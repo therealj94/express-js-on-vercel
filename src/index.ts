@@ -1,6 +1,7 @@
 import express from 'express'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { skillsData, VALID_CATEGORIES, type CategoryKey } from './data/skills.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -47,6 +48,27 @@ app.get('/api-data', (req, res) => {
 // Health check
 app.get('/healthz', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() })
+})
+
+// Skills API - list all categories
+app.get('/api/skills', (req, res) => {
+  const categories = Object.values(skillsData).map(({ key, label, description }) => ({
+    key,
+    label,
+    description,
+  }))
+  res.json({ categories })
+})
+
+// Skills API - detail for a single category
+app.get('/api/skills/:category', (req, res) => {
+  const { category } = req.params
+  const data = skillsData[category as CategoryKey]
+  if (!data) {
+    res.status(404).json({ error: 'Category not found', validCategories: VALID_CATEGORIES })
+    return
+  }
+  res.json(data)
 })
 
 export default app
