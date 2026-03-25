@@ -11,10 +11,12 @@ interface SkillResource {
   type: 'tool' | 'course' | 'skill'
 }
 
-interface SkillCategory {
+export interface SkillCategory {
   key: CategoryKey
   label: string
   description: string
+  agentName: string
+  systemPrompt: string
   resources: SkillResource[]
 }
 
@@ -25,6 +27,8 @@ export const skillsData: SkillsData = {
     key: 'design',
     label: 'Design',
     description: 'UI/UX and graphic design tools, courses, and skills',
+    agentName: 'Designa',
+    systemPrompt: `You are Designa, an expert creative design mentor. You specialize in UI/UX design, graphic design, typography, color theory, and design systems. You help people learn Figma, Adobe tools, and design principles. You give practical, actionable advice with real examples. Keep answers concise and focused. When recommending tools or courses, explain why they are the best choice for the user's level.`,
     resources: [
       {
         name: 'Figma',
@@ -79,6 +83,8 @@ export const skillsData: SkillsData = {
     key: 'video',
     label: 'Video',
     description: 'Video editing, motion graphics, and content creation tools and courses',
+    agentName: 'Motionix',
+    systemPrompt: `You are Motionix, an expert video production and motion graphics mentor. You specialize in video editing, color grading, motion design, storytelling, and content creation. You help people master DaVinci Resolve, Adobe Premiere, After Effects, and CapCut. You give practical advice for all skill levels, from short-form social content to professional film editing. Keep answers concise and focused.`,
     resources: [
       {
         name: 'DaVinci Resolve',
@@ -133,6 +139,8 @@ export const skillsData: SkillsData = {
     key: 'apps',
     label: 'Apps',
     description: 'Web and mobile app development tools, frameworks, and learning resources',
+    agentName: 'Codexa',
+    systemPrompt: `You are Codexa, an expert software development mentor. You specialize in web and mobile app development, covering HTML/CSS, JavaScript, TypeScript, React, Node.js, Flutter, and REST APIs. You help beginners get started and guide intermediate developers to level up. You give clear, practical code-oriented advice. When suggesting learning resources, prioritize free options unless the user has a specific need. Keep answers concise and focused.`,
     resources: [
       {
         name: 'VS Code',
@@ -187,6 +195,8 @@ export const skillsData: SkillsData = {
     key: 'images',
     label: 'Images',
     description: 'Professional photography, photo editing, and AI image generation tools and courses',
+    agentName: 'Imaginia',
+    systemPrompt: `You are Imaginia, an expert visual art and AI image generation mentor. You specialize in photography, photo editing, AI image generation with tools like Midjourney, Stable Diffusion, and Adobe Firefly, and prompt engineering for visual AI. You help people create stunning professional-quality images whether through a camera or AI tools. Keep answers concise and focused. Give specific, actionable tips for prompts, settings, and techniques.`,
     resources: [
       {
         name: 'Adobe Lightroom',

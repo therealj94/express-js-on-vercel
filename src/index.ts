@@ -1,12 +1,16 @@
 import express from 'express'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import Anthropic from '@anthropic-ai/sdk'
 import { skillsData, VALID_CATEGORIES, type CategoryKey } from './data/skills.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const app = express()
+app.use(express.json())
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // Home route - HTML
 app.get('/', (req, res) => {
@@ -52,10 +56,11 @@ app.get('/healthz', (req, res) => {
 
 // Skills API - list all categories
 app.get('/api/skills', (req, res) => {
-  const categories = Object.values(skillsData).map(({ key, label, description }) => ({
+  const categories = Object.values(skillsData).map(({ key, label, description, agentName }) => ({
     key,
     label,
     description,
+    agentName,
   }))
   res.json({ categories })
 })
@@ -69,6 +74,40 @@ app.get('/api/skills/:category', (req, res) => {
     return
   }
   res.json(data)
+})
+
+// Skills API - chat with a category's AI agent
+app.post('/api/skills/:category/chat', async (req, res) => {
+  const { category } = req.params
+  const agent = skillsData[category as CategoryKey]
+  if (!agent) {
+    res.status(404).json({ error: 'Category not found', validCategories: VALID_CATEGORIES })
+    return
+  }
+
+  const { message } = req.body as { message?: string }
+  if (!message || typeof message !== 'string' || message.trim() === '') {
+    res.status(400).json({ error: 'Request body must include a non-empty "message" string' })
+    return
+  }
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-opus-4-6',
+      max_tokens: 1024,
+      system: agent.systemPrompt,
+      messages: [{ role: 'user', content: message.trim() }],
+    })
+
+    const text = response.content.find((b) => b.type === 'text')?.text ?? ''
+    res.json({ agent: agent.agentName, reply: text })
+  } catch (err) {
+    if (err instanceof Anthropic.AuthenticationError) {
+      res.status(500).json({ error: 'API key not configured' })
+    } else {
+      res.status(500).json({ error: 'Failed to reach the AI agent' })
+    }
+  }
 })
 
 export default app
