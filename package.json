@@ -1,20 +1,33 @@
 {
-  "name": "express",
+  "name": "mytokenpay",
   "version": "1.0.0",
-  "description": "",
+  "description": "MyTokenPay — directorio de comercios afiliados del Sistema Financiero Social",
   "type": "module",
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,magenta \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "tsx watch src/index.ts",
+    "dev:client": "npm run dev --prefix client",
+    "build": "npm run build --prefix client",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.80.0",
-    "@types/express": "^5.0.0",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
-    "@types/node": "^22.0.0"
+    "@types/express": "^4.17.25",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.0.0",
+    "concurrently": "^10.0.3",
+    "tsx": "^4.23.1"
   }
 }
