@@ -13,6 +13,7 @@ import {
   MessageCircle,
 } from 'lucide-react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { AnimatedScreen } from '../../src/components/AnimatedScreen'
 import { api } from '../../src/lib/api'
 import type { Company, DayKey } from '../../src/lib/types'
 import { useMetaStore } from '../../src/store/meta'
@@ -84,7 +85,7 @@ export default function CompanyDetail() {
           <View style={styles.coverOverlay} />
         </View>
 
-        <View style={styles.header}>
+        <AnimatedScreen fill={false} style={styles.header}>
           <View style={styles.logoWrap}>
             {company.logoDataUrl ? (
               <Image source={{ uri: company.logoDataUrl }} style={styles.logo} />
@@ -185,7 +186,7 @@ export default function CompanyDetail() {
               </View>
             </View>
           </View>
-        </View>
+        </AnimatedScreen>
       </ScrollView>
 
       <SafeAreaView style={styles.backFab} edges={['top']} pointerEvents="box-none">

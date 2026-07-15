@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ArrowLeft, ArrowRight, Building2, Check, Globe, Camera, ShieldCheck } from 'lucide-react-native'
@@ -14,6 +14,7 @@ import { TagInput } from '../src/components/forms/TagInput'
 import { ImagePickerField } from '../src/components/forms/ImagePickerField'
 import { DocPickerField, type PickedDoc } from '../src/components/forms/DocPickerField'
 import { HoursEditor } from '../src/components/forms/HoursEditor'
+import { AnimatedScreen } from '../src/components/AnimatedScreen'
 import { colors, fonts, radius } from '../src/lib/theme'
 import type { CompanySocials, WeekHours } from '../src/lib/types'
 
@@ -134,7 +135,9 @@ export default function RegisterCompany() {
       </View>
       <Text style={styles.stepLabel}>{STEP_LABELS[step]}</Text>
 
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <AnimatedScreen animKey={step} fill={false} distance={10}>
         {step === 0 && (
           <View style={{ gap: 16 }}>
             <TextField label="Nombre legal de la empresa" value={form.legalName} onChangeText={(v) => update('legalName', v)} placeholder="Ej. Fuego Norte Parrilla S.A. de C.V." />
@@ -286,6 +289,7 @@ export default function RegisterCompany() {
             )}
           </View>
         )}
+        </AnimatedScreen>
       </ScrollView>
 
       <SafeAreaView edges={['bottom']} style={styles.footer}>
@@ -297,6 +301,7 @@ export default function RegisterCompany() {
           icon={step === STEP_LABELS.length - 1 ? undefined : <ArrowRight size={16} color={colors.bg} />}
         />
       </SafeAreaView>
+      </KeyboardAvoidingView>
     </View>
   )
 }

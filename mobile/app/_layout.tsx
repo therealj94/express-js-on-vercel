@@ -44,12 +44,18 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
       <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
-        <Stack.Screen name="(tabs)" />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.bg },
+          animation: 'slide_from_right',
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
         <Stack.Screen name="negocio/[id]" />
-        <Stack.Screen name="login" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="registro" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="registrar-empresa" />
+        <Stack.Screen name="login" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="registro" options={{ animation: 'none' }} />
+        <Stack.Screen name="registrar-empresa" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="mi-empresa" />
       </Stack>
     </GestureHandlerRootView>

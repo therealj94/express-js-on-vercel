@@ -1,6 +1,7 @@
-import { Image, StyleSheet, Text, View } from 'react-native'
+import { useState } from 'react'
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { BadgeCheck, MapPin } from 'lucide-react-native'
+import { BadgeCheck, Copy, ExternalLink, MapPin, MoreVertical, Navigation, Share2 } from 'lucide-react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import type { Company } from '../lib/types'
 import { useMetaStore } from '../store/meta'
@@ -8,12 +9,22 @@ import { colors, fonts, gradient, radius } from '../lib/theme'
 import { CategoryIcon } from './CategoryIcon'
 import { Card } from './ui/Card'
 import { Chip } from './ui/Chip'
+import { ActionSheet, type ActionItem } from './ActionSheet'
+import { copyAddress, openDirections, shareCompany } from '../lib/companyActions'
 
 export function CompanyCard({ company }: { company: Company }) {
   const router = useRouter()
   const { categories, countries, cityLabel } = useMetaStore()
   const category = categories.find((c) => c.slug === company.categorySlug)
   const country = countries.find((c) => c.slug === company.countrySlug)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const items: ActionItem[] = [
+    { key: 'view', label: 'Ver ficha', icon: ExternalLink, onPress: () => router.push(`/negocio/${company.id}`) },
+    { key: 'directions', label: 'Cómo llegar', icon: Navigation, onPress: () => openDirections(company) },
+    { key: 'share', label: 'Compartir negocio', icon: Share2, onPress: () => shareCompany(company) },
+    { key: 'copy', label: 'Copiar dirección', icon: Copy, onPress: () => copyAddress(company) },
+  ]
 
   return (
     <Card onPress={() => router.push(`/negocio/${company.id}`)} style={{ padding: 16 }}>
@@ -31,7 +42,12 @@ export function CompanyCard({ company }: { company: Company }) {
             <Text style={styles.category}>{category?.label ?? company.categorySlug}</Text>
           </View>
         </View>
-        {company.verified && <BadgeCheck size={18} color={colors.ok} />}
+        <View style={styles.headerRight}>
+          {company.verified && <BadgeCheck size={18} color={colors.ok} />}
+          <Pressable onPress={() => setMenuOpen(true)} hitSlop={10} style={styles.moreBtn}>
+            <MoreVertical size={16} color={colors.muted} />
+          </Pressable>
+        </View>
       </View>
 
       <Text style={styles.description} numberOfLines={2}>{company.description}</Text>
@@ -51,6 +67,13 @@ export function CompanyCard({ company }: { company: Company }) {
         </Text>
         <Text style={styles.flag}>{country?.flag}</Text>
       </View>
+
+      <ActionSheet
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        title={company.tradeName}
+        items={items}
+      />
     </Card>
   )
 }
@@ -58,6 +81,8 @@ export function CompanyCard({ company }: { company: Company }) {
 const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  moreBtn: { padding: 2 },
   logo: {
     width: 46,
     height: 46,

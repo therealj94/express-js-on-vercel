@@ -1,6 +1,7 @@
-import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
+import { ScrollView, StyleSheet, type StyleProp, type ViewStyle } from 'react-native'
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context'
 import { colors } from '../lib/theme'
+import { AnimatedScreen } from './AnimatedScreen'
 
 interface Props {
   children: React.ReactNode
@@ -15,10 +16,10 @@ export function Screen({ children, scroll = true, style, contentStyle, edges = [
     <SafeAreaView style={[styles.safe, style]} edges={edges}>
       {scroll ? (
         <ScrollView contentContainerStyle={[styles.content, contentStyle]} showsVerticalScrollIndicator={false}>
-          {children}
+          <AnimatedScreen fill={false}>{children}</AnimatedScreen>
         </ScrollView>
       ) : (
-        <View style={[styles.flex, contentStyle]}>{children}</View>
+        <AnimatedScreen style={contentStyle}>{children}</AnimatedScreen>
       )}
     </SafeAreaView>
   )

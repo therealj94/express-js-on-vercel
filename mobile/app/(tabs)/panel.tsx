@@ -6,12 +6,16 @@ import {
   ArrowRight,
   BadgeCheck,
   Clock,
+  Copy,
   ExternalLink,
   FileCheck2,
   LogIn,
   MapPin,
+  MoreVertical,
+  Navigation,
   Pencil,
   Rocket,
+  Share2,
   ShieldAlert,
   ShieldQuestion,
 } from 'lucide-react-native'
@@ -21,7 +25,9 @@ import { CategoryIcon } from '../../src/components/CategoryIcon'
 import { StatusBadge } from '../../src/components/StatusBadge'
 import { Card } from '../../src/components/ui/Card'
 import { GradientButton } from '../../src/components/ui/GradientButton'
+import { ActionSheet, type ActionItem } from '../../src/components/ActionSheet'
 import { api } from '../../src/lib/api'
+import { copyAddress, openDirections, shareCompany } from '../../src/lib/companyActions'
 import type { Company } from '../../src/lib/types'
 import { useAuthStore } from '../../src/store/auth'
 import { useMetaStore } from '../../src/store/meta'
@@ -51,6 +57,7 @@ export default function Dashboard() {
   const { user } = useAuthStore()
   const { categories, load } = useMetaStore()
   const [company, setCompany] = useState<Company | null | undefined>(undefined)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     load()
@@ -140,10 +147,13 @@ export default function Dashboard() {
                   <CategoryIcon name={category?.icon ?? ''} size={20} color={colors.bg} />
                 </LinearGradient>
               )}
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.companyName}>{company.tradeName}</Text>
                 <Text style={styles.companyCategory}>{category?.label}</Text>
               </View>
+              <Pressable onPress={() => setMenuOpen(true)} hitSlop={10} style={styles.moreBtn}>
+                <MoreVertical size={17} color={colors.muted} />
+              </Pressable>
             </View>
             <View style={{ marginTop: 14 }}>
               <StatusBadge status={company.kyc.status} />
@@ -153,6 +163,21 @@ export default function Dashboard() {
               <ExternalLink size={12} color={colors.blue} />
             </Pressable>
           </Card>
+
+          <ActionSheet
+            visible={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            title={company.tradeName}
+            items={
+              [
+                { key: 'view', label: 'Ver ficha pública', icon: ExternalLink, onPress: () => router.push(`/negocio/${company.id}`) },
+                { key: 'edit', label: 'Editar perfil', icon: Pencil, onPress: () => router.push('/mi-empresa') },
+                { key: 'directions', label: 'Cómo llegar', icon: Navigation, onPress: () => openDirections(company) },
+                { key: 'share', label: 'Compartir negocio', icon: Share2, onPress: () => shareCompany(company) },
+                { key: 'copy', label: 'Copiar dirección', icon: Copy, onPress: () => copyAddress(company) },
+              ] satisfies ActionItem[]
+            }
+          />
 
           <Card style={{ marginTop: 12 }}>
             <Text style={styles.statLabel}>Perfil completo</Text>
@@ -243,6 +268,7 @@ const styles = StyleSheet.create({
   cardBody: { color: colors.muted, fontFamily: fonts.body, fontSize: 12.5, lineHeight: 18, marginTop: 6 },
   listItem: { color: colors.muted, fontFamily: fonts.body, fontSize: 12.5 },
   companyRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  moreBtn: { padding: 4 },
   companyLogo: { width: 46, height: 46, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   companyName: { color: colors.text, fontFamily: fonts.display, fontSize: 15 },
   companyCategory: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, marginTop: 2 },

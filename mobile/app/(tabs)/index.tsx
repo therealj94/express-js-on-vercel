@@ -21,8 +21,6 @@ const STEPS = [
   { n: '04', title: 'Recibe nuevos clientes', body: 'Usuarios que buscan dónde gastar su ORIGEN te encuentran.', icon: Users },
 ]
 
-const QUICK_CATEGORIES = ['restaurantes', 'hoteles', 'gimnasios', 'belleza', 'vida-nocturna']
-
 export default function Home() {
   const router = useRouter()
   const { categories, load } = useMetaStore()
