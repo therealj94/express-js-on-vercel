@@ -2,7 +2,16 @@ node_modules
 .env
 .vercel
 dist
-client/node_modules
-client/dist
-client/.vite
 *.tsbuildinfo
+
+# Expo / React Native (mobile/)
+mobile/node_modules
+mobile/.expo
+mobile/dist
+mobile/web-build
+mobile/*.jks
+mobile/*.p8
+mobile/*.p12
+mobile/*.key
+mobile/*.mobileprovision
+mobile/.env*.local
