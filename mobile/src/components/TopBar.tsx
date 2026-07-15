@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Building2, ChevronDown, LayoutGrid, LogOut } from 'lucide-react-native'
 import { colors, fonts, gradient } from '../lib/theme'
 import { useAuthStore } from '../store/auth'
 import { ActionSheet, type ActionItem } from './ActionSheet'
+import { Logo } from './Logo'
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/)
@@ -36,11 +37,7 @@ export function TopBar({ title }: { title?: string }) {
 
   return (
     <View style={styles.wrap}>
-      {title ? (
-        <Text style={styles.title}>{title}</Text>
-      ) : (
-        <Image source={require('../../assets/logo.jpg')} style={styles.logo} resizeMode="cover" />
-      )}
+      {title ? <Text style={styles.title}>{title}</Text> : <Logo size="sm" />}
 
       {user ? (
         <Pressable onPress={() => setMenuOpen(true)} style={styles.pill}>
@@ -86,7 +83,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
-  logo: { width: 108, height: 32, borderRadius: 6 },
   title: { color: colors.text, fontFamily: fonts.display, fontSize: 17 },
   pill: {
     flexDirection: 'row',

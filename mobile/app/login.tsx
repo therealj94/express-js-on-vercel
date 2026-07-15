@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Compass, LogIn, UserPlus, X } from 'lucide-react-native'
 import { AuthSheet, type AuthMode } from '../src/components/AuthSheet'
 import { GradientButton } from '../src/components/ui/GradientButton'
+import { Logo } from '../src/components/Logo'
 import { colors, fonts } from '../src/lib/theme'
 
 export default function Welcome() {
@@ -51,14 +52,14 @@ export default function Welcome() {
 
         <View style={styles.content}>
           <View style={styles.brandRow}>
-            <Image source={require('../assets/logo.jpg')} style={styles.logo} />
+            <Logo size="md" shadow />
           </View>
 
           <Text style={styles.headline}>
-            El directorio de comercios que aceptan <Text style={{ color: colors.cyan }}>ORIGEN</Text>
+            Tu <Text style={{ color: colors.cyan }}>ORIGEN</Text>, en cada esquina
           </Text>
           <Text style={styles.subhead}>
-            Encuentra dónde gastar tu rendimiento, o afilia tu negocio para empezar a recibir pagos.
+            El mapa vivo de comercios donde tu rendimiento se convierte en experiencia real.
           </Text>
 
           <View style={styles.actions}>
@@ -113,7 +114,6 @@ const styles = StyleSheet.create({
   },
   content: { paddingHorizontal: 24, paddingBottom: 8 },
   brandRow: { marginBottom: 18 },
-  logo: { width: 130, height: 38, borderRadius: 8 },
   headline: {
     color: colors.text,
     fontFamily: fonts.displayBold,

@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
-import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native'
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { colors, fonts, gradient } from '../lib/theme'
+import { Logo } from './Logo'
 
 const DURATION = 1500
 
@@ -49,7 +50,7 @@ export function AnimatedSplash({ onDone }: { onDone: () => void }) {
           <Animated.View
             style={[styles.ring, { transform: [{ scale: ringScale }], opacity: ringOpacity }]}
           />
-          <Image source={require('../../assets/logo.jpg')} style={styles.logo} resizeMode="cover" />
+          <Logo size="lg" />
         </View>
 
         <View style={styles.barTrack}>
@@ -91,16 +92,11 @@ const styles = StyleSheet.create({
   },
   ring: {
     position: 'absolute',
-    width: 96,
+    width: 220,
     height: 96,
-    borderRadius: 24,
+    borderRadius: 28,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-  },
-  logo: {
-    width: 168,
-    height: 50,
-    borderRadius: 10,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   barTrack: {
     width: 200,

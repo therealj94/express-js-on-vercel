@@ -3,8 +3,17 @@ import { Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { StatusBar } from 'expo-status-bar'
-import { useFonts, Sora_500Medium, Sora_600SemiBold, Sora_700Bold } from '@expo-google-fonts/sora'
-import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from '@expo-google-fonts/inter'
+import {
+  useFonts,
+  BricolageGrotesque_500Medium,
+  BricolageGrotesque_600SemiBold,
+  BricolageGrotesque_800ExtraBold,
+} from '@expo-google-fonts/bricolage-grotesque'
+import {
+  InstrumentSans_400Regular,
+  InstrumentSans_500Medium,
+  InstrumentSans_600SemiBold,
+} from '@expo-google-fonts/instrument-sans'
 import { AnimatedSplash } from '../src/components/AnimatedSplash'
 import { useAuthStore } from '../src/store/auth'
 import { useMetaStore } from '../src/store/meta'
@@ -14,12 +23,12 @@ SplashScreen.preventAutoHideAsync().catch(() => {})
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    Sora_500Medium,
-    Sora_600SemiBold,
-    Sora_700Bold,
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
+    BricolageGrotesque_500Medium,
+    BricolageGrotesque_600SemiBold,
+    BricolageGrotesque_800ExtraBold,
+    InstrumentSans_400Regular,
+    InstrumentSans_500Medium,
+    InstrumentSans_600SemiBold,
   })
   const [introDone, setIntroDone] = useState(false)
   const init = useAuthStore((s) => s.init)

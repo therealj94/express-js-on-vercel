@@ -1,20 +1,23 @@
+// Palette sampled from the MyTokenPay mark itself (magenta-violet → royal blue →
+// cyan) rather than a generic purple/blue gradient — neutrals are tinted toward
+// the same violet instead of a flat blue-black.
 export const colors = {
-  bg: '#07080f',
-  bgSoft: '#0b0e18',
-  surface: '#10131f',
-  surfaceHi: '#161a2a',
-  border: '#1f2437',
-  muted: '#8892a8',
-  muted2: '#5c6480',
-  text: '#eef0f7',
+  bg: '#0A0812',
+  bgSoft: '#100C1B',
+  surface: '#171224',
+  surfaceHi: '#211A33',
+  border: '#2C2444',
+  muted: '#9D91B8',
+  muted2: '#6C6089',
+  text: '#F5F2FA',
 
-  violet: '#8b5cf6',
-  blue: '#4c8dff',
-  cyan: '#22d3ee',
+  violet: '#C266F5',
+  blue: '#4C6EF0',
+  cyan: '#4FF0FF',
 
-  ok: '#34d399',
-  warn: '#fbbf24',
-  danger: '#f87171',
+  ok: '#34D399',
+  warn: '#FBBF24',
+  danger: '#FB7185',
 }
 
 export const gradient = [colors.violet, colors.blue, colors.cyan] as const
@@ -30,12 +33,12 @@ export const radius = {
 export const spacing = (n: number) => n * 4
 
 export const fonts = {
-  display: 'Sora_600SemiBold',
-  displayBold: 'Sora_700Bold',
-  displayMedium: 'Sora_500Medium',
-  body: 'Inter_400Regular',
-  bodyMedium: 'Inter_500Medium',
-  bodySemiBold: 'Inter_600SemiBold',
+  display: 'BricolageGrotesque_600SemiBold',
+  displayBold: 'BricolageGrotesque_800ExtraBold',
+  displayMedium: 'BricolageGrotesque_500Medium',
+  body: 'InstrumentSans_400Regular',
+  bodyMedium: 'InstrumentSans_500Medium',
+  bodySemiBold: 'InstrumentSans_600SemiBold',
 }
 
 function withAlpha(hex: string, alpha: number): string {
