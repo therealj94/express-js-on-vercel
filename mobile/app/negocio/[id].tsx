@@ -14,6 +14,7 @@ import {
 } from 'lucide-react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AnimatedScreen } from '../../src/components/AnimatedScreen'
+import { AnimatedText } from '../../src/components/AnimatedText'
 import { api } from '../../src/lib/api'
 import type { Company, DayKey } from '../../src/lib/types'
 import { useMetaStore } from '../../src/store/meta'
@@ -97,7 +98,7 @@ export default function CompanyDetail() {
           </View>
 
           <View style={styles.nameRow}>
-            <Text style={styles.name}>{company.tradeName}</Text>
+            <AnimatedText style={styles.name}>{company.tradeName}</AnimatedText>
             {company.verified && (
               <View style={styles.verifiedPill}>
                 <BadgeCheck size={12} color={colors.ok} />

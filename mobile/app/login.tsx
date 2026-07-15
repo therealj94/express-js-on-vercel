@@ -7,6 +7,7 @@ import { Compass, LogIn, UserPlus, X } from 'lucide-react-native'
 import { AuthSheet, type AuthMode } from '../src/components/AuthSheet'
 import { GradientButton } from '../src/components/ui/GradientButton'
 import { Logo } from '../src/components/Logo'
+import { AnimatedText } from '../src/components/AnimatedText'
 import { colors, fonts } from '../src/lib/theme'
 
 export default function Welcome() {
@@ -55,9 +56,7 @@ export default function Welcome() {
             <Logo size="md" shadow />
           </View>
 
-          <Text style={styles.headline}>
-            Tu <Text style={{ color: colors.cyan }}>ORIGEN</Text>, en cada esquina
-          </Text>
+          <AnimatedText style={styles.headline}>Tu ORIGEN, en cada esquina</AnimatedText>
           <Text style={styles.subhead}>
             El mapa vivo de comercios donde tu rendimiento se convierte en experiencia real.
           </Text>

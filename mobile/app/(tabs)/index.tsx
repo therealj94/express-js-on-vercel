@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
-import { ArrowRight, MapPinned, Search, ShieldCheck, Sparkle, Store, Users } from 'lucide-react-native'
+import { ArrowRight, MapPinned, Search, ShieldCheck, Sparkle, Store, Users, X } from 'lucide-react-native'
 import { Screen } from '../../src/components/Screen'
 import { TopBar } from '../../src/components/TopBar'
 import { CategoryIcon } from '../../src/components/CategoryIcon'
 import { CompanyCard } from '../../src/components/CompanyCard'
 import { Card } from '../../src/components/ui/Card'
 import { TextField } from '../../src/components/ui/TextField'
+import { AnimatedText } from '../../src/components/AnimatedText'
 import { useMetaStore } from '../../src/store/meta'
 import { api } from '../../src/lib/api'
 import type { Company } from '../../src/lib/types'
@@ -23,7 +24,7 @@ const STEPS = [
 
 export default function Home() {
   const router = useRouter()
-  const { categories, load } = useMetaStore()
+  const { categories, countries, load } = useMetaStore()
   const [companies, setCompanies] = useState<Company[]>([])
   const [query, setQuery] = useState('')
 
@@ -48,12 +49,9 @@ export default function Home() {
           <Sparkle size={11} color={colors.muted} />
           <Text style={styles.badgeText}>Capa de comercio del Sistema Financiero Social</Text>
         </View>
-        <Text style={styles.h1}>
-          Encuentra dónde pagar con <Text style={{ color: colors.blue }}>ORIGEN</Text>
-        </Text>
+        <AnimatedText style={styles.h1}>Encuentra dónde pagar con ORIGEN</AnimatedText>
         <Text style={styles.subtitle}>
-          El directorio de comercios afiliados en Honduras, Guatemala, El Salvador, Nicaragua, Costa
-          Rica y Panamá.
+          El directorio de comercios afiliados en toda Latinoamérica, de México a la Patagonia.
         </Text>
 
         <View style={styles.searchRow}>
@@ -63,6 +61,13 @@ export default function Home() {
               onChangeText={setQuery}
               placeholder="Restaurantes, hoteles, gimnasios…"
               icon={<Search size={15} color={colors.muted2} />}
+              rightElement={
+                query.length > 0 ? (
+                  <Pressable onPress={() => setQuery('')} hitSlop={10}>
+                    <X size={14} color={colors.muted2} />
+                  </Pressable>
+                ) : undefined
+              }
               onSubmitEditing={submitSearch}
               returnKeyType="search"
             />
@@ -88,7 +93,7 @@ export default function Home() {
         </Card>
         <Card style={styles.statCard}>
           <MapPinned size={18} color={colors.blue} />
-          <Text style={styles.statNumber}>6</Text>
+          <Text style={styles.statNumber}>{countries.length || '—'}</Text>
           <Text style={styles.statLabel}>Países</Text>
         </Card>
       </View>
@@ -106,7 +111,7 @@ export default function Home() {
       </Pressable>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Explora por categoría</Text>
+        <AnimatedText style={styles.sectionTitle}>Explora por categoría</AnimatedText>
         <View style={styles.catGrid}>
           {categories.slice(0, 8).map((cat) => (
             <Pressable
@@ -124,7 +129,7 @@ export default function Home() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Cómo funciona para tu negocio</Text>
+        <AnimatedText style={styles.sectionTitle} delay={60}>Cómo funciona para tu negocio</AnimatedText>
         <View style={{ gap: 12, marginTop: 4 }}>
           {STEPS.map((step) => (
             <Card key={step.n} style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-start' }}>
@@ -143,7 +148,7 @@ export default function Home() {
 
       {featured.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Comercios destacados</Text>
+          <AnimatedText style={styles.sectionTitle} delay={60}>Comercios destacados</AnimatedText>
           <View style={{ gap: 12, marginTop: 4 }}>
             {featured.map((company) => (
               <CompanyCard key={company.id} company={company} />

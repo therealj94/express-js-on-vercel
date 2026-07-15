@@ -50,19 +50,24 @@ export function ActionSheet({ visible, onClose, header, title, items }: Props) {
           {header}
           {title && <Text style={styles.title}>{title}</Text>}
           <View style={{ marginTop: header || title ? 10 : 0 }}>
-            {items.map((item) => (
-              <Pressable
-                key={item.key}
-                onPress={() => handlePress(item)}
-                disabled={item.disabled}
-                style={({ pressed }) => [styles.item, pressed && styles.itemPressed, item.disabled && { opacity: 0.4 }]}
-              >
-                <View style={[styles.itemIcon, item.danger && styles.itemIconDanger]}>
-                  <item.icon size={16} color={item.danger ? colors.danger : colors.text} />
+            {items.map((item, i) => {
+              const needsDivider = item.danger && !items[i - 1]?.danger && i > 0
+              return (
+                <View key={item.key}>
+                  {needsDivider && <View style={styles.divider} />}
+                  <Pressable
+                    onPress={() => handlePress(item)}
+                    disabled={item.disabled}
+                    style={({ pressed }) => [styles.item, pressed && styles.itemPressed, item.disabled && { opacity: 0.4 }]}
+                  >
+                    <View style={[styles.itemIcon, item.danger && styles.itemIconDanger]}>
+                      <item.icon size={16} color={item.danger ? colors.danger : colors.text} />
+                    </View>
+                    <Text style={[styles.itemLabel, item.danger && { color: colors.danger }]}>{item.label}</Text>
+                  </Pressable>
                 </View>
-                <Text style={[styles.itemLabel, item.danger && { color: colors.danger }]}>{item.label}</Text>
-              </Pressable>
-            ))}
+              )
+            })}
           </View>
         </Animated.View>
       </View>
@@ -89,4 +94,5 @@ const styles = StyleSheet.create({
   itemIcon: { width: 34, height: 34, borderRadius: radius.sm, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   itemIconDanger: { backgroundColor: colors.danger + '18' },
   itemLabel: { color: colors.text, fontFamily: fonts.bodyMedium, fontSize: 14.5 },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: 6, marginHorizontal: 10 },
 })

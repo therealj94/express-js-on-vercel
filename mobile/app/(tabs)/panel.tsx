@@ -23,6 +23,7 @@ import { Screen } from '../../src/components/Screen'
 import { TopBar } from '../../src/components/TopBar'
 import { CategoryIcon } from '../../src/components/CategoryIcon'
 import { StatusBadge } from '../../src/components/StatusBadge'
+import { AnimatedText } from '../../src/components/AnimatedText'
 import { Card } from '../../src/components/ui/Card'
 import { GradientButton } from '../../src/components/ui/GradientButton'
 import { ActionSheet, type ActionItem } from '../../src/components/ActionSheet'
@@ -97,7 +98,7 @@ export default function Dashboard() {
     <Screen edges={['top']}>
       <TopBar title="Mi panel" />
       <View style={styles.section}>
-        <Text style={styles.hello}>Hola, {user.fullName.split(' ')[0]}</Text>
+        <AnimatedText style={styles.hello}>Hola, {user.fullName.split(' ')[0]}</AnimatedText>
         <Text style={styles.subtitle}>Este es el panel de tu cuenta en MyTokenPay.</Text>
       </View>
 

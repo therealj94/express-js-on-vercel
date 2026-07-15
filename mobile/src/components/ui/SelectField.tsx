@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
-import { ChevronDown, Check, X } from 'lucide-react-native'
+import { useMemo, useState } from 'react'
+import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ChevronDown, Check, Search, X } from 'lucide-react-native'
 import { colors, fonts, radius } from '../../lib/theme'
 
 export interface SelectOption {
@@ -15,11 +15,32 @@ interface Props {
   onChange: (value: string) => void
   placeholder?: string
   disabled?: boolean
+  searchable?: boolean
 }
 
-export function SelectField({ label, value, options, onChange, placeholder = 'Selecciona una opción', disabled }: Props) {
+function normalize(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+}
+
+export function SelectField({ label, value, options, onChange, placeholder = 'Selecciona una opción', disabled, searchable }: Props) {
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
   const selected = options.find((o) => o.value === value)
+  const showSearch = searchable ?? options.length > 6
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return options
+    const q = normalize(query)
+    return options.filter((o) => normalize(o.label).includes(q))
+  }, [options, query])
+
+  function close() {
+    setOpen(false)
+    setQuery('')
+  }
 
   return (
     <View style={{ gap: 8 }}>
@@ -34,32 +55,61 @@ export function SelectField({ label, value, options, onChange, placeholder = 'Se
         <ChevronDown size={16} color={colors.muted} />
       </Pressable>
 
-      <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
+      <Modal visible={open} animationType="slide" transparent onRequestClose={close}>
+        <Pressable style={styles.backdrop} onPress={close}>
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{label}</Text>
-              <Pressable onPress={() => setOpen(false)} hitSlop={10}>
-                <X size={20} color={colors.muted} />
+              <Pressable onPress={close} hitSlop={10} style={styles.closeBtn}>
+                <X size={16} color={colors.muted} />
               </Pressable>
             </View>
-            <FlatList
-              data={options}
-              keyExtractor={(item) => item.value}
-              style={{ maxHeight: 420 }}
-              renderItem={({ item }) => (
-                <Pressable
-                  style={styles.option}
-                  onPress={() => {
-                    onChange(item.value)
-                    setOpen(false)
-                  }}
-                >
-                  <Text style={styles.optionText}>{item.label}</Text>
-                  {item.value === value && <Check size={16} color={colors.blue} />}
-                </Pressable>
-              )}
-            />
+
+            {showSearch && (
+              <View style={styles.searchWrap}>
+                <Search size={14} color={colors.muted2} />
+                <TextInput
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder="Buscar…"
+                  placeholderTextColor={colors.muted2}
+                  style={styles.searchInput}
+                  autoCorrect={false}
+                />
+                {query.length > 0 && (
+                  <Pressable onPress={() => setQuery('')} hitSlop={10}>
+                    <X size={14} color={colors.muted2} />
+                  </Pressable>
+                )}
+              </View>
+            )}
+
+            {filtered.length === 0 ? (
+              <View style={styles.empty}>
+                <Text style={styles.emptyText}>Sin resultados para "{query}"</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={filtered}
+                keyExtractor={(item) => item.value}
+                style={{ maxHeight: 380 }}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={({ pressed }) => [styles.option, pressed && styles.optionPressed]}
+                    onPress={() => {
+                      onChange(item.value)
+                      close()
+                    }}
+                  >
+                    <Text style={[styles.optionText, item.value === value && styles.optionTextActive]}>
+                      {item.label}
+                    </Text>
+                    {item.value === value && <Check size={16} color={colors.blue} />}
+                  </Pressable>
+                )}
+              />
+            )}
           </Pressable>
         </Pressable>
       </Modal>
@@ -94,7 +144,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(4,3,8,0.68)',
     justifyContent: 'flex-end',
   },
   sheet: {
@@ -105,7 +155,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingBottom: 24,
     paddingTop: 12,
-    maxHeight: '75%',
+    maxHeight: '80%',
   },
   sheetHeader: {
     flexDirection: 'row',
@@ -113,26 +163,60 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   sheetTitle: {
     color: colors.text,
     fontFamily: fonts.display,
     fontSize: 15,
   },
+  closeBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 20,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  searchInput: {
+    flex: 1,
+    color: colors.text,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    padding: 0,
+  },
+  empty: { paddingHorizontal: 20, paddingVertical: 28, alignItems: 'center' },
+  emptyText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12.5 },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    marginHorizontal: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 13,
+    borderRadius: radius.sm,
   },
+  optionPressed: { backgroundColor: colors.surfaceHi },
   optionText: {
     color: colors.text,
     fontFamily: fonts.body,
     fontSize: 14,
+  },
+  optionTextActive: {
+    fontFamily: fonts.bodySemiBold,
+    color: colors.blue,
   },
 })

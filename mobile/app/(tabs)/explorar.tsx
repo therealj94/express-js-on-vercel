@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
 import { LayoutGrid, MapIcon, Search, SlidersHorizontal, X } from 'lucide-react-native'
 import { Screen } from '../../src/components/Screen'
@@ -9,10 +9,13 @@ import { CompanyMap } from '../../src/components/CompanyMap'
 import { CategoryIcon } from '../../src/components/CategoryIcon'
 import { TextField } from '../../src/components/ui/TextField'
 import { SelectField } from '../../src/components/ui/SelectField'
+import { AnimatedText } from '../../src/components/AnimatedText'
 import { useMetaStore } from '../../src/store/meta'
 import { api } from '../../src/lib/api'
 import type { Company } from '../../src/lib/types'
 import { colors, fonts, radius } from '../../src/lib/theme'
+
+const SEARCH_DEBOUNCE_MS = 350
 
 export default function Explore() {
   const params = useLocalSearchParams<{ q?: string; category?: string }>()
@@ -22,14 +25,25 @@ export default function Explore() {
   const [view, setView] = useState<'list' | 'map'>('list')
   const [filtersOpen, setFiltersOpen] = useState(false)
 
+  const [qInput, setQInput] = useState(params.q ?? '')
   const [q, setQ] = useState(params.q ?? '')
   const [country, setCountry] = useState('')
   const [city, setCity] = useState('')
   const [category, setCategory] = useState(params.category ?? '')
 
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => setQ(qInput), SEARCH_DEBOUNCE_MS)
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [qInput])
 
   useEffect(() => {
     setLoading(true)
@@ -40,7 +54,15 @@ export default function Explore() {
   }, [country, city, category, q])
 
   const cities = useMemo(() => countries.find((c) => c.slug === country)?.cities ?? [], [countries, country])
-  const hasFilters = Boolean(country || city || category || q)
+  const hasFilters = Boolean(country || city || category || qInput)
+
+  function clearAll() {
+    setQInput('')
+    setQ('')
+    setCountry('')
+    setCity('')
+    setCategory('')
+  }
 
   const mapCenter = country
     ? {
@@ -53,13 +75,46 @@ export default function Explore() {
     <Screen scroll={view === 'list'} edges={['top']}>
       <TopBar title="Directorio" />
 
+      <View style={styles.searchRow}>
+        <TextField
+          value={qInput}
+          onChangeText={setQInput}
+          placeholder="Busca por nombre, comida, servicio…"
+          icon={<Search size={14} color={colors.muted2} />}
+          rightElement={
+            qInput.length > 0 ? (
+              <Pressable onPress={() => setQInput('')} hitSlop={10}>
+                <X size={14} color={colors.muted2} />
+              </Pressable>
+            ) : undefined
+          }
+          returnKeyType="search"
+        />
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickCats}>
+        {categories.map((cat) => {
+          const active = category === cat.slug
+          return (
+            <Pressable
+              key={cat.slug}
+              onPress={() => setCategory(active ? '' : cat.slug)}
+              style={[styles.quickChip, active && styles.quickChipActive]}
+            >
+              <CategoryIcon name={cat.icon} size={13} color={active ? colors.bg : colors.muted} />
+              <Text style={[styles.quickChipText, active && { color: colors.bg }]}>{cat.label}</Text>
+            </Pressable>
+          )
+        })}
+      </ScrollView>
+
       <View style={styles.headerRow}>
         <Text style={styles.count}>
           {loading ? 'Buscando…' : `${companies.length} comercio${companies.length === 1 ? '' : 's'}`}
         </Text>
         <View style={styles.headerActions}>
-          <Pressable onPress={() => setFiltersOpen((v) => !v)} style={styles.iconBtn}>
-            <SlidersHorizontal size={15} color={colors.text} />
+          <Pressable onPress={() => setFiltersOpen((v) => !v)} style={[styles.iconBtn, Boolean(country || city) && styles.iconBtnActive]}>
+            <SlidersHorizontal size={15} color={country || city ? colors.blue : colors.text} />
           </Pressable>
           <View style={styles.toggle}>
             <Pressable onPress={() => setView('list')} style={[styles.toggleBtn, view === 'list' && styles.toggleActive]}>
@@ -74,12 +129,6 @@ export default function Explore() {
 
       {filtersOpen && (
         <View style={styles.filters}>
-          <TextField
-            value={q}
-            onChangeText={setQ}
-            placeholder="Buscar comercio…"
-            icon={<Search size={14} color={colors.muted2} />}
-          />
           <View style={styles.filterRow}>
             <View style={{ flex: 1 }}>
               <SelectField
@@ -105,35 +154,8 @@ export default function Explore() {
             </View>
           </View>
 
-          <View>
-            <Text style={styles.filterLabel}>Categoría</Text>
-            <View style={styles.categoryWrap}>
-              {categories.map((cat) => {
-                const active = category === cat.slug
-                return (
-                  <Pressable
-                    key={cat.slug}
-                    onPress={() => setCategory(active ? '' : cat.slug)}
-                    style={[styles.categoryChip, active && styles.categoryChipActive]}
-                  >
-                    <CategoryIcon name={cat.icon} size={13} color={active ? colors.text : colors.muted} />
-                    <Text style={[styles.categoryChipText, active && { color: colors.text }]}>{cat.label}</Text>
-                  </Pressable>
-                )
-              })}
-            </View>
-          </View>
-
           {hasFilters && (
-            <Pressable
-              onPress={() => {
-                setQ('')
-                setCountry('')
-                setCity('')
-                setCategory('')
-              }}
-              style={styles.clearBtn}
-            >
+            <Pressable onPress={clearAll} style={styles.clearBtn}>
               <X size={12} color={colors.muted} />
               <Text style={styles.clearText}>Limpiar filtros</Text>
             </Pressable>
@@ -147,8 +169,14 @@ export default function Explore() {
         </View>
       ) : companies.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>Sin resultados</Text>
-          <Text style={styles.emptyBody}>Prueba con otros filtros o busca otra categoría.</Text>
+          <AnimatedText style={styles.emptyTitle}>Sin resultados</AnimatedText>
+          <Text style={styles.emptyBody}>Prueba con otros términos, país o categoría.</Text>
+          {hasFilters && (
+            <Pressable onPress={clearAll} style={[styles.clearBtn, { marginTop: 6 }]}>
+              <X size={12} color={colors.muted} />
+              <Text style={styles.clearText}>Limpiar filtros</Text>
+            </Pressable>
+          )}
         </View>
       ) : view === 'map' ? (
         <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 }}>
@@ -166,12 +194,27 @@ export default function Explore() {
 }
 
 const styles = StyleSheet.create({
+  searchRow: { paddingHorizontal: 20, marginTop: 6 },
+  quickCats: { paddingHorizontal: 20, gap: 8, marginTop: 12 },
+  quickChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  quickChipActive: { backgroundColor: colors.blue, borderColor: colors.blue },
+  quickChipText: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 11.5 },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginTop: 4,
+    marginTop: 14,
   },
   count: { color: colors.muted, fontFamily: fonts.body, fontSize: 12.5 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -185,33 +228,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconBtnActive: { borderColor: colors.blue, backgroundColor: colors.blue + '18' },
   toggle: { flexDirection: 'row', borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, padding: 3 },
   toggleBtn: { width: 30, height: 28, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
   toggleActive: { backgroundColor: colors.surfaceHi },
-  filters: { paddingHorizontal: 20, marginTop: 16, gap: 14 },
+  filters: { paddingHorizontal: 20, marginTop: 14, gap: 12 },
   filterRow: { flexDirection: 'row', gap: 10 },
-  filterLabel: {
-    color: colors.muted2,
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 8,
-  },
-  categoryWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    borderRadius: 999,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-  },
-  categoryChipActive: { borderColor: colors.blue, backgroundColor: colors.surfaceHi },
-  categoryChipText: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 11.5 },
   clearBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10 },
   clearText: { color: colors.muted, fontFamily: fonts.bodySemiBold, fontSize: 11.5 },
   loading: { paddingTop: 60, alignItems: 'center' },
