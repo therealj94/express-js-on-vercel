@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { ChevronDown, Check, Search, X } from 'lucide-react-native'
-import { colors, fonts, radius } from '../../lib/theme'
+import { fonts, radius } from '../../lib/theme'
+import { useTheme, type ThemeColors } from '../../hooks/useTheme'
 
 export interface SelectOption {
   value: string
@@ -26,6 +27,8 @@ function normalize(text: string): string {
 }
 
 export function SelectField({ label, value, options, onChange, placeholder = 'Selecciona una opción', disabled, searchable }: Props) {
+  const { colors } = useTheme()
+  const styles = createStyles(colors)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const selected = options.find((o) => o.value === value)
@@ -117,106 +120,108 @@ export function SelectField({ label, value, options, onChange, placeholder = 'Se
   )
 }
 
-const styles = StyleSheet.create({
-  label: {
-    color: colors.muted2,
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-  trigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-  },
-  triggerText: {
-    color: colors.text,
-    fontFamily: fonts.body,
-    fontSize: 14,
-    flex: 1,
-  },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(4,3,8,0.68)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: colors.bgSoft,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingBottom: 24,
-    paddingTop: 12,
-    maxHeight: '80%',
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  sheetTitle: {
-    color: colors.text,
-    fontFamily: fonts.display,
-    fontSize: 15,
-  },
-  closeBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 20,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    borderRadius: radius.sm,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  searchInput: {
-    flex: 1,
-    color: colors.text,
-    fontFamily: fonts.body,
-    fontSize: 13,
-    padding: 0,
-  },
-  empty: { paddingHorizontal: 20, paddingVertical: 28, alignItems: 'center' },
-  emptyText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12.5 },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginHorizontal: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 13,
-    borderRadius: radius.sm,
-  },
-  optionPressed: { backgroundColor: colors.surfaceHi },
-  optionText: {
-    color: colors.text,
-    fontFamily: fonts.body,
-    fontSize: 14,
-  },
-  optionTextActive: {
-    fontFamily: fonts.bodySemiBold,
-    color: colors.blue,
-  },
-})
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    label: {
+      color: colors.muted2,
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 11,
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+    },
+    trigger: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      paddingHorizontal: 14,
+      paddingVertical: 13,
+    },
+    triggerText: {
+      color: colors.text,
+      fontFamily: fonts.body,
+      fontSize: 14,
+      flex: 1,
+    },
+    backdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(4,3,8,0.68)',
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: colors.bgSoft,
+      borderTopLeftRadius: radius.xl,
+      borderTopRightRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingBottom: 24,
+      paddingTop: 12,
+      maxHeight: '80%',
+    },
+    sheetHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingBottom: 12,
+    },
+    sheetTitle: {
+      color: colors.text,
+      fontFamily: fonts.display,
+      fontSize: 15,
+    },
+    closeBtn: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    searchWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginHorizontal: 20,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      borderRadius: radius.sm,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    searchInput: {
+      flex: 1,
+      color: colors.text,
+      fontFamily: fonts.body,
+      fontSize: 13,
+      padding: 0,
+    },
+    empty: { paddingHorizontal: 20, paddingVertical: 28, alignItems: 'center' },
+    emptyText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12.5 },
+    option: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginHorizontal: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 13,
+      borderRadius: radius.sm,
+    },
+    optionPressed: { backgroundColor: colors.surfaceHi },
+    optionText: {
+      color: colors.text,
+      fontFamily: fonts.body,
+      fontSize: 14,
+    },
+    optionTextActive: {
+      fontFamily: fonts.bodySemiBold,
+      color: colors.blue,
+    },
+  })
+}

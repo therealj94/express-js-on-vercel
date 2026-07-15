@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, type StyleProp, type ViewStyle } from 'react-native'
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context'
-import { colors } from '../lib/theme'
+import { useTheme, type ThemeColors } from '../hooks/useTheme'
 import { AnimatedScreen } from './AnimatedScreen'
 
 interface Props {
@@ -12,6 +12,8 @@ interface Props {
 }
 
 export function Screen({ children, scroll = true, style, contentStyle, edges = ['top'] }: Props) {
+  const { colors } = useTheme()
+  const styles = createStyles(colors)
   return (
     <SafeAreaView style={[styles.safe, style]} edges={edges}>
       {scroll ? (
@@ -25,8 +27,10 @@ export function Screen({ children, scroll = true, style, contentStyle, edges = [
   )
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  flex: { flex: 1 },
-  content: { paddingBottom: 48 },
-})
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.bg },
+    flex: { flex: 1 },
+    content: { paddingBottom: 48 },
+  })
+}

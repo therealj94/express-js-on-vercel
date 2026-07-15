@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -8,9 +8,13 @@ import { AuthSheet, type AuthMode } from '../src/components/AuthSheet'
 import { GradientButton } from '../src/components/ui/GradientButton'
 import { Logo } from '../src/components/Logo'
 import { AnimatedText } from '../src/components/AnimatedText'
-import { colors, fonts } from '../src/lib/theme'
+import { AnimatedPressable } from '../src/components/AnimatedPressable'
+import { fonts } from '../src/lib/theme'
+import { useTheme, type ThemeColors } from '../src/hooks/useTheme'
 
 export default function Welcome() {
+  const { colors } = useTheme()
+  const styles = createStyles(colors)
   const router = useRouter()
   const params = useLocalSearchParams<{ mode?: string; tipo?: string }>()
   const isBusiness = params.tipo === 'negocio'
@@ -47,9 +51,9 @@ export default function Welcome() {
       />
 
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <Pressable onPress={() => router.back()} style={styles.closeBtn}>
+        <AnimatedPressable onPress={() => router.back()} style={styles.closeBtn}>
           <X size={18} color={colors.text} />
-        </Pressable>
+        </AnimatedPressable>
 
         <View style={styles.content}>
           <View style={styles.brandRow}>
@@ -69,10 +73,10 @@ export default function Welcome() {
               onPress={() => openSheet('signup')}
               icon={<UserPlus size={16} color={colors.text} />}
             />
-            <Pressable onPress={() => router.back()} style={styles.guestBtn}>
+            <AnimatedPressable onPress={() => router.back()} style={styles.guestBtn}>
               <Compass size={15} color={colors.muted} />
               <Text style={styles.guestText}>Continuar como invitado</Text>
-            </Pressable>
+            </AnimatedPressable>
           </View>
         </View>
       </SafeAreaView>
@@ -89,7 +93,8 @@ export default function Welcome() {
   )
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5,6,10,0.35)' },
   scrimBottom: {
     position: 'absolute',
@@ -142,4 +147,5 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   guestText: { color: colors.text, fontFamily: fonts.bodySemiBold, fontSize: 13 },
-})
+  })
+}

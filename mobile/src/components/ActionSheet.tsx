@@ -1,7 +1,8 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import type { LucideIcon } from 'lucide-react-native'
-import { colors, fonts, radius } from '../lib/theme'
+import { fonts, radius } from '../lib/theme'
+import { useTheme, type ThemeColors } from '../hooks/useTheme'
 
 export interface ActionItem {
   key: string
@@ -21,6 +22,8 @@ interface Props {
 }
 
 export function ActionSheet({ visible, onClose, header, title, items }: Props) {
+  const { colors } = useTheme()
+  const styles = createStyles(colors)
   const translateY = useRef(new Animated.Value(30)).current
   const opacity = useRef(new Animated.Value(0)).current
 
@@ -75,7 +78,8 @@ export function ActionSheet({ visible, onClose, header, title, items }: Props) {
   )
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(4,5,10,0.65)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: colors.bgSoft,
@@ -95,4 +99,5 @@ const styles = StyleSheet.create({
   itemIconDanger: { backgroundColor: colors.danger + '18' },
   itemLabel: { color: colors.text, fontFamily: fonts.bodyMedium, fontSize: 14.5 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: 6, marginHorizontal: 10 },
-})
+  })
+}

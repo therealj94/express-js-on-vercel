@@ -22,7 +22,8 @@ import { CategoryIcon } from '../../src/components/CategoryIcon'
 import { CompanyMap } from '../../src/components/CompanyMap'
 import { Card } from '../../src/components/ui/Card'
 import { Chip } from '../../src/components/ui/Chip'
-import { colors, fonts, gradient, radius } from '../../src/lib/theme'
+import { fonts, radius } from '../../src/lib/theme'
+import { useTheme, type ThemeColors } from '../../src/hooks/useTheme'
 
 const DAY_LABELS: Record<DayKey, string> = {
   mon: 'Lunes', tue: 'Martes', wed: 'Miércoles', thu: 'Jueves', fri: 'Viernes', sat: 'Sábado', sun: 'Domingo',
@@ -30,6 +31,8 @@ const DAY_LABELS: Record<DayKey, string> = {
 const DAY_ORDER: DayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
 export default function CompanyDetail() {
+  const { colors, gradient } = useTheme()
+  const styles = createStyles(colors)
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
   const { categories, countries, cityLabel, load } = useMetaStore()
@@ -201,6 +204,8 @@ export default function CompanyDetail() {
 }
 
 function LinkRow({ icon, label, url }: { icon: React.ReactNode; label: string; url: string }) {
+  const { colors } = useTheme()
+  const styles = createStyles(colors)
   return (
     <Pressable style={styles.linkRow} onPress={() => Linking.openURL(url)}>
       {icon}
@@ -209,7 +214,8 @@ function LinkRow({ icon, label, url }: { icon: React.ReactNode; label: string; u
   )
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg, gap: 14 },
   emptyTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 15 },
   backLink: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: radius.md, backgroundColor: colors.surface },
@@ -281,4 +287,5 @@ const styles = StyleSheet.create({
   linkText: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 13 },
   addressRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   addressText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13 },
-})
+  })
+}

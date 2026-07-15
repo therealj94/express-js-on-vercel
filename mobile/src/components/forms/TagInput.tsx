@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Plus, X } from 'lucide-react-native'
 import { TextField, Field } from '../ui/TextField'
-import { colors, fonts, radius } from '../../lib/theme'
+import { fonts, radius } from '../../lib/theme'
+import { useTheme, type ThemeColors } from '../../hooks/useTheme'
+import { AnimatedPressable } from '../AnimatedPressable'
 
 interface Props {
   label: string
@@ -11,6 +13,8 @@ interface Props {
 }
 
 export function TagInput({ label, values, onChange }: Props) {
+  const { colors } = useTheme()
+  const styles = createStyles(colors)
   const [draft, setDraft] = useState('')
 
   function add() {
@@ -25,9 +29,9 @@ export function TagInput({ label, values, onChange }: Props) {
         <View style={{ flex: 1 }}>
           <TextField value={draft} onChangeText={setDraft} placeholder="Ej. Café de especialidad" onSubmitEditing={add} returnKeyType="done" />
         </View>
-        <Pressable onPress={add} style={styles.addBtn}>
+        <AnimatedPressable onPress={add} scaleTo={0.9} style={styles.addBtn}>
           <Plus size={16} color={colors.text} />
-        </Pressable>
+        </AnimatedPressable>
       </View>
       {values.length > 0 && (
         <View style={styles.tagWrap}>
@@ -45,29 +49,31 @@ export function TagInput({ label, values, onChange }: Props) {
   )
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
-  addBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tagWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-  tag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceHi,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  tagText: { color: colors.muted, fontFamily: fonts.bodySemiBold, fontSize: 11 },
-})
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    row: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+    addBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    tagWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+    tag: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceHi,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    tagText: { color: colors.muted, fontFamily: fonts.bodySemiBold, fontSize: 11 },
+  })
+}

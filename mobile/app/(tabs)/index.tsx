@@ -10,10 +10,12 @@ import { CompanyCard } from '../../src/components/CompanyCard'
 import { Card } from '../../src/components/ui/Card'
 import { TextField } from '../../src/components/ui/TextField'
 import { AnimatedText } from '../../src/components/AnimatedText'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { useMetaStore } from '../../src/store/meta'
 import { api } from '../../src/lib/api'
 import type { Company } from '../../src/lib/types'
-import { colors, fonts, gradient, radius } from '../../src/lib/theme'
+import { fonts, radius } from '../../src/lib/theme'
+import { useTheme, type ThemeColors } from '../../src/hooks/useTheme'
 
 const STEPS = [
   { n: '01', title: 'Regístrate y verifica', body: 'Crea tu cuenta y completa el KYC/KYB de tu empresa.', icon: ShieldCheck },
@@ -23,6 +25,8 @@ const STEPS = [
 ]
 
 export default function Home() {
+  const { colors, gradient } = useTheme()
+  const styles = createStyles(colors)
   const router = useRouter()
   const { categories, countries, load } = useMetaStore()
   const [companies, setCompanies] = useState<Company[]>([])
@@ -98,7 +102,7 @@ export default function Home() {
         </Card>
       </View>
 
-      <Pressable onPress={() => router.push('/registro?tipo=negocio')} style={styles.section}>
+      <AnimatedPressable onPress={() => router.push('/registro?tipo=negocio')} scaleTo={0.98} style={styles.section}>
         <LinearGradient colors={gradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
           <Sparkle size={20} color={colors.bg} />
           <Text style={styles.ctaTitle}>¿Tienes un negocio?</Text>
@@ -108,14 +112,15 @@ export default function Home() {
             <ArrowRight size={14} color={colors.bg} />
           </View>
         </LinearGradient>
-      </Pressable>
+      </AnimatedPressable>
 
       <View style={styles.section}>
         <AnimatedText style={styles.sectionTitle}>Explora por categoría</AnimatedText>
         <View style={styles.catGrid}>
           {categories.slice(0, 8).map((cat) => (
-            <Pressable
+            <AnimatedPressable
               key={cat.slug}
+              scaleTo={0.94}
               style={styles.catCard}
               onPress={() => router.push({ pathname: '/(tabs)/explorar', params: { category: cat.slug } })}
             >
@@ -123,7 +128,7 @@ export default function Home() {
                 <CategoryIcon name={cat.icon} size={17} color={colors.bg} />
               </LinearGradient>
               <Text style={styles.catLabel} numberOfLines={2}>{cat.label}</Text>
-            </Pressable>
+            </AnimatedPressable>
           ))}
         </View>
       </View>
@@ -164,18 +169,19 @@ export default function Home() {
           Regístrate gratis, completa tu perfil y verifica tu empresa. Trazabilidad pública y
           liquidación en minutos.
         </Text>
-        <Pressable onPress={() => router.push('/registro?tipo=negocio')}>
+        <AnimatedPressable onPress={() => router.push('/registro?tipo=negocio')} scaleTo={0.97}>
           <LinearGradient colors={gradient as unknown as string[]} style={styles.heroBtn}>
             <Text style={styles.heroBtnText}>Registrar mi negocio</Text>
             <ArrowRight size={14} color={colors.bg} />
           </LinearGradient>
-        </Pressable>
+        </AnimatedPressable>
       </View>
     </Screen>
   )
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   section: { paddingHorizontal: 20, marginTop: 24 },
   badge: {
     flexDirection: 'row',
@@ -240,4 +246,5 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   heroBtnText: { color: colors.bg, fontFamily: fonts.displayMedium, fontSize: 14 },
-})
+  })
+}

@@ -15,7 +15,8 @@ import { ImagePickerField } from '../src/components/forms/ImagePickerField'
 import { DocPickerField, type PickedDoc } from '../src/components/forms/DocPickerField'
 import { HoursEditor } from '../src/components/forms/HoursEditor'
 import { AnimatedScreen } from '../src/components/AnimatedScreen'
-import { colors, fonts, radius } from '../src/lib/theme'
+import { fonts, radius } from '../src/lib/theme'
+import { useTheme, type ThemeColors } from '../src/hooks/useTheme'
 import type { CompanySocials, WeekHours } from '../src/lib/types'
 
 const DEFAULT_HOURS: WeekHours = {
@@ -49,6 +50,8 @@ interface FormState {
 const STEP_LABELS = ['Datos básicos', 'Ubicación', 'Rubro', 'Perfil público', 'Verificación', 'Revisión']
 
 export default function RegisterCompany() {
+  const { colors } = useTheme()
+  const styles = createStyles(colors)
   const router = useRouter()
   const { categories, countries, load } = useMetaStore()
   const [step, setStep] = useState(0)
@@ -307,6 +310,8 @@ export default function RegisterCompany() {
 }
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
+  const { colors } = useTheme()
+  const styles = createStyles(colors)
   return (
     <View>
       <Text style={styles.summaryLabel}>{label}</Text>
@@ -315,7 +320,8 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8 },
   iconBtn: { width: 32, height: 32, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   topTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 15 },
@@ -360,4 +366,5 @@ const styles = StyleSheet.create({
   errorBox: { borderWidth: 1, borderColor: colors.danger + '55', backgroundColor: colors.danger + '18', borderRadius: radius.sm, padding: 10 },
   errorText: { color: colors.danger, fontFamily: fonts.body, fontSize: 12 },
   footer: { paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border },
-})
+  })
+}

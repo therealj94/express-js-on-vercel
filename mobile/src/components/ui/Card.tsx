@@ -1,5 +1,7 @@
-import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
-import { colors, radius } from '../../lib/theme'
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
+import { radius } from '../../lib/theme'
+import { useTheme, type ThemeColors } from '../../hooks/useTheme'
+import { AnimatedPressable } from '../AnimatedPressable'
 
 interface Props {
   children: React.ReactNode
@@ -8,25 +10,30 @@ interface Props {
 }
 
 export function Card({ children, style, onPress }: Props) {
+  const { colors } = useTheme()
+  const styles = createStyles(colors)
+
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed, style]}>
+      <AnimatedPressable onPress={onPress} scaleTo={0.98} style={[styles.card, style]}>
         {children}
-      </Pressable>
+      </AnimatedPressable>
     )
   }
   return <View style={[styles.card, style]}>{children}</View>
 }
 
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: 18,
-  },
-  pressed: {
-    opacity: 0.85,
-  },
-})
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    card: {
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      padding: 18,
+    },
+    pressed: {
+      opacity: 0.85,
+    },
+  })
+}

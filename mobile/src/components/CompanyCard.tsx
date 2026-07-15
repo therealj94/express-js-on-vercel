@@ -5,7 +5,8 @@ import { BadgeCheck, Copy, ExternalLink, MapPin, MoreVertical, Navigation, Share
 import { LinearGradient } from 'expo-linear-gradient'
 import type { Company } from '../lib/types'
 import { useMetaStore } from '../store/meta'
-import { colors, fonts, gradient, radius } from '../lib/theme'
+import { fonts, radius } from '../lib/theme'
+import { useTheme, type ThemeColors } from '../hooks/useTheme'
 import { CategoryIcon } from './CategoryIcon'
 import { Card } from './ui/Card'
 import { Chip } from './ui/Chip'
@@ -13,6 +14,8 @@ import { ActionSheet, type ActionItem } from './ActionSheet'
 import { copyAddress, openDirections, shareCompany } from '../lib/companyActions'
 
 export function CompanyCard({ company }: { company: Company }) {
+  const { colors, gradient } = useTheme()
+  const styles = createStyles(colors)
   const router = useRouter()
   const { categories, countries, cityLabel } = useMetaStore()
   const category = categories.find((c) => c.slug === company.categorySlug)
@@ -78,7 +81,8 @@ export function CompanyCard({ company }: { company: Company }) {
   )
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -106,4 +110,5 @@ const styles = StyleSheet.create({
   },
   footerText: { color: colors.muted2, fontFamily: fonts.body, fontSize: 11, flex: 1 },
   flag: { fontSize: 13 },
-})
+  })
+}

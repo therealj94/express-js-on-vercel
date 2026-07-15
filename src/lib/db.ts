@@ -45,6 +45,21 @@ export const db = {
     if (user) user.role = role
   },
 
+  updateUserPassword(id: string, passwordHash: string): void {
+    const user = users.get(id)
+    if (user) user.passwordHash = passwordHash
+  },
+
+  deleteUser(id: string): void {
+    const user = users.get(id)
+    if (!user) return
+    for (const company of companies.values()) {
+      if (company.ownerId === id) companies.delete(company.id)
+    }
+    users.delete(id)
+    usersByEmail.delete(user.email)
+  },
+
   createCompany(input: Omit<Company, 'id' | 'createdAt' | 'updatedAt' | 'verified' | 'kyc'>): Company {
     const now = new Date().toISOString()
     const company: Company = {

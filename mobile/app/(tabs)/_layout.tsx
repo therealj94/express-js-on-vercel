@@ -1,8 +1,9 @@
 import { Tabs } from 'expo-router'
 import { Home, Compass, LayoutGrid } from 'lucide-react-native'
-import { colors } from '../../src/lib/theme'
+import { useTheme } from '../../src/hooks/useTheme'
 
 export default function TabsLayout() {
+  const { colors } = useTheme()
   return (
     <Tabs
       screenOptions={{

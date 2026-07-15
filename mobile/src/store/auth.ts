@@ -10,6 +10,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>
   signup: (email: string, password: string, fullName: string) => Promise<void>
   logout: () => void
+  deleteAccount: () => Promise<void>
   refreshMe: () => Promise<void>
   clearError: () => void
 }
@@ -55,6 +56,12 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: () => {
     setToken(null)
+    set({ user: null })
+  },
+
+  deleteAccount: async () => {
+    await api.deleteAccount()
+    await setToken(null)
     set({ user: null })
   },
 

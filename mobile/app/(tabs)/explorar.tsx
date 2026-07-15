@@ -10,14 +10,18 @@ import { CategoryIcon } from '../../src/components/CategoryIcon'
 import { TextField } from '../../src/components/ui/TextField'
 import { SelectField } from '../../src/components/ui/SelectField'
 import { AnimatedText } from '../../src/components/AnimatedText'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { useMetaStore } from '../../src/store/meta'
 import { api } from '../../src/lib/api'
 import type { Company } from '../../src/lib/types'
-import { colors, fonts, radius } from '../../src/lib/theme'
+import { fonts, radius } from '../../src/lib/theme'
+import { useTheme, type ThemeColors } from '../../src/hooks/useTheme'
 
 const SEARCH_DEBOUNCE_MS = 350
 
 export default function Explore() {
+  const { colors } = useTheme()
+  const styles = createStyles(colors)
   const params = useLocalSearchParams<{ q?: string; category?: string }>()
   const { categories, countries, load } = useMetaStore()
   const [companies, setCompanies] = useState<Company[]>([])
@@ -96,14 +100,15 @@ export default function Explore() {
         {categories.map((cat) => {
           const active = category === cat.slug
           return (
-            <Pressable
+            <AnimatedPressable
               key={cat.slug}
               onPress={() => setCategory(active ? '' : cat.slug)}
+              scaleTo={0.94}
               style={[styles.quickChip, active && styles.quickChipActive]}
             >
               <CategoryIcon name={cat.icon} size={13} color={active ? colors.bg : colors.muted} />
               <Text style={[styles.quickChipText, active && { color: colors.bg }]}>{cat.label}</Text>
-            </Pressable>
+            </AnimatedPressable>
           )
         })}
       </ScrollView>
@@ -193,7 +198,8 @@ export default function Explore() {
   )
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   searchRow: { paddingHorizontal: 20, marginTop: 6 },
   quickCats: { paddingHorizontal: 20, gap: 8, marginTop: 12 },
   quickChip: {
@@ -241,4 +247,5 @@ const styles = StyleSheet.create({
   emptyTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 16 },
   emptyBody: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, textAlign: 'center' },
   list: { paddingHorizontal: 20, marginTop: 16, gap: 12 },
-})
+  })
+}

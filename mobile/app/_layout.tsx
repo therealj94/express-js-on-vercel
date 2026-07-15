@@ -17,7 +17,8 @@ import {
 import { AnimatedSplash } from '../src/components/AnimatedSplash'
 import { useAuthStore } from '../src/store/auth'
 import { useMetaStore } from '../src/store/meta'
-import { colors } from '../src/lib/theme'
+import { useThemeStore } from '../src/store/theme'
+import { useTheme } from '../src/hooks/useTheme'
 
 SplashScreen.preventAutoHideAsync().catch(() => {})
 
@@ -31,20 +32,30 @@ export default function RootLayout() {
     InstrumentSans_600SemiBold,
   })
   const [introDone, setIntroDone] = useState(false)
+  const [themeHydrated, setThemeHydrated] = useState(useThemeStore.persist.hasHydrated())
   const init = useAuthStore((s) => s.init)
   const loadMeta = useMetaStore((s) => s.load)
+  const { colors, isDark } = useTheme()
 
   useEffect(() => {
-    if (fontsLoaded) {
+    const unsub = useThemeStore.persist.onFinishHydration(() => setThemeHydrated(true))
+    if (useThemeStore.persist.hasHydrated()) setThemeHydrated(true)
+    return unsub
+  }, [])
+
+  const ready = fontsLoaded && themeHydrated
+
+  useEffect(() => {
+    if (ready) {
       SplashScreen.hideAsync().catch(() => {})
       init()
       loadMeta()
     }
-  }, [fontsLoaded, init, loadMeta])
+  }, [ready, init, loadMeta])
 
   const handleIntroDone = useCallback(() => setIntroDone(true), [])
 
-  if (!fontsLoaded) return null
+  if (!ready) return null
 
   if (!introDone) {
     return <AnimatedSplash onDone={handleIntroDone} />
@@ -52,7 +63,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <StatusBar style="light" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerShown: false,

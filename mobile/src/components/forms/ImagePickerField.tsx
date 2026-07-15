@@ -3,7 +3,8 @@ import * as ImagePicker from 'expo-image-picker'
 import { Upload } from 'lucide-react-native'
 import { Field } from '../ui/TextField'
 import { uriToDataUrl } from '../../lib/file'
-import { colors, fonts, radius } from '../../lib/theme'
+import { fonts, radius } from '../../lib/theme'
+import { useTheme, type ThemeColors } from '../../hooks/useTheme'
 
 interface Props {
   label: string
@@ -13,6 +14,9 @@ interface Props {
 }
 
 export function ImagePickerField({ label, value, onChange, round }: Props) {
+  const { colors } = useTheme()
+  const styles = createStyles(colors)
+
   async function pick() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -36,26 +40,28 @@ export function ImagePickerField({ label, value, onChange, round }: Props) {
   )
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-    borderRadius: radius.md,
-    padding: 10,
-  },
-  thumb: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surfaceHi,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  round: { borderRadius: 26 },
-  text: { color: colors.muted, fontFamily: fonts.body, fontSize: 12 },
-})
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    wrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+      borderRadius: radius.md,
+      padding: 10,
+    },
+    thumb: {
+      width: 52,
+      height: 52,
+      borderRadius: radius.sm,
+      backgroundColor: colors.surfaceHi,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    round: { borderRadius: 26 },
+    text: { color: colors.muted, fontFamily: fonts.body, fontSize: 12 },
+  })
+}

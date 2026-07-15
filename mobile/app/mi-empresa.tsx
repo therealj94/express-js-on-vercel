@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { ArrowLeft, Check, ExternalLink, Globe, Camera, Save } from 'lucide-react-native'
 import { api } from '../src/lib/api'
 import { useMetaStore } from '../src/store/meta'
-import { TextField } from '../src/components/ui/TextField'
+import { TextField, Field } from '../src/components/ui/TextField'
 import { SelectField } from '../src/components/ui/SelectField'
 import { GradientButton } from '../src/components/ui/GradientButton'
 import { TagInput } from '../src/components/forms/TagInput'
@@ -14,10 +14,14 @@ import { DocPickerField, type PickedDoc } from '../src/components/forms/DocPicke
 import { HoursEditor } from '../src/components/forms/HoursEditor'
 import { StatusBadge } from '../src/components/StatusBadge'
 import { AnimatedScreen } from '../src/components/AnimatedScreen'
-import { colors, fonts, radius } from '../src/lib/theme'
+import { MapPicker } from '../src/components/MapPicker'
+import { fonts, radius } from '../src/lib/theme'
+import { useTheme, type ThemeColors } from '../src/hooks/useTheme'
 import type { Company } from '../src/lib/types'
 
 export default function EditCompany() {
+  const { colors } = useTheme()
+  const styles = createStyles(colors)
   const router = useRouter()
   const { categories, countries, load } = useMetaStore()
   const [company, setCompany] = useState<Company | null | undefined>(undefined)
@@ -125,6 +129,14 @@ export default function EditCompany() {
         />
         <TextField label="Dirección exacta" value={company.address} onChangeText={(v) => update('address', v)} />
 
+        <Field label="Ubicación en el mapa">
+          <MapPicker
+            lat={company.lat}
+            lng={company.lng}
+            onChange={(lat, lng) => setCompany((c) => (c ? { ...c, lat, lng } : c))}
+          />
+        </Field>
+
         <SelectField
           label="Categoría"
           value={company.categorySlug}
@@ -202,7 +214,8 @@ export default function EditCompany() {
   )
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg, gap: 8, paddingHorizontal: 40 },
   emptyTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 15, textAlign: 'center' },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -218,4 +231,5 @@ const styles = StyleSheet.create({
   savedText: { color: colors.ok, fontFamily: fonts.bodySemiBold, fontSize: 12 },
   kycSection: { gap: 14, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 20, marginTop: 4 },
   kycTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 15 },
-})
+  })
+}

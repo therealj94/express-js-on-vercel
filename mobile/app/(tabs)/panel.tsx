@@ -32,7 +32,8 @@ import { copyAddress, openDirections, shareCompany } from '../../src/lib/company
 import type { Company } from '../../src/lib/types'
 import { useAuthStore } from '../../src/store/auth'
 import { useMetaStore } from '../../src/store/meta'
-import { colors, fonts, gradient, radius } from '../../src/lib/theme'
+import { fonts, radius } from '../../src/lib/theme'
+import { useTheme, type ThemeColors } from '../../src/hooks/useTheme'
 
 function profileCompleteness(company: Company): number {
   const checks = [
@@ -54,6 +55,8 @@ const KYC_STEPS = [
 ] as const
 
 export default function Dashboard() {
+  const { colors, gradient } = useTheme()
+  const styles = createStyles(colors)
   const router = useRouter()
   const { user } = useAuthStore()
   const { categories, load } = useMetaStore()
@@ -250,7 +253,8 @@ export default function Dashboard() {
   )
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   section: { paddingHorizontal: 20, marginTop: 20 },
   hello: { color: colors.text, fontFamily: fonts.displayBold, fontSize: 24 },
   subtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, marginTop: 4 },
@@ -298,4 +302,5 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   warnText: { color: colors.danger, fontFamily: fonts.body, fontSize: 12, flex: 1, lineHeight: 17 },
-})
+  })
+}

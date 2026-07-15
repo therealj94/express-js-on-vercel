@@ -1,5 +1,6 @@
 import { Image, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
-import { colors, fonts } from '../lib/theme'
+import { fonts } from '../lib/theme'
+import { useTheme } from '../hooks/useTheme'
 
 const MARK_RATIO = 282 / 338
 
@@ -14,7 +15,9 @@ const MARK_WIDTH = { sm: 24, md: 32, lg: 52 }
 const TEXT_SIZE = { sm: 15, md: 19, lg: 28 }
 const GAP = { sm: 7, md: 9, lg: 13 }
 
-export function Logo({ size = 'md', textColor = colors.text, shadow, style }: Props) {
+export function Logo({ size = 'md', textColor, shadow, style }: Props) {
+  const { colors } = useTheme()
+  const resolvedTextColor = textColor ?? colors.text
   const markWidth = MARK_WIDTH[size]
   return (
     <View style={[styles.row, { gap: GAP[size] }, style]}>
@@ -26,7 +29,7 @@ export function Logo({ size = 'md', textColor = colors.text, shadow, style }: Pr
       <Text
         style={[
           styles.word,
-          { fontSize: TEXT_SIZE[size], color: textColor },
+          { fontSize: TEXT_SIZE[size], color: resolvedTextColor },
           shadow && styles.shadow,
         ]}
       >

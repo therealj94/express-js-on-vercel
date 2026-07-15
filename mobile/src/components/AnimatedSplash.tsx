@@ -1,12 +1,15 @@
 import { useEffect, useRef } from 'react'
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { colors, fonts, gradient } from '../lib/theme'
+import { fonts } from '../lib/theme'
+import { useTheme, type ThemeColors } from '../hooks/useTheme'
 import { Logo } from './Logo'
 
 const DURATION = 1500
 
 export function AnimatedSplash({ onDone }: { onDone: () => void }) {
+  const { colors, gradient } = useTheme()
+  const styles = createStyles(colors)
   const progress = useRef(new Animated.Value(0)).current
   const enter = useRef(new Animated.Value(0)).current
   const pulse = useRef(new Animated.Value(0)).current
@@ -69,7 +72,8 @@ export function AnimatedSplash({ onDone }: { onDone: () => void }) {
   )
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -112,4 +116,5 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 2,
   },
-})
+  })
+}
