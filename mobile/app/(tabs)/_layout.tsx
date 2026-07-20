@@ -30,7 +30,7 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="panel"
-        options={{ title: 'Mi panel', tabBarIcon: ({ color, size }) => <LayoutGrid color={color} size={size} /> }}
+        options={{ title: 'Mi cuenta', tabBarIcon: ({ color, size }) => <LayoutGrid color={color} size={size} /> }}
       />
     </Tabs>
   )

@@ -2,10 +2,24 @@ import { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
-import { Building2, ChevronDown, FileText, Gift, IdCard, LayoutGrid, LogOut, Palette, UserX } from 'lucide-react-native'
+import {
+  Bell,
+  Building2,
+  ChevronDown,
+  FileText,
+  Gift,
+  IdCard,
+  LayoutGrid,
+  LogOut,
+  Palette,
+  UserX,
+  Wallet,
+} from 'lucide-react-native'
 import { fonts } from '../lib/theme'
 import { useTheme, type ThemeColors } from '../hooks/useTheme'
 import { useAuthStore } from '../store/auth'
+import { useWalletStore } from '../store/wallet'
+import { useNotificationsStore } from '../store/notifications'
 import { ActionSheet, type ActionItem } from './ActionSheet'
 import { AnimatedPressable } from './AnimatedPressable'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -22,6 +36,8 @@ export function TopBar({ title }: { title?: string }) {
   const styles = createStyles(colors)
   const router = useRouter()
   const { user, logout, deleteAccount } = useAuthStore()
+  const wallet = useWalletStore((s) => s.wallet)
+  const unread = useNotificationsStore((s) => s.items.filter((n) => !n.read).length)
   const [menuOpen, setMenuOpen] = useState(false)
   const [themeSheetOpen, setThemeSheetOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -29,9 +45,15 @@ export function TopBar({ title }: { title?: string }) {
   const items: ActionItem[] = user
     ? [
         { key: 'panel', label: 'Mi panel', icon: LayoutGrid, onPress: () => router.push('/(tabs)/panel') },
-        { key: 'empresa', label: 'Mi empresa', icon: Building2, onPress: () => router.push('/mi-empresa') },
         { key: 'bonos', label: 'Bonos y regalos', icon: Gift, onPress: () => router.push('/bonos') },
+        {
+          key: 'wallet',
+          label: wallet ? 'Mi Veta Wallet' : 'Conectar mi Veta Wallet',
+          icon: Wallet,
+          onPress: () => router.push('/conectar-wallet'),
+        },
         { key: 'identidad', label: 'Verificar mi identidad', icon: IdCard, onPress: () => router.push('/verificar-identidad') },
+        { key: 'empresa', label: 'Registrar mi empresa', icon: Building2, onPress: () => router.push('/mi-empresa') },
         { key: 'apariencia', label: 'Apariencia', icon: Palette, onPress: () => setThemeSheetOpen(true) },
         { key: 'legal', label: 'Privacidad y términos', icon: FileText, onPress: () => router.push('/legal') },
         {
@@ -64,19 +86,32 @@ export function TopBar({ title }: { title?: string }) {
     <View style={styles.wrap}>
       {title ? <Text style={styles.title}>{title}</Text> : <Logo size="sm" />}
 
-      {user ? (
-        <AnimatedPressable onPress={() => setMenuOpen(true)} style={styles.pill}>
-          <LinearGradient colors={gradient as unknown as string[]} style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials(user.fullName)}</Text>
-          </LinearGradient>
-          <Text style={styles.pillText}>{user.fullName.split(' ')[0]}</Text>
-          <ChevronDown size={13} color={colors.muted} />
-        </AnimatedPressable>
-      ) : (
-        <AnimatedPressable onPress={() => router.push('/login')} style={styles.loginBtn}>
-          <Text style={styles.loginText}>Iniciar sesión</Text>
-        </AnimatedPressable>
-      )}
+      <View style={styles.right}>
+        {user && (
+          <AnimatedPressable onPress={() => router.push('/notificaciones')} scaleTo={0.9} style={styles.bellBtn}>
+            <Bell size={18} color={colors.text} />
+            {unread > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
+              </View>
+            )}
+          </AnimatedPressable>
+        )}
+
+        {user ? (
+          <AnimatedPressable onPress={() => setMenuOpen(true)} style={styles.pill}>
+            <LinearGradient colors={gradient as unknown as string[]} style={styles.avatar}>
+              <Text style={styles.avatarText}>{initials(user.fullName)}</Text>
+            </LinearGradient>
+            <Text style={styles.pillText}>{user.fullName.split(' ')[0]}</Text>
+            <ChevronDown size={13} color={colors.muted} />
+          </AnimatedPressable>
+        ) : (
+          <AnimatedPressable onPress={() => router.push('/login')} style={styles.loginBtn}>
+            <Text style={styles.loginText}>Iniciar sesión</Text>
+          </AnimatedPressable>
+        )}
+      </View>
 
       {user && (
         <ActionSheet
@@ -122,7 +157,33 @@ function createStyles(colors: ThemeColors) {
       paddingHorizontal: 20,
       paddingVertical: 12,
     },
+    right: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     title: { color: colors.text, fontFamily: fonts.display, fontSize: 17 },
+    bellBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    badge: {
+      position: 'absolute',
+      top: -3,
+      right: -3,
+      minWidth: 17,
+      height: 17,
+      borderRadius: 9,
+      backgroundColor: colors.danger,
+      borderWidth: 1.5,
+      borderColor: colors.bg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 4,
+    },
+    badgeText: { color: '#fff', fontFamily: fonts.bodySemiBold, fontSize: 9 },
     pill: {
       flexDirection: 'row',
       alignItems: 'center',

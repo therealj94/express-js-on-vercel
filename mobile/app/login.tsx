@@ -36,7 +36,10 @@ export default function Welcome() {
 
   function handleAuthenticated(businessIntent: boolean) {
     setSheetOpen(false)
-    router.replace(businessIntent ? '/registrar-empresa' : '/(tabs)/panel')
+    // Siempre llega al directorio. Registrar una empresa es una opción, no
+    // el destino por defecto — salvo que el usuario haya entrado justamente
+    // desde el botón "Registrar mi negocio".
+    router.replace(businessIntent ? '/registrar-empresa' : '/(tabs)')
   }
 
   return (

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
-import { ArrowRight, Gift, MapPinned, Search, ShieldCheck, Sparkle, Store, Users, X } from 'lucide-react-native'
+import { ArrowRight, Gift, MapPinned, Percent, Search, ShieldCheck, Sparkle, Store, Ticket, Users, X } from 'lucide-react-native'
 import { Screen } from '../../src/components/Screen'
 import { TopBar } from '../../src/components/TopBar'
 import { CategoryIcon } from '../../src/components/CategoryIcon'
@@ -11,6 +11,7 @@ import { Card } from '../../src/components/ui/Card'
 import { TextField } from '../../src/components/ui/TextField'
 import { AnimatedText } from '../../src/components/AnimatedText'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { Pressable3D } from '../../src/components/Pressable3D'
 import { useMetaStore } from '../../src/store/meta'
 import { useAuthStore } from '../../src/store/auth'
 import { api } from '../../src/lib/api'
@@ -104,49 +105,76 @@ export default function Home() {
         </Card>
       </View>
 
-      <AnimatedPressable onPress={() => router.push('/registro?tipo=negocio')} scaleTo={0.98} style={styles.section}>
-        <LinearGradient colors={gradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
-          <Sparkle size={20} color={colors.bg} />
-          <Text style={styles.ctaTitle}>¿Tienes un negocio?</Text>
-          <Text style={styles.ctaBody}>Actívate y empieza a recibir pagos en ORIGEN.</Text>
-          <View style={styles.ctaLinkRow}>
-            <Text style={styles.ctaLink}>Registrar mi negocio</Text>
-            <ArrowRight size={14} color={colors.bg} />
-          </View>
-        </LinearGradient>
-      </AnimatedPressable>
-
-      {user && (
-        <AnimatedPressable onPress={() => router.push('/bonos')} scaleTo={0.98} style={[styles.section, styles.bonosCard]}>
-          <View style={styles.bonosIcon}>
-            <Gift size={18} color={colors.violet} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.bonosTitle}>Bonos y regalos</Text>
-            <Text style={styles.bonosBody}>Canjea tus puntos ORIGEN por premios en comercios afiliados.</Text>
-          </View>
-          <ArrowRight size={16} color={colors.muted} />
+      {user ? (
+        <View style={styles.section}>
+          <Pressable3D onPress={() => router.push('/bonos')} tilt={6}>
+            <LinearGradient colors={gradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
+              <Gift size={20} color={colors.bg} />
+              <Text style={styles.ctaTitle}>Tus beneficios por comprar</Text>
+              <Text style={styles.ctaBody}>
+                Gana puntos ORIGEN en cada compra en comercios afiliados y accede a promociones exclusivas para usuarios.
+              </Text>
+              <View style={styles.benefitRow}>
+                <View style={styles.benefitPill}>
+                  <Percent size={11} color={colors.bg} />
+                  <Text style={styles.benefitPillText}>Descuentos</Text>
+                </View>
+                <View style={styles.benefitPill}>
+                  <Ticket size={11} color={colors.bg} />
+                  <Text style={styles.benefitPillText}>Promos exclusivas</Text>
+                </View>
+              </View>
+              <View style={styles.ctaLinkRow}>
+                <Text style={styles.ctaLink}>Ver bonos y regalos</Text>
+                <ArrowRight size={14} color={colors.bg} />
+              </View>
+            </LinearGradient>
+          </Pressable3D>
+        </View>
+      ) : (
+        <AnimatedPressable onPress={() => router.push('/registro')} scaleTo={0.98} style={styles.section}>
+          <LinearGradient colors={gradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
+            <Sparkle size={20} color={colors.bg} />
+            <Text style={styles.ctaTitle}>Crea tu cuenta gratis</Text>
+            <Text style={styles.ctaBody}>Gana puntos ORIGEN al comprar en afiliados, canjea premios y guarda tus favoritos.</Text>
+            <View style={styles.ctaLinkRow}>
+              <Text style={styles.ctaLink}>Empezar ahora</Text>
+              <ArrowRight size={14} color={colors.bg} />
+            </View>
+          </LinearGradient>
         </AnimatedPressable>
       )}
 
-      <View style={styles.section}>
-        <AnimatedText style={styles.sectionTitle}>Explora por categoría</AnimatedText>
-        <View style={styles.catGrid}>
-          {categories.slice(0, 8).map((cat) => (
-            <AnimatedPressable
+      <View style={{ marginTop: 24 }}>
+        <AnimatedText style={[styles.sectionTitle, { paddingHorizontal: 20 }]}>Explora por categoría</AnimatedText>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
+          {categories.map((cat) => (
+            <Pressable3D
               key={cat.slug}
-              scaleTo={0.94}
-              style={styles.catCard}
+              tilt={10}
+              scaleTo={0.93}
+              style={styles.catTile}
               onPress={() => router.push({ pathname: '/(tabs)/explorar', params: { category: cat.slug } })}
             >
-              <LinearGradient colors={gradient as unknown as string[]} style={styles.catIcon}>
-                <CategoryIcon name={cat.icon} size={17} color={colors.bg} />
+              <LinearGradient colors={gradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.catTileIcon}>
+                <CategoryIcon name={cat.icon} size={26} color={colors.bg} />
               </LinearGradient>
-              <Text style={styles.catLabel} numberOfLines={2}>{cat.label}</Text>
-            </AnimatedPressable>
+              <Text style={styles.catTileLabel} numberOfLines={2}>{cat.label}</Text>
+            </Pressable3D>
           ))}
-        </View>
+        </ScrollView>
       </View>
+
+      {featured.length > 0 && (
+        <View style={styles.section}>
+          <AnimatedText style={styles.sectionTitle} delay={60}>Comercios destacados</AnimatedText>
+          <View style={{ gap: 14, marginTop: 14 }}>
+            {featured.map((company) => (
+              <CompanyCard key={company.id} company={company} />
+            ))}
+          </View>
+        </View>
+      )}
 
       <View style={styles.section}>
         <AnimatedText style={styles.sectionTitle} delay={60}>Cómo funciona para tu negocio</AnimatedText>
@@ -166,17 +194,6 @@ export default function Home() {
         </View>
       </View>
 
-      {featured.length > 0 && (
-        <View style={styles.section}>
-          <AnimatedText style={styles.sectionTitle} delay={60}>Comercios destacados</AnimatedText>
-          <View style={{ gap: 12, marginTop: 4 }}>
-            {featured.map((company) => (
-              <CompanyCard key={company.id} company={company} />
-            ))}
-          </View>
-        </View>
-      )}
-
       <View style={[styles.section, { marginTop: 8 }]}>
         <Image source={require('../../assets/hero-people.jpg')} style={styles.heroImage} resizeMode="cover" />
         <Text style={styles.heroTitle}>Tu negocio, visible para toda la comunidad</Text>
@@ -184,7 +201,7 @@ export default function Home() {
           Regístrate gratis, completa tu perfil y verifica tu empresa. Trazabilidad pública y
           liquidación en minutos.
         </Text>
-        <AnimatedPressable onPress={() => router.push('/registro?tipo=negocio')} scaleTo={0.97}>
+        <AnimatedPressable onPress={() => router.push('/registrar-empresa')} scaleTo={0.97}>
           <LinearGradient colors={gradient as unknown as string[]} style={styles.heroBtn}>
             <Text style={styles.heroBtnText}>Registrar mi negocio</Text>
             <ArrowRight size={14} color={colors.bg} />
@@ -220,43 +237,35 @@ function createStyles(colors: ThemeColors) {
   statNumber: { color: colors.text, fontFamily: fonts.displayBold, fontSize: 20 },
   statLabel: { color: colors.muted, fontFamily: fonts.body, fontSize: 11 },
   cta: { borderRadius: radius.xl, padding: 20, ...shadow(colors.violet, 'lg') },
-  bonosCard: {
+  ctaTitle: { color: colors.bg, fontFamily: fonts.display, fontSize: 18, marginTop: 10 },
+  ctaBody: { color: colors.bg, opacity: 0.85, fontFamily: fonts.body, fontSize: 13, marginTop: 4, lineHeight: 19 },
+  benefitRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  benefitPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: 16,
+    gap: 5,
+    backgroundColor: 'rgba(5,6,10,0.18)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
-  bonosIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: colors.violet + '18',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bonosTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 14 },
-  bonosBody: { color: colors.muted, fontFamily: fonts.body, fontSize: 11.5, marginTop: 2, lineHeight: 16 },
-  ctaTitle: { color: colors.bg, fontFamily: fonts.display, fontSize: 18, marginTop: 10 },
-  ctaBody: { color: colors.bg, opacity: 0.8, fontFamily: fonts.body, fontSize: 13, marginTop: 4 },
+  benefitPillText: { color: colors.bg, fontFamily: fonts.bodySemiBold, fontSize: 10.5 },
   ctaLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 },
   ctaLink: { color: colors.bg, fontFamily: fonts.bodySemiBold, fontSize: 13 },
   sectionTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 18 },
-  catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 14 },
-  catCard: {
-    width: '31%',
+  catScroll: { paddingHorizontal: 20, gap: 12, marginTop: 14, paddingBottom: 4 },
+  catTile: {
+    width: 108,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: 12,
-    gap: 10,
+    padding: 14,
+    gap: 12,
+    alignItems: 'flex-start',
   },
-  catIcon: { width: 34, height: 34, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
-  catLabel: { color: colors.text, fontFamily: fonts.bodySemiBold, fontSize: 11.5, lineHeight: 15 },
+  catTileIcon: { width: 48, height: 48, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  catTileLabel: { color: colors.text, fontFamily: fonts.bodySemiBold, fontSize: 12, lineHeight: 15 },
   stepIcon: {
     width: 38,
     height: 38,
