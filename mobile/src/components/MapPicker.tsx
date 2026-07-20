@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react'
-import { ActivityIndicator, Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Alert, Linking, Platform, StyleSheet, Text, View } from 'react-native'
 import MapView, { Marker, PROVIDER_GOOGLE, type LatLng, type MapPressEvent } from 'react-native-maps'
 import * as Location from 'expo-location'
-import { LocateFixed } from 'lucide-react-native'
+import { LinearGradient } from 'expo-linear-gradient'
+import { LocateFixed, MapPin as MapPinIcon } from 'lucide-react-native'
 import { fonts, radius } from '../lib/theme'
+import { MAPS_ENABLED } from '../lib/config'
 import { useTheme, type ThemeColors } from '../hooks/useTheme'
 import { MapPin } from './MapPin'
 import { AnimatedPressable } from './AnimatedPressable'
@@ -16,7 +18,7 @@ interface Props {
 }
 
 export function MapPicker({ lat, lng, zoomDelta = 0.08, onChange }: Props) {
-  const { colors } = useTheme()
+  const { colors, gradient } = useTheme()
   const styles = createStyles(colors)
   const mapRef = useRef<MapView>(null)
   const [locating, setLocating] = useState(false)
@@ -72,6 +74,35 @@ export function MapPicker({ lat, lng, zoomDelta = 0.08, onChange }: Props) {
     }
   }
 
+  if (!MAPS_ENABLED) {
+    // No Google Maps API key in this build → no native map. Users still set
+    // their location via GPS, and we show the current coordinates clearly.
+    return (
+      <View style={styles.wrap}>
+        <LinearGradient colors={[colors.bgSoft, colors.surface]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+        <View style={styles.fallbackCenter}>
+          <LinearGradient colors={gradient as unknown as string[]} style={styles.fallbackPin}>
+            <MapPinIcon size={20} color={colors.bg} />
+          </LinearGradient>
+          <Text style={styles.fallbackCoords}>{lat.toFixed(5)}, {lng.toFixed(5)}</Text>
+        </View>
+
+        <AnimatedPressable style={styles.locateBtn} onPress={useMyLocation} disabled={locating}>
+          {locating ? (
+            <ActivityIndicator size="small" color={colors.text} />
+          ) : (
+            <LocateFixed size={14} color={colors.text} />
+          )}
+          <Text style={styles.locateText}>Usar mi ubicación</Text>
+        </AnimatedPressable>
+
+        <View style={styles.hint}>
+          <Text style={styles.hintText}>Toca "Usar mi ubicación" para fijar el punto con tu GPS.</Text>
+        </View>
+      </View>
+    )
+  }
+
   return (
     <View style={styles.wrap}>
       <MapView
@@ -111,6 +142,9 @@ export function MapPicker({ lat, lng, zoomDelta = 0.08, onChange }: Props) {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     wrap: { height: 260, borderRadius: radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
+    fallbackCenter: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 10 },
+    fallbackPin: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+    fallbackCoords: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 12 },
     locateBtn: {
       position: 'absolute',
       top: 12,

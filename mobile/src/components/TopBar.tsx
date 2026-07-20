@@ -103,7 +103,7 @@ export function TopBar({ title }: { title?: string }) {
             <LinearGradient colors={gradient as unknown as string[]} style={styles.avatar}>
               <Text style={styles.avatarText}>{initials(user.fullName)}</Text>
             </LinearGradient>
-            <Text style={styles.pillText}>{user.fullName.split(' ')[0]}</Text>
+            <Text style={styles.pillText} numberOfLines={1}>{user.fullName.split(' ')[0]}</Text>
             <ChevronDown size={13} color={colors.muted} />
           </AnimatedPressable>
         ) : (
@@ -124,7 +124,7 @@ export function TopBar({ title }: { title?: string }) {
                 <Text style={styles.menuAvatarText}>{initials(user.fullName)}</Text>
               </LinearGradient>
               <View style={{ flex: 1 }}>
-                <Text style={styles.menuName} numberOfLines={1}>{user.fullName}</Text>
+                <Text style={styles.menuName} numberOfLines={2}>{user.fullName}</Text>
                 <Text style={styles.menuEmail} numberOfLines={1}>{user.email}</Text>
               </View>
             </View>
@@ -197,7 +197,7 @@ function createStyles(colors: ThemeColors) {
     },
     avatar: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
     avatarText: { color: colors.bg, fontFamily: fonts.bodySemiBold, fontSize: 9 },
-    pillText: { color: colors.text, fontFamily: fonts.bodySemiBold, fontSize: 12 },
+    pillText: { color: colors.text, fontFamily: fonts.bodySemiBold, fontSize: 12, maxWidth: 90 },
     loginBtn: {
       borderWidth: 1,
       borderColor: colors.border,

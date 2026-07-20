@@ -3,8 +3,10 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps'
 import { useRouter } from 'expo-router'
 import type { Company } from '../lib/types'
 import { radius } from '../lib/theme'
+import { MAPS_ENABLED } from '../lib/config'
 import { useTheme, type ThemeColors } from '../hooks/useTheme'
 import { MapPin } from './MapPin'
+import { MapFallback } from './MapFallback'
 
 interface Props {
   companies: Company[]
@@ -16,6 +18,19 @@ export function CompanyMap({ companies, center, zoomDelta = 4 }: Props) {
   const { colors } = useTheme()
   const styles = createStyles(colors)
   const router = useRouter()
+
+  if (!MAPS_ENABLED) {
+    const single = companies.length === 1 ? companies[0] : null
+    return (
+      <MapFallback
+        lat={single ? single.lat : center.latitude}
+        lng={single ? single.lng : center.longitude}
+        label={single?.tradeName}
+        height={single ? 220 : 420}
+        caption={single ? undefined : `${companies.length} comercios en el mapa`}
+      />
+    )
+  }
 
   return (
     <View style={styles.wrap}>

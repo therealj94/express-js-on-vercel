@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
-import { BadgeCheck, Copy, ExternalLink, MapPin, MoreVertical, Navigation, Share2 } from 'lucide-react-native'
+import { BadgeCheck, Copy, ExternalLink, Heart, MapPin, MoreVertical, Navigation, Share2 } from 'lucide-react-native'
 import type { Company } from '../lib/types'
 import { useMetaStore } from '../store/meta'
+import { useFavoritesStore } from '../store/favorites'
 import { fonts, radius, shadow } from '../lib/theme'
 import { useTheme, type ThemeColors } from '../hooks/useTheme'
 import { CategoryIcon } from './CategoryIcon'
@@ -23,6 +24,8 @@ export function CompanyCard({ company }: { company: Company }) {
   const { categories, countries, cityLabel } = useMetaStore()
   const category = categories.find((c) => c.slug === company.categorySlug)
   const country = countries.find((c) => c.slug === company.countrySlug)
+  const favorite = useFavoritesStore((s) => s.ids.includes(company.id))
+  const toggleFavorite = useFavoritesStore((s) => s.toggle)
   const [menuOpen, setMenuOpen] = useState(false)
 
   const items: ActionItem[] = [
@@ -53,9 +56,14 @@ export function CompanyCard({ company }: { company: Company }) {
           </View>
         )}
 
-        <Pressable onPress={() => setMenuOpen(true)} hitSlop={10} style={styles.moreBtn}>
-          <MoreVertical size={16} color="#fff" />
-        </Pressable>
+        <View style={styles.topRight}>
+          <Pressable onPress={() => toggleFavorite(company.id)} hitSlop={8} style={styles.iconBtn}>
+            <Heart size={15} color={favorite ? colors.danger : '#fff'} fill={favorite ? colors.danger : 'transparent'} />
+          </Pressable>
+          <Pressable onPress={() => setMenuOpen(true)} hitSlop={8} style={styles.iconBtn}>
+            <MoreVertical size={16} color="#fff" />
+          </Pressable>
+        </View>
 
         <View style={styles.coverContent}>
           <View style={styles.logoWrap}>
@@ -122,10 +130,8 @@ function createStyles(colors: ThemeColors) {
       paddingVertical: 4,
     },
     verifiedText: { color: '#fff', fontFamily: fonts.bodySemiBold, fontSize: 10.5 },
-    moreBtn: {
-      position: 'absolute',
-      top: 10,
-      right: 10,
+    topRight: { position: 'absolute', top: 10, right: 10, flexDirection: 'row', gap: 8 },
+    iconBtn: {
       width: 30,
       height: 30,
       borderRadius: 15,

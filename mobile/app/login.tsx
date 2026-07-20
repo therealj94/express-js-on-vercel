@@ -42,6 +42,14 @@ export default function Welcome() {
     router.replace(businessIntent ? '/registrar-empresa' : '/(tabs)')
   }
 
+  // La pantalla de bienvenida puede ser la primera al abrir la app (sin
+  // sesión) o un modal abierto desde el directorio. En ambos casos, salir
+  // debe llevar al directorio sin quedar en un callejón sin salida.
+  function goToApp() {
+    if (router.canGoBack()) router.back()
+    else router.replace('/(tabs)')
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <Image source={require('../assets/hero-people.jpg')} style={StyleSheet.absoluteFill} resizeMode="cover" />
@@ -54,7 +62,7 @@ export default function Welcome() {
       />
 
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <AnimatedPressable onPress={() => router.back()} style={styles.closeBtn}>
+        <AnimatedPressable onPress={goToApp} style={styles.closeBtn}>
           <X size={18} color={colors.text} />
         </AnimatedPressable>
 
@@ -76,7 +84,7 @@ export default function Welcome() {
               onPress={() => openSheet('signup')}
               icon={<UserPlus size={16} color={colors.text} />}
             />
-            <AnimatedPressable onPress={() => router.back()} style={styles.guestBtn}>
+            <AnimatedPressable onPress={goToApp} style={styles.guestBtn}>
               <Compass size={15} color={colors.muted} />
               <Text style={styles.guestText}>Continuar como invitado</Text>
             </AnimatedPressable>

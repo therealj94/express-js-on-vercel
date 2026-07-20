@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
-import { LayoutGrid, MapIcon, Search, SlidersHorizontal, X } from 'lucide-react-native'
+import { Heart, LayoutGrid, MapIcon, Search, SlidersHorizontal, X } from 'lucide-react-native'
 import { Screen } from '../../src/components/Screen'
 import { TopBar } from '../../src/components/TopBar'
 import { CompanyCard } from '../../src/components/CompanyCard'
@@ -14,6 +14,7 @@ import { AnimatedText } from '../../src/components/AnimatedText'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { AnimatedScreen } from '../../src/components/AnimatedScreen'
 import { useMetaStore } from '../../src/store/meta'
+import { useFavoritesStore } from '../../src/store/favorites'
 import { api } from '../../src/lib/api'
 import type { Company } from '../../src/lib/types'
 import { fonts, radius } from '../../src/lib/theme'
@@ -30,6 +31,8 @@ export default function Explore() {
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<'list' | 'map'>('list')
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [favOnly, setFavOnly] = useState(false)
+  const favIds = useFavoritesStore((s) => s.ids)
 
   const [qInput, setQInput] = useState(params.q ?? '')
   const [q, setQ] = useState(params.q ?? '')
@@ -60,7 +63,11 @@ export default function Explore() {
   }, [country, city, category, q])
 
   const cities = useMemo(() => countries.find((c) => c.slug === country)?.cities ?? [], [countries, country])
-  const hasFilters = Boolean(country || city || category || qInput)
+  const visible = useMemo(
+    () => (favOnly ? companies.filter((c) => favIds.includes(c.id)) : companies),
+    [companies, favOnly, favIds],
+  )
+  const hasFilters = Boolean(country || city || category || qInput || favOnly)
 
   function clearAll() {
     setQInput('')
@@ -68,6 +75,7 @@ export default function Explore() {
     setCountry('')
     setCity('')
     setCategory('')
+    setFavOnly(false)
   }
 
   const mapCenter = country
@@ -117,9 +125,12 @@ export default function Explore() {
 
       <View style={styles.headerRow}>
         <Text style={styles.count}>
-          {loading ? 'Buscando…' : `${companies.length} comercio${companies.length === 1 ? '' : 's'}`}
+          {loading ? 'Buscando…' : `${visible.length} comercio${visible.length === 1 ? '' : 's'}`}
         </Text>
         <View style={styles.headerActions}>
+          <Pressable onPress={() => setFavOnly((v) => !v)} style={[styles.iconBtn, favOnly && styles.iconBtnActive]}>
+            <Heart size={15} color={favOnly ? colors.danger : colors.text} fill={favOnly ? colors.danger : 'transparent'} />
+          </Pressable>
           <Pressable onPress={() => setFiltersOpen((v) => !v)} style={[styles.iconBtn, Boolean(country || city) && styles.iconBtnActive]}>
             <SlidersHorizontal size={15} color={country || city ? colors.blue : colors.text} />
           </Pressable>
@@ -176,10 +187,12 @@ export default function Explore() {
           <CompanyCardSkeleton />
           <CompanyCardSkeleton />
         </View>
-      ) : companies.length === 0 ? (
+      ) : visible.length === 0 ? (
         <View style={styles.empty}>
-          <AnimatedText style={styles.emptyTitle}>Sin resultados</AnimatedText>
-          <Text style={styles.emptyBody}>Prueba con otros términos, país o categoría.</Text>
+          <AnimatedText style={styles.emptyTitle}>{favOnly ? 'Sin favoritos aún' : 'Sin resultados'}</AnimatedText>
+          <Text style={styles.emptyBody}>
+            {favOnly ? 'Toca el corazón en un comercio para guardarlo aquí.' : 'Prueba con otros términos, país o categoría.'}
+          </Text>
           {hasFilters && (
             <Pressable onPress={clearAll} style={[styles.clearBtn, { marginTop: 6 }]}>
               <X size={12} color={colors.muted} />
@@ -189,11 +202,11 @@ export default function Explore() {
         </View>
       ) : view === 'map' ? (
         <AnimatedScreen animKey="map" distance={6} style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 }}>
-          <CompanyMap companies={companies} center={mapCenter} zoomDelta={country ? 3 : 8} />
+          <CompanyMap companies={visible} center={mapCenter} zoomDelta={country ? 3 : 8} />
         </AnimatedScreen>
       ) : (
         <AnimatedScreen animKey="list" fill={false} distance={6} style={styles.list}>
-          {companies.map((company) => (
+          {visible.map((company) => (
             <CompanyCard key={company.id} company={company} />
           ))}
         </AnimatedScreen>

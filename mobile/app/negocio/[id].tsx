@@ -8,6 +8,7 @@ import {
   Clock,
   Globe,
   Camera,
+  Heart,
   Link2,
   MapPin,
   MessageCircle,
@@ -15,9 +16,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AnimatedScreen } from '../../src/components/AnimatedScreen'
 import { AnimatedText } from '../../src/components/AnimatedText'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { api } from '../../src/lib/api'
 import type { Company, DayKey } from '../../src/lib/types'
 import { useMetaStore } from '../../src/store/meta'
+import { useFavoritesStore } from '../../src/store/favorites'
 import { CategoryIcon } from '../../src/components/CategoryIcon'
 import { CompanyMap } from '../../src/components/CompanyMap'
 import { Card } from '../../src/components/ui/Card'
@@ -37,6 +40,8 @@ export default function CompanyDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
   const { categories, countries, cityLabel, load } = useMetaStore()
+  const favorite = useFavoritesStore((s) => (id ? s.ids.includes(id) : false))
+  const toggleFavorite = useFavoritesStore((s) => s.toggle)
   const [company, setCompany] = useState<Company | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
 
@@ -204,11 +209,14 @@ export default function CompanyDetail() {
         </AnimatedScreen>
       </ScrollView>
 
-      <SafeAreaView style={styles.backFab} edges={['top']} pointerEvents="box-none">
+      <SafeAreaView style={styles.topFab} edges={['top']} pointerEvents="box-none">
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <ArrowLeft size={16} color={colors.text} />
           <Text style={styles.backBtnText}>Directorio</Text>
         </Pressable>
+        <AnimatedPressable onPress={() => id && toggleFavorite(id)} scaleTo={0.88} style={styles.heartBtn}>
+          <Heart size={17} color={favorite ? colors.danger : colors.text} fill={favorite ? colors.danger : 'transparent'} />
+        </AnimatedPressable>
       </SafeAreaView>
     </View>
   )
@@ -233,12 +241,20 @@ function createStyles(colors: ThemeColors) {
   backLinkText: { color: colors.text, fontFamily: fonts.bodySemiBold, fontSize: 13 },
   cover: { height: 190, backgroundColor: colors.bgSoft },
   coverOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(7,8,15,0.15)' },
-  backFab: { position: 'absolute', top: 0, left: 0 },
+  topFab: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
   backBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginLeft: 16,
     marginTop: 8,
     backgroundColor: 'rgba(16,19,31,0.85)',
     borderWidth: 1,
@@ -248,6 +264,17 @@ function createStyles(colors: ThemeColors) {
     paddingVertical: 8,
   },
   backBtnText: { color: colors.text, fontFamily: fonts.bodySemiBold, fontSize: 12 },
+  heartBtn: {
+    marginTop: 8,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(16,19,31,0.85)',
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   header: { paddingHorizontal: 20, marginTop: -40 },
   logoWrap: { marginBottom: 12 },
   logo: {
