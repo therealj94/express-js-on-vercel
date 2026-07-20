@@ -16,7 +16,7 @@ import { useAuthStore } from '../store/auth'
 import { api, ApiError } from '../lib/api'
 import { TextField } from './ui/TextField'
 import { GradientButton } from './ui/GradientButton'
-import { fonts, radius } from '../lib/theme'
+import { fonts, radius, shadow } from '../lib/theme'
 import { useTheme, type ThemeColors } from '../hooks/useTheme'
 
 export type AuthMode = 'login' | 'signup'
@@ -43,6 +43,9 @@ export function AuthSheet({ visible, mode, isBusiness, onClose, onModeChange, on
   const opacity = useRef(new Animated.Value(0)).current
 
   const [view, setView] = useState<'credentials' | 'forgot' | 'reset'>('credentials')
+  const [displayedView, setDisplayedView] = useState(view)
+  const viewOpacity = useRef(new Animated.Value(1)).current
+  const viewShift = useRef(new Animated.Value(0)).current
   const [resetEmail, setResetEmail] = useState('')
   const [resetToken, setResetToken] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -56,6 +59,9 @@ export function AuthSheet({ visible, mode, isBusiness, onClose, onModeChange, on
     if (visible) {
       clearError()
       setView('credentials')
+      setDisplayedView('credentials')
+      viewOpacity.setValue(1)
+      viewShift.setValue(0)
       setForgotError(null)
       setForgotSent(false)
       setResetDone(false)
@@ -68,6 +74,19 @@ export function AuthSheet({ visible, mode, isBusiness, onClose, onModeChange, on
       opacity.setValue(0)
     }
   }, [visible])
+
+  // Cross-fade between credentials/forgot/reset instead of an instant content swap.
+  useEffect(() => {
+    if (displayedView === view) return
+    Animated.timing(viewOpacity, { toValue: 0, duration: 120, easing: Easing.out(Easing.ease), useNativeDriver: true }).start(() => {
+      setDisplayedView(view)
+      viewShift.setValue(6)
+      Animated.parallel([
+        Animated.timing(viewOpacity, { toValue: 1, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(viewShift, { toValue: 0, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      ]).start()
+    })
+  }, [view])
 
   async function onSubmit() {
     clearError()
@@ -144,9 +163,9 @@ export function AuthSheet({ visible, mode, isBusiness, onClose, onModeChange, on
             <View style={styles.handle} />
             <View style={styles.headerRow}>
               <Text style={styles.title}>
-                {view === 'forgot'
+                {displayedView === 'forgot'
                   ? 'Recuperar contraseña'
-                  : view === 'reset'
+                  : displayedView === 'reset'
                     ? 'Nueva contraseña'
                     : mode === 'login'
                       ? 'Iniciar sesión'
@@ -159,9 +178,9 @@ export function AuthSheet({ visible, mode, isBusiness, onClose, onModeChange, on
               </Pressable>
             </View>
             <Text style={styles.subtitle}>
-              {view === 'forgot'
+              {displayedView === 'forgot'
                 ? 'Ingresa tu correo y te ayudaremos a restablecer tu contraseña.'
-                : view === 'reset'
+                : displayedView === 'reset'
                   ? resetDone
                     ? 'Tu contraseña se actualizó correctamente.'
                     : 'Elige una nueva contraseña para tu cuenta.'
@@ -172,8 +191,11 @@ export function AuthSheet({ visible, mode, isBusiness, onClose, onModeChange, on
                       : 'Explora el directorio y guarda tus comercios favoritos.'}
             </Text>
 
+            <Animated.View
+              style={{ opacity: viewOpacity, transform: [{ translateY: viewShift }] }}
+            >
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ marginTop: 18 }}>
-              {view === 'forgot' ? (
+              {displayedView === 'forgot' ? (
                 <View style={{ gap: 14 }}>
                   <TextField
                     label="Correo"
@@ -212,7 +234,7 @@ export function AuthSheet({ visible, mode, isBusiness, onClose, onModeChange, on
                     <Text style={[styles.switchText, { marginLeft: 6 }]}>Volver a iniciar sesión</Text>
                   </Pressable>
                 </View>
-              ) : view === 'reset' ? (
+              ) : displayedView === 'reset' ? (
                 <View style={{ gap: 14 }}>
                   {resetDone ? (
                     <>
@@ -303,6 +325,12 @@ export function AuthSheet({ visible, mode, isBusiness, onClose, onModeChange, on
                     </View>
                   )}
 
+                  {mode === 'signup' && (
+                    <Text style={styles.consentText}>
+                      Al crear tu cuenta aceptas nuestra Política de privacidad y Términos de servicio.
+                    </Text>
+                  )}
+
                   <GradientButton
                     label={submitting ? 'Un momento…' : mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
                     onPress={onSubmit}
@@ -322,6 +350,7 @@ export function AuthSheet({ visible, mode, isBusiness, onClose, onModeChange, on
                 </View>
               )}
             </ScrollView>
+            </Animated.View>
           </Animated.View>
         </KeyboardAvoidingView>
       </View>
@@ -343,6 +372,7 @@ function createStyles(colors: ThemeColors) {
     paddingTop: 10,
     paddingBottom: 28,
     maxHeight: '86%',
+    ...shadow(colors.bg, 'lg', 'up'),
   },
   handle: { width: 36, height: 4, borderRadius: 999, backgroundColor: colors.border, alignSelf: 'center', marginBottom: 14 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -373,6 +403,7 @@ function createStyles(colors: ThemeColors) {
   demoNote: { color: colors.muted, fontFamily: fonts.body, fontSize: 11.5, lineHeight: 17 },
   forgotLink: { alignSelf: 'flex-end' },
   forgotLinkText: { color: colors.text, fontFamily: fonts.bodySemiBold, fontSize: 12 },
+  consentText: { color: colors.muted2, fontFamily: fonts.body, fontSize: 11, lineHeight: 16, textAlign: 'center' },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   switchText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13 },
   switchLink: { color: colors.text, fontFamily: fonts.bodySemiBold },

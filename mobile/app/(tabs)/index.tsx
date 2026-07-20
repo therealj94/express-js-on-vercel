@@ -14,7 +14,7 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { useMetaStore } from '../../src/store/meta'
 import { api } from '../../src/lib/api'
 import type { Company } from '../../src/lib/types'
-import { fonts, radius } from '../../src/lib/theme'
+import { fonts, radius, shadow } from '../../src/lib/theme'
 import { useTheme, type ThemeColors } from '../../src/hooks/useTheme'
 
 const STEPS = [
@@ -204,7 +204,7 @@ function createStyles(colors: ThemeColors) {
   statCard: { flex: 1, gap: 8, alignItems: 'flex-start' },
   statNumber: { color: colors.text, fontFamily: fonts.displayBold, fontSize: 20 },
   statLabel: { color: colors.muted, fontFamily: fonts.body, fontSize: 11 },
-  cta: { borderRadius: radius.xl, padding: 20 },
+  cta: { borderRadius: radius.xl, padding: 20, ...shadow(colors.violet, 'lg') },
   ctaTitle: { color: colors.bg, fontFamily: fonts.display, fontSize: 18, marginTop: 10 },
   ctaBody: { color: colors.bg, opacity: 0.8, fontFamily: fonts.body, fontSize: 13, marginTop: 4 },
   ctaLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 },

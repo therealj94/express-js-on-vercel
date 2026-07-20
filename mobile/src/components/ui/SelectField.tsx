@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { ChevronDown, Check, Search, X } from 'lucide-react-native'
-import { fonts, radius } from '../../lib/theme'
+import { fonts, radius, shadow } from '../../lib/theme'
 import { useTheme, type ThemeColors } from '../../hooks/useTheme'
 
 export interface SelectOption {
@@ -160,6 +160,7 @@ function createStyles(colors: ThemeColors) {
       paddingBottom: 24,
       paddingTop: 12,
       maxHeight: '80%',
+      ...shadow(colors.bg, 'lg', 'up'),
     },
     sheetHeader: {
       flexDirection: 'row',

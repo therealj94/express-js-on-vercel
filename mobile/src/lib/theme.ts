@@ -49,3 +49,23 @@ function withAlpha(hex: string, alpha: number): string {
 }
 
 export const alpha = withAlpha
+
+import { Platform } from 'react-native'
+
+// Tinted shadows (matching the surface hue, not generic black) for the few
+// elements that should visibly float: primary CTAs, sheets, floating buttons.
+// direction 'up' is for bottom sheets, whose only visible edge is the top one.
+export function shadow(tintColor: string, size: 'sm' | 'lg' = 'sm', direction: 'down' | 'up' = 'down') {
+  const cfg = size === 'lg' ? { offset: 14, opacity: 0.32, radius: 24, elevation: 10 } : { offset: 6, opacity: 0.26, radius: 12, elevation: 5 }
+  const height = direction === 'up' ? -cfg.offset : cfg.offset
+  return Platform.select({
+    ios: {
+      shadowColor: tintColor,
+      shadowOffset: { width: 0, height },
+      shadowOpacity: cfg.opacity,
+      shadowRadius: cfg.radius,
+    },
+    android: { elevation: cfg.elevation, shadowColor: tintColor },
+    default: {},
+  })
+}

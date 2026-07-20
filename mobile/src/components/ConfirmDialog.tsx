@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import type { LucideIcon } from 'lucide-react-native'
-import { fonts, radius } from '../lib/theme'
+import { fonts, radius, shadow } from '../lib/theme'
 import { useTheme, type ThemeColors } from '../hooks/useTheme'
 import { AnimatedPressable } from './AnimatedPressable'
 
@@ -103,6 +103,7 @@ function createStyles(colors: ThemeColors) {
       borderRadius: radius.xl,
       padding: 22,
       alignItems: 'center',
+      ...shadow(colors.bg, 'lg'),
     },
     iconWrap: {
       width: 46,

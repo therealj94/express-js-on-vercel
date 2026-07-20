@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { Check } from 'lucide-react-native'
-import { fonts, radius } from '../lib/theme'
+import { fonts, radius, shadow } from '../lib/theme'
 import { themes, type ThemeName } from '../lib/themes'
 import { useTheme, type ThemeColors } from '../hooks/useTheme'
 import { useThemeStore } from '../store/theme'
@@ -92,6 +92,7 @@ function createStyles(colors: ThemeColors) {
       paddingHorizontal: 20,
       paddingTop: 10,
       paddingBottom: 34,
+      ...shadow(colors.bg, 'lg', 'up'),
     },
     handle: { width: 36, height: 4, borderRadius: 999, backgroundColor: colors.border, alignSelf: 'center', marginBottom: 14 },
     title: { color: colors.text, fontFamily: fonts.displayBold, fontSize: 18 },

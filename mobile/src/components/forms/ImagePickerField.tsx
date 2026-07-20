@@ -1,4 +1,5 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useRef } from 'react'
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { Upload } from 'lucide-react-native'
 import { Field } from '../ui/TextField'
@@ -16,6 +17,18 @@ interface Props {
 export function ImagePickerField({ label, value, onChange, round }: Props) {
   const { colors } = useTheme()
   const styles = createStyles(colors)
+  const opacity = useRef(new Animated.Value(value ? 1 : 0)).current
+  const scale = useRef(new Animated.Value(value ? 1 : 0.95)).current
+
+  useEffect(() => {
+    if (!value) return
+    opacity.setValue(0)
+    scale.setValue(0.95)
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+    ]).start()
+  }, [value])
 
   async function pick() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -32,7 +45,14 @@ export function ImagePickerField({ label, value, onChange, round }: Props) {
     <Field label={label}>
       <Pressable onPress={pick} style={styles.wrap}>
         <View style={[styles.thumb, round && styles.round]}>
-          {value ? <Image source={{ uri: value }} style={StyleSheet.absoluteFill} /> : <Upload size={16} color={colors.muted2} />}
+          {value ? (
+            <Animated.Image
+              source={{ uri: value }}
+              style={[StyleSheet.absoluteFill, { opacity, transform: [{ scale }] }]}
+            />
+          ) : (
+            <Upload size={16} color={colors.muted2} />
+          )}
         </View>
         <Text style={styles.text}>{value ? 'Cambiar imagen' : 'Subir imagen'}</Text>
       </Pressable>

@@ -1,6 +1,6 @@
 import { ActivityIndicator, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { fonts, radius } from '../../lib/theme'
+import { fonts, radius, shadow } from '../../lib/theme'
 import { useTheme, type ThemeColors } from '../../hooks/useTheme'
 import { AnimatedPressable } from '../AnimatedPressable'
 
@@ -34,7 +34,12 @@ export function GradientButton({ label, onPress, disabled, loading, icon, varian
   }
 
   return (
-    <AnimatedPressable onPress={onPress} disabled={isDisabled} scaleTo={0.97} style={isDisabled && styles.disabled}>
+    <AnimatedPressable
+      onPress={onPress}
+      disabled={isDisabled}
+      scaleTo={0.97}
+      style={[!isDisabled && styles.glow, isDisabled && styles.disabled]}
+    >
       <LinearGradient colors={gradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.primary, style]}>
         {loading ? <ActivityIndicator color={colors.bg} /> : icon}
         <Text style={styles.primaryLabel}>{label}</Text>
@@ -45,6 +50,10 @@ export function GradientButton({ label, onPress, disabled, loading, icon, varian
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
+    glow: {
+      borderRadius: radius.md,
+      ...shadow(colors.violet, 'sm'),
+    },
     primary: {
       flexDirection: 'row',
       alignItems: 'center',

@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
 import { LayoutGrid, MapIcon, Search, SlidersHorizontal, X } from 'lucide-react-native'
 import { Screen } from '../../src/components/Screen'
 import { TopBar } from '../../src/components/TopBar'
 import { CompanyCard } from '../../src/components/CompanyCard'
+import { CompanyCardSkeleton } from '../../src/components/CompanyCardSkeleton'
 import { CompanyMap } from '../../src/components/CompanyMap'
 import { CategoryIcon } from '../../src/components/CategoryIcon'
 import { TextField } from '../../src/components/ui/TextField'
 import { SelectField } from '../../src/components/ui/SelectField'
 import { AnimatedText } from '../../src/components/AnimatedText'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { AnimatedScreen } from '../../src/components/AnimatedScreen'
 import { useMetaStore } from '../../src/store/meta'
 import { api } from '../../src/lib/api'
 import type { Company } from '../../src/lib/types'
@@ -133,7 +135,7 @@ export default function Explore() {
       </View>
 
       {filtersOpen && (
-        <View style={styles.filters}>
+        <AnimatedScreen animKey="filters" fill={false} distance={8} style={styles.filters}>
           <View style={styles.filterRow}>
             <View style={{ flex: 1 }}>
               <SelectField
@@ -165,12 +167,14 @@ export default function Explore() {
               <Text style={styles.clearText}>Limpiar filtros</Text>
             </Pressable>
           )}
-        </View>
+        </AnimatedScreen>
       )}
 
       {loading ? (
-        <View style={styles.loading}>
-          <ActivityIndicator color={colors.blue} />
+        <View style={styles.list}>
+          <CompanyCardSkeleton />
+          <CompanyCardSkeleton />
+          <CompanyCardSkeleton />
         </View>
       ) : companies.length === 0 ? (
         <View style={styles.empty}>
@@ -184,15 +188,15 @@ export default function Explore() {
           )}
         </View>
       ) : view === 'map' ? (
-        <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 }}>
+        <AnimatedScreen animKey="map" distance={6} style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 }}>
           <CompanyMap companies={companies} center={mapCenter} zoomDelta={country ? 3 : 8} />
-        </View>
+        </AnimatedScreen>
       ) : (
-        <View style={styles.list}>
+        <AnimatedScreen animKey="list" fill={false} distance={6} style={styles.list}>
           {companies.map((company) => (
             <CompanyCard key={company.id} company={company} />
           ))}
-        </View>
+        </AnimatedScreen>
       )}
     </Screen>
   )

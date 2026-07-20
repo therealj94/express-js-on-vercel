@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
 import {
@@ -22,6 +22,7 @@ import { CategoryIcon } from '../../src/components/CategoryIcon'
 import { CompanyMap } from '../../src/components/CompanyMap'
 import { Card } from '../../src/components/ui/Card'
 import { Chip } from '../../src/components/ui/Chip'
+import { Skeleton } from '../../src/components/ui/Skeleton'
 import { fonts, radius } from '../../src/lib/theme'
 import { useTheme, type ThemeColors } from '../../src/hooks/useTheme'
 
@@ -57,9 +58,19 @@ export default function CompanyDetail() {
 
   if (status === 'loading') {
     return (
-      <SafeAreaView style={styles.center}>
-        <ActivityIndicator color={colors.blue} />
-      </SafeAreaView>
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <View style={styles.cover} />
+        <View style={styles.header}>
+          <Skeleton width={78} height={78} round="lg" style={{ marginBottom: 12 }} />
+          <Skeleton width="55%" height={20} />
+          <Skeleton width="35%" height={13} style={{ marginTop: 8 }} />
+          <View style={{ marginTop: 24, gap: 8 }}>
+            <Skeleton height={13} />
+            <Skeleton height={13} width="90%" />
+            <Skeleton height={13} width="70%" />
+          </View>
+        </View>
+      </View>
     )
   }
 

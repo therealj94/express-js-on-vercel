@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import type { LucideIcon } from 'lucide-react-native'
-import { fonts, radius } from '../lib/theme'
+import { fonts, radius, shadow } from '../lib/theme'
 import { useTheme, type ThemeColors } from '../hooks/useTheme'
 
 export interface ActionItem {
@@ -90,6 +90,7 @@ function createStyles(colors: ThemeColors) {
     paddingHorizontal: 12,
     paddingTop: 10,
     paddingBottom: 30,
+    ...shadow(colors.bg, 'lg', 'up'),
   },
   handle: { width: 36, height: 4, borderRadius: 999, backgroundColor: colors.border, alignSelf: 'center', marginBottom: 10 },
   title: { color: colors.muted, fontFamily: fonts.bodySemiBold, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.6, paddingHorizontal: 10, marginTop: 4 },

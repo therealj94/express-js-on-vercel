@@ -24,15 +24,17 @@ import { TopBar } from '../../src/components/TopBar'
 import { CategoryIcon } from '../../src/components/CategoryIcon'
 import { StatusBadge } from '../../src/components/StatusBadge'
 import { AnimatedText } from '../../src/components/AnimatedText'
+import { AnimatedScreen } from '../../src/components/AnimatedScreen'
 import { Card } from '../../src/components/ui/Card'
 import { GradientButton } from '../../src/components/ui/GradientButton'
+import { ProgressBar } from '../../src/components/ui/ProgressBar'
 import { ActionSheet, type ActionItem } from '../../src/components/ActionSheet'
 import { api } from '../../src/lib/api'
 import { copyAddress, openDirections, shareCompany } from '../../src/lib/companyActions'
 import type { Company } from '../../src/lib/types'
 import { useAuthStore } from '../../src/store/auth'
 import { useMetaStore } from '../../src/store/meta'
-import { fonts, radius } from '../../src/lib/theme'
+import { fonts, radius, shadow } from '../../src/lib/theme'
 import { useTheme, type ThemeColors } from '../../src/hooks/useTheme'
 
 function profileCompleteness(company: Company): number {
@@ -110,7 +112,7 @@ export default function Dashboard() {
           <View style={styles.skeleton} />
         </View>
       ) : company === null ? (
-        <View style={styles.section}>
+        <AnimatedScreen animKey="empty" fill={false} distance={8} style={styles.section}>
           <Pressable onPress={() => router.push('/registrar-empresa')}>
             <LinearGradient colors={gradient as unknown as string[]} style={styles.registerCta}>
               <Rocket size={22} color={colors.bg} />
@@ -139,9 +141,9 @@ export default function Dashboard() {
               ))}
             </View>
           </Card>
-        </View>
+        </AnimatedScreen>
       ) : (
-        <View style={styles.section}>
+        <AnimatedScreen animKey="company" fill={false} distance={8} style={styles.section}>
           <Card>
             <View style={styles.companyRow}>
               {company.logoDataUrl ? (
@@ -186,9 +188,7 @@ export default function Dashboard() {
           <Card style={{ marginTop: 12 }}>
             <Text style={styles.statLabel}>Perfil completo</Text>
             <Text style={styles.statNumber}>{completeness}%</Text>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${completeness}%` }]} />
-            </View>
+            <ProgressBar value={completeness} />
             <Pressable onPress={() => router.push('/mi-empresa')} style={styles.linkRow}>
               <Pencil size={12} color={colors.blue} />
               <Text style={styles.link}>Completar perfil</Text>
@@ -247,7 +247,7 @@ export default function Dashboard() {
               </View>
             )}
           </Card>
-        </View>
+        </AnimatedScreen>
       )}
     </Screen>
   )
@@ -264,7 +264,7 @@ function createStyles(colors: ThemeColors) {
   guestTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 18, textAlign: 'center', marginTop: 20 },
   guestBody: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 19 },
   guestLink: { color: colors.text, fontFamily: fonts.bodySemiBold, fontSize: 13 },
-  registerCta: { borderRadius: radius.xl, padding: 22 },
+  registerCta: { borderRadius: radius.xl, padding: 22, ...shadow(colors.violet, 'lg') },
   registerTitle: { color: colors.bg, fontFamily: fonts.display, fontSize: 19, marginTop: 14 },
   registerBody: { color: colors.bg, opacity: 0.85, fontFamily: fonts.body, fontSize: 13, marginTop: 6, lineHeight: 19 },
   registerLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16 },
@@ -281,8 +281,6 @@ function createStyles(colors: ThemeColors) {
   link: { color: colors.blue, fontFamily: fonts.bodySemiBold, fontSize: 12 },
   statLabel: { color: colors.muted2, fontFamily: fonts.bodySemiBold, fontSize: 11, textTransform: 'uppercase' },
   statNumber: { color: colors.text, fontFamily: fonts.displayBold, fontSize: 26, marginTop: 4 },
-  progressTrack: { height: 8, borderRadius: 999, backgroundColor: colors.surfaceHi, marginTop: 10, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: colors.blue, borderRadius: 999 },
   addressRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 8 },
   addressText: { color: colors.text, fontFamily: fonts.body, fontSize: 13.5, flex: 1 },
   stepsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 18, gap: 4 },
