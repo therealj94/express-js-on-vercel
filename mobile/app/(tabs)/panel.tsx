@@ -118,7 +118,7 @@ export default function Dashboard() {
       {/* Puntos ORIGEN + wallet */}
       <View style={styles.section}>
         <Pressable3D onPress={() => router.push('/bonos')} tilt={6}>
-          <LinearGradient colors={gradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
+          <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
             <View style={styles.balanceTop}>
               <Sparkle size={18} color={colors.bg} />
               <View style={styles.walletChip}>
@@ -178,7 +178,7 @@ export default function Dashboard() {
               {company.coverDataUrl ? (
                 <Image source={{ uri: company.coverDataUrl }} style={styles.companyCover} />
               ) : (
-                <LinearGradient colors={gradient as unknown as string[]} style={styles.companyCover} />
+                <LinearGradient colors={gradient} style={styles.companyCover} />
               )}
               <View style={styles.companyOverlay} />
               <View style={styles.companyContent}>

@@ -50,7 +50,7 @@ export function GradientButton({ label, onPress, disabled, loading, icon, varian
       scaleTo={0.97}
       style={[!isDisabled && styles.glow, isDisabled && styles.disabled]}
     >
-      <LinearGradient colors={gradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.primary, style]}>
+      <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.primary, style]}>
         {/* Sheen that sweeps across on press for a premium tactile feel. */}
         <Animated.View pointerEvents="none" style={[styles.shineWrap, { opacity: shine.interpolate({ inputRange: [0, 0.15, 0.85, 1], outputRange: [0, 1, 1, 0] }), transform: [{ translateX }, { rotate: '18deg' }] }]}>
           <LinearGradient

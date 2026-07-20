@@ -99,7 +99,7 @@ export default function Bonos() {
       </SafeAreaView>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <LinearGradient colors={gradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
+        <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
           <Sparkle size={20} color={colors.bg} />
           <Text style={styles.balanceNumber}>{pointsBalance}</Text>
           <Text style={styles.balanceLabel}>puntos ORIGEN disponibles</Text>

@@ -59,7 +59,7 @@ export function AnimatedSplash({ onDone }: { onDone: () => void }) {
         <View style={styles.barTrack}>
           <Animated.View style={{ width: barWidth, height: '100%' }}>
             <LinearGradient
-              colors={gradient as unknown as string[]}
+              colors={gradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={{ flex: 1, borderRadius: 999 }}

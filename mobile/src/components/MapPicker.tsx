@@ -81,7 +81,7 @@ export function MapPicker({ lat, lng, zoomDelta = 0.08, onChange }: Props) {
       <View style={styles.wrap}>
         <LinearGradient colors={[colors.bgSoft, colors.surface]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
         <View style={styles.fallbackCenter}>
-          <LinearGradient colors={gradient as unknown as string[]} style={styles.fallbackPin}>
+          <LinearGradient colors={gradient} style={styles.fallbackPin}>
             <MapPinIcon size={20} color={colors.bg} />
           </LinearGradient>
           <Text style={styles.fallbackCoords}>{lat.toFixed(5)}, {lng.toFixed(5)}</Text>

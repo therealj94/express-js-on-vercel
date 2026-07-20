@@ -100,7 +100,7 @@ export default function CompanyDetail() {
           {company.coverDataUrl ? (
             <Image source={{ uri: company.coverDataUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
           ) : (
-            <LinearGradient colors={gradient as unknown as string[]} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={gradient} style={StyleSheet.absoluteFill} />
           )}
           <View style={styles.coverOverlay} />
         </View>
@@ -110,7 +110,7 @@ export default function CompanyDetail() {
             {company.logoDataUrl ? (
               <Image source={{ uri: company.logoDataUrl }} style={styles.logo} />
             ) : (
-              <LinearGradient colors={gradient as unknown as string[]} style={styles.logo}>
+              <LinearGradient colors={gradient} style={styles.logo}>
                 <CategoryIcon name={category?.icon ?? ''} size={30} color={colors.bg} />
               </LinearGradient>
             )}
@@ -134,7 +134,7 @@ export default function CompanyDetail() {
               onPress={() => Linking.openURL(`https://wa.me/${company.socials.whatsapp!.replace(/[^\d]/g, '')}`)}
               style={{ marginTop: 16 }}
             >
-              <LinearGradient colors={gradient as unknown as string[]} style={styles.contactBtn}>
+              <LinearGradient colors={gradient} style={styles.contactBtn}>
                 <MessageCircle size={15} color={colors.bg} />
                 <Text style={styles.contactText}>Contactar</Text>
               </LinearGradient>

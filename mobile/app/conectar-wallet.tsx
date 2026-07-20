@@ -74,7 +74,7 @@ export default function ConnectWallet() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <AnimatedScreen fill={false} style={{ gap: 18 }}>
-          <LinearGradient colors={gradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+          <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
             <Wallet size={22} color={colors.bg} />
             <Text style={styles.heroTitle}>
               {wallet ? 'Tu Veta Wallet está conectada' : 'Conecta tu Veta Wallet'}

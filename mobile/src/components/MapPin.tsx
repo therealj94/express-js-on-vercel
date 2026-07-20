@@ -7,7 +7,7 @@ export function MapPin() {
   const styles = createStyles(colors)
   return (
     <View style={styles.wrap}>
-      <LinearGradient colors={gradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.pin}>
+      <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.pin}>
         <View style={styles.dot} />
       </LinearGradient>
       <View style={styles.tail} />

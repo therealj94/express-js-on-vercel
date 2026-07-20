@@ -108,7 +108,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
               </View>
             ) : (
               <View style={styles.slideWrap}>
-                <LinearGradient colors={gradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.slideIcon}>
+                <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.slideIcon}>
                   <slide.icon size={40} color={colors.bg} />
                 </LinearGradient>
                 <Text style={styles.title}>{slide.title}</Text>

@@ -100,7 +100,7 @@ export function TopBar({ title }: { title?: string }) {
 
         {user ? (
           <AnimatedPressable onPress={() => setMenuOpen(true)} style={styles.pill}>
-            <LinearGradient colors={gradient as unknown as string[]} style={styles.avatar}>
+            <LinearGradient colors={gradient} style={styles.avatar}>
               <Text style={styles.avatarText}>{initials(user.fullName)}</Text>
             </LinearGradient>
             <Text style={styles.pillText} numberOfLines={1}>{user.fullName.split(' ')[0]}</Text>
@@ -120,7 +120,7 @@ export function TopBar({ title }: { title?: string }) {
           items={items}
           header={
             <View style={styles.menuHeader}>
-              <LinearGradient colors={gradient as unknown as string[]} style={styles.menuAvatar}>
+              <LinearGradient colors={gradient} style={styles.menuAvatar}>
                 <Text style={styles.menuAvatarText}>{initials(user.fullName)}</Text>
               </LinearGradient>
               <View style={{ flex: 1 }}>

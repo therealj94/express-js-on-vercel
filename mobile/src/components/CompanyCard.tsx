@@ -41,7 +41,7 @@ export function CompanyCard({ company }: { company: Company }) {
         {company.coverDataUrl ? (
           <Image source={{ uri: company.coverDataUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
         ) : (
-          <LinearGradient colors={gradient as unknown as string[]} style={StyleSheet.absoluteFill} />
+          <LinearGradient colors={gradient} style={StyleSheet.absoluteFill} />
         )}
         <LinearGradient
           colors={['transparent', 'rgba(6,7,13,0.35)', 'rgba(6,7,13,0.88)']}
@@ -70,7 +70,7 @@ export function CompanyCard({ company }: { company: Company }) {
             {company.logoDataUrl ? (
               <Image source={{ uri: company.logoDataUrl }} style={styles.logo} />
             ) : (
-              <LinearGradient colors={gradient as unknown as string[]} style={styles.logo}>
+              <LinearGradient colors={gradient} style={styles.logo}>
                 <CategoryIcon name={category?.icon ?? ''} size={20} color={colors.bg} />
               </LinearGradient>
             )}

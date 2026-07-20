@@ -38,7 +38,7 @@ export function MapFallback({ lat, lng, label, height = 220, caption }: Props) {
         ))}
       </View>
 
-      <LinearGradient colors={gradient as unknown as string[]} style={styles.pin}>
+      <LinearGradient colors={gradient} style={styles.pin}>
         <MapPin size={18} color={colors.bg} />
       </LinearGradient>
 

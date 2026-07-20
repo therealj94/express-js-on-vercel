@@ -80,7 +80,7 @@ export default function Home() {
             />
           </View>
           <Pressable onPress={submitSearch}>
-            <LinearGradient colors={gradient as unknown as string[]} style={styles.searchBtn}>
+            <LinearGradient colors={gradient} style={styles.searchBtn}>
               <Search size={17} color={colors.bg} />
             </LinearGradient>
           </Pressable>
@@ -108,7 +108,7 @@ export default function Home() {
       {user ? (
         <View style={styles.section}>
           <Pressable3D onPress={() => router.push('/bonos')} tilt={6}>
-            <LinearGradient colors={gradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
+            <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
               <Gift size={20} color={colors.bg} />
               <Text style={styles.ctaTitle}>Tus beneficios por comprar</Text>
               <Text style={styles.ctaBody}>
@@ -133,7 +133,7 @@ export default function Home() {
         </View>
       ) : (
         <AnimatedPressable onPress={() => router.push('/registro')} scaleTo={0.98} style={styles.section}>
-          <LinearGradient colors={gradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
+          <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
             <Sparkle size={20} color={colors.bg} />
             <Text style={styles.ctaTitle}>Crea tu cuenta gratis</Text>
             <Text style={styles.ctaBody}>Gana puntos ORIGEN al comprar en afiliados, canjea premios y guarda tus favoritos.</Text>
@@ -156,7 +156,7 @@ export default function Home() {
               style={styles.catTile}
               onPress={() => router.push({ pathname: '/(tabs)/explorar', params: { category: cat.slug } })}
             >
-              <LinearGradient colors={gradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.catTileIcon}>
+              <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.catTileIcon}>
                 <CategoryIcon name={cat.icon} size={26} color={colors.bg} />
               </LinearGradient>
               <Text style={styles.catTileLabel} numberOfLines={2}>{cat.label}</Text>
@@ -202,7 +202,7 @@ export default function Home() {
           liquidación en minutos.
         </Text>
         <AnimatedPressable onPress={() => router.push('/registrar-empresa')} scaleTo={0.97}>
-          <LinearGradient colors={gradient as unknown as string[]} style={styles.heroBtn}>
+          <LinearGradient colors={gradient} style={styles.heroBtn}>
             <Text style={styles.heroBtnText}>Registrar mi negocio</Text>
             <ArrowRight size={14} color={colors.bg} />
           </LinearGradient>
