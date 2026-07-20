@@ -1,8 +1,16 @@
 import Constants from 'expo-constants'
-import * as SecureStore from 'expo-secure-store'
 import type { Category, Company, Country, PublicUser } from './types'
+import { getToken, setToken } from './token'
+import { ApiError } from './apiError'
+import { mockApi } from './mockApi'
 
-const TOKEN_KEY = 'mtp_token'
+export { getToken, setToken } from './token'
+export { ApiError } from './apiError'
+
+// Flip to false once a real backend is reachable (deployed, or your phone and
+// computer are on the same Wi-Fi with the server running) — everything else
+// in the app keeps working unchanged, since mockApi matches this same shape.
+export const USE_MOCK_API = true
 
 function resolveApiUrl(): string {
   const envUrl = process.env.EXPO_PUBLIC_API_URL
@@ -20,23 +28,6 @@ function resolveApiUrl(): string {
 }
 
 export const API_URL = resolveApiUrl()
-
-export async function getToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(TOKEN_KEY)
-}
-
-export async function setToken(token: string | null): Promise<void> {
-  if (token) await SecureStore.setItemAsync(TOKEN_KEY, token)
-  else await SecureStore.deleteItemAsync(TOKEN_KEY)
-}
-
-export class ApiError extends Error {
-  status: number
-  constructor(message: string, status: number) {
-    super(message)
-    this.status = status
-  }
-}
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = await getToken()
@@ -65,7 +56,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return body as T
 }
 
-export const api = {
+const realApi = {
   signup: (data: { email: string; password: string; fullName: string }) =>
     request<{ token: string; user: PublicUser }>('/auth/signup', {
       method: 'POST',
@@ -129,3 +120,5 @@ export const api = {
       body: JSON.stringify({ documents }),
     }),
 }
+
+export const api = USE_MOCK_API ? mockApi : realApi

@@ -4,7 +4,24 @@ App nativa (React Native + Expo Router) para MyTokenPay: directorio de comercios
 registro de empresa con verificación KYC/KYB y ubicación en mapa, todo consumiendo la API en
 `../src`.
 
-## Requisitos
+## Modo simulado (sin backend)
+
+Por defecto, la app corre en **modo simulado**: no necesita el servidor corriendo ni que el
+celular esté en la misma Wi-Fi. Los datos (categorías, países, ~30 negocios de muestra en
+Centroamérica, login/registro) viven en memoria dentro de la propia app, en
+`src/lib/mockData.ts` y `src/lib/mockApi.ts`. Puedes crear una cuenta, iniciar sesión, registrar
+un negocio y navegar el directorio completo sin backend real — los datos se reinician cada vez
+que recargas la app (no hay persistencia entre sesiones).
+
+Cuando tengas el backend real corriendo (ver abajo) y quieras que la app le hable a ese servidor:
+abre `mobile/src/lib/api.ts` y cambia
+```ts
+export const USE_MOCK_API = true
+```
+a `false`, guarda, y reinicia con `npx expo start -c`. El resto de la app no cambia — `mockApi.ts`
+y el backend real exponen exactamente la misma interfaz.
+
+## Requisitos (solo si vas a usar el backend real)
 
 - Node.js 18+
 - La app **Expo Go** instalada en tu teléfono Android (Play Store), o un emulador de Android
@@ -73,7 +90,8 @@ app/                      Rutas (Expo Router, basado en archivos)
 src/
   components/                UI compartida (mapa, tarjetas, formularios)
   store/                     Estado global (auth, catálogo) con Zustand
-  lib/                       Cliente HTTP, tema, tipos, utilidades de archivos
+  lib/                       Cliente HTTP (api.ts), modo simulado (mockApi.ts, mockData.ts),
+                              tema, tipos, utilidades de archivos
 ```
 
 ## Notas
