@@ -1,5 +1,5 @@
 import Constants from 'expo-constants'
-import type { Category, Company, Country, PublicUser } from './types'
+import type { Category, Company, Country, PublicUser, Redemption, Reward } from './types'
 import { getToken, setToken } from './token'
 import { ApiError } from './apiError'
 import { mockApi } from './mockApi'
@@ -118,6 +118,21 @@ const realApi = {
     request<{ company: Company }>(`/companies/${id}/kyc`, {
       method: 'POST',
       body: JSON.stringify({ documents }),
+    }),
+
+  submitUserKyc: (documentLabel: string) =>
+    request<{ user: PublicUser }>('/auth/me/kyc', {
+      method: 'POST',
+      body: JSON.stringify({ documentLabel }),
+    }),
+
+  listRewards: () => request<{ rewards: Reward[] }>('/rewards'),
+
+  myRewardsState: () => request<{ pointsBalance: number; redemptions: Redemption[] }>('/rewards/mine'),
+
+  redeemReward: (rewardId: string) =>
+    request<{ pointsBalance: number; redemption: Redemption }>(`/rewards/${rewardId}/redeem`, {
+      method: 'POST',
     }),
 }
 

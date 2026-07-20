@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
-import { ArrowRight, MapPinned, Search, ShieldCheck, Sparkle, Store, Users, X } from 'lucide-react-native'
+import { ArrowRight, Gift, MapPinned, Search, ShieldCheck, Sparkle, Store, Users, X } from 'lucide-react-native'
 import { Screen } from '../../src/components/Screen'
 import { TopBar } from '../../src/components/TopBar'
 import { CategoryIcon } from '../../src/components/CategoryIcon'
@@ -12,6 +12,7 @@ import { TextField } from '../../src/components/ui/TextField'
 import { AnimatedText } from '../../src/components/AnimatedText'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { useMetaStore } from '../../src/store/meta'
+import { useAuthStore } from '../../src/store/auth'
 import { api } from '../../src/lib/api'
 import type { Company } from '../../src/lib/types'
 import { fonts, radius, shadow } from '../../src/lib/theme'
@@ -29,6 +30,7 @@ export default function Home() {
   const styles = createStyles(colors)
   const router = useRouter()
   const { categories, countries, load } = useMetaStore()
+  const { user } = useAuthStore()
   const [companies, setCompanies] = useState<Company[]>([])
   const [query, setQuery] = useState('')
 
@@ -113,6 +115,19 @@ export default function Home() {
           </View>
         </LinearGradient>
       </AnimatedPressable>
+
+      {user && (
+        <AnimatedPressable onPress={() => router.push('/bonos')} scaleTo={0.98} style={[styles.section, styles.bonosCard]}>
+          <View style={styles.bonosIcon}>
+            <Gift size={18} color={colors.violet} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.bonosTitle}>Bonos y regalos</Text>
+            <Text style={styles.bonosBody}>Canjea tus puntos ORIGEN por premios en comercios afiliados.</Text>
+          </View>
+          <ArrowRight size={16} color={colors.muted} />
+        </AnimatedPressable>
+      )}
 
       <View style={styles.section}>
         <AnimatedText style={styles.sectionTitle}>Explora por categoría</AnimatedText>
@@ -205,6 +220,26 @@ function createStyles(colors: ThemeColors) {
   statNumber: { color: colors.text, fontFamily: fonts.displayBold, fontSize: 20 },
   statLabel: { color: colors.muted, fontFamily: fonts.body, fontSize: 11 },
   cta: { borderRadius: radius.xl, padding: 20, ...shadow(colors.violet, 'lg') },
+  bonosCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: 16,
+  },
+  bonosIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.violet + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bonosTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 14 },
+  bonosBody: { color: colors.muted, fontFamily: fonts.body, fontSize: 11.5, marginTop: 2, lineHeight: 16 },
   ctaTitle: { color: colors.bg, fontFamily: fonts.display, fontSize: 18, marginTop: 10 },
   ctaBody: { color: colors.bg, opacity: 0.8, fontFamily: fonts.body, fontSize: 13, marginTop: 4 },
   ctaLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 },

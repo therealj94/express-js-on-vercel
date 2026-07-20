@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
-import { Building2, ChevronDown, FileText, LayoutGrid, LogOut, Palette, UserX } from 'lucide-react-native'
+import { Building2, ChevronDown, FileText, Gift, IdCard, LayoutGrid, LogOut, Palette, UserX } from 'lucide-react-native'
 import { fonts } from '../lib/theme'
 import { useTheme, type ThemeColors } from '../hooks/useTheme'
 import { useAuthStore } from '../store/auth'
@@ -30,6 +30,8 @@ export function TopBar({ title }: { title?: string }) {
     ? [
         { key: 'panel', label: 'Mi panel', icon: LayoutGrid, onPress: () => router.push('/(tabs)/panel') },
         { key: 'empresa', label: 'Mi empresa', icon: Building2, onPress: () => router.push('/mi-empresa') },
+        { key: 'bonos', label: 'Bonos y regalos', icon: Gift, onPress: () => router.push('/bonos') },
+        { key: 'identidad', label: 'Verificar mi identidad', icon: IdCard, onPress: () => router.push('/verificar-identidad') },
         { key: 'apariencia', label: 'Apariencia', icon: Palette, onPress: () => setThemeSheetOpen(true) },
         { key: 'legal', label: 'Privacidad y términos', icon: FileText, onPress: () => router.push('/legal') },
         {

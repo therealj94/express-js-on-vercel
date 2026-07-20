@@ -5,12 +5,16 @@
 // object's shape exactly.
 import { getToken, setToken } from './token'
 import { ApiError } from './apiError'
-import type { Category, Company, Country, PublicUser } from './types'
-import { MOCK_CATEGORIES, MOCK_COUNTRIES, createMockCompanies } from './mockData'
+import type { Category, Company, Country, PublicUser, Redemption, Reward } from './types'
+import { MOCK_CATEGORIES, MOCK_COUNTRIES, MOCK_REWARDS, createMockCompanies } from './mockData'
 
 interface MockUser extends PublicUser {
   password: string
+  pointsBalance: number
+  redemptions: Redemption[]
 }
+
+const STARTING_POINTS = 480
 
 const users: MockUser[] = []
 let companies: Company[] = createMockCompanies()
@@ -25,7 +29,7 @@ function randomId(): string {
 }
 
 function toPublic(user: MockUser): PublicUser {
-  const { password: _password, ...rest } = user
+  const { password: _password, pointsBalance: _pointsBalance, redemptions: _redemptions, ...rest } = user
   return rest
 }
 
@@ -55,8 +59,11 @@ export const mockApi = {
       email,
       fullName: data.fullName.trim(),
       role: 'user',
+      kyc: { status: 'unsubmitted', documentLabel: null, submittedAt: null, reviewedAt: null },
       createdAt: new Date().toISOString(),
       password: data.password,
+      pointsBalance: STARTING_POINTS,
+      redemptions: [],
     }
     users.push(user)
     const token = `mock.${user.id}`
@@ -213,5 +220,42 @@ export const mockApi = {
       updatedAt: now,
     }
     return { company: companies[idx] }
+  },
+
+  submitUserKyc: async (documentLabel: string) => {
+    const user = await currentUser()
+    await delay(null, 500)
+    const now = new Date().toISOString()
+    user.kyc = { status: 'pending', documentLabel, submittedAt: now, reviewedAt: null }
+    // Personal ID checks are automated in this demo (unlike business KYB, which
+    // stays "pending" for manual review) — simulate a quick automatic approval.
+    setTimeout(() => {
+      if (user.kyc.status === 'pending' && user.kyc.submittedAt === now) {
+        user.kyc = { ...user.kyc, status: 'verified', reviewedAt: new Date().toISOString() }
+      }
+    }, 1800)
+    return { user: toPublic(user) }
+  },
+
+  listRewards: async () => delay<{ rewards: Reward[] }>({ rewards: MOCK_REWARDS }, 250),
+
+  myRewardsState: async () => {
+    const user = await currentUser()
+    await delay(null, 150)
+    return { pointsBalance: user.pointsBalance, redemptions: user.redemptions }
+  },
+
+  redeemReward: async (rewardId: string) => {
+    const user = await currentUser()
+    await delay(null, 500)
+    const reward = MOCK_REWARDS.find((r) => r.id === rewardId)
+    if (!reward) throw new ApiError('Recompensa no encontrada', 404)
+    if (user.pointsBalance < reward.pointsCost) {
+      throw new ApiError('No tienes suficientes puntos ORIGEN para este canje', 400)
+    }
+    user.pointsBalance -= reward.pointsCost
+    const redemption: Redemption = { id: randomId(), rewardId, redeemedAt: new Date().toISOString() }
+    user.redemptions = [redemption, ...user.redemptions]
+    return { pointsBalance: user.pointsBalance, redemption }
   },
 }

@@ -1,14 +1,22 @@
 export type UserRole = 'user' | 'business'
 
+export type KycStatus = 'unsubmitted' | 'pending' | 'verified' | 'rejected'
+
+export interface PersonalKyc {
+  status: KycStatus
+  documentLabel: string | null
+  submittedAt: string | null
+  reviewedAt: string | null
+}
+
 export interface PublicUser {
   id: string
   email: string
   fullName: string
   role: UserRole
+  kyc: PersonalKyc
   createdAt: string
 }
-
-export type KycStatus = 'unsubmitted' | 'pending' | 'verified' | 'rejected'
 
 export interface KycDocument {
   id: string
@@ -88,4 +96,21 @@ export interface Country {
   lng: number
   zoom: number
   cities: City[]
+}
+
+export interface Reward {
+  id: string
+  title: string
+  description: string
+  pointsCost: number
+  category: string
+  imageUrl: string
+  partnerCompanyId: string | null
+  partnerName: string
+}
+
+export interface Redemption {
+  id: string
+  rewardId: string
+  redeemedAt: string
 }
