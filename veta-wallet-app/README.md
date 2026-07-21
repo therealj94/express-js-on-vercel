@@ -2,6 +2,13 @@
 
 Billetera cripto de **Orden Global** en React Native + Expo. Versión **simulada** (sin backend): datos, precios y transacciones son de demostración.
 
+## 📱 Compatibilidad Android
+`minSdkVersion 23` → **Android 6.0+** (cubre >99% de dispositivos Android activos hoy).
+React Native 0.74 (usado por Expo SDK 51) ya no soporta Android 5.0 (API 21) internamente — bajar de API 23
+requeriría una versión de Expo/React Native de 2022-2023 sin soporte activo, con más riesgo de bugs y
+sin varias librerías modernas. El mínimo queda fijado explícitamente vía `expo-build-properties` en `app.json`,
+así que no depende del valor por defecto de ninguna herramienta.
+
 ## ✨ Incluye
 - Animación de arranque con el logo cargando la billetera (varios segundos).
 - Login / registro sobre foto de fondo con tarjeta *glass*.
