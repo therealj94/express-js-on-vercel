@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Veta Wallet",
+    "slug": "veta-wallet",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "vetawallet",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#021B1C",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#021B1C"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ordenglobal.vetawallet"
+    },
+    "android": {
+      "package": "com.ordenglobal.vetawallet",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#021B1C"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
