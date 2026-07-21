@@ -58,11 +58,11 @@ export default function Home({ nav }) {
             <TokenIcon t={t} />
             <View style={{ flex: 1, marginLeft: 13 }}>
               <Text style={styles.tName}>{t.n}</Text>
-              <Text style={styles.tQty}>{qtyFmt(t.qty)} {t.s}</Text>
+              <Text style={styles.tPrice}>{money(t.price)} <Text style={{ color: t.chg < 0 ? C.down : C.up, fontWeight: '600' }}>{t.chg > 0 ? '+' : ''}{t.chg.toFixed(2)}%</Text></Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={styles.tVal}>{money(t.qty * t.price)}</Text>
-              <Text style={[styles.tChg, { color: t.chg < 0 ? C.down : C.up }]}>{t.chg > 0 ? '+' : ''}{t.chg.toFixed(2)}%</Text>
+              <Text style={styles.tQty}>{qtyFmt(t.qty)} {t.s}</Text>
             </View>
           </Pressable>
         ))}
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   promoP: { fontSize: 12, color: C.txt2, marginTop: 2 },
   token: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', borderRadius: 18, padding: 13, marginBottom: 10 },
   tName: { fontSize: 14.5, fontWeight: '600', color: C.txt },
+  tPrice: { fontSize: 12, color: C.txt3, marginTop: 2 },
   tQty: { fontSize: 12, color: C.txt3, marginTop: 2 },
   tVal: { fontSize: 14.5, fontWeight: '600', color: C.txt },
-  tChg: { fontSize: 12, marginTop: 2, fontWeight: '600' },
 });

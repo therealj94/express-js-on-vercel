@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Modal, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Modal, Image, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Rect } from 'react-native-svg';
@@ -92,7 +92,9 @@ export function Receive({ nav }) {
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title="Recibir" onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22, alignItems: 'center' }}>
-        <View style={styles.qrBox}><QR /></View>
+        <View style={styles.qrBox}>
+          <Image source={require('../../assets/qr.png')} style={{ width: 244, height: 244 }} resizeMode="contain" />
+        </View>
         <Text style={{ color: C.txt2, fontSize: 12.5, marginBottom: 14, textAlign: 'center' }}>Escanea para enviar ORIGEN a esta billetera</Text>
         <View style={styles.addrBox}>
           <Text style={styles.addr}>{WALLET_ADDRESS}</Text>
@@ -231,7 +233,7 @@ const styles = StyleSheet.create({
   cur: { color: C.gold, fontWeight: '600', fontSize: 14, marginTop: 4 },
   rr: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
   rrK: { color: C.txt2, fontSize: 12.5 }, rrV: { color: C.txt, fontSize: 12.5, fontWeight: '600' },
-  qrBox: { width: 210, height: 210, backgroundColor: '#fff', borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginVertical: 16 },
+  qrBox: { width: 276, height: 276, backgroundColor: '#fff', borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginVertical: 16, padding: 16 },
   addrBox: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 16, padding: 15, marginBottom: 16, width: '100%' },
   addr: { flex: 1, color: C.txt, fontSize: 13 },
   seg: { flexDirection: 'row', backgroundColor: C.input, borderRadius: 14, padding: 4, marginBottom: 18 },

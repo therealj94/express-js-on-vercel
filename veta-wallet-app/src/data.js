@@ -6,7 +6,7 @@ export const ONDK_PRICE = 2.1;
 // icon: 'logo' usa el logo real; si no, glifo de texto con gradiente
 export const TOKENS = [
   { s: 'ORIGEN', n: 'Origen', qty: 250, price: ORIGEN_PRICE, chg: 2.4, logo: true },
-  { s: 'ONDK', n: 'Ondak', qty: 120, price: ONDK_PRICE, chg: 0.8, glyph: '◈', grad: ['#1E8C74', '#0A463F'], fg: '#EAD79C' },
+  { s: 'ONDK', n: 'ONDK', qty: 120, price: ONDK_PRICE, chg: 0.8, glyph: '◈', grad: ['#1E8C74', '#0A463F'], fg: '#EAD79C' },
   { s: 'AUKA', n: 'Auka · Oro', qty: 3, price: PRICES.GOLD_G, chg: 0.6, glyph: 'Au', grad: ['#F8EFCF', '#C9A961', '#96793F'], fg: '#3A2C08' },
   { s: 'AGKA', n: 'Agka · Plata', qty: 40, price: PRICES.SILVER_G, chg: -0.4, glyph: 'Ag', grad: ['#EDF1F3', '#B4BCC2', '#7C858C'], fg: '#2A2F33' },
   { s: 'BTC', n: 'Bitcoin', qty: 0.045, price: PRICES.BTC, chg: 1.39, glyph: '₿', grad: ['#F7931A', '#C9760F'], fg: '#fff' },
@@ -24,7 +24,7 @@ export const COIN_INFO = {
     rows: [['Tipo', 'Cripto nativa · pagos'], ['Respaldo', '1 gramín = 1/55 g oro'], ['Network ID', '8532'], ['Contrato', 'Token Nativo']],
   },
   ONDK: {
-    title: 'Ondak (ONDK)',
+    title: 'ONDK',
     desc: 'Representación de Orden Global en token. Activo de gobernanza y utilidad que refleja el valor y la participación dentro del ecosistema Orden Global.',
     rows: [['Tipo', 'Token de Orden Global'], ['Uso', 'Gobernanza · utilidad'], ['Red', 'Orden Global'], ['Contrato', '0x9a…ONDK']],
   },

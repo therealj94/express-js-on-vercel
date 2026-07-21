@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -191,8 +191,9 @@ export function Settings({ nav }) {
 
         <Text style={styles.grpTitle}>CUENTA</Text>
         <View style={styles.group}>
-          <ListRow first icon="person" title="Información personal" onPress={() => toast('Perfil')} />
+          <ListRow first icon="person" title="Información personal" onPress={() => nav.go('profile')} />
           <ListRow icon="card" title="Mi tarjeta débito" onPress={() => nav.go('card')} />
+          <ListRow icon="qr-code" title="Conectar MyTokenPay" sub="Pagos con ORIGEN" onPress={() => nav.go('mytokenpay')} />
           <ListRow icon="grid" title="Mis direcciones" onPress={() => toast('Libreta de direcciones')} />
         </View>
 
@@ -218,8 +219,82 @@ export function Settings({ nav }) {
   );
 }
 
+// ================= INFORMACIÓN PERSONAL (editable) =================
+export function Profile({ nav }) {
+  const toast = useToast();
+  const v = useRef({ name: 'José Enamorado', email: 'jose@ordenglobal.com', phone: '+504 3346 7760', country: 'Honduras', address: 'Roatán, Islas de la Bahía', dni: '0801-1994-00000' }).current;
+  const fields = [
+    { k: 'name', label: 'Nombre completo' },
+    { k: 'email', label: 'Correo electrónico', keyboardType: 'email-address', autoCapitalize: 'none' },
+    { k: 'phone', label: 'Teléfono', keyboardType: 'phone-pad' },
+    { k: 'country', label: 'País' },
+    { k: 'address', label: 'Dirección' },
+    { k: 'dni', label: 'Identidad / DNI' },
+  ];
+  return (
+    <View style={{ flex: 1, paddingTop: 6 }}>
+      <Header title="Información personal" onBack={() => nav.back()} />
+      <ScrollView contentContainerStyle={{ padding: 22 }} keyboardShouldPersistTaps="handled">
+        <View style={{ alignItems: 'center', marginBottom: 20 }}>
+          <LinearGradient colors={G.gold} style={styles.profAvBig}><Text style={{ color: C.darkText, fontWeight: '800', fontSize: 26 }}>JE</Text></LinearGradient>
+          <Pressable onPress={() => { hap(); toast('Cambiar foto de perfil'); }}><Text style={{ color: C.gold, fontWeight: '600', marginTop: 10 }}>Cambiar foto</Text></Pressable>
+        </View>
+        {fields.map((f) => (
+          <View key={f.k} style={{ marginBottom: 14 }}>
+            <Text style={styles.label}>{f.label}</Text>
+            <TextInput defaultValue={v[f.k]} onChangeText={(t) => { v[f.k] = t; }} placeholderTextColor="#6f938f" style={styles.input} keyboardType={f.keyboardType} autoCapitalize={f.autoCapitalize} />
+          </View>
+        ))}
+        <View style={{ height: 8 }} />
+        <Button3D title="Guardar cambios" icon="checkmark" onPress={() => { toast('Perfil actualizado'); setTimeout(() => nav.back(), 700); }} />
+      </ScrollView>
+    </View>
+  );
+}
+
+// ================= CONECTAR MYTOKENPAY =================
+export function MyTokenPay({ nav }) {
+  const [connected, setConnected] = useState(false);
+  const toast = useToast();
+  return (
+    <View style={{ flex: 1, paddingTop: 6 }}>
+      <Header title="MyTokenPay" onBack={() => nav.back()} />
+      <ScrollView contentContainerStyle={{ padding: 22 }}>
+        <LinearGradient colors={G.green} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+          <LinearGradient colors={G.gold} style={styles.heroIc}><Ionicons name="qr-code" size={24} color={C.darkText} /></LinearGradient>
+          <Text style={styles.heroT}>Conecta MyTokenPay</Text>
+          <Text style={styles.heroP}>Vincula tu cuenta MyTokenPay para pagar y cobrar con ORIGEN en comercios afiliados a Orden Global, con QR y en segundos.</Text>
+          {connected && (
+            <View style={styles.connBadge}><Ionicons name="checkmark-circle" size={14} color={C.up} /><Text style={styles.connTxt}>Cuenta vinculada</Text></View>
+          )}
+        </LinearGradient>
+
+        <View style={styles.group}>
+          <PayFeature icon="storefront" t="Paga en comercios" s="Escanea y paga con ORIGEN" first />
+          <PayFeature icon="cash" t="Cobra ventas" s="Recibe pagos al instante" />
+          <PayFeature icon="shield-checkmark" t="Seguro" s="Autorización con biometría" />
+        </View>
+
+        <Button3D title={connected ? 'Desconectar' : 'Conectar MyTokenPay'} variant={connected ? 'ghost' : 'gold'} icon={connected ? 'unlink' : 'link'} onPress={() => { setConnected(!connected); toast(connected ? 'MyTokenPay desconectado' : 'MyTokenPay conectado'); }} />
+      </ScrollView>
+    </View>
+  );
+}
+function PayFeature({ icon, t, s, first }) {
+  return (
+    <View style={[styles.payFeat, first && { borderTopWidth: 0 }]}>
+      <View style={styles.notifIc}><Ionicons name={icon} size={19} color={C.gold} /></View>
+      <View style={{ flex: 1 }}><Text style={{ color: C.txt, fontWeight: '600', fontSize: 14 }}>{t}</Text><Text style={{ color: C.txt3, fontSize: 11.5, marginTop: 2 }}>{s}</Text></View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   label: { fontSize: 12, color: C.txt2, marginBottom: 7, fontWeight: '500' },
+  profAvBig: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center' },
+  connBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(62,217,160,0.14)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, marginTop: 12, alignSelf: 'flex-start' },
+  connTxt: { color: C.up, fontSize: 12, fontWeight: '600' },
+  payFeat: { flexDirection: 'row', alignItems: 'center', gap: 13, padding: 15, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },
   input: { backgroundColor: C.input, borderWidth: 1.5, borderColor: 'rgba(46,116,119,0.5)', borderRadius: 14, paddingHorizontal: 15, paddingVertical: 14, color: C.txt, fontSize: 15 },
   hero: { borderRadius: 24, padding: 20, borderWidth: 1, borderColor: C.line, marginBottom: 16 },
   heroIc: { width: 50, height: 50, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
