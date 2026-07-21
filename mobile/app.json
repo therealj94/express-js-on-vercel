@@ -24,7 +24,9 @@
         "monochromeImage": "./assets/android-icon-monochrome.png",
         "backgroundColor": "#0A0812"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "minSdkVersion": 21,
+      "targetSdkVersion": 34
     },
     "web": {
       "favicon": "./assets/favicon.png"

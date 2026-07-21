@@ -12,7 +12,7 @@ por país, ciudad y categoría.
 
 ```
 src/        API Express + TypeScript (auth, empresas, categorías, países)
-mobile/     App móvil Expo (SDK 55 / React Native) — ver mobile/README.md
+mobile/     App móvil Expo (SDK 51 / React Native) — ver mobile/README.md
 ```
 
 ## Backend (API)

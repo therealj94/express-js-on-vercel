@@ -1,4 +1,4 @@
-# MyTokenPay — App móvil (Expo SDK 55)
+# MyTokenPay — App móvil (Expo SDK 51)
 
 App nativa (React Native + Expo Router) para MyTokenPay: directorio de comercios afiliados,
 registro de empresa con verificación KYC/KYB y ubicación en mapa, todo consumiendo la API en
