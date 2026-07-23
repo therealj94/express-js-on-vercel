@@ -199,7 +199,8 @@ export function Settings({ nav }) {
 
         <Text style={styles.grpTitle}>SEGURIDAD</Text>
         <View style={styles.group}>
-          <ListRow first icon="finger-print" title="Face ID / Biometría" onPress={() => {}} right={<Toggle value={bio} onValueChange={setBio} />} />
+          <ListRow first icon="finger-print" title="Genesis ID" sub="Identidad del ecosistema · verificada" onPress={() => nav.go('kyc')} />
+          <ListRow icon="scan" title="Face ID / Biometría" onPress={() => {}} right={<Toggle value={bio} onValueChange={setBio} />} />
           <ListRow icon="shield-checkmark" title="Autenticación 2FA" sub="Authenticator activo" onPress={() => toast('2FA activo')} />
           <ListRow icon="key" title="Frase de recuperación" sub="Ver tus 12 palabras" onPress={() => nav.go('seedview')} />
           <ListRow icon="notifications" title="Notificaciones" onPress={() => {}} right={<Toggle value={notif} onValueChange={setNotif} />} />

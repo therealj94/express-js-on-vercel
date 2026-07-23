@@ -1,0 +1,382 @@
+<title>Genesis Admin · Orden Global</title>
+<style>
+:root{
+  --bg:#0A1416; --surface:#122022; --surface2:#182A2C; --line:#22383A;
+  --ink:#EAF1EF; --muted:#8FA8A4; --faint:#5E7975;
+  --gold:#C9A961; --gold-soft:rgba(201,169,97,.14);
+  --cyan:#4FD8E0; --cyan-soft:rgba(79,216,224,.13);
+  --violet:#B678F0; --violet-soft:rgba(182,120,240,.13);
+  --ok:#3ED9A0; --ok-soft:rgba(62,217,160,.14);
+  --warn:#F5B62E; --warn-soft:rgba(245,182,46,.14);
+  --bad:#F0776B; --bad-soft:rgba(240,119,107,.14);
+  --shadow:0 18px 40px -22px rgba(0,0,0,.65);
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#F0F4F3; --surface:#FFFFFF; --surface2:#E9EFED; --line:#D5E0DD;
+    --ink:#132524; --muted:#5A7370; --faint:#8AA09C;
+    --gold:#9A7B3B; --gold-soft:rgba(154,123,59,.13);
+    --cyan:#0E8F98; --cyan-soft:rgba(14,143,152,.11);
+    --violet:#7C3FBF; --violet-soft:rgba(124,63,191,.11);
+    --ok:#0F9D63; --ok-soft:rgba(15,157,99,.12);
+    --warn:#A97B12; --warn-soft:rgba(169,123,18,.13);
+    --bad:#C74E42; --bad-soft:rgba(199,78,66,.12);
+    --shadow:0 16px 36px -24px rgba(19,37,36,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1416; --surface:#122022; --surface2:#182A2C; --line:#22383A;
+  --ink:#EAF1EF; --muted:#8FA8A4; --faint:#5E7975;
+  --gold:#C9A961; --gold-soft:rgba(201,169,97,.14);
+  --cyan:#4FD8E0; --cyan-soft:rgba(79,216,224,.13);
+  --violet:#B678F0; --violet-soft:rgba(182,120,240,.13);
+  --ok:#3ED9A0; --ok-soft:rgba(62,217,160,.14);
+  --warn:#F5B62E; --warn-soft:rgba(245,182,46,.14);
+  --bad:#F0776B; --bad-soft:rgba(240,119,107,.14);
+  --shadow:0 18px 40px -22px rgba(0,0,0,.65);
+}
+:root[data-theme="light"]{
+  --bg:#F0F4F3; --surface:#FFFFFF; --surface2:#E9EFED; --line:#D5E0DD;
+  --ink:#132524; --muted:#5A7370; --faint:#8AA09C;
+  --gold:#9A7B3B; --gold-soft:rgba(154,123,59,.13);
+  --cyan:#0E8F98; --cyan-soft:rgba(14,143,152,.11);
+  --violet:#7C3FBF; --violet-soft:rgba(124,63,191,.11);
+  --ok:#0F9D63; --ok-soft:rgba(15,157,99,.12);
+  --warn:#A97B12; --warn-soft:rgba(169,123,18,.13);
+  --bad:#C74E42; --bad-soft:rgba(199,78,66,.12);
+  --shadow:0 16px 36px -24px rgba(19,37,36,.35);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--ink);
+  font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.num{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+a{color:inherit}
+
+.shell{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+@media(max-width:900px){.shell{grid-template-columns:1fr}.side{display:none}}
+
+/* ---- sidebar ---- */
+.side{
+  border-right:1px solid var(--line); background:var(--surface);
+  padding:22px 14px; position:sticky; top:0; height:100vh; overflow-y:auto;
+}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 10px 20px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.brand .mark{
+  width:36px;height:36px;border-radius:11px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--gold-soft),transparent);border:1px solid var(--line);
+}
+.brand .mark svg{width:20px;height:20px;stroke:var(--gold);fill:none;stroke-width:1.8}
+.brand b{font-size:15px;letter-spacing:.01em;display:block}
+.brand span{font-size:10.5px;color:var(--faint);letter-spacing:.14em;text-transform:uppercase}
+.nav a{
+  display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;
+  color:var(--muted);text-decoration:none;font-weight:500;font-size:13.5px;margin-bottom:2px;
+}
+.nav a svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.9;flex:none}
+.nav a:hover{background:var(--surface2);color:var(--ink)}
+.nav a.on{background:var(--gold-soft);color:var(--gold);font-weight:600}
+.nav a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.side .foot{margin-top:26px;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:11.5px;color:var(--faint);line-height:1.5}
+
+/* ---- main ---- */
+.main{min-width:0;padding:0 28px 60px}
+.topbar{
+  display:flex;align-items:center;gap:14px;padding:18px 0 16px;
+  border-bottom:1px solid var(--line);margin-bottom:26px;flex-wrap:wrap;
+}
+.topbar h1{font-size:19px;font-weight:700;letter-spacing:-.01em}
+.topbar .env{
+  font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--cyan);background:var(--cyan-soft);border:1px solid var(--line);
+  padding:4px 10px;border-radius:999px;
+}
+.topbar .spacer{flex:1}
+.admin{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted)}
+.admin .av{
+  width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
+  background:var(--gold);color:#20180a;font-weight:800;font-size:12px;
+}
+section{margin-bottom:40px;scroll-margin-top:20px}
+.sec-h{display:flex;align-items:baseline;gap:12px;margin-bottom:14px}
+.sec-h h2{font-size:15px;font-weight:700}
+.sec-h .k{font-size:11px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase}
+
+/* ---- KPIs ---- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:15px 16px;box-shadow:var(--shadow)}
+.kpi .lbl{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.kpi .val{font-size:24px;font-weight:750;margin-top:6px;letter-spacing:-.02em}
+.kpi .sub{font-size:11.5px;margin-top:3px;color:var(--faint)}
+.kpi .sub b{font-weight:650}
+.kpi canvas{width:100%;height:30px;margin-top:8px;display:block}
+.up{color:var(--ok)}.dn{color:var(--bad)}.wr{color:var(--warn)}
+
+/* ---- app cards ---- */
+.apps{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.app{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow);border-top:3px solid var(--accent,var(--gold))}
+.app.veta{--accent:var(--gold);--accent-soft:var(--gold-soft)}
+.app.mtp{--accent:var(--violet);--accent-soft:var(--violet-soft)}
+.app.gen{--accent:var(--cyan);--accent-soft:var(--cyan-soft)}
+.app .head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.app .ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--accent-soft)}
+.app .ic svg{width:20px;height:20px;stroke:var(--accent);fill:none;stroke-width:1.8}
+.app .head b{font-size:14.5px;display:block}
+.app .head span{font-size:11.5px;color:var(--faint)}
+.app .live{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:650;color:var(--ok)}
+.app .live i{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block}
+.app .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.app .cell{background:var(--surface2);border-radius:10px;padding:9px 10px}
+.app .cell .v{font-size:15.5px;font-weight:700}
+.app .cell .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:1px}
+.app .meta{display:flex;gap:14px;margin-top:12px;font-size:11.5px;color:var(--faint);flex-wrap:wrap}
+.app .meta b{color:var(--muted);font-weight:600}
+
+/* ---- tables ---- */
+.tablewrap{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow-x:auto;box-shadow:var(--shadow)}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th{
+  text-align:left;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--faint);font-weight:650;padding:12px 16px;border-bottom:1px solid var(--line);white-space:nowrap;
+}
+td{padding:12px 16px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--surface2)}
+.who{display:flex;align-items:center;gap:10px;min-width:0}
+.who .av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:10.5px;font-weight:750;flex:none}
+.who div b{font-weight:620;font-size:13px;display:block}
+.who div span{font-size:11px;color:var(--faint)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:650;padding:3px 10px;border-radius:999px}
+.pill i{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
+.pill.ok{color:var(--ok);background:var(--ok-soft)}
+.pill.warn{color:var(--warn);background:var(--warn-soft)}
+.pill.bad{color:var(--bad);background:var(--bad-soft)}
+.pill.info{color:var(--cyan);background:var(--cyan-soft)}
+.chips{display:flex;gap:5px}
+.chip{font-size:10px;font-weight:700;padding:2.5px 8px;border-radius:6px;letter-spacing:.03em}
+.chip.veta{color:var(--gold);background:var(--gold-soft)}
+.chip.mtp{color:var(--violet);background:var(--violet-soft)}
+.chip.gen{color:var(--cyan);background:var(--cyan-soft)}
+.flowcell{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted)}
+.flowcell svg{width:13px;height:13px;stroke:var(--faint);fill:none;stroke-width:2}
+
+/* ---- funnel ---- */
+.funnel{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.fstep{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 13px}
+.fstep .n{font-size:19px;font-weight:750}
+.fstep .l{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+.fstep .bar{height:5px;border-radius:4px;background:var(--surface2);margin-top:9px;overflow:hidden}
+.fstep .bar i{display:block;height:100%;border-radius:4px;background:var(--cyan)}
+@media(max-width:760px){.funnel{grid-template-columns:repeat(2,1fr)}}
+
+/* ---- alerts ---- */
+.alerts{display:grid;gap:10px}
+.alert{display:flex;gap:13px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--edge,var(--warn));border-radius:12px;padding:13px 16px}
+.alert .t{font-weight:650;font-size:13px}
+.alert .d{font-size:12px;color:var(--muted);margin-top:2px;white-space:normal}
+.alert .when{margin-left:auto;font-size:11px;color:var(--faint);flex:none}
+.alert.warn{--edge:var(--warn)}.alert.bad{--edge:var(--bad)}.alert.info{--edge:var(--cyan)}
+</style>
+
+<div class="shell">
+  <aside class="side">
+    <div class="brand">
+      <div class="mark"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6l8-4z"/><path d="M12 8v4M12 12a3 3 0 103 3"/></svg></div>
+      <div><b>Genesis Admin</b><span>Orden Global</span></div>
+    </div>
+    <nav class="nav" id="nav">
+      <a href="#resumen" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="5" rx="2"/><rect x="13" y="10" width="8" height="11" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/></svg>Resumen</a>
+      <a href="#apps"><svg viewBox="0 0 24 24"><rect x="4" y="2.5" width="16" height="19" rx="3"/><path d="M9 18h6"/></svg>Aplicaciones</a>
+      <a href="#verif"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6l8-4z"/><path d="M8.5 12l2.5 2.5L15.5 9.5"/></svg>Verificaciones</a>
+      <a href="#usuarios"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.6a3.5 3.5 0 010 6.8M17.8 14.3c2.2.7 3.7 2.5 3.7 5.7"/></svg>Usuarios</a>
+      <a href="#txns"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>Transacciones</a>
+      <a href="#alertas"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 10-12 0c0 6-2.5 7.5-2.5 7.5h17S18 15 18 9z"/><path d="M10.3 20.5a2 2 0 003.4 0"/></svg>Alertas</a>
+    </nav>
+    <div class="foot">
+      Panel interno de Orden Global.<br>Datos simulados — demo sin backend.<br><span class="num">v0.9 · jul 2026</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <h1>Centro de control del ecosistema</h1>
+      <span class="env">Sandbox</span>
+      <div class="spacer"></div>
+      <div class="admin"><span>roa.corphn@gmail.com</span><div class="av">RC</div></div>
+    </div>
+
+    <!-- ===== RESUMEN ===== -->
+    <section id="resumen">
+      <div class="sec-h"><h2>Resumen</h2><span class="k">Últimos 30 días</span></div>
+      <div class="kpis">
+        <div class="kpi"><div class="lbl">Usuarios totales</div><div class="val num">12,483</div><div class="sub"><b class="up">+8.2%</b> vs. mes anterior</div><canvas data-spark="4,5,5,6,7,7,8,9,10,11,11,12" data-c="gold"></canvas></div>
+        <div class="kpi"><div class="lbl">Genesis ID verificados</div><div class="val num">9,861</div><div class="sub"><b class="up">79%</b> del total</div><canvas data-spark="3,4,4,5,6,6,7,8,8,9,9,10" data-c="cyan"></canvas></div>
+        <div class="kpi"><div class="lbl">Verificaciones hoy</div><div class="val num">214</div><div class="sub"><b class="up">96.7%</b> automáticas</div><canvas data-spark="6,7,5,8,9,7,10,8,11,9,12,10" data-c="cyan"></canvas></div>
+        <div class="kpi"><div class="lbl">Tiempo medio de verificación</div><div class="val num">41 s</div><div class="sub"><b class="up">−9 s</b> tras el timer de 30 s/paso</div><canvas data-spark="12,11,11,10,9,9,8,8,7,7,6,6" data-c="ok"></canvas></div>
+        <div class="kpi"><div class="lbl">Volumen ORIGEN (30 d)</div><div class="val num">184,220</div><div class="sub">≈ <b>$432,917</b> USD</div><canvas data-spark="5,6,7,6,8,9,8,10,11,10,12,13" data-c="gold"></canvas></div>
+        <div class="kpi"><div class="lbl">En revisión manual</div><div class="val num wr">37</div><div class="sub">SLA: <b>24 h</b> · más antigua 6 h</div><canvas data-spark="9,8,8,7,7,8,6,6,7,5,6,5" data-c="warn"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ===== APPS ===== -->
+    <section id="apps">
+      <div class="sec-h"><h2>Aplicaciones del ecosistema</h2><span class="k">Estado en vivo</span></div>
+      <div class="apps">
+        <div class="app veta">
+          <div class="head">
+            <div class="ic"><svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 10h13a3 3 0 010 6H21"/></svg></div>
+            <div><b>Veta Wallet</b><span>Billetera · custodia de ORIGEN</span></div>
+            <div class="live"><i></i>Operativa</div>
+          </div>
+          <div class="grid3">
+            <div class="cell"><div class="v num">8,942</div><div class="l">Usuarios</div></div>
+            <div class="cell"><div class="v num">2,381</div><div class="l">Activos hoy</div></div>
+            <div class="cell"><div class="v num">99.98%</div><div class="l">Uptime</div></div>
+          </div>
+          <div class="meta"><span>Versión <b class="num">1.0.0</b></span><span>SDK <b>Expo 51</b></span><span>Genesis ID <b>integrado</b></span></div>
+        </div>
+
+        <div class="app mtp">
+          <div class="head">
+            <div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><path d="M15 13.5h3v3h3v4.5h-4.5v-3h-3v3H15z"/></svg></div>
+            <div><b>MyTokenPay</b><span>Comercios · pagos con ORIGEN</span></div>
+            <div class="live"><i></i>Operativa</div>
+          </div>
+          <div class="grid3">
+            <div class="cell"><div class="v num">5,127</div><div class="l">Usuarios</div></div>
+            <div class="cell"><div class="v num">312</div><div class="l">Comercios</div></div>
+            <div class="cell"><div class="v num">1,904</div><div class="l">Pagos / 30 d</div></div>
+          </div>
+          <div class="meta"><span>Versión <b class="num">1.0.0</b></span><span>Liquidación <b>Veta Wallet</b></span><span>Genesis ID <b>integrado</b></span></div>
+        </div>
+
+        <div class="app gen">
+          <div class="head">
+            <div class="ic"><svg viewBox="0 0 24 24"><path d="M7 12a5 5 0 0110 0c0 3.5-1 6-2.4 8M9.5 20c-1-1.6-1.5-3.8-1.5-6M12 12v3.5M4.2 9a8 8 0 0115.6 0M12 4.5V2.5"/></svg></div>
+            <div><b>Genesis ID</b><span>Identidad · KYC del ecosistema</span></div>
+            <div class="live"><i></i>Operativa</div>
+          </div>
+          <div class="grid3">
+            <div class="cell"><div class="v num">9,861</div><div class="l">Identidades</div></div>
+            <div class="cell"><div class="v num">30 s</div><div class="l">Timer / paso</div></div>
+            <div class="cell"><div class="v num">96.7%</div><div class="l">Auto-aprob.</div></div>
+          </div>
+          <div class="meta"><span>Reanudación <b>activa</b></span><span>Redirección a app <b>auto + manual</b></span><span>SLA manual <b>24 h</b></span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VERIFICACIONES ===== -->
+    <section id="verif">
+      <div class="sec-h"><h2>Verificaciones Genesis ID</h2><span class="k">Embudo de hoy</span></div>
+      <div class="funnel">
+        <div class="fstep"><div class="n num">262</div><div class="l">Correo</div><div class="bar"><i style="width:100%"></i></div></div>
+        <div class="fstep"><div class="n num">241</div><div class="l">Doc. frente</div><div class="bar"><i style="width:92%"></i></div></div>
+        <div class="fstep"><div class="n num">233</div><div class="l">Doc. reverso</div><div class="bar"><i style="width:89%"></i></div></div>
+        <div class="fstep"><div class="n num">226</div><div class="l">Rostro</div><div class="bar"><i style="width:86%"></i></div></div>
+        <div class="fstep"><div class="n num">214</div><div class="l">Verificados</div><div class="bar"><i style="width:82%;background:var(--ok)"></i></div></div>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Solicitud</th><th>Usuario</th><th>App origen</th><th>Paso actual</th><th>Tiempo</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr><td class="num">GEN-7783-1120</td><td><div class="who"><div class="av" style="background:var(--gold-soft);color:var(--gold)">JE</div><div><b>José Enamorado</b><span>jose@ordenglobal.com</span></div></div></td><td><span class="chip veta">VETA</span></td><td>Completado</td><td class="num">38 s</td><td><span class="pill ok"><i></i>Verificada</span></td></tr>
+            <tr><td class="num">GEN-9114-0027</td><td><div class="who"><div class="av" style="background:var(--violet-soft);color:var(--violet)">MG</div><div><b>María Gómez</b><span>maria.g@gmail.com</span></div></div></td><td><span class="chip mtp">MTP</span></td><td>Rostro</td><td class="num">22 s</td><td><span class="pill info"><i></i>En curso</span></td></tr>
+            <tr><td class="num">GEN-5520-8841</td><td><div class="who"><div class="av" style="background:var(--cyan-soft);color:var(--cyan)">CL</div><div><b>Carlos López</b><span>carlosl@outlook.com</span></div></div></td><td><span class="chip mtp">MTP</span></td><td>Doc. reverso — timer expiró</td><td class="num">6 h</td><td><span class="pill warn"><i></i>Revisión 24 h</span></td></tr>
+            <tr><td class="num">GEN-3308-6642</td><td><div class="who"><div class="av" style="background:var(--gold-soft);color:var(--gold)">AR</div><div><b>Ana Reyes</b><span>anar@yahoo.com</span></div></div></td><td><span class="chip veta">VETA</span></td><td>Correo guardado — reanudará</td><td class="num">1 d</td><td><span class="pill info"><i></i>Pausada</span></td></tr>
+            <tr><td class="num">GEN-2244-9910</td><td><div class="who"><div class="av" style="background:var(--bad-soft);color:var(--bad)">LP</div><div><b>Luis Paz</b><span>lpaz@correo.hn</span></div></div></td><td><span class="chip mtp">MTP</span></td><td>Documento ilegible</td><td class="num">2 h</td><td><span class="pill bad"><i></i>Rechazada</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== USUARIOS ===== -->
+    <section id="usuarios">
+      <div class="sec-h"><h2>Usuarios</h2><span class="k">Vista unificada por Genesis ID</span></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Usuario</th><th>Genesis UID</th><th>Apps vinculadas</th><th>Saldo ORIGEN</th><th>KYC</th><th>Alta</th></tr></thead>
+          <tbody>
+            <tr><td><div class="who"><div class="av" style="background:var(--gold-soft);color:var(--gold)">JE</div><div><b>José Enamorado</b><span>jose@ordenglobal.com</span></div></div></td><td class="num">GEN-7783-1120</td><td><div class="chips"><span class="chip veta">VETA</span><span class="chip mtp">MTP</span></div></td><td class="num">203.6</td><td><span class="pill ok"><i></i>Verificado</span></td><td class="num">12 mar 2026</td></tr>
+            <tr><td><div class="who"><div class="av" style="background:var(--violet-soft);color:var(--violet)">MG</div><div><b>María Gómez</b><span>maria.g@gmail.com</span></div></div></td><td class="num">GEN-9114-0027</td><td><div class="chips"><span class="chip mtp">MTP</span></div></td><td class="num">88.2</td><td><span class="pill info"><i></i>En curso</span></td><td class="num">2 jun 2026</td></tr>
+            <tr><td><div class="who"><div class="av" style="background:var(--cyan-soft);color:var(--cyan)">CL</div><div><b>Carlos López</b><span>carlosl@outlook.com</span></div></div></td><td class="num">GEN-5520-8841</td><td><div class="chips"><span class="chip veta">VETA</span><span class="chip mtp">MTP</span></div></td><td class="num">412.0</td><td><span class="pill warn"><i></i>Revisión 24 h</span></td><td class="num">28 ene 2026</td></tr>
+            <tr><td><div class="who"><div class="av" style="background:var(--gold-soft);color:var(--gold)">AR</div><div><b>Ana Reyes</b><span>anar@yahoo.com</span></div></div></td><td class="num">—</td><td><div class="chips"><span class="chip veta">VETA</span></div></td><td class="num">96.4</td><td><span class="pill info"><i></i>Pausada</span></td><td class="num">19 jul 2026</td></tr>
+            <tr><td><div class="who"><div class="av" style="background:var(--bad-soft);color:var(--bad)">LP</div><div><b>Luis Paz</b><span>lpaz@correo.hn</span></div></div></td><td class="num">GEN-2244-9910</td><td><div class="chips"><span class="chip mtp">MTP</span></div></td><td class="num">0.0</td><td><span class="pill bad"><i></i>Rechazado</span></td><td class="num">21 jul 2026</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== TRANSACCIONES ===== -->
+    <section id="txns">
+      <div class="sec-h"><h2>Transacciones del ecosistema</h2><span class="k">Pagos MTP liquidados contra Veta Wallet</span></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Referencia</th><th>Usuario</th><th>Flujo</th><th>Comercio / destino</th><th>Monto</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr><td class="num">PAY-M9K2X4</td><td>José Enamorado</td><td><div class="flowcell"><span class="chip mtp">MTP</span><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="chip veta">VETA</span></div></td><td>Volcán Rooftop Lounge</td><td class="num">−18.4 ORIGEN · $43.24</td><td><span class="pill ok"><i></i>Liquidado</span></td></tr>
+            <tr><td class="num">PAY-M9K1Q8</td><td>Carlos López</td><td><div class="flowcell"><span class="chip mtp">QR</span><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="chip veta">VETA</span></div></td><td>Roatán Dive &amp; Stay</td><td class="num">−42.0 ORIGEN · $98.70</td><td><span class="pill ok"><i></i>Liquidado</span></td></tr>
+            <tr><td class="num">REM-88410</td><td>Ana Reyes</td><td><div class="flowcell"><span class="chip gen">USD</span><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="chip veta">VETA</span></div></td><td>Remesa → ORIGEN</td><td class="num">+106.4 ORIGEN · $250.00</td><td><span class="pill ok"><i></i>Acreditada</span></td></tr>
+            <tr><td class="num">PAY-M9J7T1</td><td>María Gómez</td><td><div class="flowcell"><span class="chip mtp">MTP</span><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="chip veta">VETA</span></div></td><td>Café Ceibeño</td><td class="num">−6.5 ORIGEN · $15.28</td><td><span class="pill warn"><i></i>Pendiente</span></td></tr>
+            <tr><td class="num">SWP-40233</td><td>José Enamorado</td><td><div class="flowcell"><span class="chip veta">VETA</span><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="chip veta">USDT</span></div></td><td>Swap ORIGEN → USDT</td><td class="num">50.0 ORIGEN · $117.50</td><td><span class="pill ok"><i></i>Completado</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== ALERTAS ===== -->
+    <section id="alertas">
+      <div class="sec-h"><h2>Alertas operativas</h2><span class="k">Prioridad primero</span></div>
+      <div class="alerts">
+        <div class="alert bad"><div><div class="t">3 verificaciones superan 12 h en cola manual</div><div class="d">El SLA es 24 h. Asigna un agente para GEN-5520-8841 y 2 casos más antes de las 18:00.</div></div><span class="when num">hace 20 min</span></div>
+        <div class="alert warn"><div><div class="t">Tasa de expiración del timer subió a 5.6%</div><div class="d">La mayoría expira en «documento reverso». Sugerencia: mostrar el aviso de volteo de documento 5 s antes.</div></div><span class="when num">hace 1 h</span></div>
+        <div class="alert info"><div><div class="t">Nueva versión de MyTokenPay lista para revisión</div><div class="d">Incluye pestaña Pagar (QR + transferencia) con liquidación contra Veta Wallet y Genesis ID integrado.</div></div><span class="when num">hace 3 h</span></div>
+        <div class="alert info"><div><div class="t">Pico de remesas entrantes desde EE. UU.</div><div class="d">+34% esta semana. El 78% se convierte a ORIGEN; el resto va directo a tarjeta.</div></div><span class="when num">ayer</span></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+// sparklines
+const PAL = {gold:'--gold', cyan:'--cyan', ok:'--ok', warn:'--warn'};
+function drawSparks(){
+  const css = getComputedStyle(document.documentElement);
+  document.querySelectorAll('canvas[data-spark]').forEach(cv=>{
+    const vals = cv.dataset.spark.split(',').map(Number);
+    const col = css.getPropertyValue(PAL[cv.dataset.c]||'--gold').trim();
+    const dpr = window.devicePixelRatio||1;
+    const w = cv.clientWidth||160, h = 30;
+    cv.width = w*dpr; cv.height = h*dpr;
+    const x = cv.getContext('2d'); x.scale(dpr,dpr);
+    const min=Math.min(...vals), max=Math.max(...vals), span=(max-min)||1;
+    const step=w/(vals.length-1);
+    const py=v=>3+(1-(v-min)/span)*(h-8);
+    x.beginPath();
+    vals.forEach((v,i)=>i?x.lineTo(i*step,py(v)):x.moveTo(0,py(v)));
+    x.strokeStyle=col; x.lineWidth=1.6; x.lineJoin='round'; x.stroke();
+    x.lineTo(w,h); x.lineTo(0,h); x.closePath();
+    x.fillStyle=col+'22'; x.fill();
+    const lx=(vals.length-1)*step, ly=py(vals[vals.length-1]);
+    x.beginPath(); x.arc(lx-1,ly,2.4,0,7); x.fillStyle=col; x.fill();
+  });
+}
+drawSparks();
+addEventListener('resize', drawSparks);
+new MutationObserver(drawSparks).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+// nav highlight on scroll
+const links=[...document.querySelectorAll('.nav a')];
+const map=new Map(links.map(a=>[a.getAttribute('href').slice(1),a]));
+const io=new IntersectionObserver(es=>{
+  es.forEach(e=>{
+    if(e.isIntersecting){
+      links.forEach(l=>l.classList.remove('on'));
+      const l=map.get(e.target.id); if(l) l.classList.add('on');
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+document.querySelectorAll('section[id]').forEach(s=>io.observe(s));
+</script>

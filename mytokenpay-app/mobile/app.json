@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "MyTokenPay",
+    "slug": "mytokenpay",
+    "scheme": "mytokenpay",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0A0812",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0812"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mytokenpay.app"
+    },
+    "android": {
+      "package": "com.mytokenpay.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
+        "backgroundColor": "#0A0812"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "MyTokenPay usa tu ubicación para marcar el pin exacto de tu negocio en el mapa."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "MyTokenPay necesita acceso a tus fotos para subir el logo, la portada y tus documentos."
+        }
+      ]
+    ]
+  }
+}

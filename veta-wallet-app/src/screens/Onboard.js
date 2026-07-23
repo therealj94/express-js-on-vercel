@@ -1,62 +1,321 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Animated, Easing, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, ScrollView, Pressable, TextInput, Animated, Easing, Dimensions, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { C, G } from '../theme';
+import { C } from '../theme';
 import { Header, Button3D, Card, hap, useToast } from '../ui';
 import { WALLET_SEED } from '../data';
 
-// ---------------- KYC (simulado) ----------------
-export function Kyc({ nav }) {
-  const [step, setStep] = useState(0); // 0 form, 1 verifying, 2 done
-  const [msg, setMsg] = useState('Analizando documentos…');
-  const spin = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (step === 1) {
-      Animated.loop(Animated.timing(spin, { toValue: 1, duration: 1000, easing: Easing.linear, useNativeDriver: true })).start();
-      const msgs = ['Analizando documentos…', 'Comparando rostro…', 'Validando prueba de vida…', 'Registrando en Orden Global…'];
-      let i = 0;
-      const t = setInterval(() => { i++; if (i < msgs.length) setMsg(msgs[i]); else { clearInterval(t); setStep(2); } }, 1000);
-      return () => clearInterval(t);
-    }
-  }, [step]);
-  const rot = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+const { width: SCREEN_W } = Dimensions.get('window');
+const SCAN_SECONDS = 30;
+const GENESIS_KEY = 'genesis-id-flow-veta';
 
-  if (step === 1)
-    return (
-      <View style={styles.center}>
-        <Animated.View style={[styles.spinner, { transform: [{ rotate: rot }] }]} />
-        <Text style={styles.bigTitle}>Verificando identidad</Text>
-        <Text style={styles.dim}>{msg}</Text>
-      </View>
+// Genesis ID — identidad digital única de Orden Global.
+// El progreso se guarda: si el usuario deja su correo y sale,
+// al volver continúa exactamente donde quedó.
+
+const DOC_W = Math.min(SCREEN_W - 44, 380);
+const DOC_H = Math.round(DOC_W / 1.586);
+const FACE_W = Math.min(Math.round(SCREEN_W * 0.8), 330); // marco facial grande
+const FACE_H = Math.round(FACE_W * 1.22);
+
+async function loadGenesis() {
+  try {
+    const raw = await AsyncStorage.getItem(GENESIS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+async function saveGenesis(state) {
+  try {
+    await AsyncStorage.setItem(GENESIS_KEY, JSON.stringify(state));
+  } catch (e) {}
+}
+
+// ---------------- GENESIS ID (KYC del ecosistema) ----------------
+export function Kyc({ nav }) {
+  const toast = useToast();
+  const [step, setStep] = useState('loading'); // loading|email|doc-front|doc-back|face|processing|review24|done
+  const [email, setEmail] = useState('');
+  const [uid, setUid] = useState(null);
+  const [resumed, setResumed] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(SCAN_SECONDS);
+  const [redirectIn, setRedirectIn] = useState(6);
+
+  // cargar progreso guardado
+  useEffect(() => {
+    loadGenesis().then((saved) => {
+      if (saved && saved.step && saved.step !== 'loading') {
+        setEmail(saved.email || '');
+        setUid(saved.uid || null);
+        setStep(saved.step);
+        if (saved.step !== 'email' && saved.step !== 'done') setResumed(true);
+      } else {
+        setStep('email');
+      }
+    });
+  }, []);
+
+  const persist = (next, extra = {}) => {
+    setStep(next);
+    saveGenesis({ step: next, email, uid, ...extra });
+  };
+
+  // animaciones: línea de escaneo + pulso de marco
+  const scanY = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const l1 = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scanY, { toValue: 1, duration: 1900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(scanY, { toValue: 0, duration: 1900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ]),
     );
-  if (step === 2)
-    return (
-      <View style={styles.center}>
-        <View style={styles.checkBadge}><Ionicons name="checkmark" size={52} color={C.up} /></View>
-        <Text style={styles.bigTitle}>Identidad verificada</Text>
-        <Text style={[styles.dim, { marginBottom: 26 }]}>Bienvenido a Orden Global, José</Text>
-        <Button3D title="Crear mi billetera" onPress={() => nav.go('seed')} style={{ width: 240 }} />
-      </View>
+    const l2 = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 1100, useNativeDriver: false }),
+        Animated.timing(pulse, { toValue: 0, duration: 1100, useNativeDriver: false }),
+      ]),
     );
+    l1.start(); l2.start();
+    return () => { l1.stop(); l2.stop(); };
+  }, []);
+
+  // temporizador 30 s por escaneo → revisión 24 h si expira
+  const isScan = step === 'doc-front' || step === 'doc-back' || step === 'face';
+  useEffect(() => {
+    if (!isScan) return;
+    setSecondsLeft(SCAN_SECONDS);
+    const t = setInterval(() => {
+      setSecondsLeft((s) => {
+        if (s <= 1) {
+          clearInterval(t);
+          persist('review24');
+          toast('Verificación en revisión: hasta 24 h');
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
+  // procesamiento → verificado
+  useEffect(() => {
+    if (step !== 'processing') return;
+    const t = setTimeout(() => {
+      const newUid = 'GEN-' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(1000 + Math.random() * 9000);
+      setUid(newUid);
+      saveGenesis({ step: 'done', email, uid: newUid, verifiedAt: new Date().toISOString() });
+      setStep('done');
+      hap();
+    }, 2600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
+  // regreso automático al terminar
+  useEffect(() => {
+    if (step !== 'done') return;
+    setRedirectIn(6);
+    const t = setInterval(() => {
+      setRedirectIn((s) => {
+        if (s <= 1) { clearInterval(t); nav.go('seedIntro'); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
+  const scanDoc = scanY.interpolate({ inputRange: [0, 1], outputRange: [8, DOC_H - 16] });
+  const scanFace = scanY.interpolate({ inputRange: [0, 1], outputRange: [8, FACE_H - 16] });
+  const frameBorder = pulse.interpolate({ inputRange: [0, 1], outputRange: ['rgba(201,169,97,0.45)', 'rgba(201,169,97,1)'] });
+
+  if (step === 'loading') return <View style={{ flex: 1 }} />;
 
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header title="Verificación KYC" sub="Requerido para proteger tu cuenta" onBack={() => nav.go('auth')} />
-      <ScrollView contentContainerStyle={{ padding: 22 }}>
-        <View style={styles.kycIcon}><Ionicons name="shield-checkmark" size={34} color={C.gold} /></View>
-        <Text style={[styles.bigTitle, { fontSize: 20 }]}>Verifica tu identidad</Text>
-        <Text style={[styles.dim, { textAlign: 'center', marginBottom: 18 }]}>Simulado — sin backend. Toca para completar los 3 pasos.</Text>
-        {['Datos personales', 'Documento (frente y reverso)', 'Selfie · prueba de vida'].map((s, i) => (
-          <Card key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10, padding: 14 }}>
-            <View style={styles.stepNo}><Text style={{ color: C.gold, fontWeight: '800' }}>{i + 1}</Text></View>
-            <Text style={{ color: C.txt, fontWeight: '600', flex: 1 }}>{s}</Text>
-            <Ionicons name="checkmark-circle" size={20} color={C.up} />
-          </Card>
-        ))}
-        <Button3D title="Iniciar verificación" onPress={() => setStep(1)} style={{ marginTop: 12 }} />
+      <Header
+        title="Genesis ID"
+        sub="Identidad digital · Orden Global"
+        onBack={() => nav.go('auth')}
+      />
+
+      {/* progreso */}
+      <View style={st.steps}>
+        {['Correo', 'Documento', 'Rostro', 'Listo'].map((l, i) => {
+          const idx = step === 'email' ? 0 : step === 'doc-front' || step === 'doc-back' || step === 'review24' ? 1 : step === 'face' ? 2 : 3;
+          const on = i <= idx;
+          return (
+            <View key={l} style={st.stepItem}>
+              <View style={[st.stepDot, on && { backgroundColor: C.gold }]} />
+              <Text style={[st.stepLbl, on && { color: C.txt }]}>{l}</Text>
+            </View>
+          );
+        })}
+      </View>
+
+      <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        {resumed && step !== 'done' && step !== 'review24' && (
+          <View style={st.resume}>
+            <Ionicons name="refresh" size={15} color={C.gold} />
+            <Text style={st.resumeTxt}>Continuando donde quedaste{email ? ` (${email})` : ''}. No empiezas de cero.</Text>
+          </View>
+        )}
+
+        {step === 'email' && (
+          <>
+            <View style={st.heroIcon}><Ionicons name="mail" size={28} color={C.gold} /></View>
+            <Text style={st.h1}>Una identidad para todo el ecosistema</Text>
+            <Text style={st.body}>
+              Verifícate una sola vez con Genesis ID y queda válida en Veta Wallet, MyTokenPay y todas
+              las apps de Orden Global. Si sales a mitad del proceso, continuarás donde quedaste.
+            </Text>
+            <Text style={st.label}>Correo electrónico</Text>
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder="tu@correo.com"
+              placeholderTextColor="#6f938f"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              style={st.input}
+            />
+            <Button3D
+              title="Comenzar verificación"
+              icon="shield-checkmark"
+              disabled={!email.includes('@')}
+              onPress={() => { saveGenesis({ step: 'doc-front', email, uid }); setStep('doc-front'); }}
+              style={{ marginTop: 18 }}
+            />
+          </>
+        )}
+
+        {(step === 'doc-front' || step === 'doc-back') && (
+          <>
+            <Text style={st.h1}>{step === 'doc-front' ? 'Frente de tu documento' : 'Reverso de tu documento'}</Text>
+            <Text style={st.body}>
+              Coloca el {step === 'doc-front' ? 'frente' : 'reverso'} dentro del marco. Tienes {SCAN_SECONDS} segundos
+              por lado — el contador está a la vista.
+            </Text>
+            <View style={{ alignItems: 'center', marginVertical: 14 }}>
+              <Animated.View style={[st.docFrame, { borderColor: frameBorder }]}>
+                <View style={st.frameInner}>
+                  <Ionicons name="card" size={54} color={C.txt3} />
+                  <Text style={st.sideLbl}>{step === 'doc-front' ? 'FRENTE' : 'REVERSO'}</Text>
+                </View>
+                <Animated.View style={[st.scanLine, { transform: [{ translateY: scanDoc }] }]} />
+              </Animated.View>
+            </View>
+            <TimerBar secondsLeft={secondsLeft} />
+            <Button3D
+              title={step === 'doc-front' ? 'Capturar frente' : 'Capturar reverso'}
+              icon="camera"
+              onPress={() => { hap(); persist(step === 'doc-front' ? 'doc-back' : 'face'); }}
+              style={{ marginTop: 16 }}
+            />
+          </>
+        )}
+
+        {step === 'face' && (
+          <>
+            <Text style={st.h1}>Verificación de rostro</Text>
+            <Text style={st.body}>Centra tu rostro dentro del óvalo con buena luz. Prueba de vida activa.</Text>
+            <View style={{ alignItems: 'center', marginVertical: 14 }}>
+              <Animated.View style={[st.faceFrame, { borderColor: frameBorder }]}>
+                <View style={st.frameInner}>
+                  <Ionicons name="person" size={100} color={C.txt3} />
+                </View>
+                <Animated.View style={[st.scanLine, { transform: [{ translateY: scanFace }] }]} />
+              </Animated.View>
+            </View>
+            <TimerBar secondsLeft={secondsLeft} />
+            <Button3D title="Capturar rostro" icon="scan" onPress={() => { hap(); persist('processing'); }} style={{ marginTop: 16 }} />
+          </>
+        )}
+
+        {step === 'processing' && (
+          <View style={st.center}>
+            <Spinner />
+            <Text style={[st.h1, { textAlign: 'center', marginTop: 22 }]}>Validando con Genesis</Text>
+            <Text style={[st.body, { textAlign: 'center' }]}>Documento · Biometría · Prueba de vida</Text>
+          </View>
+        )}
+
+        {step === 'review24' && (
+          <View style={st.center}>
+            <View style={[st.heroIcon, { backgroundColor: 'rgba(251,191,36,0.12)' }]}>
+              <Ionicons name="time" size={30} color="#FBBF24" />
+            </View>
+            <Text style={[st.h1, { textAlign: 'center' }]}>Pasamos tu caso a revisión</Text>
+            <Text style={[st.body, { textAlign: 'center' }]}>
+              No se completó el escaneo a tiempo. Un agente revisará tu verificación manualmente:
+              puede tardar hasta 24 horas. Te avisaremos al correo {email || 'registrado'}.
+            </Text>
+            <Button3D title="Volver a la app" icon="arrow-forward" onPress={() => nav.go('auth')} style={{ alignSelf: 'stretch', marginTop: 20 }} />
+            <Pressable onPress={() => { hap(); persist('doc-front'); }} style={st.retry}>
+              <Ionicons name="refresh" size={14} color={C.gold} />
+              <Text style={st.retryTxt}>Reintentar escaneo ahora</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {step === 'done' && (
+          <View style={st.center}>
+            <View style={st.doneBadge}><Ionicons name="checkmark" size={46} color={C.up} /></View>
+            <Text style={[st.h1, { textAlign: 'center' }]}>Identidad verificada</Text>
+            <Text style={[st.body, { textAlign: 'center' }]}>Tu Genesis ID está activa para todo el ecosistema Orden Global.</Text>
+            {uid && (
+              <View style={st.uidChip}>
+                <Ionicons name="finger-print" size={14} color={C.gold} />
+                <Text style={st.uidTxt}>{uid}</Text>
+              </View>
+            )}
+            <Button3D title="Continuar a mi billetera" icon="arrow-forward" onPress={() => nav.go('seedIntro')} style={{ alignSelf: 'stretch', marginTop: 20 }} />
+            <Text style={st.redirect}>Continuando automáticamente en {redirectIn} s…</Text>
+          </View>
+        )}
       </ScrollView>
     </View>
+  );
+}
+
+function TimerBar({ secondsLeft }) {
+  const pct = secondsLeft / SCAN_SECONDS;
+  const low = secondsLeft <= 10;
+  return (
+    <View style={{ gap: 6 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={{ color: C.txt2, fontSize: 12, fontWeight: '600' }}>Tiempo restante</Text>
+        <Text style={{ color: low ? C.down : C.txt, fontWeight: '800', fontSize: 19 }}>{secondsLeft}s</Text>
+      </View>
+      <View style={{ height: 8, borderRadius: 999, backgroundColor: C.panel2, overflow: 'hidden' }}>
+        <View style={{ height: '100%', width: `${pct * 100}%`, borderRadius: 999, backgroundColor: low ? C.down : C.gold }} />
+      </View>
+      <Text style={{ color: C.txt3, fontSize: 11 }}>Si el tiempo se agota, tu verificación pasa a revisión manual (hasta 24 h).</Text>
+    </View>
+  );
+}
+
+function Spinner() {
+  const rot = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.timing(rot, { toValue: 1, duration: 900, easing: Easing.linear, useNativeDriver: true }));
+    loop.start();
+    return () => loop.stop();
+  }, []);
+  const spin = rot.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  return (
+    <Animated.View
+      style={{
+        width: 80, height: 80, borderRadius: 40, borderWidth: 5,
+        borderColor: 'rgba(201,169,97,0.18)', borderTopColor: C.gold,
+        transform: [{ rotate: spin }],
+      }}
+    />
   );
 }
 
@@ -68,17 +327,21 @@ export function Seed({ nav }) {
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title="Frase de recuperación" onBack={() => nav.go('kyc')} />
       <ScrollView contentContainerStyle={{ padding: 22 }}>
-        <View style={styles.kycIcon}><Ionicons name="lock-closed" size={32} color={C.gold} /></View>
-        <Text style={[styles.bigTitle, { fontSize: 20 }]}>Tu llave maestra</Text>
-        <Text style={[styles.dim, { textAlign: 'center', marginBottom: 16 }]}>Estas 12 palabras son la única forma de recuperar tu billetera. Guárdalas en orden y en un lugar seguro.</Text>
-        <View style={styles.warn}>
+        <View style={st.heroIcon}><Ionicons name="lock-closed" size={30} color={C.gold} /></View>
+        <Text style={[st.h1, { textAlign: 'center' }]}>Tu llave maestra</Text>
+        <Text style={[st.body, { textAlign: 'center' }]}>
+          Estas 12 palabras son la única forma de recuperar tu billetera. Guárdalas en orden y en un lugar seguro.
+        </Text>
+        <View style={st.warn}>
           <Ionicons name="warning" size={20} color={C.down} />
-          <Text style={styles.warnTxt}>Nunca compartas tu frase. Veta jamás te la pedirá.</Text>
+          <Text style={st.warnTxt}>Nunca compartas tu frase. Veta jamás te la pedirá.</Text>
         </View>
         <SeedGrid revealed={revealed} onReveal={() => { hap(); setRevealed(true); }} />
-        <Pressable onPress={() => { hap(); setAck(!ack); }} style={styles.ackRow}>
-          <View style={[styles.checkbox, ack && { backgroundColor: C.gold, borderColor: C.gold }]}>{ack && <Ionicons name="checkmark" size={14} color={C.darkText} />}</View>
-          <Text style={styles.ackTxt}>Ya guardé mi frase en un lugar seguro.</Text>
+        <Pressable onPress={() => { hap(); setAck(!ack); }} style={st.ackRow}>
+          <View style={[st.checkbox, ack && { backgroundColor: C.gold, borderColor: C.gold }]}>
+            {ack && <Ionicons name="checkmark" size={14} color={C.darkText || '#3A2C08'} />}
+          </View>
+          <Text style={st.ackTxt}>Ya guardé mi frase en un lugar seguro.</Text>
         </Pressable>
         <Button3D title="Continuar a mi billetera" disabled={!revealed || !ack} onPress={() => nav.go('home')} />
       </ScrollView>
@@ -94,9 +357,9 @@ export function SeedView({ nav }) {
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title="Frase de recuperación" onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }}>
-        <View style={styles.warn}>
+        <View style={st.warn}>
           <Ionicons name="warning" size={20} color={C.down} />
-          <Text style={styles.warnTxt}>Cualquiera con estas 12 palabras controla tus fondos. No hagas capturas de pantalla.</Text>
+          <Text style={st.warnTxt}>Cualquiera con estas 12 palabras controla tus fondos. No hagas capturas de pantalla.</Text>
         </View>
         <SeedGrid revealed={revealed} onReveal={() => { hap(); setRevealed(true); }} />
         <Button3D variant="ghost" title="Copiar frase" icon="copy" onPress={() => { hap(); toast('Frase copiada'); }} />
@@ -107,17 +370,17 @@ export function SeedView({ nav }) {
 
 function SeedGrid({ revealed, onReveal }) {
   return (
-    <View style={{ position: 'relative', marginBottom: 18 }}>
-      <View style={styles.grid}>
+    <View style={{ position: 'relative', marginBottom: 18, marginTop: 16 }}>
+      <View style={st.grid}>
         {WALLET_SEED.map((w, i) => (
-          <View key={i} style={styles.cell}>
-            <Text style={styles.cellNo}>{i + 1}</Text>
-            <Text style={styles.cellWord}>{revealed ? w : '••••••'}</Text>
+          <View key={i} style={st.cell}>
+            <Text style={st.cellNo}>{i + 1}</Text>
+            <Text style={st.cellWord}>{revealed ? w : '••••••'}</Text>
           </View>
         ))}
       </View>
       {!revealed && (
-        <Pressable onPress={onReveal} style={styles.revealOverlay}>
+        <Pressable onPress={onReveal} style={st.revealOverlay}>
           <Ionicons name="eye" size={30} color={C.gold} />
           <Text style={{ color: C.txt2, fontWeight: '600', marginTop: 8 }}>Toca para revelar tu frase</Text>
         </Pressable>
@@ -126,22 +389,80 @@ function SeedGrid({ revealed, onReveal }) {
   );
 }
 
-const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 34 },
-  spinner: { width: 90, height: 90, borderRadius: 45, borderWidth: 5, borderColor: 'rgba(201,169,97,0.18)', borderTopColor: C.gold, marginBottom: 26 },
-  checkBadge: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(62,217,160,0.12)', borderWidth: 2, borderColor: C.up, alignItems: 'center', justifyContent: 'center', marginBottom: 22 },
-  bigTitle: { fontSize: 22, fontWeight: '800', color: C.txt, marginBottom: 8, textAlign: 'center' },
-  dim: { color: C.txt2, fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  kycIcon: { width: 76, height: 76, borderRadius: 22, backgroundColor: '#0A3A3D', borderWidth: 1, borderColor: C.line2, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 },
-  stepNo: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(201,169,97,0.14)', alignItems: 'center', justifyContent: 'center' },
-  warn: { flexDirection: 'row', gap: 12, backgroundColor: 'rgba(240,119,107,0.08)', borderWidth: 1, borderColor: 'rgba(240,119,107,0.3)', borderRadius: 16, padding: 14, marginBottom: 18, alignItems: 'center' },
+const st = StyleSheet.create({
+  steps: { flexDirection: 'row', paddingHorizontal: 22, paddingTop: 6, gap: 8 },
+  stepItem: { flex: 1, alignItems: 'center', gap: 6 },
+  stepDot: { height: 4, alignSelf: 'stretch', borderRadius: 3, backgroundColor: C.panel2 },
+  stepLbl: { color: C.txt3, fontSize: 10, fontWeight: '600' },
+
+  resume: {
+    flexDirection: 'row', gap: 10, alignItems: 'center',
+    borderWidth: 1, borderColor: 'rgba(201,169,97,0.35)', backgroundColor: 'rgba(201,169,97,0.1)',
+    borderRadius: 14, padding: 12, marginBottom: 18,
+  },
+  resumeTxt: { color: C.txt2, fontSize: 12.5, lineHeight: 17, flex: 1 },
+
+  heroIcon: {
+    width: 64, height: 64, borderRadius: 20, backgroundColor: 'rgba(201,169,97,0.12)',
+    alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16,
+  },
+  h1: { color: C.txt, fontWeight: '800', fontSize: 22, lineHeight: 28, marginBottom: 8 },
+  body: { color: C.txt2, fontSize: 13, lineHeight: 19, marginBottom: 14 },
+  label: { fontSize: 12, color: C.txt2, marginBottom: 7, fontWeight: '500' },
+  input: {
+    backgroundColor: C.input, borderWidth: 1.5, borderColor: 'rgba(46,116,119,0.5)',
+    borderRadius: 14, paddingHorizontal: 15, paddingVertical: 14, color: C.txt, fontSize: 15,
+  },
+
+  docFrame: {
+    width: DOC_W, height: DOC_H, borderRadius: 20, borderWidth: 2,
+    backgroundColor: C.panel, overflow: 'hidden',
+  },
+  faceFrame: {
+    width: FACE_W, height: FACE_H, borderRadius: FACE_W / 2, borderWidth: 3,
+    backgroundColor: C.panel, overflow: 'hidden',
+  },
+  frameInner: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  sideLbl: { color: C.txt3, fontWeight: '800', fontSize: 12, letterSpacing: 3 },
+  scanLine: { position: 'absolute', left: 12, right: 12, height: 3, borderRadius: 2, backgroundColor: C.gold, opacity: 0.85 },
+
+  center: { alignItems: 'center', paddingVertical: 24 },
+  doneBadge: {
+    width: 92, height: 92, borderRadius: 46, backgroundColor: 'rgba(62,217,160,0.12)',
+    borderWidth: 2, borderColor: C.up, alignItems: 'center', justifyContent: 'center', marginBottom: 18,
+  },
+  uidChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderColor: 'rgba(201,169,97,0.4)', backgroundColor: 'rgba(201,169,97,0.1)',
+    borderRadius: 999, paddingHorizontal: 15, paddingVertical: 8, marginTop: 14,
+  },
+  uidTxt: { color: C.txt, fontWeight: '700', fontSize: 13, letterSpacing: 0.5 },
+  redirect: { color: C.txt3, fontSize: 12, marginTop: 12 },
+  retry: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 12, marginTop: 6 },
+  retryTxt: { color: C.gold, fontWeight: '600', fontSize: 13 },
+
+  warn: {
+    flexDirection: 'row', gap: 12, backgroundColor: 'rgba(240,119,107,0.08)',
+    borderWidth: 1, borderColor: 'rgba(240,119,107,0.3)', borderRadius: 16, padding: 14,
+    marginTop: 14, alignItems: 'center',
+  },
   warnTxt: { color: '#f4b4ac', fontSize: 12.5, flex: 1, lineHeight: 17 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  cell: { width: '48%', flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.input, borderWidth: 1, borderColor: C.line2, borderRadius: 13, paddingVertical: 12, paddingHorizontal: 14, marginBottom: 10 },
+  cell: {
+    width: '48%', flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: C.input, borderWidth: 1, borderColor: C.line2,
+    borderRadius: 13, paddingVertical: 12, paddingHorizontal: 14, marginBottom: 10,
+  },
   cellNo: { color: C.gold, fontSize: 12, opacity: 0.7, width: 16, textAlign: 'right' },
   cellWord: { color: C.txt, fontSize: 14, fontWeight: '500' },
-  revealOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(4,26,27,0.55)', borderRadius: 14 },
+  revealOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 10,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(4,26,27,0.55)', borderRadius: 14,
+  },
   ackRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
-  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: C.line2, alignItems: 'center', justifyContent: 'center' },
-  ackTxt: { color: C.txt2, fontSize: 13, flex: 1 },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: C.line2,
+    alignItems: 'center', justifyContent: 'center',
+  },
 });
