@@ -26,12 +26,19 @@ function lanIP() {
   return pref ? pref.address : null
 }
 
-const ip = process.argv[2] || lanIP()
-if (!ip) {
-  console.error('\n✖ No pude detectar tu IP local. Pásala manualmente:\n  npm run connect -- 192.168.1.50\n')
-  process.exit(1)
+const arg = process.argv[2]
+let url
+if (arg && /^https?:\/\//i.test(arg)) {
+  // URL pública del host (Render, etc.)
+  url = arg.replace(/\/$/, '')
+} else {
+  const ip = arg || lanIP()
+  if (!ip) {
+    console.error('\n✖ No pude detectar tu IP local. Pásala manualmente:\n  npm run connect -- 192.168.1.50\n  o una URL pública:  npm run connect -- https://genesis-id.onrender.com\n')
+    process.exit(1)
+  }
+  url = `http://${ip}:${PORT}`
 }
-const url = `http://${ip}:${PORT}`
 
 const targets = [
   { label: 'Veta Wallet', file: join(__dirname, '..', 'veta-wallet-app', '.env') },

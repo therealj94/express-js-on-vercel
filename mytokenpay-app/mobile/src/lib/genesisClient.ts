@@ -2,7 +2,7 @@
 // envía el registro/verificación al backend real (genesis-id/). Si no, no hace
 // nada (la app usa su flujo en dispositivo). Best-effort: nunca bloquea la UI.
 
-const BASE = process.env.EXPO_PUBLIC_GENESIS_URL || null
+const BASE = (process.env.EXPO_PUBLIC_GENESIS_URL || '').replace(/\/$/, '') || null
 
 export const genesisEnabled = Boolean(BASE)
 

@@ -6,7 +6,7 @@ import { ACCOUNTS } from './accounts';
 // al backend real de Genesis ID. Mismo modelo que genesis-id/src/types.ts.
 
 const KEY = 'genesis-id-engine-v2';
-const BASE = process.env.EXPO_PUBLIC_GENESIS_URL || null;
+const BASE = (process.env.EXPO_PUBLIC_GENESIS_URL || '').replace(/\/$/, '') || null;
 
 let cache = null; // { identities: [...] }
 

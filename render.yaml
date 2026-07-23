@@ -1,0 +1,19 @@
+# Blueprint de Render para desplegar el motor Genesis ID (Orden Global).
+# En Render: New + → Blueprint → conecta este repo y elige la rama.
+services:
+  - type: web
+    name: genesis-id
+    runtime: node
+    rootDir: genesis-id
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # Persistencia entre reinicios (opcional): añade un Disk en Render montado
+      # en /var/data y descomenta la siguiente línea para conservar los datos.
+      # - key: GENESIS_DATA_FILE
+      #   value: /var/data/genesis.json

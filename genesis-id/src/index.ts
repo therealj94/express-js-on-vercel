@@ -33,9 +33,11 @@ app.use('/api', (_req, res) => res.status(404).json({ error: 'Ruta no encontrada
 
 const __filename = fileURLToPath(import.meta.url)
 const port = process.env.PORT || 4000
-if (process.argv[1] === __filename) {
-  app.listen(port, () => {
-    console.log(`Genesis ID engine escuchando en http://localhost:${port}`)
+// Escucha al correr directo (dev/start) o en un host que define PORT (Render, etc.)
+const shouldListen = process.argv[1] === __filename || Boolean(process.env.PORT) || Boolean(process.env.RENDER)
+if (shouldListen) {
+  app.listen(Number(port), '0.0.0.0', () => {
+    console.log(`Genesis ID engine escuchando en http://0.0.0.0:${port}`)
   })
 }
 
