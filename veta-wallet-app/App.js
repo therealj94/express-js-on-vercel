@@ -3,7 +3,8 @@ import { View, Text, Pressable, Animated, Easing, StyleSheet, SafeAreaView, Stat
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { C } from './src/theme';
-import { Nav, ToastCtx } from './src/ui';
+import { Nav, ToastCtx, AccountCtx } from './src/ui';
+import { loadSession, saveSession, clearSession } from './src/accounts';
 
 import Splash from './src/screens/Splash';
 import Auth from './src/screens/Auth';
@@ -12,13 +13,13 @@ import Home from './src/screens/Home';
 import TokenDetail from './src/screens/TokenDetail';
 import { Send, Receive, Buy, Swap } from './src/screens/Trade';
 import CardScreen from './src/screens/Card';
-import { Remit, Activity, Notifications, Earn, Settings, Profile, MyTokenPay } from './src/screens/More';
+import { Remit, Activity, Notifications, Earn, Settings, Profile, MyTokenPay, Passport } from './src/screens/More';
 
 const SCREENS = {
   splash: Splash, auth: Auth, kyc: Kyc, seed: Seed, seedview: SeedView,
   home: Home, token: TokenDetail, send: Send, receive: Receive, buy: Buy, swap: Swap,
   card: CardScreen, remit: Remit, activity: Activity, notifs: Notifications, earn: Earn, settings: Settings,
-  profile: Profile, mytokenpay: MyTokenPay,
+  profile: Profile, mytokenpay: MyTokenPay, passport: Passport,
 };
 const TABS = [
   { r: 'home', label: 'Inicio', icon: 'wallet' },
@@ -33,8 +34,16 @@ const FULLSCREEN = ['splash', 'auth']; // sin barra de estado propia / sin tabba
 export default function App() {
   const [stack, setStack] = useState([{ r: 'splash' }]);
   const [dir, setDir] = useState(1);
+  const [account, setAccount] = useState(null);
   const cur = stack[stack.length - 1];
   const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => { loadSession().then((a) => { if (a) setAccount(a); }); }, []);
+  const acctApi = {
+    account,
+    login: (a) => { setAccount(a); saveSession(a.email); },
+    logout: () => { setAccount(null); clearSession(); },
+  };
 
   const go = useCallback((r, params) => {
     if (TAB_ROUTES.includes(r)) { setDir(1); setStack([{ r, params }]); }
@@ -83,9 +92,11 @@ export default function App() {
   const content = (
     <Animated.View style={{ flex: 1, opacity: anim, transform: [{ translateX: tx }, { scale }] }} {...(showTabs ? pan.panHandlers : {})}>
       <Nav.Provider value={{ go, back, route: cur.r }}>
-        <ToastCtx.Provider value={showToast}>
-          <Screen nav={{ go, back, route: cur.r }} params={cur.params || {}} />
-        </ToastCtx.Provider>
+        <AccountCtx.Provider value={acctApi}>
+          <ToastCtx.Provider value={showToast}>
+            <Screen nav={{ go, back, route: cur.r }} params={cur.params || {}} />
+          </ToastCtx.Provider>
+        </AccountCtx.Provider>
       </Nav.Provider>
     </Animated.View>
   );

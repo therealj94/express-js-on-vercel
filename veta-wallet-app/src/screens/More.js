@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, TextInput, StyleSheet } from 'react-
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { C, G } from '../theme';
-import { Header, Logo, TokenIcon, Button3D, Card, ListRow, Toggle, SectionHead, useToast, hap } from '../ui';
+import { Header, Logo, TokenIcon, Button3D, Card, ListRow, Toggle, SectionHead, useToast, useAccount, hap } from '../ui';
 import { TXNS, NOTIFS, TOKENS, money } from '../data';
 
 // ================= REMESAS =================
@@ -176,18 +176,34 @@ export function Settings({ nav }) {
   const [bio, setBio] = useState(true);
   const [notif, setNotif] = useState(true);
   const toast = useToast();
+  const { account, logout } = useAccount();
+  const acc = account || { name: 'Cuenta', email: '', initials: 'VW', business: false, genesisUid: null };
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title="Ajustes" onBack={() => nav.go('home')} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 110 }}>
         <LinearGradient colors={G.green} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.prof}>
-          <LinearGradient colors={G.gold} style={styles.profAv}><Text style={{ color: C.darkText, fontWeight: '800', fontSize: 19 }}>JE</Text></LinearGradient>
-          <View>
-            <Text style={styles.profName}>José Enamorado</Text>
-            <Text style={styles.profMail}>jose@ordenglobal.com</Text>
-            <View style={styles.kycBadge}><Ionicons name="checkmark-circle" size={12} color={C.up} /><Text style={styles.kycTxt}>KYC Verificado</Text></View>
+          <LinearGradient colors={G.gold} style={styles.profAv}><Text style={{ color: C.darkText, fontWeight: '800', fontSize: 19 }}>{acc.initials}</Text></LinearGradient>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.profName} numberOfLines={1}>{acc.name}</Text>
+            <Text style={styles.profMail} numberOfLines={1}>{acc.email}</Text>
+            <View style={styles.kycBadge}><Ionicons name="checkmark-circle" size={12} color={C.up} /><Text style={styles.kycTxt}>Genesis ID · {acc.genesisUid || 'verificado'}</Text></View>
           </View>
         </LinearGradient>
+
+        {/* Pasaporte Genesis ID — credencial del ecosistema */}
+        <Pressable onPress={() => { hap(); nav.go('passport'); }}>
+          <LinearGradient colors={['#0c4f57', '#0a3a3d']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.genCard}>
+            <View style={styles.genLeft}>
+              <View style={styles.genIcon}><Ionicons name="finger-print" size={20} color={C.gold} /></View>
+              <View>
+                <Text style={styles.genTitle}>Pasaporte Genesis ID</Text>
+                <Text style={styles.genUid}>{acc.genesisUid || '—'}{acc.business && acc.bizUid ? `  ·  ${acc.bizUid}` : ''}</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={C.gold} />
+          </LinearGradient>
+        </Pressable>
 
         <Text style={styles.grpTitle}>CUENTA</Text>
         <View style={styles.group}>
@@ -197,24 +213,86 @@ export function Settings({ nav }) {
           <ListRow icon="grid" title="Mis direcciones" onPress={() => toast('Libreta de direcciones')} />
         </View>
 
+        <Text style={styles.grpTitle}>IDENTIDAD · GENESIS ID</Text>
+        <View style={styles.group}>
+          <ListRow first icon="finger-print" title="Ver mi pasaporte Genesis ID" sub={acc.genesisUid || 'Identidad del ecosistema'} onPress={() => nav.go('passport')} />
+          <ListRow icon="refresh" title="Reverificar identidad" sub="Vuelve a pasar el flujo Genesis ID" onPress={() => nav.go('kyc')} />
+          {acc.business && (
+            <ListRow icon="business" title="Genesis ID de mi negocio" sub={acc.bizUid || 'KYB verificado'} onPress={() => nav.go('passport')} />
+          )}
+        </View>
+
         <Text style={styles.grpTitle}>SEGURIDAD</Text>
         <View style={styles.group}>
-          <ListRow first icon="finger-print" title="Genesis ID" sub="Identidad del ecosistema · verificada" onPress={() => nav.go('kyc')} />
-          <ListRow icon="scan" title="Face ID / Biometría" onPress={() => {}} right={<Toggle value={bio} onValueChange={setBio} />} />
+          <ListRow first icon="scan" title="Face ID / Biometría" onPress={() => {}} right={<Toggle value={bio} onValueChange={setBio} />} />
           <ListRow icon="shield-checkmark" title="Autenticación 2FA" sub="Authenticator activo" onPress={() => toast('2FA activo')} />
           <ListRow icon="key" title="Frase de recuperación" sub="Ver tus 12 palabras" onPress={() => nav.go('seedview')} />
           <ListRow icon="notifications" title="Notificaciones" onPress={() => {}} right={<Toggle value={notif} onValueChange={setNotif} />} />
         </View>
 
-        <Text style={styles.grpTitle}>PREFERENCIAS</Text>
-        <View style={styles.group}>
-          <ListRow first icon="globe" title="Idioma" onPress={() => toast('Español')} right={<Text style={styles.rv}>Español</Text>} />
-          <ListRow icon="cash" title="Moneda" onPress={() => toast('USD')} right={<Text style={styles.rv}>USD</Text>} />
-          <ListRow icon="help-circle" title="Ayuda y soporte" onPress={() => toast('Soporte: roa.corphn@gmail.com')} />
-        </View>
-
-        <Button3D variant="ghost" title="Cerrar sesión" onPress={() => nav.go('auth')} />
+        <Button3D variant="ghost" title="Cerrar sesión" onPress={() => { logout(); nav.go('auth'); }} />
         <Text style={styles.foot}>Veta Wallet v1.0 · Orden Global{'\n'}Diseño por Monark Brand Labs</Text>
+      </ScrollView>
+    </View>
+  );
+}
+
+// ================= PASAPORTE GENESIS ID (credencial) =================
+export function Passport({ nav }) {
+  const { account } = useAccount();
+  const toast = useToast();
+  const acc = account || { name: 'Cuenta', email: '', initials: 'VW', business: false, genesisUid: 'GEN-0000-0000', since: '2026' };
+  return (
+    <View style={{ flex: 1, paddingTop: 6 }}>
+      <Header title="Pasaporte Genesis ID" onBack={() => nav.back()} />
+      <ScrollView contentContainerStyle={{ padding: 22 }}>
+        {/* credencial personal */}
+        <LinearGradient colors={['#0f5f55', '#0a3a3d', '#06282b']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.passCard}>
+          <View style={styles.passTop}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="finger-print" size={18} color={C.gold} />
+              <Text style={styles.passBrand}>GENESIS ID</Text>
+            </View>
+            <View style={styles.passVerified}><Ionicons name="shield-checkmark" size={12} color={C.up} /><Text style={styles.passVerTxt}>Verificado</Text></View>
+          </View>
+          <View style={styles.passBody}>
+            <LinearGradient colors={G.gold} style={styles.passPhoto}><Text style={{ color: C.darkText, fontWeight: '800', fontSize: 26 }}>{acc.initials}</Text></LinearGradient>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.passLabel}>Titular</Text>
+              <Text style={styles.passName} numberOfLines={1}>{acc.name}</Text>
+              <Text style={styles.passLabel2}>UID Genesis</Text>
+              <Text style={styles.passUid}>{acc.genesisUid}</Text>
+            </View>
+          </View>
+          <View style={styles.passFoot}>
+            <View><Text style={styles.passLabel}>Tipo</Text><Text style={styles.passMeta}>Identidad personal</Text></View>
+            <View><Text style={styles.passLabel}>Emitido</Text><Text style={styles.passMeta}>{acc.since || '2026'}</Text></View>
+            <View><Text style={styles.passLabel}>Ecosistema</Text><Text style={styles.passMeta}>Orden Global</Text></View>
+          </View>
+        </LinearGradient>
+
+        <Text style={styles.passNote}>Esta credencial es válida en Veta Wallet, MyTokenPay y todas las apps de Orden Global.</Text>
+
+        {acc.business && (
+          <>
+            <Text style={styles.grpTitle}>CREDENCIAL DE NEGOCIO (KYB)</Text>
+            <LinearGradient colors={['#3a2e12', '#241d0c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.passCard, { borderColor: 'rgba(201,169,97,0.4)' }]}>
+              <View style={styles.passTop}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="business" size={18} color={C.gold} />
+                  <Text style={styles.passBrand}>GENESIS ID · NEGOCIO</Text>
+                </View>
+                <View style={styles.passVerified}><Ionicons name="shield-checkmark" size={12} color={C.up} /><Text style={styles.passVerTxt}>KYB</Text></View>
+              </View>
+              <Text style={[styles.passName, { marginTop: 8 }]} numberOfLines={1}>{acc.biz}</Text>
+              <Text style={styles.passLabel2}>UID de negocio</Text>
+              <Text style={styles.passUid}>{acc.bizUid}</Text>
+            </LinearGradient>
+          </>
+        )}
+
+        <View style={{ height: 8 }} />
+        <Button3D variant="ghost" title="Compartir credencial" icon="share-social" onPress={() => { hap(); toast('Credencial Genesis ID compartida'); }} />
       </ScrollView>
     </View>
   );
@@ -337,7 +415,26 @@ const styles = StyleSheet.create({
   earnAmt: { fontSize: 37, fontWeight: '800', color: C.goldHi, textAlign: 'center', marginVertical: 6 },
   earnSub: { fontSize: 13, color: C.txt2, textAlign: 'center', fontWeight: '600' },
   earnRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', borderRadius: 18, padding: 13, marginBottom: 10 },
-  prof: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 20, padding: 17, borderWidth: 1, borderColor: C.line, marginBottom: 16 },
+  prof: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 20, padding: 17, borderWidth: 1, borderColor: C.line, marginBottom: 14 },
+  genCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 18, padding: 15, borderWidth: 1, borderColor: 'rgba(201,169,97,0.35)', marginBottom: 16 },
+  genLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  genIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(201,169,97,0.14)', alignItems: 'center', justifyContent: 'center' },
+  genTitle: { color: C.txt, fontWeight: '700', fontSize: 14.5 },
+  genUid: { color: C.gold, fontSize: 12, marginTop: 2, fontFamily: 'System' },
+  passCard: { borderRadius: 22, padding: 20, borderWidth: 1, borderColor: 'rgba(201,169,97,0.28)', marginBottom: 14 },
+  passTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  passBrand: { color: C.gold, fontWeight: '800', fontSize: 12, letterSpacing: 2 },
+  passVerified: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(62,217,160,0.14)', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
+  passVerTxt: { color: C.up, fontSize: 10.5, fontWeight: '700' },
+  passBody: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 18 },
+  passPhoto: { width: 72, height: 72, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  passLabel: { color: C.txt3, fontSize: 9.5, letterSpacing: 1, textTransform: 'uppercase' },
+  passLabel2: { color: C.txt3, fontSize: 9.5, letterSpacing: 1, textTransform: 'uppercase', marginTop: 8 },
+  passName: { color: C.txt, fontWeight: '800', fontSize: 19 },
+  passUid: { color: C.gold, fontWeight: '700', fontSize: 16, letterSpacing: 1, marginTop: 1 },
+  passFoot: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 18, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 14 },
+  passMeta: { color: C.txt, fontSize: 12, fontWeight: '600', marginTop: 2 },
+  passNote: { color: C.txt3, fontSize: 12, textAlign: 'center', lineHeight: 17, marginBottom: 18 },
   profAv: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
   profName: { fontSize: 16.5, fontWeight: '700', color: C.txt },
   profMail: { fontSize: 12, color: C.txt2 },

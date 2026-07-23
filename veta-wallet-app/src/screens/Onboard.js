@@ -3,8 +3,9 @@ import { View, Text, ScrollView, Pressable, TextInput, Animated, Easing, Dimensi
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { C } from '../theme';
-import { Header, Button3D, Card, hap, useToast } from '../ui';
+import { Header, Button3D, Card, hap, useToast, useAccount } from '../ui';
 import { WALLET_SEED } from '../data';
+import { genesis } from '../genesis';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const SCAN_SECONDS = 30;
@@ -16,8 +17,8 @@ const GENESIS_KEY = 'genesis-id-flow-veta';
 
 const DOC_W = Math.min(SCREEN_W - 44, 380);
 const DOC_H = Math.round(DOC_W / 1.586);
-const FACE_W = Math.min(Math.round(SCREEN_W * 0.8), 330); // marco facial grande
-const FACE_H = Math.round(FACE_W * 1.22);
+const FACE_W = Math.min(Math.round(SCREEN_W * 0.88), 380); // marco facial grande
+const FACE_H = Math.round(FACE_W * 1.24);
 
 async function loadGenesis() {
   try {
@@ -36,6 +37,11 @@ async function saveGenesis(state) {
 // ---------------- GENESIS ID (KYC del ecosistema) ----------------
 export function Kyc({ nav }) {
   const toast = useToast();
+  const { account } = useAccount();
+  // Si ya hay sesión (reverificación desde Ajustes) volvemos a la app;
+  // si es registro nuevo, seguimos a crear la billetera.
+  const doneDest = account ? 'home' : 'seedIntro';
+  const backDest = account ? 'settings' : 'auth';
   const [step, setStep] = useState('loading'); // loading|email|doc-front|doc-back|face|processing|review24|done
   const [email, setEmail] = useState('');
   const [uid, setUid] = useState(null);
@@ -105,8 +111,10 @@ export function Kyc({ nav }) {
   // procesamiento → verificado
   useEffect(() => {
     if (step !== 'processing') return;
-    const t = setTimeout(() => {
-      const newUid = 'GEN-' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(1000 + Math.random() * 9000);
+    const t = setTimeout(async () => {
+      // Procesa en el motor Genesis real (dispositivo + backend si hay URL) y usa su UID.
+      const rec = await genesis.process(email);
+      const newUid = (rec && rec.genesisUid) || ('GEN-' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(1000 + Math.random() * 9000));
       setUid(newUid);
       saveGenesis({ step: 'done', email, uid: newUid, verifiedAt: new Date().toISOString() });
       setStep('done');
@@ -122,7 +130,7 @@ export function Kyc({ nav }) {
     setRedirectIn(6);
     const t = setInterval(() => {
       setRedirectIn((s) => {
-        if (s <= 1) { clearInterval(t); nav.go('seedIntro'); return 0; }
+        if (s <= 1) { clearInterval(t); nav.go(doneDest); return 0; }
         return s - 1;
       });
     }, 1000);
@@ -141,7 +149,7 @@ export function Kyc({ nav }) {
       <Header
         title="Genesis ID"
         sub="Identidad digital · Orden Global"
-        onBack={() => nav.go('auth')}
+        onBack={() => nav.go(backDest)}
       />
 
       {/* progreso */}
@@ -188,7 +196,7 @@ export function Kyc({ nav }) {
               title="Comenzar verificación"
               icon="shield-checkmark"
               disabled={!email.includes('@')}
-              onPress={() => { saveGenesis({ step: 'doc-front', email, uid }); setStep('doc-front'); }}
+              onPress={() => { genesis.start(email); saveGenesis({ step: 'doc-front', email, uid }); setStep('doc-front'); }}
               style={{ marginTop: 18 }}
             />
           </>
@@ -255,7 +263,7 @@ export function Kyc({ nav }) {
               No se completó el escaneo a tiempo. Un agente revisará tu verificación manualmente:
               puede tardar hasta 24 horas. Te avisaremos al correo {email || 'registrado'}.
             </Text>
-            <Button3D title="Volver a la app" icon="arrow-forward" onPress={() => nav.go('auth')} style={{ alignSelf: 'stretch', marginTop: 20 }} />
+            <Button3D title="Volver a la app" icon="arrow-forward" onPress={() => nav.go(backDest)} style={{ alignSelf: 'stretch', marginTop: 20 }} />
             <Pressable onPress={() => { hap(); persist('doc-front'); }} style={st.retry}>
               <Ionicons name="refresh" size={14} color={C.gold} />
               <Text style={st.retryTxt}>Reintentar escaneo ahora</Text>
@@ -274,7 +282,7 @@ export function Kyc({ nav }) {
                 <Text style={st.uidTxt}>{uid}</Text>
               </View>
             )}
-            <Button3D title="Continuar a mi billetera" icon="arrow-forward" onPress={() => nav.go('seedIntro')} style={{ alignSelf: 'stretch', marginTop: 20 }} />
+            <Button3D title={account ? 'Volver a la app' : 'Continuar a mi billetera'} icon="arrow-forward" onPress={() => nav.go(doneDest)} style={{ alignSelf: 'stretch', marginTop: 20 }} />
             <Text style={st.redirect}>Continuando automáticamente en {redirectIn} s…</Text>
           </View>
         )}

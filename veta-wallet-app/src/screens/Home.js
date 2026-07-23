@@ -3,24 +3,34 @@ import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet } from 'r
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { C, G } from '../theme';
-import { Logo, TokenIcon, ActionBtn, IconBtn, SectionHead, useToast, hap } from '../ui';
-import { TOKENS, TOTAL, money, qtyFmt, SHORT_ADDR } from '../data';
+import { Logo, TokenIcon, ActionBtn, IconBtn, SectionHead, useToast, useAccount, hap } from '../ui';
+import { TOKENS, TOTAL, ORIGEN_PRICE, money, qtyFmt } from '../data';
+
+const ORIGEN_TOKEN = TOKENS.find((t) => t.s === 'ORIGEN');
 
 export default function Home({ nav }) {
   const [hidden, setHidden] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const toast = useToast();
+  const { account } = useAccount();
   const onRefresh = () => { setRefreshing(true); hap(); setTimeout(() => { setRefreshing(false); toast('Precios actualizados'); }, 900); };
+
+  const acc = account || { name: 'Cuenta', initials: 'VW', business: false, origen: 250, addr: '0x0000…0000', genesisUid: null };
+  const shortAddr = acc.addr.length > 14 ? `${acc.addr.slice(0, 6)}…${acc.addr.slice(-4)}` : acc.addr;
+  // Cliente: portafolio completo. Negocio: saldo ORIGEN de sus cobros.
+  const isBiz = acc.business;
+  const total = isBiz ? acc.origen * ORIGEN_PRICE : TOTAL;
+  const list = isBiz ? [{ ...ORIGEN_TOKEN, qty: acc.origen }] : TOKENS;
 
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.acct}>
         <Pressable onPress={() => nav.go('settings')}>
-          <LinearGradient colors={G.gold} style={styles.avatar}><Text style={styles.avatarTxt}>JE</Text></LinearGradient>
+          <LinearGradient colors={G.gold} style={styles.avatar}><Text style={styles.avatarTxt}>{acc.initials}</Text></LinearGradient>
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={styles.acctName}>Cuenta Principal <Ionicons name="chevron-down" size={13} color={C.txt2} /></Text>
-          <Text style={styles.acctAddr}>{SHORT_ADDR}</Text>
+          <Text style={styles.acctName} numberOfLines={1}>{isBiz ? acc.biz : 'Cuenta Personal'} <Ionicons name="chevron-down" size={13} color={C.txt2} /></Text>
+          <Text style={styles.acctAddr}>{shortAddr}</Text>
         </View>
         <IconBtn icon="notifications" badge onPress={() => nav.go('notifs')} />
         <IconBtn icon="qr-code" onPress={() => nav.go('receive')} />
@@ -29,12 +39,12 @@ export default function Home({ nav }) {
       <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 110 }} showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.gold} colors={[C.gold]} progressBackgroundColor={C.panel} />}>
         <LinearGradient colors={G.green} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balCard}>
-          <Text style={styles.balLbl}>BALANCE TOTAL</Text>
+          <Text style={styles.balLbl}>{isBiz ? 'SALDO DE TU NEGOCIO' : 'BALANCE TOTAL'}</Text>
           <Pressable onPress={() => { hap(); setHidden(!hidden); }} style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={styles.balAmt}>{hidden ? '••••••' : money(TOTAL)}</Text>
+            <Text style={styles.balAmt}>{hidden ? '••••••' : money(total)}</Text>
             <Ionicons name={hidden ? 'eye-off' : 'eye'} size={18} color={C.txt2} style={{ marginLeft: 8 }} />
           </Pressable>
-          <Text style={styles.balChg}>+$182.40  <Text style={styles.pill}> +2.83% </Text>  hoy</Text>
+          <Text style={styles.balChg}>{isBiz ? `${qtyFmt(acc.origen)} ORIGEN · cobros MyTokenPay` : '+$182.40  '}{!isBiz && <Text style={styles.pill}> +2.83% </Text>}{!isBiz && '  hoy'}</Text>
           <View style={styles.actions}>
             <ActionBtn icon="arrow-up" label="Enviar" onPress={() => nav.go('send')} />
             <ActionBtn icon="arrow-down" label="Recibir" onPress={() => nav.go('receive')} />
@@ -53,7 +63,7 @@ export default function Home({ nav }) {
         </Pressable>
 
         <SectionHead title="Mis activos" action="Actividad" onAction={() => nav.go('activity')} />
-        {TOKENS.map((t) => (
+        {list.map((t) => (
           <Pressable key={t.s} onPress={() => { hap(); nav.go('token', { token: t }); }} style={styles.token}>
             <TokenIcon t={t} />
             <View style={{ flex: 1, marginLeft: 13 }}>

@@ -17,6 +17,10 @@ export const useNav = () => useContext(Nav);
 export const ToastCtx = createContext(() => {});
 export const useToast = () => useContext(ToastCtx);
 
+// ---- Account context (sesión / cuenta actual) ----
+export const AccountCtx = createContext({ account: null, login: () => {}, logout: () => {} });
+export const useAccount = () => useContext(AccountCtx);
+
 export function Logo({ size = 60, style }) {
   return <Image source={LOGO} resizeMode="contain" style={[{ width: size, height: size * 0.78 }, style]} />;
 }
