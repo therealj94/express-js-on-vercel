@@ -1,0 +1,5 @@
+node_modules/
+dist/
+data/genesis.json
+*.log
+.env
