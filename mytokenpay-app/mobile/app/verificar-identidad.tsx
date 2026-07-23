@@ -18,6 +18,7 @@ import {
 import { api } from '../src/lib/api'
 import { useAuthStore } from '../src/store/auth'
 import { useGenesisStore, SCAN_SECONDS, type GenesisStep } from '../src/store/genesis'
+import { genesisClient } from '../src/lib/genesisClient'
 import { useNotificationsStore } from '../src/store/notifications'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
 import { AnimatedScreen } from '../src/components/AnimatedScreen'
@@ -113,6 +114,7 @@ export default function GenesisId() {
       } catch {
         // demo: continuar aunque el mock falle
       }
+      if (genesis.email) await genesisClient.process(genesis.email) // verificar en backend real
       setTimeout(async () => {
         if (cancelled) return
         genesis.markVerified()
@@ -157,6 +159,7 @@ export default function GenesisId() {
     const v = emailInput.trim()
     if (!v.includes('@') || v.length < 6) return
     genesis.setEmail(v)
+    genesisClient.start(v, user?.fullName) // envío al backend real (best-effort)
   }
 
   function handleCapture() {

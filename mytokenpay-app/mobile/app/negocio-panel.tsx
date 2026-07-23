@@ -7,8 +7,10 @@ import {
   ArrowLeft,
   ArrowRight,
   Banknote,
+  BadgeCheck,
   CheckCircle2,
   ExternalLink,
+  Fingerprint,
   Landmark,
   Pencil,
   QrCode,
@@ -18,6 +20,14 @@ import {
   Users,
   Wallet,
 } from 'lucide-react-native'
+
+// Credenciales Genesis ID (KYB) por comercio demo — mismos UID que el motor.
+const GENESIS_CREDS: Record<string, { owner: string; biz: string }> = {
+  'mtp-demo-cafe': { owner: 'GEN-1101-2201', biz: 'GNB-1101-2201' },
+  'mtp-demo-hotel': { owner: 'GEN-1102-2202', biz: 'GNB-1102-2202' },
+  'mtp-demo-gym': { owner: 'GEN-1103-2203', biz: 'GNB-1103-2203' },
+  'mtp-demo-tech': { owner: 'GEN-1104-2204', biz: 'GNB-1104-2204' },
+}
 import { api } from '../src/lib/api'
 import type { Company } from '../src/lib/types'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
@@ -139,6 +149,27 @@ export default function BusinessPanel() {
                   ≈ {fmtLocal(origenToLocal(balance, info), info)} · {fmtUsd(balance * ORIGEN_USD)}
                 </Text>
               </LinearGradient>
+
+              {/* Credencial Genesis ID del negocio (KYB) */}
+              {(() => {
+                const cred = GENESIS_CREDS[company.id]
+                if (!cred) return null
+                return (
+                  <View style={styles.credCard}>
+                    <View style={styles.credIcon}>
+                      <Fingerprint size={18} color={colors.cyan} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={styles.credTitle}>Genesis ID · Negocio verificado</Text>
+                        <BadgeCheck size={13} color={colors.ok} />
+                      </View>
+                      <Text style={styles.credUid}>{cred.biz}</Text>
+                      <Text style={styles.credOwner}>Titular: {cred.owner}</Text>
+                    </View>
+                  </View>
+                )
+              })()}
 
               <View style={styles.statsRow}>
                 <Card style={styles.statCard}>
@@ -352,6 +383,20 @@ function createStyles(colors: ThemeColors) {
     balNumber: { color: colors.bg, fontFamily: fonts.displayBold, fontSize: 32 },
     balLabel: { color: colors.bg, opacity: 0.85, fontFamily: fonts.bodySemiBold, fontSize: 12, marginTop: 3 },
 
+    credCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      borderWidth: 1,
+      borderColor: colors.cyan + '35',
+      backgroundColor: colors.cyan + '0E',
+      borderRadius: radius.lg,
+      padding: 14,
+    },
+    credIcon: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.cyan + '1C', alignItems: 'center', justifyContent: 'center' },
+    credTitle: { color: colors.text, fontFamily: fonts.bodySemiBold, fontSize: 12.5 },
+    credUid: { color: colors.cyan, fontFamily: fonts.displayBold, fontSize: 16, letterSpacing: 0.5, marginTop: 3 },
+    credOwner: { color: colors.muted2, fontFamily: fonts.body, fontSize: 11, marginTop: 2 },
     statsRow: { flexDirection: 'row', gap: 10 },
     statCard: { flex: 1, gap: 6, alignItems: 'flex-start', padding: 13 },
     statNum: { color: colors.text, fontFamily: fonts.displayBold, fontSize: 16 },
