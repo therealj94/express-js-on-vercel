@@ -114,10 +114,15 @@ export default function GenesisId() {
       } catch {
         // demo: continuar aunque el mock falle
       }
-      if (genesis.email) await genesisClient.process(genesis.email) // verificar en backend real
+      // Modo conectado: el backend central emite el UID oficial y lo usamos.
+      let backendUid: string | undefined
+      if (genesis.email) {
+        const r = await genesisClient.process(genesis.email)
+        backendUid = r?.genesisUid ?? undefined
+      }
       setTimeout(async () => {
         if (cancelled) return
-        genesis.markVerified()
+        genesis.markVerified(backendUid)
         await refreshMe()
         pushNotif({
           kind: 'kyc',

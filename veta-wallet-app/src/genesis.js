@@ -75,20 +75,23 @@ export const genesis = {
   async process(email) {
     const d = await read();
     const rec = d.identities.find((i) => i.email === (email || '').toLowerCase().trim());
-    if (rec) {
-      rec.step = 'verified';
-      rec.genesisUid = rec.genesisUid || uid();
-      rec.verifiedAt = now();
-      await write();
-      // Backend real (best-effort): asegura la identidad y la procesa allá también.
-      if (BASE) {
+    if (!rec) return null;
+    // Modo conectado: el backend central verifica y emite el UID oficial.
+    let backendUid = null;
+    if (BASE) {
+      try {
         const created = await post('', { email: rec.email, fullName: rec.fullName });
         const idn = created && created.identity;
         if (idn && idn.id) {
-          fetch(`${BASE}/api/identities/${idn.id}/process`, { method: 'POST' }).catch(() => {});
+          const done = await fetch(`${BASE}/api/identities/${idn.id}/process`, { method: 'POST' }).then((r) => r.json());
+          backendUid = (done && done.identity && done.identity.genesisUid) || null;
         }
-      }
+      } catch (e) {}
     }
+    rec.step = 'verified';
+    rec.genesisUid = backendUid || rec.genesisUid || uid();
+    rec.verifiedAt = now();
+    await write();
     return rec;
   },
 };

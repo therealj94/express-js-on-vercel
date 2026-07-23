@@ -12,3 +12,4 @@ ios/
 *.key
 *.mobileprovision
 .env*.local
+.env

@@ -1,19 +1,23 @@
 import express from 'express'
 import cors from 'cors'
 import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 import { identitiesRouter } from './routes/identities.js'
 import { businessRouter } from './routes/business.js'
 import { adminRouter } from './routes/admin.js'
 import { store } from './store.js'
 
+const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
 app.use(cors())
 app.use(express.json({ limit: '2mb' }))
 
-app.get('/', (_req, res) => {
-  res.json({ name: 'Genesis ID', tagline: 'Identidad digital · Orden Global', status: 'ok' })
+// Panel admin en vivo (mismo origen → sin restricciones CSP).
+app.get(['/', '/admin'], (_req, res) => {
+  res.sendFile(join(__dirname, '..', 'public', 'admin.html'))
 })
 app.get('/healthz', (_req, res) => res.json({ status: 'ok', at: new Date().toISOString() }))
+app.get('/api', (_req, res) => res.json({ name: 'Genesis ID', tagline: 'Identidad digital · Orden Global', status: 'ok' }))
 
 app.use('/api/identities', identitiesRouter)
 app.use('/api/business', businessRouter)

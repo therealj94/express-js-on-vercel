@@ -28,7 +28,7 @@ interface GenesisState {
   setEmail: (email: string) => void
   advance: (next: GenesisStep) => void
   markReview24: () => void
-  markVerified: () => void
+  markVerified: (genesisUid?: string) => void
   reset: () => void
 }
 
@@ -54,8 +54,8 @@ export const useGenesisStore = create<GenesisState>()(
 
       markReview24: () => set({ step: 'review24', review24At: new Date().toISOString() }),
 
-      markVerified: () =>
-        set({ step: 'done', verifiedAt: new Date().toISOString(), genesisUid: makeUid() }),
+      markVerified: (genesisUid?: string) =>
+        set({ step: 'done', verifiedAt: new Date().toISOString(), genesisUid: genesisUid || makeUid() }),
 
       reset: () =>
         set({ step: 'email', email: '', startedAt: null, verifiedAt: null, review24At: null, genesisUid: null }),

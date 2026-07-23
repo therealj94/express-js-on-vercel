@@ -15,7 +15,28 @@ npm run dev        # http://localhost:4000
 La data se siembra sola la primera vez (4 negocios demo + sus dueños + un cliente,
 todos verificados, con los mismos UID que las apps) en `data/genesis.json`.
 
-## Conectar las apps al motor real
+## ⚡ Modo conectado (turnkey) — un solo Genesis central
+
+Deja las dos apps apuntando al motor real con un comando (detecta tu IP local):
+```bash
+cd genesis-id
+npm install
+npm run connect          # escribe .env en veta-wallet-app y mytokenpay-app/mobile
+npm run dev              # arranca el motor  →  http://TU_IP:4000
+```
+Abre el **admin en vivo** en el navegador: **http://TU_IP:4000/admin** (o `/`).
+Luego, en cada app (misma Wi-Fi que tu compu):
+```bash
+npx expo start -c        # -c limpia caché para tomar el .env
+```
+Ahora es **un solo Genesis**: si registras/verificas en Veta Wallet, el UID lo
+emite el backend y aparece igual en MyTokenPay y en `/admin` en tiempo real.
+Si tu IP no se detecta bien: `npm run connect -- 192.168.1.50`.
+
+> El `/admin` servido por el backend es en vivo (mismo origen, lee `/api/admin`).
+> El archivo `genesis-admin.html` del repo es la maqueta estática de referencia.
+
+## Conectar las apps al motor real (manual)
 En cada app móvil define la URL antes de iniciar Expo:
 ```bash
 # MyTokenPay y Veta Wallet
