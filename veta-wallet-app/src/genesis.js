@@ -6,7 +6,9 @@ import { ACCOUNTS } from './accounts';
 // al backend real de Genesis ID. Mismo modelo que genesis-id/src/types.ts.
 
 const KEY = 'genesis-id-engine-v2';
-const BASE = (process.env.EXPO_PUBLIC_GENESIS_URL || '').replace(/\/$/, '') || null;
+// Genesis ID en la nube por defecto (funciona en Expo Go y en APK sin .env).
+// Puedes sobrescribirlo con EXPO_PUBLIC_GENESIS_URL si algún día cambias de host.
+const BASE = (process.env.EXPO_PUBLIC_GENESIS_URL || 'https://genesis-id.onrender.com').replace(/\/$/, '') || null;
 
 let cache = null; // { identities: [...] }
 

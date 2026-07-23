@@ -2,7 +2,8 @@
 // envía el registro/verificación al backend real (genesis-id/). Si no, no hace
 // nada (la app usa su flujo en dispositivo). Best-effort: nunca bloquea la UI.
 
-const BASE = (process.env.EXPO_PUBLIC_GENESIS_URL || '').replace(/\/$/, '') || null
+// Genesis ID en la nube por defecto (funciona en Expo Go y en APK sin .env).
+const BASE = (process.env.EXPO_PUBLIC_GENESIS_URL || 'https://genesis-id.onrender.com').replace(/\/$/, '') || null
 
 export const genesisEnabled = Boolean(BASE)
 
