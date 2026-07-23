@@ -20,6 +20,123 @@ const users: MockUser[] = []
 let companies: Company[] = createMockCompanies()
 const resetTokens = new Map<string, string>() // resetToken -> userId
 
+// ============================================================
+// Cuentas DEMO del ecosistema (usuario y contraseña reales para
+// entrar en la app — ver README). Cada dueño ya tiene Genesis ID
+// verificado y una empresa inscrita y verificada con catálogo.
+// ============================================================
+interface DemoSeed {
+  user: { id: string; email: string; password: string; fullName: string; genesisUid: string }
+  company: {
+    id: string
+    tradeName: string
+    legalName: string
+    categorySlug: string
+    countrySlug: string
+    citySlug: string
+    address: string
+    lat: number
+    lng: number
+    description: string
+    productsServices: string[]
+  }
+}
+
+export const DEMO_SEEDS: DemoSeed[] = [
+  {
+    user: { id: 'demo-owner-cafe', email: 'cafe.veta@mytokenpay.demo', password: 'Cafe2026!', fullName: 'Carmen Aguilar', genesisUid: 'GEN-1101-2201' },
+    company: {
+      id: 'mtp-demo-cafe', tradeName: 'Café Veta Roasters', legalName: 'Café Veta Roasters S. de R.L.',
+      categorySlug: 'cafeterias', countrySlug: 'honduras', citySlug: 'tegucigalpa',
+      address: 'Col. Palmira, Ave. República de Chile', lat: 14.0932, lng: -87.1959,
+      description: 'Tostaduría de especialidad con grano hondureño de altura. Café, repostería y baleadas gourmet — todo pagable en ORIGEN.',
+      productsServices: ['Espresso doble', 'Cappuccino Veta', 'Cold brew', 'Baleada gourmet', 'Grano en bolsa'],
+    },
+  },
+  {
+    user: { id: 'demo-owner-hotel', email: 'bahia.hotel@mytokenpay.demo', password: 'Hotel2026!', fullName: 'Diego Martínez', genesisUid: 'GEN-1102-2202' },
+    company: {
+      id: 'mtp-demo-hotel', tradeName: 'Bahía Esmeralda Hotel', legalName: 'Bahía Esmeralda Hospitality S.A.',
+      categorySlug: 'hoteles', countrySlug: 'honduras', citySlug: 'roatan',
+      address: 'West Bay Beach, Roatán', lat: 16.2711, lng: -86.5931,
+      description: 'Hotel boutique frente al arrecife con suites vista al mar, tours de snorkel y cenas en la playa.',
+      productsServices: ['Habitación estándar', 'Suite vista al mar', 'Tour de snorkel', 'Cena en la playa', 'Traslados'],
+    },
+  },
+  {
+    user: { id: 'demo-owner-gym', email: 'ironhouse.gym@mytokenpay.demo', password: 'Gym2026!', fullName: 'Sofía Ramírez', genesisUid: 'GEN-1103-2203' },
+    company: {
+      id: 'mtp-demo-gym', tradeName: 'Ironhouse Gym', legalName: 'Ironhouse Fitness S.A.',
+      categorySlug: 'gimnasios', countrySlug: 'guatemala', citySlug: 'ciudad-de-guatemala',
+      address: 'Zona 10, Blvd. Los Próceres', lat: 14.5891, lng: -90.5109,
+      description: 'Gimnasio de fuerza y acondicionamiento con entrenadores certificados, clases grupales y planes nutricionales.',
+      productsServices: ['Día de entrenamiento', 'Membresía mensual', 'Entrenamiento personal', 'Plan nutricional'],
+    },
+  },
+  {
+    user: { id: 'demo-owner-tech', email: 'nova.tech@mytokenpay.demo', password: 'Tech2026!', fullName: 'Marco Flores', genesisUid: 'GEN-1104-2204' },
+    company: {
+      id: 'mtp-demo-tech', tradeName: 'Nova Tech Center', legalName: 'Nova Tech Center S.A. de C.V.',
+      categorySlug: 'tecnologia', countrySlug: 'el-salvador', citySlug: 'san-salvador',
+      address: 'Col. Escalón, Paseo General Escalón', lat: 13.7013, lng: -89.2244,
+      description: 'Tienda de tecnología y centro de servicio: accesorios, wearables y reparaciones el mismo día.',
+      productsServices: ['Audífonos inalámbricos', 'Cargadores rápidos', 'Cambio de pantalla', 'Smartwatch Nova'],
+    },
+  },
+]
+
+export const DEMO_CLIENT = { id: 'demo-client', email: 'cliente@mytokenpay.demo', password: 'Origen2026!', fullName: 'José Cliente', genesisUid: 'GEN-1100-2200' }
+
+function seedDemoAccounts() {
+  const now = new Date().toISOString()
+  const verifiedKyc = { status: 'verified' as const, documentLabel: 'Genesis ID', submittedAt: now, reviewedAt: now }
+  const mkUser = (u: { id: string; email: string; password: string; fullName: string; genesisUid: string }): MockUser => ({
+    id: u.id,
+    email: u.email,
+    fullName: u.fullName,
+    role: 'user',
+    kyc: verifiedKyc,
+    createdAt: now,
+    genesisUid: u.genesisUid,
+    password: u.password,
+    pointsBalance: STARTING_POINTS,
+    redemptions: [],
+  })
+  users.push(mkUser(DEMO_CLIENT))
+  for (const seed of DEMO_SEEDS) {
+    users.push(mkUser(seed.user))
+    companies.push({
+      id: seed.company.id,
+      ownerId: seed.user.id,
+      legalName: seed.company.legalName,
+      tradeName: seed.company.tradeName,
+      taxId: `TAX-${seed.company.id.toUpperCase()}`,
+      categorySlug: seed.company.categorySlug,
+      productsServices: seed.company.productsServices,
+      countrySlug: seed.company.countrySlug,
+      citySlug: seed.company.citySlug,
+      address: seed.company.address,
+      lat: seed.company.lat,
+      lng: seed.company.lng,
+      description: seed.company.description,
+      logoDataUrl: `https://picsum.photos/seed/${seed.company.id}-logo/300/300`,
+      coverDataUrl: `https://picsum.photos/seed/${seed.company.id}-cover/900/560`,
+      gallery: [
+        `https://picsum.photos/seed/${seed.company.id}-g1/700/700`,
+        `https://picsum.photos/seed/${seed.company.id}-g2/700/700`,
+      ],
+      socials: {},
+      hours: null,
+      kyc: { status: 'verified', documents: [], submittedAt: now, reviewedAt: now, note: null },
+      verified: true,
+      acceptsOrigen: true,
+      createdAt: now,
+      updatedAt: now,
+    })
+  }
+}
+seedDemoAccounts()
+
 function delay<T>(value: T, ms = 350): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), ms))
 }

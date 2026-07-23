@@ -205,7 +205,7 @@ export default function Dashboard() {
         {company === undefined ? (
           <View style={styles.skeleton} />
         ) : company ? (
-          <Pressable3D onPress={() => router.push('/mi-empresa')} tilt={6}>
+          <Pressable3D onPress={() => router.push('/negocio-panel')} tilt={6}>
             <View style={styles.companyCard}>
               {company.coverDataUrl ? (
                 <Image source={{ uri: company.coverDataUrl }} style={styles.companyCover} />

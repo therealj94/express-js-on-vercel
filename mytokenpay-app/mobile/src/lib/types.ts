@@ -16,6 +16,8 @@ export interface PublicUser {
   role: UserRole
   kyc: PersonalKyc
   createdAt: string
+  /** UID de Genesis ID (identidad del ecosistema Orden Global), si ya está verificado. */
+  genesisUid?: string | null
 }
 
 export interface KycDocument {

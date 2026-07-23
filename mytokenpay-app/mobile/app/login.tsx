@@ -3,14 +3,24 @@ import { Image, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
-import { Compass, LogIn, UserPlus, X } from 'lucide-react-native'
+import { Compass, LogIn, Sparkle, UserPlus, X } from 'lucide-react-native'
 import { AuthSheet, type AuthMode } from '../src/components/AuthSheet'
 import { GradientButton } from '../src/components/ui/GradientButton'
 import { Logo } from '../src/components/Logo'
 import { AnimatedText } from '../src/components/AnimatedText'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
-import { fonts } from '../src/lib/theme'
+import { useAuthStore } from '../src/store/auth'
+import { DEMO_SEEDS, DEMO_CLIENT } from '../src/lib/mockApi'
+import { fonts, radius } from '../src/lib/theme'
 import { useTheme, type ThemeColors } from '../src/hooks/useTheme'
+
+const DEMO_QUICK = [
+  { label: 'Cliente', email: DEMO_CLIENT.email, password: DEMO_CLIENT.password },
+  { label: 'Café', email: DEMO_SEEDS[0].user.email, password: DEMO_SEEDS[0].user.password },
+  { label: 'Hotel', email: DEMO_SEEDS[1].user.email, password: DEMO_SEEDS[1].user.password },
+  { label: 'Gym', email: DEMO_SEEDS[2].user.email, password: DEMO_SEEDS[2].user.password },
+  { label: 'Tech', email: DEMO_SEEDS[3].user.email, password: DEMO_SEEDS[3].user.password },
+]
 
 export default function Welcome() {
   const { colors } = useTheme()
@@ -21,6 +31,20 @@ export default function Welcome() {
 
   const [sheetOpen, setSheetOpen] = useState(params.mode === 'signup' || params.mode === 'login')
   const [mode, setMode] = useState<AuthMode>(params.mode === 'login' ? 'login' : 'signup')
+  const login = useAuthStore((s) => s.login)
+  const [demoLoading, setDemoLoading] = useState<string | null>(null)
+
+  async function quickLogin(d: { label: string; email: string; password: string }) {
+    setDemoLoading(d.label)
+    try {
+      await login(d.email, d.password)
+      router.replace('/(tabs)')
+    } catch {
+      // el error queda visible en el store; no bloquear la pantalla
+    } finally {
+      setDemoLoading(null)
+    }
+  }
 
   useEffect(() => {
     if (params.mode === 'login' || params.mode === 'signup') {
@@ -88,6 +112,21 @@ export default function Welcome() {
               <Compass size={15} color={colors.muted} />
               <Text style={styles.guestText}>Continuar como invitado</Text>
             </AnimatedPressable>
+
+            <View style={styles.demoBox}>
+              <View style={styles.demoHead}>
+                <Sparkle size={12} color={colors.cyan} />
+                <Text style={styles.demoTitle}>Cuentas demo — entra con un toque</Text>
+              </View>
+              <View style={styles.demoRow}>
+                {DEMO_QUICK.map((d) => (
+                  <AnimatedPressable key={d.label} onPress={() => quickLogin(d)} scaleTo={0.93} style={styles.demoChip}>
+                    <Text style={styles.demoChipText}>{demoLoading === d.label ? '…' : d.label}</Text>
+                  </AnimatedPressable>
+                ))}
+              </View>
+              <Text style={styles.demoHint}>Café, Hotel, Gym y Tech son dueños de negocio con cobros y retiros.</Text>
+            </View>
           </View>
         </View>
       </SafeAreaView>
@@ -158,5 +197,27 @@ function createStyles(colors: ThemeColors) {
     paddingVertical: 12,
   },
   guestText: { color: colors.text, fontFamily: fonts.bodySemiBold, fontSize: 13 },
+  demoBox: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(16,19,31,0.6)',
+    borderRadius: radius.lg,
+    padding: 14,
+    gap: 10,
+  },
+  demoHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  demoTitle: { color: colors.text, fontFamily: fonts.bodySemiBold, fontSize: 12 },
+  demoRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  demoChip: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  demoChipText: { color: colors.text, fontFamily: fonts.bodySemiBold, fontSize: 12 },
+  demoHint: { color: 'rgba(238,240,247,0.6)', fontFamily: fonts.body, fontSize: 10.5, lineHeight: 14 },
   })
 }

@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
 import {
   ArrowLeft,
+  ArrowRight,
   BadgeCheck,
   Clock,
   Globe,
@@ -12,6 +13,9 @@ import {
   Link2,
   MapPin,
   MessageCircle,
+  Minus,
+  Plus,
+  ReceiptText,
 } from 'lucide-react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AnimatedScreen } from '../../src/components/AnimatedScreen'
@@ -24,9 +28,10 @@ import { useFavoritesStore } from '../../src/store/favorites'
 import { CategoryIcon } from '../../src/components/CategoryIcon'
 import { CompanyMap } from '../../src/components/CompanyMap'
 import { Card } from '../../src/components/ui/Card'
-import { Chip } from '../../src/components/ui/Chip'
 import { Skeleton } from '../../src/components/ui/Skeleton'
-import { fonts, radius } from '../../src/lib/theme'
+import { getCatalog, toOrigen, fmtOrigen, fmtUsd } from '../../src/lib/commerce'
+import { useCartStore, cartCount, cartTotalUsd } from '../../src/store/cart'
+import { fonts, radius, shadow } from '../../src/lib/theme'
 import { useTheme, type ThemeColors } from '../../src/hooks/useTheme'
 
 const DAY_LABELS: Record<DayKey, string> = {
@@ -44,10 +49,19 @@ export default function CompanyDetail() {
   const toggleFavorite = useFavoritesStore((s) => s.toggle)
   const [company, setCompany] = useState<Company | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const cartLines = useCartStore((s) => s.lines)
+  const cartCompanyId = useCartStore((s) => s.companyId)
+  const setCartCompany = useCartStore((s) => s.setCompany)
+  const addToCart = useCartStore((s) => s.add)
+  const removeFromCart = useCartStore((s) => s.remove)
 
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    if (company) setCartCompany(company.id, company.tradeName, company.countrySlug)
+  }, [company, setCartCompany])
 
   useEffect(() => {
     if (!id) return
@@ -95,7 +109,7 @@ export default function CompanyDetail() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScrollView bounces={false}>
+      <ScrollView bounces={false} contentContainerStyle={{ paddingBottom: 130 }}>
         <View style={styles.cover}>
           {company.coverDataUrl ? (
             <Image source={{ uri: company.coverDataUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
@@ -147,16 +161,48 @@ export default function CompanyDetail() {
               <Text style={styles.body}>{company.description}</Text>
             </View>
 
-            {company.productsServices.length > 0 && (
-              <View>
-                <Text style={styles.h2}>Productos y servicios</Text>
-                <View style={styles.tagRow}>
-                  {company.productsServices.map((tag) => (
-                    <Chip key={tag} label={tag} />
-                  ))}
+            {(() => {
+              const catalog = getCatalog(company)
+              if (catalog.length === 0) return null
+              return (
+                <View>
+                  <Text style={styles.h2}>Menú · paga con ORIGEN</Text>
+                  <View style={{ gap: 10 }}>
+                    {catalog.map((item) => {
+                      const line = cartCompanyId === company.id ? cartLines.find((l) => l.item.id === item.id) : undefined
+                      const qty = line?.qty ?? 0
+                      return (
+                        <Card key={item.id} style={styles.catRow}>
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <Text style={styles.catName} numberOfLines={1}>{item.name}</Text>
+                            <Text style={styles.catDetail} numberOfLines={1}>{item.detail}</Text>
+                            <Text style={styles.catPrice}>
+                              {fmtOrigen(toOrigen(item.priceUsd))} ORIGEN
+                              <Text style={styles.catUsd}>  ≈ {fmtUsd(item.priceUsd)}</Text>
+                            </Text>
+                          </View>
+                          {qty === 0 ? (
+                            <AnimatedPressable onPress={() => addToCart(item)} scaleTo={0.9} style={styles.addBtn}>
+                              <Plus size={16} color={colors.bg} />
+                            </AnimatedPressable>
+                          ) : (
+                            <View style={styles.stepper}>
+                              <AnimatedPressable onPress={() => removeFromCart(item.id)} scaleTo={0.85} style={styles.stepBtn}>
+                                <Minus size={14} color={colors.text} />
+                              </AnimatedPressable>
+                              <Text style={styles.stepQty}>{qty}</Text>
+                              <AnimatedPressable onPress={() => addToCart(item)} scaleTo={0.85} style={styles.stepBtn}>
+                                <Plus size={14} color={colors.text} />
+                              </AnimatedPressable>
+                            </View>
+                          )}
+                        </Card>
+                      )
+                    })}
+                  </View>
                 </View>
-              </View>
-            )}
+              )
+            })()}
 
             {company.gallery.length > 0 && (
               <View>
@@ -208,6 +254,26 @@ export default function CompanyDetail() {
           </View>
         </AnimatedScreen>
       </ScrollView>
+
+      {cartCompanyId === company.id && cartLines.length > 0 && (
+        <SafeAreaView edges={['bottom']} style={styles.cartBarWrap} pointerEvents="box-none">
+          <AnimatedPressable onPress={() => router.push('/cobro')} scaleTo={0.98}>
+            <LinearGradient colors={gradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cartBar}>
+              <View style={styles.cartBadge}>
+                <ReceiptText size={15} color={colors.bg} />
+                <Text style={styles.cartBadgeText}>{cartCount(cartLines)}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cartBarTitle}>Ver factura y cobrar</Text>
+                <Text style={styles.cartBarSub}>
+                  {fmtOrigen(toOrigen(cartTotalUsd(cartLines)))} ORIGEN · ≈ {fmtUsd(cartTotalUsd(cartLines))}
+                </Text>
+              </View>
+              <ArrowRight size={18} color={colors.bg} />
+            </LinearGradient>
+          </AnimatedPressable>
+        </SafeAreaView>
+      )}
 
       <SafeAreaView style={styles.topFab} edges={['top']} pointerEvents="box-none">
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
@@ -314,6 +380,53 @@ function createStyles(colors: ThemeColors) {
   h2: { color: colors.text, fontFamily: fonts.display, fontSize: 16, marginBottom: 8 },
   body: { color: colors.muted, fontFamily: fonts.body, fontSize: 13.5, lineHeight: 20 },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  catRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  catName: { color: colors.text, fontFamily: fonts.bodySemiBold, fontSize: 14 },
+  catDetail: { color: colors.muted2, fontFamily: fonts.body, fontSize: 11.5, marginTop: 2 },
+  catPrice: { color: colors.text, fontFamily: fonts.display, fontSize: 13, marginTop: 6 },
+  catUsd: { color: colors.muted2, fontFamily: fonts.body, fontSize: 11 },
+  addBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.sm,
+    backgroundColor: colors.violet,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceHi,
+    borderRadius: radius.sm,
+    padding: 3,
+  },
+  stepBtn: { width: 28, height: 28, borderRadius: radius.sm - 3, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  stepQty: { color: colors.text, fontFamily: fonts.displayBold, fontSize: 13, minWidth: 22, textAlign: 'center' },
+  cartBarWrap: { position: 'absolute', left: 16, right: 16, bottom: 10 },
+  cartBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: radius.lg,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    ...shadow(colors.violet, 'lg'),
+  },
+  cartBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(5,6,10,0.22)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  cartBadgeText: { color: colors.bg, fontFamily: fonts.displayBold, fontSize: 12 },
+  cartBarTitle: { color: colors.bg, fontFamily: fonts.display, fontSize: 14 },
+  cartBarSub: { color: colors.bg, opacity: 0.85, fontFamily: fonts.bodySemiBold, fontSize: 11.5, marginTop: 1 },
   gallery: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   galleryImg: { width: '31%', aspectRatio: 1, borderRadius: radius.sm },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },

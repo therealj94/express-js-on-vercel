@@ -119,3 +119,33 @@ src/
 
 Todo sigue en modo simulado (sin backend); cuando el backend real exista, estos stores se
 conectan a la API de Orden Global sin cambiar las pantallas.
+
+## 🛍️ Comercio completo (esta versión)
+
+- **Catálogo por comercio**: cada negocio ofrece productos/servicios con precio en ORIGEN
+  (las 4 empresas demo tienen catálogo curado; el resto se genera del directorio).
+- **Factura**: selecciona ítems con el carrito → factura con cantidades, propina (0/5/10/15%),
+  total en ORIGEN + USD. Paga directo con la **Veta Wallet** conectada (descuenta saldo).
+- **QR de cobro**: genera un QR con el monto exacto para escanear con MyTokenPay o Veta Wallet.
+- **Dividir cuenta**: entre 2 y 4 personas, en partes iguales o montos manuales (validados);
+  se genera **un QR por persona** y el cobro se acredita cuando todos pagan.
+- **Panel del negocio** (`/negocio-panel`): saldo ORIGEN del comercio (siempre igual al de su
+  Veta Wallet), cobros recibidos en vivo, estadísticas y **cash out**: banco + cuenta + monto
+  → retira a la moneda del país (HNL, GTQ, USD, NIO, CRC, MXN…) con tasa visible e historial.
+
+## 🔑 Cuentas demo (usuario y contraseña)
+
+| Rol | Empresa | Correo | Contraseña | Genesis ID |
+|---|---|---|---|---|
+| Cliente | — | `cliente@mytokenpay.demo` | `Origen2026!` | GEN-1100-2200 |
+| Dueño | Café Veta Roasters (HN) | `cafe.veta@mytokenpay.demo` | `Cafe2026!` | GEN-1101-2201 |
+| Dueño | Bahía Esmeralda Hotel (HN) | `bahia.hotel@mytokenpay.demo` | `Hotel2026!` | GEN-1102-2202 |
+| Dueño | Ironhouse Gym (GT) | `ironhouse.gym@mytokenpay.demo` | `Gym2026!` | GEN-1103-2203 |
+| Dueño | Nova Tech Center (SV) | `nova.tech@mytokenpay.demo` | `Tech2026!` | GEN-1104-2204 |
+
+En la pantalla de bienvenida hay chips de **"Cuentas demo"** para entrar con un toque.
+Todos ya tienen Genesis ID verificado; los dueños tienen su negocio inscrito, verificado,
+con catálogo, cobros históricos y retiros habilitados.
+
+> Nota demo: al correr en modo simulado los usuarios viven en memoria (se re-crean al
+> recargar), y los cobros/retiros persisten en el dispositivo con AsyncStorage.
