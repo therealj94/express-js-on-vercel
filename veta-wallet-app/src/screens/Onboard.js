@@ -6,6 +6,7 @@ import { C } from '../theme';
 import { Header, Button3D, Card, hap, useToast, useAccount } from '../ui';
 import { WALLET_SEED } from '../data';
 import { genesis } from '../genesis';
+import { createAccount } from '../accounts';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const SCAN_SECONDS = 30;
@@ -35,15 +36,16 @@ async function saveGenesis(state) {
 }
 
 // ---------------- GENESIS ID (KYC del ecosistema) ----------------
-export function Kyc({ nav }) {
+export function Kyc({ nav, params }) {
   const toast = useToast();
-  const { account } = useAccount();
+  const { account, login: loginAccount } = useAccount();
+  const register = params && params.register; // registro nuevo desde Auth
   // Si ya hay sesión (reverificación desde Ajustes) volvemos a la app;
-  // si es registro nuevo, seguimos a crear la billetera.
+  // si es registro nuevo, seguimos a crear la billetera (ya con sesión).
   const doneDest = account ? 'home' : 'seedIntro';
   const backDest = account ? 'settings' : 'auth';
   const [step, setStep] = useState('loading'); // loading|email|doc-front|doc-back|face|processing|review24|done
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(register ? register.email : '');
   const [uid, setUid] = useState(null);
   const [resumed, setResumed] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(SCAN_SECONDS);
@@ -116,6 +118,11 @@ export function Kyc({ nav }) {
       const rec = await genesis.process(email);
       const newUid = (rec && rec.genesisUid) || ('GEN-' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(1000 + Math.random() * 9000));
       setUid(newUid);
+      // Registro nuevo: crea la cuenta REAL con esta identidad y deja la sesión iniciada.
+      if (register && !account) {
+        const acc = await createAccount({ name: register.name, email, password: register.password, genesisUid: newUid });
+        loginAccount(acc);
+      }
       saveGenesis({ step: 'done', email, uid: newUid, verifiedAt: new Date().toISOString() });
       setStep('done');
       hap();

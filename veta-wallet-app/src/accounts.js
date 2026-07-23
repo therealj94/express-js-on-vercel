@@ -32,14 +32,60 @@ export const ACCOUNTS = [
   },
 ];
 
+// Cuentas creadas por el usuario vía Genesis ID (persistidas). Se cargan al
+// arrancar la app para que el login y la sesión las reconozcan.
+let DYNAMIC = [];
+const DYN_KEY = 'veta-dynamic-accounts';
+
+export async function initAccounts() {
+  try {
+    const raw = await AsyncStorage.getItem(DYN_KEY);
+    DYNAMIC = raw ? JSON.parse(raw) : [];
+  } catch (e) { DYNAMIC = []; }
+  return DYNAMIC;
+}
+
+function allAccounts() {
+  return [...ACCOUNTS, ...DYNAMIC];
+}
+
+function initialsFrom(name) {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'VW';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+// Crea una cuenta real desde el flujo Genesis ID (registro nuevo).
+export async function createAccount({ name, email, password, genesisUid }) {
+  const e = (email || '').toLowerCase().trim();
+  const existing = allAccounts().find((a) => a.email === e);
+  if (existing) return existing;
+  const acc = {
+    email: e,
+    password: password || 'origen',
+    name: name || 'Nuevo usuario',
+    initials: initialsFrom(name),
+    business: false,
+    genesisUid: genesisUid || null,
+    origen: 21.28, // ≈ $50 de bienvenida en ORIGEN para compras
+    addr: '0x' + Math.random().toString(16).slice(2, 10).toUpperCase() + '…' + Math.random().toString(16).slice(2, 6).toUpperCase(),
+    since: new Date().toLocaleDateString('es-HN', { month: 'short', year: 'numeric' }),
+    createdByGenesis: true,
+  };
+  DYNAMIC.push(acc);
+  try { await AsyncStorage.setItem(DYN_KEY, JSON.stringify(DYNAMIC)); } catch (er) {}
+  return acc;
+}
+
 export function findAccount(email, password) {
   const e = (email || '').toLowerCase().trim();
-  return ACCOUNTS.find((a) => a.email === e && a.password === password) || null;
+  return allAccounts().find((a) => a.email === e && a.password === password) || null;
 }
 
 export function accountByEmail(email) {
   const e = (email || '').toLowerCase().trim();
-  return ACCOUNTS.find((a) => a.email === e) || null;
+  return allAccounts().find((a) => a.email === e) || null;
 }
 
 export const usd = (origen) => origen * ORIGEN_PRICE;

@@ -4,7 +4,7 @@ import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { C } from './src/theme';
 import { Nav, ToastCtx, AccountCtx } from './src/ui';
-import { loadSession, saveSession, clearSession } from './src/accounts';
+import { loadSession, saveSession, clearSession, initAccounts } from './src/accounts';
 
 import Splash from './src/screens/Splash';
 import Auth from './src/screens/Auth';
@@ -38,7 +38,7 @@ export default function App() {
   const cur = stack[stack.length - 1];
   const anim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => { loadSession().then((a) => { if (a) setAccount(a); }); }, []);
+  useEffect(() => { initAccounts().then(() => loadSession()).then((a) => { if (a) setAccount(a); }); }, []);
   const acctApi = {
     account,
     login: (a) => { setAccount(a); saveSession(a.email); },

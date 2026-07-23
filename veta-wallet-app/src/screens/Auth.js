@@ -20,6 +20,8 @@ export default function Auth({ nav }) {
   const [showPw, setShowPw] = useState(false);
   const [email, setEmail] = useState('cliente@mytokenpay.demo');
   const [pw, setPw] = useState('Origen2026!');
+  const [regName, setRegName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
   const [err, setErr] = useState(null);
   const { login: setAccount } = useAccount();
   const toast = useToast();
@@ -59,12 +61,12 @@ export default function Auth({ nav }) {
               ))}
             </View>
 
-            {!login && <Input label="Nombre completo" placeholder="Tu nombre" />}
-            <Input label="Correo electrónico" placeholder="tu@correo.com" value={login ? email : undefined} onChangeText={login ? setEmail : undefined} keyboardType="email-address" autoCapitalize="none" />
+            {!login && <Input label="Nombre completo" placeholder="Tu nombre" value={regName} onChangeText={setRegName} />}
+            <Input label="Correo electrónico" placeholder="tu@correo.com" value={login ? email : regEmail} onChangeText={login ? setEmail : setRegEmail} keyboardType="email-address" autoCapitalize="none" />
             <View style={{ marginBottom: 6 }}>
               <Text style={styles.label}>Contraseña</Text>
               <View>
-                <TextInput placeholderTextColor="#6f938f" secureTextEntry={!showPw} value={login ? pw : undefined} onChangeText={login ? setPw : undefined} placeholder="••••••••" style={[styles.input, { paddingRight: 44 }]} />
+                <TextInput placeholderTextColor="#6f938f" secureTextEntry={!showPw} value={pw} onChangeText={setPw} placeholder="••••••••" style={[styles.input, { paddingRight: 44 }]} />
                 <Pressable onPress={() => setShowPw(!showPw)} style={styles.eye}>
                   <Ionicons name={showPw ? 'eye-off' : 'eye'} size={20} color={C.txt2} />
                 </Pressable>
@@ -79,7 +81,15 @@ export default function Auth({ nav }) {
               <Text style={styles.terms}>Crea tu cuenta y verifícate con Genesis ID, la identidad del ecosistema.</Text>
             )}
 
-            <Button3D title={login ? 'Ingresar' : 'Verificar con Genesis ID'} onPress={login ? doLogin : () => nav.go('kyc')} style={{ marginTop: 8 }} />
+            <Button3D
+              title={login ? 'Ingresar' : 'Verificar con Genesis ID'}
+              onPress={login ? doLogin : () => {
+                if (!regEmail.includes('@')) { setErr('Ingresa un correo válido para tu Genesis ID.'); return; }
+                setErr(null);
+                nav.go('kyc', { register: { name: regName || 'Nuevo usuario', email: regEmail, password: pw } });
+              }}
+              style={{ marginTop: 8 }}
+            />
 
             {login && (
               <>
