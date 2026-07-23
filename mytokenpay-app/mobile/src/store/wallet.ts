@@ -41,7 +41,7 @@ interface WalletState {
   }) => PaymentTx | { error: string }
 }
 
-const INITIAL_ORIGEN = 250 // mismo saldo demo que la app Veta Wallet
+const INITIAL_ORIGEN = 21.28 // ≈ $50 en ORIGEN para compras (mismo saldo que Veta Wallet)
 
 export const useWalletStore = create<WalletState>()(
   persist(
@@ -77,7 +77,7 @@ export const useWalletStore = create<WalletState>()(
       },
     }),
     {
-      name: 'mytokenpay-veta-wallet',
+      name: 'mytokenpay-veta-wallet-v2', // v2: saldo inicial ≈ $50 en ORIGEN
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

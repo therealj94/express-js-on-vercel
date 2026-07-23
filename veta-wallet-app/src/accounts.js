@@ -7,7 +7,7 @@ import { ORIGEN_PRICE } from './data';
 export const ACCOUNTS = [
   {
     email: 'cliente@mytokenpay.demo', password: 'Origen2026!', name: 'José Cliente', initials: 'JC',
-    business: false, genesisUid: 'GEN-1100-2200', origen: 250, addr: '0x7F2a9c4B1eD8f3A05b6C4d2C7e9F1a3B',
+    business: false, genesisUid: 'GEN-1100-2200', origen: 21.28, addr: '0x7F2a9c4B1eD8f3A05b6C4d2C7e9F1a3B',
     since: 'mar 2026',
   },
   {
