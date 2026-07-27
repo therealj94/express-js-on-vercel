@@ -67,6 +67,42 @@ async function req(path, { method = 'GET', body, timeout = 15000 } = {}) {
   }
 }
 
+// ---- Decodifica el payload de un JWT (base64url) sin librerías externas.
+// El backend de Veta Wallet mete userId/address/role/verify dentro del token.
+export function decodeJwt(tk) {
+  try {
+    const part = String(tk).split('.')[1];
+    if (!part) return null;
+    let b64 = part.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    let json;
+    if (typeof atob === 'function') {
+      json = decodeURIComponent(
+        atob(b64).split('').map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
+      );
+    } else {
+      json = b64Decode(b64);
+    }
+    return JSON.parse(json);
+  } catch (e) { return null; }
+}
+
+// Fallback de base64 (por si atob no existe en el runtime).
+function b64Decode(input) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  let str = String(input).replace(/=+$/, '');
+  let out = '';
+  for (let bc = 0, bs = 0, buffer, i = 0; (buffer = str.charAt(i++)); ) {
+    buffer = chars.indexOf(buffer);
+    if (buffer === -1) continue;
+    bs = bc % 4 ? bs * 64 + buffer : buffer;
+    if (bc++ % 4) out += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6)));
+  }
+  try {
+    return decodeURIComponent(out.split('').map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+  } catch (e) { return out; }
+}
+
 // ---- Normalizadores: adaptan respuestas de distintas formas a lo que usa la app.
 // Aceptan las variantes más comunes de backends para no depender de un contrato exacto.
 
@@ -124,12 +160,23 @@ export const walletApi = {
 };
 
 // Login de alto nivel: autentica, guarda token y devuelve { token, user, address }
-// ya normalizados. Lanza error si las credenciales son inválidas.
+// ya normalizados. El backend de Veta Wallet devuelve solo { token }, con los
+// datos del usuario (userId/address/role/verify) DENTRO del JWT.
 export async function apiLogin(email, password) {
   const d = await walletApi.login(email, password);
   const tk = pickToken(d);
   if (tk) await setToken(tk);
-  return { token: tk, user: pickUser(d), address: pickAddress(d) || pickAddress(pickUser(d) || {}) };
+  const claims = tk ? decodeJwt(tk) : null;
+  const apiUser = pickUser(d);
+  // Combina lo que venga en el body con lo que trae el token.
+  const user = {
+    email,
+    ...(apiUser && typeof apiUser === 'object' && !apiUser.token ? apiUser : {}),
+    ...(claims ? { userId: claims.userId, role: claims.role, verify: claims.verify } : {}),
+  };
+  const address = pickAddress(d) || claims?.address || pickAddress(apiUser || {}) || null;
+  if (address) user.address = address;
+  return { token: tk, user, address, claims };
 }
 
 // Carga balances normalizados del usuario autenticado.
