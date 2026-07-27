@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { C } from './src/theme';
 import { Nav, ToastCtx, AccountCtx } from './src/ui';
 import { loadSession, saveSession, clearSession, initAccounts } from './src/accounts';
+import { loadToken, setToken } from './src/api';
 
 import Splash from './src/screens/Splash';
 import Auth from './src/screens/Auth';
@@ -38,11 +39,14 @@ export default function App() {
   const cur = stack[stack.length - 1];
   const anim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => { initAccounts().then(() => loadSession()).then((a) => { if (a) setAccount(a); }); }, []);
+  useEffect(() => {
+    loadToken();
+    initAccounts().then(() => loadSession()).then((a) => { if (a) setAccount(a); });
+  }, []);
   const acctApi = {
     account,
     login: (a) => { setAccount(a); saveSession(a.email); },
-    logout: () => { setAccount(null); clearSession(); },
+    logout: () => { setAccount(null); clearSession(); setToken(null); },
   };
 
   const go = useCallback((r, params) => {

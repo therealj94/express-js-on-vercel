@@ -5,7 +5,8 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { C } from '../theme';
 import { Logo, Button3D, hap, useAccount, useToast } from '../ui';
-import { findAccount, ACCOUNTS } from '../accounts';
+import { findAccount, ACCOUNTS, upsertApiAccount, saveSession } from '../accounts';
+import { USE_REAL_API, apiLogin, apiBalances } from '../api';
 
 const DEMO_CHIPS = [
   { label: 'Cliente', email: 'cliente@mytokenpay.demo' },
@@ -27,7 +28,27 @@ export default function Auth({ nav }) {
   const toast = useToast();
   const login = tab === 'login';
 
-  function doLogin() {
+  const [busy, setBusy] = useState(false);
+
+  async function doLogin() {
+    // Con backend real configurado: autentica contra tu blockchain/billetera web.
+    if (USE_REAL_API) {
+      setBusy(true); setErr(null);
+      try {
+        const { user, address } = await apiLogin(email, pw);
+        let balances = [];
+        try { balances = await apiBalances(); } catch (e) {}
+        const acc = await upsertApiAccount(user, address, balances);
+        await saveSession(acc.email);
+        setAccount(acc);
+        nav.go('home');
+        toast(`Bienvenido, ${acc.name.split(' ')[0]}`);
+      } catch (e) {
+        setErr(e.message || 'No se pudo iniciar sesión con el servidor.');
+      } finally { setBusy(false); }
+      return;
+    }
+    // Sin backend: cuentas demo del ecosistema.
     const acc = findAccount(email, pw);
     if (!acc) { setErr('Correo o contraseña incorrectos. Prueba una cuenta demo abajo.'); return; }
     setErr(null);
@@ -82,8 +103,8 @@ export default function Auth({ nav }) {
             )}
 
             <Button3D
-              title={login ? 'Ingresar' : 'Verificar con Genesis ID'}
-              onPress={login ? doLogin : () => {
+              title={login ? (busy ? 'Ingresando…' : 'Ingresar') : 'Verificar con Genesis ID'}
+              onPress={login ? (busy ? () => {} : doLogin) : () => {
                 if (!regEmail.includes('@')) { setErr('Ingresa un correo válido para tu Genesis ID.'); return; }
                 setErr(null);
                 nav.go('kyc', { register: { name: regName || 'Nuevo usuario', email: regEmail, password: pw } });

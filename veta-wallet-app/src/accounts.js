@@ -78,6 +78,39 @@ export async function createAccount({ name, email, password, genesisUid }) {
   return acc;
 }
 
+// Construye/actualiza una cuenta a partir de la respuesta del backend real
+// (billetera web). Se persiste para que la sesión la reconozca al reabrir.
+export async function upsertApiAccount(user, address, balances) {
+  const email = (user?.email || user?.correo || '').toLowerCase().trim();
+  const name = user?.name || user?.fullName || user?.nombre || 'Mi cuenta';
+  // Saldo ORIGEN si viene en los balances normalizados.
+  let origen = 0;
+  if (Array.isArray(balances)) {
+    const o = balances.find((b) => (b.symbol || '').toUpperCase() === 'ORIGEN');
+    if (o) origen = Number(o.qty) || 0;
+  }
+  const acc = {
+    email: email || 'usuario@ordenglobal',
+    password: null,
+    name,
+    initials: initialsFrom(name),
+    business: !!(user?.business || user?.isBusiness || user?.negocio),
+    biz: user?.businessName || user?.biz || undefined,
+    genesisUid: user?.genesisUid || user?.uid || null,
+    origen,
+    addr: address || user?.address || user?.wallet || '0x0000…0000',
+    since: user?.since || new Date().toLocaleDateString('es-HN', { month: 'short', year: 'numeric' }),
+    fromApi: true,
+    balances: Array.isArray(balances) ? balances : [],
+    raw: user || null,
+  };
+  // Reemplaza cualquier cuenta previa con el mismo correo en DYNAMIC.
+  DYNAMIC = DYNAMIC.filter((a) => a.email !== acc.email);
+  DYNAMIC.push(acc);
+  try { await AsyncStorage.setItem(DYN_KEY, JSON.stringify(DYNAMIC)); } catch (e) {}
+  return acc;
+}
+
 export function findAccount(email, password) {
   const e = (email || '').toLowerCase().trim();
   return allAccounts().find((a) => a.email === e && a.password === password) || null;

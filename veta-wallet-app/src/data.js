@@ -17,6 +17,23 @@ export const TOKENS = [
 
 export const TOTAL = TOKENS.reduce((s, t) => s + t.qty * t.price, 0);
 
+// Metadatos por símbolo (nombre/ícono/precio de referencia) para renderizar
+// balances que vienen del backend real, aunque no traigan estos campos.
+export const TOKEN_META = TOKENS.reduce((m, t) => { m[t.s] = t; return m; }, {});
+
+// Convierte balances normalizados del API ([{symbol, qty, priceUsd}]) en la
+// forma que usa la UI ({ s, n, qty, price, chg, logo/glyph... }).
+export function tokensFromBalances(balances) {
+  return (balances || [])
+    .map((b) => {
+      const sym = (b.symbol || '').toUpperCase();
+      const meta = TOKEN_META[sym] || { s: sym, n: sym, price: 0, chg: 0, glyph: sym.slice(0, 3), grad: ['#1E8C74', '#0A463F'], fg: '#EAD79C' };
+      const price = b.priceUsd != null ? b.priceUsd : meta.price;
+      return { ...meta, s: sym, qty: Number(b.qty) || 0, price };
+    })
+    .filter((t) => t.qty > 0 || t.s === 'ORIGEN');
+}
+
 export const COIN_INFO = {
   ORIGEN: {
     title: 'Origen (ORIGEN)',

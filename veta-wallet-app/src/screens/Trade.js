@@ -6,6 +6,7 @@ import Svg, { Rect } from 'react-native-svg';
 import { C, G } from '../theme';
 import { Header, TokenIcon, ActionBtn, Button3D, Card, useToast, hap } from '../ui';
 import { TOKENS, money, qtyFmt, WALLET_ADDRESS } from '../data';
+import { USE_REAL_API, walletApi } from '../api';
 
 // -------- token picker modal --------
 function TokenPicker({ visible, onClose, onPick }) {
@@ -48,9 +49,30 @@ function Selector({ token, label, onPress }) {
 export function Send({ nav }) {
   const [tok, setTok] = useState(TOKENS[0]);
   const [amt, setAmt] = useState('25');
+  const [to, setTo] = useState('');
   const [pick, setPick] = useState(false);
+  const [sending, setSending] = useState(false);
   const toast = useToast();
   const usd = (parseFloat(amt) || 0) * tok.price;
+
+  async function doSend() {
+    // Con backend real: ejecuta la transacción en tu blockchain (Orden Global).
+    if (USE_REAL_API) {
+      if (!to.trim()) { toast('Ingresa la dirección de destino'); return; }
+      if (!(parseFloat(amt) > 0)) { toast('Ingresa un monto válido'); return; }
+      setSending(true);
+      try {
+        const r = await walletApi.send(to.trim(), tok.s, parseFloat(amt), '');
+        toast(r?.txId ? `Enviado · ${String(r.txId).slice(0, 10)}…` : 'Transacción enviada');
+        setTimeout(() => nav.back(), 800);
+      } catch (e) {
+        toast(e.message || 'No se pudo enviar');
+      } finally { setSending(false); }
+      return;
+    }
+    toast('Transacción enviada');
+    setTimeout(() => nav.back(), 700);
+  }
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title="Enviar" onBack={() => nav.back()} />
@@ -71,14 +93,14 @@ export function Send({ nav }) {
           <Text style={styles.cur}>≈ {money(usd)} USD</Text>
         </View>
         <Text style={styles.label}>Dirección o usuario</Text>
-        <TextInput placeholder="0x… o @usuario" placeholderTextColor="#6f938f" style={styles.input} />
+        <TextInput value={to} onChangeText={setTo} autoCapitalize="none" placeholder="0x… o @usuario" placeholderTextColor="#6f938f" style={styles.input} />
         <View style={{ height: 14 }} />
         <Card style={{ padding: 14, marginBottom: 16 }}>
           {[['Comisión de red', '0.0004 ' + tok.s], ['Tiempo estimado', '~ 3 seg'], ['Total', amt + ' ' + tok.s]].map((r, i) => (
             <View key={i} style={styles.rr}><Text style={styles.rrK}>{r[0]}</Text><Text style={styles.rrV}>{r[1]}</Text></View>
           ))}
         </Card>
-        <Button3D title="Revisar y enviar" onPress={() => { toast('Transacción enviada'); setTimeout(() => nav.back(), 700); }} />
+        <Button3D title={sending ? 'Enviando…' : 'Revisar y enviar'} onPress={sending ? () => {} : doSend} />
       </ScrollView>
       <TokenPicker visible={pick} onClose={() => setPick(false)} onPick={setTok} />
     </View>

@@ -9,7 +9,8 @@
       },
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_GENESIS_URL": "https://genesis-id.onrender.com"
+        "EXPO_PUBLIC_GENESIS_URL": "https://genesis-id.onrender.com",
+        "EXPO_PUBLIC_WALLET_API_URL": ""
       }
     },
     "production": {
@@ -17,7 +18,8 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_GENESIS_URL": "https://genesis-id.onrender.com"
+        "EXPO_PUBLIC_GENESIS_URL": "https://genesis-id.onrender.com",
+        "EXPO_PUBLIC_WALLET_API_URL": ""
       }
     }
   }

@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { C, G } from '../theme';
 import { Logo, TokenIcon, ActionBtn, IconBtn, SectionHead, useToast, useAccount, hap } from '../ui';
-import { TOKENS, TOTAL, ORIGEN_PRICE, money, qtyFmt } from '../data';
+import { TOKENS, TOTAL, ORIGEN_PRICE, money, qtyFmt, tokensFromBalances } from '../data';
 
 const ORIGEN_TOKEN = TOKENS.find((t) => t.s === 'ORIGEN');
 
@@ -17,10 +17,20 @@ export default function Home({ nav }) {
 
   const acc = account || { name: 'Cuenta', initials: 'VW', business: false, origen: 250, addr: '0x0000…0000', genesisUid: null };
   const shortAddr = acc.addr.length > 14 ? `${acc.addr.slice(0, 6)}…${acc.addr.slice(-4)}` : acc.addr;
-  // Cliente: portafolio completo. Negocio: saldo ORIGEN de sus cobros.
+  // Cuenta del backend real: usa sus balances de la blockchain.
+  // Negocio: saldo ORIGEN de sus cobros. Cliente demo: portafolio completo.
   const isBiz = acc.business;
-  const total = isBiz ? acc.origen * ORIGEN_PRICE : TOTAL;
-  const list = isBiz ? [{ ...ORIGEN_TOKEN, qty: acc.origen }] : TOKENS;
+  let list, total;
+  if (acc.fromApi) {
+    list = acc.balances && acc.balances.length ? tokensFromBalances(acc.balances) : [{ ...ORIGEN_TOKEN, qty: acc.origen || 0 }];
+    total = list.reduce((s, t) => s + t.qty * t.price, 0);
+  } else if (isBiz) {
+    list = [{ ...ORIGEN_TOKEN, qty: acc.origen }];
+    total = acc.origen * ORIGEN_PRICE;
+  } else {
+    list = TOKENS;
+    total = TOTAL;
+  }
 
   return (
     <View style={{ flex: 1 }}>
