@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, RadialGradient, Stop, Defs } from 'react-native-svg';
-import { Audio } from 'expo-av';
 import { C } from '../theme';
 import { Logo } from '../ui';
 
@@ -17,16 +16,6 @@ export default function Splash({ nav }) {
   const pop = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    let sound;
-    (async () => {
-      try {
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-        const { sound: s } = await Audio.Sound.createAsync(require('../../assets/click.wav'), { volume: 0.9 });
-        sound = s;
-        setTimeout(() => { s.replayAsync().catch(() => {}); }, 560);
-      } catch (e) {}
-    })();
-
     Animated.parallel([
       Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 5, bounciness: 11 }),
       Animated.timing(op, { toValue: 1, duration: 650, useNativeDriver: true }),
@@ -52,7 +41,7 @@ export default function Splash({ nav }) {
     Animated.timing(prog, { toValue: 1, duration: 2600, easing: Easing.inOut(Easing.cubic), useNativeDriver: false }).start();
 
     const t = setTimeout(() => nav.go('auth'), 3300);
-    return () => { clearTimeout(t); if (sound) sound.unloadAsync().catch(() => {}); };
+    return () => clearTimeout(t);
   }, []);
 
   const spin = ring.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });

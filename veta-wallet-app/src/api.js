@@ -14,7 +14,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 //   ...ver PATHS abajo.
 // ============================================================
 
-export const API_BASE = (process.env.EXPO_PUBLIC_WALLET_API_URL || '').replace(/\/$/, '') || null;
+// Backend de Veta Wallet en la nube por defecto (funciona en Expo Go y APK sin .env).
+export const API_BASE = (process.env.EXPO_PUBLIC_WALLET_API_URL || 'https://vetawallet-1a2e38ac52b1.herokuapp.com').replace(/\/$/, '') || null;
 export const USE_REAL_API = !!API_BASE;
 
 // Rutas del backend (sobre-escribibles por env sin recompilar código).
