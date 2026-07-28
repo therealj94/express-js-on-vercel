@@ -24,7 +24,7 @@ const PATHS = {
   me: process.env.EXPO_PUBLIC_WALLET_PATH_ME || '/me',
   balances: process.env.EXPO_PUBLIC_WALLET_PATH_BALANCES || '/wallet/balances',
   address: process.env.EXPO_PUBLIC_WALLET_PATH_ADDRESS || '/wallet/address',
-  send: process.env.EXPO_PUBLIC_WALLET_PATH_SEND || '/wallet/send',
+  send: process.env.EXPO_PUBLIC_WALLET_PATH_SEND || '/transaction/send',
   transactions: process.env.EXPO_PUBLIC_WALLET_PATH_TXNS || '/wallet/transactions',
   prices: process.env.EXPO_PUBLIC_WALLET_PATH_PRICES || '/prices',
 };
@@ -221,6 +221,18 @@ export async function apiPortfolio(chainIds = CHAIN_IDS) {
     });
   }
   return out;
+}
+
+// Envía una transacción vía tu backend (él la firma y la manda al RPC).
+// El backend devuelve un TransactionReceipt de ethers (hash, status, from, to).
+// NOTA: los nombres del body (to/amount/chainId) se ajustan al cURL real del envío.
+export async function apiSend({ to, amount, chainId = Number(CHAIN_IDS[0]) || 8532, symbol } = {}) {
+  const body = { to, amount: String(amount), chainId };
+  if (symbol) body.symbol = symbol;
+  const r = await walletApi.raw(walletApi.paths.send, { method: 'POST', body });
+  const hash = r?.hash || r?.transactionHash || r?.txId || null;
+  const ok = r?.status === 1 || r?.status === '1' || r?.status === true || !!hash;
+  return { hash, ok, receipt: r };
 }
 
 // Normaliza allTransfers → items para la pantalla de Actividad.

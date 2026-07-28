@@ -6,7 +6,7 @@ import Svg, { Rect } from 'react-native-svg';
 import { C, G } from '../theme';
 import { Header, TokenIcon, ActionBtn, Button3D, Card, useToast, hap } from '../ui';
 import { TOKENS, money, qtyFmt, WALLET_ADDRESS } from '../data';
-import { USE_REAL_API, walletApi } from '../api';
+import { USE_REAL_API, apiSend } from '../api';
 
 // -------- token picker modal --------
 function TokenPicker({ visible, onClose, onPick }) {
@@ -62,9 +62,10 @@ export function Send({ nav }) {
       if (!(parseFloat(amt) > 0)) { toast('Ingresa un monto válido'); return; }
       setSending(true);
       try {
-        const r = await walletApi.send(to.trim(), tok.s, parseFloat(amt), '');
-        toast(r?.txId ? `Enviado · ${String(r.txId).slice(0, 10)}…` : 'Transacción enviada');
-        setTimeout(() => nav.back(), 800);
+        const r = await apiSend({ to: to.trim(), amount: parseFloat(amt), symbol: tok.s });
+        if (r.ok) toast(r.hash ? `Enviado · ${String(r.hash).slice(0, 10)}…` : 'Transacción enviada');
+        else toast('La transacción no se confirmó');
+        setTimeout(() => nav.back(), 900);
       } catch (e) {
         toast(e.message || 'No se pudo enviar');
       } finally { setSending(false); }
