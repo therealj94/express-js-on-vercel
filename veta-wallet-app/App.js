@@ -8,7 +8,7 @@ import { LangProvider, useT } from './src/i18n';
 import * as Linking from 'expo-linking';
 import { loadSession, saveSession, clearSession, initAccounts, setPassport } from './src/accounts';
 import { loadToken, setToken, ensureSession, clearCreds } from './src/api';
-import { passportFromUrl, genesis } from './src/genesis';
+import { readReturnUrl, genesis } from './src/genesis';
 
 import Splash from './src/screens/Splash';
 import Auth from './src/screens/Auth';
@@ -77,9 +77,15 @@ function Root() {
   useEffect(() => {
     const handle = async (url) => {
       if (!url || !/genesis/i.test(url)) return;
-      const p = passportFromUrl(url);
       const acc = accountRef.current;
-      if (!p || !acc) return;
+      if (!acc) return;
+      const { token, passport } = readReturnUrl(url);
+      // Con token: se valida en el servidor (allí vive la API key del portal).
+      let p = passport;
+      if (token) {
+        p = (await genesis.validateToken(token, { email: acc.email, walletAddress: acc.addr })) || p;
+      }
+      if (!p) return;
       p.email = p.email || acc.email;
       p.walletAddress = p.walletAddress || acc.addr;
       await genesis.save(p);

@@ -5,6 +5,7 @@ import { dirname, join } from 'path'
 import { identitiesRouter } from './routes/identities.js'
 import { businessRouter } from './routes/business.js'
 import { adminRouter } from './routes/admin.js'
+import { portalRouter } from './routes/portal.js'
 import { store } from './store.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -22,6 +23,8 @@ app.get('/api', (_req, res) => res.json({ name: 'Genesis ID', tagline: 'Identida
 app.use('/api/identities', identitiesRouter)
 app.use('/api/business', businessRouter)
 app.use('/api/admin', adminRouter)
+// Puente con el portal oficial (la API key vive solo aquí, nunca en la app).
+app.use('/api/portal', portalRouter)
 
 // Utilidad de demo: reiniciar la data sembrada.
 app.post('/api/admin/reset', (_req, res) => {
