@@ -1,67 +1,55 @@
 import React, { useState } from 'react';
-import { View, Text, ImageBackground, Pressable, TextInput, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ImageBackground, Pressable, TextInput, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { C } from '../theme';
 import { Logo, Button3D, hap, useAccount, useToast } from '../ui';
-import { findAccount, ACCOUNTS, upsertApiAccount, saveSession } from '../accounts';
-import { USE_REAL_API, apiLogin, apiPortfolioOnchain } from '../api';
-
-const DEMO_CHIPS = [
-  { label: 'Cliente', email: 'cliente@mytokenpay.demo' },
-  { label: 'Café', email: 'cafe.veta@mytokenpay.demo' },
-  { label: 'Hotel', email: 'bahia.hotel@mytokenpay.demo' },
-  { label: 'Gym', email: 'ironhouse.gym@mytokenpay.demo' },
-  { label: 'Tech', email: 'nova.tech@mytokenpay.demo' },
-];
+import { upsertApiAccount, saveSession } from '../accounts';
+import { apiLogin, apiRegister, apiPortfolio, saveCreds, clearCreds } from '../api';
 
 export default function Auth({ nav }) {
   const [tab, setTab] = useState('login');
   const [showPw, setShowPw] = useState(false);
-  const [email, setEmail] = useState('cliente@mytokenpay.demo');
-  const [pw, setPw] = useState('Origen2026!');
+  const [email, setEmail] = useState('');
+  const [pw, setPw] = useState('');
   const [regName, setRegName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
+  const [remember, setRemember] = useState(true);
+  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const { login: setAccount } = useAccount();
   const toast = useToast();
   const login = tab === 'login';
 
-  const [busy, setBusy] = useState(false);
+  async function enter(kind) {
+    const mail = email.trim().toLowerCase();
+    if (!mail.includes('@')) { setErr('Ingresa un correo válido.'); return; }
+    if (!pw || pw.length < 4) { setErr('Ingresa tu contraseña.'); return; }
+    if (kind === 'register' && !regName.trim()) { setErr('Ingresa tu nombre completo.'); return; }
+    setBusy(true); setErr(null);
+    try {
+      const { user, address } = kind === 'register'
+        ? await apiRegister({ name: regName.trim(), email: mail, password: pw })
+        : await apiLogin(mail, pw);
+      if (kind === 'register') user.name = regName.trim();
 
-  async function doLogin() {
-    // Con backend real configurado: autentica contra tu blockchain/billetera web.
-    if (USE_REAL_API) {
-      setBusy(true); setErr(null);
-      try {
-        const { user, address } = await apiLogin(email, pw);
-        let balances = [];
-        try { balances = await apiPortfolioOnchain(); } catch (e) {}
-        const acc = await upsertApiAccount(user, address, balances);
-        await saveSession(acc.email);
-        setAccount(acc);
-        nav.go('home');
-        toast(`Bienvenido, ${acc.name.split(' ')[0]}`);
-      } catch (e) {
-        setErr(e.message || 'No se pudo iniciar sesión con el servidor.');
-      } finally { setBusy(false); }
-      return;
-    }
-    // Sin backend: cuentas demo del ecosistema.
-    const acc = findAccount(email, pw);
-    if (!acc) { setErr('Correo o contraseña incorrectos. Prueba una cuenta demo abajo.'); return; }
-    setErr(null);
-    setAccount(acc);
-    nav.go('home');
-    toast(`Bienvenido, ${acc.name.split(' ')[0]}`);
+      if (remember) await saveCreds(mail, pw); else await clearCreds();
+
+      // Portafolio real (saldos on-chain + historial). Si falla, entra igual
+      // con lo cacheado y se refresca en Inicio.
+      let portfolio = { balances: [], transfers: [] };
+      try { portfolio = await apiPortfolio(); } catch (e) {}
+
+      const acc = await upsertApiAccount(user, address, portfolio);
+      await saveSession(acc.email);
+      setAccount(acc);
+      nav.go('home');
+      toast(`Bienvenido, ${acc.name.split(' ')[0]}`);
+    } catch (e) {
+      setErr(e.message === 'API no configurada' ? 'Sin conexión con el servidor.' : (e.message || 'No se pudo completar. Intenta de nuevo.'));
+    } finally { setBusy(false); }
   }
-  function quick(e) {
-    const acc = ACCOUNTS.find((a) => a.email === e);
-    if (!acc) return;
-    hap(); setEmail(acc.email); setPw(acc.password); setErr(null);
-    setAccount(acc); nav.go('home'); toast(`Bienvenido, ${acc.name.split(' ')[0]}`);
-  }
+
   return (
     <ImageBackground source={require('../../assets/login-bg.jpg')} style={{ flex: 1 }} resizeMode="cover">
       <LinearGradient colors={['rgba(9,55,52,0.55)', 'rgba(3,20,21,0.82)']} style={StyleSheet.absoluteFill} />
@@ -76,54 +64,48 @@ export default function Auth({ nav }) {
           <View style={styles.glassInner}>
             <View style={styles.seg}>
               {['login', 'register'].map((k) => (
-                <Pressable key={k} onPress={() => { hap(); setTab(k); }} style={[styles.segBtn, tab === k && styles.segOn]}>
+                <Pressable key={k} onPress={() => { hap(); setTab(k); setErr(null); }} style={[styles.segBtn, tab === k && styles.segOn]}>
                   <Text style={[styles.segTxt, tab === k && styles.segTxtOn]}>{k === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}</Text>
                 </Pressable>
               ))}
             </View>
 
             {!login && <Input label="Nombre completo" placeholder="Tu nombre" value={regName} onChangeText={setRegName} />}
-            <Input label="Correo electrónico" placeholder="tu@correo.com" value={login ? email : regEmail} onChangeText={login ? setEmail : setRegEmail} keyboardType="email-address" autoCapitalize="none" />
+            <Input label="Correo electrónico" placeholder="tu@correo.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
             <View style={{ marginBottom: 6 }}>
               <Text style={styles.label}>Contraseña</Text>
               <View>
-                <TextInput placeholderTextColor="#6f938f" secureTextEntry={!showPw} value={pw} onChangeText={setPw} placeholder="••••••••" style={[styles.input, { paddingRight: 44 }]} />
+                <TextInput placeholderTextColor="#6f938f" secureTextEntry={!showPw} value={pw} onChangeText={setPw} placeholder="••••••••" autoCapitalize="none" style={[styles.input, { paddingRight: 44 }]} />
                 <Pressable onPress={() => setShowPw(!showPw)} style={styles.eye}>
                   <Ionicons name={showPw ? 'eye-off' : 'eye'} size={20} color={C.txt2} />
                 </Pressable>
               </View>
             </View>
 
+            <Pressable onPress={() => { hap(); setRemember(!remember); }} style={styles.rememberRow}>
+              <View style={[styles.checkbox, remember && { backgroundColor: C.gold, borderColor: C.gold }]}>
+                {remember && <Ionicons name="checkmark" size={13} color={C.darkText} />}
+              </View>
+              <Text style={styles.rememberTxt}>Mantener mi sesión iniciada</Text>
+            </Pressable>
+
             {err && <Text style={styles.err}>{err}</Text>}
 
-            {login ? (
-              <Text style={styles.forgot}>¿Olvidaste tu contraseña?</Text>
-            ) : (
-              <Text style={styles.terms}>Crea tu cuenta y verifícate con Genesis ID, la identidad del ecosistema.</Text>
+            {!login && (
+              <Text style={styles.terms}>
+                Tu cuenta se crea en la blockchain de Orden Global. Después podrás vincular tu Genesis ID desde Ajustes (opcional).
+              </Text>
             )}
 
             <Button3D
-              title={login ? (busy ? 'Ingresando…' : 'Ingresar') : 'Verificar con Genesis ID'}
-              onPress={login ? (busy ? () => {} : doLogin) : () => {
-                if (!regEmail.includes('@')) { setErr('Ingresa un correo válido para tu Genesis ID.'); return; }
-                setErr(null);
-                nav.go('kyc', { register: { name: regName || 'Nuevo usuario', email: regEmail, password: pw } });
-              }}
+              title={busy ? (login ? 'Ingresando…' : 'Creando cuenta…') : (login ? 'Ingresar' : 'Crear mi cuenta')}
+              onPress={busy ? () => {} : () => enter(login ? 'login' : 'register')}
               style={{ marginTop: 8 }}
             />
+            {busy && <ActivityIndicator color={C.gold} style={{ marginTop: 14 }} />}
 
             {login && (
-              <>
-                <View style={styles.divider}><View style={styles.dline} /><Text style={styles.dtxt}>cuentas demo</Text><View style={styles.dline} /></View>
-                <View style={styles.chips}>
-                  {DEMO_CHIPS.map((c) => (
-                    <Pressable key={c.email} onPress={() => quick(c.email)} style={styles.chip}>
-                      <Text style={styles.chipTxt}>{c.label}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <Text style={styles.demoHint}>Café, Hotel, Gym y Tech son cuentas de negocio con su propio saldo.</Text>
-              </>
+              <Text style={styles.forgot}>¿Olvidaste tu contraseña? Recupérala en vetawallet.com</Text>
             )}
           </View>
         </BlurView>
@@ -139,14 +121,6 @@ function Input({ label, ...props }) {
       <Text style={styles.label}>{label}</Text>
       <TextInput placeholderTextColor="#6f938f" style={styles.input} {...props} />
     </View>
-  );
-}
-function Social({ icon, label }) {
-  return (
-    <Pressable onPress={hap} style={styles.social}>
-      <Ionicons name={icon} size={17} color={C.gold} style={{ marginRight: 7 }} />
-      <Text style={{ color: C.txt, fontWeight: '600', fontSize: 13 }}>{label}</Text>
-    </Pressable>
   );
 }
 
@@ -165,16 +139,11 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, color: C.txt2, marginBottom: 7, fontWeight: '500' },
   input: { backgroundColor: 'rgba(12,58,59,0.75)', borderWidth: 1.5, borderColor: 'rgba(46,116,119,0.5)', borderRadius: 14, paddingHorizontal: 15, paddingVertical: 14, color: C.txt, fontSize: 15 },
   eye: { position: 'absolute', right: 12, top: 12, padding: 2 },
-  forgot: { color: C.gold, fontWeight: '600', fontSize: 13, textAlign: 'right', marginVertical: 14 },
-  err: { color: C.down, fontSize: 12.5, marginTop: 2, marginBottom: 8 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
-  chip: { backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(201,169,97,0.3)', borderRadius: 999, paddingHorizontal: 15, paddingVertical: 9 },
-  chipTxt: { color: C.txt, fontWeight: '600', fontSize: 12.5 },
-  demoHint: { color: 'rgba(243,236,217,0.6)', fontSize: 10.5, textAlign: 'center', marginTop: 10 },
-  terms: { color: C.txt2, fontSize: 12, marginVertical: 14, lineHeight: 17 },
-  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 16 },
-  dline: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
-  dtxt: { color: C.txt3, fontSize: 12 },
-  social: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 13, paddingVertical: 12 },
+  rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 12, marginBottom: 4 },
+  checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: 'rgba(201,169,97,0.5)', alignItems: 'center', justifyContent: 'center' },
+  rememberTxt: { color: C.txt2, fontSize: 12.5 },
+  err: { color: '#F0776B', fontSize: 12.5, marginTop: 8 },
+  forgot: { color: 'rgba(243,236,217,0.65)', fontSize: 12, textAlign: 'center', marginTop: 16 },
+  terms: { color: C.txt2, fontSize: 12, marginVertical: 12, lineHeight: 17 },
   foot: { color: 'rgba(243,236,217,0.7)', fontSize: 12, textAlign: 'center', marginTop: 18 },
 });

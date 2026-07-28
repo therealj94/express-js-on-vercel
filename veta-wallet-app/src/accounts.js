@@ -1,52 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ORIGEN_PRICE } from './data';
 
-// Cuentas reales del ecosistema (mismas que MyTokenPay y el motor Genesis ID).
-// Cada una entra a Veta Wallet con su correo/contraseña y ve SU saldo ORIGEN.
-// Los saldos de negocio reflejan los cobros sembrados en MyTokenPay.
-export const ACCOUNTS = [
-  {
-    email: 'cliente@mytokenpay.demo', password: 'Origen2026!', name: 'José Cliente', initials: 'JC',
-    business: false, genesisUid: 'GEN-1100-2200', origen: 21.28, addr: '0x7F2a9c4B1eD8f3A05b6C4d2C7e9F1a3B',
-    since: 'mar 2026',
-  },
-  {
-    email: 'cafe.veta@mytokenpay.demo', password: 'Cafe2026!', name: 'Carmen Aguilar', initials: 'CV',
-    business: true, biz: 'Café Veta Roasters', genesisUid: 'GEN-1101-2201', bizUid: 'GNB-1101-2201',
-    origen: 12.34, addr: '0xCAFE7a2290Ef1120Bd8843aa77b6c9014E', since: 'ene 2026',
-  },
-  {
-    email: 'bahia.hotel@mytokenpay.demo', password: 'Hotel2026!', name: 'Diego Martínez', initials: 'BE',
-    business: true, biz: 'Bahía Esmeralda Hotel', genesisUid: 'GEN-1102-2202', bizUid: 'GNB-1102-2202',
-    origen: 164.6, addr: '0xB4H1a55120Cd7781Ee2290aa4471c9d033', since: 'feb 2026',
-  },
-  {
-    email: 'ironhouse.gym@mytokenpay.demo', password: 'Gym2026!', name: 'Sofía Ramírez', initials: 'IG',
-    business: true, biz: 'Ironhouse Gym', genesisUid: 'GEN-1103-2203', bizUid: 'GNB-1103-2203',
-    origen: 17.87, addr: '0x1R0N7781Aa2290Bd4471Ee9c0143d8820F', since: 'ene 2026',
-  },
-  {
-    email: 'nova.tech@mytokenpay.demo', password: 'Tech2026!', name: 'Marco Flores', initials: 'NT',
-    business: true, biz: 'Nova Tech Center', genesisUid: 'GEN-1104-2204', bizUid: 'GNB-1104-2204',
-    origen: 31.49, addr: '0xN0VA2290Bd7781Aa4471Ee9c0143d8299C', since: 'mar 2026',
-  },
-];
+// Cuentas REALES de Veta Wallet. No hay cuentas demo: cada registro viene del
+// backend oficial de Orden Global. Aquí solo se cachea la cuenta en el
+// dispositivo para abrir la app al instante y sobrevivir sin conexión.
 
-// Cuentas creadas por el usuario vía Genesis ID (persistidas). Se cargan al
-// arrancar la app para que el login y la sesión las reconozcan.
-let DYNAMIC = [];
-const DYN_KEY = 'veta-dynamic-accounts';
+let CACHE = [];
+const CACHE_KEY = 'veta-accounts-cache-v2';
 
 export async function initAccounts() {
   try {
-    const raw = await AsyncStorage.getItem(DYN_KEY);
-    DYNAMIC = raw ? JSON.parse(raw) : [];
-  } catch (e) { DYNAMIC = []; }
-  return DYNAMIC;
+    const raw = await AsyncStorage.getItem(CACHE_KEY);
+    CACHE = raw ? JSON.parse(raw) : [];
+  } catch (e) { CACHE = []; }
+  return CACHE;
 }
 
-function allAccounts() {
-  return [...ACCOUNTS, ...DYNAMIC];
+async function persist() {
+  try { await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(CACHE)); } catch (e) {}
 }
 
 function initialsFrom(name) {
@@ -56,82 +26,69 @@ function initialsFrom(name) {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-// Crea una cuenta real desde el flujo Genesis ID (registro nuevo).
-export async function createAccount({ name, email, password, genesisUid }) {
-  const e = (email || '').toLowerCase().trim();
-  const existing = allAccounts().find((a) => a.email === e);
-  if (existing) return existing;
-  const acc = {
-    email: e,
-    password: password || 'origen',
-    name: name || 'Nuevo usuario',
-    initials: initialsFrom(name),
-    business: false,
-    genesisUid: genesisUid || null,
-    origen: 21.28, // ≈ $50 de bienvenida en ORIGEN para compras
-    addr: '0x' + Math.random().toString(16).slice(2, 10).toUpperCase() + '…' + Math.random().toString(16).slice(2, 6).toUpperCase(),
-    since: new Date().toLocaleDateString('es-HN', { month: 'short', year: 'numeric' }),
-    createdByGenesis: true,
-  };
-  DYNAMIC.push(acc);
-  try { await AsyncStorage.setItem(DYN_KEY, JSON.stringify(DYNAMIC)); } catch (er) {}
-  return acc;
-}
-
-// Construye/actualiza una cuenta a partir de la respuesta del backend real
-// (billetera web). Se persiste para que la sesión la reconozca al reabrir.
-export async function upsertApiAccount(user, address, balances) {
-  const email = (user?.email || user?.correo || '').toLowerCase().trim();
-  const name = user?.name || user?.fullName || user?.nombre || 'Mi cuenta';
-  // Saldo ORIGEN si viene en los balances normalizados.
-  let origen = 0;
-  if (Array.isArray(balances)) {
-    const o = balances.find((b) => (b.symbol || '').toUpperCase() === 'ORIGEN');
-    if (o) origen = Number(o.qty) || 0;
-  }
-  const acc = {
-    email: email || 'usuario@ordenglobal',
-    password: null,
-    name,
-    initials: initialsFrom(name),
-    business: !!(user?.business || user?.isBusiness || user?.negocio),
-    biz: user?.businessName || user?.biz || undefined,
-    genesisUid: user?.genesisUid || user?.uid || null,
-    origen,
-    addr: address || user?.address || user?.wallet || '0x0000…0000',
-    since: user?.since || new Date().toLocaleDateString('es-HN', { month: 'short', year: 'numeric' }),
-    fromApi: true,
-    balances: Array.isArray(balances) ? balances.map(({ transfers, ...b }) => b) : [],
-    // Historial combinado de todas las chains (para la pantalla Actividad).
-    transfers: Array.isArray(balances)
-      ? balances.flatMap((b) => (b.transfers || []).map((t) => ({ ...t, symbol: b.symbol })))
-          .sort((a, z) => Number(z.timeStamp || 0) - Number(a.timeStamp || 0))
-      : [],
-    raw: user || null,
-  };
-  // Reemplaza cualquier cuenta previa con el mismo correo en DYNAMIC.
-  DYNAMIC = DYNAMIC.filter((a) => a.email !== acc.email);
-  DYNAMIC.push(acc);
-  try { await AsyncStorage.setItem(DYN_KEY, JSON.stringify(DYNAMIC)); } catch (e) {}
-  return acc;
-}
-
-export function findAccount(email, password) {
-  const e = (email || '').toLowerCase().trim();
-  return allAccounts().find((a) => a.email === e && a.password === password) || null;
-}
-
 export function accountByEmail(email) {
   const e = (email || '').toLowerCase().trim();
-  return allAccounts().find((a) => a.email === e) || null;
+  return CACHE.find((a) => a.email === e) || null;
 }
 
-export const usd = (origen) => origen * ORIGEN_PRICE;
+// Crea/actualiza la cuenta local a partir del login real + portafolio on-chain.
+// Conserva los datos de perfil ya guardados (nombre, teléfono, etc.).
+export async function upsertApiAccount(user, address, portfolio) {
+  const email = (user?.email || '').toLowerCase().trim();
+  const prev = accountByEmail(email) || {};
+  const balances = Array.isArray(portfolio?.balances) ? portfolio.balances : [];
+  const transfers = Array.isArray(portfolio?.transfers) ? portfolio.transfers : [];
+  const name = prev.name && prev.name !== emailName(email)
+    ? prev.name
+    : (user?.name || user?.fullName || prev.name || emailName(email));
+
+  const acc = {
+    ...prev,
+    email,
+    name,
+    initials: initialsFrom(name),
+    addr: address || user?.address || prev.addr || null,
+    userId: user?.userId || prev.userId || null,
+    role: user?.role || prev.role || 'user',
+    verify: user?.verify ?? prev.verify ?? false,
+    genesisUid: prev.genesisUid || null,
+    balances,
+    transfers,
+    since: prev.since || new Date().toLocaleDateString('es-HN', { month: 'short', year: 'numeric' }),
+    fromApi: true,
+    updatedAt: Date.now(),
+  };
+  CACHE = CACHE.filter((a) => a.email !== email);
+  CACHE.push(acc);
+  await persist();
+  return acc;
+}
+
+function emailName(email) {
+  const base = (email || '').split('@')[0] || 'Mi cuenta';
+  return base.charAt(0).toUpperCase() + base.slice(1);
+}
+
+// Actualiza campos de perfil (nombre, teléfono, país...) en la cuenta local.
+export async function updateAccount(email, patch) {
+  const e = (email || '').toLowerCase().trim();
+  const acc = accountByEmail(e);
+  if (!acc) return null;
+  Object.assign(acc, patch);
+  if (patch.name) acc.initials = initialsFrom(patch.name);
+  await persist();
+  return acc;
+}
+
+// Vincula el Genesis ID (opcional) a la cuenta.
+export async function setGenesisUid(email, genesisUid) {
+  return updateAccount(email, { genesisUid });
+}
 
 // ---- sesión persistida ----
 const SESSION_KEY = 'veta-session-email';
 export async function saveSession(email) {
-  try { await AsyncStorage.setItem(SESSION_KEY, email); } catch (e) {}
+  try { await AsyncStorage.setItem(SESSION_KEY, (email || '').toLowerCase().trim()); } catch (e) {}
 }
 export async function loadSession() {
   try {

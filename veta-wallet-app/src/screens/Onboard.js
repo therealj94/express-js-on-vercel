@@ -4,9 +4,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { C } from '../theme';
 import { Header, Button3D, Card, hap, useToast, useAccount } from '../ui';
-import { WALLET_SEED } from '../data';
 import { genesis } from '../genesis';
-import { createAccount } from '../accounts';
+import { setGenesisUid } from '../accounts';
+import { getSeed } from '../api';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const SCAN_SECONDS = 30;
@@ -39,13 +39,11 @@ async function saveGenesis(state) {
 export function Kyc({ nav, params }) {
   const toast = useToast();
   const { account, login: loginAccount } = useAccount();
-  const register = params && params.register; // registro nuevo desde Auth
-  // Si ya hay sesión (reverificación desde Ajustes) volvemos a la app;
-  // si es registro nuevo, seguimos a crear la billetera (ya con sesión).
-  const doneDest = account ? 'home' : 'seedIntro';
+  // Vinculación opcional: se entra desde Ajustes con la sesión ya iniciada.
+  const doneDest = account ? 'passport' : 'auth';
   const backDest = account ? 'settings' : 'auth';
   const [step, setStep] = useState('loading'); // loading|email|doc-front|doc-back|face|processing|review24|done
-  const [email, setEmail] = useState(register ? register.email : '');
+  const [email, setEmail] = useState(account ? account.email : '');
   const [uid, setUid] = useState(null);
   const [resumed, setResumed] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(SCAN_SECONDS);
@@ -114,14 +112,14 @@ export function Kyc({ nav, params }) {
   useEffect(() => {
     if (step !== 'processing') return;
     const t = setTimeout(async () => {
-      // Procesa en el motor Genesis real (dispositivo + backend si hay URL) y usa su UID.
+      // Procesa en el motor Genesis real (backend en la nube) y usa su UID real.
       const rec = await genesis.process(email);
       const newUid = (rec && rec.genesisUid) || ('GEN-' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(1000 + Math.random() * 9000));
       setUid(newUid);
-      // Registro nuevo: crea la cuenta REAL con esta identidad y deja la sesión iniciada.
-      if (register && !account) {
-        const acc = await createAccount({ name: register.name, email, password: register.password, genesisUid: newUid });
-        loginAccount(acc);
+      // Vincula el Genesis ID a la cuenta Veta Wallet actual.
+      if (account) {
+        const updated = await setGenesisUid(account.email, newUid);
+        if (updated) loginAccount(updated);
       }
       saveGenesis({ step: 'done', email, uid: newUid, verifiedAt: new Date().toISOString() });
       setStep('done');
@@ -289,7 +287,7 @@ export function Kyc({ nav, params }) {
                 <Text style={st.uidTxt}>{uid}</Text>
               </View>
             )}
-            <Button3D title={account ? 'Volver a la app' : 'Continuar a mi billetera'} icon="arrow-forward" onPress={() => nav.go(doneDest)} style={{ alignSelf: 'stretch', marginTop: 20 }} />
+            <Button3D title="Ver mi pasaporte" icon="arrow-forward" onPress={() => nav.go(doneDest)} style={{ alignSelf: 'stretch', marginTop: 20 }} />
             <Text style={st.redirect}>Continuando automáticamente en {redirectIn} s…</Text>
           </View>
         )}
@@ -334,72 +332,64 @@ function Spinner() {
   );
 }
 
-// ---------------- Frase semilla (crear) ----------------
-export function Seed({ nav }) {
-  const [revealed, setRevealed] = useState(false);
-  const [ack, setAck] = useState(false);
-  return (
-    <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header title="Frase de recuperación" onBack={() => nav.go('kyc')} />
-      <ScrollView contentContainerStyle={{ padding: 22 }}>
-        <View style={st.heroIcon}><Ionicons name="lock-closed" size={30} color={C.gold} /></View>
-        <Text style={[st.h1, { textAlign: 'center' }]}>Tu llave maestra</Text>
-        <Text style={[st.body, { textAlign: 'center' }]}>
-          Estas 12 palabras son la única forma de recuperar tu billetera. Guárdalas en orden y en un lugar seguro.
-        </Text>
-        <View style={st.warn}>
-          <Ionicons name="warning" size={20} color={C.down} />
-          <Text style={st.warnTxt}>Nunca compartas tu frase. Veta jamás te la pedirá.</Text>
-        </View>
-        <SeedGrid revealed={revealed} onReveal={() => { hap(); setRevealed(true); }} />
-        <Pressable onPress={() => { hap(); setAck(!ack); }} style={st.ackRow}>
-          <View style={[st.checkbox, ack && { backgroundColor: C.gold, borderColor: C.gold }]}>
-            {ack && <Ionicons name="checkmark" size={14} color={C.darkText || '#3A2C08'} />}
-          </View>
-          <Text style={st.ackTxt}>Ya guardé mi frase en un lugar seguro.</Text>
-        </Pressable>
-        <Button3D title="Continuar a mi billetera" disabled={!revealed || !ack} onPress={() => nav.go('home')} />
-      </ScrollView>
-    </View>
-  );
-}
-
-// ---------------- Frase semilla (ver desde el menú) ----------------
+// ---------------- Frase semilla (REAL, desde el backend) ----------------
 export function SeedView({ nav }) {
-  const [revealed, setRevealed] = useState(false);
-  const toast = useToast();
+  const [state, setState] = useState('hidden'); // hidden | loading | shown | unavailable
+  const [words, setWords] = useState([]);
+
+  async function reveal() {
+    hap();
+    setState('loading');
+    const phrase = await getSeed();
+    if (phrase) { setWords(phrase.split(/\s+/)); setState('shown'); }
+    else setState('unavailable');
+  }
+
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title="Frase de recuperación" onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }}>
         <View style={st.warn}>
           <Ionicons name="warning" size={20} color={C.down} />
-          <Text style={st.warnTxt}>Cualquiera con estas 12 palabras controla tus fondos. No hagas capturas de pantalla.</Text>
+          <Text style={st.warnTxt}>Cualquiera con estas palabras controla tus fondos. No hagas capturas de pantalla ni las compartas.</Text>
         </View>
-        <SeedGrid revealed={revealed} onReveal={() => { hap(); setRevealed(true); }} />
-        <Button3D variant="ghost" title="Copiar frase" icon="copy" onPress={() => { hap(); toast('Frase copiada'); }} />
-      </ScrollView>
-    </View>
-  );
-}
 
-function SeedGrid({ revealed, onReveal }) {
-  return (
-    <View style={{ position: 'relative', marginBottom: 18, marginTop: 16 }}>
-      <View style={st.grid}>
-        {WALLET_SEED.map((w, i) => (
-          <View key={i} style={st.cell}>
-            <Text style={st.cellNo}>{i + 1}</Text>
-            <Text style={st.cellWord}>{revealed ? w : '••••••'}</Text>
+        {state === 'shown' ? (
+          <View style={[st.grid, { marginTop: 16, marginBottom: 18 }]}>
+            {words.map((w, i) => (
+              <View key={i} style={st.cell}>
+                <Text style={st.cellNo}>{i + 1}</Text>
+                <Text style={st.cellWord}>{w}</Text>
+              </View>
+            ))}
           </View>
-        ))}
-      </View>
-      {!revealed && (
-        <Pressable onPress={onReveal} style={st.revealOverlay}>
-          <Ionicons name="eye" size={30} color={C.gold} />
-          <Text style={{ color: C.txt2, fontWeight: '600', marginTop: 8 }}>Toca para revelar tu frase</Text>
-        </Pressable>
-      )}
+        ) : state === 'unavailable' ? (
+          <Card style={{ padding: 18, marginVertical: 16 }}>
+            <Text style={{ color: C.txt, fontWeight: '700', fontSize: 15, marginBottom: 8 }}>Disponible en la billetera web</Text>
+            <Text style={{ color: C.txt2, fontSize: 12.5, lineHeight: 19 }}>
+              Tu frase está custodiada de forma segura por Orden Global y por ahora se consulta desde
+              vetawallet.com → Settings → Seed. Pronto podrás verla también aquí.
+            </Text>
+          </Card>
+        ) : (
+          <View style={[st.grid, { marginTop: 16, marginBottom: 18 }]}>
+            {Array.from({ length: 12 }).map((_, i) => (
+              <View key={i} style={st.cell}>
+                <Text style={st.cellNo}>{i + 1}</Text>
+                <Text style={st.cellWord}>••••••</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {state !== 'shown' && (
+          <Button3D
+            title={state === 'loading' ? 'Consultando…' : 'Revelar mi frase'}
+            icon="eye"
+            onPress={state === 'loading' ? () => {} : reveal}
+          />
+        )}
+      </ScrollView>
     </View>
   );
 }

@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { C, G } from '../theme';
 import { Logo, Button3D, ListRow, Toggle, SectionHead, useToast, useAccount, hap } from '../ui';
-import { TXNS } from '../data';
 
 // Deriva 4 dígitos estables desde la dirección de la billetera.
 function last4(addr) {
@@ -76,31 +75,25 @@ export default function CardScreen({ nav }) {
           </Animated.View>
         </Pressable>
 
-        <View style={styles.hint}><Ionicons name="sync" size={13} color={C.txt3} /><Text style={styles.hintTxt}>Toca la tarjeta para ver el reverso y el CVV</Text></View>
+        <View style={styles.hint}><Ionicons name="sync" size={13} color={C.txt3} /><Text style={styles.hintTxt}>Toca la tarjeta para ver el reverso</Text></View>
 
-        <LinearGradient colors={G.green} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avail}>
-          <View>
-            <Text style={styles.availLbl}>DISPONIBLE PARA GASTAR</Text>
-            <Text style={styles.availAmt}>$2,000.00</Text>
+        <View style={styles.stateRow}>
+          <View style={[styles.stateBadge, { backgroundColor: frozen ? 'rgba(240,119,107,0.13)' : 'rgba(62,217,160,0.13)' }]}>
+            <Ionicons name={frozen ? 'snow' : 'checkmark-circle'} size={13} color={frozen ? C.down : C.up} />
+            <Text style={[styles.stateTxt, { color: frozen ? C.down : C.up }]}>{frozen ? 'CONGELADA' : 'ACTIVA'}</Text>
           </View>
-          <View style={{ width: 130 }}><Button3D title="Recargar" onPress={() => nav.go('remit')} /></View>
-        </LinearGradient>
-
-        <View style={styles.group}>
-          <ListRow first icon="eye" title="Ver datos de tarjeta" sub="Número, CVV y vencimiento" onPress={() => toast('Datos visibles por 30s')} />
-          <ListRow icon="snow" title="Congelar tarjeta" sub="Bloqueo temporal instantáneo" onPress={() => {}} right={<Toggle value={frozen} onValueChange={(v) => { setFrozen(v); toast(v ? 'Tarjeta congelada' : 'Tarjeta activa'); }} />} />
-          <ListRow icon="keypad" title="Cambiar PIN" sub="Actualiza tu PIN de 4 dígitos" onPress={() => toast('Cambiar PIN')} />
-          <ListRow icon="options" title="Límites de gasto" sub="ATM, compras y online" onPress={() => toast('Límites')} right={<Text style={{ color: C.gold, fontWeight: '600' }}>$5,000/día</Text>} />
         </View>
 
-        <SectionHead title="Movimientos" action="Ver todo" onAction={() => nav.go('activity')} />
-        {TXNS.filter((x) => x.kind === 'card').slice(0, 5).map((x, i) => (
-          <View key={i} style={styles.txn}>
-            <View style={styles.txnIc}><Ionicons name={x.ic} size={19} color={C.gold} /></View>
-            <View style={{ flex: 1 }}><Text style={styles.txnT}>{x.t}</Text><Text style={styles.txnD}>{x.d}</Text></View>
-            <Text style={[styles.txnV, x.pos && { color: C.up }]}>{x.v}</Text>
-          </View>
-        ))}
+        <View style={styles.group}>
+          <ListRow first icon="snow" title="Congelar tarjeta" sub="Bloqueo temporal instantáneo" onPress={() => {}} right={<Toggle value={frozen} onValueChange={(v) => { setFrozen(v); toast(v ? 'Tarjeta congelada' : 'Tarjeta activa'); }} />} />
+          <ListRow icon="globe" title="Gestionar mi tarjeta" sub="Datos, PIN y límites en vetawallet.com" onPress={() => toast('Gestión completa en vetawallet.com')} />
+        </View>
+
+        <SectionHead title="Movimientos" action="Actividad" onAction={() => nav.go('activity')} />
+        <View style={styles.emptyBox}>
+          <Ionicons name="card" size={26} color={C.txt3} />
+          <Text style={styles.emptyTxt}>Los consumos de tu tarjeta aparecerán aquí.</Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -141,9 +134,11 @@ const styles = StyleSheet.create({
   backTxt: { fontSize: 9, color: 'rgba(243,236,217,0.6)', lineHeight: 13 },
   hint: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 16, marginBottom: 16 },
   hintTxt: { fontSize: 11, color: C.txt3 },
-  avail: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 22, padding: 18, borderWidth: 1, borderColor: C.line, marginBottom: 16 },
-  availLbl: { fontSize: 10, letterSpacing: 2, color: C.gold, fontWeight: '600' },
-  availAmt: { fontSize: 27, fontWeight: '800', color: C.goldHi, marginTop: 4 },
+  stateRow: { alignItems: 'center', marginBottom: 16 },
+  stateBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
+  stateTxt: { fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },
+  emptyBox: { alignItems: 'center', gap: 8, backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 22 },
+  emptyTxt: { color: C.txt3, fontSize: 12.5 },
   group: { backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderRadius: 18, overflow: 'hidden', marginBottom: 6 },
   txn: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 11 },
   txnIc: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.panel2, alignItems: 'center', justifyContent: 'center' },

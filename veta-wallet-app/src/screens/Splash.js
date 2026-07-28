@@ -3,9 +3,12 @@ import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, RadialGradient, Stop, Defs } from 'react-native-svg';
 import { C } from '../theme';
-import { Logo } from '../ui';
+import { Logo, useAccount } from '../ui';
 
 export default function Splash({ nav }) {
+  const { account } = useAccount();
+  const accountRef = useRef(account);
+  accountRef.current = account;
   const scale = useRef(new Animated.Value(0.55)).current;
   const op = useRef(new Animated.Value(0)).current;
   const ring = useRef(new Animated.Value(0)).current;
@@ -40,7 +43,8 @@ export default function Splash({ nav }) {
     ]).start();
     Animated.timing(prog, { toValue: 1, duration: 2600, easing: Easing.inOut(Easing.cubic), useNativeDriver: false }).start();
 
-    const t = setTimeout(() => nav.go('auth'), 3300);
+    // Si hay sesión guardada entra directo a Inicio; si no, al login.
+    const t = setTimeout(() => nav.go(accountRef.current ? 'home' : 'auth'), 3300);
     return () => clearTimeout(t);
   }, []);
 

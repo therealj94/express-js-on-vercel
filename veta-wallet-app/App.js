@@ -5,21 +5,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { C } from './src/theme';
 import { Nav, ToastCtx, AccountCtx } from './src/ui';
 import { loadSession, saveSession, clearSession, initAccounts } from './src/accounts';
-import { loadToken, setToken } from './src/api';
+import { loadToken, setToken, ensureSession, clearCreds } from './src/api';
 
 import Splash from './src/screens/Splash';
 import Auth from './src/screens/Auth';
-import { Kyc, Seed, SeedView } from './src/screens/Onboard';
+import { Kyc, SeedView } from './src/screens/Onboard';
 import Home from './src/screens/Home';
 import TokenDetail from './src/screens/TokenDetail';
 import { Send, Receive, Buy, Swap } from './src/screens/Trade';
 import CardScreen from './src/screens/Card';
-import { Remit, Activity, Notifications, Earn, Settings, Profile, MyTokenPay, Passport, Blocked, PrivateKey } from './src/screens/More';
+import { Activity, Notifications, Settings, Profile, MyTokenPay, Passport, Blocked, PrivateKey } from './src/screens/More';
 
 const SCREENS = {
-  splash: Splash, auth: Auth, kyc: Kyc, seed: Seed, seedview: SeedView,
+  splash: Splash, auth: Auth, kyc: Kyc, seedview: SeedView,
   home: Home, token: TokenDetail, send: Send, receive: Receive, buy: Buy, swap: Swap,
-  card: CardScreen, remit: Remit, activity: Activity, notifs: Notifications, earn: Earn, settings: Settings,
+  card: CardScreen, activity: Activity, notifs: Notifications, settings: Settings,
   profile: Profile, mytokenpay: MyTokenPay, passport: Passport, blocked: Blocked, privatekey: PrivateKey,
 };
 const TABS = [
@@ -39,14 +39,23 @@ export default function App() {
   const cur = stack[stack.length - 1];
   const anim = useRef(new Animated.Value(0)).current;
 
+  // Arranque: restaura la sesión guardada y renueva el token en silencio
+  // (con "Recordarme" el JWT vencido se renueva solo — la app no te saca).
   useEffect(() => {
-    loadToken();
-    initAccounts().then(() => loadSession()).then((a) => { if (a) setAccount(a); });
+    (async () => {
+      await loadToken();
+      await initAccounts();
+      const saved = await loadSession();
+      if (saved) {
+        setAccount(saved);
+        ensureSession(); // renueva el JWT en segundo plano si expiró
+      }
+    })();
   }, []);
   const acctApi = {
     account,
     login: (a) => { setAccount(a); saveSession(a.email); },
-    logout: () => { setAccount(null); clearSession(); setToken(null); },
+    logout: () => { setAccount(null); clearSession(); setToken(null); clearCreds(); },
   };
 
   const go = useCallback((r, params) => {

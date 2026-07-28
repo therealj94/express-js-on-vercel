@@ -1,151 +1,34 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { C, G } from '../theme';
-import { Header, Logo, TokenIcon, Button3D, Card, ListRow, Toggle, SectionHead, useToast, useAccount, hap } from '../ui';
-import { TXNS, NOTIFS, TOKENS, money, qtyFmt } from '../data';
+import { Header, Button3D, ListRow, Toggle, useToast, useAccount, hap } from '../ui';
+import { money, qtyFmt } from '../data';
+import { getPrivateKey } from '../api';
+import { updateAccount } from '../accounts';
 
-// ================= REMESAS =================
-export function Remit({ nav }) {
-  const [tab, setTab] = useState('in');
-  const [target, setTarget] = useState('origen');
-  const toast = useToast();
-  return (
-    <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header title="Remesas" onBack={() => nav.back()} />
-      <ScrollView contentContainerStyle={{ padding: 22 }} keyboardShouldPersistTaps="handled">
-        <LinearGradient colors={G.green} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
-          <LinearGradient colors={G.gold} style={styles.heroIc}><Ionicons name="globe" size={24} color={C.darkText} /></LinearGradient>
-          <Text style={styles.heroT}>Remesas sin fronteras</Text>
-          <Text style={styles.heroP}>Recibe dinero del exterior y conviértelo a ORIGEN o directo a tu tarjeta débito, al instante.</Text>
-          <View style={styles.flow}>
-            <FlowNode icon="cash" label="USD" />
-            <Ionicons name="arrow-forward" size={18} color={C.gold} />
-            <FlowNode logo label="ORIGEN" />
-            <Ionicons name="arrow-forward" size={18} color={C.gold} />
-            <FlowNode icon="card" label="Tarjeta" />
-          </View>
-        </LinearGradient>
-
-        <View style={styles.seg}>
-          {[['in', 'Recibir remesa'], ['out', 'Enviar remesa']].map(([k, l]) => (
-            <Pressable key={k} onPress={() => { hap(); setTab(k); }} style={[styles.segBtn, tab === k && styles.segOn]}>
-              <Text style={[styles.segTxt, tab === k && { color: C.darkText }]}>{l}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {tab === 'in' ? (
-          <>
-            <View style={styles.bigInput}><TextInput defaultValue="250" keyboardType="decimal-pad" style={styles.amtIn} /><Text style={styles.cur}>USD a recibir</Text></View>
-            <View style={{ flexDirection: 'row', gap: 11, marginBottom: 14 }}>
-              <Mcc active={target === 'origen'} onPress={() => { hap(); setTarget('origen'); }} logo title="A ORIGEN" sub="+106.4 ORIGEN" />
-              <Mcc active={target === 'card'} onPress={() => { hap(); setTarget('card'); }} icon="card" title="A tarjeta" sub="Gasta al instante" />
-            </View>
-            <Text style={styles.label}>Remitente</Text>
-            <TextInput placeholder="Nombre de quien envía" placeholderTextColor="#6f938f" style={styles.input} />
-            <Card style={{ padding: 14, marginVertical: 14 }}>
-              {[['Tasa', '1 USD = 0.4255 ORIGEN'], ['Comisión Veta', '$0.99'], ['Recibes', '106.42 ORIGEN']].map((r, i) => (
-                <View key={i} style={styles.rr}><Text style={styles.rrK}>{r[0]}</Text><Text style={styles.rrV}>{r[1]}</Text></View>
-              ))}
-            </Card>
-            <Button3D title="Generar orden de cobro" onPress={() => toast('Orden de cobro generada')} />
-          </>
-        ) : (
-          <>
-            <View style={styles.bigInput}><TextInput defaultValue="40" keyboardType="decimal-pad" style={styles.amtIn} /><Text style={styles.cur}>≈ $94.00 USD</Text></View>
-            <Text style={styles.label}>Destinatario</Text>
-            <TextInput placeholder="Teléfono, correo o @usuario" placeholderTextColor="#6f938f" style={styles.input} />
-            <Card style={{ padding: 14, marginVertical: 14 }}>
-              {[['Recibe destinatario', '$93.60 USD'], ['Comisión', '$0.40']].map((r, i) => (
-                <View key={i} style={styles.rr}><Text style={styles.rrK}>{r[0]}</Text><Text style={styles.rrV}>{r[1]}</Text></View>
-              ))}
-            </Card>
-            <Button3D title="Enviar remesa" onPress={() => toast('Remesa enviada')} />
-          </>
-        )}
-      </ScrollView>
-    </View>
-  );
-}
-function FlowNode({ icon, logo, label }) {
-  return (
-    <View style={{ alignItems: 'center', gap: 6 }}>
-      <View style={styles.flowCc}>{logo ? <Logo size={30} /> : <Ionicons name={icon} size={22} color={C.gold} />}</View>
-      <Text style={styles.flowLbl}>{label}</Text>
-    </View>
-  );
-}
-function Mcc({ active, onPress, icon, logo, title, sub }) {
-  return (
-    <Pressable onPress={onPress} style={[styles.mcc, active && { borderColor: C.gold }]}>
-      <LinearGradient colors={G.gold} style={styles.mccIc}>{logo ? <Logo size={26} /> : <Ionicons name={icon} size={20} color={C.darkText} />}</LinearGradient>
-      <Text style={styles.mccT}>{title}</Text>
-      <Text style={styles.mccS}>{sub}</Text>
-    </Pressable>
-  );
-}
-
-// ================= ACTIVIDAD =================
 const shortAddr = (a) => (a && a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a || '');
 const fmtDate = (ts) => {
   if (!ts) return '';
   const d = new Date(Number(ts) * 1000);
-  return d.toLocaleDateString('es-HN', { day: '2-digit', month: 'short' }) + ' · ' +
+  return d.toLocaleDateString('es-HN', { day: '2-digit', month: 'short', year: 'numeric' }) + ' · ' +
     d.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' });
 };
 
+// ================= ACTIVIDAD (historial real de la blockchain) =================
 export function Activity({ nav }) {
   const [f, setF] = useState('all');
   const toast = useToast();
   const { account } = useAccount();
-
-  // Cuenta del backend real: historial de la blockchain (allTransfers).
-  if (account?.fromApi) {
-    const txns = account.transfers || [];
-    const filters = [['all', 'Todo'], ['in', 'Recibido'], ['out', 'Enviado']];
-    const isIn = (t) => t.type === 'recive' || t.type === 'receive' || t.type === 'in';
-    const list = f === 'all' ? txns : txns.filter((t) => (f === 'in' ? isIn(t) : !isIn(t)));
-    return (
-      <View style={{ flex: 1, paddingTop: 6 }}>
-        <Header title="Actividad" onBack={() => nav.go('home')} />
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
-            {filters.map(([k, l]) => (
-              <Pressable key={k} onPress={() => { hap(); setF(k); }} style={[styles.chip, f === k && styles.chipOn]}>
-                <Text style={[styles.chipTxt, f === k && { color: C.darkText }]}>{l}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-          {list.length === 0 && <Text style={{ color: C.txt3, textAlign: 'center', marginTop: 40 }}>Sin movimientos aún.</Text>}
-          {list.map((t, i) => {
-            const inbound = isIn(t);
-            return (
-              <Pressable key={t.hash || i} onPress={() => { hap(); toast(t.hash ? t.hash.slice(0, 18) + '…' : 'Transacción'); }} style={styles.txn}>
-                <View style={styles.txnIc}><Ionicons name={inbound ? 'arrow-down' : 'arrow-up'} size={19} color={inbound ? C.up : C.gold} /></View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.txnT}>{inbound ? 'Recibido' : 'Enviado'} {t.symbol || ''}</Text>
-                  <Text style={styles.txnD}>{fmtDate(t.timeStamp)} · {shortAddr(inbound ? t.from : t.to)}</Text>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={[styles.txnV, inbound && { color: C.up }]}>{inbound ? '+' : '-'}{qtyFmt(Number(t.value) || 0)} {t.symbol || ''}</Text>
-                  <Text style={styles.txnKind}>{inbound ? 'Recibido' : 'Enviado'}</Text>
-                </View>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // Cuentas demo: historial de ejemplo.
-  const filters = [['all', 'Todo'], ['in', 'Recibido'], ['out', 'Enviado'], ['swap', 'Swaps'], ['card', 'Tarjeta']];
-  const list = f === 'all' ? TXNS : TXNS.filter((x) => x.kind === f);
+  const txns = account?.transfers || [];
+  const filters = [['all', 'Todo'], ['in', 'Recibido'], ['out', 'Enviado']];
+  const isIn = (t) => t.type === 'recive' || t.type === 'receive' || t.type === 'in';
+  const list = f === 'all' ? txns : txns.filter((t) => (f === 'in' ? isIn(t) : !isIn(t)));
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header title="Actividad" onBack={() => nav.go('home')} />
+      <Header title="Actividad" sub="Blockchain Orden Global" onBack={() => nav.go('home')} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
           {filters.map(([k, l]) => (
@@ -154,16 +37,27 @@ export function Activity({ nav }) {
             </Pressable>
           ))}
         </ScrollView>
-        {list.map((x, i) => (
-          <Pressable key={i} onPress={() => { hap(); toast('Detalle: ' + x.t); }} style={styles.txn}>
-            <View style={styles.txnIc}><Ionicons name={x.ic} size={19} color={C.gold} /></View>
-            <View style={{ flex: 1 }}><Text style={styles.txnT}>{x.t}</Text><Text style={styles.txnD}>{x.d}</Text></View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={[styles.txnV, x.pos && { color: C.up }]}>{x.v}</Text>
-              <Text style={styles.txnKind}>{x.kind === 'card' ? 'Tarjeta' : x.kind === 'swap' ? 'Swap' : x.pos ? 'Recibido' : 'Enviado'}</Text>
-            </View>
-          </Pressable>
-        ))}
+        {list.length === 0 && (
+          <View style={styles.emptyWrap}>
+            <View style={styles.emptyIcon}><Ionicons name="pulse" size={30} color={C.txt3} /></View>
+            <Text style={styles.emptyTitle}>Sin movimientos aún</Text>
+            <Text style={styles.emptyBody}>Cuando envíes o recibas tokens, tus transacciones reales aparecerán aquí.</Text>
+          </View>
+        )}
+        {list.map((t, i) => {
+          const inbound = isIn(t);
+          return (
+            <Pressable key={t.hash || i} onPress={() => { hap(); toast(t.hash ? 'Tx ' + t.hash.slice(0, 18) + '…' : 'Transacción'); }} style={styles.txn}>
+              <View style={styles.txnIc}><Ionicons name={inbound ? 'arrow-down' : 'arrow-up'} size={19} color={inbound ? C.up : C.gold} /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.txnT}>{inbound ? 'Recibido' : 'Enviado'} {t.symbol || 'ORIGEN'}</Text>
+                <Text style={styles.txnD}>{fmtDate(t.timeStamp)}</Text>
+                <Text style={styles.txnD}>{inbound ? 'De' : 'Para'}: {shortAddr(inbound ? t.from : t.to)}</Text>
+              </View>
+              <Text style={[styles.txnV, inbound && { color: C.up }]}>{inbound ? '+' : '-'}{qtyFmt(Number(t.value) || 0)}</Text>
+            </Pressable>
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -175,60 +69,23 @@ export function Notifications({ nav }) {
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title="Notificaciones" onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }}>
-        {NOTIFS.map((n, i) => (
-          <View key={i} style={[styles.notif, n.u && styles.notifUnread]}>
-            <View style={styles.notifIc}><Ionicons name={n.ic} size={19} color={C.gold} /></View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.notifT}>{n.t}</Text>
-              <Text style={styles.notifP}>{n.p}</Text>
-              <Text style={styles.notifS}>{n.s}</Text>
-            </View>
-          </View>
-        ))}
+        <View style={styles.emptyWrap}>
+          <View style={styles.emptyIcon}><Ionicons name="notifications" size={30} color={C.txt3} /></View>
+          <Text style={styles.emptyTitle}>Todo al día</Text>
+          <Text style={styles.emptyBody}>Aquí verás avisos de transacciones recibidas y novedades de tu cuenta.</Text>
+        </View>
       </ScrollView>
     </View>
-  );
-}
-
-// ================= CRECER (Earn) =================
-export function Earn({ nav }) {
-  const toast = useToast();
-  return (
-    <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header title="Crecer" sub="Earn & Staking" onBack={() => nav.go('home')} />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 110 }}>
-        <LinearGradient colors={G.green} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.earnCard}>
-          <Text style={styles.earnLbl}>GANANCIAS ACUMULADAS</Text>
-          <Text style={styles.earnAmt}>+$142.87</Text>
-          <Text style={styles.earnSub}>Rendimiento promedio  <Text style={{ color: C.up }}>8.4% APY</Text></Text>
-        </LinearGradient>
-        <SectionHead title="Staking ORIGEN" />
-        <EarnRow t={TOKENS[0]} name="ORIGEN Staking" sub="Bloqueo flexible" apy="12.5% APY" pos="Stake: 50" onPress={() => toast('Stake ORIGEN')} />
-        <SectionHead title="Ahorro estable" />
-        <EarnRow t={TOKENS[7]} name="USDC Earn" sub="Sin bloqueo" apy="6.2% APY" pos="$300.00" onPress={() => toast('Earn USDC')} />
-        <EarnRow t={TOKENS[6]} name="USDT Earn" sub="Sin bloqueo" apy="5.8% APY" pos="$500.00" onPress={() => toast('Earn USDT')} />
-      </ScrollView>
-    </View>
-  );
-}
-function EarnRow({ t, name, sub, apy, pos, onPress }) {
-  return (
-    <Pressable onPress={() => { hap(); onPress(); }} style={styles.earnRow}>
-      <TokenIcon t={t} />
-      <View style={{ flex: 1, marginLeft: 13 }}><Text style={styles.txnT}>{name}</Text><Text style={styles.txnD}>{sub}</Text></View>
-      <View style={{ alignItems: 'flex-end' }}><Text style={{ color: C.up, fontWeight: '700' }}>{apy}</Text><Text style={styles.txnD}>{pos}</Text></View>
-    </Pressable>
   );
 }
 
 // ================= AJUSTES =================
 export function Settings({ nav }) {
-  const [bio, setBio] = useState(true);
   const [notif, setNotif] = useState(true);
   const [priv, setPriv] = useState(false);
   const toast = useToast();
   const { account, logout } = useAccount();
-  const acc = account || { name: 'Cuenta', email: '', initials: 'VW', business: false, genesisUid: null };
+  const acc = account || { name: 'Cuenta', email: '', initials: 'VW', addr: '', genesisUid: null };
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title="Ajustes" onBack={() => nav.go('home')} />
@@ -238,182 +95,168 @@ export function Settings({ nav }) {
           <View style={{ flex: 1 }}>
             <Text style={styles.profName} numberOfLines={1}>{acc.name}</Text>
             <Text style={styles.profMail} numberOfLines={1}>{acc.email}</Text>
-            <View style={styles.kycBadge}><Ionicons name="checkmark-circle" size={12} color={C.up} /><Text style={styles.kycTxt}>Genesis ID · {acc.genesisUid || 'verificado'}</Text></View>
+            <Text style={styles.profMail} numberOfLines={1}>{shortAddr(acc.addr)}</Text>
           </View>
+          {acc.genesisUid ? (
+            <View style={styles.kycBadge}><Ionicons name="checkmark-circle" size={12} color={C.up} /><Text style={styles.kycTxt}>Genesis</Text></View>
+          ) : null}
         </LinearGradient>
 
-        {/* Pasaporte Genesis ID — credencial del ecosistema */}
-        <Pressable onPress={() => { hap(); nav.go('passport'); }}>
-          <LinearGradient colors={['#0c4f57', '#0a3a3d']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.genCard}>
-            <View style={styles.genLeft}>
-              <View style={styles.genIcon}><Ionicons name="finger-print" size={20} color={C.gold} /></View>
-              <View>
-                <Text style={styles.genTitle}>Pasaporte Genesis ID</Text>
-                <Text style={styles.genUid}>{acc.genesisUid || '—'}{acc.business && acc.bizUid ? `  ·  ${acc.bizUid}` : ''}</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={C.gold} />
-          </LinearGradient>
-        </Pressable>
+        <Text style={styles.grpTitle}>GENESIS ID</Text>
+        <View style={styles.group}>
+          {acc.genesisUid ? (
+            <>
+              <ListRow first icon="finger-print" title="Mi pasaporte Genesis ID" sub={acc.genesisUid} onPress={() => nav.go('passport')} />
+              <ListRow icon="refresh" title="Reverificar identidad" sub="Vuelve a pasar la verificación" onPress={() => nav.go('kyc')} />
+            </>
+          ) : (
+            <ListRow first icon="finger-print" title="Vincular con Genesis ID" sub="Identidad del ecosistema · opcional, no se requiere para usar la app" onPress={() => nav.go('kyc')} />
+          )}
+        </View>
 
         <Text style={styles.grpTitle}>PRIVACIDAD</Text>
         <View style={styles.group}>
           <ListRow first icon="lock-closed" title="Cuenta privada" sub="Solo cuentas aprobadas te ven" onPress={() => {}} right={<Toggle value={priv} onValueChange={(v) => { setPriv(v); toast(v ? 'Cuenta privada activada' : 'Cuenta pública'); }} />} />
-          <ListRow icon="create" title="Configurar perfil" sub="Nombre, foto y datos" onPress={() => nav.go('profile')} />
+          <ListRow icon="create" title="Configurar perfil" sub="Nombre y datos de contacto" onPress={() => nav.go('profile')} />
           <ListRow icon="person-remove" title="Cuentas bloqueadas" onPress={() => nav.go('blocked')} />
         </View>
 
         <Text style={styles.grpTitle}>CUENTA</Text>
         <View style={styles.group}>
-          <ListRow first icon="person" title="Información personal" onPress={() => nav.go('profile')} />
-          <ListRow icon="card" title="Mi tarjeta débito" onPress={() => nav.go('card')} />
-          <ListRow icon="qr-code" title="Conectar MyTokenPay" sub="Pagos con ORIGEN" onPress={() => nav.go('mytokenpay')} />
-          <ListRow icon="grid" title="Mis direcciones" onPress={() => toast('Libreta de direcciones')} />
-        </View>
-
-        <Text style={styles.grpTitle}>IDENTIDAD · GENESIS ID</Text>
-        <View style={styles.group}>
-          <ListRow first icon="finger-print" title="Ver mi pasaporte Genesis ID" sub={acc.genesisUid || 'Identidad del ecosistema'} onPress={() => nav.go('passport')} />
-          <ListRow icon="refresh" title="Reverificar identidad" sub="Vuelve a pasar el flujo Genesis ID" onPress={() => nav.go('kyc')} />
-          {acc.business && (
-            <ListRow icon="business" title="Genesis ID de mi negocio" sub={acc.bizUid || 'KYB verificado'} onPress={() => nav.go('passport')} />
-          )}
+          <ListRow first icon="card" title="Mi tarjeta" onPress={() => nav.go('card')} />
+          <ListRow icon="qr-code" title="Mi dirección (recibir)" sub={shortAddr(acc.addr)} onPress={() => nav.go('receive')} />
+          <ListRow icon="storefront" title="MyTokenPay" sub="Pagos en comercios con ORIGEN" onPress={() => nav.go('mytokenpay')} />
         </View>
 
         <Text style={styles.grpTitle}>SEGURIDAD</Text>
         <View style={styles.group}>
-          <ListRow first icon="scan" title="Face ID / Biometría" onPress={() => {}} right={<Toggle value={bio} onValueChange={setBio} />} />
-          <ListRow icon="shield-checkmark" title="Autenticación 2FA" sub="Authenticator activo" onPress={() => toast('2FA activo')} />
-          <ListRow icon="key" title="Frase de recuperación (Seed)" sub="Ver tus 12 palabras" onPress={() => nav.go('seedview')} />
-          <ListRow icon="finger-print" title="Llave privada" sub="Ver / exportar tu llave" onPress={() => nav.go('privatekey')} />
+          <ListRow first icon="key" title="Frase de recuperación (Seed)" onPress={() => nav.go('seedview')} />
+          <ListRow icon="finger-print" title="Llave privada" onPress={() => nav.go('privatekey')} />
           <ListRow icon="notifications" title="Notificaciones" onPress={() => {}} right={<Toggle value={notif} onValueChange={setNotif} />} />
         </View>
 
-        <Button3D variant="ghost" title="Cerrar sesión" onPress={() => { logout(); nav.go('auth'); }} />
-        <Text style={styles.foot}>Veta Wallet v1.0 · Orden Global{'\n'}Diseño por Monark Brand Labs</Text>
+        <View style={{ height: 10 }} />
+        <Pressable onPress={() => { hap(); logout(); nav.go('auth'); }} style={styles.logout}>
+          <Ionicons name="power" size={18} color="#fff" />
+          <Text style={styles.logoutTxt}>Cerrar sesión</Text>
+        </Pressable>
+        <Text style={styles.foot}>Veta Wallet · Orden Global{'\n'}Conectada a la blockchain Orden Global (8532)</Text>
       </ScrollView>
     </View>
   );
 }
 
-// ================= PASAPORTE GENESIS ID (credencial) =================
+// ================= PASAPORTE GENESIS ID =================
 export function Passport({ nav }) {
   const { account } = useAccount();
   const toast = useToast();
-  const acc = account || { name: 'Cuenta', email: '', initials: 'VW', business: false, genesisUid: 'GEN-0000-0000', since: '2026' };
+  const acc = account || { name: 'Cuenta', initials: 'VW', genesisUid: null, since: '' };
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title="Pasaporte Genesis ID" onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }}>
-        {/* credencial personal */}
-        <LinearGradient colors={['#0f5f55', '#0a3a3d', '#06282b']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.passCard}>
-          <View style={styles.passTop}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Ionicons name="finger-print" size={18} color={C.gold} />
-              <Text style={styles.passBrand}>GENESIS ID</Text>
-            </View>
-            <View style={styles.passVerified}><Ionicons name="shield-checkmark" size={12} color={C.up} /><Text style={styles.passVerTxt}>Verificado</Text></View>
-          </View>
-          <View style={styles.passBody}>
-            <LinearGradient colors={G.gold} style={styles.passPhoto}><Text style={{ color: C.darkText, fontWeight: '800', fontSize: 26 }}>{acc.initials}</Text></LinearGradient>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.passLabel}>Titular</Text>
-              <Text style={styles.passName} numberOfLines={1}>{acc.name}</Text>
-              <Text style={styles.passLabel2}>UID Genesis</Text>
-              <Text style={styles.passUid}>{acc.genesisUid}</Text>
-            </View>
-          </View>
-          <View style={styles.passFoot}>
-            <View><Text style={styles.passLabel}>Tipo</Text><Text style={styles.passMeta}>Identidad personal</Text></View>
-            <View><Text style={styles.passLabel}>Emitido</Text><Text style={styles.passMeta}>{acc.since || '2026'}</Text></View>
-            <View><Text style={styles.passLabel}>Ecosistema</Text><Text style={styles.passMeta}>Orden Global</Text></View>
-          </View>
-        </LinearGradient>
-
-        <Text style={styles.passNote}>Esta credencial es válida en Veta Wallet, MyTokenPay y todas las apps de Orden Global.</Text>
-
-        {acc.business && (
+        {acc.genesisUid ? (
           <>
-            <Text style={styles.grpTitle}>CREDENCIAL DE NEGOCIO (KYB)</Text>
-            <LinearGradient colors={['#3a2e12', '#241d0c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.passCard, { borderColor: 'rgba(201,169,97,0.4)' }]}>
+            <LinearGradient colors={['#0f5f55', '#0a3a3d', '#06282b']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.passCard}>
               <View style={styles.passTop}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Ionicons name="business" size={18} color={C.gold} />
-                  <Text style={styles.passBrand}>GENESIS ID · NEGOCIO</Text>
+                  <Ionicons name="finger-print" size={18} color={C.gold} />
+                  <Text style={styles.passBrand}>GENESIS ID</Text>
                 </View>
-                <View style={styles.passVerified}><Ionicons name="shield-checkmark" size={12} color={C.up} /><Text style={styles.passVerTxt}>KYB</Text></View>
+                <View style={styles.passVerified}><Ionicons name="shield-checkmark" size={12} color={C.up} /><Text style={styles.passVerTxt}>Verificado</Text></View>
               </View>
-              <Text style={[styles.passName, { marginTop: 8 }]} numberOfLines={1}>{acc.biz}</Text>
-              <Text style={styles.passLabel2}>UID de negocio</Text>
-              <Text style={styles.passUid}>{acc.bizUid}</Text>
+              <View style={styles.passBody}>
+                <LinearGradient colors={G.gold} style={styles.passPhoto}><Text style={{ color: C.darkText, fontWeight: '800', fontSize: 26 }}>{acc.initials}</Text></LinearGradient>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.passLabel}>Titular</Text>
+                  <Text style={styles.passName} numberOfLines={1}>{acc.name}</Text>
+                  <Text style={styles.passLabel2}>UID Genesis</Text>
+                  <Text style={styles.passUid}>{acc.genesisUid}</Text>
+                </View>
+              </View>
+              <View style={styles.passFoot}>
+                <View><Text style={styles.passLabel}>Tipo</Text><Text style={styles.passMeta}>Identidad personal</Text></View>
+                <View><Text style={styles.passLabel}>Emitido</Text><Text style={styles.passMeta}>{acc.since || '2026'}</Text></View>
+                <View><Text style={styles.passLabel}>Ecosistema</Text><Text style={styles.passMeta}>Orden Global</Text></View>
+              </View>
             </LinearGradient>
+            <Text style={styles.passNote}>Credencial válida en Veta Wallet, MyTokenPay y todas las apps de Orden Global.</Text>
+            <Button3D variant="ghost" title="Compartir credencial" icon="share-social" onPress={() => { hap(); toast('Compartiendo credencial…'); }} />
           </>
+        ) : (
+          <View style={styles.emptyWrap}>
+            <View style={styles.emptyIcon}><Ionicons name="finger-print" size={30} color={C.gold} /></View>
+            <Text style={styles.emptyTitle}>Aún no vinculas tu Genesis ID</Text>
+            <Text style={styles.emptyBody}>Verifícate una sola vez y tu identidad queda válida en todo el ecosistema Orden Global. No es obligatorio para usar la billetera.</Text>
+            <Button3D title="Vincular ahora" icon="finger-print" onPress={() => nav.go('kyc')} style={{ alignSelf: 'stretch', marginTop: 18 }} />
+          </View>
         )}
-
-        <View style={{ height: 8 }} />
-        <Button3D variant="ghost" title="Compartir credencial" icon="share-social" onPress={() => { hap(); toast('Credencial Genesis ID compartida'); }} />
       </ScrollView>
     </View>
   );
 }
 
-// ================= INFORMACIÓN PERSONAL (editable) =================
+// ================= PERFIL (datos reales de la cuenta) =================
 export function Profile({ nav }) {
   const toast = useToast();
-  const v = useRef({ name: 'José Enamorado', email: 'jose@ordenglobal.com', phone: '+504 3346 7760', country: 'Honduras', address: 'Roatán, Islas de la Bahía', dni: '0801-1994-00000' }).current;
-  const fields = [
-    { k: 'name', label: 'Nombre completo' },
-    { k: 'email', label: 'Correo electrónico', keyboardType: 'email-address', autoCapitalize: 'none' },
-    { k: 'phone', label: 'Teléfono', keyboardType: 'phone-pad' },
-    { k: 'country', label: 'País' },
-    { k: 'address', label: 'Dirección' },
-    { k: 'dni', label: 'Identidad / DNI' },
-  ];
+  const { account, login } = useAccount();
+  const acc = account || { name: '', email: '', phone: '', country: '', address2: '' };
+  const [name, setName] = useState(acc.name || '');
+  const [phone, setPhone] = useState(acc.phone || '');
+  const [country, setCountry] = useState(acc.country || '');
+  const [addr2, setAddr2] = useState(acc.address2 || '');
+
+  async function save() {
+    if (!account) return;
+    const updated = await updateAccount(account.email, { name: name.trim() || account.name, phone, country, address2: addr2 });
+    if (updated) { login(updated); toast('Perfil actualizado'); setTimeout(() => nav.back(), 600); }
+  }
+
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header title="Información personal" onBack={() => nav.back()} />
+      <Header title="Configurar perfil" onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }} keyboardShouldPersistTaps="handled">
         <View style={{ alignItems: 'center', marginBottom: 20 }}>
-          <LinearGradient colors={G.gold} style={styles.profAvBig}><Text style={{ color: C.darkText, fontWeight: '800', fontSize: 26 }}>JE</Text></LinearGradient>
-          <Pressable onPress={() => { hap(); toast('Cambiar foto de perfil'); }}><Text style={{ color: C.gold, fontWeight: '600', marginTop: 10 }}>Cambiar foto</Text></Pressable>
+          <LinearGradient colors={G.gold} style={styles.profAvBig}><Text style={{ color: C.darkText, fontWeight: '800', fontSize: 26 }}>{acc.initials || 'VW'}</Text></LinearGradient>
         </View>
-        {fields.map((f) => (
-          <View key={f.k} style={{ marginBottom: 14 }}>
-            <Text style={styles.label}>{f.label}</Text>
-            <TextInput defaultValue={v[f.k]} onChangeText={(t) => { v[f.k] = t; }} placeholderTextColor="#6f938f" style={styles.input} keyboardType={f.keyboardType} autoCapitalize={f.autoCapitalize} />
-          </View>
-        ))}
+        <Field label="Nombre completo" value={name} onChangeText={setName} placeholder="Tu nombre" />
+        <Field label="Correo (cuenta)" value={acc.email} editable={false} />
+        <Field label="Dirección de billetera" value={acc.addr || ''} editable={false} />
+        <Field label="Teléfono" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+504 …" />
+        <Field label="País" value={country} onChangeText={setCountry} placeholder="Tu país" />
+        <Field label="Dirección" value={addr2} onChangeText={setAddr2} placeholder="Ciudad, calle…" />
         <View style={{ height: 8 }} />
-        <Button3D title="Guardar cambios" icon="checkmark" onPress={() => { toast('Perfil actualizado'); setTimeout(() => nav.back(), 700); }} />
+        <Button3D title="Guardar cambios" icon="checkmark" onPress={save} />
       </ScrollView>
     </View>
   );
 }
 
-// ================= CONECTAR MYTOKENPAY =================
+function Field({ label, editable = true, ...props }) {
+  return (
+    <View style={{ marginBottom: 14 }}>
+      <Text style={styles.label}>{label}</Text>
+      <TextInput placeholderTextColor="#6f938f" editable={editable} style={[styles.input, !editable && { opacity: 0.6 }]} {...props} />
+    </View>
+  );
+}
+
+// ================= MYTOKENPAY =================
 export function MyTokenPay({ nav }) {
-  const [connected, setConnected] = useState(false);
-  const toast = useToast();
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title="MyTokenPay" onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }}>
         <LinearGradient colors={G.green} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
           <LinearGradient colors={G.gold} style={styles.heroIc}><Ionicons name="qr-code" size={24} color={C.darkText} /></LinearGradient>
-          <Text style={styles.heroT}>Conecta MyTokenPay</Text>
-          <Text style={styles.heroP}>Vincula tu cuenta MyTokenPay para pagar y cobrar con ORIGEN en comercios afiliados a Orden Global, con QR y en segundos.</Text>
-          {connected && (
-            <View style={styles.connBadge}><Ionicons name="checkmark-circle" size={14} color={C.up} /><Text style={styles.connTxt}>Cuenta vinculada</Text></View>
-          )}
+          <Text style={styles.heroT}>Paga con ORIGEN en comercios</Text>
+          <Text style={styles.heroP}>MyTokenPay es la app de pagos del ecosistema Orden Global: cobra y paga con ORIGEN mediante QR. Usa el mismo correo de tu Veta Wallet.</Text>
         </LinearGradient>
-
         <View style={styles.group}>
-          <PayFeature icon="storefront" t="Paga en comercios" s="Escanea y paga con ORIGEN" first />
-          <PayFeature icon="cash" t="Cobra ventas" s="Recibe pagos al instante" />
-          <PayFeature icon="shield-checkmark" t="Seguro" s="Autorización con biometría" />
+          <PayFeature icon="storefront" t="Paga en comercios" s="Escanea el QR del negocio y paga con ORIGEN" first />
+          <PayFeature icon="cash" t="Cobra ventas" s="Los comercios reciben pagos al instante" />
+          <PayFeature icon="finger-print" t="Mismo ecosistema" s="Tu cuenta y tu Genesis ID valen en ambas apps" />
         </View>
-
-        <Button3D title={connected ? 'Desconectar' : 'Conectar MyTokenPay'} variant={connected ? 'ghost' : 'gold'} icon={connected ? 'unlink' : 'link'} onPress={() => { setConnected(!connected); toast(connected ? 'MyTokenPay desconectado' : 'MyTokenPay conectado'); }} />
       </ScrollView>
     </View>
   );
@@ -433,14 +276,10 @@ export function Blocked({ nav }) {
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title="Cuentas bloqueadas" onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }}>
-        <View style={{ alignItems: 'center', marginTop: 60 }}>
-          <View style={{ width: 78, height: 78, borderRadius: 39, backgroundColor: C.panel, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.line }}>
-            <Ionicons name="person-remove" size={34} color={C.txt3} />
-          </View>
-          <Text style={{ color: C.txt, fontWeight: '700', fontSize: 16, marginTop: 16 }}>Sin cuentas bloqueadas</Text>
-          <Text style={{ color: C.txt3, fontSize: 12.5, marginTop: 6, textAlign: 'center', lineHeight: 18 }}>
-            Cuando bloquees a alguien aparecerá aquí.{'\n'}No podrá verte ni enviarte solicitudes.
-          </Text>
+        <View style={styles.emptyWrap}>
+          <View style={styles.emptyIcon}><Ionicons name="person-remove" size={30} color={C.txt3} /></View>
+          <Text style={styles.emptyTitle}>Sin cuentas bloqueadas</Text>
+          <Text style={styles.emptyBody}>Cuando bloquees a alguien aparecerá aquí. No podrá verte ni enviarte solicitudes.</Text>
         </View>
       </ScrollView>
     </View>
@@ -449,45 +288,52 @@ export function Blocked({ nav }) {
 
 // ================= LLAVE PRIVADA =================
 export function PrivateKey({ nav }) {
-  const [reveal, setReveal] = useState(false);
+  const [state, setState] = useState('hidden'); // hidden | loading | shown | unavailable
+  const [pk, setPk] = useState(null);
   const { account } = useAccount();
   const toast = useToast();
-  const acc = account || { addr: '0x0000…0000' };
+  const acc = account || { addr: '' };
+
+  async function reveal() {
+    hap();
+    setState('loading');
+    const key = await getPrivateKey();
+    if (key) { setPk(key); setState('shown'); }
+    else setState('unavailable');
+  }
+
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title="Llave privada" onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }}>
-        <View style={{ flexDirection: 'row', gap: 10, backgroundColor: 'rgba(224,90,90,0.12)', borderWidth: 1, borderColor: 'rgba(224,90,90,0.4)', borderRadius: 16, padding: 15, marginBottom: 18 }}>
+        <View style={styles.warnBox}>
           <Ionicons name="warning" size={22} color="#E05A5A" />
-          <Text style={{ flex: 1, color: '#f3c9c9', fontSize: 12.5, lineHeight: 18 }}>
-            Nunca compartas tu llave privada ni tu frase semilla. Quien las tenga controla tus fondos.
-          </Text>
+          <Text style={styles.warnTxt}>Nunca compartas tu llave privada ni tu frase semilla. Quien las tenga controla tus fondos.</Text>
         </View>
 
         <Text style={styles.label}>Dirección pública</Text>
         <View style={styles.pkBox}>
-          <Text style={styles.pkTxt} numberOfLines={1}>{acc.addr}</Text>
-          <Pressable onPress={() => { hap(); toast('Dirección copiada'); }}><Ionicons name="copy" size={20} color={C.gold} /></Pressable>
+          <Text style={styles.pkTxt} numberOfLines={1}>{acc.addr || '—'}</Text>
+          <Pressable onPress={async () => { hap(); try { await Clipboard.setStringAsync(acc.addr || ''); toast('Dirección copiada'); } catch (e) {} }}>
+            <Ionicons name="copy" size={20} color={C.gold} />
+          </Pressable>
         </View>
 
         <Text style={[styles.label, { marginTop: 18 }]}>Llave privada</Text>
         <View style={styles.pkReveal}>
-          <Text style={{ color: reveal ? C.txt : C.txt3, fontSize: 13, lineHeight: 20 }}>
-            {reveal
-              ? 'Tu llave está custodiada de forma segura por Orden Global. Para exportarla, verifica tu identidad desde la billetera web.'
-              : '•••• •••• •••• •••• •••• •••• •••• ••••'}
-          </Text>
+          {state === 'shown' ? (
+            <Text style={{ color: C.txt, fontSize: 13, lineHeight: 20 }} selectable>{pk}</Text>
+          ) : state === 'unavailable' ? (
+            <Text style={{ color: C.txt2, fontSize: 13, lineHeight: 20 }}>
+              Tu llave está custodiada por Orden Global y por seguridad no se puede exportar desde la app todavía. Puedes verla en la billetera web (vetawallet.com → Settings → Private Key).
+            </Text>
+          ) : (
+            <Text style={{ color: C.txt3, fontSize: 13 }}>{state === 'loading' ? 'Consultando de forma segura…' : '•••• •••• •••• •••• •••• •••• •••• ••••'}</Text>
+          )}
         </View>
-        <Button3D
-          variant={reveal ? 'ghost' : undefined}
-          title={reveal ? 'Ocultar' : 'Revelar información'}
-          icon={reveal ? 'eye-off' : 'eye'}
-          onPress={() => { hap(); setReveal(!reveal); }}
-          style={{ marginTop: 14 }}
-        />
-        <Text style={{ color: C.txt3, fontSize: 11.5, textAlign: 'center', marginTop: 14, lineHeight: 17 }}>
-          Tu billetera es custodial: las firmas ocurren en el servidor de Orden Global con tu contraseña. La app nunca guarda tu llave.
-        </Text>
+        {state !== 'shown' && (
+          <Button3D title={state === 'loading' ? 'Consultando…' : 'Revelar llave'} icon="eye" onPress={state === 'loading' ? () => {} : reveal} style={{ marginTop: 14 }} />
+        )}
       </ScrollView>
     </View>
   );
@@ -495,81 +341,63 @@ export function PrivateKey({ nav }) {
 
 const styles = StyleSheet.create({
   label: { fontSize: 12, color: C.txt2, marginBottom: 7, fontWeight: '500' },
-  pkBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 14, padding: 15 },
-  pkTxt: { flex: 1, color: C.txt, fontSize: 13 },
-  pkReveal: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 14, padding: 16, minHeight: 64 },
-  profAvBig: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center' },
-  connBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(62,217,160,0.14)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, marginTop: 12, alignSelf: 'flex-start' },
-  connTxt: { color: C.up, fontSize: 12, fontWeight: '600' },
-  payFeat: { flexDirection: 'row', alignItems: 'center', gap: 13, padding: 15, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },
   input: { backgroundColor: C.input, borderWidth: 1.5, borderColor: 'rgba(46,116,119,0.5)', borderRadius: 14, paddingHorizontal: 15, paddingVertical: 14, color: C.txt, fontSize: 15 },
-  hero: { borderRadius: 24, padding: 20, borderWidth: 1, borderColor: C.line, marginBottom: 16 },
-  heroIc: { width: 50, height: 50, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  heroT: { fontSize: 18, fontWeight: '800', color: C.txt },
-  heroP: { fontSize: 12.5, color: C.txt2, marginTop: 6, lineHeight: 18 },
-  flow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 },
-  flowCc: { width: 50, height: 50, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: C.line2, alignItems: 'center', justifyContent: 'center' },
-  flowLbl: { fontSize: 10.5, color: C.txt3, fontWeight: '600' },
-  seg: { flexDirection: 'row', backgroundColor: C.input, borderRadius: 14, padding: 4, marginBottom: 18 },
-  segBtn: { flex: 1, paddingVertical: 11, borderRadius: 11, alignItems: 'center' },
-  segOn: { backgroundColor: C.gold },
-  segTxt: { color: C.txt2, fontWeight: '600', fontSize: 13.5 },
-  bigInput: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 20, padding: 20, alignItems: 'center', marginBottom: 14 },
-  amtIn: { color: C.txt, fontWeight: '800', fontSize: 40, textAlign: 'center', minWidth: 120, padding: 0 },
-  cur: { color: C.gold, fontWeight: '600', fontSize: 14, marginTop: 4 },
-  mcc: { flex: 1, backgroundColor: C.panel, borderWidth: 1.5, borderColor: C.line2, borderRadius: 16, padding: 15 },
-  mccIc: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 9 },
-  mccT: { fontSize: 14, fontWeight: '700', color: C.txt },
-  mccS: { fontSize: 11, color: C.txt3, marginTop: 2 },
-  rr: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
-  rrK: { color: C.txt2, fontSize: 12.5 }, rrV: { color: C.txt, fontSize: 12.5, fontWeight: '600' },
-  chip: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 20, paddingVertical: 8, paddingHorizontal: 15, marginRight: 8, height: 36 },
-  chipOn: { backgroundColor: C.gold, borderColor: 'transparent' },
+
+  chip: { backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 999, paddingHorizontal: 16, paddingVertical: 8, marginRight: 8, marginBottom: 10 },
+  chipOn: { backgroundColor: C.gold, borderColor: C.gold },
   chipTxt: { color: C.txt2, fontWeight: '600', fontSize: 12.5 },
-  txn: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 11 },
+
+  txn: { flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 13, marginBottom: 9 },
   txnIc: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.panel2, alignItems: 'center', justifyContent: 'center' },
   txnT: { fontSize: 14, fontWeight: '600', color: C.txt },
   txnD: { fontSize: 11.5, color: C.txt3, marginTop: 2 },
-  txnV: { fontSize: 14, fontWeight: '600', color: C.txt },
-  txnKind: { fontSize: 11, color: C.txt3, marginTop: 2 },
-  notif: { flexDirection: 'row', gap: 13, padding: 14, backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', borderRadius: 16, marginBottom: 10 },
-  notifUnread: { borderColor: C.line, backgroundColor: '#0D3B3D' },
-  notifIc: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(201,169,97,0.12)', alignItems: 'center', justifyContent: 'center' },
-  notifT: { fontSize: 14, fontWeight: '600', color: C.txt },
-  notifP: { fontSize: 12, color: C.txt2, marginTop: 2, lineHeight: 16 },
-  notifS: { fontSize: 11, color: C.txt3, marginTop: 4 },
-  earnCard: { borderRadius: 24, padding: 22, borderWidth: 1, borderColor: C.line, marginBottom: 4 },
-  earnLbl: { fontSize: 11, letterSpacing: 2, color: C.gold, fontWeight: '600', textAlign: 'center' },
-  earnAmt: { fontSize: 37, fontWeight: '800', color: C.goldHi, textAlign: 'center', marginVertical: 6 },
-  earnSub: { fontSize: 13, color: C.txt2, textAlign: 'center', fontWeight: '600' },
-  earnRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', borderRadius: 18, padding: 13, marginBottom: 10 },
-  prof: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 20, padding: 17, borderWidth: 1, borderColor: C.line, marginBottom: 14 },
-  genCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 18, padding: 15, borderWidth: 1, borderColor: 'rgba(201,169,97,0.35)', marginBottom: 16 },
-  genLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  genIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(201,169,97,0.14)', alignItems: 'center', justifyContent: 'center' },
-  genTitle: { color: C.txt, fontWeight: '700', fontSize: 14.5 },
-  genUid: { color: C.gold, fontSize: 12, marginTop: 2, fontFamily: 'System' },
-  passCard: { borderRadius: 22, padding: 20, borderWidth: 1, borderColor: 'rgba(201,169,97,0.28)', marginBottom: 14 },
-  passTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  passBrand: { color: C.gold, fontWeight: '800', fontSize: 12, letterSpacing: 2 },
-  passVerified: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(62,217,160,0.14)', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
-  passVerTxt: { color: C.up, fontSize: 10.5, fontWeight: '700' },
-  passBody: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 18 },
-  passPhoto: { width: 72, height: 72, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  passLabel: { color: C.txt3, fontSize: 9.5, letterSpacing: 1, textTransform: 'uppercase' },
-  passLabel2: { color: C.txt3, fontSize: 9.5, letterSpacing: 1, textTransform: 'uppercase', marginTop: 8 },
-  passName: { color: C.txt, fontWeight: '800', fontSize: 19 },
-  passUid: { color: C.gold, fontWeight: '700', fontSize: 16, letterSpacing: 1, marginTop: 1 },
-  passFoot: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 18, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 14 },
-  passMeta: { color: C.txt, fontSize: 12, fontWeight: '600', marginTop: 2 },
-  passNote: { color: C.txt3, fontSize: 12, textAlign: 'center', lineHeight: 17, marginBottom: 18 },
-  profAv: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  txnV: { fontSize: 14, fontWeight: '700', color: C.txt },
+
+  emptyWrap: { alignItems: 'center', marginTop: 60, paddingHorizontal: 10 },
+  emptyIcon: { width: 78, height: 78, borderRadius: 39, backgroundColor: C.panel, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.line },
+  emptyTitle: { color: C.txt, fontWeight: '700', fontSize: 16, marginTop: 16 },
+  emptyBody: { color: C.txt3, fontSize: 12.5, marginTop: 6, textAlign: 'center', lineHeight: 18 },
+
+  prof: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 22, padding: 18, borderWidth: 1, borderColor: C.line, marginBottom: 8 },
+  profAv: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  profAvBig: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center' },
   profName: { fontSize: 16.5, fontWeight: '700', color: C.txt },
-  profMail: { fontSize: 12, color: C.txt2 },
-  kycBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(62,217,160,0.14)', borderRadius: 7, paddingHorizontal: 8, paddingVertical: 2, marginTop: 5, alignSelf: 'flex-start' },
-  kycTxt: { color: C.up, fontSize: 10.5, fontWeight: '600' },
-  grpTitle: { fontSize: 11.5, letterSpacing: 1, color: C.txt3, fontWeight: '600', marginBottom: 9, marginLeft: 4, marginTop: 4 },
-  group: { backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderRadius: 18, overflow: 'hidden', marginBottom: 14 },
-  rv: { color: C.gold, fontWeight: '600', fontSize: 13 },
-  foot: { textAlign: 'center', color: C.txt3, fontSize: 11, marginTop: 18, lineHeight: 16 },
+  profMail: { fontSize: 12, color: C.txt2, marginTop: 2 },
+  kycBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(62,217,160,0.13)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  kycTxt: { color: C.up, fontSize: 11, fontWeight: '700' },
+
+  grpTitle: { fontSize: 11, letterSpacing: 2, color: C.txt3, fontWeight: '700', marginTop: 20, marginBottom: 9, paddingHorizontal: 2 },
+  group: { backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderRadius: 18, overflow: 'hidden' },
+
+  logout: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#8E1F2F', borderRadius: 16, paddingVertical: 15, marginTop: 8 },
+  logoutTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  foot: { textAlign: 'center', color: C.txt3, fontSize: 11, lineHeight: 16, marginTop: 18 },
+
+  passCard: { borderRadius: 22, padding: 18, borderWidth: 1, borderColor: 'rgba(62,217,160,0.25)' },
+  passTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  passBrand: { color: C.txt, fontWeight: '800', letterSpacing: 2, fontSize: 12 },
+  passVerified: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(62,217,160,0.13)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  passVerTxt: { color: C.up, fontSize: 10.5, fontWeight: '700' },
+  passBody: { flexDirection: 'row', gap: 14, alignItems: 'center' },
+  passPhoto: { width: 64, height: 64, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  passLabel: { color: C.txt3, fontSize: 9.5, letterSpacing: 1.4 },
+  passLabel2: { color: C.txt3, fontSize: 9.5, letterSpacing: 1.4, marginTop: 8 },
+  passName: { color: C.txt, fontWeight: '700', fontSize: 16.5, marginTop: 2 },
+  passUid: { color: C.gold, fontWeight: '800', fontSize: 15, letterSpacing: 1, marginTop: 2 },
+  passFoot: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
+  passMeta: { color: C.txt, fontSize: 11.5, fontWeight: '600', marginTop: 2 },
+  passNote: { color: C.txt3, fontSize: 11.5, lineHeight: 16, textAlign: 'center', marginVertical: 14 },
+
+  hero: { borderRadius: 22, padding: 20, borderWidth: 1, borderColor: C.line, marginBottom: 16, alignItems: 'center' },
+  heroIc: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  heroT: { fontSize: 17, fontWeight: '800', color: C.txt, textAlign: 'center' },
+  heroP: { fontSize: 12.5, color: C.txt2, textAlign: 'center', lineHeight: 18, marginTop: 6 },
+  payFeat: { flexDirection: 'row', alignItems: 'center', gap: 13, padding: 15, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },
+  notifIc: { width: 38, height: 38, borderRadius: 11, backgroundColor: 'rgba(201,169,97,0.12)', alignItems: 'center', justifyContent: 'center' },
+
+  warnBox: { flexDirection: 'row', gap: 10, backgroundColor: 'rgba(224,90,90,0.12)', borderWidth: 1, borderColor: 'rgba(224,90,90,0.4)', borderRadius: 16, padding: 15, marginBottom: 18 },
+  warnTxt: { flex: 1, color: '#f3c9c9', fontSize: 12.5, lineHeight: 18 },
+  pkBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 14, padding: 15 },
+  pkTxt: { flex: 1, color: C.txt, fontSize: 13 },
+  pkReveal: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 14, padding: 16, minHeight: 64 },
 });
