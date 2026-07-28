@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from '../icons';
 import { C } from '../theme';
 import { Logo, Button3D, hap, useAccount, useToast, AppBackground } from '../ui';
 import { upsertApiAccount, saveSession } from '../accounts';
@@ -78,14 +78,14 @@ export default function Auth({ nav }) {
               <View>
                 <TextInput placeholderTextColor="#6f938f" secureTextEntry={!showPw} value={pw} onChangeText={setPw} placeholder="••••••••" autoCapitalize="none" style={[styles.input, { paddingRight: 44 }]} />
                 <Pressable onPress={() => setShowPw(!showPw)} style={styles.eye}>
-                  <Ionicons name={showPw ? 'eye-off' : 'eye'} size={20} color={C.txt2} />
+                  <Icon name={showPw ? 'eye-off' : 'eye'} size={20} color={C.txt2} />
                 </Pressable>
               </View>
             </View>
 
             <Pressable onPress={() => { hap(); setRemember(!remember); }} style={styles.rememberRow}>
               <View style={[styles.checkbox, remember && { backgroundColor: C.gold, borderColor: C.gold }]}>
-                {remember && <Ionicons name="checkmark" size={13} color={C.darkText} />}
+                {remember && <Icon name="checkmark" size={13} color={C.darkText} />}
               </View>
               <Text style={styles.rememberTxt}>{t('auth.remember')}</Text>
             </Pressable>

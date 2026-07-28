@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from '../icons';
 import { C, G } from '../theme';
 import { Header, Button3D, Card, hap, useToast, useAccount } from '../ui';
 import { genesis } from '../genesis';
@@ -73,7 +73,7 @@ export function Kyc({ nav }) {
       <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 40 }}>
         {state === 'intro' && (
           <>
-            <View style={st.heroIcon}><Ionicons name="finger-print" size={30} color={C.gold} /></View>
+            <View style={st.heroIcon}><Icon name="finger-print" size={30} color={C.gold} /></View>
             <Text style={st.h1}>{t('gen.h1')}</Text>
             <Text style={st.body}>{t('gen.portalBody')}</Text>
 
@@ -106,13 +106,13 @@ export function Kyc({ nav }) {
         {state === 'pending' && (
           <View style={st.center}>
             <View style={[st.heroIcon, { backgroundColor: 'rgba(251,191,36,0.12)' }]}>
-              <Ionicons name="time" size={30} color="#FBBF24" />
+              <Icon name="time" size={30} color="#FBBF24" />
             </View>
             <Text style={[st.h1, { textAlign: 'center' }]}>{t('gen.pendingT')}</Text>
             <Text style={[st.body, { textAlign: 'center' }]}>{t('gen.pendingP')}</Text>
             <Button3D title={t('gen.recheck')} icon="refresh" onPress={recheck} style={{ alignSelf: 'stretch', marginTop: 16 }} />
             <Pressable onPress={start} style={st.retry}>
-              <Ionicons name="open-outline" size={14} color={C.gold} />
+              <Icon name="open-outline" size={14} color={C.gold} />
               <Text style={st.retryTxt}>{t('gen.reopen')}</Text>
             </Pressable>
             <Pressable onPress={() => nav.go(account ? 'home' : 'auth')} style={st.retry}>
@@ -123,12 +123,12 @@ export function Kyc({ nav }) {
 
         {state === 'done' && (
           <View style={st.center}>
-            <View style={st.doneBadge}><Ionicons name="checkmark" size={46} color={C.up} /></View>
+            <View style={st.doneBadge}><Icon name="checkmark" size={46} color={C.up} /></View>
             <Text style={[st.h1, { textAlign: 'center' }]}>{t('gen.doneT')}</Text>
             <Text style={[st.body, { textAlign: 'center' }]}>{t('gen.doneP')}</Text>
             {passport?.genesisUid && (
               <View style={st.uidChip}>
-                <Ionicons name="finger-print" size={14} color={C.gold} />
+                <Icon name="finger-print" size={14} color={C.gold} />
                 <Text style={st.uidTxt}>{passport.genesisUid}</Text>
               </View>
             )}
@@ -167,13 +167,13 @@ export function GenesisOffer({ nav }) {
       <ScrollView contentContainerStyle={{ padding: 22, flexGrow: 1, justifyContent: 'center' }}>
         <View style={{ alignItems: 'center' }}>
           <LinearGradient colors={G.gold} style={st.offerIcon}>
-            <Ionicons name="checkmark" size={38} color={C.darkText} />
+            <Icon name="checkmark" size={38} color={C.darkText} />
           </LinearGradient>
           <Text style={[st.h1, { textAlign: 'center' }]}>{t('offer.title')}</Text>
           <Text style={[st.body, { textAlign: 'center' }]}>{t('offer.p')}</Text>
           {account?.addr ? (
             <View style={st.uidChip}>
-              <Ionicons name="wallet" size={14} color={C.gold} />
+              <Icon name="wallet" size={14} color={C.gold} />
               <Text style={st.uidTxt}>{account.addr.slice(0, 8)}…{account.addr.slice(-6)}</Text>
             </View>
           ) : null}
@@ -206,7 +206,7 @@ export function SeedView({ nav }) {
       <Header title={t('seed.title')} onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }}>
         <View style={st.warn}>
-          <Ionicons name="warning" size={20} color={C.down} />
+          <Icon name="warning" size={20} color={C.down} />
           <Text style={st.warnTxt}>{t('seed.warn')}</Text>
         </View>
 

@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, ScrollView, Pressable, Animated, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from '../icons';
 import Svg, { Path } from 'react-native-svg';
 import { C, G } from '../theme';
 import { Logo, Button3D, ListRow, Toggle, SectionHead, useToast, useAccount, hap } from '../ui';
@@ -40,12 +40,12 @@ export default function CardScreen({ nav }) {
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <View style={styles.top}>
-        <Pressable onPress={() => nav.go('home')} style={styles.iconBtn}><Ionicons name="chevron-back" size={20} color={C.txt} /></Pressable>
+        <Pressable onPress={() => nav.go('home')} style={styles.iconBtn}><Icon name="chevron-back" size={20} color={C.txt} /></Pressable>
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Text style={styles.title}>{t('card.title')}</Text>
-          {verified && <View style={styles.verified}><Ionicons name="checkmark-circle" size={12} color={C.up} /><Text style={styles.verifiedTxt}>Verified</Text></View>}
+          {verified && <View style={styles.verified}><Icon name="checkmark-circle" size={12} color={C.up} /><Text style={styles.verifiedTxt}>Verified</Text></View>}
         </View>
-        <Pressable onPress={() => nav.go('activity')} style={styles.iconBtn}><Ionicons name="time-outline" size={20} color={C.txt} /></Pressable>
+        <Pressable onPress={() => nav.go('activity')} style={styles.iconBtn}><Icon name="time-outline" size={20} color={C.txt} /></Pressable>
       </View>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
         <Pressable onPress={flip} style={{ height: 210 }}>
@@ -77,11 +77,11 @@ export default function CardScreen({ nav }) {
           </Animated.View>
         </Pressable>
 
-        <View style={styles.hint}><Ionicons name="sync" size={13} color={C.txt3} /><Text style={styles.hintTxt}>{t('card.hint')}</Text></View>
+        <View style={styles.hint}><Icon name="sync" size={13} color={C.txt3} /><Text style={styles.hintTxt}>{t('card.hint')}</Text></View>
 
         <View style={styles.stateRow}>
           <View style={[styles.stateBadge, { backgroundColor: frozen ? 'rgba(240,119,107,0.13)' : 'rgba(62,217,160,0.13)' }]}>
-            <Ionicons name={frozen ? 'snow' : 'checkmark-circle'} size={13} color={frozen ? C.down : C.up} />
+            <Icon name={frozen ? 'snow' : 'checkmark-circle'} size={13} color={frozen ? C.down : C.up} />
             <Text style={[styles.stateTxt, { color: frozen ? C.down : C.up }]}>{frozen ? t('card.frozen') : t('card.active')}</Text>
           </View>
         </View>
@@ -93,7 +93,7 @@ export default function CardScreen({ nav }) {
 
         <SectionHead title={t('card.movs')} action={t('act.title')} onAction={() => nav.go('activity')} />
         <View style={styles.emptyBox}>
-          <Ionicons name="card" size={26} color={C.txt3} />
+          <Icon name="card" size={26} color={C.txt3} />
           <Text style={styles.emptyTxt}>{t('card.empty')}</Text>
         </View>
       </ScrollView>

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, Pressable, Animated, Easing, StyleSheet, SafeAreaView, StatusBar, Platform, PanResponder } from 'react-native';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from './src/icons';
 import { C } from './src/theme';
 import { Nav, ToastCtx, AccountCtx, AppBackground } from './src/ui';
 import { LangProvider, useT } from './src/i18n';
@@ -187,7 +187,7 @@ function Root() {
                 const on = cur.r === t.r;
                 return (
                   <Pressable key={t.r} onPress={() => go(t.r)} style={styles.tab}>
-                    <Ionicons name={t.icon} size={23} color={on ? C.gold : C.txt3} />
+                    <Icon name={t.icon} size={23} color={on ? C.gold : C.txt3} />
                     <Text style={[styles.tabTxt, { color: on ? C.gold : C.txt3 }]}>{tr(t.label)}</Text>
                   </Pressable>
                 );
@@ -199,7 +199,7 @@ function Root() {
 
       {toast && (
         <Animated.View style={[styles.toast, { opacity: tOp, transform: [{ translateY: tOp.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
-          <Ionicons name="checkmark-circle" size={17} color={C.up} />
+          <Icon name="checkmark-circle" size={17} color={C.up} />
           <Text style={styles.toastTxt}>{toast}</Text>
         </Animated.View>
       )}

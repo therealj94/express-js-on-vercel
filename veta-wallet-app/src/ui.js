@@ -1,7 +1,7 @@
 import React, { useRef, createContext, useContext } from 'react';
 import { View, Text, Pressable, TextInput, Animated, Image, ImageBackground, StyleSheet, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from './icons';
 import Svg, { Rect, Line, Path, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { C, G } from './theme';
@@ -79,7 +79,7 @@ export function Button3D({ title, onPress, variant = 'gold', icon, style, disabl
           onPress={onPress}
           style={{ borderRadius: 17, overflow: 'hidden' }}>
           <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnInner}>
-            {icon ? <Ionicons name={icon} size={18} color={txtColor} style={{ marginRight: 8 }} /> : null}
+            {icon ? <Icon name={icon} size={18} color={txtColor} style={{ marginRight: 8 }} /> : null}
             <Text style={[styles.btnText, { color: txtColor }]}>{title}</Text>
           </LinearGradient>
         </Pressable>
@@ -99,7 +99,7 @@ export function ActionBtn({ icon, label, onPress, size = 54 }) {
       style={{ alignItems: 'center', gap: 8 }}>
       <Animated.View style={{ transform: [{ scale: s }] }}>
         <LinearGradient colors={G.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.circle, { width: size, height: size, borderRadius: size / 2 }]}>
-          <Ionicons name={icon} size={size * 0.42} color={C.darkText} />
+          <Icon name={icon} size={size * 0.42} color={C.darkText} />
         </LinearGradient>
       </Animated.View>
       {label ? <Text style={styles.actLabel}>{label}</Text> : null}
@@ -110,7 +110,7 @@ export function ActionBtn({ icon, label, onPress, size = 54 }) {
 export function IconBtn({ icon, onPress, badge }) {
   return (
     <Pressable onPress={() => { hap(); onPress && onPress(); }} style={styles.iconBtn}>
-      <Ionicons name={icon} size={20} color={C.txt} />
+      <Icon name={icon} size={20} color={C.txt} />
       {badge ? <View style={styles.iconDot} /> : null}
     </Pressable>
   );
@@ -149,12 +149,12 @@ export function Toggle({ value, onValueChange }) {
 export function ListRow({ icon, title, sub, right, onPress, first }) {
   return (
     <Pressable onPress={onPress ? () => { hap(); onPress(); } : undefined} style={[styles.listRow, first && { borderTopWidth: 0 }]}>
-      <View style={styles.liIcon}><Ionicons name={icon} size={19} color={C.gold} /></View>
+      <View style={styles.liIcon}><Icon name={icon} size={19} color={C.gold} /></View>
       <View style={{ flex: 1 }}>
         <Text style={styles.liTitle}>{title}</Text>
         {sub ? <Text style={styles.liSub}>{sub}</Text> : null}
       </View>
-      {right !== undefined ? right : <Ionicons name="chevron-forward" size={17} color={C.txt3} />}
+      {right !== undefined ? right : <Icon name="chevron-forward" size={17} color={C.txt3} />}
     </Pressable>
   );
 }

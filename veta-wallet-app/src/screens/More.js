@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Image, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from '../icons';
 import * as Clipboard from 'expo-clipboard';
 import { C, G } from '../theme';
 import { Header, Button3D, ListRow, Toggle, useToast, useAccount, hap } from '../ui';
@@ -41,7 +41,7 @@ export function Activity({ nav }) {
         </ScrollView>
         {list.length === 0 && (
           <View style={styles.emptyWrap}>
-            <View style={styles.emptyIcon}><Ionicons name="pulse" size={30} color={C.txt3} /></View>
+            <View style={styles.emptyIcon}><Icon name="pulse" size={30} color={C.txt3} /></View>
             <Text style={styles.emptyTitle}>{t('act.emptyT')}</Text>
             <Text style={styles.emptyBody}>{t('act.emptyP')}</Text>
           </View>
@@ -50,7 +50,7 @@ export function Activity({ nav }) {
           const inbound = isIn(x);
           return (
             <Pressable key={x.hash || i} onPress={() => { hap(); toast(x.hash ? 'Tx ' + x.hash.slice(0, 18) + '…' : 'Tx'); }} style={styles.txn}>
-              <View style={styles.txnIc}><Ionicons name={inbound ? 'arrow-down' : 'arrow-up'} size={19} color={inbound ? C.up : C.gold} /></View>
+              <View style={styles.txnIc}><Icon name={inbound ? 'arrow-down' : 'arrow-up'} size={19} color={inbound ? C.up : C.gold} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.txnT}>{inbound ? t('act.in') : t('act.out')} {x.symbol || 'ORIGEN'}</Text>
                 <Text style={styles.txnD}>{fmtDate(x.timeStamp)}</Text>
@@ -73,7 +73,7 @@ export function Notifications({ nav }) {
       <Header title={t('notif.title')} onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }}>
         <View style={styles.emptyWrap}>
-          <View style={styles.emptyIcon}><Ionicons name="notifications" size={30} color={C.txt3} /></View>
+          <View style={styles.emptyIcon}><Icon name="notifications" size={30} color={C.txt3} /></View>
           <Text style={styles.emptyTitle}>{t('notif.emptyT')}</Text>
           <Text style={styles.emptyBody}>{t('notif.emptyP')}</Text>
         </View>
@@ -103,7 +103,7 @@ export function Settings({ nav }) {
             <Text style={styles.profMail} numberOfLines={1}>{shortAddr(acc.addr)}</Text>
           </View>
           {acc.genesisUid ? (
-            <View style={styles.kycBadge}><Ionicons name="checkmark-circle" size={12} color={C.up} /><Text style={styles.kycTxt}>Genesis</Text></View>
+            <View style={styles.kycBadge}><Icon name="checkmark-circle" size={12} color={C.up} /><Text style={styles.kycTxt}>Genesis</Text></View>
           ) : null}
         </LinearGradient>
 
@@ -144,7 +144,7 @@ export function Settings({ nav }) {
         <View style={styles.group}>
           <View style={[styles.langRow]}>
             <View style={{ width: 38, height: 38, borderRadius: 11, backgroundColor: 'rgba(201,169,97,0.12)', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="language" size={19} color={C.gold} />
+              <Icon name="language" size={19} color={C.gold} />
             </View>
             <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: C.txt }}>{t('set.lang')}</Text>
             <View style={styles.langSeg}>
@@ -159,7 +159,7 @@ export function Settings({ nav }) {
 
         <View style={{ height: 10 }} />
         <Pressable onPress={() => { hap(); logout(); nav.go('auth'); }} style={styles.logout}>
-          <Ionicons name="power" size={18} color="#fff" />
+          <Icon name="power" size={18} color="#fff" />
           <Text style={styles.logoutTxt}>{t('set.logout')}</Text>
         </Pressable>
         <Text style={styles.foot}>{t('set.foot')}</Text>
@@ -184,7 +184,7 @@ export function Passport({ nav }) {
         <Header title={t('pass.title')} onBack={() => nav.back()} />
         <ScrollView contentContainerStyle={{ padding: 22 }}>
           <View style={styles.emptyWrap}>
-            <View style={styles.emptyIcon}><Ionicons name="finger-print" size={30} color={C.gold} /></View>
+            <View style={styles.emptyIcon}><Icon name="finger-print" size={30} color={C.gold} /></View>
             <Text style={styles.emptyTitle}>{t('pass.emptyT')}</Text>
             <Text style={styles.emptyBody}>{t('pass.emptyP')}</Text>
             <Button3D title={t('pass.linkNow')} icon="finger-print" onPress={() => nav.go('kyc')} style={{ alignSelf: 'stretch', marginTop: 18 }} />
@@ -211,11 +211,11 @@ export function Passport({ nav }) {
         <LinearGradient colors={['#0f5f55', '#0a3a3d', '#06282b']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.passCard}>
           <View style={styles.passTop}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Ionicons name="finger-print" size={18} color={C.gold} />
+              <Icon name="finger-print" size={18} color={C.gold} />
               <Text style={styles.passBrand}>GENESIS ID</Text>
             </View>
             <View style={[styles.passVerified, !verified && { backgroundColor: 'rgba(251,191,36,0.14)' }]}>
-              <Ionicons name={verified ? 'shield-checkmark' : 'time'} size={12} color={verified ? C.up : '#FBBF24'} />
+              <Icon name={verified ? 'shield-checkmark' : 'time'} size={12} color={verified ? C.up : '#FBBF24'} />
               <Text style={[styles.passVerTxt, !verified && { color: '#FBBF24' }]}>{statusLbl}</Text>
             </View>
           </View>
@@ -248,13 +248,13 @@ export function Passport({ nav }) {
 
         {/* Billetera emparejada */}
         <View style={styles.pairCard}>
-          <View style={styles.pairIcon}><Ionicons name="link" size={17} color={C.gold} /></View>
+          <View style={styles.pairIcon}><Icon name="link" size={17} color={C.gold} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.pairT}>{t('pass.linked')}</Text>
             <Text style={styles.pairV} numberOfLines={1}>{p?.walletAddress || acc.addr || '—'}</Text>
           </View>
           <Pressable onPress={async () => { hap(); try { await Clipboard.setStringAsync(p?.walletAddress || acc.addr || ''); toast(t('recv.copied')); } catch (e) {} }}>
-            <Ionicons name="copy" size={18} color={C.gold} />
+            <Icon name="copy" size={18} color={C.gold} />
           </Pressable>
         </View>
 
@@ -326,7 +326,7 @@ export function MyTokenPay({ nav }) {
       <Header title={t('mtp.title')} onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }}>
         <LinearGradient colors={G.green} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
-          <LinearGradient colors={G.gold} style={styles.heroIc}><Ionicons name="qr-code" size={24} color={C.darkText} /></LinearGradient>
+          <LinearGradient colors={G.gold} style={styles.heroIc}><Icon name="qr-code" size={24} color={C.darkText} /></LinearGradient>
           <Text style={styles.heroT}>{t('mtp.h')}</Text>
           <Text style={styles.heroP}>{t('mtp.p')}</Text>
         </LinearGradient>
@@ -342,7 +342,7 @@ export function MyTokenPay({ nav }) {
 function PayFeature({ icon, t, s, first }) {
   return (
     <View style={[styles.payFeat, first && { borderTopWidth: 0 }]}>
-      <View style={styles.notifIc}><Ionicons name={icon} size={19} color={C.gold} /></View>
+      <View style={styles.notifIc}><Icon name={icon} size={19} color={C.gold} /></View>
       <View style={{ flex: 1 }}><Text style={{ color: C.txt, fontWeight: '600', fontSize: 14 }}>{t}</Text><Text style={{ color: C.txt3, fontSize: 11.5, marginTop: 2 }}>{s}</Text></View>
     </View>
   );
@@ -356,7 +356,7 @@ export function Blocked({ nav }) {
       <Header title={t('blk.title')} onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }}>
         <View style={styles.emptyWrap}>
-          <View style={styles.emptyIcon}><Ionicons name="person-remove" size={30} color={C.txt3} /></View>
+          <View style={styles.emptyIcon}><Icon name="person-remove" size={30} color={C.txt3} /></View>
           <Text style={styles.emptyTitle}>{t('blk.emptyT')}</Text>
           <Text style={styles.emptyBody}>{t('blk.emptyP')}</Text>
         </View>
@@ -387,7 +387,7 @@ export function PrivateKey({ nav }) {
       <Header title={t('pk.title')} onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }}>
         <View style={styles.warnBox}>
-          <Ionicons name="warning" size={22} color="#E05A5A" />
+          <Icon name="warning" size={22} color="#E05A5A" />
           <Text style={styles.warnTxt}>{t('pk.warn')}</Text>
         </View>
 
@@ -395,7 +395,7 @@ export function PrivateKey({ nav }) {
         <View style={styles.pkBox}>
           <Text style={styles.pkTxt} numberOfLines={1}>{acc.addr || '—'}</Text>
           <Pressable onPress={async () => { hap(); try { await Clipboard.setStringAsync(acc.addr || ''); toast(t('recv.copied')); } catch (e) {} }}>
-            <Ionicons name="copy" size={20} color={C.gold} />
+            <Icon name="copy" size={20} color={C.gold} />
           </Pressable>
         </View>
 

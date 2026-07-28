@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from '../icons';
 import * as Clipboard from 'expo-clipboard';
 import { C } from '../theme';
 import { Header, TokenIcon, ActionBtn, Button3D, Card, useToast, useAccount, hap } from '../ui';
@@ -57,7 +57,7 @@ export default function TokenDetail({ nav, params }) {
               <Text style={styles.infoK}>{tr('tok.contract')}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Text style={styles.infoV}>{shortHash(t.contract)}</Text>
-                <Ionicons name="copy" size={13} color={C.gold} />
+                <Icon name="copy" size={13} color={C.gold} />
               </View>
             </Pressable>
           )}
@@ -73,7 +73,7 @@ export default function TokenDetail({ nav, params }) {
           const inbound = isIn(x);
           return (
             <Pressable key={x.hash || i} onPress={() => { hap(); toast('Tx ' + shortHash(x.hash)); }} style={styles.txn}>
-              <View style={styles.txnIc}><Ionicons name={inbound ? 'arrow-down' : 'arrow-up'} size={17} color={inbound ? C.up : C.gold} /></View>
+              <View style={styles.txnIc}><Icon name={inbound ? 'arrow-down' : 'arrow-up'} size={17} color={inbound ? C.up : C.gold} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.txnT}>{inbound ? tr('tok.received') : tr('tok.sent')}</Text>
                 <Text style={styles.txnD}>{shortHash(x.hash)}</Text>

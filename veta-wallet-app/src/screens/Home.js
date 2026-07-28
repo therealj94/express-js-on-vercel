@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from '../icons';
 import { C, G } from '../theme';
 import { TokenIcon, ActionBtn, IconBtn, SectionHead, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt, tokensFromBalances } from '../data';
@@ -75,7 +75,7 @@ export default function Home({ nav }) {
           <Text style={styles.balLbl}>{t('home.balance')}</Text>
           <Pressable onPress={() => { hap(); setHidden(!hidden); }} style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center' }}>
             <Text style={styles.balAmt}>{hidden ? '••••••' : money(total)}</Text>
-            <Ionicons name={hidden ? 'eye-off' : 'eye'} size={18} color={C.txt2} style={{ marginLeft: 8 }} />
+            <Icon name={hidden ? 'eye-off' : 'eye'} size={18} color={C.txt2} style={{ marginLeft: 8 }} />
           </Pressable>
           {dayPct != null ? (
             <Text style={[styles.balChg, { color: dayPct >= 0 ? C.up : C.down }]}>
@@ -94,12 +94,12 @@ export default function Home({ nav }) {
 
         {!acc.genesisUid && (
           <Pressable onPress={() => nav.go('kyc')} style={styles.promo}>
-            <LinearGradient colors={G.gold} style={styles.promoIc}><Ionicons name="finger-print" size={22} color={C.darkText} /></LinearGradient>
+            <LinearGradient colors={G.gold} style={styles.promoIc}><Icon name="finger-print" size={22} color={C.darkText} /></LinearGradient>
             <View style={{ flex: 1 }}>
               <Text style={styles.promoT}>{t('home.genesisT')}</Text>
               <Text style={styles.promoP}>{t('home.genesisP')}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={C.gold} />
+            <Icon name="chevron-forward" size={20} color={C.gold} />
           </Pressable>
         )}
 

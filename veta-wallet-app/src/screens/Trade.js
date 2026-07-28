@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from '../icons';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { C } from '../theme';
@@ -48,7 +48,7 @@ function Selector({ token, label, onPress }) {
         <Text style={styles.selName}>{label || token.n}</Text>
         <Text style={styles.selSub}>{tr('send.available')}: {qtyFmt(token.qty)} {token.s}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color={C.txt3} />
+      <Icon name="chevron-forward" size={20} color={C.txt3} />
     </Pressable>
   );
 }
@@ -99,7 +99,7 @@ export function Send({ nav }) {
 
         {!isNative && (
           <View style={styles.notice}>
-            <Ionicons name="information-circle" size={18} color={C.gold} />
+            <Icon name="information-circle" size={18} color={C.gold} />
             <Text style={styles.noticeTxt}>{t('send.soon', { s: tok.s })}</Text>
           </View>
         )}
@@ -158,7 +158,7 @@ export function Receive({ nav }) {
         </Text>
         <View style={styles.addrBox}>
           <Text style={styles.addr} numberOfLines={1}>{address || '—'}</Text>
-          <Pressable onPress={copy}><Ionicons name="copy" size={22} color={C.gold} /></Pressable>
+          <Pressable onPress={copy}><Icon name="copy" size={22} color={C.gold} /></Pressable>
         </View>
         <Button3D title={t('recv.copy')} icon="copy" onPress={copy} style={{ alignSelf: 'stretch' }} />
       </ScrollView>
@@ -174,7 +174,7 @@ export function Buy({ nav }) {
       <Header title={t('buy.title')} onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }}>
         <View style={styles.soonWrap}>
-          <View style={styles.soonIcon}><Ionicons name="card" size={34} color={C.gold} /></View>
+          <View style={styles.soonIcon}><Icon name="card" size={34} color={C.gold} /></View>
           <Text style={styles.soonTitle}>{t('buy.h')}</Text>
           <Text style={styles.soonBody}>{t('buy.p')}</Text>
           <Button3D title={t('buy.cta')} icon="qr-code" onPress={() => nav.go('receive')} style={{ alignSelf: 'stretch', marginTop: 18 }} />
@@ -203,7 +203,7 @@ export function Swap({ nav }) {
       <Header title={t('swap.title')} onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 110 }} keyboardShouldPersistTaps="handled">
         <SwapBox label={t('swap.from')} balance={qtyFmt(from.qty)} token={from} value={amt} onChange={setAmt} onPickToken={() => setPick('from')} />
-        <Pressable onPress={flip} style={styles.flip}><Ionicons name="swap-vertical" size={22} color={C.gold} /></Pressable>
+        <Pressable onPress={flip} style={styles.flip}><Icon name="swap-vertical" size={22} color={C.gold} /></Pressable>
         <SwapBox label={t('swap.toLbl')} balance={qtyFmt(to.qty)} token={to} value={out ? out.toFixed(4) : ''} readOnly onPickToken={() => setPick('to')} />
         <Card style={{ padding: 14, marginTop: 16 }}>
           <Row k={t('swap.rate')} v={rate ? `1 ${from.s} = ${rate.toFixed(4)} ${to.s}` : '—'} />
@@ -211,7 +211,7 @@ export function Swap({ nav }) {
           <Row k={`${t('swap.price')} ${to.s}`} v={money(to.price)} />
         </Card>
         <View style={styles.notice}>
-          <Ionicons name="information-circle" size={18} color={C.gold} />
+          <Icon name="information-circle" size={18} color={C.gold} />
           <Text style={styles.noticeTxt}>{t('swap.soon')}</Text>
         </View>
         <Button3D title={t('swap.cta')} icon="swap-horizontal" disabled onPress={() => {}} />
@@ -234,7 +234,7 @@ function SwapBox({ label, balance, token, value, onChange, readOnly, onPickToken
         <Pressable onPress={() => { hap(); onPickToken(); }} style={styles.swapTok}>
           <TokenIcon t={token} size={28} />
           <Text style={{ color: C.txt, fontWeight: '700', marginLeft: 7 }}>{token.s}</Text>
-          <Ionicons name="chevron-down" size={16} color={C.txt2} style={{ marginLeft: 3 }} />
+          <Icon name="chevron-down" size={16} color={C.txt2} style={{ marginLeft: 3 }} />
         </Pressable>
       </View>
     </Card>
