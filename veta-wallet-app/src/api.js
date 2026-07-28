@@ -223,12 +223,14 @@ export async function erc20Decimals(provider, contract) {
 // Registro de tokens ON-CHAIN de Orden Global (red 8532). ORIGEN es el nativo;
 // el resto son ERC-20 con su dirección de contrato. `price` = USD por token
 // (los que faltan se ajustan cuando tengamos el precio de tu backend).
+// AUKA (oro) y AGKA (plata) siguen el precio del metal; se pueden actualizar en
+// vivo si tu backend expone un feed de precios (ver fetchPrices más abajo).
 export const ONCHAIN_TOKENS = [
   { symbol: 'ORIGEN', native: true, decimals: 18, price: 2.35 },
-  { symbol: 'AUKA', contract: '0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B', price: 4014 },
-  { symbol: 'AGKA', contract: '0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B', price: 0 },
+  { symbol: 'AUKA', contract: '0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B', price: 4014, tracks: 'gold' },
+  { symbol: 'AGKA', contract: '0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B', price: 57.22, tracks: 'silver' },
   { symbol: 'ONDK', contract: '0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1', price: 2.10 },
-  { symbol: 'MNKA', contract: '0x18b6680CFF71c11067bec312Fc48786bE2e54Ead', price: 0 },
+  { symbol: 'MNKA', contract: '0x18b6680CFF71c11067bec312Fc48786bE2e54Ead', price: 1.50 },
 ];
 
 // Lee saldos de TODOS los tokens del registro (nativo + ERC-20) desde el RPC.
