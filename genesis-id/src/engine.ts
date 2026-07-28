@@ -18,13 +18,22 @@ export function getIdentity(identityId: string): Identity | undefined {
 }
 
 /** Crea (o retoma) una identidad a partir del correo. Si ya existe, la devuelve
- *  tal cual para permitir reanudar donde quedó. */
-export function startIdentity(email: string, fullName?: string): Identity {
+ *  tal cual para permitir reanudar donde quedó. Si viene walletAddress, queda
+ *  emparejada la Veta Wallet del usuario (visible en el admin). */
+export function startIdentity(email: string, fullName?: string, walletAddress?: string): Identity {
   const normalized = email.toLowerCase().trim()
   const existing = findIdentityByEmail(normalized)
   if (existing) {
+    let changed = false
     if (fullName && !existing.fullName) {
       existing.fullName = fullName
+      changed = true
+    }
+    if (walletAddress && existing.walletAddress !== walletAddress) {
+      existing.walletAddress = walletAddress
+      changed = true
+    }
+    if (changed) {
       existing.updatedAt = now()
       store.save()
     }
@@ -35,6 +44,7 @@ export function startIdentity(email: string, fullName?: string): Identity {
     type: 'personal',
     email: normalized,
     fullName: fullName ?? null,
+    walletAddress: walletAddress ?? null,
     step: 'doc-front',
     genesisUid: null,
     startedAt: now(),
@@ -43,6 +53,16 @@ export function startIdentity(email: string, fullName?: string): Identity {
     updatedAt: now(),
   }
   store.all().identities.push(identity)
+  store.save()
+  return identity
+}
+
+/** Empareja (o actualiza) la Veta Wallet de una identidad existente. */
+export function linkWallet(email: string, walletAddress: string): Identity | undefined {
+  const identity = findIdentityByEmail(email)
+  if (!identity) return undefined
+  identity.walletAddress = walletAddress
+  identity.updatedAt = now()
   store.save()
   return identity
 }

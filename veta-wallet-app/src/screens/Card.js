@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { C, G } from '../theme';
 import { Logo, Button3D, ListRow, Toggle, SectionHead, useToast, useAccount, hap } from '../ui';
+import { useT } from '../i18n';
 
 // Deriva 4 dígitos estables desde la dirección de la billetera.
 function last4(addr) {
@@ -20,6 +21,7 @@ export default function CardScreen({ nav }) {
   const [flipped, setFlipped] = useState(false);
   const [frozen, setFrozen] = useState(false);
   const toast = useToast();
+  const t = useT();
   const { account } = useAccount();
   const acc = account || { name: 'Titular', addr: '0x0000', genesisUid: null };
   const titular = (acc.name || 'Titular').toUpperCase();
@@ -40,7 +42,7 @@ export default function CardScreen({ nav }) {
       <View style={styles.top}>
         <Pressable onPress={() => nav.go('home')} style={styles.iconBtn}><Ionicons name="chevron-back" size={20} color={C.txt} /></Pressable>
         <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text style={styles.title}>Mi tarjeta</Text>
+          <Text style={styles.title}>{t('card.title')}</Text>
           {verified && <View style={styles.verified}><Ionicons name="checkmark-circle" size={12} color={C.up} /><Text style={styles.verifiedTxt}>Verified</Text></View>}
         </View>
         <Pressable onPress={() => nav.go('activity')} style={styles.iconBtn}><Ionicons name="time-outline" size={20} color={C.txt} /></Pressable>
@@ -75,24 +77,24 @@ export default function CardScreen({ nav }) {
           </Animated.View>
         </Pressable>
 
-        <View style={styles.hint}><Ionicons name="sync" size={13} color={C.txt3} /><Text style={styles.hintTxt}>Toca la tarjeta para ver el reverso</Text></View>
+        <View style={styles.hint}><Ionicons name="sync" size={13} color={C.txt3} /><Text style={styles.hintTxt}>{t('card.hint')}</Text></View>
 
         <View style={styles.stateRow}>
           <View style={[styles.stateBadge, { backgroundColor: frozen ? 'rgba(240,119,107,0.13)' : 'rgba(62,217,160,0.13)' }]}>
             <Ionicons name={frozen ? 'snow' : 'checkmark-circle'} size={13} color={frozen ? C.down : C.up} />
-            <Text style={[styles.stateTxt, { color: frozen ? C.down : C.up }]}>{frozen ? 'CONGELADA' : 'ACTIVA'}</Text>
+            <Text style={[styles.stateTxt, { color: frozen ? C.down : C.up }]}>{frozen ? t('card.frozen') : t('card.active')}</Text>
           </View>
         </View>
 
         <View style={styles.group}>
-          <ListRow first icon="snow" title="Congelar tarjeta" sub="Bloqueo temporal instantáneo" onPress={() => {}} right={<Toggle value={frozen} onValueChange={(v) => { setFrozen(v); toast(v ? 'Tarjeta congelada' : 'Tarjeta activa'); }} />} />
-          <ListRow icon="globe" title="Gestionar mi tarjeta" sub="Datos, PIN y límites en vetawallet.com" onPress={() => toast('Gestión completa en vetawallet.com')} />
+          <ListRow first icon="snow" title={t('card.freeze')} sub={t('card.freezeSub')} onPress={() => {}} right={<Toggle value={frozen} onValueChange={(v) => { setFrozen(v); toast(v ? t('card.frozenT') : t('card.activeT')); }} />} />
+          <ListRow icon="globe" title={t('card.manage')} sub={t('card.manageSub')} onPress={() => toast(t('card.manageToast'))} />
         </View>
 
-        <SectionHead title="Movimientos" action="Actividad" onAction={() => nav.go('activity')} />
+        <SectionHead title={t('card.movs')} action={t('act.title')} onAction={() => nav.go('activity')} />
         <View style={styles.emptyBox}>
           <Ionicons name="card" size={26} color={C.txt3} />
-          <Text style={styles.emptyTxt}>Los consumos de tu tarjeta aparecerán aquí.</Text>
+          <Text style={styles.emptyTxt}>{t('card.empty')}</Text>
         </View>
       </ScrollView>
     </View>

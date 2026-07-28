@@ -5,6 +5,7 @@ import * as Clipboard from 'expo-clipboard';
 import { C } from '../theme';
 import { Header, TokenIcon, ActionBtn, Button3D, Card, useToast, useAccount, hap } from '../ui';
 import { COIN_INFO, money, qtyFmt } from '../data';
+import { useT } from '../i18n';
 
 const shortHash = (h) => (h && h.length > 14 ? `${h.slice(0, 8)}…${h.slice(-4)}` : h || '');
 
@@ -12,6 +13,7 @@ export default function TokenDetail({ nav, params }) {
   const t = params.token || { s: 'ORIGEN', n: 'Origen', qty: 0, price: 0, logo: true };
   const info = COIN_INFO[t.s] || { title: t.n, desc: '', rows: [] };
   const toast = useToast();
+  const tr = useT();
   const { account } = useAccount();
   const up = (t.chg ?? 0) >= 0;
 
@@ -28,7 +30,7 @@ export default function TokenDetail({ nav, params }) {
           <Text style={styles.qty}>{qtyFmt(t.qty)} {t.s}</Text>
           <Text style={styles.usd}>≈ {money(t.qty * t.price)} USD</Text>
           <View style={styles.priceRow}>
-            <Text style={styles.priceTxt}>Precio: {money(t.price)}</Text>
+            <Text style={styles.priceTxt}>{tr('tok.price')}: {money(t.price)}</Text>
             {t.chg != null && (
               <Text style={[styles.chg, { color: up ? C.up : C.down }]}>{up ? '+' : ''}{t.chg.toFixed(2)}% 24h</Text>
             )}
@@ -36,9 +38,9 @@ export default function TokenDetail({ nav, params }) {
         </View>
 
         <View style={styles.mini}>
-          <ActionBtn icon="arrow-up" label="Enviar" size={48} onPress={() => nav.go('send')} />
-          <ActionBtn icon="arrow-down" label="Recibir" size={48} onPress={() => nav.go('receive')} />
-          <ActionBtn icon="swap-horizontal" label="Swap" size={48} onPress={() => nav.go('swap')} />
+          <ActionBtn icon="arrow-up" label={tr('home.send')} size={48} onPress={() => nav.go('send')} />
+          <ActionBtn icon="arrow-down" label={tr('home.receive')} size={48} onPress={() => nav.go('receive')} />
+          <ActionBtn icon="swap-horizontal" label={tr('home.swap')} size={48} onPress={() => nav.go('swap')} />
         </View>
 
         <Card style={{ marginBottom: 14 }}>
@@ -51,8 +53,8 @@ export default function TokenDetail({ nav, params }) {
             </View>
           ))}
           {t.contract && (
-            <Pressable onPress={async () => { hap(); try { await Clipboard.setStringAsync(t.contract); toast('Contrato copiado'); } catch (e) {} }} style={styles.infoRow}>
-              <Text style={styles.infoK}>Contrato</Text>
+            <Pressable onPress={async () => { hap(); try { await Clipboard.setStringAsync(t.contract); toast(tr('tok.copied')); } catch (e) {} }} style={styles.infoRow}>
+              <Text style={styles.infoK}>{tr('tok.contract')}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Text style={styles.infoV}>{shortHash(t.contract)}</Text>
                 <Ionicons name="copy" size={13} color={C.gold} />
@@ -61,10 +63,10 @@ export default function TokenDetail({ nav, params }) {
           )}
         </Card>
 
-        <Text style={styles.secTitle}>Movimientos</Text>
+        <Text style={styles.secTitle}>{tr('tok.movs')}</Text>
         {transfers.length === 0 && (
           <Card style={{ padding: 18, alignItems: 'center' }}>
-            <Text style={{ color: C.txt3, fontSize: 12.5 }}>Sin movimientos de {t.s} todavía.</Text>
+            <Text style={{ color: C.txt3, fontSize: 12.5 }}>{tr('tok.empty', { s: t.s })}</Text>
           </Card>
         )}
         {transfers.slice(0, 15).map((x, i) => {
@@ -73,7 +75,7 @@ export default function TokenDetail({ nav, params }) {
             <Pressable key={x.hash || i} onPress={() => { hap(); toast('Tx ' + shortHash(x.hash)); }} style={styles.txn}>
               <View style={styles.txnIc}><Ionicons name={inbound ? 'arrow-down' : 'arrow-up'} size={17} color={inbound ? C.up : C.gold} /></View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.txnT}>{inbound ? 'Recibido' : 'Enviado'}</Text>
+                <Text style={styles.txnT}>{inbound ? tr('tok.received') : tr('tok.sent')}</Text>
                 <Text style={styles.txnD}>{shortHash(x.hash)}</Text>
               </View>
               <Text style={[styles.txnV, inbound && { color: C.up }]}>{inbound ? '+' : '-'}{qtyFmt(Number(x.value) || 0)}</Text>
@@ -82,7 +84,7 @@ export default function TokenDetail({ nav, params }) {
         })}
 
         <View style={{ height: 14 }} />
-        <Button3D title="Ver actividad completa" icon="pulse" onPress={() => nav.go('activity')} />
+        <Button3D title={tr('tok.viewAll')} icon="pulse" onPress={() => nav.go('activity')} />
       </ScrollView>
     </View>
   );

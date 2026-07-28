@@ -7,11 +7,13 @@ import { TokenIcon, ActionBtn, IconBtn, SectionHead, useToast, useAccount, hap }
 import { money, qtyFmt, tokensFromBalances } from '../data';
 import { apiPortfolio } from '../api';
 import { upsertApiAccount } from '../accounts';
+import { useT } from '../i18n';
 
 export default function Home({ nav }) {
   const [hidden, setHidden] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const toast = useToast();
+  const t = useT();
   const { account, login } = useAccount();
   const refreshedOnce = useRef(false);
 
@@ -32,9 +34,9 @@ export default function Home({ nav }) {
       const portfolio = await apiPortfolio();
       const updated = await upsertApiAccount({ email: acc.email, name: acc.name }, acc.addr, portfolio);
       login(updated);
-      if (showToast) toast('Saldos actualizados');
+      if (showToast) toast(t('home.updated'));
     } catch (e) {
-      if (showToast) toast('Sin conexión — mostrando datos guardados');
+      if (showToast) toast(t('home.offline'));
     }
   }
 
@@ -70,23 +72,23 @@ export default function Home({ nav }) {
       <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 110 }} showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.gold} colors={[C.gold]} progressBackgroundColor={C.panel} />}>
         <LinearGradient colors={G.green} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balCard}>
-          <Text style={styles.balLbl}>BALANCE TOTAL</Text>
+          <Text style={styles.balLbl}>{t('home.balance')}</Text>
           <Pressable onPress={() => { hap(); setHidden(!hidden); }} style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center' }}>
             <Text style={styles.balAmt}>{hidden ? '••••••' : money(total)}</Text>
             <Ionicons name={hidden ? 'eye-off' : 'eye'} size={18} color={C.txt2} style={{ marginLeft: 8 }} />
           </Pressable>
           {dayPct != null ? (
             <Text style={[styles.balChg, { color: dayPct >= 0 ? C.up : C.down }]}>
-              {dayPct >= 0 ? '+' : '-'}{money(Math.abs(dayUsd))}  <Text style={styles.pill}> {dayPct >= 0 ? '+' : ''}{dayPct.toFixed(2)}% </Text>  hoy
+              {dayPct >= 0 ? '+' : '-'}{money(Math.abs(dayUsd))}  <Text style={styles.pill}> {dayPct >= 0 ? '+' : ''}{dayPct.toFixed(2)}% </Text>  {t('home.today')}
             </Text>
           ) : (
-            <Text style={styles.balChg}>Blockchain Orden Global · en vivo</Text>
+            <Text style={styles.balChg}>{t('home.live')}</Text>
           )}
           <View style={styles.actions}>
-            <ActionBtn icon="arrow-up" label="Enviar" onPress={() => nav.go('send')} />
-            <ActionBtn icon="arrow-down" label="Recibir" onPress={() => nav.go('receive')} />
-            <ActionBtn icon="card" label="Comprar" onPress={() => nav.go('buy')} />
-            <ActionBtn icon="swap-horizontal" label="Swap" onPress={() => nav.go('swap')} />
+            <ActionBtn icon="arrow-up" label={t('home.send')} onPress={() => nav.go('send')} />
+            <ActionBtn icon="arrow-down" label={t('home.receive')} onPress={() => nav.go('receive')} />
+            <ActionBtn icon="card" label={t('home.buy')} onPress={() => nav.go('buy')} />
+            <ActionBtn icon="swap-horizontal" label={t('home.swap')} onPress={() => nav.go('swap')} />
           </View>
         </LinearGradient>
 
@@ -94,14 +96,14 @@ export default function Home({ nav }) {
           <Pressable onPress={() => nav.go('kyc')} style={styles.promo}>
             <LinearGradient colors={G.gold} style={styles.promoIc}><Ionicons name="finger-print" size={22} color={C.darkText} /></LinearGradient>
             <View style={{ flex: 1 }}>
-              <Text style={styles.promoT}>Vincula tu Genesis ID</Text>
-              <Text style={styles.promoP}>Identidad verificada para todo el ecosistema (opcional)</Text>
+              <Text style={styles.promoT}>{t('home.genesisT')}</Text>
+              <Text style={styles.promoP}>{t('home.genesisP')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={C.gold} />
           </Pressable>
         )}
 
-        <SectionHead title="Mis activos" action="Actividad" onAction={() => nav.go('activity')} />
+        <SectionHead title={t('home.assets')} action={t('home.activity')} onAction={() => nav.go('activity')} />
         {list.map((t) => (
           <Pressable key={t.s} onPress={() => { hap(); nav.go('token', { token: t }); }} style={styles.token}>
             <TokenIcon t={t} />

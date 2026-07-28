@@ -7,6 +7,7 @@ import { C } from '../theme';
 import { Logo, Button3D, hap, useAccount, useToast } from '../ui';
 import { upsertApiAccount, saveSession } from '../accounts';
 import { apiLogin, apiRegister, apiPortfolio, saveCreds, clearCreds } from '../api';
+import { useT } from '../i18n';
 
 export default function Auth({ nav }) {
   const [tab, setTab] = useState('login');
@@ -19,13 +20,14 @@ export default function Auth({ nav }) {
   const [err, setErr] = useState(null);
   const { login: setAccount } = useAccount();
   const toast = useToast();
+  const t = useT();
   const login = tab === 'login';
 
   async function enter(kind) {
     const mail = email.trim().toLowerCase();
-    if (!mail.includes('@')) { setErr('Ingresa un correo válido.'); return; }
-    if (!pw || pw.length < 4) { setErr('Ingresa tu contraseña.'); return; }
-    if (kind === 'register' && !regName.trim()) { setErr('Ingresa tu nombre completo.'); return; }
+    if (!mail.includes('@')) { setErr(t('auth.errEmail')); return; }
+    if (!pw || pw.length < 4) { setErr(t('auth.errPw')); return; }
+    if (kind === 'register' && !regName.trim()) { setErr(t('auth.errName')); return; }
     setBusy(true); setErr(null);
     try {
       const { user, address } = kind === 'register'
@@ -43,10 +45,11 @@ export default function Auth({ nav }) {
       const acc = await upsertApiAccount(user, address, portfolio);
       await saveSession(acc.email);
       setAccount(acc);
-      nav.go('home');
-      toast(`Bienvenido, ${acc.name.split(' ')[0]}`);
+      // Cuenta nueva: ofrece emparejar Genesis ID de una vez (opcional).
+      nav.go(kind === 'register' ? 'genesisOffer' : 'home');
+      toast(`${t('auth.welcome')}, ${acc.name.split(' ')[0]}`);
     } catch (e) {
-      setErr(e.message === 'API no configurada' ? 'Sin conexión con el servidor.' : (e.message || 'No se pudo completar. Intenta de nuevo.'));
+      setErr(e.message === 'API no configurada' ? t('auth.errServer') : (e.message || t('auth.errGeneric')));
     } finally { setBusy(false); }
   }
 
@@ -65,15 +68,15 @@ export default function Auth({ nav }) {
             <View style={styles.seg}>
               {['login', 'register'].map((k) => (
                 <Pressable key={k} onPress={() => { hap(); setTab(k); setErr(null); }} style={[styles.segBtn, tab === k && styles.segOn]}>
-                  <Text style={[styles.segTxt, tab === k && styles.segTxtOn]}>{k === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}</Text>
+                  <Text style={[styles.segTxt, tab === k && styles.segTxtOn]}>{k === 'login' ? t('auth.login') : t('auth.register')}</Text>
                 </Pressable>
               ))}
             </View>
 
-            {!login && <Input label="Nombre completo" placeholder="Tu nombre" value={regName} onChangeText={setRegName} />}
-            <Input label="Correo electrónico" placeholder="tu@correo.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+            {!login && <Input label={t('auth.name')} placeholder={t('auth.namePh')} value={regName} onChangeText={setRegName} />}
+            <Input label={t('auth.email')} placeholder="tu@correo.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
             <View style={{ marginBottom: 6 }}>
-              <Text style={styles.label}>Contraseña</Text>
+              <Text style={styles.label}>{t('auth.password')}</Text>
               <View>
                 <TextInput placeholderTextColor="#6f938f" secureTextEntry={!showPw} value={pw} onChangeText={setPw} placeholder="••••••••" autoCapitalize="none" style={[styles.input, { paddingRight: 44 }]} />
                 <Pressable onPress={() => setShowPw(!showPw)} style={styles.eye}>
@@ -86,30 +89,24 @@ export default function Auth({ nav }) {
               <View style={[styles.checkbox, remember && { backgroundColor: C.gold, borderColor: C.gold }]}>
                 {remember && <Ionicons name="checkmark" size={13} color={C.darkText} />}
               </View>
-              <Text style={styles.rememberTxt}>Mantener mi sesión iniciada</Text>
+              <Text style={styles.rememberTxt}>{t('auth.remember')}</Text>
             </Pressable>
 
             {err && <Text style={styles.err}>{err}</Text>}
 
-            {!login && (
-              <Text style={styles.terms}>
-                Tu cuenta se crea en la blockchain de Orden Global. Después podrás vincular tu Genesis ID desde Ajustes (opcional).
-              </Text>
-            )}
+            {!login && <Text style={styles.terms}>{t('auth.terms')}</Text>}
 
             <Button3D
-              title={busy ? (login ? 'Ingresando…' : 'Creando cuenta…') : (login ? 'Ingresar' : 'Crear mi cuenta')}
+              title={busy ? (login ? t('auth.entering') : t('auth.creating')) : (login ? t('auth.enter') : t('auth.create'))}
               onPress={busy ? () => {} : () => enter(login ? 'login' : 'register')}
               style={{ marginTop: 8 }}
             />
             {busy && <ActivityIndicator color={C.gold} style={{ marginTop: 14 }} />}
 
-            {login && (
-              <Text style={styles.forgot}>¿Olvidaste tu contraseña? Recupérala en vetawallet.com</Text>
-            )}
+            {login && <Text style={styles.forgot}>{t('auth.forgot')}</Text>}
           </View>
         </BlurView>
-        <Text style={styles.foot}>Protegido por Orden Global Blockchain</Text>
+        <Text style={styles.foot}>{t('auth.foot')}</Text>
       </ScrollView>
     </ImageBackground>
   );

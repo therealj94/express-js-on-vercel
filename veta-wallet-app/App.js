@@ -4,12 +4,13 @@ import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { C } from './src/theme';
 import { Nav, ToastCtx, AccountCtx } from './src/ui';
+import { LangProvider, useT } from './src/i18n';
 import { loadSession, saveSession, clearSession, initAccounts } from './src/accounts';
 import { loadToken, setToken, ensureSession, clearCreds } from './src/api';
 
 import Splash from './src/screens/Splash';
 import Auth from './src/screens/Auth';
-import { Kyc, SeedView } from './src/screens/Onboard';
+import { Kyc, SeedView, GenesisOffer } from './src/screens/Onboard';
 import Home from './src/screens/Home';
 import TokenDetail from './src/screens/TokenDetail';
 import { Send, Receive, Buy, Swap } from './src/screens/Trade';
@@ -17,22 +18,31 @@ import CardScreen from './src/screens/Card';
 import { Activity, Notifications, Settings, Profile, MyTokenPay, Passport, Blocked, PrivateKey } from './src/screens/More';
 
 const SCREENS = {
-  splash: Splash, auth: Auth, kyc: Kyc, seedview: SeedView,
+  splash: Splash, auth: Auth, kyc: Kyc, seedview: SeedView, genesisOffer: GenesisOffer,
   home: Home, token: TokenDetail, send: Send, receive: Receive, buy: Buy, swap: Swap,
   card: CardScreen, activity: Activity, notifs: Notifications, settings: Settings,
   profile: Profile, mytokenpay: MyTokenPay, passport: Passport, blocked: Blocked, privatekey: PrivateKey,
 };
 const TABS = [
-  { r: 'home', label: 'Inicio', icon: 'wallet' },
-  { r: 'card', label: 'Tarjeta', icon: 'card' },
-  { r: 'swap', label: 'Swap', icon: 'swap-horizontal' },
-  { r: 'activity', label: 'Actividad', icon: 'pulse' },
-  { r: 'settings', label: 'Ajustes', icon: 'settings-sharp' },
+  { r: 'home', label: 'tab.home', icon: 'wallet' },
+  { r: 'card', label: 'tab.card', icon: 'card' },
+  { r: 'swap', label: 'tab.swap', icon: 'swap-horizontal' },
+  { r: 'activity', label: 'tab.activity', icon: 'pulse' },
+  { r: 'settings', label: 'tab.settings', icon: 'settings-sharp' },
 ];
 const TAB_ROUTES = TABS.map((t) => t.r);
 const FULLSCREEN = ['splash', 'auth']; // sin barra de estado propia / sin tabbar
 
 export default function App() {
+  return (
+    <LangProvider>
+      <Root />
+    </LangProvider>
+  );
+}
+
+function Root() {
+  const tr = useT();
   const [stack, setStack] = useState([{ r: 'splash' }]);
   const [dir, setDir] = useState(1);
   const [account, setAccount] = useState(null);
@@ -95,6 +105,20 @@ export default function App() {
     })
   ).current;
 
+  // ---- swipe a la derecha para REGRESAR en pantallas apiladas ----
+  const backPan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => g.dx > 24 && Math.abs(g.dx) > Math.abs(g.dy) * 1.8,
+      onPanResponderRelease: (_, g) => {
+        if (g.dx > 60) {
+          const s = stackRef.current;
+          if (s.length > 1) { setDir(-1); setStack(s.slice(0, -1)); }
+          else if (!TAB_ROUTES.includes(s[s.length - 1].r)) { setDir(-1); setStack([{ r: 'home' }]); }
+        }
+      },
+    })
+  ).current;
+
   const Screen = SCREENS[cur.r] || Home;
   const showTabs = TAB_ROUTES.includes(cur.r);
   const isFull = FULLSCREEN.includes(cur.r);
@@ -103,7 +127,9 @@ export default function App() {
   const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] });
 
   const content = (
-    <Animated.View style={{ flex: 1, opacity: anim, transform: [{ translateX: tx }, { scale }] }} {...(showTabs ? pan.panHandlers : {})}>
+    <Animated.View
+      style={{ flex: 1, opacity: anim, transform: [{ translateX: tx }, { scale }] }}
+      {...(showTabs ? pan.panHandlers : !isFull ? backPan.panHandlers : {})}>
       <Nav.Provider value={{ go, back, route: cur.r }}>
         <AccountCtx.Provider value={acctApi}>
           <ToastCtx.Provider value={showToast}>
@@ -129,7 +155,7 @@ export default function App() {
                 return (
                   <Pressable key={t.r} onPress={() => go(t.r)} style={styles.tab}>
                     <Ionicons name={t.icon} size={23} color={on ? C.gold : C.txt3} />
-                    <Text style={[styles.tabTxt, { color: on ? C.gold : C.txt3 }]}>{t.label}</Text>
+                    <Text style={[styles.tabTxt, { color: on ? C.gold : C.txt3 }]}>{tr(t.label)}</Text>
                   </Pressable>
                 );
               })}

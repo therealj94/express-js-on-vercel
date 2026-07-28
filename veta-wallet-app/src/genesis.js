@@ -1,13 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ACCOUNTS } from './accounts';
 
-// Motor Genesis ID en el dispositivo: crea y GUARDA identidades reales (no
-// teatro). Si EXPO_PUBLIC_GENESIS_URL está definida, además envía el registro
-// al backend real de Genesis ID. Mismo modelo que genesis-id/src/types.ts.
+// Cliente del motor Genesis ID real (backend en la nube). Guarda una copia
+// local para reanudar el proceso sin conexión, pero el UID oficial y el
+// emparejamiento con la Veta Wallet (address) los emite el backend.
 
-const KEY = 'genesis-id-engine-v2';
-// Genesis ID en la nube por defecto (funciona en Expo Go y en APK sin .env).
-// Puedes sobrescribirlo con EXPO_PUBLIC_GENESIS_URL si algún día cambias de host.
+const KEY = 'genesis-id-engine-v3';
 const BASE = (process.env.EXPO_PUBLIC_GENESIS_URL || 'https://genesis-id.onrender.com').replace(/\/$/, '') || null;
 
 let cache = null; // { identities: [...] }
@@ -24,16 +21,7 @@ async function read() {
     const raw = await AsyncStorage.getItem(KEY);
     cache = raw ? JSON.parse(raw) : null;
   } catch (e) { cache = null; }
-  if (!cache) {
-    // sembrar identidades verificadas de las cuentas del ecosistema
-    cache = {
-      identities: ACCOUNTS.map((a) => ({
-        email: a.email, fullName: a.name, type: 'personal', step: 'verified',
-        genesisUid: a.genesisUid, startedAt: now(), verifiedAt: now(), review24At: null,
-      })),
-    };
-    await write();
-  }
+  if (!cache) cache = { identities: [] };
   return cache;
 }
 async function write() {
@@ -53,17 +41,21 @@ export const genesis = {
     return d.identities.find((i) => i.email === (email || '').toLowerCase().trim()) || null;
   },
 
-  // Crea o reanuda por correo (registro real + envío al backend si hay URL).
-  async start(email, fullName) {
+  // Crea o reanuda por correo. Envía nombre + address de la Veta Wallet al
+  // backend real para que la identidad quede emparejada desde el inicio.
+  async start(email, fullName, walletAddress) {
     const d = await read();
     const e = (email || '').toLowerCase().trim();
     let rec = d.identities.find((i) => i.email === e);
     if (!rec) {
-      rec = { email: e, fullName: fullName || null, type: 'personal', step: 'doc-front', genesisUid: null, startedAt: now(), verifiedAt: null, review24At: null };
+      rec = { email: e, fullName: fullName || null, walletAddress: walletAddress || null, type: 'personal', step: 'doc-front', genesisUid: null, startedAt: now(), verifiedAt: null, review24At: null };
       d.identities.push(rec);
       await write();
+    } else if (walletAddress && rec.walletAddress !== walletAddress) {
+      rec.walletAddress = walletAddress;
+      await write();
     }
-    post('', { email: e, fullName }); // best-effort al backend real
+    post('', { email: e, fullName, walletAddress }); // best-effort al backend real
     return rec;
   },
 
@@ -74,26 +66,42 @@ export const genesis = {
     return rec;
   },
 
-  async process(email) {
+  // Verifica en el backend central: emite el UID oficial y deja emparejada
+  // la Veta Wallet (email + fullName + walletAddress visibles en el admin).
+  async process(email, extra = {}) {
     const d = await read();
-    const rec = d.identities.find((i) => i.email === (email || '').toLowerCase().trim());
-    if (!rec) return null;
-    // Modo conectado: el backend central verifica y emite el UID oficial.
+    const e = (email || '').toLowerCase().trim();
+    let rec = d.identities.find((i) => i.email === e);
+    if (!rec) {
+      rec = { email: e, fullName: extra.fullName || null, walletAddress: extra.walletAddress || null, type: 'personal', step: 'processing', genesisUid: null, startedAt: now(), verifiedAt: null, review24At: null };
+      d.identities.push(rec);
+    }
+    if (extra.walletAddress) rec.walletAddress = extra.walletAddress;
+    if (extra.fullName && !rec.fullName) rec.fullName = extra.fullName;
+
     let backendUid = null;
     if (BASE) {
       try {
-        const created = await post('', { email: rec.email, fullName: rec.fullName });
+        const created = await post('', { email: rec.email, fullName: rec.fullName, walletAddress: rec.walletAddress });
         const idn = created && created.identity;
         if (idn && idn.id) {
           const done = await fetch(`${BASE}/api/identities/${idn.id}/process`, { method: 'POST' }).then((r) => r.json());
           backendUid = (done && done.identity && done.identity.genesisUid) || null;
         }
-      } catch (e) {}
+      } catch (e2) {}
     }
     rec.step = 'verified';
     rec.genesisUid = backendUid || rec.genesisUid || uid();
     rec.verifiedAt = now();
     await write();
     return rec;
+  },
+
+  // Empareja la Veta Wallet con una identidad Genesis ya existente.
+  async linkWallet(email, walletAddress) {
+    const d = await read();
+    const rec = d.identities.find((i) => i.email === (email || '').toLowerCase().trim());
+    if (rec) { rec.walletAddress = walletAddress; await write(); }
+    return post('/link-wallet', { email, walletAddress });
   },
 };

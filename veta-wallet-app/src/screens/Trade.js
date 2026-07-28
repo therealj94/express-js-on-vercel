@@ -7,6 +7,7 @@ import { C } from '../theme';
 import { Header, TokenIcon, Button3D, Card, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt, tokensFromBalances } from '../data';
 import { apiSend, NETWORK_FEE_ORIGEN } from '../api';
+import { useT } from '../i18n';
 
 function useTokens() {
   const { account } = useAccount();
@@ -15,12 +16,13 @@ function useTokens() {
 
 // -------- selector de activo --------
 function TokenPicker({ visible, tokens, onClose, onPick }) {
+  const tr = useT();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.sheetBg} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={() => {}}>
           <View style={styles.grab} />
-          <Text style={styles.sheetTitle}>Selecciona un activo</Text>
+          <Text style={styles.sheetTitle}>{tr('picker.title')}</Text>
           {tokens.map((t) => (
             <Pressable key={t.s} onPress={() => { hap(); onPick(t); onClose(); }} style={styles.pick}>
               <TokenIcon t={t} size={40} />
@@ -38,12 +40,13 @@ function TokenPicker({ visible, tokens, onClose, onPick }) {
 }
 
 function Selector({ token, label, onPress }) {
+  const tr = useT();
   return (
     <Pressable onPress={() => { hap(); onPress(); }} style={styles.selector}>
       <TokenIcon t={token} size={38} />
       <View style={{ flex: 1, marginLeft: 12 }}>
         <Text style={styles.selName}>{label || token.n}</Text>
-        <Text style={styles.selSub}>Disponible: {qtyFmt(token.qty)} {token.s}</Text>
+        <Text style={styles.selSub}>{tr('send.available')}: {qtyFmt(token.qty)} {token.s}</Text>
       </View>
       <Ionicons name="chevron-forward" size={20} color={C.txt3} />
     </Pressable>
@@ -61,6 +64,7 @@ export function Send({ nav }) {
   const [pick, setPick] = useState(false);
   const [sending, setSending] = useState(false);
   const toast = useToast();
+  const t = useT();
 
   const amount = parseFloat(amt) || 0;
   const usd = amount * (tok.price || 0);
@@ -68,35 +72,35 @@ export function Send({ nav }) {
   const insufficient = isNative && amount > 0 && amount + NETWORK_FEE_ORIGEN > tok.qty;
 
   async function doSend() {
-    if (!isNative) { toast(`El envío de ${tok.s} llegará pronto a la app. Por ahora úsalo desde vetawallet.com`); return; }
-    if (!/^0x[a-fA-F0-9]{40}$/.test(to.trim())) { toast('Ingresa una dirección válida (0x…)'); return; }
-    if (!(amount > 0)) { toast('Ingresa un monto válido'); return; }
-    if (insufficient) { toast('Saldo insuficiente (incluye la comisión de red)'); return; }
-    if (!pw) { toast('Ingresa tu contraseña para firmar'); return; }
+    if (!isNative) { toast(t('send.soon', { s: tok.s })); return; }
+    if (!/^0x[a-fA-F0-9]{40}$/.test(to.trim())) { toast(t('send.errAddr')); return; }
+    if (!(amount > 0)) { toast(t('send.errAmt')); return; }
+    if (insufficient) { toast(t('send.errBal')); return; }
+    if (!pw) { toast(t('send.errPw')); return; }
     setSending(true);
     try {
       const r = await apiSend({ to: to.trim(), amount, password: pw });
       if (r.ok) {
-        toast(r.hash ? `Enviado ✓ ${String(r.hash).slice(0, 12)}…` : 'Transacción enviada');
+        toast(r.hash ? `✓ ${String(r.hash).slice(0, 12)}…` : t('send.sent'));
         setTimeout(() => nav.go('home'), 900);
       } else {
-        toast('La transacción no se confirmó. Revisa en Actividad.');
+        toast(t('send.notConfirmed'));
       }
     } catch (e) {
-      toast(e.message || 'No se pudo enviar');
+      toast(e.message || t('auth.errGeneric'));
     } finally { setSending(false); }
   }
 
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header title="Enviar" onBack={() => nav.back()} />
+      <Header title={t('send.title')} onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }} keyboardShouldPersistTaps="handled">
         <Selector token={tok} onPress={() => setPick(true)} />
 
         {!isNative && (
           <View style={styles.notice}>
             <Ionicons name="information-circle" size={18} color={C.gold} />
-            <Text style={styles.noticeTxt}>El envío de {tok.s} desde la app estará disponible próximamente. Hoy puedes enviarlo desde la billetera web.</Text>
+            <Text style={styles.noticeTxt}>{t('send.soon', { s: tok.s })}</Text>
           </View>
         )}
 
@@ -105,22 +109,22 @@ export function Send({ nav }) {
           <Text style={styles.cur}>≈ {money(usd)} USD</Text>
         </View>
 
-        <Text style={styles.label}>Dirección de destino</Text>
+        <Text style={styles.label}>{t('send.to')}</Text>
         <TextInput value={to} onChangeText={setTo} autoCapitalize="none" autoCorrect={false} placeholder="0x…" placeholderTextColor="#6f938f" style={styles.input} />
 
         <View style={{ height: 14 }} />
-        <Text style={styles.label}>Contraseña (firma la transacción)</Text>
+        <Text style={styles.label}>{t('send.pw')}</Text>
         <TextInput value={pw} onChangeText={setPw} secureTextEntry autoCapitalize="none" placeholder="••••••••" placeholderTextColor="#6f938f" style={styles.input} />
 
         <View style={{ height: 14 }} />
         <Card style={{ padding: 14, marginBottom: 16 }}>
-          <Row k="Comisión de red" v={`${NETWORK_FEE_ORIGEN} ORIGEN`} />
-          <Row k="Red" v="Orden Global · 8532" />
-          <Row k="Total a debitar" v={`${amount ? (amount + (isNative ? NETWORK_FEE_ORIGEN : 0)).toFixed(4) : '—'} ${tok.s}`} />
+          <Row k={t('send.fee')} v={`${NETWORK_FEE_ORIGEN} ORIGEN`} />
+          <Row k={t('send.network')} v="Orden Global · 8532" />
+          <Row k={t('send.total')} v={`${amount ? (amount + (isNative ? NETWORK_FEE_ORIGEN : 0)).toFixed(4) : '—'} ${tok.s}`} />
         </Card>
-        {insufficient && <Text style={styles.errTxt}>Saldo insuficiente: tienes {qtyFmt(tok.qty)} {tok.s}.</Text>}
+        {insufficient && <Text style={styles.errTxt}>{t('send.insufficient', { q: qtyFmt(tok.qty), s: tok.s })}</Text>}
 
-        <Button3D title={sending ? 'Enviando…' : 'Revisar y enviar'} disabled={sending || !isNative} onPress={sending ? () => {} : doSend} />
+        <Button3D title={sending ? t('send.sending') : t('send.review')} disabled={sending || !isNative} onPress={sending ? () => {} : doSend} />
       </ScrollView>
       <TokenPicker visible={pick} tokens={tokens} onClose={() => setPick(false)} onPick={setTok} />
     </View>
@@ -134,28 +138,29 @@ function Row({ k, v }) {
 // ================= RECIBIR =================
 export function Receive({ nav }) {
   const toast = useToast();
+  const t = useT();
   const { account } = useAccount();
   const address = account?.addr || '';
   const copy = async () => {
     hap();
-    try { await Clipboard.setStringAsync(address); toast('Dirección copiada'); }
-    catch (e) { toast('No se pudo copiar'); }
+    try { await Clipboard.setStringAsync(address); toast(t('recv.copied')); }
+    catch (e) { toast(t('recv.copyErr')); }
   };
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header title="Recibir" onBack={() => nav.back()} />
+      <Header title={t('recv.title')} onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22, alignItems: 'center' }}>
         <View style={styles.qrBox}>
           {address ? <QRCode value={address} size={224} color="#04211d" backgroundColor="#ffffff" ecl="M" /> : <Text style={{ color: '#04211d' }}>Sin dirección</Text>}
         </View>
         <Text style={{ color: C.txt2, fontSize: 12.5, marginBottom: 14, textAlign: 'center' }}>
-          Escanea para recibir ORIGEN y tokens de la red Orden Global (8532)
+          {t('recv.scan')}
         </Text>
         <View style={styles.addrBox}>
           <Text style={styles.addr} numberOfLines={1}>{address || '—'}</Text>
           <Pressable onPress={copy}><Ionicons name="copy" size={22} color={C.gold} /></Pressable>
         </View>
-        <Button3D title="Copiar dirección" icon="copy" onPress={copy} style={{ alignSelf: 'stretch' }} />
+        <Button3D title={t('recv.copy')} icon="copy" onPress={copy} style={{ alignSelf: 'stretch' }} />
       </ScrollView>
     </View>
   );
@@ -163,18 +168,16 @@ export function Receive({ nav }) {
 
 // ================= COMPRAR =================
 export function Buy({ nav }) {
+  const t = useT();
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header title="Comprar" onBack={() => nav.back()} />
+      <Header title={t('buy.title')} onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }}>
         <View style={styles.soonWrap}>
           <View style={styles.soonIcon}><Ionicons name="card" size={34} color={C.gold} /></View>
-          <Text style={styles.soonTitle}>Compra con tarjeta y banco</Text>
-          <Text style={styles.soonBody}>
-            La compra de ORIGEN con tarjeta o transferencia estará disponible muy pronto en la app.
-            Mientras tanto puedes recibir tokens de otra billetera con tu código QR.
-          </Text>
-          <Button3D title="Recibir con mi QR" icon="qr-code" onPress={() => nav.go('receive')} style={{ alignSelf: 'stretch', marginTop: 18 }} />
+          <Text style={styles.soonTitle}>{t('buy.h')}</Text>
+          <Text style={styles.soonBody}>{t('buy.p')}</Text>
+          <Button3D title={t('buy.cta')} icon="qr-code" onPress={() => nav.go('receive')} style={{ alignSelf: 'stretch', marginTop: 18 }} />
         </View>
       </ScrollView>
     </View>
@@ -185,6 +188,7 @@ export function Buy({ nav }) {
 export function Swap({ nav }) {
   const tokens = useTokens();
   const toast = useToast();
+  const t = useT();
   const t0 = tokens[0] || { s: 'ORIGEN', n: 'Origen', qty: 0, price: 0, logo: true };
   const t1 = tokens[3] || tokens[1] || t0;
   const [from, setFrom] = useState(t0);
@@ -196,21 +200,21 @@ export function Swap({ nav }) {
   const flip = () => { hap(); setFrom(to); setTo(from); };
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header title="Intercambiar" onBack={() => nav.back()} />
+      <Header title={t('swap.title')} onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 110 }} keyboardShouldPersistTaps="handled">
-        <SwapBox label="Envías" balance={qtyFmt(from.qty)} token={from} value={amt} onChange={setAmt} onPickToken={() => setPick('from')} />
+        <SwapBox label={t('swap.from')} balance={qtyFmt(from.qty)} token={from} value={amt} onChange={setAmt} onPickToken={() => setPick('from')} />
         <Pressable onPress={flip} style={styles.flip}><Ionicons name="swap-vertical" size={22} color={C.gold} /></Pressable>
-        <SwapBox label="Recibes" balance={qtyFmt(to.qty)} token={to} value={out ? out.toFixed(4) : ''} readOnly onPickToken={() => setPick('to')} />
+        <SwapBox label={t('swap.toLbl')} balance={qtyFmt(to.qty)} token={to} value={out ? out.toFixed(4) : ''} readOnly onPickToken={() => setPick('to')} />
         <Card style={{ padding: 14, marginTop: 16 }}>
-          <Row k="Tasa en vivo" v={rate ? `1 ${from.s} = ${rate.toFixed(4)} ${to.s}` : '—'} />
-          <Row k={`Precio ${from.s}`} v={money(from.price)} />
-          <Row k={`Precio ${to.s}`} v={money(to.price)} />
+          <Row k={t('swap.rate')} v={rate ? `1 ${from.s} = ${rate.toFixed(4)} ${to.s}` : '—'} />
+          <Row k={`${t('swap.price')} ${from.s}`} v={money(from.price)} />
+          <Row k={`${t('swap.price')} ${to.s}`} v={money(to.price)} />
         </Card>
         <View style={styles.notice}>
           <Ionicons name="information-circle" size={18} color={C.gold} />
-          <Text style={styles.noticeTxt}>El intercambio dentro de la app estará disponible próximamente. Las tasas mostradas son precios reales del mercado.</Text>
+          <Text style={styles.noticeTxt}>{t('swap.soon')}</Text>
         </View>
-        <Button3D title="Intercambiar" icon="swap-horizontal" disabled onPress={() => toast('Disponible próximamente')} />
+        <Button3D title={t('swap.cta')} icon="swap-horizontal" disabled onPress={() => {}} />
       </ScrollView>
       <TokenPicker visible={!!pick} tokens={tokens} onClose={() => setPick(null)} onPick={(t) => { pick === 'from' ? setFrom(t) : setTo(t); }} />
     </View>
@@ -218,11 +222,12 @@ export function Swap({ nav }) {
 }
 
 function SwapBox({ label, balance, token, value, onChange, readOnly, onPickToken }) {
+  const tr = useT();
   return (
     <Card style={{ padding: 17 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
         <Text style={{ color: C.txt3, fontSize: 12 }}>{label}</Text>
-        <Text style={{ color: C.txt3, fontSize: 12 }}>Balance: {balance}</Text>
+        <Text style={{ color: C.txt3, fontSize: 12 }}>{tr('swap.balance')}: {balance}</Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <TextInput value={value} onChangeText={onChange} editable={!readOnly} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#3a5c58" style={styles.swapIn} />

@@ -7,17 +7,37 @@ import {
   processIdentity,
   sendToReview,
   retryScan,
+  linkWallet,
 } from '../engine.js'
 
 export const identitiesRouter = Router()
 
 // Crear o retomar una identidad a partir del correo (reanuda donde quedó).
+// Acepta walletAddress para dejar emparejada la Veta Wallet del usuario.
 identitiesRouter.post('/', (req, res) => {
-  const { email, fullName } = req.body ?? {}
+  const { email, fullName, walletAddress } = req.body ?? {}
   if (!email || typeof email !== 'string' || !email.includes('@')) {
     return res.status(400).json({ error: 'Correo válido requerido' })
   }
-  const identity = startIdentity(email, typeof fullName === 'string' ? fullName : undefined)
+  const identity = startIdentity(
+    email,
+    typeof fullName === 'string' ? fullName : undefined,
+    typeof walletAddress === 'string' && walletAddress.startsWith('0x') ? walletAddress : undefined,
+  )
+  res.json({ identity })
+})
+
+// Emparejar la Veta Wallet (address) con una identidad ya existente.
+identitiesRouter.post('/link-wallet', (req, res) => {
+  const { email, walletAddress } = req.body ?? {}
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    return res.status(400).json({ error: 'Correo válido requerido' })
+  }
+  if (!walletAddress || typeof walletAddress !== 'string' || !walletAddress.startsWith('0x')) {
+    return res.status(400).json({ error: 'walletAddress (0x…) requerido' })
+  }
+  const identity = linkWallet(email, walletAddress)
+  if (!identity) return res.status(404).json({ error: 'Identidad no encontrada' })
   res.json({ identity })
 })
 

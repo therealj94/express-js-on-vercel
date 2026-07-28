@@ -16,6 +16,8 @@ export interface Identity {
   type: 'personal'
   email: string
   fullName: string | null
+  /** Dirección de la Veta Wallet emparejada (0x…), si el usuario la vinculó. */
+  walletAddress?: string | null
   step: VerifyStep
   /** UID emitido al verificar (GEN-XXXX-XXXX). */
   genesisUid: string | null

@@ -1,0 +1,244 @@
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Idioma de la app (es | en), persistido. Cambia en Ajustes → Idioma.
+
+const S = {
+  es: {
+    // tabs
+    'tab.home': 'Inicio', 'tab.card': 'Tarjeta', 'tab.swap': 'Swap', 'tab.activity': 'Actividad', 'tab.settings': 'Ajustes',
+    // auth
+    'auth.login': 'Iniciar sesión', 'auth.register': 'Crear cuenta', 'auth.name': 'Nombre completo', 'auth.namePh': 'Tu nombre',
+    'auth.email': 'Correo electrónico', 'auth.password': 'Contraseña', 'auth.remember': 'Mantener mi sesión iniciada',
+    'auth.enter': 'Ingresar', 'auth.entering': 'Ingresando…', 'auth.create': 'Crear mi cuenta', 'auth.creating': 'Creando cuenta…',
+    'auth.forgot': '¿Olvidaste tu contraseña? Recupérala en vetawallet.com',
+    'auth.terms': 'Tu cuenta se crea en la blockchain de Orden Global. Después podrás vincular tu Genesis ID desde Ajustes (opcional).',
+    'auth.errEmail': 'Ingresa un correo válido.', 'auth.errPw': 'Ingresa tu contraseña.', 'auth.errName': 'Ingresa tu nombre completo.',
+    'auth.errServer': 'Sin conexión con el servidor.', 'auth.errGeneric': 'No se pudo completar. Intenta de nuevo.',
+    'auth.welcome': 'Bienvenido', 'auth.foot': 'Protegido por Orden Global Blockchain',
+    // home
+    'home.balance': 'BALANCE TOTAL', 'home.live': 'Blockchain Orden Global · en vivo', 'home.today': 'hoy',
+    'home.send': 'Enviar', 'home.receive': 'Recibir', 'home.buy': 'Comprar', 'home.swap': 'Swap',
+    'home.assets': 'Mis activos', 'home.activity': 'Actividad',
+    'home.genesisT': 'Vincula tu Genesis ID', 'home.genesisP': 'Identidad verificada para todo el ecosistema (opcional)',
+    'home.updated': 'Saldos actualizados', 'home.offline': 'Sin conexión — mostrando datos guardados',
+    // send
+    'send.title': 'Enviar', 'send.to': 'Dirección de destino', 'send.pw': 'Contraseña (firma la transacción)',
+    'send.fee': 'Comisión de red', 'send.network': 'Red', 'send.total': 'Total a debitar',
+    'send.review': 'Revisar y enviar', 'send.sending': 'Enviando…', 'send.sent': 'Transacción enviada',
+    'send.soon': 'El envío de {s} desde la app estará disponible próximamente. Hoy puedes enviarlo desde la billetera web.',
+    'send.errAddr': 'Ingresa una dirección válida (0x…)', 'send.errAmt': 'Ingresa un monto válido',
+    'send.errBal': 'Saldo insuficiente (incluye la comisión de red)', 'send.errPw': 'Ingresa tu contraseña para firmar',
+    'send.notConfirmed': 'La transacción no se confirmó. Revisa en Actividad.', 'send.available': 'Disponible',
+    'send.insufficient': 'Saldo insuficiente: tienes {q} {s}.',
+    // receive
+    'recv.title': 'Recibir', 'recv.scan': 'Escanea para recibir ORIGEN y tokens de la red Orden Global (8532)',
+    'recv.copy': 'Copiar dirección', 'recv.copied': 'Dirección copiada', 'recv.copyErr': 'No se pudo copiar',
+    // buy
+    'buy.title': 'Comprar', 'buy.h': 'Compra con tarjeta y banco',
+    'buy.p': 'La compra de ORIGEN con tarjeta o transferencia estará disponible muy pronto en la app. Mientras tanto puedes recibir tokens de otra billetera con tu código QR.',
+    'buy.cta': 'Recibir con mi QR',
+    // swap
+    'swap.title': 'Intercambiar', 'swap.from': 'Envías', 'swap.toLbl': 'Recibes', 'swap.rate': 'Tasa en vivo',
+    'swap.price': 'Precio', 'swap.soon': 'El intercambio dentro de la app estará disponible próximamente. Las tasas mostradas son precios reales del mercado.',
+    'swap.cta': 'Intercambiar', 'swap.balance': 'Balance',
+    // picker
+    'picker.title': 'Selecciona un activo',
+    // card
+    'card.title': 'Mi tarjeta', 'card.hint': 'Toca la tarjeta para ver el reverso', 'card.active': 'ACTIVA', 'card.frozen': 'CONGELADA',
+    'card.freeze': 'Congelar tarjeta', 'card.freezeSub': 'Bloqueo temporal instantáneo',
+    'card.manage': 'Gestionar mi tarjeta', 'card.manageSub': 'Datos, PIN y límites en vetawallet.com',
+    'card.manageToast': 'Gestión completa en vetawallet.com', 'card.frozenT': 'Tarjeta congelada', 'card.activeT': 'Tarjeta activa',
+    'card.movs': 'Movimientos', 'card.empty': 'Los consumos de tu tarjeta aparecerán aquí.', 'card.holder': 'TITULAR',
+    // activity
+    'act.title': 'Actividad', 'act.sub': 'Blockchain Orden Global', 'act.all': 'Todo', 'act.in': 'Recibido', 'act.out': 'Enviado',
+    'act.emptyT': 'Sin movimientos aún', 'act.emptyP': 'Cuando envíes o recibas tokens, tus transacciones reales aparecerán aquí.',
+    'act.from': 'De', 'act.to': 'Para',
+    // notifications
+    'notif.title': 'Notificaciones', 'notif.emptyT': 'Todo al día', 'notif.emptyP': 'Aquí verás avisos de transacciones recibidas y novedades de tu cuenta.',
+    // settings
+    'set.title': 'Ajustes', 'set.genesis': 'GENESIS ID', 'set.privacy': 'PRIVACIDAD', 'set.account': 'CUENTA', 'set.security': 'SEGURIDAD', 'set.general': 'GENERAL',
+    'set.passport': 'Mi pasaporte Genesis ID', 'set.reverify': 'Reverificar identidad', 'set.reverifySub': 'Vuelve a pasar la verificación',
+    'set.link': 'Vincular con Genesis ID', 'set.linkSub': 'Identidad del ecosistema · opcional, no se requiere para usar la app',
+    'set.private': 'Cuenta privada', 'set.privateSub': 'Solo cuentas aprobadas te ven',
+    'set.privateOn': 'Cuenta privada activada', 'set.privateOff': 'Cuenta pública',
+    'set.profile': 'Configurar perfil', 'set.profileSub': 'Nombre y datos de contacto', 'set.blocked': 'Cuentas bloqueadas',
+    'set.card': 'Mi tarjeta', 'set.addr': 'Mi dirección (recibir)', 'set.mtp': 'MyTokenPay', 'set.mtpSub': 'Pagos en comercios con ORIGEN',
+    'set.seed': 'Frase de recuperación (Seed)', 'set.pk': 'Llave privada', 'set.notifs': 'Notificaciones',
+    'set.lang': 'Idioma / Language', 'set.logout': 'Cerrar sesión',
+    'set.foot': 'Veta Wallet · Orden Global\nConectada a la blockchain Orden Global (8532)',
+    // passport
+    'pass.title': 'Pasaporte Genesis ID', 'pass.holder': 'Titular', 'pass.uid': 'UID Genesis', 'pass.verified': 'Verificado',
+    'pass.type': 'Tipo', 'pass.typeV': 'Identidad personal', 'pass.issued': 'Emitido', 'pass.eco': 'Ecosistema',
+    'pass.note': 'Credencial válida en Veta Wallet, MyTokenPay y todas las apps de Orden Global.',
+    'pass.share': 'Compartir credencial', 'pass.sharing': 'Compartiendo credencial…',
+    'pass.emptyT': 'Aún no vinculas tu Genesis ID',
+    'pass.emptyP': 'Verifícate una sola vez y tu identidad queda válida en todo el ecosistema Orden Global. No es obligatorio para usar la billetera.',
+    'pass.linkNow': 'Vincular ahora',
+    // profile
+    'prof.title': 'Configurar perfil', 'prof.name': 'Nombre completo', 'prof.email': 'Correo (cuenta)', 'prof.wallet': 'Dirección de billetera',
+    'prof.phone': 'Teléfono', 'prof.country': 'País', 'prof.addr': 'Dirección', 'prof.save': 'Guardar cambios', 'prof.saved': 'Perfil actualizado',
+    // blocked
+    'blk.title': 'Cuentas bloqueadas', 'blk.emptyT': 'Sin cuentas bloqueadas', 'blk.emptyP': 'Cuando bloquees a alguien aparecerá aquí. No podrá verte ni enviarte solicitudes.',
+    // private key / seed
+    'pk.title': 'Llave privada', 'pk.warn': 'Nunca compartas tu llave privada ni tu frase semilla. Quien las tenga controla tus fondos.',
+    'pk.pub': 'Dirección pública', 'pk.key': 'Llave privada', 'pk.reveal': 'Revelar llave', 'pk.loading': 'Consultando…',
+    'pk.checking': 'Consultando de forma segura…',
+    'pk.unavailable': 'Tu llave está custodiada por Orden Global y por seguridad no se puede exportar desde la app todavía. Puedes verla en la billetera web (vetawallet.com → Settings → Private Key).',
+    'seed.title': 'Frase de recuperación',
+    'seed.warn': 'Cualquiera con estas palabras controla tus fondos. No hagas capturas de pantalla ni las compartas.',
+    'seed.reveal': 'Revelar mi frase', 'seed.webT': 'Disponible en la billetera web',
+    'seed.webP': 'Tu frase está custodiada de forma segura por Orden Global y por ahora se consulta desde vetawallet.com → Settings → Seed. Pronto podrás verla también aquí.',
+    // token detail
+    'tok.price': 'Precio', 'tok.movs': 'Movimientos', 'tok.empty': 'Sin movimientos de {s} todavía.',
+    'tok.viewAll': 'Ver actividad completa', 'tok.contract': 'Contrato', 'tok.copied': 'Contrato copiado',
+    'tok.received': 'Recibido', 'tok.sent': 'Enviado',
+    // genesis flow
+    'gen.title': 'Genesis ID', 'gen.sub': 'Identidad digital · Orden Global',
+    'gen.steps.mail': 'Correo', 'gen.steps.doc': 'Documento', 'gen.steps.face': 'Rostro', 'gen.steps.done': 'Listo',
+    'gen.h1': 'Una identidad para todo el ecosistema',
+    'gen.body': 'Verifícate una sola vez con Genesis ID y queda válida en Veta Wallet, MyTokenPay y todas las apps de Orden Global. Si sales a mitad del proceso, continuarás donde quedaste.',
+    'gen.start': 'Comenzar verificación', 'gen.resume': 'Continuando donde quedaste', 'gen.resume2': 'No empiezas de cero.',
+    'gen.docFront': 'Frente de tu documento', 'gen.docBack': 'Reverso de tu documento',
+    'gen.docBody': 'Coloca el documento dentro del marco. Tienes {n} segundos por lado — el contador está a la vista.',
+    'gen.capFront': 'Capturar frente', 'gen.capBack': 'Capturar reverso',
+    'gen.faceT': 'Verificación de rostro', 'gen.faceP': 'Centra tu rostro dentro del óvalo con buena luz. Prueba de vida activa.',
+    'gen.capFace': 'Capturar rostro', 'gen.processing': 'Validando con Genesis', 'gen.processingSub': 'Documento · Biometría · Prueba de vida',
+    'gen.reviewT': 'Pasamos tu caso a revisión',
+    'gen.reviewP': 'No se completó el escaneo a tiempo. Un agente revisará tu verificación manualmente: puede tardar hasta 24 horas.',
+    'gen.back': 'Volver a la app', 'gen.retry': 'Reintentar escaneo ahora',
+    'gen.doneT': 'Identidad verificada', 'gen.doneP': 'Tu Genesis ID está activa y tu Veta Wallet quedó emparejada en el ecosistema Orden Global.',
+    'gen.seePass': 'Ver mi pasaporte', 'gen.auto': 'Continuando automáticamente en {n} s…',
+    'gen.timeLeft': 'Tiempo restante', 'gen.timeHint': 'Si el tiempo se agota, tu verificación pasa a revisión manual (hasta 24 h).',
+    'gen.review24Toast': 'Verificación en revisión: hasta 24 h',
+    // genesis offer (post-registro)
+    'offer.title': 'Tu cuenta está lista',
+    'offer.p': '¿Quieres vincular tu Genesis ID ahora? Tu identidad y tu billetera quedan emparejadas en todo el ecosistema. También puedes hacerlo después desde Ajustes.',
+    'offer.now': 'Vincular Genesis ID ahora', 'offer.later': 'Más tarde',
+    // mytokenpay
+    'mtp.title': 'MyTokenPay', 'mtp.h': 'Paga con ORIGEN en comercios',
+    'mtp.p': 'MyTokenPay es la app de pagos del ecosistema Orden Global: cobra y paga con ORIGEN mediante QR. Usa el mismo correo de tu Veta Wallet.',
+    'mtp.f1': 'Paga en comercios', 'mtp.f1s': 'Escanea el QR del negocio y paga con ORIGEN',
+    'mtp.f2': 'Cobra ventas', 'mtp.f2s': 'Los comercios reciben pagos al instante',
+    'mtp.f3': 'Mismo ecosistema', 'mtp.f3s': 'Tu cuenta y tu Genesis ID valen en ambas apps',
+  },
+  en: {
+    'tab.home': 'Home', 'tab.card': 'Card', 'tab.swap': 'Swap', 'tab.activity': 'Activity', 'tab.settings': 'Settings',
+    'auth.login': 'Sign in', 'auth.register': 'Create account', 'auth.name': 'Full name', 'auth.namePh': 'Your name',
+    'auth.email': 'Email', 'auth.password': 'Password', 'auth.remember': 'Keep me signed in',
+    'auth.enter': 'Sign in', 'auth.entering': 'Signing in…', 'auth.create': 'Create my account', 'auth.creating': 'Creating account…',
+    'auth.forgot': 'Forgot your password? Recover it at vetawallet.com',
+    'auth.terms': 'Your account is created on the Orden Global blockchain. You can link your Genesis ID later from Settings (optional).',
+    'auth.errEmail': 'Enter a valid email.', 'auth.errPw': 'Enter your password.', 'auth.errName': 'Enter your full name.',
+    'auth.errServer': 'No connection to the server.', 'auth.errGeneric': 'Could not complete. Try again.',
+    'auth.welcome': 'Welcome', 'auth.foot': 'Secured by Orden Global Blockchain',
+    'home.balance': 'TOTAL BALANCE', 'home.live': 'Orden Global Blockchain · live', 'home.today': 'today',
+    'home.send': 'Send', 'home.receive': 'Receive', 'home.buy': 'Buy', 'home.swap': 'Swap',
+    'home.assets': 'My assets', 'home.activity': 'Activity',
+    'home.genesisT': 'Link your Genesis ID', 'home.genesisP': 'Verified identity for the whole ecosystem (optional)',
+    'home.updated': 'Balances updated', 'home.offline': 'Offline — showing saved data',
+    'send.title': 'Send', 'send.to': 'Destination address', 'send.pw': 'Password (signs the transaction)',
+    'send.fee': 'Network fee', 'send.network': 'Network', 'send.total': 'Total to debit',
+    'send.review': 'Review & send', 'send.sending': 'Sending…', 'send.sent': 'Transaction sent',
+    'send.soon': 'Sending {s} from the app is coming soon. For now you can send it from the web wallet.',
+    'send.errAddr': 'Enter a valid address (0x…)', 'send.errAmt': 'Enter a valid amount',
+    'send.errBal': 'Insufficient balance (includes network fee)', 'send.errPw': 'Enter your password to sign',
+    'send.notConfirmed': 'The transaction was not confirmed. Check Activity.', 'send.available': 'Available',
+    'send.insufficient': 'Insufficient balance: you have {q} {s}.',
+    'recv.title': 'Receive', 'recv.scan': 'Scan to receive ORIGEN and Orden Global network tokens (8532)',
+    'recv.copy': 'Copy address', 'recv.copied': 'Address copied', 'recv.copyErr': 'Could not copy',
+    'buy.title': 'Buy', 'buy.h': 'Buy with card or bank',
+    'buy.p': 'Buying ORIGEN with card or bank transfer is coming very soon. Meanwhile you can receive tokens from another wallet using your QR code.',
+    'buy.cta': 'Receive with my QR',
+    'swap.title': 'Swap', 'swap.from': 'You pay', 'swap.toLbl': 'You receive', 'swap.rate': 'Live rate',
+    'swap.price': 'Price', 'swap.soon': 'In-app swaps are coming soon. The rates shown are real market prices.',
+    'swap.cta': 'Swap', 'swap.balance': 'Balance',
+    'picker.title': 'Select an asset',
+    'card.title': 'My Card', 'card.hint': 'Tap the card to see the back', 'card.active': 'ACTIVE', 'card.frozen': 'FROZEN',
+    'card.freeze': 'Freeze card', 'card.freezeSub': 'Instant temporary lock',
+    'card.manage': 'Manage my card', 'card.manageSub': 'Details, PIN and limits at vetawallet.com',
+    'card.manageToast': 'Full management at vetawallet.com', 'card.frozenT': 'Card frozen', 'card.activeT': 'Card active',
+    'card.movs': 'Transactions', 'card.empty': 'Your card purchases will appear here.', 'card.holder': 'HOLDER',
+    'act.title': 'Activity', 'act.sub': 'Orden Global Blockchain', 'act.all': 'All', 'act.in': 'Received', 'act.out': 'Sent',
+    'act.emptyT': 'No transactions yet', 'act.emptyP': 'When you send or receive tokens, your real transactions will appear here.',
+    'act.from': 'From', 'act.to': 'To',
+    'notif.title': 'Notifications', 'notif.emptyT': 'All caught up', 'notif.emptyP': 'Alerts about received transactions and account news will appear here.',
+    'set.title': 'Settings', 'set.genesis': 'GENESIS ID', 'set.privacy': 'PRIVACY', 'set.account': 'ACCOUNT', 'set.security': 'SECURITY', 'set.general': 'GENERAL',
+    'set.passport': 'My Genesis ID passport', 'set.reverify': 'Re-verify identity', 'set.reverifySub': 'Go through verification again',
+    'set.link': 'Link with Genesis ID', 'set.linkSub': 'Ecosystem identity · optional, not required to use the app',
+    'set.private': 'Private account', 'set.privateSub': 'Only approved accounts can see you',
+    'set.privateOn': 'Private account enabled', 'set.privateOff': 'Public account',
+    'set.profile': 'Configure profile', 'set.profileSub': 'Name and contact info', 'set.blocked': 'Blocked accounts',
+    'set.card': 'My card', 'set.addr': 'My address (receive)', 'set.mtp': 'MyTokenPay', 'set.mtpSub': 'Pay merchants with ORIGEN',
+    'set.seed': 'Recovery phrase (Seed)', 'set.pk': 'Private key', 'set.notifs': 'Notifications',
+    'set.lang': 'Idioma / Language', 'set.logout': 'Log out',
+    'set.foot': 'Veta Wallet · Orden Global\nConnected to the Orden Global blockchain (8532)',
+    'pass.title': 'Genesis ID Passport', 'pass.holder': 'Holder', 'pass.uid': 'Genesis UID', 'pass.verified': 'Verified',
+    'pass.type': 'Type', 'pass.typeV': 'Personal identity', 'pass.issued': 'Issued', 'pass.eco': 'Ecosystem',
+    'pass.note': 'Credential valid in Veta Wallet, MyTokenPay and every Orden Global app.',
+    'pass.share': 'Share credential', 'pass.sharing': 'Sharing credential…',
+    'pass.emptyT': "You haven't linked your Genesis ID yet",
+    'pass.emptyP': 'Verify once and your identity is valid across the whole Orden Global ecosystem. Not required to use the wallet.',
+    'pass.linkNow': 'Link now',
+    'prof.title': 'Configure profile', 'prof.name': 'Full name', 'prof.email': 'Email (account)', 'prof.wallet': 'Wallet address',
+    'prof.phone': 'Phone', 'prof.country': 'Country', 'prof.addr': 'Address', 'prof.save': 'Save changes', 'prof.saved': 'Profile updated',
+    'blk.title': 'Blocked accounts', 'blk.emptyT': 'No blocked accounts', 'blk.emptyP': "When you block someone they'll appear here. They won't be able to see you or send you requests.",
+    'pk.title': 'Private key', 'pk.warn': 'Never share your private key or seed phrase. Anyone who has them controls your funds.',
+    'pk.pub': 'Public address', 'pk.key': 'Private key', 'pk.reveal': 'Reveal key', 'pk.loading': 'Checking…',
+    'pk.checking': 'Checking securely…',
+    'pk.unavailable': 'Your key is held in custody by Orden Global and cannot be exported from the app yet. You can view it in the web wallet (vetawallet.com → Settings → Private Key).',
+    'seed.title': 'Recovery phrase',
+    'seed.warn': 'Anyone with these words controls your funds. Do not screenshot or share them.',
+    'seed.reveal': 'Reveal my phrase', 'seed.webT': 'Available in the web wallet',
+    'seed.webP': 'Your phrase is held securely by Orden Global and for now is available at vetawallet.com → Settings → Seed. Soon you will see it here too.',
+    'tok.price': 'Price', 'tok.movs': 'Transactions', 'tok.empty': 'No {s} transactions yet.',
+    'tok.viewAll': 'View full activity', 'tok.contract': 'Contract', 'tok.copied': 'Contract copied',
+    'tok.received': 'Received', 'tok.sent': 'Sent',
+    'gen.title': 'Genesis ID', 'gen.sub': 'Digital identity · Orden Global',
+    'gen.steps.mail': 'Email', 'gen.steps.doc': 'Document', 'gen.steps.face': 'Face', 'gen.steps.done': 'Done',
+    'gen.h1': 'One identity for the whole ecosystem',
+    'gen.body': 'Verify once with Genesis ID and it is valid in Veta Wallet, MyTokenPay and every Orden Global app. If you leave mid-process, you will continue where you left off.',
+    'gen.start': 'Start verification', 'gen.resume': 'Continuing where you left off', 'gen.resume2': "You don't start over.",
+    'gen.docFront': 'Front of your document', 'gen.docBack': 'Back of your document',
+    'gen.docBody': 'Place the document inside the frame. You have {n} seconds per side — the timer is visible.',
+    'gen.capFront': 'Capture front', 'gen.capBack': 'Capture back',
+    'gen.faceT': 'Face verification', 'gen.faceP': 'Center your face inside the oval with good light. Liveness check active.',
+    'gen.capFace': 'Capture face', 'gen.processing': 'Validating with Genesis', 'gen.processingSub': 'Document · Biometrics · Liveness',
+    'gen.reviewT': 'Your case went to review',
+    'gen.reviewP': 'The scan was not completed in time. An agent will review your verification manually: it can take up to 24 hours.',
+    'gen.back': 'Back to the app', 'gen.retry': 'Retry scan now',
+    'gen.doneT': 'Identity verified', 'gen.doneP': 'Your Genesis ID is active and your Veta Wallet is paired across the Orden Global ecosystem.',
+    'gen.seePass': 'View my passport', 'gen.auto': 'Continuing automatically in {n} s…',
+    'gen.timeLeft': 'Time left', 'gen.timeHint': 'If time runs out, your verification goes to manual review (up to 24 h).',
+    'gen.review24Toast': 'Verification under review: up to 24 h',
+    'offer.title': 'Your account is ready',
+    'offer.p': 'Do you want to link your Genesis ID now? Your identity and wallet get paired across the ecosystem. You can also do it later from Settings.',
+    'offer.now': 'Link Genesis ID now', 'offer.later': 'Later',
+    'mtp.title': 'MyTokenPay', 'mtp.h': 'Pay merchants with ORIGEN',
+    'mtp.p': 'MyTokenPay is the payments app of the Orden Global ecosystem: charge and pay with ORIGEN via QR. Use the same email as your Veta Wallet.',
+    'mtp.f1': 'Pay at merchants', 'mtp.f1s': 'Scan the store QR and pay with ORIGEN',
+    'mtp.f2': 'Charge sales', 'mtp.f2s': 'Merchants get paid instantly',
+    'mtp.f3': 'Same ecosystem', 'mtp.f3s': 'Your account and Genesis ID work in both apps',
+  },
+};
+
+export const LangCtx = createContext({ lang: 'es', t: (k) => k, setLang: () => {} });
+export const useLang = () => useContext(LangCtx);
+export const useT = () => useContext(LangCtx).t;
+
+export function LangProvider({ children }) {
+  const [lang, setLangState] = useState('es');
+  useEffect(() => {
+    AsyncStorage.getItem('veta-lang').then((l) => { if (l === 'en' || l === 'es') setLangState(l); }).catch(() => {});
+  }, []);
+  const setLang = (l) => {
+    setLangState(l);
+    AsyncStorage.setItem('veta-lang', l).catch(() => {});
+  };
+  const t = (key, vars) => {
+    let s = (S[lang] && S[lang][key]) || S.es[key] || key;
+    if (vars) for (const k of Object.keys(vars)) s = s.replace(`{${k}}`, String(vars[k]));
+    return s;
+  };
+  return <LangCtx.Provider value={{ lang, t, setLang }}>{children}</LangCtx.Provider>;
+}

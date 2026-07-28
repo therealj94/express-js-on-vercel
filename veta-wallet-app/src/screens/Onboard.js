@@ -7,6 +7,7 @@ import { Header, Button3D, Card, hap, useToast, useAccount } from '../ui';
 import { genesis } from '../genesis';
 import { setGenesisUid } from '../accounts';
 import { getSeed } from '../api';
+import { useT } from '../i18n';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const SCAN_SECONDS = 30;
@@ -38,6 +39,7 @@ async function saveGenesis(state) {
 // ---------------- GENESIS ID (KYC del ecosistema) ----------------
 export function Kyc({ nav, params }) {
   const toast = useToast();
+  const t = useT();
   const { account, login: loginAccount } = useAccount();
   // Vinculación opcional: se entra desde Ajustes con la sesión ya iniciada.
   const doneDest = account ? 'passport' : 'auth';
@@ -93,27 +95,31 @@ export function Kyc({ nav, params }) {
   useEffect(() => {
     if (!isScan) return;
     setSecondsLeft(SCAN_SECONDS);
-    const t = setInterval(() => {
+    const iv = setInterval(() => {
       setSecondsLeft((s) => {
         if (s <= 1) {
-          clearInterval(t);
+          clearInterval(iv);
           persist('review24');
-          toast('Verificación en revisión: hasta 24 h');
+          toast(t('gen.review24Toast'));
           return 0;
         }
         return s - 1;
       });
     }, 1000);
-    return () => clearInterval(t);
+    return () => clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
   // procesamiento → verificado
   useEffect(() => {
     if (step !== 'processing') return;
-    const t = setTimeout(async () => {
-      // Procesa en el motor Genesis real (backend en la nube) y usa su UID real.
-      const rec = await genesis.process(email);
+    const timer = setTimeout(async () => {
+      // Procesa en el motor Genesis real (backend en la nube): emite el UID
+      // oficial y deja EMPAREJADA la Veta Wallet (nombre + address en el admin).
+      const rec = await genesis.process(email, {
+        fullName: account ? account.name : undefined,
+        walletAddress: account ? account.addr : undefined,
+      });
       const newUid = (rec && rec.genesisUid) || ('GEN-' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(1000 + Math.random() * 9000));
       setUid(newUid);
       // Vincula el Genesis ID a la cuenta Veta Wallet actual.
@@ -125,7 +131,7 @@ export function Kyc({ nav, params }) {
       setStep('done');
       hap();
     }, 2600);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
@@ -133,13 +139,13 @@ export function Kyc({ nav, params }) {
   useEffect(() => {
     if (step !== 'done') return;
     setRedirectIn(6);
-    const t = setInterval(() => {
+    const iv = setInterval(() => {
       setRedirectIn((s) => {
-        if (s <= 1) { clearInterval(t); nav.go(doneDest); return 0; }
+        if (s <= 1) { clearInterval(iv); nav.go(doneDest); return 0; }
         return s - 1;
       });
     }, 1000);
-    return () => clearInterval(t);
+    return () => clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
@@ -152,14 +158,14 @@ export function Kyc({ nav, params }) {
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header
-        title="Genesis ID"
-        sub="Identidad digital · Orden Global"
+        title={t('gen.title')}
+        sub={t('gen.sub')}
         onBack={() => nav.go(backDest)}
       />
 
       {/* progreso */}
       <View style={st.steps}>
-        {['Correo', 'Documento', 'Rostro', 'Listo'].map((l, i) => {
+        {[t('gen.steps.mail'), t('gen.steps.doc'), t('gen.steps.face'), t('gen.steps.done')].map((l, i) => {
           const idx = step === 'email' ? 0 : step === 'doc-front' || step === 'doc-back' || step === 'review24' ? 1 : step === 'face' ? 2 : 3;
           const on = i <= idx;
           return (
@@ -175,19 +181,16 @@ export function Kyc({ nav, params }) {
         {resumed && step !== 'done' && step !== 'review24' && (
           <View style={st.resume}>
             <Ionicons name="refresh" size={15} color={C.gold} />
-            <Text style={st.resumeTxt}>Continuando donde quedaste{email ? ` (${email})` : ''}. No empiezas de cero.</Text>
+            <Text style={st.resumeTxt}>{t('gen.resume')}{email ? ` (${email})` : ''}. {t('gen.resume2')}</Text>
           </View>
         )}
 
         {step === 'email' && (
           <>
             <View style={st.heroIcon}><Ionicons name="mail" size={28} color={C.gold} /></View>
-            <Text style={st.h1}>Una identidad para todo el ecosistema</Text>
-            <Text style={st.body}>
-              Verifícate una sola vez con Genesis ID y queda válida en Veta Wallet, MyTokenPay y todas
-              las apps de Orden Global. Si sales a mitad del proceso, continuarás donde quedaste.
-            </Text>
-            <Text style={st.label}>Correo electrónico</Text>
+            <Text style={st.h1}>{t('gen.h1')}</Text>
+            <Text style={st.body}>{t('gen.body')}</Text>
+            <Text style={st.label}>{t('auth.email')}</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
@@ -198,10 +201,14 @@ export function Kyc({ nav, params }) {
               style={st.input}
             />
             <Button3D
-              title="Comenzar verificación"
+              title={t('gen.start')}
               icon="shield-checkmark"
               disabled={!email.includes('@')}
-              onPress={() => { genesis.start(email); saveGenesis({ step: 'doc-front', email, uid }); setStep('doc-front'); }}
+              onPress={() => {
+                genesis.start(email, account ? account.name : undefined, account ? account.addr : undefined);
+                saveGenesis({ step: 'doc-front', email, uid });
+                setStep('doc-front');
+              }}
               style={{ marginTop: 18 }}
             />
           </>
@@ -209,11 +216,8 @@ export function Kyc({ nav, params }) {
 
         {(step === 'doc-front' || step === 'doc-back') && (
           <>
-            <Text style={st.h1}>{step === 'doc-front' ? 'Frente de tu documento' : 'Reverso de tu documento'}</Text>
-            <Text style={st.body}>
-              Coloca el {step === 'doc-front' ? 'frente' : 'reverso'} dentro del marco. Tienes {SCAN_SECONDS} segundos
-              por lado — el contador está a la vista.
-            </Text>
+            <Text style={st.h1}>{step === 'doc-front' ? t('gen.docFront') : t('gen.docBack')}</Text>
+            <Text style={st.body}>{t('gen.docBody', { n: SCAN_SECONDS })}</Text>
             <View style={{ alignItems: 'center', marginVertical: 14 }}>
               <Animated.View style={[st.docFrame, { borderColor: frameBorder }]}>
                 <View style={st.frameInner}>
@@ -225,7 +229,7 @@ export function Kyc({ nav, params }) {
             </View>
             <TimerBar secondsLeft={secondsLeft} />
             <Button3D
-              title={step === 'doc-front' ? 'Capturar frente' : 'Capturar reverso'}
+              title={step === 'doc-front' ? t('gen.capFront') : t('gen.capBack')}
               icon="camera"
               onPress={() => { hap(); persist(step === 'doc-front' ? 'doc-back' : 'face'); }}
               style={{ marginTop: 16 }}
@@ -235,8 +239,8 @@ export function Kyc({ nav, params }) {
 
         {step === 'face' && (
           <>
-            <Text style={st.h1}>Verificación de rostro</Text>
-            <Text style={st.body}>Centra tu rostro dentro del óvalo con buena luz. Prueba de vida activa.</Text>
+            <Text style={st.h1}>{t('gen.faceT')}</Text>
+            <Text style={st.body}>{t('gen.faceP')}</Text>
             <View style={{ alignItems: 'center', marginVertical: 14 }}>
               <Animated.View style={[st.faceFrame, { borderColor: frameBorder }]}>
                 <View style={st.frameInner}>
@@ -246,15 +250,15 @@ export function Kyc({ nav, params }) {
               </Animated.View>
             </View>
             <TimerBar secondsLeft={secondsLeft} />
-            <Button3D title="Capturar rostro" icon="scan" onPress={() => { hap(); persist('processing'); }} style={{ marginTop: 16 }} />
+            <Button3D title={t('gen.capFace')} icon="scan" onPress={() => { hap(); persist('processing'); }} style={{ marginTop: 16 }} />
           </>
         )}
 
         {step === 'processing' && (
           <View style={st.center}>
             <Spinner />
-            <Text style={[st.h1, { textAlign: 'center', marginTop: 22 }]}>Validando con Genesis</Text>
-            <Text style={[st.body, { textAlign: 'center' }]}>Documento · Biometría · Prueba de vida</Text>
+            <Text style={[st.h1, { textAlign: 'center', marginTop: 22 }]}>{t('gen.processing')}</Text>
+            <Text style={[st.body, { textAlign: 'center' }]}>{t('gen.processingSub')}</Text>
           </View>
         )}
 
@@ -263,15 +267,12 @@ export function Kyc({ nav, params }) {
             <View style={[st.heroIcon, { backgroundColor: 'rgba(251,191,36,0.12)' }]}>
               <Ionicons name="time" size={30} color="#FBBF24" />
             </View>
-            <Text style={[st.h1, { textAlign: 'center' }]}>Pasamos tu caso a revisión</Text>
-            <Text style={[st.body, { textAlign: 'center' }]}>
-              No se completó el escaneo a tiempo. Un agente revisará tu verificación manualmente:
-              puede tardar hasta 24 horas. Te avisaremos al correo {email || 'registrado'}.
-            </Text>
-            <Button3D title="Volver a la app" icon="arrow-forward" onPress={() => nav.go(backDest)} style={{ alignSelf: 'stretch', marginTop: 20 }} />
+            <Text style={[st.h1, { textAlign: 'center' }]}>{t('gen.reviewT')}</Text>
+            <Text style={[st.body, { textAlign: 'center' }]}>{t('gen.reviewP')}</Text>
+            <Button3D title={t('gen.back')} icon="arrow-forward" onPress={() => nav.go(backDest)} style={{ alignSelf: 'stretch', marginTop: 20 }} />
             <Pressable onPress={() => { hap(); persist('doc-front'); }} style={st.retry}>
               <Ionicons name="refresh" size={14} color={C.gold} />
-              <Text style={st.retryTxt}>Reintentar escaneo ahora</Text>
+              <Text style={st.retryTxt}>{t('gen.retry')}</Text>
             </Pressable>
           </View>
         )}
@@ -279,16 +280,16 @@ export function Kyc({ nav, params }) {
         {step === 'done' && (
           <View style={st.center}>
             <View style={st.doneBadge}><Ionicons name="checkmark" size={46} color={C.up} /></View>
-            <Text style={[st.h1, { textAlign: 'center' }]}>Identidad verificada</Text>
-            <Text style={[st.body, { textAlign: 'center' }]}>Tu Genesis ID está activa para todo el ecosistema Orden Global.</Text>
+            <Text style={[st.h1, { textAlign: 'center' }]}>{t('gen.doneT')}</Text>
+            <Text style={[st.body, { textAlign: 'center' }]}>{t('gen.doneP')}</Text>
             {uid && (
               <View style={st.uidChip}>
                 <Ionicons name="finger-print" size={14} color={C.gold} />
                 <Text style={st.uidTxt}>{uid}</Text>
               </View>
             )}
-            <Button3D title="Ver mi pasaporte" icon="arrow-forward" onPress={() => nav.go(doneDest)} style={{ alignSelf: 'stretch', marginTop: 20 }} />
-            <Text style={st.redirect}>Continuando automáticamente en {redirectIn} s…</Text>
+            <Button3D title={t('gen.seePass')} icon="arrow-forward" onPress={() => nav.go(doneDest)} style={{ alignSelf: 'stretch', marginTop: 20 }} />
+            <Text style={st.redirect}>{t('gen.auto', { n: redirectIn })}</Text>
           </View>
         )}
       </ScrollView>
@@ -297,18 +298,47 @@ export function Kyc({ nav, params }) {
 }
 
 function TimerBar({ secondsLeft }) {
+  const t = useT();
   const pct = secondsLeft / SCAN_SECONDS;
   const low = secondsLeft <= 10;
   return (
     <View style={{ gap: 6 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ color: C.txt2, fontSize: 12, fontWeight: '600' }}>Tiempo restante</Text>
+        <Text style={{ color: C.txt2, fontSize: 12, fontWeight: '600' }}>{t('gen.timeLeft')}</Text>
         <Text style={{ color: low ? C.down : C.txt, fontWeight: '800', fontSize: 19 }}>{secondsLeft}s</Text>
       </View>
       <View style={{ height: 8, borderRadius: 999, backgroundColor: C.panel2, overflow: 'hidden' }}>
         <View style={{ height: '100%', width: `${pct * 100}%`, borderRadius: 999, backgroundColor: low ? C.down : C.gold }} />
       </View>
-      <Text style={{ color: C.txt3, fontSize: 11 }}>Si el tiempo se agota, tu verificación pasa a revisión manual (hasta 24 h).</Text>
+      <Text style={{ color: C.txt3, fontSize: 11 }}>{t('gen.timeHint')}</Text>
+    </View>
+  );
+}
+
+// ---------------- Oferta de emparejamiento tras crear la cuenta ----------------
+export function GenesisOffer({ nav }) {
+  const t = useT();
+  const { account } = useAccount();
+  return (
+    <View style={{ flex: 1, paddingTop: 6 }}>
+      <Header title={t('gen.title')} sub={t('gen.sub')} onBack={() => nav.go('home')} />
+      <ScrollView contentContainerStyle={{ padding: 22, flexGrow: 1, justifyContent: 'center' }}>
+        <View style={{ alignItems: 'center' }}>
+          <View style={st.doneBadge}><Ionicons name="checkmark" size={46} color={C.up} /></View>
+          <Text style={[st.h1, { textAlign: 'center' }]}>{t('offer.title')}</Text>
+          <Text style={[st.body, { textAlign: 'center' }]}>{t('offer.p')}</Text>
+          {account?.addr ? (
+            <View style={st.uidChip}>
+              <Ionicons name="wallet" size={14} color={C.gold} />
+              <Text style={st.uidTxt}>{account.addr.slice(0, 8)}…{account.addr.slice(-6)}</Text>
+            </View>
+          ) : null}
+          <Button3D title={t('offer.now')} icon="finger-print" onPress={() => nav.go('kyc')} style={{ alignSelf: 'stretch', marginTop: 22 }} />
+          <Pressable onPress={() => { hap(); nav.go('home'); }} style={st.retry}>
+            <Text style={st.retryTxt}>{t('offer.later')}</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -334,6 +364,7 @@ function Spinner() {
 
 // ---------------- Frase semilla (REAL, desde el backend) ----------------
 export function SeedView({ nav }) {
+  const t = useT();
   const [state, setState] = useState('hidden'); // hidden | loading | shown | unavailable
   const [words, setWords] = useState([]);
 
@@ -347,11 +378,11 @@ export function SeedView({ nav }) {
 
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header title="Frase de recuperación" onBack={() => nav.back()} />
+      <Header title={t('seed.title')} onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22 }}>
         <View style={st.warn}>
           <Ionicons name="warning" size={20} color={C.down} />
-          <Text style={st.warnTxt}>Cualquiera con estas palabras controla tus fondos. No hagas capturas de pantalla ni las compartas.</Text>
+          <Text style={st.warnTxt}>{t('seed.warn')}</Text>
         </View>
 
         {state === 'shown' ? (
@@ -365,11 +396,8 @@ export function SeedView({ nav }) {
           </View>
         ) : state === 'unavailable' ? (
           <Card style={{ padding: 18, marginVertical: 16 }}>
-            <Text style={{ color: C.txt, fontWeight: '700', fontSize: 15, marginBottom: 8 }}>Disponible en la billetera web</Text>
-            <Text style={{ color: C.txt2, fontSize: 12.5, lineHeight: 19 }}>
-              Tu frase está custodiada de forma segura por Orden Global y por ahora se consulta desde
-              vetawallet.com → Settings → Seed. Pronto podrás verla también aquí.
-            </Text>
+            <Text style={{ color: C.txt, fontWeight: '700', fontSize: 15, marginBottom: 8 }}>{t('seed.webT')}</Text>
+            <Text style={{ color: C.txt2, fontSize: 12.5, lineHeight: 19 }}>{t('seed.webP')}</Text>
           </Card>
         ) : (
           <View style={[st.grid, { marginTop: 16, marginBottom: 18 }]}>
@@ -384,7 +412,7 @@ export function SeedView({ nav }) {
 
         {state !== 'shown' && (
           <Button3D
-            title={state === 'loading' ? 'Consultando…' : 'Revelar mi frase'}
+            title={state === 'loading' ? t('pk.loading') : t('seed.reveal')}
             icon="eye"
             onPress={state === 'loading' ? () => {} : reveal}
           />

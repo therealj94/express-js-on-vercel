@@ -57,7 +57,7 @@ tr:last-child td{border-bottom:none}
   <div class="kpis" id="kpis"></div>
 
   <h2>Identidades personales (KYC)</h2>
-  <div class="card"><table><thead><tr><th>Correo</th><th>Nombre</th><th>UID Genesis</th><th>Paso</th><th>Actualizado</th></tr></thead><tbody id="idns"></tbody></table></div>
+  <div class="card"><table><thead><tr><th>Correo</th><th>Nombre</th><th>UID Genesis</th><th>Veta Wallet</th><th>Paso</th><th>Actualizado</th></tr></thead><tbody id="idns"></tbody></table></div>
 
   <h2>Negocios (KYB)</h2>
   <div class="card"><table><thead><tr><th>Negocio</th><th>Titular</th><th>UID negocio</th><th>País</th><th>Estado</th></tr></thead><tbody id="biz"></tbody></table></div>
@@ -89,9 +89,11 @@ async function load(){
       kpi('g','Negocios',s.businesses.total)+kpi('o','KYB verificados',s.businesses.verified);
     document.getElementById('idns').innerHTML = i.identities.length ? i.identities.map(x=>{
       const st=STEP[x.step]||['info',x.step];
+      const w=x.walletAddress ? x.walletAddress.slice(0,6)+'…'+x.walletAddress.slice(-4) : '—';
       return '<tr><td>'+x.email+'</td><td>'+(x.fullName||'—')+'</td><td class="num uid">'+(x.genesisUid||'—')+
+        '</td><td class="num buid" title="'+(x.walletAddress||'')+'">'+w+
         '</td><td>'+pill(st[0],st[1])+'</td><td class="num">'+ago(x.updatedAt)+'</td></tr>';}).join('') :
-      '<tr><td colspan="5" class="empty">Aún no hay identidades.</td></tr>';
+      '<tr><td colspan="6" class="empty">Aún no hay identidades.</td></tr>';
     document.getElementById('biz').innerHTML = b.businesses.length ? b.businesses.map(x=>{
       const st=BSTAT[x.status]||['info',x.status];
       return '<tr><td>'+x.tradeName+'</td><td>'+x.ownerEmail+'</td><td class="num buid">'+(x.genesisUid||'—')+
