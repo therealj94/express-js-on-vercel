@@ -101,7 +101,12 @@ export async function upsertApiAccount(user, address, balances) {
     addr: address || user?.address || user?.wallet || '0x0000…0000',
     since: user?.since || new Date().toLocaleDateString('es-HN', { month: 'short', year: 'numeric' }),
     fromApi: true,
-    balances: Array.isArray(balances) ? balances : [],
+    balances: Array.isArray(balances) ? balances.map(({ transfers, ...b }) => b) : [],
+    // Historial combinado de todas las chains (para la pantalla Actividad).
+    transfers: Array.isArray(balances)
+      ? balances.flatMap((b) => (b.transfers || []).map((t) => ({ ...t, symbol: b.symbol })))
+          .sort((a, z) => Number(z.timeStamp || 0) - Number(a.timeStamp || 0))
+      : [],
     raw: user || null,
   };
   // Reemplaza cualquier cuenta previa con el mismo correo en DYNAMIC.

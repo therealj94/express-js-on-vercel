@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { C, G } from '../theme';
 import { Header, Logo, TokenIcon, Button3D, Card, ListRow, Toggle, SectionHead, useToast, useAccount, hap } from '../ui';
-import { TXNS, NOTIFS, TOKENS, money } from '../data';
+import { TXNS, NOTIFS, TOKENS, money, qtyFmt } from '../data';
 
 // ================= REMESAS =================
 export function Remit({ nav }) {
@@ -88,9 +88,59 @@ function Mcc({ active, onPress, icon, logo, title, sub }) {
 }
 
 // ================= ACTIVIDAD =================
+const shortAddr = (a) => (a && a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a || '');
+const fmtDate = (ts) => {
+  if (!ts) return '';
+  const d = new Date(Number(ts) * 1000);
+  return d.toLocaleDateString('es-HN', { day: '2-digit', month: 'short' }) + ' · ' +
+    d.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' });
+};
+
 export function Activity({ nav }) {
   const [f, setF] = useState('all');
   const toast = useToast();
+  const { account } = useAccount();
+
+  // Cuenta del backend real: historial de la blockchain (allTransfers).
+  if (account?.fromApi) {
+    const txns = account.transfers || [];
+    const filters = [['all', 'Todo'], ['in', 'Recibido'], ['out', 'Enviado']];
+    const isIn = (t) => t.type === 'recive' || t.type === 'receive' || t.type === 'in';
+    const list = f === 'all' ? txns : txns.filter((t) => (f === 'in' ? isIn(t) : !isIn(t)));
+    return (
+      <View style={{ flex: 1, paddingTop: 6 }}>
+        <Header title="Actividad" onBack={() => nav.go('home')} />
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
+            {filters.map(([k, l]) => (
+              <Pressable key={k} onPress={() => { hap(); setF(k); }} style={[styles.chip, f === k && styles.chipOn]}>
+                <Text style={[styles.chipTxt, f === k && { color: C.darkText }]}>{l}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          {list.length === 0 && <Text style={{ color: C.txt3, textAlign: 'center', marginTop: 40 }}>Sin movimientos aún.</Text>}
+          {list.map((t, i) => {
+            const inbound = isIn(t);
+            return (
+              <Pressable key={t.hash || i} onPress={() => { hap(); toast(t.hash ? t.hash.slice(0, 18) + '…' : 'Transacción'); }} style={styles.txn}>
+                <View style={styles.txnIc}><Ionicons name={inbound ? 'arrow-down' : 'arrow-up'} size={19} color={inbound ? C.up : C.gold} /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.txnT}>{inbound ? 'Recibido' : 'Enviado'} {t.symbol || ''}</Text>
+                  <Text style={styles.txnD}>{fmtDate(t.timeStamp)} · {shortAddr(inbound ? t.from : t.to)}</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={[styles.txnV, inbound && { color: C.up }]}>{inbound ? '+' : '-'}{qtyFmt(Number(t.value) || 0)} {t.symbol || ''}</Text>
+                  <Text style={styles.txnKind}>{inbound ? 'Recibido' : 'Enviado'}</Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // Cuentas demo: historial de ejemplo.
   const filters = [['all', 'Todo'], ['in', 'Recibido'], ['out', 'Enviado'], ['swap', 'Swaps'], ['card', 'Tarjeta']];
   const list = f === 'all' ? TXNS : TXNS.filter((x) => x.kind === f);
   return (

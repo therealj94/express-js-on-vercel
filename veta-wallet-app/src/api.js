@@ -148,7 +148,12 @@ export const walletApi = {
   register: (payload) => req(PATHS.register, { method: 'POST', body: payload }),
   me: () => req(PATHS.me),
 
-  // Billetera / blockchain
+  // Blockchain de Orden Global: config de red + historial por chain_id.
+  chain: (chainId) => req(`/chains/getChainsForId/${chainId}`),
+  // Lista de chains/tokens del usuario (ajusta la ruta si difiere en tu backend).
+  chains: () => req(process.env.EXPO_PUBLIC_WALLET_PATH_CHAINS || '/chains/getChains'),
+
+  // Billetera / blockchain (rutas genéricas, por si tu backend las tiene)
   balances: () => req(PATHS.balances),
   address: () => req(PATHS.address),
   send: (to, symbol, amount, note) => req(PATHS.send, { method: 'POST', body: { to, symbol, amount, note } }),
@@ -158,6 +163,80 @@ export const walletApi = {
   raw: req,
   paths: PATHS,
 };
+
+// Chain IDs a consultar (configurable). Por defecto la red Orden Global (8532).
+export const CHAIN_IDS = (process.env.EXPO_PUBLIC_WALLET_CHAIN_IDS || '8532')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+
+// Lee el saldo NATIVO de una blockchain EVM directo del nodo RPC (solo lectura,
+// no requiere llaves). Devuelve la cantidad en unidades del token (÷ 1e18).
+export async function rpcBalance(provider, address, decimals = 18) {
+  try {
+    const res = await fetch(provider, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: [address, 'latest'] }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!d || !d.result) return 0;
+    // hex wei → número. Usamos BigInt para no perder precisión.
+    const wei = BigInt(d.result);
+    const div = BigInt(10) ** BigInt(decimals);
+    const whole = Number(wei / div);
+    const frac = Number(wei % div) / Number(div);
+    return whole + frac;
+  } catch (e) { return 0; }
+}
+
+// Extrae el objeto "chain" de la respuesta (viene como objeto, {chain}, o [chain]).
+function pickChain(c) {
+  if (!c) return null;
+  if (Array.isArray(c)) return c[0] || null;
+  return c.chain || c.data || c;
+}
+
+// Portafolio real: por cada chain, config + precio + saldo (RPC) + historial.
+// Devuelve [{ symbol, qty, priceUsd, name, image, transfers }].
+export async function apiPortfolio(chainIds = CHAIN_IDS) {
+  const claims = decodeJwt(getToken());
+  const address = claims?.address;
+  const out = [];
+  for (const id of chainIds) {
+    const raw = await walletApi.chain(id).catch(() => null);
+    const chain = pickChain(raw);
+    if (!chain) continue;
+    // Saldo: usa el campo del backend si viene; si no, léelo del nodo RPC.
+    let qty = Number(chain.balance ?? chain.amount ?? chain.value ?? NaN);
+    if (!Number.isFinite(qty) && chain.provider && address) {
+      qty = await rpcBalance(chain.provider, address, Number(chain.decimals) || 18);
+    }
+    out.push({
+      symbol: chain.symbol,
+      qty: Number.isFinite(qty) ? qty : 0,
+      priceUsd: Number(chain.price) || undefined,
+      name: chain.name,
+      image: chain.image,
+      chainId: chain.chain_id || id,
+      transfers: Array.isArray(chain.allTransfers) ? chain.allTransfers : [],
+    });
+  }
+  return out;
+}
+
+// Normaliza allTransfers → items para la pantalla de Actividad.
+export function transfersToActivity(transfers, symbol = '') {
+  return (transfers || []).map((t) => {
+    const inbound = t.type === 'recive' || t.type === 'receive' || t.type === 'in';
+    return {
+      hash: t.hash,
+      type: inbound ? 'in' : 'out',
+      value: Number(t.value) || 0,
+      symbol,
+      counterparty: inbound ? (t.from || '') : (t.to || ''),
+      date: t.timeStamp ? new Date(Number(t.timeStamp) * 1000) : null,
+    };
+  });
+}
 
 // Login de alto nivel: autentica, guarda token y devuelve { token, user, address }
 // ya normalizados. El backend de Veta Wallet devuelve solo { token }, con los
