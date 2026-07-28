@@ -188,6 +188,63 @@ export async function rpcBalance(provider, address, decimals = 18) {
   } catch (e) { return 0; }
 }
 
+// Lee el saldo de un token ERC-20 (contrato) directo del nodo RPC: balanceOf(addr).
+export async function erc20Balance(provider, contract, address, decimals = 18) {
+  try {
+    // balanceOf(address) = selector 0x70a08231 + address a 32 bytes.
+    const data = '0x70a08231' + address.replace(/^0x/, '').toLowerCase().padStart(64, '0');
+    const res = await fetch(provider, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: contract, data }, 'latest'] }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!d || !d.result || d.result === '0x') return 0;
+    const raw = BigInt(d.result);
+    const div = BigInt(10) ** BigInt(decimals);
+    return Number(raw / div) + Number(raw % div) / Number(div);
+  } catch (e) { return 0; }
+}
+
+// Registro de tokens ON-CHAIN de Orden Global. ORIGEN es nativo; el resto son
+// ERC-20 (contrato). Completa `contract` y `price` de cada uno con los datos de
+// tu billetera web. La app lee el saldo del nodo RPC (chain 8532).
+export const ONCHAIN_TOKENS = [
+  { symbol: 'ORIGEN', native: true, decimals: 18, price: 2.35 },
+  { symbol: 'AUKA', contract: '', decimals: 18, price: 0 },
+  { symbol: 'AGKA', contract: '', decimals: 18, price: 0 },
+  { symbol: 'ONDK', contract: '', decimals: 18, price: 2.10 },
+];
+
+// Lee saldos de TODOS los tokens del registro (nativo + ERC-20) desde el RPC.
+export async function apiPortfolioOnchain(providerUrl) {
+  const claims = decodeJwt(getToken());
+  const address = claims?.address;
+  if (!address) return [];
+  // Provider: el pasado, o el de la red 8532.
+  let provider = providerUrl;
+  if (!provider) {
+    const chain = pickChain(await walletApi.chain(CHAIN_IDS[0] || '8532').catch(() => null));
+    provider = chain?.provider || 'https://rpc.ordenglobal-rpc.com/';
+  }
+  const out = [];
+  for (const t of ONCHAIN_TOKENS) {
+    let qty = 0;
+    if (t.native) qty = await rpcBalance(provider, address, t.decimals || 18);
+    else if (t.contract) qty = await erc20Balance(provider, t.contract, address, t.decimals || 18);
+    else continue; // token sin contrato aún: se omite
+    out.push({ symbol: t.symbol, qty, priceUsd: t.price || undefined });
+  }
+  // Historial de la red (allTransfers) → se adjunta al token nativo.
+  try {
+    const chain = pickChain(await walletApi.chain(CHAIN_IDS[0] || '8532').catch(() => null));
+    const transfers = Array.isArray(chain?.allTransfers) ? chain.allTransfers : [];
+    const native = out.find((o) => o.symbol === 'ORIGEN') || out[0];
+    if (native) native.transfers = transfers;
+  } catch (e) {}
+  return out;
+}
+
 // Extrae el objeto "chain" de la respuesta (viene como objeto, {chain}, o [chain]).
 function pickChain(c) {
   if (!c) return null;

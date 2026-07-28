@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { C } from '../theme';
 import { Logo, Button3D, hap, useAccount, useToast } from '../ui';
 import { findAccount, ACCOUNTS, upsertApiAccount, saveSession } from '../accounts';
-import { USE_REAL_API, apiLogin, apiPortfolio } from '../api';
+import { USE_REAL_API, apiLogin, apiPortfolioOnchain } from '../api';
 
 const DEMO_CHIPS = [
   { label: 'Cliente', email: 'cliente@mytokenpay.demo' },
@@ -37,7 +37,7 @@ export default function Auth({ nav }) {
       try {
         const { user, address } = await apiLogin(email, pw);
         let balances = [];
-        try { balances = await apiPortfolio(); } catch (e) {}
+        try { balances = await apiPortfolioOnchain(); } catch (e) {}
         const acc = await upsertApiAccount(user, address, balances);
         await saveSession(acc.email);
         setAccount(acc);
