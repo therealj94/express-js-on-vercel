@@ -4,14 +4,28 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { C, G } from '../theme';
-import { Logo, Button3D, ListRow, Toggle, SectionHead, useToast, hap } from '../ui';
+import { Logo, Button3D, ListRow, Toggle, SectionHead, useToast, useAccount, hap } from '../ui';
 import { TXNS } from '../data';
+
+// Deriva 4 dígitos estables desde la dirección de la billetera.
+function last4(addr) {
+  const digits = String(addr || '').replace(/\D/g, '');
+  if (digits.length >= 4) return digits.slice(-4);
+  let s = 0;
+  for (let i = 0; i < String(addr).length; i++) s = (s * 31 + String(addr).charCodeAt(i)) % 10000;
+  return String(s).padStart(4, '0');
+}
 
 export default function CardScreen({ nav }) {
   const rot = useRef(new Animated.Value(0)).current;
   const [flipped, setFlipped] = useState(false);
   const [frozen, setFrozen] = useState(false);
   const toast = useToast();
+  const { account } = useAccount();
+  const acc = account || { name: 'Titular', addr: '0x0000', genesisUid: null };
+  const titular = (acc.name || 'Titular').toUpperCase();
+  const num4 = last4(acc.addr);
+  const verified = !!(acc.genesisUid || acc.verify);
 
   const flip = () => {
     hap();
@@ -26,7 +40,10 @@ export default function CardScreen({ nav }) {
     <View style={{ flex: 1, paddingTop: 6 }}>
       <View style={styles.top}>
         <Pressable onPress={() => nav.go('home')} style={styles.iconBtn}><Ionicons name="chevron-back" size={20} color={C.txt} /></Pressable>
-        <Text style={styles.title}>Tarjeta débito</Text>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <Text style={styles.title}>Mi tarjeta</Text>
+          {verified && <View style={styles.verified}><Ionicons name="checkmark-circle" size={12} color={C.up} /><Text style={styles.verifiedTxt}>Verified</Text></View>}
+        </View>
         <Pressable onPress={() => nav.go('activity')} style={styles.iconBtn}><Ionicons name="time-outline" size={20} color={C.txt} /></Pressable>
       </View>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
@@ -37,9 +54,9 @@ export default function CardScreen({ nav }) {
               <View style={styles.cardIn}>
                 <View style={styles.cardTop}><Logo size={42} /><Text style={styles.visa}>VISA</Text></View>
                 <LinearGradient colors={['#F8EFCF', '#C9A961', '#96793F']} style={styles.chip} />
-                <Text style={styles.cardNum}>4821  5530  9012  7760</Text>
+                <Text style={styles.cardNum}>••••  ••••  ••••  {num4}</Text>
                 <View style={styles.cardBot}>
-                  <View><Text style={styles.k}>TITULAR</Text><Text style={styles.v}>JOSÉ ENAMORADO</Text></View>
+                  <View style={{ flex: 1 }}><Text style={styles.k}>TITULAR</Text><Text style={styles.v} numberOfLines={1}>{titular}</Text></View>
                   <View><Text style={[styles.k, { textAlign: 'right' }]}>DÉBITO · ORDEN GLOBAL</Text><Text style={[styles.v, { textAlign: 'right' }]}>Vence 12/29</Text></View>
                 </View>
               </View>
@@ -102,7 +119,9 @@ function Waves() {
 const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 22, paddingBottom: 14, paddingTop: 4 },
   iconBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1, textAlign: 'center', fontSize: 19, fontWeight: '800', color: C.txt },
+  title: { textAlign: 'center', fontSize: 19, fontWeight: '800', color: C.txt },
+  verified: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3, backgroundColor: 'rgba(62,217,160,0.14)', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 2 },
+  verifiedTxt: { color: C.up, fontSize: 11, fontWeight: '700' },
   face: { position: 'absolute', top: 0, left: 0, right: 0, height: 210, borderRadius: 22, backfaceVisibility: 'hidden' },
   faceBack: { },
   cardBg: { flex: 1, borderRadius: 22, overflow: 'hidden' },

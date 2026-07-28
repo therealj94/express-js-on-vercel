@@ -225,6 +225,7 @@ function EarnRow({ t, name, sub, apy, pos, onPress }) {
 export function Settings({ nav }) {
   const [bio, setBio] = useState(true);
   const [notif, setNotif] = useState(true);
+  const [priv, setPriv] = useState(false);
   const toast = useToast();
   const { account, logout } = useAccount();
   const acc = account || { name: 'Cuenta', email: '', initials: 'VW', business: false, genesisUid: null };
@@ -255,6 +256,13 @@ export function Settings({ nav }) {
           </LinearGradient>
         </Pressable>
 
+        <Text style={styles.grpTitle}>PRIVACIDAD</Text>
+        <View style={styles.group}>
+          <ListRow first icon="lock-closed" title="Cuenta privada" sub="Solo cuentas aprobadas te ven" onPress={() => {}} right={<Toggle value={priv} onValueChange={(v) => { setPriv(v); toast(v ? 'Cuenta privada activada' : 'Cuenta pública'); }} />} />
+          <ListRow icon="create" title="Configurar perfil" sub="Nombre, foto y datos" onPress={() => nav.go('profile')} />
+          <ListRow icon="person-remove" title="Cuentas bloqueadas" onPress={() => nav.go('blocked')} />
+        </View>
+
         <Text style={styles.grpTitle}>CUENTA</Text>
         <View style={styles.group}>
           <ListRow first icon="person" title="Información personal" onPress={() => nav.go('profile')} />
@@ -276,7 +284,8 @@ export function Settings({ nav }) {
         <View style={styles.group}>
           <ListRow first icon="scan" title="Face ID / Biometría" onPress={() => {}} right={<Toggle value={bio} onValueChange={setBio} />} />
           <ListRow icon="shield-checkmark" title="Autenticación 2FA" sub="Authenticator activo" onPress={() => toast('2FA activo')} />
-          <ListRow icon="key" title="Frase de recuperación" sub="Ver tus 12 palabras" onPress={() => nav.go('seedview')} />
+          <ListRow icon="key" title="Frase de recuperación (Seed)" sub="Ver tus 12 palabras" onPress={() => nav.go('seedview')} />
+          <ListRow icon="finger-print" title="Llave privada" sub="Ver / exportar tu llave" onPress={() => nav.go('privatekey')} />
           <ListRow icon="notifications" title="Notificaciones" onPress={() => {}} right={<Toggle value={notif} onValueChange={setNotif} />} />
         </View>
 
@@ -418,8 +427,77 @@ function PayFeature({ icon, t, s, first }) {
   );
 }
 
+// ================= CUENTAS BLOQUEADAS =================
+export function Blocked({ nav }) {
+  return (
+    <View style={{ flex: 1, paddingTop: 6 }}>
+      <Header title="Cuentas bloqueadas" onBack={() => nav.back()} />
+      <ScrollView contentContainerStyle={{ padding: 22 }}>
+        <View style={{ alignItems: 'center', marginTop: 60 }}>
+          <View style={{ width: 78, height: 78, borderRadius: 39, backgroundColor: C.panel, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.line }}>
+            <Ionicons name="person-remove" size={34} color={C.txt3} />
+          </View>
+          <Text style={{ color: C.txt, fontWeight: '700', fontSize: 16, marginTop: 16 }}>Sin cuentas bloqueadas</Text>
+          <Text style={{ color: C.txt3, fontSize: 12.5, marginTop: 6, textAlign: 'center', lineHeight: 18 }}>
+            Cuando bloquees a alguien aparecerá aquí.{'\n'}No podrá verte ni enviarte solicitudes.
+          </Text>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+// ================= LLAVE PRIVADA =================
+export function PrivateKey({ nav }) {
+  const [reveal, setReveal] = useState(false);
+  const { account } = useAccount();
+  const toast = useToast();
+  const acc = account || { addr: '0x0000…0000' };
+  return (
+    <View style={{ flex: 1, paddingTop: 6 }}>
+      <Header title="Llave privada" onBack={() => nav.back()} />
+      <ScrollView contentContainerStyle={{ padding: 22 }}>
+        <View style={{ flexDirection: 'row', gap: 10, backgroundColor: 'rgba(224,90,90,0.12)', borderWidth: 1, borderColor: 'rgba(224,90,90,0.4)', borderRadius: 16, padding: 15, marginBottom: 18 }}>
+          <Ionicons name="warning" size={22} color="#E05A5A" />
+          <Text style={{ flex: 1, color: '#f3c9c9', fontSize: 12.5, lineHeight: 18 }}>
+            Nunca compartas tu llave privada ni tu frase semilla. Quien las tenga controla tus fondos.
+          </Text>
+        </View>
+
+        <Text style={styles.label}>Dirección pública</Text>
+        <View style={styles.pkBox}>
+          <Text style={styles.pkTxt} numberOfLines={1}>{acc.addr}</Text>
+          <Pressable onPress={() => { hap(); toast('Dirección copiada'); }}><Ionicons name="copy" size={20} color={C.gold} /></Pressable>
+        </View>
+
+        <Text style={[styles.label, { marginTop: 18 }]}>Llave privada</Text>
+        <View style={styles.pkReveal}>
+          <Text style={{ color: reveal ? C.txt : C.txt3, fontSize: 13, lineHeight: 20 }}>
+            {reveal
+              ? 'Tu llave está custodiada de forma segura por Orden Global. Para exportarla, verifica tu identidad desde la billetera web.'
+              : '•••• •••• •••• •••• •••• •••• •••• ••••'}
+          </Text>
+        </View>
+        <Button3D
+          variant={reveal ? 'ghost' : undefined}
+          title={reveal ? 'Ocultar' : 'Revelar información'}
+          icon={reveal ? 'eye-off' : 'eye'}
+          onPress={() => { hap(); setReveal(!reveal); }}
+          style={{ marginTop: 14 }}
+        />
+        <Text style={{ color: C.txt3, fontSize: 11.5, textAlign: 'center', marginTop: 14, lineHeight: 17 }}>
+          Tu billetera es custodial: las firmas ocurren en el servidor de Orden Global con tu contraseña. La app nunca guarda tu llave.
+        </Text>
+      </ScrollView>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   label: { fontSize: 12, color: C.txt2, marginBottom: 7, fontWeight: '500' },
+  pkBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 14, padding: 15 },
+  pkTxt: { flex: 1, color: C.txt, fontSize: 13 },
+  pkReveal: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 14, padding: 16, minHeight: 64 },
   profAvBig: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center' },
   connBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(62,217,160,0.14)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, marginTop: 12, alignSelf: 'flex-start' },
   connTxt: { color: C.up, fontSize: 12, fontWeight: '600' },

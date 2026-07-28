@@ -4,7 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Rect } from 'react-native-svg';
 import { C, G } from '../theme';
-import { Header, TokenIcon, ActionBtn, Button3D, Card, useToast, hap } from '../ui';
+import QRCode from 'react-native-qrcode-svg';
+import { Header, TokenIcon, ActionBtn, Button3D, Card, useToast, useAccount, hap } from '../ui';
 import { TOKENS, money, qtyFmt, WALLET_ADDRESS } from '../data';
 import { USE_REAL_API, apiSend } from '../api';
 
@@ -120,16 +121,18 @@ export function Send({ nav }) {
 // ================= RECEIVE =================
 export function Receive({ nav }) {
   const toast = useToast();
+  const { account } = useAccount();
+  const address = account?.addr || WALLET_ADDRESS;
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title="Recibir" onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22, alignItems: 'center' }}>
         <View style={styles.qrBox}>
-          <Image source={require('../../assets/qr.png')} style={{ width: 244, height: 244 }} resizeMode="contain" />
+          <QRCode value={address} size={224} color="#04211d" backgroundColor="#ffffff" ecl="M" />
         </View>
-        <Text style={{ color: C.txt2, fontSize: 12.5, marginBottom: 14, textAlign: 'center' }}>Escanea para enviar ORIGEN a esta billetera</Text>
+        <Text style={{ color: C.txt2, fontSize: 12.5, marginBottom: 14, textAlign: 'center' }}>Escanea para enviar tokens a esta billetera</Text>
         <View style={styles.addrBox}>
-          <Text style={styles.addr}>{WALLET_ADDRESS}</Text>
+          <Text style={styles.addr} numberOfLines={1}>{address}</Text>
           <Pressable onPress={() => { hap(); toast('Dirección copiada'); }}><Ionicons name="copy" size={22} color={C.gold} /></Pressable>
         </View>
         <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
