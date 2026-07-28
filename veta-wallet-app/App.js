@@ -3,7 +3,7 @@ import { View, Text, Pressable, Animated, Easing, StyleSheet, SafeAreaView, Stat
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { C } from './src/theme';
-import { Nav, ToastCtx, AccountCtx } from './src/ui';
+import { Nav, ToastCtx, AccountCtx, AppBackground } from './src/ui';
 import { LangProvider, useT } from './src/i18n';
 import * as Linking from 'expo-linking';
 import { loadSession, saveSession, clearSession, initAccounts, setPassport } from './src/accounts';
@@ -171,7 +171,10 @@ function Root() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.bg }}>
+    // Fondo de marca en TODA la app: las pantallas de marca (splash/login)
+    // traen el suyo propio a pantalla completa; el resto se dibuja sobre la
+    // misma foto muy velada, que aporta profundidad sin restar legibilidad.
+    <AppBackground intensity="content">
       <ExpoStatusBar style="light" />
       {isFull ? (
         <View style={{ flex: 1 }}>{content}</View>
@@ -200,12 +203,13 @@ function Root() {
           <Text style={styles.toastTxt}>{toast}</Text>
         </Animated.View>
       )}
-    </View>
+    </AppBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  tabbar: { flexDirection: 'row', backgroundColor: 'rgba(3,22,23,0.96)', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)', paddingTop: 9, paddingBottom: Platform.OS === 'ios' ? 24 : 10 },
+  // Barra inferior de vidrio: deja pasar un poco del fondo de marca.
+  tabbar: { flexDirection: 'row', backgroundColor: 'rgba(3,22,23,0.82)', borderTopWidth: 1, borderTopColor: 'rgba(201,169,97,0.16)', paddingTop: 9, paddingBottom: Platform.OS === 'ios' ? 24 : 10 },
   tab: { flex: 1, alignItems: 'center', gap: 4, paddingVertical: 4 },
   tabTxt: { fontSize: 10, fontWeight: '600' },
   toast: { position: 'absolute', bottom: 96, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#0A3A3C', borderWidth: 1, borderColor: C.gold, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 20, maxWidth: '86%' },

@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, ImageBackground, Pressable, TextInput, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, Pressable, TextInput, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { C } from '../theme';
-import { Logo, Button3D, hap, useAccount, useToast } from '../ui';
+import { Logo, Button3D, hap, useAccount, useToast, AppBackground } from '../ui';
 import { upsertApiAccount, saveSession } from '../accounts';
 import { apiLogin, apiRegister, apiPortfolio, saveCreds, clearCreds } from '../api';
 import { useT } from '../i18n';
@@ -54,8 +53,7 @@ export default function Auth({ nav }) {
   }
 
   return (
-    <ImageBackground source={require('../../assets/login-bg.jpg')} style={{ flex: 1 }} resizeMode="cover">
-      <LinearGradient colors={['rgba(9,55,52,0.55)', 'rgba(3,20,21,0.82)']} style={StyleSheet.absoluteFill} />
+    <AppBackground intensity="hero">
       <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
         <View style={{ alignItems: 'center', marginBottom: 22 }}>
           <Logo size={92} />
@@ -108,7 +106,7 @@ export default function Auth({ nav }) {
         </BlurView>
         <Text style={styles.foot}>{t('auth.foot')}</Text>
       </ScrollView>
-    </ImageBackground>
+    </AppBackground>
   );
 }
 

@@ -3,7 +3,7 @@ import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, RadialGradient, Stop, Defs } from 'react-native-svg';
 import { C } from '../theme';
-import { Logo, useAccount } from '../ui';
+import { Logo, useAccount, AppBackground } from '../ui';
 
 export default function Splash({ nav }) {
   const { account } = useAccount();
@@ -56,7 +56,7 @@ export default function Splash({ nav }) {
   const width = prog.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
 
   return (
-    <LinearGradient colors={['#0A2F31', '#031517', '#010B0C']} style={styles.wrap}>
+    <AppBackground intensity="hero" style={styles.wrap}>
       <View style={{ alignItems: 'center' }}>
         <View style={{ width: 250, height: 250, alignItems: 'center', justifyContent: 'center' }}>
           {/* glow radial suave */}
@@ -101,7 +101,7 @@ export default function Splash({ nav }) {
         </View>
         <Text style={styles.loading}>Cargando tu billetera…</Text>
       </View>
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

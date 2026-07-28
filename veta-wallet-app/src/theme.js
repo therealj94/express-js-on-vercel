@@ -1,12 +1,15 @@
+// Paleta Orden Global. Los paneles son translúcidos a propósito: la app se
+// dibuja sobre la fotografía de marca (ver AppBackground) y esa transparencia
+// es la que le da la profundidad de vidrio sin restar legibilidad.
 export const C = {
   bg: '#021B1C',
-  bg2: '#052A2B',
-  panel: '#0A3436',
-  panel2: '#123F41',
-  panel3: '#164E50',
-  line: 'rgba(201,169,97,0.16)',
-  line2: '#1C5E61',
-  input: '#0C3A3B',
+  bg2: 'rgba(6,42,43,0.94)',
+  panel: 'rgba(11,55,57,0.66)',
+  panel2: 'rgba(20,71,73,0.72)',
+  panel3: 'rgba(24,84,86,0.78)',
+  line: 'rgba(201,169,97,0.22)',
+  line2: 'rgba(40,110,113,0.7)',
+  input: 'rgba(12,58,59,0.78)',
   inputBr: '#2E7477',
   gold: '#C9A961',
   goldLt: '#EAD79C',

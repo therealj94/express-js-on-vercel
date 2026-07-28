@@ -1,5 +1,5 @@
 import React, { useRef, createContext, useContext } from 'react';
-import { View, Text, Pressable, TextInput, Animated, Image, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, Pressable, TextInput, Animated, Image, ImageBackground, StyleSheet, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Rect, Line, Path, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
@@ -7,7 +7,25 @@ import * as Haptics from 'expo-haptics';
 import { C, G } from './theme';
 
 export const LOGO = require('../assets/logo.png');
+export const BG = require('../assets/login-bg.jpg');
 export const hap = (style = Haptics.ImpactFeedbackStyle.Light) => { try { Haptics.impactAsync(style); } catch (e) {} };
+
+// Fondo de marca de toda la app: la fotografía del ecosistema con un velo
+// oscuro encima. `intensity` controla cuánta imagen se deja ver:
+//   'hero'    → pantallas de marca (splash, login): imagen protagonista
+//   'content' → pantallas con datos: apenas una textura de profundidad
+export function AppBackground({ children, intensity = 'content', style }) {
+  const hero = intensity === 'hero';
+  const veil = hero
+    ? ['rgba(9,55,52,0.55)', 'rgba(3,20,21,0.82)']
+    : ['rgba(2,27,28,0.90)', 'rgba(2,22,23,0.955)', 'rgba(1,15,16,0.985)'];
+  return (
+    <ImageBackground source={BG} resizeMode="cover" style={[{ flex: 1, backgroundColor: '#021B1C' }, style]}>
+      <LinearGradient colors={veil} style={StyleSheet.absoluteFill} />
+      {children}
+    </ImageBackground>
+  );
+}
 
 // ---- Navigation context ----
 export const Nav = createContext({ go: () => {}, back: () => {}, route: 'splash' });
@@ -232,5 +250,8 @@ export const styles = StyleSheet.create({
   secHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 22, marginBottom: 12, paddingHorizontal: 2 },
   secTitle: { fontSize: 16.5, fontWeight: '700', color: C.txt },
   secMore: { fontSize: 13, color: C.gold, fontWeight: '600' },
-  card: { backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderRadius: 18, padding: 16 },
+  card: {
+    backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 18, padding: 16,
+    shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 4,
+  },
 });
