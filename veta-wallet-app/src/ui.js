@@ -21,8 +21,11 @@ export const useToast = () => useContext(ToastCtx);
 export const AccountCtx = createContext({ account: null, login: () => {}, logout: () => {} });
 export const useAccount = () => useContext(AccountCtx);
 
+// El logo real mide 520x354 → relación de aspecto 0.6808. Usar otra proporción
+// dejaba un hueco vertical vacío alrededor de la marca.
+export const LOGO_RATIO = 354 / 520;
 export function Logo({ size = 60, style }) {
-  return <Image source={LOGO} resizeMode="contain" style={[{ width: size, height: size * 0.78 }, style]} />;
+  return <Image source={LOGO} resizeMode="contain" style={[{ width: size, height: Math.round(size * LOGO_RATIO) }, style]} />;
 }
 
 export function TokenIcon({ t, size = 44 }) {

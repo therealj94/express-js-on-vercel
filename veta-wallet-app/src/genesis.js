@@ -1,107 +1,173 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 
-// Cliente del motor Genesis ID real (backend en la nube). Guarda una copia
-// local para reanudar el proceso sin conexión, pero el UID oficial y el
-// emparejamiento con la Veta Wallet (address) los emite el backend.
+// ============================================================
+// Genesis ID — identidad digital de Orden Global.
+//
+// La verificación REAL ocurre en el portal oficial:
+//     https://www.genesisid.online
+//
+// Flujo:
+//   1. La app abre el portal con los datos de la cuenta (correo, nombre y
+//      dirección de la Veta Wallet) + una URL de retorno (deep link).
+//   2. El usuario completa allá TODO el proceso (documento, rostro, datos).
+//   3. Al terminar, el portal regresa a la app por el deep link con el UID.
+//   4. Si el portal aún no soporta el retorno, la app consulta el motor
+//      Genesis por correo y trae el pasaporte igual.
+// ============================================================
 
-const KEY = 'genesis-id-engine-v3';
-const BASE = (process.env.EXPO_PUBLIC_GENESIS_URL || 'https://genesis-id.onrender.com').replace(/\/$/, '') || null;
+const KEY = 'genesis-id-local-v4';
 
-let cache = null; // { identities: [...] }
+// Portal público de Genesis ID (donde el usuario llena su información).
+export const PORTAL = (process.env.EXPO_PUBLIC_GENESIS_PORTAL || 'https://www.genesisid.online').replace(/\/$/, '');
+// Motor/backend de Genesis ID (emite y consulta identidades).
+export const ENGINE = (process.env.EXPO_PUBLIC_GENESIS_URL || 'https://genesis-id.onrender.com').replace(/\/$/, '');
+// Deep link de retorno a la app.
+export const RETURN_URL = 'vetawallet://genesis';
 
-function uid() {
-  const b = () => String(Math.floor(1000 + Math.random() * 9000));
-  return `GEN-${b()}-${b()}`;
-}
 const now = () => new Date().toISOString();
 
-async function read() {
-  if (cache) return cache;
-  try {
-    const raw = await AsyncStorage.getItem(KEY);
-    cache = raw ? JSON.parse(raw) : null;
-  } catch (e) { cache = null; }
-  if (!cache) cache = { identities: [] };
-  return cache;
+async function readLocal() {
+  try { const raw = await AsyncStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; }
+  catch (e) { return null; }
 }
-async function write() {
-  try { await AsyncStorage.setItem(KEY, JSON.stringify(cache)); } catch (e) {}
+async function writeLocal(rec) {
+  try { await AsyncStorage.setItem(KEY, JSON.stringify(rec)); } catch (e) {}
+  return rec;
 }
 
-function post(path, body) {
-  if (!BASE) return Promise.resolve(null);
-  return fetch(`${BASE}/api/identities${path}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}),
-  }).then((r) => r.json()).catch(() => null);
+// ---------- motor Genesis (backend) ----------
+async function engine(path, { method = 'GET', body } = {}) {
+  try {
+    const res = await fetch(`${ENGINE}/api${path}`, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) { return null; }
+}
+
+/** Consulta el pasaporte en el motor por correo. */
+export async function fetchIdentity(email) {
+  const d = await engine(`/identities/by-email/${encodeURIComponent((email || '').toLowerCase().trim())}`);
+  return d?.identity || null;
+}
+
+/** Registra/actualiza la identidad con la Veta Wallet emparejada. */
+export async function pairWallet({ email, fullName, walletAddress }) {
+  const d = await engine('/identities', { method: 'POST', body: { email, fullName, walletAddress } });
+  return d?.identity || null;
+}
+
+// Construye la URL del portal con los datos de la cuenta y el retorno.
+export function portalUrl({ email, fullName, walletAddress }) {
+  const q = new URLSearchParams();
+  if (email) q.set('email', email);
+  if (fullName) q.set('name', fullName);
+  if (walletAddress) { q.set('wallet', walletAddress); q.set('address', walletAddress); }
+  q.set('source', 'veta-wallet');
+  q.set('return_url', RETURN_URL);
+  q.set('redirect_uri', RETURN_URL);
+  return `${PORTAL}/?${q.toString()}`;
+}
+
+// Normaliza lo que devuelva el portal o el motor a un pasaporte de la app.
+export function toPassport(src, fallback = {}) {
+  if (!src) return null;
+  const uid = src.genesisUid || src.uid || src.genesis_uid || src.id || null;
+  if (!uid) return null;
+  return {
+    genesisUid: String(uid),
+    fullName: src.fullName || src.name || src.full_name || fallback.fullName || null,
+    email: src.email || fallback.email || null,
+    walletAddress: src.walletAddress || src.wallet || fallback.walletAddress || null,
+    documentId: src.documentId || src.document || src.dni || src.doc || null,
+    nationality: src.nationality || src.country || src.pais || null,
+    birthDate: src.birthDate || src.dob || src.fechaNacimiento || null,
+    status: src.step === 'verified' || src.status === 'verified' ? 'verified'
+      : src.step === 'review24' || src.status === 'review' ? 'review' : (src.status || src.step || 'pending'),
+    issuedAt: src.verifiedAt || src.issuedAt || now(),
+    photoUrl: src.photoUrl || src.photo || src.avatar || null,
+    raw: src,
+  };
+}
+
+// Lee el pasaporte de un deep link de retorno: vetawallet://genesis?uid=…
+export function passportFromUrl(url) {
+  try {
+    const { queryParams } = Linking.parse(url);
+    if (!queryParams) return null;
+    const p = toPassport(queryParams);
+    if (p) return p;
+    // Algunos portales devuelven el objeto completo codificado en JSON.
+    const blob = queryParams.data || queryParams.passport || queryParams.identity;
+    if (blob) {
+      try { return toPassport(JSON.parse(decodeURIComponent(String(blob)))); } catch (e) {}
+    }
+    return null;
+  } catch (e) { return null; }
 }
 
 export const genesis = {
-  async find(email) {
-    const d = await read();
-    return d.identities.find((i) => i.email === (email || '').toLowerCase().trim()) || null;
-  },
+  PORTAL, ENGINE, RETURN_URL,
 
-  // Crea o reanuda por correo. Envía nombre + address de la Veta Wallet al
-  // backend real para que la identidad quede emparejada desde el inicio.
-  async start(email, fullName, walletAddress) {
-    const d = await read();
-    const e = (email || '').toLowerCase().trim();
-    let rec = d.identities.find((i) => i.email === e);
-    if (!rec) {
-      rec = { email: e, fullName: fullName || null, walletAddress: walletAddress || null, type: 'personal', step: 'doc-front', genesisUid: null, startedAt: now(), verifiedAt: null, review24At: null };
-      d.identities.push(rec);
-      await write();
-    } else if (walletAddress && rec.walletAddress !== walletAddress) {
-      rec.walletAddress = walletAddress;
-      await write();
+  /** Pasaporte guardado en el dispositivo. */
+  local: readLocal,
+  save: writeLocal,
+
+  /**
+   * Abre el portal oficial y espera el regreso.
+   * Devuelve { passport } si se obtuvo, o { cancelled } / { pending }.
+   */
+  async verify({ email, fullName, walletAddress }) {
+    // Deja la identidad creada y la billetera emparejada antes de salir.
+    await pairWallet({ email, fullName, walletAddress });
+
+    const url = portalUrl({ email, fullName, walletAddress });
+    let result;
+    try {
+      result = await WebBrowser.openAuthSessionAsync(url, RETURN_URL, {
+        showInRecents: true,
+        preferEphemeralSession: false,
+      });
+    } catch (e) {
+      // Si no se puede abrir la sesión con retorno, abre el navegador normal.
+      try { await WebBrowser.openBrowserAsync(url); } catch (e2) {}
+      result = { type: 'dismiss' };
     }
-    post('', { email: e, fullName, walletAddress }); // best-effort al backend real
-    return rec;
-  },
 
-  async setStep(email, step) {
-    const d = await read();
-    const rec = d.identities.find((i) => i.email === (email || '').toLowerCase().trim());
-    if (rec) { rec.step = step; if (step === 'review24') rec.review24At = now(); await write(); }
-    return rec;
-  },
-
-  // Verifica en el backend central: emite el UID oficial y deja emparejada
-  // la Veta Wallet (email + fullName + walletAddress visibles en el admin).
-  async process(email, extra = {}) {
-    const d = await read();
-    const e = (email || '').toLowerCase().trim();
-    let rec = d.identities.find((i) => i.email === e);
-    if (!rec) {
-      rec = { email: e, fullName: extra.fullName || null, walletAddress: extra.walletAddress || null, type: 'personal', step: 'processing', genesisUid: null, startedAt: now(), verifiedAt: null, review24At: null };
-      d.identities.push(rec);
+    // 1) El portal regresó por el deep link con los datos.
+    if (result?.type === 'success' && result.url) {
+      const p = passportFromUrl(result.url);
+      if (p) {
+        p.walletAddress = p.walletAddress || walletAddress;
+        p.email = p.email || email;
+        p.fullName = p.fullName || fullName;
+        await writeLocal(p);
+        return { passport: p };
+      }
     }
-    if (extra.walletAddress) rec.walletAddress = extra.walletAddress;
-    if (extra.fullName && !rec.fullName) rec.fullName = extra.fullName;
 
-    let backendUid = null;
-    if (BASE) {
-      try {
-        const created = await post('', { email: rec.email, fullName: rec.fullName, walletAddress: rec.walletAddress });
-        const idn = created && created.identity;
-        if (idn && idn.id) {
-          const done = await fetch(`${BASE}/api/identities/${idn.id}/process`, { method: 'POST' }).then((r) => r.json());
-          backendUid = (done && done.identity && done.identity.genesisUid) || null;
-        }
-      } catch (e2) {}
+    // 2) Sin datos en el retorno: consulta el motor por correo (el portal ya
+    //    debió emitir la identidad allá).
+    const idn = await fetchIdentity(email);
+    const p = toPassport(idn, { email, fullName, walletAddress });
+    if (p && p.status === 'verified') {
+      await writeLocal(p);
+      return { passport: p };
     }
-    rec.step = 'verified';
-    rec.genesisUid = backendUid || rec.genesisUid || uid();
-    rec.verifiedAt = now();
-    await write();
-    return rec;
+    if (p) return { pending: p };
+    return result?.type === 'cancel' ? { cancelled: true } : { pending: null };
   },
 
-  // Empareja la Veta Wallet con una identidad Genesis ya existente.
-  async linkWallet(email, walletAddress) {
-    const d = await read();
-    const rec = d.identities.find((i) => i.email === (email || '').toLowerCase().trim());
-    if (rec) { rec.walletAddress = walletAddress; await write(); }
-    return post('/link-wallet', { email, walletAddress });
+  /** Reintenta traer el pasaporte del motor (para el botón "Ya me verifiqué"). */
+  async refresh(email, fallback) {
+    const idn = await fetchIdentity(email);
+    const p = toPassport(idn, fallback);
+    if (p && p.status === 'verified') { await writeLocal(p); return p; }
+    return p ? { ...p, _notVerified: true } : null;
   },
 };

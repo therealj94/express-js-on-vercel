@@ -80,9 +80,16 @@ export async function updateAccount(email, patch) {
   return acc;
 }
 
-// Vincula el Genesis ID (opcional) a la cuenta.
-export async function setGenesisUid(email, genesisUid) {
-  return updateAccount(email, { genesisUid });
+// Vincula el pasaporte Genesis ID (opcional) a la cuenta, con toda su
+// información: UID, nombre legal, documento, nacionalidad, foto, estado…
+export async function setPassport(email, passport) {
+  if (!passport) return null;
+  return updateAccount(email, {
+    genesisUid: passport.genesisUid || null,
+    passport,
+    // Si Genesis trae el nombre legal verificado, prevalece sobre el escrito.
+    ...(passport.fullName ? { name: passport.fullName } : {}),
+  });
 }
 
 // ---- sesión persistida ----

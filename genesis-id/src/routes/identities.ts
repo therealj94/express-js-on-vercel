@@ -8,6 +8,7 @@ import {
   sendToReview,
   retryScan,
   linkWallet,
+  setPassportData,
 } from '../engine.js'
 
 export const identitiesRouter = Router()
@@ -24,6 +25,20 @@ identitiesRouter.post('/', (req, res) => {
     typeof fullName === 'string' ? fullName : undefined,
     typeof walletAddress === 'string' && walletAddress.startsWith('0x') ? walletAddress : undefined,
   )
+  res.json({ identity })
+})
+
+// El portal oficial (genesisid.online) publica aquí el pasaporte emitido:
+// UID, nombre legal, documento, nacionalidad y foto.
+identitiesRouter.post('/passport', (req, res) => {
+  const { email, ...data } = req.body ?? {}
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    return res.status(400).json({ error: 'Correo válido requerido' })
+  }
+  // Crea la identidad si aún no existe, para no perder el pasaporte.
+  startIdentity(email, typeof data.fullName === 'string' ? data.fullName : undefined)
+  const identity = setPassportData(email, data)
+  if (!identity) return res.status(404).json({ error: 'Identidad no encontrada' })
   res.json({ identity })
 })
 

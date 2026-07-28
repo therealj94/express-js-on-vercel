@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Image, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -173,50 +173,103 @@ export function Passport({ nav }) {
   const { account } = useAccount();
   const toast = useToast();
   const t = useT();
-  const acc = account || { name: 'Cuenta', initials: 'VW', genesisUid: null, since: '' };
-  return (
-    <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header title={t('pass.title')} onBack={() => nav.back()} />
-      <ScrollView contentContainerStyle={{ padding: 22 }}>
-        {acc.genesisUid ? (
-          <>
-            <LinearGradient colors={['#0f5f55', '#0a3a3d', '#06282b']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.passCard}>
-              <View style={styles.passTop}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Ionicons name="finger-print" size={18} color={C.gold} />
-                  <Text style={styles.passBrand}>GENESIS ID</Text>
-                </View>
-                <View style={styles.passVerified}><Ionicons name="shield-checkmark" size={12} color={C.up} /><Text style={styles.passVerTxt}>{t('pass.verified')}</Text></View>
-              </View>
-              <View style={styles.passBody}>
-                <LinearGradient colors={G.gold} style={styles.passPhoto}><Text style={{ color: C.darkText, fontWeight: '800', fontSize: 26 }}>{acc.initials}</Text></LinearGradient>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.passLabel}>{t('pass.holder')}</Text>
-                  <Text style={styles.passName} numberOfLines={1}>{acc.name}</Text>
-                  <Text style={styles.passLabel2}>{t('pass.uid')}</Text>
-                  <Text style={styles.passUid}>{acc.genesisUid}</Text>
-                </View>
-              </View>
-              <View style={styles.passFoot}>
-                <View><Text style={styles.passLabel}>{t('pass.type')}</Text><Text style={styles.passMeta}>{t('pass.typeV')}</Text></View>
-                <View><Text style={styles.passLabel}>{t('pass.issued')}</Text><Text style={styles.passMeta}>{acc.since || '2026'}</Text></View>
-                <View><Text style={styles.passLabel}>{t('pass.eco')}</Text><Text style={styles.passMeta}>Orden Global</Text></View>
-              </View>
-            </LinearGradient>
-            <Text style={styles.passNote}>{t('pass.note')}</Text>
-            <Button3D variant="ghost" title={t('pass.share')} icon="share-social" onPress={() => { hap(); toast(t('pass.sharing')); }} />
-          </>
-        ) : (
+  const acc = account || {};
+  const p = acc.passport || null;
+  const verified = p?.status === 'verified' || (!!acc.genesisUid && !p);
+  const statusLbl = p?.status === 'review' ? t('pass.review') : verified ? t('pass.verified') : t('pass.pending');
+
+  if (!acc.genesisUid && !p) {
+    return (
+      <View style={{ flex: 1, paddingTop: 6 }}>
+        <Header title={t('pass.title')} onBack={() => nav.back()} />
+        <ScrollView contentContainerStyle={{ padding: 22 }}>
           <View style={styles.emptyWrap}>
             <View style={styles.emptyIcon}><Ionicons name="finger-print" size={30} color={C.gold} /></View>
             <Text style={styles.emptyTitle}>{t('pass.emptyT')}</Text>
             <Text style={styles.emptyBody}>{t('pass.emptyP')}</Text>
             <Button3D title={t('pass.linkNow')} icon="finger-print" onPress={() => nav.go('kyc')} style={{ alignSelf: 'stretch', marginTop: 18 }} />
           </View>
-        )}
+        </ScrollView>
+      </View>
+    );
+  }
+
+  const rows = [
+    [t('pass.type'), t('pass.typeV')],
+    p?.documentId ? [t('pass.doc'), p.documentId] : null,
+    p?.nationality ? [t('pass.nat'), p.nationality] : null,
+    p?.birthDate ? [t('prof.name'), p.birthDate] : null,
+    [t('auth.email'), p?.email || acc.email || '—'],
+    [t('pass.issued'), fmtIssued(p?.issuedAt) || acc.since || '—'],
+    [t('pass.status'), statusLbl],
+  ].filter(Boolean);
+
+  return (
+    <View style={{ flex: 1, paddingTop: 6 }}>
+      <Header title={t('pass.title')} onBack={() => nav.back()} />
+      <ScrollView contentContainerStyle={{ padding: 22 }}>
+        <LinearGradient colors={['#0f5f55', '#0a3a3d', '#06282b']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.passCard}>
+          <View style={styles.passTop}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="finger-print" size={18} color={C.gold} />
+              <Text style={styles.passBrand}>GENESIS ID</Text>
+            </View>
+            <View style={[styles.passVerified, !verified && { backgroundColor: 'rgba(251,191,36,0.14)' }]}>
+              <Ionicons name={verified ? 'shield-checkmark' : 'time'} size={12} color={verified ? C.up : '#FBBF24'} />
+              <Text style={[styles.passVerTxt, !verified && { color: '#FBBF24' }]}>{statusLbl}</Text>
+            </View>
+          </View>
+
+          <View style={styles.passBody}>
+            {p?.photoUrl ? (
+              <Image source={{ uri: p.photoUrl }} style={styles.passPhotoImg} />
+            ) : (
+              <LinearGradient colors={G.gold} style={styles.passPhoto}>
+                <Text style={{ color: C.darkText, fontWeight: '800', fontSize: 26 }}>{acc.initials || 'VW'}</Text>
+              </LinearGradient>
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.passLabel}>{t('pass.holder')}</Text>
+              <Text style={styles.passName} numberOfLines={2}>{p?.fullName || acc.name}</Text>
+              <Text style={styles.passLabel2}>{t('pass.uid')}</Text>
+              <Text style={styles.passUid}>{p?.genesisUid || acc.genesisUid}</Text>
+            </View>
+          </View>
+
+          <View style={styles.passRows}>
+            {rows.map(([k, v]) => (
+              <View key={k} style={styles.passRow}>
+                <Text style={styles.passRowK}>{k}</Text>
+                <Text style={styles.passRowV} numberOfLines={1}>{v}</Text>
+              </View>
+            ))}
+          </View>
+        </LinearGradient>
+
+        {/* Billetera emparejada */}
+        <View style={styles.pairCard}>
+          <View style={styles.pairIcon}><Ionicons name="link" size={17} color={C.gold} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.pairT}>{t('pass.linked')}</Text>
+            <Text style={styles.pairV} numberOfLines={1}>{p?.walletAddress || acc.addr || '—'}</Text>
+          </View>
+          <Pressable onPress={async () => { hap(); try { await Clipboard.setStringAsync(p?.walletAddress || acc.addr || ''); toast(t('recv.copied')); } catch (e) {} }}>
+            <Ionicons name="copy" size={18} color={C.gold} />
+          </Pressable>
+        </View>
+
+        <Text style={styles.passNote}>{t('pass.note')}</Text>
+        <Button3D variant="ghost" title={t('pass.share')} icon="share-social" onPress={() => { hap(); toast(t('pass.sharing')); }} />
       </ScrollView>
     </View>
   );
+}
+
+function fmtIssued(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d)) return null;
+  return d.toLocaleDateString('es-HN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 // ================= PERFIL (datos reales de la cuenta) =================
@@ -419,6 +472,15 @@ const styles = StyleSheet.create({
   passFoot: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
   passMeta: { color: C.txt, fontSize: 11.5, fontWeight: '600', marginTop: 2 },
   passNote: { color: C.txt3, fontSize: 11.5, lineHeight: 16, textAlign: 'center', marginVertical: 14 },
+  passPhotoImg: { width: 64, height: 64, borderRadius: 18, backgroundColor: C.panel2 },
+  passRows: { marginTop: 16, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
+  passRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 14, paddingVertical: 6 },
+  passRowK: { color: C.txt3, fontSize: 11.5 },
+  passRowV: { color: C.txt, fontSize: 11.5, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
+  pairCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 16, padding: 14, marginTop: 14 },
+  pairIcon: { width: 36, height: 36, borderRadius: 11, backgroundColor: 'rgba(201,169,97,0.12)', alignItems: 'center', justifyContent: 'center' },
+  pairT: { color: C.txt3, fontSize: 11, letterSpacing: 0.5 },
+  pairV: { color: C.txt, fontSize: 12.5, fontWeight: '600', marginTop: 2 },
 
   hero: { borderRadius: 22, padding: 20, borderWidth: 1, borderColor: C.line, marginBottom: 16, alignItems: 'center' },
   heroIc: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },

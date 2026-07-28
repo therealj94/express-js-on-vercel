@@ -5,8 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { C } from './src/theme';
 import { Nav, ToastCtx, AccountCtx } from './src/ui';
 import { LangProvider, useT } from './src/i18n';
-import { loadSession, saveSession, clearSession, initAccounts } from './src/accounts';
+import * as Linking from 'expo-linking';
+import { loadSession, saveSession, clearSession, initAccounts, setPassport } from './src/accounts';
 import { loadToken, setToken, ensureSession, clearCreds } from './src/api';
+import { passportFromUrl, genesis } from './src/genesis';
 
 import Splash from './src/screens/Splash';
 import Auth from './src/screens/Auth';
@@ -67,6 +69,28 @@ function Root() {
     login: (a) => { setAccount(a); saveSession(a.email); },
     logout: () => { setAccount(null); clearSession(); setToken(null); clearCreds(); },
   };
+
+  // Retorno desde el portal Genesis ID (vetawallet://genesis?uid=…). Captura el
+  // pasaporte aunque la app estuviera en segundo plano o se abriera de cero.
+  const accountRef = useRef(account);
+  accountRef.current = account;
+  useEffect(() => {
+    const handle = async (url) => {
+      if (!url || !/genesis/i.test(url)) return;
+      const p = passportFromUrl(url);
+      const acc = accountRef.current;
+      if (!p || !acc) return;
+      p.email = p.email || acc.email;
+      p.walletAddress = p.walletAddress || acc.addr;
+      await genesis.save(p);
+      const updated = await setPassport(acc.email, p);
+      if (updated) { setAccount(updated); setDir(1); setStack([{ r: 'home' }, { r: 'passport' }]); }
+    };
+    const sub = Linking.addEventListener('url', (e) => handle(e.url));
+    Linking.getInitialURL().then(handle).catch(() => {});
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const go = useCallback((r, params) => {
     if (TAB_ROUTES.includes(r)) { setDir(1); setStack([{ r, params }]); }

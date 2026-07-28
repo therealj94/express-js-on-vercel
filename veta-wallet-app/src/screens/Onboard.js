@@ -1,295 +1,138 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Animated, Easing, Dimensions, StyleSheet } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { C } from '../theme';
+import { C, G } from '../theme';
 import { Header, Button3D, Card, hap, useToast, useAccount } from '../ui';
 import { genesis } from '../genesis';
-import { setGenesisUid } from '../accounts';
+import { setPassport } from '../accounts';
 import { getSeed } from '../api';
 import { useT } from '../i18n';
 
-const { width: SCREEN_W } = Dimensions.get('window');
-const SCAN_SECONDS = 30;
-const GENESIS_KEY = 'genesis-id-flow-veta';
+// ---------------- GENESIS ID: verificación en el portal oficial ----------------
+// La app NO simula el proceso: abre https://www.genesisid.online, el usuario
+// llena todo allá y regresa a la app con su pasaporte completo.
 
-// Genesis ID — identidad digital única de Orden Global.
-// El progreso se guarda: si el usuario deja su correo y sale,
-// al volver continúa exactamente donde quedó.
-
-const DOC_W = Math.min(SCREEN_W - 44, 380);
-const DOC_H = Math.round(DOC_W / 1.586);
-const FACE_W = Math.min(Math.round(SCREEN_W * 0.88), 380); // marco facial grande
-const FACE_H = Math.round(FACE_W * 1.24);
-
-async function loadGenesis() {
-  try {
-    const raw = await AsyncStorage.getItem(GENESIS_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (e) {
-    return null;
-  }
-}
-async function saveGenesis(state) {
-  try {
-    await AsyncStorage.setItem(GENESIS_KEY, JSON.stringify(state));
-  } catch (e) {}
-}
-
-// ---------------- GENESIS ID (KYC del ecosistema) ----------------
-export function Kyc({ nav, params }) {
-  const toast = useToast();
+export function Kyc({ nav }) {
   const t = useT();
+  const toast = useToast();
   const { account, login: loginAccount } = useAccount();
-  // Vinculación opcional: se entra desde Ajustes con la sesión ya iniciada.
-  const doneDest = account ? 'passport' : 'auth';
-  const backDest = account ? 'settings' : 'auth';
-  const [step, setStep] = useState('loading'); // loading|email|doc-front|doc-back|face|processing|review24|done
-  const [email, setEmail] = useState(account ? account.email : '');
-  const [uid, setUid] = useState(null);
-  const [resumed, setResumed] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(SCAN_SECONDS);
-  const [redirectIn, setRedirectIn] = useState(6);
+  const [state, setState] = useState('intro'); // intro | opening | pending | done
+  const [passport, setPass] = useState(null);
 
-  // cargar progreso guardado
-  useEffect(() => {
-    loadGenesis().then((saved) => {
-      if (saved && saved.step && saved.step !== 'loading') {
-        setEmail(saved.email || '');
-        setUid(saved.uid || null);
-        setStep(saved.step);
-        if (saved.step !== 'email' && saved.step !== 'done') setResumed(true);
-      } else {
-        setStep('email');
-      }
-    });
-  }, []);
+  const email = account?.email || '';
+  const fullName = account?.name || '';
+  const walletAddress = account?.addr || '';
 
-  const persist = (next, extra = {}) => {
-    setStep(next);
-    saveGenesis({ step: next, email, uid, ...extra });
-  };
+  async function applyPassport(p) {
+    setPass(p);
+    if (account) {
+      const updated = await setPassport(account.email, p);
+      if (updated) loginAccount(updated);
+    }
+  }
 
-  // animaciones: línea de escaneo + pulso de marco
-  const scanY = useRef(new Animated.Value(0)).current;
-  const pulse = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const l1 = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scanY, { toValue: 1, duration: 1900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(scanY, { toValue: 0, duration: 1900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      ]),
-    );
-    const l2 = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 1100, useNativeDriver: false }),
-        Animated.timing(pulse, { toValue: 0, duration: 1100, useNativeDriver: false }),
-      ]),
-    );
-    l1.start(); l2.start();
-    return () => { l1.stop(); l2.stop(); };
-  }, []);
-
-  // temporizador 30 s por escaneo → revisión 24 h si expira
-  const isScan = step === 'doc-front' || step === 'doc-back' || step === 'face';
-  useEffect(() => {
-    if (!isScan) return;
-    setSecondsLeft(SCAN_SECONDS);
-    const iv = setInterval(() => {
-      setSecondsLeft((s) => {
-        if (s <= 1) {
-          clearInterval(iv);
-          persist('review24');
-          toast(t('gen.review24Toast'));
-          return 0;
-        }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(iv);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
-
-  // procesamiento → verificado
-  useEffect(() => {
-    if (step !== 'processing') return;
-    const timer = setTimeout(async () => {
-      // Procesa en el motor Genesis real (backend en la nube): emite el UID
-      // oficial y deja EMPAREJADA la Veta Wallet (nombre + address en el admin).
-      const rec = await genesis.process(email, {
-        fullName: account ? account.name : undefined,
-        walletAddress: account ? account.addr : undefined,
-      });
-      const newUid = (rec && rec.genesisUid) || ('GEN-' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(1000 + Math.random() * 9000));
-      setUid(newUid);
-      // Vincula el Genesis ID a la cuenta Veta Wallet actual.
-      if (account) {
-        const updated = await setGenesisUid(account.email, newUid);
-        if (updated) loginAccount(updated);
-      }
-      saveGenesis({ step: 'done', email, uid: newUid, verifiedAt: new Date().toISOString() });
-      setStep('done');
+  async function start() {
+    hap();
+    setState('opening');
+    const r = await genesis.verify({ email, fullName, walletAddress });
+    if (r.passport) {
+      await applyPassport(r.passport);
+      setState('done');
       hap();
-    }, 2600);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+      return;
+    }
+    if (r.cancelled) { setState('intro'); return; }
+    setState('pending');
+  }
 
-  // regreso automático al terminar
+  // Botón "Ya completé mi verificación": vuelve a consultar el motor.
+  async function recheck() {
+    hap();
+    setState('opening');
+    const p = await genesis.refresh(email, { fullName, walletAddress, email });
+    if (p && !p._notVerified) {
+      await applyPassport(p);
+      setState('done');
+      return;
+    }
+    setState('pending');
+    toast(t('gen.stillPending'));
+  }
+
+  // Al terminar, continúa al pasaporte.
   useEffect(() => {
-    if (step !== 'done') return;
-    setRedirectIn(6);
-    const iv = setInterval(() => {
-      setRedirectIn((s) => {
-        if (s <= 1) { clearInterval(iv); nav.go(doneDest); return 0; }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(iv);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
-
-  const scanDoc = scanY.interpolate({ inputRange: [0, 1], outputRange: [8, DOC_H - 16] });
-  const scanFace = scanY.interpolate({ inputRange: [0, 1], outputRange: [8, FACE_H - 16] });
-  const frameBorder = pulse.interpolate({ inputRange: [0, 1], outputRange: ['rgba(201,169,97,0.45)', 'rgba(201,169,97,1)'] });
-
-  if (step === 'loading') return <View style={{ flex: 1 }} />;
+    if (state !== 'done') return;
+    const timer = setTimeout(() => nav.go('passport'), 2200);
+    return () => clearTimeout(timer);
+  }, [state]);
 
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header
-        title={t('gen.title')}
-        sub={t('gen.sub')}
-        onBack={() => nav.go(backDest)}
-      />
-
-      {/* progreso */}
-      <View style={st.steps}>
-        {[t('gen.steps.mail'), t('gen.steps.doc'), t('gen.steps.face'), t('gen.steps.done')].map((l, i) => {
-          const idx = step === 'email' ? 0 : step === 'doc-front' || step === 'doc-back' || step === 'review24' ? 1 : step === 'face' ? 2 : 3;
-          const on = i <= idx;
-          return (
-            <View key={l} style={st.stepItem}>
-              <View style={[st.stepDot, on && { backgroundColor: C.gold }]} />
-              <Text style={[st.stepLbl, on && { color: C.txt }]}>{l}</Text>
-            </View>
-          );
-        })}
-      </View>
-
-      <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-        {resumed && step !== 'done' && step !== 'review24' && (
-          <View style={st.resume}>
-            <Ionicons name="refresh" size={15} color={C.gold} />
-            <Text style={st.resumeTxt}>{t('gen.resume')}{email ? ` (${email})` : ''}. {t('gen.resume2')}</Text>
-          </View>
-        )}
-
-        {step === 'email' && (
+      <Header title={t('gen.title')} sub={t('gen.sub')} onBack={() => nav.go(account ? 'settings' : 'auth')} />
+      <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 40 }}>
+        {state === 'intro' && (
           <>
-            <View style={st.heroIcon}><Ionicons name="mail" size={28} color={C.gold} /></View>
+            <View style={st.heroIcon}><Ionicons name="finger-print" size={30} color={C.gold} /></View>
             <Text style={st.h1}>{t('gen.h1')}</Text>
-            <Text style={st.body}>{t('gen.body')}</Text>
-            <Text style={st.label}>{t('auth.email')}</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="tu@correo.com"
-              placeholderTextColor="#6f938f"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              style={st.input}
-            />
-            <Button3D
-              title={t('gen.start')}
-              icon="shield-checkmark"
-              disabled={!email.includes('@')}
-              onPress={() => {
-                genesis.start(email, account ? account.name : undefined, account ? account.addr : undefined);
-                saveGenesis({ step: 'doc-front', email, uid });
-                setStep('doc-front');
-              }}
-              style={{ marginTop: 18 }}
-            />
-          </>
-        )}
+            <Text style={st.body}>{t('gen.portalBody')}</Text>
 
-        {(step === 'doc-front' || step === 'doc-back') && (
-          <>
-            <Text style={st.h1}>{step === 'doc-front' ? t('gen.docFront') : t('gen.docBack')}</Text>
-            <Text style={st.body}>{t('gen.docBody', { n: SCAN_SECONDS })}</Text>
-            <View style={{ alignItems: 'center', marginVertical: 14 }}>
-              <Animated.View style={[st.docFrame, { borderColor: frameBorder }]}>
-                <View style={st.frameInner}>
-                  <Ionicons name="card" size={54} color={C.txt3} />
-                  <Text style={st.sideLbl}>{step === 'doc-front' ? 'FRENTE' : 'REVERSO'}</Text>
-                </View>
-                <Animated.View style={[st.scanLine, { transform: [{ translateY: scanDoc }] }]} />
-              </Animated.View>
+            <Card style={{ padding: 16, marginBottom: 16 }}>
+              <Text style={st.cardTitle}>{t('gen.willSend')}</Text>
+              <Row k={t('auth.email')} v={email || '—'} />
+              <Row k={t('prof.name')} v={fullName || '—'} />
+              <Row k={t('prof.wallet')} v={walletAddress ? `${walletAddress.slice(0, 10)}…${walletAddress.slice(-6)}` : '—'} />
+            </Card>
+
+            <View style={st.steps}>
+              <Step n="1" txt={t('gen.s1')} />
+              <Step n="2" txt={t('gen.s2')} />
+              <Step n="3" txt={t('gen.s3')} />
             </View>
-            <TimerBar secondsLeft={secondsLeft} />
-            <Button3D
-              title={step === 'doc-front' ? t('gen.capFront') : t('gen.capBack')}
-              icon="camera"
-              onPress={() => { hap(); persist(step === 'doc-front' ? 'doc-back' : 'face'); }}
-              style={{ marginTop: 16 }}
-            />
+
+            <Button3D title={t('gen.openPortal')} icon="shield-checkmark" onPress={start} style={{ marginTop: 6 }} />
+            <Text style={st.foot}>{t('gen.secure')}</Text>
           </>
         )}
 
-        {step === 'face' && (
-          <>
-            <Text style={st.h1}>{t('gen.faceT')}</Text>
-            <Text style={st.body}>{t('gen.faceP')}</Text>
-            <View style={{ alignItems: 'center', marginVertical: 14 }}>
-              <Animated.View style={[st.faceFrame, { borderColor: frameBorder }]}>
-                <View style={st.frameInner}>
-                  <Ionicons name="person" size={100} color={C.txt3} />
-                </View>
-                <Animated.View style={[st.scanLine, { transform: [{ translateY: scanFace }] }]} />
-              </Animated.View>
-            </View>
-            <TimerBar secondsLeft={secondsLeft} />
-            <Button3D title={t('gen.capFace')} icon="scan" onPress={() => { hap(); persist('processing'); }} style={{ marginTop: 16 }} />
-          </>
-        )}
-
-        {step === 'processing' && (
+        {state === 'opening' && (
           <View style={st.center}>
-            <Spinner />
+            <ActivityIndicator size="large" color={C.gold} />
             <Text style={[st.h1, { textAlign: 'center', marginTop: 22 }]}>{t('gen.processing')}</Text>
-            <Text style={[st.body, { textAlign: 'center' }]}>{t('gen.processingSub')}</Text>
+            <Text style={[st.body, { textAlign: 'center' }]}>{t('gen.portalOpening')}</Text>
           </View>
         )}
 
-        {step === 'review24' && (
+        {state === 'pending' && (
           <View style={st.center}>
             <View style={[st.heroIcon, { backgroundColor: 'rgba(251,191,36,0.12)' }]}>
               <Ionicons name="time" size={30} color="#FBBF24" />
             </View>
-            <Text style={[st.h1, { textAlign: 'center' }]}>{t('gen.reviewT')}</Text>
-            <Text style={[st.body, { textAlign: 'center' }]}>{t('gen.reviewP')}</Text>
-            <Button3D title={t('gen.back')} icon="arrow-forward" onPress={() => nav.go(backDest)} style={{ alignSelf: 'stretch', marginTop: 20 }} />
-            <Pressable onPress={() => { hap(); persist('doc-front'); }} style={st.retry}>
-              <Ionicons name="refresh" size={14} color={C.gold} />
-              <Text style={st.retryTxt}>{t('gen.retry')}</Text>
+            <Text style={[st.h1, { textAlign: 'center' }]}>{t('gen.pendingT')}</Text>
+            <Text style={[st.body, { textAlign: 'center' }]}>{t('gen.pendingP')}</Text>
+            <Button3D title={t('gen.recheck')} icon="refresh" onPress={recheck} style={{ alignSelf: 'stretch', marginTop: 16 }} />
+            <Pressable onPress={start} style={st.retry}>
+              <Ionicons name="open-outline" size={14} color={C.gold} />
+              <Text style={st.retryTxt}>{t('gen.reopen')}</Text>
+            </Pressable>
+            <Pressable onPress={() => nav.go(account ? 'home' : 'auth')} style={st.retry}>
+              <Text style={[st.retryTxt, { color: C.txt3 }]}>{t('gen.back')}</Text>
             </Pressable>
           </View>
         )}
 
-        {step === 'done' && (
+        {state === 'done' && (
           <View style={st.center}>
             <View style={st.doneBadge}><Ionicons name="checkmark" size={46} color={C.up} /></View>
             <Text style={[st.h1, { textAlign: 'center' }]}>{t('gen.doneT')}</Text>
             <Text style={[st.body, { textAlign: 'center' }]}>{t('gen.doneP')}</Text>
-            {uid && (
+            {passport?.genesisUid && (
               <View style={st.uidChip}>
                 <Ionicons name="finger-print" size={14} color={C.gold} />
-                <Text style={st.uidTxt}>{uid}</Text>
+                <Text style={st.uidTxt}>{passport.genesisUid}</Text>
               </View>
             )}
-            <Button3D title={t('gen.seePass')} icon="arrow-forward" onPress={() => nav.go(doneDest)} style={{ alignSelf: 'stretch', marginTop: 20 }} />
-            <Text style={st.redirect}>{t('gen.auto', { n: redirectIn })}</Text>
+            <Button3D title={t('gen.seePass')} icon="arrow-forward" onPress={() => nav.go('passport')} style={{ alignSelf: 'stretch', marginTop: 20 }} />
           </View>
         )}
       </ScrollView>
@@ -297,20 +140,19 @@ export function Kyc({ nav, params }) {
   );
 }
 
-function TimerBar({ secondsLeft }) {
-  const t = useT();
-  const pct = secondsLeft / SCAN_SECONDS;
-  const low = secondsLeft <= 10;
+function Row({ k, v }) {
   return (
-    <View style={{ gap: 6 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ color: C.txt2, fontSize: 12, fontWeight: '600' }}>{t('gen.timeLeft')}</Text>
-        <Text style={{ color: low ? C.down : C.txt, fontWeight: '800', fontSize: 19 }}>{secondsLeft}s</Text>
-      </View>
-      <View style={{ height: 8, borderRadius: 999, backgroundColor: C.panel2, overflow: 'hidden' }}>
-        <View style={{ height: '100%', width: `${pct * 100}%`, borderRadius: 999, backgroundColor: low ? C.down : C.gold }} />
-      </View>
-      <Text style={{ color: C.txt3, fontSize: 11 }}>{t('gen.timeHint')}</Text>
+    <View style={st.row}>
+      <Text style={st.rowK}>{k}</Text>
+      <Text style={st.rowV} numberOfLines={1}>{v}</Text>
+    </View>
+  );
+}
+function Step({ n, txt }) {
+  return (
+    <View style={st.step}>
+      <View style={st.stepN}><Text style={st.stepNTxt}>{n}</Text></View>
+      <Text style={st.stepTxt}>{txt}</Text>
     </View>
   );
 }
@@ -324,7 +166,9 @@ export function GenesisOffer({ nav }) {
       <Header title={t('gen.title')} sub={t('gen.sub')} onBack={() => nav.go('home')} />
       <ScrollView contentContainerStyle={{ padding: 22, flexGrow: 1, justifyContent: 'center' }}>
         <View style={{ alignItems: 'center' }}>
-          <View style={st.doneBadge}><Ionicons name="checkmark" size={46} color={C.up} /></View>
+          <LinearGradient colors={G.gold} style={st.offerIcon}>
+            <Ionicons name="checkmark" size={38} color={C.darkText} />
+          </LinearGradient>
           <Text style={[st.h1, { textAlign: 'center' }]}>{t('offer.title')}</Text>
           <Text style={[st.body, { textAlign: 'center' }]}>{t('offer.p')}</Text>
           {account?.addr ? (
@@ -343,26 +187,7 @@ export function GenesisOffer({ nav }) {
   );
 }
 
-function Spinner() {
-  const rot = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(Animated.timing(rot, { toValue: 1, duration: 900, easing: Easing.linear, useNativeDriver: true }));
-    loop.start();
-    return () => loop.stop();
-  }, []);
-  const spin = rot.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  return (
-    <Animated.View
-      style={{
-        width: 80, height: 80, borderRadius: 40, borderWidth: 5,
-        borderColor: 'rgba(201,169,97,0.18)', borderTopColor: C.gold,
-        transform: [{ rotate: spin }],
-      }}
-    />
-  );
-}
-
-// ---------------- Frase semilla (REAL, desde el backend) ----------------
+// ---------------- Frase semilla (real, desde el backend) ----------------
 export function SeedView({ nav }) {
   const t = useT();
   const [state, setState] = useState('hidden'); // hidden | loading | shown | unavailable
@@ -423,43 +248,26 @@ export function SeedView({ nav }) {
 }
 
 const st = StyleSheet.create({
-  steps: { flexDirection: 'row', paddingHorizontal: 22, paddingTop: 6, gap: 8 },
-  stepItem: { flex: 1, alignItems: 'center', gap: 6 },
-  stepDot: { height: 4, alignSelf: 'stretch', borderRadius: 3, backgroundColor: C.panel2 },
-  stepLbl: { color: C.txt3, fontSize: 10, fontWeight: '600' },
-
-  resume: {
-    flexDirection: 'row', gap: 10, alignItems: 'center',
-    borderWidth: 1, borderColor: 'rgba(201,169,97,0.35)', backgroundColor: 'rgba(201,169,97,0.1)',
-    borderRadius: 14, padding: 12, marginBottom: 18,
-  },
-  resumeTxt: { color: C.txt2, fontSize: 12.5, lineHeight: 17, flex: 1 },
-
   heroIcon: {
     width: 64, height: 64, borderRadius: 20, backgroundColor: 'rgba(201,169,97,0.12)',
     alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16,
   },
+  offerIcon: { width: 78, height: 78, borderRadius: 39, alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
   h1: { color: C.txt, fontWeight: '800', fontSize: 22, lineHeight: 28, marginBottom: 8 },
-  body: { color: C.txt2, fontSize: 13, lineHeight: 19, marginBottom: 14 },
-  label: { fontSize: 12, color: C.txt2, marginBottom: 7, fontWeight: '500' },
-  input: {
-    backgroundColor: C.input, borderWidth: 1.5, borderColor: 'rgba(46,116,119,0.5)',
-    borderRadius: 14, paddingHorizontal: 15, paddingVertical: 14, color: C.txt, fontSize: 15,
-  },
+  body: { color: C.txt2, fontSize: 13, lineHeight: 19, marginBottom: 16 },
+  cardTitle: { color: C.txt, fontWeight: '700', fontSize: 13.5, marginBottom: 10 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', gap: 14, paddingVertical: 7, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },
+  rowK: { color: C.txt3, fontSize: 12.5 },
+  rowV: { color: C.txt, fontSize: 12.5, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
 
-  docFrame: {
-    width: DOC_W, height: DOC_H, borderRadius: 20, borderWidth: 2,
-    backgroundColor: C.panel, overflow: 'hidden',
-  },
-  faceFrame: {
-    width: FACE_W, height: FACE_H, borderRadius: FACE_W / 2, borderWidth: 3,
-    backgroundColor: C.panel, overflow: 'hidden',
-  },
-  frameInner: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  sideLbl: { color: C.txt3, fontWeight: '800', fontSize: 12, letterSpacing: 3 },
-  scanLine: { position: 'absolute', left: 12, right: 12, height: 3, borderRadius: 2, backgroundColor: C.gold, opacity: 0.85 },
+  steps: { gap: 12, marginBottom: 22 },
+  step: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  stepN: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(201,169,97,0.15)', alignItems: 'center', justifyContent: 'center' },
+  stepNTxt: { color: C.gold, fontWeight: '800', fontSize: 12.5 },
+  stepTxt: { color: C.txt2, fontSize: 12.5, flex: 1, lineHeight: 18 },
+  foot: { color: C.txt3, fontSize: 11.5, textAlign: 'center', marginTop: 14, lineHeight: 16 },
 
-  center: { alignItems: 'center', paddingVertical: 24 },
+  center: { alignItems: 'center', paddingVertical: 30 },
   doneBadge: {
     width: 92, height: 92, borderRadius: 46, backgroundColor: 'rgba(62,217,160,0.12)',
     borderWidth: 2, borderColor: C.up, alignItems: 'center', justifyContent: 'center', marginBottom: 18,
@@ -467,11 +275,10 @@ const st = StyleSheet.create({
   uidChip: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderWidth: 1, borderColor: 'rgba(201,169,97,0.4)', backgroundColor: 'rgba(201,169,97,0.1)',
-    borderRadius: 999, paddingHorizontal: 15, paddingVertical: 8, marginTop: 14,
+    borderRadius: 999, paddingHorizontal: 15, paddingVertical: 8, marginTop: 6,
   },
   uidTxt: { color: C.txt, fontWeight: '700', fontSize: 13, letterSpacing: 0.5 },
-  redirect: { color: C.txt3, fontSize: 12, marginTop: 12 },
-  retry: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 12, marginTop: 6 },
+  retry: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 12, marginTop: 4 },
   retryTxt: { color: C.gold, fontWeight: '600', fontSize: 13 },
 
   warn: {
@@ -488,14 +295,4 @@ const st = StyleSheet.create({
   },
   cellNo: { color: C.gold, fontSize: 12, opacity: 0.7, width: 16, textAlign: 'right' },
   cellWord: { color: C.txt, fontSize: 14, fontWeight: '500' },
-  revealOverlay: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 10,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(4,26,27,0.55)', borderRadius: 14,
-  },
-  ackRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
-  checkbox: {
-    width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: C.line2,
-    alignItems: 'center', justifyContent: 'center',
-  },
 });

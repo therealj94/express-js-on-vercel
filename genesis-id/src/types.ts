@@ -18,6 +18,11 @@ export interface Identity {
   fullName: string | null
   /** Dirección de la Veta Wallet emparejada (0x…), si el usuario la vinculó. */
   walletAddress?: string | null
+  /** Datos del pasaporte que emite el portal oficial (genesisid.online). */
+  documentId?: string | null
+  nationality?: string | null
+  birthDate?: string | null
+  photoUrl?: string | null
   step: VerifyStep
   /** UID emitido al verificar (GEN-XXXX-XXXX). */
   genesisUid: string | null

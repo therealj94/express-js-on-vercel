@@ -57,6 +57,34 @@ export function startIdentity(email: string, fullName?: string, walletAddress?: 
   return identity
 }
 
+/** Guarda los datos del pasaporte emitidos por el portal oficial. */
+export function setPassportData(email: string, data: {
+  genesisUid?: string
+  fullName?: string
+  documentId?: string
+  nationality?: string
+  birthDate?: string
+  photoUrl?: string
+  walletAddress?: string
+}): Identity | undefined {
+  const identity = findIdentityByEmail(email)
+  if (!identity) return undefined
+  if (data.genesisUid) identity.genesisUid = data.genesisUid
+  if (data.fullName) identity.fullName = data.fullName
+  if (data.documentId) identity.documentId = data.documentId
+  if (data.nationality) identity.nationality = data.nationality
+  if (data.birthDate) identity.birthDate = data.birthDate
+  if (data.photoUrl) identity.photoUrl = data.photoUrl
+  if (data.walletAddress) identity.walletAddress = data.walletAddress
+  if (identity.genesisUid) {
+    identity.step = 'verified'
+    identity.verifiedAt = identity.verifiedAt ?? now()
+  }
+  identity.updatedAt = now()
+  store.save()
+  return identity
+}
+
 /** Empareja (o actualiza) la Veta Wallet de una identidad existente. */
 export function linkWallet(email: string, walletAddress: string): Identity | undefined {
   const identity = findIdentityByEmail(email)
