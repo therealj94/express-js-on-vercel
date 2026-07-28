@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { C, G } from '../theme';
 import { Logo, TokenIcon, ActionBtn, IconBtn, SectionHead, useToast, useAccount, hap } from '../ui';
 import { TOKENS, TOTAL, ORIGEN_PRICE, money, qtyFmt, tokensFromBalances } from '../data';
+import { apiPortfolioOnchain } from '../api';
+import { upsertApiAccount } from '../accounts';
 
 const ORIGEN_TOKEN = TOKENS.find((t) => t.s === 'ORIGEN');
 
@@ -12,8 +14,22 @@ export default function Home({ nav }) {
   const [hidden, setHidden] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const toast = useToast();
-  const { account } = useAccount();
-  const onRefresh = () => { setRefreshing(true); hap(); setTimeout(() => { setRefreshing(false); toast('Precios actualizados'); }, 900); };
+  const { account, login } = useAccount();
+  const onRefresh = async () => {
+    setRefreshing(true); hap();
+    if (account?.fromApi) {
+      try {
+        const bals = await apiPortfolioOnchain();
+        const user = account.raw || { email: account.email, name: account.name };
+        const updated = await upsertApiAccount(user, account.addr, bals);
+        login(updated);
+        toast('Saldos actualizados');
+      } catch (e) { toast('No se pudo actualizar'); }
+      setRefreshing(false);
+      return;
+    }
+    setTimeout(() => { setRefreshing(false); toast('Precios actualizados'); }, 900);
+  };
 
   const acc = account || { name: 'Cuenta', initials: 'VW', business: false, origen: 250, addr: '0x0000…0000', genesisUid: null };
   const shortAddr = acc.addr.length > 14 ? `${acc.addr.slice(0, 6)}…${acc.addr.slice(-4)}` : acc.addr;

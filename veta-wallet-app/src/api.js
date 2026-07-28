@@ -233,6 +233,37 @@ export const ONCHAIN_TOKENS = [
   { symbol: 'MNKA', contract: '0x18b6680CFF71c11067bec312Fc48786bE2e54Ead', price: 1.50 },
 ];
 
+// Precio de metales en vivo (USD por onza troy). Fuente configurable con
+// EXPO_PUBLIC_METALS_API (por defecto gold-api.com, gratis y sin API key).
+// Si falla, devuelve null y la app usa los precios fijos de respaldo.
+export async function fetchMetalPrices() {
+  const src = (process.env.EXPO_PUBLIC_METALS_API || 'https://api.gold-api.com').replace(/\/$/, '');
+  const one = async (sym) => {
+    try {
+      const r = await fetch(`${src}/price/${sym}`);
+      const d = await r.json().catch(() => ({}));
+      const p = Number(d?.price ?? d?.rate ?? d?.value ?? d?.[sym]);
+      return Number.isFinite(p) && p > 0 ? p : null;
+    } catch (e) { return null; }
+  };
+  const [goldOz, silverOz] = await Promise.all([one('XAU'), one('XAG')]);
+  return { goldOz, silverOz };
+}
+
+// Calcula precios en vivo de los tokens respaldados en metal.
+//   AUKA  = 1 onza de oro       ORIGEN = 1/55 de gramo de oro
+//   AGKA  = 1 onza de plata     (1 onza troy = 31.1035 g)
+export async function livePrices() {
+  const { goldOz, silverOz } = await fetchMetalPrices();
+  const p = {};
+  if (goldOz) {
+    p.AUKA = goldOz;
+    p.ORIGEN = goldOz / 31.1035 / 55;
+  }
+  if (silverOz) p.AGKA = silverOz;
+  return p;
+}
+
 // Lee saldos de TODOS los tokens del registro (nativo + ERC-20) desde el RPC.
 export async function apiPortfolioOnchain(providerUrl) {
   const claims = decodeJwt(getToken());
@@ -244,6 +275,8 @@ export async function apiPortfolioOnchain(providerUrl) {
     const chain = pickChain(await walletApi.chain(CHAIN_IDS[0] || '8532').catch(() => null));
     provider = chain?.provider || 'https://rpc.ordenglobal-rpc.com/';
   }
+  // Precios en vivo (oro/plata) con respaldo a los fijos del registro.
+  const live = await livePrices().catch(() => ({}));
   const out = [];
   for (const t of ONCHAIN_TOKENS) {
     let qty = 0;
@@ -254,7 +287,8 @@ export async function apiPortfolioOnchain(providerUrl) {
       const dec = t.decimals || (await erc20Decimals(provider, t.contract)) || 18;
       qty = await erc20Balance(provider, t.contract, address, dec);
     } else continue; // token sin contrato aún: se omite
-    out.push({ symbol: t.symbol, qty, priceUsd: t.price || undefined });
+    const price = live[t.symbol] != null ? live[t.symbol] : t.price;
+    out.push({ symbol: t.symbol, qty, priceUsd: price || undefined });
   }
   // Historial de la red (allTransfers) → se adjunta al token nativo.
   try {
