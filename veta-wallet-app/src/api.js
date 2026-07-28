@@ -223,12 +223,16 @@ export async function apiPortfolio(chainIds = CHAIN_IDS) {
   return out;
 }
 
-// Envía una transacción vía tu backend (él la firma y la manda al RPC).
-// El backend devuelve un TransactionReceipt de ethers (hash, status, from, to).
-// NOTA: los nombres del body (to/amount/chainId) se ajustan al cURL real del envío.
-export async function apiSend({ to, amount, chainId = Number(CHAIN_IDS[0]) || 8532, symbol } = {}) {
-  const body = { to, amount: String(amount), chainId };
-  if (symbol) body.symbol = symbol;
+// Envía una transacción vía tu backend (él la firma con tu password y la manda
+// al RPC). Body exacto: { chain_id, recipientAddress, password, amount }.
+// Devuelve el TransactionReceipt de ethers (hash, status, from, to).
+export async function apiSend({ to, amount, password, chainId = CHAIN_IDS[0] || '8532' } = {}) {
+  const body = {
+    chain_id: String(chainId),
+    recipientAddress: to,
+    password,
+    amount: String(amount),
+  };
   const r = await walletApi.raw(walletApi.paths.send, { method: 'POST', body });
   const hash = r?.hash || r?.transactionHash || r?.txId || null;
   const ok = r?.status === 1 || r?.status === '1' || r?.status === true || !!hash;

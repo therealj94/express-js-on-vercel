@@ -50,6 +50,7 @@ export function Send({ nav }) {
   const [tok, setTok] = useState(TOKENS[0]);
   const [amt, setAmt] = useState('25');
   const [to, setTo] = useState('');
+  const [pw, setPw] = useState('');
   const [pick, setPick] = useState(false);
   const [sending, setSending] = useState(false);
   const toast = useToast();
@@ -60,9 +61,10 @@ export function Send({ nav }) {
     if (USE_REAL_API) {
       if (!to.trim()) { toast('Ingresa la dirección de destino'); return; }
       if (!(parseFloat(amt) > 0)) { toast('Ingresa un monto válido'); return; }
+      if (!pw) { toast('Ingresa tu contraseña para firmar'); return; }
       setSending(true);
       try {
-        const r = await apiSend({ to: to.trim(), amount: parseFloat(amt), symbol: tok.s });
+        const r = await apiSend({ to: to.trim(), amount: parseFloat(amt), password: pw });
         if (r.ok) toast(r.hash ? `Enviado · ${String(r.hash).slice(0, 10)}…` : 'Transacción enviada');
         else toast('La transacción no se confirmó');
         setTimeout(() => nav.back(), 900);
@@ -93,8 +95,15 @@ export function Send({ nav }) {
           <TextInput value={amt} onChangeText={setAmt} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#3a5c58" style={styles.amtIn} />
           <Text style={styles.cur}>≈ {money(usd)} USD</Text>
         </View>
-        <Text style={styles.label}>Dirección o usuario</Text>
-        <TextInput value={to} onChangeText={setTo} autoCapitalize="none" placeholder="0x… o @usuario" placeholderTextColor="#6f938f" style={styles.input} />
+        <Text style={styles.label}>Dirección de destino</Text>
+        <TextInput value={to} onChangeText={setTo} autoCapitalize="none" placeholder="0x…" placeholderTextColor="#6f938f" style={styles.input} />
+        {USE_REAL_API && (
+          <>
+            <View style={{ height: 14 }} />
+            <Text style={styles.label}>Contraseña (para firmar)</Text>
+            <TextInput value={pw} onChangeText={setPw} secureTextEntry autoCapitalize="none" placeholder="••••••••" placeholderTextColor="#6f938f" style={styles.input} />
+          </>
+        )}
         <View style={{ height: 14 }} />
         <Card style={{ padding: 14, marginBottom: 16 }}>
           {[['Comisión de red', '0.0004 ' + tok.s], ['Tiempo estimado', '~ 3 seg'], ['Total', amt + ' ' + tok.s]].map((r, i) => (
