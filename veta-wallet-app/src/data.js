@@ -20,6 +20,8 @@ export const TOTAL = TOKENS.reduce((s, t) => s + t.qty * t.price, 0);
 // Metadatos por símbolo (nombre/ícono/precio de referencia) para renderizar
 // balances que vienen del backend real, aunque no traigan estos campos.
 export const TOKEN_META = TOKENS.reduce((m, t) => { m[t.s] = t; return m; }, {});
+// Monarka (MNKA): token del ecosistema Orden Global (no está en el portafolio demo).
+TOKEN_META.MNKA = { s: 'MNKA', n: 'Monarka', price: 0, chg: 0, glyph: '♛', grad: ['#F8EFCF', '#C9A961', '#96793F'], fg: '#3A2C08' };
 
 // Convierte balances normalizados del API ([{symbol, qty, priceUsd}]) en la
 // forma que usa la UI ({ s, n, qty, price, chg, logo/glyph... }).

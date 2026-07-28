@@ -206,14 +206,29 @@ export async function erc20Balance(provider, contract, address, decimals = 18) {
   } catch (e) { return 0; }
 }
 
-// Registro de tokens ON-CHAIN de Orden Global. ORIGEN es nativo; el resto son
-// ERC-20 (contrato). Completa `contract` y `price` de cada uno con los datos de
-// tu billetera web. La app lee el saldo del nodo RPC (chain 8532).
+// Lee los decimales de un token ERC-20 desde el contrato (decimals()).
+export async function erc20Decimals(provider, contract) {
+  try {
+    const res = await fetch(provider, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: contract, data: '0x313ce567' }, 'latest'] }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!d || !d.result || d.result === '0x') return null;
+    return Number(BigInt(d.result));
+  } catch (e) { return null; }
+}
+
+// Registro de tokens ON-CHAIN de Orden Global (red 8532). ORIGEN es el nativo;
+// el resto son ERC-20 con su dirección de contrato. `price` = USD por token
+// (los que faltan se ajustan cuando tengamos el precio de tu backend).
 export const ONCHAIN_TOKENS = [
   { symbol: 'ORIGEN', native: true, decimals: 18, price: 2.35 },
-  { symbol: 'AUKA', contract: '', decimals: 18, price: 0 },
-  { symbol: 'AGKA', contract: '', decimals: 18, price: 0 },
-  { symbol: 'ONDK', contract: '', decimals: 18, price: 2.10 },
+  { symbol: 'AUKA', contract: '0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B', price: 4014 },
+  { symbol: 'AGKA', contract: '0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B', price: 0 },
+  { symbol: 'ONDK', contract: '0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1', price: 2.10 },
+  { symbol: 'MNKA', contract: '0x18b6680CFF71c11067bec312Fc48786bE2e54Ead', price: 0 },
 ];
 
 // Lee saldos de TODOS los tokens del registro (nativo + ERC-20) desde el RPC.
@@ -230,9 +245,13 @@ export async function apiPortfolioOnchain(providerUrl) {
   const out = [];
   for (const t of ONCHAIN_TOKENS) {
     let qty = 0;
-    if (t.native) qty = await rpcBalance(provider, address, t.decimals || 18);
-    else if (t.contract) qty = await erc20Balance(provider, t.contract, address, t.decimals || 18);
-    else continue; // token sin contrato aún: se omite
+    if (t.native) {
+      qty = await rpcBalance(provider, address, t.decimals || 18);
+    } else if (t.contract) {
+      // Lee los decimales reales del contrato (fallback 18) para no equivocar el saldo.
+      const dec = t.decimals || (await erc20Decimals(provider, t.contract)) || 18;
+      qty = await erc20Balance(provider, t.contract, address, dec);
+    } else continue; // token sin contrato aún: se omite
     out.push({ symbol: t.symbol, qty, priceUsd: t.price || undefined });
   }
   // Historial de la red (allTransfers) → se adjunta al token nativo.
