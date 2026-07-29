@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.2.1';
-export const BUILD = 8;
+export const VERSION = '1.2.2';
+export const BUILD = 9;
 export const RELEASED = '2026-07-29';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,19 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.2.2',
+    build: 9,
+    date: '2026-07-29',
+    es: [
+      'Faltaba declarar el plugin del selector de fotos: sin él el build del APK fallaba.',
+      'Nuevo "npm run verificar": revisa el proyecto antes de construir y avisa si falta algo por instalar.',
+    ],
+    en: [
+      'The photo picker plugin was not declared: without it the APK build failed.',
+      'New "npm run verificar": checks the project before building and warns if anything is missing.',
+    ],
+  },
   {
     v: '1.2.1',
     build: 8,

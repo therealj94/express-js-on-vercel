@@ -2,7 +2,7 @@
   "expo": {
     "name": "Veta Wallet",
     "slug": "veta-wallet",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "vetawallet",
@@ -62,6 +62,13 @@
         "expo-notifications",
         {
           "color": "#C9A961"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Veta Wallet accede a tus fotos para que subas la imagen de tu pasaporte Genesis ID.",
+          "cameraPermission": "Veta Wallet usa la cámara para escanear códigos QR y capturar tu pasaporte."
         }
       ]
     ]
