@@ -71,6 +71,18 @@ if (malUbicadas.length) {
   else bien('las que Metro necesita están en dependencies');
 }
 
+// 1c. Expo Go de la tienda solo abre proyectos del SDK más reciente. Si el
+// proyecto se queda atrás, el teléfono responde con un error de versión y no
+// hay forma de probar la app ahí.
+console.log('\nSDK de Expo');
+const sdk = (pkg.dependencies.expo || '').replace(/^[~^]/, '').split('.')[0];
+try {
+  const instalado = JSON.parse(fs.readFileSync(path.join(raiz, 'node_modules/expo/package.json'), 'utf8')).version;
+  if (instalado.split('.')[0] !== sdk) mal(`package.json pide expo ${pkg.dependencies.expo} pero hay ${instalado} instalado`);
+  else bien(`SDK ${sdk} (expo ${instalado})`);
+  console.log(`     Expo Go tiene que ser la versión de SDK ${sdk}. Si tu Expo Go es más nuevo, actualiza el proyecto.`);
+} catch (e) { mal('expo no está instalado'); }
+
 // 2. La versión tiene que coincidir en los tres sitios.
 console.log('\nVersión');
 const version = fs.readFileSync(path.join(raiz, 'src/version.js'), 'utf8');

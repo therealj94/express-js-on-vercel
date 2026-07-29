@@ -1,7 +1,8 @@
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
-import * as BackgroundFetch from 'expo-background-fetch';
+import * as BackgroundTask from 'expo-background-task';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 
 // ============================================================
@@ -200,22 +201,30 @@ export async function marcarVisto(email, transfers) {
 // La tarea se define en el ámbito del módulo (requisito de expo-task-manager:
 // tiene que existir antes de que el sistema despierte la app). Importa
 // apiPortfolio de forma diferida para no arrastrar toda la app al arrancar.
-TaskManager.defineTask(TASK, async () => {
-  try {
-    const on = await AsyncStorage.getItem(ENABLED);
-    const email = await AsyncStorage.getItem(WATCH_EMAIL);
-    if (on === '0' || !email) return BackgroundFetch.BackgroundFetchResult.NoData;
-    const { ensureSession, apiPortfolio } = require('./api');
-    const ok = await ensureSession();
-    if (!ok) return BackgroundFetch.BackgroundFetchResult.NoData;
-    const p = await apiPortfolio();
-    const lang = (await AsyncStorage.getItem('veta-lang')) || 'en';
-    const n = await avisarNuevas(email, p?.transfers, lang);
-    return n > 0 ? BackgroundFetch.BackgroundFetchResult.NewData : BackgroundFetch.BackgroundFetchResult.NoData;
-  } catch (e) {
-    return BackgroundFetch.BackgroundFetchResult.Failed;
-  }
-});
+// En Expo Go no hay trabajo en segundo plano: los módulos nativos que lo
+// hacen no vienen dentro. Registrar la tarea allí lanza un error, así que se
+// detecta el entorno y se omite. Las notificaciones locales sí funcionan, de
+// modo que con la app abierta el aviso llega igual.
+export const enExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+if (!enExpoGo) {
+  TaskManager.defineTask(TASK, async () => {
+    try {
+      const on = await AsyncStorage.getItem(ENABLED);
+      const email = await AsyncStorage.getItem(WATCH_EMAIL);
+      if (on === '0' || !email) return BackgroundTask.BackgroundTaskResult.Success;
+      const { ensureSession, apiPortfolio } = require('./api');
+      const ok = await ensureSession();
+      if (!ok) return BackgroundTask.BackgroundTaskResult.Success;
+      const p = await apiPortfolio();
+      const lang = (await AsyncStorage.getItem('veta-lang')) || 'en';
+      await avisarNuevas(email, p?.transfers, lang);
+      return BackgroundTask.BackgroundTaskResult.Success;
+    } catch (e) {
+      return BackgroundTask.BackgroundTaskResult.Failed;
+    }
+  });
+}
 
 /** Enciende los avisos para esta cuenta (permiso + tarea en segundo plano). */
 export async function activarAvisos(email) {
@@ -223,15 +232,11 @@ export async function activarAvisos(email) {
   if (!ok) return false;
   await AsyncStorage.setItem(WATCH_EMAIL, (email || '').toLowerCase()).catch(() => {});
   await AsyncStorage.setItem(ENABLED, '1').catch(() => {});
+  if (enExpoGo) return true; // en Expo Go solo hay avisos con la app abierta
   try {
     const ya = await TaskManager.isTaskRegisteredAsync(TASK);
-    if (!ya) {
-      await BackgroundFetch.registerTaskAsync(TASK, {
-        minimumInterval: 15 * 60, // 15 min: el mínimo que respetan Android e iOS
-        stopOnTerminate: false,   // Android: sigue tras cerrar la app
-        startOnBoot: true,        // Android: vuelve tras reiniciar el teléfono
-      });
-    }
+    // minimumInterval va en MINUTOS (antes, en background-fetch, eran segundos).
+    if (!ya) await BackgroundTask.registerTaskAsync(TASK, { minimumInterval: 15 });
   } catch (e) {}
   return true;
 }
@@ -240,8 +245,9 @@ export async function activarAvisos(email) {
 export async function desactivarAvisos() {
   await AsyncStorage.setItem(ENABLED, '0').catch(() => {});
   stopWatch();
+  if (enExpoGo) return;
   try {
-    if (await TaskManager.isTaskRegisteredAsync(TASK)) await BackgroundFetch.unregisterTaskAsync(TASK);
+    if (await TaskManager.isTaskRegisteredAsync(TASK)) await BackgroundTask.unregisterTaskAsync(TASK);
   } catch (e) {}
 }
 

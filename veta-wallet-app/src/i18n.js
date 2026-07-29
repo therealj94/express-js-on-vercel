@@ -218,6 +218,7 @@ const S = {
     'notif.gotToast': '¡Recibiste tokens! Saldo actualizado',
     // notificaciones
     'set.notifsSub': 'Avisos cuando recibes tokens, con la app abierta o cerrada',
+    'set.notifsGo': 'En Expo Go solo llegan con la app abierta. En el APK también con la app cerrada.',
     'set.notifsOn': 'Avisos activados', 'set.notifsOff': 'Avisos desactivados',
     'set.notifsDenied': 'Permite las notificaciones en los ajustes del teléfono',
     // versión
@@ -417,6 +418,7 @@ const S = {
     'nav.exit': 'Press back again to exit',
     'notif.gotToast': 'Tokens received! Balance updated',
     'set.notifsSub': 'Alerts when you receive tokens, with the app open or closed',
+    'set.notifsGo': 'In Expo Go they only arrive with the app open. In the APK, also when closed.',
     'set.notifsOn': 'Alerts enabled', 'set.notifsOff': 'Alerts disabled',
     'set.notifsDenied': 'Allow notifications in your phone settings',
     'set.about': 'About this version',

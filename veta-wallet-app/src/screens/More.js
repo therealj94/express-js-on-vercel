@@ -10,7 +10,7 @@ import { getPrivateKey } from '../api';
 import { genesis } from '../genesis';
 import { setPassport } from '../accounts';
 import { updateAccount } from '../accounts';
-import { activarAvisos, desactivarAvisos, avisosActivos } from '../notify';
+import { activarAvisos, desactivarAvisos, avisosActivos, enExpoGo } from '../notify';
 import { versionLabel } from '../version';
 import { useT, useLang } from '../i18n';
 
@@ -159,7 +159,7 @@ export function Settings({ nav }) {
           <ListRow
             icon="notifications"
             title={t('set.notifs')}
-            sub={t('set.notifsSub')}
+            sub={enExpoGo ? t('set.notifsGo') : t('set.notifsSub')}
             onPress={() => {}}
             right={
               <Toggle

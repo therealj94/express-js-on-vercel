@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.3.1';
-export const BUILD = 11;
+export const VERSION = '1.4.0';
+export const BUILD = 12;
 export const RELEASED = '2026-07-29';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,21 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.4.0',
+    build: 12,
+    date: '2026-07-29',
+    es: [
+      'La app sube al SDK 57 de Expo: ya se puede abrir en Expo Go escaneando el QR, sin construir el APK.',
+      'El trabajo en segundo plano usa la librería nueva; en Expo Go los avisos llegan con la app abierta y en el APK también cerrada.',
+      'Ajustes avisa de esa diferencia cuando corres en Expo Go.',
+    ],
+    en: [
+      'The app moves to Expo SDK 57: it now opens in Expo Go by scanning the QR, with no APK build needed.',
+      'Background work uses the new library; in Expo Go alerts arrive with the app open, and in the APK also when closed.',
+      'Settings points out that difference when running in Expo Go.',
+    ],
+  },
   {
     v: '1.3.1',
     build: 11,
