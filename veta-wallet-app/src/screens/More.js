@@ -7,6 +7,8 @@ import { C, G } from '../theme';
 import { Header, Button3D, ListRow, Toggle, Glass, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt } from '../data';
 import { getPrivateKey } from '../api';
+import { genesis } from '../genesis';
+import { setPassport } from '../accounts';
 import { updateAccount } from '../accounts';
 import { useT, useLang } from '../i18n';
 
@@ -174,10 +176,26 @@ export function Settings({ nav }) {
 
 // ================= PASAPORTE GENESIS ID =================
 export function Passport({ nav }) {
-  const { account } = useAccount();
+  const { account, login } = useAccount();
   const toast = useToast();
   const t = useT();
   const acc = account || {};
+
+  // Al abrir el pasaporte, vuelve a consultar el portal: si allá ya hay
+  // nombre legal, foto o documento, la credencial se completa sola.
+  useEffect(() => {
+    if (!acc.email || !acc.genesisUid) return;
+    let vivo = true;
+    genesis.status(acc.email, acc.addr)
+      .then(async (p) => {
+        if (!vivo || !p?.genesisUid) return;
+        const updated = await setPassport(acc.email, p);
+        if (vivo && updated) login(updated);
+      })
+      .catch(() => {});
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acc.email]);
   const p = acc.passport || null;
   const verified = p?.status === 'verified' || (!!acc.genesisUid && !p);
   const statusLbl = p?.status === 'review' ? t('pass.review') : verified ? t('pass.verified') : t('pass.pending');

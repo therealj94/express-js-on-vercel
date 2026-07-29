@@ -3,7 +3,7 @@ import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, RadialGradient, Stop, Defs } from 'react-native-svg';
 import { C } from '../theme';
-import { Logo, useAccount, AppBackground } from '../ui';
+import { Logo, useAccount, AppBackground, BG_SPLASH } from '../ui';
 
 export default function Splash({ nav }) {
   const { account } = useAccount();
@@ -56,7 +56,7 @@ export default function Splash({ nav }) {
   const width = prog.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
 
   return (
-    <AppBackground intensity="hero" style={styles.wrap}>
+    <AppBackground intensity="hero" image={BG_SPLASH} style={styles.wrap}>
       <View style={{ alignItems: 'center' }}>
         <View style={{ width: 250, height: 250, alignItems: 'center', justifyContent: 'center' }}>
           {/* glow radial suave */}

@@ -6,12 +6,12 @@ export const C = {
   bg2: 'rgba(6,42,43,0.88)',
   // Vidrio: los paneles dejan pasar la fotografía de marca, igual que la
   // tarjeta del login. Los contenedores grandes además llevan desenfoque.
-  panel: 'rgba(10,52,54,0.46)',
-  panel2: 'rgba(16,68,70,0.56)',
+  panel: 'rgba(8,46,48,0.70)',
+  panel2: 'rgba(14,60,62,0.76)',
   panel3: 'rgba(24,84,86,0.62)',
   line: 'rgba(201,169,97,0.28)',
   line2: 'rgba(201,169,97,0.22)',
-  input: 'rgba(12,58,59,0.58)',
+  input: 'rgba(10,50,52,0.78)',
   inputBr: '#2E7477',
   gold: '#C9A961',
   goldLt: '#EAD79C',
@@ -28,7 +28,7 @@ export const C = {
 // gradient stop arrays
 export const G = {
   gold: ['#F8EFCF', '#DFC078', '#C9A961', '#96793F'],
-  green: ['rgba(15,95,85,0.58)', 'rgba(10,58,61,0.52)', 'rgba(4,25,27,0.58)'],
+  green: ['rgba(13,88,79,0.86)', 'rgba(9,52,55,0.84)', 'rgba(4,25,27,0.88)'],
   greenCard: ['#0E6155', '#0A463F', '#063430'],
 };
 

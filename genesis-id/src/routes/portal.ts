@@ -109,6 +109,37 @@ portalRouter.get('/status', (_req, res) => {
 })
 
 /**
+ * Diagnóstico: muestra QUÉ CAMPOS devuelve el portal, sin exponer los datos
+ * (los valores van enmascarados). Sirve para mapear nombres de campo cuando
+ * el pasaporte llega incompleto.
+ *   GET /api/portal/inspect?email=tu@correo.com
+ */
+portalRouter.get('/inspect', async (req, res) => {
+  const email = String(req.query.email || '')
+  if (!email.includes('@')) return res.status(400).json({ error: 'Usa ?email=tu@correo.com' })
+
+  const mask = (v: any): any => {
+    if (v === null || v === undefined) return null
+    if (Array.isArray(v)) return v.length ? [mask(v[0]), `…(${v.length})`] : []
+    if (typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, mask(x)]))
+    const s = String(v)
+    if (typeof v === 'boolean' || typeof v === 'number') return v
+    if (/^https?:\/\//.test(s)) return `<url ${s.length} chars>`
+    return s.length <= 4 ? s : `${s.slice(0, 3)}…(${s.length})`
+  }
+
+  const r = await callPortal('/api/apps/user-status', { email, app: 'veta-wallet' })
+  const passport = toPassport(r.data)
+  res.json({
+    portalHttpStatus: r.status,
+    camposQueDevuelveElPortal: mask(r.data),
+    pasaporteQueLeeLaApp: passport
+      ? Object.fromEntries(Object.entries(passport).filter(([k]) => k !== 'raw').map(([k, v]) => [k, v ? 'OK' : 'FALTA']))
+      : 'el portal no devolvió un UID',
+  })
+})
+
+/**
  * Registra/vincula la app del usuario en el portal (paso previo a verificar).
  * Body: { email, fullName?, walletAddress? }
  */

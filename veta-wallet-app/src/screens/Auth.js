@@ -61,7 +61,7 @@ export default function Auth({ nav }) {
           <Text style={styles.tag}>ORDEN GLOBAL</Text>
         </View>
 
-        <BlurView intensity={38} tint="dark" style={styles.glass}>
+        <BlurView intensity={55} tint="dark" style={styles.glass}>
           <View style={styles.glassInner}>
             <View style={styles.seg}>
               {['login', 'register'].map((k) => (
@@ -124,15 +124,15 @@ const styles = StyleSheet.create({
   brand: { fontSize: 26, fontWeight: '800', color: '#EAD79C', letterSpacing: 1, marginTop: 6 },
   italic: { fontWeight: '300', fontStyle: 'italic', color: '#C9A961' },
   tag: { color: 'rgba(243,236,217,0.7)', fontSize: 11, letterSpacing: 4, marginTop: 4 },
-  glass: { borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(201,169,97,0.28)' },
-  glassInner: { padding: 22, backgroundColor: 'rgba(10,52,54,0.35)' },
+  glass: { borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(201,169,97,0.45)', shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 24, shadowOffset: { width: 0, height: 10 }, elevation: 12 },
+  glassInner: { padding: 22, backgroundColor: 'rgba(5,38,40,0.74)' },
   seg: { flexDirection: 'row', backgroundColor: 'rgba(6,34,35,0.6)', borderRadius: 14, padding: 4, marginBottom: 18, borderWidth: 1, borderColor: 'rgba(46,116,119,0.4)' },
   segBtn: { flex: 1, paddingVertical: 11, borderRadius: 11, alignItems: 'center' },
   segOn: { backgroundColor: C.gold },
   segTxt: { color: C.txt2, fontWeight: '600', fontSize: 13.5 },
   segTxtOn: { color: C.darkText },
   label: { fontSize: 12, color: C.txt2, marginBottom: 7, fontWeight: '500' },
-  input: { backgroundColor: 'rgba(12,58,59,0.75)', borderWidth: 1.5, borderColor: 'rgba(46,116,119,0.5)', borderRadius: 14, paddingHorizontal: 15, paddingVertical: 14, color: C.txt, fontSize: 15 },
+  input: { backgroundColor: 'rgba(8,44,46,0.85)', borderWidth: 1.5, borderColor: 'rgba(46,116,119,0.5)', borderRadius: 14, paddingHorizontal: 15, paddingVertical: 14, color: C.txt, fontSize: 15 },
   eye: { position: 'absolute', right: 12, top: 12, padding: 2 },
   rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 12, marginBottom: 4 },
   checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: 'rgba(201,169,97,0.5)', alignItems: 'center', justifyContent: 'center' },

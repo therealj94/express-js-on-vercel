@@ -8,22 +8,23 @@ import * as Haptics from 'expo-haptics';
 import { C, G } from './theme';
 
 export const LOGO = require('../assets/logo.png');
-export const BG = require('../assets/login-bg.jpg');
+export const BG = require('../assets/login-bg.jpg');       // iniciar sesión y contenido
+export const BG_SPLASH = require('../assets/splash-bg.jpg'); // al abrir la app
 export const hap = (style = Haptics.ImpactFeedbackStyle.Light) => { try { Haptics.impactAsync(style); } catch (e) {} };
 
 // Fondo de marca de toda la app: la fotografía del ecosistema con un velo
 // oscuro encima. `intensity` controla cuánta imagen se deja ver:
 //   'hero'    → pantallas de marca (splash, login): imagen protagonista
 //   'content' → pantallas con datos: apenas una textura de profundidad
-export function AppBackground({ children, intensity = 'content', style }) {
+export function AppBackground({ children, intensity = 'content', image, style }) {
   const hero = intensity === 'hero';
+  // La fotografía se deja ver; la legibilidad la resuelven las tarjetas, que
+  // van en vidrio bien sólido encima (no oscureciendo la foto entera).
   const veil = hero
-    ? ['rgba(9,55,52,0.55)', 'rgba(3,20,21,0.82)']
-    // Velo del contenido: deja ver la fotografía de marca (antes iba al
-    // 90-98% y la tapaba por completo, dejando las pantallas planas).
-    : ['rgba(9,55,52,0.50)', 'rgba(4,26,27,0.74)'];
+    ? ['rgba(4,30,30,0.30)', 'rgba(2,18,19,0.55)', 'rgba(1,12,13,0.72)']
+    : ['rgba(4,30,30,0.45)', 'rgba(2,20,21,0.66)', 'rgba(1,12,13,0.78)'];
   return (
-    <ImageBackground source={BG} resizeMode="cover" style={[{ flex: 1, backgroundColor: '#021B1C' }, style]}>
+    <ImageBackground source={image || BG} resizeMode="cover" style={[{ flex: 1, backgroundColor: '#021B1C' }, style]}>
       <LinearGradient colors={veil} style={StyleSheet.absoluteFill} />
       {children}
     </ImageBackground>
