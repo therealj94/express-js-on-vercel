@@ -13,6 +13,13 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
+      # Portal oficial de Genesis ID (genesisid.online).
+      - key: GENESIS_PORTAL_API
+        value: https://www.genesisid.online
+      # API key del portal. sync:false = Render la pide en el dashboard y NO
+      # queda escrita en el repositorio (es un secreto: nunca versionarla).
+      - key: GENESIS_API_KEY
+        sync: false
       # Persistencia entre reinicios (opcional): añade un Disk en Render montado
       # en /var/data y descomenta la siguiente línea para conservar los datos.
       # - key: GENESIS_DATA_FILE
