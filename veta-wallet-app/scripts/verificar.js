@@ -92,6 +92,35 @@ if (app.version !== pkg.version) mal(`app.json dice ${app.version} y package.jso
 else if (app.version !== enCodigo) mal(`app.json dice ${app.version} y src/version.js ${enCodigo}`);
 else bien(`${enCodigo} · build ${build}, igual en app.json, package.json y src/version.js`);
 
+// 2b. Colisión de mayúsculas: si dos archivos difieren solo en el case (por
+// ejemplo src/contacts.js y src/screens/Contacts.js), en Windows y en macOS
+// por defecto el sistema los ve como el mismo. Metro carga uno pero atribuye
+// sus imports al otro y el bundle falla con un import "imposible" (uno del
+// segundo archivo, atribuido al primero, que no existe desde su ruta).
+console.log('\nColisión de mayúsculas');
+const porNombre = {};
+(function walk(d) {
+  for (const f of fs.readdirSync(d)) {
+    const p = path.join(d, f);
+    if (fs.statSync(p).isDirectory()) walk(p);
+    else if (/\.(jsx?|tsx?)$/.test(f)) {
+      const clave = f.toLowerCase();
+      (porNombre[clave] = porNombre[clave] || []).push(path.relative(raiz, p));
+    }
+  }
+})(path.join(raiz, 'src'));
+// Solo cuentan las colisiones REALES: dos archivos con el mismo nombre en
+// lowercase que difieren en el case (uno como Contacts.js y otro como
+// contacts.js). Dos archivos idénticos en distintas carpetas no molestan.
+const choques = Object.values(porNombre).filter((v) => {
+  if (v.length < 2) return false;
+  const bases = v.map((x) => path.basename(x));
+  return new Set(bases).size > 1;
+});
+if (choques.length) {
+  for (const grupo of choques) mal(`estos archivos colisionan en Windows/macOS: ${grupo.join(' ↔ ')}. Renombra uno.`);
+} else bien('no hay archivos que colisionen entre sí');
+
 // 3. Carpetas nativas: en flujo managed no deben venir en el paquete.
 console.log('\nProyecto');
 for (const dir of ['android', 'ios']) {

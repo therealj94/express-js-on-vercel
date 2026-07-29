@@ -7,7 +7,7 @@ import { C } from '../theme';
 import { Header, TokenIcon, Button3D, Card, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt, tokensFromBalances } from '../data';
 import { apiSend, NETWORK_FEE_ORIGEN } from '../api';
-import { listContacts, touchContact, addContact, parseAddress } from '../contacts';
+import { listContacts, touchContact, addContact, parseAddress } from '../addressBook';
 import { ScanModal } from './Scan';
 import { useT } from '../i18n';
 

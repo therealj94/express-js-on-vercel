@@ -4,7 +4,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Icon } from '../icons';
 import { C } from '../theme';
 import { Header, Button3D, hap, useToast } from '../ui';
-import { parseAddress } from '../contacts';
+import { parseAddress } from '../addressBook';
 import { useT } from '../i18n';
 
 const { width: W } = Dimensions.get('window');

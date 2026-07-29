@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.4.1';
-export const BUILD = 13;
+export const VERSION = '1.4.2';
+export const BUILD = 14;
 export const RELEASED = '2026-07-29';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,19 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.4.2',
+    build: 14,
+    date: '2026-07-29',
+    es: [
+      'Arreglada la colisión de mayúsculas que rompía el build en Windows y macOS: la libreta se llama ahora addressBook y la pantalla se queda como Contacts.',
+      'La revisión previa detecta este tipo de colisión.',
+    ],
+    en: [
+      'Fixed a case-only naming collision that broke the Windows/macOS build: the address book is now addressBook and the screen stays as Contacts.',
+      'The pre-build check catches this kind of collision.',
+    ],
+  },
   {
     v: '1.4.1',
     build: 13,

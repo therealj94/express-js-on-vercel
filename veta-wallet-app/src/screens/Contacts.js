@@ -5,7 +5,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Icon } from '../icons';
 import { C, G } from '../theme';
 import { Header, Button3D, hap, useToast, useAccount } from '../ui';
-import { listContacts, addContact, removeContact, toggleFav, isAddress, parseAddress } from '../contacts';
+import { listContacts, addContact, removeContact, toggleFav, isAddress, parseAddress } from '../addressBook';
 import { ScanModal } from './Scan';
 import { useT } from '../i18n';
 
