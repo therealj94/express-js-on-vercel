@@ -2,7 +2,7 @@
   "expo": {
     "name": "Veta Wallet",
     "slug": "veta-wallet",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "vetawallet",
@@ -20,7 +20,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.ordenglobal.vetawallet",
       "infoPlist": {
-        "NSCameraUsageDescription": "Veta Wallet usa la cámara para escanear códigos QR de direcciones de billetera."
+        "NSCameraUsageDescription": "Veta Wallet usa la cámara para escanear códigos QR de direcciones de billetera.",
+        "NSPhotoLibraryUsageDescription": "Veta Wallet accede a tus fotos para que subas la imagen de tu pasaporte Genesis ID."
       }
     },
     "android": {

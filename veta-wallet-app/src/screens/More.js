@@ -322,6 +322,22 @@ export function Passport({ nav }) {
           </Pressable>
         </View>
 
+        {/* Si el portal no entregó los datos del titular, la credencial se ve
+            a medias (sin nombre real ni foto). Se dice aquí, con el botón
+            para completarla, en vez de dejar al usuario adivinando. */}
+        {(!p?.fullName || !p?.photoUrl) && (
+          <View style={styles.incompleto}>
+            <Icon name="information-circle" size={18} color="#FBBF24" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.incT}>{t('pass.incompleteT')}</Text>
+              <Text style={styles.incP}>{t('pass.incompleteP')}</Text>
+            </View>
+          </View>
+        )}
+        {(!p?.fullName || !p?.photoUrl) && (
+          <Button3D title={t('pass.complete')} icon="create" onPress={() => nav.go('importPassport')} style={{ marginBottom: 12 }} />
+        )}
+
         <Text style={styles.passNote}>{t('pass.note')}</Text>
         <Button3D variant="ghost" title={t('pass.share')} icon="share-social" onPress={() => { hap(); toast(t('pass.sharing')); }} />
       </ScrollView>
@@ -610,6 +626,9 @@ const styles = StyleSheet.create({
   passFoot: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
   passMeta: { color: C.txt, fontSize: 11.5, fontWeight: '600', marginTop: 2 },
   passNote: { color: C.txt3, fontSize: 11.5, lineHeight: 16, textAlign: 'center', marginVertical: 14 },
+  incompleto: { flexDirection: 'row', gap: 11, alignItems: 'flex-start', backgroundColor: 'rgba(251,191,36,0.10)', borderWidth: 1, borderColor: 'rgba(251,191,36,0.3)', borderRadius: 16, padding: 14, marginTop: 14, marginBottom: 12 },
+  incT: { color: '#FBBF24', fontWeight: '700', fontSize: 13 },
+  incP: { color: C.txt2, fontSize: 12, lineHeight: 17.5, marginTop: 3 },
   passPhotoImg: { width: 64, height: 64, borderRadius: 18, backgroundColor: C.panel2 },
   passRows: { marginTop: 16, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
   passRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 14, paddingVertical: 6 },

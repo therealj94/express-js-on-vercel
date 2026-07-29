@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.2.0';
-export const BUILD = 7;
+export const VERSION = '1.2.1';
+export const BUILD = 8;
 export const RELEASED = '2026-07-29';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,23 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.2.1',
+    build: 8,
+    date: '2026-07-29',
+    es: [
+      'El pasaporte ya acepta la imagen o el PDF que descargas del portal, no solo un archivo .json.',
+      'Puedes subir tu foto y escribir tu nombre, documento, nacionalidad y fecha: la credencial queda completa.',
+      'Al arreglar el titular, el nombre real reemplaza al deducido del correo en toda la app.',
+      'Si falta el nombre o la foto, el propio pasaporte lo avisa y ofrece completarlo.',
+    ],
+    en: [
+      'The passport now accepts the image or PDF you download from the portal, not just a .json file.',
+      'You can upload your photo and type your name, document, nationality and date: the credential is then complete.',
+      'Once the holder is fixed, the real name replaces the one guessed from the email across the app.',
+      'If the name or photo is missing, the passport itself says so and offers to complete it.',
+    ],
+  },
   {
     v: '1.2.0',
     build: 7,
