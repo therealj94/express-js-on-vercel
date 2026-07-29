@@ -90,7 +90,8 @@ async function load(){
     document.getElementById('idns').innerHTML = i.identities.length ? i.identities.map(x=>{
       const st=STEP[x.step]||['info',x.step];
       const w=x.walletAddress ? x.walletAddress.slice(0,6)+'…'+x.walletAddress.slice(-4) : '—';
-      return '<tr><td>'+x.email+'</td><td>'+(x.fullName||'—')+'</td><td class="num uid">'+(x.genesisUid||'—')+
+      const pic=x.photoUrl ? '<img src="'+x.photoUrl+'" style="width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:7px">' : '';
+      return '<tr><td>'+x.email+'</td><td>'+pic+(x.fullName||'—')+'</td><td class="num uid">'+(x.genesisUid||'—')+
         '</td><td class="num buid" title="'+(x.walletAddress||'')+'">'+w+
         '</td><td>'+pill(st[0],st[1])+'</td><td class="num">'+ago(x.updatedAt)+'</td></tr>';}).join('') :
       '<tr><td colspan="6" class="empty">Aún no hay identidades.</td></tr>';

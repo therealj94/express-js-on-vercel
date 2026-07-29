@@ -96,7 +96,11 @@ export function Settings({ nav }) {
       <Header title={t('set.title')} onBack={() => nav.go('home')} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 110 }}>
         <LinearGradient colors={G.green} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.prof}>
-          <LinearGradient colors={G.gold} style={styles.profAv}><Text style={{ color: C.darkText, fontWeight: '800', fontSize: 19 }}>{acc.initials}</Text></LinearGradient>
+          {acc.passport?.photoUrl ? (
+            <Image source={{ uri: acc.passport.photoUrl }} style={styles.profAv} />
+          ) : (
+            <LinearGradient colors={G.gold} style={styles.profAv}><Text style={{ color: C.darkText, fontWeight: '800', fontSize: 19 }}>{acc.initials}</Text></LinearGradient>
+          )}
           <View style={{ flex: 1 }}>
             <Text style={styles.profName} numberOfLines={1}>{acc.name}</Text>
             <Text style={styles.profMail} numberOfLines={1}>{acc.email}</Text>
@@ -198,7 +202,7 @@ export function Passport({ nav }) {
     [t('pass.type'), t('pass.typeV')],
     p?.documentId ? [t('pass.doc'), p.documentId] : null,
     p?.nationality ? [t('pass.nat'), p.nationality] : null,
-    p?.birthDate ? [t('prof.name'), p.birthDate] : null,
+    p?.birthDate ? [t('pass.dob'), p.birthDate] : null,
     [t('auth.email'), p?.email || acc.email || '—'],
     [t('pass.issued'), fmtIssued(p?.issuedAt) || acc.since || '—'],
     [t('pass.status'), statusLbl],

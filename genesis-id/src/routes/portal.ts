@@ -46,26 +46,43 @@ async function callPortal(path: string, body: unknown) {
   }
 }
 
+// Toma el primer valor no vacío entre varios nombres posibles de campo.
+const pick = (o: any, ...keys: string[]) => {
+  for (const k of keys) {
+    const v = o?.[k]
+    if (v !== undefined && v !== null && String(v).trim() !== '') return v
+  }
+  return null
+}
+
 // Normaliza lo que devuelva el portal a un pasaporte del ecosistema.
-function toPassport(raw: any) {
+// Acepta el objeto plano o anidado (user/identity/data/profile/passport) y
+// los nombres de campo más habituales, para no depender de un contrato exacto.
+function toPassport(raw: any): any {
   if (!raw || typeof raw !== 'object') return null
-  const src = raw.user || raw.identity || raw.data || raw
-  const genesisUid = src.genesisUid || src.uid || src.genesis_uid || src.gid || null
+  const src = raw.user || raw.identity || raw.data || raw.profile || raw.passport || raw
+  // Si viene doblemente anidado (p. ej. { data: { user: {...} } }).
+  const s = (src.user || src.identity || src.passport || src) as any
+
+  const genesisUid = pick(s, 'genesisUid', 'gid', 'uid', 'genesis_uid', 'genesisId', 'genesis_id', 'GID')
   // Sin UID no hay pasaporte: no devolvemos un objeto lleno de nulls.
   if (!genesisUid) return null
-  const statusRaw = String(src.status || src.state || src.verificationStatus || '').toLowerCase()
-  const verified = statusRaw.includes('verif') || statusRaw === 'approved' || src.verified === true
+
+  const statusRaw = String(pick(s, 'status', 'state', 'verificationStatus', 'kycStatus') || '').toLowerCase()
+  const verified = statusRaw.includes('verif') || statusRaw.includes('approve') || statusRaw === 'active'
+    || statusRaw === 'complete' || statusRaw === 'completed' || s.verified === true || s.isVerified === true
+
   return {
     genesisUid: String(genesisUid),
-    fullName: src.fullName || src.name || src.full_name || null,
-    email: src.email || null,
-    documentId: src.documentId || src.document || src.documentNumber || src.dni || null,
-    nationality: src.nationality || src.country || null,
-    birthDate: src.birthDate || src.dob || src.dateOfBirth || null,
-    photoUrl: src.photoUrl || src.photo || src.avatar || src.selfieUrl || null,
-    walletAddress: src.walletAddress || src.wallet || null,
+    fullName: pick(s, 'fullName', 'name', 'full_name', 'fullname', 'legalName', 'displayName', 'nombre'),
+    email: pick(s, 'email', 'correo', 'mail'),
+    documentId: pick(s, 'documentId', 'document', 'documentNumber', 'document_number', 'dni', 'idNumber', 'identity'),
+    nationality: pick(s, 'nationality', 'country', 'nacionalidad', 'pais', 'countryCode'),
+    birthDate: pick(s, 'birthDate', 'dob', 'dateOfBirth', 'birth_date', 'fechaNacimiento'),
+    photoUrl: pick(s, 'photoUrl', 'photo', 'photo_url', 'avatar', 'avatarUrl', 'selfieUrl', 'selfie', 'picture', 'image', 'imageUrl', 'foto'),
+    walletAddress: pick(s, 'walletAddress', 'wallet', 'wallet_address', 'address'),
     status: verified ? 'verified' : statusRaw.includes('review') || statusRaw.includes('pending') ? 'review' : (statusRaw || 'pending'),
-    raw: src,
+    raw: s,
   }
 }
 
@@ -124,6 +141,12 @@ portalRouter.post('/user-status', async (req, res) => {
   }
   const r = await callPortal('/api/apps/user-status', { email, walletAddress, app: 'veta-wallet' })
   const passport = toPassport(r.data)
+  if (passport) {
+    // El portal no siempre devuelve la billetera: la completamos con la
+    // que envió la app para que el pasaporte salga entero.
+    passport.email = passport.email || email
+    passport.walletAddress = passport.walletAddress || walletAddress || null
+  }
   if (r.ok && passport) persist(email, passport, walletAddress)
 
   // Respaldo: si el portal no responde, entrega lo que ya tengamos guardado.
@@ -162,6 +185,10 @@ portalRouter.post('/token-validate', async (req, res) => {
   const r = await callPortal('/api/apps/token-validate', { token, app: 'veta-wallet' })
   const passport = toPassport(r.data)
   const mail = passport?.email || email
+  if (passport) {
+    passport.email = mail || null
+    passport.walletAddress = passport.walletAddress || walletAddress || null
+  }
   if (r.ok && passport && mail) persist(mail, passport, walletAddress)
   res.status(r.ok ? 200 : r.status).json({ passport, source: 'portal', portal: r.data })
 })

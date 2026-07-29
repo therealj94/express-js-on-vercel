@@ -8,7 +8,7 @@ import { LangProvider, useT } from './src/i18n';
 import * as Linking from 'expo-linking';
 import { loadSession, saveSession, clearSession, initAccounts, setPassport } from './src/accounts';
 import { loadToken, setToken, ensureSession, clearCreds } from './src/api';
-import { readReturnUrl, genesis } from './src/genesis';
+import { readReturnUrl, genesis, mergePassport } from './src/genesis';
 
 import Splash from './src/screens/Splash';
 import Auth from './src/screens/Auth';
@@ -81,11 +81,18 @@ function Root() {
       if (!acc) return;
       const { token, passport } = readReturnUrl(url);
       // Con token: se valida en el servidor (allí vive la API key del portal).
+      // Se combina todo para no perder GID, nombre ni foto.
       let p = passport;
       if (token) {
-        p = (await genesis.validateToken(token, { email: acc.email, walletAddress: acc.addr })) || p;
+        const validated = await genesis.validateToken(token, { email: acc.email, walletAddress: acc.addr });
+        p = mergePassport(p, validated);
+      }
+      if (p && (!p.photoUrl || !p.fullName)) {
+        const status = await genesis.status(acc.email, acc.addr).catch(() => null);
+        p = mergePassport(p, status);
       }
       if (!p) return;
+      p.fullName = p.fullName || acc.name;
       p.email = p.email || acc.email;
       p.walletAddress = p.walletAddress || acc.addr;
       await genesis.save(p);
