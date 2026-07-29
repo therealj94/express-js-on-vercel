@@ -18,8 +18,17 @@ services:
         value: https://www.genesisid.online
       # API key del portal. sync:false = Render la pide en el dashboard y NO
       # queda escrita en el repositorio (es un secreto: nunca versionarla).
+      #
+      # PEGA LA CLAVE COMPLETA. Si se copia una versión abreviada del tipo
+      # gid_live_xxxx… el carácter «…» no cabe en una cabecera HTTP y todas
+      # las llamadas al portal fallan. Compruébalo en /api/portal/status:
+      # debe responder {"configured": true} sin "problemaConLaClave".
       - key: GENESIS_API_KEY
         sync: false
+      # Opcional: segundos de espera al portal antes de rendirse (30 s por
+      # defecto). Súbelo solo si el portal tarda en despertar.
+      # - key: GENESIS_PORTAL_TIMEOUT_MS
+      #   value: "30000"
       # Persistencia entre reinicios (opcional): añade un Disk en Render montado
       # en /var/data y descomenta la siguiente línea para conservar los datos.
       # - key: GENESIS_DATA_FILE
