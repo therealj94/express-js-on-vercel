@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.3.0';
-export const BUILD = 10;
+export const VERSION = '1.3.1';
+export const BUILD = 11;
 export const RELEASED = '2026-07-29';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,19 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.3.1',
+    build: 11,
+    date: '2026-07-29',
+    es: [
+      'Arreglado el build del APK: @babel/core estaba declarado como dependencia de desarrollo y el servidor de compilación lo omitía.',
+      'La revisión previa avisa si alguna pieza que Metro necesita queda fuera de "dependencies".',
+    ],
+    en: [
+      'APK build fixed: @babel/core was declared as a dev dependency and the build server skipped it.',
+      'The pre-build check now warns if anything Metro needs is left out of "dependencies".',
+    ],
+  },
   {
     v: '1.3.0',
     build: 10,

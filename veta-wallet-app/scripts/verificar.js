@@ -39,9 +39,12 @@ if (!fs.existsSync(path.join(raiz, 'node_modules'))) {
     if (!fs.existsSync(p)) { faltan.push(nombre); continue; }
     const instalada = JSON.parse(fs.readFileSync(p, 'utf8')).version;
     const base = rango.replace(/^[~^]/, '');
-    // Comparación de la parte mayor.menor: suficiente para detectar un
-    // node_modules de otra versión del proyecto.
-    if (/^[\d.]+$/.test(base) && instalada.split('.').slice(0, 2).join('.') !== base.split('.').slice(0, 2).join('.')) {
+    if (!/^[\d.]+$/.test(base)) continue;
+    // Se compara según lo que el rango permite de verdad: "^" deja subir la
+    // menor, "~" solo el parche, y sin prefijo tiene que ser exacta.
+    const partes = rango.startsWith('^') ? 1 : rango.startsWith('~') ? 2 : 3;
+    const corta = (v) => v.split('.').slice(0, partes).join('.');
+    if (corta(instalada) !== corta(base)) {
       distintas.push(`${nombre}: declarada ${rango}, instalada ${instalada}`);
     }
   }
@@ -51,6 +54,21 @@ if (!fs.existsSync(path.join(raiz, 'node_modules'))) {
     console.log('     Arréglalo así:   rm -rf node_modules package-lock.json && npm install');
   } else bien(`las ${Object.keys(pkg.dependencies).length} dependencias están instaladas`);
   for (const d of distintas) ojo(d);
+}
+
+// 1b. Metro necesita estos paquetes para construir el bundle. Si están en
+// devDependencies, una instalación de producción los omite y el build muere
+// con "expo export:embed ... exited with non-zero code: 1" sin más pistas.
+console.log('\nDependencias del build');
+const dev = pkg.devDependencies || {};
+const necesarias = ['@babel/core', 'expo', 'react', 'react-native'];
+const malUbicadas = necesarias.filter((n) => dev[n]);
+if (malUbicadas.length) {
+  mal(`${malUbicadas.join(', ')} está(n) en devDependencies. Metro los necesita al construir: muévelos a "dependencies".`);
+} else {
+  const ausentes = necesarias.filter((n) => !(pkg.dependencies || {})[n]);
+  if (ausentes.length) mal(`faltan en dependencies: ${ausentes.join(', ')}`);
+  else bien('las que Metro necesita están en dependencies');
 }
 
 // 2. La versión tiene que coincidir en los tres sitios.
