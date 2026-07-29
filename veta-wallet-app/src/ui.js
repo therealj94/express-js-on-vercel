@@ -1,6 +1,7 @@
 import React, { useRef, createContext, useContext } from 'react';
 import { View, Text, Pressable, TextInput, Animated, Image, ImageBackground, StyleSheet, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Icon } from './icons';
 import Svg, { Rect, Line, Path, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
@@ -20,7 +21,7 @@ export function AppBackground({ children, intensity = 'content', style }) {
     ? ['rgba(9,55,52,0.55)', 'rgba(3,20,21,0.82)']
     // Velo del contenido: deja ver la fotografía de marca (antes iba al
     // 90-98% y la tapaba por completo, dejando las pantallas planas).
-    : ['rgba(6,44,45,0.55)', 'rgba(4,30,31,0.72)', 'rgba(2,18,19,0.86)'];
+    : ['rgba(9,55,52,0.50)', 'rgba(4,26,27,0.74)'];
   return (
     <ImageBackground source={BG} resizeMode="cover" style={[{ flex: 1, backgroundColor: '#021B1C' }, style]}>
       <LinearGradient colors={veil} style={StyleSheet.absoluteFill} />
@@ -224,8 +225,18 @@ export function Spark({ data, width, height = 40, up = true }) {
   );
 }
 
+// Vidrio esmerilado: el mismo tratamiento de la tarjeta del login, para que
+// todas las pantallas compartan ese acabado premium sobre la fotografía.
+export function Glass({ children, style, intensity = 26, radius = 18 }) {
+  return (
+    <BlurView intensity={intensity} tint="dark" style={[{ borderRadius: radius, overflow: 'hidden' }, style]}>
+      {children}
+    </BlurView>
+  );
+}
+
 export function Card({ children, style }) {
-  return <View style={[styles.card, style]}>{children}</View>;
+  return <Glass style={[styles.card, style]}>{children}</Glass>;
 }
 
 export const styles = StyleSheet.create({
@@ -253,7 +264,7 @@ export const styles = StyleSheet.create({
   secTitle: { fontSize: 16.5, fontWeight: '700', color: C.txt },
   secMore: { fontSize: 13, color: C.gold, fontWeight: '600' },
   card: {
-    backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 18, padding: 16,
+    backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, borderRadius: 18, padding: 16,
     shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 4,
   },
 });

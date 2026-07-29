@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '../icons';
 import * as Clipboard from 'expo-clipboard';
 import { C, G } from '../theme';
-import { Header, Button3D, ListRow, Toggle, useToast, useAccount, hap } from '../ui';
+import { Header, Button3D, ListRow, Toggle, Glass, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt } from '../data';
 import { getPrivateKey } from '../api';
 import { updateAccount } from '../accounts';
@@ -112,7 +112,7 @@ export function Settings({ nav }) {
         </LinearGradient>
 
         <Text style={styles.grpTitle}>{t('set.genesis')}</Text>
-        <View style={styles.group}>
+        <Glass style={styles.group}>
           {acc.genesisUid ? (
             <>
               <ListRow first icon="finger-print" title={t('set.passport')} sub={acc.genesisUid} onPress={() => nav.go('passport')} />
@@ -121,31 +121,31 @@ export function Settings({ nav }) {
           ) : (
             <ListRow first icon="finger-print" title={t('set.link')} sub={t('set.linkSub')} onPress={() => nav.go('kyc')} />
           )}
-        </View>
+        </Glass>
 
         <Text style={styles.grpTitle}>{t('set.privacy')}</Text>
-        <View style={styles.group}>
+        <Glass style={styles.group}>
           <ListRow first icon="lock-closed" title={t('set.private')} sub={t('set.privateSub')} onPress={() => {}} right={<Toggle value={priv} onValueChange={(v) => { setPriv(v); toast(v ? t('set.privateOn') : t('set.privateOff')); }} />} />
           <ListRow icon="create" title={t('set.profile')} sub={t('set.profileSub')} onPress={() => nav.go('profile')} />
           <ListRow icon="person-remove" title={t('set.blocked')} onPress={() => nav.go('blocked')} />
-        </View>
+        </Glass>
 
         <Text style={styles.grpTitle}>{t('set.account')}</Text>
-        <View style={styles.group}>
+        <Glass style={styles.group}>
           <ListRow first icon="card" title={t('set.card')} onPress={() => nav.go('card')} />
           <ListRow icon="qr-code" title={t('set.addr')} sub={shortAddr(acc.addr)} onPress={() => nav.go('receive')} />
           <ListRow icon="storefront" title={t('set.mtp')} sub={t('set.mtpSub')} onPress={() => nav.go('mytokenpay')} />
-        </View>
+        </Glass>
 
         <Text style={styles.grpTitle}>{t('set.security')}</Text>
-        <View style={styles.group}>
+        <Glass style={styles.group}>
           <ListRow first icon="key" title={t('set.seed')} onPress={() => nav.go('seedview')} />
           <ListRow icon="finger-print" title={t('set.pk')} onPress={() => nav.go('privatekey')} />
           <ListRow icon="notifications" title={t('set.notifs')} onPress={() => {}} right={<Toggle value={notif} onValueChange={setNotif} />} />
-        </View>
+        </Glass>
 
         <Text style={styles.grpTitle}>{t('set.general')}</Text>
-        <View style={styles.group}>
+        <Glass style={styles.group}>
           <View style={[styles.langRow]}>
             <View style={{ width: 38, height: 38, borderRadius: 11, backgroundColor: 'rgba(201,169,97,0.12)', alignItems: 'center', justifyContent: 'center' }}>
               <Icon name="language" size={19} color={C.gold} />
@@ -159,7 +159,7 @@ export function Settings({ nav }) {
               ))}
             </View>
           </View>
-        </View>
+        </Glass>
 
         <View style={{ height: 10 }} />
         <Pressable onPress={() => { hap(); logout(); nav.go('auth'); }} style={styles.logout}>
@@ -334,11 +334,11 @@ export function MyTokenPay({ nav }) {
           <Text style={styles.heroT}>{t('mtp.h')}</Text>
           <Text style={styles.heroP}>{t('mtp.p')}</Text>
         </LinearGradient>
-        <View style={styles.group}>
+        <Glass style={styles.group}>
           <PayFeature icon="storefront" t={t('mtp.f1')} s={t('mtp.f1s')} first />
           <PayFeature icon="cash" t={t('mtp.f2')} s={t('mtp.f2s')} />
           <PayFeature icon="finger-print" t={t('mtp.f3')} s={t('mtp.f3s')} />
-        </View>
+        </Glass>
       </ScrollView>
     </View>
   );
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
   chipOn: { backgroundColor: C.gold, borderColor: C.gold },
   chipTxt: { color: C.txt2, fontWeight: '600', fontSize: 12.5 },
 
-  txn: { flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 13, marginBottom: 9 },
+  txn: { flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, borderRadius: 16, padding: 13, marginBottom: 9 },
   txnIc: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.panel2, alignItems: 'center', justifyContent: 'center' },
   txnT: { fontSize: 14, fontWeight: '600', color: C.txt },
   txnD: { fontSize: 11.5, color: C.txt3, marginTop: 2 },
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
   kycTxt: { color: C.up, fontSize: 11, fontWeight: '700' },
 
   grpTitle: { fontSize: 11, letterSpacing: 2, color: C.txt3, fontWeight: '700', marginTop: 20, marginBottom: 9, paddingHorizontal: 2 },
-  group: { backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderRadius: 18, overflow: 'hidden' },
+  group: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, borderRadius: 18, overflow: 'hidden' },
 
   logout: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#8E1F2F', borderRadius: 16, paddingVertical: 15, marginTop: 8 },
   langRow: { flexDirection: 'row', alignItems: 'center', gap: 13, padding: 15 },
