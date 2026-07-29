@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.1.4';
-export const BUILD = 6;
+export const VERSION = '1.2.0';
+export const BUILD = 7;
 export const RELEASED = '2026-07-29';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,21 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.2.0',
+    build: 7,
+    date: '2026-07-29',
+    es: [
+      'Las notificaciones ya salen como banner emergente, con sonido y vibración, igual que un mensaje.',
+      'Corregido: con la app cerrada no había sesión, así que el aviso de dinero recibido nunca llegaba.',
+      'El aviso se ve también en la pantalla de bloqueo y al tocarlo abre Actividad.',
+    ],
+    en: [
+      'Notifications now pop up as a heads-up banner, with sound and vibration, just like a message.',
+      'Fixed: with the app closed there was no session, so the incoming-funds alert never arrived.',
+      'The alert also shows on the lock screen, and tapping it opens Activity.',
+    ],
+  },
   {
     v: '1.1.4',
     build: 6,

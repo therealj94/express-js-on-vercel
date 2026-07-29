@@ -27,13 +27,25 @@ const SEEN = (email) => `veta-last-in-${(email || 'anon').toLowerCase()}`;
 const WATCH_EMAIL = 'veta-notify-email';
 const ENABLED = 'veta-notify-on';
 
-// Con la app abierta la notificación también se ve y se oye.
+const CANAL = 'veta-in'; // canal de Android para los avisos de dinero recibido
+
+// Valores de los enums de expo-notifications, con respaldo literal. Si una
+// versión de la librería dejara de exportarlos, `X.MAX` sería un TypeError y
+// el aviso no saldría — en silencio, porque va dentro de un try. Con el
+// respaldo el aviso sale igual.
+const PRIORIDAD_MAX = Notifications.AndroidNotificationPriority?.MAX ?? 'max';
+const IMPORTANCIA_MAX = Notifications.AndroidImportance?.MAX ?? 5;
+const VISIBLE_EN_BLOQUEO = Notifications.AndroidNotificationVisibility?.PUBLIC ?? 1;
+
+// Con la app abierta la notificación también se ve y se oye, arriba de todo,
+// igual que un mensaje de WhatsApp.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
+    shouldShowBanner: true,   // el banner que baja desde arriba
+    shouldShowList: true,     // y queda en la bandeja
     shouldPlaySound: true,
     shouldSetBadge: true,
+    priority: PRIORIDAD_MAX,
   }),
 });
 
@@ -82,13 +94,20 @@ export async function pedirPermiso() {
       const pedido = await Notifications.requestPermissionsAsync();
       ok = pedido.granted;
     }
+    // El canal debe existir ANTES de lanzar nada: en Android 8+ la
+    // importancia del canal es lo que decide si el aviso sale como banner
+    // emergente o se queda callado en la bandeja.
     if (ok && Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('veta-in', {
+      await Notifications.setNotificationChannelAsync(CANAL, {
         name: 'Tokens recibidos',
-        importance: Notifications.AndroidImportance.HIGH,
+        description: 'Aviso cuando entra dinero a tu Veta Wallet',
+        importance: IMPORTANCIA_MAX,
         vibrationPattern: [0, 220, 90, 220],
         lightColor: '#C9A961',
+        lockscreenVisibility: VISIBLE_EN_BLOQUEO,
         sound: 'default',
+        enableVibrate: true,
+        showBadge: true,
       });
     }
     return !!ok;
@@ -99,10 +118,26 @@ async function lanzar(tx, lang) {
   const { title, body } = textoAviso(tx, lang);
   try {
     await Notifications.scheduleNotificationAsync({
-      content: { title, body, sound: 'default', data: { hash: tx.hash, screen: 'activity' } },
-      trigger: null, // ahora mismo
+      content: {
+        title,
+        body,
+        sound: 'default',
+        priority: PRIORIDAD_MAX,
+        color: '#C9A961',
+        vibrate: [0, 220, 90, 220],
+        data: { hash: tx.hash, screen: 'activity' },
+      },
+      // En Android el canal se indica AQUÍ, en el disparador: con `null` se
+      // usaba el canal por defecto y el aviso no salía como banner.
+      trigger: Platform.OS === 'android' ? { channelId: CANAL } : null,
     });
-  } catch (e) {}
+    return true;
+  } catch (e) {
+    // Que un aviso falle no debe romper la app, pero tampoco desaparecer
+    // sin dejar rastro: en desarrollo se ve en consola.
+    if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('[notify] no se pudo lanzar el aviso:', e?.message || e);
+    return false;
+  }
 }
 
 /** Avisa de lo nuevo y deja marcado hasta dónde se avisó. */

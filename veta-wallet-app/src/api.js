@@ -85,6 +85,10 @@ export function tokenValid() {
 // renueva el login en silencio. Devuelve true si hay sesión utilizable.
 export async function ensureSession() {
   if (tokenValid()) return true;
+  // La tarea en segundo plano arranca el módulo de cero, así que el token en
+  // memoria está vacío aunque haya uno guardado. Sin esto, con la app cerrada
+  // no había sesión y los avisos de dinero recibido nunca salían.
+  if (!token) { await loadToken(); if (tokenValid()) return true; }
   const creds = await loadCreds();
   if (!creds) return false;
   try {
