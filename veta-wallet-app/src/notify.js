@@ -125,6 +125,10 @@ async function lanzar(tx, lang) {
         priority: PRIORIDAD_MAX,
         color: '#C9A961',
         vibrate: [0, 220, 90, 220],
+        // El aviso NO se borra solo: se queda en la bandeja hasta que lo
+        // tocas, aunque cambies de app o cierres Veta Wallet del todo.
+        autoDismiss: false,
+        sticky: false, // se puede descartar deslizando, pero no desaparece sola
         data: { hash: tx.hash, screen: 'activity' },
       },
       // En Android el canal se indica AQUÍ, en el disparador: con `null` se

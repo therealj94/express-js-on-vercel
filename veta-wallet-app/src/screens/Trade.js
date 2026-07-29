@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Modal, Animated, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Modal, Animated, ActivityIndicator, StyleSheet } from 'react-native';
 import { Icon } from '../icons';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
@@ -62,8 +62,8 @@ export function Send({ nav }) {
   const [tok, setTok] = useState(origen);
   const [amt, setAmt] = useState('');
   const [to, setTo] = useState('');
-  const [pw, setPw] = useState('');
   const [pick, setPick] = useState(false);
+  const [review, setReview] = useState(null);  // ficha de revisión antes de firmar
   const [sending, setSending] = useState(false);
   const [contacts, setContacts] = useState([]);
   const [saveAs, setSaveAs] = useState('');   // nombre para guardar el destino
@@ -84,28 +84,59 @@ export function Send({ nav }) {
   const isNative = tok.s === 'ORIGEN';
   const insufficient = isNative && amount > 0 && amount + NETWORK_FEE_ORIGEN > tok.qty;
 
-  async function doSend() {
+  // Paso 1: revisar. Solo comprueba los datos y abre la ficha de revisión;
+  // la contraseña se pide allí, junto al resumen de lo que se va a firmar.
+  function revisar() {
     if (!isNative) { toast(t('send.soon', { s: tok.s })); return; }
     if (!/^0x[a-fA-F0-9]{40}$/.test(to.trim())) { toast(t('send.errAddr')); return; }
     if (!(amount > 0)) { toast(t('send.errAmt')); return; }
     if (insufficient) { toast(t('send.errBal')); return; }
-    if (!pw) { toast(t('send.errPw')); return; }
+    hap();
+    setReview({
+      amount,
+      usd,
+      symbol: tok.s,
+      to: to.trim(),
+      fee: isNative ? NETWORK_FEE_ORIGEN : 0,
+      total: amount + (isNative ? NETWORK_FEE_ORIGEN : 0),
+      saldoAntes: tok.qty,
+      contacto: contacts.find((c) => c.address.toLowerCase() === to.trim().toLowerCase())?.name || null,
+    });
+  }
+
+  // Paso 2: enviar de verdad, con la contraseña escrita en la revisión.
+  async function confirmar(password) {
     setSending(true);
     try {
-      const r = await apiSend({ to: to.trim(), amount, password: pw });
+      const r = await apiSend({ to: to.trim(), amount, password });
       if (r.ok) {
-        // Recuerda el destino para ordenar los contactos por uso.
         touchContact(account?.email, to.trim());
         if (saveAs.trim()) addContact(account?.email, { name: saveAs.trim(), address: to.trim() }).catch(() => {});
-        // Comprobante en pantalla: el usuario confirma con OK, no se le
-        // cambia de pantalla por debajo mientras lee.
-        setDone({ amount, symbol: tok.s, to: to.trim(), hash: r.hash || null, fee: isNative ? NETWORK_FEE_ORIGEN : 0 });
         hap();
-      } else {
-        toast(t('send.notConfirmed'));
+        setReview(null);
+        setDone({
+          ...review,
+          hash: r.hash || null,
+          bloque: r.receipt?.blockNumber ?? null,
+          gas: r.receipt?.gasUsed ?? null,
+          fecha: Date.now(),
+        });
+        return { ok: true };
       }
+      return { ok: false, msg: t('send.notConfirmed') };
     } catch (e) {
-      toast(e.message || t('auth.errGeneric'));
+      // Antes se mostraba e.message tal cual y salía un "Aborted" que no
+      // explicaba nada. Ahora cada fallo tiene su propio mensaje, y el de
+      // tiempo agotado avisa de que la transacción puede haber salido igual.
+      const porCodigo = {
+        timeout: t('send.errTimeout'),
+        red: t('send.errNet'),
+        auth: t('send.errAuth'),
+        rechazado: e.message || t('send.errRejected'),
+        servidor: t('send.errServer'),
+        config: t('auth.errServer'),
+      };
+      return { ok: false, msg: porCodigo[e?.code] || e?.message || t('auth.errGeneric') };
     } finally { setSending(false); }
   }
 
@@ -164,18 +195,15 @@ export function Send({ nav }) {
         )}
 
         <View style={{ height: 14 }} />
-        <Text style={styles.label}>{t('send.pw')}</Text>
-        <TextInput value={pw} onChangeText={setPw} secureTextEntry autoCapitalize="none" placeholder="••••••••" placeholderTextColor="#6f938f" style={styles.input} />
-
-        <View style={{ height: 14 }} />
         <Card style={{ padding: 14, marginBottom: 16 }}>
           <Row k={t('send.fee')} v={`${NETWORK_FEE_ORIGEN} ORIGEN`} />
           <Row k={t('send.network')} v="Orden Global · 8532" />
           <Row k={t('send.total')} v={`${amount ? (amount + (isNative ? NETWORK_FEE_ORIGEN : 0)).toFixed(4) : '—'} ${tok.s}`} />
+          <Row k={t('send.after')} v={`${amount ? Math.max(0, tok.qty - amount - (isNative ? NETWORK_FEE_ORIGEN : 0)).toFixed(4) : qtyFmt(tok.qty)} ${tok.s}`} />
         </Card>
         {insufficient && <Text style={styles.errTxt}>{t('send.insufficient', { q: qtyFmt(tok.qty), s: tok.s })}</Text>}
 
-        <Button3D title={sending ? t('send.sending') : t('send.review')} disabled={sending || !isNative} onPress={sending ? () => {} : doSend} />
+        <Button3D title={t('send.review')} disabled={!isNative} onPress={revisar} />
       </ScrollView>
       <TokenPicker visible={pick} tokens={tokens} onClose={() => setPick(false)} onPick={setTok} />
       {/* La cámara va en modal: así el formulario sigue montado y la
@@ -188,12 +216,142 @@ export function Send({ nav }) {
         onPick={(a) => { setTo(a); setBook(false); }}
         onManage={() => { setBook(false); nav.go('contacts'); }}
       />
+      <ReviewSheet
+        data={review}
+        token={tok}
+        onCancel={() => setReview(null)}
+        onConfirm={confirmar}
+      />
       <SentReceipt
         data={done}
         contacts={contacts}
         onClose={() => { setDone(null); nav.go('home'); }}
       />
     </View>
+  );
+}
+
+// -------- paso 2: revisar, firmar y ver el avance --------
+// Todo ocurre en la misma ficha: se revisa, se escribe la contraseña, y al
+// confirmar la ficha se convierte en el indicador de progreso. Así el usuario
+// nunca se queda mirando una pantalla quieta sin saber qué pasa.
+function ReviewSheet({ data, token, onCancel, onConfirm }) {
+  const t = useT();
+  const [pw, setPw] = useState('');
+  const [fase, setFase] = useState(0);   // 0 revisando · 1..3 enviando · -1 error
+  const [error, setError] = useState(null);
+  const prog = useRef(new Animated.Value(0)).current;
+  const fases = [t('send.step1'), t('send.step2'), t('send.step3')];
+
+  useEffect(() => {
+    if (!data) { setPw(''); setFase(0); setError(null); prog.setValue(0); }
+  }, [data]);
+
+  // Las fases avanzan solas mientras la red trabaja: no podemos saber el
+  // progreso real de un bloque, pero sí reflejar en qué punto va el proceso.
+  useEffect(() => {
+    if (fase < 1) return;
+    Animated.timing(prog, { toValue: fase / 3, duration: 600, useNativeDriver: false }).start();
+    if (fase >= 3) return;
+    const id = setTimeout(() => setFase((f) => (f > 0 && f < 3 ? f + 1 : f)), fase === 1 ? 1800 : 6000);
+    return () => clearTimeout(id);
+  }, [fase]);
+
+  async function enviar() {
+    if (!pw) { setError(t('send.errPw')); return; }
+    setError(null);
+    setFase(1);
+    const r = await onConfirm(pw);
+    if (!r.ok) { setFase(-1); setError(r.msg); prog.setValue(0); }
+  }
+
+  if (!data) return null;
+  const enviando = fase > 0;
+  const destino = data.contacto || `${data.to.slice(0, 12)}…${data.to.slice(-10)}`;
+
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={enviando ? () => {} : onCancel}>
+      <View style={styles.revBg}>
+        <View style={styles.revCard}>
+          <View style={styles.grab} />
+          <Text style={styles.revT}>{enviando ? t('send.sendingT') : t('send.reviewT')}</Text>
+
+          {/* Lo que se va a mover, bien grande */}
+          <View style={styles.revMonto}>
+            <TokenIcon t={token} size={44} />
+            <Text style={styles.revAmt}>{qtyFmt(data.amount)} {data.symbol}</Text>
+            <Text style={styles.revUsd}>≈ {money(data.usd)} USD</Text>
+          </View>
+
+          <View style={styles.revRows}>
+            <Row k={t('send.to')} v={destino} />
+            <Row k={t('send.fee')} v={`${data.fee} ORIGEN`} />
+            <Row k={t('send.total')} v={`${data.total.toFixed(4)} ${data.symbol}`} />
+            <Row k={t('send.after')} v={`${Math.max(0, data.saldoAntes - data.total).toFixed(4)} ${data.symbol}`} />
+            <Row k={t('send.network')} v="Orden Global · 8532" />
+          </View>
+
+          {fase === 0 ? (
+            <>
+              <Text style={[styles.label, { marginTop: 16 }]}>{t('send.pw')}</Text>
+              <TextInput
+                value={pw}
+                onChangeText={(v) => { setPw(v); setError(null); }}
+                secureTextEntry
+                autoCapitalize="none"
+                placeholder="••••••••"
+                placeholderTextColor="#6f938f"
+                style={styles.input}
+                autoFocus
+              />
+              {error && <Text style={styles.revErr}>{error}</Text>}
+              <Button3D title={t('send.confirm')} icon="arrow-up" onPress={enviar} style={{ marginTop: 14 }} />
+              <Pressable onPress={onCancel} style={styles.revCancel}>
+                <Text style={styles.revCancelTxt}>{t('send.cancel')}</Text>
+              </Pressable>
+            </>
+          ) : fase > 0 ? (
+            <View style={{ marginTop: 20 }}>
+              {/* Barra de avance + la fase en la que va */}
+              <View style={styles.barBg}>
+                <Animated.View
+                  style={[styles.barFill, { width: prog.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]}
+                />
+              </View>
+              <View style={styles.pasos}>
+                {fases.map((f, i) => {
+                  const hecho = fase > i + 1;
+                  const actual = fase === i + 1;
+                  return (
+                    <View key={f} style={styles.paso}>
+                      <View style={[styles.pasoIc, hecho && styles.pasoOk, actual && styles.pasoNow]}>
+                        {hecho ? <Icon name="checkmark" size={12} color={C.darkText} />
+                          : actual ? <ActivityIndicator size="small" color={C.gold} />
+                            : <View style={styles.pasoDot} />}
+                      </View>
+                      <Text style={[styles.pasoTxt, (hecho || actual) && { color: C.txt }]}>{f}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+              <Text style={styles.revEspera}>{t('send.wait')}</Text>
+            </View>
+          ) : (
+            /* fase === -1: falló, con el motivo y la opción de reintentar */
+            <View style={{ marginTop: 16 }}>
+              <View style={styles.errBox}>
+                <Icon name="warning" size={18} color={C.down} />
+                <Text style={styles.errBoxTxt}>{error}</Text>
+              </View>
+              <Button3D title={t('send.retry')} icon="refresh" onPress={() => { setFase(0); setError(null); }} style={{ marginTop: 12 }} />
+              <Pressable onPress={onCancel} style={styles.revCancel}>
+                <Text style={styles.revCancelTxt}>{t('send.cancel')}</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -227,10 +385,19 @@ function SentReceipt({ data, contacts, onClose }) {
           <Text style={styles.doneAmt}>{qtyFmt(data.amount)} {data.symbol}</Text>
           <Text style={styles.doneP}>{t('send.doneP')}</Text>
 
+          {data.usd ? <Text style={styles.doneUsd}>≈ {money(data.usd)} USD</Text> : null}
+
           <View style={styles.doneRows}>
             <DoneRow first k={t('send.to')} v={destino} onPress={() => copiar(data.to)} />
             {data.fee ? <DoneRow k={t('send.fee')} v={`${data.fee} ORIGEN`} /> : null}
+            {data.total ? <DoneRow k={t('send.total')} v={`${data.total.toFixed(4)} ${data.symbol}`} /> : null}
+            {data.saldoAntes != null ? (
+              <DoneRow k={t('send.after')} v={`${Math.max(0, data.saldoAntes - (data.total || 0)).toFixed(4)} ${data.symbol}`} />
+            ) : null}
             <DoneRow k={t('send.network')} v="Orden Global · 8532" />
+            {data.bloque != null ? <DoneRow k={t('send.block')} v={`#${data.bloque}`} /> : null}
+            {data.gas != null ? <DoneRow k={t('send.gas')} v={String(data.gas)} /> : null}
+            <DoneRow k={t('send.date')} v={new Date(data.fecha || Date.now()).toLocaleString()} />
             {data.hash ? (
               <DoneRow k={t('send.hash')} v={`${String(data.hash).slice(0, 10)}…${String(data.hash).slice(-8)}`} onPress={() => copiar(data.hash)} />
             ) : null}
@@ -398,11 +565,35 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, color: C.txt2, marginBottom: 7, fontWeight: '500' },
   contactsRow: { flexDirection: 'row', gap: 12, paddingBottom: 16, paddingRight: 4 },
   emptyPick: { color: C.txt3, fontSize: 12.5, textAlign: 'center', paddingVertical: 26, lineHeight: 18 },
+  // ---- ficha de revisión / envío ----
+  revBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  revCard: { backgroundColor: '#06282B', borderTopLeftRadius: 28, borderTopRightRadius: 28, borderTopWidth: 1, borderColor: C.line, padding: 22, paddingBottom: 32 },
+  revT: { fontSize: 17, fontWeight: '800', color: C.txt, textAlign: 'center', marginBottom: 16 },
+  revMonto: { alignItems: 'center', marginBottom: 18, gap: 4 },
+  revAmt: { color: C.txt, fontSize: 28, fontWeight: '800', marginTop: 8 },
+  revUsd: { color: C.txt2, fontSize: 13 },
+  revRows: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 4 },
+  revErr: { color: C.down, fontSize: 12.5, marginTop: 9, lineHeight: 18 },
+  revCancel: { alignItems: 'center', paddingVertical: 13, marginTop: 4 },
+  revCancelTxt: { color: C.txt3, fontSize: 13.5, fontWeight: '600' },
+  revEspera: { color: C.txt3, fontSize: 11.5, textAlign: 'center', marginTop: 18, lineHeight: 17 },
+  barBg: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden' },
+  barFill: { height: 6, borderRadius: 3, backgroundColor: C.gold },
+  pasos: { marginTop: 18, gap: 13 },
+  paso: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  pasoIc: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
+  pasoOk: { backgroundColor: C.up },
+  pasoNow: { backgroundColor: 'rgba(201,169,97,0.16)' },
+  pasoDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.txt3 },
+  pasoTxt: { color: C.txt3, fontSize: 13.5, fontWeight: '600' },
+  errBox: { flexDirection: 'row', gap: 11, alignItems: 'flex-start', backgroundColor: 'rgba(240,119,107,0.10)', borderWidth: 1, borderColor: 'rgba(240,119,107,0.32)', borderRadius: 16, padding: 14 },
+  errBoxTxt: { color: C.txt, fontSize: 12.5, lineHeight: 18, flex: 1 },
   doneBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', padding: 26 },
   doneCard: { width: '100%', backgroundColor: '#06282B', borderRadius: 26, borderWidth: 1, borderColor: C.line, padding: 24, alignItems: 'center' },
   doneIc: { width: 74, height: 74, borderRadius: 37, backgroundColor: C.up, alignItems: 'center', justifyContent: 'center', marginBottom: 16, shadowColor: C.up, shadowOpacity: 0.5, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
   doneT: { color: C.txt, fontSize: 19, fontWeight: '800' },
   doneAmt: { color: C.gold, fontSize: 27, fontWeight: '800', marginTop: 8 },
+  doneUsd: { color: C.txt2, fontSize: 13, marginTop: 2 },
   doneP: { color: C.txt2, fontSize: 12.5, textAlign: 'center', marginTop: 8, lineHeight: 18 },
   doneRows: { alignSelf: 'stretch', marginTop: 18, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, paddingHorizontal: 14 },
   doneRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 11, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },

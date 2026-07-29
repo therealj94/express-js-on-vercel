@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.2.2';
-export const BUILD = 9;
+export const VERSION = '1.3.0';
+export const BUILD = 10;
 export const RELEASED = '2026-07-29';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,23 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.3.0',
+    build: 10,
+    date: '2026-07-29',
+    es: [
+      'Enviar ahora tiene tres pasos: revisas todo, firmas con tu contraseña y ves el avance hasta que se confirma.',
+      'Se acabó el "Aborted": cada fallo dice qué pasó, y si se agota el tiempo avisa de que la transacción pudo salir igual.',
+      'El comprobante muestra bloque, gas, fecha, total, lo que te queda y el hash.',
+      'Los avisos de dinero recibido ya no se borran solos y siguen llegando aunque cambies de app.',
+    ],
+    en: [
+      'Sending now has three steps: you review everything, sign with your password and watch the progress until it confirms.',
+      'No more "Aborted": every failure says what happened, and a timeout warns the transaction may have gone through anyway.',
+      'The receipt shows block, gas, date, total, what you have left and the hash.',
+      'Incoming-funds alerts no longer dismiss themselves and keep arriving when you switch apps.',
+    ],
+  },
   {
     v: '1.2.2',
     build: 9,

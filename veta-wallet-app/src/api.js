@@ -101,7 +101,7 @@ export async function ensureSession() {
 
 // ---------- HTTP ----------
 async function rawReq(path, { method = 'GET', body, timeout = 20000 } = {}) {
-  if (!API_BASE) throw new Error('API no configurada');
+  if (!API_BASE) { const e = new Error('API no configurada'); e.code = 'config'; throw e; }
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeout);
   try {
@@ -119,9 +119,21 @@ async function rawReq(path, { method = 'GET', body, timeout = 20000 } = {}) {
     if (!res.ok) {
       const err = new Error(data.message || data.error || `Error ${res.status}`);
       err.status = res.status;
+      // Un código propio para que la pantalla sepa qué decir sin leer textos.
+      err.code = res.status === 401 || res.status === 403 ? 'auth'
+        : res.status === 400 || res.status === 422 ? 'rechazado'
+          : res.status >= 500 ? 'servidor' : 'http';
       throw err;
     }
     return data;
+  } catch (e) {
+    // Sin esto, al vencer el tiempo de espera la pantalla mostraba el mensaje
+    // crudo de la excepción: un "Aborted" que no le dice nada a nadie.
+    if (e?.name === 'AbortError') { const err = new Error('timeout'); err.code = 'timeout'; throw err; }
+    if (!e?.code && (e instanceof TypeError || /network|fetch/i.test(e?.message || ''))) {
+      const err = new Error('network'); err.code = 'red'; throw err;
+    }
+    throw e;
   } finally { clearTimeout(t); }
 }
 
@@ -392,7 +404,10 @@ export async function apiSend({ to, amount, password }) {
     password,
     amount: String(amount),
   };
-  const r = await req(PATHS.send, { method: 'POST', body });
+  // Minar y confirmar un bloque puede pasar de 20 s: con el tiempo de espera
+  // por defecto el envío se cortaba a media transacción y salía "Aborted"
+  // aunque la transacción se hubiera mandado.
+  const r = await req(PATHS.send, { method: 'POST', body, timeout: 90000 });
   const hash = r?.hash || r?.transactionHash || r?.txId || null;
   const ok = r?.status === 1 || r?.status === '1' || r?.status === true || !!hash;
   return { hash, ok, receipt: r };

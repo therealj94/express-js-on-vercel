@@ -195,11 +195,12 @@ function Root() {
     let vivo = true;
     let parar = () => {};
 
-    const arrancar = () => {
+    const arrancar = (cada = 25000) => {
       parar();
       parar = watchIncoming({
         email,
         lang,
+        cada,
         traer: apiPortfolio,
         // Al entrar dinero, el saldo en pantalla se actualiza junto con el aviso.
         onNuevas: async (n, p) => {
@@ -220,11 +221,13 @@ function Root() {
       arrancar();
     })();
 
-    // En segundo plano no se consulta desde aquí: de eso se encarga la tarea
-    // de sistema, que además gasta mucha menos batería.
+    // Al cambiar de app NO se deja de vigilar: solo se espacia la consulta.
+    // Si se parara del todo, moverse un momento a otra app dejaba al usuario
+    // sin aviso hasta la siguiente pasada de la tarea de sistema (~15 min).
+    // Cuando el teléfono suspenda la app, esa tarea toma el relevo igual.
     const sub = AppState.addEventListener('change', (s) => {
       if (!vivo) return;
-      if (s === 'active') arrancar(); else { parar(); stopWatch(); }
+      arrancar(s === 'active' ? 25000 : 60000);
     });
 
     return () => { vivo = false; parar(); stopWatch(); sub.remove(); };
