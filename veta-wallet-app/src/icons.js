@@ -86,6 +86,13 @@ const PATHS = {
 
   notifications: ['M6 10a6 6 0 0 1 12 0c0 5.2 2.2 6.6 2.2 6.6H3.8S6 15.2 6 10z', 'M10 20a2.2 2.2 0 0 0 4 0'],
   'person-remove': [circle(10, 8, 3.8), 'M2.8 20.5a7.2 7.2 0 0 1 14.4 0', 'M17.5 8.5h4.5'],
+  'person-add': [circle(10, 8, 3.8), 'M2.8 20.5a7.2 7.2 0 0 1 14.4 0', 'M19.7 6.2v4.6', 'M17.4 8.5h4.6'],
+  person: [circle(12, 8, 3.9), 'M4.8 20.5a7.2 7.2 0 0 1 14.4 0'],
+  people: [circle(9, 8.2, 3.4), 'M2.4 20.2a6.7 6.7 0 0 1 13.2 0', 'M16.4 5.2a3.4 3.4 0 0 1 0 6.6', 'M17.6 14.4a6 6 0 0 1 4 5.8'],
+  star: ['M12 3.4l2.7 5.6 6.1.85-4.4 4.3 1.05 6.1L12 17.4l-5.45 2.85L7.6 14.15 3.2 9.85l6.1-.85z'],
+  trash: ['M4 6.5h16', 'M9.5 6.5V4.6a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1.9', 'M6 6.5l1 13.1a1.5 1.5 0 0 0 1.5 1.4h7a1.5 1.5 0 0 0 1.5-1.4l1-13.1', 'M10 10.5v6.5', 'M14 10.5v6.5'],
+  'document-text': ['M13.5 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z', 'M13.5 3v5.5H19', 'M8.5 13h7', 'M8.5 16.5h5'],
+  'cloud-upload': ['M6.8 18.5a4.3 4.3 0 0 1-.4-8.6 5.6 5.6 0 0 1 10.8-1.3 3.9 3.9 0 0 1 .5 7.7', 'M12 21v-9', 'M8.8 15.2L12 12l3.2 3.2'],
   snow: ['M12 2.5v19', 'M3.8 7.2l16.4 9.6', 'M20.2 7.2L3.8 16.8', 'M9.6 4.4L12 2.5l2.4 1.9', 'M9.6 19.6L12 21.5l2.4-1.9'],
   language: ['M3 6h10', 'M8 4v2', 'M11.5 6c0 4.5-3.2 8.3-8 10', 'M6 9.5c.8 2.6 2.9 4.9 5.6 6', 'M12.8 20.5L17 9.5l4.2 11', 'M14.3 16.8h5.4'],
 };
@@ -95,7 +102,7 @@ PATHS['time-outline'] = PATHS.time;
 PATHS['settings'] = PATHS['settings-sharp'];
 
 // Iconos que se ven mejor rellenos (badges pequeños).
-const FILLED = new Set([]);
+const FILLED = new Set(['star']);
 
 export function Icon({ name, size = 24, color = '#F3ECD9', style }) {
   const d = PATHS[name];

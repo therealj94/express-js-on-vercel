@@ -84,11 +84,11 @@ const S = {
     'pk.title': 'Llave privada', 'pk.warn': 'Nunca compartas tu llave privada ni tu frase semilla. Quien las tenga controla tus fondos.',
     'pk.pub': 'Dirección pública', 'pk.key': 'Llave privada', 'pk.reveal': 'Revelar llave', 'pk.loading': 'Consultando…',
     'pk.checking': 'Consultando de forma segura…',
-    'pk.unavailable': 'Tu llave está custodiada por Orden Global y por seguridad no se puede exportar desde la app todavía. Puedes verla en la billetera web (vetawallet.com → Settings → Private Key).',
+    'pk.unavailable': 'Tu llave privada está disponible en la versión web: entra a vetawallet.com → Settings → Private Key para verla. Por seguridad aún no se exporta desde la app.',
     'seed.title': 'Frase de recuperación',
     'seed.warn': 'Cualquiera con estas palabras controla tus fondos. No hagas capturas de pantalla ni las compartas.',
     'seed.reveal': 'Revelar mi frase', 'seed.webT': 'Disponible en la billetera web',
-    'seed.webP': 'Tu frase está custodiada de forma segura por Orden Global y por ahora se consulta desde vetawallet.com → Settings → Seed. Pronto podrás verla también aquí.',
+    'seed.webP': 'Tu frase de recuperación está disponible en la versión web: entra a vetawallet.com → Settings → Seed para verla. Pronto podrás consultarla también desde la app.',
     // token detail
     'tok.price': 'Precio', 'tok.movs': 'Movimientos', 'tok.empty': 'Sin movimientos de {s} todavía.',
     'tok.viewAll': 'Ver actividad completa', 'tok.contract': 'Contrato', 'tok.copied': 'Contrato copiado',
@@ -141,6 +141,49 @@ const S = {
     'mtp.f1': 'Paga en comercios', 'mtp.f1s': 'Escanea el QR del negocio y paga con ORIGEN',
     'mtp.f2': 'Cobra ventas', 'mtp.f2s': 'Los comercios reciben pagos al instante',
     'mtp.f3': 'Mismo ecosistema', 'mtp.f3s': 'Tu cuenta y tu Genesis ID valen en ambas apps',
+    // escáner QR
+    'scan.title': 'Escanear código QR',
+    'scan.invalid': 'Ese código no contiene una dirección válida',
+    'scan.permT': 'Permiso de cámara',
+    'scan.permP': 'Veta Wallet necesita la cámara para leer el código QR de una billetera. No se guarda ninguna imagen.',
+    'scan.allow': 'Permitir cámara',
+    'scan.hint': 'Apunta al código QR de la billetera que va a recibir',
+    'scan.hintPass': 'Apunta al código QR de tu pasaporte Genesis ID',
+    // contactos
+    'con.title': 'Contactos', 'con.add': 'Nuevo contacto', 'con.newT': 'Nuevo contacto',
+    'con.name': 'Nombre', 'con.namePh': 'Ej.: María Fernández',
+    'con.valid': 'Dirección válida', 'con.fav': 'Marcar como favorito',
+    'con.saved': 'Contacto guardado', 'con.removed': 'Contacto eliminado',
+    'con.manage': 'Administrar contactos',
+    'con.emptyT': 'Aún no tienes contactos',
+    'con.emptyP': 'Guarda las billeteras a las que envías seguido y podrás elegirlas con un toque al enviar.',
+    'send.scan': 'Escanear', 'send.contacts': 'Contactos', 'send.saveAs': 'Guardar este destino como contacto (opcional)',
+    // importar pasaporte
+    'imp.title': 'Importar pasaporte', 'imp.sub': 'Desde Genesis ID',
+    'imp.h1': 'Sube tu pasaporte Genesis ID',
+    'imp.p': 'Si ya te verificaste en genesisid.online, descarga allí tu pasaporte y súbelo aquí. Tus datos quedan guardados en la app y tu perfil se rellena solo.',
+    'imp.howT': 'Cómo obtenerlo',
+    'imp.how1': 'Entra a genesisid.online con tu misma cuenta.',
+    'imp.how2': 'En tu pasaporte toca «Descargar» (archivo .json) o muestra su código QR.',
+    'imp.how3': 'Vuelve aquí y súbelo: se completa tu perfil y tu credencial.',
+    'imp.file': 'Subir archivo del pasaporte', 'imp.qr': 'Escanear código QR',
+    'imp.or': 'o pega el código', 'imp.paste': 'Código del pasaporte',
+    'imp.pastePh': 'Pega aquí el contenido o el enlace que te dio Genesis ID…',
+    'imp.pasteBtn': 'Importar del portapapeles',
+    'imp.ok': 'Pasaporte importado',
+    'imp.errRead': 'No pudimos leer ese pasaporte. Verifica que sea el archivo que descargaste de Genesis ID.',
+    'imp.errEmpty': 'Pega primero el código de tu pasaporte.',
+    'imp.foot': 'Solo se guarda en tu teléfono y en tu cuenta de Orden Global.',
+    'set.import': 'Importar mi pasaporte', 'set.importSub': 'Sube el archivo que descargaste de Genesis ID',
+    'set.contacts': 'Contactos', 'set.contactsSub': 'Billeteras guardadas para enviar más rápido',
+    // perfil (datos que llegan de Genesis ID)
+    'prof.fromGenesis': 'Verificado por Genesis ID',
+    'prof.locked': 'Este dato viene de tu pasaporte Genesis ID y no se edita aquí.',
+    'prof.extra': 'DATOS DE CONTACTO',
+    'prof.identity': 'IDENTIDAD',
+    'prof.noPassT': 'Sin pasaporte vinculado',
+    'prof.noPassP': 'Vincula o importa tu Genesis ID y estos datos se rellenan solos.',
+    'prof.import': 'Importar pasaporte',
   },
   en: {
     'tab.home': 'Home', 'tab.card': 'Card', 'tab.swap': 'Swap', 'tab.activity': 'Activity', 'tab.settings': 'Settings',
@@ -206,11 +249,11 @@ const S = {
     'pk.title': 'Private key', 'pk.warn': 'Never share your private key or seed phrase. Anyone who has them controls your funds.',
     'pk.pub': 'Public address', 'pk.key': 'Private key', 'pk.reveal': 'Reveal key', 'pk.loading': 'Checking…',
     'pk.checking': 'Checking securely…',
-    'pk.unavailable': 'Your key is held in custody by Orden Global and cannot be exported from the app yet. You can view it in the web wallet (vetawallet.com → Settings → Private Key).',
+    'pk.unavailable': 'Your private key is available in the web version: go to vetawallet.com → Settings → Private Key to view it. For security it cannot be exported from the app yet.',
     'seed.title': 'Recovery phrase',
     'seed.warn': 'Anyone with these words controls your funds. Do not screenshot or share them.',
     'seed.reveal': 'Reveal my phrase', 'seed.webT': 'Available in the web wallet',
-    'seed.webP': 'Your phrase is held securely by Orden Global and for now is available at vetawallet.com → Settings → Seed. Soon you will see it here too.',
+    'seed.webP': 'Your recovery phrase is available in the web version: go to vetawallet.com → Settings → Seed to view it. Soon you will be able to see it from the app too.',
     'tok.price': 'Price', 'tok.movs': 'Transactions', 'tok.empty': 'No {s} transactions yet.',
     'tok.viewAll': 'View full activity', 'tok.contract': 'Contract', 'tok.copied': 'Contract copied',
     'tok.received': 'Received', 'tok.sent': 'Sent',
@@ -259,6 +302,45 @@ const S = {
     'mtp.f1': 'Pay at merchants', 'mtp.f1s': 'Scan the store QR and pay with ORIGEN',
     'mtp.f2': 'Charge sales', 'mtp.f2s': 'Merchants get paid instantly',
     'mtp.f3': 'Same ecosystem', 'mtp.f3s': 'Your account and Genesis ID work in both apps',
+    'scan.title': 'Scan QR code',
+    'scan.invalid': 'That code does not contain a valid address',
+    'scan.permT': 'Camera permission',
+    'scan.permP': 'Veta Wallet needs the camera to read a wallet QR code. No image is stored.',
+    'scan.allow': 'Allow camera',
+    'scan.hint': 'Point at the QR code of the receiving wallet',
+    'scan.hintPass': 'Point at the QR code of your Genesis ID passport',
+    'con.title': 'Contacts', 'con.add': 'New contact', 'con.newT': 'New contact',
+    'con.name': 'Name', 'con.namePh': 'e.g. Maria Fernandez',
+    'con.valid': 'Valid address', 'con.fav': 'Mark as favorite',
+    'con.saved': 'Contact saved', 'con.removed': 'Contact removed',
+    'con.manage': 'Manage contacts',
+    'con.emptyT': 'No contacts yet',
+    'con.emptyP': 'Save the wallets you send to often and pick them with one tap when sending.',
+    'send.scan': 'Scan', 'send.contacts': 'Contacts', 'send.saveAs': 'Save this address as a contact (optional)',
+    'imp.title': 'Import passport', 'imp.sub': 'From Genesis ID',
+    'imp.h1': 'Upload your Genesis ID passport',
+    'imp.p': 'If you already verified at genesisid.online, download your passport there and upload it here. Your details are saved in the app and your profile fills in automatically.',
+    'imp.howT': 'How to get it',
+    'imp.how1': 'Sign in to genesisid.online with the same account.',
+    'imp.how2': 'On your passport tap “Download” (.json file) or show its QR code.',
+    'imp.how3': 'Come back here and upload it: your profile and credential are completed.',
+    'imp.file': 'Upload passport file', 'imp.qr': 'Scan QR code',
+    'imp.or': 'or paste the code', 'imp.paste': 'Passport code',
+    'imp.pastePh': 'Paste here the content or link Genesis ID gave you…',
+    'imp.pasteBtn': 'Import from clipboard',
+    'imp.ok': 'Passport imported',
+    'imp.errRead': 'We could not read that passport. Make sure it is the file you downloaded from Genesis ID.',
+    'imp.errEmpty': 'Paste your passport code first.',
+    'imp.foot': 'Stored only on your phone and in your Orden Global account.',
+    'set.import': 'Import my passport', 'set.importSub': 'Upload the file you downloaded from Genesis ID',
+    'set.contacts': 'Contacts', 'set.contactsSub': 'Saved wallets for faster sending',
+    'prof.fromGenesis': 'Verified by Genesis ID',
+    'prof.locked': 'This field comes from your Genesis ID passport and is not edited here.',
+    'prof.extra': 'CONTACT DETAILS',
+    'prof.identity': 'IDENTITY',
+    'prof.noPassT': 'No passport linked',
+    'prof.noPassP': 'Link or import your Genesis ID and these fields fill in automatically.',
+    'prof.import': 'Import passport',
   },
 };
 
@@ -267,7 +349,7 @@ export const useLang = () => useContext(LangCtx);
 export const useT = () => useContext(LangCtx).t;
 
 export function LangProvider({ children }) {
-  const [lang, setLangState] = useState('es');
+  const [lang, setLangState] = useState('en'); // inglés por defecto
   useEffect(() => {
     AsyncStorage.getItem('veta-lang').then((l) => { if (l === 'en' || l === 'es') setLangState(l); }).catch(() => {});
   }, []);
@@ -276,7 +358,7 @@ export function LangProvider({ children }) {
     AsyncStorage.setItem('veta-lang', l).catch(() => {});
   };
   const t = (key, vars) => {
-    let s = (S[lang] && S[lang][key]) || S.es[key] || key;
+    let s = (S[lang] && S[lang][key]) || S.en[key] || S.es[key] || key;
     if (vars) for (const k of Object.keys(vars)) s = s.replace(`{${k}}`, String(vars[k]));
     return s;
   };

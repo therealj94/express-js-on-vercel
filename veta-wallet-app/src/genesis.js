@@ -77,19 +77,69 @@ export function toPassport(src, fallback = {}) {
   const verified = statusRaw.includes('verif') || statusRaw.includes('approve')
     || statusRaw === 'active' || statusRaw === 'complete' || statusRaw === 'completed'
     || s.verified === true || s.isVerified === true;
+  // El portal puede mandar el nombre partido en dos campos.
+  const partes = [pick(s, 'firstName', 'first_name', 'givenName', 'given_name', 'nombres'),
+    pick(s, 'lastName', 'last_name', 'familyName', 'family_name', 'surname', 'apellidos')].filter(Boolean);
   return {
     genesisUid: String(uid),
-    fullName: pick(s, 'fullName', 'name', 'full_name', 'fullname', 'legalName', 'nombre') || fallback.fullName || null,
+    fullName: pick(s, 'fullName', 'name', 'full_name', 'fullname', 'legalName', 'nombre')
+      || (partes.length ? partes.join(' ') : null) || fallback.fullName || null,
     email: pick(s, 'email', 'correo', 'mail') || fallback.email || null,
     walletAddress: pick(s, 'walletAddress', 'wallet', 'wallet_address', 'address') || fallback.walletAddress || null,
     documentId: pick(s, 'documentId', 'document', 'documentNumber', 'document_number', 'dni', 'idNumber'),
     nationality: pick(s, 'nationality', 'country', 'nacionalidad', 'pais'),
     birthDate: pick(s, 'birthDate', 'dob', 'dateOfBirth', 'birth_date', 'fechaNacimiento'),
+    // Datos generales que también rellenan el perfil de la app.
+    phone: pick(s, 'phone', 'phoneNumber', 'phone_number', 'telefono', 'mobile', 'celular'),
+    address: pick(s, 'residence', 'homeAddress', 'home_address', 'addressLine', 'address_line', 'direccion', 'domicilio', 'city'),
     photoUrl: pick(s, 'photoUrl', 'photo', 'photo_url', 'avatar', 'avatarUrl', 'selfieUrl', 'selfie', 'picture', 'image', 'imageUrl', 'foto'),
     status: verified ? 'verified' : statusRaw.includes('review') || statusRaw.includes('pending') ? 'review' : (statusRaw || 'pending'),
     issuedAt: pick(s, 'verifiedAt', 'issuedAt', 'issued_at') || now(),
     raw: s,
   };
+}
+
+/**
+ * Saca un pasaporte de CUALQUIER texto: el .json que descargas del portal, un
+ * código QR, un enlace o un bloque en base64. Es lo que permite importar el
+ * pasaporte a mano cuando la consulta automática al portal no lo devuelve.
+ */
+export function passportFromText(raw) {
+  const txt = String(raw || '').trim();
+  if (!txt) return null;
+
+  // 1) JSON directo
+  try { const p = toPassport(JSON.parse(txt)); if (p) return p; } catch (e) {}
+
+  // 2) JSON dentro del texto (por si trae encabezados o saltos)
+  const brace = txt.indexOf('{');
+  if (brace >= 0) {
+    try { const p = toPassport(JSON.parse(txt.slice(brace, txt.lastIndexOf('}') + 1))); if (p) return p; } catch (e) {}
+  }
+
+  // 3) base64 de un JSON
+  if (/^[A-Za-z0-9+/=\s]+$/.test(txt) && txt.length > 40) {
+    try {
+      const limpio = txt.replace(/\s/g, '');
+      const dec = typeof atob === 'function'
+        ? atob(limpio)
+        : typeof Buffer !== 'undefined' ? Buffer.from(limpio, 'base64').toString('utf8') : null;
+      if (dec) { const p = toPassport(JSON.parse(dec)); if (p) return p; }
+    } catch (e) {}
+  }
+
+  // 4) URL o deep link con parámetros (?gid=…&name=…)
+  const q = txt.includes('?') ? txt.slice(txt.indexOf('?') + 1) : txt;
+  if (q.includes('=')) {
+    const obj = {};
+    for (const part of q.split('&')) {
+      const [k, ...v] = part.split('=');
+      if (k) obj[k.trim()] = decodeURIComponent((v.join('=') || '').trim().replace(/\+/g, ' '));
+    }
+    const p = toPassport(obj);
+    if (p) return p;
+  }
+  return null;
 }
 
 /** Combina dos pasaportes sin perder datos (el nuevo manda, el viejo rellena). */

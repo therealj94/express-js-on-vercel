@@ -13,17 +13,25 @@
       "resizeMode": "contain",
       "backgroundColor": "#021B1C"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ordenglobal.vetawallet"
+      "bundleIdentifier": "com.ordenglobal.vetawallet",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Veta Wallet usa la cámara para escanear códigos QR de direcciones de billetera."
+      }
     },
     "android": {
       "package": "com.ordenglobal.vetawallet",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#021B1C"
-      }
+      },
+      "permissions": [
+        "CAMERA"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -38,6 +46,12 @@
             "targetSdkVersion": 35,
             "buildToolsVersion": "35.0.0"
           }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Veta Wallet usa la cámara para escanear códigos QR de direcciones de billetera."
         }
       ]
     ]

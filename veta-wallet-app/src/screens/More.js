@@ -118,25 +118,33 @@ export function Settings({ nav }) {
           {acc.genesisUid ? (
             <>
               <ListRow first icon="finger-print" title={t('set.passport')} sub={acc.genesisUid} onPress={() => nav.go('passport')} />
+              <ListRow icon="cloud-upload" title={t('set.import')} sub={t('set.importSub')} onPress={() => nav.go('importPassport')} />
               <ListRow icon="refresh" title={t('set.reverify')} sub={t('set.reverifySub')} onPress={() => nav.go('kyc')} />
             </>
           ) : (
-            <ListRow first icon="finger-print" title={t('set.link')} sub={t('set.linkSub')} onPress={() => nav.go('kyc')} />
+            <>
+              <ListRow first icon="finger-print" title={t('set.link')} sub={t('set.linkSub')} onPress={() => nav.go('kyc')} />
+              <ListRow icon="cloud-upload" title={t('set.import')} sub={t('set.importSub')} onPress={() => nav.go('importPassport')} />
+            </>
           )}
+        </Glass>
+
+        {/* CUENTA: aquí vive todo lo que es "mis datos". El perfil está una
+            sola vez (antes aparecía también en Privacidad, y por eso parecía
+            que la app pedía llenar la información dos veces). */}
+        <Text style={styles.grpTitle}>{t('set.account')}</Text>
+        <Glass style={styles.group}>
+          <ListRow first icon="person" title={t('set.profile')} sub={t('set.profileSub')} onPress={() => nav.go('profile')} />
+          <ListRow icon="people" title={t('set.contacts')} sub={t('set.contactsSub')} onPress={() => nav.go('contacts')} />
+          <ListRow icon="card" title={t('set.card')} onPress={() => nav.go('card')} />
+          <ListRow icon="qr-code" title={t('set.addr')} sub={shortAddr(acc.addr)} onPress={() => nav.go('receive')} />
+          <ListRow icon="storefront" title={t('set.mtp')} sub={t('set.mtpSub')} onPress={() => nav.go('mytokenpay')} />
         </Glass>
 
         <Text style={styles.grpTitle}>{t('set.privacy')}</Text>
         <Glass style={styles.group}>
           <ListRow first icon="lock-closed" title={t('set.private')} sub={t('set.privateSub')} onPress={() => {}} right={<Toggle value={priv} onValueChange={(v) => { setPriv(v); toast(v ? t('set.privateOn') : t('set.privateOff')); }} />} />
-          <ListRow icon="create" title={t('set.profile')} sub={t('set.profileSub')} onPress={() => nav.go('profile')} />
           <ListRow icon="person-remove" title={t('set.blocked')} onPress={() => nav.go('blocked')} />
-        </Glass>
-
-        <Text style={styles.grpTitle}>{t('set.account')}</Text>
-        <Glass style={styles.group}>
-          <ListRow first icon="card" title={t('set.card')} onPress={() => nav.go('card')} />
-          <ListRow icon="qr-code" title={t('set.addr')} sub={shortAddr(acc.addr)} onPress={() => nav.go('receive')} />
-          <ListRow icon="storefront" title={t('set.mtp')} sub={t('set.mtpSub')} onPress={() => nav.go('mytokenpay')} />
         </Glass>
 
         <Text style={styles.grpTitle}>{t('set.security')}</Text>
@@ -210,6 +218,8 @@ export function Passport({ nav }) {
             <Text style={styles.emptyTitle}>{t('pass.emptyT')}</Text>
             <Text style={styles.emptyBody}>{t('pass.emptyP')}</Text>
             <Button3D title={t('pass.linkNow')} icon="finger-print" onPress={() => nav.go('kyc')} style={{ alignSelf: 'stretch', marginTop: 18 }} />
+            {/* Si ya te verificaste en el portal, sube el pasaporte que descargaste. */}
+            <Button3D title={t('prof.import')} icon="cloud-upload" variant="teal" onPress={() => nav.go('importPassport')} style={{ alignSelf: 'stretch', marginTop: 10 }} />
           </View>
         </ScrollView>
       </View>
@@ -295,32 +305,98 @@ function fmtIssued(iso) {
 }
 
 // ================= PERFIL (datos reales de la cuenta) =================
+//
+// El perfil NO vuelve a pedir lo que Genesis ID ya verificó: nombre legal,
+// documento, nacionalidad y fecha de nacimiento se muestran en una ficha de
+// solo lectura con el sello del pasaporte. Solo se escribe lo que Genesis no
+// entrega (teléfono, país de residencia y dirección) — y si el pasaporte los
+// trae, llegan ya rellenos. Así se acaba la sensación de "información
+// duplicada" entre Ajustes y esta pantalla.
 export function Profile({ nav }) {
   const toast = useToast();
   const t = useT();
   const { account, login } = useAccount();
   const acc = account || { name: '', email: '', phone: '', country: '', address2: '' };
+  const p = acc.passport || null;
+  const verificado = !!p?.genesisUid;
+
   const [name, setName] = useState(acc.name || '');
   const [phone, setPhone] = useState(acc.phone || '');
   const [country, setCountry] = useState(acc.country || '');
   const [addr2, setAddr2] = useState(acc.address2 || '');
 
+  // Si el pasaporte llega o se actualiza, el perfil se rellena solo.
+  useEffect(() => {
+    setName(acc.name || '');
+    if (!acc.phone && p?.phone) setPhone(p.phone);
+    if (!acc.country && p?.nationality) setCountry(p.nationality);
+    if (!acc.address2 && p?.address) setAddr2(p.address);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p?.genesisUid, acc.name]);
+
   async function save() {
     if (!account) return;
-    const updated = await updateAccount(account.email, { name: name.trim() || account.name, phone, country, address2: addr2 });
+    const patch = { phone, country, address2: addr2 };
+    // El nombre legal manda si viene verificado: no se sobreescribe a mano.
+    if (!p?.fullName) patch.name = name.trim() || account.name;
+    const updated = await updateAccount(account.email, patch);
     if (updated) { login(updated); toast(t('prof.saved')); setTimeout(() => nav.back(), 600); }
   }
+
+  // Identidad: lo que ya está confirmado, en solo lectura.
+  const identidad = [
+    [t('prof.name'), p?.fullName || acc.name || '—'],
+    [t('prof.email'), acc.email || '—'],
+    p?.documentId ? [t('pass.doc'), p.documentId] : null,
+    p?.nationality ? [t('pass.nat'), p.nationality] : null,
+    p?.birthDate ? [t('pass.dob'), p.birthDate] : null,
+    [t('prof.wallet'), acc.addr || '—'],
+  ].filter(Boolean);
 
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title={t('prof.title')} onBack={() => nav.back()} />
-      <ScrollView contentContainerStyle={{ padding: 22 }} keyboardShouldPersistTaps="handled">
-        <View style={{ alignItems: 'center', marginBottom: 20 }}>
-          <LinearGradient colors={G.gold} style={styles.profAvBig}><Text style={{ color: C.darkText, fontWeight: '800', fontSize: 26 }}>{acc.initials || 'VW'}</Text></LinearGradient>
+      <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        <View style={{ alignItems: 'center', marginBottom: 18 }}>
+          {p?.photoUrl ? (
+            <Image source={{ uri: p.photoUrl }} style={styles.profAvBig} />
+          ) : (
+            <LinearGradient colors={G.gold} style={styles.profAvBig}><Text style={{ color: C.darkText, fontWeight: '800', fontSize: 26 }}>{acc.initials || 'VW'}</Text></LinearGradient>
+          )}
+          {verificado ? (
+            <View style={styles.verifPill}>
+              <Icon name="shield-checkmark" size={12} color={C.up} />
+              <Text style={styles.verifTxt}>{t('prof.fromGenesis')}</Text>
+            </View>
+          ) : null}
         </View>
-        <Field label={t('prof.name')} value={name} onChangeText={setName} placeholder={t('auth.namePh')} />
-        <Field label={t('prof.email')} value={acc.email} editable={false} />
-        <Field label={t('prof.wallet')} value={acc.addr || ''} editable={false} />
+
+        <Text style={styles.grpTitle}>{t('prof.identity')}</Text>
+        {verificado ? (
+          <>
+            <Glass style={styles.group}>
+              {identidad.map(([k, v], i) => (
+                <View key={k} style={[styles.idRow, i === 0 && { borderTopWidth: 0 }]}>
+                  <Text style={styles.idK}>{k}</Text>
+                  <Text style={styles.idV} numberOfLines={1}>{v}</Text>
+                </View>
+              ))}
+            </Glass>
+            <Text style={styles.lockedNote}>{t('prof.locked')}</Text>
+          </>
+        ) : (
+          <Glass style={[styles.group, { padding: 16 }]}>
+            <Text style={styles.noPassT}>{t('prof.noPassT')}</Text>
+            <Text style={styles.noPassP}>{t('prof.noPassP')}</Text>
+            <View style={{ height: 12 }} />
+            <Field label={t('prof.name')} value={name} onChangeText={setName} placeholder={t('auth.namePh')} />
+            <Field label={t('prof.email')} value={acc.email} editable={false} />
+            <Field label={t('prof.wallet')} value={acc.addr || ''} editable={false} />
+            <Button3D title={t('prof.import')} icon="cloud-upload" variant="teal" onPress={() => nav.go('importPassport')} />
+          </Glass>
+        )}
+
+        <Text style={styles.grpTitle}>{t('prof.extra')}</Text>
         <Field label={t('prof.phone')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+504 …" />
         <Field label={t('prof.country')} value={country} onChangeText={setCountry} placeholder="—" />
         <Field label={t('prof.addr')} value={addr2} onChangeText={setAddr2} placeholder="—" />
@@ -463,6 +539,14 @@ const styles = StyleSheet.create({
   prof: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 22, padding: 18, borderWidth: 1, borderColor: C.line, marginBottom: 8 },
   profAv: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   profAvBig: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center' },
+  verifPill: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, paddingHorizontal: 11, paddingVertical: 5, borderRadius: 20, backgroundColor: 'rgba(52,211,153,0.13)', borderWidth: 1, borderColor: 'rgba(52,211,153,0.3)' },
+  verifTxt: { color: C.up, fontSize: 11, fontWeight: '700' },
+  idRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14, paddingVertical: 13, paddingHorizontal: 15, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },
+  idK: { color: C.txt3, fontSize: 12.5 },
+  idV: { color: C.txt, fontSize: 13, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
+  lockedNote: { color: C.txt3, fontSize: 11.5, lineHeight: 17, marginTop: 9, paddingHorizontal: 2 },
+  noPassT: { color: C.txt, fontWeight: '700', fontSize: 15 },
+  noPassP: { color: C.txt3, fontSize: 12.5, lineHeight: 18, marginTop: 5 },
   profName: { fontSize: 16.5, fontWeight: '700', color: C.txt },
   profMail: { fontSize: 12, color: C.txt2, marginTop: 2 },
   kycBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(62,217,160,0.13)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },

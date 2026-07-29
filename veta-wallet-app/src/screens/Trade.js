@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal, StyleSheet } from 'react-native';
 import { Icon } from '../icons';
 import QRCode from 'react-native-qrcode-svg';
@@ -7,6 +7,8 @@ import { C } from '../theme';
 import { Header, TokenIcon, Button3D, Card, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt, tokensFromBalances } from '../data';
 import { apiSend, NETWORK_FEE_ORIGEN } from '../api';
+import { listContacts, touchContact, addContact, parseAddress } from '../contacts';
+import { ScanModal } from './Scan';
 import { useT } from '../i18n';
 
 function useTokens() {
@@ -56,15 +58,25 @@ function Selector({ token, label, onPress }) {
 // ================= ENVIAR =================
 export function Send({ nav }) {
   const tokens = useTokens();
-  const origen = tokens.find((t) => t.s === 'ORIGEN') || tokens[0] || { s: 'ORIGEN', n: 'Origen', qty: 0, price: 0, logo: true };
+  const origen = tokens.find((t) => t.s === 'ORIGEN') || tokens[0] || { s: 'ORIGEN', n: 'ORIGEN', qty: 0, price: 0, logo: true };
   const [tok, setTok] = useState(origen);
   const [amt, setAmt] = useState('');
   const [to, setTo] = useState('');
   const [pw, setPw] = useState('');
   const [pick, setPick] = useState(false);
   const [sending, setSending] = useState(false);
+  const [contacts, setContacts] = useState([]);
+  const [saveAs, setSaveAs] = useState('');   // nombre para guardar el destino
+  const [scan, setScan] = useState(false);    // cámara abierta
+  const [book, setBook] = useState(false);    // libreta de contactos abierta
   const toast = useToast();
   const t = useT();
+  const { account } = useAccount();
+
+  // Contactos guardados: acceso rápido a las direcciones frecuentes.
+  useEffect(() => {
+    if (account?.email) listContacts(account.email).then(setContacts);
+  }, [account?.email]);
 
   const amount = parseFloat(amt) || 0;
   const usd = amount * (tok.price || 0);
@@ -81,6 +93,9 @@ export function Send({ nav }) {
     try {
       const r = await apiSend({ to: to.trim(), amount, password: pw });
       if (r.ok) {
+        // Recuerda el destino para ordenar los contactos por uso.
+        touchContact(account?.email, to.trim());
+        if (saveAs.trim()) addContact(account?.email, { name: saveAs.trim(), address: to.trim() }).catch(() => {});
         toast(r.hash ? `✓ ${String(r.hash).slice(0, 12)}…` : t('send.sent'));
         setTimeout(() => nav.go('home'), 900);
       } else {
@@ -109,8 +124,41 @@ export function Send({ nav }) {
           <Text style={styles.cur}>≈ {money(usd)} USD</Text>
         </View>
 
+        {/* Cámara, libreta y contactos guardados: toca uno y se rellena la dirección */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.contactsRow}>
+          <Pressable onPress={() => { hap(); setScan(true); }} style={styles.contactItem}>
+            <View style={[styles.contactAv, styles.contactScan]}><Icon name="qr-code" size={21} color={C.darkText} /></View>
+            <Text style={styles.contactName} numberOfLines={1}>{t('send.scan')}</Text>
+          </Pressable>
+          <Pressable onPress={() => { hap(); setBook(true); }} style={styles.contactItem}>
+            <View style={styles.contactAv}><Icon name="people" size={20} color={C.gold} /></View>
+            <Text style={styles.contactName} numberOfLines={1}>{t('send.contacts')}</Text>
+          </Pressable>
+          {contacts.slice(0, 6).map((c) => (
+            <Pressable key={c.id} onPress={() => { hap(); setTo(c.address); }} style={styles.contactItem}>
+              <View style={[styles.contactAv, c.fav && styles.contactFav]}><Text style={styles.contactIni}>{c.initials}</Text></View>
+              <Text style={styles.contactName} numberOfLines={1}>{c.name.split(' ')[0]}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
         <Text style={styles.label}>{t('send.to')}</Text>
-        <TextInput value={to} onChangeText={setTo} autoCapitalize="none" autoCorrect={false} placeholder="0x…" placeholderTextColor="#6f938f" style={styles.input} />
+        <View style={{ flexDirection: 'row', gap: 9 }}>
+          <TextInput value={to} onChangeText={setTo} autoCapitalize="none" autoCorrect={false} placeholder="0x…" placeholderTextColor="#6f938f" style={[styles.input, { flex: 1 }]} />
+          <Pressable onPress={() => { hap(); setScan(true); }} style={styles.scanBtn}>
+            <Icon name="qr-code" size={21} color={C.darkText} />
+          </Pressable>
+        </View>
+        {/* Guardar el destino como contacto (solo si no lo tenemos ya) */}
+        {parseAddress(to) && !contacts.some((c) => c.address.toLowerCase() === (parseAddress(to) || '').toLowerCase()) && (
+          <TextInput
+            value={saveAs}
+            onChangeText={setSaveAs}
+            placeholder={t('send.saveAs')}
+            placeholderTextColor="#6f938f"
+            style={[styles.input, { marginTop: 9, fontSize: 13.5 }]}
+          />
+        )}
 
         <View style={{ height: 14 }} />
         <Text style={styles.label}>{t('send.pw')}</Text>
@@ -127,7 +175,46 @@ export function Send({ nav }) {
         <Button3D title={sending ? t('send.sending') : t('send.review')} disabled={sending || !isNative} onPress={sending ? () => {} : doSend} />
       </ScrollView>
       <TokenPicker visible={pick} tokens={tokens} onClose={() => setPick(false)} onPick={setTok} />
+      {/* La cámara va en modal: así el formulario sigue montado y la
+          dirección leída se escribe directamente en el campo. */}
+      <ScanModal visible={scan} onResult={setTo} onClose={() => setScan(false)} />
+      <ContactPicker
+        visible={book}
+        contacts={contacts}
+        onClose={() => setBook(false)}
+        onPick={(a) => { setTo(a); setBook(false); }}
+        onManage={() => { setBook(false); nav.go('contacts'); }}
+      />
     </View>
+  );
+}
+
+// -------- libreta de contactos (elegir destino) --------
+function ContactPicker({ visible, contacts, onClose, onPick, onManage }) {
+  const t = useT();
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.sheetBg} onPress={onClose}>
+        <Pressable style={styles.sheet} onPress={() => {}}>
+          <View style={styles.grab} />
+          <Text style={styles.sheetTitle}>{t('con.title')}</Text>
+          <ScrollView style={{ maxHeight: 340 }}>
+            {contacts.length === 0 && <Text style={styles.emptyPick}>{t('con.emptyP')}</Text>}
+            {contacts.map((c) => (
+              <Pressable key={c.id} onPress={() => { hap(); onPick(c.address); }} style={styles.pick}>
+                <View style={[styles.contactAv, c.fav && styles.contactFav]}><Text style={styles.contactIni}>{c.initials}</Text></View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.pickName}>{c.name}</Text>
+                  <Text style={styles.pickSub}>{`${c.address.slice(0, 10)}…${c.address.slice(-6)}`}</Text>
+                </View>
+                {c.fav ? <Icon name="star" size={16} color={C.gold} /> : null}
+              </Pressable>
+            ))}
+          </ScrollView>
+          <Button3D title={t('con.manage')} icon="people" variant="teal" onPress={onManage} style={{ marginTop: 14 }} />
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -243,6 +330,15 @@ function SwapBox({ label, balance, token, value, onChange, readOnly, onPickToken
 
 const styles = StyleSheet.create({
   label: { fontSize: 12, color: C.txt2, marginBottom: 7, fontWeight: '500' },
+  contactsRow: { flexDirection: 'row', gap: 12, paddingBottom: 16, paddingRight: 4 },
+  emptyPick: { color: C.txt3, fontSize: 12.5, textAlign: 'center', paddingVertical: 26, lineHeight: 18 },
+  contactItem: { alignItems: 'center', gap: 6, width: 58 },
+  contactAv: { width: 50, height: 50, borderRadius: 25, backgroundColor: C.panel2, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
+  contactScan: { backgroundColor: C.gold, borderColor: 'transparent' },
+  contactFav: { backgroundColor: 'rgba(201,169,97,0.16)' },
+  contactIni: { color: C.gold, fontWeight: '800', fontSize: 15 },
+  contactName: { fontSize: 10.5, color: C.txt2, textAlign: 'center' },
+  scanBtn: { width: 52, borderRadius: 14, backgroundColor: C.gold, alignItems: 'center', justifyContent: 'center' },
   input: { backgroundColor: C.input, borderWidth: 1.5, borderColor: 'rgba(46,116,119,0.5)', borderRadius: 14, paddingHorizontal: 15, paddingVertical: 14, color: C.txt, fontSize: 15 },
   selector: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 16, padding: 12, marginBottom: 13 },
   selName: { fontSize: 14, fontWeight: '600', color: C.txt },

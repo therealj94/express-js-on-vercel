@@ -84,11 +84,19 @@ export async function updateAccount(email, patch) {
 // información: UID, nombre legal, documento, nacionalidad, foto, estado…
 export async function setPassport(email, passport) {
   if (!passport) return null;
+  const acc = accountByEmail((email || '').toLowerCase().trim());
+  // El pasaporte rellena el perfil: lo que Genesis verifica no hay que volver
+  // a escribirlo a mano (era lo que se sentía "duplicado" en Ajustes).
+  const auto = {};
+  if (passport.nationality && !acc?.country) auto.country = passport.nationality;
+  if (passport.phone && !acc?.phone) auto.phone = passport.phone;
+  if (passport.address && !acc?.address2) auto.address2 = passport.address;
   return updateAccount(email, {
     genesisUid: passport.genesisUid || null,
     passport,
     // Si Genesis trae el nombre legal verificado, prevalece sobre el escrito.
     ...(passport.fullName ? { name: passport.fullName } : {}),
+    ...auto,
   });
 }
 
