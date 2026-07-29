@@ -135,6 +135,32 @@ export const genesis = {
   local: readLocal,
   save: writeLocal,
 
+  /**
+   * Diagnóstico honesto de por qué no llegó el pasaporte. Devuelve un código
+   * para que la pantalla explique el problema real en vez de un "en proceso"
+   * genérico:
+   *   'no-engine'      → no hay internet o el motor está dormido/caído
+   *   'no-key'         → el servidor no tiene GENESIS_API_KEY configurada
+   *   'not-verified'   → el portal responde, pero aún no te ha verificado
+   *   'ok'             → todo listo
+   */
+  async diagnose(email, walletAddress) {
+    let health = null;
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 20000);
+      const res = await fetch(`${ENGINE}/api/portal/status`, { signal: ctrl.signal });
+      clearTimeout(timer);
+      health = await res.json();
+    } catch (e) {
+      return { code: 'no-engine' };
+    }
+    if (!health?.configured) return { code: 'no-key', portal: health?.portal };
+    const p = await this.status(email, walletAddress).catch(() => null);
+    if (p?.status === 'verified') return { code: 'ok', passport: p };
+    return { code: 'not-verified', passport: p };
+  },
+
   /** Registra/vincula al usuario en el portal antes de verificar. */
   register: ({ email, fullName, walletAddress }) =>
     engine('/portal/register', { email, fullName, walletAddress }),

@@ -18,7 +18,9 @@ export function AppBackground({ children, intensity = 'content', style }) {
   const hero = intensity === 'hero';
   const veil = hero
     ? ['rgba(9,55,52,0.55)', 'rgba(3,20,21,0.82)']
-    : ['rgba(2,27,28,0.90)', 'rgba(2,22,23,0.955)', 'rgba(1,15,16,0.985)'];
+    // Velo del contenido: deja ver la fotografía de marca (antes iba al
+    // 90-98% y la tapaba por completo, dejando las pantallas planas).
+    : ['rgba(6,44,45,0.55)', 'rgba(4,30,31,0.72)', 'rgba(2,18,19,0.86)'];
   return (
     <ImageBackground source={BG} resizeMode="cover" style={[{ flex: 1, backgroundColor: '#021B1C' }, style]}>
       <LinearGradient colors={veil} style={StyleSheet.absoluteFill} />

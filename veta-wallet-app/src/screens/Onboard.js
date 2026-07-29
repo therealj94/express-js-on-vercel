@@ -19,6 +19,7 @@ export function Kyc({ nav }) {
   const { account, login: loginAccount } = useAccount();
   const [state, setState] = useState('intro'); // intro | opening | pending | done
   const [passport, setPass] = useState(null);
+  const [reason, setReason] = useState(null); // por que no llego el pasaporte
 
   const email = account?.email || '';
   const fullName = account?.name || '';
@@ -43,6 +44,10 @@ export function Kyc({ nav }) {
       return;
     }
     if (r.cancelled) { setState('intro'); return; }
+    // No llegó el pasaporte: averigua el motivo real y dilo.
+    const d = await genesis.diagnose(email, walletAddress);
+    if (d.code === 'ok' && d.passport) { await applyPassport(d.passport); setState('done'); return; }
+    setReason(d);
     setState('pending');
   }
 
@@ -56,6 +61,9 @@ export function Kyc({ nav }) {
       setState('done');
       return;
     }
+    const d = await genesis.diagnose(email, walletAddress);
+    if (d.code === 'ok' && d.passport) { await applyPassport(d.passport); setState('done'); return; }
+    setReason(d);
     setState('pending');
     toast(t('gen.stillPending'));
   }
@@ -108,8 +116,12 @@ export function Kyc({ nav }) {
             <View style={[st.heroIcon, { backgroundColor: 'rgba(251,191,36,0.12)' }]}>
               <Icon name="time" size={30} color="#FBBF24" />
             </View>
-            <Text style={[st.h1, { textAlign: 'center' }]}>{t('gen.pendingT')}</Text>
-            <Text style={[st.body, { textAlign: 'center' }]}>{t('gen.pendingP')}</Text>
+            <Text style={[st.h1, { textAlign: 'center' }]}>
+              {reason?.code === 'no-key' ? t('gen.errKeyT') : reason?.code === 'no-engine' ? t('gen.errNetT') : t('gen.pendingT')}
+            </Text>
+            <Text style={[st.body, { textAlign: 'center' }]}>
+              {reason?.code === 'no-key' ? t('gen.errKeyP') : reason?.code === 'no-engine' ? t('gen.errNetP') : t('gen.pendingP')}
+            </Text>
             <Button3D title={t('gen.recheck')} icon="refresh" onPress={recheck} style={{ alignSelf: 'stretch', marginTop: 16 }} />
             <Pressable onPress={start} style={st.retry}>
               <Icon name="open-outline" size={14} color={C.gold} />
