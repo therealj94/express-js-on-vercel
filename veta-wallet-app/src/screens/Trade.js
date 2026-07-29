@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Modal, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, ScrollView, Pressable, TextInput, Modal, Animated, StyleSheet } from 'react-native';
 import { Icon } from '../icons';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
@@ -69,6 +69,7 @@ export function Send({ nav }) {
   const [saveAs, setSaveAs] = useState('');   // nombre para guardar el destino
   const [scan, setScan] = useState(false);    // cámara abierta
   const [book, setBook] = useState(false);    // libreta de contactos abierta
+  const [done, setDone] = useState(null);     // comprobante del envío
   const toast = useToast();
   const t = useT();
   const { account } = useAccount();
@@ -96,8 +97,10 @@ export function Send({ nav }) {
         // Recuerda el destino para ordenar los contactos por uso.
         touchContact(account?.email, to.trim());
         if (saveAs.trim()) addContact(account?.email, { name: saveAs.trim(), address: to.trim() }).catch(() => {});
-        toast(r.hash ? `✓ ${String(r.hash).slice(0, 12)}…` : t('send.sent'));
-        setTimeout(() => nav.go('home'), 900);
+        // Comprobante en pantalla: el usuario confirma con OK, no se le
+        // cambia de pantalla por debajo mientras lee.
+        setDone({ amount, symbol: tok.s, to: to.trim(), hash: r.hash || null, fee: isNative ? NETWORK_FEE_ORIGEN : 0 });
+        hap();
       } else {
         toast(t('send.notConfirmed'));
       }
@@ -185,7 +188,70 @@ export function Send({ nav }) {
         onPick={(a) => { setTo(a); setBook(false); }}
         onManage={() => { setBook(false); nav.go('contacts'); }}
       />
+      <SentReceipt
+        data={done}
+        contacts={contacts}
+        onClose={() => { setDone(null); nav.go('home'); }}
+      />
     </View>
+  );
+}
+
+// -------- comprobante de envío --------
+// Aparece al confirmarse la transacción: monto, destino, comisión y hash.
+// No se cierra solo — el usuario lee y da OK.
+function SentReceipt({ data, contacts, onClose }) {
+  const t = useT();
+  const toast = useToast();
+  const check = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!data) { check.setValue(0); return; }
+    Animated.spring(check, { toValue: 1, useNativeDriver: true, friction: 5, tension: 90 }).start();
+  }, [data]);
+
+  if (!data) return null;
+  const guardado = contacts.find((c) => c.address.toLowerCase() === data.to.toLowerCase());
+  const destino = guardado ? guardado.name : `${data.to.slice(0, 10)}…${data.to.slice(-8)}`;
+
+  const copiar = async (v) => { hap(); try { await Clipboard.setStringAsync(v); toast(t('recv.copied')); } catch (e) {} };
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.doneBg}>
+        <View style={styles.doneCard}>
+          <Animated.View style={[styles.doneIc, { transform: [{ scale: check }] }]}>
+            <Icon name="checkmark" size={38} color={C.darkText} />
+          </Animated.View>
+          <Text style={styles.doneT}>{t('send.doneT')}</Text>
+          <Text style={styles.doneAmt}>{qtyFmt(data.amount)} {data.symbol}</Text>
+          <Text style={styles.doneP}>{t('send.doneP')}</Text>
+
+          <View style={styles.doneRows}>
+            <DoneRow first k={t('send.to')} v={destino} onPress={() => copiar(data.to)} />
+            {data.fee ? <DoneRow k={t('send.fee')} v={`${data.fee} ORIGEN`} /> : null}
+            <DoneRow k={t('send.network')} v="Orden Global · 8532" />
+            {data.hash ? (
+              <DoneRow k={t('send.hash')} v={`${String(data.hash).slice(0, 10)}…${String(data.hash).slice(-8)}`} onPress={() => copiar(data.hash)} />
+            ) : null}
+          </View>
+
+          <Button3D title={t('send.ok')} icon="checkmark" onPress={onClose} style={{ alignSelf: 'stretch', marginTop: 18 }} />
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function DoneRow({ k, v, onPress, first }) {
+  return (
+    <Pressable onPress={onPress} disabled={!onPress} style={[styles.doneRow, first && { borderTopWidth: 0 }]}>
+      <Text style={styles.doneK}>{k}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
+        <Text style={styles.doneV} numberOfLines={1}>{v}</Text>
+        {onPress ? <Icon name="copy" size={13} color={C.gold} /> : null}
+      </View>
+    </Pressable>
   );
 }
 
@@ -332,6 +398,16 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, color: C.txt2, marginBottom: 7, fontWeight: '500' },
   contactsRow: { flexDirection: 'row', gap: 12, paddingBottom: 16, paddingRight: 4 },
   emptyPick: { color: C.txt3, fontSize: 12.5, textAlign: 'center', paddingVertical: 26, lineHeight: 18 },
+  doneBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', padding: 26 },
+  doneCard: { width: '100%', backgroundColor: '#06282B', borderRadius: 26, borderWidth: 1, borderColor: C.line, padding: 24, alignItems: 'center' },
+  doneIc: { width: 74, height: 74, borderRadius: 37, backgroundColor: C.up, alignItems: 'center', justifyContent: 'center', marginBottom: 16, shadowColor: C.up, shadowOpacity: 0.5, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
+  doneT: { color: C.txt, fontSize: 19, fontWeight: '800' },
+  doneAmt: { color: C.gold, fontSize: 27, fontWeight: '800', marginTop: 8 },
+  doneP: { color: C.txt2, fontSize: 12.5, textAlign: 'center', marginTop: 8, lineHeight: 18 },
+  doneRows: { alignSelf: 'stretch', marginTop: 18, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, paddingHorizontal: 14 },
+  doneRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 11, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },
+  doneK: { color: C.txt3, fontSize: 12 },
+  doneV: { color: C.txt, fontSize: 12.5, fontWeight: '600', flexShrink: 1 },
   contactItem: { alignItems: 'center', gap: 6, width: 58 },
   contactAv: { width: 50, height: 50, borderRadius: 25, backgroundColor: C.panel2, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
   contactScan: { backgroundColor: C.gold, borderColor: 'transparent' },

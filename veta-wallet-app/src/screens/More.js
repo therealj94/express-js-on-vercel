@@ -10,6 +10,8 @@ import { getPrivateKey } from '../api';
 import { genesis } from '../genesis';
 import { setPassport } from '../accounts';
 import { updateAccount } from '../accounts';
+import { activarAvisos, desactivarAvisos, avisosActivos } from '../notify';
+import { versionLabel } from '../version';
 import { useT, useLang } from '../i18n';
 
 const shortAddr = (a) => (a && a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a || '');
@@ -88,6 +90,7 @@ export function Notifications({ nav }) {
 export function Settings({ nav }) {
   const [notif, setNotif] = useState(true);
   const [priv, setPriv] = useState(false);
+  useEffect(() => { avisosActivos().then(setNotif).catch(() => {}); }, []);
   const toast = useToast();
   const t = useT();
   const { lang, setLang } = useLang();
@@ -151,7 +154,30 @@ export function Settings({ nav }) {
         <Glass style={styles.group}>
           <ListRow first icon="key" title={t('set.seed')} onPress={() => nav.go('seedview')} />
           <ListRow icon="finger-print" title={t('set.pk')} onPress={() => nav.go('privatekey')} />
-          <ListRow icon="notifications" title={t('set.notifs')} onPress={() => {}} right={<Toggle value={notif} onValueChange={setNotif} />} />
+          {/* El interruptor enciende de verdad los avisos: pide permiso y
+              registra la tarea que revisa la red con la app cerrada. */}
+          <ListRow
+            icon="notifications"
+            title={t('set.notifs')}
+            sub={t('set.notifsSub')}
+            onPress={() => {}}
+            right={
+              <Toggle
+                value={notif}
+                onValueChange={async (v) => {
+                  setNotif(v);
+                  if (v) {
+                    const ok = await activarAvisos(acc.email);
+                    if (!ok) { setNotif(false); toast(t('set.notifsDenied')); return; }
+                    toast(t('set.notifsOn'));
+                  } else {
+                    await desactivarAvisos();
+                    toast(t('set.notifsOff'));
+                  }
+                }}
+              />
+            }
+          />
         </Glass>
 
         <Text style={styles.grpTitle}>{t('set.general')}</Text>
@@ -169,6 +195,12 @@ export function Settings({ nav }) {
               ))}
             </View>
           </View>
+          <ListRow
+            icon="information-circle"
+            title={t('set.about')}
+            sub={versionLabel()}
+            onPress={() => nav.go('about')}
+          />
         </Glass>
 
         <View style={{ height: 10 }} />
@@ -176,7 +208,7 @@ export function Settings({ nav }) {
           <Icon name="power" size={18} color="#fff" />
           <Text style={styles.logoutTxt}>{t('set.logout')}</Text>
         </Pressable>
-        <Text style={styles.foot}>{t('set.foot')}</Text>
+        <Text style={styles.foot}>{t('set.foot')}{'\n'}{versionLabel()}</Text>
       </ScrollView>
     </View>
   );

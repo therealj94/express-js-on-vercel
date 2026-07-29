@@ -184,6 +184,25 @@ const S = {
     'prof.noPassT': 'Sin pasaporte vinculado',
     'prof.noPassP': 'Vincula o importa tu Genesis ID y estos datos se rellenan solos.',
     'prof.import': 'Importar pasaporte',
+    // comprobante de envío
+    'send.doneT': 'Enviado', 'send.ok': 'OK, entendido', 'send.hash': 'Comprobante (hash)',
+    'send.doneP': 'La transacción quedó registrada en la blockchain de Orden Global. El destinatario recibe un aviso en su app.',
+    // navegación
+    'nav.exit': 'Toca atrás otra vez para salir',
+    'notif.gotToast': '¡Recibiste tokens! Saldo actualizado',
+    // notificaciones
+    'set.notifsSub': 'Avisos cuando recibes tokens, con la app abierta o cerrada',
+    'set.notifsOn': 'Avisos activados', 'set.notifsOff': 'Avisos desactivados',
+    'set.notifsDenied': 'Permite las notificaciones en los ajustes del teléfono',
+    // versión
+    'set.about': 'Acerca de esta versión',
+    'about.title': 'Versión y novedades', 'about.build': 'build {b}',
+    'about.current': 'Versión instalada', 'about.news': 'NOVEDADES', 'about.latest': 'ACTUAL',
+    // gráfico
+    'chart.title': 'Precio en vivo',
+    'chart.hint': 'Mantén el dedo sobre el gráfico para ver cada vela',
+    'chart.offline': 'No pudimos cargar el histórico. Revisa tu conexión.',
+    'chart.noMarket': '{s} todavía no cotiza en un mercado público, así que no hay velas que mostrar. Su precio dentro del ecosistema sí es real.',
   },
   en: {
     'tab.home': 'Home', 'tab.card': 'Card', 'tab.swap': 'Swap', 'tab.activity': 'Activity', 'tab.settings': 'Settings',
@@ -341,6 +360,20 @@ const S = {
     'prof.noPassT': 'No passport linked',
     'prof.noPassP': 'Link or import your Genesis ID and these fields fill in automatically.',
     'prof.import': 'Import passport',
+    'send.doneT': 'Sent', 'send.ok': 'OK, got it', 'send.hash': 'Receipt (hash)',
+    'send.doneP': 'The transaction is recorded on the Orden Global blockchain. The recipient gets a notification in their app.',
+    'nav.exit': 'Press back again to exit',
+    'notif.gotToast': 'Tokens received! Balance updated',
+    'set.notifsSub': 'Alerts when you receive tokens, with the app open or closed',
+    'set.notifsOn': 'Alerts enabled', 'set.notifsOff': 'Alerts disabled',
+    'set.notifsDenied': 'Allow notifications in your phone settings',
+    'set.about': 'About this version',
+    'about.title': 'Version & what’s new', 'about.build': 'build {b}',
+    'about.current': 'Installed version', 'about.news': "WHAT'S NEW", 'about.latest': 'CURRENT',
+    'chart.title': 'Live price',
+    'chart.hint': 'Hold your finger on the chart to inspect each candle',
+    'chart.offline': 'We could not load the history. Check your connection.',
+    'chart.noMarket': '{s} is not traded on a public market yet, so there are no candles to show. Its price inside the ecosystem is still real.',
   },
 };
 

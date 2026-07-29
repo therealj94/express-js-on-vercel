@@ -260,6 +260,56 @@ export async function fetchMetalPrices() {
   return { goldOz, silverOz, goldChg: null, silverChg: null };
 }
 
+// ---------- velas japonesas (histórico OHLC real) ----------
+//
+// CoinGecko devuelve [[ms, open, high, low, close], …]. El intervalo lo elige
+// la propia API según los días pedidos: 1 día → velas de 30 min; hasta 30 días
+// → 4 h; más → 4 días. AUKA sigue el oro y AGKA la plata, así que se leen de
+// pax-gold y kinesis-silver; ORIGEN es la misma serie del oro escalada a
+// 1/55 de gramo. ONDK y MNKA no cotizan en un mercado público: para ellos no
+// se inventan velas, se avisa en pantalla.
+const CG_ID = { AUKA: 'pax-gold', ORIGEN: 'pax-gold', AGKA: 'kinesis-silver' };
+const CG_FACTOR = { ORIGEN: 1 / OZ_GRAMS / 55 };
+
+// Temporalidades que se ofrecen en la ficha del token.
+export const TIMEFRAMES = [
+  { k: '1D', days: 1 },
+  { k: '1W', days: 7 },
+  { k: '1M', days: 30 },
+  { k: '3M', days: 90 },
+  { k: '1Y', days: 365 },
+];
+
+const ohlcCache = new Map(); // symbol|days → { at, velas }
+
+/** Velas reales del token. Devuelve [] si ese token no cotiza. */
+export async function fetchCandles(symbol, days = 1) {
+  const sym = String(symbol || '').toUpperCase();
+  const id = CG_ID[sym];
+  if (!id) return [];
+  const key = `${sym}|${days}`;
+  const hit = ohlcCache.get(key);
+  // Las velas de un día se refrescan cada 2 min; las largas, cada 30.
+  const ttl = days <= 1 ? 120000 : 1800000;
+  if (hit && Date.now() - hit.at < ttl) return hit.velas;
+  try {
+    const r = await fetch(`${COINGECKO}/coins/${id}/ohlc?vs_currency=usd&days=${days}`);
+    const d = await r.json();
+    if (!Array.isArray(d) || !d.length) return hit?.velas || [];
+    const f = CG_FACTOR[sym] || 1;
+    const velas = d
+      .map((v) => ({ t: Number(v[0]), o: Number(v[1]) * f, h: Number(v[2]) * f, l: Number(v[3]) * f, c: Number(v[4]) * f }))
+      .filter((v) => Number.isFinite(v.o) && Number.isFinite(v.c) && Number.isFinite(v.h) && Number.isFinite(v.l));
+    ohlcCache.set(key, { at: Date.now(), velas });
+    return velas;
+  } catch (e) {
+    return hit?.velas || [];
+  }
+}
+
+/** ¿Este token tiene mercado público con histórico? */
+export const tieneVelas = (symbol) => !!CG_ID[String(symbol || '').toUpperCase()];
+
 export async function livePrices() {
   const { goldOz, silverOz, goldChg, silverChg } = await fetchMetalPrices();
   const prices = {}, changes = {};

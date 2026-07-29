@@ -21,8 +21,8 @@ export function AppBackground({ children, intensity = 'content', image, style })
   // La fotografía se deja ver; la legibilidad la resuelven las tarjetas, que
   // van en vidrio bien sólido encima (no oscureciendo la foto entera).
   const veil = hero
-    ? ['rgba(4,30,30,0.30)', 'rgba(2,18,19,0.55)', 'rgba(1,12,13,0.72)']
-    : ['rgba(4,30,30,0.45)', 'rgba(2,20,21,0.66)', 'rgba(1,12,13,0.78)'];
+    ? ['rgba(4,30,30,0.14)', 'rgba(2,18,19,0.38)', 'rgba(1,12,13,0.60)']
+    : ['rgba(4,30,30,0.26)', 'rgba(2,20,21,0.50)', 'rgba(1,12,13,0.66)'];
   return (
     <ImageBackground source={image || BG} resizeMode="cover" style={[{ flex: 1, backgroundColor: '#021B1C' }, style]}>
       <LinearGradient colors={veil} style={StyleSheet.absoluteFill} />

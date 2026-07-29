@@ -6,12 +6,14 @@ export const C = {
   bg2: 'rgba(6,42,43,0.88)',
   // Vidrio: los paneles dejan pasar la fotografía de marca, igual que la
   // tarjeta del login. Los contenedores grandes además llevan desenfoque.
-  panel: 'rgba(8,46,48,0.70)',
-  panel2: 'rgba(14,60,62,0.76)',
-  panel3: 'rgba(24,84,86,0.62)',
-  line: 'rgba(201,169,97,0.28)',
-  line2: 'rgba(201,169,97,0.22)',
-  input: 'rgba(10,50,52,0.78)',
+  // Al dejar la foto más visible (velo bajo en AppBackground), las tarjetas
+  // suben de cuerpo para que el texto encima siga leyéndose sin esfuerzo.
+  panel: 'rgba(6,40,42,0.82)',
+  panel2: 'rgba(12,54,56,0.86)',
+  panel3: 'rgba(22,78,80,0.74)',
+  line: 'rgba(201,169,97,0.34)',
+  line2: 'rgba(201,169,97,0.26)',
+  input: 'rgba(8,44,46,0.88)',
   inputBr: '#2E7477',
   gold: '#C9A961',
   goldLt: '#EAD79C',

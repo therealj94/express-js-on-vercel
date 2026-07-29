@@ -6,6 +6,7 @@ import { C } from '../theme';
 import { Logo, Button3D, hap, useAccount, useToast, AppBackground } from '../ui';
 import { upsertApiAccount, saveSession } from '../accounts';
 import { apiLogin, apiRegister, apiPortfolio, saveCreds, clearCreds } from '../api';
+import { versionLabel } from '../version';
 import { useT } from '../i18n';
 
 export default function Auth({ nav }) {
@@ -105,6 +106,7 @@ export default function Auth({ nav }) {
           </View>
         </BlurView>
         <Text style={styles.foot}>{t('auth.foot')}</Text>
+        <Text style={styles.ver}>{versionLabel()}</Text>
       </ScrollView>
     </AppBackground>
   );
@@ -141,4 +143,5 @@ const styles = StyleSheet.create({
   forgot: { color: 'rgba(243,236,217,0.65)', fontSize: 12, textAlign: 'center', marginTop: 16 },
   terms: { color: C.txt2, fontSize: 12, marginVertical: 12, lineHeight: 17 },
   foot: { color: 'rgba(243,236,217,0.7)', fontSize: 12, textAlign: 'center', marginTop: 18 },
+  ver: { color: 'rgba(243,236,217,0.45)', fontSize: 10.5, textAlign: 'center', marginTop: 6 },
 });

@@ -44,7 +44,9 @@ export async function addContact(email, { name, address, fav }) {
   const i = arr.findIndex((c) => c.address.toLowerCase() === addr.toLowerCase());
   const nombre = (name || '').trim() || (i >= 0 ? arr[i].name : `${addr.slice(0, 6)}…${addr.slice(-4)}`);
   const rec = {
-    id: i >= 0 ? arr[i].id : `c_${Date.now().toString(36)}`,
+    // Con solo la marca de tiempo, dos contactos guardados en el mismo
+    // milisegundo compartían id y borrar uno se llevaba el otro.
+    id: i >= 0 ? arr[i].id : `c_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
     name: nombre,
     address: addr,
     // Si no se indica, se respeta el favorito que ya tuviera.

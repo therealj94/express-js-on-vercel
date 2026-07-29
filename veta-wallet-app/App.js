@@ -1,14 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, Pressable, Animated, Easing, StyleSheet, SafeAreaView, StatusBar, Platform, PanResponder } from 'react-native';
+import { View, Text, Pressable, Animated, Easing, StyleSheet, SafeAreaView, StatusBar, Platform, PanResponder, BackHandler, AppState } from 'react-native';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { Icon } from './src/icons';
 import { C } from './src/theme';
 import { Nav, ToastCtx, AccountCtx, AppBackground } from './src/ui';
-import { LangProvider, useT } from './src/i18n';
+import { LangProvider, useT, useLang } from './src/i18n';
 import * as Linking from 'expo-linking';
-import { loadSession, saveSession, clearSession, initAccounts, setPassport } from './src/accounts';
-import { loadToken, setToken, ensureSession, clearCreds } from './src/api';
+import { loadSession, saveSession, clearSession, initAccounts, setPassport, updateAccount } from './src/accounts';
+import { loadToken, setToken, ensureSession, clearCreds, apiPortfolio } from './src/api';
 import { readReturnUrl, genesis, mergePassport } from './src/genesis';
+import { activarAvisos, limpiarAvisos, watchIncoming, marcarVisto, stopWatch, alTocarNotificacion, avisosActivos } from './src/notify';
 
 import Splash from './src/screens/Splash';
 import Auth from './src/screens/Auth';
@@ -21,13 +22,14 @@ import { Activity, Notifications, Settings, Profile, MyTokenPay, Passport, Block
 import Scan from './src/screens/Scan';
 import Contacts from './src/screens/Contacts';
 import ImportPassport from './src/screens/ImportPassport';
+import About from './src/screens/About';
 
 const SCREENS = {
   splash: Splash, auth: Auth, kyc: Kyc, seedview: SeedView, genesisOffer: GenesisOffer,
   home: Home, token: TokenDetail, send: Send, receive: Receive, buy: Buy, swap: Swap,
   card: CardScreen, activity: Activity, notifs: Notifications, settings: Settings,
   profile: Profile, mytokenpay: MyTokenPay, passport: Passport, blocked: Blocked, privatekey: PrivateKey,
-  scan: Scan, contacts: Contacts, importPassport: ImportPassport,
+  scan: Scan, contacts: Contacts, importPassport: ImportPassport, about: About,
 };
 const TABS = [
   { r: 'home', label: 'tab.home', icon: 'wallet' },
@@ -71,7 +73,7 @@ function Root() {
   const acctApi = {
     account,
     login: (a) => { setAccount(a); saveSession(a.email); },
-    logout: () => { setAccount(null); clearSession(); setToken(null); clearCreds(); },
+    logout: () => { setAccount(null); clearSession(); setToken(null); clearCreds(); limpiarAvisos(); },
   };
 
   // Retorno desde el portal Genesis ID (vetawallet://genesis?uid=…). Captura el
@@ -159,6 +161,80 @@ function Root() {
       },
     })
   ).current;
+
+  // ---- botón ATRÁS de Android ----
+  // Sin esto Android cierra la app en cualquier pantalla. Ahora:
+  //   pantalla apilada → vuelve una atrás
+  //   pestaña que no es Inicio → vuelve a Inicio
+  //   Inicio → dos toques seguidos para salir (el primero avisa)
+  const salir = useRef(0);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      const s = stackRef.current;
+      const actual = s[s.length - 1].r;
+      if (actual === 'auth' || actual === 'splash') return false; // sin sesión, salir
+      if (s.length > 1) { setDir(-1); setStack(s.slice(0, -1)); return true; }
+      if (actual !== 'home') { setDir(-1); setStack([{ r: 'home' }]); return true; }
+      if (Date.now() - salir.current < 2000) return false; // segundo toque: sale
+      salir.current = Date.now();
+      showToast(tr('nav.exit'));
+      return true;
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tr]);
+
+  // ---- avisos de tokens recibidos ----
+  // Con la app abierta vigila la red cada 25 s; la tarea en segundo plano
+  // (src/notify.js) se encarga de cuando la app está cerrada.
+  const { lang } = useLang();
+  useEffect(() => {
+    if (!account?.email) { stopWatch(); return; }
+    const email = account.email;
+    let vivo = true;
+    let parar = () => {};
+
+    const arrancar = () => {
+      parar();
+      parar = watchIncoming({
+        email,
+        lang,
+        traer: apiPortfolio,
+        // Al entrar dinero, el saldo en pantalla se actualiza junto con el aviso.
+        onNuevas: async (n, p) => {
+          const upd = await updateAccount(email, { balances: p.balances, transfers: p.transfers });
+          if (!vivo) return;
+          if (upd) setAccount({ ...upd });
+          showToast(tr('notif.gotToast'));
+        },
+      });
+    };
+
+    (async () => {
+      // Lo que ya está en el historial no se notifica: solo lo que llegue nuevo.
+      await marcarVisto(email, account.transfers);
+      if (!vivo) return;
+      if (await avisosActivos()) await activarAvisos(email);
+      if (!vivo) return;
+      arrancar();
+    })();
+
+    // En segundo plano no se consulta desde aquí: de eso se encarga la tarea
+    // de sistema, que además gasta mucha menos batería.
+    const sub = AppState.addEventListener('change', (s) => {
+      if (!vivo) return;
+      if (s === 'active') arrancar(); else { parar(); stopWatch(); }
+    });
+
+    return () => { vivo = false; parar(); stopWatch(); sub.remove(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.email, lang]);
+
+  // Tocar la notificación abre Actividad.
+  useEffect(() => alTocarNotificacion((pantalla) => {
+    if (accountRef.current) { setDir(1); setStack([{ r: pantalla || 'activity' }]); }
+  }), []);
 
   const Screen = SCREENS[cur.r] || Home;
   const showTabs = TAB_ROUTES.includes(cur.r);

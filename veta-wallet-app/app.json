@@ -2,7 +2,7 @@
   "expo": {
     "name": "Veta Wallet",
     "slug": "veta-wallet",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "vetawallet",
@@ -30,7 +30,10 @@
         "backgroundColor": "#021B1C"
       },
       "permissions": [
-        "CAMERA"
+        "CAMERA",
+        "POST_NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
+        "WAKE_LOCK"
       ]
     },
     "web": {
@@ -52,6 +55,13 @@
         "expo-camera",
         {
           "cameraPermission": "Veta Wallet usa la cámara para escanear códigos QR de direcciones de billetera."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#C9A961",
+          "defaultChannel": "veta-in"
         }
       ]
     ]

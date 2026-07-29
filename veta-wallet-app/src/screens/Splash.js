@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, RadialGradient, Stop, Defs } from 'react-native-svg';
 import { C } from '../theme';
 import { Logo, useAccount, AppBackground, BG_SPLASH } from '../ui';
+import { versionLabel } from '../version';
 
 export default function Splash({ nav }) {
   const { account } = useAccount();
@@ -100,6 +101,7 @@ export default function Splash({ nav }) {
           </Animated.View>
         </View>
         <Text style={styles.loading}>Cargando tu billetera…</Text>
+        <Text style={styles.ver}>{versionLabel()}</Text>
       </View>
     </AppBackground>
   );
@@ -116,4 +118,5 @@ const styles = StyleSheet.create({
   progTrack: { width: 130, height: 3, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.1)', overflow: 'hidden', marginTop: 26 },
   progFill: { height: 3, borderRadius: 3 },
   loading: { color: C.txt3, fontSize: 12, marginTop: 12 },
+  ver: { color: 'rgba(243,236,217,0.4)', fontSize: 10.5, marginTop: 8, letterSpacing: 0.6 },
 });
