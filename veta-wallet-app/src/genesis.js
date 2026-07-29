@@ -54,6 +54,8 @@ async function engine(path, body) {
   finally { clearTimeout(timer); }
 }
 
+const esBilletera = (v) => /^0x[a-fA-F0-9]{40}$/.test(String(v || '').trim());
+
 // Primer valor no vacío entre varios nombres posibles de campo.
 const pick = (o, ...keys) => {
   for (const k of keys) {
@@ -85,13 +87,19 @@ export function toPassport(src, fallback = {}) {
     fullName: pick(s, 'fullName', 'name', 'full_name', 'fullname', 'legalName', 'nombre')
       || (partes.length ? partes.join(' ') : null) || fallback.fullName || null,
     email: pick(s, 'email', 'correo', 'mail') || fallback.email || null,
-    walletAddress: pick(s, 'walletAddress', 'wallet', 'wallet_address', 'address') || fallback.walletAddress || null,
+    // 'address' se reparte según su forma: si parece 0x… es la billetera; si
+    // no, es el domicilio del titular (abajo). Antes un domicilio acababa
+    // guardado como dirección on-chain.
+    walletAddress: pick(s, 'walletAddress', 'wallet', 'wallet_address')
+      || (esBilletera(s?.address) ? String(s.address).trim() : null)
+      || fallback.walletAddress || null,
     documentId: pick(s, 'documentId', 'document', 'documentNumber', 'document_number', 'dni', 'idNumber'),
     nationality: pick(s, 'nationality', 'country', 'nacionalidad', 'pais'),
     birthDate: pick(s, 'birthDate', 'dob', 'dateOfBirth', 'birth_date', 'fechaNacimiento'),
     // Datos generales que también rellenan el perfil de la app.
     phone: pick(s, 'phone', 'phoneNumber', 'phone_number', 'telefono', 'mobile', 'celular'),
-    address: pick(s, 'residence', 'homeAddress', 'home_address', 'addressLine', 'address_line', 'direccion', 'domicilio', 'city'),
+    address: pick(s, 'residence', 'homeAddress', 'home_address', 'addressLine', 'address_line', 'direccion', 'domicilio', 'city')
+      || (esBilletera(s?.address) ? null : pick(s, 'address')),
     photoUrl: pick(s, 'photoUrl', 'photo', 'photo_url', 'avatar', 'avatarUrl', 'selfieUrl', 'selfie', 'picture', 'image', 'imageUrl', 'foto'),
     status: verified ? 'verified' : statusRaw.includes('review') || statusRaw.includes('pending') ? 'review' : (statusRaw || 'pending'),
     issuedAt: pick(s, 'verifiedAt', 'issuedAt', 'issued_at') || now(),

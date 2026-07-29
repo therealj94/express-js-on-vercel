@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.1.0';
-export const BUILD = 2;
+export const VERSION = '1.1.1';
+export const BUILD = 3;
 export const RELEASED = '2026-07-29';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,21 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.1.1',
+    build: 3,
+    date: '2026-07-29',
+    es: [
+      'Pasaporte Genesis ID: el titular ya no sale como «Info». El portal manda el nombre en dos campos y ahora se arma completo.',
+      'El domicilio del titular ya no se guardaba como dirección de billetera.',
+      'Diagnóstico del portal: dice por qué falla la conexión, no solo que falló.',
+    ],
+    en: [
+      'Genesis ID passport: the holder no longer shows as “Info”. The portal sends the name in two fields and it is now assembled in full.',
+      "The holder's home address was being stored as the wallet address.",
+      'Portal diagnostics: it now says why the connection fails, not just that it failed.',
+    ],
+  },
   {
     v: '1.1.0',
     build: 2,
