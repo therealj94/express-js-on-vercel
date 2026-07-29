@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.1.3';
-export const BUILD = 5;
+export const VERSION = '1.1.4';
+export const BUILD = 6;
 export const RELEASED = '2026-07-29';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,19 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.1.4',
+    build: 6,
+    date: '2026-07-29',
+    es: [
+      'El portal aún no publica su API de aplicaciones: la verificación automática queda a la espera y se usa la importación manual del pasaporte.',
+      'El servidor permite probar una ruta concreta del portal al instante, sin redesplegar.',
+    ],
+    en: [
+      'The portal does not publish its apps API yet: automatic verification is on hold and the manual passport import is used instead.',
+      'The server can now test a specific portal route instantly, with no redeploy.',
+    ],
+  },
   {
     v: '1.1.3',
     build: 5,

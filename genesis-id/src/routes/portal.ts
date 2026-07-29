@@ -300,11 +300,17 @@ portalRouter.get('/ping', async (_req, res) => {
  * un 404, para configurarla sin adivinar.
  *   GET /api/portal/discover
  */
-portalRouter.get('/discover', async (_req, res) => {
+portalRouter.get('/discover', async (req, res) => {
   const clave = revisarClave()
   if (!clave.ok) return res.status(503).json({ error: 'Clave del portal inválida', reason: clave.problema })
 
-  const candidatas: Record<string, string[]> = {
+  // ?paths=/api/x,/api/y prueba rutas concretas. Sirve para comprobar al
+  // instante la ruta real del portal, sin esperar a un redespliegue.
+  const sueltas = String(req.query.paths || '')
+    .split(',').map((s) => s.trim()).filter(Boolean)
+    .map((s) => (s.startsWith('/') ? s : `/${s}`))
+
+  const candidatas: Record<string, string[]> = sueltas.length ? { rutasQuePediste: sueltas } : {
     userStatus: [
       '/api/apps/user-status', '/api/apps/user_status', '/api/apps/userStatus', '/api/apps/status',
       '/api/app/user-status', '/api/v1/apps/user-status', '/api/user-status', '/api/users/status',
@@ -328,21 +334,27 @@ portalRouter.get('/discover', async (_req, res) => {
     : PORTAL_API.replace('://', '://www.')
   if (alt !== PORTAL_API) hosts.push(alt)
 
-  const probar = async (host: string, path: string) => {
+  // Se prueba POST y GET: si la ruta existiera pero con otro método, el
+  // portal respondería 405 en vez de 404, y eso ya sería una pista.
+  const probar = async (host: string, path: string, method: 'POST' | 'GET') => {
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), 12000)
     try {
       const r = await fetch(`${host}${path}`, {
-        method: 'POST',
+        method,
         signal: ctrl.signal,
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-API-Key': API_KEY },
-        body: JSON.stringify({ ping: true, app: 'veta-wallet' }),
+        headers: {
+          Accept: 'application/json',
+          'X-API-Key': API_KEY,
+          ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
+        },
+        body: method === 'POST' ? JSON.stringify({ ping: true, app: 'veta-wallet' }) : undefined,
       })
       const texto = (await r.text()).slice(0, 200)
       const esHtml = /^\s*</.test(texto)
-      return { status: r.status, tipo: esHtml ? 'html' : 'json', muestra: esHtml ? null : texto }
+      return { method, status: r.status, tipo: esHtml ? 'html' : 'json', muestra: esHtml ? null : texto }
     } catch (e) {
-      return { status: 0, tipo: 'error', muestra: motivoDeFallo(e).code }
+      return { method, status: 0, tipo: 'error', muestra: motivoDeFallo(e).code }
     } finally { clearTimeout(timer) }
   }
 
@@ -353,11 +365,23 @@ portalRouter.get('/discover', async (_req, res) => {
     const filas: any[] = []
     for (const host of hosts) {
       for (const path of rutas) {
-        const r = await probar(host, path)
-        // 404 = no existe. Cualquier otra cosa significa que algo hay ahí.
-        if (r.status !== 404 && r.status !== 0) {
-          filas.push({ host, path, ...r })
-          if (!encontradas[grupo]) encontradas[grupo] = `${host}${path}`
+        for (const method of ['POST', 'GET'] as const) {
+          const r = await probar(host, path, method)
+          if (r.status === 404 || r.status === 0) continue
+          // Que responda no basta: una página web también responde. Solo
+          // sirve si devuelve JSON.
+          const esApi = r.tipo === 'json'
+          filas.push({
+            host,
+            path,
+            ...r,
+            lectura: esApi
+              ? (r.status < 300 ? 'API JSON — esta sirve' : `API JSON, pero respondió ${r.status}`)
+              : 'devuelve una página web, no es una API',
+          })
+          if (esApi && !encontradas[grupo] && method === 'POST') encontradas[grupo] = `${host}${path}`
+          // Si el POST ya respondió, no hace falta probar el GET.
+          if (method === 'POST') break
         }
       }
     }
@@ -369,14 +393,28 @@ portalRouter.get('/discover', async (_req, res) => {
     portalProbado: hosts,
     rutasConfiguradasAhora: PATHS,
     rutasQueSIRESPONDEN: resultado,
-    comoConfigurarlo: halladas
-      ? {
+    comoConfigurarlo: sueltas.length
+      ? (encontradas.rutasQuePediste
+        ? `Esa ruta sirve. Guarda en Render la variable que corresponda con el valor: ${encontradas.rutasQuePediste.replace(/^https?:\/\/[^/]+/, '')}`
+        : 'Ninguna de las rutas que pediste devuelve JSON. Mira "lectura" en cada fila.')
+      : halladas
+        ? {
         nota: 'Guarda en Render las variables de las rutas que aparecen arriba y redespliega.',
         GENESIS_PATH_USER_STATUS: encontradas.userStatus?.replace(/^https?:\/\/[^/]+/, '') || '(sin cambios)',
         GENESIS_PATH_REGISTER: encontradas.register?.replace(/^https?:\/\/[^/]+/, '') || '(sin cambios)',
         GENESIS_PATH_TOKEN_VALIDATE: encontradas.tokenValidate?.replace(/^https?:\/\/[^/]+/, '') || '(sin cambios)',
       }
-      : 'Ninguna variante respondió. Pide al equipo del portal la ruta exacta de la API de aplicaciones.',
+      : {
+        lectura: `Ninguna de las ${Object.values(candidatas).flat().length} rutas probadas existe en ${hosts.join(' ni ')} (todas 404). La API de aplicaciones no está publicada ahí.`,
+        comoEncontrarLaRuta: [
+          'El portal es un proyecto Next.js en Vercel: cada ruta de API es un archivo del repositorio.',
+          'Busca en el repo del portal: app/api/**/route.ts  (App Router)  o  pages/api/**.ts  (Pages Router).',
+          'Lo que veas ahí es la ruta real. Ejemplo: app/api/v2/identity/status/route.ts → /api/v2/identity/status',
+          'Si no existe ningún archivo parecido, la API de aplicaciones todavía no está construida en el portal.',
+        ],
+        comoProbarla: 'Cuando tengas la ruta, pruébala al instante sin redesplegar: /api/portal/discover?paths=/tu/ruta',
+        mientrasTanto: 'Veta Wallet no queda bloqueada: el pasaporte se puede importar a mano (Ajustes → Importar mi pasaporte) y el motor guarda las identidades igual.',
+      },
   })
 })
 
