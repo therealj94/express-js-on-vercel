@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.1.2';
-export const BUILD = 4;
+export const VERSION = '1.1.3';
+export const BUILD = 5;
 export const RELEASED = '2026-07-29';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,19 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.1.3',
+    build: 5,
+    date: '2026-07-29',
+    es: [
+      'La clave del portal ya funciona. Ahora falta ajustar la ruta de su API: el servidor la descubre solo.',
+      'Las rutas del portal se configuran sin tocar código, por si el portal las mueve.',
+    ],
+    en: [
+      'The portal key works now. What remains is the API route: the server discovers it on its own.',
+      'Portal routes are configurable without touching code, in case the portal moves them.',
+    ],
+  },
   {
     v: '1.1.2',
     build: 4,

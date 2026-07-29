@@ -56,6 +56,15 @@ export function revisarClave(k = API_KEY) {
 
 const TIMEOUT_MS = Number(process.env.GENESIS_PORTAL_TIMEOUT_MS || 30000)
 
+// Rutas del portal. Se pueden cambiar por variable de entorno sin tocar el
+// código: si el portal las mueve, basta con actualizarlas en el host.
+// Descúbrelas con GET /api/portal/discover.
+const PATHS = {
+  userStatus: process.env.GENESIS_PATH_USER_STATUS || '/api/apps/user-status',
+  register: process.env.GENESIS_PATH_REGISTER || '/api/apps/register-app',
+  tokenValidate: process.env.GENESIS_PATH_TOKEN_VALIDATE || '/api/apps/token-validate',
+}
+
 /**
  * Traduce el fallo de un fetch a algo accionable. Sin esto, cualquier
  * problema de red se veía como un 502 con el mismo texto genérico y era
@@ -225,7 +234,7 @@ portalRouter.get('/status', (_req, res) => {
  *   GET /api/portal/ping
  */
 portalRouter.get('/ping', async (_req, res) => {
-  const rutas = ['/api/apps/user-status', '/api/apps/register-app', '/api/apps/token-validate']
+  const rutas = [PATHS.userStatus, PATHS.register, PATHS.tokenValidate]
 
   // Raíz con GET: comprueba DNS + TLS + que el host esté vivo, sin la clave.
   const raiz = await (async () => {
@@ -284,6 +293,93 @@ portalRouter.get('/ping', async (_req, res) => {
   })
 })
 
+/**
+ * Descubridor de rutas. Cuando el portal responde 404 con HTML, la ruta que
+ * tenemos configurada no existe en ese host. Esto prueba las variantes más
+ * probables (y el host con y sin www) y dice cuál contesta algo que no sea
+ * un 404, para configurarla sin adivinar.
+ *   GET /api/portal/discover
+ */
+portalRouter.get('/discover', async (_req, res) => {
+  const clave = revisarClave()
+  if (!clave.ok) return res.status(503).json({ error: 'Clave del portal inválida', reason: clave.problema })
+
+  const candidatas: Record<string, string[]> = {
+    userStatus: [
+      '/api/apps/user-status', '/api/apps/user_status', '/api/apps/userStatus', '/api/apps/status',
+      '/api/app/user-status', '/api/v1/apps/user-status', '/api/user-status', '/api/users/status',
+      '/api/external/user-status', '/api/partners/user-status', '/api/integrations/user-status',
+      '/apps/user-status', '/api/apps/verify-user',
+    ],
+    register: [
+      '/api/apps/register-app', '/api/apps/register', '/api/apps/register_app', '/api/app/register-app',
+      '/api/v1/apps/register-app', '/api/register-app', '/apps/register-app',
+    ],
+    tokenValidate: [
+      '/api/apps/token-validate', '/api/apps/validate-token', '/api/apps/token_validate',
+      '/api/apps/token/validate', '/api/v1/apps/token-validate', '/api/token-validate', '/apps/token-validate',
+    ],
+  }
+
+  // El host puede estar publicado con o sin www: se prueban ambos.
+  const hosts = [PORTAL_API]
+  const alt = PORTAL_API.includes('://www.')
+    ? PORTAL_API.replace('://www.', '://')
+    : PORTAL_API.replace('://', '://www.')
+  if (alt !== PORTAL_API) hosts.push(alt)
+
+  const probar = async (host: string, path: string) => {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 12000)
+    try {
+      const r = await fetch(`${host}${path}`, {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-API-Key': API_KEY },
+        body: JSON.stringify({ ping: true, app: 'veta-wallet' }),
+      })
+      const texto = (await r.text()).slice(0, 200)
+      const esHtml = /^\s*</.test(texto)
+      return { status: r.status, tipo: esHtml ? 'html' : 'json', muestra: esHtml ? null : texto }
+    } catch (e) {
+      return { status: 0, tipo: 'error', muestra: motivoDeFallo(e).code }
+    } finally { clearTimeout(timer) }
+  }
+
+  const resultado: Record<string, any> = {}
+  const encontradas: Record<string, string> = {}
+
+  for (const [grupo, rutas] of Object.entries(candidatas)) {
+    const filas: any[] = []
+    for (const host of hosts) {
+      for (const path of rutas) {
+        const r = await probar(host, path)
+        // 404 = no existe. Cualquier otra cosa significa que algo hay ahí.
+        if (r.status !== 404 && r.status !== 0) {
+          filas.push({ host, path, ...r })
+          if (!encontradas[grupo]) encontradas[grupo] = `${host}${path}`
+        }
+      }
+    }
+    resultado[grupo] = filas.length ? filas : 'ninguna de las variantes existe (todas 404)'
+  }
+
+  const halladas = Object.keys(encontradas).length
+  res.json({
+    portalProbado: hosts,
+    rutasConfiguradasAhora: PATHS,
+    rutasQueSIRESPONDEN: resultado,
+    comoConfigurarlo: halladas
+      ? {
+        nota: 'Guarda en Render las variables de las rutas que aparecen arriba y redespliega.',
+        GENESIS_PATH_USER_STATUS: encontradas.userStatus?.replace(/^https?:\/\/[^/]+/, '') || '(sin cambios)',
+        GENESIS_PATH_REGISTER: encontradas.register?.replace(/^https?:\/\/[^/]+/, '') || '(sin cambios)',
+        GENESIS_PATH_TOKEN_VALIDATE: encontradas.tokenValidate?.replace(/^https?:\/\/[^/]+/, '') || '(sin cambios)',
+      }
+      : 'Ninguna variante respondió. Pide al equipo del portal la ruta exacta de la API de aplicaciones.',
+  })
+})
+
 portalRouter.get('/inspect', async (req, res) => {
   const email = String(req.query.email || '')
   if (!email.includes('@')) return res.status(400).json({ error: 'Usa ?email=tu@correo.com' })
@@ -298,14 +394,19 @@ portalRouter.get('/inspect', async (req, res) => {
     return s.length <= 4 ? s : `${s.slice(0, 3)}…(${s.length})`
   }
 
-  const r = await callPortal('/api/apps/user-status', { email, app: 'veta-wallet' })
+  const r = await callPortal(PATHS.userStatus, { email, app: 'veta-wallet' })
   const passport = toPassport(r.data)
 
   // Un mensaje de error no es un dato personal: se muestra entero. Enmascarar
   // también los errores fue lo que ocultó la causa real del problema.
   const falloDeRed = r.status === 502 || r.status === 503
+  // Si el portal devuelve HTML (su página de error), no hay campos que mapear:
+  // es que la ruta no existe o no acepta esta llamada. Enmascararlo como
+  // "<!D…(400)" solo escondía el diagnóstico.
+  const devolvioHtml = typeof r.data?.noJson === 'string'
   res.json({
     portal: PORTAL_API,
+    rutaUsada: PATHS.userStatus,
     portalHttpStatus: r.status,
     tardoMs: r.ms,
     ...(falloDeRed
@@ -314,7 +415,15 @@ portalRouter.get('/inspect', async (req, res) => {
         detalle: r.data,
         siguiente: 'Abre /api/portal/ping para ver si el portal es alcanzable desde este servidor.',
       }
-      : {
+      : devolvioHtml
+        ? {
+          problema: r.status === 404
+            ? `El portal respondió 404: la ruta ${PATHS.userStatus} no existe en ${PORTAL_API}.`
+            : `El portal respondió ${r.status} con una página HTML en vez de JSON.`,
+          respuestaHtml: r.data.noJson.slice(0, 200),
+          siguiente: 'Abre /api/portal/discover: prueba las rutas alternativas y te dice cuál configurar.',
+        }
+        : {
         camposQueDevuelveElPortal: mask(r.data),
         pasaporteQueLeeLaApp: passport
           ? Object.fromEntries(Object.entries(passport).filter(([k]) => k !== 'raw').map(([k, v]) => [k, v ? 'OK' : 'FALTA']))
@@ -333,7 +442,7 @@ portalRouter.post('/register', async (req, res) => {
     return res.status(400).json({ error: 'Correo válido requerido' })
   }
   startIdentity(email, fullName, walletAddress)
-  const r = await callPortal('/api/apps/register-app', {
+  const r = await callPortal(PATHS.register, {
     email,
     fullName,
     name: fullName,
@@ -354,7 +463,7 @@ portalRouter.post('/user-status', async (req, res) => {
   if (!email || typeof email !== 'string' || !email.includes('@')) {
     return res.status(400).json({ error: 'Correo válido requerido' })
   }
-  const r = await callPortal('/api/apps/user-status', { email, walletAddress, app: 'veta-wallet' })
+  const r = await callPortal(PATHS.userStatus, { email, walletAddress, app: 'veta-wallet' })
   const passport = toPassport(r.data)
   if (passport) {
     // El portal no siempre devuelve la billetera: la completamos con la
@@ -397,7 +506,7 @@ portalRouter.post('/token-validate', async (req, res) => {
   if (!token || typeof token !== 'string') {
     return res.status(400).json({ error: 'token requerido' })
   }
-  const r = await callPortal('/api/apps/token-validate', { token, app: 'veta-wallet' })
+  const r = await callPortal(PATHS.tokenValidate, { token, app: 'veta-wallet' })
   const passport = toPassport(r.data)
   const mail = passport?.email || email
   if (passport) {

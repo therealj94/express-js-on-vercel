@@ -29,6 +29,15 @@ services:
       # defecto). Súbelo solo si el portal tarda en despertar.
       # - key: GENESIS_PORTAL_TIMEOUT_MS
       #   value: "30000"
+      # Rutas de la API del portal. Solo hacen falta si el portal las publica
+      # en otro sitio (síntoma: 404 con una página HTML). Descúbrelas con
+      # GET /api/portal/discover, que dice exactamente qué poner aquí.
+      # - key: GENESIS_PATH_USER_STATUS
+      #   value: /api/apps/user-status
+      # - key: GENESIS_PATH_REGISTER
+      #   value: /api/apps/register-app
+      # - key: GENESIS_PATH_TOKEN_VALIDATE
+      #   value: /api/apps/token-validate
       # Persistencia entre reinicios (opcional): añade un Disk en Render montado
       # en /var/data y descomenta la siguiente línea para conservar los datos.
       # - key: GENESIS_DATA_FILE
