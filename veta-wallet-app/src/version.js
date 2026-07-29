@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.1.1';
-export const BUILD = 3;
+export const VERSION = '1.1.2';
+export const BUILD = 4;
 export const RELEASED = '2026-07-29';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,21 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.1.2',
+    build: 4,
+    date: '2026-07-29',
+    es: [
+      'Encontrada la causa de que el pasaporte no llegara: la clave del portal guardada en el servidor estaba abreviada.',
+      'El servidor revisa la clave y dice qué le pasa, en vez de reportar que el portal no responde.',
+      'Si la verificación se atasca, ahí mismo se ofrece subir el pasaporte a mano.',
+    ],
+    en: [
+      'Found why the passport never arrived: the portal key stored on the server was an abbreviated copy.',
+      'The server now checks the key and says what is wrong with it, instead of reporting that the portal is down.',
+      'If verification stalls, you can now upload the passport by hand right there.',
+    ],
+  },
   {
     v: '1.1.1',
     build: 3,

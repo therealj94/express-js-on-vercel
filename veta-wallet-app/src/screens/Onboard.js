@@ -122,7 +122,11 @@ export function Kyc({ nav }) {
             <Text style={[st.body, { textAlign: 'center' }]}>
               {reason?.code === 'no-key' ? t('gen.errKeyP') : reason?.code === 'no-engine' ? t('gen.errNetP') : t('gen.pendingP')}
             </Text>
-            <Button3D title={t('gen.recheck')} icon="refresh" onPress={recheck} style={{ alignSelf: 'stretch', marginTop: 16 }} />
+            {/* Motivo exacto que reporta el servidor, para el administrador. */}
+            {reason?.detail ? <Text style={st.detail}>{reason.detail}</Text> : null}
+            {/* Si ya te verificaste en el portal, súbelo a mano y sigue. */}
+            <Button3D title={t('prof.import')} icon="cloud-upload" variant="teal" onPress={() => nav.go('importPassport')} style={{ alignSelf: 'stretch', marginTop: 16 }} />
+            <Button3D title={t('gen.recheck')} icon="refresh" onPress={recheck} style={{ alignSelf: 'stretch', marginTop: 10 }} />
             <Pressable onPress={start} style={st.retry}>
               <Icon name="open-outline" size={14} color={C.gold} />
               <Text style={st.retryTxt}>{t('gen.reopen')}</Text>
@@ -292,6 +296,7 @@ const st = StyleSheet.create({
   uidTxt: { color: C.txt, fontWeight: '700', fontSize: 13, letterSpacing: 0.5 },
   retry: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 12, marginTop: 4 },
   retryTxt: { color: C.gold, fontWeight: '600', fontSize: 13 },
+  detail: { color: '#FBBF24', fontSize: 11.5, lineHeight: 17, textAlign: 'center', marginTop: 10, paddingHorizontal: 6 },
 
   warn: {
     flexDirection: 'row', gap: 12, backgroundColor: 'rgba(240,119,107,0.08)',

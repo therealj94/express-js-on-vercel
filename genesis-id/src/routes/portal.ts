@@ -16,9 +16,43 @@ import { startIdentity, setPassportData, findIdentityByEmail } from '../engine.j
 export const portalRouter = Router()
 
 const PORTAL_API = (process.env.GENESIS_PORTAL_API || 'https://www.genesisid.online').replace(/\/$/, '')
-const API_KEY = process.env.GENESIS_API_KEY || ''
+
+// La clave se limpia al leerla: al pegarla en el panel del host es fácil que
+// se cuelen espacios o un salto de línea al final.
+const API_KEY = (process.env.GENESIS_API_KEY || '').trim()
 
 export const portalConfigured = () => Boolean(API_KEY)
+
+/**
+ * Revisa que la clave se pueda usar como cabecera HTTP.
+ *
+ * Una cabecera solo admite bytes (0-255). Si la clave trae un carácter como
+ * «…» —lo que pasa cuando se copia una versión abreviada del tipo
+ * `gid_live_xxxx…`— fetch lanza un TypeError ANTES de salir a la red, y el
+ * síntoma que se veía era "no se pudo contactar el portal", que apunta al
+ * sitio equivocado. Mejor detectarlo aquí y decir exactamente qué pasa.
+ */
+export function revisarClave(k = API_KEY) {
+  if (!k) return { ok: false, problema: 'GENESIS_API_KEY no está configurada en el servidor.' }
+
+  for (let i = 0; i < k.length; i++) {
+    const cp = k.codePointAt(i)!
+    if (cp > 255) {
+      const nombre = cp === 0x2026 ? '… (puntos suspensivos)' : `«${String.fromCodePoint(cp)}»`
+      return {
+        ok: false,
+        problema: `La clave contiene ${nombre} en la posición ${i}. Eso pasa al copiar una versión ABREVIADA de la clave (gid_live_xxxx…). Copia la clave completa desde el portal y vuelve a guardarla.`,
+      }
+    }
+    if (cp < 32 || cp === 127) {
+      return { ok: false, problema: `La clave contiene un carácter de control en la posición ${i}. Vuelve a pegarla sin saltos de línea.` }
+    }
+    if (cp > 0xffff) i++ // pares suplentes
+  }
+  if (/\s/.test(k)) return { ok: false, problema: 'La clave contiene espacios. Vuelve a pegarla completa, sin espacios.' }
+  if (!k.startsWith('gid_')) return { ok: false, problema: 'La clave no empieza por "gid_". Revisa que sea la clave del portal y no otro valor.' }
+  return { ok: true as const, problema: null }
+}
 
 const TIMEOUT_MS = Number(process.env.GENESIS_PORTAL_TIMEOUT_MS || 30000)
 
@@ -47,8 +81,11 @@ function motivoDeFallo(e: any) {
 }
 
 async function callPortal(path: string, body: unknown) {
-  if (!API_KEY) {
-    return { ok: false as const, status: 503, data: { error: 'GENESIS_API_KEY no configurada en el servidor' }, ms: 0 }
+  // Si la clave no sirve como cabecera, se dice aquí: antes el fetch fallaba
+  // con un TypeError que se leía como "el portal no responde".
+  const clave = revisarClave()
+  if (!clave.ok) {
+    return { ok: false as const, status: 503, data: { error: 'Clave del portal inválida', reason: clave.problema }, ms: 0 }
   }
   // Un intento y un reintento: los servicios que duermen (Render/Vercel free)
   // suelen fallar el primer golpe y responder bien al segundo.
@@ -166,7 +203,12 @@ function persist(email: string, p: ReturnType<typeof toPassport>, walletAddress?
 
 /** ¿Está configurado el puente con el portal? */
 portalRouter.get('/status', (_req, res) => {
-  res.json({ configured: portalConfigured(), portal: PORTAL_API })
+  const clave = revisarClave()
+  res.json({
+    configured: portalConfigured() && clave.ok,
+    portal: PORTAL_API,
+    ...(clave.ok ? {} : { problemaConLaClave: clave.problema }),
+  })
 })
 
 /**
@@ -199,8 +241,17 @@ portalRouter.get('/ping', async (_req, res) => {
     } finally { clearTimeout(timer) }
   })()
 
+  // Radiografía de la clave sin revelarla: longitud, prefijo y si es usable.
+  const clave = revisarClave()
+  const claveInfo = {
+    valida: clave.ok,
+    longitud: API_KEY.length,
+    empiezaPor: API_KEY.slice(0, 9) || null,
+    ...(clave.ok ? {} : { problema: clave.problema }),
+  }
+
   const endpoints: Record<string, any> = {}
-  if (portalConfigured()) {
+  if (clave.ok) {
     for (const p of rutas) {
       const r = await callPortal(p, { ping: true, app: 'veta-wallet' })
       endpoints[p] = {
@@ -221,13 +272,15 @@ portalRouter.get('/ping', async (_req, res) => {
 
   res.json({
     portal: PORTAL_API,
-    claveConfigurada: portalConfigured(),
+    clave: claveInfo,
     timeoutMs: TIMEOUT_MS,
     raiz,
     endpoints,
-    siguiente: raiz.alcanzable
-      ? 'El servidor sí llega al portal: mira el httpStatus de cada ruta.'
-      : `Este servidor NO llega a ${PORTAL_API} (${(raiz as any).code}). Revisa que el dominio y el servicio estén arriba.`,
+    siguiente: !clave.ok
+      ? `Arregla primero la clave: ${clave.problema}`
+      : raiz.alcanzable
+        ? 'El servidor sí llega al portal: mira el httpStatus de cada ruta.'
+        : `Este servidor NO llega a ${PORTAL_API} (${(raiz as any).code}). Revisa que el dominio y el servicio estén arriba.`,
   })
 })
 

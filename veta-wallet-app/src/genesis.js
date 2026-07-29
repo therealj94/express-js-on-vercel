@@ -213,7 +213,9 @@ export const genesis = {
     } catch (e) {
       return { code: 'no-engine' };
     }
-    if (!health?.configured) return { code: 'no-key', portal: health?.portal };
+    // El servidor dice POR QUÉ la clave no sirve (abreviada, con espacios…).
+    // Se pasa tal cual a la pantalla para no obligar a mirar los registros.
+    if (!health?.configured) return { code: 'no-key', portal: health?.portal, detail: health?.problemaConLaClave || null };
     const p = await this.status(email, walletAddress).catch(() => null);
     if (p?.status === 'verified') return { code: 'ok', passport: p };
     return { code: 'not-verified', passport: p };
