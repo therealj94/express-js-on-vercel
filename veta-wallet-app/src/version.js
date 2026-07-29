@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.4.0';
-export const BUILD = 12;
+export const VERSION = '1.4.1';
+export const BUILD = 13;
 export const RELEASED = '2026-07-29';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,17 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.4.1',
+    build: 13,
+    date: '2026-07-29',
+    es: [
+      'Ajustada al SDK 54, que es el que soporta Expo Go de la App Store hoy: ya abre escaneando el QR.',
+    ],
+    en: [
+      'Aligned to SDK 54, the one Expo Go on the App Store supports today: it now opens by scanning the QR.',
+    ],
+  },
   {
     v: '1.4.0',
     build: 12,

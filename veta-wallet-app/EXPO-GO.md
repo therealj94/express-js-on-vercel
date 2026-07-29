@@ -1,6 +1,6 @@
 # Abrir Veta Wallet en Expo Go
 
-Veta Wallet usa el **SDK 57 de Expo**. Expo Go de la tienda solo abre
+Veta Wallet usa el **SDK 54 de Expo**. Expo Go de la tienda solo abre
 proyectos del SDK más reciente: si el proyecto se queda atrás, el teléfono
 contesta con un error de versión y no hay forma de probarlo ahí. Por eso el
 proyecto se mantiene al día.
@@ -56,6 +56,9 @@ eas build -p android --profile preview
 ```
 
 ## Si algo falla
+
+**"Project requires a newer version of Expo Go"**
+Tu Expo Go es más viejo que el SDK del proyecto: actualiza Expo Go desde la tienda.
 
 **"Project is incompatible with this version of Expo Go"**
 Tu Expo Go es de otro SDK. Comprueba con `npm run verificar` qué SDK usa el
