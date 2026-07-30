@@ -53,10 +53,10 @@ export default function TokenDetail({ nav, params }) {
         <View style={{ alignItems: 'center', marginBottom: 16 }}>
           <TokenIcon t={t} size={64} />
           <Text style={styles.qty}>{qtyFmt(t.qty)} {t.s}</Text>
-          <Text style={styles.usd}>≈ {money(t.qty * t.price)} USD</Text>
+          <Text style={styles.usd}>≈ {t.hasPrice ? money(t.qty * t.price) : '—'} USD</Text>
           <View style={styles.priceRow}>
-            <Text style={styles.priceTxt}>{tr('tok.price')}: {money(t.price)}</Text>
-            {t.chg != null && (
+            <Text style={styles.priceTxt}>{tr('tok.price')}: {t.hasPrice ? money(t.price) : '—'}</Text>
+            {t.hasPrice && t.chg != null && (
               <Text style={[styles.chg, { color: up ? C.up : C.down }]}>{up ? '+' : ''}{t.chg.toFixed(2)}% 24h</Text>
             )}
           </View>

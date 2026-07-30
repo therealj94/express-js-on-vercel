@@ -15,7 +15,9 @@ export default function Auth({ nav }) {
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [regName, setRegName] = useState('');
-  const [remember, setRemember] = useState(true);
+  // Apagado por defecto: guardar la contraseña, aunque sea en el llavero
+  // seguro del sistema, es una decisión del usuario, no del producto.
+  const [remember, setRemember] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const { login: setAccount } = useAccount();

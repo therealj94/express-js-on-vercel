@@ -14,6 +14,7 @@ export default function Home({ nav }) {
   const [refreshing, setRefreshing] = useState(false);
   const toast = useToast();
   const t = useT();
+  const tr = t; // alias para no colisionar con la variable "t" del map de tokens
   const { account, login } = useAccount();
   const refreshedOnce = useRef(false);
 
@@ -21,10 +22,14 @@ export default function Home({ nav }) {
   const shortAddr = acc.addr && acc.addr.length > 14 ? `${acc.addr.slice(0, 6)}…${acc.addr.slice(-4)}` : acc.addr || '';
 
   const list = tokensFromBalances(acc.balances);
-  const total = list.reduce((s, t) => s + t.qty * t.price, 0);
+  // Total solo con tokens que tienen precio real. Un feed caído no debe
+  // aparecer como si valiera cero: se refleja como "sin precio" en la ficha.
+  const priced = list.filter((t) => t.hasPrice);
+  const total = priced.reduce((s, t) => s + t.qty * t.price, 0);
+  const holdingNoPrice = list.some((t) => t.qty > 0 && !t.hasPrice);
 
   // Variación 24 h ponderada del portafolio (solo con datos reales del feed).
-  const withChg = list.filter((t) => t.chg != null && t.qty * t.price > 0);
+  const withChg = priced.filter((t) => t.chg != null && t.qty * t.price > 0);
   const chgBase = withChg.reduce((s, t) => s + t.qty * t.price, 0);
   const dayPct = chgBase > 0 ? withChg.reduce((s, t) => s + t.chg * (t.qty * t.price), 0) / chgBase : null;
   const dayUsd = dayPct != null ? total * (dayPct / 100) : null;
@@ -110,18 +115,21 @@ export default function Home({ nav }) {
             <View style={{ flex: 1, marginLeft: 13 }}>
               <Text style={styles.tName}>{t.n}</Text>
               <Text style={styles.tPrice}>
-                {money(t.price)}
-                {t.chg != null && (
+                {t.hasPrice ? money(t.price) : '—'}
+                {t.hasPrice && t.chg != null && (
                   <Text style={{ color: t.chg < 0 ? C.down : C.up, fontWeight: '600' }}>  {t.chg > 0 ? '+' : ''}{t.chg.toFixed(2)}%</Text>
                 )}
               </Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.tVal}>{hidden ? '••••' : money(t.qty * t.price)}</Text>
+              <Text style={styles.tVal}>{hidden ? '••••' : (t.hasPrice ? money(t.qty * t.price) : '—')}</Text>
               <Text style={styles.tQty}>{hidden ? `•••• ${t.s}` : `${qtyFmt(t.qty)} ${t.s}`}</Text>
             </View>
           </Pressable>
         ))}
+        {holdingNoPrice && !hidden && (
+          <Text style={styles.noPriceHint}>{tr('home.noPriceHint')}</Text>
+        )}
       </ScrollView>
     </View>
   );
@@ -148,4 +156,5 @@ const styles = StyleSheet.create({
   tPrice: { fontSize: 12, color: C.txt3, marginTop: 2 },
   tQty: { fontSize: 12, color: C.txt3, marginTop: 2 },
   tVal: { fontSize: 14.5, fontWeight: '600', color: C.txt },
+  noPriceHint: { color: C.txt3, fontSize: 11.5, lineHeight: 16, textAlign: 'center', marginTop: 8, paddingHorizontal: 12 },
 });

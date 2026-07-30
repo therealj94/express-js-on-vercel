@@ -6,7 +6,7 @@ import * as Clipboard from 'expo-clipboard';
 import { C } from '../theme';
 import { Header, TokenIcon, Button3D, Card, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt, tokensFromBalances } from '../data';
-import { apiSend, apiPortfolio, NETWORK_FEE_ORIGEN, CHAIN_ID } from '../api';
+import { apiSend, apiPortfolio, estimateNetworkFee, NETWORK_FEE_ORIGEN, CHAIN_ID } from '../api';
 import { updateAccount } from '../accounts';
 import { listContacts, touchContact, addContact, parseAddress } from '../addressBook';
 import { ScanModal } from './Scan';
@@ -80,10 +80,20 @@ export function Send({ nav }) {
     if (account?.email) listContacts(account.email).then(setContacts);
   }, [account?.email]);
 
+  // Fee real leído del RPC. Antes vivía hardcodeado (0.0084) y si la red
+  // subía el gasPrice el envío fallaba en silencio. Se refresca al montar
+  // la pantalla y usa el respaldo si el RPC no responde.
+  const [fee, setFee] = useState(NETWORK_FEE_ORIGEN);
+  useEffect(() => {
+    let vivo = true;
+    estimateNetworkFee(21000).then((f) => { if (vivo) setFee(f); }).catch(() => {});
+    return () => { vivo = false; };
+  }, []);
+
   const amount = parseFloat(amt) || 0;
   const usd = amount * (tok.price || 0);
   const isNative = tok.s === 'ORIGEN';
-  const insufficient = isNative && amount > 0 && amount + NETWORK_FEE_ORIGEN > tok.qty;
+  const insufficient = isNative && amount > 0 && amount + fee > tok.qty;
 
   // Paso 1: revisar. Solo comprueba los datos y abre la ficha de revisión;
   // la contraseña se pide allí, junto al resumen de lo que se va a firmar.
@@ -98,8 +108,8 @@ export function Send({ nav }) {
       usd,
       symbol: tok.s,
       to: to.trim(),
-      fee: isNative ? NETWORK_FEE_ORIGEN : 0,
-      total: amount + (isNative ? NETWORK_FEE_ORIGEN : 0),
+      fee: isNative ? fee : 0,
+      total: amount + (isNative ? fee : 0),
       saldoAntes: tok.qty,
       contacto: contacts.find((c) => c.address.toLowerCase() === to.trim().toLowerCase())?.name || null,
     });
@@ -130,7 +140,7 @@ export function Send({ nav }) {
             to: to.trim(),
             gasUsed: r.receipt?.gasUsed ?? null,
             blockNumber: r.receipt?.blockNumber ?? null,
-            fee: NETWORK_FEE_ORIGEN,
+            fee,
             localPending: !r.hash,
           };
           const yaEsta = (account.transfers || []).some((x) => x.hash === nueva.hash);
@@ -228,10 +238,10 @@ export function Send({ nav }) {
 
         <View style={{ height: 14 }} />
         <Card style={{ padding: 14, marginBottom: 16 }}>
-          <Row k={t('send.fee')} v={`${NETWORK_FEE_ORIGEN} ORIGEN`} />
+          <Row k={t('send.fee')} v={`${fee.toFixed(6)} ORIGEN`} />
           <Row k={t('send.network')} v="Orden Global · 8532" />
-          <Row k={t('send.total')} v={`${amount ? (amount + (isNative ? NETWORK_FEE_ORIGEN : 0)).toFixed(4) : '—'} ${tok.s}`} />
-          <Row k={t('send.after')} v={`${amount ? Math.max(0, tok.qty - amount - (isNative ? NETWORK_FEE_ORIGEN : 0)).toFixed(4) : qtyFmt(tok.qty)} ${tok.s}`} />
+          <Row k={t('send.total')} v={`${amount ? (amount + (isNative ? fee : 0)).toFixed(4) : '—'} ${tok.s}`} />
+          <Row k={t('send.after')} v={`${amount ? Math.max(0, tok.qty - amount - (isNative ? fee : 0)).toFixed(4) : qtyFmt(tok.qty)} ${tok.s}`} />
         </Card>
         {insufficient && <Text style={styles.errTxt}>{t('send.insufficient', { q: qtyFmt(tok.qty), s: tok.s })}</Text>}
 
@@ -531,16 +541,15 @@ export function Receive({ nav }) {
 
 // ================= COMPRAR =================
 // ================= COMPRAR =================
-// Flujo de 3 pasos: elegir monto en USDT + red → pagar (QR con dirección
-// de tesorería y monto exacto) → estado en vivo.
+// La pasarela USDT → ORIGEN vive en el backend (endpoints /api/buy/* y
+// pollers de TRC-20/BEP-20). Mientras eso no exista, la pantalla NO
+// muestra direcciones reales de tesorería para evitar que un usuario
+// mande USDT y no reciba nada. En su lugar aparece un aviso "en
+// preparación" con la opción de que le avisemos cuando esté lista.
 //
-// Por ahora la compra directa es SOLO ORIGEN. Los demás tokens (AUKA,
-// AGKA, ONDK, MNKA) se obtienen luego con Swap desde ORIGEN, para que la
-// tesorería no tenga que atender cinco pares distintos.
-//
-// La detección automática del pago vive en el backend (aún por enchufar):
-// mientras tanto la pantalla muestra el diseño completo con un banner
-// "en pruebas" bien visible para que nadie envíe USDT sin querer.
+// El interruptor está aquí para volver a abrir la pantalla en una línea
+// cuando el backend confirme detección de pagos.
+const BUY_ENABLED = false;
 const BUYABLE = ['ORIGEN'];
 const PAY_CHAINS = [
   { id: 'TRC20', short: 'TRC-20', tone: '#EF4444', net: 'Tron',            addr: 'TGxSQXLJKnWUzHNyvBzzWJZHDNrbfobvSg' },
@@ -553,6 +562,26 @@ export function Buy({ nav }) {
   const tokens = useTokens();
   const buyable = tokens.filter((x) => BUYABLE.includes(x.s));
   const first = buyable.find((x) => x.s === 'ORIGEN') || buyable[0] || { s: 'ORIGEN', n: 'ORIGEN', price: 0 };
+
+  // La pasarela está apagada hasta que el backend detecte pagos. Vista
+  // de "en preparación" para que la tarjeta no muestre direcciones reales
+  // por accidente (evitar que alguien mande USDT sin que se acredite).
+  if (!BUY_ENABLED) {
+    return (
+      <View style={{ flex: 1, paddingTop: 6 }}>
+        <Header title={t('buy.title')} onBack={() => nav.back()} />
+        <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 60 }}>
+          <View style={styles.soonWrap}>
+            <View style={styles.soonIcon}><Icon name="construct" size={34} color={C.gold} /></View>
+            <Text style={styles.soonTitle}>{t('buy.wipT')}</Text>
+            <Text style={styles.soonBody}>{t('buy.wipP')}</Text>
+            <View style={{ height: 20 }} />
+            <Button3D title={t('buy.wipCta')} icon="qr-code" onPress={() => nav.go('receive')} style={{ alignSelf: 'stretch' }} />
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
 
   const [step, setStep] = useState('choose'); // 'choose' | 'pay' | 'status'
   const [tok] = useState(first); // por ahora fijo en ORIGEN

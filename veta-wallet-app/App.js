@@ -6,10 +6,12 @@ import { C } from './src/theme';
 import { Nav, ToastCtx, AccountCtx, AppBackground } from './src/ui';
 import { LangProvider, useT, useLang } from './src/i18n';
 import * as Linking from 'expo-linking';
+import NetInfo from '@react-native-community/netinfo';
 import { loadSession, saveSession, clearSession, initAccounts, setPassport, updateAccount } from './src/accounts';
 import { loadToken, setToken, ensureSession, clearCreds, apiPortfolio } from './src/api';
 import { readReturnUrl, genesis, mergePassport } from './src/genesis';
 import { activarAvisos, limpiarAvisos, watchIncoming, marcarVisto, stopWatch, alTocarNotificacion, avisosActivos } from './src/notify';
+import LockScreen, { useAppLock } from './src/LockScreen';
 
 import Splash from './src/screens/Splash';
 import Auth from './src/screens/Auth';
@@ -23,6 +25,7 @@ import Scan from './src/screens/Scan';
 import Contacts from './src/screens/Contacts';
 import ImportPassport from './src/screens/ImportPassport';
 import About from './src/screens/About';
+import ErrorBoundary from './src/ErrorBoundary';
 
 const SCREENS = {
   splash: Splash, auth: Auth, kyc: Kyc, seedview: SeedView, genesisOffer: GenesisOffer,
@@ -43,9 +46,11 @@ const FULLSCREEN = ['splash', 'auth']; // sin barra de estado propia / sin tabba
 
 export default function App() {
   return (
-    <LangProvider>
-      <Root />
-    </LangProvider>
+    <ErrorBoundary>
+      <LangProvider>
+        <Root />
+      </LangProvider>
+    </ErrorBoundary>
   );
 }
 
@@ -56,6 +61,20 @@ function Root() {
   const [account, setAccount] = useState(null);
   const cur = stack[stack.length - 1];
   const anim = useRef(new Animated.Value(0)).current;
+
+  // Candado biométrico: se pide al arrancar y al volver del segundo plano
+  // tras más de 2 minutos afuera. Sin biometría configurada arranca abierto.
+  const { locked, setLocked, available } = useAppLock();
+
+  // Banner sin internet: aparece en la parte superior cuando NetInfo
+  // reporta desconexión, se desvanece al recuperar.
+  const [online, setOnline] = useState(true);
+  useEffect(() => {
+    const sub = NetInfo.addEventListener((s) => {
+      setOnline(s.isConnected !== false);
+    });
+    return () => sub();
+  }, []);
 
   // Arranque: restaura la sesión guardada y renueva el token en silencio
   // (con "Recordarme" el JWT vencido se renueva solo — la app no te saca).
@@ -293,6 +312,19 @@ function Root() {
           <Text style={styles.toastTxt}>{toast}</Text>
         </Animated.View>
       )}
+
+      {!online && (
+        <View style={styles.offline} pointerEvents="none">
+          <Icon name="cloud-offline" size={14} color="#fff" />
+          <Text style={styles.offlineTxt}>{tr('home.offlineBanner')}</Text>
+        </View>
+      )}
+
+      {locked && (
+        <View style={StyleSheet.absoluteFill}>
+          <LockScreen onUnlock={() => setLocked(false)} available={available} />
+        </View>
+      )}
     </AppBackground>
   );
 }
@@ -304,4 +336,13 @@ const styles = StyleSheet.create({
   tabTxt: { fontSize: 10, fontWeight: '600' },
   toast: { position: 'absolute', bottom: 96, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#0A3A3C', borderWidth: 1, borderColor: C.gold, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 20, maxWidth: '86%' },
   toastTxt: { color: C.txt, fontWeight: '600', fontSize: 13 },
+  offline: {
+    position: 'absolute',
+    top: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0,
+    left: 0, right: 0,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#8A2A21',
+    paddingVertical: 6, paddingHorizontal: 12,
+  },
+  offlineTxt: { color: '#fff', fontSize: 11.5, fontWeight: '700' },
 });

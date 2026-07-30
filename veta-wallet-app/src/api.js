@@ -1,10 +1,43 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 // ============================================================
 // Veta Wallet — capa de conexión con el backend oficial de
 // Orden Global (Heroku) y la blockchain (nodo RPC, chain 8532).
 // Nada simulado: login, saldos, historial y envíos son reales.
+//
+// SECRETOS EN EL DISPOSITIVO
+// El token JWT y las credenciales "recordarme" viven en el
+// Keychain (iOS) y Keystore (Android) mediante expo-secure-store,
+// no en AsyncStorage. Un backup del teléfono ya no expone
+// contraseñas. La migración desde AsyncStorage se hace la
+// primera vez que se lee cada llave (ver secureGet).
 // ============================================================
+
+// ---------- almacenamiento seguro (llavero del sistema) ----------
+async function secureGet(key) {
+  try {
+    const v = await SecureStore.getItemAsync(key);
+    if (v != null) return v;
+    // Migración: si aún queda en AsyncStorage (versión vieja),
+    // lo movemos al llavero y limpiamos el rastro anterior.
+    const legacy = await AsyncStorage.getItem(key);
+    if (legacy != null) {
+      try { await SecureStore.setItemAsync(key, legacy); } catch (e) {}
+      try { await AsyncStorage.removeItem(key); } catch (e) {}
+      return legacy;
+    }
+    return null;
+  } catch (e) { return null; }
+}
+async function secureSet(key, value) {
+  try { await SecureStore.setItemAsync(key, String(value)); } catch (e) {}
+}
+async function secureDel(key) {
+  try { await SecureStore.deleteItemAsync(key); } catch (e) {}
+  // Por si quedó copia vieja en AsyncStorage tras una actualización.
+  try { await AsyncStorage.removeItem(key); } catch (e) {}
+}
 
 export const API_BASE = (process.env.EXPO_PUBLIC_WALLET_API_URL || 'https://vetawallet-1a2e38ac52b1.herokuapp.com').replace(/\/$/, '') || null;
 export const USE_REAL_API = !!API_BASE;
@@ -16,33 +49,34 @@ const PATHS = {
   send: process.env.EXPO_PUBLIC_WALLET_PATH_SEND || '/transaction/send',
 };
 
-// ---------- token + credenciales recordadas ----------
+// ---------- token + credenciales recordadas (en el llavero) ----------
 let token = null;
+const TOKEN_KEY = 'veta-api-token';
 
 export async function loadToken() {
-  try { token = await AsyncStorage.getItem('veta-api-token'); } catch (e) {}
+  token = await secureGet(TOKEN_KEY);
   return token;
 }
 export async function setToken(t) {
   token = t || null;
-  try {
-    if (t) await AsyncStorage.setItem('veta-api-token', t);
-    else await AsyncStorage.removeItem('veta-api-token');
-  } catch (e) {}
+  if (t) await secureSet(TOKEN_KEY, t);
+  else await secureDel(TOKEN_KEY);
 }
 export function getToken() { return token; }
 
 // "Recordarme": guarda credenciales para renovar la sesión sola cuando el
 // JWT expira (el backend lo vence a los 40 min). Así la app no te saca.
+// Van al Keychain/Keystore, no a AsyncStorage.
 const CREDS_KEY = 'veta-remember-creds';
 export async function saveCreds(email, password) {
-  try { await AsyncStorage.setItem(CREDS_KEY, JSON.stringify({ email, password })); } catch (e) {}
+  await secureSet(CREDS_KEY, JSON.stringify({ email, password }));
 }
 export async function loadCreds() {
-  try { const raw = await AsyncStorage.getItem(CREDS_KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+  const raw = await secureGet(CREDS_KEY);
+  try { return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
 }
 export async function clearCreds() {
-  try { await AsyncStorage.removeItem(CREDS_KEY); } catch (e) {}
+  await secureDel(CREDS_KEY);
 }
 
 // ---------- JWT ----------
@@ -371,12 +405,16 @@ export async function livePrices() {
 
 // ---------- registro de tokens on-chain (red Orden Global 8532) ----------
 export const CHAIN_ID = process.env.EXPO_PUBLIC_WALLET_CHAIN_ID || '8532';
+// Ya no hay `fallbackPrice`: si CoinGecko y gold-api caen, es preferible
+// mostrar "—" que un número congelado que un usuario podría confundir con
+// precio de mercado y usar para vender/comprar mal. La app pinta el estado
+// "sin precio" en Home y TokenDetail cuando priceUsd viene null.
 export const ONCHAIN_TOKENS = [
-  { symbol: 'ORIGEN', native: true, decimals: 18, fallbackPrice: 2.35 },
-  { symbol: 'AUKA', contract: '0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B', fallbackPrice: 4014 },
-  { symbol: 'AGKA', contract: '0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B', fallbackPrice: 57.22 },
-  { symbol: 'ONDK', contract: '0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1', fallbackPrice: 2.10 },
-  { symbol: 'MNKA', contract: '0x18b6680CFF71c11067bec312Fc48786bE2e54Ead', fallbackPrice: 1.50 },
+  { symbol: 'ORIGEN', native: true, decimals: 18 },
+  { symbol: 'AUKA', contract: '0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B' },
+  { symbol: 'AGKA', contract: '0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B' },
+  { symbol: 'ONDK', contract: '0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1' },
+  { symbol: 'MNKA', contract: '0x18b6680CFF71c11067bec312Fc48786bE2e54Ead' },
 ];
 
 // Portafolio real completo: saldo de cada token (RPC), precio en vivo,
@@ -409,11 +447,12 @@ export async function apiPortfolio() {
     } catch (e) {}
     let priceUsd = prices[t.symbol];
     if (priceUsd == null && t.symbol === 'ONDK' && ondkPrice) priceUsd = ondkPrice;
-    if (priceUsd == null) priceUsd = t.fallbackPrice;
+    // Sin precio real: se envía null (la UI lo pinta como "—"). Nunca un
+    // valor cocinado — el usuario podría tomar decisiones a partir de él.
     return {
       symbol: t.symbol,
       qty: Number.isFinite(qty) ? qty : 0,
-      priceUsd,
+      priceUsd: priceUsd != null && priceUsd > 0 ? priceUsd : null,
       changePct: changes[t.symbol] ?? null,
       contract: t.contract || null,
     };
@@ -441,8 +480,41 @@ export async function apiSend({ to, amount, password }) {
   return { hash, ok, receipt: r };
 }
 
-// Comisión de red real observada en la chain (gasPrice 400 gwei × 21000 gas).
+// Comisión de red por defecto (gasPrice 400 gwei × 21000 gas). Sirve de
+// respaldo si la lectura de gasPrice del RPC falla. En condiciones normales
+// la app llama a estimateNetworkFee() y usa el valor real de la chain.
 export const NETWORK_FEE_ORIGEN = 0.0084;
+
+/**
+ * Estima el fee real de una transferencia nativa (ORIGEN) leyendo el
+ * gasPrice actual del RPC. Devuelve el fee en ORIGEN. Si el RPC no
+ * responde, devuelve NETWORK_FEE_ORIGEN como respaldo.
+ *
+ *   fee_wei = gasPrice_wei * gasLimit
+ *   fee_origen = fee_wei / 10^18
+ *
+ * gasLimit 21000 para transferencia nativa (por defecto). Para ERC-20
+ * pasar 65000 aprox. cuando lo enchufemos.
+ */
+export async function estimateNetworkFee(gasLimit = 21000) {
+  try {
+    let provider = RPC_FALLBACK;
+    try {
+      const raw = await walletApi.chain(CHAIN_ID);
+      const chain = Array.isArray(raw) ? raw[0] : raw?.chain || raw?.data || raw;
+      provider = chain?.provider || RPC_FALLBACK;
+    } catch (e) {}
+    const hex = await rpcCall(provider, 'eth_gasPrice', []);
+    if (!hex) return NETWORK_FEE_ORIGEN;
+    const gasPrice = BigInt(hex);
+    const feeWei = gasPrice * BigInt(gasLimit);
+    const div = BigInt(10) ** BigInt(18);
+    const fee = Number(feeWei / div) + Number(feeWei % div) / Number(div);
+    return Number.isFinite(fee) && fee > 0 ? fee : NETWORK_FEE_ORIGEN;
+  } catch (e) {
+    return NETWORK_FEE_ORIGEN;
+  }
+}
 
 // ---------- seed / llave privada (si el backend los expone) ----------
 async function tryPaths(cands, opts) {

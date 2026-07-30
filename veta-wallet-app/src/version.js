@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.6.1';
-export const BUILD = 21;
+export const VERSION = '1.8.0';
+export const BUILD = 23;
 export const RELEASED = '2026-07-30';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,42 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.8.0',
+    build: 23,
+    date: '2026-07-30',
+    es: [
+      'Bloqueo con biometría al abrir la app y al volver del segundo plano tras más de 2 minutos. Usa tu huella o Face ID. Si tu teléfono no tiene biometría configurada, la app te avisa y sigue funcionando.',
+      'Barra roja "sin conexión" cuando el teléfono pierde internet: sabes que los datos que ves son los guardados, no los últimos.',
+      'Comisión de red leída del RPC en tiempo real. Se acabó el fee fijo — si la red sube, el envío calcula bien y no falla.',
+      'Precios sin feed real muestran "—" en vez de un número congelado. Si algún token no tiene precio ahora, la app te lo avisa en Home.',
+    ],
+    en: [
+      'Biometric lock when opening the app and when returning from background after more than 2 minutes. Uses your fingerprint or Face ID. If your phone has no biometrics set up, the app tells you and keeps working.',
+      'Red "no connection" bar when the phone loses internet: you know the data you see is saved data, not the latest.',
+      'Network fee read from RPC in real time. No more fixed fee — if the network price rises, the send calculates correctly and does not fail.',
+      'Prices without real feed show "—" instead of a frozen number. If any token has no price right now, the app warns you on Home.',
+    ],
+  },
+  {
+    v: '1.7.0',
+    build: 22,
+    date: '2026-07-30',
+    es: [
+      'Seguridad reforzada: tu contraseña y el token de sesión pasan al llavero del sistema (Keychain en iPhone, Keystore en Android) en vez del almacenamiento común. Un respaldo de tu teléfono ya no expone tus credenciales.',
+      'El "Recordarme" del login queda apagado por defecto. Ahora es una decisión tuya, no una opción tomada por la app.',
+      'Red de seguridad global: si algo falla en la app, aparece una pantalla de "algo salió mal" con opción de reintentar, en vez de quedarse en blanco.',
+      'La pantalla Comprar entra en modo "en preparación": no muestra direcciones de tesorería hasta que la detección automática de pagos esté lista. Es para evitar que alguien mande USDT y no reciba nada.',
+      'Declaración de Face ID y de encriptación no exenta, requisitos de la App Store.',
+    ],
+    en: [
+      'Hardened security: your password and session token move to the system keychain (Keychain on iPhone, Keystore on Android) instead of common storage. A backup of your phone no longer exposes your credentials.',
+      'The "Remember me" toggle on login is now off by default. It is your decision, not one the app made for you.',
+      'Global safety net: if something crashes, a friendly "something went wrong" screen appears with a retry, instead of a blank screen.',
+      'The Buy screen enters "in preparation" mode: no treasury addresses are shown until automatic payment detection is ready. Prevents anyone from sending USDT and not being credited.',
+      'Face ID and non-exempt encryption declarations, required by the App Store.',
+    ],
+  },
   {
     v: '1.6.1',
     build: 21,

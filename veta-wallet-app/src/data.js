@@ -70,15 +70,19 @@ export const COIN_INFO = {
 
 // Convierte los balances reales ([{symbol, qty, priceUsd, changePct, contract}])
 // en la forma que renderiza la UI. Muestra TODOS los tokens, incluso en 0.
+// Un precio ausente (feed caído) llega como null y la UI lo pinta como "—";
+// nunca se sustituye por un valor congelado.
 export function tokensFromBalances(balances) {
   return (balances || []).map((b) => {
     const sym = (b.symbol || '').toUpperCase();
     const meta = TOKEN_META[sym] || { s: sym, n: sym, glyph: sym.slice(0, 3), grad: ['#1E8C74', '#0A463F'], fg: '#EAD79C' };
+    const price = b.priceUsd != null && Number(b.priceUsd) > 0 ? Number(b.priceUsd) : null;
     return {
       ...meta,
       s: sym,
       qty: Number(b.qty) || 0,
-      price: Number(b.priceUsd) || 0,
+      price: price != null ? price : 0,
+      hasPrice: price != null,
       chg: b.changePct != null ? Number(b.changePct) : null,
       contract: b.contract || null,
     };
