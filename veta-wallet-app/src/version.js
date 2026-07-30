@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.5.1';
-export const BUILD = 16;
+export const VERSION = '1.5.2';
+export const BUILD = 17;
 export const RELEASED = '2026-07-29';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,17 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.5.2',
+    build: 17,
+    date: '2026-07-29',
+    es: [
+      'Prueba de despliegue automático: este mensaje llegó a tu teléfono sin abrir la computadora ni escribir un solo comando.',
+    ],
+    en: [
+      'Automatic deployment test: this message reached your phone without opening your computer or running a single command.',
+    ],
+  },
   {
     v: '1.5.1',
     build: 16,
