@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.5.4';
-export const BUILD = 19;
+export const VERSION = '1.6.0';
+export const BUILD = 20;
 export const RELEASED = '2026-07-30';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,23 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.6.0',
+    build: 20,
+    date: '2026-07-30',
+    es: [
+      'Nuevo flujo "Comprar": eliges token (ORIGEN, AUKA, AGKA, ONDK, MNKA) y monto en USDT, pagas por Tron (TRC-20) o BNB Smart Chain (BEP-20) y ves el estado en vivo hasta que los tokens caen en tu billetera.',
+      'La orden genera un monto exacto con 4 decimales aleatorios (ej. 100.0342 USDT) — el backend reconocerá tu pago aunque la red no soporte memo/tag.',
+      'Sin comisiones. Mínimo de compra: 5 USDT.',
+      'La pasarela viaja en modo de pruebas: la pantalla enseña el diseño completo y avisa con un banner grande. La detección automática del pago se enciende cuando conectemos el backend.',
+    ],
+    en: [
+      'New "Buy" flow: pick a token (ORIGEN, AUKA, AGKA, ONDK, MNKA) and USDT amount, pay via Tron (TRC-20) or BNB Smart Chain (BEP-20) and watch the status live until the tokens land in your wallet.',
+      'Each order generates an exact amount with 4 random decimals (e.g. 100.0342 USDT) — the backend can identify your payment even on networks with no memo/tag.',
+      'No fees. Minimum order: 5 USDT.',
+      'The gateway ships in test mode: the screen shows the full design with a large notice. Automatic payment detection turns on when we connect the backend.',
+    ],
+  },
   {
     v: '1.5.4',
     build: 19,

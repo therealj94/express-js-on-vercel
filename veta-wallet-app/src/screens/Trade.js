@@ -528,18 +528,262 @@ export function Receive({ nav }) {
 }
 
 // ================= COMPRAR =================
+// ================= COMPRAR =================
+// Flujo de 3 pasos: elegir token + monto en USDT + red → pagar (QR con
+// dirección de tesorería y monto exacto) → estado en vivo.
+//
+// Nota: la detección automática del pago vive en el backend (aún por
+// enchufar). Mientras tanto la pantalla enseña el diseño completo y avisa
+// con banner "en pruebas" para que nadie mande USDT sin querer.
+const BUYABLE = ['ORIGEN', 'AUKA', 'AGKA', 'ONDK', 'MNKA'];
+const PAY_CHAINS = [
+  { id: 'TRC20', short: 'TRC-20', tone: '#EF4444', net: 'Tron',            addr: 'TGxSQXLJKnWUzHNyvBzzWJZHDNrbfobvSg' },
+  { id: 'BEP20', short: 'BEP-20', tone: '#F0B90B', net: 'BNB Smart Chain', addr: '0xa8e20f3c6ee078bd20325693acda5047f8f6ced7' },
+];
+
 export function Buy({ nav }) {
   const t = useT();
+  const toast = useToast();
+  const tokens = useTokens();
+  const buyable = tokens.filter((x) => BUYABLE.includes(x.s));
+  const first = buyable.find((x) => x.s === 'ORIGEN') || buyable[0] || { s: 'ORIGEN', n: 'ORIGEN', price: 0 };
+
+  const [step, setStep] = useState('choose'); // 'choose' | 'pay' | 'status'
+  const [tok, setTok] = useState(first);
+  const [amt, setAmt] = useState('');
+  const [chain, setChain] = useState(PAY_CHAINS[0]);
+  const [pick, setPick] = useState(false);
+  const [order, setOrder] = useState(null);
+  const [status, setStatus] = useState('waiting'); // waiting | detected | sending | done
+  const [expiresAt, setExpiresAt] = useState(0);
+  const [now, setNow] = useState(Date.now());
+
+  // Reloj para el contador de expiración (30 min).
+  useEffect(() => {
+    if (step === 'choose') return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [step]);
+
+  const usd = parseFloat(amt) || 0;
+  const priced = tok.price > 0;
+  const qty = priced ? usd / tok.price : 0;
+  const canGo = priced && usd >= 5;
+
+  function buildOrder() {
+    if (!canGo) return;
+    // El "código" de la orden son 4 decimales aleatorios sumados al monto.
+    // Ej: 100 USDT → 100.0342. Así el backend reconoce la orden al llegar
+    // el pago aunque la red no soporte memo/tag.
+    const tag = Math.floor(1000 + Math.random() * 8999);
+    const exact = (usd + tag / 10000).toFixed(4);
+    const id = `VW-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    setOrder({ id, exact, qty, tokenSym: tok.s, tokenName: tok.n, chain, createdAt: Date.now() });
+    setExpiresAt(Date.now() + 30 * 60 * 1000);
+    setStatus('waiting');
+    setStep('pay');
+  }
+
+  function markPaid() {
+    hap();
+    setStatus('detected');
+    setStep('status');
+    // Simulación visual del avance: cuando el backend esté conectado
+    // este bloque se reemplaza por polling real al endpoint de estado.
+    setTimeout(() => setStatus('sending'), 2500);
+    setTimeout(() => setStatus('done'), 6000);
+  }
+
+  function cancelOrder() {
+    setOrder(null);
+    setStep('choose');
+    setStatus('waiting');
+  }
+
+  async function copyAddr() {
+    hap();
+    try { await Clipboard.setStringAsync(chain.addr); toast(t('buy.addrCopied')); } catch { toast(t('recv.copyErr')); }
+  }
+  async function copyAmt() {
+    hap();
+    try { await Clipboard.setStringAsync(order.exact); toast(t('buy.amtCopied')); } catch {}
+  }
+
+  const remaining = Math.max(0, Math.floor((expiresAt - now) / 1000));
+  const mm = String(Math.floor(remaining / 60)).padStart(2, '0');
+  const ss = String(remaining % 60).padStart(2, '0');
+
+  // ---------- Paso 1: elegir ----------
+  if (step === 'choose') {
+    return (
+      <View style={{ flex: 1, paddingTop: 6 }}>
+        <Header title={t('buy.title')} onBack={() => nav.back()} />
+        <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 110 }} keyboardShouldPersistTaps="handled">
+          <View style={styles.testBanner}>
+            <Icon name="construct" size={18} color={C.gold} />
+            <Text style={styles.testBannerTxt}>{t('buy.testBanner')}</Text>
+          </View>
+
+          <Text style={styles.label}>{t('buy.tokenLbl')}</Text>
+          <Selector token={tok} label={tok.n} onPress={() => setPick(true)} />
+
+          <Text style={styles.label}>{t('buy.amtLbl')}</Text>
+          <View style={styles.bigInput}>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+              <Text style={{ color: C.txt3, fontSize: 22, fontWeight: '700' }}>$</Text>
+              <TextInput value={amt} onChangeText={setAmt} placeholder="0" placeholderTextColor={C.txt3} keyboardType="decimal-pad" style={styles.amtIn} />
+            </View>
+            <Text style={styles.cur}>USDT</Text>
+            {priced && usd > 0 && (
+              <Text style={{ color: C.txt2, fontSize: 12.5, marginTop: 6, textAlign: 'center' }}>
+                ≈ {qtyFmt(qty)} {tok.s}   ·   {money(tok.price)} / {tok.s}
+              </Text>
+            )}
+            {!priced && (
+              <Text style={{ color: C.down, fontSize: 12, marginTop: 6, textAlign: 'center' }}>{t('buy.noPrice')}</Text>
+            )}
+          </View>
+
+          <Text style={styles.label}>{t('buy.chainLbl')}</Text>
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 8 }}>
+            {PAY_CHAINS.map((c) => {
+              const on = chain.id === c.id;
+              return (
+                <Pressable key={c.id} onPress={() => { hap(); setChain(c); }} style={[styles.chainPill, on && { borderColor: c.tone, backgroundColor: 'rgba(201,169,97,0.08)' }]}>
+                  <View style={[styles.chainDot, { backgroundColor: c.tone }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.chainTxt, on && { color: C.txt }]}>{c.short}</Text>
+                    <Text style={styles.chainSub}>{c.net}</Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={{ color: C.txt3, fontSize: 11.5, marginBottom: 16, lineHeight: 16 }}>
+            {t('buy.chainHint')}
+          </Text>
+
+          <View style={styles.summary}>
+            <Row k={t('buy.recibes')} v={priced && usd ? `${qtyFmt(qty)} ${tok.s}` : '—'} />
+            <Row k={t('buy.pagas')} v={usd ? `${usd.toFixed(2)} USDT` : '—'} />
+            <Row k={t('buy.tarifa')} v={t('buy.tarifaFree')} />
+          </View>
+
+          <Button3D title={t('buy.next')} icon="arrow-forward" disabled={!canGo} onPress={() => { hap(); buildOrder(); }} />
+          {usd > 0 && usd < 5 && (
+            <Text style={{ color: C.down, fontSize: 12, marginTop: 10, textAlign: 'center' }}>{t('buy.min')}</Text>
+          )}
+        </ScrollView>
+        <TokenPicker visible={pick} tokens={buyable.length ? buyable : [first]} onClose={() => setPick(false)} onPick={setTok} />
+      </View>
+    );
+  }
+
+  // ---------- Paso 2: pagar ----------
+  if (step === 'pay') {
+    return (
+      <View style={{ flex: 1, paddingTop: 6 }}>
+        <Header title={t('buy.payTitle')} onBack={cancelOrder} />
+        <ScrollView contentContainerStyle={{ padding: 22, alignItems: 'center', paddingBottom: 40 }}>
+          <View style={styles.testBanner}>
+            <Icon name="construct" size={18} color={C.gold} />
+            <Text style={styles.testBannerTxt}>{t('buy.testBanner')}</Text>
+          </View>
+
+          <View style={styles.orderTag}>
+            <Text style={styles.orderTagK}>{t('buy.orderId')}</Text>
+            <Text style={styles.orderTagV}>{order.id}</Text>
+          </View>
+
+          <View style={styles.qrBox}>
+            <QRCode value={chain.addr} size={224} color="#04211d" backgroundColor="#ffffff" ecl="M" />
+          </View>
+
+          <Text style={styles.payHead}>{t('buy.payHead', { chain: chain.short, net: chain.net })}</Text>
+
+          <View style={styles.payAmtBox}>
+            <Text style={styles.payAmtK}>{t('buy.payAmt')}</Text>
+            <Pressable onPress={copyAmt} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
+              <Text style={styles.payAmtV}>{order.exact}</Text>
+              <Text style={styles.payAmtCur}>USDT</Text>
+              <Icon name="copy" size={18} color={C.gold} />
+            </Pressable>
+            <Text style={styles.payAmtHint}>{t('buy.payAmtHint')}</Text>
+          </View>
+
+          <View style={styles.addrBox}>
+            <View style={[styles.chainDot, { backgroundColor: chain.tone, marginRight: 4 }]} />
+            <Text style={styles.addr} numberOfLines={1}>{chain.addr}</Text>
+            <Pressable onPress={copyAddr}><Icon name="copy" size={22} color={C.gold} /></Pressable>
+          </View>
+
+          <View style={styles.timer}>
+            <Icon name="time" size={16} color={C.gold} />
+            <Text style={styles.timerTxt}>{t('buy.expiresIn', { mm, ss })}</Text>
+          </View>
+
+          <Button3D title={t('buy.paid')} icon="checkmark-circle" onPress={markPaid} style={{ alignSelf: 'stretch', marginTop: 20 }} />
+          <Pressable onPress={cancelOrder} style={{ paddingVertical: 14, alignSelf: 'center' }}>
+            <Text style={{ color: C.txt3, fontWeight: '600' }}>{t('buy.cancel')}</Text>
+          </Pressable>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // ---------- Paso 3: estado ----------
+  const steps = [
+    { s: 'waiting',  label: t('buy.st.waiting')  },
+    { s: 'detected', label: t('buy.st.detected') },
+    { s: 'sending',  label: t('buy.st.sending')  },
+    { s: 'done',     label: t('buy.st.done')     },
+  ];
+  const curIdx = steps.findIndex((x) => x.s === status);
+
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header title={t('buy.title')} onBack={() => nav.back()} />
-      <ScrollView contentContainerStyle={{ padding: 22 }}>
-        <View style={styles.soonWrap}>
-          <View style={styles.soonIcon}><Icon name="card" size={34} color={C.gold} /></View>
-          <Text style={styles.soonTitle}>{t('buy.h')}</Text>
-          <Text style={styles.soonBody}>{t('buy.p')}</Text>
-          <Button3D title={t('buy.cta')} icon="qr-code" onPress={() => nav.go('receive')} style={{ alignSelf: 'stretch', marginTop: 18 }} />
+      <Header title={t('buy.statusTitle')} onBack={() => nav.go('home')} />
+      <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 40 }}>
+        <View style={styles.testBanner}>
+          <Icon name="construct" size={18} color={C.gold} />
+          <Text style={styles.testBannerTxt}>{t('buy.testBanner')}</Text>
         </View>
+
+        <View style={{ alignItems: 'center', marginVertical: 20 }}>
+          {status !== 'done' ? (
+            <ActivityIndicator size="large" color={C.gold} />
+          ) : (
+            <View style={styles.doneIc}><Icon name="checkmark" size={40} color={C.darkText} /></View>
+          )}
+          <Text style={{ color: C.gold, fontSize: 11, letterSpacing: 2, fontWeight: '700', marginTop: 18 }}>
+            {status === 'done' ? t('buy.doneKicker') : t('buy.progKicker')}
+          </Text>
+          <Text style={{ color: C.txt, fontSize: 24, fontWeight: '800', marginTop: 6 }}>
+            {qtyFmt(order.qty)} {order.tokenSym}
+          </Text>
+          <Text style={{ color: C.txt2, fontSize: 13, marginTop: 2 }}>
+            {order.exact} USDT · {order.chain.short}
+          </Text>
+        </View>
+
+        <View style={styles.pasos}>
+          {steps.map((sd, i) => {
+            const done = i < curIdx || status === 'done';
+            const nowStep = i === curIdx && status !== 'done';
+            return (
+              <View key={sd.s} style={styles.paso}>
+                <View style={[styles.pasoIc, done && styles.pasoOk, nowStep && styles.pasoNow]}>
+                  {done ? <Icon name="checkmark" size={14} color={C.darkText} /> : <View style={styles.pasoDot} />}
+                </View>
+                <Text style={[styles.pasoTxt, (done || nowStep) && { color: C.txt }]}>{sd.label}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        {status === 'done' && (
+          <Button3D title={t('buy.goHome')} icon="wallet" onPress={() => nav.go('home')} style={{ marginTop: 22 }} />
+        )}
       </ScrollView>
     </View>
   );
@@ -676,4 +920,23 @@ const styles = StyleSheet.create({
   sheetTitle: { fontSize: 17, fontWeight: '700', color: C.txt, textAlign: 'center', marginBottom: 14 },
   pick: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 15, padding: 12, marginBottom: 8 },
   pickName: { fontSize: 14, fontWeight: '600', color: C.txt }, pickSub: { fontSize: 11.5, color: C.txt3 },
+  // ---- pasarela de compra ----
+  testBanner: { flexDirection: 'row', gap: 10, alignItems: 'center', backgroundColor: 'rgba(201,169,97,0.10)', borderWidth: 1, borderColor: 'rgba(201,169,97,0.4)', borderRadius: 14, padding: 12, marginBottom: 18, width: '100%' },
+  testBannerTxt: { flex: 1, color: C.txt2, fontSize: 11.5, lineHeight: 16, fontWeight: '600' },
+  chainPill: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 14 },
+  chainDot: { width: 10, height: 10, borderRadius: 5 },
+  chainTxt: { color: C.txt2, fontWeight: '700', fontSize: 13 },
+  chainSub: { color: C.txt3, fontSize: 10.5, marginTop: 1 },
+  summary: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 16 },
+  orderTag: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, borderRadius: 12, marginBottom: 4 },
+  orderTagK: { color: C.txt3, fontSize: 11, fontWeight: '600', letterSpacing: 1 },
+  orderTagV: { color: C.gold, fontSize: 13, fontWeight: '800', letterSpacing: 1 },
+  payHead: { color: C.txt2, fontSize: 13, textAlign: 'center', marginBottom: 14, lineHeight: 18 },
+  payAmtBox: { alignSelf: 'stretch', backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(201,169,97,0.3)', borderRadius: 18, padding: 16, alignItems: 'center', marginBottom: 14 },
+  payAmtK: { color: C.txt3, fontSize: 11, letterSpacing: 2, fontWeight: '700' },
+  payAmtV: { color: C.gold, fontSize: 28, fontWeight: '800', letterSpacing: -0.5 },
+  payAmtCur: { color: C.gold, fontSize: 14, fontWeight: '700' },
+  payAmtHint: { color: C.txt3, fontSize: 11.5, textAlign: 'center', marginTop: 8, lineHeight: 16 },
+  timer: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  timerTxt: { color: C.txt2, fontSize: 12.5, fontWeight: '600' },
 });
