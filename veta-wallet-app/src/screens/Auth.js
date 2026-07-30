@@ -58,7 +58,12 @@ export default function Auth({ nav }) {
       nav.go(kind === 'register' ? 'genesisOffer' : 'home');
       toast(`${t('auth.welcome')}, ${acc.name.split(' ')[0]}`);
     } catch (e) {
-      setErr(e.message === 'API no configurada' ? t('auth.errServer') : (e.message || t('auth.errGeneric')));
+      const msg = e?.code === 'no-register' ? t('auth.errNoSignup')
+        : e?.status === 404 ? t('auth.err404')
+        : e?.status === 409 || /exist|registrad|duplicate|ya\s*existe/i.test(e?.message || '') ? t('auth.errExists')
+        : e?.message === 'API no configurada' ? t('auth.errServer')
+        : (e?.message || t('auth.errGeneric'));
+      setErr(msg);
     } finally { setBusy(false); }
   }
 

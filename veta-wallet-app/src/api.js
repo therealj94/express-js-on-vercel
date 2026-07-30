@@ -191,13 +191,41 @@ export async function apiLogin(email, password) {
 }
 
 // Registro contra el backend oficial. Tras crear la cuenta inicia sesión.
+//
+// El backend puede publicar la ruta con otro nombre. Se prueba la configurada
+// primero y, si responde 404 (no existe), otras variantes comunes: si alguna
+// devuelve algo distinto de 404, ya es la buena. Si TODAS dan 404, el
+// mensaje dice qué probamos, en vez de un genérico.
 export async function apiRegister({ name, email, password }) {
-  try {
-    await walletApi.register({ name, email, password });
-  } catch (e) {
-    // Si la cuenta ya existe intentamos entrar directo; otros errores se muestran.
-    if (!/exist|registrad|duplicate/i.test(e.message || '')) throw e;
+  const body = { name, email, password, fullName: name };
+  const rutas = [PATHS.register, '/auth/signup', '/register', '/signup', '/users/register', '/api/auth/register', '/api/register'];
+  const probadas = [];
+  let usada = null;
+  let ultimo404 = null;
+
+  for (const ruta of rutas) {
+    if (probadas.includes(ruta)) continue;
+    probadas.push(ruta);
+    try {
+      await rawReq(ruta, { method: 'POST', body });
+      usada = ruta;
+      break;
+    } catch (e) {
+      // 404 → seguimos probando; ya-existe → login directo; otro → se lanza.
+      if (e.status === 404) { ultimo404 = e; continue; }
+      if (/exist|registrad|duplicate|ya\s*existe/i.test(e.message || '') || e.status === 409) {
+        usada = ruta; break;
+      }
+      throw e;
+    }
   }
+
+  if (!usada && ultimo404) {
+    const err = new Error(`El servidor no tiene endpoint de registro. Se probaron: ${probadas.join(', ')}. Puede que las cuentas se creen desde la web.`);
+    err.code = 'no-register';
+    throw err;
+  }
+  // Login inmediato con las credenciales recién creadas.
   return apiLogin(email, password);
 }
 

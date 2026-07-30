@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.5.0';
-export const BUILD = 15;
+export const VERSION = '1.5.1';
+export const BUILD = 16;
 export const RELEASED = '2026-07-29';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,19 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.5.1',
+    build: 16,
+    date: '2026-07-29',
+    es: [
+      'Crear cuenta ahora prueba varias rutas del backend: si tu servidor publica el registro con otro nombre, la app lo encuentra igual.',
+      'Los mensajes de registro distinguen entre "ese correo ya existe", "el servidor no tiene registro" y "ruta no encontrada".',
+    ],
+    en: [
+      'Sign-up now tries several backend routes: if your server publishes registration under a different name, the app still finds it.',
+      'Sign-up messages distinguish "email already exists", "server has no sign-up" and "route not found".',
+    ],
+  },
   {
     v: '1.5.0',
     build: 15,
