@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.5.3';
-export const BUILD = 18;
+export const VERSION = '1.5.4';
+export const BUILD = 19;
 export const RELEASED = '2026-07-30';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,19 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.5.4',
+    build: 19,
+    date: '2026-07-30',
+    es: [
+      'AUKA se une al resto: ya se ve con su insignia dorada oficial en Portafolio, Enviar, Recibir y en el gráfico.',
+      'El ojito del saldo ahora tapa TODO tu dinero: total, cambio del día, valor y cantidad de cada token. Los precios de mercado siguen visibles porque son públicos.',
+    ],
+    en: [
+      'AUKA joins the rest: it now shows its official golden badge in Portfolio, Send, Receive and the chart.',
+      'The balance eye now hides ALL your money: total, day change, and each token’s value and quantity. Market prices stay visible because they are public.',
+    ],
+  },
   {
     v: '1.5.3',
     build: 18,

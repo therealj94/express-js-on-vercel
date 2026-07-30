@@ -9,7 +9,7 @@ export const ORIGEN_PRICE = 2.35; // respaldo si el feed de precios no responde
 // el glifo antiguo sobre un degradado. Así se mezclan sin sorpresas.
 export const TOKEN_META = {
   ORIGEN: { s: 'ORIGEN', n: 'ORIGEN', image: require('../assets/tokens/origen.jpg') },
-  AUKA:   { s: 'AUKA',   n: 'AUKA',   glyph: 'Au', grad: ['#F8EFCF', '#C9A961', '#96793F'], fg: '#3A2C08' },
+  AUKA:   { s: 'AUKA',   n: 'AUKA',   image: require('../assets/tokens/auka.jpg') },
   AGKA:   { s: 'AGKA',   n: 'AGKA',   image: require('../assets/tokens/agka.jpg') },
   ONDK:   { s: 'ONDK',   n: 'ONDK',   image: require('../assets/tokens/ondk.jpg') },
   MNKA:   { s: 'MNKA',   n: 'MNKA',   glyph: '♛', grad: ['#F8EFCF', '#C9A961', '#96793F'], fg: '#3A2C08' },

@@ -79,7 +79,7 @@ export default function Home({ nav }) {
           </Pressable>
           {dayPct != null ? (
             <Text style={[styles.balChg, { color: dayPct >= 0 ? C.up : C.down }]}>
-              {dayPct >= 0 ? '+' : '-'}{money(Math.abs(dayUsd))}  <Text style={styles.pill}> {dayPct >= 0 ? '+' : ''}{dayPct.toFixed(2)}% </Text>  {t('home.today')}
+              {hidden ? '••••' : `${dayPct >= 0 ? '+' : '-'}${money(Math.abs(dayUsd))}`}  <Text style={styles.pill}> {dayPct >= 0 ? '+' : ''}{dayPct.toFixed(2)}% </Text>  {t('home.today')}
             </Text>
           ) : (
             <Text style={styles.balChg}>{t('home.live')}</Text>
@@ -117,8 +117,8 @@ export default function Home({ nav }) {
               </Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.tVal}>{money(t.qty * t.price)}</Text>
-              <Text style={styles.tQty}>{qtyFmt(t.qty)} {t.s}</Text>
+              <Text style={styles.tVal}>{hidden ? '••••' : money(t.qty * t.price)}</Text>
+              <Text style={styles.tQty}>{hidden ? `•••• ${t.s}` : `${qtyFmt(t.qty)} ${t.s}`}</Text>
             </View>
           </Pressable>
         ))}
