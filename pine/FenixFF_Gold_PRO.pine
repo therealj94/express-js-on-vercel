@@ -1,0 +1,648 @@
+//@version=6
+// =====================================================================================
+//  FENIX FF GOLD PRO — FC + Fallo del Fallo + Acumulación + Panel MTF
+//  XAUUSD · Pine Script v6 · optimizado para temporalidades bajas (1m, 3m, 5m, 15m)
+//
+//  CAPA 1 — FC (Fallo de Continuidad): marca cada FC con su etiqueta y traza la línea
+//           de la zona (verde = FC alcista / rojo = FC bajista). La línea se extiende
+//           hasta que el precio la LIQUIDA (mitiga); ahí se cierra y suma al contador.
+//  CAPA 2 — FALLO DEL FALLO: FC -> mitigación -> estiramiento ineficiente (2+ velas con
+//           cuerpo >= ATR x mult) que deja la VELA DE TESTEO VIRGEN (FVG) -> entrada en
+//           el rebalanceo. SL detrás de la lógica tendencial, TP1 en R, TP2 camino libre.
+//  CAPA 3 — ACUMULACIÓN: doble F+F en los extremos de un rango; la Vela Memoria de la
+//           temporalidad mayor decide qué extremo es real y cuál es el anzuelo.
+//  CAPA 4 — PANEL: zona activa, señal, zonas vivas, liquidadas, pendientes, MTF, sesión.
+// =====================================================================================
+
+indicator("FENIX FF GOLD PRO — FC + Fallo del Fallo", shorttitle="FENIX FF PRO", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=500)
+
+// =====================================================================================
+// ① AUTO-ADAPTACIÓN A LA TEMPORALIDAD
+// =====================================================================================
+grpAuto = "① Auto-adaptación"
+autoTf  = input.bool(true, "Auto-adaptar parámetros a la temporalidad", group=grpAuto, tooltip="Ajusta fractal, cuerpo mínimo, ineficiencia mínima y cooldown según 1m/3m/5m/15m/30m+. Desactívalo para usar tus valores manuales.")
+tfMin   = timeframe.in_seconds(timeframe.period) / 60.0
+
+autoPivot = tfMin <= 1 ? 5   : tfMin <= 3 ? 5    : tfMin <= 5 ? 6    : tfMin <= 15 ? 8    : tfMin <= 60 ? 10   : 12
+autoDisp  = tfMin <= 1 ? 0.45: tfMin <= 3 ? 0.48 : tfMin <= 5 ? 0.50 : tfMin <= 15 ? 0.55 : tfMin <= 60 ? 0.55 : 0.50
+autoFvg   = tfMin <= 1 ? 0.10: tfMin <= 3 ? 0.12 : tfMin <= 5 ? 0.14 : tfMin <= 15 ? 0.18 : tfMin <= 60 ? 0.20 : 0.20
+autoTol   = tfMin <= 1 ? 0.35: tfMin <= 3 ? 0.32 : tfMin <= 5 ? 0.30 : tfMin <= 15 ? 0.25 : 0.22
+autoCool  = tfMin <= 1 ? 3   : tfMin <= 5 ? 4    : 5
+autoHtf   = tfMin <= 1 ? "15": tfMin <= 3 ? "30" : tfMin <= 5 ? "30" : tfMin <= 15 ? "60" : tfMin <= 60 ? "240": "D"
+
+// =====================================================================================
+// ② FC — Fallo de Continuidad (capa de zonas)
+// =====================================================================================
+grpFC   = "② FC · zonas de fallo"
+showFC     = input.bool(true,  "Marcar etiquetas FC",                 group=grpFC)
+fcSens     = input.string("Media", "Sensibilidad FC", options=["Alta (todos)", "Media", "Baja (solo fuertes)"], group=grpFC, tooltip="Alta = marca todos los fallos (gráfico muy poblado, como en 1m). Baja = solo los de rango relevante.")
+showFCLine = input.bool(true,  "Trazar líneas de zona FC",            group=grpFC)
+fcLineW    = input.int(2,      "Grosor de línea FC",                  minval=1, maxval=4, group=grpFC)
+fcExtend   = input.int(60,     "Extensión de la línea (velas)",       minval=5, maxval=500, group=grpFC)
+maxZones   = input.int(30,     "Máx. zonas vivas por lado",           minval=5, maxval=100, group=grpFC)
+keepLiq    = input.bool(true,  "Dejar rastro de la zona liquidada",   group=grpFC, tooltip="La línea se vuelve punteada y se congela donde fue liquidada, en vez de borrarse.")
+colFCBull  = input.color(#00E676, "Color FC alcista",                 group=grpFC)
+colFCBear  = input.color(#FF1744, "Color FC bajista",                 group=grpFC)
+
+// =====================================================================================
+// ③ FALLO DEL FALLO
+// =====================================================================================
+grpFF = "③ Fallo del Fallo (entradas)"
+showFF       = input.bool(true, "Activar entradas F+F (BUY/SELL)",     group=grpFF)
+pivotIn      = input.int(8,     "Fractal (pivot) lookback",            minval=2, maxval=50, group=grpFF)
+sweepMaxAge  = input.int(120,   "Vida máxima del pivot (velas)",       minval=10, maxval=500, group=grpFF)
+tolIn        = input.float(0.25,"Tolerancia lógica tendencial (x ATR)", minval=0.0, maxval=2.0, step=0.05, group=grpFF)
+awayAtr      = input.float(0.30,"Alejamiento previo a la mitigación (x ATR)", minval=0.0, maxval=3.0, step=0.05, group=grpFF)
+dispIn       = input.float(0.55,"Cuerpo mínimo de impulso (x ATR)",    minval=0.1, maxval=3.0, step=0.05, group=grpFF)
+minImpulse   = input.int(2,     "Velas de estiramiento mínimas",       minval=1, maxval=5, group=grpFF)
+requireBOS   = input.bool(true, "Exigir desplazamiento estructural (BOS)", group=grpFF)
+minFvgIn     = input.float(0.18,"Tamaño mínimo de la ineficiencia (x ATR)", minval=0.0, maxval=2.0, step=0.02, group=grpFF)
+entryMode    = input.string("Confirmación", "Disparo de entrada", options=["Toque", "Confirmación"], group=grpFF)
+fvgFillMode  = input.string("50% (mitad de la ineficiencia)", "Nivel de rebalanceo", options=["Borde (primer toque)", "50% (mitad de la ineficiencia)", "Relleno total"], group=grpFF)
+maxWaitMitig = input.int(25,    "Máx. velas esperando mitigación",     minval=3, maxval=200, group=grpFF)
+maxWaitExp   = input.int(20,    "Máx. velas esperando estiramiento",   minval=2, maxval=200, group=grpFF)
+maxWaitRetest= input.int(40,    "Máx. velas esperando rebalanceo",     minval=2, maxval=300, group=grpFF)
+
+// =====================================================================================
+// ④ FILTROS
+// =====================================================================================
+grpFilter = "④ Filtros"
+useSession   = input.bool(false,"Filtrar por sesión (killzones)",      group=grpFilter, tooltip="En 1m-5m suele convenir desactivado si operas manual y activado si usas alertas automáticas.")
+sess1        = input.session("0700-1030", "Killzone Londres",          group=grpFilter)
+sess2        = input.session("1230-1600", "Killzone Nueva York",       group=grpFilter)
+tzInput      = input.string("UTC", "Zona horaria de las sesiones",     group=grpFilter)
+useHtfBias   = input.bool(true, "Filtro MTF (dominancia fractal)",     group=grpFilter)
+htfIn        = input.timeframe("30", "Temporalidad mayor (Vela Memoria)", group=grpFilter)
+htfEmaLen    = input.int(50,    "EMA de sesgo en HTF",                 minval=5, maxval=400, group=grpFilter)
+biasMode     = input.string("EMA + Vela Memoria", "Modo de sesgo", options=["EMA", "Vela Memoria", "EMA + Vela Memoria"], group=grpFilter)
+useVolFilter = input.bool(true, "Filtro de volatilidad mínima",        group=grpFilter)
+minAtrPct    = input.float(0.02,"ATR mínimo (% del precio)",           minval=0.0, maxval=1.0, step=0.01, group=grpFilter)
+coolIn       = input.int(5,     "Cooldown entre señales (velas)",      minval=0, maxval=100, group=grpFilter)
+
+// =====================================================================================
+// ⑤ GESTIÓN
+// =====================================================================================
+grpRisk = "⑤ Gestión (SL / TP)"
+atrLen     = input.int(14,    "ATR length",                            minval=2, maxval=100, group=grpRisk)
+slBuffAtr  = input.float(0.20,"Colchón del SL (x ATR)",                minval=0.0, maxval=2.0, step=0.05, group=grpRisk)
+rr1        = input.float(2.0, "TP1 en múltiplo de R",                  minval=0.5, maxval=20, step=0.5, group=grpRisk)
+useOppTp   = input.bool(true, "TP2 = F+F opuesto / extremo del rango", group=grpRisk)
+
+// =====================================================================================
+// ⑥ ACUMULACIÓN
+// =====================================================================================
+grpAcc = "⑥ F+F en Acumulación"
+accEnable  = input.bool(true, "Detectar acumulación (doble mitigación)", group=grpAcc)
+accLen     = input.int(30,    "Ventana del rango (velas)",             minval=10, maxval=200, group=grpAcc)
+accMaxAtr  = input.float(4.5, "Ancho máximo del rango (x ATR)",        minval=1.0, maxval=20, step=0.5, group=grpAcc)
+accOnlyDom = input.bool(true, "Operar solo el extremo dominante",      group=grpAcc)
+
+// =====================================================================================
+// ⑦ VISUAL / PANEL
+// =====================================================================================
+grpUi = "⑦ Visual y panel"
+showPanel  = input.bool(true, "Mostrar panel",                         group=grpUi)
+panelPos   = input.string("Superior derecha", "Posición del panel", options=["Superior derecha", "Superior izquierda", "Inferior derecha", "Inferior izquierda", "Centro derecha"], group=grpUi)
+panelSize  = input.string("Grande", "Tamaño del panel", options=["Normal", "Grande", "Enorme"], group=grpUi)
+showPhases = input.bool(true, "Mostrar fases L / F / M",               group=grpUi)
+showZones  = input.bool(true, "Mostrar cajas (FC e ineficiencia)",     group=grpUi)
+showLevels = input.bool(true, "Mostrar Entrada / SL / TP",             group=grpUi)
+colBull    = input.color(#2962FF, "Color señal alcista",               group=grpUi)
+colBear    = input.color(#E91E63, "Color señal bajista",               group=grpUi)
+colHeader  = input.color(#C9A227, "Color cabecera del panel",          group=grpUi)
+colZone    = input.int(85,    "Transparencia de cajas",                minval=50, maxval=95, group=grpUi)
+
+// =====================================================================================
+// PARÁMETROS EFECTIVOS (auto o manual)
+// =====================================================================================
+pivotLen  = autoTf ? autoPivot : pivotIn
+dispMult  = autoTf ? autoDisp  : dispIn
+minFvgAtr = autoTf ? autoFvg   : minFvgIn
+tolAtr    = autoTf ? autoTol   : tolIn
+cooldown  = autoTf ? autoCool  : coolIn
+htfTf     = autoTf ? autoHtf   : htfIn
+
+// =====================================================================================
+// CÁLCULOS BASE
+// =====================================================================================
+atr     = ta.atr(atrLen)
+bodySz  = math.abs(close - open)
+rng     = high - low
+bullBar = close > open
+bearBar = close < open
+
+inSess1   = not na(time(timeframe.period, sess1, tzInput))
+inSess2   = not na(time(timeframe.period, sess2, tzInput))
+sessionOk = not useSession or inSess1 or inSess2
+
+atrPct = close != 0 ? atr / close * 100 : 0.0
+volOk  = not useVolFilter or atrPct >= minAtrPct
+
+htfClose = request.security(syminfo.tickerid, htfTf, close, lookahead=barmerge.lookahead_off)
+htfOpen  = request.security(syminfo.tickerid, htfTf, open,  lookahead=barmerge.lookahead_off)
+htfEma   = request.security(syminfo.tickerid, htfTf, ta.ema(close, htfEmaLen), lookahead=barmerge.lookahead_off)
+
+emaBull    = htfClose > htfEma
+emaBear    = htfClose < htfEma
+memoryBull = htfClose > htfOpen
+memoryBear = htfClose < htfOpen
+biasBull   = biasMode == "EMA" ? emaBull : biasMode == "Vela Memoria" ? memoryBull : emaBull and memoryBull
+biasBear   = biasMode == "EMA" ? emaBear : biasMode == "Vela Memoria" ? memoryBear : emaBear and memoryBear
+htfOkLong  = not useHtfBias or biasBull
+htfOkShort = not useHtfBias or biasBear
+
+allowLong  = sessionOk and volOk and htfOkLong
+allowShort = sessionOk and volOk and htfOkShort
+
+// =====================================================================================
+// CAPA 1 · DETECCIÓN Y GESTIÓN DE ZONAS FC
+// =====================================================================================
+fcMinRng = fcSens == "Alta (todos)" ? 0.0 : fcSens == "Media" ? 0.30 * atr : 0.60 * atr
+
+// FC alcista: barre el mínimo anterior pero cierra por encima y con fuerza compradora
+fcBull = low < low[1] and close > close[1] and close > open and rng >= fcMinRng
+// FC bajista: barre el máximo anterior pero cierra por debajo
+fcBear = high > high[1] and close < close[1] and close < open and rng >= fcMinRng
+
+var array<float> zbLvl = array.new<float>()
+var array<line>  zbLn  = array.new<line>()
+var array<int>   zbBar = array.new<int>()
+var array<float> zsLvl = array.new<float>()
+var array<line>  zsLn  = array.new<line>()
+var array<int>   zsBar = array.new<int>()
+
+var int fcBullTotal = 0
+var int fcBearTotal = 0
+var int fcBullLiq   = 0
+var int fcBearLiq   = 0
+
+// --- nueva zona FC alcista ------------------------------------------------------------
+if fcBull
+    fcBullTotal += 1
+    line ln = na
+    if showFCLine
+        ln := line.new(bar_index, low, bar_index + fcExtend, low, color=color.new(colFCBull, 25), width=fcLineW)
+    array.push(zbLvl, low)
+    array.push(zbLn,  ln)
+    array.push(zbBar, bar_index)
+    if showFC
+        label.new(bar_index, low, "FC", style=label.style_label_up, color=color.new(colFCBull, 15), textcolor=color.black, size=size.tiny, tooltip="Fallo de Continuidad alcista · zona de demanda")
+    if array.size(zbLvl) > maxZones
+        line oldLn = array.shift(zbLn)
+        array.shift(zbLvl)
+        array.shift(zbBar)
+        if not na(oldLn)
+            line.delete(oldLn)
+
+// --- nueva zona FC bajista ------------------------------------------------------------
+if fcBear
+    fcBearTotal += 1
+    line ln2 = na
+    if showFCLine
+        ln2 := line.new(bar_index, high, bar_index + fcExtend, high, color=color.new(colFCBear, 25), width=fcLineW)
+    array.push(zsLvl, high)
+    array.push(zsLn,  ln2)
+    array.push(zsBar, bar_index)
+    if showFC
+        label.new(bar_index, high, "FC", style=label.style_label_down, color=color.new(colFCBear, 15), textcolor=color.white, size=size.tiny, tooltip="Fallo de Continuidad bajista · zona de oferta")
+    if array.size(zsLvl) > maxZones
+        line oldLn2 = array.shift(zsLn)
+        array.shift(zsLvl)
+        array.shift(zsBar)
+        if not na(oldLn2)
+            line.delete(oldLn2)
+
+// --- liquidación / extensión de zonas alcistas ------------------------------------------
+if array.size(zbLvl) > 0
+    for i = array.size(zbLvl) - 1 to 0
+        lvl  = array.get(zbLvl, i)
+        ln3  = array.get(zbLn,  i)
+        bIdx = array.get(zbBar, i)
+        if low <= lvl and bar_index > bIdx
+            fcBullLiq += 1
+            if not na(ln3)
+                if keepLiq
+                    line.set_x2(ln3, bar_index)
+                    line.set_style(ln3, line.style_dotted)
+                    line.set_color(ln3, color.new(colFCBull, 65))
+                    line.set_width(ln3, 1)
+                else
+                    line.delete(ln3)
+            array.remove(zbLvl, i)
+            array.remove(zbLn,  i)
+            array.remove(zbBar, i)
+        else if not na(ln3)
+            line.set_x2(ln3, bar_index + math.min(fcExtend, 20))
+
+// --- liquidación / extensión de zonas bajistas -------------------------------------------
+if array.size(zsLvl) > 0
+    for i = array.size(zsLvl) - 1 to 0
+        lvl2  = array.get(zsLvl, i)
+        ln4   = array.get(zsLn,  i)
+        sIdx  = array.get(zsBar, i)
+        if high >= lvl2 and bar_index > sIdx
+            fcBearLiq += 1
+            if not na(ln4)
+                if keepLiq
+                    line.set_x2(ln4, bar_index)
+                    line.set_style(ln4, line.style_dotted)
+                    line.set_color(ln4, color.new(colFCBear, 65))
+                    line.set_width(ln4, 1)
+                else
+                    line.delete(ln4)
+            array.remove(zsLvl, i)
+            array.remove(zsLn,  i)
+            array.remove(zsBar, i)
+        else if not na(ln4)
+            line.set_x2(ln4, bar_index + math.min(fcExtend, 20))
+
+// --- ¿en qué zona cotiza el precio? -------------------------------------------------------
+zoneNear = 0.35 * atr
+inBullZone = false
+inBearZone = false
+if array.size(zbLvl) > 0
+    for i = 0 to array.size(zbLvl) - 1
+        if math.abs(close - array.get(zbLvl, i)) <= zoneNear
+            inBullZone := true
+if array.size(zsLvl) > 0
+    for i = 0 to array.size(zsLvl) - 1
+        if math.abs(close - array.get(zsLvl, i)) <= zoneNear
+            inBearZone := true
+
+// =====================================================================================
+// CAPA 2 · MOTOR FALLO DEL FALLO
+// =====================================================================================
+ph = ta.pivothigh(high, pivotLen, pivotLen)
+pl = ta.pivotlow(low,   pivotLen, pivotLen)
+
+var float lastPH    = na
+var int   lastPHBar = na
+var bool  phUsed    = false
+var float lastPL    = na
+var int   lastPLBar = na
+var bool  plUsed    = false
+
+if not na(ph)
+    lastPH    := ph
+    lastPHBar := bar_index - pivotLen
+    phUsed    := false
+if not na(pl)
+    lastPL    := pl
+    lastPLBar := bar_index - pivotLen
+    plUsed    := false
+
+var int   bSt     = 0
+var float bFcLo   = na
+var float bFcHi   = na
+var int   bStBar  = na
+var bool  bAway   = false
+var float bStruct = na
+var float bFvgTop = na
+var float bFvgBot = na
+var float bTrig   = na
+var int   bImp    = 0
+var box   bFvgBox = na
+
+var int   sSt     = 0
+var float sFcLo   = na
+var float sFcHi   = na
+var int   sStBar  = na
+var bool  sAway   = false
+var float sStruct = na
+var float sFvgTop = na
+var float sFvgBot = na
+var float sTrig   = na
+var int   sImp    = 0
+var box   sFvgBox = na
+
+var int    lastSigBar = na
+var float  entryPx    = na
+var float  slPx       = na
+var float  tp1Px      = na
+var float  tp2Px      = na
+var string lastSignal = "—"
+var int    winBull    = 0
+var int    winBear    = 0
+
+bool markL_L = false
+bool markL_S = false
+bool markF_L = false
+bool markF_S = false
+bool markM_L = false
+bool markM_S = false
+bool buySig  = false
+bool sellSig = false
+
+accHi   = ta.highest(high, accLen)
+accLo   = ta.lowest(low,   accLen)
+inAccum = accEnable and atr > 0 and (accHi - accLo) <= accMaxAtr * atr
+
+tol    = tolAtr * atr
+coolOk = na(lastSigBar) or bar_index - lastSigBar >= cooldown
+
+// ————— máquina alcista —————
+if bSt == 0
+    freshPL = not na(lastPL) and not plUsed and bar_index - lastPLBar <= sweepMaxAge
+    if showFF and freshPL and low < lastPL and close > lastPL and allowLong
+        bSt     := 1
+        bFcLo   := low
+        bFcHi   := math.max(open, close)
+        bStruct := low
+        bStBar  := bar_index
+        bImp    := 0
+        bAway   := false
+        plUsed  := true
+        markL_L := true
+
+else if bSt == 1
+    if low < bFcLo - tol
+        bSt := 0
+    else
+        if low < bFcLo
+            bStruct := low
+        if high > bFcHi + awayAtr * atr
+            bAway := true
+        if bAway and low <= bFcHi
+            bSt     := 2
+            bStBar  := bar_index
+            bImp    := 0
+            markF_L := true
+        else if bar_index - bStBar > maxWaitMitig
+            bSt := 0
+
+else if bSt == 2
+    if low < bStruct - tol
+        bSt := 0
+    else
+        bImp := bullBar and bodySz >= dispMult * atr ? bImp + 1 : 0
+        fvgOk   = low > high[2]
+        fvgSize = low - high[2]
+        bosOk   = not requireBOS or close > bFcHi
+        if bImp >= minImpulse and fvgOk and fvgSize >= minFvgAtr * atr and bosOk
+            bFvgTop := low
+            bFvgBot := high[2]
+            bTrig   := fvgFillMode == "Borde (primer toque)" ? low : fvgFillMode == "Relleno total" ? high[2] : (low + high[2]) / 2
+            bSt     := 3
+            bStBar  := bar_index
+            markM_L := true
+            if showZones
+                bFvgBox := box.new(bar_index - 2, bFvgTop, bar_index + 1, bFvgBot, border_color=color.new(colBull, 30), bgcolor=color.new(colBull, math.max(colZone - 15, 0)), text="testeo virgen", text_color=color.new(colBull, 20), text_size=size.tiny, text_halign=text.align_right)
+        else if bar_index - bStBar > maxWaitExp
+            bSt := 0
+
+else if bSt == 3
+    if not na(bFvgBox)
+        box.set_right(bFvgBox, bar_index + 1)
+    touched   = low <= bTrig
+    confirmOk = entryMode == "Toque" ? touched : touched and bullBar and close > bTrig
+    if close < bStruct - tol
+        bSt := 0
+    else if confirmOk and allowLong and coolOk
+        buySig := true
+        bSt    := 0
+    else if bar_index - bStBar > maxWaitRetest
+        bSt := 0
+
+// ————— máquina bajista —————
+if sSt == 0
+    freshPH = not na(lastPH) and not phUsed and bar_index - lastPHBar <= sweepMaxAge
+    if showFF and freshPH and high > lastPH and close < lastPH and allowShort
+        sSt     := 1
+        sFcHi   := high
+        sFcLo   := math.min(open, close)
+        sStruct := high
+        sStBar  := bar_index
+        sImp    := 0
+        sAway   := false
+        phUsed  := true
+        markL_S := true
+
+else if sSt == 1
+    if high > sFcHi + tol
+        sSt := 0
+    else
+        if high > sFcHi
+            sStruct := high
+        if low < sFcLo - awayAtr * atr
+            sAway := true
+        if sAway and high >= sFcLo
+            sSt     := 2
+            sStBar  := bar_index
+            sImp    := 0
+            markF_S := true
+        else if bar_index - sStBar > maxWaitMitig
+            sSt := 0
+
+else if sSt == 2
+    if high > sStruct + tol
+        sSt := 0
+    else
+        sImp := bearBar and bodySz >= dispMult * atr ? sImp + 1 : 0
+        fvgOkS   = high < low[2]
+        fvgSizeS = low[2] - high
+        bosOkS   = not requireBOS or close < sFcLo
+        if sImp >= minImpulse and fvgOkS and fvgSizeS >= minFvgAtr * atr and bosOkS
+            sFvgBot := high
+            sFvgTop := low[2]
+            sTrig   := fvgFillMode == "Borde (primer toque)" ? high : fvgFillMode == "Relleno total" ? low[2] : (high + low[2]) / 2
+            sSt     := 3
+            sStBar  := bar_index
+            markM_S := true
+            if showZones
+                sFvgBox := box.new(bar_index - 2, sFvgTop, bar_index + 1, sFvgBot, border_color=color.new(colBear, 30), bgcolor=color.new(colBear, math.max(colZone - 15, 0)), text="testeo virgen", text_color=color.new(colBear, 20), text_size=size.tiny, text_halign=text.align_right)
+        else if bar_index - sStBar > maxWaitExp
+            sSt := 0
+
+else if sSt == 3
+    if not na(sFvgBox)
+        box.set_right(sFvgBox, bar_index + 1)
+    touchedS   = high >= sTrig
+    confirmOkS = entryMode == "Toque" ? touchedS : touchedS and bearBar and close < sTrig
+    if close > sStruct + tol
+        sSt := 0
+    else if confirmOkS and allowShort and coolOk
+        sellSig := true
+        sSt     := 0
+    else if bar_index - sStBar > maxWaitRetest
+        sSt := 0
+
+// =====================================================================================
+// CAPA 3 · ACUMULACIÓN
+// =====================================================================================
+dualFF = inAccum and bSt >= 2 and sSt >= 2
+var box  accBox    = na
+var bool accTagged = false
+
+if dualFF and not accTagged
+    accTagged := true
+    if showZones
+        accBox := box.new(bar_index - accLen, accHi, bar_index + 1, accLo, border_color=color.new(color.orange, 35), border_style=line.style_dashed, bgcolor=color.new(color.orange, 92))
+    label.new(bar_index, accHi, "F+F ACUM · " + (biasBull ? "▲ dominancia alcista" : biasBear ? "▼ dominancia bajista" : "neutra"), style=label.style_label_down, color=color.new(color.orange, 15), textcolor=color.white, size=size.small)
+if accTagged and not dualFF
+    accTagged := false
+if dualFF and not na(accBox)
+    box.set_right(accBox, bar_index + 1)
+    box.set_top(accBox, accHi)
+    box.set_bottom(accBox, accLo)
+
+if accOnlyDom and dualFF
+    if buySig and not biasBull
+        buySig := false
+    if sellSig and not biasBear
+        sellSig := false
+
+// =====================================================================================
+// NIVELES
+// =====================================================================================
+if buySig
+    entryPx    := entryMode == "Toque" ? bTrig : close
+    slPx       := bStruct - slBuffAtr * atr
+    riskL      = math.max(entryPx - slPx, syminfo.mintick)
+    tp1Px      := entryPx + rr1 * riskL
+    tp2Px      := useOppTp ? (not na(sFvgBot) and sFvgBot > entryPx ? sFvgBot : accHi > entryPx ? accHi : na) : na
+    lastSigBar := bar_index
+    lastSignal := "COMPRA F+F"
+    winBull    += 1
+
+if sellSig
+    entryPx    := entryMode == "Toque" ? sTrig : close
+    slPx       := sStruct + slBuffAtr * atr
+    riskS      = math.max(slPx - entryPx, syminfo.mintick)
+    tp1Px      := entryPx - rr1 * riskS
+    tp2Px      := useOppTp ? (not na(bFvgTop) and bFvgTop < entryPx ? bFvgTop : accLo < entryPx ? accLo : na) : na
+    lastSigBar := bar_index
+    lastSignal := "VENTA F+F"
+    winBear    += 1
+
+// =====================================================================================
+// VISUALES
+// =====================================================================================
+if showPhases and markL_L
+    label.new(bar_index, low,  "L", style=label.style_triangleup,   color=color.new(color.yellow, 20), textcolor=color.black, size=size.tiny, tooltip="Liquidez barrida · nace el FC alcista")
+if showPhases and markL_S
+    label.new(bar_index, high, "L", style=label.style_triangledown, color=color.new(color.yellow, 20), textcolor=color.black, size=size.tiny, tooltip="Liquidez barrida · nace el FC bajista")
+if showPhases and markF_L
+    label.new(bar_index, low,  "F", style=label.style_label_up,   color=color.new(color.orange, 20), textcolor=color.white, size=size.tiny, tooltip="Mitigación del FC · limpieza de impacientes")
+if showPhases and markF_S
+    label.new(bar_index, high, "F", style=label.style_label_down, color=color.new(color.orange, 20), textcolor=color.white, size=size.tiny, tooltip="Mitigación del FC · limpieza de impacientes")
+if showPhases and markM_L
+    label.new(bar_index, high, "M", style=label.style_label_down, color=color.new(colBull, 15), textcolor=color.white, size=size.tiny, tooltip="Estiramiento ineficiente · vela de testeo virgen")
+if showPhases and markM_S
+    label.new(bar_index, low,  "M", style=label.style_label_up,   color=color.new(colBear, 15), textcolor=color.white, size=size.tiny, tooltip="Estiramiento ineficiente · vela de testeo virgen")
+
+if buySig
+    label.new(bar_index, low,  "BUY\n" + str.tostring(entryPx, format.mintick), style=label.style_label_up,   color=colBull, textcolor=color.white, size=size.normal)
+if sellSig
+    label.new(bar_index, high, "SELL\n" + str.tostring(entryPx, format.mintick), style=label.style_label_down, color=colBear, textcolor=color.white, size=size.normal)
+
+if showLevels and (buySig or sellSig)
+    cc = buySig ? colBull : colBear
+    line.new(bar_index, entryPx, bar_index + 30, entryPx, color=color.new(cc, 10), width=2)
+    line.new(bar_index, slPx,   bar_index + 30, slPx,   color=color.new(color.red, 10),   width=2, style=line.style_dashed)
+    line.new(bar_index, tp1Px,  bar_index + 30, tp1Px,  color=color.new(color.green, 10), width=2, style=line.style_dashed)
+    label.new(bar_index + 30, slPx,  "SL "  + str.tostring(slPx,  format.mintick), style=label.style_label_left, color=color.new(color.red, 60),   textcolor=color.white, size=size.tiny)
+    label.new(bar_index + 30, tp1Px, "TP1 " + str.tostring(tp1Px, format.mintick), style=label.style_label_left, color=color.new(color.green, 60), textcolor=color.white, size=size.tiny)
+    if not na(tp2Px)
+        line.new(bar_index, tp2Px, bar_index + 30, tp2Px, color=color.new(color.teal, 30), width=1, style=line.style_dotted)
+        label.new(bar_index + 30, tp2Px, "TP2 " + str.tostring(tp2Px, format.mintick), style=label.style_label_left, color=color.new(color.teal, 60), textcolor=color.white, size=size.tiny)
+
+barcolor(buySig ? colBull : sellSig ? colBear : na)
+
+// =====================================================================================
+// CAPA 4 · PANEL
+// =====================================================================================
+stName(st) => st == 0 ? "—" : st == 1 ? "FC" : st == 2 ? "MITIGADO" : "TESTEO"
+pPos = panelPos == "Superior derecha" ? position.top_right : panelPos == "Superior izquierda" ? position.top_left : panelPos == "Inferior derecha" ? position.bottom_right : panelPos == "Inferior izquierda" ? position.bottom_left : position.middle_right
+pTxt = panelSize == "Normal" ? size.small : panelSize == "Grande" ? size.normal : size.large
+pHdr = panelSize == "Normal" ? size.normal : panelSize == "Grande" ? size.large : size.huge
+
+var table panel = table.new(pPos, 4, 10, border_width=1, frame_width=2, frame_color=color.new(#C9A227, 30))
+
+if showPanel and barstate.islast
+    cDark  = color.new(#0B0B0B, 5)
+    cDark2 = color.new(#151515, 5)
+    cTxt   = color.new(#D0D0D0, 0)
+    cOn    = #FFD54F
+    cOff   = color.new(#666666, 0)
+
+    table.clear(panel, 0, 0, 3, 9)
+
+    // cabecera
+    table.cell(panel, 0, 0, "FENIX F+F GOLD PRO", text_color=color.black, bgcolor=colHeader, text_size=pHdr)
+    table.merge_cells(panel, 0, 0, 2, 0)
+    table.cell(panel, 3, 0, "◆", text_color=color.black, bgcolor=colHeader, text_size=pHdr)
+
+    // zona activa
+    table.cell(panel, 0, 1, "Zona PC:", text_color=cTxt, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 1, 1, inBullZone and inBearZone ? "DOBLE" : inBullZone ? "COMPRA" : inBearZone ? "VENTA" : "NINGUNA", text_color = inBullZone and inBearZone ? color.orange : inBullZone ? colFCBull : inBearZone ? colFCBear : cOff, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 2, 1, inBullZone or inBearZone ? "ACTIVA" : "OFF", text_color = inBullZone or inBearZone ? cOn : cOff, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 3, 1, showFF ? "ON" : "OFF", text_color = showFF ? cOn : cOff, bgcolor=cDark, text_size=pTxt)
+
+    // señal
+    table.cell(panel, 0, 2, "Señal:", text_color=cTxt, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 1, 2, lastSignal, text_color = lastSignal == "COMPRA F+F" ? colFCBull : lastSignal == "VENTA F+F" ? colFCBear : cOff, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 2, 2, "Trend:", text_color=cTxt, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 3, 2, biasBull ? "▲ UP" : biasBear ? "▼ DOWN" : "FLAT", text_color = biasBull ? colFCBull : biasBear ? colFCBear : cOff, bgcolor=cDark2, text_size=pTxt)
+
+    // zonas vivas
+    table.cell(panel, 0, 3, "Zonas activas:", text_color=cTxt, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 1, 3, "▲ " + str.tostring(array.size(zbLvl)), text_color=colFCBull, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 2, 3, "▼ " + str.tostring(array.size(zsLvl)), text_color=colFCBear, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 3, 3, "ON", text_color=cOn, bgcolor=cDark, text_size=pTxt)
+
+    // liquidadas
+    table.cell(panel, 0, 4, "Liquidadas:", text_color=cTxt, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 1, 4, "▲ " + str.tostring(fcBullLiq), text_color=colFCBull, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 2, 4, "▼ " + str.tostring(fcBearLiq), text_color=colFCBear, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 3, 4, keepLiq ? "RASTRO" : "OFF", text_color = keepLiq ? cOn : cOff, bgcolor=cDark2, text_size=pTxt)
+
+    // detectadas
+    table.cell(panel, 0, 5, "FC detectados:", text_color=cTxt, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 1, 5, "B " + str.tostring(fcBullTotal), text_color=colHeader, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 2, 5, "S " + str.tostring(fcBearTotal), text_color=colHeader, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 3, 5, fcSens, text_color=cTxt, bgcolor=cDark, text_size=size.tiny)
+
+    // setups F+F
+    table.cell(panel, 0, 6, "Setup F+F:", text_color=cTxt, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 1, 6, "▲ " + stName(bSt), text_color = bSt > 0 ? colFCBull : cOff, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 2, 6, "▼ " + stName(sSt), text_color = sSt > 0 ? colFCBear : cOff, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 3, 6, dualFF ? "ACUM" : inAccum ? "RANGO" : "EXPAN", text_color = dualFF ? color.orange : cTxt, bgcolor=cDark2, text_size=pTxt)
+
+    // señales emitidas
+    table.cell(panel, 0, 7, "Señales:", text_color=cTxt, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 1, 7, "▲ " + str.tostring(winBull), text_color=colBull, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 2, 7, "▼ " + str.tostring(winBear), text_color=colBear, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 3, 7, entryMode == "Toque" ? "TOQUE" : "CONF", text_color=cTxt, bgcolor=cDark, text_size=size.tiny)
+
+    // MTF / precio
+    table.cell(panel, 0, 8, "MTF " + htfTf + " / Precio:", text_color=cTxt, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 1, 8, memoryBull ? "▲ MEM" : "▼ MEM", text_color = memoryBull ? colFCBull : colFCBear, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 2, 8, str.tostring(close, format.mintick), text_color=color.white, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 3, 8, useHtfBias ? "MTF ON" : "MTF OFF", text_color = useHtfBias ? cOn : cOff, bgcolor=cDark2, text_size=pTxt)
+
+    // motor / sesión
+    table.cell(panel, 0, 9, "TF " + timeframe.period + (autoTf ? " · AUTO" : " · MAN"), text_color=cTxt, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 1, 9, "ATR " + str.tostring(atr, format.mintick), text_color=cTxt, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 2, 9, str.tostring(atrPct, "#.##") + "%", text_color = volOk ? color.teal : cOff, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 3, 9, sessionOk ? "SESIÓN OK" : "FUERA", text_color = sessionOk ? cOn : cOff, bgcolor=cDark, text_size=size.tiny)
+
+// =====================================================================================
+// ALERTAS
+// =====================================================================================
+if buySig
+    alert("FENIX F+F ▲ BUY " + syminfo.ticker + " " + timeframe.period + " | Entrada " + str.tostring(entryPx, format.mintick) + " | SL " + str.tostring(slPx, format.mintick) + " | TP1 " + str.tostring(tp1Px, format.mintick) + (dualFF ? " | ACUM" : ""), alert.freq_once_per_bar_close)
+if sellSig
+    alert("FENIX F+F ▼ SELL " + syminfo.ticker + " " + timeframe.period + " | Entrada " + str.tostring(entryPx, format.mintick) + " | SL " + str.tostring(slPx, format.mintick) + " | TP1 " + str.tostring(tp1Px, format.mintick) + (dualFF ? " | ACUM" : ""), alert.freq_once_per_bar_close)
+if markM_L or markM_S
+    alert("FENIX F+F · ineficiencia virgen creada en " + syminfo.ticker + " " + timeframe.period + " — esperar rebalanceo", alert.freq_once_per_bar_close)
+
+alertcondition(buySig,  title="FF PRO — BUY",  message="FENIX F+F BUY {{ticker}} {{interval}} @ {{close}}")
+alertcondition(sellSig, title="FF PRO — SELL", message="FENIX F+F SELL {{ticker}} {{interval}} @ {{close}}")
+alertcondition(markM_L or markM_S, title="FF PRO — Ineficiencia creada", message="FENIX F+F: vela de testeo virgen en {{ticker}} {{interval}}")
+alertcondition(fcBull, title="FF PRO — FC alcista", message="FC alcista en {{ticker}} {{interval}} @ {{close}}")
+alertcondition(fcBear, title="FF PRO — FC bajista", message="FC bajista en {{ticker}} {{interval}} @ {{close}}")
+
+plot(buySig ? 1 : sellSig ? -1 : 0, "Señal", display=display.data_window)
+plot(entryPx, "Entrada", display=display.data_window)
+plot(slPx,    "SL",      display=display.data_window)
+plot(tp1Px,   "TP1",     display=display.data_window)
