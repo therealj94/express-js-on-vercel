@@ -119,6 +119,25 @@ export default function Home({ nav }) {
           </View>
         </LinearGradient>
 
+        {/* Remesas: puerta de entrada destacada. Usa el mismo lenguaje visual
+            que el hero verde para conectar con "envío" a distancia. */}
+        <Pressable
+          onPress={() => { hap(); nav.go('remesas'); }}
+          accessibilityRole="button"
+          accessibilityLabel={tr('home.remesasA11y')}
+          style={styles.remCard}>
+          <LinearGradient colors={['#0f5f55', '#0a3a3d']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.remCardBg}>
+            <View style={styles.remIc}>
+              <Icon name="paper-plane" size={22} color={C.gold} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.remT}>{tr('home.remesasT')}</Text>
+              <Text style={styles.remP}>{tr('home.remesasP')}</Text>
+            </View>
+            <Icon name="chevron-forward" size={20} color={C.gold} />
+          </LinearGradient>
+        </Pressable>
+
         {showBackup && (
           <View style={styles.backupCard}>
             <View style={styles.backupIc}><Icon name="key" size={22} color={C.gold} /></View>
@@ -226,4 +245,9 @@ const styles = StyleSheet.create({
   backupBtnTxt: { color: C.darkText, fontSize: 12.5, fontWeight: '800' },
   backupLater: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 11, borderWidth: 1, borderColor: 'rgba(201,169,97,0.32)' },
   backupLaterTxt: { color: C.txt2, fontSize: 12.5, fontWeight: '700' },
+  remCard: { marginTop: 18, borderRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.32, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
+  remCardBg: { flexDirection: 'row', alignItems: 'center', gap: 13, padding: 15, borderWidth: 1, borderColor: 'rgba(201,169,97,0.35)', borderRadius: 20 },
+  remIc: { width: 46, height: 46, borderRadius: 14, backgroundColor: 'rgba(201,169,97,0.16)', borderWidth: 1, borderColor: 'rgba(201,169,97,0.32)', alignItems: 'center', justifyContent: 'center' },
+  remT: { color: C.txt, fontWeight: '800', fontSize: 14.5 },
+  remP: { color: C.txt2, fontSize: 12, marginTop: 2, lineHeight: 16 },
 });

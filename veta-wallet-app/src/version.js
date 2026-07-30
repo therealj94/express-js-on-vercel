@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.9.5';
-export const BUILD = 29;
+export const VERSION = '1.10.1';
+export const BUILD = 31;
 export const RELEASED = '2026-07-30';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,36 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.10.1',
+    build: 31,
+    date: '2026-07-30',
+    es: [
+      'Nueva opción "Eliminar cuenta" en Ajustes → Zona peligrosa: asistente de 5 pasos con cuatro confirmaciones progresivas (¿estás seguro?, ¿sabés que perderás fondos?, ¿sabés que no se recupera?, ¿confirmas?) más verificación con tu contraseña real. Al concluir se cierra la sesión y se borran todos los datos guardados en el teléfono; se pide al servidor que borre la cuenta remota, y si el backend aún no lo soporta te avisamos para que escribas al soporte. Requisito de Google Play y App Store.',
+      'Contactos oficiales del equipo en Ayuda: WhatsApp +504 3213-6457 y correo j.ordonez@ordenglobal.org.',
+    ],
+    en: [
+      'New "Delete account" option in Settings → Danger zone: 5-step wizard with four progressive confirmations (are you sure? aware you lose funds? aware it is unrecoverable? confirm?) plus verification with your real password. On completion the session closes and all data stored on the phone is wiped; the server is asked to delete the account, and if the backend does not support it yet we tell you to write support. Required by Google Play and App Store.',
+      'Official team contacts in Help: WhatsApp +504 3213-6457 and email j.ordonez@ordenglobal.org.',
+    ],
+  },
+  {
+    v: '1.10.0',
+    build: 30,
+    date: '2026-07-30',
+    es: [
+      'Nueva sección Remesas con puerta destacada en Home: hero verde con avión de papel, tres beneficios (segundos · fee mínima · sin bancos), simulador que muestra cuánto llega a Honduras, El Salvador, Guatemala, Nicaragua, Costa Rica, Panamá, México, Colombia o EE.UU. con tasa de referencia, y guía de 3 pasos.',
+      'Botones "Enviar remesa" y "Recibir" enlazan directo con Enviar (con monto pre-relleno) y con Recibir (donde se genera el link/QR de pago).',
+      'Set de iconos completado: se agregaron help-buoy, chatbubbles, mail, alert-circle, cloud-offline, add, construct, paper-plane, heart, trending-up. Antes salían huecos en Ayuda y en algunos avisos.',
+      'Contactos oficiales de soporte cargados en Ayuda: WhatsApp +504 3213-6457 y correo j.ordonez@ordenglobal.org.',
+    ],
+    en: [
+      'New Remittances section with a highlighted entry on Home: green hero with a paper plane, three benefits (seconds · minimal fee · no banks), a simulator showing how much arrives to Honduras, El Salvador, Guatemala, Nicaragua, Costa Rica, Panamá, Mexico, Colombia or USA at a reference rate, and a 3-step how-it-works.',
+      '"Send remittance" and "Receive" buttons wire directly into Send (with amount pre-filled) and Receive (where you can generate the pay link/QR).',
+      'Icon set completed: added help-buoy, chatbubbles, mail, alert-circle, cloud-offline, add, construct, paper-plane, heart, trending-up. Help and several notices had empty spots before.',
+      'Official support contacts wired in Help: WhatsApp +504 3213-6457 and email j.ordonez@ordenglobal.org.',
+    ],
+  },
   {
     v: '1.9.5',
     build: 29,

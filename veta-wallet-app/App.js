@@ -31,6 +31,8 @@ import Onboarding, { seenOnboarding } from './src/screens/Onboarding';
 import WatchOnly from './src/screens/WatchOnly';
 import Sessions from './src/screens/Sessions';
 import Help from './src/screens/Help';
+import Remesas from './src/screens/Remesas';
+import DeleteAccount from './src/screens/DeleteAccount';
 import ErrorBoundary from './src/ErrorBoundary';
 
 const SCREENS = {
@@ -40,6 +42,7 @@ const SCREENS = {
   profile: Profile, mytokenpay: MyTokenPay, passport: Passport, blocked: Blocked, privatekey: PrivateKey,
   scan: Scan, contacts: Contacts, importPassport: ImportPassport, about: About,
   onboarding: Onboarding, watchOnly: WatchOnly, sessions: Sessions, help: Help,
+  remesas: Remesas, deleteAccount: DeleteAccount,
 };
 const TABS = [
   { r: 'home', label: 'tab.home', icon: 'wallet' },

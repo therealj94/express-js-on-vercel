@@ -96,6 +96,43 @@ const PATHS = {
   image: ['M3.5 5.5A1.5 1.5 0 0 1 5 4h14a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 19 20H5a1.5 1.5 0 0 1-1.5-1.5z', circle(8.6, 9.2, 1.7), 'M3.6 16.6l4.6-4 4 3.4 3.2-2.8 4.1 3.6'],
   snow: ['M12 2.5v19', 'M3.8 7.2l16.4 9.6', 'M20.2 7.2L3.8 16.8', 'M9.6 4.4L12 2.5l2.4 1.9', 'M9.6 19.6L12 21.5l2.4-1.9'],
   language: ['M3 6h10', 'M8 4v2', 'M11.5 6c0 4.5-3.2 8.3-8 10', 'M6 9.5c.8 2.6 2.9 4.9 5.6 6', 'M12.8 20.5L17 9.5l4.2 11', 'M14.3 16.8h5.4'],
+
+  // Iconos añadidos en 1.10: sin ellos el centro de ayuda y varios avisos
+  // salían con un hueco en blanco (Icon devuelve un SVG vacío si el nombre
+  // no existe). El set completo evita ese silencio visual.
+  add: ['M12 5v14', 'M5 12h14'],
+  close: ['M6 6l12 12', 'M18 6L6 18'],
+  'close-circle': [circle(12, 12, 9), 'M9 9l6 6', 'M15 9l-6 6'],
+  mail: [
+    'M3.5 6.5A1.5 1.5 0 0 1 5 5h14a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z',
+    'M3.5 6.9L12 13l8.5-6.1',
+  ],
+  chatbubbles: [
+    'M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v6A2.5 2.5 0 0 1 17.5 16H11l-4 3.5V16H6.5A2.5 2.5 0 0 1 4 13.5z',
+    circle(9, 10.5, 0.8), circle(12, 10.5, 0.8), circle(15, 10.5, 0.8),
+  ],
+  'alert-circle': [circle(12, 12, 9), 'M12 7.2v6', circle(12, 16.6, 0.7)],
+  'cloud-offline': [
+    'M6.8 18.5a4.3 4.3 0 0 1-.4-8.6 5.6 5.6 0 0 1 10.8-1.3 3.9 3.9 0 0 1 .5 7.7',
+    'M3 3l18 18',
+  ],
+  construct: [
+    'M13.5 8.5l7 -3.5-3-3-3.5 7z',
+    'M11.5 10.5L4 18l2 2 7.5-7.5',
+    'M12.2 11.8l1.6 1.6',
+  ],
+  'help-buoy': [
+    circle(12, 12, 9),
+    circle(12, 12, 3.4),
+    'M12 3v5.4', 'M12 15.6V21', 'M3 12h5.4', 'M15.6 12H21',
+  ],
+  // Avión de papel — usado como remesa/enviar-al-extranjero.
+  send: ['M21 3L2 12l7 3 3 7z', 'M9 15l12-12'],
+  airplane: ['M21 3L2 12l7 3 3 7z', 'M9 15l12-12'],
+  'paper-plane': ['M21 3L2 12l7 3 3 7z', 'M9 15l12-12'],
+  heart: ['M12 21s-8-5.3-8-11.3a4.7 4.7 0 0 1 8-3.3 4.7 4.7 0 0 1 8 3.3c0 6-8 11.3-8 11.3z'],
+  earth: [circle(12, 12, 9), 'M3 12h18', 'M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18'],
+  'trending-up': ['M3 17l6-6 4 4 8-8', 'M15 7h5v5'],
 };
 
 // Alias: mismos nombres que usábamos antes.

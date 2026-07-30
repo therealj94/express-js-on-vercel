@@ -278,6 +278,23 @@ export function Settings({ nav }) {
           <Icon name="power" size={18} color="#fff" />
           <Text style={styles.logoutTxt}>{t('set.logout')}</Text>
         </Pressable>
+
+        {/* Zona peligrosa: eliminar cuenta. Requisito de tiendas y del
+            usuario poder pedir la eliminación desde la app misma. */}
+        <Text style={[styles.grpTitle, { color: '#8E1F2F', marginTop: 26 }]}>{t('delAcc.dangerGrp')}</Text>
+        <Pressable
+          onPress={() => { hap(); nav.go('deleteAccount'); }}
+          accessibilityRole="button"
+          accessibilityLabel={t('delAcc.title')}
+          style={styles.dangerRow}>
+          <View style={styles.dangerIc}><Icon name="trash" size={18} color="#F0776B" /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.dangerT}>{t('delAcc.title')}</Text>
+            <Text style={styles.dangerP}>{t('delAcc.rowSub')}</Text>
+          </View>
+          <Icon name="chevron-forward" size={18} color="#F0776B" />
+        </Pressable>
+
         <Text style={styles.foot}>{t('set.foot')}{'\n'}{versionLabel()}</Text>
       </ScrollView>
     </View>
@@ -692,6 +709,10 @@ const styles = StyleSheet.create({
   langOn: { backgroundColor: C.gold },
   langTxt: { color: C.txt2, fontWeight: '700', fontSize: 12.5 },
   logoutTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  dangerRow: { flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: 'rgba(240,119,107,0.08)', borderWidth: 1, borderColor: 'rgba(240,119,107,0.30)', borderRadius: 16, padding: 14 },
+  dangerIc: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(240,119,107,0.12)', alignItems: 'center', justifyContent: 'center' },
+  dangerT: { color: '#F0776B', fontWeight: '700', fontSize: 14 },
+  dangerP: { color: C.txt3, fontSize: 11.5, marginTop: 2 },
   foot: { textAlign: 'center', color: C.txt3, fontSize: 11, lineHeight: 16, marginTop: 18 },
 
   passCard: { borderRadius: 22, padding: 18, borderWidth: 1, borderColor: 'rgba(62,217,160,0.25)' },

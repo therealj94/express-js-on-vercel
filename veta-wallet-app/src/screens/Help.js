@@ -6,13 +6,11 @@ import { Header, Button3D, hap } from '../ui';
 import { versionLabel } from '../version';
 import { useT } from '../i18n';
 
-// Datos de contacto del equipo Orden Global. Estos son los únicos valores
-// que hay que actualizar cuando cambien: el resto del centro de ayuda vive
-// como cadenas i18n. Los ceros al principio del número WhatsApp NO se
-// escriben — se usa el formato internacional sin +.
+// Datos de contacto oficiales del equipo Orden Global. El formato de
+// WhatsApp es internacional sin "+" y sin espacios.
 const SUPPORT = {
-  whatsappNumber: '50400000000', // TODO: reemplazar con el número real de Orden Global
-  email: 'soporte@vetawallet.com', // TODO: reemplazar con el correo real
+  whatsappNumber: '50432136457',
+  email: 'j.ordonez@ordenglobal.org',
 };
 
 // Ayuda dentro de la app: FAQ estático + contactos. Reduce carga de soporte
