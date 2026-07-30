@@ -8,6 +8,8 @@ import * as Haptics from 'expo-haptics';
 import { C, G } from './theme';
 
 export const LOGO = require('../assets/logo.png');
+// Logo corporativo de la empresa dueña del ecosistema (marca en el pie).
+export const LOGO_ORDEN = require('../assets/orden-global.png');
 export const BG = require('../assets/login-bg.jpg');       // iniciar sesión y contenido
 export const BG_SPLASH = require('../assets/splash-bg.jpg'); // al abrir la app
 export const hap = (style = Haptics.ImpactFeedbackStyle.Light) => { try { Haptics.impactAsync(style); } catch (e) {} };
@@ -52,6 +54,16 @@ export function Logo({ size = 60, style }) {
 
 export function TokenIcon({ t, size = 44 }) {
   const r = size / 2;
+  // Logo real del token: se muestra sobre un disco negro con anillo dorado
+  // sutil. Los logos vienen sobre fondo negro y así se funden bien.
+  if (t.image) {
+    return (
+      <View style={{ width: size, height: size, borderRadius: r, backgroundColor: '#000', borderWidth: 1, borderColor: 'rgba(201,169,97,0.35)', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        <Image source={t.image} style={{ width: size * 0.94, height: size * 0.94, borderRadius: r }} resizeMode="contain" />
+      </View>
+    );
+  }
+  // Compat: si aún hubiese un token con `logo: true` (banner "gold" con logo).
   if (t.logo) {
     return (
       <LinearGradient colors={G.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: size, height: size, borderRadius: r, alignItems: 'center', justifyContent: 'center' }}>

@@ -228,7 +228,7 @@ const S = {
     // versión
     'set.about': 'Acerca de esta versión',
     'about.title': 'Versión y novedades', 'about.build': 'build {b}',
-    'about.current': 'Versión instalada', 'about.news': 'NOVEDADES', 'about.latest': 'ACTUAL',
+    'about.current': 'Versión instalada', 'about.news': 'NOVEDADES', 'about.latest': 'ACTUAL', 'about.by': 'UN PRODUCTO DE',
     // gráfico
     'chart.title': 'Precio en vivo',
     'chart.hint': 'Mantén el dedo sobre el gráfico para ver cada vela',
@@ -431,7 +431,7 @@ const S = {
     'set.notifsDenied': 'Allow notifications in your phone settings',
     'set.about': 'About this version',
     'about.title': 'Version & what’s new', 'about.build': 'build {b}',
-    'about.current': 'Installed version', 'about.news': "WHAT'S NEW", 'about.latest': 'CURRENT',
+    'about.current': 'Installed version', 'about.news': "WHAT'S NEW", 'about.latest': 'CURRENT', 'about.by': 'A PRODUCT BY',
     'chart.title': 'Live price',
     'chart.hint': 'Hold your finger on the chart to inspect each candle',
     'chart.offline': 'We could not load the history. Check your connection.',

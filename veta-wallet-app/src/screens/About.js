@@ -1,9 +1,9 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Image, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '../icons';
 import { C, G } from '../theme';
-import { Header, Logo, Glass } from '../ui';
+import { Header, Logo, Glass, LOGO_ORDEN } from '../ui';
 import { VERSION, BUILD, RELEASED, CHANGELOG } from '../version';
 import { useT, useLang } from '../i18n';
 
@@ -45,6 +45,14 @@ export default function About({ nav }) {
           </Glass>
         ))}
 
+        {/* Firma de la empresa dueña del ecosistema. Va sobre un rectángulo
+            blanco tenue porque el logo viene en blanco: sin fondo, se
+            perdería sobre el tema oscuro de la app. */}
+        <Text style={st.byT}>{t('about.by')}</Text>
+        <View style={st.byBox}>
+          <Image source={LOGO_ORDEN} style={st.byLogo} resizeMode="contain" />
+        </View>
+
         <Text style={st.foot}>{t('set.foot')}</Text>
       </ScrollView>
     </View>
@@ -68,4 +76,7 @@ const st = StyleSheet.create({
   dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: C.gold, marginTop: 6 },
   itemTxt: { color: C.txt2, fontSize: 12.5, lineHeight: 18.5, flex: 1 },
   foot: { color: C.txt3, fontSize: 11, textAlign: 'center', marginTop: 18, lineHeight: 17 },
+  byT: { color: C.txt3, fontSize: 10.5, letterSpacing: 2, fontWeight: '700', textAlign: 'center', marginTop: 26 },
+  byBox: { backgroundColor: '#fff', borderRadius: 18, paddingVertical: 22, paddingHorizontal: 24, marginTop: 10, alignItems: 'center' },
+  byLogo: { width: '100%', height: 74 },
 });

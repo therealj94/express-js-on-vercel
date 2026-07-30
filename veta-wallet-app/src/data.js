@@ -4,12 +4,15 @@
 
 export const ORIGEN_PRICE = 2.35; // respaldo si el feed de precios no responde
 
+// Cada token que tiene logo propio lo trae en `image`; TokenIcon renderiza
+// esa imagen sobre un disco oscuro. Los que no lo tienen (MNKA) siguen con
+// el glifo antiguo sobre un degradado. Así se mezclan sin sorpresas.
 export const TOKEN_META = {
-  ORIGEN: { s: 'ORIGEN', n: 'ORIGEN', logo: true },
-  AUKA: { s: 'AUKA', n: 'AUKA', glyph: 'Au', grad: ['#F8EFCF', '#C9A961', '#96793F'], fg: '#3A2C08' },
-  AGKA: { s: 'AGKA', n: 'AGKA', glyph: 'Ag', grad: ['#EDF1F3', '#B4BCC2', '#7C858C'], fg: '#2A2F33' },
-  ONDK: { s: 'ONDK', n: 'ONDK', glyph: '◈', grad: ['#1E8C74', '#0A463F'], fg: '#EAD79C' },
-  MNKA: { s: 'MNKA', n: 'MNKA', glyph: '♛', grad: ['#F8EFCF', '#C9A961', '#96793F'], fg: '#3A2C08' },
+  ORIGEN: { s: 'ORIGEN', n: 'ORIGEN', image: require('../assets/tokens/origen.jpg') },
+  AUKA:   { s: 'AUKA',   n: 'AUKA',   glyph: 'Au', grad: ['#F8EFCF', '#C9A961', '#96793F'], fg: '#3A2C08' },
+  AGKA:   { s: 'AGKA',   n: 'AGKA',   image: require('../assets/tokens/agka.jpg') },
+  ONDK:   { s: 'ONDK',   n: 'ONDK',   image: require('../assets/tokens/ondk.jpg') },
+  MNKA:   { s: 'MNKA',   n: 'MNKA',   glyph: '♛', grad: ['#F8EFCF', '#C9A961', '#96793F'], fg: '#3A2C08' },
 };
 
 export const COIN_INFO = {

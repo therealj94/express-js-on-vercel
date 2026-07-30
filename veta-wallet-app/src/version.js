@@ -10,15 +10,28 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.5.2';
-export const BUILD = 17;
-export const RELEASED = '2026-07-29';
+export const VERSION = '1.5.3';
+export const BUILD = 18;
+export const RELEASED = '2026-07-30';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.5.3',
+    build: 18,
+    date: '2026-07-30',
+    es: [
+      'Cada token muestra ahora su logo real: ORIGEN, AGKA y ONDK llevan su insignia oficial en Portafolio, Enviar, Recibir y en el gráfico.',
+      'Firma corporativa de Orden Global al final de Ajustes → Acerca de esta versión.',
+    ],
+    en: [
+      'Each token now shows its real logo: ORIGEN, AGKA and ONDK carry their official badge in Portfolio, Send, Receive and the chart.',
+      'Orden Global corporate signature at the bottom of Settings → About this version.',
+    ],
+  },
   {
     v: '1.5.2',
     build: 17,
