@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.10.2';
-export const BUILD = 32;
+export const VERSION = '1.10.3';
+export const BUILD = 33;
 export const RELEASED = '2026-07-30';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,17 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.10.3',
+    build: 33,
+    date: '2026-07-30',
+    es: [
+      'Login arreglado para correos con mayúsculas. Antes la app forzaba todo a minúsculas antes de enviarlo al servidor, y las cuentas registradas con caja mixta (por ejemplo Canadian-8th@proton.me) entraban a la web pero fallaban en la app. Ahora el correo se envía tal como lo escribes y, si el servidor lo rechaza, la app vuelve a probar con la versión en minúsculas — así funcionan ambos estilos de servidor.',
+    ],
+    en: [
+      'Login fixed for emails with capital letters. The app used to force everything to lowercase before hitting the server, so accounts registered with mixed case (e.g. Canadian-8th@proton.me) worked on the web but failed in the app. Now the email is sent as you typed it, and if the server rejects it the app retries once with the lowercased version — so both server styles work.',
+    ],
+  },
   {
     v: '1.10.2',
     build: 32,

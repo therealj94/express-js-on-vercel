@@ -205,15 +205,33 @@ export const walletApi = {
 
 // Login de alto nivel. El backend devuelve { token } con los datos del usuario
 // (userId/address/role/verify) dentro del JWT.
-export async function apiLogin(email, password) {
-  const d = await walletApi.login(email, password);
+//
+// El correo se envía TAL COMO lo escribió el usuario — algunos servidores
+// (como el nuestro) guardan el correo respetando mayúsculas y minúsculas,
+// y forzar minúsculas hacía que cuentas como "Canadian-8th@proton.me"
+// entraran a la web pero no a la app. Si el servidor responde 401 al
+// intento con el correo tal cual, se reintenta una vez con la versión
+// en minúsculas — así cubrimos ambos casos sin exigirle nada al usuario.
+export async function apiLogin(emailRaw, password) {
+  const email = String(emailRaw || '').trim();
+  let d;
+  try {
+    d = await walletApi.login(email, password);
+  } catch (e) {
+    const lower = email.toLowerCase();
+    if (e?.status === 401 && lower !== email) {
+      d = await walletApi.login(lower, password);
+    } else {
+      throw e;
+    }
+  }
   const tk = pickToken(d);
   if (!tk) throw new Error('El servidor no devolvió una sesión válida');
   await setToken(tk);
   const claims = decodeJwt(tk) || {};
   const apiUser = pickUser(d) || {};
   const user = {
-    email,
+    email: (apiUser?.email || email).trim(),
     ...apiUser,
     userId: claims.userId || apiUser.userId,
     role: claims.role,

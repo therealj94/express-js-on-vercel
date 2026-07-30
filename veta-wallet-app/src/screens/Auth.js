@@ -48,7 +48,11 @@ export default function Auth({ nav }) {
   const login = tab === 'login';
 
   async function enter(kind) {
-    const mail = email.trim().toLowerCase();
+    // No forzamos minúsculas: algunos backends (el nuestro entre ellos)
+    // guardan el correo respetando la caja original. apiLogin ya reintenta
+    // con la versión minúscula si el primer intento da 401, así que
+    // cubrimos ambos casos sin depender de la caja tipeada.
+    const mail = email.trim();
     if (!mail.includes('@')) { setErr(t('auth.errEmail')); return; }
     if (!pw || pw.length < 4) { setErr(t('auth.errPw')); return; }
     if (kind === 'register' && !regName.trim()) { setErr(t('auth.errName')); return; }
