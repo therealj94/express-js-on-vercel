@@ -1,26 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '../icons';
 import { C, G } from '../theme';
 import { Header, Button3D, hap, useAccount } from '../ui';
 import { money } from '../data';
-import { useT } from '../i18n';
+import { fetchRates, STATIC_RATES } from '../fx';
+import { useT, useLang } from '../i18n';
 
-// Países soportados con moneda local y tasa aproximada de USD → local.
-// Los tipos de cambio se muestran como referencia informativa: no se usan
-// para pactar ningún envío. Cuando conectemos el backend con un feed real
-// (Fixer.io o similar) se reemplazan por vivos.
+// Comisión fija de Veta Wallet por remesa. Se le resta al monto en USD
+// antes de convertir a moneda local — así el simulador muestra lo que
+// realmente le llega al destinatario, no el bruto.
+const REMESA_FEE_USD = 1;
+
+// Países soportados con moneda local. La tasa live viene de fx.js
+// (open.er-api.com); estas cifras solo se usan si el feed no responde.
 const COUNTRIES = [
-  { code: 'HN', name: 'Honduras',       flag: '🇭🇳', ccy: 'HNL', rate: 24.60 },
-  { code: 'SV', name: 'El Salvador',    flag: '🇸🇻', ccy: 'USD', rate: 1 },
-  { code: 'GT', name: 'Guatemala',      flag: '🇬🇹', ccy: 'GTQ', rate: 7.75 },
-  { code: 'NI', name: 'Nicaragua',      flag: '🇳🇮', ccy: 'NIO', rate: 36.80 },
-  { code: 'CR', name: 'Costa Rica',     flag: '🇨🇷', ccy: 'CRC', rate: 525 },
-  { code: 'PA', name: 'Panamá',         flag: '🇵🇦', ccy: 'USD', rate: 1 },
-  { code: 'MX', name: 'México',         flag: '🇲🇽', ccy: 'MXN', rate: 17.50 },
-  { code: 'CO', name: 'Colombia',       flag: '🇨🇴', ccy: 'COP', rate: 4200 },
-  { code: 'US', name: 'Estados Unidos', flag: '🇺🇸', ccy: 'USD', rate: 1 },
+  { code: 'HN', name: 'Honduras',       flag: '🇭🇳', ccy: 'HNL' },
+  { code: 'SV', name: 'El Salvador',    flag: '🇸🇻', ccy: 'USD' },
+  { code: 'GT', name: 'Guatemala',      flag: '🇬🇹', ccy: 'GTQ' },
+  { code: 'NI', name: 'Nicaragua',      flag: '🇳🇮', ccy: 'NIO' },
+  { code: 'CR', name: 'Costa Rica',     flag: '🇨🇷', ccy: 'CRC' },
+  { code: 'PA', name: 'Panamá',         flag: '🇵🇦', ccy: 'USD' },
+  { code: 'MX', name: 'México',         flag: '🇲🇽', ccy: 'MXN' },
+  { code: 'CO', name: 'Colombia',       flag: '🇨🇴', ccy: 'COP' },
+  { code: 'US', name: 'Estados Unidos', flag: '🇺🇸', ccy: 'USD' },
 ];
 
 const fmtLocal = (v, ccy) => {
@@ -30,6 +34,18 @@ const fmtLocal = (v, ccy) => {
   return `${s} ${ccy}`;
 };
 
+// Formato bonito para la marca de tiempo del feed (dd/mm HH:mm en local).
+function fmtStamp(iso, lang) {
+  if (!iso) return null;
+  try {
+    const d = new Date(iso);
+    if (isNaN(d)) return null;
+    const locale = lang === 'en' ? 'en-US' : 'es-HN';
+    return d.toLocaleDateString(locale, { day: '2-digit', month: 'short' })
+      + ' · ' + d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  } catch (e) { return null; }
+}
+
 // Pantalla Remesas: página de aterrizaje bien diseñada + tabla de países
 // + selector rápido de monto + botón que lanza el flujo Enviar reutilizando
 // el link de pagos que ya existe. La idea es que la persona en el otro
@@ -38,21 +54,51 @@ const fmtLocal = (v, ccy) => {
 // el link ya está listo para el día que sí).
 export default function Remesas({ nav }) {
   const t = useT();
+  const { lang } = useLang();
   const { account } = useAccount();
   const [usd, setUsd] = useState('100');
   const [country, setCountry] = useState(COUNTRIES[0]);
+  const [rates, setRates] = useState(STATIC_RATES);
+  const [updatedAt, setUpdatedAt] = useState(null);
+  const [source, setSource] = useState('static');
+  const [refreshing, setRefreshing] = useState(true);
+
   const amount = Number(usd) || 0;
+  const netUsd = Math.max(0, amount - REMESA_FEE_USD);
+  const rate = rates?.[country.ccy] ?? STATIC_RATES[country.ccy] ?? 1;
+  const llegaLocal = netUsd * rate;
+
+  // Feed de tasas: al montar y cada vez que se enfoca la pantalla.
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      const r = await fetchRates();
+      if (!vivo) return;
+      if (r?.rates) setRates(r.rates);
+      setUpdatedAt(r?.updatedAt || null);
+      setSource(r?.source || 'static');
+      setRefreshing(false);
+    })();
+    return () => { vivo = false; };
+  }, []);
+
+  const refrescar = async () => {
+    hap(); setRefreshing(true);
+    const r = await fetchRates(true);
+    if (r?.rates) setRates(r.rates);
+    setUpdatedAt(r?.updatedAt || null);
+    setSource(r?.source || 'static');
+    setRefreshing(false);
+  };
 
   const irEnviar = () => {
     hap();
-    // Salta a Enviar con el monto pre-relleno. El destinatario lo pega el
-    // usuario en la pantalla (o escanea el QR de quien va a recibir).
+    // Salta a Enviar con el monto BRUTO (incluye la comisión). La fee se
+    // descuenta en el flujo de envío al conectar el backend.
     nav.go('send', { amount: amount > 0 ? String(amount) : undefined });
   };
   const solicitar = () => {
     hap();
-    // Alterna: si soy quien VA A RECIBIR, genero un link/QR desde Recibir.
-    // Recibir ya soporta "solicitud de pago" — se abre allí para ese caso.
     nav.go('receive');
   };
 
@@ -123,14 +169,41 @@ export default function Remesas({ nav }) {
 
           <View style={st.result}>
             <View style={st.resultRow}>
-              <Text style={st.resultK}>{t('rem.resTo', { country: country.name })}</Text>
-              <Text style={st.resultV}>{fmtLocal(amount * country.rate, country.ccy)}</Text>
+              <Text style={st.resultK}>{t('rem.resEnvias')}</Text>
+              <Text style={st.resultVsm}>{money(amount)}</Text>
+            </View>
+            <View style={st.resultRow}>
+              <Text style={st.resultK}>{t('rem.resFee')}</Text>
+              <Text style={[st.resultVsm, { color: C.txt3 }]}>− {money(REMESA_FEE_USD)}</Text>
+            </View>
+            <View style={st.resultDivider} />
+            <View style={st.resultRow}>
+              <Text style={st.resultKbig}>{t('rem.resTo', { country: country.name })}</Text>
+              <Text style={st.resultV}>{fmtLocal(llegaLocal, country.ccy)}</Text>
             </View>
             <View style={st.resultRow}>
               <Text style={st.resultK}>{t('rem.resRate')}</Text>
-              <Text style={st.resultVsm}>1 USD ≈ {country.rate} {country.ccy}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={[st.liveDot, { backgroundColor: source === 'live' ? C.up : source === 'cache' ? C.gold : C.down }]} />
+                <Text style={st.resultVsm}>1 USD ≈ {country.ccy === 'USD' ? '1' : rate.toLocaleString('en-US', { maximumFractionDigits: rate >= 100 ? 0 : 2 })} {country.ccy}</Text>
+              </View>
             </View>
           </View>
+
+          {/* Marca de tiempo del feed y botón de actualizar manual. */}
+          <Pressable onPress={refrescar} disabled={refreshing} style={st.rateFoot} accessibilityRole="button" accessibilityLabel={t('rem.updateNow')}>
+            <Icon name="refresh" size={14} color={C.gold} />
+            <Text style={st.rateFootTxt}>
+              {refreshing
+                ? t('rem.updating')
+                : source === 'live'
+                  ? t('rem.livePrefix') + (fmtStamp(updatedAt, lang) ? ' · ' + fmtStamp(updatedAt, lang) : '')
+                  : source === 'cache'
+                    ? t('rem.cachePrefix') + (fmtStamp(updatedAt, lang) ? ' · ' + fmtStamp(updatedAt, lang) : '')
+                    : t('rem.staticPrefix')}
+            </Text>
+          </Pressable>
+
           <Text style={st.disclaimer}>{t('rem.disclaimer')}</Text>
         </View>
 
@@ -216,9 +289,14 @@ const st = StyleSheet.create({
   result: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 14, marginTop: 4 },
   resultRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingVertical: 4 },
   resultK: { color: C.txt3, fontSize: 12.5 },
-  resultV: { color: C.gold, fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  resultKbig: { color: C.txt, fontSize: 13, fontWeight: '700' },
+  resultV: { color: C.gold, fontSize: 20, fontWeight: '800', fontVariant: ['tabular-nums'] },
   resultVsm: { color: C.txt2, fontSize: 12, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  disclaimer: { color: C.txt3, fontSize: 10.5, lineHeight: 15, marginTop: 10, paddingHorizontal: 2 },
+  resultDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 6 },
+  liveDot: { width: 6, height: 6, borderRadius: 3 },
+  rateFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10, paddingVertical: 4 },
+  rateFootTxt: { color: C.gold, fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
+  disclaimer: { color: C.txt3, fontSize: 10.5, lineHeight: 15, marginTop: 6, paddingHorizontal: 2 },
 
   stepsCard: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, borderRadius: 20, paddingHorizontal: 18 },
   step: { flexDirection: 'row', gap: 14, alignItems: 'flex-start', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },

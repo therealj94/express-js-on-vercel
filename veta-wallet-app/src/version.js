@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.10.1';
-export const BUILD = 31;
+export const VERSION = '1.10.2';
+export const BUILD = 32;
 export const RELEASED = '2026-07-30';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,19 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.10.2',
+    build: 32,
+    date: '2026-07-30',
+    es: [
+      'Tasas de cambio en Remesas ahora son en vivo. Cada vez que abrís la pantalla, la app consulta el mercado (open.er-api.com, sin API key) y muestra la conversión del día. Un puntito verde indica que la tasa es en vivo; dorado si es la última guardada; rojo si estás sin conexión. Con un tap en "Actualizar tasas" refrescás manualmente.',
+      'Comisión Veta de $1 USD por remesa se muestra en el simulador: ves qué envías, qué se cobra y qué llega al destinatario en su moneda local — sin sorpresas.',
+    ],
+    en: [
+      'Remittance rates are now live. Every time you open the screen the app queries the market (open.er-api.com, no API key) and shows today’s conversion. A green dot means the rate is live; gold means last saved; red means offline. A "Update rates" tap refreshes manually.',
+      'Veta fee of $1 USD per remittance is shown in the simulator: you see what you send, what is charged and what arrives to the recipient in local currency — no surprises.',
+    ],
+  },
   {
     v: '1.10.1',
     build: 31,
