@@ -458,6 +458,12 @@ export const ONCHAIN_TOKENS = [
 const ONDK_CACHE = { price: null, at: 0 };
 const ONDK_TTL = 30 * 60 * 1000;
 const ONDK_CACHE_KEY = 'veta-ondk-price-cache';
+// Precio "de referencia" como último recurso: si (a) el server no envió
+// precio en ESTA carga y (b) el teléfono nunca lo cacheó antes, mostramos
+// esto para que el usuario no vea "—" en la ficha de ONDK. Se actualiza
+// aproximadamente cada release; el precio real del server siempre gana.
+// Origen del valor: último precio conocido del ecosistema el 30 jul 2026.
+const ONDK_STATIC_FALLBACK = 2.10;
 
 async function loadOndkCache() {
   try {
@@ -495,6 +501,12 @@ export async function apiPortfolio() {
   // Precio de ONDK: primero lo intentamos del endpoint del chain. Si no
   // vino, usamos el último cacheado (mientras siga dentro del TTL). Si
   // el endpoint sí trajo precio nuevo, refrescamos el caché para el resto.
+  // Precio de ONDK con 3 niveles de respaldo:
+  //   1. El que trae el server ahora (mejor caso)
+  //   2. El último cacheado en el teléfono (30 min TTL)
+  //   3. Un valor estático de referencia (evita "—" en cuentas nuevas
+  //      cuyo backend nunca les devolvió precio; el server real siempre
+  //      gana en la siguiente carga que sí lo mande).
   let ondkPrice = Number(chain?.price) || null;
   if (ondkPrice && ondkPrice > 0) {
     ONDK_CACHE.price = ondkPrice;
@@ -502,6 +514,8 @@ export async function apiPortfolio() {
     saveOndkCache();
   } else if (ONDK_CACHE.price && Date.now() - ONDK_CACHE.at < ONDK_TTL) {
     ondkPrice = ONDK_CACHE.price;
+  } else {
+    ondkPrice = ONDK_STATIC_FALLBACK;
   }
 
   const { prices, changes } = await livePrices().catch(() => ({ prices: {}, changes: {} }));

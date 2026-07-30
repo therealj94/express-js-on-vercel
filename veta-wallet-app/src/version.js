@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.10.5';
-export const BUILD = 35;
+export const VERSION = '1.10.6';
+export const BUILD = 36;
 export const RELEASED = '2026-07-30';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,19 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.10.6',
+    build: 36,
+    date: '2026-07-30',
+    es: [
+      'ONDK ahora siempre muestra un precio: si el servidor no lo devuelve y el teléfono nunca lo cacheó, se usa un valor de referencia ($2.10) para que las cuentas nuevas no queden con "—" en la ficha. El precio real del servidor siempre gana en la siguiente carga que sí lo mande.',
+      'Es un parche mientras arreglamos la raíz en el backend. La solución definitiva llega apenas tengamos acceso a Heroku (API key).',
+    ],
+    en: [
+      'ONDK now always shows a price: if the server does not return it and the phone never cached it, a reference value ($2.10) is used so fresh accounts do not see "—". The real server price always wins on the next load that includes it.',
+      'This is a patch while we fix the root on the backend. Definitive fix ships as soon as we have Heroku access (API key).',
+    ],
+  },
   {
     v: '1.10.5',
     build: 35,
