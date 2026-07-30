@@ -451,6 +451,31 @@ export const ONCHAIN_TOKENS = [
   { symbol: 'MNKA', contract: '0x18b6680CFF71c11067bec312Fc48786bE2e54Ead' },
 ];
 
+// Caché del último precio "bueno" de ONDK que devolvió el endpoint de
+// chain. Vive en memoria + en AsyncStorage para sobrevivir a reinicios
+// de la app. Sirve de respaldo cuando el server no incluye el precio en
+// una respuesta (pasa intermitentemente en cuentas nuevas). TTL 30 min.
+const ONDK_CACHE = { price: null, at: 0 };
+const ONDK_TTL = 30 * 60 * 1000;
+const ONDK_CACHE_KEY = 'veta-ondk-price-cache';
+
+async function loadOndkCache() {
+  try {
+    const raw = await AsyncStorage.getItem(ONDK_CACHE_KEY);
+    if (!raw) return;
+    const { price, at } = JSON.parse(raw);
+    if (price && at && Date.now() - at < ONDK_TTL) {
+      ONDK_CACHE.price = Number(price);
+      ONDK_CACHE.at = Number(at);
+    }
+  } catch (e) {}
+}
+async function saveOndkCache() {
+  try { await AsyncStorage.setItem(ONDK_CACHE_KEY, JSON.stringify(ONDK_CACHE)); } catch (e) {}
+}
+// Se hidrata en cuanto el módulo carga.
+loadOndkCache();
+
 // Portafolio real completo: saldo de cada token (RPC), precio en vivo,
 // variación 24h e historial de la red. Incluye tokens con saldo 0.
 export async function apiPortfolio() {
@@ -466,7 +491,18 @@ export async function apiPortfolio() {
   } catch (e) {}
   const provider = chain?.provider || RPC_FALLBACK;
   const transfers = Array.isArray(chain?.allTransfers) ? chain.allTransfers : [];
-  const ondkPrice = Number(chain?.price) || null;
+
+  // Precio de ONDK: primero lo intentamos del endpoint del chain. Si no
+  // vino, usamos el último cacheado (mientras siga dentro del TTL). Si
+  // el endpoint sí trajo precio nuevo, refrescamos el caché para el resto.
+  let ondkPrice = Number(chain?.price) || null;
+  if (ondkPrice && ondkPrice > 0) {
+    ONDK_CACHE.price = ondkPrice;
+    ONDK_CACHE.at = Date.now();
+    saveOndkCache();
+  } else if (ONDK_CACHE.price && Date.now() - ONDK_CACHE.at < ONDK_TTL) {
+    ondkPrice = ONDK_CACHE.price;
+  }
 
   const { prices, changes } = await livePrices().catch(() => ({ prices: {}, changes: {} }));
 

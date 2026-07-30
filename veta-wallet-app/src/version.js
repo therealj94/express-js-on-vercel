@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.10.4';
-export const BUILD = 34;
+export const VERSION = '1.10.5';
+export const BUILD = 35;
 export const RELEASED = '2026-07-30';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,19 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.10.5',
+    build: 35,
+    date: '2026-07-30',
+    es: [
+      'Precio de ONDK más resistente: si el servidor no lo devuelve en una carga (pasa a veces con cuentas nuevas), la app usa el último precio bueno guardado en el teléfono. Se acabó el "—" que dejaba a algunos usuarios sin ver cuánto vale su ONDK.',
+      'El precio se cachea 30 minutos por dispositivo y sobrevive a reinicios de la app.',
+    ],
+    en: [
+      'ONDK price is more resilient: if the server does not return it on a load (happens sometimes with fresh accounts), the app uses the last good price stored on the device. No more "—" leaving some users without ONDK value.',
+      'Price is cached for 30 minutes per device and survives app restarts.',
+    ],
+  },
   {
     v: '1.10.4',
     build: 34,
