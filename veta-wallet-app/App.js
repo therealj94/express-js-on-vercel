@@ -10,6 +10,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { loadSession, saveSession, clearSession, initAccounts, setPassport, updateAccount } from './src/accounts';
 import { loadToken, setToken, ensureSession, clearCreds, apiPortfolio } from './src/api';
 import { recordLogout } from './src/sessionLog';
+import { primerArranque } from './src/backupNudge';
 import { readReturnUrl, genesis, mergePassport } from './src/genesis';
 import { activarAvisos, limpiarAvisos, watchIncoming, marcarVisto, stopWatch, alTocarNotificacion, avisosActivos } from './src/notify';
 import LockScreen, { useAppLock } from './src/LockScreen';
@@ -29,6 +30,7 @@ import About from './src/screens/About';
 import Onboarding, { seenOnboarding } from './src/screens/Onboarding';
 import WatchOnly from './src/screens/WatchOnly';
 import Sessions from './src/screens/Sessions';
+import Help from './src/screens/Help';
 import ErrorBoundary from './src/ErrorBoundary';
 
 const SCREENS = {
@@ -37,7 +39,7 @@ const SCREENS = {
   card: CardScreen, activity: Activity, notifs: Notifications, settings: Settings,
   profile: Profile, mytokenpay: MyTokenPay, passport: Passport, blocked: Blocked, privatekey: PrivateKey,
   scan: Scan, contacts: Contacts, importPassport: ImportPassport, about: About,
-  onboarding: Onboarding, watchOnly: WatchOnly, sessions: Sessions,
+  onboarding: Onboarding, watchOnly: WatchOnly, sessions: Sessions, help: Help,
 };
 const TABS = [
   { r: 'home', label: 'tab.home', icon: 'wallet' },
@@ -87,6 +89,7 @@ function Root() {
     (async () => {
       await loadToken();
       await initAccounts();
+      await primerArranque(); // marca por dispositivo, para el nudge de respaldo
       const saved = await loadSession();
       if (saved) {
         setAccount(saved);
@@ -100,33 +103,63 @@ function Root() {
     logout: () => { recordLogout(); setAccount(null); clearSession(); setToken(null); clearCreds(); limpiarAvisos(); },
   };
 
-  // Retorno desde el portal Genesis ID (vetawallet://genesis?uid=…). Captura el
-  // pasaporte aunque la app estuviera en segundo plano o se abriera de cero.
+  // Deep links entrantes.
+  // Dos casos:
+  //   vetawallet://genesis?uid=... → retorno del portal Genesis ID.
+  //   vetawallet://pay?to=...&amount=...&memo=... → solicitud de pago
+  //   recibida por link o QR. Se abre Enviar con los campos rellenos.
   const accountRef = useRef(account);
   accountRef.current = account;
   useEffect(() => {
+    const parsePayLink = (url) => {
+      // Formato esperado: vetawallet://pay?to=0x...&amount=X&sym=ORIGEN&memo=...
+      try {
+        const q = url.split('?')[1] || '';
+        const params = {};
+        for (const kv of q.split('&')) {
+          if (!kv) continue;
+          const [k, v] = kv.split('=');
+          if (k) params[k] = v ? decodeURIComponent(v) : '';
+        }
+        return params;
+      } catch (e) { return {}; }
+    };
+
     const handle = async (url) => {
-      if (!url || !/genesis/i.test(url)) return;
+      if (!url) return;
+
+      // ---- Solicitud de pago ----
+      if (/vetawallet:\/\/pay(\?|$)/i.test(url)) {
+        if (!accountRef.current) return; // sin sesión, no hay a quién llevar
+        const p = parsePayLink(url);
+        if (!/^0x[a-fA-F0-9]{40}$/.test(p.to || '')) return;
+        setDir(1);
+        setStack([{ r: 'home' }, { r: 'send', params: p }]);
+        return;
+      }
+
+      // ---- Retorno del portal Genesis ID ----
+      if (!/genesis/i.test(url)) return;
       const acc = accountRef.current;
       if (!acc) return;
       const { token, passport } = readReturnUrl(url);
       // Con token: se valida en el servidor (allí vive la API key del portal).
       // Se combina todo para no perder GID, nombre ni foto.
-      let p = passport;
+      let pp = passport;
       if (token) {
         const validated = await genesis.validateToken(token, { email: acc.email, walletAddress: acc.addr });
-        p = mergePassport(p, validated);
+        pp = mergePassport(pp, validated);
       }
-      if (p && (!p.photoUrl || !p.fullName)) {
+      if (pp && (!pp.photoUrl || !pp.fullName)) {
         const status = await genesis.status(acc.email, acc.addr).catch(() => null);
-        p = mergePassport(p, status);
+        pp = mergePassport(pp, status);
       }
-      if (!p) return;
-      p.fullName = p.fullName || acc.name;
-      p.email = p.email || acc.email;
-      p.walletAddress = p.walletAddress || acc.addr;
-      await genesis.save(p);
-      const updated = await setPassport(acc.email, p);
+      if (!pp) return;
+      pp.fullName = pp.fullName || acc.name;
+      pp.email = pp.email || acc.email;
+      pp.walletAddress = pp.walletAddress || acc.addr;
+      await genesis.save(pp);
+      const updated = await setPassport(acc.email, pp);
       if (updated) { setAccount(updated); setDir(1); setStack([{ r: 'home' }, { r: 'passport' }]); }
     };
     const sub = Linking.addEventListener('url', (e) => handle(e.url));

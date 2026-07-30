@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { NativeModules, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Idioma de la app (es | en), persistido. Cambia en Ajustes → Idioma.
@@ -10,6 +11,11 @@ const S = {
     // auth
     'auth.login': 'Iniciar sesión', 'auth.register': 'Crear cuenta', 'auth.name': 'Nombre completo', 'auth.namePh': 'Tu nombre',
     'auth.email': 'Correo electrónico', 'auth.password': 'Contraseña', 'auth.remember': 'Mantener mi sesión iniciada',
+    'auth.pw.weakEmpty': 'CONTRASEÑA MUY CORTA',
+    'auth.pw.weak': 'DÉBIL',
+    'auth.pw.ok': 'ACEPTABLE',
+    'auth.pw.good': 'BUENA',
+    'auth.pw.strong': 'FUERTE',
     'auth.enter': 'Ingresar', 'auth.entering': 'Ingresando…', 'auth.create': 'Crear mi cuenta', 'auth.creating': 'Creando cuenta…',
     'auth.forgot': '¿Olvidaste tu contraseña? Recupérala en vetawallet.com',
     'auth.terms': 'Tu cuenta se crea en la blockchain de Orden Global. Después podrás vincular tu Genesis ID desde Ajustes (opcional).',
@@ -28,6 +34,10 @@ const S = {
     'home.notificationsA11y': 'Ver notificaciones',
     'home.qrA11y': 'Ver mi código QR para recibir',
     'home.tokenA11y': 'Ver detalle de {name}, tienes {qty} {sym}',
+    'home.backupT': 'Guardá el respaldo de tu billetera',
+    'home.backupP': 'Tu frase semilla es la única forma de recuperar tus fondos si perdés el acceso al teléfono. Guardala en un lugar seguro (no en el celular).',
+    'home.backupCta': 'Ver mi frase',
+    'home.backupLater': 'Más tarde',
     'lock.title': 'Veta Wallet bloqueada',
     'lock.p': 'Usa tu huella o Face ID para desbloquear tu billetera.',
     'lock.cta': 'Desbloquear',
@@ -72,12 +82,40 @@ const S = {
     'sess.closeOk': 'Cerrar',
     'sess.closed': 'Sesión cerrada',
     'sess.emptyT': 'Aún no hay sesiones registradas aquí',
+    'help.title': 'Ayuda',
+    'help.subtitle': 'Preguntas frecuentes y contacto',
+    'help.heroT': '¿En qué te podemos ayudar?',
+    'help.heroP': 'Aquí están las respuestas a las preguntas más comunes. Si no encuentras la tuya, escríbenos: te respondemos en persona.',
+    'help.faqGrp': 'PREGUNTAS FRECUENTES',
+    'help.contactGrp': 'CONTACTA CON EL EQUIPO',
+    'help.q1t': '¿Qué es Veta Wallet?',
+    'help.q1p': 'Una billetera para la blockchain de Orden Global. Manejas ORIGEN y los tokens del ecosistema (AUKA, AGKA, ONDK, MNKA), envías y recibes, ves el precio en vivo, y vinculas tu identidad Genesis ID si querés.',
+    'help.q2t': '¿Cómo envío tokens a otra persona?',
+    'help.q2p': 'Home → Enviar → pega la dirección o escanea el QR → escribe el monto → toca Enviar. Revisas la ficha, firmas con tu contraseña y listo. Si la otra persona te mandó un link de "solicitud de pago", los campos ya llegan rellenos.',
+    'help.q3t': '¿Cómo recibo un pago?',
+    'help.q3p': 'Home → Recibir. Tu QR es tu dirección: quien lo escanee te puede mandar tokens. Si querés cobrar un monto exacto, escribe la cifra en "Solicitar un pago" y comparte el link — la otra persona lo abre y ya tiene todo listo para enviarte.',
+    'help.q4t': '¿Qué pasa si pierdo mi teléfono?',
+    'help.q4p': 'Tu billetera se recupera con la frase semilla que respaldaste al comenzar. Es lo único que da acceso a tus fondos. Guardala en un lugar seguro (papel, gestor de contraseñas) — nunca solo en el celular. Si aún no la viste, entrá a Ajustes → Seguridad → Ver mi frase.',
+    'help.q5t': '¿Es seguro guardar mi contraseña con "Recordarme"?',
+    'help.q5p': 'La contraseña se guarda en el llavero seguro del sistema (Keychain en iPhone, Keystore en Android), no en el almacenamiento común. Aún así, la app te desbloquea con tu huella/Face ID cada vez que la abrís tras dos minutos afuera. Podés apagar el "Recordarme" en cualquier momento en el login.',
+    'help.q6t': '¿Qué es Genesis ID?',
+    'help.q6p': 'La identidad digital de Orden Global. Verificás tu documento y foto en el portal oficial una sola vez, y con eso quedás listo para funciones adicionales del ecosistema. Es opcional — la app funciona sin él.',
+    'help.q7t': 'La app dice "sin conexión". ¿Qué hago?',
+    'help.q7p': 'Es porque no llega el internet al teléfono. Los saldos que ves son los últimos guardados. Cuando vuelva la conexión, se refrescan solos y la barra desaparece. Si el problema persiste, revisá los datos móviles o Wi-Fi del teléfono.',
+    'help.whatsapp': 'WhatsApp',
+    'help.email': 'Correo',
+    'help.foot': 'Horario de soporte: L–V de 8:00 a 18:00 (UTC-6). Fuera de ese horario respondemos al día siguiente.',
+    'help.waCtx': 'Hola, escribo desde Veta Wallet ({v}). Necesito ayuda con:',
+    'help.mailSubject': 'Soporte Veta Wallet',
+    'help.mailBody': 'Cuéntanos con detalle qué está pasando.\n\n---\nInformación técnica (no borrar):\nVersión: {v}',
     'home.send': 'Enviar', 'home.receive': 'Recibir', 'home.buy': 'Comprar', 'home.swap': 'Swap',
     'home.assets': 'Mis activos', 'home.activity': 'Actividad',
     'home.genesisT': 'Vincula tu Genesis ID', 'home.genesisP': 'Identidad verificada para todo el ecosistema (opcional)',
     'home.updated': 'Saldos actualizados', 'home.offline': 'Sin conexión — mostrando datos guardados',
     // send
     'send.title': 'Enviar', 'send.to': 'Dirección de destino', 'send.pw': 'Contraseña (firma la transacción)',
+    'send.reqFilled': 'Solicitud recibida — {memo}. Verifica los datos antes de firmar.',
+    'send.reqFilledPlain': 'Solicitud de pago recibida. Verifica los datos antes de firmar.',
     'send.fee': 'Comisión de red', 'send.network': 'Red', 'send.total': 'Total a debitar',
     'send.review': 'Revisar y enviar', 'send.sending': 'Enviando…', 'send.sent': 'Transacción enviada',
     'send.soon': 'El envío de {s} desde la app estará disponible próximamente. Hoy puedes enviarlo desde la billetera web.',
@@ -87,7 +125,19 @@ const S = {
     'send.insufficient': 'Saldo insuficiente: tienes {q} {s}.',
     // receive
     'recv.title': 'Recibir', 'recv.scan': 'Escanea para recibir ORIGEN y tokens de la red Orden Global (8532)',
+    'recv.scanReq': 'Escanea para pagar {amount} ORIGEN',
     'recv.copy': 'Copiar dirección', 'recv.copied': 'Dirección copiada', 'recv.copyErr': 'No se pudo copiar',
+    'recv.reqTitle': 'Solicitar un pago',
+    'recv.reqHint': 'Opcional: escribe el monto (y el motivo) para generar un link/QR que ya trae los datos rellenos. Quien lo escanee desde Veta Wallet cae directo en Enviar.',
+    'recv.reqAmt': 'Monto',
+    'recv.reqMemo': 'Motivo (opcional)',
+    'recv.reqMemoPh': 'Ej.: Almuerzo del martes',
+    'recv.share': 'Compartir',
+    'recv.copyLink': 'Copiar link',
+    'recv.linkCopied': 'Link de pago copiado',
+    'recv.shareAddr': 'Esta es mi dirección de Veta Wallet:',
+    'recv.shareMsg': 'Te pido {amount} {sym} en Veta Wallet. Motivo: {memo}',
+    'recv.shareMsgNoMemo': 'Te pido {amount} {sym} en Veta Wallet.',
     // buy (pasarela USDT → ORIGEN/AUKA/AGKA/ONDK/MNKA)
     'buy.title': 'Comprar',
     'buy.wipT': 'Pasarela en preparación',
@@ -327,6 +377,11 @@ const S = {
     'tab.home': 'Home', 'tab.card': 'Card', 'tab.swap': 'Swap', 'tab.activity': 'Activity', 'tab.settings': 'Settings',
     'auth.login': 'Sign in', 'auth.register': 'Create account', 'auth.name': 'Full name', 'auth.namePh': 'Your name',
     'auth.email': 'Email', 'auth.password': 'Password', 'auth.remember': 'Keep me signed in',
+    'auth.pw.weakEmpty': 'PASSWORD TOO SHORT',
+    'auth.pw.weak': 'WEAK',
+    'auth.pw.ok': 'OK',
+    'auth.pw.good': 'GOOD',
+    'auth.pw.strong': 'STRONG',
     'auth.enter': 'Sign in', 'auth.entering': 'Signing in…', 'auth.create': 'Create my account', 'auth.creating': 'Creating account…',
     'auth.forgot': 'Forgot your password? Recover it at vetawallet.com',
     'auth.terms': 'Your account is created on the Orden Global blockchain. You can link your Genesis ID later from Settings (optional).',
@@ -344,6 +399,10 @@ const S = {
     'home.notificationsA11y': 'View notifications',
     'home.qrA11y': 'View my QR code to receive',
     'home.tokenA11y': 'Open {name} detail, you hold {qty} {sym}',
+    'home.backupT': 'Back up your wallet',
+    'home.backupP': 'Your seed phrase is the only way to recover your funds if you lose access to the phone. Store it safely (not on the phone).',
+    'home.backupCta': 'View my phrase',
+    'home.backupLater': 'Later',
     'lock.title': 'Veta Wallet locked',
     'lock.p': 'Use your fingerprint or Face ID to unlock your wallet.',
     'lock.cta': 'Unlock',
@@ -388,11 +447,39 @@ const S = {
     'sess.closeOk': 'Sign out',
     'sess.closed': 'Signed out',
     'sess.emptyT': 'No sessions recorded here yet',
+    'help.title': 'Help',
+    'help.subtitle': 'FAQ and contact',
+    'help.heroT': 'How can we help?',
+    'help.heroP': 'Answers to the most common questions. If yours is not here, drop us a line — we reply personally.',
+    'help.faqGrp': 'FREQUENTLY ASKED',
+    'help.contactGrp': 'CONTACT THE TEAM',
+    'help.q1t': 'What is Veta Wallet?',
+    'help.q1p': 'A wallet for the Orden Global blockchain. You manage ORIGEN and the ecosystem tokens (AUKA, AGKA, ONDK, MNKA), send and receive, watch live prices, and optionally link your Genesis ID identity.',
+    'help.q2t': 'How do I send tokens?',
+    'help.q2p': 'Home → Send → paste the address or scan the QR → type the amount → tap Send. Review the sheet, sign with your password and done. If someone sent you a payment-request link, the fields arrive filled in.',
+    'help.q3t': 'How do I receive a payment?',
+    'help.q3p': 'Home → Receive. Your QR is your address: anyone who scans it can send you tokens. To request a specific amount, type it in "Request a payment" and share the link — the other person opens it and has everything set to pay you.',
+    'help.q4t': 'What happens if I lose my phone?',
+    'help.q4p': 'Your wallet recovers via the seed phrase you backed up at the start. It is the only way in to your funds. Keep it safe (paper, password manager) — never only on the phone. If you have not seen it yet, go to Settings → Security → View my phrase.',
+    'help.q5t': 'Is it safe to save my password with "Remember me"?',
+    'help.q5p': 'The password is saved in the system secure keychain (Keychain on iPhone, Keystore on Android), not in common storage. Even so, the app unlocks with your fingerprint/Face ID every time you open it after two minutes away. You can turn "Remember me" off any time on the login screen.',
+    'help.q6t': 'What is Genesis ID?',
+    'help.q6p': 'The digital identity of Orden Global. You verify your document and face on the official portal once, and unlock extra features across the ecosystem. It is optional — the wallet works without it.',
+    'help.q7t': 'The app says "no connection". What do I do?',
+    'help.q7p': 'That means the internet is not reaching the phone. The balances you see are the last saved ones. Once connection returns, they refresh automatically and the bar disappears. If the problem persists, check your mobile data or Wi-Fi.',
+    'help.whatsapp': 'WhatsApp',
+    'help.email': 'Email',
+    'help.foot': 'Support hours: Mon–Fri 8:00–18:00 (UTC-6). Outside that we reply the next day.',
+    'help.waCtx': 'Hello, writing from Veta Wallet ({v}). I need help with:',
+    'help.mailSubject': 'Veta Wallet support',
+    'help.mailBody': 'Please describe what is happening.\n\n---\nTechnical info (do not remove):\nVersion: {v}',
     'home.send': 'Send', 'home.receive': 'Receive', 'home.buy': 'Buy', 'home.swap': 'Swap',
     'home.assets': 'My assets', 'home.activity': 'Activity',
     'home.genesisT': 'Link your Genesis ID', 'home.genesisP': 'Verified identity for the whole ecosystem (optional)',
     'home.updated': 'Balances updated', 'home.offline': 'Offline — showing saved data',
     'send.title': 'Send', 'send.to': 'Destination address', 'send.pw': 'Password (signs the transaction)',
+    'send.reqFilled': 'Payment request received — {memo}. Please verify before signing.',
+    'send.reqFilledPlain': 'Payment request received. Please verify before signing.',
     'send.fee': 'Network fee', 'send.network': 'Network', 'send.total': 'Total to debit',
     'send.review': 'Review & send', 'send.sending': 'Sending…', 'send.sent': 'Transaction sent',
     'send.soon': 'Sending {s} from the app is coming soon. For now you can send it from the web wallet.',
@@ -401,7 +488,19 @@ const S = {
     'send.notConfirmed': 'The transaction was not confirmed. Check Activity.', 'send.available': 'Available',
     'send.insufficient': 'Insufficient balance: you have {q} {s}.',
     'recv.title': 'Receive', 'recv.scan': 'Scan to receive ORIGEN and Orden Global network tokens (8532)',
+    'recv.scanReq': 'Scan to pay {amount} ORIGEN',
     'recv.copy': 'Copy address', 'recv.copied': 'Address copied', 'recv.copyErr': 'Could not copy',
+    'recv.reqTitle': 'Request a payment',
+    'recv.reqHint': 'Optional: type the amount (and reason) to generate a link/QR with the fields pre-filled. Anyone scanning it in Veta Wallet lands directly on Send.',
+    'recv.reqAmt': 'Amount',
+    'recv.reqMemo': 'Reason (optional)',
+    'recv.reqMemoPh': 'e.g. Tuesday lunch',
+    'recv.share': 'Share',
+    'recv.copyLink': 'Copy link',
+    'recv.linkCopied': 'Payment link copied',
+    'recv.shareAddr': 'This is my Veta Wallet address:',
+    'recv.shareMsg': 'I am requesting {amount} {sym} on Veta Wallet. Reason: {memo}',
+    'recv.shareMsgNoMemo': 'I am requesting {amount} {sym} on Veta Wallet.',
     'buy.title': 'Buy',
     'buy.wipT': 'Payment gateway in preparation',
     'buy.wipP': 'Direct purchase with USDT will be live very soon. We prefer not to show you a payment address until we can credit the tokens instantly. Meanwhile you can receive tokens from another wallet using your QR code.',
@@ -619,8 +718,29 @@ export const LangCtx = createContext({ lang: 'es', t: (k) => k, setLang: () => {
 export const useLang = () => useContext(LangCtx);
 export const useT = () => useContext(LangCtx).t;
 
+// Detección del idioma del sistema. Devuelve 'es' o 'en'. Si no se puede
+// determinar, cae en 'en'. En iOS y Android tomamos el primer idioma
+// preferido del usuario. Se usa la primera vez que abre la app; después
+// respetamos la preferencia manual guardada en AsyncStorage.
+function idiomaDelSistema() {
+  try {
+    let loc = null;
+    if (Platform.OS === 'ios') {
+      loc = NativeModules.SettingsManager?.settings?.AppleLocale
+        || NativeModules.SettingsManager?.settings?.AppleLanguages?.[0]
+        || null;
+    } else if (Platform.OS === 'android') {
+      loc = NativeModules.I18nManager?.localeIdentifier || null;
+    }
+    if (loc && /^es/i.test(String(loc))) return 'es';
+  } catch (e) {}
+  return 'en';
+}
+
 export function LangProvider({ children }) {
-  const [lang, setLangState] = useState('en'); // inglés por defecto
+  // Por defecto el idioma del sistema — así un usuario en español ve la app
+  // en español desde el primer momento, sin tener que ir a Ajustes.
+  const [lang, setLangState] = useState(idiomaDelSistema());
   useEffect(() => {
     AsyncStorage.getItem('veta-lang').then((l) => { if (l === 'en' || l === 'es') setLangState(l); }).catch(() => {});
   }, []);

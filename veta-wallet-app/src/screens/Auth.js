@@ -11,6 +11,26 @@ import { versionLabel } from '../version';
 import { useT } from '../i18n';
 import { seenOnboarding } from './Onboarding';
 
+// Fuerza de contraseña sin depender de zxcvbn (agregaría un paquete pesado
+// para muy poco). Puntúa por longitud, mezcla de tipos y ausencia de patrones
+// triviales. Devuelve { score: 0..4, label, color }.
+function passwordStrength(pw, t) {
+  const s = String(pw || '');
+  if (!s) return { score: 0, label: '', color: 'transparent' };
+  let score = 0;
+  if (s.length >= 8) score++;
+  if (s.length >= 12) score++;
+  if (/[a-z]/.test(s) && /[A-Z]/.test(s)) score++;
+  if (/\d/.test(s) && /[^A-Za-z0-9]/.test(s)) score++;
+  // Restas por patrones comunes / repeticiones evidentes.
+  if (/^(?:password|123456|qwerty|abc123|origen|veta)$/i.test(s)) score = 0;
+  if (/^(.)\1+$/.test(s)) score = 0;
+  const clamp = Math.max(0, Math.min(4, score));
+  const key = ['weakEmpty', 'weak', 'ok', 'good', 'strong'][clamp];
+  const colors = ['#5A6A66', '#E27060', '#E1B354', '#8FCFA3', '#3ED9A0'];
+  return { score: clamp, label: t(`auth.pw.${key}`), color: colors[clamp] };
+}
+
 export default function Auth({ nav }) {
   const [tab, setTab] = useState('login');
   const [showPw, setShowPw] = useState(false);
@@ -104,6 +124,25 @@ export default function Auth({ nav }) {
                   <Icon name={showPw ? 'eye-off' : 'eye'} size={20} color={C.txt2} />
                 </Pressable>
               </View>
+              {!login && pw.length > 0 && (() => {
+                const s = passwordStrength(pw, t);
+                return (
+                  <View style={{ marginTop: 8 }}>
+                    <View style={styles.meter}>
+                      {[0, 1, 2, 3].map((i) => (
+                        <View
+                          key={i}
+                          style={[
+                            styles.meterSeg,
+                            { backgroundColor: i < s.score ? s.color : 'rgba(255,255,255,0.08)' },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                    <Text style={[styles.meterLbl, { color: s.color }]}>{s.label}</Text>
+                  </View>
+                );
+              })()}
             </View>
 
             <Pressable onPress={() => { hap(); setRemember(!remember); }} style={styles.rememberRow}>
@@ -162,6 +201,9 @@ const styles = StyleSheet.create({
   checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: 'rgba(201,169,97,0.5)', alignItems: 'center', justifyContent: 'center' },
   rememberTxt: { color: C.txt2, fontSize: 12.5 },
   err: { color: '#F0776B', fontSize: 12.5, marginTop: 8 },
+  meter: { flexDirection: 'row', gap: 5, marginTop: 2 },
+  meterSeg: { flex: 1, height: 4, borderRadius: 2 },
+  meterLbl: { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, marginTop: 6 },
   forgot: { color: 'rgba(243,236,217,0.65)', fontSize: 12, textAlign: 'center', marginTop: 16 },
   terms: { color: C.txt2, fontSize: 12, marginVertical: 12, lineHeight: 17 },
   foot: { color: 'rgba(243,236,217,0.7)', fontSize: 12, textAlign: 'center', marginTop: 18 },

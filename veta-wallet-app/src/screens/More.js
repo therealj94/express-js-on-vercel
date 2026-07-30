@@ -260,6 +260,12 @@ export function Settings({ nav }) {
             </View>
           </View>
           <ListRow
+            icon="help-buoy"
+            title={t('help.title')}
+            sub={t('help.subtitle')}
+            onPress={() => nav.go('help')}
+          />
+          <ListRow
             icon="information-circle"
             title={t('set.about')}
             sub={versionLabel()}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Modal, Animated, ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Modal, Animated, ActivityIndicator, KeyboardAvoidingView, Platform, Share, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Icon } from '../icons';
 import QRCode from 'react-native-qrcode-svg';
@@ -58,12 +58,16 @@ function Selector({ token, label, onPress }) {
 }
 
 // ================= ENVIAR =================
-export function Send({ nav }) {
+// Acepta pre-relleno via `params` cuando llega desde una solicitud de pago
+// (deep link vetawallet://pay?to=...&amount=...&memo=...). En ese caso el
+// destinatario y el monto quedan puestos y el memo queda como saveAs
+// sugerido (por si el usuario quiere guardar al contacto).
+export function Send({ nav, params }) {
   const tokens = useTokens();
   const origen = tokens.find((t) => t.s === 'ORIGEN') || tokens[0] || { s: 'ORIGEN', n: 'ORIGEN', qty: 0, price: 0, logo: true };
   const [tok, setTok] = useState(origen);
-  const [amt, setAmt] = useState('');
-  const [to, setTo] = useState('');
+  const [amt, setAmt] = useState(params?.amount ? String(params.amount) : '');
+  const [to, setTo] = useState(params?.to || '');
   const [pick, setPick] = useState(false);
   const [review, setReview] = useState(null);  // ficha de revisión antes de firmar
   const [sending, setSending] = useState(false);
@@ -80,6 +84,15 @@ export function Send({ nav }) {
   useEffect(() => {
     if (account?.email) listContacts(account.email).then(setContacts);
   }, [account?.email]);
+
+  // Si vengo con params de deep link (solicitud de pago), aviso al usuario
+  // que los campos ya vienen puestos para que sepa que no los tipeó él.
+  useEffect(() => {
+    if (params?.to || params?.amount) {
+      toast(params?.memo ? t('send.reqFilled', { memo: params.memo }) : t('send.reqFilledPlain'), 'info');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params?.to, params?.amount]);
 
   // Fee real leído del RPC. Antes vivía hardcodeado (0.0084) y si la red
   // subía el gasPrice el envío fallaba en silencio. Se refresca al montar
@@ -251,7 +264,29 @@ export function Send({ nav }) {
       <TokenPicker visible={pick} tokens={tokens} onClose={() => setPick(false)} onPick={setTok} />
       {/* La cámara va en modal: así el formulario sigue montado y la
           dirección leída se escribe directamente en el campo. */}
-      <ScanModal visible={scan} onResult={setTo} onClose={() => setScan(false)} />
+      <ScanModal
+        visible={scan}
+        onResult={(raw) => {
+          // El QR puede ser una dirección pelada o un link vetawallet://pay
+          // con monto y memo. Si viene con monto, lo pre-rellenamos también.
+          if (/^vetawallet:\/\/pay\?/i.test(raw)) {
+            try {
+              const q = raw.split('?')[1] || '';
+              const parts = {};
+              for (const kv of q.split('&')) {
+                const [k, v] = kv.split('=');
+                if (k) parts[k] = v ? decodeURIComponent(v) : '';
+              }
+              if (parts.to) setTo(parts.to);
+              if (parts.amount) setAmt(String(parts.amount));
+              if (parts.memo) setSaveAs(parts.memo);
+              return;
+            } catch (e) {}
+          }
+          setTo(raw);
+        }}
+        onClose={() => setScan(false)}
+      />
       <ContactPicker
         visible={book}
         contacts={contacts}
@@ -527,31 +562,121 @@ function Row({ k, v }) {
 }
 
 // ================= RECIBIR =================
+//
+// Recibir sirve dos casos: (1) enseñar mi dirección para que me manden
+// cualquier cantidad, o (2) generar una SOLICITUD DE PAGO concreta con
+// monto y opcionalmente un memo. Cuando el usuario escribe un monto, el
+// QR y el link "vetawallet://pay?..." dejan de ser la dirección pelada y
+// pasan a ser un link pagable. Quien lo escanea desde Veta Wallet cae
+// directo en Enviar con los campos rellenos.
+function buildPayLink({ to, amount, memo, sym = 'ORIGEN' }) {
+  const enc = encodeURIComponent;
+  const q = [`to=${enc(to)}`];
+  if (amount != null && amount !== '' && Number(amount) > 0) q.push(`amount=${enc(String(amount))}`);
+  if (sym) q.push(`sym=${enc(sym)}`);
+  if (memo) q.push(`memo=${enc(memo)}`);
+  return `vetawallet://pay?${q.join('&')}`;
+}
+
 export function Receive({ nav }) {
   const toast = useToast();
   const t = useT();
   const { account } = useAccount();
   const address = account?.addr || '';
-  const copy = async () => {
+
+  const [amt, setAmt] = useState('');
+  const [memo, setMemo] = useState('');
+  const isRequest = !!amt && Number(amt) > 0;
+  const link = address ? buildPayLink({ to: address, amount: isRequest ? amt : null, memo: memo.trim() || null }) : '';
+  const qrValue = isRequest ? link : address;
+
+  const copyAddr = async () => {
     hap();
     try { await Clipboard.setStringAsync(address); toast(t('recv.copied')); }
-    catch (e) { toast(t('recv.copyErr')); }
+    catch (e) { toast(t('recv.copyErr'), 'error'); }
   };
+  const copyLink = async () => {
+    hap();
+    try { await Clipboard.setStringAsync(link); toast(t('recv.linkCopied')); }
+    catch (e) { toast(t('recv.copyErr'), 'error'); }
+  };
+  const share = async () => {
+    hap();
+    try {
+      const message = isRequest
+        ? (memo.trim()
+            ? t('recv.shareMsg', { amount: amt, sym: 'ORIGEN', memo: memo.trim() })
+            : t('recv.shareMsgNoMemo', { amount: amt, sym: 'ORIGEN' })) + `\n\n${link}`
+        : `${t('recv.shareAddr')}\n\n${address}`;
+      await Share.share({ message });
+    } catch (e) {}
+  };
+
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title={t('recv.title')} onBack={() => nav.back()} />
-      <ScrollView contentContainerStyle={{ padding: 22, alignItems: 'center' }}>
+      <ScrollView contentContainerStyle={{ padding: 22, alignItems: 'center', paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
         <View style={styles.qrBox}>
-          {address ? <QRCode value={address} size={224} color="#04211d" backgroundColor="#ffffff" ecl="M" /> : <Text style={{ color: '#04211d' }}>Sin dirección</Text>}
+          {address
+            ? <QRCode value={qrValue || address} size={224} color="#04211d" backgroundColor="#ffffff" ecl="M" />
+            : <Text style={{ color: '#04211d' }}>Sin dirección</Text>}
         </View>
+
         <Text style={{ color: C.txt2, fontSize: 12.5, marginBottom: 14, textAlign: 'center' }}>
-          {t('recv.scan')}
+          {isRequest ? t('recv.scanReq', { amount: amt }) : t('recv.scan')}
         </Text>
+
         <View style={styles.addrBox}>
           <Text style={styles.addr} numberOfLines={1}>{address || '—'}</Text>
-          <Pressable onPress={copy}><Icon name="copy" size={22} color={C.gold} /></Pressable>
+          <Pressable onPress={copyAddr} accessibilityRole="button" accessibilityLabel={t('recv.copy')}><Icon name="copy" size={22} color={C.gold} /></Pressable>
         </View>
-        <Button3D title={t('recv.copy')} icon="copy" onPress={copy} style={{ alignSelf: 'stretch' }} />
+
+        {/* Solicitud de pago: monto y memo opcionales. */}
+        <View style={styles.reqCard}>
+          <Text style={styles.reqTitle}>{t('recv.reqTitle')}</Text>
+          <Text style={styles.reqHint}>{t('recv.reqHint')}</Text>
+
+          <Text style={styles.label}>{t('recv.reqAmt')}</Text>
+          <View style={{ position: 'relative' }}>
+            <TextInput
+              value={amt}
+              onChangeText={setAmt}
+              keyboardType="decimal-pad"
+              placeholder="0"
+              placeholderTextColor="#6f938f"
+              style={[styles.input, { paddingRight: 74 }]}
+            />
+            <Text style={styles.reqSym}>ORIGEN</Text>
+          </View>
+
+          <Text style={[styles.label, { marginTop: 12 }]}>{t('recv.reqMemo')}</Text>
+          <TextInput
+            value={memo}
+            onChangeText={setMemo}
+            placeholder={t('recv.reqMemoPh')}
+            placeholderTextColor="#6f938f"
+            maxLength={60}
+            style={styles.input}
+          />
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 16, alignSelf: 'stretch' }}>
+          <Button3D
+            title={t('recv.share')}
+            icon="share-social"
+            onPress={share}
+            style={{ flex: 1 }}
+          />
+          {isRequest && (
+            <Button3D
+              title={t('recv.copyLink')}
+              icon="link"
+              variant="teal"
+              onPress={copyLink}
+              style={{ flex: 1 }}
+            />
+          )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -1013,4 +1138,17 @@ const styles = StyleSheet.create({
   tokenBadgeTxt: { color: C.gold, fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   tokenNote: { color: C.txt3, fontSize: 11, lineHeight: 15, marginBottom: 14, paddingHorizontal: 2 },
   flipStatic: { width: 44, height: 44, borderRadius: 14, backgroundColor: C.panel3, borderWidth: 3, borderColor: C.bg, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginVertical: -14, zIndex: 3 },
+  // Solicitar pago
+  reqCard: {
+    alignSelf: 'stretch',
+    backgroundColor: 'rgba(6,40,42,0.75)',
+    borderWidth: 1,
+    borderColor: 'rgba(201,169,97,0.32)',
+    borderRadius: 18,
+    padding: 16,
+    marginTop: 6,
+  },
+  reqTitle: { color: C.txt, fontSize: 14, fontWeight: '800', marginBottom: 4 },
+  reqHint: { color: C.txt3, fontSize: 11.5, lineHeight: 16, marginBottom: 12 },
+  reqSym: { position: 'absolute', right: 15, top: 15, color: C.gold, fontWeight: '800', fontSize: 12.5, letterSpacing: 1 },
 });

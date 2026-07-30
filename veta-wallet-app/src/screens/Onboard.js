@@ -213,7 +213,12 @@ export function SeedView({ nav }) {
     hap();
     setState('loading');
     const phrase = await getSeed();
-    if (phrase) { setWords(phrase.split(/\s+/)); setState('shown'); }
+    if (phrase) {
+      setWords(phrase.split(/\s+/));
+      setState('shown');
+      // El usuario vio la seed: no hace falta seguirle recordando que la respalde.
+      try { const { marcarSeedVista } = await import('../backupNudge'); marcarSeedVista(); } catch (e) {}
+    }
     else setState('unavailable');
   }
 

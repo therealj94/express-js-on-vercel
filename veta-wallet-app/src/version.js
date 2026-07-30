@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.9.2';
-export const BUILD = 26;
+export const VERSION = '1.9.5';
+export const BUILD = 29;
 export const RELEASED = '2026-07-30';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,47 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.9.5',
+    build: 29,
+    date: '2026-07-30',
+    es: [
+      'Centro de ayuda dentro de la app: siete preguntas frecuentes con respuestas, y dos botones para escribir al equipo por WhatsApp o correo con el contexto de la app precargado. Entra por Ajustes → Ayuda.',
+      'Detección automática del idioma: la primera vez que abres la app, si tu teléfono está en español, ves la app en español; si está en inglés, en inglés. Después respetamos tu preferencia manual.',
+    ],
+    en: [
+      'In-app help center: seven FAQs with answers, and two buttons to reach the team via WhatsApp or email with app context pre-filled. Enter via Settings → Help.',
+      'Automatic language detection: the first time you open the app, if your phone is in Spanish you see the app in Spanish; if in English, in English. Manual preference is respected afterwards.',
+    ],
+  },
+  {
+    v: '1.9.4',
+    build: 28,
+    date: '2026-07-30',
+    es: [
+      'Solicitar un pago: en Recibir puedes escribir un monto y un motivo. La app arma un link (vetawallet://pay?...) y un QR con esos datos, y un botón Compartir lo manda por WhatsApp o correo. Quien lo abre desde Veta Wallet cae directo en Enviar con los campos rellenos — no tiene que copiar dirección ni escribir el monto.',
+      'El escáner QR de Enviar también reconoce los links de pago: si te mandan un QR con monto, la app te llena el destino y el importe.',
+      'Al llegar por solicitud de pago, un aviso azul te recuerda "verifica antes de firmar" para que nunca envíes sin revisar.',
+    ],
+    en: [
+      'Request a payment: on Receive you can type an amount and a reason. The app builds a link (vetawallet://pay?...) and a QR with those fields, and a Share button sends it via WhatsApp or email. Whoever opens it from Veta Wallet lands directly on Send with fields filled — no need to copy address or type amount.',
+      'The Send QR scanner now also recognises payment links: if someone sends you a QR with amount, the app fills destination and amount for you.',
+      'When arriving via a payment request, a blue toast reminds "verify before signing" so you never send without checking.',
+    ],
+  },
+  {
+    v: '1.9.3',
+    build: 27,
+    date: '2026-07-30',
+    es: [
+      'Indicador de fuerza de contraseña en la pantalla de registro: 4 barras que se llenan con color y una etiqueta (débil / aceptable / buena / fuerte) para saber en el momento qué tan sólida es.',
+      'Recordatorio amable en Home para respaldar tu frase semilla si llevás más de 24 horas usando la app y aún no la has visto. Con opción "Más tarde" que reposa el aviso una semana. Cuando la ves, no vuelve a molestar.',
+    ],
+    en: [
+      'Password strength indicator on the register screen: 4 bars that fill with color and a label (weak / ok / good / strong) so you know your password strength as you type.',
+      'Gentle Home reminder to back up your seed phrase if you have used the app for over 24 hours without viewing it. "Later" snoozes the reminder for a week. Once you see the seed, it stops nudging.',
+    ],
+  },
   {
     v: '1.9.2',
     build: 26,

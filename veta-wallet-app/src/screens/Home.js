@@ -7,6 +7,7 @@ import { TokenIcon, ActionBtn, IconBtn, SectionHead, Skeleton, useToast, useAcco
 import { money, qtyFmt, tokensFromBalances } from '../data';
 import { apiPortfolio } from '../api';
 import { upsertApiAccount } from '../accounts';
+import { debeMostrarBackup, posponer } from '../backupNudge';
 import { useT } from '../i18n';
 
 export default function Home({ nav }) {
@@ -57,6 +58,14 @@ export default function Home({ nav }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.email]);
+
+  // Aviso amable "respaldá tu seed" tras 24 h en la app sin haberla visto.
+  const [showBackup, setShowBackup] = useState(false);
+  useEffect(() => {
+    debeMostrarBackup().then(setShowBackup);
+  }, []);
+  const cerrarBackup = async () => { hap(); await posponer(); setShowBackup(false); };
+  const irBackup = () => { hap(); nav.go('seedview'); setShowBackup(false); };
 
   const onRefresh = async () => {
     setRefreshing(true); hap();
@@ -109,6 +118,24 @@ export default function Home({ nav }) {
             <ActionBtn icon="swap-horizontal" label={t('home.swap')} onPress={() => nav.go('swap')} />
           </View>
         </LinearGradient>
+
+        {showBackup && (
+          <View style={styles.backupCard}>
+            <View style={styles.backupIc}><Icon name="key" size={22} color={C.gold} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.promoT}>{tr('home.backupT')}</Text>
+              <Text style={styles.promoP}>{tr('home.backupP')}</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                <Pressable onPress={irBackup} style={styles.backupBtn} accessibilityRole="button" accessibilityLabel={tr('home.backupCta')}>
+                  <Text style={styles.backupBtnTxt}>{tr('home.backupCta')}</Text>
+                </Pressable>
+                <Pressable onPress={cerrarBackup} style={styles.backupLater} accessibilityRole="button" accessibilityLabel={tr('home.backupLater')}>
+                  <Text style={styles.backupLaterTxt}>{tr('home.backupLater')}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )}
 
         {!acc.genesisUid && (
           <Pressable onPress={() => nav.go('kyc')} style={styles.promo}>
@@ -193,4 +220,10 @@ const styles = StyleSheet.create({
   tQty: { fontSize: 12, color: C.txt3, marginTop: 2 },
   tVal: { fontSize: 14.5, fontWeight: '600', color: C.txt },
   noPriceHint: { color: C.txt3, fontSize: 11.5, lineHeight: 16, textAlign: 'center', marginTop: 8, paddingHorizontal: 12 },
+  backupCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 13, backgroundColor: 'rgba(201,169,97,0.10)', borderWidth: 1, borderColor: 'rgba(201,169,97,0.38)', borderRadius: 20, padding: 15, marginTop: 18 },
+  backupIc: { width: 46, height: 46, borderRadius: 14, backgroundColor: 'rgba(201,169,97,0.16)', alignItems: 'center', justifyContent: 'center' },
+  backupBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 11, backgroundColor: C.gold },
+  backupBtnTxt: { color: C.darkText, fontSize: 12.5, fontWeight: '800' },
+  backupLater: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 11, borderWidth: 1, borderColor: 'rgba(201,169,97,0.32)' },
+  backupLaterTxt: { color: C.txt2, fontSize: 12.5, fontWeight: '700' },
 });
