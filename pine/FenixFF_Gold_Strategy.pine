@@ -1,0 +1,376 @@
+//@version=6
+// =====================================================================================
+//  FENIX FF GOLD — STRATEGY (backtest)
+//  Misma lógica que "Fenix FF Gold — Fallo del Fallo [XAUUSD]" pero como strategy,
+//  para medir winrate, profit factor y drawdown en el Strategy Tester.
+//
+//  Gestión: riesgo fijo por operación (% de equity), SL detrás de la lógica tendencial,
+//  parcial en TP1 (múltiplo de R), resto al F+F opuesto / extremo del rango con SL a BE.
+// =====================================================================================
+
+strategy("Fenix FF Gold — Strategy [XAUUSD]", shorttitle="Fenix FF Gold ST", overlay=true,
+     initial_capital       = 10000,
+     currency              = currency.USD,
+     default_qty_type      = strategy.fixed,
+     default_qty_value     = 1,
+     pyramiding            = 0,
+     calc_on_every_tick    = false,
+     process_orders_on_close= true,
+     commission_type       = strategy.commission.cash_per_contract,
+     commission_value      = 0.05,
+     slippage              = 2,
+     max_labels_count      = 500,
+     max_lines_count       = 500,
+     max_boxes_count       = 500)
+
+// =====================================================================================
+// INPUTS (idénticos al indicador + gestión de backtest)
+// =====================================================================================
+grpStr = "① Estructura / Liquidez"
+pivotLen     = input.int(8,     "Fractal (pivot) lookback",             minval=2,  maxval=50,  group=grpStr)
+sweepMaxAge  = input.int(120,   "Vida máxima del pivot (velas)",        minval=10, maxval=500, group=grpStr)
+tolAtr       = input.float(0.25,"Tolerancia de la lógica tendencial (x ATR)", minval=0.0, maxval=2.0, step=0.05, group=grpStr)
+awayAtr      = input.float(0.30,"Alejamiento previo a la mitigación (x ATR)", minval=0.0, maxval=3.0, step=0.05, group=grpStr)
+
+grpFF = "② Fallo del Fallo"
+dispMult     = input.float(0.55,"Cuerpo mínimo de vela de impulso (x ATR)", minval=0.1, maxval=3.0, step=0.05, group=grpFF)
+minImpulse   = input.int(2,     "Velas de estiramiento mínimas",        minval=1,  maxval=5,   group=grpFF)
+requireBOS   = input.bool(true, "Exigir desplazamiento estructural (BOS)", group=grpFF)
+minFvgAtr    = input.float(0.18,"Tamaño mínimo de la ineficiencia (x ATR)", minval=0.0, maxval=2.0, step=0.02, group=grpFF)
+entryMode    = input.string("Confirmación", "Disparo de entrada", options=["Toque", "Confirmación"], group=grpFF)
+fvgFillMode  = input.string("50% (mitad de la ineficiencia)", "Nivel de rebalanceo", options=["Borde (primer toque)", "50% (mitad de la ineficiencia)", "Relleno total"], group=grpFF)
+
+grpTime = "③ Ventanas de tiempo"
+maxWaitMitig = input.int(25,    "Máx. velas esperando mitigación",      minval=3,  maxval=200, group=grpTime)
+maxWaitExp   = input.int(20,    "Máx. velas esperando estiramiento",    minval=2,  maxval=200, group=grpTime)
+maxWaitRetest= input.int(40,    "Máx. velas esperando rebalanceo",      minval=2,  maxval=300, group=grpTime)
+
+grpFilter = "④ Filtros de precisión (Oro)"
+useSession   = input.bool(true, "Filtrar por sesión",                   group=grpFilter)
+sess1        = input.session("0700-1030", "Killzone Londres",           group=grpFilter)
+sess2        = input.session("1230-1600", "Killzone Nueva York",        group=grpFilter)
+tzInput      = input.string("UTC", "Zona horaria de las sesiones",      group=grpFilter)
+useHtfBias   = input.bool(true, "Filtro de dominancia fractal (HTF)",   group=grpFilter)
+htfTf        = input.timeframe("30", "Temporalidad mayor (Vela Memoria)", group=grpFilter)
+htfEmaLen    = input.int(50,    "EMA de sesgo en HTF",                  minval=5,  maxval=400, group=grpFilter)
+biasMode     = input.string("EMA + Vela Memoria", "Modo de sesgo", options=["EMA", "Vela Memoria", "EMA + Vela Memoria"], group=grpFilter)
+useVolFilter = input.bool(true, "Filtro de volatilidad mínima",         group=grpFilter)
+minAtrPct    = input.float(0.03,"ATR mínimo (% del precio)",            minval=0.0, maxval=1.0, step=0.01, group=grpFilter)
+useGann      = input.bool(false,"Filtro Gann High/Low",                 group=grpFilter)
+gannH        = input.int(5,     "Gann HIGH period",                     minval=1,  group=grpFilter)
+gannL        = input.int(5,     "Gann LOW period",                      minval=1,  group=grpFilter)
+cooldown     = input.int(5,     "Cooldown entre señales (velas)",       minval=0,  maxval=100, group=grpFilter)
+
+grpRisk = "⑤ Gestión / Backtest"
+atrLen       = input.int(14,    "ATR length",                           minval=2,  maxval=100, group=grpRisk)
+slBuffAtr    = input.float(0.20,"Colchón del SL (x ATR)",               minval=0.0, maxval=2.0, step=0.05, group=grpRisk)
+rr1          = input.float(2.0, "TP1 en múltiplo de R",                 minval=0.5, maxval=20, step=0.5, group=grpRisk)
+useOppTp     = input.bool(true, "TP2 = F+F opuesto / extremo del rango", group=grpRisk)
+rr2Fallback  = input.float(4.0, "TP2 por defecto en R (si no hay opuesto)", minval=1.0, maxval=30, step=0.5, group=grpRisk)
+partialPct   = input.int(50,    "Parcial en TP1 (% de la posición)",    minval=0,  maxval=100, group=grpRisk)
+moveBe       = input.bool(true, "Mover SL a Break Even tras TP1",       group=grpRisk)
+riskPct      = input.float(1.0, "Riesgo por operación (% de equity)",   minval=0.05, maxval=10, step=0.05, group=grpRisk)
+contractVal  = input.float(1.0, "USD por cada 1.0 de movimiento y contrato", minval=0.0001, step=0.1, group=grpRisk, tooltip="XAUUSD CFD estándar: 1 contrato = 1 onza -> 1.0. Si tu bróker usa lotes de 100 oz, pon 100.")
+useDates     = input.bool(false,"Limitar rango de fechas",              group=grpRisk)
+dateFrom     = input.time(timestamp("01 Jan 2023 00:00 +0000"), "Desde", group=grpRisk)
+dateTo       = input.time(timestamp("01 Jan 2030 00:00 +0000"), "Hasta", group=grpRisk)
+
+grpAcc = "⑥ F+F en Acumulación"
+accEnable    = input.bool(true, "Detectar acumulación (doble mitigación)", group=grpAcc)
+accLen       = input.int(30,    "Ventana del rango (velas)",            minval=10, maxval=200, group=grpAcc)
+accMaxAtr    = input.float(4.5, "Ancho máximo del rango (x ATR)",       minval=1.0, maxval=20, step=0.5, group=grpAcc)
+accOnlyDom   = input.bool(true, "Operar solo el extremo dominante (HTF)", group=grpAcc)
+
+grpDir = "⑦ Dirección"
+allowLongs   = input.bool(true, "Permitir largos",                      group=grpDir)
+allowShorts  = input.bool(true, "Permitir cortos",                      group=grpDir)
+
+// =====================================================================================
+// CÁLCULOS BASE
+// =====================================================================================
+atr     = ta.atr(atrLen)
+bodySz  = math.abs(close - open)
+bullBar = close > open
+bearBar = close < open
+
+inSess1   = not na(time(timeframe.period, sess1, tzInput))
+inSess2   = not na(time(timeframe.period, sess2, tzInput))
+sessionOk = not useSession or inSess1 or inSess2
+
+atrPct = close != 0 ? atr / close * 100 : 0.0
+volOk  = not useVolFilter or atrPct >= minAtrPct
+
+htfClose = request.security(syminfo.tickerid, htfTf, close, lookahead=barmerge.lookahead_off)
+htfOpen  = request.security(syminfo.tickerid, htfTf, open,  lookahead=barmerge.lookahead_off)
+htfEma   = request.security(syminfo.tickerid, htfTf, ta.ema(close, htfEmaLen), lookahead=barmerge.lookahead_off)
+
+emaBull    = htfClose > htfEma
+emaBear    = htfClose < htfEma
+memoryBull = htfClose > htfOpen
+memoryBear = htfClose < htfOpen
+biasBull   = biasMode == "EMA" ? emaBull : biasMode == "Vela Memoria" ? memoryBull : emaBull and memoryBull
+biasBear   = biasMode == "EMA" ? emaBear : biasMode == "Vela Memoria" ? memoryBear : emaBear and memoryBear
+htfOkLong  = not useHtfBias or biasBull
+htfOkShort = not useHtfBias or biasBear
+
+gSmaH    = ta.sma(high, gannH)
+gSmaL    = ta.sma(low,  gannL)
+gIff     = close < nz(gSmaL[1]) ? -1 : 0
+gHLd     = close > nz(gSmaH[1]) ?  1 : gIff
+gHLv     = ta.valuewhen(gHLd != 0, gHLd, 0)
+gannLine = gHLv == -1 ? gSmaH : gSmaL
+plot(useGann ? gannLine : na, "Gann High/Low", color = gHLv == -1 ? color.new(color.maroon, 40) : color.new(color.teal, 40), linewidth=2)
+gannOkLong  = not useGann or close > gannLine
+gannOkShort = not useGann or close < gannLine
+
+dateOk     = not useDates or (time >= dateFrom and time <= dateTo)
+allowLong  = sessionOk and volOk and htfOkLong  and gannOkLong  and allowLongs  and dateOk
+allowShort = sessionOk and volOk and htfOkShort and gannOkShort and allowShorts and dateOk
+
+ph = ta.pivothigh(high, pivotLen, pivotLen)
+pl = ta.pivotlow(low,   pivotLen, pivotLen)
+
+var float lastPH    = na
+var int   lastPHBar = na
+var bool  phUsed    = false
+var float lastPL    = na
+var int   lastPLBar = na
+var bool  plUsed    = false
+
+if not na(ph)
+    lastPH    := ph
+    lastPHBar := bar_index - pivotLen
+    phUsed    := false
+if not na(pl)
+    lastPL    := pl
+    lastPLBar := bar_index - pivotLen
+    plUsed    := false
+
+// =====================================================================================
+// ESTADO
+// =====================================================================================
+var int   bSt     = 0
+var float bFcLo   = na
+var float bFcHi   = na
+var int   bStBar  = na
+var bool  bAway   = false
+var float bStruct = na
+var float bFvgTop = na
+var float bFvgBot = na
+var float bTrig   = na
+var int   bImp    = 0
+
+var int   sSt     = 0
+var float sFcLo   = na
+var float sFcHi   = na
+var int   sStBar  = na
+var bool  sAway   = false
+var float sStruct = na
+var float sFvgTop = na
+var float sFvgBot = na
+var float sTrig   = na
+var int   sImp    = 0
+
+var int   lastSigBar = na
+var float entryPx    = na
+var float slPx       = na
+var float tp1Px      = na
+var float tp2Px      = na
+var bool  tp1Hit     = false
+
+bool buySig  = false
+bool sellSig = false
+
+accHi   = ta.highest(high, accLen)
+accLo   = ta.lowest(low,   accLen)
+inAccum = accEnable and atr > 0 and (accHi - accLo) <= accMaxAtr * atr
+
+tol    = tolAtr * atr
+coolOk = na(lastSigBar) or bar_index - lastSigBar >= cooldown
+flat   = strategy.position_size == 0
+
+// =====================================================================================
+// MÁQUINA ALCISTA
+// =====================================================================================
+if bSt == 0
+    freshPL = not na(lastPL) and not plUsed and bar_index - lastPLBar <= sweepMaxAge
+    if freshPL and low < lastPL and close > lastPL and allowLong
+        bSt     := 1
+        bFcLo   := low
+        bFcHi   := math.max(open, close)
+        bStruct := low
+        bStBar  := bar_index
+        bImp    := 0
+        bAway   := false
+        plUsed  := true
+
+else if bSt == 1
+    if low < bFcLo - tol
+        bSt := 0
+    else
+        if low < bFcLo
+            bStruct := low
+        if high > bFcHi + awayAtr * atr
+            bAway := true
+        if bAway and low <= bFcHi
+            bSt    := 2
+            bStBar := bar_index
+            bImp   := 0
+        else if bar_index - bStBar > maxWaitMitig
+            bSt := 0
+
+else if bSt == 2
+    if low < bStruct - tol
+        bSt := 0
+    else
+        bImp := bullBar and bodySz >= dispMult * atr ? bImp + 1 : 0
+        fvgOk   = low > high[2]
+        fvgSize = low - high[2]
+        bosOk   = not requireBOS or close > bFcHi
+        if bImp >= minImpulse and fvgOk and fvgSize >= minFvgAtr * atr and bosOk
+            bFvgTop := low
+            bFvgBot := high[2]
+            bTrig   := fvgFillMode == "Borde (primer toque)" ? low : fvgFillMode == "Relleno total" ? high[2] : (low + high[2]) / 2
+            bSt     := 3
+            bStBar  := bar_index
+        else if bar_index - bStBar > maxWaitExp
+            bSt := 0
+
+else if bSt == 3
+    touched   = low <= bTrig
+    confirmOk = entryMode == "Toque" ? touched : touched and bullBar and close > bTrig
+    if close < bStruct - tol
+        bSt := 0
+    else if confirmOk and allowLong and coolOk and flat
+        buySig := true
+        bSt    := 0
+    else if bar_index - bStBar > maxWaitRetest
+        bSt := 0
+
+// =====================================================================================
+// MÁQUINA BAJISTA
+// =====================================================================================
+if sSt == 0
+    freshPH = not na(lastPH) and not phUsed and bar_index - lastPHBar <= sweepMaxAge
+    if freshPH and high > lastPH and close < lastPH and allowShort
+        sSt     := 1
+        sFcHi   := high
+        sFcLo   := math.min(open, close)
+        sStruct := high
+        sStBar  := bar_index
+        sImp    := 0
+        sAway   := false
+        phUsed  := true
+
+else if sSt == 1
+    if high > sFcHi + tol
+        sSt := 0
+    else
+        if high > sFcHi
+            sStruct := high
+        if low < sFcLo - awayAtr * atr
+            sAway := true
+        if sAway and high >= sFcLo
+            sSt    := 2
+            sStBar := bar_index
+            sImp   := 0
+        else if bar_index - sStBar > maxWaitMitig
+            sSt := 0
+
+else if sSt == 2
+    if high > sStruct + tol
+        sSt := 0
+    else
+        sImp := bearBar and bodySz >= dispMult * atr ? sImp + 1 : 0
+        fvgOkS   = high < low[2]
+        fvgSizeS = low[2] - high
+        bosOkS   = not requireBOS or close < sFcLo
+        if sImp >= minImpulse and fvgOkS and fvgSizeS >= minFvgAtr * atr and bosOkS
+            sFvgBot := high
+            sFvgTop := low[2]
+            sTrig   := fvgFillMode == "Borde (primer toque)" ? high : fvgFillMode == "Relleno total" ? low[2] : (high + low[2]) / 2
+            sSt     := 3
+            sStBar  := bar_index
+        else if bar_index - sStBar > maxWaitExp
+            sSt := 0
+
+else if sSt == 3
+    touchedS   = high >= sTrig
+    confirmOkS = entryMode == "Toque" ? touchedS : touchedS and bearBar and close < sTrig
+    if close > sStruct + tol
+        sSt := 0
+    else if confirmOkS and allowShort and coolOk and flat
+        sellSig := true
+        sSt     := 0
+    else if bar_index - sStBar > maxWaitRetest
+        sSt := 0
+
+// =====================================================================================
+// ACUMULACIÓN
+// =====================================================================================
+dualFF = inAccum and bSt >= 2 and sSt >= 2
+if accOnlyDom and dualFF
+    if buySig and not biasBull
+        buySig := false
+    if sellSig and not biasBear
+        sellSig := false
+
+// =====================================================================================
+// EJECUCIÓN
+// =====================================================================================
+if buySig
+    entryPx := entryMode == "Toque" ? bTrig : close
+    slPx    := bStruct - slBuffAtr * atr
+    riskL   = math.max(entryPx - slPx, syminfo.mintick)
+    tp1Px   := entryPx + rr1 * riskL
+    oppL    = not na(sFvgBot) and sFvgBot > entryPx + riskL ? sFvgBot : accHi > entryPx + riskL ? accHi : na
+    tp2Px   := useOppTp and not na(oppL) ? oppL : entryPx + rr2Fallback * riskL
+    qty     = math.max((strategy.equity * riskPct / 100) / (riskL * contractVal), 0.01)
+    tp1Hit  := false
+    lastSigBar := bar_index
+    strategy.entry("L", strategy.long, qty=qty, comment="F+F ▲")
+
+if sellSig
+    entryPx := entryMode == "Toque" ? sTrig : close
+    slPx    := sStruct + slBuffAtr * atr
+    riskS   = math.max(slPx - entryPx, syminfo.mintick)
+    tp1Px   := entryPx - rr1 * riskS
+    oppS    = not na(bFvgTop) and bFvgTop < entryPx - riskS ? bFvgTop : accLo < entryPx - riskS ? accLo : na
+    tp2Px   := useOppTp and not na(oppS) ? oppS : entryPx - rr2Fallback * riskS
+    qty     = math.max((strategy.equity * riskPct / 100) / (riskS * contractVal), 0.01)
+    tp1Hit  := false
+    lastSigBar := bar_index
+    strategy.entry("S", strategy.short, qty=qty, comment="F+F ▼")
+
+// Registro del parcial alcanzado (para el break even del runner)
+if strategy.position_size > 0 and not tp1Hit and high >= tp1Px
+    tp1Hit := true
+if strategy.position_size < 0 and not tp1Hit and low <= tp1Px
+    tp1Hit := true
+
+runnerStopL = tp1Hit and moveBe ? math.max(entryPx, slPx) : slPx
+runnerStopS = tp1Hit and moveBe ? math.min(entryPx, slPx) : slPx
+
+if strategy.position_size > 0
+    if partialPct > 0 and partialPct < 100
+        strategy.exit("TP1", from_entry="L", qty_percent=partialPct, stop=slPx, limit=tp1Px, comment_profit="TP1", comment_loss="SL")
+        strategy.exit("RUN", from_entry="L", stop=runnerStopL, limit=tp2Px, comment_profit="TP2", comment_loss="SL/BE")
+    else
+        strategy.exit("TP1", from_entry="L", stop=slPx, limit = partialPct == 100 ? tp1Px : tp2Px, comment_profit="TP", comment_loss="SL")
+
+if strategy.position_size < 0
+    if partialPct > 0 and partialPct < 100
+        strategy.exit("TP1", from_entry="S", qty_percent=partialPct, stop=slPx, limit=tp1Px, comment_profit="TP1", comment_loss="SL")
+        strategy.exit("RUN", from_entry="S", stop=runnerStopS, limit=tp2Px, comment_profit="TP2", comment_loss="SL/BE")
+    else
+        strategy.exit("TP1", from_entry="S", stop=slPx, limit = partialPct == 100 ? tp1Px : tp2Px, comment_profit="TP", comment_loss="SL")
+
+// =====================================================================================
+// VISUAL MÍNIMO
+// =====================================================================================
+plot(strategy.position_size != 0 ? entryPx : na, "Entrada", color=color.new(color.blue, 0),  style=plot.style_linebr)
+plot(strategy.position_size != 0 ? slPx    : na, "SL",      color=color.new(color.red, 0),   style=plot.style_linebr)
+plot(strategy.position_size != 0 ? tp1Px   : na, "TP1",     color=color.new(color.green, 0), style=plot.style_linebr)
+plot(strategy.position_size != 0 ? tp2Px   : na, "TP2",     color=color.new(color.teal, 40), style=plot.style_linebr)
+plotshape(buySig,  title="BUY",  style=shape.labelup,   location=location.belowbar, color=color.new(#2962FF, 0), text="BUY",  textcolor=color.white, size=size.tiny)
+plotshape(sellSig, title="SELL", style=shape.labeldown, location=location.abovebar, color=color.new(#E91E63, 0), text="SELL", textcolor=color.white, size=size.tiny)
