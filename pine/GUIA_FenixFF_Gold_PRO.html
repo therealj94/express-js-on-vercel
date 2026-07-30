@@ -1,0 +1,969 @@
+<title>Manual FENIX FF GOLD PRO</title>
+
+<style>
+  :root {
+    --paper:      #F3F2EF;
+    --panel:      #FFFFFF;
+    --panel-2:    #EAE8E2;
+    --ink:        #17150F;
+    --ink-2:      #4A463C;
+    --ink-3:      #7A7466;
+    --rule:       #D8D5CC;
+    --gold:       #A8811A;
+    --gold-bright:#C9A227;
+    --bull:       #0F7A4D;
+    --bear:       #C4243C;
+    --bull-soft:  #E3F1EA;
+    --bear-soft:  #F9E4E7;
+    --gold-soft:  #F5EEDA;
+    --shadow:     0 1px 2px rgba(23,21,15,.06), 0 8px 24px rgba(23,21,15,.05);
+
+    --serif: Charter, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:      #0D0D0E;
+      --panel:      #16161A;
+      --panel-2:    #1F1F24;
+      --ink:        #EDEAE1;
+      --ink-2:      #B0AB9E;
+      --ink-3:      #7E7969;
+      --rule:       #2C2C32;
+      --gold:       #E0B93F;
+      --gold-bright:#F0CF62;
+      --bull:       #37D28B;
+      --bear:       #FF5C72;
+      --bull-soft:  #12291F;
+      --bear-soft:  #2B1419;
+      --gold-soft:  #2A230F;
+      --shadow:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:      #0D0D0E;
+    --panel:      #16161A;
+    --panel-2:    #1F1F24;
+    --ink:        #EDEAE1;
+    --ink-2:      #B0AB9E;
+    --ink-3:      #7E7969;
+    --rule:       #2C2C32;
+    --gold:       #E0B93F;
+    --gold-bright:#F0CF62;
+    --bull:       #37D28B;
+    --bear:       #FF5C72;
+    --bull-soft:  #12291F;
+    --bear-soft:  #2B1419;
+    --gold-soft:  #2A230F;
+    --shadow:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  :root[data-theme="light"] {
+    --paper:      #F3F2EF;
+    --panel:      #FFFFFF;
+    --panel-2:    #EAE8E2;
+    --ink:        #17150F;
+    --ink-2:      #4A463C;
+    --ink-3:      #7A7466;
+    --rule:       #D8D5CC;
+    --gold:       #A8811A;
+    --gold-bright:#C9A227;
+    --bull:       #0F7A4D;
+    --bear:       #C4243C;
+    --bull-soft:  #E3F1EA;
+    --bear-soft:  #F9E4E7;
+    --gold-soft:  #F5EEDA;
+    --shadow:     0 1px 2px rgba(23,21,15,.06), 0 8px 24px rgba(23,21,15,.05);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 22px 96px;
+  }
+
+  /* ---------- cabecera ---------- */
+  .masthead {
+    border-bottom: 3px solid var(--gold);
+    padding: 56px 0 22px;
+    margin-bottom: 8px;
+  }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin: 0 0 18px;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(34px, 7vw, 54px);
+    line-height: 1.04;
+    font-weight: 600;
+    letter-spacing: -.015em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-family: var(--serif);
+    font-size: clamp(18px, 2.4vw, 21px);
+    line-height: 1.5;
+    color: var(--ink-2);
+    margin: 0;
+    max-width: 60ch;
+  }
+  .meta-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 26px;
+  }
+  .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    color: var(--ink-2);
+    background: var(--panel);
+  }
+  .tag.hot { border-color: var(--gold); color: var(--gold); background: var(--gold-soft); }
+
+  /* ---------- navegación ---------- */
+  nav.toc {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: color-mix(in srgb, var(--paper) 92%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--rule);
+    margin: 0 -22px 44px;
+    padding: 0 22px;
+  }
+  .toc-inner {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 12px 0;
+  }
+  .toc-inner::-webkit-scrollbar { display: none; }
+  .toc-inner a {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--ink-3);
+    text-decoration: none;
+    padding-bottom: 2px;
+    border-bottom: 1.5px solid transparent;
+  }
+  .toc-inner a:hover, .toc-inner a:focus-visible { color: var(--gold); border-bottom-color: var(--gold); }
+
+  /* ---------- estructura ---------- */
+  section { margin-bottom: 68px; scroll-margin-top: 70px; }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: clamp(25px, 3.6vw, 32px);
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+  .sec-num {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .14em;
+    color: var(--gold);
+    display: block;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  h3 {
+    font-family: var(--sans);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -.005em;
+    margin: 34px 0 10px;
+  }
+  p { margin: 0 0 16px; max-width: 66ch; }
+  .lede { color: var(--ink-2); font-size: 17.5px; margin-bottom: 26px; max-width: 64ch; }
+  strong { font-weight: 650; }
+  code {
+    font-family: var(--mono);
+    font-size: .85em;
+    background: var(--panel-2);
+    padding: 2px 5px;
+    border-radius: 3px;
+    color: var(--ink);
+  }
+  a { color: var(--gold); }
+
+  /* ---------- raíl de fases ---------- */
+  .phases { display: flex; flex-direction: column; gap: 0; margin: 30px 0 10px; }
+  .phase {
+    display: grid;
+    grid-template-columns: 54px 1fr;
+    gap: 20px;
+    padding: 24px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .phase:last-child { border-bottom: 1px solid var(--rule); }
+  .phase-mark {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .glyph {
+    width: 40px; height: 40px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 15px;
+    border: 1.5px solid var(--rule);
+    background: var(--panel);
+    color: var(--ink);
+  }
+  .glyph.g-l { border-color: var(--gold); color: var(--gold); background: var(--gold-soft); }
+  .glyph.g-f { border-color: var(--gold); color: var(--gold); }
+  .glyph.g-m { border-color: var(--bull); color: var(--bull); background: var(--bull-soft); }
+  .glyph.g-e { border-color: var(--bull); color: #fff; background: var(--bull); }
+  .phase-step {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    color: var(--ink-3);
+  }
+  .phase h4 {
+    font-family: var(--sans);
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0 0 4px;
+  }
+  .phase .role {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin: 0 0 10px;
+  }
+  .phase p { margin-bottom: 12px; font-size: 16px; }
+  .psy {
+    border-left: 2px solid var(--rule);
+    padding-left: 14px;
+    font-family: var(--serif);
+    font-size: 15.5px;
+    font-style: italic;
+    color: var(--ink-2);
+    margin: 0;
+  }
+  .code-cond {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: var(--panel-2);
+    border-radius: 3px;
+    padding: 8px 11px;
+    margin: 12px 0 0;
+    overflow-x: auto;
+    white-space: nowrap;
+    color: var(--ink-2);
+  }
+
+  /* ---------- tablas ---------- */
+  .t-wrap { overflow-x: auto; margin: 22px 0; border: 1px solid var(--rule); border-radius: 4px; background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; min-width: 480px; }
+  th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--panel-2);
+    white-space: nowrap;
+  }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.p-name { font-family: var(--mono); font-size: 12.5px; color: var(--ink); white-space: nowrap; }
+  td.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .t-note { font-size: 13px; color: var(--ink-3); margin: -12px 0 24px; }
+
+  /* ---------- chips / leyenda ---------- */
+  .legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; margin: 24px 0; }
+  .leg-item { background: var(--panel); padding: 15px 16px; display: flex; gap: 12px; align-items: flex-start; }
+  .swatch {
+    flex: 0 0 auto;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 3px;
+    margin-top: 1px;
+    letter-spacing: .03em;
+  }
+  .sw-fc-b { background: var(--bull); color: #04150D; }
+  .sw-fc-s { background: var(--bear); color: #fff; }
+  .sw-l    { background: var(--gold-bright); color: #1A1403; }
+  .sw-f    { background: #E08A1E; color: #1A1403; }
+  .sw-m    { background: #2962FF; color: #fff; }
+  .sw-buy  { background: #2962FF; color: #fff; }
+  .sw-sell { background: #E91E63; color: #fff; }
+  .sw-acc  { background: #E08A1E; color: #1A1403; }
+  .sw-line-b { background: var(--bull-soft); color: var(--bull); border: 1px solid var(--bull); }
+  .sw-line-s { background: var(--bear-soft); color: var(--bear); border: 1px solid var(--bear); }
+  .leg-item div strong { display: block; font-size: 14.5px; margin-bottom: 2px; }
+  .leg-item div span { font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
+
+  /* ---------- panel replica ---------- */
+  .dash {
+    border: 2px solid var(--gold);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 24px 0;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: var(--panel);
+  }
+  .dash-head {
+    background: var(--gold-bright);
+    color: #1A1403;
+    padding: 9px 14px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    display: flex;
+    justify-content: space-between;
+  }
+  .dash-row {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr .9fr;
+    border-top: 1px solid var(--rule);
+  }
+  .dash-row > span { padding: 8px 12px; }
+  .dash-row > span:first-child { color: var(--ink-2); }
+  .dash-row .up { color: var(--bull); }
+  .dash-row .dn { color: var(--bear); }
+  .dash-row .on { color: var(--gold); }
+  .dash-row .off { color: var(--ink-3); }
+  .dash-key { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 14px 26px; margin: 22px 0; }
+  .dash-key div { font-size: 14.5px; }
+  .dash-key b { font-family: var(--mono); font-size: 12.5px; color: var(--gold); display: block; }
+  .dash-key span { color: var(--ink-2); }
+
+  /* ---------- cambios ---------- */
+  .changes { display: flex; flex-direction: column; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; margin: 24px 0; }
+  .chg { background: var(--panel); padding: 18px 18px; display: grid; grid-template-columns: 86px 1fr; gap: 16px; }
+  .chg-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 4px 0;
+    text-align: center;
+    border-radius: 2px;
+    height: fit-content;
+    font-weight: 700;
+  }
+  .b-new { background: var(--bull-soft); color: var(--bull); border: 1px solid var(--bull); }
+  .b-fix { background: var(--gold-soft); color: var(--gold); border: 1px solid var(--gold); }
+  .b-imp { background: var(--panel-2); color: var(--ink-2); border: 1px solid var(--rule); }
+  .chg h4 { margin: 0 0 5px; font-size: 15.5px; font-weight: 700; }
+  .chg p { margin: 0; font-size: 14.5px; color: var(--ink-2); max-width: none; }
+
+  /* ---------- checklist ---------- */
+  ol.check { counter-reset: step; list-style: none; padding: 0; margin: 24px 0; }
+  ol.check li {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--rule);
+    font-size: 15.5px;
+  }
+  ol.check li::before {
+    content: counter(step);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--gold);
+    border: 1px solid var(--gold);
+    border-radius: 50%;
+    width: 26px; height: 26px;
+    display: grid; place-items: center;
+    margin-top: 1px;
+  }
+  ol.check li b { display: block; }
+  ol.check li span { color: var(--ink-2); font-size: 14.5px; }
+
+  /* ---------- avisos ---------- */
+  .note {
+    border-left: 3px solid var(--gold);
+    background: var(--gold-soft);
+    padding: 16px 18px;
+    margin: 24px 0;
+    border-radius: 0 3px 3px 0;
+  }
+  .note p { margin: 0; font-size: 15px; max-width: none; }
+  .note .n-title { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); display: block; margin-bottom: 6px; }
+  .warn { border-left-color: var(--bear); background: var(--bear-soft); }
+  .warn .n-title { color: var(--bear); }
+
+  ul.plain { padding-left: 20px; margin: 0 0 18px; }
+  ul.plain li { margin-bottom: 8px; max-width: 64ch; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 22px;
+    margin-top: 20px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .05em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  @media (max-width: 560px) {
+    body { font-size: 16px; }
+    .phase { grid-template-columns: 42px 1fr; gap: 14px; }
+    .glyph { width: 34px; height: 34px; font-size: 13px; }
+    .chg { grid-template-columns: 1fr; gap: 8px; }
+    .chg-badge { width: 84px; }
+    .dash-row { grid-template-columns: 1.3fr 1fr 1fr; font-size: 11.5px; }
+    .dash-row > span:last-child { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="kicker">Fenix Forex Funds · Manual técnico v2.0</p>
+    <h1>FENIX FF GOLD PRO</h1>
+    <p class="standfirst">Guía completa del indicador: qué detecta, cómo lo detecta, qué cambió en esta actualización y cómo operarlo en oro desde 1 minuto hasta 1 hora.</p>
+    <div class="meta-strip">
+      <span class="tag hot">Actualización PRO</span>
+      <span class="tag">Pine Script v6</span>
+      <span class="tag">XAUUSD</span>
+      <span class="tag">1m · 3m · 5m · 15m · H1</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <div class="toc-inner">
+      <a href="#que-hace">Qué hace</a>
+      <a href="#fases">Las 4 fases</a>
+      <a href="#novedades">Novedades</a>
+      <a href="#grafico">Leer el gráfico</a>
+      <a href="#panel">El panel</a>
+      <a href="#parametros">Parámetros</a>
+      <a href="#temporalidades">Temporalidades</a>
+      <a href="#operar">Cómo operar</a>
+      <a href="#alertas">Alertas</a>
+      <a href="#problemas">Problemas</a>
+      <a href="#limites">Límites</a>
+    </div>
+  </nav>
+
+  <!-- ============================================ -->
+  <section id="que-hace">
+    <span class="sec-num">01 — Concepto</span>
+    <h2>Qué hace el indicador</h2>
+    <p class="lede">No es un indicador de señales. Es un mapa del flujo de órdenes que va marcando, en tiempo real, dónde el algoritmo dejó trabajo pendiente y dónde piensa volver a buscarlo.</p>
+
+    <p>El indicador trabaja en cuatro capas que se apilan. Puedes usarlas todas juntas o apagar las que no necesites.</p>
+
+    <h3>Capa 1 · Zonas FC</h3>
+    <p>Marca cada <strong>Fallo de Continuidad</strong> del gráfico con su etiqueta y traza una línea horizontal en el nivel exacto del fallo: <span style="color:var(--bull);font-weight:650">verde</span> si es alcista (demanda), <span style="color:var(--bear);font-weight:650">roja</span> si es bajista (oferta). La línea se extiende hacia la derecha mientras la zona siga viva. Cuando el precio vuelve y la toca, la zona queda <strong>liquidada</strong>: la línea se congela justo ahí y se vuelve punteada para que veas el histórico de dónde ya se cobró liquidez.</p>
+
+    <h3>Capa 2 · Fallo del Fallo</h3>
+    <p>Encima de las zonas corre el motor de entradas. Persigue el patrón completo del manual —barrido, mitigación, estiramiento ineficiente y rebalanceo— y solo emite <code>BUY</code> o <code>SELL</code> cuando las cuatro fases se cumplen en orden. Este es el que te da entrada, stop loss y objetivos.</p>
+
+    <h3>Capa 3 · Acumulación</h3>
+    <p>Vigila las dos direcciones a la vez. Si detecta un F+F alcista abajo y uno bajista arriba dentro de un rango comprimido, dibuja la caja del rango y avisa: <code>F+F ACUM</code>. Ahí la temporalidad mayor decide qué extremo es real y cuál es el anzuelo.</p>
+
+    <h3>Capa 4 · Panel</h3>
+    <p>El cuadro dorado arriba a la derecha resume el estado completo del mercado según el sistema: dónde está el precio, qué setups están vivos, cuántas zonas quedan sin liquidar y qué dice la temporalidad mayor.</p>
+  </section>
+
+  <!-- ============================================ -->
+  <section id="fases">
+    <span class="sec-num">02 — Motor</span>
+    <h2>Las cuatro fases, una por una</h2>
+    <p class="lede">Esta es la secuencia obligatoria. Si una fase falla o se vence su tiempo, el setup muere y el contador vuelve a cero. No hay atajos ni entradas a mitad de camino.</p>
+
+    <div class="phases">
+
+      <div class="phase">
+        <div class="phase-mark">
+          <div class="glyph g-l">L</div>
+          <span class="phase-step">FASE 1</span>
+        </div>
+        <div>
+          <h4>Liquidez e inducción</h4>
+          <p class="role">Nace el FC</p>
+          <p>El precio barre un fractal previo —un mínimo o máximo donde hay stops acumulados— pero <strong>cierra de vuelta al otro lado</strong>. Ese cierre de rechazo es lo que convierte un simple barrido en un Fallo de Continuidad. La zona del FC va desde la mecha hasta el cuerpo de esa vela.</p>
+          <p class="psy">La masa ve el movimiento agresivo, entra tarde por FOMO y deja sus stops en el mínimo obvio más cercano. El algoritmo acaba de crear su despensa.</p>
+          <p class="code-cond">low &lt; pivotLow  <span style="color:var(--gold)">and</span>  close &gt; pivotLow</p>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-mark">
+          <div class="glyph g-f">F</div>
+          <span class="phase-step">FASE 2</span>
+        </div>
+        <div>
+          <h4>Mitigación — el primer fallo</h4>
+          <p class="role">Limpieza de impacientes</p>
+          <p>El precio debe <strong>alejarse primero</strong> de la zona FC y después regresar a tocarla. Ese regreso es la cacería de stops: barre a los que entraron temprano. Si la mecha perfora la lógica tendencial dentro de la tolerancia, el indicador <strong>actualiza</strong> el mínimo estructural en vez de invalidar; si la rompe con cierre más allá de la tolerancia, el setup muere.</p>
+          <p class="psy">Aquí el minorista entra en pánico: le saltó el stop y encima cree que la tendencia se dio la vuelta, así que se posiciona en contra. El Dealer absorbe toda esa contrapartida.</p>
+          <p class="code-cond">high &gt; fcHigh + (0.30 × ATR)   →   luego   low ≤ fcHigh</p>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-mark">
+          <div class="glyph g-m">M</div>
+          <span class="phase-step">FASE 3</span>
+        </div>
+        <div>
+          <h4>Estiramiento ineficiente — el Fallo del Fallo</h4>
+          <p class="role">Se crea la vela de testeo virgen</p>
+          <p>El mercado se gira con violencia: se exigen <strong>dos o más velas consecutivas</strong> con cuerpo mayor a un múltiplo del ATR, que además rompan estructura. Ese movimiento tan rápido deja un hueco de liquidez sin testear —la ineficiencia—. Ese hueco <em>es</em> la vela de testeo virgen del manual, y el indicador la dibuja como caja.</p>
+          <p class="psy">El trader que fue barrido ve el mercado irse justo hacia donde él pensaba. Frustrado, persigue el precio caro en la punta del impulso. Segunda trampa cobrada.</p>
+          <p class="code-cond">2+ velas · cuerpo ≥ ATR×mult · BOS · low &gt; high[2] (FVG)</p>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-mark">
+          <div class="glyph g-e">▲</div>
+          <span class="phase-step">FASE 4</span>
+        </div>
+        <div>
+          <h4>Rebalanceo — la entrada</h4>
+          <p class="role">BUY / SELL con SL y TP</p>
+          <p>El algoritmo tiene la obligación matemática de volver a rebalancear esa ineficiencia. El indicador espera pacientemente ese regreso quirúrgico y ahí dispara la señal. El <strong>stop loss</strong> va detrás de la lógica tendencial más un colchón de ATR —nunca pegado a la mecha—. El <strong>TP1</strong> es un múltiplo de R y el <strong>TP2</strong> apunta al F+F opuesto: el camino libre.</p>
+          <p class="psy">Aquí no hay emoción. La vela roja que vuelve a la zona no es una amenaza, es el imán algorítmico activándose. Riesgo mínimo, lógica intacta.</p>
+          <p class="code-cond">low ≤ nivel de rebalanceo   ·   SL = estructura − (0.20 × ATR)</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="note">
+      <span class="n-title">Por qué importa el orden</span>
+      <p>El patrón vale porque las dos trampas ya se cobraron antes de que tú entres: arriba quedó gente vendida y abajo quedó gente barrida. Entrar en la fase 2 o 3 es ponerte del lado de la masa. La ventaja completa solo existe en la fase 4.</p>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <section id="novedades">
+    <span class="sec-num">03 — Actualización</span>
+    <h2>Qué cambió en la versión PRO</h2>
+    <p class="lede">La versión anterior solo marcaba el patrón completo, que en oro aparece pocas veces al día. Esta añade la capa de zonas FC, el panel de control y la adaptación automática a temporalidades bajas.</p>
+
+    <div class="changes">
+
+      <div class="chg">
+        <span class="chg-badge b-new">Nuevo</span>
+        <div>
+          <h4>Capa de zonas FC con líneas vivas</h4>
+          <p>Cada Fallo de Continuidad se etiqueta y genera su línea de nivel. La línea se extiende hasta que el precio la liquida; ahí se congela punteada. Ahora ves de un vistazo qué liquidez sigue pendiente arriba y abajo, no solo el patrón terminado.</p>
+        </div>
+      </div>
+
+      <div class="chg">
+        <span class="chg-badge b-new">Nuevo</span>
+        <div>
+          <h4>Sensibilidad FC de tres niveles</h4>
+          <p><strong>Alta</strong> marca todos los fallos —gráfico muy poblado, útil en 1m—. <strong>Media</strong> exige rango mínimo de 0.30 ATR. <strong>Baja</strong> exige 0.60 ATR y deja solo los fallos con peso real. Es el control principal para pasar de un gráfico ruidoso a uno quirúrgico.</p>
+        </div>
+      </div>
+
+      <div class="chg">
+        <span class="chg-badge b-new">Nuevo</span>
+        <div>
+          <h4>Panel de control con contadores en vivo</h4>
+          <p>Diez filas con la zona donde cotiza el precio, la última señal, zonas activas por lado, liquidadas acumuladas, FC detectados, estado de los dos setups, señales emitidas, sesgo de la temporalidad mayor, ATR% y estado de sesión. Tamaño y posición configurables.</p>
+        </div>
+      </div>
+
+      <div class="chg">
+        <span class="chg-badge b-new">Nuevo</span>
+        <div>
+          <h4>Auto-adaptación por temporalidad</h4>
+          <p>El fractal, el cuerpo mínimo del impulso, el tamaño mínimo de la ineficiencia, la tolerancia y el cooldown se recalculan solos según el gráfico. En 1m el motor se vuelve más fino; en H1 más exigente. Se apaga con un clic si prefieres tus valores.</p>
+        </div>
+      </div>
+
+      <div class="chg">
+        <span class="chg-badge b-fix">Corregido</span>
+        <div>
+          <h4>Mitigación trivial</h4>
+          <p>Antes la fase 2 podía darse por cumplida en la vela inmediatamente siguiente al FC, porque el precio todavía estaba dentro de la zona. Ahora se exige que el precio se aleje primero <code>0.30 × ATR</code> antes de que un regreso cuente como mitigación real. Esto elimina una familia entera de señales falsas.</p>
+        </div>
+      </div>
+
+      <div class="chg">
+        <span class="chg-badge b-fix">Corregido</span>
+        <div>
+          <h4>Una sola máquina de estados</h4>
+          <p>El código original solo podía seguir un setup a la vez, así que era imposible detectar acumulación. Ahora corren dos motores independientes —alcista y bajista— en paralelo. Esa es la condición técnica que hace posible el módulo de doble mitigación.</p>
+        </div>
+      </div>
+
+      <div class="chg">
+        <span class="chg-badge b-imp">Mejorado</span>
+        <div>
+          <h4>Stop loss dinámico</h4>
+          <p>El SL ya no se fija en la vela de fallo y se olvida. Sigue la lógica tendencial: si una mecha perfora el mínimo dentro de la tolerancia, el nivel estructural se actualiza y el stop lo acompaña, siempre con su colchón de ATR por debajo.</p>
+        </div>
+      </div>
+
+      <div class="chg">
+        <span class="chg-badge b-imp">Mejorado</span>
+        <div>
+          <h4>Objetivo en el camino libre</h4>
+          <p>El TP2 ya no es un múltiplo arbitrario: apunta al F+F opuesto cuando existe, o al extremo del rango de acumulación. Es la traducción literal del concepto del manual —los stops del lado contrario son el combustible del movimiento—.</p>
+        </div>
+      </div>
+
+      <div class="chg">
+        <span class="chg-badge b-imp">Mejorado</span>
+        <div>
+          <h4>Modo de rebalanceo configurable</h4>
+          <p>Puedes entrar al primer toque del borde, al 50 % de la ineficiencia o esperar el relleno total. El 50 % es el equilibrio por defecto: mejor precio que el borde, menos setups perdidos que el relleno completo.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <section id="grafico">
+    <span class="sec-num">04 — Lectura</span>
+    <h2>Todo lo que verás en el gráfico</h2>
+    <p class="lede">Cada marca significa una cosa concreta. Si sabes leerlas, el gráfico te cuenta la historia completa de la manipulación sin que tengas que abrir el panel.</p>
+
+    <div class="legend">
+      <div class="leg-item">
+        <span class="swatch sw-fc-b">FC</span>
+        <div><strong>FC alcista</strong><span>Fallo de continuidad comprador. Zona de demanda pendiente.</span></div>
+      </div>
+      <div class="leg-item">
+        <span class="swatch sw-fc-s">FC</span>
+        <div><strong>FC bajista</strong><span>Fallo de continuidad vendedor. Zona de oferta pendiente.</span></div>
+      </div>
+      <div class="leg-item">
+        <span class="swatch sw-line-b">━━</span>
+        <div><strong>Línea verde continua</strong><span>Zona alcista viva. El precio todavía no ha vuelto a cobrarla.</span></div>
+      </div>
+      <div class="leg-item">
+        <span class="swatch sw-line-s">━━</span>
+        <div><strong>Línea roja continua</strong><span>Zona bajista viva. Liquidez pendiente por encima.</span></div>
+      </div>
+      <div class="leg-item">
+        <span class="swatch sw-line-b">┈┈</span>
+        <div><strong>Línea punteada</strong><span>Zona ya liquidada. Se congela donde el precio la tocó.</span></div>
+      </div>
+      <div class="leg-item">
+        <span class="swatch sw-l">L</span>
+        <div><strong>Fase 1</strong><span>Liquidez barrida con cierre de rechazo. Empieza el setup.</span></div>
+      </div>
+      <div class="leg-item">
+        <span class="swatch sw-f">F</span>
+        <div><strong>Fase 2</strong><span>El FC fue mitigado. Los impacientes ya fueron limpiados.</span></div>
+      </div>
+      <div class="leg-item">
+        <span class="swatch sw-m">M</span>
+        <div><strong>Fase 3</strong><span>Estiramiento confirmado. Se creó la ineficiencia virgen.</span></div>
+      </div>
+      <div class="leg-item">
+        <span class="swatch sw-m">▭</span>
+        <div><strong>Caja «testeo virgen»</strong><span>La ineficiencia. Es la zona donde se espera la entrada.</span></div>
+      </div>
+      <div class="leg-item">
+        <span class="swatch sw-buy">BUY</span>
+        <div><strong>Entrada larga</strong><span>Con el precio de entrada impreso en la etiqueta.</span></div>
+      </div>
+      <div class="leg-item">
+        <span class="swatch sw-sell">SELL</span>
+        <div><strong>Entrada corta</strong><span>La vela de señal se colorea del color de la dirección.</span></div>
+      </div>
+      <div class="leg-item">
+        <span class="swatch sw-acc">ACUM</span>
+        <div><strong>Caja naranja</strong><span>Acumulación con doble F+F. Indica el extremo dominante.</span></div>
+      </div>
+    </div>
+
+    <h3>Las tres líneas de la operación</h3>
+    <p>Cuando aparece una señal se dibujan tres niveles hacia la derecha, cada uno con su etiqueta y su precio: la <strong>entrada</strong> en línea sólida, el <strong>SL</strong> en rojo discontinuo y el <strong>TP1</strong> en verde discontinuo. Si existe un F+F opuesto vivo, aparece además el <strong>TP2</strong> punteado en el nivel del camino libre.</p>
+  </section>
+
+  <!-- ============================================ -->
+  <section id="panel">
+    <span class="sec-num">05 — Panel</span>
+    <h2>Cómo leer el cuadro de control</h2>
+    <p class="lede">Diez filas que responden, sin mirar el gráfico, a la única pregunta que importa: ¿hay algo que hacer ahora mismo?</p>
+
+    <div class="dash">
+      <div class="dash-head"><span>FENIX F+F GOLD PRO</span><span>◆</span></div>
+      <div class="dash-row"><span>Zona PC:</span><span class="up">COMPRA</span><span class="on">ACTIVA</span><span class="on">ON</span></div>
+      <div class="dash-row"><span>Señal:</span><span class="up">COMPRA F+F</span><span>Trend:</span><span class="up">▲ UP</span></div>
+      <div class="dash-row"><span>Zonas activas:</span><span class="up">▲ 12</span><span class="dn">▼ 7</span><span class="on">ON</span></div>
+      <div class="dash-row"><span>Liquidadas:</span><span class="up">▲ 58</span><span class="dn">▼ 62</span><span class="on">RASTRO</span></div>
+      <div class="dash-row"><span>FC detectados:</span><span class="on">B 626</span><span class="on">S 651</span><span class="off">Media</span></div>
+      <div class="dash-row"><span>Setup F+F:</span><span class="up">▲ TESTEO</span><span class="off">▼ —</span><span>EXPAN</span></div>
+      <div class="dash-row"><span>Señales:</span><span>▲ 14</span><span>▼ 11</span><span class="off">CONF</span></div>
+      <div class="dash-row"><span>MTF 30 / Precio:</span><span class="up">▲ MEM</span><span>4105.40</span><span class="on">MTF ON</span></div>
+      <div class="dash-row"><span>TF 5 · AUTO</span><span>ATR 1.85</span><span style="color:var(--bull)">0.04%</span><span class="on">SESIÓN OK</span></div>
+    </div>
+
+    <div class="dash-key">
+      <div><b>Zona PC</b><span>Si el precio cotiza dentro del rango de una zona FC viva. COMPRA, VENTA, DOBLE o NINGUNA.</span></div>
+      <div><b>Señal</b><span>La última entrada emitida por el motor F+F. Junto a ella, el sesgo de tendencia.</span></div>
+      <div><b>Zonas activas</b><span>Cuántas zonas FC siguen sin liquidar por lado. Muchas arriba = liquidez pendiente arriba.</span></div>
+      <div><b>Liquidadas</b><span>Acumulado de zonas ya cobradas. Mide cuánto trabajo lleva hecho el algoritmo en la sesión.</span></div>
+      <div><b>FC detectados</b><span>Total histórico y el nivel de sensibilidad activo.</span></div>
+      <div><b>Setup F+F</b><span>En qué fase va cada motor: FC, MITIGADO o TESTEO. TESTEO significa que puede entrar en cualquier momento.</span></div>
+      <div><b>Señales</b><span>Cuántas entradas ha dado el indicador en el histórico cargado, y el modo de disparo.</span></div>
+      <div><b>MTF / Precio</b><span>Vela Memoria de la temporalidad mayor, precio actual y si el filtro MTF está activo.</span></div>
+      <div><b>TF · ATR</b><span>Temporalidad, si el motor va en AUTO o manual, ATR absoluto, ATR% y estado de la sesión.</span></div>
+    </div>
+
+    <div class="note">
+      <span class="n-title">El estado que hay que vigilar</span>
+      <p>Cuando <strong>Setup F+F</strong> marca <code>TESTEO</code>, la ineficiencia ya está creada y solo falta que el precio vuelva. Ese es el momento de tener el gráfico delante, no antes.</p>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <section id="parametros">
+    <span class="sec-num">06 — Ajustes</span>
+    <h2>Cada parámetro, explicado</h2>
+    <p class="lede">Los valores por defecto están calibrados para oro. Estas tablas son para cuando quieras afinar con criterio, no a ciegas.</p>
+
+    <h3>② Zonas FC</h3>
+    <div class="t-wrap">
+      <table>
+        <thead><tr><th>Parámetro</th><th>Defecto</th><th>Qué hace</th></tr></thead>
+        <tbody>
+          <tr><td class="p-name">Sensibilidad FC</td><td class="num">Media</td><td>Filtro de rango mínimo. Alta = todos, Media = 0.30 ATR, Baja = 0.60 ATR.</td></tr>
+          <tr><td class="p-name">Extensión de línea</td><td class="num">60</td><td>Hasta dónde proyecta la línea hacia la derecha mientras la zona viva.</td></tr>
+          <tr><td class="p-name">Máx. zonas vivas</td><td class="num">30</td><td>Tope por lado. Al superarlo borra la más antigua para no saturar el gráfico.</td></tr>
+          <tr><td class="p-name">Dejar rastro</td><td class="num">Sí</td><td>La zona liquidada se congela punteada en vez de desaparecer.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>③ Fallo del Fallo</h3>
+    <div class="t-wrap">
+      <table>
+        <thead><tr><th>Parámetro</th><th>Defecto</th><th>Qué hace</th></tr></thead>
+        <tbody>
+          <tr><td class="p-name">Fractal lookback</td><td class="num">8</td><td>Velas a cada lado para validar un pivote. Más alto = solo liquidez mayor.</td></tr>
+          <tr><td class="p-name">Tolerancia (×ATR)</td><td class="num">0.25</td><td>Cuánto puede perforar la mecha la estructura sin matar el setup.</td></tr>
+          <tr><td class="p-name">Alejamiento (×ATR)</td><td class="num">0.30</td><td>Separación exigida del FC antes de que el regreso cuente como mitigación.</td></tr>
+          <tr><td class="p-name">Cuerpo impulso (×ATR)</td><td class="num">0.55</td><td>Qué tan vertical debe ser cada vela del estiramiento. El filtro más potente.</td></tr>
+          <tr><td class="p-name">Velas mínimas</td><td class="num">2</td><td>Las «dos o más velas verticales» del manual.</td></tr>
+          <tr><td class="p-name">Exigir BOS</td><td class="num">Sí</td><td>El impulso debe romper estructura, no solo ser grande.</td></tr>
+          <tr><td class="p-name">Ineficiencia mín. (×ATR)</td><td class="num">0.18</td><td>Descarta huecos microscópicos que el precio rellena por ruido.</td></tr>
+          <tr><td class="p-name">Disparo de entrada</td><td class="num">Confirmación</td><td>Toque = entra al tocar. Confirmación = espera cierre a favor.</td></tr>
+          <tr><td class="p-name">Nivel de rebalanceo</td><td class="num">50 %</td><td>Borde, mitad o relleno total de la ineficiencia.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>④ Filtros</h3>
+    <div class="t-wrap">
+      <table>
+        <thead><tr><th>Parámetro</th><th>Defecto</th><th>Qué hace</th></tr></thead>
+        <tbody>
+          <tr><td class="p-name">Filtrar por sesión</td><td class="num">No</td><td>Limita las señales a las killzones de Londres y Nueva York.</td></tr>
+          <tr><td class="p-name">Zona horaria</td><td class="num">UTC</td><td>Las sesiones se leen en esta zona. Cámbiala si operas en horario local.</td></tr>
+          <tr><td class="p-name">Filtro MTF</td><td class="num">Sí</td><td>Solo permite señales alineadas con la temporalidad mayor.</td></tr>
+          <tr><td class="p-name">Modo de sesgo</td><td class="num">EMA + Memoria</td><td>Exige que la EMA y la Vela Memoria coincidan. Es el modo más estricto.</td></tr>
+          <tr><td class="p-name">ATR mínimo</td><td class="num">0.02 %</td><td>Descarta el rango muerto donde el patrón no tiene recorrido.</td></tr>
+          <tr><td class="p-name">Cooldown</td><td class="num">5</td><td>Velas de espera obligatoria entre dos señales.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>⑤ Gestión</h3>
+    <div class="t-wrap">
+      <table>
+        <thead><tr><th>Parámetro</th><th>Defecto</th><th>Qué hace</th></tr></thead>
+        <tbody>
+          <tr><td class="p-name">Colchón del SL (×ATR)</td><td class="num">0.20</td><td>Distancia extra bajo la estructura. Por debajo de 0.15 el oro te barre.</td></tr>
+          <tr><td class="p-name">TP1 en R</td><td class="num">2.0</td><td>Primer objetivo como múltiplo del riesgo.</td></tr>
+          <tr><td class="p-name">TP2 opuesto</td><td class="num">Sí</td><td>Segundo objetivo en el F+F contrario o el extremo del rango.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <section id="temporalidades">
+    <span class="sec-num">07 — Auto</span>
+    <h2>Qué hace el modo automático</h2>
+    <p class="lede">Con la auto-adaptación activa, estos son los valores que el indicador se pone solo según el gráfico donde lo cargues.</p>
+
+    <div class="t-wrap">
+      <table>
+        <thead>
+          <tr><th>TF</th><th>Fractal</th><th>Cuerpo</th><th>Ineficiencia</th><th>Tolerancia</th><th>Cooldown</th><th>MTF</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="p-name">1m</td><td class="num">5</td><td class="num">0.45</td><td class="num">0.10</td><td class="num">0.35</td><td class="num">3</td><td class="num">15m</td></tr>
+          <tr><td class="p-name">3m</td><td class="num">5</td><td class="num">0.48</td><td class="num">0.12</td><td class="num">0.32</td><td class="num">3</td><td class="num">30m</td></tr>
+          <tr><td class="p-name">5m</td><td class="num">6</td><td class="num">0.50</td><td class="num">0.14</td><td class="num">0.30</td><td class="num">4</td><td class="num">30m</td></tr>
+          <tr><td class="p-name">15m</td><td class="num">8</td><td class="num">0.55</td><td class="num">0.18</td><td class="num">0.25</td><td class="num">5</td><td class="num">60m</td></tr>
+          <tr><td class="p-name">30m–1h</td><td class="num">10</td><td class="num">0.55</td><td class="num">0.20</td><td class="num">0.22</td><td class="num">5</td><td class="num">4h</td></tr>
+          <tr><td class="p-name">4h+</td><td class="num">12</td><td class="num">0.50</td><td class="num">0.20</td><td class="num">0.22</td><td class="num">5</td><td class="num">D</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="t-note">Cuerpo, ineficiencia y tolerancia se expresan como múltiplos del ATR, así que se ajustan solos a la volatilidad del día además de a la temporalidad.</p>
+
+    <p>La lógica del ajuste es simple: en temporalidades bajas el ATR es pequeño y el ruido es proporcionalmente mayor, así que se relajan los umbrales de tamaño —si no, no encontraría ningún patrón— pero se amplía la tolerancia estructural, porque en 1m una mecha de manipulación se come varios puntos en segundos. En temporalidades altas ocurre lo contrario: menos ruido, más exigencia de limpieza estructural.</p>
+
+    <div class="note warn">
+      <span class="n-title">1 minuto</span>
+      <p>Es la temporalidad donde el indicador más señales da y donde el spread del oro más te castiga. Si operas en 1m, sube el <code>Colchón del SL</code> a 0.30 y no bajes el TP1 de 2R: con 1R el spread se come la ventaja.</p>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <section id="operar">
+    <span class="sec-num">08 — Operativa</span>
+    <h2>Cómo se opera, paso a paso</h2>
+    <p class="lede">Este es el flujo completo de una operación, desde que el panel se enciende hasta que cierras.</p>
+
+    <ol class="check">
+      <li><b>Confirma el sesgo antes de mirar señales</b><span>Panel, fila MTF. Si marca ▲ UP, solo te interesan los setups alcistas de abajo. Los de arriba son el anzuelo.</span></li>
+      <li><b>Localiza dónde queda liquidez pendiente</b><span>Fila «Zonas activas». Si hay muchas rojas arriba sin liquidar, el precio tiene un imán hacia arriba aunque el movimiento inmediato sea bajista.</span></li>
+      <li><b>Espera a que el setup llegue a TESTEO</b><span>Antes de esa fase no hay nada que hacer. La ineficiencia todavía no existe.</span></li>
+      <li><b>Deja que el precio venga a la caja</b><span>No persigas el impulso. El manual es explícito: la masa compra caro en la punta; nosotros esperamos el regreso a la zona gris.</span></li>
+      <li><b>Entra donde marca la señal</b><span>Con la etiqueta BUY o SELL. El precio de entrada viene impreso en la propia etiqueta.</span></li>
+      <li><b>Coloca el stop donde dice la línea roja</b><span>Detrás de la lógica tendencial, no donde a ti te gustaría por tamaño de posición. Si el stop te queda grande, reduce el lotaje, nunca acerques el stop.</span></li>
+      <li><b>Cierra la mitad en TP1 y mueve a break even</b><span>Con 2R en la mitad, la operación ya no puede perder. El resto corre hacia el camino libre.</span></li>
+      <li><b>Si el precio cierra más allá del SL, se acabó</b><span>La lógica cambió. No promedies, no muevas el stop, no busques revancha en la vela siguiente.</span></li>
+    </ol>
+
+    <h3>Cuándo NO operar aunque haya señal</h3>
+    <ul class="plain">
+      <li>Quince minutos antes o después de NFP, CPI o FOMC: el patrón se cumple, pero el slippage se come el edge.</li>
+      <li>Con el panel marcando ATR% en gris: no hay recorrido para llegar al TP1.</li>
+      <li>En acumulación, cuando la señal viene del extremo contrario a la dominancia. El indicador ya la filtra, pero si desactivaste ese filtro, ese es tu recordatorio.</li>
+      <li>Cuando el SL calculado supera lo que tu gestión de riesgo permite en esa operación.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================ -->
+  <section id="alertas">
+    <span class="sec-num">09 — Alertas</span>
+    <h2>Las cinco alertas disponibles</h2>
+
+    <div class="t-wrap">
+      <table>
+        <thead><tr><th>Alerta</th><th>Cuándo salta</th><th>Para qué sirve</th></tr></thead>
+        <tbody>
+          <tr><td class="p-name">BUY</td><td>Entrada larga confirmada</td><td>Ejecutar. Incluye entrada, SL y TP1 en el mensaje.</td></tr>
+          <tr><td class="p-name">SELL</td><td>Entrada corta confirmada</td><td>Ejecutar. Mismo formato.</td></tr>
+          <tr><td class="p-name">Ineficiencia creada</td><td>Al terminar la fase 3</td><td>Aviso anticipado: prepárate, la entrada puede llegar en minutos.</td></tr>
+          <tr><td class="p-name">FC alcista</td><td>Cada FC comprador</td><td>Seguimiento de zonas. En 1m se dispara mucho.</td></tr>
+          <tr><td class="p-name">FC bajista</td><td>Cada FC vendedor</td><td>Igual, en el lado de la oferta.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Configúralas siempre con <strong>Once Per Bar Close</strong>. Así la señal se evalúa con la vela cerrada y no repinta. Si eliges «Once Per Bar» recibirás avisos intrabar que pueden desaparecer cuando la vela cierre.</p>
+
+    <div class="note">
+      <span class="n-title">La alerta más útil no es la de entrada</span>
+      <p>Es la de <strong>ineficiencia creada</strong>. Te avisa cuando la trampa ya está montada y solo falta el regreso, que es exactamente el momento en que quieres estar mirando el gráfico.</p>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <section id="problemas">
+    <span class="sec-num">10 — Ajuste fino</span>
+    <h2>Si algo no se ve como esperas</h2>
+
+    <div class="t-wrap">
+      <table>
+        <thead><tr><th>Síntoma</th><th>Causa</th><th>Solución</th></tr></thead>
+        <tbody>
+          <tr><td>Gráfico saturado de etiquetas FC</td><td>Sensibilidad demasiado alta para la temporalidad</td><td>Sensibilidad FC → Baja. O desactiva «Marcar etiquetas FC» y deja solo las líneas.</td></tr>
+          <tr><td>No aparece ninguna señal BUY/SELL</td><td>Los filtros se están anulando entre sí</td><td>Apaga MTF y sesión, comprueba que aparecen, y vuelve a encenderlos de uno en uno.</td></tr>
+          <tr><td>Demasiadas señales seguidas</td><td>Cooldown corto y cuerpo mínimo bajo</td><td>Sube el cuerpo de impulso a 0.70 y el cooldown a 10.</td></tr>
+          <tr><td>Las señales llegan tarde</td><td>Modo Confirmación en temporalidad baja</td><td>Cambia a Toque y nivel de rebalanceo → Borde.</td></tr>
+          <tr><td>El SL salta y luego el precio va a tu favor</td><td>Colchón insuficiente para el oro</td><td>Sube el colchón a 0.30 y la tolerancia a 0.35.</td></tr>
+          <tr><td>Las líneas antiguas ensucian el gráfico</td><td>Rastro activado con muchas zonas</td><td>Desactiva «Dejar rastro» o baja «Máx. zonas vivas» a 15.</td></tr>
+          <tr><td>El panel tapa el precio</td><td>Posición por defecto</td><td>Panel → Inferior izquierda, o tamaño Normal.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <section id="limites">
+    <span class="sec-num">11 — Honestidad</span>
+    <h2>Lo que el indicador no hace</h2>
+    <p class="lede">Un manual que solo enumera virtudes no sirve para operar. Esto es lo que hay que tener claro antes de poner dinero.</p>
+
+    <ul class="plain">
+      <li><strong>Todo se evalúa al cierre de vela.</strong> Durante la formación de la vela el estado puede cambiar. Lo que ves a mitad de vela no es definitivo.</li>
+      <li><strong>No predice, reacciona.</strong> Detecta que las condiciones del patrón se cumplieron. Que se cumplan no garantiza que el movimiento se complete.</li>
+      <li><strong>El TP2 depende del contexto.</strong> Solo existe si hay un F+F opuesto vivo o un rango detectado. Si no, no se dibuja.</li>
+      <li><strong>Los contadores dependen del histórico cargado.</strong> Al cambiar de temporalidad se recalculan desde cero con las velas que TradingView tenga en memoria.</li>
+      <li><strong>El feed importa.</strong> Distintos brókers dan mechas distintas en oro, y las mechas son precisamente lo que este sistema mide. Usa siempre el feed de tu bróker real.</li>
+      <li><strong>No gestiona la operación por ti.</strong> Es un indicador, no un bot. La ejecución, el tamaño de posición y la disciplina siguen siendo tuyos.</li>
+    </ul>
+
+    <div class="note warn">
+      <span class="n-title">Antes de operarlo en real</span>
+      <p>Pásalo primero por cuenta demo durante al menos dos semanas completas, y corre la versión strategy en el Strategy Tester sobre tu propio feed. El backtest no incluye el ensanchamiento del spread en noticias, así que el resultado real siempre será algo peor que el simulado.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>Fenix Forex Funds · Manual de alta precisión</span>
+    <span>FENIX FF GOLD PRO · Pine v6</span>
+  </footer>
+
+</div>
