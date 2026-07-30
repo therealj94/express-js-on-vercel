@@ -1,0 +1,85 @@
+name: Veta Wallet — publicar preview
+
+# Se dispara con cada push a la rama de trabajo del asistente y publica un
+# EAS Update al channel "preview". Tu Expo Go recibe el cambio en cuanto
+# reabres la app, sin encender tu computadora.
+#
+# Requisitos (una vez):
+#   1. EXPO_TOKEN — Settings → Secrets → Actions → "New repository secret".
+#      Genéralo en https://expo.dev/settings/access-tokens
+#
+# También se puede lanzar a mano desde la pestaña Actions → "Run workflow",
+# eligiendo la rama.
+
+on:
+  push:
+    branches:
+      - claude/veta-wallet-phantom-design-x37uqw
+      - preview
+    paths:
+      - 'veta-wallet-app/**'
+      - '.github/workflows/veta-preview.yml'
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Mensaje del update (aparece en el Dashboard EAS)'
+        required: false
+        default: 'update automático'
+
+concurrency:
+  group: veta-preview
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: veta-wallet-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: veta-wallet-app/package-lock.json
+
+      - name: EAS CLI
+        run: npm install -g eas-cli@latest
+
+      - name: Install
+        run: npm ci
+
+      # Revisión previa: caza colisiones de nombres, dependencias mal
+      # ubicadas y desfases de SDK antes de gastar minutos publicando algo
+      # que no va a abrir en el teléfono.
+      - name: Verificar
+        run: npm run verificar
+
+      - name: Publicar EAS Update
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          set -e
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Falta el secreto EXPO_TOKEN. Créalo en Settings → Secrets → Actions."
+            exit 1
+          fi
+          MSG="${{ github.event.inputs.message }}"
+          if [ -z "$MSG" ]; then
+            # Con el commit se ve qué llevó cada update sin pensarlo.
+            MSG=$(git log -1 --pretty=format:'%s' | cut -c1-72)
+          fi
+          eas update --branch preview --message "$MSG" --non-interactive
+
+      - name: Resumen
+        if: success()
+        run: |
+          echo "### ✅ Update publicado" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Reabre Veta Wallet en tu Expo Go: el cambio se descarga automáticamente." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Dashboard: https://expo.dev/accounts/vetawallet/projects/veta-wallet/updates" >> $GITHUB_STEP_SUMMARY
