@@ -15,6 +15,7 @@ const S = {
     'auth.terms': 'Tu cuenta se crea en la blockchain de Orden Global. Después podrás vincular tu Genesis ID desde Ajustes (opcional).',
     'auth.errEmail': 'Ingresa un correo válido.', 'auth.errPw': 'Ingresa tu contraseña.', 'auth.errName': 'Ingresa tu nombre completo.',
     'auth.errServer': 'Sin conexión con el servidor.', 'auth.errGeneric': 'No se pudo completar. Intenta de nuevo.',
+    'auth.errNoWallet': 'La cuenta se creó pero el servidor no devolvió tu dirección de billetera. Sin ella no puedes enviar ni recibir — escríbenos.',
     'auth.welcome': 'Bienvenido', 'auth.foot': 'Protegido por Orden Global Blockchain',
     // home
     'home.balance': 'BALANCE TOTAL', 'home.live': 'Blockchain Orden Global · en vivo', 'home.today': 'hoy',
@@ -53,7 +54,7 @@ const S = {
     // activity
     'act.title': 'Actividad', 'act.sub': 'Blockchain Orden Global', 'act.all': 'Todo', 'act.in': 'Recibido', 'act.out': 'Enviado',
     'act.emptyT': 'Sin movimientos aún', 'act.emptyP': 'Cuando envíes o recibas tokens, tus transacciones reales aparecerán aquí.',
-    'act.from': 'De', 'act.to': 'Para',
+    'act.from': 'De', 'act.to': 'Para', 'act.pending': 'Pendiente de confirmar en la red',
     // notifications
     'notif.title': 'Notificaciones', 'notif.emptyT': 'Todo al día', 'notif.emptyP': 'Aquí verás avisos de transacciones recibidas y novedades de tu cuenta.',
     // settings
@@ -240,6 +241,7 @@ const S = {
     'auth.terms': 'Your account is created on the Orden Global blockchain. You can link your Genesis ID later from Settings (optional).',
     'auth.errEmail': 'Enter a valid email.', 'auth.errPw': 'Enter your password.', 'auth.errName': 'Enter your full name.',
     'auth.errServer': 'No connection to the server.', 'auth.errGeneric': 'Could not complete. Try again.',
+    'auth.errNoWallet': 'The account was created but the server did not return your wallet address. Without it you cannot send or receive — contact us.',
     'auth.welcome': 'Welcome', 'auth.foot': 'Secured by Orden Global Blockchain',
     'home.balance': 'TOTAL BALANCE', 'home.live': 'Orden Global Blockchain · live', 'home.today': 'today',
     'home.send': 'Send', 'home.receive': 'Receive', 'home.buy': 'Buy', 'home.swap': 'Swap',
@@ -270,7 +272,7 @@ const S = {
     'card.movs': 'Transactions', 'card.empty': 'Your card purchases will appear here.', 'card.holder': 'HOLDER',
     'act.title': 'Activity', 'act.sub': 'Orden Global Blockchain', 'act.all': 'All', 'act.in': 'Received', 'act.out': 'Sent',
     'act.emptyT': 'No transactions yet', 'act.emptyP': 'When you send or receive tokens, your real transactions will appear here.',
-    'act.from': 'From', 'act.to': 'To',
+    'act.from': 'From', 'act.to': 'To', 'act.pending': 'Pending network confirmation',
     'notif.title': 'Notifications', 'notif.emptyT': 'All caught up', 'notif.emptyP': 'Alerts about received transactions and account news will appear here.',
     'set.title': 'Settings', 'set.genesis': 'GENESIS ID', 'set.privacy': 'PRIVACY', 'set.account': 'ACCOUNT', 'set.security': 'SECURITY', 'set.general': 'GENERAL',
     'set.passport': 'My Genesis ID passport', 'set.reverify': 'Re-verify identity', 'set.reverifySub': 'Go through verification again',

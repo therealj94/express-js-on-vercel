@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Image, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Image, Modal, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '../icons';
 import * as Clipboard from 'expo-clipboard';
@@ -11,6 +11,7 @@ import { genesis } from '../genesis';
 import { setPassport } from '../accounts';
 import { updateAccount } from '../accounts';
 import { activarAvisos, desactivarAvisos, avisosActivos, enExpoGo } from '../notify';
+import { listContacts, nameFor } from '../addressBook';
 import { versionLabel } from '../version';
 import { useT, useLang } from '../i18n';
 
@@ -25,6 +26,8 @@ const fmtDate = (ts) => {
 // ================= ACTIVIDAD (historial real de la blockchain) =================
 export function Activity({ nav }) {
   const [f, setF] = useState('all');
+  const [detalle, setDetalle] = useState(null);      // tx que se está mirando
+  const [contactos, setContactos] = useState([]);    // libreta para nombrar direcciones
   const toast = useToast();
   const t = useT();
   const { account } = useAccount();
@@ -32,6 +35,12 @@ export function Activity({ nav }) {
   const filters = [['all', t('act.all')], ['in', t('act.in')], ['out', t('act.out')]];
   const isIn = (t) => t.type === 'recive' || t.type === 'receive' || t.type === 'in';
   const list = f === 'all' ? txns : txns.filter((t) => (f === 'in' ? isIn(t) : !isIn(t)));
+
+  // Contactos guardados: si el remitente/destinatario está en la libreta,
+  // en la lista aparece SU NOMBRE en vez de la dirección cortada.
+  useEffect(() => { if (account?.email) listContacts(account.email).then(setContactos); }, [account?.email]);
+  const etiqueta = (addr) => nameFor(contactos, addr) || shortAddr(addr);
+
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title={t('act.title')} sub={t('act.sub')} onBack={() => nav.go('home')} />
@@ -52,20 +61,73 @@ export function Activity({ nav }) {
         )}
         {list.map((x, i) => {
           const inbound = isIn(x);
+          const otra = inbound ? x.from : x.to;
           return (
-            <Pressable key={x.hash || i} onPress={() => { hap(); toast(x.hash ? 'Tx ' + x.hash.slice(0, 18) + '…' : 'Tx'); }} style={styles.txn}>
+            <Pressable key={x.hash || i} onPress={() => { hap(); setDetalle({ ...x, inbound }); }} style={styles.txn}>
               <View style={styles.txnIc}><Icon name={inbound ? 'arrow-down' : 'arrow-up'} size={19} color={inbound ? C.up : C.gold} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.txnT}>{inbound ? t('act.in') : t('act.out')} {x.symbol || 'ORIGEN'}</Text>
                 <Text style={styles.txnD}>{fmtDate(x.timeStamp)}</Text>
-                <Text style={styles.txnD}>{inbound ? t('act.from') : t('act.to')}: {shortAddr(inbound ? x.from : x.to)}</Text>
+                <Text style={styles.txnD}>{inbound ? t('act.from') : t('act.to')}: {etiqueta(otra)}</Text>
               </View>
               <Text style={[styles.txnV, inbound && { color: C.up }]}>{inbound ? '+' : '-'}{qtyFmt(Number(x.value) || 0)}</Text>
             </Pressable>
           );
         })}
       </ScrollView>
+      <TxDetail data={detalle} etiqueta={etiqueta} onClose={() => setDetalle(null)} onToast={toast} />
     </View>
+  );
+}
+
+// Ficha de una transacción — hash, bloque, gas, importe, contraparte y fecha.
+// Es lo que antes salía solo como un toast con el hash cortado.
+function TxDetail({ data, etiqueta, onClose, onToast }) {
+  const t = useT();
+  if (!data) return null;
+  const inbound = data.inbound;
+  const otra = inbound ? data.from : data.to;
+  const copiar = async (v) => { if (!v) return; hap(); try { await Clipboard.setStringAsync(String(v)); onToast(t('recv.copied')); } catch (e) {} };
+  const filas = [
+    [inbound ? t('act.from') : t('act.to'), etiqueta(otra), otra],
+    [t('send.date'), fmtDate(data.timeStamp)],
+    [t('send.network'), 'Orden Global · 8532'],
+    data.blockNumber != null ? [t('send.block'), `#${data.blockNumber}`] : null,
+    data.gasUsed != null ? [t('send.gas'), String(data.gasUsed)] : null,
+    data.fee ? [t('send.fee'), `${data.fee} ORIGEN`] : null,
+    data.hash && !data.localPending ? [t('send.hash'), `${String(data.hash).slice(0, 10)}…${String(data.hash).slice(-8)}`, data.hash] : null,
+  ].filter(Boolean);
+
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.sheetBg} onPress={onClose}>
+        <Pressable style={styles.sheet} onPress={() => {}}>
+          <View style={styles.grab} />
+          <View style={{ alignItems: 'center', marginBottom: 16 }}>
+            <View style={[styles.txDetIc, { backgroundColor: inbound ? 'rgba(62,217,160,0.14)' : 'rgba(201,169,97,0.14)' }]}>
+              <Icon name={inbound ? 'arrow-down' : 'arrow-up'} size={26} color={inbound ? C.up : C.gold} />
+            </View>
+            <Text style={styles.txDetT}>{inbound ? t('act.in') : t('act.out')}</Text>
+            <Text style={[styles.txDetAmt, { color: inbound ? C.up : C.gold }]}>
+              {inbound ? '+' : '-'}{qtyFmt(Number(data.value) || 0)} {data.symbol || 'ORIGEN'}
+            </Text>
+            {data.localPending ? <Text style={styles.txDetPend}>{t('act.pending')}</Text> : null}
+          </View>
+          <View style={styles.txDetRows}>
+            {filas.map(([k, v, full], i) => (
+              <Pressable key={k} onPress={full ? () => copiar(full) : undefined} disabled={!full} style={[styles.txDetRow, i === 0 && { borderTopWidth: 0 }]}>
+                <Text style={styles.txDetK}>{k}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
+                  <Text style={styles.txDetV} numberOfLines={1}>{v}</Text>
+                  {full ? <Icon name="copy" size={13} color={C.gold} /> : null}
+                </View>
+              </Pressable>
+            ))}
+          </View>
+          <Button3D title={t('send.ok')} icon="checkmark" onPress={onClose} style={{ marginTop: 16 }} />
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -578,6 +640,18 @@ const styles = StyleSheet.create({
   txnT: { fontSize: 14, fontWeight: '600', color: C.txt },
   txnD: { fontSize: 11.5, color: C.txt3, marginTop: 2 },
   txnV: { fontSize: 14, fontWeight: '700', color: C.txt },
+  // ---- ficha de detalle de transacción ----
+  sheetBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#06282B', borderTopLeftRadius: 28, borderTopRightRadius: 28, borderTopWidth: 1, borderColor: C.line, padding: 22, paddingBottom: 32 },
+  grab: { width: 40, height: 4, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.2)', alignSelf: 'center', marginBottom: 16 },
+  txDetIc: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  txDetT: { color: C.txt2, fontSize: 12.5, fontWeight: '600', letterSpacing: 1 },
+  txDetAmt: { fontSize: 26, fontWeight: '800', marginTop: 4 },
+  txDetPend: { color: '#FBBF24', fontSize: 11.5, marginTop: 6, fontWeight: '600' },
+  txDetRows: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, paddingHorizontal: 14 },
+  txDetRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 11, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },
+  txDetK: { color: C.txt3, fontSize: 12 },
+  txDetV: { color: C.txt, fontSize: 12.5, fontWeight: '600', flexShrink: 1 },
 
   emptyWrap: { alignItems: 'center', marginTop: 60, paddingHorizontal: 10 },
   emptyIcon: { width: 78, height: 78, borderRadius: 39, backgroundColor: C.panel, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.line },

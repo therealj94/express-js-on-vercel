@@ -35,6 +35,15 @@ export default function Auth({ nav }) {
         : await apiLogin(mail, pw);
       if (kind === 'register') user.name = regName.trim();
 
+      // Sin dirección de billetera no es una cuenta usable: el backend no la
+      // creó en la blockchain. Se avisa aquí en vez de seguir y toparse con
+      // errores más adelante cuando el usuario intente recibir o enviar.
+      if (kind === 'register' && !address) {
+        setErr(t('auth.errNoWallet'));
+        setBusy(false);
+        return;
+      }
+
       if (remember) await saveCreds(mail, pw); else await clearCreds();
 
       // Portafolio real (saldos on-chain + historial). Si falla, entra igual

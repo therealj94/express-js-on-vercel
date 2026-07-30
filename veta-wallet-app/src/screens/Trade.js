@@ -6,7 +6,8 @@ import * as Clipboard from 'expo-clipboard';
 import { C } from '../theme';
 import { Header, TokenIcon, Button3D, Card, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt, tokensFromBalances } from '../data';
-import { apiSend, NETWORK_FEE_ORIGEN } from '../api';
+import { apiSend, apiPortfolio, NETWORK_FEE_ORIGEN, CHAIN_ID } from '../api';
+import { updateAccount } from '../accounts';
 import { listContacts, touchContact, addContact, parseAddress } from '../addressBook';
 import { ScanModal } from './Scan';
 import { useT } from '../i18n';
@@ -72,7 +73,7 @@ export function Send({ nav }) {
   const [done, setDone] = useState(null);     // comprobante del envío
   const toast = useToast();
   const t = useT();
-  const { account } = useAccount();
+  const { account, login } = useAccount();
 
   // Contactos guardados: acceso rápido a las direcciones frecuentes.
   useEffect(() => {
@@ -114,6 +115,37 @@ export function Send({ nav }) {
         if (saveAs.trim()) addContact(account?.email, { name: saveAs.trim(), address: to.trim() }).catch(() => {});
         hap();
         setReview(null);
+
+        // Añade el envío al historial LOCAL al instante para que aparezca en
+        // Actividad ya, sin esperar a que la red lo indexe. Después el
+        // portafolio real lo reemplaza — usamos el hash como identificador.
+        if (account?.email) {
+          const nueva = {
+            hash: r.hash || `local_${Date.now()}`,
+            timeStamp: Math.floor(Date.now() / 1000),
+            value: String(amount),
+            symbol: tok.s,
+            type: 'send',
+            from: account.addr,
+            to: to.trim(),
+            gasUsed: r.receipt?.gasUsed ?? null,
+            blockNumber: r.receipt?.blockNumber ?? null,
+            fee: NETWORK_FEE_ORIGEN,
+            localPending: !r.hash,
+          };
+          const yaEsta = (account.transfers || []).some((x) => x.hash === nueva.hash);
+          const transfers = yaEsta ? account.transfers : [nueva, ...(account.transfers || [])];
+          const upd = await updateAccount(account.email, { transfers });
+          if (upd) login(upd);
+          // Y en segundo plano refresca de la red, para traer saldo y hash reales.
+          apiPortfolio()
+            .then(async (p) => {
+              const u2 = await updateAccount(account.email, { balances: p.balances, transfers: p.transfers });
+              if (u2) login(u2);
+            })
+            .catch(() => {});
+        }
+
         setDone({
           ...review,
           hash: r.hash || null,
@@ -238,13 +270,14 @@ export function Send({ nav }) {
 function ReviewSheet({ data, token, onCancel, onConfirm }) {
   const t = useT();
   const [pw, setPw] = useState('');
+  const [verPw, setVerPw] = useState(false);
   const [fase, setFase] = useState(0);   // 0 revisando · 1..3 enviando · -1 error
   const [error, setError] = useState(null);
   const prog = useRef(new Animated.Value(0)).current;
   const fases = [t('send.step1'), t('send.step2'), t('send.step3')];
 
   useEffect(() => {
-    if (!data) { setPw(''); setFase(0); setError(null); prog.setValue(0); }
+    if (!data) { setPw(''); setVerPw(false); setFase(0); setError(null); prog.setValue(0); }
   }, [data]);
 
   // Las fases avanzan solas mientras la red trabaja: no podemos saber el
@@ -294,16 +327,24 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
           {fase === 0 ? (
             <>
               <Text style={[styles.label, { marginTop: 16 }]}>{t('send.pw')}</Text>
-              <TextInput
-                value={pw}
-                onChangeText={(v) => { setPw(v); setError(null); }}
-                secureTextEntry
-                autoCapitalize="none"
-                placeholder="••••••••"
-                placeholderTextColor="#6f938f"
-                style={styles.input}
-                autoFocus
-              />
+              {/* Ojito para mostrar la contraseña: verla evita escribir una
+                  clave mal y que se agote el intento con la red. */}
+              <View style={{ position: 'relative' }}>
+                <TextInput
+                  value={pw}
+                  onChangeText={(v) => { setPw(v); setError(null); }}
+                  secureTextEntry={!verPw}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder="••••••••"
+                  placeholderTextColor="#6f938f"
+                  style={[styles.input, { paddingRight: 46 }]}
+                  autoFocus
+                />
+                <Pressable onPress={() => setVerPw((v) => !v)} style={styles.ojito}>
+                  <Icon name={verPw ? 'eye-off' : 'eye'} size={19} color={C.txt2} />
+                </Pressable>
+              </View>
               {error && <Text style={styles.revErr}>{error}</Text>}
               <Button3D title={t('send.confirm')} icon="arrow-up" onPress={enviar} style={{ marginTop: 14 }} />
               <Pressable onPress={onCancel} style={styles.revCancel}>
@@ -606,6 +647,7 @@ const styles = StyleSheet.create({
   contactIni: { color: C.gold, fontWeight: '800', fontSize: 15 },
   contactName: { fontSize: 10.5, color: C.txt2, textAlign: 'center' },
   scanBtn: { width: 52, borderRadius: 14, backgroundColor: C.gold, alignItems: 'center', justifyContent: 'center' },
+  ojito: { position: 'absolute', right: 12, top: 0, bottom: 0, width: 34, alignItems: 'center', justifyContent: 'center' },
   input: { backgroundColor: C.input, borderWidth: 1.5, borderColor: 'rgba(46,116,119,0.5)', borderRadius: 14, paddingHorizontal: 15, paddingVertical: 14, color: C.txt, fontSize: 15 },
   selector: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 16, padding: 12, marginBottom: 13 },
   selName: { fontSize: 14, fontWeight: '600', color: C.txt },

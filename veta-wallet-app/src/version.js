@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.4.2';
-export const BUILD = 14;
+export const VERSION = '1.5.0';
+export const BUILD = 15;
 export const RELEASED = '2026-07-29';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,25 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.5.0',
+    build: 15,
+    date: '2026-07-29',
+    es: [
+      'Ojito para ver la contraseña al confirmar el envío: evita escribirla mal y gastar un intento con la red.',
+      'Actividad se actualiza al instante tras enviar: el movimiento aparece como pendiente hasta que la red lo confirma.',
+      'Tocar una transacción abre su ficha: monto, contraparte, fecha, red, bloque, gas y hash — todo se copia al tocarlo.',
+      'Si el remitente o el destinatario están en tus contactos, aparece su nombre en vez de la dirección cortada.',
+      'La creación de cuenta avisa si el servidor no devuelve la dirección de billetera, en vez de dejarte con una cuenta a medias.',
+    ],
+    en: [
+      'Eye toggle for the password when confirming a send: prevents typos that would waste a network attempt.',
+      'Activity refreshes right after sending: the entry shows as pending until the network confirms it.',
+      'Tap a transaction to open its card: amount, counterparty, date, network, block, gas and hash — everything is copyable.',
+      'If the sender or recipient is in your contacts, their name shows instead of the shortened address.',
+      'Account creation now warns if the server does not return your wallet address, instead of leaving you with a half-created account.',
+    ],
+  },
   {
     v: '1.4.2',
     build: 14,
