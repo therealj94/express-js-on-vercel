@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.6.0';
-export const BUILD = 20;
+export const VERSION = '1.6.1';
+export const BUILD = 21;
 export const RELEASED = '2026-07-30';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,27 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.6.1',
+    build: 21,
+    date: '2026-07-30',
+    es: [
+      'Comprar ahora es solo ORIGEN. La tarjeta del token no muestra tu saldo y aparece un badge "ÚNICO POR AHORA" con la nota: los demás tokens se obtienen con Intercambiar desde ORIGEN.',
+      'Ya no se traba el teclado sobre el input al agregar un contacto ni al escribir la contraseña de envío: la pantalla se acomoda para que veas lo que escribes.',
+      'La libreta de contactos ahora es del teléfono, no del correo: sobrevive a cambios de sesión y actualizaciones. Si tenías contactos guardados con el sistema viejo, se importan solos la primera vez.',
+      'Botón de borrar contacto más visible (rojo) y con confirmación antes de eliminar.',
+      'Ficha de cada moneda con la misma estructura: Tipo, Respaldo, Red y Contrato — las 5 tokens se leen igual y se pueden comparar de un vistazo. Se quitó "Par" (era información interna del feed de precios).',
+      'Intercambiar es solo desde ORIGEN: el origen del swap queda fijo y el destino esconde a ORIGEN. Nada de ONDK→ORIGEN por accidente. Para volver a ORIGEN vendrá una pantalla de "vender" más adelante.',
+    ],
+    en: [
+      'Buy is now ORIGEN-only. The token card hides your balance and shows an "ONLY FOR NOW" badge with the note that other tokens are obtained via Swap from ORIGEN.',
+      'The keyboard no longer covers the input when adding a contact or typing the send password: the sheet moves up so you can see what you type.',
+      'The contacts book is now per device, not per email: it survives session changes and updates. If you had contacts saved with the old system, they migrate automatically on first read.',
+      'Delete-contact button is more visible (red) and asks for confirmation before removing.',
+      'Every token card follows the same structure: Type, Backing, Network and Contract — all 5 tokens read alike and can be compared at a glance. "Pair" was removed (it was internal price-feed info).',
+      'Swap is one-way from ORIGEN: the "from" side is locked and the "to" picker hides ORIGEN. No accidental ONDK→ORIGEN. A "sell" screen will be added later to go back into ORIGEN.',
+    ],
+  },
   {
     v: '1.6.0',
     build: 20,

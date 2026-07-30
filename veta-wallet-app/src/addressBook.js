@@ -1,9 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Libreta de direcciones: contactos guardados para enviar más rápido.
-// Se guarda por cuenta (cada correo tiene su propia libreta) en el teléfono.
+//
+// Se guarda POR DISPOSITIVO (no por correo). Antes era por correo y eso
+// hacía que los contactos "desaparecieran" al cambiar de sesión o al bajar
+// un update: bastaba que el correo activo cambiara para dejar la lista en
+// blanco. Ahora la libreta es única del teléfono y se mantiene aunque
+// entres con otro correo, actualices, o reinstales sin borrar datos.
+//
+// listContacts/addContact/etc. siguen aceptando `email` para no romper a
+// quien los llama (Send, Contacts, notificaciones), pero lo ignoran al
+// guardar. Al leer, si no hay libreta nueva, se migra automáticamente lo
+// que ya tuvieras guardado bajo el correo anterior.
 
-const KEY = (email) => `veta-contacts-${(email || 'anon').toLowerCase()}`;
+const KEY = 'veta-contacts';
+const LEGACY_KEY = (email) => `veta-contacts-${(email || 'anon').toLowerCase()}`;
 
 export const isAddress = (a) => /^0x[a-fA-F0-9]{40}$/.test(String(a || '').trim());
 
@@ -12,7 +23,6 @@ export function parseAddress(raw) {
   const s = String(raw || '').trim();
   if (!s) return null;
   if (isAddress(s)) return s;
-  // Formatos tipo ethereum:0xABC…@8532?value=1  ó  vetawallet://send?to=0x…
   const m = s.match(/0x[a-fA-F0-9]{40}/);
   return m ? m[0] : null;
 }
@@ -23,17 +33,31 @@ const initials = (name) => {
   return (p.length === 1 ? p[0].slice(0, 2) : p[0][0] + p[1][0]).toUpperCase();
 };
 
-export async function listContacts(email) {
+async function readList(key) {
   try {
-    const raw = await AsyncStorage.getItem(KEY(email));
-    const arr = raw ? JSON.parse(raw) : [];
-    // Favoritos primero, luego por uso más reciente.
-    return arr.sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0) || (b.usedAt || 0) - (a.usedAt || 0));
+    const raw = await AsyncStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
   } catch (e) { return []; }
 }
 
-async function save(email, arr) {
-  try { await AsyncStorage.setItem(KEY(email), JSON.stringify(arr)); } catch (e) {}
+const ordenar = (arr) =>
+  arr.sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0) || (b.usedAt || 0) - (a.usedAt || 0));
+
+export async function listContacts(email) {
+  let arr = await readList(KEY);
+  if (arr.length === 0) {
+    // Migración desde la libreta antigua por correo (una sola vez).
+    const legacy = await readList(LEGACY_KEY(email));
+    if (legacy.length > 0) {
+      arr = legacy;
+      try { await AsyncStorage.setItem(KEY, JSON.stringify(arr)); } catch (e) {}
+    }
+  }
+  return ordenar(arr);
+}
+
+async function save(arr) {
+  try { await AsyncStorage.setItem(KEY, JSON.stringify(arr)); } catch (e) {}
   return arr;
 }
 
@@ -44,31 +68,28 @@ export async function addContact(email, { name, address, fav }) {
   const i = arr.findIndex((c) => c.address.toLowerCase() === addr.toLowerCase());
   const nombre = (name || '').trim() || (i >= 0 ? arr[i].name : `${addr.slice(0, 6)}…${addr.slice(-4)}`);
   const rec = {
-    // Con solo la marca de tiempo, dos contactos guardados en el mismo
-    // milisegundo compartían id y borrar uno se llevaba el otro.
     id: i >= 0 ? arr[i].id : `c_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
     name: nombre,
     address: addr,
-    // Si no se indica, se respeta el favorito que ya tuviera.
     fav: fav === undefined ? (i >= 0 ? !!arr[i].fav : false) : !!fav,
     initials: initials(nombre),
     usedAt: i >= 0 ? arr[i].usedAt : 0,
   };
   if (i >= 0) arr[i] = { ...arr[i], ...rec }; else arr.push(rec);
-  await save(email, arr);
+  await save(arr);
   return rec;
 }
 
 export async function removeContact(email, id) {
   const arr = (await listContacts(email)).filter((c) => c.id !== id);
-  return save(email, arr);
+  return save(arr);
 }
 
 export async function toggleFav(email, id) {
   const arr = await listContacts(email);
   const c = arr.find((x) => x.id === id);
   if (c) c.fav = !c.fav;
-  await save(email, arr);
+  await save(arr);
   return arr;
 }
 
@@ -78,7 +99,7 @@ export async function touchContact(email, address) {
   if (!addr) return;
   const arr = await listContacts(email);
   const c = arr.find((x) => x.address.toLowerCase() === addr.toLowerCase());
-  if (c) { c.usedAt = Date.now(); await save(email, arr); }
+  if (c) { c.usedAt = Date.now(); await save(arr); }
 }
 
 /** Nombre guardado para una dirección (para mostrarlo en Actividad). */

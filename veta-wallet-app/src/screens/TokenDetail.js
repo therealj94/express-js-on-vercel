@@ -99,15 +99,19 @@ export default function TokenDetail({ nav, params }) {
               <Text style={styles.infoV}>{r[1]}</Text>
             </View>
           ))}
-          {t.contract && (
-            <Pressable onPress={async () => { hap(); try { await Clipboard.setStringAsync(t.contract); toast(tr('tok.copied')); } catch (e) {} }} style={styles.infoRow}>
-              <Text style={styles.infoK}>{tr('tok.contract')}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.infoV}>{shortHash(t.contract)}</Text>
-                <Icon name="copy" size={13} color={C.gold} />
-              </View>
-            </Pressable>
-          )}
+          {/* Contrato: se muestra SIEMPRE para que las 5 monedas tengan la
+              misma cantidad de filas. Si es un ERC-20, la dirección se
+              copia al tocar; ORIGEN es nativa y aparece como "Token nativo". */}
+          <Pressable
+            onPress={t.contract ? async () => { hap(); try { await Clipboard.setStringAsync(t.contract); toast(tr('tok.copied')); } catch (e) {} } : undefined}
+            style={styles.infoRow}
+          >
+            <Text style={styles.infoK}>{tr('tok.contract')}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.infoV}>{t.contract ? shortHash(t.contract) : tr('tok.native')}</Text>
+              {t.contract ? <Icon name="copy" size={13} color={C.gold} /> : null}
+            </View>
+          </Pressable>
         </Card>
 
         <Text style={styles.secTitle}>{tr('tok.movs')}</Text>

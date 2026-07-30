@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Modal, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Modal, KeyboardAvoidingView, Platform, Alert, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 import { Icon } from '../icons';
@@ -42,6 +42,20 @@ export default function Contacts({ nav, params }) {
     } catch (e) { toast(t('send.errAddr')); }
   }
 
+  function pedirBorrar(c) {
+    hap();
+    Alert.alert(
+      t('con.delT'),
+      t('con.delQ', { name: c.name }),
+      [
+        { text: t('con.cancel'), style: 'cancel' },
+        { text: t('con.delOk'), style: 'destructive', onPress: async () => {
+          await removeContact(email, c.id); load(); toast(t('con.removed'));
+        } },
+      ],
+    );
+  }
+
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header
@@ -71,11 +85,11 @@ export default function Contacts({ nav, params }) {
               <Text style={st.name} numberOfLines={1}>{c.name}</Text>
               <Text style={st.addr} numberOfLines={1}>{short(c.address)}</Text>
             </View>
-            <Pressable onPress={async () => { hap(); await toggleFav(email, c.id); load(); }} style={st.iconBtn}>
-              <Icon name="star" size={18} color={c.fav ? C.gold : C.txt3} />
+            <Pressable onPress={async () => { hap(); await toggleFav(email, c.id); load(); }} style={st.iconBtn} hitSlop={8}>
+              <Icon name="star" size={20} color={c.fav ? C.gold : C.txt3} />
             </Pressable>
-            <Pressable onPress={async () => { hap(); await removeContact(email, c.id); load(); toast(t('con.removed')); }} style={st.iconBtn}>
-              <Icon name="trash" size={18} color={C.txt3} />
+            <Pressable onPress={() => pedirBorrar(c)} style={st.delBtn} hitSlop={8}>
+              <Icon name="trash" size={18} color={C.down} />
             </Pressable>
           </Pressable>
         ))}
@@ -90,6 +104,7 @@ export default function Contacts({ nav, params }) {
 
       {/* alta / edición */}
       <Modal visible={!!edit} transparent animationType="slide" onRequestClose={() => setEdit(null)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <Pressable style={st.sheetBg} onPress={() => setEdit(null)}>
           <Pressable style={st.sheet} onPress={() => {}}>
             <View style={st.grab} />
@@ -135,6 +150,7 @@ export default function Contacts({ nav, params }) {
             <Button3D title={t('prof.save')} icon="checkmark" onPress={guardar} style={{ marginTop: 16 }} />
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Cámara sobre la ficha: al leer el QR rellena la dirección sin perder el nombre. */}
@@ -155,6 +171,7 @@ const st = StyleSheet.create({
   name: { color: C.txt, fontWeight: '700', fontSize: 14.5 },
   addr: { color: C.txt3, fontSize: 11.5, marginTop: 2 },
   iconBtn: { padding: 7 },
+  delBtn: { padding: 7, marginLeft: 2, borderRadius: 10, backgroundColor: 'rgba(240,119,107,0.10)', borderWidth: 1, borderColor: 'rgba(240,119,107,0.28)' },
   empty: { alignItems: 'center', marginTop: 50, marginBottom: 20 },
   emptyIc: { width: 78, height: 78, borderRadius: 39, backgroundColor: C.panel, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.line },
   emptyT: { color: C.txt, fontWeight: '700', fontSize: 16, marginTop: 16 },

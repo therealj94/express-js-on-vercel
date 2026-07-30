@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Modal, Animated, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Modal, Animated, ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { Icon } from '../icons';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
@@ -304,7 +304,8 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={enviando ? () => {} : onCancel}>
-      <View style={styles.revBg}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.revBg}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={styles.revCard}>
           <View style={styles.grab} />
           <Text style={styles.revT}>{enviando ? t('send.sendingT') : t('send.reviewT')}</Text>
@@ -391,7 +392,8 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
             </View>
           )}
         </View>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -529,13 +531,17 @@ export function Receive({ nav }) {
 
 // ================= COMPRAR =================
 // ================= COMPRAR =================
-// Flujo de 3 pasos: elegir token + monto en USDT + red → pagar (QR con
-// dirección de tesorería y monto exacto) → estado en vivo.
+// Flujo de 3 pasos: elegir monto en USDT + red → pagar (QR con dirección
+// de tesorería y monto exacto) → estado en vivo.
 //
-// Nota: la detección automática del pago vive en el backend (aún por
-// enchufar). Mientras tanto la pantalla enseña el diseño completo y avisa
-// con banner "en pruebas" para que nadie mande USDT sin querer.
-const BUYABLE = ['ORIGEN', 'AUKA', 'AGKA', 'ONDK', 'MNKA'];
+// Por ahora la compra directa es SOLO ORIGEN. Los demás tokens (AUKA,
+// AGKA, ONDK, MNKA) se obtienen luego con Swap desde ORIGEN, para que la
+// tesorería no tenga que atender cinco pares distintos.
+//
+// La detección automática del pago vive en el backend (aún por enchufar):
+// mientras tanto la pantalla muestra el diseño completo con un banner
+// "en pruebas" bien visible para que nadie envíe USDT sin querer.
+const BUYABLE = ['ORIGEN'];
 const PAY_CHAINS = [
   { id: 'TRC20', short: 'TRC-20', tone: '#EF4444', net: 'Tron',            addr: 'TGxSQXLJKnWUzHNyvBzzWJZHDNrbfobvSg' },
   { id: 'BEP20', short: 'BEP-20', tone: '#F0B90B', net: 'BNB Smart Chain', addr: '0xa8e20f3c6ee078bd20325693acda5047f8f6ced7' },
@@ -549,10 +555,9 @@ export function Buy({ nav }) {
   const first = buyable.find((x) => x.s === 'ORIGEN') || buyable[0] || { s: 'ORIGEN', n: 'ORIGEN', price: 0 };
 
   const [step, setStep] = useState('choose'); // 'choose' | 'pay' | 'status'
-  const [tok, setTok] = useState(first);
+  const [tok] = useState(first); // por ahora fijo en ORIGEN
   const [amt, setAmt] = useState('');
   const [chain, setChain] = useState(PAY_CHAINS[0]);
-  const [pick, setPick] = useState(false);
   const [order, setOrder] = useState(null);
   const [status, setStatus] = useState('waiting'); // waiting | detected | sending | done
   const [expiresAt, setExpiresAt] = useState(0);
@@ -625,7 +630,17 @@ export function Buy({ nav }) {
           </View>
 
           <Text style={styles.label}>{t('buy.tokenLbl')}</Text>
-          <Selector token={tok} label={tok.n} onPress={() => setPick(true)} />
+          <View style={styles.tokenFixed}>
+            <TokenIcon t={tok} size={44} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.selName}>{tok.n}</Text>
+              {tok.price > 0 && <Text style={styles.selSub}>{money(tok.price)} / {tok.s}</Text>}
+            </View>
+            <View style={styles.tokenBadge}>
+              <Text style={styles.tokenBadgeTxt}>{t('buy.onlyOrigen')}</Text>
+            </View>
+          </View>
+          <Text style={styles.tokenNote}>{t('buy.origenFirst')}</Text>
 
           <Text style={styles.label}>{t('buy.amtLbl')}</Text>
           <View style={styles.bigInput}>
@@ -674,7 +689,6 @@ export function Buy({ nav }) {
             <Text style={{ color: C.down, fontSize: 12, marginTop: 10, textAlign: 'center' }}>{t('buy.min')}</Text>
           )}
         </ScrollView>
-        <TokenPicker visible={pick} tokens={buyable.length ? buyable : [first]} onClose={() => setPick(false)} onPick={setTok} />
       </View>
     );
   }
@@ -790,44 +804,52 @@ export function Buy({ nav }) {
 }
 
 // ================= SWAP =================
+// Regla: SIEMPRE se intercambia desde ORIGEN hacia otro token. Nunca al
+// revés (ni ONDK→ORIGEN, ni AUKA→ORIGEN, etc.). ORIGEN es la puerta de
+// entrada al ecosistema: se compra con USDT y desde allí se convierte a
+// los demás. Por eso el origen del swap está fijo (no se puede cambiar)
+// y el selector del destino oculta ORIGEN.
 export function Swap({ nav }) {
   const tokens = useTokens();
-  const toast = useToast();
   const t = useT();
-  const t0 = tokens[0] || { s: 'ORIGEN', n: 'Origen', qty: 0, price: 0, logo: true };
-  const t1 = tokens[3] || tokens[1] || t0;
-  const [from, setFrom] = useState(t0);
-  const [to, setTo] = useState(t1);
+  const origen = tokens.find((x) => x.s === 'ORIGEN') || { s: 'ORIGEN', n: 'ORIGEN', qty: 0, price: 0, logo: true };
+  const destinos = tokens.filter((x) => x.s !== 'ORIGEN');
+  const destPref = destinos.find((x) => x.s === 'ONDK') || destinos[0] || origen;
+  const [to, setTo] = useState(destPref);
   const [amt, setAmt] = useState('');
-  const [pick, setPick] = useState(null);
-  const rate = from.price && to.price ? from.price / to.price : 0;
+  const [pick, setPick] = useState(false);
+  const rate = origen.price && to.price ? origen.price / to.price : 0;
   const out = ((parseFloat(amt) || 0) * rate);
-  const flip = () => { hap(); setFrom(to); setTo(from); };
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title={t('swap.title')} onBack={() => nav.back()} />
       <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 110 }} keyboardShouldPersistTaps="handled">
-        <SwapBox label={t('swap.from')} balance={qtyFmt(from.qty)} token={from} value={amt} onChange={setAmt} onPickToken={() => setPick('from')} />
-        <Pressable onPress={flip} style={styles.flip}><Icon name="swap-vertical" size={22} color={C.gold} /></Pressable>
-        <SwapBox label={t('swap.toLbl')} balance={qtyFmt(to.qty)} token={to} value={out ? out.toFixed(4) : ''} readOnly onPickToken={() => setPick('to')} />
+        <SwapBox label={t('swap.from')} balance={qtyFmt(origen.qty)} token={origen} value={amt} onChange={setAmt} locked />
+        <View style={styles.flipStatic}><Icon name="arrow-down" size={20} color={C.gold} /></View>
+        <SwapBox label={t('swap.toLbl')} balance={qtyFmt(to.qty)} token={to} value={out ? out.toFixed(4) : ''} readOnly onPickToken={() => setPick(true)} />
         <Card style={{ padding: 14, marginTop: 16 }}>
-          <Row k={t('swap.rate')} v={rate ? `1 ${from.s} = ${rate.toFixed(4)} ${to.s}` : '—'} />
-          <Row k={`${t('swap.price')} ${from.s}`} v={money(from.price)} />
+          <Row k={t('swap.rate')} v={rate ? `1 ${origen.s} = ${rate.toFixed(4)} ${to.s}` : '—'} />
+          <Row k={`${t('swap.price')} ${origen.s}`} v={money(origen.price)} />
           <Row k={`${t('swap.price')} ${to.s}`} v={money(to.price)} />
         </Card>
+        <View style={styles.notice}>
+          <Icon name="information-circle" size={18} color={C.gold} />
+          <Text style={styles.noticeTxt}>{t('swap.onlyOrigen')}</Text>
+        </View>
         <View style={styles.notice}>
           <Icon name="information-circle" size={18} color={C.gold} />
           <Text style={styles.noticeTxt}>{t('swap.soon')}</Text>
         </View>
         <Button3D title={t('swap.cta')} icon="swap-horizontal" disabled onPress={() => {}} />
       </ScrollView>
-      <TokenPicker visible={!!pick} tokens={tokens} onClose={() => setPick(null)} onPick={(t) => { pick === 'from' ? setFrom(t) : setTo(t); }} />
+      <TokenPicker visible={pick} tokens={destinos.length ? destinos : [destPref]} onClose={() => setPick(false)} onPick={setTo} />
     </View>
   );
 }
 
-function SwapBox({ label, balance, token, value, onChange, readOnly, onPickToken }) {
+function SwapBox({ label, balance, token, value, onChange, readOnly, onPickToken, locked }) {
   const tr = useT();
+  const TokenChip = locked ? View : Pressable;
   return (
     <Card style={{ padding: 17 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -836,11 +858,11 @@ function SwapBox({ label, balance, token, value, onChange, readOnly, onPickToken
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <TextInput value={value} onChangeText={onChange} editable={!readOnly} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#3a5c58" style={styles.swapIn} />
-        <Pressable onPress={() => { hap(); onPickToken(); }} style={styles.swapTok}>
+        <TokenChip onPress={onPickToken ? () => { hap(); onPickToken(); } : undefined} style={styles.swapTok}>
           <TokenIcon t={token} size={28} />
           <Text style={{ color: C.txt, fontWeight: '700', marginLeft: 7 }}>{token.s}</Text>
-          <Icon name="chevron-down" size={16} color={C.txt2} style={{ marginLeft: 3 }} />
-        </Pressable>
+          {!locked && <Icon name="chevron-down" size={16} color={C.txt2} style={{ marginLeft: 3 }} />}
+        </TokenChip>
       </View>
     </Card>
   );
@@ -939,4 +961,9 @@ const styles = StyleSheet.create({
   payAmtHint: { color: C.txt3, fontSize: 11.5, textAlign: 'center', marginTop: 8, lineHeight: 16 },
   timer: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   timerTxt: { color: C.txt2, fontSize: 12.5, fontWeight: '600' },
+  tokenFixed: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 16, padding: 12, marginBottom: 6 },
+  tokenBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, backgroundColor: 'rgba(201,169,97,0.14)', borderWidth: 1, borderColor: 'rgba(201,169,97,0.35)' },
+  tokenBadgeTxt: { color: C.gold, fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  tokenNote: { color: C.txt3, fontSize: 11, lineHeight: 15, marginBottom: 14, paddingHorizontal: 2 },
+  flipStatic: { width: 44, height: 44, borderRadius: 14, backgroundColor: C.panel3, borderWidth: 3, borderColor: C.bg, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginVertical: -14, zIndex: 3 },
 });

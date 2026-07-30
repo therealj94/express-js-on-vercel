@@ -15,31 +15,56 @@ export const TOKEN_META = {
   MNKA:   { s: 'MNKA',   n: 'MNKA',   glyph: '♛', grad: ['#F8EFCF', '#C9A961', '#96793F'], fg: '#3A2C08' },
 };
 
+// Las mismas 3 filas para las 5 monedas (Tipo · Respaldo · Red) para que
+// la ficha de cada token se lea igual y compare fácil. El "Contrato" lo
+// añade TokenDetail al final: dirección real si es un token de contrato,
+// o "Token nativo" para ORIGEN. Se eliminó "Par" (era interno del feed
+// de precios) para no ensuciar la vista al usuario.
 export const COIN_INFO = {
   ORIGEN: {
     title: 'ORIGEN',
     desc: 'Cripto nativa de la blockchain de Orden Global, usada para pagos y transferencias dentro del ecosistema. Su valor se ancla a un gramín: 1/55 de un gramo de oro.',
-    rows: [['Tipo', 'Cripto nativa · pagos'], ['Respaldo', '1 gramín = 1/55 g oro'], ['Network ID', '8532'], ['Contrato', 'Token nativo']],
+    rows: [
+      ['Tipo', 'Cripto nativa · pagos'],
+      ['Respaldo', '1 gramín = 1/55 g oro'],
+      ['Red', 'Orden Global · 8532'],
+    ],
   },
   AUKA: {
     title: 'AUKA',
     desc: 'Token respaldado en oro: sigue el precio de una onza de oro. Ofrece exposición al oro sin custodia física.',
-    rows: [['Respaldo', 'Oro (1 oz)'], ['Precio', 'Sigue el oro en vivo'], ['Network ID', '8532'], ['Tipo', 'Commodity token']],
+    rows: [
+      ['Tipo', 'Commodity token'],
+      ['Respaldo', 'Oro · 1 onza'],
+      ['Red', 'Orden Global · 8532'],
+    ],
   },
   AGKA: {
     title: 'AGKA',
     desc: 'Token respaldado en plata: sigue el precio de una onza de plata. Una forma descentralizada de invertir en el mercado de la plata.',
-    rows: [['Respaldo', 'Plata (1 oz)'], ['Precio', 'Sigue la plata en vivo'], ['Network ID', '8532'], ['Tipo', 'Commodity token']],
+    rows: [
+      ['Tipo', 'Commodity token'],
+      ['Respaldo', 'Plata · 1 onza'],
+      ['Red', 'Orden Global · 8532'],
+    ],
   },
   ONDK: {
     title: 'ONDK',
     desc: 'Representación de Orden Global en token. Activo de gobernanza y utilidad que refleja el valor y la participación dentro del ecosistema.',
-    rows: [['Tipo', 'Token de Orden Global'], ['Uso', 'Gobernanza · utilidad'], ['Par', 'ONDKUSDT'], ['Network ID', '8532']],
+    rows: [
+      ['Tipo', 'Token de Orden Global'],
+      ['Respaldo', 'Ecosistema · gobernanza y utilidad'],
+      ['Red', 'Orden Global · 8532'],
+    ],
   },
   MNKA: {
     title: 'MNKA',
     desc: 'Activo digital del ecosistema Orden Global, diseñado para impulsar el crecimiento y la innovación impulsados por la comunidad.',
-    rows: [['Tipo', 'Activo digital'], ['Par', 'MNKAUSDT'], ['Network ID', '8532']],
+    rows: [
+      ['Tipo', 'Activo digital'],
+      ['Respaldo', 'Ecosistema · comunidad e innovación'],
+      ['Red', 'Orden Global · 8532'],
+    ],
   },
 };
 
