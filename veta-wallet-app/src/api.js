@@ -206,21 +206,37 @@ export const walletApi = {
 // Login de alto nivel. El backend devuelve { token } con los datos del usuario
 // (userId/address/role/verify) dentro del JWT.
 //
-// El correo se envía TAL COMO lo escribió el usuario — algunos servidores
-// (como el nuestro) guardan el correo respetando mayúsculas y minúsculas,
-// y forzar minúsculas hacía que cuentas como "Canadian-8th@proton.me"
-// entraran a la web pero no a la app. Si el servidor responde 401 al
-// intento con el correo tal cual, se reintenta una vez con la versión
-// en minúsculas — así cubrimos ambos casos sin exigirle nada al usuario.
+// El correo se envía TAL COMO lo escribió el usuario. Algunos servidores
+// respetan mayúsculas y minúsculas (Proton, por ejemplo), así que forzar
+// minúsculas hacía que cuentas como "Canadian-8th@proton.me" entraran a
+// la web pero no a la app. Si el intento con la caja original falla con
+// CUALQUIER error de credenciales (401, 403, 400/422 con mensaje típico
+// de "wrong password"), se reintenta UNA vez con la versión en minúsculas.
+// Cubrimos así servidores case-sensitive y los que normalizan.
+const AUTH_ERR_RE = /wrong|invalid|incorrect|credential|password|contraseñ|correo|no\s*encontrad|not\s*found|no\s*existe/i;
+function esErrorDeCredenciales(e) {
+  const s = e?.status;
+  if (s === 401 || s === 403) return true;
+  if ((s === 400 || s === 404 || s === 422) && AUTH_ERR_RE.test(e?.message || '')) return true;
+  return false;
+}
+
 export async function apiLogin(emailRaw, password) {
   const email = String(emailRaw || '').trim();
+  const lower = email.toLowerCase();
   let d;
   try {
     d = await walletApi.login(email, password);
   } catch (e) {
-    const lower = email.toLowerCase();
-    if (e?.status === 401 && lower !== email) {
-      d = await walletApi.login(lower, password);
+    // Si el primer intento falla por credenciales y el correo tiene
+    // mayúsculas, probamos también con la versión en minúsculas.
+    if (lower !== email && esErrorDeCredenciales(e)) {
+      try {
+        d = await walletApi.login(lower, password);
+      } catch (e2) {
+        // Se re-lanza el error del segundo intento (más específico).
+        throw e2;
+      }
     } else {
       throw e;
     }

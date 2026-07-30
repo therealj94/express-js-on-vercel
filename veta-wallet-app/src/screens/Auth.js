@@ -90,11 +90,17 @@ export default function Auth({ nav }) {
       else nav.go(kind === 'register' ? 'genesisOffer' : 'home');
       toast(`${t('auth.welcome')}, ${acc.name.split(' ')[0]}`);
     } catch (e) {
+      // Prioridad: casos conocidos con mensaje amigable. Si no coinciden,
+      // mostramos el mensaje del servidor (útil para diagnosticar cuando
+      // el back devuelve algo específico como "wrong email or password").
+      const raw = e?.message || '';
       const msg = e?.code === 'no-register' ? t('auth.errNoSignup')
-        : e?.status === 404 ? t('auth.err404')
-        : e?.status === 409 || /exist|registrad|duplicate|ya\s*existe/i.test(e?.message || '') ? t('auth.errExists')
+        : e?.status === 404 && !/wrong|invalid|incorrect|credential|password|correo/i.test(raw) ? t('auth.err404')
+        : e?.status === 409 || /exist|registrad|duplicate|ya\s*existe/i.test(raw) ? t('auth.errExists')
+        : e?.status === 401 || e?.status === 403 || /wrong|invalid|incorrect|credential|password|contraseñ|correo/i.test(raw) ? t('auth.errBadCreds')
         : e?.message === 'API no configurada' ? t('auth.errServer')
-        : (e?.message || t('auth.errGeneric'));
+        : e?.code === 'red' || e?.code === 'timeout' ? t('auth.errNet')
+        : (raw || t('auth.errGeneric'));
       setErr(msg);
     } finally { setBusy(false); }
   }

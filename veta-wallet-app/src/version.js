@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.10.3';
-export const BUILD = 33;
+export const VERSION = '1.10.4';
+export const BUILD = 34;
 export const RELEASED = '2026-07-30';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,19 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.10.4',
+    build: 34,
+    date: '2026-07-30',
+    es: [
+      'Mensajes de error de login más claros: en vez de mostrar el texto crudo del servidor ("wrong email or password") ahora dice "El correo o la contraseña no coinciden con ninguna cuenta en este servidor" — sirve para distinguir cuando el problema es un caso raro de conexión, credenciales mal escritas, o una cuenta que existe en la web pero no en el servidor que consulta la app.',
+      'El reintento automático con correo en minúsculas ahora se dispara con cualquier error de credenciales (401, 403 o 400/422 con mensaje típico), no solo con 401. Cubre backends con distintos códigos de estado.',
+    ],
+    en: [
+      'Clearer login error messages: instead of the raw server text ("wrong email or password") the app now says "The email or password does not match any account on this server" — helps distinguish a rare connection issue, mistyped credentials, or an account that exists on the web but not on the server the app calls.',
+      'The automatic retry with lowercased email now fires on any credential error (401, 403 or 400/422 with typical wording), not only 401. Covers backends that use different status codes.',
+    ],
+  },
   {
     v: '1.10.3',
     build: 33,
