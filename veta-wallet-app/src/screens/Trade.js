@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal, Animated, ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Icon } from '../icons';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
@@ -98,10 +99,10 @@ export function Send({ nav }) {
   // Paso 1: revisar. Solo comprueba los datos y abre la ficha de revisión;
   // la contraseña se pide allí, junto al resumen de lo que se va a firmar.
   function revisar() {
-    if (!isNative) { toast(t('send.soon', { s: tok.s })); return; }
-    if (!/^0x[a-fA-F0-9]{40}$/.test(to.trim())) { toast(t('send.errAddr')); return; }
-    if (!(amount > 0)) { toast(t('send.errAmt')); return; }
-    if (insufficient) { toast(t('send.errBal')); return; }
+    if (!isNative) { toast(t('send.soon', { s: tok.s }), 'info'); return; }
+    if (!/^0x[a-fA-F0-9]{40}$/.test(to.trim())) { toast(t('send.errAddr'), 'error'); return; }
+    if (!(amount > 0)) { toast(t('send.errAmt'), 'error'); return; }
+    if (insufficient) { toast(t('send.errBal'), 'error'); return; }
     hap();
     setReview({
       amount,
@@ -284,10 +285,11 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
   const [fase, setFase] = useState(0);   // 0 revisando · 1..3 enviando · -1 error
   const [error, setError] = useState(null);
   const prog = useRef(new Animated.Value(0)).current;
+  const shake = useRef(new Animated.Value(0)).current;
   const fases = [t('send.step1'), t('send.step2'), t('send.step3')];
 
   useEffect(() => {
-    if (!data) { setPw(''); setVerPw(false); setFase(0); setError(null); prog.setValue(0); }
+    if (!data) { setPw(''); setVerPw(false); setFase(0); setError(null); prog.setValue(0); shake.setValue(0); }
   }, [data]);
 
   // Las fases avanzan solas mientras la red trabaja: no podemos saber el
@@ -300,12 +302,28 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
     return () => clearTimeout(id);
   }, [fase]);
 
+  // Sacudida horizontal cuando el envío falla o la contraseña queda vacía.
+  // Es la señal universal de "eso está mal, arréglalo" y se combina con
+  // haptic Error para reforzar sin depender solo del color.
+  const shakeAnim = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    shake.setValue(0);
+    Animated.sequence([
+      Animated.timing(shake, { toValue: 10, duration: 60, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: -10, duration: 60, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: 6, duration: 60, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: -6, duration: 60, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: 0, duration: 60, useNativeDriver: true }),
+    ]).start();
+  };
+
   async function enviar() {
-    if (!pw) { setError(t('send.errPw')); return; }
+    if (!pw) { setError(t('send.errPw')); shakeAnim(); return; }
     setError(null);
     setFase(1);
     const r = await onConfirm(pw);
-    if (!r.ok) { setFase(-1); setError(r.msg); prog.setValue(0); }
+    if (!r.ok) { setFase(-1); setError(r.msg); prog.setValue(0); shakeAnim(); }
+    else { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {}); }
   }
 
   if (!data) return null;
@@ -316,7 +334,7 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
     <Modal visible transparent animationType="slide" onRequestClose={enviando ? () => {} : onCancel}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.revBg}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <View style={styles.revCard}>
+        <Animated.View style={[styles.revCard, { transform: [{ translateX: shake }] }]}>
           <View style={styles.grab} />
           <Text style={styles.revT}>{enviando ? t('send.sendingT') : t('send.reviewT')}</Text>
 
@@ -401,7 +419,7 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
               </Pressable>
             </View>
           )}
-        </View>
+        </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
@@ -636,7 +654,7 @@ export function Buy({ nav }) {
 
   async function copyAddr() {
     hap();
-    try { await Clipboard.setStringAsync(chain.addr); toast(t('buy.addrCopied')); } catch { toast(t('recv.copyErr')); }
+    try { await Clipboard.setStringAsync(chain.addr); toast(t('buy.addrCopied')); } catch { toast(t('recv.copyErr'), 'error'); }
   }
   async function copyAmt() {
     hap();

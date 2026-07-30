@@ -9,6 +9,7 @@ import * as Linking from 'expo-linking';
 import NetInfo from '@react-native-community/netinfo';
 import { loadSession, saveSession, clearSession, initAccounts, setPassport, updateAccount } from './src/accounts';
 import { loadToken, setToken, ensureSession, clearCreds, apiPortfolio } from './src/api';
+import { recordLogout } from './src/sessionLog';
 import { readReturnUrl, genesis, mergePassport } from './src/genesis';
 import { activarAvisos, limpiarAvisos, watchIncoming, marcarVisto, stopWatch, alTocarNotificacion, avisosActivos } from './src/notify';
 import LockScreen, { useAppLock } from './src/LockScreen';
@@ -25,6 +26,9 @@ import Scan from './src/screens/Scan';
 import Contacts from './src/screens/Contacts';
 import ImportPassport from './src/screens/ImportPassport';
 import About from './src/screens/About';
+import Onboarding, { seenOnboarding } from './src/screens/Onboarding';
+import WatchOnly from './src/screens/WatchOnly';
+import Sessions from './src/screens/Sessions';
 import ErrorBoundary from './src/ErrorBoundary';
 
 const SCREENS = {
@@ -33,6 +37,7 @@ const SCREENS = {
   card: CardScreen, activity: Activity, notifs: Notifications, settings: Settings,
   profile: Profile, mytokenpay: MyTokenPay, passport: Passport, blocked: Blocked, privatekey: PrivateKey,
   scan: Scan, contacts: Contacts, importPassport: ImportPassport, about: About,
+  onboarding: Onboarding, watchOnly: WatchOnly, sessions: Sessions,
 };
 const TABS = [
   { r: 'home', label: 'tab.home', icon: 'wallet' },
@@ -92,7 +97,7 @@ function Root() {
   const acctApi = {
     account,
     login: (a) => { setAccount(a); saveSession(a.email); },
-    logout: () => { setAccount(null); clearSession(); setToken(null); clearCreds(); limpiarAvisos(); },
+    logout: () => { recordLogout(); setAccount(null); clearSession(); setToken(null); clearCreds(); limpiarAvisos(); },
   };
 
   // Retorno desde el portal Genesis ID (vetawallet://genesis?uid=…). Captura el
@@ -141,16 +146,27 @@ function Root() {
     Animated.timing(anim, { toValue: 1, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [cur.r, stack.length]);
 
-  // ---- Toast ----
+  // ---- Toast con variantes ----
+  // Antes había un solo estilo (borde dorado + tick verde) sin importar el
+  // mensaje. Ahora se acepta un segundo argumento con la variante:
+  //   'success' (por defecto, verde) · 'error' (rojo) · 'warn' (ámbar) · 'info' (dorado)
+  // El toast pinta borde y ícono acordes. Llamadas viejas showToast('msg')
+  // siguen funcionando sin cambio.
   const [toast, setToast] = useState(null);
   const tOp = useRef(new Animated.Value(0)).current;
   const tTimer = useRef(null);
-  const showToast = useCallback((msg) => {
-    setToast(msg);
+  const showToast = useCallback((msg, variant = 'success') => {
+    setToast({ msg, variant });
     Animated.spring(tOp, { toValue: 1, useNativeDriver: true }).start();
     clearTimeout(tTimer.current);
-    tTimer.current = setTimeout(() => Animated.timing(tOp, { toValue: 0, duration: 260, useNativeDriver: true }).start(() => setToast(null)), 1900);
+    tTimer.current = setTimeout(() => Animated.timing(tOp, { toValue: 0, duration: 260, useNativeDriver: true }).start(() => setToast(null)), 2200);
   }, []);
+  const toastStyle = toast
+    ? (toast.variant === 'error' ? { border: C.down, icon: 'alert-circle' }
+      : toast.variant === 'warn' ? { border: '#FBBF24', icon: 'warning' }
+      : toast.variant === 'info' ? { border: C.gold, icon: 'information-circle' }
+      : { border: C.up, icon: 'checkmark-circle' })
+    : null;
 
   // ---- swipe entre pestañas ----
   const stackRef = useRef(stack);
@@ -307,9 +323,12 @@ function Root() {
       )}
 
       {toast && (
-        <Animated.View style={[styles.toast, { opacity: tOp, transform: [{ translateY: tOp.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
-          <Icon name="checkmark-circle" size={17} color={C.up} />
-          <Text style={styles.toastTxt}>{toast}</Text>
+        <Animated.View style={[
+          styles.toast,
+          { borderColor: toastStyle.border, opacity: tOp, transform: [{ translateY: tOp.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] },
+        ]}>
+          <Icon name={toastStyle.icon} size={17} color={toastStyle.border} />
+          <Text style={styles.toastTxt}>{toast.msg}</Text>
         </Animated.View>
       )}
 

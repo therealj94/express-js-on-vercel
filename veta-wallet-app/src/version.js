@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.8.0';
-export const BUILD = 23;
+export const VERSION = '1.9.2';
+export const BUILD = 26;
 export const RELEASED = '2026-07-30';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,49 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.9.2',
+    build: 26,
+    date: '2026-07-30',
+    es: [
+      'Toast con colores: verde para éxito, rojo para error, ámbar para advertencia, dorado para información. Ya no dice todo con el mismo tono.',
+      'Nueva pantalla Sesiones activas en Ajustes → Seguridad: ves desde cuándo estás loggeado en este teléfono, cuáles sesiones cerraste y puedes cerrar la actual con confirmación.',
+    ],
+    en: [
+      'Toast with colors: green for success, red for error, amber for warning, gold for info. It no longer says everything in the same tone.',
+      'New Active sessions screen in Settings → Security: see since when you have been signed in on this phone, which sessions you closed, and sign out on this device with confirmation.',
+    ],
+  },
+  {
+    v: '1.9.1',
+    build: 25,
+    date: '2026-07-30',
+    es: [
+      'Cantidad de token con precisión visual: en la ficha del token se muestran los 6 decimales, los últimos vacíos van en tono tenue para que la lectura fluya sin perder exactitud.',
+      'Confirmar envío ahora vibra con Success al firmar y hace una sacudida (con haptic Error) si la contraseña queda vacía o el envío falla. El feedback físico deja claro qué pasó sin depender solo del color.',
+    ],
+    en: [
+      'Token amount with visual precision: the token detail shows all 6 decimals, trailing zeros dimmed so reading flows without losing exactness.',
+      'Send confirmation now vibrates with Success on sign, and shakes (with Error haptic) if the password is empty or the send fails. Physical feedback makes it clear what happened, not only color.',
+    ],
+  },
+  {
+    v: '1.9.0',
+    build: 24,
+    date: '2026-07-30',
+    es: [
+      'Onboarding de tres pantallas la primera vez que entras: qué es Veta, cómo funciona y cómo va Genesis ID. Se puede saltar y solo aparece una vez.',
+      'Skeletons pulsantes en Home mientras se cargan los saldos: se acabó el flash con "$0.00" y "0 ORIGEN" al abrir la app.',
+      'Nueva opción Observar dirección en Ajustes: agrega la wallet de un familiar o de un negocio para ver sus saldos sin tener la llave. Solo lectura.',
+      'Etiquetas de accesibilidad en los botones principales (VoiceOver en iPhone, TalkBack en Android leen ya con contexto).',
+    ],
+    en: [
+      'Three-screen onboarding on first launch: what Veta is, how it works, how Genesis ID fits in. Skippable and shown only once.',
+      'Pulsing skeletons on Home while balances load: no more flash of "$0.00" and "0 ORIGEN" when opening the app.',
+      'New Watch address option in Settings: add a family member’s or a business wallet to see balances without holding the key. Read-only.',
+      'Accessibility labels on the main buttons (VoiceOver on iPhone, TalkBack on Android now read them with context).',
+    ],
+  },
   {
     v: '1.8.0',
     build: 23,

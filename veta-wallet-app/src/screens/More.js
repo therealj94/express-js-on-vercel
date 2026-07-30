@@ -201,6 +201,7 @@ export function Settings({ nav }) {
         <Glass style={styles.group}>
           <ListRow first icon="person" title={t('set.profile')} sub={t('set.profileSub')} onPress={() => nav.go('profile')} />
           <ListRow icon="people" title={t('set.contacts')} sub={t('set.contactsSub')} onPress={() => nav.go('contacts')} />
+          <ListRow icon="eye" title={t('set.watchLbl')} onPress={() => nav.go('watchOnly')} />
           <ListRow icon="card" title={t('set.card')} onPress={() => nav.go('card')} />
           <ListRow icon="qr-code" title={t('set.addr')} sub={shortAddr(acc.addr)} onPress={() => nav.go('receive')} />
           <ListRow icon="storefront" title={t('set.mtp')} sub={t('set.mtpSub')} onPress={() => nav.go('mytokenpay')} />
@@ -216,6 +217,7 @@ export function Settings({ nav }) {
         <Glass style={styles.group}>
           <ListRow first icon="key" title={t('set.seed')} onPress={() => nav.go('seedview')} />
           <ListRow icon="finger-print" title={t('set.pk')} onPress={() => nav.go('privatekey')} />
+          <ListRow icon="time" title={t('sess.title')} sub={t('sess.subtitle')} onPress={() => nav.go('sessions')} />
           {/* El interruptor enciende de verdad los avisos: pide permiso y
               registra la tarea que revisa la red con la app cerrada. */}
           <ListRow

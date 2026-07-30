@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet } from 'r
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '../icons';
 import { C, G } from '../theme';
-import { TokenIcon, ActionBtn, IconBtn, SectionHead, useToast, useAccount, hap } from '../ui';
+import { TokenIcon, ActionBtn, IconBtn, SectionHead, Skeleton, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt, tokensFromBalances } from '../data';
 import { apiPortfolio } from '../api';
 import { upsertApiAccount } from '../accounts';
@@ -27,6 +27,10 @@ export default function Home({ nav }) {
   const priced = list.filter((t) => t.hasPrice);
   const total = priced.reduce((s, t) => s + t.qty * t.price, 0);
   const holdingNoPrice = list.some((t) => t.qty > 0 && !t.hasPrice);
+  // Primera carga: no hay cuenta todavía o llegó sin balances. Mientras
+  // llegan los datos, pintamos skeletons para que no se vea un flash con
+  // "$0.00" y "0 ORIGEN" antes de tener saldos reales.
+  const firstLoad = !account || (list.length === 0 && !refreshedOnce.current);
 
   // Variación 24 h ponderada del portafolio (solo con datos reales del feed).
   const withChg = priced.filter((t) => t.chg != null && t.qty * t.price > 0);
@@ -70,24 +74,33 @@ export default function Home({ nav }) {
           <Text style={styles.acctName} numberOfLines={1}>{acc.name}</Text>
           <Text style={styles.acctAddr}>{shortAddr}</Text>
         </View>
-        <IconBtn icon="notifications" onPress={() => nav.go('notifs')} />
-        <IconBtn icon="qr-code" onPress={() => nav.go('receive')} />
+        <IconBtn icon="notifications" onPress={() => nav.go('notifs')} label={t('home.notificationsA11y')} />
+        <IconBtn icon="qr-code" onPress={() => nav.go('receive')} label={t('home.qrA11y')} />
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 110 }} showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.gold} colors={[C.gold]} progressBackgroundColor={C.panel} />}>
         <LinearGradient colors={G.green} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balCard}>
           <Text style={styles.balLbl}>{t('home.balance')}</Text>
-          <Pressable onPress={() => { hap(); setHidden(!hidden); }} style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={styles.balAmt}>{hidden ? '••••••' : money(total)}</Text>
-            <Icon name={hidden ? 'eye-off' : 'eye'} size={18} color={C.txt2} style={{ marginLeft: 8 }} />
-          </Pressable>
-          {dayPct != null ? (
-            <Text style={[styles.balChg, { color: dayPct >= 0 ? C.up : C.down }]}>
-              {hidden ? '••••' : `${dayPct >= 0 ? '+' : '-'}${money(Math.abs(dayUsd))}`}  <Text style={styles.pill}> {dayPct >= 0 ? '+' : ''}{dayPct.toFixed(2)}% </Text>  {t('home.today')}
-            </Text>
+          {firstLoad ? (
+            <View style={{ alignItems: 'center', marginTop: 12, marginBottom: 20, gap: 8 }}>
+              <Skeleton width={170} height={36} radius={10} />
+              <Skeleton width={110} height={14} radius={7} />
+            </View>
           ) : (
-            <Text style={styles.balChg}>{t('home.live')}</Text>
+            <>
+              <Pressable onPress={() => { hap(); setHidden(!hidden); }} style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.balAmt}>{hidden ? '••••••' : money(total)}</Text>
+                <Icon name={hidden ? 'eye-off' : 'eye'} size={18} color={C.txt2} style={{ marginLeft: 8 }} />
+              </Pressable>
+              {dayPct != null ? (
+                <Text style={[styles.balChg, { color: dayPct >= 0 ? C.up : C.down }]}>
+                  {hidden ? '••••' : `${dayPct >= 0 ? '+' : '-'}${money(Math.abs(dayUsd))}`}  <Text style={styles.pill}> {dayPct >= 0 ? '+' : ''}{dayPct.toFixed(2)}% </Text>  {t('home.today')}
+                </Text>
+              ) : (
+                <Text style={styles.balChg}>{t('home.live')}</Text>
+              )}
+            </>
           )}
           <View style={styles.actions}>
             <ActionBtn icon="arrow-up" label={t('home.send')} onPress={() => nav.go('send')} />
@@ -109,24 +122,47 @@ export default function Home({ nav }) {
         )}
 
         <SectionHead title={t('home.assets')} action={t('home.activity')} onAction={() => nav.go('activity')} />
-        {list.map((t) => (
-          <Pressable key={t.s} onPress={() => { hap(); nav.go('token', { token: t }); }} style={styles.token}>
-            <TokenIcon t={t} />
-            <View style={{ flex: 1, marginLeft: 13 }}>
-              <Text style={styles.tName}>{t.n}</Text>
-              <Text style={styles.tPrice}>
-                {t.hasPrice ? money(t.price) : '—'}
-                {t.hasPrice && t.chg != null && (
-                  <Text style={{ color: t.chg < 0 ? C.down : C.up, fontWeight: '600' }}>  {t.chg > 0 ? '+' : ''}{t.chg.toFixed(2)}%</Text>
-                )}
-              </Text>
+        {firstLoad ? (
+          // Cinco filas fantasma con la misma silueta que un token real,
+          // para que el ojo ya sepa dónde ir cuando lleguen los datos.
+          [0, 1, 2, 3, 4].map((i) => (
+            <View key={`sk-${i}`} style={styles.token}>
+              <Skeleton width={44} height={44} radius={22} />
+              <View style={{ flex: 1, marginLeft: 13, gap: 6 }}>
+                <Skeleton width={80} height={13} />
+                <Skeleton width={54} height={11} />
+              </View>
+              <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                <Skeleton width={68} height={13} />
+                <Skeleton width={90} height={11} />
+              </View>
             </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.tVal}>{hidden ? '••••' : (t.hasPrice ? money(t.qty * t.price) : '—')}</Text>
-              <Text style={styles.tQty}>{hidden ? `•••• ${t.s}` : `${qtyFmt(t.qty)} ${t.s}`}</Text>
-            </View>
-          </Pressable>
-        ))}
+          ))
+        ) : (
+          list.map((t) => (
+            <Pressable
+              key={t.s}
+              onPress={() => { hap(); nav.go('token', { token: t }); }}
+              accessibilityRole="button"
+              accessibilityLabel={tr('home.tokenA11y', { name: t.n, qty: qtyFmt(t.qty), sym: t.s })}
+              style={styles.token}>
+              <TokenIcon t={t} />
+              <View style={{ flex: 1, marginLeft: 13 }}>
+                <Text style={styles.tName}>{t.n}</Text>
+                <Text style={styles.tPrice}>
+                  {t.hasPrice ? money(t.price) : '—'}
+                  {t.hasPrice && t.chg != null && (
+                    <Text style={{ color: t.chg < 0 ? C.down : C.up, fontWeight: '600' }}>  {t.chg > 0 ? '+' : ''}{t.chg.toFixed(2)}%</Text>
+                  )}
+                </Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.tVal}>{hidden ? '••••' : (t.hasPrice ? money(t.qty * t.price) : '—')}</Text>
+                <Text style={styles.tQty}>{hidden ? `•••• ${t.s}` : `${qtyFmt(t.qty)} ${t.s}`}</Text>
+              </View>
+            </Pressable>
+          ))
+        )}
         {holdingNoPrice && !hidden && (
           <Text style={styles.noPriceHint}>{tr('home.noPriceHint')}</Text>
         )}

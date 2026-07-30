@@ -6,8 +6,10 @@ import { C } from '../theme';
 import { Logo, Button3D, hap, useAccount, useToast, AppBackground } from '../ui';
 import { upsertApiAccount, saveSession } from '../accounts';
 import { apiLogin, apiRegister, apiPortfolio, saveCreds, clearCreds } from '../api';
+import { recordLogin } from '../sessionLog';
 import { versionLabel } from '../version';
 import { useT } from '../i18n';
+import { seenOnboarding } from './Onboarding';
 
 export default function Auth({ nav }) {
   const [tab, setTab] = useState('login');
@@ -55,9 +57,13 @@ export default function Auth({ nav }) {
 
       const acc = await upsertApiAccount(user, address, portfolio);
       await saveSession(acc.email);
+      await recordLogin(acc.email);
       setAccount(acc);
-      // Cuenta nueva: ofrece emparejar Genesis ID de una vez (opcional).
-      nav.go(kind === 'register' ? 'genesisOffer' : 'home');
+      // Primera vez en el teléfono: tour de 3 pantallas antes de entrar.
+      // Después, cuenta nueva → oferta Genesis ID; sesión ya conocida → home.
+      const done = await seenOnboarding();
+      if (!done) nav.go('onboarding');
+      else nav.go(kind === 'register' ? 'genesisOffer' : 'home');
       toast(`${t('auth.welcome')}, ${acc.name.split(' ')[0]}`);
     } catch (e) {
       const msg = e?.code === 'no-register' ? t('auth.errNoSignup')

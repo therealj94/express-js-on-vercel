@@ -1,4 +1,4 @@
-import React, { useRef, createContext, useContext } from 'react';
+import React, { useRef, useEffect, createContext, useContext } from 'react';
 import { View, Text, Pressable, TextInput, Animated, Image, ImageBackground, StyleSheet, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -93,6 +93,9 @@ export function Button3D({ title, onPress, variant = 'gold', icon, style, disabl
           onPressIn={() => { press(3); hap(); }}
           onPressOut={() => press(0)}
           onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={title}
+          accessibilityState={{ disabled: !!disabled }}
           style={{ borderRadius: 17, overflow: 'hidden' }}>
           <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnInner}>
             {icon ? <Icon name={icon} size={18} color={txtColor} style={{ marginRight: 8 }} /> : null}
@@ -112,6 +115,8 @@ export function ActionBtn({ icon, label, onPress, size = 54 }) {
       onPressIn={() => { Animated.spring(s, { toValue: 0.88, useNativeDriver: true }).start(); hap(); }}
       onPressOut={() => Animated.spring(s, { toValue: 1, useNativeDriver: true }).start()}
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label || icon}
       style={{ alignItems: 'center', gap: 8 }}>
       <Animated.View style={{ transform: [{ scale: s }] }}>
         <LinearGradient colors={G.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.circle, { width: size, height: size, borderRadius: size / 2 }]}>
@@ -123,9 +128,13 @@ export function ActionBtn({ icon, label, onPress, size = 54 }) {
   );
 }
 
-export function IconBtn({ icon, onPress, badge }) {
+export function IconBtn({ icon, onPress, badge, label }) {
   return (
-    <Pressable onPress={() => { hap(); onPress && onPress(); }} style={styles.iconBtn}>
+    <Pressable
+      onPress={() => { hap(); onPress && onPress(); }}
+      accessibilityRole="button"
+      accessibilityLabel={label || icon}
+      style={styles.iconBtn}>
       <Icon name={icon} size={20} color={C.txt} />
       {badge ? <View style={styles.iconDot} /> : null}
     </Pressable>
@@ -250,6 +259,39 @@ export function Glass({ children, style, intensity = 26, radius = 18 }) {
 
 export function Card({ children, style }) {
   return <Glass style={[styles.card, style]}>{children}</Glass>;
+}
+
+// Barra "esqueleto" con pulsación suave para pintar espacios de contenido
+// mientras se están cargando. Reemplaza el flash de "$0.00" y "0 ORIGEN"
+// que aparecía antes de que llegara el primer portafolio real.
+// Cantidad de token con precisión visual: los decimales útiles se pintan
+// como el resto del texto y los ceros sobrantes en tono más tenue. Usa
+// tabular-nums para que las cifras alineen en columnas.
+export function PreciseQty({ parts, style, dimStyle }) {
+  const { sign, int, decUtil, decDim } = parts || { sign: '', int: '0', decUtil: '', decDim: '' };
+  return (
+    <Text style={[{ fontVariant: ['tabular-nums'] }, style]}>
+      {sign}{int}
+      {(decUtil || decDim) ? '.' : ''}
+      {decUtil}
+      {decDim ? <Text style={[{ color: C.txt3 }, dimStyle]}>{decDim}</Text> : null}
+    </Text>
+  );
+}
+
+export function Skeleton({ width, height = 14, radius = 6, style }) {
+  const anim = useRef(new Animated.Value(0.35)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(anim, { toValue: 0.85, duration: 900, useNativeDriver: true }),
+      Animated.timing(anim, { toValue: 0.35, duration: 900, useNativeDriver: true }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [anim]);
+  return (
+    <Animated.View style={[{ width, height, borderRadius: radius, backgroundColor: 'rgba(201,169,97,0.14)', opacity: anim }, style]} />
+  );
 }
 
 export const styles = StyleSheet.create({

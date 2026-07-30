@@ -3,8 +3,8 @@ import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { Icon } from '../icons';
 import * as Clipboard from 'expo-clipboard';
 import { C } from '../theme';
-import { Header, TokenIcon, ActionBtn, Button3D, Card, useToast, useAccount, hap } from '../ui';
-import { COIN_INFO, money, qtyFmt } from '../data';
+import { Header, TokenIcon, ActionBtn, Button3D, Card, PreciseQty, useToast, useAccount, hap } from '../ui';
+import { COIN_INFO, money, qtyFmt, qtyFmtParts } from '../data';
 import { fetchCandles, tieneVelas, TIMEFRAMES } from '../api';
 import { CandleChart, TimeframeBar } from '../chart';
 import { useT, useLang } from '../i18n';
@@ -52,7 +52,10 @@ export default function TokenDetail({ nav, params }) {
       <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
         <View style={{ alignItems: 'center', marginBottom: 16 }}>
           <TokenIcon t={t} size={64} />
-          <Text style={styles.qty}>{qtyFmt(t.qty)} {t.s}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 8 }}>
+            <PreciseQty parts={qtyFmtParts(t.qty)} style={styles.qty} />
+            <Text style={[styles.qty, { marginLeft: 6 }]}>{t.s}</Text>
+          </View>
           <Text style={styles.usd}>≈ {t.hasPrice ? money(t.qty * t.price) : '—'} USD</Text>
           <View style={styles.priceRow}>
             <Text style={styles.priceTxt}>{tr('tok.price')}: {t.hasPrice ? money(t.price) : '—'}</Text>
@@ -142,7 +145,7 @@ export default function TokenDetail({ nav, params }) {
 }
 
 const styles = StyleSheet.create({
-  qty: { fontSize: 25, fontWeight: '800', color: C.txt, marginTop: 8 },
+  qty: { fontSize: 25, fontWeight: '800', color: C.txt },
   usd: { fontSize: 13, color: C.txt2, marginTop: 2 },
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 },
   priceTxt: { fontSize: 13, color: C.txt2, fontWeight: '600' },

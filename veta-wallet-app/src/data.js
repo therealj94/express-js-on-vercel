@@ -96,3 +96,23 @@ export const qtyFmt = (q) => {
   if (n >= 1) return n.toLocaleString('en-US', { maximumFractionDigits: 4 });
   return n.toLocaleString('en-US', { maximumFractionDigits: 6 });
 };
+
+// Versión "de precisión" para vistas donde la exactitud importa (detalle
+// del token, revisión de envío, historial): siempre 6 decimales, pero
+// los últimos vacíos van en tono tenue para no romper la lectura. Devuelve
+// un array [entero, decimales, decimalesTenue] para que la UI decida.
+// El tercer elemento son los ceros/decimales sobrantes tras la parte útil.
+export function qtyFmtParts(q) {
+  const n = Number(q) || 0;
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  const fixed = abs.toFixed(6);
+  const [intPart, decPart = '000000'] = fixed.split('.');
+  // Encontrar el último dígito no-cero para separar la parte útil de la tenue.
+  let last = decPart.length;
+  while (last > 0 && decPart[last - 1] === '0') last--;
+  const decUtil = decPart.slice(0, last);
+  const decDim = decPart.slice(last);
+  const intWithSep = Number(intPart).toLocaleString('en-US');
+  return { sign, int: intWithSep, decUtil, decDim };
+}

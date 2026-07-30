@@ -35,11 +35,11 @@ export default function Contacts({ nav, params }) {
 
   async function guardar() {
     const addr = parseAddress(edit.address);
-    if (!addr) { toast(t('send.errAddr')); return; }
+    if (!addr) { toast(t('send.errAddr'), 'error'); return; }
     try {
       await addContact(email, { name: edit.name, address: addr, fav: edit.fav });
       setEdit(null); load(); toast(t('con.saved'));
-    } catch (e) { toast(t('send.errAddr')); }
+    } catch (e) { toast(t('send.errAddr'), 'error'); }
   }
 
   function pedirBorrar(c) {
