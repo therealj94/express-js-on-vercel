@@ -1,11 +1,11 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, Animated, Modal, TextInput, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, Animated, Modal, TextInput, ActivityIndicator, Image, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '../icons';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Circle } from 'react-native-svg';
 import * as Clipboard from 'expo-clipboard';
 import { C, G } from '../theme';
-import { Logo, Button3D, ListRow, Toggle, SectionHead, Skeleton, useToast, useAccount, hap } from '../ui';
+import { LOGO_ORDEN, Button3D, ListRow, Toggle, SectionHead, Skeleton, useToast, useAccount, hap } from '../ui';
 import { qtyFmt } from '../data';
 import { cardApi, sinTarjeta } from '../api';
 import { useT } from '../i18n';
@@ -163,10 +163,14 @@ function SolicitarTarjeta({ nav, onEmitida, t, toast }) {
   return (
     <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 110 }}>
       <View style={styles.pitchCard}>
-        <LinearGradient colors={G.greenCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.pitchBg}>
-          <Waves />
+        <LinearGradient colors={G.blackCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.pitchBg}>
+          <Circuito />
+          <Image source={LOGO_ORDEN} resizeMode="contain" style={styles.monogramaPitch} />
           <View style={styles.pitchIn}>
-            <View style={styles.cardTop}><Logo size={38} /><Text style={styles.visa}>VISA</Text></View>
+            <View style={styles.cardTop}>
+              <Text style={styles.premium}>PREMIUM</Text>
+              <Text style={styles.visa}>VISA</Text>
+            </View>
             <Text style={styles.pitchT}>{t('card.pitchT')}</Text>
           </View>
         </LinearGradient>
@@ -317,44 +321,64 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
 
   return (
     <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
-      <Pressable onPress={voltear} style={{ height: 210 }} accessibilityRole="button" accessibilityLabel={t('card.flip')}>
+      <Pressable onPress={voltear} style={{ height: 214 }} accessibilityRole="button" accessibilityLabel={t('card.flip')}>
+        {/* ---------- frente ---------- */}
         <Animated.View style={[styles.face, { transform: [{ perspective: 1000 }, { rotateY: frontRot }] }]}>
-          <LinearGradient colors={G.greenCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cardBg}>
-            <Waves />
+          <LinearGradient colors={G.blackCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cardBg}>
+            <Circuito />
+            {/* El monograma va detrás del texto y con poca opacidad: es marca,
+                no información. Lo que se tiene que leer son los números. */}
+            <Image source={LOGO_ORDEN} resizeMode="contain" style={styles.monograma} />
             {congelada && <View style={styles.frozenVeil} />}
             <View style={styles.cardIn}>
-              <View style={styles.cardTop}><Logo size={42} /><Text style={styles.visa}>VISA</Text></View>
-              <LinearGradient colors={['#F8EFCF', '#C9A961', '#96793F']} style={styles.chip} />
-              <Text style={styles.cardNum}>
-                {secreto?.pan ? formatearPan(secreto.pan) : `••••  ••••  ••••  ${card.last4 || '••••'}`}
-              </Text>
+              <View style={styles.cardTop}>
+                <Text style={styles.premium}>PREMIUM</Text>
+                <Text style={styles.visa}>VISA</Text>
+              </View>
+
+              <View style={styles.cardMid}>
+                <LinearGradient colors={['#F8EFCF', '#D9BC78', '#8F7236']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.chip}>
+                  <View style={styles.chipLine} />
+                  <View style={[styles.chipLine, { top: 20 }]} />
+                  <View style={styles.chipCol} />
+                </LinearGradient>
+                <Text style={styles.cardNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                  {secreto?.pan ? formatearPan(secreto.pan) : `••••  ••••  ••••  ${card.last4 || '••••'}`}
+                </Text>
+              </View>
+
               <View style={styles.cardBot}>
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, marginRight: 12 }}>
                   <Text style={styles.k}>{t('card.holder')}</Text>
-                  <Text style={styles.v} numberOfLines={1}>{titular || '—'}</Text>
+                  <Text style={styles.holder} numberOfLines={1}>{titular || '—'}</Text>
                 </View>
                 <View>
                   <Text style={[styles.k, { textAlign: 'right' }]}>{t('card.expiry')}</Text>
-                  <Text style={[styles.v, { textAlign: 'right' }]}>{secreto?.expiry || '••/••'}</Text>
+                  <Text style={[styles.holder, { textAlign: 'right' }]}>{secreto?.expiry || '••/••'}</Text>
                 </View>
               </View>
             </View>
           </LinearGradient>
         </Animated.View>
 
+        {/* ---------- reverso ---------- */}
         <Animated.View style={[styles.face, { transform: [{ perspective: 1000 }, { rotateY: backRot }] }]}>
-          <LinearGradient colors={['#0B4A42', '#052824']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cardBg}>
+          <LinearGradient colors={G.blackCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cardBg}>
+            <Circuito />
             <View style={styles.magstripe} />
-            <View style={styles.sig} />
-            {/* El CVV solo existe acá si el usuario lo pidió con su contraseña.
-                Antes había un número fijo escrito en el código que no era el
-                de ninguna tarjeta. */}
-            <View style={styles.cvvBox}>
-              <Text style={styles.cvv}>{secreto?.cvv || '•••'}</Text>
+            <View style={styles.sigRow}>
+              <View style={styles.sig} />
+              {/* El CVV es lo que la gente viene a buscar acá: caja blanca,
+                  dígitos negros y grandes. Solo tiene valor real si se pidió
+                  con la contraseña; si no, van los puntos. */}
+              <View style={styles.cvvBox}>
+                <Text style={styles.cvvK}>CVV</Text>
+                <Text style={styles.cvv}>{secreto?.cvv || '•••'}</Text>
+              </View>
             </View>
             <View style={styles.backFoot}>
               <Text style={styles.backTxt}>{t('card.backNote')}</Text>
-              <Text style={styles.visa}>VISA</Text>
+              <Text style={[styles.visa, { fontSize: 17 }]}>VISA</Text>
             </View>
           </LinearGradient>
         </Animated.View>
@@ -413,11 +437,24 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
         )}
       </View>
 
+      {/* Con los datos ya revelados, lo que sigue casi siempre es pegarlos en
+          una tienda. Cada dato se copia por separado: pegar el número entero
+          con el CVV pegado atrás no sirve en ningún formulario. */}
       {secreto?.pan && (
-        <Pressable onPress={() => copiar(secreto.pan.replace(/\s/g, ''), t('card.copied'))} style={styles.copyRow}>
-          <Icon name="copy" size={15} color={C.gold} />
-          <Text style={styles.copyTxt}>{t('card.copyPan')}</Text>
-        </Pressable>
+        <View style={styles.copiarFila}>
+          <ChipCopiar icono="copy" texto={t('card.copyPan')} onPress={() => copiar(secreto.pan.replace(/\s/g, ''), t('card.copiedPan'))} />
+          {!!secreto.cvv && (
+            <ChipCopiar icono="copy" texto={t('card.copyCvv')} onPress={() => copiar(secreto.cvv, t('card.copiedCvv'))} />
+          )}
+          {!!secreto.expiry && (
+            <ChipCopiar icono="copy" texto={t('card.copyExp')} onPress={() => copiar(secreto.expiry, t('card.copiedExp'))} />
+          )}
+        </View>
+      )}
+      {!!pin && (
+        <View style={styles.copiarFila}>
+          <ChipCopiar icono="copy" texto={t('card.copyPin')} onPress={() => copiar(pin, t('card.copiedPin'))} />
+        </View>
       )}
       {(secreto || pin) && <Text style={styles.autoHide}>{t('card.autoHide', { s: OCULTAR_TRAS })}</Text>}
 
@@ -545,13 +582,36 @@ function fmtFecha(v) {
   } catch (e) { return ''; }
 }
 
-function Waves() {
+// Trazas de circuito en oro, como la tarjeta física. Van en opacidad baja:
+// son textura de fondo y no deben competir con los números.
+const TRAZAS = [
+  'M0 26h58l16 16h74', 'M320 34h-52l-14 14h-46', 'M0 74h30l18-18h52l14 14h40',
+  'M320 96h-64l-16-16h-58', 'M0 132h44l20 20h58', 'M320 150h-40l-18-18h-52',
+  'M96 0v22l14 14v34', 'M214 0v30l-16 16v28', 'M148 200v-26l18-18v-30',
+  'M258 200v-40l-14-14', 'M62 200v-18l16-16', 'M292 60h-30l-16 16v40',
+];
+const VIAS = [[58, 26], [148, 42], [268, 34], [30, 74], [136, 70], [256, 96], [44, 132], [122, 152], [280, 150], [96, 22], [214, 30], [292, 60]];
+
+function Circuito() {
   return (
     <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" viewBox="0 0 320 200" preserveAspectRatio="none">
-      {[132, 147, 162, 117].map((y, i) => (
-        <Path key={i} d={`M-20 ${y} Q 80 ${y - 40} 160 ${y - 10} T 340 ${y - 20}`} stroke="rgba(201,169,97,0.4)" strokeWidth={1.3} fill="none" />
+      {TRAZAS.map((d, i) => (
+        <Path key={i} d={d} stroke="rgba(201,169,97,0.28)" strokeWidth={1} fill="none" />
+      ))}
+      {VIAS.map(([cx, cy], i) => (
+        <Circle key={`v${i}`} cx={cx} cy={cy} r={2.6} stroke="rgba(201,169,97,0.42)" strokeWidth={1} fill="none" />
       ))}
     </Svg>
+  );
+}
+
+// Botón de copiar un dato sensible ya revelado.
+function ChipCopiar({ icono, texto, onPress }) {
+  return (
+    <Pressable onPress={onPress} style={styles.chipCopiar} accessibilityRole="button" accessibilityLabel={texto}>
+      <Icon name={icono} size={14} color={C.gold} />
+      <Text style={styles.chipCopiarTxt}>{texto}</Text>
+    </Pressable>
   );
 }
 
@@ -564,23 +624,41 @@ const styles = StyleSheet.create({
   centroT: { color: C.txt, fontSize: 16, fontWeight: '700', marginTop: 6 },
   centroP: { color: C.txt3, fontSize: 13, textAlign: 'center', lineHeight: 19 },
 
-  face: { position: 'absolute', top: 0, left: 0, right: 0, height: 210, borderRadius: 22, backfaceVisibility: 'hidden' },
-  cardBg: { flex: 1, borderRadius: 22, overflow: 'hidden' },
-  cardIn: { flex: 1, padding: 20, justifyContent: 'space-between' },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  visa: { fontSize: 22, fontWeight: '800', fontStyle: 'italic', color: '#F3ECD9' },
-  chip: { width: 44, height: 34, borderRadius: 7 },
-  cardNum: { fontSize: 19, letterSpacing: 2, color: '#F3ECD9', fontWeight: '600' },
+  face: { position: 'absolute', top: 0, left: 0, right: 0, height: 214, borderRadius: 20, backfaceVisibility: 'hidden' },
+  cardBg: { flex: 1, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(201,169,97,0.28)' },
+  cardIn: { flex: 1, padding: 19, justifyContent: 'space-between' },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  premium: { fontSize: 10.5, letterSpacing: 4, color: 'rgba(234,215,156,0.82)', fontWeight: '600' },
+  visa: { fontSize: 21, fontWeight: '800', fontStyle: 'italic', color: C.goldHi, letterSpacing: 0.5 },
+  // El monograma es marca de fondo: centrado, grande y tenue.
+  monograma: { position: 'absolute', alignSelf: 'center', top: 34, width: '58%', height: 108, opacity: 0.17 },
+  cardMid: { flexDirection: 'row', alignItems: 'center', gap: 13 },
+  chip: { width: 42, height: 32, borderRadius: 6, overflow: 'hidden' },
+  chipLine: { position: 'absolute', left: 0, right: 0, top: 11, height: 1, backgroundColor: 'rgba(90,70,25,0.55)' },
+  chipCol: { position: 'absolute', top: 0, bottom: 0, left: 15, width: 1, backgroundColor: 'rgba(90,70,25,0.55)' },
+  // Números grandes, muy espaciados y en oro claro: es el dato que se copia
+  // a mano en una tienda, tiene que leerse de un vistazo.
+  cardNum: { flex: 1, fontSize: 20, letterSpacing: 2.2, color: C.goldHi, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.55)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
   cardBot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  k: { fontSize: 8, letterSpacing: 1.2, color: 'rgba(243,236,217,0.6)' },
-  v: { fontSize: 12.5, color: '#F3ECD9', fontWeight: '600', marginTop: 3 },
-  frozenVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(2,27,28,0.45)', zIndex: 2 },
-  magstripe: { position: 'absolute', top: 22, left: 0, right: 0, height: 42, backgroundColor: '#04211d' },
-  sig: { position: 'absolute', top: 80, left: 21, right: 70, height: 28, backgroundColor: '#e8e0cf', borderRadius: 4 },
-  cvvBox: { position: 'absolute', top: 82, right: 21, backgroundColor: '#e8e0cf', borderRadius: 5, paddingHorizontal: 12, paddingVertical: 5 },
-  cvv: { color: '#1a1a1a', fontWeight: '700', letterSpacing: 1 },
-  backFoot: { position: 'absolute', bottom: 16, left: 21, right: 21, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  backTxt: { fontSize: 9, color: 'rgba(243,236,217,0.6)', lineHeight: 13, flex: 1, marginRight: 10 },
+  k: { fontSize: 8, letterSpacing: 1.6, color: 'rgba(234,215,156,0.62)', fontWeight: '600' },
+  // El titular antes iba en 12.5 y se perdía sobre el fondo. Ahora es del
+  // tamaño de un dato, no de un pie de página.
+  holder: { fontSize: 14.5, color: C.goldLt, fontWeight: '700', marginTop: 4, letterSpacing: 1.3 },
+  frozenVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 2 },
+
+  magstripe: { position: 'absolute', top: 20, left: 0, right: 0, height: 44, backgroundColor: '#080705' },
+  sigRow: { position: 'absolute', top: 82, left: 19, right: 19, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sig: { flex: 1, height: 34, backgroundColor: '#EFEAE0', borderRadius: 3 },
+  // Caja blanca con dígitos negros y grandes, como en la tarjeta física.
+  cvvBox: { backgroundColor: '#FFFFFF', borderRadius: 4, paddingHorizontal: 11, paddingVertical: 4, alignItems: 'center', minWidth: 66 },
+  cvvK: { color: '#5A5A5A', fontSize: 7.5, letterSpacing: 1.6, fontWeight: '800' },
+  cvv: { color: '#0B0B0B', fontWeight: '800', letterSpacing: 2.5, fontSize: 20, lineHeight: 24 },
+  backFoot: { position: 'absolute', bottom: 14, left: 19, right: 19, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  backTxt: { fontSize: 8.5, color: 'rgba(234,215,156,0.55)', lineHeight: 12.5, flex: 1, marginRight: 10 },
+
+  copiarFila: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 10, marginBottom: 4 },
+  chipCopiar: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.panel2, borderWidth: 1, borderColor: C.line2, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 },
+  chipCopiarTxt: { color: C.gold, fontSize: 12.5, fontWeight: '600' },
 
   hint: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 16, marginBottom: 14 },
   hintTxt: { fontSize: 11, color: C.txt3 },
@@ -594,8 +672,6 @@ const styles = StyleSheet.create({
   saldoHint: { fontSize: 11, color: C.txt3, marginTop: 5, textAlign: 'center' },
 
   group: { backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderRadius: 18, overflow: 'hidden', marginBottom: 8 },
-  copyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 11 },
-  copyTxt: { color: C.gold, fontSize: 13, fontWeight: '600' },
   autoHide: { color: C.txt3, fontSize: 11, textAlign: 'center', marginBottom: 8 },
 
   limitBox: { backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderRadius: 18, padding: 16, marginBottom: 6 },
@@ -613,7 +689,8 @@ const styles = StyleSheet.create({
   txnV: { fontSize: 13.5, fontWeight: '600', color: C.txt },
 
   pitchCard: { height: 168, marginBottom: 18 },
-  pitchBg: { flex: 1, borderRadius: 22, overflow: 'hidden' },
+  pitchBg: { flex: 1, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(201,169,97,0.28)' },
+  monogramaPitch: { position: 'absolute', alignSelf: 'center', top: 30, width: '52%', height: 88, opacity: 0.17 },
   pitchIn: { flex: 1, padding: 20, justifyContent: 'space-between' },
   pitchT: { color: '#F3ECD9', fontSize: 17, fontWeight: '700', maxWidth: '85%' },
   pitchP: { color: C.txt2, fontSize: 13.5, lineHeight: 20, marginBottom: 16 },

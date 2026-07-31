@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.11.1';
-export const BUILD = 40;
+export const VERSION = '1.11.2';
+export const BUILD = 41;
 export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,21 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.11.2',
+    build: 41,
+    date: '2026-07-31',
+    es: [
+      'Tarjeta rediseñada en negro y dorado, con el monograma de Orden Global y el grabado de circuito de la tarjeta física.',
+      'El nombre del titular y el CVV ahora se leen sin esfuerzo: el titular subió de tamaño y el CVV va en una caja blanca con dígitos negros grandes, como en una tarjeta de verdad.',
+      'Después de poner tu contraseña podés copiar por separado el número, el CVV y el vencimiento con un toque. Antes solo se podía copiar el número, y copiar todo junto no sirve para pegarlo en una tienda.',
+    ],
+    en: [
+      'Card redesigned in black and gold, with the Orden Global monogram and the circuit engraving from the physical card.',
+      'The cardholder name and CVV are now effortless to read: the name is larger and the CVV sits in a white box with big black digits, like on a real card.',
+      'After entering your password you can copy the number, CVV and expiry separately with one tap. Previously only the number could be copied, and copying everything together is useless when pasting into a store.',
+    ],
+  },
   {
     v: '1.11.1',
     build: 40,

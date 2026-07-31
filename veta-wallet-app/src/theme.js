@@ -32,6 +32,9 @@ export const G = {
   gold: ['#F8EFCF', '#DFC078', '#C9A961', '#96793F'],
   green: ['rgba(13,88,79,0.86)', 'rgba(9,52,55,0.84)', 'rgba(4,25,27,0.88)'],
   greenCard: ['#0E6155', '#0A463F', '#063430'],
+  // Tarjeta Visa: negro con calidez, para que el dorado del monograma y los
+  // relieves no queden grises encima. Un negro puro apaga el oro.
+  blackCard: ['#221D15', '#12100C', '#050505'],
 };
 
 export const F = {
