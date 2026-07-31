@@ -308,13 +308,22 @@ export const cardApi = {
   // Direcciones para fondear la tarjeta desde fuera (USDT/USDC en Polygon).
   topUpWallets: () => req('/cards/top-up-wallets', { timeout: 30000 }),
 
-  // Fondear con ORIGEN del propio saldo.
+  // Recargar la tarjeta con ORIGEN del propio saldo.
+  //
+  // Son dos transferencias en cadenas distintas: el usuario paga ORIGEN y el
+  // treasury libera el equivalente en USDT a la tarjeta. El backend confirma
+  // el pago antes de liberar nada, así que esta llamada puede volver con
+  // `listo: false` y estado 'pending' — no es un error, es que la
+  // confirmación todavía no llegó. En ese caso se consulta `fundStatus`.
   fund: ({ amountOrigen, password }) =>
     req('/cards/fund', {
       method: 'POST',
       body: { amount: String(amountOrigen), password },
-      timeout: 90000,   // hay transacciones on-chain de por medio
+      timeout: 60000,
     }),
+
+  // Retoma la recarga en curso. Cada llamada intenta avanzarla.
+  fundStatus: () => req('/cards/fund/status', { timeout: 45000 }),
 
   // Cuánto llevás gastado contra cada límite, en ORIGEN.
   spending: () => req('/cards/accumulated-spending', { timeout: 30000 }),

@@ -25,6 +25,7 @@ import TokenDetail from './src/screens/TokenDetail';
 import { Send, Receive, Buy, Swap } from './src/screens/Trade';
 import CardScreen from './src/screens/Card';
 import CardSettings from './src/screens/CardSettings';
+import FundCard from './src/screens/FundCard';
 import { Activity, Notifications, Settings, Profile, MyTokenPay, Passport, Blocked, PrivateKey } from './src/screens/More';
 import Scan from './src/screens/Scan';
 import Contacts from './src/screens/Contacts';
@@ -41,7 +42,7 @@ import ErrorBoundary from './src/ErrorBoundary';
 const SCREENS = {
   splash: Splash, auth: Auth, kyc: Kyc, seedview: SeedView, genesisOffer: GenesisOffer,
   home: Home, token: TokenDetail, send: Send, receive: Receive, buy: Buy, swap: Swap,
-  card: CardScreen, cardSettings: CardSettings, activity: Activity, notifs: Notifications, settings: Settings,
+  card: CardScreen, cardSettings: CardSettings, fundCard: FundCard, activity: Activity, notifs: Notifications, settings: Settings,
   profile: Profile, mytokenpay: MyTokenPay, passport: Passport, blocked: Blocked, privatekey: PrivateKey,
   scan: Scan, contacts: Contacts, importPassport: ImportPassport, about: About,
   onboarding: Onboarding, watchOnly: WatchOnly, sessions: Sessions, help: Help,

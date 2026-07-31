@@ -6,7 +6,7 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import * as Clipboard from 'expo-clipboard';
 import { C, G } from '../theme';
 import { LOGO_ORDEN, Button3D, ListRow, Toggle, SectionHead, Skeleton, useToast, useAccount, hap } from '../ui';
-import { qtyFmt } from '../data';
+import { qtyFmt, money } from '../data';
 import { cardApi, sinTarjeta } from '../api';
 import { useT } from '../i18n';
 import PedirClave from '../PedirClave';
@@ -505,6 +505,10 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
           {card.availableOrigen != null ? `${qtyFmt(card.availableOrigen)} ORIGEN` : '—'}
         </Text>
         {card.availableOrigen == null && <Text style={styles.saldoHint}>{t('card.balanceUnknown')}</Text>}
+        <Pressable onPress={() => { hap(); nav.go('fundCard'); }} style={styles.recargarBtn} accessibilityRole="button">
+          <Icon name="arrow-up" size={16} color={C.darkText} />
+          <Text style={styles.recargarTxt}>{t('card.recargar')}</Text>
+        </Pressable>
       </View>
 
       <View style={styles.group}>
@@ -617,7 +621,11 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
                 <Text style={styles.txnT} numberOfLines={1}>{m.merchant || '—'}</Text>
                 <Text style={styles.txnD}>{fmtFecha(m.date)}{m.status ? ` · ${m.status}` : ''}</Text>
               </View>
-              <Text style={styles.txnV}>{m.origenAmount != null ? `${qtyFmt(m.origenAmount)} ORIGEN` : '—'}</Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.txnV}>{m.origenAmount != null ? `${qtyFmt(m.origenAmount)} ORIGEN` : '—'}</Text>
+                {/* El dolar es referencia de lo que costo, no la unidad. */}
+                {m.amount != null && <Text style={styles.txnUsd}>{money(m.amount)} USD</Text>}
+              </View>
               <Icon name="chevron-forward" size={16} color={C.txt3} />
             </Pressable>
           ))}
@@ -727,6 +735,9 @@ function DetalleMovimiento({ mov, t, toast, onCerrar }) {
               <Text style={styles.movMonto}>
                 {mov.origenAmount != null ? `${qtyFmt(mov.origenAmount)} ORIGEN` : '—'}
               </Text>
+              {(d.billAmountUsd ?? mov.amount) != null && (
+                <Text style={styles.movEquiv}>≈ {money(d.billAmountUsd ?? mov.amount)} USD</Text>
+              )}
               {cargando && <ActivityIndicator size="small" color={C.gold} style={{ marginTop: 12 }} />}
 
               <View style={styles.movFilas}>
@@ -1013,6 +1024,10 @@ const styles = StyleSheet.create({
   saldoBox: { backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderRadius: 18, padding: 18, alignItems: 'center', marginBottom: 12 },
   saldoK: { fontSize: 10, letterSpacing: 1.4, color: C.txt3, fontWeight: '700' },
   saldoV: { fontSize: 26, color: C.gold, fontWeight: '800', marginTop: 6 },
+  recargarBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.gold, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 10, marginTop: 14 },
+  recargarTxt: { color: C.darkText, fontSize: 13.5, fontWeight: '800' },
+  txnUsd: { fontSize: 11, color: C.txt3, marginTop: 2 },
+  movEquiv: { color: C.txt3, fontSize: 13.5, textAlign: 'center', marginTop: 5 },
   saldoHint: { fontSize: 11, color: C.txt3, marginTop: 5, textAlign: 'center' },
 
   group: { backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderRadius: 18, overflow: 'hidden', marginBottom: 8 },

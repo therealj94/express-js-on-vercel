@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.15.0';
-export const BUILD = 48;
+export const VERSION = '1.16.0';
+export const BUILD = 49;
 export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,23 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.16.0',
+    build: 49,
+    date: '2026-07-31',
+    es: [
+      'Ya podés recargar tu tarjeta desde la app. Pasás ORIGEN de tu billetera y el saldo de la tarjeta se acredita solo.',
+      'Todo se muestra en ORIGEN: lo que recargás, el saldo de la tarjeta y cada consumo. El dólar aparece siempre como referencia al lado, nunca como la unidad.',
+      'La recarga son dos pasos en redes distintas, así que la pantalla te muestra en cuál va: pago enviado, pago confirmado y saldo acreditado. Podés salir mientras tanto — sigue su curso y el saldo aparece solo.',
+      'Si la red tarda, la recarga no se pierde: al volver a entrar la app la retoma donde quedó.',
+    ],
+    en: [
+      'You can now top up your card from the app. You move ORIGEN from your wallet and the card balance is credited automatically.',
+      'Everything is shown in ORIGEN: what you add, the card balance and every purchase. The dollar always appears as a reference beside it, never as the unit.',
+      'A top up is two steps across different networks, so the screen shows which one it is on: payment sent, payment confirmed, balance credited. You can leave meanwhile — it carries on and the balance appears on its own.',
+      'If the network is slow the top up is not lost: the app picks it up where it left off when you come back.',
+    ],
+  },
   {
     v: '1.15.0',
     build: 48,
