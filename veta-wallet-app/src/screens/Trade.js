@@ -6,7 +6,7 @@ import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { C } from '../theme';
 import { Header, TokenIcon, Button3D, Card, useToast, useAccount, hap } from '../ui';
-import { money, qtyFmt, tokensFromBalances } from '../data';
+import { money, qtyFmt, tokensFromBalances, parseAmt, normalizeAmtInput } from '../data';
 import { apiSend, apiPortfolio, estimateNetworkFee, NETWORK_FEE_ORIGEN, CHAIN_ID } from '../api';
 import { updateAccount } from '../accounts';
 import { listContacts, touchContact, addContact, parseAddress } from '../addressBook';
@@ -66,7 +66,10 @@ export function Send({ nav, params }) {
   const tokens = useTokens();
   const origen = tokens.find((t) => t.s === 'ORIGEN') || tokens[0] || { s: 'ORIGEN', n: 'ORIGEN', qty: 0, price: 0, logo: true };
   const [tok, setTok] = useState(origen);
-  const [amt, setAmt] = useState(params?.amount ? String(params.amount) : '');
+  // El monto puede llegar de fuera (deep link de pago, salto desde Remesas):
+  // se normaliza igual que si se hubiera tecleado, para que el campo nunca
+  // muestre algo que parseAmt vaya a rechazar.
+  const [amt, setAmt] = useState(params?.amount ? normalizeAmtInput(String(params.amount)) : '');
   const [to, setTo] = useState(params?.to || '');
   const [pick, setPick] = useState(false);
   const [review, setReview] = useState(null);  // ficha de revisión antes de firmar
@@ -104,7 +107,7 @@ export function Send({ nav, params }) {
     return () => { vivo = false; };
   }, []);
 
-  const amount = parseFloat(amt) || 0;
+  const amount = parseAmt(amt);
   const usd = amount * (tok.price || 0);
   const isNative = tok.s === 'ORIGEN';
   const insufficient = isNative && amount > 0 && amount + fee > tok.qty;
@@ -130,13 +133,22 @@ export function Send({ nav, params }) {
   }
 
   // Paso 2: enviar de verdad, con la contraseña escrita en la revisión.
+  //
+  // Se firma EXACTAMENTE lo que dice la ficha de revisión (`tx`), no el estado
+  // vivo del formulario. Antes se leían las variables `to` y `amount` del
+  // componente, así que cualquier cosa que las cambiara mientras la ficha
+  // estaba abierta — un deep link vetawallet://pay entrante, el resultado del
+  // escáner (que sigue montado detrás), un remontaje por cambio de idioma —
+  // hacía que saliera un envío distinto del que el usuario aprobó.
   async function confirmar(password) {
+    const tx = review;
+    if (!tx) return { ok: false, msg: t('send.notConfirmed') };
     setSending(true);
     try {
-      const r = await apiSend({ to: to.trim(), amount, password });
+      const r = await apiSend({ to: tx.to, amount: tx.amount, password });
       if (r.ok) {
-        touchContact(account?.email, to.trim());
-        if (saveAs.trim()) addContact(account?.email, { name: saveAs.trim(), address: to.trim() }).catch(() => {});
+        touchContact(account?.email, tx.to);
+        if (saveAs.trim()) addContact(account?.email, { name: saveAs.trim(), address: tx.to }).catch(() => {});
         hap();
         setReview(null);
 
@@ -147,14 +159,14 @@ export function Send({ nav, params }) {
           const nueva = {
             hash: r.hash || `local_${Date.now()}`,
             timeStamp: Math.floor(Date.now() / 1000),
-            value: String(amount),
-            symbol: tok.s,
+            value: String(tx.amount),
+            symbol: tx.symbol,
             type: 'send',
             from: account.addr,
-            to: to.trim(),
+            to: tx.to,
             gasUsed: r.receipt?.gasUsed ?? null,
             blockNumber: r.receipt?.blockNumber ?? null,
-            fee,
+            fee: tx.fee,
             localPending: !r.hash,
           };
           const yaEsta = (account.transfers || []).some((x) => x.hash === nueva.hash);
@@ -171,7 +183,7 @@ export function Send({ nav, params }) {
         }
 
         setDone({
-          ...review,
+          ...tx,
           hash: r.hash || null,
           bloque: r.receipt?.blockNumber ?? null,
           gas: r.receipt?.gasUsed ?? null,
@@ -210,9 +222,20 @@ export function Send({ nav, params }) {
         )}
 
         <View style={styles.bigInput}>
-          <TextInput value={amt} onChangeText={setAmt} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#3a5c58" style={styles.amtIn} />
+          <TextInput value={amt} onChangeText={(v) => setAmt(normalizeAmtInput(v))} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#3a5c58" style={styles.amtIn} />
           <Text style={styles.cur}>≈ {money(usd)} USD</Text>
         </View>
+
+        {/* Viene de Remesas, donde el monto se escribió en dólares. Se muestra
+            la cifra original para que se pueda verificar la conversión: es la
+            única forma de que el usuario note si el precio usado no era el que
+            esperaba antes de firmar. */}
+        {params?.fiatUsd > 0 && (
+          <View style={styles.notice}>
+            <Icon name="swap-horizontal" size={18} color={C.gold} />
+            <Text style={styles.noticeTxt}>{t('send.fromRemesa', { usd: money(params.fiatUsd) })}</Text>
+          </View>
+        )}
 
         {/* Cámara, libreta y contactos guardados: toca uno y se rellena la dirección */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.contactsRow}>
@@ -278,7 +301,7 @@ export function Send({ nav, params }) {
                 if (k) parts[k] = v ? decodeURIComponent(v) : '';
               }
               if (parts.to) setTo(parts.to);
-              if (parts.amount) setAmt(String(parts.amount));
+              if (parts.amount) setAmt(normalizeAmtInput(String(parts.amount)));
               if (parts.memo) setSaveAs(parts.memo);
               return;
             } catch (e) {}
@@ -640,7 +663,7 @@ export function Receive({ nav }) {
           <View style={{ position: 'relative' }}>
             <TextInput
               value={amt}
-              onChangeText={setAmt}
+              onChangeText={(v) => setAmt(normalizeAmtInput(v))}
               keyboardType="decimal-pad"
               placeholder="0"
               placeholderTextColor="#6f938f"
@@ -742,7 +765,7 @@ export function Buy({ nav }) {
     return () => clearInterval(id);
   }, [step]);
 
-  const usd = parseFloat(amt) || 0;
+  const usd = parseAmt(amt);
   const priced = tok.price > 0;
   const qty = priced ? usd / tok.price : 0;
   const canGo = priced && usd >= 5;
@@ -818,7 +841,7 @@ export function Buy({ nav }) {
           <View style={styles.bigInput}>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
               <Text style={{ color: C.txt3, fontSize: 22, fontWeight: '700' }}>$</Text>
-              <TextInput value={amt} onChangeText={setAmt} placeholder="0" placeholderTextColor={C.txt3} keyboardType="decimal-pad" style={styles.amtIn} />
+              <TextInput value={amt} onChangeText={(v) => setAmt(normalizeAmtInput(v))} placeholder="0" placeholderTextColor={C.txt3} keyboardType="decimal-pad" style={styles.amtIn} />
             </View>
             <Text style={styles.cur}>USDT</Text>
             {priced && usd > 0 && (
@@ -991,7 +1014,7 @@ export function Swap({ nav }) {
   const [amt, setAmt] = useState('');
   const [pick, setPick] = useState(false);
   const rate = origen.price && to.price ? origen.price / to.price : 0;
-  const out = ((parseFloat(amt) || 0) * rate);
+  const out = (parseAmt(amt) * rate);
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title={t('swap.title')} onBack={() => nav.back()} />
@@ -1029,7 +1052,7 @@ function SwapBox({ label, balance, token, value, onChange, readOnly, onPickToken
         <Text style={{ color: C.txt3, fontSize: 12 }}>{tr('swap.balance')}: {balance}</Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <TextInput value={value} onChangeText={onChange} editable={!readOnly} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#3a5c58" style={styles.swapIn} />
+        <TextInput value={value} onChangeText={onChange ? (v) => onChange(normalizeAmtInput(v)) : undefined} editable={!readOnly} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#3a5c58" style={styles.swapIn} />
         <TokenChip onPress={onPickToken ? () => { hap(); onPickToken(); } : undefined} style={styles.swapTok}>
           <TokenIcon t={token} size={28} />
           <Text style={{ color: C.txt, fontWeight: '700', marginLeft: 7 }}>{token.s}</Text>

@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.10.7';
-export const BUILD = 37;
+export const VERSION = '1.10.8';
+export const BUILD = 38;
 export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,21 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.10.8',
+    build: 38,
+    date: '2026-07-31',
+    es: [
+      'Corregido un error grave en Remesas: al tocar "Enviar remesa" el monto en dólares pasaba a la pantalla de envío como si fueran ORIGEN, así que se enviaba más del doble de lo que pediste. Ahora se convierte al precio del día y la pantalla de envío te recuerda cuántos dólares pediste mandar, para que puedas revisarlo antes de firmar.',
+      'Los montos con coma ya se entienden bien. En un teléfono en español el teclado escribe coma, y antes "1,5" se enviaba como 1. Ahora la coma vale como decimal en Enviar, Recibir, Comprar e Intercambiar. Un monto que no se entienda se rechaza en vez de adivinarse.',
+      'La pantalla de confirmación ahora es la única que manda: se firma exactamente el destino y el monto que revisaste. Antes, si algo cambiaba mientras la ficha estaba abierta — un enlace de pago entrante, el escáner — podía salir un envío distinto del aprobado.',
+    ],
+    en: [
+      'Fixed a serious bug in Remittances: tapping "Send remittance" passed the dollar amount to the send screen as if it were ORIGEN, so more than twice the requested value was sent. It now converts at today\'s price, and the send screen reminds you how many dollars you asked to send so you can check before signing.',
+      'Amounts typed with a comma now work. On a Spanish-language phone the keypad types a comma, and "1,5" used to be sent as 1. The comma is now read as a decimal in Send, Receive, Buy and Swap. An amount that cannot be read is rejected instead of guessed.',
+      'The confirmation screen is now the single source of truth: exactly the recipient and amount you reviewed get signed. Previously, anything that changed while the sheet was open — an incoming payment link, the scanner — could result in a different transfer than the one approved.',
+    ],
+  },
   {
     v: '1.10.7',
     build: 37,

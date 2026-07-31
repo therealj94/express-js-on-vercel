@@ -3,8 +3,8 @@ import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '../icons';
 import { C, G } from '../theme';
-import { Header, Button3D, hap, useAccount } from '../ui';
-import { money } from '../data';
+import { Header, Button3D, hap, useAccount, useToast } from '../ui';
+import { money, tokensFromBalances } from '../data';
 import { fetchRates, STATIC_RATES } from '../fx';
 import { useT, useLang } from '../i18n';
 
@@ -56,6 +56,7 @@ export default function Remesas({ nav }) {
   const t = useT();
   const { lang } = useLang();
   const { account } = useAccount();
+  const toast = useToast();
   const [usd, setUsd] = useState('100');
   const [country, setCountry] = useState(COUNTRIES[0]);
   const [rates, setRates] = useState(STATIC_RATES);
@@ -67,6 +68,11 @@ export default function Remesas({ nav }) {
   const netUsd = Math.max(0, amount - REMESA_FEE_USD);
   const rate = rates?.[country.ccy] ?? STATIC_RATES[country.ccy] ?? 1;
   const llegaLocal = netUsd * rate;
+
+  // Precio de ORIGEN, para convertir el monto del simulador (que está en
+  // DÓLARES) a la cantidad de token que Enviar espera recibir.
+  const origen = tokensFromBalances(account?.balances || []).find((x) => x.s === 'ORIGEN');
+  const origenPrice = origen?.hasPrice ? origen.price : 0;
 
   // Feed de tasas: al montar y cada vez que se enfoca la pantalla.
   useEffect(() => {
@@ -93,9 +99,16 @@ export default function Remesas({ nav }) {
 
   const irEnviar = () => {
     hap();
-    // Salta a Enviar con el monto BRUTO (incluye la comisión). La fee se
-    // descuenta en el flujo de envío al conectar el backend.
-    nav.go('send', { amount: amount > 0 ? String(amount) : undefined });
+    if (!(amount > 0)) { toast(t('rem.errAmt'), 'error'); return; }
+    // Este simulador trabaja en DÓLARES; Enviar trabaja en ORIGEN. Antes se
+    // pasaba el monto sin convertir, así que "mandar $100" llegaba a Enviar
+    // como 100 ORIGEN — más del doble en valor. Sin precio no se puede
+    // convertir, y mandar un número ambiguo es peor que no navegar.
+    if (!(origenPrice > 0)) { toast(t('rem.errNoPrice'), 'error'); return; }
+    // Se sigue enviando el monto BRUTO (con la comisión incluida), igual que
+    // antes; lo que cambia es que ahora va en la unidad correcta.
+    const qty = amount / origenPrice;
+    nav.go('send', { amount: qty.toFixed(6), fiatUsd: amount });
   };
   const solicitar = () => {
     hap();

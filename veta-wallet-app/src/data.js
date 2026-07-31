@@ -89,6 +89,41 @@ export function tokensFromBalances(balances) {
   });
 }
 
+// ---------- montos escritos por el usuario ----------
+//
+// En un teléfono configurado en español el teclado `decimal-pad` muestra
+// COMA, no punto. `parseFloat("1,5")` devuelve 1: el usuario pedía enviar
+// uno y medio y salía uno, sin ningún aviso. Y "0,5" quedaba en cero, que
+// la app rechazaba como "monto inválido" sin explicar por qué.
+//
+// normalizeAmtInput() se usa en el onChangeText de cada campo de monto para
+// que el estado guarde siempre la forma canónica con punto; parseAmt() es
+// el único lugar donde un texto de monto se convierte a número.
+export function normalizeAmtInput(s) {
+  // Se acepta lo que el teclado pueda producir (coma o punto) y se deja un
+  // solo separador: el primero que aparezca. Los demás se descartan para que
+  // "1.2.3" no se convierta en un número distinto del que se ve en pantalla.
+  const limpio = String(s ?? '').replace(/[^\d.,]/g, '').replace(/,/g, '.');
+  const i = limpio.indexOf('.');
+  if (i === -1) return limpio;
+  return limpio.slice(0, i + 1) + limpio.slice(i + 1).replace(/\./g, '');
+}
+
+export function parseAmt(s) {
+  if (typeof s === 'number') return Number.isFinite(s) && s > 0 ? s : 0;
+  const txt = String(s ?? '').trim().replace(/,/g, '.');
+  // Estricto a propósito: un número positivo con UN solo separador. Cualquier
+  // otra cosa — signo, separadores de más, texto — devuelve 0 en vez de
+  // adivinarse. `parseFloat` aceptaba "1.2.3" como 1.2 y "-5" como -5; para un
+  // monto que se va a firmar es preferible que el usuario lo reescriba a que
+  // salga un número distinto del que quiso poner. El campo nunca llega en ese
+  // estado (lo limpia normalizeAmtInput en cada tecla), pero un monto que
+  // viene de un deep link o de otra pantalla sí puede.
+  if (txt === '' || txt === '.' || !/^\d*\.?\d*$/.test(txt)) return 0;
+  const n = parseFloat(txt);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 export const money = (v) => '$' + Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export const qtyFmt = (q) => {
   const n = Number(q) || 0;
