@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.13.0';
-export const BUILD = 45;
+export const VERSION = '1.14.0';
+export const BUILD = 46;
 export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,25 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.14.0',
+    build: 46,
+    date: '2026-07-31',
+    es: [
+      'Nueva pantalla de Ajustes de la tarjeta, con todo lo que antes no existía en la app: editar tus límites de gasto, el teléfono donde llegan los códigos de compras online, activar la verificación por SMS, exportar tu estado de cuenta, reemitir la tarjeta y cancelarla.',
+      'Ahora ves cuánto llevás gastado contra cada límite —diario, semanal y mensual— con barras que se ponen rojas al acercarse al tope.',
+      'Tocá cualquier consumo para ver el detalle completo: comercio, divisa original, tipo de cambio y saldo después. Si no reconocés un cargo, podés disputarlo desde ahí.',
+      'Si te clonan la tarjeta, "Reemitir" te da un número nuevo al instante. Congelar solo la pausa; reemitir la reemplaza.',
+      'Los avisos del emisor —bloqueos por seguridad, cargos declinados— ahora aparecen en la pantalla de la tarjeta. El servidor los venía guardando y nadie los veía.',
+    ],
+    en: [
+      'New Card settings screen with everything the app was missing: edit your spending limits, the phone where online purchase codes arrive, enable SMS verification, export your statement, reissue the card and cancel it.',
+      'You can now see how much you have spent against each limit — daily, weekly and monthly — with bars that turn red as you approach the cap.',
+      'Tap any purchase to see the full detail: merchant, original currency, exchange rate and balance after. If you do not recognise a charge, you can dispute it right there.',
+      'If your card is cloned, "Reissue" gives you a new number instantly. Freezing only pauses it; reissuing replaces it.',
+      'Issuer alerts — security blocks, declined charges — now appear on the card screen. The server had been storing them and nobody ever saw them.',
+    ],
+  },
   {
     v: '1.13.0',
     build: 45,

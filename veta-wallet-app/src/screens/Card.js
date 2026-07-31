@@ -307,6 +307,8 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
 
   const [movs, setMovs] = useState(null);         // null = cargando, [] = vacío
   const [movsErr, setMovsErr] = useState(false);
+  const [detalle, setDetalle] = useState(null);   // movimiento abierto en la ficha
+  const [avisos, setAvisos] = useState([]);       // notificaciones sin leer del emisor
 
   const congelada = estaCongelada(card.status);
 
@@ -323,8 +325,20 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
     cardApi.transactions({ page: 1 })
       .then((d) => { if (vivo) setMovs(Array.isArray(d?.transactions) ? d.transactions : []); })
       .catch(() => { if (vivo) { setMovs([]); setMovsErr(true); } });
+    // Los avisos son complementarios: si fallan, la pantalla sigue sirviendo.
+    cardApi.notifications()
+      .then((d) => { if (vivo) setAvisos(Array.isArray(d?.notifications) ? d.notifications : []); })
+      .catch(() => {});
     return () => { vivo = false; };
   }, []);
+
+  const marcarLeidos = async () => {
+    hap();
+    const previos = avisos;
+    setAvisos([]);                       // respuesta inmediata
+    try { await cardApi.markNotificationsRead(); }
+    catch (e) { setAvisos(previos); toast(mensajeDeError(e, t), 'error'); }
+  };
 
   const voltear = () => {
     hap();
@@ -561,6 +575,25 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
         </>
       )}
 
+      {/* Avisos del emisor: bloqueos por velocidad, cargos declinados. El
+          webhook ya los guardaba en el backend y nadie los veía nunca. */}
+      {avisos.length > 0 && (
+        <View style={styles.avisos}>
+          {avisos.slice(0, 4).map((a, i) => (
+            <View key={a._id || i} style={[styles.avisoFila, i > 0 && styles.avisoLinea]}>
+              <Icon name="alert-circle" size={17} color={C.gold} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.avisoTxt}>{a.message || a.type}</Text>
+                {!!a.merchant && <Text style={styles.avisoSub}>{a.merchant}</Text>}
+              </View>
+            </View>
+          ))}
+          <Pressable onPress={marcarLeidos} style={styles.avisoBtn}>
+            <Text style={styles.avisoBtnTxt}>{t('card.avisosLeidos')}</Text>
+          </Pressable>
+        </View>
+      )}
+
       <SectionHead title={t('card.movs')} action={t('act.title')} onAction={() => nav.go('activity')} />
       {movs === null && <Skeleton width="100%" height={90} radius={16} />}
       {movs !== null && movs.length === 0 && (
@@ -572,17 +605,37 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
       {movs !== null && movs.length > 0 && (
         <View style={styles.group}>
           {movs.slice(0, 12).map((m, i) => (
-            <View key={m.id || i} style={[styles.txn, i > 0 && styles.txnLine]}>
+            <Pressable
+              key={m.id || i}
+              onPress={() => { hap(); setDetalle(m); }}
+              style={({ pressed }) => [styles.txn, i > 0 && styles.txnLine, pressed && { backgroundColor: 'rgba(255,255,255,0.03)' }]}
+              accessibilityRole="button"
+              accessibilityLabel={`${m.merchant || '—'} · ${m.origenAmount != null ? qtyFmt(m.origenAmount) : ''} ORIGEN`}
+            >
               <View style={styles.txnIc}><Icon name="card" size={17} color={C.gold} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.txnT} numberOfLines={1}>{m.merchant || '—'}</Text>
                 <Text style={styles.txnD}>{fmtFecha(m.date)}{m.status ? ` · ${m.status}` : ''}</Text>
               </View>
               <Text style={styles.txnV}>{m.origenAmount != null ? `${qtyFmt(m.origenAmount)} ORIGEN` : '—'}</Text>
-            </View>
+              <Icon name="chevron-forward" size={16} color={C.txt3} />
+            </Pressable>
           ))}
         </View>
       )}
+
+      <Pressable onPress={() => { hap(); nav.go('cardSettings'); }} style={styles.ajustesBtn}>
+        <Icon name="settings-sharp" size={17} color={C.gold} />
+        <Text style={styles.ajustesTxt}>{t('cset.title')}</Text>
+        <Icon name="chevron-forward" size={16} color={C.txt3} />
+      </Pressable>
+
+      <DetalleMovimiento
+        mov={detalle}
+        t={t}
+        toast={toast}
+        onCerrar={() => setDetalle(null)}
+      />
 
       <ElegirPin
         visible={eligiendoPin}
@@ -614,6 +667,136 @@ function FilaLim({ k, v }) {
       <Text style={styles.limV}>{v}</Text>
     </View>
   );
+}
+
+// ---------- detalle de un movimiento ----------
+//
+// La lista muestra comercio, fecha y monto. Acá se pide el detalle completo al
+// emisor —divisa original, tipo de cambio, saldo antes y después— y se ofrece
+// disputar el cargo, que es lo que uno busca cuando abre un movimiento que no
+// reconoce.
+function DetalleMovimiento({ mov, t, toast, onCerrar }) {
+  const [full, setFull] = useState(null);
+  const [cargando, setCargando] = useState(false);
+  const [disputando, setDisputando] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => {
+    if (!mov) { setFull(null); setDisputando(false); setMotivo(''); return; }
+    let vivo = true;
+    setCargando(true);
+    cardApi.transaction(mov.id)
+      .then((d) => { if (vivo) setFull(d); })
+      .catch(() => {})   // el resumen de la lista alcanza si el detalle falla
+      .finally(() => { if (vivo) setCargando(false); });
+    return () => { vivo = false; };
+  }, [mov]);
+
+  const enviarDisputa = async () => {
+    if (!motivo.trim()) { toast(t('mov.motivoFalta'), 'error'); return; }
+    hap();
+    setEnviando(true);
+    try {
+      await cardApi.dispute({
+        transactionId: mov.id,
+        reason: motivo.trim(),
+        merchant: mov.merchant,
+        amount: mov.origenAmount,
+        date: mov.date,
+      });
+      toast(t('mov.disputaOk'), 'success');
+      onCerrar();
+    } catch (e) {
+      toast(e?.message || t('card.errGeneric'), 'error');
+    } finally { setEnviando(false); }
+  };
+
+  if (!mov) return null;
+  const d = full || {};
+
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onCerrar}>
+      <Pressable style={styles.pinBg} onPress={enviando ? undefined : onCerrar}>
+        <Pressable style={styles.pinSheet} onPress={() => {}}>
+          <View style={styles.pinGrab} />
+
+          {!disputando ? (
+            <>
+              <Text style={styles.movComercio} numberOfLines={2}>{mov.merchant || '—'}</Text>
+              <Text style={styles.movMonto}>
+                {mov.origenAmount != null ? `${qtyFmt(mov.origenAmount)} ORIGEN` : '—'}
+              </Text>
+              {cargando && <ActivityIndicator size="small" color={C.gold} style={{ marginTop: 12 }} />}
+
+              <View style={styles.movFilas}>
+                <FilaMov k={t('mov.fecha')} v={fmtFechaLarga(d.datetime || mov.date)} />
+                {!!(d.status || mov.status) && <FilaMov k={t('mov.estado')} v={d.status || mov.status} />}
+                {!!d.operation && <FilaMov k={t('mov.tipo')} v={d.operation} />}
+                {d.transactionAmount != null && d.transactionCurrency && d.transactionCurrency !== 'ORIGEN' && (
+                  <FilaMov k={t('mov.original')} v={`${d.transactionAmount} ${d.transactionCurrency}`} />
+                )}
+                {d.exchangeRate != null && <FilaMov k={t('mov.cambio')} v={String(d.exchangeRate)} />}
+                {d.newBalance != null && <FilaMov k={t('mov.saldoDespues')} v={`${qtyFmt(d.newBalance)} ORIGEN`} />}
+              </View>
+
+              <View style={{ height: 14 }} />
+              <Pressable onPress={() => { hap(); setDisputando(true); }} style={styles.disputaBtn}>
+                <Icon name="alert-circle" size={16} color={C.down} />
+                <Text style={styles.disputaTxt}>{t('mov.disputar')}</Text>
+              </Pressable>
+              <Pressable onPress={onCerrar} style={{ paddingVertical: 13, alignItems: 'center' }}>
+                <Text style={{ color: C.txt3, fontSize: 13.5 }}>{t('mov.cerrar')}</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Text style={styles.pinTitulo}>{t('mov.disputarT')}</Text>
+              <Text style={styles.pinSub}>{t('mov.disputarP')}</Text>
+              <TextInput
+                value={motivo}
+                onChangeText={setMotivo}
+                placeholder={t('mov.motivoPh')}
+                placeholderTextColor="#6f938f"
+                multiline
+                numberOfLines={4}
+                style={styles.motivo}
+                accessibilityLabel={t('mov.motivoPh')}
+              />
+              <View style={{ height: 14 }} />
+              <Button3D
+                title={enviando ? t('clave.verificando') : t('mov.enviarDisputa')}
+                disabled={enviando || !motivo.trim()}
+                onPress={enviarDisputa}
+              />
+              <Pressable onPress={() => setDisputando(false)} style={{ paddingVertical: 13, alignItems: 'center' }}>
+                <Text style={{ color: C.txt3, fontSize: 13.5 }}>{t('card.cancel')}</Text>
+              </Pressable>
+            </>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function FilaMov({ k, v }) {
+  return (
+    <View style={styles.movFila}>
+      <Text style={styles.movK}>{k}</Text>
+      <Text style={styles.movV} numberOfLines={1}>{v}</Text>
+    </View>
+  );
+}
+
+function fmtFechaLarga(v) {
+  if (!v) return '—';
+  try {
+    const d = new Date(v);
+    if (isNaN(d)) return String(v);
+    return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+      + ' · ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  } catch (e) { return '—'; }
 }
 
 // ---------- elegir un PIN ----------
@@ -848,6 +1031,27 @@ const styles = StyleSheet.create({
   txnT: { fontSize: 14, fontWeight: '600', color: C.txt },
   txnD: { fontSize: 11.5, color: C.txt3, marginTop: 2 },
   txnV: { fontSize: 13.5, fontWeight: '600', color: C.txt },
+
+  avisos: { backgroundColor: 'rgba(201,169,97,0.08)', borderWidth: 1, borderColor: 'rgba(201,169,97,0.28)', borderRadius: 18, paddingHorizontal: 14, marginBottom: 14, marginTop: 4 },
+  avisoFila: { flexDirection: 'row', alignItems: 'flex-start', gap: 11, paddingVertical: 12 },
+  avisoLinea: { borderTopWidth: 1, borderTopColor: 'rgba(201,169,97,0.18)' },
+  avisoTxt: { color: C.txt, fontSize: 13, lineHeight: 18 },
+  avisoSub: { color: C.txt3, fontSize: 11.5, marginTop: 2 },
+  avisoBtn: { alignItems: 'center', paddingVertical: 11, borderTopWidth: 1, borderTopColor: 'rgba(201,169,97,0.18)' },
+  avisoBtnTxt: { color: C.gold, fontSize: 12.5, fontWeight: '700' },
+
+  ajustesBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 15, marginTop: 14 },
+  ajustesTxt: { flex: 1, color: C.txt, fontSize: 14.5, fontWeight: '600' },
+
+  movComercio: { color: C.txt, fontSize: 18, fontWeight: '800', textAlign: 'center' },
+  movMonto: { color: C.gold, fontSize: 26, fontWeight: '800', textAlign: 'center', marginTop: 8 },
+  movFilas: { marginTop: 18, backgroundColor: C.panel2, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 4 },
+  movFila: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  movK: { color: C.txt3, fontSize: 12.5 },
+  movV: { color: C.txt, fontSize: 13, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
+  disputaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: 'rgba(240,119,107,0.35)', borderRadius: 14, paddingVertical: 13 },
+  disputaTxt: { color: C.down, fontSize: 13.5, fontWeight: '700' },
+  motivo: { backgroundColor: C.input, borderWidth: 1, borderColor: C.inputBr, borderRadius: 14, paddingHorizontal: 15, paddingVertical: 13, color: C.txt, fontSize: 14.5, marginTop: 14, minHeight: 96, textAlignVertical: 'top' },
 
   pinBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   pinSheet: { backgroundColor: '#06282B', borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 22, paddingBottom: 28 },

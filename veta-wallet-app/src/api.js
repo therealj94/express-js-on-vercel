@@ -316,6 +316,60 @@ export const cardApi = {
       timeout: 90000,   // hay transacciones on-chain de por medio
     }),
 
+  // Cuánto llevás gastado contra cada límite, en ORIGEN.
+  spending: () => req('/cards/accumulated-spending', { timeout: 30000 }),
+
+  // Estado de cuenta. Este endpoint responde CSV, no JSON, así que no puede
+  // pasar por `req()` — se lee como texto plano.
+  statementCsv: async ({ from, to } = {}) => {
+    if (!API_BASE) { const e = new Error('API no configurada'); e.code = 'config'; throw e; }
+    await ensureSession();
+    const q = new URLSearchParams();
+    if (from) q.set('from', from);
+    if (to) q.set('to', to);
+    const sufijo = q.toString() ? `?${q.toString()}` : '';
+    const res = await fetch(`${API_BASE}/cards/statement${sufijo}`, {
+      headers: { Accept: 'text/csv', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    });
+    if (!res.ok) {
+      const err = new Error(`Error ${res.status}`);
+      err.status = res.status;
+      err.code = res.status === 401 ? 'auth' : res.status >= 500 ? 'servidor' : 'http';
+      throw err;
+    }
+    // El backend antepone un BOM para que Excel respete los acentos; sobra
+    // al compartir el texto por otras vías.
+    return (await res.text()).replace(/^﻿/, '');
+  },
+
+  // Detalle de un movimiento: comercio, divisa original, tipo de cambio,
+  // saldo antes y después.
+  transaction: (txId) => req(`/cards/transactions/${encodeURIComponent(txId)}`, { timeout: 30000 }),
+
+  // Teléfono donde llegan los códigos de las compras online (3D Secure).
+  setOtpPhone: ({ countryCode, phone }) =>
+    req('/cards/otp-phone', {
+      method: 'PUT',
+      body: { phone_country_code: Number(countryCode), phone: String(phone) },
+    }),
+
+  // Reemitir con número nuevo. El anterior deja de servir: pide contraseña.
+  reissue: (password) => req('/cards/reissue', { method: 'PUT', body: { password }, timeout: 45000 }),
+
+  // Quitar el bloqueo que aplica el emisor. Distinto de descongelar.
+  unblock: () => req('/cards/unblock', { method: 'PATCH', timeout: 30000 }),
+
+  // Autenticación de compras online. Hoy solo SMS.
+  set3ds: (type = 'SMS') => req('/cards/3ds', { method: 'POST', body: { type } }),
+
+  // Disputar un cargo.
+  dispute: ({ transactionId, reason, merchant, amount, date }) =>
+    req('/cards/dispute', {
+      method: 'POST',
+      body: { transaction_id: transactionId, reason, merchant, amount, date },
+      timeout: 30000,
+    }),
+
   limits: ({ daily, weekly, monthly }) =>
     req('/cards/limits', {
       method: 'PATCH',
