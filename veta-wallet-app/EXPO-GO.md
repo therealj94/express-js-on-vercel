@@ -55,6 +55,35 @@ detecta que corres en Expo Go. Para probar esa parte hace falta el APK:
 eas build -p android --profile preview
 ```
 
+## Por qué `runtimeVersion` es `sdkVersion` y no `fingerprint`
+
+Un update publicado con `eas update` solo se entrega a una app cuyo
+`runtimeVersion` coincida. Expo Go pide siempre `exposdk:54.0.0`, que es lo
+que produce la política `sdkVersion` de `app.json`.
+
+La política `fingerprint` produce en cambio un hash del proyecto. Es lo
+correcto para un APK propio — cambia solo cuando cambia algo nativo, así que
+un binario viejo nunca recibe JavaScript que no puede ejecutar. Pero Expo Go
+jamás va a igualar ese hash, así que deja de recibir updates **sin ningún
+mensaje de error**: el servidor simplemente contesta que no hay nada nuevo.
+Eso pasó entre las builds 48 y 49, y se ve solo mirando el número de build en
+Ajustes → Acerca de.
+
+Mientras Expo Go sea donde probamos, la política se queda en `sdkVersion`.
+Tiene un costo que hay que respetar:
+
+> Con `sdkVersion`, **cualquier** APK del SDK 54 se considera compatible con
+> **cualquier** update. Si se agrega un módulo **nativo** nuevo — no una
+> pantalla, no una dependencia de JavaScript, sino algo que toca el binario —
+> hay que recompilar y repartir el APK **antes** de publicar el update. Si no,
+> el APK viejo se baja un JavaScript que llama a algo que no tiene y se cierra
+> al abrir.
+
+Cómo saber si un cambio es nativo: si aparece o desaparece un paquete de la
+lista `plugins` de `app.json`, o si `npm install` agregó una librería
+`expo-*`/`react-native-*` que trae código propio, es nativo. Cambiar
+pantallas, textos, estilos, llamadas a la API o lógica no lo es.
+
 ## Si algo falla
 
 **"Project requires a newer version of Expo Go"**

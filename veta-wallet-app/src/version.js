@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.16.0';
-export const BUILD = 49;
+export const VERSION = '1.16.1';
+export const BUILD = 50;
 export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,17 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.16.1',
+    build: 50,
+    date: '2026-07-31',
+    es: [
+      'Se arregla que las actualizaciones dejaran de llegar a Expo Go desde la build 47. Volvés a recibir cada cambio al reabrir la app.',
+    ],
+    en: [
+      'Fixes updates no longer reaching Expo Go since build 47. You get every change again when you reopen the app.',
+    ],
+  },
   {
     v: '1.16.0',
     build: 49,

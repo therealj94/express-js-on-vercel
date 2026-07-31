@@ -2,10 +2,10 @@
   "expo": {
     "name": "Veta Wallet",
     "slug": "veta-wallet",
-    "version": "1.16.0",
+    "version": "1.16.1",
     "owner": "vetawallet",
     "runtimeVersion": {
-      "policy": "fingerprint"
+      "policy": "sdkVersion"
     },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
