@@ -340,6 +340,7 @@ const S = {
     'card.load2': 'ORIGEN — la moneda que Latinoamérica estaba esperando',
     'card.load3': 'Tu oro, en el bolsillo, en millones de comercios',
     'card.load4': 'Cada ORIGEN se ancla a 1/55 de gramo de oro',
+    'upd.lista': 'Hay una versión nueva lista', 'upd.aplicar': 'Reiniciar', 'upd.luego': 'Después',
     // biometría
     'bio.face': 'Face ID', 'bio.huella': 'huella', 'bio.iris': 'reconocimiento de iris',
     'clave.por': 'Autoriza esta operación para continuar.',
@@ -879,6 +880,7 @@ const S = {
     'card.load2': 'ORIGEN — the currency Latin America was waiting for',
     'card.load3': 'Your gold, in your pocket, at millions of merchants',
     'card.load4': 'Every ORIGEN is anchored to 1/55 of a gram of gold',
+    'upd.lista': 'A new version is ready', 'upd.aplicar': 'Restart', 'upd.luego': 'Later',
     // biometrics
     'bio.face': 'Face ID', 'bio.huella': 'fingerprint', 'bio.iris': 'iris recognition',
     'clave.por': 'Authorize this operation to continue.',

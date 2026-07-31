@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 5.9.0"
+    "version": ">= 5.9.0",
+    "appVersionSource": "local"
   },
   "build": {
     "preview": {
@@ -11,7 +12,8 @@
       "env": {
         "EXPO_PUBLIC_GENESIS_URL": "https://genesis-id.onrender.com",
         "EXPO_PUBLIC_WALLET_API_URL": "https://vetawallet-1a2e38ac52b1.herokuapp.com"
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "android": {
@@ -20,7 +22,8 @@
       "env": {
         "EXPO_PUBLIC_GENESIS_URL": "https://genesis-id.onrender.com",
         "EXPO_PUBLIC_WALLET_API_URL": "https://vetawallet-1a2e38ac52b1.herokuapp.com"
-      }
+      },
+      "channel": "production"
     }
   }
 }

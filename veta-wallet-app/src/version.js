@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.14.1';
-export const BUILD = 47;
+export const VERSION = '1.15.0';
+export const BUILD = 48;
 export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,21 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.15.0',
+    build: 48,
+    date: '2026-07-31',
+    es: [
+      'La app ya puede actualizarse sola. Hasta ahora los arreglos solo llegaban a quien la abría desde Expo Go: al APK instalado no le llegaba ninguno, porque le faltaba el componente que los descarga. Ya está instalado.',
+      'Importante: esta versión no puede llegarle por aire a quien tenga el APK viejo — justamente porque a ese APK le falta esa pieza. Hay que instalar uno nuevo una última vez. De ahí en adelante, cada mejora llega sola.',
+      'Cuando haya una versión nueva, la app la descarga en segundo plano y te ofrece reiniciar. Nunca se reinicia sola: hacerlo a mitad de un envío sería peor que esperar.',
+    ],
+    en: [
+      'The app can now update itself. Until now fixes only reached people opening it from Expo Go: the installed APK never received any, because it was missing the component that downloads them. That is now installed.',
+      'Important: this version cannot reach anyone on the old APK over the air — precisely because that APK lacks this piece. A new one has to be installed one last time. From then on, every improvement arrives on its own.',
+      'When a new version is available, the app downloads it in the background and offers to restart. It never restarts on its own: doing that mid-transfer would be worse than waiting.',
+    ],
+  },
   {
     v: '1.14.1',
     build: 47,

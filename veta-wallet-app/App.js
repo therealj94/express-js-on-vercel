@@ -10,6 +10,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { loadSession, saveSession, clearSession, initAccounts, setPassport, updateAccount } from './src/accounts';
 import { loadToken, setToken, setRefreshToken, ensureSession, clearCreds, apiPortfolio } from './src/api';
 import { desactivarDesbloqueo } from './src/unlock';
+import { buscarActualizacion, aplicarActualizacion, puedeActualizar } from './src/updates';
 import { recordLogout } from './src/sessionLog';
 import { primerArranque } from './src/backupNudge';
 import { readReturnUrl, genesis, mergePassport } from './src/genesis';
@@ -81,6 +82,7 @@ function Root() {
   // Banner sin internet: aparece en la parte superior cuando NetInfo
   // reporta desconexión, se desvanece al recuperar.
   const [online, setOnline] = useState(true);
+  const [updateLista, setUpdateLista] = useState(false);
   useEffect(() => {
     const sub = NetInfo.addEventListener((s) => {
       setOnline(s.isConnected !== false);
@@ -107,6 +109,28 @@ function Root() {
     login: (a) => { setAccount(a); saveSession(a.email); },
     logout: () => { recordLogout(); setAccount(null); clearSession(); setToken(null); setRefreshToken(null); clearCreds(); desactivarDesbloqueo(); limpiarAvisos(); },
   };
+
+  // Actualizaciones por aire. Se consulta al arrancar y cada vez que la app
+  // vuelve del segundo plano; si hay algo nuevo se descarga y se ofrece
+  // aplicarlo. Nunca se reinicia sola: hacerlo a mitad de un envío seria peor
+  // que esperar al proximo arranque.
+  useEffect(() => {
+    if (!puedeActualizar()) return;   // Expo Go y desarrollo: no aplica
+    let vivo = true;
+    let ultima = 0;
+
+    const revisar = async () => {
+      // No tiene sentido preguntar en cada cambio de foco; basta cada 10 min.
+      if (Date.now() - ultima < 10 * 60 * 1000) return;
+      ultima = Date.now();
+      const lista = await buscarActualizacion();
+      if (vivo && lista) setUpdateLista(true);
+    };
+
+    revisar();
+    const sub = AppState.addEventListener('change', (s) => { if (s === 'active') revisar(); });
+    return () => { vivo = false; sub.remove(); };
+  }, []);
 
   // Deep links entrantes.
   // Dos casos:
@@ -377,6 +401,22 @@ function Root() {
         </View>
       )}
 
+      {/* Actualizacion ya descargada, esperando a que el usuario decida.
+          No se aplica sola: reiniciar a alguien a mitad de un envio seria
+          peor que esperar al proximo arranque. */}
+      {updateLista && (
+        <View style={styles.updBanner}>
+          <Icon name="cloud-upload" size={16} color={C.darkText} />
+          <Text style={styles.updTxt}>{tr('upd.lista')}</Text>
+          <Pressable onPress={aplicarActualizacion} style={styles.updBtn} accessibilityRole="button">
+            <Text style={styles.updBtnTxt}>{tr('upd.aplicar')}</Text>
+          </Pressable>
+          <Pressable onPress={() => setUpdateLista(false)} hitSlop={10} accessibilityRole="button" accessibilityLabel={tr('upd.luego')}>
+            <Icon name="close-circle" size={18} color="rgba(58,44,8,0.55)" />
+          </Pressable>
+        </View>
+      )}
+
       {locked && (
         <View style={StyleSheet.absoluteFill}>
           <LockScreen onUnlock={() => setLocked(false)} available={available} />
@@ -402,4 +442,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6, paddingHorizontal: 12,
   },
   offlineTxt: { color: '#fff', fontSize: 11.5, fontWeight: '700' },
+  updBanner: {
+    position: 'absolute', left: 12, right: 12, bottom: 96,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: C.gold, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11,
+    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8,
+  },
+  updTxt: { flex: 1, color: C.darkText, fontSize: 12.5, fontWeight: '700' },
+  updBtn: { backgroundColor: 'rgba(58,44,8,0.14)', borderRadius: 9, paddingHorizontal: 12, paddingVertical: 6 },
+  updBtnTxt: { color: C.darkText, fontSize: 12, fontWeight: '800' },
 });

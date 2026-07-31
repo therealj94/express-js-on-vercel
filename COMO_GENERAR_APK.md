@@ -28,6 +28,36 @@ eas build -p android --profile preview
 Al terminar, EAS te da una **URL de descarga del .apk**. Ábrela en el teléfono
 y descarga/instala (activa "instalar apps de origen desconocido" si lo pide).
 
+## Actualizaciones por aire (EAS Update)
+
+Desde la versión 1.15.0 el APK **sí recibe actualizaciones sin recompilar**.
+Antes no: `app.json` declaraba la URL de updates pero la librería
+`expo-updates` no estaba instalada, así que el pipeline publicaba y ningún
+teléfono con el APK lo recibía. Solo llegaban a Expo Go.
+
+**El APK que ya tiene la gente instalado no puede arreglarse por aire** — le
+falta justamente el componente que descarga los updates. Hay que compilar uno
+nuevo y repartirlo una última vez. De ese en adelante, cada push a la rama de
+trabajo les llega solo.
+
+Cómo funciona:
+
+- El perfil `preview` de `eas.json` está atado al canal `preview`, y el
+  workflow de GitHub publica con `eas update --branch preview`. Canal y rama
+  tienen que coincidir o el update no llega.
+- La app pregunta si hay algo nuevo al abrirse y al volver del segundo plano
+  (como mucho una vez cada 10 min). Si lo hay, lo descarga y ofrece reiniciar.
+  Nunca se reinicia sola.
+
+### Cuándo hay que compilar un APK nuevo igual
+
+`runtimeVersion` usa la política `fingerprint`: la huella cambia cuando cambia
+algo **nativo**. Los cambios de JavaScript viajan por aire; agregar o quitar
+una librería con parte nativa, no. Si instalás una dependencia nueva de ese
+tipo, los updates dejan de alcanzar a los APK viejos hasta que compiles y
+repartas uno nuevo. Es a propósito: mandarles JavaScript que llama a un
+módulo que su binario no tiene reventaría la app.
+
 ## Compilar MyTokenPay
 ```bash
 cd mytokenpay-app/mobile
