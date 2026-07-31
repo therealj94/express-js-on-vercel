@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.11.3';
-export const BUILD = 42;
+export const VERSION = '1.12.0';
+export const BUILD = 43;
 export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,23 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.12.0',
+    build: 43,
+    date: '2026-07-31',
+    es: [
+      'Face ID y huella para autorizar. Donde antes había que teclear la contraseña — enviar dinero, ver el número o el CVV de la tarjeta — ahora basta tu cara o tu dedo. La primera vez escribís la contraseña y marcás la casilla; de ahí en adelante queda guardada en el llavero seguro del teléfono, del que solo sale con tu biometría. El teclado sigue disponible si preferís, o si la biometría falla.',
+      'Al enviar dinero la biometría NO se dispara sola: primero tenés que poder leer el monto y el destino. En la tarjeta sí se pide de una, porque ahí no hay nada que aprobar.',
+      'Corregido el recuadro blanco detrás del logo OG en la tarjeta y en "Acerca de": el archivo era un JPEG sin transparencia. Ahora el monograma va calado sobre el negro.',
+      'La pantalla de bloqueo se rediseñó: halo dorado, anillo que late mientras el sistema espera tu cara o tu dedo, y los errores en un aviso legible en vez de texto suelto.',
+    ],
+    en: [
+      'Face ID and fingerprint to authorize. Where you used to type your password — sending money, viewing your card number or CVV — your face or finger is now enough. The first time you type the password and tick the box; from then on it lives in the phone\'s secure keychain and is only released by your biometrics. The keyboard is always available as a fallback.',
+      'When sending money biometrics do NOT fire automatically: you must be able to read the amount and recipient first. On the card it does fire immediately, because there is nothing to approve there.',
+      'Fixed the white box behind the OG logo on the card and in "About": the file was a JPEG with no transparency. The monogram is now knocked out over the black.',
+      'The lock screen was redesigned: gold halo, a ring that pulses while the system waits for your face or finger, and errors shown in a readable notice instead of loose text.',
+    ],
+  },
   {
     v: '1.11.3',
     build: 42,

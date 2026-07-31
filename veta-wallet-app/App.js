@@ -9,6 +9,7 @@ import * as Linking from 'expo-linking';
 import NetInfo from '@react-native-community/netinfo';
 import { loadSession, saveSession, clearSession, initAccounts, setPassport, updateAccount } from './src/accounts';
 import { loadToken, setToken, setRefreshToken, ensureSession, clearCreds, apiPortfolio } from './src/api';
+import { desactivarDesbloqueo } from './src/unlock';
 import { recordLogout } from './src/sessionLog';
 import { primerArranque } from './src/backupNudge';
 import { readReturnUrl, genesis, mergePassport } from './src/genesis';
@@ -103,7 +104,7 @@ function Root() {
   const acctApi = {
     account,
     login: (a) => { setAccount(a); saveSession(a.email); },
-    logout: () => { recordLogout(); setAccount(null); clearSession(); setToken(null); setRefreshToken(null); clearCreds(); limpiarAvisos(); },
+    logout: () => { recordLogout(); setAccount(null); clearSession(); setToken(null); setRefreshToken(null); clearCreds(); desactivarDesbloqueo(); limpiarAvisos(); },
   };
 
   // Deep links entrantes.

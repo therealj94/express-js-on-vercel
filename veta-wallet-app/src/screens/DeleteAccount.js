@@ -41,7 +41,7 @@ async function intentarBorrarEnBackend(email) {
 
 // Claves del dispositivo que se borran al eliminar cuenta.
 async function wipeLocal() {
-  const secure = ['veta-api-token', 'veta-remember-creds', 'veta-refresh-token'];
+  const secure = ['veta-api-token', 'veta-remember-creds', 'veta-refresh-token', 'veta-clave-biometrica', 'veta-clave-biometrica-on'];
   for (const k of secure) { try { await SecureStore.deleteItemAsync(k); } catch (e) {} }
   const keys = [
     'veta-accounts-cache-v2',

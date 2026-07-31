@@ -9,6 +9,7 @@ import { LOGO_ORDEN, Button3D, ListRow, Toggle, SectionHead, Skeleton, useToast,
 import { qtyFmt } from '../data';
 import { cardApi, sinTarjeta } from '../api';
 import { useT } from '../i18n';
+import PedirClave from '../PedirClave';
 
 // ============================================================
 // Tarjeta Visa · pantalla conectada al backend
@@ -283,9 +284,10 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
     } finally { setCongelando(false); }
   };
 
-  // La ficha de contraseña se cierra cuando la consulta TERMINA, no cuando se
-  // envía: pedir el número puede tardar varios segundos (pasa por el emisor) y
-  // cerrarla antes dejaba la pantalla quieta sin explicar que algo iba en curso.
+  // La ficha se cierra sola cuando la operación termina bien. Si la
+  // contraseña es incorrecta se devuelve { ok:false } para que la ficha siga
+  // abierta con el error a la vista, en vez de cerrarse y obligar a empezar
+  // de nuevo. Pedir el número tarda varios segundos: pasa por el emisor.
   const revelar = async (password) => {
     const tipo = pedirPw;
     try {
@@ -299,17 +301,21 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
         setPin(d?.pin || null);
         if (!d?.pin) toast(t('card.pinFallback'), 'info');
       }
+      setPedirPw(null);
+      return { ok: true };
     } catch (e) {
+      // Contraseña incorrecta: la ficha se queda abierta y lo muestra.
+      if (e?.status === 401) return { ok: false, msg: t('card.badPw') };
       // 409 = el emisor no tiene ese dato para esta tarjeta. No es un fallo:
       // se explica y, en el caso del PIN, se deja de ofrecer.
       if (e?.status === 409) {
         if (tipo === 'pin') { setSinPin(true); toast(t('card.noPin'), 'info'); }
         else toast(t('card.noPan'), 'info');
       } else {
-        toast(e?.status === 401 ? t('card.badPw') : mensajeDeError(e, t), 'error');
+        toast(mensajeDeError(e, t), 'error');
       }
-    } finally {
       setPedirPw(null);
+      return { ok: true };   // cerrada a propósito: reintentar no cambia nada
     }
   };
 
@@ -488,10 +494,11 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
         </View>
       )}
 
-      <PasswordSheet
+      <PedirClave
         visible={!!pedirPw}
         titulo={pedirPw === 'pin' ? t('card.pwPin') : t('card.pwPan')}
-        t={t}
+        subtitulo={t('card.pwWhy')}
+        ctaTexto={t('card.reveal')}
         onCancel={() => setPedirPw(null)}
         onSubmit={revelar}
       />
@@ -505,63 +512,6 @@ function FilaLim({ k, v }) {
       <Text style={styles.limK}>{k}</Text>
       <Text style={styles.limV}>{v}</Text>
     </View>
-  );
-}
-
-// ---------- contraseña para datos sensibles ----------
-function PasswordSheet({ visible, titulo, t, onCancel, onSubmit }) {
-  const [pw, setPw] = useState('');
-  const [ver, setVer] = useState(false);
-  const [yendo, setYendo] = useState(false);
-
-  useEffect(() => { if (!visible) { setPw(''); setVer(false); setYendo(false); } }, [visible]);
-
-  const enviar = async () => {
-    if (!pw) return;
-    setYendo(true);
-    const v = pw;
-    setPw('');
-    await onSubmit(v);
-    setYendo(false);
-  };
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
-      <Pressable style={styles.sheetBg} onPress={onCancel}>
-        <Pressable style={styles.sheet} onPress={() => {}}>
-          <View style={styles.grab} />
-          <Text style={styles.sheetTitle}>{titulo}</Text>
-          <Text style={styles.sheetSub}>{t('card.pwWhy')}</Text>
-          <View style={{ position: 'relative', marginTop: 14 }}>
-            <TextInput
-              value={pw}
-              onChangeText={setPw}
-              secureTextEntry={!ver}
-              autoCapitalize="none"
-              autoCorrect={false}
-              placeholder={t('auth.password')}
-              placeholderTextColor="#6f938f"
-              style={[styles.input, { paddingRight: 46 }]}
-              accessibilityLabel={t('auth.password')}
-            />
-            <Pressable
-              onPress={() => { hap(); setVer(!ver); }}
-              style={styles.ojito}
-              hitSlop={10}
-              accessibilityRole="button"
-              accessibilityLabel={t(ver ? 'card.hidePw' : 'card.showPw')}
-            >
-              <Icon name={ver ? 'eye-off' : 'eye'} size={19} color={C.txt3} />
-            </Pressable>
-          </View>
-          <View style={{ height: 16 }} />
-          <Button3D title={yendo ? t('card.checking') : t('card.reveal')} disabled={!pw || yendo} onPress={enviar} />
-          <Pressable onPress={onCancel} style={{ paddingVertical: 14, alignItems: 'center' }}>
-            <Text style={{ color: C.txt3, fontSize: 13.5 }}>{t('card.cancel')}</Text>
-          </Pressable>
-        </Pressable>
-      </Pressable>
-    </Modal>
   );
 }
 

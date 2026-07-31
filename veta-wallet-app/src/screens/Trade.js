@@ -12,6 +12,8 @@ import { updateAccount } from '../accounts';
 import { listContacts, touchContact, addContact, parseAddress } from '../addressBook';
 import { ScanModal } from './Scan';
 import { useT } from '../i18n';
+import { capacidadBiometrica, desbloqueoActivo, desbloquearClave, activarDesbloqueo, TIPO } from '../unlock';
+import { nombreBiometria } from '../PedirClave';
 
 function useTokens() {
   const { account } = useAccount();
@@ -341,13 +343,38 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
   const [pw, setPw] = useState('');
   const [verPw, setVerPw] = useState(false);
   const [fase, setFase] = useState(0);   // 0 revisando · 1..3 enviando · -1 error
+  // Desbloqueo biométrico: con la contraseña ya guardada, firmar es una cara
+  // o un dedo. El teclado sigue disponible siempre como alternativa.
+  const [bio, setBio] = useState({ disponible: false, tipo: TIPO.HUELLA });
+  const [bioActivo, setBioActivo] = useState(false);
+  const [pidiendoBio, setPidiendoBio] = useState(false);
+  const [modoManual, setModoManual] = useState(false);
+  const [quiereActivar, setQuiereActivar] = useState(false);
   const [error, setError] = useState(null);
   const prog = useRef(new Animated.Value(0)).current;
   const shake = useRef(new Animated.Value(0)).current;
   const fases = [t('send.step1'), t('send.step2'), t('send.step3')];
 
   useEffect(() => {
-    if (!data) { setPw(''); setVerPw(false); setFase(0); setError(null); prog.setValue(0); shake.setValue(0); }
+    if (!data) {
+      setPw(''); setVerPw(false); setFase(0); setError(null); prog.setValue(0); shake.setValue(0);
+      setModoManual(false); setQuiereActivar(false); setPidiendoBio(false);
+    }
+  }, [data]);
+
+  // Al abrirse la ficha se consulta qué ofrece el teléfono. A diferencia de
+  // otras pantallas, acá NO se dispara la biometría sola: el usuario tiene que
+  // poder leer el monto y el destino antes de autorizar nada.
+  useEffect(() => {
+    if (!data) return;
+    let vivo = true;
+    (async () => {
+      const [cap, act] = await Promise.all([capacidadBiometrica(), desbloqueoActivo()]);
+      if (!vivo) return;
+      setBio(cap);
+      setBioActivo(act && cap.disponible);
+    })();
+    return () => { vivo = false; };
   }, [data]);
 
   // Las fases avanzan solas mientras la red trabaja: no podemos saber el
@@ -375,13 +402,33 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
     ]).start();
   };
 
-  async function enviar() {
-    if (!pw) { setError(t('send.errPw')); shakeAnim(); return; }
+  // Firma con la contraseña, venga de la biometría o del teclado. Si el envío
+  // sale bien y el usuario pidió activar el desbloqueo, se guarda recién ahí:
+  // guardar una contraseña que el servidor rechaza dejaría un desbloqueo que
+  // falla siempre.
+  async function enviar(clave, { deBio = false } = {}) {
+    const password = clave ?? pw;
+    if (!password) { setError(t('send.errPw')); shakeAnim(); return; }
     setError(null);
     setFase(1);
-    const r = await onConfirm(pw);
-    if (!r.ok) { setFase(-1); setError(r.msg); prog.setValue(0); shakeAnim(); }
-    else { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {}); }
+    const r = await onConfirm(password);
+    if (!r.ok) {
+      setFase(-1); setError(r.msg); prog.setValue(0); shakeAnim();
+      // Si la clave guardada dejó de servir, se vuelve al teclado.
+      if (deBio) setModoManual(true);
+    } else {
+      if (quiereActivar && !deBio) activarDesbloqueo(password).catch(() => {});
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    }
+  }
+
+  async function autorizarConBio() {
+    setError(null);
+    setPidiendoBio(true);
+    const clave = await desbloquearClave();
+    setPidiendoBio(false);
+    if (!clave) { setModoManual(true); return; }
+    await enviar(clave, { deBio: true });
   }
 
   if (!data) return null;
@@ -412,32 +459,80 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
           </View>
 
           {fase === 0 ? (
-            <>
-              <Text style={[styles.label, { marginTop: 16 }]}>{t('send.pw')}</Text>
-              {/* Ojito para mostrar la contraseña: verla evita escribir una
-                  clave mal y que se agote el intento con la red. */}
-              <View style={{ position: 'relative' }}>
-                <TextInput
-                  value={pw}
-                  onChangeText={(v) => { setPw(v); setError(null); }}
-                  secureTextEntry={!verPw}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  placeholder="••••••••"
-                  placeholderTextColor="#6f938f"
-                  style={[styles.input, { paddingRight: 46 }]}
-                  autoFocus
+            bioActivo && !modoManual ? (
+              /* Con el desbloqueo activo, firmar es una cara o un dedo. */
+              <View style={{ marginTop: 18, alignItems: 'center' }}>
+                <View style={styles.bioCirc}>
+                  {pidiendoBio
+                    ? <ActivityIndicator size="large" color={C.gold} />
+                    : <Icon name={bio.tipo === TIPO.FACE ? 'person' : 'finger-print'} size={38} color={C.gold} />}
+                </View>
+                <Text style={styles.bioHint}>{t('send.bioHint', { m: nombreBiometria(bio.tipo, t) })}</Text>
+                {error && <Text style={styles.revErr}>{error}</Text>}
+                <Button3D
+                  title={t('send.bioCta', { m: nombreBiometria(bio.tipo, t) })}
+                  icon="finger-print"
+                  onPress={() => { hap(); autorizarConBio(); }}
+                  style={{ marginTop: 4, alignSelf: 'stretch' }}
                 />
-                <Pressable onPress={() => setVerPw((v) => !v)} style={styles.ojito}>
-                  <Icon name={verPw ? 'eye-off' : 'eye'} size={19} color={C.txt2} />
+                <Pressable onPress={() => { hap(); setModoManual(true); setError(null); }} style={styles.revCancel}>
+                  <Text style={styles.bioAlt}>{t('clave.usarClave')}</Text>
+                </Pressable>
+                <Pressable onPress={onCancel} style={{ paddingBottom: 6 }}>
+                  <Text style={styles.revCancelTxt}>{t('send.cancel')}</Text>
                 </Pressable>
               </View>
-              {error && <Text style={styles.revErr}>{error}</Text>}
-              <Button3D title={t('send.confirm')} icon="arrow-up" onPress={enviar} style={{ marginTop: 14 }} />
-              <Pressable onPress={onCancel} style={styles.revCancel}>
-                <Text style={styles.revCancelTxt}>{t('send.cancel')}</Text>
-              </Pressable>
-            </>
+            ) : (
+              <>
+                <Text style={[styles.label, { marginTop: 16 }]}>{t('send.pw')}</Text>
+                {/* Ojito para mostrar la contraseña: verla evita escribir una
+                    clave mal y que se agote el intento con la red. */}
+                <View style={{ position: 'relative' }}>
+                  <TextInput
+                    value={pw}
+                    onChangeText={(v) => { setPw(v); setError(null); }}
+                    secureTextEntry={!verPw}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    placeholder="••••••••"
+                    placeholderTextColor="#6f938f"
+                    style={[styles.input, { paddingRight: 46 }]}
+                    autoFocus
+                  />
+                  <Pressable onPress={() => setVerPw((v) => !v)} style={styles.ojito}>
+                    <Icon name={verPw ? 'eye-off' : 'eye'} size={19} color={C.txt2} />
+                  </Pressable>
+                </View>
+                {error && <Text style={styles.revErr}>{error}</Text>}
+
+                {/* Ofrecer el desbloqueo solo si el teléfono lo soporta y aún
+                    no está activo. Se guarda tras un envío exitoso. */}
+                {bio.disponible && !bioActivo && (
+                  <Pressable
+                    onPress={() => { hap(); setQuiereActivar(!quiereActivar); }}
+                    style={styles.activarFila}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: quiereActivar }}
+                    accessibilityLabel={t('clave.activar', { m: nombreBiometria(bio.tipo, t) })}
+                  >
+                    <View style={[styles.casilla, quiereActivar && { backgroundColor: C.gold, borderColor: C.gold }]}>
+                      {quiereActivar && <Icon name="checkmark" size={13} color={C.darkText} />}
+                    </View>
+                    <Text style={styles.activarTxt}>{t('clave.activar', { m: nombreBiometria(bio.tipo, t) })}</Text>
+                  </Pressable>
+                )}
+
+                <Button3D title={t('send.confirm')} icon="arrow-up" onPress={() => enviar()} style={{ marginTop: 14 }} />
+                {bioActivo && (
+                  <Pressable onPress={() => { hap(); setModoManual(false); setError(null); }} style={styles.revCancel}>
+                    <Text style={styles.bioAlt}>{t('clave.reintentarBio', { m: nombreBiometria(bio.tipo, t) })}</Text>
+                  </Pressable>
+                )}
+                <Pressable onPress={onCancel} style={bioActivo ? { paddingBottom: 6, alignItems: 'center' } : styles.revCancel}>
+                  <Text style={styles.revCancelTxt}>{t('send.cancel')}</Text>
+                </Pressable>
+              </>
+            )
           ) : fase > 0 ? (
             <View style={{ marginTop: 20 }}>
               {/* Barra de avance + la fase en la que va */}
@@ -1079,6 +1174,20 @@ const styles = StyleSheet.create({
   revCancel: { alignItems: 'center', paddingVertical: 13, marginTop: 4 },
   revCancelTxt: { color: C.txt3, fontSize: 13.5, fontWeight: '600' },
   revEspera: { color: C.txt3, fontSize: 11.5, textAlign: 'center', marginTop: 18, lineHeight: 17 },
+  // Autorización biométrica dentro de la ficha de revisión.
+  bioCirc: {
+    width: 88, height: 88, borderRadius: 30,
+    backgroundColor: 'rgba(201,169,97,0.12)',
+    borderWidth: 1, borderColor: 'rgba(201,169,97,0.32)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 15,
+  },
+  bioHint: { color: C.txt2, fontSize: 13, textAlign: 'center', lineHeight: 19, marginBottom: 16, paddingHorizontal: 10 },
+  bioAlt: { color: C.gold, fontSize: 13.5, fontWeight: '600' },
+  activarFila: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14 },
+  casilla: { width: 21, height: 21, borderRadius: 6, borderWidth: 1.5, borderColor: C.line2, alignItems: 'center', justifyContent: 'center' },
+  activarTxt: { color: C.txt2, fontSize: 12.5, flex: 1, lineHeight: 18 },
+  // Faltaban desde antes: los Text que las referencian se dibujaban sin estilo.
+  rrV: { color: C.txt, fontSize: 13, fontWeight: '600' },
   barBg: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden' },
   barFill: { height: 6, borderRadius: 3, backgroundColor: C.gold },
   pasos: { marginTop: 18, gap: 13 },
