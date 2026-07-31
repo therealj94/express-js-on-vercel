@@ -297,11 +297,13 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
   // Datos sensibles: viven solo en memoria y se borran solos.
   const [secreto, setSecreto] = useState(null);   // { pan, cvv, expiry, panUrl }
   const [pin, setPin] = useState(null);
-  const [pedirPw, setPedirPw] = useState(null);   // 'pan' | 'pin' | null
-  // Las tarjetas virtuales no tienen PIN: no se usan en cajero y el emisor ni
-  // siquiera expone el dato. Cuando el backend lo confirma, se deja de ofrecer
-  // en vez de dejar un botón que siempre va a fallar.
+  const [pedirPw, setPedirPw] = useState(null);   // 'pan' | 'pin' | 'crearPin' | null
+  // El emisor responde 409 cuando la tarjeta todavía no tiene un PIN asignado.
+  // No es que el producto no lo soporte: es que nunca se creó. En ese caso la
+  // fila cambia de "Ver PIN" a "Crear PIN".
   const [sinPin, setSinPin] = useState(false);
+  const [eligiendoPin, setEligiendoPin] = useState(false);
+  const [pinNuevo, setPinNuevo] = useState(null);   // elegido, pendiente de autorizar
 
   const [movs, setMovs] = useState(null);         // null = cargando, [] = vacío
   const [movsErr, setMovsErr] = useState(false);
@@ -359,7 +361,13 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
   const revelar = async (password) => {
     const tipo = pedirPw;
     try {
-      if (tipo === 'pan') {
+      if (tipo === 'crearPin') {
+        await cardApi.setPin({ pin: pinNuevo, password });
+        setPin(pinNuevo);           // se muestra recién creado, y se oculta solo
+        setPinNuevo(null);
+        setSinPin(false);
+        toast(t('card.pinCreado'), 'success');
+      } else if (tipo === 'pan') {
         const d = await cardApi.pan(password);
         setSecreto(d);
         if (!d?.pan && d?.panUrl) toast(t('card.panFallback'), 'info');
@@ -374,8 +382,16 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
     } catch (e) {
       // Contraseña incorrecta: la ficha se queda abierta y lo muestra.
       if (e?.status === 401) return { ok: false, msg: t('card.badPw') };
-      // 409 = el emisor no tiene ese dato para esta tarjeta. No es un fallo:
-      // se explica y, en el caso del PIN, se deja de ofrecer.
+      // El emisor rechazó el PIN elegido: es corregible, la ficha se cierra y
+      // se vuelve al selector para que elija otro.
+      if (e?.status === 400 && tipo === 'crearPin') {
+        setPedirPw(null);
+        setEligiendoPin(true);
+        toast(e?.message || t('card.pinRechazado'), 'error');
+        return { ok: true };
+      }
+      // 409 al CONSULTAR el PIN significa que la tarjeta no tiene uno todavía.
+      // No es un fallo: se ofrece crearlo.
       if (e?.status === 409) {
         if (tipo === 'pin') { setSinPin(true); toast(t('card.noPin'), 'info'); }
         else toast(t('card.noPan'), 'info');
@@ -496,12 +512,18 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
           sub={t('card.showPanSub')}
           onPress={() => { hap(); setPedirPw('pan'); }}
         />
-        {!sinPin && (
+        <ListRow
+          icon="lock-closed"
+          title={sinPin ? t('card.crearPin') : t('card.showPin')}
+          sub={pin ? `PIN · ${pin}` : (sinPin ? t('card.crearPinSub') : t('card.showPinSub'))}
+          onPress={() => { hap(); if (sinPin) setEligiendoPin(true); else setPedirPw('pin'); }}
+        />
+        {!!pin && (
           <ListRow
-            icon="lock-closed"
-            title={t('card.showPin')}
-            sub={pin ? `PIN · ${pin}` : t('card.showPinSub')}
-            onPress={() => { hap(); setPedirPw('pin'); }}
+            icon="create"
+            title={t('card.cambiarPin')}
+            sub={t('card.cambiarPinSub')}
+            onPress={() => { hap(); setEligiendoPin(true); }}
           />
         )}
       </View>
@@ -562,12 +584,23 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
         </View>
       )}
 
+      <ElegirPin
+        visible={eligiendoPin}
+        t={t}
+        onCancel={() => setEligiendoPin(false)}
+        onListo={(elegido) => { setPinNuevo(elegido); setEligiendoPin(false); setPedirPw('crearPin'); }}
+      />
+
       <PedirClave
         visible={!!pedirPw}
-        titulo={pedirPw === 'pin' ? t('card.pwPin') : t('card.pwPan')}
+        titulo={
+          pedirPw === 'crearPin' ? t('card.pwCrearPin')
+            : pedirPw === 'pin' ? t('card.pwPin')
+              : t('card.pwPan')
+        }
         subtitulo={t('card.pwWhy')}
-        ctaTexto={t('card.reveal')}
-        onCancel={() => setPedirPw(null)}
+        ctaTexto={pedirPw === 'crearPin' ? t('card.pinGuardar') : t('card.reveal')}
+        onCancel={() => { setPedirPw(null); setPinNuevo(null); }}
         onSubmit={revelar}
       />
     </ScrollView>
@@ -580,6 +613,79 @@ function FilaLim({ k, v }) {
       <Text style={styles.limK}>{k}</Text>
       <Text style={styles.limV}>{v}</Text>
     </View>
+  );
+}
+
+// ---------- elegir un PIN ----------
+//
+// Solo recoge y valida el PIN. La autorización con contraseña o biometría la
+// hace después PedirClave, para no duplicar ese flujo ni pedir dos cosas en la
+// misma pantalla.
+function ElegirPin({ visible, t, onCancel, onListo }) {
+  const [a, setA] = useState('');
+  const [b, setB] = useState('');
+  const [error, setError] = useState(null);
+
+  useEffect(() => { if (!visible) { setA(''); setB(''); setError(null); } }, [visible]);
+
+  const soloDigitos = (v) => String(v).replace(/\D/g, '').slice(0, 12);
+
+  const continuar = () => {
+    if (!/^\d{4,12}$/.test(a)) { setError(t('card.pinLargo')); return; }
+    if (a !== b) { setError(t('card.pinNoCoincide')); return; }
+    // Secuencias y repeticiones obvias: el emisor las suele rechazar y es
+    // mejor decirlo antes de gastar una llamada y la contraseña del usuario.
+    if (/^(\d)\1+$/.test(a)) { setError(t('card.pinDebil')); return; }
+    hap();
+    onListo(a);
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
+      <Pressable style={styles.pinBg} onPress={onCancel}>
+        <Pressable style={styles.pinSheet} onPress={() => {}}>
+          <View style={styles.pinGrab} />
+          <Text style={styles.pinTitulo}>{t('card.pinTitulo')}</Text>
+          <Text style={styles.pinSub}>{t('card.pinSub')}</Text>
+
+          <Text style={styles.pinLabel}>{t('card.pinNuevo')}</Text>
+          <TextInput
+            value={a}
+            onChangeText={(v) => { setA(soloDigitos(v)); if (error) setError(null); }}
+            keyboardType="number-pad"
+            secureTextEntry
+            maxLength={12}
+            placeholder="••••"
+            placeholderTextColor="#6f938f"
+            style={styles.pinInput}
+            accessibilityLabel={t('card.pinNuevo')}
+          />
+
+          <Text style={styles.pinLabel}>{t('card.pinRepetir')}</Text>
+          <TextInput
+            value={b}
+            onChangeText={(v) => { setB(soloDigitos(v)); if (error) setError(null); }}
+            keyboardType="number-pad"
+            secureTextEntry
+            maxLength={12}
+            placeholder="••••"
+            placeholderTextColor="#6f938f"
+            style={styles.pinInput}
+            accessibilityLabel={t('card.pinRepetir')}
+            onSubmitEditing={continuar}
+            returnKeyType="go"
+          />
+
+          {!!error && <Text style={styles.pinErr}>{error}</Text>}
+
+          <View style={{ height: 16 }} />
+          <Button3D title={t('card.pinContinuar')} disabled={!a || !b} onPress={continuar} />
+          <Pressable onPress={onCancel} style={{ paddingVertical: 14, alignItems: 'center' }}>
+            <Text style={{ color: C.txt3, fontSize: 13.5 }}>{t('card.cancel')}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -742,6 +848,15 @@ const styles = StyleSheet.create({
   txnT: { fontSize: 14, fontWeight: '600', color: C.txt },
   txnD: { fontSize: 11.5, color: C.txt3, marginTop: 2 },
   txnV: { fontSize: 13.5, fontWeight: '600', color: C.txt },
+
+  pinBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  pinSheet: { backgroundColor: '#06282B', borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 22, paddingBottom: 28 },
+  pinGrab: { width: 40, height: 4, borderRadius: 2, backgroundColor: C.line2, alignSelf: 'center', marginBottom: 16 },
+  pinTitulo: { color: C.txt, fontSize: 17.5, fontWeight: '800' },
+  pinSub: { color: C.txt3, fontSize: 12.5, marginTop: 5, lineHeight: 18 },
+  pinLabel: { color: C.txt3, fontSize: 10.5, letterSpacing: 1.4, fontWeight: '700', marginTop: 16, marginBottom: 7 },
+  pinInput: { backgroundColor: C.input, borderWidth: 1, borderColor: C.inputBr, borderRadius: 14, paddingHorizontal: 15, paddingVertical: 13, color: C.txt, fontSize: 20, letterSpacing: 6, textAlign: 'center' },
+  pinErr: { color: C.down, fontSize: 12.5, marginTop: 11, textAlign: 'center' },
 
   cargaCard: { height: 224, marginBottom: 22 },
   destello: { position: 'absolute', top: -40, bottom: -40, width: 110 },

@@ -290,7 +290,12 @@ export const cardApi = {
   pan: (password) => req('/cards/pan', { method: 'POST', body: { password }, timeout: 30000 }),
 
   // PIN. Requiere contraseña. Igual que arriba: { pin } o { pinUrl }.
+  // Responde 409 con code PIN_NOT_SET si la tarjeta todavía no tiene uno.
   pin: (password) => req('/cards/pin', { method: 'POST', body: { password }, timeout: 30000 }),
+
+  // Crear o cambiar el PIN. Entre 4 y 12 dígitos.
+  setPin: ({ pin, password }) =>
+    req('/cards/pin', { method: 'PUT', body: { pin: String(pin), password }, timeout: 30000 }),
 
   // Movimientos. El backend ya devuelve los montos convertidos a ORIGEN.
   transactions: ({ page = 1, from, to } = {}) => {

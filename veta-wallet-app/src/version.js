@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.12.1';
-export const BUILD = 44;
+export const VERSION = '1.13.0';
+export const BUILD = 45;
 export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,19 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.13.0',
+    build: 45,
+    date: '2026-07-31',
+    es: [
+      'Corregimos lo que te dijimos en la versión anterior: tu tarjeta SÍ puede tener PIN. El error que salía no era "las virtuales no usan PIN" — era que a tu tarjeta nunca se le asignó uno.',
+      'Ahora podés crearlo desde la app: elegís un PIN de 4 a 12 dígitos, lo confirmás con tu Face ID, huella o contraseña, y queda guardado en el emisor. Después podés cambiarlo cuando quieras.',
+    ],
+    en: [
+      'Correcting what we told you in the previous version: your card CAN have a PIN. The error was not "virtual cards do not use a PIN" — it was that your card never had one assigned.',
+      'You can now create it from the app: pick a 4 to 12 digit PIN, confirm with Face ID, fingerprint or your password, and it is saved with the issuer. You can change it whenever you want.',
+    ],
+  },
   {
     v: '1.12.1',
     build: 44,
