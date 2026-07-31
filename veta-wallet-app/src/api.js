@@ -245,6 +245,88 @@ export const walletApi = {
   paths: PATHS,
 };
 
+// ---------- tarjeta Visa (CryptoMate, vía nuestro backend) ----------
+//
+// La tarjeta es un producto REAL: el backend la emite contra CryptoMate y
+// expone el estado, el saldo, los movimientos y los controles de seguridad.
+// Todo pasa por el backend — la app nunca habla con CryptoMate directamente
+// ni ve la API key.
+//
+// Dos reglas que vienen del backend y conviene respetar en la UI:
+//   · Los montos se muestran en ORIGEN, nunca en USD/USDT. El backend ya
+//     hace la conversión y devuelve `origenAmount` / `availableOrigen`.
+//   · Los datos sensibles (número completo, CVV, PIN) exigen la contraseña
+//     en cada consulta y no se cachean nunca en el dispositivo.
+//
+// `sinTarjeta` distingue "este usuario todavía no tiene tarjeta" (404, que
+// es un estado normal y esperado) de un error de verdad, para que la
+// pantalla muestre el flujo de solicitud en vez de un mensaje de fallo.
+export function sinTarjeta(e) {
+  return e?.status === 404;
+}
+
+export const cardApi = {
+  // Estado de la tarjeta: last4, status, saldo en ORIGEN, límites.
+  mine: () => req('/cards/my-card'),
+
+  // Emitir. El backend exige KYC aprobado y aceptación de términos.
+  request: ({ acceptedTerms, phoneCountryCode, phoneNumber }) =>
+    req('/cards/request', {
+      method: 'POST',
+      body: {
+        acceptedTerms: !!acceptedTerms,
+        ...(phoneCountryCode ? { phone_country_code: Number(phoneCountryCode) } : {}),
+        ...(phoneNumber ? { phone_number: String(phoneNumber) } : {}),
+      },
+      timeout: 45000,   // emitir una tarjeta pasa por CryptoMate: es lento
+    }),
+
+  // Congelar / descongelar. Control de seguridad real, no cosmético.
+  setFrozen: (frozen) => req('/cards/freeze', { method: 'POST', body: { frozen: !!frozen } }),
+
+  // Número completo + vencimiento + CVV. Requiere contraseña.
+  // Puede devolver { pan, cvv, expiry } ya parseados o solo { panUrl } si
+  // CryptoMate cambió el HTML — la pantalla contempla los dos casos.
+  pan: (password) => req('/cards/pan', { method: 'POST', body: { password }, timeout: 30000 }),
+
+  // PIN. Requiere contraseña. Igual que arriba: { pin } o { pinUrl }.
+  pin: (password) => req('/cards/pin', { method: 'POST', body: { password }, timeout: 30000 }),
+
+  // Movimientos. El backend ya devuelve los montos convertidos a ORIGEN.
+  transactions: ({ page = 1, from, to } = {}) => {
+    const q = new URLSearchParams({ page: String(page) });
+    if (from) q.set('from', from);
+    if (to) q.set('to', to);
+    return req(`/cards/transactions?${q.toString()}`, { timeout: 30000 });
+  },
+
+  // Direcciones para fondear la tarjeta desde fuera (USDT/USDC en Polygon).
+  topUpWallets: () => req('/cards/top-up-wallets', { timeout: 30000 }),
+
+  // Fondear con ORIGEN del propio saldo.
+  fund: ({ amountOrigen, password }) =>
+    req('/cards/fund', {
+      method: 'POST',
+      body: { amount: String(amountOrigen), password },
+      timeout: 90000,   // hay transacciones on-chain de por medio
+    }),
+
+  limits: ({ daily, weekly, monthly }) =>
+    req('/cards/limits', {
+      method: 'PATCH',
+      body: {
+        ...(daily != null ? { daily_limit: Number(daily) } : {}),
+        ...(weekly != null ? { weekly_limit: Number(weekly) } : {}),
+        ...(monthly != null ? { monthly_limit: Number(monthly) } : {}),
+      },
+    }),
+
+  cancel: (password) => req('/cards/cancel', { method: 'POST', body: { password } }),
+
+  notifications: () => req('/cards/notifications'),
+  markNotificationsRead: () => req('/cards/notifications/read', { method: 'POST' }),
+};
+
 // Login de alto nivel. El backend devuelve { token } con los datos del usuario
 // (userId/address/role/verify) dentro del JWT.
 //

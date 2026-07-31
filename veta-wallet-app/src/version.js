@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.10.8';
-export const BUILD = 38;
+export const VERSION = '1.11.0';
+export const BUILD = 39;
 export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,23 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.11.0',
+    build: 39,
+    date: '2026-07-31',
+    es: [
+      'La pantalla de tu tarjeta ahora está conectada de verdad: los últimos 4 dígitos, el estado, el saldo disponible, los límites y tus consumos vienen del emisor, no de la app.',
+      'IMPORTANTE — "Congelar tarjeta" ahora congela de verdad. Antes el interruptor solo cambiaba el dibujo en pantalla y la tarjeta seguía activa. Si alguna vez la congelaste creyendo que quedaba bloqueada, revisá tus movimientos: no lo estaba. Ahora, si el bloqueo no se puede aplicar, la app te lo dice y el interruptor vuelve a su lugar.',
+      'Ver el número completo, el vencimiento, el CVV y el PIN ahora pide tu contraseña cada vez, muestra los datos reales de tu tarjeta y los oculta solos a los 45 segundos. Nunca se guardan en el teléfono.',
+      'Si todavía no tenés tarjeta, podés solicitarla desde la app. Se emite a tu nombre y requiere tener la identidad verificada.',
+    ],
+    en: [
+      'Your card screen is now genuinely connected: the last 4 digits, status, available balance, limits and your purchases all come from the issuer, not from the app.',
+      'IMPORTANT — "Freeze card" now actually freezes. The toggle previously only changed what was drawn on screen while the card stayed active. If you ever froze it believing it was blocked, review your transactions: it was not. Now, if the block cannot be applied, the app tells you and the toggle reverts.',
+      'Viewing the full number, expiry, CVV and PIN now asks for your password every time, shows your card\'s real details, and hides them automatically after 45 seconds. They are never stored on your phone.',
+      'If you do not have a card yet, you can request one from the app. It is issued in your name and requires a verified identity.',
+    ],
+  },
   {
     v: '1.10.8',
     build: 38,
