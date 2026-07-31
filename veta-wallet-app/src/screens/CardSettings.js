@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal, ActivityIndicator, Share, Alert, StyleSheet } from 'react-native';
 import { Icon } from '../icons';
 import { C } from '../theme';
-import { Header, Button3D, ListRow, SectionHead, useToast, useAccount, hap } from '../ui';
+import { Header, Button3D, ListRow, SectionHead, useToast, hap } from '../ui';
 import { qtyFmt } from '../data';
 import { cardApi, sinTarjeta } from '../api';
 import { useT } from '../i18n';
@@ -23,7 +23,6 @@ import PedirClave from '../PedirClave';
 export default function CardSettings({ nav }) {
   const t = useT();
   const toast = useToast();
-  const { account } = useAccount();
 
   const [card, setCard] = useState(null);
   const [gasto, setGasto] = useState(null);
@@ -71,7 +70,8 @@ export default function CardSettings({ nav }) {
     hap();
     setOcupado('3ds');
     try {
-      await cardApi.set3ds('SMS');
+      const r = await cardApi.set3ds('SMS');
+      setCard((c) => ({ ...c, threeDsType: r?.type || 'SMS', threeDsSetAt: r?.setAt || new Date().toISOString() }));
       toast(t('cset.tresDsOk'), 'success');
     } catch (e) {
       // 409 = falta el teléfono, que es exactamente lo que hay que arreglar.
@@ -200,19 +200,28 @@ export default function CardSettings({ nav }) {
           {/* ---- compras online ---- */}
           <SectionHead title={t('cset.online')} />
           <View style={st.grupo}>
+            {/* El teléfono y el estado del 3DS vienen del servidor: el modelo
+                de cuenta local no los guarda, así que leerlos de `account`
+                mostraba siempre "sin teléfono" aunque estuvieran bien. */}
             <ListRow
               first
               icon="notifications"
               title={t('cset.telefono')}
-              sub={account?.phone_number ? `+${account?.phone_country_code || ''} ${account.phone_number}` : t('cset.telefonoVacio')}
+              sub={card?.otpPhone ? `+${card.otpPhoneCountryCode || ''} ${card.otpPhone}` : t('cset.telefonoVacio')}
               onPress={() => { hap(); setEditandoTel(true); }}
             />
             <ListRow
               icon="shield-checkmark"
-              title={t('cset.tresDs')}
-              sub={t('cset.tresDsSub')}
+              title={card?.threeDsType ? t('cset.tresDsActiva') : t('cset.tresDs')}
+              sub={card?.threeDsType ? t('cset.tresDsActivaSub', { m: card.threeDsType }) : t('cset.tresDsSub')}
               onPress={activar3ds}
-              right={ocupado === '3ds' ? <ActivityIndicator size="small" color={C.gold} /> : null}
+              right={
+                ocupado === '3ds'
+                  ? <ActivityIndicator size="small" color={C.gold} />
+                  : card?.threeDsType
+                    ? <Icon name="checkmark-circle" size={19} color={C.up} />
+                    : null
+              }
             />
           </View>
 
@@ -266,10 +275,18 @@ export default function CardSettings({ nav }) {
 
       <EditarTelefono
         visible={editandoTel}
-        account={account}
+        card={card}
         t={t}
         onCancel={() => setEditandoTel(false)}
-        onGuardado={() => { setEditandoTel(false); toast(t('cset.telefonoOk'), 'success'); }}
+        onGuardado={(guardado) => {
+          setCard((c) => ({
+            ...c,
+            otpPhone: guardado?.otpPhone ?? c?.otpPhone,
+            otpPhoneCountryCode: guardado?.otpPhoneCountryCode ?? c?.otpPhoneCountryCode,
+          }));
+          setEditandoTel(false);
+          toast(t('cset.telefonoOk'), 'success');
+        }}
         onError={(m) => toast(m, 'error')}
       />
 
@@ -368,24 +385,24 @@ function EditarLimites({ visible, card, t, onCancel, onGuardado, onError }) {
 }
 
 // ---------- editar teléfono OTP ----------
-function EditarTelefono({ visible, account, t, onCancel, onGuardado, onError }) {
+function EditarTelefono({ visible, card, t, onCancel, onGuardado, onError }) {
   const [cc, setCc] = useState('');
   const [tel, setTel] = useState('');
   const [yendo, setYendo] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
-    setCc(account?.phone_country_code ? String(account.phone_country_code) : '504');
-    setTel(account?.phone_number ? String(account.phone_number) : '');
-  }, [visible, account]);
+    setCc(card?.otpPhoneCountryCode ? String(card.otpPhoneCountryCode) : '504');
+    setTel(card?.otpPhone ? String(card.otpPhone) : '');
+  }, [visible, card]);
 
   const guardar = async () => {
     if (!tel) { onError(t('cset.telefonoFalta')); return; }
     hap();
     setYendo(true);
     try {
-      await cardApi.setOtpPhone({ countryCode: cc || 504, phone: tel });
-      onGuardado();
+      const r = await cardApi.setOtpPhone({ countryCode: cc || 504, phone: tel });
+      onGuardado(r);
     } catch (e) {
       onError(e?.message || t('card.errGeneric'));
     } finally { setYendo(false); }

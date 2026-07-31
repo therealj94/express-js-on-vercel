@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.14.0';
-export const BUILD = 46;
+export const VERSION = '1.14.1';
+export const BUILD = 47;
 export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,19 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.14.1',
+    build: 47,
+    date: '2026-07-31',
+    es: [
+      'El teléfono para los códigos sí se estaba guardando, pero la pantalla seguía diciendo "sin teléfono registrado". Ahora muestra el que tenés y lo trae del servidor.',
+      'La verificación por SMS también se activaba de verdad, pero nada en pantalla lo indicaba. Ahora la fila queda marcada con un check verde y dice que está activada.',
+    ],
+    en: [
+      'The phone for verification codes was being saved correctly, but the screen kept saying "no phone registered". It now shows the one you have, read from the server.',
+      'SMS verification was also being enabled for real, but nothing on screen showed it. The row is now marked with a green check and says it is enabled.',
+    ],
+  },
   {
     v: '1.14.0',
     build: 46,
