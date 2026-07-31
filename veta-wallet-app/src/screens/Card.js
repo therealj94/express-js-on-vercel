@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, Animated, Modal, TextInput, ActivityIndicator, Image, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, Animated, Easing, Modal, TextInput, ActivityIndicator, Image, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '../icons';
 import Svg, { Path, Circle } from 'react-native-svg';
@@ -86,7 +86,7 @@ export default function CardScreen({ nav }) {
         </Pressable>
       </View>
 
-      {fase === 'cargando' && <Cargando />}
+      {fase === 'cargando' && <Cargando t={t} />}
       {fase === 'error' && <ErrorEstado msg={errMsg} onRetry={() => cargar()} t={t} />}
       {fase === 'sinTarjeta' && <SolicitarTarjeta nav={nav} onEmitida={() => cargar()} t={t} toast={toast} />}
       {fase === 'lista' && card && (
@@ -115,18 +115,86 @@ function mensajeDeError(e, t) {
   return porCodigo[e?.code] || e?.message || t('card.errGeneric');
 }
 
-// ---------- estados de carga y error ----------
-function Cargando() {
+// ---------- estado de carga ----------
+//
+// Consultar la tarjeta tarda unos tres segundos de verdad: el backend pregunta
+// al emisor por el estado, por el saldo y por el precio de ORIGEN. En vez de
+// barras grises, se dibuja la propia tarjeta con un destello recorriéndola y
+// se aprovechan esos segundos para contar algo del ecosistema.
+const FRASES_CARGA = ['card.load1', 'card.load2', 'card.load3', 'card.load4'];
+
+function Cargando({ t }) {
+  const [i, setI] = useState(0);
+  const fade = useRef(new Animated.Value(0)).current;
+  const barrido = useRef(new Animated.Value(0)).current;
+
+  // Destello que recorre la tarjeta, como la luz sobre el metal.
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(barrido, { toValue: 1, duration: 1700, easing: Easing.linear, useNativeDriver: true })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [barrido]);
+
+  // Las frases entran y salen con desvanecido; al terminar cada ciclo pasa
+  // a la siguiente. El guard evita seguir animando tras desmontar.
+  useEffect(() => {
+    let vivo = true;
+    const ciclo = () => {
+      Animated.sequence([
+        Animated.timing(fade, { toValue: 1, duration: 420, useNativeDriver: true }),
+        Animated.delay(1850),
+        Animated.timing(fade, { toValue: 0, duration: 360, useNativeDriver: true }),
+      ]).start(() => {
+        if (!vivo) return;
+        setI((n) => (n + 1) % FRASES_CARGA.length);
+        ciclo();
+      });
+    };
+    ciclo();
+    return () => { vivo = false; };
+  }, [fade]);
+
+  const desplazo = barrido.interpolate({ inputRange: [0, 1], outputRange: [-260, 400] });
+
   return (
     <View style={{ paddingHorizontal: 22 }}>
-      <Skeleton width="100%" height={224} radius={20} />
-      <View style={{ height: 18 }} />
-      <Skeleton width="100%" height={54} radius={16} />
-      <View style={{ height: 10 }} />
-      <Skeleton width="100%" height={120} radius={18} />
+      <View style={styles.cargaCard}>
+        <LinearGradient colors={G.blackCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cardBg}>
+          <Circuito />
+          <Image source={LOGO_ORDEN} resizeMode="contain" style={[styles.monograma, { opacity: 0.4 }]} />
+          <View style={styles.cardIn}>
+            <View style={styles.cardTop}>
+              <Text style={styles.premium}>PREMIUM</Text>
+              <Text style={[styles.visa, { opacity: 0.55 }]}>VISA</Text>
+            </View>
+          </View>
+          <Animated.View style={[styles.destello, { transform: [{ translateX: desplazo }, { rotate: '18deg' }] }]}>
+            <LinearGradient
+              colors={['rgba(201,169,97,0)', 'rgba(234,215,156,0.16)', 'rgba(201,169,97,0)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{ flex: 1 }}
+            />
+          </Animated.View>
+        </LinearGradient>
+      </View>
+
+      <Animated.Text style={[styles.cargaFrase, { opacity: fade }]}>
+        {t(FRASES_CARGA[i])}
+      </Animated.Text>
+
+      <View style={styles.cargaPuntos}>
+        {FRASES_CARGA.map((_, n) => (
+          <View key={n} style={[styles.cargaPunto, n === i && styles.cargaPuntoOn]} />
+        ))}
+      </View>
     </View>
   );
 }
+
+// ---------- estado de error ----------
 
 function ErrorEstado({ msg, onRetry, t }) {
   return (
@@ -675,6 +743,13 @@ const styles = StyleSheet.create({
   txnD: { fontSize: 11.5, color: C.txt3, marginTop: 2 },
   txnV: { fontSize: 13.5, fontWeight: '600', color: C.txt },
 
+  cargaCard: { height: 224, marginBottom: 22 },
+  destello: { position: 'absolute', top: -40, bottom: -40, width: 110 },
+  cargaFrase: { color: C.goldLt, fontSize: 15, fontWeight: '600', textAlign: 'center', lineHeight: 22, minHeight: 66, paddingHorizontal: 14 },
+  cargaPuntos: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 6 },
+  cargaPunto: { width: 5, height: 5, borderRadius: 3, backgroundColor: C.line2 },
+  cargaPuntoOn: { backgroundColor: C.gold, width: 16 },
+
   pitchCard: { height: 168, marginBottom: 18 },
   pitchBg: { flex: 1, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(201,169,97,0.28)' },
   monogramaPitch: { position: 'absolute', alignSelf: 'center', top: 30, width: '52%', height: 88, opacity: 0.17 },
@@ -689,11 +764,4 @@ const styles = StyleSheet.create({
   termsTxt: { color: C.txt2, fontSize: 12.5, flex: 1, lineHeight: 18 },
   slowHint: { color: C.txt3, fontSize: 11.5, textAlign: 'center', marginTop: 10 },
 
-  sheetBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#06282B', borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 22, paddingBottom: 30 },
-  grab: { width: 40, height: 4, borderRadius: 2, backgroundColor: C.line2, alignSelf: 'center', marginBottom: 16 },
-  sheetTitle: { color: C.txt, fontSize: 17, fontWeight: '800' },
-  sheetSub: { color: C.txt3, fontSize: 12.5, marginTop: 5, lineHeight: 18 },
-  input: { backgroundColor: C.input, borderWidth: 1, borderColor: C.inputBr, borderRadius: 14, paddingHorizontal: 15, paddingVertical: 13, color: C.txt, fontSize: 15 },
-  ojito: { position: 'absolute', right: 6, top: 0, bottom: 0, width: 40, alignItems: 'center', justifyContent: 'center' },
 });

@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.12.0';
-export const BUILD = 43;
+export const VERSION = '1.12.1';
+export const BUILD = 44;
 export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,17 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.12.1',
+    build: 44,
+    date: '2026-07-31',
+    es: [
+      'Abrir la tarjeta ya no es una espera en blanco: mientras el emisor responde se dibuja tu tarjeta con un destello dorado recorriéndola y van pasando frases del ecosistema. Los tres segundos que tarda la consulta ahora cuentan algo.',
+    ],
+    en: [
+      'Opening your card is no longer a blank wait: while the issuer responds, your card is drawn with a gold sheen sweeping across it and short lines about the ecosystem cycle through. The three seconds the lookup takes now say something.',
+    ],
+  },
   {
     v: '1.12.0',
     build: 43,

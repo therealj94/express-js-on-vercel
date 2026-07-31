@@ -294,6 +294,11 @@ const S = {
     'card.kycP': 'Por regulación, necesitamos confirmar quién eres antes de emitir una tarjeta a tu nombre.',
     'card.kycCta': 'Verificar mi identidad',
     'card.back': 'Volver', 'card.cancel': 'Cancelar',
+    // frases mientras carga la tarjeta (el emisor tarda ~3 s)
+    'card.load1': 'Estamos alistando tu tarjeta…',
+    'card.load2': 'ORIGEN — la moneda que Latinoamérica estaba esperando',
+    'card.load3': 'Tu oro, en el bolsillo, en millones de comercios',
+    'card.load4': 'Cada ORIGEN se ancla a 1/55 de gramo de oro',
     // biometría
     'bio.face': 'Face ID', 'bio.huella': 'huella', 'bio.iris': 'reconocimiento de iris',
     'clave.por': 'Autoriza esta operación para continuar.',
@@ -776,6 +781,11 @@ const S = {
     'card.kycP': 'By regulation, we need to confirm who you are before issuing a card in your name.',
     'card.kycCta': 'Verify my identity',
     'card.back': 'Back', 'card.cancel': 'Cancel',
+    // phrases shown while the card loads (the issuer takes ~3s)
+    'card.load1': 'Getting your card ready…',
+    'card.load2': 'ORIGEN — the currency Latin America was waiting for',
+    'card.load3': 'Your gold, in your pocket, at millions of merchants',
+    'card.load4': 'Every ORIGEN is anchored to 1/55 of a gram of gold',
     // biometrics
     'bio.face': 'Face ID', 'bio.huella': 'fingerprint', 'bio.iris': 'iris recognition',
     'clave.por': 'Authorize this operation to continue.',
