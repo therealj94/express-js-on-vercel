@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.11.0';
-export const BUILD = 39;
+export const VERSION = '1.11.1';
+export const BUILD = 40;
 export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,17 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.11.1',
+    build: 40,
+    date: '2026-07-31',
+    es: [
+      'Al pedir el PIN salía un error de servidor. La causa: tu tarjeta es virtual y las virtuales no usan PIN — se paga con el número, sin cajero — así que el emisor no tiene ese dato. Ahora la app te lo explica en vez de mostrar un error, y no ofrece el PIN cuando la tarjeta no lo maneja.',
+    ],
+    en: [
+      'Requesting the PIN showed a server error. The cause: your card is virtual, and virtual cards do not use a PIN — you pay with the number, no ATM — so the issuer has no such data. The app now explains this instead of showing an error, and no longer offers the PIN when the card does not support one.',
+    ],
+  },
   {
     v: '1.11.0',
     build: 39,

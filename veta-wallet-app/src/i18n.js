@@ -255,6 +255,7 @@ const S = {
     // card
     'card.title': 'Mi tarjeta', 'card.hint': 'Toca la tarjeta para ver el reverso', 'card.active': 'ACTIVA', 'card.frozen': 'CONGELADA',
     'card.freeze': 'Congelar tarjeta', 'card.freezeSub': 'Bloqueo temporal instantáneo',
+    'card.frozenT': 'Tarjeta congelada', 'card.activeT': 'Tarjeta activa',
     'card.movs': 'Movimientos', 'card.empty': 'Los consumos de tu tarjeta aparecerán aquí.', 'card.holder': 'TITULAR',
     'card.expiry': 'VENCE', 'card.flip': 'Girar la tarjeta', 'card.refresh': 'Actualizar',
     'card.backNote': 'Veta Wallet · Orden Global\nSoporte: soporte@ordenglobal.org',
@@ -292,6 +293,8 @@ const S = {
     'card.kycP': 'Por regulación, necesitamos confirmar quién eres antes de emitir una tarjeta a tu nombre.',
     'card.kycCta': 'Verificar mi identidad',
     'card.back': 'Volver', 'card.cancel': 'Cancelar',
+    'card.noPin': 'Tu tarjeta es virtual y no usa PIN: pagas con el número, sin cajero.',
+    'card.noPan': 'El emisor no puede mostrar los datos de esta tarjeta ahora mismo.',
     // activity
     'act.title': 'Actividad', 'act.sub': 'Blockchain Orden Global', 'act.all': 'Todo', 'act.in': 'Recibido', 'act.out': 'Enviado',
     'act.emptyT': 'Sin movimientos aún', 'act.emptyP': 'Cuando envíes o recibas tokens, tus transacciones reales aparecerán aquí.',
@@ -718,6 +721,7 @@ const S = {
     'picker.title': 'Select an asset',
     'card.title': 'My Card', 'card.hint': 'Tap the card to see the back', 'card.active': 'ACTIVE', 'card.frozen': 'FROZEN',
     'card.freeze': 'Freeze card', 'card.freezeSub': 'Instant temporary lock',
+    'card.frozenT': 'Card frozen', 'card.activeT': 'Card active',
     'card.movs': 'Transactions', 'card.empty': 'Your card purchases will appear here.', 'card.holder': 'HOLDER',
     'card.expiry': 'EXPIRES', 'card.flip': 'Flip the card', 'card.refresh': 'Refresh',
     'card.backNote': 'Veta Wallet · Orden Global\nSupport: soporte@ordenglobal.org',
@@ -755,6 +759,8 @@ const S = {
     'card.kycP': 'By regulation, we need to confirm who you are before issuing a card in your name.',
     'card.kycCta': 'Verify my identity',
     'card.back': 'Back', 'card.cancel': 'Cancel',
+    'card.noPin': 'Your card is virtual and does not use a PIN: you pay with the number, no ATM.',
+    'card.noPan': 'The issuer cannot show this card\'s details right now.',
     'act.title': 'Activity', 'act.sub': 'Orden Global Blockchain', 'act.all': 'All', 'act.in': 'Received', 'act.out': 'Sent',
     'act.emptyT': 'No transactions yet', 'act.emptyP': 'When you send or receive tokens, your real transactions will appear here.',
     'act.from': 'From', 'act.to': 'To', 'act.pending': 'Pending network confirmation',

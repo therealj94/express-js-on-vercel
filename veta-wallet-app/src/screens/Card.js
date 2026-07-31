@@ -225,6 +225,10 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
   const [secreto, setSecreto] = useState(null);   // { pan, cvv, expiry, panUrl }
   const [pin, setPin] = useState(null);
   const [pedirPw, setPedirPw] = useState(null);   // 'pan' | 'pin' | null
+  // Las tarjetas virtuales no tienen PIN: no se usan en cajero y el emisor ni
+  // siquiera expone el dato. Cuando el backend lo confirma, se deja de ofrecer
+  // en vez de dejar un botón que siempre va a fallar.
+  const [sinPin, setSinPin] = useState(false);
 
   const [movs, setMovs] = useState(null);         // null = cargando, [] = vacío
   const [movsErr, setMovsErr] = useState(false);
@@ -292,7 +296,14 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
         if (!d?.pin) toast(t('card.pinFallback'), 'info');
       }
     } catch (e) {
-      toast(e?.status === 401 ? t('card.badPw') : mensajeDeError(e, t), 'error');
+      // 409 = el emisor no tiene ese dato para esta tarjeta. No es un fallo:
+      // se explica y, en el caso del PIN, se deja de ofrecer.
+      if (e?.status === 409) {
+        if (tipo === 'pin') { setSinPin(true); toast(t('card.noPin'), 'info'); }
+        else toast(t('card.noPan'), 'info');
+      } else {
+        toast(e?.status === 401 ? t('card.badPw') : mensajeDeError(e, t), 'error');
+      }
     } finally {
       setPedirPw(null);
     }
@@ -392,12 +403,14 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
           sub={t('card.showPanSub')}
           onPress={() => { hap(); setPedirPw('pan'); }}
         />
-        <ListRow
-          icon="lock-closed"
-          title={t('card.showPin')}
-          sub={pin ? `PIN · ${pin}` : t('card.showPinSub')}
-          onPress={() => { hap(); setPedirPw('pin'); }}
-        />
+        {!sinPin && (
+          <ListRow
+            icon="lock-closed"
+            title={t('card.showPin')}
+            sub={pin ? `PIN · ${pin}` : t('card.showPinSub')}
+            onPress={() => { hap(); setPedirPw('pin'); }}
+          />
+        )}
       </View>
 
       {secreto?.pan && (
