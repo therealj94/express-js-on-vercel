@@ -5,7 +5,7 @@ import { Icon } from '../icons';
 import { C, G } from '../theme';
 import { TokenIcon, ActionBtn, IconBtn, SectionHead, Skeleton, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt, tokensFromBalances } from '../data';
-import { apiPortfolio } from '../api';
+import { apiPortfolio, depositApi } from '../api';
 import { upsertApiAccount } from '../accounts';
 import { debeMostrarBackup, posponer } from '../backupNudge';
 import { useT } from '../i18n';
@@ -13,6 +13,10 @@ import { useT } from '../i18n';
 export default function Home({ nav }) {
   const [hidden, setHidden] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // Saldo ORIGEN comprado con depositos de USDT. Vive en el backend, no en la
+  // cadena, asi que NO entra en `total`: ese total suma lo que se puede firmar
+  // y enviar hoy, y esto todavia no. Se muestra aparte a proposito.
+  const [comprado, setComprado] = useState(null);
   const toast = useToast();
   const t = useT();
   const tr = t; // alias para no colisionar con la variable "t" del map de tokens
@@ -39,6 +43,15 @@ export default function Home({ nav }) {
   const dayPct = chgBase > 0 ? withChg.reduce((s, t) => s + t.chg * (t.qty * t.price), 0) / chgBase : null;
   const dayUsd = dayPct != null ? total * (dayPct / 100) : null;
 
+  // El saldo comprado se pide aparte del portafolio on-chain: son dos
+  // fuentes distintas y que una falle no debe dejar la otra sin mostrar.
+  async function refrescarComprado() {
+    try {
+      const d = await depositApi.balance();
+      setComprado(d);
+    } catch (e) { /* sin saldo interno o sin red: la tarjeta no se pinta */ }
+  }
+
   async function refresh(showToast) {
     try {
       const portfolio = await apiPortfolio();
@@ -55,6 +68,7 @@ export default function Home({ nav }) {
     if (account?.email && !refreshedOnce.current) {
       refreshedOnce.current = true;
       refresh(false);
+      refrescarComprado();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.email]);
@@ -118,6 +132,35 @@ export default function Home({ nav }) {
             <ActionBtn icon="swap-horizontal" label={t('home.swap')} onPress={() => nav.go('swap')} />
           </View>
         </LinearGradient>
+
+        {/* ORIGEN comprado con depósitos de USDT.
+            Va FUERA del hero y con su propio recuadro porque no es el mismo
+            saldo que el de arriba: aquel está en la cadena y se puede enviar,
+            este lo llevamos nosotros todavía. Mezclarlos en un solo número
+            sería más limpio de mirar y una mentira para gastar. */}
+        <Pressable
+          onPress={() => { hap(); nav.go('deposit'); }}
+          accessibilityRole="button"
+          accessibilityLabel={tr('home.depA11y')}
+          style={styles.depCard}>
+          <View style={styles.depIc}>
+            <Icon name="arrow-down" size={20} color={C.gold} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.depT}>{tr('home.depT')}</Text>
+            {comprado && comprado.origen > 0 ? (
+              <>
+                <Text style={styles.depV}>{hidden ? '••••••' : `${qtyFmt(comprado.origen)} ORIGEN`}</Text>
+                {comprado.usdValue != null && (
+                  <Text style={styles.depU}>{hidden ? '••••' : `≈ ${money(comprado.usdValue)} USD`}</Text>
+                )}
+              </>
+            ) : (
+              <Text style={styles.depP}>{tr('home.depP')}</Text>
+            )}
+          </View>
+          <Icon name="chevron-forward" size={18} color={C.txt3} />
+        </Pressable>
 
         {/* Remesas: puerta de entrada destacada. Usa el mismo lenguaje visual
             que el hero verde para conectar con "envío" a distancia. */}
@@ -245,6 +288,13 @@ const styles = StyleSheet.create({
   backupBtnTxt: { color: C.darkText, fontSize: 12.5, fontWeight: '800' },
   backupLater: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 11, borderWidth: 1, borderColor: 'rgba(201,169,97,0.32)' },
   backupLaterTxt: { color: C.txt2, fontSize: 12.5, fontWeight: '700' },
+  depCard: { flexDirection: 'row', alignItems: 'center', gap: 13, marginTop: 16, backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(201,169,97,0.22)', borderRadius: 18, padding: 16 },
+  depIc: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(201,169,97,0.13)', alignItems: 'center', justifyContent: 'center' },
+  depT: { color: C.txt3, fontSize: 10.5, letterSpacing: 1.2, fontWeight: '700' },
+  depV: { color: C.gold, fontSize: 18, fontWeight: '800', marginTop: 4 },
+  depU: { color: C.txt3, fontSize: 11.5, marginTop: 2 },
+  depP: { color: C.txt2, fontSize: 12.5, marginTop: 4, lineHeight: 17 },
+
   remCard: { marginTop: 18, borderRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.32, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
   remCardBg: { flexDirection: 'row', alignItems: 'center', gap: 13, padding: 15, borderWidth: 1, borderColor: 'rgba(201,169,97,0.35)', borderRadius: 20 },
   remIc: { width: 46, height: 46, borderRadius: 14, backgroundColor: 'rgba(201,169,97,0.16)', borderWidth: 1, borderColor: 'rgba(201,169,97,0.32)', alignItems: 'center', justifyContent: 'center' },

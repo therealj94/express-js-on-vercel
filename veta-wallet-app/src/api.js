@@ -245,6 +245,35 @@ export const walletApi = {
   paths: PATHS,
 };
 
+// ---------- pasarela de entrada: depositar USDT y recibir ORIGEN ----------
+//
+// El usuario deposita USDT en Polygon a su PROPIA dirección — es la misma que
+// ya tiene en la wallet, porque una clave privada sirve en las dos cadenas —
+// y el backend le acredita ORIGEN.
+//
+// Ese ORIGEN es un saldo interno del backend y NO es el ORIGEN nativo de la
+// chain 8532 que la app lee por RPC en apiPortfolio(). Son dos saldos
+// distintos a propósito y no hay que sumarlos como si fueran uno: el on-chain
+// se puede firmar y enviar, este todavía no. Más adelante se conectan.
+//
+// No hay watcher del lado del backend: cada llamada compara el saldo USDT de
+// la cadena contra lo ya acreditado. Por eso `deposit-info` y `check` pueden
+// tardar — están leyendo Polygon — y por eso llamarlos de más no acredita de
+// más.
+export const depositApi = {
+  // Dirección, red, mínimo y saldo. De paso revisa si entró algo.
+  info: () => req('/wallet/deposit-info', { timeout: 30000 }),
+
+  // Fuerza una revisión. Es lo que sondea la pantalla mientras espera.
+  check: () => req('/wallet/deposit/check', { method: 'POST', timeout: 30000 }),
+
+  // Solo el saldo interno. Barato: no toca la cadena.
+  balance: () => req('/wallet/origen-balance', { timeout: 20000 }),
+
+  // Historial de acreditaciones.
+  list: (limit = 25) => req(`/wallet/deposits?limit=${encodeURIComponent(limit)}`, { timeout: 20000 }),
+};
+
 // ---------- tarjeta Visa (CryptoMate, vía nuestro backend) ----------
 //
 // La tarjeta es un producto REAL: el backend la emite contra CryptoMate y

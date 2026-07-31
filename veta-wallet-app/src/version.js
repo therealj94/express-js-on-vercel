@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.16.1';
-export const BUILD = 50;
+export const VERSION = '1.17.0';
+export const BUILD = 51;
 export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,23 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.17.0',
+    build: 51,
+    date: '2026-07-31',
+    es: [
+      'Ya podés depositar USDT y recibir ORIGEN. En Inicio tenés la dirección con su código QR: mandás USDT por la red Polygon y tu ORIGEN aparece solo, sin apretar nada.',
+      'Todo se muestra en ORIGEN, con el equivalente en dólares al lado. También ves a qué precio se convirtió cada depósito.',
+      'El ORIGEN comprado se muestra aparte del que ya tenías en la billetera, porque todavía son dos saldos distintos. Los vamos a unir más adelante.',
+      'La pantalla avisa con claridad que solo se acepta USDT por Polygon: mandar otra moneda u otra red no tiene vuelta atrás.',
+    ],
+    en: [
+      'You can now deposit USDT and receive ORIGEN. Home has the address with its QR code: you send USDT over the Polygon network and your ORIGEN shows up on its own, without pressing anything.',
+      'Everything is shown in ORIGEN, with the dollar equivalent beside it. You also see the price each deposit was converted at.',
+      'Purchased ORIGEN is shown separately from what you already had in the wallet, because they are still two different balances. We will join them later.',
+      'The screen states clearly that only USDT over Polygon is accepted: sending another coin or another network cannot be undone.',
+    ],
+  },
   {
     v: '1.16.1',
     build: 50,
