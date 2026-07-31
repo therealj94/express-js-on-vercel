@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.11.2';
-export const BUILD = 41;
+export const VERSION = '1.11.3';
+export const BUILD = 42;
 export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,19 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.11.3',
+    build: 42,
+    date: '2026-07-31',
+    es: [
+      'El monograma de Orden Global ahora es el protagonista de la tarjeta, en dorado pleno sobre el negro, en vez de una marca de agua tenue. El grabado de circuito es más denso y con dos intensidades, y el chip tiene el brillo del oro pulido.',
+      'El número, el vencimiento y el titular van en relieve, con más aire entre ellos.',
+    ],
+    en: [
+      'The Orden Global monogram is now the hero of the card, in full gold on black, instead of a faint watermark. The circuit engraving is denser and rendered at two intensities, and the chip has the sheen of polished gold.',
+      'The number, expiry and cardholder name are embossed, with more room to breathe.',
+    ],
+  },
   {
     v: '1.11.2',
     build: 41,

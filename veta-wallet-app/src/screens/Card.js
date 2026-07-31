@@ -118,7 +118,7 @@ function mensajeDeError(e, t) {
 function Cargando() {
   return (
     <View style={{ paddingHorizontal: 22 }}>
-      <Skeleton width="100%" height={210} radius={22} />
+      <Skeleton width="100%" height={224} radius={20} />
       <View style={{ height: 18 }} />
       <Skeleton width="100%" height={54} radius={16} />
       <View style={{ height: 10 }} />
@@ -321,13 +321,14 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
 
   return (
     <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
-      <Pressable onPress={voltear} style={{ height: 214 }} accessibilityRole="button" accessibilityLabel={t('card.flip')}>
+      <Pressable onPress={voltear} style={{ height: 224 }} accessibilityRole="button" accessibilityLabel={t('card.flip')}>
         {/* ---------- frente ---------- */}
         <Animated.View style={[styles.face, { transform: [{ perspective: 1000 }, { rotateY: frontRot }] }]}>
           <LinearGradient colors={G.blackCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cardBg}>
             <Circuito />
-            {/* El monograma va detrás del texto y con poca opacidad: es marca,
-                no información. Lo que se tiene que leer son los números. */}
+            {/* El monograma es el protagonista de la tarjeta, no una marca de
+                agua: va grande, centrado y a plena opacidad, ocupando la banda
+                superior. Los datos se apoyan debajo para no pisarlo. */}
             <Image source={LOGO_ORDEN} resizeMode="contain" style={styles.monograma} />
             {congelada && <View style={styles.frozenVeil} />}
             <View style={styles.cardIn}>
@@ -336,25 +337,19 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
                 <Text style={styles.visa}>VISA</Text>
               </View>
 
-              <View style={styles.cardMid}>
-                <LinearGradient colors={['#F8EFCF', '#D9BC78', '#8F7236']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.chip}>
-                  <View style={styles.chipLine} />
-                  <View style={[styles.chipLine, { top: 20 }]} />
-                  <View style={styles.chipCol} />
-                </LinearGradient>
-                <Text style={styles.cardNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-                  {secreto?.pan ? formatearPan(secreto.pan) : `••••  ••••  ••••  ${card.last4 || '••••'}`}
-                </Text>
-              </View>
-
-              <View style={styles.cardBot}>
-                <View style={{ flex: 1, marginRight: 12 }}>
-                  <Text style={styles.k}>{t('card.holder')}</Text>
+              <View style={styles.cardDatos}>
+                <Chip />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>
+                    {secreto?.pan ? formatearPan(secreto.pan) : `••••  ••••  ••••  ${card.last4 || '••••'}`}
+                  </Text>
+                  <View style={styles.cardBot}>
+                    <View style={styles.validBloque}>
+                      <Text style={styles.validK}>VALID{'\n'}THRU</Text>
+                      <Text style={styles.validV}>{secreto?.expiry || '••/••'}</Text>
+                    </View>
+                  </View>
                   <Text style={styles.holder} numberOfLines={1}>{titular || '—'}</Text>
-                </View>
-                <View>
-                  <Text style={[styles.k, { textAlign: 'right' }]}>{t('card.expiry')}</Text>
-                  <Text style={[styles.holder, { textAlign: 'right' }]}>{secreto?.expiry || '••/••'}</Text>
                 </View>
               </View>
             </View>
@@ -582,26 +577,59 @@ function fmtFecha(v) {
   } catch (e) { return ''; }
 }
 
-// Trazas de circuito en oro, como la tarjeta física. Van en opacidad baja:
-// son textura de fondo y no deben competir con los números.
-const TRAZAS = [
-  'M0 26h58l16 16h74', 'M320 34h-52l-14 14h-46', 'M0 74h30l18-18h52l14 14h40',
-  'M320 96h-64l-16-16h-58', 'M0 132h44l20 20h58', 'M320 150h-40l-18-18h-52',
-  'M96 0v22l14 14v34', 'M214 0v30l-16 16v28', 'M148 200v-26l18-18v-30',
-  'M258 200v-40l-14-14', 'M62 200v-18l16-16', 'M292 60h-30l-16 16v40',
+// Grabado de circuito en oro, como la tarjeta física: buses que entran desde
+// los bordes, giran en ángulo recto y terminan en una vía. Se dibujan en dos
+// intensidades — unas pocas líneas marcadas y muchas tenues — porque un patrón
+// de una sola opacidad se lee como trama de fondo, no como grabado.
+const BUSES = [
+  'M0 30h44l18 18h58', 'M320 40h-46l-18 18h-52', 'M0 84h26l20-20h46l16 16h34',
+  'M320 104h-58l-18-18h-50', 'M0 148h38l22 22h52', 'M320 162h-34l-20-20h-46',
 ];
-const VIAS = [[58, 26], [148, 42], [268, 34], [30, 74], [136, 70], [256, 96], [44, 132], [122, 152], [280, 150], [96, 22], [214, 30], [292, 60]];
+const TRAZAS = [
+  'M0 16h68l14 14h40', 'M320 18h-40l-16 16h-58', 'M0 50h20l16 16h54l12 12',
+  'M320 66h-30l-14 14h-40', 'M0 106h34l16-16h40', 'M320 130h-52l-16 16h-30',
+  'M0 172h56l16-16h36', 'M320 184h-44l-18-18h-38',
+  'M82 0v18l12 12v28', 'M118 0v10l14 14', 'M206 0v24l-14 14v22',
+  'M242 0v14l16 16', 'M100 200v-22l14-14v-24', 'M172 200v-14l-16-16',
+  'M228 200v-30l16-16', 'M282 200v-18l-14-14v-26',
+  'M46 66v46l14 14v40', 'M274 58v54l-16 16v34',
+];
+const VIAS = [
+  [44, 30], [120, 48], [274, 40], [26, 84], [142, 80], [262, 104], [38, 148], [112, 170], [286, 162],
+  [82, 18], [206, 24], [242, 14], [68, 16], [280, 18], [46, 66], [274, 58], [156, 184], [100, 178],
+];
 
 function Circuito() {
   return (
     <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" viewBox="0 0 320 200" preserveAspectRatio="none">
       {TRAZAS.map((d, i) => (
-        <Path key={i} d={d} stroke="rgba(201,169,97,0.28)" strokeWidth={1} fill="none" />
+        <Path key={`t${i}`} d={d} stroke="rgba(201,169,97,0.22)" strokeWidth={0.8} fill="none" />
+      ))}
+      {BUSES.map((d, i) => (
+        <Path key={`b${i}`} d={d} stroke="rgba(223,192,120,0.52)" strokeWidth={1.3} fill="none" />
       ))}
       {VIAS.map(([cx, cy], i) => (
-        <Circle key={`v${i}`} cx={cx} cy={cy} r={2.6} stroke="rgba(201,169,97,0.42)" strokeWidth={1} fill="none" />
+        <Circle key={`v${i}`} cx={cx} cy={cy} r={2.4} stroke="rgba(223,192,120,0.6)" strokeWidth={1} fill="none" />
       ))}
     </Svg>
+  );
+}
+
+// El chip lleva un halo: en la tarjeta física el oro pulido rebota luz sobre
+// el fondo negro. React Native no tiene degradado radial, así que se apilan
+// tres capas doradas cada vez más grandes y transparentes.
+function Chip() {
+  return (
+    <View style={styles.chipWrap}>
+      <View style={[styles.halo, styles.halo3]} />
+      <View style={[styles.halo, styles.halo2]} />
+      <View style={[styles.halo, styles.halo1]} />
+      <LinearGradient colors={['#FBF3D6', '#DEC078', '#8F7236']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.chip}>
+        <View style={styles.chipLine} />
+        <View style={[styles.chipLine, { top: 20 }]} />
+        <View style={styles.chipCol} />
+      </LinearGradient>
+    </View>
   );
 }
 
@@ -624,27 +652,36 @@ const styles = StyleSheet.create({
   centroT: { color: C.txt, fontSize: 16, fontWeight: '700', marginTop: 6 },
   centroP: { color: C.txt3, fontSize: 13, textAlign: 'center', lineHeight: 19 },
 
-  face: { position: 'absolute', top: 0, left: 0, right: 0, height: 214, borderRadius: 20, backfaceVisibility: 'hidden' },
-  cardBg: { flex: 1, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(201,169,97,0.28)' },
-  cardIn: { flex: 1, padding: 19, justifyContent: 'space-between' },
+  face: { position: 'absolute', top: 0, left: 0, right: 0, height: 224, borderRadius: 20, backfaceVisibility: 'hidden' },
+  cardBg: { flex: 1, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(201,169,97,0.34)' },
+  cardIn: { flex: 1, paddingHorizontal: 19, paddingTop: 16, paddingBottom: 17, justifyContent: 'space-between' },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  premium: { fontSize: 10.5, letterSpacing: 4, color: 'rgba(234,215,156,0.82)', fontWeight: '600' },
+  premium: { fontSize: 10.5, letterSpacing: 4.5, color: 'rgba(234,215,156,0.85)', fontWeight: '600' },
   visa: { fontSize: 21, fontWeight: '800', fontStyle: 'italic', color: C.goldHi, letterSpacing: 0.5 },
-  // El monograma es marca de fondo: centrado, grande y tenue.
-  monograma: { position: 'absolute', alignSelf: 'center', top: 34, width: '58%', height: 108, opacity: 0.17 },
-  cardMid: { flexDirection: 'row', alignItems: 'center', gap: 13 },
+  // Protagonista: banda superior completa, a plena opacidad.
+  monograma: { position: 'absolute', alignSelf: 'center', top: 36, width: '64%', height: 92, opacity: 0.95 },
+
+  cardDatos: { flexDirection: 'row', alignItems: 'flex-end', gap: 13 },
+  chipWrap: { alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  halo: { position: 'absolute', borderRadius: 14 },
+  halo1: { width: 56, height: 46, backgroundColor: 'rgba(223,192,120,0.20)' },
+  halo2: { width: 70, height: 58, backgroundColor: 'rgba(223,192,120,0.11)' },
+  halo3: { width: 86, height: 72, backgroundColor: 'rgba(223,192,120,0.06)' },
   chip: { width: 42, height: 32, borderRadius: 6, overflow: 'hidden' },
   chipLine: { position: 'absolute', left: 0, right: 0, top: 11, height: 1, backgroundColor: 'rgba(90,70,25,0.55)' },
   chipCol: { position: 'absolute', top: 0, bottom: 0, left: 15, width: 1, backgroundColor: 'rgba(90,70,25,0.55)' },
-  // Números grandes, muy espaciados y en oro claro: es el dato que se copia
-  // a mano en una tienda, tiene que leerse de un vistazo.
-  cardNum: { flex: 1, fontSize: 20, letterSpacing: 2.2, color: C.goldHi, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.55)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
-  cardBot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+
+  // Relieve: una sombra oscura desplazada imita el grabado sobre el negro.
+  cardNum: { fontSize: 20.5, letterSpacing: 2.4, color: C.goldHi, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1.5 }, textShadowRadius: 2.5 },
+  cardBot: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 7 },
+  validBloque: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  validK: { fontSize: 6.5, lineHeight: 8, letterSpacing: 1.2, color: 'rgba(234,215,156,0.7)', fontWeight: '700' },
+  validV: { fontSize: 14, color: C.goldLt, fontWeight: '700', letterSpacing: 1.6, textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
   k: { fontSize: 8, letterSpacing: 1.6, color: 'rgba(234,215,156,0.62)', fontWeight: '600' },
   // El titular antes iba en 12.5 y se perdía sobre el fondo. Ahora es del
   // tamaño de un dato, no de un pie de página.
-  holder: { fontSize: 14.5, color: C.goldLt, fontWeight: '700', marginTop: 4, letterSpacing: 1.3 },
-  frozenVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 2 },
+  holder: { fontSize: 15, color: C.goldLt, fontWeight: '700', marginTop: 6, letterSpacing: 1.8, textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
+  frozenVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.58)', zIndex: 2 },
 
   magstripe: { position: 'absolute', top: 20, left: 0, right: 0, height: 44, backgroundColor: '#080705' },
   sigRow: { position: 'absolute', top: 82, left: 19, right: 19, flexDirection: 'row', alignItems: 'center', gap: 10 },
