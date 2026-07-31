@@ -47,6 +47,7 @@ const PATHS = {
   login: process.env.EXPO_PUBLIC_WALLET_PATH_LOGIN || '/auth/login',
   register: process.env.EXPO_PUBLIC_WALLET_PATH_REGISTER || '/auth/register',
   send: process.env.EXPO_PUBLIC_WALLET_PATH_SEND || '/transaction/send',
+  refresh: process.env.EXPO_PUBLIC_WALLET_PATH_REFRESH || '/auth/refresh',
 };
 
 // ---------- token + credenciales recordadas (en el llavero) ----------
@@ -63,6 +64,22 @@ export async function setToken(t) {
   else await secureDel(TOKEN_KEY);
 }
 export function getToken() { return token; }
+
+// Token de refresco (30 días, lo emite el backend junto al JWT en login).
+// Vive en el mismo llavero seguro que el JWT y no depende de "Recordarme":
+// permite renovar la sesión sin volver a pedir la contraseña.
+let refreshToken = null;
+const REFRESH_TOKEN_KEY = 'veta-refresh-token';
+
+export async function loadRefreshToken() {
+  refreshToken = await secureGet(REFRESH_TOKEN_KEY);
+  return refreshToken;
+}
+export async function setRefreshToken(t) {
+  refreshToken = t || null;
+  if (t) await secureSet(REFRESH_TOKEN_KEY, t);
+  else await secureDel(REFRESH_TOKEN_KEY);
+}
 
 // "Recordarme": guarda credenciales para renovar la sesión sola cuando el
 // JWT expira (el backend lo vence a los 40 min). Así la app no te saca.
@@ -115,20 +132,42 @@ export function tokenValid() {
   return !!(c && c.exp && c.exp * 1000 > Date.now() + 30000);
 }
 
-// Garantiza sesión viva: si el token expiró y hay credenciales guardadas,
-// renueva el login en silencio. Devuelve true si hay sesión utilizable.
+// Garantiza sesión viva: si el token expiró, primero intenta renovarlo con
+// el refreshToken (no pide contraseña, funciona aunque "Recordarme" esté
+// apagado) y, si eso falla o no hay refreshToken guardado, cae al relogin
+// con credenciales guardadas. Devuelve true si hay sesión utilizable.
 export async function ensureSession() {
   if (tokenValid()) return true;
   // La tarea en segundo plano arranca el módulo de cero, así que el token en
   // memoria está vacío aunque haya uno guardado. Sin esto, con la app cerrada
   // no había sesión y los avisos de dinero recibido nunca salían.
   if (!token) { await loadToken(); if (tokenValid()) return true; }
+
+  if (!refreshToken) await loadRefreshToken();
+  if (refreshToken) {
+    try {
+      const d = await rawReq(PATHS.refresh, { method: 'POST', body: { refreshToken } });
+      const tk = pickToken(d);
+      if (tk) {
+        await setToken(tk);
+        const rt = pickRefreshToken(d);
+        await setRefreshToken(rt || refreshToken);
+        return true;
+      }
+    } catch (e) {}
+  }
+
   const creds = await loadCreds();
   if (!creds) return false;
   try {
     const d = await rawReq(PATHS.login, { method: 'POST', body: { email: creds.email, password: creds.password } });
     const tk = pickToken(d);
-    if (tk) { await setToken(tk); return true; }
+    if (tk) {
+      await setToken(tk);
+      const rt = pickRefreshToken(d);
+      if (rt) await setRefreshToken(rt);
+      return true;
+    }
   } catch (e) {}
   return false;
 }
@@ -190,6 +229,9 @@ async function req(path, opts = {}) {
 export function pickToken(d) {
   return d?.token || d?.accessToken || d?.access_token || d?.jwt || d?.data?.token || null;
 }
+export function pickRefreshToken(d) {
+  return d?.refreshToken || d?.refresh_token || d?.data?.refreshToken || null;
+}
 export function pickUser(d) {
   const u = d?.user || d?.data?.user || d?.profile || null;
   return u && typeof u === 'object' ? u : null;
@@ -244,6 +286,8 @@ export async function apiLogin(emailRaw, password) {
   const tk = pickToken(d);
   if (!tk) throw new Error('El servidor no devolvió una sesión válida');
   await setToken(tk);
+  const rt = pickRefreshToken(d);
+  if (rt) await setRefreshToken(rt);
   const claims = decodeJwt(tk) || {};
   const apiUser = pickUser(d) || {};
   const user = {

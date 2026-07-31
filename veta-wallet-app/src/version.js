@@ -10,15 +10,26 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.10.6';
-export const BUILD = 36;
-export const RELEASED = '2026-07-30';
+export const VERSION = '1.10.7';
+export const BUILD = 37;
+export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.10.7',
+    build: 37,
+    date: '2026-07-31',
+    es: [
+      'Arreglada la raíz del bug de ONDK: el servidor cerraba la sesión a los 40 min y, si no tenías "Recordarme" activado, la app se quedaba pegada pidiendo datos con una sesión vencida (por eso a veces no llegaba el precio ni el historial). Ahora el backend entrega también un token de renovación que dura 30 días y la app lo usa para renovar la sesión sola, sin pedir contraseña de nuevo — pase lo que pase con "Recordarme".',
+    ],
+    en: [
+      'Fixed the root cause of the ONDK bug: the server ended your session after 40 min and, without "Remember me" on, the app kept requesting data with an expired session (why price and history sometimes did not load). The backend now also issues a 30-day renewal token and the app uses it to renew the session on its own, without asking for your password again — regardless of "Remember me".',
+    ],
+  },
   {
     v: '1.10.6',
     build: 36,
