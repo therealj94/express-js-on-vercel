@@ -7,7 +7,7 @@ import * as Clipboard from 'expo-clipboard';
 import { C, G } from '../theme';
 import { LOGO_ORDEN, Button3D, ListRow, Toggle, SectionHead, Skeleton, useToast, useAccount, hap } from '../ui';
 import { qtyFmt, money } from '../data';
-import { cardApi, sinTarjeta } from '../api';
+import { cardApi, depositApi, sinTarjeta } from '../api';
 import { useT } from '../i18n';
 import PedirClave from '../PedirClave';
 
@@ -511,6 +511,12 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
         </Pressable>
       </View>
 
+      {/* Comprar ORIGEN depositando USDT.
+          Va aquí y no en Inicio porque es lo que se hace justo antes de
+          recargar: si no te alcanza el ORIGEN, este es el camino para
+          conseguir más sin salir de la sección. */}
+      <ComprarOrigen nav={nav} t={t} />
+
       <View style={styles.group}>
         <ListRow
           first
@@ -683,6 +689,50 @@ function FilaLim({ k, v }) {
 // emisor —divisa original, tipo de cambio, saldo antes y después— y se ofrece
 // disputar el cargo, que es lo que uno busca cuando abre un movimiento que no
 // reconoce.
+// ---------- comprar ORIGEN con USDT ----------
+// Se pide su propio saldo en vez de recibirlo por props: es una fuente
+// distinta a la de la tarjeta (backend propio, no CryptoMate) y si falla no
+// debe arrastrar a la pantalla entera — simplemente no se pinta el número.
+function ComprarOrigen({ nav, t }) {
+  const [saldo, setSaldo] = useState(null);
+
+  useEffect(() => {
+    let vivo = true;
+    depositApi.balance()
+      .then((d) => { if (vivo) setSaldo(d); })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, []);
+
+  const tiene = saldo && saldo.origen > 0;
+
+  return (
+    <Pressable
+      onPress={() => { hap(); nav.go('deposit'); }}
+      accessibilityRole="button"
+      accessibilityLabel={t('card.depA11y')}
+      style={styles.depCard}>
+      <View style={styles.depIc}>
+        <Icon name="arrow-down" size={20} color={C.gold} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.depT}>{t('card.depT')}</Text>
+        {tiene ? (
+          <>
+            <Text style={styles.depV}>{qtyFmt(saldo.origen)} ORIGEN</Text>
+            {saldo.usdValue != null && (
+              <Text style={styles.depU}>≈ {money(saldo.usdValue)} USD</Text>
+            )}
+          </>
+        ) : (
+          <Text style={styles.depP}>{t('card.depP')}</Text>
+        )}
+      </View>
+      <Icon name="chevron-forward" size={18} color={C.txt3} />
+    </Pressable>
+  );
+}
+
 function DetalleMovimiento({ mov, t, toast, onCerrar }) {
   const [full, setFull] = useState(null);
   const [cargando, setCargando] = useState(false);
@@ -1024,6 +1074,13 @@ const styles = StyleSheet.create({
   saldoBox: { backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderRadius: 18, padding: 18, alignItems: 'center', marginBottom: 12 },
   saldoK: { fontSize: 10, letterSpacing: 1.4, color: C.txt3, fontWeight: '700' },
   saldoV: { fontSize: 26, color: C.gold, fontWeight: '800', marginTop: 6 },
+  depCard: { flexDirection: 'row', alignItems: 'center', gap: 13, marginBottom: 12, backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(201,169,97,0.22)', borderRadius: 18, padding: 16 },
+  depIc: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(201,169,97,0.13)', alignItems: 'center', justifyContent: 'center' },
+  depT: { color: C.txt3, fontSize: 10.5, letterSpacing: 1.2, fontWeight: '700' },
+  depV: { color: C.gold, fontSize: 18, fontWeight: '800', marginTop: 4 },
+  depU: { color: C.txt3, fontSize: 11.5, marginTop: 2 },
+  depP: { color: C.txt2, fontSize: 12.5, marginTop: 4, lineHeight: 17 },
+
   recargarBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.gold, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 10, marginTop: 14 },
   recargarTxt: { color: C.darkText, fontSize: 13.5, fontWeight: '800' },
   txnUsd: { fontSize: 11, color: C.txt3, marginTop: 2 },

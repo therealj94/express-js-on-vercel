@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.17.0';
-export const BUILD = 51;
+export const VERSION = '1.17.1';
+export const BUILD = 52;
 export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,17 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.17.1',
+    build: 52,
+    date: '2026-07-31',
+    es: [
+      'Depositar USDT se movió a la sección de la tarjeta, que es donde tiene sentido: si no te alcanza el ORIGEN para recargar, lo conseguís ahí mismo sin salir.',
+    ],
+    en: [
+      'Deposit USDT moved into the card section, where it belongs: if you do not have enough ORIGEN to top up, you get it right there without leaving.',
+    ],
+  },
   {
     v: '1.17.0',
     build: 51,
