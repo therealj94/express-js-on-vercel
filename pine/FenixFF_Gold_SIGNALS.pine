@@ -1,20 +1,24 @@
 //@version=6
 // =====================================================================================
-//  FENIX FF GOLD SIGNALS — Sistema completo de señales con historial y puntaje
+//  FENIX FF GOLD SIGNALS v2 — Señales con probabilidad, historial y decisión completa
 //  XAUUSD y cualquier activo · Pine Script v6 · todas las temporalidades (auto-tuning)
 //
 //  QUÉ HACE:
 //   · Motor Fallo del Fallo (L → F → M → entrada) en ambas direcciones a la vez.
-//   · PUNTAJE 0-100 por señal (8 confluencias) con nota A+ / A / B y filtro mínimo.
-//   · GESTOR DE OPERACIÓN: cada señal abre una operación virtual con cajas de riesgo
-//     (roja) y recompensa (verde). Al tocar SL o TP se cierra sola, se congela como
-//     HISTORIAL en el gráfico y marca el resultado: ✔ TP +R  o  ✘ SL -1R.
-//   · Regla conservadora: si SL y TP se tocan en la misma vela, cuenta como SL.
-//   · Solo una operación activa a la vez → historial limpio y medible.
-//   · PANEL con estadísticas: trades, ganadas, perdidas, winrate, R neto, racha.
+//   · PUNTAJE 0-100 (8 confluencias) + PROBABILIDAD %: estimada al inicio y REAL
+//     (winrate histórico por nota) cuando esa nota acumula 10+ operaciones cerradas.
+//   · CHECKLIST de confluencias impreso en cada señal (MTF✓ FC✓ VOL✗ ...).
+//   · AVISO "PREPARAR" al crearse la ineficiencia, con entrada/SL/TP planificados.
+//   · LOTE SUGERIDO según tu capital y % de riesgo.
+//   · CHEQUEO DE CAMINO LIBRE: avisa si hay una zona FC opuesta antes del TP.
+//   · GESTOR DE OPERACIÓN: cajas riesgo/recompensa que se extienden vela a vela; al
+//     tocar SL o TP la operación se cierra sola y queda congelada como HISTORIAL con
+//     su resultado: ✔ TP +R / ✘ SL -1R. Regla conservadora: SL y TP en la misma vela
+//     cuenta como SL. Solo una operación activa a la vez.
+//   · PANEL: trade activo, historial, winrate, R neto, racha y winrate POR NOTA.
 // =====================================================================================
 
-indicator("FENIX FF GOLD SIGNALS — Historial + Puntaje", shorttitle="FENIX FF SIGNALS", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=500)
+indicator("FENIX FF GOLD SIGNALS — Probabilidad + Historial", shorttitle="FENIX FF SIGNALS", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=500)
 
 // =====================================================================================
 // ① AUTO-ADAPTACIÓN A LA TEMPORALIDAD
@@ -49,9 +53,9 @@ maxWaitExp   = input.int(20,    "Máx. velas esperando estiramiento",   minval=2
 maxWaitRetest= input.int(40,    "Máx. velas esperando rebalanceo",     minval=2, maxval=300, group=grpFF)
 
 // =====================================================================================
-// ③ PUNTAJE DE PROBABILIDAD
+// ③ PUNTAJE Y PROBABILIDAD
 // =====================================================================================
-grpScore = "③ Puntaje de probabilidad"
+grpScore = "③ Puntaje y probabilidad"
 minScore   = input.int(50,  "Puntaje mínimo para dar señal (0-100)", minval=0, maxval=100, group=grpScore, tooltip="50 = filtra las señales de nota C. 65 = solo A y A+. 80 = solo A+.")
 wMtf       = input.int(25,  "Peso · sesgo MTF alineado",           minval=0, maxval=50, group=grpScore)
 wZone      = input.int(15,  "Peso · entrada en zona FC viva",      minval=0, maxval=50, group=grpScore)
@@ -62,16 +66,22 @@ wImp       = input.int(10,  "Peso · impulso extra (3+ velas)",     minval=0, ma
 wFvg       = input.int(10,  "Peso · ineficiencia amplia",          minval=0, maxval=50, group=grpScore)
 wRep       = input.int(10,  "Peso · nivel repetido",               minval=0, maxval=50, group=grpScore)
 repTolPct  = input.float(0.5,"Tolerancia nivel repetido (%)",      minval=0.05, maxval=3.0, step=0.05, group=grpScore)
+minProbN   = input.int(10,  "Operaciones mínimas para usar winrate real por nota", minval=3, maxval=100, group=grpScore, tooltip="Hasta llegar a este número, la P%% mostrada es una estimación calibrada por puntaje. Desde ahí, es el winrate histórico real de esa nota.")
 
 // =====================================================================================
-// ④ GESTIÓN DE LA OPERACIÓN VIRTUAL
+// ④ OPERACIÓN, RIESGO E HISTORIAL
 // =====================================================================================
-grpTrade = "④ Operación e historial"
+grpTrade = "④ Operación, riesgo e historial"
 atrLen     = input.int(14,    "ATR length",                          minval=2, maxval=100, group=grpTrade)
 slBuffAtr  = input.float(0.20,"Colchón del SL (x ATR)",              minval=0.0, maxval=2.0, step=0.05, group=grpTrade)
 rr1        = input.float(2.0, "TP en múltiplo de R",                 minval=0.5, maxval=20, step=0.5, group=grpTrade)
 maxTradeBars = input.int(150, "Máx. velas por operación",            minval=10, maxval=1000, group=grpTrade, tooltip="Si no toca SL ni TP en este tiempo, se cierra al precio actual y se registra el R real.")
 keepHistory  = input.bool(true,"Congelar operaciones cerradas como historial", group=grpTrade)
+capUSD     = input.float(10000,"Capital de la cuenta (USD)",         minval=10, group=grpTrade)
+riskPctIn  = input.float(1.0, "Riesgo por operación (%)",            minval=0.05, maxval=10, step=0.05, group=grpTrade)
+usdPerPt   = input.float(1.0, "USD por punto por lote",              minval=0.0001, group=grpTrade, tooltip="XAUUSD: lote de 1 oz = 1 USD por punto de movimiento; lote de 100 oz = 100.")
+showCheck  = input.bool(true, "Mostrar checklist de confluencias",   group=grpTrade)
+showPrep   = input.bool(true, "Aviso PREPARAR al crearse la ineficiencia", group=grpTrade)
 
 // =====================================================================================
 // ⑤ FILTROS
@@ -489,10 +499,18 @@ if accOnlyDom and dualFF
         sellRdy := false
 
 // =====================================================================================
-// PUNTAJE DE PROBABILIDAD (0-100)
+// PUNTAJE, CHECKLIST Y PROBABILIDAD
 // =====================================================================================
 var array<float> prevLong  = array.new<float>()
 var array<float> prevShort = array.new<float>()
+
+// historial por nota: 3 = A+, 2 = A, 1 = B (y C si se baja el mínimo)
+var int gW3 = 0
+var int gT3 = 0
+var int gW2 = 0
+var int gT2 = 0
+var int gW1 = 0
+var int gT1 = 0
 
 isRepeated(array<float> arr, float lvl) =>
     rep = false
@@ -505,39 +523,53 @@ isRepeated(array<float> arr, float lvl) =>
 
 gradeOf(int sc) => sc >= 80 ? "A+" : sc >= 65 ? "A" : sc >= 50 ? "B" : "C"
 
+// P%: winrate real de la nota si ya hay muestra suficiente; si no, estimación por puntaje
+probFor(int sc) =>
+    g  = gradeOf(sc)
+    bt = g == "A+" ? gT3 : g == "A" ? gT2 : gT1
+    bw = g == "A+" ? gW3 : g == "A" ? gW2 : gW1
+    bt >= minProbN ? 100.0 * bw / bt : 35.0 + sc * 0.32
+
 calcScore(bool isLong, int impSave, float fvgQual) =>
-    sc = 0
-    sc += (isLong ? biasBull : biasBear) ? wMtf : 0
-    sc += (isLong ? inBullZone : inBearZone) ? wZone : 0
-    sc += dualFF and (isLong ? biasBull : biasBear) ? wAcum : 0
-    sc += inKill ? wSess : 0
-    sc += volHigh ? wVol : 0
-    sc += impSave >= 3 ? wImp : 0
-    sc += fvgQual >= 1.5 ? wFvg : 0
-    sc += isRepeated(isLong ? prevLong : prevShort, close) ? wRep : 0
-    sc
+    c1 = isLong ? biasBull : biasBear
+    c2 = isLong ? inBullZone : inBearZone
+    c3 = dualFF and (isLong ? biasBull : biasBear)
+    c4 = inKill
+    c5 = volHigh
+    c6 = impSave >= 3
+    c7 = fvgQual >= 1.5
+    c8 = isRepeated(isLong ? prevLong : prevShort, close)
+    sc = (c1 ? wMtf : 0) + (c2 ? wZone : 0) + (c3 ? wAcum : 0) + (c4 ? wSess : 0) + (c5 ? wVol : 0) + (c6 ? wImp : 0) + (c7 ? wFvg : 0) + (c8 ? wRep : 0)
+    chk = "MTF" + (c1 ? "✓" : "✗") + " FC" + (c2 ? "✓" : "✗") + " ACU" + (c3 ? "✓" : "✗") + " KZ" + (c4 ? "✓" : "✗") + "\nVOL" + (c5 ? "✓" : "✗") + " IMP" + (c6 ? "✓" : "✗") + " FVG" + (c7 ? "✓" : "✗") + " REP" + (c8 ? "✓" : "✗")
+    [sc, chk]
 
 bool buySig  = false
 bool sellSig = false
 var int    sigScore = 0
 var string sigGrade = "—"
+var float  sigProb  = 0.0
+var string sigChk   = ""
 
 if buyRdy
-    scL = calcScore(true, bImpSave, bFvgQual)
+    [scL, chkL] = calcScore(true, bImpSave, bFvgQual)
     if scL >= minScore
         buySig   := true
         sigScore := scL
         sigGrade := gradeOf(scL)
+        sigProb  := probFor(scL)
+        sigChk   := chkL
         array.push(prevLong, close)
         if array.size(prevLong) > 10
             array.shift(prevLong)
 
 if sellRdy
-    scS = calcScore(false, sImpSave, sFvgQual)
+    [scS, chkS] = calcScore(false, sImpSave, sFvgQual)
     if scS >= minScore
         sellSig  := true
         sigScore := scS
         sigGrade := gradeOf(scS)
+        sigProb  := probFor(scS)
+        sigChk   := chkS
         array.push(prevShort, close)
         if array.size(prevShort) > 10
             array.shift(prevShort)
@@ -553,7 +585,6 @@ var int   streak   = 0
 var string lastRes = "—"
 
 closeTrade(bool won, float rGain, string tag) =>
-    // congela cajas y marca el resultado
     if not na(tRisk)
         box.set_right(tRisk, bar_index)
         if not keepHistory
@@ -566,7 +597,7 @@ closeTrade(bool won, float rGain, string tag) =>
     label.new(bar_index, won ? high : low, resTxt, style = won ? label.style_label_down : label.style_label_up, color = won ? color.new(#0F7A4D, 10) : color.new(#C4243C, 10), textcolor=color.white, size=size.small)
     resTxt
 
-// --- apertura ---
+// --- apertura LONG ---
 if buySig
     tDir   := 1
     tEntry := entryMode == "Toque" ? bTrig : close
@@ -578,8 +609,25 @@ if buySig
     tRisk  := box.new(bar_index, tEntry, bar_index + 1, tSl, border_color=color.new(#C4243C, 55), bgcolor=color.new(#C4243C, 85))
     tRew   := box.new(bar_index, tTp, bar_index + 1, tEntry, border_color=color.new(#0F7A4D, 55), bgcolor=color.new(#0F7A4D, 85))
     lastSigBar := bar_index
-    label.new(bar_index, low, "BUY " + str.tostring(sigScore) + " " + sigGrade + "\nE " + str.tostring(tEntry, format.mintick) + "\nSL " + str.tostring(tSl, format.mintick) + "\nTP " + str.tostring(tTp, format.mintick), style=label.style_label_up, color=colBull, textcolor=color.white, size=size.normal)
+    // chequeo de camino libre: ¿hay FC bajista vivo entre entrada y TP?
+    obstL = false
+    if array.size(zsLvl) > 0
+        for i = 0 to array.size(zsLvl) - 1
+            lvlO = array.get(zsLvl, i)
+            if lvlO > tEntry and lvlO < tTp
+                obstL := true
+    lotL = riskL > 0 and usdPerPt > 0 ? (capUSD * riskPctIn / 100) / (riskL * usdPerPt) : 0.0
+    txtL = "▲ BUY · P≈" + str.tostring(sigProb, "#") + "% · " + str.tostring(sigScore) + " " + sigGrade
+    txtL := txtL + "\nE " + str.tostring(tEntry, format.mintick) + " · SL " + str.tostring(tSl, format.mintick)
+    txtL := txtL + "\nTP " + str.tostring(tTp, format.mintick) + " · R:R 1:" + str.tostring(rr1, "#.#")
+    txtL := txtL + "\nLote≈" + str.tostring(lotL, "#.##") + " (riesgo " + str.tostring(riskPctIn, "#.##") + "%)"
+    if showCheck
+        txtL := txtL + "\n" + sigChk
+    if obstL
+        txtL := txtL + "\n⚠ FC opuesto antes del TP"
+    label.new(bar_index, low, txtL, style=label.style_label_up, color=colBull, textcolor=color.white, size=size.normal)
 
+// --- apertura SHORT ---
 if sellSig
     tDir   := -1
     tEntry := entryMode == "Toque" ? sTrig : close
@@ -591,14 +639,28 @@ if sellSig
     tRisk  := box.new(bar_index, tSl, bar_index + 1, tEntry, border_color=color.new(#C4243C, 55), bgcolor=color.new(#C4243C, 85))
     tRew   := box.new(bar_index, tEntry, bar_index + 1, tTp, border_color=color.new(#0F7A4D, 55), bgcolor=color.new(#0F7A4D, 85))
     lastSigBar := bar_index
-    label.new(bar_index, high, "SELL " + str.tostring(sigScore) + " " + sigGrade + "\nE " + str.tostring(tEntry, format.mintick) + "\nSL " + str.tostring(tSl, format.mintick) + "\nTP " + str.tostring(tTp, format.mintick), style=label.style_label_down, color=colBear, textcolor=color.white, size=size.normal)
+    obstS = false
+    if array.size(zbLvl) > 0
+        for i = 0 to array.size(zbLvl) - 1
+            lvlO2 = array.get(zbLvl, i)
+            if lvlO2 < tEntry and lvlO2 > tTp
+                obstS := true
+    lotS = riskS > 0 and usdPerPt > 0 ? (capUSD * riskPctIn / 100) / (riskS * usdPerPt) : 0.0
+    txtS = "▼ SELL · P≈" + str.tostring(sigProb, "#") + "% · " + str.tostring(sigScore) + " " + sigGrade
+    txtS := txtS + "\nE " + str.tostring(tEntry, format.mintick) + " · SL " + str.tostring(tSl, format.mintick)
+    txtS := txtS + "\nTP " + str.tostring(tTp, format.mintick) + " · R:R 1:" + str.tostring(rr1, "#.#")
+    txtS := txtS + "\nLote≈" + str.tostring(lotS, "#.##") + " (riesgo " + str.tostring(riskPctIn, "#.##") + "%)"
+    if showCheck
+        txtS := txtS + "\n" + sigChk
+    if obstS
+        txtS := txtS + "\n⚠ FC opuesto antes del TP"
+    label.new(bar_index, high, txtS, style=label.style_label_down, color=colBear, textcolor=color.white, size=size.normal)
 
 // --- seguimiento y cierre (en velas posteriores a la apertura) ---
 bool winEvt  = false
 bool lossEvt = false
 
 if tDir != 0 and bar_index > tBar
-    // extender cajas
     if not na(tRisk)
         box.set_right(tRisk, bar_index + 1)
     if not na(tRew)
@@ -625,7 +687,6 @@ if tDir != 0 and bar_index > tBar
         winEvt  := true
         tDir    := 0
     else if bar_index - tBar >= maxTradeBars
-        // timeout: cierra al precio actual con el R real conseguido
         riskAbs = math.abs(tEntry - tSl)
         rNow    = riskAbs > 0 ? (tDir == 1 ? close - tEntry : tEntry - close) / riskAbs : 0.0
         won     = rNow >= 0
@@ -644,10 +705,23 @@ if tDir != 0 and bar_index > tBar
             lossEvt := true
         tDir := 0
 
+// actualizar el historial por nota (tScore aún guarda la operación cerrada)
+if winEvt or lossEvt
+    gCl = gradeOf(tScore)
+    if gCl == "A+"
+        gT3 += 1
+        gW3 += winEvt ? 1 : 0
+    else if gCl == "A"
+        gT2 += 1
+        gW2 += winEvt ? 1 : 0
+    else
+        gT1 += 1
+        gW1 += winEvt ? 1 : 0
+
 winrate = nTrades > 0 ? 100.0 * nWins / nTrades : 0.0
 
 // =====================================================================================
-// VISUALES DE FASES
+// VISUALES DE FASES + AVISO PREPARAR
 // =====================================================================================
 if showPhases and markL_L
     label.new(bar_index, low,  "L", style=label.style_triangleup,   color=color.new(color.yellow, 25), textcolor=color.black, size=size.tiny)
@@ -662,17 +736,28 @@ if showPhases and markM_L
 if showPhases and markM_S
     label.new(bar_index, low,  "M", style=label.style_label_up,   color=color.new(colBear, 20), textcolor=color.white, size=size.tiny)
 
+// PREPARAR: la ineficiencia acaba de crearse → plan de la operación antes de la señal
+if showPrep and markM_L
+    pSlL = bStruct - slBuffAtr * atr
+    pRkL = math.max(bTrig - pSlL, syminfo.mintick)
+    label.new(bar_index, low, "PREPARAR LONG\nE≈" + str.tostring(bTrig, format.mintick) + "\nSL " + str.tostring(pSlL, format.mintick) + "\nTP " + str.tostring(bTrig + rr1 * pRkL, format.mintick), style=label.style_label_upper_right, color=color.new(colBull, 60), textcolor=color.white, size=size.tiny)
+if showPrep and markM_S
+    pSlS = sStruct + slBuffAtr * atr
+    pRkS = math.max(pSlS - sTrig, syminfo.mintick)
+    label.new(bar_index, high, "PREPARAR SHORT\nE≈" + str.tostring(sTrig, format.mintick) + "\nSL " + str.tostring(pSlS, format.mintick) + "\nTP " + str.tostring(sTrig - rr1 * pRkS, format.mintick), style=label.style_label_lower_right, color=color.new(colBear, 60), textcolor=color.white, size=size.tiny)
+
 barcolor(buySig ? colBull : sellSig ? colBear : na)
 
 // =====================================================================================
 // PANEL CON ESTADÍSTICAS
 // =====================================================================================
 stName(st) => st == 0 ? "—" : st == 1 ? "FC" : st == 2 ? "MITIGADO" : "TESTEO"
+grTxt(int w, int t) => t > 0 ? str.tostring(w) + "/" + str.tostring(t) + " (" + str.tostring(100.0 * w / t, "#") + "%)" : "—"
 pPos = panelPos == "Superior derecha" ? position.top_right : panelPos == "Superior izquierda" ? position.top_left : panelPos == "Inferior derecha" ? position.bottom_right : position.bottom_left
 pTxt = panelSize == "Normal" ? size.small : size.normal
 pHdr = panelSize == "Normal" ? size.normal : size.large
 
-var table panel = table.new(pPos, 4, 10, border_width=1, frame_width=2, frame_color=color.new(#C9A227, 30))
+var table panel = table.new(pPos, 4, 11, border_width=1, frame_width=2, frame_color=color.new(#C9A227, 30))
 
 if showPanel and barstate.islast
     cDark  = color.new(#0B0B0B, 5)
@@ -683,7 +768,7 @@ if showPanel and barstate.islast
     cUp    = #37D28B
     cDn    = #FF5C72
 
-    table.clear(panel, 0, 0, 3, 9)
+    table.clear(panel, 0, 0, 3, 10)
 
     table.cell(panel, 0, 0, "FENIX FF SIGNALS", text_color=color.black, bgcolor=colHeader, text_size=pHdr)
     table.merge_cells(panel, 0, 0, 2, 0)
@@ -709,51 +794,59 @@ if showPanel and barstate.islast
     table.cell(panel, 2, 4, "R neto:", text_color=cTxt, bgcolor=cDark2, text_size=pTxt)
     table.cell(panel, 3, 4, (netR >= 0 ? "+" : "") + str.tostring(netR, "#.#") + "R", text_color = netR >= 0 ? cUp : cDn, bgcolor=cDark2, text_size=pTxt)
 
-    table.cell(panel, 0, 5, "Racha / Último:", text_color=cTxt, bgcolor=cDark, text_size=pTxt)
-    table.cell(panel, 1, 5, (streak > 0 ? "+" : "") + str.tostring(streak), text_color = streak >= 0 ? cUp : cDn, bgcolor=cDark, text_size=pTxt)
-    table.cell(panel, 2, 5, lastRes, text_color=cTxt, bgcolor=cDark, text_size=size.tiny)
-    table.merge_cells(panel, 2, 5, 3, 5)
+    table.cell(panel, 0, 5, "Por nota:", text_color=cTxt, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 1, 5, "A+ " + grTxt(gW3, gT3), text_color=cUp, bgcolor=cDark, text_size=size.tiny)
+    table.cell(panel, 2, 5, "A " + grTxt(gW2, gT2), text_color=cOn, bgcolor=cDark, text_size=size.tiny)
+    table.cell(panel, 3, 5, "B " + grTxt(gW1, gT1), text_color=cTxt, bgcolor=cDark, text_size=size.tiny)
 
-    table.cell(panel, 0, 6, "Sesgo MTF " + htfTf + ":", text_color=cTxt, bgcolor=cDark2, text_size=pTxt)
-    table.cell(panel, 1, 6, biasBull ? "▲ UP" : biasBear ? "▼ DOWN" : "FLAT", text_color = biasBull ? cUp : biasBear ? cDn : cOff, bgcolor=cDark2, text_size=pTxt)
-    table.cell(panel, 2, 6, "Killzone:", text_color=cTxt, bgcolor=cDark2, text_size=pTxt)
-    table.cell(panel, 3, 6, inKill ? "SÍ" : "NO", text_color = inKill ? cOn : cOff, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 0, 6, "Racha / Último:", text_color=cTxt, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 1, 6, (streak > 0 ? "+" : "") + str.tostring(streak), text_color = streak >= 0 ? cUp : cDn, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 2, 6, lastRes, text_color=cTxt, bgcolor=cDark2, text_size=size.tiny)
+    table.merge_cells(panel, 2, 6, 3, 6)
 
-    table.cell(panel, 0, 7, "Zonas FC:", text_color=cTxt, bgcolor=cDark, text_size=pTxt)
-    table.cell(panel, 1, 7, "▲ " + str.tostring(array.size(zbLvl)), text_color=colFCBull, bgcolor=cDark, text_size=pTxt)
-    table.cell(panel, 2, 7, "▼ " + str.tostring(array.size(zsLvl)), text_color=colFCBear, bgcolor=cDark, text_size=pTxt)
-    table.cell(panel, 3, 7, "Vol " + (volHigh ? "▲" : "▼"), text_color = volHigh ? cUp : cOff, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 0, 7, "Sesgo MTF " + htfTf + ":", text_color=cTxt, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 1, 7, biasBull ? "▲ UP" : biasBear ? "▼ DOWN" : "FLAT", text_color = biasBull ? cUp : biasBear ? cDn : cOff, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 2, 7, "Killzone:", text_color=cTxt, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 3, 7, inKill ? "SÍ" : "NO", text_color = inKill ? cOn : cOff, bgcolor=cDark, text_size=pTxt)
 
-    table.cell(panel, 0, 8, "Setup F+F:", text_color=cTxt, bgcolor=cDark2, text_size=pTxt)
-    table.cell(panel, 1, 8, "▲ " + stName(bSt), text_color = bSt > 0 ? cUp : cOff, bgcolor=cDark2, text_size=pTxt)
-    table.cell(panel, 2, 8, "▼ " + stName(sSt), text_color = sSt > 0 ? cDn : cOff, bgcolor=cDark2, text_size=pTxt)
-    table.cell(panel, 3, 8, dualFF ? "ACUM" : inAccum ? "RANGO" : "EXPAN", text_color = dualFF ? color.orange : cTxt, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 0, 8, "Zonas FC:", text_color=cTxt, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 1, 8, "▲ " + str.tostring(array.size(zbLvl)), text_color=colFCBull, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 2, 8, "▼ " + str.tostring(array.size(zsLvl)), text_color=colFCBear, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 3, 8, "Vol " + (volHigh ? "▲" : "▼"), text_color = volHigh ? cUp : cOff, bgcolor=cDark2, text_size=pTxt)
 
-    table.cell(panel, 0, 9, "TF " + timeframe.period + (autoTf ? " · AUTO" : " · MAN"), text_color=cTxt, bgcolor=cDark, text_size=pTxt)
-    table.cell(panel, 1, 9, "Min: " + str.tostring(minScore), text_color=cTxt, bgcolor=cDark, text_size=pTxt)
-    table.cell(panel, 2, 9, "ATR " + str.tostring(atrPct, "#.##") + "%", text_color = volOk ? color.teal : cOff, bgcolor=cDark, text_size=pTxt)
-    table.cell(panel, 3, 9, sessionOk ? "OK" : "FUERA", text_color = sessionOk ? cOn : cOff, bgcolor=cDark, text_size=size.tiny)
+    table.cell(panel, 0, 9, "Setup F+F:", text_color=cTxt, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 1, 9, "▲ " + stName(bSt), text_color = bSt > 0 ? cUp : cOff, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 2, 9, "▼ " + stName(sSt), text_color = sSt > 0 ? cDn : cOff, bgcolor=cDark, text_size=pTxt)
+    table.cell(panel, 3, 9, dualFF ? "ACUM" : inAccum ? "RANGO" : "EXPAN", text_color = dualFF ? color.orange : cTxt, bgcolor=cDark, text_size=pTxt)
+
+    table.cell(panel, 0, 10, "TF " + timeframe.period + (autoTf ? " · AUTO" : " · MAN"), text_color=cTxt, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 1, 10, "Min: " + str.tostring(minScore), text_color=cTxt, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 2, 10, "ATR " + str.tostring(atrPct, "#.##") + "%", text_color = volOk ? color.teal : cOff, bgcolor=cDark2, text_size=pTxt)
+    table.cell(panel, 3, 10, sessionOk ? "OK" : "FUERA", text_color = sessionOk ? cOn : cOff, bgcolor=cDark2, text_size=size.tiny)
 
 // =====================================================================================
 // ALERTAS
 // =====================================================================================
 if buySig
-    alert("FENIX ▲ BUY " + syminfo.ticker + " " + timeframe.period + " | Puntaje " + str.tostring(sigScore) + " " + sigGrade + " | E " + str.tostring(tEntry, format.mintick) + " | SL " + str.tostring(tSl, format.mintick) + " | TP " + str.tostring(tTp, format.mintick), alert.freq_once_per_bar_close)
+    alert("FENIX ▲ BUY " + syminfo.ticker + " " + timeframe.period + " | P≈" + str.tostring(sigProb, "#") + "% (" + str.tostring(sigScore) + " " + sigGrade + ") | E " + str.tostring(tEntry, format.mintick) + " | SL " + str.tostring(tSl, format.mintick) + " | TP " + str.tostring(tTp, format.mintick), alert.freq_once_per_bar_close)
 if sellSig
-    alert("FENIX ▼ SELL " + syminfo.ticker + " " + timeframe.period + " | Puntaje " + str.tostring(sigScore) + " " + sigGrade + " | E " + str.tostring(tEntry, format.mintick) + " | SL " + str.tostring(tSl, format.mintick) + " | TP " + str.tostring(tTp, format.mintick), alert.freq_once_per_bar_close)
+    alert("FENIX ▼ SELL " + syminfo.ticker + " " + timeframe.period + " | P≈" + str.tostring(sigProb, "#") + "% (" + str.tostring(sigScore) + " " + sigGrade + ") | E " + str.tostring(tEntry, format.mintick) + " | SL " + str.tostring(tSl, format.mintick) + " | TP " + str.tostring(tTp, format.mintick), alert.freq_once_per_bar_close)
 if winEvt
     alert("FENIX ✔ TP alcanzado en " + syminfo.ticker + " " + timeframe.period + " | " + lastRes + " | Winrate " + str.tostring(winrate, "#.#") + "% | R neto " + str.tostring(netR, "#.#"), alert.freq_once_per_bar_close)
 if lossEvt
     alert("FENIX ✘ SL tocado en " + syminfo.ticker + " " + timeframe.period + " | " + lastRes + " | Winrate " + str.tostring(winrate, "#.#") + "% | R neto " + str.tostring(netR, "#.#"), alert.freq_once_per_bar_close)
-if markM_L or markM_S
-    alert("FENIX · ineficiencia virgen creada en " + syminfo.ticker + " " + timeframe.period + " — esperar rebalanceo", alert.freq_once_per_bar_close)
+if markM_L
+    alert("FENIX · PREPARAR LONG en " + syminfo.ticker + " " + timeframe.period + " | E≈" + str.tostring(bTrig, format.mintick) + " — esperar rebalanceo", alert.freq_once_per_bar_close)
+if markM_S
+    alert("FENIX · PREPARAR SHORT en " + syminfo.ticker + " " + timeframe.period + " | E≈" + str.tostring(sTrig, format.mintick) + " — esperar rebalanceo", alert.freq_once_per_bar_close)
 
 alertcondition(buySig,  title="SIGNALS — BUY",        message="FENIX BUY {{ticker}} {{interval}} @ {{close}}")
 alertcondition(sellSig, title="SIGNALS — SELL",       message="FENIX SELL {{ticker}} {{interval}} @ {{close}}")
 alertcondition(winEvt,  title="SIGNALS — TP tocado",  message="FENIX TP alcanzado {{ticker}} {{interval}}")
 alertcondition(lossEvt, title="SIGNALS — SL tocado",  message="FENIX SL tocado {{ticker}} {{interval}}")
-alertcondition(markM_L or markM_S, title="SIGNALS — Ineficiencia creada", message="FENIX ineficiencia virgen {{ticker}} {{interval}}")
+alertcondition(markM_L or markM_S, title="SIGNALS — Preparar entrada", message="FENIX ineficiencia virgen {{ticker}} {{interval}}")
 
 plot(buySig ? 1 : sellSig ? -1 : 0, "Señal", display=display.data_window)
-plot(sigScore, "Puntaje", display=display.data_window)
-plot(netR,     "R neto",  display=display.data_window)
+plot(sigScore, "Puntaje",      display=display.data_window)
+plot(sigProb,  "Probabilidad", display=display.data_window)
+plot(netR,     "R neto",       display=display.data_window)
