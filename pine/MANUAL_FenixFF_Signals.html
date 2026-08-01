@@ -1,0 +1,442 @@
+<title>FENIX FF SIGNALS — Vista previa y manual</title>
+
+<style>
+  :root {
+    --paper:      #F3F2EF;
+    --panel:      #FFFFFF;
+    --panel-2:    #EAE8E2;
+    --ink:        #17150F;
+    --ink-2:      #4A463C;
+    --ink-3:      #7A7466;
+    --rule:       #D8D5CC;
+    --gold:       #A8811A;
+    --gold-bright:#C9A227;
+    --bull:       #0F7A4D;
+    --bear:       #C4243C;
+    --bull-soft:  #E3F1EA;
+    --bear-soft:  #F9E4E7;
+    --gold-soft:  #F5EEDA;
+
+    --serif: Charter, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0D0D0E; --panel: #16161A; --panel-2: #1F1F24;
+      --ink: #EDEAE1; --ink-2: #B0AB9E; --ink-3: #7E7969; --rule: #2C2C32;
+      --gold: #E0B93F; --gold-bright: #F0CF62;
+      --bull: #37D28B; --bear: #FF5C72;
+      --bull-soft: #12291F; --bear-soft: #2B1419; --gold-soft: #2A230F;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0D0D0E; --panel: #16161A; --panel-2: #1F1F24;
+    --ink: #EDEAE1; --ink-2: #B0AB9E; --ink-3: #7E7969; --rule: #2C2C32;
+    --gold: #E0B93F; --gold-bright: #F0CF62;
+    --bull: #37D28B; --bear: #FF5C72;
+    --bull-soft: #12291F; --bear-soft: #2B1419; --gold-soft: #2A230F;
+  }
+  :root[data-theme="light"] {
+    --paper: #F3F2EF; --panel: #FFFFFF; --panel-2: #EAE8E2;
+    --ink: #17150F; --ink-2: #4A463C; --ink-3: #7A7466; --rule: #D8D5CC;
+    --gold: #A8811A; --gold-bright: #C9A227;
+    --bull: #0F7A4D; --bear: #C4243C;
+    --bull-soft: #E3F1EA; --bear-soft: #F9E4E7; --gold-soft: #F5EEDA;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 17px; line-height: 1.65; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 22px 90px; }
+
+  .masthead { border-bottom: 3px solid var(--gold); padding: 50px 0 20px; margin-bottom: 34px; }
+  .kicker { font-family: var(--mono); font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); margin: 0 0 16px; }
+  h1 { font-family: var(--serif); font-size: clamp(32px, 6vw, 48px); line-height: 1.05; font-weight: 600; letter-spacing: -.015em; margin: 0 0 14px; text-wrap: balance; }
+  .standfirst { font-family: var(--serif); font-size: clamp(18px, 2.3vw, 20px); color: var(--ink-2); margin: 0; max-width: 62ch; }
+
+  section { margin-bottom: 64px; }
+  h2 { font-family: var(--serif); font-size: clamp(24px, 3.4vw, 30px); font-weight: 600; letter-spacing: -.01em; margin: 0 0 6px; text-wrap: balance; }
+  .sec-num { font-family: var(--mono); font-size: 11.5px; letter-spacing: .14em; color: var(--gold); display: block; margin-bottom: 10px; text-transform: uppercase; }
+  h3 { font-size: 17px; font-weight: 700; margin: 30px 0 10px; }
+  p { margin: 0 0 16px; max-width: 68ch; }
+  .lede { color: var(--ink-2); font-size: 17.5px; margin-bottom: 24px; max-width: 64ch; }
+  code { font-family: var(--mono); font-size: .85em; background: var(--panel-2); padding: 2px 5px; border-radius: 3px; }
+
+  /* ------- gráfico simulado ------- */
+  .chart-shell { background: #101114; border: 1px solid #2A2C33; border-radius: 6px; padding: 14px 10px 8px; position: relative; overflow: hidden; }
+  .chart-shell canvas { width: 100%; height: auto; display: block; }
+  .tv-panel {
+    position: absolute; top: 20px; left: 20px; width: 252px;
+    font-family: var(--mono); font-size: 10px; line-height: 1.35;
+    border: 2px solid #C9A227; border-radius: 3px; overflow: hidden;
+    background: #0B0B0B; color: #D0D0D0; box-shadow: 0 6px 18px rgba(0,0,0,.5);
+  }
+  .tv-head { background: #C9A227; color: #1A1403; font-weight: 700; letter-spacing: .06em; padding: 5px 9px; display: flex; justify-content: space-between; }
+  .tv-row { display: grid; grid-template-columns: 1.35fr 1fr 1fr .7fr; border-top: 1px solid #26262b; }
+  .tv-row > span { padding: 4px 7px; white-space: nowrap; overflow: hidden; }
+  .tv-row .k { color: #9a958a; }
+  .up { color: #37D28B; } .dn { color: #FF5C72; } .au { color: #FFD54F; } .mut { color: #666; }
+  @media (max-width: 720px) {
+    .tv-panel { position: static; width: 100%; margin-top: 10px; box-shadow: none; }
+  }
+  .chart-note { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin: 10px 2px 0; }
+
+  /* callout legend */
+  .callouts { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; margin: 26px 0 0; }
+  .co { background: var(--panel); padding: 14px 16px; display: flex; gap: 12px; }
+  .co-n { flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; background: var(--gold-bright); color: #1A1403; font-family: var(--mono); font-size: 12px; font-weight: 700; display: grid; place-items: center; margin-top: 2px; }
+  .co div strong { display: block; font-size: 14.5px; margin-bottom: 2px; }
+  .co div span { font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
+
+  /* anatomía de la etiqueta */
+  .sig-card { display: grid; grid-template-columns: 250px 1fr; gap: 22px; margin: 24px 0; align-items: start; }
+  .sig-label { font-family: var(--mono); font-size: 12.5px; line-height: 1.55; background: #2962FF; color: #fff; border-radius: 6px; padding: 12px 14px; box-shadow: 0 6px 16px rgba(41,98,255,.3); }
+  .sig-label .warn-line { color: #FFD54F; }
+  .sig-rows { display: flex; flex-direction: column; gap: 0; }
+  .sig-row { display: grid; grid-template-columns: 118px 1fr; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 14.5px; }
+  .sig-row:last-child { border-bottom: none; }
+  .sig-row b { font-family: var(--mono); font-size: 12px; color: var(--gold); }
+  .sig-row span { color: var(--ink-2); }
+  @media (max-width: 640px) { .sig-card { grid-template-columns: 1fr; } }
+
+  /* tablas */
+  .t-wrap { overflow-x: auto; margin: 20px 0; border: 1px solid var(--rule); border-radius: 4px; background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; min-width: 460px; }
+  th { text-align: left; font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); padding: 10px 14px; border-bottom: 1px solid var(--rule); background: var(--panel-2); white-space: nowrap; }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.p-name { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
+  td.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+
+  ol.check { counter-reset: step; list-style: none; padding: 0; margin: 22px 0; }
+  ol.check li { counter-increment: step; display: grid; grid-template-columns: 30px 1fr; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--rule); font-size: 15.5px; }
+  ol.check li::before { content: counter(step); font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--gold); border: 1px solid var(--gold); border-radius: 50%; width: 26px; height: 26px; display: grid; place-items: center; margin-top: 1px; }
+  ol.check li b { display: block; }
+  ol.check li span { color: var(--ink-2); font-size: 14.5px; }
+
+  .note { border-left: 3px solid var(--gold); background: var(--gold-soft); padding: 15px 18px; margin: 22px 0; border-radius: 0 3px 3px 0; }
+  .note p { margin: 0; font-size: 15px; max-width: none; }
+  .note .n-title { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); display: block; margin-bottom: 6px; }
+  .warn { border-left-color: var(--bear); background: var(--bear-soft); }
+  .warn .n-title { color: var(--bear); }
+  ul.plain { padding-left: 20px; margin: 0 0 18px; }
+  ul.plain li { margin-bottom: 8px; max-width: 64ch; }
+
+  footer { border-top: 1px solid var(--rule); padding-top: 20px; font-family: var(--mono); font-size: 11.5px; letter-spacing: .05em; color: var(--ink-3); text-transform: uppercase; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="kicker">Fenix Forex Funds · FENIX FF SIGNALS v2</p>
+    <h1>Así se ve el indicador, y así se usa</h1>
+    <p class="standfirst">Simulación fiel de lo que aparece en tu gráfico de TradingView — cada zona, cada etiqueta y el panel — seguida del manual de decisión completo.</p>
+  </header>
+
+  <!-- ============================================================ -->
+  <section id="vista">
+    <span class="sec-num">01 — Vista previa</span>
+    <h2>Una operación completa, de principio a fin</h2>
+    <p class="lede">Esta escena muestra el ciclo entero en XAUUSD 5m: el barrido de liquidez, la mitigación, el estiramiento que deja la vela de testeo, la señal con toda su información, y el cierre en TP que queda como historial.</p>
+
+    <div class="chart-shell">
+      <canvas id="chart" width="1960" height="1080"></canvas>
+      <div class="tv-panel">
+        <div class="tv-head"><span>FENIX FF SIGNALS</span><span>◆</span></div>
+        <div class="tv-row"><span class="k">Operación:</span><span class="mut">SIN TRADE</span><span>—</span><span>—</span></div>
+        <div class="tv-row"><span class="k">Niveles:</span><span>—</span><span>—</span><span>—</span></div>
+        <div class="tv-row"><span class="k">Historial:</span><span class="up">✔ 1</span><span class="dn">✘ 0</span><span>1</span></div>
+        <div class="tv-row"><span class="k">Winrate:</span><span class="up">100%</span><span class="k">R neto:</span><span class="up">+2.0R</span></div>
+        <div class="tv-row"><span class="k">Por nota:</span><span class="up">A+ —</span><span class="au">A 1/1</span><span>B —</span></div>
+        <div class="tv-row"><span class="k">Racha / Último:</span><span class="up">+1</span><span class="up" style="grid-column: span 2">✔ TP +2R (A)</span></div>
+        <div class="tv-row"><span class="k">Sesgo MTF 30:</span><span class="up">▲ UP</span><span class="k">Killzone:</span><span class="au">SÍ</span></div>
+        <div class="tv-row"><span class="k">Zonas FC:</span><span class="up">▲ 1</span><span class="dn">▼ 0</span><span class="up">Vol ▲</span></div>
+        <div class="tv-row"><span class="k">Setup F+F:</span><span class="mut">▲ —</span><span class="mut">▼ —</span><span>EXPAN</span></div>
+        <div class="tv-row"><span class="k">TF 5 · AUTO</span><span class="k">Min: 50</span><span class="up">ATR 0.04%</span><span class="au">OK</span></div>
+      </div>
+    </div>
+    <p class="chart-note">Simulación ilustrativa · XAUUSD 5m · los números de los círculos dorados se explican abajo</p>
+
+    <div class="callouts">
+      <div class="co"><span class="co-n">1</span><div><strong>L — barrido de liquidez</strong><span>El precio perfora el mínimo previo pero cierra por encima: nace el FC alcista y su línea verde de zona.</span></div></div>
+      <div class="co"><span class="co-n">2</span><div><strong>F — mitigación</strong><span>Tras alejarse, el precio regresa a la zona FC y limpia a los impacientes. El setup sigue vivo.</span></div></div>
+      <div class="co"><span class="co-n">3</span><div><strong>M + caja "testeo virgen"</strong><span>Dos velas verticales dejan la ineficiencia (FVG): la caja azul es el imán donde se esperará la entrada.</span></div></div>
+      <div class="co"><span class="co-n">4</span><div><strong>Aviso PREPARAR</strong><span>Al crearse la ineficiencia, el plan completo aparece antes de la señal: entrada estimada, SL y TP.</span></div></div>
+      <div class="co"><span class="co-n">5</span><div><strong>Señal BUY completa</strong><span>Probabilidad, puntaje y nota, niveles, lote sugerido y checklist de confluencias. Todo en una etiqueta.</span></div></div>
+      <div class="co"><span class="co-n">6</span><div><strong>Cajas riesgo / recompensa</strong><span>Roja hasta el SL, verde hasta el TP. Se extienden vela a vela mientras la operación está viva.</span></div></div>
+      <div class="co"><span class="co-n">7</span><div><strong>✔ Resultado e historial</strong><span>El precio tocó el TP: la operación se cierra sola, las cajas se congelan y queda el sello del resultado.</span></div></div>
+      <div class="co"><span class="co-n">8</span><div><strong>Línea FC liquidada</strong><span>La zona roja de arriba fue cobrada: la línea se congela punteada como rastro del trabajo ya hecho.</span></div></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="anatomia">
+    <span class="sec-num">02 — La señal</span>
+    <h2>Anatomía de la etiqueta de entrada</h2>
+    <p class="lede">Cada línea de la etiqueta responde una pregunta concreta. Si sabes leerla, la decisión toma segundos.</p>
+
+    <div class="sig-card">
+      <div class="sig-label">▲ BUY · P≈58% · 75 A<br>E 4106.40 · SL 4103.70<br>TP 4111.80 · R:R 1:2.0<br>Lote≈0.37 (riesgo 1%)<br>MTF✓ FC✓ ACU✗ KZ✓<br>VOL✓ IMP✗ FVG✓ REP✗<br><span class="warn-line">⚠ FC opuesto antes del TP</span></div>
+      <div class="sig-rows">
+        <div class="sig-row"><b>P≈58%</b><span>Probabilidad de la señal. Al principio es una estimación calibrada por el puntaje; cuando esa nota acumula 10+ operaciones cerradas, pasa a ser el winrate real histórico.</span></div>
+        <div class="sig-row"><b>75 A</b><span>Puntaje de confluencias (0–100) y su nota: A+ ≥80, A 65–79, B 50–64. Las C ni aparecen con el filtro por defecto.</span></div>
+        <div class="sig-row"><b>E · SL · TP</b><span>Entrada, stop detrás de la lógica tendencial con colchón ATR, y objetivo a 2R. Son los tres números que pones en tu bróker.</span></div>
+        <div class="sig-row"><b>Lote≈0.37</b><span>Tamaño de posición calculado con TU capital y TU % de riesgo para que, si salta el SL, pierdas exactamente lo planeado.</span></div>
+        <div class="sig-row"><b>Checklist</b><span>Qué confluencia pasó (✓) y cuál falló (✗): sesgo MTF, zona FC, acumulación, killzone, volumen, impulso, tamaño de la FVG y nivel repetido.</span></div>
+        <div class="sig-row"><b>⚠ Obstáculo</b><span>Solo aparece si hay una zona FC opuesta viva entre la entrada y el TP. Es el aviso de que el camino al objetivo no está limpio.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="prob">
+    <span class="sec-num">03 — Probabilidad</span>
+    <h2>De dónde sale la P%</h2>
+    <p>El sistema tiene dos modos y cambia solo entre ellos:</p>
+    <div class="t-wrap">
+      <table>
+        <thead><tr><th>Fase</th><th>Cuándo</th><th>Qué muestra</th></tr></thead>
+        <tbody>
+          <tr><td class="p-name">Estimación</td><td>Mientras la nota tiene menos de 10 operaciones cerradas</td><td>Una fórmula calibrada por puntaje: de ~35% (puntaje 0) a ~67% (puntaje 100). Es orientativa.</td></tr>
+          <tr><td class="p-name">Real</td><td>Desde la operación cerrada nº 10 de esa nota</td><td>El winrate histórico verdadero de esa nota en ese gráfico y temporalidad. Se actualiza con cada cierre.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <span class="n-title">Por qué esto importa</span>
+      <p>La mayoría de indicadores inventan la probabilidad. Aquí el propio historial la corrige: si tus señales A ganan el 54% de las veces, la P% de las próximas A dirá 54%. El indicador aprende de sus resultados en tu activo y tu temporalidad.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="flujo">
+    <span class="sec-num">04 — Operativa</span>
+    <h2>El flujo de decisión, paso a paso</h2>
+    <ol class="check">
+      <li><b>Configura una sola vez el grupo ④</b><span>Capital real, % de riesgo por operación y USD por punto según tu bróker (1 si el lote es de 1 onza, 100 si es de 100 oz). De esto depende que el lote sugerido sea correcto.</span></li>
+      <li><b>Llega la alerta PREPARAR</b><span>La ineficiencia se creó. Abre el gráfico: ya tienes entrada estimada, SL y TP. Decide con calma si el plan te convence — antes de que exista la señal.</span></li>
+      <li><b>Llega la señal</b><span>Mira tres cosas en orden: la P%, el checklist (¿qué falló y te importa?) y si hay ⚠ de obstáculo. Regla simple: P baja + ⚠ = se deja pasar.</span></li>
+      <li><b>Ejecuta con los números de la etiqueta</b><span>Entrada, SL, TP y lote tal cual. No muevas el SL "para que quepa más lote": si el lote te parece pequeño, es que el stop es grande — y eso es información, no un error.</span></li>
+      <li><b>No toques nada hasta el cierre</b><span>El indicador vigila la operación por ti. Toca TP → ✔ verde. Toca SL → ✘ rojo. Se acabó: sin promediar, sin mover stops, sin revancha.</span></li>
+      <li><b>Lee el panel cada semana</b><span>La fila "Por nota" es tu auditoría: si las A+ no ganan más que las B, algo en los pesos no refleja tu mercado — ajústalos de a uno.</span></li>
+    </ol>
+
+    <h3>Cuándo NO tomar la señal aunque aparezca</h3>
+    <ul class="plain">
+      <li>Con noticias de alto impacto a menos de 15 minutos (NFP, CPI, FOMC).</li>
+      <li>Con el aviso ⚠ de FC opuesto y una P% que ya venía justa.</li>
+      <li>Si el lote sugerido sale más pequeño que el mínimo de tu bróker: el stop es demasiado grande para tu cuenta en esa operación.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="config">
+    <span class="sec-num">05 — Configuración</span>
+    <h2>Ajustes clave y alertas</h2>
+
+    <div class="t-wrap">
+      <table>
+        <thead><tr><th>Ajuste</th><th>Defecto</th><th>Cuándo cambiarlo</th></tr></thead>
+        <tbody>
+          <tr><td class="p-name">Puntaje mínimo</td><td class="num">50</td><td>Súbelo a 65 para operar solo A y A+; a 80 para solo A+. Menos señales, más calidad.</td></tr>
+          <tr><td class="p-name">Auto-adaptación</td><td class="num">Activada</td><td>Déjala. Ajusta sola el motor a 1m/3m/5m/15m/1h/4h.</td></tr>
+          <tr><td class="p-name">Disparo de entrada</td><td class="num">Confirmación</td><td>Cambia a "Toque" en 1m–3m si las señales te llegan tarde.</td></tr>
+          <tr><td class="p-name">TP en múltiplo de R</td><td class="num">2.0</td><td>Con 2R basta ganar el 34% para ser rentable. Súbelo solo si tu historial lo aguanta.</td></tr>
+          <tr><td class="p-name">Bloquear contra MTF</td><td class="num">Apagado</td><td>Enciéndelo si quieres cero señales contratendencia; apagado, el MTF solo resta puntos.</td></tr>
+          <tr><td class="p-name">Sensibilidad FC</td><td class="num">Baja</td><td>Sube a Media/Alta si quieres ver más zonas (más ruido en pantalla).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Las 6 alertas</h3>
+    <div class="t-wrap">
+      <table>
+        <thead><tr><th>Alerta</th><th>Para qué</th></tr></thead>
+        <tbody>
+          <tr><td class="p-name">PREPARAR LONG / SHORT</td><td>La más valiosa: te da el plan antes de la señal. Es tu llamada a la pantalla.</td></tr>
+          <tr><td class="p-name">BUY / SELL</td><td>Ejecutar. El mensaje trae P%, nota, entrada, SL y TP.</td></tr>
+          <tr><td class="p-name">TP tocado / SL tocado</td><td>Cierre de la operación con el winrate y R neto actualizados. Puedes soltar la pantalla mientras tanto.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Créalas con <strong>Once Per Bar Close</strong> (clic derecho → Add alert → Condition: FENIX FF SIGNALS). Así nada repinta: toda señal se confirma al cierre de vela.</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="limites">
+    <span class="sec-num">06 — Honestidad</span>
+    <h2>Lo que debes saber antes de fiarte</h2>
+    <ul class="plain">
+      <li><strong>Regla conservadora:</strong> si una misma vela toca SL y TP, cuenta como pérdida. El winrate mostrado nunca está inflado; el real puede ser algo mejor.</li>
+      <li><strong>Las estadísticas viven en el gráfico cargado:</strong> al cambiar de temporalidad o recargar, se recalculan desde cero con el histórico disponible.</li>
+      <li><strong>La P% inicial es estimación,</strong> no promesa. Se vuelve real con operaciones cerradas — dale mínimo 2 semanas en demo antes de dinero real.</li>
+      <li><strong>El historial virtual no incluye spread ni slippage.</strong> En oro con noticias, el resultado real será algo peor que el del panel.</li>
+      <li><strong>Es un copiloto, no un bot:</strong> muestra, mide y avisa — la ejecución y la disciplina siguen siendo tuyas.</li>
+    </ul>
+    <div class="note warn">
+      <span class="n-title">Protocolo de validación</span>
+      <p>Dos semanas en demo siguiendo las señales al pie de la letra. Si el R neto del panel y el de tu cuenta demo se parecen, el sistema está bien calibrado para tu bróker. Solo entonces, dinero real con el riesgo por operación al 1% o menos.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>Fenix Forex Funds · FENIX FF SIGNALS v2</span>
+    <span>Pine Script v6 · Manual de uso</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var cv = document.getElementById('chart');
+  var g = cv.getContext('2d');
+  var W = cv.width, H = cv.height;
+  var S = 2; // factor de resolución
+  g.scale(1, 1);
+
+  // ---------- datos de velas (historia completa) ----------
+  var C = [
+    [4107.4,4107.7,4106.9,4107.0],[4107.0,4107.3,4106.5,4106.7],[4106.7,4107.0,4106.2,4106.4],
+    [4106.4,4106.8,4105.9,4106.1],[4106.1,4106.5,4105.6,4105.8],[4105.8,4106.2,4105.3,4105.5],
+    [4105.5,4105.9,4104.9,4105.1],[4105.1,4105.4,4104.7,4104.9],[4104.9,4105.2,4104.5,4104.7],
+    [4104.7,4105.3,4104.6,4105.1],[4105.1,4105.7,4105.0,4105.5],[4105.5,4105.9,4105.2,4105.7],
+    [4105.7,4105.9,4104.9,4105.1],[4104.8,4105.1,4104.0,4105.0],[4105.0,4105.8,4104.9,4105.6],
+    [4105.6,4106.3,4105.4,4106.1],[4106.1,4106.7,4105.9,4106.5],[4106.5,4106.6,4105.6,4105.8],
+    [4105.5,4105.6,4104.95,4105.1],[4105.2,4106.4,4105.1,4106.3],[4106.3,4107.8,4106.1,4107.6],
+    [4107.6,4108.2,4107.2,4108.0],[4108.0,4108.5,4107.6,4108.3],[4108.3,4108.8,4107.7,4107.9],
+    [4107.9,4108.0,4107.0,4107.2],[4107.2,4107.4,4106.3,4106.5],[4106.1,4106.6,4105.7,4106.4],
+    [4106.4,4106.9,4106.0,4106.7],[4106.7,4107.3,4106.4,4107.1],[4107.1,4107.4,4106.5,4106.7],
+    [4106.7,4107.8,4106.6,4107.6],[4107.6,4108.6,4107.4,4108.4],[4108.4,4109.3,4108.2,4109.1],
+    [4109.1,4110.0,4108.8,4109.8],[4109.8,4110.6,4109.5,4110.4],[4110.4,4111.2,4110.1,4111.0],
+    [4111.0,4111.9,4110.8,4111.6],[4111.6,4111.8,4110.9,4111.1],[4111.1,4111.4,4110.5,4110.7],
+    [4110.7,4111.0,4110.2,4110.5]
+  ];
+  var N = C.length;
+  var minP = 4103.0, maxP = 4113.8;
+  var padL = 16*S, padR = 76*S, padT = 14*S, padB = 26*S;
+  var cw = 17*S, gap = 6.5*S;
+  var x0 = padL;
+  function X(i) { return x0 + i*(cw+gap) + cw/2; }
+  function Y(p) { return padT + (maxP-p)/(maxP-minP)*(H-padT-padB); }
+
+  // fondo
+  g.fillStyle = '#101114'; g.fillRect(0,0,W,H);
+  // grid
+  g.strokeStyle = '#1C1E24'; g.lineWidth = 1*S;
+  g.font = (10*S)+'px Menlo, monospace'; g.fillStyle = '#5A5D66'; g.textAlign = 'left';
+  for (var p = 4103; p <= 4112.5; p += 1) {
+    g.beginPath(); g.moveTo(padL, Y(p)); g.lineTo(W-padR+8*S, Y(p)); g.stroke();
+    g.fillText(p.toFixed(0)+'.00', W-padR+14*S, Y(p)+3*S);
+  }
+
+  var entry = 4106.4, sl = 4103.7, tp = 4111.8;
+  var iBuy = 26, iEnd = 36;
+
+  // caja FVG (testeo virgen): high[18]=4105.6 .. low[20]=4106.1, desde vela 18 hasta que se toca (26)
+  g.fillStyle = 'rgba(41,98,255,0.16)';
+  g.strokeStyle = 'rgba(41,98,255,0.55)'; g.lineWidth = 1.2*S;
+  var fx1 = X(18)-cw/2, fx2 = X(iBuy)+cw/2+6*S;
+  g.fillRect(fx1, Y(4106.1), fx2-fx1, Y(4105.6)-Y(4106.1));
+  g.strokeRect(fx1, Y(4106.1), fx2-fx1, Y(4105.6)-Y(4106.1));
+  g.fillStyle = 'rgba(120,160,255,0.9)'; g.font = (9.5*S)+'px Menlo, monospace';
+  g.fillText('testeo virgen', fx1+6*S, Y(4106.1)-4*S);
+
+  // cajas riesgo / recompensa congeladas (historial) de la vela 26 a la 36
+  var tx1 = X(iBuy)-cw/2, tx2 = X(iEnd)+cw/2;
+  g.fillStyle = 'rgba(196,36,60,0.14)';
+  g.strokeStyle = 'rgba(196,36,60,0.5)';
+  g.fillRect(tx1, Y(entry), tx2-tx1, Y(sl)-Y(entry));
+  g.strokeRect(tx1, Y(entry), tx2-tx1, Y(sl)-Y(entry));
+  g.fillStyle = 'rgba(15,122,77,0.14)';
+  g.strokeStyle = 'rgba(15,122,77,0.5)';
+  g.fillRect(tx1, Y(tp), tx2-tx1, Y(entry)-Y(tp));
+  g.strokeRect(tx1, Y(tp), tx2-tx1, Y(entry)-Y(tp));
+  // niveles texto
+  g.font = (9.5*S)+'px Menlo, monospace';
+  g.fillStyle = '#FF5C72'; g.fillText('SL 4103.70', tx1+4*S, Y(sl)+11*S);
+  g.fillStyle = '#37D28B'; g.fillText('TP 4111.80', tx1+4*S, Y(tp)-4*S);
+  g.fillStyle = '#8AB4FF'; g.fillText('E 4106.40', tx1+4*S, Y(entry)-4*S);
+
+  // línea FC alcista viva (verde) desde vela 13 en low 4104.0 hasta el borde
+  g.strokeStyle = 'rgba(0,230,118,0.85)'; g.lineWidth = 2*S; g.setLineDash([]);
+  g.beginPath(); g.moveTo(X(13), Y(4104.0)); g.lineTo(W-padR+6*S, Y(4104.0)); g.stroke();
+
+  // línea FC bajista liquidada (roja punteada) de vela 23 (4108.8) a vela 32
+  g.strokeStyle = 'rgba(255,23,68,0.7)'; g.lineWidth = 1.4*S; g.setLineDash([4*S,4*S]);
+  g.beginPath(); g.moveTo(X(23), Y(4108.8)); g.lineTo(X(32), Y(4108.8)); g.stroke();
+  g.setLineDash([]);
+
+  // ---------- velas ----------
+  for (var i = 0; i < N; i++) {
+    var o=C[i][0], h=C[i][1], l=C[i][2], c=C[i][3];
+    var up = c >= o;
+    var col = up ? '#26A69A' : '#EF5350';
+    g.strokeStyle = col; g.lineWidth = 1.4*S;
+    g.beginPath(); g.moveTo(X(i), Y(h)); g.lineTo(X(i), Y(l)); g.stroke();
+    g.fillStyle = col;
+    var yO = Y(o), yC = Y(c);
+    g.fillRect(X(i)-cw/2, Math.min(yO,yC), cw, Math.max(Math.abs(yC-yO), 1.5*S));
+  }
+
+  // ---------- etiquetas ----------
+  function tag(x, y, txt, bg, fg, above, fs) {
+    fs = fs || 10*S;
+    g.font = '700 '+fs+'px Menlo, monospace';
+    var lines = txt.split('\n');
+    var w = 0;
+    for (var j=0;j<lines.length;j++) w = Math.max(w, g.measureText(lines[j]).width);
+    w += 12*S;
+    var lh = fs*1.35, hh = lines.length*lh + 8*S;
+    var yy = above ? y - hh - 8*S : y + 8*S;
+    g.fillStyle = bg;
+    g.beginPath();
+    if (g.roundRect) { g.roundRect(x-w/2, yy, w, hh, 4*S); g.fill(); }
+    else { g.fillRect(x-w/2, yy, w, hh); }
+    // flechita
+    g.beginPath();
+    if (above) { g.moveTo(x-5*S, yy+hh); g.lineTo(x+5*S, yy+hh); g.lineTo(x, yy+hh+6*S); }
+    else { g.moveTo(x-5*S, yy); g.lineTo(x+5*S, yy); g.lineTo(x, yy-6*S); }
+    g.fill();
+    g.fillStyle = fg; g.textAlign = 'left';
+    for (var j2=0;j2<lines.length;j2++)
+      g.fillText(lines[j2], x-w/2+6*S, yy + 6*S + fs*0.82 + j2*lh);
+  }
+
+  // FC labels sobre las velas clave
+  tag(X(13), Y(C[13][2]), 'FC', 'rgba(0,230,118,0.92)', '#04150D', false, 9*S);
+  tag(X(23), Y(C[23][1]), 'FC', 'rgba(255,23,68,0.92)', '#fff', true, 9*S);
+
+  // fases
+  tag(X(13)-cw*1.4, Y(C[13][2])+26*S, 'L', 'rgba(255,235,59,0.95)', '#1A1403', false, 9.5*S);
+  tag(X(18), Y(C[18][2]), 'F', 'rgba(255,152,0,0.95)', '#fff', false, 9.5*S);
+  tag(X(20), Y(C[20][1]), 'M', 'rgba(41,98,255,0.95)', '#fff', true, 9.5*S);
+
+  // PREPARAR
+  tag(X(22)+cw, Y(4110.4), 'PREPARAR LONG\nE≈ 4105.85\nSL 4103.70\nTP 4110.15', 'rgba(41,98,255,0.45)', '#DCE6FF', false, 8.5*S);
+
+  // BUY (etiqueta grande)
+  tag(X(iBuy), Y(C[iBuy][2]), '▲ BUY · P≈58% · 75 A\nE 4106.40 · SL 4103.70\nTP 4111.80 · R:R 1:2.0\nLote≈0.37 (riesgo 1%)\nMTF✓ FC✓ ACU✗ KZ✓\nVOL✓ IMP✗ FVG✓ REP✗', 'rgba(41,98,255,0.97)', '#fff', false, 8.8*S);
+
+  // resultado
+  tag(X(iEnd), Y(C[iEnd][1]), '✔ TP +2.0R (A)', 'rgba(15,122,77,0.97)', '#fff', true, 10*S);
+
+  // ---------- callouts numerados ----------
+  function co(n, x, y) {
+    g.beginPath(); g.arc(x, y, 9.5*S, 0, 7);
+    g.fillStyle = '#C9A227'; g.fill();
+    g.fillStyle = '#1A1403'; g.font = '700 '+(10*S)+'px Menlo, monospace'; g.textAlign='center';
+    g.fillText(String(n), x, y+3.5*S);
+    g.textAlign='left';
+  }
+  co(1, X(13)-cw*1.4, Y(C[13][2])+64*S);
+  co(2, X(18)+cw*1.2, Y(C[18][2])+34*S);
+  co(3, X(16), Y(4105.85));
+  co(4, X(25)+cw, Y(4110.9));
+  co(5, X(iBuy)-cw*1.6, Y(4104.6));
+  co(6, X(31), Y(4105.2));
+  co(7, X(iEnd)+cw*1.3, Y(4112.35));
+  co(8, X(27), Y(4108.8)-14*S);
+})();
+</script>
