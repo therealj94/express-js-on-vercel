@@ -1,24 +1,26 @@
 //@version=6
 // =====================================================================================
-//  FENIX FF GOLD SIGNALS v2 — Señales con probabilidad, historial y decisión completa
+//  FENIX FF GOLD SIGNALS v3 — Señales + Guía paso a paso para cualquier nivel
 //  XAUUSD y cualquier activo · Pine Script v6 · todas las temporalidades (auto-tuning)
 //
 //  QUÉ HACE:
 //   · Motor Fallo del Fallo (L → F → M → entrada) en ambas direcciones a la vez.
+//   · MODO GUÍA: tabla en español simple que dice qué está haciendo el precio
+//     (acumulación, tendencia, dormido), en qué PASO 1/4-4/4 va cada dirección y
+//     qué hay que esperar ahora. Fondo naranja suave cuando hay acumulación.
 //   · PUNTAJE 0-100 (8 confluencias) + PROBABILIDAD %: estimada al inicio y REAL
-//     (winrate histórico por nota) cuando esa nota acumula 10+ operaciones cerradas.
+//     (winrate histórico por nota) cuando esa nota acumula operaciones cerradas.
 //   · CHECKLIST de confluencias impreso en cada señal (MTF✓ FC✓ VOL✗ ...).
 //   · AVISO "PREPARAR" al crearse la ineficiencia, con entrada/SL/TP planificados.
 //   · LOTE SUGERIDO según tu capital y % de riesgo.
 //   · CHEQUEO DE CAMINO LIBRE: avisa si hay una zona FC opuesta antes del TP.
-//   · GESTOR DE OPERACIÓN: cajas riesgo/recompensa que se extienden vela a vela; al
-//     tocar SL o TP la operación se cierra sola y queda congelada como HISTORIAL con
-//     su resultado: ✔ TP +R / ✘ SL -1R. Regla conservadora: SL y TP en la misma vela
-//     cuenta como SL. Solo una operación activa a la vez.
+//   · GESTOR DE OPERACIÓN: cajas riesgo/recompensa; al tocar SL o TP se cierra sola
+//     y queda como HISTORIAL: ✔ TP +R / ✘ SL -1R. Si SL y TP se tocan en la misma
+//     vela cuenta como SL (regla conservadora). Solo una operación a la vez.
 //   · PANEL: trade activo, historial, winrate, R neto, racha y winrate POR NOTA.
 // =====================================================================================
 
-indicator("FENIX FF GOLD SIGNALS — Probabilidad + Historial", shorttitle="FENIX FF SIGNALS", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=500)
+indicator("FENIX FF GOLD SIGNALS — Probabilidad + Guía", shorttitle="FENIX FF SIGNALS", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=500)
 
 // =====================================================================================
 // ① AUTO-ADAPTACIÓN A LA TEMPORALIDAD
@@ -124,14 +126,23 @@ accOnlyDom = input.bool(true, "Operar solo el extremo dominante",     group=grpA
 // ⑧ VISUAL
 // =====================================================================================
 grpUi = "⑧ Visual y panel"
-showPanel  = input.bool(true, "Mostrar panel",                        group=grpUi)
+showPanel  = input.bool(true, "Mostrar panel de estadísticas",        group=grpUi)
 panelPos   = input.string("Superior derecha", "Posición del panel", options=["Superior derecha", "Superior izquierda", "Inferior derecha", "Inferior izquierda"], group=grpUi)
 panelSize  = input.string("Grande", "Tamaño del panel", options=["Normal", "Grande"], group=grpUi)
-showPhases = input.bool(true, "Mostrar fases L / F / M",              group=grpUi)
+showPhases = input.bool(true, "Mostrar fases en el gráfico",          group=grpUi)
 showZonesB = input.bool(true, "Mostrar caja de ineficiencia",         group=grpUi)
 colBull    = input.color(#2962FF, "Color señal alcista",              group=grpUi)
 colBear    = input.color(#E91E63, "Color señal bajista",              group=grpUi)
 colHeader  = input.color(#C9A227, "Color cabecera del panel",         group=grpUi)
+
+// =====================================================================================
+// ⑨ MODO GUÍA (para principiantes)
+// =====================================================================================
+grpGuide = "⑨ Modo guía"
+showGuide  = input.bool(true, "Mostrar guía ¿QUÉ PASA AHORA?",        group=grpGuide, tooltip="Tabla en español simple: qué hace el precio, en qué paso va el patrón y qué esperar.")
+guidePos   = input.string("Inferior izquierda", "Posición de la guía", options=["Superior derecha", "Superior izquierda", "Inferior derecha", "Inferior izquierda"], group=grpGuide)
+easyLabels = input.bool(true, "Etiquetas explicativas (1·Barrido, 2·Mitigado...)", group=grpGuide)
+accShade   = input.bool(true, "Sombrear el fondo cuando hay acumulación", group=grpGuide)
 
 // =====================================================================================
 // PARÁMETROS EFECTIVOS
@@ -200,7 +211,7 @@ if fcBull
     array.push(zbLn,  lnB)
     array.push(zbBar, bar_index)
     if showFC
-        label.new(bar_index, low, "FC", style=label.style_label_up, color=color.new(colFCBull, 20), textcolor=color.black, size=size.tiny)
+        label.new(bar_index, low, "FC", style=label.style_label_up, color=color.new(colFCBull, 20), textcolor=color.black, size=size.tiny, tooltip="Zona de demanda: aquí el precio falló al bajar")
     if array.size(zbLvl) > maxZones
         line oldB = array.shift(zbLn)
         array.shift(zbLvl)
@@ -216,7 +227,7 @@ if fcBear
     array.push(zsLn,  lnS)
     array.push(zsBar, bar_index)
     if showFC
-        label.new(bar_index, high, "FC", style=label.style_label_down, color=color.new(colFCBear, 20), textcolor=color.white, size=size.tiny)
+        label.new(bar_index, high, "FC", style=label.style_label_down, color=color.new(colFCBear, 20), textcolor=color.white, size=size.tiny, tooltip="Zona de oferta: aquí el precio falló al subir")
     if array.size(zsLvl) > maxZones
         line oldS = array.shift(zsLn)
         array.shift(zsLvl)
@@ -406,7 +417,7 @@ else if bSt == 2
             bStBar   := bar_index
             markM_L  := true
             if showZonesB
-                bFvgBox := box.new(bar_index - 2, bFvgTop, bar_index + 1, bFvgBot, border_color=color.new(colBull, 30), bgcolor=color.new(colBull, 80), text="testeo virgen", text_color=color.new(colBull, 20), text_size=size.tiny, text_halign=text.align_right)
+                bFvgBox := box.new(bar_index - 2, bFvgTop, bar_index + 1, bFvgBot, border_color=color.new(colBull, 30), bgcolor=color.new(colBull, 80), text="hueco · esperar regreso", text_color=color.new(colBull, 20), text_size=size.tiny, text_halign=text.align_right)
         else if bar_index - bStBar > maxWaitExp
             bSt := 0
 
@@ -471,7 +482,7 @@ else if sSt == 2
             sStBar   := bar_index
             markM_S  := true
             if showZonesB
-                sFvgBox := box.new(bar_index - 2, sFvgTop, bar_index + 1, sFvgBot, border_color=color.new(colBear, 30), bgcolor=color.new(colBear, 80), text="testeo virgen", text_color=color.new(colBear, 20), text_size=size.tiny, text_halign=text.align_right)
+                sFvgBox := box.new(bar_index - 2, sFvgTop, bar_index + 1, sFvgBot, border_color=color.new(colBear, 30), bgcolor=color.new(colBear, 80), text="hueco · esperar regreso", text_color=color.new(colBear, 20), text_size=size.tiny, text_halign=text.align_right)
         else if bar_index - sStBar > maxWaitExp
             sSt := 0
 
@@ -497,6 +508,9 @@ if accOnlyDom and dualFF
         buyRdy := false
     if sellRdy and not biasBear
         sellRdy := false
+
+// fondo suave cuando el precio está encerrado en acumulación
+bgcolor(accShade and inAccum ? color.new(color.orange, 92) : na)
 
 // =====================================================================================
 // PUNTAJE, CHECKLIST Y PROBABILIDAD
@@ -723,30 +737,88 @@ winrate = nTrades > 0 ? 100.0 * nWins / nTrades : 0.0
 // =====================================================================================
 // VISUALES DE FASES + AVISO PREPARAR
 // =====================================================================================
+txL1 = easyLabels ? "1·Barrido"   : "L"
+txF1 = easyLabels ? "2·Mitigado"  : "F"
+txM1 = easyLabels ? "3·Hueco listo" : "M"
+
 if showPhases and markL_L
-    label.new(bar_index, low,  "L", style=label.style_triangleup,   color=color.new(color.yellow, 25), textcolor=color.black, size=size.tiny)
+    label.new(bar_index, low,  txL1, style=label.style_label_up,   color=color.new(color.yellow, 25), textcolor=color.black, size=size.tiny, tooltip="Paso 1: el precio barrió el mínimo y lo rechazó. Empieza el patrón de COMPRA.")
 if showPhases and markL_S
-    label.new(bar_index, high, "L", style=label.style_triangledown, color=color.new(color.yellow, 25), textcolor=color.black, size=size.tiny)
+    label.new(bar_index, high, txL1, style=label.style_label_down, color=color.new(color.yellow, 25), textcolor=color.black, size=size.tiny, tooltip="Paso 1: el precio barrió el máximo y lo rechazó. Empieza el patrón de VENTA.")
 if showPhases and markF_L
-    label.new(bar_index, low,  "F", style=label.style_label_up,   color=color.new(color.orange, 25), textcolor=color.white, size=size.tiny)
+    label.new(bar_index, low,  txF1, style=label.style_label_up,   color=color.new(color.orange, 25), textcolor=color.white, size=size.tiny, tooltip="Paso 2: el precio regresó a la zona y limpió a los impacientes. El patrón sigue vivo.")
 if showPhases and markF_S
-    label.new(bar_index, high, "F", style=label.style_label_down, color=color.new(color.orange, 25), textcolor=color.white, size=size.tiny)
+    label.new(bar_index, high, txF1, style=label.style_label_down, color=color.new(color.orange, 25), textcolor=color.white, size=size.tiny, tooltip="Paso 2: el precio regresó a la zona y limpió a los impacientes. El patrón sigue vivo.")
 if showPhases and markM_L
-    label.new(bar_index, high, "M", style=label.style_label_down, color=color.new(colBull, 20), textcolor=color.white, size=size.tiny)
+    label.new(bar_index, high, txM1, style=label.style_label_down, color=color.new(colBull, 20), textcolor=color.white, size=size.tiny, tooltip="Paso 3: impulso fuerte que dejó un hueco sin operar. Ahora se espera el regreso al hueco.")
 if showPhases and markM_S
-    label.new(bar_index, low,  "M", style=label.style_label_up,   color=color.new(colBear, 20), textcolor=color.white, size=size.tiny)
+    label.new(bar_index, low,  txM1, style=label.style_label_up,   color=color.new(colBear, 20), textcolor=color.white, size=size.tiny, tooltip="Paso 3: impulso fuerte que dejó un hueco sin operar. Ahora se espera el regreso al hueco.")
 
 // PREPARAR: la ineficiencia acaba de crearse → plan de la operación antes de la señal
 if showPrep and markM_L
     pSlL = bStruct - slBuffAtr * atr
     pRkL = math.max(bTrig - pSlL, syminfo.mintick)
-    label.new(bar_index, low, "PREPARAR LONG\nE≈" + str.tostring(bTrig, format.mintick) + "\nSL " + str.tostring(pSlL, format.mintick) + "\nTP " + str.tostring(bTrig + rr1 * pRkL, format.mintick), style=label.style_label_upper_right, color=color.new(colBull, 60), textcolor=color.white, size=size.tiny)
+    label.new(bar_index, low, "PREPARAR COMPRA\nE≈" + str.tostring(bTrig, format.mintick) + "\nSL " + str.tostring(pSlL, format.mintick) + "\nTP " + str.tostring(bTrig + rr1 * pRkL, format.mintick), style=label.style_label_upper_right, color=color.new(colBull, 60), textcolor=color.white, size=size.tiny)
 if showPrep and markM_S
     pSlS = sStruct + slBuffAtr * atr
     pRkS = math.max(pSlS - sTrig, syminfo.mintick)
-    label.new(bar_index, high, "PREPARAR SHORT\nE≈" + str.tostring(sTrig, format.mintick) + "\nSL " + str.tostring(pSlS, format.mintick) + "\nTP " + str.tostring(sTrig - rr1 * pRkS, format.mintick), style=label.style_label_lower_right, color=color.new(colBear, 60), textcolor=color.white, size=size.tiny)
+    label.new(bar_index, high, "PREPARAR VENTA\nE≈" + str.tostring(sTrig, format.mintick) + "\nSL " + str.tostring(pSlS, format.mintick) + "\nTP " + str.tostring(sTrig - rr1 * pRkS, format.mintick), style=label.style_label_lower_right, color=color.new(colBear, 60), textcolor=color.white, size=size.tiny)
 
 barcolor(buySig ? colBull : sellSig ? colBear : na)
+
+// =====================================================================================
+// GUÍA ¿QUÉ PASA AHORA? — español simple para decidir sin conocer el sistema
+// =====================================================================================
+stepDesc(int st) =>
+    st == 0 ? "Paso 1/4 · buscando barrido de liquidez" :
+     st == 1 ? "Paso 2/4 · barrido hecho, falta el regreso a la zona" :
+     st == 2 ? "Paso 3/4 · zona mitigada, falta impulso con hueco" :
+     "Paso 4/4 · ¡hueco listo! esperando regreso para ENTRAR"
+
+// qué hace el precio, en palabras
+ctxTxt = tDir != 0 ? "OPERACIÓN EN CURSO" :
+     dualFF ? "ACUMULACIÓN · trampa armada en ambos extremos" :
+     inAccum ? "ACUMULACIÓN · el precio está encerrado en un rango" :
+     not volOk ? "MERCADO DORMIDO · muy poca volatilidad" :
+     biasBull ? "TENDENCIA ALCISTA · solo interesan compras" :
+     biasBear ? "TENDENCIA BAJISTA · solo interesan ventas" :
+     "SIN DIRECCIÓN CLARA · mejor esperar"
+ctxCol = tDir != 0 ? color.new(#FFD54F, 0) : dualFF or inAccum ? color.orange : not volOk ? color.new(#666666, 0) : biasBull ? color.new(#37D28B, 0) : biasBear ? color.new(#FF5C72, 0) : color.new(#999999, 0)
+
+// la instrucción del momento
+actTxt = tDir == 1 ? "COMPRA ACTIVA · no toques nada: se cierra sola en TP o SL" :
+     tDir == -1 ? "VENTA ACTIVA · no toques nada: se cierra sola en TP o SL" :
+     bSt == 3 and sSt == 3 ? "MÁXIMA ATENCIÓN · puede salir señal en cualquier dirección" :
+     bSt == 3 ? "ATENTO · posible COMPRA cuando el precio regrese al hueco azul" :
+     sSt == 3 ? "ATENTO · posible VENTA cuando el precio regrese al hueco rosado" :
+     bSt == 2 or sSt == 2 ? "PREPÁRATE · falta el impulso fuerte que deje el hueco" :
+     bSt == 1 or sSt == 1 ? "PACIENCIA · el patrón apenas está comenzando" :
+     "ESPERA · no hay patrón en formación. No operes por aburrimiento"
+actCol = tDir != 0 ? color.new(#FFD54F, 0) : bSt == 3 or sSt == 3 ? color.new(#37D28B, 0) : bSt >= 1 or sSt >= 1 ? color.orange : color.new(#999999, 0)
+
+gPos = guidePos == "Superior derecha" ? position.top_right : guidePos == "Superior izquierda" ? position.top_left : guidePos == "Inferior derecha" ? position.bottom_right : position.bottom_left
+var table guide = table.new(gPos, 2, 5, border_width=1, frame_width=2, frame_color=color.new(#C9A227, 30))
+
+if showGuide and barstate.islast
+    gDark  = color.new(#0B0B0B, 5)
+    gDark2 = color.new(#151515, 5)
+    gTxt   = color.new(#D0D0D0, 0)
+
+    table.clear(guide, 0, 0, 1, 4)
+    table.cell(guide, 0, 0, "GUÍA · ¿QUÉ PASA AHORA?", text_color=color.black, bgcolor=color.new(#C9A227, 0), text_size=size.normal)
+    table.merge_cells(guide, 0, 0, 1, 0)
+
+    table.cell(guide, 0, 1, "El precio está en:", text_color=gTxt, bgcolor=gDark, text_size=size.small)
+    table.cell(guide, 1, 1, ctxTxt, text_color=ctxCol, bgcolor=gDark, text_size=size.small)
+
+    table.cell(guide, 0, 2, "Patrón de COMPRA:", text_color=gTxt, bgcolor=gDark2, text_size=size.small)
+    table.cell(guide, 1, 2, stepDesc(bSt), text_color = bSt > 0 ? color.new(#37D28B, 0) : color.new(#777777, 0), bgcolor=gDark2, text_size=size.small)
+
+    table.cell(guide, 0, 3, "Patrón de VENTA:", text_color=gTxt, bgcolor=gDark, text_size=size.small)
+    table.cell(guide, 1, 3, stepDesc(sSt), text_color = sSt > 0 ? color.new(#FF5C72, 0) : color.new(#777777, 0), bgcolor=gDark, text_size=size.small)
+
+    table.cell(guide, 0, 4, "AHORA:", text_color=color.black, bgcolor=color.new(#C9A227, 25), text_size=size.small)
+    table.cell(guide, 1, 4, actTxt, text_color=actCol, bgcolor=gDark2, text_size=size.small)
 
 // =====================================================================================
 // PANEL CON ESTADÍSTICAS
@@ -828,23 +900,23 @@ if showPanel and barstate.islast
 // ALERTAS
 // =====================================================================================
 if buySig
-    alert("FENIX ▲ BUY " + syminfo.ticker + " " + timeframe.period + " | P≈" + str.tostring(sigProb, "#") + "% (" + str.tostring(sigScore) + " " + sigGrade + ") | E " + str.tostring(tEntry, format.mintick) + " | SL " + str.tostring(tSl, format.mintick) + " | TP " + str.tostring(tTp, format.mintick), alert.freq_once_per_bar_close)
+    alert("FENIX ▲ COMPRA " + syminfo.ticker + " " + timeframe.period + " | P≈" + str.tostring(sigProb, "#") + "% (" + str.tostring(sigScore) + " " + sigGrade + ") | E " + str.tostring(tEntry, format.mintick) + " | SL " + str.tostring(tSl, format.mintick) + " | TP " + str.tostring(tTp, format.mintick), alert.freq_once_per_bar_close)
 if sellSig
-    alert("FENIX ▼ SELL " + syminfo.ticker + " " + timeframe.period + " | P≈" + str.tostring(sigProb, "#") + "% (" + str.tostring(sigScore) + " " + sigGrade + ") | E " + str.tostring(tEntry, format.mintick) + " | SL " + str.tostring(tSl, format.mintick) + " | TP " + str.tostring(tTp, format.mintick), alert.freq_once_per_bar_close)
+    alert("FENIX ▼ VENTA " + syminfo.ticker + " " + timeframe.period + " | P≈" + str.tostring(sigProb, "#") + "% (" + str.tostring(sigScore) + " " + sigGrade + ") | E " + str.tostring(tEntry, format.mintick) + " | SL " + str.tostring(tSl, format.mintick) + " | TP " + str.tostring(tTp, format.mintick), alert.freq_once_per_bar_close)
 if winEvt
     alert("FENIX ✔ TP alcanzado en " + syminfo.ticker + " " + timeframe.period + " | " + lastRes + " | Winrate " + str.tostring(winrate, "#.#") + "% | R neto " + str.tostring(netR, "#.#"), alert.freq_once_per_bar_close)
 if lossEvt
     alert("FENIX ✘ SL tocado en " + syminfo.ticker + " " + timeframe.period + " | " + lastRes + " | Winrate " + str.tostring(winrate, "#.#") + "% | R neto " + str.tostring(netR, "#.#"), alert.freq_once_per_bar_close)
 if markM_L
-    alert("FENIX · PREPARAR LONG en " + syminfo.ticker + " " + timeframe.period + " | E≈" + str.tostring(bTrig, format.mintick) + " — esperar rebalanceo", alert.freq_once_per_bar_close)
+    alert("FENIX · PREPARAR COMPRA en " + syminfo.ticker + " " + timeframe.period + " | E≈" + str.tostring(bTrig, format.mintick) + " — esperar el regreso al hueco", alert.freq_once_per_bar_close)
 if markM_S
-    alert("FENIX · PREPARAR SHORT en " + syminfo.ticker + " " + timeframe.period + " | E≈" + str.tostring(sTrig, format.mintick) + " — esperar rebalanceo", alert.freq_once_per_bar_close)
+    alert("FENIX · PREPARAR VENTA en " + syminfo.ticker + " " + timeframe.period + " | E≈" + str.tostring(sTrig, format.mintick) + " — esperar el regreso al hueco", alert.freq_once_per_bar_close)
 
-alertcondition(buySig,  title="SIGNALS — BUY",        message="FENIX BUY {{ticker}} {{interval}} @ {{close}}")
-alertcondition(sellSig, title="SIGNALS — SELL",       message="FENIX SELL {{ticker}} {{interval}} @ {{close}}")
+alertcondition(buySig,  title="SIGNALS — COMPRA",     message="FENIX COMPRA {{ticker}} {{interval}} @ {{close}}")
+alertcondition(sellSig, title="SIGNALS — VENTA",      message="FENIX VENTA {{ticker}} {{interval}} @ {{close}}")
 alertcondition(winEvt,  title="SIGNALS — TP tocado",  message="FENIX TP alcanzado {{ticker}} {{interval}}")
 alertcondition(lossEvt, title="SIGNALS — SL tocado",  message="FENIX SL tocado {{ticker}} {{interval}}")
-alertcondition(markM_L or markM_S, title="SIGNALS — Preparar entrada", message="FENIX ineficiencia virgen {{ticker}} {{interval}}")
+alertcondition(markM_L or markM_S, title="SIGNALS — Preparar entrada", message="FENIX hueco creado {{ticker}} {{interval}}")
 
 plot(buySig ? 1 : sellSig ? -1 : 0, "Señal", display=display.data_window)
 plot(sigScore, "Puntaje",      display=display.data_window)
