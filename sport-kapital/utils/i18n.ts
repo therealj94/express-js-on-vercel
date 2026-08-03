@@ -164,6 +164,7 @@ const D: Record<string, [string, string]> = {
   'bio.lockedSub': ['Desbloqueá con Face ID o huella para entrar a tu cuenta.', 'Unlock with Face ID or fingerprint to access your account.'],
   'bio.checking': ['Verificando…', 'Verifying…'],
   'bio.unlock': ['Desbloquear', 'Unlock'],
+  'bio.skip': ['Entrar sin biometría', 'Enter without biometrics'],
   'prof.biometric': ['Face ID / Huella', 'Face ID / Fingerprint'],
   'prof.biometricSub': ['Pedir biometría para abrir la app', 'Require biometrics to open the app'],
   'prof.biometricNoHw': ['Este dispositivo no tiene biometría configurada.', 'This device has no biometrics set up.'],
@@ -197,6 +198,10 @@ const D: Record<string, [string, string]> = {
 
   // ---------- pestaña real ----------
   // ---------- pestaña partidos ----------
+  'fixture.title': ['Partido', 'Match'],
+  'fixture.unavailable': ['No pudimos cargar este partido. Deslizá hacia abajo para reintentar.', 'We could not load this match. Pull down to retry.'],
+  'fixture.noEvents': ['Todavía no hay incidencias registradas en este partido.', 'No events recorded for this match yet.'],
+  'stat.possession': ['Posesión', 'Possession'],
   'team.nextMatches': ['Próximos partidos', 'Next matches'],
   'team.lastMatches': ['Últimos resultados', 'Recent results'],
   'match.tab.summary': ['Resumen', 'Summary'],
@@ -487,10 +492,10 @@ const D: Record<string, [string, string]> = {
   'store.sellRef': ['Venta {ticker}', 'Sell {ticker}'],
 
   // ---------- ligas / categorías / competiciones ----------
-  'league.LALIGA': ['LaLiga 25/26', 'LaLiga 25/26'],
-  'league.BRASIL': ['Brasileirão 2026', 'Brasileirão 2026'],
+  'league.LALIGA': ['LaLiga', 'LaLiga'],
+  'league.BRASIL': ['Brasileirão', 'Brasileirão'],
   'league.HONDURAS': ['Liga Nacional', 'National League'],
-  'league.ESTADOS_UNIDOS': ['MLS 2026', 'MLS 2026'],
+  'league.ESTADOS_UNIDOS': ['MLS', 'MLS'],
   'tier.1': ['Categoría A · Élite Mundial', 'Category A · World Elite'],
   'tier.2': ['Categoría B · Liga Profesional', 'Category B · Pro League'],
   'tier.3': ['Categoría C · Liga Regional', 'Category C · Regional League'],

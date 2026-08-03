@@ -197,7 +197,7 @@ export default function Dashboard() {
                   <Text style={styles.blockTitle}>{t('dash.realLive')}</Text>
                 </View>
                 <View style={styles.blockBody}>
-                  {liveNow.map((fx) => <FixtureRow key={fx.fixtureId} fx={fx} teams={teams} />)}
+                  {liveNow.map((fx, i) => <FixtureRow key={fx.fixtureId} fx={fx} teams={teams} index={i} />)}
                 </View>
               </View>
             )}
@@ -228,7 +228,7 @@ export default function Dashboard() {
                 <View key={lg} style={styles.block}>
                   <LeagueHeader label={LEAGUE_API[lg].label} country={LEAGUE_API[lg].country} />
                   <View style={styles.blockBody}>
-                    {list.map((fx) => <FixtureRow key={fx.fixtureId} fx={fx} teams={teams} />)}
+                    {list.map((fx, i) => <FixtureRow key={fx.fixtureId} fx={fx} teams={teams} index={i} />)}
                   </View>
                 </View>
               ))

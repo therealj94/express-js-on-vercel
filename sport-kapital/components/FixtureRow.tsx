@@ -3,11 +3,13 @@
 // (o el minuto en vivo / "FIN"), en el centro los dos equipos uno sobre otro
 // con su escudo, y a la derecha el marcador. Los equipos tokenizados se marcan
 // con un punto dorado y la fila lleva al partido o al token.
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { colors, font, radius, themedSheet, type Palette } from '@/theme/tokens';
 import { TeamBadge } from '@/components/TeamBadge';
+import { Icon } from '@/components/Icon';
 import { tap } from '@/utils/haptics';
 import { t, tName } from '@/utils/i18n';
 import { isLive, isFinished, type LeagueFixtureLite } from '@/utils/realData';
@@ -34,28 +36,34 @@ function statusLabel(fx: LeagueFixtureLite): { text: string; live: boolean; done
   return { text: `${hh}:${mm}`, live: false, done: false };
 }
 
-export function FixtureRow({ fx, teams }: { fx: LeagueFixtureLite; teams: Team[] }) {
+/** Punto rojo que late — deja claro de un vistazo qué partido está corriendo. */
+function LiveDot() {
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    pulse.value = withRepeat(withSequence(withTiming(0.25, { duration: 650 }), withTiming(1, { duration: 650 })), -1);
+  }, []);
+  const style = useAnimatedStyle(() => ({ opacity: pulse.value }));
+  return <Animated.View style={[styles.liveDot, style]} />;
+}
+
+export function FixtureRow({ fx, teams, index = 0 }: { fx: LeagueFixtureLite; teams: Team[]; index?: number }) {
   const home = sideOf(teams, fx.homeTeamId, fx.homeName);
   const away = sideOf(teams, fx.awayTeamId, fx.awayName);
   const st = statusLabel(fx);
   const showScore = st.live || st.done;
 
-  // toca la fila: si el partido está en vivo y es de un token nuestro, abre el
-  // partido; si no, abre el token del equipo local (o del visitante).
-  const onPress = () => {
-    tap();
-    const tokenId = home.tokenId ?? away.tokenId;
-    if (st.live && tokenId) { router.push(`/team/${tokenId}`); return; }
-    if (tokenId) router.push(`/team/${tokenId}`);
-  };
+  // tocar la fila SIEMPRE abre la ficha del partido (con eventos, estadísticas
+  // y alineaciones). Para ir al token hay que tocar el equipo dentro de la ficha.
+  const onPress = () => { tap(); router.push(`/fixture/${fx.fixtureId}`); };
 
   const winnerHome = showScore && (fx.goalsHome ?? 0) > (fx.goalsAway ?? 0);
   const winnerAway = showScore && (fx.goalsAway ?? 0) > (fx.goalsHome ?? 0);
 
   return (
-    <Pressable onPress={onPress} style={styles.row}>
+    <Animated.View entering={index < 8 ? FadeInDown.delay(index * 45).duration(320) : undefined}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
       <View style={styles.statusCol}>
-        {st.live && <View style={styles.liveDot} />}
+        {st.live && <LiveDot />}
         <Text style={[styles.statusTxt, st.live && styles.statusLive, st.done && styles.statusDone]} numberOfLines={1}>
           {st.text}
         </Text>
@@ -75,12 +83,15 @@ export function FixtureRow({ fx, teams }: { fx: LeagueFixtureLite; teams: Team[]
           {showScore && <Text style={[styles.score, winnerAway && styles.teamWinner]}>{fx.goalsAway ?? 0}</Text>}
         </View>
       </View>
+      <Icon name="chevron-right" size={14} color={colors.textTertiary} />
     </Pressable>
+    </Animated.View>
   );
 }
 
 const styles = themedSheet((colors: Palette) => StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, gap: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, gap: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
+  rowPressed: { backgroundColor: colors.bgCardHover },
   statusCol: { width: 52, alignItems: 'center', justifyContent: 'center', gap: 3 },
   statusTxt: { color: colors.textSecondary, fontSize: font.size.xs, fontWeight: '700' },
   statusLive: { color: colors.loss, fontWeight: '900' },

@@ -84,7 +84,7 @@ function useFlowGate(ready: boolean) {
       if (first !== 'risk') router.replace('/risk');
       return;
     }
-    const mainAppRoutes = ['(tabs)', 'team', 'match', 'trade', 'profile', 'leaderboard'];
+    const mainAppRoutes = ['(tabs)', 'team', 'match', 'fixture', 'trade', 'profile', 'leaderboard'];
     if (!first || !mainAppRoutes.includes(first)) {
       router.replace('/(tabs)/dashboard');
     }
@@ -263,6 +263,7 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
             <Stack.Screen name="team/[id]" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="match/[id]" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="fixture/[id]" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="trade/[id]" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
             <Stack.Screen name="profile" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="leaderboard" options={{ animation: 'slide_from_right' }} />

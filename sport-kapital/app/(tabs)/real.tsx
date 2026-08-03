@@ -136,7 +136,7 @@ export default function MatchesTab() {
                   country={league === 'ALL' ? LEAGUE_API[key as League].country : undefined}
                 />
                 <View>
-                  {list.map((fx) => <FixtureRow key={fx.fixtureId} fx={fx} teams={teams} />)}
+                  {list.map((fx, i) => <FixtureRow key={fx.fixtureId} fx={fx} teams={teams} index={i} />)}
                 </View>
               </View>
             ))

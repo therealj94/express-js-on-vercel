@@ -559,9 +559,15 @@ export const selectUnrealized = (s: State) => selectPortfolioValue(s) - selectIn
 
 export const selectEquity = (s: State) => s.balance + selectPortfolioValue(s);
 
-export const selectPositionsDetailed = (s: State) =>
-  s.positions.map((p) => {
-    const team = s.teams.find((t) => t.id === p.teamId);
+/**
+ * NO usar como selector de `useStore`: devuelve un array nuevo en cada llamada
+ * y con useSyncExternalStore eso provoca un bucle infinito de renders
+ * ("Maximum update depth exceeded"). Se llama desde un useMemo de la pantalla,
+ * pasando `positions` y `teams` (que sí son referencias estables del store).
+ */
+export const buildPositionsDetailed = (positions: Position[], teams: Team[]) =>
+  positions.map((p) => {
+    const team = teams.find((t) => t.id === p.teamId);
     const price = team?.currentPrice ?? p.avgBuyPrice;
     const value = price * p.shares;
     const cost = p.avgBuyPrice * p.shares;

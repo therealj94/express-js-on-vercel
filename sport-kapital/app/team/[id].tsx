@@ -215,7 +215,7 @@ export default function TeamDetail() {
           <>
             <Text style={styles.section}>{t('team.nextMatches')}</Text>
             <View style={styles.fixtureBox}>
-              {nextFixtures.map((fx) => <FixtureRow key={fx.fixtureId} fx={fx} teams={allTeams} />)}
+              {nextFixtures.map((fx, i) => <FixtureRow key={fx.fixtureId} fx={fx} teams={allTeams} index={i} />)}
             </View>
           </>
         )}
@@ -224,7 +224,7 @@ export default function TeamDetail() {
           <>
             <Text style={styles.section}>{t('team.lastMatches')}</Text>
             <View style={styles.fixtureBox}>
-              {lastFixtures.map((fx) => <FixtureRow key={fx.fixtureId} fx={fx} teams={allTeams} />)}
+              {lastFixtures.map((fx, i) => <FixtureRow key={fx.fixtureId} fx={fx} teams={allTeams} index={i} />)}
             </View>
           </>
         )}

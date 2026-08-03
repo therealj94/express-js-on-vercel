@@ -1,10 +1,10 @@
 // app/(tabs)/portfolio.tsx
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import { router } from 'expo-router';
-import { useStore, selectPortfolioValue, selectInvested, selectUnrealized, selectPositionsDetailed } from '@/store/useStore';
+import { useStore, selectPortfolioValue, selectInvested, selectUnrealized, buildPositionsDetailed } from '@/store/useStore';
 import { colors, font, radius, spacing, themedSheet, type Palette } from '@/theme/tokens';
 import { usd, pct } from '@/utils/format';
 import { TeamBadge } from '@/components/TeamBadge';
@@ -17,7 +17,12 @@ import { useBallRefresh, ballRefreshControl } from '@/components/BallRefresh';
 export default function Portfolio() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const positions = useStore(selectPositionsDetailed);
+  // se seleccionan las referencias ESTABLES del store y el detalle se arma en
+  // un useMemo: seleccionar un array construido al vuelo hace que
+  // useSyncExternalStore crea que el estado cambió en cada render (bucle).
+  const rawPositions = useStore((s) => s.positions);
+  const teams = useStore((s) => s.teams);
+  const positions = useMemo(() => buildPositionsDetailed(rawPositions, teams), [rawPositions, teams]);
   const invested = useStore(selectInvested);
   const value = useStore(selectPortfolioValue);
   const unrealized = useStore(selectUnrealized);
