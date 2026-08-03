@@ -117,6 +117,7 @@ interface State {
   goalAlert: GoalAlertPayload | null;  // aviso en pantalla del último gol propio (no se persiste)
   onbStep: number;       // paso actual del onboarding — sobrevive al remount por cambio de tema (no se persiste)
   notifAsked: boolean;   // ya se le pidió permiso de notificaciones (en onboarding, o con el aviso de bienvenida a cuentas existentes) — para no volver a preguntar solo
+  biometricEnabled: boolean; // Face ID / huella para entrar a la app (ajuste del perfil)
 
   balance: number;
   realizedTotal: number;       // PnL realizado histórico
@@ -165,6 +166,7 @@ interface State {
   setGoalAlert: (a: GoalAlertPayload | null) => void;
   setOnbStep: (n: number) => void;
   setNotifAsked: () => void;
+  setBiometricEnabled: (v: boolean) => void;
   resetAll: () => void;
   setUid: (uid: string | null) => void;
   /** Aplica un snapshot traído de la nube (login en un dispositivo nuevo). */
@@ -212,6 +214,7 @@ export const useStore = create<State>()(
       goalAlert: null,
       onbStep: 0,
       notifAsked: false,
+      biometricEnabled: false,
       balance: 0,
       realizedTotal: 0,
       teams: [],
@@ -277,6 +280,7 @@ export const useStore = create<State>()(
       setGoalAlert: (a) => set({ goalAlert: a }),
       setOnbStep: (n) => set({ onbStep: n }),
       setNotifAsked: () => set({ notifAsked: true }),
+      setBiometricEnabled: (v) => set({ biometricEnabled: v }),
 
       resetAll: () =>
         set({
@@ -509,6 +513,7 @@ export const useStore = create<State>()(
         themeKey: s.themeKey,
         language: s.language,
         notifAsked: s.notifAsked,
+        biometricEnabled: s.biometricEnabled,
         balance: s.balance,
         realizedTotal: s.realizedTotal,
         positions: s.positions,

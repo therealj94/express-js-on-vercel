@@ -207,7 +207,7 @@ export class MarketEngine {
     if (active.length >= 2 || teams.length < 2) return;
 
     const busy = new Set(active.flatMap((m) => [m.homeId, m.awayId]));
-    const leagues: League[] = ['MUNDIAL', 'LALIGA', 'HONDURAS'];
+    const leagues: League[] = ['MUNDIAL', 'LALIGA', 'HONDURAS', 'BRASIL', 'ESTADOS_UNIDOS'];
     const league = pick(leagues);
     const pool = teams.filter((t) => t.league === league && !busy.has(t.id));
     if (pool.length < 2) return;

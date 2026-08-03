@@ -144,6 +144,19 @@ const D: Record<string, [string, string]> = {
   'dash.liveMatches': ['Partidos en vivo', 'Live matches'],
   'dash.realLive': ['Partidos reales en vivo', 'Real live matches'],
   'dash.todayReal': ['Partidos reales de hoy', "Today's real matches"],
+  'dash.liveNow': ['EN VIVO', 'LIVE NOW'],
+  'dash.startsInHm': ['en {h}h {m}m', 'in {h}h {m}m'],
+  'dash.startsInM': ['en {m}m', 'in {m}m'],
+
+  // ---------- Face ID / huella ----------
+  'bio.promptMessage': ['Confirmá tu identidad para entrar', 'Confirm your identity to continue'],
+  'bio.cancel': ['Cancelar', 'Cancel'],
+  'bio.lockedSub': ['Desbloqueá con Face ID o huella para entrar a tu cuenta.', 'Unlock with Face ID or fingerprint to access your account.'],
+  'bio.checking': ['Verificando…', 'Verifying…'],
+  'bio.unlock': ['Desbloquear', 'Unlock'],
+  'prof.biometric': ['Face ID / Huella', 'Face ID / Fingerprint'],
+  'prof.biometricSub': ['Pedir biometría para abrir la app', 'Require biometrics to open the app'],
+  'prof.biometricNoHw': ['Este dispositivo no tiene biometría configurada.', 'This device has no biometrics set up.'],
   'dash.modeReal': ['Cuenta real', 'Real account'],
   'dash.modePractice': ['Práctica', 'Practice'],
   'dash.practiceFunds': ['FONDOS DE PRÁCTICA', 'PRACTICE FUNDS'],
@@ -167,6 +180,10 @@ const D: Record<string, [string, string]> = {
   'mkt.sortGainers': ['Suben', 'Gainers'],
   'mkt.sortLosers': ['Bajan', 'Losers'],
   'mkt.empty': ['No se encontraron equipos con esos filtros.', 'No teams found with those filters.'],
+  'mkt.viewTokens': ['Tokens', 'Tokens'],
+  'mkt.viewStandings': ['Tabla', 'Standings'],
+  'standings.team': ['Equipo', 'Team'],
+  'standings.pickLeague': ['Elegí una liga para ver su tabla completa.', 'Pick a league to see its full table.'],
 
   // ---------- pestaña real ----------
   'real.subtitle': ['Calendario y resultados de los próximos mes y medio — LaLiga y Liga Nacional.', 'Schedule and results for the next month and a half — LaLiga and the National League.'],
@@ -396,6 +413,7 @@ const D: Record<string, [string, string]> = {
   'prof.goalSoundSub': ['Suena cuando anota un equipo que tienes comprado', 'Plays when a team you own scores'],
   'prof.signOut': ['Cerrar sesión', 'Sign out'],
   'prof.signOutCloud': ['Se cerrará tu sesión en este dispositivo. Tu saldo, posiciones e historial están respaldados en la nube: inicia sesión de nuevo con tu correo y contraseña para recuperarlos.', 'You will be signed out on this device. Your balance, positions and history are backed up to the cloud: log in again with your email and password to recover them.'],
+  'prof.security': ['SEGURIDAD', 'SECURITY'],
   'prof.privacy': ['PRIVACIDAD Y CUENTA', 'PRIVACY & ACCOUNT'],
   'prof.privacyPolicy': ['Política de privacidad', 'Privacy policy'],
   'prof.deleteAccount': ['Eliminar cuenta', 'Delete account'],
@@ -465,7 +483,9 @@ const D: Record<string, [string, string]> = {
   // ---------- ligas / categorías / competiciones ----------
   'league.MUNDIAL': ['Mundial 2026', 'World Cup 2026'],
   'league.LALIGA': ['LaLiga 25/26', 'LaLiga 25/26'],
+  'league.BRASIL': ['Brasileirão 2026', 'Brasileirão 2026'],
   'league.HONDURAS': ['Liga Nacional', 'National League'],
+  'league.ESTADOS_UNIDOS': ['MLS 2026', 'MLS 2026'],
   'tier.1': ['Categoría A · Élite Mundial', 'Category A · World Elite'],
   'tier.2': ['Categoría B · Liga Profesional', 'Category B · Pro League'],
   'tier.3': ['Categoría C · Liga Regional', 'Category C · Regional League'],

@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { router } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
@@ -42,6 +43,17 @@ export default function Profile() {
   const setMusicMode = useStore((s) => s.setMusicMode);
   const goalSoundOn = useStore((s) => s.goalSoundOn);
   const setGoalSoundOn = useStore((s) => s.setGoalSoundOn);
+  const biometricEnabled = useStore((s) => s.biometricEnabled);
+  const setBiometricEnabled = useStore((s) => s.setBiometricEnabled);
+
+  const toggleBiometric = async () => {
+    tap();
+    if (biometricEnabled) { setBiometricEnabled(false); return; }
+    const hasHardware = await LocalAuthentication.hasHardwareAsync().catch(() => false);
+    const enrolled = hasHardware && (await LocalAuthentication.isEnrolledAsync().catch(() => false));
+    if (!hasHardware || !enrolled) { Alert.alert('', t('prof.biometricNoHw')); return; }
+    setBiometricEnabled(true);
+  };
   const themeKey = useStore((s) => s.themeKey);
   const setTheme = useStore((s) => s.setTheme);
   const language = useStore((s) => s.language);
@@ -263,6 +275,21 @@ export default function Profile() {
           </Panel>
         </Animated.View>
 
+        <Animated.View entering={FadeInDown.delay(232).duration(350)}>
+          <Panel style={styles.card}>
+            <Text style={styles.cardTitle}>{t('prof.security')}</Text>
+            <Pressable onPress={toggleBiometric} style={styles.toggleRowNoBorder}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.toggleTitle}>{t('prof.biometric')}</Text>
+                <Text style={styles.toggleSub}>{t('prof.biometricSub')}</Text>
+              </View>
+              <View style={[styles.toggle, biometricEnabled && styles.toggleOn]}>
+                <View style={[styles.toggleKnob, biometricEnabled && styles.toggleKnobOn]} />
+              </View>
+            </Pressable>
+          </Panel>
+        </Animated.View>
+
         <Animated.View entering={FadeInDown.delay(235).duration(350)}>
           <Panel style={styles.card}>
             <Text style={styles.cardTitle}>{t('prof.privacy')}</Text>
@@ -370,6 +397,7 @@ const styles = themedSheet((colors: Palette) => StyleSheet.create({
   themeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: radius.full, paddingHorizontal: 13, paddingVertical: 9, borderWidth: 1.5 },
   themeChipDot: { width: 9, height: 9, borderRadius: 5 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.border },
+  toggleRowNoBorder: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   toggleTitle: { color: colors.text, fontSize: font.size.sm, fontWeight: '700' },
   toggleSub: { color: colors.textTertiary, fontSize: font.size.xs, marginTop: 2 },
   toggle: { width: 46, height: 26, borderRadius: 13, backgroundColor: colors.bgCardHover, borderWidth: 1, borderColor: colors.border, padding: 2, justifyContent: 'center' },

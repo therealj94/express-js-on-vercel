@@ -1,5 +1,5 @@
 // app/(tabs)/dashboard.tsx
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
@@ -29,6 +29,17 @@ const TUTORIAL = () => [
   { icon: 'candle' as IconName, title: t('tut.d3t'), body: t('tut.d3b'), accent: colors.blue },
   { icon: 'pie' as IconName, title: t('tut.d4t'), body: t('tut.d4b'), accent: colors.purple },
 ];
+
+/** "en 2h 15m" / "en 45m" / "EN VIVO" — cuenta regresiva compacta para la cartelera real del día. */
+function kickoffLabel(kickoffMs: number, now: number): string {
+  const diff = kickoffMs - now;
+  if (diff <= 0) return t('dash.liveNow');
+  const totalMin = Math.ceil(diff / 60_000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h > 0) return t('dash.startsInHm', { h, m });
+  return t('dash.startsInM', { m });
+}
 
 export default function Dashboard() {
   const insets = useSafeAreaInsets();
@@ -61,6 +72,10 @@ export default function Dashboard() {
   const setAccountMode = useStore((s) => s.setAccountMode);
   const realFixtures = useStore((s) => s.realFixtures);
   const isPractice = accountMode === 'PRACTICE';
+
+  // reloj para la cuenta regresiva de "cuánto falta" en la cartelera real del día
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const id = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(id); }, []);
 
   // partidos REALES de hoy/mañana de nuestros tokens (del caché diario de la
   // API): la cartelera real del día, para que la app viva de fútbol real.
@@ -175,14 +190,19 @@ export default function Dashboard() {
                   if (!team) return null;
                   const d = new Date(fx.dateISO);
                   const hm = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+                  const kickoffMs = d.getTime();
+                  const live = kickoffMs <= now;
                   return (
                     <Pressable key={fx.fixtureId} onPress={() => { tap(); router.push(`/team/${teamId}`); }} style={styles.todayRow}>
-                      <View style={styles.todayTime}><Text style={styles.todayTimeTxt}>{hm}</Text></View>
+                      <View style={[styles.todayTime, live && styles.todayTimeLive]}>
+                        {live && <View style={styles.liveDot} />}
+                        <Text style={[styles.todayTimeTxt, live && styles.todayTimeTxtLive]}>{kickoffLabel(kickoffMs, now)}</Text>
+                      </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.todayMatch} numberOfLines={1}>
                           {fx.isHome ? `${team.short} vs ${fx.opponentName}` : `${fx.opponentName} vs ${team.short}`}
                         </Text>
-                        <Text style={styles.todayComp} numberOfLines={1}>{fx.competition}</Text>
+                        <Text style={styles.todayComp} numberOfLines={1}>{fx.competition} · {hm}</Text>
                       </View>
                       <View style={styles.todayTrade}><Text style={styles.todayTradeTxt}>{t('mundial.tradeSide', { s: team.short })}</Text></View>
                     </Pressable>
@@ -306,8 +326,11 @@ const styles = themedSheet((colors: Palette) => StyleSheet.create({
   practiceBadgeTxt: { color: colors.gold, fontSize: 10, fontWeight: '900', letterSpacing: 0.6 },
   // cartelera real del día
   todayRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.bgCard, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: 12, marginBottom: 8 },
-  todayTime: { backgroundColor: colors.blueDim, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 5 },
+  todayTime: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.blueDim, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 5, minWidth: 64, justifyContent: 'center' },
+  todayTimeLive: { backgroundColor: 'rgba(255,60,60,0.14)' },
   todayTimeTxt: { color: colors.blue, fontSize: font.size.xs, fontWeight: '900' },
+  todayTimeTxtLive: { color: colors.loss },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.loss },
   todayMatch: { color: colors.text, fontSize: font.size.sm, fontWeight: '800' },
   todayComp: { color: colors.textTertiary, fontSize: font.size.xs, marginTop: 2, fontWeight: '600' },
   todayTrade: { backgroundColor: colors.goldDim, borderWidth: 1, borderColor: colors.gold, borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 6 },

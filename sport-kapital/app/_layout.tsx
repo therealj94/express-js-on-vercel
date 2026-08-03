@@ -22,6 +22,7 @@ import { startAppMusic } from '@/utils/music';
 import { colors, getPalette } from '@/theme/tokens';
 import { Scanlines } from '@/components/Scanlines';
 import { BusyBall } from '@/components/BusyBall';
+import { BiometricGate } from '@/components/BiometricGate';
 import { GoalAlert } from '@/components/GoalAlert';
 import { BrandIntro } from '@/components/BrandIntro';
 import { CrashBoundary } from '@/components/CrashBoundary';
@@ -242,6 +243,7 @@ export default function RootLayout() {
       <GestureHandlerRootView key={`${themeKey}-${language}`} style={{ flex: 1 }}>
         <SafeAreaProvider>
           <StatusBar style={palette.dark ? 'light' : 'dark'} />
+          <BiometricGate>
           <Stack
             screenOptions={{
               headerShown: false,
@@ -265,6 +267,7 @@ export default function RootLayout() {
           <Scanlines />
           <BusyBall />
           <GoalAlert />
+          </BiometricGate>
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </CrashBoundary>

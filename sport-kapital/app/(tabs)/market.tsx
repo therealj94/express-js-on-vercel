@@ -1,12 +1,13 @@
 // app/(tabs)/market.tsx
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, FlatList, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, spacing, themedSheet, type Palette } from '@/theme/tokens';
 import { TeamCard } from '@/components/TeamCard';
 import { LiveMatchCard } from '@/components/LiveMatchCard';
+import { StandingsTable } from '@/components/StandingsTable';
 import { Icon } from '@/components/Icon';
 import { type League } from '@/data/teams';
 import { isRealMatch } from '@/utils/matchEngine';
@@ -16,7 +17,8 @@ import { useBallRefresh, ballRefreshControl } from '@/components/BallRefresh';
 
 type Sort = 'cap' | 'gainers' | 'losers';
 type MatchFilter = 'ALL' | 'SIM' | 'REAL';
-const LEAGUES: (League | 'ALL')[] = ['ALL', 'MUNDIAL', 'LALIGA', 'HONDURAS'];
+type ViewMode = 'tokens' | 'standings';
+const LEAGUES: (League | 'ALL')[] = ['ALL', 'MUNDIAL', 'LALIGA', 'BRASIL', 'ESTADOS_UNIDOS', 'HONDURAS'];
 
 export default function Market() {
   const insets = useSafeAreaInsets();
@@ -26,6 +28,7 @@ export default function Market() {
   const [q, setQ] = useState('');
   const [league, setLeague] = useState<League | 'ALL'>('ALL');
   const [sort, setSort] = useState<Sort>('cap');
+  const [viewMode, setViewMode] = useState<ViewMode>('tokens');
   // en cuenta real, la lista de partidos arranca mostrando solo los REALES
   const [matchFilter, setMatchFilter] = useState<MatchFilter>(() =>
     useStore.getState().accountMode === 'REAL' ? 'REAL' : 'ALL');
@@ -68,15 +71,36 @@ export default function Market() {
           </Pressable>
         ))}
       </View>
-      <View style={styles.chips}>
-        {(['cap', 'gainers', 'losers'] as Sort[]).map((s) => (
-          <Pressable key={s} onPress={() => { tap(); setSort(s); }} style={[styles.chip, sort === s && styles.chipGold]}>
-            <Text style={[styles.chipTxt, sort === s && styles.chipTxtGold]}>{{ cap: t('mkt.sortLiquidity'), gainers: t('mkt.sortGainers'), losers: t('mkt.sortLosers') }[s]}</Text>
-          </Pressable>
-        ))}
+      <View style={styles.segmentRow}>
+        <View style={styles.segment}>
+          {(['tokens', 'standings'] as ViewMode[]).map((m) => (
+            <Pressable key={m} onPress={() => { tap(); setViewMode(m); }} style={[styles.segmentBtn, viewMode === m && styles.segmentBtnOn]}>
+              <Text style={[styles.segmentTxt, viewMode === m && styles.segmentTxtOn]}>
+                {m === 'tokens' ? t('mkt.viewTokens') : t('mkt.viewStandings')}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        {viewMode === 'tokens' && (
+          <View style={styles.chipsInline}>
+            {(['cap', 'gainers', 'losers'] as Sort[]).map((s) => (
+              <Pressable key={s} onPress={() => { tap(); setSort(s); }} style={[styles.chipSmall, sort === s && styles.chipGold]}>
+                <Text style={[styles.chipSmallTxt, sort === s && styles.chipTxtGold]}>{{ cap: t('mkt.sortLiquidity'), gainers: t('mkt.sortGainers'), losers: t('mkt.sortLosers') }[s]}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
       </View>
 
-      {isFocused ? (
+      {viewMode === 'standings' ? (
+        <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.xl, paddingTop: 10, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+          {league === 'ALL'
+            ? (['MUNDIAL', 'LALIGA', 'BRASIL', 'ESTADOS_UNIDOS', 'HONDURAS'] as League[]).map((l) => (
+                <StandingsTable key={l} teams={teams} league={l} />
+              ))
+            : <StandingsTable teams={teams} league={league} />}
+        </ScrollView>
+      ) : isFocused ? (
         <FlatList
           data={filtered}
           keyExtractor={(t) => t.id}
@@ -132,4 +156,10 @@ const styles = themedSheet((colors: Palette) => StyleSheet.create({
   chipsInline: { flexDirection: 'row', gap: 6 },
   chipSmall: { backgroundColor: colors.bgCard, borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: colors.border },
   chipSmallTxt: { color: colors.textSecondary, fontSize: 11, fontWeight: '700' },
+  segmentRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingTop: 12, flexWrap: 'wrap', gap: 8 },
+  segment: { flexDirection: 'row', backgroundColor: colors.bgCard, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, padding: 3 },
+  segmentBtn: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: radius.full },
+  segmentBtnOn: { backgroundColor: colors.gold },
+  segmentTxt: { color: colors.textSecondary, fontSize: font.size.xs, fontWeight: '800', textTransform: 'uppercase' },
+  segmentTxtOn: { color: '#1A1500' },
 }));

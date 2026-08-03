@@ -64,6 +64,12 @@
           "icon": "./assets/adaptive-icon.png",
           "color": "#00FF9C"
         }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Sport Kapital usa Face ID para proteger el acceso a tu cuenta."
+        }
       ]
     ],
     "experiments": {
