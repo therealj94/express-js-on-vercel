@@ -1,0 +1,15 @@
+// firestore.rules
+// Reglas de seguridad para Sport Kapital: cada usuario solo puede leer y
+// escribir su propio documento (users/{uid}), identificado por su sesión de
+// Firebase Auth. Nadie puede leer los datos de otra cuenta.
+//
+// Cómo aplicarlas: Firebase Console > Firestore Database > Reglas > pega
+// este contenido > Publicar.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
