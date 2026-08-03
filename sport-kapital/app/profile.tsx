@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
@@ -283,6 +284,9 @@ export default function Profile() {
             <Icon name="close" size={16} color={colors.loss} />
             <Text style={styles.signOutTxt}>{t('prof.signOut')}</Text>
           </Pressable>
+          <Text style={styles.versionTxt}>
+            {Constants.expoConfig?.name ?? 'Sport Kapital'} v{Constants.expoConfig?.version ?? '1.0.0'}
+          </Text>
         </Animated.View>
       </ScrollView>
 
@@ -393,4 +397,5 @@ const styles = themedSheet((colors: Palette) => StyleSheet.create({
   deleteErr: { color: colors.loss, fontSize: font.size.sm, fontWeight: '600', marginTop: 10, textAlign: 'center' },
   signOutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 20, paddingVertical: 14, borderRadius: radius.md, borderWidth: 1, borderColor: colors.lossDim },
   signOutTxt: { color: colors.loss, fontSize: font.size.md, fontWeight: '700', fontFamily: font.family.bodySemiBold },
+  versionTxt: { color: colors.textTertiary, fontSize: font.size.xs, textAlign: 'center', marginTop: 16 },
 }));
