@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.17.1';
-export const BUILD = 52;
+export const VERSION = '1.18.0';
+export const BUILD = 53;
 export const RELEASED = '2026-07-31';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,25 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.18.0',
+    build: 53,
+    date: '2026-07-31',
+    es: [
+      'Eliminar tu cuenta ahora borra de verdad tus datos del servidor, no solo de este teléfono. Se conserva únicamente tu clave cifrada, para que los fondos que te queden sigan siendo recuperables con tu frase de respaldo.',
+      'Cambiar la contraseña ahora cierra la sesión en todos los demás teléfonos. Si la cambiás porque sospechás que alguien entró, el cambio sirve de algo.',
+      'El ORIGEN que comprás con USDT ya puede recargar la tarjeta. Antes se veía el saldo pero no se podía usar.',
+      'Los envíos que fallan ahora te dicen qué pasó — sin saldo, red caída, dirección inválida — en vez de quedarse noventa segundos girando.',
+      'La política de privacidad y los términos ahora se abren desde Ajustes.',
+    ],
+    en: [
+      'Deleting your account now really erases your data from the server, not just from this phone. Only your encrypted key is kept, so any remaining funds stay recoverable with your backup phrase.',
+      'Changing your password now signs you out on every other phone. If you change it because you suspect someone got in, the change actually does something.',
+      'The ORIGEN you buy with USDT can now top up the card. Before you could see the balance but not use it.',
+      'Failed transfers now tell you what happened — no balance, network down, invalid address — instead of spinning for ninety seconds.',
+      'The privacy policy and terms now open from Settings.',
+    ],
+  },
   {
     v: '1.17.1',
     build: 52,

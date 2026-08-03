@@ -19,24 +19,25 @@ import { useT } from '../i18n';
 
 const PREGUNTAS = ['q1', 'q2', 'q3', 'q4']; // 4 confirmaciones + 1 de contraseña
 
-// Rutas candidatas para el endpoint de eliminación en el backend. Se
-// prueban en orden hasta que una responda algo distinto de 404.
-const DELETE_PATHS = ['/auth/delete-account', '/user/delete', '/user', '/account/delete', '/auth/account'];
-
-async function intentarBorrarEnBackend(email) {
-  for (const p of DELETE_PATHS) {
-    try {
-      await walletApi.raw(p, { method: 'DELETE' });
-      return { ok: true, path: p };
-    } catch (e) {
-      if (e.status && e.status !== 404 && e.status !== 405) {
-        // Si el servidor responde algo distinto de "no existe la ruta",
-        // damos por hecho que atendió la petición (aunque diga 200/202/204).
-        return { ok: false, status: e.status, message: e.message };
-      }
-    }
+// El backend expone DELETE /users/me. Antes esto probaba cinco rutas
+// inventadas a ver si alguna existía, porque el endpoint no estaba hecho;
+// ahora está y se llama directo.
+//
+// La palabra "ELIMINAR" es un pestillo del backend contra una llamada suelta
+// a la API. La app la manda ella misma porque el usuario ya pasó por cuatro
+// confirmaciones y su contraseña, que es una garantía más fuerte que escribir
+// una palabra.
+async function borrarEnBackend(password) {
+  try {
+    const r = await walletApi.raw('/users/me', {
+      method: 'DELETE',
+      body: { password, confirm: 'ELIMINAR' },
+      timeout: 30000,
+    });
+    return { ok: true, data: r };
+  } catch (e) {
+    return { ok: false, status: e?.status, message: e?.message };
   }
-  return { ok: false, status: 404, message: 'no-endpoint' };
 }
 
 // Claves del dispositivo que se borran al eliminar cuenta.
@@ -115,7 +116,7 @@ export default function DeleteAccount({ nav }) {
         return;
       }
       // 2) Intentamos que el backend borre la cuenta.
-      const remoto = await intentarBorrarEnBackend(acc.email);
+      const remoto = await borrarEnBackend(pw);
       // 3) Wipe local COMPLETO — se hace siempre, incluso si el endpoint
       // remoto no existe (el usuario ve la sesión cerrada aquí y contacta
       // a soporte para forzar el borrado en el servidor si aplica).

@@ -4,7 +4,7 @@ import { Icon } from '../icons';
 import { C } from '../theme';
 import { Header, Button3D, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt, parseAmt, normalizeAmtInput, tokensFromBalances } from '../data';
-import { cardApi } from '../api';
+import { cardApi, depositApi } from '../api';
 import { useT } from '../i18n';
 import PedirClave from '../PedirClave';
 
@@ -38,12 +38,32 @@ export default function FundCard({ nav }) {
   const [esperando, setEsperando] = useState(false);
   const desde = useRef(0);
 
+  const [comprado, setComprado] = useState(0);
+
+  // Hay dos saldos de ORIGEN y no se suman.
+  //
+  // El comprado (depósitos de USDT) vive en el backend y se cobra con un
+  // decremento; el de la billetera vive en la cadena 8532 y se cobra firmando
+  // una transferencia. Una recarga sale entera de uno o del otro: mezclarlas
+  // significa que si la segunda mitad falla hay que devolver la primera, y ese
+  // camino tiene más formas de salir mal que de salir bien.
+  //
+  // Por eso el tope es el MAYOR de los dos, no la suma.
   const origen = tokensFromBalances(account?.balances || []).find((x) => x.s === 'ORIGEN');
-  const saldo = origen?.qty || 0;
+  const enCadena = origen?.qty || 0;
+  const saldo = Math.max(enCadena, comprado);
   const precio = origen?.hasPrice ? origen.price : 0;
   const cantidad = parseAmt(monto);
   const equivalente = cantidad * precio;
   const suficiente = cantidad > 0 && cantidad <= saldo;
+
+  useEffect(() => {
+    let vivo = true;
+    depositApi.balance()
+      .then((d) => { if (vivo) setComprado(d?.origen || 0); })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, []);
 
   // Al entrar se comprueba si quedó una recarga a medias de otra sesión.
   useEffect(() => {
@@ -170,6 +190,11 @@ export default function FundCard({ nav }) {
             <Text style={st.saldoV}>{qtyFmt(saldo)} ORIGEN</Text>
           </Pressable>
         </View>
+        {comprado > 0 && enCadena > 0 && (
+          <Text style={st.fuentes}>
+            {t('fund.fuentes', { c: qtyFmt(comprado), b: qtyFmt(enCadena) })}
+          </Text>
+        )}
         {cantidad > 0 && !suficiente && <Text style={st.err}>{t('fund.errSaldo')}</Text>}
 
         <View style={st.nota}>
@@ -261,6 +286,7 @@ const st = StyleSheet.create({
   saldoFila: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 },
   saldoK: { color: C.txt3, fontSize: 12.5 },
   saldoV: { color: C.gold, fontSize: 13.5, fontWeight: '700' },
+  fuentes: { color: C.txt3, fontSize: 11.5, marginTop: 8, lineHeight: 16 },
   err: { color: C.down, fontSize: 12.5, marginTop: 10, textAlign: 'center' },
 
   nota: { flexDirection: 'row', gap: 11, alignItems: 'flex-start', backgroundColor: C.panel2, borderRadius: 14, padding: 14, marginTop: 20 },

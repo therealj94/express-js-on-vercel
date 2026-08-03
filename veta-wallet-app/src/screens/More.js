@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Image, Modal, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as WebBrowser from 'expo-web-browser';
 import { Icon } from '../icons';
 import * as Clipboard from 'expo-clipboard';
 import { C, G } from '../theme';
@@ -149,6 +150,12 @@ export function Notifications({ nav }) {
 }
 
 // ================= AJUSTES =================
+// Abre un enlace en el navegador del sistema. Si falla —sin navegador, URL
+// mal formada— no se rompe la pantalla: simplemente no pasa nada.
+async function abrir(url) {
+  try { await WebBrowser.openBrowserAsync(url); } catch (e) {}
+}
+
 export function Settings({ nav }) {
   const [notif, setNotif] = useState(true);
   const [priv, setPriv] = useState(false);
@@ -270,6 +277,18 @@ export function Settings({ nav }) {
             title={t('set.about')}
             sub={versionLabel()}
             onPress={() => nav.go('about')}
+          />
+          {/* Ambas tiendas exigen que la política de privacidad sea accesible
+              desde dentro de la app, no solo desde la ficha de la tienda. */}
+          <ListRow
+            icon="shield-checkmark"
+            title={t('set.privacy')}
+            onPress={() => { hap(); abrir('https://vetawallet.com/privacidad'); }}
+          />
+          <ListRow
+            icon="document-text"
+            title={t('set.terms')}
+            onPress={() => { hap(); abrir('https://vetawallet.com/terminos'); }}
           />
         </Glass>
 
