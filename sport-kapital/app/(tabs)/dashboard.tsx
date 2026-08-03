@@ -11,7 +11,6 @@ import { colors, font, radius, spacing, themedSheet, type Palette } from '@/them
 import { usd, pct, timeAgo } from '@/utils/format';
 import { TeamCard } from '@/components/TeamCard';
 import { LiveMatchCard } from '@/components/LiveMatchCard';
-import { MundialFeature } from '@/components/MundialFeature';
 import { PriceFlash } from '@/components/PriceFlash';
 import { Icon, IconName } from '@/components/Icon';
 import { Logo } from '@/components/Logo';
@@ -158,9 +157,6 @@ export default function Dashboard() {
                 </View>
               </Panel>
             </Animated.View>
-
-            {/* Mundial 2026: tarjeta premium destacada (próximo partido / Final). */}
-            <MundialFeature />
 
             {/* Partidos REALES en vivo (api-football) — protagonistas. */}
             {realLive.length > 0 && (
