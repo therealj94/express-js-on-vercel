@@ -1,5 +1,5 @@
 // app/team/[id].tsx
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -33,7 +33,11 @@ export default function TeamDetail() {
   const team = useStore((s) => s.teams.find((t) => t.id === id));
   const position = useStore((s) => s.positions.find((p) => p.teamId === id));
   const match = useStore((s) => s.matches.find((m) => m.status !== 'FT' && (m.homeId === id || m.awayId === id)));
-  const news = useStore((s) => s.news.filter((n) => n.teamId === id || n.rivalId === id).slice(0, 4));
+  const newsAll = useStore((s) => s.news);
+  const news = useMemo(
+    () => newsAll.filter((n) => n.teamId === id || n.rivalId === id).slice(0, 4),
+    [newsAll, id],
+  );
   const sell = useStore((s) => s.sell);
   const tut = useTutorial('team');
 
