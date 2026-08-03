@@ -6,7 +6,7 @@ import { buildTeams, type Team, type Candle, type League } from '@/data/teams';
 import { setCurrentTheme, type ThemeKey } from '@/theme/palettes';
 import { setCurrentLang, t, type Lang } from '@/utils/i18n';
 import type { LiveMatch, NewsItem, PriceMove } from '@/utils/matchEngine';
-import type { RealFixtureLite, RealTransferLite } from '@/utils/realData';
+import type { RealFixtureLite, RealTransferLite, LeagueFixtureLite } from '@/utils/realData';
 
 export type MusicMode = 'off' | 'track2';
 
@@ -135,11 +135,11 @@ interface State {
   realDataFetchedAt: number;
   isFetchingReal: boolean;
 
-  // resultados finales de los partidos del Mundial que la app simuló en vivo
-  // (tercer puesto, gran final): fixtureId -> [golesLocal, golesVisita]. Quedan
-  // guardados para que el cuadro los muestre aunque el partido en vivo ya se
-  // haya retirado de la lista de "en vivo".
-  mundialResults: Record<string, [number, number]>;
+  // cartelera REAL por liga (api-football, una llamada por liga). Es la fuente
+  // de "qué se juega" para el inicio, la pestaña de partidos y cada equipo.
+  leagueFixtures: Record<string, LeagueFixtureLite[]>;
+  leagueFixturesAt: number;
+  isFetchingFixtures: boolean;
 
   // partidos REALES (api-football) que ya terminaron mientras la app estuvo
   // abierta, para mostrarlos en "resultados" de la pestaña Real.
@@ -181,7 +181,9 @@ interface State {
   setRealTransfers: (teamId: string, list: RealTransferLite[]) => void;
   setRealDataFetchedAt: (ts: number) => void;
   setIsFetchingReal: (v: boolean) => void;
-  setMundialResult: (fixtureId: string, home: number, away: number) => void;
+  setLeagueFixtures: (league: string, list: LeagueFixtureLite[]) => void;
+  setLeagueFixturesAt: (ts: number) => void;
+  setIsFetchingFixtures: (v: boolean) => void;
   addPastRealMatch: (m: PastRealMatch) => void;
 
   buy: (teamId: string, shares: number) => { ok: boolean; msg: string };
@@ -227,7 +229,9 @@ export const useStore = create<State>()(
       realTransfers: {},
       realDataFetchedAt: 0,
       isFetchingReal: false,
-      mundialResults: {},
+      leagueFixtures: {},
+      leagueFixturesAt: 0,
+      isFetchingFixtures: false,
       pastRealMatches: [],
       accountMode: 'REAL',
       otherLedger: freshPracticeLedger(),
@@ -286,7 +290,7 @@ export const useStore = create<State>()(
         set({
           registered: false, uid: null, user: null, alias: null, onboarded: false, riskAccepted: false, riskAcceptedAt: undefined,
           tutorialsSeen: {}, balance: 0, realizedTotal: 0, positions: [], transactions: [], walletTxs: [],
-          matches: [], news: [], teams: buildTeams(), notifAsked: false, mundialResults: {}, pastRealMatches: [],
+          matches: [], news: [], teams: buildTeams(), notifAsked: false, pastRealMatches: [],
           accountMode: 'REAL', otherLedger: freshPracticeLedger(),
         }),
 
@@ -345,8 +349,10 @@ export const useStore = create<State>()(
       setRealTransfers: (teamId, list) => set((s) => ({ realTransfers: { ...s.realTransfers, [teamId]: list } })),
       setRealDataFetchedAt: (ts) => set({ realDataFetchedAt: ts }),
       setIsFetchingReal: (v) => set({ isFetchingReal: v }),
-      setMundialResult: (fixtureId, home, away) =>
-        set((s) => ({ mundialResults: { ...s.mundialResults, [fixtureId]: [home, away] } })),
+      setLeagueFixtures: (league, list) =>
+        set((s) => ({ leagueFixtures: { ...s.leagueFixtures, [league]: list } })),
+      setLeagueFixturesAt: (ts) => set({ leagueFixturesAt: ts }),
+      setIsFetchingFixtures: (v) => set({ isFetchingFixtures: v }),
       addPastRealMatch: (m) =>
         set((s) => ({
           // dedup por id (no repetir el mismo fixture) y guardamos los últimos 30
@@ -522,7 +528,6 @@ export const useStore = create<State>()(
         realFixtures: s.realFixtures,
         realTransfers: s.realTransfers,
         realDataFetchedAt: s.realDataFetchedAt,
-        mundialResults: s.mundialResults,
         pastRealMatches: s.pastRealMatches,
         accountMode: s.accountMode,
         otherLedger: s.otherLedger,

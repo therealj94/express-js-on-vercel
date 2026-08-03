@@ -781,18 +781,6 @@ export function startRealEngineLazy(): void {
       onRealMatchEnded: (m: RealEndedMatch) => {
         const store = useStore.getState();
         store.addPastRealMatch({ ...m, competition: undefined, endedAt: Date.now() });
-        // si es un partido del Mundial entre dos selecciones, actualiza también
-        // el cuadro (marcador real sobre la llave correspondiente).
-        if (m.league === 'MUNDIAL') {
-          try {
-            const { buildSchedule, mundialFixtures } = require('../data/schedule');
-            const fx = mundialFixtures(buildSchedule(Date.now())).find((f: any) =>
-              f.home.kind === 'team' && f.away.kind === 'team' &&
-              teamShortFor(store.teams, f.home.teamId) === m.homeShort &&
-              teamShortFor(store.teams, f.away.teamId) === m.awayShort);
-            if (fx) store.setMundialResult(fx.id, m.scoreHome, m.scoreAway);
-          } catch { /* no-op */ }
-        }
       },
     });
     singleton.start();

@@ -7,7 +7,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useStore } from '@/store/useStore';
 import { colors, font, radius, spacing, themedSheet, type Palette } from '@/theme/tokens';
 import { Button } from '@/components/Button';
-import { Icon } from '@/components/Icon';
+import { Icon, type IconName } from '@/components/Icon';
 import { Logo } from '@/components/Logo';
 import { CyberBackground } from '@/components/CyberBackground';
 import { GlitchText } from '@/components/GlitchText';
@@ -157,6 +157,13 @@ export default function Register() {
             </Text>
           </Animated.View>
 
+          {/* qué te llevás al abrir la cuenta — deja claro el valor de registrarse */}
+          <Animated.View entering={FadeInDown.delay(50).duration(400)} style={styles.perksCard}>
+            <Perk icon="wallet" text={t('reg.perkBonus')} color={colors.gold} />
+            <Perk icon="globe" text={t('reg.perkLeagues')} color={colors.blue} />
+            <Perk icon="shield" text={t('reg.perkPractice')} color={colors.profit} />
+          </Animated.View>
+
           <Animated.View entering={FadeInDown.delay(80).duration(400)} style={{ marginTop: 24 }}>
             <Text style={styles.label}>{t('reg.name')}</Text>
             <View style={styles.inputBox}>
@@ -186,6 +193,7 @@ export default function Register() {
                     <Icon name={showPassword ? 'eye-off' : 'eye'} size={18} color={colors.textTertiary} />
                   </Pressable>
                 </View>
+                {password.length > 0 && <PasswordStrength value={password} />}
 
                 <Text style={styles.label}>{t('reg.confirm')}</Text>
                 <View style={styles.inputBox}>
@@ -265,6 +273,47 @@ export default function Register() {
   );
 }
 
+/** Chip de beneficio de la cuenta (icono + texto corto). */
+function Perk({ icon, text, color }: { icon: IconName; text: string; color: string }) {
+  return (
+    <View style={styles.perkRow}>
+      <View style={[styles.perkIcon, { borderColor: color }]}><Icon name={icon} size={13} color={color} /></View>
+      <Text style={styles.perkTxt}>{text}</Text>
+    </View>
+  );
+}
+
+/**
+ * Medidor de fuerza de contraseña: puntúa largo y variedad de caracteres para
+ * que se vea al instante si la clave es débil, en vez de enterarse recién al
+ * enviar el formulario.
+ */
+function scorePassword(v: string): number {
+  let score = 0;
+  if (v.length >= 6) score++;
+  if (v.length >= 10) score++;
+  if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
+  if (/[0-9]/.test(v)) score++;
+  if (/[^A-Za-z0-9]/.test(v)) score++;
+  return Math.min(score, 4);
+}
+
+function PasswordStrength({ value }: { value: string }) {
+  const score = scorePassword(value);
+  const tone = score <= 1 ? colors.loss : score === 2 ? colors.gold : colors.profit;
+  const label = score <= 1 ? t('reg.pwWeak') : score === 2 ? t('reg.pwMedium') : t('reg.pwStrong');
+  return (
+    <View style={styles.pwWrap}>
+      <View style={styles.pwBars}>
+        {[0, 1, 2, 3].map((i) => (
+          <View key={i} style={[styles.pwBar, { backgroundColor: i < score ? tone : colors.border }]} />
+        ))}
+      </View>
+      <Text style={[styles.pwTxt, { color: tone }]}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = themedSheet((colors: Palette) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: spacing.xl },
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 24 },
@@ -288,6 +337,14 @@ const styles = themedSheet((colors: Palette) => StyleSheet.create({
   chipOn: { backgroundColor: colors.goldDim, borderColor: colors.gold },
   chipTxt: { color: colors.textSecondary, fontSize: font.size.sm, fontWeight: '700' },
   chipTxtOn: { color: colors.gold },
+  perksCard: { marginTop: 18, backgroundColor: colors.bgCard, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: 14, gap: 10 },
+  perkRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  perkIcon: { width: 26, height: 26, borderRadius: 9, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  perkTxt: { flex: 1, color: colors.textSecondary, fontSize: font.size.xs, fontWeight: '600', lineHeight: 17 },
+  pwWrap: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
+  pwBars: { flexDirection: 'row', gap: 4, flex: 1 },
+  pwBar: { flex: 1, height: 4, borderRadius: 2 },
+  pwTxt: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
   ageRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginTop: 22 },
   checkbox: { width: 24, height: 24, borderRadius: 7, borderWidth: 2, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   checkboxOn: { backgroundColor: colors.gold, borderColor: colors.gold },

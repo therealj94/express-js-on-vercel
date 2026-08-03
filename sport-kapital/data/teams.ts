@@ -1,10 +1,11 @@
 // data/teams.ts
-// Tokens de equipos en tres mercados, con datos reales al 12 de julio de 2026:
-// - Mundial 2026 (cuartos ya jugados; semifinales: Francia vs España y Argentina vs Inglaterra)
-// - LaLiga 2025/26 (Barcelona campeón, título 29)
-// - Liga Nacional de Honduras (Motagua campeón del Clausura 2026, Olimpia campeón del Apertura 2025)
+// Tokens de equipos de cuatro ligas reales, con datos de la temporada en curso:
+// - LaLiga (España)
+// - Brasileirão Série A (Brasil)
+// - MLS (Estados Unidos)
+// - Liga Nacional (Honduras)
 
-export type League = 'MUNDIAL' | 'LALIGA' | 'HONDURAS' | 'BRASIL' | 'ESTADOS_UNIDOS';
+export type League = 'LALIGA' | 'BRASIL' | 'ESTADOS_UNIDOS' | 'HONDURAS';
 
 /**
  * Categoría de valoración del token, según el nivel del equipo. Es la base de
@@ -16,15 +17,14 @@ export type League = 'MUNDIAL' | 'LALIGA' | 'HONDURAS' | 'BRASIL' | 'ESTADOS_UNI
 export type Tier = 1 | 2 | 3;
 
 export const LEAGUE_TIER: Record<League, Tier> = {
-  MUNDIAL: 1,
-  LALIGA: 2,
-  BRASIL: 2,
+  LALIGA: 1,
+  BRASIL: 1,
+  ESTADOS_UNIDOS: 2,
   HONDURAS: 3,
-  ESTADOS_UNIDOS: 3,
 };
 
 export const TIER_LABEL: Record<Tier, string> = {
-  1: 'Categoría A · Élite Mundial',
+  1: 'Categoría A · Élite Global',
   2: 'Categoría B · Liga Profesional',
   3: 'Categoría C · Liga Regional',
 };
@@ -70,32 +70,6 @@ export interface Team extends TeamSeed {
 }
 
 export const TEAM_SEEDS: TeamSeed[] = [
-  // ============ MUNDIAL 2026 — estado real del torneo ============
-  { id: 'fra', name: 'Francia', short: 'FRA', league: 'MUNDIAL', country: 'Francia', basePrice: 148, color: '#1D3D8F', color2: '#E1000F',
-    played: 6, wins: 5, draws: 1, losses: 0, goalsFor: 15, goalsAgainst: 4,
-    note: 'En semifinales. Venció 2-0 a Marruecos; Mbappé suma 8 goles en el torneo y 20 históricos.' },
-  { id: 'esp', name: 'España', short: 'ESP', league: 'MUNDIAL', country: 'España', basePrice: 152, color: '#B8860B', color2: '#AA151B',
-    played: 6, wins: 6, draws: 0, losses: 0, goalsFor: 17, goalsAgainst: 3,
-    note: 'En semifinales tras vencer 2-0 a Bélgica con goles de Fabián Ruiz y Merino. Yamal en nivel histórico.' },
-  { id: 'arg', name: 'Argentina', short: 'ARG', league: 'MUNDIAL', country: 'Argentina', basePrice: 145, color: '#5FA8D3', color2: '#FFFFFF',
-    played: 6, wins: 5, draws: 1, losses: 0, goalsFor: 13, goalsAgainst: 5,
-    note: 'Campeón defensor. Venció 1-0 a Suiza en cuartos; disputa la semifinal ante Inglaterra.' },
-  { id: 'sui', name: 'Suiza', short: 'SUI', league: 'MUNDIAL', country: 'Suiza', basePrice: 96, color: '#D52B1E', color2: '#FFFFFF',
-    played: 6, wins: 3, draws: 2, losses: 1, goalsFor: 8, goalsAgainst: 5,
-    note: 'Cayó 1-0 ante Argentina en cuartos tras eliminar a Colombia en penales. Fin de su Mundial.' },
-  { id: 'eng', name: 'Inglaterra', short: 'ENG', league: 'MUNDIAL', country: 'Inglaterra', basePrice: 132, color: '#FFFFFF', color2: '#CE1124',
-    played: 6, wins: 5, draws: 1, losses: 0, goalsFor: 13, goalsAgainst: 4,
-    note: 'Venció 2-1 a Noruega en cuartos; jugará la semifinal contra Argentina.' },
-  { id: 'nor', name: 'Noruega', short: 'NOR', league: 'MUNDIAL', country: 'Noruega', basePrice: 104, color: '#BA0C2F', color2: '#00205B',
-    played: 6, wins: 4, draws: 0, losses: 2, goalsFor: 14, goalsAgainst: 8,
-    note: 'La revelación del torneo con Haaland, eliminada 2-1 por Inglaterra en cuartos.' },
-  { id: 'mar', name: 'Marruecos', short: 'MAR', league: 'MUNDIAL', country: 'Marruecos', basePrice: 62, color: '#C1272D', color2: '#006233',
-    played: 6, wins: 4, draws: 1, losses: 1, goalsFor: 9, goalsAgainst: 6,
-    note: 'Eliminado en cuartos ante Francia (0-2). Último africano en despedirse del torneo.' },
-  { id: 'bel', name: 'Bélgica', short: 'BEL', league: 'MUNDIAL', country: 'Bélgica', basePrice: 58, color: '#2D2926', color2: '#FDDA24',
-    played: 6, wins: 3, draws: 2, losses: 1, goalsFor: 10, goalsAgainst: 8,
-    note: 'Eliminada en cuartos ante España (0-2) en el adiós del estadio de Los Ángeles.' },
-
   // ============ LALIGA 2025/26 — tabla final real ============
   { id: 'bar', name: 'FC Barcelona', short: 'BAR', league: 'LALIGA', country: 'España', basePrice: 168, color: '#A50044', color2: '#004D98',
     played: 38, wins: 28, draws: 6, losses: 4, goalsFor: 92, goalsAgainst: 34,
@@ -372,11 +346,10 @@ export function buildTeams(): Team[] {
 }
 
 export const LEAGUE_LABEL: Record<League, string> = {
-  MUNDIAL: 'Mundial 2026',
-  LALIGA: 'LaLiga 25/26',
-  BRASIL: 'Brasileirão 2026',
+  LALIGA: 'LaLiga',
+  BRASIL: 'Brasileirão',
+  ESTADOS_UNIDOS: 'MLS',
   HONDURAS: 'Liga Nacional',
-  ESTADOS_UNIDOS: 'MLS 2026',
 };
 
 /** Rival natural dentro de la liga (para flujo de liquidez en noticias). */

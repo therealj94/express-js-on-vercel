@@ -18,7 +18,7 @@ import { useBallRefresh, ballRefreshControl } from '@/components/BallRefresh';
 type Sort = 'cap' | 'gainers' | 'losers';
 type MatchFilter = 'ALL' | 'SIM' | 'REAL';
 type ViewMode = 'tokens' | 'standings';
-const LEAGUES: (League | 'ALL')[] = ['ALL', 'MUNDIAL', 'LALIGA', 'BRASIL', 'ESTADOS_UNIDOS', 'HONDURAS'];
+const LEAGUES: (League | 'ALL')[] = ['ALL', 'LALIGA', 'BRASIL', 'ESTADOS_UNIDOS', 'HONDURAS'];
 
 export default function Market() {
   const insets = useSafeAreaInsets();
@@ -34,9 +34,7 @@ export default function Market() {
     useStore.getState().accountMode === 'REAL' ? 'REAL' : 'ALL');
   const refresh = useBallRefresh();
 
-  // los partidos del Mundial (id 'sched-…') tienen su propio apartado premium
-  // (dashboard + /mundial), así que no se listan acá como "en vivo" del mercado.
-  const liveMatchesAll = matches.filter((m) => m.status !== 'FT' && !m.id.startsWith('sched-'));
+  const liveMatchesAll = matches.filter((m) => m.status !== 'FT');
   const liveMatches = liveMatchesAll.filter((m) =>
     matchFilter === 'ALL' ? true : matchFilter === 'REAL' ? isRealMatch(m) : !isRealMatch(m)
   );
@@ -95,7 +93,7 @@ export default function Market() {
       {viewMode === 'standings' ? (
         <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.xl, paddingTop: 10, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
           {league === 'ALL'
-            ? (['MUNDIAL', 'LALIGA', 'BRASIL', 'ESTADOS_UNIDOS', 'HONDURAS'] as League[]).map((l) => (
+            ? (['LALIGA', 'BRASIL', 'ESTADOS_UNIDOS', 'HONDURAS'] as League[]).map((l) => (
                 <StandingsTable key={l} teams={teams} league={l} />
               ))
             : <StandingsTable teams={teams} league={league} />}

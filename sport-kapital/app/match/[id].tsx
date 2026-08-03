@@ -13,6 +13,7 @@ import { TeamBadge } from '@/components/TeamBadge';
 import { PriceFlash } from '@/components/PriceFlash';
 import { Icon, IconName } from '@/components/Icon';
 import { Panel } from '@/components/Panel';
+import { Lineups } from '@/components/Lineups';
 
 import { tap } from '@/utils/haptics';
 import { t } from '@/utils/i18n';
@@ -52,6 +53,13 @@ export default function MatchScreen() {
 
   const live = match.status !== 'FT';
   const real = isRealMatch(match);
+
+  // id del fixture real (los partidos reales usan el id 'real-<fixtureId>'),
+  // necesario para pedir las alineaciones oficiales.
+  const fixtureId = real && typeof id === 'string' && id.startsWith('real-')
+    ? Number(id.slice(5)) || null
+    : null;
+  const [tab, setTab] = useState<'summary' | 'stats' | 'lineups'>('summary');
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -103,8 +111,27 @@ export default function MatchScreen() {
           {real && live && <Text style={styles.refreshHint}>{t('match.pullRefresh')}</Text>}
         </Panel>
 
+        {/* Pestañas estilo app de resultados: resumen / estadísticas / alineaciones */}
+        <View style={styles.tabsRow}>
+          {(['summary', 'stats', 'lineups'] as const).map((k) => (
+            <Pressable key={k} onPress={() => { tap(); setTab(k); }} style={[styles.tabBtn, tab === k && styles.tabBtnOn]}>
+              <Text style={[styles.tabTxt, tab === k && styles.tabTxtOn]}>{t(`match.tab.${k}`)}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {tab === 'lineups' && (
+          <View style={{ paddingHorizontal: spacing.xl, paddingTop: 4 }}>
+            {real ? (
+              <Lineups fixtureId={fixtureId} homeColor={home.color} awayColor={away.color} />
+            ) : (
+              <Text style={styles.tabEmpty}>{t('lineup.simOnly')}</Text>
+            )}
+          </View>
+        )}
+
         {/* Estadísticas oficiales completas (solo partidos reales) */}
-        {match.statsHome && match.statsAway && (
+        {tab === 'stats' && match.statsHome && match.statsAway && (
           <>
             <Text style={styles.section}>{t('match.liveStats')}</Text>
             <View style={styles.statsPanel}>
@@ -126,9 +153,13 @@ export default function MatchScreen() {
           </>
         )}
 
+        {tab === 'stats' && !(match.statsHome && match.statsAway) && (
+          <Text style={styles.tabEmpty}>{t('match.noStats')}</Text>
+        )}
+
         {/* Feed de eventos */}
-        <Text style={styles.section}>{t('match.liveFeed')}</Text>
-        <View style={{ paddingHorizontal: spacing.xl }}>
+        {tab === 'summary' && <Text style={styles.section}>{t('match.liveFeed')}</Text>}
+        <View style={{ paddingHorizontal: spacing.xl, display: tab === 'summary' ? 'flex' : 'none' }}>
           {match.events.map((e, i) => {
             const team = e.teamId === home.id ? home : away;
             const evColor = EVENT_COLOR()[e.kind];
@@ -273,6 +304,12 @@ const styles = themedSheet((colors: Palette) => StyleSheet.create({
   possBar: { flex: 1, height: 8, borderRadius: 4, overflow: 'hidden', flexDirection: 'row', backgroundColor: colors.bgElevated },
   possSeg: { height: '100%' },
   possTeam: { color: colors.textTertiary, fontSize: font.size.xs, fontWeight: '700' },
+  tabsRow: { flexDirection: 'row', marginHorizontal: spacing.xl, marginTop: 16, backgroundColor: colors.bgCard, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, padding: 3 },
+  tabBtn: { flex: 1, paddingVertical: 9, borderRadius: radius.full, alignItems: 'center' },
+  tabBtnOn: { backgroundColor: colors.gold },
+  tabTxt: { color: colors.textSecondary, fontSize: font.size.xs, fontWeight: '800', textTransform: 'uppercase' },
+  tabTxtOn: { color: '#14000F' },
+  tabEmpty: { color: colors.textSecondary, fontSize: font.size.sm, textAlign: 'center', paddingHorizontal: spacing.xl, paddingVertical: 40, lineHeight: 20 },
   section: { color: colors.text, fontSize: font.size.md, fontFamily: font.family.headingBold, textTransform: 'uppercase', letterSpacing: 1, paddingHorizontal: spacing.xl, marginTop: 20, marginBottom: 12 },
   eventRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.bgCard, borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: colors.border, marginBottom: 8 },
   eventIcon: { width: 34, height: 34, borderRadius: 17, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bgElevated },

@@ -12,10 +12,6 @@
 
 import type { Team, Candle, League } from '@/data/teams';
 import { t, tName } from './i18n';
-import {
-  buildSchedule, mundialFixtures, matchPhase, liveMinute, seededResult,
-  type Fixture, type TeamOpponent,
-} from '@/data/schedule';
 
 export type MatchEventKind = 'GOL' | 'TIRO' | 'FALTA' | 'AMARILLA' | 'ROJA' | 'CORNER' | 'INICIO' | 'DESCANSO' | 'FINAL';
 
@@ -132,9 +128,6 @@ export interface EngineCallbacks {
   applyMoves: (moves: PriceMove[], pushCandle: boolean) => void;
   onMatchUpdate: (m: LiveMatch) => void;
   onNews: (n: NewsItem) => void;
-  // resultado final de un partido programado del Mundial (tercer puesto / final)
-  // para que quede guardado en el cuadro.
-  onMundialResult?: (fixtureId: string, home: number, away: number) => void;
 }
 
 export class MarketEngine {
@@ -145,11 +138,6 @@ export class MarketEngine {
   private matches: LiveMatch[] = [];
   private running = false;
 
-  // partidos PROGRAMADOS del Mundial (ficticio, atados a su horario real)
-  private schedFixtures: Fixture[] | null = null;
-  private sched = new Map<string, { match: LiveMatch; lastMin: number }>();
-  private schedDone = new Set<string>();
-
   constructor(private cb: EngineCallbacks) {}
 
   start() {
@@ -158,8 +146,7 @@ export class MarketEngine {
     this.loopTicks();
     this.loopNews();
     this.scheduleNextMatch(4000); // primer partido a los ~4 s de abrir
-    this.matchTimer = setInterval(() => { this.stepMatches(); this.stepScheduled(); }, 4000); // 1 min simulado
-    this.stepScheduled(); // engancha de inmediato un partido del Mundial ya en curso
+    this.matchTimer = setInterval(() => { this.stepMatches(); }, 4000); // 1 min simulado
   }
 
   stop() {
@@ -207,7 +194,7 @@ export class MarketEngine {
     if (active.length >= 2 || teams.length < 2) return;
 
     const busy = new Set(active.flatMap((m) => [m.homeId, m.awayId]));
-    const leagues: League[] = ['MUNDIAL', 'LALIGA', 'HONDURAS', 'BRASIL', 'ESTADOS_UNIDOS'];
+    const leagues: League[] = ['LALIGA', 'HONDURAS', 'BRASIL', 'ESTADOS_UNIDOS'];
     const league = pick(leagues);
     const pool = teams.filter((t) => t.league === league && !busy.has(t.id));
     if (pool.length < 2) return;
@@ -314,114 +301,6 @@ export class MarketEngine {
     });
   }
 
-  // ---------- partidos PROGRAMADOS del Mundial ----------
-  // El Mundial 2026 de la app es ficticio, así que sus partidos por jugar
-  // (tercer puesto, gran final) los simula la propia app atados a su horario:
-  // se ponen en vivo al llegar el saque (minuto en tiempo real, precios
-  // moviéndose) y al terminar guardan el resultado en el cuadro. La UI muestra
-  // la cuenta regresiva (y "se abre para operar" 1 h antes) — de eso se encarga
-  // la pantalla Mundial; aquí solo manejamos el partido EN VIVO y su cierre.
-  private mundialToPlay(): Fixture[] {
-    if (!this.schedFixtures) {
-      this.schedFixtures = mundialFixtures(buildSchedule(Date.now()))
-        .filter((f) => !f.finished && f.home.kind === 'team' && f.away.kind === 'team');
-    }
-    return this.schedFixtures;
-  }
-
-  private stepScheduled() {
-    const now = Date.now();
-    const teams = this.cb.getTeams();
-    if (teams.length < 2) return;
-
-    for (const fx of this.mundialToPlay()) {
-      const phase = matchPhase(fx.dateMs, now);
-      const homeId = (fx.home as TeamOpponent).teamId;
-      const awayId = (fx.away as TeamOpponent).teamId;
-      const home = teams.find((t) => t.id === homeId);
-      const away = teams.find((t) => t.id === awayId);
-      if (!home || !away) continue;
-
-      if (phase === 'live') {
-        const minute = liveMinute(fx.dateMs, now);
-        let st = this.sched.get(fx.id);
-        if (!st) {
-          const match: LiveMatch = {
-            id: `sched-${fx.id}`, league: 'MUNDIAL', homeId, awayId,
-            minute, scoreHome: 0, scoreAway: 0, status: 'LIVE',
-            events: [{ id: uid(), minute: 0, kind: 'INICIO', teamId: homeId, text: eventText('INICIO', home, 0), impact: 0, ts: now }],
-            startedAt: fx.dateMs, source: 'SIM',
-          };
-          st = { match, lastMin: 0 };
-          this.sched.set(fx.id, st);
-          this.cb.onMatchUpdate({ ...match });
-          this.cb.onNews({
-            id: uid(), source: 'PARTIDO', teamId: homeId, rivalId: awayId, impact: 0, ts: now,
-            headline: t('ng.kickoffH', { home: tName(home), away: tName(away) }),
-            body: t('ng.kickoffB', { league: leagueLabel('MUNDIAL') }),
-          });
-        }
-        // simula cada minuto NUEVO cruzado desde la última pasada (ritmo real)
-        for (let min = st.lastMin + 1; min <= minute; min++) {
-          this.playScheduledMinute(st.match, min, teams);
-        }
-        st.lastMin = minute;
-        st.match.minute = minute;
-        st.match.status = 'LIVE';
-        this.cb.onMatchUpdate({ ...st.match });
-      } else if (phase === 'done' && !this.schedDone.has(fx.id)) {
-        this.schedDone.add(fx.id);
-        const st = this.sched.get(fx.id);
-        if (st) {
-          // se jugó en vivo: cierra con el marcador simulado real
-          st.match.status = 'FT';
-          st.match.minute = 90;
-          st.match.events.unshift({ id: uid(), minute: 90, kind: 'FINAL', teamId: homeId, text: t('ev.final'), impact: 0, ts: now });
-          this.cb.onMatchUpdate({ ...st.match });
-          this.cb.onMundialResult?.(fx.id, st.match.scoreHome, st.match.scoreAway);
-        } else {
-          // la app no estuvo abierta durante el partido: resultado determinístico
-          const [h, a] = seededResult(fx);
-          this.cb.onMundialResult?.(fx.id, h, a);
-        }
-      }
-    }
-  }
-
-  private playScheduledMinute(m: LiveMatch, minute: number, teams: Team[]) {
-    for (const [kind, prob] of PROB) {
-      if (Math.random() >= prob) continue;
-      const isHome = Math.random() < 0.5;
-      const teamId = isHome ? m.homeId : m.awayId;
-      const rivalId = isHome ? m.awayId : m.homeId;
-      const team = teams.find((t) => t.id === teamId);
-      const rival = teams.find((t) => t.id === rivalId);
-      if (!team || !rival) continue;
-
-      let impact = IMPACT[kind] * (0.85 + Math.random() * 0.3);
-      if (kind === 'GOL') { if (isHome) m.scoreHome += 1; else m.scoreAway += 1; }
-      impact = r2(impact);
-
-      const ev: MatchEvent = { id: uid(), minute, kind, teamId, text: eventText(kind, team, minute), impact, ts: Date.now() };
-      m.events.unshift(ev);
-      if (m.events.length > 40) m.events.pop();
-
-      this.cb.applyMoves([{ id: teamId, pct: impact }, { id: rivalId, pct: r2(-impact) }], false);
-
-      if (kind === 'GOL' || kind === 'ROJA') {
-        this.cb.onNews({
-          id: uid(), source: 'PARTIDO', teamId, rivalId, impact, ts: Date.now(),
-          isGoal: kind === 'GOL',
-          headline: kind === 'GOL'
-            ? t('ng.golH', { team: tName(team), min: minute, pct: `${impact > 0 ? '+' : ''}${impact}` })
-            : t('ng.rojaH', { team: tName(team), min: minute, pct: impact }),
-          body: kind === 'GOL'
-            ? t('ng.golB', { team: tName(team), score: `${m.homeId === teamId ? m.scoreHome : m.scoreAway}-${m.homeId === teamId ? m.scoreAway : m.scoreHome}`, rival: tName(rival) })
-            : t('ng.rojaB', { team: tName(team), rival: tName(rival) }),
-        });
-      }
-    }
-  }
 
   // ---------- noticias de mercado ----------
   private loopNews() {

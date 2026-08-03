@@ -10,16 +10,6 @@ export interface TeamApiMapping {
 }
 
 export const TEAM_API_MAPPING: Record<string, TeamApiMapping> = {
-  // ---- Mundial 2026 (selecciones) ---- confirmados contra la API real
-  fra: { apiTeamId: 2, national: true },      // Francia
-  esp: { apiTeamId: 9, national: true },      // España
-  arg: { apiTeamId: 26, national: true },     // Argentina
-  sui: { apiTeamId: 15, national: true },     // Suiza
-  eng: { apiTeamId: 10, national: true },     // Inglaterra
-  nor: { apiTeamId: 1090, national: true },   // Noruega
-  mar: { apiTeamId: 31, national: true },     // Marruecos
-  bel: { apiTeamId: 1, national: true },      // Bélgica
-
   // ---- LaLiga 2025/26 (clubes) ----
   bar: { apiTeamId: 529, national: false },   // FC Barcelona
   rma: { apiTeamId: 541, national: false },   // Real Madrid

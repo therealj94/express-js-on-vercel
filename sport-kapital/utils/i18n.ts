@@ -41,7 +41,7 @@ const D: Record<string, [string, string]> = {
   // ---------- pestañas ----------
   'tabs.home': ['Inicio', 'Home'],
   'tabs.market': ['Mercado', 'Market'],
-  'tabs.real': ['Real', 'Real'],
+  'tabs.real': ['Partidos', 'Matches'],
   'tabs.portfolio': ['Cartera', 'Portfolio'],
   'tabs.news': ['Noticias', 'News'],
   'tabs.wallet': ['Wallet', 'Wallet'],
@@ -77,6 +77,12 @@ const D: Record<string, [string, string]> = {
   'reg.errAge': ['Debes ser mayor de 18 años para usar Sport Kapital.', 'You must be over 18 to use Sport Kapital.'],
   'reg.errAgeCheck': ['Confirma que eres mayor de 18 años para continuar.', 'Confirm you are over 18 to continue.'],
   'reg.errCloud': ['No se pudo crear la cuenta en la nube.', 'Could not create the cloud account.'],
+  'reg.perkBonus': ['50 USDT de bienvenida en tu cuenta real', '50 USDT welcome bonus in your real account'],
+  'reg.perkLeagues': ['LaLiga, Brasileirão, MLS y Liga Nacional en vivo', 'LaLiga, Brasileirão, MLS and Liga Nacional live'],
+  'reg.perkPractice': ['Cuenta de práctica aparte, con fondos de prueba', 'Separate practice account with test funds'],
+  'reg.pwWeak': ['Débil', 'Weak'],
+  'reg.pwMedium': ['Media', 'Medium'],
+  'reg.pwStrong': ['Fuerte', 'Strong'],
   'reg.language': ['Idioma', 'Language'],
 
   // ---------- login ----------
@@ -99,7 +105,7 @@ const D: Record<string, [string, string]> = {
 
   // ---------- onboarding ----------
   'onb.s1t': ['Opera equipos como activos', 'Trade teams like assets'],
-  'onb.s1b': ['Compra y vende tokens del Mundial 2026, LaLiga y la Liga Nacional de Honduras. Cada equipo cotiza según su rendimiento real y el flujo del mercado.', 'Buy and sell tokens from the 2026 World Cup, LaLiga and the Honduran National League. Every team trades on its real performance and market flow.'],
+  'onb.s1b': ['Compra y vende tokens de LaLiga, Brasileirão, MLS y la Liga Nacional de Honduras. Cada equipo cotiza según su rendimiento real y el flujo del mercado.', 'Buy and sell tokens from LaLiga, Brasileirão, MLS and the Honduran National League. Every team trades on its real performance and market flow.'],
   'onb.s2t': ['Partidos que mueven el precio', 'Matches move the price'],
   'onb.s2b': ['Goles, tiros, faltas y tarjetas impactan la cotización en vivo. La liquidez fluye entre rivales: cuando un equipo sube, su oponente baja.', 'Goals, shots, fouls and cards move prices live. Liquidity flows between rivals: when one team goes up, its opponent goes down.'],
   'onb.s3t': ['Velas japonesas y análisis', 'Candlesticks & analysis'],
@@ -144,6 +150,10 @@ const D: Record<string, [string, string]> = {
   'dash.liveMatches': ['Partidos en vivo', 'Live matches'],
   'dash.realLive': ['Partidos reales en vivo', 'Real live matches'],
   'dash.todayReal': ['Partidos reales de hoy', "Today's real matches"],
+  'dash.upcomingByLeague': ['Próximos partidos', 'Upcoming matches'],
+  'dash.seeAll': ['Ver todos', 'See all'],
+  'dash.noUpcoming': ['Todavía no hay partidos programados en el rango.', 'No matches scheduled in range yet.'],
+  'dash.movers': ['Se mueve el mercado', 'Market movers'],
   'dash.liveNow': ['EN VIVO', 'LIVE NOW'],
   'dash.startsInHm': ['en {h}h {m}m', 'in {h}h {m}m'],
   'dash.startsInM': ['en {m}m', 'in {m}m'],
@@ -186,30 +196,26 @@ const D: Record<string, [string, string]> = {
   'standings.pickLeague': ['Elegí una liga para ver su tabla completa.', 'Pick a league to see its full table.'],
 
   // ---------- pestaña real ----------
-  'real.subtitle': ['Calendario y resultados de los próximos mes y medio — LaLiga y Liga Nacional.', 'Schedule and results for the next month and a half — LaLiga and the National League.'],
-  'real.upcoming': ['Próximos partidos', 'Upcoming matches'],
-  'real.results': ['Resultados recientes', 'Recent results'],
-  'real.tokens': ['Tokens por categoría', 'Tokens by category'],
-  'real.noUpcoming': ['No hay partidos programados.', 'No matches scheduled.'],
-  'real.noResults': ['Sin resultados recientes.', 'No recent results.'],
-  'real.tbd': ['Por definir', 'To be decided'],
-  'real.mundialTitle': ['Mundial 2026', 'World Cup 2026'],
-  'real.mundialSub': ['Todo el camino al título: cuadro completo, resultados y cuenta regresiva.', "The full road to the title: complete bracket, results and countdown."],
+  // ---------- pestaña partidos ----------
+  'team.nextMatches': ['Próximos partidos', 'Next matches'],
+  'team.lastMatches': ['Últimos resultados', 'Recent results'],
+  'match.tab.summary': ['Resumen', 'Summary'],
+  'match.tab.stats': ['Estadísticas', 'Stats'],
+  'match.tab.lineups': ['Alineaciones', 'Lineups'],
+  'match.noStats': ['Todavía no hay estadísticas oficiales de este partido.', 'No official stats for this match yet.'],
+  'lineup.coach': ['DT', 'Coach'],
+  'lineup.bench': ['Suplentes', 'Bench'],
+  'lineup.none': ['Las alineaciones se publican cerca del saque inicial.', 'Lineups are published close to kick-off.'],
+  'lineup.simOnly': ['Las alineaciones solo están disponibles en partidos reales.', 'Lineups are only available for real matches.'],
+  'matches.title': ['Partidos', 'Matches'],
+  'matches.today': ['Hoy', 'Today'],
+  'matches.upcoming': ['Próximos', 'Upcoming'],
+  'matches.results': ['Resultados', 'Results'],
+  'matches.empty': ['No hay partidos para mostrar en esta vista.', 'No matches to show in this view.'],
+  'matches.footNote': ['Datos oficiales en vivo de LaLiga, Brasileirão, MLS y Liga Nacional. El punto dorado marca los equipos con token operable.', 'Official live data from LaLiga, Brasileirão, MLS and Liga Nacional. The gold dot marks teams with a tradable token.'],
 
   // ---------- apartado Mundial 2026 ----------
-  'mundial.title': ['Mundial 2026', 'World Cup 2026'],
-  'mundial.subtitle': ['El camino completo al título: de octavos a la gran final.', 'The full road to the title: from the round of 16 to the grand final.'],
-  'mundial.remaining': ['Lo que falta', "What's left"],
-  'mundial.bracket': ['Camino al título', 'Road to the title'],
-  'mundial.vs': ['vs', 'vs'],
-  'mundial.days': ['días', 'days'],
-  'mundial.hours': ['hrs', 'hrs'],
-  'mundial.minutes': ['min', 'min'],
-  'mundial.seconds': ['seg', 'sec'],
-  'mundial.openToTrade': ['ABIERTO · OPERÁ', 'OPEN · TRADE'],
-  'mundial.tradeSide': ['Operar {s}', 'Trade {s}'],
-  'mundial.tapTrade': ['Tocá para operar los equipos', 'Tap to trade the teams'],
-  'mundial.tapMatch': ['Tocá para ver el partido en vivo', 'Tap to see the live match'],
+  'dash.trade': ['Operar {s}', 'Trade {s}'],
 
   // ---------- cartera ----------
   'port.title': ['Cartera', 'Portfolio'],
@@ -481,7 +487,6 @@ const D: Record<string, [string, string]> = {
   'store.sellRef': ['Venta {ticker}', 'Sell {ticker}'],
 
   // ---------- ligas / categorías / competiciones ----------
-  'league.MUNDIAL': ['Mundial 2026', 'World Cup 2026'],
   'league.LALIGA': ['LaLiga 25/26', 'LaLiga 25/26'],
   'league.BRASIL': ['Brasileirão 2026', 'Brasileirão 2026'],
   'league.HONDURAS': ['Liga Nacional', 'National League'],
@@ -492,10 +497,6 @@ const D: Record<string, [string, string]> = {
   'tier.s1': ['Cat A', 'Cat A'],
   'tier.s2': ['Cat B', 'Cat B'],
   'tier.s3': ['Cat C', 'Cat C'],
-  'comp.wcR16': ['Mundial 2026 · Octavos', 'World Cup 2026 · Round of 16'],
-  'comp.wcQF': ['Mundial 2026 · Cuartos', 'World Cup 2026 · Quarterfinal'],
-  'comp.wcSF': ['Mundial 2026 · Semifinal', 'World Cup 2026 · Semifinal'],
-  'comp.wcF': ['Mundial 2026 · Gran Final', 'World Cup 2026 · Grand Final'],
   'comp.friendly': ['Amistoso', 'Friendly'],
   'comp.preseason': ['Amistoso de pretemporada', 'Preseason friendly'],
   'comp.laligaJ1': ['LaLiga 26/27 · Jornada 1', 'LaLiga 26/27 · Matchday 1'],
@@ -566,13 +567,8 @@ export function t(key: string, vars?: Record<string, string | number>): string {
   return s;
 }
 
-/** Traduce una competición del calendario (data/schedule.ts) por su texto en español. */
-const COMP_KEYS: Record<string, string> = {
-  'Mundial 2026 · Octavos': 'comp.wcR16',
-  'Mundial 2026 · Cuartos': 'comp.wcQF',
-  'Mundial 2026 · Semifinal': 'comp.wcSF',
-  'Mundial 2026 · Gran Final': 'comp.wcF',
-  'Amistoso': 'comp.friendly',
+/** Traduce nombres de competición conocidos; el resto pasa tal cual. */
+const COMP_KEYS: Record<string, string> = {  'Amistoso': 'comp.friendly',
   'Amistoso de pretemporada': 'comp.preseason',
   'LaLiga 26/27 · Jornada 1': 'comp.laligaJ1',
   'LaLiga 26/27 · Jornada 2': 'comp.laligaJ2',
@@ -584,18 +580,11 @@ export function tComp(comp: string): string {
   return key ? t(key) : comp;
 }
 
-// Nombres de equipos/rivales en inglés (los clubes son nombres propios y quedan
-// igual; solo cambian las selecciones y algunos países). Se resuelve por id de
-// equipo (tokens) o por nombre en español (rivales sin token del calendario).
-const TEAM_NAME_EN_BY_ID: Record<string, string> = {
-  fra: 'France', esp: 'Spain', arg: 'Argentina', sui: 'Switzerland',
-  eng: 'England', nor: 'Norway', mar: 'Morocco', bel: 'Belgium',
-};
-const NAME_EN_BY_ES: Record<string, string> = {
-  'Francia': 'France', 'España': 'Spain', 'Argentina': 'Argentina', 'Suiza': 'Switzerland',
-  'Inglaterra': 'England', 'Noruega': 'Norway', 'Marruecos': 'Morocco', 'Bélgica': 'Belgium',
-  'Egipto': 'Egypt', 'Colombia': 'Colombia', 'Por definir': 'To be defined',
-};
+// Nombres de equipos en inglés. Todas las ligas de la app son de clubes y los
+// nombres de club son nombres propios que no se traducen, así que los mapas
+// quedan vacíos — se mantienen por si más adelante entra alguna selección.
+const TEAM_NAME_EN_BY_ID: Record<string, string> = {};
+const NAME_EN_BY_ES: Record<string, string> = {};
 
 /** Nombre de un equipo con token, localizado al idioma activo. */
 export function tName(team: { id: string; name: string }): string {

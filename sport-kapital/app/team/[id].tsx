@@ -13,6 +13,9 @@ import { PriceFlash } from '@/components/PriceFlash';
 import { Icon, IconName } from '@/components/Icon';
 import { Button } from '@/components/Button';
 import { Panel } from '@/components/Panel';
+import { FixtureRow } from '@/components/FixtureRow';
+import { fixturesForTeam } from '@/utils/leagueFixtures';
+import { isFinished } from '@/utils/realData';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { TutorialOverlay, useTutorial, HelpButton } from '@/components/TutorialOverlay';
 
@@ -39,6 +42,18 @@ export default function TeamDetail() {
     [newsAll, id],
   );
   const sell = useStore((s) => s.sell);
+  const allTeams = useStore((s) => s.teams);
+  const leagueFixtures = useStore((s) => s.leagueFixtures);
+
+  // calendario real del equipo, sacado de la cartelera por liga (sin llamadas
+  // extra a la API: ya está cacheada para toda la app).
+  const { nextFixtures, lastFixtures } = useMemo(() => {
+    const list = id ? fixturesForTeam(leagueFixtures, id) : [];
+    return {
+      nextFixtures: list.filter((f) => !isFinished(f.statusShort)).slice(0, 4),
+      lastFixtures: list.filter((f) => isFinished(f.statusShort)).slice(-4).reverse(),
+    };
+  }, [leagueFixtures, id]);
   const tut = useTutorial('team');
 
   const [confirmClose, setConfirmClose] = useState(false);
@@ -195,6 +210,25 @@ export default function TeamDetail() {
           </Animated.View>
         )}
 
+        {/* Calendario real del equipo */}
+        {nextFixtures.length > 0 && (
+          <>
+            <Text style={styles.section}>{t('team.nextMatches')}</Text>
+            <View style={styles.fixtureBox}>
+              {nextFixtures.map((fx) => <FixtureRow key={fx.fixtureId} fx={fx} teams={allTeams} />)}
+            </View>
+          </>
+        )}
+
+        {lastFixtures.length > 0 && (
+          <>
+            <Text style={styles.section}>{t('team.lastMatches')}</Text>
+            <View style={styles.fixtureBox}>
+              {lastFixtures.map((fx) => <FixtureRow key={fx.fixtureId} fx={fx} teams={allTeams} />)}
+            </View>
+          </>
+        )}
+
         {/* Noticias del equipo */}
         {news.length > 0 && (
           <>
@@ -279,6 +313,7 @@ const styles = themedSheet((colors: Palette) => StyleSheet.create({
   liveBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.lossDim, marginHorizontal: spacing.xl, marginTop: 14, borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: colors.loss },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.loss },
   liveTxt: { color: colors.loss, fontSize: font.size.sm, fontWeight: '700', flex: 1 },
+  fixtureBox: { marginHorizontal: spacing.xl, backgroundColor: colors.bgCard, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   section: { color: colors.text, fontSize: font.size.md, fontFamily: font.family.headingBold, textTransform: 'uppercase', letterSpacing: 1, paddingHorizontal: spacing.xl, marginTop: 24, marginBottom: 12 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.xl, gap: 10 },
   stat: { width: '30.7%', backgroundColor: colors.bgCard, borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: colors.border },

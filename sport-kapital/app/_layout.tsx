@@ -15,6 +15,7 @@ import { ShareTechMono_400Regular } from '@expo-google-fonts/share-tech-mono';
 import { useStore } from '@/store/useStore';
 import { MarketEngine } from '@/utils/matchEngine';
 import { startRealEngineLazy } from '@/utils/realMatchEngine';
+import { refreshLeagueFixtures } from '@/utils/leagueFixtures';
 import { startCloudSync } from '@/utils/cloudSync';
 import { preloadGoalSound } from '@/utils/sound';
 import { startGoalAlerts } from '@/utils/goalAlerts';
@@ -83,7 +84,7 @@ function useFlowGate(ready: boolean) {
       if (first !== 'risk') router.replace('/risk');
       return;
     }
-    const mainAppRoutes = ['(tabs)', 'team', 'match', 'trade', 'profile', 'leaderboard', 'mundial'];
+    const mainAppRoutes = ['(tabs)', 'team', 'match', 'trade', 'profile', 'leaderboard'];
     if (!first || !mainAppRoutes.includes(first)) {
       router.replace('/(tabs)/dashboard');
     }
@@ -129,7 +130,6 @@ export default function RootLayout() {
       applyMoves: (moves, pushCandle) => useStore.getState().applyMoves(moves, pushCandle),
       onMatchUpdate: (m) => useStore.getState().setMatch(m),
       onNews: (n) => useStore.getState().pushNews(n),
-      onMundialResult: (fxId, h, a) => useStore.getState().setMundialResult(fxId, h, a),
     });
     engine.current.start();
     cleanups.push(() => engine.current?.stop());
@@ -162,16 +162,20 @@ export default function RootLayout() {
       // calendario real YA NO se arrancan aquí. Hacían llamadas de red durante
       // el arranque que, en ciertos dispositivos, cerraban la app de golpe
       // (crash nativo). Ahora se activan de forma perezosa la primera vez que
-      // el usuario entra a la pestaña "Real" o a "Mundial 2026"
+      // el usuario entra a la pestaña de partidos
       // (startRealEngineLazy / refreshRealData en esas pantallas), así el
       // arranque queda limpio en todos los teléfonos.
 
       // motor de partidos REALES (api-football): arranca ya desde el inicio de
       // la app (diferido, no en el arranque crítico) para que un partido en
       // vivo se detecte de una, sin esperar a abrir la pestaña Real. Es
-      // idempotente (también se dispara al entrar a Real/Mundial). Si en algún
+      // idempotente (también se dispara al entrar a la pestaña de partidos). Si en algún
       // dispositivo llegara a crashear, el auto-aislamiento desactiva este paso.
       step(300, 'realEngine', () => { startRealEngineLazy(); });
+
+      // cartelera real de las 4 ligas (4 llamadas, cacheada 30 min): que el
+      // inicio tenga partidos que mostrar sin esperar a que se abra la pestaña.
+      step(900, 'leagueFixtures', () => { refreshLeagueFixtures(); });
 
       // respaldo en la nube (Firebase): no hace nada si no está configurado.
       step(500, 'cloudSync', () => {
@@ -262,7 +266,6 @@ export default function RootLayout() {
             <Stack.Screen name="trade/[id]" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
             <Stack.Screen name="profile" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="leaderboard" options={{ animation: 'slide_from_right' }} />
-            <Stack.Screen name="mundial" options={{ animation: 'slide_from_right' }} />
           </Stack>
           <Scanlines />
           <BusyBall />

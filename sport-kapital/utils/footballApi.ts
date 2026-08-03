@@ -131,6 +131,35 @@ export async function fetchTeamTransfers(apiTeamId: number): Promise<ApiTransfer
   return apiGet<ApiTransfer>(`/transfers?team=${apiTeamId}`);
 }
 
+/**
+ * Todos los partidos de una LIGA en un rango de fechas — una sola llamada trae
+ * la jornada completa de todos sus equipos. Es muchísimo más barato en cuota
+ * que pedir el calendario equipo por equipo (4 llamadas para toda la app en vez
+ * de una por cada club).
+ */
+export async function fetchLeagueFixtures(
+  leagueId: number, season: number, fromISO: string, toISO: string,
+): Promise<ApiFixture[] | null> {
+  return apiGet<ApiFixture>(`/fixtures?league=${leagueId}&season=${season}&from=${fromISO}&to=${toISO}`);
+}
+
+// ---------- alineaciones ----------
+export interface ApiLineupPlayer {
+  player: { id: number | null; name: string; number: number | null; pos: string | null; grid: string | null };
+}
+export interface ApiLineup {
+  team: { id: number; name: string };
+  formation: string | null;
+  coach: { id: number | null; name: string | null } | null;
+  startXI: ApiLineupPlayer[];
+  substitutes: ApiLineupPlayer[];
+}
+
+/** Alineaciones confirmadas de un partido (formación, once inicial y suplentes). */
+export async function fetchFixtureLineups(fixtureId: number): Promise<ApiLineup[] | null> {
+  return apiGet<ApiLineup>(`/fixtures/lineups?fixture=${fixtureId}`);
+}
+
 export function isApiConfigured(): boolean {
   return !!API_KEY;
 }

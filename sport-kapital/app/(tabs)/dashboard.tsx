@@ -11,6 +11,8 @@ import { colors, font, radius, spacing, themedSheet, type Palette } from '@/them
 import { usd, pct, timeAgo } from '@/utils/format';
 import { TeamCard } from '@/components/TeamCard';
 import { LiveMatchCard } from '@/components/LiveMatchCard';
+import { FixtureRow, LeagueHeader } from '@/components/FixtureRow';
+import { Sparkline } from '@/components/Sparkline';
 import { PriceFlash } from '@/components/PriceFlash';
 import { Icon, IconName } from '@/components/Icon';
 import { Logo } from '@/components/Logo';
@@ -22,6 +24,10 @@ import { tap } from '@/utils/haptics';
 import { t } from '@/utils/i18n';
 import { ensureNotificationPermission } from '@/utils/notifications';
 import { useBallRefresh, ballRefreshControl } from '@/components/BallRefresh';
+import { refreshLeagueFixtures, allFixtures } from '@/utils/leagueFixtures';
+import { LEAGUE_API, LEAGUE_ORDER } from '@/data/leagues';
+import { isLive, isFinished } from '@/utils/realData';
+import type { League } from '@/data/teams';
 
 const TUTORIAL = () => [
   { icon: 'wallet' as IconName, title: t('tut.d1t'), body: t('tut.d1b'), accent: colors.gold },
@@ -70,41 +76,48 @@ export default function Dashboard() {
 
   const accountMode = useStore((s) => s.accountMode);
   const setAccountMode = useStore((s) => s.setAccountMode);
-  const realFixtures = useStore((s) => s.realFixtures);
+  const leagueFixtures = useStore((s) => s.leagueFixtures);
   const isPractice = accountMode === 'PRACTICE';
 
   // reloj para la cuenta regresiva de "cuánto falta" en la cartelera real del día
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(id); }, []);
 
-  // partidos REALES de hoy/mañana de nuestros tokens (del caché diario de la
-  // API): la cartelera real del día, para que la app viva de fútbol real.
-  const todayReal = useMemo(() => {
-    const now = Date.now();
-    const seen = new Set<number>();
-    const out: { teamId: string; fx: import('@/utils/realData').RealFixtureLite }[] = [];
-    for (const [teamId, list] of Object.entries(realFixtures)) {
-      for (const fx of list ?? []) {
-        const ts = Date.parse(fx.dateISO);
-        if (!Number.isFinite(ts) || ts < now - 2 * 3600_000 || ts > now + 36 * 3600_000) continue;
-        if (seen.has(fx.fixtureId)) continue;
-        seen.add(fx.fixtureId);
-        out.push({ teamId, fx });
-      }
+  // la cartelera real se descarga una vez por liga (4 llamadas) y alimenta
+  // tanto el "en vivo" como los próximos partidos agrupados por liga.
+  useEffect(() => { refreshLeagueFixtures(); }, []);
+
+  // partidos REALES en vivo ahora mismo, en cualquiera de las cuatro ligas
+  const liveNow = useMemo(
+    () => allFixtures(leagueFixtures).filter((f) => isLive(f.statusShort)).slice(0, 5),
+    [leagueFixtures],
+  );
+
+  // próximos partidos por liga: hasta 3 por liga, ordenados por hora de saque
+  const upcomingByLeague = useMemo(() => {
+    const nowMs = Date.now();
+    const out: { league: League; list: ReturnType<typeof allFixtures> }[] = [];
+    for (const lg of LEAGUE_ORDER) {
+      const list = (leagueFixtures[lg] ?? [])
+        .filter((f) => !isFinished(f.statusShort) && !isLive(f.statusShort) && Date.parse(f.dateISO) > nowMs)
+        .sort((a, b) => a.dateISO.localeCompare(b.dateISO))
+        .slice(0, 3)
+        .map((f) => ({ ...f, league: lg }));
+      if (list.length) out.push({ league: lg, list });
     }
-    return out.sort((a, b) => Date.parse(a.fx.dateISO) - Date.parse(b.fx.dateISO)).slice(0, 4);
-  }, [realFixtures]);
+    return out;
+  }, [leagueFixtures]);
 
   const sorted = useMemo(() => [...teams].sort((a, b) => b.priceChange - a.priceChange), [teams]);
   const gainers = sorted.slice(0, 3);
   const losers = sorted.slice(-3).reverse();
+  // carrusel de "lo que se mueve": los que más suben y los que más bajan juntos
+  const movers = useMemo(() => [...gainers, ...losers], [gainers, losers]);
   // Tres mundos SEPARADOS para que la principal se vea ordenada:
   //  - reales: partidos reales del día (api-football) → arriba, protagonistas.
-  //  - Mundial: los partidos del torneo (id 'sched-…') → van en su tarjeta
-  //    premium propia (MundialFeature), no en esta lista.
   //  - simulación: el mercado de práctica (relleno) → sección aparte, al fondo.
   const { realLive, simLive } = useMemo(() => {
-    const live = matches.filter((m) => m.status !== 'FT' && !m.id.startsWith('sched-'));
+    const live = matches.filter((m) => m.status !== 'FT');
     return {
       realLive: live.filter(isRealMatch).slice(0, 3),
       simLive: live.filter((m) => !isRealMatch(m)).slice(0, 2),
@@ -173,52 +186,23 @@ export default function Dashboard() {
               </Panel>
             </Animated.View>
 
-            {/* Partidos REALES en vivo (api-football) — protagonistas. */}
-            {realLive.length > 0 && (
-              <>
-                <Section title={t('dash.realLive')} icon="globe" color={colors.profit} />
-                {realLive.map((m) => <LiveMatchCard key={m.id} match={m} />)}
-              </>
+            {/* ---- EN VIVO: partidos reales corriendo ahora mismo ---- */}
+            {liveNow.length > 0 && (
+              <View style={styles.block}>
+                <View style={styles.blockHead}>
+                  <View style={styles.liveBadge}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.liveBadgeTxt}>{t('common.live')}</Text>
+                  </View>
+                  <Text style={styles.blockTitle}>{t('dash.realLive')}</Text>
+                </View>
+                <View style={styles.blockBody}>
+                  {liveNow.map((fx) => <FixtureRow key={fx.fixtureId} fx={fx} teams={teams} />)}
+                </View>
+              </View>
             )}
 
-            {/* Cartelera REAL del día: partidos de hoy de nuestros tokens */}
-            {todayReal.length > 0 && (
-              <>
-                <Section title={t('dash.todayReal')} icon="calendar" color={colors.blue} />
-                {todayReal.map(({ teamId, fx }) => {
-                  const team = teams.find((tm) => tm.id === teamId);
-                  if (!team) return null;
-                  const d = new Date(fx.dateISO);
-                  const hm = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-                  const kickoffMs = d.getTime();
-                  const live = kickoffMs <= now;
-                  return (
-                    <Pressable key={fx.fixtureId} onPress={() => { tap(); router.push(`/team/${teamId}`); }} style={styles.todayRow}>
-                      <View style={[styles.todayTime, live && styles.todayTimeLive]}>
-                        {live && <View style={styles.liveDot} />}
-                        <Text style={[styles.todayTimeTxt, live && styles.todayTimeTxtLive]}>{kickoffLabel(kickoffMs, now)}</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.todayMatch} numberOfLines={1}>
-                          {fx.isHome ? `${team.short} vs ${fx.opponentName}` : `${fx.opponentName} vs ${team.short}`}
-                        </Text>
-                        <Text style={styles.todayComp} numberOfLines={1}>{fx.competition} · {hm}</Text>
-                      </View>
-                      <View style={styles.todayTrade}><Text style={styles.todayTradeTxt}>{t('mundial.tradeSide', { s: team.short })}</Text></View>
-                    </Pressable>
-                  );
-                })}
-              </>
-            )}
-
-            <Section title={t('dash.gainers')} icon="arrow-up-right" color={colors.profit} />
-            {gainers.map((t) => <TeamCard key={t.id} team={t} />)}
-
-            <Section title={t('dash.losers')} icon="arrow-down-right" color={colors.loss} />
-            {losers.map((t) => <TeamCard key={t.id} team={t} />)}
-
-            {/* Simulación: SOLO visible en modo práctica — en la cuenta real la
-                app vive de partidos reales, sin contenido demostrativo. */}
+            {/* ---- motor simulado en vivo: solo en cuenta de práctica ---- */}
             {isPractice && simLive.length > 0 && (
               <>
                 <Section title={t('dash.simPractice')} icon="bolt" color={colors.textTertiary} />
@@ -226,6 +210,47 @@ export default function Dashboard() {
                 {simLive.map((m) => <LiveMatchCard key={m.id} match={m} />)}
               </>
             )}
+
+            {/* ---- PRÓXIMOS PARTIDOS, agrupados por liga ---- */}
+            <View style={styles.sectionHeadRow}>
+              <Section title={t('dash.upcomingByLeague')} icon="calendar" color={colors.blue} />
+              <Pressable onPress={() => { tap(); router.push('/(tabs)/real'); }} hitSlop={8}>
+                <Text style={styles.seeAll}>{t('dash.seeAll')}</Text>
+              </Pressable>
+            </View>
+            {upcomingByLeague.length === 0 ? (
+              <View style={styles.empty}>
+                <Icon name="calendar" size={22} color={colors.textTertiary} />
+                <Text style={styles.emptyTxt}>{t('dash.noUpcoming')}</Text>
+              </View>
+            ) : (
+              upcomingByLeague.map(({ league: lg, list }) => (
+                <View key={lg} style={styles.block}>
+                  <LeagueHeader label={LEAGUE_API[lg].label} country={LEAGUE_API[lg].country} />
+                  <View style={styles.blockBody}>
+                    {list.map((fx) => <FixtureRow key={fx.fixtureId} fx={fx} teams={teams} />)}
+                  </View>
+                </View>
+              ))
+            )}
+
+            {/* ---- MOVIMIENTOS DEL MERCADO: tarjetas horizontales ---- */}
+            <Section title={t('dash.movers')} icon="candle" color={colors.gold} />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.moversRow}>
+              {movers.map((tm) => {
+                const up = tm.priceChange >= 0;
+                return (
+                  <Pressable key={tm.id} onPress={() => { tap(); router.push(`/team/${tm.id}`); }} style={styles.moverCard}>
+                    <View style={styles.moverTop}>
+                      <Text style={styles.moverShort}>{tm.short}</Text>
+                      <Text style={[styles.moverPct, { color: up ? colors.profit : colors.loss }]}>{pct(tm.priceChange)}</Text>
+                    </View>
+                    <Sparkline data={tm.candles.slice(-24).map((c) => c.c)} up={up} width={92} height={26} />
+                    <Text style={styles.moverPrice}>{usd(tm.currentPrice)}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
 
             <Section title={t('dash.latestNews')} icon="news" />
             {news.length === 0 ? (
@@ -309,6 +334,23 @@ const styles = themedSheet((colors: Palette) => StyleSheet.create({
   pnlChip: { flex: 1, borderRadius: radius.md, padding: 10 },
   pnlLabel: { color: colors.textSecondary, fontSize: font.size.xs, fontWeight: '600' },
   pnlValue: { fontSize: font.size.md, fontWeight: '800', marginTop: 2 },
+  // bloques de partidos estilo marcador
+  block: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.bgCard, overflow: 'hidden', marginBottom: 12 },
+  blockBody: {},
+  blockHead: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 12, paddingTop: 12, paddingBottom: 9, backgroundColor: colors.bgElevated },
+  blockTitle: { color: colors.text, fontSize: font.size.sm, fontFamily: font.family.headingBold, textTransform: 'uppercase', letterSpacing: 0.8 },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.lossDim, borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 3 },
+  liveBadgeTxt: { color: colors.loss, fontSize: 9, fontWeight: '900', letterSpacing: 0.6 },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.loss },
+  sectionHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  seeAll: { color: colors.gold, fontSize: font.size.xs, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+  // carrusel de movimientos
+  moversRow: { gap: 10, paddingBottom: 4, paddingRight: 4 },
+  moverCard: { width: 116, backgroundColor: colors.bgCard, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: 11, gap: 7 },
+  moverTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  moverShort: { color: colors.text, fontSize: font.size.sm, fontFamily: font.family.headingBold, letterSpacing: 0.5 },
+  moverPct: { fontSize: 10, fontWeight: '900' },
+  moverPrice: { color: colors.textSecondary, fontSize: font.size.xs, fontWeight: '700' },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 30, marginBottom: 16 },
   section: { color: colors.text, fontSize: font.size.md, fontFamily: font.family.headingBold, textTransform: 'uppercase', letterSpacing: 1 },
   empty: { backgroundColor: colors.bgCard, borderRadius: radius.lg, padding: 20, borderWidth: 1, borderColor: colors.border, alignItems: 'center', gap: 10 },
@@ -325,16 +367,6 @@ const styles = themedSheet((colors: Palette) => StyleSheet.create({
   practiceBadge: { alignSelf: 'flex-start', backgroundColor: colors.goldDim, borderWidth: 1, borderColor: colors.gold, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 8 },
   practiceBadgeTxt: { color: colors.gold, fontSize: 10, fontWeight: '900', letterSpacing: 0.6 },
   // cartelera real del día
-  todayRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.bgCard, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: 12, marginBottom: 8 },
-  todayTime: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.blueDim, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 5, minWidth: 64, justifyContent: 'center' },
-  todayTimeLive: { backgroundColor: 'rgba(255,60,60,0.14)' },
-  todayTimeTxt: { color: colors.blue, fontSize: font.size.xs, fontWeight: '900' },
-  todayTimeTxtLive: { color: colors.loss },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.loss },
-  todayMatch: { color: colors.text, fontSize: font.size.sm, fontWeight: '800' },
-  todayComp: { color: colors.textTertiary, fontSize: font.size.xs, marginTop: 2, fontWeight: '600' },
-  todayTrade: { backgroundColor: colors.goldDim, borderWidth: 1, borderColor: colors.gold, borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 6 },
-  todayTradeTxt: { color: colors.gold, fontSize: font.size.xs, fontWeight: '900' },
   newsRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.bgCard, borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: colors.border, marginBottom: 8, gap: 12 },
   newsBar: { width: 3, alignSelf: 'stretch', borderRadius: 2 },
   newsHead: { color: colors.text, fontSize: font.size.sm, fontWeight: '600', lineHeight: 19 },
