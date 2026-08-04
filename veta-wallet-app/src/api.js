@@ -863,7 +863,12 @@ async function tryPaths(cands, opts) {
 export async function getSeed(password) {
   const extra = process.env.EXPO_PUBLIC_WALLET_PATH_SEED;
   const opts = { method: 'POST', body: { password }, timeout: 30000 };
-  const d = await tryPaths([extra, '/user/seed', '/auth/seed', '/wallet/seed'].filter(Boolean), opts);
+  // La ruta real del backend es /users/decriptSeed (plural "users", y sí,
+  // "decript" está mal escrito — así está en el servidor). Las tres viejas
+  // (/user/seed, /auth/seed, /wallet/seed) nunca existieron: por eso esto
+  // devolvía "no disponible" siempre y la app mandaba a la versión web. Se
+  // dejan como respaldo por si algún día cambian de nombre otra vez.
+  const d = await tryPaths([extra, '/users/decriptSeed', '/user/seed', '/auth/seed', '/wallet/seed'].filter(Boolean), opts);
   const phrase = d?.seed || d?.mnemonic || d?.phrase || d?.data?.seed || null;
   return typeof phrase === 'string' && phrase.trim().split(/\s+/).length >= 12 ? phrase.trim() : null;
 }
@@ -871,7 +876,8 @@ export async function getSeed(password) {
 export async function getPrivateKey(password) {
   const extra = process.env.EXPO_PUBLIC_WALLET_PATH_PRIVATE_KEY;
   const opts = { method: 'POST', body: { password }, timeout: 30000 };
-  const d = await tryPaths([extra, '/user/privateKey', '/auth/privateKey', '/wallet/privateKey'].filter(Boolean), opts);
+  // Misma historia que getSeed(): la ruta real es /users/decriptPrivate.
+  const d = await tryPaths([extra, '/users/decriptPrivate', '/user/privateKey', '/auth/privateKey', '/wallet/privateKey'].filter(Boolean), opts);
   const pk = d?.privateKey || d?.private_key || d?.key || d?.data?.privateKey || null;
   return typeof pk === 'string' && pk.length >= 32 ? pk : null;
 }
