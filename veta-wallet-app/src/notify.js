@@ -1,9 +1,33 @@
-import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
+
+// ¿Estamos dentro de Expo Go? Se calcula acá arriba porque de ello depende
+// si se puede cargar expo-notifications siquiera (ver justo debajo).
+export const enExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+// expo-notifications NO se importa de forma estática, y esto es importante:
+// su index.js reexporta desde `DevicePushTokenAutoRegistration.fx` — el
+// sufijo `.fx` significa "efecto al importar" — y ese archivo llama a
+// addPushTokenListener() en el ámbito del módulo. Esa llamada, desde el SDK
+// 53, hace `throw` en Android cuando corre en Expo Go. Resultado: la app se
+// cerraba al arrancar con "[runtime not ready]" solo por tener el import,
+// sin haber llamado a ninguna función de notificaciones.
+//
+// Cargándolo con require() y solo fuera de Expo Go, el módulo nunca se
+// evalúa allí y la app abre normal. Las notificaciones no funcionan en Expo
+// Go de todas formas — eso ya estaba asumido y documentado.
+let _N;
+function notif() {
+  if (_N !== undefined) return _N;
+  _N = null;
+  if (!enExpoGo) {
+    try { _N = require('expo-notifications'); } catch (e) { _N = null; }
+  }
+  return _N;
+}
 
 // ============================================================
 // Avisos de tokens recibidos.
@@ -34,13 +58,13 @@ const CANAL = 'veta-in'; // canal de Android para los avisos de dinero recibido
 // versión de la librería dejara de exportarlos, `X.MAX` sería un TypeError y
 // el aviso no saldría — en silencio, porque va dentro de un try. Con el
 // respaldo el aviso sale igual.
-const PRIORIDAD_MAX = Notifications.AndroidNotificationPriority?.MAX ?? 'max';
-const IMPORTANCIA_MAX = Notifications.AndroidImportance?.MAX ?? 5;
-const VISIBLE_EN_BLOQUEO = Notifications.AndroidNotificationVisibility?.PUBLIC ?? 1;
+const PRIORIDAD_MAX = notif()?.AndroidNotificationPriority?.MAX ?? 'max';
+const IMPORTANCIA_MAX = notif()?.AndroidImportance?.MAX ?? 5;
+const VISIBLE_EN_BLOQUEO = notif()?.AndroidNotificationVisibility?.PUBLIC ?? 1;
 
 // Con la app abierta la notificación también se ve y se oye, arriba de todo,
 // igual que un mensaje de WhatsApp.
-Notifications.setNotificationHandler({
+notif()?.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,   // el banner que baja desde arriba
     shouldShowList: true,     // y queda en la bandeja
@@ -88,18 +112,20 @@ export function textoAviso(tx, lang = 'en') {
 
 // ---- permisos y canal ----
 export async function pedirPermiso() {
+  const N = notif();
+  if (!N) return false;          // en Expo Go no hay notificaciones
   try {
-    const actual = await Notifications.getPermissionsAsync();
-    let ok = actual.granted || actual.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+    const actual = await N.getPermissionsAsync();
+    let ok = actual.granted || actual.ios?.status === N.IosAuthorizationStatus.PROVISIONAL;
     if (!ok && actual.canAskAgain !== false) {
-      const pedido = await Notifications.requestPermissionsAsync();
+      const pedido = await N.requestPermissionsAsync();
       ok = pedido.granted;
     }
     // El canal debe existir ANTES de lanzar nada: en Android 8+ la
     // importancia del canal es lo que decide si el aviso sale como banner
     // emergente o se queda callado en la bandeja.
     if (ok && Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync(CANAL, {
+      await N.setNotificationChannelAsync(CANAL, {
         name: 'Tokens recibidos',
         description: 'Aviso cuando entra dinero a tu Veta Wallet',
         importance: IMPORTANCIA_MAX,
@@ -116,9 +142,11 @@ export async function pedirPermiso() {
 }
 
 async function lanzar(tx, lang) {
+  const N = notif();
+  if (!N) return;
   const { title, body } = textoAviso(tx, lang);
   try {
-    await Notifications.scheduleNotificationAsync({
+    await N.scheduleNotificationAsync({
       content: {
         title,
         body,
@@ -203,10 +231,8 @@ export async function marcarVisto(email, transfers) {
 // apiPortfolio de forma diferida para no arrastrar toda la app al arrancar.
 // En Expo Go no hay trabajo en segundo plano: los módulos nativos que lo
 // hacen no vienen dentro. Registrar la tarea allí lanza un error, así que se
-// detecta el entorno y se omite. Las notificaciones locales sí funcionan, de
-// modo que con la app abierta el aviso llega igual.
-export const enExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-
+// detecta el entorno y se omite. (`enExpoGo` se declara arriba del todo,
+// porque de él depende si se puede cargar expo-notifications siquiera.)
 if (!enExpoGo) {
   TaskManager.defineTask(TASK, async () => {
     try {
@@ -263,7 +289,9 @@ export async function limpiarAvisos() {
 
 /** Se dispara al tocar la notificación: devuelve la pantalla a abrir. */
 export function alTocarNotificacion(cb) {
-  const sub = Notifications.addNotificationResponseReceivedListener((r) => {
+  const N = notif();
+  if (!N) return () => {};       // en Expo Go no hay notificaciones que tocar
+  const sub = N.addNotificationResponseReceivedListener((r) => {
     cb(r?.notification?.request?.content?.data?.screen || 'activity');
   });
   return () => sub.remove();
