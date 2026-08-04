@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { NativeModules, Platform } from 'react-native';
+import * as Localization from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Idioma de la app (es | en), persistido. Cambia en Ajustes → Idioma.
@@ -1195,6 +1196,20 @@ export const useT = () => useContext(LangCtx).t;
 // preferido del usuario. Se usa la primera vez que abre la app; después
 // respetamos la preferencia manual guardada en AsyncStorage.
 function idiomaDelSistema() {
+  // Vía oficial: expo-localization. Antes se leía NativeModules.SettingsManager
+  // (iOS) e I18nManager (Android), módulos del puente legacy que bajo la Nueva
+  // Arquitectura pueden venir vacíos. Como la lectura estaba dentro de un
+  // try/catch con encadenamiento opcional, no rompía nada: simplemente devolvía
+  // 'en' siempre, y un usuario hispanohablante abría la app en inglés sin que
+  // nada avisara del fallo.
+  try {
+    const loc = Localization.getLocales?.()[0];
+    const code = loc?.languageCode || loc?.languageTag || null;
+    if (code && /^es/i.test(String(code))) return 'es';
+    if (code) return 'en';
+  } catch (e) {}
+
+  // Respaldo para builds viejas donde el módulo no esté disponible.
   try {
     let loc = null;
     if (Platform.OS === 'ios') {

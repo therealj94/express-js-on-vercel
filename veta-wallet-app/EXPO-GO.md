@@ -1,41 +1,23 @@
 # Abrir Veta Wallet en Expo Go
 
-> ## ⚠️ Hoy Expo Go NO abre este proyecto
+> ## ⚠️ El APK anterior (build 54 y anteriores) hay que reemplazarlo
 >
-> El proyecto está en el **SDK 54**. La última versión publicada de Expo es el
-> **SDK 57** (comprobado en agosto de 2026: `npm view expo dist-tags`).
+> El proyecto subió del **SDK 54 al SDK 57** para volver a funcionar con el
+> Expo Go de la tienda. Eso cambia el `runtimeVersion` de `exposdk:54.0.0` a
+> `exposdk:57.0.0`, y trae una consecuencia que hay que respetar:
 >
-> Expo Go de la App Store / Play Store solo abre proyectos del SDK **más
-> reciente**. Con tres versiones de diferencia, el teléfono contesta
-> *"Project is incompatible with this version of Expo Go"* y no hay forma de
-> probar la app ahí. **No es un fallo de la app: es la política de Expo Go.**
+> **Los teléfonos con el APK viejo dejan de recibir updates, en silencio.**
+> No da error: el servidor simplemente contesta que no hay nada nuevo, porque
+> ese APK pide un runtime que ya no se publica. Se ve solo mirando el número
+> de build en Ajustes → Acerca de.
 >
-> Tres salidas, de menos a más trabajo:
->
-> 1. **Build de desarrollo** (recomendado, y lo que Expo recomienda desde que
->    dejó de sostener SDKs viejos en Expo Go):
->    ```bash
->    eas build -p android --profile development
->    ```
->    Se instala una vez y funciona como Expo Go —recarga en vivo incluida—
->    pero atado al SDK de este proyecto. Además incluye los módulos nativos
->    que Expo Go no trae (avisos con la app cerrada).
->
-> 2. **Solo Android**: instalar un APK viejo de Expo Go del SDK 54 desde
->    `expo.dev/go`. En iPhone no se puede: la App Store solo sirve la versión
->    actual.
->
-> 3. **Subir el proyecto al SDK 57.** Es el camino "correcto" a largo plazo,
->    pero son tres saltos de SDK: hay que revisar cambios de ruptura en cada
->    dependencia y volver a probar la app entera. No se hace a la ligera en
->    una app que mueve dinero.
->
-> Ojo con el punto 3: `runtimeVersion` está en política `sdkVersion` (ver más
-> abajo). Al subir de SDK cambia el runtime, así que **hay que compilar y
-> repartir el APK nuevo antes de publicar cualquier update**, o los teléfonos
-> con el APK viejo dejan de recibir actualizaciones en silencio.
+> Antes de publicar cualquier update nuevo hay que **compilar y repartir el
+> APK del SDK 57**:
+> ```bash
+> eas build -p android --profile preview
+> ```
 
-Veta Wallet usa el **SDK 54 de Expo**.
+Veta Wallet usa el **SDK 57 de Expo**.
 
 ## En el computador
 
@@ -90,7 +72,7 @@ eas build -p android --profile preview
 ## Por qué `runtimeVersion` es `sdkVersion` y no `fingerprint`
 
 Un update publicado con `eas update` solo se entrega a una app cuyo
-`runtimeVersion` coincida. Expo Go pide siempre `exposdk:54.0.0`, que es lo
+`runtimeVersion` coincida. Expo Go pide siempre `exposdk:57.0.0`, que es lo
 que produce la política `sdkVersion` de `app.json`.
 
 La política `fingerprint` produce en cambio un hash del proyecto. Es lo
@@ -104,7 +86,7 @@ Ajustes → Acerca de.
 Mientras Expo Go sea donde probamos, la política se queda en `sdkVersion`.
 Tiene un costo que hay que respetar:
 
-> Con `sdkVersion`, **cualquier** APK del SDK 54 se considera compatible con
+> Con `sdkVersion`, **cualquier** APK del SDK 57 se considera compatible con
 > **cualquier** update. Si se agrega un módulo **nativo** nuevo — no una
 > pantalla, no una dependencia de JavaScript, sino algo que toca el binario —
 > hay que recompilar y repartir el APK **antes** de publicar el update. Si no,

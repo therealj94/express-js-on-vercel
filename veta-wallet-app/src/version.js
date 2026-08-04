@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.19.0';
-export const BUILD = 54;
+export const VERSION = '1.20.0';
+export const BUILD = 55;
 export const RELEASED = '2026-08-04';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,21 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.20.0',
+    build: 55,
+    date: '2026-08-04',
+    es: [
+      'La app se actualizó a la última versión de Expo (SDK 57). Vuelve a poder probarse en el Expo Go de la tienda, sin instalar versiones viejas.',
+      'El idioma del sistema se detecta con la API oficial. Antes se leía por una vía antigua que en esta versión ya no responde: un teléfono en español habría abierto la app en inglés sin avisar de nada.',
+      'Actualizadas todas las librerías internas a las versiones que pide el SDK nuevo, incluido el motor de React Native.',
+    ],
+    en: [
+      'The app was updated to the latest Expo version (SDK 57). It can be tested again with the Expo Go from the store, without installing older versions.',
+      'The system language is now detected through the official API. It used to be read through an older path that no longer responds in this version: a phone set to Spanish would have opened the app in English without any warning.',
+      'All internal libraries updated to the versions the new SDK expects, including the React Native engine.',
+    ],
+  },
   {
     v: '1.19.0',
     build: 54,
