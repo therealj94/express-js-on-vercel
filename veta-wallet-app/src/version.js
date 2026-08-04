@@ -10,15 +10,40 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.18.0';
-export const BUILD = 53;
-export const RELEASED = '2026-07-31';
+export const VERSION = '1.19.0';
+export const BUILD = 54;
+export const RELEASED = '2026-08-04';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.19.0',
+    build: 54,
+    date: '2026-08-04',
+    es: [
+      'Si un envío se queda sin respuesta, la app ya no te ofrece reenviarlo: te lleva a Actividad con el historial recién actualizado. Antes te avisaba de que la transacción podía haber salido igual y te ponía el botón de reintentar justo debajo, con el riesgo de pagar dos veces.',
+      'Tocar dos veces seguidas "Firmar y enviar" ya no dispara dos transferencias. Lo mismo al confirmar con la contraseña en la tarjeta.',
+      'Ver tu frase de respaldo o tu llave privada ahora pide tu contraseña o tu huella, igual que ver el PIN de la tarjeta. Y se ocultan solas a los 45 segundos.',
+      'El número, el CVV y el PIN de la tarjeta ya no se quedan pegados en el portapapeles: se borran junto con el temporizador que los oculta.',
+      'Cuando no hay precio real de un token, se muestra "—" en vez de un valor de referencia. Un precio aproximado sumado a tu patrimonio total podía llevarte a decidir mal.',
+      'Si no se pueden leer tus saldos, la app te lo dice. Antes mostraba "$0.00", que se confunde con una cuenta vacía.',
+      'Al firmar un envío ves el monto exacto que se va a mover, sin redondear.',
+      'Se retiró el interruptor de "Cuenta privada": decía que quedaba activado, pero no hacía nada.',
+    ],
+    en: [
+      'If a transfer times out, the app no longer offers to resend it: it takes you to Activity with a freshly updated history. It used to warn that the transaction might have gone through anyway and put the retry button right underneath, risking a double payment.',
+      'Tapping "Sign & send" twice no longer fires two transfers. Same when confirming with your password on the card.',
+      'Viewing your backup phrase or private key now asks for your password or fingerprint, just like viewing the card PIN. They also hide themselves after 45 seconds.',
+      'Your card number, CVV and PIN no longer stay in the clipboard: they are cleared along with the timer that hides them.',
+      'When there is no real price for a token, "—" is shown instead of a reference value. An approximate price added to your total could lead you to a bad decision.',
+      'If your balances cannot be read, the app says so. It used to show "$0.00", which looks like an empty account.',
+      'When signing a transfer you now see the exact amount that will move, unrounded.',
+      'The "Private account" switch was removed: it said it was on, but it did nothing.',
+    ],
+  },
   {
     v: '1.18.0',
     build: 53,
