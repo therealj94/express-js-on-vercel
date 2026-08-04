@@ -1,9 +1,41 @@
 # Abrir Veta Wallet en Expo Go
 
-Veta Wallet usa el **SDK 54 de Expo**. Expo Go de la tienda solo abre
-proyectos del SDK más reciente: si el proyecto se queda atrás, el teléfono
-contesta con un error de versión y no hay forma de probarlo ahí. Por eso el
-proyecto se mantiene al día.
+> ## ⚠️ Hoy Expo Go NO abre este proyecto
+>
+> El proyecto está en el **SDK 54**. La última versión publicada de Expo es el
+> **SDK 57** (comprobado en agosto de 2026: `npm view expo dist-tags`).
+>
+> Expo Go de la App Store / Play Store solo abre proyectos del SDK **más
+> reciente**. Con tres versiones de diferencia, el teléfono contesta
+> *"Project is incompatible with this version of Expo Go"* y no hay forma de
+> probar la app ahí. **No es un fallo de la app: es la política de Expo Go.**
+>
+> Tres salidas, de menos a más trabajo:
+>
+> 1. **Build de desarrollo** (recomendado, y lo que Expo recomienda desde que
+>    dejó de sostener SDKs viejos en Expo Go):
+>    ```bash
+>    eas build -p android --profile development
+>    ```
+>    Se instala una vez y funciona como Expo Go —recarga en vivo incluida—
+>    pero atado al SDK de este proyecto. Además incluye los módulos nativos
+>    que Expo Go no trae (avisos con la app cerrada).
+>
+> 2. **Solo Android**: instalar un APK viejo de Expo Go del SDK 54 desde
+>    `expo.dev/go`. En iPhone no se puede: la App Store solo sirve la versión
+>    actual.
+>
+> 3. **Subir el proyecto al SDK 57.** Es el camino "correcto" a largo plazo,
+>    pero son tres saltos de SDK: hay que revisar cambios de ruptura en cada
+>    dependencia y volver a probar la app entera. No se hace a la ligera en
+>    una app que mueve dinero.
+>
+> Ojo con el punto 3: `runtimeVersion` está en política `sdkVersion` (ver más
+> abajo). Al subir de SDK cambia el runtime, así que **hay que compilar y
+> repartir el APK nuevo antes de publicar cualquier update**, o los teléfonos
+> con el APK viejo dejan de recibir actualizaciones en silencio.
+
+Veta Wallet usa el **SDK 54 de Expo**.
 
 ## En el computador
 

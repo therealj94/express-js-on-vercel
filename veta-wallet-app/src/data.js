@@ -151,3 +151,16 @@ export function qtyFmtParts(q) {
   const intWithSep = Number(intPart).toLocaleString('en-US');
   return { sign, int: intWithSep, decUtil, decDim };
 }
+
+// Monto EXACTO, sin recortar, para las pantallas donde el usuario aprueba
+// algo irreversible. qtyFmt recorta a 4 decimales para valores >= 1, así que
+// firmar 42.512345 mostraba "42.5123": la cifra que se ve tiene que ser la
+// cifra que se firma. Se quitan los ceros sobrantes del final.
+export const qtyExacto = (q) => {
+  const n = Number(q) || 0;
+  if (n === 0) return '0';
+  const s = n.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+  const [ent, dec] = s.split('.');
+  const entSep = Number(ent).toLocaleString('en-US');
+  return dec ? `${entSep}.${dec}` : entSep;
+};

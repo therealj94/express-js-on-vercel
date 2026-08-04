@@ -13,6 +13,7 @@ import { useT } from '../i18n';
 export default function Home({ nav }) {
   const [hidden, setHidden] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [falloCarga, setFalloCarga] = useState(false);  // no se pudieron leer los saldos
   const toast = useToast();
   const t = useT();
   const tr = t; // alias para no colisionar con la variable "t" del map de tokens
@@ -31,7 +32,9 @@ export default function Home({ nav }) {
   // Primera carga: no hay cuenta todavía o llegó sin balances. Mientras
   // llegan los datos, pintamos skeletons para que no se vea un flash con
   // "$0.00" y "0 ORIGEN" antes de tener saldos reales.
-  const firstLoad = !account || (list.length === 0 && !refreshedOnce.current);
+  // Si el refresco falló, se sale del estado de carga: mostrar el aviso de
+  // error es mejor que dejar los skeletons latiendo indefinidamente.
+  const firstLoad = !falloCarga && (!account || (list.length === 0 && !refreshedOnce.current));
 
   // Variación 24 h ponderada del portafolio (solo con datos reales del feed).
   const withChg = priced.filter((t) => t.chg != null && t.qty * t.price > 0);
@@ -44,8 +47,16 @@ export default function Home({ nav }) {
       const portfolio = await apiPortfolio();
       const updated = await upsertApiAccount({ email: acc.email, name: acc.name }, acc.addr, portfolio);
       login(updated);
+      setFalloCarga(false);
       if (showToast) toast(t('home.updated'));
     } catch (e) {
+      // Sin esta marca, un fallo en el primer refresco dejaba los skeletons
+      // latiendo para siempre (no cambiaba ningún estado, así que no había
+      // re-render), y al tirar para refrescar la pantalla pasaba a mostrar
+      // "$0.00" como si el usuario no tuviera nada. En una billetera, un cero
+      // sin explicación es el peor mensaje posible: ahora se dice que no se
+      // pudieron leer los saldos.
+      setFalloCarga(true);
       if (showToast) toast(t('home.offline'));
     }
   }
@@ -99,10 +110,12 @@ export default function Home({ nav }) {
           ) : (
             <>
               <Pressable onPress={() => { hap(); setHidden(!hidden); }} style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.balAmt}>{hidden ? '••••••' : money(total)}</Text>
+                <Text style={styles.balAmt}>{hidden ? '••••••' : (falloCarga && list.length === 0 ? '—' : money(total))}</Text>
                 <Icon name={hidden ? 'eye-off' : 'eye'} size={18} color={C.txt2} style={{ marginLeft: 8 }} />
               </Pressable>
-              {dayPct != null ? (
+              {falloCarga && list.length === 0 ? (
+                <Text style={styles.balChg}>{t('home.errSaldos')}</Text>
+              ) : dayPct != null ? (
                 <Text style={[styles.balChg, { color: dayPct >= 0 ? C.up : C.down }]}>
                   {hidden ? '••••' : `${dayPct >= 0 ? '+' : '-'}${money(Math.abs(dayUsd))}`}  <Text style={styles.pill}> {dayPct >= 0 ? '+' : ''}{dayPct.toFixed(2)}% </Text>  {t('home.today')}
                 </Text>

@@ -297,6 +297,7 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
   // Datos sensibles: viven solo en memoria y se borran solos.
   const [secreto, setSecreto] = useState(null);   // { pan, cvv, expiry, panUrl }
   const [pin, setPin] = useState(null);
+  const copiadoRef = useRef(null);                // último dato sensible copiado
   const [pedirPw, setPedirPw] = useState(null);   // 'pan' | 'pin' | 'crearPin' | null
   // El emisor responde 409 cuando la tarjeta todavía no tiene un PIN asignado.
   // No es que el producto no lo soporte: es que nunca se creó. En ese caso la
@@ -314,9 +315,25 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
 
   // Los secretos se ocultan solos: si alguien deja el teléfono abierto en
   // esta pantalla, el número completo no se queda a la vista.
+  //
+  // Y con ellos se limpia el portapapeles. Ocultar la pantalla no servía de
+  // nada si el número o el CVV seguían pegados en el portapapeles: cualquier
+  // app en primer plano puede leerlo, iOS lo sincroniza al Mac y al iPad por
+  // Universal Clipboard, y en Android queda en el historial del teclado.
+  // Solo se borra si lo último copiado fue nuestro, para no pisarle al
+  // usuario algo que copió él por su cuenta.
   useEffect(() => {
     if (!secreto && !pin) return;
-    const id = setTimeout(() => { setSecreto(null); setPin(null); setVolteada(false); rot.setValue(0); }, OCULTAR_TRAS * 1000);
+    const id = setTimeout(async () => {
+      setSecreto(null); setPin(null); setVolteada(false); rot.setValue(0);
+      try {
+        if (copiadoRef.current) {
+          const actual = await Clipboard.getStringAsync();
+          if (actual && actual === copiadoRef.current) await Clipboard.setStringAsync('');
+          copiadoRef.current = null;
+        }
+      } catch (e) {}
+    }, OCULTAR_TRAS * 1000);
     return () => clearTimeout(id);
   }, [secreto, pin, rot]);
 
@@ -417,8 +434,15 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
     }
   };
 
+  // Se recuerda lo último copiado para poder limpiarlo cuando venza el
+  // temporizador de ocultar (ver el efecto de arriba).
   const copiar = async (valor, aviso) => {
-    try { await Clipboard.setStringAsync(String(valor)); hap(); toast(aviso, 'success'); } catch (e) {}
+    try {
+      await Clipboard.setStringAsync(String(valor));
+      copiadoRef.current = String(valor);
+      hap();
+      toast(aviso, 'success');
+    } catch (e) {}
   };
 
   const titular = (card.cardHolderName || account?.name || '').toUpperCase();

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, Pressable, TextInput, Modal, ActivityIndicator, StyleSheet } from 'react-native';
 import { Icon } from './icons';
 import { C } from './theme';
@@ -46,12 +46,19 @@ export default function PedirClave({ visible, titulo, subtitulo, ctaTexto, onCan
   const [intentandoBio, setIntentandoBio] = useState(false);
   const [quiereActivar, setQuiereActivar] = useState(false);
   const [modoManual, setModoManual] = useState(false);
+  const enVuelo = useRef(false);   // candado contra doble disparo (botón + teclado)
 
   const nombre = nombreBiometria(bio.tipo, t);
 
   // Envía la contraseña y, si corresponde, deja el desbloqueo activado.
   const enviar = useCallback(async (password, { veniaDeBio = false } = {}) => {
     if (!password) return;
+    // `yendo` es estado y no frena un segundo disparo en el mismo frame: el
+    // botón está protegido con disabled, pero onSubmitEditing del teclado no.
+    // Sin esto, "go" en el teclado + toque al botón mandaba la operación dos
+    // veces (recargar tarjeta, reemitir, cancelar…).
+    if (enVuelo.current) return;
+    enVuelo.current = true;
     setYendo(true);
     setError(null);
     try {
@@ -68,6 +75,7 @@ export default function PedirClave({ visible, titulo, subtitulo, ctaTexto, onCan
     } catch (e) {
       setError(e?.message || t('clave.mal'));
     } finally {
+      enVuelo.current = false;
       setYendo(false);
       setPw('');
     }

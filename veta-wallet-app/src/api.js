@@ -212,13 +212,17 @@ async function rawReq(path, { method = 'GET', body, timeout = 20000 } = {}) {
 
 // req con renovación automática: si el token venció (401 / jwt expired),
 // re-inicia sesión con las credenciales guardadas y reintenta una vez.
+//
+// `opts.noRetry` desactiva ese reintento. Se usa en las operaciones que mueven
+// dinero: repetir un POST que quizá ya se ejecutó del otro lado es peor que
+// mostrar el error y dejar que el usuario verifique.
 async function req(path, opts = {}) {
   if (path !== PATHS.login && !tokenValid()) await ensureSession();
   try {
     return await rawReq(path, opts);
   } catch (e) {
     const expired = e.status === 401 || e.status === 403 || /jwt|expired|unauthorized/i.test(e.message || '');
-    if (path !== PATHS.login && expired && (await ensureSession())) {
+    if (!opts.noRetry && path !== PATHS.login && expired && (await ensureSession())) {
       return await rawReq(path, opts);
     }
     throw e;
@@ -521,14 +525,22 @@ export async function apiRegister({ name, email, password }) {
 }
 
 // ---------- blockchain (RPC, solo lectura) ----------
-export async function rpcCall(provider, method, params) {
-  const res = await fetch(provider, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
-  });
-  const d = await res.json().catch(() => ({}));
-  return d?.result ?? null;
+// Con tiempo de espera propio: sin esto, un nodo colgado dejaba el "tirar para
+// refrescar" de Inicio girando hasta el timeout de la plataforma (60 s en iOS),
+// porque apiPortfolio lanza cinco de estas en paralelo y espera a todas.
+export async function rpcCall(provider, method, params, timeout = 12000) {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), timeout);
+  try {
+    const res = await fetch(provider, {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+    });
+    const d = await res.json().catch(() => ({}));
+    return d?.result ?? null;
+  } finally { clearTimeout(id); }
 }
 
 function fromUnits(hex, decimals = 18) {
@@ -681,12 +693,13 @@ export const ONCHAIN_TOKENS = [
 const ONDK_CACHE = { price: null, at: 0 };
 const ONDK_TTL = 30 * 60 * 1000;
 const ONDK_CACHE_KEY = 'veta-ondk-price-cache';
-// Precio "de referencia" como último recurso: si (a) el server no envió
-// precio en ESTA carga y (b) el teléfono nunca lo cacheó antes, mostramos
-// esto para que el usuario no vea "—" en la ficha de ONDK. Se actualiza
-// aproximadamente cada release; el precio real del server siempre gana.
-// Origen del valor: último precio conocido del ecosistema el 30 jul 2026.
-const ONDK_STATIC_FALLBACK = 2.10;
+// NO hay precio de respaldo horneado en el código. Antes existía una
+// constante (2.10) que se usaba cuando el server no mandaba precio y el
+// teléfono nunca lo había cacheado: ese número entraba al patrimonio total
+// como si fuera precio de mercado, sin ninguna marca, y el usuario no tenía
+// forma de saber que era inventado. Es exactamente lo que la política de
+// precios de este archivo prohíbe seis líneas más arriba. Sin precio real
+// se manda null y la UI muestra "—".
 
 async function loadOndkCache() {
   try {
@@ -738,7 +751,7 @@ export async function apiPortfolio() {
   } else if (ONDK_CACHE.price && Date.now() - ONDK_CACHE.at < ONDK_TTL) {
     ondkPrice = ONDK_CACHE.price;
   } else {
-    ondkPrice = ONDK_STATIC_FALLBACK;
+    ondkPrice = null;   // sin precio real: "—", nunca un número inventado
   }
 
   const { prices, changes } = await livePrices().catch(() => ({ prices: {}, changes: {} }));
@@ -771,17 +784,26 @@ export async function apiPortfolio() {
 // ---------- envíos (el backend firma con tu contraseña) ----------
 // Body real de la billetera web: { chain_id, recipientAddress, password, amount }.
 // Nota: este endpoint transfiere la moneda NATIVA (ORIGEN).
-export async function apiSend({ to, amount, password }) {
+export async function apiSend({ to, amount, password, idem }) {
   const body = {
     chain_id: String(CHAIN_ID),
     recipientAddress: to,
     password,
     amount: String(amount),
+    // Sello de idempotencia: mismo envío reintentado = mismo sello. El backend
+    // debe descartar un segundo POST con un sello ya visto en vez de volver a
+    // transferir. Mientras el backend no lo honre, la app igual evita el doble
+    // envío por su lado (candado de reentrada + no ofrecer reintento cuando el
+    // resultado quedó en duda), pero el respaldo real es este campo.
+    ...(idem ? { idempotencyKey: idem } : {}),
   };
   // Minar y confirmar un bloque puede pasar de 20 s: con el tiempo de espera
   // por defecto el envío se cortaba a media transacción y salía "Aborted"
   // aunque la transacción se hubiera mandado.
-  const r = await req(PATHS.send, { method: 'POST', body, timeout: 90000 });
+  // `noRetry`: si este POST falla con 401/403, NO se reintenta solo. Reintentar
+  // una transferencia que quizá ya se ejecutó es exactamente lo que no se debe
+  // hacer; es preferible pedirle al usuario que verifique.
+  const r = await req(PATHS.send, { method: 'POST', body, timeout: 90000, noRetry: true });
   const hash = r?.hash || r?.transactionHash || r?.txId || null;
   const ok = r?.status === 1 || r?.status === '1' || r?.status === true || !!hash;
   return { hash, ok, receipt: r };

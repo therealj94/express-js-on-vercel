@@ -6,7 +6,7 @@ import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { C } from '../theme';
 import { Header, TokenIcon, Button3D, Card, useToast, useAccount, hap } from '../ui';
-import { money, qtyFmt, tokensFromBalances, parseAmt, normalizeAmtInput } from '../data';
+import { money, qtyFmt, qtyExacto, tokensFromBalances, parseAmt, normalizeAmtInput } from '../data';
 import { apiSend, apiPortfolio, estimateNetworkFee, NETWORK_FEE_ORIGEN, CHAIN_ID } from '../api';
 import { updateAccount } from '../accounts';
 import { listContacts, touchContact, addContact, parseAddress } from '../addressBook';
@@ -76,6 +76,7 @@ export function Send({ nav, params }) {
   const [pick, setPick] = useState(false);
   const [review, setReview] = useState(null);  // ficha de revisión antes de firmar
   const [sending, setSending] = useState(false);
+  const enviando = useRef(false);             // candado inmediato contra doble envío
   const [contacts, setContacts] = useState([]);
   const [saveAs, setSaveAs] = useState('');   // nombre para guardar el destino
   const [scan, setScan] = useState(false);    // cámara abierta
@@ -131,6 +132,10 @@ export function Send({ nav, params }) {
       total: amount + (isNative ? fee : 0),
       saldoAntes: tok.qty,
       contacto: contacts.find((c) => c.address.toLowerCase() === to.trim().toLowerCase())?.name || null,
+      // Sello de idempotencia: nace con la ficha de revisión y NO cambia si el
+      // usuario reintenta. Así el backend puede reconocer que es el mismo envío
+      // y no cobrarlo dos veces. Igual que el que ya usa la recarga de tarjeta.
+      idem: `snd_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`,
     });
   }
 
@@ -145,9 +150,14 @@ export function Send({ nav, params }) {
   async function confirmar(password) {
     const tx = review;
     if (!tx) return { ok: false, msg: t('send.notConfirmed') };
+    // Candado de reentrada: `sending` es estado de React y no se ve hasta el
+    // siguiente render, así que dos toques dentro del mismo frame pasaban los
+    // dos. El ref se ve al instante.
+    if (enviando.current) return { ok: false, msg: t('send.enCurso') };
+    enviando.current = true;
     setSending(true);
     try {
-      const r = await apiSend({ to: tx.to, amount: tx.amount, password });
+      const r = await apiSend({ to: tx.to, amount: tx.amount, password, idem: tx.idem });
       if (r.ok) {
         touchContact(account?.email, tx.to);
         if (saveAs.trim()) addContact(account?.email, { name: saveAs.trim(), address: tx.to }).catch(() => {});
@@ -206,8 +216,25 @@ export function Send({ nav, params }) {
         servidor: t('send.errServer'),
         config: t('auth.errServer'),
       };
-      return { ok: false, msg: porCodigo[e?.code] || e?.message || t('auth.errGeneric') };
-    } finally { setSending(false); }
+      // Timeout y caída de red dejan el resultado EN DUDA: la transacción pudo
+      // haber salido igual. Antes se ofrecía "Intentar de nuevo" justo debajo
+      // de ese aviso, que es la receta del doble gasto. Ahora se refresca el
+      // historial de verdad y se manda al usuario a mirarlo, en vez de a
+      // reenviar a ciegas.
+      const enDuda = e?.code === 'timeout' || e?.code === 'red';
+      if (enDuda && account?.email) {
+        apiPortfolio()
+          .then(async (p) => {
+            const u = await updateAccount(account.email, { balances: p.balances, transfers: p.transfers });
+            if (u) login({ ...u });
+          })
+          .catch(() => {});
+      }
+      return { ok: false, msg: porCodigo[e?.code] || e?.message || t('auth.errGeneric'), enDuda };
+    } finally {
+      enviando.current = false;
+      setSending(false);
+    }
   }
 
   return (
@@ -351,6 +378,8 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
   const [modoManual, setModoManual] = useState(false);
   const [quiereActivar, setQuiereActivar] = useState(false);
   const [error, setError] = useState(null);
+  const [enDuda, setEnDuda] = useState(false);   // el envío pudo haber salido igual
+  const firmando = useRef(false);                // candado contra doble toque
   const prog = useRef(new Animated.Value(0)).current;
   const shake = useRef(new Animated.Value(0)).current;
   const fases = [t('send.step1'), t('send.step2'), t('send.step3')];
@@ -409,16 +438,25 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
   async function enviar(clave, { deBio = false } = {}) {
     const password = clave ?? pw;
     if (!password) { setError(t('send.errPw')); shakeAnim(); return; }
+    // Mismo motivo que en confirmar(): `fase` es estado y no frena un segundo
+    // toque disparado en el mismo frame. Este ref sí.
+    if (firmando.current) return;
+    firmando.current = true;
     setError(null);
+    setEnDuda(false);
     setFase(1);
-    const r = await onConfirm(password);
-    if (!r.ok) {
-      setFase(-1); setError(r.msg); prog.setValue(0); shakeAnim();
-      // Si la clave guardada dejó de servir, se vuelve al teclado.
-      if (deBio) setModoManual(true);
-    } else {
-      if (quiereActivar && !deBio) activarDesbloqueo(password).catch(() => {});
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    try {
+      const r = await onConfirm(password);
+      if (!r.ok) {
+        setFase(-1); setError(r.msg); setEnDuda(!!r.enDuda); prog.setValue(0); shakeAnim();
+        // Si la clave guardada dejó de servir, se vuelve al teclado.
+        if (deBio) setModoManual(true);
+      } else {
+        if (quiereActivar && !deBio) activarDesbloqueo(password).catch(() => {});
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      }
+    } finally {
+      firmando.current = false;
     }
   }
 
@@ -446,13 +484,13 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
           {/* Lo que se va a mover, bien grande */}
           <View style={styles.revMonto}>
             <TokenIcon t={token} size={44} />
-            <Text style={styles.revAmt}>{qtyFmt(data.amount)} {data.symbol}</Text>
+            <Text style={styles.revAmt}>{qtyExacto(data.amount)} {data.symbol}</Text>
             <Text style={styles.revUsd}>≈ {money(data.usd)} USD</Text>
           </View>
 
           <View style={styles.revRows}>
             <Row k={t('send.to')} v={destino} />
-            <Row k={t('send.fee')} v={`${data.fee} ORIGEN`} />
+            <Row k={t('send.fee')} v={`${qtyExacto(data.fee)} ORIGEN`} />
             <Row k={t('send.total')} v={`${data.total.toFixed(4)} ${data.symbol}`} />
             <Row k={t('send.after')} v={`${Math.max(0, data.saldoAntes - data.total).toFixed(4)} ${data.symbol}`} />
             <Row k={t('send.network')} v="Orden Global · 8532" />
@@ -560,13 +598,23 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
               <Text style={styles.revEspera}>{t('send.wait')}</Text>
             </View>
           ) : (
-            /* fase === -1: falló, con el motivo y la opción de reintentar */
+            /* fase === -1: falló. Si el resultado quedó EN DUDA (tiempo agotado
+               o caída de red) NO se ofrece reenviar: la transacción pudo haber
+               salido igual y reintentar sería pagar dos veces. Se manda a
+               Actividad, que ya viene refrescada de la red. */
             <View style={{ marginTop: 16 }}>
               <View style={styles.errBox}>
                 <Icon name="warning" size={18} color={C.down} />
                 <Text style={styles.errBoxTxt}>{error}</Text>
               </View>
-              <Button3D title={t('send.retry')} icon="refresh" onPress={() => { setFase(0); setError(null); }} style={{ marginTop: 12 }} />
+              {enDuda ? (
+                <>
+                  <Button3D title={t('send.verActividad')} icon="time" onPress={onCancel} style={{ marginTop: 12 }} />
+                  <Text style={styles.revEspera}>{t('send.dudaNota')}</Text>
+                </>
+              ) : (
+                <Button3D title={t('send.retry')} icon="refresh" onPress={() => { setFase(0); setError(null); }} style={{ marginTop: 12 }} />
+              )}
               <Pressable onPress={onCancel} style={styles.revCancel}>
                 <Text style={styles.revCancelTxt}>{t('send.cancel')}</Text>
               </Pressable>
@@ -606,14 +654,14 @@ function SentReceipt({ data, contacts, onClose }) {
             <Icon name="checkmark" size={38} color={C.darkText} />
           </Animated.View>
           <Text style={styles.doneT}>{t('send.doneT')}</Text>
-          <Text style={styles.doneAmt}>{qtyFmt(data.amount)} {data.symbol}</Text>
+          <Text style={styles.doneAmt}>{qtyExacto(data.amount)} {data.symbol}</Text>
           <Text style={styles.doneP}>{t('send.doneP')}</Text>
 
           {data.usd ? <Text style={styles.doneUsd}>≈ {money(data.usd)} USD</Text> : null}
 
           <View style={styles.doneRows}>
             <DoneRow first k={t('send.to')} v={destino} onPress={() => copiar(data.to)} />
-            {data.fee ? <DoneRow k={t('send.fee')} v={`${data.fee} ORIGEN`} /> : null}
+            {data.fee ? <DoneRow k={t('send.fee')} v={`${qtyExacto(data.fee)} ORIGEN`} /> : null}
             {data.total ? <DoneRow k={t('send.total')} v={`${data.total.toFixed(4)} ${data.symbol}`} /> : null}
             {data.saldoAntes != null ? (
               <DoneRow k={t('send.after')} v={`${Math.max(0, data.saldoAntes - (data.total || 0)).toFixed(4)} ${data.symbol}`} />

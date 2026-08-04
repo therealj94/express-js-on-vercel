@@ -211,6 +211,13 @@ export function SeedView({ nav }) {
   const [words, setWords] = useState([]);
   const [pedirPw, setPedirPw] = useState(false);
 
+  // Se oculta sola a los 45 s, igual que el número de la tarjeta.
+  useEffect(() => {
+    if (state !== 'shown') return;
+    const id = setTimeout(() => { setWords([]); setState('hidden'); }, 45000);
+    return () => clearTimeout(id);
+  }, [state]);
+
   // Misma contraseña que se pide para ver el PIN/número de la tarjeta: la
   // seed es lo más sensible que tiene la app, no puede quedar a un solo
   // toque de distancia si alguien agarra el teléfono desbloqueado.

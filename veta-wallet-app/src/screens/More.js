@@ -159,7 +159,6 @@ async function abrir(url) {
 
 export function Settings({ nav }) {
   const [notif, setNotif] = useState(true);
-  const [priv, setPriv] = useState(false);
   useEffect(() => { avisosActivos().then(setNotif).catch(() => {}); }, []);
   const toast = useToast();
   const t = useT();
@@ -215,10 +214,14 @@ export function Settings({ nav }) {
           <ListRow icon="storefront" title={t('set.mtp')} sub={t('set.mtpSub')} onPress={() => nav.go('mytokenpay')} />
         </Glass>
 
+        {/* "Cuenta privada" se quitó: era un interruptor que no llamaba al
+            backend ni guardaba nada — se reseteaba al volver a entrar — pero
+            decía "Cuenta privada activada" y prometía "solo cuentas aprobadas
+            te ven". Prometer una protección de privacidad que no existe es
+            peor que no ofrecerla. Vuelve cuando el backend la soporte. */}
         <Text style={styles.grpTitle}>{t('set.privacy')}</Text>
         <Glass style={styles.group}>
-          <ListRow first icon="lock-closed" title={t('set.private')} sub={t('set.privateSub')} onPress={() => {}} right={<Toggle value={priv} onValueChange={(v) => { setPriv(v); toast(v ? t('set.privateOn') : t('set.privateOff')); }} />} />
-          <ListRow icon="person-remove" title={t('set.blocked')} onPress={() => nav.go('blocked')} />
+          <ListRow first icon="person-remove" title={t('set.blocked')} onPress={() => nav.go('blocked')} />
         </Glass>
 
         <Text style={styles.grpTitle}>{t('set.security')}</Text>
@@ -627,6 +630,14 @@ export function PrivateKey({ nav }) {
   const toast = useToast();
   const t = useT();
   const acc = account || { addr: '' };
+
+  // Se oculta sola a los 45 s, igual que el número de la tarjeta: si alguien
+  // deja el teléfono abierto en esta pantalla, la llave no se queda a la vista.
+  useEffect(() => {
+    if (state !== 'shown') return;
+    const id = setTimeout(() => { setPk(null); setState('hidden'); }, 45000);
+    return () => clearTimeout(id);
+  }, [state]);
 
   // Igual que ver el PIN/número de la tarjeta: la contraseña se pide justo
   // antes de mostrar el dato, no alcanza con haber entrado a la sesión.
