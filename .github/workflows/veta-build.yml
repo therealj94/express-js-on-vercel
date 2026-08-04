@@ -1,0 +1,89 @@
+name: Veta Wallet — compilar APK
+
+# Compila un APK de Android en los servidores de Expo. No hace falta tener
+# nada instalado en tu computadora: se lanza desde la pestaña Actions.
+#
+#   Actions → "Veta Wallet — compilar APK" → Run workflow → elegir perfil
+#
+# Qué perfil elegir:
+#
+#   development  Para PROBAR. Reemplaza a Expo Go: se instala una vez y
+#                recibe los cambios en vivo igual que Expo Go, pero atado
+#                al SDK de este proyecto. Deja de importar qué versión de
+#                Expo Go tengas — que es justo el problema que da
+#                "Failed to download remote update" cuando el SDK del
+#                proyecto y el de Expo Go no coinciden.
+#                Además incluye los módulos nativos que Expo Go no trae
+#                (los avisos con la app cerrada).
+#
+#   preview      APK para repartir a gente que solo va a usar la app.
+#                Sin recarga en vivo; recibe updates del channel "preview".
+#
+# Requisito (ya configurado): el secreto EXPO_TOKEN del repositorio.
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Perfil de build'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - preview
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: veta-wallet-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Node 20
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: veta-wallet-app/package-lock.json
+
+      - name: EAS CLI
+        run: npm install -g eas-cli@latest
+
+      - name: Install
+        run: npm ci
+
+      # Mismo chequeo previo que usa el workflow de updates: caza desfases
+      # de SDK y dependencias mal puestas antes de gastar una build entera.
+      - name: Verificar
+        run: npm run verificar
+
+      - name: Compilar
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Falta el secreto EXPO_TOKEN. Créalo en Settings → Secrets → Actions."
+            exit 1
+          fi
+          eas build \
+            --platform android \
+            --profile "${{ inputs.profile }}" \
+            --non-interactive \
+            --wait
+
+      - name: Dónde descargarlo
+        if: always()
+        run: |
+          echo "### APK compilado" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Perfil: **${{ inputs.profile }}**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Descárgalo desde el panel de Expo — el enlace del APK aparece en la fila de la build:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "https://expo.dev/accounts/vetawallet/projects/veta-wallet/builds" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Ábrelo desde el teléfono y se instala. Si es el perfil \`development\`, después abre la app y apunta al servidor con \`npx expo start\` o carga el channel \`development\`." >> $GITHUB_STEP_SUMMARY
