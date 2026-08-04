@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.20.0';
-export const BUILD = 55;
+export const VERSION = '1.20.1';
+export const BUILD = 56;
 export const RELEASED = '2026-08-04';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,17 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.20.1',
+    build: 56,
+    date: '2026-08-04',
+    es: [
+      'Cambio interno: vuelta al SDK 54 de Expo, a pedido, para las pruebas en curso. Sin cambios visibles para el usuario.',
+    ],
+    en: [
+      'Internal change: reverted to Expo SDK 54, on request, for ongoing testing. No visible changes for users.',
+    ],
+  },
   {
     v: '1.20.0',
     build: 55,

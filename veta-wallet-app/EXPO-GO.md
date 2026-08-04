@@ -1,23 +1,48 @@
 # Abrir Veta Wallet en Expo Go
 
-> ## ⚠️ El APK anterior (build 54 y anteriores) hay que reemplazarlo
->
-> El proyecto subió del **SDK 54 al SDK 57** para volver a funcionar con el
-> Expo Go de la tienda. Eso cambia el `runtimeVersion` de `exposdk:54.0.0` a
-> `exposdk:57.0.0`, y trae una consecuencia que hay que respetar:
->
-> **Los teléfonos con el APK viejo dejan de recibir updates, en silencio.**
-> No da error: el servidor simplemente contesta que no hay nada nuevo, porque
-> ese APK pide un runtime que ya no se publica. Se ve solo mirando el número
-> de build en Ajustes → Acerca de.
->
-> Antes de publicar cualquier update nuevo hay que **compilar y repartir el
-> APK del SDK 57**:
-> ```bash
-> eas build -p android --profile preview
-> ```
+Veta Wallet usa el **SDK 54 de Expo**.
 
-Veta Wallet usa el **SDK 57 de Expo**.
+> ## La regla que evita este ida y vuelta
+>
+> El SDK del proyecto **no es una elección fija** — tiene que perseguir a lo
+> que Expo Go de la tienda esté repartiendo en cada momento, y eso cambia
+> solo con el tiempo, sin que nadie acá haga nada.
+>
+> Cuando Expo publica un SDK nuevo, tarda unas semanas en llegar a todos los
+> teléfonos: Play Store y App Store lo distribuyen de a poco. Durante esa
+> ventana, el proyecto tiene que quedarse en el SDK **viejo**, porque es el
+> que la mayoría de la gente todavía tiene instalado. Una vez que el nuevo ya
+> rodó del todo, hay que subir, porque Expo Go deja de aceptar proyectos de
+> SDKs muy atrasados.
+>
+> **Antes de tocar nada, comprobá cuál es hoy:**
+> ```bash
+> curl -s https://exp.host/--/api/v2/versions/latest | python3 -c "
+> import sys,json; d=json.load(sys.stdin)
+> print('Expo Go Android (tienda):', d.get('androidClientVersion'))
+> print('Expo Go iOS (tienda):', d.get('iosClientVersion'))
+> "
+> ```
+> Y compará contra el SDK del proyecto (`npm run verificar` lo dice). Si no
+> coinciden, ahí está el problema — no hace falta adivinar nada más.
+>
+> Este vaivén ya pasó dos veces (subir → SDK 57, bajar → SDK 54, subir de
+> nuevo → 57, bajar de nuevo → 54). Cada vez que se cambie, dejar anotado
+> acá arriba la fecha y qué decía el comando de arriba en ese momento.
+
+## Camino confiable: `npx expo start`
+
+Es el único método que probamos que funciona siempre, sin depender de
+cuentas de Expo ni de si un update ya se propagó. Sirve el bundle en vivo
+desde tu computadora — nada de esto pasa por `u.expo.dev`.
+
+**No uses la URL de un update publicado** (`exp://u.expo.dev/...`) para
+abrir la app en Expo Go. Expo cambió en mayo de 2026 cómo Expo Go valida esos
+updates (requiere que la cuenta logueada sea dueña del proyecto, y limitó
+qué formato de bundle acepta) y quedó frágil — a veces falla con "Failed to
+download remote update" sin ninguna razón clara, incluso con todo bien
+configurado del lado del servidor. `npx expo start` no pasa por ese camino:
+sirve el bundle directo, sin publicar nada.
 
 ## En el computador
 
@@ -35,8 +60,12 @@ Aparece un código QR en la terminal.
 
 ## En el teléfono
 
-1. Instala **Expo Go** desde Play Store o App Store. Tiene que ser la versión
-   actual de la tienda — si la tuya es vieja, actualízala.
+1. Instala **Expo Go** — tiene que ser la versión de **SDK 54**. Si Play
+   Store/App Store ya reparte una más nueva (comprobalo con el comando de
+   arriba), no sirve la de la tienda: bajala aparte desde
+   `https://expo.dev/go?sdkVersion=54&platform=android&device=true` (Android
+   únicamente — en iPhone no hay forma de instalar una versión vieja, la App
+   Store solo sirve la actual).
 2. El teléfono y el computador tienen que estar en la **misma red wifi**.
 3. **Android**: abre Expo Go y toca *Scan QR code*.
    **iPhone**: escanea el QR con la cámara del sistema y abre el enlace.
@@ -69,11 +98,23 @@ detecta que corres en Expo Go. Para probar esa parte hace falta el APK:
 eas build -p android --profile preview
 ```
 
+**Importante, y esto costó un bug real:** no alcanza con no *usar*
+notificaciones dentro de Expo Go — ni siquiera se puede *importar*
+`expo-notifications` sin protección. Su propio `index.js` reexporta desde un
+archivo con efecto al importar (`DevicePushTokenAutoRegistration.fx`) que
+registra un listener de push apenas se carga el módulo, y eso hace `throw`
+en Android dentro de Expo Go desde el SDK 53. La app se cerraba al abrir con
+`[runtime not ready]` sin haber llamado a ninguna función de notificaciones.
+`src/notify.js` ahora lo carga con `require()` diferido y solo fuera de Expo
+Go — si alguna vez se vuelve a tocar ese archivo, no se puede volver a un
+`import * as Notifications from 'expo-notifications'` estático arriba del
+todo.
+
 ## Por qué `runtimeVersion` es `sdkVersion` y no `fingerprint`
 
 Un update publicado con `eas update` solo se entrega a una app cuyo
-`runtimeVersion` coincida. Expo Go pide siempre `exposdk:57.0.0`, que es lo
-que produce la política `sdkVersion` de `app.json`.
+`runtimeVersion` coincida. Expo Go pide siempre `exposdk:<SDK del proyecto>`,
+que es lo que produce la política `sdkVersion` de `app.json`.
 
 La política `fingerprint` produce en cambio un hash del proyecto. Es lo
 correcto para un APK propio — cambia solo cuando cambia algo nativo, así que
@@ -86,12 +127,17 @@ Ajustes → Acerca de.
 Mientras Expo Go sea donde probamos, la política se queda en `sdkVersion`.
 Tiene un costo que hay que respetar:
 
-> Con `sdkVersion`, **cualquier** APK del SDK 57 se considera compatible con
-> **cualquier** update. Si se agrega un módulo **nativo** nuevo — no una
-> pantalla, no una dependencia de JavaScript, sino algo que toca el binario —
-> hay que recompilar y repartir el APK **antes** de publicar el update. Si no,
-> el APK viejo se baja un JavaScript que llama a algo que no tiene y se cierra
-> al abrir.
+> Con `sdkVersion`, **cualquier** APK del SDK del proyecto se considera
+> compatible con **cualquier** update. Si se agrega un módulo **nativo**
+> nuevo — no una pantalla, no una dependencia de JavaScript, sino algo que
+> toca el binario — hay que recompilar y repartir el APK **antes** de
+> publicar el update. Si no, el APK viejo se baja un JavaScript que llama a
+> algo que no tiene y se cierra al abrir.
+>
+> Y al cambiar el SDK del proyecto (como acá), el `runtimeVersion` cambia
+> también — los APK viejos dejan de recibir updates, en silencio, por el
+> mismo motivo. Hay que recompilar y repartir el APK del SDK nuevo antes de
+> publicar el próximo update.
 
 Cómo saber si un cambio es nativo: si aparece o desaparece un paquete de la
 lista `plugins` de `app.json`, o si `npm install` agregó una librería
@@ -105,7 +151,12 @@ Tu Expo Go es más viejo que el SDK del proyecto: actualiza Expo Go desde la tie
 
 **"Project is incompatible with this version of Expo Go"**
 Tu Expo Go es de otro SDK. Comprueba con `npm run verificar` qué SDK usa el
-proyecto; si tu Expo Go es más nuevo, hay que subir el proyecto.
+proyecto; si tu Expo Go es más nuevo, hay que subir el proyecto (o bajar
+Expo Go, ver arriba).
+
+**"Failed to download remote update" (java.io.IOException)**
+Casi siempre es que abriste la URL de un update publicado (`u.expo.dev`) en
+vez de usar `npx expo start`. Cambiá al método de arriba.
 
 **Se queda cargando o no encuentra el servidor**
 No estáis en la misma red. Usa `npx expo start --tunnel`.
