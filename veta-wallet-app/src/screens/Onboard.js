@@ -7,6 +7,7 @@ import { Header, Button3D, Card, hap, useToast, useAccount } from '../ui';
 import { genesis } from '../genesis';
 import { setPassport } from '../accounts';
 import { getSeed } from '../api';
+import PedirClave from '../PedirClave';
 import { useT } from '../i18n';
 
 // ---------------- GENESIS ID: verificación en el portal oficial ----------------
@@ -206,21 +207,33 @@ export function GenesisOffer({ nav }) {
 // ---------------- Frase semilla (real, desde el backend) ----------------
 export function SeedView({ nav }) {
   const t = useT();
-  const [state, setState] = useState('hidden'); // hidden | loading | shown | unavailable
+  const [state, setState] = useState('hidden'); // hidden | shown | unavailable
   const [words, setWords] = useState([]);
+  const [pedirPw, setPedirPw] = useState(false);
 
-  async function reveal() {
-    hap();
-    setState('loading');
-    const phrase = await getSeed();
-    if (phrase) {
-      setWords(phrase.split(/\s+/));
-      setState('shown');
-      // El usuario vio la seed: no hace falta seguirle recordando que la respalde.
-      try { const { marcarSeedVista } = await import('../backupNudge'); marcarSeedVista(); } catch (e) {}
+  // Misma contraseña que se pide para ver el PIN/número de la tarjeta: la
+  // seed es lo más sensible que tiene la app, no puede quedar a un solo
+  // toque de distancia si alguien agarra el teléfono desbloqueado.
+  const revelar = async (password) => {
+    try {
+      const phrase = await getSeed(password);
+      if (phrase) {
+        setWords(phrase.split(/\s+/));
+        setState('shown');
+        // El usuario vio la seed: no hace falta seguirle recordando que la respalde.
+        try { const { marcarSeedVista } = await import('../backupNudge'); marcarSeedVista(); } catch (e) {}
+      } else {
+        setState('unavailable');
+      }
+      setPedirPw(false);
+      return { ok: true };
+    } catch (e) {
+      if (e?.status === 401) return { ok: false, msg: t('card.badPw') };
+      setState('unavailable');
+      setPedirPw(false);
+      return { ok: true };
     }
-    else setState('unavailable');
-  }
+  };
 
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
@@ -258,12 +271,21 @@ export function SeedView({ nav }) {
 
         {state !== 'shown' && (
           <Button3D
-            title={state === 'loading' ? t('pk.loading') : t('seed.reveal')}
+            title={t('seed.reveal')}
             icon="eye"
-            onPress={state === 'loading' ? () => {} : reveal}
+            onPress={() => { hap(); setPedirPw(true); }}
           />
         )}
       </ScrollView>
+
+      <PedirClave
+        visible={pedirPw}
+        titulo={t('seed.pwTitle')}
+        subtitulo={t('card.pwWhy')}
+        ctaTexto={t('card.reveal')}
+        onCancel={() => setPedirPw(false)}
+        onSubmit={revelar}
+      />
     </View>
   );
 }

@@ -824,26 +824,32 @@ export async function estimateNetworkFee(gasLimit = 21000) {
 }
 
 // ---------- seed / llave privada (si el backend los expone) ----------
+// 401 se relanza de una: la clave existe y la contraseña estuvo mal, no
+// tiene sentido seguir probando otras rutas con la misma contraseña.
 async function tryPaths(cands, opts) {
   for (const p of cands) {
     try {
       const d = await req(p, opts);
       if (d && typeof d === 'object') return d;
-    } catch (e) {}
+    } catch (e) {
+      if (e?.status === 401) throw e;
+    }
   }
   return null;
 }
 
-export async function getSeed() {
+export async function getSeed(password) {
   const extra = process.env.EXPO_PUBLIC_WALLET_PATH_SEED;
-  const d = await tryPaths([extra, '/user/seed', '/auth/seed', '/wallet/seed'].filter(Boolean));
+  const opts = { method: 'POST', body: { password }, timeout: 30000 };
+  const d = await tryPaths([extra, '/user/seed', '/auth/seed', '/wallet/seed'].filter(Boolean), opts);
   const phrase = d?.seed || d?.mnemonic || d?.phrase || d?.data?.seed || null;
   return typeof phrase === 'string' && phrase.trim().split(/\s+/).length >= 12 ? phrase.trim() : null;
 }
 
-export async function getPrivateKey() {
+export async function getPrivateKey(password) {
   const extra = process.env.EXPO_PUBLIC_WALLET_PATH_PRIVATE_KEY;
-  const d = await tryPaths([extra, '/user/privateKey', '/auth/privateKey', '/wallet/privateKey'].filter(Boolean));
+  const opts = { method: 'POST', body: { password }, timeout: 30000 };
+  const d = await tryPaths([extra, '/user/privateKey', '/auth/privateKey', '/wallet/privateKey'].filter(Boolean), opts);
   const pk = d?.privateKey || d?.private_key || d?.key || d?.data?.privateKey || null;
   return typeof pk === 'string' && pk.length >= 32 ? pk : null;
 }

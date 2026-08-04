@@ -8,6 +8,7 @@ import { C, G } from '../theme';
 import { Header, Button3D, ListRow, Toggle, Glass, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt } from '../data';
 import { getPrivateKey } from '../api';
+import PedirClave from '../PedirClave';
 import { genesis } from '../genesis';
 import { setPassport } from '../accounts';
 import { updateAccount } from '../accounts';
@@ -619,20 +620,30 @@ export function Blocked({ nav }) {
 
 // ================= LLAVE PRIVADA =================
 export function PrivateKey({ nav }) {
-  const [state, setState] = useState('hidden'); // hidden | loading | shown | unavailable
+  const [state, setState] = useState('hidden'); // hidden | shown | unavailable
   const [pk, setPk] = useState(null);
+  const [pedirPw, setPedirPw] = useState(false);
   const { account } = useAccount();
   const toast = useToast();
   const t = useT();
   const acc = account || { addr: '' };
 
-  async function reveal() {
-    hap();
-    setState('loading');
-    const key = await getPrivateKey();
-    if (key) { setPk(key); setState('shown'); }
-    else setState('unavailable');
-  }
+  // Igual que ver el PIN/número de la tarjeta: la contraseña se pide justo
+  // antes de mostrar el dato, no alcanza con haber entrado a la sesión.
+  const revelar = async (password) => {
+    try {
+      const key = await getPrivateKey(password);
+      if (key) { setPk(key); setState('shown'); }
+      else setState('unavailable');
+      setPedirPw(false);
+      return { ok: true };
+    } catch (e) {
+      if (e?.status === 401) return { ok: false, msg: t('card.badPw') };
+      setState('unavailable');
+      setPedirPw(false);
+      return { ok: true };
+    }
+  };
 
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
@@ -660,13 +671,22 @@ export function PrivateKey({ nav }) {
               {t('pk.unavailable')}
             </Text>
           ) : (
-            <Text style={{ color: C.txt3, fontSize: 13 }}>{state === 'loading' ? t('pk.checking') : '•••• •••• •••• •••• •••• •••• •••• ••••'}</Text>
+            <Text style={{ color: C.txt3, fontSize: 13 }}>•••• •••• •••• •••• •••• •••• •••• ••••</Text>
           )}
         </View>
         {state !== 'shown' && (
-          <Button3D title={state === 'loading' ? t('pk.loading') : t('pk.reveal')} icon="eye" onPress={state === 'loading' ? () => {} : reveal} style={{ marginTop: 14 }} />
+          <Button3D title={t('pk.reveal')} icon="eye" onPress={() => { hap(); setPedirPw(true); }} style={{ marginTop: 14 }} />
         )}
       </ScrollView>
+
+      <PedirClave
+        visible={pedirPw}
+        titulo={t('pk.pwTitle')}
+        subtitulo={t('card.pwWhy')}
+        ctaTexto={t('card.reveal')}
+        onCancel={() => setPedirPw(false)}
+        onSubmit={revelar}
+      />
     </View>
   );
 }
