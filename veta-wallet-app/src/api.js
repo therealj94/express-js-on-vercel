@@ -616,6 +616,19 @@ export async function fetchMetalPrices() {
 // 1/55 de gramo. ONDK y MNKA no cotizan en un mercado público: para ellos no
 // se inventan velas, se avisa en pantalla.
 const CG_ID = { AUKA: 'pax-gold', ORIGEN: 'pax-gold', AGKA: 'kinesis-silver' };
+
+// Precios fijos de referencia para los tokens de sector que no cotizan en
+// ningún mercado público (no están en CoinGecko ni tienen un feed propio como
+// ONDK). Son los mismos valores que usa la billetera web — se confirmaron
+// leyendo su propio bundle compilado (vetawallet.com), donde aparecen como
+// una serie plana: el mismo número repetido en cada punto del histórico, lo
+// que confirma que son fijos y no un precio de mercado real. TXT no tiene un
+// valor asignado ni ahí — se deja sin precio (la UI lo pinta como "—") en vez
+// de inventarle uno.
+const FIXED_PRICES = {
+  AGRO: 13.13, AIT: 5.32, SOL: 0.75, REST: 8.57, LOVE: 0.1,
+  POLITICAL: 0.33, ASL: 2.328, AUBEX: 10, HARV: 0.75, IBS: 1.2,
+};
 const CG_FACTOR = { ORIGEN: 1 / OZ_GRAMS / 55 };
 
 // Temporalidades que se ofrecen en la ficha del token.
@@ -784,13 +797,17 @@ export async function apiPortfolio() {
     } catch (e) {}
     let priceUsd = prices[t.symbol];
     if (priceUsd == null && t.symbol === 'ONDK' && ondkPrice) priceUsd = ondkPrice;
+    if (priceUsd == null && FIXED_PRICES[t.symbol] != null) priceUsd = FIXED_PRICES[t.symbol];
     // Sin precio real: se envía null (la UI lo pinta como "—"). Nunca un
     // valor cocinado — el usuario podría tomar decisiones a partir de él.
     return {
       symbol: t.symbol,
       qty: Number.isFinite(qty) ? qty : 0,
       priceUsd: priceUsd != null && priceUsd > 0 ? priceUsd : null,
-      changePct: changes[t.symbol] ?? null,
+      // Un precio fijo no tiene variación 24h real que reportar — null en vez
+      // de un 0% que se leería como "no se movió hoy" cuando en realidad
+      // nunca se mueve.
+      changePct: FIXED_PRICES[t.symbol] != null ? null : (changes[t.symbol] ?? null),
       contract: t.contract || null,
     };
   }));
