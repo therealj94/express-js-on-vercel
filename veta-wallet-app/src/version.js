@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.29.0';
-export const BUILD = 65;
+export const VERSION = '1.30.0';
+export const BUILD = 66;
 export const RELEASED = '2026-08-05';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,25 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.30.0',
+    build: 66,
+    date: '2026-08-05',
+    es: [
+      'Arreglado lo que impedía terminar la verificación: la app nunca enviaba la foto del documento, así que el rostro no se podía comparar con nada. Pasabas la prueba de vida al 100 % y aun así salía «fallida».',
+      'Ahora la foto del frente —la que ya se toma para leer tu nombre— se envía una sola vez, en el momento del cotejo, y no se guarda: se compara y se descarta. Del reverso sigue viajando solo el texto.',
+      'El texto de la pantalla lo dice así. Prometía que ninguna foto salía del teléfono, y para comparar tu cara con tu cédula eso no puede ser cierto.',
+      'Si no leíste el frente, ahora te avisa ANTES de empezar los gestos, en vez de dejarte terminar y quedar esperando.',
+      'El gesto de girar dice cómo: «girá la cabeza como diciendo no».',
+    ],
+    en: [
+      'Fixed what made verification impossible to finish: the app never sent the document photo, so your face had nothing to be compared against. You could pass the liveness check at 100 % and still get «failed».',
+      'The front photo — already taken to read your name — is now sent once, at the moment of matching, and is not stored: it is compared and discarded. Only text still travels from the back.',
+      'The on-screen text now says so. It promised no photo ever left your phone, and to match your face against your ID that cannot be true.',
+      'If you did not read the front, you are now warned BEFORE the gestures start, instead of finishing and being left waiting.',
+      'The turn gesture now says how: «turn your head as if saying no».',
+    ],
+  },
   {
     v: '1.29.0',
     build: 65,
