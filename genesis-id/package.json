@@ -1,17 +1,18 @@
 {
   "name": "genesis-id",
-  "version": "1.0.0",
-  "description": "Genesis ID — motor de identidad digital del ecosistema Orden Global (KYC personal + KYB de negocios)",
+  "version": "2.0.0",
+  "description": "Genesis ID — identidad digital del ecosistema Orden Global: KYC, KYB, tamizado de sanciones, monitoreo AML e inicio de sesión único",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
-    "connect": "node setup-connect.mjs",
+    "prueba": "node --import tsx --test src/pruebas/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2",
+    "mongodb": "^7.5.0",
     "tsx": "^4.23.1"
   },
   "devDependencies": {

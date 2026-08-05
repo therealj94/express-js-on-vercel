@@ -1,69 +1,286 @@
-# Genesis ID — Motor de identidad (Orden Global)
+# Genesis ID
 
-Backend real y ejecutable de **Genesis ID**: la identidad digital única del
-ecosistema (Veta Wallet · MyTokenPay). Verifica personas (KYC) y negocios (KYB),
-emite un **UID Genesis** y persiste todo en disco. Ambas apps le envían el
-registro cuando está configurada su URL; si no hay servidor, usan el mismo motor
-como respaldo en el dispositivo (para demos en Expo Go sin montar nada).
+Motor de identidad del ecosistema Orden Global: KYC de personas, KYB de
+empresas, tamizado contra listas de sanciones, monitoreo AML de transacciones e
+inicio de sesión único entre Veta Wallet, MyTokenPay y ordenscan.
 
-## Correr
-```bash
-cd genesis-id
+---
+
+## De dónde viene esto
+
+La versión anterior de Genesis ID estaba **abierta a internet sin ninguna
+credencial**. Comprobado desde fuera, sin contraseña:
+
+| Ruta | Qué permitía |
+| --- | --- |
+| `GET /api/admin/identities` | volcar todas las personas con nombre, documento y nacionalidad |
+| `GET /api/admin/stats` | recuento completo del sistema |
+| `POST /api/identities/:id/process` | **emitir un UID verificado sin verificar nada** |
+| `POST /api/identities/passport` | inyectar un pasaporte —nombre legal, documento, foto— a cualquier correo |
+| `POST /api/admin/reset` | borrar la base entera |
+
+MyTokenPay llamaba a `process` directamente desde el teléfono, así que cada
+identidad "verificada" del sistema lo estaba sin comprobación alguna.
+
+Por suerte no había datos de nadie: los cinco registros eran los de demostración
+(`@mytokenpay.demo`), y el almacén era un JSON sobre el disco efímero de Render.
+Era un arma cargada sin nadie enfrente.
+
+---
+
+## La idea que sostiene el diseño
+
+> **Ninguna identidad se verifica sola.**
+
+`verificada` tiene una única puerta, y esa puerta exige:
+
+1. un **operador identificado** con permiso `identidad.aprobar`;
+2. que **no queden bloqueos** — documento válido, tamizado hecho contra listas
+   realmente cargadas, biometría resuelta;
+3. si el operador aprueba **a pesar** de un bloqueo, una justificación escrita
+   que queda marcada para siempre en el expediente y en la bitácora.
+
+El GID no existe antes de esa decisión. Ninguna clave de API, por válida que
+sea, puede aprobar a nadie.
+
+### Y la que evita el falso verde
+
+Un sistema que dice "sin coincidencias" cuando en realidad no tiene listas
+cargadas es peor que uno que no tamiza: el equipo ve verde y cree estar
+cumpliendo. Por eso las listas **vienen vacías de fábrica** y el motor
+distingue *sin coincidencias* de **sin tamizar**. Sin listas, nadie se aprueba
+sin anulación expresa.
+
+Lo mismo con la biometría: sin proveedor configurado el estado es
+`no-configurada`, no "correcta", y obliga a que una persona coteje el rostro y
+lo firme.
+
+---
+
+## Qué verifica de verdad, y qué no
+
+Esto importa más que la lista de funciones.
+
+### Comprobado de forma real, aquí, sin depender de nadie
+
+- **MRZ del documento** (ICAO 9303, formatos TD1/TD2/TD3): se recalculan
+  **todos** los dígitos de control, incluido el compuesto. Cambiar una fecha de
+  nacimiento para aparentar otra edad rompe la aritmética y se detecta.
+  Verificado contra los ejemplos oficiales del estándar.
+- **Vigencia, edad mínima, país emisor** y coherencia entre el nombre declarado
+  y el del documento.
+- **Tamizado de sanciones** con comparación de nombres tolerante a orden,
+  tildes, errores de escritura, alias y variantes de transliteración
+  (`Mohammed`/`Muhammad`/`Mohamed`), ajustada por fecha de nacimiento.
+- **Direcciones de criptomonedas sancionadas**, cotejo exacto. Es el control
+  más directo del ecosistema: se puede aplicar a cada envío de Veta Wallet
+  antes de firmarlo.
+- **Identificadores fiscales**: NIF/NIE/CIF español, NIT guatemalteco, CUIT
+  argentino y RUT chileno se validan por su dígito verificador. Los demás solo
+  por forma, y el resultado lo dice (`comprobacion: "formato"`), para que nadie
+  confunda "bien escrito" con "existe".
+- **Reglas AML** sobre transacciones: umbral único, acumulado, fraccionamiento,
+  velocidad, contraparte sancionada, jurisdicción de riesgo, cuenta de paso y
+  cuenta nueva con volumen alto.
+
+### Lo que NO puede afirmar
+
+- **Que el documento sea auténtico.** Que la MRZ cuadre prueba que está bien
+  formado, no que lo emitiera un país. Para eso hay que leer el chip NFC y
+  validar su firma contra el directorio de claves de la OACI.
+- **Que la persona sea la del documento.** Eso es biometría, y hace falta un
+  proveedor que responda por su tasa de error. `kyc/biometria.ts` define el
+  hueco; sin proveedor, el cotejo lo hace una persona.
+- **Que un identificador fiscal esté dado de alta.** Eso solo lo dice el
+  registro de cada país.
+
+---
+
+## Cómo se pone en marcha
+
+```sh
 npm install
-npm run dev        # http://localhost:4000
+npm start          # http://localhost:4000  → panel en /admin
+npm run prueba     # 80 pruebas
+npm run typecheck
 ```
-La data se siembra sola la primera vez (4 negocios demo + sus dueños + un cliente,
-todos verificados, con los mismos UID que las apps) en `data/genesis.json`.
 
-## ⚡ Modo conectado (turnkey) — un solo Genesis central
+Al arrancar por primera vez crea el administrador e imprime su contraseña **una
+sola vez**, junto con la clave de API de cada app del ecosistema. Cópielas en
+ese momento: de las claves solo se guarda el hash.
 
-Deja las dos apps apuntando al motor real con un comando (detecta tu IP local):
-```bash
-cd genesis-id
-npm install
-npm run connect          # escribe .env en veta-wallet-app y mytokenpay-app/mobile
-npm run dev              # arranca el motor  →  http://TU_IP:4000
+### Variables de entorno
+
+| Variable | Para qué |
+| --- | --- |
+| `GENESIS_MONGO_URL` | **Imprescindible en producción.** Sin ella los datos viven en un archivo, y en Render el disco se borra en cada despliegue |
+| `GENESIS_ADMIN_EMAIL` / `GENESIS_ADMIN_PASSWORD` | Primer administrador |
+| `GENESIS_SSO_SECRETO` | Firma los tokens de sesión única. Sin él, el SSO queda desactivado |
+| `GENESIS_LISTAS_DIR` | Carpeta con las listas de sanciones. **Sin ella no se tamiza a nadie** |
+| `GENESIS_BIOMETRIA_URL` / `_KEY` | Proveedor de cotejo de rostro y prueba de vida |
+| `GENESIS_EDAD_MINIMA` | 18 por defecto |
+| `GENESIS_UMBRAL_USD` | Umbral de reporte por operación. 10 000 por defecto |
+
+`GET /healthz` responde `degradado` mientras falte algo de lo esencial, y el
+panel muestra cada carencia en la primera pantalla.
+
+### Cargar las listas de sanciones
+
+En la carpeta de `GENESIS_LISTAS_DIR`:
+
+- `SDN.CSV` y `ALT.CSV` — formato oficial de la OFAC, tal cual se descargan de
+  <https://sanctionslist.ofac.treas.gov/Home/SdnList>
+- cualquier `*.json` con el formato de `RegistroSancion` — para listas locales,
+  PEP nacionales o la lista consolidada de la UE ya convertida
+- `meta.json` con `{"fechaDescarga":"2026-08-05"}` — si pasa de 30 días, el
+  panel avisa
+
+Después, **Listas → Recargar**: vuelve a tamizar a todas las identidades ya
+registradas y abre casos por lo que aparezca.
+
+---
+
+## La API
+
+Tres superficies, con credenciales distintas que no se mezclan.
+
+### `/api/sesion/*` — operadores del panel
+
+`entrar`, `salir`, `yo`, `contrasena`. Diez intentos por minuto y bloqueo de
+15 minutos tras cinco fallos.
+
+### `/api/v1/*` — apps del ecosistema (`X-API-Key`)
+
+| Ruta | Alcance |
+| --- | --- |
+| `POST /identidades` | `identidad.crear` |
+| `POST /identidades/:id/datos` | `identidad.crear` |
+| `POST /identidades/:id/documento` | `identidad.documento` |
+| `POST /identidades/:id/biometria` | `identidad.documento` |
+| `GET /identidades/:id`, `/por-email/:email` | `identidad.leer` |
+| `POST /vinculos` | `vinculo.crear` |
+| `GET /gid/:gid`, `/direccion/:dir` | `gid.verificar` |
+| `GET /tamiz/direccion/:dir` | `tamiz.direccion` |
+| `POST /sso/token`, `/sso/verificar` | `gid.verificar` |
+| `POST /negocios`, `/negocios/:id/beneficiarios` | `negocio.crear` |
+| `POST /movimientos` | `movimiento.enviar` |
+
+Cada app tiene los suyos: ordenscan solo puede preguntar si un GID está
+verificado, nunca crear identidades ni leer datos personales.
+
+**Ninguna de estas rutas aprueba nada.**
+
+### `/api/panel/*` — cumplimiento (sesión de operador)
+
+Identidades, negocios, casos, listas, bitácora, operadores y aplicaciones.
+
+| Rol | Puede |
+| --- | --- |
+| `admin` | todo, incluidos operadores y claves de API |
+| `cumplimiento` | decidir sobre identidades, negocios y casos |
+| `revisor` | preparar y recomendar, **no** aprobar |
+| `auditor` | leerlo todo, no tocar nada |
+
+---
+
+## Integración con el ecosistema
+
+La clave de API **no puede ir dentro de las apps móviles**: un APK se
+descomprime y cualquiera la extraería. Por eso cada backend monta el puente de
+`infra/genesis-proxy/genesis.router.js`:
+
 ```
-Abre el **admin en vivo** en el navegador: **http://TU_IP:4000/admin** (o `/`).
-Luego, en cada app (misma Wi-Fi que tu compu):
-```bash
-npx expo start -c        # -c limpia caché para tomar el .env
+teléfono ──▶ backend de la app (/genesis/*) ──X-API-Key──▶ Genesis ID
 ```
-Ahora es **un solo Genesis**: si registras/verificas en Veta Wallet, el UID lo
-emite el backend y aparece igual en MyTokenPay y en `/admin` en tiempo real.
-Si tu IP no se detecta bien: `npm run connect -- 192.168.1.50`.
 
-> El `/admin` servido por el backend es en vivo (mismo origen, lee `/api/admin`).
-> El archivo `genesis-admin.html` del repo es la maqueta estática de referencia.
+El router fija la cuenta a partir de la sesión del usuario, nunca del cuerpo de
+la petición: si viniera del cliente, alguien podría atar su GID a la cuenta de
+otro.
 
-## Conectar las apps al motor real (manual)
-En cada app móvil define la URL antes de iniciar Expo:
-```bash
-# MyTokenPay y Veta Wallet
-EXPO_PUBLIC_GENESIS_URL=http://TU_IP_LOCAL:4000npx expo start
+### Sesión única
+
+Un GID vale en las tres apps. La app que ya autenticó al usuario pide un token
+(`POST /api/v1/sso/token`) y cualquier otra lo valida
+(`POST /api/v1/sso/verificar`). Si la identidad se suspende, los tokens vivos
+dejan de valer en el acto.
+
+Es un modelo de **cliente de confianza**: Genesis ID comprueba que la cuenta
+esté atada a ese GID, pero no vuelve a autenticar a la persona — de eso responde
+la app con su clave. Vale porque las tres son del mismo ecosistema; no sería
+aceptable para aplicaciones de terceros.
+
+---
+
+## KYB: por qué se insiste tanto en los beneficiarios
+
+Una empresa no se puede "mirar a la cara". Una sociedad se constituye en un día
+y sirve perfectamente de pantalla, así que verificar la empresa sin saber quién
+está detrás no verifica nada.
+
+Por eso no se aprueba un negocio si:
+
+- falta alguno de los seis documentos exigidos;
+- no hay beneficiarios declarados, o no cubren al menos el 75 % de la propiedad;
+- alguien con **≥ 25 %** no tiene su propia identidad personal verificada;
+- un beneficiario tiene coincidencia fuerte en listas;
+- el representante legal no está verificado.
+
+Si nadie llega al 25 %, hay que identificar a quien controle por otra vía o a la
+administración — es lo que exige la normativa, y el motor lo pide.
+
+---
+
+## Bitácora
+
+Cada entrada lleva el hash de la anterior. Alterar o borrar una vieja rompe
+todos los hashes posteriores, y `verificarCadena()` señala dónde. El panel lo
+muestra en cada carga.
+
+No impide la manipulación a quien controle la base —podría recalcular la cadena
+entera— pero sí la hace evidente. Para hacerla irreversible habría que anclar el
+último hash fuera del sistema; `anclaje()` lo devuelve listo para publicarlo en
+la propia cadena de Orden Global, que es lo natural aquí.
+
+De la bitácora se omiten siempre contraseñas, tokens, claves y fotos: se lee, se
+exporta y se enseña a auditores externos, y un descuido ahí convierte el
+registro de seguridad en una filtración.
+
+---
+
+## Pruebas
+
+```sh
+npm run prueba
 ```
-Sin esa variable, las apps usan el motor Genesis en el dispositivo (registros
-reales persistidos con AsyncStorage) — ideal para demostrar en el teléfono.
 
-## API
-### Identidades personales (KYC)
-- `POST /api/identities` `{ email, fullName? }` → crea o **reanuda** la identidad
-- `GET  /api/identities/:id`
-- `GET  /api/identities/by-email/:email`
-- `POST /api/identities/:id/capture` → avanza (doc-front → doc-back → face → processing)
-- `POST /api/identities/:id/process` → **verifica y emite UID** (GEN-XXXX-XXXX)
-- `POST /api/identities/:id/review` → a revisión manual (hasta 24 h)
-- `POST /api/identities/:id/retry`  → reintenta el escaneo
+**80 pruebas**, en dos bloques:
 
-### Negocios (KYB)
-- `POST /api/business` `{ ownerEmail, legalName, tradeName, taxId, category, country, city, address }`
-- `GET  /api/business/:id` · `GET /api/business/by-owner/:email`
-- `POST /api/business/:id/review` `{ status: "verified"|"rejected", note? }` → emite UID (GNB-XXXX-XXXX)
+- `nucleo.test.ts` (53) — MRZ contra los ejemplos del estándar y contra
+  manipulaciones, comparación de nombres, criptografía (incluido el rechazo de
+  tokens `alg: none`), tamizado, riesgo, reglas AML e identificadores fiscales.
+- `flujo.test.ts` (27) — el servidor real de punta a punta. La mitad comprueba
+  **lo que ya no se puede hacer**: que las rutas viejas devuelvan 404, que una
+  clave de API no apruebe, que un operador no apruebe con bloqueos, que un GID
+  suspendido invalide sus tokens.
 
-### Admin
-- `GET  /api/admin/stats` · `GET /api/admin/identities` · `GET /api/admin/business`
-- `POST /api/admin/reset` (demo: re-siembra)
+Una de las pruebas encontró un fallo de diseño durante el desarrollo: con el
+nombre exacto de un sancionado pero otra fecha de nacimiento, la coincidencia
+desaparecía del todo. Como usar una fecha falsa es justamente una forma de
+esquivar el tamizado, ahora se mantiene visible para el analista aunque deje de
+contar como coincidencia fuerte.
 
-## Modelo
-`Identity` (personal) y `BusinessIdentity` (KYB) — ver `src/types.ts`. Es el mismo
-modelo que reflejan las apps, así el backend y el respaldo local hablan igual.
+---
+
+## Qué falta
+
+- **Rehacer el flujo de verificación en Veta Wallet.**
+  `veta-wallet-app/src/genesis.js` todavía apunta al portal externo
+  `genesisid.online`, que nunca llegó a funcionar. No rompe nada —falla en
+  silencio y la app sigue— pero hay que reescribirlo contra el puente, como ya
+  está el de MyTokenPay. Requiere tocar las pantallas de escaneo, y eso no se
+  puede comprobar sin ejecutar la app.
+- **El portal externo se retiró.** `routes/portal.ts` era el vector de inyección
+  de pasaportes, y Genesis ID ahora verifica por sí mismo.
+- **Cargar las listas reales** y montar el disco en Render.
+- **Contratar el proveedor de biometría**, o asumir el cotejo manual.
+- **Anclar el hash de la bitácora** en la cadena 8532.

@@ -1,49 +1,121 @@
-// Cliente del motor Genesis ID real. Si EXPO_PUBLIC_GENESIS_URL está definida,
-// envía el registro/verificación al backend real (genesis-id/). Si no, no hace
-// nada (la app usa su flujo en dispositivo). Best-effort: nunca bloquea la UI.
+// Cliente de Genesis ID para MyTokenPay.
+//
+// QUE CAMBIO Y POR QUE
+//
+// La versión anterior llamaba a `POST /api/identities/:id/process`, que emitía
+// un UID verificado sin comprobar absolutamente nada: ni documento, ni
+// tamizado de sanciones, ni una persona que respondiera por la decisión. Ese
+// endpoint ya no existe, y con razón: una app no puede verificar identidades.
+//
+// Ahora la app solo APORTA datos. La verificación la decide un operador de
+// cumplimiento en el panel de Genesis ID, y hasta entonces el estado es
+// "en revisión".
+//
+// Y no habla con Genesis ID directamente: la clave de API vive en el backend
+// de MyTokenPay, porque un APK se descomprime y cualquiera la sacaría de aquí.
+//
+//   app ──▶ backend de MyTokenPay (/genesis/*) ──X-API-Key──▶ Genesis ID
+//
+// El router del backend está en infra/genesis-proxy/genesis.router.js.
 
-// Genesis ID en la nube por defecto (funciona en Expo Go y en APK sin .env).
-const BASE = (process.env.EXPO_PUBLIC_GENESIS_URL || 'https://genesis-id.onrender.com').replace(/\/$/, '') || null
+const BASE = (process.env.EXPO_PUBLIC_API_URL || '').replace(/\/$/, '')
 
 export const genesisEnabled = Boolean(BASE)
 
-async function req(path: string, body?: unknown): Promise<any | null> {
+export type EstadoIdentidad =
+  | 'iniciada' | 'datos' | 'documento' | 'biometria'
+  | 'en-revision' | 'verificada' | 'rechazada' | 'suspendida'
+
+export interface EstadoGenesis {
+  id: string
+  email: string
+  estado: EstadoIdentidad
+  gid: string | null
+  nombreLegal: string | null
+  documentoAceptable: boolean | null
+  faltan: number
+  siguientePaso: string
+  actualizadaEn: string
+}
+
+/** El token de sesión de MyTokenPay; el backend lo traduce a la clave de API. */
+let sesion: string | null = null
+export const usarSesion = (token: string | null) => { sesion = token }
+
+async function pedir(ruta: string, cuerpo?: unknown): Promise<any | null> {
   if (!BASE) return null
   try {
-    const res = await fetch(`${BASE}/api${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body ?? {}),
+    const r = await fetch(`${BASE}/genesis${ruta}`, {
+      method: cuerpo ? 'POST' : 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(sesion ? { Authorization: `Bearer ${sesion}` } : {}),
+      },
+      body: cuerpo ? JSON.stringify(cuerpo) : undefined,
     })
-    return await res.json()
+    const datos = await r.json().catch(() => null)
+    // Se devuelve también el cuerpo de los errores: trae el motivo, y la
+    // pantalla puede explicárselo al usuario en vez de decir "algo falló".
+    return r.ok ? datos : { error: datos?.error || `Error ${r.status}` }
   } catch {
     return null
   }
 }
 
 export const genesisClient = {
-  /** Crea o reanuda la identidad por correo en el backend real. */
-  start: (email: string, fullName?: string) => req('/identities', { email, fullName }),
-
-  /** Verifica y emite UID en el backend real. */
-  async process(email: string): Promise<{ genesisUid: string | null } | null> {
-    if (!BASE) return null
-    const created = await req('/identities', { email })
-    const idn = created?.identity
-    if (!idn?.id) return null
-    const done = await req(`/identities/${idn.id}/process`)
-    return done?.identity ?? null
+  /** Estado del trámite. Crea la identidad si aún no existe. */
+  async estado(): Promise<EstadoGenesis | null> {
+    const d = await pedir('/estado')
+    return d?.identidad ?? null
   },
 
-  /** Registra el negocio (KYB) en el backend real. */
-  registerBusiness: (input: {
-    ownerEmail: string
-    legalName: string
-    tradeName: string
-    taxId: string
-    category: string
-    country: string
-    city: string
-    address: string
-  }) => req('/business', input),
+  /** Datos que declara la persona. */
+  async declararDatos(datos: {
+    nombreCompleto: string; fechaNacimiento?: string; paisResidencia?: string; telefono?: string
+  }): Promise<EstadoGenesis | null> {
+    const d = await pedir('/datos', datos)
+    return d?.identidad ?? null
+  },
+
+  /**
+   * MRZ del documento, ya leída en el teléfono.
+   * Devuelve también qué falla, para poder decírselo al usuario.
+   */
+  async enviarDocumento(mrz: string): Promise<{
+    identidad: EstadoGenesis | null; aceptable: boolean; problemas: string[]
+  }> {
+    const d = await pedir('/documento', { mrz })
+    return {
+      identidad: d?.identidad ?? null,
+      aceptable: Boolean(d?.documento?.aceptable),
+      problemas: d?.documento?.problemas ?? (d?.error ? [d.error] : []),
+    }
+  },
+
+  async enviarSelfie(selfie: string, fotoDocumento?: string) {
+    return pedir('/biometria', { selfie, fotoDocumento })
+  },
+
+  /** Ata esta cuenta de MyTokenPay al GID. */
+  vincular: () => pedir('/vincular', {}),
+
+  /** Token para entrar en otra app del ecosistema sin repetir el KYC. */
+  async tokenEcosistema(): Promise<string | null> {
+    const d = await pedir('/sso/token', {})
+    return d?.token ?? null
+  },
+
+  /** Registra el negocio para KYB. Lo aprueba cumplimiento, no la app. */
+  registrarNegocio: (input: {
+    razonSocial: string; nombreComercial: string; identificadorFiscal: string
+    categoria: string; pais: string; ciudad: string; direccion: string; sitioWeb?: string
+  }) => pedir('/negocios', input),
+
+  /**
+   * Beneficiario final. Sin ellos el negocio no se aprueba: identificar a la
+   * empresa sin saber quién está detrás no verifica nada.
+   */
+  agregarBeneficiario: (idNegocio: string, input: {
+    nombreCompleto: string; porcentaje: number; nacionalidad?: string; fechaNacimiento?: string; gid?: string
+  }) => pedir(`/negocios/${idNegocio}/beneficiarios`, input),
 }

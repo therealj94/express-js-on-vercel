@@ -3,107 +3,853 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Genesis ID · Admin en vivo</title>
+<title>Genesis ID · Panel de cumplimiento</title>
 <style>
 :root{
-  --bg:#021B1C; --panel:#0A3436; --panel2:#123F41; --line:#1C5E61;
+  --bg:#021012; --panel:#0A3436; --panel2:#0d2b2d; --line:#1C5E61; --line2:#164a4d;
   --gold:#C9A961; --cyan:#4FD8E0; --txt:#F1EAD6; --mut:#9BB6B2; --faint:#66857f;
-  --ok:#3ED9A0; --warn:#F5B62E; --bad:#F0776B;
+  --ok:#3ED9A0; --warn:#F5B62E; --bad:#F0776B; --crit:#ff5a7a;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:radial-gradient(1000px 600px at 50% -10%,#0a2f31,#021012);color:var(--txt);
- font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh;padding:26px}
+body{background:radial-gradient(1100px 640px at 50% -12%,#0a2f31,#021012);color:var(--txt);
+ font:14px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
 .num{font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,Consolas,monospace}
-header{display:flex;align-items:center;gap:14px;max-width:1080px;margin:0 auto 22px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:11px}
-.mark{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);display:grid;place-items:center;
- background:linear-gradient(135deg,rgba(201,169,97,.18),transparent)}
-.mark svg{width:22px;height:22px;stroke:var(--gold);fill:none;stroke-width:1.7}
-.brand b{font-size:17px;display:block}.brand span{font-size:10.5px;color:var(--faint);letter-spacing:.16em;text-transform:uppercase}
-.live{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ok);font-weight:600}
-.live i{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(62,217,160,.6);animation:p 1.6s infinite}
-@keyframes p{0%{box-shadow:0 0 0 0 rgba(62,217,160,.5)}70%{box-shadow:0 0 0 8px rgba(62,217,160,0)}100%{box-shadow:0 0 0 0 rgba(62,217,160,0)}}
-.wrap{max-width:1080px;margin:0 auto}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
-.kpi{background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:15px}
-.kpi .l{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
-.kpi .v{font-size:26px;font-weight:750;margin-top:5px}
-.kpi.g .v{color:var(--gold)}.kpi.c .v{color:var(--cyan)}.kpi.w .v{color:var(--warn)}.kpi.o .v{color:var(--ok)}
-h2{font-size:15px;margin:22px 0 12px;font-weight:700}
-.card{background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:14px;overflow-x:auto}
-table{width:100%;border-collapse:collapse;min-width:640px}
-th{text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:650;padding:11px 15px;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:11px 15px;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px;white-space:nowrap}
+button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:8px 14px;background:var(--line);color:var(--txt)}
+button:hover{filter:brightness(1.18)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.p{background:var(--gold);color:#1a1200;font-weight:700}
+button.ok{background:var(--ok);color:#022;font-weight:700}
+button.bad{background:var(--bad);color:#2a0a06;font-weight:700}
+button.g{background:transparent;border:1px solid var(--line)}
+input,select,textarea{font:inherit;background:#061e20;color:var(--txt);border:1px solid var(--line);
+ border-radius:9px;padding:9px 11px;width:100%}
+a{color:var(--cyan)}
+.oculto{display:none!important}
+
+#entrada{display:grid;place-items:center;min-height:100vh;padding:20px}
+.caja{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:30px;width:100%;max-width:400px}
+.caja h1{font-size:20px;margin-bottom:4px}
+.caja p.sub{color:var(--faint);font-size:12px;margin-bottom:22px}
+.caja label{display:block;font-size:11.5px;color:var(--mut);margin:12px 0 5px;font-weight:600}
+
+header{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid var(--line2);flex-wrap:wrap}
+.marca{display:flex;align-items:center;gap:11px}
+.sello{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);display:grid;place-items:center;
+ background:linear-gradient(135deg,rgba(201,169,97,.2),transparent)}
+.sello svg{width:21px;height:21px;stroke:var(--gold);fill:none;stroke-width:1.7}
+.marca b{font-size:16px;display:block}
+.marca span{font-size:10px;color:var(--faint);letter-spacing:.16em;text-transform:uppercase}
+.quien{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:12.5px}
+.rol{background:rgba(201,169,97,.16);color:var(--gold);padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700}
+nav{display:flex;gap:4px;padding:0 16px;border-bottom:1px solid var(--line2);overflow-x:auto}
+nav button{background:none;border-radius:0;border-bottom:2px solid transparent;color:var(--mut);padding:11px 14px;white-space:nowrap}
+nav button.sel{color:var(--txt);border-bottom-color:var(--gold)}
+main{padding:22px;max-width:1400px;margin:0 auto}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:13px;padding:14px}
+.kpi .l{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;font-weight:650}
+.kpi .v{font-size:25px;font-weight:750;margin-top:4px}
+.kpi.g .v{color:var(--gold)}.kpi.c .v{color:var(--cyan)}.kpi.w .v{color:var(--warn)}
+.kpi.o .v{color:var(--ok)}.kpi.b .v{color:var(--bad)}
+h2{font-size:15px;margin:22px 0 11px;font-weight:700}
+h3{font-size:12px;margin:16px 0 8px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+.tarjeta{background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:13px;overflow:hidden}
+.tarjeta.p{padding:16px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:720px}
+th{text-align:left;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);
+ font-weight:650;padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px}
 tr:last-child td{border-bottom:none}
-.pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:650;padding:3px 10px;border-radius:999px}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:rgba(255,255,255,.035)}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:650;padding:3px 9px;border-radius:999px;white-space:nowrap}
 .pill i{width:6px;height:6px;border-radius:50%;background:currentColor}
-.ok{color:var(--ok);background:rgba(62,217,160,.14)}.warn{color:var(--warn);background:rgba(245,182,46,.14)}
-.info{color:var(--cyan);background:rgba(79,216,224,.14)}.bad{color:var(--bad);background:rgba(240,119,107,.14)}
-.uid{color:var(--gold)}.buid{color:var(--cyan)}
-.foot{max-width:1080px;margin:22px auto 0;color:var(--faint);font-size:11.5px;text-align:center}
-.empty{padding:22px 15px;color:var(--faint);font-size:12.5px}
+.ok{color:var(--ok);background:rgba(62,217,160,.14)}
+.warn{color:var(--warn);background:rgba(245,182,46,.14)}
+.info{color:var(--cyan);background:rgba(79,216,224,.14)}
+.bad{color:var(--bad);background:rgba(240,119,107,.14)}
+.crit{color:var(--crit);background:rgba(255,90,122,.16)}
+.mut{color:var(--faint);background:rgba(255,255,255,.05)}
+.uid{color:var(--gold);font-weight:650}
+.filtros{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px}
+.filtros input,.filtros select,.filtros button{width:auto;min-width:150px;flex:0 1 auto}
+.vacio{padding:26px 16px;color:var(--faint);font-size:12.5px;text-align:center}
+
+.avisos{display:grid;gap:8px;margin-bottom:18px}
+.aviso{display:flex;gap:10px;align-items:flex-start;padding:11px 14px;border-radius:11px;font-size:12.5px;
+ border:1px solid;background:rgba(245,182,46,.08);border-color:rgba(245,182,46,.3)}
+.aviso.grave{background:rgba(255,90,122,.09);border-color:rgba(255,90,122,.35)}
+.aviso.bien{background:rgba(62,217,160,.08);border-color:rgba(62,217,160,.3)}
+.aviso b{display:block;margin-bottom:2px}
+
+#capa{position:fixed;inset:0;background:rgba(0,8,9,.72);backdrop-filter:blur(3px);z-index:50;display:none}
+#capa.abierta{display:block}
+#ficha{position:fixed;top:0;right:0;bottom:0;width:min(760px,100%);background:var(--bg);
+ border-left:1px solid var(--line);z-index:51;transform:translateX(100%);transition:transform .22s;
+ display:flex;flex-direction:column}
+#ficha.abierta{transform:none}
+.fichaCab{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line2)}
+.fichaCab h2{margin:0;flex:1;font-size:16px}
+.fichaCuerpo{padding:20px;overflow-y:auto;flex:1}
+.campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.campo{background:var(--panel2);border:1px solid rgba(255,255,255,.05);border-radius:10px;padding:10px 12px}
+.campo .l{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;font-weight:650}
+.campo .v{margin-top:3px;font-size:13.5px;word-break:break-word}
+.lista{display:grid;gap:7px}
+.item{background:var(--panel2);border:1px solid rgba(255,255,255,.05);border-radius:10px;padding:10px 12px;font-size:12.5px}
+.item.grave{border-color:rgba(255,90,122,.4);background:rgba(255,90,122,.07)}
+.item.aviso2{border-color:rgba(245,182,46,.35);background:rgba(245,182,46,.06)}
+.item.bien{border-color:rgba(62,217,160,.28)}
+.item .t{font-weight:650;margin-bottom:2px}
+.item .d{color:var(--mut)}
+.acciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--line2)}
+.barra{height:7px;background:#06282a;border-radius:99px;overflow:hidden;margin-top:6px}
+.barra i{display:block;height:100%;border-radius:99px}
+pre{background:#061e20;border:1px solid var(--line2);border-radius:10px;padding:12px;overflow-x:auto;font-size:11.5px;white-space:pre-wrap;word-break:break-word}
+.aguja{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--panel);
+ border:1px solid var(--line);border-radius:11px;padding:11px 18px;z-index:99;font-size:13px;display:none}
+.aguja.ver{display:block}
+.aguja.mal{border-color:var(--bad);color:var(--bad)}
+@media(max-width:640px){main{padding:14px}.fichaCuerpo{padding:14px}}
 </style>
 </head>
 <body>
-<header>
-  <div class="brand">
-    <div class="mark"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6l8-4z"/><path d="M8.5 12l2.5 2.5L15.5 9.5"/></svg></div>
-    <div><b>Genesis ID · Admin en vivo</b><span>Orden Global · motor real</span></div>
-  </div>
-  <div class="live"><i></i><span id="liveTxt">Conectado</span></div>
-</header>
 
-<div class="wrap">
-  <div class="kpis" id="kpis"></div>
-
-  <h2>Identidades personales (KYC)</h2>
-  <div class="card"><table><thead><tr><th>Correo</th><th>Nombre</th><th>UID Genesis</th><th>Veta Wallet</th><th>Paso</th><th>Actualizado</th></tr></thead><tbody id="idns"></tbody></table></div>
-
-  <h2>Negocios (KYB)</h2>
-  <div class="card"><table><thead><tr><th>Negocio</th><th>Titular</th><th>UID negocio</th><th>País</th><th>Estado</th></tr></thead><tbody id="biz"></tbody></table></div>
+<div id="entrada">
+  <form class="caja" onsubmit="entrar(event)">
+    <h1>Genesis ID</h1>
+    <p class="sub">Panel de cumplimiento · Orden Global</p>
+    <label>Correo</label>
+    <input id="eMail" type="email" autocomplete="username" required>
+    <label>Contraseña</label>
+    <input id="eClave" type="password" autocomplete="current-password" required>
+    <button class="p" style="width:100%;margin-top:18px" type="submit">Entrar</button>
+    <p id="eError" class="sub" style="color:var(--bad);margin-top:12px;display:none"></p>
+  </form>
 </div>
-<div class="foot">Se actualiza cada 4 s desde <span class="num">/api/admin</span> · datos reales del motor</div>
+
+<div id="app" class="oculto">
+  <header>
+    <div class="marca">
+      <div class="sello"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6l8-4z"/><path d="M8.5 12l2.5 2.5L15.5 9.5"/></svg></div>
+      <div><b>Genesis ID</b><span>Cumplimiento</span></div>
+    </div>
+    <div class="quien">
+      <span id="qNombre"></span><span class="rol" id="qRol"></span>
+      <button class="g" onclick="salir()">Salir</button>
+    </div>
+  </header>
+  <nav id="nav"></nav>
+  <main id="vista"></main>
+</div>
+
+<div id="capa" onclick="cerrarFicha()"></div>
+<aside id="ficha">
+  <div class="fichaCab">
+    <h2 id="fTitulo"></h2>
+    <button class="g" onclick="cerrarFicha()">Cerrar</button>
+  </div>
+  <div class="fichaCuerpo" id="fCuerpo"></div>
+</aside>
+
+<div class="aguja" id="aguja"></div>
 
 <script>
-const STEP = {
-  'email':['info','Correo'],'doc-front':['info','Documento'],'doc-back':['info','Documento'],
-  'face':['info','Rostro'],'processing':['info','Procesando'],'review24':['warn','Revisión 24 h'],'verified':['ok','Verificada'],
-};
-const BSTAT = {'verified':['ok','Verificado'],'pending':['warn','En revisión'],'rejected':['bad','Rechazado']};
-function ago(iso){ if(!iso) return '—'; const s=(Date.now()-new Date(iso))/1000;
-  if(s<60) return 'hace '+Math.floor(s)+'s'; if(s<3600) return 'hace '+Math.floor(s/60)+'m';
-  if(s<86400) return 'hace '+Math.floor(s/3600)+'h'; return 'hace '+Math.floor(s/86400)+'d'; }
-function pill(cls,txt){return '<span class="pill '+cls+'"><i></i>'+txt+'</span>';}
+let sesion = localStorage.getItem('gid.sesion') || ''
+let yo = null
+let pestana = 'resumen'
 
-async function load(){
-  try{
-    const [s,i,b] = await Promise.all([
-      fetch('/api/admin/stats').then(r=>r.json()),
-      fetch('/api/admin/identities').then(r=>r.json()),
-      fetch('/api/admin/business').then(r=>r.json()),
-    ]);
-    document.getElementById('liveTxt').textContent='Conectado';
-    document.getElementById('kpis').innerHTML =
-      kpi('g','Identidades',s.identities.total)+kpi('o','Verificadas',s.identities.verified)+
-      kpi('c','En proceso',s.identities.inProgress)+kpi('w','Revisión 24h',s.identities.inReview)+
-      kpi('g','Negocios',s.businesses.total)+kpi('o','KYB verificados',s.businesses.verified);
-    document.getElementById('idns').innerHTML = i.identities.length ? i.identities.map(x=>{
-      const st=STEP[x.step]||['info',x.step];
-      const w=x.walletAddress ? x.walletAddress.slice(0,6)+'…'+x.walletAddress.slice(-4) : '—';
-      const pic=x.photoUrl ? '<img src="'+x.photoUrl+'" style="width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:7px">' : '';
-      return '<tr><td>'+x.email+'</td><td>'+pic+(x.fullName||'—')+'</td><td class="num uid">'+(x.genesisUid||'—')+
-        '</td><td class="num buid" title="'+(x.walletAddress||'')+'">'+w+
-        '</td><td>'+pill(st[0],st[1])+'</td><td class="num">'+ago(x.updatedAt)+'</td></tr>';}).join('') :
-      '<tr><td colspan="6" class="empty">Aún no hay identidades.</td></tr>';
-    document.getElementById('biz').innerHTML = b.businesses.length ? b.businesses.map(x=>{
-      const st=BSTAT[x.status]||['info',x.status];
-      return '<tr><td>'+x.tradeName+'</td><td>'+x.ownerEmail+'</td><td class="num buid">'+(x.genesisUid||'—')+
-        '</td><td>'+x.country+'</td><td>'+pill(st[0],st[1])+'</td></tr>';}).join('') :
-      '<tr><td colspan="5" class="empty">Aún no hay negocios.</td></tr>';
-  }catch(e){ document.getElementById('liveTxt').textContent='Reconectando…'; }
+const $ = (s) => document.querySelector(s)
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+const fecha = (f) => f ? new Date(f).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' }) : '—'
+const dinero = (n) => 'USD ' + Number(n || 0).toLocaleString('es', { maximumFractionDigits: 0 })
+
+function avisar(texto, mal) {
+  const a = $('#aguja')
+  a.textContent = texto
+  a.className = 'aguja ver' + (mal ? ' mal' : '')
+  clearTimeout(a._t)
+  a._t = setTimeout(() => { a.className = 'aguja' }, 4200)
 }
-function kpi(c,l,v){return '<div class="kpi '+c+'"><div class="l">'+l+'</div><div class="v num">'+v+'</div></div>';}
-load(); setInterval(load,4000);
+
+async function api(ruta, opciones = {}) {
+  const r = await fetch('/api' + ruta, {
+    ...opciones,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(sesion ? { Authorization: 'Bearer ' + sesion } : {}),
+      ...(opciones.headers || {}),
+    },
+  })
+  if (r.status === 401) {
+    sesion = ''; localStorage.removeItem('gid.sesion'); mostrarEntrada()
+    throw new Error('La sesión caducó')
+  }
+  const cuerpo = await r.json().catch(() => ({}))
+  if (!r.ok) throw Object.assign(new Error(cuerpo.error || 'Error'), { datos: cuerpo })
+  return cuerpo
+}
+
+const puede = (p) => yo && (yo.permisos.includes('*') || yo.permisos.includes(p))
+
+async function entrar(ev) {
+  ev.preventDefault()
+  try {
+    const r = await api('/sesion/entrar', {
+      method: 'POST',
+      body: JSON.stringify({ email: $('#eMail').value, contrasena: $('#eClave').value }),
+    })
+    sesion = r.token
+    localStorage.setItem('gid.sesion', sesion)
+    yo = r.operador
+    arrancar()
+    if (yo.debeCambiarContrasena) avisar('Debe cambiar la contraseña inicial', true)
+  } catch (e) {
+    $('#eError').textContent = e.message
+    $('#eError').style.display = 'block'
+  }
+}
+
+function salir() {
+  api('/sesion/salir', { method: 'POST' }).catch(() => {})
+  sesion = ''; yo = null
+  localStorage.removeItem('gid.sesion')
+  mostrarEntrada()
+}
+
+function mostrarEntrada() {
+  $('#entrada').classList.remove('oculto')
+  $('#app').classList.add('oculto')
+}
+
+const PESTANAS = [
+  { id: 'resumen', txt: 'Resumen', permiso: null },
+  { id: 'identidades', txt: 'Identidades', permiso: 'identidad.ver' },
+  { id: 'negocios', txt: 'Negocios', permiso: 'negocio.ver' },
+  { id: 'casos', txt: 'Casos', permiso: 'caso.ver' },
+  { id: 'listas', txt: 'Listas', permiso: 'listas.ver' },
+  { id: 'bitacora', txt: 'Bitácora', permiso: 'bitacora.ver' },
+  { id: 'ajustes', txt: 'Operadores y apps', permiso: '*' },
+]
+
+function arrancar() {
+  $('#entrada').classList.add('oculto')
+  $('#app').classList.remove('oculto')
+  $('#qNombre').textContent = yo.nombre || yo.email
+  $('#qRol').textContent = yo.rol
+  $('#nav').innerHTML = PESTANAS.filter((p) => !p.permiso || puede(p.permiso))
+    .map((p) => `<button data-p="${p.id}" onclick="ir('${p.id}')">${p.txt}</button>`).join('')
+  ir('resumen')
+}
+
+const VISTAS = {}
+function ir(id) {
+  pestana = id
+  document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('sel', b.dataset.p === id))
+  $('#vista').innerHTML = '<div class="vacio">Cargando…</div>'
+  VISTAS[id]().catch((e) => { $('#vista').innerHTML = `<div class="aviso grave"><div>${esc(e.message)}</div></div>` })
+}
+
+const kpi = (l, v, c = '') => `<div class="kpi ${c}"><div class="l">${l}</div><div class="v num">${v}</div></div>`
+const campo = (l, v) => `<div class="campo"><div class="l">${l}</div><div class="v">${esc(v)}</div></div>`
+const PILL_RIESGO = { bajo: 'ok', medio: 'warn', alto: 'bad', inaceptable: 'crit' }
+const PILL_ESTADO = {
+  verificada: 'ok', verificado: 'ok', rechazada: 'bad', rechazado: 'bad',
+  suspendida: 'crit', suspendido: 'crit', 'en-revision': 'warn', biometria: 'warn',
+  documento: 'info', datos: 'mut', iniciada: 'mut', iniciado: 'mut', documentos: 'info',
+}
+const pill = (txt, clase) => `<span class="pill ${clase || 'mut'}"><i></i>${esc(txt)}</span>`
+
+// ── Resumen ─────────────────────────────────────────────────────────────────
+VISTAS.resumen = async function () {
+  const d = await api('/panel/resumen')
+  const s = d.salud
+
+  // Los avisos van arriba porque describen cosas que impiden operar de verdad.
+  const avisos = []
+  if (s.almacen.efimero) avisos.push(['grave', 'Almacén en archivo',
+    'En Render el disco se borra en cada despliegue. Configure GENESIS_MONGO_URL antes de verificar identidades reales.'])
+  if (!s.listas.cargadas) avisos.push(['grave', 'Sin listas de sanciones',
+    'No se está tamizando a nadie. Ninguna identidad puede aprobarse sin anulación expresa. Configure GENESIS_LISTAS_DIR.'])
+  else if (s.listas.vencidas) avisos.push(['', 'Listas desactualizadas',
+    `Se descargaron hace ${s.listas.diasDesdeDescarga} días. Conviene refrescarlas.`])
+  if (s.biometria !== 'configurada') avisos.push(['', 'Sin proveedor de biometría',
+    'El cotejo del rostro lo tiene que resolver un operador a mano en cada verificación.'])
+  if (!s.bitacora.integra) avisos.push(['grave', 'Bitácora alterada',
+    `La cadena se rompe en la entrada ${s.bitacora.rotaEn}. Alguien modificó el registro.`])
+  if (!s.sso) avisos.push(['', 'Sin inicio de sesión único', 'Falta definir GENESIS_SSO_SECRETO.'])
+  if (s.listasGafi.dias > 180) avisos.push(['', 'Listas del GAFI antiguas',
+    `Las incrustadas son de la plenaria del ${s.listasGafi.fecha}, hace ${s.listasGafi.dias} días.`])
+
+  $('#vista').innerHTML = `
+    ${avisos.length ? `<div class="avisos">${avisos.map(([g, t, x]) =>
+      `<div class="aviso ${g}"><div><b>${t}</b>${esc(x)}</div></div>`).join('')}</div>`
+      : '<div class="aviso bien"><div><b>Todo en orden</b>El motor está en condiciones de operar.</div></div>'}
+
+    <h2>Identidades</h2>
+    <div class="kpis">
+      ${kpi('Total', d.identidades.total)}
+      ${kpi('Verificadas', d.identidades.verificadas, 'o')}
+      ${kpi('En revisión', d.identidades.enRevision, 'w')}
+      ${kpi('Sin terminar', d.identidades.sinTerminar)}
+      ${kpi('Riesgo alto', d.identidades.riesgoAlto, 'b')}
+      ${kpi('PEP', d.identidades.pep, 'g')}
+      ${kpi('Rechazadas', d.identidades.rechazadas)}
+      ${kpi('Suspendidas', d.identidades.suspendidas)}
+    </div>
+
+    <h2>Negocios</h2>
+    <div class="kpis">
+      ${kpi('Total', d.negocios.total)}
+      ${kpi('Verificados', d.negocios.verificados, 'o')}
+      ${kpi('En revisión', d.negocios.enRevision, 'w')}
+      ${kpi('Rechazados', d.negocios.rechazados)}
+    </div>
+
+    <h2>Casos de cumplimiento</h2>
+    <div class="kpis">
+      ${kpi('Abiertos', d.casos.abiertos, 'w')}
+      ${kpi('En análisis', d.casos.enAnalisis, 'c')}
+      ${kpi('Críticos', d.casos.criticos, 'b')}
+      ${kpi('Reportados', d.casos.reportados, 'g')}
+      ${kpi('Cerrados', d.casos.cerrados)}
+    </div>
+
+    <h2>Monitoreo</h2>
+    <div class="kpis">
+      ${kpi('Movimientos', d.movimientos.total)}
+      ${kpi('Volumen', dinero(d.movimientos.volumenUsd), 'c')}
+    </div>
+
+    <h2>Estado del sistema</h2>
+    <div class="tarjeta p"><div class="campos">
+      ${campo('Almacén', s.almacen.motor + (s.almacen.efimero ? ' (efímero)' : ''))}
+      ${campo('Listas de sanciones', s.listas.cargadas ? `${s.listas.registros.toLocaleString('es')} registros` : 'ninguna')}
+      ${campo('Fuentes', (s.listas.fuentes || []).join(', ') || '—')}
+      ${campo('Biometría', s.biometria)}
+      ${campo('Listas GAFI', `${s.listasGafi.fecha} (${s.listasGafi.dias} días)`)}
+      ${campo('Bitácora', s.bitacora.integra ? `íntegra · ${s.bitacora.total} entradas` : 'ALTERADA')}
+      ${campo('Apps activas', s.apps)}
+      ${campo('Sesión única', s.sso ? 'configurada' : 'desactivada')}
+    </div></div>`
+}
+
+// ── Identidades ─────────────────────────────────────────────────────────────
+VISTAS.identidades = async function () {
+  $('#vista').innerHTML = `
+    <div class="filtros">
+      <input id="fTexto" placeholder="Buscar por nombre, correo o GID" oninput="recargarIdentidades()">
+      <select id="fEstado" onchange="recargarIdentidades()">
+        <option value="">Todos los estados</option>
+        ${['iniciada','datos','documento','biometria','en-revision','verificada','rechazada','suspendida']
+          .map((e) => `<option>${e}</option>`).join('')}
+      </select>
+      <select id="fRiesgo" onchange="recargarIdentidades()">
+        <option value="">Todo riesgo</option>
+        ${['bajo','medio','alto','inaceptable'].map((e) => `<option>${e}</option>`).join('')}
+      </select>
+    </div>
+    <div class="tarjeta scroll" id="tablaIdentidades"><div class="vacio">Cargando…</div></div>`
+  await recargarIdentidades()
+}
+
+async function recargarIdentidades() {
+  const q = new URLSearchParams({
+    texto: $('#fTexto')?.value || '', estado: $('#fEstado')?.value || '', riesgo: $('#fRiesgo')?.value || '',
+  })
+  const { identidades: lista } = await api('/panel/identidades?' + q)
+  $('#tablaIdentidades').innerHTML = lista.length ? `
+    <table><thead><tr>
+      <th>Persona</th><th>GID</th><th>Estado</th><th>Riesgo</th>
+      <th>Bloqueos</th><th>Listas</th><th>Apps</th><th>Actualizada</th>
+    </tr></thead><tbody>
+    ${lista.map((i) => `<tr onclick="verIdentidad('${i.id}')">
+      <td><div>${esc(i.nombre || '—')}</div><div style="color:var(--faint);font-size:11.5px">${esc(i.email)}</div></td>
+      <td class="uid num">${esc(i.gid || '—')}</td>
+      <td>${pill(i.estado, PILL_ESTADO[i.estado])}${i.pep ? ' ' + pill('PEP', 'warn') : ''}</td>
+      <td>${i.riesgo ? pill(`${i.riesgo} · ${i.puntuacion}`, PILL_RIESGO[i.riesgo]) : '—'}</td>
+      <td>${i.bloqueos ? pill(i.bloqueos, 'bad') : pill('0', 'ok')}</td>
+      <td>${i.coincidencias ? pill(i.coincidencias, 'crit') : '—'}</td>
+      <td style="font-size:11.5px;color:var(--mut)">${esc(i.apps.join(', ') || '—')}</td>
+      <td style="font-size:11.5px;color:var(--faint)">${fecha(i.actualizadaEn)}</td>
+    </tr>`).join('')}
+    </tbody></table>` : '<div class="vacio">No hay identidades que cumplan el filtro</div>'
+}
+
+async function verIdentidad(id) {
+  abrirFicha('Cargando…', '<div class="vacio">…</div>')
+  const { identidad: i } = await api('/panel/identidades/' + id)
+  const r = i.riesgo || {}
+  const hallazgos = i.documento?.hallazgos || []
+  const coincidencias = i.tamiz?.coincidencias || []
+
+  abrirFicha(esc(i.nombreLegal || i.nombreDeclarado || i.email), `
+    <div class="campos">
+      ${campo('Estado', i.estado)}
+      ${campo('GID', i.gid || 'todavía sin emitir')}
+      ${campo('Correo', i.email)}
+      ${campo('Nombre declarado', i.nombreDeclarado || '—')}
+      ${campo('Nombre del documento', i.nombreLegal || '—')}
+      ${campo('Nacimiento', i.fechaNacimiento || i.fechaNacimientoDeclarada || '—')}
+      ${campo('Nacionalidad', i.nacionalidad || '—')}
+      ${campo('Documento', i.numeroDocumento ? `${i.numeroDocumento} (${i.tipoDocumento || ''})` : '—')}
+      ${campo('Vence', i.vencimientoDocumento || '—')}
+      ${campo('País de residencia', i.paisResidencia || '—')}
+    </div>
+
+    <h3>Riesgo</h3>
+    <div class="tarjeta p">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        ${r.nivel ? pill(r.nivel, PILL_RIESGO[r.nivel]) : '—'}
+        <b class="num" style="font-size:22px">${r.puntuacion ?? '—'}</b>
+        <span style="color:var(--mut)">recomendación: <b>${esc(r.recomendacion || '—')}</b></span>
+      </div>
+      <div class="barra"><i style="width:${Math.min(100, r.puntuacion || 0)}%;background:var(--${
+        r.nivel === 'bajo' ? 'ok' : r.nivel === 'medio' ? 'warn' : 'bad'})"></i></div>
+      ${(r.factores || []).length ? `<div class="lista" style="margin-top:12px">${r.factores.map((f) =>
+        `<div class="item"><div class="t">${esc(f.detalle)}</div>
+         <div class="d">${esc(f.clave)} · ${f.puntos > 0 ? '+' : ''}${f.puntos}</div></div>`).join('')}</div>` : ''}
+    </div>
+
+    ${(r.bloqueos || []).length ? `<h3>Bloqueos — impiden aprobar</h3>
+      <div class="lista">${r.bloqueos.map((b) => `<div class="item grave">${esc(b)}</div>`).join('')}</div>` : ''}
+
+    <h3>Documento</h3>
+    ${hallazgos.length ? `<div class="lista">${hallazgos.map((h) =>
+      `<div class="item ${h.gravedad === 'grave' ? 'grave' : h.gravedad === 'aviso' ? 'aviso2' : 'bien'}">
+        <div class="t">${esc(h.detalle)}</div><div class="d">${esc(h.clave)}</div></div>`).join('')}</div>`
+      : '<div class="vacio">Todavía no se ha recibido ningún documento</div>'}
+
+    <h3>Tamizado de sanciones</h3>
+    ${!i.tamiz ? '<div class="vacio">Sin tamizar</div>'
+      : !i.tamiz.tamizado ? '<div class="item grave">No hay listas cargadas: esta identidad NO ha sido tamizada</div>'
+      : coincidencias.length ? `<div class="lista">${coincidencias.map((c) =>
+        `<div class="item ${c.fuerza === 'fuerte' ? 'grave' : 'aviso2'}">
+          <div class="t">${esc(c.registro.nombre)} · ${(c.puntuacion * 100).toFixed(0)} %
+            ${pill(c.fuerza, c.fuerza === 'fuerte' ? 'crit' : 'warn')}</div>
+          <div class="d">${esc(c.razones.join('. '))}</div>
+          <div class="d">Lista ${esc(c.registro.lista)} · programa ${esc(c.registro.programa || '—')}</div>
+        </div>`).join('')}</div>`
+      : `<div class="item bien">Sin coincidencias · ${i.tamiz.estadoListas.registros.toLocaleString('es')} registros consultados</div>`}
+
+    <h3>Biometría</h3>
+    ${i.biometria ? `<div class="item ${i.biometria.estado === 'ok' ? 'bien'
+        : i.biometria.estado === 'no-configurada' ? 'aviso2' : 'grave'}">
+      <div class="t">${esc(i.biometria.estado)} · ${esc(i.biometria.proveedor)}</div>
+      <div class="d">${esc(i.biometria.motivo || '')}</div></div>`
+      : '<div class="vacio">Sin resolver</div>'}
+
+    ${i.vinculos.length ? `<h3>Cuentas del ecosistema</h3>
+      <div class="lista">${i.vinculos.map((v) =>
+        `<div class="item"><div class="t">${esc(v.app)}</div>
+         <div class="d">${esc(v.cuenta)}${v.direccion ? ' · ' + esc(v.direccion) : ''}</div></div>`).join('')}</div>` : ''}
+
+    ${i.decisiones.length ? `<h3>Decisiones</h3>
+      <div class="lista">${i.decisiones.slice().reverse().map((d) =>
+        `<div class="item"><div class="t">${esc(d.estado)} — ${esc(d.operador)}</div>
+         <div class="d">${esc(d.motivo)}</div><div class="d">${fecha(d.fecha)}</div></div>`).join('')}</div>` : ''}
+
+    <div class="acciones">
+      ${puede('identidad.revisar') && i.estado !== 'verificada' ? `
+        <button class="g" onclick="biometriaManual('${i.id}',true)">Rostro coincide</button>
+        <button class="g" onclick="biometriaManual('${i.id}',false)">Rostro NO coincide</button>` : ''}
+      ${puede('identidad.revisar') ? `<button class="g" onclick="marcarPep('${i.id}',${!i.pep})">${i.pep ? 'Quitar PEP' : 'Marcar PEP'}</button>` : ''}
+      ${puede('identidad.aprobar') && i.estado !== 'verificada'
+        ? `<button class="ok" onclick="aprobarIdentidad('${i.id}',${(r.bloqueos || []).length})">Aprobar</button>` : ''}
+      ${puede('identidad.rechazar') && i.estado !== 'rechazada'
+        ? `<button class="bad" onclick="decidir('/panel/identidades/${i.id}/rechazar','Motivo del rechazo')">Rechazar</button>` : ''}
+      ${puede('identidad.suspender') && i.estado === 'verificada'
+        ? `<button class="bad" onclick="decidir('/panel/identidades/${i.id}/suspender','Motivo de la suspensión')">Suspender</button>` : ''}
+    </div>`)
+}
+
+async function aprobarIdentidad(id, bloqueos) {
+  const motivo = prompt('Motivo de la aprobación (queda en la bitácora):')
+  if (!motivo) return
+  let anulacion
+  if (bloqueos) {
+    anulacion = prompt(
+      `Hay ${bloqueos} comprobación(es) sin resolver.\n\n` +
+      'Para aprobar igualmente hace falta una justificación escrita de al menos 20 caracteres.\n' +
+      'Quedará marcada de forma permanente en el expediente y en la bitácora.')
+    if (!anulacion) return
+  }
+  try {
+    const r = await api(`/panel/identidades/${id}/aprobar`, {
+      method: 'POST', body: JSON.stringify({ motivo, anulacion }),
+    })
+    avisar('Aprobada · GID ' + r.gid)
+    cerrarFicha(); recargarIdentidades()
+  } catch (e) {
+    alert(e.message + (e.datos?.bloqueos ? '\n\n· ' + e.datos.bloqueos.join('\n· ') : ''))
+  }
+}
+
+async function decidir(ruta, etiqueta) {
+  const motivo = prompt(etiqueta + ':')
+  if (!motivo) return
+  try {
+    await api(ruta, { method: 'POST', body: JSON.stringify({ motivo }) })
+    avisar('Hecho'); cerrarFicha(); ir(pestana)
+  } catch (e) { alert(e.message) }
+}
+
+async function biometriaManual(id, coincide) {
+  const nota = prompt(coincide ? 'Nota del cotejo:' : 'Por qué no coincide:') || ''
+  await api(`/panel/identidades/${id}/biometria`, { method: 'POST', body: JSON.stringify({ coincide, nota }) })
+  avisar('Cotejo registrado'); verIdentidad(id)
+}
+
+async function marcarPep(id, pep) {
+  const nota = prompt('Fundamento de la marca PEP:') || ''
+  await api(`/panel/identidades/${id}/pep`, { method: 'POST', body: JSON.stringify({ pep, nota }) })
+  avisar('Actualizado'); verIdentidad(id)
+}
+
+// ── Negocios ────────────────────────────────────────────────────────────────
+VISTAS.negocios = async function () {
+  const { negocios: lista, umbralUbo } = await api('/panel/negocios')
+  $('#vista').innerHTML = `
+    <h2>Negocios (KYB)</h2>
+    <p style="color:var(--faint);font-size:12.5px;margin-bottom:12px">
+      Un negocio no se aprueba sin identificar a sus beneficiarios finales (≥ ${umbralUbo} %), y cada uno
+      necesita su propia identidad personal verificada.</p>
+    <div class="tarjeta scroll">${lista.length ? `
+      <table><thead><tr>
+        <th>Empresa</th><th>GID</th><th>País</th><th>Estado</th><th>Riesgo</th>
+        <th>Bloqueos</th><th>Beneficiarios</th><th>Docs. pendientes</th>
+      </tr></thead><tbody>
+      ${lista.map((n) => `<tr onclick="verNegocio('${n.id}')">
+        <td><div>${esc(n.razonSocial)}</div>
+            <div style="color:var(--faint);font-size:11.5px">${esc(n.nombreComercial)} · ${esc(n.categoria)}</div></td>
+        <td class="uid num">${esc(n.gid || '—')}</td>
+        <td class="num">${esc(n.pais)}</td>
+        <td>${pill(n.estado, PILL_ESTADO[n.estado])}</td>
+        <td>${n.riesgo ? pill(n.riesgo, PILL_RIESGO[n.riesgo]) : '—'}</td>
+        <td>${n.bloqueos ? pill(n.bloqueos, 'bad') : pill('0', 'ok')}</td>
+        <td class="num">${n.beneficiarios}</td>
+        <td>${n.documentosPendientes ? pill(n.documentosPendientes, 'warn') : pill('0', 'ok')}</td>
+      </tr>`).join('')}</tbody></table>` : '<div class="vacio">No hay negocios registrados</div>'}</div>`
+}
+
+async function verNegocio(id) {
+  abrirFicha('Cargando…', '<div class="vacio">…</div>')
+  const { negocio: n } = await api('/panel/negocios/' + id)
+  const r = n.riesgo || {}
+  abrirFicha(esc(n.razonSocial), `
+    <div class="campos">
+      ${campo('Estado', n.estado)}
+      ${campo('GID', n.gid || 'todavía sin emitir')}
+      ${campo('Nombre comercial', n.nombreComercial)}
+      ${campo('Identificador fiscal', n.identificadorFiscal)}
+      ${campo('País', n.pais)}
+      ${campo('Ciudad', n.ciudad)}
+      ${campo('Actividad', `${n.categoria} (riesgo ${n.actividadRiesgo})`)}
+      ${campo('Dueño', n.emailDueno)}
+    </div>
+
+    <h3>Riesgo</h3>
+    <div class="tarjeta p">
+      ${r.nivel ? pill(r.nivel, PILL_RIESGO[r.nivel]) : '—'}
+      <b class="num" style="font-size:20px;margin-left:8px">${r.puntuacion ?? '—'}</b>
+    </div>
+
+    ${(r.bloqueos || []).length ? `<h3>Bloqueos — impiden aprobar</h3>
+      <div class="lista">${r.bloqueos.map((b) => `<div class="item grave">${esc(b)}</div>`).join('')}</div>` : ''}
+
+    <h3>Beneficiarios finales</h3>
+    ${n.beneficiarios.length ? `<div class="lista">${n.beneficiarios.map((b) =>
+      `<div class="item ${(b.tamiz?.fuertes ?? 0) > 0 ? 'grave' : b.gid ? 'bien' : 'aviso2'}">
+        <div class="t">${esc(b.nombreCompleto)} · ${b.porcentaje} % ${b.pep ? pill('PEP', 'warn') : ''}</div>
+        <div class="d">Vía ${esc(b.via)} · ${b.gid ? 'GID ' + esc(b.gid) : 'SIN identidad verificada'}</div>
+        ${(b.tamiz?.fuertes ?? 0) > 0 ? '<div class="d" style="color:var(--crit)">Coincidencia fuerte en listas de sanciones</div>' : ''}
+      </div>`).join('')}</div>` : '<div class="item grave">No se ha declarado ningún beneficiario final</div>'}
+
+    <h3>Documentos</h3>
+    <div class="lista">${n.documentos.map((d) =>
+      `<div class="item ${d.recibidoEn ? 'bien' : 'aviso2'}">
+        <div class="t">${esc(d.nombre)}</div>
+        <div class="d">${d.recibidoEn ? 'recibido ' + fecha(d.recibidoEn) : 'pendiente'}
+          ${puede('negocio.revisar') && !d.recibidoEn
+            ? ` · <a href="#" onclick="recibirDoc('${n.id}','${d.clave}');return false">marcar recibido</a>` : ''}</div>
+      </div>`).join('')}</div>
+
+    <div class="acciones">
+      ${puede('negocio.aprobar') && n.estado !== 'verificado'
+        ? `<button class="ok" onclick="aprobarNegocio('${n.id}',${(r.bloqueos || []).length})">Aprobar</button>` : ''}
+      ${puede('negocio.rechazar') && n.estado !== 'rechazado'
+        ? `<button class="bad" onclick="decidir('/panel/negocios/${n.id}/rechazar','Motivo del rechazo')">Rechazar</button>` : ''}
+    </div>`)
+}
+
+async function recibirDoc(id, clave) {
+  const referencia = prompt('Referencia del documento (expediente, enlace o código):')
+  if (!referencia) return
+  await api(`/panel/negocios/${id}/documento`, { method: 'POST', body: JSON.stringify({ clave, referencia }) })
+  avisar('Documento registrado'); verNegocio(id)
+}
+
+async function aprobarNegocio(id, bloqueos) {
+  const motivo = prompt('Motivo de la aprobación:')
+  if (!motivo) return
+  let anulacion
+  if (bloqueos) {
+    anulacion = prompt(`Hay ${bloqueos} bloqueo(s). Justificación escrita (mínimo 20 caracteres):`)
+    if (!anulacion) return
+  }
+  try {
+    const r = await api(`/panel/negocios/${id}/aprobar`, { method: 'POST', body: JSON.stringify({ motivo, anulacion }) })
+    avisar('Aprobado · GID ' + r.gid); cerrarFicha(); ir('negocios')
+  } catch (e) {
+    alert(e.message + (e.datos?.bloqueos ? '\n\n· ' + e.datos.bloqueos.join('\n· ') : ''))
+  }
+}
+
+// ── Casos ───────────────────────────────────────────────────────────────────
+VISTAS.casos = async function () {
+  const { casos: lista } = await api('/panel/casos')
+  $('#vista').innerHTML = `
+    <h2>Casos de cumplimiento</h2>
+    <div class="tarjeta scroll">${lista.length ? `
+      <table><thead><tr><th>Caso</th><th>Origen</th><th>Gravedad</th><th>Estado</th><th>Asignado</th><th>Abierto</th></tr></thead><tbody>
+      ${lista.map((c) => `<tr onclick="verCaso('${c.id}')">
+        <td>${esc(c.titulo)}</td>
+        <td>${pill(c.origen, 'info')}</td>
+        <td>${pill(c.gravedad, c.gravedad === 'critica' ? 'crit' : c.gravedad === 'alta' ? 'bad' : 'warn')}</td>
+        <td>${pill(c.estado, c.cerradoEn ? 'mut' : 'warn')}</td>
+        <td style="font-size:12px">${esc(c.asignadoA || '—')}</td>
+        <td style="font-size:11.5px;color:var(--faint)">${fecha(c.abiertoEn)}</td>
+      </tr>`).join('')}</tbody></table>` : '<div class="vacio">No hay casos</div>'}</div>`
+}
+
+async function verCaso(id) {
+  abrirFicha('Cargando…', '<div class="vacio">…</div>')
+  const { caso: c } = await api('/panel/casos/' + id)
+  abrirFicha(esc(c.titulo), `
+    <div class="campos">
+      ${campo('Estado', c.estado)}${campo('Gravedad', c.gravedad)}
+      ${campo('Origen', c.origen)}${campo('GID', c.gid || '—')}
+      ${campo('Asignado a', c.asignadoA || 'nadie')}${campo('Abierto', fecha(c.abiertoEn))}
+    </div>
+
+    <h3>Alertas</h3>
+    <div class="lista">${c.alertas.map((a) =>
+      `<div class="item ${a.gravedad === 'critica' ? 'grave' : 'aviso2'}">
+        <div class="t">${esc(a.titulo)} ${a.reportable ? pill('reportable', 'crit') : ''}</div>
+        <div class="d">${esc(a.detalle)}</div>
+        ${a.montoUsd ? `<div class="d num">${dinero(a.montoUsd)}</div>` : ''}
+      </div>`).join('')}</div>
+
+    ${c.notas.length ? `<h3>Análisis</h3><div class="lista">${c.notas.map((n) =>
+      `<div class="item"><div class="t">${esc(n.operador)}</div><div class="d">${esc(n.texto)}</div>
+       <div class="d">${fecha(n.fecha)}</div></div>`).join('')}</div>` : ''}
+
+    <div class="acciones">
+      ${puede('caso.gestionar') && !c.cerradoEn ? `
+        <button class="g" onclick="asignarCaso('${c.id}')">Asignármelo</button>
+        <button class="g" onclick="notaCaso('${c.id}')">Añadir nota</button>` : ''}
+      ${puede('caso.reportar') ? `<button class="g" onclick="verReporte('${c.id}')">Borrador de reporte</button>` : ''}
+      ${puede('caso.reportar') && !c.cerradoEn ? `
+        <button class="ok" onclick="cerrarCaso('${c.id}',false)">Cerrar sin acción</button>
+        <button class="bad" onclick="cerrarCaso('${c.id}',true)">Cerrar con reporte</button>` : ''}
+    </div>`)
+}
+
+async function asignarCaso(id) {
+  await api(`/panel/casos/${id}/asignar`, { method: 'POST', body: JSON.stringify({ a: yo.email }) })
+  avisar('Asignado'); verCaso(id)
+}
+async function notaCaso(id) {
+  const texto = prompt('Nota de análisis:')
+  if (!texto) return
+  await api(`/panel/casos/${id}/nota`, { method: 'POST', body: JSON.stringify({ texto }) })
+  avisar('Nota añadida'); verCaso(id)
+}
+async function cerrarCaso(id, conReporte) {
+  const conclusion = prompt('Conclusión del análisis (mínimo 20 caracteres):')
+  if (!conclusion) return
+  const referencia = conReporte ? prompt('Referencia del reporte presentado:') : undefined
+  try {
+    await api(`/panel/casos/${id}/cerrar`, { method: 'POST', body: JSON.stringify({ conReporte, conclusion, referencia }) })
+    avisar('Caso cerrado'); cerrarFicha(); ir('casos')
+  } catch (e) { alert(e.message) }
+}
+async function verReporte(id) {
+  const r = await api(`/panel/casos/${id}/reporte`)
+  abrirFicha('Borrador de reporte', `<div class="item aviso2">${esc(r.aviso)}</div>
+    <pre>${esc(JSON.stringify(r, null, 2))}</pre>`)
+}
+
+// ── Listas ──────────────────────────────────────────────────────────────────
+VISTAS.listas = async function () {
+  const { estado: e, gafi } = await api('/panel/listas')
+  $('#vista').innerHTML = `
+    <h2>Listas de sanciones</h2>
+    ${!e.cargadas ? `<div class="aviso grave"><div><b>No hay ninguna lista cargada</b>
+      Nadie está siendo tamizado. Deje los archivos de la OFAC (SDN.CSV y ALT.CSV) o sus listas en JSON
+      en la carpeta que indique GENESIS_LISTAS_DIR y pulse recargar.</div></div>` : ''}
+    <div class="tarjeta p">
+      <div class="campos">
+        ${campo('Registros', e.registros.toLocaleString('es'))}
+        ${campo('Fuentes', (e.fuentes || []).join(', ') || '—')}
+        ${campo('Descargadas', e.fechaDescarga || 'desconocido')}
+        ${campo('Antigüedad', e.diasDesdeDescarga != null ? `${e.diasDesdeDescarga} días` : '—')}
+        ${campo('Cargadas en memoria', fecha(e.cargadaEn))}
+        ${campo('Listas GAFI', `${gafi.fecha} · hace ${gafi.dias} días`)}
+      </div>
+      ${puede('listas.recargar') ? `<div class="acciones">
+        <button class="p" onclick="recargarListas()">Recargar y volver a tamizar a todos</button></div>` : ''}
+    </div>
+
+    <h2>Buscar en las listas</h2>
+    <div class="filtros">
+      <input id="qLista" placeholder="Nombre o alias" onkeydown="if(event.key==='Enter')buscarLista()">
+      <button class="g" onclick="buscarLista()">Buscar</button>
+    </div>
+    <div id="resLista"></div>`
+}
+
+async function recargarListas() {
+  avisar('Recargando…')
+  const r = await api('/panel/listas/recargar', { method: 'POST' })
+  avisar(`${r.registros.toLocaleString('es')} registros · ${r.revisadas} identidades retamizadas · ${r.conCoincidencias} con coincidencias`)
+  ir('listas')
+}
+
+async function buscarLista() {
+  const { resultados } = await api('/panel/listas/buscar?q=' + encodeURIComponent($('#qLista').value))
+  $('#resLista').innerHTML = resultados.length
+    ? `<div class="lista">${resultados.map((r) =>
+        `<div class="item"><div class="t">${esc(r.nombre)}</div>
+         <div class="d">${esc(r.lista)} · ${esc(r.programa || '—')} · ${esc(r.tipo)}</div>
+         ${r.alias?.length ? `<div class="d">Alias: ${esc(r.alias.join(', '))}</div>` : ''}
+         ${r.direcciones?.length ? `<div class="d num">${esc(r.direcciones.join(', '))}</div>` : ''}
+        </div>`).join('')}</div>`
+    : '<div class="vacio">Sin resultados</div>'
+}
+
+// ── Bitácora ────────────────────────────────────────────────────────────────
+VISTAS.bitacora = async function () {
+  const d = await api('/panel/bitacora')
+  $('#vista').innerHTML = `
+    <h2>Bitácora</h2>
+    <div class="aviso ${d.cadena.integra ? 'bien' : 'grave'}">
+      <div><b>${d.cadena.integra ? 'Cadena íntegra' : 'CADENA ALTERADA'}</b>
+      ${d.cadena.integra
+        ? `Las ${d.cadena.total} entradas encadenan correctamente. Último hash:
+           <span class="num">${esc(d.anclaje.hash.slice(0, 32))}…</span>`
+        : `La cadena se rompe en la entrada ${d.cadena.rotaEn}. Alguien modificó o borró el registro.`}</div>
+    </div>
+    <div class="tarjeta scroll">
+      <table><thead><tr><th>Fecha</th><th>Actor</th><th>Acción</th><th>Objeto</th><th>Detalle</th></tr></thead><tbody>
+      ${d.entradas.map((e, n) => `<tr onclick="verEntrada(${n})">
+        <td style="font-size:11.5px;color:var(--faint);white-space:nowrap">${fecha(e.fecha)}</td>
+        <td style="font-size:12px">${esc(e.actor)}</td>
+        <td>${pill(e.accion, e.accion.includes('aprobada') ? 'ok' : e.accion.includes('fallida') ? 'bad' : 'info')}</td>
+        <td class="num" style="font-size:11.5px">${esc(e.objeto)}</td>
+        <td style="font-size:11.5px;color:var(--mut);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          ${esc(JSON.stringify(e.detalle))}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>`
+  window._bitacora = d.entradas
+}
+
+function verEntrada(n) {
+  abrirFicha('Entrada de bitácora', `<pre>${esc(JSON.stringify(window._bitacora[n], null, 2))}</pre>`)
+}
+
+// ── Operadores y aplicaciones ───────────────────────────────────────────────
+VISTAS.ajustes = async function () {
+  const [o, a] = await Promise.all([api('/panel/operadores'), api('/panel/aplicaciones')])
+  $('#vista').innerHTML = `
+    <h2>Operadores</h2>
+    <div class="tarjeta scroll">
+      <table><thead><tr><th>Operador</th><th>Rol</th><th>Estado</th><th>Último acceso</th><th></th></tr></thead><tbody>
+      ${o.operadores.map((x) => `<tr>
+        <td><div>${esc(x.nombre)}</div><div style="color:var(--faint);font-size:11.5px">${esc(x.email)}</div></td>
+        <td>${pill(x.rol, 'info')}</td>
+        <td>${pill(x.activo ? 'activo' : 'desactivado', x.activo ? 'ok' : 'mut')}
+            ${x.debeCambiarContrasena ? ' ' + pill('debe cambiar clave', 'warn') : ''}</td>
+        <td style="font-size:11.5px;color:var(--faint)">${fecha(x.ultimoAcceso)}</td>
+        <td>${x.id !== yo.id
+          ? `<button class="g" onclick="activarOperador('${x.id}',${!x.activo})">${x.activo ? 'Desactivar' : 'Activar'}</button>`
+          : ''}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>
+    <div class="acciones"><button class="p" onclick="nuevoOperador()">Nuevo operador</button></div>
+
+    <h3>Qué puede hacer cada rol</h3>
+    <div class="lista">${Object.entries(o.permisos).map(([rol, permisos]) =>
+      `<div class="item"><div class="t">${esc(rol)}</div><div class="d">${esc(permisos.join(', '))}</div></div>`).join('')}</div>
+
+    <h2>Aplicaciones del ecosistema</h2>
+    <div class="tarjeta scroll">
+      <table><thead><tr><th>Aplicación</th><th>Clave</th><th>Alcances</th><th>Estado</th><th>Último uso</th><th></th></tr></thead><tbody>
+      ${a.aplicaciones.map((x) => `<tr>
+        <td><div>${esc(x.nombre)}</div><div style="color:var(--faint);font-size:11.5px">${esc(x.clave)}</div></td>
+        <td class="num" style="font-size:11.5px">${esc(x.pistaClave)}</td>
+        <td style="font-size:11px;color:var(--mut);max-width:280px">${esc(x.alcances.join(', '))}</td>
+        <td>${pill(x.activa ? 'activa' : 'revocada', x.activa ? 'ok' : 'bad')}</td>
+        <td style="font-size:11.5px;color:var(--faint)">${fecha(x.ultimoUso)}</td>
+        <td style="white-space:nowrap">
+          <button class="g" onclick="rotarApp('${x.id}')">Rotar</button>
+          ${x.activa ? `<button class="g" onclick="revocarApp('${x.id}')">Revocar</button>` : ''}
+        </td>
+      </tr>`).join('')}</tbody></table>
+    </div>
+    <p style="color:var(--faint);font-size:12px;margin-top:10px">
+      De cada clave solo se guarda su hash. Al rotarla se muestra una vez y no se puede volver a ver:
+      si se pierde, hay que rotarla otra vez.</p>`
+}
+
+async function nuevoOperador() {
+  const email = prompt('Correo:'); if (!email) return
+  const nombre = prompt('Nombre:'); if (!nombre) return
+  const rol = prompt('Rol (admin, cumplimiento, revisor, auditor):', 'revisor'); if (!rol) return
+  const contrasena = prompt('Contraseña inicial (mínimo 12 caracteres):'); if (!contrasena) return
+  try {
+    await api('/panel/operadores', { method: 'POST', body: JSON.stringify({ email, nombre, rol, contrasena }) })
+    avisar('Operador creado'); ir('ajustes')
+  } catch (e) { alert(e.message) }
+}
+async function activarOperador(id, activo) {
+  await api(`/panel/operadores/${id}/activo`, { method: 'POST', body: JSON.stringify({ activo }) })
+  avisar('Actualizado'); ir('ajustes')
+}
+async function rotarApp(id) {
+  if (!confirm('La clave actual dejará de funcionar en el acto. ¿Continuar?')) return
+  const r = await api(`/panel/aplicaciones/${id}/rotar`, { method: 'POST' })
+  abrirFicha('Clave nueva', `<div class="item aviso2">Se muestra una sola vez. Cópiela ahora y configúrela en la aplicación.</div>
+    <pre>${esc(r.clave_secreta)}</pre>`)
+}
+async function revocarApp(id) {
+  if (!confirm('¿Revocar la clave de esta aplicación?')) return
+  await api(`/panel/aplicaciones/${id}/revocar`, { method: 'POST' })
+  avisar('Revocada'); ir('ajustes')
+}
+
+// ── Ficha lateral ───────────────────────────────────────────────────────────
+function abrirFicha(titulo, html) {
+  $('#fTitulo').innerHTML = titulo
+  $('#fCuerpo').innerHTML = html
+  $('#ficha').classList.add('abierta')
+  $('#capa').classList.add('abierta')
+}
+function cerrarFicha() {
+  $('#ficha').classList.remove('abierta')
+  $('#capa').classList.remove('abierta')
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarFicha() })
+
+// Sesión guardada: se comprueba que siga viva antes de mostrar el panel.
+if (sesion) {
+  api('/sesion/yo').then((r) => { yo = r.operador; arrancar() }).catch(() => mostrarEntrada())
+} else {
+  mostrarEntrada()
+}
 </script>
 </body>
 </html>
