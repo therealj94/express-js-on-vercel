@@ -399,9 +399,19 @@ export function Kyc({ nav }) {
               </>
             ) : (
               <>
-                {puedeEscanear() && (
+                {puedeEscanear() ? (
                   <Button3D title={t('gen.scanStart')} icon="card"
                     onPress={abrirEscaner} disabled={ocupado} style={{ marginBottom: 14 }} />
+                ) : (
+                  // En Expo Go el lector no existe —es un modulo nativo— y el
+                  // boton desaparecia sin mas. Callarselo parece un fallo de la
+                  // app; decirlo convierte una ausencia en una explicacion.
+                  <View style={st.warn}>
+                    <Icon name="information-circle" size={20} color={C.gold} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={st.warnTxt}>{t('gen.scanNeedsApk')}</Text>
+                    </View>
+                  </View>
                 )}
 
                 <Card style={{ padding: 14, marginBottom: 14 }}>
