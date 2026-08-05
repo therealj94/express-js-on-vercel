@@ -6,6 +6,21 @@ compilación. Se despliega copiándolo a cualquier hosting estático.
 Backend: <https://orden-global-scan-c4abe71e8024.herokuapp.com>
 (código en `../ogscan-backend`).
 
+**Desplegado para revisión:** <https://main.d34dnrmfl6lkwn.amplifyapp.com>
+(app de Amplify `ordenscan-explorador`, `d34dnrmfl6lkwn`). No tiene dominio
+propio y no toca `ordenscan.com` en absoluto.
+
+## Por qué existe este explorador
+
+`ordenscan.com` es hoy el app de Amplify `ogscan-frontend` (`d25qv92e7m8uv9`),
+una aplicación **Next.js SSR** cuyo código vive en
+`gitlab.com/shark-technology/ogscan-frontend` — un repositorio de un tercero.
+El auto-build está apagado y el último despliegue es de abril de 2025.
+
+Ese sitio no tiene página `/block/[n]`, así que devuelve 404 y no cumple
+EIP-3091. Y al no tener el código, no se puede corregir. De ahí este reemplazo:
+un solo archivo, sin dependencias, que el equipo sí controla.
+
 ---
 
 ## Lo importante: el hosting tiene que reescribir todas las rutas
@@ -34,9 +49,17 @@ cualquier ruta que no sea un archivo real.**
   en *Index document* como en *Error document*; y en CloudFront, crear dos
   *Custom error responses* (403 y 404) que devuelvan `/index.html` con
   código 200.
-- **AWS Amplify** — en *Rewrites and redirects*, una regla:
-  origen `</^[^.]+$|\.(?!(css|js|png|jpg|svg|ico|json|txt|xml)$)([^.]+$)/>`,
-  destino `/index.html`, tipo `200 (Rewrite)`.
+- **AWS Amplify** — en *Rewrites and redirects*, una sola regla:
+
+  | origen | destino | tipo |
+  | --- | --- | --- |
+  | `</^[^.]+$\|\.(?!(css\|gif\|ico\|jpg\|jpeg\|js\|png\|txt\|svg\|woff\|woff2\|ttf\|map\|json\|xml\|webmanifest)$)([^.]+$)/>` | `/index.html` | `200 (Rewrite)` |
+
+  **No usar la regla `/<*>` → `/index.html` con `404-200`.** Está en varios
+  tutoriales y parece equivalente, pero no lo es: Amplify sirve el `index.html`
+  dejando el código de respuesta en **404**, y además redirige `/block/123` a
+  `/block/123/` con un 301. Se probó y falla — una ruta EIP-3091 válida no puede
+  responder 404. La regla de la tabla devuelve 200 directo, sin redirección.
 
 Sin esa regla el explorador funciona al navegar dentro del sitio, pero se rompe
 al recargar o al abrir un enlace compartido — que es justo lo que hace una
