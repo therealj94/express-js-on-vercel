@@ -470,6 +470,13 @@ export function perfilPublico(identidad: Identidad) {
 /** Lo que ve el usuario dueño de la identidad sobre su propio trámite. */
 export function estadoParaUsuario(identidad: Identidad) {
   const pendientes = (identidad.riesgo?.bloqueos ?? []).length
+
+  // Un cotejo FALLIDO no es lo mismo que uno pendiente de revisión. Casi
+  // siempre es mala luz o un gesto a medias, y la persona puede repetirlo en
+  // veinte segundos. Sin esta señal, la app la mandaba a esperar días por una
+  // foto mal tomada — y al volver a entrar tampoco le dejaba reintentar.
+  const rostroPendiente = identidad.biometria?.estado === 'fallida'
+
   return {
     id: identidad.id,
     email: identidad.email,
@@ -477,12 +484,14 @@ export function estadoParaUsuario(identidad: Identidad) {
     gid: identidad.gid,
     nombreLegal: identidad.nombreLegal,
     documentoAceptable: identidad.documento?.aceptable ?? null,
+    rostroPendiente,
     // Al usuario se le dice qué le falta, no el detalle del análisis interno.
     faltan: identidad.estado === 'verificada' ? 0 : pendientes,
     siguientePaso:
       identidad.estado === 'iniciada' ? 'Completar nombre y fecha de nacimiento'
         : identidad.estado === 'datos' ? 'Escanear el documento de identidad'
         : identidad.estado === 'documento' ? 'Tomarse la foto de rostro'
+        : rostroPendiente ? 'Repetir la comprobación del rostro'
         : identidad.estado === 'biometria' || identidad.estado === 'en-revision' ? 'En revisión'
         : identidad.estado === 'verificada' ? 'Listo'
         : identidad.estado === 'rechazada' ? 'Verificación rechazada'

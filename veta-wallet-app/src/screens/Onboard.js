@@ -7,6 +7,7 @@ import { C, G } from '../theme';
 import { Header, Button3D, Card, Field, hap, useToast, useAccount } from '../ui';
 import { genesis, revisarFormaMrz } from '../genesis';
 import { leerDeFoto, puedeEscanear } from '../mrzOcr';
+import { FRECUENTES, buscarPaises, nombrePais } from '../paises';
 import { setPassport } from '../accounts';
 import { getSeed } from '../api';
 import PedirClave from '../PedirClave';
@@ -20,8 +21,6 @@ import { useT } from '../i18n';
 //
 // Cuatro pasos: datos → documento → rostro → revisión.
 
-const PAISES_FRECUENTES = ['HND', 'GTM', 'SLV', 'NIC', 'CRI', 'PAN', 'MEX', 'USA', 'ESP', 'COL'];
-
 export function Kyc({ nav }) {
   const t = useT();
   const toast = useToast();
@@ -33,9 +32,35 @@ export function Kyc({ nav }) {
   const [ocupado, setOcupado] = useState(false);
 
   // Paso 1 — datos declarados
+  //
+  // La fecha se pide en tres casillas y no en un campo con formato. Tenía que
+  // escribirse exactamente «1990-05-23»: un guion de menos y el servidor
+  // respondía que no coincidía con el documento, sin forma de volver atrás a
+  // corregirlo. Tres números con teclado numérico no se pueden escribir mal.
   const [nombre, setNombre] = useState(account?.name || '');
-  const [nacimiento, setNacimiento] = useState('');
+  const [dia, setDia] = useState('');
+  const [mes, setMes] = useState('');
+  const [anio, setAnio] = useState('');
   const [pais, setPais] = useState(account?.country || 'HND');
+  const [buscaPais, setBuscaPais] = useState('');
+  const [eligiendoPais, setEligiendoPais] = useState(false);
+  const refMes = useRef(null);
+  const refAnio = useRef(null);
+
+  const nacimiento = (dia && mes && anio)
+    ? `${anio.padStart(4, '0')}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`
+    : '';
+
+  /** ¿Es una fecha que existe de verdad? El 31 de febrero no. */
+  const fechaValida = (() => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(nacimiento)) return false;
+    const [a, m, d] = nacimiento.split('-').map(Number);
+    if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+    const f = new Date(Date.UTC(a, m - 1, d));
+    if (f.getUTCMonth() !== m - 1 || f.getUTCDate() !== d) return false;
+    const edad = (Date.now() - f.getTime()) / 31557600000;
+    return edad >= 18 && edad <= 120;
+  })();
 
   // Paso 2 — documento
   const [mrz, setMrz] = useState('');
@@ -96,7 +121,7 @@ export function Kyc({ nav }) {
   // ---- paso 1 ----
   async function enviarDatos() {
     if (!nombre.trim()) { toast(t('gen.needName')); return; }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(nacimiento)) { toast(t('gen.needDob')); return; }
+    if (!fechaValida) { toast(t('gen.needDob')); return; }
     hap(); setOcupado(true);
     const r = await genesis.declararDatos({
       nombreCompleto: nombre.trim(),
@@ -192,14 +217,21 @@ export function Kyc({ nav }) {
       setOcupado(false);
       if (!r || r.error) { toast(r?.error || t('gen.errNetT')); reiniciarReto(); return; }
 
-      // Si la prueba de vida no convenció, se dice y se ofrece repetirla: el
-      // expediente sigue vivo y no hay nada que rehacer salvo esta parte.
+      setEstado(r.estado);
+      reiniciarReto();
+
+      // Una prueba de vida fallida NO puede acabar en la cola de revisión sin
+      // más: casi siempre es mala luz o un gesto a medias, y mandar a alguien a
+      // esperar días por eso —sin ofrecerle repetir— es perder la verificación.
+      // Se queda en el paso del rostro con el motivo concreto delante.
       const bio = r.biometria;
-      if (bio && (bio.estado === 'fallida' || bio.estado === 'dudosa')) {
+      if (bio?.estado === 'fallida') {
         const falló = (bio.gestos || []).find((g) => !g.ok);
-        toast(falló?.motivo ? `${t('gen.liveFailed')} (${falló.gesto})` : t('gen.liveFailed'));
+        toast(falló?.motivo ? `${t('gesto.' + falló.gesto)}: ${falló.motivo}` : t('gen.liveFailed'));
+        return; // sigue en 'rostro', con el botón de empezar de nuevo
       }
-      setEstado(r.estado); reiniciarReto(); setPaso('revision');
+      if (bio?.estado === 'dudosa') toast(t('gen.liveDoubt'));
+      setPaso('revision');
     } catch (e) { setOcupado(false); toast(t('gen.errPhoto')); }
   }
 
@@ -237,19 +269,72 @@ export function Kyc({ nav }) {
             <Text style={st.body}>{t('gen.stepDataP')}</Text>
             <Field label={t('prof.name')} value={nombre} onChangeText={setNombre}
               placeholder={t('gen.nameHint')} autoCapitalize="words" />
-            <Field label={t('gen.dob')} value={nacimiento} onChangeText={setNacimiento}
-              placeholder="1990-05-23" keyboardType="numbers-and-punctuation" maxLength={10} />
+            <Text style={st.foot2}>{t('gen.nameAsDoc')}</Text>
+
+            {/* Tres casillas y salto automático: se teclea sin pensar en formatos. */}
+            <Text style={st.label}>{t('gen.dob')}</Text>
+            <View style={st.fecha}>
+              <TextInput style={st.fechaCaja} value={dia} placeholder={t('gen.dobD')}
+                placeholderTextColor="#6f938f" keyboardType="number-pad" maxLength={2}
+                onChangeText={(v) => {
+                  const n = v.replace(/\D/g, ''); setDia(n);
+                  if (n.length === 2) refMes.current?.focus();
+                }} />
+              <Text style={st.fechaSep}>/</Text>
+              <TextInput ref={refMes} style={st.fechaCaja} value={mes} placeholder={t('gen.dobM')}
+                placeholderTextColor="#6f938f" keyboardType="number-pad" maxLength={2}
+                onChangeText={(v) => {
+                  const n = v.replace(/\D/g, ''); setMes(n);
+                  if (n.length === 2) refAnio.current?.focus();
+                }} />
+              <Text style={st.fechaSep}>/</Text>
+              <TextInput ref={refAnio} style={[st.fechaCaja, { flex: 1.5 }]} value={anio}
+                placeholder={t('gen.dobY')} placeholderTextColor="#6f938f"
+                keyboardType="number-pad" maxLength={4}
+                onChangeText={(v) => setAnio(v.replace(/\D/g, ''))} />
+            </View>
+            {dia && mes && anio.length === 4 && !fechaValida && (
+              <Text style={st.mrzPista}>{t('gen.dobBad')}</Text>
+            )}
+
             <Text style={st.label}>{t('gen.country')}</Text>
             <View style={st.paises}>
-              {PAISES_FRECUENTES.map((p) => (
-                <Pressable key={p} onPress={() => { hap(); setPais(p); }}
+              {FRECUENTES.map((p) => (
+                <Pressable key={p} onPress={() => { hap(); setPais(p); setEligiendoPais(false); }}
                   style={[st.pais, pais === p && st.paisSel]}>
                   <Text style={[st.paisTxt, pais === p && st.paisTxtSel]}>{p}</Text>
                 </Pressable>
               ))}
+              {/* Sin esto, quien no viva en uno de los diez de arriba no podía
+                  terminar la verificación, o declaraba un país que no es el suyo. */}
+              <Pressable onPress={() => { hap(); setEligiendoPais(!eligiendoPais); }}
+                style={[st.pais, !FRECUENTES.includes(pais) && st.paisSel]}>
+                <Text style={[st.paisTxt, !FRECUENTES.includes(pais) && st.paisTxtSel]}>
+                  {FRECUENTES.includes(pais) ? t('gen.otherCountry') : pais}
+                </Text>
+              </Pressable>
             </View>
+            <Text style={st.foot2}>{nombrePais(pais)}</Text>
+
+            {eligiendoPais && (
+              <View style={{ marginTop: 10 }}>
+                <TextInput style={st.buscaPais} value={buscaPais} onChangeText={setBuscaPais}
+                  placeholder={t('gen.searchCountry')} placeholderTextColor="#6f938f"
+                  autoCorrect={false} />
+                <View style={st.listaPaises}>
+                  {buscarPaises(buscaPais).slice(0, 40).map(([codigo, nombrePs]) => (
+                    <Pressable key={codigo} style={st.filaPais}
+                      onPress={() => { hap(); setPais(codigo); setEligiendoPais(false); setBuscaPais(''); }}>
+                      <Text style={st.filaPaisTxt}>{nombrePs}</Text>
+                      <Text style={st.filaPaisCod}>{codigo}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
+
             <Button3D title={t('gen.continue')} icon="arrow-forward" onPress={enviarDatos}
-              disabled={ocupado} style={{ marginTop: 18 }} />
+              disabled={ocupado || !nombre.trim() || !fechaValida} style={{ marginTop: 18 }} />
             <Text style={st.foot}>{t('gen.dataFoot')}</Text>
           </>
         )}
@@ -319,6 +404,15 @@ export function Kyc({ nav }) {
                   {problemas.map((p, i) => <Text key={i} style={st.warnTxt}>{p}</Text>)}
                 </View>
               </View>
+            )}
+
+            {/* Si lo que falla es el nombre o la fecha que declaró, el problema
+                no está en el documento sino en el paso anterior — y hasta ahora
+                no había manera de volver: la verificación se quedaba muerta ahí. */}
+            {problemas.some((p) => /declarad|coincid/i.test(p)) && (
+              <Pressable onPress={() => { hap(); setProblemas([]); setPaso('datos'); }} style={st.retry}>
+                <Text style={st.retryTxt}>{t('gen.fixData')}</Text>
+              </Pressable>
             )}
 
             <Button3D title={t('gen.sendDoc')} icon="shield-checkmark" onPress={enviarDocumento}
@@ -626,6 +720,26 @@ const st = StyleSheet.create({
   },
 
   // La instrucción del gesto tiene que leerse de reojo, mirando a la cámara.
+  foot2: { color: C.txt3, fontSize: 11.5, marginTop: -8, marginBottom: 12 },
+  fecha: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  fechaCaja: {
+    flex: 1, backgroundColor: '#06282a', borderWidth: 1, borderColor: C.line2,
+    borderRadius: 12, paddingVertical: 12, color: C.txt, fontSize: 17,
+    textAlign: 'center', fontVariant: ['tabular-nums'],
+  },
+  fechaSep: { color: C.txt3, fontSize: 17 },
+  buscaPais: {
+    backgroundColor: '#06282a', borderWidth: 1, borderColor: C.line2,
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, color: C.txt,
+  },
+  listaPaises: { marginTop: 8, maxHeight: 260, borderRadius: 12, overflow: 'hidden' },
+  filaPais: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 11, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: C.line2,
+  },
+  filaPaisTxt: { color: C.txt, fontSize: 14, flex: 1 },
+  filaPaisCod: { color: C.txt3, fontSize: 12, fontVariant: ['tabular-nums'] },
+
   // Franja que marca dónde poner el pie del documento. Encuadrar bien es la
   // diferencia entre leerlo a la primera y tres intentos.
   guia: {

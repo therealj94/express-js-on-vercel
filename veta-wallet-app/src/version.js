@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.22.0';
-export const BUILD = 58;
+export const VERSION = '1.23.0';
+export const BUILD = 59;
 export const RELEASED = '2026-08-05';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,25 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.23.0',
+    build: 59,
+    date: '2026-08-05',
+    es: [
+      'La fecha de nacimiento se escribe en tres casillas —día, mes, año— con teclado numérico y salto automático. Antes había que teclearla exactamente como «1990-05-23»: un guion de menos y la verificación se caía por «no coincide con tu documento».',
+      'Ya se puede elegir cualquier país de residencia, con buscador. Antes solo había diez botones: quien vive en Ecuador, Perú o Argentina no podía terminar la verificación, o declaraba un país que no es el suyo.',
+      'Si el documento no coincide con lo que declaraste, ahora podés volver a corregirlo. Antes la verificación se quedaba muerta en esa pantalla, sin salida.',
+      'Si la comprobación del rostro falla —mala luz, un gesto a medias— podés repetirla ahí mismo. Antes se iba a revisión manual y había que esperar días por una foto mal tomada. Y si cerrabas la app, al volver tampoco te dejaba reintentar.',
+      'Aviso inmediato cuando la fecha escrita no existe o la edad no permite abrir cuenta, en vez de descubrirlo tres pantallas después.',
+    ],
+    en: [
+      'Date of birth is now three boxes — day, month, year — with a number pad and automatic jumps. It used to require typing exactly «1990-05-23»: one missing dash and verification failed with «does not match your document».',
+      'You can now pick any country of residence, with search. There used to be ten buttons only: anyone living in Ecuador, Peru or Argentina could not finish verification, or declared a country that was not theirs.',
+      'If your document does not match what you declared, you can now go back and fix it. Verification used to dead-end on that screen with no way out.',
+      'If the face check fails — poor light, a half-done gesture — you can retry right there. It used to go to manual review, meaning days of waiting over a bad photo. And closing the app lost the retry too.',
+      'Immediate warning when the date typed does not exist or the age does not allow opening an account, instead of finding out three screens later.',
+    ],
+  },
   {
     v: '1.22.0',
     build: 58,

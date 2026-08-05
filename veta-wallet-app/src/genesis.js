@@ -164,7 +164,10 @@ function aVista(identidad) {
     id: identidad.id,
     email: identidad.email,
     estado: identidad.estado,
-    paso: PASOS[identidad.estado] || 'datos',
+    // Un rostro que FALLO vuelve al paso del rostro, no a la sala de espera:
+    // repetirlo son veinte segundos y esperar una revision manual son dias.
+    paso: identidad.rostroPendiente ? 'rostro' : (PASOS[identidad.estado] || 'datos'),
+    rostroPendiente: Boolean(identidad.rostroPendiente),
     genesisUid: identidad.gid || null,
     fullName: identidad.nombreLegal || null,
     documentoAceptable: identidad.documentoAceptable,
