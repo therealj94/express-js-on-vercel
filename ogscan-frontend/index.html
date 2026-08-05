@@ -191,7 +191,9 @@
   .copiar{background:none;border:0;color:var(--txt3);cursor:pointer;padding:2px 4px;
     vertical-align:middle;line-height:0}
   .copiar:hover{color:var(--oro)}
-  .aviso{padding:36px 20px;text-align:center;color:var(--txt3);font-size:14px}
+  .aviso.peligro{border-color:rgba(240,119,107,.45);background:rgba(240,119,107,.09);color:#f4b4ac;text-align:left}
+.aviso.bueno{border-color:rgba(62,217,160,.4);background:rgba(62,217,160,.08);color:#9fe8cd;text-align:left}
+.aviso{padding:36px 20px;text-align:center;color:var(--txt3);font-size:14px}
   .error{padding:18px;border:1px solid rgba(232,106,106,.4);border-radius:var(--r2);
     color:var(--mal);background:rgba(232,106,106,.07);margin:16px 0;font-size:14px}
   .cargando{color:var(--txt3);padding:32px;text-align:center;font-size:13.5px}
@@ -893,6 +895,38 @@ async function vistaToken(app, contrato) {
   }
 }
 
+// ── Identidad y sanciones de una dirección ───────────────────────────────────
+//
+// Tres estados, y distinguirlos importa:
+//
+//   sancionada === true   → aviso rojo, y se dice ANTES que ninguna otra cosa
+//   sancionada === false  → se comprobó y está limpia
+//   sancionada === null   → NO se pudo comprobar
+//
+// El tercero no se enseña como si fuera el segundo. Un explorador que diga
+// "sin coincidencias" cuando en realidad no consultó nada le da a alguien la
+// confianza para mandar fondos que no debería tener. Si no se comprobó, se
+// calla — es preferible no decir nada que decir algo tranquilizador y falso.
+function avisoIdentidad(g) {
+  if (!g || !g.consultado) return "";
+  const partes = [];
+
+  if (g.sancionada === true) {
+    partes.push(`<div class="aviso peligro">
+      <b>Dirección en listas de sanciones.</b>
+      ${g.ficha ? `Figura en ${esc(g.ficha.lista)}${g.ficha.programa ? ` (programa ${esc(g.ficha.programa)})` : ""}.` : ""}
+      No envíe fondos a esta dirección.</div>`);
+  }
+
+  if (g.verificada === true && g.gid) {
+    partes.push(`<div class="aviso bueno">
+      <b>Identidad verificada.</b> Detrás de esta dirección hay una identidad
+      comprobada por Genesis ID: <span class="mono">${esc(g.gid)}</span>.</div>`);
+  }
+
+  return partes.join("");
+}
+
 async function vistaDireccion(app, addr) {
   await catalogo();
   const sim = tokenPorContrato(addr);
@@ -914,7 +948,7 @@ async function vistaDireccion(app, addr) {
       return `<a class="tarj" href="${c ? `/token/${c}` : "#"}" data-ruta>
         <div class="et">${esc(k)}</div><div class="va">${valor(v.balance)}</div></a>`;
     }).join("");
-    $("#res").innerHTML = `<div class="tarjetas">
+    $("#res").innerHTML = avisoIdentidad(d.identidad) + `<div class="tarjetas">
       <div class="tarj"><div class="et">Saldo ${MONEDA}</div>
         <div class="va oro">${d.balance === null ? "—" : valor(d.balance)}</div>
         ${d.balance === null ? `<div class="sub">el nodo no respondió</div>` : ""}</div>${filasTk}</div>`;

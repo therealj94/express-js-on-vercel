@@ -4,6 +4,7 @@ import Transaction from "../Models/Transaction";
 import Token from "../Models/TokenTx";
 
 const ABI = require("../ABI/abi.json");
+import { estadoDeDireccion } from "../lib/genesis";
 
 export const getTransactionsByAddress = async (req, res) => {
   try {
@@ -45,6 +46,11 @@ export const getTransactionsByAddress = async (req, res) => {
     let balanceEther = null;
     let tokensBalance = {};
     let esContrato = false;
+    // Genesis ID va fuera del try del saldo: si el servicio de identidad falla,
+    // la ficha tiene que seguir mostrando saldos y transacciones igual.
+    // `estadoDeDireccion` nunca lanza — devuelve consultado:false.
+    const genesis = await estadoDeDireccion(addr).catch(() => null);
+
     try {
       const [balanceWei, tk, codigo] = await Promise.all([
         web3.eth.getBalance(addr),
@@ -65,6 +71,9 @@ export const getTransactionsByAddress = async (req, res) => {
       balance: balanceEther,
       tokensBalance,
       esContrato,
+      // `null` en verificada o sancionada significa "no se pudo comprobar",
+      // que no es lo mismo que "no". El frontend distingue los tres casos.
+      identidad: genesis,
       total: allTransactions.length,
     });
   } catch (error) {
