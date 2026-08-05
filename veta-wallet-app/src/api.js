@@ -684,6 +684,23 @@ export const ONCHAIN_TOKENS = [
   { symbol: 'AGKA', contract: '0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B' },
   { symbol: 'ONDK', contract: '0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1' },
   { symbol: 'MNKA', contract: '0x18b6680CFF71c11067bec312Fc48786bE2e54Ead' },
+  // Resto de los tokens reales de la red (contratos confirmados contra la
+  // cadena: se les llamó symbol()/name()/decimals() a cada uno; los 16 usan
+  // 18 decimales, se fija el valor para no gastar una llamada RPC extra por
+  // token en cada carga del portafolio — el RPC de producción hoy es un
+  // solo nodo). Se dejó fuera TKNB — su nombre en cadena es literalmente
+  // "TokenB", un contrato de prueba, no un activo del ecosistema.
+  { symbol: 'TXT', contract: '0x5d917686FB61507CC9202BbC4F6eeD03560fa469', decimals: 18 },
+  { symbol: 'IBS', contract: '0x7AF11D3E94A174f6fc290A5B7791A6DEE2718E62', decimals: 18 },
+  { symbol: 'HARV', contract: '0x0fa04D11F28B28cbC9b98dd016F02023AdDb1923', decimals: 18 },
+  { symbol: 'AUBEX', contract: '0xF1498640B27A66C0DC505093D70911C060e04fb0', decimals: 18 },
+  { symbol: 'ASL', contract: '0x69846aC960D45F9946C613DFCe1b761D37Faf098', decimals: 18 },
+  { symbol: 'LOVE', contract: '0x638F2ba0e3E1083D1ba570b449BD266F3860D164', decimals: 18 },
+  { symbol: 'REST', contract: '0x1aC12Ebd7739003059d1E9EA2a4863C92D1505DD', decimals: 18 },
+  { symbol: 'SOL', contract: '0xAAc6aE2E2037fC2e94d0b060792E7eB4E5fBfa66', decimals: 18 },
+  { symbol: 'AIT', contract: '0xAE14Db486872AC07d74Ad69cC09590239b21BA2e', decimals: 18 },
+  { symbol: 'AGRO', contract: '0x2A31ba919A5339fCB0F8aEeFfCE2c807B16007fe', decimals: 18 },
+  { symbol: 'POLITICAL', contract: '0x92496E1848e001428A3495409a9A9f616bB6dD3B', decimals: 18 },
 ];
 
 // Caché del último precio "bueno" de ONDK que devolvió el endpoint de

@@ -13,6 +13,17 @@ export const TOKEN_META = {
   AGKA:   { s: 'AGKA',   n: 'AGKA',   image: require('../assets/tokens/agka.jpg') },
   ONDK:   { s: 'ONDK',   n: 'ONDK',   image: require('../assets/tokens/ondk.jpg') },
   MNKA:   { s: 'MNKA',   n: 'MNKA',   glyph: '♛', grad: ['#F8EFCF', '#C9A961', '#96793F'], fg: '#3A2C08' },
+  TXT:      { s: 'TXT',      n: 'TXT',       glyph: 'TXT', grad: ['#CFE0E8', '#6C97A8', '#3C5C68'], fg: '#0E2731' },
+  IBS:      { s: 'IBS',      n: 'IBS Energy',glyph: '⚡',  grad: ['#FFE9B0', '#E0A426', '#8A5E0E'], fg: '#3A2400' },
+  HARV:     { s: 'HARV',     n: 'Harvi',     glyph: '🌾',  grad: ['#E9F2C8', '#9CBF5E', '#5A7A2C'], fg: '#1D2A0C' },
+  AUBEX:    { s: 'AUBEX',    n: 'AUBEX',     glyph: 'AB',  grad: ['#E4D9F7', '#8E6FC9', '#4B3684'], fg: '#1C1030' },
+  ASL:      { s: 'ASL',      n: 'Athletic',  glyph: '🏃',  grad: ['#D9F0E6', '#4FB98B', '#227455'], fg: '#062A1D' },
+  LOVE:     { s: 'LOVE',     n: 'Amor Global',glyph: '♥',  grad: ['#FBD8E3', '#E0648B', '#93254F'], fg: '#390318' },
+  REST:     { s: 'REST',     n: 'Real State',glyph: '🏠',  grad: ['#DCE6F5', '#6E8FC2', '#354E76'], fg: '#0E1A2C' },
+  SOL:      { s: 'SOL',      n: 'Solar',     glyph: '☀',  grad: ['#FFEBB0', '#F0A93A', '#A5610E'], fg: '#3A1E00' },
+  AIT:      { s: 'AIT',      n: 'AI',        glyph: 'AI',  grad: ['#D3E8FB', '#4E8FD6', '#274F82'], fg: '#0A2038' },
+  AGRO:     { s: 'AGRO',     n: 'Agrotech',  glyph: '🌱',  grad: ['#E2F1D6', '#7FB25A', '#43682D'], fg: '#152508' },
+  POLITICAL:{ s: 'POLITICAL',n: 'Political', glyph: 'PO',  grad: ['#E9E0D6', '#A98E6E', '#6B5236'], fg: '#241A0C' },
 };
 
 // Las mismas 3 filas para las 5 monedas (Tipo · Respaldo · Red) para que
@@ -65,6 +76,64 @@ export const COIN_INFO = {
       ['Respaldo', 'Ecosistema · comunidad e innovación'],
       ['Red', 'Orden Global · 8532'],
     ],
+  },
+  // Descripciones honestas: a diferencia de AUKA/AGKA, estos tokens no
+  // tienen un respaldo en un commodity específico verificado, así que la
+  // fila "Respaldo" describe el sector del proyecto, no un activo físico.
+  TXT: {
+    title: 'TXT',
+    desc: 'Activo digital del ecosistema Orden Global.',
+    rows: [['Tipo', 'Activo digital'], ['Respaldo', 'Ecosistema Orden Global'], ['Red', 'Orden Global · 8532']],
+  },
+  IBS: {
+    title: 'IBS Energy',
+    desc: 'Token del sector energético dentro del ecosistema Orden Global.',
+    rows: [['Tipo', 'Token de sector'], ['Respaldo', 'Energía'], ['Red', 'Orden Global · 8532']],
+  },
+  HARV: {
+    title: 'Harvi',
+    desc: 'Activo digital del ecosistema Orden Global.',
+    rows: [['Tipo', 'Activo digital'], ['Respaldo', 'Ecosistema Orden Global'], ['Red', 'Orden Global · 8532']],
+  },
+  AUBEX: {
+    title: 'AUBEX',
+    desc: 'Activo digital del ecosistema Orden Global.',
+    rows: [['Tipo', 'Activo digital'], ['Respaldo', 'Ecosistema Orden Global'], ['Red', 'Orden Global · 8532']],
+  },
+  ASL: {
+    title: 'Athletic',
+    desc: 'Token del sector deportivo dentro del ecosistema Orden Global.',
+    rows: [['Tipo', 'Token de sector'], ['Respaldo', 'Deporte'], ['Red', 'Orden Global · 8532']],
+  },
+  LOVE: {
+    title: 'Amor Global',
+    desc: 'Activo digital del ecosistema Orden Global.',
+    rows: [['Tipo', 'Activo digital'], ['Respaldo', 'Ecosistema Orden Global'], ['Red', 'Orden Global · 8532']],
+  },
+  REST: {
+    title: 'Real State',
+    desc: 'Token del sector inmobiliario dentro del ecosistema Orden Global.',
+    rows: [['Tipo', 'Token de sector'], ['Respaldo', 'Bienes raíces'], ['Red', 'Orden Global · 8532']],
+  },
+  SOL: {
+    title: 'Solar',
+    desc: 'Token del sector de energía solar dentro del ecosistema Orden Global.',
+    rows: [['Tipo', 'Token de sector'], ['Respaldo', 'Energía solar'], ['Red', 'Orden Global · 8532']],
+  },
+  AIT: {
+    title: 'Artificial Intelligence',
+    desc: 'Token del sector de inteligencia artificial dentro del ecosistema Orden Global.',
+    rows: [['Tipo', 'Token de sector'], ['Respaldo', 'Inteligencia artificial'], ['Red', 'Orden Global · 8532']],
+  },
+  AGRO: {
+    title: 'Agrotech',
+    desc: 'Token del sector agrícola dentro del ecosistema Orden Global.',
+    rows: [['Tipo', 'Token de sector'], ['Respaldo', 'Agricultura'], ['Red', 'Orden Global · 8532']],
+  },
+  POLITICAL: {
+    title: 'Political',
+    desc: 'Activo digital del ecosistema Orden Global.',
+    rows: [['Tipo', 'Activo digital'], ['Respaldo', 'Ecosistema Orden Global'], ['Red', 'Orden Global · 8532']],
   },
 };
 
