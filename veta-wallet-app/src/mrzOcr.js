@@ -125,6 +125,35 @@ const LETRA_A_CIFRA = {
   Z: ['2'], A: ['4'], S: ['5'], G: ['6'], T: ['7'], B: ['8'],
 };
 
+/**
+ * Cifras que el OCR pone donde solo puede haber letras: los nombres.
+ *
+ * Es el reflejo exacto de la tabla de arriba. En una cédula real se leyó
+ * «ENAMORAD0» con un cero: en un apellido no cabe una cifra, así que es con
+ * certeza un error de lectura y se puede corregir sin adivinar nada.
+ */
+const CIFRA_A_LETRA = { 0: 'O', 1: 'I', 2: 'Z', 5: 'S', 6: 'G', 8: 'B' };
+
+/**
+ * Arregla las cifras que aparezcan en la línea de nombres.
+ *
+ * Solo en esa línea —la tercera de una TD1, la primera de un pasaporte— y solo
+ * después del tipo de documento y el país, que sí llevan cifras en otros
+ * formatos. Es una corrección segura: la norma no admite dígitos en un nombre.
+ */
+export function arreglarNombres(lineas, formato) {
+  const iNombres = formato === 'TD1' ? 2 : 0;
+  const l = lineas[iNombres];
+  if (!l) return lineas;
+  // En TD3/TD2 los cinco primeros caracteres son tipo y país emisor.
+  const desde = formato === 'TD1' ? 0 : 5;
+  const arreglada = l.split('').map((c, i) =>
+    (i >= desde && CIFRA_A_LETRA[c]) ? CIFRA_A_LETRA[c] : c).join('');
+  const copia = [...lineas];
+  copia[iNombres] = arreglada;
+  return copia;
+}
+
 /** Posiciones donde la norma exige cifra: los dígitos de control y las fechas. */
 function zonasNumericas(formato) {
   const reglas = CONTROLES[formato] || [];
@@ -326,7 +355,10 @@ export async function leerDeFoto(uri) {
       return { ok: false, motivo: 'cortadas', visto: encontrado.visto };
     }
 
-    const { formato, lineas } = encontrado;
+    const { formato } = encontrado;
+    // Las cifras que caigan en la línea del nombre son errores de lectura
+    // seguros: ahí la norma no admite dígitos.
+    const lineas = arreglarNombres(encontrado.lineas, formato);
     const yaCuadra = cuadranDigitos(lineas, formato);
     if (yaCuadra.bien === yaCuadra.total) {
       return { ok: true, mrz: lineas.join('\n'), formato, corregida: false };

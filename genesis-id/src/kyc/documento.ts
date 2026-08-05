@@ -57,12 +57,18 @@ function cotejarAnverso(
   if (!plano) return { nombre: null, fecha: null, detalle: 'El anverso no traía texto legible' }
 
   let nombre: boolean | null = null
+  let halladas = 0
+  let partes: string[] = []
   if (declarado.nombreCompleto) {
-    // Cada palabra del nombre declarado tiene que aparecer impresa. Se piden
-    // tres letras o más para no contar partículas ni iniciales sueltas.
-    const partes = fichas(declarado.nombreCompleto).filter((f) => f.length >= 3)
-    const halladas = partes.filter((f) => plano.includes(f))
-    nombre = partes.length > 0 && halladas.length === partes.length
+    // Se piden tres letras o más para no contar partículas ni iniciales.
+    partes = fichas(declarado.nombreCompleto).filter((f) => f.length >= 3)
+    // Se acepta que una palabra aparezca cortada o con una letra mal leída: el
+    // anverso está impreso sobre una filigrana de colores y el reconocimiento
+    // se equivoca a menudo. Basta con que el principio coincida.
+    halladas = partes.filter((f) => plano.includes(f) || plano.includes(f.slice(0, Math.max(4, f.length - 2)))).length
+    // Confirmado si aparecen TODAS. Con la mayoría no se afirma nada: ni que
+    // coincide ni que no, porque una lectura incompleta no dice nada de nadie.
+    nombre = partes.length > 0 && halladas === partes.length
   }
 
   let fecha: boolean | null = null
@@ -78,14 +84,14 @@ function cotejarAnverso(
     fecha = formas.some((f) => plano.includes(f) || sinSeparadores.includes(f.replace(/ /g, '')))
   }
 
-  const partes: string[] = []
-  partes.push(nombre === null ? 'sin nombre declarado que cotejar'
+  const notas: string[] = []
+  notas.push(nombre === null ? 'sin nombre declarado que cotejar'
     : nombre ? 'el nombre declarado aparece impreso en el anverso'
-    : 'el nombre declarado NO aparece impreso en el anverso')
+    : `solo se reconocieron ${halladas} de ${partes.length} palabras del nombre en el anverso`)
   if (fecha !== null) {
-    partes.push(fecha ? 'la fecha de nacimiento también' : 'la fecha de nacimiento no se encontró')
+    notas.push(fecha ? 'la fecha de nacimiento también' : 'la fecha de nacimiento no se encontró')
   }
-  return { nombre, fecha, detalle: partes.join('; ') }
+  return { nombre, fecha, detalle: notas.join('; ') }
 }
 
 /** Edad mínima. Se puede subir por país si la regulación lo pide. */
@@ -254,10 +260,22 @@ export function revisarDocumento(
     anverso = { aportado: true, nombreConfirmado: c.nombre, fechaConfirmada: c.fecha }
 
     if (c.nombre === false) {
+      // AVISO, NO BLOQUEO. Y es una corrección de un error propio.
+      //
+      // El anverso de una cédula está impreso sobre una filigrana de colores,
+      // con reflejos y a menudo fotografiado de lado. Que el reconocimiento no
+      // encuentre una palabra NO es prueba de que no esté: es una lectura
+      // fallida, y no dice absolutamente nada sobre la persona.
+      //
+      // Tratarlo como grave bloqueaba verificaciones legítimas —pasó con una
+      // cédula hondureña cuyo anverso decía el nombre entero, bien claro— y
+      // encima con un mensaje que sonaba a acusación. El cotejo que sí puede
+      // afirmar algo es el de la MRZ, que lleva dígitos de control.
       hallazgos.push({
-        clave: 'anverso.nombreNoAparece',
-        gravedad: 'grave',
-        detalle: `El nombre declarado ("${declarado.nombreCompleto}") no aparece impreso en el anverso del documento`,
+        clave: 'anverso.nombreNoLegible',
+        gravedad: 'aviso',
+        detalle: `En el anverso ${c.detalle}. No se pudo confirmar por ahí; ` +
+          'el cotejo válido es el de la MRZ del reverso.',
       })
     } else if (c.nombre === true) {
       hallazgos.push({ clave: 'anverso.nombre', gravedad: 'ok', detalle: c.detalle })

@@ -10,7 +10,7 @@ const RUTA = '/home/user/express-js-on-vercel/veta-wallet-app/src/mrzOcr.js'
 const src = readFileSync(RUTA, 'utf8')
 // Se toma solo la parte pura, sin el reconocedor nativo, que aquí no existe.
 const cuerpo = src.slice(src.indexOf('const VALOR'), src.indexOf('export async function leerDeFoto'))
-const { digitoControl, cuadranDigitos, corregirConDigitos, extraerLineas } =
+const { digitoControl, cuadranDigitos, corregirConDigitos, extraerLineas, arreglarNombres } =
   await import('data:text/javascript,' + encodeURIComponent(cuerpo))
 
 let fallos = 0
@@ -115,6 +115,18 @@ ok(unido?.lineas?.[0] === HND[0], 'une los trozos de una linea partida por el OC
 // El texto impreso del documento no debe confundirse con una MRZ.
 ok(extraerLineas('COMISIONADOS PROPIETARIOS\nREPUBLICA DE HONDURAS\nJOSE MARIO ORDONEZ') === null,
   'el texto impreso del documento no se toma por MRZ')
+
+
+console.log('\n8. Cifras donde solo caben letras (cedula real)')
+// Lo que devolvio el telefono: «ENAMORAD0» con un cero. En un apellido no cabe
+// una cifra, asi que es con certeza un error de lectura.
+const conCero = ['I<HND0035996903<<<<<<<<<<<<<<<','9403213M3103212HND<<<<<<<<<<<4','ORDONEZ<ENAMORAD0<<MEDARDO<JOS']
+const arreglado = arreglarNombres(conCero, 'TD1')
+ok(arreglado[2] === 'ORDONEZ<ENAMORADO<<MEDARDO<JOS', 'convierte el 0 del apellido en O')
+ok(arreglado[0] === conCero[0] && arreglado[1] === conCero[1], 'no toca las lineas con cifras de verdad')
+
+// El numero de documento de la primera linea NO se toca aunque tenga ceros.
+ok(arreglarNombres(conCero, 'TD1')[0].includes('0035996903'), 'el numero de documento queda intacto')
 
 console.log(fallos ? `\n${fallos} FALLOS\n` : '\nTodo en verde\n')
 process.exit(fallos ? 1 : 0)

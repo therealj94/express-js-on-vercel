@@ -584,6 +584,13 @@ export function Kyc({ nav }) {
                         <Text style={st.caraD}>
                           {textoAnverso ? t('gen.frontDone') : t('gen.frontHint')}
                         </Text>
+                        {/* Se enseña lo que se leyo: si algo falla, la persona
+                            lo ve y puede repetir la foto sabiendo por que. */}
+                        {textoAnverso ? (
+                          <Text style={[st.caraD, { fontSize: 10.5, marginTop: 4 }]} numberOfLines={3}>
+                            {textoAnverso.replace(/\s+/g, ' ').slice(0, 160)}
+                          </Text>
+                        ) : null}
                       </View>
                     </Pressable>
 

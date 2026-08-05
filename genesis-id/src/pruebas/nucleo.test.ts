@@ -468,14 +468,30 @@ test('con el anverso se confirma el nombre entero y la fecha', () => {
   assert.ok(r.aceptable, 'un documento correcto con anverso tiene que ser aceptable')
 })
 
-test('si el nombre declarado NO esta impreso en el anverso, se bloquea', () => {
-  // Este es el control que el anverso hace posible y antes no existia: alguien
-  // que declara un nombre que el documento no lleva.
+test('si el anverso no confirma el nombre, avisa pero NO bloquea por si solo', () => {
+  // Corrige un error propio: bloquear porque el reconocimiento no encontro una
+  // palabra en el anverso. Ese anverso esta impreso sobre una filigrana de
+  // colores y se fotografia de lado; una lectura fallida no dice nada de nadie.
+  // Quien decide sigue siendo la MRZ, que lleva digitos de control — y ahi este
+  // nombre inventado si choca, y ese es el que bloquea.
   const r = revisarDocumento(
     CEDULA, { nombreCompleto: 'Carlos Alberto Ramirez Lopez' }, ANVERSO)
   assert.equal(r.anverso.nombreConfirmado, false)
+  assert.ok(r.hallazgos.some((h) => h.clave === 'anverso.nombreNoLegible' && h.gravedad === 'aviso'))
+  assert.ok(r.hallazgos.some((h) => h.clave === 'documento.nombreNoCoincide' && h.gravedad === 'grave'),
+    'lo que bloquea es la MRZ, no el anverso')
   assert.ok(!r.aceptable)
-  assert.ok(r.hallazgos.some((h) => h.clave === 'anverso.nombreNoAparece' && h.gravedad === 'grave'))
+})
+
+test('un anverso ilegible no tumba una verificacion buena', () => {
+  // El caso real: cedula correcta, anverso fotografiado de lado y con reflejos
+  // del que apenas se saca texto. Tiene que seguir siendo aceptable.
+  const r = revisarDocumento(
+    CEDULA,
+    { nombreCompleto: 'Medardo Jose Ordonez Enamorado', fechaNacimiento: '1994-03-21' },
+    'REPUBLICA DE HONDURAS\nRNP\nDOCUMENTO NACIONAL DE IDENTIFICACION')
+  assert.equal(r.anverso.nombreConfirmado, false)
+  assert.ok(r.aceptable, 'un anverso ilegible no puede bloquear un documento correcto')
 })
 
 test('el anverso levanta el bloqueo del nombre cortado, sin ocultarlo', () => {
