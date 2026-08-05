@@ -7,11 +7,22 @@ import Transaction from "../Models/Transaction";
 // gana a "1484788" porque empieza por 9. El resultado visible era que la lista
 // de "ultimas transacciones" mostraba una de hace mas de un año como la mas
 // reciente. Se ordena convirtiendo a numero dentro de la propia consulta.
-const ORDEN_NUMERICO = [
-  { $addFields: { _bn: { $toDouble: { $ifNull: ["$blockNumber", "0"] } },
-                  _ti: { $toDouble: { $ifNull: ["$transactionIndex", "0"] } } } },
-  { $sort: { _bn: -1, _ti: -1 } },
-];
+// Todos los campos numericos estan guardados como String. Se convierten dentro
+// de la consulta para poder ordenar y filtrar de verdad. Se usa $convert con
+// onError en vez de $toDouble porque hay valores como "0." (con el punto
+// suelto) que hacen fallar la conversion estricta y tumbarian la consulta
+// entera.
+const NUMERICOS = {
+  $addFields: {
+    _bn: { $convert: { input: "$blockNumber",       to: "double", onError: 0, onNull: 0 } },
+    _ti: { $convert: { input: "$transactionIndex",  to: "double", onError: 0, onNull: 0 } },
+    _ts: { $convert: { input: "$timestamp",         to: "double", onError: 0, onNull: 0 } },
+    _v:  { $convert: { input: "$value",             to: "double", onError: 0, onNull: 0 } },
+  },
+};
+const ORDENAR = { $sort: { _bn: -1, _ti: -1 } };
+// Los campos auxiliares no se devuelven al cliente.
+const LIMPIAR = { $project: { _bn: 0, _ti: 0, _ts: 0, _v: 0 } };
 
 const POR_DEFECTO = 10;
 const MAXIMO = 100;
@@ -24,6 +35,57 @@ function cuantas(valor) {
 function desde(valor) {
   const n = Number.parseInt(valor, 10);
   return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function numero(valor) {
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Construye el $match de los filtros a partir de la query. Se filtra en la base
+// de datos, no en el cliente: filtrar en el navegador solo esconderia filas de
+// la pagina actual y daria totales falsos.
+function construirFiltro(q) {
+  const filtro = {};
+
+  // Simbolo: ORIGEN es la moneda nativa, CONTRACT son interacciones con
+  // contratos, y el resto son tokens.
+  if (q.simbolo && String(q.simbolo).trim()) {
+    filtro.symbol = String(q.simbolo).trim();
+  }
+
+  // Rango de fechas, en segundos unix.
+  const d = numero(q.desdeFecha);
+  const h = numero(q.hastaFecha);
+  if (d !== null || h !== null) {
+    filtro._ts = {};
+    if (d !== null) filtro._ts.$gte = d;
+    if (h !== null) filtro._ts.$lte = h;
+  }
+
+  // Rango de cantidad. Ojo con la semantica: cuando la transaccion es una
+  // transferencia de token reconocida, `value` guarda la cantidad DEL TOKEN,
+  // no de ORIGEN. Por eso este filtro casi siempre se usa junto con `simbolo`.
+  const min = numero(q.minValor);
+  const max = numero(q.maxValor);
+  if (min !== null || max !== null) {
+    filtro._v = {};
+    if (min !== null) filtro._v.$gte = min;
+    if (max !== null) filtro._v.$lte = max;
+  }
+
+  // Busqueda libre por hash, remitente o destinatario.
+  const texto = String(q.q || "").trim().toLowerCase();
+  if (texto) {
+    const escapado = texto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    filtro.$or = [
+      { hash: { $regex: escapado, $options: "i" } },
+      { from: { $regex: escapado, $options: "i" } },
+      { to: { $regex: escapado, $options: "i" } },
+    ];
+  }
+
+  return filtro;
 }
 
 function comoTexto(t) {
@@ -78,20 +140,72 @@ export const allTransactions = async (req, res) => {
     // kilobytes en cada carga de la portada, y solo va a crecer.
     const limite = cuantas(req.query.lastTransaction);
     const salto = desde(req.query.desde);
+    const filtro = construirFiltro(req.query);
+    const hayFiltro = Object.keys(filtro).length > 0;
 
-    const [filas, total] = await Promise.all([
-      Transaction.aggregate([...ORDEN_NUMERICO, { $skip: salto }, { $limit: limite }]),
-      Transaction.estimatedDocumentCount(),
+    // El total se calcula con los mismos filtros aplicados: si no, la
+    // paginacion mostraria "1521 resultados" aunque el filtro deje 3.
+    const tuberia = [NUMERICOS];
+    if (hayFiltro) tuberia.push({ $match: filtro });
+
+    const [filas, conteo] = await Promise.all([
+      Transaction.aggregate([...tuberia, ORDENAR, { $skip: salto }, { $limit: limite }, LIMPIAR]),
+      hayFiltro
+        ? Transaction.aggregate([...tuberia, { $count: "n" }])
+        : Transaction.estimatedDocumentCount(),
     ]);
+
+    const total = hayFiltro ? (conteo[0]?.n ?? 0) : conteo;
 
     res.status(200).json({
       transactions: filas.map(comoTexto),
       total,
       desde: salto,
       limite,
+      filtrado: hayFiltro,
     });
   } catch (error) {
     console.error("[allTransactions]", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+};
+
+// Resumen para la portada: de que esta hecha la cadena. Se calcula en la base
+// de datos con un solo recorrido en vez de traerse las transacciones al
+// servidor para contarlas.
+export const resumen = async (req, res) => {
+  try {
+    const [porSimbolo, porMes, rango] = await Promise.all([
+      Transaction.aggregate([
+        { $group: { _id: { $ifNull: ["$symbol", ""] }, n: { $sum: 1 } } },
+        { $sort: { n: -1 } },
+      ]),
+      Transaction.aggregate([
+        { $addFields: { _ts: { $convert: { input: "$timestamp", to: "long", onError: 0, onNull: 0 } } } },
+        { $match: { _ts: { $gt: 0 } } },
+        { $addFields: { _f: { $toDate: { $multiply: ["$_ts", 1000] } } } },
+        { $group: {
+            _id: { a: { $year: "$_f" }, m: { $month: "$_f" } },
+            n: { $sum: 1 },
+        } },
+        { $sort: { "_id.a": 1, "_id.m": 1 } },
+      ]),
+      Transaction.aggregate([
+        { $addFields: { _ts: { $convert: { input: "$timestamp", to: "double", onError: 0, onNull: 0 } } } },
+        { $match: { _ts: { $gt: 0 } } },
+        { $group: { _id: null, primera: { $min: "$_ts" }, ultima: { $max: "$_ts" } } },
+      ]),
+    ]);
+
+    res.status(200).json({
+      total: porSimbolo.reduce((a, x) => a + x.n, 0),
+      simbolos: porSimbolo.map((x) => ({ simbolo: x._id || "", n: x.n })),
+      porMes: porMes.map((x) => ({ anio: x._id.a, mes: x._id.m, n: x.n })),
+      primera: rango[0]?.primera ?? null,
+      ultima: rango[0]?.ultima ?? null,
+    });
+  } catch (error) {
+    console.error("[resumen]", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 };

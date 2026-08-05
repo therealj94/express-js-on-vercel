@@ -3,87 +3,238 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Orden Global Explorer</title>
-<meta name="description" content="Explorador de bloques de la blockchain Orden Global (chain 8532)">
+<title>Orden Global Explorer · Chain 8532</title>
+<meta name="description" content="Explorador oficial de la blockchain Orden Global (chain 8532). Bloques, transacciones, direcciones y tokens en tiempo real.">
+<meta property="og:title" content="Orden Global Explorer">
+<meta property="og:description" content="Explorador oficial de la blockchain Orden Global · Chain 8532">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#04191A">
+<!-- Favicon en linea: sin peticiones externas, que la politica de contenido del
+     hosting bloquea, y sin un archivo mas que mantener. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2304191A'/%3E%3Cpath d='M16 6l8.5 5v10L16 26l-8.5-5V11z' fill='none' stroke='%23C9A961' stroke-width='2.2' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23C9A961'/%3E%3C/svg%3E">
 <style>
   /* ── Un solo archivo, sin dependencias ni paso de compilacion. Se despliega
        copiandolo a cualquier hosting estatico. Decision deliberada: el equipo
        puede mantenerlo sin instalar nada. ───────────────────────────────── */
   :root{
-    --oro:#C9A961; --oro2:#E0C888;
-    --fondo:#04191A; --panel:#072526; --panel2:#0A2F30;
-    --linea:#123E3F; --txt:#EAF3F2; --txt2:#9FBDBA; --txt3:#6C918E;
-    --ok:#3FB984; --mal:#E05A5A;
+    --oro:#C9A961; --oro2:#E4CE93; --oro-t:rgba(201,169,97,.13);
+    --fondo:#031415; --panel:#072526; --panel2:#0A3132;
+    --linea:#123E3F; --linea2:#1B5354;
+    --txt:#EDF5F4; --txt2:#9FBDBA; --txt3:#6B908D;
+    --ok:#3FB984; --mal:#E86A6A; --info:#5AA9E0;
+    --r:14px; --r2:11px;
+    --sombra:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--fondo);color:var(--txt);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:var(--fondo);color:var(--txt);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    /* El resplandor dorado del fondo se queda fijo detras del contenido. */
+    background-image:radial-gradient(900px 480px at 50% -8%, rgba(201,169,97,.10), transparent 70%);
+    background-repeat:no-repeat;background-attachment:fixed;
+  }
   a{color:var(--oro);text-decoration:none}
-  a:hover{text-decoration:underline}
-  .env{max-width:1120px;margin:0 auto;padding:0 20px}
+  a:hover{color:var(--oro2)}
+  .env{max-width:1180px;margin:0 auto;padding:0 20px}
+  h2{font-size:16.5px;font-weight:700;letter-spacing:-.15px}
+  .seccion{margin:34px 0}
+  .cabecera-seccion{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+  .cabecera-seccion .mas{font-size:13px;color:var(--txt2)}
+  .cabecera-seccion .mas:hover{color:var(--oro)}
 
-  header{border-bottom:1px solid var(--linea);background:rgba(7,37,38,.75);backdrop-filter:blur(8px);position:sticky;top:0;z-index:10}
-  .barra{display:flex;align-items:center;gap:22px;padding:15px 0;flex-wrap:wrap}
-  .logo{font-weight:800;font-size:17px;color:var(--txt);letter-spacing:.2px;white-space:nowrap}
+  /* ── Cabecera ─────────────────────────────────────────────────────────── */
+  header{position:sticky;top:0;z-index:30;border-bottom:1px solid var(--linea);
+    background:rgba(4,22,23,.86);backdrop-filter:blur(12px)}
+  .barra{display:flex;align-items:center;gap:10px;padding:13px 0}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:16.5px;
+    letter-spacing:-.3px;white-space:nowrap;color:var(--txt);margin-right:8px}
+  .logo:hover{color:var(--txt)}
+  .logo svg{flex:none}
   .logo span{color:var(--oro)}
-  nav{display:flex;gap:18px;font-size:14px}
-  nav a{color:var(--txt2)} nav a:hover,nav a.on{color:var(--oro);text-decoration:none}
+  nav{display:flex;gap:4px;font-size:14px;margin-left:auto;flex-wrap:wrap}
+  nav a{color:var(--txt2);padding:7px 12px;border-radius:9px;white-space:nowrap}
+  nav a:hover{color:var(--txt);background:var(--panel2)}
+  nav a.on{color:var(--oro);background:var(--oro-t)}
+  /* En pantallas estrechas la navegacion se partia en tres lineas y empujaba
+     el logo a un costado. Pasa a una fila propia que se desliza en horizontal. */
+  @media(max-width:720px){
+    .barra{flex-wrap:wrap;gap:0;padding:11px 0 0}
+    .logo{margin:0 0 9px}
+    nav{margin:0 -20px;padding:0 20px 9px;width:calc(100% + 40px);
+      flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;
+      scrollbar-width:none}
+    nav::-webkit-scrollbar{display:none}
+    .hero{padding:34px 0 4px}
+    .buscar button{padding:0 18px}
+  }
 
-  .buscar{display:flex;gap:8px;margin:26px 0 8px}
-  .buscar input{flex:1;background:var(--panel);border:1px solid var(--linea);border-radius:11px;padding:13px 15px;color:var(--txt);font-size:14.5px;outline:none;min-width:0}
-  .buscar input:focus{border-color:var(--oro)}
-  .buscar button{background:var(--oro);color:#04191A;border:0;border-radius:11px;padding:0 24px;font-weight:700;font-size:14.5px;cursor:pointer;white-space:nowrap}
-  .buscar button:hover{background:var(--oro2)}
-  .pista{color:var(--txt3);font-size:12.5px;margin-bottom:26px}
+  /* ── Portada ──────────────────────────────────────────────────────────── */
+  .hero{padding:52px 0 8px;text-align:center}
+  .hero .et{display:inline-flex;align-items:center;gap:7px;font-size:12px;
+    letter-spacing:.7px;text-transform:uppercase;color:var(--oro);
+    background:var(--oro-t);border:1px solid rgba(201,169,97,.28);
+    padding:5px 13px;border-radius:999px;margin-bottom:18px}
+  .punto{width:6px;height:6px;border-radius:50%;background:var(--ok);
+    box-shadow:0 0 0 0 rgba(63,185,132,.6);animation:latido 2.2s infinite}
+  @keyframes latido{70%{box-shadow:0 0 0 7px rgba(63,185,132,0)}100%{box-shadow:0 0 0 0 rgba(63,185,132,0)}}
+  .hero h1{font-size:clamp(28px,5.2vw,44px);line-height:1.12;font-weight:800;
+    letter-spacing:-1.1px;margin-bottom:13px}
+  .hero h1 b{background:linear-gradient(96deg,var(--oro) 15%,var(--oro2) 85%);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{color:var(--txt2);font-size:16px;max-width:560px;margin:0 auto 26px}
 
-  .tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:30px}
-  .tarj{background:var(--panel);border:1px solid var(--linea);border-radius:14px;padding:17px 19px}
-  .tarj .et{color:var(--txt3);font-size:11.5px;text-transform:uppercase;letter-spacing:.9px;margin-bottom:7px}
-  .tarj .va{font-size:23px;font-weight:750;color:var(--txt);word-break:break-all}
+  /* ── Buscador ─────────────────────────────────────────────────────────── */
+  .buscar{display:flex;gap:9px;max-width:660px;margin:0 auto}
+  .buscar .campo{flex:1;position:relative;min-width:0}
+  .buscar .campo svg{position:absolute;left:15px;top:50%;transform:translateY(-50%);opacity:.5}
+  .buscar input{width:100%;background:var(--panel);border:1px solid var(--linea2);
+    border-radius:12px;padding:14px 15px 14px 43px;color:var(--txt);font-size:14.5px;
+    outline:none;transition:border-color .15s,box-shadow .15s}
+  .buscar input::placeholder{color:var(--txt3)}
+  .buscar input:focus{border-color:var(--oro);box-shadow:0 0 0 3px rgba(201,169,97,.14)}
+  .buscar button{background:linear-gradient(180deg,var(--oro2),var(--oro));color:#04191A;
+    border:0;border-radius:12px;padding:0 26px;font-weight:700;font-size:14.5px;
+    cursor:pointer;white-space:nowrap}
+  .buscar button:hover{filter:brightness(1.07)}
+  .pista{color:var(--txt3);font-size:12.5px;margin:11px auto 0;text-align:center}
+  .pista code{background:var(--panel);border:1px solid var(--linea);border-radius:6px;
+    padding:1.5px 7px;font-size:11.5px;cursor:pointer;color:var(--txt2)}
+  .pista code:hover{border-color:var(--oro);color:var(--oro)}
+
+  /* ── Tarjetas de cifras ───────────────────────────────────────────────── */
+  .tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:13px}
+  .tarj{background:var(--panel);border:1px solid var(--linea);border-radius:var(--r);
+    padding:17px 19px;box-shadow:var(--sombra);position:relative;overflow:hidden}
+  a.tarj:hover{border-color:var(--linea2);background:var(--panel2)}
+  .tarj .et{color:var(--txt3);font-size:11px;text-transform:uppercase;
+    letter-spacing:.85px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .tarj .va{font-size:22px;font-weight:750;letter-spacing:-.5px;word-break:break-all;line-height:1.25}
   .tarj .va.oro{color:var(--oro)}
+  .tarj .sub{color:var(--txt3);font-size:12px;margin-top:4px}
 
-  h2{font-size:16px;margin:0 0 13px;font-weight:700}
-  .panel{background:var(--panel);border:1px solid var(--linea);border-radius:14px;overflow:hidden;margin-bottom:26px}
-  .fila{display:flex;justify-content:space-between;gap:14px;padding:13px 17px;border-top:1px solid var(--linea);align-items:center}
+  /* ── Paneles y filas ──────────────────────────────────────────────────── */
+  .panel{background:var(--panel);border:1px solid var(--linea);border-radius:var(--r);
+    overflow:hidden;box-shadow:var(--sombra)}
+  .fila{display:flex;justify-content:space-between;gap:14px;padding:13px 17px;
+    border-top:1px solid var(--linea);align-items:center}
   .fila:first-child{border-top:0}
   .fila:hover{background:var(--panel2)}
   .izq{min-width:0;flex:1}
-  .der{text-align:right;color:var(--txt2);font-size:12.8px;white-space:nowrap}
-  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.8px}
+  .der{text-align:right;color:var(--txt2);font-size:12.6px;white-space:nowrap;flex:none}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.7px}
   .cortar{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
-  .sub{color:var(--txt3);font-size:12.3px;margin-top:3px}
-
-  .cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
-  @media(max-width:820px){.cols{grid-template-columns:1fr}}
+  .sub{color:var(--txt3);font-size:12.2px;margin-top:3px}
+  .icono{width:30px;height:30px;border-radius:9px;background:var(--oro-t);
+    display:grid;place-items:center;flex:none;color:var(--oro);font-size:11px;font-weight:700}
+  .conicono{display:flex;gap:11px;align-items:center;min-width:0}
 
   table{width:100%;border-collapse:collapse}
-  td{padding:11px 17px;border-top:1px solid var(--linea);vertical-align:top;font-size:13.6px}
+  td{padding:12px 17px;border-top:1px solid var(--linea);vertical-align:top;font-size:13.8px}
   tr:first-child td{border-top:0}
-  td.k{color:var(--txt3);width:190px;white-space:nowrap}
+  td.k{color:var(--txt3);width:200px;white-space:nowrap}
   td.v{word-break:break-all}
+  @media(max-width:640px){
+    td.k{width:auto;display:block;border-top:1px solid var(--linea);padding-bottom:2px;font-size:12px}
+    td.v{display:block;border-top:0;padding-top:2px}
+  }
 
-  .aviso{padding:34px 20px;text-align:center;color:var(--txt3);font-size:14px}
-  .error{padding:20px;border:1px solid var(--mal);border-radius:12px;color:var(--mal);background:rgba(224,90,90,.08);margin:20px 0}
-  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--linea);border-radius:999px;padding:2px 10px;font-size:11.5px;color:var(--txt2)}
-  footer{border-top:1px solid var(--linea);margin-top:44px;padding:22px 0 34px;color:var(--txt3);font-size:12.5px;text-align:center}
-  .cargando{color:var(--txt3);padding:30px;text-align:center}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  @media(max-width:860px){.cols{grid-template-columns:1fr}}
+
+  /* ── Filtros ──────────────────────────────────────────────────────────── */
+  .filtros{background:var(--panel);border:1px solid var(--linea);border-radius:var(--r);
+    padding:15px 17px;margin-bottom:16px;box-shadow:var(--sombra)}
+  .filtros-rej{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:11px}
+  .campo-f label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.7px;
+    color:var(--txt3);margin-bottom:5px}
+  .campo-f input,.campo-f select{width:100%;background:var(--fondo);border:1px solid var(--linea2);
+    border-radius:9px;padding:9px 11px;color:var(--txt);font-size:13.5px;outline:none;
+    font-family:inherit}
+  .campo-f input:focus,.campo-f select:focus{border-color:var(--oro)}
+  .campo-f input::-webkit-calendar-picker-indicator{filter:invert(.7)}
+  .acciones-f{display:flex;gap:9px;margin-top:13px;flex-wrap:wrap;align-items:center}
+  .btn{background:linear-gradient(180deg,var(--oro2),var(--oro));color:#04191A;border:0;
+    border-radius:9px;padding:9px 18px;font-weight:700;font-size:13.5px;cursor:pointer;
+    font-family:inherit}
+  .btn:hover{filter:brightness(1.07)}
+  .btn.sec{background:none;border:1px solid var(--linea2);color:var(--txt2)}
+  .btn.sec:hover{border-color:var(--oro);color:var(--oro);filter:none}
+  .resumen-f{color:var(--txt3);font-size:12.5px;margin-left:auto}
+
+  /* ── Paginacion ───────────────────────────────────────────────────────── */
+  .pag{display:flex;gap:9px;align-items:center;justify-content:center;margin-top:16px;flex-wrap:wrap}
+  .pag .info{color:var(--txt3);font-size:12.8px;padding:0 6px}
+
+  /* ── Varios ───────────────────────────────────────────────────────────── */
+  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--linea2);
+    border-radius:999px;padding:2px 10px;font-size:11.3px;color:var(--txt2);white-space:nowrap}
+  .pill.oro{background:var(--oro-t);border-color:rgba(201,169,97,.3);color:var(--oro)}
+  .pill.ok{background:rgba(63,185,132,.12);border-color:rgba(63,185,132,.3);color:var(--ok)}
+  .pill.ent{background:rgba(63,185,132,.12);border-color:rgba(63,185,132,.3);color:var(--ok)}
+  .pill.sal{background:rgba(232,106,106,.1);border-color:rgba(232,106,106,.28);color:var(--mal)}
+  .copiar{background:none;border:0;color:var(--txt3);cursor:pointer;padding:2px 4px;
+    vertical-align:middle;line-height:0}
+  .copiar:hover{color:var(--oro)}
+  .aviso{padding:36px 20px;text-align:center;color:var(--txt3);font-size:14px}
+  .error{padding:18px;border:1px solid rgba(232,106,106,.4);border-radius:var(--r2);
+    color:var(--mal);background:rgba(232,106,106,.07);margin:16px 0;font-size:14px}
+  .cargando{color:var(--txt3);padding:32px;text-align:center;font-size:13.5px}
+  /* Esqueleto de carga: da idea de la forma que va a tener el contenido. */
+  .hueso{height:12px;border-radius:6px;background:linear-gradient(90deg,var(--panel2) 25%,var(--linea) 50%,var(--panel2) 75%);
+    background-size:200% 100%;animation:brillo 1.3s infinite}
+  @keyframes brillo{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+  /* ── Grafico ──────────────────────────────────────────────────────────── */
+  .graf{padding:18px 19px 12px}
+  .graf .barras{display:flex;align-items:flex-end;gap:3px;height:112px}
+  .graf .b{flex:1;background:linear-gradient(180deg,var(--oro),rgba(201,169,97,.28));
+    border-radius:3px 3px 0 0;min-height:3px;position:relative;cursor:default;transition:filter .12s}
+  .graf .b:hover{filter:brightness(1.35)}
+  .graf .ejes{display:flex;justify-content:space-between;color:var(--txt3);
+    font-size:11px;margin-top:9px;border-top:1px solid var(--linea);padding-top:9px}
+
+  footer{border-top:1px solid var(--linea);margin-top:52px;padding:26px 0 38px;
+    color:var(--txt3);font-size:12.6px}
+  .pie{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center}
+  .pie a{color:var(--txt2)}
+  .pie a:hover{color:var(--oro)}
+
+  /* Aviso flotante al copiar. */
+  #brindis{position:fixed;bottom:22px;left:50%;transform:translate(-50%,80px);
+    background:var(--panel2);border:1px solid var(--oro);color:var(--oro);
+    padding:10px 20px;border-radius:11px;font-size:13.5px;z-index:60;
+    transition:transform .22s ease;box-shadow:var(--sombra)}
+  #brindis.ver{transform:translate(-50%,0)}
 </style>
 </head>
 <body>
 <header><div class="env barra">
-  <div class="logo">ORDEN <span>GLOBAL</span></div>
+  <a class="logo" href="/" data-ruta>
+    <svg width="25" height="25" viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M16 5l9.5 5.6v11.2L16 27.4 6.5 21.8V10.6z" fill="none" stroke="#C9A961" stroke-width="2.2" stroke-linejoin="round"/>
+      <circle cx="16" cy="16" r="3.1" fill="#C9A961"/>
+    </svg>
+    ORDEN <span>GLOBAL</span>
+  </a>
   <nav>
     <a href="/" data-ruta>Inicio</a>
     <a href="/blocks" data-ruta>Bloques</a>
     <a href="/txs" data-ruta>Transacciones</a>
     <a href="/tokens" data-ruta>Tokens</a>
+    <a href="/red" data-ruta>Red</a>
   </nav>
 </div></header>
 
-<main class="env" id="app"><div class="cargando">Cargando…</div></main>
+<main id="app"><div class="env"><div class="cargando">Cargando…</div></div></main>
 
-<footer class="env">
-  Explorador de la blockchain Orden Global · chain 8532
-</footer>
+<footer><div class="env pie">
+  <div>Explorador de la blockchain <b style="color:var(--txt2)">Orden Global</b> · Chain 8532</div>
+  <div><a href="/red" data-ruta>Datos de la red</a> · <a href="/tokens" data-ruta>Tokens</a></div>
+</div></footer>
+
+<div id="brindis"></div>
 
 <script>
 // ── Configuracion ────────────────────────────────────────────────────────────
@@ -94,22 +245,35 @@
 const API = (typeof window.OGSCAN_API === "string")
   ? window.OGSCAN_API
   : "https://orden-global-scan-c4abe71e8024.herokuapp.com";
-const CHAIN_ID = 8532;
 
-// Los tres tokens de la cadena, con su contrato. Sirve para dos cosas: mostrar
-// la sección de tokens en la portada, y reconocer cuándo una dirección es en
-// realidad el contrato de un token para ofrecer su ficha.
-const TOKENS = [
-  { symbol: "ONDK", nombre: "Orden Kapital", contrato: "0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1" },
-  { symbol: "AGKA", nombre: "AGKA Token",    contrato: "0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B" },
-  { symbol: "AUKA", nombre: "Gold Kapital",  contrato: "0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B" },
-];
-const tokenPorContrato = (a) => TOKENS.find(t => t.contrato.toLowerCase() === String(a || "").toLowerCase());
+const CHAIN_ID = 8532;
+const RPC = "https://ordenglobal-rpc.com/";
+const MONEDA = "ORIGEN";
+
+// Contratos conocidos. El indexador guarda mas simbolos que estos (hay 19 en
+// total), pero solo de estos tres se conoce el contrato con certeza, que es lo
+// que la ficha de token necesita para consultar suministro y decimales.
+const CONTRATOS = {
+  ONDK: "0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1",
+  AGKA: "0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B",
+  AUKA: "0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B",
+};
+const NOMBRES = { ONDK: "Orden Kapital", AGKA: "AGKA Token", AUKA: "Gold Kapital" };
+// `CONTRACT` no es un token: asi marca el indexador las llamadas a contratos.
+// Y ORIGEN es la moneda nativa. Ninguno de los dos va en la lista de tokens.
+const NO_TOKEN = new Set(["", "ORIGEN", "CONTRACT"]);
+const contratoDe = (s) => CONTRATOS[String(s || "").toUpperCase()] || null;
+const tokenPorContrato = (a) => Object.keys(CONTRATOS)
+  .find(s => CONTRATOS[s].toLowerCase() === String(a || "").toLowerCase());
 
 // ── Utilidades ───────────────────────────────────────────────────────────────
 const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const corto = (s, i = 10, f = 8) => { s = String(s ?? ""); return s.length > i + f + 3 ? s.slice(0, i) + "…" + s.slice(-f) : s; };
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const corto = (s, i = 10, f = 8) => {
+  s = String(s ?? "");
+  return s.length > i + f + 3 ? s.slice(0, i) + "…" + s.slice(-f) : s;
+};
 const num = (n) => Number(n ?? 0).toLocaleString("es");
 
 function hace(ts) {
@@ -118,23 +282,40 @@ function hace(ts) {
   if (s < 60) return `hace ${s} s`;
   if (s < 3600) return `hace ${Math.floor(s / 60)} min`;
   if (s < 86400) return `hace ${Math.floor(s / 3600)} h`;
-  return `hace ${Math.floor(s / 86400)} d`;
+  if (s < 2592000) return `hace ${Math.floor(s / 86400)} d`;
+  if (s < 31536000) return `hace ${Math.floor(s / 2592000)} meses`;
+  return `hace ${Math.floor(s / 31536000)} años`;
 }
 function fecha(ts) {
   const n = Number(ts || 0);
   return n ? new Date(n * 1000).toLocaleString("es") : "—";
 }
-// El destino puede ser null (creacion de contrato). Se evita mostrar "→ "
-// vacio o el "0x000…" mal formado que antes venia del backend.
-function destinoCorto(x) {
-  return x.to ? esc(corto(x.to, 8, 6)) : "creación de contrato";
-}
 // El valor llega como "0." o "1.5" segun el token; se normaliza para mostrar.
 function valor(v) {
   const s = String(v ?? "0").replace(/\.$/, "");
   const n = Number(s);
-  return Number.isFinite(n) ? n.toLocaleString("es", { maximumFractionDigits: 6 }) : s;
+  return Number.isFinite(n) ? n.toLocaleString("es", { maximumFractionDigits: 8 }) : s;
 }
+// Divide un totalSupply en crudo (entero, sin decimales) por 10^decimales.
+// No se usa Number: 555 millones con 18 decimales tiene 27 digitos y no cabe
+// en un double sin perder precision. Se hace con BigInt sobre el texto.
+function supplyLegible(crudo, decimales) {
+  try {
+    const entero = BigInt(crudo) / (10n ** BigInt(decimales || 18));
+    return Number(entero).toLocaleString("es");
+  } catch (e) { return String(crudo); }
+}
+
+// Que moneda representa el `value` de una transaccion. Cuando el indexador
+// reconoce una transferencia de token, guarda en `value` la cantidad DEL TOKEN
+// (no de ORIGEN) y en `to` al destinatario real. Etiquetarlo siempre como
+// ORIGEN seria falso: una fila de 328,44 ONDK se leeria como 328,44 ORIGEN.
+function monedaDe(t) {
+  const s = String(t?.symbol || "").toUpperCase();
+  return (!s || s === "CONTRACT") ? MONEDA : s;
+}
+const esToken = (t) => !NO_TOKEN.has(String(t?.symbol || "").toUpperCase());
+const destinoCorto = (x) => x.to ? esc(corto(x.to, 8, 6)) : "creación de contrato";
 
 async function api(ruta) {
   const r = await fetch(API + ruta, { headers: { Accept: "application/json" } });
@@ -146,12 +327,44 @@ async function api(ruta) {
   return r.json();
 }
 
+// ── Copiar al portapapeles ───────────────────────────────────────────────────
+function brindis(txt) {
+  const b = $("#brindis");
+  b.textContent = txt;
+  b.classList.add("ver");
+  clearTimeout(brindis._t);
+  brindis._t = setTimeout(() => b.classList.remove("ver"), 1600);
+}
+const iconoCopiar = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>`;
+const btnCopiar = (v) => `<button class="copiar" data-copiar="${esc(v)}" title="Copiar" aria-label="Copiar">${iconoCopiar}</button>`;
+
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-copiar]");
+  if (!b) return;
+  e.preventDefault();
+  const v = b.getAttribute("data-copiar");
+  try {
+    await navigator.clipboard.writeText(v);
+    brindis("Copiado");
+  } catch (err) {
+    // navigator.clipboard no existe fuera de HTTPS ni en algunos navegadores
+    // antiguos; se recurre al metodo de seleccion de toda la vida.
+    const ta = document.createElement("textarea");
+    ta.value = v; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); brindis("Copiado"); }
+    catch (e2) { brindis("No se pudo copiar"); }
+    document.body.removeChild(ta);
+  }
+});
+
 // ── Enrutado (EIP-3091) ──────────────────────────────────────────────────────
 // Las rutas /block/<n>, /tx/<hash> y /address/<addr> son el estandar que exigen
 // Chainlist y las billeteras para reconocer un explorador. Se resuelven en el
 // cliente; el hosting debe reescribir cualquier ruta a este index.html.
 function ir(url, reemplazar) {
   history[reemplazar ? "replaceState" : "pushState"]({}, "", url);
+  window.scrollTo(0, 0);
   pintar();
 }
 document.addEventListener("click", (e) => {
@@ -167,119 +380,317 @@ function buscar(e) {
   const q = ($("#q")?.value || "").trim();
   if (!q) return;
   if (/^0x[a-fA-F0-9]{64}$/.test(q)) return ir(`/tx/${q}`);
-  if (/^0x[a-fA-F0-9]{40}$/.test(q)) return ir(`/address/${q}`);
+  if (/^0x[a-fA-F0-9]{40}$/.test(q)) {
+    // Si la direccion es el contrato de un token conocido, su ficha de token
+    // es mas util que la de direccion.
+    const s = tokenPorContrato(q);
+    return ir(s ? `/token/${q}` : `/address/${q}`);
+  }
   if (/^\d+$/.test(q)) return ir(`/block/${q}`);
-  alert("Escribe un número de bloque, un hash de transacción (0x + 64) o una dirección (0x + 40).");
+  // Cualquier otra cosa se trata como busqueda libre sobre las transacciones.
+  return ir(`/txs?q=${encodeURIComponent(q)}`);
 }
+function ejemplo(el) { const i = $("#q"); if (i) { i.value = el.textContent; buscar(); } }
 
-const cajaBuscar = () => `
-  <form class="buscar" onsubmit="buscar(event)">
-    <input id="q" placeholder="Bloque, hash de transacción o dirección" autocomplete="off" spellcheck="false">
+const iconoLupa = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.2-4.2"/></svg>`;
+const cajaBuscar = (compacta) => `
+  <form class="buscar" onsubmit="buscar(event)" style="${compacta ? "margin:0 0 18px" : ""}">
+    <div class="campo">${iconoLupa}
+      <input id="q" placeholder="Bloque, hash de transacción, dirección o texto" autocomplete="off" spellcheck="false">
+    </div>
     <button type="submit">Buscar</button>
-  </form>
-  <div class="pista">Ejemplos: <code>4129701</code> · <code>0x8257c6…98d5</code> · <code>0xf777de…d4d0</code></div>`;
+  </form>`;
 
 const err = (m) => `<div class="error"><b>No se pudo cargar.</b><br>${esc(m)}</div>`;
+const esqueleto = (n = 5) => `<div>` + Array.from({ length: n }, () => `
+  <div class="fila"><div class="izq"><div class="hueso" style="width:52%"></div>
+  <div class="hueso" style="width:32%;margin-top:8px;height:9px"></div></div>
+  <div class="der"><div class="hueso" style="width:58px;height:9px"></div></div></div>`).join("") + `</div>`;
 
 // ── Vistas ───────────────────────────────────────────────────────────────────
 async function vistaInicio(app) {
-  app.innerHTML = cajaBuscar() + `<div id="stats"></div>
-    <div class="tarjetas">` + TOKENS.map(t => `
-      <a class="tarj" href="/token/${t.contrato}" data-ruta style="display:block">
-        <div class="et">${esc(t.symbol)}</div><div class="va">${esc(t.nombre)}</div>
-      </a>`).join("") + `</div>
-    <div class="cols">
-    <div><h2>Últimos bloques</h2><div class="panel" id="bl"><div class="cargando">Cargando…</div></div></div>
-    <div><h2>Últimas transacciones</h2><div class="panel" id="tx"><div class="cargando">Cargando…</div></div></div>
-  </div>`;
+  app.innerHTML = `
+    <div class="env">
+      <section class="hero">
+        <div class="et"><span class="punto"></span> Red en funcionamiento · Chain ${CHAIN_ID}</div>
+        <h1>Explorador de <b>Orden Global</b></h1>
+        <p>Consultá bloques, transacciones, direcciones y tokens de la cadena, en tiempo real.</p>
+        ${cajaBuscar()}
+        <div class="pista">Probá:
+          <code onclick="ejemplo(this)">4129701</code>
+          <code onclick="ejemplo(this)">0x049f03cf2efd67906d774203bda023eb1e209ed8</code>
+        </div>
+      </section>
+
+      <!-- Las cuatro tarjetas se crean ya, con su identificador definitivo, y
+           cada peticion rellena la suya. Antes se creaban dentro del .then() de
+           una de las llamadas, asi que la respuesta que llegaba primero no
+           encontraba su elemento y se perdia en silencio: las tarjetas de
+           Transacciones y Tokens se quedaban en "…" para siempre. -->
+      <section class="seccion"><div class="tarjetas">
+        ${[["Último bloque", "cbloq"], ["Transacciones", "ctx"], ["Tokens", "ctk"], ["Tiempo de bloque", "ctiem"]]
+          .map(([t, id]) => `<div class="tarj" id="${id}"><div class="et">${t}</div>
+            <div class="hueso" style="width:64%;height:20px"></div></div>`).join("")}
+      </div></section>
+
+      <section class="seccion" id="secgraf"></section>
+
+      <section class="seccion"><div class="cols">
+        <div>
+          <div class="cabecera-seccion"><h2>Últimos bloques</h2><a class="mas" href="/blocks" data-ruta>Ver todos →</a></div>
+          <div class="panel" id="bl">${esqueleto()}</div>
+        </div>
+        <div>
+          <div class="cabecera-seccion"><h2>Últimas transacciones</h2><a class="mas" href="/txs" data-ruta>Ver todas →</a></div>
+          <div class="panel" id="tx">${esqueleto()}</div>
+        </div>
+      </div></section>
+
+      <section class="seccion">
+        <div class="cabecera-seccion"><h2>Tokens de la red</h2><a class="mas" href="/tokens" data-ruta>Ver todos →</a></div>
+        <div class="tarjetas" id="tks"></div>
+      </section>
+    </div>`;
+
+  // Rellena una tarjeta ya existente. Cada peticion llama a esto cuando llega,
+  // en el orden que sea.
+  const tarjeta = (id, et, va, sub, clase) => {
+    const el = $("#" + id);
+    if (!el) return;
+    el.innerHTML = `<div class="et">${et}</div><div class="va ${clase || ""}">${va}</div>` +
+      (sub ? `<div class="sub">${sub}</div>` : "");
+  };
 
   // Cada bloque se carga por separado: si una parte falla, el resto se ve igual.
-  api("/block/totalBlock").then(d => {
-    const t = $("#stats");
-    t.innerHTML = `<div class="tarjetas">
-      <div class="tarj"><div class="et">Último bloque</div><div class="va oro">${num(d.blockTotal)}</div></div>
-      <div class="tarj" id="ttx"><div class="et">Transacciones</div><div class="va">…</div></div>
-      <div class="tarj"><div class="et">Red</div><div class="va">Chain ${CHAIN_ID}</div></div>
-    </div>`;
-    api("/transaction/totalTransactions")
-      .then(x => { $("#ttx").innerHTML = `<div class="et">Transacciones</div><div class="va">${num(x.totalTransactions)}</div>`; })
-      .catch(() => { $("#ttx").innerHTML = `<div class="et">Transacciones</div><div class="va">—</div>`; });
-  }).catch(e => { $("#stats").innerHTML = err(e.message); });
+  api("/block/totalBlock")
+    .then(d => tarjeta("cbloq", "Último bloque", num(d.blockTotal), "", "oro"))
+    .catch(() => tarjeta("cbloq", "Último bloque", "—", "el nodo no respondió"));
 
-  api("/block/allBlocks?lastBlock=10").then(d => {
+  // El tiempo de bloque se mide de verdad, con bloques reales, en vez de
+  // escribir "15 s" a mano y que envejezca mal.
+  api("/block/allBlocks?lastBlock=11").then(b => {
+    const l = (b.blockInfo || []).map(x => Number(x.timestamp)).filter(Boolean);
+    const t = l.length > 1 ? ((l[0] - l[l.length - 1]) / (l.length - 1)).toFixed(1) + " s" : "—";
+    tarjeta("ctiem", "Tiempo de bloque", t, "promedio de los últimos 10");
+  }).catch(() => tarjeta("ctiem", "Tiempo de bloque", "—"));
+
+  api("/transaction/resumen").then(r => {
+    const tks = (r.simbolos || []).filter(s => !NO_TOKEN.has(s.simbolo.toUpperCase()));
+    tarjeta("ctx", "Transacciones", num(r.total),
+      "desde " + (r.primera ? new Date(r.primera * 1000).toLocaleDateString("es", { month: "short", year: "numeric" }) : "—"));
+    tarjeta("ctk", "Tokens", tks.length, "con movimientos registrados");
+
+    // Grafico de actividad. SVG a mano: sin librerias, que la politica de
+    // contenido del hosting bloquea igualmente.
+    const meses = r.porMes || [];
+    if (meses.length) {
+      const max = Math.max(...meses.map(m => m.n));
+      const et = (m) => new Date(m.anio, m.mes - 1, 1).toLocaleDateString("es", { month: "short", year: "2-digit" });
+      $("#secgraf").innerHTML = `
+        <div class="cabecera-seccion"><h2>Actividad de la cadena</h2>
+          <span class="mas">${num(meses.length)} meses · pico de ${num(max)} en un mes</span></div>
+        <div class="panel graf">
+          <div class="barras">${meses.map(m => `
+            <div class="b" style="height:${Math.max(3, (m.n / max) * 100)}%" title="${et(m)}: ${num(m.n)} transacciones"></div>`).join("")}</div>
+          <div class="ejes"><span>${et(meses[0])}</span><span>${et(meses[meses.length - 1])}</span></div>
+        </div>`;
+    }
+
+    // Los tokens de la portada salen de los datos reales, no de una lista fija.
+    $("#tks").innerHTML = tks.slice(0, 4).map(s => {
+      const c = contratoDe(s.simbolo);
+      const dest = c ? `/token/${c}` : `/txs?simbolo=${encodeURIComponent(s.simbolo)}`;
+      return `<a class="tarj" href="${dest}" data-ruta>
+        <div class="et">${esc(s.simbolo)}</div>
+        <div class="va">${esc(NOMBRES[s.simbolo] || s.simbolo)}</div>
+        <div class="sub">${num(s.n)} ${s.n === 1 ? "transacción" : "transacciones"}</div>
+      </a>`;
+    }).join("");
+  }).catch(() => {
+    tarjeta("ctx", "Transacciones", "—");
+    tarjeta("ctk", "Tokens", "—");
+    $("#tks").innerHTML = `<div class="aviso">No se pudo cargar el resumen.</div>`;
+  });
+
+  api("/block/allBlocks?lastBlock=8").then(d => {
     const b = d.blockInfo || [];
     $("#bl").innerHTML = b.length ? b.map(x => `
-      <div class="fila"><div class="izq">
-        <a href="/block/${esc(x.number)}" data-ruta><b>#${num(x.number)}</b></a>
-        <div class="sub">${x.transactions} ${x.transactions == 1 ? "transacción" : "transacciones"}</div>
-      </div><div class="der">${hace(x.timestamp)}</div></div>`).join("")
+      <div class="fila"><div class="conicono izq">
+        <div class="icono">Bk</div>
+        <div style="min-width:0">
+          <a href="/block/${esc(x.number)}" data-ruta><b>#${num(x.number)}</b></a>
+          <div class="sub">${num(x.transactions)} ${x.transactions == 1 ? "transacción" : "transacciones"}</div>
+        </div></div><div class="der">${hace(x.timestamp)}</div></div>`).join("")
       : `<div class="aviso">Sin bloques para mostrar.</div>`;
   }).catch(e => { $("#bl").innerHTML = err(e.message); });
 
-  api("/transaction/allTransactions?lastTransaction=10").then(d => {
-    const t = d.transactions || [];
-    $("#tx").innerHTML = t.length ? t.slice(0, 10).map(x => `
-      <div class="fila"><div class="izq">
-        <a href="/tx/${esc(x.hash)}" data-ruta class="mono cortar">${esc(corto(x.hash, 14, 8))}</a>
-        <div class="sub mono cortar">${esc(corto(x.from, 8, 6))} → ${destinoCorto(x)}</div>
-      </div><div class="der">${hace(x.timestamp)}</div></div>`).join("")
+  api("/transaction/allTransactions?lastTransaction=8").then(d => {
+    $("#tx").innerHTML = (d.transactions || []).length
+      ? d.transactions.map(filaTx).join("")
       : `<div class="aviso">Sin transacciones para mostrar.</div>`;
   }).catch(e => { $("#tx").innerHTML = err(e.message); });
 }
 
-async function vistaBloques(app) {
-  app.innerHTML = cajaBuscar() + `<h2>Últimos bloques</h2><div class="panel" id="l"><div class="cargando">Cargando…</div></div>`;
+// Fila de transaccion reutilizada por la portada, el listado y los filtros.
+function filaTx(x) {
+  const mon = monedaDe(x);
+  return `<div class="fila"><div class="conicono izq">
+      <div class="icono">${esc(esToken(x) ? mon.slice(0, 3) : "Tx")}</div>
+      <div style="min-width:0">
+        <a href="/tx/${esc(x.hash)}" data-ruta class="mono cortar">${esc(corto(x.hash, 16, 8))}</a>
+        <div class="sub mono cortar">${esc(corto(x.from, 8, 6))} → ${destinoCorto(x)}</div>
+      </div></div>
+    <div class="der">${valor(x.value)} <span class="pill">${esc(mon)}</span>
+      <div class="sub">${hace(x.timestamp)}</div></div></div>`;
+}
+
+async function vistaBloques(app, params) {
+  const pagina = Math.max(1, Number(params.get("p") || 1));
+  const POR = 25;
+  app.innerHTML = `<div class="env">${cajaBuscar(true)}
+    <div class="cabecera-seccion"><h2>Bloques</h2></div>
+    <div class="panel" id="l">${esqueleto(8)}</div><div id="pag"></div></div>`;
   try {
-    const d = await api("/block/allBlocks?lastBlock=50");
-    const b = d.blockInfo || [];
+    // El backend devuelve los N ultimos desde la punta de la cadena, asi que la
+    // pagina se consigue pidiendo hasta el final del tramo y quedandose con su
+    // ultimo trozo. El tope del servidor son 50 por peticion.
+    const hasta = pagina * POR;
+    const d = await api(`/block/allBlocks?lastBlock=${Math.min(50, hasta)}`);
+    const todos = d.blockInfo || [];
+    const b = todos.slice((pagina - 1) * POR, pagina * POR);
     $("#l").innerHTML = b.length ? b.map(x => `
-      <div class="fila"><div class="izq">
-        <a href="/block/${esc(x.number)}" data-ruta><b>#${num(x.number)}</b></a>
-        <div class="sub mono cortar">${esc(corto(x.hash, 18, 10))}</div>
-      </div><div class="der">${x.transactions} tx · ${hace(x.timestamp)}</div></div>`).join("")
+      <div class="fila"><div class="conicono izq">
+        <div class="icono">Bk</div>
+        <div style="min-width:0">
+          <a href="/block/${esc(x.number)}" data-ruta><b>#${num(x.number)}</b></a>
+          <div class="sub mono cortar">${esc(corto(x.hash, 20, 10))}</div>
+        </div></div>
+        <div class="der">${num(x.transactions)} tx<div class="sub">${hace(x.timestamp)}</div></div></div>`).join("")
       : `<div class="aviso">Sin bloques.</div>`;
+    $("#pag").innerHTML = paginacion(pagina, todos.length >= Math.min(50, hasta) && pagina < 2, "/blocks");
   } catch (e) { $("#l").innerHTML = err(e.message); }
 }
 
-async function vistaTxs(app) {
-  app.innerHTML = cajaBuscar() + `<h2>Últimas transacciones<span id="ntot" style="color:var(--txt3);font-weight:400;font-size:13px"></span></h2><div class="panel" id="l"><div class="cargando">Cargando…</div></div>`;
+function paginacion(pagina, hayMas, base, extra = "") {
+  const url = (p) => `${base}?${extra}${extra ? "&" : ""}p=${p}`;
+  return `<div class="pag">
+    ${pagina > 1 ? `<a class="btn sec" href="${url(pagina - 1)}" data-ruta>← Anterior</a>`
+                 : `<span class="btn sec" style="opacity:.4">← Anterior</span>`}
+    <span class="info">Página ${num(pagina)}</span>
+    ${hayMas ? `<a class="btn sec" href="${url(pagina + 1)}" data-ruta>Siguiente →</a>`
+             : `<span class="btn sec" style="opacity:.4">Siguiente →</span>`}
+  </div>`;
+}
+
+// ── Listado de transacciones, con filtros de servidor ────────────────────────
+const FILTROS = ["simbolo", "desdeFecha", "hastaFecha", "minValor", "maxValor", "q"];
+
+async function vistaTxs(app, params) {
+  const pagina = Math.max(1, Number(params.get("p") || 1));
+  const POR = 25;
+
+  // Los filtros viven en la URL: asi un enlace filtrado se puede compartir y
+  // el boton de atras del navegador funciona.
+  const f = {};
+  FILTROS.forEach(k => { const v = params.get(k); if (v) f[k] = v; });
+  const aFecha = (u) => u ? new Date(Number(u) * 1000).toISOString().slice(0, 10) : "";
+
+  app.innerHTML = `<div class="env">${cajaBuscar(true)}
+    <div class="cabecera-seccion"><h2>Transacciones</h2><span class="mas" id="cuenta"></span></div>
+    <form class="filtros" onsubmit="aplicarFiltros(event)">
+      <div class="filtros-rej">
+        <div class="campo-f"><label for="f-sim">Moneda o token</label>
+          <select id="f-sim"><option value="">Todas</option></select></div>
+        <div class="campo-f"><label for="f-des">Desde</label>
+          <input id="f-des" type="date" value="${aFecha(f.desdeFecha)}"></div>
+        <div class="campo-f"><label for="f-has">Hasta</label>
+          <input id="f-has" type="date" value="${aFecha(f.hastaFecha)}"></div>
+        <div class="campo-f"><label for="f-min">Cantidad mínima</label>
+          <input id="f-min" type="number" step="any" min="0" placeholder="0" value="${esc(f.minValor || "")}"></div>
+        <div class="campo-f"><label for="f-max">Cantidad máxima</label>
+          <input id="f-max" type="number" step="any" min="0" placeholder="sin límite" value="${esc(f.maxValor || "")}"></div>
+        <div class="campo-f"><label for="f-q">Hash o dirección</label>
+          <input id="f-q" type="text" placeholder="0x…" value="${esc(f.q || "")}"></div>
+      </div>
+      <div class="acciones-f">
+        <button class="btn" type="submit">Aplicar filtros</button>
+        <a class="btn sec" href="/txs" data-ruta>Limpiar</a>
+        <span class="resumen-f" id="resf"></span>
+      </div>
+    </form>
+    <div class="panel" id="l">${esqueleto(8)}</div><div id="pag"></div></div>`;
+
+  // El desplegable de monedas se llena con lo que hay de verdad en la cadena.
+  api("/transaction/resumen").then(r => {
+    const sel = $("#f-sim");
+    if (!sel) return;
+    (r.simbolos || []).forEach(s => {
+      const et = s.simbolo === "" ? "(sin etiqueta)" : s.simbolo;
+      const o = document.createElement("option");
+      o.value = s.simbolo; o.textContent = `${et} · ${num(s.n)}`;
+      if (s.simbolo === (f.simbolo || "")) o.selected = true;
+      sel.appendChild(o);
+    });
+  }).catch(() => {});
+
+  const qs = new URLSearchParams();
+  Object.entries(f).forEach(([k, v]) => qs.set(k, v));
+  qs.set("lastTransaction", String(POR));
+  qs.set("desde", String((pagina - 1) * POR));
+
   try {
-    const d = await api("/transaction/allTransactions?lastTransaction=50");
+    const d = await api(`/transaction/allTransactions?${qs}`);
     const t = d.transactions || [];
-    if (d.total) $("#ntot").textContent = ` · ${num(d.total)} en total`;
-    $("#l").innerHTML = t.length ? t.map(x => `
-      <div class="fila"><div class="izq">
-        <a href="/tx/${esc(x.hash)}" data-ruta class="mono cortar">${esc(corto(x.hash, 20, 10))}</a>
-        <div class="sub mono cortar">${esc(corto(x.from, 10, 6))} → ${destinoCorto(x)}</div>
-      </div><div class="der">${hace(x.timestamp)}</div></div>`).join("")
-      : `<div class="aviso">Sin transacciones.</div>`;
+    $("#cuenta").textContent = d.filtrado
+      ? `${num(d.total)} coinciden con el filtro`
+      : `${num(d.total)} en total`;
+    $("#resf").textContent = d.filtrado ? `Filtro activo · ${num(d.total)} resultados` : "";
+    $("#l").innerHTML = t.length ? t.map(filaTx).join("")
+      : `<div class="aviso">Ninguna transacción coincide con esos filtros.<br>
+         <a href="/txs" data-ruta>Quitar los filtros</a></div>`;
+    const extra = Object.entries(f).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+    $("#pag").innerHTML = paginacion(pagina, pagina * POR < d.total, "/txs", extra);
   } catch (e) { $("#l").innerHTML = err(e.message); }
+}
+
+function aplicarFiltros(e) {
+  e.preventDefault();
+  const p = new URLSearchParams();
+  const sim = $("#f-sim").value; if (sim) p.set("simbolo", sim);
+  const des = $("#f-des").value; if (des) p.set("desdeFecha", String(Math.floor(new Date(des + "T00:00:00Z") / 1000)));
+  // El "hasta" incluye el dia entero: si no, elegir el mismo dia en ambos
+  // campos no devolveria nada.
+  const has = $("#f-has").value; if (has) p.set("hastaFecha", String(Math.floor(new Date(has + "T23:59:59Z") / 1000)));
+  const mi = $("#f-min").value; if (mi !== "") p.set("minValor", mi);
+  const ma = $("#f-max").value; if (ma !== "") p.set("maxValor", ma);
+  const q = $("#f-q").value.trim(); if (q) p.set("q", q);
+  ir(`/txs${p.toString() ? "?" + p : ""}`);
 }
 
 async function vistaBloque(app, id) {
-  app.innerHTML = cajaBuscar() + `<h2>Bloque #${esc(num(id))}</h2><div class="panel" id="d"><div class="cargando">Cargando…</div></div><div id="txb"></div>`;
+  app.innerHTML = `<div class="env">${cajaBuscar(true)}
+    <div class="cabecera-seccion"><h2>Bloque #${esc(num(id))}</h2></div>
+    <div class="panel" id="d">${esqueleto(6)}</div><div id="txb"></div></div>`;
   try {
     const r = await api(`/block/block/${encodeURIComponent(id)}`);
     const b = r.blockInfo || r.block || r;
     if (!b || b.number === undefined) throw new Error("No se encontró ese bloque.");
 
-    // `transactions` puede venir como lista de hashes (ficha de un bloque) o
-    // como un número (listados). Se admiten las dos formas.
     const hashes = Array.isArray(b.transactions) ? b.transactions : [];
-    const cuantas = b.transactionCount ?? (Array.isArray(b.transactions) ? b.transactions.length : Number(b.transactions || 0));
+    const cuantas = b.transactionCount ?? hashes.length;
 
     // Sobre el validador: en PolyBFT la cabecera `miner` es siempre la
-    // dirección cero — el proponente va firmado dentro de extraData. Mostrar
-    // "Validador: 0x000…000" no es un dato, es ruido que además hace pensar
+    // direccion cero — el proponente va firmado dentro de extraData. Mostrar
+    // "Validador: 0x000…000" no es un dato, es ruido que ademas hace pensar
     // que el bloque no tiene validador. Se indica el consenso y ya.
     const cero = /^0x0{40}$/i.test(String(b.miner || ""));
     const filaValidador = cero
       ? `<tr><td class="k">Consenso</td><td class="v">PolyBFT <span class="pill">el proponente va firmado en extraData</span></td></tr>`
-      : `<tr><td class="k">Validador</td><td class="v mono">${esc(b.miner)}</td></tr>`;
+      : `<tr><td class="k">Validador</td><td class="v mono">${esc(b.miner)} ${btnCopiar(b.miner)}</td></tr>`;
 
     $("#d").innerHTML = `<table>
       <tr><td class="k">Número</td><td class="v">${num(b.number)}</td></tr>
-      <tr><td class="k">Hash</td><td class="v mono">${esc(b.hash)}</td></tr>
+      <tr><td class="k">Hash</td><td class="v mono">${esc(b.hash)} ${btnCopiar(b.hash)}</td></tr>
       <tr><td class="k">Fecha</td><td class="v">${fecha(b.timestamp)} <span class="pill">${hace(b.timestamp)}</span></td></tr>
       <tr><td class="k">Transacciones</td><td class="v">${num(cuantas)}</td></tr>
       <tr><td class="k">Gas usado / límite</td><td class="v">${num(b.gasUsed)} / ${num(b.gasLimit)}</td></tr>
@@ -287,85 +698,97 @@ async function vistaBloque(app, id) {
       ${filaValidador}
       ${b.parentHash ? `<tr><td class="k">Bloque padre</td><td class="v mono"><a href="/block/${Number(b.number) - 1}" data-ruta>${esc(b.parentHash)}</a></td></tr>` : ""}
     </table>
-    <div class="fila"><div class="izq">
-      <a href="/block/${Number(b.number) - 1}" data-ruta>← Bloque anterior</a></div>
+    <div class="fila"><div class="izq"><a href="/block/${Number(b.number) - 1}" data-ruta>← Bloque anterior</a></div>
       <div class="der"><a href="/block/${Number(b.number) + 1}" data-ruta>Bloque siguiente →</a></div></div>`;
 
     if (hashes.length) {
-      $("#txb").innerHTML = `<h2>Transacciones del bloque (${num(hashes.length)})</h2><div class="panel">` +
-        hashes.map(h => `<div class="fila"><div class="izq">
-          <a href="/tx/${esc(h)}" data-ruta class="mono cortar">${esc(h)}</a>
-        </div></div>`).join("") + `</div>`;
+      $("#txb").innerHTML = `<div class="seccion">
+        <div class="cabecera-seccion"><h2>Transacciones del bloque (${num(hashes.length)})</h2></div>
+        <div class="panel">` + hashes.map(h => `
+          <div class="fila"><div class="conicono izq"><div class="icono">Tx</div>
+            <a href="/tx/${esc(h)}" data-ruta class="mono cortar">${esc(h)}</a>
+          </div></div>`).join("") + `</div></div>`;
     }
   } catch (e) { $("#d").innerHTML = err(e.message); }
 }
 
 async function vistaTx(app, hash) {
-  app.innerHTML = cajaBuscar() + `<h2>Transacción</h2><div class="panel" id="d"><div class="cargando">Cargando…</div></div>`;
+  app.innerHTML = `<div class="env">${cajaBuscar(true)}
+    <div class="cabecera-seccion"><h2>Transacción</h2></div>
+    <div class="panel" id="d">${esqueleto(7)}</div></div>`;
   try {
     const r = await api(`/transaction/transaction/${encodeURIComponent(hash)}`);
     const t = r.transaction || r.transactionInfo || r;
     if (!t || !t.hash) throw new Error("No se encontró esa transacción.");
 
-    // Una transferencia de token se ve, en crudo, como valor 0 hacia el
-    // contrato. El backend ya decodifica el `input`; si viene, se muestra el
-    // destinatario y la cantidad reales en vez de "Para: <contrato>, Valor: 0".
+    const mon = monedaDe(t);
+    const tk = esToken(t);
+    const contrato = t.addressContract || (tk ? contratoDe(mon) : null);
+
+    // Hay dos formas de transferencia de token en los datos. Cuando el
+    // indexador la reconocio, `to` ya es el destinatario y `value` la cantidad
+    // del token. Cuando no, queda el `input` en crudo y el backend lo
+    // decodifica: ahi `to` es el contrato y el destinatario va aparte.
     const tr = t.transferencia;
     const filaDestino = t.to
-      ? `<tr><td class="k">Para</td><td class="v mono"><a href="/address/${esc(t.to)}" data-ruta>${esc(t.to)}</a>${tr ? ` <span class="pill">contrato de token</span>` : ""}</td></tr>`
+      ? `<tr><td class="k">Para</td><td class="v mono"><a href="/address/${esc(t.to)}" data-ruta>${esc(t.to)}</a> ${btnCopiar(t.to)}${tr ? ` <span class="pill">contrato del token</span>` : ""}</td></tr>`
       : `<tr><td class="k">Para</td><td class="v"><span class="pill">creación de contrato</span></td></tr>`;
 
     const filasToken = tr ? `
-      <tr><td class="k">Tipo</td><td class="v">Transferencia de token ${t.symbol ? `<span class="pill">${esc(t.symbol)}</span>` : ""}</td></tr>
-      <tr><td class="k">Destinatario</td><td class="v mono"><a href="/address/${esc(tr.destino)}" data-ruta>${esc(tr.destino)}</a></td></tr>
-      <tr><td class="k">Cantidad</td><td class="v">${valor(tr.cantidad)} ${esc(t.symbol || "")}</td></tr>` : "";
+      <tr><td class="k">Destinatario real</td><td class="v mono"><a href="/address/${esc(tr.destino)}" data-ruta>${esc(tr.destino)}</a> ${btnCopiar(tr.destino)}</td></tr>
+      <tr><td class="k">Cantidad transferida</td><td class="v"><b>${valor(tr.cantidad)}</b> ${esc(t.symbol || "")}</td></tr>` : "";
 
     $("#d").innerHTML = `<table>
-      <tr><td class="k">Hash</td><td class="v mono">${esc(t.hash)}</td></tr>
+      <tr><td class="k">Hash</td><td class="v mono">${esc(t.hash)} ${btnCopiar(t.hash)}</td></tr>
+      <tr><td class="k">Tipo</td><td class="v">${tk
+        ? `Transferencia de token <span class="pill oro">${esc(mon)}</span>`
+        : (String(t.symbol).toUpperCase() === "CONTRACT"
+            ? `Interacción con contrato`
+            : `Transferencia de ${MONEDA}`)}</td></tr>
       <tr><td class="k">Bloque</td><td class="v"><a href="/block/${esc(t.blockNumber)}" data-ruta>#${num(t.blockNumber)}</a></td></tr>
       <tr><td class="k">Fecha</td><td class="v">${fecha(t.timestamp)} <span class="pill">${hace(t.timestamp)}</span></td></tr>
-      <tr><td class="k">De</td><td class="v mono"><a href="/address/${esc(t.from)}" data-ruta>${esc(t.from)}</a></td></tr>
+      <tr><td class="k">De</td><td class="v mono"><a href="/address/${esc(t.from)}" data-ruta>${esc(t.from)}</a> ${btnCopiar(t.from)}</td></tr>
       ${filaDestino}
-      <tr><td class="k">Valor nativo</td><td class="v">${valor(t.value)} ORIGEN</td></tr>
+      <tr><td class="k">Valor</td><td class="v"><b style="font-size:15px">${valor(t.value)}</b> ${esc(mon)}</td></tr>
       ${filasToken}
+      ${contrato ? `<tr><td class="k">Contrato del token</td><td class="v mono"><a href="/token/${esc(contrato)}" data-ruta>${esc(contrato)}</a></td></tr>` : ""}
       <tr><td class="k">Precio del gas</td><td class="v">${num(t.gasPrice)}</td></tr>
+      ${t.gas ? `<tr><td class="k">Gas</td><td class="v">${num(t.gas)}</td></tr>` : ""}
       <tr><td class="k">Nonce</td><td class="v">${esc(t.nonce)}</td></tr>
     </table>`;
   } catch (e) { $("#d").innerHTML = err(e.message); }
 }
 
-// Divide un totalSupply en crudo (entero, sin decimales) por 10^decimales.
-// No se usa Number: 555 millones con 18 decimales tiene 27 dígitos y no cabe
-// en un double sin perder precisión. Se hace con BigInt sobre el texto.
-function supplyLegible(crudo, decimales) {
-  try {
-    const d = BigInt(decimales || 18);
-    const bruto = BigInt(crudo);
-    const div = 10n ** d;
-    const entero = bruto / div;
-    return Number(entero).toLocaleString("es");
-  } catch (e) {
-    return String(crudo);
-  }
-}
-
 async function vistaTokens(app) {
-  app.innerHTML = cajaBuscar() + `<h2>Tokens de la red</h2>
-    <div class="tarjetas">` + TOKENS.map(t => `
-      <a class="tarj" href="/token/${t.contrato}" data-ruta style="display:block">
-        <div class="et">${esc(t.symbol)}</div>
-        <div class="va">${esc(t.nombre)}</div>
-        <div class="sub mono cortar" style="margin-top:6px">${esc(corto(t.contrato, 12, 10))}</div>
-      </a>`).join("") + `</div>`;
+  app.innerHTML = `<div class="env">${cajaBuscar(true)}
+    <div class="cabecera-seccion"><h2>Tokens de la red</h2></div>
+    <div class="tarjetas" id="tks">${esqueleto(3)}</div>
+    <p class="pista" style="text-align:left;margin-top:18px">
+      Los tokens salen de las transacciones indexadas. De los que tienen contrato
+      conocido se puede ver su ficha completa; del resto, sus movimientos.</p></div>`;
+  try {
+    const r = await api("/transaction/resumen");
+    const tks = (r.simbolos || []).filter(s => !NO_TOKEN.has(s.simbolo.toUpperCase()));
+    $("#tks").innerHTML = tks.length ? tks.map(s => {
+      const c = contratoDe(s.simbolo);
+      const dest = c ? `/token/${c}` : `/txs?simbolo=${encodeURIComponent(s.simbolo)}`;
+      return `<a class="tarj" href="${dest}" data-ruta>
+        <div class="et">${esc(s.simbolo)} ${c ? `<span class="pill ok">con contrato</span>` : ""}</div>
+        <div class="va">${esc(NOMBRES[s.simbolo] || s.simbolo)}</div>
+        <div class="sub">${num(s.n)} ${s.n === 1 ? "transacción" : "transacciones"}</div>
+      </a>`;
+    }).join("") : `<div class="aviso">No hay tokens con movimientos.</div>`;
+  } catch (e) { $("#tks").innerHTML = err(e.message); }
 }
 
 async function vistaToken(app, contrato) {
-  const conocido = tokenPorContrato(contrato);
-  app.innerHTML = cajaBuscar() +
-    `<h2>Token ${conocido ? esc(conocido.symbol) : ""}</h2>
-     <div class="mono" style="color:var(--txt2);margin:-6px 0 14px;word-break:break-all">${esc(contrato)}</div>
-     <div id="res"></div><h2>Transacciones del token</h2>
-     <div class="panel" id="l"><div class="cargando">Cargando…</div></div>`;
+  const sim = tokenPorContrato(contrato);
+  app.innerHTML = `<div class="env">${cajaBuscar(true)}
+    <div class="cabecera-seccion"><h2>Token ${sim ? esc(sim) : ""}</h2></div>
+    <div class="mono" style="color:var(--txt2);margin:-6px 0 16px;word-break:break-all">${esc(contrato)} ${btnCopiar(contrato)}</div>
+    <div id="res"></div>
+    <div class="cabecera-seccion" style="margin-top:26px"><h2>Movimientos del token</h2></div>
+    <div class="panel" id="l">${esqueleto(6)}</div></div>`;
   try {
     const r = await api(`/address/token/${encodeURIComponent(contrato)}`);
     const d = r.result || r;
@@ -373,79 +796,135 @@ async function vistaToken(app, contrato) {
     $("#res").innerHTML = `<div class="tarjetas">
       <div class="tarj"><div class="et">Símbolo</div><div class="va oro">${esc(td.symbol)}</div></div>
       <div class="tarj"><div class="et">Nombre</div><div class="va">${esc(td.name)}</div></div>
-      <div class="tarj"><div class="et">Suministro total</div><div class="va">${supplyLegible(td.totalSupply, td.decimal)}</div></div>
+      <div class="tarj"><div class="et">Suministro total</div><div class="va">${supplyLegible(td.totalSupply, td.decimal)}</div>
+        <div class="sub">${esc(td.symbol)}</div></div>
       <div class="tarj"><div class="et">Decimales</div><div class="va">${esc(td.decimal)}</div></div>
     </div>`;
-
     const t = d.transactions || [];
-    $("#l").innerHTML = t.length ? t.slice(0, 50).map(x => `
-      <div class="fila"><div class="izq">
-        <a href="/tx/${esc(x.hash)}" data-ruta class="mono cortar">${esc(corto(x.hash, 18, 10))}</a>
-        <div class="sub mono cortar">${esc(corto(x.from, 10, 6))} → ${destinoCorto(x)}</div>
-      </div><div class="der">${hace(x.timestamp)}</div></div>`).join("")
+    $("#l").innerHTML = t.length ? t.slice(0, 50).map(filaTx).join("")
       : `<div class="aviso">Este token no tiene transacciones registradas en el índice.</div>`;
   } catch (e) {
-    // El backend responde 400 si el contrato está mal escrito; se muestra su
-    // mensaje, que es más útil que un genérico.
     $("#res").innerHTML = "";
     $("#l").innerHTML = err(e.message);
   }
 }
 
 async function vistaDireccion(app, addr) {
-  // Si la dirección es el contrato de un token conocido, se ofrece su ficha.
-  const tk = tokenPorContrato(addr);
-  const banner = tk
-    ? `<div class="pista" style="margin:-6px 0 14px">Esta dirección es el contrato del token <b>${esc(tk.symbol)}</b>. <a href="/token/${tk.contrato}" data-ruta>Ver la ficha del token →</a></div>`
+  const sim = tokenPorContrato(addr);
+  const banner = sim
+    ? `<div class="pista" style="text-align:left;margin:-6px 0 16px">Esta dirección es el contrato del token <b>${esc(sim)}</b>. <a href="/token/${addr}" data-ruta>Ver la ficha del token →</a></div>`
     : "";
-  app.innerHTML = cajaBuscar() +
-    `<h2>Dirección</h2><div class="mono" style="color:var(--txt2);margin:-6px 0 14px;word-break:break-all">${esc(addr)}</div>${banner}
-     <div id="res"></div><h2>Transacciones<span id="ntx"></span></h2><div class="panel" id="l"><div class="cargando">Cargando…</div></div>`;
+  app.innerHTML = `<div class="env">${cajaBuscar(true)}
+    <div class="cabecera-seccion"><h2>Dirección</h2></div>
+    <div class="mono" style="color:var(--txt2);margin:-6px 0 14px;word-break:break-all">${esc(addr)} ${btnCopiar(addr)}</div>
+    ${banner}<div id="res"></div>
+    <div class="cabecera-seccion" style="margin-top:26px"><h2>Transacciones<span id="ntx"></span></h2>
+      <a class="mas" href="/txs?q=${encodeURIComponent(addr)}" data-ruta>Buscar con filtros →</a></div>
+    <div class="panel" id="l">${esqueleto(6)}</div></div>`;
   try {
     const d = await api(`/address/${encodeURIComponent(addr)}`);
-    const saldo = d.balance ?? "0";
     const tk = d.tokensBalance || {};
-    const filasTk = Object.entries(tk)
-      .map(([k, v]) => `<div class="tarj"><div class="et">${esc(k)}</div><div class="va">${valor(v.balance)}</div></div>`)
-      .join("");
+    const filasTk = Object.entries(tk).map(([k, v]) => {
+      const c = v.contractAddress;
+      return `<a class="tarj" href="${c ? `/token/${c}` : "#"}" data-ruta>
+        <div class="et">${esc(k)}</div><div class="va">${valor(v.balance)}</div></a>`;
+    }).join("");
     $("#res").innerHTML = `<div class="tarjetas">
-      <div class="tarj"><div class="et">Saldo ORIGEN</div><div class="va oro">${valor(saldo)}</div></div>${filasTk}</div>`;
+      <div class="tarj"><div class="et">Saldo ${MONEDA}</div>
+        <div class="va oro">${d.balance === null ? "—" : valor(d.balance)}</div>
+        ${d.balance === null ? `<div class="sub">el nodo no respondió</div>` : ""}</div>${filasTk}</div>`;
 
     const t = d.transactions || [];
-    // El servidor devuelve el historial completo sin límite. Se muestra un
-    // tramo y se dice cuántas hay en total, en vez de pintar miles de filas y
-    // dejar la página inutilizable en una dirección con mucho movimiento.
     const TOPE = 50;
-    const visibles = t.slice(0, TOPE);
     $("#ntx").textContent = t.length ? ` (${num(t.length)})` : "";
-    $("#l").innerHTML = (visibles.length ? visibles.map(x => {
+    $("#l").innerHTML = (t.length ? t.slice(0, TOPE).map(x => {
       const sale = String(x.from || "").toLowerCase() === String(addr).toLowerCase();
-      return `<div class="fila"><div class="izq">
-        <a href="/tx/${esc(x.hash)}" data-ruta class="mono cortar">${esc(corto(x.hash, 18, 10))}</a>
-        <div class="sub mono cortar">${sale ? "envió a " + esc(corto(x.to, 10, 6)) : "recibió de " + esc(corto(x.from, 10, 6))}</div>
-      </div><div class="der">${valor(x.value)}<div class="sub">${hace(x.timestamp)}</div></div></div>`;
+      const mon = monedaDe(x);
+      return `<div class="fila"><div class="conicono izq">
+        <div class="icono">${sale ? "↑" : "↓"}</div>
+        <div style="min-width:0">
+          <a href="/tx/${esc(x.hash)}" data-ruta class="mono cortar">${esc(corto(x.hash, 16, 8))}</a>
+          <div class="sub mono cortar">${sale
+            ? `<span class="pill sal">envió</span> a ${destinoCorto(x)}`
+            : `<span class="pill ent">recibió</span> de ${esc(corto(x.from, 10, 6))}`}</div>
+        </div></div>
+        <div class="der">${valor(x.value)} <span class="pill">${esc(mon)}</span>
+          <div class="sub">${hace(x.timestamp)}</div></div></div>`;
     }).join("") : `<div class="aviso">Esta dirección no tiene transacciones registradas.</div>`)
       + (t.length > TOPE ? `<div class="aviso">Mostrando las ${TOPE} más recientes de ${num(t.length)}.</div>` : "");
   } catch (e) { $("#l").innerHTML = err(e.message); }
+}
+
+// ── Datos de la red, con alta en la billetera ────────────────────────────────
+async function vistaRed(app) {
+  app.innerHTML = `<div class="env">
+    <div class="cabecera-seccion" style="margin-top:26px"><h2>Datos de la red</h2></div>
+    <div class="panel"><table>
+      <tr><td class="k">Nombre</td><td class="v">Orden Global</td></tr>
+      <tr><td class="k">ID de cadena</td><td class="v">${CHAIN_ID} <span class="pill">0x${CHAIN_ID.toString(16)}</span> ${btnCopiar(String(CHAIN_ID))}</td></tr>
+      <tr><td class="k">Moneda</td><td class="v">${MONEDA} <span class="pill">18 decimales</span></td></tr>
+      <tr><td class="k">RPC</td><td class="v mono">${RPC} ${btnCopiar(RPC)}</td></tr>
+      <tr><td class="k">Explorador</td><td class="v mono">${esc(location.origin)} ${btnCopiar(location.origin)}</td></tr>
+      <tr><td class="k">Consenso</td><td class="v">PolyBFT</td></tr>
+      <tr><td class="k">Último bloque</td><td class="v" id="ub">…</td></tr>
+    </table></div>
+    <div class="acciones-f" style="margin-top:18px">
+      <button class="btn" onclick="agregarBilletera()">Añadir a MetaMask</button>
+      <span class="resumen-f" id="mmsg" style="margin-left:0"></span>
+    </div>
+    <p class="pista" style="text-align:left;margin-top:22px">
+      Este explorador implementa <b>EIP-3091</b> — las rutas <code>/block/&lt;n&gt;</code>,
+      <code>/tx/&lt;hash&gt;</code> y <code>/address/&lt;0x…&gt;</code> — que es el estándar
+      que exigen Chainlist y las billeteras para reconocer un explorador de bloques.</p>
+  </div>`;
+  api("/block/totalBlock").then(d => { $("#ub").textContent = num(d.blockTotal); })
+    .catch(() => { $("#ub").textContent = "—"; });
+}
+
+async function agregarBilletera() {
+  const m = $("#mmsg");
+  if (!window.ethereum) {
+    m.textContent = "No se detectó ninguna billetera en este navegador.";
+    return;
+  }
+  try {
+    await window.ethereum.request({
+      method: "wallet_addEthereumChain",
+      params: [{
+        chainId: "0x" + CHAIN_ID.toString(16),
+        chainName: "Orden Global",
+        nativeCurrency: { name: MONEDA, symbol: MONEDA, decimals: 18 },
+        rpcUrls: [RPC],
+        blockExplorerUrls: [location.origin],
+      }],
+    });
+    m.textContent = "Red añadida.";
+  } catch (e) {
+    m.textContent = "No se pudo añadir: " + (e?.message || "cancelado");
+  }
 }
 
 // ── Despachador ──────────────────────────────────────────────────────────────
 function pintar() {
   const app = $("#app");
   const p = location.pathname.replace(/\/+$/, "") || "/";
-  document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.getAttribute("href") === p));
+  const params = new URLSearchParams(location.search);
+  document.querySelectorAll("nav a").forEach(a =>
+    a.classList.toggle("on", a.getAttribute("href") === p));
 
   let m;
   if (p === "/") return vistaInicio(app);
-  if (p === "/blocks") return vistaBloques(app);
-  if (p === "/txs") return vistaTxs(app);
+  if (p === "/blocks") return vistaBloques(app, params);
+  if (p === "/txs") return vistaTxs(app, params);
   if (p === "/tokens") return vistaTokens(app);
+  if (p === "/red") return vistaRed(app);
   if ((m = p.match(/^\/block\/(.+)$/))) return vistaBloque(app, decodeURIComponent(m[1]));
   if ((m = p.match(/^\/tx\/(.+)$/))) return vistaTx(app, decodeURIComponent(m[1]));
   if ((m = p.match(/^\/token\/(.+)$/))) return vistaToken(app, decodeURIComponent(m[1]));
   if ((m = p.match(/^\/address\/(.+)$/))) return vistaDireccion(app, decodeURIComponent(m[1]));
 
-  app.innerHTML = cajaBuscar() + `<div class="aviso">Esa página no existe. <a href="/" data-ruta>Volver al inicio</a></div>`;
+  app.innerHTML = `<div class="env">${cajaBuscar(true)}
+    <div class="aviso">Esa página no existe. <a href="/" data-ruta>Volver al inicio</a></div></div>`;
 }
 pintar();
 </script>
