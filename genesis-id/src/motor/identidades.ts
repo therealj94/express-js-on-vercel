@@ -22,6 +22,7 @@ import { store } from '../store.js'
 import { gidPersonal, id } from '../lib/uid.js'
 import { registrar } from '../audit/bitacora.js'
 import { revisarDocumento } from '../kyc/documento.js'
+import { parecidoNombres } from '../lib/texto.js'
 import { cotejar, sinProveedor, cotejoManual, biometriaConfigurada } from '../kyc/biometria.js'
 import type { ResultadoVivacidad } from '../kyc/vivacidad.js'
 import { tamizarPersona } from '../aml/tamiz.js'
@@ -148,7 +149,19 @@ export function adjuntarDocumento(
 
   // Los datos válidos del documento pasan a ser los oficiales de la identidad.
   if (revision.datos) {
-    identidad.nombreLegal = revision.datos.nombreCompleto
+    // EL NOMBRE COMPLETO, NO EL RECORTADO POR EL ANCHO DE LA MRZ.
+    //
+    // La zona de lectura mecánica corta: en una cédula hondureña «JOSE» sale
+    // «JOS», y ese recorte acababa impreso en la credencial —«MEDARDO JOS
+    // ORDONEZ ENAMORADO»— como si la persona se llamara así. Cuando el anverso
+    // confirmó el nombre declarado y el del documento es su versión cortada, el
+    // que vale es el entero: es el mismo nombre, sin la mutilación del formato.
+    const declarado = identidad.nombreDeclarado
+    const recortado = revision.datos.nombreCompleto
+    const esRecorteDe = Boolean(
+      declarado && revision.anverso.nombreConfirmado &&
+      parecidoNombres(declarado, recortado) >= 0.95)
+    identidad.nombreLegal = esRecorteDe ? declarado! : recortado
     identidad.fechaNacimiento = revision.datos.fechaNacimiento
     identidad.nacionalidad = revision.datos.nacionalidad
     identidad.numeroDocumento = revision.datos.numeroDocumento

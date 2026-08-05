@@ -335,6 +335,47 @@ export function Passport({ nav }) {
   const t = useT();
   const acc = account || {};
 
+  /**
+   * La foto de la credencial.
+   *
+   * La pantalla decia «subelos tu» y no ofrecia ningun sitio donde hacerlo.
+   * Ahora se elige de la galeria o se toma con la camara, se recorta a un
+   * cuadrado pequeño y se guarda SOLO en este telefono: no viaja a ningun
+   * servidor, porque la credencial se dibuja aqui.
+   */
+  async function elegirFotoCredencial(origen) {
+    hap();
+    try {
+      const ImagePicker = require('expo-image-picker');
+      const ImageManipulator = require('expo-image-manipulator');
+
+      const permiso = origen === 'camara'
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permiso?.granted) { toast(t('pass.photoNoPerm')); return; }
+
+      const sel = origen === 'camara'
+        ? await ImagePicker.launchCameraAsync({ quality: 1, allowsEditing: true, aspect: [1, 1] })
+        : await ImagePicker.launchImageLibraryAsync({ quality: 1, allowsEditing: true, aspect: [1, 1], mediaTypes: ['images'] });
+      if (sel?.canceled || !sel?.assets?.[0]?.uri) return;
+
+      // 320 px de lado basta para una credencial y deja el dato pequeño: se
+      // guarda dentro de la cuenta, en el propio telefono.
+      const chica = await ImageManipulator.manipulateAsync(
+        sel.assets[0].uri, [{ resize: { width: 320, height: 320 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+      );
+      if (!chica?.base64) { toast(t('pass.photoFail')); return; }
+
+      const actualizada = await setPassport(acc.email, {
+        photoUrl: `data:image/jpeg;base64,${chica.base64}`,
+      });
+      if (actualizada) { login(actualizada); toast(t('pass.photoOk')); }
+    } catch (e) {
+      toast(t('pass.photoFail'));
+    }
+  }
+
   // Al abrir el pasaporte se vuelve a consultar el estado real en el servidor.
   // Sirve para dos cosas: completar la credencial cuando cumplimiento acaba de
   // aprobarla, y RETIRARLA si la identidad fue suspendida. Lo segundo importa
@@ -447,14 +488,34 @@ export function Passport({ nav }) {
         {/* Mientras cumplimiento no haya aprobado, la credencial se ve a
             medias (sin nombre legal ni foto). Se dice aquí en vez de dejar al
             usuario adivinando por qué le falta información. */}
-        {(!p?.fullName || !p?.photoUrl) && (
+        {/* El aviso decia «subelos tu» y no habia ningun sitio donde hacerlo.
+            Ahora el boton esta aqui mismo: la foto se elige de la galeria o se
+            toma con la camara, se reduce y se guarda SOLO en este telefono. */}
+        {!p?.photoUrl && (
           <View style={styles.incompleto}>
             <Icon name="information-circle" size={18} color="#FBBF24" />
             <View style={{ flex: 1 }}>
               <Text style={styles.incT}>{t('pass.incompleteT')}</Text>
               <Text style={styles.incP}>{t('pass.incompleteP')}</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                <Pressable onPress={() => elegirFotoCredencial('galeria')} style={styles.miniBtn}>
+                  <Icon name="image" size={15} color={C.gold} />
+                  <Text style={styles.miniBtnTxt}>{t('pass.fromGallery')}</Text>
+                </Pressable>
+                <Pressable onPress={() => elegirFotoCredencial('camara')} style={styles.miniBtn}>
+                  <Icon name="eye" size={15} color={C.gold} />
+                  <Text style={styles.miniBtnTxt}>{t('pass.fromCamera')}</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
+        )}
+
+        {p?.photoUrl && (
+          <Pressable onPress={() => elegirFotoCredencial('galeria')} style={styles.cambiarFoto}>
+            <Icon name="refresh" size={15} color={C.txt3} />
+            <Text style={styles.cambiarFotoTxt}>{t('pass.changePhoto')}</Text>
+          </Pressable>
         )}
 
         <Text style={styles.passNote}>{t('pass.note')}</Text>
@@ -788,6 +849,14 @@ const styles = StyleSheet.create({
   passMeta: { color: C.txt, fontSize: 11.5, fontWeight: '600', marginTop: 2 },
   passNote: { color: C.txt3, fontSize: 11.5, lineHeight: 16, textAlign: 'center', marginVertical: 14 },
   incompleto: { flexDirection: 'row', gap: 11, alignItems: 'flex-start', backgroundColor: 'rgba(251,191,36,0.10)', borderWidth: 1, borderColor: 'rgba(251,191,36,0.3)', borderRadius: 16, padding: 14, marginTop: 14, marginBottom: 12 },
+  miniBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1, borderColor: 'rgba(201,169,97,0.4)', borderRadius: 10,
+    paddingVertical: 7, paddingHorizontal: 12,
+  },
+  miniBtnTxt: { color: C.gold, fontSize: 12, fontWeight: '700' },
+  cambiarFoto: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center', paddingVertical: 10 },
+  cambiarFotoTxt: { color: C.txt3, fontSize: 12.5 },
   incT: { color: '#FBBF24', fontWeight: '700', fontSize: 13 },
   incP: { color: C.txt2, fontSize: 12, lineHeight: 17.5, marginTop: 3 },
   passPhotoImg: { width: 64, height: 64, borderRadius: 18, backgroundColor: C.panel2 },

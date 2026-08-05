@@ -357,10 +357,14 @@ function Root() {
     // misma foto muy velada, que aporta profundidad sin restar legibilidad.
     <AppBackground intensity="content">
       <ExpoStatusBar style="light" />
+      {/* El margen de ARRIBA sale de los insets igual que el de abajo.
+          `StatusBar.currentHeight` devuelve 0 cuando la app dibuja de borde a
+          borde —lo normal desde Android 15— y el encabezado se metia debajo del
+          reloj y la bateria. Se toma el mayor de los dos por si acaso. */}
       {isFull ? (
         <View style={{ flex: 1 }}>{content}</View>
       ) : (
-        <SafeAreaView style={{ flex: 1, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }}>
+        <SafeAreaView style={{ flex: 1, paddingTop: Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0) }}>
           {content}
           {/* La barra de navegacion de Android —los tres botones, o la raya de
               gestos— tapaba el menu: `SafeAreaView` no la contempla en Android.
@@ -432,7 +436,7 @@ const styles = StyleSheet.create({
   toastTxt: { color: C.txt, fontWeight: '600', fontSize: 13 },
   offline: {
     position: 'absolute',
-    top: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0,
+    top: 0,
     left: 0, right: 0,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: '#8A2A21',

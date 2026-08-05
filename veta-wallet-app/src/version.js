@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.30.0';
-export const BUILD = 66;
+export const VERSION = '1.31.0';
+export const BUILD = 67;
 export const RELEASED = '2026-08-05';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,21 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.31.0',
+    build: 67,
+    date: '2026-08-05',
+    es: [
+      'Ya podés poner tu foto en la credencial. La pantalla decía «súbelos tú» y no ofrecía ningún sitio donde hacerlo. Ahora se elige de tus fotos o se toma con la cámara, y se guarda solo en este teléfono: no viaja a ningún servidor.',
+      'Tu nombre en la credencial ya no sale cortado. Decía «MEDARDO JOS» porque la línea del reverso tiene ancho fijo y recorta; cuando el frente confirma tu nombre entero, se usa ese.',
+      'Arreglado el encabezado, que se metía debajo del reloj y la batería. La app dibuja de borde a borde y no estaba respetando el espacio de arriba.',
+    ],
+    en: [
+      'You can now add your photo to the credential. The screen said «upload them yourself» and offered nowhere to do it. Choose from your photos or take one with the camera — it is stored only on this phone and never travels to a server.',
+      'Your name on the credential is no longer truncated. It read «MEDARDO JOS» because the line on the back has a fixed width and cuts names; when the front confirms your full name, that is the one used.',
+      'Fixed the header sliding under the clock and battery. The app draws edge to edge and was not respecting the top inset.',
+    ],
+  },
   {
     v: '1.30.0',
     build: 66,

@@ -508,3 +508,15 @@ test('un anverso vacio o ilegible no se cuenta como comprobado', () => {
   assert.equal(r.anverso.aportado, false)
   assert.notEqual(r.anverso.nombreConfirmado, true)
 })
+
+test('el nombre recortado por la MRZ no acaba impreso en la credencial', () => {
+  // «MEDARDO JOS ORDONEZ ENAMORADO» salia en el pasaporte como si la persona
+  // se llamara asi. Es el ancho del campo, no su nombre.
+  const r = revisarDocumento(
+    CEDULA,
+    { nombreCompleto: 'Medardo Jose Ordonez Enamorado', fechaNacimiento: '1994-03-21' },
+    ANVERSO)
+  assert.equal(r.anverso.nombreConfirmado, true)
+  assert.ok(r.datos!.nombreCompleto.includes('JOS'), 'el documento sigue diciendo lo que dice')
+  assert.ok(!r.datos!.nombreCompleto.includes('JOSE'), 'y viene recortado, que es el caso a cubrir')
+})
