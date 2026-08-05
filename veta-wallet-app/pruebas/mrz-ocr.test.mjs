@@ -84,5 +84,37 @@ ok(td1Sacado?.formato === 'TD1' && td1Sacado.lineas.length === 3, 'reconoce una 
 ok(extraerLineas('NOMBRE JUAN PEREZ\nFECHA 12/05/1990') === null, 'no ve una MRZ donde no la hay')
 ok(extraerLineas('') === null, 'no revienta con texto vacío')
 
+
+console.log('\n7. Casos reales de una cedula hondurena')
+// Lo que devolvio ML Kit con el telefono demasiado cerca: las lineas salen
+// cortadas por la derecha. Antes se descartaban y se decia "no se distinguen
+// las lineas", que mandaba a la persona a buscar mas luz para nada.
+const cortado = `COMISIONADOS PROPIETARIOS
+I<HND0035996903<<<<<<<<<<<
+9403213M3103212HND<<<
+ORDONEZ<ENAMORADO<<`
+const rCorte = extraerLineas(cortado)
+ok(rCorte?.cortadas === true, 'detecta que las lineas salen cortadas')
+ok(rCorte?.visto < 30, `informa cuanto se vio (${rCorte?.visto} caracteres)`)
+
+// La misma cedula bien encuadrada.
+const HND = [
+  'I<HND0035996903<<<<<<<<<<<<<<<',
+  '9403213M3103212HND<<<<<<<<<<<6',
+  'ORDONEZ<ENAMORADO<<JOSE<MARIO<',
+]
+const bien = extraerLineas('REPUBLICA DE HONDURAS\nCOMISIONADOS PROPIETARIOS\n' + HND.join('\n'))
+ok(bien?.formato === 'TD1', 'con la cedula entera reconoce el formato TD1')
+ok(bien?.lineas.join('\n') === HND.join('\n'), 'devuelve las tres lineas exactas')
+
+// El OCR parte una linea en dos cuando hay una sombra o un doblez.
+const partido = ['I<HND00359969', '03<<<<<<<<<<<<<<<', HND[1], HND[2]].join('\n')
+const unido = extraerLineas(partido)
+ok(unido?.lineas?.[0] === HND[0], 'une los trozos de una linea partida por el OCR')
+
+// El texto impreso del documento no debe confundirse con una MRZ.
+ok(extraerLineas('COMISIONADOS PROPIETARIOS\nREPUBLICA DE HONDURAS\nJOSE MARIO ORDONEZ') === null,
+  'el texto impreso del documento no se toma por MRZ')
+
 console.log(fallos ? `\n${fallos} FALLOS\n` : '\nTodo en verde\n')
 process.exit(fallos ? 1 : 0)

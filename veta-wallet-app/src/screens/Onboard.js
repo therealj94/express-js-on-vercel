@@ -168,8 +168,40 @@ export function Kyc({ nav }) {
         toast(t('gen.scanPartial'));
         return;
       }
+      // «Cortadas» no es «no se ve nada»: se leyeron las lineas pero el
+      // telefono estaba demasiado cerca. Decirle a alguien que busque mas luz
+      // cuando lo que sobra es cercania es mandarlo a perder el tiempo.
+      if (r.motivo === 'cortadas') { toast(t('gen.scanCut')); return; }
       toast(r.motivo === 'sin-lector' ? t('gen.scanNoReader') : t('gen.scanRetry'));
     } catch (e) { setOcupado(false); toast(t('gen.errPhoto')); }
+  }
+
+  /**
+   * Leer desde una foto ya tomada.
+   *
+   * Con la camara de la app no se puede enfocar ni acercar a voluntad. La
+   * camara del telefono si, y para un documento gastado eso es la diferencia
+   * entre leerlo y no leerlo. La imagen tampoco sale del telefono.
+   */
+  async function elegirFoto() {
+    hap();
+    try {
+      const ImagePicker = require('expo-image-picker');
+      const permisoGaleria = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permisoGaleria?.granted) { toast(t('gen.scanNoGallery')); return; }
+      const sel = await ImagePicker.launchImageLibraryAsync({ quality: 1, mediaTypes: ['images'] });
+      if (sel?.canceled || !sel?.assets?.[0]?.uri) return;
+
+      setOcupado(true);
+      const r = await leerDeFoto(sel.assets[0].uri);
+      setOcupado(false);
+      if (r.ok || r.mrz) {
+        setMrz(r.mrz); setEscaneando(false);
+        toast(r.ok ? (r.corregida ? t('gen.scanFixed') : t('gen.scanOk')) : t('gen.scanPartial'));
+        return;
+      }
+      toast(r.motivo === 'cortadas' ? t('gen.scanCut') : t('gen.scanRetry'));
+    } catch (e) { setOcupado(false); toast(t('gen.scanRetry')); }
   }
 
   async function enviarDocumento() {
@@ -358,6 +390,9 @@ export function Kyc({ nav }) {
                 <Button3D title={ocupado ? t('gen.scanReading') : t('gen.scanShot')}
                   icon="card" onPress={escanearDocumento} disabled={ocupado}
                   style={{ marginTop: 12 }} />
+                <Pressable onPress={elegirFoto} style={st.retry} disabled={ocupado}>
+                  <Text style={st.retryTxt}>{t('gen.scanGallery')}</Text>
+                </Pressable>
                 <Pressable onPress={() => setEscaneando(false)} style={st.retry} disabled={ocupado}>
                   <Text style={[st.retryTxt, { color: C.txt3 }]}>{t('gen.scanManual')}</Text>
                 </Pressable>
@@ -742,9 +777,13 @@ const st = StyleSheet.create({
 
   // Franja que marca dónde poner el pie del documento. Encuadrar bien es la
   // diferencia entre leerlo a la primera y tres intentos.
+  // La franja va de lado a lado y en el centro. La version anterior era un
+  // recuadro pequeño abajo: la gente ponia el documento arriba, fuera de el, y
+  // sobre todo lo acercaba tanto que las lineas salian cortadas por los lados.
+  // Lo que hay que encuadrar es el ANCHO entero.
   guia: {
-    position: 'absolute', left: '6%', right: '6%', bottom: '18%', height: 76,
-    borderWidth: 2, borderColor: C.gold, borderRadius: 8, opacity: 0.75,
+    position: 'absolute', left: 8, right: 8, top: '32%', height: 108,
+    borderWidth: 2, borderColor: C.gold, borderRadius: 8, opacity: 0.8,
   },
   gestoPaso: { color: C.txt3, fontSize: 12, letterSpacing: 1, marginTop: 14, textTransform: 'uppercase' },
   gestoTxt: { color: C.gold, fontSize: 22, fontWeight: '700', marginTop: 4, marginBottom: 12 },

@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.23.0';
-export const BUILD = 59;
+export const VERSION = '1.24.0';
+export const BUILD = 60;
 export const RELEASED = '2026-08-05';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,27 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.24.0',
+    build: 60,
+    date: '2026-08-05',
+    es: [
+      'El escáner del documento no leía las cédulas hondureñas. Las líneas sí se veían, pero salían cortadas por los lados al acercar el teléfono, y el lector las descartaba diciendo «no se distinguen las líneas» — un diagnóstico falso que mandaba a buscar más luz cuando lo que sobraba era cercanía.',
+      'Ahora, si salen cortadas, se dice exactamente eso: «alejá un poco el teléfono para que quepan enteras».',
+      'La guía de encuadre pasa a ser una franja de lado a lado en el centro. Antes era un recuadro pequeño abajo, donde casi nadie pone el documento.',
+      'Si la cámara parte una línea en dos por una sombra o un doblez, los trozos se vuelven a unir en vez de descartarse.',
+      'Nuevo: leer el documento desde una foto ya tomada. La cámara del teléfono enfoca y acerca mejor que la de la app, y para un documento gastado eso decide. La imagen sigue sin salir del teléfono.',
+      'El texto impreso del documento —«REPÚBLICA DE HONDURAS», «COMISIONADOS PROPIETARIOS»— ya no se confunde con las líneas de código.',
+    ],
+    en: [
+      'The document scanner could not read Honduran ID cards. The lines were visible, but got cut off at the sides when the phone came close, and the reader discarded them saying «the lines are not legible» — a false diagnosis that sent people looking for more light when the problem was being too close.',
+      'Now, if they are cut off, it says exactly that: «move the phone back so they fit whole».',
+      'The framing guide is now a band across the middle. It used to be a small box at the bottom, where almost nobody holds the document.',
+      'If the camera splits a line in two because of a shadow or a fold, the pieces are joined back instead of discarded.',
+      'New: read the document from a photo you already took. The phone camera focuses and zooms better than the in-app one, and for a worn document that decides it. The image still never leaves your phone.',
+      'Printed text on the document is no longer mistaken for the code lines.',
+    ],
+  },
   {
     v: '1.23.0',
     build: 59,

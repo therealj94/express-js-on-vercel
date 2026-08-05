@@ -212,38 +212,69 @@ export function corregirConDigitos(lineas, formato) {
 // Extracción desde el texto que devuelve el OCR
 // ---------------------------------------------------------------------------
 
-const LARGOS = { 44: 'TD3', 36: 'TD2', 30: 'TD1' };
+const FORMATOS = [
+  { largo: 44, formato: 'TD3', cuantas: 2 },
+  { largo: 36, formato: 'TD2', cuantas: 2 },
+  { largo: 30, formato: 'TD1', cuantas: 3 },
+];
+
+/**
+ * ¿Esto tiene pinta de una línea de MRZ y no del resto del documento?
+ *
+ * La marca que las distingue es el «<»: los documentos rellenan con él los
+ * campos hasta el largo fijo, y ningún texto impreso lo lleva. Sin esta
+ * condición, «REPUBLICA DE HONDURAS» y «COMISIONADOS PROPIETARIOS» pasaban por
+ * líneas de MRZ cortadas y la persona recibía un diagnóstico inventado.
+ */
+const pareceMrz = (l) =>
+  l.length >= 12 && (l.includes('<<') || (l.includes('<') && /\d/.test(l)));
 
 /**
  * Saca las líneas de MRZ de todo el texto que ve la cámara.
  *
- * El OCR devuelve también el resto del documento —nombre impreso, escudo,
- * fecha— así que hay que quedarse solo con lo que tiene forma de MRZ: puros
- * caracteres del alfabeto permitido y del largo exacto. Se acepta un carácter
- * de margen porque los lectores a veces se comen o añaden un «<» del borde.
+ * Tres cosas que en el mundo real pasan siempre y la primera versión no
+ * contemplaba:
+ *
+ *   · el OCR parte una línea en dos bloques cuando hay una sombra o un doblez,
+ *     así que los trozos consecutivos se intentan unir antes de descartarlos;
+ *   · el resto del documento —«COMISIONADOS PROPIETARIOS», el nombre impreso—
+ *     también se lee, y hay que distinguirlo;
+ *   · si el teléfono está demasiado cerca las líneas salen CORTADAS. Eso no es
+ *     «no se distinguen»: es un encuadre que la persona puede arreglar en un
+ *     segundo si se lo dicen. Se devuelve `cortadas` para poder decírselo.
  */
 export function extraerLineas(textoOcr) {
-  const brutas = String(textoOcr || '')
+  const trozos = String(textoOcr || '')
     .toUpperCase()
-    .replace(/[«»‹›«»]/g, '<')
+    .replace(/[«»‹›]/g, '<')
     .replace(/[ \t]/g, '')
     .split(/[\r\n]+/)
     .map((l) => l.replace(/[^A-Z0-9<]/g, ''))
-    .filter((l) => l.length >= 28);
+    .filter(Boolean);
 
-  // Una línea de MRZ tiene muchos «<» o empieza por el tipo de documento.
-  const parecenMrz = brutas.filter((l) =>
-    l.includes('<<') || /^[A-Z][A-Z0-9<]/.test(l));
-
-  for (const largo of [44, 36, 30]) {
-    const formato = LARGOS[largo];
-    const cuantas = formato === 'TD1' ? 3 : 2;
-    const ajustadas = parecenMrz
-      .filter((l) => Math.abs(l.length - largo) <= 1)
-      .map((l) => (l.length > largo ? l.slice(0, largo) : l.padEnd(largo, '<')));
-    if (ajustadas.length >= cuantas) {
-      return { formato, lineas: ajustadas.slice(0, cuantas) };
+  for (const { largo, formato, cuantas } of FORMATOS) {
+    const candidatas = [];
+    for (let i = 0; i < trozos.length; i++) {
+      // Tal cual, o unido con el trozo siguiente por si el OCR partió la línea.
+      for (const l of [trozos[i], trozos[i] + (trozos[i + 1] || '')]) {
+        if (!pareceMrz(l)) continue;
+        if (Math.abs(l.length - largo) > 1) continue;
+        candidatas.push(l.length > largo ? l.slice(0, largo) : l.padEnd(largo, '<'));
+        break;
+      }
     }
+    if (candidatas.length >= cuantas) {
+      return { formato, lineas: candidatas.slice(0, cuantas) };
+    }
+  }
+
+  // No cuadró ningún formato. ¿Es porque salen cortadas?
+  const parecidas = trozos.filter(pareceMrz);
+  if (parecidas.length >= 2) {
+    const masLarga = Math.max(...parecidas.map((l) => l.length));
+    // Una MRZ empieza en 30 caracteres. Si lo más largo que se ve son 26, el
+    // documento no cabe entero en el cuadro.
+    if (masLarga < 30) return { cortadas: true, visto: masLarga, lineas: parecidas };
   }
   return null;
 }
@@ -260,9 +291,19 @@ export async function leerDeFoto(uri) {
   if (!rec) return { ok: false, motivo: 'sin-lector' };
   try {
     const r = await rec.recognize(uri);
-    const texto = r?.text || (r?.blocks || []).map((b) => b.text).join('\n');
-    const encontrado = extraerLineas(texto);
+    // `blocks` conserva mejor la separación de renglones que el texto plano;
+    // se usan los dos porque distintas versiones devuelven una u otra cosa.
+    const porBloques = (r?.blocks || [])
+      .flatMap((b) => (b.lines || []).map((l) => l.text) || [b.text])
+      .filter(Boolean)
+      .join('\n');
+    const encontrado = extraerLineas(porBloques) || extraerLineas(r?.text || '');
     if (!encontrado) return { ok: false, motivo: 'no-encontrada' };
+
+    // Se leyeron las líneas pero salen cortadas: hay que alejar el teléfono.
+    if (encontrado.cortadas) {
+      return { ok: false, motivo: 'cortadas', visto: encontrado.visto };
+    }
 
     const { formato, lineas } = encontrado;
     const yaCuadra = cuadranDigitos(lineas, formato);
