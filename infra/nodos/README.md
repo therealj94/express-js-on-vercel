@@ -102,22 +102,45 @@ de ~2 segundos, la cadena siguió produciendo y el RPC público y el explorador
 no se vieron afectados. Tras el reinicio hubo que reconectar los 5 nodos a
 mano, porque el descubrimiento automático no los vuelve a unir solo.
 
-## Pendiente: los nodos no tienen IP elástica
+## IPs elásticas: el arreglo de fondo
 
-Ninguna de las IPs públicas de los nodos es elástica, así que **AWS les asigna
-una nueva cada vez que la instancia se detiene y arranca** — que es exactamente
-el origen de todo este problema: los `--nat` quedaron apuntando a direcciones
-que dejaron de existir, y los nodos se quedaron anunciando una dirección
+La causa de raíz de todo esto era que **ninguna IP pública era elástica**: AWS
+asigna una nueva en cada stop/start, los `--nat` quedaban apuntando a
+direcciones que ya no existían, y los nodos se anunciaban en una dirección
 inalcanzable.
 
-Corregir los `--nat` arregla el síntoma de hoy, pero **va a volver a pasar** en
-el próximo stop/start de cualquier nodo. El arreglo de fondo es asignarles IPs
-elásticas. Dato útil: la cuenta ya tiene **dos IPs elásticas asignadas y sin
-usar** (`18.211.40.149` y `3.224.143.231`) — se están pagando igual, así que
-usarlas no cuesta nada extra.
+Los 5 nodos que no son el validador ya tienen IP elástica (fija):
 
-Ojo: asociar una IP elástica **cambia la IP pública** de la instancia, así que
-hay que actualizar después los `--nat` y los bootnodes que la referencien.
+| Nodo  | Región    | IP elástica     |
+| ----- | --------- | --------------- |
+| node3 | us-east-1 | `54.205.125.99` |
+| node5 | us-east-1 | `18.211.40.149` |
+| node6 | us-east-1 | `3.224.143.231` |
+| node2 | us-east-2 | `18.190.14.28`  |
+| node4 | us-east-2 | `18.226.95.184` |
+
+Dos de ellas (`18.211.40.149`, `3.224.143.231`) ya estaban asignadas y sin usar
+en la cuenta — se pagaban igual. Las otras tres se asignaron nuevas. Desde
+febrero de 2024 AWS cobra por toda IPv4 pública, elástica o no, así que pasar
+de auto-asignada a elástica **no cambia el costo**.
+
+Además se reescribió la lista de `bootnodes` de cada genesis con las 5
+direcciones estables de los demás nodos (excluyendo la propia).
+
+### Verificación
+
+Se reiniciaron los 5 **sin reconectar nada a mano** y volvieron a encontrarse
+solos: `peerCount = 5` en todos. Antes de esto, un reinicio los dejaba
+aislados y había que reconectarlos manualmente uno por uno.
+
+### Falta node1
+
+**El validador sigue sin IP elástica** (`34.203.38.219`, auto-asignada). No se
+tocó porque asociar una elástica le cambia la IP pública, y eso obliga a otro
+reinicio del validador — con su corte de cadena — además de actualizar los
+bootnodes de los otros 5 que lo referencian. Conviene hacerlo en una ventana
+planificada. Mientras tanto su `--nat` está correcto, así que funciona; el
+riesgo es solo si alguna vez se detiene y arranca la instancia.
 
 Se instala en `/usr/local/bin/ogb-watchdog.sh` con
 `ogb-watchdog.service` (oneshot) + `ogb-watchdog.timer` (cada 3 min,
