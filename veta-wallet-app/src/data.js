@@ -13,7 +13,6 @@ export const TOKEN_META = {
   AGKA:   { s: 'AGKA',   n: 'AGKA',   image: require('../assets/tokens/agka.jpg') },
   ONDK:   { s: 'ONDK',   n: 'ONDK',   image: require('../assets/tokens/ondk.jpg') },
   MNKA:   { s: 'MNKA',   n: 'MNKA',   glyph: '♛', grad: ['#F8EFCF', '#C9A961', '#96793F'], fg: '#3A2C08' },
-  TXT:      { s: 'TXT',      n: 'TXT',       glyph: 'TXT', grad: ['#CFE0E8', '#6C97A8', '#3C5C68'], fg: '#0E2731' },
   IBS:      { s: 'IBS',      n: 'IBS Energy',glyph: '⚡',  grad: ['#FFE9B0', '#E0A426', '#8A5E0E'], fg: '#3A2400' },
   HARV:     { s: 'HARV',     n: 'Harvi',     glyph: '🌾',  grad: ['#E9F2C8', '#9CBF5E', '#5A7A2C'], fg: '#1D2A0C' },
   AUBEX:    { s: 'AUBEX',    n: 'AUBEX',     glyph: 'AB',  grad: ['#E4D9F7', '#8E6FC9', '#4B3684'], fg: '#1C1030' },
@@ -80,11 +79,6 @@ export const COIN_INFO = {
   // Descripciones honestas: a diferencia de AUKA/AGKA, estos tokens no
   // tienen un respaldo en un commodity específico verificado, así que la
   // fila "Respaldo" describe el sector del proyecto, no un activo físico.
-  TXT: {
-    title: 'TXT',
-    desc: 'Activo digital del ecosistema Orden Global.',
-    rows: [['Tipo', 'Activo digital'], ['Respaldo', 'Ecosistema Orden Global'], ['Red', 'Orden Global · 8532']],
-  },
   IBS: {
     title: 'IBS Energy',
     desc: 'Token del sector energético dentro del ecosistema Orden Global.',

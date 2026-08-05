@@ -622,9 +622,7 @@ const CG_ID = { AUKA: 'pax-gold', ORIGEN: 'pax-gold', AGKA: 'kinesis-silver' };
 // ONDK). Son los mismos valores que usa la billetera web — se confirmaron
 // leyendo su propio bundle compilado (vetawallet.com), donde aparecen como
 // una serie plana: el mismo número repetido en cada punto del histórico, lo
-// que confirma que son fijos y no un precio de mercado real. TXT no tiene un
-// valor asignado ni ahí — se deja sin precio (la UI lo pinta como "—") en vez
-// de inventarle uno.
+// que confirma que son fijos y no un precio de mercado real.
 const FIXED_PRICES = {
   AGRO: 13.13, AIT: 5.32, SOL: 0.75, REST: 8.57, LOVE: 0.1,
   POLITICAL: 0.33, ASL: 2.328, AUBEX: 10, HARV: 0.75, IBS: 1.2,
@@ -701,9 +699,8 @@ export const ONCHAIN_TOKENS = [
   // cadena: se les llamó symbol()/name()/decimals() a cada uno; los 16 usan
   // 18 decimales, se fija el valor para no gastar una llamada RPC extra por
   // token en cada carga del portafolio — el RPC de producción hoy es un
-  // solo nodo). Se dejó fuera TKNB — su nombre en cadena es literalmente
-  // "TokenB", un contrato de prueba, no un activo del ecosistema.
-  { symbol: 'TXT', contract: '0x5d917686FB61507CC9202BbC4F6eeD03560fa469', decimals: 18 },
+  // solo nodo). Se dejaron fuera TKNB y TXT — contratos de prueba, no
+  // activos del ecosistema (confirmado por José).
   { symbol: 'IBS', contract: '0x7AF11D3E94A174f6fc290A5B7791A6DEE2718E62', decimals: 18 },
   { symbol: 'HARV', contract: '0x0fa04D11F28B28cbC9b98dd016F02023AdDb1923', decimals: 18 },
   { symbol: 'AUBEX', contract: '0xF1498640B27A66C0DC505093D70911C060e04fb0', decimals: 18 },

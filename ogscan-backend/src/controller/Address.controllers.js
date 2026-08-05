@@ -128,12 +128,12 @@ export const getTokenData = async (req, res) => {
 // indexadas, se descarto lo que no tiene codigo, y a lo que quedaba se le llamo
 // symbol()/name()/decimals(). Varios simbolos tienen mas de un contrato
 // desplegado (AGKA e IBS, por ejemplo); se eligio el que de verdad se usa en
-// las transacciones indexadas, no el primero encontrado.
+// las transacciones indexadas, no el primero encontrado. TXT y TKNB se dejan
+// fuera a proposito: contratos de prueba, no activos del ecosistema.
 const tokenAddresses = {
   ONDK: "0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1",
   AUKA: "0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B",
   AGKA: "0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B",
-  TXT:  "0x5d917686FB61507CC9202BbC4F6eeD03560fa469",
   IBS:  "0x7AF11D3E94A174f6fc290A5B7791A6DEE2718E62",
   HARV: "0x0fa04D11F28B28cbC9b98dd016F02023AdDb1923",
   AUBEX: "0xF1498640B27A66C0DC505093D70911C060e04fb0",
@@ -145,7 +145,6 @@ const tokenAddresses = {
   AGRO: "0x2A31ba919A5339fCB0F8aEeFfCE2c807B16007fe",
   MNKA: "0x18b6680CFF71c11067bec312Fc48786bE2e54Ead",
   POLITICAL: "0x92496E1848e001428A3495409a9A9f616bB6dD3B",
-  TKNB: "0xeBC08Ee5244E65AD55D5e97B86bdba283e3C894E",
 };
 
 // Catalogo publico de tokens: el frontend ya no necesita llevar la lista
