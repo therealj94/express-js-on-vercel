@@ -134,14 +134,16 @@ export function declararDatos(idn: string, datos: {
  * Recibe la MRZ del documento, la comprueba, tamiza contra sanciones con el
  * nombre REAL del documento (no con el declarado) y recalcula el riesgo.
  */
-export function adjuntarDocumento(idn: string, mrz: string, origen: string): Identidad | null {
+export function adjuntarDocumento(
+  idn: string, mrz: string, origen: string, textoAnverso?: string | null,
+): Identidad | null {
   const identidad = porId(idn)
   if (!identidad) return null
 
   const revision = revisarDocumento(mrz, {
     nombreCompleto: identidad.nombreDeclarado,
     fechaNacimiento: identidad.fechaNacimientoDeclarada,
-  })
+  }, textoAnverso)
   identidad.documento = revision
 
   // Los datos válidos del documento pasan a ser los oficiales de la identidad.

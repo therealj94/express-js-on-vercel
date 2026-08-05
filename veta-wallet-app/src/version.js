@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.25.0';
-export const BUILD = 61;
+export const VERSION = '1.26.0';
+export const BUILD = 62;
 export const RELEASED = '2026-08-05';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,27 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.26.0',
+    build: 62,
+    date: '2026-08-05',
+    es: [
+      'Ahora se piden las DOS caras del documento, como en cualquier verificación seria. El frente lleva tu nombre completo; el reverso, el código que se comprueba solo.',
+      'Con eso se arregla el nombre cortado: la MRZ del reverso tiene ancho fijo y recorta —«JOSE» sale «JOS»—, y sin el frente no había forma de distinguir un nombre truncado de una discrepancia real. Ahora el frente lo confirma y deja de bloquear.',
+      'Del frente viaja solo el TEXTO reconocido, nunca la fotografía. La imagen del documento sigue sin salir de tu teléfono.',
+      'La cámara del rostro tiene guía visual: un óvalo que marca dónde ponerte, un anillo que se llena con la cuenta atrás, y un dibujo animado que hace el gesto que se te pide. Se entiende sin leer, que es lo que hacía falta con los ojos cerrados.',
+      'Modo manual: si preferís disparar vos en lugar de esperar la cuenta, podés cambiarlo con un toque.',
+      'El nombre truncado por el documento ya no baja la coincidencia: «Jose Ordóñez» contra «ORDONEZ JOS» pasa de 76 % a 99 %.',
+    ],
+    en: [
+      'Both SIDES of the document are now requested, as in any serious verification. The front carries your full name; the back, the code that verifies itself.',
+      'That fixes the truncated name: the MRZ on the back has a fixed width and cuts names — «JOSE» prints as «JOS» — and without the front there was no way to tell a truncated name from a real mismatch. The front now confirms it and it stops blocking.',
+      'Only the recognised TEXT of the front travels, never the photograph. The document image still never leaves your phone.',
+      'The face camera now has visual guidance: an oval showing where to sit, a ring that fills with the countdown, and an animated drawing performing the gesture asked of you. It works without reading — which is what was needed with your eyes closed.',
+      'Manual mode: if you prefer to trigger the shot yourself instead of waiting for the countdown, one tap switches it.',
+      'A name truncated by the document no longer lowers the match: «Jose Ordóñez» against «ORDONEZ JOS» goes from 76 % to 99 %.',
+    ],
+  },
   {
     v: '1.25.0',
     build: 61,

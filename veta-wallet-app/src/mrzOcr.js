@@ -280,6 +280,27 @@ export function extraerLineas(textoOcr) {
 }
 
 /**
+ * Todo el texto que la cámara vea en una imagen, sin interpretarlo.
+ *
+ * Se usa para el anverso del documento: ahí no hay MRZ, hay el nombre completo
+ * impreso y la fecha. El cotejo lo hace Genesis ID sobre estas palabras; la
+ * imagen se queda en el teléfono.
+ */
+export async function leerTexto(uri) {
+  const rec = reconocedor();
+  if (!rec) return '';
+  try {
+    const r = await rec.recognize(uri);
+    const porBloques = (r?.blocks || [])
+      .flatMap((b) => (b.lines || []).map((l) => l.text) || [b.text])
+      .filter(Boolean).join('\n');
+    return (porBloques || r?.text || '').slice(0, 4000);
+  } catch (e) {
+    return '';
+  }
+}
+
+/**
  * Lee la MRZ de una imagen ya guardada en el teléfono.
  *
  * Devuelve `{ ok, mrz, formato, corregida }` o `{ ok:false, motivo }`. Nunca

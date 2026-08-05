@@ -225,11 +225,15 @@ export const genesis = {
    * Devuelve también qué falla, porque los dígitos de control detectan un
    * error de transcripción al instante y conviene decirlo en el momento.
    */
-  async enviarDocumento(mrz) {
+  async enviarDocumento(mrz, textoAnverso) {
     const forma = revisarFormaMrz(mrz);
     if (!forma.ok) return { aceptable: false, problemas: [forma.motivo] };
 
-    const r = await puente('/documento', { mrz: limpiarMrz(mrz) });
+    // Del anverso viaja TEXTO, nunca la fotografia.
+    const r = await puente('/documento', {
+      mrz: limpiarMrz(mrz),
+      textoAnverso: textoAnverso ? String(textoAnverso).slice(0, 4000) : undefined,
+    });
     if (!r.ok) return { aceptable: false, problemas: [r.error], code: r.code };
 
     const vista = aVista(r.datos?.identidad);

@@ -431,3 +431,65 @@ test('las equivalencias de transliteracion siguen funcionando', () => {
   assert.equal(parecidoNombres('Youssef Ibrahim', 'YUSUF IBRAHEEM'), 1)
   assert.equal(parecidoNombres('Mohammed Ali', 'MUHAMMAD ALY'), 1)
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// El anverso del documento
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { revisarDocumento } from '../kyc/documento.js'
+
+// Cedula hondureña TD1 con el nombre cortado por el ancho de la MRZ, que es
+// exactamente lo que devuelve un documento real.
+const CEDULA = [
+  'I<HND0035996903<<<<<<<<<<<<<<<',
+  '9403213M3103212HND<<<<<<<<<<<4',
+  'ORDONEZ<ENAMORADO<<MEDARDO<JOS',
+].join('\n')
+
+const ANVERSO = `REPUBLICA DE HONDURAS
+REGISTRO NACIONAL DE LAS PERSONAS
+Nombres: MEDARDO JOSE
+Apellidos: ORDONEZ ENAMORADO
+Fecha de nacimiento: 21/03/1994`
+
+test('sin anverso, el nombre cortado por la MRZ deja aviso pero no bloquea', () => {
+  const r = revisarDocumento(CEDULA, { nombreCompleto: 'Medardo Jose Ordonez Enamorado' })
+  assert.equal(r.anverso.aportado, false)
+  assert.ok(r.hallazgos.some((h) => h.clave === 'anverso.falta'))
+})
+
+test('con el anverso se confirma el nombre entero y la fecha', () => {
+  const r = revisarDocumento(
+    CEDULA,
+    { nombreCompleto: 'Medardo Jose Ordonez Enamorado', fechaNacimiento: '1994-03-21' },
+    ANVERSO)
+  assert.equal(r.anverso.aportado, true)
+  assert.equal(r.anverso.nombreConfirmado, true)
+  assert.equal(r.anverso.fechaConfirmada, true)
+  assert.ok(r.aceptable, 'un documento correcto con anverso tiene que ser aceptable')
+})
+
+test('si el nombre declarado NO esta impreso en el anverso, se bloquea', () => {
+  // Este es el control que el anverso hace posible y antes no existia: alguien
+  // que declara un nombre que el documento no lleva.
+  const r = revisarDocumento(
+    CEDULA, { nombreCompleto: 'Carlos Alberto Ramirez Lopez' }, ANVERSO)
+  assert.equal(r.anverso.nombreConfirmado, false)
+  assert.ok(!r.aceptable)
+  assert.ok(r.hallazgos.some((h) => h.clave === 'anverso.nombreNoAparece' && h.gravedad === 'grave'))
+})
+
+test('el anverso levanta el bloqueo del nombre cortado, sin ocultarlo', () => {
+  // Un solo nombre de pila: contra la MRZ cortada esto daba por debajo del
+  // minimo y bloqueaba. El anverso demuestra que no habia discrepancia.
+  const r = revisarDocumento(
+    CEDULA, { nombreCompleto: 'Medardo Jose Ordonez Enamorado' }, ANVERSO)
+  assert.ok(!r.hallazgos.some((h) => h.clave === 'documento.nombreNoCoincide'))
+  assert.ok(r.aceptable)
+})
+
+test('un anverso vacio o ilegible no se cuenta como comprobado', () => {
+  const r = revisarDocumento(CEDULA, { nombreCompleto: 'Medardo Jose Ordonez' }, '   ')
+  assert.equal(r.anverso.aportado, false)
+  assert.notEqual(r.anverso.nombreConfirmado, true)
+})

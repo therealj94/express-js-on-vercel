@@ -7,8 +7,9 @@ import { Icon } from '../icons';
 import { C, G } from '../theme';
 import { Header, Button3D, Card, Field, hap, useToast, useAccount } from '../ui';
 import { genesis, revisarFormaMrz } from '../genesis';
-import { leerDeFoto, puedeEscanear } from '../mrzOcr';
+import { leerDeFoto, leerTexto, puedeEscanear } from '../mrzOcr';
 import { FRECUENTES, buscarPaises, nombrePais } from '../paises';
+import { SenaGesto, OvaloRostro } from '../RostroGuia';
 import { setPassport } from '../accounts';
 import { getSeed } from '../api';
 import PedirClave from '../PedirClave';
@@ -66,8 +67,12 @@ export function Kyc({ nav }) {
   // Paso 2 — documento
   const [mrz, setMrz] = useState('');
   const [problemas, setProblemas] = useState([]);
-  const [escaneando, setEscaneando] = useState(false);
+  const [escaneando, setEscaneando] = useState(false);   // false | 'anverso' | 'reverso'
   const camaraDoc = useRef(null);
+  // Texto del anverso. Se guarda el TEXTO, nunca la imagen: la foto del
+  // documento no sale del telefono, y sin embargo el nombre completo —el que
+  // la MRZ corta— si llega a Genesis ID para poder cotejarlo.
+  const [textoAnverso, setTextoAnverso] = useState('');
 
   // Paso 3 — rostro y prueba de vida
   const [permiso, pedirPermiso] = useCameraPermissions();
@@ -76,6 +81,8 @@ export function Kyc({ nav }) {
   const [gesto, setGesto] = useState(0);
   const [fotogramas, setFotogramas] = useState([]);
   const [cuenta, setCuenta] = useState(null);   // cuenta atrás antes de cada foto
+  const [manual, setManual] = useState(false);  // el usuario prefiere disparar él
+  const disparo = useRef(null);                 // resolver() del disparo manual
   const corriendo = useRef(false);              // para cortar la secuencia al salir
 
   // Un aviso que SE QUEDA en pantalla. Los errores salían como un mensajito
@@ -147,9 +154,37 @@ export function Kyc({ nav }) {
   // viaja es el texto. Es lo que permite que la pantalla prometa «nunca la foto
   // de tu documento» y sea verdad.
 
-  async function abrirEscaner() {
+  async function abrirEscaner(cara) {
     if (!permiso?.granted) { const p = await pedirPermiso(); if (!p?.granted) return; }
-    hap(); setProblemas([]); setEscaneando(true);
+    hap(); setProblemas([]); setAviso(null); setEscaneando(cara);
+  }
+
+  /**
+   * Anverso del documento: la cara con la foto y el nombre COMPLETO.
+   *
+   * Es lo que pide la mayoria de los reguladores y lo que resuelve el nombre
+   * cortado: la MRZ del reverso tiene ancho fijo y recorta —«JOSE» sale
+   * «JOS»—, y sin el anverso no hay forma de distinguir un nombre truncado de
+   * una discrepancia real.
+   *
+   * Se reconoce el texto aqui y se manda solo eso. La imagen no viaja.
+   */
+  async function leerAnverso() {
+    hap(); setOcupado(true);
+    try {
+      const foto = await camaraDoc.current?.takePictureAsync({ quality: 1, skipProcessing: true });
+      if (!foto?.uri) { setAviso({ mal: true, txt: t('gen.errPhoto') }); setOcupado(false); return; }
+      const texto = await leerTexto(foto.uri);
+      setOcupado(false);
+      if (!texto || texto.length < 12) {
+        setAviso({ mal: true, txt: t('gen.frontRetry') });
+        return;
+      }
+      setTextoAnverso(texto);
+      setEscaneando(false);
+      setAviso(null);
+      toast(t('gen.frontOk'));
+    } catch (e) { setOcupado(false); setAviso({ mal: true, txt: t('gen.errPhoto') }); }
   }
 
   async function escanearDocumento() {
@@ -216,7 +251,7 @@ export function Kyc({ nav }) {
 
   async function enviarDocumento() {
     hap(); setOcupado(true); setProblemas([]);
-    const r = await genesis.enviarDocumento(mrz);
+    const r = await genesis.enviarDocumento(mrz, textoAnverso);
     setOcupado(false);
     if (r.aceptable) { setEstado(r.estado); setProblemas([]); setPaso('rostro'); return; }
     // Los dígitos de control detectan al instante un error de transcripción,
@@ -264,13 +299,23 @@ export function Kyc({ nav }) {
         await dormir(1400);
         if (!corriendo.current) return;
 
-        for (let c = 3; c > 0; c--) {
-          setCuenta(c);
-          hap();
-          await dormir(900);
+        if (manual) {
+          // Modo manual: se espera a que la persona dispare. Sirve cuando la
+          // cuenta atras va demasiado rapida, o cuando alguien necesita su
+          // tiempo para colocarse.
+          setCuenta(null);
+          await new Promise((res) => { disparo.current = res; });
+          disparo.current = null;
           if (!corriendo.current) return;
+        } else {
+          for (let c = 3; c > 0; c--) {
+            setCuenta(c);
+            hap();
+            await dormir(900);
+            if (!corriendo.current) return;
+          }
+          setCuenta(0);
         }
-        setCuenta(0);
         hap(Haptics.ImpactFeedbackStyle.Heavy); // el pulso fuerte = «ya»
 
         const foto = await camara.current?.takePictureAsync({
@@ -467,30 +512,62 @@ export function Kyc({ nav }) {
                 teclear 88 caracteres llenos de «<» es donde la gente abandona. */}
             {escaneando ? (
               <>
+                <Text style={st.gestoTxt}>
+                  {escaneando === 'anverso' ? t('gen.frontTitle') : t('gen.backTitle')}
+                </Text>
                 <View style={st.camaraCaja}>
                   <CameraView ref={camaraDoc} style={{ flex: 1 }} facing="back" />
                   <View style={st.guia} pointerEvents="none" />
                 </View>
-                <Text style={st.mrzPista}>{t('gen.scanAim')}</Text>
-                <Button3D title={ocupado ? t('gen.scanReading') : t('gen.scanShot')}
-                  icon="card" onPress={escanearDocumento} disabled={ocupado}
+                <Text style={st.mrzPista}>
+                  {escaneando === 'anverso' ? t('gen.frontAim') : t('gen.scanAim')}
+                </Text>
+                <Button3D
+                  title={ocupado ? t('gen.scanReading') : t('gen.scanShot')}
+                  icon="card" disabled={ocupado}
+                  onPress={escaneando === 'anverso' ? leerAnverso : escanearDocumento}
                   style={{ marginTop: 12 }} />
-                <Pressable onPress={elegirFoto} style={st.retry} disabled={ocupado}>
-                  <Text style={st.retryTxt}>{t('gen.scanGallery')}</Text>
-                </Pressable>
+                {escaneando === 'reverso' && (
+                  <Pressable onPress={elegirFoto} style={st.retry} disabled={ocupado}>
+                    <Text style={st.retryTxt}>{t('gen.scanGallery')}</Text>
+                  </Pressable>
+                )}
                 <Pressable onPress={() => setEscaneando(false)} style={st.retry} disabled={ocupado}>
-                  <Text style={[st.retryTxt, { color: C.txt3 }]}>{t('gen.scanManual')}</Text>
+                  <Text style={[st.retryTxt, { color: C.txt3 }]}>{t('gen.cancel')}</Text>
                 </Pressable>
               </>
             ) : (
               <>
                 {puedeEscanear() ? (
-                  <Button3D title={t('gen.scanStart')} icon="card"
-                    onPress={abrirEscaner} disabled={ocupado} style={{ marginBottom: 14 }} />
+                  <>
+                    {/* Las dos caras, como las pide cualquier verificacion seria:
+                        el anverso lleva el nombre completo y el reverso el codigo
+                        que se puede comprobar solo. */}
+                    <Pressable onPress={() => abrirEscaner('anverso')} disabled={ocupado}
+                      style={[st.cara, textoAnverso && st.caraLista]}>
+                      <Icon name={textoAnverso ? 'checkmark-circle' : 'card'} size={22}
+                        color={textoAnverso ? C.up || '#3ED9A0' : C.gold} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={st.caraT}>{t('gen.frontTitle')}</Text>
+                        <Text style={st.caraD}>
+                          {textoAnverso ? t('gen.frontDone') : t('gen.frontHint')}
+                        </Text>
+                      </View>
+                    </Pressable>
+
+                    <Pressable onPress={() => abrirEscaner('reverso')} disabled={ocupado}
+                      style={[st.cara, forma.ok && st.caraLista]}>
+                      <Icon name={forma.ok ? 'checkmark-circle' : 'card'} size={22}
+                        color={forma.ok ? C.up || '#3ED9A0' : C.gold} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={st.caraT}>{t('gen.backTitle')}</Text>
+                        <Text style={st.caraD}>
+                          {forma.ok ? t('gen.backDone', { f: forma.formato }) : t('gen.backHint')}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  </>
                 ) : (
-                  // En Expo Go el lector no existe —es un modulo nativo— y el
-                  // boton desaparecia sin mas. Callarselo parece un fallo de la
-                  // app; decirlo convierte una ausencia en una explicacion.
                   <View style={st.warn}>
                     <Icon name="information-circle" size={20} color={C.gold} />
                     <View style={{ flex: 1 }}>
@@ -572,29 +649,40 @@ export function Kyc({ nav }) {
                 <Text style={st.gestoPaso}>
                   {t('gen.liveStep', { n: gesto + 1, total: reto.gestos.length })}
                 </Text>
-                {/* La instrucción va grande y sola: se lee de un vistazo
-                    mientras la persona se mira en la cámara. */}
                 <Text style={st.gestoTxt}>
                   {t(`gesto.${reto.gestos[gesto]}`) !== `gesto.${reto.gestos[gesto]}`
                     ? t(`gesto.${reto.gestos[gesto]}`)
                     : reto.instrucciones[gesto]}
                 </Text>
+
+                {/* El dibujo se mueve como hay que moverse: se entiende sin leer. */}
+                <View style={st.sena}><SenaGesto gesto={reto.gestos[gesto]} /></View>
+
                 <View style={st.camaraCaja}>
                   <CameraView ref={camara} style={{ flex: 1 }} facing="front" />
-                  {cuenta !== null && (
-                    <View style={st.cuentaCapa} pointerEvents="none">
-                      <Text style={st.cuentaNum}>{cuenta > 0 ? cuenta : '✓'}</Text>
-                    </View>
-                  )}
+                  <OvaloRostro cuenta={cuenta} listo={cuenta === 0} />
                 </View>
+
                 <View style={st.puntos}>
                   {reto.gestos.map((g, k) => (
                     <View key={g + k} style={[st.punto, k < fotogramas.length && st.puntoHecho]} />
                   ))}
                 </View>
-                <Text style={st.mrzPista}>
-                  {ocupado ? t('gen.liveSending') : t('gen.liveAuto')}
-                </Text>
+
+                {manual ? (
+                  <Button3D title={ocupado ? t('gen.liveSending') : t('gen.liveShotManual')}
+                    icon="eye" disabled={ocupado}
+                    onPress={() => { hap(); disparo.current?.(); }}
+                    style={{ marginTop: 12 }} />
+                ) : (
+                  <Text style={st.mrzPista}>
+                    {ocupado ? t('gen.liveSending') : t('gen.liveAuto')}
+                  </Text>
+                )}
+
+                <Pressable onPress={() => setManual(!manual)} style={st.retry} disabled={ocupado}>
+                  <Text style={st.retryTxt}>{manual ? t('gen.liveToAuto') : t('gen.liveToManual')}</Text>
+                </Pressable>
                 <Pressable onPress={reiniciarReto} style={st.retry} disabled={ocupado}>
                   <Text style={[st.retryTxt, { color: C.txt3 }]}>{t('gen.liveRetry')}</Text>
                 </Pressable>
@@ -858,11 +946,14 @@ const st = StyleSheet.create({
   warnInfo: { borderColor: 'rgba(201,169,97,0.4)', backgroundColor: 'rgba(201,169,97,0.08)' },
   volver: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 12, paddingVertical: 4 },
   volverTxt: { color: C.txt3, fontSize: 13 },
-  cuentaCapa: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(2,27,28,0.35)',
+  sena: { alignItems: 'center', marginBottom: 10 },
+  cara: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginBottom: 10,
+    borderRadius: 14, borderWidth: 1, borderColor: C.line2, backgroundColor: '#06282a',
   },
-  cuentaNum: { color: C.gold, fontSize: 92, fontWeight: '800' },
+  caraLista: { borderColor: 'rgba(62,217,160,0.45)' },
+  caraT: { color: C.txt, fontSize: 14, fontWeight: '700' },
+  caraD: { color: C.txt3, fontSize: 12, marginTop: 2 },
   foot2: { color: C.txt3, fontSize: 11.5, marginTop: -8, marginBottom: 12 },
   fecha: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   fechaCaja: {

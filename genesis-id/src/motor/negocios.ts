@@ -242,7 +242,10 @@ export function recalcular(negocio: Negocio): Negocio {
     // El KYB no tiene documento de identidad personal ni biometría; se le pasan
     // resueltos para que no los cuente como bloqueo, porque los bloqueos del
     // negocio son otros y se añaden abajo.
-    documento: { aceptable: true, datos: null, hallazgos: [], edad: null },
+    documento: {
+      aceptable: true, datos: null, hallazgos: [], edad: null,
+      anverso: { aportado: false, nombreConfirmado: null, fechaConfirmada: null },
+    },
     tamiz: negocio.tamiz,
     biometria: {
       estado: 'ok', parecido: null, vivacidad: null,

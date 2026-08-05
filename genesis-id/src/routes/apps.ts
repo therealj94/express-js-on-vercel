@@ -54,11 +54,16 @@ appsRouter.post('/identidades/:id/datos', limite(60), exigeApp('identidad.crear'
  * que es menos dato personal en riesgo por cada usuario.
  */
 appsRouter.post('/identidades/:id/documento', limite(30), exigeApp('identidad.documento'), (req, res) => {
-  const { mrz } = req.body ?? {}
+  const { mrz, textoAnverso } = req.body ?? {}
   if (!mrz || typeof mrz !== 'string') {
     return res.status(400).json({ error: 'Hace falta el texto de la MRZ del documento' })
   }
-  const identidad = ids.adjuntarDocumento(req.params.id, mrz, `app:${req.app_ecosistema!.clave}`)
+  // Del anverso llega TEXTO, nunca la imagen: el reconocimiento se hace en el
+  // teléfono y aquí solo entran las palabras. Se acota el largo porque de una
+  // cédula salen unas pocas líneas, no un documento entero.
+  const anverso = typeof textoAnverso === 'string' ? textoAnverso.slice(0, 4000) : null
+  const identidad = ids.adjuntarDocumento(
+    req.params.id, mrz, `app:${req.app_ecosistema!.clave}`, anverso)
   if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
 
   // A la app se le dice si el documento sirve y qué falla, pero no el resultado
@@ -69,6 +74,7 @@ appsRouter.post('/identidades/:id/documento', limite(30), exigeApp('identidad.do
     identidad: ids.estadoParaUsuario(identidad),
     documento: {
       aceptable: identidad.documento?.aceptable ?? false,
+      anverso: identidad.documento?.anverso ?? null,
       problemas: (identidad.documento?.hallazgos ?? [])
         .filter((h) => h.gravedad === 'grave')
         .map((h) => h.detalle),

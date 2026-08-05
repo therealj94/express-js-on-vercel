@@ -9,7 +9,7 @@
 // el conjunto va al motor de riesgo, y la decisión final la firma una persona.
 
 import { leerMrz, type DatosMrz } from './mrz.js'
-import { parecidoNombres } from '../lib/texto.js'
+import { parecidoNombres, normalizar, fichas } from '../lib/texto.js'
 import { ISO3, nombrePais } from '../aml/paises.js'
 
 export type Gravedad = 'ok' | 'aviso' | 'grave'
@@ -26,6 +26,66 @@ export interface RevisionDocumento {
   datos: DatosMrz | null
   hallazgos: Hallazgo[]
   edad: number | null
+  /** Qué se pudo confirmar con el anverso, si se aportó. */
+  anverso: { aportado: boolean; nombreConfirmado: boolean | null; fechaConfirmada: boolean | null }
+}
+
+/**
+ * Comprueba el nombre y la fecha declarados contra el TEXTO DEL ANVERSO.
+ *
+ * POR QUE HACE FALTA EL ANVERSO
+ *
+ * La zona de lectura mecánica tiene ancho fijo y CORTA los nombres largos: en
+ * una cédula hondureña real, «JOSE» sale impreso «JOS». Con solo el reverso no
+ * hay forma de saber si el nombre está cortado o si de verdad no coincide, y
+ * cualquiera de las dos respuestas es mala: bloquear a quien no debe, o dejar
+ * pasar una discrepancia real.
+ *
+ * El anverso lleva el nombre entero, sin recortes. Cotejarlo contra él es lo
+ * que hace el resto del sector y lo que pide la mayoría de los reguladores:
+ * identificar con documentos de una fuente fiable e independiente, no con un
+ * campo truncado por una limitación de formato.
+ *
+ * Se compara sobre el TEXTO reconocido, no sobre una foto: la imagen se
+ * procesa en el teléfono y aquí solo llegan las palabras.
+ */
+function cotejarAnverso(
+  texto: string,
+  declarado: { nombreCompleto?: string | null; fechaNacimiento?: string | null },
+): { nombre: boolean | null; fecha: boolean | null; detalle: string } {
+  const plano = normalizar(texto)
+  if (!plano) return { nombre: null, fecha: null, detalle: 'El anverso no traía texto legible' }
+
+  let nombre: boolean | null = null
+  if (declarado.nombreCompleto) {
+    // Cada palabra del nombre declarado tiene que aparecer impresa. Se piden
+    // tres letras o más para no contar partículas ni iniciales sueltas.
+    const partes = fichas(declarado.nombreCompleto).filter((f) => f.length >= 3)
+    const halladas = partes.filter((f) => plano.includes(f))
+    nombre = partes.length > 0 && halladas.length === partes.length
+  }
+
+  let fecha: boolean | null = null
+  if (declarado.fechaNacimiento) {
+    const [a, m, d] = declarado.fechaNacimiento.split('-')
+    // Las cédulas escriben la fecha de muchas formas; se busca cualquiera de
+    // las habituales, con y sin ceros delante.
+    const formas = [
+      `${d}${m}${a}`, `${d} ${m} ${a}`, `${a}${m}${d}`,
+      `${Number(d)} ${Number(m)} ${a}`, `${d}${m}${a.slice(2)}`,
+    ]
+    const sinSeparadores = plano.replace(/ /g, '')
+    fecha = formas.some((f) => plano.includes(f) || sinSeparadores.includes(f.replace(/ /g, '')))
+  }
+
+  const partes: string[] = []
+  partes.push(nombre === null ? 'sin nombre declarado que cotejar'
+    : nombre ? 'el nombre declarado aparece impreso en el anverso'
+    : 'el nombre declarado NO aparece impreso en el anverso')
+  if (fecha !== null) {
+    partes.push(fecha ? 'la fecha de nacimiento también' : 'la fecha de nacimiento no se encontró')
+  }
+  return { nombre, fecha, detalle: partes.join('; ') }
 }
 
 /** Edad mínima. Se puede subir por país si la regulación lo pide. */
@@ -54,6 +114,7 @@ export function edadEn(fechaNacimiento: string, referencia = new Date()): number
 export function revisarDocumento(
   textoMrz: string,
   declarado: { nombreCompleto?: string | null; fechaNacimiento?: string | null } = {},
+  textoAnverso?: string | null,
 ): RevisionDocumento {
   const hallazgos: Hallazgo[] = []
   const lectura = leerMrz(textoMrz)
@@ -64,7 +125,10 @@ export function revisarDocumento(
       gravedad: 'grave',
       detalle: lectura.motivo || 'No se pudo leer la MRZ',
     })
-    return { aceptable: false, datos: null, hallazgos, edad: null }
+    return {
+      aceptable: false, datos: null, hallazgos, edad: null,
+      anverso: { aportado: Boolean(textoAnverso), nombreConfirmado: null, fechaConfirmada: null },
+    }
   }
 
   const d = lectura.datos
@@ -177,10 +241,59 @@ export function revisarDocumento(
     })
   }
 
+  // 7. El anverso, si se aportó.
+  //
+  // Es lo que resuelve el nombre cortado por el ancho de la MRZ: cuando el
+  // reverso trae «JOS» y el anverso dice «JOSE», la persona no tiene ninguna
+  // discrepancia y esto lo demuestra. También lo contrario: si el nombre
+  // declarado NO está impreso en el documento, eso es grave y hasta ahora no
+  // se podía ver.
+  let anverso = { aportado: false, nombreConfirmado: null as boolean | null, fechaConfirmada: null as boolean | null }
+  if (textoAnverso && textoAnverso.trim()) {
+    const c = cotejarAnverso(textoAnverso, declarado)
+    anverso = { aportado: true, nombreConfirmado: c.nombre, fechaConfirmada: c.fecha }
+
+    if (c.nombre === false) {
+      hallazgos.push({
+        clave: 'anverso.nombreNoAparece',
+        gravedad: 'grave',
+        detalle: `El nombre declarado ("${declarado.nombreCompleto}") no aparece impreso en el anverso del documento`,
+      })
+    } else if (c.nombre === true) {
+      hallazgos.push({ clave: 'anverso.nombre', gravedad: 'ok', detalle: c.detalle })
+      // El anverso manda sobre el recorte de la MRZ: si el nombre entero está
+      // impreso ahí, la diferencia del reverso era el ancho del campo y no una
+      // discrepancia. Se retira el hallazgo grave que lo bloqueaba.
+      const i = hallazgos.findIndex((h) => h.clave === 'documento.nombreNoCoincide')
+      if (i >= 0) {
+        hallazgos[i] = {
+          clave: 'documento.nombreCortado',
+          gravedad: 'aviso',
+          detalle: `El nombre del reverso viene cortado por el ancho de la MRZ ("${d.nombreCompleto}"), ` +
+            'pero el anverso confirma el nombre declarado',
+        }
+      }
+    }
+    if (c.fecha === false) {
+      hallazgos.push({
+        clave: 'anverso.fecha',
+        gravedad: 'aviso',
+        detalle: 'La fecha de nacimiento declarada no se encontró en el anverso',
+      })
+    }
+  } else {
+    hallazgos.push({
+      clave: 'anverso.falta',
+      gravedad: 'aviso',
+      detalle: 'No se aportó el anverso del documento: solo se pudo cotejar contra la MRZ',
+    })
+  }
+
   return {
     aceptable: !hallazgos.some((h) => h.gravedad === 'grave'),
     datos: d,
     hallazgos,
     edad,
+    anverso,
   }
 }

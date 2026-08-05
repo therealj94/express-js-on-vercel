@@ -135,7 +135,7 @@ export function routerGenesis({ exigirSesion } = {}) {
     const idn = await idDe(req.usuario.email)
     if (!idn) return res.status(404).json({ error: 'Identidad no encontrada' })
     responder(res)(await llamar(`/api/v1/identidades/${idn}/documento`, {
-      method: 'POST', body: JSON.stringify({ mrz: req.body?.mrz }),
+      method: 'POST', body: JSON.stringify({ mrz: req.body?.mrz, textoAnverso: req.body?.textoAnverso }),
     }))
   })
 
