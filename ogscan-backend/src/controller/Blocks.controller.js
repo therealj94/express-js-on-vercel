@@ -99,21 +99,40 @@ export const idBlock = async (req, res) => {
     }
 
     const block = await web3.eth.getBlock(blockNumber);
+    if (!block) {
+      return res.status(404).json({ error: "El nodo no devolvio ese bloque" });
+    }
+
+    // Antes esta respuesta no incluia las transacciones, ni siquiera cuantas.
+    // La consecuencia era que la ficha de un bloque en el explorador mostraba
+    // siempre "Transacciones 0", incluso en bloques que claramente tenian gas
+    // gastado — y no habia forma de llegar desde un bloque a sus transacciones.
+    const transactions = Array.isArray(block.transactions)
+      ? block.transactions.map((t) => (typeof t === "string" ? t : t?.hash)).filter(Boolean)
+      : [];
+
     const blockData = {
       number: block.number.toString(),
-      nonce: block.nonce.toString(),
-      hash: block.hash.toString(),
-      miner: block.miner.toString(),
-      difficulty: block.difficulty.toString(),
-      totalDifficulty: block.totalDifficulty.toString(),
-      extraData: block.extraData.toString(),
-      size: block.size.toString(),
-      gasLimit: block.gasLimit.toString(),
-      gasUsed: block.gasUsed.toString(),
-      timestamp: block.timestamp.toString(),
+      nonce: block.nonce?.toString() ?? "0",
+      hash: block.hash?.toString() ?? "",
+      // En PolyBFT `miner` es siempre la direccion cero: el proponente del
+      // bloque va firmado dentro de extraData, no en esta cabecera. Se envia
+      // tal cual viene del nodo, pero el cliente no debe presentarlo como
+      // "validador" porque no lo es.
+      miner: block.miner?.toString() ?? "",
+      difficulty: block.difficulty?.toString() ?? "0",
+      totalDifficulty: block.totalDifficulty?.toString() ?? "0",
+      extraData: block.extraData?.toString() ?? "",
+      size: block.size?.toString() ?? "0",
+      gasLimit: block.gasLimit?.toString() ?? "0",
+      gasUsed: block.gasUsed?.toString() ?? "0",
+      timestamp: block.timestamp?.toString() ?? "0",
+      parentHash: block.parentHash?.toString() ?? "",
+      transactions,
+      transactionCount: transactions.length,
     };
 
-    res.status(202).json({ blockInfo: blockData });
+    res.status(200).json({ blockInfo: blockData });
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: "Error al obtener información del bloque" });

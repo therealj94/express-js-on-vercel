@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orden Global Explorer</title>
+<meta name="description" content="Explorador de bloques de la blockchain Orden Global (chain 8532)">
+<style>
+  /* ── Un solo archivo, sin dependencias ni paso de compilacion. Se despliega
+       copiandolo a cualquier hosting estatico. Decision deliberada: el equipo
+       puede mantenerlo sin instalar nada. ───────────────────────────────── */
+  :root{
+    --oro:#C9A961; --oro2:#E0C888;
+    --fondo:#04191A; --panel:#072526; --panel2:#0A2F30;
+    --linea:#123E3F; --txt:#EAF3F2; --txt2:#9FBDBA; --txt3:#6C918E;
+    --ok:#3FB984; --mal:#E05A5A;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--fondo);color:var(--txt);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:var(--oro);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .env{max-width:1120px;margin:0 auto;padding:0 20px}
+
+  header{border-bottom:1px solid var(--linea);background:rgba(7,37,38,.75);backdrop-filter:blur(8px);position:sticky;top:0;z-index:10}
+  .barra{display:flex;align-items:center;gap:22px;padding:15px 0;flex-wrap:wrap}
+  .logo{font-weight:800;font-size:17px;color:var(--txt);letter-spacing:.2px;white-space:nowrap}
+  .logo span{color:var(--oro)}
+  nav{display:flex;gap:18px;font-size:14px}
+  nav a{color:var(--txt2)} nav a:hover,nav a.on{color:var(--oro);text-decoration:none}
+
+  .buscar{display:flex;gap:8px;margin:26px 0 8px}
+  .buscar input{flex:1;background:var(--panel);border:1px solid var(--linea);border-radius:11px;padding:13px 15px;color:var(--txt);font-size:14.5px;outline:none;min-width:0}
+  .buscar input:focus{border-color:var(--oro)}
+  .buscar button{background:var(--oro);color:#04191A;border:0;border-radius:11px;padding:0 24px;font-weight:700;font-size:14.5px;cursor:pointer;white-space:nowrap}
+  .buscar button:hover{background:var(--oro2)}
+  .pista{color:var(--txt3);font-size:12.5px;margin-bottom:26px}
+
+  .tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:30px}
+  .tarj{background:var(--panel);border:1px solid var(--linea);border-radius:14px;padding:17px 19px}
+  .tarj .et{color:var(--txt3);font-size:11.5px;text-transform:uppercase;letter-spacing:.9px;margin-bottom:7px}
+  .tarj .va{font-size:23px;font-weight:750;color:var(--txt);word-break:break-all}
+  .tarj .va.oro{color:var(--oro)}
+
+  h2{font-size:16px;margin:0 0 13px;font-weight:700}
+  .panel{background:var(--panel);border:1px solid var(--linea);border-radius:14px;overflow:hidden;margin-bottom:26px}
+  .fila{display:flex;justify-content:space-between;gap:14px;padding:13px 17px;border-top:1px solid var(--linea);align-items:center}
+  .fila:first-child{border-top:0}
+  .fila:hover{background:var(--panel2)}
+  .izq{min-width:0;flex:1}
+  .der{text-align:right;color:var(--txt2);font-size:12.8px;white-space:nowrap}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.8px}
+  .cortar{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+  .sub{color:var(--txt3);font-size:12.3px;margin-top:3px}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  @media(max-width:820px){.cols{grid-template-columns:1fr}}
+
+  table{width:100%;border-collapse:collapse}
+  td{padding:11px 17px;border-top:1px solid var(--linea);vertical-align:top;font-size:13.6px}
+  tr:first-child td{border-top:0}
+  td.k{color:var(--txt3);width:190px;white-space:nowrap}
+  td.v{word-break:break-all}
+
+  .aviso{padding:34px 20px;text-align:center;color:var(--txt3);font-size:14px}
+  .error{padding:20px;border:1px solid var(--mal);border-radius:12px;color:var(--mal);background:rgba(224,90,90,.08);margin:20px 0}
+  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--linea);border-radius:999px;padding:2px 10px;font-size:11.5px;color:var(--txt2)}
+  footer{border-top:1px solid var(--linea);margin-top:44px;padding:22px 0 34px;color:var(--txt3);font-size:12.5px;text-align:center}
+  .cargando{color:var(--txt3);padding:30px;text-align:center}
+</style>
+</head>
+<body>
+<header><div class="env barra">
+  <div class="logo">ORDEN <span>GLOBAL</span></div>
+  <nav>
+    <a href="/" data-ruta>Inicio</a>
+    <a href="/blocks" data-ruta>Bloques</a>
+    <a href="/txs" data-ruta>Transacciones</a>
+  </nav>
+</div></header>
+
+<main class="env" id="app"><div class="cargando">Cargando…</div></main>
+
+<footer class="env">
+  Explorador de la blockchain Orden Global · chain 8532
+</footer>
+
+<script>
+// ── Configuracion ────────────────────────────────────────────────────────────
+// Se acepta la cadena vacia a proposito: significa "mismo dominio", que es lo
+// correcto cuando el frontend y la API se sirven juntos (evita CORS). Por eso
+// se comprueba el tipo y no la veracidad — con `||` una cadena vacia caeria al
+// valor por defecto y la configuracion quedaria ignorada.
+const API = (typeof window.OGSCAN_API === "string")
+  ? window.OGSCAN_API
+  : "https://orden-global-scan-c4abe71e8024.herokuapp.com";
+const CHAIN_ID = 8532;
+
+// ── Utilidades ───────────────────────────────────────────────────────────────
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const corto = (s, i = 10, f = 8) => { s = String(s ?? ""); return s.length > i + f + 3 ? s.slice(0, i) + "…" + s.slice(-f) : s; };
+const num = (n) => Number(n ?? 0).toLocaleString("es");
+
+function hace(ts) {
+  const s = Math.floor(Date.now() / 1000) - Number(ts || 0);
+  if (!Number.isFinite(s) || s < 0) return "";
+  if (s < 60) return `hace ${s} s`;
+  if (s < 3600) return `hace ${Math.floor(s / 60)} min`;
+  if (s < 86400) return `hace ${Math.floor(s / 3600)} h`;
+  return `hace ${Math.floor(s / 86400)} d`;
+}
+function fecha(ts) {
+  const n = Number(ts || 0);
+  return n ? new Date(n * 1000).toLocaleString("es") : "—";
+}
+// El valor llega como "0." o "1.5" segun el token; se normaliza para mostrar.
+function valor(v) {
+  const s = String(v ?? "0").replace(/\.$/, "");
+  const n = Number(s);
+  return Number.isFinite(n) ? n.toLocaleString("es", { maximumFractionDigits: 6 }) : s;
+}
+
+async function api(ruta) {
+  const r = await fetch(API + ruta, { headers: { Accept: "application/json" } });
+  if (!r.ok) {
+    let msg = `El servidor respondió ${r.status}`;
+    try { const j = await r.json(); if (j.error) msg = j.error; } catch (e) {}
+    throw new Error(msg);
+  }
+  return r.json();
+}
+
+// ── Enrutado (EIP-3091) ──────────────────────────────────────────────────────
+// Las rutas /block/<n>, /tx/<hash> y /address/<addr> son el estandar que exigen
+// Chainlist y las billeteras para reconocer un explorador. Se resuelven en el
+// cliente; el hosting debe reescribir cualquier ruta a este index.html.
+function ir(url, reemplazar) {
+  history[reemplazar ? "replaceState" : "pushState"]({}, "", url);
+  pintar();
+}
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("a[data-ruta]");
+  if (!a) return;
+  e.preventDefault();
+  ir(a.getAttribute("href"));
+});
+window.addEventListener("popstate", pintar);
+
+function buscar(e) {
+  if (e) e.preventDefault();
+  const q = ($("#q")?.value || "").trim();
+  if (!q) return;
+  if (/^0x[a-fA-F0-9]{64}$/.test(q)) return ir(`/tx/${q}`);
+  if (/^0x[a-fA-F0-9]{40}$/.test(q)) return ir(`/address/${q}`);
+  if (/^\d+$/.test(q)) return ir(`/block/${q}`);
+  alert("Escribe un número de bloque, un hash de transacción (0x + 64) o una dirección (0x + 40).");
+}
+
+const cajaBuscar = () => `
+  <form class="buscar" onsubmit="buscar(event)">
+    <input id="q" placeholder="Bloque, hash de transacción o dirección" autocomplete="off" spellcheck="false">
+    <button type="submit">Buscar</button>
+  </form>
+  <div class="pista">Ejemplos: <code>4129701</code> · <code>0x8257c6…98d5</code> · <code>0xf777de…d4d0</code></div>`;
+
+const err = (m) => `<div class="error"><b>No se pudo cargar.</b><br>${esc(m)}</div>`;
+
+// ── Vistas ───────────────────────────────────────────────────────────────────
+async function vistaInicio(app) {
+  app.innerHTML = cajaBuscar() + `<div id="stats"></div><div class="cols">
+    <div><h2>Últimos bloques</h2><div class="panel" id="bl"><div class="cargando">Cargando…</div></div></div>
+    <div><h2>Últimas transacciones</h2><div class="panel" id="tx"><div class="cargando">Cargando…</div></div></div>
+  </div>`;
+
+  // Cada bloque se carga por separado: si una parte falla, el resto se ve igual.
+  api("/block/totalBlock").then(d => {
+    const t = $("#stats");
+    t.innerHTML = `<div class="tarjetas">
+      <div class="tarj"><div class="et">Último bloque</div><div class="va oro">${num(d.blockTotal)}</div></div>
+      <div class="tarj" id="ttx"><div class="et">Transacciones</div><div class="va">…</div></div>
+      <div class="tarj"><div class="et">Red</div><div class="va">Chain ${CHAIN_ID}</div></div>
+    </div>`;
+    api("/transaction/totalTransactions")
+      .then(x => { $("#ttx").innerHTML = `<div class="et">Transacciones</div><div class="va">${num(x.totalTransactions)}</div>`; })
+      .catch(() => { $("#ttx").innerHTML = `<div class="et">Transacciones</div><div class="va">—</div>`; });
+  }).catch(e => { $("#stats").innerHTML = err(e.message); });
+
+  api("/block/allBlocks?lastBlock=10").then(d => {
+    const b = d.blockInfo || [];
+    $("#bl").innerHTML = b.length ? b.map(x => `
+      <div class="fila"><div class="izq">
+        <a href="/block/${esc(x.number)}" data-ruta><b>#${num(x.number)}</b></a>
+        <div class="sub">${x.transactions} ${x.transactions == 1 ? "transacción" : "transacciones"}</div>
+      </div><div class="der">${hace(x.timestamp)}</div></div>`).join("")
+      : `<div class="aviso">Sin bloques para mostrar.</div>`;
+  }).catch(e => { $("#bl").innerHTML = err(e.message); });
+
+  api("/transaction/allTransactions?lastTransaction=10").then(d => {
+    const t = d.transactions || [];
+    $("#tx").innerHTML = t.length ? t.slice(0, 10).map(x => `
+      <div class="fila"><div class="izq">
+        <a href="/tx/${esc(x.hash)}" data-ruta class="mono cortar">${esc(corto(x.hash, 14, 8))}</a>
+        <div class="sub mono cortar">${esc(corto(x.from, 8, 6))} → ${esc(corto(x.to, 8, 6))}</div>
+      </div><div class="der">${hace(x.timestamp)}</div></div>`).join("")
+      : `<div class="aviso">Sin transacciones para mostrar.</div>`;
+  }).catch(e => { $("#tx").innerHTML = err(e.message); });
+}
+
+async function vistaBloques(app) {
+  app.innerHTML = cajaBuscar() + `<h2>Últimos bloques</h2><div class="panel" id="l"><div class="cargando">Cargando…</div></div>`;
+  try {
+    const d = await api("/block/allBlocks?lastBlock=50");
+    const b = d.blockInfo || [];
+    $("#l").innerHTML = b.length ? b.map(x => `
+      <div class="fila"><div class="izq">
+        <a href="/block/${esc(x.number)}" data-ruta><b>#${num(x.number)}</b></a>
+        <div class="sub mono cortar">${esc(corto(x.hash, 18, 10))}</div>
+      </div><div class="der">${x.transactions} tx · ${hace(x.timestamp)}</div></div>`).join("")
+      : `<div class="aviso">Sin bloques.</div>`;
+  } catch (e) { $("#l").innerHTML = err(e.message); }
+}
+
+async function vistaTxs(app) {
+  app.innerHTML = cajaBuscar() + `<h2>Últimas transacciones</h2><div class="panel" id="l"><div class="cargando">Cargando…</div></div>`;
+  try {
+    const d = await api("/transaction/allTransactions?lastTransaction=50");
+    const t = d.transactions || [];
+    $("#l").innerHTML = t.length ? t.map(x => `
+      <div class="fila"><div class="izq">
+        <a href="/tx/${esc(x.hash)}" data-ruta class="mono cortar">${esc(corto(x.hash, 20, 10))}</a>
+        <div class="sub mono cortar">${esc(corto(x.from, 10, 6))} → ${esc(corto(x.to, 10, 6))}</div>
+      </div><div class="der">${hace(x.timestamp)}</div></div>`).join("")
+      : `<div class="aviso">Sin transacciones.</div>`;
+  } catch (e) { $("#l").innerHTML = err(e.message); }
+}
+
+async function vistaBloque(app, id) {
+  app.innerHTML = cajaBuscar() + `<h2>Bloque #${esc(num(id))}</h2><div class="panel" id="d"><div class="cargando">Cargando…</div></div><div id="txb"></div>`;
+  try {
+    const r = await api(`/block/block/${encodeURIComponent(id)}`);
+    const b = r.blockInfo || r.block || r;
+    if (!b || b.number === undefined) throw new Error("No se encontró ese bloque.");
+
+    // `transactions` puede venir como lista de hashes (ficha de un bloque) o
+    // como un número (listados). Se admiten las dos formas.
+    const hashes = Array.isArray(b.transactions) ? b.transactions : [];
+    const cuantas = b.transactionCount ?? (Array.isArray(b.transactions) ? b.transactions.length : Number(b.transactions || 0));
+
+    // Sobre el validador: en PolyBFT la cabecera `miner` es siempre la
+    // dirección cero — el proponente va firmado dentro de extraData. Mostrar
+    // "Validador: 0x000…000" no es un dato, es ruido que además hace pensar
+    // que el bloque no tiene validador. Se indica el consenso y ya.
+    const cero = /^0x0{40}$/i.test(String(b.miner || ""));
+    const filaValidador = cero
+      ? `<tr><td class="k">Consenso</td><td class="v">PolyBFT <span class="pill">el proponente va firmado en extraData</span></td></tr>`
+      : `<tr><td class="k">Validador</td><td class="v mono">${esc(b.miner)}</td></tr>`;
+
+    $("#d").innerHTML = `<table>
+      <tr><td class="k">Número</td><td class="v">${num(b.number)}</td></tr>
+      <tr><td class="k">Hash</td><td class="v mono">${esc(b.hash)}</td></tr>
+      <tr><td class="k">Fecha</td><td class="v">${fecha(b.timestamp)} <span class="pill">${hace(b.timestamp)}</span></td></tr>
+      <tr><td class="k">Transacciones</td><td class="v">${num(cuantas)}</td></tr>
+      <tr><td class="k">Gas usado / límite</td><td class="v">${num(b.gasUsed)} / ${num(b.gasLimit)}</td></tr>
+      <tr><td class="k">Tamaño</td><td class="v">${num(b.size)} bytes</td></tr>
+      ${filaValidador}
+      ${b.parentHash ? `<tr><td class="k">Bloque padre</td><td class="v mono"><a href="/block/${Number(b.number) - 1}" data-ruta>${esc(b.parentHash)}</a></td></tr>` : ""}
+    </table>
+    <div class="fila"><div class="izq">
+      <a href="/block/${Number(b.number) - 1}" data-ruta>← Bloque anterior</a></div>
+      <div class="der"><a href="/block/${Number(b.number) + 1}" data-ruta>Bloque siguiente →</a></div></div>`;
+
+    if (hashes.length) {
+      $("#txb").innerHTML = `<h2>Transacciones del bloque (${num(hashes.length)})</h2><div class="panel">` +
+        hashes.map(h => `<div class="fila"><div class="izq">
+          <a href="/tx/${esc(h)}" data-ruta class="mono cortar">${esc(h)}</a>
+        </div></div>`).join("") + `</div>`;
+    }
+  } catch (e) { $("#d").innerHTML = err(e.message); }
+}
+
+async function vistaTx(app, hash) {
+  app.innerHTML = cajaBuscar() + `<h2>Transacción</h2><div class="panel" id="d"><div class="cargando">Cargando…</div></div>`;
+  try {
+    const r = await api(`/transaction/transaction/${encodeURIComponent(hash)}`);
+    const t = r.transaction || r.transactionInfo || r;
+    if (!t || !t.hash) throw new Error("No se encontró esa transacción.");
+    $("#d").innerHTML = `<table>
+      <tr><td class="k">Hash</td><td class="v mono">${esc(t.hash)}</td></tr>
+      <tr><td class="k">Bloque</td><td class="v"><a href="/block/${esc(t.blockNumber)}" data-ruta>#${num(t.blockNumber)}</a></td></tr>
+      <tr><td class="k">Fecha</td><td class="v">${fecha(t.timestamp)} <span class="pill">${hace(t.timestamp)}</span></td></tr>
+      <tr><td class="k">De</td><td class="v mono"><a href="/address/${esc(t.from)}" data-ruta>${esc(t.from)}</a></td></tr>
+      <tr><td class="k">Para</td><td class="v mono"><a href="/address/${esc(t.to)}" data-ruta>${esc(t.to)}</a></td></tr>
+      <tr><td class="k">Valor</td><td class="v">${valor(t.value)}</td></tr>
+      <tr><td class="k">Precio del gas</td><td class="v">${num(t.gasPrice)}</td></tr>
+      <tr><td class="k">Nonce</td><td class="v">${esc(t.nonce)}</td></tr>
+    </table>`;
+  } catch (e) { $("#d").innerHTML = err(e.message); }
+}
+
+async function vistaDireccion(app, addr) {
+  app.innerHTML = cajaBuscar() +
+    `<h2>Dirección</h2><div class="mono" style="color:var(--txt2);margin:-6px 0 14px;word-break:break-all">${esc(addr)}</div>
+     <div id="res"></div><h2>Transacciones<span id="ntx"></span></h2><div class="panel" id="l"><div class="cargando">Cargando…</div></div>`;
+  try {
+    const d = await api(`/address/${encodeURIComponent(addr)}`);
+    const saldo = d.balance ?? "0";
+    const tk = d.tokensBalance || {};
+    const filasTk = Object.entries(tk)
+      .map(([k, v]) => `<div class="tarj"><div class="et">${esc(k)}</div><div class="va">${valor(v.balance)}</div></div>`)
+      .join("");
+    $("#res").innerHTML = `<div class="tarjetas">
+      <div class="tarj"><div class="et">Saldo ORIGEN</div><div class="va oro">${valor(saldo)}</div></div>${filasTk}</div>`;
+
+    const t = d.transactions || [];
+    // El servidor devuelve el historial completo sin límite. Se muestra un
+    // tramo y se dice cuántas hay en total, en vez de pintar miles de filas y
+    // dejar la página inutilizable en una dirección con mucho movimiento.
+    const TOPE = 50;
+    const visibles = t.slice(0, TOPE);
+    $("#ntx").textContent = t.length ? ` (${num(t.length)})` : "";
+    $("#l").innerHTML = (visibles.length ? visibles.map(x => {
+      const sale = String(x.from || "").toLowerCase() === String(addr).toLowerCase();
+      return `<div class="fila"><div class="izq">
+        <a href="/tx/${esc(x.hash)}" data-ruta class="mono cortar">${esc(corto(x.hash, 18, 10))}</a>
+        <div class="sub mono cortar">${sale ? "envió a " + esc(corto(x.to, 10, 6)) : "recibió de " + esc(corto(x.from, 10, 6))}</div>
+      </div><div class="der">${valor(x.value)}<div class="sub">${hace(x.timestamp)}</div></div></div>`;
+    }).join("") : `<div class="aviso">Esta dirección no tiene transacciones registradas.</div>`)
+      + (t.length > TOPE ? `<div class="aviso">Mostrando las ${TOPE} más recientes de ${num(t.length)}.</div>` : "");
+  } catch (e) { $("#l").innerHTML = err(e.message); }
+}
+
+// ── Despachador ──────────────────────────────────────────────────────────────
+function pintar() {
+  const app = $("#app");
+  const p = location.pathname.replace(/\/+$/, "") || "/";
+  document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.getAttribute("href") === p));
+
+  let m;
+  if (p === "/") return vistaInicio(app);
+  if (p === "/blocks") return vistaBloques(app);
+  if (p === "/txs") return vistaTxs(app);
+  if ((m = p.match(/^\/block\/(.+)$/))) return vistaBloque(app, decodeURIComponent(m[1]));
+  if ((m = p.match(/^\/tx\/(.+)$/))) return vistaTx(app, decodeURIComponent(m[1]));
+  if ((m = p.match(/^\/address\/(.+)$/))) return vistaDireccion(app, decodeURIComponent(m[1]));
+
+  app.innerHTML = cajaBuscar() + `<div class="aviso">Esa página no existe. <a href="/" data-ruta>Volver al inicio</a></div>`;
+}
+pintar();
+</script>
+</body>
+</html>
