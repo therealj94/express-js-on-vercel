@@ -6,20 +6,34 @@ compilación. Se despliega copiándolo a cualquier hosting estático.
 Backend: <https://orden-global-scan-c4abe71e8024.herokuapp.com>
 (código en `../ogscan-backend`).
 
-**Desplegado para revisión:** <https://main.d34dnrmfl6lkwn.amplifyapp.com>
-(app de Amplify `ordenscan-explorador`, `d34dnrmfl6lkwn`). No tiene dominio
-propio y no toca `ordenscan.com` en absoluto.
+**En producción desde el 5 de agosto de 2026:** `ordenscan.com` y
+`www.ordenscan.com` sirven este explorador (app de Amplify
+`ordenscan-explorador`, `d34dnrmfl6lkwn`). También sigue disponible en
+<https://main.d34dnrmfl6lkwn.amplifyapp.com>.
 
 ## Por qué existe este explorador
 
-`ordenscan.com` es hoy el app de Amplify `ogscan-frontend` (`d25qv92e7m8uv9`),
-una aplicación **Next.js SSR** cuyo código vive en
-`gitlab.com/shark-technology/ogscan-frontend` — un repositorio de un tercero.
-El auto-build está apagado y el último despliegue es de abril de 2025.
+Hasta el 5 de agosto de 2026, `ordenscan.com` era el app de Amplify
+`ogscan-frontend` (`d25qv92e7m8uv9`), una aplicación **Next.js SSR** cuyo
+código vive en `gitlab.com/shark-technology/ogscan-frontend` — un repositorio
+de un tercero. El auto-build estaba apagado y el último despliegue era de
+abril de 2025.
 
-Ese sitio no tiene página `/block/[n]`, así que devuelve 404 y no cumple
-EIP-3091. Y al no tener el código, no se puede corregir. De ahí este reemplazo:
-un solo archivo, sin dependencias, que el equipo sí controla.
+Ese sitio no tenía página `/block/[n]`, así que devolvía 404 y no cumplía
+EIP-3091. Y al no tener el código, no se podía corregir. De ahí este
+reemplazo: un solo archivo, sin dependencias, que el equipo sí controla.
+
+**El app viejo no se borró.** Sigue existiendo en Amplify (`d25qv92e7m8uv9`,
+sin dominio propio ahora) por si hiciera falta revertir el cambio de dominio:
+```
+aws amplify create-domain-association --app-id d25qv92e7m8uv9 \
+  --domain-name ordenscan.com \
+  --sub-domain-settings prefix=,branchName=main prefix=www,branchName=main
+```
+(y habría que borrar antes la asociación en `d34dnrmfl6lkwn`, porque un
+dominio de Amplify solo puede estar asociado a un app a la vez, y luego
+actualizar el registro A/CNAME en Route53 — zona `Z0047915DJYCTJJ7G0RP` — al
+CloudFront del app viejo, `d1q7q6eqt7gd2z.cloudfront.net`).
 
 ---
 
