@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.21.0';
-export const BUILD = 57;
+export const VERSION = '1.22.0';
+export const BUILD = 58;
 export const RELEASED = '2026-08-05';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,23 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.22.0',
+    build: 58,
+    date: '2026-08-05',
+    es: [
+      'Ya no hace falta teclear el código del documento. Apuntás la cámara al pie de la cédula o el pasaporte y se lee solo. Eran 88 caracteres llenos de «<»: era el punto donde la gente abandonaba la verificación, y con razón.',
+      'Si la cámara confunde un cero con una O —les pasa a todos los lectores—, se corrige solo usando los dígitos de control del propio documento. Y cuando hay más de una lectura posible no elige ninguna: te pide otra foto, porque acertar por casualidad sería mandar el documento de otra persona.',
+      'La foto del documento no sale del teléfono. La lectura ocurre acá y lo único que viaja es el texto, igual que antes.',
+      'Escribirlo a mano sigue disponible para cuando la cámara no ayuda.',
+    ],
+    en: [
+      'You no longer have to type the document code. Point the camera at the bottom of your ID or passport and it reads itself. It was 88 characters full of «<» — the point where people gave up on verification, and understandably so.',
+      'If the camera mistakes a zero for an O — every reader does — it is corrected automatically using the document\u2019s own check digits. And when more than one reading is possible it picks none: it asks for another photo, because guessing right by chance would mean submitting someone else\u2019s document.',
+      'The document photo never leaves your phone. Reading happens here and only the text travels, same as before.',
+      'Typing it by hand is still there for when the camera does not help.',
+    ],
+  },
   {
     v: '1.21.0',
     build: 57,

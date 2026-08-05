@@ -6,6 +6,7 @@ import { Icon } from '../icons';
 import { C, G } from '../theme';
 import { Header, Button3D, Card, Field, hap, useToast, useAccount } from '../ui';
 import { genesis, revisarFormaMrz } from '../genesis';
+import { leerDeFoto, puedeEscanear } from '../mrzOcr';
 import { setPassport } from '../accounts';
 import { getSeed } from '../api';
 import PedirClave from '../PedirClave';
@@ -39,6 +40,8 @@ export function Kyc({ nav }) {
   // Paso 2 — documento
   const [mrz, setMrz] = useState('');
   const [problemas, setProblemas] = useState([]);
+  const [escaneando, setEscaneando] = useState(false);
+  const camaraDoc = useRef(null);
 
   // Paso 3 — rostro y prueba de vida
   const [permiso, pedirPermiso] = useCameraPermissions();
@@ -105,7 +108,45 @@ export function Kyc({ nav }) {
     setEstado(r); setPaso('documento');
   }
 
-  // ---- paso 2 ----
+  // ---- paso 2: leer la MRZ con la cámara ----
+  //
+  // La foto NO sale del teléfono: el reconocimiento es local y lo único que
+  // viaja es el texto. Es lo que permite que la pantalla prometa «nunca la foto
+  // de tu documento» y sea verdad.
+
+  async function abrirEscaner() {
+    if (!permiso?.granted) { const p = await pedirPermiso(); if (!p?.granted) return; }
+    hap(); setProblemas([]); setEscaneando(true);
+  }
+
+  async function escanearDocumento() {
+    hap(); setOcupado(true);
+    try {
+      const foto = await camaraDoc.current?.takePictureAsync({ quality: 1, skipProcessing: true });
+      if (!foto?.uri) { toast(t('gen.errPhoto')); setOcupado(false); return; }
+
+      const r = await leerDeFoto(foto.uri);
+      setOcupado(false);
+
+      if (r.ok) {
+        setMrz(r.mrz);
+        setEscaneando(false);
+        toast(r.corregida ? t('gen.scanFixed') : t('gen.scanOk'));
+        return;
+      }
+      // Si se leyó algo con forma de MRZ pero los dígitos no cuadran, se deja
+      // en el cuadro de texto: corregir dos caracteres es mucho mejor que
+      // teclear ochenta y ocho.
+      if (r.mrz) {
+        setMrz(r.mrz);
+        setEscaneando(false);
+        toast(t('gen.scanPartial'));
+        return;
+      }
+      toast(r.motivo === 'sin-lector' ? t('gen.scanNoReader') : t('gen.scanRetry'));
+    } catch (e) { setOcupado(false); toast(t('gen.errPhoto')); }
+  }
+
   async function enviarDocumento() {
     hap(); setOcupado(true); setProblemas([]);
     const r = await genesis.enviarDocumento(mrz);
@@ -220,13 +261,38 @@ export function Kyc({ nav }) {
             <Text style={st.h1}>{t('gen.stepDocT')}</Text>
             <Text style={st.body}>{t('gen.stepDocP')}</Text>
 
-            <Card style={{ padding: 14, marginBottom: 14 }}>
-              <Text style={st.cardTitle}>{t('gen.mrzWhere')}</Text>
-              <Text style={st.mrzEjemplo} numberOfLines={2}>
-                P&lt;HNDPEREZ&lt;&lt;JUAN&lt;CARLOS&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;{'\n'}
-                A123456781HND9005236M3012159&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;06
-              </Text>
-            </Card>
+            {/* La cámara va primero y a mano queda como salida de emergencia:
+                teclear 88 caracteres llenos de «<» es donde la gente abandona. */}
+            {escaneando ? (
+              <>
+                <View style={st.camaraCaja}>
+                  <CameraView ref={camaraDoc} style={{ flex: 1 }} facing="back" />
+                  <View style={st.guia} pointerEvents="none" />
+                </View>
+                <Text style={st.mrzPista}>{t('gen.scanAim')}</Text>
+                <Button3D title={ocupado ? t('gen.scanReading') : t('gen.scanShot')}
+                  icon="card" onPress={escanearDocumento} disabled={ocupado}
+                  style={{ marginTop: 12 }} />
+                <Pressable onPress={() => setEscaneando(false)} style={st.retry} disabled={ocupado}>
+                  <Text style={[st.retryTxt, { color: C.txt3 }]}>{t('gen.scanManual')}</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                {puedeEscanear() && (
+                  <Button3D title={t('gen.scanStart')} icon="card"
+                    onPress={abrirEscaner} disabled={ocupado} style={{ marginBottom: 14 }} />
+                )}
+
+                <Card style={{ padding: 14, marginBottom: 14 }}>
+                  <Text style={st.cardTitle}>{t('gen.mrzWhere')}</Text>
+                  <Text style={st.mrzEjemplo} numberOfLines={2}>
+                    P&lt;HNDPEREZ&lt;&lt;JUAN&lt;CARLOS&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;{'\n'}
+                    A123456781HND9005236M3012159&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;06
+                  </Text>
+                </Card>
+              </>
+            )}
 
             <Text style={st.label}>{t('gen.mrzLabel')}</Text>
             <TextInput
@@ -560,6 +626,12 @@ const st = StyleSheet.create({
   },
 
   // La instrucción del gesto tiene que leerse de reojo, mirando a la cámara.
+  // Franja que marca dónde poner el pie del documento. Encuadrar bien es la
+  // diferencia entre leerlo a la primera y tres intentos.
+  guia: {
+    position: 'absolute', left: '6%', right: '6%', bottom: '18%', height: 76,
+    borderWidth: 2, borderColor: C.gold, borderRadius: 8, opacity: 0.75,
+  },
   gestoPaso: { color: C.txt3, fontSize: 12, letterSpacing: 1, marginTop: 14, textTransform: 'uppercase' },
   gestoTxt: { color: C.gold, fontSize: 22, fontWeight: '700', marginTop: 4, marginBottom: 12 },
   puntos: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 12 },
