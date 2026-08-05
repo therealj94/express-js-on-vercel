@@ -273,14 +273,14 @@ contar como coincidencia fuerte.
 
 ## Qué falta
 
-- **Rehacer el flujo de verificación en Veta Wallet.**
-  `veta-wallet-app/src/genesis.js` todavía apunta al portal externo
-  `genesisid.online`, que nunca llegó a funcionar. No rompe nada —falla en
-  silencio y la app sigue— pero hay que reescribirlo contra el puente, como ya
-  está el de MyTokenPay. Requiere tocar las pantallas de escaneo, y eso no se
-  puede comprobar sin ejecutar la app.
-- **El portal externo se retiró.** `routes/portal.ts` era el vector de inyección
-  de pasaportes, y Genesis ID ahora verifica por sí mismo.
+- **Montar el puente en el backend de Veta Wallet.** El router está listo y
+  probado en `infra/genesis-proxy/`, y el cliente móvil ya apunta a él, pero
+  añadirlo al backend exige un despliegue en Heroku — bloqueado por el mismo
+  token vencido que la rotación de `PASS_ADM`. Hasta entonces la app enseña
+  "el servidor todavía no tiene activada la conexión", que es la verdad.
+- **Probar el flujo en un teléfono.** La lógica está verificada de punta a
+  punta contra el servidor real, pero la cámara y el teclado solo se pueden
+  comprobar ejecutando la app.
 - **Cargar las listas reales** y montar el disco en Render.
 - **Contratar el proveedor de biometría**, o asumir el cotejo manual.
 - **Anclar el hash de la bitácora** en la cadena 8532.

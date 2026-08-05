@@ -1,33 +1,42 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
+import { API_BASE, getToken } from './api';
 
 // ============================================================
 // Genesis ID — identidad digital de Orden Global.
 //
-// La verificación REAL ocurre en el portal oficial genesisid.online.
-// La app NUNCA lleva la API key (gid_live_…): un APK se descomprime y
-// cualquiera la extraería. La app habla con el motor Genesis (Render), y
-// ESE servidor es quien llama al portal con la clave.
+// QUE CAMBIO Y POR QUE
 //
-//   App  ──▶  motor Genesis (/api/portal/*)  ──X-API-Key──▶  genesisid.online
+// Antes esto abría el portal externo genesisid.online y esperaba que volviera
+// con un "pasaporte". Ese puente nunca llegó a funcionar, y el endpoint que lo
+// recibía dejaba inyectar un pasaporte —nombre legal, documento, foto— a
+// cualquier correo sin autenticación alguna. Se retiró.
 //
-// Flujo:
-//   1. La app registra al usuario y abre el portal con sus datos.
-//   2. El usuario completa allá la verificación.
-//   3. Al volver: si el portal devuelve un token, se valida en el servidor;
-//      si no, se consulta el estado por correo. En ambos casos la app
-//      obtiene el pasaporte completo.
+// Ahora la verificación la hace Genesis ID, y la decide una persona del equipo
+// de cumplimiento. La app solo APORTA datos:
+//
+//   1. la persona declara nombre y fecha de nacimiento
+//   2. captura la MRZ de su documento (las líneas de abajo del pasaporte)
+//   3. se toma la foto de rostro
+//   4. queda en revisión hasta que un operador aprueba o rechaza
+//
+// La app NO decide si alguien está verificado, y ya no puede: el GID lo emite
+// el servidor y solo existe después de esa decisión.
+//
+// POR QUE PASA POR EL BACKEND DE VETA WALLET
+//
+// Genesis ID exige una clave de API. Esa clave no puede vivir aquí: un APK se
+// descomprime con una orden y cualquiera la sacaría. Así que la app habla con
+// su propio backend, que ya la autentica con su JWT, y ese servidor es el que
+// llama a Genesis ID con la clave.
+//
+//   app ──JWT──▶ backend de Veta Wallet (/genesis/*) ──X-API-Key──▶ Genesis ID
+//
+// El router del backend está en infra/genesis-proxy/genesis.router.js.
 // ============================================================
 
-const KEY = 'genesis-id-local-v4';
+const KEY = 'genesis-id-local-v5';
 
-export const PORTAL = (process.env.EXPO_PUBLIC_GENESIS_PORTAL || 'https://www.genesisid.online').replace(/\/$/, '');
-export const ENGINE = (process.env.EXPO_PUBLIC_GENESIS_URL || 'https://genesis-id.onrender.com').replace(/\/$/, '');
-export const RETURN_URL = 'vetawallet://genesis';
-
-const now = () => new Date().toISOString();
-
+/** Copia local del estado, solo para pintar la pantalla sin esperar la red. */
 async function readLocal() {
   try { const raw = await AsyncStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; }
   catch (e) { return null; }
@@ -37,120 +46,135 @@ async function writeLocal(rec) {
   return rec;
 }
 
-// ---------- motor Genesis (nuestro servidor) ----------
-async function engine(path, body) {
+/**
+ * Llamada al puente del backend, con el token de sesión de la wallet.
+ *
+ * Devuelve `{ ok, datos, error, code }` en vez de lanzar: estas pantallas
+ * tienen que poder explicar qué pasó, y una excepción sin código obliga a
+ * enseñar un mensaje genérico.
+ */
+async function puente(ruta, cuerpo) {
+  if (!API_BASE) return { ok: false, code: 'config', error: 'API no configurada' };
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 25000);
   try {
-    const res = await fetch(`${ENGINE}/api${path}`, {
-      method: body ? 'POST' : 'GET',
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/genesis${ruta}`, {
+      method: cuerpo ? 'POST' : 'GET',
       signal: ctrl.signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: cuerpo ? JSON.stringify(cuerpo) : undefined,
     });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (e) { return null; }
-  finally { clearTimeout(timer); }
+    const datos = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        ok: false,
+        datos,
+        error: datos?.error || `Error ${res.status}`,
+        // 404 en el puente casi siempre significa que el backend todavía no lo
+        // tiene montado; conviene distinguirlo de un fallo de red.
+        code: res.status === 401 || res.status === 403 ? 'auth'
+          : res.status === 404 ? 'sin-puente'
+            : res.status === 503 ? 'sin-clave'
+              : res.status >= 500 ? 'servidor' : 'http',
+      };
+    }
+    return { ok: true, datos };
+  } catch (e) {
+    return {
+      ok: false,
+      code: e?.name === 'AbortError' ? 'timeout' : 'red',
+      error: e?.name === 'AbortError' ? 'El servidor no respondió a tiempo' : 'Sin conexión',
+    };
+  } finally { clearTimeout(timer); }
 }
 
-const esBilletera = (v) => /^0x[a-fA-F0-9]{40}$/.test(String(v || '').trim());
-
-// Primer valor no vacío entre varios nombres posibles de campo.
-const pick = (o, ...keys) => {
-  for (const k of keys) {
-    const v = o?.[k];
-    if (v !== undefined && v !== null && String(v).trim() !== '') return v;
-  }
-  return null;
-};
+// ---------------------------------------------------------------------------
+// MRZ
+// ---------------------------------------------------------------------------
 
 /**
- * Normaliza un pasaporte venga del servidor, del portal o del deep link.
- * Acepta el objeto plano o anidado y los nombres de campo más habituales
- * (gid/uid/genesisUid, name/fullName, photo/avatar/picture…).
+ * Deja la MRZ en el formato que espera el servidor: en mayúsculas, sin
+ * espacios, una línea por renglón.
+ *
+ * Los `<` se teclean mal con frecuencia, así que se aceptan también los
+ * caracteres con los que la gente los sustituye por error.
  */
-export function toPassport(src, fallback = {}) {
-  if (!src || typeof src !== 'object') return null;
-  const s = src.user || src.identity || src.data || src.passport || src;
-  const uid = pick(s, 'genesisUid', 'gid', 'uid', 'genesis_uid', 'genesisId', 'genesis_id', 'GID');
-  if (!uid) return null;
-  const statusRaw = String(pick(s, 'status', 'step', 'state', 'kycStatus') || '').toLowerCase();
-  const verified = statusRaw.includes('verif') || statusRaw.includes('approve')
-    || statusRaw === 'active' || statusRaw === 'complete' || statusRaw === 'completed'
-    || s.verified === true || s.isVerified === true;
-  // El portal puede mandar el nombre partido en dos campos.
-  const partes = [pick(s, 'firstName', 'first_name', 'givenName', 'given_name', 'nombres'),
-    pick(s, 'lastName', 'last_name', 'familyName', 'family_name', 'surname', 'apellidos')].filter(Boolean);
+export function limpiarMrz(texto) {
+  return String(texto || '')
+    .toUpperCase()
+    .replace(/[«»‹›]/g, '<')
+    .split(/[\r\n]+/)
+    .map((l) => l.replace(/[^A-Z0-9<]/g, ''))
+    .filter((l) => l.length > 0)
+    .join('\n');
+}
+
+/**
+ * Comprobación de forma antes de gastar una llamada al servidor.
+ *
+ * No valida los dígitos de control —eso lo hace Genesis ID, que es donde debe
+ * hacerse— pero sí evita mandar algo que a todas luces no es una MRZ, y le
+ * dice a la persona exactamente cuántos caracteres le faltan o le sobran.
+ */
+export function revisarFormaMrz(texto) {
+  const lineas = limpiarMrz(texto).split('\n').filter(Boolean);
+  if (!lineas.length) return { ok: false, motivo: 'Escriba o escanee las líneas de la MRZ' };
+
+  const largos = lineas.map((l) => l.length);
+  const esperado =
+    lineas.length === 2 && largos.every((l) => l === 44) ? 'TD3'
+      : lineas.length === 2 && largos.every((l) => l === 36) ? 'TD2'
+        : lineas.length === 3 && largos.every((l) => l === 30) ? 'TD1'
+          : null;
+
+  if (esperado) return { ok: true, formato: esperado, lineas };
+
   return {
-    genesisUid: String(uid),
-    fullName: pick(s, 'fullName', 'name', 'full_name', 'fullname', 'legalName', 'nombre')
-      || (partes.length ? partes.join(' ') : null) || fallback.fullName || null,
-    email: pick(s, 'email', 'correo', 'mail') || fallback.email || null,
-    // 'address' se reparte según su forma: si parece 0x… es la billetera; si
-    // no, es el domicilio del titular (abajo). Antes un domicilio acababa
-    // guardado como dirección on-chain.
-    walletAddress: pick(s, 'walletAddress', 'wallet', 'wallet_address')
-      || (esBilletera(s?.address) ? String(s.address).trim() : null)
-      || fallback.walletAddress || null,
-    documentId: pick(s, 'documentId', 'document', 'documentNumber', 'document_number', 'dni', 'idNumber'),
-    nationality: pick(s, 'nationality', 'country', 'nacionalidad', 'pais'),
-    birthDate: pick(s, 'birthDate', 'dob', 'dateOfBirth', 'birth_date', 'fechaNacimiento'),
-    // Datos generales que también rellenan el perfil de la app.
-    phone: pick(s, 'phone', 'phoneNumber', 'phone_number', 'telefono', 'mobile', 'celular'),
-    address: pick(s, 'residence', 'homeAddress', 'home_address', 'addressLine', 'address_line', 'direccion', 'domicilio', 'city')
-      || (esBilletera(s?.address) ? null : pick(s, 'address')),
-    photoUrl: pick(s, 'photoUrl', 'photo', 'photo_url', 'avatar', 'avatarUrl', 'selfieUrl', 'selfie', 'picture', 'image', 'imageUrl', 'foto'),
-    status: verified ? 'verified' : statusRaw.includes('review') || statusRaw.includes('pending') ? 'review' : (statusRaw || 'pending'),
-    issuedAt: pick(s, 'verifiedAt', 'issuedAt', 'issued_at') || now(),
-    raw: s,
+    ok: false,
+    motivo:
+      `Se leyeron ${lineas.length} línea(s) de ${largos.join('/')} caracteres. ` +
+      'Un pasaporte son 2 líneas de 44; una cédula, 3 de 30 o 2 de 36.',
   };
 }
 
-/**
- * Saca un pasaporte de CUALQUIER texto: el .json que descargas del portal, un
- * código QR, un enlace o un bloque en base64. Es lo que permite importar el
- * pasaporte a mano cuando la consulta automática al portal no lo devuelve.
- */
-export function passportFromText(raw) {
-  const txt = String(raw || '').trim();
-  if (!txt) return null;
+// ---------------------------------------------------------------------------
+// Estado que se enseña en pantalla
+// ---------------------------------------------------------------------------
 
-  // 1) JSON directo
-  try { const p = toPassport(JSON.parse(txt)); if (p) return p; } catch (e) {}
+const PASOS = {
+  iniciada: 'datos',
+  datos: 'documento',
+  documento: 'rostro',
+  biometria: 'revision',
+  'en-revision': 'revision',
+  verificada: 'listo',
+  rechazada: 'rechazada',
+  suspendida: 'suspendida',
+};
 
-  // 2) JSON dentro del texto (por si trae encabezados o saltos)
-  const brace = txt.indexOf('{');
-  if (brace >= 0) {
-    try { const p = toPassport(JSON.parse(txt.slice(brace, txt.lastIndexOf('}') + 1))); if (p) return p; } catch (e) {}
-  }
-
-  // 3) base64 de un JSON
-  if (/^[A-Za-z0-9+/=\s]+$/.test(txt) && txt.length > 40) {
-    try {
-      const limpio = txt.replace(/\s/g, '');
-      const dec = typeof atob === 'function'
-        ? atob(limpio)
-        : typeof Buffer !== 'undefined' ? Buffer.from(limpio, 'base64').toString('utf8') : null;
-      if (dec) { const p = toPassport(JSON.parse(dec)); if (p) return p; }
-    } catch (e) {}
-  }
-
-  // 4) URL o deep link con parámetros (?gid=…&name=…)
-  const q = txt.includes('?') ? txt.slice(txt.indexOf('?') + 1) : txt;
-  if (q.includes('=')) {
-    const obj = {};
-    for (const part of q.split('&')) {
-      const [k, ...v] = part.split('=');
-      if (k) obj[k.trim()] = decodeURIComponent((v.join('=') || '').trim().replace(/\+/g, ' '));
-    }
-    const p = toPassport(obj);
-    if (p) return p;
-  }
-  return null;
+/** Traduce la respuesta del servidor a lo que la pantalla necesita. */
+function aVista(identidad) {
+  if (!identidad) return null;
+  return {
+    id: identidad.id,
+    email: identidad.email,
+    estado: identidad.estado,
+    paso: PASOS[identidad.estado] || 'datos',
+    genesisUid: identidad.gid || null,
+    fullName: identidad.nombreLegal || null,
+    documentoAceptable: identidad.documentoAceptable,
+    siguientePaso: identidad.siguientePaso,
+    verificada: identidad.estado === 'verificada',
+    actualizadaEn: identidad.actualizadaEn,
+  };
 }
 
-/** Combina dos pasaportes sin perder datos (el nuevo manda, el viejo rellena). */
+/** Combina dos estados sin perder datos (el nuevo manda, el viejo rellena). */
 export function mergePassport(base, extra) {
   if (!base) return extra || null;
   if (!extra) return base;
@@ -162,138 +186,124 @@ export function mergePassport(base, extra) {
   return out;
 }
 
-/** Lee el token o el pasaporte del deep link de retorno. */
-export function readReturnUrl(url) {
-  try {
-    const { queryParams } = Linking.parse(url);
-    if (!queryParams) return {};
-    const token = queryParams.token || queryParams.code || queryParams.access_token || null;
-    const passport = toPassport(queryParams);
-    return { token: token ? String(token) : null, passport };
-  } catch (e) { return {}; }
-}
-// Compatibilidad con el manejador de deep links de App.js
-export const passportFromUrl = (url) => readReturnUrl(url).passport;
-
-/** URL del portal con los datos de la cuenta y el retorno a la app. */
-export function portalUrl({ email, fullName, walletAddress }) {
-  const q = new URLSearchParams();
-  if (email) q.set('email', email);
-  if (fullName) q.set('name', fullName);
-  if (walletAddress) { q.set('wallet', walletAddress); q.set('address', walletAddress); }
-  q.set('app', 'veta-wallet');
-  q.set('source', 'veta-wallet');
-  q.set('return_url', RETURN_URL);
-  q.set('redirect_uri', RETURN_URL);
-  return `${PORTAL}/?${q.toString()}`;
-}
-
 export const genesis = {
-  PORTAL, ENGINE, RETURN_URL,
+  /** Estado guardado en el teléfono, para pintar sin esperar la red. */
   local: readLocal,
   save: writeLocal,
 
   /**
-   * Diagnóstico honesto de por qué no llegó el pasaporte. Devuelve un código
-   * para que la pantalla explique el problema real en vez de un "en proceso"
-   * genérico:
-   *   'no-engine'      → no hay internet o el motor está dormido/caído
-   *   'no-key'         → el servidor no tiene GENESIS_API_KEY configurada
-   *   'not-verified'   → el portal responde, pero aún no te ha verificado
-   *   'ok'             → todo listo
+   * Estado del trámite. Crea la identidad si aún no existe.
+   * Es lo primero que llama la pantalla al entrar.
    */
-  async diagnose(email, walletAddress) {
-    let health = null;
-    try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 20000);
-      const res = await fetch(`${ENGINE}/api/portal/status`, { signal: ctrl.signal });
-      clearTimeout(timer);
-      health = await res.json();
-    } catch (e) {
-      return { code: 'no-engine' };
-    }
-    // El servidor dice POR QUÉ la clave no sirve (abreviada, con espacios…).
-    // Se pasa tal cual a la pantalla para no obligar a mirar los registros.
-    if (!health?.configured) return { code: 'no-key', portal: health?.portal, detail: health?.problemaConLaClave || null };
-    const p = await this.status(email, walletAddress).catch(() => null);
-    if (p?.status === 'verified') return { code: 'ok', passport: p };
-    return { code: 'not-verified', passport: p };
+  async estado() {
+    const r = await puente('/estado');
+    if (!r.ok) return { error: r.error, code: r.code };
+    const vista = aVista(r.datos?.identidad);
+    if (vista) await writeLocal(vista);
+    return vista;
   },
 
-  /** Registra/vincula al usuario en el portal antes de verificar. */
-  register: ({ email, fullName, walletAddress }) =>
-    engine('/portal/register', { email, fullName, walletAddress }),
-
-  /** Consulta el estado de verificación y trae el pasaporte si ya existe. */
-  async status(email, walletAddress) {
-    const d = await engine('/portal/user-status', { email, walletAddress });
-    return d?.passport ? toPassport(d.passport, { email, walletAddress }) : null;
-  },
-
-  /** Valida en el servidor el token que devolvió el portal. */
-  async validateToken(token, { email, walletAddress } = {}) {
-    const d = await engine('/portal/token-validate', { token, email, walletAddress });
-    return d?.passport ? toPassport(d.passport, { email, walletAddress }) : null;
+  /** Lo que la persona declara de sí misma. */
+  async declararDatos({ nombreCompleto, fechaNacimiento, paisResidencia, telefono }) {
+    const r = await puente('/datos', { nombreCompleto, fechaNacimiento, paisResidencia, telefono });
+    if (!r.ok) return { error: r.error, code: r.code };
+    const vista = aVista(r.datos?.identidad);
+    if (vista) await writeLocal(vista);
+    return vista;
   },
 
   /**
-   * Abre el portal oficial y espera el regreso.
-   * Devuelve { passport } | { pending } | { cancelled }.
+   * Manda la MRZ del documento.
+   *
+   * Se envía el TEXTO, nunca la fotografía: así la imagen del documento no
+   * viaja por la red ni se almacena en ningún servidor. Un dato personal menos
+   * en riesgo por cada usuario.
+   *
+   * Devuelve también qué falla, porque los dígitos de control detectan un
+   * error de transcripción al instante y conviene decirlo en el momento.
    */
-  async verify({ email, fullName, walletAddress }) {
-    await this.register({ email, fullName, walletAddress });
+  async enviarDocumento(mrz) {
+    const forma = revisarFormaMrz(mrz);
+    if (!forma.ok) return { aceptable: false, problemas: [forma.motivo] };
 
-    const url = portalUrl({ email, fullName, walletAddress });
-    let result;
-    try {
-      result = await WebBrowser.openAuthSessionAsync(url, RETURN_URL, { showInRecents: true });
-    } catch (e) {
-      try { await WebBrowser.openBrowserAsync(url); } catch (e2) {}
-      result = { type: 'dismiss' };
-    }
+    const r = await puente('/documento', { mrz: limpiarMrz(mrz) });
+    if (!r.ok) return { aceptable: false, problemas: [r.error], code: r.code };
 
-    const fb = { email, fullName, walletAddress };
-    if (result?.type === 'success' && result.url) {
-      const { token, passport: fromUrl } = readReturnUrl(result.url);
-      let p = fromUrl;
-      // 1) Si trae token, se valida en el servidor (allí vive la API key) y
-      //    lo que devuelva se COMBINA con lo que venía en la URL: así no se
-      //    pierde ni el GID, ni el nombre, ni la foto, venga de donde venga.
-      if (token) {
-        const validated = await this.validateToken(token, { email, walletAddress });
-        p = mergePassport(p, validated);
-      }
-      // 2) Completa lo que falte consultando el estado por correo.
-      if (p && (!p.photoUrl || !p.fullName || !p.documentId)) {
-        const status = await this.status(email, walletAddress).catch(() => null);
-        p = mergePassport(p, status);
-      }
-      if (p) {
-        p = mergePassport(p, null);
-        p.email = p.email || email;
-        p.fullName = p.fullName || fullName;
-        p.walletAddress = p.walletAddress || walletAddress;
-        await writeLocal(p);
-        return { passport: p };
-      }
-    }
-
-    // 3) Sin datos en el retorno: consulta el estado por correo.
-    const p = await this.status(email, walletAddress);
-    if (p?.status === 'verified') {
-      p.fullName = p.fullName || fullName;
-      await writeLocal(p);
-      return { passport: p };
-    }
-    if (p) return { pending: p };
-    return result?.type === 'cancel' ? { cancelled: true } : { pending: null };
+    const vista = aVista(r.datos?.identidad);
+    if (vista) await writeLocal(vista);
+    return {
+      estado: vista,
+      aceptable: Boolean(r.datos?.documento?.aceptable),
+      problemas: r.datos?.documento?.problemas || [],
+    };
   },
 
-  /** Botón "Ya me verifiqué": vuelve a consultar el estado. */
-  async refresh(email, fallback = {}) {
-    const p = await this.status(email, fallback.walletAddress);
-    if (p?.status === 'verified') { await writeLocal(p); return p; }
-    return p ? { ...p, _notVerified: true } : null;
+  /** Foto de rostro para el cotejo con la del documento. */
+  async enviarSelfie(selfieBase64) {
+    const r = await puente('/biometria', { selfie: selfieBase64 });
+    if (!r.ok) return { error: r.error, code: r.code };
+    const vista = aVista(r.datos?.identidad);
+    if (vista) await writeLocal(vista);
+    return vista;
+  },
+
+  /** Ata esta cuenta de Veta Wallet al GID, para la sesión única. */
+  vincular: () => puente('/vincular', {}),
+
+  /** Token para entrar en otra app del ecosistema sin repetir el KYC. */
+  async tokenEcosistema() {
+    const r = await puente('/sso/token', {});
+    return r.ok ? (r.datos?.token || null) : null;
+  },
+
+  /**
+   * ¿Está sancionada esta dirección?
+   *
+   * Conviene consultarlo ANTES de firmar un envío. Devuelve `null` si no se
+   * pudo comprobar — y eso NO es lo mismo que "está limpia": la pantalla debe
+   * distinguirlo, porque dar por buena una dirección que no se pudo tamizar es
+   * exactamente el error que hay que evitar.
+   */
+  async tamizarDireccion(direccion) {
+    const r = await puente(`/tamiz/${encodeURIComponent(direccion)}`);
+    if (!r.ok || !r.datos?.tamizado) return null;
+    return { sancionada: Boolean(r.datos.sancionada), ficha: r.datos.ficha || null };
+  },
+
+  /** Manda movimientos para el monitoreo AML. Nunca bloquea la interfaz. */
+  enviarMovimientos: (movimientos) =>
+    puente('/movimientos', { movimientos }).catch(() => null),
+
+  /**
+   * Vuelve a consultar el estado. Es el botón "ya me verifiqué".
+   * Se mantiene el nombre porque lo usan varias pantallas.
+   */
+  async refresh() {
+    return genesis.estado();
+  },
+
+  /** Alias histórico; varias pantallas lo llaman así. */
+  async status() {
+    return genesis.estado();
+  },
+
+  /**
+   * Por qué no avanza el trámite. Devuelve un código para que la pantalla
+   * explique el problema real en vez de un "en proceso" genérico:
+   *   'sin-puente' → el backend aún no tiene montado /genesis
+   *   'sin-clave'  → el backend no tiene GENESIS_API_KEY configurada
+   *   'auth'       → la sesión de la wallet caducó
+   *   'red'        → sin conexión
+   *   'revision'   → todo enviado, esperando a cumplimiento
+   *   'ok'         → verificada
+   */
+  async diagnose() {
+    const e = await genesis.estado();
+    if (!e) return { code: 'red' };
+    if (e.error) return { code: e.code || 'http', detail: e.error };
+    if (e.verificada) return { code: 'ok', estado: e };
+    if (e.estado === 'rechazada') return { code: 'rechazada', estado: e };
+    if (e.estado === 'suspendida') return { code: 'suspendida', estado: e };
+    return { code: e.paso === 'revision' ? 'revision' : 'incompleto', estado: e };
   },
 };

@@ -190,13 +190,11 @@ export function Settings({ nav }) {
           {acc.genesisUid ? (
             <>
               <ListRow first icon="finger-print" title={t('set.passport')} sub={acc.genesisUid} onPress={() => nav.go('passport')} />
-              <ListRow icon="cloud-upload" title={t('set.import')} sub={t('set.importSub')} onPress={() => nav.go('importPassport')} />
               <ListRow icon="refresh" title={t('set.reverify')} sub={t('set.reverifySub')} onPress={() => nav.go('kyc')} />
             </>
           ) : (
             <>
               <ListRow first icon="finger-print" title={t('set.link')} sub={t('set.linkSub')} onPress={() => nav.go('kyc')} />
-              <ListRow icon="cloud-upload" title={t('set.import')} sub={t('set.importSub')} onPress={() => nav.go('importPassport')} />
             </>
           )}
         </Glass>
@@ -337,16 +335,26 @@ export function Passport({ nav }) {
   const t = useT();
   const acc = account || {};
 
-  // Al abrir el pasaporte, vuelve a consultar el portal: si allá ya hay
-  // nombre legal, foto o documento, la credencial se completa sola.
+  // Al abrir el pasaporte se vuelve a consultar el estado real en el servidor.
+  // Sirve para dos cosas: completar la credencial cuando cumplimiento acaba de
+  // aprobarla, y RETIRARLA si la identidad fue suspendida. Lo segundo importa
+  // tanto como lo primero: una credencial que solo se actualiza cuando trae
+  // buenas noticias sigue enseñando "verificado" a quien ya no lo está.
   useEffect(() => {
     if (!acc.email || !acc.genesisUid) return;
     let vivo = true;
-    genesis.status(acc.email, acc.addr)
-      .then(async (p) => {
-        if (!vivo || !p?.genesisUid) return;
-        const updated = await setPassport(acc.email, p);
-        if (vivo && updated) login(updated);
+    genesis.estado()
+      .then(async (e) => {
+        if (!vivo || !e || e.error) return;
+        const actualizada = await setPassport(acc.email, {
+          genesisUid: e.verificada ? e.genesisUid : null,
+          fullName: e.fullName || acc.name,
+          email: acc.email,
+          walletAddress: acc.addr,
+          status: e.verificada ? 'verified' : e.estado === 'suspendida' ? 'suspended' : 'review',
+          issuedAt: e.actualizadaEn,
+        });
+        if (vivo && actualizada) login(actualizada);
       })
       .catch(() => {});
     return () => { vivo = false; };
@@ -366,8 +374,6 @@ export function Passport({ nav }) {
             <Text style={styles.emptyTitle}>{t('pass.emptyT')}</Text>
             <Text style={styles.emptyBody}>{t('pass.emptyP')}</Text>
             <Button3D title={t('pass.linkNow')} icon="finger-print" onPress={() => nav.go('kyc')} style={{ alignSelf: 'stretch', marginTop: 18 }} />
-            {/* Si ya te verificaste en el portal, sube el pasaporte que descargaste. */}
-            <Button3D title={t('prof.import')} icon="cloud-upload" variant="teal" onPress={() => nav.go('importPassport')} style={{ alignSelf: 'stretch', marginTop: 10 }} />
           </View>
         </ScrollView>
       </View>
@@ -438,9 +444,9 @@ export function Passport({ nav }) {
           </Pressable>
         </View>
 
-        {/* Si el portal no entregó los datos del titular, la credencial se ve
-            a medias (sin nombre real ni foto). Se dice aquí, con el botón
-            para completarla, en vez de dejar al usuario adivinando. */}
+        {/* Mientras cumplimiento no haya aprobado, la credencial se ve a
+            medias (sin nombre legal ni foto). Se dice aquí en vez de dejar al
+            usuario adivinando por qué le falta información. */}
         {(!p?.fullName || !p?.photoUrl) && (
           <View style={styles.incompleto}>
             <Icon name="information-circle" size={18} color="#FBBF24" />
@@ -449,9 +455,6 @@ export function Passport({ nav }) {
               <Text style={styles.incP}>{t('pass.incompleteP')}</Text>
             </View>
           </View>
-        )}
-        {(!p?.fullName || !p?.photoUrl) && (
-          <Button3D title={t('pass.complete')} icon="create" onPress={() => nav.go('importPassport')} style={{ marginBottom: 12 }} />
         )}
 
         <Text style={styles.passNote}>{t('pass.note')}</Text>
@@ -556,7 +559,6 @@ export function Profile({ nav }) {
             <Field label={t('prof.name')} value={name} onChangeText={setName} placeholder={t('auth.namePh')} />
             <Field label={t('prof.email')} value={acc.email} editable={false} />
             <Field label={t('prof.wallet')} value={acc.addr || ''} editable={false} />
-            <Button3D title={t('prof.import')} icon="cloud-upload" variant="teal" onPress={() => nav.go('importPassport')} />
           </Glass>
         )}
 

@@ -7,13 +7,12 @@ import { Nav, ToastCtx, AccountCtx, AppBackground } from './src/ui';
 import { LangProvider, useT, useLang } from './src/i18n';
 import * as Linking from 'expo-linking';
 import NetInfo from '@react-native-community/netinfo';
-import { loadSession, saveSession, clearSession, initAccounts, setPassport, updateAccount } from './src/accounts';
+import { loadSession, saveSession, clearSession, initAccounts, updateAccount } from './src/accounts';
 import { loadToken, setToken, setRefreshToken, ensureSession, clearCreds, apiPortfolio } from './src/api';
 import { desactivarDesbloqueo } from './src/unlock';
 import { buscarActualizacion, aplicarActualizacion, puedeActualizar } from './src/updates';
 import { recordLogout } from './src/sessionLog';
 import { primerArranque } from './src/backupNudge';
-import { readReturnUrl, genesis, mergePassport } from './src/genesis';
 import { activarAvisos, limpiarAvisos, watchIncoming, marcarVisto, stopWatch, alTocarNotificacion, avisosActivos } from './src/notify';
 import LockScreen, { useAppLock } from './src/LockScreen';
 
@@ -30,7 +29,6 @@ import Deposit from './src/screens/Deposit';
 import { Activity, Notifications, Settings, Profile, MyTokenPay, Passport, Blocked, PrivateKey } from './src/screens/More';
 import Scan from './src/screens/Scan';
 import Contacts from './src/screens/Contacts';
-import ImportPassport from './src/screens/ImportPassport';
 import About from './src/screens/About';
 import Onboarding, { seenOnboarding } from './src/screens/Onboarding';
 import WatchOnly from './src/screens/WatchOnly';
@@ -45,7 +43,7 @@ const SCREENS = {
   home: Home, token: TokenDetail, send: Send, receive: Receive, buy: Buy, swap: Swap,
   card: CardScreen, cardSettings: CardSettings, fundCard: FundCard, deposit: Deposit, activity: Activity, notifs: Notifications, settings: Settings,
   profile: Profile, mytokenpay: MyTokenPay, passport: Passport, blocked: Blocked, privatekey: PrivateKey,
-  scan: Scan, contacts: Contacts, importPassport: ImportPassport, about: About,
+  scan: Scan, contacts: Contacts, about: About,
   onboarding: Onboarding, watchOnly: WatchOnly, sessions: Sessions, help: Help,
   remesas: Remesas, deleteAccount: DeleteAccount,
 };
@@ -136,7 +134,7 @@ function Root() {
 
   // Deep links entrantes.
   // Dos casos:
-  //   vetawallet://genesis?uid=... → retorno del portal Genesis ID.
+  //   vetawallet://genesis → abre la verificación de identidad.
   //   vetawallet://pay?to=...&amount=...&memo=... → solicitud de pago
   //   recibida por link o QR. Se abre Enviar con los campos rellenos.
   const accountRef = useRef(account);
@@ -169,29 +167,19 @@ function Root() {
         return;
       }
 
-      // ---- Retorno del portal Genesis ID ----
+      // ---- Enlace a la verificación de identidad ----
+      //
+      // Antes este bloque leía un "pasaporte" de los parámetros del enlace de
+      // retorno del portal genesisid.online y lo daba por bueno. Eso convertía
+      // un enlace en una vía para marcarse como verificado: bastaba abrir
+      // vetawallet://genesis?gid=…&name=… para que la app lo creyera.
+      //
+      // Ahora quien decide si alguien está verificado es el servidor, así que
+      // el enlace solo abre la pantalla y esta consulta el estado real.
       if (!/genesis/i.test(url)) return;
-      const acc = accountRef.current;
-      if (!acc) return;
-      const { token, passport } = readReturnUrl(url);
-      // Con token: se valida en el servidor (allí vive la API key del portal).
-      // Se combina todo para no perder GID, nombre ni foto.
-      let pp = passport;
-      if (token) {
-        const validated = await genesis.validateToken(token, { email: acc.email, walletAddress: acc.addr });
-        pp = mergePassport(pp, validated);
-      }
-      if (pp && (!pp.photoUrl || !pp.fullName)) {
-        const status = await genesis.status(acc.email, acc.addr).catch(() => null);
-        pp = mergePassport(pp, status);
-      }
-      if (!pp) return;
-      pp.fullName = pp.fullName || acc.name;
-      pp.email = pp.email || acc.email;
-      pp.walletAddress = pp.walletAddress || acc.addr;
-      await genesis.save(pp);
-      const updated = await setPassport(acc.email, pp);
-      if (updated) { setAccount(updated); setDir(1); setStack([{ r: 'home' }, { r: 'passport' }]); }
+      if (!accountRef.current) return;
+      setDir(1);
+      setStack([{ r: 'home' }, { r: 'kyc' }]);
     };
     const sub = Linking.addEventListener('url', (e) => handle(e.url));
     Linking.getInitialURL().then(handle).catch(() => {});
