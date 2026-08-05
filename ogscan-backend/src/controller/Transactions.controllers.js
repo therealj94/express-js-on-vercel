@@ -230,6 +230,37 @@ export const idTransaction = async (req, res) => {
     const decodificado = decodificarTransferencia(transaction.input);
     if (decodificado) transaction.transferencia = decodificado;
 
+    // Lo que guarda el indexador no incluye si la transaccion tuvo exito, ni
+    // cuanto gas gasto de verdad, ni los eventos que emitio. Sin eso un
+    // explorador no sirve: una transferencia fallida se veria igual que una
+    // buena. Se pide el recibo al nodo. Si el nodo no responde, la ficha se
+    // muestra igual con lo que hay en el indice.
+    try {
+      const [recibo, ultimo] = await Promise.all([
+        web3.eth.getTransactionReceipt(transaction.hash),
+        web3.eth.getBlockNumber(),
+      ]);
+      if (recibo) {
+        const gasUsado = recibo.gasUsed?.toString() ?? null;
+        const precio = transaction.gasPrice;
+        transaction.recibo = {
+          exito: recibo.status === true || recibo.status === 1n || recibo.status === "0x1",
+          gasUsado,
+          // La comision es gas gastado x precio del gas. Se calcula con BigInt
+          // porque el producto se sale del rango seguro de un double.
+          comision: (gasUsado && precio)
+            ? web3.utils.fromWei((BigInt(gasUsado) * BigInt(precio)).toString(), "ether")
+            : null,
+          posicionEnBloque: recibo.transactionIndex?.toString() ?? null,
+          contratoCreado: recibo.contractAddress || null,
+          eventos: Array.isArray(recibo.logs) ? recibo.logs.length : 0,
+          confirmaciones: Math.max(0, Number(ultimo) - Number(transaction.blockNumber)),
+        };
+      }
+    } catch (e) {
+      console.error("[idTransaction] recibo:", e.message);
+    }
+
     // 202 significa "aceptado, aun no procesado". Esto es una lectura ya
     // resuelta: corresponde 200.
     res.status(200).json({ transaction });

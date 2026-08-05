@@ -146,7 +146,21 @@
   /* ── Filtros ──────────────────────────────────────────────────────────── */
   .filtros{background:var(--panel);border:1px solid var(--linea);border-radius:var(--r);
     padding:15px 17px;margin-bottom:16px;box-shadow:var(--sombra)}
-  .filtros-rej{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:11px}
+  /* Los filtros se agrupan por lo que preguntan — que, cuando, cuanto, quien —
+     en vez de ser seis cajas sueltas en fila. */
+  .grupos-f{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:18px}
+  .grupo-f{min-width:0}
+  .tit-f{font-size:11px;text-transform:uppercase;letter-spacing:.9px;color:var(--oro);
+    margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid var(--linea)}
+  .par-f{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .chip{display:inline-flex;align-items:center;gap:7px;background:var(--oro-t);
+    border:1px solid rgba(201,169,97,.32);border-radius:999px;padding:5px 12px;
+    font-size:12.5px;color:var(--txt2)}
+  .chip b{color:var(--oro);font-weight:600}
+  .chip .x{color:var(--txt3);font-size:11px}
+  .chip:hover{border-color:var(--mal);text-decoration:none}
+  .chip:hover .x{color:var(--mal)}
   .campo-f label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.7px;
     color:var(--txt3);margin-bottom:5px}
   .campo-f input,.campo-f select{width:100%;background:var(--fondo);border:1px solid var(--linea2);
@@ -250,15 +264,23 @@ const CHAIN_ID = 8532;
 const RPC = "https://ordenglobal-rpc.com/";
 const MONEDA = "ORIGEN";
 
-// Contratos conocidos. El indexador guarda mas simbolos que estos (hay 19 en
-// total), pero solo de estos tres se conoce el contrato con certeza, que es lo
-// que la ficha de token necesita para consultar suministro y decimales.
-const CONTRATOS = {
-  ONDK: "0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1",
-  AGKA: "0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B",
-  AUKA: "0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B",
-};
-const NOMBRES = { ONDK: "Orden Kapital", AGKA: "AGKA Token", AUKA: "Gold Kapital" };
+// El catalogo de tokens lo sirve el backend (/address/tokens), que los resuelve
+// contra la cadena. Aqui solo se guarda en memoria al vuelo, para no llevar una
+// lista escrita a mano que envejece cada vez que se despliega un token nuevo.
+let CONTRATOS = {};
+let NOMBRES = {};
+let _catalogo = null;
+function catalogo() {
+  if (_catalogo) return _catalogo;
+  _catalogo = api("/address/tokens").then(d => {
+    (d.tokens || []).forEach(t => {
+      CONTRATOS[t.symbol] = t.contrato;
+      NOMBRES[t.symbol] = t.nombre || t.symbol;
+    });
+    return d.tokens || [];
+  }).catch(() => []);
+  return _catalogo;
+}
 // `CONTRACT` no es un token: asi marca el indexador las llamadas a contratos.
 // Y ORIGEN es la moneda nativa. Ninguno de los dos va en la lista de tokens.
 const NO_TOKEN = new Set(["", "ORIGEN", "CONTRACT"]);
@@ -474,7 +496,7 @@ async function vistaInicio(app) {
     tarjeta("ctiem", "Tiempo de bloque", t, "promedio de los últimos 10");
   }).catch(() => tarjeta("ctiem", "Tiempo de bloque", "—"));
 
-  api("/transaction/resumen").then(r => {
+  Promise.all([api("/transaction/resumen"), catalogo()]).then(([r]) => {
     const tks = (r.simbolos || []).filter(s => !NO_TOKEN.has(s.simbolo.toUpperCase()));
     tarjeta("ctx", "Transacciones", num(r.total),
       "desde " + (r.primera ? new Date(r.primera * 1000).toLocaleDateString("es", { month: "short", year: "numeric" }) : "—"));
@@ -598,27 +620,63 @@ async function vistaTxs(app, params) {
   app.innerHTML = `<div class="env">${cajaBuscar(true)}
     <div class="cabecera-seccion"><h2>Transacciones</h2><span class="mas" id="cuenta"></span></div>
     <form class="filtros" onsubmit="aplicarFiltros(event)">
-      <div class="filtros-rej">
-        <div class="campo-f"><label for="f-sim">Moneda o token</label>
-          <select id="f-sim"><option value="">Todas</option></select></div>
-        <div class="campo-f"><label for="f-des">Desde</label>
-          <input id="f-des" type="date" value="${aFecha(f.desdeFecha)}"></div>
-        <div class="campo-f"><label for="f-has">Hasta</label>
-          <input id="f-has" type="date" value="${aFecha(f.hastaFecha)}"></div>
-        <div class="campo-f"><label for="f-min">Cantidad mínima</label>
-          <input id="f-min" type="number" step="any" min="0" placeholder="0" value="${esc(f.minValor || "")}"></div>
-        <div class="campo-f"><label for="f-max">Cantidad máxima</label>
-          <input id="f-max" type="number" step="any" min="0" placeholder="sin límite" value="${esc(f.maxValor || "")}"></div>
-        <div class="campo-f"><label for="f-q">Hash o dirección</label>
-          <input id="f-q" type="text" placeholder="0x…" value="${esc(f.q || "")}"></div>
+      <div class="grupos-f">
+        <div class="grupo-f">
+          <div class="tit-f">Qué</div>
+          <div class="campo-f"><label for="f-sim">Moneda o token</label>
+            <select id="f-sim"><option value="">Todas las monedas</option></select></div>
+        </div>
+        <div class="grupo-f">
+          <div class="tit-f">Cuándo</div>
+          <div class="par-f">
+            <div class="campo-f"><label for="f-des">Desde</label>
+              <input id="f-des" type="date" value="${aFecha(f.desdeFecha)}"></div>
+            <div class="campo-f"><label for="f-has">Hasta</label>
+              <input id="f-has" type="date" value="${aFecha(f.hastaFecha)}"></div>
+          </div>
+        </div>
+        <div class="grupo-f">
+          <div class="tit-f">Cuánto</div>
+          <div class="par-f">
+            <div class="campo-f"><label for="f-min">Mínimo</label>
+              <input id="f-min" type="number" step="any" min="0" placeholder="0" value="${esc(f.minValor || "")}"></div>
+            <div class="campo-f"><label for="f-max">Máximo</label>
+              <input id="f-max" type="number" step="any" min="0" placeholder="sin límite" value="${esc(f.maxValor || "")}"></div>
+          </div>
+        </div>
+        <div class="grupo-f">
+          <div class="tit-f">Quién</div>
+          <div class="campo-f"><label for="f-q">Hash o dirección</label>
+            <input id="f-q" type="text" placeholder="0x…" value="${esc(f.q || "")}"></div>
+        </div>
       </div>
       <div class="acciones-f">
         <button class="btn" type="submit">Aplicar filtros</button>
-        <a class="btn sec" href="/txs" data-ruta>Limpiar</a>
+        ${Object.keys(f).length ? `<a class="btn sec" href="/txs" data-ruta>Limpiar todo</a>` : ""}
         <span class="resumen-f" id="resf"></span>
       </div>
     </form>
+    <div id="chips"></div>
     <div class="panel" id="l">${esqueleto(8)}</div><div id="pag"></div></div>`;
+
+  // Etiquetas de lo que esta filtrando ahora mismo, cada una con su aspa para
+  // quitarla sin tener que vaciar el formulario entero.
+  const quitar = (k) => {
+    const p = new URLSearchParams();
+    Object.entries(f).forEach(([kk, vv]) => { if (kk !== k) p.set(kk, vv); });
+    return `/txs${p.toString() ? "?" + p : ""}`;
+  };
+  const nombreF = { simbolo: "Moneda", desdeFecha: "Desde", hastaFecha: "Hasta",
+                    minValor: "Mínimo", maxValor: "Máximo", q: "Contiene" };
+  const valorF = (k, v) => (k === "desdeFecha" || k === "hastaFecha")
+    ? new Date(Number(v) * 1000).toLocaleDateString("es")
+    : (k === "q" ? corto(v, 10, 6) : v);
+  const activos = Object.entries(f);
+  if (activos.length) {
+    $("#chips").innerHTML = `<div class="chips">` + activos.map(([k, v]) =>
+      `<a class="chip" href="${quitar(k)}" data-ruta title="Quitar este filtro">
+        <b>${nombreF[k] || k}:</b> ${esc(valorF(k, v))} <span class="x">✕</span></a>`).join("") + `</div>`;
+  }
 
   // El desplegable de monedas se llena con lo que hay de verdad en la cadena.
   api("/transaction/resumen").then(r => {
@@ -721,9 +779,11 @@ async function vistaTx(app, hash) {
     const t = r.transaction || r.transactionInfo || r;
     if (!t || !t.hash) throw new Error("No se encontró esa transacción.");
 
+    await catalogo();
     const mon = monedaDe(t);
     const tk = esToken(t);
     const contrato = t.addressContract || (tk ? contratoDe(mon) : null);
+    const rc = t.recibo;
 
     // Hay dos formas de transferencia de token en los datos. Cuando el
     // indexador la reconocio, `to` ya es el destinatario y `value` la cantidad
@@ -738,23 +798,46 @@ async function vistaTx(app, hash) {
       <tr><td class="k">Destinatario real</td><td class="v mono"><a href="/address/${esc(tr.destino)}" data-ruta>${esc(tr.destino)}</a> ${btnCopiar(tr.destino)}</td></tr>
       <tr><td class="k">Cantidad transferida</td><td class="v"><b>${valor(tr.cantidad)}</b> ${esc(t.symbol || "")}</td></tr>` : "";
 
+    // Los datos crudos de la llamada: util para quien sabe leerlos, oculto
+    // tras un desplegable para quien no.
+    const hayDatos = t.input && t.input !== "0x" && t.input !== "Transfer";
+    const metodo = hayDatos && t.input.startsWith("0x") && t.input.length >= 10
+      ? t.input.slice(0, 10) : null;
+
     $("#d").innerHTML = `<table>
       <tr><td class="k">Hash</td><td class="v mono">${esc(t.hash)} ${btnCopiar(t.hash)}</td></tr>
+      <tr><td class="k">Estado</td><td class="v">${rc
+        ? (rc.exito ? `<span class="pill ok">✓ Éxito</span>`
+                    : `<span class="pill sal">✕ Fallida</span>`)
+        : `<span class="pill">no disponible</span>`}${
+        rc && rc.confirmaciones ? ` <span class="pill">${num(rc.confirmaciones)} confirmaciones</span>` : ""}</td></tr>
       <tr><td class="k">Tipo</td><td class="v">${tk
         ? `Transferencia de token <span class="pill oro">${esc(mon)}</span>`
         : (String(t.symbol).toUpperCase() === "CONTRACT"
             ? `Interacción con contrato`
             : `Transferencia de ${MONEDA}`)}</td></tr>
-      <tr><td class="k">Bloque</td><td class="v"><a href="/block/${esc(t.blockNumber)}" data-ruta>#${num(t.blockNumber)}</a></td></tr>
+      <tr><td class="k">Bloque</td><td class="v"><a href="/block/${esc(t.blockNumber)}" data-ruta>#${num(t.blockNumber)}</a>${
+        rc && rc.posicionEnBloque !== null ? ` <span class="pill">posición ${esc(rc.posicionEnBloque)}</span>` : ""}</td></tr>
       <tr><td class="k">Fecha</td><td class="v">${fecha(t.timestamp)} <span class="pill">${hace(t.timestamp)}</span></td></tr>
       <tr><td class="k">De</td><td class="v mono"><a href="/address/${esc(t.from)}" data-ruta>${esc(t.from)}</a> ${btnCopiar(t.from)}</td></tr>
       ${filaDestino}
       <tr><td class="k">Valor</td><td class="v"><b style="font-size:15px">${valor(t.value)}</b> ${esc(mon)}</td></tr>
       ${filasToken}
-      ${contrato ? `<tr><td class="k">Contrato del token</td><td class="v mono"><a href="/token/${esc(contrato)}" data-ruta>${esc(contrato)}</a></td></tr>` : ""}
-      <tr><td class="k">Precio del gas</td><td class="v">${num(t.gasPrice)}</td></tr>
-      ${t.gas ? `<tr><td class="k">Gas</td><td class="v">${num(t.gas)}</td></tr>` : ""}
+      ${contrato ? `<tr><td class="k">Contrato del token</td><td class="v mono"><a href="/token/${esc(contrato)}" data-ruta>${esc(contrato)}</a> ${btnCopiar(contrato)}</td></tr>` : ""}
+      ${rc && rc.contratoCreado ? `<tr><td class="k">Contrato creado</td><td class="v mono"><a href="/address/${esc(rc.contratoCreado)}" data-ruta>${esc(rc.contratoCreado)}</a></td></tr>` : ""}
+      ${rc && rc.comision !== null ? `<tr><td class="k">Comisión pagada</td><td class="v">${valor(rc.comision)} ${MONEDA}</td></tr>` : ""}
+      <tr><td class="k">Gas usado / límite</td><td class="v">${rc && rc.gasUsado ? num(rc.gasUsado) : "—"}${
+        t.gas ? ` / ${num(t.gas)}` : ""}${
+        rc && rc.gasUsado && t.gas ? ` <span class="pill">${((Number(rc.gasUsado) / Number(t.gas)) * 100).toFixed(1)}%</span>` : ""}</td></tr>
+      <tr><td class="k">Precio del gas</td><td class="v">${num(t.gasPrice)} <span class="pill">${valor(Number(t.gasPrice) / 1e9)} Gwei</span></td></tr>
       <tr><td class="k">Nonce</td><td class="v">${esc(t.nonce)}</td></tr>
+      ${rc ? `<tr><td class="k">Eventos emitidos</td><td class="v">${num(rc.eventos)}</td></tr>` : ""}
+      ${hayDatos ? `<tr><td class="k">Datos de entrada</td><td class="v">
+        ${metodo ? `<span class="pill mono">método ${esc(metodo)}</span> ` : ""}
+        <details style="margin-top:7px"><summary style="cursor:pointer;color:var(--oro)">Ver datos en crudo</summary>
+        <div class="mono" style="margin-top:8px;word-break:break-all;color:var(--txt2);
+             background:var(--fondo);border:1px solid var(--linea);border-radius:9px;padding:11px;
+             max-height:180px;overflow:auto">${esc(t.input)}</div></details></td></tr>` : ""}
     </table>`;
   } catch (e) { $("#d").innerHTML = err(e.message); }
 }
@@ -767,7 +850,7 @@ async function vistaTokens(app) {
       Los tokens salen de las transacciones indexadas. De los que tienen contrato
       conocido se puede ver su ficha completa; del resto, sus movimientos.</p></div>`;
   try {
-    const r = await api("/transaction/resumen");
+    const [r] = await Promise.all([api("/transaction/resumen"), catalogo()]);
     const tks = (r.simbolos || []).filter(s => !NO_TOKEN.has(s.simbolo.toUpperCase()));
     $("#tks").innerHTML = tks.length ? tks.map(s => {
       const c = contratoDe(s.simbolo);
@@ -782,6 +865,7 @@ async function vistaTokens(app) {
 }
 
 async function vistaToken(app, contrato) {
+  await catalogo();
   const sim = tokenPorContrato(contrato);
   app.innerHTML = `<div class="env">${cajaBuscar(true)}
     <div class="cabecera-seccion"><h2>Token ${sim ? esc(sim) : ""}</h2></div>
@@ -810,6 +894,7 @@ async function vistaToken(app, contrato) {
 }
 
 async function vistaDireccion(app, addr) {
+  await catalogo();
   const sim = tokenPorContrato(addr);
   const banner = sim
     ? `<div class="pista" style="text-align:left;margin:-6px 0 16px">Esta dirección es el contrato del token <b>${esc(sim)}</b>. <a href="/token/${addr}" data-ruta>Ver la ficha del token →</a></div>`
@@ -926,6 +1011,7 @@ function pintar() {
   app.innerHTML = `<div class="env">${cajaBuscar(true)}
     <div class="aviso">Esa página no existe. <a href="/" data-ruta>Volver al inicio</a></div></div>`;
 }
+catalogo();   // se pide ya, para que las vistas no esperen por el
 pintar();
 </script>
 </body>

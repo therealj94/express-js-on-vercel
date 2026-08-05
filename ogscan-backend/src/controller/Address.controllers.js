@@ -37,15 +37,25 @@ export const getTransactionsByAddress = async (req, res) => {
     // Antes se pedian en serie (await, await, await…): la respuesta tardaba la
     // suma de todas. Se piden en paralelo. Y si el nodo falla en el saldo, la
     // direccion se muestra igual con sus transacciones en vez de dar un 500.
+    // Que tokens ha tocado esta direccion, para no consultar los 16 al nodo.
+    const relevantes = [...new Set(
+      addressData.map((t) => String(t.symbol || "").toUpperCase()).filter(Boolean)
+    )];
+
     let balanceEther = null;
     let tokensBalance = {};
+    let esContrato = false;
     try {
-      const [balanceWei, tk] = await Promise.all([
+      const [balanceWei, tk, codigo] = await Promise.all([
         web3.eth.getBalance(addr),
-        getTokenBalances(addr),
+        getTokenBalances(addr, relevantes),
+        // Distinguir una cuenta normal de un contrato es basico en cualquier
+        // explorador y el dato no costaba nada: lo dice el propio nodo.
+        web3.eth.getCode(addr).catch(() => "0x"),
       ]);
       balanceEther = web3.utils.fromWei(balanceWei, "ether");
       tokensBalance = tk;
+      esContrato = !!codigo && codigo !== "0x";
     } catch (e) {
       console.error("[getTransactionsByAddress] saldo:", e.message);
     }
@@ -54,6 +64,8 @@ export const getTransactionsByAddress = async (req, res) => {
       transactions: allTransactions,
       balance: balanceEther,
       tokensBalance,
+      esContrato,
+      total: allTransactions.length,
     });
   } catch (error) {
     console.error("[getTransactionsByAddress]", error);
@@ -111,18 +123,71 @@ export const getTokenData = async (req, res) => {
 };
 
 
+// Los contratos se obtuvieron preguntandole a la propia cadena: se recorrieron
+// todas las direcciones que aparecen como destino en las transacciones
+// indexadas, se descarto lo que no tiene codigo, y a lo que quedaba se le llamo
+// symbol()/name()/decimals(). Varios simbolos tienen mas de un contrato
+// desplegado (AGKA e IBS, por ejemplo); se eligio el que de verdad se usa en
+// las transacciones indexadas, no el primero encontrado.
 const tokenAddresses = {
-  AGKA: "0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B",
   ONDK: "0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1",
   AUKA: "0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B",
+  AGKA: "0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B",
+  TXT:  "0x5d917686FB61507CC9202BbC4F6eeD03560fa469",
+  IBS:  "0x7AF11D3E94A174f6fc290A5B7791A6DEE2718E62",
+  HARV: "0x0fa04D11F28B28cbC9b98dd016F02023AdDb1923",
+  AUBEX: "0xF1498640B27A66C0DC505093D70911C060e04fb0",
+  ASL:  "0x69846aC960D45F9946C613DFCe1b761D37Faf098",
+  LOVE: "0x638F2ba0e3E1083D1ba570b449BD266F3860D164",
+  REST: "0x1aC12Ebd7739003059d1E9EA2a4863C92D1505DD",
+  SOL:  "0xAAc6aE2E2037fC2e94d0b060792E7eB4E5fBfa66",
+  AIT:  "0xAE14Db486872AC07d74Ad69cC09590239b21BA2e",
+  AGRO: "0x2A31ba919A5339fCB0F8aEeFfCE2c807B16007fe",
+  MNKA: "0x18b6680CFF71c11067bec312Fc48786bE2e54Ead",
+  POLITICAL: "0x92496E1848e001428A3495409a9A9f616bB6dD3B",
+  TKNB: "0xeBC08Ee5244E65AD55D5e97B86bdba283e3C894E",
 };
 
-const getTokenBalances = async (walletAddress) => {
-  // Se consultan los tres tokens a la vez, no uno tras otro. Y si uno falla
-  // (contrato caido, nodo lento), los demas se muestran igual — antes un solo
-  // fallo hacia caer la respuesta entera de la direccion.
+// Catalogo publico de tokens: el frontend ya no necesita llevar la lista
+// escrita a mano ni quedarse desactualizado cuando se despliegue uno nuevo.
+export const listaTokens = async (req, res) => {
   const entradas = await Promise.all(
     Object.entries(tokenAddresses).map(async ([symbol, address]) => {
+      try {
+        const c = new web3.eth.Contract(ABI, address);
+        const [name, decimals, totalSupply] = await Promise.all([
+          c.methods.name().call(),
+          c.methods.decimals().call(),
+          c.methods.totalSupply().call(),
+        ]);
+        return { symbol, contrato: address, nombre: String(name),
+                 decimales: String(decimals), suministro: String(totalSupply) };
+      } catch (e) {
+        return { symbol, contrato: address, nombre: symbol, error: true };
+      }
+    })
+  );
+  res.status(200).json({ tokens: entradas });
+};
+
+// Tokens principales de la red: se consultan siempre, aunque la direccion no
+// los haya movido, porque su saldo es informacion relevante igualmente.
+const PRINCIPALES = ["ONDK", "AUKA", "AGKA"];
+
+const getTokenBalances = async (walletAddress, simbolosRelevantes) => {
+  // Consultar los 16 tokens serian 32 llamadas al nodo por cada ficha de
+  // direccion. Se consultan los principales mas los que esa direccion ha
+  // movido de verdad, que es lo unico que puede tener saldo interesante.
+  const cuales = new Set(PRINCIPALES);
+  (simbolosRelevantes || []).forEach((s) => {
+    if (tokenAddresses[s]) cuales.add(s);
+  });
+
+  // Se consultan a la vez, no uno tras otro. Y si uno falla (contrato caido,
+  // nodo lento), los demas se muestran igual — antes un solo fallo hacia caer
+  // la respuesta entera de la direccion.
+  const entradas = await Promise.all(
+    Object.entries(tokenAddresses).filter(([s]) => cuales.has(s)).map(async ([symbol, address]) => {
       try {
         const token = new web3.eth.Contract(ABI, address);
         const [name, balanceRaw] = await Promise.all([
