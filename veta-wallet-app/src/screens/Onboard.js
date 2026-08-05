@@ -40,9 +40,12 @@ export function Kyc({ nav }) {
   const [mrz, setMrz] = useState('');
   const [problemas, setProblemas] = useState([]);
 
-  // Paso 3 — rostro
+  // Paso 3 — rostro y prueba de vida
   const [permiso, pedirPermiso] = useCameraPermissions();
   const camara = useRef(null);
+  const [reto, setReto] = useState(null);
+  const [gesto, setGesto] = useState(0);
+  const [fotogramas, setFotogramas] = useState([]);
 
   async function guardarEnCuenta(vista) {
     if (!account || !vista?.genesisUid) return;
@@ -113,19 +116,53 @@ export function Kyc({ nav }) {
     setProblemas(r.problemas?.length ? r.problemas : [t('gen.docBad')]);
   }
 
-  // ---- paso 3 ----
-  async function tomarFoto() {
+  // ---- paso 3: rostro con prueba de vida ----
+  //
+  // La secuencia de gestos la sortea el servidor y viene con caducidad. La app
+  // solo la muestra, graba un fotograma por gesto y los devuelve en ese orden;
+  // no decide nada ni puntúa nada, porque cualquier comprobación hecha en el
+  // teléfono la desactiva quien controla el teléfono.
+
+  async function comenzarReto() {
     if (!permiso?.granted) { const p = await pedirPermiso(); if (!p?.granted) return; }
+    hap(); setOcupado(true);
+    const r = await genesis.pedirReto();
+    setOcupado(false);
+    if (!r || r.error) { toast(r?.error || t('gen.errNetT')); return; }
+    setReto(r); setGesto(0); setFotogramas([]);
+  }
+
+  async function capturarGesto() {
+    if (!reto) return;
     hap(); setOcupado(true);
     try {
       const foto = await camara.current?.takePictureAsync({ base64: true, quality: 0.5, skipProcessing: true });
       if (!foto?.base64) { toast(t('gen.errPhoto')); setOcupado(false); return; }
-      const r = await genesis.enviarSelfie(`data:image/jpeg;base64,${foto.base64}`);
+      const tomados = [...fotogramas, `data:image/jpeg;base64,${foto.base64}`];
+      setFotogramas(tomados);
+
+      if (tomados.length < reto.gestos.length) {
+        setGesto(tomados.length);
+        setOcupado(false);
+        return;
+      }
+
+      const r = await genesis.enviarRostro({ reto: reto.id, fotogramas: tomados });
       setOcupado(false);
-      if (!r || r.error) { toast(r?.error || t('gen.errNetT')); return; }
-      setEstado(r); setPaso('revision');
+      if (!r || r.error) { toast(r?.error || t('gen.errNetT')); reiniciarReto(); return; }
+
+      // Si la prueba de vida no convenció, se dice y se ofrece repetirla: el
+      // expediente sigue vivo y no hay nada que rehacer salvo esta parte.
+      const bio = r.biometria;
+      if (bio && (bio.estado === 'fallida' || bio.estado === 'dudosa')) {
+        const falló = (bio.gestos || []).find((g) => !g.ok);
+        toast(falló?.motivo ? `${t('gen.liveFailed')} (${falló.gesto})` : t('gen.liveFailed'));
+      }
+      setEstado(r.estado); reiniciarReto(); setPaso('revision');
     } catch (e) { setOcupado(false); toast(t('gen.errPhoto')); }
   }
+
+  function reiniciarReto() { setReto(null); setGesto(0); setFotogramas([]); }
 
   useEffect(() => {
     if (paso !== 'listo') return;
@@ -227,22 +264,48 @@ export function Kyc({ nav }) {
         {/* ---- 3. rostro ---- */}
         {paso === 'rostro' && (
           <>
-            <View style={st.heroIcon}><Icon name="happy" size={30} color={C.gold} /></View>
+            <View style={st.heroIcon}><Icon name="person" size={30} color={C.gold} /></View>
             <Text style={st.h1}>{t('gen.stepFaceT')}</Text>
             <Text style={st.body}>{t('gen.stepFaceP')}</Text>
 
             {!permiso?.granted ? (
-              <Button3D title={t('gen.allowCam')} icon="camera" onPress={pedirPermiso} />
+              <Button3D title={t('gen.allowCam')} icon="eye" onPress={pedirPermiso} />
+            ) : !reto ? (
+              <>
+                <Text style={st.body}>{t('gen.liveIntro')}</Text>
+                <Button3D title={t('gen.liveStart')} icon="finger-print" onPress={comenzarReto}
+                  disabled={ocupado} style={{ marginTop: 16 }} />
+              </>
             ) : (
               <>
+                <Text style={st.gestoPaso}>
+                  {t('gen.liveStep', { n: gesto + 1, total: reto.gestos.length })}
+                </Text>
+                {/* La instrucción va grande y sola: la persona la lee de un
+                    vistazo mientras se mira en la cámara. */}
+                <Text style={st.gestoTxt}>
+                  {t(`gesto.${reto.gestos[gesto]}`) !== `gesto.${reto.gestos[gesto]}`
+                    ? t(`gesto.${reto.gestos[gesto]}`)
+                    : reto.instrucciones[gesto]}
+                </Text>
                 <View style={st.camaraCaja}>
                   <CameraView ref={camara} style={{ flex: 1 }} facing="front" />
                 </View>
-                <Button3D title={t('gen.takePhoto')} icon="camera" onPress={tomarFoto}
-                  disabled={ocupado} style={{ marginTop: 16 }} />
+                <View style={st.puntos}>
+                  {reto.gestos.map((g, k) => (
+                    <View key={g + k} style={[st.punto, k < fotogramas.length && st.puntoHecho]} />
+                  ))}
+                </View>
+                <Button3D
+                  title={ocupado ? t('gen.liveSending') : t('gen.liveShot')}
+                  icon="eye" onPress={capturarGesto}
+                  disabled={ocupado} style={{ marginTop: 12 }} />
+                <Pressable onPress={reiniciarReto} style={st.retry} disabled={ocupado}>
+                  <Text style={[st.retryTxt, { color: C.txt3 }]}>{t('gen.liveRetry')}</Text>
+                </Pressable>
               </>
             )}
-            <Text style={st.foot}>{t('gen.faceFoot')}</Text>
+            <Text style={st.foot}>{reto ? t('gen.liveFoot') : t('gen.faceFoot')}</Text>
           </>
         )}
 
@@ -275,7 +338,7 @@ export function Kyc({ nav }) {
               {paso === 'rechazada' ? t('gen.rejectedP') : t('gen.suspendedP')}
             </Text>
             <Pressable onPress={() => nav.go('help')} style={st.retry}>
-              <Icon name="help-circle" size={14} color={C.gold} />
+              <Icon name="help-buoy" size={14} color={C.gold} />
               <Text style={st.retryTxt}>{t('gen.contact')}</Text>
             </Pressable>
           </View>
@@ -495,6 +558,13 @@ const st = StyleSheet.create({
     height: 320, borderRadius: 20, overflow: 'hidden',
     borderWidth: 1, borderColor: C.line2, backgroundColor: '#000',
   },
+
+  // La instrucción del gesto tiene que leerse de reojo, mirando a la cámara.
+  gestoPaso: { color: C.txt3, fontSize: 12, letterSpacing: 1, marginTop: 14, textTransform: 'uppercase' },
+  gestoTxt: { color: C.gold, fontSize: 22, fontWeight: '700', marginTop: 4, marginBottom: 12 },
+  puntos: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 12 },
+  punto: { width: 26, height: 4, borderRadius: 2, backgroundColor: C.line2 },
+  puntoHecho: { backgroundColor: C.gold },
 
   heroIcon: {
     width: 64, height: 64, borderRadius: 20, backgroundColor: 'rgba(201,169,97,0.12)',

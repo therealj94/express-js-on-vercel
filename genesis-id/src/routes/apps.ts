@@ -14,6 +14,8 @@ import { tamizarDireccion } from '../aml/tamiz.js'
 import { firmarToken, verificarToken } from '../lib/cripto.js'
 import { gidValido, normalizarGid } from '../lib/uid.js'
 import { registrar } from '../audit/bitacora.js'
+import { emitirReto, comprobarReto } from '../kyc/vivacidad.js'
+import { biometriaConfigurada } from '../kyc/biometria.js'
 import type { Movimiento } from '../types.js'
 
 export const appsRouter = Router()
@@ -74,15 +76,75 @@ appsRouter.post('/identidades/:id/documento', limite(30), exigeApp('identidad.do
   })
 })
 
-appsRouter.post('/identidades/:id/biometria', limite(20), exigeApp('identidad.documento'), async (req, res) => {
-  const { selfie, fotoDocumento } = req.body ?? {}
-  if (!selfie) return res.status(400).json({ error: 'Hace falta el selfie' })
-  const identidad = await ids.adjuntarBiometria(
-    req.params.id, String(selfie), String(fotoDocumento || ''), `app:${req.app_ecosistema!.clave}`)
+/**
+ * Pide un reto de vivacidad.
+ *
+ * La secuencia la sortea el servidor en este instante y vale dos minutos: es lo
+ * que impide responder con un vídeo preparado de antemano. La app la muestra
+ * gesto a gesto y graba un fotograma por cada uno.
+ */
+appsRouter.post('/identidades/:id/vivacidad', limite(20), exigeApp('identidad.documento'), (req, res) => {
+  const identidad = ids.porId(req.params.id)
   if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
+  if (!biometriaConfigurada()) {
+    return res.status(503).json({
+      error: 'No hay proveedor de biometría configurado; el cotejo lo resuelve un operador',
+      reto: null,
+    })
+  }
+  res.json({ reto: emitirReto(identidad.id) })
+})
+
+/**
+ * Recibe el rostro.
+ *
+ * Dos formas, y la primera es la buena:
+ *
+ *   { reto, fotogramas: [...], fotoDocumento }   con prueba de vida
+ *   { selfie, fotoDocumento }                    sin ella — queda en revisión
+ *
+ * La segunda se mantiene porque hay clientes publicados que la usan y cortarla
+ * dejaría a esos usuarios sin poder avanzar; pero nunca aprueba sola.
+ */
+appsRouter.post('/identidades/:id/biometria', limite(20), exigeApp('identidad.documento'), async (req, res) => {
+  const { selfie, fotoDocumento, reto, fotogramas } = req.body ?? {}
+  const identidad = ids.porId(req.params.id)
+  if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
+
+  let vivacidad = null
+  let cara = String(selfie || '')
+
+  if (reto) {
+    if (!Array.isArray(fotogramas) || !fotogramas.length) {
+      return res.status(400).json({ error: 'Con un reto hacen falta los fotogramas' })
+    }
+    vivacidad = await comprobarReto(String(reto), identidad.id, fotogramas.map(String))
+    // El fotograma de frente es el selfie: se comprobó que ahí hay un rostro
+    // vivo, mirando a la cámara. Aceptar otra imagen distinta como selfie
+    // dejaría el reto de adorno.
+    if (vivacidad.frenteSelfie) cara = vivacidad.frenteSelfie
+    else if (!cara) cara = String(fotogramas[0] || '')
+  }
+
+  if (!cara) return res.status(400).json({ error: 'Hace falta el selfie' })
+
+  const actualizada = await ids.adjuntarBiometria(
+    identidad.id,
+    { selfie: cara, fotoDocumento: String(fotoDocumento || ''), vivacidad },
+    `app:${req.app_ecosistema!.clave}`)
+  if (!actualizada) return res.status(404).json({ error: 'Identidad no encontrada' })
+
   res.json({
-    identidad: ids.estadoParaUsuario(identidad),
-    biometria: { estado: identidad.biometria?.estado, motivo: identidad.biometria?.motivo },
+    identidad: ids.estadoParaUsuario(actualizada),
+    biometria: {
+      estado: actualizada.biometria?.estado,
+      motivo: actualizada.biometria?.motivo,
+      // La puntuación de parecido no se devuelve a la app: es un número que
+      // ayuda a afinar un intento de suplantación. El detalle de la vivacidad
+      // sí, porque es lo que permite decirle a la persona qué gesto repetir.
+      vivacidad: actualizada.biometria?.vivacidad ?? null,
+      gestos: vivacidad?.pasos.map((p) => ({ gesto: p.gesto, ok: p.ok, motivo: p.motivo })) ?? [],
+    },
   })
 })
 

@@ -82,15 +82,30 @@ Esto importa más que la lista de funciones.
 - **Reglas AML** sobre transacciones: umbral único, acumulado, fraccionamiento,
   velocidad, contraparte sancionada, jurisdicción de riesgo, cuenta de paso y
   cuenta nueva con volumen alto.
+- **Que el rostro sea el del documento**, con AWS Rekognition. Comprobado con
+  dos retratos distintos de la misma persona (100 %) y con dos personas
+  distintas (1 %), muy lejos del umbral de 88 %.
+- **Que haya alguien delante de la cámara** y no una fotografía: el servidor
+  sortea una secuencia de gestos —de frente, sonreír, abrir la boca, cerrar los
+  ojos, girar la cabeza—, la manda al teléfono con dos minutos de caducidad y
+  comprueba gesto a gesto que se cumplió, en orden. Además rechaza el mismo
+  fotograma repetido y la postura que no cambia entre tomas.
 
 ### Lo que NO puede afirmar
 
 - **Que el documento sea auténtico.** Que la MRZ cuadre prueba que está bien
   formado, no que lo emitiera un país. Para eso hay que leer el chip NFC y
   validar su firma contra el directorio de claves de la OACI.
-- **Que la persona sea la del documento.** Eso es biometría, y hace falta un
-  proveedor que responda por su tasa de error. `kyc/biometria.ts` define el
-  hueco; sin proveedor, el cotejo lo hace una persona.
+- **Que sea imposible engañar a la prueba de vida.** El reto detiene una foto
+  impresa, una foto en una pantalla y un vídeo grabado de antemano. No detiene
+  a quien genere vídeo en tiempo real con el rostro de la víctima y lo inyecte
+  en la cámara: contra eso hacen falta señales del propio dispositivo, y
+  ninguna biblioteca del lado del servidor las sustituye. Por eso el resultado
+  es una puntuación que queda en el expediente, y todo lo que no llega al
+  umbral cae en la cola de revisión de una persona.
+- **Nada de lo anterior, si no hay proveedor configurado.** Sin credenciales de
+  Rekognition ni proveedor externo, el cotejo lo hace una persona y el estado
+  queda en `no-configurada`, que no es `ok`.
 - **Que un identificador fiscal esté dado de alta.** Eso solo lo dice el
   registro de cada país.
 
@@ -117,7 +132,9 @@ ese momento: de las claves solo se guarda el hash.
 | `GENESIS_ADMIN_EMAIL` / `GENESIS_ADMIN_PASSWORD` | Primer administrador |
 | `GENESIS_SSO_SECRETO` | Firma los tokens de sesión única. Sin él, el SSO queda desactivado |
 | `GENESIS_LISTAS_DIR` | Carpeta con las listas de sanciones. **Sin ella no se tamiza a nadie** |
-| `GENESIS_BIOMETRIA_URL` / `_KEY` | Proveedor de cotejo de rostro y prueba de vida |
+| `GENESIS_AWS_ACCESS_KEY_ID` / `_SECRET_ACCESS_KEY` / `_REGION` | Credenciales de AWS Rekognition: activan el cotejo de rostro y la prueba de vida. Bastan dos permisos, `rekognition:CompareFaces` y `rekognition:DetectFaces` |
+| `GENESIS_BIOMETRIA_URL` / `_KEY` | Proveedor externo de biometría, alternativa a Rekognition. Si está definida, manda sobre él |
+| `GENESIS_UMBRAL_PARECIDO` / `GENESIS_UMBRAL_VIVACIDAD` | Umbrales de aceptación. 0,88 y 0,90 por defecto |
 | `GENESIS_EDAD_MINIMA` | 18 por defecto |
 | `GENESIS_UMBRAL_USD` | Umbral de reporte por operación. 10 000 por defecto |
 
@@ -156,7 +173,8 @@ Tres superficies, con credenciales distintas que no se mezclan.
 | `POST /identidades` | `identidad.crear` |
 | `POST /identidades/:id/datos` | `identidad.crear` |
 | `POST /identidades/:id/documento` | `identidad.documento` |
-| `POST /identidades/:id/biometria` | `identidad.documento` |
+| `POST /identidades/:id/vivacidad` | `identidad.documento` — sortea el reto de gestos |
+| `POST /identidades/:id/biometria` | `identidad.documento` — recibe los fotogramas del reto |
 | `GET /identidades/:id`, `/por-email/:email` | `identidad.leer` |
 | `POST /vinculos` | `vinculo.crear` |
 | `GET /gid/:gid`, `/direccion/:dir` | `gid.verificar` |
@@ -282,5 +300,10 @@ contar como coincidencia fuerte.
   punta contra el servidor real, pero la cámara y el teclado solo se pueden
   comprobar ejecutando la app.
 - **Cargar las listas reales** y montar el disco en Render.
-- **Contratar el proveedor de biometría**, o asumir el cotejo manual.
+- **Crear el usuario de IAM para Rekognition** y poner sus dos claves en Render.
+  El código está listo y probado contra AWS, pero hace falta una credencial
+  permanente con `rekognition:CompareFaces` y `rekognition:DetectFaces`, y eso
+  se crea desde la consola de IAM.
+- **Mover los retos de vivacidad a Mongo** si algún día Genesis ID corre en más
+  de una instancia. Hoy viven en memoria, que es correcto con una sola.
 - **Anclar el hash de la bitácora** en la cadena 8532.

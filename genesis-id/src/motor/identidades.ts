@@ -23,6 +23,7 @@ import { gidPersonal, id } from '../lib/uid.js'
 import { registrar } from '../audit/bitacora.js'
 import { revisarDocumento } from '../kyc/documento.js'
 import { cotejar, sinProveedor, cotejoManual, biometriaConfigurada } from '../kyc/biometria.js'
+import type { ResultadoVivacidad } from '../kyc/vivacidad.js'
 import { tamizarPersona } from '../aml/tamiz.js'
 import { evaluarRiesgo } from '../aml/riesgo.js'
 import { abrirCasoPorTamiz } from '../aml/casos.js'
@@ -183,14 +184,38 @@ export function adjuntarDocumento(idn: string, mrz: string, origen: string): Ide
 // Biometría
 // ─────────────────────────────────────────────────────────────────────────────
 
+export interface EntradaRostro {
+  selfie: string
+  fotoDocumento: string
+  /** Reto de vivacidad ya resuelto, si lo hubo. */
+  vivacidad?: ResultadoVivacidad | null
+}
+
+/**
+ * Cotejo del rostro.
+ *
+ * Ni el selfie ni la foto del documento se guardan: se cotejan y se descartan.
+ * Lo que queda en el expediente es el veredicto, la puntuación y —si hubo
+ * reto— qué gesto se pidió y si se cumplió. Con eso un operador puede revisar
+ * la decisión sin que Genesis ID se convierta en un depósito de fotos de
+ * documentos, que es el peor dato que se puede acumular.
+ */
 export async function adjuntarBiometria(
-  idn: string, selfie: string, fotoDocumento: string, origen: string,
+  idn: string, entrada: EntradaRostro, origen: string,
 ): Promise<Identidad | null> {
   const identidad = porId(idn)
   if (!identidad) return null
 
+  const v = entrada.vivacidad
   identidad.biometria = biometriaConfigurada()
-    ? await cotejar({ selfie, fotoDocumento })
+    ? await cotejar({
+        selfie: entrada.selfie,
+        fotoDocumento: entrada.fotoDocumento,
+        vivacidad: v ? v.puntuacion : null,
+        pasosVivacidad: v?.pasos,
+        avisosVivacidad: v?.avisos,
+        notaVivacidad: v?.motivo,
+      })
     : sinProveedor()
 
   if (identidad.estado === 'documento') identidad.estado = 'biometria'
@@ -200,6 +225,8 @@ export async function adjuntarBiometria(
   registrar(origen, 'identidad.biometria', identidad.id, {
     estado: identidad.biometria.estado,
     proveedor: identidad.biometria.proveedor,
+    parecido: identidad.biometria.parecido,
+    vivacidad: identidad.biometria.vivacidad,
   })
   return identidad
 }

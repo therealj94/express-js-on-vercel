@@ -17,8 +17,19 @@
 //
 // COMO SE MONTA
 //
-//   import { routerGenesis } from './genesis.router.js'
+//   import { routerGenesis, parserRostro } from './genesis.router.js'
+//
+//   app.use('/genesis/biometria', parserRostro)   // ANTES del parser general
+//   app.use(bodyParser.json({ limit: '100kb' }))  // el de siempre, sin tocar
+//   ...
 //   app.use('/genesis', routerGenesis({ exigirSesion: miMiddlewareDeAuth }))
+//
+// El orden de esas dos líneas importa y no es un detalle: el cuerpo lo parsea
+// el PRIMER parser que lo alcanza, y los fotogramas del rostro pesan más que
+// el límite general —que está bajo a propósito, porque ninguna otra ruta de la
+// app tiene motivo para recibir un megabyte—. Si el parser general va primero,
+// la verificación de identidad muere con un 413 y el usuario ve "no se pudo
+// enviar la foto" sin más explicación.
 //
 // Variables de entorno:
 //   GENESIS_URL      https://genesis-id.onrender.com   (por defecto)
@@ -31,7 +42,16 @@
 // a nombre de cualquier correo. Cada ruta comprueba además que el usuario
 // autenticado sea el dueño de la identidad que está tocando.
 
-import { Router } from 'express'
+import express, { Router } from 'express'
+
+/**
+ * Parser exclusivo de la ruta del rostro.
+ *
+ * Cuatro fotogramas en base64 no caben en el límite general de la app. Se le da
+ * holgura solo a esta ruta y solo a ella: Genesis ID rechaza después cualquier
+ * imagen de más de 5 MB, que es el tope de la propia API de reconocimiento.
+ */
+export const parserRostro = express.json({ limit: '12mb' })
 
 const BASE = (process.env.GENESIS_URL || 'https://genesis-id.onrender.com').replace(/\/$/, '')
 const CLAVE = (process.env.GENESIS_API_KEY || '').trim()
@@ -119,12 +139,29 @@ export function routerGenesis({ exigirSesion } = {}) {
     }))
   })
 
+  /**
+   * Pide el reto de vivacidad.
+   *
+   * La secuencia de gestos la sortea Genesis ID, no la app: si la eligiera el
+   * cliente, quien controle el teléfono elegiría la que ya tiene grabada.
+   */
+  router.post('/vivacidad', async (req, res) => {
+    const idn = await idDe(req.usuario.email)
+    if (!idn) return res.status(404).json({ error: 'Identidad no encontrada' })
+    responder(res)(await llamar(`/api/v1/identidades/${idn}/vivacidad`, { method: 'POST' }))
+  })
+
   router.post('/biometria', async (req, res) => {
     const idn = await idDe(req.usuario.email)
     if (!idn) return res.status(404).json({ error: 'Identidad no encontrada' })
     responder(res)(await llamar(`/api/v1/identidades/${idn}/biometria`, {
       method: 'POST',
-      body: JSON.stringify({ selfie: req.body?.selfie, fotoDocumento: req.body?.fotoDocumento }),
+      body: JSON.stringify({
+        selfie: req.body?.selfie,
+        fotoDocumento: req.body?.fotoDocumento,
+        reto: req.body?.reto,
+        fotogramas: req.body?.fotogramas,
+      }),
     }))
   })
 

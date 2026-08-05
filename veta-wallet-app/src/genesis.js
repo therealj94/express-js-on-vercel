@@ -238,7 +238,41 @@ export const genesis = {
     };
   },
 
-  /** Foto de rostro para el cotejo con la del documento. */
+  /**
+   * Pide el reto de vivacidad.
+   *
+   * Devuelve la secuencia de gestos que hay que ir mostrando en pantalla, uno
+   * por uno, grabando un fotograma de cada uno. Vale dos minutos: si la persona
+   * se distrae, se pide otro y ya está.
+   *
+   *   { id, gestos: ['frente','sonreir',...], instrucciones: ['Mire...'], segundos }
+   */
+  async pedirReto() {
+    const r = await puente('/vivacidad', {});
+    if (!r.ok) return { error: r.error, code: r.code };
+    return r.datos?.reto || null;
+  },
+
+  /**
+   * Manda los fotogramas del reto.
+   *
+   * Van en el mismo orden que los gestos. El servidor comprueba gesto a gesto
+   * y decide; la app no puntúa nada, solo enseña el resultado.
+   */
+  async enviarRostro({ reto, fotogramas, fotoDocumento }) {
+    const r = await puente('/biometria', { reto, fotogramas, fotoDocumento });
+    if (!r.ok) return { error: r.error, code: r.code };
+    const vista = aVista(r.datos?.identidad);
+    if (vista) await writeLocal(vista);
+    return { estado: vista, biometria: r.datos?.biometria || null };
+  },
+
+  /**
+   * Envío de un solo selfie, sin prueba de vida.
+   *
+   * Se mantiene para las versiones ya publicadas de la app. Nunca aprueba sola:
+   * el expediente queda en revisión de un operador.
+   */
   async enviarSelfie(selfieBase64) {
     const r = await puente('/biometria', { selfie: selfieBase64 });
     if (!r.ok) return { error: r.error, code: r.code };

@@ -7,7 +7,7 @@ import { store, iniciar, motor } from './store.js'
 import { asegurarAdministrador, limpiarSesiones } from './auth/operadores.js'
 import { asegurarAplicaciones } from './auth/aplicaciones.js'
 import { estadoListas, hayListas, iniciarListas } from './aml/listas.js'
-import { biometriaConfigurada } from './kyc/biometria.js'
+import { biometriaConfigurada, proveedorBiometria } from './kyc/biometria.js'
 import { verificarCadena } from './audit/bitacora.js'
 import { sesionRouter } from './routes/sesion.js'
 import { appsRouter } from './routes/apps.js'
@@ -19,7 +19,11 @@ const app = express()
 // CORS abierto solo tiene sentido para las apps del ecosistema, que se
 // identifican con clave de API; el panel se sirve desde el mismo origen.
 app.use(cors())
-app.use(express.json({ limit: '2mb' }))
+// 12 MB porque la prueba de vida manda cuatro fotogramas en base64 en una sola
+// petición. El tope real lo pone `kyc/rekognition.ts`, que rechaza cualquier
+// imagen suelta de más de 5 MB —el límite de la API de reconocimiento—, así que
+// esta holgura no permite mandar una imagen más grande, solo varias.
+app.use(express.json({ limit: '12mb' }))
 
 // Cabeceras de seguridad. Son pocas líneas y evitan las formas más comunes de
 // abuso de un panel: incrustarlo en un iframe ajeno para engañar al operador, y
@@ -56,6 +60,7 @@ app.get('/healthz', (_req, res) => {
       listasCargadas: listas.cargadas,
       listasVencidas: listas.vencidas,
       biometria: biometriaConfigurada(),
+      proveedorBiometria: proveedorBiometria(),
       ssoConfigurado: Boolean(process.env.GENESIS_SSO_SECRETO),
       bitacoraIntegra: cadena.integra,
     },
@@ -133,8 +138,11 @@ export async function arrancar(): Promise<void> {
   if (!biometriaConfigurada()) {
     avisos.push(
       'SIN PROVEEDOR DE BIOMETRIA: el cotejo del rostro tendrá que resolverlo un operador ' +
-      'a mano en cada verificación.',
+      'a mano en cada verificación. Defina GENESIS_AWS_ACCESS_KEY_ID y ' +
+      'GENESIS_AWS_SECRET_ACCESS_KEY para usar Rekognition.',
     )
+  } else {
+    console.log(`[genesis-id] biometría: ${proveedorBiometria()}`)
   }
   if (!process.env.GENESIS_SSO_SECRETO) {
     avisos.push('SIN GENESIS_SSO_SECRETO: el inicio de sesión único entre apps está desactivado.')

@@ -23,14 +23,23 @@ En el backend de Veta Wallet (`app.js`), y con el mismo código en el de
 MyTokenPay:
 
 ```js
-import { routerGenesis } from './genesis.router.js'
+import { routerGenesis, parserRostro } from './genesis.router.js'
 import { verificarToken } from './middleware/auth.js'   // el de la propia app
+
+// ANTES del parser general de la app: los fotogramas del rostro no caben en su
+// límite, y el cuerpo lo parsea el primero que lo alcanza.
+app.use('/genesis/biometria', parserRostro)
+
+// ... aquí va el bodyParser.json({ limit: '100kb' }) de siempre ...
 
 // El middleware tiene que dejar en `req.usuario` al menos { id, email }.
 // Si la app maneja dirección on-chain, añadir `address`: el puente la usa para
 // atar la billetera al GID y que ordenscan pueda resolverla.
 app.use('/genesis', routerGenesis({ exigirSesion: verificarToken }))
 ```
+
+Si el parser general va primero, la verificación de identidad muere con un 413
+y en el teléfono solo se ve "no se pudo enviar la foto".
 
 Variables de entorno del backend:
 

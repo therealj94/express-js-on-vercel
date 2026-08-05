@@ -14,7 +14,7 @@ import {
 import { consultar, verificarCadena, anclaje, registrar } from '../audit/bitacora.js'
 import { crearOperador, PERMISOS } from '../auth/operadores.js'
 import { crearAplicacion, revocar, rotar, ALCANCES } from '../auth/aplicaciones.js'
-import { biometriaConfigurada } from '../kyc/biometria.js'
+import { biometriaConfigurada, proveedorBiometria } from '../kyc/biometria.js'
 import { FECHA_LISTAS_GAFI, diasDesdeActualizacion } from '../aml/paises.js'
 import { DOCUMENTOS_EXIGIDOS, UMBRAL_UBO } from '../motor/negocios.js'
 import type { Rol } from '../types.js'
@@ -57,7 +57,7 @@ panelRouter.get('/resumen', (_req, res) => {
     salud: {
       almacen: store.estado(),
       listas: estadoListas(),
-      biometria: biometriaConfigurada() ? 'configurada' : 'sin proveedor',
+      biometria: biometriaConfigurada() ? proveedorBiometria() : 'sin proveedor',
       listasGafi: { fecha: FECHA_LISTAS_GAFI, dias: diasDesdeActualizacion() },
       bitacora: verificarCadena(),
       apps: d.aplicaciones.filter((a) => a.activa).length,

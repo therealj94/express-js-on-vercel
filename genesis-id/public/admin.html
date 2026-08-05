@@ -276,8 +276,9 @@ VISTAS.resumen = async function () {
     'No se está tamizando a nadie. Ninguna identidad puede aprobarse sin anulación expresa. Configure GENESIS_LISTAS_DIR.'])
   else if (s.listas.vencidas) avisos.push(['', 'Listas desactualizadas',
     `Se descargaron hace ${s.listas.diasDesdeDescarga} días. Conviene refrescarlas.`])
-  if (s.biometria !== 'configurada') avisos.push(['', 'Sin proveedor de biometría',
-    'El cotejo del rostro lo tiene que resolver un operador a mano en cada verificación.'])
+  if (s.biometria === 'sin proveedor') avisos.push(['', 'Sin proveedor de biometría',
+    'El cotejo del rostro lo tiene que resolver un operador a mano en cada verificación. ' +
+    'Defina GENESIS_AWS_ACCESS_KEY_ID y GENESIS_AWS_SECRET_ACCESS_KEY para usar Rekognition.'])
   if (!s.bitacora.integra) avisos.push(['grave', 'Bitácora alterada',
     `La cadena se rompe en la entrada ${s.bitacora.rotaEn}. Alguien modificó el registro.`])
   if (!s.sso) avisos.push(['', 'Sin inicio de sesión único', 'Falta definir GENESIS_SSO_SECRETO.'])
@@ -439,7 +440,18 @@ async function verIdentidad(id) {
     ${i.biometria ? `<div class="item ${i.biometria.estado === 'ok' ? 'bien'
         : i.biometria.estado === 'no-configurada' ? 'aviso2' : 'grave'}">
       <div class="t">${esc(i.biometria.estado)} · ${esc(i.biometria.proveedor)}</div>
-      <div class="d">${esc(i.biometria.motivo || '')}</div></div>`
+      <div class="d">${esc(i.biometria.motivo || '')}</div>
+      ${i.biometria.parecido != null || i.biometria.vivacidad != null ? `<div class="d">
+        ${i.biometria.parecido != null ? `Parecido con el documento: <b>${(i.biometria.parecido * 100).toFixed(1)}%</b>` : ''}
+        ${i.biometria.vivacidad != null ? ` · Prueba de vida: <b>${(i.biometria.vivacidad * 100).toFixed(0)}%</b>` : ' · Sin prueba de vida'}
+      </div>` : ''}
+      ${(i.biometria.pasosVivacidad || []).length ? `<div class="d">Gestos pedidos: ${
+        i.biometria.pasosVivacidad.map((p) =>
+          `${p.ok ? '✓' : '✗'} ${esc(p.gesto)}${p.ok ? '' : ` (${esc(p.motivo || '')})`}`).join(' · ')
+      }</div>` : ''}
+      ${(i.biometria.avisos || []).length
+        ? `<div class="d">${i.biometria.avisos.map((a) => '⚠ ' + esc(a)).join('<br>')}</div>` : ''}
+      </div>`
       : '<div class="vacio">Sin resolver</div>'}
 
     ${i.vinculos.length ? `<h3>Cuentas del ecosistema</h3>
