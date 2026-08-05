@@ -96,11 +96,28 @@ incomunicados. El caso más llamativo fue **node3**, que anunciaba
 `18.191.232.121` — la IP vieja de **node2**, un copiar/pegar mal de quien lo
 configuró. Su IP real es `54.165.79.187`. Corregido en los cinco.
 
-**node1 todavía anuncia `54.166.135.175`, que tampoco es su IP actual**
-(`34.203.38.219`). No se corrigió porque hacerlo exige reiniciar el validador y
-detener la cadena unos segundos. Hoy no le afecta — los demás nodos lo
-encuentran igual porque se les configuró su dirección real a mano — pero
-conviene arreglarlo en una ventana planificada.
+**node1 también estaba mal** (anunciaba `54.166.135.175` en vez de
+`34.203.38.219`). Ya corregido. Requirió reiniciar el validador: el corte fue
+de ~2 segundos, la cadena siguió produciendo y el RPC público y el explorador
+no se vieron afectados. Tras el reinicio hubo que reconectar los 5 nodos a
+mano, porque el descubrimiento automático no los vuelve a unir solo.
+
+## Pendiente: los nodos no tienen IP elástica
+
+Ninguna de las IPs públicas de los nodos es elástica, así que **AWS les asigna
+una nueva cada vez que la instancia se detiene y arranca** — que es exactamente
+el origen de todo este problema: los `--nat` quedaron apuntando a direcciones
+que dejaron de existir, y los nodos se quedaron anunciando una dirección
+inalcanzable.
+
+Corregir los `--nat` arregla el síntoma de hoy, pero **va a volver a pasar** en
+el próximo stop/start de cualquier nodo. El arreglo de fondo es asignarles IPs
+elásticas. Dato útil: la cuenta ya tiene **dos IPs elásticas asignadas y sin
+usar** (`18.211.40.149` y `3.224.143.231`) — se están pagando igual, así que
+usarlas no cuesta nada extra.
+
+Ojo: asociar una IP elástica **cambia la IP pública** de la instancia, así que
+hay que actualizar después los `--nat` y los bootnodes que la referencien.
 
 Se instala en `/usr/local/bin/ogb-watchdog.sh` con
 `ogb-watchdog.service` (oneshot) + `ogb-watchdog.timer` (cada 3 min,
