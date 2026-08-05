@@ -60,8 +60,13 @@ export function Kyc({ nav }) {
   async function refrescar(avisar) {
     const e = await genesis.estado();
     if (!e || e.error) {
-      setFallo(e?.code === 'sin-puente'
-        ? { code: 'sin-puente', detail: t('gen.errBridge') }
+      // 'sin-puente' (el backend no tiene la ruta) y 'sin-clave' (la tiene
+      // pero sin GENESIS_API_KEY) son el mismo problema visto por el usuario:
+      // falta terminar de configurar el servidor. Se dice, en vez de dejarle
+      // creer que es su conexión.
+      const faltaConfig = e?.code === 'sin-puente' || e?.code === 'sin-clave';
+      setFallo(faltaConfig
+        ? { code: 'config', detail: t('gen.errBridge') }
         : { code: e?.code || 'red', detail: e?.error });
       setPaso('fallo');
       return null;

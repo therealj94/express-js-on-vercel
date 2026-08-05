@@ -20,11 +20,11 @@ mal, y las dos son irreversibles:
 - Si alguien se registra mientras corre, su registro nace con una clave y se lee
   con otra.
 
-Por eso va en tres etapas.
+Por eso fue en tres etapas.
 
 ## Las tres etapas
 
-### Etapa 1 — la aplicación entiende las dos claves *(hecha y desplegada)*
+### Etapa 1 — la aplicación entiende las dos claves *(hecha)*
 
 `cripto.js` es el módulo que se desplegó como `lib/cripto.js`. Cifra siempre con
 `PASS_ADM_NUEVA` y, al descifrar, prueba primero la nueva y cae a `PASS_ADM` si
@@ -36,7 +36,8 @@ Las siete llamadas que antes usaban `process.env.PASS_ADM` a mano pasaron a este
 módulo: `authController` (1 cifrado), `userController` (2 descifrados),
 `swapController` (1) y `transactionController` (2).
 
-`PASS_ADM` **se dejó puesta a propósito**. Es la vuelta atrás.
+`PASS_ADM` se dejó puesta durante toda la migración a propósito: era la vuelta
+atrás. Se retiró al final, en la etapa 3.
 
 #### La verificación por formato, y por qué hace falta
 
@@ -49,7 +50,7 @@ estricto, y se verificó contra los 403 registros reales que **todos** lo
 cumplen: 402 llaves privadas con `0x` + 64 hexadecimales, y 402 semillas de
 exactamente 12 palabras en minúsculas.
 
-### Etapa 2 — recifrar los registros *(lista, sin ejecutar)*
+### Etapa 2 — recifrar los registros *(hecha)*
 
 `migrar.js`. Arranca en simulacro; solo escribe con `MIGRAR=si`.
 
@@ -73,10 +74,10 @@ Lo que protege cada cosa:
 
 Nada del texto en claro se imprime nunca.
 
-### Etapa 3 — quitar la clave vieja
+### Etapa 3 — borrar los respaldos y quitar la clave vieja *(hecha)*
 
-Solo cuando `verificar.js` informe `conVieja: 0`. Recién ahí se borra `PASS_ADM`
-de la configuración y se puede quitar la rama de respaldo del módulo.
+`limpiar.js` primero y la retirada de `PASS_ADM` después. En ese orden: el
+respaldo es lo que de verdad guardaba el riesgo, ver más abajo.
 
 ## Los 2 campos rotos
 
@@ -135,15 +136,68 @@ cifrado nuevo: si eso pasara, se perdería la única vía de vuelta.
 
 Resultado actual: las dos pasan.
 
-## Estado
+## Estado: TERMINADA
 
-| Etapa | Estado |
+Ejecutada el 2026-08-05. Los cuatro pasos, con su comprobación:
+
+| Paso | Resultado |
 | --- | --- |
-| 1 — doble clave desplegada | hecha, en producción |
-| 1 — verificada contra los 403 registros en vivo | **pendiente**, hace falta un token de Heroku vigente |
-| 2 — recifrado | script listo y probado, sin ejecutar |
-| 3 — quitar `PASS_ADM` | pendiente de la etapa 2 |
+| Verificación previa | 402 llaves y 402 semillas legibles, `conVieja: 402` |
+| Simulacro | 804 campos a recifrar, 0 fallos |
+| Migración | 804 migrados, 0 fallos, 0 restauraciones |
+| Verificación | `conNueva: 402`, `conVieja: 0` |
+| **Comparación** | **804 de 804 descifran al MISMO texto que antes** |
+| Limpieza de respaldos | 804 borrados, 0 conservados |
+| Retirada de `PASS_ADM` | release 55, `vieja: false` |
+| Verificación final | 402 legibles solo con la clave nueva |
 
-Para volver atrás de la etapa 1 basta con desplegar la release anterior, la
-**53**. Como `PASS_ADM` sigue puesta y ningún registro se ha recifrado todavía,
-la vuelta atrás hoy es inmediata y sin pérdida.
+### La comparación es la que importa
+
+Que los registros se descifren con la clave nueva y den algo con forma válida
+no prueba que den *lo mismo* que antes: una llave privada distinta también
+tiene forma de llave privada, y llevaría a una cuenta que no es la del usuario.
+
+Mientras el respaldo seguía en el documento se pudo comprobar de verdad —
+descifrar el original con la clave vieja, el actual con la nueva, y compararlos
+carácter por carácter. Los 804 coinciden. `comparar.js`.
+
+### Por qué había que borrar los respaldos
+
+**Este paso es el que de verdad cerró el agujero, y es fácil pasarlo por alto.**
+
+La migración recifró todo con la clave nueva, pero guardó el cifrado original
+en `privateKeyRespaldo` y `seedRespaldo`. Ese original está cifrado con la
+clave de 7 caracteres y contiene exactamente las mismas llaves privadas.
+
+Es decir: **mientras los respaldos existieran, un volcado de la base seguía
+valiendo lo mismo que antes** — se rompe la clave de 7 caracteres por fuerza
+bruta y se vacían las cuentas igual. La migración por sí sola no arreglaba
+nada. `limpiar.js` los quitó, comprobando uno por uno que el valor actual
+descifrara y coincidiera antes de borrar.
+
+## Los 2 campos rotos
+
+De los 806 campos, 804 se migraron y **2 no**: los del usuario
+`0x00646bd8c7455c7cc64a4ff74f39fd1825042055`. Están rotos **desde antes** de
+todo esto — no se descifraban ni con la clave original. La migración no los
+tocó. Es un problema aparte y anterior, y conviene mirar si esa dirección tiene
+saldo on-chain.
+
+## Cómo se corrió
+
+```sh
+export HEROKU_API_KEY=...
+
+python3 dyno.py verificar.js              # solo lectura
+python3 dyno.py migrar.js                 # simulacro
+python3 dyno.py migrar.js MIGRAR=si       # migración
+python3 dyno.py verificar.js              # conVieja: 0
+python3 dyno.py comparar.js               # prueba que nada cambió
+python3 dyno.py limpiar.js                # simulacro
+python3 dyno.py limpiar.js LIMPIAR=si     # borra los respaldos
+# y por último, quitar PASS_ADM de la configuración
+```
+
+> `MIGRAR=si` y `LIMPIAR=si` se pasan como variable del dyno, no de la
+> aplicación: si quedaran en la configuración permanente, el siguiente dyno que
+> alguien lance por cualquier motivo arrancaría en modo escritura sin querer.

@@ -30,10 +30,18 @@ cmd = ("node -e \"require('fs').writeFileSync('/app/v.js',"
        "Buffer.from(process.env.SCRIPT_B64,'base64'))\" "
        "&& npx babel-node /app/v.js")
 
+# Variables extra para el dyno, con la forma CLAVE=valor. Se usa para pasar
+# MIGRAR=si sin dejarlo escrito en la configuracion permanente de la
+# aplicacion: si quedara ahi, el siguiente dyno que alguien lance por cualquier
+# motivo arrancaria en modo escritura sin querer.
+extra = dict(p.split("=", 1) for p in sys.argv[2:] if "=" in p)
+
 d = api("POST", f"/apps/{APP}/dynos", {
     "command": cmd, "attach": False, "time_to_live": 900,
-    "env": {"SCRIPT_B64": base64.b64encode(script).decode()},
+    "env": {"SCRIPT_B64": base64.b64encode(script).decode(), **extra},
 })
+if extra:
+    print(f"[extra: {', '.join(extra)}]", file=sys.stderr)
 name = d["name"]
 print(f"[dyno {name}]", file=sys.stderr)
 
