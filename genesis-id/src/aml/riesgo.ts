@@ -46,6 +46,8 @@ export interface EntradaRiesgo {
   pep?: boolean
   /** Actividad declarada del negocio, si aplica. */
   actividadRiesgo?: 'alta' | 'media' | 'baja' | null
+  /** Qué falta del perfil de cumplimiento de una persona. */
+  faltanDatos?: string[]
 }
 
 /** Actividades que la normativa considera de mayor riesgo. */
@@ -99,6 +101,22 @@ export function evaluarRiesgo(e: EntradaRiesgo): EvaluacionRiesgo {
         `Las listas se descargaron hace ${e.tamiz.estadoListas.diasDesdeDescarga} días`)
     }
   }
+
+  // ── Perfil de cumplimiento ────────────────────────────────────────────────
+  //
+  // De qué vive alguien y cuánto espera mover no es papeleo: es lo único
+  // contra lo que se puede comparar un movimiento cuando salte una alerta.
+  // Sin eso, «recibió 40 000 dólares» no significa nada — parece normal o
+  // parece grave según quién lo mire, y ninguna de las dos es una decisión.
+  const ESENCIALES = ['ocupacion', 'origenFondos']
+  const faltanEsenciales = (e.faltanDatos ?? []).filter((d) => ESENCIALES.includes(d))
+  if (faltanEsenciales.length) {
+    bloqueos.push(
+      `Faltan datos del perfil de cumplimiento: ${faltanEsenciales.join(', ')}. ` +
+      'Sin ocupación ni origen de fondos no hay con qué contrastar los movimientos.')
+  }
+  const otrosFaltan = (e.faltanDatos ?? []).filter((d) => !ESENCIALES.includes(d))
+  if (otrosFaltan.length) sumar('perfil.incompleto', 5, `Sin ${otrosFaltan.join(', ')} en el expediente`)
 
   // ── Biometría ─────────────────────────────────────────────────────────────
   if (!e.biometria || e.biometria.estado === 'no-configurada') {

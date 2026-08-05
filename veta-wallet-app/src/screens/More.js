@@ -367,10 +367,17 @@ export function Passport({ nav }) {
       );
       if (!chica?.base64) { toast(t('pass.photoFail')); return; }
 
-      const actualizada = await setPassport(acc.email, {
-        photoUrl: `data:image/jpeg;base64,${chica.base64}`,
-      });
-      if (actualizada) { login(actualizada); toast(t('pass.photoOk')); }
+      const uri = `data:image/jpeg;base64,${chica.base64}`;
+
+      // Se guarda en el telefono Y en Genesis ID. Lo segundo importa: el GID
+      // vale en todas las apps del ecosistema, y una credencial que solo se ve
+      // completa en el movil que subio la foto no sirve para eso.
+      const actualizada = await setPassport(acc.email, { photoUrl: uri });
+      if (actualizada) login(actualizada);
+
+      const r = await genesis.guardarFoto(uri);
+      if (r?.error) toast(t('pass.photoLocalOnly'));
+      else toast(t('pass.photoOk'));
     } catch (e) {
       toast(t('pass.photoFail'));
     }

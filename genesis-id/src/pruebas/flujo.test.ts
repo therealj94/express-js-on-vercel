@@ -169,10 +169,33 @@ describe('Flujo completo de verificación', () => {
   test('la app declara los datos de la persona', async () => {
     const r = await pedir(`/api/v1/identidades/${identidadId}/datos`, {
       method: 'POST', headers: conClave(),
-      body: JSON.stringify({ nombreCompleto: 'Anna Maria Eriksson', fechaNacimiento: '1974-08-12', paisResidencia: 'HND' }),
+      body: JSON.stringify({
+        nombreCompleto: 'Anna Maria Eriksson', fechaNacimiento: '1974-08-12', paisResidencia: 'HND',
+        // El perfil de cumplimiento va con el alta: sin ocupacion ni origen de
+        // fondos no hay contra que contrastar un movimiento, y por eso bloquea.
+        telefono: '+504 9999 0000', direccion: 'Col. Palmira, Tegucigalpa',
+        ocupacion: 'Ingeniera de sistemas', origenFondos: 'Salario',
+        propositoCuenta: 'Ahorro y remesas familiares', volumenEsperadoUsd: 1500,
+        pepDeclarado: false,
+      }),
     })
     assert.equal(r.estado, 200)
     assert.equal(r.cuerpo.identidad.estado, 'datos')
+  })
+
+  test('sin ocupacion ni origen de fondos, la identidad NO se puede aprobar', async () => {
+    // Se comprueba sobre una identidad aparte para no romper el flujo de arriba.
+    const alta = await pedir('/api/v1/identidades', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ email: 'sin.perfil@ejemplo.test' }),
+    })
+    const otra = alta.cuerpo.identidad.id
+    await pedir(`/api/v1/identidades/${otra}/datos`, {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ nombreCompleto: 'Persona Sin Perfil', fechaNacimiento: '1990-01-01' }),
+    })
+    const ficha = await pedir(`/api/v1/identidades/${otra}`, { headers: conClave() })
+    assert.ok(ficha.cuerpo.identidad.faltan > 0, 'tiene que quedar con bloqueos pendientes')
   })
 
   test('un documento con la MRZ manipulada se rechaza', async () => {

@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.31.0';
-export const BUILD = 67;
+export const VERSION = '1.32.0';
+export const BUILD = 68;
 export const RELEASED = '2026-08-05';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,27 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.32.0',
+    build: 68,
+    date: '2026-08-05',
+    es: [
+      'La foto de tu credencial ahora se guarda en Genesis ID, no solo en este teléfono. Tu pasaporte viaja contigo a todas las apps del ecosistema y se ve completo en cualquiera.',
+      'Si ya tenés tu Genesis ID, la app deja de ofrecerte hacerlo otra vez: te lleva directo a tu credencial.',
+      'Los países se eligen por su nombre, no por su código. «HND» no le dice nada a nadie.',
+      'La fecha decía «AAAA-MM-DD» mientras las casillas iban día / mes / año. Corregido.',
+      'Paso nuevo con los datos que pide la normativa: teléfono, dirección, ocupación, origen de tus fondos, para qué usarás la cuenta, cuánto esperás mover y si tenés cargo público. No es papeleo: es lo único contra lo que se puede comparar un movimiento tuyo si algún día salta una alerta — y lo que evita que una transferencia normal te bloquee la cuenta.',
+      'Sin ocupación ni origen de fondos la verificación ya no se puede aprobar. Es el estándar de cualquier revisión de cumplimiento seria.',
+    ],
+    en: [
+      'Your credential photo is now stored in Genesis ID, not only on this phone. Your passport travels with you to every app in the ecosystem and shows complete on any of them.',
+      'If you already have your Genesis ID, the app stops offering to do it again: it takes you straight to your credential.',
+      'Countries are chosen by name, not by code. «HND» means nothing to anyone.',
+      'The date said «YYYY-MM-DD» while the boxes went day / month / year. Fixed.',
+      'New step with the details regulation requires: phone, address, occupation, source of funds, what you will use the account for, how much you expect to move, and whether you hold public office. Not paperwork: it is the only thing a transfer of yours can be compared against if an alert is ever raised — and what stops a normal transfer from freezing your account.',
+      'Without occupation and source of funds, verification can no longer be approved. That is the standard for any serious compliance review.',
+    ],
+  },
   {
     v: '1.31.0',
     build: 67,

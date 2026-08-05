@@ -171,6 +171,8 @@ function aVista(identidad) {
     genesisUid: identidad.gid || null,
     fullName: identidad.nombreLegal || null,
     documentoAceptable: identidad.documentoAceptable,
+    fotoCredencial: identidad.fotoCredencial || null,
+    faltanDatos: identidad.faltanDatos || [],
     siguientePaso: identidad.siguientePaso,
     verificada: identidad.estado === 'verificada',
     actualizadaEn: identidad.actualizadaEn,
@@ -285,6 +287,21 @@ export const genesis = {
    */
   async enviarSelfie(selfieBase64) {
     const r = await puente('/biometria', { selfie: selfieBase64 });
+    if (!r.ok) return { error: r.error, code: r.code };
+    const vista = aVista(r.datos?.identidad);
+    if (vista) await writeLocal(vista);
+    return vista;
+  },
+
+  /**
+   * Guarda la foto de la credencial en Genesis ID.
+   *
+   * Es la unica imagen que se conserva, y va ahi y no solo en el telefono
+   * porque el GID vale en todas las apps del ecosistema: una credencial que
+   * solo se ve completa en el movil que subio la foto no sirve para eso.
+   */
+  async guardarFoto(base64) {
+    const r = await puente('/foto', { foto: base64 });
     if (!r.ok) return { error: r.error, code: r.code };
     const vista = aVista(r.datos?.identidad);
     if (vista) await writeLocal(vista);

@@ -38,10 +38,22 @@ appsRouter.post('/identidades', limite(60), exigeApp('identidad.crear'), (req, r
 })
 
 appsRouter.post('/identidades/:id/datos', limite(60), exigeApp('identidad.crear'), (req, res) => {
-  const { nombreCompleto, fechaNacimiento, paisResidencia, telefono } = req.body ?? {}
-  const identidad = ids.declararDatos(req.params.id,
-    { nombreCompleto, fechaNacimiento, paisResidencia, telefono },
-    `app:${req.app_ecosistema!.clave}`)
+  const b = req.body ?? {}
+  // Se enumeran uno por uno a propósito: así el cuerpo de la petición no puede
+  // escribir campos que no le corresponden —estado, gid, riesgo— por el simple
+  // hecho de venir con ese nombre.
+  const identidad = ids.declararDatos(req.params.id, {
+    nombreCompleto: b.nombreCompleto,
+    fechaNacimiento: b.fechaNacimiento,
+    paisResidencia: b.paisResidencia,
+    telefono: b.telefono,
+    direccion: b.direccion,
+    ocupacion: b.ocupacion,
+    origenFondos: b.origenFondos,
+    propositoCuenta: b.propositoCuenta,
+    volumenEsperadoUsd: b.volumenEsperadoUsd,
+    pepDeclarado: typeof b.pepDeclarado === 'boolean' ? b.pepDeclarado : undefined,
+  }, `app:${req.app_ecosistema!.clave}`)
   if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
   res.json({ identidad: ids.estadoParaUsuario(identidad) })
 })
@@ -152,6 +164,20 @@ appsRouter.post('/identidades/:id/biometria', limite(20), exigeApp('identidad.do
       gestos: vivacidad?.pasos.map((p) => ({ gesto: p.gesto, ok: p.ok, motivo: p.motivo })) ?? [],
     },
   })
+})
+
+/**
+ * Foto de la credencial.
+ *
+ * Es la única imagen que Genesis ID guarda, y va aparte del cotejo: aquella se
+ * compara y se descarta, esta se conserva porque la credencial tiene que verse
+ * completa en cualquier app del ecosistema, no solo en el teléfono que la subió.
+ */
+appsRouter.post('/identidades/:id/foto', limite(20), exigeApp('identidad.documento'), (req, res) => {
+  const r = ids.guardarFotoCredencial(
+    req.params.id, String(req.body?.foto || ''), `app:${req.app_ecosistema!.clave}`)
+  if (!r.ok) return res.status(400).json({ error: r.error })
+  res.json({ ok: true, identidad: ids.estadoParaUsuario(r.identidad!) })
 })
 
 appsRouter.get('/identidades/:id', limite(120), exigeApp('identidad.leer'), (req, res) => {

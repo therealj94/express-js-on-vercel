@@ -47,6 +47,16 @@ export function Kyc({ nav }) {
   const [pais, setPais] = useState(account?.country || 'HND');
   const [buscaPais, setBuscaPais] = useState('');
   const [eligiendoPais, setEligiendoPais] = useState(false);
+
+  // Perfil de cumplimiento. No es papeleo: es lo unico contra lo que se puede
+  // comparar un movimiento cuando salte una alerta.
+  const [telefono, setTelefono] = useState('');
+  const [direccion, setDireccion] = useState('');
+  const [ocupacion, setOcupacion] = useState('');
+  const [origenFondos, setOrigenFondos] = useState('');
+  const [proposito, setProposito] = useState('');
+  const [volumen, setVolumen] = useState('');
+  const [pep, setPep] = useState(null);
   const refMes = useRef(null);
   const refAnio = useRef(null);
 
@@ -148,6 +158,24 @@ export function Kyc({ nav }) {
       nombreCompleto: nombre.trim(),
       fechaNacimiento: nacimiento,
       paisResidencia: pais,
+    });
+    setOcupado(false);
+    if (!r || r.error) { setAviso({ mal: true, txt: r?.error || t('gen.errNetT') }); return; }
+    setAviso(null); setEstado(r); setPaso('perfil');
+  }
+
+  // ---- paso 1b: perfil de cumplimiento ----
+  async function enviarPerfil() {
+    if (!ocupacion.trim() || !origenFondos) { setAviso({ mal: true, txt: t('gen.needAml') }); return; }
+    hap(); setOcupado(true);
+    const r = await genesis.declararDatos({
+      telefono: telefono.trim() || undefined,
+      direccion: direccion.trim() || undefined,
+      ocupacion: ocupacion.trim(),
+      origenFondos,
+      propositoCuenta: proposito || undefined,
+      volumenEsperadoUsd: volumen ? Number(volumen) : undefined,
+      pepDeclarado: pep,
     });
     setOcupado(false);
     if (!r || r.error) { setAviso({ mal: true, txt: r?.error || t('gen.errNetT') }); return; }
@@ -420,7 +448,7 @@ export function Kyc({ nav }) {
   // Poder volver atrás. No lo habia en ningun paso: si algo fallaba —un dato
   // mal escrito, un documento que no cuadraba— la unica salida era abandonar
   // la verificacion entera y empezar de cero.
-  const ANTERIOR = { documento: 'datos', rostro: 'documento', revision: 'rostro' };
+  const ANTERIOR = { perfil: 'datos', documento: 'perfil', rostro: 'documento', revision: 'rostro' };
   function volver() {
     const previo = ANTERIOR[paso];
     if (!previo) return;
@@ -454,6 +482,23 @@ export function Kyc({ nav }) {
             <Icon name="chevron-back" size={16} color={C.txt3} />
             <Text style={st.volverTxt}>{t('gen.goBack')}</Text>
           </Pressable>
+        )}
+
+        {/* Ya verificado: no se vuelve a pedir nada. Antes la pantalla seguia
+            ofreciendo rehacer el tramite a quien ya tenia su GID. */}
+        {paso === 'listo' && (
+          <View style={st.center}>
+            <View style={[st.heroIcon, { backgroundColor: 'rgba(62,217,160,0.12)' }]}>
+              <Icon name="checkmark-circle" size={30} color={C.up || '#3ED9A0'} />
+            </View>
+            <Text style={[st.h1, { textAlign: 'center' }]}>{t('gen.alreadyVerified')}</Text>
+            <Text style={[st.body, { textAlign: 'center' }]}>{t('gen.alreadyVerifiedP')}</Text>
+            {estado?.genesisUid ? (
+              <Text style={[st.gestoTxt, { textAlign: 'center' }]}>{estado.genesisUid}</Text>
+            ) : null}
+            <Button3D title={t('gen.seePassport')} icon="card" onPress={() => nav.go('passport')}
+              style={{ alignSelf: 'stretch', marginTop: 14 }} />
+          </View>
         )}
 
         {paso === 'cargando' && (
@@ -504,7 +549,8 @@ export function Kyc({ nav }) {
               {FRECUENTES.map((p) => (
                 <Pressable key={p} onPress={() => { hap(); setPais(p); setEligiendoPais(false); }}
                   style={[st.pais, pais === p && st.paisSel]}>
-                  <Text style={[st.paisTxt, pais === p && st.paisTxtSel]}>{p}</Text>
+                  {/* El NOMBRE, no el codigo: «HND» no le dice nada a nadie. */}
+                  <Text style={[st.paisTxt, pais === p && st.paisTxtSel]}>{nombrePais(p)}</Text>
                 </Pressable>
               ))}
               {/* Sin esto, quien no viva en uno de los diez de arriba no podía
@@ -512,7 +558,7 @@ export function Kyc({ nav }) {
               <Pressable onPress={() => { hap(); setEligiendoPais(!eligiendoPais); }}
                 style={[st.pais, !FRECUENTES.includes(pais) && st.paisSel]}>
                 <Text style={[st.paisTxt, !FRECUENTES.includes(pais) && st.paisTxtSel]}>
-                  {FRECUENTES.includes(pais) ? t('gen.otherCountry') : pais}
+                  {FRECUENTES.includes(pais) ? t('gen.otherCountry') : nombrePais(pais)}
                 </Text>
               </Pressable>
             </View>
@@ -538,6 +584,61 @@ export function Kyc({ nav }) {
             <Button3D title={t('gen.continue')} icon="arrow-forward" onPress={enviarDatos}
               disabled={ocupado || !nombre.trim() || !fechaValida} style={{ marginTop: 18 }} />
             <Text style={st.foot}>{t('gen.dataFoot')}</Text>
+          </>
+        )}
+
+        {/* ---- 1b. perfil de cumplimiento ---- */}
+        {paso === 'perfil' && (
+          <>
+            <View style={st.heroIcon}><Icon name="shield-checkmark" size={30} color={C.gold} /></View>
+            <Text style={st.h1}>{t('gen.stepAmlT')}</Text>
+            <Text style={st.body}>{t('gen.stepAmlP')}</Text>
+
+            <Field label={t('gen.phone')} value={telefono} onChangeText={setTelefono}
+              placeholder={t('gen.phoneHint')} keyboardType="phone-pad" />
+            <Field label={t('gen.address')} value={direccion} onChangeText={setDireccion}
+              placeholder={t('gen.addressHint')} />
+            <Field label={t('gen.job')} value={ocupacion} onChangeText={setOcupacion}
+              placeholder={t('gen.jobHint')} />
+
+            <Text style={st.label}>{t('gen.funds')}</Text>
+            <View style={st.paises}>
+              {['salario', 'negocio', 'remesas', 'inversiones', 'pension', 'herencia', 'otro'].map((k) => (
+                <Pressable key={k} onPress={() => { hap(); setOrigenFondos(k); }}
+                  style={[st.pais, origenFondos === k && st.paisSel]}>
+                  <Text style={[st.paisTxt, origenFondos === k && st.paisTxtSel]}>{t(`funds.${k}`)}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={st.label}>{t('gen.purpose')}</Text>
+            <View style={st.paises}>
+              {['ahorro', 'remesas', 'pagos', 'negocio', 'inversion'].map((k) => (
+                <Pressable key={k} onPress={() => { hap(); setProposito(k); }}
+                  style={[st.pais, proposito === k && st.paisSel]}>
+                  <Text style={[st.paisTxt, proposito === k && st.paisTxtSel]}>{t(`purpose.${k}`)}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Field label={t('gen.volume')} value={volumen} keyboardType="number-pad"
+              onChangeText={(v) => setVolumen(v.replace(/\D/g, ''))} placeholder="500" />
+
+            <Text style={st.label}>{t('gen.pepQ')}</Text>
+            <View style={st.paises}>
+              <Pressable onPress={() => { hap(); setPep(false); }}
+                style={[st.pais, pep === false && st.paisSel]}>
+                <Text style={[st.paisTxt, pep === false && st.paisTxtSel]}>{t('gen.pepNo')}</Text>
+              </Pressable>
+              <Pressable onPress={() => { hap(); setPep(true); }}
+                style={[st.pais, pep === true && st.paisSel]}>
+                <Text style={[st.paisTxt, pep === true && st.paisTxtSel]}>{t('gen.pepYes')}</Text>
+              </Pressable>
+            </View>
+            <Text style={st.foot2}>{t('gen.pepNote')}</Text>
+
+            <Button3D title={t('gen.continue')} icon="arrow-forward" onPress={enviarPerfil}
+              disabled={ocupado || !ocupacion.trim() || !origenFondos} style={{ marginTop: 18 }} />
           </>
         )}
 
@@ -829,7 +930,7 @@ export function Kyc({ nav }) {
   );
 }
 
-const ORDEN = ['datos', 'documento', 'rostro', 'revision'];
+const ORDEN = ['datos', 'perfil', 'documento', 'rostro', 'revision'];
 
 function Pasos({ actual }) {
   const i = ORDEN.indexOf(actual);
@@ -848,6 +949,14 @@ function Pasos({ actual }) {
 export function GenesisOffer({ nav }) {
   const t = useT();
   const { account } = useAccount();
+
+  // Quien YA tiene su Genesis ID no vuelve a ver la oferta: se le lleva a su
+  // credencial. Ofrecerle hacer lo que ya hizo es un ruido innecesario.
+  useEffect(() => {
+    if (account?.genesisUid) nav.go('passport');
+  }, [account?.genesisUid]);
+  if (account?.genesisUid) return null;
+
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title={t('gen.title')} sub={t('gen.sub')} onBack={() => nav.go('home')} />

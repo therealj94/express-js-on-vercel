@@ -400,6 +400,13 @@ async function verIdentidad(id) {
       ${campo('Documento', i.numeroDocumento ? `${i.numeroDocumento} (${i.tipoDocumento || ''})` : '—')}
       ${campo('Vence', i.vencimientoDocumento || '—')}
       ${campo('País de residencia', i.paisResidencia || '—')}
+      ${campo('Teléfono', i.telefono || '—')}
+      ${campo('Dirección', i.direccion || '—')}
+      ${campo('Ocupación', i.ocupacion || '—')}
+      ${campo('Origen de fondos', i.origenFondos || '—')}
+      ${campo('Propósito de la cuenta', i.propositoCuenta || '—')}
+      ${campo('Volumen esperado', i.volumenEsperadoUsd != null ? `${i.volumenEsperadoUsd.toLocaleString('es')} USD/mes` : '—')}
+      ${campo('PEP declarado', i.pepDeclarado === null || i.pepDeclarado === undefined ? 'sin declarar' : (i.pepDeclarado ? 'SÍ' : 'no'))}
     </div>
 
     <h3>Riesgo</h3>
@@ -475,9 +482,21 @@ async function verIdentidad(id) {
         ? `<button class="ok" onclick="aprobarIdentidad('${i.id}',${(r.bloqueos || []).length})">Aprobar</button>` : ''}
       ${puede('identidad.rechazar') && i.estado !== 'rechazada'
         ? `<button class="bad" onclick="decidir('/panel/identidades/${i.id}/rechazar','Motivo del rechazo')">Rechazar</button>` : ''}
-      ${puede('identidad.suspender') && i.estado === 'verificada'
-        ? `<button class="bad" onclick="decidir('/panel/identidades/${i.id}/suspender','Motivo de la suspensión')">Suspender</button>` : ''}
-    </div>`)
+      ${/* SUSPENDER ESTABA ESCONDIDO. Solo salia si la identidad estaba
+            verificada, asi que no habia forma de bloquear a alguien en pleno
+            tramite —justo cuando mas falta hace— ni de retirarle el acceso a
+            quien acaba de saltar en una lista. Ahora sale siempre que no este
+            ya suspendida. */''}
+      ${puede('identidad.suspender') && i.estado !== 'suspendida'
+        ? `<button class="bad" onclick="decidir('/panel/identidades/${i.id}/suspender','Motivo de la suspensión — bloquea el GID en todo el ecosistema')">Suspender / bloquear</button>` : ''}
+      ${i.estado === 'suspendida' && puede('identidad.aprobar')
+        ? `<button class="g" onclick="reiniciarVerificacion('${i.id}')">Reactivar (rehacer verificación)</button>` : ''}
+    </div>
+    <p style="color:var(--faint);font-size:12px;margin-top:10px">
+      Los expedientes no se borran: en cumplimiento, el registro de que alguien intentó
+      verificarse —y qué se encontró— es justamente lo que hay que conservar. Suspender
+      retira el GID de todas las apps del ecosistema, que es el efecto que se busca al
+      «borrar» a alguien.</p>`)
 }
 
 async function aprobarIdentidad(id, bloqueos) {

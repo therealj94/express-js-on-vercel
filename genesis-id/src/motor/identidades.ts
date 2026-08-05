@@ -62,6 +62,13 @@ export function iniciar(email: string, origen: string): Identidad {
     fechaNacimientoDeclarada: null,
     paisResidencia: null,
     telefono: null,
+    direccion: null,
+    ocupacion: null,
+    origenFondos: null,
+    propositoCuenta: null,
+    volumenEsperadoUsd: null,
+    pepDeclarado: null,
+    fotoCredencial: null,
     nombreLegal: null,
     fechaNacimiento: null,
     nacionalidad: null,
@@ -87,9 +94,20 @@ export function iniciar(email: string, origen: string): Identidad {
   return identidad
 }
 
-export function declararDatos(idn: string, datos: {
-  nombreCompleto?: string; fechaNacimiento?: string; paisResidencia?: string; telefono?: string
-}, origen: string): Identidad | null {
+export interface DatosDeclarados {
+  nombreCompleto?: string
+  fechaNacimiento?: string
+  paisResidencia?: string
+  telefono?: string
+  direccion?: string
+  ocupacion?: string
+  origenFondos?: string
+  propositoCuenta?: string
+  volumenEsperadoUsd?: number
+  pepDeclarado?: boolean
+}
+
+export function declararDatos(idn: string, datos: DatosDeclarados, origen: string): Identidad | null {
   const identidad = porId(idn)
   if (!identidad) return null
   if (identidad.estado === 'verificada') {
@@ -101,7 +119,20 @@ export function declararDatos(idn: string, datos: {
   if (datos.nombreCompleto) identidad.nombreDeclarado = datos.nombreCompleto.trim()
   if (datos.fechaNacimiento) identidad.fechaNacimientoDeclarada = datos.fechaNacimiento
   if (datos.paisResidencia) identidad.paisResidencia = datos.paisResidencia.toUpperCase()
-  if (datos.telefono) identidad.telefono = datos.telefono
+  if (datos.telefono) identidad.telefono = String(datos.telefono).trim()
+  if (datos.direccion) identidad.direccion = String(datos.direccion).trim()
+  if (datos.ocupacion) identidad.ocupacion = String(datos.ocupacion).trim()
+  if (datos.origenFondos) identidad.origenFondos = String(datos.origenFondos).trim()
+  if (datos.propositoCuenta) identidad.propositoCuenta = String(datos.propositoCuenta).trim()
+  if (Number.isFinite(datos.volumenEsperadoUsd)) {
+    identidad.volumenEsperadoUsd = Math.max(0, Number(datos.volumenEsperadoUsd))
+  }
+  if (typeof datos.pepDeclarado === 'boolean') {
+    identidad.pepDeclarado = datos.pepDeclarado
+    // Declararse PEP marca la identidad. Quitarla es decisión de un operador,
+    // nunca de la propia persona: si no, bastaría con volver a declararse «no».
+    if (datos.pepDeclarado) identidad.pep = true
+  }
 
   if (identidad.estado === 'iniciada' && identidad.nombreDeclarado) identidad.estado = 'datos'
 
@@ -125,6 +156,40 @@ export function declararDatos(idn: string, datos: {
     paisResidencia: identidad.paisResidencia,
   })
   return identidad
+}
+
+/**
+ * Guarda la foto de la credencial.
+ *
+ * Es la única imagen que Genesis ID almacena, y lo hace por un motivo
+ * concreto: el GID vale en todas las apps del ecosistema, y una credencial que
+ * solo se ve completa en el teléfono que subió la foto no sirve para eso.
+ *
+ * Se acota el tamaño en serio. Una credencial necesita un cuadrado de 320 px;
+ * aceptar más sería convertir el expediente en un álbum, y cada byte guardado
+ * de una persona hay que justificarlo.
+ */
+export function guardarFotoCredencial(idn: string, base64: string, origen: string):
+  { ok: boolean; error?: string; identidad?: Identidad } {
+  const identidad = porId(idn)
+  if (!identidad) return { ok: false, error: 'Identidad no encontrada' }
+
+  const limpio = String(base64 || '').replace(/^data:image\/[a-z+]+;base64,/i, '').replace(/\s+/g, '')
+  if (!limpio) {
+    identidad.fotoCredencial = null
+  } else {
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(limpio)) return { ok: false, error: 'La foto no es base64 válido' }
+    const bytes = Math.floor((limpio.length * 3) / 4)
+    if (bytes > 400 * 1024) {
+      return { ok: false, error: `La foto pesa ${Math.round(bytes / 1024)} kB y el máximo son 400 kB` }
+    }
+    identidad.fotoCredencial = limpio
+  }
+
+  identidad.actualizadaEn = ahora()
+  store.guardar()
+  registrar(origen, 'identidad.fotoCredencial', identidad.id, { quitada: !limpio })
+  return { ok: true, identidad }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -271,6 +336,14 @@ export function recalcularRiesgo(identidad: Identidad): Identidad {
     biometria: identidad.biometria,
     pais: identidad.nacionalidad || identidad.paisResidencia,
     pep: identidad.pep,
+    faltanDatos: [
+      !identidad.telefono && 'telefono',
+      !identidad.direccion && 'direccion',
+      !identidad.ocupacion && 'ocupacion',
+      !identidad.origenFondos && 'origenFondos',
+      !identidad.propositoCuenta && 'propositoCuenta',
+      identidad.pepDeclarado === null && 'pepDeclarado',
+    ].filter(Boolean) as string[],
   })
   return identidad
 }
@@ -529,6 +602,19 @@ export function estadoParaUsuario(identidad: Identidad) {
     nombreLegal: identidad.nombreLegal,
     documentoAceptable: identidad.documento?.aceptable ?? null,
     rostroPendiente,
+    // La credencial viaja con la identidad: sin esto se ve a medias en
+    // cualquier teléfono que no sea el que subió la foto.
+    fotoCredencial: identidad.fotoCredencial
+      ? `data:image/jpeg;base64,${identidad.fotoCredencial}` : null,
+    // Qué falta del perfil de cumplimiento, para que la app lo pida.
+    faltanDatos: [
+      !identidad.telefono && 'telefono',
+      !identidad.direccion && 'direccion',
+      !identidad.ocupacion && 'ocupacion',
+      !identidad.origenFondos && 'origenFondos',
+      !identidad.propositoCuenta && 'propositoCuenta',
+      identidad.pepDeclarado === null && 'pepDeclarado',
+    ].filter(Boolean) as string[],
     // Al usuario se le dice qué le falta, no el detalle del análisis interno.
     faltan: identidad.estado === 'verificada' ? 0 : pendientes,
     siguientePaso:

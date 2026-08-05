@@ -115,14 +115,34 @@ export function routerGenesis({ exigirSesion } = {}) {
     responder(res)(creada)
   })
 
-  /** Datos que declara la persona sobre sí misma. */
+  /** Foto de la credencial: la unica imagen que Genesis ID conserva. */
+  router.post('/foto', async (req, res) => {
+    const idn = await idDe(req.usuario.email)
+    if (!idn) return res.status(404).json({ error: 'Identidad no encontrada' })
+    responder(res)(await llamar(`/api/v1/identidades/${idn}/foto`, {
+      method: 'POST', body: JSON.stringify({ foto: req.body?.foto }),
+    }))
+  })
+
+  /** Datos que declara la persona sobre sí misma, incluido el perfil AML. */
   router.post('/datos', async (req, res) => {
     const idn = await idDe(req.usuario.email)
     if (!idn) return res.status(404).json({ error: 'Identidad no encontrada' })
-    const { nombreCompleto, fechaNacimiento, paisResidencia, telefono } = req.body ?? {}
+    const b = req.body ?? {}
     responder(res)(await llamar(`/api/v1/identidades/${idn}/datos`, {
       method: 'POST',
-      body: JSON.stringify({ nombreCompleto, fechaNacimiento, paisResidencia, telefono }),
+      body: JSON.stringify({
+        nombreCompleto: b.nombreCompleto,
+        fechaNacimiento: b.fechaNacimiento,
+        paisResidencia: b.paisResidencia,
+        telefono: b.telefono,
+        direccion: b.direccion,
+        ocupacion: b.ocupacion,
+        origenFondos: b.origenFondos,
+        propositoCuenta: b.propositoCuenta,
+        volumenEsperadoUsd: b.volumenEsperadoUsd,
+        pepDeclarado: b.pepDeclarado,
+      }),
     }))
   })
 

@@ -44,6 +44,33 @@ export interface Identidad {
   fechaNacimientoDeclarada: string | null
   paisResidencia: string | null
   telefono: string | null
+  direccion: string | null
+
+  /**
+   * Perfil de cumplimiento.
+   *
+   * Estos cuatro no son burocracia: son el ÚNICO patrón contra el que se puede
+   * comparar un movimiento. Sin saber de qué vive alguien y cuánto espera
+   * mover, una alerta de monitoreo no dice nada — cualquier cifra parece
+   * normal o parece sospechosa según quien la mire. Con ellos, «recibió
+   * 40 000 dólares» se convierte en una pregunta contestable.
+   */
+  ocupacion: string | null
+  origenFondos: string | null
+  propositoCuenta: string | null
+  volumenEsperadoUsd: number | null
+  /** Lo que la persona declara sobre cargos públicos, suyos o de allegados. */
+  pepDeclarado: boolean | null
+
+  /**
+   * Foto de la credencial, en base64.
+   *
+   * La elige la persona y viaja con el GID a todas las apps del ecosistema:
+   * sin ella la credencial se ve a medias en cualquier teléfono que no sea el
+   * que la subió. Es la ÚNICA imagen que Genesis ID almacena — las del
+   * documento y las del reto de vivacidad se comparan y se descartan.
+   */
+  fotoCredencial: string | null
 
   /** Lo que dice el documento, que es lo que vale. */
   nombreLegal: string | null
