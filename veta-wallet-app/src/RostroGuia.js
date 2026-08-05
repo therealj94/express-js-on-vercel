@@ -125,6 +125,19 @@ export function SenaGesto({ gesto, tamano = 92 }) {
     );
   }
 
+  if (gesto === 'acercarse') {
+    // La cara crece: es exactamente el movimiento que se pide y que el servidor
+    // mide comparando con el fotograma de frente.
+    return (
+      <Animated.View style={{ transform: [{ scale: t.interpolate({ inputRange: [0, 1], outputRange: [0.72, 1.12] }) }] }}>
+        {cara(<>
+          {ojosNormales}
+          <Path d="M40 64 Q50 68 60 64" stroke={C.gold} strokeWidth="2.5" fill="none" strokeLinecap="round" />
+        </>)}
+      </Animated.View>
+    );
+  }
+
   // 'frente' y cualquier otro: cara neutra mirando al frente, latiendo apenas.
   return (
     <Animated.View style={{ transform: [{ scale: t.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }] }}>

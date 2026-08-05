@@ -116,6 +116,11 @@ test('faltando o sobrando fotogramas, el reto no se evalúa', async () => {
   const corto = await comprobarReto(r.id, 'idn_1', ['a', 'b'])
   assert.equal(corto.puntuacion, 0)
   assert.match(corto.motivo!, /se esperaban 4 fotogramas/i)
+  // Un múltiplo sí vale: dos fotogramas por gesto. Hace falta un reto nuevo,
+  // porque el intento anterior ya gastó el primero.
+  const r2 = emitirReto('idn_1')
+  const doble = await comprobarReto(r2.id, 'idn_1', ['a','b','c','d','e','f','g','h'])
+  assert.ok(!/se esperaban/i.test(doble.motivo || ''), 'un múltiplo de fotogramas tiene que aceptarse')
 })
 
 test('un reto es de un solo uso, aunque el intento anterior fallara', async () => {
@@ -186,19 +191,28 @@ test('ojos cerrados: con gafas de sol no se puede comprobar y se dice', () => {
 test('girar la cabeza vale hacia cualquier lado', () => {
   // A propósito: con la cámara frontal espejada, "izquierda" y "derecha" se
   // interpretan al revés según el teléfono, y eso reprobaría a gente honesta.
-  for (const guinada of [25, -25, 40, -40]) {
+  for (const guinada of [16, -16, 25, -40]) {
     assert.ok(evaluarGesto('girar-cabeza', rostro({ postura: { guinada, cabeceo: 0, alabeo: 0 } })).ok,
       `debería aceptar ${guinada}°`)
   }
-  for (const guinada of [0, 10, -15, 21]) {
+  for (const guinada of [0, 8, -10, 14]) {
     assert.equal(
       evaluarGesto('girar-cabeza', rostro({ postura: { guinada, cabeceo: 0, alabeo: 0 } })).ok, false,
       `no debería aceptar ${guinada}°`)
   }
 })
 
+test('acercarse: se mide el movimiento, no la distancia', () => {
+  // Sin referencia no se puede afirmar nada.
+  assert.equal(evaluarGesto('acercarse', rostro({ tamano: 0.5 })).ok, false)
+  // Con la cara un 40 % mas grande que en el fotograma de frente: se acerco.
+  assert.ok(evaluarGesto('acercarse', rostro({ tamano: 0.56 }), 0.4).ok)
+  // Apenas mas grande: no.
+  assert.equal(evaluarGesto('acercarse', rostro({ tamano: 0.44 }), 0.4).ok, false)
+})
+
 test('todos los gestos sorteables tienen instrucción escrita', () => {
-  const gestos: Gesto[] = ['frente', 'sonreir', 'boca-abierta', 'ojos-cerrados', 'girar-cabeza']
+  const gestos: Gesto[] = ['frente', 'sonreir', 'boca-abierta', 'ojos-cerrados', 'girar-cabeza', 'acercarse']
   for (const g of gestos) assert.ok(INSTRUCCIONES[g]?.length > 4, `falta instrucción de ${g}`)
 })
 

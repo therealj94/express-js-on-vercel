@@ -9,7 +9,6 @@ import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { leerMrz, digitoControl } from '../kyc/mrz.js'
-import { revisarDocumento } from '../kyc/documento.js'
 import { normalizar, fichas, parecidoNombres, jaroWinkler } from '../lib/texto.js'
 import { gidPersonal, gidNegocio, gidValido } from '../lib/uid.js'
 import { firmarToken, verificarToken, hashContrasena, verificarContrasena } from '../lib/cripto.js'

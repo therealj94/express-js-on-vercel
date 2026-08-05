@@ -548,6 +548,7 @@ const S = {
     'gesto.boca-abierta': 'Abre la boca',
     'gesto.ojos-cerrados': 'Cierra los ojos',
     'gesto.girar-cabeza': 'Gira la cabeza hacia un lado',
+    'gesto.acercarse': 'Acercá la cara a la cámara',
 
     'gen.errAuthT': 'Tu sesión caducó',
     'gen.errAuthP': 'Vuelve a iniciar sesión y retoma la verificación donde la dejaste.',
@@ -1211,6 +1212,7 @@ const S = {
     'gesto.boca-abierta': 'Open your mouth',
     'gesto.ojos-cerrados': 'Close your eyes',
     'gesto.girar-cabeza': 'Turn your head to one side',
+    'gesto.acercarse': 'Move your face closer to the camera',
 
     'gen.errAuthT': 'Your session expired',
     'gen.errAuthP': 'Sign in again and pick up the verification where you left it.',

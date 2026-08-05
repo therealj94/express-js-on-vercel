@@ -33,7 +33,7 @@ import { createHash, randomInt } from 'node:crypto'
 import { detectarRostro, type RostroDetectado } from './rekognition.js'
 import { id as nuevoId } from '../lib/uid.js'
 
-export type Gesto = 'frente' | 'sonreir' | 'boca-abierta' | 'ojos-cerrados' | 'girar-cabeza'
+export type Gesto = 'frente' | 'sonreir' | 'boca-abierta' | 'ojos-cerrados' | 'girar-cabeza' | 'acercarse'
 
 export const INSTRUCCIONES: Record<Gesto, string> = {
   'frente': 'Mire a la cámara de frente, con gesto neutro',
@@ -41,10 +41,11 @@ export const INSTRUCCIONES: Record<Gesto, string> = {
   'boca-abierta': 'Abra la boca',
   'ojos-cerrados': 'Cierre los ojos',
   'girar-cabeza': 'Gire la cabeza hacia un lado',
+  'acercarse': 'Acerque la cara a la cámara',
 }
 
 /** Gestos que pueden sortearse. `frente` va siempre primero y no entra en el sorteo. */
-const SORTEABLES: Gesto[] = ['sonreir', 'boca-abierta', 'ojos-cerrados', 'girar-cabeza']
+const SORTEABLES: Gesto[] = ['sonreir', 'boca-abierta', 'ojos-cerrados', 'girar-cabeza', 'acercarse']
 
 /** Cuántos gestos se piden además del de frente. */
 const CUANTOS = 3
@@ -54,8 +55,20 @@ const VIDA_MS = 120000
 const CONFIANZA_GESTO = 0.85
 /** Confianza mínima de que lo detectado es un rostro. */
 const CONFIANZA_ROSTRO = 0.9
-/** Grados de guiñada para dar por girada la cabeza. */
-const GRADOS_GIRO = 22
+/**
+ * Grados de guiñada para dar por girada la cabeza.
+ *
+ * Estaba en 22 y era inalcanzable: la persona mira la pantalla para seguir la
+ * cuenta atrás, y mirando la pantalla no se gira la cabeza mucho más de diez o
+ * quince grados. La tarea se peleaba consigo misma. A 15° sigue siendo
+ * imposible para una fotografía sostenida de frente.
+ */
+const GRADOS_GIRO = 15
+
+/** Cuánto tiene que crecer la cara para dar por hecho que se acercó. */
+const CRECIMIENTO_ACERCARSE = 1.25
+/** Fracción del ancho del cuadro que la cara debe ocupar para poder evaluarla. */
+const TAMANO_MINIMO = 0.14
 /** Nitidez mínima. Una foto de una foto pierde nitidez; una pantalla, brillo. */
 const NITIDEZ_MINIMA = 12
 
@@ -120,7 +133,9 @@ export const retosVivos = () => { purgar(); return retos.size }
  * la cabeza a un lado cualquiera es igual de difícil de falsificar con una foto
  * y no tiene ambigüedad.
  */
-export function evaluarGesto(gesto: Gesto, r: RostroDetectado): { ok: boolean; motivo?: string } {
+export function evaluarGesto(
+  gesto: Gesto, r: RostroDetectado, referencia?: number | null,
+): { ok: boolean; motivo?: string } {
   const dir = (b: { valor: boolean; confianza: number }, esperado: boolean) =>
     b.valor === esperado && b.confianza >= CONFIANZA_GESTO
 
@@ -152,6 +167,17 @@ export function evaluarGesto(gesto: Gesto, r: RostroDetectado): { ok: boolean; m
       return Math.abs(r.postura.guinada) >= GRADOS_GIRO
         ? { ok: true }
         : { ok: false, motivo: `la cabeza apenas giró (${Math.round(r.postura.guinada)}°)` }
+
+    case 'acercarse': {
+      // Se compara con el fotograma de frente: lo que se mide es el MOVIMIENTO,
+      // no la distancia absoluta, que depende del brazo de cada uno. Una
+      // fotografía sostenida ante la cámara no se acerca sola.
+      if (!referencia) return { ok: false, motivo: 'no hay con qué comparar el acercamiento' }
+      const crecio = r.tamano / referencia
+      return crecio >= CRECIMIENTO_ACERCARSE
+        ? { ok: true }
+        : { ok: false, motivo: `la cara apenas se acercó (${Math.round((crecio - 1) * 100)} % más grande)` }
+    }
   }
 }
 
@@ -213,8 +239,17 @@ export async function comprobarReto(
   if (reto.usado) return nulo('Ese reto ya se usó; pida uno nuevo')
   if (reto.identidad !== identidad) return nulo('El reto fue emitido para otra identidad')
   if (Date.now() - reto.emitidoEn > VIDA_MS) { retos.delete(reto.id); return nulo('El reto venció; pida uno nuevo') }
-  if (!Array.isArray(fotogramas) || fotogramas.length !== reto.gestos.length) {
-    return nulo(`Se esperaban ${reto.gestos.length} fotogramas, llegaron ${fotogramas?.length ?? 0}`)
+  // La app puede mandar VARIOS fotogramas por gesto, y eso es lo que salva la
+  // verificación en la práctica: entre que aparece la instrucción y se dispara
+  // la foto hay un instante, y con un solo fotograma un gesto bien hecho se
+  // pierde por llegar tarde o adelantarse. Con dos o tres basta con que uno
+  // salga bien — que es lo que hace una persona de verdad, y lo que una
+  // fotografía sigue sin poder hacer en ninguno.
+  const cuantos = reto.gestos.length
+  const total = Array.isArray(fotogramas) ? fotogramas.length : 0
+  const porGesto = total && total % cuantos === 0 ? total / cuantos : 0
+  if (!porGesto || porGesto > 4) {
+    return nulo(`Se esperaban ${cuantos} fotogramas (o un múltiplo), llegaron ${total}`)
   }
 
   // Se marca usado ANTES de analizar: si el análisis falla a medias, el reto ya
@@ -227,62 +262,62 @@ export async function comprobarReto(
   const avisos: string[] = []
   let frenteSelfie: string | null = null
   const guinadas: number[] = []
+  /** Tamaño de la cara de frente: la referencia contra la que se mide acercarse. */
+  let tamanoFrente: number | null = null
 
-  for (let i = 0; i < reto.gestos.length; i++) {
+  for (let i = 0; i < cuantos; i++) {
     const gesto = reto.gestos[i]
-    const imagen = String(fotogramas[i] || '')
+    const grupo = fotogramas.slice(i * porGesto, (i + 1) * porGesto).map(String)
 
-    const huella = createHash('sha256').update(imagen).digest('hex')
-    if (huellas.has(huella)) {
-      pasos.push({ gesto, ok: false, motivo: 'es la misma imagen que otro fotograma' })
-      continue
-    }
-    huellas.add(huella)
+    let mejor: { ok: boolean; motivo?: string; rostro: RostroDetectado; imagen: string } | null = null
+    let ultimoMotivo = 'no se ve ningún rostro'
 
-    let rostro: RostroDetectado | null
-    try {
-      rostro = await detectarRostro(imagen, `el fotograma ${i + 1}`)
-    } catch (e: any) {
-      pasos.push({ gesto, ok: false, motivo: `no se pudo analizar: ${e?.message || 'error'}` })
-      continue
+    for (const imagen of grupo) {
+      const huella = createHash('sha256').update(imagen).digest('hex')
+      if (huellas.has(huella)) { ultimoMotivo = 'es la misma imagen que otro fotograma'; continue }
+      huellas.add(huella)
+
+      let rostro: RostroDetectado | null
+      try {
+        rostro = await detectarRostro(imagen, `el fotograma ${i + 1}`)
+      } catch (e: any) {
+        ultimoMotivo = `no se pudo analizar: ${e?.message || 'error'}`
+        continue
+      }
+      if (!rostro) { ultimoMotivo = 'no se ve ningún rostro'; continue }
+      if (rostro.confianza < CONFIANZA_ROSTRO) { ultimoMotivo = 'lo que se ve no parece un rostro'; continue }
+      if (rostro.tamano < TAMANO_MINIMO) {
+        ultimoMotivo = 'la cara queda lejos: acérquela hasta llenar el óvalo'
+        continue
+      }
+      if (rostro.calidad.nitidez < NITIDEZ_MINIMA) {
+        avisos.push(`El fotograma ${i + 1} tiene poca nitidez (${rostro.calidad.nitidez.toFixed(0)}), ` +
+          'compatible con una foto de una pantalla')
+      }
+      guinadas.push(rostro.postura.guinada)
+
+      const v = evaluarGesto(gesto, rostro, tamanoFrente)
+      if (!mejor || (v.ok && !mejor.ok)) mejor = { ...v, rostro, imagen }
+      if (v.ok) break // ya salió: no hace falta gastar más análisis ni dinero
+      ultimoMotivo = v.motivo || ultimoMotivo
     }
 
-    if (!rostro) { pasos.push({ gesto, ok: false, motivo: 'no se ve ningún rostro' }); continue }
-    if (rostro.confianza < CONFIANZA_ROSTRO) {
-      pasos.push({ gesto, ok: false, motivo: 'lo que se ve no parece un rostro' }); continue
-    }
-    if (rostro.tamano < 0.12) {
-      pasos.push({ gesto, ok: false, motivo: 'el rostro queda demasiado lejos de la cámara' }); continue
-    }
-    if (rostro.calidad.nitidez < NITIDEZ_MINIMA) {
-      avisos.push(`El fotograma ${i + 1} tiene poca nitidez (${rostro.calidad.nitidez.toFixed(0)}), ` +
-        'compatible con una foto de una pantalla')
-    }
-
-    guinadas.push(rostro.postura.guinada)
-    const veredicto = evaluarGesto(gesto, rostro)
+    if (!mejor) { pasos.push({ gesto, ok: false, motivo: ultimoMotivo }); continue }
     pasos.push({
-      gesto, ok: veredicto.ok, motivo: veredicto.motivo,
-      guinada: Math.round(rostro.postura.guinada), nitidez: Math.round(rostro.calidad.nitidez),
+      gesto, ok: mejor.ok, motivo: mejor.motivo,
+      guinada: Math.round(mejor.rostro.postura.guinada),
+      nitidez: Math.round(mejor.rostro.calidad.nitidez),
     })
-    if (gesto === 'frente' && veredicto.ok) frenteSelfie = imagen
+    if (gesto === 'frente') {
+      tamanoFrente = mejor.rostro.tamano
+      if (mejor.ok) frenteSelfie = mejor.imagen
+    }
   }
 
-  // La puntuación exigía los cuatro gestos perfectos: con el umbral en 0,90 y
-  // cuatro pasos, tres aciertos daban 0,75 y la persona fallaba. En la práctica
-  // eso significaba que casi nadie pasaba, porque siempre hay un gesto que sale
-  // a medias —una sonrisa tímida, unos ojos entornados—, y quedaba esperando
-  // una revisión manual por algo que no tenía nada de sospechoso.
-  //
-  // El criterio ahora es: mirar de frente, y cumplir DOS de los tres gestos
-  // sorteados. Sigue siendo inalcanzable para una fotografía —que no cumple
-  // ninguno— y para un vídeo grabado antes, que tendría que contener por
-  // casualidad dos de los tres gestos que el servidor acaba de sortear. Lo que
-  // cambia es que ya no castiga a quien sí está delante de la cámara.
   let puntuacion = _puntuar(pasos)
 
   // Una foto quieta ante la cámara puede colar un gesto por casualidad, pero no
-  // cambia de postura entre fotogramas.
+  // cambia de postura entre fotogramas. Se mide sobre todos los analizados.
   if (guinadas.length >= 2) {
     const rango = Math.max(...guinadas) - Math.min(...guinadas)
     if (rango < 3) {

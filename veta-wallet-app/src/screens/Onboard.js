@@ -318,14 +318,22 @@ export function Kyc({ nav }) {
         }
         hap(Haptics.ImpactFeedbackStyle.Heavy); // el pulso fuerte = «ya»
 
-        const foto = await camara.current?.takePictureAsync({
-          base64: true, quality: 0.5, skipProcessing: true,
-        });
-        if (!corriendo.current) return;
-        if (!foto?.base64) { setAviso({ mal: true, txt: t('gen.errPhoto') }); reiniciarReto(); return; }
-        tomados.push(`data:image/jpeg;base64,${foto.base64}`);
+        // DOS fotos por gesto, separadas medio segundo. Es lo que salva la
+        // verificacion: entre que se lee la instruccion y se dispara hay un
+        // instante, y con una sola foto un gesto bien hecho se pierde por
+        // llegar tarde o adelantarse. Al servidor le basta con que una salga
+        // bien; una fotografia sigue sin poder hacerlo en ninguna.
+        for (let k = 0; k < 2; k++) {
+          const foto = await camara.current?.takePictureAsync({
+            base64: true, quality: 0.5, skipProcessing: true,
+          });
+          if (!corriendo.current) return;
+          if (!foto?.base64) { setAviso({ mal: true, txt: t('gen.errPhoto') }); reiniciarReto(); return; }
+          tomados.push(`data:image/jpeg;base64,${foto.base64}`);
+          if (k === 0) await dormir(450);
+        }
         setFotogramas([...tomados]);
-        await dormir(500);
+        await dormir(400);
       }
 
       setCuenta(null);
@@ -665,7 +673,7 @@ export function Kyc({ nav }) {
 
                 <View style={st.puntos}>
                   {reto.gestos.map((g, k) => (
-                    <View key={g + k} style={[st.punto, k < fotogramas.length && st.puntoHecho]} />
+                    <View key={g + k} style={[st.punto, k < Math.floor(fotogramas.length / 2) && st.puntoHecho]} />
                   ))}
                 </View>
 

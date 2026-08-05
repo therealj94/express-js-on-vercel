@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.26.0';
-export const BUILD = 62;
+export const VERSION = '1.27.0';
+export const BUILD = 63;
 export const RELEASED = '2026-08-05';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,23 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.27.0',
+    build: 63,
+    date: '2026-08-05',
+    es: [
+      'Girar la cabeza era imposible de pasar, y el motivo era una contradicción mía: para seguir la cuenta atrás hay que mirar la pantalla, y mirando la pantalla nadie gira la cabeza 22 grados. Ahora bastan 15, que una fotografía de frente sigue sin poder hacer.',
+      'Se toman DOS fotos por gesto, medio segundo aparte, y basta con que una salga bien. Antes, un gesto bien hecho se perdía por llegar tarde o adelantarse al disparo.',
+      'Gesto nuevo: acercar la cara a la cámara. Se puede hacer mirando la pantalla, y se comprueba comparando con la primera foto — o sea que se mide el movimiento, no lo largo que tengas el brazo.',
+      'Si la cara queda lejos, ahora lo dice así: «acércala hasta llenar el óvalo», en vez de dar el gesto por fallado sin explicar.',
+    ],
+    en: [
+      'Turning your head was impossible to pass, because of a contradiction on my side: following the countdown means looking at the screen, and looking at the screen nobody turns their head 22 degrees. Fifteen is now enough — still out of reach for a photograph held straight on.',
+      'TWO photos are taken per gesture, half a second apart, and one good one is enough. A well-done gesture used to be lost by being slightly early or late.',
+      'New gesture: move your face closer to the camera. It can be done while looking at the screen, and it is checked against your first photo — so what is measured is the movement, not the length of your arm.',
+      'If your face is too far, it now says «move closer until you fill the oval», instead of failing the gesture without explaining.',
+    ],
+  },
   {
     v: '1.26.0',
     build: 62,
