@@ -109,15 +109,16 @@ asigna una nueva en cada stop/start, los `--nat` quedaban apuntando a
 direcciones que ya no existían, y los nodos se anunciaban en una dirección
 inalcanzable.
 
-Los 5 nodos que no son el validador ya tienen IP elástica (fija):
+**Los 6 nodos** tienen IP elástica (fija):
 
-| Nodo  | Región    | IP elástica     |
-| ----- | --------- | --------------- |
-| node3 | us-east-1 | `54.205.125.99` |
-| node5 | us-east-1 | `18.211.40.149` |
-| node6 | us-east-1 | `3.224.143.231` |
-| node2 | us-east-2 | `18.190.14.28`  |
-| node4 | us-east-2 | `18.226.95.184` |
+| Nodo  | Región    | IP elástica     |                  |
+| ----- | --------- | --------------- | ---------------- |
+| node1 | us-east-1 | `23.23.205.33`  | **el validador** |
+| node3 | us-east-1 | `54.205.125.99` |                  |
+| node5 | us-east-1 | `18.211.40.149` |                  |
+| node6 | us-east-1 | `3.224.143.231` |                  |
+| node2 | us-east-2 | `18.190.14.28`  |                  |
+| node4 | us-east-2 | `18.226.95.184` |                  |
 
 Dos de ellas (`18.211.40.149`, `3.224.143.231`) ya estaban asignadas y sin usar
 en la cuenta — se pagaban igual. Las otras tres se asignaron nuevas. Desde
@@ -133,14 +134,26 @@ Se reiniciaron los 5 **sin reconectar nada a mano** y volvieron a encontrarse
 solos: `peerCount = 5` en todos. Antes de esto, un reinicio los dejaba
 aislados y había que reconectarlos manualmente uno por uno.
 
-### Falta node1
+### El validador también
 
-**El validador sigue sin IP elástica** (`34.203.38.219`, auto-asignada). No se
-tocó porque asociar una elástica le cambia la IP pública, y eso obliga a otro
-reinicio del validador — con su corte de cadena — además de actualizar los
-bootnodes de los otros 5 que lo referencian. Conviene hacerlo en una ventana
-planificada. Mientras tanto su `--nat` está correcto, así que funciona; el
-riesgo es solo si alguna vez se detiene y arranca la instancia.
+node1 pasó de `34.203.38.219` (auto-asignada) a `23.23.205.33` (elástica).
+Requirió un segundo reinicio del validador: volvió a responder en ~2 s y siguió
+produciendo bloques.
+
+Antes de tocarlo se verificó que el balanceador `OrdenKapital` registra a node1
+**por ID de instancia, no por IP** (`TargetType: instance`), así que cambiarle
+la IP pública no afecta al RPC público. Confirmado después: el destino siguió
+`healthy` y `ordenglobal-rpc.com` respondió sin interrupción.
+
+## Resultado
+
+Ya no hay ninguna dirección auto-asignada en la red: los `--nat` y los
+`bootnodes` de los 6 apuntan a direcciones que no cambian. Se reiniciaron los 5
+no validadores **sin reconectar nada a mano** y volvieron a formar la red
+solos (`peerCount = 5` en todos).
+
+El watchdog sigue instalado como red de seguridad para el estancamiento del
+syncer, que es un problema distinto e independiente de las IPs.
 
 Se instala en `/usr/local/bin/ogb-watchdog.sh` con
 `ogb-watchdog.service` (oneshot) + `ogb-watchdog.timer` (cada 3 min,
