@@ -701,7 +701,13 @@ VISTAS.listas = async function () {
         ${campo('Listas GAFI', `${gafi.fecha} · hace ${gafi.dias} días`)}
       </div>
       ${puede('listas.recargar') ? `<div class="acciones">
-        <button class="p" onclick="recargarListas()">Recargar y volver a tamizar a todos</button></div>` : ''}
+        <button class="p" onclick="descargarOfac()">Descargar de la OFAC</button>
+        <button class="g" onclick="recargarListas()">Recargar y volver a tamizar</button>
+        <button class="g" onclick="importarPropia()">Importar lista propia</button>
+      </div>
+      <p style="color:var(--faint);font-size:12px;margin-top:10px">
+        «Descargar de la OFAC» trae la lista oficial completa —unas 17 000 fichas— la guarda
+        y vuelve a tamizar a todas las identidades ya registradas. Tarda un minuto o dos.</p>` : ''}
     </div>
 
     <h2>Buscar en las listas</h2>
@@ -717,6 +723,32 @@ async function recargarListas() {
   const r = await api('/panel/listas/recargar', { method: 'POST' })
   avisar(`${r.registros.toLocaleString('es')} registros · ${r.revisadas} identidades retamizadas · ${r.conCoincidencias} con coincidencias`)
   ir('listas')
+}
+
+async function descargarOfac() {
+  if (!confirm('Se va a descargar la lista completa de la OFAC (unas 17 000 fichas), reemplazando '
+    + 'la que haya, y se volverá a tamizar a todas las identidades registradas.\n\n'
+    + 'Puede tardar uno o dos minutos. ¿Continuar?')) return
+  avisar('Descargando de la OFAC… puede tardar un par de minutos')
+  try {
+    const r = await api('/panel/listas/ofac', { method: 'POST' })
+    avisar(`${r.registros.toLocaleString('es')} fichas (${r.conAlias.toLocaleString('es')} con alias) · `
+      + `${r.revisadas} identidades retamizadas · ${r.conCoincidencias} con coincidencias`)
+    ir('listas')
+  } catch (e) { alert(e.message) }
+}
+
+async function importarPropia() {
+  const fuente = prompt('Nombre de la lista (ej. «PEP-Honduras», «UE-consolidada»):')
+  if (!fuente) return
+  const texto = prompt('Pegue el contenido: JSON con el formato de RegistroSancion, o CSV con el formato de la OFAC.')
+  if (!texto) return
+  avisar('Importando…')
+  try {
+    const r = await api('/panel/listas/importar', { method: 'POST', body: JSON.stringify({ texto, fuente }) })
+    avisar(`${r.registros.toLocaleString('es')} fichas importadas · ${r.revisadas} identidades retamizadas`)
+    ir('listas')
+  } catch (e) { alert(e.message) }
 }
 
 async function buscarLista() {

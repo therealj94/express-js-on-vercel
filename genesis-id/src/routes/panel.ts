@@ -7,7 +7,10 @@ import { store } from '../store.js'
 import * as ids from '../motor/identidades.js'
 import * as biz from '../motor/negocios.js'
 import * as casos from '../aml/casos.js'
-import { cargarListas, estadoListas, buscar as buscarEnListas } from '../aml/listas.js'
+import {
+  cargarListas, estadoListas, buscar as buscarEnListas,
+  importarDeOfac, importarTexto, cargarDesdeMongo,
+} from '../aml/listas.js'
 import { consultar, verificarCadena, anclaje, registrar } from '../audit/bitacora.js'
 import { crearOperador, PERMISOS } from '../auth/operadores.js'
 import { crearAplicacion, revocar, rotar, ALCANCES } from '../auth/aplicaciones.js'
@@ -245,12 +248,48 @@ panelRouter.get('/listas/buscar', exigePermiso('listas.ver'), (req, res) => {
   res.json({ resultados: buscarEnListas(String(req.query.q || '')) })
 })
 
-/** Recarga desde disco y vuelve a tamizar a todo el mundo. */
-panelRouter.post('/listas/recargar', exigePermiso('listas.recargar'), (req, res) => {
-  const cargados = cargarListas()
+/** Recarga desde el almacen (Mongo, o la carpeta) y vuelve a tamizar a todos. */
+panelRouter.post('/listas/recargar', exigePermiso('listas.recargar'), async (req, res) => {
+  const deMongo = await cargarDesdeMongo().catch(() => 0)
+  const cargados = deMongo > 0 ? deMongo : cargarListas()
   const r = ids.retamizarTodas(req.operador!.email)
   registrar(req.operador!.email, 'listas.recargadas', 'listas', { registros: cargados, ...r })
   res.json({ ok: true, registros: cargados, ...r, estado: estadoListas() })
+})
+
+/**
+ * Baja la lista de la OFAC, la guarda y vuelve a tamizar a todo el mundo.
+ *
+ * Es la via normal para poner el tamizado en marcha: no hace falta subir
+ * archivos ni montar discos. Puede tardar un minuto — son varios megabytes y
+ * unas 17 000 fichas que hay que insertar e indexar.
+ */
+panelRouter.post('/listas/ofac', exigePermiso('listas.recargar'), async (req, res) => {
+  try {
+    const r = await importarDeOfac()
+    // Retamizar despues de cargar es lo que convierte esto en algo util: si
+    // alguien ya registrado esta en la lista, aparece ahora, no la proxima vez
+    // que toque su expediente.
+    const t = ids.retamizarTodas(req.operador!.email)
+    registrar(req.operador!.email, 'listas.ofac', 'listas', { ...r, ...t })
+    res.json({ ok: true, ...r, ...t, estado: estadoListas() })
+  } catch (e: any) {
+    res.status(502).json({ error: `No se pudo traer la lista de la OFAC: ${e.message}` })
+  }
+})
+
+/** Importa una lista propia pegada como texto (JSON o CSV con formato OFAC). */
+panelRouter.post('/listas/importar', exigePermiso('listas.recargar'), async (req, res) => {
+  const { texto, fuente } = req.body ?? {}
+  if (!texto || !fuente) return res.status(400).json({ error: 'Hacen falta el texto y el nombre de la fuente' })
+  try {
+    const r = await importarTexto(String(texto), String(fuente))
+    const t = ids.retamizarTodas(req.operador!.email)
+    registrar(req.operador!.email, 'listas.importadas', String(fuente), { ...r, ...t })
+    res.json({ ok: true, ...r, ...t, estado: estadoListas() })
+  } catch (e: any) {
+    res.status(400).json({ error: e.message })
+  }
 })
 
 // ─────────────────────────────────────────────────────────────────────────────

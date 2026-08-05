@@ -44,6 +44,7 @@ function vacio(): DatosGenesis {
 
 let datos: DatosGenesis = vacio()
 let coleccion: any = null
+let baseMongo: any = null
 let pendiente: NodeJS.Timeout | null = null
 let volcando: Promise<void> = Promise.resolve()
 
@@ -77,7 +78,27 @@ async function abrirMongo(): Promise<void> {
   const { MongoClient } = await import('mongodb')
   const cliente = new MongoClient(MONGO_URL)
   await cliente.connect()
-  coleccion = cliente.db(MONGO_BASE).collection('estado')
+  baseMongo = cliente.db(MONGO_BASE)
+  coleccion = baseMongo.collection('estado')
+}
+
+/**
+ * Una colección aparte, para lo que NO cabe en el documento de estado.
+ *
+ * Todo el estado del motor vive en un único documento (`estado/genesis`), que
+ * es simple y suficiente para identidades, negocios y casos: son miles de
+ * registros, no millones.
+ *
+ * Las listas de sanciones no entran ahí. La lista de la OFAC son unas 17 000
+ * fichas con sus alias, y un documento de MongoDB no puede pasar de 16 MB —
+ * pero además, aunque cupieran, cada guardado de cualquier cosa reescribiría
+ * esos megabytes enteros. Van en su propia colección.
+ *
+ * Devuelve `null` cuando el motor es de archivo: quien la use tiene que saber
+ * arreglárselas sin ella.
+ */
+export function coleccionAparte(nombre: string): any | null {
+  return baseMongo ? baseMongo.collection(nombre) : null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

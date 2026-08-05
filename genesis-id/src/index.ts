@@ -6,7 +6,7 @@ import { dirname, join } from 'path'
 import { store, iniciar, motor } from './store.js'
 import { asegurarAdministrador, limpiarSesiones } from './auth/operadores.js'
 import { asegurarAplicaciones } from './auth/aplicaciones.js'
-import { estadoListas, hayListas } from './aml/listas.js'
+import { estadoListas, hayListas, iniciarListas } from './aml/listas.js'
 import { biometriaConfigurada } from './kyc/biometria.js'
 import { verificarCadena } from './audit/bitacora.js'
 import { sesionRouter } from './routes/sesion.js'
@@ -100,6 +100,14 @@ const debeEscuchar =
 export async function arrancar(): Promise<void> {
   await iniciar()
 
+  // Las listas se cargan DESPUES de abrir el almacen: viven en Mongo, en su
+  // propia coleccion, y antes de eso no hay de donde traerlas.
+  const fichas = await iniciarListas().catch((e) => {
+    console.error('[genesis-id] no se pudieron cargar las listas:', e?.message)
+    return 0
+  })
+  if (fichas > 0) console.log(`[genesis-id] listas de sanciones: ${fichas.toLocaleString('es')} fichas`)
+
   const admin = asegurarAdministrador()
   const appsNuevas = asegurarAplicaciones()
   limpiarSesiones()
@@ -118,7 +126,8 @@ export async function arrancar(): Promise<void> {
   if (!hayListas()) {
     avisos.push(
       'SIN LISTAS DE SANCIONES: no se puede tamizar a nadie, y por eso ninguna identidad ' +
-      'podrá aprobarse sin anulación expresa. Configure GENESIS_LISTAS_DIR.',
+      'podrá aprobarse sin anulación expresa. Cárguelas desde el panel: Listas → ' +
+      'Descargar de la OFAC.',
     )
   }
   if (!biometriaConfigurada()) {

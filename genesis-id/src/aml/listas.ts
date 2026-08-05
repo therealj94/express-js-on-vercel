@@ -28,6 +28,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from 'fs'
 import { join } from 'path'
 import { fichas, parecidoNombres, normalizar } from '../lib/texto.js'
+import { coleccionAparte } from '../store.js'
 
 export type TipoSancionado = 'persona' | 'entidad' | 'buque' | 'aeronave'
 
@@ -341,7 +342,182 @@ export function buscar(texto: string, limite = 50): RegistroSancion[] {
     .slice(0, limite)
 }
 
-/** Se intenta cargar al arrancar; si no hay carpeta, queda vacío a propósito. */
-cargarListas()
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Persistencia en MongoDB
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// POR QUE EN MONGO Y NO EN UN ARCHIVO
+//
+// La alternativa era un disco montado en Render, pero el plan gratuito no
+// tiene discos y el estado del motor ya vive en Mongo. Guardar aqui las listas
+// las hace sobrevivir a los despliegues sin costo adicional, y de paso permite
+// cargarlas desde el panel sin tocar el servidor.
+//
+// Van en su PROPIA coleccion, no en el documento de estado: son unas 17 000
+// fichas y un documento de MongoDB no pasa de 16 MB. Ademas, meterlas ahi haria
+// que cada guardado de cualquier cosa reescribiera esos megabytes.
+
+const COLECCION = 'sanciones'
+const META = 'sanciones_meta'
+
+/**
+ * Reemplaza las listas guardadas por las nuevas.
+ *
+ * Se borra y se vuelve a insertar en vez de ir actualizando ficha por ficha:
+ * una lista de sanciones es una foto de un momento, y mezclar la de hoy con la
+ * del mes pasado dejaria dentro a gente que ya salio. Eso es peor que no
+ * tenerla, porque bloquea a personas que ya no estan sancionadas.
+ */
+export async function guardarEnMongo(
+  registros: RegistroSancion[],
+  fuente: string,
+  fechaDescarga: string,
+): Promise<number> {
+  const col = coleccionAparte(COLECCION)
+  const meta = coleccionAparte(META)
+  if (!col || !meta) throw new Error('No hay MongoDB configurado: defina GENESIS_MONGO_URL')
+
+  await col.deleteMany({})
+  // Por lotes: un insertMany de 17 000 documentos de golpe puede pasarse del
+  // limite de tamaño de mensaje del servidor.
+  const LOTE = 2000
+  for (let i = 0; i < registros.length; i += LOTE) {
+    await col.insertMany(registros.slice(i, i + LOTE), { ordered: false })
+  }
+
+  await meta.updateOne(
+    { _id: 'meta' },
+    { $set: { fuente, fechaDescarga, registros: registros.length, guardadoEn: new Date().toISOString() } },
+    { upsert: true },
+  )
+  return registros.length
+}
+
+/** Trae las listas de Mongo y las indexa en memoria. */
+export async function cargarDesdeMongo(): Promise<number> {
+  const col = coleccionAparte(COLECCION)
+  const meta = coleccionAparte(META)
+  if (!col || !meta) return 0
+
+  const registros: RegistroSancion[] = await col.find({}, { projection: { _id: 0 } }).toArray()
+  if (!registros.length) {
+    indice = vacio()
+    return 0
+  }
+  const m = await meta.findOne({ _id: 'meta' })
+  indice = indexar(registros, [m?.fuente || `mongodb (${registros.length})`], m?.fechaDescarga ?? null)
+  return registros.length
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Descarga directa desde la OFAC
+// ─────────────────────────────────────────────────────────────────────────────
+
+const URL_SDN = process.env.GENESIS_OFAC_SDN || 'https://www.treasury.gov/ofac/downloads/sdn.csv'
+const URL_ALT = process.env.GENESIS_OFAC_ALT || 'https://www.treasury.gov/ofac/downloads/alt.csv'
+
+async function bajar(url: string): Promise<string> {
+  const control = new AbortController()
+  const temporizador = setTimeout(() => control.abort(), 120000)
+  try {
+    const r = await fetch(url, { signal: control.signal })
+    if (!r.ok) throw new Error(`${url} respondio ${r.status}`)
+    return await r.text()
+  } finally {
+    clearTimeout(temporizador)
+  }
+}
+
+/**
+ * Baja la lista de la OFAC, la guarda en Mongo y la deja indexada.
+ *
+ * Es la via normal para poner el tamizado en marcha: no hace falta subir
+ * archivos ni montar discos, solo pulsar el boton del panel.
+ */
+export async function importarDeOfac(): Promise<{ registros: number; conAlias: number; fuente: string }> {
+  const sdn = await bajar(URL_SDN)
+  const registros = leerSdnCsv(sdn)
+  if (!registros.length) {
+    throw new Error('La descarga de la OFAC no trajo ninguna ficha: puede que hayan cambiado el formato o la direccion')
+  }
+
+  // Los alias van en otro archivo. Si ese falla no se aborta todo: una lista
+  // sin alias sigue sirviendo, solo encuentra algo menos.
+  let conAlias = 0
+  try {
+    aplicarAlias(await bajar(URL_ALT), registros)
+    conAlias = registros.filter((r) => r.alias.length > 0).length
+  } catch (e) {
+    console.warn('[listas] no se pudieron traer los alias de la OFAC:', (e as Error)?.message)
+  }
+
+  const fecha = new Date().toISOString().slice(0, 10)
+  const fuente = `OFAC-SDN (${registros.length})`
+  await guardarEnMongo(registros, fuente, fecha)
+  await cargarDesdeMongo()
+  return { registros: registros.length, conAlias, fuente }
+}
+
+/**
+ * Importa una lista propia pegada como texto: JSON con el formato de
+ * `RegistroSancion`, o un CSV con el formato de la OFAC.
+ *
+ * Se conserva lo que ya hubiera de otras fuentes; solo se reemplaza lo que
+ * venga de esta misma.
+ */
+export async function importarTexto(
+  texto: string,
+  nombreFuente: string,
+): Promise<{ registros: number }> {
+  const t = texto.trim()
+  let nuevos: RegistroSancion[]
+
+  if (t.startsWith('[') || t.startsWith('{')) {
+    const crudo = JSON.parse(t)
+    const lista: RegistroSancion[] = Array.isArray(crudo) ? crudo : crudo.registros || []
+    nuevos = lista.filter((r) => r && r.nombre).map((r, i) => ({
+      ...r,
+      id: r.id || `${nombreFuente}-${i}`,
+      alias: r.alias || [],
+      tipo: r.tipo || 'persona',
+      lista: r.lista || nombreFuente,
+      programa: r.programa || '',
+    }))
+  } else {
+    nuevos = leerSdnCsv(t).map((r) => ({ ...r, lista: nombreFuente }))
+  }
+
+  if (!nuevos.length) throw new Error('No se reconocio ninguna ficha en el texto')
+
+  const col = coleccionAparte(COLECCION)
+  if (!col) throw new Error('No hay MongoDB configurado')
+
+  await col.deleteMany({ lista: nombreFuente })
+  const LOTE = 2000
+  for (let i = 0; i < nuevos.length; i += LOTE) {
+    await col.insertMany(nuevos.slice(i, i + LOTE), { ordered: false })
+  }
+  const total = await col.countDocuments({})
+  const meta = coleccionAparte(META)!
+  await meta.updateOne(
+    { _id: 'meta' },
+    { $set: { fuente: `varias (${total})`, fechaDescarga: new Date().toISOString().slice(0, 10), registros: total } },
+    { upsert: true },
+  )
+  await cargarDesdeMongo()
+  return { registros: nuevos.length }
+}
+
+/**
+ * Carga al arrancar. Prefiere Mongo; si no hay, cae a la carpeta.
+ * Si no hay ninguna de las dos, queda vacio a proposito.
+ */
+export async function iniciarListas(): Promise<number> {
+  const deMongo = await cargarDesdeMongo().catch(() => 0)
+  if (deMongo > 0) return deMongo
+  return cargarListas()
+}
 
 export { parecidoNombres }
