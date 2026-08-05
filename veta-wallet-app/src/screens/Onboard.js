@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, StyleSheet, TextInput, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Icon } from '../icons';
 import { C, G } from '../theme';
@@ -74,6 +75,13 @@ export function Kyc({ nav }) {
   const [reto, setReto] = useState(null);
   const [gesto, setGesto] = useState(0);
   const [fotogramas, setFotogramas] = useState([]);
+  const [cuenta, setCuenta] = useState(null);   // cuenta atrás antes de cada foto
+  const corriendo = useRef(false);              // para cortar la secuencia al salir
+
+  // Un aviso que SE QUEDA en pantalla. Los errores salían como un mensajito
+  // que se iba solo en dos segundos: si mirabas la cámara en ese momento, no
+  // llegabas a leerlo y te quedabas sin saber qué pasó ni qué hacer.
+  const [aviso, setAviso] = useState(null);
 
   async function guardarEnCuenta(vista) {
     if (!account || !vista?.genesisUid) return;
@@ -120,8 +128,8 @@ export function Kyc({ nav }) {
 
   // ---- paso 1 ----
   async function enviarDatos() {
-    if (!nombre.trim()) { toast(t('gen.needName')); return; }
-    if (!fechaValida) { toast(t('gen.needDob')); return; }
+    if (!nombre.trim()) { setAviso({ mal: true, txt: t('gen.needName') }); return; }
+    if (!fechaValida) { setAviso({ mal: true, txt: t('gen.needDob') }); return; }
     hap(); setOcupado(true);
     const r = await genesis.declararDatos({
       nombreCompleto: nombre.trim(),
@@ -129,8 +137,8 @@ export function Kyc({ nav }) {
       paisResidencia: pais,
     });
     setOcupado(false);
-    if (!r || r.error) { toast(r?.error || t('gen.errNetT')); return; }
-    setEstado(r); setPaso('documento');
+    if (!r || r.error) { setAviso({ mal: true, txt: r?.error || t('gen.errNetT') }); return; }
+    setAviso(null); setEstado(r); setPaso('documento');
   }
 
   // ---- paso 2: leer la MRZ con la cámara ----
@@ -148,7 +156,7 @@ export function Kyc({ nav }) {
     hap(); setOcupado(true);
     try {
       const foto = await camaraDoc.current?.takePictureAsync({ quality: 1, skipProcessing: true });
-      if (!foto?.uri) { toast(t('gen.errPhoto')); setOcupado(false); return; }
+      if (!foto?.uri) { setAviso({ mal: true, txt: t('gen.errPhoto') }); setOcupado(false); return; }
 
       const r = await leerDeFoto(foto.uri);
       setOcupado(false);
@@ -156,6 +164,7 @@ export function Kyc({ nav }) {
       if (r.ok) {
         setMrz(r.mrz);
         setEscaneando(false);
+        setAviso(null);
         toast(r.corregida ? t('gen.scanFixed') : t('gen.scanOk'));
         return;
       }
@@ -165,15 +174,15 @@ export function Kyc({ nav }) {
       if (r.mrz) {
         setMrz(r.mrz);
         setEscaneando(false);
-        toast(t('gen.scanPartial'));
+        setAviso({ mal: true, txt: t('gen.scanPartial') });
         return;
       }
       // «Cortadas» no es «no se ve nada»: se leyeron las lineas pero el
       // telefono estaba demasiado cerca. Decirle a alguien que busque mas luz
       // cuando lo que sobra es cercania es mandarlo a perder el tiempo.
-      if (r.motivo === 'cortadas') { toast(t('gen.scanCut')); return; }
-      toast(r.motivo === 'sin-lector' ? t('gen.scanNoReader') : t('gen.scanRetry'));
-    } catch (e) { setOcupado(false); toast(t('gen.errPhoto')); }
+      if (r.motivo === 'cortadas') { setAviso({ mal: true, txt: t('gen.scanCut') }); return; }
+      setAviso({ mal: true, txt: r.motivo === 'sin-lector' ? t('gen.scanNoReader') : t('gen.scanRetry') });
+    } catch (e) { setOcupado(false); setAviso({ mal: true, txt: t('gen.errPhoto') }); }
   }
 
   /**
@@ -188,7 +197,7 @@ export function Kyc({ nav }) {
     try {
       const ImagePicker = require('expo-image-picker');
       const permisoGaleria = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permisoGaleria?.granted) { toast(t('gen.scanNoGallery')); return; }
+      if (!permisoGaleria?.granted) { setAviso({ mal: true, txt: t('gen.scanNoGallery') }); return; }
       const sel = await ImagePicker.launchImageLibraryAsync({ quality: 1, mediaTypes: ['images'] });
       if (sel?.canceled || !sel?.assets?.[0]?.uri) return;
 
@@ -197,11 +206,12 @@ export function Kyc({ nav }) {
       setOcupado(false);
       if (r.ok || r.mrz) {
         setMrz(r.mrz); setEscaneando(false);
-        toast(r.ok ? (r.corregida ? t('gen.scanFixed') : t('gen.scanOk')) : t('gen.scanPartial'));
+        if (r.ok) toast(r.corregida ? t('gen.scanFixed') : t('gen.scanOk'));
+        else setAviso({ mal: true, txt: t('gen.scanPartial') });
         return;
       }
-      toast(r.motivo === 'cortadas' ? t('gen.scanCut') : t('gen.scanRetry'));
-    } catch (e) { setOcupado(false); toast(t('gen.scanRetry')); }
+      setAviso({ mal: true, txt: r.motivo === 'cortadas' ? t('gen.scanCut') : t('gen.scanRetry') });
+    } catch (e) { setOcupado(false); setAviso({ mal: true, txt: t('gen.scanRetry') }); }
   }
 
   async function enviarDocumento() {
@@ -223,51 +233,96 @@ export function Kyc({ nav }) {
 
   async function comenzarReto() {
     if (!permiso?.granted) { const p = await pedirPermiso(); if (!p?.granted) return; }
-    hap(); setOcupado(true);
+    hap(); setAviso(null); setOcupado(true);
     const r = await genesis.pedirReto();
     setOcupado(false);
-    if (!r || r.error) { toast(r?.error || t('gen.errNetT')); return; }
+    if (!r || r.error) { setAviso({ mal: true, txt: r?.error || t('gen.errNetT') }); return; }
     setReto(r); setGesto(0); setFotogramas([]);
+    correrReto(r);
   }
 
-  async function capturarGesto() {
-    if (!reto) return;
-    hap(); setOcupado(true);
+  /**
+   * Recorre los gestos SOLO. La persona no toca el teléfono en ningún momento.
+   *
+   * La versión anterior pedía apretar un botón después de cada gesto, y con
+   * «cierra los ojos» eso era literalmente imposible: no se puede ver el botón
+   * con los ojos cerrados, y al abrirlos para buscarlo el gesto ya no se
+   * cumple. Nadie podía terminar la verificación, y el mensaje culpaba a la luz.
+   *
+   * Ahora hay una cuenta atrás con vibración en cada número —que se siente sin
+   * mirar— y la foto se toma sola. Con los ojos cerrados se sigue por el tacto.
+   */
+  async function correrReto(r) {
+    const dormir = (ms) => new Promise((r2) => setTimeout(r2, ms));
+    const tomados = [];
+    corriendo.current = true;
     try {
-      const foto = await camara.current?.takePictureAsync({ base64: true, quality: 0.5, skipProcessing: true });
-      if (!foto?.base64) { toast(t('gen.errPhoto')); setOcupado(false); return; }
-      const tomados = [...fotogramas, `data:image/jpeg;base64,${foto.base64}`];
-      setFotogramas(tomados);
+      for (let i = 0; i < r.gestos.length; i++) {
+        setGesto(i);
+        // Un respiro para leer la instrucción antes de que empiece la cuenta.
+        setCuenta(null);
+        await dormir(1400);
+        if (!corriendo.current) return;
 
-      if (tomados.length < reto.gestos.length) {
-        setGesto(tomados.length);
-        setOcupado(false);
+        for (let c = 3; c > 0; c--) {
+          setCuenta(c);
+          hap();
+          await dormir(900);
+          if (!corriendo.current) return;
+        }
+        setCuenta(0);
+        hap(Haptics.ImpactFeedbackStyle.Heavy); // el pulso fuerte = «ya»
+
+        const foto = await camara.current?.takePictureAsync({
+          base64: true, quality: 0.5, skipProcessing: true,
+        });
+        if (!corriendo.current) return;
+        if (!foto?.base64) { setAviso({ mal: true, txt: t('gen.errPhoto') }); reiniciarReto(); return; }
+        tomados.push(`data:image/jpeg;base64,${foto.base64}`);
+        setFotogramas([...tomados]);
+        await dormir(500);
+      }
+
+      setCuenta(null);
+      setOcupado(true);
+      const res = await genesis.enviarRostro({ reto: r.id, fotogramas: tomados });
+      setOcupado(false);
+      if (!corriendo.current) return;
+      if (!res || res.error) {
+        setAviso({ mal: true, txt: res?.error || t('gen.errNetT') });
+        reiniciarReto();
         return;
       }
 
-      const r = await genesis.enviarRostro({ reto: reto.id, fotogramas: tomados });
-      setOcupado(false);
-      if (!r || r.error) { toast(r?.error || t('gen.errNetT')); reiniciarReto(); return; }
-
-      setEstado(r.estado);
+      setEstado(res.estado);
       reiniciarReto();
 
-      // Una prueba de vida fallida NO puede acabar en la cola de revisión sin
-      // más: casi siempre es mala luz o un gesto a medias, y mandar a alguien a
-      // esperar días por eso —sin ofrecerle repetir— es perder la verificación.
-      // Se queda en el paso del rostro con el motivo concreto delante.
-      const bio = r.biometria;
+      // Un cotejo fallido no puede acabar en la cola de revisión sin más: casi
+      // siempre es un gesto a medias y se repite en veinte segundos.
+      const bio = res.biometria;
       if (bio?.estado === 'fallida') {
-        const falló = (bio.gestos || []).find((g) => !g.ok);
-        toast(falló?.motivo ? `${t('gesto.' + falló.gesto)}: ${falló.motivo}` : t('gen.liveFailed'));
-        return; // sigue en 'rostro', con el botón de empezar de nuevo
+        const fallo = (bio.gestos || []).find((g) => !g.ok);
+        setAviso({
+          mal: true,
+          txt: fallo ? `${t('gesto.' + fallo.gesto)} — ${fallo.motivo || ''}` : t('gen.liveFailed'),
+        });
+        return; // sigue en 'rostro', con el botón de repetir
       }
-      if (bio?.estado === 'dudosa') toast(t('gen.liveDoubt'));
+      if (bio?.estado === 'dudosa') setAviso({ mal: false, txt: t('gen.liveDoubt') });
       setPaso('revision');
-    } catch (e) { setOcupado(false); toast(t('gen.errPhoto')); }
+    } catch (e) {
+      setOcupado(false);
+      if (corriendo.current) { setAviso({ mal: true, txt: t('gen.errPhoto') }); reiniciarReto(); }
+    } finally {
+      corriendo.current = false;
+      setCuenta(null);
+    }
   }
 
-  function reiniciarReto() { setReto(null); setGesto(0); setFotogramas([]); }
+  function reiniciarReto() {
+    corriendo.current = false;
+    setReto(null); setGesto(0); setFotogramas([]); setCuenta(null);
+  }
 
   useEffect(() => {
     if (paso !== 'listo') return;
@@ -277,6 +332,17 @@ export function Kyc({ nav }) {
 
   const forma = revisarFormaMrz(mrz);
 
+  // Poder volver atrás. No lo habia en ningun paso: si algo fallaba —un dato
+  // mal escrito, un documento que no cuadraba— la unica salida era abandonar
+  // la verificacion entera y empezar de cero.
+  const ANTERIOR = { documento: 'datos', rostro: 'documento', revision: 'rostro' };
+  function volver() {
+    const previo = ANTERIOR[paso];
+    if (!previo) return;
+    hap(); reiniciarReto(); setEscaneando(false); setAviso(null); setProblemas([]);
+    setPaso(previo);
+  }
+
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title={t('gen.title')} sub={t('gen.sub')} onBack={() => nav.go(account ? 'settings' : 'auth')} />
@@ -284,6 +350,25 @@ export function Kyc({ nav }) {
 
         {paso !== 'cargando' && paso !== 'listo' && paso !== 'fallo' && (
           <Pasos actual={paso} />
+        )}
+
+        {/* Se queda hasta que la persona lo cierra o avanza. */}
+        {aviso && (
+          <Pressable onPress={() => setAviso(null)} style={[st.warn, !aviso.mal && st.warnInfo]}>
+            <Icon name={aviso.mal ? 'alert-circle' : 'information-circle'} size={20}
+              color={aviso.mal ? '#F0776B' : C.gold} />
+            <View style={{ flex: 1 }}>
+              <Text style={st.warnTxt}>{aviso.txt}</Text>
+              <Text style={[st.warnTxt, { color: C.txt3, marginTop: 4 }]}>{t('gen.tapToClose')}</Text>
+            </View>
+          </Pressable>
+        )}
+
+        {ANTERIOR[paso] && (
+          <Pressable onPress={volver} style={st.volver}>
+            <Icon name="chevron-back" size={16} color={C.txt3} />
+            <Text style={st.volverTxt}>{t('gen.goBack')}</Text>
+          </Pressable>
         )}
 
         {paso === 'cargando' && (
@@ -416,6 +501,7 @@ export function Kyc({ nav }) {
 
                 <Card style={{ padding: 14, marginBottom: 14 }}>
                   <Text style={st.cardTitle}>{t('gen.mrzWhere')}</Text>
+                  <Text style={[st.foot2, { marginTop: 6, marginBottom: 10 }]}>{t('gen.docBack')}</Text>
                   <Text style={st.mrzEjemplo} numberOfLines={2}>
                     P&lt;HNDPEREZ&lt;&lt;JUAN&lt;CARLOS&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;{'\n'}
                     A123456781HND9005236M3012159&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;06
@@ -486,8 +572,8 @@ export function Kyc({ nav }) {
                 <Text style={st.gestoPaso}>
                   {t('gen.liveStep', { n: gesto + 1, total: reto.gestos.length })}
                 </Text>
-                {/* La instrucción va grande y sola: la persona la lee de un
-                    vistazo mientras se mira en la cámara. */}
+                {/* La instrucción va grande y sola: se lee de un vistazo
+                    mientras la persona se mira en la cámara. */}
                 <Text style={st.gestoTxt}>
                   {t(`gesto.${reto.gestos[gesto]}`) !== `gesto.${reto.gestos[gesto]}`
                     ? t(`gesto.${reto.gestos[gesto]}`)
@@ -495,16 +581,20 @@ export function Kyc({ nav }) {
                 </Text>
                 <View style={st.camaraCaja}>
                   <CameraView ref={camara} style={{ flex: 1 }} facing="front" />
+                  {cuenta !== null && (
+                    <View style={st.cuentaCapa} pointerEvents="none">
+                      <Text style={st.cuentaNum}>{cuenta > 0 ? cuenta : '✓'}</Text>
+                    </View>
+                  )}
                 </View>
                 <View style={st.puntos}>
                   {reto.gestos.map((g, k) => (
                     <View key={g + k} style={[st.punto, k < fotogramas.length && st.puntoHecho]} />
                   ))}
                 </View>
-                <Button3D
-                  title={ocupado ? t('gen.liveSending') : t('gen.liveShot')}
-                  icon="eye" onPress={capturarGesto}
-                  disabled={ocupado} style={{ marginTop: 12 }} />
+                <Text style={st.mrzPista}>
+                  {ocupado ? t('gen.liveSending') : t('gen.liveAuto')}
+                </Text>
                 <Pressable onPress={reiniciarReto} style={st.retry} disabled={ocupado}>
                   <Text style={[st.retryTxt, { color: C.txt3 }]}>{t('gen.liveRetry')}</Text>
                 </Pressable>
@@ -765,6 +855,14 @@ const st = StyleSheet.create({
   },
 
   // La instrucción del gesto tiene que leerse de reojo, mirando a la cámara.
+  warnInfo: { borderColor: 'rgba(201,169,97,0.4)', backgroundColor: 'rgba(201,169,97,0.08)' },
+  volver: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 12, paddingVertical: 4 },
+  volverTxt: { color: C.txt3, fontSize: 13 },
+  cuentaCapa: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(2,27,28,0.35)',
+  },
+  cuentaNum: { color: C.gold, fontSize: 92, fontWeight: '800' },
   foot2: { color: C.txt3, fontSize: 11.5, marginTop: -8, marginBottom: 12 },
   fecha: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   fechaCaja: {

@@ -213,3 +213,56 @@ test('sin proveedor, el resultado dice "no comprobado", nunca "correcto"', () =>
   assert.equal(r.vivacidad, null)
   assert.notEqual(r.estado, 'ok')
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// La politica de aprobacion de la prueba de vida
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { _puntuar } from '../kyc/vivacidad.js'
+
+test('exigir los cuatro gestos perfectos dejaba fuera a casi todo el mundo', () => {
+  // Este es el caso que hacia imposible verificarse: tres gestos bien y uno a
+  // medias daba 0,75, por debajo del umbral de 0,90.
+  const casi = _puntuar([
+    { gesto: 'frente', ok: true }, { gesto: 'sonreir', ok: true },
+    { gesto: 'boca-abierta', ok: true }, { gesto: 'ojos-cerrados', ok: false },
+  ] as any)
+  assert.ok(casi >= 0.9, `de frente y dos de tres deberia bastar, dio ${casi}`)
+})
+
+test('los cuatro gestos puntuan mas que los justos', () => {
+  const todos = _puntuar([
+    { gesto: 'frente', ok: true }, { gesto: 'sonreir', ok: true },
+    { gesto: 'boca-abierta', ok: true }, { gesto: 'ojos-cerrados', ok: true },
+  ] as any)
+  const justos = _puntuar([
+    { gesto: 'frente', ok: true }, { gesto: 'sonreir', ok: true },
+    { gesto: 'boca-abierta', ok: true }, { gesto: 'ojos-cerrados', ok: false },
+  ] as any)
+  assert.ok(todos > justos, 'un expediente impecable debe distinguirse de uno justo')
+})
+
+test('una fotografia sigue sin pasar', () => {
+  // Una foto puesta ante la camara cumple «de frente» y nada mas.
+  const foto = _puntuar([
+    { gesto: 'frente', ok: true }, { gesto: 'sonreir', ok: false },
+    { gesto: 'boca-abierta', ok: false }, { gesto: 'girar-cabeza', ok: false },
+  ] as any)
+  assert.ok(foto < 0.9, `una foto no puede pasar, dio ${foto}`)
+})
+
+test('un solo gesto ademas del de frente no basta', () => {
+  const uno = _puntuar([
+    { gesto: 'frente', ok: true }, { gesto: 'sonreir', ok: true },
+    { gesto: 'boca-abierta', ok: false }, { gesto: 'girar-cabeza', ok: false },
+  ] as any)
+  assert.ok(uno < 0.9, `uno de tres no puede bastar, dio ${uno}`)
+})
+
+test('sin mirar de frente no se aprueba, aunque salgan los demas', () => {
+  const sinFrente = _puntuar([
+    { gesto: 'frente', ok: false }, { gesto: 'sonreir', ok: true },
+    { gesto: 'boca-abierta', ok: true }, { gesto: 'girar-cabeza', ok: true },
+  ] as any)
+  assert.ok(sinFrente < 0.9, `sin el de frente no hay cotejo fiable, dio ${sinFrente}`)
+})

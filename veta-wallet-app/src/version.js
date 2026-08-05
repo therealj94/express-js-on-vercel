@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.24.0';
-export const BUILD = 60;
+export const VERSION = '1.25.0';
+export const BUILD = 61;
 export const RELEASED = '2026-08-05';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,27 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.25.0',
+    build: 61,
+    date: '2026-08-05',
+    es: [
+      'La foto de cada gesto se toma sola, con una cuenta atrás que vibra. Antes había que apretar un botón después de cada gesto, y con «cierra los ojos» eso era imposible: no se puede ver el botón con los ojos cerrados. Nadie podía terminar la verificación y el mensaje culpaba a la luz.',
+      'Ya no hay que hacer los cuatro gestos perfectos. Basta mirar de frente y cumplir dos de los tres. Antes uno a medias —una sonrisa tímida, unos ojos entornados— tumbaba la verificación entera.',
+      'Se puede volver al paso anterior desde cualquier pantalla. Antes, si algo fallaba, la única salida era abandonar la verificación y empezar de cero.',
+      'Los errores se quedan en pantalla hasta que los cerrás. Antes salían como un mensajito que desaparecía en dos segundos: si estabas mirando la cámara, no llegabas a leerlo.',
+      'Se dice claramente que el código está en la parte de ATRÁS del documento, y que el frente no hace falta.',
+      'Cuando un gesto falla, se nombra cuál fue y por qué, en vez de decir «1 de 4 no se cumplieron».',
+    ],
+    en: [
+      'Each gesture photo is now taken automatically, with a countdown you can feel. It used to require pressing a button after each gesture, which made «close your eyes» impossible: you cannot see the button with your eyes closed. Nobody could finish verification and the message blamed the lighting.',
+      'You no longer need all four gestures perfect. Looking straight at the camera plus two of the three is enough. One half-done gesture used to sink the whole verification.',
+      'You can go back to the previous step from any screen. If something failed, the only way out used to be abandoning verification and starting over.',
+      'Errors now stay on screen until you dismiss them. They used to vanish after two seconds — if you were looking at the camera, you never read them.',
+      'It now says clearly that the code is on the BACK of your document, and that the front is not needed.',
+      'When a gesture fails, it names which one and why, instead of «1 of 4 were not met».',
+    ],
+  },
   {
     v: '1.24.0',
     build: 60,

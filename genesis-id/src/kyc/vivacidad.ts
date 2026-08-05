@@ -140,7 +140,13 @@ export function evaluarGesto(gesto: Gesto, r: RostroDetectado): { ok: boolean; m
 
     case 'ojos-cerrados':
       if (r.gafas) return { ok: false, motivo: 'hay gafas de sol; quíteselas' }
-      return dir(r.ojosAbiertos, false) ? { ok: true } : { ok: false, motivo: 'los ojos siguen abiertos' }
+      // Detectar unos ojos cerrados es de lo menos fiable que hace cualquier
+      // proveedor —basta una pestaña visible— así que aquí se pide menos
+      // confianza que en los demás gestos. Exigir 0,85 rechazaba a gente que
+      // los tenía cerrados de verdad.
+      return !r.ojosAbiertos.valor && r.ojosAbiertos.confianza >= 0.7
+        ? { ok: true }
+        : { ok: false, motivo: 'los ojos siguen abiertos' }
 
     case 'girar-cabeza':
       return Math.abs(r.postura.guinada) >= GRADOS_GIRO
@@ -165,6 +171,23 @@ export interface ResultadoVivacidad {
   frenteSelfie: string | null
   avisos: string[]
   motivo?: string
+}
+
+/**
+ * La política de aprobación de la prueba de vida, en un solo sitio y probada.
+ *
+ * De frente, y dos de los tres gestos sorteados. Una fotografía cumple el
+ * primero y ninguno más; un vídeo grabado de antemano tendría que contener por
+ * casualidad dos de los tres que el servidor acaba de sortear.
+ */
+export function _puntuar(pasos: PasoVivacidad[]): number {
+  if (!pasos.length) return 0
+  const acertados = pasos.filter((p) => p.ok).length
+  const frenteOk = pasos.find((p) => p.gesto === 'frente')?.ok ?? false
+  const otros = pasos.filter((p) => p.gesto !== 'frente')
+  const otrosOk = otros.filter((p) => p.ok).length
+  if (frenteOk && otrosOk >= 2) return otrosOk === otros.length ? 1 : 0.93
+  return (acertados / pasos.length) * 0.8
 }
 
 const nulo = (motivo: string): ResultadoVivacidad =>
@@ -245,8 +268,18 @@ export async function comprobarReto(
     if (gesto === 'frente' && veredicto.ok) frenteSelfie = imagen
   }
 
-  const acertados = pasos.filter((p) => p.ok).length
-  let puntuacion = acertados / pasos.length
+  // La puntuación exigía los cuatro gestos perfectos: con el umbral en 0,90 y
+  // cuatro pasos, tres aciertos daban 0,75 y la persona fallaba. En la práctica
+  // eso significaba que casi nadie pasaba, porque siempre hay un gesto que sale
+  // a medias —una sonrisa tímida, unos ojos entornados—, y quedaba esperando
+  // una revisión manual por algo que no tenía nada de sospechoso.
+  //
+  // El criterio ahora es: mirar de frente, y cumplir DOS de los tres gestos
+  // sorteados. Sigue siendo inalcanzable para una fotografía —que no cumple
+  // ninguno— y para un vídeo grabado antes, que tendría que contener por
+  // casualidad dos de los tres gestos que el servidor acaba de sortear. Lo que
+  // cambia es que ya no castiga a quien sí está delante de la cámara.
+  let puntuacion = _puntuar(pasos)
 
   // Una foto quieta ante la cámara puede colar un gesto por casualidad, pero no
   // cambia de postura entre fotogramas.
@@ -264,8 +297,10 @@ export async function comprobarReto(
     pasos,
     frenteSelfie,
     avisos,
-    motivo: acertados === pasos.length ? undefined
-      : `${pasos.length - acertados} de ${pasos.length} gestos no se cumplieron`,
+    // El motivo nombra el gesto concreto que falló: «no se cumplieron 1 de 4»
+    // no le dice a nadie qué repetir.
+    motivo: pasos.every((p) => p.ok) ? undefined
+      : pasos.filter((p) => !p.ok).map((p) => `${p.gesto}: ${p.motivo || 'no se cumplió'}`).join('; '),
   }
 }
 
