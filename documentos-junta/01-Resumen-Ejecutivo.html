@@ -70,12 +70,12 @@ cada persona, y la cadena registra lo que esas personas hacen.</figcaption></fig
 
 <h3>Dónde está exactamente</h3>
 <p>Los cinco nodos nuevos están descargando el historial de la cadena. Última medición:</p>
-<table><thead><tr><th>Nodo</th><th>Bloque</th><th>Avance</th><th>Estado</th></tr></thead><tbody><tr><td>node2</td><td>2.320.187</td><td>56,1 %</td><td>avanzando</td></tr><tr><td>node3</td><td>2.188.895</td><td>52,9 %</td><td>avanzando</td></tr><tr><td>node4</td><td>2.319.951</td><td>56,1 %</td><td>avanzando</td></tr><tr><td>node5</td><td>2.319.945</td><td>56,1 %</td><td>avanzando</td></tr><tr><td>node6</td><td>2.319.962</td><td>56,1 %</td><td>avanzando</td></tr></tbody></table>
-<p style="font-size:9pt;color:#5C6B68">Alturas leídas en cada nodo el 5 de agosto a las 21:07 UTC.
-Porcentajes calculados sobre la altura de la cadena verificada esa misma noche a las 23:26 UTC:
-4.135.067 bloques. Ritmo de copia sostenido de unos 1.180 bloques por minuto.</p>
+<table><thead><tr><th>Nodo</th><th>Bloque</th><th>Avance</th><th>Estado</th></tr></thead><tbody><tr><td>node2</td><td>2.523.115</td><td>61,0 %</td><td>avanzando</td></tr><tr><td>node3</td><td>2.379.256</td><td>57,5 %</td><td>avanzando</td></tr><tr><td>node4</td><td>2.522.836</td><td>61,0 %</td><td>avanzando</td></tr><tr><td>node5</td><td>2.522.785</td><td>61,0 %</td><td>avanzando</td></tr><tr><td>node6</td><td>2.522.865</td><td>61,0 %</td><td>avanzando</td></tr></tbody></table>
+<p style="font-size:9pt;color:#5C6B68">Alturas leídas en cada nodo el 5 de agosto a las 23:51 UTC,
+contra una altura de cadena de 4.135.164 bloques verificada en ese mismo minuto. Los cinco
+copian a unos 1.570 bloques por minuto y ninguno ha necesitado que el vigilante intervenga.</p>
 
-<div class="nota riesgo"><b class="t">El riesgo crítico abierto</b>La cadena funciona con <b>un solo validador</b>. Si ese nodo se detiene, la cadena se detiene: no hay quien produzca bloques. Los cinco nodos nuevos estarán listos en unas 25 horas, pero activarlos exige tres decisiones que corresponden a la Junta —cuántos validadores, cuánto ORIGEN en garantía y desde qué billetera— y no pueden tomarse por vía técnica.</div>
+<div class="nota riesgo"><b class="t">El riesgo crítico abierto</b>La cadena funciona con <b>un solo validador</b>. Si ese nodo se detiene, la cadena se detiene: no hay quien produzca bloques. Cuatro de los cinco nodos nuevos estarán listos en unas 17 horas y el quinto en unas 23, pero activarlos exige tres decisiones que corresponden a la Junta —cuántos validadores, cuánto ORIGEN en garantía y desde qué billetera— y no pueden tomarse por vía técnica.</div>
 
 <div class="salto"></div>
 <h2>2 · Veta Wallet</h2>
@@ -107,7 +107,7 @@ puede saltar y ninguna aplicación puede aprobar por su cuenta.</strong></p>
 <h2>Qué falta, y de quién depende</h2>
 
 <h3>Decisiones de la Junta</h3>
-<table><thead><tr><th>Decisión</th><th>Por qué importa</th><th>Plazo</th></tr></thead><tbody><tr><td>Cuántos validadores activar</td><td>Hoy hay uno solo: un único punto de fallo para toda la cadena</td><td>Al terminar la sincronización (~25 h)</td></tr><tr><td>Cuánto ORIGEN en garantía por validador</td><td>Define el coste de atacar la red</td><td>Con lo anterior</td></tr><tr><td>Desde qué billetera sale ese ORIGEN</td><td>Es un movimiento de tesorería</td><td>Con lo anterior</td></tr><tr><td>Si MyTokenPay entra al ecosistema ahora</td><td>Su clave está emitida y sin usar</td><td>Cuando se decida</td></tr></tbody></table>
+<table><thead><tr><th>Decisión</th><th>Por qué importa</th><th>Plazo</th></tr></thead><tbody><tr><td>Cuántos validadores activar</td><td>Hoy hay uno solo: un único punto de fallo para toda la cadena</td><td>Al terminar la sincronización (17-23 h)</td></tr><tr><td>Cuánto ORIGEN en garantía por validador</td><td>Define el coste de atacar la red</td><td>Con lo anterior</td></tr><tr><td>Desde qué billetera sale ese ORIGEN</td><td>Es un movimiento de tesorería</td><td>Con lo anterior</td></tr><tr><td>Si MyTokenPay entra al ecosistema ahora</td><td>Su clave está emitida y sin usar</td><td>Cuando se decida</td></tr></tbody></table>
 
 <h3>Tareas administrativas pendientes</h3>
 <table><thead><tr><th>Tarea</th><th>Quién</th><th>Consecuencia de no hacerlo</th></tr></thead><tbody><tr><td>Cambiar la contraseña del administrador de Genesis ID</td><td>Dirección</td><td>La clave del panel de cumplimiento sigue siendo la inicial</td></tr><tr><td>Crear credencial permanente de nube para los nodos</td><td>Administrador de la nube</td><td>El seguimiento de los nodos se interrumpe</td></tr><tr><td>Permisos para copias de seguridad automáticas</td><td>Administrador de la nube</td><td>Los nodos no tienen respaldo automático</td></tr><tr><td>Logotipo de la red en formato PNG</td><td>Marca</td><td>La red no puede publicarse en directorios públicos</td></tr><tr><td>Acceso al repositorio de la billetera web</td><td>Dirección</td><td>El riesgo de doble envío en web sigue abierto</td></tr></tbody></table>

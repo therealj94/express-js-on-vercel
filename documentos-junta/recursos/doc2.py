@@ -123,11 +123,11 @@ VALIDADORES = f'''<svg viewBox="0 0 560 206" xmlns="http://www.w3.org/2000/svg">
 </svg>'''
 
 PROGRESO = barra_progreso([
-    ("node2", 56.1, "2.320.187 · 56,1 %"),
-    ("node3", 52.9, "2.188.895 · 52,9 %"),
-    ("node4", 56.1, "2.319.951 · 56,1 %"),
-    ("node5", 56.1, "2.319.945 · 56,1 %"),
-    ("node6", 56.1, "2.319.962 · 56,1 %"),
+    ("node2", 61.0, "2.523.115 · 61,0 %"),
+    ("node3", 57.5, "2.379.256 · 57,5 %"),
+    ("node4", 61.0, "2.522.836 · 61,0 %"),
+    ("node5", 61.0, "2.522.785 · 61,0 %"),
+    ("node6", 61.0, "2.522.865 · 61,0 %"),
 ])
 
 cuerpo = portada(
@@ -155,7 +155,7 @@ ella sin modificaciones.</p>
   ["Identificador de la red", "8532", "<code>eth_chainId</code> → <code>0x2154</code>"],
   ["Moneda propia", "ORIGEN · 18 decimales", "declarada en la red y en el registro público"],
   ["Un bloque cada", "15,3 segundos", "medido sobre 51.200 bloques reales"],
-  ["Altura de la cadena", "4.135.067 bloques", "<code>eth_blockNumber</code>, 23:26 UTC"],
+  ["Altura de la cadena", "4.135.164 bloques", "<code>eth_blockNumber</code>, 23:51 UTC"],
   ["Capacidad por bloque", "10.000.000 de gas", "leído del último bloque"],
   ["Coste de transacción", "0", "<code>eth_gasPrice</code> → <code>0x0</code>"],
   ["Consenso", "IBFT con garantía en depósito", "contrato del sistema activo en la cadena"],
@@ -399,25 +399,22 @@ Es un proceso largo por su propia naturaleza: hay más de cuatro millones de blo
 uno se verifica al recibirlo.</p>
 
 <figure>{PROGRESO}
-<figcaption>Alturas leídas directamente en cada nodo el 5 de agosto a las 21:07 UTC.
-Porcentaje calculado sobre una altura de cadena de 4.135.067 bloques.</figcaption></figure>
+<figcaption>Alturas leídas directamente en cada nodo el 5 de agosto a las 23:51 UTC, contra
+una altura de cadena de 4.135.164 bloques verificada en ese mismo minuto.</figcaption></figure>
 
-{cifras(("15,3 s", "un bloque cada"), ("4.135.067", "altura de la cadena"),
-        ("~1.180", "bloques copiados por minuto"), ("~25 h", "para terminar"))}
+{cifras(("15,3 s", "un bloque cada"), ("4.135.164", "altura de la cadena"),
+        ("~1.570", "bloques copiados por minuto"), ("17-23 h", "para terminar"))}
 
-<p>Al ritmo medido, a los nodos les quedan alrededor de <strong>25 horas</strong> de copia.
-El detalle que hace esto viable: la cadena avanza a unos <strong>4 bloques por minuto</strong>
-y los nodos copian a <strong>1.180 por minuto</strong>. Van casi trescientas veces más rápido
-que la meta, así que la alcanzan sin discusión.</p>
+<p>Al ritmo medido les quedan unas <strong>17 horas</strong> de copia a cuatro de ellos, y
+unas 23 a node3, que va algo más atrás. El detalle que hace esto viable: la cadena avanza a
+unos <strong>4 bloques por minuto</strong> y los nodos copian a <strong>1.570 por minuto</strong>.
+Van unas cuatrocientas veces más rápido que la meta, así que la alcanzan sin discusión.</p>
 
-{nota("Una nota de método sobre esta sección",
- "Las alturas de los nodos son de las 21:07 UTC. Al preparar este documento se intentó "
- "releerlas y el sistema de administración remota de AWS respondió <code>AccessDenied</code>: "
- "las credenciales temporales en uso ya no permiten ejecutar órdenes en las máquinas. "
- "<b>No es una falla de los nodos</b> —se verificó que las cinco máquinas están encendidas, "
- "con los controles de salud en verde y su agente de administración conectado hace minutos—, "
- "sino de los permisos de la credencial. Por eso las alturas llevan la hora de su lectura y no "
- "se presentan como actuales.")}
+{nota("La salud de los cinco, leída en la misma medición",
+ "Cada nodo ve a los otros <b>cinco</b> vecinos: la red está completa y ninguno quedó aislado. "
+ "El vigilante registra «avanzando ok» en las tres últimas revisiones de los cinco, así que "
+ "<b>no ha tenido que intervenir ni una vez</b> en esta tanda. De disco van holgados: los de "
+ "30 GB usan 8,7 y los de 40 GB, 6,6 — sobra sitio para el resto de la cadena.", "bien")}
 
 <h2>9 · Cómo se llega a la cadena desde afuera</h2>
 
@@ -466,7 +463,7 @@ nodo atendiendo, esa comprobación es mucho más segura.</li>
 
 <h3>Decisiones de la Junta</h3>
 {tabla(["Qué", "Cuándo", "Si no se hace"], [
-  ["Cuántos validadores activar", "Al terminar la sincronización (~25 h)", "La cadena sigue con un único punto de falla"],
+  ["Cuántos validadores activar", "Al terminar la sincronización (17-23 h)", "La cadena sigue con un único punto de falla"],
   ["Cuánto ORIGEN en garantía por validador", "Con lo anterior", "No se puede activar ninguno"],
   ["Desde qué billetera sale ese ORIGEN", "Con lo anterior", "No se puede activar ninguno"],
   ["Si se registra la red en Chainlist ahora o después", "Tras activar validadores", "La red no aparece en las billeteras del mundo"],

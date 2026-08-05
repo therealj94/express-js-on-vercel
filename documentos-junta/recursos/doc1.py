@@ -87,19 +87,19 @@ cada persona, y la cadena registra lo que esas personas hacen.</figcaption></fig
 <h3>Dónde está exactamente</h3>
 <p>Los cinco nodos nuevos están descargando el historial de la cadena. Última medición:</p>
 {tabla(["Nodo", "Bloque", "Avance", "Estado"], [
-  ["node2", "2.320.187", "56,1 %", "avanzando"],
-  ["node3", "2.188.895", "52,9 %", "avanzando"],
-  ["node4", "2.319.951", "56,1 %", "avanzando"],
-  ["node5", "2.319.945", "56,1 %", "avanzando"],
-  ["node6", "2.319.962", "56,1 %", "avanzando"],
+  ["node2", "2.523.115", "61,0 %", "avanzando"],
+  ["node3", "2.379.256", "57,5 %", "avanzando"],
+  ["node4", "2.522.836", "61,0 %", "avanzando"],
+  ["node5", "2.522.785", "61,0 %", "avanzando"],
+  ["node6", "2.522.865", "61,0 %", "avanzando"],
 ])}
-<p style="font-size:9pt;color:#5C6B68">Alturas leídas en cada nodo el 5 de agosto a las 21:07 UTC.
-Porcentajes calculados sobre la altura de la cadena verificada esa misma noche a las 23:26 UTC:
-4.135.067 bloques. Ritmo de copia sostenido de unos 1.180 bloques por minuto.</p>
+<p style="font-size:9pt;color:#5C6B68">Alturas leídas en cada nodo el 5 de agosto a las 23:51 UTC,
+contra una altura de cadena de 4.135.164 bloques verificada en ese mismo minuto. Los cinco
+copian a unos 1.570 bloques por minuto y ninguno ha necesitado que el vigilante intervenga.</p>
 
 {nota("El riesgo crítico abierto",
  "La cadena funciona con <b>un solo validador</b>. Si ese nodo se detiene, la cadena se detiene: "
- "no hay quien produzca bloques. Los cinco nodos nuevos estarán listos en unas 25 horas, pero "
+ "no hay quien produzca bloques. Cuatro de los cinco nodos nuevos estarán listos en unas 17 horas y el quinto en unas 23, pero "
  "activarlos exige tres decisiones que corresponden a la Junta —cuántos validadores, cuánto "
  "ORIGEN en garantía y desde qué billetera— y no pueden tomarse por vía técnica.", "riesgo")}
 
@@ -162,7 +162,7 @@ puede saltar y ninguna aplicación puede aprobar por su cuenta.</strong></p>
 
 <h3>Decisiones de la Junta</h3>
 {tabla(["Decisión", "Por qué importa", "Plazo"], [
-  ["Cuántos validadores activar", "Hoy hay uno solo: un único punto de fallo para toda la cadena", "Al terminar la sincronización (~25 h)"],
+  ["Cuántos validadores activar", "Hoy hay uno solo: un único punto de fallo para toda la cadena", "Al terminar la sincronización (17-23 h)"],
   ["Cuánto ORIGEN en garantía por validador", "Define el coste de atacar la red", "Con lo anterior"],
   ["Desde qué billetera sale ese ORIGEN", "Es un movimiento de tesorería", "Con lo anterior"],
   ["Si MyTokenPay entra al ecosistema ahora", "Su clave está emitida y sin usar", "Cuando se decida"],
