@@ -267,6 +267,9 @@ export const genesis = {
    * y decide; la app no puntúa nada, solo enseña el resultado.
    */
   async enviarRostro({ reto, fotogramas, fotoDocumento }) {
+    // `fotoDocumento` es la foto del anverso, reducida. Viaja SOLO en este
+    // momento y solo para el cotejo: Genesis ID compara y la descarta, no la
+    // almacena en ningun sitio. Sin ella no hay con que comparar el rostro.
     const r = await puente('/biometria', { reto, fotogramas, fotoDocumento });
     if (!r.ok) return { error: r.error, code: r.code };
     const vista = aVista(r.datos?.identidad);

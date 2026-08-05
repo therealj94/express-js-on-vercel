@@ -74,6 +74,10 @@ export function Kyc({ nav }) {
   // documento no sale del telefono, y sin embargo el nombre completo —el que
   // la MRZ corta— si llega a Genesis ID para poder cotejarlo.
   const [textoAnverso, setTextoAnverso] = useState('');
+  // Y la foto del anverso, reducida. Sin ella el rostro NO se puede cotejar:
+  // comparar dos caras exige dos caras. Se manda una sola vez, en el momento
+  // del cotejo, y Genesis ID no la guarda — compara y la descarta.
+  const [fotoAnverso, setFotoAnverso] = useState(null);
 
   // Paso 3 — rostro y prueba de vida
   const [permiso, pedirPermiso] = useCameraPermissions();
@@ -150,6 +154,26 @@ export function Kyc({ nav }) {
     setAviso(null); setEstado(r); setPaso('documento');
   }
 
+  /**
+   * Reduce la foto antes de mandarla.
+   *
+   * `quality` comprime pero NO cambia el tamaño: una foto de 12 megapíxeles
+   * sigue pesando dos megas, y en base64 casi tres. Con ocho fotogramas eso
+   * son veinte megas y el servidor devolvía 413 —«demasiado grande»— sin que
+   * la persona pudiera hacer nada al respecto.
+   *
+   * A 720 píxeles de ancho cada fotograma baja a unos 60 kB. El análisis de
+   * rostro no necesita más resolución que esa, y de paso la subida deja de
+   * tardar una eternidad con datos móviles.
+   */
+  async function encoger(uri) {
+    const r = await ImageManipulator.manipulateAsync(
+      uri, [{ resize: { width: 720 } }],
+      { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+    );
+    return r?.base64 ? `data:image/jpeg;base64,${r.base64}` : null;
+  }
+
   // ---- paso 2: leer la MRZ con la cámara ----
   //
   // La foto NO sale del teléfono: el reconocimiento es local y lo único que
@@ -177,12 +201,14 @@ export function Kyc({ nav }) {
       const foto = await camaraDoc.current?.takePictureAsync({ quality: 1, skipProcessing: true });
       if (!foto?.uri) { setAviso({ mal: true, txt: t('gen.errPhoto') }); setOcupado(false); return; }
       const texto = await leerTexto(foto.uri);
+      const pequena = await encoger(foto.uri);
       setOcupado(false);
       if (!texto || texto.length < 12) {
         setAviso({ mal: true, txt: t('gen.frontRetry') });
         return;
       }
       setTextoAnverso(texto);
+      setFotoAnverso(pequena);
       setEscaneando(false);
       setAviso(null);
       toast(t('gen.frontOk'));
@@ -289,26 +315,6 @@ export function Kyc({ nav }) {
    * Ahora hay una cuenta atrás con vibración en cada número —que se siente sin
    * mirar— y la foto se toma sola. Con los ojos cerrados se sigue por el tacto.
    */
-  /**
-   * Reduce la foto antes de mandarla.
-   *
-   * `quality` comprime pero NO cambia el tamaño: una foto de 12 megapíxeles
-   * sigue pesando dos megas, y en base64 casi tres. Con ocho fotogramas eso
-   * son veinte megas y el servidor devolvía 413 —«demasiado grande»— sin que
-   * la persona pudiera hacer nada al respecto.
-   *
-   * A 720 píxeles de ancho cada fotograma baja a unos 60 kB. El análisis de
-   * rostro no necesita más resolución que esa, y de paso la subida deja de
-   * tardar una eternidad con datos móviles.
-   */
-  async function encoger(uri) {
-    const r = await ImageManipulator.manipulateAsync(
-      uri, [{ resize: { width: 720 } }],
-      { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true },
-    );
-    return r?.base64 ? `data:image/jpeg;base64,${r.base64}` : null;
-  }
-
   async function correrReto(r) {
     const dormir = (ms) => new Promise((r2) => setTimeout(r2, ms));
     const tomados = [];
@@ -362,7 +368,9 @@ export function Kyc({ nav }) {
 
       setCuenta(null);
       setOcupado(true);
-      const res = await genesis.enviarRostro({ reto: r.id, fotogramas: tomados });
+      const res = await genesis.enviarRostro({
+        reto: r.id, fotogramas: tomados, fotoDocumento: fotoAnverso,
+      });
       setOcupado(false);
       if (!corriendo.current) return;
       if (!res || res.error) {
@@ -680,6 +688,16 @@ export function Kyc({ nav }) {
             ) : !reto ? (
               <>
                 <Text style={st.body}>{t('gen.liveIntro')}</Text>
+                {/* Sin la foto del anverso no hay con que comparar el rostro:
+                    mas vale decirlo aqui que dejar la verificacion en espera. */}
+                {!fotoAnverso && (
+                  <View style={[st.warn, st.warnInfo]}>
+                    <Icon name="information-circle" size={20} color={C.gold} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={st.warnTxt}>{t('gen.needFront')}</Text>
+                    </View>
+                  </View>
+                )}
                 <Button3D title={t('gen.liveStart')} icon="finger-print" onPress={comenzarReto}
                   disabled={ocupado} style={{ marginTop: 16 }} />
               </>

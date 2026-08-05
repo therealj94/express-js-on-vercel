@@ -156,6 +156,26 @@ async function cotejarConRekognition(entrada: EntradaBiometria): Promise<Resulta
   const proveedor = `aws-rekognition:${regionRekognition()}`
   const avisos = [...(entrada.avisosVivacidad || [])]
 
+  // SIN FOTO DEL DOCUMENTO NO HAY COTEJO, Y ESO NO ES UN FALLO.
+  //
+  // Comparar un rostro exige dos rostros. Si no llegó el del documento no es
+  // que no coincida: es que no se pudo mirar. Devolver «fallida» ahí acusaba a
+  // la persona de algo que no hizo —pasó de verdad, con la prueba de vida al
+  // 100 %— y la mandaba a una cola de revisión sin decir qué faltaba.
+  if (!String(entrada.fotoDocumento || '').trim()) {
+    return {
+      estado: 'dudosa',
+      parecido: null,
+      vivacidad: entrada.vivacidad ?? null,
+      proveedor,
+      motivo: 'No llegó la foto del documento, así que el rostro no se pudo cotejar. ' +
+        'Hace falta que un operador lo compare a mano.',
+      evaluadoEn: ahora(),
+      ...(entrada.pasosVivacidad?.length ? { pasosVivacidad: entrada.pasosVivacidad } : {}),
+      ...(avisos.length ? { avisos } : {}),
+    }
+  }
+
   try {
     // Un selfie con dos caras es motivo de revisión: la segunda podría ser la
     // persona que sostiene el teléfono ante alguien que no está participando.
