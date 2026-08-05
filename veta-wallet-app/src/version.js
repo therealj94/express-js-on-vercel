@@ -10,15 +10,34 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.20.1';
-export const BUILD = 56;
-export const RELEASED = '2026-08-04';
+export const VERSION = '1.21.0';
+export const BUILD = 57;
+export const RELEASED = '2026-08-05';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.21.0',
+    build: 57,
+    date: '2026-08-05',
+    es: [
+      'La verificación de identidad ahora comprueba que sos vos quien está delante de la cámara, y no una fotografía. Genesis ID sortea tres gestos al azar en ese momento —sonreír, abrir la boca, cerrar los ojos, girar la cabeza— y los comprueba uno por uno.',
+      'El rostro se compara con la foto del documento de forma automática. Antes esa comparación la tenía que hacer una persona a mano en cada verificación.',
+      'Se quitó el envío de una sola foto, que no permitía distinguir a una persona de una imagen suya sacada de internet.',
+      'Arreglado: el envío de la foto fallaba con un error de tamaño y solo decía "no se pudo enviar la foto".',
+      'Arreglados cuatro iconos de la pantalla de verificación que se dibujaban como un hueco vacío.',
+    ],
+    en: [
+      'Identity verification now checks that you are the one in front of the camera, not a photograph. Genesis ID picks three gestures at random right then — smile, open your mouth, close your eyes, turn your head — and checks them one by one.',
+      'Your face is now matched against your document photo automatically. That comparison used to be done by hand on every verification.',
+      'Removed the single-photo submission, which could not tell a person apart from a picture of them taken off the internet.',
+      'Fixed: sending the photo failed with a size error and only said "the photo could not be sent".',
+      'Fixed four icons on the verification screen that rendered as an empty gap.',
+    ],
+  },
   {
     v: '1.20.1',
     build: 56,

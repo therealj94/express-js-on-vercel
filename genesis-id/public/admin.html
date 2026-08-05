@@ -282,8 +282,9 @@ VISTAS.resumen = async function () {
   if (!s.bitacora.integra) avisos.push(['grave', 'Bitácora alterada',
     `La cadena se rompe en la entrada ${s.bitacora.rotaEn}. Alguien modificó el registro.`])
   if (!s.sso) avisos.push(['', 'Sin inicio de sesión único', 'Falta definir GENESIS_SSO_SECRETO.'])
-  if (s.listasGafi.dias > 180) avisos.push(['', 'Listas del GAFI antiguas',
-    `Las incrustadas son de la plenaria del ${s.listasGafi.fecha}, hace ${s.listasGafi.dias} días.`])
+  if (s.listasGafi.vencidas) avisos.push(['', 'Listas del GAFI antiguas',
+    `Las vigentes son de la plenaria del ${s.listasGafi.fecha}, hace ${s.listasGafi.dias} días. `
+    + 'El GAFI se reúne unas tres veces al año: Listas → Actualizar listas del GAFI.'])
 
   $('#vista').innerHTML = `
     ${avisos.length ? `<div class="avisos">${avisos.map(([g, t, x]) =>
@@ -716,6 +717,12 @@ VISTAS.listas = async function () {
         <button class="p" onclick="descargarOfac()">Descargar de la OFAC</button>
         <button class="g" onclick="recargarListas()">Recargar y volver a tamizar</button>
         <button class="g" onclick="importarPropia()">Importar lista propia</button>
+        <button class="g" onclick="actualizarGafi()">Actualizar listas del GAFI</button>
+      </div>
+      <div class="ficha" style="margin-top:12px">
+        ${campo('GAFI · llamamiento a la acción', gafi.altoRiesgo.join(', ') || '—')}
+        ${campo('GAFI · vigilancia intensificada', `${gafi.vigilancia.length} países: ${gafi.vigilancia.join(', ')}`)}
+        ${campo('Origen', gafi.origen === 'incrustada' ? 'semilla del código' : gafi.origen)}
       </div>
       <p style="color:var(--faint);font-size:12px;margin-top:10px">
         «Descargar de la OFAC» trae la lista oficial completa —unas 17 000 fichas— la guarda
@@ -759,6 +766,41 @@ async function importarPropia() {
   try {
     const r = await api('/panel/listas/importar', { method: 'POST', body: JSON.stringify({ texto, fuente }) })
     avisar(`${r.registros.toLocaleString('es')} fichas importadas · ${r.revisadas} identidades retamizadas`)
+    ir('listas')
+  } catch (e) { alert(e.message) }
+}
+
+/**
+ * Sustituye las listas del GAFI.
+ *
+ * Se piden los códigos ISO de tres letras separados por coma. Se rellenan con
+ * lo que hay vigente para que actualizar sea quitar dos y añadir dos, que es lo
+ * que cambia en una plenaria normal — y no volver a teclear veintidós países,
+ * que es como se cuela un error.
+ */
+async function actualizarGafi() {
+  const { gafi } = await api('/panel/listas')
+  const fecha = prompt('Fecha de la plenaria (AAAA-MM-DD).\n\n'
+    + 'La fuente oficial es fatf-gafi.org → High-risk and other monitored jurisdictions.', gafi.fecha)
+  if (!fecha) return
+  const altoRiesgo = prompt('Llamamiento a la acción («lista negra»), códigos ISO-3 separados por coma:',
+    gafi.altoRiesgo.join(', '))
+  if (altoRiesgo === null) return
+  const vigilancia = prompt('Vigilancia intensificada («lista gris»), códigos ISO-3 separados por coma:',
+    gafi.vigilancia.join(', '))
+  if (vigilancia === null) return
+
+  const partir = (s) => s.split(',').map((x) => x.trim().toUpperCase()).filter(Boolean)
+  try {
+    const r = await api('/panel/listas/gafi', {
+      method: 'POST',
+      body: JSON.stringify({ fecha, altoRiesgo: partir(altoRiesgo), vigilancia: partir(vigilancia) }),
+    })
+    const cambios = []
+    if (r.cambios.entraron.length) cambios.push(`entraron ${r.cambios.entraron.join(', ')}`)
+    if (r.cambios.salieron.length) cambios.push(`salieron ${r.cambios.salieron.join(', ')}`)
+    avisar(`Listas del GAFI al ${r.gafi.fecha}${cambios.length ? ' · ' + cambios.join(' · ') : ' · sin cambios'}`)
+    if (r.aviso) alert(r.aviso)
     ir('listas')
   } catch (e) { alert(e.message) }
 }

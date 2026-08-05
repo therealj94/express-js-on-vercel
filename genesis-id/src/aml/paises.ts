@@ -4,36 +4,102 @@
 //
 // El GAFI (FATF) revisa sus listas en cada plenaria, unas tres veces al año, y
 // los países entran y salen. Una lista incrustada en el código envejece sola y
-// en pocos meses miente. Por eso:
+// en pocos meses miente — y eso ya pasó aquí: las primeras listas se quedaron
+// 530 días sin tocar, con Argelia y Namibia marcadas como vigiladas cuando ya
+// habían salido, y sin Irak ni Bosnia, que ya habían entrado.
 //
-//   - cada lista lleva la fecha de la plenaria de la que salió, y esa fecha se
-//     muestra en el panel de cumplimiento junto a cada resultado;
-//   - se pueden sustituir sin tocar el código, apuntando GENESIS_LISTAS_DIR a
-//     una carpeta con los archivos actualizados;
-//   - si la fecha tiene más de 180 días, el motor avisa de que están vencidas.
+// Así que ahora:
+//
+//   - la lista incrustada es solo la SEMILLA, la que vale el primer día;
+//   - un operador de cumplimiento la sustituye desde el panel en un minuto,
+//     sin desplegar nada, y queda guardada en Mongo con la fecha de plenaria
+//     y quién la cargó;
+//   - la fecha se muestra en el panel junto a cada resultado, y si tiene más
+//     de 180 días el motor lo dice en cada evaluación de riesgo.
 //
 // La fuente oficial es fatf-gafi.org/publications/high-risk-and-other-monitored-jurisdictions
 
-/** Plenaria de la que salieron las listas incrustadas. */
-export const FECHA_LISTAS_GAFI = '2025-02-21'
+import { coleccionAparte } from '../store.js'
 
 /**
- * Llamamiento a la acción del GAFI ("lista negra"): jurisdicciones con
- * deficiencias graves donde se exige diligencia reforzada y, en el caso de
- * Irán y Corea del Norte, contramedidas.
+ * Semilla: plenaria del 17-19 de junio de 2026.
+ *
+ * Llamamiento a la acción ("lista negra"): deficiencias graves, diligencia
+ * reforzada y —en Irán y Corea del Norte— contramedidas.
+ * Vigilancia intensificada ("lista gris"): países con un plan de acción
+ * comprometido. No obligan a contramedidas, pero sí a mirar con más cuidado.
  */
-export const GAFI_ALTO_RIESGO = new Set(['IRN', 'PRK', 'MMR'])
+const SEMILLA = {
+  fecha: '2026-06-19',
+  altoRiesgo: ['IRN', 'PRK', 'MMR'],
+  vigilancia: [
+    'AGO', 'BOL', 'BIH', 'BGR', 'CMR', 'CIV', 'COD', 'HTI', 'IRQ', 'KEN',
+    'KWT', 'LAO', 'LBN', 'MCO', 'NPL', 'PNG', 'SSD', 'SYR', 'VEN', 'VNM',
+    'VGB', 'YEM',
+  ],
+}
+
+let fechaGafi = SEMILLA.fecha
+let origenGafi = 'incrustada'
+let cargadaPor: string | null = null
+let altoRiesgo = new Set(SEMILLA.altoRiesgo)
+let vigilancia = new Set(SEMILLA.vigilancia)
+
+export const fechaListasGafi = () => fechaGafi
+export const gafiAltoRiesgo = () => [...altoRiesgo].sort()
+export const gafiVigilancia = () => [...vigilancia].sort()
+
+export const estadoGafi = () => ({
+  fecha: fechaGafi,
+  dias: diasDesdeActualizacion(),
+  vencidas: listasVencidas(),
+  origen: origenGafi,
+  cargadaPor,
+  altoRiesgo: gafiAltoRiesgo(),
+  vigilancia: gafiVigilancia(),
+})
 
 /**
- * Vigilancia intensificada del GAFI ("lista gris"): países comprometidos con
- * un plan de acción. No obligan a contramedidas, pero sí a mirar con más
- * cuidado.
+ * Sustituye las listas del GAFI.
+ *
+ * Los códigos que no existan se rechazan y se devuelven: un error de tecleo
+ * en un ISO no puede pasar en silencio, porque el país que se creía marcado
+ * quedaría sin marcar y nadie lo notaría hasta que fuera tarde. Por lo mismo,
+ * una lista vacía de vigilancia se rechaza: el GAFI nunca ha publicado una.
  */
-export const GAFI_VIGILANCIA = new Set([
-  'DZA', 'AGO', 'BGR', 'BFA', 'CMR', 'CIV', 'HRV', 'COD', 'HTI', 'KEN', 'LBN',
-  'MLI', 'MCO', 'MOZ', 'NAM', 'NPL', 'NGA', 'ZAF', 'SSD', 'SYR', 'TZA', 'VEN',
-  'VNM', 'YEM',
-])
+export function aplicarGafi(
+  entrada: { fecha?: string; altoRiesgo?: string[]; vigilancia?: string[] },
+  origen: string,
+  quien: string | null = null,
+): { ok: boolean; error?: string; desconocidos: string[] } {
+  const fecha = String(entrada.fecha || '').trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || Number.isNaN(Date.parse(fecha + 'T00:00:00Z'))) {
+    return { ok: false, error: 'Hace falta la fecha de la plenaria en formato AAAA-MM-DD', desconocidos: [] }
+  }
+  if (Date.parse(fecha + 'T00:00:00Z') > Date.now() + 86400000) {
+    return { ok: false, error: 'La fecha de la plenaria está en el futuro', desconocidos: [] }
+  }
+
+  const limpiar = (xs: unknown) =>
+    (Array.isArray(xs) ? xs : []).map((x) => String(x || '').trim().toUpperCase()).filter(Boolean)
+  const alto = limpiar(entrada.altoRiesgo)
+  const vig = limpiar(entrada.vigilancia)
+
+  const desconocidos = [...new Set([...alto, ...vig])].filter((c) => !ISO3.has(c))
+  if (desconocidos.length) {
+    return { ok: false, error: `Códigos ISO no reconocidos: ${desconocidos.join(', ')}`, desconocidos }
+  }
+  if (!vig.length) {
+    return { ok: false, error: 'La lista de vigilancia intensificada llegó vacía', desconocidos: [] }
+  }
+
+  fechaGafi = fecha
+  altoRiesgo = new Set(alto)
+  vigilancia = new Set(vig)
+  origenGafi = origen
+  cargadaPor = quien
+  return { ok: true, desconocidos: [] }
+}
 
 /** Países bajo sanciones amplias. Aquí no se abre cuenta: se rechaza. */
 export const SANCION_INTEGRAL = new Set(['IRN', 'PRK', 'SYR', 'CUB'])
@@ -46,8 +112,8 @@ export type NivelPais = 'prohibido' | 'alto' | 'medio' | 'normal'
 export function nivelPais(iso3: string): NivelPais {
   const c = String(iso3 || '').toUpperCase()
   if (SANCION_INTEGRAL.has(c)) return 'prohibido'
-  if (GAFI_ALTO_RIESGO.has(c)) return 'prohibido'
-  if (GAFI_VIGILANCIA.has(c) || REGIONES_RESTRINGIDAS.has(c)) return 'alto'
+  if (altoRiesgo.has(c)) return 'prohibido'
+  if (vigilancia.has(c) || REGIONES_RESTRINGIDAS.has(c)) return 'alto'
   if (!ISO3.has(c)) return 'medio' // código desconocido: no se asume que esté bien
   return 'normal'
 }
@@ -55,8 +121,8 @@ export function nivelPais(iso3: string): NivelPais {
 export function motivoPais(iso3: string): string | null {
   const c = String(iso3 || '').toUpperCase()
   if (SANCION_INTEGRAL.has(c)) return `${nombrePais(c)} está bajo sanciones integrales`
-  if (GAFI_ALTO_RIESGO.has(c)) return `${nombrePais(c)} está en el llamamiento a la acción del GAFI`
-  if (GAFI_VIGILANCIA.has(c)) return `${nombrePais(c)} está bajo vigilancia intensificada del GAFI`
+  if (altoRiesgo.has(c)) return `${nombrePais(c)} está en el llamamiento a la acción del GAFI`
+  if (vigilancia.has(c)) return `${nombrePais(c)} está bajo vigilancia intensificada del GAFI`
   if (REGIONES_RESTRINGIDAS.has(c)) return `${nombrePais(c)} tiene sanciones sectoriales vigentes`
   if (!ISO3.has(c)) return `Código de país no reconocido: ${c}`
   return null
@@ -64,11 +130,50 @@ export function motivoPais(iso3: string): string | null {
 
 /** ¿Hace cuánto se actualizaron las listas? El panel lo muestra. */
 export function diasDesdeActualizacion(): number {
-  const d = new Date(FECHA_LISTAS_GAFI + 'T00:00:00Z')
+  const d = new Date(fechaGafi + 'T00:00:00Z')
   return Math.floor((Date.now() - d.getTime()) / 86400000)
 }
 
 export const listasVencidas = () => diasDesdeActualizacion() > 180
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Persistencia
+// ─────────────────────────────────────────────────────────────────────────────
+
+const COLECCION = 'gafi'
+
+/** Guarda las listas vigentes para que sobrevivan al siguiente despliegue. */
+export async function guardarGafiEnMongo(quien: string): Promise<boolean> {
+  const col = coleccionAparte(COLECCION)
+  if (!col) return false
+  await col.replaceOne({ _id: 'vigente' }, {
+    _id: 'vigente',
+    fecha: fechaGafi,
+    altoRiesgo: gafiAltoRiesgo(),
+    vigilancia: gafiVigilancia(),
+    cargadaPor: quien,
+    guardadaEn: new Date().toISOString(),
+  }, { upsert: true })
+  return true
+}
+
+/**
+ * Trae las listas guardadas, si las hay.
+ *
+ * Si no hay nada en Mongo se queda la semilla del código, que es lo correcto
+ * el primer día. Y si lo guardado fuera MÁS VIEJO que la semilla, tampoco se
+ * aplica: un despliegue con listas nuevas no puede quedar pisado por lo que
+ * alguien cargó hace un año.
+ */
+export async function cargarGafiDesdeMongo(): Promise<boolean> {
+  const col = coleccionAparte(COLECCION)
+  if (!col) return false
+  const d = await col.findOne({ _id: 'vigente' })
+  if (!d?.fecha) return false
+  if (Date.parse(d.fecha) < Date.parse(SEMILLA.fecha)) return false
+  const r = aplicarGafi(d, 'mongo', d.cargadaPor || null)
+  return r.ok
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ISO 3166-1 alfa-3

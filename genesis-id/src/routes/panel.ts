@@ -15,7 +15,7 @@ import { consultar, verificarCadena, anclaje, registrar } from '../audit/bitacor
 import { crearOperador, PERMISOS } from '../auth/operadores.js'
 import { crearAplicacion, revocar, rotar, ALCANCES } from '../auth/aplicaciones.js'
 import { biometriaConfigurada, proveedorBiometria } from '../kyc/biometria.js'
-import { FECHA_LISTAS_GAFI, diasDesdeActualizacion } from '../aml/paises.js'
+import { estadoGafi, aplicarGafi, guardarGafiEnMongo, fechaListasGafi, diasDesdeActualizacion } from '../aml/paises.js'
 import { DOCUMENTOS_EXIGIDOS, UMBRAL_UBO } from '../motor/negocios.js'
 import type { Rol } from '../types.js'
 
@@ -58,7 +58,7 @@ panelRouter.get('/resumen', (_req, res) => {
       almacen: store.estado(),
       listas: estadoListas(),
       biometria: biometriaConfigurada() ? proveedorBiometria() : 'sin proveedor',
-      listasGafi: { fecha: FECHA_LISTAS_GAFI, dias: diasDesdeActualizacion() },
+      listasGafi: estadoGafi(),
       bitacora: verificarCadena(),
       apps: d.aplicaciones.filter((a) => a.activa).length,
       sso: Boolean(process.env.GENESIS_SSO_SECRETO),
@@ -241,7 +241,40 @@ panelRouter.get('/casos/:id/reporte', exigePermiso('caso.reportar'), (req, res) 
 // ─────────────────────────────────────────────────────────────────────────────
 
 panelRouter.get('/listas', exigePermiso('listas.ver'), (_req, res) => {
-  res.json({ estado: estadoListas(), gafi: { fecha: FECHA_LISTAS_GAFI, dias: diasDesdeActualizacion() } })
+  res.json({ estado: estadoListas(), gafi: estadoGafi() })
+})
+
+/**
+ * Sustituye las listas del GAFI sin desplegar nada.
+ *
+ * Se pide `listas.recargar` porque cambiar esto cambia el riesgo de cada país:
+ * quitar un código de aquí es dejar de marcar a todo un país, y eso tiene que
+ * quedar firmado en la bitácora con nombre y apellido.
+ *
+ *   { "fecha": "2026-06-19", "altoRiesgo": ["IRN","PRK","MMR"], "vigilancia": ["AGO", ...] }
+ */
+panelRouter.post('/listas/gafi', exigePermiso('listas.recargar'), async (req, res) => {
+  const antes = estadoGafi()
+  const r = aplicarGafi(req.body ?? {}, `panel:${req.operador!.email}`, req.operador!.email)
+  if (!r.ok) return res.status(400).json({ error: r.error, desconocidos: r.desconocidos })
+
+  const guardadas = await guardarGafiEnMongo(req.operador!.email).catch(() => false)
+  const ahora = estadoGafi()
+  const salieron = antes.vigilancia.filter((c) => !ahora.vigilancia.includes(c))
+  const entraron = ahora.vigilancia.filter((c) => !antes.vigilancia.includes(c))
+
+  registrar(req.operador!.email, 'listas.gafi', 'gafi', {
+    fecha: ahora.fecha, entraron, salieron, persistidas: guardadas,
+  })
+  res.json({
+    gafi: ahora,
+    cambios: { entraron, salieron },
+    // Si no hay Mongo, esto se pierde en el próximo despliegue y hay que
+    // decirlo: creer que quedó guardado y que no sea así es peor que no tenerlo.
+    persistidas: guardadas,
+    aviso: guardadas ? undefined
+      : 'No hay almacén persistente: estas listas se pierden en el próximo reinicio',
+  })
 })
 
 panelRouter.get('/listas/buscar', exigePermiso('listas.ver'), (req, res) => {

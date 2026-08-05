@@ -15,7 +15,7 @@
 
 import type { Hallazgo, RevisionDocumento } from '../kyc/documento.js'
 import type { ResultadoTamiz } from './tamiz.js'
-import { nivelPais, motivoPais, listasVencidas, FECHA_LISTAS_GAFI } from './paises.js'
+import { nivelPais, motivoPais, listasVencidas, fechaListasGafi } from './paises.js'
 import type { ResultadoBiometria } from '../kyc/biometria.js'
 
 export type NivelRiesgo = 'bajo' | 'medio' | 'alto' | 'inaceptable'
@@ -129,7 +129,7 @@ export function evaluarRiesgo(e: EntradaRiesgo): EvaluacionRiesgo {
     }
     if (listasVencidas()) {
       sumar('pais.listasViejas', 5,
-        `Las listas del GAFI incrustadas son de la plenaria del ${FECHA_LISTAS_GAFI}`)
+        `Las listas del GAFI son de la plenaria del ${fechaListasGafi()}`)
     }
   }
 

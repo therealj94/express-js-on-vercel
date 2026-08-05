@@ -7,6 +7,7 @@ import { store, iniciar, motor } from './store.js'
 import { asegurarAdministrador, limpiarSesiones } from './auth/operadores.js'
 import { asegurarAplicaciones } from './auth/aplicaciones.js'
 import { estadoListas, hayListas, iniciarListas } from './aml/listas.js'
+import { cargarGafiDesdeMongo, estadoGafi, listasVencidas } from './aml/paises.js'
 import { biometriaConfigurada, proveedorBiometria } from './kyc/biometria.js'
 import { verificarCadena } from './audit/bitacora.js'
 import { sesionRouter } from './routes/sesion.js'
@@ -113,6 +114,14 @@ export async function arrancar(): Promise<void> {
   })
   if (fichas > 0) console.log(`[genesis-id] listas de sanciones: ${fichas.toLocaleString('es')} fichas`)
 
+  // Las del GAFI son otra cosa y viven aparte: no son nombres de personas sino
+  // países, caben en dos líneas y las mantiene a mano el equipo de cumplimiento.
+  await cargarGafiDesdeMongo().catch(() => false)
+  const gafi = estadoGafi()
+  console.log(
+    `[genesis-id] listas del GAFI: plenaria del ${gafi.fecha} (${gafi.origen}) · ` +
+    `${gafi.altoRiesgo.length} en llamamiento, ${gafi.vigilancia.length} bajo vigilancia`)
+
   const admin = asegurarAdministrador()
   const appsNuevas = asegurarAplicaciones()
   limpiarSesiones()
@@ -143,6 +152,13 @@ export async function arrancar(): Promise<void> {
     )
   } else {
     console.log(`[genesis-id] biometría: ${proveedorBiometria()}`)
+  }
+  if (listasVencidas()) {
+    avisos.push(
+      `LISTAS DEL GAFI VENCIDAS: las vigentes son de la plenaria del ${gafi.fecha}, hace ` +
+      `${gafi.dias} días. El GAFI se reúne unas tres veces al año; actualícelas en el panel: ` +
+      'Listas → Actualizar GAFI.',
+    )
   }
   if (!process.env.GENESIS_SSO_SECRETO) {
     avisos.push('SIN GENESIS_SSO_SECRETO: el inicio de sesión único entre apps está desactivado.')
