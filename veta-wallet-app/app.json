@@ -2,7 +2,7 @@
   "expo": {
     "name": "Veta Wallet",
     "slug": "veta-wallet",
-    "version": "1.27.0",
+    "version": "1.28.0",
     "owner": "vetawallet",
     "runtimeVersion": {
       "policy": "sdkVersion"
@@ -30,7 +30,7 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryAddUsageDescription": "Veta Wallet guarda en tus fotos el código QR de tu dirección cuando eliges descargarlo."
       },
-      "buildNumber": "63",
+      "buildNumber": "64",
       "privacyManifests": {
         "NSPrivacyAccessedAPITypes": [
           {
@@ -75,7 +75,7 @@
         "RECEIVE_BOOT_COMPLETED",
         "WAKE_LOCK"
       ],
-      "versionCode": 63,
+      "versionCode": 64,
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_EXTERNAL_STORAGE",

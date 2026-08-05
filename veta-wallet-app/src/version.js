@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.27.0';
-export const BUILD = 63;
+export const VERSION = '1.28.0';
+export const BUILD = 64;
 export const RELEASED = '2026-08-05';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,25 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.28.0',
+    build: 64,
+    date: '2026-08-05',
+    es: [
+      'Arreglado el error 413 al enviar el rostro. Las fotos salían sin reducir —dos megas cada una, ocho en total— y el servidor las rechazaba. Ahora se reducen a 720 píxeles antes de enviarlas: de 784 kB a 28 kB cada una, y el análisis no pierde nada.',
+      'De paso, la subida deja de tardar una eternidad con datos móviles: el envío entero pasó de veinte megas a menos de medio.',
+      'Los botones del sistema Android ya no tapan el menú de abajo. La app no estaba contemplando la barra de navegación del teléfono.',
+      'Se explica lo de los dos disparos: de cada gesto se toman DOS fotos seguidas y basta con que una salga bien. Antes se oían dos flashes sin ninguna explicación. Durante la toma se ve «Foto 1 de 2 — no te muevas».',
+      'Instrucciones más claras antes de empezar: qué va a pasar, dónde poner la cara y hasta cuándo mantener cada gesto.',
+    ],
+    en: [
+      'Fixed error 413 when submitting your face. Photos were sent without resizing — two megabytes each, eight in total — and the server rejected them. They are now reduced to 720 pixels first: from 784 kB down to 28 kB each, with no loss for the analysis.',
+      'As a result, uploading no longer takes forever on mobile data: the whole submission went from twenty megabytes to under half a megabyte.',
+      'Android system buttons no longer cover the bottom menu. The app was not accounting for the phone navigation bar.',
+      'The two shutter sounds are now explained: TWO photos are taken per gesture and one good one is enough. You used to hear two flashes with no explanation. During capture it now shows «Photo 1 of 2 — hold still».',
+      'Clearer instructions before starting: what will happen, where to put your face, and how long to hold each gesture.',
+    ],
+  },
   {
     v: '1.27.0',
     build: 63,
