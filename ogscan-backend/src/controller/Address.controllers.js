@@ -9,25 +9,54 @@ export const getTransactionsByAddress = async (req, res) => {
   try {
     const { address } = req.params;
 
-    const addressData = await Transaction.find({
-      $or: [{ from: address.toLowerCase() }, { to: address.toLowerCase() }],
-    }).sort({ timestamp: -1 });
+    // Sin validar, una direccion mal escrita hacia que web3.eth.getBalance
+    // lanzara y la respuesta era un 500 generico. Se valida y se responde 400.
+    if (!/^0x[a-fA-F0-9]{40}$/.test(String(address || ""))) {
+      return res.status(400).json({
+        error: "Se espera una direccion (0x + 40 caracteres)",
+        recibido: address,
+      });
+    }
+
+    const addr = address.toLowerCase();
+
+    // `timestamp` es String en el esquema, asi que .sort({ timestamp: -1 })
+    // ordenaba alfabeticamente. Se ordena por numero de bloque real.
+    const addressData = await Transaction.aggregate([
+      { $match: { $or: [{ from: addr }, { to: addr }] } },
+      { $addFields: { _bn: { $toDouble: { $ifNull: ["$blockNumber", "0"] } },
+                      _ti: { $toDouble: { $ifNull: ["$transactionIndex", "0"] } } } },
+      { $sort: { _bn: -1, _ti: -1 } },
+    ]);
 
     const allTransactions = addressData.map((transaction) =>
       createTransactionData(transaction)
     );
 
-    const balanceWei = await web3.eth.getBalance(address);
-    const balanceEther = web3.utils.fromWei(balanceWei, "ether");
-    const result = await getTokenBalances(address);
+    // El saldo nativo y el de los tokens son consultas independientes al nodo.
+    // Antes se pedian en serie (await, await, await…): la respuesta tardaba la
+    // suma de todas. Se piden en paralelo. Y si el nodo falla en el saldo, la
+    // direccion se muestra igual con sus transacciones en vez de dar un 500.
+    let balanceEther = null;
+    let tokensBalance = {};
+    try {
+      const [balanceWei, tk] = await Promise.all([
+        web3.eth.getBalance(addr),
+        getTokenBalances(addr),
+      ]);
+      balanceEther = web3.utils.fromWei(balanceWei, "ether");
+      tokensBalance = tk;
+    } catch (e) {
+      console.error("[getTransactionsByAddress] saldo:", e.message);
+    }
 
     res.status(200).json({
       transactions: allTransactions,
       balance: balanceEther,
-      tokensBalance: result,
+      tokensBalance,
     });
   } catch (error) {
-    console.log(error);
+    console.error("[getTransactionsByAddress]", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 };
@@ -89,29 +118,30 @@ const tokenAddresses = {
 };
 
 const getTokenBalances = async (walletAddress) => {
-  const results = {};
+  // Se consultan los tres tokens a la vez, no uno tras otro. Y si uno falla
+  // (contrato caido, nodo lento), los demas se muestran igual — antes un solo
+  // fallo hacia caer la respuesta entera de la direccion.
+  const entradas = await Promise.all(
+    Object.entries(tokenAddresses).map(async ([symbol, address]) => {
+      try {
+        const token = new web3.eth.Contract(ABI, address);
+        const [name, balanceRaw] = await Promise.all([
+          token.methods.name().call(),
+          token.methods.balanceOf(walletAddress).call(),
+        ]);
+        return [symbol, {
+          name,
+          balance: web3.utils.fromWei(balanceRaw, "ether").toString(),
+          contractAddress: address,
+        }];
+      } catch (e) {
+        console.error(`[getTokenBalances] ${symbol}:`, e.message);
+        return [symbol, { name: symbol, balance: "0", contractAddress: address, error: true }];
+      }
+    })
+  );
 
-  for (const [symbol, address] of Object.entries(tokenAddresses)) {
-    const token = new web3.eth.Contract(ABI, address);
-
-    const [name, balanceRaw] = await Promise.all([
-      token.methods.name().call(),
-      token.methods.balanceOf(walletAddress).call(),
-    ]);
-
-    const balance = web3.utils.fromWei(
-      balanceRaw,
-      "ether"
-    );
-
-    results[symbol] = {
-      name,
-      balance: balance.toString(),
-      contractAddress: address,
-    };
-  }
-
-  return results;
+  return Object.fromEntries(entradas);
 };
 
 function createTransactionData(transaction) {

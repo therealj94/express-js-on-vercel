@@ -113,6 +113,11 @@ function fecha(ts) {
   const n = Number(ts || 0);
   return n ? new Date(n * 1000).toLocaleString("es") : "—";
 }
+// El destino puede ser null (creacion de contrato). Se evita mostrar "→ "
+// vacio o el "0x000…" mal formado que antes venia del backend.
+function destinoCorto(x) {
+  return x.to ? esc(corto(x.to, 8, 6)) : "creación de contrato";
+}
 // El valor llega como "0." o "1.5" segun el token; se normaliza para mostrar.
 function valor(v) {
   const s = String(v ?? "0").replace(/\.$/, "");
@@ -200,7 +205,7 @@ async function vistaInicio(app) {
     $("#tx").innerHTML = t.length ? t.slice(0, 10).map(x => `
       <div class="fila"><div class="izq">
         <a href="/tx/${esc(x.hash)}" data-ruta class="mono cortar">${esc(corto(x.hash, 14, 8))}</a>
-        <div class="sub mono cortar">${esc(corto(x.from, 8, 6))} → ${esc(corto(x.to, 8, 6))}</div>
+        <div class="sub mono cortar">${esc(corto(x.from, 8, 6))} → ${destinoCorto(x)}</div>
       </div><div class="der">${hace(x.timestamp)}</div></div>`).join("")
       : `<div class="aviso">Sin transacciones para mostrar.</div>`;
   }).catch(e => { $("#tx").innerHTML = err(e.message); });
@@ -221,14 +226,15 @@ async function vistaBloques(app) {
 }
 
 async function vistaTxs(app) {
-  app.innerHTML = cajaBuscar() + `<h2>Últimas transacciones</h2><div class="panel" id="l"><div class="cargando">Cargando…</div></div>`;
+  app.innerHTML = cajaBuscar() + `<h2>Últimas transacciones<span id="ntot" style="color:var(--txt3);font-weight:400;font-size:13px"></span></h2><div class="panel" id="l"><div class="cargando">Cargando…</div></div>`;
   try {
     const d = await api("/transaction/allTransactions?lastTransaction=50");
     const t = d.transactions || [];
+    if (d.total) $("#ntot").textContent = ` · ${num(d.total)} en total`;
     $("#l").innerHTML = t.length ? t.map(x => `
       <div class="fila"><div class="izq">
         <a href="/tx/${esc(x.hash)}" data-ruta class="mono cortar">${esc(corto(x.hash, 20, 10))}</a>
-        <div class="sub mono cortar">${esc(corto(x.from, 10, 6))} → ${esc(corto(x.to, 10, 6))}</div>
+        <div class="sub mono cortar">${esc(corto(x.from, 10, 6))} → ${destinoCorto(x)}</div>
       </div><div class="der">${hace(x.timestamp)}</div></div>`).join("")
       : `<div class="aviso">Sin transacciones.</div>`;
   } catch (e) { $("#l").innerHTML = err(e.message); }
@@ -284,13 +290,28 @@ async function vistaTx(app, hash) {
     const r = await api(`/transaction/transaction/${encodeURIComponent(hash)}`);
     const t = r.transaction || r.transactionInfo || r;
     if (!t || !t.hash) throw new Error("No se encontró esa transacción.");
+
+    // Una transferencia de token se ve, en crudo, como valor 0 hacia el
+    // contrato. El backend ya decodifica el `input`; si viene, se muestra el
+    // destinatario y la cantidad reales en vez de "Para: <contrato>, Valor: 0".
+    const tr = t.transferencia;
+    const filaDestino = t.to
+      ? `<tr><td class="k">Para</td><td class="v mono"><a href="/address/${esc(t.to)}" data-ruta>${esc(t.to)}</a>${tr ? ` <span class="pill">contrato de token</span>` : ""}</td></tr>`
+      : `<tr><td class="k">Para</td><td class="v"><span class="pill">creación de contrato</span></td></tr>`;
+
+    const filasToken = tr ? `
+      <tr><td class="k">Tipo</td><td class="v">Transferencia de token ${t.symbol ? `<span class="pill">${esc(t.symbol)}</span>` : ""}</td></tr>
+      <tr><td class="k">Destinatario</td><td class="v mono"><a href="/address/${esc(tr.destino)}" data-ruta>${esc(tr.destino)}</a></td></tr>
+      <tr><td class="k">Cantidad</td><td class="v">${valor(tr.cantidad)} ${esc(t.symbol || "")}</td></tr>` : "";
+
     $("#d").innerHTML = `<table>
       <tr><td class="k">Hash</td><td class="v mono">${esc(t.hash)}</td></tr>
       <tr><td class="k">Bloque</td><td class="v"><a href="/block/${esc(t.blockNumber)}" data-ruta>#${num(t.blockNumber)}</a></td></tr>
       <tr><td class="k">Fecha</td><td class="v">${fecha(t.timestamp)} <span class="pill">${hace(t.timestamp)}</span></td></tr>
       <tr><td class="k">De</td><td class="v mono"><a href="/address/${esc(t.from)}" data-ruta>${esc(t.from)}</a></td></tr>
-      <tr><td class="k">Para</td><td class="v mono"><a href="/address/${esc(t.to)}" data-ruta>${esc(t.to)}</a></td></tr>
-      <tr><td class="k">Valor</td><td class="v">${valor(t.value)}</td></tr>
+      ${filaDestino}
+      <tr><td class="k">Valor nativo</td><td class="v">${valor(t.value)} ORIGEN</td></tr>
+      ${filasToken}
       <tr><td class="k">Precio del gas</td><td class="v">${num(t.gasPrice)}</td></tr>
       <tr><td class="k">Nonce</td><td class="v">${esc(t.nonce)}</td></tr>
     </table>`;
