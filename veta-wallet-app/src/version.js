@@ -10,8 +10,8 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.28.0';
-export const BUILD = 64;
+export const VERSION = '1.29.0';
+export const BUILD = 65;
 export const RELEASED = '2026-08-05';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -19,6 +19,23 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.29.0',
+    build: 65,
+    date: '2026-08-05',
+    es: [
+      'El frente del documento ya no puede tumbar una verificación. Si la cámara no logra leer el nombre ahí —la cédula está impresa sobre una filigrana de colores y suele fotografiarse de lado— queda como aviso, no como bloqueo. Que no se lea no prueba nada; quien decide es el código del reverso, que lleva dígitos de control.',
+      'Las cifras que aparezcan dentro de un apellido se corrigen solas. En una cédula real se leyó «ENAMORAD0» con un cero: en un nombre no cabe una cifra, así que es un error de lectura seguro.',
+      'El frente ahora muestra el texto que leyó, para que un fallo se vea en vez de adivinarse.',
+      'Corregido un mensaje que mentía: decía «tu nombre completo quedó confirmado» en cuanto leía cualquier texto. Quien confirma es Genesis ID al comprobar.',
+    ],
+    en: [
+      'The front of the document can no longer sink a verification. If the camera cannot read the name there — ID cards are printed over a coloured watermark and are usually photographed at an angle — it becomes a warning, not a block. Failing to read something proves nothing; the decision belongs to the code on the back, which carries check digits.',
+      'Digits appearing inside a surname are now corrected automatically. A real ID card read as «ENAMORAD0» with a zero: a name cannot contain a digit, so it is certainly a misread.',
+      'The front now shows the text it read, so a failure is visible instead of guessed at.',
+      'Fixed a message that lied: it said «your full name is confirmed» as soon as any text was read. Genesis ID is what confirms it, on check.',
+    ],
+  },
   {
     v: '1.28.0',
     build: 64,
