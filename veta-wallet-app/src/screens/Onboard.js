@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, StyleSheet, TextInput, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Icon } from '../icons';
 import { C, G } from '../theme';
@@ -81,6 +82,7 @@ export function Kyc({ nav }) {
   const [gesto, setGesto] = useState(0);
   const [fotogramas, setFotogramas] = useState([]);
   const [cuenta, setCuenta] = useState(null);   // cuenta atrás antes de cada foto
+  const [toma, setToma] = useState(0);          // 1 o 2: cuál de las dos fotos va
   const [manual, setManual] = useState(false);  // el usuario prefiere disparar él
   const disparo = useRef(null);                 // resolver() del disparo manual
   const corriendo = useRef(false);              // para cortar la secuencia al salir
@@ -287,6 +289,26 @@ export function Kyc({ nav }) {
    * Ahora hay una cuenta atrás con vibración en cada número —que se siente sin
    * mirar— y la foto se toma sola. Con los ojos cerrados se sigue por el tacto.
    */
+  /**
+   * Reduce la foto antes de mandarla.
+   *
+   * `quality` comprime pero NO cambia el tamaño: una foto de 12 megapíxeles
+   * sigue pesando dos megas, y en base64 casi tres. Con ocho fotogramas eso
+   * son veinte megas y el servidor devolvía 413 —«demasiado grande»— sin que
+   * la persona pudiera hacer nada al respecto.
+   *
+   * A 720 píxeles de ancho cada fotograma baja a unos 60 kB. El análisis de
+   * rostro no necesita más resolución que esa, y de paso la subida deja de
+   * tardar una eternidad con datos móviles.
+   */
+  async function encoger(uri) {
+    const r = await ImageManipulator.manipulateAsync(
+      uri, [{ resize: { width: 720 } }],
+      { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+    );
+    return r?.base64 ? `data:image/jpeg;base64,${r.base64}` : null;
+  }
+
   async function correrReto(r) {
     const dormir = (ms) => new Promise((r2) => setTimeout(r2, ms));
     const tomados = [];
@@ -324,14 +346,16 @@ export function Kyc({ nav }) {
         // llegar tarde o adelantarse. Al servidor le basta con que una salga
         // bien; una fotografia sigue sin poder hacerlo en ninguna.
         for (let k = 0; k < 2; k++) {
-          const foto = await camara.current?.takePictureAsync({
-            base64: true, quality: 0.5, skipProcessing: true,
-          });
+          setToma(k + 1);
+          const foto = await camara.current?.takePictureAsync({ quality: 1, skipProcessing: true });
           if (!corriendo.current) return;
-          if (!foto?.base64) { setAviso({ mal: true, txt: t('gen.errPhoto') }); reiniciarReto(); return; }
-          tomados.push(`data:image/jpeg;base64,${foto.base64}`);
+          const pequena = foto?.uri ? await encoger(foto.uri) : null;
+          if (!corriendo.current) return;
+          if (!pequena) { setAviso({ mal: true, txt: t('gen.errPhoto') }); reiniciarReto(); return; }
+          tomados.push(pequena);
           if (k === 0) await dormir(450);
         }
+        setToma(0);
         setFotogramas([...tomados]);
         await dormir(400);
       }
@@ -374,7 +398,7 @@ export function Kyc({ nav }) {
 
   function reiniciarReto() {
     corriendo.current = false;
-    setReto(null); setGesto(0); setFotogramas([]); setCuenta(null);
+    setReto(null); setGesto(0); setFotogramas([]); setCuenta(null); setToma(0);
   }
 
   useEffect(() => {
@@ -677,16 +701,19 @@ export function Kyc({ nav }) {
                   ))}
                 </View>
 
+                <Text style={st.mrzPista}>
+                  {ocupado ? t('gen.liveSending')
+                    : toma ? t('gen.liveShotN', { n: toma })
+                    : cuenta !== null ? t('gen.liveHold')
+                    : manual ? t('gen.liveReady') : t('gen.liveAuto')}
+                </Text>
+
                 {manual ? (
                   <Button3D title={ocupado ? t('gen.liveSending') : t('gen.liveShotManual')}
                     icon="eye" disabled={ocupado}
                     onPress={() => { hap(); disparo.current?.(); }}
                     style={{ marginTop: 12 }} />
-                ) : (
-                  <Text style={st.mrzPista}>
-                    {ocupado ? t('gen.liveSending') : t('gen.liveAuto')}
-                  </Text>
-                )}
+                ) : null}
 
                 <Pressable onPress={() => setManual(!manual)} style={st.retry} disabled={ocupado}>
                   <Text style={st.retryTxt}>{manual ? t('gen.liveToAuto') : t('gen.liveToManual')}</Text>

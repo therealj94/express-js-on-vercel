@@ -49,9 +49,11 @@ import express, { Router } from 'express'
  *
  * Cuatro fotogramas en base64 no caben en el límite general de la app. Se le da
  * holgura solo a esta ruta y solo a ella: Genesis ID rechaza después cualquier
- * imagen de más de 5 MB, que es el tope de la propia API de reconocimiento.
+ * imagen suelta de más de 5 MB, que es el tope de la propia API de
+ * reconocimiento, así que esta holgura solo permite mandar VARIAS, no una
+ * más grande.
  */
-export const parserRostro = express.json({ limit: '12mb' })
+export const parserRostro = express.json({ limit: '25mb' })
 
 const BASE = (process.env.GENESIS_URL || 'https://genesis-id.onrender.com').replace(/\/$/, '')
 const CLAVE = (process.env.GENESIS_API_KEY || '').trim()

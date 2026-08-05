@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, Pressable, Animated, Easing, StyleSheet, SafeAreaView, StatusBar, Platform, PanResponder, BackHandler, AppState } from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { Icon } from './src/icons';
 import { C } from './src/theme';
@@ -60,15 +61,18 @@ const FULLSCREEN = ['splash', 'auth']; // sin barra de estado propia / sin tabba
 export default function App() {
   return (
     <ErrorBoundary>
-      <LangProvider>
-        <Root />
-      </LangProvider>
+      <SafeAreaProvider>
+        <LangProvider>
+          <Root />
+        </LangProvider>
+      </SafeAreaProvider>
     </ErrorBoundary>
   );
 }
 
 function Root() {
   const tr = useT();
+  const insets = useSafeAreaInsets();
   const [stack, setStack] = useState([{ r: 'splash' }]);
   const [dir, setDir] = useState(1);
   const [account, setAccount] = useState(null);
@@ -358,8 +362,11 @@ function Root() {
       ) : (
         <SafeAreaView style={{ flex: 1, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }}>
           {content}
+          {/* La barra de navegacion de Android —los tres botones, o la raya de
+              gestos— tapaba el menu: `SafeAreaView` no la contempla en Android.
+              `insets.bottom` da su altura real en cada telefono. */}
           {showTabs && (
-            <View style={styles.tabbar}>
+            <View style={[styles.tabbar, { paddingBottom: Math.max(insets.bottom, 10) + 6 }]}>
               {TABS.map((t) => {
                 const on = cur.r === t.r;
                 return (
@@ -418,7 +425,7 @@ function Root() {
 
 const styles = StyleSheet.create({
   // Barra inferior de vidrio: deja pasar un poco del fondo de marca.
-  tabbar: { flexDirection: 'row', backgroundColor: 'rgba(3,22,23,0.82)', borderTopWidth: 1, borderTopColor: 'rgba(201,169,97,0.16)', paddingTop: 9, paddingBottom: Platform.OS === 'ios' ? 24 : 10 },
+  tabbar: { flexDirection: 'row', backgroundColor: 'rgba(3,22,23,0.82)', borderTopWidth: 1, borderTopColor: 'rgba(201,169,97,0.16)', paddingTop: 9 },
   tab: { flex: 1, alignItems: 'center', gap: 4, paddingVertical: 4 },
   tabTxt: { fontSize: 10, fontWeight: '600' },
   toast: { position: 'absolute', bottom: 96, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#0A3A3C', borderWidth: 1, borderColor: C.gold, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 20, maxWidth: '86%' },

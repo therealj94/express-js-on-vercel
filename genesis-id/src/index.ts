@@ -20,11 +20,15 @@ const app = express()
 // CORS abierto solo tiene sentido para las apps del ecosistema, que se
 // identifican con clave de API; el panel se sirve desde el mismo origen.
 app.use(cors())
-// 12 MB porque la prueba de vida manda cuatro fotogramas en base64 en una sola
-// petición. El tope real lo pone `kyc/rekognition.ts`, que rechaza cualquier
-// imagen suelta de más de 5 MB —el límite de la API de reconocimiento—, así que
-// esta holgura no permite mandar una imagen más grande, solo varias.
-app.use(express.json({ limit: '12mb' }))
+// 25 MB porque la prueba de vida manda hasta ocho fotogramas en base64 en una
+// sola petición. La app los reduce a 720 px —unos 40 kB cada uno— pero las
+// versiones ya publicadas mandan la foto entera, de dos megas larga, y esas
+// personas no pueden actualizar hasta que instalen: dejarlas fuera por un
+// límite es dejarlas sin verificarse.
+//
+// La holgura no permite mandar una IMAGEN más grande: `kyc/rekognition.ts`
+// rechaza cualquiera que pase de 5 MB, que es el tope de la propia API.
+app.use(express.json({ limit: '25mb' }))
 
 // Cabeceras de seguridad. Son pocas líneas y evitan las formas más comunes de
 // abuso de un panel: incrustarlo en un iframe ajeno para engañar al operador, y
@@ -90,6 +94,16 @@ app.use('/api', (_req, res) => res.status(404).json({ error: 'Ruta no encontrada
 // Cualquier error no previsto se registra completo pero se responde escueto: el
 // detalle de una excepción puede filtrar rutas de archivos y estructura interna.
 app.use((error: any, _req: express.Request, res: express.Response, _n: express.NextFunction) => {
+  // Un cuerpo demasiado grande no es un fallo del servidor y no puede
+  // responderse «Error interno»: quien lo manda puede arreglarlo, pero solo si
+  // se le dice. Pasó de verdad — una verificación de rostro con ocho fotos sin
+  // reducir daba 500 y nadie sabía por qué.
+  if (error?.type === 'entity.too.large' || error?.status === 413) {
+    return res.status(413).json({
+      error: 'Las imágenes pesan demasiado. Actualice la aplicación: la versión nueva las reduce antes de enviarlas.',
+      limite: '25 MB',
+    })
+  }
   console.error('[genesis-id] error no controlado:', error)
   res.status(500).json({ error: 'Error interno' })
 })
