@@ -44,7 +44,7 @@ globalThis.__COL = Idempotencia
 const { code } = babel.transformSync(fuente, { presets: [['@babel/preset-env', { targets: { node: 'current' } }]], cwd: '/tmp/vw-deploy', babelrc: false, configFile: false })
 const mod = {}
 new Function('exports', 'require', 'module', code)(mod, require, { exports: mod })
-const { reservar, completar, marcarFallo, seSabeQueNoSalio, responderSiCorresponde } = mod
+const { reservar, completar, marcarFallo, seSabeQueNoSalio, responderSiCorresponde, normalizarSello } = mod
 
 let fallos = 0
 const ok = (c, m) => { if (c) console.log('  ok   ', m); else { fallos++; console.log('  FALLA', m) } }
@@ -113,5 +113,27 @@ ok(responderSiCorresponde(falso(), { accion: 'seguir' }) === null, 'seguir -> no
 console.log('\n9. Sin sello, todo sigue funcionando como antes')
 ok(responderSiCorresponde(falso(), { accion: 'seguir' }) === null, 'compatibilidad hacia atras')
 
-console.log(fallos ? `\n${fallos} FALLOS` : '\nIDEMPOTENCIA OK — 20 comprobaciones')
+console.log('\n10. Un fallo al anotar el sello NO puede convertir un envio bueno en error')
+// Es el caso mas traicionero: la transferencia YA salio y ya esta en el
+// historial. Si `completar` lanzara, el controlador caeria en su catch y le
+// devolveria un error al usuario por un envio que funciono — invitandolo a
+// repetirlo.
+filas.length = 0
+await reservar('s9', USUARIO, ENVIO)
+const updateOriginal = Idempotencia.updateOne
+Idempotencia.updateOne = async () => { throw new Error('base caida') }
+let lanzo = false
+try { await completar('s9', USUARIO, { hash: '0xOK' }) } catch { lanzo = true }
+Idempotencia.updateOne = updateOriginal
+ok(!lanzo, 'completar() se traga el fallo en vez de propagarlo')
+
+console.log('\n11. Sellos raros del cliente')
+ok(normalizarSello({ $ne: null }) === null, 'un objeto no entra como sello')
+ok(normalizarSello([1, 2]) === null, 'un arreglo tampoco')
+ok(normalizarSello(null) === null && normalizarSello('') === null, 'vacio -> sin sello')
+ok(normalizarSello('  abc  ') === 'abc', 'se recortan los espacios')
+ok(normalizarSello('x'.repeat(5000)).length === 200, 'un sello larguisimo se recorta a 200')
+ok(normalizarSello(12345) === '12345', 'un numero se acepta como texto')
+
+console.log(fallos ? `\n${fallos} FALLOS` : '\nIDEMPOTENCIA OK — 27 comprobaciones')
 process.exit(fallos ? 1 : 0)

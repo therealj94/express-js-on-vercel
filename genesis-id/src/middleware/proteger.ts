@@ -75,21 +75,6 @@ export function exigeApp(...alcances: string[]) {
   }
 }
 
-/**
- * Acepta operador O aplicación. Se usa en las consultas que sirven para ambos,
- * como comprobar si un GID está verificado.
- */
-export function exigeAlguno(alcanceApp: string) {
-  return (req: Request, res: Response, siguiente: NextFunction) => {
-    const operador = operadorDeSesion(tokenDe(req))
-    if (operador) {
-      req.operador = operador
-      return siguiente()
-    }
-    return exigeApp(alcanceApp)(req, res, siguiente)
-  }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Límite de peticiones
 // ─────────────────────────────────────────────────────────────────────────────

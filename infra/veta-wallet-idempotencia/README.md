@@ -2,7 +2,7 @@
 
 Impide que un mismo envío de dinero se ejecute dos veces.
 
-Desplegado en producción el 2026-08-05, **release 58**.
+Desplegado en producción el 2026-08-05, **release 59**.
 
 ---
 
@@ -112,10 +112,11 @@ copia de lo que se desplegó:
 cd /ruta/al/backend && node .../pruebas/unidad.test.mjs
 ```
 
-20 comprobaciones: primer envío, segundo toque, reintento devolviendo el mismo
+27 comprobaciones: primer envío, segundo toque, reintento devolviendo el mismo
 hash, conflicto por monto y por destinatario, sellos de dos personas que no se
 cruzan, fallo previo al envío que sí se puede reintentar, corte de red que no,
-y las cinco respuestas HTTP.
+las cinco respuestas HTTP, y los dos casos que salieron de la revisión (ver
+abajo).
 
 **Producción** — contra la base real, en un dyno one-off. Solo toca la colección
 de sellos con una clave de prueba que borra al final; no emite ninguna
@@ -131,3 +132,33 @@ existe de verdad —si no se hubiera creado, el código pasaría las dos veces s
 que nada avisara— y que el TTL está puesto.
 
 Las dos pasan.
+
+---
+
+## Dos cosas que aparecieron al revisarlo
+
+Ninguna de las dos la vi al escribirlo; salieron al releerlo buscando fallos.
+
+### `completar()` podía convertir un envío bueno en un error
+
+Estaba escrito como `await completar(...)` justo antes de responder. Si esa
+escritura fallaba —un hipo de la base, nada raro— la excepción caía en el
+`catch` del controlador, que marcaba el sello como dudoso y **le devolvía un
+error al usuario por un envío que ya había salido y ya estaba en su historial**.
+El peor resultado posible: el usuario ve un error y lo repite.
+
+Ahora `completar()` no lanza nunca, por contrato. El precio es que el sello
+queda en «en-curso» y un reintento recibe un 409 hasta que caduca — molesto,
+pero del lado seguro.
+
+### El sello venía del cliente sin normalizar
+
+`idempotencyKey` se usaba tal cual llegara. Dos consecuencias:
+
+- Un objeto (`{"$ne": null}`) acababa dentro de una consulta a Mongo. Aquí no
+  daba acceso a nada ajeno —el usuario sale del token, no del cuerpo— pero no
+  hay razón para dejar entrar datos del cliente como operadores de consulta.
+- Un sello larguísimo revienta el límite de clave del índice, y ese error no es
+  `11000`, así que salía como un 500 en vez de como lo que es.
+
+`normalizarSello()` lo fuerza a texto y lo recorta a 200 caracteres.

@@ -65,6 +65,25 @@ export const seSabeQueNoSalio = (error) => FALLOS_ANTES_DE_EMITIR.has(error?.cod
  *   { accion: 'verificar', error }        quedo en duda: no repetir a ciegas
  *   { accion: 'conflicto' }               mismo sello, datos distintos
  */
+/**
+ * Normaliza el sello que manda el cliente.
+ *
+ * Se fuerza a texto y se recorta a 200 caracteres por dos motivos:
+ *
+ *   - Si llegara un objeto (`{"$ne": null}`), acabaria dentro de una consulta a
+ *     Mongo. Aqui no daria acceso a nada ajeno —el usuario sale del token, no
+ *     del cuerpo— pero no hay ninguna razon para dejar que datos del cliente
+ *     entren como operadores en una consulta.
+ *   - Un sello larguisimo revienta el limite de clave del indice, y ese error
+ *     no es 11000, asi que saldria como un 500 en vez de como lo que es.
+ */
+export function normalizarSello(valor) {
+  if (valor == null) return null;
+  if (typeof valor !== "string" && typeof valor !== "number") return null;
+  const s = String(valor).trim();
+  return s ? s.slice(0, 200) : null;
+}
+
 export async function reservar(clave, usuario, datosDelEnvio) {
   const huella = huellaDe(datosDelEnvio);
 
@@ -89,12 +108,28 @@ export async function reservar(clave, usuario, datosDelEnvio) {
   return { accion: "esperar" };
 }
 
-/** El envio salio: se guarda la respuesta para devolverla en los reintentos. */
+/**
+ * El envio salio: se guarda la respuesta para devolverla en los reintentos.
+ *
+ * NUNCA lanza. Es deliberado: para cuando se llama, la transferencia YA se
+ * emitio y ya se guardo en el historial. Si un fallo al anotar el sello se
+ * propagara, el controlador caeria en su catch y le devolveria un error al
+ * usuario por un envio que en realidad salio bien — el peor resultado posible,
+ * porque le invita a repetirlo.
+ *
+ * El precio de tragarse el fallo es que el sello queda en "en-curso" y un
+ * reintento recibe un 409 hasta que caduca. Molesto, pero del lado seguro: no
+ * transfiere dos veces.
+ */
 export async function completar(clave, usuario, respuesta) {
-  await Idempotencia.updateOne(
-    { clave, usuario },
-    { $set: { estado: "listo", respuesta } }
-  );
+  try {
+    await Idempotencia.updateOne(
+      { clave, usuario },
+      { $set: { estado: "listo", respuesta } }
+    );
+  } catch (error) {
+    console.error("[idempotencia] no se pudo anotar el sello como listo:", error?.message);
+  }
 }
 
 /**

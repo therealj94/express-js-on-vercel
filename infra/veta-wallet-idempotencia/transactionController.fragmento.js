@@ -1,5 +1,5 @@
 // Fragmento de controller/transactionController.js del backend de Veta Wallet,
-// tal como quedo desplegado (release 58). Se guarda aqui porque el codigo del
+// tal como quedo desplegado (release 59). Se guarda aqui porque el codigo del
 // backend no vive en este repositorio: si hubiera que rehacerlo, esto es lo que
 // hay que volver a poner.
 //
@@ -13,7 +13,7 @@ export const send = async (req, res) => {
   let quien = null;
   try {
     const { chain_id, recipientAddress, password, amount, idempotencyKey } = req.body;
-    sello = idempotencyKey || null;
+    sello = normalizarSello(idempotencyKey);
 
     const token = req.headers.authorization;
     const decodedToken = jwt.verify(
@@ -134,7 +134,7 @@ export const sendToken = async (req, res) => {
       tokenContractAddress,
       idempotencyKey,
     } = req.body;
-    sello = idempotencyKey || null;
+    sello = normalizarSello(idempotencyKey);
 
     const token = req.headers.authorization;
     const decodedToken = jwt.verify(
