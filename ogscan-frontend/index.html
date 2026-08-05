@@ -75,6 +75,7 @@
     <a href="/" data-ruta>Inicio</a>
     <a href="/blocks" data-ruta>Bloques</a>
     <a href="/txs" data-ruta>Transacciones</a>
+    <a href="/tokens" data-ruta>Tokens</a>
   </nav>
 </div></header>
 
@@ -94,6 +95,16 @@ const API = (typeof window.OGSCAN_API === "string")
   ? window.OGSCAN_API
   : "https://orden-global-scan-c4abe71e8024.herokuapp.com";
 const CHAIN_ID = 8532;
+
+// Los tres tokens de la cadena, con su contrato. Sirve para dos cosas: mostrar
+// la sección de tokens en la portada, y reconocer cuándo una dirección es en
+// realidad el contrato de un token para ofrecer su ficha.
+const TOKENS = [
+  { symbol: "ONDK", nombre: "Orden Kapital", contrato: "0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1" },
+  { symbol: "AGKA", nombre: "AGKA Token",    contrato: "0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B" },
+  { symbol: "AUKA", nombre: "Gold Kapital",  contrato: "0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B" },
+];
+const tokenPorContrato = (a) => TOKENS.find(t => t.contrato.toLowerCase() === String(a || "").toLowerCase());
 
 // ── Utilidades ───────────────────────────────────────────────────────────────
 const $ = (s) => document.querySelector(s);
@@ -172,7 +183,12 @@ const err = (m) => `<div class="error"><b>No se pudo cargar.</b><br>${esc(m)}</d
 
 // ── Vistas ───────────────────────────────────────────────────────────────────
 async function vistaInicio(app) {
-  app.innerHTML = cajaBuscar() + `<div id="stats"></div><div class="cols">
+  app.innerHTML = cajaBuscar() + `<div id="stats"></div>
+    <div class="tarjetas">` + TOKENS.map(t => `
+      <a class="tarj" href="/token/${t.contrato}" data-ruta style="display:block">
+        <div class="et">${esc(t.symbol)}</div><div class="va">${esc(t.nombre)}</div>
+      </a>`).join("") + `</div>
+    <div class="cols">
     <div><h2>Últimos bloques</h2><div class="panel" id="bl"><div class="cargando">Cargando…</div></div></div>
     <div><h2>Últimas transacciones</h2><div class="panel" id="tx"><div class="cargando">Cargando…</div></div></div>
   </div>`;
@@ -318,9 +334,72 @@ async function vistaTx(app, hash) {
   } catch (e) { $("#d").innerHTML = err(e.message); }
 }
 
-async function vistaDireccion(app, addr) {
+// Divide un totalSupply en crudo (entero, sin decimales) por 10^decimales.
+// No se usa Number: 555 millones con 18 decimales tiene 27 dígitos y no cabe
+// en un double sin perder precisión. Se hace con BigInt sobre el texto.
+function supplyLegible(crudo, decimales) {
+  try {
+    const d = BigInt(decimales || 18);
+    const bruto = BigInt(crudo);
+    const div = 10n ** d;
+    const entero = bruto / div;
+    return Number(entero).toLocaleString("es");
+  } catch (e) {
+    return String(crudo);
+  }
+}
+
+async function vistaTokens(app) {
+  app.innerHTML = cajaBuscar() + `<h2>Tokens de la red</h2>
+    <div class="tarjetas">` + TOKENS.map(t => `
+      <a class="tarj" href="/token/${t.contrato}" data-ruta style="display:block">
+        <div class="et">${esc(t.symbol)}</div>
+        <div class="va">${esc(t.nombre)}</div>
+        <div class="sub mono cortar" style="margin-top:6px">${esc(corto(t.contrato, 12, 10))}</div>
+      </a>`).join("") + `</div>`;
+}
+
+async function vistaToken(app, contrato) {
+  const conocido = tokenPorContrato(contrato);
   app.innerHTML = cajaBuscar() +
-    `<h2>Dirección</h2><div class="mono" style="color:var(--txt2);margin:-6px 0 14px;word-break:break-all">${esc(addr)}</div>
+    `<h2>Token ${conocido ? esc(conocido.symbol) : ""}</h2>
+     <div class="mono" style="color:var(--txt2);margin:-6px 0 14px;word-break:break-all">${esc(contrato)}</div>
+     <div id="res"></div><h2>Transacciones del token</h2>
+     <div class="panel" id="l"><div class="cargando">Cargando…</div></div>`;
+  try {
+    const r = await api(`/address/token/${encodeURIComponent(contrato)}`);
+    const d = r.result || r;
+    const td = d.tokenData || {};
+    $("#res").innerHTML = `<div class="tarjetas">
+      <div class="tarj"><div class="et">Símbolo</div><div class="va oro">${esc(td.symbol)}</div></div>
+      <div class="tarj"><div class="et">Nombre</div><div class="va">${esc(td.name)}</div></div>
+      <div class="tarj"><div class="et">Suministro total</div><div class="va">${supplyLegible(td.totalSupply, td.decimal)}</div></div>
+      <div class="tarj"><div class="et">Decimales</div><div class="va">${esc(td.decimal)}</div></div>
+    </div>`;
+
+    const t = d.transactions || [];
+    $("#l").innerHTML = t.length ? t.slice(0, 50).map(x => `
+      <div class="fila"><div class="izq">
+        <a href="/tx/${esc(x.hash)}" data-ruta class="mono cortar">${esc(corto(x.hash, 18, 10))}</a>
+        <div class="sub mono cortar">${esc(corto(x.from, 10, 6))} → ${destinoCorto(x)}</div>
+      </div><div class="der">${hace(x.timestamp)}</div></div>`).join("")
+      : `<div class="aviso">Este token no tiene transacciones registradas en el índice.</div>`;
+  } catch (e) {
+    // El backend responde 400 si el contrato está mal escrito; se muestra su
+    // mensaje, que es más útil que un genérico.
+    $("#res").innerHTML = "";
+    $("#l").innerHTML = err(e.message);
+  }
+}
+
+async function vistaDireccion(app, addr) {
+  // Si la dirección es el contrato de un token conocido, se ofrece su ficha.
+  const tk = tokenPorContrato(addr);
+  const banner = tk
+    ? `<div class="pista" style="margin:-6px 0 14px">Esta dirección es el contrato del token <b>${esc(tk.symbol)}</b>. <a href="/token/${tk.contrato}" data-ruta>Ver la ficha del token →</a></div>`
+    : "";
+  app.innerHTML = cajaBuscar() +
+    `<h2>Dirección</h2><div class="mono" style="color:var(--txt2);margin:-6px 0 14px;word-break:break-all">${esc(addr)}</div>${banner}
      <div id="res"></div><h2>Transacciones<span id="ntx"></span></h2><div class="panel" id="l"><div class="cargando">Cargando…</div></div>`;
   try {
     const d = await api(`/address/${encodeURIComponent(addr)}`);
@@ -360,8 +439,10 @@ function pintar() {
   if (p === "/") return vistaInicio(app);
   if (p === "/blocks") return vistaBloques(app);
   if (p === "/txs") return vistaTxs(app);
+  if (p === "/tokens") return vistaTokens(app);
   if ((m = p.match(/^\/block\/(.+)$/))) return vistaBloque(app, decodeURIComponent(m[1]));
   if ((m = p.match(/^\/tx\/(.+)$/))) return vistaTx(app, decodeURIComponent(m[1]));
+  if ((m = p.match(/^\/token\/(.+)$/))) return vistaToken(app, decodeURIComponent(m[1]));
   if ((m = p.match(/^\/address\/(.+)$/))) return vistaDireccion(app, decodeURIComponent(m[1]));
 
   app.innerHTML = cajaBuscar() + `<div class="aviso">Esa página no existe. <a href="/" data-ruta>Volver al inicio</a></div>`;
