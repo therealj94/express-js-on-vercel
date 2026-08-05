@@ -160,3 +160,32 @@ Se instala en `/usr/local/bin/ogb-watchdog.sh` con
 `OnBootSec=3min` para que sobreviva reinicios).
 
 Para ver qué hizo: `journalctl -t ogb-watchdog`
+
+
+## Backups de la cadena
+
+Se tomó el **primer backup** del volumen de node1 (el validador, que tiene la
+cadena completa): snapshot EBS `snap-0a11f92d83ae77309` del volumen
+`vol-0416f026197b24eae` (30 GB). Antes de esto **no existía ningún backup** —
+el único snapshot de la cuenta era de 2023 y de otro volumen.
+
+Los snapshots de EBS son incrementales y consistentes a nivel de bloque, así
+que se pueden tomar con el nodo corriendo, sin detener el servicio.
+
+### Pendiente: automatizarlos
+
+No se pudo dejar programado desde acá. Requiere un rol de IAM y las
+credenciales de sesión temporal tienen IAM bloqueado (`InvalidClientTokenId`).
+Se probó también si el rol de la instancia podía hacerlo por su cuenta:
+tampoco (`UnauthorizedOperation: no identity-based policy allows
+ec2:CreateSnapshot`).
+
+**Hace falta una acción en la consola de AWS**, una sola vez:
+
+1. EC2 → Lifecycle Manager → *Create snapshot lifecycle policy*
+2. Target: por etiqueta `Proposito = backup-cadena-8532` (el snapshot actual ya
+   la tiene; conviene etiquetar también los volúmenes)
+3. Frecuencia diaria, retención sugerida 7-14 copias
+4. AWS crea el rol `AWSDataLifecycleManagerDefaultRole` solo
+
+Mientras eso no exista, los backups son manuales.
