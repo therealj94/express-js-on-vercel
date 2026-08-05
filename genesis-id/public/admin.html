@@ -467,6 +467,7 @@ async function verIdentidad(id) {
 
     <div class="acciones">
       ${puede('identidad.revisar') && i.estado !== 'verificada' ? `
+        <button class="g" onclick="reiniciarVerificacion('${i.id}')">Reiniciar verificación</button>
         <button class="g" onclick="biometriaManual('${i.id}',true)">Rostro coincide</button>
         <button class="g" onclick="biometriaManual('${i.id}',false)">Rostro NO coincide</button>` : ''}
       ${puede('identidad.revisar') ? `<button class="g" onclick="marcarPep('${i.id}',${!i.pep})">${i.pep ? 'Quitar PEP' : 'Marcar PEP'}</button>` : ''}
@@ -507,6 +508,17 @@ async function decidir(ruta, etiqueta) {
   try {
     await api(ruta, { method: 'POST', body: JSON.stringify({ motivo }) })
     avisar('Hecho'); cerrarFicha(); ir(pestana)
+  } catch (e) { alert(e.message) }
+}
+
+async function reiniciarVerificacion(id) {
+  const motivo = prompt('Motivo para que esta persona vuelva a hacer la verificación desde el documento:\n\n'
+    + 'No se borra nada: queda el expediente y la bitácora, y se limpia solo lo que tiene que volver a aportar.')
+  if (!motivo || motivo.trim().length < 8) return
+  try {
+    await api(`/panel/identidades/${id}/reiniciar`, { method: 'POST', body: JSON.stringify({ motivo }) })
+    avisar('Verificación reiniciada: la persona puede rehacerla desde la app')
+    cerrarFicha(); ir('identidades')
   } catch (e) { alert(e.message) }
 }
 

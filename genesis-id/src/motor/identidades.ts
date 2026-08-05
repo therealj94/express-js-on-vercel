@@ -399,6 +399,35 @@ export async function suspender(idn: string, operador: Operador, motivo: string)
   return { ok: true, identidad }
 }
 
+/**
+ * Devuelve una identidad al principio para que la persona la rehaga.
+ *
+ * NO es un borrado, y no puede serlo: un expediente de cumplimiento no se
+ * elimina, porque el registro de que alguien intentó verificarse —y qué se
+ * encontró— es justamente lo que hay que conservar. Lo que se hace es limpiar
+ * lo que la persona tiene que volver a aportar (documento, rostro, riesgo) y
+ * dejar los datos declarados, para que no reescriba su nombre.
+ *
+ * Queda en la bitácora quién lo reinició y por qué. Una identidad ya verificada
+ * no entra por aquí: para eso hay que suspenderla primero, que es una decisión
+ * distinta y más seria.
+ */
+export function reiniciar(idn: string, operador: Operador, motivo: string): Identidad | null {
+  const identidad = porId(idn)
+  if (!identidad) return null
+  if (identidad.estado === 'verificada') return null
+
+  identidad.documento = null
+  identidad.biometria = null
+  identidad.nombreLegal = null
+  identidad.estado = identidad.nombreDeclarado ? 'datos' : 'iniciada'
+  recalcularRiesgo(identidad)
+  identidad.actualizadaEn = ahora()
+  store.guardar()
+  registrar(operador.email, 'identidad.reiniciar', identidad.id, { motivo })
+  return identidad
+}
+
 export function marcarPep(idn: string, operador: Operador, pep: boolean, nota: string): Identidad | null {
   const identidad = porId(idn)
   if (!identidad) return null

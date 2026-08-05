@@ -400,3 +400,34 @@ describe('Identificadores fiscales', () => {
     assert.equal(validarIdentificadorFiscal('JPN', 'ABC123456').comprobacion, 'desconocido')
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Nombres cortados por el ancho de la MRZ (caso real, cedula hondureña)
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('un nombre truncado por el documento sigue coincidiendo', () => {
+  // La MRZ tiene ancho fijo: «JOSE» se imprime «JOS». No es una discrepancia,
+  // es lo que el Estado emitio, y bloquear por eso acusa a la persona de algo
+  // que hizo bien.
+  assert.ok(parecidoNombres('Jose Ordoñez', 'ORDONEZ JOS') > 0.9)
+  assert.ok(parecidoNombres('Jose Mario Ordoñez Enamorado', 'ORDONEZ ENAMORADO JOS MARIO') > 0.9)
+  assert.ok(parecidoNombres('Maria Jose Nuñez Peña', 'NUNEZ PENA MARIA JOS') > 0.9)
+})
+
+test('la Ñ del documento, que la MRZ escribe como N, no estorba', () => {
+  assert.equal(parecidoNombres('José Mario Ordóñez Enamorado', 'ORDONEZ ENAMORADO JOSE MARIO'), 1)
+  assert.equal(parecidoNombres('Peña', 'PENA'), 1)
+})
+
+test('truncar no puede servir para colar a otra persona', () => {
+  assert.ok(parecidoNombres('Jose Mario Ordoñez Enamorado', 'ORDONEZ ENAMORADO CARLOS ALBERTO') < 0.85)
+  assert.ok(parecidoNombres('Juan Perez', 'RODRIGUEZ MARTINEZ ANA') < 0.85)
+  // Dos letras no bastan: «AN» no puede dar por bueno a «ANASTASIA».
+  assert.ok(parecidoNombres('An Lopez', 'LOPEZ ANASTASIA') < 0.9)
+})
+
+test('las equivalencias de transliteracion siguen funcionando', () => {
+  // Lo que se arreglo no puede haber roto el motivo por el que existe la tabla.
+  assert.equal(parecidoNombres('Youssef Ibrahim', 'YUSUF IBRAHEEM'), 1)
+  assert.equal(parecidoNombres('Mohammed Ali', 'MUHAMMAD ALY'), 1)
+})

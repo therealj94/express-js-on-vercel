@@ -158,6 +158,29 @@ function pareceFicha(a: string, b: string): number {
   if (esInicial(a) || esInicial(b)) {
     return a[0] === b[0] ? 0.6 : 0
   }
+
+  // NOMBRES CORTADOS POR LA PROPIA MRZ
+  //
+  // La zona de lectura mecánica tiene ancho fijo, así que cuando el nombre no
+  // cabe, el documento lo TRUNCA: en una cédula hondureña, «JOSE» aparece como
+  // «JOS». Eso no es un error de lectura ni una discrepancia: es lo que el
+  // Estado imprimió, y la norma ICAO 9303 lo contempla.
+  //
+  // Sin esto, «Jose Ordoñez» contra «ORDONEZ JOS» daba 76 % y la verificación
+  // se bloqueaba por «el nombre declarado no coincide con el del documento»,
+  // acusando a la persona de algo que hizo bien.
+  //
+  // Se exigen al menos tres letras y que una sea prefijo exacto de la otra —no
+  // basta parecerse—, y no se da 1 sino 0,97: el expediente conserva la señal
+  // de que hubo una diferencia, que es información real para quien revise.
+  // OJO: sobre las fichas tal como vienen, NO sobre la forma canónica. La
+  // tabla de equivalencias convierte «JOSE» en «YUSUF» —que es lo correcto para
+  // reconocer a un Youssef— y ahí «JOS» deja de ser prefijo de nada. Este fue
+  // exactamente el motivo de que una cédula hondureña real no pasara.
+  const corto = a.length <= b.length ? a : b
+  const largo = a.length <= b.length ? b : a
+  if (corto.length >= 3 && largo.startsWith(corto)) return 0.97
+
   return jaroWinkler(ca, cb)
 }
 
@@ -176,8 +199,10 @@ function pareceFicha(a: string, b: string): number {
  * quien decide es siempre una persona, no este número.
  */
 export function parecidoNombres(uno: string, otro: string): number {
-  const a = fichas(uno).map(canonizar)
-  const b = fichas(otro).map(canonizar)
+  // Sin canonizar aquí: `pareceFicha` ya lo hace, y necesita ver las fichas
+  // originales para reconocer un nombre cortado por el ancho de la MRZ.
+  const a = fichas(uno)
+  const b = fichas(otro)
   if (!a.length || !b.length) return 0
 
   const [corto, largo] = a.length <= b.length ? [a, b] : [b, a]

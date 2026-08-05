@@ -140,6 +140,26 @@ panelRouter.post('/identidades/:id/biometria', exigePermiso('identidad.revisar')
   res.json({ ok: true, identidad: i })
 })
 
+/**
+ * Reinicia una verificación para que la persona la rehaga.
+ *
+ * No borra el expediente —en cumplimiento no se borra— sino que limpia lo que
+ * hay que volver a aportar. Exige el permiso de revisar y un motivo escrito.
+ */
+panelRouter.post('/identidades/:id/reiniciar', exigePermiso('identidad.revisar'), (req, res) => {
+  const motivo = String(req.body?.motivo || '').trim()
+  if (motivo.length < 8) {
+    return res.status(400).json({ error: 'Hace falta un motivo escrito para reiniciar una verificación' })
+  }
+  const i = ids.reiniciar(req.params.id, req.operador!, motivo)
+  if (!i) {
+    return res.status(400).json({
+      error: 'No se encontró la identidad, o ya está verificada (habría que suspenderla primero)',
+    })
+  }
+  res.json({ ok: true, identidad: i })
+})
+
 panelRouter.post('/identidades/:id/pep', exigePermiso('identidad.revisar'), (req, res) => {
   const { pep, nota } = req.body ?? {}
   const i = ids.marcarPep(req.params.id, req.operador!, Boolean(pep), String(nota || ''))
