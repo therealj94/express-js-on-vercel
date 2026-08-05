@@ -283,16 +283,22 @@ export function Settings({ nav }) {
             onPress={() => nav.go('about')}
           />
           {/* Ambas tiendas exigen que la política de privacidad sea accesible
-              desde dentro de la app, no solo desde la ficha de la tienda. */}
+              desde dentro de la app, no solo desde la ficha de la tienda.
+
+              Van a legal.vetawallet.com, no al dominio raíz: vetawallet.com
+              redirige CUALQUIER ruta a /login, así que /privacidad y /terminos
+              nunca fueron accesibles sin cuenta — que es justo lo que las
+              tiendas rechazan. El subdominio sirve los documentos como HTML
+              público, sin sesión. */}
           <ListRow
             icon="shield-checkmark"
             title={t('set.privacy')}
-            onPress={() => { hap(); abrir('https://vetawallet.com/privacidad'); }}
+            onPress={() => { hap(); abrir('https://legal.vetawallet.com/privacidad'); }}
           />
           <ListRow
             icon="document-text"
             title={t('set.terms')}
-            onPress={() => { hap(); abrir('https://vetawallet.com/terminos'); }}
+            onPress={() => { hap(); abrir('https://legal.vetawallet.com/terminos'); }}
           />
         </Glass>
 

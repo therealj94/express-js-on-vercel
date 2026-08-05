@@ -40,15 +40,23 @@ Es la ruta crítica. Tarda semanas y bloquea todo lo demás en iOS.
 
 **Android no depende de esto.** Puede salir antes.
 
-### 2. Publicar los dos documentos legales
+### 2. Documentos legales — LISTO
 
-La app los enlaza a:
+Publicados y accesibles sin sesión:
 
-- `https://vetawallet.com/privacidad`
-- `https://vetawallet.com/terminos`
+- `https://legal.vetawallet.com/privacidad`
+- `https://legal.vetawallet.com/terminos`
 
-Esas URLs tienen que responder antes de enviar a revisión. Si van a vivir en
-otra ruta, hay que cambiarlas en `src/screens/More.js`.
+Son las URLs que hay que pegar en la ficha de App Store Connect y de Google
+Play Console, y son las que enlaza la app desde Ajustes.
+
+**Por qué un subdominio y no `vetawallet.com/privacidad`:** el dominio raíz
+redirige *cualquier* ruta a `/login`, así que esas URLs nunca fueron accesibles
+sin cuenta — exactamente lo que las tiendas rechazan. La web de la billetera es
+un Next.js cuyo código está en un GitLab de terceros al que no tenemos acceso,
+así que no se podía arreglar ahí. `legal.vetawallet.com` es un sitio estático
+aparte que sí controlamos (Amplify `vetawallet-legal`, fuente en
+`veta-wallet-legal/` de este repo).
 
 ### 3. Cuenta de demostración
 
