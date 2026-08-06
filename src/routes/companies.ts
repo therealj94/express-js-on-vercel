@@ -50,6 +50,17 @@ function validateCompanyPayload(body: Record<string, unknown>): string | null {
   return null
 }
 
+/**
+ * Una dirección de la cadena 8532: 0x y 40 hexadecimales.
+ *
+ * Se valida la forma, no que exista. Si el comercio se equivoca en un carácter
+ * el dinero se va a una dirección que nadie controla y no vuelve — así que al
+ * guardarla la app le enseña los últimos cuatro para que los compare.
+ */
+function direccionValida(v: unknown): boolean {
+  return typeof v === 'string' && /^0x[0-9a-fA-F]{40}$/.test(v.trim())
+}
+
 companiesRouter.post('/', requireAuth, (req, res) => {
   if (db.findCompanyByOwner(req.userId!)) {
     res.status(409).json({ error: 'Ya tienes una empresa registrada' })
@@ -77,6 +88,7 @@ companiesRouter.post('/', requireAuth, (req, res) => {
     lng: body.lng as number,
     description: typeof body.description === 'string' ? body.description : '',
     logoDataUrl: typeof body.logoDataUrl === 'string' ? body.logoDataUrl : null,
+    walletAddress: direccionValida(body.walletAddress) ? (body.walletAddress as string) : null,
     coverDataUrl: typeof body.coverDataUrl === 'string' ? body.coverDataUrl : null,
     gallery: Array.isArray(body.gallery) ? (body.gallery as string[]) : [],
     socials: (body.socials as CompanySocials) ?? {},
@@ -118,7 +130,23 @@ companiesRouter.put('/:id', requireAuth, (req, res) => {
     'gallery',
     'socials',
     'hours',
+    'acceptsOrigen',
   ]
+  // La dirección de cobro va aparte de la lista blanca: se valida su forma,
+  // porque un carácter mal escrito manda el dinero a un pozo sin fondo.
+  if (body.walletAddress !== undefined) {
+    if (body.walletAddress === null || body.walletAddress === '') {
+      patch.walletAddress = null
+    } else if (direccionValida(body.walletAddress)) {
+      patch.walletAddress = String(body.walletAddress).trim()
+    } else {
+      res.status(400).json({
+        error: 'La dirección no tiene la forma correcta',
+        detalle: 'Debe empezar por 0x y tener 40 caracteres después.',
+      })
+      return
+    }
+  }
   for (const key of editable) {
     if (body[key] !== undefined) {
       // @ts-expect-error narrow assignment across a whitelisted key set

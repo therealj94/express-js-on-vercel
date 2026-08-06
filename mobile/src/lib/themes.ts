@@ -23,7 +23,7 @@ export interface ThemeDef {
   description: string
   isDark: boolean
   colors: ThemeColors
-  gradient: readonly [string, string, string]
+  gradient: [string, string, string]
   swatch: readonly [string, string, string]
 }
 

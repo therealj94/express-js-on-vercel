@@ -20,7 +20,7 @@ export const colors = {
   danger: '#FB7185',
 }
 
-export const gradient = [colors.violet, colors.blue, colors.cyan] as const
+export const gradient: [string, string, string] = [colors.violet, colors.blue, colors.cyan]
 
 export const radius = {
   sm: 10,

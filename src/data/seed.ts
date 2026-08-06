@@ -697,6 +697,7 @@ export function buildSeedCompanies(): Company[] {
       },
       verified: item.verified,
       acceptsOrigen: true,
+    walletAddress: null,
       createdAt: now,
       updatedAt: now,
     }

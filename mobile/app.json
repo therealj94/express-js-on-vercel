@@ -15,7 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mytokenpay.app"
+      "bundleIdentifier": "com.mytokenpay.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "MyTokenPay usa la cámara para leer el código de cobro del comercio."
+      }
     },
     "android": {
       "package": "com.mytokenpay.app",
@@ -26,7 +29,10 @@
       },
       "predictiveBackGestureEnabled": false,
       "minSdkVersion": 21,
-      "targetSdkVersion": 34
+      "targetSdkVersion": 34,
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -45,6 +51,12 @@
         "expo-image-picker",
         {
           "photosPermission": "MyTokenPay necesita acceso a tus fotos para subir el logo, la portada y tus documentos."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "MyTokenPay usa la cámara para leer el código de cobro del comercio."
         }
       ]
     ]

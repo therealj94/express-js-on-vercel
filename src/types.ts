@@ -1,4 +1,4 @@
-export type UserRole = 'user' | 'business'
+export type UserRole = 'user' | 'business' | 'admin'
 
 export interface User {
   id: string
@@ -68,6 +68,8 @@ export interface Company {
   }
   verified: boolean
   acceptsOrigen: boolean
+  /** Dirección en la cadena 8532 donde el comercio recibe los pagos. */
+  walletAddress: string | null
   createdAt: string
   updatedAt: string
 }

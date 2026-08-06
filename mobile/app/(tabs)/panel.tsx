@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Bell,
   Building2,
+  CreditCard,
   Gift,
   IdCard,
   LogIn,
@@ -218,6 +219,29 @@ export default function Dashboard() {
             </View>
           </Pressable3D>
         )}
+
+        {company?.kyc.status === 'verified' && (
+          <View style={styles.posFila}>
+            <Pressable3D onPress={() => router.push('/pos')} tilt={5} style={{ flex: 1 }}>
+              <View style={styles.posBoton}>
+                <CreditCard size={20} color={colors.violet} />
+                <Text style={styles.posTexto}>Cobrar</Text>
+              </View>
+            </Pressable3D>
+            <Pressable3D onPress={() => router.push('/pos/saldo')} tilt={5} style={{ flex: 1 }}>
+              <View style={styles.posBoton}>
+                <Wallet size={20} color={colors.violet} />
+                <Text style={styles.posTexto}>Mi dinero</Text>
+              </View>
+            </Pressable3D>
+          </View>
+        )}
+
+        {!!company && company.kyc.status !== 'verified' && (
+          <Text style={styles.posEspera}>
+            Vas a poder cobrar en cuanto verifiquemos tu negocio.
+          </Text>
+        )}
       </View>
     </Screen>
   )
@@ -226,6 +250,18 @@ export default function Dashboard() {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     section: { paddingHorizontal: 20, marginTop: 18 },
+    posFila: { flexDirection: 'row', gap: 10, marginTop: 10 },
+    posBoton: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      paddingVertical: 16,
+      alignItems: 'center',
+      gap: 7,
+    },
+    posTexto: { color: colors.text, fontFamily: fonts.bodyMedium, fontSize: 13 },
+    posEspera: { color: colors.muted, fontFamily: fonts.body, fontSize: 12.5, marginTop: 10, lineHeight: 18 },
     hello: { color: colors.text, fontFamily: fonts.displayBold, fontSize: 24 },
     subtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, marginTop: 4 },
     skeleton: { height: 120, borderRadius: radius.xl, backgroundColor: colors.surface, marginTop: 12 },

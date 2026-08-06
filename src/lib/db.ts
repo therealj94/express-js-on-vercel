@@ -16,6 +16,25 @@ export function toPublicUser(user: User): PublicUser {
 }
 
 export const db = {
+  /**
+   * Asegura que exista el administrador que paga los retiros.
+   *
+   * No se puede llegar a administrador registrándose: el rol solo se concede
+   * aquí, desde variables de entorno del servidor. Si algún día se necesitan
+   * más administradores, los crea uno que ya lo sea — nunca el formulario de
+   * alta público.
+   */
+  asegurarAdministrador(email: string, passwordHash: string): User {
+    const existente = db.findUserByEmail(email)
+    if (existente) {
+      existente.role = 'admin'
+      return existente
+    }
+    const user = db.createUser({ email, passwordHash, fullName: 'Administración Orden Global' })
+    user.role = 'admin'
+    return user
+  },
+
   createUser(input: { email: string; passwordHash: string; fullName: string }): User {
     const id = randomUUID()
     const user: User = {

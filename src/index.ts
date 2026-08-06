@@ -5,8 +5,18 @@ import { fileURLToPath } from 'url'
 import { authRouter } from './routes/auth.js'
 import { metaRouter } from './routes/meta.js'
 import { companiesRouter } from './routes/companies.js'
+import { cobrosRouter } from './routes/cobros.js'
+import { retirosRouter } from './routes/retiros.js'
+import { adminRouter } from './routes/admin.js'
+import { db } from './lib/db.js'
+import { hashPassword } from './lib/auth.js'
 
 const __filename = fileURLToPath(import.meta.url)
+
+// El administrador se siembra al arrancar, si el entorno lo define.
+if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
+  db.asegurarAdministrador(process.env.ADMIN_EMAIL, hashPassword(process.env.ADMIN_PASSWORD))
+}
 
 const app = express()
 app.use(cors())
@@ -22,6 +32,9 @@ app.get('/healthz', (_req, res) => {
 
 app.use('/api/auth', authRouter)
 app.use('/api/companies', companiesRouter)
+app.use('/api/cobros', cobrosRouter)
+app.use('/api/retiros', retirosRouter)
+app.use('/api/admin', adminRouter)
 app.use('/api', metaRouter)
 
 app.use('/api', (_req, res) => {
