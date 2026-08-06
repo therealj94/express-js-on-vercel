@@ -64,6 +64,18 @@ export const db = {
     return usuarios.uno({ email: email.toLowerCase().trim() })
   },
 
+  async findUserByGid(gid: string): Promise<User | undefined> {
+    return usuarios.uno({ gid })
+  },
+
+  async setUserGid(id: string, gid: string): Promise<void> {
+    const user = await usuarios.uno({ id })
+    if (user) {
+      user.gid = gid
+      await usuarios.guardar(user)
+    }
+  },
+
   async findUserById(id: string): Promise<User | undefined> {
     return usuarios.uno({ id })
   },

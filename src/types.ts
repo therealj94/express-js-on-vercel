@@ -7,6 +7,8 @@ export interface User {
   fullName: string
   role: UserRole
   createdAt: string
+  /** GID de Genesis ID atado a esta cuenta, si el usuario entró con su identidad. */
+  gid?: string | null
 }
 
 export type PublicUser = Omit<User, 'passwordHash'>

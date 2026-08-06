@@ -1,10 +1,88 @@
 import { Router } from 'express'
+import { randomBytes } from 'crypto'
 import { db, toPublicUser } from '../lib/db.js'
 import { hashPassword, signResetToken, signToken, verifyPassword, verifyResetToken } from '../lib/auth.js'
 import { requireAuth } from '../middleware/auth.js'
 import { h } from '../lib/ruta.js'
+import { llamarGenesis, identidadPorEmail } from '../lib/genesis.js'
 
 export const authRouter = Router()
+
+/**
+ * Entrar con Genesis ID.
+ *
+ * El usuario viene de otra app del ecosistema (Veta Wallet) con un pase de
+ * sesión única que Genesis ID firmó. El enlace profundo trae `token` y `email`;
+ * el email NO se cree por venir en el enlace — se comprueba contra Genesis ID
+ * que ese correo pertenezca exactamente al GID del pase. Sin esa comprobación,
+ * cualquiera con un pase válido podría atarse a la cuenta de otra persona con
+ * solo escribir su correo.
+ *
+ * Si el correo no tiene cuenta en MyTokenPay, se crea en el momento: esa es la
+ * gracia del inicio de sesión único — el KYC ya está hecho en Genesis ID y no
+ * se repite. La cuenta nueva nace sin contraseña utilizable (un azar de 32
+ * bytes); si algún día quiere entrar sin Genesis ID, el flujo de «olvidé mi
+ * contraseña» le deja fijar una, porque el correo es suyo de verdad.
+ */
+authRouter.post('/sso', h(async (req, res) => {
+  const { token, email } = req.body as { token?: string; email?: string }
+  if (!token || typeof token !== 'string') {
+    res.status(400).json({ error: 'Falta el pase de Genesis ID' })
+    return
+  }
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    res.status(400).json({ error: 'Falta el correo de la identidad' })
+    return
+  }
+
+  const v = await llamarGenesis('/api/v1/sso/verificar', { method: 'POST', body: JSON.stringify({ token }) })
+  if (!v.ok || !v.cuerpo?.valido || !v.cuerpo?.gid) {
+    res.status(401).json({ error: v.cuerpo?.error || 'El pase de Genesis ID no es válido o ya venció' })
+    return
+  }
+  const gid: string = v.cuerpo.gid
+  const perfil = v.cuerpo.perfil ?? null
+
+  // El correo tiene que ser el de ESA identidad, según Genesis ID.
+  const identidad = await identidadPorEmail(email)
+  if (!identidad || identidad.gid !== gid) {
+    res.status(403).json({ error: 'El correo no corresponde a la identidad del pase' })
+    return
+  }
+
+  // ¿Ya hay una cuenta atada a este GID? Entra directo.
+  let user = await db.findUserByGid(gid)
+  if (!user) {
+    user = await db.findUserByEmail(email)
+    if (user?.gid && user.gid !== gid) {
+      // Una cuenta no cambia de identidad en silencio, jamás.
+      res.status(403).json({ error: 'Esta cuenta ya está atada a otra identidad' })
+      return
+    }
+    if (!user) {
+      user = await db.createUser({
+        email,
+        fullName: perfil?.nombre || identidad.nombreLegal || 'Usuario de Genesis ID',
+        passwordHash: hashPassword(randomBytes(32).toString('hex')),
+      })
+    }
+    await db.setUserGid(user.id, gid)
+    user.gid = gid
+  }
+
+  // Ata la cuenta al GID también del lado de Genesis ID, para que desde
+  // MyTokenPay se pueda saltar a otras apps del ecosistema sin repetir nada.
+  await llamarGenesis('/api/v1/vinculos', {
+    method: 'POST',
+    body: JSON.stringify({ identidadId: identidad.id, cuenta: user.id }),
+  })
+
+  res.json({
+    token: signToken(user.id),
+    user: toPublicUser(user),
+    genesis: { gid, nombre: perfil?.nombre ?? identidad.nombreLegal ?? null, verificada: true },
+  })
+}))
 
 authRouter.post('/signup', h(async (req, res) => {
   const { email, password, fullName } = req.body as {

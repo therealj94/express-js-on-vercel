@@ -70,6 +70,7 @@ export async function conectarAlmacen(): Promise<'mongo' | 'memoria'> {
     baseMongo.collection('cobros').createIndex({ companyId: 1 }),
     baseMongo.collection('usuarios').createIndex({ id: 1 }, { unique: true }),
     baseMongo.collection('usuarios').createIndex({ email: 1 }, { unique: true }),
+    baseMongo.collection('usuarios').createIndex({ gid: 1 }, { unique: true, sparse: true }),
     baseMongo.collection('comercios').createIndex({ id: 1 }, { unique: true }),
     baseMongo.collection('comercios').createIndex({ ownerId: 1 }),
     baseMongo.collection('movimientos').createIndex({ companyId: 1 }),

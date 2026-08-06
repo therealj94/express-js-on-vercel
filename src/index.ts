@@ -9,6 +9,7 @@ import { companiesRouter } from './routes/companies.js'
 import { cobrosRouter } from './routes/cobros.js'
 import { retirosRouter } from './routes/retiros.js'
 import { adminRouter } from './routes/admin.js'
+import { genesisRouter } from './routes/genesis.js'
 import { db } from './lib/db.js'
 import { conectarAlmacen, modoAlmacen } from './lib/almacen.js'
 import { hashPassword } from './lib/auth.js'
@@ -50,6 +51,7 @@ app.use('/api/companies', companiesRouter)
 app.use('/api/cobros', cobrosRouter)
 app.use('/api/retiros', retirosRouter)
 app.use('/api/admin', adminRouter)
+app.use('/genesis', genesisRouter)
 app.use('/api', metaRouter)
 
 app.use('/api', (_req, res) => {
