@@ -8,7 +8,7 @@
 //
 // El viaje de ida y vuelta:
 //
-//   MyTokenPay  ──vetawallet://pagar?…&volver=mytokenpay://…──▶  Veta Wallet
+//   MyTokenPay  ──vetawallet://pay?…&volver=mytokenpay://…──▶  Veta Wallet
 //                                                                    │ firma
 //   MyTokenPay  ◀──mytokenpay://pagar/CODIGO?tx=0x…&sello=…──────────┘
 //
@@ -40,18 +40,32 @@ export interface OrdenDePago {
   sello: string
 }
 
+/**
+ * El enlace que abre Veta Wallet con el pago listo para firmar.
+ *
+ * Va por `pay` y con los nombres `to` / `amount` / `sym`, que es lo que Veta
+ * Wallet entiende desde hace tiempo. Probando en un teléfono real, mandarlo
+ * por `pagar` abría la app pero no la pantalla de enviar: ese formato solo lo
+ * entienden las versiones nuevas, y una app instalada tarda en actualizarse.
+ * Hablarle a la wallet en el idioma que ya habla hoy es más importante que
+ * usar el nombre más bonito.
+ *
+ * `volver` viaja igual y Veta lo pasa entero a su pantalla de enviar, así que
+ * en cuanto la wallet reciba su actualización, el regreso con el hash funciona
+ * sin tocar nada de este lado.
+ */
 export function enlaceDePago(orden: OrdenDePago): string {
   const volver = `${ESQUEMA_PROPIO}://pagar/${encodeURIComponent(orden.referencia)}?sello=${encodeURIComponent(orden.sello)}`
   const p = new URLSearchParams({
-    a: orden.destino,
-    monto: String(orden.montoOrigen),
-    token: 'ORIGEN',
+    to: orden.destino,
+    amount: String(orden.montoOrigen),
+    sym: 'ORIGEN',
     ref: orden.referencia,
     memo: orden.concepto || `Pago MyTokenPay ${orden.referencia}`,
     sello: orden.sello,
     volver,
   })
-  return `${ESQUEMA_VETA}://pagar?${p.toString()}`
+  return `${ESQUEMA_VETA}://pay?${p.toString()}`
 }
 
 export async function vetaInstalada(): Promise<boolean> {

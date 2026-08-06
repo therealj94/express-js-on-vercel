@@ -16,7 +16,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, AppState, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { FadeInDown } from 'react-native-reanimated'
@@ -98,6 +98,36 @@ export default function Pagar() {
       hnl: ps.reduce((s, p) => s + (p.montoHnl ?? p.montoOrigen * cobro.tasaHnlPorOrigen), 0),
     }
   }, [cobro, elegidas])
+
+  // Volver de Veta Wallet sin haber pagado dejaba el botón girando para
+  // siempre: la pantalla se quedaba en «firmando» esperando un regreso que ya
+  // había ocurrido. Ahora, al volver a primer plano, si no llegó ningún
+  // comprobante se ofrece la salida — pegar el hash a mano o reintentar — en
+  // vez de un botón que da vueltas sin fin.
+  useEffect(() => {
+    let aviso: ReturnType<typeof setTimeout> | null = null
+    const sub = AppState.addEventListener('change', (estado) => {
+      if (estado !== 'active') return
+      // Un respiro antes de dar el intento por perdido: quien vuelve CON el
+      // comprobante llega por el enlace profundo un instante después de que la
+      // app pasa a primer plano, y no hay que asustarlo con un error que se
+      // desmiente solo.
+      aviso = setTimeout(() => {
+        setFase((f) => {
+          if (f !== 'firmando') return f
+          setPedirHash(true)
+          setError(
+            'Volviste sin comprobante. Si ya firmaste en Veta Wallet, pegá el hash abajo; si no, tocá pagar de nuevo.',
+          )
+          return 'eligiendo'
+        })
+      }, 1500)
+    })
+    return () => {
+      if (aviso) clearTimeout(aviso)
+      sub.remove()
+    }
+  }, [])
 
   function alternar(p: Parte) {
     if (p.estado !== 'libre') return
