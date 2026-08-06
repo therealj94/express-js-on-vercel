@@ -54,18 +54,28 @@ la búsqueda de comercios, los puntos y premios, y el KYC personal usan datos de
 demostración en el teléfono (`USE_MOCK_API`). Es la parte de «vitrina», no la de
 dinero. Conectarla a Genesis ID es un paso aparte.
 
-## Los tres pasos para producción de verdad
+## Base de datos: hecho ✅
 
-En orden. Ninguno es reconstruir; los tres son conectar o configurar.
+El backend ya **no guarda en memoria**. Persiste en **MongoDB** (el mismo clúster
+Atlas del ecosistema, base `mytokenpay`). Un reinicio del dyno ya no borra nada:
+está verificado en vivo — se creó un cobro, se reinició el servidor, y el cobro
+seguía ahí.
 
-1. **Base de datos.** El backend guarda en memoria: un reinicio del dyno borra
-   los cobros. Bien para probar en un teléfono, no para comercios reales.
-   MongoDB, como Genesis ID. El almacén (`src/lib/caja.ts`, `src/lib/db.ts`)
-   está aislado para que sea cambiar esos dos archivos.
-2. **Genesis ID.** Quitar el KYC simulado del directorio y apuntar al motor que
+- `src/lib/almacen.ts` es una colección mínima con dos respaldos: MongoDB si hay
+  `MONGODB_URI`, memoria si no (para desarrollo y pruebas). Si hay URI y falla,
+  no arranca en memoria a escondidas: lanza.
+- Índices únicos sobre el sello (cortafuegos final contra el doble cobro), el
+  código del cobro y el correo del usuario.
+- `GET /healthz` informa qué respaldo está activo (`"almacen":"mongo"`).
+
+## Los dos pasos que quedan para producción de verdad
+
+Ninguno es reconstruir; los dos son conectar o configurar.
+
+1. **Genesis ID.** Quitar el KYC simulado del directorio y apuntar al motor que
    ya opera con 19.178 fichas de sanciones. El puente vive en
    `infra/genesis-proxy`.
-3. **Verificar el hash en la cadena.** Hoy el pago se confía del comprobante que
+2. **Verificar el hash en la cadena.** Hoy el pago se confía del comprobante que
    manda la app; comprobar que el monto y el destino cuadran en la 8532 cierra
    el círculo.
 
@@ -73,7 +83,9 @@ En orden. Ninguno es reconstruir; los tres son conectar o configurar.
 
 - **App:** Expo SDK 54, React 19, Reanimated 4, 23 pantallas. Empaqueta limpio
   (7,1 MB Hermes). Cero errores de tipos.
-- **Backend:** Express + TypeScript, Node 20. Cero errores de tipos.
+- **Backend:** Express + TypeScript, Node 20. Persistencia en MongoDB. Cero
+  errores de tipos. 10/10 pruebas del dominio contra la URL de producción
+  (ya con Mongo detrás).
 - **Rama:** `claude/mytokenpay-pos-origen`.
 - **Docs:** `ARQUITECTURA.md` (cómo conecta todo), `POS.md` (el dominio de
   cobro), este archivo (la entrega).
