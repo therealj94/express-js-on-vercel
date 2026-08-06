@@ -54,6 +54,7 @@ async function nuevoComercio(token, verificar = true) {
       description: 'Un comedor para probar el cobro',
       socials: {},
       acceptsOrigen: true,
+      walletAddress: '0xf777de573e67e78ececd2afe19dd18dd046fd4d0',
     },
   })
   assert.equal(r.estado, 201, `alta de comercio: ${JSON.stringify(r.datos)}`)
