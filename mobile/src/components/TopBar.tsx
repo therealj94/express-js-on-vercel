@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   LogOut,
   Palette,
+  Settings as SettingsIcon,
   UserX,
   Wallet,
 } from 'lucide-react-native'
@@ -44,6 +45,7 @@ export function TopBar({ title }: { title?: string }) {
 
   const items: ActionItem[] = user
     ? [
+        { key: 'ajustes', label: 'Ajustes', icon: SettingsIcon, onPress: () => router.push('/ajustes') },
         { key: 'panel', label: 'Mi panel', icon: LayoutGrid, onPress: () => router.push('/(tabs)/panel') },
         { key: 'bonos', label: 'Bonos y regalos', icon: Gift, onPress: () => router.push('/bonos') },
         {

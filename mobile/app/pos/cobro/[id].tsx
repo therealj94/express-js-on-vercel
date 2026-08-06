@@ -19,12 +19,13 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Clipboard from 'expo-clipboard'
 import * as Haptics from 'expo-haptics'
 import QRCode from 'react-native-qrcode-svg'
-import { Check, Copy, Hourglass, X } from 'lucide-react-native'
+import { Check, Copy, Download, Hourglass, X } from 'lucide-react-native'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 import { AnimatedScreen } from '../../../src/components/AnimatedScreen'
 import { ConfirmDialog } from '../../../src/components/ConfirmDialog'
 import { TopBar } from '../../../src/components/TopBar'
 import { pos, lempiras, origen, enlaceCobro, type Cobro } from '../../../src/lib/pos'
+import { compartirRecibo } from '../../../src/lib/recibo'
 import { fonts, radius } from '../../../src/lib/theme'
 import { useTheme, type ThemeColors } from '../../../src/hooks/useTheme'
 
@@ -40,6 +41,7 @@ export default function CobroEnVivo() {
   const [error, setError] = useState<string | null>(null)
   const [copiado, setCopiado] = useState(false)
   const [confirmarAnular, setConfirmarAnular] = useState(false)
+  const [generandoRecibo, setGenerandoRecibo] = useState(false)
   const pagadasPrevias = useRef(0)
 
   const cargar = useCallback(async () => {
@@ -119,6 +121,28 @@ export default function CobroEnVivo() {
               </View>
               <Text style={styles.exitoTitulo}>Cobro completo</Text>
               <Text style={styles.exitoMonto}>{lempiras(cobro.montoHnl)}</Text>
+              <AnimatedPressable
+                onPress={async () => {
+                  if (generandoRecibo) return
+                  setGenerandoRecibo(true)
+                  await compartirRecibo({
+                    codigo: cobro.codigo,
+                    concepto: cobro.concepto,
+                    negocio: 'Tu comercio',
+                    montoHnl: cobro.montoHnl,
+                    montoOrigen: cobro.montoOrigen,
+                    tasaHnlPorOrigen: cobro.tasaHnlPorOrigen,
+                    txHash: cobro.partes.find((p) => p.txHash)?.txHash ?? null,
+                    fecha: cobro.pagadoEn ?? new Date().toISOString(),
+                    tipo: 'cobro',
+                  })
+                  setGenerandoRecibo(false)
+                }}
+                style={styles.recibo}
+              >
+                <Download size={17} color={colors.violet} />
+                <Text style={styles.reciboTexto}>{generandoRecibo ? 'Generando…' : 'Descargar recibo'}</Text>
+              </AnimatedPressable>
             </View>
           ) : (
             <>
@@ -260,6 +284,18 @@ function crearEstilos(colors: ThemeColors) {
     },
     exitoTitulo: { fontFamily: fonts.display, fontSize: 20, color: colors.text, marginTop: 14 },
     exitoMonto: { fontFamily: fonts.displayBold, fontSize: 34, color: colors.ok, marginTop: 4 },
+    recibo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 18,
+      paddingHorizontal: 20,
+      paddingVertical: 11,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: colors.violet,
+    },
+    reciboTexto: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.violet },
 
     resumen: {
       width: '100%',

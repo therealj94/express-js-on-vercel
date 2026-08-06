@@ -20,7 +20,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Haptics from 'expo-haptics'
-import { BadgeCheck, Check, Store, TriangleAlert, Wallet } from 'lucide-react-native'
+import { BadgeCheck, Check, Download, Store, TriangleAlert, Wallet } from 'lucide-react-native'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { AnimatedScreen } from '../../src/components/AnimatedScreen'
 import { GradientButton } from '../../src/components/ui/GradientButton'
@@ -28,6 +28,7 @@ import { TextField } from '../../src/components/ui/TextField'
 import { TopBar } from '../../src/components/TopBar'
 import { pos, lempiras, origen, nuevoSello, type CobroPublico, type Parte } from '../../src/lib/pos'
 import { abrirTienda, abrirVeta, hashValido, vetaInstalada } from '../../src/lib/veta'
+import { compartirRecibo } from '../../src/lib/recibo'
 import { ApiError } from '../../src/lib/apiError'
 import { fonts, radius } from '../../src/lib/theme'
 import { useTheme, type ThemeColors } from '../../src/hooks/useTheme'
@@ -50,6 +51,8 @@ export default function Pagar() {
   const [error, setError] = useState<string | null>(null)
   const [hashManual, setHashManual] = useState('')
   const [pedirHash, setPedirHash] = useState(false)
+  const [hashPagado, setHashPagado] = useState<string | null>(null)
+  const [generandoRecibo, setGenerandoRecibo] = useState(false)
 
   // El sello se fija UNA vez por intento. Si se regenerara en cada envío, el
   // reintento parecería un pago nuevo y el cliente pagaría dos veces.
@@ -149,6 +152,7 @@ export default function Pagar() {
         sello: sello.current,
       })
       setCobro(r.cobro)
+      setHashPagado(txHash)
       setFase('listo')
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
     } catch (e) {
@@ -196,6 +200,28 @@ export default function Pagar() {
               ? 'La cuenta quedó saldada.'
               : `Faltan ${cobro.partes.filter((p) => p.estado !== 'pagada').length} partes por pagar.`}
           </Text>
+          <AnimatedPressable
+            onPress={async () => {
+              if (generandoRecibo) return
+              setGenerandoRecibo(true)
+              await compartirRecibo({
+                codigo: cobro.codigo,
+                concepto: cobro.concepto,
+                negocio: cobro.negocio?.nombre ?? 'Comercio',
+                montoHnl: total.hnl,
+                montoOrigen: total.origen,
+                tasaHnlPorOrigen: cobro.tasaHnlPorOrigen,
+                txHash: hashPagado,
+                fecha: new Date().toISOString(),
+                tipo: 'pago',
+              })
+              setGenerandoRecibo(false)
+            }}
+            style={styles.recibo}
+          >
+            <Download size={17} color={colors.violet} />
+            <Text style={styles.reciboTexto}>{generandoRecibo ? 'Generando…' : 'Descargar recibo'}</Text>
+          </AnimatedPressable>
           <GradientButton label="Volver" onPress={() => router.replace('/(tabs)')} style={styles.ctaVolver} />
         </View>
       </SafeAreaView>
@@ -442,6 +468,18 @@ function crearEstilos(colors: ThemeColors) {
     exitoTitulo: { fontFamily: fonts.display, fontSize: 22, color: colors.text, marginTop: 8 },
     exitoMonto: { fontFamily: fonts.displayBold, fontSize: 36, color: colors.ok },
     exitoPie: { fontFamily: fonts.body, fontSize: 13, color: colors.muted, textAlign: 'center' },
-    ctaVolver: { marginTop: 20, alignSelf: 'stretch' },
+    recibo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 20,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: colors.violet,
+    },
+    reciboTexto: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.violet },
+    ctaVolver: { marginTop: 12, alignSelf: 'stretch' },
   })
 }

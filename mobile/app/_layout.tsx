@@ -20,6 +20,8 @@ import { useAuthStore } from '../src/store/auth'
 import { useMetaStore } from '../src/store/meta'
 import { useThemeStore } from '../src/store/theme'
 import { useOnboardingStore } from '../src/store/onboarding'
+import { useLockStore } from '../src/store/lock'
+import { LockGate } from '../src/components/LockGate'
 import { useTheme } from '../src/hooks/useTheme'
 
 SplashScreen.preventAutoHideAsync().catch(() => {})
@@ -80,6 +82,7 @@ export default function RootLayout() {
       SplashScreen.hideAsync().catch(() => {})
       init()
       loadMeta()
+      useLockStore.getState().cargar()
     }
   }, [ready, init, loadMeta])
 
@@ -122,6 +125,7 @@ export default function RootLayout() {
         <Stack.Screen name="pos/retirar" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="pagar/index" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="pagar/[codigo]" />
+        <Stack.Screen name="ajustes" />
       </Stack>
       <AuthGate />
     </GestureHandlerRootView>
