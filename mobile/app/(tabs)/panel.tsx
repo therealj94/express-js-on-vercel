@@ -10,8 +10,10 @@ import {
   Gift,
   IdCard,
   LogIn,
+  ScanLine,
   Sparkle,
   Store,
+  UtensilsCrossed,
   Wallet,
   type LucideIcon,
 } from 'lucide-react-native'
@@ -23,6 +25,7 @@ import { AnimatedScreen } from '../../src/components/AnimatedScreen'
 import { Pressable3D } from '../../src/components/Pressable3D'
 import { GradientButton } from '../../src/components/ui/GradientButton'
 import { api } from '../../src/lib/api'
+import { pos, lempiras, type Saldo } from '../../src/lib/pos'
 import type { Company } from '../../src/lib/types'
 import { useAuthStore } from '../../src/store/auth'
 import { useWalletStore } from '../../src/store/wallet'
@@ -48,10 +51,16 @@ export default function Dashboard() {
   const unread = useNotificationsStore((s) => s.items.filter((n) => !n.read).length)
   const [company, setCompany] = useState<Company | null | undefined>(undefined)
   const [points, setPoints] = useState<number | null>(null)
+  const [saldo, setSaldo] = useState<Saldo | null>(null)
 
   useEffect(() => {
     if (!user) return
-    api.myCompany().then(({ company }) => setCompany(company)).catch(() => setCompany(null))
+    api.myCompany().then(({ company }) => {
+      setCompany(company)
+      if (company?.kyc.status === 'verified') {
+        pos.saldo().then(setSaldo).catch(() => {})
+      }
+    }).catch(() => setCompany(null))
     api.myRewardsState().then((s) => setPoints(s.pointsBalance)).catch(() => {})
   }, [user])
 
@@ -114,6 +123,22 @@ export default function Dashboard() {
       <View style={styles.section}>
         <AnimatedText style={styles.hello}>Hola, {user.fullName.split(' ')[0]}</AnimatedText>
         <Text style={styles.subtitle}>Bienvenido de nuevo a MyTokenPay.</Text>
+      </View>
+
+      {/* Pagar: la acción número uno de un usuario en un comercio */}
+      <View style={styles.section}>
+        <Pressable3D onPress={() => router.push('/pagar')} tilt={6}>
+          <View style={styles.pagarCard}>
+            <View style={styles.pagarIcon}>
+              <ScanLine size={22} color={colors.bg} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.pagarTitle}>Pagar en un comercio</Text>
+              <Text style={styles.pagarHint}>Escaneá el QR de la cuenta o escribí el código</Text>
+            </View>
+            <ArrowRight size={18} color={colors.text} />
+          </View>
+        </Pressable3D>
       </View>
 
       {/* Puntos ORIGEN + wallet */}
@@ -221,20 +246,52 @@ export default function Dashboard() {
         )}
 
         {company?.kyc.status === 'verified' && (
-          <View style={styles.posFila}>
-            <Pressable3D onPress={() => router.push('/pos')} tilt={5} style={{ flex: 1 }}>
-              <View style={styles.posBoton}>
-                <CreditCard size={20} color={colors.violet} />
-                <Text style={styles.posTexto}>Cobrar</Text>
-              </View>
-            </Pressable3D>
-            <Pressable3D onPress={() => router.push('/pos/saldo')} tilt={5} style={{ flex: 1 }}>
-              <View style={styles.posBoton}>
-                <Wallet size={20} color={colors.violet} />
-                <Text style={styles.posTexto}>Mi dinero</Text>
-              </View>
-            </Pressable3D>
-          </View>
+          <>
+            {saldo && (
+              <Pressable3D onPress={() => router.push('/pos/saldo')} tilt={5}>
+                <View style={styles.saldoCard}>
+                  <View>
+                    <Text style={styles.saldoEtiqueta}>Disponible para retirar</Text>
+                    <Text style={styles.saldoMonto}>
+                      {saldo.enLempiras ? lempiras(saldo.enLempiras.disponible) : `${saldo.saldo.disponible} ORIGEN`}
+                    </Text>
+                    {saldo.enLempiras && (
+                      <Text style={styles.saldoOrigen}>{saldo.saldo.disponible} ORIGEN</Text>
+                    )}
+                  </View>
+                  <ArrowRight size={16} color={colors.muted} />
+                </View>
+              </Pressable3D>
+            )}
+            <View style={styles.posFila}>
+              <Pressable3D onPress={() => router.push('/pos')} tilt={5} style={{ flex: 1 }}>
+                <View style={styles.posBoton}>
+                  <CreditCard size={20} color={colors.violet} />
+                  <Text style={styles.posTexto}>Cobrar</Text>
+                </View>
+              </Pressable3D>
+              <Pressable3D onPress={() => router.push('/pos/orden')} tilt={5} style={{ flex: 1 }}>
+                <View style={styles.posBoton}>
+                  <UtensilsCrossed size={20} color={colors.violet} />
+                  <Text style={styles.posTexto}>Tomar orden</Text>
+                </View>
+              </Pressable3D>
+            </View>
+            <View style={styles.posFila}>
+              <Pressable3D onPress={() => router.push('/pos/saldo')} tilt={5} style={{ flex: 1 }}>
+                <View style={styles.posBoton}>
+                  <Wallet size={20} color={colors.violet} />
+                  <Text style={styles.posTexto}>Mi dinero</Text>
+                </View>
+              </Pressable3D>
+              <Pressable3D onPress={() => router.push('/mi-empresa')} tilt={5} style={{ flex: 1 }}>
+                <View style={styles.posBoton}>
+                  <Store size={20} color={colors.violet} />
+                  <Text style={styles.posTexto}>Mi empresa</Text>
+                </View>
+              </Pressable3D>
+            </View>
+          </>
         )}
 
         {!!company && company.kyc.status !== 'verified' && (
@@ -251,6 +308,41 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     section: { paddingHorizontal: 20, marginTop: 18 },
     posFila: { flexDirection: 'row', gap: 10, marginTop: 10 },
+    pagarCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      borderRadius: radius.xl,
+      padding: 16,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.violet + '66',
+      ...shadow(colors.violet, 'sm'),
+    },
+    pagarIcon: {
+      width: 46,
+      height: 46,
+      borderRadius: radius.lg,
+      backgroundColor: colors.violet,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pagarTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 15.5 },
+    pagarHint: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, marginTop: 2 },
+    saldoCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      padding: 16,
+      marginTop: 10,
+    },
+    saldoEtiqueta: { color: colors.muted, fontFamily: fonts.body, fontSize: 12 },
+    saldoMonto: { color: colors.text, fontFamily: fonts.displayBold, fontSize: 24, marginTop: 3 },
+    saldoOrigen: { color: colors.muted2, fontFamily: fonts.body, fontSize: 11.5, marginTop: 2 },
     posBoton: {
       backgroundColor: colors.surface,
       borderWidth: 1,

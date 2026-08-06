@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
-import { ArrowRight, Gift, MapPinned, Percent, Search, ShieldCheck, Sparkle, Store, Ticket, Users, X } from 'lucide-react-native'
+import { ArrowRight, Gift, MapPinned, Percent, ScanLine, Search, ShieldCheck, Sparkle, Store, Ticket, Users, X } from 'lucide-react-native'
 import { Screen } from '../../src/components/Screen'
 import { TopBar } from '../../src/components/TopBar'
 import { CategoryIcon } from '../../src/components/CategoryIcon'
@@ -83,6 +83,15 @@ export default function Home() {
             <LinearGradient colors={gradient} style={styles.searchBtn}>
               <Search size={17} color={colors.bg} />
             </LinearGradient>
+          </Pressable>
+        </View>
+
+        {/* Pagar una cuenta: siempre a un toque desde el inicio */}
+        <View style={styles.pagarRow}>
+          <Pressable onPress={() => router.push('/pagar')} style={styles.pagarBtn}>
+            <ScanLine size={16} color={colors.violet} />
+            <Text style={styles.pagarBtnTexto}>Pagar una cuenta · escaneá el QR o escribí el código</Text>
+            <ArrowRight size={14} color={colors.violet} />
           </Pressable>
         </View>
       </View>
@@ -231,6 +240,20 @@ function createStyles(colors: ThemeColors) {
   h1: { color: colors.text, fontFamily: fonts.displayBold, fontSize: 30, lineHeight: 36, marginTop: 14 },
   subtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21, marginTop: 10 },
   searchRow: { flexDirection: 'row', gap: 10, marginTop: 18, alignItems: 'center' },
+  pagarRow: { marginTop: 10 },
+  pagarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.violet + '55',
+    backgroundColor: colors.violet + '14',
+    borderRadius: radius.md,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  pagarBtnTexto: { color: colors.text, fontFamily: fonts.bodySemiBold, fontSize: 12.5, flexShrink: 1 },
   searchBtn: { width: 46, height: 46, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   statsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginTop: 20 },
   statCard: { flex: 1, gap: 8, alignItems: 'flex-start' },

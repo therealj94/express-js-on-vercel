@@ -1,8 +1,9 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { Animated, Pressable, type GestureResponderEvent, type PressableProps, type StyleProp, type ViewStyle } from 'react-native'
+import { repartirEstilo } from './layoutSplit'
 
 interface Props extends Omit<PressableProps, 'style'> {
-  style?: StyleProp<ViewStyle> | ((state: { pressed: boolean }) => StyleProp<ViewStyle>)
+  style?: StyleProp<ViewStyle>
   scaleTo?: number
   children: React.ReactNode
 }
@@ -20,13 +21,15 @@ export function AnimatedPressable({ style, scaleTo = 0.96, onPressIn, onPressOut
     onPressOut?.(e)
   }
 
+  // El layout (ancho, flex, márgenes) tiene que vivir en el Pressable externo:
+  // si viviera solo en la vista interna, un `width: '48%'` se resolvería
+  // contra un contenedor de ancho automático y la tarjeta colapsaría en una
+  // tira ilegible — pasó con el teclado de la caja y el panel.
+  const { externo, interno } = useMemo(() => repartirEstilo(style), [style])
+
   return (
-    <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut} {...props}>
-      {(state) => (
-        <Animated.View style={[typeof style === 'function' ? style(state) : style, { transform: [{ scale }] }]}>
-          {children}
-        </Animated.View>
-      )}
+    <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut} style={externo} {...props}>
+      <Animated.View style={[interno, { transform: [{ scale }] }]}>{children}</Animated.View>
     </Pressable>
   )
 }

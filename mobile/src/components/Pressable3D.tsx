@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import {
   Animated,
   Pressable,
@@ -8,6 +8,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native'
+import { repartirEstilo } from './layoutSplit'
 
 interface Props extends Omit<PressableProps, 'style'> {
   style?: StyleProp<ViewStyle>
@@ -55,10 +56,14 @@ export function Pressable3D({ style, tilt = 8, scaleTo = 0.96, onPressIn, onPres
   const rx = rotateX.interpolate({ inputRange: [-tilt, tilt], outputRange: [`-${tilt}deg`, `${tilt}deg`] })
   const ry = rotateY.interpolate({ inputRange: [-tilt, tilt], outputRange: [`-${tilt}deg`, `${tilt}deg`] })
 
+  // El layout vive en el Pressable externo; lo visual, en la vista animada.
+  // Sin este reparto, un `width: '48%'` colapsa contra el ancho automático.
+  const { externo, interno } = useMemo(() => repartirEstilo(style), [style])
+
   return (
-    <Pressable onLayout={onLayout} onPressIn={handlePressIn} onPressOut={handlePressOut} {...props}>
+    <Pressable onLayout={onLayout} onPressIn={handlePressIn} onPressOut={handlePressOut} style={externo} {...props}>
       <Animated.View
-        style={[style, { transform: [{ perspective: 800 }, { rotateX: rx }, { rotateY: ry }, { scale }] }]}
+        style={[interno, { transform: [{ perspective: 800 }, { rotateX: rx }, { rotateY: ry }, { scale }] }]}
       >
         {children}
       </Animated.View>
