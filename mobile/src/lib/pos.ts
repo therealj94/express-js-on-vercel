@@ -13,17 +13,33 @@ import Constants from 'expo-constants'
 import { getToken } from './token'
 import { ApiError } from './apiError'
 
+/**
+ * La URL del servidor.
+ *
+ * PRODUCCIÓN es el valor por defecto, no localhost. Parece un detalle y no lo
+ * es: la variable de entorno se hornea al compilar el APK, pero una
+ * actualización por aire se publica sin ella, y con el orden anterior la app
+ * ya instalada caía a `http://localhost:3001` — un servidor que en un teléfono
+ * no existe. La app quedaba muerta hasta reinstalarla, que es exactamente lo
+ * que las actualizaciones por aire venían a evitar.
+ *
+ * El descubrimiento LAN queda solo para desarrollo (`__DEV__`), que es el único
+ * sitio donde tiene sentido buscar la API en la máquina que sirve el bundle.
+ */
+const API_PRODUCCION = 'https://mytokenpay-api-5ab43b64205a.herokuapp.com'
+
 function resolverUrl(): string {
   const env = process.env.EXPO_PUBLIC_API_URL
   if (env) return env.replace(/\/$/, '')
 
-  // En Expo Go, `hostUri` apunta al equipo que sirve el bundle: la misma
-  // máquina que normalmente corre la API en desarrollo.
-  const host =
-    Constants.expoConfig?.hostUri ??
-    (Constants as { expoGoConfig?: { debuggerHost?: string } }).expoGoConfig?.debuggerHost
-  if (host) return `http://${host.split(':')[0]}:3001`
-  return 'http://localhost:3001'
+  // Solo en desarrollo: la API vive en la misma máquina que sirve el bundle.
+  if (__DEV__) {
+    const host =
+      Constants.expoConfig?.hostUri ??
+      (Constants as { expoGoConfig?: { debuggerHost?: string } }).expoGoConfig?.debuggerHost
+    if (host) return `http://${host.split(':')[0]}:3001`
+  }
+  return API_PRODUCCION
 }
 
 export const API_URL = resolverUrl()
