@@ -37,7 +37,10 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.USE_BIOMETRIC",
-        "android.permission.USE_FINGERPRINT"
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO"
       ],
       "versionCode": 1
     },
@@ -76,6 +79,13 @@
     "runtimeVersion": {
       "policy": "sdkVersion"
     },
-    "newArchEnabled": true
+    "newArchEnabled": true,
+    "owner": "vetawallet",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "bc7468d1-e7a1-4bf2-9c2a-9d03ddab6fe9"
+      }
+    }
   }
 }
