@@ -250,6 +250,10 @@ export const caja = {
       montoOrigen: parte.montoOrigen,
       concepto: cobro.concepto || `Cobro ${cobro.codigo}`,
       referencia: cobro.id,
+      parteId: parte.id,
+      // Nace sin confirmar: la mesa se cierra al instante, pero este ORIGEN no
+      // es retirable hasta que la cadena diga que el depósito existe.
+      confirmado: false,
     })
 
     alDia(cobro)
@@ -274,13 +278,27 @@ export const caja = {
     return Math.round(total * 100) / 100
   },
 
-  /** Anota lo que dijo la cadena sobre el comprobante de una parte. */
+  /**
+   * Anota lo que dijo la cadena sobre el comprobante de una parte, y mueve ese
+   * dinero entre «por confirmar» y «confirmado».
+   *
+   * Es el único punto donde un abono pasa a ser retirable. Si el veredicto deja
+   * de ser 'confirmada' (una reorganización de la cadena, un hash que resultó
+   * no existir), el dinero vuelve a «por confirmar»: el saldo dice la verdad en
+   * las dos direcciones, no solo en la buena.
+   */
   async marcarVerificacion(cobroId: string, parteId: string, veredicto: string): Promise<void> {
     const cobro = await cobros.uno({ id: cobroId })
     const parte = cobro?.partes.find((p) => p.id === parteId)
     if (!cobro || !parte) return
     parte.verificacionCadena = veredicto
     await cobros.guardar(cobro)
+
+    const mov = await movimientos.uno({ referencia: cobroId, parteId } as any)
+    if (mov) {
+      mov.confirmado = veredicto === 'confirmada'
+      await movimientos.guardar(mov)
+    }
   },
 
   // ── Saldo ─────────────────────────────────────────────────────────────────
@@ -297,15 +315,36 @@ export const caja = {
   },
 
   /**
-   * Saldo del comercio, en ORIGEN.
+   * Saldo del comercio, en ORIGEN, en dos niveles.
    *
-   * `disponible` descuenta lo que ya está comprometido en retiros que el
-   * administrador todavía no ha resuelto. Sin ese descuento un comercio podría
-   * pedir tres veces el mismo dinero y las tres solicitudes parecerían válidas.
+   * `confirmado` es el dinero que la cadena 8532 respalda: está de verdad en la
+   * billetera del comercio. `porConfirmar` es lo que la app dio por pagado y la
+   * cadena todavía no avala — sirve para que el mesero vea que la mesa cerró,
+   * pero no es dinero que se pueda retirar.
+   *
+   * `disponible` sale SOLO de lo confirmado, menos lo comprometido en retiros
+   * sin resolver. Un administrador que paga lempiras contra un abono que la
+   * cadena nunca respaldó está regalando dinero, y esa puerta queda cerrada
+   * aquí: es la única definición de «disponible» que existe en el sistema.
    */
-  async saldo(companyId: string): Promise<{ total: number; retenido: number; disponible: number }> {
+  async saldo(companyId: string): Promise<{
+    total: number
+    confirmado: number
+    porConfirmar: number
+    retenido: number
+    disponible: number
+  }> {
     const movs = await movimientos.varios({ companyId })
     const total = movs.reduce((s, m) => s + m.montoOrigen, 0)
+
+    // Un movimiento sin el campo (los de antes de esta versión) cuenta como no
+    // confirmado: ante la duda, no es retirable. Los retiros (negativos) sí
+    // pesan siempre, porque ese dinero ya salió.
+    const confirmado = movs.reduce(
+      (s, m) => s + (m.montoOrigen < 0 || m.confirmado === true ? m.montoOrigen : 0),
+      0,
+    )
+    const porConfirmar = total - confirmado
 
     const rets = await retiros.varios({ companyId })
     const retenido = rets
@@ -313,7 +352,13 @@ export const caja = {
       .reduce((s, r) => s + r.montoOrigen, 0)
 
     const r6 = (n: number) => Math.round(n * 1e6) / 1e6
-    return { total: r6(total), retenido: r6(retenido), disponible: r6(total - retenido) }
+    return {
+      total: r6(total),
+      confirmado: r6(confirmado),
+      porConfirmar: r6(porConfirmar),
+      retenido: r6(retenido),
+      disponible: r6(Math.max(0, confirmado - retenido)),
+    }
   },
 
   // ── Retiros ───────────────────────────────────────────────────────────────
@@ -385,6 +430,8 @@ export const caja = {
         montoOrigen: -r.montoOrigen,
         concepto: `Retiro a ${r.banco.banco} ····${r.banco.numeroCuenta.slice(-4)}`,
         referencia: r.id,
+        // Una salida siempre pesa: la pagó una persona con lempiras de verdad.
+        confirmado: true,
       })
     }
     return r

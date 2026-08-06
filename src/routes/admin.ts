@@ -84,9 +84,15 @@ adminRouter.get('/retiros', h(async (req, res) => {
   const retiros = await Promise.all(
     lista.map(async (r) => {
       const negocio = await db.findCompanyById(r.companyId)
+      // El saldo del comercio viaja con cada solicitud: antes de mandar
+      // lempiras a un banco, quien paga tiene que ver cuánto de ese dinero
+      // respalda la cadena. Un retiro que supera lo confirmado es una alarma.
+      const saldo = await caja.saldo(r.companyId)
       return {
         ...r,
         negocio: negocio ? { id: negocio.id, nombre: negocio.tradeName, verificado: negocio.verified } : null,
+        saldo,
+        respaldado: r.montoOrigen <= saldo.confirmado,
       }
     }),
   )

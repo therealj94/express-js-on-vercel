@@ -80,6 +80,17 @@ export interface Movimiento {
   montoOrigen: number
   concepto: string
   referencia: string | null
+  /** La parte del cobro que originó el abono, para poder confirmarla después. */
+  parteId?: string | null
+  /**
+   * ¿La cadena 8532 respalda este dinero?
+   *
+   * Un abono nace en `false`: la app dijo que pagó y la mesa se cierra, pero
+   * hasta que la cadena confirme el depósito ese ORIGEN no existe en la
+   * billetera del comercio y NO se puede retirar. Los retiros nacen en `true`:
+   * los paga una persona con lempiras de verdad.
+   */
+  confirmado?: boolean
   creadoEn: string
 }
 

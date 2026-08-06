@@ -86,6 +86,8 @@ retirosRouter.get('/saldo', requireAuth, h(async (req, res) => {
     enLempiras: tasa
       ? {
           total: aHnl(saldo.total, tasa.hnlPorOrigen),
+          confirmado: aHnl(saldo.confirmado, tasa.hnlPorOrigen),
+          porConfirmar: aHnl(saldo.porConfirmar, tasa.hnlPorOrigen),
           disponible: aHnl(saldo.disponible, tasa.hnlPorOrigen),
           tasaHnlPorOrigen: tasa.hnlPorOrigen,
           fuente: tasa.fuente,
@@ -116,12 +118,12 @@ retirosRouter.post('/', requireAuth, h(async (req, res) => {
     return
   }
 
-  const { disponible } = await caja.saldo(negocio.id)
-  if (monto > disponible) {
-    res.status(400).json({
-      error: 'No tenés saldo suficiente',
-      detalle: `Disponible: ${disponible} ORIGEN. Si pediste otro retiro hace poco, ese monto queda reservado hasta que se resuelva.`,
-    })
+  const s = await caja.saldo(negocio.id)
+  if (monto > s.disponible) {
+    const detalle = s.porConfirmar > 0
+      ? `Disponible: ${s.disponible} ORIGEN. Tenés ${s.porConfirmar} ORIGEN por confirmar: son pagos que la cadena todavía no respalda, y no se pueden retirar hasta que el depósito aparezca en tu billetera. Usá «Verificar pago» en el cobro.`
+      : `Disponible: ${s.disponible} ORIGEN. Si pediste otro retiro hace poco, ese monto queda reservado hasta que se resuelva.`
+    res.status(400).json({ error: 'No tenés saldo suficiente', detalle })
     return
   }
 
