@@ -24,6 +24,21 @@ async function pedir(ruta, { metodo = 'GET', cuerpo, token } = {}) {
   return { estado: r.status, datos: await r.json().catch(() => ({})) }
 }
 
+/**
+ * Pide al servidor que verifique el cobro contra la cadena y dice si TODO el
+ * dinero quedó respaldado.
+ *
+ * Contra la cadena de verdad, un comprobante de prueba nunca se confirma —y
+ * eso está bien: es la garantía que protege al administrador de pagar
+ * lempiras contra dinero que no existe. Contra un nodo simulado
+ * (RPC_8532_URL apuntando a un doble), sí se confirma y se puede ejercitar el
+ * circuito entero del retiro.
+ */
+async function respaldadoEnCadena(tokenComercio, cobroId) {
+  const r = await pedir(`/api/cobros/mios/${cobroId}/verificar`, { metodo: 'POST', token: tokenComercio })
+  return r.estado === 200 && r.datos?.resumen?.todoDepositado === true
+}
+
 const correo = (p) => `${p}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@prueba.test`
 
 async function nuevoUsuario(nombre) {
@@ -216,6 +231,8 @@ test('el número de cuenta nunca vuelve completo al comercio', async () => {
     cuerpo: { parteIds: [datos.cobro.partes[0].id], txHash: '0xff', sello: `s-${datos.cobro.codigo}` },
   })
 
+  const respaldado = await respaldadoEnCadena(dueño.token, datos.cobro.id)
+
   const r = await pedir('/api/retiros', {
     metodo: 'POST',
     token: dueño.token,
@@ -224,6 +241,15 @@ test('el número de cuenta nunca vuelve completo al comercio', async () => {
       banco: { banco: 'Banco Ficohsa', tipoCuenta: 'ahorro', numeroCuenta: '2000456756', titular: 'Prueba Prueba', identidad: '0801199912345' },
     },
   })
+
+  if (!respaldado) {
+    // La otra mitad de la misma promesa: sin respaldo en la cadena ese dinero
+    // NO se retira, por mucho que la app haya dado el pago por hecho.
+    assert.equal(r.estado, 400, JSON.stringify(r.datos))
+    assert.match(JSON.stringify(r.datos), /por confirmar/, 'debe explicar que falta el respaldo')
+    return
+  }
+
   assert.equal(r.estado, 201, JSON.stringify(r.datos))
   assert.ok(!JSON.stringify(r.datos).includes('2000456756'), 'el número de cuenta volvió completo')
   assert.match(r.datos.retiro.banco.numeroCuenta, /^····6756$/)
@@ -248,6 +274,8 @@ test('el saldo se descuenta solo cuando el administrador confirma que pagó', as
     cuerpo: { parteIds: [datos.cobro.partes[0].id], txHash: '0xee', sello: `sf-${datos.cobro.codigo}` },
   })
 
+  const respaldado = await respaldadoEnCadena(dueño.token, datos.cobro.id)
+
   const antes = await pedir('/api/retiros/saldo', { token: dueño.token })
   const total = antes.datos.saldo.total
 
@@ -259,6 +287,16 @@ test('el saldo se descuenta solo cuando el administrador confirma que pagó', as
       banco: { banco: 'BAC Credomatic', tipoCuenta: 'cheques', numeroCuenta: '1122334455', titular: 'Prueba Prueba', identidad: '0801199912345' },
     },
   })
+
+  if (!respaldado) {
+    // Sin respaldo en la cadena no hay retiro que resolver: el saldo se ve,
+    // pero no sale. Que esto sea 400 es la garantía, no un fallo.
+    assert.equal(cr.estado, 400, JSON.stringify(cr.datos))
+    assert.equal(antes.datos.saldo.disponible, 0, 'nada sin confirmar puede estar disponible')
+    assert.ok(antes.datos.saldo.porConfirmar > 0, 'el dinero pagado tiene que verse como por confirmar')
+    return
+  }
+
   assert.equal(cr.estado, 201)
 
   const enEspera = await pedir('/api/retiros/saldo', { token: dueño.token })
