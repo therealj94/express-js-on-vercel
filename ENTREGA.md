@@ -8,7 +8,7 @@ verificado en vivo**, no en teoría.
 | Pieza | Dónde | Estado |
 | --- | --- | --- |
 | **Backend del POS** | `https://mytokenpay-api-5ab43b64205a.herokuapp.com` | ✅ en producción |
-| **MyTokenPay (APK)** | [descargar APK](https://expo.dev/artifacts/eas/t-IlmsAGdQ4Mnv-c8fuFq6YEgLdoMXea1DfgAa6Kcis.apk) · `@vetawallet/mytokenpay` | ✅ v1.0.0 — layout arreglado, panel de negocio, Pagar visible, menú y orden |
+| **MyTokenPay (APK)** | [descargar APK](https://expo.dev/artifacts/eas/bdkP7kgYLdba17ezfDDYfAddzi64zffBHs8n38o_A68.apk) · `@vetawallet/mytokenpay` | ✅ v1.0.0 — el último que se instala a mano: ya recibe cambios por aire |
 | **Veta Wallet (APK)** | [descargar APK](https://expo.dev/artifacts/eas/44cn1FX-0Lox3jFbw4VJB-7lr5a-bs-Zdapc9itBSnU.apk) · `@vetawallet/veta-wallet` | ✅ v1.32.0 — el botón SSO le llega por el aire al abrirla |
 | **Genesis ID (panel)** | `https://genesis-id.onrender.com` | ✅ en producción |
 | **Cadena 8532 + ORIGEN** | `ordenscan.com` | ✅ en producción |
@@ -98,6 +98,39 @@ seguía ahí.
 - Índices únicos sobre el sello (cortafuegos final contra el doble cobro), el
   código del cobro y el correo del usuario.
 - `GET /healthz` informa qué respaldo está activo (`"almacen":"mongo"`).
+
+## El dinero, de punta a punta
+
+El pago cierra el círculo entre las tres piezas:
+
+1. La mesa ordena del menú → el POS arma la cuenta → QR (entera o dividida).
+2. El comensal escanea, elige su parte y **salta a Veta Wallet** con la
+   dirección del comercio y el monto ya puestos (`vetawallet://pagar?…`).
+3. Firma el envío de ORIGEN en la cadena 8532 y **vuelve con el hash**, que
+   confirma su parte. Cuando todas están, la cuenta se cierra en **pagado**.
+4. El comercio toca **«Verificar pago en la cadena»**: se le pregunta a la 8532
+   si esa transferencia existe, salió bien, va a su dirección y trae el monto.
+
+### El saldo tiene dos niveles, y esto importa
+
+- **Por confirmar** — la app dio el pago por hecho y la mesa cerró, pero la
+  cadena todavía no avala el depósito. Se ve; **no se retira**.
+- **Confirmado** — la 8532 dice que el ORIGEN está en la billetera del negocio.
+  Es lo único que alimenta «disponible».
+
+Nació de un hallazgo real: el restaurante de demostración mostraba 10,81 ORIGEN
+retirables y su billetera en la cadena tenía 0,0. El backend acreditaba con solo
+el comprobante que mandaba la app. Un administrador podía pagar lempiras contra
+dinero que no existía. Esa puerta está cerrada: la cola del administrador viaja
+con el saldo del comercio y una marca `respaldado`.
+
+## Actualizaciones por aire
+
+MyTokenPay ya lleva `expo-updates`, como Veta Wallet. Un cambio de JavaScript
+—pantallas, textos, lógica, diseño— llega al teléfono en segundos, con un aviso
+discreto para aplicarlo (nunca reinicia sola: a un mesero a mitad de un cobro,
+un reinicio sorpresa le cuesta la venta). Solo hace falta compilar un APK nuevo
+si se agrega una librería con parte nativa.
 
 ## El paso que queda para producción de verdad
 
