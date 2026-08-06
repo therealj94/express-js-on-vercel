@@ -15,7 +15,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ArrowDownLeft, ArrowUpRight, Banknote, Clock, Info } from 'lucide-react-native'
+import { ArrowDownLeft, ArrowUpRight, Banknote, Clock, Info, ShieldAlert } from 'lucide-react-native'
 import { AnimatedScreen } from '../../src/components/AnimatedScreen'
 import { GradientButton } from '../../src/components/ui/GradientButton'
 import { TopBar } from '../../src/components/TopBar'
@@ -94,6 +94,18 @@ export default function SaldoComercio() {
               {enLempiras ? lempiras(enLempiras.disponible) : origen(saldo.disponible)}
             </Text>
             <Text style={styles.enOrigen}>{origen(saldo.disponible)}</Text>
+
+            {saldo.porConfirmar > 0 && (
+              <View style={styles.porConfirmar}>
+                <ShieldAlert size={14} color={colors.warn} />
+                <Text style={styles.porConfirmarTexto}>
+                  {origen(saldo.porConfirmar)}
+                  {enLempiras ? ` (${lempiras(enLempiras.porConfirmar)})` : ''} por confirmar: son
+                  pagos que la cadena todavía no respalda. Aparecen acá, pero no se pueden retirar
+                  hasta que el depósito esté en tu billetera. Usá «Verificar pago» en el cobro.
+                </Text>
+              </View>
+            )}
 
             {saldo.retenido > 0 && (
               <View style={styles.retenido}>
@@ -197,6 +209,16 @@ function crearEstilos(colors: ThemeColors) {
     etq: { fontFamily: fonts.body, fontSize: 12, color: colors.muted },
     grande: { fontFamily: fonts.displayBold, fontSize: 40, color: colors.text, marginTop: 4, letterSpacing: -1 },
     enOrigen: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.violet, marginTop: 2 },
+    porConfirmar: {
+      flexDirection: 'row',
+      gap: 8,
+      alignItems: 'flex-start',
+      marginTop: 14,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: 12,
+    },
+    porConfirmarTexto: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 17, flex: 1 },
     retenido: {
       flexDirection: 'row',
       gap: 8,

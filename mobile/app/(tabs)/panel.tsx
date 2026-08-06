@@ -258,6 +258,11 @@ export default function Dashboard() {
                     {saldo.enLempiras && (
                       <Text style={styles.saldoOrigen}>{saldo.saldo.disponible} ORIGEN</Text>
                     )}
+                    {saldo.saldo.porConfirmar > 0 && (
+                      <Text style={styles.saldoPendiente}>
+                        + {saldo.saldo.porConfirmar} ORIGEN por confirmar en la cadena
+                      </Text>
+                    )}
                   </View>
                   <ArrowRight size={16} color={colors.muted} />
                 </View>
@@ -343,6 +348,7 @@ function createStyles(colors: ThemeColors) {
     saldoEtiqueta: { color: colors.muted, fontFamily: fonts.body, fontSize: 12 },
     saldoMonto: { color: colors.text, fontFamily: fonts.displayBold, fontSize: 24, marginTop: 3 },
     saldoOrigen: { color: colors.muted2, fontFamily: fonts.body, fontSize: 11.5, marginTop: 2 },
+    saldoPendiente: { color: colors.warn, fontFamily: fonts.body, fontSize: 11.5, marginTop: 4 },
     posBoton: {
       backgroundColor: colors.surface,
       borderWidth: 1,

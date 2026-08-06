@@ -99,8 +99,23 @@ export interface CobroPublico {
 }
 
 export interface Saldo {
-  saldo: { total: number; retenido: number; disponible: number }
-  enLempiras: { total: number; disponible: number; tasaHnlPorOrigen: number; fuente: string } | null
+  saldo: {
+    total: number
+    /** Lo que la cadena 8532 respalda: dinero de verdad en la billetera. */
+    confirmado: number
+    /** Pagos que la app dio por hechos y la cadena aún no avala. No se retira. */
+    porConfirmar: number
+    retenido: number
+    disponible: number
+  }
+  enLempiras: {
+    total: number
+    confirmado: number
+    porConfirmar: number
+    disponible: number
+    tasaHnlPorOrigen: number
+    fuente: string
+  } | null
   movimientos: Movimiento[]
 }
 
@@ -109,6 +124,7 @@ export interface Movimiento {
   tipo: 'cobro' | 'retiro' | 'reverso' | 'ajuste'
   montoOrigen: number
   concepto: string
+  confirmado?: boolean
   creadoEn: string
 }
 
