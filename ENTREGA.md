@@ -8,7 +8,7 @@ verificado en vivo**, no en teoría.
 | Pieza | Dónde | Estado |
 | --- | --- | --- |
 | **Backend del POS** | `https://mytokenpay-api-5ab43b64205a.herokuapp.com` | ✅ en producción |
-| **App móvil (APK)** | EAS · `@vetawallet/mytokenpay` | 🔨 compilando / ✅ ver builds |
+| **App móvil (APK)** | [descargar APK](https://expo.dev/artifacts/eas/hZjZPhXHkfLeC1Ooww_pHnn0MpfqfDLvcKz_1pjFLcY.apk) · `@vetawallet/mytokenpay` | ✅ compilado (v1.0.0) |
 | **Cadena 8532 + ORIGEN** | `ordenscan.com` | ✅ en producción |
 
 El backend pasó las **10 pruebas del dominio contra la URL de producción**, no
