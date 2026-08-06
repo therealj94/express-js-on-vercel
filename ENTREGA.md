@@ -42,17 +42,46 @@ contraseña:  Mtp-Y8phx8FdtO
    marca pagado.
 7. Los dos descargan su **recibo en PDF** con el hash verificable.
 
-## Lo que funciona de verdad vs lo simulado
+## Ya no hay nada simulado
 
-**Real (API en producción, dinero de verdad):**
-todo el POS — cobrar, dividir, pagar, saldo, retiros, panel de administración,
-recibos, conversión lempira↔ORIGEN con el precio real del oro, y el bloqueo con
-rostro/huella.
+El simulador (`USE_MOCK_API`) está **apagado**. La revisión destapó que con él
+encendido el login guardaba un token de mentira y el POS —que siempre fue
+real— lo rechazaba con 401: registrarse y cobrar no podían funcionar juntos.
+Hoy la app entera habla con la API de producción:
 
-**Simulado todavía (el directorio de comercios):**
-la búsqueda de comercios, los puntos y premios, y el KYC personal usan datos de
-demostración en el teléfono (`USE_MOCK_API`). Es la parte de «vitrina», no la de
-dinero. Conectarla a Genesis ID es un paso aparte.
+- **POS** — cobrar, dividir, pagar, saldo, retiros, recibos, panel de admin.
+- **Directorio** — comercios reales del backend (con su semilla de arranque).
+- **Bonos y regalos** — los puntos salen de los pagos que hiciste de verdad:
+  un lempira pagado, un punto. Verificado en vivo: pago de L 120 → +120 puntos.
+- **KYC personal** — contra **Genesis ID**, el registro de identidad del
+  ecosistema. Ver la sección siguiente.
+
+## Genesis ID: conectado ✅
+
+MyTokenPay es ahora un ciudadano pleno del ecosistema de identidad:
+
+- **Entrar con Genesis ID.** En Veta Wallet (Ajustes → MyTokenPay) hay un botón
+  «Abrir MyTokenPay con mi Genesis ID»: Genesis ID firma un pase de un solo
+  uso, se abre `mytokenpay://sso` y entrás sin crear cuenta ni repetir el KYC.
+  El botón «Entrar con Genesis ID» de la bienvenida de MyTokenPay hace el viaje
+  inverso (abre Veta, que emite el pase y te devuelve).
+- **Seguridad del pase:** el backend no se cree el correo del enlace — comprueba
+  contra Genesis ID que pertenezca exactamente al GID del pase. Correo ajeno →
+  403. Pase inventado → 401. Una cuenta jamás cambia de identidad en silencio.
+- **Verificación dentro de MyTokenPay.** La pantalla «Identidad Genesis» ya no
+  finge: datos → franja MRZ del documento → foto de rostro → revisión de un
+  oficial de cumplimiento en el panel (`genesis-id.onrender.com`) → GID. La
+  misma identidad vale en Veta Wallet y en todo el ecosistema.
+- **Probado de punta a punta en producción:** alta → documento ICAO válido →
+  biometría → aprobación de operador → vínculo → pase SSO → login en MyTokenPay
+  → reingreso a la misma cuenta. La identidad de laboratorio quedó suspendida
+  al terminar, como se registró en la bitácora.
+
+**Para entrar con TU Genesis ID:** verificate en Veta Wallet (o en MyTokenPay,
+pantalla Identidad Genesis), aprobá el trámite en el panel de cumplimiento con
+el usuario administrador, y desde Veta tocá «Abrir MyTokenPay con mi Genesis
+ID». La actualización de Veta Wallet llega sola por el aire (reabrí la app dos
+veces).
 
 ## Base de datos: hecho ✅
 
@@ -68,14 +97,9 @@ seguía ahí.
   código del cobro y el correo del usuario.
 - `GET /healthz` informa qué respaldo está activo (`"almacen":"mongo"`).
 
-## Los dos pasos que quedan para producción de verdad
+## El paso que queda para producción de verdad
 
-Ninguno es reconstruir; los dos son conectar o configurar.
-
-1. **Genesis ID.** Quitar el KYC simulado del directorio y apuntar al motor que
-   ya opera con 19.178 fichas de sanciones. El puente vive en
-   `infra/genesis-proxy`.
-2. **Verificar el hash en la cadena.** Hoy el pago se confía del comprobante que
+1. **Verificar el hash en la cadena.** Hoy el pago se confía del comprobante que
    manda la app; comprobar que el monto y el destino cuadran en la 8532 cierra
    el círculo.
 
