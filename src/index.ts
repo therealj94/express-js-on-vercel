@@ -3,6 +3,7 @@ import express from 'express'
 import type { NextFunction, Request, Response } from 'express'
 import cors from 'cors'
 import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 import { authRouter } from './routes/auth.js'
 import { metaRouter } from './routes/meta.js'
 import { companiesRouter } from './routes/companies.js'
@@ -17,6 +18,7 @@ import { conectarAlmacen, modoAlmacen } from './lib/almacen.js'
 import { hashPassword } from './lib/auth.js'
 
 const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 /**
  * Arranque: primero se conecta el almacén (Mongo o memoria), después se siembra
@@ -39,6 +41,17 @@ const listo = inicializar()
 const app = express()
 app.use(cors())
 app.use(express.json({ limit: '12mb' }))
+
+/**
+ * El panel de administración, servido por el mismo backend.
+ *
+ * Sin framework ni compilación y desde aquí a propósito: un segundo despliegue
+ * es un sitio más que se puede quedar viejo mientras la API avanza, y quien
+ * paga los retiros no puede estar mirando datos de ayer.
+ */
+const PANEL = join(__dirname, 'publico', 'admin.html')
+app.get('/admin', (_req, res) => res.sendFile(PANEL))
+app.use('/admin', express.static(join(__dirname, 'publico'), { redirect: false }))
 
 app.get('/', (_req, res) => {
   res.json({ name: 'MyTokenPay API', status: 'ok' })
