@@ -7,10 +7,10 @@ import { mockApi } from './mockApi'
 export { getToken, setToken } from './token'
 export { ApiError } from './apiError'
 
-// Flip to false once a real backend is reachable (deployed, or your phone and
-// computer are on the same Wi-Fi with the server running) — everything else
-// in the app keeps working unchanged, since mockApi matches this same shape.
-export const USE_MOCK_API = true
+// La app habla con el backend real. El simulador (mockApi) queda solo como
+// herramienta de desarrollo sin servidor: encenderlo rompe el POS a propósito,
+// porque un token simulado no paga cobros de verdad.
+export const USE_MOCK_API = false
 
 function resolveApiUrl(): string {
   const envUrl = process.env.EXPO_PUBLIC_API_URL
@@ -56,7 +56,68 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return body as T
 }
 
+async function requestRaiz<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = await getToken()
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> | undefined),
+  }
+  if (token) headers.Authorization = `Bearer ${token}`
+  let res: Response
+  try {
+    res = await fetch(`${API_URL}${path}`, { ...options, headers })
+  } catch {
+    throw new ApiError(`No se pudo conectar con la API en ${API_URL}.`, 0)
+  }
+  const isJson = res.headers.get('content-type')?.includes('application/json')
+  const body = isJson ? await res.json() : null
+  if (!res.ok) throw new ApiError(body?.error ?? 'Ocurrió un error inesperado', res.status)
+  return body as T
+}
+
+/**
+ * El puente a Genesis ID, el registro de identidad del ecosistema. La clave de
+ * API vive en el servidor; el teléfono solo presenta su propia sesión.
+ */
+export const genesis = {
+  estado: () => requestRaiz<{ identidad: IdentidadGenesis }>('/genesis/estado'),
+  datos: (d: { nombreCompleto: string; fechaNacimiento: string; paisResidencia: string; telefono?: string }) =>
+    requestRaiz<{ identidad: IdentidadGenesis }>('/genesis/datos', { method: 'POST', body: JSON.stringify(d) }),
+  documento: (mrz: string) =>
+    requestRaiz<{ identidad: IdentidadGenesis; documento?: { aceptable: boolean; problemas: string[] } }>(
+      '/genesis/documento',
+      { method: 'POST', body: JSON.stringify({ mrz }) },
+    ),
+  biometria: (selfie: string) =>
+    requestRaiz<{ identidad: IdentidadGenesis; biometria?: { estado: string; motivo?: string } }>(
+      '/genesis/biometria',
+      { method: 'POST', body: JSON.stringify({ selfie }) },
+    ),
+  vincular: () => requestRaiz<{ ok: boolean }>('/genesis/vincular', { method: 'POST', body: '{}' }),
+  ssoToken: () =>
+    requestRaiz<{ token: string; expiraEnSegundos: number }>('/genesis/sso/token', { method: 'POST', body: '{}' }),
+}
+
+export interface IdentidadGenesis {
+  id: string
+  email: string
+  estado: 'iniciada' | 'datos' | 'documento' | 'biometria' | 'en-revision' | 'verificada' | 'rechazada' | 'suspendida'
+  gid: string | null
+  nombreLegal: string | null
+  documentoAceptable: boolean | null
+  faltan: number
+  siguientePaso: string
+  actualizadaEn: string
+}
+
 const realApi = {
+  /** Entrar con un pase de sesión única emitido desde Veta Wallet. */
+  sso: (data: { token: string; email: string }) =>
+    request<{ token: string; user: PublicUser; genesis: { gid: string; nombre: string | null } }>('/auth/sso', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   signup: (data: { email: string; password: string; fullName: string }) =>
     request<{ token: string; user: PublicUser }>('/auth/signup', {
       method: 'POST',
@@ -120,12 +181,6 @@ const realApi = {
       body: JSON.stringify({ documents }),
     }),
 
-  submitUserKyc: (documentLabel: string) =>
-    request<{ user: PublicUser }>('/auth/me/kyc', {
-      method: 'POST',
-      body: JSON.stringify({ documentLabel }),
-    }),
-
   listRewards: () => request<{ rewards: Reward[] }>('/rewards'),
 
   myRewardsState: () => request<{ pointsBalance: number; redemptions: Redemption[] }>('/rewards/mine'),
@@ -136,4 +191,7 @@ const realApi = {
     }),
 }
 
-export const api = USE_MOCK_API ? mockApi : realApi
+// El simulador no conoce las rutas nuevas (sso, genesis); si un día se
+// enciende para desarrollo, que truene en la pantalla que las use — por eso
+// el molde es el de la API real.
+export const api: typeof realApi = USE_MOCK_API ? (mockApi as unknown as typeof realApi) : realApi

@@ -3,7 +3,8 @@ import { Image, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
-import { Compass, LogIn, UserPlus, X } from 'lucide-react-native'
+import { Alert, Linking } from 'react-native'
+import { Compass, LogIn, ShieldCheck, UserPlus, X } from 'lucide-react-native'
 import { AuthSheet, type AuthMode } from '../src/components/AuthSheet'
 import { GradientButton } from '../src/components/ui/GradientButton'
 import { Logo } from '../src/components/Logo'
@@ -45,6 +46,23 @@ export default function Welcome() {
   // La pantalla de bienvenida puede ser la primera al abrir la app (sin
   // sesión) o un modal abierto desde el directorio. En ambos casos, salir
   // debe llevar al directorio sin quedar en un callejón sin salida.
+  // El pase lo emite Veta Wallet (ahí vive el KYC del ecosistema) y vuelve por
+  // el enlace mytokenpay://sso. Si Veta no está instalada, se dice claro qué
+  // opciones hay en vez de fallar en silencio.
+  async function entrarConGenesis() {
+    const enlace = 'vetawallet://sso?destino=mytokenpay'
+    try {
+      const puede = await Linking.canOpenURL(enlace)
+      if (!puede) throw new Error('sin veta')
+      await Linking.openURL(enlace)
+    } catch {
+      Alert.alert(
+        'Genesis ID vive en Veta Wallet',
+        'Para entrar con tu identidad, instalá Veta Wallet y verificate ahí — o creá tu cuenta aquí con correo y completá tu identidad en Ajustes → Identidad Genesis.',
+      )
+    }
+  }
+
   function goToApp() {
     if (router.canGoBack()) router.back()
     else router.replace('/(tabs)')
@@ -83,6 +101,12 @@ export default function Welcome() {
               variant="ghost"
               onPress={() => openSheet('signup')}
               icon={<UserPlus size={16} color={colors.text} />}
+            />
+            <GradientButton
+              label="Entrar con Genesis ID"
+              variant="ghost"
+              onPress={entrarConGenesis}
+              icon={<ShieldCheck size={16} color="#E8B84B" />}
             />
             <AnimatedPressable onPress={goToApp} style={styles.guestBtn}>
               <Compass size={15} color={colors.muted} />

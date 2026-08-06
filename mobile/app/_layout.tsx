@@ -126,6 +126,7 @@ export default function RootLayout() {
         <Stack.Screen name="pagar/index" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="pagar/[codigo]" />
         <Stack.Screen name="ajustes" />
+        <Stack.Screen name="sso" options={{ animation: 'fade' }} />
       </Stack>
       <AuthGate />
     </GestureHandlerRootView>

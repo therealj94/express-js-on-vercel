@@ -257,6 +257,23 @@ export const caja = {
     return { ok: true, cobro, repetido: false }
   },
 
+  /**
+   * Total en lempiras que un usuario ha pagado en cobros, sumando sus partes
+   * pagadas. Es la base de los puntos de bonos: consumo real, no sembrado.
+   */
+  async pagadoPor(userId: string): Promise<number> {
+    const todos = await cobros.varios()
+    let total = 0
+    for (const c of todos) {
+      for (const p of c.partes) {
+        if (p.estado === 'pagada' && p.pagadorId === userId) {
+          total += p.montoOrigen * c.tasaHnlPorOrigen
+        }
+      }
+    }
+    return Math.round(total * 100) / 100
+  },
+
   // ── Saldo ─────────────────────────────────────────────────────────────────
 
   async anotar(input: Omit<Movimiento, 'id' | 'creadoEn'>): Promise<Movimiento> {

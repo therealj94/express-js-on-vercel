@@ -8,6 +8,8 @@ interface AuthState {
   error: string | null
   init: () => Promise<void>
   login: (email: string, password: string) => Promise<void>
+  /** Entrar con un pase de sesión única de Genesis ID (viene de Veta Wallet). */
+  loginConGenesis: (token: string, email: string) => Promise<{ gid: string; nombre: string | null }>
   signup: (email: string, password: string, fullName: string) => Promise<void>
   logout: () => void
   deleteAccount: () => Promise<void>
@@ -38,6 +40,19 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ user })
     } catch (err) {
       set({ error: err instanceof ApiError ? err.message : 'No se pudo iniciar sesión' })
+      throw err
+    }
+  },
+
+  loginConGenesis: async (token, email) => {
+    set({ error: null })
+    try {
+      const r = await api.sso({ token, email })
+      await setToken(r.token)
+      set({ user: r.user })
+      return { gid: r.genesis.gid, nombre: r.genesis.nombre }
+    } catch (err) {
+      set({ error: err instanceof ApiError ? err.message : 'No se pudo entrar con Genesis ID' })
       throw err
     }
   },

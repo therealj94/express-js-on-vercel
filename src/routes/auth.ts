@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { randomBytes } from 'crypto'
 import { db, toPublicUser } from '../lib/db.js'
+import { perfilApp } from '../lib/perfil.js'
 import { hashPassword, signResetToken, signToken, verifyPassword, verifyResetToken } from '../lib/auth.js'
 import { requireAuth } from '../middleware/auth.js'
 import { h } from '../lib/ruta.js'
@@ -79,7 +80,7 @@ authRouter.post('/sso', h(async (req, res) => {
 
   res.json({
     token: signToken(user.id),
-    user: toPublicUser(user),
+    user: await perfilApp(user),
     genesis: { gid, nombre: perfil?.nombre ?? identidad.nombreLegal ?? null, verificada: true },
   })
 }))
@@ -106,7 +107,7 @@ authRouter.post('/signup', h(async (req, res) => {
 
   const user = await db.createUser({ email, fullName, passwordHash: hashPassword(password) })
   const token = signToken(user.id)
-  res.status(201).json({ token, user: toPublicUser(user) })
+  res.status(201).json({ token, user: await perfilApp(user) })
 }))
 
 authRouter.post('/login', h(async (req, res) => {
@@ -123,7 +124,7 @@ authRouter.post('/login', h(async (req, res) => {
   }
 
   const token = signToken(user.id)
-  res.json({ token, user: toPublicUser(user) })
+  res.json({ token, user: await perfilApp(user) })
 }))
 
 authRouter.get('/me', requireAuth, h(async (req, res) => {
@@ -132,7 +133,7 @@ authRouter.get('/me', requireAuth, h(async (req, res) => {
     res.status(404).json({ error: 'Usuario no encontrado' })
     return
   }
-  res.json({ user: toPublicUser(user) })
+  res.json({ user: await perfilApp(user) })
 }))
 
 authRouter.delete('/me', requireAuth, h(async (req, res) => {
