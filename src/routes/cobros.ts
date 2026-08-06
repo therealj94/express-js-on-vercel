@@ -22,6 +22,7 @@ import { h } from '../lib/ruta.js'
 import { db } from '../lib/db.js'
 import { caja } from '../lib/caja.js'
 import { cotizacion, aOrigen } from '../lib/tasas.js'
+import { verificarTransferencia } from '../lib/cadena.js'
 import type { Cobro } from '../types-cobro.js'
 
 export const cobrosRouter = Router()
@@ -181,6 +182,45 @@ cobrosRouter.post('/mios/:id/anular', requireAuth, h(async (req, res) => {
   res.json({ cobro: anulado })
 }))
 
+/**
+ * «Verificar pago»: el comercio pregunta a la cadena 8532, aquí y ahora, si
+ * cada comprobante de este cobro es un depósito real en su billetera.
+ *
+ * Devuelve el cobro con `verificacionCadena` por parte: 'confirmada' es
+ * dinero en la casa; 'no-encontrada' o 'destino-ajeno' es para no entregar
+ * la mercadería todavía.
+ */
+cobrosRouter.post('/mios/:id/verificar', requireAuth, h(async (req, res) => {
+  const negocio = await comercioDe(req.userId!)
+  const cobro = await caja.buscarCobro(req.params.id)
+  if (!negocio || !cobro || cobro.companyId !== negocio.id) {
+    res.status(404).json({ error: 'Cobro no encontrado' })
+    return
+  }
+  if (!negocio.walletAddress) {
+    res.status(400).json({ error: 'El negocio no tiene dirección de cobro configurada' })
+    return
+  }
+
+  for (const parte of cobro.partes) {
+    if (parte.estado !== 'pagada' || !parte.txHash) continue
+    const r = await verificarTransferencia(parte.txHash, negocio.walletAddress, parte.montoOrigen)
+    parte.verificacionCadena = r.veredicto
+    await caja.marcarVerificacion(cobro.id, parte.id, r.veredicto)
+  }
+
+  const pagadas = cobro.partes.filter((p) => p.estado === 'pagada')
+  const confirmadas = pagadas.filter((p) => p.verificacionCadena === 'confirmada')
+  res.json({
+    cobro,
+    resumen: {
+      pagadas: pagadas.length,
+      depositadasEnCadena: confirmadas.length,
+      todoDepositado: pagadas.length > 0 && confirmadas.length === pagadas.length,
+    },
+  })
+}))
+
 // ── El cliente consulta y paga ───────────────────────────────────────────────
 
 cobrosRouter.get('/codigo/:codigo', requireAuth, h(async (req, res) => {
@@ -290,6 +330,25 @@ cobrosRouter.post('/codigo/:codigo/pagar', requireAuth, h(async (req, res) => {
   }
 
   const actualizado = (await caja.buscarCobro(cobro.id))!
+
+  // La cadena se consulta en segundo plano: la mesa no espera a la RPC para
+  // ver su celebración, pero el comercio sí sabrá después si el depósito es
+  // real («Verificar pago» en su pantalla del cobro).
+  void (async () => {
+    try {
+      const negocio = await db.findCompanyById(actualizado.companyId)
+      if (!negocio?.walletAddress) return
+      for (const parteId of parteIds) {
+        const parte = actualizado.partes.find((p) => p.id === parteId)
+        if (!parte || parte.estado !== 'pagada' || !parte.txHash) continue
+        const r = await verificarTransferencia(parte.txHash, negocio.walletAddress, parte.montoOrigen)
+        await caja.marcarVerificacion(actualizado.id, parteId, r.veredicto)
+      }
+    } catch {
+      // mejor sin veredicto que un veredicto inventado
+    }
+  })()
+
   res.json({
     cobro: await paraPagador(actualizado),
     cerrado: actualizado.estado === 'pagado',

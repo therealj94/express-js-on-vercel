@@ -19,7 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Clipboard from 'expo-clipboard'
 import * as Haptics from 'expo-haptics'
 import QRCode from 'react-native-qrcode-svg'
-import { Check, Copy, Download, Hourglass, X } from 'lucide-react-native'
+import { Check, Copy, Download, Hourglass, ShieldCheck, ShieldAlert, X } from 'lucide-react-native'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 import { AnimatedScreen } from '../../../src/components/AnimatedScreen'
 import { ConfirmDialog } from '../../../src/components/ConfirmDialog'
@@ -43,6 +43,8 @@ export default function CobroEnVivo() {
   const [copiado, setCopiado] = useState(false)
   const [confirmarAnular, setConfirmarAnular] = useState(false)
   const [generandoRecibo, setGenerandoRecibo] = useState(false)
+  const [verificando, setVerificando] = useState(false)
+  const [veredicto, setVeredicto] = useState<string | null>(null)
   const pagadasPrevias = useRef(0)
 
   const cargar = useCallback(async () => {
@@ -180,6 +182,47 @@ export default function CobroEnVivo() {
             )}
           </View>
 
+          {pagadas.length > 0 && (
+            <View style={{ gap: 8 }}>
+              <AnimatedPressable
+                onPress={async () => {
+                  if (verificando) return
+                  setVerificando(true)
+                  setVeredicto(null)
+                  try {
+                    const r = await pos.verificarCobro(cobro.id)
+                    setCobro(r.cobro)
+                    setVeredicto(
+                      r.resumen.todoDepositado
+                        ? 'Depósito confirmado en la cadena: el ORIGEN está en tu billetera.'
+                        : `En cadena: ${r.resumen.depositadasEnCadena} de ${r.resumen.pagadas} depósitos confirmados. Si acaban de pagar, dale unos segundos y verificá de nuevo.`,
+                    )
+                    Haptics.notificationAsync(
+                      r.resumen.todoDepositado
+                        ? Haptics.NotificationFeedbackType.Success
+                        : Haptics.NotificationFeedbackType.Warning,
+                    ).catch(() => {})
+                  } catch {
+                    setVeredicto('No se pudo consultar la cadena. Probá de nuevo.')
+                  } finally {
+                    setVerificando(false)
+                  }
+                }}
+                style={styles.verificar}
+              >
+                {verificando ? (
+                  <ActivityIndicator size="small" color={colors.ok} />
+                ) : (
+                  <ShieldCheck size={16} color={colors.ok} />
+                )}
+                <Text style={styles.verificarTexto}>
+                  {verificando ? 'Consultando la cadena…' : 'Verificar pago en la cadena'}
+                </Text>
+              </AnimatedPressable>
+              {veredicto && <Text style={styles.veredicto}>{veredicto}</Text>}
+            </View>
+          )}
+
           {cobro.partes.length > 1 && (
             <View style={styles.partes}>
               <Text style={styles.partesTitulo}>
@@ -187,6 +230,12 @@ export default function CobroEnVivo() {
               </Text>
               {cobro.partes.map((p) => (
                 <View key={p.id} style={styles.parte}>
+                  {p.estado === 'pagada' && p.verificacionCadena === 'confirmada' && (
+                    <ShieldCheck size={13} color={colors.ok} />
+                  )}
+                  {p.estado === 'pagada' && p.verificacionCadena && p.verificacionCadena !== 'confirmada' && (
+                    <ShieldAlert size={13} color={colors.warn} />
+                  )}
                   <View
                     style={[
                       styles.parteIcono,
@@ -286,6 +335,19 @@ function crearEstilos(colors: ThemeColors) {
     },
     exitoTitulo: { fontFamily: fonts.display, fontSize: 20, color: colors.text, marginTop: 14 },
     exitoMonto: { fontFamily: fonts.displayBold, fontSize: 34, color: colors.ok, marginTop: 4 },
+    verificar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      borderWidth: 1,
+      borderColor: colors.ok + '55',
+      backgroundColor: colors.ok + '12',
+      borderRadius: radius.md,
+      paddingVertical: 12,
+    },
+    verificarTexto: { color: colors.ok, fontFamily: fonts.bodySemiBold, fontSize: 13 },
+    veredicto: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 17, textAlign: 'center' },
     recibo: {
       flexDirection: 'row',
       alignItems: 'center',

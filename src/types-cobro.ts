@@ -44,6 +44,11 @@ export interface ParteCobro {
   pagadaEn: string | null
   /** Hash de la transferencia en la cadena 8532. */
   txHash: string | null
+  /**
+   * Qué dijo la cadena 8532 del comprobante: 'confirmada' es dinero en la
+   * billetera del comercio; null es que aún no se ha preguntado.
+   */
+  verificacionCadena?: string | null
 }
 
 export interface Cobro {

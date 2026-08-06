@@ -274,6 +274,15 @@ export const caja = {
     return Math.round(total * 100) / 100
   },
 
+  /** Anota lo que dijo la cadena sobre el comprobante de una parte. */
+  async marcarVerificacion(cobroId: string, parteId: string, veredicto: string): Promise<void> {
+    const cobro = await cobros.uno({ id: cobroId })
+    const parte = cobro?.partes.find((p) => p.id === parteId)
+    if (!cobro || !parte) return
+    parte.verificacionCadena = veredicto
+    await cobros.guardar(cobro)
+  },
+
   // ── Saldo ─────────────────────────────────────────────────────────────────
 
   async anotar(input: Omit<Movimiento, 'id' | 'creadoEn'>): Promise<Movimiento> {

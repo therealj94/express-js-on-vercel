@@ -69,6 +69,7 @@ export interface Parte {
   pagadorNombre: string | null
   pagadaEn?: string | null
   txHash?: string | null
+  verificacionCadena?: string | null
 }
 
 export interface Cobro {
@@ -136,6 +137,13 @@ export const pos = {
 
   anularCobro: (id: string) =>
     pedir<{ cobro: Cobro }>(`/cobros/mios/${id}/anular`, { method: 'POST' }),
+
+  /** Pregunta a la cadena 8532 si cada comprobante es un depósito real. */
+  verificarCobro: (id: string) =>
+    pedir<{ cobro: Cobro; resumen: { pagadas: number; depositadasEnCadena: number; todoDepositado: boolean } }>(
+      `/cobros/mios/${id}/verificar`,
+      { method: 'POST' },
+    ),
 
   // ── El cliente paga ────────────────────────────────────────────────────────
 
