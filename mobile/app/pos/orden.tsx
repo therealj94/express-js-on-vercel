@@ -94,7 +94,14 @@ export default function TomarOrden() {
         .join(', ')
         .slice(0, 120)
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
-      const { cobro } = await pos.crearCobro({ montoHnl: total, concepto: detalle, partes })
+      // El desglose viaja aparte del texto: es lo que después alimenta «los
+      // más vendidos». Un concepto no se puede sumar.
+      const articulos = orden.map((p) => ({
+        nombre: p.nombre,
+        cantidad: cantidades[p.id] ?? 0,
+        precioUnitarioHnl: enLempiras(p) ?? 0,
+      }))
+      const { cobro } = await pos.crearCobro({ montoHnl: total, concepto: detalle, partes, articulos })
       router.replace(`/pos/cobro/${cobro.id}`)
     } catch (e) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {})

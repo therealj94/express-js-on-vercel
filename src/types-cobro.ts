@@ -51,11 +51,27 @@ export interface ParteCobro {
   verificacionCadena?: string | null
 }
 
+/**
+ * Una línea de la orden: qué se vendió y cuánto.
+ *
+ * Se guarda aparte del concepto porque un texto no se puede sumar. Sin esto,
+ * «los productos más vendidos» habría que adivinarlo troceando una frase, y a
+ * la primera venta con una coma en el nombre del plato deja de cuadrar.
+ */
+export interface ArticuloVendido {
+  nombre: string
+  cantidad: number
+  /** En lempiras, ya convertido si el menú lo tenía en dólares. */
+  precioUnitarioHnl: number
+}
+
 export interface Cobro {
   id: string
   companyId: string
   creadoPor: string
   concepto: string
+  /** El desglose de la orden, cuando vino del menú. */
+  articulos?: ArticuloVendido[]
   /** El comercio piensa en lempiras; la cadena mueve ORIGEN. Se guardan los dos. */
   montoHnl: number
   montoOrigen: number

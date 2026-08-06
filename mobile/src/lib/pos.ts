@@ -114,6 +114,60 @@ export interface CobroPublico {
   partes: Parte[]
 }
 
+export interface ArticuloVendido {
+  nombre: string
+  cantidad: number
+  precioUnitarioHnl: number
+}
+
+export interface PagoMio {
+  codigo: string
+  concepto: string
+  articulos: ArticuloVendido[]
+  negocio: {
+    id: string
+    nombre: string
+    logo: string | null
+    categoria: string
+    ciudad: string
+    direccion: string
+  } | null
+  montoHnl: number
+  montoOrigen: number
+  tasaHnlPorOrigen: number
+  dividida: boolean
+  partesTotales: number
+  totalCuentaHnl: number
+  pagadaEn: string | null
+  txHash: string | null
+  verificacionCadena: string | null
+  estadoCobro: string
+}
+
+export interface MisPagos {
+  pagos: PagoMio[]
+  resumen: {
+    pagos: number
+    totalHnl: number
+    totalOrigen: number
+    comercios: number
+    ticketPromedioHnl: number
+  }
+}
+
+export interface Estadisticas {
+  hoy: { ventas: number; hnl: number; origen: number }
+  mes: { ventas: number; hnl: number; origen: number }
+  total: { ventas: number; hnl: number; origen: number }
+  ticketPromedioHnl: number
+  porConfirmar: { ventas: number; hnl: number }
+  diario: { dia: string; hnl: number; ventas: number }[]
+  mensual: { mes: string; hnl: number; ventas: number }[]
+  productos: { nombre: string; cantidad: number; hnl: number; ordenes: number }[]
+  horas: { hora: number; ventas: number; hnl: number }[]
+  mejorDia: { dia: string; hnl: number; ventas: number }
+}
+
 export interface Saldo {
   saldo: {
     total: number
@@ -159,7 +213,12 @@ export interface Retiro {
 // ── El comercio cobra ────────────────────────────────────────────────────────
 
 export const pos = {
-  crearCobro: (data: { montoHnl: number; concepto?: string; partes?: number }) =>
+  crearCobro: (data: {
+    montoHnl: number
+    concepto?: string
+    partes?: number
+    articulos?: { nombre: string; cantidad: number; precioUnitarioHnl: number }[]
+  }) =>
     pedir<{ cobro: Cobro }>('/cobros', { method: 'POST', body: JSON.stringify(data) }),
 
   misCobros: (desde?: string) =>
@@ -169,6 +228,12 @@ export const pos = {
 
   anularCobro: (id: string) =>
     pedir<{ cobro: Cobro }>(`/cobros/mios/${id}/anular`, { method: 'POST' }),
+
+  /** Lo que YO he pagado, con el detalle de cada compra. */
+  misPagos: () => pedir<MisPagos>('/actividad/mis-pagos'),
+
+  /** Lo que MI COMERCIO ha vendido, agregado. */
+  estadisticas: () => pedir<Estadisticas>('/actividad/estadisticas'),
 
   /** Pregunta a la cadena 8532 si cada comprobante es un depósito real. */
   verificarCobro: (id: string) =>

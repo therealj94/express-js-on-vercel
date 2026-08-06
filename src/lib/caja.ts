@@ -94,6 +94,7 @@ export const caja = {
     montoOrigen: number
     tasaHnlPorOrigen: number
     partes: number
+    articulos?: { nombre: string; cantidad: number; precioUnitarioHnl: number }[]
   }): Promise<Cobro> {
     const ahora = new Date().toISOString()
     const trozos = repartir(input.montoOrigen, input.partes)
@@ -106,6 +107,7 @@ export const caja = {
       companyId: input.companyId,
       creadoPor: input.creadoPor,
       concepto: input.concepto,
+      ...(input.articulos?.length ? { articulos: input.articulos } : {}),
       montoHnl: input.montoHnl,
       montoOrigen: input.montoOrigen,
       tasaHnlPorOrigen: input.tasaHnlPorOrigen,
@@ -299,6 +301,24 @@ export const caja = {
       mov.confirmado = veredicto === 'confirmada'
       await movimientos.guardar(mov)
     }
+  },
+
+  /**
+   * Todo lo que una persona ha pagado: la parte y el cobro al que pertenece.
+   *
+   * Recorre los cobros en vez de llevar un índice por pagador. A esta escala
+   * es de sobra, y un índice paralelo es una cosa más que se puede
+   * desincronizar de la verdad.
+   */
+  async pagosDe(userId: string): Promise<{ cobro: Cobro; parte: ParteCobro }[]> {
+    const todos = await cobros.varios()
+    const salida: { cobro: Cobro; parte: ParteCobro }[] = []
+    for (const c of todos) {
+      for (const p of c.partes) {
+        if (p.estado === 'pagada' && p.pagadorId === userId) salida.push({ cobro: c, parte: p })
+      }
+    }
+    return salida
   },
 
   /**

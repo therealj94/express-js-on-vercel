@@ -10,6 +10,8 @@ import {
   Gift,
   IdCard,
   LogIn,
+  ChartNoAxesColumn,
+  Receipt,
   ScanLine,
   Sparkle,
   Store,
@@ -89,7 +91,8 @@ export default function Dashboard() {
   }
 
   const actions: QuickAction[] = [
-    { key: 'bonos', label: 'Bonos y regalos', hint: 'Canjea tus puntos', icon: Gift, route: '/bonos', tint: 'violet' },
+    { key: 'pagos', label: 'Mis pagos', hint: 'Todo lo que pagaste', icon: Receipt, route: '/mis-pagos', tint: 'violet' },
+    { key: 'bonos', label: 'Bonos y regalos', hint: 'Canjea tus puntos', icon: Gift, route: '/bonos', tint: 'blue' },
     {
       key: 'wallet',
       label: wallet ? 'Mi Veta Wallet' : 'Conectar wallet',
@@ -289,12 +292,21 @@ export default function Dashboard() {
                   <Text style={styles.posTexto}>Mi dinero</Text>
                 </View>
               </Pressable3D>
+              <Pressable3D onPress={() => router.push('/pos/estadisticas')} tilt={5} style={{ flex: 1 }}>
+                <View style={styles.posBoton}>
+                  <ChartNoAxesColumn size={20} color={colors.violet} />
+                  <Text style={styles.posTexto}>Estadísticas</Text>
+                </View>
+              </Pressable3D>
+            </View>
+            <View style={styles.posFila}>
               <Pressable3D onPress={() => router.push('/mi-empresa')} tilt={5} style={{ flex: 1 }}>
                 <View style={styles.posBoton}>
                   <Store size={20} color={colors.violet} />
                   <Text style={styles.posTexto}>Mi empresa</Text>
                 </View>
               </Pressable3D>
+              <View style={{ flex: 1 }} />
             </View>
           </>
         )}

@@ -94,10 +94,11 @@ cobrosRouter.post('/', requireAuth, h(async (req, res) => {
     return
   }
 
-  const { montoHnl, concepto, partes } = req.body as {
+  const { montoHnl, concepto, partes, articulos } = req.body as {
     montoHnl?: number
     concepto?: string
     partes?: number
+    articulos?: { nombre?: string; cantidad?: number; precioUnitarioHnl?: number }[]
   }
 
   const monto = Number(montoHnl)
@@ -129,10 +130,24 @@ cobrosRouter.post('/', requireAuth, h(async (req, res) => {
     return
   }
 
+  // El desglose de la orden, saneado: es lo que después alimenta «los más
+  // vendidos», así que no puede entrar cualquier cosa.
+  const lineas = Array.isArray(articulos)
+    ? articulos
+        .map((a) => ({
+          nombre: String(a?.nombre || '').trim().slice(0, 80),
+          cantidad: Math.max(1, Math.min(99, Math.trunc(Number(a?.cantidad) || 0))),
+          precioUnitarioHnl: Math.max(0, Math.round((Number(a?.precioUnitarioHnl) || 0) * 100) / 100),
+        }))
+        .filter((a) => a.nombre)
+        .slice(0, 80)
+    : undefined
+
   const cobro = await caja.crearCobro({
     companyId: negocio.id,
     creadoPor: req.userId!,
     concepto: String(concepto || '').trim().slice(0, 120),
+    articulos: lineas && lineas.length ? lineas : undefined,
     montoHnl: Math.round(monto * 100) / 100,
     montoOrigen: aOrigen(monto, tasa.hnlPorOrigen),
     tasaHnlPorOrigen: tasa.hnlPorOrigen,
