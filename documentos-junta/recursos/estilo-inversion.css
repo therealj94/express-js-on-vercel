@@ -162,3 +162,6 @@ figure svg { max-width: 100%; height: auto; }
    lo justo para que quepa de una pieza. */
 .cifras.apretadas .dato { font-size: 20pt; }
 .cifras .dato { white-space: nowrap; }
+
+/* Las cifras de suministro se leen mal si cada fila alinea distinto. */
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
