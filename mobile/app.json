@@ -75,6 +75,7 @@
     ],
     "runtimeVersion": {
       "policy": "sdkVersion"
-    }
+    },
+    "newArchEnabled": true
   }
 }

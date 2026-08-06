@@ -26,6 +26,7 @@ import { ConfirmDialog } from '../../../src/components/ConfirmDialog'
 import { TopBar } from '../../../src/components/TopBar'
 import { pos, lempiras, origen, enlaceCobro, type Cobro } from '../../../src/lib/pos'
 import { compartirRecibo } from '../../../src/lib/recibo'
+import { PagoExito } from '../../../src/components/PagoExito'
 import { fonts, radius } from '../../../src/lib/theme'
 import { useTheme, type ThemeColors } from '../../../src/hooks/useTheme'
 
@@ -116,11 +117,12 @@ export default function CobroEnVivo() {
         <ScrollView contentContainerStyle={styles.cuerpo} showsVerticalScrollIndicator={false}>
           {pagado ? (
             <View style={styles.exito}>
-              <View style={styles.exitoCirculo}>
-                <Check size={40} color="#fff" strokeWidth={3} />
-              </View>
-              <Text style={styles.exitoTitulo}>Cobro completo</Text>
-              <Text style={styles.exitoMonto}>{lempiras(cobro.montoHnl)}</Text>
+              <PagoExito
+                montoHnl={cobro.montoHnl}
+                origenTexto={origen(cobro.montoOrigen)}
+                titulo="Cobro completo"
+                subtitulo="El dinero ya está en tu saldo"
+              />
               <AnimatedPressable
                 onPress={async () => {
                   if (generandoRecibo) return

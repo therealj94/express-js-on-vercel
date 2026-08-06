@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 import * as Haptics from 'expo-haptics'
 import { BadgeCheck, Check, Download, Store, TriangleAlert, Wallet } from 'lucide-react-native'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
@@ -29,6 +30,8 @@ import { TopBar } from '../../src/components/TopBar'
 import { pos, lempiras, origen, nuevoSello, type CobroPublico, type Parte } from '../../src/lib/pos'
 import { abrirTienda, abrirVeta, hashValido, vetaInstalada } from '../../src/lib/veta'
 import { compartirRecibo } from '../../src/lib/recibo'
+import { PagoExito } from '../../src/components/PagoExito'
+import { Procesando } from '../../src/components/Procesando'
 import { ApiError } from '../../src/lib/apiError'
 import { fonts, radius } from '../../src/lib/theme'
 import { useTheme, type ThemeColors } from '../../src/hooks/useTheme'
@@ -190,16 +193,15 @@ export default function Pagar() {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <TopBar title="Pago hecho" />
         <View style={styles.centro}>
-          <View style={styles.exitoCirculo}>
-            <Check size={44} color="#fff" strokeWidth={3} />
-          </View>
-          <Text style={styles.exitoTitulo}>Listo</Text>
-          <Text style={styles.exitoMonto}>{lempiras(total.hnl)}</Text>
-          <Text style={styles.exitoPie}>
-            {cobro.estado === 'pagado'
-              ? 'La cuenta quedó saldada.'
-              : `Faltan ${cobro.partes.filter((p) => p.estado !== 'pagada').length} partes por pagar.`}
-          </Text>
+          <PagoExito
+            montoHnl={total.hnl}
+            origenTexto={origen(total.origen)}
+            subtitulo={
+              cobro.estado === 'pagado'
+                ? `Pagaste a ${cobro.negocio?.nombre ?? 'el comercio'}`
+                : `Faltan ${cobro.partes.filter((p) => p.estado !== 'pagada').length} partes por pagar`
+            }
+          />
           <AnimatedPressable
             onPress={async () => {
               if (generandoRecibo) return
@@ -269,12 +271,12 @@ export default function Pagar() {
             <>
               <Text style={styles.seccion}>Elegí qué pagás</Text>
               <View style={styles.partes}>
-                {cobro.partes.map((p) => {
+                {cobro.partes.map((p, i) => {
                   const elegida = elegidas.includes(p.id)
                   const libre = p.estado === 'libre'
                   return (
+                    <Animated.View key={p.id} entering={FadeInDown.delay(i * 55).springify().damping(16)}>
                     <AnimatedPressable
-                      key={p.id}
                       onPress={() => alternar(p)}
                       disabled={!libre}
                       style={[
@@ -300,6 +302,7 @@ export default function Pagar() {
                         </Text>
                       </View>
                     </AnimatedPressable>
+                    </Animated.View>
                   )
                 })}
               </View>
@@ -371,6 +374,12 @@ export default function Pagar() {
           </View>
         )}
       </AnimatedScreen>
+
+      {fase === 'confirmando' && (
+        <View style={styles.overlayProcesando}>
+          <Procesando />
+        </View>
+      )}
     </SafeAreaView>
   )
 }
@@ -380,6 +389,12 @@ function crearEstilos(colors: ThemeColors) {
     safe: { flex: 1, backgroundColor: colors.bg },
     centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 10 },
     cuerpo: { padding: 20, paddingBottom: 24 },
+    overlayProcesando: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: colors.bg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
     negocio: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     negocioIcono: {
