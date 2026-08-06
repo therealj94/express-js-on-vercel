@@ -15,6 +15,7 @@ import {
   InstrumentSans_600SemiBold,
 } from '@expo-google-fonts/instrument-sans'
 import { AnimatedSplash } from '../src/components/AnimatedSplash'
+import { AvisoActualizacion } from '../src/components/AvisoActualizacion'
 import { Onboarding } from '../src/components/Onboarding'
 import { useAuthStore } from '../src/store/auth'
 import { useMetaStore } from '../src/store/meta'
@@ -130,6 +131,7 @@ export default function RootLayout() {
         <Stack.Screen name="sso" options={{ animation: 'fade' }} />
       </Stack>
       <AuthGate />
+      <AvisoActualizacion />
     </GestureHandlerRootView>
   )
 }
