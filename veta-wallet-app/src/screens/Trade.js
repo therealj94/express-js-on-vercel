@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal, Animated, ActivityIndicator, KeyboardAvoidingView, Platform, Share, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import * as Linking from 'expo-linking';
 import { Icon } from '../icons';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
@@ -200,6 +201,9 @@ export function Send({ nav, params }) {
           bloque: r.receipt?.blockNumber ?? null,
           gas: r.receipt?.gasUsed ?? null,
           fecha: Date.now(),
+          // Si el pago lo pidió MyTokenPay, el comprobante ofrece volver con
+          // el hash para que el cobro se confirme allá.
+          volver: params?.volver || null,
         });
         return { ok: true };
       }
@@ -675,7 +679,19 @@ function SentReceipt({ data, contacts, onClose }) {
             ) : null}
           </View>
 
-          <Button3D title={t('send.ok')} icon="checkmark" onPress={onClose} style={{ alignSelf: 'stretch', marginTop: 18 }} />
+          {data.volver && data.hash ? (
+            <Button3D
+              title={t('send.volverMtp')}
+              icon="arrow-redo"
+              onPress={() => {
+                const enlace = `${data.volver}${data.volver.includes('?') ? '&' : '?'}tx=${data.hash}`;
+                Linking.openURL(enlace).catch(() => {});
+                onClose();
+              }}
+              style={{ alignSelf: 'stretch', marginTop: 18 }}
+            />
+          ) : null}
+          <Button3D title={t('send.ok')} icon="checkmark" onPress={onClose} style={{ alignSelf: 'stretch', marginTop: data.volver && data.hash ? 10 : 18 }} />
         </View>
       </View>
     </Modal>

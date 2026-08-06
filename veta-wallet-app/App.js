@@ -171,6 +171,25 @@ function Root() {
         return;
       }
 
+      // ---- Pago pedido por MyTokenPay ----
+      //
+      // MyTokenPay manda: vetawallet://pagar?a=0x…&monto=…&token=ORIGEN&
+      // ref=COD&memo=…&volver=mytokenpay://pagar/COD?sello=…
+      // Se abre Enviar con todo puesto; al confirmarse el envio, el
+      // comprobante ofrece volver a MyTokenPay con el hash para que el cobro
+      // se confirme alla.
+      if (/vetawallet:\/\/pagar(\?|$)/i.test(url)) {
+        if (!accountRef.current) return;
+        const p = parsePayLink(url);
+        if (!/^0x[a-fA-F0-9]{40}$/.test(p.a || '')) return;
+        setDir(1);
+        setStack([{ r: 'home' }, { r: 'send', params: {
+          to: p.a, amount: p.monto, sym: p.token || 'ORIGEN',
+          memo: p.memo || p.ref || '', volver: p.volver || null,
+        } }]);
+        return;
+      }
+
       // ---- Puerta al ecosistema: emitir pase y saltar a MyTokenPay ----
       //
       // MyTokenPay abre vetawallet://sso?destino=mytokenpay cuando alguien
