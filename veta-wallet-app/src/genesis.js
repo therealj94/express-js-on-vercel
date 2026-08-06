@@ -309,7 +309,7 @@ export const genesis = {
   },
 
   /** Ata esta cuenta de Veta Wallet al GID, para la sesión única. */
-  vincular: () => puente('/vincular', {}),
+  vincular: (direccion) => puente('/vincular', direccion ? { direccion } : {}),
 
   /**
    * Pase de sesión única para entrar a MyTokenPay sin repetir el KYC.

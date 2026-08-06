@@ -668,6 +668,11 @@ export function MyTokenPay({ nav, params }) {
     if (!account?.email) return;
     setAbriendo(true);
     try {
+      // La dirección de esta billetera queda registrada en Genesis ID (si aún
+      // no lo estaba) y viaja también en el enlace: así MyTokenPay conecta la
+      // billetera solo, sin pedirle a la persona teclear su propia dirección.
+      const direccion = /^0x[a-fA-F0-9]{40}$/.test(account.addr || '') ? account.addr : null;
+      if (direccion) genesis.vincular(direccion).catch(() => {});
       const r = await genesis.paseParaMyTokenPay();
       if (!r.token) {
         // Sin identidad verificada no hay pase: el camino es hacer el KYC.
@@ -675,7 +680,8 @@ export function MyTokenPay({ nav, params }) {
         nav.go('kyc');
         return;
       }
-      const enlace = `mytokenpay://sso?token=${encodeURIComponent(r.token)}&email=${encodeURIComponent(account.email)}`;
+      const enlace = `mytokenpay://sso?token=${encodeURIComponent(r.token)}&email=${encodeURIComponent(account.email)}`
+        + (direccion ? `&direccion=${direccion}` : '');
       await Linking.openURL(enlace);
     } catch (e) {
       toast(t('mtp.sinApp'));
