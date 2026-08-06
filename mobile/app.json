@@ -17,8 +17,12 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.mytokenpay.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "MyTokenPay usa la cámara para leer el código de cobro del comercio."
-      }
+        "NSCameraUsageDescription": "MyTokenPay usa la cámara para leer el código de cobro del comercio.",
+        "NSFaceIDUsageDescription": "MyTokenPay usa Face ID para desbloquear tu cuenta.",
+        "NSPhotoLibraryUsageDescription": "MyTokenPay accede a tus fotos para subir los documentos de verificación de tu negocio.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "buildNumber": "1"
     },
     "android": {
       "package": "com.mytokenpay.app",
@@ -31,8 +35,11 @@
       "minSdkVersion": 21,
       "targetSdkVersion": 34,
       "permissions": [
-        "android.permission.CAMERA"
-      ]
+        "android.permission.CAMERA",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ],
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -58,7 +65,16 @@
         {
           "cameraPermission": "MyTokenPay usa la cámara para leer el código de cobro del comercio."
         }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "MyTokenPay usa Face ID para desbloquear tu cuenta."
+        }
       ]
-    ]
+    ],
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    }
   }
 }
