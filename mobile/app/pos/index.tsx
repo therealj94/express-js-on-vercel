@@ -80,7 +80,7 @@ export default function Caja() {
   const porPersona = monto / partes
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <TopBar title="Cobrar" />
       <AnimatedScreen style={styles.cuerpo}>
         <View style={styles.pantalla}>

@@ -96,6 +96,8 @@ export const genesis = {
   vincular: () => requestRaiz<{ ok: boolean }>('/genesis/vincular', { method: 'POST', body: '{}' }),
   ssoToken: () =>
     requestRaiz<{ token: string; expiraEnSegundos: number }>('/genesis/sso/token', { method: 'POST', body: '{}' }),
+  /** La dirección de billetera que el ecosistema ya conoce de esta identidad. */
+  billetera: () => requestRaiz<{ direccion: string | null; gid: string | null }>('/genesis/billetera'),
 }
 
 export interface IdentidadGenesis {
@@ -113,7 +115,7 @@ export interface IdentidadGenesis {
 const realApi = {
   /** Entrar con un pase de sesión única emitido desde Veta Wallet. */
   sso: (data: { token: string; email: string }) =>
-    request<{ token: string; user: PublicUser; genesis: { gid: string; nombre: string | null } }>('/auth/sso', {
+    request<{ token: string; user: PublicUser; genesis: { gid: string; nombre: string | null; direccion: string | null } }>('/auth/sso', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

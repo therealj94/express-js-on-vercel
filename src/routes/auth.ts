@@ -78,10 +78,20 @@ authRouter.post('/sso', h(async (req, res) => {
     body: JSON.stringify({ identidadId: identidad.id, cuenta: user.id }),
   })
 
+  // La dirección de cobro que Genesis ID ya conoce de esta identidad (la que
+  // Veta Wallet registró al vincular). Si existe, la app conecta la billetera
+  // sola: entrar con tu identidad Y tener que teclear tu propia dirección es
+  // pedirle dos veces lo mismo a la misma persona.
+  const apps: { app: string; direccion: string | null }[] = perfil?.apps ?? []
+  const direccion =
+    apps.find((a) => a.app === 'veta-wallet' && a.direccion)?.direccion ??
+    apps.find((a) => a.direccion)?.direccion ??
+    null
+
   res.json({
     token: signToken(user.id),
     user: await perfilApp(user),
-    genesis: { gid, nombre: perfil?.nombre ?? identidad.nombreLegal ?? null, verificada: true },
+    genesis: { gid, nombre: perfil?.nombre ?? identidad.nombreLegal ?? null, verificada: true, direccion },
   })
 }))
 

@@ -152,6 +152,29 @@ genesisRouter.post('/sso/token', h(async (req, res) => {
   }))
 }))
 
+/**
+ * La dirección de billetera que Genesis ID conoce de la identidad del usuario.
+ *
+ * Sale de los vínculos del GID (la registra Veta Wallet al vincular). Sirve
+ * para que «Conectar billetera» no le pida a la persona teclear una dirección
+ * que el ecosistema ya tiene.
+ */
+genesisRouter.get('/billetera', h(async (req, res) => {
+  const identidad = await identidadPorEmail(req.usuario!.email)
+  const gid = identidad?.gid
+  if (!gid) {
+    res.json({ direccion: null, gid: null })
+    return
+  }
+  const r = await llamarGenesis(`/api/v1/gid/${encodeURIComponent(gid)}`)
+  const apps: { app: string; direccion: string | null }[] = r.ok ? r.cuerpo?.apps ?? [] : []
+  const direccion =
+    apps.find((a) => a.app === 'veta-wallet' && a.direccion)?.direccion ??
+    apps.find((a) => a.direccion)?.direccion ??
+    null
+  res.json({ direccion, gid })
+}))
+
 /** Comprueba si una dirección está sancionada. Conviene llamarlo antes de cobrar hacia ella. */
 genesisRouter.get('/tamiz/:direccion', h(async (req, res) => {
   responder(res)(await llamarGenesis(`/api/v1/tamiz/direccion/${encodeURIComponent(req.params.direccion)}`))

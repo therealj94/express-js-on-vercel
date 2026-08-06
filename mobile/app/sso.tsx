@@ -19,6 +19,7 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated'
 import { BadgeCheck, ShieldCheck, XCircle } from 'lucide-react-native'
 import * as Haptics from 'expo-haptics'
 import { useAuthStore } from '../src/store/auth'
+import { useWalletStore } from '../src/store/wallet'
 import { Logo } from '../src/components/Logo'
 import { GradientButton } from '../src/components/ui/GradientButton'
 import { fonts, radius } from '../src/lib/theme'
@@ -32,7 +33,7 @@ export default function EntrarConGenesis() {
   const { colors } = useTheme()
   const styles = createStyles(colors)
   const { loginConGenesis } = useAuthStore()
-  const params = useLocalSearchParams<{ token?: string; email?: string }>()
+  const params = useLocalSearchParams<{ token?: string; email?: string; direccion?: string }>()
 
   const [fase, setFase] = useState<'verificando' | 'listo' | 'error'>('verificando')
   const [detalle, setDetalle] = useState<string | null>(null)
@@ -54,6 +55,14 @@ export default function EntrarConGenesis() {
     loginConGenesis(token, email)
       .then((g) => {
         setGenesis(g)
+        // La billetera queda conectada sola: primero la dirección que Genesis
+        // ID tiene registrada de esta identidad; si no hay, la que Veta Wallet
+        // mandó en el enlace. Entrar con tu identidad y tener que teclear tu
+        // propia dirección sería pedirle dos veces lo mismo a la misma persona.
+        const candidata = g.direccion || (typeof params.direccion === 'string' ? params.direccion : '')
+        if (/^0x[0-9a-fA-F]{40}$/.test(candidata)) {
+          useWalletStore.getState().connect('address', candidata)
+        }
         setFase('listo')
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
         // Un respiro para leer la bienvenida, y adentro.

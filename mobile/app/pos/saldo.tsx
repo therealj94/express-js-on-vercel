@@ -57,7 +57,7 @@ export default function SaldoComercio() {
 
   if (!datos) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <TopBar title="Mi dinero" />
         <View style={styles.centro}>
           {error ? <Text style={styles.error}>{error}</Text> : <ActivityIndicator color={colors.violet} />}
@@ -70,7 +70,7 @@ export default function SaldoComercio() {
   const enCola = retiros.filter((r) => r.estado === 'solicitado' || r.estado === 'en_proceso')
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <TopBar title="Mi dinero" />
       <AnimatedScreen style={{ flex: 1 }}>
         <ScrollView

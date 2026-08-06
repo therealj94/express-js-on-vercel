@@ -172,7 +172,7 @@ export default function Pagar() {
 
   if (!cobro) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <TopBar title="Pagar" />
         <View style={styles.centro}>
           {error ? (
@@ -190,7 +190,7 @@ export default function Pagar() {
 
   if (fase === 'listo') {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <TopBar title="Pago hecho" />
         <View style={styles.centro}>
           <PagoExito
@@ -233,7 +233,7 @@ export default function Pagar() {
   const cerrado = cobro.estado !== 'abierto'
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <TopBar title="Pagar" />
       <AnimatedScreen style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.cuerpo} showsVerticalScrollIndicator={false}>

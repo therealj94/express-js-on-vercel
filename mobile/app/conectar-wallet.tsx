@@ -1,15 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
-import { ArrowLeft, Check, Copy, Wallet } from 'lucide-react-native'
+import { ArrowLeft, Check, Copy, ShieldCheck, Wallet } from 'lucide-react-native'
 import * as Clipboard from 'expo-clipboard'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
 import { AnimatedScreen } from '../src/components/AnimatedScreen'
 import { TextField } from '../src/components/ui/TextField'
 import { GradientButton } from '../src/components/ui/GradientButton'
 import { ConfirmDialog } from '../src/components/ConfirmDialog'
+import { genesis } from '../src/lib/api'
+import { useAuthStore } from '../src/store/auth'
 import { useWalletStore, type WalletKind } from '../src/store/wallet'
 import { useNotificationsStore } from '../src/store/notifications'
 import { fonts, radius, shadow } from '../src/lib/theme'
@@ -34,6 +36,44 @@ export default function ConnectWallet() {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [confirmDisconnect, setConfirmDisconnect] = useState(false)
+  const user = useAuthStore((s) => s.user)
+  const [buscandoGenesis, setBuscandoGenesis] = useState(false)
+  const buscoSola = useRef(false)
+
+  // Si entraste con tu Genesis ID, tu dirección ya la conoce el ecosistema:
+  // se trae sola en cuanto se abre la pantalla, sin pedirte teclear nada.
+  async function traerDeGenesis(silencioso = false) {
+    if (!user) {
+      if (!silencioso) setError('Iniciá sesión primero para traer tu billetera de Genesis ID.')
+      return
+    }
+    setBuscandoGenesis(true)
+    try {
+      const r = await genesis.billetera()
+      if (r.direccion && /^0x[0-9a-fA-F]{40}$/.test(r.direccion)) {
+        connect('address', r.direccion)
+        pushNotif({
+          kind: 'wallet',
+          title: 'Veta Wallet conectada',
+          body: 'Tu dirección llegó desde tu Genesis ID. Ya puedes recibir tus puntos ORIGEN.',
+        })
+      } else if (!silencioso) {
+        setError('Genesis ID todavía no tiene una dirección tuya. Verificate en Veta Wallet o pegala aquí abajo.')
+      }
+    } catch {
+      if (!silencioso) setError('No se pudo consultar Genesis ID. Probá de nuevo o pegá la dirección abajo.')
+    } finally {
+      setBuscandoGenesis(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!wallet && user && !buscoSola.current) {
+      buscoSola.current = true
+      traerDeGenesis(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wallet, user])
 
   function handleConnect() {
     const v = value.trim()
@@ -108,6 +148,17 @@ export default function ConnectWallet() {
             </View>
           ) : (
             <>
+              <GradientButton
+                label={buscandoGenesis ? 'Consultando Genesis ID…' : 'Traer de mi Genesis ID'}
+                onPress={() => traerDeGenesis(false)}
+                loading={buscandoGenesis}
+                icon={<ShieldCheck size={16} color={colors.bg} />}
+              />
+              <Text style={styles.note}>
+                Si entraste con tu Genesis ID, tu dirección ya está registrada en el ecosistema y
+                se conecta sola. Si preferís, pegala a mano:
+              </Text>
+
               <View style={styles.segment}>
                 <AnimatedPressable
                   onPress={() => setKind('address')}
@@ -139,10 +190,6 @@ export default function ConnectWallet() {
                   <Text style={styles.errorText}>{error}</Text>
                 </View>
               )}
-
-              <Text style={styles.note}>
-                Tus datos de billetera se guardan solo en tu teléfono en esta versión de demostración.
-              </Text>
 
               <GradientButton
                 label="Conectar billetera"

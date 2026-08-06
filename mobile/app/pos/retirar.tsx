@@ -85,7 +85,7 @@ export default function Retirar() {
 
   if (listo) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <TopBar title="Retiro pedido" />
         <View style={styles.centro}>
           <View style={styles.reloj}>
@@ -103,7 +103,7 @@ export default function Retirar() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <TopBar title="Retirar" />
       <AnimatedScreen style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.cuerpo} showsVerticalScrollIndicator={false}>

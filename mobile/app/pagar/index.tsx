@@ -58,7 +58,7 @@ export default function Escanear() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <TopBar title="Pagar" />
       <View style={styles.cuerpo}>
         <View style={styles.visor}>

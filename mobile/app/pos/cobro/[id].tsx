@@ -95,7 +95,7 @@ export default function CobroEnVivo() {
 
   if (!cobro) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <TopBar title="Cobro" />
         <View style={styles.centro}>
           {error ? <Text style={styles.error}>{error}</Text> : <ActivityIndicator color={colors.violet} />}
@@ -111,7 +111,7 @@ export default function CobroEnVivo() {
   const pagado = cobro.estado === 'pagado'
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <TopBar title={cobro.concepto || 'Cobro'} />
       <AnimatedScreen style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.cuerpo} showsVerticalScrollIndicator={false}>
