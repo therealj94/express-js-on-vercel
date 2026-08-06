@@ -193,6 +193,8 @@ export interface Movimiento {
   id: string
   tipo: 'cobro' | 'retiro' | 'reverso' | 'ajuste'
   montoOrigen: number
+  /** Los lempiras del momento de la venta. Los movimientos viejos no lo traen. */
+  montoHnl?: number
   concepto: string
   confirmado?: boolean
   creadoEn: string
@@ -234,6 +236,13 @@ export const pos = {
 
   /** Lo que MI COMERCIO ha vendido, agregado. */
   estadisticas: () => pedir<Estadisticas>('/actividad/estadisticas'),
+
+  /** Reconcilia de una vez todo lo que este comercio tiene sin respaldo. */
+  verificarTodos: () =>
+    pedir<{ revisadas: number; confirmadas: number; saldo: Saldo['saldo'] }>(
+      '/cobros/mios/verificar-todos',
+      { method: 'POST' },
+    ),
 
   /** Pregunta a la cadena 8532 si cada comprobante es un depósito real. */
   verificarCobro: (id: string) =>

@@ -250,6 +250,7 @@ export const caja = {
       companyId: cobro.companyId,
       tipo: 'cobro',
       montoOrigen: parte.montoOrigen,
+      montoHnl: Math.round(parte.montoOrigen * cobro.tasaHnlPorOrigen * 100) / 100,
       concepto: cobro.concepto || `Cobro ${cobro.codigo}`,
       referencia: cobro.id,
       parteId: parte.id,
@@ -475,6 +476,7 @@ export const caja = {
         companyId: r.companyId,
         tipo: 'retiro',
         montoOrigen: -r.montoOrigen,
+        montoHnl: -r.montoHnl,
         concepto: `Retiro a ${r.banco.banco} ····${r.banco.numeroCuenta.slice(-4)}`,
         referencia: r.id,
         // Una salida siempre pesa: la pagó una persona con lempiras de verdad.

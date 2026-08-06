@@ -94,6 +94,14 @@ export interface Movimiento {
   tipo: TipoMovimiento
   /** Positivo entra al comercio, negativo sale. Nunca se edita: se compensa. */
   montoOrigen: number
+  /**
+   * Los lempiras de ese momento, con la tasa de ese momento.
+   *
+   * Se guardan en vez de recalcularlos: el comercio vendió a un precio, y que
+   * su historial cambie de cifras porque hoy el oro está más caro convierte un
+   * libro contable en una adivinanza.
+   */
+  montoHnl?: number
   concepto: string
   referencia: string | null
   /** La parte del cobro que originó el abono, para poder confirmarla después. */

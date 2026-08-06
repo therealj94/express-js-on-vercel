@@ -15,10 +15,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ArrowDownLeft, ArrowUpRight, Banknote, Clock, Info, ShieldAlert } from 'lucide-react-native'
+import { ArrowDownLeft, ArrowUpRight, Banknote, Clock, Info, ShieldAlert, ShieldCheck } from 'lucide-react-native'
 import { AnimatedScreen } from '../../src/components/AnimatedScreen'
 import { GradientButton } from '../../src/components/ui/GradientButton'
 import { TopBar } from '../../src/components/TopBar'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { pos, lempiras, origen, type Movimiento, type Retiro, type Saldo } from '../../src/lib/pos'
 import { fonts, radius } from '../../src/lib/theme'
 import { useTheme, type ThemeColors } from '../../src/hooks/useTheme'
@@ -39,6 +40,8 @@ export default function SaldoComercio() {
   const [retiros, setRetiros] = useState<Retiro[]>([])
   const [error, setError] = useState<string | null>(null)
   const [refrescando, setRefrescando] = useState(false)
+  const [verificando, setVerificando] = useState(false)
+  const [veredicto, setVeredicto] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
     try {
@@ -123,6 +126,40 @@ export default function SaldoComercio() {
             )}
           </View>
 
+          {saldo.porConfirmar > 0 && (
+            <AnimatedPressable
+              onPress={async () => {
+                if (verificando) return
+                setVerificando(true)
+                setVeredicto(null)
+                try {
+                  const r = await pos.verificarTodos()
+                  setVeredicto(
+                    r.confirmadas > 0
+                      ? `${r.confirmadas} de ${r.revisadas} pagos quedaron respaldados por la cadena.`
+                      : `Se revisaron ${r.revisadas} pagos y ninguno tiene respaldo todavía. Si el pago es reciente, dale unos segundos.`,
+                  )
+                  await cargar()
+                } catch {
+                  setVeredicto('No se pudo consultar la cadena. Probá de nuevo.')
+                } finally {
+                  setVerificando(false)
+                }
+              }}
+              style={styles.verificar}
+            >
+              {verificando ? (
+                <ActivityIndicator size="small" color={colors.ok} />
+              ) : (
+                <ShieldCheck size={16} color={colors.ok} />
+              )}
+              <Text style={styles.verificarTexto}>
+                {verificando ? 'Consultando la cadena…' : 'Verificar mis pagos en la cadena'}
+              </Text>
+            </AnimatedPressable>
+          )}
+          {veredicto && <Text style={styles.veredicto}>{veredicto}</Text>}
+
           <GradientButton
             label="Retirar a mi cuenta"
             onPress={() => router.push('/pos/retirar')}
@@ -176,10 +213,21 @@ export default function SaldoComercio() {
                       })}
                     </Text>
                   </View>
-                  <Text style={[styles.movMonto, { color: entra ? colors.ok : colors.muted }]}>
-                    {entra ? '+' : ''}
-                    {origen(Math.abs(m.montoOrigen))}
-                  </Text>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={[styles.movMonto, { color: entra ? colors.ok : colors.muted }]}>
+                      {entra ? '+' : '−'}
+                      {lempiras(Math.abs(
+                        // Los lempiras del momento de la venta. Si el
+                        // movimiento es viejo y no los trae, se estiman con la
+                        // tasa de hoy — y se nota, porque un histórico que
+                        // cambia de cifras cada día no es un histórico.
+                        m.montoHnl ?? (enLempiras ? m.montoOrigen * enLempiras.tasaHnlPorOrigen : 0),
+                      ))}
+                    </Text>
+                    <Text style={styles.movOrigen}>
+                      {entra ? '+' : '−'}{origen(Math.abs(m.montoOrigen))}
+                    </Text>
+                  </View>
                 </View>
               )
             })
@@ -209,6 +257,21 @@ function crearEstilos(colors: ThemeColors) {
     etq: { fontFamily: fonts.body, fontSize: 12, color: colors.muted },
     grande: { fontFamily: fonts.displayBold, fontSize: 40, color: colors.text, marginTop: 4, letterSpacing: -1 },
     enOrigen: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.violet, marginTop: 2 },
+    movOrigen: { color: colors.muted2, fontFamily: fonts.body, fontSize: 11, marginTop: 1 },
+    verificar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      borderWidth: 1,
+      borderColor: colors.ok + '55',
+      backgroundColor: colors.ok + '12',
+      borderRadius: radius.md,
+      paddingVertical: 12,
+      marginTop: 14,
+    },
+    verificarTexto: { color: colors.ok, fontFamily: fonts.bodySemiBold, fontSize: 13 },
+    veredicto: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 17, textAlign: 'center', marginTop: 8 },
     porConfirmar: {
       flexDirection: 'row',
       gap: 8,

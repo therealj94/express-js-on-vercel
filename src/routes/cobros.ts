@@ -198,6 +198,66 @@ cobrosRouter.post('/mios/:id/anular', requireAuth, h(async (req, res) => {
 }))
 
 /**
+ * «Verificar todos»: reconcilia de una vez todo lo que el comercio tiene sin
+ * respaldo.
+ *
+ * Ir cobro por cobro tocando «Verificar pago» es un trabajo que nadie hace: si
+ * la única forma de que tu dinero se confirme es abrir veinte pantallas, el
+ * saldo se queda en «por confirmar» para siempre. Esto barre todo de un toque.
+ */
+cobrosRouter.post('/mios/verificar-todos', requireAuth, h(async (req, res) => {
+  const negocio = await comercioDe(req.userId!)
+  if (!negocio) {
+    res.status(403).json({ error: 'No tenés un negocio registrado' })
+    return
+  }
+  if (!negocio.walletAddress) {
+    res.status(400).json({ error: 'El negocio no tiene dirección de cobro configurada' })
+    return
+  }
+
+  const cobros = await caja.listarCobros(negocio.id)
+  const entradas = await entradasA(negocio.walletAddress)
+  const usados = await caja.hashesUsados(negocio.id)
+
+  let revisadas = 0
+  let confirmadas = 0
+
+  for (const cobro of cobros) {
+    for (const parte of cobro.partes) {
+      if (parte.estado !== 'pagada') continue
+      if (parte.verificacionCadena === 'confirmada') continue
+      revisadas += 1
+
+      // Primero el comprobante que trajo quien pagó.
+      if (parte.txHash) {
+        const r = await verificarTransferencia(parte.txHash, negocio.walletAddress, parte.montoOrigen)
+        if (r.veredicto === 'confirmada') {
+          await caja.marcarVerificacion(cobro.id, parte.id, 'confirmada')
+          usados.add(parte.txHash.toLowerCase())
+          confirmadas += 1
+          continue
+        }
+        await caja.marcarVerificacion(cobro.id, parte.id, r.veredicto)
+      }
+
+      // Y si no, se busca al revés: qué entró que cuadre y no esté gastado.
+      const calce = entradas.find(
+        (e) => !usados.has(e.hash.toLowerCase()) && e.origenRecibido + 1e-6 >= parte.montoOrigen,
+      )
+      if (!calce) continue
+      usados.add(calce.hash.toLowerCase())
+      await caja.fijarHash(cobro.id, parte.id, calce.hash)
+      await caja.marcarVerificacion(cobro.id, parte.id, 'confirmada')
+      confirmadas += 1
+    }
+  }
+
+  const saldo = await caja.saldo(negocio.id)
+  res.json({ revisadas, confirmadas, saldo })
+}))
+
+/**
  * «Verificar pago»: el comercio pregunta a la cadena 8532, aquí y ahora, si
  * cada comprobante de este cobro es un depósito real en su billetera.
  *

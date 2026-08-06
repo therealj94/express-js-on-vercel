@@ -9,6 +9,21 @@
 // Se anima con un TextInput y useAnimatedProps para no re-renderizar React en
 // cada cuadro — el número cambia sesenta veces por segundo y hacerlo por estado
 // haría trabajar al hilo de JS hasta ahogarlo.
+//
+// POR QUÉ EL FORMATO ESTÁ ESCRITO A MANO
+//
+// Este componente tumbó la app en producción: la pantalla del pago aparecía un
+// instante y se ponía NEGRA, en el teléfono del cliente y en el del comercio.
+// La causa era `toLocaleString` dentro del worklet. Un worklet corre en el hilo
+// de la interfaz, donde no existen las funciones del hilo de JavaScript ni las
+// tablas de idioma; al llegar el primer cuadro de la animación, reventaba.
+//
+// Y ese fallo NO lo atrapa un error boundary de React —ocurre fuera de React—,
+// así que no había pantalla de error que mostrar: solo negro, justo en el
+// momento en que alguien acababa de pagar.
+//
+// De ahí la regla: dentro del worklet solo aritmética y concatenación. Nada de
+// funciones de fuera, ni siquiera las que parecen inofensivas.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect } from 'react'
@@ -25,19 +40,43 @@ const AnimatedTextInput = Animated.createAnimatedComponent(TextInput)
 
 interface Props {
   hasta: number
-  /** Cómo formatear el número en cada paso. Por defecto, dos decimales. */
-  formato?: (n: number) => string
   prefijo?: string
   sufijo?: string
+  /** Cuántos decimales mostrar mientras cuenta. */
+  decimales?: number
   style?: TextStyle | TextStyle[]
   /** Milisegundos antes de arrancar, para coreografiar con otras cosas. */
   retraso?: number
 }
 
-const dosDecimales = (n: number) =>
-  n.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+/** El mismo formato que el worklet, para el valor inicial y el de respaldo. */
+function formatear(n: number, decimales: number): string {
+  const negativo = n < 0
+  const abs = n < 0 ? -n : n
+  const factor = Math.pow(10, decimales)
+  let entero = Math.floor(abs)
+  let dec = Math.round((abs - entero) * factor)
+  if (dec >= factor) {
+    entero += 1
+    dec = 0
+  }
 
-export function CountUp({ hasta, formato = dosDecimales, prefijo = '', sufijo = '', style, retraso = 0 }: Props) {
+  const crudo = String(entero)
+  let miles = ''
+  let cuenta = 0
+  for (let i = crudo.length - 1; i >= 0; i--) {
+    miles = crudo[i] + miles
+    cuenta += 1
+    if (cuenta % 3 === 0 && i > 0) miles = ',' + miles
+  }
+
+  if (decimales <= 0) return (negativo ? '-' : '') + miles
+  let decTexto = String(dec)
+  while (decTexto.length < decimales) decTexto = '0' + decTexto
+  return (negativo ? '-' : '') + miles + '.' + decTexto
+}
+
+export function CountUp({ hasta, prefijo = '', sufijo = '', decimales = 2, style, retraso = 0 }: Props) {
   const valor = useSharedValue(0)
 
   useEffect(() => {
@@ -49,16 +88,49 @@ export function CountUp({ hasta, formato = dosDecimales, prefijo = '', sufijo = 
   }, [hasta, retraso, valor])
 
   const props = useAnimatedProps(() => {
-    return { text: `${prefijo}${formato(valor.value)}${sufijo}`, defaultValue: `${prefijo}${formato(0)}${sufijo}` } as any
+    'worklet'
+    // Todo lo de aquí dentro corre en el hilo de la interfaz: solo aritmética
+    // y texto. Leé el comentario de arriba antes de meter cualquier llamada.
+    const n = valor.value
+    const negativo = n < 0
+    const abs = n < 0 ? -n : n
+    const factor = Math.pow(10, decimales)
+    let entero = Math.floor(abs)
+    let dec = Math.round((abs - entero) * factor)
+    if (dec >= factor) {
+      entero += 1
+      dec = 0
+    }
+
+    const crudo = String(entero)
+    let miles = ''
+    let cuenta = 0
+    for (let i = crudo.length - 1; i >= 0; i--) {
+      miles = crudo[i] + miles
+      cuenta += 1
+      if (cuenta % 3 === 0 && i > 0) miles = ',' + miles
+    }
+
+    let texto = (negativo ? '-' : '') + miles
+    if (decimales > 0) {
+      let decTexto = String(dec)
+      while (decTexto.length < decimales) decTexto = '0' + decTexto
+      texto = texto + '.' + decTexto
+    }
+
+    const completo = prefijo + texto + sufijo
+    return { text: completo, defaultValue: completo } as any
   })
+
+  const final = `${prefijo}${formatear(hasta, decimales)}${sufijo}`
 
   return (
     <AnimatedTextInput
       editable={false}
-      // eslint-disable-next-line react-native/no-inline-styles
       style={[styles.base, style]}
       animatedProps={props}
-      value={`${prefijo}${formato(hasta)}${sufijo}`}
+      value={final}
+      defaultValue={final}
       pointerEvents="none"
     />
   )
@@ -68,5 +140,4 @@ const styles = StyleSheet.create({
   base: { padding: 0, margin: 0 },
 })
 
-/** Acceso a un shared value externo, por si se quiere sincronizar con otra cosa. */
 export type { SharedValue }
