@@ -8,7 +8,7 @@ verificado en vivo**, no en teoría.
 | Pieza | Dónde | Estado |
 | --- | --- | --- |
 | **Backend del POS** | `https://mytokenpay-api-5ab43b64205a.herokuapp.com` | ✅ en producción |
-| **MyTokenPay (APK)** | [descargar APK](https://expo.dev/artifacts/eas/GtfZAZIPkJmJE2Br4iqITzsN4Oee2aQoxOeOWYZ0_oM.apk) · `@vetawallet/mytokenpay` | ✅ v1.0.0 con Genesis ID y API real |
+| **MyTokenPay (APK)** | [descargar APK](https://expo.dev/artifacts/eas/khsXHzi60QAOYSYhbrdx3QQ4RzXqWCinpIJqYBCBjSE.apk) · `@vetawallet/mytokenpay` | ✅ v1.0.0 — Genesis ID, menú y toma de orden, billetera automática |
 | **Veta Wallet (APK)** | [descargar APK](https://expo.dev/artifacts/eas/44cn1FX-0Lox3jFbw4VJB-7lr5a-bs-Zdapc9itBSnU.apk) · `@vetawallet/veta-wallet` | ✅ v1.32.0 — el botón SSO le llega por el aire al abrirla |
 | **Genesis ID (panel)** | `https://genesis-id.onrender.com` | ✅ en producción |
 | **Cadena 8532 + ORIGEN** | `ordenscan.com` | ✅ en producción |
