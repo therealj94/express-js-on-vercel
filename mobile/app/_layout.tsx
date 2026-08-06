@@ -120,6 +120,7 @@ export default function RootLayout() {
         <Stack.Screen name="registrar-empresa" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="mi-empresa" />
         <Stack.Screen name="pos/index" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="pos/orden" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="pos/cobro/[id]" />
         <Stack.Screen name="pos/saldo" />
         <Stack.Screen name="pos/retirar" options={{ animation: 'slide_from_bottom' }} />

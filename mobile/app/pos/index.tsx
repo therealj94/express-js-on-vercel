@@ -17,7 +17,7 @@ import { StyleSheet, Text, TextInput, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Haptics from 'expo-haptics'
-import { Delete, Minus, Plus, Users } from 'lucide-react-native'
+import { Delete, Minus, Plus, Users, UtensilsCrossed } from 'lucide-react-native'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { AnimatedScreen } from '../../src/components/AnimatedScreen'
 import { GradientButton } from '../../src/components/ui/GradientButton'
@@ -157,6 +157,10 @@ export default function Caja() {
           loading={enviando}
           style={styles.cta}
         />
+        <AnimatedPressable onPress={() => router.push('/pos/orden')} style={styles.ordenLink}>
+          <UtensilsCrossed size={14} color={colors.violet} />
+          <Text style={styles.ordenLinkTexto}>Tomar orden del menú</Text>
+        </AnimatedPressable>
       </AnimatedScreen>
     </SafeAreaView>
   )
@@ -238,6 +242,8 @@ function crearEstilos(colors: ThemeColors) {
     teclaBorrar: { color: colors.warn, fontSize: 22 },
 
     error: { fontFamily: fonts.body, fontSize: 13, color: colors.danger, textAlign: 'center', marginTop: 12 },
-    cta: { marginTop: 16, marginBottom: 12 },
+    cta: { marginTop: 16, marginBottom: 4 },
+    ordenLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 10, marginBottom: 6 },
+    ordenLinkTexto: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: colors.violet },
   })
 }

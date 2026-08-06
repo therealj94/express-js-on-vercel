@@ -6,7 +6,7 @@ import { h } from '../lib/ruta.js'
 import { categoryBySlug } from '../data/categories.js'
 import { countryBySlug } from '../data/locations.js'
 import { defaultHours } from '../data/seed.js'
-import type { Company, CompanySocials, KycDocument, WeekHours } from '../types.js'
+import type { Company, CompanySocials, KycDocument, PlatoMenu, WeekHours } from '../types.js'
 
 export const companiesRouter = Router()
 
@@ -49,6 +49,34 @@ function validateCompanyPayload(body: Record<string, unknown>): string | null {
   if (!country.cities.some((c) => c.slug === body.citySlug)) return 'Ciudad inválida'
   if (typeof body.lat !== 'number' || typeof body.lng !== 'number') return 'Ubicación en el mapa es requerida'
   return null
+}
+
+/**
+ * El menú que manda el dueño, saneado plato por plato.
+ *
+ * El precio se limita a dos decimales y a un máximo sensato: un cero de más en
+ * un plato no debe poder convertirse en un cobro de un millón por error.
+ */
+function sanearMenu(entrada: unknown): PlatoMenu[] | { error: string } {
+  if (!Array.isArray(entrada)) return { error: 'El menú tiene que ser una lista de platos' }
+  if (entrada.length > 80) return { error: 'El menú acepta hasta 80 platos' }
+  const salida: PlatoMenu[] = []
+  for (const p of entrada as Partial<PlatoMenu>[]) {
+    const nombre = String(p?.nombre || '').trim().slice(0, 80)
+    if (!nombre) return { error: 'Cada plato necesita un nombre' }
+    const precio = Math.round(Number(p?.precio) * 100) / 100
+    if (!Number.isFinite(precio) || precio <= 0 || precio > 200_000) {
+      return { error: `El precio de «${nombre}» no es válido` }
+    }
+    salida.push({
+      id: typeof p?.id === 'string' && p.id ? p.id : randomUUID(),
+      nombre,
+      descripcion: String(p?.descripcion || '').trim().slice(0, 200),
+      precio,
+      moneda: p?.moneda === 'USD' ? 'USD' : 'HNL',
+    })
+  }
+  return salida
 }
 
 /**
@@ -133,6 +161,15 @@ companiesRouter.put('/:id', requireAuth, h(async (req, res) => {
     'hours',
     'acceptsOrigen',
   ]
+  // El menú va aparte de la lista blanca porque se sanea plato por plato.
+  if ((body as any).menu !== undefined) {
+    const menu = sanearMenu((body as any).menu)
+    if ('error' in menu) {
+      res.status(400).json({ error: menu.error })
+      return
+    }
+    patch.menu = menu
+  }
   // La dirección de cobro va aparte de la lista blanca: se valida su forma,
   // porque un carácter mal escrito manda el dinero a un pozo sin fondo.
   if (body.walletAddress !== undefined) {

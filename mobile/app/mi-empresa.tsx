@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ArrowLeft, Check, ExternalLink, Globe, Camera, Save } from 'lucide-react-native'
-import { api } from '../src/lib/api'
+import { ArrowLeft, Check, ExternalLink, Globe, Camera, Save, ShieldCheck, Wallet } from 'lucide-react-native'
+import { api, genesis } from '../src/lib/api'
 import { useMetaStore } from '../src/store/meta'
 import { TextField, Field } from '../src/components/ui/TextField'
 import { SelectField } from '../src/components/ui/SelectField'
@@ -12,6 +12,7 @@ import { TagInput } from '../src/components/forms/TagInput'
 import { ImagePickerField } from '../src/components/forms/ImagePickerField'
 import { DocPickerField, type PickedDoc } from '../src/components/forms/DocPickerField'
 import { HoursEditor } from '../src/components/forms/HoursEditor'
+import { MenuEditor } from '../src/components/forms/MenuEditor'
 import { StatusBadge } from '../src/components/StatusBadge'
 import { AnimatedScreen } from '../src/components/AnimatedScreen'
 import { MapPicker } from '../src/components/MapPicker'
@@ -29,6 +30,7 @@ export default function EditCompany() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [trayendoDir, setTrayendoDir] = useState(false)
   const [idDoc, setIdDoc] = useState<PickedDoc | null>(null)
   const [legalDoc, setLegalDoc] = useState<PickedDoc | null>(null)
   const [resubmitting, setResubmitting] = useState(false)
@@ -56,6 +58,21 @@ export default function EditCompany() {
       setError(err instanceof Error ? err.message : 'No se pudo guardar los cambios')
     } finally {
       setSaving(false)
+    }
+  }
+
+  // La dirección donde el negocio recibe sus cobros puede venir del propio
+  // Genesis ID del dueño (la billetera de Veta), sin teclearla.
+  async function traerDireccionGenesis() {
+    setTrayendoDir(true)
+    try {
+      const r = await genesis.billetera()
+      if (r.direccion) update('walletAddress', r.direccion)
+      else setError('Genesis ID no tiene una dirección tuya todavía. Verificate en Veta Wallet o pegala a mano.')
+    } catch {
+      setError('No se pudo consultar Genesis ID')
+    } finally {
+      setTrayendoDir(false)
     }
   }
 
@@ -171,6 +188,34 @@ export default function EditCompany() {
 
         {company.hours && <HoursEditor hours={company.hours} onChange={(h) => update('hours', h)} />}
 
+        <View style={styles.walletSection}>
+          <View style={styles.walletHeader}>
+            <Wallet size={15} color="#E8B84B" />
+            <Text style={styles.walletTitle}>Dirección de cobro</Text>
+          </View>
+          <Text style={styles.walletHint}>
+            Aquí llega el ORIGEN de cada venta. Sin ella no podés cobrar. Compará los últimos
+            cuatro caracteres al guardarla: un error manda el dinero a un pozo sin fondo.
+          </Text>
+          <TextField
+            label="Dirección (0x…)"
+            placeholder="0x…"
+            value={company.walletAddress ?? ''}
+            onChangeText={(v) => update('walletAddress', v.trim())}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <GradientButton
+            label={trayendoDir ? 'Consultando…' : 'Usar la de mi Genesis ID'}
+            variant="ghost"
+            onPress={traerDireccionGenesis}
+            loading={trayendoDir}
+            icon={<ShieldCheck size={15} color="#E8B84B" />}
+          />
+        </View>
+
+        <MenuEditor menu={company.menu ?? []} onChange={(m) => update('menu', m)} />
+
         {error && (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
@@ -230,6 +275,10 @@ function createStyles(colors: ThemeColors) {
   savedRow: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center' },
   savedText: { color: colors.ok, fontFamily: fonts.bodySemiBold, fontSize: 12 },
   kycSection: { gap: 14, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 20, marginTop: 4 },
+  walletSection: { gap: 10, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 18 },
+  walletHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  walletTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 15 },
+  walletHint: { color: colors.muted, fontFamily: fonts.body, fontSize: 12.5, lineHeight: 18 },
   kycTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 15 },
   })
 }

@@ -150,6 +150,10 @@ const realApi = {
 
   categories: () => request<{ categories: Category[] }>('/categories'),
 
+  /** Cotización del día: lempiras por ORIGEN y por dólar. */
+  tasa: () =>
+    request<{ tasa: { hnlPorOrigen: number; hnlPorUsd: number; usdPorOnza: number; fuente: string } }>('/tasa'),
+
   countries: () => request<{ countries: Country[] }>('/countries'),
 
   listCompanies: (params: Record<string, string | undefined>) => {

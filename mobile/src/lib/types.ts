@@ -2,6 +2,15 @@ export type UserRole = 'user' | 'business'
 
 export type KycStatus = 'unsubmitted' | 'pending' | 'verified' | 'rejected'
 
+/** Un plato o producto del menú del negocio. El precio vive en su moneda. */
+export interface PlatoMenu {
+  id: string
+  nombre: string
+  descripcion: string
+  precio: number
+  moneda: 'HNL' | 'USD'
+}
+
 export interface PersonalKyc {
   status: KycStatus
   documentLabel: string | null
@@ -71,6 +80,10 @@ export interface Company {
   }
   verified: boolean
   acceptsOrigen: boolean
+  /** Dirección de la cadena 8532 donde el negocio recibe sus cobros. */
+  walletAddress?: string | null
+  /** Menú del negocio: lo que se puede ordenar desde MyTokenPay. */
+  menu?: PlatoMenu[]
   createdAt: string
   updatedAt: string
 }

@@ -147,6 +147,22 @@ export default function CompanyDetail() {
               <Text style={styles.body}>{company.description}</Text>
             </View>
 
+            {(company.menu?.length ?? 0) > 0 && (
+              <View>
+                <Text style={styles.h2}>Menú</Text>
+                <View style={{ gap: 8, marginTop: 8 }}>
+                  {company.menu!.map((p) => (
+                    <View key={p.id} style={styles.menuItem}>
+                      <Text style={styles.menuNombre}>{p.nombre}</Text>
+                      <Text style={styles.menuPrecio}>
+                        {p.moneda === 'USD' ? 'US$' : 'L'} {p.precio.toLocaleString('es-HN', { minimumFractionDigits: 2 })}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
             {company.productsServices.length > 0 && (
               <View>
                 <Text style={styles.h2}>Productos y servicios</Text>
@@ -314,6 +330,9 @@ function createStyles(colors: ThemeColors) {
   h2: { color: colors.text, fontFamily: fonts.display, fontSize: 16, marginBottom: 8 },
   body: { color: colors.muted, fontFamily: fonts.body, fontSize: 13.5, lineHeight: 20 },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 11 },
+  menuNombre: { color: colors.text, fontFamily: fonts.bodySemiBold, fontSize: 13.5, flex: 1, marginRight: 10 },
+  menuPrecio: { color: colors.muted, fontFamily: fonts.bodySemiBold, fontSize: 13 },
   gallery: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   galleryImg: { width: '31%', aspectRatio: 1, borderRadius: radius.sm },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
