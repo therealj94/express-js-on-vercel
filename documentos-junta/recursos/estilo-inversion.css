@@ -1,0 +1,164 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   Hoja de estilo del documento de inversión.
+
+   Aquí SÍ manda la marca: fondo oscuro en las páginas de apertura y cierre,
+   dorado como acento y tipografía grande. Es un documento que se lee en
+   pantalla y se proyecta, no uno que se imprime para archivar — al revés que
+   los cuatro documentos de la Junta, que usan `estilo.css`.
+
+   Cada página se maqueta a mano (`.hoja`) en vez de dejar que el texto fluya:
+   en una presentación el salto de página es una decisión de diseño, no un
+   accidente del maquetador.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --verde:    #04191A;
+  --verde2:   #072526;
+  --verde3:   #0C3335;
+  --oro:      #C9A961;
+  --oro-osc:  #9A7B2E;
+  --claro:    #EAF3F2;
+  --claro2:   #9FBDBA;
+  --tinta:    #16211F;
+  --suave:    #5C6B68;
+  --linea:    #123E3F;
+  --linea-cl: #DDE5E3;
+  --ok:       #2FA37A;
+  --alerta:   #D9A441;
+}
+
+@page { size: A4; margin: 0; }
+
+* { box-sizing: border-box; }
+body { margin: 0; font: 11pt/1.6 Georgia, "Times New Roman", serif; color: var(--tinta); }
+h1, h2, h3, h4, .dato, .etq, table, .pastilla, nav { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+
+/* ── La página ───────────────────────────────────────────────────────────── */
+.hoja {
+  width: 210mm; height: 297mm; padding: 20mm 18mm 16mm;
+  page-break-after: always; position: relative; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.hoja:last-child { page-break-after: auto; }
+.hoja.oscura { background: var(--verde); color: var(--claro); }
+.hoja.oscura h2, .hoja.oscura h3 { color: var(--claro); }
+.hoja.oscura .dato { color: var(--oro); }
+.hoja.oscura p { color: var(--claro2); }
+.hoja.oscura strong { color: var(--claro); }
+
+/* Número de página y marca al pie */
+.hoja .folio {
+  position: absolute; bottom: 10mm; left: 18mm; right: 18mm;
+  display: flex; justify-content: space-between;
+  font: 7.5pt/1 Helvetica, Arial, sans-serif; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--suave);
+}
+.hoja.oscura .folio { color: #3E5C5A; }
+
+/* ── Portada ─────────────────────────────────────────────────────────────── */
+.marca { display: flex; align-items: center; gap: 14px; }
+.marca svg { width: 52px; height: 52px; }
+.marca b { display: block; font: 700 17pt/1.1 Helvetica, Arial, sans-serif; letter-spacing: .04em; color: var(--claro); }
+.marca span { font: 8pt/1 Helvetica, Arial, sans-serif; letter-spacing: .3em; text-transform: uppercase; color: var(--oro); }
+
+.hoja h1 {
+  font-size: 42pt; line-height: 1.04; margin: 0 0 16px; font-weight: 700;
+  letter-spacing: -.02em; color: var(--claro);
+}
+.hoja h1 em { font-style: normal; color: var(--oro); }
+.entrada { font-size: 14pt; line-height: 1.5; color: var(--claro2); max-width: 150mm; }
+.filete { height: 3px; width: 64mm; background: linear-gradient(90deg, var(--oro), transparent); margin: 0 0 26px; }
+
+/* ── Títulos de sección ──────────────────────────────────────────────────── */
+.hoja h2 {
+  font-size: 25pt; line-height: 1.15; margin: 0 0 6px; color: var(--verde);
+  font-weight: 700; letter-spacing: -.015em;
+}
+.hoja h3 { font-size: 12.5pt; margin: 20px 0 7px; color: var(--verde3); font-weight: 700; }
+.hoja.oscura h3 { color: var(--oro); }
+.rotulo {
+  font: 700 8pt/1 Helvetica, Arial, sans-serif; letter-spacing: .24em;
+  text-transform: uppercase; color: var(--oro-osc); margin-bottom: 10px;
+}
+.hoja.oscura .rotulo { color: var(--oro); }
+p { margin: 0 0 11px; }
+.grande { font-size: 13pt; line-height: 1.55; }
+ul { margin: 0 0 11px; padding-left: 19px; }
+li { margin-bottom: 7px; }
+strong { color: var(--verde); font-weight: 700; }
+
+/* ── Cifras ──────────────────────────────────────────────────────────────── */
+.cifras { display: flex; gap: 12px; margin: 16px 0; }
+.cifras > div { flex: 1; }
+.dato { font: 700 27pt/1.05 Helvetica, Arial, sans-serif; color: var(--verde); letter-spacing: -.02em; }
+.dato.oro { color: var(--oro-osc); }
+.etq { font-size: 7.5pt; letter-spacing: .1em; text-transform: uppercase; color: var(--suave); margin-top: 5px; line-height: 1.35; }
+.hoja.oscura .etq { color: var(--claro2); }
+
+.enorme { font: 700 62pt/1 Helvetica, Arial, sans-serif; color: var(--oro); letter-spacing: -.03em; }
+
+/* ── Bloques ─────────────────────────────────────────────────────────────── */
+.tarjetas { display: flex; gap: 12px; margin: 14px 0; }
+.tarjeta {
+  flex: 1; border: 1px solid var(--linea-cl); border-radius: 8px; padding: 14px 15px;
+  background: #FAFCFB;
+}
+.hoja.oscura .tarjeta { background: var(--verde2); border-color: var(--linea); }
+.tarjeta h4 { margin: 0 0 5px; font-size: 10.5pt; color: var(--verde); letter-spacing: 0; }
+.hoja.oscura .tarjeta h4 { color: var(--oro); }
+.tarjeta p { font-size: 9.5pt; margin: 0; color: var(--suave); }
+.hoja.oscura .tarjeta p { color: var(--claro2); }
+
+.resalte {
+  border-left: 3px solid var(--oro); background: #FBF8F1;
+  padding: 13px 16px; margin: 14px 0; font-size: 10.5pt;
+}
+.hoja.oscura .resalte { background: var(--verde2); border-left-color: var(--oro); }
+
+.pastilla {
+  display: inline-block; padding: 4px 11px; border-radius: 20px;
+  font: 700 8pt/1.4 Helvetica, Arial, sans-serif; letter-spacing: .09em; text-transform: uppercase;
+  border: 1px solid var(--oro); color: var(--oro-osc);
+}
+.hoja.oscura .pastilla { color: var(--oro); }
+.pastilla.viva { border-color: var(--ok); color: var(--ok); }
+
+/* ── Tablas ──────────────────────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 9.5pt; }
+th {
+  text-align: left; padding: 8px 11px; background: var(--verde); color: var(--claro);
+  font-size: 7.5pt; letter-spacing: .1em; text-transform: uppercase; font-weight: 700;
+}
+td { padding: 8px 11px; border-bottom: 1px solid var(--linea-cl); vertical-align: top; }
+tr:nth-child(even) td { background: #F6F9F8; }
+.hoja.oscura td { border-bottom-color: var(--linea); color: var(--claro2); }
+.hoja.oscura tr:nth-child(even) td { background: var(--verde2); }
+.hoja.oscura th { background: var(--verde3); }
+td b { color: var(--verde); }
+.hoja.oscura td b { color: var(--claro); }
+
+/* ── Imágenes de producto ────────────────────────────────────────────────── */
+.captura { border-radius: 9px; overflow: hidden; border: 1px solid var(--linea-cl); }
+.hoja.oscura .captura { border-color: var(--linea); }
+.captura img { display: block; width: 100%; }
+.telefonos { display: flex; gap: 14px; align-items: flex-start; justify-content: center; margin: 6px 0; }
+.telefono {
+  border-radius: 20px; overflow: hidden; border: 2px solid var(--linea);
+  background: var(--verde); flex: 1;
+}
+.telefono img { display: block; width: 100%; }
+.epigrafe { font-size: 8pt; color: var(--suave); font-style: italic; margin-top: 7px; text-align: center; }
+.hoja.oscura .epigrafe { color: #3E5C5A; }
+
+.fuente { font-size: 7.5pt; color: var(--suave); line-height: 1.45; margin-top: auto; padding-top: 10px; }
+.hoja.oscura .fuente { color: #3E5C5A; }
+
+.crece { flex: 1; }
+figure { margin: 12px 0; text-align: center; }
+figure svg { max-width: 100%; height: auto; }
+
+/* Una cifra como «US$ 12.212 M» no cabe a 27 pt en una columna de cuatro: se
+   parte en dos líneas y descuadra la fila entera. `.cifras.apretadas` la baja
+   lo justo para que quepa de una pieza. */
+.cifras.apretadas .dato { font-size: 20pt; }
+.cifras .dato { white-space: nowrap; }
