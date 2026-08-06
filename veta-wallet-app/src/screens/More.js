@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Image, Modal, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { Icon } from '../icons';
 import * as Clipboard from 'expo-clipboard';
 import { C, G } from '../theme';
@@ -651,8 +652,45 @@ function Field({ label, editable = true, ...props }) {
 }
 
 // ================= MYTOKENPAY =================
-export function MyTokenPay({ nav }) {
+export function MyTokenPay({ nav, params }) {
   const t = useT();
+  const toast = useToast();
+  const { account } = useAccount();
+  const [abriendo, setAbriendo] = useState(false);
+
+  // El puente al ecosistema: Genesis ID firma un pase de sesión única y
+  // MyTokenPay lo canjea por una sesión propia. El KYC no se repite jamás.
+  //
+  // El correo viaja en el enlace solo como pista de a qué cuenta entrar; el
+  // backend de MyTokenPay NO se lo cree: comprueba contra Genesis ID que ese
+  // correo pertenezca exactamente al GID del pase.
+  const abrirMyTokenPay = React.useCallback(async () => {
+    if (!account?.email) return;
+    setAbriendo(true);
+    try {
+      const r = await genesis.paseParaMyTokenPay();
+      if (!r.token) {
+        // Sin identidad verificada no hay pase: el camino es hacer el KYC.
+        toast(t('mtp.sinGid'));
+        nav.go('kyc');
+        return;
+      }
+      const enlace = `mytokenpay://sso?token=${encodeURIComponent(r.token)}&email=${encodeURIComponent(account.email)}`;
+      await Linking.openURL(enlace);
+    } catch (e) {
+      toast(t('mtp.sinApp'));
+    } finally {
+      setAbriendo(false);
+    }
+  }, [account, nav, t, toast]);
+
+  // Si venimos del enlace vetawallet://sso?destino=mytokenpay (el botón
+  // «Entrar con Genesis ID» de la otra app), se dispara solo.
+  useEffect(() => {
+    if (params?.auto) abrirMyTokenPay();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title={t('mtp.title')} onBack={() => nav.back()} />
@@ -667,6 +705,15 @@ export function MyTokenPay({ nav }) {
           <PayFeature icon="cash" t={t('mtp.f2')} s={t('mtp.f2s')} />
           <PayFeature icon="finger-print" t={t('mtp.f3')} s={t('mtp.f3s')} />
         </Glass>
+        <Button3D
+          title={abriendo ? t('mtp.abriendo') : t('mtp.abrir')}
+          onPress={abrirMyTokenPay}
+          disabled={abriendo || !account}
+          style={{ marginTop: 16 }}
+        />
+        <Text style={{ color: C.txt3, fontSize: 11.5, textAlign: 'center', marginTop: 10, lineHeight: 16 }}>
+          {t('mtp.abrirNota')}
+        </Text>
       </ScrollView>
     </View>
   );

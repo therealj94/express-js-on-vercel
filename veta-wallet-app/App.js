@@ -171,6 +171,22 @@ function Root() {
         return;
       }
 
+      // ---- Puerta al ecosistema: emitir pase y saltar a MyTokenPay ----
+      //
+      // MyTokenPay abre vetawallet://sso?destino=mytokenpay cuando alguien
+      // toca «Entrar con Genesis ID» allá. Aquí se abre la pantalla del
+      // puente, que pide el pase al backend y devuelve al usuario con
+      // mytokenpay://sso?token=…  El pase lo firma Genesis ID; esta app solo
+      // hace de cartero.
+      if (/vetawallet:\/\/sso(\?|$)/i.test(url)) {
+        if (!accountRef.current) return; // sin sesión no hay pase que pedir
+        const p = parsePayLink(url);
+        if ((p.destino || '').toLowerCase() !== 'mytokenpay') return;
+        setDir(1);
+        setStack([{ r: 'home' }, { r: 'mytokenpay', params: { auto: 1 } }]);
+        return;
+      }
+
       // ---- Enlace a la verificación de identidad ----
       //
       // Antes este bloque leía un "pasaporte" de los parámetros del enlace de

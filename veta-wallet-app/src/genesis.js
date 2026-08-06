@@ -311,6 +311,19 @@ export const genesis = {
   /** Ata esta cuenta de Veta Wallet al GID, para la sesión única. */
   vincular: () => puente('/vincular', {}),
 
+  /**
+   * Pase de sesión única para entrar a MyTokenPay sin repetir el KYC.
+   *
+   * Lo firma Genesis ID y vence en minutos. Solo existe si la identidad está
+   * verificada y esta cuenta está atada al GID — es decir: nadie puede pedir
+   * un pase de una identidad que no es suya.
+   */
+  async paseParaMyTokenPay() {
+    const r = await puente('/sso/token', {});
+    if (!r.ok) return { error: r.error, code: r.code };
+    return { token: r.datos?.token || null, expiraEnSegundos: r.datos?.expiraEnSegundos || 900 };
+  },
+
   /** Token para entrar en otra app del ecosistema sin repetir el KYC. */
   async tokenEcosistema() {
     const r = await puente('/sso/token', {});
