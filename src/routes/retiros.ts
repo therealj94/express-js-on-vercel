@@ -14,6 +14,7 @@
 
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
+import { h } from '../lib/ruta.js'
 import { db } from '../lib/db.js'
 import { caja } from '../lib/caja.js'
 import { cotizacion, aHnl } from '../lib/tasas.js'
@@ -64,14 +65,14 @@ retirosRouter.get('/bancos', (_req, res) => {
 
 // ── Saldo y movimientos del comercio ─────────────────────────────────────────
 
-retirosRouter.get('/saldo', requireAuth, async (req, res) => {
-  const negocio = db.findCompanyByOwner(req.userId!)
+retirosRouter.get('/saldo', requireAuth, h(async (req, res) => {
+  const negocio = await db.findCompanyByOwner(req.userId!)
   if (!negocio) {
     res.status(403).json({ error: 'No tenés un negocio registrado' })
     return
   }
 
-  const saldo = caja.saldo(negocio.id)
+  const saldo = await caja.saldo(negocio.id)
   let tasa = null
   try {
     tasa = await cotizacion()
@@ -90,14 +91,14 @@ retirosRouter.get('/saldo', requireAuth, async (req, res) => {
           fuente: tasa.fuente,
         }
       : null,
-    movimientos: caja.movimientos(negocio.id, 60),
+    movimientos: await caja.movimientos(negocio.id, 60),
   })
-})
+}))
 
 // ── Pedir un retiro ──────────────────────────────────────────────────────────
 
-retirosRouter.post('/', requireAuth, async (req, res) => {
-  const negocio = db.findCompanyByOwner(req.userId!)
+retirosRouter.post('/', requireAuth, h(async (req, res) => {
+  const negocio = await db.findCompanyByOwner(req.userId!)
   if (!negocio) {
     res.status(403).json({ error: 'No tenés un negocio registrado' })
     return
@@ -115,7 +116,7 @@ retirosRouter.post('/', requireAuth, async (req, res) => {
     return
   }
 
-  const { disponible } = caja.saldo(negocio.id)
+  const { disponible } = await caja.saldo(negocio.id)
   if (monto > disponible) {
     res.status(400).json({
       error: 'No tenés saldo suficiente',
@@ -138,7 +139,7 @@ retirosRouter.post('/', requireAuth, async (req, res) => {
     return
   }
 
-  const retiro = caja.crearRetiro({
+  const retiro = await caja.crearRetiro({
     companyId: negocio.id,
     solicitadoPor: req.userId!,
     montoOrigen: monto,
@@ -148,15 +149,16 @@ retirosRouter.post('/', requireAuth, async (req, res) => {
   })
 
   res.status(201).json({ retiro: { ...retiro, banco: taparCuenta(retiro.banco) } })
-})
+}))
 
-retirosRouter.get('/mios', requireAuth, (req, res) => {
-  const negocio = db.findCompanyByOwner(req.userId!)
+retirosRouter.get('/mios', requireAuth, h(async (req, res) => {
+  const negocio = await db.findCompanyByOwner(req.userId!)
   if (!negocio) {
     res.status(403).json({ error: 'No tenés un negocio registrado' })
     return
   }
+  const retiros = await caja.listarRetiros({ companyId: negocio.id })
   res.json({
-    retiros: caja.listarRetiros({ companyId: negocio.id }).map((r) => ({ ...r, banco: taparCuenta(r.banco) })),
+    retiros: retiros.map((r) => ({ ...r, banco: taparCuenta(r.banco) })),
   })
-})
+}))

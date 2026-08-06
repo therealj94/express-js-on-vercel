@@ -19,31 +19,36 @@
 import { Router } from 'express'
 import type { NextFunction, Request, Response } from 'express'
 import { requireAuth } from '../middleware/auth.js'
+import { h } from '../lib/ruta.js'
 import { db } from '../lib/db.js'
 import { caja } from '../lib/caja.js'
 import { cotizacion } from '../lib/tasas.js'
 
 export const adminRouter = Router()
 
-function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  const usuario = db.findUserById(req.userId!)
-  if (usuario?.role !== 'admin') {
-    // Se responde 404 y no 403: a quien no es administrador no hace falta
-    // confirmarle que este panel existe.
-    res.status(404).json({ error: 'Ruta no encontrada' })
-    return
+async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  try {
+    const usuario = await db.findUserById(req.userId!)
+    if (usuario?.role !== 'admin') {
+      // Se responde 404 y no 403: a quien no es administrador no hace falta
+      // confirmarle que este panel existe.
+      res.status(404).json({ error: 'Ruta no encontrada' })
+      return
+    }
+    next()
+  } catch (err) {
+    next(err)
   }
-  next()
 }
 
 adminRouter.use(requireAuth, requireAdmin)
 
 // ── Resumen ──────────────────────────────────────────────────────────────────
 
-adminRouter.get('/resumen', async (_req, res) => {
-  const pendientes = caja.listarRetiros({ estado: 'solicitado' })
-  const enProceso = caja.listarRetiros({ estado: 'en_proceso' })
-  const negocios = db.listCompanies({})
+adminRouter.get('/resumen', h(async (_req, res) => {
+  const pendientes = await caja.listarRetiros({ estado: 'solicitado' })
+  const enProceso = await caja.listarRetiros({ estado: 'en_proceso' })
+  const negocios = await db.listCompanies({})
 
   let tasa = null
   try {
@@ -69,23 +74,26 @@ adminRouter.get('/resumen', async (_req, res) => {
     },
     tasa,
   })
-})
+}))
 
 // ── Retiros ──────────────────────────────────────────────────────────────────
 
-adminRouter.get('/retiros', (req, res) => {
+adminRouter.get('/retiros', h(async (req, res) => {
   const estado = req.query.estado as any
-  const retiros = caja.listarRetiros(estado ? { estado } : {}).map((r) => {
-    const negocio = db.findCompanyById(r.companyId)
-    return {
-      ...r,
-      negocio: negocio ? { id: negocio.id, nombre: negocio.tradeName, verificado: negocio.verified } : null,
-    }
-  })
+  const lista = await caja.listarRetiros(estado ? { estado } : {})
+  const retiros = await Promise.all(
+    lista.map(async (r) => {
+      const negocio = await db.findCompanyById(r.companyId)
+      return {
+        ...r,
+        negocio: negocio ? { id: negocio.id, nombre: negocio.tradeName, verificado: negocio.verified } : null,
+      }
+    }),
+  )
   res.json({ retiros })
-})
+}))
 
-adminRouter.post('/retiros/:id/estado', (req, res) => {
+adminRouter.post('/retiros/:id/estado', h(async (req, res) => {
   const { estado, nota } = req.body as { estado?: string; nota?: string }
   const validos = ['en_proceso', 'pagado', 'rechazado']
   if (!estado || !validos.includes(estado)) {
@@ -98,22 +106,21 @@ adminRouter.post('/retiros/:id/estado', (req, res) => {
     return
   }
 
-  const retiro = caja.resolverRetiro(req.params.id, estado as any, req.userId!, nota)
+  const retiro = await caja.resolverRetiro(req.params.id, estado as any, req.userId!, nota)
   if (!retiro) {
     res.status(404).json({ error: 'Retiro no encontrado' })
     return
   }
   res.json({ retiro })
-})
+}))
 
 // ── Verificación de negocios ─────────────────────────────────────────────────
 
-adminRouter.get('/negocios', (req, res) => {
+adminRouter.get('/negocios', h(async (req, res) => {
   const estado = req.query.estado as string | undefined
-  const negocios = db
-    .listCompanies({})
-    .filter((n) => (estado ? n.kyc.status === estado : true))
-    .map((n) => ({
+  const lista = (await db.listCompanies({})).filter((n) => (estado ? n.kyc.status === estado : true))
+  const negocios = await Promise.all(
+    lista.map(async (n) => ({
       id: n.id,
       nombre: n.tradeName,
       razonSocial: n.legalName,
@@ -123,26 +130,27 @@ adminRouter.get('/negocios', (req, res) => {
       categoria: n.categorySlug,
       kyc: { ...n.kyc, documents: n.kyc.documents.map((d) => ({ id: d.id, label: d.label, uploadedAt: d.uploadedAt })) },
       verificado: n.verified,
-      saldo: caja.saldo(n.id),
+      saldo: await caja.saldo(n.id),
       creadoEn: n.createdAt,
-    }))
+    })),
+  )
   res.json({ negocios })
-})
+}))
 
 /** El documento se sirve de uno en uno y solo al administrador que lo revisa. */
-adminRouter.get('/negocios/:id/documento/:docId', (req, res) => {
-  const negocio = db.findCompanyById(req.params.id)
+adminRouter.get('/negocios/:id/documento/:docId', h(async (req, res) => {
+  const negocio = await db.findCompanyById(req.params.id)
   const doc = negocio?.kyc.documents.find((d) => d.id === req.params.docId)
   if (!doc) {
     res.status(404).json({ error: 'Documento no encontrado' })
     return
   }
   res.json({ documento: doc })
-})
+}))
 
-adminRouter.post('/negocios/:id/resolver', (req, res) => {
+adminRouter.post('/negocios/:id/resolver', h(async (req, res) => {
   const { decision, nota } = req.body as { decision?: 'verificar' | 'rechazar'; nota?: string }
-  const negocio = db.findCompanyById(req.params.id)
+  const negocio = await db.findCompanyById(req.params.id)
   if (!negocio) {
     res.status(404).json({ error: 'Negocio no encontrado' })
     return
@@ -156,7 +164,7 @@ adminRouter.post('/negocios/:id/resolver', (req, res) => {
     return
   }
 
-  const actualizado = db.updateCompany(negocio.id, {
+  const actualizado = await db.updateCompany(negocio.id, {
     verified: decision === 'verificar',
     kyc: {
       ...negocio.kyc,
@@ -167,4 +175,4 @@ adminRouter.post('/negocios/:id/resolver', (req, res) => {
   })
 
   res.json({ negocio: actualizado })
-})
+}))

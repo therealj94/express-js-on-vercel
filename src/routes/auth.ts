@@ -2,10 +2,11 @@ import { Router } from 'express'
 import { db, toPublicUser } from '../lib/db.js'
 import { hashPassword, signResetToken, signToken, verifyPassword, verifyResetToken } from '../lib/auth.js'
 import { requireAuth } from '../middleware/auth.js'
+import { h } from '../lib/ruta.js'
 
 export const authRouter = Router()
 
-authRouter.post('/signup', (req, res) => {
+authRouter.post('/signup', h(async (req, res) => {
   const { email, password, fullName } = req.body as {
     email?: string
     password?: string
@@ -20,24 +21,24 @@ authRouter.post('/signup', (req, res) => {
     res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' })
     return
   }
-  if (db.findUserByEmail(email)) {
+  if (await db.findUserByEmail(email)) {
     res.status(409).json({ error: 'Ya existe una cuenta con este correo' })
     return
   }
 
-  const user = db.createUser({ email, fullName, passwordHash: hashPassword(password) })
+  const user = await db.createUser({ email, fullName, passwordHash: hashPassword(password) })
   const token = signToken(user.id)
   res.status(201).json({ token, user: toPublicUser(user) })
-})
+}))
 
-authRouter.post('/login', (req, res) => {
+authRouter.post('/login', h(async (req, res) => {
   const { email, password } = req.body as { email?: string; password?: string }
   if (!email || !password) {
     res.status(400).json({ error: 'Correo y contraseña son requeridos' })
     return
   }
 
-  const user = db.findUserByEmail(email)
+  const user = await db.findUserByEmail(email)
   if (!user || !verifyPassword(password, user.passwordHash)) {
     res.status(401).json({ error: 'Credenciales inválidas' })
     return
@@ -45,40 +46,40 @@ authRouter.post('/login', (req, res) => {
 
   const token = signToken(user.id)
   res.json({ token, user: toPublicUser(user) })
-})
+}))
 
-authRouter.get('/me', requireAuth, (req, res) => {
-  const user = db.findUserById(req.userId!)
+authRouter.get('/me', requireAuth, h(async (req, res) => {
+  const user = await db.findUserById(req.userId!)
   if (!user) {
     res.status(404).json({ error: 'Usuario no encontrado' })
     return
   }
   res.json({ user: toPublicUser(user) })
-})
+}))
 
-authRouter.delete('/me', requireAuth, (req, res) => {
-  const user = db.findUserById(req.userId!)
+authRouter.delete('/me', requireAuth, h(async (req, res) => {
+  const user = await db.findUserById(req.userId!)
   if (!user) {
     res.status(404).json({ error: 'Usuario no encontrado' })
     return
   }
-  db.deleteUser(user.id)
+  await db.deleteUser(user.id)
   res.status(204).end()
-})
+}))
 
 // No real email delivery exists in this demo backend. In production this endpoint
 // would send a reset link by email and always respond generically to avoid leaking
 // whether an account exists. Here it responds generically too, but also returns the
 // token directly so the mobile app can complete the reset flow end to end without a
 // mail provider.
-authRouter.post('/forgot-password', (req, res) => {
+authRouter.post('/forgot-password', h(async (req, res) => {
   const { email } = req.body as { email?: string }
   if (!email) {
     res.status(400).json({ error: 'El correo es requerido' })
     return
   }
 
-  const user = db.findUserByEmail(email)
+  const user = await db.findUserByEmail(email)
   const genericResponse = {
     message: 'Si el correo está registrado, recibirás instrucciones para restablecer tu contraseña.',
   }
@@ -89,9 +90,9 @@ authRouter.post('/forgot-password', (req, res) => {
 
   const resetToken = signResetToken(user.id)
   res.json({ ...genericResponse, demoResetToken: resetToken })
-})
+}))
 
-authRouter.post('/reset-password', (req, res) => {
+authRouter.post('/reset-password', h(async (req, res) => {
   const { token, newPassword } = req.body as { token?: string; newPassword?: string }
   if (!token || !newPassword) {
     res.status(400).json({ error: 'Token y nueva contraseña son requeridos' })
@@ -103,11 +104,11 @@ authRouter.post('/reset-password', (req, res) => {
   }
 
   const userId = verifyResetToken(token)
-  if (!userId || !db.findUserById(userId)) {
+  if (!userId || !(await db.findUserById(userId))) {
     res.status(400).json({ error: 'El enlace de restablecimiento no es válido o ha expirado' })
     return
   }
 
-  db.updateUserPassword(userId, hashPassword(newPassword))
+  await db.updateUserPassword(userId, hashPassword(newPassword))
   res.json({ message: 'Contraseña actualizada correctamente' })
-})
+}))

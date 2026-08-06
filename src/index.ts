@@ -1,5 +1,6 @@
 import 'dotenv/config'
 import express from 'express'
+import type { NextFunction, Request, Response } from 'express'
 import cors from 'cors'
 import { fileURLToPath } from 'url'
 import { authRouter } from './routes/auth.js'
@@ -9,14 +10,28 @@ import { cobrosRouter } from './routes/cobros.js'
 import { retirosRouter } from './routes/retiros.js'
 import { adminRouter } from './routes/admin.js'
 import { db } from './lib/db.js'
+import { conectarAlmacen, modoAlmacen } from './lib/almacen.js'
 import { hashPassword } from './lib/auth.js'
 
 const __filename = fileURLToPath(import.meta.url)
 
-// El administrador se siembra al arrancar, si el entorno lo define.
-if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
-  db.asegurarAdministrador(process.env.ADMIN_EMAIL, hashPassword(process.env.ADMIN_PASSWORD))
+/**
+ * Arranque: primero se conecta el almacén (Mongo o memoria), después se siembra
+ * el directorio y el administrador. En ese orden, porque sembrar antes de tener
+ * dónde guardar no sirve de nada.
+ */
+async function inicializar() {
+  const modo = await conectarAlmacen()
+  await db.sembrarComercios()
+  // El administrador se siembra al arrancar, si el entorno lo define. Es la única
+  // vía para tener rol de administrador: nunca se concede desde el alta pública.
+  if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
+    await db.asegurarAdministrador(process.env.ADMIN_EMAIL, hashPassword(process.env.ADMIN_PASSWORD))
+  }
+  console.log(`MyTokenPay API · almacén: ${modo}`)
 }
+
+const listo = inicializar()
 
 const app = express()
 app.use(cors())
@@ -27,7 +42,7 @@ app.get('/', (_req, res) => {
 })
 
 app.get('/healthz', (_req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() })
+  res.status(200).json({ status: 'ok', almacen: modoAlmacen(), timestamp: new Date().toISOString() })
 })
 
 app.use('/api/auth', authRouter)
@@ -41,11 +56,26 @@ app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Ruta no encontrada' })
 })
 
+// Middleware de errores: cierra las promesas rechazadas que `h()` reenvía. Sin
+// esto, un fallo del almacén dejaría la petición colgada.
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('Error no controlado:', err)
+  if (res.headersSent) return
+  res.status(500).json({ error: 'Algo salió mal de nuestro lado. Intentá de nuevo.' })
+})
+
 const port = process.env.PORT || 3001
 if (process.env.VERCEL === undefined && process.argv[1] === __filename) {
-  app.listen(port, () => {
-    console.log(`MyTokenPay API listening on http://localhost:${port}`)
-  })
+  listo
+    .then(() => {
+      app.listen(port, () => {
+        console.log(`MyTokenPay API listening on http://localhost:${port}`)
+      })
+    })
+    .catch((err) => {
+      console.error('No se pudo inicializar el almacén:', err)
+      process.exit(1)
+    })
 }
 
 export default app

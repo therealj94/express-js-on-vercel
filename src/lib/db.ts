@@ -1,14 +1,10 @@
 import { randomUUID } from 'crypto'
 import type { Company, PublicUser, User } from '../types.js'
 import { buildSeedCompanies } from '../data/seed.js'
+import { coleccion } from './almacen.js'
 
-const users = new Map<string, User>()
-const usersByEmail = new Map<string, string>()
-const companies = new Map<string, Company>()
-
-for (const company of buildSeedCompanies()) {
-  companies.set(company.id, company)
-}
+const usuarios = coleccion<User>('usuarios')
+const comercios = coleccion<Company>('comercios')
 
 export function toPublicUser(user: User): PublicUser {
   const { passwordHash, ...rest } = user
@@ -17,6 +13,20 @@ export function toPublicUser(user: User): PublicUser {
 
 export const db = {
   /**
+   * Siembra el directorio de comercios de demostración, una sola vez.
+   *
+   * Los comercios semilla tienen `id` estable, así que reinsertar es idempotente;
+   * aun así solo se guarda el que falta, para no pisar los que el administrador
+   * ya haya editado o verificado.
+   */
+  async sembrarComercios(): Promise<void> {
+    for (const company of buildSeedCompanies()) {
+      const existe = await comercios.uno({ id: company.id })
+      if (!existe) await comercios.guardar(company)
+    }
+  },
+
+  /**
    * Asegura que exista el administrador que paga los retiros.
    *
    * No se puede llegar a administrador registrándose: el rol solo se concede
@@ -24,62 +34,66 @@ export const db = {
    * más administradores, los crea uno que ya lo sea — nunca el formulario de
    * alta público.
    */
-  asegurarAdministrador(email: string, passwordHash: string): User {
-    const existente = db.findUserByEmail(email)
+  async asegurarAdministrador(email: string, passwordHash: string): Promise<User> {
+    const existente = await db.findUserByEmail(email)
     if (existente) {
       existente.role = 'admin'
+      await usuarios.guardar(existente)
       return existente
     }
-    const user = db.createUser({ email, passwordHash, fullName: 'Administración Orden Global' })
+    const user = await db.createUser({ email, passwordHash, fullName: 'Administración Orden Global' })
     user.role = 'admin'
+    await usuarios.guardar(user)
     return user
   },
 
-  createUser(input: { email: string; passwordHash: string; fullName: string }): User {
-    const id = randomUUID()
+  async createUser(input: { email: string; passwordHash: string; fullName: string }): Promise<User> {
     const user: User = {
-      id,
+      id: randomUUID(),
       email: input.email.toLowerCase().trim(),
       passwordHash: input.passwordHash,
       fullName: input.fullName.trim(),
       role: 'user',
       createdAt: new Date().toISOString(),
     }
-    users.set(id, user)
-    usersByEmail.set(user.email, id)
+    await usuarios.guardar(user)
     return user
   },
 
-  findUserByEmail(email: string): User | undefined {
-    const id = usersByEmail.get(email.toLowerCase().trim())
-    return id ? users.get(id) : undefined
+  async findUserByEmail(email: string): Promise<User | undefined> {
+    return usuarios.uno({ email: email.toLowerCase().trim() })
   },
 
-  findUserById(id: string): User | undefined {
-    return users.get(id)
+  async findUserById(id: string): Promise<User | undefined> {
+    return usuarios.uno({ id })
   },
 
-  setUserRole(id: string, role: User['role']): void {
-    const user = users.get(id)
-    if (user) user.role = role
-  },
-
-  updateUserPassword(id: string, passwordHash: string): void {
-    const user = users.get(id)
-    if (user) user.passwordHash = passwordHash
-  },
-
-  deleteUser(id: string): void {
-    const user = users.get(id)
-    if (!user) return
-    for (const company of companies.values()) {
-      if (company.ownerId === id) companies.delete(company.id)
+  async setUserRole(id: string, role: User['role']): Promise<void> {
+    const user = await usuarios.uno({ id })
+    if (user) {
+      user.role = role
+      await usuarios.guardar(user)
     }
-    users.delete(id)
-    usersByEmail.delete(user.email)
   },
 
-  createCompany(input: Omit<Company, 'id' | 'createdAt' | 'updatedAt' | 'verified' | 'kyc'>): Company {
+  async updateUserPassword(id: string, passwordHash: string): Promise<void> {
+    const user = await usuarios.uno({ id })
+    if (user) {
+      user.passwordHash = passwordHash
+      await usuarios.guardar(user)
+    }
+  },
+
+  async deleteUser(id: string): Promise<void> {
+    const user = await usuarios.uno({ id })
+    if (!user) return
+    await comercios.borrar({ ownerId: id })
+    await usuarios.borrar({ id })
+  },
+
+  async createCompany(
+    input: Omit<Company, 'id' | 'createdAt' | 'updatedAt' | 'verified' | 'kyc'>,
+  ): Promise<Company> {
     const now = new Date().toISOString()
     const company: Company = {
       ...input,
@@ -95,12 +109,12 @@ export const db = {
       createdAt: now,
       updatedAt: now,
     }
-    companies.set(company.id, company)
+    await comercios.guardar(company)
     return company
   },
 
-  updateCompany(id: string, patch: Partial<Company>): Company | undefined {
-    const existing = companies.get(id)
+  async updateCompany(id: string, patch: Partial<Company>): Promise<Company | undefined> {
+    const existing = await comercios.uno({ id })
     if (!existing) return undefined
     const updated: Company = {
       ...existing,
@@ -109,26 +123,27 @@ export const db = {
       ownerId: existing.ownerId,
       updatedAt: new Date().toISOString(),
     }
-    companies.set(id, updated)
+    await comercios.guardar(updated)
     return updated
   },
 
-  findCompanyById(id: string): Company | undefined {
-    return companies.get(id)
+  async findCompanyById(id: string): Promise<Company | undefined> {
+    return comercios.uno({ id })
   },
 
-  findCompanyByOwner(ownerId: string): Company | undefined {
-    return [...companies.values()].find((c) => c.ownerId === ownerId)
+  async findCompanyByOwner(ownerId: string): Promise<Company | undefined> {
+    const list = await comercios.varios({ ownerId })
+    return list[0]
   },
 
-  listCompanies(filter: {
+  async listCompanies(filter: {
     country?: string
     city?: string
     category?: string
     q?: string
     verifiedOnly?: boolean
-  }): Company[] {
-    let list = [...companies.values()].filter((c) => c.kyc.status !== 'unsubmitted')
+  }): Promise<Company[]> {
+    let list = (await comercios.varios()).filter((c) => c.kyc.status !== 'unsubmitted')
     if (filter.country) list = list.filter((c) => c.countrySlug === filter.country)
     if (filter.city) list = list.filter((c) => c.citySlug === filter.city)
     if (filter.category) list = list.filter((c) => c.categorySlug === filter.category)
@@ -142,6 +157,8 @@ export const db = {
           c.productsServices.some((p) => p.toLowerCase().includes(q)),
       )
     }
-    return list.sort((a, b) => Number(b.verified) - Number(a.verified) || a.tradeName.localeCompare(b.tradeName))
+    return list.sort(
+      (a, b) => Number(b.verified) - Number(a.verified) || a.tradeName.localeCompare(b.tradeName),
+    )
   },
 }

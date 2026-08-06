@@ -1,14 +1,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // El almacén de cobros, movimientos y retiros.
 //
-// Vive en memoria, igual que el resto de este backend. Está escrito para que
-// cambiarlo por una base de datos real sea sustituir este archivo y nada más:
-// ninguna ruta sabe cómo se guardan las cosas, solo llama a estas funciones.
+// Guarda a través de `coleccion()` (ver `almacen.ts`): MongoDB en producción,
+// memoria en desarrollo y en las pruebas. Ninguna ruta sabe cuál de los dos hay
+// detrás; solo llama a estas funciones.
 //
 // Sobre el saldo: no existe un campo `saldo`. Se suma la lista de movimientos
 // cada vez que se pregunta. Es más lento y es a propósito — un saldo guardado
 // que se desincroniza de sus movimientos es un error que nadie ve hasta que hay
 // que devolverle dinero a alguien.
+//
+// Sobre el tiempo: los cobros caducan y las reservas se liberan al leerse, no
+// con un temporizador de fondo. Como ahora el estado vive en la base, cuando
+// una lectura cambia algo por el paso del tiempo, se persiste ese cambio antes
+// de devolverlo.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { randomUUID } from 'crypto'
@@ -23,50 +28,65 @@ import {
   generarCodigo,
   repartir,
 } from '../types-cobro.js'
+import { coleccion } from './almacen.js'
 
-const cobros = new Map<string, Cobro>()
-const cobrosPorCodigo = new Map<string, string>()
-const movimientos: Movimiento[] = []
-const retiros = new Map<string, Retiro>()
+const cobros = coleccion<Cobro>('cobros')
+const movimientos = coleccion<Movimiento>('movimientos')
+const retiros = coleccion<Retiro>('retiros')
 
 /** Sellos ya usados, para que un doble toque no pague dos veces. */
-const sellosVistos = new Map<string, string>()
+interface Sello {
+  id: string
+  sello: string
+  cobroId: string
+}
+const sellos = coleccion<Sello>('sellos')
 
 const enMinutos = (m: number) => new Date(Date.now() + m * 60_000).toISOString()
 const vencido = (iso: string | null) => (iso ? Date.parse(iso) < Date.now() : false)
 
 /**
- * Devuelve al estado que corresponde por el paso del tiempo.
- *
- * Se llama al leer en vez de con un temporizador de fondo: un proceso que
- * caduca cosas cada minuto es una pieza más que puede morirse en silencio y
- * dejar cuentas bloqueadas sin que nadie se entere.
+ * Pone el cobro al día por el paso del tiempo. Devuelve `true` si cambió algo,
+ * para que quien lo lea sepa que hay que persistirlo.
  */
-function alDia(cobro: Cobro): Cobro {
-  if (cobro.estado === 'abierto') {
-    for (const p of cobro.partes) {
-      if (p.estado === 'reservada' && vencido(p.reservadaHasta)) {
-        p.estado = 'libre'
-        p.pagadorId = null
-        p.pagadorNombre = null
-        p.reservadaHasta = null
-      }
-    }
-    const pagadas = cobro.partes.filter((p) => p.estado === 'pagada').length
-    if (pagadas === cobro.partes.length) {
-      cobro.estado = 'pagado'
-      cobro.pagadoEn = new Date().toISOString()
-    } else if (vencido(cobro.venceEn)) {
-      cobro.estado = 'vencido'
+function alDia(cobro: Cobro): boolean {
+  if (cobro.estado !== 'abierto') return false
+  let cambio = false
+
+  for (const p of cobro.partes) {
+    if (p.estado === 'reservada' && vencido(p.reservadaHasta)) {
+      p.estado = 'libre'
+      p.pagadorId = null
+      p.pagadorNombre = null
+      p.reservadaHasta = null
+      cambio = true
     }
   }
+
+  const pagadas = cobro.partes.filter((p) => p.estado === 'pagada').length
+  if (pagadas === cobro.partes.length) {
+    cobro.estado = 'pagado'
+    cobro.pagadoEn = new Date().toISOString()
+    cambio = true
+  } else if (vencido(cobro.venceEn)) {
+    cobro.estado = 'vencido'
+    cambio = true
+  }
+  return cambio
+}
+
+/** Carga un cobro, lo pone al día y persiste el cambio si lo hubo. */
+async function cargar(id: string): Promise<Cobro | undefined> {
+  const cobro = await cobros.uno({ id })
+  if (!cobro) return undefined
+  if (alDia(cobro)) await cobros.guardar(cobro)
   return cobro
 }
 
 export const caja = {
   // ── Cobros ────────────────────────────────────────────────────────────────
 
-  crearCobro(input: {
+  async crearCobro(input: {
     companyId: string
     creadoPor: string
     concepto: string
@@ -74,12 +94,12 @@ export const caja = {
     montoOrigen: number
     tasaHnlPorOrigen: number
     partes: number
-  }): Cobro {
+  }): Promise<Cobro> {
     const ahora = new Date().toISOString()
     const trozos = repartir(input.montoOrigen, input.partes)
 
     let codigo = generarCodigo()
-    while (cobrosPorCodigo.has(codigo)) codigo = generarCodigo()
+    while (await cobros.uno({ codigo })) codigo = generarCodigo()
 
     const cobro: Cobro = {
       id: randomUUID(),
@@ -107,46 +127,47 @@ export const caja = {
       pagadoEn: null,
     }
 
-    cobros.set(cobro.id, cobro)
-    cobrosPorCodigo.set(codigo, cobro.id)
+    await cobros.guardar(cobro)
     return cobro
   },
 
-  buscarCobro(id: string): Cobro | undefined {
-    const c = cobros.get(id)
-    return c ? alDia(c) : undefined
+  async buscarCobro(id: string): Promise<Cobro | undefined> {
+    return cargar(id)
   },
 
-  buscarCobroPorCodigo(codigo: string): Cobro | undefined {
-    const id = cobrosPorCodigo.get(codigo.toUpperCase().trim())
-    return id ? caja.buscarCobro(id) : undefined
+  async buscarCobroPorCodigo(codigo: string): Promise<Cobro | undefined> {
+    const c = await cobros.uno({ codigo: codigo.toUpperCase().trim() })
+    return c ? cargar(c.id) : undefined
   },
 
-  listarCobros(companyId: string, desde?: string): Cobro[] {
-    return [...cobros.values()]
-      .filter((c) => c.companyId === companyId)
+  async listarCobros(companyId: string, desde?: string): Promise<Cobro[]> {
+    const lista = await cobros.varios({ companyId })
+    for (const c of lista) {
+      if (alDia(c)) await cobros.guardar(c)
+    }
+    return lista
       .filter((c) => (desde ? c.creadoEn >= desde : true))
-      .map(alDia)
       .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn))
   },
 
-  anularCobro(id: string): Cobro | undefined {
-    const c = caja.buscarCobro(id)
+  async anularCobro(id: string): Promise<Cobro | undefined> {
+    const c = await cargar(id)
     if (!c || c.estado !== 'abierto') return undefined
     // Si alguien ya puso su parte, anular le quitaría dinero sin devolvérselo.
     if (c.partes.some((p) => p.estado === 'pagada')) return undefined
     c.estado = 'anulado'
+    await cobros.guardar(c)
     return c
   },
 
   /** Toma una parte libre y la bloquea unos minutos a nombre de quien va a pagar. */
-  reservarParte(
+  async reservarParte(
     cobroId: string,
     parteId: string,
     pagadorId: string,
     pagadorNombre: string,
-  ): { ok: true; parte: ParteCobro } | { ok: false; motivo: string } {
-    const cobro = caja.buscarCobro(cobroId)
+  ): Promise<{ ok: true; parte: ParteCobro } | { ok: false; motivo: string }> {
+    const cobro = await cargar(cobroId)
     if (!cobro) return { ok: false, motivo: 'El cobro no existe' }
     if (cobro.estado !== 'abierto') return { ok: false, motivo: `El cobro está ${cobro.estado}` }
 
@@ -161,17 +182,19 @@ export const caja = {
     parte.pagadorId = pagadorId
     parte.pagadorNombre = pagadorNombre
     parte.reservadaHasta = enMinutos(MINUTOS_RESERVA)
+    await cobros.guardar(cobro)
     return { ok: true, parte }
   },
 
-  liberarParte(cobroId: string, parteId: string, pagadorId: string): boolean {
-    const cobro = caja.buscarCobro(cobroId)
+  async liberarParte(cobroId: string, parteId: string, pagadorId: string): Promise<boolean> {
+    const cobro = await cargar(cobroId)
     const parte = cobro?.partes.find((p) => p.id === parteId)
-    if (!parte || parte.estado !== 'reservada' || parte.pagadorId !== pagadorId) return false
+    if (!cobro || !parte || parte.estado !== 'reservada' || parte.pagadorId !== pagadorId) return false
     parte.estado = 'libre'
     parte.pagadorId = null
     parte.pagadorNombre = null
     parte.reservadaHasta = null
+    await cobros.guardar(cobro)
     return true
   },
 
@@ -181,25 +204,24 @@ export const caja = {
    * El `sello` es la protección contra el doble cobro: si la app reintenta
    * porque se cortó la red, el segundo intento devuelve el mismo resultado en
    * vez de pagar otra vez. Es la misma regla que rige los envíos de Veta Wallet
-   * y por el mismo motivo — entre comprobar y escribir caben dos peticiones.
+   * y por el mismo motivo — entre comprobar y escribir caben dos peticiones. En
+   * Mongo, además, un índice único sobre el sello es el último cortafuegos.
    */
-  pagarParte(input: {
+  async pagarParte(input: {
     cobroId: string
     parteId: string
     pagadorId: string
     pagadorNombre: string
     txHash: string
     sello: string
-  }):
-    | { ok: true; cobro: Cobro; repetido: boolean }
-    | { ok: false; motivo: string } {
-    const yaVisto = sellosVistos.get(input.sello)
+  }): Promise<{ ok: true; cobro: Cobro; repetido: boolean } | { ok: false; motivo: string }> {
+    const yaVisto = await sellos.uno({ sello: input.sello })
     if (yaVisto) {
-      const cobro = caja.buscarCobro(yaVisto)
+      const cobro = await cargar(yaVisto.cobroId)
       if (cobro) return { ok: true, cobro, repetido: true }
     }
 
-    const cobro = caja.buscarCobro(input.cobroId)
+    const cobro = await cargar(input.cobroId)
     if (!cobro) return { ok: false, motivo: 'El cobro no existe' }
     if (cobro.estado === 'anulado') return { ok: false, motivo: 'El cobro fue anulado' }
     if (cobro.estado === 'vencido') return { ok: false, motivo: 'El cobro venció' }
@@ -218,7 +240,11 @@ export const caja = {
     parte.txHash = input.txHash
     parte.reservadaHasta = null
 
-    caja.anotar({
+    // El sello se registra antes de abonar: si otro intento idéntico corre a la
+    // vez, el índice único lo detiene aquí en vez de dejar pasar un doble abono.
+    await sellos.guardar({ id: input.sello, sello: input.sello, cobroId: cobro.id })
+
+    await caja.anotar({
       companyId: cobro.companyId,
       tipo: 'cobro',
       montoOrigen: parte.montoOrigen,
@@ -226,23 +252,22 @@ export const caja = {
       referencia: cobro.id,
     })
 
-    sellosVistos.set(input.sello, cobro.id)
-    return { ok: true, cobro: alDia(cobro), repetido: false }
+    alDia(cobro)
+    await cobros.guardar(cobro)
+    return { ok: true, cobro, repetido: false }
   },
 
   // ── Saldo ─────────────────────────────────────────────────────────────────
 
-  anotar(input: Omit<Movimiento, 'id' | 'creadoEn'>): Movimiento {
+  async anotar(input: Omit<Movimiento, 'id' | 'creadoEn'>): Promise<Movimiento> {
     const m: Movimiento = { ...input, id: randomUUID(), creadoEn: new Date().toISOString() }
-    movimientos.push(m)
+    await movimientos.guardar(m)
     return m
   },
 
-  movimientos(companyId: string, limite = 100): Movimiento[] {
-    return movimientos
-      .filter((m) => m.companyId === companyId)
-      .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn))
-      .slice(0, limite)
+  async movimientos(companyId: string, limite = 100): Promise<Movimiento[]> {
+    const lista = await movimientos.varios({ companyId })
+    return lista.sort((a, b) => b.creadoEn.localeCompare(a.creadoEn)).slice(0, limite)
   },
 
   /**
@@ -252,13 +277,12 @@ export const caja = {
    * administrador todavía no ha resuelto. Sin ese descuento un comercio podría
    * pedir tres veces el mismo dinero y las tres solicitudes parecerían válidas.
    */
-  saldo(companyId: string): { total: number; retenido: number; disponible: number } {
-    const total = movimientos
-      .filter((m) => m.companyId === companyId)
-      .reduce((s, m) => s + m.montoOrigen, 0)
+  async saldo(companyId: string): Promise<{ total: number; retenido: number; disponible: number }> {
+    const movs = await movimientos.varios({ companyId })
+    const total = movs.reduce((s, m) => s + m.montoOrigen, 0)
 
-    const retenido = [...retiros.values()]
-      .filter((r) => r.companyId === companyId)
+    const rets = await retiros.varios({ companyId })
+    const retenido = rets
       .filter((r) => r.estado === 'solicitado' || r.estado === 'en_proceso')
       .reduce((s, r) => s + r.montoOrigen, 0)
 
@@ -268,14 +292,14 @@ export const caja = {
 
   // ── Retiros ───────────────────────────────────────────────────────────────
 
-  crearRetiro(input: {
+  async crearRetiro(input: {
     companyId: string
     solicitadoPor: string
     montoOrigen: number
     tasaHnlPorOrigen: number
     montoHnl: number
     banco: CuentaBanco
-  }): Retiro {
+  }): Promise<Retiro> {
     const r: Retiro = {
       ...input,
       id: randomUUID(),
@@ -285,17 +309,20 @@ export const caja = {
       resueltoEn: null,
       resueltoPor: null,
     }
-    retiros.set(r.id, r)
+    await retiros.guardar(r)
     return r
   },
 
-  buscarRetiro(id: string): Retiro | undefined {
-    return retiros.get(id)
+  async buscarRetiro(id: string): Promise<Retiro | undefined> {
+    return retiros.uno({ id })
   },
 
-  listarRetiros(filtro: { companyId?: string; estado?: Retiro['estado'] } = {}): Retiro[] {
-    return [...retiros.values()]
-      .filter((r) => (filtro.companyId ? r.companyId === filtro.companyId : true))
+  async listarRetiros(
+    filtro: { companyId?: string; estado?: Retiro['estado'] } = {},
+  ): Promise<Retiro[]> {
+    const base = filtro.companyId ? { companyId: filtro.companyId } : undefined
+    const lista = await retiros.varios(base)
+    return lista
       .filter((r) => (filtro.estado ? r.estado === filtro.estado : true))
       .sort((a, b) => b.solicitadoEn.localeCompare(a.solicitadoEn))
   },
@@ -307,13 +334,13 @@ export const caja = {
    * ese momento el comercio no ha recibido sus lempiras. Y si se rechaza no se
    * anota nada: el dinero nunca salió, así que no hay nada que devolver.
    */
-  resolverRetiro(
+  async resolverRetiro(
     id: string,
     estado: Retiro['estado'],
     resueltoPor: string,
     nota?: string,
-  ): Retiro | undefined {
-    const r = retiros.get(id)
+  ): Promise<Retiro | undefined> {
+    const r = await retiros.uno({ id })
     if (!r) return undefined
     if (r.estado === 'pagado' || r.estado === 'rechazado') return r
 
@@ -323,9 +350,10 @@ export const caja = {
       r.resueltoEn = new Date().toISOString()
       r.resueltoPor = resueltoPor
     }
+    await retiros.guardar(r)
 
     if (estado === 'pagado') {
-      caja.anotar({
+      await caja.anotar({
         companyId: r.companyId,
         tipo: 'retiro',
         montoOrigen: -r.montoOrigen,

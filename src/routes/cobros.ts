@@ -18,6 +18,7 @@
 
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
+import { h } from '../lib/ruta.js'
 import { db } from '../lib/db.js'
 import { caja } from '../lib/caja.js'
 import { cotizacion, aOrigen } from '../lib/tasas.js'
@@ -34,8 +35,8 @@ const MAX_HNL = 500_000
  * Deliberadamente NO incluye el id interno del cobro ni el del comercio: con el
  * código y los ids de las partes tiene todo lo que necesita, y nada más.
  */
-function paraPagador(cobro: Cobro) {
-  const negocio = db.findCompanyById(cobro.companyId)
+async function paraPagador(cobro: Cobro) {
+  const negocio = await db.findCompanyById(cobro.companyId)
   return {
     codigo: cobro.codigo,
     concepto: cobro.concepto,
@@ -70,8 +71,8 @@ function comercioDe(userId: string) {
 
 // ── El comercio crea un cobro ────────────────────────────────────────────────
 
-cobrosRouter.post('/', requireAuth, async (req, res) => {
-  const negocio = comercioDe(req.userId!)
+cobrosRouter.post('/', requireAuth, h(async (req, res) => {
+  const negocio = await comercioDe(req.userId!)
   if (!negocio) {
     res.status(403).json({ error: 'Necesitas un negocio registrado para cobrar' })
     return
@@ -127,7 +128,7 @@ cobrosRouter.post('/', requireAuth, async (req, res) => {
     return
   }
 
-  const cobro = caja.crearCobro({
+  const cobro = await caja.crearCobro({
     companyId: negocio.id,
     creadoPor: req.userId!,
     concepto: String(concepto || '').trim().slice(0, 120),
@@ -138,38 +139,38 @@ cobrosRouter.post('/', requireAuth, async (req, res) => {
   })
 
   res.status(201).json({ cobro, tasa })
-})
+}))
 
 // ── El comercio mira su caja ─────────────────────────────────────────────────
 
-cobrosRouter.get('/mios', requireAuth, (req, res) => {
-  const negocio = comercioDe(req.userId!)
+cobrosRouter.get('/mios', requireAuth, h(async (req, res) => {
+  const negocio = await comercioDe(req.userId!)
   if (!negocio) {
     res.status(403).json({ error: 'No tenés un negocio registrado' })
     return
   }
   const desde = typeof req.query.desde === 'string' ? req.query.desde : undefined
-  res.json({ cobros: caja.listarCobros(negocio.id, desde) })
-})
+  res.json({ cobros: await caja.listarCobros(negocio.id, desde) })
+}))
 
-cobrosRouter.get('/mios/:id', requireAuth, (req, res) => {
-  const negocio = comercioDe(req.userId!)
-  const cobro = caja.buscarCobro(req.params.id)
+cobrosRouter.get('/mios/:id', requireAuth, h(async (req, res) => {
+  const negocio = await comercioDe(req.userId!)
+  const cobro = await caja.buscarCobro(req.params.id)
   if (!negocio || !cobro || cobro.companyId !== negocio.id) {
     res.status(404).json({ error: 'Cobro no encontrado' })
     return
   }
   res.json({ cobro })
-})
+}))
 
-cobrosRouter.post('/mios/:id/anular', requireAuth, (req, res) => {
-  const negocio = comercioDe(req.userId!)
-  const cobro = caja.buscarCobro(req.params.id)
+cobrosRouter.post('/mios/:id/anular', requireAuth, h(async (req, res) => {
+  const negocio = await comercioDe(req.userId!)
+  const cobro = await caja.buscarCobro(req.params.id)
   if (!negocio || !cobro || cobro.companyId !== negocio.id) {
     res.status(404).json({ error: 'Cobro no encontrado' })
     return
   }
-  const anulado = caja.anularCobro(cobro.id)
+  const anulado = await caja.anularCobro(cobro.id)
   if (!anulado) {
     res.status(409).json({
       error: 'Este cobro ya no se puede anular',
@@ -178,26 +179,26 @@ cobrosRouter.post('/mios/:id/anular', requireAuth, (req, res) => {
     return
   }
   res.json({ cobro: anulado })
-})
+}))
 
 // ── El cliente consulta y paga ───────────────────────────────────────────────
 
-cobrosRouter.get('/codigo/:codigo', requireAuth, (req, res) => {
-  const cobro = caja.buscarCobroPorCodigo(req.params.codigo)
+cobrosRouter.get('/codigo/:codigo', requireAuth, h(async (req, res) => {
+  const cobro = await caja.buscarCobroPorCodigo(req.params.codigo)
   if (!cobro) {
     res.status(404).json({ error: 'No encontramos ese cobro' })
     return
   }
-  res.json({ cobro: paraPagador(cobro) })
-})
+  res.json({ cobro: await paraPagador(cobro) })
+}))
 
-cobrosRouter.post('/codigo/:codigo/reservar', requireAuth, (req, res) => {
-  const cobro = caja.buscarCobroPorCodigo(req.params.codigo)
+cobrosRouter.post('/codigo/:codigo/reservar', requireAuth, h(async (req, res) => {
+  const cobro = await caja.buscarCobroPorCodigo(req.params.codigo)
   if (!cobro) {
     res.status(404).json({ error: 'No encontramos ese cobro' })
     return
   }
-  const usuario = db.findUserById(req.userId!)
+  const usuario = await db.findUserById(req.userId!)
   const { parteIds } = req.body as { parteIds?: string[] }
   if (!Array.isArray(parteIds) || parteIds.length === 0) {
     res.status(400).json({ error: 'Decinos qué partes vas a pagar' })
@@ -206,30 +207,30 @@ cobrosRouter.post('/codigo/:codigo/reservar', requireAuth, (req, res) => {
 
   const tomadas: string[] = []
   for (const parteId of parteIds) {
-    const r = caja.reservarParte(cobro.id, parteId, req.userId!, usuario?.fullName ?? 'Alguien')
+    const r = await caja.reservarParte(cobro.id, parteId, req.userId!, usuario?.fullName ?? 'Alguien')
     if (!r.ok) {
       // Se sueltan las que sí se tomaron: dejar media reserva colgada bloquea
       // partes que nadie va a pagar hasta que caduquen.
-      for (const t of tomadas) caja.liberarParte(cobro.id, t, req.userId!)
+      for (const t of tomadas) await caja.liberarParte(cobro.id, t, req.userId!)
       res.status(409).json({ error: r.motivo })
       return
     }
     tomadas.push(parteId)
   }
 
-  res.json({ cobro: paraPagador(caja.buscarCobro(cobro.id)!) })
-})
+  res.json({ cobro: await paraPagador((await caja.buscarCobro(cobro.id))!) })
+}))
 
-cobrosRouter.post('/codigo/:codigo/liberar', requireAuth, (req, res) => {
-  const cobro = caja.buscarCobroPorCodigo(req.params.codigo)
+cobrosRouter.post('/codigo/:codigo/liberar', requireAuth, h(async (req, res) => {
+  const cobro = await caja.buscarCobroPorCodigo(req.params.codigo)
   if (!cobro) {
     res.status(404).json({ error: 'No encontramos ese cobro' })
     return
   }
   const { parteIds } = req.body as { parteIds?: string[] }
-  for (const parteId of parteIds ?? []) caja.liberarParte(cobro.id, parteId, req.userId!)
-  res.json({ cobro: paraPagador(caja.buscarCobro(cobro.id)!) })
-})
+  for (const parteId of parteIds ?? []) await caja.liberarParte(cobro.id, parteId, req.userId!)
+  res.json({ cobro: await paraPagador((await caja.buscarCobro(cobro.id))!) })
+}))
 
 /**
  * Confirma el pago de una o varias partes.
@@ -239,8 +240,8 @@ cobrosRouter.post('/codigo/:codigo/liberar', requireAuth, (req, res) => {
  * veces — y recuperar ese dinero después es una conversación que nadie quiere
  * tener.
  */
-cobrosRouter.post('/codigo/:codigo/pagar', requireAuth, (req, res) => {
-  const cobro = caja.buscarCobroPorCodigo(req.params.codigo)
+cobrosRouter.post('/codigo/:codigo/pagar', requireAuth, h(async (req, res) => {
+  const cobro = await caja.buscarCobroPorCodigo(req.params.codigo)
   if (!cobro) {
     res.status(404).json({ error: 'No encontramos ese cobro' })
     return
@@ -265,19 +266,22 @@ cobrosRouter.post('/codigo/:codigo/pagar', requireAuth, (req, res) => {
     return
   }
 
-  const usuario = db.findUserById(req.userId!)
-  const resultados = parteIds.map((parteId) =>
-    caja.pagarParte({
-      cobroId: cobro.id,
-      parteId,
-      pagadorId: req.userId!,
-      pagadorNombre: usuario?.fullName ?? 'Alguien',
-      txHash: String(txHash),
-      // Un sello por parte: si alguien paga tres porciones de una vez, cada una
-      // necesita su propia marca o la segunda se tomaría por un duplicado.
-      sello: `${sello}:${parteId}`,
-    }),
-  )
+  const usuario = await db.findUserById(req.userId!)
+  const resultados = []
+  for (const parteId of parteIds) {
+    resultados.push(
+      await caja.pagarParte({
+        cobroId: cobro.id,
+        parteId,
+        pagadorId: req.userId!,
+        pagadorNombre: usuario?.fullName ?? 'Alguien',
+        txHash: String(txHash),
+        // Un sello por parte: si alguien paga tres porciones de una vez, cada una
+        // necesita su propia marca o la segunda se tomaría por un duplicado.
+        sello: `${sello}:${parteId}`,
+      }),
+    )
+  }
 
   const fallo = resultados.find((r) => !r.ok)
   if (fallo && !fallo.ok) {
@@ -285,10 +289,10 @@ cobrosRouter.post('/codigo/:codigo/pagar', requireAuth, (req, res) => {
     return
   }
 
-  const actualizado = caja.buscarCobro(cobro.id)!
+  const actualizado = (await caja.buscarCobro(cobro.id))!
   res.json({
-    cobro: paraPagador(actualizado),
+    cobro: await paraPagador(actualizado),
     cerrado: actualizado.estado === 'pagado',
     repetido: resultados.every((r) => r.ok && r.repetido),
   })
-})
+}))

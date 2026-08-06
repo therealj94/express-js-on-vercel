@@ -11,24 +11,32 @@ declare global {
   }
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const header = req.headers.authorization
-  const token = header?.startsWith('Bearer ') ? header.slice(7) : undefined
-  const userId = token ? verifyToken(token) : null
-  if (!userId || !db.findUserById(userId)) {
-    res.status(401).json({ error: 'No autorizado' })
-    return
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  try {
+    const header = req.headers.authorization
+    const token = header?.startsWith('Bearer ') ? header.slice(7) : undefined
+    const userId = token ? verifyToken(token) : null
+    if (!userId || !(await db.findUserById(userId))) {
+      res.status(401).json({ error: 'No autorizado' })
+      return
+    }
+    req.userId = userId
+    next()
+  } catch (err) {
+    next(err)
   }
-  req.userId = userId
-  next()
 }
 
-export function attachUser(req: Request, _res: Response, next: NextFunction) {
-  const header = req.headers.authorization
-  const token = header?.startsWith('Bearer ') ? header.slice(7) : undefined
-  const userId = token ? verifyToken(token) : null
-  if (userId && db.findUserById(userId)) {
-    req.userId = userId
+export async function attachUser(req: Request, _res: Response, next: NextFunction) {
+  try {
+    const header = req.headers.authorization
+    const token = header?.startsWith('Bearer ') ? header.slice(7) : undefined
+    const userId = token ? verifyToken(token) : null
+    if (userId && (await db.findUserById(userId))) {
+      req.userId = userId
+    }
+    next()
+  } catch (err) {
+    next(err)
   }
-  next()
 }
