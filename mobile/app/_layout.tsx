@@ -16,6 +16,7 @@ import {
 } from '@expo-google-fonts/instrument-sans'
 import { AnimatedSplash } from '../src/components/AnimatedSplash'
 import { AvisoActualizacion } from '../src/components/AvisoActualizacion'
+import { PantallaError } from '../src/components/PantallaError'
 import { Onboarding } from '../src/components/Onboarding'
 import { useAuthStore } from '../src/store/auth'
 import { useMetaStore } from '../src/store/meta'
@@ -26,6 +27,15 @@ import { LockGate } from '../src/components/LockGate'
 import { useTheme } from '../src/hooks/useTheme'
 
 SplashScreen.preventAutoHideAsync().catch(() => {})
+
+/**
+ * expo-router monta esto cuando una pantalla lanza. Sin él, un error en
+ * tiempo de ejecución dejaba la app en negro y sin salida: había que cerrarla
+ * a la fuerza justo después de haber transferido dinero.
+ */
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
+  return <PantallaError error={error} retry={retry} />
+}
 
 // After the intro splash, if the user isn't signed in, take them to the
 // welcome / login screen instead of dropping them straight into the app.

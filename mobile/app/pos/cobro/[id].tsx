@@ -30,6 +30,13 @@ import { PagoExito } from '../../../src/components/PagoExito'
 import { fonts, radius } from '../../../src/lib/theme'
 import { useTheme, type ThemeColors } from '../../../src/hooks/useTheme'
 
+import { PantallaError } from '../../../src/components/PantallaError'
+
+/** El comercio no puede quedarse mirando una pantalla negra a media venta. */
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
+  return <PantallaError error={error} retry={retry} />
+}
+
 const REFRESCO_MS = 2000
 
 export default function CobroEnVivo() {

@@ -301,6 +301,33 @@ export const caja = {
     }
   },
 
+  /**
+   * Los hashes que YA respaldan una parte de este comercio.
+   *
+   * Un mismo depósito no puede confirmar dos cobros: si se pudiera, una sola
+   * transferencia pagaría media carta. Por eso quien reconcilia tiene que
+   * saber qué entradas ya están gastadas.
+   */
+  async hashesUsados(companyId: string): Promise<Set<string>> {
+    const lista = await cobros.varios({ companyId })
+    const usados = new Set<string>()
+    for (const c of lista) {
+      for (const p of c.partes) {
+        if (p.verificacionCadena === 'confirmada' && p.txHash) usados.add(p.txHash.toLowerCase())
+      }
+    }
+    return usados
+  },
+
+  /** Cambia el comprobante de una parte por el que de verdad la respalda. */
+  async fijarHash(cobroId: string, parteId: string, txHash: string): Promise<void> {
+    const cobro = await cobros.uno({ id: cobroId })
+    const parte = cobro?.partes.find((p) => p.id === parteId)
+    if (!cobro || !parte) return
+    parte.txHash = txHash
+    await cobros.guardar(cobro)
+  },
+
   // ── Saldo ─────────────────────────────────────────────────────────────────
 
   async anotar(input: Omit<Movimiento, 'id' | 'creadoEn'>): Promise<Movimiento> {

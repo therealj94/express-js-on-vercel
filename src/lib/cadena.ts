@@ -75,3 +75,53 @@ export async function verificarTransferencia(
     return { veredicto: 'sin-respuesta' }
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reconciliación por dirección.
+//
+// POR QUÉ HACE FALTA
+//
+// El circuito normal depende de que quien paga vuelva a la app con el hash. Y
+// eso falla en la vida real: la pantalla se cae, el teléfono se queda sin
+// batería, la persona cierra la app y se va a comer. Pasó de verdad: el dinero
+// entró a la billetera del comercio y MyTokenPay nunca se enteró.
+//
+// Un cobro no puede depender de que el cliente termine un viaje de vuelta. Así
+// que el comercio también puede preguntar al revés: «¿qué entró a MI dirección
+// que cuadre con lo que me deben?». La cadena es la fuente de verdad y está
+// ahí para cualquiera que quiera mirarla.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const EXPLORADOR = (process.env.EXPLORADOR_8532_URL || 'https://orden-global-scan-c4abe71e8024.herokuapp.com').replace(/\/$/, '')
+
+export interface EntradaCadena {
+  hash: string
+  origenRecibido: number
+  de: string
+  cuando: string | null
+}
+
+/** Transferencias que ENTRARON a una dirección, más recientes primero. */
+export async function entradasA(direccion: string): Promise<EntradaCadena[]> {
+  const control = new AbortController()
+  const timer = setTimeout(() => control.abort(), 15_000)
+  try {
+    const r = await fetch(`${EXPLORADOR}/address/${encodeURIComponent(direccion)}`, { signal: control.signal })
+    if (!r.ok) return []
+    const d: any = await r.json()
+    const txs: any[] = Array.isArray(d?.transactions) ? d.transactions : []
+    return txs
+      .filter((t) => String(t?.to || '').toLowerCase() === direccion.toLowerCase())
+      .map((t) => ({
+        hash: String(t.hash || ''),
+        origenRecibido: Number(t.value || 0) / 1e18,
+        de: String(t.from || ''),
+        cuando: t.timestamp ? String(t.timestamp) : null,
+      }))
+      .filter((t) => t.hash && t.origenRecibido > 0)
+  } catch {
+    return []
+  } finally {
+    clearTimeout(timer)
+  }
+}

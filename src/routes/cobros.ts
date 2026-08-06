@@ -22,7 +22,7 @@ import { h } from '../lib/ruta.js'
 import { db } from '../lib/db.js'
 import { caja } from '../lib/caja.js'
 import { cotizacion, aOrigen } from '../lib/tasas.js'
-import { verificarTransferencia } from '../lib/cadena.js'
+import { verificarTransferencia, entradasA } from '../lib/cadena.js'
 import type { Cobro } from '../types-cobro.js'
 
 export const cobrosRouter = Router()
@@ -202,11 +202,41 @@ cobrosRouter.post('/mios/:id/verificar', requireAuth, h(async (req, res) => {
     return
   }
 
+  // 1) Lo primero, el comprobante que trajo quien pagó.
   for (const parte of cobro.partes) {
     if (parte.estado !== 'pagada' || !parte.txHash) continue
     const r = await verificarTransferencia(parte.txHash, negocio.walletAddress, parte.montoOrigen)
     parte.verificacionCadena = r.veredicto
     await caja.marcarVerificacion(cobro.id, parte.id, r.veredicto)
+  }
+
+  // 2) Y si alguna sigue sin respaldo, se busca al revés: qué entró a la
+  //    dirección del comercio que cuadre con lo que le deben.
+  //
+  //    Esto existe porque el viaje de vuelta falla en la vida real — la
+  //    pantalla se cae, el teléfono se apaga, la persona cierra la app y se
+  //    va. Pasó de verdad: el ORIGEN llegó a la billetera del comercio y
+  //    MyTokenPay se quedó esperando un comprobante que nunca volvió. El
+  //    dinero no puede depender de que el cliente termine el trámite.
+  const sinRespaldo = cobro.partes.filter(
+    (p) => p.estado === 'pagada' && p.verificacionCadena !== 'confirmada',
+  )
+  if (sinRespaldo.length > 0) {
+    const entradas = await entradasA(negocio.walletAddress)
+    const usados = await caja.hashesUsados(negocio.id)
+    for (const parte of sinRespaldo) {
+      // Un depósito solo puede respaldar UNA parte: si no, una transferencia
+      // sola pagaría media carta.
+      const calce = entradas.find(
+        (e) => !usados.has(e.hash.toLowerCase()) && e.origenRecibido + 1e-6 >= parte.montoOrigen,
+      )
+      if (!calce) continue
+      usados.add(calce.hash.toLowerCase())
+      await caja.fijarHash(cobro.id, parte.id, calce.hash)
+      await caja.marcarVerificacion(cobro.id, parte.id, 'confirmada')
+      parte.txHash = calce.hash
+      parte.verificacionCadena = 'confirmada'
+    }
   }
 
   const pagadas = cobro.partes.filter((p) => p.estado === 'pagada')

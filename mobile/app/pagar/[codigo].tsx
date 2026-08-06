@@ -36,6 +36,13 @@ import { ApiError } from '../../src/lib/apiError'
 import { fonts, radius } from '../../src/lib/theme'
 import { useTheme, type ThemeColors } from '../../src/hooks/useTheme'
 
+import { PantallaError } from '../../src/components/PantallaError'
+
+/** Si esta pantalla revienta, quien acaba de pagar merece algo mejor que negro. */
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
+  return <PantallaError error={error} retry={retry} />
+}
+
 type Fase = 'eligiendo' | 'firmando' | 'confirmando' | 'listo'
 
 export default function Pagar() {
@@ -78,12 +85,21 @@ export default function Pagar() {
   }, [cargar])
 
   // Vuelta desde Veta Wallet con el comprobante en la mano.
+  //
+  // Espera a que el cobro esté cargado. Antes no: el enlace profundo arranca
+  // la app de cero, el cobro todavía era null y la confirmación se descartaba
+  // en silencio — la persona había pagado de verdad y la pantalla se quedaba
+  // muda. Un pago hecho no se puede perder porque la pantalla llegó primero.
+  const yaConfirmado = useRef(false)
   useEffect(() => {
-    if (tx && hashValido(String(tx)) && fase !== 'listo') {
-      confirmar(String(tx))
-    }
+    if (yaConfirmado.current) return
+    if (!cobro) return
+    if (!tx || !hashValido(String(tx))) return
+    if (fase === 'listo' || fase === 'confirmando') return
+    yaConfirmado.current = true
+    confirmar(String(tx))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tx])
+  }, [tx, cobro])
 
   const libres = useMemo(
     () => cobro?.partes.filter((p) => p.estado === 'libre') ?? [],
@@ -104,6 +120,15 @@ export default function Pagar() {
   // había ocurrido. Ahora, al volver a primer plano, si no llegó ningún
   // comprobante se ofrece la salida — pegar el hash a mano o reintentar — en
   // vez de un botón que da vueltas sin fin.
+  // La fase, en un ref, para poder mirarla desde un temporizador sin tener que
+  // meter efectos dentro de un actualizador de estado — React puede llamar a
+  // esos actualizadores más de una vez, y ahí un `setState` escondido rompe la
+  // pantalla entera.
+  const faseRef = useRef<Fase>('eligiendo')
+  useEffect(() => {
+    faseRef.current = fase
+  }, [fase])
+
   useEffect(() => {
     let aviso: ReturnType<typeof setTimeout> | null = null
     const sub = AppState.addEventListener('change', (estado) => {
@@ -112,16 +137,15 @@ export default function Pagar() {
       // comprobante llega por el enlace profundo un instante después de que la
       // app pasa a primer plano, y no hay que asustarlo con un error que se
       // desmiente solo.
+      if (aviso) clearTimeout(aviso)
       aviso = setTimeout(() => {
-        setFase((f) => {
-          if (f !== 'firmando') return f
-          setPedirHash(true)
-          setError(
-            'Volviste sin comprobante. Si ya firmaste en Veta Wallet, pegá el hash abajo; si no, tocá pagar de nuevo.',
-          )
-          return 'eligiendo'
-        })
-      }, 1500)
+        if (faseRef.current !== 'firmando') return
+        setFase('eligiendo')
+        setPedirHash(true)
+        setError(
+          'Volviste sin comprobante. Si ya firmaste en Veta Wallet, pegá el hash abajo; si no, tocá pagar de nuevo.',
+        )
+      }, 2500)
     })
     return () => {
       if (aviso) clearTimeout(aviso)
