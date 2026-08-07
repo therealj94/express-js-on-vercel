@@ -1,0 +1,889 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Orden Global · El viaje del valor</title>
+<meta name="description" content="El viaje del valor: del oro certificado a una Layer 1 propia. ORIGEN, la moneda de oro digital para Latinoamérica y un sistema financiero soberano.">
+<meta name="theme-color" content="#05060a">
+<link rel="icon" href="assets/favicon-og.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/favicon-og.png">
+<meta property="og:title" content="Orden Global · El viaje del valor">
+<meta property="og:description" content="Del oro a una Layer 1 propia. La moneda de Latinoamérica.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,200;1,9..144,300;1,9..144,400&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════════════════════════════
+   ORDEN GLOBAL — "El viaje del valor"
+   Un solo scroll narrado. La historia: el valor se evapora → se ancla al oro →
+   se certifica → se vuelve digital sobre una Layer 1 propia → circula como
+   ORIGEN → llega a la gente → vuelve a casa.
+   Apuesta única: la metamorfosis oro (cálido/físico) → señal (frío/digital)
+   en el instante de la digitalización.
+   ══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --void:#05060a; --void2:#080b12; --ink:#0b0f18;
+  --gold:#d9b45f; --gold-lp:#f5e4ab; --gold-dp:#a07d3a;
+  --signal:#74e6c8; --signal-dp:#2f9d86;   /* frío/digital — eco del teal de Veta */
+  --crema:#f4efe4; --ash:#9aa2b4; --ash2:#69708220; --line:rgba(226,214,180,.12);
+  --serif:'Fraunces',Georgia,serif; --sans:'Manrope',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  --shadow:0 30px 90px -30px rgba(0,0,0,.8);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:auto}
+body{background:var(--void);color:var(--crema);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden;line-height:1.55}
+body.locked{overflow:hidden;height:100vh}
+img{max-width:100%;display:block}
+::selection{background:var(--gold);color:var(--void)}
+a{color:inherit;text-decoration:none}
+
+/* ── Entrada (portal) ── */
+#gate{position:fixed;inset:0;z-index:200;background:radial-gradient(120% 90% at 50% 30%,#0c1017,#05060a 70%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;transition:opacity .9s ease,visibility .9s}
+#gate.gone{opacity:0;visibility:hidden;pointer-events:none}
+#gate .mk{height:74px;width:auto;margin-bottom:30px;filter:drop-shadow(0 6px 30px rgba(217,180,95,.35));animation:breathe 4s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.9;transform:scale(1)}50%{opacity:1;transform:scale(1.03)}}
+#gate h1{font-family:var(--serif);font-weight:300;font-size:clamp(26px,4.4vw,44px);letter-spacing:-.01em;margin-bottom:10px;color:var(--crema)}
+#gate h1 em{font-style:italic;color:var(--gold-lp)}
+#gate p{color:var(--ash);font-size:14px;max-width:32ch;margin:0 auto 30px;letter-spacing:.01em}
+.gate-langs{display:flex;gap:14px;margin-bottom:26px}
+.gate-langs button{font-family:var(--sans);font-weight:600;font-size:14px;color:var(--crema);background:rgba(255,255,255,.04);
+  border:1px solid var(--line);border-radius:100px;padding:13px 30px;cursor:pointer;transition:.25s;letter-spacing:.02em}
+.gate-langs button:hover{border-color:var(--gold);background:rgba(217,180,95,.08);transform:translateY(-2px)}
+.gate-sound{display:flex;align-items:center;gap:10px;color:var(--ash);font-size:12.5px;cursor:pointer;user-select:none;letter-spacing:.03em}
+.gate-sound .box{width:34px;height:18px;border-radius:100px;border:1px solid var(--line);position:relative;transition:.25s;background:rgba(255,255,255,.03)}
+.gate-sound .box::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--ash);transition:.25s}
+.gate-sound.on .box{background:rgba(116,230,200,.2);border-color:var(--signal)}
+.gate-sound.on .box::after{left:17px;background:var(--signal)}
+.gate-hint{margin-top:34px;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#5a6072}
+
+/* ── Chrome mínimo ── */
+#chrome{position:fixed;inset:0;z-index:90;pointer-events:none;opacity:0;transition:opacity 1s .3s}
+#chrome.on{opacity:1}
+.corner{position:fixed;top:22px;left:26px;display:flex;align-items:center;gap:11px;pointer-events:auto}
+.corner img{height:26px;width:auto}
+.corner .cn{font-family:var(--serif);font-size:15px;letter-spacing:.01em;border-left:1px solid var(--line);padding-left:11px;color:var(--crema)}
+@media(max-width:600px){.corner .cn{display:none}}
+.tools{position:fixed;top:20px;right:22px;display:flex;gap:9px;pointer-events:auto}
+.tools button{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:rgba(8,11,18,.5);backdrop-filter:blur(8px);
+  color:var(--crema);display:grid;place-items:center;cursor:pointer;transition:.25s}
+.tools button:hover{border-color:var(--gold);color:var(--gold-lp)}
+.tools button.act{border-color:var(--signal);color:var(--signal)}
+.tools svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7}
+.tools .lang{width:auto;padding:0 14px;border-radius:100px;font-family:var(--sans);font-weight:700;font-size:12px;letter-spacing:.05em}
+
+/* ── Riel del viaje (spine) ── */
+#rail{position:fixed;right:26px;top:50%;transform:translateY(-50%);z-index:90;display:flex;flex-direction:column;
+  align-items:center;gap:0;pointer-events:none;opacity:0;transition:opacity 1s .4s}
+#rail.on{opacity:1}
+@media(max-width:820px){#rail{display:none}}
+.rail-line{position:relative;width:1px;height:44vh;background:var(--line)}
+.rail-fill{position:absolute;top:0;left:0;width:100%;height:0;background:linear-gradient(180deg,var(--gold),var(--signal))}
+.rail-stops{position:absolute;top:0;left:50%;transform:translateX(-50%);height:100%}
+.rail-stop{position:absolute;transform:translate(-50%,-50%);left:50%;width:7px;height:7px;border-radius:50%;
+  background:var(--void);border:1px solid var(--ash);transition:.3s;pointer-events:auto;cursor:pointer}
+.rail-stop.done{border-color:var(--gold)}
+.rail-stop.act{background:var(--signal);border-color:var(--signal);box-shadow:0 0 0 4px rgba(116,230,200,.15);width:9px;height:9px}
+.rail-stop .lbl{position:absolute;right:20px;top:50%;transform:translateY(-50%);white-space:nowrap;font-size:10px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--ash);opacity:0;transition:.3s;font-weight:600}
+.rail-stop:hover .lbl,.rail-stop.act .lbl{opacity:1}
+
+/* ── Progreso en móvil ──
+   En el teléfono no cabe el riel lateral, y sin saber cuánto falta la gente
+   abandona a mitad del relato. Esta barra dice en qué capítulo va y cuánto
+   queda, para que se quede hasta el final. */
+#mprog{position:fixed;left:0;right:0;bottom:0;z-index:95;display:none;
+  background:linear-gradient(180deg,rgba(5,6,10,0),rgba(5,6,10,.93) 45%);
+  padding:26px 16px calc(10px + env(safe-area-inset-bottom));
+  opacity:0;transition:opacity .6s;pointer-events:none}
+#mprog.on{opacity:1}
+@media(max-width:820px){
+  #mprog{display:block}
+  /* La barra va fija abajo: hay que dejarle aire para que no tape el texto. */
+  .stage{padding-bottom:58px}
+  .flow-sec{padding-bottom:calc(16vh + 58px)}
+  footer{padding-bottom:calc(56px + env(safe-area-inset-bottom))}
+}
+.mp-track{height:2px;border-radius:2px;background:rgba(226,214,180,.16);overflow:hidden}
+.mp-fill{height:100%;width:0;border-radius:2px;background:linear-gradient(90deg,var(--gold),var(--signal))}
+.mp-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:9px}
+.mp-cap{font-size:10.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--gold-lp);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mp-falta{font-size:10.5px;font-weight:600;letter-spacing:.08em;color:var(--ash);white-space:nowrap}
+.mp-falta b{color:var(--signal);font-weight:700}
+
+/* ── Estructura de capítulos ── */
+.chapter{position:relative}
+.pin{position:sticky;top:0;height:100svh;overflow:hidden}
+.canvas-wrap{position:absolute;inset:0;z-index:1}
+.canvas-wrap canvas{width:100%;height:100%;display:block}
+.veil{position:absolute;inset:0;z-index:2;pointer-events:none}
+.stage{position:absolute;inset:0;z-index:3;display:flex;align-items:center}
+.hold{width:100%;max-width:1180px;margin:0 auto;padding:0 clamp(24px,6vw,80px);position:relative}
+.hold.mid{text-align:center}
+.hold.mid .beat{margin-left:auto;margin-right:auto}
+
+/* Beats: bloques de texto que entran/salen con el progreso */
+.beat{position:absolute;width:min(88%,760px);opacity:0;transform:translateY(40px);
+  transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1);will-change:opacity,transform;pointer-events:none}
+.hold.mid .beat{left:50%;transform:translate(-50%,40px);width:min(92%,860px)}
+.beat.show{opacity:1;transform:translateY(0);pointer-events:auto}
+.hold.mid .beat.show{transform:translate(-50%,0)}
+.beat.flow{position:relative;width:100%}
+
+/* Tipografía narrativa */
+.mark{font-size:11.5px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);margin-bottom:26px}
+.line{font-family:var(--serif);font-weight:300;letter-spacing:-.015em;line-height:1.02;font-size:clamp(38px,7vw,104px)}
+.line em{font-style:italic;color:var(--gold-lp)}
+.line .cold{color:var(--signal)}
+.say{font-size:clamp(16px,2.1vw,21px);color:var(--crema);opacity:.9;max-width:44ch;margin-top:26px;font-weight:300;line-height:1.6}
+.say.mx{margin-left:auto;margin-right:auto}
+.sub{font-size:14px;color:var(--ash);max-width:50ch;margin-top:16px;line-height:1.65}
+
+/* ── Prólogo (el problema) ── */
+#prologue .pin{background:radial-gradient(130% 100% at 50% 0%,#0c111b,#05060a 65%)}
+.fall{font-family:var(--mono);color:var(--gold);opacity:.5}
+#devalue{font-family:var(--serif);font-weight:300;font-size:clamp(44px,9vw,120px);color:var(--gold-lp);line-height:1;letter-spacing:-.02em}
+#devalue .u{font-size:.42em;color:var(--ash);letter-spacing:.04em;font-family:var(--sans)}
+
+/* ── Cadena (forge) ── */
+#cadena .pin{background:radial-gradient(120% 100% at 70% 40%,#071417,#05060a 70%)}
+.telem{display:flex;gap:34px;margin-top:34px;flex-wrap:wrap}
+.telem .t{border-left:1px solid var(--line);padding-left:16px}
+.telem .t:first-child{border-left:0;padding-left:0}
+.telem .k{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--signal-dp);margin-bottom:7px}
+.telem .v{font-family:var(--mono);font-weight:500;font-size:clamp(18px,2.4vw,26px);color:var(--signal);line-height:1}
+.hashrow{font-family:var(--mono);font-size:11px;color:var(--signal-dp);margin-top:22px;opacity:.7;letter-spacing:.02em;overflow:hidden;white-space:nowrap;max-width:min(88%,560px)}
+
+/* ── ORIGEN ── */
+#origen .pin{background:radial-gradient(120% 100% at 40% 45%,#12100a,#05060a 70%)}
+.coin-mk{height:clamp(50px,7vw,80px);width:auto;margin:0 auto 22px;display:block;filter:drop-shadow(0 0 26px rgba(255,205,100,.4));animation:cfloat 6s ease-in-out infinite}
+@keyframes cfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.mono-cta{display:inline-flex;align-items:center;gap:10px;font-family:var(--sans);font-weight:600;font-size:15px;
+  padding:15px 30px;border-radius:100px;transition:.28s;cursor:pointer}
+.mono-cta.solid{background:var(--gold-lp);color:var(--void)}
+.mono-cta.solid:hover{background:#fff;transform:translateY(-2px);box-shadow:0 14px 40px -12px rgba(217,180,95,.5)}
+.mono-cta.ghost{border:1px solid var(--line);color:var(--crema)}
+.mono-cta.ghost:hover{border-color:var(--signal);color:var(--signal)}
+.cta-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:34px}
+.hold.mid .cta-row{justify-content:center}
+
+/* ── Ecosistema (flujo) ── */
+.flow-sec{position:relative;z-index:3;padding:16vh clamp(24px,6vw,80px);max-width:1220px;margin:0 auto}
+.eco-head{max-width:760px;margin-bottom:64px}
+.eco-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}
+.node-card{grid-column:span 4;background:linear-gradient(180deg,rgba(255,240,190,.045),rgba(255,240,190,.008));
+  border:1px solid var(--line);border-radius:20px;padding:30px 26px;transition:.4s;display:flex;flex-direction:column;min-height:240px;position:relative;overflow:hidden}
+.node-card:hover{border-color:rgba(116,230,200,.4);transform:translateY(-6px);box-shadow:var(--shadow)}
+.node-card.wide{grid-column:span 6}
+.node-card.tall{grid-column:span 6}
+@media(max-width:820px){.node-card,.node-card.wide,.node-card.tall{grid-column:span 12}}
+.node-card .ico{width:52px;height:52px;border-radius:14px;background:rgba(0,0,0,.35);border:1px solid var(--line);display:grid;place-items:center;overflow:hidden;margin-bottom:auto}
+.node-card .ico img{width:34px;height:34px;object-fit:contain}
+.node-card .ico svg{width:23px;height:23px;stroke:var(--gold-lp);fill:none;stroke-width:1.5}
+.node-card .rl{font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin:24px 0 9px}
+.node-card h3{font-family:var(--serif);font-weight:400;font-size:23px;margin-bottom:8px}
+.node-card p{font-size:14px;color:var(--ash);line-height:1.55}
+.node-card .go{margin-top:16px;font-size:13px;font-weight:600;color:var(--signal);display:inline-flex;gap:7px;align-items:center}
+.node-card:hover .go{gap:11px}
+
+/* ── Soberanía / cierre ── */
+#fin{position:relative;z-index:3;text-align:center;padding:20vh clamp(24px,6vw,80px) 0;background:radial-gradient(120% 80% at 50% 100%,#0c1017,#05060a 70%)}
+#fin .og{height:clamp(64px,9vw,104px);width:auto;margin:0 auto 30px;filter:drop-shadow(0 6px 34px rgba(217,180,95,.32))}
+.fin-line{font-family:var(--serif);font-weight:300;font-size:clamp(40px,8vw,96px);line-height:1.02;letter-spacing:-.02em}
+.fin-line em{font-style:italic;color:var(--gold-lp)}
+/* ── La fórmula de ORIGEN ── */
+.formula{max-width:860px;margin:11vh auto 0;padding:44px clamp(22px,5vw,54px);border:1px solid var(--line);border-radius:26px;
+  background:linear-gradient(180deg,rgba(217,180,95,.055),rgba(217,180,95,.006))}
+.fx-eq{display:flex;align-items:baseline;justify-content:center;gap:18px;flex-wrap:wrap;font-family:var(--serif);font-weight:300}
+.fx-a{font-size:clamp(28px,4.6vw,52px);color:var(--gold-lp)}
+.fx-eqs{font-size:clamp(24px,3.6vw,42px);color:var(--ash)}
+.fx-b{font-size:clamp(28px,4.6vw,52px);color:var(--crema)}
+.fx-sub{margin-top:12px;font-size:13.5px;color:var(--ash)}
+.fx-price{margin:28px auto 30px;display:flex;align-items:baseline;justify-content:center;gap:16px;flex-wrap:wrap}
+.fx-lbl{font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+.fx-val{font-family:var(--serif);font-weight:300;font-size:clamp(42px,7vw,68px);line-height:1;color:var(--crema)}
+.fx-chg{font-family:var(--mono);font-size:13px;color:var(--signal)}
+.fx-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;text-align:left;border-top:1px solid var(--line);padding-top:28px}
+@media(max-width:720px){.fx-grid{grid-template-columns:1fr}}
+.fx-grid h5{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-lp);margin-bottom:8px}
+.fx-grid p{font-size:13.5px;color:var(--ash);line-height:1.6}
+
+/* ── El llamado final ── */
+.call{margin-top:16vh}
+.yo-quiero{margin-top:38px;font-family:var(--sans);font-weight:800;font-size:clamp(16px,2.4vw,21px);color:var(--void);
+  background:linear-gradient(120deg,var(--gold-lp),var(--gold) 50%,var(--gold-lp));background-size:220% 100%;
+  border:0;border-radius:100px;padding:20px 48px;cursor:pointer;transition:transform .3s;
+  box-shadow:0 18px 60px -18px rgba(217,180,95,.55);animation:goldshift 5s linear infinite}
+@keyframes goldshift{0%{background-position:0 0}100%{background-position:220% 0}}
+.yo-quiero:hover{transform:translateY(-3px) scale(1.02)}
+.yo-quiero:active{transform:scale(.97)}
+/* El grito: la frase que convierte el relato en invitación */
+.cl-grito{margin:44px auto 0;max-width:20ch;font-family:var(--serif);font-weight:300;line-height:1.08;
+  font-size:clamp(28px,4.8vw,58px);letter-spacing:-.015em;color:var(--crema)}
+.cl-grito em{font-style:italic;color:var(--gold-lp);
+  background:linear-gradient(100deg,var(--gold-lp),#fff 45%,var(--gold) 70%,var(--gold-lp));
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  animation:goldshift 6s linear infinite}
+.cl-sub{margin-top:22px;font-size:12.5px;color:var(--ash);letter-spacing:.04em}
+.chispa{position:fixed;width:7px;height:7px;border-radius:2px;background:var(--gold-lp);z-index:300;pointer-events:none;
+  animation:chispa .85s cubic-bezier(.15,.6,.3,1) forwards}
+@keyframes chispa{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(220deg) scale(.35);opacity:0}}
+
+footer{margin-top:18vh;border-top:1px solid var(--line);background:var(--void2);padding:70px clamp(24px,6vw,80px) 40px;text-align:left}
+.foot-in{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:40px}
+@media(max-width:820px){.foot-in{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.foot-in{grid-template-columns:1fr}}
+.foot-brand .fb-mk{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.foot-brand .fb-mk img{height:34px}
+.foot-brand .fb-mk span{font-family:var(--serif);font-size:21px}
+.foot-brand p{font-size:14px;color:var(--ash);max-width:34ch;line-height:1.6}
+.foot-col h5{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#5a6072;margin-bottom:16px}
+.foot-col a{display:block;font-size:14px;color:var(--ash);padding:5px 0;transition:.2s}
+.foot-col a:hover{color:var(--signal)}
+.social{display:flex;gap:11px;margin-top:22px}
+.social a{width:40px;height:40px;border-radius:11px;border:1px solid var(--line);display:grid;place-items:center;transition:.25s}
+.social a svg{width:18px;height:18px;fill:var(--ash)}
+.social a:hover{transform:translateY(-3px);border-color:transparent}
+.social a.ig:hover{background:linear-gradient(45deg,#f09433,#dc2743,#bc1888)}
+.social a.fb:hover{background:#1877f2}.social a.tt:hover{background:#000;border-color:var(--signal)}
+.social a:hover svg{fill:#fff}
+.foot-legal{max-width:1180px;margin:50px auto 0;padding-top:24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:11.5px;letter-spacing:.04em;color:#5a6072}
+
+/* ── Cue de scroll ── */
+.cue{position:absolute;bottom:34px;left:50%;transform:translateX(-50%);z-index:4;font-size:10.5px;font-weight:600;
+  letter-spacing:.28em;text-transform:uppercase;color:var(--ash);text-align:center;opacity:.7;transition:opacity .5s}
+.cue .bar{width:1px;height:34px;background:linear-gradient(var(--gold),transparent);margin:12px auto 0;animation:cuepulse 2s ease-in-out infinite}
+@keyframes cuepulse{0%,100%{opacity:.3;transform:scaleY(.7)}50%{opacity:1;transform:scaleY(1)}}
+.cue.hide{opacity:0}
+
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:opacity .2s!important}.beat{transform:none!important;opacity:1!important}}
+@media(max-width:600px){.telem{gap:22px}.telem .t{padding-left:12px}}
+</style>
+</head>
+<body class="locked">
+
+<!-- ══ PORTAL DE ENTRADA ══ -->
+<div id="gate">
+  <img class="mk" src="assets/og.png" alt="Orden Global">
+  <h1>El viaje del <em>valor</em></h1>
+  <p data-i="gate-p">Una historia en un solo desplazamiento. Bajá a la tierra, subí a la red.</p>
+  <div class="gate-langs">
+    <button onclick="EXPERIENCE.start('es')">Español</button>
+    <button onclick="EXPERIENCE.start('en')">English</button>
+  </div>
+  <div class="gate-sound" id="gate-sound" onclick="EXPERIENCE.toggleSoundPref()">
+    <span class="box"></span><span data-i="gate-snd">Sonido ambiente</span>
+  </div>
+  <div class="gate-sound" id="gate-cine" onclick="EXPERIENCE.toggleCinePref()" style="margin-top:12px">
+    <span class="box"></span><span data-i="gate-cine">Modo cine · pantalla completa, se cuenta sola</span>
+  </div>
+  <div class="gate-hint" data-i="gate-hint">Mejor con audio · desliza para avanzar</div>
+</div>
+
+<!-- ══ CHROME ══ -->
+<div id="chrome">
+  <a class="corner" href="#top" onclick="EXPERIENCE.toTop(event)"><img src="assets/og.png" alt="Orden Global"><span class="cn">Orden Global</span></a>
+  <div class="tools">
+    <button class="lang" id="btn-lang" onclick="EXPERIENCE.swap()">EN</button>
+    <button id="btn-sound" title="Sonido" onclick="EXPERIENCE.toggleSound()" aria-label="Sonido">
+      <svg id="ic-sound" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="wv" d="M16 8.5a5 5 0 010 7"/><path class="wv" d="M18.5 6a8 8 0 010 12"/></svg>
+    </button>
+    <button id="btn-auto" title="Auto" onclick="EXPERIENCE.toggleAuto()" aria-label="Auto-reproducir">
+      <svg id="ic-auto" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+    <button id="btn-fs" title="Pantalla completa" onclick="EXPERIENCE.toggleFS()" aria-label="Pantalla completa">
+      <svg id="ic-fs" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ══ RIEL DEL VIAJE ══ -->
+<div id="rail"><div class="rail-line"><div class="rail-fill"></div><div class="rail-stops" id="stops"></div></div></div>
+
+<!-- ══ PROGRESO (móvil) ══ -->
+<div id="mprog">
+  <div class="mp-track"><div class="mp-fill" id="mp-fill"></div></div>
+  <div class="mp-row">
+    <span class="mp-cap" id="mp-cap">Prólogo</span>
+    <span class="mp-falta" id="mp-falta"></span>
+  </div>
+</div>
+
+<audio id="amb" loop preload="none" src="audio/ambiente.mp3"></audio>
+
+<main id="top">
+
+<!-- ── 0 · PRÓLOGO — el problema ── -->
+<section class="chapter" id="prologue" style="height:330vh" data-stop="Prólogo" data-stop-en="Prologue">
+  <div class="pin">
+    <div class="canvas-wrap"><canvas data-fx="fall"></canvas></div>
+    <div class="stage"><div class="hold">
+      <div class="beat" data-in="0" data-out=".25">
+        <div class="line" data-i="pr-1">Tu trabajo.<br>Tus ahorros.<br><em>Tu esfuerzo.</em></div>
+      </div>
+      <div class="beat" data-in=".24" data-out=".5">
+        <div class="line" data-i="pr-2">Y cada año…<br><em>se evapora.</em></div>
+        <div style="margin-top:34px"><span id="devalue">100<span class="u" data-i="pr-pc"> poder de compra</span></span></div>
+      </div>
+      <div class="beat" data-in=".49" data-out=".74">
+        <div class="line" style="font-size:clamp(26px,4.4vw,58px)" data-i="pr-3">Monedas que se devalúan.<br>Comisiones que lo devoran.<br><em>Dinero que nunca llega.</em></div>
+      </div>
+      <div class="beat" data-in=".73" data-out="1">
+        <div class="line" style="font-size:clamp(28px,4.8vw,66px)" data-i="pr-4">Nacimos para cambiar eso:<br><em>que el dinero llegue<br>a la gente.</em></div>
+      </div>
+    </div></div>
+    <div class="cue" id="cue"><span data-i="cue">Deslizá</span><div class="bar"></div></div>
+  </div>
+</section>
+
+<!-- ── I · LA TIERRA ── -->
+<section class="chapter scrub" id="tierra" data-seq="gold" data-n="54" data-zoom="1.55" data-focus="0.30,0.55" style="height:360vh" data-stop="La tierra" data-stop-en="The Earth">
+  <div class="pin">
+    <div class="canvas-wrap"><canvas data-scrub></canvas></div>
+    <div class="veil" style="background:linear-gradient(90deg,rgba(5,6,10,.85),rgba(5,6,10,.25) 60%,transparent)"></div>
+    <div class="stage"><div class="hold">
+      <div class="beat" data-in="0" data-out=".5">
+        <div class="mark" data-i="t-mk">Capítulo I · La tierra</div>
+        <div class="line" data-i="t-1">Todo valor real<br>empieza en la <em data-i="t-1b">tierra.</em></div>
+      </div>
+      <div class="beat" data-in=".5" data-out="1">
+        <div class="say" data-i="t-2">Oro extraído de concesiones propias. No es una promesa ni una pantalla: es el metal más estable de la historia, sacado del suelo de la región.</div>
+        <div class="telem" style="--c:var(--gold)">
+          <div class="t"><div class="k" style="color:var(--gold-dp)" data-i="t-k1">Origen</div><div class="v" style="color:var(--gold-lp);font-family:var(--serif);font-weight:300" data-i="t-v1">Concesiones propias</div></div>
+          <div class="t"><div class="k" style="color:var(--gold-dp)" data-i="t-k2">Activo</div><div class="v" style="color:var(--gold-lp);font-family:var(--serif);font-weight:300" data-i="t-v2">Oro físico</div></div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+</section>
+
+<!-- ── II · LA BÓVEDA ── -->
+<section class="chapter scrub" id="boveda" data-seq="hero" data-n="54" style="height:360vh" data-stop="La bóveda" data-stop-en="The Vault">
+  <div class="pin">
+    <div class="canvas-wrap"><canvas data-scrub></canvas></div>
+    <div class="veil" style="background:linear-gradient(90deg,rgba(5,6,10,.82),rgba(5,6,10,.15) 55%,transparent)"></div>
+    <div class="stage"><div class="hold">
+      <div class="beat" data-in="0" data-out=".5">
+        <div class="mark" data-i="b-mk">Capítulo II · La bóveda</div>
+        <div class="line" data-i="b-1">Un gramo,<br><em data-i="b-1b">guardado.</em></div>
+      </div>
+      <div class="beat" data-in=".5" data-out="1">
+        <div class="say" data-i="b-2">Cada barra se certifica bajo estándar internacional NI 43-101, se custodia en bóveda y se ancla 1:1. Lo que entra, queda. Verificable, para siempre.</div>
+        <div class="telem">
+          <div class="t"><div class="k" style="color:var(--gold-dp)">1:1</div><div class="v" style="color:var(--gold-lp);font-family:var(--serif);font-weight:300" data-i="b-v1">Respaldo en oro</div></div>
+          <div class="t"><div class="k" style="color:var(--gold-dp)">NI 43-101</div><div class="v" style="color:var(--gold-lp);font-family:var(--serif);font-weight:300" data-i="b-v2">Certificado</div></div>
+          <div class="t"><div class="k" style="color:var(--gold-dp)">24/7</div><div class="v" style="color:var(--gold-lp);font-family:var(--serif);font-weight:300" data-i="b-v3">Auditable</div></div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+</section>
+
+<!-- ── III · LA CADENA (metamorfosis + forge) ── -->
+<section class="chapter scrub" id="cadena" data-seq="blockchain" data-n="54" style="height:460vh" data-stop="La cadena" data-stop-en="The Chain">
+  <div class="pin">
+    <div class="canvas-wrap"><canvas data-scrub></canvas></div>
+    <div class="canvas-wrap" style="z-index:2"><canvas data-fx="forge"></canvas></div>
+    <div class="veil" style="background:linear-gradient(90deg,rgba(5,6,10,.8),rgba(5,6,10,.1) 55%,transparent)"></div>
+    <div class="stage"><div class="hold">
+      <div class="beat" data-in="0" data-out=".34">
+        <div class="mark" data-i="c-mk">Capítulo III · La cadena</div>
+        <div class="line" data-i="c-1">Y aquí el oro<br>se vuelve <span class="cold" data-i="c-1b">dinero vivo.</span></div>
+      </div>
+      <div class="beat" data-in=".33" data-out=".66">
+        <div class="line" style="font-size:clamp(26px,4vw,54px)" data-i="c-2">No alquilamos la cadena de otro.<br><span class="cold" data-i="c-2b">Operamos la nuestra.</span></div>
+        <div class="say" data-i="c-2s">Una Layer 1 propia, con nuestros validadores, nuestro consenso y nuestras reglas. Casi 4,2 millones de bloques, sin interrupción, desde 2024.</div>
+      </div>
+      <div class="beat" data-in=".64" data-out="1">
+        <div class="telem">
+          <div class="t"><div class="k" data-i="c-k1">Altura</div><div class="v"><span id="height">4 200 000</span></div></div>
+          <div class="t"><div class="k" data-i="c-k2">Bloque</div><div class="v">~15 s</div></div>
+          <div class="t"><div class="k" data-i="c-k3">Consenso</div><div class="v">PoS · BLS</div></div>
+          <div class="t"><div class="k" data-i="c-k4">Validadores</div><div class="v" id="vals">6</div></div>
+        </div>
+        <div class="hashrow" id="hashrow">0x00000000000000000000000000000000</div>
+      </div>
+    </div></div>
+  </div>
+</section>
+
+<!-- ── IV · ORIGEN ── -->
+<section class="chapter scrub" id="origen" data-seq="origen" data-n="54" style="height:380vh" data-stop="ORIGEN" data-stop-en="ORIGEN">
+  <div class="pin">
+    <div class="canvas-wrap"><canvas data-scrub></canvas></div>
+    <div class="veil" style="background:linear-gradient(180deg,rgba(5,6,10,.3) 0%,rgba(5,6,10,.04) 36%,rgba(5,6,10,.78) 78%,rgba(5,6,10,.97) 100%)"></div>
+    <div class="stage" style="align-items:flex-end"><div class="hold" style="text-align:center;padding-bottom:9vh">
+      <div class="beat flow show" style="margin:0 auto;max-width:840px">
+        <div class="mark" data-i="o-mk">Capítulo IV · La moneda</div>
+        <div class="line" style="font-size:clamp(32px,5.4vw,72px)" data-i="o-h">De Latinoamérica,<br><em>para el mundo.</em></div>
+        <div class="say mx" data-i="o-2">Oro real, digitalizado. Se guarda, se envía, se paga y se cambia, con el respaldo del metal y la velocidad de un mensaje. En cualquier rincón del mundo.</div>
+        <div class="cta-row" style="justify-content:center">
+          <a class="mono-cta solid" href="https://www.vetawallet.com" target="_blank" rel="noopener" data-i="o-cta1">Quiero ORIGEN</a>
+          <a class="mono-cta ghost" href="https://orden-global-scan-c4abe71e8024.herokuapp.com" target="_blank" rel="noopener" data-i="o-cta2">Ver la cadena en vivo</a>
+        </div>
+      </div>
+    </div></div>
+  </div>
+</section>
+
+<!-- ── V · EL ECOSISTEMA ── -->
+<section class="chapter" id="ecosistema" data-stop="En tus manos" data-stop-en="In Your Hands">
+  <div class="flow-sec">
+    <div class="eco-head beat flow">
+      <div class="mark" data-i="e-mk">Capítulo V · En tus manos</div>
+      <div class="line" style="font-size:clamp(34px,6vw,76px)" data-i="e-1">En cada bolsillo,<br>en cada <em>esquina.</em></div>
+      <div class="say" data-i="e-2">El oro no se queda en la bóveda: circula. Billetera, pagos y explorador, unidos por una sola identidad verificada que te protege en cada paso.</div>
+    </div>
+    <div class="eco-grid">
+      <a class="node-card wide beat flow" href="https://genesis-id.onrender.com" target="_blank" rel="noopener">
+        <div class="ico"><img src="assets/genesis-mark.png" alt="Genesis ID"></div>
+        <div class="rl" data-i="e-c2r">El motor del ecosistema</div><h3>Genesis ID</h3>
+        <p data-i="e-c2p">Una sola identidad verificada para todas las apps. Te protege, te da confianza y te hace la vida más fácil: tu llave para todo el ecosistema.</p>
+        <span class="go" data-i="e-visit2">Visitar →</span>
+      </a>
+      <a class="node-card wide beat flow" href="https://www.vetawallet.com" target="_blank" rel="noopener">
+        <div class="ico"><img src="assets/veta-icon.png" alt="Veta Wallet"></div>
+        <div class="rl" data-i="e-c1r">La billetera</div><h3>Veta Wallet</h3>
+        <p data-i="e-c1p">Tu oro en el bolsillo. Enviá, recibí y pagá con ORIGEN desde el teléfono.</p>
+        <span class="go" data-i="e-visit">Visitar →</span>
+      </a>
+      <a class="node-card beat flow" href="#" onclick="return false">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 12h18M13 6l6 6-6 6"/></svg></div>
+        <div class="rl" data-i="e-c3r">Los pagos</div><h3>MyTokenPay</h3>
+        <p data-i="e-c3p">Cobros para comercios. El restaurante cobra en ORIGEN y recibe en su banco.</p>
+        <span class="go" data-i="e-soon">Muy pronto →</span>
+      </a>
+      <a class="node-card beat flow" href="https://orden-global-scan-c4abe71e8024.herokuapp.com" target="_blank" rel="noopener">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></div>
+        <div class="rl" data-i="e-c4r">El explorador</div><h3>ordenscan</h3>
+        <p data-i="e-c4p">Cada bloque y cada transacción de la cadena 8532, públicos y auditables.</p>
+        <span class="go" data-i="e-visit3">Visitar →</span>
+      </a>
+      <a class="node-card beat flow" href="#" onclick="return false">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M7 8l-4 4 4 4M17 8l4 4-4 4M14 4l-4 16"/></svg></div>
+        <div class="rl" data-i="e-c5r">El intercambio</div><h3>GoldexSwap</h3>
+        <p data-i="e-c5p">Cambiá ORIGEN por otras monedas del ecosistema, directo y sin intermediarios.</p>
+        <span class="go" data-i="e-soon2">Muy pronto →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ── VI · SOBERANÍA / CIERRE ── -->
+<section class="chapter" id="fin" data-stop="Soberanía" data-stop-en="Sovereignty">
+  <div class="beat flow" style="max-width:900px;margin:0 auto">
+    <div class="mark" data-i="f-mk">Capítulo VI · Soberanía</div>
+    <img class="og" src="assets/og.png" alt="Orden Global">
+    <div class="fin-line" data-i="f-1">El valor<br><em>vuelve a casa.</em></div>
+  </div>
+
+  <!-- La fórmula: qué es ORIGEN, cuánto vale y por qué te cuida -->
+  <div class="formula beat flow">
+    <div class="fx-eq"><span class="fx-a">1 ORIGEN</span><span class="fx-eqs">=</span><span class="fx-b" data-i="fx-b">1 gramin de oro</span></div>
+    <div class="fx-sub" data-i="fx-sub">1⁄55 de gramo de oro certificado NI 43-101, guardado en bóveda.</div>
+    <div class="fx-price">
+      <span class="fx-lbl" data-i="fx-lbl">Referenciado al precio del oro</span>
+      <span class="fx-val" id="fx-val">$2.40</span>
+      <span class="fx-chg" id="fx-chg">+ $0.010</span>
+    </div>
+    <div class="fx-grid">
+      <div><h5 data-i="fx-1t">Sube con el oro</h5><p data-i="fx-1p">Cuando el oro sube, tu ORIGEN sube con él. Tu dinero deja de depender de una moneda que se devalúa.</p></div>
+      <div><h5 data-i="fx-2t">Te cuida el valor</h5><p data-i="fx-2p">No es una promesa: es metal certificado en bóveda. Lo que ahorrás hoy, vale mañana.</p></div>
+      <div><h5 data-i="fx-3t">Pagás en el mundo</h5><p data-i="fx-3p">De un teléfono a otro, de un país a otro. Tu oro viaja a la velocidad de un mensaje.</p></div>
+    </div>
+  </div>
+
+  <!-- El llamado -->
+  <div class="call beat flow">
+    <div class="fin-line" style="font-size:clamp(34px,6.4vw,84px)" data-i="cl-1">Queremos que<br><em>seas parte de esto.</em></div>
+    <p class="say mx" style="margin-top:24px" data-i="cl-2">Un ecosistema entero, construido pieza por pieza: oro real que no se devalúa, una cadena propia, una identidad que te cuida y pagos que cruzan el mundo. Todo para devolverte algo simple y enorme: la libertad de decidir sobre tu propio dinero.</p>
+    <p class="cl-grito" data-i="cl-grito">Para cambiar el mundo,<br><em>te necesitamos a vos.</em></p>
+    <button class="yo-quiero" id="yo-quiero" onclick="EXPERIENCE.quiero(event)"><span data-i="cl-cta">Sí, yo quiero ser parte</span></button>
+    <p class="cl-sub" data-i="cl-3">Abrí tu cuenta en Veta Wallet · verificá tu identidad con Genesis ID · tené oro hoy</p>
+  </div>
+  <footer>
+    <div class="foot-in">
+      <div class="foot-brand">
+        <div class="fb-mk"><img src="assets/og.png" alt="Orden Global"><span>Orden Global</span></div>
+        <p data-i="foot-p">Oro real, digitalizado sobre una Layer 1 propia. Nace en Latinoamérica, conecta el mundo.</p>
+        <div class="social">
+          <a class="ig" href="https://www.instagram.com/_vetawallet" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41-.56-.22-.96-.48-1.38-.9-.42-.42-.68-.82-.9-1.38-.16-.42-.36-1.06-.41-2.23C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16zm0 2.88a6.96 6.96 0 100 13.92 6.96 6.96 0 000-13.92zm0 11.48a4.52 4.52 0 110-9.04 4.52 4.52 0 010 9.04zm7.24-11.75a1.63 1.63 0 11-3.26 0 1.63 1.63 0 013.26 0z"/></svg></a>
+          <a class="fb" href="https://www.facebook.com/share/1G9YkArDao/" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5.02 3.66 9.18 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.52 1.49-3.91 3.77-3.91 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.78-1.63 1.57v1.89h2.78l-.45 2.91h-2.33V22c4.78-.76 8.44-4.92 8.44-9.94z"/></svg></a>
+          <a class="tt" href="https://www.tiktok.com/@veta.wallet" target="_blank" rel="noopener" aria-label="TikTok"><svg viewBox="0 0 24 24"><path d="M16.6 5.82A4.28 4.28 0 0115.54 3h-3.09v12.4a2.59 2.59 0 01-2.59 2.5 2.6 2.6 0 01-2.6-2.6 2.6 2.6 0 013.1-2.55v-3.13a5.7 5.7 0 00-.5-.03 5.72 5.72 0 100 11.44 5.72 5.72 0 005.72-5.72V9.01a7.35 7.35 0 004.29 1.38V7.3a4.28 4.28 0 01-3.27-1.48z"/></svg></a>
+        </div>
+      </div>
+      <div class="foot-col"><h5 data-i="foot-eco">Ecosistema</h5><a href="https://www.vetawallet.com" target="_blank" rel="noopener">Veta Wallet</a><a href="https://genesis-id.onrender.com" target="_blank" rel="noopener">Genesis ID</a><a href="https://orden-global-scan-c4abe71e8024.herokuapp.com" target="_blank" rel="noopener">ordenscan</a><a href="#origen" onclick="EXPERIENCE.goto('origen',event)">ORIGEN</a></div>
+      <div class="foot-col"><h5 data-i="foot-co">Compañía</h5><a href="#prologue" onclick="EXPERIENCE.goto('prologue',event)" data-i="foot-story">La historia</a><a href="#cadena" onclick="EXPERIENCE.goto('cadena',event)" data-i="foot-tech">Tecnología</a><a href="#tierra" onclick="EXPERIENCE.goto('tierra',event)" data-i="foot-gold">El oro</a><a href="mailto:info@ordenglobal.org">info@ordenglobal.org</a></div>
+      <div class="foot-col"><h5 data-i="foot-legal">Legal</h5><a href="#" data-i="foot-priv">Privacidad</a><a href="#" data-i="foot-terms">Términos</a></div>
+    </div>
+    <div class="foot-legal"><span data-i="foot-c">© 2026 Orden Global Corp · Isla Roatán, Honduras</span><span>NI 43-101 · CHAIN 8532 · LIVE</span></div>
+  </footer>
+</section>
+
+</main>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   MOTOR DEL VIAJE
+   Un solo rAF gobierna todo: progreso por capítulo, scrub de fotogramas,
+   parallax, inercia (mecido por velocidad), reveals, riel, forge y color.
+   ══════════════════════════════════════════════════════════════════════════ */
+const I18N={en:{
+ "gate-p":"One story in a single scroll. Descend into the earth, rise into the network.",
+ "gate-snd":"Ambient sound","gate-hint":"Best with audio · scroll to move","cue":"Scroll",
+ "pr-1":"Your work.<br>Your savings.<br><em>Your effort.</em>",
+ "pr-2":"And every year…<br><em>it evaporates.</em>","pr-pc":" purchasing power",
+ "pr-3":"Currencies that devalue.<br>Fees that devour it.<br><em>Money that never arrives.</em>",
+ "pr-4":"We were born to change that:<br><em>money that reaches<br>the people.</em>",
+ "t-mk":"Chapter I · The Earth","t-1":"All real value<br>begins in the <em>earth.</em>",
+ "t-2":"Gold mined from our own concessions. It isn't a promise or a screen: it's the most stable asset in history, pulled from the region's ground.",
+ "t-k1":"Source","t-v1":"Own concessions","t-k2":"Asset","t-v2":"Physical gold",
+ "b-mk":"Chapter II · The Vault","b-1":"One gram,<br><em>secured.</em>",
+ "b-2":"Every bar is certified to the NI 43-101 international standard, held in vault and anchored 1:1. What goes in, stays. Verifiable, forever.",
+ "b-v1":"Gold-backed","b-v2":"Certified","b-v3":"Auditable",
+ "c-mk":"Chapter III · The Chain","c-1":"And here gold<br>becomes <span class='cold'>living money.</span>",
+ "c-2":"We don't rent someone else's chain.<br><span class='cold'>We run our own.</span>",
+ "c-2s":"A sovereign Layer 1, with our own validators, our own consensus and our own rules. Nearly 4.2 million blocks, uninterrupted, since 2024.",
+ "c-k1":"Height","c-k2":"Block","c-k3":"Consensus","c-k4":"Validators",
+ "o-mk":"Chapter IV · The Currency","o-h":"From Latin America,<br><em>to the world.</em>",
+ "o-2":"Real gold, digitized. Store it, send it, pay and swap with it, with the metal's backing and the speed of a message. Anywhere in the world.",
+ "o-cta1":"I want ORIGEN","o-cta2":"See the chain live",
+ "e-mk":"Chapter V · In Your Hands","e-1":"In every pocket,<br>on every <em>corner.</em>",
+ "e-2":"Gold doesn't stay in the vault: it circulates. Wallet, payments and explorer, united by one verified identity that protects you at every step.",
+ "e-c1r":"The wallet","e-c1p":"Your gold in your pocket. Send, receive and pay with ORIGEN from your phone.",
+ "e-c2r":"The ecosystem's engine","e-c2p":"One verified identity across every app. It protects you, gives you confidence and makes life easier: your key to the whole ecosystem.",
+ "e-c3r":"Payments","e-c3p":"Merchant checkout. The restaurant charges in ORIGEN and settles to its bank.",
+ "e-c4r":"The explorer","e-c4p":"Every block and transaction on chain 8532, public and auditable.",
+ "e-c5r":"The exchange","e-c5p":"Swap ORIGEN for other ecosystem coins, direct and without middlemen.",
+ "e-visit":"Visit →","e-visit2":"Visit →","e-visit3":"Visit →","e-soon":"Coming soon →","e-soon2":"Coming soon →",
+ "f-mk":"Chapter VI · Sovereignty","f-1":"Value<br><em>comes home.</em>",
+ "gate-cine":"Cinema mode · full screen, plays itself",
+ "fx-b":"1 gramin of gold","fx-sub":"1⁄55 of a gram of NI 43-101 certified gold, held in vault.",
+ "fx-lbl":"Referenced to the gold price",
+ "fx-1t":"Rises with gold","fx-1p":"When gold goes up, your ORIGEN goes up with it. Your money stops depending on a currency that devalues.",
+ "fx-2t":"Protects your value","fx-2p":"Not a promise: certified metal in a vault. What you save today is still worth something tomorrow.",
+ "fx-3t":"Pay worldwide","fx-3p":"Phone to phone, country to country. Your gold travels at the speed of a message.",
+ "cl-1":"We want you<br><em>to be part of this.</em>",
+ "cl-2":"A whole ecosystem, built piece by piece: real gold that doesn't devalue, our own chain, an identity that looks after you and payments that cross the world. All to give you back something simple and enormous: the freedom to decide over your own money.",
+ "cl-grito":"To change the world,<br><em>we need you.</em>",
+ "cl-cta":"Yes, I want in","cl-3":"Open your account in Veta Wallet · verify your identity with Genesis ID · hold gold today",
+ "foot-p":"Real gold, digitized on a sovereign Layer 1. Born in Latin America, connecting the world.",
+ "foot-eco":"Ecosystem","foot-co":"Company","foot-legal":"Legal","foot-story":"The story","foot-tech":"Technology","foot-gold":"The gold",
+ "foot-priv":"Privacy","foot-terms":"Terms","foot-c":"© 2026 Orden Global Corp · Roatán, Honduras"
+}};
+
+const EXPERIENCE=(()=>{
+  const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const mobile=matchMedia('(max-width:820px)').matches;
+  let lang='es', DEF={}, soundPref=false, cinePref=false, auto=false;
+  const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+
+  /* ---- i18n ---- */
+  function captureDefault(){ $$('[data-i]').forEach(el=>DEF[el.dataset.i]=el.innerHTML); }
+  function apply(l){
+    lang=l; document.documentElement.lang=l;
+    $$('[data-i]').forEach(el=>{ const k=el.dataset.i; const v=l==='es'?DEF[k]:(I18N.en[k]??DEF[k]); if(v!=null)el.innerHTML=v; });
+    const b=$('#btn-lang'); if(b)b.textContent=l==='es'?'EN':'ES';
+    // el riel también habla el idioma elegido
+    mpUlt=-1;
+    stops.forEach(s=>{ const lb=s.el.querySelector('.lbl');
+      if(lb) lb.textContent = l==='es' ? s.sec.dataset.stop : (s.sec.dataset.stopEn||s.sec.dataset.stop); });
+  }
+  function swap(){ apply(lang==='es'?'en':'es'); }
+
+  /* ---- scrub de fotogramas ---- */
+  const scrubs=[];
+  function prepScrub(sec){
+    const name=sec.dataset.seq, n=+sec.dataset.n, canvas=sec.querySelector('canvas[data-scrub]');
+    const ctx=canvas.getContext('2d',{alpha:false}); const imgs=new Array(n); let loaded=0;
+    for(let i=0;i<n;i++){ const im=new Image(); im.onload=()=>{loaded++}; im.src=`seq/${name}/${String(i).padStart(2,'0')}.jpg`; imgs[i]=im; }
+    const S={sec,canvas,ctx,imgs,n,cur:-1,dpr:Math.min(devicePixelRatio||1,2),zoom:parseFloat(sec.dataset.zoom||'1'),fx:.5,fy:.5};
+    const foc=(sec.dataset.focus||'').split(','); if(foc.length===2){S.fx=parseFloat(foc[0]);S.fy=parseFloat(foc[1]);}
+    function size(){ const r=canvas.getBoundingClientRect(); canvas.width=r.width*S.dpr; canvas.height=r.height*S.dpr; S.cur=-1; }
+    S.size=size; size(); scrubs.push(S);
+  }
+  function cover(ctx,im,cw,ch,zoom=1,fx=.5,fy=.5){ const ir=im.width/im.height, cr=cw/ch; let w,h;
+    if(ir>cr){h=ch*zoom;w=h*ir}else{w=cw*zoom;h=w/ir}
+    let x=cw*.5-fx*w, y=ch*.5-fy*h;
+    x=Math.min(0,Math.max(cw-w,x)); y=Math.min(0,Math.max(ch-h,y));
+    ctx.drawImage(im,x,y,w,h); }
+  function drawScrub(S,p){ const idx=Math.max(0,Math.min(S.n-1,Math.round(p*(S.n-1)))); if(idx===S.cur)return;
+    const im=S.imgs[idx]; if(!im||!im.complete||!im.naturalWidth){ return; } S.cur=idx;
+    S.ctx.fillStyle='#05060a'; S.ctx.fillRect(0,0,S.canvas.width,S.canvas.height); cover(S.ctx,im,S.canvas.width,S.canvas.height,S.zoom,S.fx,S.fy); }
+
+  /* ---- lluvia del prólogo (valor que cae) ---- */
+  let fall=null;
+  function prepFall(canvas){
+    const ctx=canvas.getContext('2d'); const dpr=Math.min(devicePixelRatio||1,2); let W,H,parts=[];
+    const glyphs='0123456789$'.split('');
+    function size(){ const r=canvas.getBoundingClientRect(); W=canvas.width=r.width*dpr; H=canvas.height=r.height*dpr;
+      const N=mobile?54:110; parts=Array.from({length:N},()=>({x:Math.random()*W,y:Math.random()*H,v:(.4+Math.random()*1.3)*dpr,g:glyphs[(Math.random()*glyphs.length)|0],s:(11+Math.random()*13)*dpr,a:.18+Math.random()*.5})); }
+    fall={canvas,ctx,size,get W(){return W},get H(){return H},parts,dpr,intensity:1}; size();
+  }
+  function drawFall(vel){ if(!fall)return; const {ctx,W,H,parts,dpr}=fall; ctx.clearRect(0,0,W,H);
+    ctx.font=`${12*dpr}px 'JetBrains Mono',monospace`;
+    const boost=1+Math.min(Math.abs(vel)*.02,3);
+    for(const p of parts){ p.y+=p.v*boost; if(p.y>H+20){p.y=-20;p.x=Math.random()*W;} ctx.globalAlpha=p.a*fall.intensity;
+      ctx.fillStyle='#d9b45f'; ctx.font=`${p.s}px 'JetBrains Mono',monospace`; ctx.fillText(p.g,p.x,p.y); }
+    ctx.globalAlpha=1;
+  }
+
+  /* ---- forge de la cadena (nodos, bloques, hashes) ---- */
+  let forge=null;
+  function prepForge(canvas){
+    const ctx=canvas.getContext('2d'); const dpr=Math.min(devicePixelRatio||1,2); let W,H,nodes=[],blocks=[],links=[];
+    function size(){ const r=canvas.getBoundingClientRect(); W=canvas.width=r.width*dpr; H=canvas.height=r.height*dpr;
+      const N=mobile?7:12; nodes=Array.from({length:N},(_,i)=>({x:(.1+Math.random()*.8)*W,y:(.12+Math.random()*.76)*H,r:(2+Math.random()*2)*dpr,ph:Math.random()*6.28,sp:.6+Math.random()*1.4}));
+      links=[]; for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){ const d=Math.hypot(nodes[i].x-nodes[j].x,nodes[i].y-nodes[j].y); if(d<W*.34)links.push([i,j,d]); }
+      blocks=[]; }
+    forge={canvas,ctx,size,get W(){return W},get H(){return H},nodes,links,blocks,dpr,intensity:0,t:0}; size();
+  }
+  function drawForge(dt,vel){ if(!forge)return; const {ctx,W,H,dpr}=forge; const I=forge.intensity; ctx.clearRect(0,0,W,H);
+    if(I<=0.001)return; forge.t+=dt*(1+Math.min(Math.abs(vel)*.01,2));
+    const nodes=forge.nodes,links=forge.links;
+    ctx.lineWidth=dpr;
+    for(const [i,j,d] of links){ const a=nodes[i],b=nodes[j]; const pulse=(Math.sin(forge.t*.001*a.sp+a.ph)+1)/2;
+      ctx.strokeStyle=`rgba(116,230,200,${(.05+pulse*.12)*I})`; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+      // paquete viajando por el enlace
+      const tt=((forge.t*.0004*a.sp)%1); const px=a.x+(b.x-a.x)*tt, py=a.y+(b.y-a.y)*tt;
+      ctx.fillStyle=`rgba(180,255,235,${.5*I})`; ctx.beginPath(); ctx.arc(px,py,1.4*dpr,0,6.28); ctx.fill();
+    }
+    for(const nd of nodes){ const pulse=(Math.sin(forge.t*.002*nd.sp+nd.ph)+1)/2;
+      ctx.fillStyle=`rgba(116,230,200,${(.4+pulse*.6)*I})`; ctx.beginPath(); ctx.arc(nd.x,nd.y,nd.r+pulse*dpr,0,6.28); ctx.fill();
+      ctx.strokeStyle=`rgba(116,230,200,${.12*I})`; ctx.beginPath(); ctx.arc(nd.x,nd.y,nd.r*3+pulse*4*dpr,0,6.28); ctx.stroke();
+    }
+    // bloques que se acuñan y ascienden por la derecha
+    if(forge.t-(forge._lb||0)>900){ forge._lb=forge.t; forge.blocks.push({y:H*.9,life:0}); if(forge.blocks.length>7)forge.blocks.shift(); }
+    const bx=W-(mobile?40*dpr:90*dpr), bw=(mobile?26:40)*dpr, bh=(mobile?14:20)*dpr;
+    forge.blocks.forEach((bl,k)=>{ bl.life+=dt; bl.y-=dt*.02*dpr; const al=Math.max(0,1-bl.life/6000)*I;
+      ctx.strokeStyle=`rgba(116,230,200,${.5*al})`; ctx.fillStyle=`rgba(47,157,134,${.12*al})`; ctx.lineWidth=dpr;
+      ctx.beginPath(); ctx.rect(bx,bl.y,bw,bh); ctx.fill(); ctx.stroke(); });
+  }
+
+  /* ---- parallax + inercia ---- */
+  function setup(){
+    captureDefault();
+    $$('.chapter.scrub').forEach(prepScrub);
+    const fc=$('canvas[data-fx="fall"]'); if(fc)prepFall(fc);
+    const gc=$('canvas[data-fx="forge"]'); if(gc)prepForge(gc);
+    buildRail();
+    addEventListener('resize',()=>{ scrubs.forEach(s=>s.size()); fall&&fall.size(); forge&&forge.size(); measure(); },{passive:true});
+    window.addEventListener('scroll',onScroll,{passive:true});
+    measure();
+  }
+
+  /* riel */
+  let stops=[];
+  function buildRail(){
+    const host=$('#stops'); const chs=$$('.chapter[data-stop]');
+    const total=chs.length;
+    chs.forEach((c,i)=>{ const el=document.createElement('div'); el.className='rail-stop'; el.style.top=(i/(total-1)*100)+'%';
+      el.innerHTML=`<span class="lbl">${c.dataset.stop}</span>`; el.onclick=()=>goto(c.id); host.appendChild(el);
+      stops.push({el,sec:c}); });
+  }
+
+  /* medición de tramos */
+  let secs=[];
+  function measure(){ secs=$$('.chapter').map(sec=>{ const r=sec.getBoundingClientRect(); const top=r.top+scrollY;
+    return {sec,top,h:sec.offsetHeight,scrub:sec.classList.contains('scrub')?scrubs.find(s=>s.sec===sec):null,
+      beats:[...sec.querySelectorAll('.beat')].map(b=>({b,in:parseFloat(b.dataset.in||'0'),out:parseFloat(b.dataset.out||'1'),flow:b.classList.contains('flow')}))}; }); }
+
+  /* loop */
+  let lastY=scrollY, vel=0, velS=0, raf=0, lastT=performance.now();
+  function onScroll(){ if(!raf)raf=requestAnimationFrame(frame); }
+  function frame(t){
+    raf=0; const dt=Math.min(48,t-lastT); lastT=t; const y=scrollY;
+    vel=y-lastY; lastY=y; velS+=(vel-velS)*.15;   // velocidad suavizada
+    const vh=innerHeight;
+
+    // progreso global -> riel
+    const docH=document.body.scrollHeight-vh; const gp=Math.max(0,Math.min(1,y/docH));
+    const rf=$('.rail-fill'); if(rf)rf.style.height=(gp*100)+'%';
+
+    let activeIdx=0;
+    secs.forEach((S,si)=>{
+      const start=S.top-vh, end=S.top+S.h; const inView=(y+vh>S.top-vh)&&(y<S.top+S.h);
+      // progreso pinned 0..1
+      let p;
+      if(S.h>vh*1.4){ p=(y-S.top)/(S.h-vh); } else { p=(y+vh-S.top)/(S.h+vh); }
+      p=Math.max(0,Math.min(1,p));
+      if(y>=S.top-vh*.5 && y<S.top+S.h-vh*.5){ activeIdx=Math.max(activeIdx,si); }
+      if(!inView)return;
+      if(S.scrub)drawScrub(S.scrub,p);
+      // beats
+      S.beats.forEach(bt=>{
+        if(bt.flow){ // reveal una vez al entrar en viewport
+          const rr=bt.b.getBoundingClientRect(); const vis=rr.top<vh*.85 && rr.bottom>0;
+          bt.b.classList.toggle('show',vis);
+        } else {
+          const on=p>=bt.in-.001 && p<=bt.out+.001; bt.b.classList.toggle('show',on);
+        }
+      });
+      // inercia: el fondo (canvas) se mece y deriva según la velocidad — da el peso físico
+      if(!rm && S.scrub){ const cw=S.sec.querySelector('.canvas-wrap'); if(cw){
+        const sway=Math.max(-14,Math.min(14,velS*.6)); const zoom=1.06+Math.min(Math.abs(velS)*.0016,.05);
+        cw.style.transform=`scale(${zoom}) translateY(${sway*-.4}px)`; } }
+    });
+
+    // FX capítulo
+    const inPro=isVisible('#prologue'); if(inPro){ drawFall(velS); tickDevalue(); }
+    const cadP=chapterProgress('cadena');
+    if(forge){ forge.intensity+= ((cadP>0&&cadP<1?1:0)-forge.intensity)*.08; drawForge(dt,velS); tickChain(cadP); }
+    // metamorfosis de color: mezcla de acento del cálido al frío a través de la cadena
+    document.documentElement.style.setProperty('--t', cadP.toFixed(3));
+
+    // riel activo
+    stops.forEach((s,i)=>{ s.el.classList.toggle('act',i===activeIdx); s.el.classList.toggle('done',i<activeIdx); });
+    pintarProgresoMovil(gp,activeIdx);
+    // cue: ocultar tras el primer scroll
+    const cue=$('#cue'); if(cue)cue.classList.toggle('hide',y>vh*.35);
+
+    const inFin=isVisible('#fin'); if(inFin)tickFormula(dt);
+    if(auto){ autoScrollStep(dt); }
+    if(Math.abs(velS)>.4 || auto || (forge&&forge.intensity>.01) || inPro || inFin){ raf=requestAnimationFrame(frame); }
+  }
+  /* Progreso en móvil: capítulo actual y cuánto falta, para que nadie se salga
+     creyendo que ya terminó. Al llegar al final felicita en vez de marcar 0%. */
+  let mpUlt=-1;
+  function pintarProgresoMovil(gp,idx){
+    const f=$('#mp-fill'); if(!f)return;
+    f.style.width=(gp*100).toFixed(1)+'%';
+    const falta=Math.max(0,Math.round((1-gp)*100));
+    const cap=$('#mp-cap'), fl=$('#mp-falta');
+    if(idx!==mpUlt && stops[idx]){ mpUlt=idx;
+      const sec=stops[idx].sec;
+      cap.textContent = lang==='es' ? sec.dataset.stop : (sec.dataset.stopEn||sec.dataset.stop); }
+    if(falta<=1) fl.innerHTML = lang==='es' ? '<b>Llegaste al final</b>' : '<b>You made it</b>';
+    else fl.innerHTML = (lang==='es'?'falta ':'') + '<b>'+falta+'%</b>' + (lang==='es'?'':' left');
+  }
+  function isVisible(sel){ const el=$(sel); if(!el)return false; const r=el.getBoundingClientRect(); return r.top<innerHeight&&r.bottom>0; }
+  function chapterProgress(id){ const S=secs.find(s=>s.sec.id===id); if(!S)return 0; const y=scrollY,vh=innerHeight;
+    if(y+vh<S.top||y>S.top+S.h)return 0; let p=(y-S.top)/(S.h-vh); return Math.max(0,Math.min(1,p)); }
+
+  /* contadores */
+  let dv=100; function tickDevalue(){ const el=$('#devalue'); if(!el)return; dv+=(Math.random()<.5?-1:-0.6); if(dv<3)dv=100;
+    el.firstChild.textContent=Math.max(3,dv).toFixed(0); }
+  /* El precio de ORIGEN respira como el mercado del oro: sube Y baja. */
+  let fxT=0; function tickFormula(dt){ const v=$('#fx-val'); if(!v)return; fxT+=dt;
+    const wave=Math.sin(fxT*.00095)*.018+Math.sin(fxT*.00041)*.011;
+    v.textContent='$'+(2.40+wave).toFixed(2);
+    const c=$('#fx-chg'); if(c){ const up=wave>=0;
+      c.textContent=(up?'+ $':'− $')+Math.abs(wave).toFixed(3);
+      c.style.color=up?'var(--signal)':'#e08585'; } }
+
+  let hgt=4200000; function tickChain(p){ if(p<=0||p>=1)return; const h=$('#height'); if(h){ hgt+=Math.random()<.06?1:0;
+    h.textContent=hgt.toLocaleString('es-ES').replace(/\./g,' '); }
+    const hr=$('#hashrow'); if(hr&&Math.random()<.15){ hr.textContent='0x'+Array.from({length:40},()=>'0123456789abcdef'[(Math.random()*16)|0]).join(''); } }
+
+  /* ---- música ambiente (loop de 60 s subido por la casa, con fundidos) ----
+     En iPhone `volume` es de solo lectura: el fundido jamás llega a cero y el
+     audio parecía no apagarse. Por eso el apagado SIEMPRE termina en pause()
+     garantizado, funcione o no el fundido. */
+  let ambTimer=null, ambStop=null;
+  function toggleSoundPref(){ soundPref=!soundPref; $('#gate-sound').classList.toggle('on',soundPref); }
+  function toggleSound(){ soundPref=!soundPref; applySound(); }
+  function applySound(){ const btn=$('#btn-sound'); btn.classList.toggle('act',soundPref);
+    const a=document.getElementById('amb'); if(!a)return;
+    clearInterval(ambTimer); clearTimeout(ambStop);
+    if(soundPref){ a.muted=false;
+      if(a.paused){ try{a.volume=0}catch(e){} a.play().catch(()=>{}); }
+      ambTimer=setInterval(()=>{ try{a.volume=Math.min(.65,a.volume+.035)}catch(e){clearInterval(ambTimer)}
+        if(a.volume>=.65)clearInterval(ambTimer); },90);
+    } else {
+      ambTimer=setInterval(()=>{ try{a.volume=Math.max(0,a.volume-.09)}catch(e){}
+        if(a.volume<=0){a.pause();clearInterval(ambTimer);} },60);
+      ambStop=setTimeout(()=>{ clearInterval(ambTimer); a.pause(); a.muted=true; },700);
+    }
+  }
+
+  /* ---- modo cine y pantalla completa ---- */
+  function toggleCinePref(){ cinePref=!cinePref; $('#gate-cine').classList.toggle('on',cinePref); }
+  function fsSupported(){ const el=document.documentElement; return !!(el.requestFullscreen||el.webkitRequestFullscreen); }
+  function toggleFS(){ const el=document.documentElement;
+    if(!document.fullscreenElement&&!document.webkitFullscreenElement){
+      (el.requestFullscreen?el.requestFullscreen():el.webkitRequestFullscreen&&el.webkitRequestFullscreen());
+    } else {
+      (document.exitFullscreen?document.exitFullscreen():document.webkitExitFullscreen&&document.webkitExitFullscreen());
+    } }
+  document.addEventListener('fullscreenchange',()=>{ const b=$('#btn-fs'); if(!b)return;
+    const on=!!document.fullscreenElement; b.classList.toggle('act',on);
+    $('#ic-fs').innerHTML=on?'<path d="M3 8h5V3M21 8h-5V3M3 16h5v5M21 16h-5v5"/>':'<path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/>'; });
+
+  /* ---- auto-play ----
+     El avance es de fracciones de píxel por cuadro y el navegador redondea a
+     cero: por eso antes se quedaba clavado en el primer capítulo. Se acumula
+     el sobrante y solo se desplaza cuando ya hay al menos un píxel entero. */
+  let autoAcc=0, userStop=null, velAct=0;
+  // En los capítulos de video la imagen se queda fija mientras el scroll
+  // avanza, así que al ritmo de lectura se hacen eternos. Ahí acelera; en las
+  // secciones que fluyen vuelve al ritmo normal. La transición es gradual
+  // para que el cambio no se sienta como un tirón.
+  const VEL_LEER=88, VEL_VIDEO=250;
+  function pintarAuto(){ $('#btn-auto').classList.toggle('act',auto);
+    $('#ic-auto').innerHTML=auto?'<rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/>':'<path d="M8 5v14l11-7z"/>'; }
+  function pararAuto(){ auto=false; autoAcc=0; velAct=0; pintarAuto(); quitarEscucha(); }
+  function quitarEscucha(){ if(!userStop)return;
+    removeEventListener('wheel',userStop); removeEventListener('touchmove',userStop);
+    removeEventListener('keydown',userStop); userStop=null; }
+  function toggleAuto(){ auto=!auto; autoAcc=0; pintarAuto();
+    if(auto){ quitarEscucha();
+      userStop=(e)=>{ if(e.type==='keydown'&&!['ArrowDown','ArrowUp','PageDown','PageUp',' '].includes(e.key))return; pararAuto(); };
+      addEventListener('wheel',userStop,{passive:true}); addEventListener('touchmove',userStop,{passive:true});
+      addEventListener('keydown',userStop);
+      if(!raf)raf=requestAnimationFrame(frame);
+    } else quitarEscucha(); }
+  /** ¿El scroll está dentro de un capítulo de video anclado? */
+  function enVideo(){ const y=scrollY, vh=innerHeight;
+    return secs.some(S=>S.scrub && y>S.top-vh*.25 && y<S.top+S.h-vh*.75); }
+  function autoScrollStep(dt){
+    const docH=Math.max(0,document.documentElement.scrollHeight-innerHeight);
+    if(scrollY>=docH-2){ pararAuto(); return; }
+    const objetivo=enVideo()?VEL_VIDEO:VEL_LEER;
+    if(!velAct)velAct=objetivo;
+    velAct+=(objetivo-velAct)*Math.min(1,dt/420);   // rampa suave
+    autoAcc+=velAct*(dt/1000);
+    if(autoAcc>=1){ const px=Math.floor(autoAcc); autoAcc-=px;
+      scrollTo(0,Math.min(docH,scrollY+px)); } }
+
+  /* ---- "Sí, yo también lo quiero": estallido dorado y a Veta Wallet ---- */
+  function quiero(e){ const btn=e.currentTarget; burst(btn);
+    setTimeout(()=>{ window.open('https://www.vetawallet.com','_blank','noopener'); },620); }
+  function burst(btn){ const r=btn.getBoundingClientRect();
+    for(let i=0;i<30;i++){ const s=document.createElement('span'); s.className='chispa';
+      const a=Math.random()*Math.PI*2, d=70+Math.random()*170;
+      s.style.left=(r.left+r.width/2)+'px'; s.style.top=(r.top+r.height/2)+'px';
+      s.style.setProperty('--dx',Math.cos(a)*d+'px'); s.style.setProperty('--dy',(Math.sin(a)*d-50)+'px');
+      document.body.appendChild(s); setTimeout(()=>s.remove(),950); } }
+
+  /* ---- navegación ---- */
+  function goto(id,e){ e&&e.preventDefault(); const el=document.getElementById(id); if(!el)return;
+    scrollTo({top:el.offsetTop+ (el.classList.contains('scrub')? innerHeight*0.2:0),behavior:'smooth'}); }
+  function toTop(e){ e&&e.preventDefault(); scrollTo({top:0,behavior:'smooth'}); }
+
+  /* ---- arranque ---- */
+  function start(l){
+    apply(l);
+    const g=$('#gate'); g.classList.add('gone'); document.body.classList.remove('locked');
+    $('#chrome').classList.add('on'); $('#rail').classList.add('on'); $('#mprog').classList.add('on');
+    if(soundPref)applySound();
+    // La pantalla completa SOLO se concede dentro del gesto que la pidió: hay
+    // que llamarla aquí mismo, no dentro de un setTimeout (ahí ya se perdió).
+    if(cinePref){ try{ toggleFS(); }catch(e){}
+      setTimeout(()=>{ if(!auto)toggleAuto(); },1600); }
+    if(!fsSupported()){ const b=$('#btn-fs'); if(b)b.style.display='none'; }
+    measure(); lastY=scrollY; if(!raf)raf=requestAnimationFrame(frame);
+    // primer render de scrubs visibles
+    requestAnimationFrame(()=>{ secs.forEach(S=>{ if(S.scrub)drawScrub(S.scrub,0); }); });
+  }
+
+  document.addEventListener('DOMContentLoaded',setup);
+  window.addEventListener('load',()=>{ scrubs.forEach(s=>{s.size();}); measure(); if(!document.body.classList.contains('locked')&&!raf)raf=requestAnimationFrame(frame); });
+
+  return { start, swap, toggleSound, toggleSoundPref, toggleCinePref, toggleAuto, toggleFS, quiero, goto, toTop };
+})();
+</script>
+</body>
+</html>
