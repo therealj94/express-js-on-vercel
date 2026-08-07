@@ -28,7 +28,7 @@ mkdir -p /tmp/ogsite/assets /tmp/ogsite/audio
 cd /tmp/ogsite
 cp <repo>/sitio-ordenglobal/index.html .
 for a in og veta veta-mark veta-icon origen origen-mark genesis-mark favicon-og; do
-  curl -sO https://www.ordenglobal.org/assets/$a.png
+  curl -so assets/$a.png https://www.ordenglobal.org/assets/$a.png
 done
 curl -so assets/genesis.ico https://www.ordenglobal.org/assets/genesis.ico
 for s in hero gold blockchain origen; do
@@ -37,32 +37,82 @@ for s in hero gold blockchain origen; do
     curl -so seq/$s/$i.jpg https://www.ordenglobal.org/seq/$s/$i.jpg
   done
 done
-python3 <repo>/sitio-ordenglobal/musica/componer.py   # deja ambiente.wav
+python3 <repo>/sitio-ordenglobal/musica/componer.py   # capas/*.wav y mezcla.wav
+python3 <repo>/sitio-ordenglobal/musica/efectos.py    # efectos/*.wav
+# a MP3: capas a 72k, efectos a 64k, la mezcla plana a 96k (ver "La musica")
 ```
 
-Al terminar tienen que ser 227 archivos y ~11 MB.
+Al terminar tienen que ser 237 archivos y ~16 MB.
 
 ## Publicar
 
 ```sh
 AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... python3 desplegar.py /tmp/ogsite
+node probar-bso.mjs                # comprueba la banda sonora en un navegador
 ```
 
 Amplify **reemplaza el manifiesto entero** en cada despliegue: lo que no va en
 la subida desaparece del sitio. Por eso el script recorre el arbol completo y
-sube los 227 archivos aunque solo haya cambiado uno. Nunca subir un archivo
+sube los 237 archivos aunque solo haya cambiado uno. Nunca subir un archivo
 suelto.
 
-Despues, el espejo: subir lo mismo a `public_html/` del servidor cPanel. El
-`.htaccess` de ahi tiene un `DirectoryIndex index.html index.php` que hace que
-la pagina nueva gane sobre el WordPress viejo. **El WordPress sigue instalado y
-no se toca** — solo queda tapado.
+El espejo del servidor viejo ya **no recibe trafico**: `www` resuelve a
+CloudFront en todos los resolutores que se probaron, y el apex (`ordenglobal.org`
+a secas, que sigue apuntando a `50.31.177.40`) solo hace el 301 hacia `www`. Su
+copia esta vieja y no importa mientras ese redirect siga en pie. El `.htaccess`
+que lo sostiene tiene tambien un `DirectoryIndex index.html index.php`; **el
+WordPress sigue instalado y no se toca**, solo queda tapado.
 
 ## La musica
 
-`musica/componer.py` sintetiza los 60 segundos de ambiente que suenan de fondo.
-Es una obra propia, no una pista con dueño: el sitio es publico y comercial, y
-una licencia ajena es un problema esperando a pasar.
+No es una pista de fondo: es una banda sonora que sigue al lector.
+
+`musica/componer.py` compone minuto y medio en mi menor a 86 pulsos por minuto
+y lo exporta en **cinco capas** del mismo compas y la misma duracion. El
+navegador las arranca todas a la vez y solo mueve sus volumenes segun el
+capitulo: en el prologo suena una, en el final las cinco. Como comparten reloj,
+entran y salen sin desfase por mas que el lector suba, baje o se detenga — que
+es la unica forma de que la musica acompañe a alguien que maneja el tiempo con
+el dedo.
+
+| capa | que es | desde donde suena |
+|---|---|---|
+| `fondo` | colchon de cuerdas y aire | siempre |
+| `pulso` | bajo y bateria | la tierra |
+| `alma` | la melodia | la boveda |
+| `senal` | campanas y datos | la cadena |
+| `cumbre` | octava alta, pedal, timbales | ORIGEN |
+
+`musica/efectos.py` hace los cinco efectos de escena — la excavadora, la puerta
+de la boveda, los bloques encajando, la moneda, la apertura final. Estan
+afinados en la misma tonalidad que la pieza, que es la diferencia entre un
+efecto pegado encima y uno que pertenece a la obra.
+
+Tres decisiones que no son obvias y conviene no deshacer:
+
+- **El limitador vive en el navegador, no en los archivos.** Grabarlo dejaria la
+  reduccion marcada en las cinco capas, y en el prologo suena el colchon solo:
+  se oiria latiendo al ritmo de una bateria que no esta sonando.
+- **72 kbps, no 56.** A 56 el codificador se queda sin bits y *inventa* dos
+  decibelios y medio de agudos que no estaban. A 72 los conserva intactos y pesa
+  un cuarto menos que 96.
+- **El filtro de retumbe se aplica sobre el largo exacto, sin relleno.** Rellenar
+  con ceros mete un escalon al final, el filtro lo vuelve repique y ese repique
+  ensucia los dos bordes que tienen que empalmar: se probo, y el salto del bucle
+  paso de 0,0001 a 0,59.
+
+La musica es obra propia y no una licencia. La referencia era *Bitter Sweet
+Symphony*, que es el caso de manual de lo que no hay que hacer: The Verve
+grabaron su propia orquesta y aun asi perdieron el cien por ciento de las
+regalias, porque lo que se protege es la melodia y no la grabacion. Se tomo lo
+que no tiene dueño — el tempo, el bucle de cuatro acordes, la orquesta sobre el
+ritmo — y la melodia se escribio aqui.
+
+`probar-bso.mjs` verifica todo eso en un navegador de verdad: que las cinco
+capas arranquen al mismo sample, que la mezcla cambie con el capitulo, que el
+filtro se abra, que los efectos suenen una sola vez, que apagar el sonido lo
+apague — y, con un analizador conectado a la salida, que de verdad salga señal.
+Eso ultimo es lo que separa "el cableado esta bien" de "se oye".
 
 Progresion en re menor (Dm - Bb - F - C), dos vueltas de cuatro acordes. El
 final se funde con el principio con tres segundos de cruce, asi que el bucle no

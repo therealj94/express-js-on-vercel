@@ -735,6 +735,9 @@ const EXPERIENCE=(()=>{
     // metamorfosis de color: mezcla de acento del cálido al frío a través de la cadena
     document.documentElement.style.setProperty('--t', cadP.toFixed(3));
 
+    // la música sigue al capítulo, y a la velocidad de la mano
+    if(secs[activeIdx])bsoEscena(secs[activeIdx].sec.id,velS);
+
     // riel activo
     stops.forEach((s,i)=>{ s.el.classList.toggle('act',i===activeIdx); s.el.classList.toggle('done',i<activeIdx); });
     pintarProgresoMovil(gp,activeIdx);
@@ -778,24 +781,160 @@ const EXPERIENCE=(()=>{
     h.textContent=hgt.toLocaleString('es-ES').replace(/\./g,' '); }
     const hr=$('#hashrow'); if(hr&&Math.random()<.15){ hr.textContent='0x'+Array.from({length:40},()=>'0123456789abcdef'[(Math.random()*16)|0]).join(''); } }
 
-  /* ---- música ambiente (loop de 60 s subido por la casa, con fundidos) ----
-     En iPhone `volume` es de solo lectura: el fundido jamás llega a cero y el
-     audio parecía no apagarse. Por eso el apagado SIEMPRE termina en pause()
-     garantizado, funcione o no el fundido. */
-  let ambTimer=null, ambStop=null;
+  /* ---- banda sonora por capas ----------------------------------------------
+     La música no es una pista de fondo: son cinco capas del mismo compás y la
+     misma duración, arrancadas en el mismo instante y mezcladas según el
+     capítulo que se está leyendo. En el prólogo suena una sola; en el final,
+     las cinco. Como comparten reloj, entran y salen sin desfase por más que el
+     lector suba, baje o se quede quieto — que es la única forma de que la
+     música acompañe a alguien que controla el tiempo con el dedo.
+
+     El filtro que se va abriendo hace tanto como las capas. Al principio la
+     música suena tapada, como desde debajo de la tierra, y para cuando aparece
+     ORIGEN está completamente destapada. Es el mismo viaje que cuenta la
+     página — metal enterrado que termina siendo señal — contado otra vez con
+     el sonido, sin que nadie tenga que darse cuenta. */
+  const BSO_DUR=89.302, BSO_VOL=.55;
+  const BSO_CAPAS=['fondo','pulso','alma','senal','cumbre'];
+  // Cada capa se guarda a su mejor nivel para no desperdiciar resolución del
+  // archivo; estos números la devuelven a su sitio dentro de la mezcla.
+  const BSO_MEZCLA={fondo:.586,pulso:1.453,alma:.580,senal:1.907,cumbre:1.381};
+  // La partitura de la página: qué suena en cada capítulo y cuánto se destapa.
+  //
+  // El colchón también crece. Si sonara igual de fuerte en el prólogo que en el
+  // final, encender las otras cuatro capas subiría el volumen apenas cinco
+  // decibelios — se midió — y eso no es un clímax, es un poco más de ruido.
+  // Empezando el prólogo bajo y tapado, el final llega casi el triple de lleno.
+  const ESCENAS={
+    prologue:  {fondo:.55, pulso:0,   alma:0,   senal:0,   cumbre:0,   corte:420},
+    tierra:    {fondo:.80, pulso:.75, alma:0,   senal:0,   cumbre:0,   corte:1100, fx:'tierra'},
+    boveda:    {fondo:.92, pulso:.72, alma:.90, senal:0,   cumbre:0,   corte:2800, fx:'boveda'},
+    cadena:    {fondo:.88, pulso:.90, alma:.60, senal:1,   cumbre:0,   corte:9000, fx:'cadena'},
+    origen:    {fondo:1,   pulso:1,   alma:1,   senal:.75, cumbre:.90, corte:15000,fx:'origen'},
+    ecosistema:{fondo:1,   pulso:.95, alma:1,   senal:.45, cumbre:.75, corte:17000},
+    fin:       {fondo:1,   pulso:1,   alma:1,   senal:.65, cumbre:1,   corte:19000,fx:'fin'}
+  };
+
+  let bso=null, bsoEsc=null, bsoDormir=null, bsoPidiendo=false;
+  function bsoIniciar(){
+    if(bso!==null) return bso;
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC){ bso=false; return false; }
+    const ctx=new AC();
+    // El limitador va aquí y no grabado en las capas: la reducción quedaría
+    // marcada en las cinco, y en el prólogo suena el colchón solo — se oiría
+    // latiendo al ritmo de una batería que no está sonando.
+    const lim=ctx.createDynamicsCompressor();
+    lim.threshold.value=-6; lim.knee.value=6; lim.ratio.value=12;
+    lim.attack.value=.004; lim.release.value=.25;
+    const maestro=ctx.createGain(); maestro.gain.value=0;
+    const filtro=ctx.createBiquadFilter(); filtro.type='lowpass';
+    filtro.frequency.value=ESCENAS.prologue.corte; filtro.Q.value=.7;
+    const efectos=ctx.createGain(); efectos.gain.value=.5;
+    filtro.connect(lim); efectos.connect(lim);   // los efectos no se filtran
+    lim.connect(maestro); maestro.connect(ctx.destination);
+    bso={ctx,filtro,maestro,efectos,gan:{},buf:{},t0:0,vivo:false,visto:{}};
+    return bso;
+  }
+
+  function bsoSumar(nombre,buffer){
+    const b=bso, g=b.ctx.createGain();
+    g.gain.value=0; g.connect(b.filtro);
+    const s=b.ctx.createBufferSource();
+    s.buffer=buffer; s.loop=true; s.loopStart=0; s.loopEnd=BSO_DUR; s.connect(g);
+    // La capa que llega tarde no empieza por el principio: entra en el punto
+    // del bucle donde van las demás. Sin esto cada una sonaría en su propio
+    // compás y la mezcla sería un amasijo.
+    const cuando=b.ctx.currentTime+.06;
+    if(!b.vivo){ b.t0=cuando; b.vivo=true; }
+    s.start(cuando, ((cuando-b.t0)%BSO_DUR+BSO_DUR)%BSO_DUR);
+    b.gan[nombre]=g; bsoEsc=null;               // que la escena se vuelva a aplicar
+    // El bucle de dibujo se detiene cuando nadie mueve la página, así que una
+    // capa que termina de cargar con el lector quieto se quedaría muda. Un
+    // cuadro más basta para que entre a su volumen.
+    onScroll();
+  }
+
+  function bsoTraer(ruta,alLlegar){
+    const b=bso;
+    return fetch(ruta).then(r=>r.arrayBuffer())
+      .then(a=>new Promise((ok,mal)=>{ const p=b.ctx.decodeAudioData(a,ok,mal); if(p&&p.then)p.then(ok,mal); }))
+      .then(alLlegar).catch(()=>{});
+  }
+
+  function bsoCargar(){
+    const b=bso; if(!b||bsoPidiendo)return; bsoPidiendo=true;
+    // El colchón primero y solo: es lo único que suena en el prólogo, así que
+    // en cuanto llega ya hay música. Lo demás viene detrás mientras se lee, y
+    // nada se descarga si el lector nunca enciende el sonido.
+    bsoTraer('audio/capa-fondo.mp3',buf=>{ b.buf.fondo=buf; bsoSumar('fondo',buf); })
+      .then(()=>Promise.all(BSO_CAPAS.slice(1).map(c=>
+        bsoTraer('audio/capa-'+c+'.mp3',buf=>{ b.buf[c]=buf; bsoSumar(c,buf); }))))
+      .then(()=>Promise.all(['tierra','boveda','cadena','origen','fin'].map(f=>
+        bsoTraer('audio/fx-'+f+'.mp3',buf=>{ b.buf['fx-'+f]=buf; }))));
+  }
+
+  /* Los efectos de escena suenan una vez al entrar en el capítulo, por debajo
+     de la música: la excavadora, la puerta de la bóveda, los bloques encajando,
+     la moneda. Están afinados en la misma tonalidad que la pieza, que es la
+     diferencia entre un efecto pegado encima y uno que pertenece a la obra. */
+  function bsoEfecto(nombre){
+    const b=bso, buf=b.buf['fx-'+nombre]; if(!buf)return;
+    const t=b.ctx.currentTime;
+    // Quien vuelva sobre sus pasos merece volver a oírlo, pero no cada vez que
+    // el dedo cruza la frontera entre dos capítulos.
+    if(b.visto[nombre]&&t-b.visto[nombre]<25)return;
+    b.visto[nombre]=t;
+    const s=b.ctx.createBufferSource(); s.buffer=buf; s.connect(b.efectos); s.start();
+  }
+
+  function bsoEscena(id,vel){
+    const b=bso; if(!b||!b.vivo||b.ctx.state!=='running')return;
+    const e=ESCENAS[id]; if(!e)return;
+    const t=b.ctx.currentTime;
+    BSO_CAPAS.forEach(c=>{ const g=b.gan[c]; if(!g)return;
+      g.gain.setTargetAtTime((e[c]||0)*BSO_MEZCLA[c],t,.7); });
+    // Al moverse rápido la música se destapa un poco. Es sutil a propósito: el
+    // sonido responde al gesto de la mano en vez de ignorarlo.
+    b.filtro.frequency.setTargetAtTime(
+      Math.min(19000,e.corte*(1+Math.min(.30,Math.abs(vel)*.004))),t,.8);
+    if(id!==bsoEsc){ bsoEsc=id; if(e.fx)bsoEfecto(e.fx); }
+  }
+
   function toggleSoundPref(){ soundPref=!soundPref; $('#gate-sound').classList.toggle('on',soundPref); }
   function toggleSound(){ soundPref=!soundPref; applySound(); }
-  function applySound(){ const btn=$('#btn-sound'); btn.classList.toggle('act',soundPref);
-    const a=document.getElementById('amb'); if(!a)return;
-    clearInterval(ambTimer); clearTimeout(ambStop);
-    if(soundPref){ a.muted=false;
-      if(a.paused){ try{a.volume=0}catch(e){} a.play().catch(()=>{}); }
-      ambTimer=setInterval(()=>{ try{a.volume=Math.min(.65,a.volume+.035)}catch(e){clearInterval(ambTimer)}
-        if(a.volume>=.65)clearInterval(ambTimer); },90);
+  function applySound(){
+    const btn=$('#btn-sound'); if(btn)btn.classList.toggle('act',soundPref);
+    const b=bsoIniciar();
+    if(!b) return sonidoSimple();
+    clearTimeout(bsoDormir);
+    if(soundPref){
+      b.ctx.resume().catch(()=>{});
+      b.maestro.gain.setTargetAtTime(BSO_VOL,b.ctx.currentTime,.5);
+      bsoCargar();
     } else {
-      ambTimer=setInterval(()=>{ try{a.volume=Math.max(0,a.volume-.09)}catch(e){}
-        if(a.volume<=0){a.pause();clearInterval(ambTimer);} },60);
-      ambStop=setTimeout(()=>{ clearInterval(ambTimer); a.pause(); a.muted=true; },700);
+      b.maestro.gain.setTargetAtTime(0,b.ctx.currentTime,.25);
+      // El apagado tiene que ser seguro. La vez pasada el fundido se quedaba a
+      // medias en iPhone y el sonido no se iba nunca; ahora, pase lo que pase
+      // con la rampa, un segundo después el contexto queda suspendido y ya no
+      // suena nada.
+      bsoDormir=setTimeout(()=>{ if(!soundPref)b.ctx.suspend().catch(()=>{}); },900);
+    }
+  }
+
+  /* Respaldo para el navegador sin audio programable: la mezcla ya hecha, sin
+     capas ni escenas. Se pierde el juego, no la música. */
+  let simpleTimer=null;
+  function sonidoSimple(){
+    const a=document.getElementById('amb'); if(!a)return;
+    clearInterval(simpleTimer);
+    if(soundPref){ a.muted=false; if(a.paused){ try{a.volume=0}catch(e){} a.play().catch(()=>{}); }
+      simpleTimer=setInterval(()=>{ try{a.volume=Math.min(.6,a.volume+.03)}catch(e){clearInterval(simpleTimer)}
+        if(a.volume>=.6)clearInterval(simpleTimer); },90);
+    } else {
+      simpleTimer=setInterval(()=>{ try{a.volume=Math.max(0,a.volume-.09)}catch(e){}
+        if(a.volume<=0){a.pause();clearInterval(simpleTimer);} },60);
+      setTimeout(()=>{ clearInterval(simpleTimer); a.pause(); a.muted=true; },700);
     }
   }
 
@@ -882,7 +1021,12 @@ const EXPERIENCE=(()=>{
   document.addEventListener('DOMContentLoaded',setup);
   window.addEventListener('load',()=>{ scrubs.forEach(s=>{s.size();}); measure(); if(!document.body.classList.contains('locked')&&!raf)raf=requestAnimationFrame(frame); });
 
-  return { start, swap, toggleSound, toggleSoundPref, toggleCinePref, toggleAuto, toggleFS, quiero, goto, toTop };
+  // `sonido` no lo usa la página: es una ventana para mirar qué está haciendo
+  // la banda sonora — qué capas suenan, a qué volumen, dónde está el filtro.
+  // Con eso se puede comprobar la mezcla desde fuera, que es la única forma de
+  // verificar audio sin oírlo.
+  return { start, swap, toggleSound, toggleSoundPref, toggleCinePref, toggleAuto,
+           toggleFS, quiero, goto, toTop, sonido:()=>bso };
 })();
 </script>
 </body>
