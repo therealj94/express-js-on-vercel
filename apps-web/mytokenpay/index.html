@@ -1,0 +1,294 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MyTokenPay · Pagá con ORIGEN donde quieras</title>
+<meta name="description" content="MyTokenPay: el directorio de comercios que aceptan ORIGEN. Pagá con tu Veta Wallet, ganá puntos y verificá tu identidad una sola vez con Genesis ID.">
+<meta name="theme-color" content="#0A0812">
+<link rel="icon" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/icon.png">
+<meta property="og:title" content="MyTokenPay">
+<meta property="og:description" content="La capa de comercio del Sistema Financiero Social.">
+<meta property="og:image" content="assets/mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   MyTokenPay · web
+
+   Es un directorio de negocios que aceptan ORIGEN, y un negocio de barrio se
+   reconoce de noche por su rótulo encendido. De ahí sale todo el diseño: cada
+   comercio es un rótulo, su categoría le da el color del neón, y el que está
+   abierto ahora tiene la luz prendida. La lista se lee como una calle.
+
+   La paleta y las tipografias vienen de la aplicacion del telefono, sin
+   retocar: violeta casi negro, magenta, azul y cian, con Bricolage Grotesque
+   para los titulares e Instrument Sans para el texto.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  --noche:#0A0812; --tinta:#100C1B; --sup:#171224; --supHi:#211A33; --borde:#2C2444;
+  --niebla:#9D91B8; --niebla2:#6C6089; --claro:#F5F2FA;
+  --violeta:#C266F5; --azul:#4C6EF0; --cian:#4FF0FF;
+  --ok:#34D399; --alerta:#FBBF24; --malo:#FB7185;
+  --disp:'Bricolage Grotesque',system-ui,sans-serif;
+  --sans:'Instrument Sans',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --r:14px; --r2:20px; --r3:28px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--noche);color:var(--claro);font-family:var(--sans);min-height:100svh;
+  overflow-x:hidden;-webkit-font-smoothing:antialiased;
+  background-image:
+    radial-gradient(100% 70% at 85% -5%, rgba(194,102,245,.16), transparent 62%),
+    radial-gradient(90% 60% at 5% 100%, rgba(79,240,255,.09), transparent 60%);
+  background-attachment:fixed}
+button,input,select{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--cian);outline-offset:3px;border-radius:8px}
+.oculto{display:none!important}
+.mono{font-family:var(--mono);font-variant-ligatures:none}
+h1,h2,h3,.disp{font-family:var(--disp);font-weight:600;letter-spacing:-.02em}
+
+/* ── el rótulo: la firma de la casa ──────────────────────────────────────────
+   Un tubo de neón es un trazo de color con halo. Aquí es un borde de 1px, un
+   resplandor por fuera y otro por dentro, con el color de la categoría. */
+.rotulo{position:relative;display:block;width:100%;text-align:left;
+  background:var(--sup);border:1px solid var(--borde);border-radius:var(--r2);
+  padding:18px;transition:transform .22s cubic-bezier(.2,.8,.3,1),border-color .22s,box-shadow .22s}
+.rotulo::before{content:"";position:absolute;left:18px;right:18px;top:-1px;height:2px;border-radius:2px;
+  background:var(--neon,var(--violeta));box-shadow:0 0 14px 1px var(--neon,var(--violeta));opacity:.85}
+.rotulo:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--neon,var(--violeta)) 45%,var(--borde));
+  box-shadow:0 18px 46px -22px var(--neon,var(--violeta))}
+.rotulo.apagado::before{opacity:.22;box-shadow:none}
+.rotulo.apagado{opacity:.72}
+
+/* ── bienvenida ─────────────────────────────────────────────────────────── */
+#bienvenida{position:relative;min-height:100svh;display:grid;place-items:center;padding:clamp(22px,5vw,56px)}
+.bv{max-width:min(94vw,660px);text-align:center;animation:sube .9s .1s cubic-bezier(.2,.8,.3,1) both}
+@keyframes sube{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+.logo{display:block;width:74px;height:74px;margin:0 auto 22px;border-radius:20px;
+  box-shadow:0 18px 50px -20px rgba(194,102,245,.7)}
+.bv h1{font-size:clamp(31px,7vw,54px);line-height:1.04;font-weight:800}
+.bv h1 span{background:linear-gradient(100deg,var(--violeta),var(--azul) 48%,var(--cian));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.bv .lema{margin-top:9px;font-size:12px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--niebla2)}
+.bv p{margin-top:20px;color:var(--niebla);font-size:16px;line-height:1.65;max-width:46ch;margin-inline:auto}
+.bv-btns{margin-top:32px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.cifras{margin-top:42px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:440px;margin-inline:auto}
+.cifra{padding:16px 10px;background:var(--sup);border:1px solid var(--borde);border-radius:var(--r)}
+.cifra b{display:block;font-family:var(--disp);font-size:26px;font-weight:800;
+  background:linear-gradient(100deg,var(--violeta),var(--cian));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.cifra small{display:block;margin-top:4px;font-size:11.5px;color:var(--niebla2);font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+
+/* ── botones ─────────────────────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:14px 28px;
+  border-radius:100px;font-weight:700;font-size:15px;transition:transform .2s,box-shadow .2s,background .2s,border-color .2s;white-space:nowrap}
+.btn:active{transform:scale(.975)}
+.btn-neon{color:#12081A;background:linear-gradient(100deg,var(--violeta),var(--azul) 52%,var(--cian));
+  box-shadow:0 14px 38px -16px rgba(148,120,255,.85)}
+.btn-neon:hover{transform:translateY(-2px);box-shadow:0 20px 50px -16px rgba(148,120,255,1)}
+.btn-linea{border:1px solid var(--borde);color:var(--claro);background:rgba(255,255,255,.03)}
+.btn-linea:hover{border-color:var(--violeta);background:rgba(194,102,245,.09);transform:translateY(-2px)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+.btn-full{width:100%} .btn-sm{padding:10px 18px;font-size:13.5px}
+
+/* ── acceso ──────────────────────────────────────────────────────────────── */
+#acceso{min-height:100svh;display:grid;place-items:center;padding:clamp(20px,5vw,48px)}
+.acc{width:min(94vw,420px);background:var(--sup);border:1px solid var(--borde);border-radius:var(--r3);padding:clamp(24px,5vw,34px)}
+.acc-top{text-align:center;margin-bottom:24px}
+.acc-top img{width:52px;height:52px;border-radius:15px;margin-bottom:14px}
+.acc-top h2{font-size:23px;font-weight:800}
+.acc-top p{margin-top:6px;font-size:13.5px;color:var(--niebla)}
+.seg{display:flex;gap:4px;padding:4px;background:var(--noche);border:1px solid var(--borde);border-radius:100px;margin-bottom:22px}
+.seg button{flex:1;padding:10px;border-radius:100px;font-size:14px;font-weight:600;color:var(--niebla);transition:.2s}
+.seg button[aria-selected=true]{background:linear-gradient(100deg,var(--violeta),var(--azul));color:#fff}
+.campo{margin-bottom:14px}
+.campo label{display:block;font-size:12px;color:var(--niebla);margin-bottom:6px;font-weight:600}
+.campo input,.campo select{width:100%;padding:13px 14px;background:var(--noche);border:1px solid var(--borde);
+  border-radius:var(--r);font-size:15.5px;color:var(--claro);transition:border-color .2s,box-shadow .2s}
+.campo input::placeholder{color:var(--niebla2)}
+.campo input:focus,.campo select:focus{outline:none;border-color:var(--violeta);box-shadow:0 0 0 3px rgba(194,102,245,.16)}
+.aviso{margin:2px 0 14px;padding:11px 13px;border-radius:var(--r);font-size:13.5px;line-height:1.5}
+.aviso-mal{background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.34);color:#FFC9D2}
+.aviso-ok{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);color:#B6F0DA}
+.acc-volver{display:block;margin:18px auto 0;font-size:13px;color:var(--niebla2)}
+.acc-volver:hover{color:var(--cian)}
+
+/* ── armazón ─────────────────────────────────────────────────────────────── */
+#app{min-height:100svh;padding-bottom:96px}
+.barra{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;
+  padding:14px clamp(16px,4vw,28px);background:rgba(10,8,18,.9);border-bottom:1px solid var(--borde);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.barra img{width:30px;height:30px;border-radius:9px}
+.barra .nom{font-family:var(--disp);font-weight:800;font-size:17px;letter-spacing:-.02em}
+.barra .der{margin-left:auto;display:flex;align-items:center;gap:10px}
+.lienzo{max-width:960px;margin:0 auto;padding:clamp(18px,3vw,30px) clamp(16px,4vw,28px)}
+.cab{margin-bottom:22px}
+.cab h2{font-size:clamp(24px,4.4vw,32px);font-weight:800}
+.cab .sub{margin-top:5px;font-size:13.5px;color:var(--niebla)}
+
+/* ── el saldo ────────────────────────────────────────────────────────────── */
+.saldo{padding:24px;border-radius:var(--r3);position:relative;overflow:hidden;
+  background:linear-gradient(150deg,rgba(194,102,245,.2),rgba(76,110,240,.14) 46%,rgba(79,240,255,.1));
+  border:1px solid rgba(194,102,245,.28)}
+.saldo-lbl{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--niebla)}
+.saldo-cifra{margin-top:10px;font-family:var(--disp);font-weight:800;font-size:clamp(38px,8vw,56px);line-height:1;letter-spacing:-.03em}
+.saldo-cifra span{font-size:.36em;font-weight:600;color:var(--cian);margin-left:8px;letter-spacing:.06em}
+.saldo-fiat{margin-top:8px;font-size:14.5px;color:var(--niebla)}
+
+/* ── bloques y listas ────────────────────────────────────────────────────── */
+.bloque{margin-top:20px;padding:20px;background:var(--sup);border:1px solid var(--borde);border-radius:var(--r2)}
+.bloque h3{font-size:16px;font-weight:700}
+.bloque .pie{margin-top:7px;font-size:13.5px;color:var(--niebla);line-height:1.6}
+.rejilla{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));margin-top:16px}
+.r-top{display:flex;align-items:flex-start;gap:12px}
+.r-ini{width:44px;height:44px;flex:0 0 auto;border-radius:13px;display:grid;place-items:center;
+  font-family:var(--disp);font-weight:800;font-size:17px;color:#12081A;
+  background:linear-gradient(140deg,var(--neon,var(--violeta)),color-mix(in srgb,var(--neon,var(--violeta)) 40%,#fff))}
+.r-nom{font-family:var(--disp);font-weight:700;font-size:16px;letter-spacing:-.01em}
+.r-cat{margin-top:3px;font-size:12px;color:var(--niebla2);font-weight:600}
+.r-desc{margin-top:11px;font-size:13.5px;color:var(--niebla);line-height:1.55;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.r-pie{margin-top:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--niebla2)}
+.chapa{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:100px;font-size:11.5px;font-weight:700}
+.ch-ok{background:rgba(52,211,153,.13);color:var(--ok)}
+.ch-rev{background:rgba(251,191,36,.13);color:var(--alerta)}
+.filtros{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-top:4px;scrollbar-width:none}
+.filtros::-webkit-scrollbar{display:none}
+.pastilla{padding:8px 15px;border-radius:100px;border:1px solid var(--borde);background:var(--sup);
+  font-size:13px;font-weight:600;color:var(--niebla);white-space:nowrap;transition:.18s}
+.pastilla[aria-pressed=true]{border-color:var(--violeta);background:rgba(194,102,245,.14);color:var(--claro)}
+.pastilla:hover{color:var(--claro)}
+.buscar{width:100%;padding:13px 15px;background:var(--sup);border:1px solid var(--borde);
+  border-radius:100px;font-size:15px;color:var(--claro);margin-bottom:14px}
+.buscar:focus{outline:none;border-color:var(--violeta)}
+.vacio{padding:34px 18px;text-align:center;color:var(--niebla2);font-size:14px;line-height:1.7}
+.vacio b{display:block;color:var(--niebla);font-size:15px;margin-bottom:6px;font-weight:700}
+.hilera{display:flex;align-items:center;gap:13px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.hilera:last-child{border-bottom:0}
+.hilera .txt{flex:1;min-width:0}
+.hilera .txt b{display:block;font-size:14.5px;font-weight:600}
+.hilera .txt small{display:block;font-size:12.5px;color:var(--niebla2);margin-top:2px}
+.hilera .val{font-family:var(--mono);font-size:14px;white-space:nowrap}
+
+/* ── el cobro ────────────────────────────────────────────────────────────── */
+.qr-caja{margin:18px auto 0;width:min(72vw,240px);padding:14px;background:#fff;border-radius:18px}
+.qr-caja svg{display:block;width:100%;height:auto;aspect-ratio:1;border-radius:6px}
+.monto-grande{font-family:var(--disp);font-weight:800;font-size:clamp(40px,10vw,64px);letter-spacing:-.03em;text-align:center}
+.monto-grande span{font-size:.34em;color:var(--cian);margin-left:8px}
+.tecla{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:20px}
+.tecla button{padding:17px 0;border-radius:var(--r);background:var(--supHi);border:1px solid var(--borde);
+  font-family:var(--disp);font-size:20px;font-weight:600;transition:.15s}
+.tecla button:hover{border-color:var(--violeta);background:rgba(194,102,245,.12)}
+.tecla button:active{transform:scale(.96)}
+
+/* ── pestañas ────────────────────────────────────────────────────────────── */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(4,1fr);
+  padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+  background:rgba(10,8,18,.94);border-top:1px solid var(--borde);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.tabs button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px;
+  border-radius:12px;font-size:10.5px;font-weight:700;color:var(--niebla2);transition:.18s}
+.tabs button svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabs button[aria-current=page]{color:var(--cian)}
+.tabs button:hover{color:var(--claro)}
+
+/* ── avisos ──────────────────────────────────────────────────────────────── */
+#tostada{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translate(-50%,180%);
+  z-index:60;padding:12px 20px;border-radius:100px;background:var(--supHi);border:1px solid var(--borde);
+  font-size:14px;font-weight:600;transition:transform .36s cubic-bezier(.2,.9,.3,1);max-width:90vw;text-align:center}
+#tostada.ver{transform:translate(-50%,0)}
+.girando{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.25);
+  border-top-color:currentColor;border-radius:50%;animation:gira .7s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+
+/* ── ficha del comercio ──────────────────────────────────────────────────── */
+.ficha-top{padding:24px;border-radius:var(--r3);border:1px solid var(--borde);background:var(--sup);position:relative;overflow:hidden}
+.ficha-top::before{content:"";position:absolute;inset:0 0 auto;height:3px;
+  background:var(--neon,var(--violeta));box-shadow:0 0 22px 2px var(--neon,var(--violeta))}
+.ficha-top h2{font-size:clamp(24px,5vw,32px);font-weight:800;margin-top:6px}
+.lista-p{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+.lista-p span{padding:6px 12px;border-radius:100px;background:var(--supHi);border:1px solid var(--borde);font-size:12.5px;color:var(--niebla)}
+
+@media (min-width:861px){
+  .tabs{position:sticky;bottom:auto;top:0;grid-template-columns:none;display:flex;justify-content:center;gap:6px;
+    border-top:0;border-bottom:1px solid var(--borde);padding:10px}
+  .tabs button{flex-direction:row;gap:8px;font-size:14px;padding:9px 18px}
+  .tabs button svg{width:18px;height:18px}
+  #app{padding-bottom:20px}
+  #tostada{bottom:26px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+</style>
+
+<!-- ══════════════════════════ BIENVENIDA ══════════════════════════════════ -->
+<section id="bienvenida">
+  <div class="bv">
+    <img class="logo" src="assets/mark.png" alt="MyTokenPay">
+    <h1>Pagá con <span>ORIGEN</span><br>donde ya te conocen.</h1>
+    <div class="lema">Capa de comercio · Sistema Financiero Social</div>
+    <p>El directorio de negocios que aceptan oro digital. Encontralos, pagá desde tu Veta Wallet y ganá puntos en cada compra.</p>
+    <div class="bv-btns">
+      <button class="btn btn-neon" onclick="MTP.ir('acceso','crear')">Crear mi cuenta</button>
+      <button class="btn btn-linea" onclick="MTP.entrarComoInvitado()">Ver los comercios</button>
+    </div>
+    <div class="cifras" id="bv-cifras"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ ACCESO ══════════════════════════════════════ -->
+<section id="acceso" class="oculto">
+  <div class="acc">
+    <div class="acc-top">
+      <img src="assets/mark.png" alt="">
+      <h2 id="acc-tit">Creá tu cuenta</h2>
+      <p id="acc-sub">Gratis. Con Genesis ID quedás verificado en todo el ecosistema.</p>
+    </div>
+    <div class="seg" role="tablist">
+      <button role="tab" id="tab-entrar" aria-selected="false" onclick="MTP.pestana('entrar')">Entrar</button>
+      <button role="tab" id="tab-crear" aria-selected="true" onclick="MTP.pestana('crear')">Crear cuenta</button>
+    </div>
+    <form id="form-acceso">
+      <div class="campo" id="campo-nombre">
+        <label for="i-nombre">Nombre completo</label>
+        <input id="i-nombre" autocomplete="name" placeholder="Como aparece en tu documento">
+      </div>
+      <div class="campo">
+        <label for="i-correo">Correo</label>
+        <input id="i-correo" type="email" autocomplete="email" inputmode="email" placeholder="tu@correo.com" required>
+      </div>
+      <div class="campo">
+        <label for="i-clave">Contraseña</label>
+        <input id="i-clave" type="password" autocomplete="current-password" placeholder="••••••••" required>
+      </div>
+      <div id="acc-aviso" class="aviso oculto" role="alert"></div>
+      <button class="btn btn-neon btn-full" id="btn-acceso" type="submit">Crear mi cuenta</button>
+    </form>
+    <button class="acc-volver" onclick="MTP.ir('bienvenida')">Volver</button>
+  </div>
+</section>
+
+<!-- ══════════════════════════ APLICACIÓN ══════════════════════════════════ -->
+<main id="app" class="oculto">
+  <header class="barra">
+    <img src="assets/mark.png" alt=""><span class="nom">MyTokenPay</span>
+    <div class="der" id="barra-der"></div>
+  </header>
+  <nav class="tabs" aria-label="Secciones">
+    <button data-vista="inicio" aria-current="page" onclick="MTP.vista('inicio')"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H3z"/></svg>Inicio</button>
+    <button data-vista="explorar" onclick="MTP.vista('explorar')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Explorar</button>
+    <button data-vista="pagar" onclick="MTP.vista('pagar')"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/></svg>Pagar</button>
+    <button data-vista="cuenta" onclick="MTP.vista('cuenta')"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg>Mi cuenta</button>
+  </nav>
+  <div class="lienzo" id="lienzo"></div>
+</main>
+
+<div id="tostada" role="status" aria-live="polite"></div>
+
+<script src="qr.js"></script>
+<script src="datos.js"></script>
+<script src="app.js"></script>
