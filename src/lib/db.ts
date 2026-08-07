@@ -148,6 +148,11 @@ export const db = {
     return list[0]
   },
 
+  /** Todos los usuarios. Solo se usa para contar el padrón, no para servirlos. */
+  async listUsers(): Promise<User[]> {
+    return usuarios.varios()
+  },
+
   async listCompanies(filter: {
     country?: string
     city?: string

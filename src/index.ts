@@ -61,6 +61,36 @@ telemetria.iniciar({
 })
 app.use(telemetria.express())
 
+// ─────────────────────────────────────────────────────────────────────────────
+// El padrón: cuánta gente hay registrada de verdad.
+//
+// La telemetría solo ve a quien abre la app después de encenderla, así que sin
+// esto el panel enseñaría una fracción de la base y parecería que MyTokenPay
+// casi no tiene usuarios. Se manda al arrancar y cada seis horas — no cambia
+// tan rápido como para justificar más.
+// ─────────────────────────────────────────────────────────────────────────────
+async function declararPadron(): Promise<void> {
+  try {
+    const usuarios = await db.listUsers()
+    const negocios = await db.listCompanies({})
+    await fetch(`${(process.env.GENESIS_URL || 'https://genesis-id.onrender.com').replace(/\/$/, '')}/api/v1/telemetria/censo`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': (process.env.GENESIS_TELEMETRIA_KEY || process.env.GENESIS_API_KEY || '').trim(),
+      },
+      body: JSON.stringify({
+        registrados: usuarios.length,
+        negocios: negocios.length,
+        extra: { negociosVerificados: negocios.filter((n) => n.verified).length },
+      }),
+    })
+  } catch {
+    // Si Genesis ID no responde, el padrón se manda en el próximo intento. No
+    // vale la pena ni registrar el fallo: es una métrica, no una venta.
+  }
+}
+
 /**
  * El panel de administración, servido por el mismo backend.
  *
@@ -93,6 +123,11 @@ app.use('/api', metaRouter)
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Ruta no encontrada' })
 })
+
+// Al arrancar y cada seis horas. `unref` para que no impida que el proceso
+// termine cuando Heroku recicla el dyno.
+setTimeout(declararPadron, 8000).unref?.()
+setInterval(declararPadron, 6 * 3600 * 1000).unref?.()
 
 // Reporta al panel cualquier excepción que llegue hasta aquí, y la deja seguir
 // su curso hacia el manejador de errores de siempre.
