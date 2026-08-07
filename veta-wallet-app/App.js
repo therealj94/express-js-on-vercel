@@ -152,6 +152,9 @@ function Root() {
   //   recibida por link o QR. Se abre Enviar con los campos rellenos.
   const accountRef = useRef(account);
   accountRef.current = account;
+  /** Enlace que llego antes de que hubiera sesion. Se atiende al iniciarla. */
+  const pendienteRef = useRef(null);
+  const handleRef = useRef(null);
   useEffect(() => {
     const parsePayLink = (url) => {
       // Formato esperado: vetawallet://pay?to=0x...&amount=X&sym=ORIGEN&memo=...
@@ -229,11 +232,33 @@ function Root() {
       setDir(1);
       setStack([{ r: 'home' }, { r: 'kyc' }]);
     };
-    const sub = Linking.addEventListener('url', (e) => handle(e.url));
-    Linking.getInitialURL().then(handle).catch(() => {});
+    // Con la app CERRADA, el enlace llega antes de que la sesion termine de
+    // cargar: `accountRef.current` todavia es null y el pago se descartaba en
+    // silencio — habia que rehacerlo entero. Ahora el enlace se guarda y se
+    // atiende en cuanto hay cuenta.
+    handleRef.current = handle;
+
+    const conSesion = async (url) => {
+      if (!url) return;
+      if (accountRef.current) return handle(url);
+      pendienteRef.current = url;
+    };
+
+    const sub = Linking.addEventListener('url', (e) => conSesion(e.url));
+    Linking.getInitialURL().then(conSesion).catch(() => {});
     return () => sub.remove();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Cuando la sesion queda lista, se atiende el enlace que habia quedado
+  // esperando. Sin esto, abrir un cobro con la wallet cerrada no hacia nada.
+  useEffect(() => {
+    if (!account) return;
+    const url = pendienteRef.current;
+    if (!url || !handleRef.current) return;
+    pendienteRef.current = null;
+    handleRef.current(url);
+  }, [account]);
 
   const go = useCallback((r, params) => {
     if (TAB_ROUTES.includes(r)) { setDir(1); setStack([{ r, params }]); }
