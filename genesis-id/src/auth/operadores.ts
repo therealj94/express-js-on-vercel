@@ -27,7 +27,7 @@ export const PERMISOS: Record<Rol, string[]> = {
     'negocio.ver', 'negocio.revisar', 'negocio.aprobar', 'negocio.rechazar',
     'caso.ver', 'caso.gestionar', 'caso.reportar',
     'listas.ver', 'listas.recargar', 'bitacora.ver',
-    'analitica.ver', 'analitica.gestionar',
+    'analitica.ver', 'analitica.gestionar', 'usuarios.ver',
   ],
   // Revisor: prepara el caso y recomienda, pero no firma la aprobación.
   revisor: [

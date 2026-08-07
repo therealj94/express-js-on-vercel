@@ -186,6 +186,7 @@ const PESTANAS = [
   ['usuarios',  'Usuarios'],
   ['paises',    'Países'],
   ['embudo',    'Verificación'],
+  ['usuarios2', 'Directorio'],
   ['errores',   'Errores'],
   ['seguridad', 'Seguridad'],
   ['salud',     'Salud'],
@@ -458,6 +459,12 @@ async function traer(forzar) {
   } else if (pestana === 'errores') {
     const app = document.getElementById('filtroApp').value;
     Object.assign(r, await p('/errores?limite=200' + (app !== 'todas' ? '&app=' + encodeURIComponent(app) : '')));
+  } else if (pestana === 'usuarios2') {
+    const q = new URLSearchParams(filtrosDir()).toString();
+    const [rr, ll] = await Promise.all([
+      api('/panel/directorio/resumen'), api('/panel/directorio?' + q),
+    ]);
+    Object.assign(r, { resumenDir: rr, lista: ll });
   } else if (pestana === 'seguridad') {
     Object.assign(r, await p('/seguridad'));
   } else if (pestana === 'salud') {
@@ -478,7 +485,7 @@ async function pintar(forzar) {
     lienzo.innerHTML = ({
       resumen: vistaResumen, apps: vistaApps, usuarios: vistaUsuarios,
       paises: vistaPaises, embudo: vistaEmbudo, errores: vistaErrores,
-      seguridad: vistaSeguridad, salud: vistaSalud,
+      seguridad: vistaSeguridad, salud: vistaSalud, usuarios2: vistaDirectorio,
     })[pestana](d);
   } catch (e) {
     lienzo.innerHTML = `<div class="err">${esc(e.message)}</div>`;
@@ -762,6 +769,130 @@ function vistaErrores(d) {
   se encontró el usuario a3f9…» y «…b7c1…» son el mismo fallo y cuentan como uno
   visto dos veces. Un error dado por resuelto que reaparece en una versión
   posterior se marca <b>reabierto</b> solo.</p>`;
+}
+
+
+/* ── Directorio de usuarios ─────────────────────────────────────────────── */
+
+let dirFiltros = { texto: '', app: 'todas', conWallet: '', conGid: '', conSaldo: '', inactivosDias: '', orden: 'ultimoAcceso' };
+function filtrosDir() {
+  const f = {};
+  for (const [k, v] of Object.entries(dirFiltros)) if (v !== '' && v !== 'todas') f[k] = v;
+  f.limite = 150;
+  return f;
+}
+function ponFiltro(k, v) { dirFiltros[k] = v; datos = {}; pintar(); }
+
+function vistaDirectorio(d) {
+  const R = d.resumenDir, L = d.lista;
+  if (!R.total) {
+    return vacio('El directorio está vacío',
+      'Cada app sincroniza su padrón con POST /api/v1/directorio/sincronizar. Veta Wallet y MyTokenPay lo hacen solas cada seis horas.');
+  }
+  const saldos = Object.entries(R.saldos || {}).filter(([, n]) => n > 0)
+    .map(([m, n]) => `${n.toLocaleString('es', { maximumFractionDigits: 4 })} ${esc(m)}`).join(' · ') || '—';
+
+  const sel = (k, opciones) => `<select onchange="ponFiltro('${k}', this.value)" style="width:auto;padding:6px 9px;font-size:12.5px">
+    ${opciones.map(([v, t]) => `<option value="${v}" ${dirFiltros[k] === v ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+
+  return `
+  <div class="kpis">
+    ${kpi('Personas en el directorio', corto(R.total), 'g',
+      `<div class="d">${R.enVariasApps} en las dos apps</div>`)}
+    ${kpi('Con billetera', corto(R.conWallet), 'c',
+      `<div class="d">${Math.round(R.conWallet / R.total * 100)} % del total</div>`)}
+    ${kpi('Con saldo', corto(R.conSaldo), 'o', `<div class="d">${esc(saldos)}</div>`)}
+    ${kpi('Verificadas en Genesis', corto(R.conGid), 'v',
+      `<div class="d">faltan ${corto(R.sinGid)}</div>`)}
+    ${kpi('Activas 30 días', corto(R.activos30), '')}
+    ${kpi('Dormidas +90 días', corto(R.dormidos90), R.dormidos90 > R.total / 2 ? 'b' : 'w')}
+  </div>
+
+  <div class="tarjeta p" style="margin-bottom:14px">
+    <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
+      <input placeholder="Buscar por correo, nombre, billetera, GID o teléfono…"
+        value="${esc(dirFiltros.texto)}" style="flex:1;min-width:240px"
+        onchange="ponFiltro('texto', this.value)">
+      ${sel('app', [['todas', 'Todas las apps'], ...R.porApp.map((a) => [a.clave, `${a.clave} (${a.n})`])])}
+      ${sel('conWallet', [['', 'Billetera: todas'], ['1', 'Con billetera'], ['0', 'Sin billetera']])}
+      ${sel('conGid', [['', 'Genesis: todos'], ['1', 'Verificados'], ['0', 'Sin verificar']])}
+      ${sel('conSaldo', [['', 'Saldo: todos'], ['1', 'Con saldo'], ['0', 'En cero']])}
+      ${sel('inactivosDias', [['', 'Actividad: toda'], ['30', 'Sin entrar 30 d'], ['90', 'Sin entrar 90 d'], ['180', 'Sin entrar 180 d']])}
+      ${sel('orden', [['ultimoAcceso', 'Última conexión'], ['creadoEn', 'Más recientes'], ['saldo', 'Mayor saldo'], ['email', 'Correo A-Z']])}
+    </div>
+  </div>
+
+  <h2>${n(L.total)} ${L.total === 1 ? 'persona' : 'personas'}
+    <span class="pista">mostrando ${L.usuarios.length} · tocá una fila para su ficha completa</span></h2>
+  <div class="tarjeta scroll"><table>
+    <thead><tr><th>Persona</th><th>App</th><th>Billetera</th><th>Saldo</th>
+      <th>Genesis ID</th><th>País</th><th>Última conexión</th></tr></thead>
+    <tbody>${L.usuarios.map((u) => {
+      const tot = Object.values(u.saldos || {}).reduce((s, x) => s + x, 0);
+      const dias = u.ultimoAcceso ? Math.floor((Date.now() - new Date(u.ultimoAcceso)) / 86400000) : null;
+      return `<tr class="pulsable" onclick="verPersona('${esc(u.email)}')">
+        <td><b>${esc(u.nombre || u.usuario || '—')}</b>
+          <div style="font-size:11.5px;color:var(--faint)">${esc(u.email)}</div></td>
+        <td><span class="eti mut">${esc(u.app)}</span></td>
+        <td class="num" style="font-size:11px">${u.direccionWallet
+          ? esc(u.direccionWallet.slice(0, 10)) + '…' + esc(u.direccionWallet.slice(-6))
+          : '<span style="color:var(--faint)">sin billetera</span>'}</td>
+        <td class="num">${tot > 0 ? Object.entries(u.saldos).filter(([, x]) => x > 0)
+            .map(([m, x]) => `${x.toLocaleString('es', { maximumFractionDigits: 4 })} ${esc(m)}`).join('<br>')
+          : '<span style="color:var(--faint)">0</span>'}</td>
+        <td>${u.gid ? `<span class="eti ok">${esc(u.gid)}</span>`
+          : `<span class="eti mut">sin verificar</span>`}</td>
+        <td>${esc(u.pais || '—')}</td>
+        <td style="font-size:12px;${dias !== null && dias > 90 ? 'color:var(--warn)' : ''}">
+          ${u.ultimoAcceso ? cuando(u.ultimoAcceso) : '<span style="color:var(--faint)">nunca</span>'}</td>
+      </tr>`;
+    }).join('')}</tbody></table></div>
+  <p class="pie">Esta pantalla muestra datos personales y no es anónima como el
+  resto del panel. <b>Cada búsqueda y cada ficha quedan escritas en la bitácora</b>
+  con el nombre de quien las hizo. Las llaves privadas y las frases de respaldo
+  de los clientes <b>nunca</b> salen de su base original: la sincronización
+  acepta campos por lista blanca, así que un campo nuevo en el origen no llega
+  aquí hasta que alguien lo agregue a mano.</p>`;
+}
+
+async function verPersona(email) {
+  let d;
+  try { d = await api('/panel/directorio/persona/' + encodeURIComponent(email)); }
+  catch (e) { alert(e.message); return; }
+  const velo = document.createElement('div');
+  velo.className = 'velo';
+  velo.onclick = (ev) => { if (ev.target === velo) velo.remove(); };
+  velo.innerHTML = `<div class="modal">
+    <h3>${esc(d.email)}</h3>
+    ${d.genesis ? `<div style="margin:10px 0 16px">
+        <span class="eti ok">${esc(d.genesis.gid)}</span>
+        <span class="eti cyan">${esc(d.genesis.estado)}</span>
+        ${d.genesis.riesgo ? `<span class="eti ${d.genesis.riesgo === 'alto' ? 'bad' : 'mut'}">riesgo ${esc(d.genesis.riesgo)}</span>` : ''}
+        ${d.genesis.pep ? '<span class="eti warn">PEP</span>' : ''}
+        <div style="font-size:12.5px;color:var(--mut);margin-top:7px">
+          ${esc(d.genesis.nombreLegal || '')} ${d.genesis.nacionalidad ? '· ' + esc(d.genesis.nacionalidad) : ''}</div>
+      </div>`
+      : `<div class="err" style="margin:10px 0 16px">Sin identidad en Genesis ID — esta persona no ha completado la verificación.</div>`}
+    ${d.cuentas.map((c) => `
+      <h3>${esc(c.app)}</h3>
+      <table style="min-width:0"><tbody>
+        ${[['Nombre', c.nombre], ['Usuario', c.usuario], ['Teléfono', c.telefono],
+           ['País', c.pais], ['Ciudad', c.ciudad], ['Rol', c.rol], ['Estado', c.estado],
+           ['KYC de la app', c.kyc], ['Billetera', c.direccionWallet],
+           ['Se registró', c.creadoEn ? new Date(c.creadoEn).toLocaleString('es') : null],
+           ['Última conexión', c.ultimoAcceso ? new Date(c.ultimoAcceso).toLocaleString('es') : null]]
+          .filter(([, v]) => v).map(([k, v]) => `<tr>
+            <td style="color:var(--faint);width:38%">${k}</td>
+            <td class="${k === 'Billetera' ? 'num' : ''}" style="font-size:12.5px">${esc(v)}</td></tr>`).join('')}
+        ${Object.entries(c.saldos || {}).filter(([, x]) => x > 0).map(([m, x]) => `<tr>
+          <td style="color:var(--faint)">Saldo ${esc(m)}</td>
+          <td class="num"><b>${x.toLocaleString('es', { maximumFractionDigits: 6 })}</b></td></tr>`).join('')}
+        ${Object.entries(c.extra || {}).map(([k, v]) => `<tr>
+          <td style="color:var(--faint)">${esc(k)}</td><td style="font-size:12.5px">${esc(v)}</td></tr>`).join('')}
+      </tbody></table>`).join('')}
+    <div class="filaBtn"><button class="g" onclick="this.closest('.velo').remove()">Cerrar</button></div>
+  </div>`;
+  document.body.appendChild(velo);
 }
 
 function vistaSeguridad(d) {

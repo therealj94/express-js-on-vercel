@@ -16,6 +16,8 @@ import { appsRouter } from './routes/apps.js'
 import { panelRouter } from './routes/panel.js'
 import { telemetriaRouter } from './routes/telemetria.js'
 import { analiticaRouter } from './routes/analitica.js'
+import { directorioAppsRouter, directorioPanelRouter } from './routes/directorio.js'
+import { prepararDirectorio } from './directorio/padron.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -100,8 +102,10 @@ app.get('/api', (_req, res) => {
 
 app.use('/api/sesion', sesionRouter)
 app.use('/api/v1/telemetria', telemetriaRouter)
+app.use('/api/v1/directorio', directorioAppsRouter)
 app.use('/api/v1', appsRouter)
 app.use('/api/panel/analitica', analiticaRouter)
+app.use('/api/panel/directorio', directorioPanelRouter)
 app.use('/api/panel', panelRouter)
 
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }))
@@ -160,6 +164,7 @@ export async function arrancar(): Promise<void> {
   // Índices y caducidad de la telemetría. Va después de abrir el almacén y no
   // rompe el arranque si falla: sin analítica el motor de identidad sigue
   // haciendo su trabajo, que es lo que no se puede detener.
+  await prepararDirectorio().catch(() => {})
   await prepararTelemetria().catch((e) =>
     console.error('[genesis-id] no se pudieron preparar los índices de telemetría:', e?.message))
 

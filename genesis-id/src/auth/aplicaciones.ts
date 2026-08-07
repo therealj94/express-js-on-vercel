@@ -27,6 +27,7 @@ export const ALCANCES = {
   'movimiento.enviar': 'Enviar movimientos para monitoreo AML',
   'tamiz.direccion': 'Consultar si una dirección está sancionada',
   'telemetria.enviar': 'Reportar uso y errores al panel de analítica',
+  'directorio.enviar': 'Sincronizar su padrón de usuarios con el directorio',
 } as const
 
 export type Alcance = keyof typeof ALCANCES
@@ -41,7 +42,7 @@ export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance
     alcances: [
       'identidad.crear', 'identidad.leer', 'identidad.documento',
       'gid.verificar', 'gid.perfil', 'vinculo.crear',
-      'movimiento.enviar', 'tamiz.direccion', 'telemetria.enviar',
+      'movimiento.enviar', 'tamiz.direccion', 'telemetria.enviar', 'directorio.enviar',
     ],
   },
   {
@@ -51,7 +52,7 @@ export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance
     alcances: [
       'identidad.crear', 'identidad.leer', 'identidad.documento',
       'gid.verificar', 'gid.perfil', 'vinculo.crear',
-      'negocio.crear', 'movimiento.enviar', 'telemetria.enviar',
+      'negocio.crear', 'movimiento.enviar', 'telemetria.enviar', 'directorio.enviar',
     ],
   },
   {
