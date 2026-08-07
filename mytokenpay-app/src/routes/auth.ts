@@ -1,6 +1,13 @@
 import { Router } from 'express'
 import { db, toPublicUser } from '../lib/db.js'
-import { hashPassword, signResetToken, signToken, verifyPassword, verifyResetToken } from '../lib/auth.js'
+import {
+  hashPassword,
+  passwordFingerprint,
+  readResetToken,
+  signResetToken,
+  signToken,
+  verifyPassword,
+} from '../lib/auth.js'
 import { requireAuth } from '../middleware/auth.js'
 
 export const authRouter = Router()
@@ -66,11 +73,21 @@ authRouter.delete('/me', requireAuth, (req, res) => {
   res.status(204).end()
 })
 
-// No real email delivery exists in this demo backend. In production this endpoint
-// would send a reset link by email and always respond generically to avoid leaking
-// whether an account exists. Here it responds generically too, but also returns the
-// token directly so the mobile app can complete the reset flow end to end without a
-// mail provider.
+// Returning the reset token in the response hands any account to whoever knows
+// the email address: ask for the reset, read the token off the reply, spend it.
+// The token only ever travels back to the caller when EXPOSE_RESET_TOKEN is set
+// AND we are not running in production, so a deploy cannot leak it by accident —
+// forgetting to unset a variable is a mistake that should fail closed.
+//
+// There is still no mail provider here, so with the flag off the reset flow has
+// no delivery channel. That is the correct failure: better a flow nobody can
+// finish than one anybody can finish on someone else's account. Wiring real
+// delivery is what makes this endpoint useful in production.
+const EXPOSE_RESET_TOKEN =
+  process.env.EXPOSE_RESET_TOKEN === '1' &&
+  process.env.NODE_ENV !== 'production' &&
+  !process.env.VERCEL
+
 authRouter.post('/forgot-password', (req, res) => {
   const { email } = req.body as { email?: string }
   if (!email) {
@@ -79,6 +96,8 @@ authRouter.post('/forgot-password', (req, res) => {
   }
 
   const user = db.findUserByEmail(email)
+  // The same body either way: a different shape for a registered address would
+  // turn this endpoint into a way to check who has an account.
   const genericResponse = {
     message: 'Si el correo está registrado, recibirás instrucciones para restablecer tu contraseña.',
   }
@@ -87,8 +106,8 @@ authRouter.post('/forgot-password', (req, res) => {
     return
   }
 
-  const resetToken = signResetToken(user.id)
-  res.json({ ...genericResponse, demoResetToken: resetToken })
+  const resetToken = signResetToken(user.id, user.passwordHash)
+  res.json(EXPOSE_RESET_TOKEN ? { ...genericResponse, demoResetToken: resetToken } : genericResponse)
 })
 
 authRouter.post('/reset-password', (req, res) => {
@@ -102,12 +121,15 @@ authRouter.post('/reset-password', (req, res) => {
     return
   }
 
-  const userId = verifyResetToken(token)
-  if (!userId || !db.findUserById(userId)) {
+  const claim = readResetToken(token)
+  const user = claim ? db.findUserById(claim.userId) : null
+  // The fingerprint stops a token from being spent twice: the first reset
+  // changes the hash, so every link issued before it stops matching.
+  if (!claim || !user || claim.passwordFingerprint !== passwordFingerprint(user.passwordHash)) {
     res.status(400).json({ error: 'El enlace de restablecimiento no es válido o ha expirado' })
     return
   }
 
-  db.updateUserPassword(userId, hashPassword(newPassword))
+  db.updateUserPassword(user.id, hashPassword(newPassword))
   res.json({ message: 'Contraseña actualizada correctamente' })
 })
