@@ -80,6 +80,7 @@ directorioPanelRouter.get('/persona/:email', async (req, res) => {
 directorioPanelRouter.post('/saldos', exigePermiso('usuarios.ver'), (req, res) => {
   registrar(req.operador!.email, 'directorio.saldos', 'cadena-8532', {})
   refrescarSaldos().then((r) =>
-    console.log(`[directorio] saldos refrescados: ${r.consultadas} direcciones, ${r.conSaldo} con saldo`))
+    console.log(`[directorio] saldos: ${r.consultadas} direcciones · ${r.conSaldo} con algo · ` +
+      `${r.monedas} monedas · ${r.perdidas} lecturas perdidas`))
   res.json({ ok: true, mensaje: 'Consultando la cadena. Refrescá en un minuto.' })
 })

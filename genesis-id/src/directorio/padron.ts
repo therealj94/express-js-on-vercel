@@ -347,8 +347,9 @@ export async function fichaPorEmail(email: string) {
  * Devuelve cuántas direcciones se consultaron y cuántas tienen algo.
  */
 export async function refrescarSaldos(maximo = 800): Promise<{
-  consultadas: number; conSaldo: number; monedas: number
+  consultadas: number; conSaldo: number; monedas: number; perdidas: number
 }> {
+  let perdidas = 0
   const c = col()
   const todas: EntradaDirectorio[] = c ? await c.find({}).toArray() : [...memoria.values()]
   const conDireccion = todas.filter((e) => e.direccionWallet).slice(0, maximo)
@@ -356,9 +357,10 @@ export async function refrescarSaldos(maximo = 800): Promise<{
   let conSaldo = 0
   // De cuarenta direcciones a la vez: cada una son quince llamadas, así que un
   // grupo es unas seiscientas y el nodo las aguanta sin despeinarse.
-  for (let i = 0; i < conDireccion.length; i += 40) {
-    const grupo = conDireccion.slice(i, i + 40)
-    const saldos = await saldosDe(grupo.map((e) => e.direccionWallet!))
+  for (let i = 0; i < conDireccion.length; i += 25) {
+    const grupo = conDireccion.slice(i, i + 25)
+    const { saldos, fallidas } = await saldosDe(grupo.map((e) => e.direccionWallet!))
+    perdidas += fallidas
     for (const e of grupo) {
       const nuevos = saldos.get(e.direccionWallet!)
       if (nuevos === undefined) continue      // sin respuesta: se deja lo previo
@@ -367,5 +369,6 @@ export async function refrescarSaldos(maximo = 800): Promise<{
       else memoria.get(e._id)!.saldos = nuevos
     }
   }
-  return { consultadas: conDireccion.length, conSaldo, monedas: monedas().length }
+  if (perdidas) console.warn(`[directorio] ${perdidas} lecturas sin respuesta del nodo`)
+  return { consultadas: conDireccion.length, conSaldo, monedas: monedas().length, perdidas }
 }

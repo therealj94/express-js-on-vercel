@@ -70,61 +70,96 @@ const datosBalanceOf = (direccion: string) =>
  * y «tiene cero» son cosas distintas, y confundirlas en un panel de control es
  * cómo se toman decisiones equivocadas con cara de estar informado.
  */
-export async function saldosDe(
-  direcciones: string[],
-): Promise<Map<string, Record<string, number>>> {
-  const lista = monedas()
-  const salida = new Map<string, Record<string, number>>()
-  if (!direcciones.length) return salida
+/**
+ * Cuántas llamadas acepta el nodo en un solo lote.
+ *
+ * Veinte. Lo dice el nodo: con veinticinco responde
+ * `-32600 Batch request length too long`. Estaba puesto en 300 y TODOS los
+ * lotes salían rechazados — el panel enseñaba cero tenedores de ONDK y de las
+ * otras trece monedas, y parecía un dato cuando era un fallo.
+ *
+ * El error no estaba en el número sino en tragárselo: el `catch` daba el lote
+ * por vacío y seguía, así que «el nodo me rechazó» y «esa persona no tiene
+ * nada» acababan pintados igual en la pantalla. Ahora se cuenta y se devuelve.
+ */
+const MAX_LOTE_RPC = Number(process.env.RPC_MAX_LOTE || 20)
 
-  const llamadas: { id: number; direccion: string; moneda: Moneda }[] = []
+async function lote(cuerpo: any[]): Promise<any[] | null> {
+  try {
+    const ctrl = new AbortController()
+    const alarma = setTimeout(() => ctrl.abort(), 25000)
+    const r = await fetch(RPC(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cuerpo),
+      signal: ctrl.signal,
+    })
+    clearTimeout(alarma)
+    const j = await r.json()
+    if (Array.isArray(j)) return j
+    // Respuesta que no es un arreglo = el lote entero fue rechazado.
+    console.error('[monedas] lote rechazado por el nodo:',
+      JSON.stringify(j)?.slice(0, 200))
+    return null
+  } catch (e: any) {
+    console.error('[monedas] el nodo no respondió:', e?.message)
+    return null
+  }
+}
+
+export interface LecturaSaldos {
+  saldos: Map<string, Record<string, number>>
+  /** Cuántas llamadas quedaron sin respuesta. Si no es 0, la tabla está coja. */
+  fallidas: number
+}
+
+/**
+ * Lee todas las monedas de varias direcciones.
+ *
+ * Devuelve además cuántas llamadas se perdieron, para que quien llame pueda
+ * decir «faltan datos» en vez de enseñar ceros con cara de certeza.
+ */
+export async function saldosDe(direcciones: string[]): Promise<LecturaSaldos> {
+  const lista = monedas()
+  const saldos = new Map<string, Record<string, number>>()
+  let fallidas = 0
+  if (!direcciones.length) return { saldos, fallidas }
+
+  const llamadas: { direccion: string; moneda: Moneda }[] = []
   const cuerpo: any[] = []
-  let id = 0
   for (const d of direcciones) {
     for (const m of lista) {
-      llamadas.push({ id, direccion: d, moneda: m })
+      const id = llamadas.length
+      llamadas.push({ direccion: d, moneda: m })
       cuerpo.push(m.contrato
         ? { jsonrpc: '2.0', id, method: 'eth_call', params: [{ to: m.contrato, data: datosBalanceOf(d) }, 'latest'] }
         : { jsonrpc: '2.0', id, method: 'eth_getBalance', params: [d, 'latest'] })
-      id++
     }
+    // Toda dirección consultada aparece en el mapa, aunque no tenga nada. Sin
+    // esto, «sin saldo» y «no la consulté» se confunden río abajo.
+    saldos.set(d, {})
   }
 
-  const TROZO = 300
-  for (let i = 0; i < cuerpo.length; i += TROZO) {
-    const trozo = cuerpo.slice(i, i + TROZO)
-    try {
-      const ctrl = new AbortController()
-      const alarma = setTimeout(() => ctrl.abort(), 25000)
-      const r = await fetch(RPC(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(trozo),
-        signal: ctrl.signal,
-      })
-      clearTimeout(alarma)
-      const respuestas: any[] = await r.json()
-      if (!Array.isArray(respuestas)) continue
+  for (let i = 0; i < cuerpo.length; i += MAX_LOTE_RPC) {
+    const trozo = cuerpo.slice(i, i + MAX_LOTE_RPC)
+    const res = await lote(trozo)
+    if (!res) { fallidas += trozo.length; continue }
 
-      for (const res of respuestas) {
-        const meta = llamadas[res?.id]
-        if (!meta || !res?.result || res.result === '0x') continue
-        let valor: number
-        try {
-          valor = Number(BigInt(res.result)) / Math.pow(10, meta.moneda.decimales)
-        } catch { continue }
-        if (!Number.isFinite(valor)) continue
-        const actual = salida.get(meta.direccion) ?? {}
-        // Solo se anotan los saldos que existen. Guardar quince ceros por
-        // persona haría la tabla ilegible y el documento tres veces más grande.
-        if (valor > 0) actual[meta.moneda.simbolo] = Math.round(valor * 1e6) / 1e6
-        salida.set(meta.direccion, actual)
-      }
-    } catch {
-      // Trozo perdido: se sigue con el siguiente. Lo que ya estaba se conserva.
+    for (const x of res) {
+      const meta = llamadas[x?.id]
+      if (!meta) { fallidas++; continue }
+      if (!x?.result || x.result === '0x') { fallidas++; continue }
+      let valor: number
+      try {
+        valor = Number(BigInt(x.result)) / Math.pow(10, meta.moneda.decimales)
+      } catch { fallidas++; continue }
+      if (!Number.isFinite(valor)) { fallidas++; continue }
+      // Solo se anotan los saldos que existen: quince ceros por persona harían
+      // la tabla ilegible y el documento tres veces más grande.
+      if (valor > 0) saldos.get(meta.direccion)![meta.moneda.simbolo] = Math.round(valor * 1e6) / 1e6
     }
   }
-  return salida
+  return { saldos, fallidas }
 }
 
 /**
@@ -145,21 +180,14 @@ export async function emisiones(): Promise<Record<string, number | null>> {
     jsonrpc: '2.0', id: i, method: 'eth_call',
     params: [{ to: m.contrato, data: '0x18160ddd' }, 'latest'],   // totalSupply()
   }))
-  try {
-    const ctrl = new AbortController()
-    const alarma = setTimeout(() => ctrl.abort(), 25000)
-    const r = await fetch(RPC(), {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(cuerpo), signal: ctrl.signal,
-    })
-    clearTimeout(alarma)
-    const res: any[] = await r.json()
-    if (!Array.isArray(res)) return salida
+  for (let i = 0; i < cuerpo.length; i += MAX_LOTE_RPC) {
+    const res = await lote(cuerpo.slice(i, i + MAX_LOTE_RPC))
+    if (!res) continue                     // queda en null: «no lo sé», no «cero»
     for (const x of res) {
       const m = lista[x?.id]
       if (!m || !x?.result || x.result === '0x') continue
       try { salida[m.simbolo] = Number(BigInt(x.result)) / Math.pow(10, m.decimales) } catch { /* null */ }
     }
-  } catch { /* deja los null: «no lo sé» no es «cero» */ }
+  }
   return salida
 }
