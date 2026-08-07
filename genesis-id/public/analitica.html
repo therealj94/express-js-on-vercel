@@ -774,7 +774,7 @@ function vistaErrores(d) {
 
 /* ── Directorio de usuarios ─────────────────────────────────────────────── */
 
-let dirFiltros = { texto: '', app: 'todas', conWallet: '', conGid: '', conSaldo: '', inactivosDias: '', orden: 'ultimoAcceso' };
+let dirFiltros = { texto: '', app: 'todas', moneda: '', conWallet: '', conGid: '', conSaldo: '', inactivosDias: '', orden: 'ultimoAcceso' };
 function filtrosDir() {
   const f = {};
   for (const [k, v] of Object.entries(dirFiltros)) if (v !== '' && v !== 'todas') f[k] = v;
@@ -801,7 +801,8 @@ function vistaDirectorio(d) {
       `<div class="d">${R.enVariasApps} en las dos apps</div>`)}
     ${kpi('Con billetera', corto(R.conWallet), 'c',
       `<div class="d">${Math.round(R.conWallet / R.total * 100)} % del total</div>`)}
-    ${kpi('Con saldo', corto(R.conSaldo), 'o', `<div class="d">${esc(saldos)}</div>`)}
+    ${kpi('Con saldo', corto(R.conSaldo), 'o',
+      `<div class="d">${(R.porMoneda || []).filter((m) => m.tenedores).length} monedas en circulación</div>`)}
     ${kpi('Verificadas en Genesis', corto(R.conGid), 'v',
       `<div class="d">faltan ${corto(R.sinGid)}</div>`)}
     ${kpi('Activas 30 días', corto(R.activos30), '')}
@@ -816,12 +817,33 @@ function vistaDirectorio(d) {
       ${sel('app', [['todas', 'Todas las apps'], ...R.porApp.map((a) => [a.clave, `${a.clave} (${a.n})`])])}
       ${sel('conWallet', [['', 'Billetera: todas'], ['1', 'Con billetera'], ['0', 'Sin billetera']])}
       ${sel('conGid', [['', 'Genesis: todos'], ['1', 'Verificados'], ['0', 'Sin verificar']])}
+      ${sel('moneda', [['', 'Todas las monedas'], ...(R.porMoneda || []).map((m) =>
+        [m.simbolo, `${m.simbolo}${m.tenedores ? ' (' + m.tenedores + ')' : ''}`])])}
       ${sel('conSaldo', [['', 'Saldo: todos'], ['1', 'Con saldo'], ['0', 'En cero']])}
       ${sel('inactivosDias', [['', 'Actividad: toda'], ['30', 'Sin entrar 30 d'], ['90', 'Sin entrar 90 d'], ['180', 'Sin entrar 180 d']])}
       ${sel('orden', [['ultimoAcceso', 'Última conexión'], ['creadoEn', 'Más recientes'], ['saldo', 'Mayor saldo'], ['email', 'Correo A-Z']])}
       <button class="g mini" onclick="refrescarSaldos(this)" title="Le pregunta a la cadena 8532 el saldo real de cada billetera">Actualizar saldos</button>
     </div>
   </div>
+
+  ${(R.porMoneda || []).some((m) => m.tenedores) ? `
+  <h2>Qué tiene la gente <span class="pista">saldos leídos de la cadena 8532, no de las apps</span></h2>
+  <div class="tarjeta scroll" style="margin-bottom:16px"><table style="min-width:560px">
+    <thead><tr><th>Moneda</th><th>Personas que la tienen</th><th></th><th>Total en manos</th><th>Contrato</th></tr></thead>
+    <tbody>${R.porMoneda.filter((m) => m.tenedores).map((m) => {
+      const max = Math.max(...R.porMoneda.map((x) => x.tenedores));
+      return `<tr class="pulsable" onclick="ponFiltro('moneda','${esc(m.simbolo)}')">
+        <td><b>${esc(m.simbolo)}</b><div style="font-size:11.5px;color:var(--faint)">${esc(m.nombre)}</div></td>
+        <td class="num">${n(m.tenedores)}</td>
+        <td style="width:30%"><div class="barra"><i style="width:${(m.tenedores / max) * 100}%"></i></div></td>
+        <td class="num"><b>${m.total.toLocaleString('es', { maximumFractionDigits: 4 })}</b></td>
+        <td class="num" style="font-size:10.5px;color:var(--faint)">${m.contrato
+          ? esc(m.contrato.slice(0, 10)) + '…' + esc(m.contrato.slice(-6)) : 'nativa de la cadena'}</td>
+      </tr>`;
+    }).join('')}</tbody></table></div>
+  <p style="color:var(--faint);font-size:11.5px;margin:-8px 0 18px">
+    Tocá una moneda para filtrar la lista por quienes la tienen. Se consultan
+    ${R.porMoneda.length} monedas del ecosistema; las que nadie tiene no aparecen.</p>` : ''}
 
   <h2>${n(L.total)} ${L.total === 1 ? 'persona' : 'personas'}
     <span class="pista">mostrando ${L.usuarios.length} · tocá una fila para su ficha completa</span></h2>
@@ -838,8 +860,12 @@ function vistaDirectorio(d) {
         <td class="num" style="font-size:11px">${u.direccionWallet
           ? esc(u.direccionWallet.slice(0, 10)) + '…' + esc(u.direccionWallet.slice(-6))
           : '<span style="color:var(--faint)">sin billetera</span>'}</td>
-        <td class="num">${tot > 0 ? Object.entries(u.saldos).filter(([, x]) => x > 0)
-            .map(([m, x]) => `${x.toLocaleString('es', { maximumFractionDigits: 4 })} ${esc(m)}`).join('<br>')
+        <td class="num" style="font-size:12px">${tot > 0 ? Object.entries(u.saldos)
+            .filter(([m, x]) => x > 0 && (!dirFiltros.moneda || m === dirFiltros.moneda))
+            .sort((a, b) => b[1] - a[1]).slice(0, 4)
+            .map(([m, x]) => `${x.toLocaleString('es', { maximumFractionDigits: 4 })} <span style="color:var(--faint)">${esc(m)}</span>`).join('<br>')
+          + (Object.keys(u.saldos).length > 4 && !dirFiltros.moneda
+            ? `<div style="color:var(--faint);font-size:10.5px">+${Object.keys(u.saldos).length - 4} más</div>` : '')
           : '<span style="color:var(--faint)">0</span>'}</td>
         <td>${u.gid ? `<span class="eti ok">${esc(u.gid)}</span>`
           : `<span class="eti mut">sin verificar</span>`}</td>

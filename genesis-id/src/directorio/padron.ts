@@ -30,6 +30,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { coleccionAparte, store } from '../store.js'
+import { saldosDe, monedas } from './monedas.js'
 
 /** Lo único que se guarda. Todo lo demás que llegue se descarta en silencio. */
 const CAMPOS = [
@@ -174,6 +175,8 @@ export interface FiltroDirectorio {
   conWallet?: boolean
   conGid?: boolean
   conSaldo?: boolean
+  /** Solo quien tenga esta moneda concreta. */
+  moneda?: string
   /** Sin actividad desde hace N días. Para encontrar cuentas dormidas. */
   inactivosDias?: number
   orden?: 'ultimoAcceso' | 'creadoEn' | 'saldo' | 'email'
@@ -195,6 +198,7 @@ function pasaFiltro(e: EntradaDirectorio, f: FiltroDirectorio): boolean {
     const tiene = Object.values(e.saldos || {}).some((n) => n > 0)
     if (tiene !== f.conSaldo) return false
   }
+  if (f.moneda && !((e.saldos || {})[f.moneda.toUpperCase()] > 0)) return false
   if (f.inactivosDias) {
     const corte = Date.now() - f.inactivosDias * 86400000
     const ult = e.ultimoAcceso ? Date.parse(e.ultimoAcceso) : 0
@@ -213,7 +217,13 @@ export async function consultar(f: FiltroDirectorio = {}) {
 
   const orden = f.orden || 'ultimoAcceso'
   filtradas.sort((a, b) => {
-    if (orden === 'saldo') return saldoTotal(b) - saldoTotal(a)
+    if (orden === 'saldo') {
+      if (f.moneda) {
+        const m = f.moneda.toUpperCase()
+        return ((b.saldos || {})[m] || 0) - ((a.saldos || {})[m] || 0)
+      }
+      return saldoTotal(b) - saldoTotal(a)
+    }
     if (orden === 'email') return a.email.localeCompare(b.email)
     const ka = (orden === 'creadoEn' ? a.creadoEn : a.ultimoAcceso) || ''
     const kb = (orden === 'creadoEn' ? b.creadoEn : b.ultimoAcceso) || ''
@@ -236,6 +246,8 @@ export async function resumenDirectorio() {
   const porPais: Record<string, number> = {}
   const porKyc: Record<string, number> = {}
   const saldos: Record<string, number> = {}
+  /** Cuánta gente tiene cada moneda. Sin esto, un total grande puede ser de una sola persona. */
+  const tenedores: Record<string, number> = {}
   let conWallet = 0, conGid = 0, activos30 = 0, dormidos90 = 0, conSaldo = 0
 
   for (const e of todas) {
@@ -247,7 +259,11 @@ export async function resumenDirectorio() {
     const ult = e.ultimoAcceso ? Date.parse(e.ultimoAcceso) : 0
     if (ult >= hace30) activos30++
     if (ult && ult < hace90) dormidos90++
-    for (const [m, n] of Object.entries(e.saldos || {})) saldos[m] = (saldos[m] ?? 0) + n
+    for (const [m, n] of Object.entries(e.saldos || {})) {
+      if (!(n > 0)) continue
+      saldos[m] = (saldos[m] ?? 0) + n
+      tenedores[m] = (tenedores[m] ?? 0) + 1
+    }
     if (saldoTotal(e) > 0) conSaldo++
   }
 
@@ -262,6 +278,12 @@ export async function resumenDirectorio() {
     porApp: ordenar(porApp),
     porPais: ordenar(porPais).slice(0, 15),
     porKyc: ordenar(porKyc),
+    /** Una fila por moneda: cuánta hay en manos de la gente y cuántos la tienen. */
+    porMoneda: monedas().map((m) => ({
+      simbolo: m.simbolo, nombre: m.nombre, contrato: m.contrato,
+      total: Math.round((saldos[m.simbolo] ?? 0) * 1e6) / 1e6,
+      tenedores: tenedores[m.simbolo] ?? 0,
+    })).sort((a, b) => b.tenedores - a.tenedores || b.total - a.total),
     saldos: Object.fromEntries(Object.entries(saldos).map(([m, n]) => [m, Math.round(n * 1e6) / 1e6])),
     /** Cuántas personas están en las dos apps (mismo correo). */
     enVariasApps: (() => {
@@ -309,50 +331,31 @@ export async function fichaPorEmail(email: string) {
 // retirables sobre una billetera que en la cadena tenía 0,0.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const RPC = process.env.RPC_8532_URL || 'https://rpc.ordenglobal-rpc.com/'
-
-async function saldoEnCadena(direccion: string): Promise<number | null> {
-  try {
-    const ctrl = new AbortController()
-    const alarma = setTimeout(() => ctrl.abort(), 8000)
-    const r = await fetch(RPC, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_getBalance', params: [direccion, 'latest'], id: 1 }),
-      signal: ctrl.signal,
-    })
-    clearTimeout(alarma)
-    const j: any = await r.json()
-    if (!j?.result) return null
-    return Number(BigInt(j.result)) / 1e18
-  } catch {
-    return null
-  }
-}
-
 /**
- * Refresca el saldo en cadena de las direcciones del directorio.
+ * Refresca el saldo en cadena de TODAS las monedas del ecosistema.
  *
- * De a veinte a la vez: cientos de peticiones simultáneas al RPC lo tumbarían,
- * y este trabajo no tiene ninguna prisa. Devuelve cuántas actualizó.
+ * Devuelve cuántas direcciones se consultaron y cuántas tienen algo.
  */
-export async function refrescarSaldos(maximo = 600): Promise<{ consultadas: number; conSaldo: number }> {
+export async function refrescarSaldos(maximo = 800): Promise<{
+  consultadas: number; conSaldo: number; monedas: number
+}> {
   const c = col()
   const todas: EntradaDirectorio[] = c ? await c.find({}).toArray() : [...memoria.values()]
   const conDireccion = todas.filter((e) => e.direccionWallet).slice(0, maximo)
 
   let conSaldo = 0
-  for (let i = 0; i < conDireccion.length; i += 20) {
-    const grupo = conDireccion.slice(i, i + 20)
-    const saldos = await Promise.all(grupo.map((e) => saldoEnCadena(e.direccionWallet!)))
-    for (let k = 0; k < grupo.length; k++) {
-      const n = saldos[k]
-      if (n === null) continue          // sin respuesta: se deja lo que había
-      if (n > 0) conSaldo++
-      const nuevos = { ...(grupo[k].saldos || {}), ORIGEN: Math.round(n * 1e6) / 1e6 }
-      if (c) await c.updateOne({ _id: grupo[k]._id }, { $set: { saldos: nuevos } })
-      else memoria.get(grupo[k]._id)!.saldos = nuevos
+  // De cuarenta direcciones a la vez: cada una son quince llamadas, así que un
+  // grupo es unas seiscientas y el nodo las aguanta sin despeinarse.
+  for (let i = 0; i < conDireccion.length; i += 40) {
+    const grupo = conDireccion.slice(i, i + 40)
+    const saldos = await saldosDe(grupo.map((e) => e.direccionWallet!))
+    for (const e of grupo) {
+      const nuevos = saldos.get(e.direccionWallet!)
+      if (nuevos === undefined) continue      // sin respuesta: se deja lo previo
+      if (Object.keys(nuevos).length) conSaldo++
+      if (c) await c.updateOne({ _id: e._id }, { $set: { saldos: nuevos } })
+      else memoria.get(e._id)!.saldos = nuevos
     }
   }
-  return { consultadas: conDireccion.length, conSaldo }
+  return { consultadas: conDireccion.length, conSaldo, monedas: monedas().length }
 }

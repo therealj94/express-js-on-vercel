@@ -44,6 +44,7 @@ directorioPanelRouter.get('/', async (req, res) => {
     conWallet: bool(q.conWallet),
     conGid: bool(q.conGid),
     conSaldo: bool(q.conSaldo),
+    moneda: q.moneda || undefined,
     inactivosDias: Number(q.inactivosDias) || undefined,
     orden: (q.orden as any) || undefined,
     limite: Math.min(500, Number(q.limite) || 100),
