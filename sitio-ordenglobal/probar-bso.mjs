@@ -50,7 +50,7 @@ pagina.on('requestfailed', r => { if (r.url().startsWith(base))
 // Se enganchan los nodos antes de que la página cargue, para poder leer qué
 // hace realmente el audio en vez de suponerlo.
 await pagina.addInitScript(() => {
-  window.__espia = { fuentes: [], efectos: 0, ganancias: {}, filtro: [] }
+  window.__espia = { fuentes: [], sonados: [], filtro: [] }
   const AC = window.AudioContext
   const crearGain = AC.prototype.createGain
   const crearFuente = AC.prototype.createBufferSource
@@ -59,7 +59,10 @@ await pagina.addInitScript(() => {
     const s = crearFuente.call(this)
     const start = s.start.bind(s)
     s.start = (cuando, desfase) => {
-      window.__espia.fuentes.push({ cuando, desfase, dur: s.buffer && s.buffer.duration, bucle: s.loop })
+      const d = s.buffer && s.buffer.duration
+      window.__espia.fuentes.push({ cuando, desfase, dur: d, bucle: s.loop })
+      // Cada efecto se identifica por la duración de su búfer, que es única.
+      window.__espia.sonados.push({ t: Math.round(performance.now()), dur: +(d || 0).toFixed(3), bucle: !!s.loop })
       return start(cuando, desfase)
     }
     return s
@@ -99,10 +102,13 @@ const arranque = await pagina.evaluate(() => ({
   t0: EXPERIENCE.sonido().t0,
   ahora: EXPERIENCE.sonido().ctx.currentTime,
 }))
-const enBucle = arranque.fuentes.filter(f => f.bucle)
+const enBucle = arranque.fuentes.filter(f => f.bucle && Math.abs(f.dur - 89.302) < 0.05)
+const maquinas = arranque.fuentes.filter(f => f.bucle && f.dur < 30)
 decir(arranque.capas.length === 5, 'las cinco capas están sonando',
   'capas: ' + arranque.capas.join(', '))
 decir(enBucle.length === 5, 'las cinco arrancaron en bucle')
+decir(maquinas.length === 2, 'y aparte giran los dos bucles de la excavadora',
+  'duraciones: ' + maquinas.map(f => f.dur.toFixed(2) + ' s').join(', '))
 decir(enBucle.every(f => Math.abs(f.dur - 89.302) < 0.05),
   'todas duran lo mismo (89,30 s)',
   'duraciones: ' + enBucle.map(f => f.dur.toFixed(3)).join(', '))
@@ -117,19 +123,35 @@ decir(Math.max(...desvios) < 0.001, 'cada capa entró en el punto exacto del buc
   'desvío máximo: ' + (Math.max(...desvios) * 1000).toFixed(3) + ' ms')
 
 // ── 2. la mezcla cambia con el capítulo ─────────────────────────────────────
-const capitulos = ['prologue', 'tierra', 'boveda', 'cadena', 'origen', 'ecosistema', 'fin']
+// Colocarse en un punto exacto del capítulo. Los efectos ahora dependen del
+// fotograma, así que "por la mitad" ya no basta: hay que poder pedir el 0,58 de
+// La Tierra, que es donde el cucharón muerde.
+const irA = async (cap, p = 0.5) => {
+  await pagina.evaluate(([c, q]) => {
+    const el = document.getElementById(c), vh = innerHeight
+    const y = el.offsetHeight > vh * 1.4
+      ? el.offsetTop + q * (el.offsetHeight - vh)
+      : el.offsetTop - vh + q * (el.offsetHeight + vh)
+    scrollTo(0, Math.max(0, y))
+  }, [cap, p])
+  await pagina.waitForTimeout(700)
+}
+const estado = () => pagina.evaluate(() => {
+  const b = EXPERIENCE.sonido()
+  return {
+    gan: Object.fromEntries(Object.entries(b.gan).map(([k, g]) => [k, +(g.__ultimo ?? g.gain.value).toFixed(3)])),
+    maq: Object.fromEntries(Object.entries(b.maq).map(([k, m]) => [k,
+      { gan: +m.gan.gain.value.toFixed(3), tono: +m.src.playbackRate.value.toFixed(3) }])),
+    corte: Math.round(b.filtro.frequency.value),
+    fx: Object.keys(b.visto), sonados: window.__espia.sonados.slice(),
+  }
+})
+
+const capitulos = ['prologue', 'puente', 'tierra', 'boveda', 'cadena', 'origen', 'ecosistema', 'fin']
 const leidas = {}
 for (const id of capitulos) {
-  await pagina.evaluate(cap => {
-    const el = document.getElementById(cap)
-    scrollTo(0, el.offsetTop + el.offsetHeight * 0.5)
-  }, id)
-  await pagina.waitForTimeout(900)
-  leidas[id] = await pagina.evaluate(() => ({
-    gan: Object.fromEntries(Object.entries(EXPERIENCE.sonido().gan).map(([k, g]) => [k, +(g.__ultimo ?? g.gain.value).toFixed(3)])),
-    corte: Math.round(EXPERIENCE.sonido().filtro.frequency.value),
-    efectos: Object.keys(EXPERIENCE.sonido().visto),
-  }))
+  await irA(id, 0.5)
+  leidas[id] = await estado()
 }
 
 console.log('\n  capítulo     fondo pulso  alma señal cumbre   filtro')
@@ -159,17 +181,16 @@ decir(cortes[0] < 900 && cortes[cortes.length - 1] > 12000,
   `${cortes[0]} Hz al principio, ${cortes[cortes.length - 1]} Hz al final`)
 
 // ── 4. los efectos de escena suenan, y una sola vez ─────────────────────────
-decir(leidas.fin.efectos.length === 5, 'sonaron los cinco efectos de escena',
-  'disparados: ' + leidas.fin.efectos.join(', '))
+// (que suenen todos se comprueba al final, recorriendo la página de verdad)
 
-const antes = await pagina.evaluate(() => EXPERIENCE.sonido().visto.origen)
+const antes = await pagina.evaluate(() => EXPERIENCE.sonido().visto.moneda)
 await pagina.evaluate(() => {   // ir y volver: no debe volver a sonar
   scrollTo(0, document.getElementById('cadena').offsetTop)
 })
 await pagina.waitForTimeout(500)
 await pagina.evaluate(() => scrollTo(0, document.getElementById('origen').offsetTop))
 await pagina.waitForTimeout(700)
-const despues = await pagina.evaluate(() => EXPERIENCE.sonido().visto.origen)
+const despues = await pagina.evaluate(() => EXPERIENCE.sonido().visto.moneda)
 decir(antes === despues, 'cruzar la frontera dos veces no repite el efecto')
 
 // ── 5. apagar el sonido lo apaga ────────────────────────────────────────────
@@ -229,6 +250,160 @@ decir(enFinal.rms > enPrologo.rms * 2.2, 'el final suena claramente más lleno q
 decir(enFinal.agudo - enPrologo.agudo > 12, 'el filtro se abre: en el final hay agudos que en el prólogo no',
   `${(enFinal.agudo - enPrologo.agudo).toFixed(0)} dB más arriba de 6 kHz`)
 decir(enFinal.pico < 1.0, 'la mezcla no satura', `pico ${enFinal.pico.toFixed(3)}`)
+
+
+// ── 7. el sonido pegado al fotograma ────────────────────────────────────────
+// Lo que separa una banda sonora de un efecto de biblioteca: que suene cuando
+// pasa la cosa, no cuando empieza el capítulo. Se comprueba yendo a un punto
+// ANTES del suceso, verificando que no ha sonado, y cruzándolo.
+const cruzar = async (cap, antes, despues, fx, desde) => {
+  await pagina.evaluate(() => { EXPERIENCE.sonido().visto = {} })
+  if (desde) await irA(desde, 0.75)      // se entra por donde entra un lector
+  await irA(cap, antes)
+  const previo = (await estado()).sonados.length
+  await irA(cap, despues)
+  const post = await estado()
+  const nuevos = post.sonados.slice(previo)
+  return { sono: post.fx.includes(fx), nuevos }
+}
+
+const pala = await cruzar('tierra', 0.35, 0.72, 'pala', 'puente')
+decir(pala.sono, 'la pala suena al morder la roca, no al entrar al capítulo',
+  'el cucharón toca el suelo en el fotograma 32 de 54 (p = 0,58)')
+await pagina.evaluate(() => { EXPERIENCE.sonido().visto = {} })
+await irA('puente', 0.75); await irA('tierra', 0.35)
+decir(!(await estado()).fx.includes('pala'), 'y antes de ese punto no ha sonado')
+
+const rompe = await cruzar('boveda', 0.10, 0.30, 'desmorona', 'tierra')
+decir(rompe.sono, 'el oro suena al deshacerse en píxeles',
+  'la barra empieza a romperse en el fotograma 12 (p = 0,17)')
+
+const cae = await cruzar('origen', 0.20, 0.55, 'moneda', 'cadena')
+decir(cae.sono, 'la moneda golpea cuando queda de frente',
+  'el disco se cierra y es legible en el fotograma 24 (p = 0,42)')
+// (que el polvo suene ANTES del golpe se comprueba en la lectura completa)
+
+// ── 8. la máquina obedece a la mano ─────────────────────────────────────────
+await irA('tierra', 0.4)
+const quieta = (await estado()).maq
+// Un desplazamiento de verdad, para que la velocidad suavizada suba.
+await pagina.evaluate(async () => {
+  for (let i = 0; i < 22; i++) { scrollBy(0, 46); await new Promise(r => setTimeout(r, 16)) }
+})
+const moviendo = (await estado()).maq
+console.log(`\n  excavadora  quieta: motor ${quieta.motor.gan} · hidráulico ${quieta.hidraulico.gan}`
+  + ` (tono ${quieta.hidraulico.tono})`)
+console.log(`              moviendo: motor ${moviendo.motor.gan} · hidráulico ${moviendo.hidraulico.gan}`
+  + ` (tono ${moviendo.hidraulico.tono})`)
+decir(quieta.motor.gan > 0.05, 'el motor ralentiza mientras nadie se mueve')
+decir(moviendo.hidraulico.gan > quieta.hidraulico.gan * 1.6,
+  'y los hidráulicos suben cuando la mano mueve la página')
+decir(moviendo.hidraulico.tono > quieta.hidraulico.tono + 0.02,
+  'la bomba además sube de tono, no solo de volumen',
+  `${quieta.hidraulico.tono} → ${moviendo.hidraulico.tono}`)
+
+await irA('cadena', 0.5)
+await pagina.waitForTimeout(1400)
+decir((await estado()).maq.motor.gan < 0.02, 'y la excavadora calla fuera de su capítulo')
+
+// ── 9. el goteo: contador y rayos ───────────────────────────────────────────
+await irA('prologue', 0.35)
+const antesTic = (await estado()).sonados.length
+await pagina.waitForTimeout(1200)
+const tics = (await estado()).sonados.slice(antesTic).filter(s => s.dur < 0.2)
+decir(tics.length >= 6, 'el contador que se desploma va marcando el paso',
+  `${tics.length} tics en 1,2 s`)
+
+await irA('cadena', 0.6)
+const antesRayo = (await estado()).sonados.length
+await pagina.waitForTimeout(1800)
+const rayos = (await estado()).sonados.slice(antesRayo).filter(s => s.dur > 0.5 && s.dur < 1.2)
+decir(rayos.length >= 3, 'los rayos van saltando entre los nodos de la red',
+  `${rayos.length} pulsos en 1,8 s`)
+
+// ── 10. el capítulo nuevo ───────────────────────────────────────────────────
+const puente = await pagina.evaluate(() => {
+  const s = document.getElementById('puente')
+  const rail = [...document.querySelectorAll('#stops .lbl')].map(e => e.textContent)
+  return { existe: !!s, rail, orden: [...document.querySelectorAll('.chapter')].map(e => e.id) }
+})
+decir(puente.existe && puente.orden[1] === 'puente',
+  'el puente entra justo después del prólogo', puente.orden.join(' → '))
+decir(puente.rail.includes('El puente'), 'y aparece en el riel lateral', puente.rail.join(' · '))
+await pagina.evaluate(() => { EXPERIENCE.sonido().visto = {} })
+await irA('puente', 0.05); await irA('puente', 0.45)
+const sonPuente = await estado()
+decir(sonPuente.gan.alma > 0 && sonPuente.gan.senal === 0,
+  'con su propia mezcla: ya hay melodía, todavía no hay red')
+decir(sonPuente.fx.includes('puente'), 'y suena el capital cruzando de un lado al otro')
+
+// ── 11. la portada habla los dos idiomas ────────────────────────────────────
+await pagina.goto(base, { waitUntil: 'load' })
+await pagina.waitForTimeout(500)
+const portada = await pagina.evaluate(() => {
+  const g = document.getElementById('gate')
+  return { texto: g.innerText, ingles: [...g.querySelectorAll('.en, .en2')].map(e => e.innerText.trim()) }
+})
+decir(portada.ingles.length >= 3 && /scroll/i.test(portada.texto),
+  'la portada se lee también en inglés antes de elegir idioma',
+  portada.ingles.join(' | '))
+
+// ── 12. el botón del final ──────────────────────────────────────────────────
+await pagina.click('#gate-sound')          // la recarga apagó el sonido
+await pagina.click('.gate-langs button')
+await pagina.waitForTimeout(3500)          // que vuelvan a cargar capas y efectos
+const boton = await pagina.evaluate(() => {
+  const b = document.getElementById('yo-quiero')
+  return { letras: b.querySelectorAll('.ch').length, texto: b.innerText.trim(),
+           encendidas: b.querySelectorAll('.ch.on').length }
+})
+decir(boton.letras > 10 && boton.texto.length > 10,
+  'el botón está partido en letras y sigue leyéndose entero',
+  `"${boton.texto}" en ${boton.letras} tramos`)
+decir(boton.encendidas === 0, 'que empiezan escondidas, esperando al final')
+await irA('fin', 0.85)
+await pagina.waitForTimeout(1500)
+const tras = await pagina.evaluate(() => document.querySelectorAll('#yo-quiero .ch.on').length)
+decir(tras === boton.letras, 'y se levantan una a una al llegar el llamado',
+  `${tras} de ${boton.letras}`)
+
+const trasIdioma = await pagina.evaluate(() => { EXPERIENCE.swap()
+  const b = document.getElementById('yo-quiero')
+  return { letras: b.querySelectorAll('.ch').length, texto: b.innerText.trim() } })
+decir(trasIdioma.letras > 8 && trasIdioma.texto.length > 5,
+  'cambiar de idioma no vacía el botón', `"${trasIdioma.texto}"`)
+
+
+// ── 13. la lectura completa, como la hace una persona ───────────────────────
+// Es la única prueba que vale de verdad: bajar la página entera, sin saltos, y
+// ver qué suena. Todo lo demás comprueba piezas; esto comprueba la experiencia.
+await pagina.evaluate(() => { const b = EXPERIENCE.sonido(); b.visto = {}; b.pAnt = {} })
+await pagina.evaluate(() => scrollTo(0, 0))
+await pagina.waitForTimeout(600)
+await pagina.evaluate(async () => {
+  const fin = document.documentElement.scrollHeight - innerHeight
+  while (scrollY < fin - 4) {
+    scrollBy(0, Math.max(24, innerHeight * 0.06))
+    await new Promise(r => setTimeout(r, 22))
+  }
+})
+await pagina.waitForTimeout(900)
+const recorrido = await estado()
+const ESPERADOS = ['puente', 'pala', 'boveda', 'desmorona', 'cadena', 'particula', 'moneda', 'fin']
+const faltan = ESPERADOS.filter(f => !recorrido.fx.includes(f))
+decir(faltan.length === 0, 'leyendo la página entera suenan los ocho momentos',
+  faltan.length ? 'no sonaron: ' + faltan.join(', ') : recorrido.fx.join(' · '))
+
+// Y en el orden correcto, que es lo que hace que la escena se entienda: el polvo
+// se junta y DESPUÉS el metal se cierra. Al revés, el golpe llega de la nada.
+const cuando = await pagina.evaluate(() => {
+  const v = EXPERIENCE.sonido().visto
+  return { polvo: v.particula, golpe: v.moneda, rompe: v.desmorona, puerta: v.boveda }
+})
+decir(cuando.polvo < cuando.golpe, 'el polvo dorado se junta antes de que la moneda golpee',
+  `${(cuando.golpe - cuando.polvo).toFixed(1)} s entre uno y otro`)
+decir(cuando.puerta < cuando.rompe, 'y la bóveda se cierra antes de que el oro se deshaga',
+  `${(cuando.rompe - cuando.puerta).toFixed(1)} s entre uno y otro`)
 
 decir(errores.length === 0, 'sin errores en la consola', errores.slice(0, 4).join('\n           '))
 

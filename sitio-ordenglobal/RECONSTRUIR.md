@@ -83,10 +83,36 @@ el dedo.
 | `senal` | campanas y datos | la cadena |
 | `cumbre` | octava alta, pedal, timbales | ORIGEN |
 
-`musica/efectos.py` hace los cinco efectos de escena — la excavadora, la puerta
-de la boveda, los bloques encajando, la moneda, la apertura final. Estan
-afinados en la misma tonalidad que la pieza, que es la diferencia entre un
-efecto pegado encima y uno que pertenece a la obra.
+`musica/efectos.py` hace los trece efectos de escena, y estan afinados en la
+misma tonalidad que la pieza — que es la diferencia entre un efecto pegado
+encima y uno que pertenece a la obra.
+
+Lo importante no es que existan, sino **cuando suenan**. Un efecto disparado al
+entrar al capitulo cae donde cae, y casi nunca donde pasa algo. Estos van atados
+al fotograma, y los numeros de la tabla `CUES` en `index.html` salen de mirar las
+cuatro secuencias una por una:
+
+| momento | fotograma | p | suena |
+|---|---|---|---|
+| el cucharon muerde la roca | 32 de 54 | 0,58 | `pala` |
+| la barra de oro se agrieta | 12 de 54 | 0,17 | `desmorona` |
+| la moneda queda de frente | 24 de 54 | 0,42 | `moneda` (con `particula` desde el 1) |
+| el capital cruza el puente | — | 0,30 | `puente` |
+
+Hay tres familias:
+
+- **Golpes** (`CUES`): suenan una vez al cruzar su punto, en cualquiera de los
+  dos sentidos. Quien sube a mirar otra vez la moneda vuelve a oirla. Saltar al
+  medio de un capitulo con el riel **no** los dispara, y es correcto: si uno cae
+  con la moneda ya hecha en pantalla, no tiene por que oirla acuñarse.
+- **Bucles** (`MAQUINAS`): el motor y los hidraulicos de la excavadora giran sin
+  parar mientras dura el capitulo, y su volumen **y su tono** siguen la velocidad
+  de la mano. Es lo que convierte la maquina de un video en algo que obedece.
+- **Goteos** (`GOTEOS`): un mismo sonido repetido a lo largo de un tramo, con la
+  cadencia acelerando. El contador del prologo marca el paso; los rayos de la
+  cadena saltan entre nodos. Cada repeticion sale a un tono y un lugar del
+  estereo distintos — sin eso son treinta copias del mismo archivo y el oido lo
+  detecta enseguida.
 
 Tres decisiones que no son obvias y conviene no deshacer:
 
