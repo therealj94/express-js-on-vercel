@@ -1017,9 +1017,100 @@ async function verPersona(email) {
         ${Object.entries(c.extra || {}).map(([k, v]) => `<tr>
           <td style="color:var(--faint)">${esc(k)}</td><td style="font-size:12.5px">${esc(v)}</td></tr>`).join('')}
       </tbody></table>`).join('')}
+    <h3 style="margin-top:20px">Movimientos en la cadena</h3>
+    <div id="movs"><div class="cargando">Consultando el explorador…</div></div>
     <div class="filaBtn"><button class="g" onclick="this.closest('.velo').remove()">Cerrar</button></div>
   </div>`;
   document.body.appendChild(velo);
+  cargarMovimientos(email);
+}
+
+/* ── Historial de una persona ───────────────────────────────────────────── */
+
+let movCache = null;
+let movMoneda = '';
+let movSentido = '';
+
+async function cargarMovimientos(email) {
+  const caja = document.getElementById('movs');
+  try {
+    movCache = await api('/panel/directorio/persona/' + encodeURIComponent(email) + '/movimientos');
+    movMoneda = ''; movSentido = '';
+    pintarMovimientos();
+  } catch (e) {
+    caja.innerHTML = `<div class="err">${esc(e.message)}</div>`;
+  }
+}
+
+function filtraMov(k, v) {
+  if (k === 'moneda') movMoneda = v; else movSentido = v;
+  pintarMovimientos();
+}
+
+function pintarMovimientos() {
+  const caja = document.getElementById('movs');
+  if (!caja || !movCache) return;
+  const d = movCache;
+
+  if (d.sinBilletera) {
+    caja.innerHTML = vacio('Sin billetera', 'Esta persona no tiene una dirección registrada, así que no hay nada que buscar en la cadena.');
+    return;
+  }
+  if (!d.resumen.total) {
+    caja.innerHTML = vacio('Sin movimientos en la cadena',
+      d.resumen.incompleto ? 'Además, el explorador no respondió: la lista puede estar incompleta.'
+        : 'Su billetera existe pero nunca envió ni recibió nada en la 8532.');
+    return;
+  }
+
+  const lista = d.movimientos.filter((m) =>
+    (!movMoneda || m.moneda === movMoneda) && (!movSentido || m.sentido === movSentido));
+
+  const sel = (k, v, opciones) => `<select onchange="filtraMov('${k}', this.value)"
+    style="width:auto;padding:5px 9px;font-size:12px">
+    ${opciones.map(([val, t]) => `<option value="${val}" ${v === val ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+
+  caja.innerHTML = `
+    ${d.resumen.incompleto ? `<div class="err" style="margin-bottom:10px">
+      El explorador no respondió para alguna billetera: esta lista puede estar incompleta.</div>` : ''}
+
+    <div class="scroll" style="margin-bottom:12px"><table style="min-width:0">
+      <thead><tr><th>Moneda</th><th>Recibió</th><th>Envió</th><th>Neto</th><th>Veces</th></tr></thead>
+      <tbody>${d.resumen.porMoneda.map((m) => `<tr>
+        <td><b>${esc(m.moneda)}</b></td>
+        <td class="num" style="color:var(--ok)">${m.entradas.toLocaleString('es', { maximumFractionDigits: 6 })}</td>
+        <td class="num" style="color:var(--bad)">${m.salidas.toLocaleString('es', { maximumFractionDigits: 6 })}</td>
+        <td class="num"><b>${m.neto.toLocaleString('es', { maximumFractionDigits: 6 })}</b></td>
+        <td class="num" style="color:var(--faint)">${m.veces}</td></tr>`).join('')}
+      </tbody></table></div>
+
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:9px;flex-wrap:wrap">
+      ${sel('moneda', movMoneda, [['', `Todas (${d.resumen.total})`],
+        ...d.resumen.porMoneda.map((m) => [m.moneda, `${m.moneda} (${m.veces})`])])}
+      ${sel('sentido', movSentido, [['', 'Entradas y salidas'], ['entrada', 'Solo recibido'], ['salida', 'Solo enviado']])}
+      <span style="font-size:11.5px;color:var(--faint)">
+        ${lista.length} de ${d.resumen.total} · desde ${d.resumen.primero ? new Date(d.resumen.primero).toLocaleDateString('es') : '—'}</span>
+    </div>
+
+    <div class="scroll" style="max-height:320px;overflow-y:auto"><table style="min-width:520px">
+      <thead><tr><th>Cuándo</th><th></th><th>Monto</th><th>Con quién</th><th>Bloque</th></tr></thead>
+      <tbody>${lista.slice(0, 200).map((m) => `<tr>
+        <td style="white-space:nowrap;font-size:12px;color:var(--faint)">${cuando(m.en)}</td>
+        <td><span class="eti ${m.sentido === 'entrada' ? 'ok' : m.sentido === 'salida' ? 'bad' : 'mut'}">
+          ${m.sentido === 'entrada' ? 'recibió' : m.sentido === 'salida' ? 'envió' : 'a sí misma'}</span></td>
+        <td class="num"><b>${m.monto.toLocaleString('es', { maximumFractionDigits: 6 })}</b>
+          <span style="color:var(--faint)">${esc(m.moneda)}</span></td>
+        <td class="num" style="font-size:10.5px;color:var(--mut)">${
+          esc((m.sentido === 'entrada' ? m.de : m.a).slice(0, 12))}…</td>
+        <td class="num" style="font-size:11px;color:var(--faint)">${n(m.bloque)}</td>
+      </tr>`).join('')}</tbody></table></div>
+    ${lista.length > 200 ? `<p style="color:var(--faint);font-size:11.5px;margin-top:8px">
+      Se muestran los 200 más recientes de ${lista.length}. El cuadro de arriba suma todos.</p>` : ''}
+    <p style="color:var(--faint);font-size:11.5px;margin-top:8px">
+      Solo aparece lo que ocurrió <b>en la cadena</b>. Veta Wallet es custodia y
+      lleva además su contabilidad interna: un movimiento que solo existe ahí no
+      deja rastro en la 8532 y no sale en esta lista. Cuando las dos versiones no
+      coinciden, esa diferencia es justo lo que hay que mirar.</p>`;
 }
 
 function vistaSeguridad(d) {

@@ -9,6 +9,7 @@ import { Router } from 'express'
 import { exigeApp, exigeOperador, exigePermiso, limite } from '../middleware/proteger.js'
 import { sincronizar, consultar, resumenDirectorio, fichaPorEmail, refrescarSaldos } from '../directorio/padron.js'
 import { registrar } from '../audit/bitacora.js'
+import { historialDe, resumirMovimientos } from '../directorio/movimientos.js'
 
 export const directorioAppsRouter = Router()
 export const directorioPanelRouter = Router()
@@ -88,4 +89,45 @@ directorioPanelRouter.post('/saldos', exigePermiso('usuarios.ver'), (req, res) =
     console.log(`[directorio] saldos: ${r.consultadas} direcciones · ${r.conSaldo} con algo · ` +
       `${r.monedas} monedas · ${r.perdidas} lecturas perdidas`))
   res.json({ ok: true, mensaje: 'Consultando la cadena. Refrescá en un minuto.' })
+})
+
+/**
+ * Los movimientos de una persona, en todas sus billeteras y todas las monedas.
+ *
+ * Consultar el historial de un cliente es mirar sus finanzas, así que queda en
+ * la bitácora igual que abrir su ficha.
+ */
+directorioPanelRouter.get('/persona/:email/movimientos', async (req, res) => {
+  const ficha = await fichaPorEmail(req.params.email)
+  if (!ficha) return res.status(404).json({ error: 'No hay nadie con ese correo en el directorio' })
+
+  const direcciones = [...new Set(ficha.cuentas
+    .map((c) => c.direccionWallet)
+    .filter((d): d is string => Boolean(d)))]
+
+  if (!direcciones.length) {
+    return res.json({
+      email: ficha.email, direcciones: [], movimientos: [],
+      resumen: { total: 0, porMoneda: [], primero: null, ultimo: null, incompleto: false },
+      sinBilletera: true,
+    })
+  }
+
+  registrar(req.operador!.email, 'directorio.movimientos', req.params.email,
+    { direcciones: direcciones.length })
+
+  const historiales = await Promise.all(direcciones.map(historialDe))
+  const { movimientos, resumen } = resumirMovimientos(historiales)
+
+  res.json({
+    email: ficha.email,
+    direcciones: historiales.map((h) => ({
+      direccion: h.direccion, saldoNativo: h.saldoNativo,
+      saldosToken: h.saldosToken, leido: h.leido, movimientos: h.movimientos.length,
+    })),
+    // Se acota a 500: es un panel de revisión, no un extracto bancario. Si
+    // alguien tiene más, lo que importa se ve en el resumen por moneda.
+    movimientos: movimientos.slice(0, 500),
+    resumen,
+  })
 })
