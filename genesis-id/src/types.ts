@@ -218,6 +218,14 @@ export interface Aplicacion {
   hashClave: string
   /** Últimos caracteres, para poder reconocerla en el panel. */
   pistaClave: string
+  /**
+   * Clave pública de ingesta de telemetría, en claro.
+   *
+   * Va dentro de la app —un APK se descomprime— así que no es un secreto y no
+   * se guarda como tal. Solo abre `POST /api/v1/telemetria/eventos`: escribe
+   * métricas y no lee absolutamente nada.
+   */
+  clavePublica?: string
   alcances: string[]
   activa: boolean
   creadaEn: string

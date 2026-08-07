@@ -6,10 +6,43 @@
 // métricas no sirva para nada más.
 
 import { Router } from 'express'
+import type { Request, Response, NextFunction } from 'express'
 import { exigeApp, limite } from '../middleware/proteger.js'
 import { ingerir, paisDeCabeceras, MAX_LOTE, TIPOS } from '../analitica/eventos.js'
+import { aplicacionDeClavePublica } from '../auth/aplicaciones.js'
 
 export const telemetriaRouter = Router()
+
+/**
+ * Deja pasar con la clave secreta de la app O con su clave pública de ingesta.
+ *
+ * POR QUE EXISTE UNA CLAVE PUBLICA
+ *
+ * Una app móvil no puede guardar un secreto: un APK se descomprime en diez
+ * segundos. Hasta aquí eso obligaba a que cada app reportara contra su propio
+ * backend y este reenviara — un salto más, un servicio más que puede caerse, y
+ * en la práctica la excusa perfecta para no instrumentar nada.
+ *
+ * La clave pública resuelve eso sin abrir nada: solo sirve para ESTA ruta, solo
+ * escribe, no lee absolutamente nada, y no da acceso a ninguna otra parte de
+ * Genesis ID. Es el mismo trato que hacen Sentry con su DSN o PostHog con su
+ * clave de proyecto, y por la misma razón. Lo peor que puede hacer quien la
+ * saque de un APK es mandar métricas falsas; para eso está el límite de
+ * peticiones, y si alguien abusa se rota la clave desde el panel y la app vieja
+ * simplemente deja de reportar.
+ *
+ * La clave SECRETA sigue siendo la única que sirve para identidades.
+ */
+function exigeIngesta(req: Request, res: Response, siguiente: NextFunction) {
+  const publica = String(req.headers['x-telemetria-key'] || '').trim()
+  if (publica) {
+    const app = aplicacionDeClavePublica(publica)
+    if (!app) return res.status(401).json({ error: 'Clave de telemetría inválida o revocada' })
+    req.app_ecosistema = app
+    return siguiente()
+  }
+  return exigeApp('telemetria.enviar')(req, res, siguiente)
+}
 
 /**
  * Recibe un lote de eventos.
@@ -21,7 +54,7 @@ export const telemetriaRouter = Router()
 telemetriaRouter.post(
   '/eventos',
   limite(600),
-  exigeApp('telemetria.enviar'),
+  exigeIngesta,
   async (req, res) => {
     const cuerpo = req.body ?? {}
     const lote = Array.isArray(cuerpo) ? cuerpo : cuerpo.eventos

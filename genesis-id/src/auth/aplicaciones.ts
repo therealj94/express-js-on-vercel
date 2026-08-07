@@ -10,7 +10,7 @@
 // recuperarla, y eso es exactamente lo que se quiere.
 
 import { store } from '../store.js'
-import { generarClaveApi, hashClaveApi } from '../lib/cripto.js'
+import { generarClaveApi, hashClaveApi, azar as azarUrl } from '../lib/cripto.js'
 import { id } from '../lib/uid.js'
 import { registrar } from '../audit/bitacora.js'
 import type { Aplicacion } from '../types.js'
@@ -116,6 +116,40 @@ export function asegurarAplicaciones(): { clave: string; secreta: string }[] {
     registrar('sistema', 'aplicacion.creada', def.clave, { alcances: def.alcances })
   }
   return nuevas
+}
+
+/**
+ * La clave pública de ingesta de una app.
+ *
+ * A diferencia de la secreta, esta se guarda EN CLARO y a propósito: va dentro
+ * de la app, así que no es un secreto y fingir que lo es solo complica la
+ * rotación. Solo abre la ruta de telemetría, solo escribe, y no lee nada.
+ */
+export function clavePublicaDe(app: Aplicacion): string {
+  if (!app.clavePublica) {
+    app.clavePublica = `gidp_${app.clave}_${azarUrl(12)}`
+    store.guardar()
+  }
+  return app.clavePublica
+}
+
+export function aplicacionDeClavePublica(clave: string): Aplicacion | null {
+  if (!clave) return null
+  const app = store.todo().aplicaciones.find((a) => a.clavePublica === clave)
+  if (!app || !app.activa) return null
+  app.ultimoUso = new Date().toISOString()
+  store.guardar()
+  return app
+}
+
+/** Emite una clave pública nueva. La anterior deja de reportar en el acto. */
+export function rotarPublica(idApp: string, actor: string): string | null {
+  const app = store.todo().aplicaciones.find((a) => a.id === idApp)
+  if (!app) return null
+  app.clavePublica = `gidp_${app.clave}_${azarUrl(12)}`
+  store.guardar()
+  registrar(actor, 'aplicacion.clavePublicaRotada', app.clave, {})
+  return app.clavePublica
 }
 
 export function aplicacionDeClave(clave: string): Aplicacion | null {

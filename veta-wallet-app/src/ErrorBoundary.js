@@ -3,12 +3,13 @@ import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Icon } from './icons';
 import { C } from './theme';
 import { Logo } from './ui';
+import { fallo } from './telemetria';
 
 // Red de seguridad global. Sin esto, un error en cualquier pantalla dejaba
 // la app en blanco sin manera de recuperar. Ahora se muestra una tarjeta
-// con el mensaje, opción de reintentar y — cuando enchufemos Sentry — el
-// stack se envía a monitoreo. En tiendas, un crash sin captura es motivo
-// habitual de rechazo en la revisión.
+// con el mensaje, opción de reintentar, y el fallo se reporta a la analítica
+// de Genesis ID con la pila de componentes. En tiendas, un crash sin captura
+// es motivo habitual de rechazo en la revisión.
 export default class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null, info: null };
 
@@ -18,7 +19,18 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     this.setState({ info });
-    // Placeholder: cuando enchufemos Sentry, aquí va Sentry.captureException(error, {contexts:{react:{componentStack:info.componentStack}}}).
+    // Un fallo que llega hasta aquí ya dejó a alguien mirando una pantalla
+    // rota, así que se reporta como crítico y con la pila de componentes: sin
+    // ella, «Cannot read property of undefined» no dice en qué pantalla pasó.
+    // El reporte nunca lanza — si Genesis ID está caído, esto no hace nada.
+    try {
+      fallo(error, {
+        nombre: 'pantalla-rota',
+        gravedad: 'critico',
+        meta: { componentes: String(info?.componentStack || '').slice(0, 400) },
+      });
+    } catch (e) { /* jamás empeorar un fallo intentando reportarlo */ }
+
     if (typeof console !== 'undefined' && console.error) {
       console.error('[ErrorBoundary]', error, info && info.componentStack);
     }

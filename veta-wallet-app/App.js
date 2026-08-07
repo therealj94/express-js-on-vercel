@@ -38,6 +38,7 @@ import Help from './src/screens/Help';
 import Remesas from './src/screens/Remesas';
 import DeleteAccount from './src/screens/DeleteAccount';
 import ErrorBoundary from './src/ErrorBoundary';
+import { arrancarTelemetria, fallo } from './src/telemetria';
 
 const SCREENS = {
   splash: Splash, auth: Auth, kyc: Kyc, seedview: SeedView, genesisOffer: GenesisOffer,
@@ -92,6 +93,14 @@ function Root() {
       setOnline(s.isConnected !== false);
     });
     return () => sub();
+  }, []);
+
+  // Telemetría: se arranca una vez, al montar. Nunca lanza — si Genesis ID no
+  // responde, la cola se guarda y se reintenta con espera creciente, y la app
+  // ni se entera. A partir de aquí quedan enganchados también los errores que
+  // nadie atrapa, que son los que dejan la pantalla en negro.
+  useEffect(() => {
+    arrancarTelemetria();
   }, []);
 
   // Arranque: restaura la sesión guardada y renueva el token en silencio

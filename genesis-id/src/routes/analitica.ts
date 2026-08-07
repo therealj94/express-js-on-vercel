@@ -12,6 +12,7 @@ import {
   embudoKyc, saludEcosistema, serviciosVigilados,
 } from '../analitica/consultas.js'
 import { almacen } from '../analitica/eventos.js'
+import { clavePublicaDe, rotarPublica } from '../auth/aplicaciones.js'
 import { consultar as bitacoraConsultar, registrar } from '../audit/bitacora.js'
 import { store } from '../store.js'
 import type { EstadoError } from '../analitica/eventos.js'
@@ -128,8 +129,12 @@ analiticaRouter.get('/seguridad', (req, res) => {
     porActor: Object.entries(porActor).map(([clave, n]) => ({ clave, n })).sort((a, b) => b.n - a.n),
     porAccion: Object.entries(porAccion).map(([clave, n]) => ({ clave, n })).sort((a, b) => b.n - a.n).slice(0, 15),
     aplicaciones: store.todo().aplicaciones.map((a) => ({
-      clave: a.clave, nombre: a.nombre, activa: a.activa,
+      id: a.id, clave: a.clave, nombre: a.nombre, activa: a.activa,
       pista: a.pistaClave, alcances: a.alcances,
+      // La pública se muestra entera porque no es un secreto: vive dentro de
+      // las apps. La secreta no se puede mostrar ni queriendo — solo se guardó
+      // su hash.
+      clavePublica: a.alcances.includes('telemetria.enviar') ? clavePublicaDe(a) : null,
       creadaEn: a.creadaEn, ultimoUso: a.ultimoUso,
     })),
     operadores: store.todo().operadores.map((o) => ({
@@ -183,4 +188,11 @@ analiticaRouter.get('/versiones', async (_req, res) => {
     for (const a of Object.keys(salida)) salida[a].sort((x, y) => y.usuarios - x.usuarios)
   }
   res.json({ versiones: salida })
+})
+
+/** Rota la clave pública de ingesta de una app. La anterior deja de reportar. */
+analiticaRouter.post('/apps/:id/clave-publica', exigePermiso('analitica.gestionar'), (req, res) => {
+  const nueva = rotarPublica(req.params.id, req.operador!.email)
+  if (!nueva) return res.status(404).json({ error: 'No hay ninguna aplicación con ese id' })
+  res.json({ clavePublica: nueva })
 })

@@ -156,3 +156,23 @@ test('una fecha absurda no puede ensuciar el eje del tiempo', async () => {
     assert.ok(e.ts.getTime() > Date.now() - 900 * 3600 * 1000, 'nada puede irse a 1970')
   }
 })
+
+test('la clave pública identifica a la app y solo sirve para ingerir', async () => {
+  const { crearAplicacion, clavePublicaDe, aplicacionDeClavePublica, rotarPublica } =
+    await import('../auth/aplicaciones.js')
+
+  const { aplicacion } = crearAplicacion('app-publica', 'Prueba', ['telemetria.enviar'])
+  const publica = clavePublicaDe(aplicacion)
+
+  assert.ok(publica.startsWith('gidp_app-publica_'), 'debe decir a qué app pertenece')
+  assert.equal(aplicacionDeClavePublica(publica)?.clave, 'app-publica')
+  assert.equal(aplicacionDeClavePublica('gidp_inventada_xxx'), null)
+  assert.equal(aplicacionDeClavePublica(''), null)
+
+  // Rotarla invalida la anterior en el acto: es la única defensa si alguien la
+  // saca de un APK y empieza a mandar basura.
+  const nueva = rotarPublica(aplicacion.id, 'operador@prueba')
+  assert.ok(nueva && nueva !== publica)
+  assert.equal(aplicacionDeClavePublica(publica), null, 'la vieja deja de servir')
+  assert.equal(aplicacionDeClavePublica(nueva!)?.clave, 'app-publica')
+})
