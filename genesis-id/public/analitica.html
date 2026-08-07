@@ -826,24 +826,37 @@ function vistaDirectorio(d) {
     </div>
   </div>
 
-  ${(R.porMoneda || []).some((m) => m.tenedores) ? `
-  <h2>Qué tiene la gente <span class="pista">saldos leídos de la cadena 8532, no de las apps</span></h2>
-  <div class="tarjeta scroll" style="margin-bottom:16px"><table style="min-width:560px">
-    <thead><tr><th>Moneda</th><th>Personas que la tienen</th><th></th><th>Total en manos</th><th>Contrato</th></tr></thead>
-    <tbody>${R.porMoneda.filter((m) => m.tenedores).map((m) => {
-      const max = Math.max(...R.porMoneda.map((x) => x.tenedores));
-      return `<tr class="pulsable" onclick="ponFiltro('moneda','${esc(m.simbolo)}')">
+  ${(R.porMoneda || []).length ? `
+  <h2>Las monedas del ecosistema
+    <span class="pista">emisión y tenencia, leídas de la cadena 8532 — no de las apps</span></h2>
+  <div class="tarjeta scroll" style="margin-bottom:10px"><table style="min-width:680px">
+    <thead><tr><th>Moneda</th><th>Estado</th><th>Personas que la tienen</th><th></th>
+      <th>En manos</th><th>Emitido</th><th>Contrato</th></tr></thead>
+    <tbody>${R.porMoneda.map((m) => {
+      const max = Math.max(1, ...R.porMoneda.map((x) => x.tenedores));
+      const eti = m.estado === 'en circulación' ? 'ok'
+        : m.estado === 'emitida, sin repartir' ? 'warn'
+        : m.estado === 'sin emisión' ? 'mut' : 'bad';
+      return `<tr class="${m.tenedores ? 'pulsable' : ''}"
+          ${m.tenedores ? `onclick="ponFiltro('moneda','${esc(m.simbolo)}')"` : ''}>
         <td><b>${esc(m.simbolo)}</b><div style="font-size:11.5px;color:var(--faint)">${esc(m.nombre)}</div></td>
-        <td class="num">${n(m.tenedores)}</td>
-        <td style="width:30%"><div class="barra"><i style="width:${(m.tenedores / max) * 100}%"></i></div></td>
-        <td class="num"><b>${m.total.toLocaleString('es', { maximumFractionDigits: 4 })}</b></td>
+        <td><span class="eti ${eti}">${esc(m.estado)}</span></td>
+        <td class="num">${m.tenedores ? n(m.tenedores) : '<span style="color:var(--faint)">0</span>'}</td>
+        <td style="width:22%"><div class="barra"><i style="width:${(m.tenedores / max) * 100}%"></i></div></td>
+        <td class="num">${m.total ? '<b>' + m.total.toLocaleString('es', { maximumFractionDigits: 4 }) + '</b>'
+          : '<span style="color:var(--faint)">—</span>'}</td>
+        <td class="num" style="color:var(--mut)">${m.emitido === null ? '?'
+          : m.emitido.toLocaleString('es', { maximumFractionDigits: 0 })}</td>
         <td class="num" style="font-size:10.5px;color:var(--faint)">${m.contrato
-          ? esc(m.contrato.slice(0, 10)) + '…' + esc(m.contrato.slice(-6)) : 'nativa de la cadena'}</td>
+          ? esc(m.contrato.slice(0, 10)) + '…' + esc(m.contrato.slice(-6)) : 'nativa'}</td>
       </tr>`;
     }).join('')}</tbody></table></div>
-  <p style="color:var(--faint);font-size:11.5px;margin:-8px 0 18px">
-    Tocá una moneda para filtrar la lista por quienes la tienen. Se consultan
-    ${R.porMoneda.length} monedas del ecosistema; las que nadie tiene no aparecen.</p>` : ''}
+  <p style="color:var(--faint);font-size:11.5px;margin:0 0 18px">
+    <b>«Emitida, sin repartir»</b> quiere decir que el token existe en la cadena
+    con emisión declarada, pero <b>ninguna de las ${n(R.conWallet)} billeteras de
+    tus usuarios tiene una sola unidad</b>. No es que el panel no cargue: es que
+    en la cadena no hay nada que mostrar. Tocá una moneda con tenedores para
+    filtrar la lista por quienes la tienen.</p>` : ''}
 
   <h2>${n(L.total)} ${L.total === 1 ? 'persona' : 'personas'}
     <span class="pista">mostrando ${L.usuarios.length} · tocá una fila para su ficha completa</span></h2>

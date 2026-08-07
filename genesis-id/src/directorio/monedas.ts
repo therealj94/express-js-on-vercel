@@ -126,3 +126,40 @@ export async function saldosDe(
   }
   return salida
 }
+
+/**
+ * Cuánto se emitió de cada moneda, según la propia cadena.
+ *
+ * Sin esto, una moneda que nadie tiene se ve exactamente igual que una que el
+ * panel no pudo leer, y lo primero que piensa cualquiera es que la lista está
+ * rota. Con la emisión al lado se distinguen tres casos muy distintos: emitida
+ * y repartida, emitida y sin repartir, y sin emisión.
+ */
+export async function emisiones(): Promise<Record<string, number | null>> {
+  const lista = monedas().filter((m) => m.contrato)
+  const salida: Record<string, number | null> = {}
+  for (const m of monedas()) salida[m.simbolo] = null
+  if (!lista.length) return salida
+
+  const cuerpo = lista.map((m, i) => ({
+    jsonrpc: '2.0', id: i, method: 'eth_call',
+    params: [{ to: m.contrato, data: '0x18160ddd' }, 'latest'],   // totalSupply()
+  }))
+  try {
+    const ctrl = new AbortController()
+    const alarma = setTimeout(() => ctrl.abort(), 25000)
+    const r = await fetch(RPC(), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cuerpo), signal: ctrl.signal,
+    })
+    clearTimeout(alarma)
+    const res: any[] = await r.json()
+    if (!Array.isArray(res)) return salida
+    for (const x of res) {
+      const m = lista[x?.id]
+      if (!m || !x?.result || x.result === '0x') continue
+      try { salida[m.simbolo] = Number(BigInt(x.result)) / Math.pow(10, m.decimales) } catch { /* null */ }
+    }
+  } catch { /* deja los null: «no lo sé» no es «cero» */ }
+  return salida
+}

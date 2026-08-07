@@ -30,7 +30,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { coleccionAparte, store } from '../store.js'
-import { saldosDe, monedas } from './monedas.js'
+import { saldosDe, monedas, emisiones } from './monedas.js'
 
 /** Lo único que se guarda. Todo lo demás que llegue se descarta en silencio. */
 const CAMPOS = [
@@ -237,6 +237,7 @@ export async function consultar(f: FiltroDirectorio = {}) {
 
 /** Los números de arriba de la pantalla, sobre TODO el directorio. */
 export async function resumenDirectorio() {
+  const emitido = await emisiones()
   const c = col()
   const todas: EntradaDirectorio[] = c ? await c.find({}).toArray() : [...memoria.values()]
   const hace30 = Date.now() - 30 * 86400000
@@ -279,11 +280,20 @@ export async function resumenDirectorio() {
     porPais: ordenar(porPais).slice(0, 15),
     porKyc: ordenar(porKyc),
     /** Una fila por moneda: cuánta hay en manos de la gente y cuántos la tienen. */
-    porMoneda: monedas().map((m) => ({
-      simbolo: m.simbolo, nombre: m.nombre, contrato: m.contrato,
-      total: Math.round((saldos[m.simbolo] ?? 0) * 1e6) / 1e6,
-      tenedores: tenedores[m.simbolo] ?? 0,
-    })).sort((a, b) => b.tenedores - a.tenedores || b.total - a.total),
+    porMoneda: monedas().map((m) => {
+      const enManos = Math.round((saldos[m.simbolo] ?? 0) * 1e6) / 1e6
+      const emision = emitido[m.simbolo] ?? null
+      return {
+        simbolo: m.simbolo, nombre: m.nombre, contrato: m.contrato,
+        total: enManos,
+        tenedores: tenedores[m.simbolo] ?? 0,
+        emitido: emision,
+        estado: (tenedores[m.simbolo] ?? 0) > 0 ? 'en circulación'
+          : emision === null ? 'no se pudo leer'
+          : emision > 0 ? 'emitida, sin repartir'
+          : 'sin emisión',
+      }
+    }).sort((a, b) => b.tenedores - a.tenedores || (b.emitido ?? 0) - (a.emitido ?? 0)),
     saldos: Object.fromEntries(Object.entries(saldos).map(([m, n]) => [m, Math.round(n * 1e6) / 1e6])),
     /** Cuántas personas están en las dos apps (mismo correo). */
     enVariasApps: (() => {
