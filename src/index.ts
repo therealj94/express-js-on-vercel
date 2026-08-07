@@ -73,6 +73,38 @@ async function declararPadron(): Promise<void> {
   try {
     const usuarios = await db.listUsers()
     const negocios = await db.listCompanies({})
+    const genesis = (process.env.GENESIS_URL || 'https://genesis-id.onrender.com').replace(/\/$/, '')
+    const clave = (process.env.GENESIS_TELEMETRIA_KEY || process.env.GENESIS_API_KEY || '').trim()
+
+    // El directorio: quién es cada quien. Se manda por lotes y solo con los
+    // campos que el panel necesita — nunca el hash de la contraseña.
+    for (let i = 0; i < usuarios.length; i += 500) {
+      await fetch(`${genesis}/api/v1/directorio/sincronizar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': clave },
+        body: JSON.stringify({
+          usuarios: usuarios.slice(i, i + 500).map((u) => {
+            const suyos = negocios.filter((n) => n.ownerId === u.id)
+            return {
+              idExterno: u.id,
+              email: u.email,
+              nombre: u.fullName,
+              rol: u.role,
+              // El KYC de MyTokenPay no vive en su tabla: es el de Genesis ID.
+              // Genesis lo cruza solo por correo, así que aquí no se manda.
+              verificado: Boolean(u.gid),
+              creadoEn: u.createdAt,
+              direccionWallet: suyos[0]?.walletAddress,
+              extra: {
+                negocios: suyos.length,
+                negocioVerificado: suyos.some((n) => n.verified),
+                genesisId: u.gid || '',
+              },
+            }
+          }),
+        }),
+      })
+    }
     await fetch(`${(process.env.GENESIS_URL || 'https://genesis-id.onrender.com').replace(/\/$/, '')}/api/v1/telemetria/censo`, {
       method: 'POST',
       headers: {
