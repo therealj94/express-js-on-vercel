@@ -1,12 +1,11 @@
 # Analítica del ecosistema — cómo entrar y cómo encenderla
 
-Todo el código está escrito, probado y subido. Lo que falta es **desplegarlo**,
-y eso necesita dos credenciales que no están en este entorno. Este documento
-dice exactamente qué hacer, en orden, y cuánto tarda cada paso.
+**Está desplegado y funcionando.** Genesis ID corre la analítica en producción,
+MyTokenPay ya reporta solo, y las claves de las apps están abajo.
 
 ---
 
-## 1. Cómo entrar, una vez desplegado
+## 1. Cómo entrar
 
 | | |
 | --- | --- |
@@ -31,35 +30,15 @@ poder marcar un fallo como resuelto.
 
 ---
 
-## 2. Lo que falta para encenderla (dos pasos)
+## 2. Las claves de ingesta de cada app
 
-### Paso 1 — Desplegar Genesis ID en Render · ~5 minutos
+Ya emitidas. También salen del panel, pestaña **Seguridad**:
 
-El código ya está en la rama `claude/veta-wallet-phantom-design-7syah8`.
-`render.yaml` tiene `autoDeploy: true`, así que hay dos caminos:
-
-- **Si Render está conectado a esa rama:** entrá al panel de Render, servicio
-  `genesis-id`, y tocá **Manual Deploy → Deploy latest commit**. Con eso basta.
-- **Si está conectado a otra rama:** en Settings → Build & Deploy, cambiá la
-  rama a `claude/veta-wallet-phantom-design-7syah8`, o fusioná esa rama a la
-  que Render esté siguiendo.
-
-**Comprobación de que quedó:**
-
-```bash
-curl -s https://genesis-id.onrender.com/api | grep analitica
-```
-
-Si aparece `analitica` en la lista de rutas, está arriba. También podés mirar
-`/healthz`: tiene que decir `"telemetriaPersistente": true`.
-
-> No hace falta ninguna variable de entorno nueva. La telemetría usa la misma
-> conexión a MongoDB que ya está configurada, en colecciones aparte.
-
-### Paso 2 — Sacar las claves públicas y ponerlas en cada app · ~10 minutos
-
-Entrá a `/analitica` → pestaña **Seguridad**. Ahí, en la tabla de claves de
-API, cada app muestra su **clave pública de ingesta** (`gidp_…`), entera.
+| App | Clave pública |
+| --- | --- |
+| Veta Wallet | `gidp_veta-wallet_98cwxS8AnbUIRAEr` |
+| MyTokenPay | `gidp_mytokenpay__riQsWLOw5v2XQ_R` |
+| ordenscan | `gidp_ordenscan_RIo4I1gyxv6gewfq` |
 
 Esa clave **sí puede ir dentro del APK**. Solo abre la ruta de telemetría:
 escribe métricas y no lee absolutamente nada. Es el mismo trato que hacen
@@ -152,26 +131,19 @@ a los 90 días, la historia de cuánta gente hubo cada día se conserva entera.
 
 ---
 
-## 6. Estado, sin adornos
+## 6. Estado
 
-**Hecho y comprobado:**
+**En producción y comprobado contra el servidor real:**
 
-- Motor de telemetría con colecciones propias, caducidad y resúmenes al vuelo
-- Ingesta con clave secreta o pública, límite de peticiones y validación
-- Ocho pestañas del panel, revisadas en un navegador real
-- Agrupación de errores por patrón, con reapertura automática por versión
-- Cliente listo para pegar, y Veta Wallet ya conectada
+- `/analitica` responde 200 · `/healthz` dice `telemetriaPersistente: true`
+- Las nueve rutas del panel responden 200
+- Ingesta con clave pública: aceptada · con clave falsa: 401
+- **MyTokenPay reporta solo** desde su backend, sin haber tocado ninguna
+  variable: la clave que ya tenía recibió el alcance nuevo al arrancar
+- La pestaña Salud mide los cinco servicios del ecosistema: los cinco arriba
 - 129/129 pruebas en verde, cero errores de tipos
-- Probado con 34.000 eventos de tres apps a lo largo de 30 días
 
-**Falta, y necesita credenciales que no tengo:**
+**Falta, y son minutos:**
 
-- **Desplegar Genesis ID en Render.** Es lo único que falta de verdad, y no hay
-  credenciales de Render en este entorno. Hasta que eso pase, no hay dónde
-  reportar: el panel existe en el código pero `/analitica` responde 404 en vivo.
-- Conectar la app móvil de MyTokenPay y ordenscan (minutos, una vez haya claves)
-
-**Ya desplegado con Heroku:** el backend de MyTokenPay (release 18) lleva la
-telemetría dentro y dormida. Se comprobó después de desplegar que `/healthz`
-responde, el panel de administración carga y el login del comercio funciona:
-nada se rompió.
+- Poner la clave pública en `app.json` de Veta Wallet y sacarlo por aire
+- Copiar el cliente a la app móvil de MyTokenPay y a ordenscan
