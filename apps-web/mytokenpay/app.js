@@ -73,7 +73,8 @@ const MTP = (() => {
   // ── navegación ────────────────────────────────────────────────────────────
 
   function ir(destino, cual) {
-    for (const id of ['bienvenida', 'acceso', 'app']) $('#' + id).classList.toggle('oculto', id !== destino);
+    for (const id of ['portada', 'acceso', 'app']) $('#' + id).classList.toggle('oculto', id !== (destino === 'bienvenida' ? 'portada' : destino));
+    $('#techo').classList.toggle('oculto', destino !== 'bienvenida');
     if (destino === 'acceso') { pestana(cual || 'crear'); setTimeout(() => $('#i-correo').focus(), 60); }
     if (destino === 'app') vista(vistaActual);
     window.scrollTo(0, 0);
@@ -84,18 +85,98 @@ const MTP = (() => {
     $('#tab-entrar').setAttribute('aria-selected', String(cual === 'entrar'));
     $('#tab-crear').setAttribute('aria-selected', String(cual === 'crear'));
     $('#campo-nombre').classList.toggle('oculto', cual !== 'crear');
-    $('#btn-acceso').textContent = cual === 'crear' ? 'Crear mi cuenta' : 'Entrar';
-    $('#acc-tit').textContent = cual === 'crear' ? 'Creá tu cuenta' : 'Entrá a tu cuenta';
-    $('#acc-sub').textContent = cual === 'crear'
-      ? 'Gratis. Con Genesis ID quedás verificado en todo el ecosistema.'
-      : 'Con el mismo correo que usás en la app.';
+    $('#btn-acceso').textContent = cual === 'crear' ? t('acc.btnCrear') : t('acc.btnEntrar');
+    $('#acc-tit').textContent = cual === 'crear' ? t('acc.titCrear') : t('acc.titEntrar');
+    $('#acc-sub').textContent = t(cual === 'crear' ? 'acc.subCrear' : 'acc.subEntrar');
     $('#i-clave').setAttribute('autocomplete', cual === 'crear' ? 'new-password' : 'current-password');
     $('#acc-aviso').classList.add('oculto');
   }
 
+
+  /* Cambiar de idioma en caliente. Las vistas se generan enteras cada vez que se
+     navega, asi que basta con repintar los textos fijos y volver a dibujar la
+     vista actual: no queda nada a medio traducir. */
+  function idioma(cual) {
+    if (cual !== 'es' && cual !== 'en') return;
+    idiomaActual = cual;
+    try { localStorage.setItem('mtp.idioma', cual); } catch {}
+    pintarIdioma();
+    pintarCifras();
+    if (!$('#acceso').classList.contains('oculto')) pestana(modo);
+    if (!$('#app').classList.contains('oculto')) vista(vistaActual);
+  }
+
+  const pintarCifras = () => {
+    const c = $('#bv-cifras');
+    if (c) c.innerHTML = [[COMERCIOS.length, t('c.comercios')], [verificados(), t('c.verificados')], [PAISES.length, t('c.paises')]]
+      .map(([n, l]) => `<div class="cifra"><b>${n}</b><small>${l}</small></div>`).join('');
+  };
+
+  /* La calle de la portada: los rotulos del directorio pasando de largo, en dos
+     columnas que corren en sentidos opuestos. Cada tira lleva los comercios dos
+     veces seguidas porque la animacion desplaza justo la mitad de su altura: al
+     llegar al final, la segunda copia esta exactamente donde estaba la primera y
+     el salto no se ve. */
+  function pintarCalle() {
+    const c = $('#calle');
+    if (!c) return;
+    const rotulo = m => `<div class="mini" style="--neon:${neon(m.cat)}">
+      <b>${esc(m.nombre)}</b><small>${esc(catNom(m.cat))} · ${esc(ciudadNom(m.pais, m.ciudad))}</small></div>`;
+    const mitad = Math.ceil(COMERCIOS.length / 2);
+    const tira = lista => `<div class="tira">${(lista.concat(lista)).map(rotulo).join('')}</div>`;
+    c.innerHTML = tira(COMERCIOS.slice(0, mitad))
+      + tira(COMERCIOS.slice(mitad)).replace('class="tira"', 'class="tira b"');
+  }
+
+  /* Cada bloque del recorrido sube a su sitio al entrar en pantalla, y se queda:
+     un elemento que aparece y desaparece mientras uno sube y baja no es una
+     animacion, es un parpadeo. Se usa IntersectionObserver porque el navegador
+     ya sabe que hay en pantalla; calcularlo en cada pixel de desplazamiento
+     cuesta la fluidez de la pagina. */
+  function armarRevelado() {
+    const piezas = document.querySelectorAll('.rev');
+    if (!('IntersectionObserver' in window)) {
+      piezas.forEach(p => p.classList.add('ve'));
+      return;
+    }
+    const ojo = new IntersectionObserver(entradas => {
+      entradas.forEach(e => {
+        // Tambien se revela lo que quedo POR ENCIMA de la pantalla: quien llega
+        // por un enlace al final, o baja de un tiron, se saltaria media pagina
+        // con bloques invisibles esperando una entrada que ya paso.
+        if (!e.isIntersecting && e.boundingClientRect.top > 0) return;
+        e.target.classList.add('ve');
+        ojo.unobserve(e.target);
+      });
+    }, { rootMargin: '0px 0px -12% 0px', threshold: 0.08 });
+    let grupo = null, i = 0;
+    piezas.forEach(p => {
+      if (p.parentElement !== grupo) { grupo = p.parentElement; i = 0; }
+      p.style.transitionDelay = (i++ * 90) + 'ms';
+      ojo.observe(p);
+    });
+
+    // Y un barrido de respaldo. El observador avisa de los cambios de estado,
+    // pero si alguien salta al final de la pagina de golpe hay bloques que pasan
+    // de estar debajo a estar encima sin haber llegado a asomarse nunca, y
+    // quedan invisibles para siempre. Esto recoge todo lo que ya se paso.
+    let pedido = 0;
+    const barrer = () => {
+      pedido = 0;
+      document.querySelectorAll('.rev:not(.ve)').forEach(p => {
+        if (p.getBoundingClientRect().top < innerHeight * 0.92) {
+          p.classList.add('ve');
+          ojo.unobserve(p);
+        }
+      });
+    };
+    addEventListener('scroll', () => { if (!pedido) pedido = requestAnimationFrame(barrer); }, { passive: true });
+    barrer();
+  }
+
   function entrarComoInvitado() {
     E.invitado = true; guardar(); ir('app'); vista('explorar');
-    avisar('Estás mirando sin cuenta. Creá una para pagar.');
+    avisar(t('ok.invitado'));
   }
 
   async function enviarAcceso(ev) {
@@ -103,14 +184,14 @@ const MTP = (() => {
     const nombre = $('#i-nombre').value.trim(), correo = $('#i-correo').value.trim(), clave = $('#i-clave').value;
     const a = $('#acc-aviso');
     const decir = t => { a.textContent = t; a.className = 'aviso aviso-mal'; a.classList.remove('oculto'); };
-    if (!correo || !clave) return decir('Completá el correo y la contraseña.');
-    if (modo === 'crear' && !nombre) return decir('Escribí tu nombre completo.');
-    if (modo === 'crear' && clave.length < 8) return decir('La contraseña necesita al menos 8 caracteres.');
+    if (!correo || !clave) return decir(t('err.completa'));
+    if (modo === 'crear' && !nombre) return decir(t('err.nombre'));
+    if (modo === 'crear' && clave.length < 8) return decir(t('err.corta'));
     a.classList.add('oculto');
 
     const b = $('#btn-acceso'); b.disabled = true;
     const antes = b.textContent;
-    b.innerHTML = '<span class="girando"></span> ' + (modo === 'crear' ? 'Creando…' : 'Entrando…');
+    b.innerHTML = '<span class="girando"></span> ' + (modo === 'crear' ? t('acc.creando') : t('acc.entrando'));
     try {
       if (API) {
         const r = await fetch(API + (modo === 'crear' ? '/api/auth/register' : '/api/auth/login'), {
@@ -118,7 +199,7 @@ const MTP = (() => {
           body: JSON.stringify(modo === 'crear' ? { fullName: nombre, email: correo, password: clave } : { email: correo, password: clave }),
         });
         const d = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(d.error || 'No pudimos completar el acceso.');
+        if (!r.ok) throw new Error(d.error || t('err.acceso'));
         E.sesion = { nombre: d.user?.fullName || nombre || correo.split('@')[0], correo: d.user?.email || correo };
       } else {
         E.sesion = { nombre: nombre || correo.split('@')[0], correo };
@@ -145,9 +226,13 @@ const MTP = (() => {
       activa ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current');
     });
     $('#lienzo').innerHTML = ({ inicio, explorar, comercio, pagar, cobro: vCobro, cuenta, billetera, identidad: vIdentidad })[cual]();
-    $('#barra-der').innerHTML = E.sesion
-      ? `<span class="chapa ${E.identidad === 'verificada' ? 'ch-ok' : 'ch-rev'}">${E.identidad === 'verificada' ? 'Verificado' : 'Sin verificar'}</span>`
-      : `<button class="btn btn-neon btn-sm" onclick="MTP.ir('acceso','crear')">Crear cuenta</button>`;
+    $('#barra-der').innerHTML =
+      `<div class="idiomas" role="group" aria-label="Idioma">
+         <button data-lang="es" aria-pressed="${idiomaActual === 'es'}" onclick="MTP.idioma('es')">ES</button>
+         <button data-lang="en" aria-pressed="${idiomaActual === 'en'}" onclick="MTP.idioma('en')">EN</button>
+       </div>` + (E.sesion
+      ? `<span class="chapa ${E.identidad === 'verificada' ? 'ch-ok' : 'ch-rev'}">${t(E.identidad === 'verificada' ? 'x.verificado' : 'x.sinVerificar')}</span>`
+      : `<button class="btn btn-neon btn-sm" onclick="MTP.ir('acceso','crear')">${t('x.crearCuenta')}</button>`);
     if (cual === 'cobro') pintarQr();
     window.scrollTo(0, 0);
   }
@@ -158,20 +243,20 @@ const MTP = (() => {
     const nom = (E.sesion?.nombre || '').split(' ')[0];
     return `
     <div class="cab">
-      <h2>${E.sesion ? `Hola, ${esc(nom)}` : 'Bienvenido'}</h2>
-      <div class="sub">Capa de comercio del Sistema Financiero Social</div>
+      <h2>${E.sesion ? `${t('ini.hola')}, ${esc(nom)}` : t('ini.bienvenido')}</h2>
+      <div class="sub">${t('ini.sub')}</div>
     </div>
     ${E.sesion ? tarjetaSaldo() : ''}
     <div class="rejilla" style="grid-template-columns:repeat(3,1fr);gap:10px">
-      ${[[COMERCIOS.length, 'Comercios'], [verificados(), 'Verificados'], [PAISES.length, 'Países']]
+      ${[[COMERCIOS.length, t('c.comercios')], [verificados(), t('c.verificados')], [PAISES.length, t('c.paises')]]
         .map(([n, l]) => `<div class="cifra"><b>${n}</b><small>${l}</small></div>`).join('')}
     </div>
     ${tarjetaBilletera()}
     ${tarjetaIdentidad()}
     <div class="bloque">
       <div style="display:flex;align-items:center;justify-content:space-between">
-        <h3>Cerca de vos</h3>
-        <button class="btn btn-linea btn-sm" onclick="MTP.vista('explorar')">Ver todos</button>
+        <h3>${t('ini.cerca')}</h3>
+        <button class="btn btn-linea btn-sm" onclick="MTP.vista('explorar')">${t('ini.verTodos')}</button>
       </div>
       <div class="rejilla">${COMERCIOS.slice(0, 4).map(tarjetaComercio).join('')}</div>
     </div>`;
@@ -180,12 +265,12 @@ const MTP = (() => {
   function tarjetaSaldo() {
     return `
     <div class="saldo">
-      <div class="saldo-lbl">${E.billetera ? 'Veta Wallet conectada' : 'Saldo de demostración'}</div>
+      <div class="saldo-lbl">${t(E.billetera ? 'sal.conectada' : 'sal.demo')}</div>
       <div class="saldo-cifra">${oro(E.saldo)}<span>ORIGEN</span></div>
       <div class="saldo-fiat">${esc(usd(E.saldo * ORIGEN_USD))} · 1 ORIGEN = ${esc(usd(ORIGEN_USD))}</div>
       <div style="margin-top:18px;display:flex;gap:9px;flex-wrap:wrap">
-        <button class="btn btn-neon btn-sm" onclick="MTP.vista('pagar')">Pagar</button>
-        ${E.billetera ? '' : `<button class="btn btn-linea btn-sm" onclick="MTP.vista('billetera')">Conectar Veta Wallet</button>`}
+        <button class="btn btn-neon btn-sm" onclick="MTP.vista('pagar')">${t('sal.pagar')}</button>
+        ${E.billetera ? '' : `<button class="btn btn-linea btn-sm" onclick="MTP.vista('billetera')">${t('sal.conectar')}</button>`}
       </div>
     </div>`;
   }
@@ -203,7 +288,7 @@ const MTP = (() => {
       </div>
       <div class="r-desc">${esc(c.desc)}</div>
       <div class="r-pie">
-        <span class="chapa ${abierto ? 'ch-ok' : 'ch-rev'}">${abierto ? 'Verificado' : 'En revisión'}</span>
+        <span class="chapa ${abierto ? 'ch-ok' : 'ch-rev'}">${t(abierto ? 'x.verificado' : 'x.enRevision')}</span>
         <span>${esc(paisNom(c.pais))}</span>
       </div>
     </button>`;
@@ -217,22 +302,22 @@ const MTP = (() => {
     const usadas = [...new Set(COMERCIOS.map(c => c.cat))];
     return `
     <div class="cab">
-      <h2>Explorar</h2>
-      <div class="sub">${lista.length} de ${COMERCIOS.length} comercios aceptan ORIGEN</div>
+      <h2>${t('exp.t')}</h2>
+      <div class="sub">${lista.length} ${t('exp.sub1')} ${COMERCIOS.length} ${t('exp.sub2')}</div>
     </div>
-    <input class="buscar" id="buscar" placeholder="Buscar por nombre, ciudad o rubro" value="${esc(filtro.texto)}"
+    <input class="buscar" id="buscar" placeholder="${t('exp.buscar')}" value="${esc(filtro.texto)}"
       oninput="MTP.buscar(this.value)" autocomplete="off">
     <div class="filtros">
-      <button class="pastilla" aria-pressed="${!filtro.pais}" onclick="MTP.filtrarPais(null)">Todos los países</button>
+      <button class="pastilla" aria-pressed="${!filtro.pais}" onclick="MTP.filtrarPais(null)">${t('exp.todosPaises')}</button>
       ${PAISES.map(p => `<button class="pastilla" aria-pressed="${filtro.pais === p.slug}" onclick="MTP.filtrarPais('${p.slug}')">${p.flag} ${esc(p.label)}</button>`).join('')}
     </div>
     <div class="filtros" style="margin-top:8px">
-      <button class="pastilla" aria-pressed="${!filtro.cat}" onclick="MTP.filtrarCat(null)">Todos los rubros</button>
+      <button class="pastilla" aria-pressed="${!filtro.cat}" onclick="MTP.filtrarCat(null)">${t('exp.todosRubros')}</button>
       ${usadas.map(s => `<button class="pastilla" aria-pressed="${filtro.cat === s}" onclick="MTP.filtrarCat('${s}')">${esc(catNom(s))}</button>`).join('')}
     </div>
     ${lista.length
       ? `<div class="rejilla">${lista.map(tarjetaComercio).join('')}</div>`
-      : `<div class="bloque"><div class="vacio"><b>No encontramos comercios así</b>Probá con otro rubro, otro país o menos palabras.</div></div>`}`;
+      : `<div class="bloque"><div class="vacio"><b>${t('exp.vacioT')}</b>${t('exp.vacioP')}</div></div>`}`;
   }
 
   function buscar(v) { filtro.texto = v; const f = document.activeElement === $('#buscar'); vista('explorar'); if (f) { const i = $('#buscar'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }
@@ -241,45 +326,45 @@ const MTP = (() => {
 
   function comercio() {
     const c = COMERCIOS.find(x => x.id === verComercio);
-    if (!c) return `<div class="bloque"><div class="vacio"><b>Ese comercio ya no está</b>Volvé al directorio.</div></div>`;
+    if (!c) return `<div class="bloque"><div class="vacio"><b>${t('com.noT')}</b>${t('com.noP')}</div></div>`;
     const redes = Object.entries(c.redes || {}).filter(([, v]) => v);
     return `
-    <button class="btn btn-linea btn-sm" style="margin-bottom:16px" onclick="MTP.vista('explorar')">← Volver</button>
+    <button class="btn btn-linea btn-sm" style="margin-bottom:16px" onclick="MTP.vista('explorar')">${t('x.volver')}</button>
     <div class="ficha-top" style="--neon:${neon(c.cat)}">
       <div class="r-cat">${esc(catNom(c.cat))}</div>
       <h2>${esc(c.nombre)}</h2>
       <div class="r-pie" style="margin-top:10px">
-        <span class="chapa ${c.estado === 'verified' ? 'ch-ok' : 'ch-rev'}">${c.estado === 'verified' ? 'Verificado' : 'En revisión'}</span>
+        <span class="chapa ${c.estado === 'verified' ? 'ch-ok' : 'ch-rev'}">${t(c.estado === 'verified' ? 'x.verificado' : 'x.enRevision')}</span>
         <span>${esc(c.dir)} · ${esc(ciudadNom(c.pais, c.ciudad))}, ${esc(paisNom(c.pais))}</span>
       </div>
       <p style="margin-top:16px;color:var(--niebla);line-height:1.65;font-size:14.5px">${esc(c.desc)}</p>
       ${c.ofrece?.length ? `<div class="lista-p">${c.ofrece.map(o => `<span>${esc(o)}</span>`).join('')}</div>` : ''}
       <div style="margin-top:20px;display:flex;gap:9px;flex-wrap:wrap">
-        <button class="btn btn-neon btn-sm" onclick="MTP.pagarA('${c.id}')">Pagar aquí</button>
-        <a class="btn btn-linea btn-sm" href="https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lng}" target="_blank" rel="noopener">Cómo llegar</a>
+        <button class="btn btn-neon btn-sm" onclick="MTP.pagarA('${c.id}')">${t('com.pagarAqui')}</button>
+        <a class="btn btn-linea btn-sm" href="https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lng}" target="_blank" rel="noopener">${t('com.comoLlegar')}</a>
       </div>
     </div>
-    ${redes.length ? `<div class="bloque"><h3>Encontralos también en</h3>
+    ${redes.length ? `<div class="bloque"><h3>${t('com.tambien')}</h3>
       <div class="lista-p">${redes.map(([k, v]) => `<a href="${esc(v)}" target="_blank" rel="noopener"><span>${esc(k)}</span></a>`).join('')}</div></div>` : ''}
     <div class="bloque">
-      <h3>Razón social</h3>
+      <h3>${t('com.razon')}</h3>
       <p class="pie">${esc(c.razon)}</p>
     </div>`;
   }
 
   function pagar() {
     if (!E.sesion) return `
-      <div class="cab"><h2>Pagar</h2><div class="sub">Pagá con ORIGEN en segundos</div></div>
+      <div class="cab"><h2>${t('pag.t')}</h2><div class="sub">${t('pag.sub')}</div></div>
       <div class="bloque"><div class="vacio">
-        <b>Necesitás una cuenta</b>Creá tu cuenta gratis para pagar en los comercios afiliados.
-        <div style="margin-top:16px"><button class="btn btn-neon btn-sm" onclick="MTP.ir('acceso','crear')">Crear mi cuenta</button></div>
+        <b>${t('pag.necesitaT')}</b>${t('pag.necesitaP')}
+        <div style="margin-top:16px"><button class="btn btn-neon btn-sm" onclick="MTP.ir('acceso','crear')">${t('bv.crear')}</button></div>
       </div></div>`;
     return `
-    <div class="cab"><h2>Pagar</h2><div class="sub">Elegí el comercio y enviá ORIGEN al instante</div></div>
+    <div class="cab"><h2>${t('pag.t')}</h2><div class="sub">${t('pag.sub')}</div></div>
     ${tarjetaSaldo()}
     <div class="bloque">
-      <h3>¿A quién le pagás?</h3>
-      <p class="pie">Elegí un comercio del directorio. En el teléfono además podés escanear su código.</p>
+      <h3>${t('pag.quien')}</h3>
+      <p class="pie">${t('pag.quienP')}</p>
       <div class="rejilla">${COMERCIOS.filter(c => c.estado === 'verified').slice(0, 6).map(c => `
         <button class="rotulo" style="--neon:${neon(c.cat)}" onclick="MTP.pagarA('${c.id}')">
           <div class="r-top"><div class="r-ini">${esc(c.nombre.trim()[0])}</div>
@@ -287,7 +372,7 @@ const MTP = (() => {
             <div class="r-cat">${esc(ciudadNom(c.pais, c.ciudad))}</div></div></div>
         </button>`).join('')}</div>
     </div>
-    ${E.pagos.length ? `<div class="bloque"><h3>Tus pagos</h3>${E.pagos.slice(0, 8).map(p => `
+    ${E.pagos.length ? `<div class="bloque"><h3>${t('pag.tus')}</h3>${E.pagos.slice(0, 8).map(p => `
       <div class="hilera"><div class="txt"><b>${esc(p.comercio)}</b><small>${esc(cuando(p.fecha))}</small></div>
       <div class="val">−${oro(p.origen)} ORIGEN</div></div>`).join('')}</div>` : ''}`;
   }
@@ -299,9 +384,9 @@ const MTP = (() => {
     const monto = Number(cobro.monto || 0);
     const cadena = `mtp://pago?comercio=${cobro.comercio}&origen=${monto || 0}`;
     return `
-    <button class="btn btn-linea btn-sm" style="margin-bottom:16px" onclick="MTP.vista('pagar')">← Volver</button>
-    <div class="cab"><h2>Pagar a ${esc(c?.nombre || 'un comercio')}</h2>
-      <div class="sub">Tenés ${oro(E.saldo)} ORIGEN disponibles</div></div>
+    <button class="btn btn-linea btn-sm" style="margin-bottom:16px" onclick="MTP.vista('pagar')">${t('x.volver')}</button>
+    <div class="cab"><h2>${t('cob.a')} ${esc(c?.nombre || t('cob.unComercio'))}</h2>
+      <div class="sub">${t('cob.tenes')} ${oro(E.saldo)} ${t('cob.disp')}</div></div>
     <div class="bloque">
       <div class="monto-grande">${cobro.monto || '0'}<span>ORIGEN</span></div>
       <div style="text-align:center;color:var(--niebla);margin-top:6px">${esc(usd(monto * ORIGEN_USD))}</div>
@@ -309,11 +394,11 @@ const MTP = (() => {
         ${['1','2','3','4','5','6','7','8','9','.','0','←'].map(t =>
           `<button onclick="MTP.tecla('${t}')">${t}</button>`).join('')}
       </div>
-      <div style="margin-top:18px"><button class="btn btn-neon btn-full" onclick="MTP.confirmarPago()" ${monto > 0 ? '' : 'disabled'}>Pagar ${monto > 0 ? oro(monto) + ' ORIGEN' : ''}</button></div>
+      <div style="margin-top:18px"><button class="btn btn-neon btn-full" onclick="MTP.confirmarPago()" ${monto > 0 ? '' : 'disabled'}>${t('cob.pagar')} ${monto > 0 ? oro(monto) + ' ORIGEN' : ''}</button></div>
     </div>
     <div class="bloque" style="text-align:center">
-      <h3>O mostrale este código</h3>
-      <p class="pie">El comercio lo escanea desde su MyTokenPay y cobra sin que tengas que dictar nada.</p>
+      <h3>${t('cob.oCodigo')}</h3>
+      <p class="pie">${t('cob.oCodigoP')}</p>
       <div class="qr-caja" id="qr-caja" data-cadena="${esc(cadena)}"></div>
     </div>`;
   }
@@ -340,12 +425,12 @@ const MTP = (() => {
   function confirmarPago() {
     const monto = Number(cobro.monto || 0);
     const c = COMERCIOS.find(x => x.id === cobro.comercio);
-    if (!(monto > 0)) return avisar('Escribí una cantidad.');
-    if (monto > E.saldo) return avisar(`No te alcanza: tenés ${oro(E.saldo)} ORIGEN.`);
+    if (!(monto > 0)) return avisar(t('cob.escribi'));
+    if (monto > E.saldo) return avisar(`${t('cob.noAlcanza')} ${oro(E.saldo)} ORIGEN.`);
     E.saldo -= monto;
     E.pagos.unshift({ comercio: c?.nombre || 'Comercio', origen: monto, fecha: new Date().toISOString() });
     guardar();
-    avisar(`Pagaste ${oro(monto)} ORIGEN en ${c?.nombre || 'el comercio'}`);
+    avisar(`${t('cob.pagaste')} ${oro(monto)} ORIGEN ${t('cob.en')} ${c?.nombre || t('cob.unComercio')}`);
     cobro = { monto: '', comercio: null };
     vista('pagar');
   }
@@ -355,60 +440,60 @@ const MTP = (() => {
     return `
     <div class="bloque">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-        <div><h3>Veta Wallet</h3>
+        <div><h3>${t('w.t')}</h3>
           <p class="pie">${E.billetera
-            ? `Conectada · <span class="mono">${esc(E.billetera.valor.slice(0, 10))}…${esc(E.billetera.valor.slice(-6))}</span>`
-            : 'Conectá tu billetera para reflejar tu saldo real de ORIGEN.'}</p></div>
-        <button class="btn ${E.billetera ? 'btn-linea' : 'btn-neon'} btn-sm" onclick="MTP.vista('billetera')">${E.billetera ? 'Cambiar' : 'Conectar'}</button>
+            ? `${t('w.conectadaP')} · <span class="mono">${esc(E.billetera.valor.slice(0, 10))}…${esc(E.billetera.valor.slice(-6))}</span>`
+            : t('w.sinP')}</p></div>
+        <button class="btn ${E.billetera ? 'btn-linea' : 'btn-neon'} btn-sm" onclick="MTP.vista('billetera')">${t(E.billetera ? 'w.cambiar' : 'w.conectar')}</button>
       </div>
     </div>`;
   }
 
   function billetera() {
     return `
-    <button class="btn btn-linea btn-sm" style="margin-bottom:16px" onclick="MTP.vista('cuenta')">← Volver</button>
-    <div class="cab"><h2>Veta Wallet</h2><div class="sub">Tu billetera de oro, conectada a MyTokenPay</div></div>
+    <button class="btn btn-linea btn-sm" style="margin-bottom:16px" onclick="MTP.vista('cuenta')">${t('x.volver')}</button>
+    <div class="cab"><h2>${t('w.t')}</h2><div class="sub">${t('w.sub')}</div></div>
     <div class="bloque">
       ${E.billetera ? `
-        <h3>Está conectada</h3>
-        <p class="pie mono" style="margin-top:8px">${esc(E.billetera.tipo === 'address' ? 'Dirección' : 'UID')}: ${esc(E.billetera.valor)}</p>
+        <h3>${t('w.conectadaT')}</h3>
+        <p class="pie mono" style="margin-top:8px">${esc(t(E.billetera.tipo === 'address' ? 'w.dir' : 'w.uid'))}: ${esc(E.billetera.valor)}</p>
         <div style="margin-top:16px;display:flex;gap:9px;flex-wrap:wrap">
-          <button class="btn btn-linea btn-sm" onclick="MTP.desconectar()">Desconectar</button>
-          <a class="btn btn-linea btn-sm" href="${VETA_WEB}" target="_blank" rel="noopener">Abrir Veta Wallet</a>
+          <button class="btn btn-linea btn-sm" onclick="MTP.desconectar()">${t('w.desconectar')}</button>
+          <a class="btn btn-linea btn-sm" href="${VETA_WEB}" target="_blank" rel="noopener">${t('w.abrir')}</a>
         </div>` : `
-        <h3>Conectá tu Veta Wallet</h3>
-        <p class="pie">Pegá la dirección de tu billetera o el UID de tu cuenta. Los encontrás en Veta Wallet, en la pantalla de recibir.</p>
+        <h3>${t('w.conectaT')}</h3>
+        <p class="pie">${t('w.conectaP')}</p>
         <div class="seg" style="margin-top:16px">
-          <button role="tab" id="w-address" aria-selected="true" onclick="MTP.tipoBilletera('address')">Dirección</button>
-          <button role="tab" id="w-uid" aria-selected="false" onclick="MTP.tipoBilletera('uid')">UID</button>
+          <button role="tab" id="w-address" aria-selected="true" onclick="MTP.tipoBilletera('address')">${t('w.dir')}</button>
+          <button role="tab" id="w-uid" aria-selected="false" onclick="MTP.tipoBilletera('uid')">${t('w.uid')}</button>
         </div>
-        <div class="campo"><label for="w-valor" id="w-lbl">Dirección de la billetera</label>
+        <div class="campo"><label for="w-valor" id="w-lbl">${t('w.dirLbl')}</label>
           <input id="w-valor" class="mono" placeholder="0x…" autocomplete="off" spellcheck="false"></div>
         <div id="w-aviso" class="aviso oculto" role="alert"></div>
-        <button class="btn btn-neon btn-full" onclick="MTP.conectar()">Conectar</button>
-        <p class="pie" style="margin-top:14px">¿Todavía no tenés? <a href="${VETA_WEB}" target="_blank" rel="noopener" style="color:var(--cian)">Abrí tu Veta Wallet gratis</a>.</p>`}
+        <button class="btn btn-neon btn-full" onclick="MTP.conectar()">${t('w.conectar')}</button>
+        <p class="pie" style="margin-top:14px">${t('w.noTenes')} <a href="${VETA_WEB}" target="_blank" rel="noopener" style="color:var(--cian)">${t('w.abriGratis')}</a>.</p>`}
     </div>`;
   }
 
   let tipoW = 'address';
-  function tipoBilletera(t) {
-    tipoW = t;
-    $('#w-address').setAttribute('aria-selected', String(t === 'address'));
-    $('#w-uid').setAttribute('aria-selected', String(t === 'uid'));
-    $('#w-lbl').textContent = t === 'address' ? 'Dirección de la billetera' : 'UID de tu Veta Wallet';
-    $('#w-valor').placeholder = t === 'address' ? '0x…' : 'VW-…';
+  function tipoBilletera(tipo) {
+    tipoW = tipo;
+    $('#w-address').setAttribute('aria-selected', String(tipo === 'address'));
+    $('#w-uid').setAttribute('aria-selected', String(tipo === 'uid'));
+    $('#w-lbl').textContent = t(tipo === 'address' ? 'w.dirLbl' : 'w.uidLbl');
+    $('#w-valor').placeholder = tipo === 'address' ? '0x…' : 'VW-…';
     $('#w-valor').focus();
   }
   function conectar() {
     const v = $('#w-valor').value.trim(), a = $('#w-aviso');
     const decir = t => { a.textContent = t; a.className = 'aviso aviso-mal'; a.classList.remove('oculto'); };
     if (tipoW === 'address' && !/^0x[a-fA-F0-9]{40}$/.test(v))
-      return decir('Esa no parece una dirección de la cadena. Empieza con 0x y lleva 40 caracteres.');
-    if (tipoW === 'uid' && v.length < 6) return decir('Escribí el UID completo de tu Veta Wallet.');
+      return decir(t('w.eDir'));
+    if (tipoW === 'uid' && v.length < 6) return decir(t('w.eUid'));
     E.billetera = { tipo: tipoW, valor: v }; guardar();
-    avisar('Veta Wallet conectada'); vista('cuenta');
+    avisar(t('w.ok')); vista('cuenta');
   }
-  function desconectar() { E.billetera = null; guardar(); avisar('Billetera desconectada'); vista('billetera'); }
+  function desconectar() { E.billetera = null; guardar(); avisar(t('w.fuera')); vista('billetera'); }
 
   function tarjetaIdentidad() {
     if (!E.sesion) return '';
@@ -416,68 +501,61 @@ const MTP = (() => {
     return `
     <div class="bloque">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-        <div><h3>Genesis ID <span class="chapa ${v ? 'ch-ok' : 'ch-rev'}">${v ? 'Verificada' : rev ? 'En revisión' : 'Sin verificar'}</span></h3>
-          <p class="pie">${v ? 'Tu identidad vale en MyTokenPay, Veta Wallet y todo Orden Global.'
-            : rev ? 'Un operador está revisando tus datos. Suele tardar menos de 24 horas.'
-            : 'Verificate una vez y quedás verificado en todo el ecosistema.'}</p></div>
-        ${v ? '' : `<button class="btn btn-neon btn-sm" onclick="MTP.vista('identidad')">${rev ? 'Ver estado' : 'Verificar'}</button>`}
+        <div><h3>Genesis ID <span class="chapa ${v ? 'ch-ok' : 'ch-rev'}">${t(v ? 'x.verificado' : rev ? 'x.enRevision' : 'x.sinVerificar')}</span></h3>
+          <p class="pie">${t(v ? 'g.verT' : rev ? 'g.revT' : 'g.noT')}</p></div>
+        ${v ? '' : `<button class="btn btn-neon btn-sm" onclick="MTP.vista('identidad')">${t(rev ? 'g.verEstado' : 'g.verificar')}</button>`}
       </div>
     </div>`;
   }
 
   function vIdentidad() {
-    const pasos = [
-      ['Tus datos', 'Nombre, fecha de nacimiento y país'],
-      ['Tu documento', 'Frente y reverso de tu identificación'],
-      ['Tu rostro', 'Una prueba de vida de unos segundos'],
-      ['Revisión', 'Un operador de cumplimiento decide'],
-    ];
+    const pasos = [1, 2, 3, 4].map(n => [t(`g.p${n}t`), t(`g.p${n}p`)]);
     return `
-    <button class="btn btn-linea btn-sm" style="margin-bottom:16px" onclick="MTP.vista('cuenta')">← Volver</button>
-    <div class="cab"><h2>Genesis ID</h2><div class="sub">Identidad digital · Orden Global</div></div>
+    <button class="btn btn-linea btn-sm" style="margin-bottom:16px" onclick="MTP.vista('cuenta')">${t('x.volver')}</button>
+    <div class="cab"><h2>${t('g.t')}</h2><div class="sub">${t('g.sub')}</div></div>
     <div class="bloque">
-      <h3>Tu identidad única para todo el ecosistema</h3>
-      <p class="pie">Con una sola verificación quedás verificado en MyTokenPay, en Veta Wallet y en el resto de los servicios del grupo. No hay que repetir el trámite en cada uno.</p>
+      <h3>${t('g.unaT')}</h3>
+      <p class="pie">${t('g.unaP')}</p>
       <div style="margin-top:16px">
         ${pasos.map(([t, s], i) => `<div class="hilera">
           <div class="r-ini" style="--neon:var(--cian);width:32px;height:32px;font-size:14px">${i + 1}</div>
           <div class="txt"><b>${t}</b><small>${s}</small></div></div>`).join('')}
       </div>
       <div style="margin-top:20px">
-        <a class="btn btn-neon btn-full" href="${GENESIS_WEB}" target="_blank" rel="noopener">Empezar la verificación</a>
+        <a class="btn btn-neon btn-full" href="${GENESIS_WEB}" target="_blank" rel="noopener">${t('g.empezar')}</a>
       </div>
-      <p class="pie" style="margin-top:14px">La verificación la decide una persona del equipo de cumplimiento, no la aplicación. Hasta entonces tu estado queda en revisión.</p>
+      <p class="pie" style="margin-top:14px">${t('g.nota')}</p>
     </div>`;
   }
 
   function cuenta() {
     if (!E.sesion) return `
-      <div class="cab"><h2>Mi cuenta</h2></div>
+      <div class="cab"><h2>${t('cta.t')}</h2></div>
       <div class="bloque"><div class="vacio">
-        <b>Estás mirando sin cuenta</b>Creala gratis para pagar, ganar puntos y guardar tus comercios.
+        <b>${t('cta.sinT')}</b>${t('cta.sinP')}
         <div style="margin-top:16px;display:flex;gap:9px;justify-content:center;flex-wrap:wrap">
-          <button class="btn btn-neon btn-sm" onclick="MTP.ir('acceso','crear')">Crear mi cuenta</button>
-          <button class="btn btn-linea btn-sm" onclick="MTP.ir('acceso','entrar')">Ya tengo una</button>
+          <button class="btn btn-neon btn-sm" onclick="MTP.ir('acceso','crear')">${t('bv.crear')}</button>
+          <button class="btn btn-linea btn-sm" onclick="MTP.ir('acceso','entrar')">${t('cta.yaTengo')}</button>
         </div>
       </div></div>`;
     return `
-    <div class="cab"><h2>Mi cuenta</h2><div class="sub">${esc(E.sesion.correo)}</div></div>
+    <div class="cab"><h2>${t('cta.t')}</h2><div class="sub">${esc(E.sesion.correo)}</div></div>
     ${tarjetaIdentidad()}
     ${tarjetaBilletera()}
     <div class="bloque">
-      <h3>Tus datos</h3>
-      <div class="hilera"><div class="txt"><b>Nombre</b><small>${esc(E.sesion.nombre)}</small></div></div>
-      <div class="hilera"><div class="txt"><b>Correo</b><small>${esc(E.sesion.correo)}</small></div></div>
+      <h3>${t('cta.datos')}</h3>
+      <div class="hilera"><div class="txt"><b>${t('cta.nombre')}</b><small>${esc(E.sesion.nombre)}</small></div></div>
+      <div class="hilera"><div class="txt"><b>${t('cta.correo')}</b><small>${esc(E.sesion.correo)}</small></div></div>
     </div>
     <div class="bloque">
-      <h3>¿Tenés un negocio?</h3>
-      <p class="pie">Registralo para aparecer en el directorio y empezar a cobrar en ORIGEN. Desde la app del teléfono podés subir tus fotos y tu ubicación.</p>
-      <div style="margin-top:14px"><button class="btn btn-linea btn-sm" onclick="MTP.avisar('El registro de comercios se hace desde la app del teléfono.')">Registrar mi comercio</button></div>
+      <h3>${t('cta.negT')}</h3>
+      <p class="pie">${t('cta.negP')}</p>
+      <div style="margin-top:14px"><button class="btn btn-linea btn-sm" onclick="MTP.avisar(t('cta.negAviso'))">${t('cta.negBtn')}</button></div>
     </div>
     <div class="bloque">
-      <h3>Cerrar sesión</h3>
-      <p class="pie">Se borra la sesión de este navegador.</p>
-      <div style="margin-top:14px"><button class="btn btn-linea btn-sm" onclick="MTP.salir()">Cerrar sesión</button></div>
+      <h3>${t('cta.salirT')}</h3>
+      <p class="pie">${t('cta.salirP')}</p>
+      <div style="margin-top:14px"><button class="btn btn-linea btn-sm" onclick="MTP.salir()">${t('cta.salirT')}</button></div>
     </div>`;
   }
 
@@ -485,8 +563,10 @@ const MTP = (() => {
 
   function arrancar() {
     $('#form-acceso').addEventListener('submit', enviarAcceso);
-    $('#bv-cifras').innerHTML = [[COMERCIOS.length, 'Comercios'], [verificados(), 'Verificados'], [PAISES.length, 'Países']]
-      .map(([n, l]) => `<div class="cifra"><b>${n}</b><small>${l}</small></div>`).join('');
+    pintarIdioma();
+    pintarCifras();
+    pintarCalle();
+    armarRevelado();
     const g = recuperar();
     if (g) E = { ...E, ...g };
     if (E.sesion || E.invitado) { ir('app'); vista(E.sesion ? 'inicio' : 'explorar'); }
@@ -494,7 +574,7 @@ const MTP = (() => {
   }
   document.addEventListener('DOMContentLoaded', arrancar);
 
-  return { ir, pestana, vista, buscar, filtrarCat, filtrarPais, pagarA, tecla, confirmarPago,
+  return { ir, pestana, vista, buscar, idioma, filtrarCat, filtrarPais, pagarA, tecla, confirmarPago,
            tipoBilletera, conectar, desconectar, salir, avisar, entrarComoInvitado,
            _estado: () => E };
 })();

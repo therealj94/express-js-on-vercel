@@ -9,31 +9,35 @@
 <meta property="og:description" content="Tu oro, en tu bolsillo. En cualquier parte del mundo.">
 <meta property="og:image" content="assets/veta.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,600;1,6..96,400;1,6..96,500&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════
    Veta Wallet · web
 
-   Una veta es una franja de mineral dentro de la roca: el camino por el que el
-   oro llega a la superficie. Es el nombre de la marca y es el elemento que
-   sostiene todo este diseño — una línea dorada que atraviesa la pantalla, se
-   abre donde hay que decidir y se ensancha donde está el valor.
+   Una veta es la franja de mineral por la que el oro llega a la superficie:
+   el nombre de la marca y la columna vertebral de este diseño. Una sola línea
+   dorada atraviesa la pantalla, se abre donde hay que decidir y se ensancha
+   donde está el valor.
 
-   La paleta viene de la app, sin retocar: verde de mina, oro, crema. Los
-   paneles dejan pasar el fondo porque en la app son de vidrio sobre la
-   fotografía de marca, y esa profundidad es parte de la identidad.
+   La letra grande es una didona (Bodoni Moda): la tipografía de las casas de
+   joyería y de los billetes grabados, con ese contraste fino/grueso que ya es
+   oro tallado. El texto de trabajo va en Archivo, seca y neutra, para que la
+   didona sea la única voz alta. Los números del saldo también van en didona:
+   un saldo en oro merece cifras de grabado, no de hoja de cálculo.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root{
-  --pozo:#021B1C; --veta:#063430; --musgo:#0A463F; --lodo:#0E5A52;
-  --panel:rgba(6,40,42,.82); --panel2:rgba(12,54,56,.86); --panel3:rgba(22,78,80,.5);
+  --pozo:#021B1C; --veta:#063430;
+  --panel:rgba(6,40,42,.82); --panel2:rgba(12,54,56,.86);
   --linea:rgba(201,169,97,.28); --linea2:rgba(201,169,97,.15);
   --campo:rgba(8,44,46,.9); --campoBr:#2E7477;
   --oro:#C9A961; --oroLt:#EAD79C; --oroHi:#F8EFCF; --oroDp:#96793F;
   --crema:#F3ECD9; --bruma:#AEC7C3; --humo:#6E938F;
   --jade:#3ED9A0; --coral:#F0776B;
-  --serif:'Fraunces',Georgia,serif; --sans:'Manrope',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  --serif:'Bodoni Moda',Didot,'Times New Roman',serif;
+  --sans:'Archivo',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
   --r:16px; --r2:22px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -41,8 +45,6 @@ html{-webkit-text-size-adjust:100%}
 body{
   background:var(--pozo); color:var(--crema); font-family:var(--sans); font-weight:400;
   min-height:100svh; overflow-x:hidden; -webkit-font-smoothing:antialiased;
-  /* La mina: dos brillos fríos y uno dorado, muy abiertos. Es el fondo sobre el
-     que flotan los paneles de vidrio, igual que en la app. */
   background-image:
     radial-gradient(120% 80% at 78% -10%, rgba(14,90,82,.55), transparent 60%),
     radial-gradient(90% 60% at 8% 105%, rgba(201,169,97,.10), transparent 62%),
@@ -56,68 +58,121 @@ a{color:inherit}
 .oculto{display:none!important}
 .mono{font-family:var(--mono);font-variant-ligatures:none}
 
-/* ── la veta ───────────────────────────────────────────────────────────────
-   El elemento que da nombre a todo. En la bienvenida se dibuja sola de arriba
-   abajo; en la aplicación queda como un hilo fino al costado. Es una sola
-   línea de oro y es la única cosa decorativa de la página. */
+/* ── la veta ─────────────────────────────────────────────────────────────── */
 .veta-svg{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
-.veta-svg path{fill:none;stroke:url(#vetaGrad);stroke-width:1.1;stroke-linecap:round;
+.veta-svg path{fill:none;stroke:url(#vetaGrad);stroke-width:1.7;stroke-linecap:round;
   stroke-dasharray:var(--largo);stroke-dashoffset:var(--largo);
   animation:vetaCrece 2.6s cubic-bezier(.32,.9,.35,1) forwards}
-.veta-svg path.b{animation-delay:.55s;opacity:.55}
-.veta-svg path.c{animation-delay:.95s;opacity:.32}
+.veta-svg path.b{animation-delay:.55s;opacity:.7}
+.veta-svg path.c{animation-delay:.95s;opacity:.45}
 @keyframes vetaCrece{to{stroke-dashoffset:0}}
 .pepita{fill:var(--oroHi);opacity:0;animation:pepitaSale .9s 2.1s ease forwards}
 @keyframes pepitaSale{from{opacity:0}to{opacity:1}}
 
-/* ── bienvenida ─────────────────────────────────────────────────────────── */
-#bienvenida{position:relative;z-index:2;min-height:100svh;display:grid;place-items:center;
-  padding:clamp(24px,6vw,64px);text-align:center}
-.bv{max-width:min(92vw,560px);animation:sube 1s .35s cubic-bezier(.2,.8,.3,1) both}
-@keyframes sube{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
-.marca{display:flex;align-items:baseline;justify-content:center;gap:.42ch;
-  font-family:var(--serif);font-weight:300;letter-spacing:-.02em;
-  font-size:clamp(38px,8.6vw,66px);line-height:1;color:var(--crema)}
-.marca em{font-style:italic;
+/* ── cabecera fina, presente en la portada y el acceso ───────────────────── */
+.techo{position:fixed;inset:0 0 auto;z-index:10;display:flex;align-items:center;
+  justify-content:space-between;padding:18px clamp(18px,4vw,42px)}
+.techo .marca{font-size:clamp(19px,2.6vw,23px)}
+.idiomas{display:flex;border:1px solid var(--linea2);border-radius:100px;overflow:hidden;
+  background:rgba(2,22,23,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.idiomas button{padding:7px 14px;font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--humo);transition:.2s}
+.idiomas button[aria-pressed=true]{background:rgba(201,169,97,.16);color:var(--oroHi)}
+
+/* ── marca ───────────────────────────────────────────────────────────────── */
+.marca{display:flex;align-items:baseline;gap:.34ch;
+  font-family:var(--serif);font-weight:500;letter-spacing:.005em;line-height:1;color:var(--crema)}
+.marca em{font-style:italic;font-weight:400;
   background:linear-gradient(100deg,var(--oroLt),var(--oroHi) 42%,var(--oro) 72%,var(--oroLt));
   background-size:220% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
   animation:brillo 6s linear infinite}
 @keyframes brillo{to{background-position:220% 0}}
-.sello{margin-top:14px;font-size:10.5px;font-weight:700;letter-spacing:.34em;color:var(--oroDp);text-transform:uppercase}
-.bv h1{margin-top:30px;font-family:var(--serif);font-weight:300;letter-spacing:-.015em;
-  font-size:clamp(23px,4.4vw,34px);line-height:1.22;color:var(--crema)}
-.bv h1 i{font-style:italic;color:var(--oroLt)}
-.bv p{margin-top:16px;color:var(--bruma);font-size:15px;line-height:1.62;max-width:42ch;margin-inline:auto}
-.bv-btns{margin-top:34px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.bv-pie{margin-top:30px;font-size:11.5px;color:var(--humo);letter-spacing:.02em}
-.bv-pie a{color:var(--bruma);text-decoration:none;border-bottom:1px solid var(--linea2)}
-.bv-pie a:hover{color:var(--oroLt)}
 
-/* ── botones ──────────────────────────────────────────────────────────────── */
+/* ── portada: editorial, cargada a la izquierda ──────────────────────────────
+   Nada centrado. El texto vive en la mitad izquierda como una página de
+   revista; la mitad derecha es de la veta y del lingote flotante. El vacío de
+   la derecha no es un descuido: es la roca sin excavar. */
+#bienvenida{position:relative;z-index:2;min-height:min(100svh,860px);display:grid;align-items:center;
+  grid-template-columns:minmax(0,6fr) minmax(0,4fr);gap:clamp(20px,3.5vw,48px);
+  max-width:1420px;margin:0 auto;
+  padding:clamp(86px,14vh,120px) clamp(20px,5vw,64px) clamp(40px,7vh,64px)}
+.bv{max-width:640px}
+.bv .renglon{display:block;overflow:hidden;padding-bottom:.06em}
+.bv .palabra{display:inline-block;transform:translateY(112%);animation:palabraSube .8s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes palabraSube{to{transform:none}}
+.sello{font-size:11px;font-weight:700;letter-spacing:.34em;color:var(--oroDp);text-transform:uppercase;
+  display:flex;align-items:center;gap:14px}
+.sello::after{content:"";height:1px;width:74px;background:linear-gradient(90deg,var(--oroDp),transparent)}
+.bv h1{margin-top:22px;font-family:var(--serif);font-weight:500;letter-spacing:0;
+  font-size:clamp(40px,7vw,82px);line-height:1.04;color:var(--crema)}
+.bv h1 i{font-style:italic;font-weight:400;color:var(--oroLt)}
+.bv p{margin-top:22px;color:var(--bruma);font-size:clamp(14.5px,1.6vw,16.5px);line-height:1.66;max-width:46ch;
+  opacity:0;animation:aparece .8s 1s ease forwards}
+.bv-btns{margin-top:32px;display:flex;gap:12px;flex-wrap:wrap;
+  opacity:0;animation:aparece .8s 1.2s ease forwards}
+@keyframes aparece{to{opacity:1}}
+/* La fila de hechos: alineada a la izquierda, separada por hilos, cada dato
+   con su cifra en didona. Es la línea de "por qué creerle" y entra la última. */
+.hechos{margin-top:clamp(34px,6vh,58px);display:flex;gap:clamp(18px,3vw,38px);flex-wrap:wrap;
+  opacity:0;animation:aparece .9s 1.5s ease forwards}
+.hecho{padding-left:16px;border-left:1px solid var(--linea2)}
+.hecho b{display:block;font-family:var(--serif);font-weight:500;font-size:clamp(20px,2.6vw,27px);color:var(--oroLt)}
+.hecho small{display:block;margin-top:4px;font-size:11.5px;color:var(--humo);letter-spacing:.04em;max-width:17ch;line-height:1.5}
+
+/* El lingote: una tarjeta de vidrio con la equivalencia del gramo y un QR real
+   hacia la casa. Flota apenas, como colgada de la veta. */
+.lingote{justify-self:end;align-self:center;width:min(100%,320px);padding:26px;
+  animation:flota 7s 2.4s ease-in-out infinite,aparece 1s 1.6s ease both}
+@keyframes flota{0%,100%{transform:translateY(0) rotate(-.4deg)}50%{transform:translateY(-
+12px) rotate(.4deg)}}
+.lingote .l-lbl{font-size:10.5px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;color:var(--humo)}
+.lingote .l-uno{margin-top:10px;font-family:var(--serif);font-weight:500;font-size:44px;line-height:1;color:var(--oroHi)}
+.lingote .l-eq{margin-top:8px;font-size:13px;color:var(--bruma);line-height:1.6}
+.lingote .l-qr{margin-top:18px;display:flex;align-items:center;gap:14px;padding-top:18px;border-top:1px solid var(--linea2)}
+.lingote .l-qr>div{width:74px;flex:0 0 auto;border-radius:10px;overflow:hidden}
+.lingote .l-qr small{font-size:11.5px;color:var(--humo);line-height:1.55}
+
+/* ── botones ─────────────────────────────────────────────────────────────── */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;
   padding:15px 30px;border-radius:100px;font-weight:700;font-size:15px;letter-spacing:.01em;
   transition:transform .22s cubic-bezier(.2,.8,.3,1),box-shadow .22s,background .22s,border-color .22s;
-  white-space:nowrap}
+  white-space:nowrap;position:relative;overflow:hidden}
 .btn:active{transform:scale(.975)}
 .btn-oro{color:#2A2007;background:linear-gradient(120deg,var(--oroLt),var(--oro) 52%,var(--oroLt));
-  background-size:210% 100%;box-shadow:0 14px 40px -16px rgba(201,169,97,.7);animation:brillo 7s linear infinite}
+  background-size:210% 100%;box-shadow:0 14px 40px -16px rgba(201,169,97,.7)}
 .btn-oro:hover{transform:translateY(-2px);box-shadow:0 20px 52px -16px rgba(201,169,97,.85)}
+/* El destello que cruza al pasar el cursor: reflejo sobre metal, no un hover. */
+.btn-oro::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.55) 50%,transparent 60%);
+  background-size:250% 100%;background-position:160% 0;transition:background-position .7s ease}
+.btn-oro:hover::after{background-position:-60% 0}
 .btn-linea{border:1px solid var(--linea);color:var(--crema);background:rgba(255,255,255,.03)}
 .btn-linea:hover{border-color:var(--oro);background:rgba(201,169,97,.09);transform:translateY(-2px)}
 .btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
 .btn-full{width:100%}
 .btn-sm{padding:11px 20px;font-size:13.5px}
 
-/* ── tarjetas de vidrio ───────────────────────────────────────────────────── */
 .vidrio{background:var(--panel);border:1px solid var(--linea2);border-radius:var(--r2);
-  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  backdrop-filter:bl
+ur(18px);-webkit-backdrop-filter:blur(18px);
   box-shadow:0 30px 80px -40px rgba(0,0,0,.9)}
 
-/* ── entrar / crear cuenta ────────────────────────────────────────────────── */
-#acceso{position:relative;z-index:2;min-height:100svh;display:grid;place-items:center;padding:clamp(20px,5vw,48px)}
-.acc{width:min(94vw,428px);padding:clamp(26px,5vw,38px)}
-.acc-top{text-align:center;margin-bottom:26px}
-.acc-top .marca{font-size:clamp(28px,6vw,38px)}
+/* ── acceso: el formulario a un lado, la promesa al otro ─────────────────── */
+#acceso{position:relative;z-index:2;min-height:100svh;display:grid;align-items:center;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(24px,5vw,70px);
+  padding:clamp(86px,13vh,110px) clamp(20px,5vw,64px) 48px}
+.acc-lado{max-width:430px;justify-self:end}
+.acc-lado .sello{margin-bottom:18px}
+.acc-lado h2{font-family:var(--serif);font-weight:500;font-size:clamp(30px,4.2vw,50px);line-height:1.08}
+.acc-lado h2 i{font-style:italic;font-weight:400;color:var(--oroLt)}
+.acc-lado p{margin-top:16px;color:var(--bruma);font-size:15px;line-height:1.65;max-width:38ch}
+.acc-lado .gid-mini{margin-top:26px;display:flex;gap:12px;align-items:flex-start;padding:16px;
+  border:1px solid var(--linea2);border-radius:var(--r);background:rgba(2,22,23,.4)}
+.acc-lado .gid-mini svg{width:20px;height:20px;flex:0 0 auto;stroke:var(--oroLt);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.acc-lado .gid-mini small{font-size:12.5px;color:var(--humo);line-height:1.6}
+.acc{width:min(94vw,428px);padding:cl
+amp(26px,5vw,38px);justify-self:start;
+  animation:sube .7s cubic-bezier(.2,.8,.3,1) both}
+@keyframes sube{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
 .seg{display:flex;gap:4px;padding:4px;background:rgba(2,20,20,.6);border:1px solid var(--linea2);
   border-radius:100px;margin-bottom:24px}
 .seg button{flex:1;padding:11px;border-radius:100px;font-size:14px;font-weight:600;color:var(--bruma);transition:.2s}
@@ -143,46 +198,56 @@ a{color:inherit}
 .acc-volver{display:block;margin:20px auto 0;font-size:13px;color:var(--humo)}
 .acc-volver:hover{color:var(--oroLt)}
 
-/* ── el armazón de la aplicación ──────────────────────────────────────────── */
+/* ── armazón de la aplicación ────────────────────────────────────────────── */
 #app{position:relative;z-index:2;min-height:100svh}
 .riel{position:fixed;left:0;top:0;bottom:0;width:232px;padding:26px 18px;z-index:5;
   border-right:1px solid var(--linea2);background:rgba(2,22,23,.72);
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   display:flex;flex-direction:column;gap:6px}
-.riel-marca{display:flex;align-items:center;gap:10px;padding:6px 10px 22px;font-family:var(--serif);
-  font-weight:300;font-size:21px;letter-spacing:-.01em}
+.riel-marca{display:flex;align-items:center;gap:10px;padding:6px 10px 22px;font-size:21px}
 .riel-marca img{width:26px;height:26px;border-radius:7px}
-.riel-marca em{font-style:italic;color:var(--oroLt)}
 .nav{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;
-  font-size:14.5px;font-weight:600;color:var(--bruma);transition:.18s;width:100%;text-align:left}
+  font-size:14.5px;font-weight:600;color:var(--bruma);transition:.18s;width:100%;text-align:left;position:relative}
 .nav svg{width:19px;height:19px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .nav:hover{background:rgba(255,255,255,.045);color:var(--crema)}
 .nav[aria-current=page]{background:rgba(201,169,97,.13);color:var(--oroHi)}
 .nav[aria-current=page] svg{color:var(--oro)}
+/* La sección activa lleva su propia astilla de veta al costado. */
+.nav[aria-current=page]::before{content:"";position:absolute;left:-18px;top:22%;bottom:22%;width:2px;
+  background:linear-gradient(180deg,transparent,var(--oro),transparent)}
 .riel-pie{margin-top:auto;padding:14px 12px 0;border-top:1px solid var(--linea2);font-size:11.5px;color:var(--humo);line-height:1.7}
 .riel-pie a{color:var(--bruma);text-decoration:none}
 .riel-pie a:hover{color:var(--oroLt)}
+.riel-pie .idiomas{margin-top:10px;width:max-content}
 
-.lienzo{margin-left:232px;padding:clamp(20px,3vw,38px) clamp(16px,3vw,38px) 60px;
-  max-width:920px}
+.lienzo{margin-left:232px;padding:clamp(20px,3vw,38px) clamp(16px,3vw,38px) 60px;max-width:920px}
+/* Cada vista entra en cascada: los bloques se levantan uno tras otro. Como el
+   contenido se re-crea al navegar, la animación corre sola en cada cambio. */
+.lienzo>*{animation:bloqueSube .55s cubic-bezier(.2,.8,.3,1) both}
+.lienzo>*:nth-child(2){animation-delay:.07s}
+.lienzo>*:nth-child(3){animation-delay:.14s}
+.lienzo>*:nth-child(4){animation-delay:.21s}
+.lienzo>*:nth-child(5){animation-delay:.28s}
+@keyframes bloqueSube{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 .cab{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px}
-.cab h2{font-family:var(--serif);font-weight:300;font-size:clamp(25px,3.6vw,34px);letter-spacing:-.015em}
-.cab .sub{font-size:13px;color:var(--humo);margin-top:5px}
+.cab h2{font-family:var(--serif);font-weight:500;font-size:clamp(27px,3.8vw,38px)}
+.cab .sub{font-size:13px;color:var(--humo);margin-top:6px}
 
-/* ── el saldo: el momento en que la veta se ensancha ─────────────────────── */
+/* ── el saldo ────────────────────────────────────────────────────────────── */
 .saldo{padding:clamp(24px,4vw,34px);position:relative;overflow:hidden}
 .saldo::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;
   background:linear-gradient(180deg,transparent,var(--oro) 22%,var(--oroHi) 50%,var(--oro) 78%,transparent)}
 .saldo-lbl{font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--humo);font-weight:600}
 .saldo-cifra{margin-top:12px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-.saldo-cifra b{font-family:var(--serif);font-weight:300;font-size:clamp(42px,8.4vw,68px);
-  letter-spacing:-.03em;line-height:1;
+.saldo-cifra b{font-family:var(--serif);font-weight:500;font-size:clamp(44px,8.4vw,72px);
+  line-height:1;font-variant-numeric:lining-nums;
   background:linear-gradient(105deg,var(--oroHi),var(--oroLt) 40%,var(--oro) 75%,var(--oroHi));
   background-size:220% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
   animation:brillo 8s linear infinite}
-.saldo-cifra span{font-size:15px;font-weight:700;color:var(--oroDp);letter-spacing:.12em}
+.saldo-cifra span{font-size:14px;font-weight:700;color:var(--oroDp);letter-spacing:.14em}
 .saldo-fiat{margin-top:10px;font-size:15px;color:var(--bruma)}
-.saldo-fiat .pastilla{display:inline-block;margin-left:8px;padding:3px 9px;border-radius:100px;
+.saldo-fiat .pastilla{display:inline-block;margin-left:8px;padding:3px 9px;border-radius:100
+px;
   font-size:12px;font-weight:700;font-family:var(--mono)}
 .sube-p{background:rgba(62,217,160,.14);color:var(--jade)}
 .baja-p{background:rgba(240,119,107,.14);color:var(--coral)}
@@ -193,7 +258,6 @@ a{color:inherit}
 .acc-btn:hover{border-color:var(--linea);background:rgba(201,169,97,.09);transform:translateY(-2px)}
 .acc-btn svg{width:21px;height:21px;stroke:var(--oro);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
-/* ── bloques ─────────────────────────────────────────────────────────────── */
 .bloque{margin-top:22px;padding:clamp(20px,3vw,26px)}
 .bloque h3{font-size:15px;font-weight:700;margin-bottom:4px}
 .bloque .pie{font-size:13px;color:var(--humo);line-height:1.6}
@@ -211,7 +275,6 @@ a{color:inherit}
 .vacio{padding:34px 20px;text-align:center;color:var(--humo);font-size:14px;line-height:1.7}
 .vacio b{display:block;color:var(--bruma);font-size:15px;margin-bottom:6px;font-weight:600}
 
-/* ── Genesis ID ──────────────────────────────────────────────────────────── */
 .gid{display:flex;align-items:flex-start;gap:16px}
 .gid-ic{width:46px;height:46px;flex:0 0 auto;border-radius:14px;display:grid;place-items:center;
   background:linear-gradient(140deg,rgba(201,169,97,.22),rgba(62,217,160,.12));border:1px solid var(--linea)}
@@ -224,25 +287,21 @@ a{color:inherit}
 .e-no{background:rgba(174,199,195,.1);color:var(--bruma)}
 .e-mal{background:rgba(240,119,107,.12);color:var(--coral)}
 
-/* ── recibir: el QR ──────────────────────────────────────────────────────── */
 .qr-caja{margin:0 auto;width:min(78vw,260px);padding:16px;background:var(--crema);border-radius:20px;
   box-shadow:0 24px 60px -26px rgba(0,0,0,.9)}
 .qr-caja svg{display:block;width:100%;height:auto;aspect-ratio:1;border-radius:8px}
 .dir{margin-top:20px;padding:15px;background:rgba(2,20,20,.55);border:1px solid var(--linea2);
   border-radius:var(--r);font-family:var(--mono);font-size:13px;word-break:break-all;line-height:1.7;
   text-align:center;color:var(--bruma)}
-
-/* ── pestañas de móvil ───────────────────────────────────────────────────── */
 .tabs{display:none}
 
-/* ── avisos flotantes ────────────────────────────────────────────────────── */
 #tostada{position:fixed;left:50%;bottom:26px;transform:translate(-50%,140%);z-index:60;
+  opacity:0;visibility:hidden;
   padding:13px 22px;border-radius:100px;background:rgba(6,44,46,.96);border:1px solid var(--linea);
   font-size:14px;font-weight:600;box-shadow:0 18px 50px -18px rgba(0,0,0,.9);
-  transition:transform .38s cubic-bezier(.2,.9,.3,1);max-width:90vw;text-align:center}
-#tostada.ver{transform:translate(-50%,0)}
-
-/* ── carga ───────────────────────────────────────────────────────────────── */
+  transition:transform .38s cubic-bezier(.2,.9,.3,1),opacity .3s,visibility .3s;
+  max-width:90vw;text-align:center}
+#tostada.ver{transform:translate(-50%,0);opacity:1;visibility:visible}
 .girando{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.25);
   border-top-color:currentColor;border-radius:50%;animation:gira .7s linear infinite}
 @keyframes gira{to{transform:rotate(360deg)}}
@@ -250,28 +309,140 @@ a{color:inherit}
   background-size:200% 100%;animation:brilloEsq 1.3s linear infinite;border-radius:8px;color:transparent}
 @keyframes brilloEsq{to{background-position:-200% 0}}
 
+/* ══ EL RECORRIDO ═════════════════════════════════════════════════════════════
+   Debajo de la portada. No es relleno: es lo que una persona necesita saber
+   antes de confiarle oro a una pagina — que es ORIGEN, como se usa, quien lo
+   guarda, y que hay detras. Cada bloque entra al aparecer en pantalla y cada
+   uno se compone distinto: nada de tres tarjetas iguales en fila. */
+
+.baja{scroll-margin-top:80px}
+/* Lo que todavia no se ha visto espera abajo y a un lado; al entrar en pantalla
+   sube a su sitio. El desplazamiento lateral alterna, asi que el ojo va en
+   zigzag en vez de bajar en linea recta. */
+.rev{opacity:0;transform:translateY(38px);transition:opacity .8s cubic-bezier(.2,.8,.2,1),transform .8s cubic-bezier(.2,.8,.2,1)}
+.rev.izq{transform:translate(-26px,26px)}
+.rev.der{transform:translate(26px,26px)}
+.rev.ve{opacity:1;transform:none}
+
+.tramo{position:relative;z-index:2;padding:clamp(64px,11vh,120px) clamp(20px,5vw,64px);max-width:1420px;margin:0 auto}
+.tramo-cab{max-width:44ch}
+.tramo-cab .sello{margin-bottom:20px}
+.tramo-cab h2{font-family:var(--serif);font-weight:500;font-size:clamp(28px,4.6vw,54px);line-height:1.08}
+.tramo-cab h2 i{font-style:italic;font-weight:400;color:var(--oroLt)}
+.tramo-cab p{margin-top:18px;color:var(--bruma);font-size:15.5px;line-height:1.68}
+
+/* ── qué es ORIGEN: una escalera, no una rejilla ────────────────────────────
+   Tres peldaños que bajan hacia la derecha. El desnivel dice lo que dice el
+   texto: del metal enterrado al dinero que se mueve. */
+.escalera{margin-top:clamp(34px,6vh,64px);display:grid;gap:14px}
+.peldano{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:start;
+  padding:26px clamp(20px,3vw,32px);border:1px solid var(--linea2);border-radius:var(--r2);
+  background:rgba(6,40,42,.5);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  transition:border-color .3s,transform .3s,background .3s}
+.peldano:hover{border-color:var(--linea);transform:translateY(-3px);background:rgba(6,40,42,.72)}
+.peldano:nth-child(2){margin-left:clamp(0px,6vw,90px)}
+.peldano:nth-child(3){margin-left:clamp(0px,12vw,180px)}
+.peldano .num{font-family:var(--serif);font-weight:500;font-size:clamp(28px,3.4vw,42px);
+  line-height:1;color:var(--oroDp);min-width:1.4ch}
+.peldano h3{font-family:var(--serif);font-weight:500;font-size:clamp(19px,2.2vw,25px);line-height:1.2}
+.peldano p{margin-top:9px;color:var(--bruma);font-size:14.5px;line-height:1.66;max-width:52ch}
+
+/* ── la bóveda: cifra enorme a un lado, lista de garantías al otro ────────── */
+.par{margin-top:clamp(34px,6vh,64px);display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);
+  gap:clamp(26px,5vw,72px);align-items:center}
+.par .cifrona{font-family:var(--serif);font-weight:500;font-size:clamp(64px,13vw,160px);line-height:.86;
+  letter-spacing:-.02em;
+  background:linear-gradient(150deg,var(--oroHi),var(--oro) 55%,var(--oroDp));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.par .cifrona small{display:block;margin-top:16px;font-family:var(--sans);font-size:12px;font-weight:700;
+  letter-spacing:.24em;text-transform:uppercase;color:var(--humo);-webkit-text-fill-color:var(--humo)}
+.garantias{display:grid;gap:0}
+.garantia{display:flex;gap:16px;align-items:flex-start;padding:20px 0;border-top:1px solid var(--linea2)}
+.garantia:last-child{border-bottom:1px solid var(--linea2)}
+.garantia svg{width:20px;height:20px;flex:0 0 auto;margin-top:2px;stroke:var(--oro);fill:none;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.garantia b{display:block;font-size:15px;font-weight:600}
+.garantia small{display:block;margin-top:5px;font-size:13.5px;color:var(--humo);line-height:1.6}
+
+/* ── el ecosistema: fichas anchas con su propio acento ─────────────────────── */
+.eco{margin-top:clamp(34px,6vh,64px);display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.eco-f{padding:26px;border:1px solid var(--linea2);border-radius:var(--r2);position:relative;overflow:hidden;
+  background:rgba(6,40,42,.5);transition:transform .3s,border-color .3s}
+.eco-f::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--acento,var(--oro));opacity:.55}
+.eco-f:hover{transform:translateY(-4px);border-color:var(--linea)}
+.eco-f h3{font-family:var(--serif);font-weight:500;font-size:22px}
+.eco-f p{margin-top:10px;color:var(--bruma);font-size:14px;line-height:1.62}
+.eco-f a{display:inline-flex;align-items:center;gap:6px;margin-top:16px;font-size:13px;font-weight:700;color:var(--oroLt)}
+.eco-f a::after{content:"→";transition:transform .25s}
+.eco-f a:hover::after{transform:translateX(4px)}
+
+/* ── el cierre: una sola frase grande y el botón ───────────────────────────── */
+.cierre{padding:clamp(70px,13vh,140px) clamp(20px,5vw,64px) clamp(80px,14vh,150px);
+  max-width:1420px;margin:0 auto;position:relative;z-index:2}
+.cierre h2{font-family:var(--serif);font-weight:500;font-size:clamp(34px,6.4vw,88px);line-height:1.02;max-width:16ch}
+.cierre h2 i{font-style:italic;font-weight:400;
+  background:linear-gradient(100deg,var(--oroLt),var(--oroHi) 45%,var(--oro) 72%,var(--oroLt));
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  animation:brillo 7s linear infinite}
+.cierre .btns{margin-top:38px;display:flex;gap:12px;flex-wrap:wrap}
+.pie{border-top:1px solid var(--linea2);padding:26px clamp(20px,5vw,64px);position:relative;z-index:2;
+  display:flex;gap:18px;flex-wrap:wrap;align-items:center;justify-content:space-between;
+  max-width:1420px;margin:0 auto;font-size:12.5px;color:var(--humo)}
+.pie a{color:var(--bruma);text-decoration:none}
+.pie a:hover{color:var(--oroLt)}
+.pie nav{display:flex;gap:16px;flex-wrap:wrap}
+
+@media (max-width:900px){
+  .par{grid-template-columns:1fr;gap:26px}
+  .peldano:nth-child(2),.peldano:nth-child(3){margin-left:0}
+  .peldano{grid-template-columns:1fr;gap:10px}
+}
+
+@media (max-width:900px){
+  /* En un teléfono el desplazamiento lateral del revelado no aporta — la
+     pantalla es demasiado estrecha para que el zigzag se lea — y en cambio
+     empuja los bloques fuera del borde: eso es lo que creaba los cuatro píxeles
+     de desplazamiento horizontal. Aquí solo suben. */
+  .rev.izq,.rev.der{transform:translateY(26px)}
+}
+@media (prefers-reduced-motion:reduce){
+  .rev{opacity:1;transform:none;transition:none}
+}
+
 /* ── móvil ───────────────────────────────────────────────────────────────── */
-@media (max-width:860px){
+@media (max-width:900px){
+  #bienvenida{grid-template-columns:1fr;align-content
+:center;gap:34px;padding-top:96px}
+  .bv h1{font-size:clamp(38px,10.4vw,58px)}
+  .lingote{justify-self:start;animation:aparece 1s 1.6s ease both}
+  #acceso{grid-template-columns:1fr;gap:26px;align-content:start;padding-top:92px}
+  .acc-lado{justify-self:start;max-width:none}
+  .acc-lado h2{font-size:clamp(27px,7vw,36px)}
+  .acc-lado .gid-mini{display:none}
+  .acc{justify-self:stretch;width:100%}
   .riel{position:static;width:auto;height:auto;flex-direction:row;align-items:center;
-    border-right:0;border-bottom:1px solid var(--linea2);padding:14px 16px;gap:12px}
+    border-right:0;border-bottom:1px solid var(--linea2);padding:14px 16px;gap:12px;justify-content:space-between}
   .riel .nav,.riel-pie{display:none}
   .riel-marca{padding:0;font-size:19px}
+  .riel .idiomas{display:flex;margin:0}
   .lienzo{margin-left:0;padding:20px 16px 104px}
   .tabs{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;
     padding:8px 6px calc(8px + env(safe-area-inset-bottom));
     background:rgba(2,22,23,.94);border-top:1px solid var(--linea2);
     backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
   .tabs .nav{flex-direction:column;gap:5px;padding:8px 4px;font-size:10.5px;font-weight:700;
-    letter-spacing:.01em;justify-content:center;text-align:center;border-radius:12px}
+    justify-content:center;text-align:center;border-radius:12px}
   .tabs .nav svg{width:21px;height:21px}
+  .tabs .nav[aria-current=page]::before{display:none}
   .acciones{grid-template-columns:repeat(4,1fr)}
   .acc-btn{padding:14px 4px;font-size:11px}
 }
-@media (max-width:400px){ .acc-btn{font-size:10px} }
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
   .veta-svg path{stroke-dashoffset:0}
   .pepita{opacity:1}
+  .bv .palabra{transform:none}
+  .bv p,.bv-btns,.hechos,.lingote{opacity:1}
 }
 </style>
 
@@ -279,57 +450,165 @@ a{color:inherit}
   <defs>
     <linearGradient id="vetaGrad" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#96793F" stop-opacity="0"/>
-      <stop offset=".25" stop-color="#C9A961" stop-opacity=".85"/>
+      <stop offset=".25" stop-color="#C9A961"/>
       <stop offset=".6" stop-color="#F8EFCF"/>
-      <stop offset="1" stop-color="#C9A961" stop-opacity=".3"/>
+      <stop offset="1" stop-color="#C9A961" stop-opacity=".55"/>
     </linearGradient>
   </defs>
-  <!-- La veta baja, se abre en dos y una de las ramas termina en la pepita.
-       Es el recorrido del oro dentro de la roca, y es lo único decorativo. -->
   <path style="--largo:1400" d="M905 -40 C 900 120, 830 200, 812 320 C 796 430, 856 500, 838 620 C 822 730, 742 790, 736 940"/>
   <path class="b" style="--largo:900" d="M812 320 C 760 360, 690 372, 628 420 C 566 468, 540 540, 470 600"/>
   <path class="c" style="--largo:700" d="M838 620 C 906 660, 968 654, 1030 700 C 1092 746, 1110 800, 1160 840"/>
-  <circle class="pepita" cx="470" cy="600" r="4.5"/>
+  <circle class="pepita" cx
+="470" cy="600" r="4.5"/>
   <circle class="pepita" cx="736" cy="940" r="3"/>
 </svg>
 
-<!-- ══════════════════════════ BIENVENIDA ══════════════════════════════════ -->
+<!-- La cabecera fina: marca a la izquierda, idioma a la derecha. Está desde el
+     primer pixel porque el idioma se elige ANTES de leer, no después. -->
+<header class="techo" id="techo">
+  <div class="marca">veta <em>wallet</em></div>
+  <div class="idiomas" role="group" aria-label="Idioma">
+    <button data-lang="es" id="lang-es" aria-pressed="true" onclick="VETA.idioma('es')">ES</button>
+    <button data-lang="en" id="lang-en" aria-pressed="false" onclick="VETA.idioma('en')">EN</button>
+  </div>
+</header>
+
+<!-- ══════════════════════════ PORTADA ═════════════════════════════════════ -->
+<!-- Todo lo que se ve antes de entrar vive dentro de #portada: la
+     bienvenida y el recorrido completo. Asi se esconde de una vez al pasar
+     a la cuenta, en vez de quedar colgando debajo de la billetera. -->
+<div id="portada">
 <section id="bienvenida">
   <div class="bv">
-    <div class="marca">veta <em>wallet</em></div>
     <div class="sello">Orden Global</div>
-    <h1>Tu oro, en tu bolsillo.<br><i>En cualquier parte del mundo.</i></h1>
-    <p>ORIGEN es oro real, certificado y guardado, que viaja a la velocidad de un mensaje. Guardalo, enviálo, pagá con él.</p>
+    <h1 id="bv-titulo" aria-live="polite"></h1>
+    <p data-t="bv.p"></p>
     <div class="bv-btns">
-      <button class="btn btn-oro" onclick="VETA.ir('acceso','crear')">Crear mi cuenta</button>
-      <button class="btn btn-linea" onclick="VETA.ir('acceso','entrar')">Ya tengo cuenta</button>
+      <button class="btn btn-oro" data-t="bv.crear" onclick="VETA.ir('acceso','crear')"></button>
+      <button class="btn btn-linea" data-t="bv.entrar" onclick="VETA.ir('acceso','entrar')"></button>
     </div>
-    <div class="bv-pie">Una sola identidad para todo el ecosistema · <a href="#" onclick="VETA.ir('acceso','crear');return false">Genesis ID</a></div>
+    <div class="hechos">
+      <div class="hecho"><b>1:1</b><small data-t="bv.h1"></small></div>
+      <div class="hecho"><b>8532</b><small data-t="bv.h2"></small></div>
+      <div class="hecho"><b>1</b><small data-t="bv.h3"></small></div>
+    </div>
+  </div>
+  <aside class="lingote vidrio" aria-hidden="true">
+    <div class="l-lbl">ORIGEN</div>
+    <div class="l-uno">1 <span style="font-size:.42em">GRAMIN</span></div>
+    <div class="l-eq" data-t="bv.eq"></div>
+    <div class="l-qr"><div id="qr-mini"></div><small data-t="bv.qr"></small></div>
+  </aside>
+</section>
+
+<!-- ══ EL RECORRIDO ═══════════════════════════════════════════════════════════
+     Lo que hace falta saber antes de confiarle oro a una pagina: que es ORIGEN,
+     donde esta el metal, y que mas hay alrededor. Cada bloque se compone
+     distinto — escalera, par, fichas — para que bajar no sea leer tres veces la
+     misma rejilla. -->
+
+<section class="tramo baja" id="que-es">
+  <div class="tramo-cab rev izq">
+    <div class="sello" data-t="q.sello"></div>
+    <h2 id="q-titulo"></h2>
+    <p data-t="q.p"></p>
+  </div>
+  <div class="escalera">
+    <article class="peldano rev der"><div class="num">01</div>
+      <div><h3 data-t="q.1t"></h3><p data-t="q.1p"></p></div></article>
+    <article class="peldano rev der"><div class="num">02</div>
+      <div><h3 data-t="q.2t"></h3><p data-t="q.2p"></p></div></article>
+    <article class="peldano rev der"><div class="num">03</div>
+      <div><h3 data-t="q.3t"></h3><p data-t="q.3p"></p></div></article>
   </div>
 </section>
 
+<section class="tramo baja" id="boveda">
+  <div class="tramo-cab rev izq">
+    <div class="sello" data-t="b.sello"></div>
+    <h2 id="b-titulo"></h2>
+    <p data-t="b.p"></p>
+  </div>
+  <div class="par">
+    <div class="cifrona rev izq">1:1<small data-t="b.cifra"></small></div>
+    <div class="garantias rev der">
+      <div class="garantia">
+        <svg viewBox="0 0 24 24"><path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>
+        <div><b data-t="b.g1t"></b><small data-t="b.g1p"></small></div></div>
+      <div class="garantia">
+        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <div><b data-t="b.g2t"></b><small data-t="b.g2p"></small></div></div>
+      <div class="garantia">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <div><b data-t="b.g3t"></b><small data-t="b.g3p"></small></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="tramo baja" id="ecosistema">
+  <div class="tramo-cab rev izq">
+    <div class="sello" data-t="e.sello"></div>
+    <h2 id="e-titulo"></h2>
+    <p data-t="e.p"></p>
+  </div>
+  <div class="eco">
+    <article class="eco-f rev der" style="--acento:#C9A961">
+      <h3>Genesis ID</h3><p data-t="e.gid"></p>
+      <a href="https://genesis-id.onrender.com" target="_blank" rel="noopener" data-t="e.ver"></a></article>
+    <article class="eco-f rev der" style="--acento:#C266F5">
+      <h3>MyTokenPay</h3><p data-t="e.mtp"></p>
+      <a href="https://mytokenpay-pos.com" target="_blank" rel="noopener" data-t="e.ver"></a></article>
+    <article class="eco-f rev der" style="--acento:#74E6C8">
+      <h3>ordenscan</h3><p data-t="e.scan"></p>
+      <a href="https://ordenscan.com" target="_blank" rel="noopener" data-t="e.ver"></a></article>
+  </div>
+</section>
+
+<section class="cierre baja" id="empezar">
+  <h2 class="rev izq" id="c-titulo"></h2>
+  <div class="btns rev izq">
+    <button class="btn btn-oro" data-t="bv.crear" onclick="VETA.ir('acceso','crear')"></button>
+    <button class="btn btn-linea" data-t="bv.entrar" onclick="VETA.ir('acceso','entrar')"></button>
+  </div>
+</section>
+
+<footer class="pie">
+  <div>© 2026 Veta Wallet · <a href="https://www.ordenglobal.org" target="_blank" rel="noopener">Orden Global</a></div>
+  <nav>
+    <a href="terminos.html" data-t="pie.term"></a>
+    <a href="privacidad.html" data-t="pie.priv"></a>
+    <a href="mailto:info@ordenglobal.org">info@ordenglobal.org</a>
+  </nav>
+</footer>
+</div>
+
 <!-- ══════════════════════════ ACCESO ══════════════════════════════════════ -->
 <section id="acceso" class="oculto">
-  <div class="acc vidrio">
-    <div class="acc-top">
-      <div class="marca">veta <em>wallet</em></div>
-      <div class="sello">Orden Global</div>
+  <div class="acc-lado">
+    <div class="sello">Orden Global</div>
+    <h2 id="acc-promesa"></h2>
+    <p data-t="acc.p"></p>
+    <div class="gid-mini">
+      <svg viewBox="0 0 24 24"><path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>
+      <small data-t="acc.gid"></small>
     </div>
+  </div>
+  <div class="acc vidrio">
     <div class="seg" role="tablist">
-      <button role="tab" id="tab-entrar" aria-selected="true" onclick="VETA.pestana('entrar')">Entrar</button>
-      <button role="tab" id="tab-crear" aria-selected="false" onclick="VETA.pestana('crear')">Crear cuenta</button>
+      <button role="tab" id="tab-entrar" aria-selected="true" data-t="acc.tEntrar" onclick="VETA.pestana('entrar')"></button>
+      <button role="tab" id="tab-crear" aria-selected="false" data-t="acc.tCrear" onclick="VETA.pestana('crear')"></button>
     </div>
     <form id="form-acceso" autocomplete="on">
       <div class="campo oculto" id="campo-nombre">
-        <label for="i-nombre">Nombre completo</label>
-        <input id="i-nombre" name="name" autocomplete="name" placeholder="Como aparece en tu documento">
+        <label for="i-nombre" data-t="acc.nombre"></label>
+        <input id="i-nombre" name="name" autocomplete="name" data-tp="acc.nombrePh">
       </div>
       <div class="campo">
-        <label for="i-correo">Correo</label>
+        <label for="i-correo" data-t="acc.correo"></label>
         <input id="i-correo" name="email" type="email" autocomplete="email" inputmode="email" placeholder="tu@correo.com" required>
       </div>
       <div class="campo">
-        <label for="i-clave">Contraseña</label>
+        <label for="i-clave" data-t="acc.clave"></label>
         <div class="campo-pw">
           <input id="i-clave" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
           <button type="button" class="ojo" id="btn-ojo" aria-label="Mostrar contraseña" onclick="VETA.ojo()">
@@ -342,40 +621,49 @@ a{color:inherit}
         </div>
       </div>
       <div id="acc-aviso" class="aviso oculto" role="alert"></div>
-      <button class="btn btn-oro btn-full" id="btn-acceso" type="submit">Entrar</button>
-      <p class="acc-legal" id="acc-legal">Al crear tu cuenta aceptás los <a href="terminos.html">términos</a> y la <a href="privacidad.html">política de privacidad</a>.</p>
+      <button class="btn btn-oro btn-full" id="btn-acceso" type="submit"></button>
+      <p class="acc-legal" id="acc-legal"></p>
     </form>
-    <button class="acc-volver" onclick="VETA.ir('bienvenida')">Volver</button>
+    <button class="acc-volver" data-t="acc.volver" onclick="VETA.ir('bienvenida')"></button>
   </div>
 </section>
 
 <!-- ══════════════════════════ APLICACIÓN ══════════════════════════════════ -->
 <main id="app" class="oculto">
   <nav class="riel" aria-label="Secciones">
-    <div class="riel-marca"><img src="assets/veta-icon.png" alt="">veta <em>wallet</em></div>
-    <button class="nav" data-vista="inicio" aria-current="page" onclick="VETA.vista('inicio')"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H3z"/></svg>Inicio</button>
-    <button class="nav" data-vista="enviar" onclick="VETA.vista('enviar')"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Enviar</button>
-    <button class="nav" data-vista="recibir" onclick="VETA.vista('recibir')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM19 19h2v2h-2z"/></svg>Recibir</button>
-    <button class="nav" data-vista="actividad" onclick="VETA.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>Actividad</button>
+    <div class="riel-marca marca"><img src="assets/veta-icon.png" alt="">veta <em>wallet</em></div>
+    <div class="idiomas movil-solo" style="display:none" role="group" aria-label="Idioma">
+      <button data-lang="es" id="lang-es-m" aria-pressed="true" onclick="VETA.idioma('es')">ES</button>
+      <button data-lang="en" id="lang-en-m" aria-pressed="false" onclick="VETA.idioma('en')">EN</button>
+    </div>
+    <button class="nav" data-vista="inicio" aria-current="page" onclick="VETA.vista('inicio')"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H3z"/></svg><span data-t="nav.inicio"></span></button>
+    <button class="nav" data-vista="enviar" onclick="VETA.vista('enviar')"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg><span data-t="nav.enviar"></span></button>
+    <button class="nav" data-vista="recibir" onclick="VETA.vista('recibir')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM19 19h2v2h-2z"/></svg><span data-t="nav.recibir"></span></button>
+    <button class="nav" data-vista="actividad" onclick="VETA.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>
     <button class="nav" data-vista="identidad" onclick="VETA.vista('identidad')"><svg viewBox="0 0 24 24"><path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>Genesis ID</button>
-    <button class="nav" data-vista="cuenta" onclick="VETA.vista('cuenta')"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg>Mi cuenta</button>
+    <button class="nav" data-vista="cuenta" onclick="VETA.vista('cuenta')"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg><span data-t="nav.cuenta"></span></button>
     <div class="riel-pie">
       <a href="https://www.ordenglobal.org" target="_blank" rel="noopener">Orden Global</a> ·
-      <a href="terminos.html">Términos</a> ·
-      <a href="privacidad.html">Privacidad</a>
+      <a href="terminos.html" data-t="pie.term"></a> ·
+      <a href="privacidad.html" data-t="pie.priv"></a>
+      <div class="idiomas" role="group" aria-label="Idioma">
+        <button data-lang="es" id="lang-es-r" aria-pressed="true" onclick="VETA.idioma('es')">ES</button>
+        <button data-lang="en" id="lang-en-r" aria-pressed="false" onclick="VETA.idioma('en')">EN</button>
+      </div>
     </div>
   </nav>
   <div class="lienzo" id="lienzo"></div>
   <nav class="tabs" aria-label="Secciones">
-    <button class="nav" data-vista="inicio" aria-current="page" onclick="VETA.vista('inicio')"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H3z"/></svg>Inicio</button>
-    <button class="nav" data-vista="enviar" onclick="VETA.vista('enviar')"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Enviar</button>
-    <button class="nav" data-vista="recibir" onclick="VETA.vista('recibir')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM19 19h2v2h-2z"/></svg>Recibir</button>
-    <button class="nav" data-vista="actividad" onclick="VETA.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>Actividad</button>
-    <button class="nav" data-vista="identidad" onclick="VETA.vista('identidad')"><svg viewBox="0 0 24 24"><path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>Identidad</button>
+    <button class="nav" data-vista="inicio" aria-current="page" onclick="VETA.vista('inicio')"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H3z"/></svg><span data-t="nav.inicio"></span></button>
+    <button class="nav" data-vista="enviar" onclick="VETA.vista('enviar')"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg><span data-t="nav.enviar"></span></button>
+    <button class="nav" data-vista="recibir" onclick="VETA.vista('recibir')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM19 19h2v2h-2z"/></svg><span data-t="nav.recibir"></span></button>
+    <button class="nav" data-vista="actividad" onclick="VETA.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>
+    <button class="nav" data-vista="identidad" onclick="VETA.vista('identidad')"><svg viewBox="0 0 24 24"><path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/></svg><span data-t="nav.id"></span></button>
   </nav>
 </main>
 
 <div id="tostada" role="status" aria-live="polite"></div>
 
 <script src="qr.js"></script>
+<script src="i18n.js"></script>
 <script src="app.js"></script>
