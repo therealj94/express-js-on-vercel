@@ -117,7 +117,9 @@
     "extra": {
       "eas": {
         "projectId": "8d134ab3-cd6b-41e8-8df7-fb3744ce844d"
-      }
+      },
+      "genesisUrl": "https://genesis-id.onrender.com",
+      "telemetriaClave": "gidp_veta-wallet_98cwxS8AnbUIRAEr"
     },
     "updates": {
       "url": "https://u.expo.dev/8d134ab3-cd6b-41e8-8df7-fb3744ce844d"

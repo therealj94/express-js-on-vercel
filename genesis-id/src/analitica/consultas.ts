@@ -11,7 +11,7 @@
 // se ve igual de bien.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { almacen } from './eventos.js'
+import { almacen, leerCenso } from './eventos.js'
 import type { EstadoError, GrupoError } from './eventos.js'
 import { store } from '../store.js'
 
@@ -155,9 +155,24 @@ export async function resumen(dias = 30, app?: string) {
   const dHoy = porDia.get(hoy) ?? vacio
   const dAyer = porDia.get(ayer) ?? vacio
 
+  // El padrón declarado por las apps. Va aparte del recuento de telemetría y
+  // nunca se suma con él: uno dice cuánta gente hay, el otro cuánta se mueve.
+  const censos = await leerCenso(app)
+  const registrados = censos.reduce((s, c) => s + (c.registrados || 0), 0)
+
   return {
     ventanaDias: dias,
     app: app ?? null,
+    censo: {
+      registrados,
+      /** Sin censo, el panel tiene que decir que no lo sabe, no inventar un 0. */
+      hay: censos.length > 0,
+      porApp: censos.map((c) => ({
+        app: c.app, registrados: c.registrados, activos30: c.activos30 ?? null,
+        verificados: c.verificados ?? null, negocios: c.negocios ?? null,
+        extra: c.extra ?? null, en: c.en,
+      })),
+    },
     usuarios: {
       total: await totalUsuarios(app),
       activosHoy: activos[hoy] ?? 0,

@@ -54,7 +54,18 @@ nav button .pip{display:inline-block;min-width:17px;padding:0 4px;margin-left:6p
  background:var(--crit);color:#2a0008;font-size:10px;font-weight:800;line-height:16px;text-align:center}
 main{padding:22px;max-width:1500px;margin:0 auto}
 
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:22px}
+/* Un degradado apenas perceptible arriba de cada tarjeta. Da profundidad sin
+   pedir atención: en un panel que se mira todos los días, el adorno que se
+   nota es el que cansa. */
+.kpi::before{content:'';position:absolute;inset:0 0 auto 0;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(201,169,97,.5),transparent);opacity:.7}
+.kpi.c::before{background:linear-gradient(90deg,transparent,rgba(79,216,224,.55),transparent)}
+.kpi.o::before{background:linear-gradient(90deg,transparent,rgba(62,217,160,.55),transparent)}
+.kpi.b::before{background:linear-gradient(90deg,transparent,rgba(240,119,107,.6),transparent)}
+.kpi.v::before{background:linear-gradient(90deg,transparent,rgba(156,140,240,.55),transparent)}
+.kpi{transition:transform .16s ease,border-color .16s ease}
+.kpi:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.13)}
 .kpi{background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:13px;padding:14px;position:relative;overflow:hidden}
 .kpi .l{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;font-weight:650}
 .kpi .v{font-size:26px;font-weight:750;margin-top:4px;font-variant-numeric:tabular-nums}
@@ -147,6 +158,7 @@ pre.pila{background:#061e20;border:1px solid var(--line2);border-radius:10px;pad
       </select>
       <button class="g mini" onclick="pintar(true)">Actualizar</button>
       <span class="rol" id="quien"></span>
+      <button class="g mini" onclick="location.href='/admin'" title="Identidades, negocios y casos">Cumplimiento ↗</button>
       <button class="g mini" onclick="salir()">Salir</button>
     </div>
   </header>
@@ -498,16 +510,44 @@ function vistaResumen(d) {
   const volumen = Object.entries(a.volumen || {})
     .map(([m, v]) => `${n(Math.round(v * 100) / 100)} ${esc(m)}`).join(' · ') || '—';
 
-  return avisoSinDatos(d) + `
+  // Dos bloques, y en este orden: primero LA BASE (lo que la empresa tiene),
+  // después EL MOVIMIENTO (lo que pasa hoy). Mezclarlos en una sola fila de
+  // seis números hace que nadie sepa cuál mirar primero.
+  const c = d.censo || { hay: false, registrados: 0, porApp: [] };
+  const base = c.hay ? `
+    <h2 style="margin-top:0">La base <span class="pista">lo que hay, según el padrón de cada app</span></h2>
+    <div class="kpis">
+      ${kpi('Usuarios registrados', corto(c.registrados), 'g',
+        `<div class="d">en todas las apps</div>`)}
+      ${c.porApp.map((a) => kpi(a.app, corto(a.registrados), '',
+        a.verificados !== null ? `<div class="d">${corto(a.verificados)} verificados</div>`
+        : a.negocios !== null ? `<div class="d">${corto(a.negocios)} negocios</div>` : '')).join('')}
+    </div>` : `
+    <div class="tarjeta p" style="border-color:rgba(201,169,97,.35);margin-bottom:18px">
+      <b style="color:var(--gold)">Falta el padrón de las apps</b>
+      <p style="color:var(--mut);font-size:13px;margin-top:6px">
+        Aquí abajo solo se cuenta a quien abrió una app <b>desde que se encendió
+        la analítica</b>. Los usuarios que ya tenías no aparecen hasta que cada
+        app declare su padrón con una llamada a
+        <code>POST /api/v1/telemetria/censo</code>. Sin eso, estas cifras
+        subestiman la base — y una cifra que subestima se ve igual de bien que
+        una correcta.
+      </p></div>`;
+
+  return avisoSinDatos(d) + base + `
+  <h2>El movimiento <span class="pista">lo que pasó en la ventana elegida</span></h2>
   <div class="kpis">
-    ${kpi('Usuarios registrados', corto(u.total), 'g')}
     ${kpi('Activos hoy', corto(u.activosHoy), 'c',
         `<div class="d">${corto(u.activos7)} en 7 d · ${corto(u.activos30)} en 30 d</div>`,
         chispa(d.serie.map((s) => s.activos), '#4FD8E0'))}
+    ${c.hay && c.registrados ? kpi('Alcance', Math.round((u.activos30 / c.registrados) * 100) + ' %', 'v',
+        '<div class="d">de tu base entró este mes</div>') : ''}
     ${kpi('Altas hoy', corto(u.nuevosHoy), 'o', delta(u.nuevosHoy, u.nuevosAyer),
         chispa(d.serie.map((s) => s.nuevos), '#3ED9A0'))}
     ${kpi('Eventos hoy', corto(a.eventosHoy), '',
         `<div class="d">${corto(a.eventosVentana)} en la ventana</div>`)}
+    ${kpi('Vistos por primera vez', corto(u.total), '',
+        '<div class="d">desde que se encendió</div>')}
     ${kpi('Errores hoy', corto(e.hoy), e.criticosHoy ? 'b' : 'w',
         delta(e.hoy, e.ayer, true) +
         (e.criticosHoy ? `<div class="d baja">${e.criticosHoy} crítico(s)</div>` : ''),

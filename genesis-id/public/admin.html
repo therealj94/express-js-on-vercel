@@ -233,6 +233,10 @@ const PESTANAS = [
   { id: 'listas', txt: 'Listas', permiso: 'listas.ver' },
   { id: 'bitacora', txt: 'Bitácora', permiso: 'bitacora.ver' },
   { id: 'ajustes', txt: 'Operadores y apps', permiso: '*' },
+  // La analítica vive en su propia página pero se entra desde aquí: tener dos
+  // direcciones sueltas que nadie recuerda es la forma más segura de que un
+  // panel no se use nunca.
+  { id: 'analitica', txt: 'Analítica ↗', permiso: 'analitica.ver', fuera: '/analitica' },
 ]
 
 function arrancar() {
@@ -241,7 +245,9 @@ function arrancar() {
   $('#qNombre').textContent = yo.nombre || yo.email
   $('#qRol').textContent = yo.rol
   $('#nav').innerHTML = PESTANAS.filter((p) => !p.permiso || puede(p.permiso))
-    .map((p) => `<button data-p="${p.id}" onclick="ir('${p.id}')">${p.txt}</button>`).join('')
+    .map((p) => p.fuera
+      ? `<button data-p="${p.id}" onclick="location.href='${p.fuera}'" title="Métricas, errores y salud del ecosistema">${p.txt}</button>`
+      : `<button data-p="${p.id}" onclick="ir('${p.id}')">${p.txt}</button>`).join('')
   ir('resumen')
 }
 

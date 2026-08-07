@@ -8,7 +8,7 @@
 import { Router } from 'express'
 import type { Request, Response, NextFunction } from 'express'
 import { exigeApp, limite } from '../middleware/proteger.js'
-import { ingerir, paisDeCabeceras, MAX_LOTE, TIPOS } from '../analitica/eventos.js'
+import { ingerir, paisDeCabeceras, guardarCenso, MAX_LOTE, TIPOS } from '../analitica/eventos.js'
 import { aplicacionDeClavePublica } from '../auth/aplicaciones.js'
 
 export const telemetriaRouter = Router()
@@ -116,4 +116,23 @@ telemetriaRouter.get('/esquema', exigeApp('telemetria.enviar'), (_req, res) => {
     },
     aviso: 'No mandes datos personales. Ni correos, ni nombres, ni documentos.',
   })
+})
+
+/**
+ * El padrón de una app: cuánta gente tiene registrada de verdad.
+ *
+ * Va con la clave SECRETA, no con la pública: es una afirmación sobre los
+ * datos propios de la app, y no puede venir de algo que viaja dentro de un
+ * APK. Se manda al arrancar y cada pocas horas; el panel guarda solo el
+ * último valor de cada app.
+ */
+telemetriaRouter.post('/censo', limite(60), exigeApp('telemetria.enviar'), async (req, res) => {
+  const { registrados, activos30, verificados, negocios, extra } = req.body ?? {}
+  if (!Number.isFinite(Number(registrados))) {
+    return res.status(400).json({ error: 'Falta «registrados», y tiene que ser un número' })
+  }
+  const censo = await guardarCenso(req.app_ecosistema!.clave, {
+    registrados, activos30, verificados, negocios, extra,
+  })
+  res.json({ ok: true, censo })
 })

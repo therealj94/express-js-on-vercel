@@ -11,7 +11,7 @@ import {
   resumen, porApp, paises, retencion, errores, errorDetalle, marcarError,
   embudoKyc, saludEcosistema, serviciosVigilados,
 } from '../analitica/consultas.js'
-import { almacen } from '../analitica/eventos.js'
+import { almacen, leerCenso } from '../analitica/eventos.js'
 import { clavePublicaDe, rotarPublica } from '../auth/aplicaciones.js'
 import { consultar as bitacoraConsultar, registrar } from '../audit/bitacora.js'
 import { store } from '../store.js'
@@ -195,4 +195,9 @@ analiticaRouter.post('/apps/:id/clave-publica', exigePermiso('analitica.gestiona
   const nueva = rotarPublica(req.params.id, req.operador!.email)
   if (!nueva) return res.status(404).json({ error: 'No hay ninguna aplicación con ese id' })
   res.json({ clavePublica: nueva })
+})
+
+/** El padrón declarado por cada app, tal cual lo mandaron. */
+analiticaRouter.get('/censo', async (_req, res) => {
+  res.json({ censo: await leerCenso() })
 })
