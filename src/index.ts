@@ -16,6 +16,7 @@ import { actividadRouter } from './routes/actividad.js'
 import { db } from './lib/db.js'
 import { conectarAlmacen, modoAlmacen } from './lib/almacen.js'
 import { hashPassword } from './lib/auth.js'
+import telemetria from './lib/telemetria.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -41,6 +42,24 @@ const listo = inicializar()
 const app = express()
 app.use(cors())
 app.use(express.json({ limit: '12mb' }))
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Telemetría hacia el panel de analítica de Genesis ID.
+//
+// Se arranca aquí, antes que cualquier ruta, para que el middleware alcance a
+// medir TODAS las peticiones. Si no hay clave configurada no hace absolutamente
+// nada: ni una petición, ni un error en el registro. Eso permite desplegar este
+// backend antes de que el panel exista y encenderlo después con solo poner la
+// variable, sin volver a desplegar.
+// ─────────────────────────────────────────────────────────────────────────────
+telemetria.iniciar({
+  url: process.env.GENESIS_URL || 'https://genesis-id.onrender.com',
+  clave: (process.env.GENESIS_TELEMETRIA_KEY || process.env.GENESIS_API_KEY || '').trim(),
+  app: 'mytokenpay',
+  version: process.env.HEROKU_RELEASE_VERSION || '1.0.0',
+  plataforma: 'servidor',
+})
+app.use(telemetria.express())
 
 /**
  * El panel de administración, servido por el mismo backend.
@@ -74,6 +93,10 @@ app.use('/api', metaRouter)
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Ruta no encontrada' })
 })
+
+// Reporta al panel cualquier excepción que llegue hasta aquí, y la deja seguir
+// su curso hacia el manejador de errores de siempre.
+app.use(telemetria.expressErrores())
 
 // Middleware de errores: cierra las promesas rechazadas que `h()` reenvía. Sin
 // esto, un fallo del almacén dejaría la petición colgada.
