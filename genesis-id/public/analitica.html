@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genesis ID · Analítica del ecosistema</title>
+<style>
+/* Mismo sistema de color que el panel de cumplimiento: quien salta de uno a
+   otro tiene que sentir que sigue en la misma casa. */
+:root{
+  --bg:#021012; --panel:#0A3436; --panel2:#0d2b2d; --line:#1C5E61; --line2:#164a4d;
+  --gold:#C9A961; --cyan:#4FD8E0; --txt:#F1EAD6; --mut:#9BB6B2; --faint:#66857f;
+  --ok:#3ED9A0; --warn:#F5B62E; --bad:#F0776B; --crit:#ff5a7a; --viol:#9C8CF0;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:radial-gradient(1100px 640px at 50% -12%,#0a2f31,#021012);color:var(--txt);
+ font:14px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.num{font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,Consolas,monospace}
+button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:8px 14px;background:var(--line);color:var(--txt)}
+button:hover{filter:brightness(1.18)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.p{background:var(--gold);color:#1a1200;font-weight:700}
+button.ok{background:var(--ok);color:#022;font-weight:700}
+button.bad{background:var(--bad);color:#2a0a06;font-weight:700}
+button.g{background:transparent;border:1px solid var(--line)}
+button.mini{padding:5px 10px;font-size:12px}
+input,select,textarea{font:inherit;background:#061e20;color:var(--txt);border:1px solid var(--line);
+ border-radius:9px;padding:9px 11px;width:100%}
+a{color:var(--cyan)}
+.oculto{display:none!important}
+
+#entrada{display:grid;place-items:center;min-height:100vh;padding:20px}
+.caja{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:30px;width:100%;max-width:400px}
+.caja h1{font-size:20px;margin-bottom:4px}
+.caja p.sub{color:var(--faint);font-size:12px;margin-bottom:22px}
+.caja label{display:block;font-size:11.5px;color:var(--mut);margin:12px 0 5px;font-weight:600}
+.err{background:rgba(240,119,107,.14);border:1px solid rgba(240,119,107,.4);color:var(--bad);
+ padding:9px 12px;border-radius:9px;font-size:12.5px;margin-top:12px}
+
+header{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid var(--line2);flex-wrap:wrap}
+.marca{display:flex;align-items:center;gap:11px}
+.sello{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);display:grid;place-items:center;
+ background:linear-gradient(135deg,rgba(201,169,97,.2),transparent)}
+.sello svg{width:21px;height:21px;stroke:var(--gold);fill:none;stroke-width:1.7}
+.marca b{font-size:16px;display:block}
+.marca span{font-size:10px;color:var(--faint);letter-spacing:.16em;text-transform:uppercase}
+.mandos{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.mandos select{width:auto;padding:6px 10px;font-size:12.5px}
+.rol{background:rgba(201,169,97,.16);color:var(--gold);padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700}
+nav{display:flex;gap:4px;padding:0 16px;border-bottom:1px solid var(--line2);overflow-x:auto}
+nav button{background:none;border-radius:0;border-bottom:2px solid transparent;color:var(--mut);padding:11px 14px;white-space:nowrap}
+nav button.sel{color:var(--txt);border-bottom-color:var(--gold)}
+nav button .pip{display:inline-block;min-width:17px;padding:0 4px;margin-left:6px;border-radius:9px;
+ background:var(--crit);color:#2a0008;font-size:10px;font-weight:800;line-height:16px;text-align:center}
+main{padding:22px;max-width:1500px;margin:0 auto}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:13px;padding:14px;position:relative;overflow:hidden}
+.kpi .l{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;font-weight:650}
+.kpi .v{font-size:26px;font-weight:750;margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi .d{font-size:11.5px;margin-top:3px;color:var(--faint);position:relative;z-index:1;padding-right:96px}
+.kpi .d.sube{color:var(--ok)} .kpi .d.baja{color:var(--bad)}
+.kpi.g .v{color:var(--gold)}.kpi.c .v{color:var(--cyan)}.kpi.w .v{color:var(--warn)}
+.kpi.o .v{color:var(--ok)}.kpi.b .v{color:var(--bad)}.kpi.v .v{color:var(--viol)}
+/* La chispa va detrás del texto y muy tenue: es un adorno que da contexto, no
+   un dato que se lea. Si tapa la cifra deja de ser un adorno y es un estorbo. */
+.kpi .chispa{position:absolute;right:0;bottom:0;opacity:.28;pointer-events:none;z-index:0}
+
+h2{font-size:15px;margin:24px 0 11px;font-weight:700;display:flex;align-items:center;gap:9px}
+h2 .pista{font-size:11.5px;color:var(--faint);font-weight:400}
+h3{font-size:12px;margin:16px 0 8px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+.tarjeta{background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:13px;overflow:hidden}
+.tarjeta.p{padding:16px}
+.rejilla{display:grid;gap:14px}
+.rejilla.dos{grid-template-columns:1fr 1fr}
+.rejilla.tres{grid-template-columns:repeat(3,1fr)}
+@media(max-width:1000px){.rejilla.dos,.rejilla.tres{grid-template-columns:1fr}}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:620px}
+th{text-align:left;font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;
+ padding:10px 12px;border-bottom:1px solid var(--line2);font-weight:700}
+td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.045);font-size:13px;vertical-align:middle}
+tbody tr:hover{background:rgba(255,255,255,.025)}
+tbody tr.pulsable{cursor:pointer}
+.vacio{padding:34px 18px;text-align:center;color:var(--faint);font-size:13px}
+.vacio b{display:block;color:var(--mut);margin-bottom:5px;font-size:14px}
+
+.eti{display:inline-block;padding:2.5px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.eti.ok{background:rgba(62,217,160,.16);color:var(--ok)}
+.eti.warn{background:rgba(245,182,46,.16);color:var(--warn)}
+.eti.bad{background:rgba(240,119,107,.16);color:var(--bad)}
+.eti.crit{background:rgba(255,90,122,.18);color:var(--crit)}
+.eti.mut{background:rgba(155,182,178,.13);color:var(--mut)}
+.eti.cyan{background:rgba(79,216,224,.14);color:var(--cyan)}
+.eti.gold{background:rgba(201,169,97,.16);color:var(--gold)}
+
+.barra{height:7px;border-radius:7px;background:rgba(255,255,255,.07);overflow:hidden;min-width:60px}
+.barra i{display:block;height:100%;border-radius:7px;background:linear-gradient(90deg,var(--cyan),var(--gold))}
+
+pre.pila{background:#061e20;border:1px solid var(--line2);border-radius:10px;padding:13px;
+ font:11.5px/1.6 ui-monospace,Menlo,Consolas,monospace;color:var(--mut);overflow-x:auto;white-space:pre;max-height:330px}
+
+.velo{position:fixed;inset:0;background:rgba(2,10,12,.78);display:grid;place-items:center;padding:20px;z-index:60}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;
+ width:100%;max-width:820px;max-height:88vh;overflow-y:auto}
+.modal h3{margin-top:0;color:var(--txt);text-transform:none;letter-spacing:0;font-size:16px}
+.filaBtn{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}
+
+.leyenda{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--mut);margin-top:9px}
+.leyenda i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle}
+.cargando{color:var(--faint);font-size:12.5px;padding:16px}
+.pie{color:var(--faint);font-size:11.5px;margin-top:26px;padding-top:16px;border-top:1px solid var(--line2)}
+</style>
+</head>
+<body>
+
+<!-- ── Entrada ─────────────────────────────────────────────────────────── -->
+<div id="entrada">
+  <form class="caja" onsubmit="entrar(event)">
+    <h1>Analítica del ecosistema</h1>
+    <p class="sub">Genesis ID · Orden Global</p>
+    <label>Correo del operador</label>
+    <input id="eMail" type="email" autocomplete="username" required>
+    <label>Contraseña</label>
+    <input id="eClave" type="password" autocomplete="current-password" required>
+    <div id="eError" class="err oculto"></div>
+    <button class="p" style="width:100%;margin-top:18px" type="submit">Entrar</button>
+    <p style="margin-top:14px;font-size:11.5px;color:var(--faint)">
+      Se usa la misma cuenta que el panel de cumplimiento.
+    </p>
+  </form>
+</div>
+
+<!-- ── Aplicación ──────────────────────────────────────────────────────── -->
+<div id="app" class="oculto">
+  <header>
+    <div class="marca">
+      <div class="sello"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 4-7 5 5"/><path d="M3 21h18"/></svg></div>
+      <div><b>Analítica del ecosistema</b><span>Genesis ID</span></div>
+    </div>
+    <div class="mandos">
+      <select id="filtroApp" onchange="pintar()"><option value="todas">Todas las apps</option></select>
+      <select id="filtroDias" onchange="pintar()">
+        <option value="7">7 días</option>
+        <option value="30" selected>30 días</option>
+        <option value="90">90 días</option>
+      </select>
+      <button class="g mini" onclick="pintar(true)">Actualizar</button>
+      <span class="rol" id="quien"></span>
+      <button class="g mini" onclick="salir()">Salir</button>
+    </div>
+  </header>
+
+  <nav id="nav"></nav>
+  <main id="lienzo"><div class="cargando">Cargando…</div></main>
+</div>
+
+<script>
+'use strict';
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Estado y transporte
+   ───────────────────────────────────────────────────────────────────────── */
+
+let sesion = localStorage.getItem('gid.sesion') || '';
+let yo = null;
+let pestana = 'resumen';
+let datos = {};      // caché de lo último traído
+let cargando = false;
+
+const PESTANAS = [
+  ['resumen',   'Resumen'],
+  ['apps',      'Apps'],
+  ['usuarios',  'Usuarios'],
+  ['paises',    'Países'],
+  ['embudo',    'Verificación'],
+  ['errores',   'Errores'],
+  ['seguridad', 'Seguridad'],
+  ['salud',     'Salud'],
+];
+
+async function api(ruta, opciones = {}) {
+  const r = await fetch('/api' + ruta, {
+    ...opciones,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(sesion ? { Authorization: 'Bearer ' + sesion } : {}),
+      ...(opciones.headers || {}),
+    },
+  });
+  const cuerpo = await r.json().catch(() => ({}));
+  if (r.status === 401) { salir(); throw new Error('La sesión venció'); }
+  if (!r.ok) throw new Error(cuerpo.error || ('Error ' + r.status));
+  return cuerpo;
+}
+
+async function entrar(ev) {
+  ev.preventDefault();
+  const err = document.getElementById('eError');
+  err.classList.add('oculto');
+  try {
+    const r = await api('/sesion/entrar', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: document.getElementById('eMail').value,
+        contrasena: document.getElementById('eClave').value,
+      }),
+    });
+    sesion = r.token;
+    localStorage.setItem('gid.sesion', sesion);
+    yo = r.operador;
+    arrancar();
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.remove('oculto');
+  }
+}
+
+function salir() {
+  api('/sesion/salir', { method: 'POST' }).catch(() => {});
+  sesion = ''; yo = null;
+  localStorage.removeItem('gid.sesion');
+  document.getElementById('app').classList.add('oculto');
+  document.getElementById('entrada').classList.remove('oculto');
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Utilidades de presentación
+   ───────────────────────────────────────────────────────────────────────── */
+
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const n = (v) => (v === null || v === undefined) ? '—' : Number(v).toLocaleString('es');
+
+/** Números grandes en corto: 12.400 → 12,4 k. En un KPI, los ceros estorban. */
+function corto(v) {
+  if (v === null || v === undefined) return '—';
+  const x = Number(v);
+  if (Math.abs(x) >= 1e6) return (x / 1e6).toFixed(1).replace('.', ',') + ' M';
+  if (Math.abs(x) >= 1e4) return (x / 1e3).toFixed(1).replace('.', ',') + ' k';
+  return x.toLocaleString('es');
+}
+
+function cuando(iso) {
+  if (!iso) return '—';
+  const t = new Date(iso), seg = (Date.now() - t) / 1000;
+  if (seg < 60) return 'hace instantes';
+  if (seg < 3600) return 'hace ' + Math.floor(seg / 60) + ' min';
+  if (seg < 86400) return 'hace ' + Math.floor(seg / 3600) + ' h';
+  if (seg < 604800) return 'hace ' + Math.floor(seg / 86400) + ' d';
+  return t.toLocaleDateString('es', { day: '2-digit', month: 'short', year: '2-digit' });
+}
+
+const fechaCorta = (d) => {
+  const [, m, dd] = String(d).split('-');
+  return dd + '/' + m;
+};
+
+/** Variación entre dos cifras, con su flecha y su color. */
+function delta(hoy, ayer, alRevés = false) {
+  if (!ayer && !hoy) return '<div class="d">sin datos ayer</div>';
+  if (!ayer) return '<div class="d sube">↑ nuevo</div>';
+  const p = Math.round(((hoy - ayer) / ayer) * 100);
+  if (p === 0) return '<div class="d">igual que ayer</div>';
+  const bueno = alRevés ? p < 0 : p > 0;
+  return `<div class="d ${bueno ? 'sube' : 'baja'}">${p > 0 ? '↑' : '↓'} ${Math.abs(p)} % vs ayer</div>`;
+}
+
+function kpi(etiqueta, valor, clase = '', extra = '', chispa = null) {
+  return `<div class="kpi ${clase}">
+    <div class="l">${etiqueta}</div>
+    <div class="v">${valor}</div>
+    ${extra}
+    ${chispa ? `<div class="chispa">${chispa}</div>` : ''}
+  </div>`;
+}
+
+function vacio(titulo, texto) {
+  return `<div class="vacio"><b>${esc(titulo)}</b>${esc(texto)}</div>`;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Gráficas
+   Se dibujan a mano en SVG. No hay librería de gráficas: son cuatro formas,
+   pesan cero y no meten una dependencia de terceros en el panel que además
+   sirve identidades.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/** Línea con área, rejilla y ejes. `series` = [{nombre,color,valores}]. */
+function grafLinea(etiquetas, series, alto = 190) {
+  const W = 1000, H = alto, ml = 44, mr = 12, mt = 14, mb = 26;
+  const ancho = W - ml - mr, altoU = H - mt - mb;
+  const todos = series.flatMap((s) => s.valores.filter((v) => v !== null));
+  const max = Math.max(1, ...todos);
+  const paso = etiquetas.length > 1 ? ancho / (etiquetas.length - 1) : 0;
+  const x = (i) => ml + i * paso;
+  const y = (v) => mt + altoU - (v / max) * altoU;
+
+  // Cuatro líneas de rejilla bastan para leer una magnitud sin ensuciar.
+  let rejilla = '';
+  for (let i = 0; i <= 4; i++) {
+    const v = (max / 4) * i, yy = y(v);
+    rejilla += `<line x1="${ml}" y1="${yy}" x2="${W - mr}" y2="${yy}" stroke="rgba(255,255,255,.06)"/>
+      <text x="${ml - 7}" y="${yy + 3.5}" fill="#66857f" font-size="10" text-anchor="end">${corto(Math.round(v))}</text>`;
+  }
+
+  let ejes = '';
+  const cada = Math.max(1, Math.ceil(etiquetas.length / 8));
+  etiquetas.forEach((e, i) => {
+    if (i % cada && i !== etiquetas.length - 1) return;
+    ejes += `<text x="${x(i)}" y="${H - 8}" fill="#66857f" font-size="10" text-anchor="middle">${fechaCorta(e)}</text>`;
+  });
+
+  // El último día está a medias —son las tres de la tarde, no las doce de la
+  // noche— y dibujarlo igual que los demás hace que toda gráfica parezca un
+  // desplome al final. Se traza aparte, punteado, y se dice en la leyenda.
+  const ultimo = etiquetas.length - 1;
+  let trazos = '';
+  series.forEach((s) => {
+    const firmes = s.valores.slice(0, ultimo);
+    const pts = firmes.map((v, i) => `${x(i)},${y(v ?? 0)}`).join(' ');
+    trazos += `<polygon points="${ml},${y(0)} ${pts} ${x(ultimo - 1)},${y(0)}"
+        fill="${s.color}" opacity=".10"/>
+      <polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2"
+        stroke-linejoin="round" stroke-linecap="round"/>
+      <line x1="${x(ultimo - 1)}" y1="${y(firmes[firmes.length - 1] ?? 0)}"
+        x2="${x(ultimo)}" y2="${y(s.valores[ultimo] ?? 0)}"
+        stroke="${s.color}" stroke-width="2" stroke-dasharray="3 3" opacity=".65"/>
+      <circle cx="${x(ultimo)}" cy="${y(s.valores[ultimo] ?? 0)}" r="3.2"
+        fill="none" stroke="${s.color}" stroke-width="1.8"/>`;
+  });
+
+  const leyenda = series.map((s) =>
+    `<span><i style="background:${s.color}"></i>${esc(s.nombre)}</span>`).join('') +
+    '<span style="color:var(--faint)">— · — el último punto es el día en curso, todavía incompleto</span>';
+
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+      ${rejilla}${trazos}${ejes}
+    </svg><div class="leyenda">${leyenda}</div>`;
+}
+
+/** Línea diminuta para meter dentro de una celda o un KPI. */
+function chispa(valores, color = '#4FD8E0', ancho = 92, alto = 30) {
+  if (!valores || valores.length < 2) return '';
+  const max = Math.max(1, ...valores);
+  const paso = ancho / (valores.length - 1);
+  const pts = valores.map((v, i) => `${i * paso},${alto - (v / max) * (alto - 4) - 2}`).join(' ');
+  return `<svg viewBox="0 0 ${ancho} ${alto}" width="${ancho}" height="${alto}">
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8"
+      stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+
+/**
+ * Barras verticales por día o por categoría corta.
+ *
+ * `ancho` es el del viewBox, no el de la pantalla: el SVG se estira al hueco
+ * que le toque, así que un viewBox de 1000 metido en media columna encoge la
+ * tipografía a la mitad y las fechas dejan de leerse. Para una gráfica chica
+ * se pasa un viewBox chico y el texto queda a su tamaño.
+ */
+function grafBarras(etiquetas, valores, color = '#C9A961', alto = 150, W = 1000) {
+  const H = alto, ml = 40, mr = 10, mt = 10, mb = 24;
+  const ancho = W - ml - mr, altoU = H - mt - mb;
+  const max = Math.max(1, ...valores);
+  const paso = ancho / valores.length;
+  const w = Math.max(2, paso * 0.62);
+  let barras = '', ejes = '';
+  valores.forEach((v, i) => {
+    const h = (v / max) * altoU;
+    const x = ml + i * paso + (paso - w) / 2;
+    barras += `<rect x="${x}" y="${mt + altoU - h}" width="${w}" height="${h}" rx="2" fill="${color}" opacity=".82"/>`;
+    const cada = Math.max(1, Math.ceil(valores.length / 12));
+    if (!(i % cada)) ejes += `<text x="${x + w / 2}" y="${H - 7}" fill="#66857f" font-size="9.5" text-anchor="middle">${esc(etiquetas[i])}</text>`;
+  });
+  for (let i = 0; i <= 2; i++) {
+    const v = (max / 2) * i, yy = mt + altoU - (v / max) * altoU;
+    barras = `<line x1="${ml}" y1="${yy}" x2="${W - mr}" y2="${yy}" stroke="rgba(255,255,255,.06)"/>
+      <text x="${ml - 6}" y="${yy + 3.5}" fill="#66857f" font-size="9.5" text-anchor="end">${corto(Math.round(v))}</text>` + barras;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${barras}${ejes}</svg>`;
+}
+
+/** Embudo: cada paso, su ancho proporcional y cuánta gente se cayó ahí. */
+function grafEmbudo(pasos) {
+  if (!pasos.length || !pasos[0].n) return vacio('Todavía no hay verificaciones', 'El embudo aparece con la primera identidad.');
+  const max = pasos[0].n;
+  return pasos.map((p, i) => {
+    const pct = (p.n / max) * 100;
+    const color = i === pasos.length - 1 ? 'var(--ok)' : 'linear-gradient(90deg,var(--cyan),var(--gold))';
+    return `<div style="margin-bottom:11px">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px">
+        <span>${esc(p.paso)}</span>
+        <span class="num"><b>${n(p.n)}</b>
+          <span style="color:var(--faint)">· ${p.porcentaje} %</span>
+          ${p.caida > 0 ? `<span style="color:var(--bad)"> −${n(p.caida)}</span>` : ''}</span>
+      </div>
+      <div style="height:22px;border-radius:7px;background:rgba(255,255,255,.05);overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${color};border-radius:7px"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/** Fila de tabla con barra proporcional. */
+function filaBarra(nombre, valor, max, extra = '') {
+  const pct = max ? (valor / max) * 100 : 0;
+  return `<tr>
+    <td>${nombre}</td>
+    <td class="num" style="width:80px">${n(valor)}</td>
+    <td style="width:38%"><div class="barra"><i style="width:${pct}%"></i></div></td>
+    <td style="width:110px;color:var(--faint);font-size:12px">${extra}</td>
+  </tr>`;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Carga de datos
+   ───────────────────────────────────────────────────────────────────────── */
+
+const qs = () => {
+  const app = document.getElementById('filtroApp').value;
+  const dias = document.getElementById('filtroDias').value;
+  return `?dias=${dias}` + (app !== 'todas' ? `&app=${encodeURIComponent(app)}` : '');
+};
+
+async function traer(forzar) {
+  const clave = pestana + qs();
+  if (!forzar && datos[clave]) return datos[clave];
+  const r = {};
+  const p = (ruta) => api('/panel/analitica' + ruta);
+
+  if (pestana === 'resumen') {
+    const [res, apps] = await Promise.all([p('/resumen' + qs()), p('/apps' + qs())]);
+    Object.assign(r, res, { apps: apps.apps });
+  } else if (pestana === 'apps') {
+    Object.assign(r, await p('/apps' + qs()));
+  } else if (pestana === 'usuarios') {
+    const [res, ret, ver] = await Promise.all([
+      p('/resumen' + qs()), p('/retencion' + qs()), p('/versiones'),
+    ]);
+    Object.assign(r, res, { cohortes: ret.cohortes, versiones: ver.versiones });
+  } else if (pestana === 'paises') {
+    Object.assign(r, await p('/paises' + qs()));
+  } else if (pestana === 'embudo') {
+    Object.assign(r, await p('/embudo'));
+  } else if (pestana === 'errores') {
+    const app = document.getElementById('filtroApp').value;
+    Object.assign(r, await p('/errores?limite=200' + (app !== 'todas' ? '&app=' + encodeURIComponent(app) : '')));
+  } else if (pestana === 'seguridad') {
+    Object.assign(r, await p('/seguridad'));
+  } else if (pestana === 'salud') {
+    Object.assign(r, await p('/salud' + (forzar ? '?forzar=1' : '')));
+  }
+  datos[clave] = r;
+  return r;
+}
+
+async function pintar(forzar) {
+  if (cargando) return;
+  cargando = true;
+  const lienzo = document.getElementById('lienzo');
+  if (forzar) datos = {};
+  lienzo.innerHTML = '<div class="cargando">Cargando…</div>';
+  try {
+    const d = await traer(forzar);
+    lienzo.innerHTML = ({
+      resumen: vistaResumen, apps: vistaApps, usuarios: vistaUsuarios,
+      paises: vistaPaises, embudo: vistaEmbudo, errores: vistaErrores,
+      seguridad: vistaSeguridad, salud: vistaSalud,
+    })[pestana](d);
+  } catch (e) {
+    lienzo.innerHTML = `<div class="err">${esc(e.message)}</div>`;
+  } finally {
+    cargando = false;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Vistas
+   ───────────────────────────────────────────────────────────────────────── */
+
+function avisoSinDatos(d) {
+  if (d.diasConDatos > 0) return '';
+  return `<div class="tarjeta p" style="border-color:rgba(201,169,97,.4);margin-bottom:18px">
+    <b style="color:var(--gold)">Todavía no llega telemetría</b>
+    <p style="color:var(--mut);font-size:13px;margin-top:6px">
+      El motor está listo y esperando. Falta que las apps empiecen a reportar:
+      cada una manda sus eventos a <code>POST /api/v1/telemetria/eventos</code>
+      con su cabecera <code>X-API-Key</code>. En <code>clientes/telemetria.js</code>
+      está el cliente listo para pegar.
+    </p></div>`;
+}
+
+function vistaResumen(d) {
+  const u = d.usuarios, e = d.errores, a = d.actividad;
+  const etiquetas = d.serie.map((s) => s.dia);
+
+  const volumen = Object.entries(a.volumen || {})
+    .map(([m, v]) => `${n(Math.round(v * 100) / 100)} ${esc(m)}`).join(' · ') || '—';
+
+  return avisoSinDatos(d) + `
+  <div class="kpis">
+    ${kpi('Usuarios registrados', corto(u.total), 'g')}
+    ${kpi('Activos hoy', corto(u.activosHoy), 'c',
+        `<div class="d">${corto(u.activos7)} en 7 d · ${corto(u.activos30)} en 30 d</div>`,
+        chispa(d.serie.map((s) => s.activos), '#4FD8E0'))}
+    ${kpi('Altas hoy', corto(u.nuevosHoy), 'o', delta(u.nuevosHoy, u.nuevosAyer),
+        chispa(d.serie.map((s) => s.nuevos), '#3ED9A0'))}
+    ${kpi('Eventos hoy', corto(a.eventosHoy), '',
+        `<div class="d">${corto(a.eventosVentana)} en la ventana</div>`)}
+    ${kpi('Errores hoy', corto(e.hoy), e.criticosHoy ? 'b' : 'w',
+        delta(e.hoy, e.ayer, true) +
+        (e.criticosHoy ? `<div class="d baja">${e.criticosHoy} crítico(s)</div>` : ''),
+        chispa(d.serie.map((s) => s.errores), '#F0776B'))}
+    ${kpi('Tasa de error', e.tasaPorMil + ' <span style="font-size:13px;color:var(--faint)">/ mil</span>',
+        e.tasaPorMil > 20 ? 'b' : e.tasaPorMil > 5 ? 'w' : 'o')}
+  </div>
+
+  <div class="rejilla dos">
+    <div class="tarjeta p">
+      <h2 style="margin-top:0">Personas <span class="pista">activos y altas por día</span></h2>
+      ${grafLinea(etiquetas, [
+        { nombre: 'Activos', color: '#4FD8E0', valores: d.serie.map((s) => s.activos) },
+        { nombre: 'Altas nuevas', color: '#3ED9A0', valores: d.serie.map((s) => s.nuevos) },
+      ])}
+    </div>
+    <div class="tarjeta p">
+      <h2 style="margin-top:0">Uso y fallos <span class="pista">eventos contra errores</span></h2>
+      ${grafLinea(etiquetas, [
+        { nombre: 'Eventos', color: '#C9A961', valores: d.serie.map((s) => s.eventos) },
+        { nombre: 'Errores', color: '#F0776B', valores: d.serie.map((s) => s.errores) },
+      ])}
+    </div>
+  </div>
+
+  <div class="rejilla dos" style="margin-top:14px">
+    <div class="tarjeta">
+      <h2 style="margin:16px 16px 4px">Por aplicación</h2>
+      <div class="scroll"><table>
+        <thead><tr><th>App</th><th>Usuarios</th><th>Activos 7 d</th><th>Errores</th><th>Tendencia</th></tr></thead>
+        <tbody>${(d.apps || []).map((x) => `<tr>
+          <td><b>${esc(x.app)}</b></td>
+          <td class="num">${n(x.usuarios)}</td>
+          <td class="num">${n(x.activos7)}</td>
+          <td class="num">${x.errores ? `<span class="eti ${x.tasaPorMil > 20 ? 'bad' : 'warn'}">${n(x.errores)}</span>` : '<span class="eti ok">0</span>'}</td>
+          <td>${chispa(x.serie, '#4FD8E0', 80, 26)}</td></tr>`).join('') ||
+          `<tr><td colspan="5">${vacio('Sin apps reportando', 'Aparecerán solas al mandar su primer evento.')}</td></tr>`}
+        </tbody></table></div>
+    </div>
+    <div class="tarjeta">
+      <h2 style="margin:16px 16px 4px">Dónde está la gente</h2>
+      <div class="scroll"><table>
+        <thead><tr><th>País</th><th>Eventos</th><th></th><th>%</th></tr></thead>
+        <tbody>${(d.paises || []).slice(0, 8).map((p) =>
+          filaBarra(esc(p.clave), p.n, d.paises[0].n,
+            Math.round((p.n / (d.paises.reduce((s, q) => s + q.n, 0) || 1)) * 1000) / 10 + ' %')).join('') ||
+          `<tr><td colspan="4">${vacio('Sin datos de país', 'Llegan con el primer evento.')}</td></tr>`}
+        </tbody></table></div>
+      <div style="padding:12px 16px;color:var(--faint);font-size:11.5px">
+        Volumen movido en la ventana: <b style="color:var(--mut)">${volumen}</b>
+      </div>
+    </div>
+  </div>`;
+}
+
+function vistaApps(d) {
+  const apps = d.apps || [];
+  if (!apps.length) return vacio('Ninguna app está reportando todavía', 'Cada app aparece aquí sola en cuanto manda su primer evento.');
+  return `<h2>Comparativa de aplicaciones <span class="pista">la ventana elegida</span></h2>
+  <div class="tarjeta scroll"><table>
+    <thead><tr><th>Aplicación</th><th>Usuarios</th><th>Activos 7 d</th><th>Altas</th>
+      <th>Eventos</th><th>Errores</th><th>Tasa /mil</th><th>Actividad diaria</th></tr></thead>
+    <tbody>${apps.map((x) => `<tr>
+      <td><b>${esc(x.app)}</b></td>
+      <td class="num">${n(x.usuarios)}</td>
+      <td class="num">${n(x.activos7)}</td>
+      <td class="num" style="color:var(--ok)">${n(x.nuevos)}</td>
+      <td class="num">${n(x.eventos)}</td>
+      <td class="num">${n(x.errores)}</td>
+      <td><span class="eti ${x.tasaPorMil > 20 ? 'bad' : x.tasaPorMil > 5 ? 'warn' : 'ok'}">${x.tasaPorMil}</span></td>
+      <td>${chispa(x.serie, '#C9A961', 130, 30)}</td></tr>`).join('')}
+    </tbody></table></div>
+  <p class="pie">La tasa por mil es errores por cada mil eventos. Es la cifra que
+  se puede comparar entre apps y entre versiones — el número crudo de errores solo
+  dice cuánta gente usó la app.</p>`;
+}
+
+function vistaUsuarios(d) {
+  const etiquetas = d.serie.map((s) => s.dia);
+  const versiones = d.versiones || {};
+  return `
+  <div class="kpis">
+    ${kpi('Registrados', corto(d.usuarios.total), 'g')}
+    ${kpi('Activos 30 días', corto(d.usuarios.activos30), 'c')}
+    ${kpi('Activos 7 días', corto(d.usuarios.activos7), 'c')}
+    ${kpi('Altas en la ventana', corto(d.usuarios.nuevosVentana), 'o')}
+    ${kpi('Pegajosidad', d.usuarios.activos30 ? Math.round((d.usuarios.activosHoy / d.usuarios.activos30) * 100) + ' %' : '—', 'v',
+      '<div class="d">activos hoy sobre los del mes</div>')}
+  </div>
+
+  <div class="tarjeta p">
+    <h2 style="margin-top:0">Altas y actividad</h2>
+    ${grafLinea(etiquetas, [
+      { nombre: 'Activos', color: '#4FD8E0', valores: d.serie.map((s) => s.activos) },
+      { nombre: 'Altas', color: '#3ED9A0', valores: d.serie.map((s) => s.nuevos) },
+    ], 210)}
+  </div>
+
+  <div class="rejilla dos" style="margin-top:14px">
+    <div class="tarjeta">
+      <h2 style="margin:16px 16px 4px">Retención por cohorte <span class="pista">¿vuelven?</span></h2>
+      <div class="scroll"><table style="min-width:400px">
+        <thead><tr><th>Se registraron</th><th>Altas</th><th>Siguen</th><th></th><th>%</th></tr></thead>
+        <tbody>${(d.cohortes || []).map((c) => `<tr>
+          <td>${esc(c.semana)} semana(s)</td>
+          <td class="num">${n(c.altas)}</td>
+          <td class="num">${n(c.siguen)}</td>
+          <td style="width:34%"><div class="barra"><i style="width:${c.porcentaje ?? 0}%"></i></div></td>
+          <td class="num">${c.porcentaje === null ? '—' : c.porcentaje + ' %'}</td></tr>`).join('')}
+        </tbody></table></div>
+      <p style="padding:12px 16px;color:var(--faint);font-size:11.5px">
+        De los que se dieron de alta esa semana, cuántos volvieron después. Es la
+        métrica que dice si el producto sirve; el resto dice cuánta gente lo probó.</p>
+    </div>
+    <div class="tarjeta">
+      <h2 style="margin:16px 16px 4px">Versiones en la calle</h2>
+      <div style="padding:0 16px 16px">
+        ${Object.keys(versiones).length ? Object.entries(versiones).map(([app, lista]) => {
+          const total = lista.reduce((s, v) => s + v.usuarios, 0) || 1;
+          return `<h3>${esc(app)}</h3>` + lista.slice(0, 6).map((v) => `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
+              <span class="num" style="width:74px;font-size:12px">${esc(v.version)}</span>
+              <div class="barra" style="flex:1"><i style="width:${(v.usuarios / total) * 100}%"></i></div>
+              <span class="num" style="width:64px;text-align:right;font-size:12px">${n(v.usuarios)}</span>
+            </div>`).join('');
+        }).join('') : vacio('Sin versiones registradas', 'Aparecen cuando las apps reporten su versión.')}
+      </div>
+      <p style="padding:0 16px 16px;color:var(--faint);font-size:11.5px">
+        Con actualizaciones por aire esta curva se mueve en horas. Si un error solo
+        aparece en la versión vieja, ya está arreglado y solo falta que la gente
+        reinicie la app.</p>
+    </div>
+  </div>`;
+}
+
+function vistaPaises(d) {
+  const lista = d.paises || [];
+  if (!lista.length) return vacio('Sin datos de país todavía', 'El país se deduce del proxy o lo manda la app. La IP no se guarda.');
+  const maxU = Math.max(1, ...lista.map((p) => p.usuarios));
+  return `<h2>Dónde está la base <span class="pista">${lista.length} países</span></h2>
+  <div class="tarjeta scroll"><table>
+    <thead><tr><th>País</th><th>Usuarios</th><th></th><th>Eventos</th><th>% del uso</th></tr></thead>
+    <tbody>${lista.map((p) => `<tr>
+      <td><b>${esc(p.nombre)}</b> <span style="color:var(--faint);font-size:11.5px">${esc(p.codigo)}</span></td>
+      <td class="num">${n(p.usuarios)}</td>
+      <td style="width:32%"><div class="barra"><i style="width:${(p.usuarios / maxU) * 100}%"></i></div></td>
+      <td class="num">${n(p.eventos)}</td>
+      <td class="num">${p.porcentaje} %</td></tr>`).join('')}
+    </tbody></table></div>
+  <p class="pie">El país sale de la cabecera que pone el proxy, o de lo que declara
+  la app. <b>La dirección IP no se guarda en ningún momento</b> — se lee el país y
+  se descarta.</p>`;
+}
+
+function vistaEmbudo(d) {
+  return `<h2>Embudo de verificación <span class="pista">del padrón de Genesis ID</span></h2>
+  <div class="rejilla dos">
+    <div class="tarjeta p">${grafEmbudo(d.pasos || [])}</div>
+    <div class="tarjeta p">
+      <h3 style="margin-top:0">Resultado</h3>
+      <div class="kpis" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
+        ${kpi('Rechazadas', n(d.rechazadas), 'b')}
+        ${kpi('Suspendidas', n(d.suspendidas), 'w')}
+      </div>
+      <h3>Por nacionalidad</h3>
+      <table style="min-width:0">
+        <tbody>${(d.porNacionalidad || []).map((x) =>
+          filaBarra(esc(x.clave), x.n, d.porNacionalidad[0].n)).join('') ||
+          `<tr><td>${vacio('Sin identidades', '')}</td></tr>`}
+        </tbody></table>
+    </div>
+  </div>
+  <p class="pie">Cada escalón cuenta a quienes lo pasaron, aunque hoy estén más
+  adelante. La columna en rojo es cuánta gente se cae exactamente en ese paso: ahí
+  es donde conviene mirar la pantalla, no en el total.</p>`;
+}
+
+function vistaErrores(d) {
+  const lista = d.errores || [];
+  const abiertos = lista.filter((e) => e.estado === 'nuevo' || e.estado === 'reabierto');
+  if (!lista.length) {
+    return `<div class="kpis">${kpi('Errores agrupados', '0', 'o')}</div>` +
+      vacio('Ningún error reportado', 'Cuando una app reporte un fallo, aparecerá aquí agrupado con sus repeticiones.');
+  }
+  const et = { nuevo: 'crit', reabierto: 'crit', visto: 'warn', resuelto: 'ok', ignorado: 'mut' };
+  return `
+  <div class="kpis">
+    ${kpi('Grupos de error', n(lista.length), '')}
+    ${kpi('Sin atender', n(abiertos.length), abiertos.length ? 'b' : 'o')}
+    ${kpi('Críticos', n(lista.filter((e) => e.gravedad === 'critico').length), 'b')}
+    ${kpi('Personas afectadas', n(lista.reduce((s, e) => s + e.usuarios, 0)), 'w')}
+    ${kpi('Repeticiones', corto(lista.reduce((s, e) => s + e.total, 0)), '')}
+  </div>
+  <h2>Errores agrupados <span class="pista">tocá una fila para ver la pila y las muestras</span></h2>
+  <div class="tarjeta scroll"><table>
+    <thead><tr><th>Error</th><th>App</th><th>Estado</th><th>Veces</th><th>Personas</th>
+      <th>Versiones</th><th>Primera</th><th>Última</th></tr></thead>
+    <tbody>${lista.map((e) => `<tr class="pulsable" onclick="verError('${esc(e.huella)}')">
+      <td style="max-width:380px">
+        <span class="eti ${e.gravedad === 'critico' ? 'crit' : e.gravedad === 'error' ? 'bad' : 'warn'}"
+          style="margin-right:7px">${esc(e.gravedad)}</span>
+        ${esc(e.titulo)}</td>
+      <td>${esc(e.app)}</td>
+      <td><span class="eti ${et[e.estado] || 'mut'}">${esc(e.estado)}</span></td>
+      <td class="num">${n(e.total)}</td>
+      <td class="num">${n(e.usuarios)}</td>
+      <td style="font-size:11.5px;color:var(--mut)">${e.versiones.slice(0, 3).map(esc).join(', ')}</td>
+      <td style="font-size:12px;color:var(--faint)">${cuando(e.primera)}</td>
+      <td style="font-size:12px">${cuando(e.ultima)}</td></tr>`).join('')}
+    </tbody></table></div>
+  <p class="pie">Los errores se agrupan por su patrón, no por su texto exacto: «no
+  se encontró el usuario a3f9…» y «…b7c1…» son el mismo fallo y cuentan como uno
+  visto dos veces. Un error dado por resuelto que reaparece en una versión
+  posterior se marca <b>reabierto</b> solo.</p>`;
+}
+
+function vistaSeguridad(d) {
+  const et = (a) => /revocada|suspendida|rechazada|fallida|ignorado/.test(a) ? 'bad'
+    : /creada|rotada|aprobada/.test(a) ? 'gold' : 'mut';
+  return `
+  <div class="rejilla dos">
+    <div class="tarjeta">
+      <h2 style="margin:16px 16px 4px">Movimientos sensibles <span class="pista">claves, operadores, suspensiones</span></h2>
+      <div class="scroll" style="max-height:420px;overflow-y:auto"><table style="min-width:520px">
+        <thead><tr><th>Cuándo</th><th>Quién</th><th>Qué</th><th>Sobre</th></tr></thead>
+        <tbody>${(d.sensibles || []).map((e) => `<tr>
+          <td style="font-size:12px;color:var(--faint);white-space:nowrap">${cuando(e.fecha)}</td>
+          <td style="font-size:12px">${esc(e.actor)}</td>
+          <td><span class="eti ${et(e.accion)}">${esc(e.accion)}</span></td>
+          <td style="font-size:11.5px;color:var(--mut);max-width:170px;overflow:hidden;text-overflow:ellipsis">${esc(e.objeto)}</td>
+          </tr>`).join('') || `<tr><td colspan="4">${vacio('Nada sensible registrado', 'La bitácora está limpia en esta ventana.')}</td></tr>`}
+        </tbody></table></div>
+    </div>
+    <div class="tarjeta">
+      <h2 style="margin:16px 16px 4px">Claves de API</h2>
+      <div class="scroll"><table style="min-width:420px">
+        <thead><tr><th>App</th><th>Estado</th><th>Pista</th><th>Último uso</th></tr></thead>
+        <tbody>${(d.aplicaciones || []).map((a) => `<tr>
+          <td><b>${esc(a.nombre)}</b><div style="font-size:11px;color:var(--faint)">${a.alcances.length} alcances</div></td>
+          <td><span class="eti ${a.activa ? 'ok' : 'bad'}">${a.activa ? 'activa' : 'revocada'}</span></td>
+          <td class="num" style="font-size:11.5px">${esc(a.pista || '—')}</td>
+          <td style="font-size:12px;color:var(--faint)">${cuando(a.ultimoUso)}</td></tr>`).join('')}
+        </tbody></table></div>
+      <h2 style="margin:18px 16px 4px">Operadores</h2>
+      <div class="scroll"><table style="min-width:420px">
+        <thead><tr><th>Operador</th><th>Rol</th><th>Estado</th></tr></thead>
+        <tbody>${(d.operadores || []).map((o) => `<tr>
+          <td>${esc(o.nombre)}<div style="font-size:11px;color:var(--faint)">${esc(o.email)}</div></td>
+          <td><span class="eti gold">${esc(o.rol)}</span></td>
+          <td><span class="eti ${o.activo ? 'ok' : 'mut'}">${o.activo ? 'activo' : 'inactivo'}</span></td>
+          </tr>`).join('')}
+        </tbody></table></div>
+    </div>
+  </div>
+
+  <div class="rejilla dos" style="margin-top:14px">
+    <div class="tarjeta p">
+      <h2 style="margin-top:0">Actividad por operador</h2>
+      <table style="min-width:0"><tbody>${(d.porActor || []).slice(0, 10).map((x) =>
+        filaBarra(esc(x.clave), x.n, d.porActor[0].n)).join('')}</tbody></table>
+    </div>
+    <div class="tarjeta p">
+      <h2 style="margin-top:0">Acciones más frecuentes</h2>
+      <table style="min-width:0"><tbody>${(d.porAccion || []).map((x) =>
+        filaBarra(esc(x.clave), x.n, d.porAccion[0].n)).join('')}</tbody></table>
+    </div>
+  </div>
+  <p class="pie">Todo esto sale de la bitácora encadenada de Genesis ID: cada
+  entrada lleva el hash de la anterior, así que borrar o alterar una vieja rompe
+  la cadena y se nota.</p>`;
+}
+
+function vistaSalud(d) {
+  const s = d.servicios || [];
+  const caidos = s.filter((x) => x.estado === 'caido').length;
+  const et = { arriba: 'ok', degradado: 'warn', caido: 'crit' };
+  return `
+  <div class="kpis">
+    ${kpi('Servicios vigilados', n(s.length), '')}
+    ${kpi('Arriba', n(s.filter((x) => x.estado === 'arriba').length), 'o')}
+    ${kpi('Degradados', n(s.filter((x) => x.estado === 'degradado').length), 'w')}
+    ${kpi('Caídos', n(caidos), caidos ? 'b' : 'o')}
+    ${kpi('Almacén de telemetría', d.almacenTelemetria === 'mongodb' ? 'MongoDB' : 'Memoria',
+      d.almacenTelemetria === 'mongodb' ? 'o' : 'w',
+      `<div class="d">retiene ${d.retencionDias} días</div>`)}
+  </div>
+  <h2>Estado de los servicios <span class="pista">medido ahora, con caché de 45 s</span></h2>
+  <div class="tarjeta scroll"><table>
+    <thead><tr><th>Servicio</th><th>Estado</th><th>Código</th><th>Respuesta</th><th>Dirección</th></tr></thead>
+    <tbody>${s.map((x) => `<tr>
+      <td><b>${esc(x.nombre)}</b>${x.detalle ? `<div style="font-size:11.5px;color:var(--bad)">${esc(x.detalle)}</div>` : ''}</td>
+      <td><span class="eti ${et[x.estado]}">${esc(x.estado)}</span></td>
+      <td class="num">${x.codigo ?? '—'}</td>
+      <td class="num" style="color:${x.ms > 3000 ? 'var(--warn)' : 'var(--mut)'}">${n(x.ms)} ms</td>
+      <td style="font-size:11.5px;color:var(--faint);max-width:280px;overflow:hidden;text-overflow:ellipsis">${esc(x.url)}</td>
+      </tr>`).join('')}
+    </tbody></table></div>
+  <p class="pie">Se puede cambiar qué se vigila sin tocar código, con la variable
+  <code>GENESIS_SERVICIOS</code>: <code>clave|nombre|url,clave|nombre|url</code>.</p>`;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Detalle de un error
+   ───────────────────────────────────────────────────────────────────────── */
+
+async function verError(huella) {
+  let d;
+  try {
+    d = await api('/panel/analitica/errores/' + encodeURIComponent(huella));
+  } catch (e) { alert(e.message); return; }
+
+  const maxSerie = Math.max(1, ...d.serie.map((x) => x.n));
+  const puedeGestionar = yo && (yo.permisos.includes('*') || yo.permisos.includes('analitica.gestionar'));
+
+  const velo = document.createElement('div');
+  velo.className = 'velo';
+  velo.onclick = (ev) => { if (ev.target === velo) velo.remove(); };
+  velo.innerHTML = `<div class="modal">
+    <h3>${esc(d.titulo)}</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 16px">
+      <span class="eti ${d.gravedad === 'critico' ? 'crit' : 'bad'}">${esc(d.gravedad)}</span>
+      <span class="eti mut">${esc(d.app)}</span>
+      <span class="eti cyan">${esc(d.estado)}</span>
+      <span class="eti gold">${n(d.total)} veces</span>
+      <span class="eti mut">${n(d.usuarios)} personas</span>
+    </div>
+
+    <div class="rejilla dos" style="margin-bottom:14px">
+      <div><h3>Cuándo pasó</h3>${grafBarras(d.serie.map((x) => fechaCorta(x.dia)), d.serie.map((x) => x.n), '#F0776B', 130, 460)}</div>
+      <div>
+        <h3>Dónde</h3>
+        <div style="font-size:12.5px;line-height:1.9">
+          <div><span style="color:var(--faint)">Versiones:</span> ${d.versiones.map(esc).join(', ') || '—'}</div>
+          <div><span style="color:var(--faint)">Plataformas:</span> ${d.plataformas.map(esc).join(', ') || '—'}</div>
+          <div><span style="color:var(--faint)">Rutas:</span> ${(d.rutas || []).slice(0, 4).map(esc).join(', ') || '—'}</div>
+          <div><span style="color:var(--faint)">Primera vez:</span> ${cuando(d.primera)}</div>
+          <div><span style="color:var(--faint)">Última vez:</span> ${cuando(d.ultima)}</div>
+          ${d.resueltaEn ? `<div style="color:var(--ok)">Resuelto por ${esc(d.resueltaPor)} ${cuando(d.resueltaEn)}${d.resueltaEnVersion ? ' en ' + esc(d.resueltaEnVersion) : ''}</div>` : ''}
+          ${d.nota ? `<div style="margin-top:6px;color:var(--mut)"><b>Nota:</b> ${esc(d.nota)}</div>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <h3>Mensaje</h3>
+    <pre class="pila">${esc(d.mensaje)}</pre>
+    ${d.pila ? `<h3>Pila</h3><pre class="pila">${esc(d.pila)}</pre>` : ''}
+
+    <h3>Últimas veces que ocurrió</h3>
+    <div class="scroll"><table style="min-width:0">
+      <thead><tr><th>Cuándo</th><th>Versión</th><th>Mensaje</th></tr></thead>
+      <tbody>${d.muestras.map((m) => `<tr>
+        <td style="white-space:nowrap;font-size:12px;color:var(--faint)">${cuando(m.en)}</td>
+        <td class="num" style="font-size:12px">${esc(m.version)}</td>
+        <td style="font-size:12px;color:var(--mut)">${esc(String(m.mensaje).slice(0, 160))}</td>
+        </tr>`).join('')}
+      </tbody></table></div>
+
+    ${puedeGestionar ? `
+      <h3 style="margin-top:18px">Resolver</h3>
+      <input id="notaErr" placeholder="Qué se hizo, o por qué se ignora (obligatorio para cerrar)">
+      <input id="verErr" placeholder="Versión en la que queda arreglado — p. ej. 1.4.0" style="margin-top:8px">
+      <div class="filaBtn">
+        <button class="ok" onclick="cambiarError('${esc(d.huella)}','resuelto')">Marcar resuelto</button>
+        <button onclick="cambiarError('${esc(d.huella)}','visto')">Visto, en curso</button>
+        <button class="bad" onclick="cambiarError('${esc(d.huella)}','ignorado')">Ignorar</button>
+        <button class="g" onclick="this.closest('.velo').remove()">Cerrar</button>
+      </div>
+      <p style="margin-top:10px;color:var(--faint);font-size:11.5px">
+        Al resolver, anotá la versión: si el mismo error vuelve en una versión
+        posterior, el panel lo marca <b>reabierto</b> solo. Si vuelve en una
+        anterior, es alguien con la app vieja y no molesta.</p>
+    ` : `<div class="filaBtn"><button class="g" onclick="this.closest('.velo').remove()">Cerrar</button></div>`}
+  </div>`;
+  document.body.appendChild(velo);
+}
+
+async function cambiarError(huella, estado) {
+  const nota = document.getElementById('notaErr')?.value || '';
+  const version = document.getElementById('verErr')?.value || '';
+  try {
+    await api(`/panel/analitica/errores/${encodeURIComponent(huella)}/estado`, {
+      method: 'POST',
+      body: JSON.stringify({ estado, nota, version }),
+    });
+    document.querySelector('.velo')?.remove();
+    pintar(true);
+  } catch (e) { alert(e.message); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Arranque
+   ───────────────────────────────────────────────────────────────────────── */
+
+function pintarNav(pendientes = 0) {
+  document.getElementById('nav').innerHTML = PESTANAS.map(([k, t]) =>
+    `<button class="${k === pestana ? 'sel' : ''}" onclick="irA('${k}')">${t}${
+      k === 'errores' && pendientes ? `<span class="pip">${pendientes}</span>` : ''}</button>`).join('');
+}
+
+function irA(k) { pestana = k; pintarNav(); pintar(); }
+
+async function arrancar() {
+  document.getElementById('entrada').classList.add('oculto');
+  document.getElementById('app').classList.remove('oculto');
+  document.getElementById('quien').textContent = yo ? yo.rol : '';
+
+  // Las apps del selector salen de lo que de verdad reportó, no de una lista
+  // fija: una app nueva aparece sola sin tocar nada aquí.
+  try {
+    const { apps } = await api('/panel/analitica/apps?dias=90');
+    const sel = document.getElementById('filtroApp');
+    sel.innerHTML = '<option value="todas">Todas las apps</option>' +
+      apps.map((a) => `<option value="${esc(a.app)}">${esc(a.app)}</option>`).join('');
+  } catch { /* sin apps todavía: el selector se queda con «todas» */ }
+
+  // El contador rojo de la pestaña de errores: lo primero que hay que ver.
+  let pendientes = 0;
+  try {
+    const { errores } = await api('/panel/analitica/errores?limite=300');
+    pendientes = errores.filter((e) => e.estado === 'nuevo' || e.estado === 'reabierto').length;
+  } catch { /* da igual, el contador es un lujo */ }
+
+  pintarNav(pendientes);
+  pintar();
+}
+
+(async function inicio() {
+  if (!sesion) return;
+  try {
+    const r = await api('/sesion/yo');
+    yo = r.operador;
+    arrancar();
+  } catch { salir(); }
+})();
+</script>
+</body>
+</html>

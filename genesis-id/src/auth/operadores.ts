@@ -27,15 +27,21 @@ export const PERMISOS: Record<Rol, string[]> = {
     'negocio.ver', 'negocio.revisar', 'negocio.aprobar', 'negocio.rechazar',
     'caso.ver', 'caso.gestionar', 'caso.reportar',
     'listas.ver', 'listas.recargar', 'bitacora.ver',
+    'analitica.ver', 'analitica.gestionar',
   ],
   // Revisor: prepara el caso y recomienda, pero no firma la aprobación.
   revisor: [
     'identidad.ver', 'identidad.revisar',
     'negocio.ver', 'negocio.revisar',
     'caso.ver', 'caso.gestionar', 'listas.ver',
+    'analitica.ver',
   ],
-  // Auditor: lo ve todo, no toca nada.
-  auditor: ['identidad.ver', 'negocio.ver', 'caso.ver', 'listas.ver', 'bitacora.ver'],
+  // Auditor: lo ve todo, no toca nada. Incluye la analítica: es justo el rol
+  // que necesita mirar cifras sin poder cerrar un error como «resuelto».
+  auditor: [
+    'identidad.ver', 'negocio.ver', 'caso.ver', 'listas.ver', 'bitacora.ver',
+    'analitica.ver',
+  ],
 }
 
 export function puede(rol: Rol, permiso: string): boolean {

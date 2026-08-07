@@ -5,7 +5,8 @@ import { dirname, join } from 'path'
 
 import { store, iniciar, motor } from './store.js'
 import { asegurarAdministrador, limpiarSesiones } from './auth/operadores.js'
-import { asegurarAplicaciones } from './auth/aplicaciones.js'
+import { asegurarAplicaciones, alinearAlcances } from './auth/aplicaciones.js'
+import { prepararTelemetria, hayMongo as telemetriaEnMongo } from './analitica/eventos.js'
 import { estadoListas, hayListas, iniciarListas } from './aml/listas.js'
 import { cargarGafiDesdeMongo, estadoGafi, listasVencidas } from './aml/paises.js'
 import { biometriaConfigurada, proveedorBiometria } from './kyc/biometria.js'
@@ -13,6 +14,8 @@ import { verificarCadena } from './audit/bitacora.js'
 import { sesionRouter } from './routes/sesion.js'
 import { appsRouter } from './routes/apps.js'
 import { panelRouter } from './routes/panel.js'
+import { telemetriaRouter } from './routes/telemetria.js'
+import { analiticaRouter } from './routes/analitica.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -45,6 +48,13 @@ app.get(['/', '/admin'], (_req, res) => {
   res.sendFile(join(__dirname, '..', 'public', 'admin.html'))
 })
 
+// El panel de analítica se sirve aparte del de cumplimiento. Son dos oficios
+// distintos —quien mira métricas no está aprobando identidades— y separarlos
+// deja abrir uno sin cargar el otro.
+app.get(['/analitica', '/metricas'], (_req, res) => {
+  res.sendFile(join(__dirname, '..', 'public', 'analitica.html'))
+})
+
 /**
  * Estado del servicio.
  *
@@ -68,6 +78,7 @@ app.get('/healthz', (_req, res) => {
       proveedorBiometria: proveedorBiometria(),
       ssoConfigurado: Boolean(process.env.GENESIS_SSO_SECRETO),
       bitacoraIntegra: cadena.integra,
+      telemetriaPersistente: telemetriaEnMongo(),
     },
   })
 })
@@ -80,13 +91,17 @@ app.get('/api', (_req, res) => {
     rutas: {
       sesion: '/api/sesion/* — operadores del panel',
       apps: '/api/v1/* — aplicaciones del ecosistema (cabecera X-API-Key)',
+      telemetria: '/api/v1/telemetria/eventos — uso y errores de las apps',
       panel: '/api/panel/* — cumplimiento (sesión de operador)',
+      analitica: '/api/panel/analitica/* — métricas del ecosistema',
     },
   })
 })
 
 app.use('/api/sesion', sesionRouter)
+app.use('/api/v1/telemetria', telemetriaRouter)
 app.use('/api/v1', appsRouter)
+app.use('/api/panel/analitica', analiticaRouter)
 app.use('/api/panel', panelRouter)
 
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }))
@@ -138,7 +153,15 @@ export async function arrancar(): Promise<void> {
 
   const admin = asegurarAdministrador()
   const appsNuevas = asegurarAplicaciones()
+  const alcancesNuevos = alinearAlcances()
+  for (const t of alcancesNuevos) console.log(`[genesis-id] alcances al día — ${t}`)
   limpiarSesiones()
+
+  // Índices y caducidad de la telemetría. Va después de abrir el almacén y no
+  // rompe el arranque si falla: sin analítica el motor de identidad sigue
+  // haciendo su trabajo, que es lo que no se puede detener.
+  await prepararTelemetria().catch((e) =>
+    console.error('[genesis-id] no se pudieron preparar los índices de telemetría:', e?.message))
 
   console.log(`[genesis-id] almacén: ${motor}`)
 

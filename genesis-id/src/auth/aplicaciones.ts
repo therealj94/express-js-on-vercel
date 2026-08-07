@@ -26,6 +26,7 @@ export const ALCANCES = {
   'negocio.crear': 'Registrar un negocio para KYB',
   'movimiento.enviar': 'Enviar movimientos para monitoreo AML',
   'tamiz.direccion': 'Consultar si una dirección está sancionada',
+  'telemetria.enviar': 'Reportar uso y errores al panel de analítica',
 } as const
 
 export type Alcance = keyof typeof ALCANCES
@@ -40,7 +41,7 @@ export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance
     alcances: [
       'identidad.crear', 'identidad.leer', 'identidad.documento',
       'gid.verificar', 'gid.perfil', 'vinculo.crear',
-      'movimiento.enviar', 'tamiz.direccion',
+      'movimiento.enviar', 'tamiz.direccion', 'telemetria.enviar',
     ],
   },
   {
@@ -50,7 +51,7 @@ export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance
     alcances: [
       'identidad.crear', 'identidad.leer', 'identidad.documento',
       'gid.verificar', 'gid.perfil', 'vinculo.crear',
-      'negocio.crear', 'movimiento.enviar',
+      'negocio.crear', 'movimiento.enviar', 'telemetria.enviar',
     ],
   },
   {
@@ -58,9 +59,32 @@ export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance
     nombre: 'ordenscan',
     // Un explorador es público: solo necesita saber si una dirección tiene
     // identidad verificada detrás. Nada de datos personales.
-    alcances: ['gid.verificar', 'tamiz.direccion'],
+    alcances: ['gid.verificar', 'tamiz.direccion', 'telemetria.enviar'],
   },
 ]
+
+/**
+ * Le añade a las apps ya existentes los alcances nuevos que les corresponden.
+ *
+ * Sin esto, `telemetria.enviar` solo lo tendrían las apps creadas después de
+ * este cambio: las tres que ya están dadas de alta seguirían recibiendo 403 al
+ * reportar, y el panel de analítica se vería vacío sin que nada avisara por qué.
+ * Solo AÑADE — nunca quita un alcance que un operador haya retirado a mano.
+ */
+export function alinearAlcances(): string[] {
+  const tocadas: string[] = []
+  for (const def of APPS_ECOSISTEMA) {
+    const app = store.todo().aplicaciones.find((a) => a.clave === def.clave)
+    if (!app) continue
+    const faltan = def.alcances.filter((a) => !app.alcances.includes(a))
+    if (!faltan.length) continue
+    app.alcances.push(...faltan)
+    tocadas.push(`${app.clave}: +${faltan.join(', ')}`)
+    registrar('sistema', 'aplicacion.alcances', app.clave, { anadidos: faltan })
+  }
+  if (tocadas.length) store.guardar()
+  return tocadas
+}
 
 export function crearAplicacion(clave: string, nombre: string, alcances: string[]): {
   aplicacion: Aplicacion; clave_secreta: string

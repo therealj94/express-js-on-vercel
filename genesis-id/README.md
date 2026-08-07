@@ -265,6 +265,114 @@ registro de seguridad en una filtración.
 
 ---
 
+## Analítica del ecosistema
+
+Genesis ID es también el punto donde convergen las señales de todas las apps.
+El panel vive en **`/analitica`** y se entra con la misma cuenta de operador.
+
+### Por qué aquí y no en un servicio aparte
+
+Levantar un segundo servicio significaba otra base, otro panel, otra contraseña
+y otro sitio del que acordarse. Genesis ID ya sabe qué aplicaciones existen y ya
+tiene claves de API por app, roles y una bitácora encadenada. La analítica se
+monta encima de todo eso sin inventar nada.
+
+### Qué se ve
+
+| Pestaña | Qué responde |
+| --- | --- |
+| **Resumen** | Registrados, activos hoy / 7 d / 30 d, altas, eventos, errores y tasa por mil |
+| **Apps** | La misma tabla comparada entre Veta Wallet, MyTokenPay, ordenscan y las que vengan |
+| **Usuarios** | Altas por día, retención por cohorte semanal y qué versión tiene la gente instalada |
+| **Países** | Dónde está la base, por usuarios y por uso |
+| **Verificación** | El embudo del KYC: en qué paso exacto se cae la gente |
+| **Errores** | Fallos agrupados por patrón, con pila, muestras, versiones afectadas y resolución |
+| **Seguridad** | Movimientos sensibles de la bitácora, claves de API y operadores |
+| **Salud** | Estado en vivo de todos los servicios del ecosistema |
+
+### Tres decisiones de diseño
+
+**No se guarda la IP ni el identificador del usuario.** De la IP se saca el país
+y se descarta en el acto. Del identificador se guarda una huella HMAC con una
+sal del servidor **y la clave de la app**: la misma persona se cuenta dos días
+seguidos dentro de una app, pero la huella no se puede revertir ni cruzar entre
+apps. Un panel de métricas no necesita saber quién es nadie, y este servicio
+guarda documentos de identidad.
+
+**Los eventos crudos no van en el documento de estado.** Todo Genesis ID cabe en
+un documento de Mongo porque son miles de registros; la telemetría son millones.
+Va en colecciones propias (`telemetria_*`) con caducidad automática a 90 días.
+
+**Las cuentas se hacen al escribir, no al mirar.** Cada evento actualiza de paso
+su resumen del día, así que el panel abre instantáneo aunque haya cien millones
+de eventos guardados: nunca los recorre.
+
+### Agrupación de errores
+
+Los fallos se agrupan por **patrón**, no por texto exacto. «No se encontró el
+cobro 8f2a-41bc-9d10» y «…3c91-77de-2a04» son el mismo fallo visto dos veces, y
+salen como una fila que dice «3 veces, 3 personas» en vez de tres filas
+distintas. Se normalizan UUID, identificadores cortos con guiones, direcciones
+`0x…`, cadenas entre comillas y números — incluidos los pegados a su unidad,
+como `15000ms`.
+
+Un error dado por resuelto que reaparece **en una versión posterior** a la que se
+declaró arreglada se marca `reabierto` solo. Si vuelve en una versión anterior,
+es alguien con la app vieja y no molesta a nadie.
+
+### Cómo reporta una app
+
+```js
+import { telemetria } from './telemetria.js'   // clientes/telemetria.js
+
+telemetria.iniciar({
+  url: 'https://genesis-id.onrender.com',
+  clave: process.env.GENESIS_API_KEY,          // en el móvil, vía TU backend
+  app: 'mytokenpay',
+  version: '1.0.0',
+  plataforma: 'android',
+})
+
+telemetria.identificar(usuario.id)
+telemetria.accion('cobrar', { ruta: '/pos/cobro' })
+telemetria.error(e, { ruta: '/pagar' })
+```
+
+En un backend Express:
+
+```js
+app.use(telemetria.express())          // antes de las rutas
+app.use(telemetria.expressErrores())   // después
+```
+
+El cliente acumula por lotes, nunca lanza, nunca reintenta sin freno y engancha
+solo los errores que nadie atrapó — que son justamente los que dejan la app en
+negro.
+
+> ⚠ **La clave no va dentro del APK.** Un APK se descomprime en diez segundos.
+> Ponela en tu backend y que la app reporte contra un endpoint tuyo que
+> reenvíe, igual que ya hace el puente de identidad de Veta Wallet.
+
+### API
+
+| Ruta | Quién | Para qué |
+| --- | --- | --- |
+| `POST /api/v1/telemetria/eventos` | App (`X-API-Key`, alcance `telemetria.enviar`) | Mandar un lote de hasta 200 eventos |
+| `GET /api/v1/telemetria/esquema` | App | Qué campos acepta la puerta |
+| `GET /api/panel/analitica/*` | Operador con `analitica.ver` | Todo lo del panel |
+| `POST /api/panel/analitica/errores/:huella/estado` | Operador con `analitica.gestionar` | Resolver o ignorar un fallo (queda en la bitácora) |
+
+### Variables de entorno
+
+| Variable | Por defecto | Para qué |
+| --- | --- | --- |
+| `GENESIS_TELEMETRIA_DIAS` | `90` | Días que se guardan los eventos crudos |
+| `GENESIS_TELEMETRIA_ATRASO_H` | `72` | Cuánto atraso se le acepta a un evento. Subir solo para importar historial |
+| `GENESIS_TELEMETRIA_SAL` | el secreto de SSO | Sal de las huellas de usuario |
+| `GENESIS_SERVICIOS` | los cinco del ecosistema | Qué vigila la pestaña Salud: `clave\|nombre\|url,…` |
+
+---
+
 ## Pruebas
 
 ```sh
