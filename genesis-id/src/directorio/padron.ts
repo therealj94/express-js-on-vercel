@@ -179,7 +179,16 @@ export interface FiltroDirectorio {
   moneda?: string
   /** Sin actividad desde hace N días. Para encontrar cuentas dormidas. */
   inactivosDias?: number
-  orden?: 'ultimoAcceso' | 'creadoEn' | 'saldo' | 'email'
+  /** Se registró en los últimos N días. */
+  registradoDias?: number
+  /** Nunca abrió sesión: se dio de alta y no volvió. */
+  nuncaEntro?: boolean
+  /** Saldo mínimo, en la moneda filtrada o sumando todas. */
+  saldoMin?: number
+  estado?: string
+  orden?: 'ultimoAcceso' | 'creadoEn' | 'saldo' | 'email' | 'nombre' | 'app' | 'pais'
+  /** `desc` es mayor a menor y más reciente primero; `asc` al revés. */
+  direccion?: 'asc' | 'desc'
   limite?: number
   desde?: number
 }
@@ -199,6 +208,17 @@ function pasaFiltro(e: EntradaDirectorio, f: FiltroDirectorio): boolean {
     if (tiene !== f.conSaldo) return false
   }
   if (f.moneda && !((e.saldos || {})[f.moneda.toUpperCase()] > 0)) return false
+  if (f.estado && (e.estado || '') !== f.estado) return false
+  if (f.nuncaEntro !== undefined && Boolean(e.ultimoAcceso) === f.nuncaEntro) return false
+  if (f.saldoMin !== undefined && f.saldoMin > 0) {
+    const s = f.moneda ? ((e.saldos || {})[f.moneda.toUpperCase()] || 0) : saldoTotal(e)
+    if (s < f.saldoMin) return false
+  }
+  if (f.registradoDias) {
+    const corte = Date.now() - f.registradoDias * 86400000
+    const alta = e.creadoEn ? Date.parse(e.creadoEn) : 0
+    if (!alta || alta < corte) return false
+  }
   if (f.inactivosDias) {
     const corte = Date.now() - f.inactivosDias * 86400000
     const ult = e.ultimoAcceso ? Date.parse(e.ultimoAcceso) : 0
@@ -215,19 +235,39 @@ export async function consultar(f: FiltroDirectorio = {}) {
   const todas: EntradaDirectorio[] = c ? await c.find({}).toArray() : [...memoria.values()]
   const filtradas = todas.filter((e) => pasaFiltro(e, f))
 
+  // `desc` significa lo que uno espera de cada columna: en números, mayor a
+  // menor; en fechas, lo más reciente arriba; en texto, de la A a la Z. Que
+  // «descendente» quiera decir Z-A en un nombre confunde más de lo que ayuda.
   const orden = f.orden || 'ultimoAcceso'
+  const desc = (f.direccion || 'desc') === 'desc'
+  const signo = desc ? 1 : -1
+
   filtradas.sort((a, b) => {
+    let r = 0
     if (orden === 'saldo') {
-      if (f.moneda) {
-        const m = f.moneda.toUpperCase()
-        return ((b.saldos || {})[m] || 0) - ((a.saldos || {})[m] || 0)
-      }
-      return saldoTotal(b) - saldoTotal(a)
+      const val = (e: EntradaDirectorio) => f.moneda
+        ? ((e.saldos || {})[f.moneda.toUpperCase()] || 0)
+        : saldoTotal(e)
+      r = val(b) - val(a)
+    } else if (orden === 'email') {
+      r = a.email.localeCompare(b.email) * -1
+    } else if (orden === 'nombre') {
+      r = (a.nombre || a.usuario || '~').localeCompare(b.nombre || b.usuario || '~') * -1
+    } else if (orden === 'app') {
+      r = a.app.localeCompare(b.app) * -1
+    } else if (orden === 'pais') {
+      r = (a.pais || '~').localeCompare(b.pais || '~') * -1
+    } else {
+      // Fechas. Quien nunca entró va al final en cualquier sentido: es la
+      // ausencia de un dato, no el dato más antiguo.
+      const ka = (orden === 'creadoEn' ? a.creadoEn : a.ultimoAcceso) || ''
+      const kb = (orden === 'creadoEn' ? b.creadoEn : b.ultimoAcceso) || ''
+      if (!ka && !kb) r = 0
+      else if (!ka) return 1
+      else if (!kb) return -1
+      else r = kb.localeCompare(ka)
     }
-    if (orden === 'email') return a.email.localeCompare(b.email)
-    const ka = (orden === 'creadoEn' ? a.creadoEn : a.ultimoAcceso) || ''
-    const kb = (orden === 'creadoEn' ? b.creadoEn : b.ultimoAcceso) || ''
-    return kb.localeCompare(ka)
+    return r * signo
   })
 
   const desde = Math.max(0, f.desde || 0)

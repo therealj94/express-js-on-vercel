@@ -94,6 +94,8 @@ td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.045);font-size:13
 tbody tr:hover{background:rgba(255,255,255,.025)}
 tbody tr.pulsable{cursor:pointer}
 .vacio{padding:34px 18px;text-align:center;color:var(--faint);font-size:13px}
+th.orden{cursor:pointer;user-select:none}
+th.orden:hover{color:var(--txt)}
 .vacio b{display:block;color:var(--mut);margin-bottom:5px;font-size:14px}
 
 .eti{display:inline-block;padding:2.5px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
@@ -774,7 +776,32 @@ function vistaErrores(d) {
 
 /* ── Directorio de usuarios ─────────────────────────────────────────────── */
 
-let dirFiltros = { texto: '', app: 'todas', moneda: '', conWallet: '', conGid: '', conSaldo: '', inactivosDias: '', orden: 'ultimoAcceso' };
+let dirFiltros = {
+  texto: '', app: 'todas', moneda: '', pais: '', conWallet: '', conGid: '',
+  conSaldo: '', saldoMin: '', inactivosDias: '', registradoDias: '',
+  nuncaEntro: '', orden: 'ultimoAcceso', direccion: 'desc',
+};
+const DIR_LIMPIO = { ...dirFiltros };
+
+/** Cuántos filtros hay puestos, sin contar el orden. */
+function dirActivos() {
+  return Object.entries(dirFiltros).filter(([k, v]) =>
+    k !== 'orden' && k !== 'direccion' && v !== '' && v !== 'todas').length;
+}
+function limpiarFiltros() { dirFiltros = { ...DIR_LIMPIO }; datos = {}; pintar(); }
+
+/** Toca una cabecera: ordena por esa columna, o invierte si ya estaba. */
+function ordenarPor(col) {
+  if (dirFiltros.orden === col) {
+    dirFiltros.direccion = dirFiltros.direccion === 'desc' ? 'asc' : 'desc';
+  } else {
+    dirFiltros.orden = col;
+    dirFiltros.direccion = 'desc';
+  }
+  datos = {}; pintar();
+}
+const flecha = (col) => dirFiltros.orden === col
+  ? `<span style="color:var(--gold)">${dirFiltros.direccion === 'desc' ? '↓' : '↑'}</span>` : '';
 function filtrosDir() {
   const f = {};
   for (const [k, v] of Object.entries(dirFiltros)) if (v !== '' && v !== 'todas') f[k] = v;
@@ -820,8 +847,20 @@ function vistaDirectorio(d) {
       ${sel('moneda', [['', 'Todas las monedas'], ...(R.porMoneda || []).map((m) =>
         [m.simbolo, `${m.simbolo}${m.tenedores ? ' (' + m.tenedores + ')' : ''}`])])}
       ${sel('conSaldo', [['', 'Saldo: todos'], ['1', 'Con saldo'], ['0', 'En cero']])}
-      ${sel('inactivosDias', [['', 'Actividad: toda'], ['30', 'Sin entrar 30 d'], ['90', 'Sin entrar 90 d'], ['180', 'Sin entrar 180 d']])}
-      ${sel('orden', [['ultimoAcceso', 'Última conexión'], ['creadoEn', 'Más recientes'], ['saldo', 'Mayor saldo'], ['email', 'Correo A-Z']])}
+      ${sel('inactivosDias', [['', 'Actividad: toda'], ['30', 'Sin entrar 30 d'], ['90', 'Sin entrar 90 d'], ['180', 'Sin entrar 180 d'], ['365', 'Sin entrar un año']])}
+      ${sel('registradoDias', [['', 'Alta: cualquiera'], ['7', 'Se registró esta semana'], ['30', 'Este mes'], ['90', 'Últimos 3 meses'], ['365', 'Este año']])}
+      ${sel('nuncaEntro', [['', 'Entró: da igual'], ['1', 'Nunca entró'], ['0', 'Sí entró alguna vez']])}
+      ${sel('pais', [['', 'Todos los países'], ...(R.porPais || []).map((x) => [x.clave, `${x.clave} (${x.n})`])])}
+      <input placeholder="Saldo mínimo" value="${esc(dirFiltros.saldoMin)}" inputmode="decimal"
+        style="width:120px" onchange="ponFiltro('saldoMin', this.value)">
+      ${sel('direccion', [['desc', 'Mayor a menor ↓'], ['asc', 'Menor a mayor ↑']])}
+    </div>
+    <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:10px;
+                border-top:1px solid rgba(255,255,255,.06);padding-top:10px">
+      <span style="font-size:12px;color:var(--faint)">
+        ${dirActivos() ? `${dirActivos()} filtro(s) puesto(s)` : 'sin filtros'}</span>
+      ${dirActivos() ? `<button class="g mini" onclick="limpiarFiltros()">Limpiar todo</button>` : ''}
+      <button class="g mini" onclick="exportarCsv()" title="Descarga lo que estás viendo, con los filtros puestos">Exportar CSV</button>
       <button class="g mini" onclick="refrescarSaldos(this)" title="Le pregunta a la cadena 8532 el saldo real de cada billetera">Actualizar saldos</button>
     </div>
   </div>
@@ -860,9 +899,17 @@ function vistaDirectorio(d) {
 
   <h2>${n(L.total)} ${L.total === 1 ? 'persona' : 'personas'}
     <span class="pista">mostrando ${L.usuarios.length} · tocá una fila para su ficha completa</span></h2>
-  <div class="tarjeta scroll"><table>
-    <thead><tr><th>Persona</th><th>App</th><th>Billetera</th><th>Saldo</th>
-      <th>Genesis ID</th><th>País</th><th>Última conexión</th></tr></thead>
+  <div class="tarjeta scroll"><table id="tablaPersonas">
+    <thead><tr>
+      <th class="orden" onclick="ordenarPor('nombre')">Persona ${flecha('nombre')}</th>
+      <th class="orden" onclick="ordenarPor('app')">App ${flecha('app')}</th>
+      <th>Billetera</th>
+      <th class="orden" onclick="ordenarPor('saldo')">Saldo ${flecha('saldo')}</th>
+      <th>Genesis ID</th>
+      <th class="orden" onclick="ordenarPor('pais')">País ${flecha('pais')}</th>
+      <th class="orden" onclick="ordenarPor('creadoEn')">Alta ${flecha('creadoEn')}</th>
+      <th class="orden" onclick="ordenarPor('ultimoAcceso')">Última conexión ${flecha('ultimoAcceso')}</th>
+    </tr></thead>
     <tbody>${L.usuarios.map((u) => {
       const tot = Object.values(u.saldos || {}).reduce((s, x) => s + x, 0);
       const dias = u.ultimoAcceso ? Math.floor((Date.now() - new Date(u.ultimoAcceso)) / 86400000) : null;
@@ -883,6 +930,7 @@ function vistaDirectorio(d) {
         <td>${u.gid ? `<span class="eti ok">${esc(u.gid)}</span>`
           : `<span class="eti mut">sin verificar</span>`}</td>
         <td>${esc(u.pais || '—')}</td>
+        <td style="font-size:12px;color:var(--mut)">${u.creadoEn ? cuando(u.creadoEn) : '—'}</td>
         <td style="font-size:12px;${dias !== null && dias > 90 ? 'color:var(--warn)' : ''}">
           ${u.ultimoAcceso ? cuando(u.ultimoAcceso) : '<span style="color:var(--faint)">nunca</span>'}</td>
       </tr>`;
@@ -893,6 +941,36 @@ function vistaDirectorio(d) {
   de los clientes <b>nunca</b> salen de su base original: la sincronización
   acepta campos por lista blanca, así que un campo nuevo en el origen no llega
   aquí hasta que alguien lo agregue a mano.</p>`;
+}
+
+/**
+ * Descarga lo que se está viendo, con los filtros puestos.
+ *
+ * Se genera en el navegador con los datos que ya están en pantalla: no hace
+ * otra consulta ni manda nada a ningún lado. Un padrón de clientes que sale
+ * del servidor por una ruta nueva es una ruta más que proteger.
+ */
+function exportarCsv() {
+  const filas = (datos[pestana + qs()]?.lista?.usuarios) || [];
+  if (!filas.length) { alert('No hay nada que exportar con estos filtros.'); return; }
+  const monedas = [...new Set(filas.flatMap((u) => Object.keys(u.saldos || {})))].sort();
+  const cab = ['correo', 'nombre', 'app', 'pais', 'billetera', 'genesis_id',
+    'estado_genesis', 'alta', 'ultima_conexion', ...monedas];
+  const esc2 = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const lineas = [cab.join(',')];
+  for (const u of filas) {
+    lineas.push([u.email, u.nombre || u.usuario || '', u.app, u.pais || '',
+      u.direccionWallet || '', u.gid || '', u.estadoGenesis || '',
+      u.creadoEn || '', u.ultimoAcceso || '',
+      ...monedas.map((m) => (u.saldos || {})[m] || 0)].map(esc2).join(','));
+  }
+  // El BOM es para que Excel abra los acentos bien; sin él, «México» sale roto.
+  const blob = new Blob(['\uFEFF' + lineas.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `directorio-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 async function refrescarSaldos(boton) {
