@@ -819,6 +819,7 @@ function vistaDirectorio(d) {
       ${sel('conSaldo', [['', 'Saldo: todos'], ['1', 'Con saldo'], ['0', 'En cero']])}
       ${sel('inactivosDias', [['', 'Actividad: toda'], ['30', 'Sin entrar 30 d'], ['90', 'Sin entrar 90 d'], ['180', 'Sin entrar 180 d']])}
       ${sel('orden', [['ultimoAcceso', 'Última conexión'], ['creadoEn', 'Más recientes'], ['saldo', 'Mayor saldo'], ['email', 'Correo A-Z']])}
+      <button class="g mini" onclick="refrescarSaldos(this)" title="Le pregunta a la cadena 8532 el saldo real de cada billetera">Actualizar saldos</button>
     </div>
   </div>
 
@@ -853,6 +854,15 @@ function vistaDirectorio(d) {
   de los clientes <b>nunca</b> salen de su base original: la sincronización
   acepta campos por lista blanca, así que un campo nuevo en el origen no llega
   aquí hasta que alguien lo agregue a mano.</p>`;
+}
+
+async function refrescarSaldos(boton) {
+  boton.disabled = true; boton.textContent = 'Consultando la cadena…';
+  try {
+    const r = await api('/panel/directorio/saldos', { method: 'POST' });
+    boton.textContent = r.mensaje;
+  } catch (e) { boton.textContent = e.message; }
+  setTimeout(() => { boton.disabled = false; boton.textContent = 'Actualizar saldos'; }, 8000);
 }
 
 async function verPersona(email) {

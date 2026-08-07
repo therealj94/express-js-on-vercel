@@ -7,7 +7,7 @@
 
 import { Router } from 'express'
 import { exigeApp, exigeOperador, exigePermiso, limite } from '../middleware/proteger.js'
-import { sincronizar, consultar, resumenDirectorio, fichaPorEmail } from '../directorio/padron.js'
+import { sincronizar, consultar, resumenDirectorio, fichaPorEmail, refrescarSaldos } from '../directorio/padron.js'
 import { registrar } from '../audit/bitacora.js'
 
 export const directorioAppsRouter = Router()
@@ -67,4 +67,18 @@ directorioPanelRouter.get('/persona/:email', async (req, res) => {
   if (!ficha) return res.status(404).json({ error: 'No hay nadie con ese correo en el directorio' })
   registrar(req.operador!.email, 'directorio.ficha', req.params.email, {})
   res.json(ficha)
+})
+
+/**
+ * Vuelve a preguntarle a la cadena cuánto tiene cada dirección.
+ *
+ * Se dispara a mano desde el panel porque son cientos de consultas al RPC y no
+ * tiene sentido hacerlas en cada carga de la pantalla. Corre en segundo plano:
+ * la respuesta vuelve enseguida y el trabajo sigue.
+ */
+directorioPanelRouter.post('/saldos', exigePermiso('usuarios.ver'), (req, res) => {
+  registrar(req.operador!.email, 'directorio.saldos', 'cadena-8532', {})
+  refrescarSaldos().then((r) =>
+    console.log(`[directorio] saldos refrescados: ${r.consultadas} direcciones, ${r.conSaldo} con saldo`))
+  res.json({ ok: true, mensaje: 'Consultando la cadena. Refrescá en un minuto.' })
 })

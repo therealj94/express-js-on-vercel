@@ -296,3 +296,63 @@ export async function fichaPorEmail(email: string) {
     } : null,
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Saldos: se le preguntan a la cadena, no a las apps
+//
+// Veta Wallet es custodia y lleva su propia contabilidad, pero lo que de verdad
+// tiene una persona es lo que dice la cadena 8532 sobre su dirección. Son dos
+// cifras que deberían coincidir y a veces no coinciden — y cuando no coinciden,
+// eso es exactamente lo que hay que ver en una revisión.
+//
+// Ya pasó una vez en este ecosistema: MyTokenPay mostraba 10,81 ORIGEN
+// retirables sobre una billetera que en la cadena tenía 0,0.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const RPC = process.env.RPC_8532_URL || 'https://rpc.ordenglobal-rpc.com/'
+
+async function saldoEnCadena(direccion: string): Promise<number | null> {
+  try {
+    const ctrl = new AbortController()
+    const alarma = setTimeout(() => ctrl.abort(), 8000)
+    const r = await fetch(RPC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_getBalance', params: [direccion, 'latest'], id: 1 }),
+      signal: ctrl.signal,
+    })
+    clearTimeout(alarma)
+    const j: any = await r.json()
+    if (!j?.result) return null
+    return Number(BigInt(j.result)) / 1e18
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Refresca el saldo en cadena de las direcciones del directorio.
+ *
+ * De a veinte a la vez: cientos de peticiones simultáneas al RPC lo tumbarían,
+ * y este trabajo no tiene ninguna prisa. Devuelve cuántas actualizó.
+ */
+export async function refrescarSaldos(maximo = 600): Promise<{ consultadas: number; conSaldo: number }> {
+  const c = col()
+  const todas: EntradaDirectorio[] = c ? await c.find({}).toArray() : [...memoria.values()]
+  const conDireccion = todas.filter((e) => e.direccionWallet).slice(0, maximo)
+
+  let conSaldo = 0
+  for (let i = 0; i < conDireccion.length; i += 20) {
+    const grupo = conDireccion.slice(i, i + 20)
+    const saldos = await Promise.all(grupo.map((e) => saldoEnCadena(e.direccionWallet!)))
+    for (let k = 0; k < grupo.length; k++) {
+      const n = saldos[k]
+      if (n === null) continue          // sin respuesta: se deja lo que había
+      if (n > 0) conSaldo++
+      const nuevos = { ...(grupo[k].saldos || {}), ORIGEN: Math.round(n * 1e6) / 1e6 }
+      if (c) await c.updateOne({ _id: grupo[k]._id }, { $set: { saldos: nuevos } })
+      else memoria.get(grupo[k]._id)!.saldos = nuevos
+    }
+  }
+  return { consultadas: conDireccion.length, conSaldo }
+}
