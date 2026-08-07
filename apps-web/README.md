@@ -15,24 +15,43 @@ poniendo la carpeta detras de cualquier servidor estatico.
 Las de ensayo no tienen dominio propio y sirven para mirar los cambios antes de
 tocar los reales. **Se despliega ahi primero, siempre.**
 
-### Por que `app.` y no `www.`
+### Como se recupero `vetawallet.com`
 
-`www.vetawallet.com` y el apex no apuntan a Amplify: apuntan a la distribucion
-de CloudFront `d1ceoywtt4iywx.cloudfront.net`, que **no esta en esta cuenta de
-AWS**. Su origen es la app de Amplify `d7ofsbyqsj3d9` (por eso se despliega
-tambien ahi: es lo unico que se puede alimentar de ese lado), pero la cache la
-controla otro.
+El dominio estaba muerto, y no por falta de contenido. `vetawallet.com` era un
+registro A hacia la distribucion de CloudFront `d1ceoywtt4iywx.cloudfront.net`,
+que **no esta en esta cuenta de AWS**; esa distribucion contesta un 302 hacia
+`www.vetawallet.com`, y `www` **no tenia ningun registro en la zona**. Quien
+escribia el nombre del dominio terminaba en un nombre que no resuelve.
 
-Reclamar el nombre desde aqui no se puede. Amplify responde *"One or more of the
-CNAMEs you provided are already associated"*, y el procedimiento de AWS para
-mover un alias — el TXT `_www.vetawallet.com` mas `AssociateAlias`, que ya se
-creo en Route 53 (`Z05028253J23E6DVECFZA`) — solo funciona entre distribuciones
-de la **misma** cuenta. Versionar rutas (`app.js?v=…`) tampoco sirve: ese CDN
-ignora la cadena de consulta.
+Amplify no podia quedarse con `www`: responde *"One or more of the CNAMEs you
+provided are already associated"*, porque el alias lo tiene tomado esa
+distribucion ajena. Y servir el sitio a traves de ella tampoco era opcion —
+reescribe cualquier ruta al index, asi que `/app.js` devolvia la portada y la
+pagina cargaba sin su codigo.
 
-Quedan dos salidas, las dos en manos de quien sea dueño de esa distribucion:
-soltar el alias, o correr una invalidacion. Mientras tanto `app.vetawallet.com`
-es la direccion buena y esta enteramente bajo control de esta cuenta.
+La salida es montar **una distribucion propia** (`E3N96U0LYGO5S3`,
+`d3vq91ahiny6zl.cloudfront.net`) con origen `main.d264zjawew1yea.amplifyapp.com`
+y certificado propio, y reclamar el nombre con el procedimiento de AWS para
+mover un alias entre cuentas: un TXT `_www.vetawallet.com` con el dominio de la
+distribucion destino, y despues `AssociateAlias` sobre la distribucion propia.
+Ese TXT cae dentro de la zona, asi que se puede crear — y es la razon por la que
+esto se puede hacer sin la cuenta ajena.
+
+Amplify no sirve para este paso aunque la distribucion de destino fuera suya: no
+expone `AssociateAlias`, solo `create_domain_association`, que se planta en
+*"One or more of the CNAMEs you provided are already associated"* y no tiene
+manera de presentar la prueba de propiedad.
+
+**Con el apex no se puede hacer lo mismo**: el TXT tendria que llamarse
+`_vetawallet.com`, que no es hijo de `vetawallet.com` sino hermano, y vive en la
+zona de `.com`. Route 53 rechaza crearlo y es correcto que lo haga. No hace
+falta: el 302 de la distribucion ajena conserva la ruta entera
+(`vetawallet.com/privacidad` → `www.vetawallet.com/privacidad`), asi que el apex
+sigue funcionando de rebote. Si algun dia esa distribucion se apaga, el apex cae
+con ella y hay que repuntar el registro A a la distribucion propia.
+
+`app.vetawallet.com` y `legal.vetawallet.com` van directo a Amplify y siguen
+siendo las direcciones que no dependen de nadie mas.
 
 ### Amplify no sirve la extension `.html`
 
