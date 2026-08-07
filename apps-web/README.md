@@ -9,11 +9,39 @@ poniendo la carpeta detras de cualquier servidor estatico.
 
 | | dominio | app de Amplify | ensayo |
 |---|---|---|---|
-| Veta Wallet | `vetawallet.com` | `d264zjawew1yea` | `main.d289v5ffkexk23.amplifyapp.com` |
-| MyTokenPay | `mytokenpay-pos.com` | `dd486t2t5w516` | `main.d2dr8sh34hni4c.amplifyapp.com` |
+| Veta Wallet | `app.vetawallet.com` y `legal.vetawallet.com` | `d264zjawew1yea` | `main.d289v5ffkexk23.amplifyapp.com` |
+| MyTokenPay | sin desplegar | `dd486t2t5w516` | `main.d2dr8sh34hni4c.amplifyapp.com` |
 
 Las de ensayo no tienen dominio propio y sirven para mirar los cambios antes de
 tocar los reales. **Se despliega ahi primero, siempre.**
+
+### Por que `app.` y no `www.`
+
+`www.vetawallet.com` y el apex no apuntan a Amplify: apuntan a la distribucion
+de CloudFront `d1ceoywtt4iywx.cloudfront.net`, que **no esta en esta cuenta de
+AWS**. Su origen es la app de Amplify `d7ofsbyqsj3d9` (por eso se despliega
+tambien ahi: es lo unico que se puede alimentar de ese lado), pero la cache la
+controla otro.
+
+Reclamar el nombre desde aqui no se puede. Amplify responde *"One or more of the
+CNAMEs you provided are already associated"*, y el procedimiento de AWS para
+mover un alias — el TXT `_www.vetawallet.com` mas `AssociateAlias`, que ya se
+creo en Route 53 (`Z05028253J23E6DVECFZA`) — solo funciona entre distribuciones
+de la **misma** cuenta. Versionar rutas (`app.js?v=…`) tampoco sirve: ese CDN
+ignora la cadena de consulta.
+
+Quedan dos salidas, las dos en manos de quien sea dueño de esa distribucion:
+soltar el alias, o correr una invalidacion. Mientras tanto `app.vetawallet.com`
+es la direccion buena y esta enteramente bajo control de esta cuenta.
+
+### Amplify no sirve la extension `.html`
+
+Un `privacidad.html` desplegado queda publicado en `/privacidad`, a secas. La
+URL con extension no corresponde a ningun objeto, asi que cae en la regla
+comodin y devuelve la portada — y no hay reescritura que lo arregle, porque el
+destino se normaliza igual. Los enlaces internos apuntan a `/privacidad` y
+`/terminos`; escribirlos con `.html` es publicar un enlace roto que responde 200
+y por eso no lo delata ninguna prueba de enlaces.
 
 ```sh
 AWS_ACCESS_KEY_ID=… AWS_SECRET_ACCESS_KEY=… python3 subir.py veta-wallet  d289v5ffkexk23   # ensayo
@@ -21,8 +49,8 @@ AWS_ACCESS_KEY_ID=… AWS_SECRET_ACCESS_KEY=… python3 subir.py veta-wallet  d2
 ```
 
 **Amplify reemplaza el manifiesto entero en cada despliegue.** En
-`vetawallet.com` esto no es un detalle: ahi viven `privacidad.html` y
-`terminos.html`, las tiendas de aplicaciones las exigen, y ya se cayeron una vez
+`vetawallet.com` esto no es un detalle: ahi viven las paginas de privacidad y
+terminos, las tiendas de aplicaciones las exigen, y ya se cayeron una vez
 cuando una pagina de "proximamente" se subio sin ellas. Subir siempre la carpeta
 completa, nunca un archivo suelto.
 
