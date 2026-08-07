@@ -79,14 +79,17 @@ deja de reportar en el acto.
 
 Y sale por aire con `eas update` — no hace falta APK nuevo.
 
-**En MyTokenPay** — copiar `genesis-id/clientes/telemetria.js` a la app y
-llamar `iniciar()` al arrancar, igual que en Veta Wallet. En su backend, que
-sí puede guardar secretos, se usa la clave **secreta** y dos líneas más:
+**En MyTokenPay** — el backend **ya está desplegado con la telemetría dentro**
+(release 18). Mide cada petición y reporta cada 5xx y cada excepción. Está
+dormido a propósito: sin clave no manda nada, ni una petición. Para encenderlo,
+una sola variable en Heroku y ni siquiera hace falta volver a desplegar:
 
-```js
-app.use(telemetria.express())          // antes de las rutas
-app.use(telemetria.expressErrores())   // después
+```bash
+heroku config:set GENESIS_TELEMETRIA_KEY=gid_live_… --app mytokenpay-api
 ```
+
+Para la app móvil de MyTokenPay, copiar `genesis-id/clientes/telemetria.js` y
+llamar `iniciar()` con la clave **pública**, igual que en Veta Wallet.
 
 **En ordenscan** — lo mismo, con su propia clave pública.
 
@@ -163,10 +166,12 @@ a los 90 días, la historia de cuánta gente hubo cada día se conserva entera.
 
 **Falta, y necesita credenciales que no tengo:**
 
-- Desplegar en Render (no hay credenciales de Render en este entorno)
-- Conectar MyTokenPay y ordenscan — el código de MyTokenPay que está en esta
-  rama es una copia vieja; el bueno vive en `claude/mytokenpay-pos-origen` y su
-  backend está en Heroku, cuyo token está vencido
+- **Desplegar Genesis ID en Render.** Es lo único que falta de verdad, y no hay
+  credenciales de Render en este entorno. Hasta que eso pase, no hay dónde
+  reportar: el panel existe en el código pero `/analitica` responde 404 en vivo.
+- Conectar la app móvil de MyTokenPay y ordenscan (minutos, una vez haya claves)
 
-Con acceso a Render y un token de Heroku válido, lo dejo andando en menos de
-media hora.
+**Ya desplegado con Heroku:** el backend de MyTokenPay (release 18) lleva la
+telemetría dentro y dormida. Se comprobó después de desplegar que `/healthz`
+responde, el panel de administración carga y el login del comercio funciona:
+nada se rompió.

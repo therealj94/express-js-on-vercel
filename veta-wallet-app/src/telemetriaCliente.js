@@ -195,12 +195,14 @@ async function vaciar() {
     if (r.ok) {
       cola = cola.slice(lote.length)
       fallos = 0
-    } else if (r.status === 401 || r.status === 403) {
-      // La clave no sirve. Reintentar con la misma clave no la va a arreglar y
-      // solo genera ruido: se apaga y se avisa una vez.
+    } else if (r.status === 401 || r.status === 403 || r.status === 404) {
+      // 401/403: la clave no sirve. 404: el servidor todavía no tiene la ruta
+      // de telemetría — pasa cuando la app se despliega antes que Genesis ID.
+      // En los tres casos, reintentar no lo va a arreglar: se apaga, se avisa
+      // una vez y se vuelve a intentar en el próximo arranque de la app.
       CONF.activa = false
       cola = []
-      console.warn('[telemetria] clave rechazada (' + r.status + '); telemetría apagada')
+      console.warn('[telemetria] ingesta no disponible (' + r.status + '); telemetría apagada hasta el próximo arranque')
     } else {
       fallos++
     }
