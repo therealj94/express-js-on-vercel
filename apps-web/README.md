@@ -29,26 +29,43 @@ distribucion ajena. Y servir el sitio a traves de ella tampoco era opcion —
 reescribe cualquier ruta al index, asi que `/app.js` devolvia la portada y la
 pagina cargaba sin su codigo.
 
-La salida es montar **una distribucion propia** (`E3N96U0LYGO5S3`,
+Se intento recuperarlo desde esta cuenta y **no se puede**. Queda escrito lo que
+se probo para que nadie lo vuelva a intentar creyendo que le falto un paso.
+
+Esta montada una **distribucion propia** (`E3N96U0LYGO5S3`,
 `d3vq91ahiny6zl.cloudfront.net`) con origen `main.d264zjawew1yea.amplifyapp.com`
-y certificado propio, y reclamar el nombre con el procedimiento de AWS para
-mover un alias entre cuentas: un TXT `_www.vetawallet.com` con el dominio de la
-distribucion destino, y despues `AssociateAlias` sobre la distribucion propia.
-Ese TXT cae dentro de la zona, asi que se puede crear — y es la razon por la que
-esto se puede hacer sin la cuenta ajena.
+y certificado propio emitido para `vetawallet.com` y `www.vetawallet.com`. Esta
+desplegada y sin alias: lista para recibir el nombre el dia que se libere, pero
+hoy no sirve trafico.
 
-Amplify no sirve para este paso aunque la distribucion de destino fuera suya: no
-expone `AssociateAlias`, solo `create_domain_association`, que se planta en
-*"One or more of the CNAMEs you provided are already associated"* y no tiene
-manera de presentar la prueba de propiedad.
+Los tres caminos, y donde muere cada uno:
 
-**Con el apex no se puede hacer lo mismo**: el TXT tendria que llamarse
+| intento | respuesta de AWS |
+|---|---|
+| `AssociateAlias` de `www` con el TXT `_www.vetawallet.com` | `IllegalUpdate: Alias move is not allowed since the source distribution is enabled` |
+| `AssociateAlias` del apex | `IllegalUpdate: Invalid or missing alias DNS TXT records` |
+| Alias explicito `www` en la distribucion propia | `CNAMEAlreadyExists` |
+
+El procedimiento de AWS para mover un alias entre cuentas — TXT de propiedad mas
+`AssociateAlias` — exige que la distribucion de origen este **apagada**. La
+ajena esta encendida, asi que el movimiento esta prohibido aunque la propiedad
+del dominio quede demostrada. Y el tercer intento descarta que su reclamo sea un
+comodin `*.vetawallet.com`: si lo fuera, un alias explicito le ganaria. Lo tiene
+tomado exacto.
+
+Con el apex el bloqueo es anterior: el TXT tendria que llamarse
 `_vetawallet.com`, que no es hijo de `vetawallet.com` sino hermano, y vive en la
-zona de `.com`. Route 53 rechaza crearlo y es correcto que lo haga. No hace
-falta: el 302 de la distribucion ajena conserva la ruta entera
-(`vetawallet.com/privacidad` → `www.vetawallet.com/privacidad`), asi que el apex
-sigue funcionando de rebote. Si algun dia esa distribucion se apaga, el apex cae
-con ella y hay que repuntar el registro A a la distribucion propia.
+zona de `.com`. Route 53 rechaza crearlo, y es correcto que lo haga.
+
+**Depende de la otra cuenta.** Basta con que apague esa distribucion, la borre, o
+le quite los dos alias; despues, aqui es un solo comando. Mientras tanto la
+direccion buena es `app.vetawallet.com`.
+
+Lo que **no** hay que hacer es crear el registro `www` apuntando a la
+distribucion ajena para que al menos resuelva: reescribe cualquier ruta al
+index, asi que la portada se pintaria pero `/app.js` devolveria HTML y la
+aplicacion no funcionaria. Una pagina que carga y no responde es peor que un
+nombre que no resuelve, porque nadie sabe que esta rota.
 
 `app.vetawallet.com` y `legal.vetawallet.com` van directo a Amplify y siguen
 siendo las direcciones que no dependen de nadie mas.
