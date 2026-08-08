@@ -3,8 +3,8 @@
 <title>Veta Wallet · Tu oro, en tu bolsillo</title>
 <meta name="description" content="Veta Wallet: guardá, enviá y pagá con ORIGEN, oro real digitalizado sobre la Layer 1 de Orden Global. Verificá tu identidad una sola vez con Genesis ID.">
 <meta name="theme-color" content="#021B1C">
-<link rel="icon" href="assets/veta-icon.png">
-<link rel="apple-touch-icon" href="assets/veta-icon.png">
+<link rel="icon" href="assets/veta-logo.png">
+<link rel="apple-touch-icon" href="assets/veta-logo.png">
 <meta property="og:title" content="Veta Wallet">
 <meta property="og:description" content="Tu oro, en tu bolsillo. En cualquier parte del mundo.">
 <meta property="og:image" content="https://app.vetawallet.com/assets/veta.png">
@@ -205,7 +205,7 @@ amp(26px,5vw,38px);justify-self:start;
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   display:flex;flex-direction:column;gap:6px}
 .riel-marca{display:flex;align-items:center;gap:10px;padding:6px 10px 22px;font-size:21px}
-.riel-marca img{width:26px;height:26px;border-radius:7px}
+.riel-marca img{height:30px;width:auto;border-radius:0}
 .nav{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;
   font-size:14.5px;font-weight:600;color:var(--bruma);transition:.18s;width:100%;text-align:left;position:relative}
 .nav svg{width:19px;height:19px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -605,6 +605,111 @@ px;
   .cc-fila input{font-size:23px}
   .cc-sel{max-width:132px}
 }
+
+/* ── la tarjeta, calcada del telefono ─────────────────────────────────────── */
+
+/* La escena es la que gira. Cada cara esta girada media vuelta respecto de la
+   otra y con la trasera oculta, asi que solo se ve una a la vez — que es como
+   funciona una tarjeta de verdad. */
+.tar-escena{position:relative;max-width:378px;aspect-ratio:1.586;
+  transform-style:preserve-3d;transition:transform .72s cubic-bezier(.2,.8,.2,1)}
+.tar-escena.volteada{transform:rotateY(180deg)}
+.tar-cara{position:absolute;inset:0;border-radius:20px;overflow:hidden;cursor:pointer;
+  -webkit-backface-visibility:hidden;backface-visibility:hidden;
+  border:1px solid var(--linea);padding:16px 19px 17px;text-align:left;
+  background:linear-gradient(135deg,#221D15,#12100C 55%,#050505);
+  box-shadow:0 20px 44px rgba(0,0,0,.45);
+  display:flex;flex-direction:column;justify-content:space-between}
+.tar-reverso{transform:rotateY(180deg)}
+.tar-cara:focus-visible{outline:2px solid var(--oro);outline-offset:3px}
+.tar-circuito{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+/* El monograma es el protagonista, no una marca de agua: grande, centrado y
+   arriba. Los datos se apoyan debajo para no pisarlo. */
+.tar-mono{position:absolute;left:50%;top:17%;transform:translateX(-50%);
+  width:60%;max-height:44%;object-fit:contain;opacity:.95;pointer-events:none}
+.tar-fria{filter:saturate(.3) brightness(.8)}
+.tar-fila-alta{display:flex;justify-content:space-between;align-items:center;position:relative}
+.tar-premium{font-size:10.5px;letter-spacing:.45em;color:rgba(234,215,156,.85);font-weight:600}
+.tar-visa{font-size:21px;font-weight:800;font-style:italic;color:var(--oroHi);letter-spacing:.02em}
+.tar-datos{display:flex;align-items:flex-end;gap:13px;position:relative}
+.tar-chip{position:relative;width:42px;height:32px;border-radius:6px;flex:none;margin-bottom:2px;
+  background:linear-gradient(135deg,#F8EFCF,#DFC078 45%,#96793F);
+  box-shadow:0 0 0 6px rgba(223,192,120,.10),0 0 0 13px rgba(223,192,120,.05)}
+.tar-chip-l,.tar-chip-c{position:absolute;background:rgba(90,70,25,.55)}
+.tar-chip-l{left:0;right:0;top:11px;height:1px}
+.tar-chip-c{top:0;bottom:0;left:15px;width:1px}
+.tar-campos{flex:1;min-width:0}
+/* Una sombra oscura desplazada imita el grabado sobre el negro. */
+.tar-num{display:block;font-family:var(--mono);font-size:clamp(15px,4.6vw,20.5px);
+  letter-spacing:.11em;color:var(--oroHi);font-weight:700;white-space:nowrap;
+  text-shadow:0 1.5px 2.5px rgba(0,0,0,.7)}
+.tar-valid{display:flex;align-items:center;gap:7px;margin-top:7px}
+.tar-validK{font-size:6.5px;line-height:8px;letter-spacing:.12em;
+  color:rgba(234,215,156,.7);font-weight:700}
+.tar-validV{font-size:14px;color:var(--oroLt);font-weight:700;letter-spacing:.11em;
+  font-family:var(--mono);text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.tar-titular{display:block;font-size:14px;color:var(--oroLt);font-weight:700;margin-top:6px;
+  letter-spacing:.12em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  text-shadow:0 1px 2px rgba(0,0,0,.6)}
+/* el reverso */
+.tar-banda{position:absolute;top:20px;left:0;right:0;height:44px;background:#080705}
+.tar-firma-fila{position:absolute;top:82px;left:19px;right:19px;display:flex;align-items:center;gap:10px}
+.tar-firma{flex:1;height:34px;background:#EFEAE0;border-radius:3px}
+.tar-cvv{background:#fff;border-radius:4px;padding:4px 11px;text-align:center;min-width:66px}
+.tar-cvvK{display:block;color:#5A5A5A;font-size:7.5px;letter-spacing:.16em;font-weight:800}
+.tar-cvv b{color:#0B0B0B;font-weight:800;letter-spacing:.14em;font-size:20px;font-family:var(--mono)}
+.tar-reverso-pie{position:absolute;bottom:14px;left:19px;right:19px;display:flex;
+  justify-content:space-between;align-items:flex-end;gap:10px;
+  font-size:8.5px;line-height:1.45;color:rgba(234,215,156,.55)}
+.tar-pista{display:flex;align-items:center;gap:7px;margin-top:12px;
+  font-size:12.5px;color:var(--humo)}
+.tar-pista svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+.tar-estado{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;margin-top:16px}
+.tar-estado b{font-family:var(--mono);color:var(--crema);font-size:15px}
+
+@media (prefers-reduced-motion:reduce){ .tar-escena{transition:none} }
+
+
+/* ── atajos, contactos, visor y secretos ──────────────────────────────────── */
+
+.atajos{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+.atajo{display:flex;align-items:center;gap:13px;text-align:left;cursor:pointer;
+  background:var(--panel);border:1px solid var(--linea);border-radius:18px;padding:14px;
+  color:inherit;font:inherit;transition:border-color .18s,transform .18s,background .18s}
+.atajo:hover{border-color:var(--oro);background:var(--panel2);transform:translateY(-1px)}
+.atajo:focus-visible{outline:2px solid var(--oro);outline-offset:2px}
+.atajo b{display:block;font-size:14px;font-weight:600;color:var(--crema)}
+.atajo small{display:block;font-size:11.5px;color:var(--humo);margin-top:2px;line-height:1.4}
+.atajo-ic{width:40px;height:40px;border-radius:13px;flex:none;display:flex;align-items:center;
+  justify-content:center;background:rgba(201,169,97,.1);border:1px solid var(--linea)}
+.atajo-ic svg{width:19px;height:19px;fill:none;stroke:var(--oro);stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round}
+
+.con-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+/* el visor de la camara */
+.visor{position:relative;max-width:340px;margin:0 auto;aspect-ratio:1;border-radius:20px;
+  overflow:hidden;background:#04191A;border:1px solid var(--linea)}
+.visor video{width:100%;height:100%;object-fit:cover;display:block}
+.visor-marco{position:absolute;inset:16%;border-radius:14px;pointer-events:none;
+  box-shadow:0 0 0 2px var(--oro),0 0 0 100vmax rgba(2,27,28,.55)}
+
+/* la frase de recuperacion */
+.frase{list-style:none;counter-reset:p;margin:0 0 16px;padding:0;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.frase li{counter-increment:p;display:flex;align-items:baseline;gap:7px;
+  background:var(--panel);border:1px solid var(--linea);border-radius:11px;padding:9px 10px}
+.frase li::before{content:counter(p);font-size:10.5px;color:var(--humo);
+  min-width:14px;text-align:right;flex:none}
+.frase li span{font-size:13.5px;color:var(--oroHi);font-weight:600;word-break:break-all}
+.llave-txt{word-break:break-all;font-size:12.5px;color:var(--oroHi);line-height:1.7;margin-bottom:14px}
+
+@media (max-width:520px){
+  .atajos{grid-template-columns:1fr}
+  .frase{grid-template-columns:repeat(2,1fr)}
+}
 </style>
 
 <svg class="veta-svg" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
@@ -792,7 +897,7 @@ px;
 <!-- ══════════════════════════ APLICACIÓN ══════════════════════════════════ -->
 <main id="app" class="oculto">
   <nav class="riel" aria-label="Secciones">
-    <div class="riel-marca marca"><img src="assets/veta-icon.png" alt="">veta <em>wallet</em></div>
+    <div class="riel-marca marca"><img src="assets/veta-logo.png" alt="">veta <em>wallet</em></div>
     <button class="nav" data-vista="billetera" aria-current="page" onclick="VETA.vista('billetera')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.billetera"></span></button>
     <button class="nav" data-vista="tarjeta" onclick="VETA.vista('tarjeta')"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20M6 15h4"/></svg><span data-t="nav.tarjeta"></span></button>
     <button class="nav" data-vista="cambiar" onclick="VETA.vista('cambiar')"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg><span data-t="nav.swap"></span></button>

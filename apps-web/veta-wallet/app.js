@@ -23,6 +23,12 @@ const VETA = (() => {
   let movimientos = [];
   let tarjeta = null;         // { estado, last4, saldo… } o { falta: true }
   let movsTarjeta = [];
+  let volteada = false;         // la tarjeta, de frente o de espaldas
+  /* El numero, el CVV y el vencimiento viven SOLO en memoria y solo mientras
+     dure la pantalla: no se guardan, no se escriben en el navegador, y se
+     borran al salir de la tarjeta. Son los datos con los que se puede comprar
+     en cualquier sitio del mundo. */
+  let secretoTarjeta = null;
   let transferencias = [];   // el historial de la cadena
   let tokenAbierto = null;    // simbolo del token cuya ficha se esta mirando
   let ocultos = false;        // el ojo: esconde todas las cifras de una vez
@@ -50,7 +56,7 @@ const VETA = (() => {
 
   // ── el servidor ───────────────────────────────────────────────────────────
 
-  async function pedir(ruta, { metodo = 'GET', cuerpo, espera = 25000, conSesion = true } = {}) {
+  async function crudo(ruta, { metodo = 'GET', cuerpo, espera = 25000, conSesion = true } = {}) {
     const ctl = new AbortController();
     const reloj = setTimeout(() => ctl.abort(), espera);
     try {
@@ -81,6 +87,76 @@ const VETA = (() => {
     } finally { clearTimeout(reloj); }
   }
 
+  /* La sesion se renueva sola.
+   *
+   * Esta era la razon de que la tarjeta dijera "invalid token": el JWT del
+   * backend dura poco, y esta pagina guardaba solo el token del login y no lo
+   * renovaba nunca. Al vencer, TODA llamada con sesion empezaba a fallar — la
+   * tarjeta, los depositos, Genesis — y desde afuera parecia un problema de la
+   * tarjeta porque es lo que la gente abria despues de un rato.
+   *
+   * El telefono ya lo resolvia asi: guarda tambien el refreshToken y llama a
+   * /auth/refresh antes de que el token venza, o al recibir un 401.
+   */
+  const vive = () => {
+    const c = sesion?.token ? abrirToken(sesion.token) : null;
+    return !!(c?.exp && c.exp * 1000 > Date.now() + 30000);
+  };
+
+  let renovando = null;
+  async function renovar() {
+    if (!sesion?.refresco) return false;
+    // Si llegan cinco llamadas a la vez con el token vencido, una sola renueva
+    // y las otras cuatro esperan a esa. Sin esto, cinco /auth/refresh en
+    // paralelo con el mismo refreshToken: el servidor rota el token y cuatro
+    // se quedan con uno que ya no vale.
+    if (renovando) return renovando;
+    renovando = (async () => {
+      try {
+        const d = await crudo('/auth/refresh', {
+          metodo: 'POST', cuerpo: { refreshToken: sesion.refresco }, conSesion: false,
+        });
+        const tk = d?.token || d?.accessToken || d?.access_token || d?.jwt || d?.data?.token;
+        if (!tk) return false;
+        sesion.token = tk;
+        sesion.refresco = d?.refreshToken || d?.refresh_token || d?.data?.refreshToken || sesion.refresco;
+        const c = abrirToken(tk);
+        if (c.address) sesion.direccion = c.address;
+        guardar();
+        return true;
+      } catch { return false; }
+      finally { renovando = null; }
+    })();
+    return renovando;
+  }
+
+  /* `sinReintento` para lo que mueve dinero: repetir un POST que quiza ya se
+     ejecuto del otro lado es peor que enseñar el error y dejar comprobar. */
+  async function pedir(ruta, opciones = {}) {
+    const { conSesion = true, sinReintento = false } = opciones;
+    if (conSesion && !vive() && sesion?.refresco) await renovar();
+    try {
+      return await crudo(ruta, opciones);
+    } catch (e) {
+      const vencio = e.estado === 401 || e.estado === 403 ||
+                     /jwt|expired|invalid token|unauthor/i.test(e.message || '');
+      if (!sinReintento && conSesion && vencio && await renovar()) {
+        return await crudo(ruta, opciones);
+      }
+      // Sin refresco posible, la sesion esta muerta: mejor pedir la contraseña
+      // que dejar la pantalla dando errores en cada gesto.
+      if (vencio && conSesion && !sesion?.refresco) caduco();
+      throw e;
+    }
+  }
+
+  // Se llama cuando la sesion ya no se puede recuperar.
+  function caduco() {
+    if (!sesion) return;
+    avisar(t('err.caduco'));
+    salir();
+  }
+
   /** El token trae dentro la dirección de la billetera y el estado de verificación. */
   function abrirToken(token) {
     try {
@@ -95,9 +171,11 @@ const VETA = (() => {
   function recuperar() {
     try {
       const s = JSON.parse(localStorage.getItem(LLAVE) || 'null');
-      // Un token vencido deja la sesión inservible: mejor pedir la contraseña
-      // que enseñar una pantalla que falla en cada petición.
-      if (s?.token) {
+      /* Un token vencido ya no obliga a volver a entrar: si quedo guardado el
+         refreshToken, la sesion se renueva sola en la primera llamada. Solo se
+         descarta cuando vencio Y no hay con que renovarla — ahi si, enseñar una
+         pantalla que falla en cada gesto es peor que pedir la contraseña. */
+      if (s?.token && !s?.refresco) {
         const c = abrirToken(s.token);
         if (c.exp && c.exp * 1000 < Date.now()) return null;
       }
@@ -236,11 +314,15 @@ const VETA = (() => {
       const c = abrirToken(token);
       sesion = {
         token,
+        // Sin esto la sesion no se puede renovar y, al vencer el token, todo
+        // empieza a contestar "invalid token".
+        refresco: d?.refreshToken || d?.refresh_token || d?.data?.refreshToken || null,
         correo: d?.user?.email || correo,
         nombre: d?.user?.name || d?.user?.fullName || nombre || (d?.user?.email || correo).split('@')[0],
         direccion: c.address || d?.user?.address || d?.user?.wallet || null,
       };
       guardar();
+      anotarSesion();
       ir('app');
       cargarTodo();
       avisar(modo === 'crear' ? `${t('ok.creada')}, ${sesion.nombre.split(' ')[0]}` : `${t('ok.hola')}, ${sesion.nombre.split(' ')[0]}`);
@@ -372,16 +454,23 @@ const VETA = (() => {
   const VISTAS = {
     billetera, tarjeta: vTarjeta, cambiar, actividad, ajustes,
     enviar, recibir, comprar, deposito, token: vToken, identidad: vIdentidad,
+    remesas, contactos, sesiones, lector, seguridad, perfil,
   };
   const PESTANAS = ['billetera', 'tarjeta', 'cambiar', 'actividad', 'ajustes'];
   // A que pestaña se le enciende la luz cuando estas en una vista que no es una.
   const DENTRO_DE = {
     enviar: 'billetera', recibir: 'billetera', comprar: 'billetera',
     deposito: 'billetera', token: 'billetera', identidad: 'ajustes',
+    remesas: 'billetera', lector: 'billetera',
+    contactos: 'ajustes', sesiones: 'ajustes', seguridad: 'ajustes', perfil: 'ajustes',
   };
 
   function vista(cual, dato) {
     if (!VISTAS[cual]) cual = 'billetera';
+    // Salir de la tarjeta borra el numero y el CVV de la memoria y la deja de
+    // frente otra vez. Nadie tiene por que volver y encontrarselos puestos.
+    if (vistaActual === 'tarjeta' && cual !== 'tarjeta') { secretoTarjeta = null; volteada = false; }
+    if (vistaActual === 'lector' && cual !== 'lector') cerrarCamara();
     vistaActual = cual;
     if (cual === 'token' && dato) tokenAbierto = dato;
     const encendida = PESTANAS.includes(cual) ? cual : DENTRO_DE[cual];
@@ -394,6 +483,7 @@ const VETA = (() => {
     if (cual === 'enviar') $('#env-monto')?.focus();
     if (cual === 'cambiar') cambioMonto();
     if (cual === 'tarjeta' && !tarjeta) cargarTarjeta().then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
+    if (cual === 'remesas' && !tasas) cargarTasas().then(() => { if (vistaActual === 'remesas') vista('remesas'); });
     window.scrollTo(0, 0);
   }
 
@@ -404,6 +494,13 @@ const VETA = (() => {
     cambiar: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
     id: '<path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/>',
     ojo: '<path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/>',
+    voltear: '<path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M3 18v-4h4M21 6v4h-4"/>',
+    remesa: '<path d="M22 3 11 14M22 3l-7 19-4-8-8-4z"/>',
+    gente: '<circle cx="9" cy="8" r="3.5"/><path d="M2 21c0-3.6 3.1-5.8 7-5.8s7 2.2 7 5.8"/><path d="M17 8.5a3 3 0 0 0 0-5M18.5 20c0-2.4-.9-4.3-2.4-5.6"/>',
+    reloj: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5.5l3.5 2"/>',
+    camara: '<path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.8l1.3-2h6.8l1.3 2h1.8A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.6"/>',
+    escudo: '<path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/>',
+    lapiz: '<path d="M4 20h4L20 8l-4-4L4 16z"/><path d="M14 6l4 4"/>',
     ojoNo: '<path d="M4 4l16 16"/><path d="M9.9 5.2A9.6 9.6 0 0 1 12 5c6.4 0 10 6 10 6a17 17 0 0 1-3.3 3.9M6.3 7.4A16.7 16.7 0 0 0 2 11s3.6 6 10 6a9.7 9.7 0 0 0 3.4-.6"/>',
     volver: '<path d="M15 6l-6 6 6 6"/>',
     atras: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
@@ -562,6 +659,16 @@ const VETA = (() => {
       <button class="btn btn-linea btn-sm" onclick="VETA.reintentar()">${t('ini.act')}</button>
     </div>
     ${bloqueSaldo()}
+    <div class="atajos">
+      <button class="atajo" onclick="VETA.vista('remesas')">
+        <span class="atajo-ic"><svg viewBox="0 0 24 24">${ICO.remesa}</svg></span>
+        <span><b>${t('rem.t')}</b><small>${t('rem.sub')}</small></span>
+      </button>
+      <button class="atajo" onclick="VETA.vista('lector')">
+        <span class="atajo-ic"><svg viewBox="0 0 24 24">${ICO.camara}</svg></span>
+        <span><b>${t('qr.t')}</b><small>${t('qr.sub')}</small></span>
+      </button>
+    </div>
     ${identidad && !esVerificada() ? tarjetaIdentidad(true) : ''}
     <div class="bloque vidrio">
       <div class="bloque-cab">
@@ -700,7 +807,10 @@ const VETA = (() => {
     b.innerHTML = '<span class="girando"></span> ' + t('env.enviando');
     try {
       const r = await pedir('/transaction/send', {
-        metodo: 'POST', espera: 90000,
+        // Sin reintento automatico: si el token vencio a mitad del envio, este
+        // POST pudo haber salido igual. Repetirlo seria mandar el dinero dos
+        // veces; es preferible enseñar el error y que se compruebe.
+        metodo: 'POST', espera: 90000, sinReintento: true,
         cuerpo: {
           chain_id: CHAIN, recipientAddress: dir, amount: String(monto),
           password: clave,
@@ -862,6 +972,15 @@ const VETA = (() => {
            <div style="margin-top:14px"><button class="btn btn-oro btn-sm" onclick="VETA.vista('identidad')">Genesis ID</button></div>`}
       </div>`;
 
+    return cab + plastico() + movimientosTarjeta();
+  }
+
+  /* El plastico, calcado del telefono: negro con el circuito grabado, el
+     monograma de Orden Global grande arriba, el chip, el numero en relieve y el
+     titular. Y se da vuelta — el CVV vive atras, como en una tarjeta de verdad,
+     no en una lista de datos. Es lo que hace que se sienta una tarjeta y no una
+     ficha de base de datos. */
+  function plastico() {
     const estado = String(tarjeta.status || tarjeta.estado || '').toUpperCase();
     const congelada = estado === 'FROZEN';
     const bloqueada = estado === 'BLOCKED';
@@ -877,22 +996,52 @@ const VETA = (() => {
       [t('tar.limM'), tarjeta.monthlyLimit],
     ].filter(([, v]) => v != null);
 
-    return cab + `
+    return `
     <div class="bloque vidrio">
-      <div class="tar-plastico ${congelada ? 'tar-fria' : ''}">
-        <span class="tar-marca">VETA <em>WALLET</em></span>
-        <span class="tar-num mono">•••• •••• •••• ${esc(last4)}</span>
-        <span class="tar-pie">
-          <span class="estado ${bloqueada ? 'e-mal' : congelada ? 'e-rev' : 'e-ok'}">
-            ${bloqueada ? t('tar.bloqueada') : congelada ? t('tar.congelada') : t('tar.activa')}
+      <div class="tar-escena ${volteada ? 'volteada' : ''}" id="tar-escena">
+        <button class="tar-cara tar-frente ${congelada ? 'tar-fria' : ''}"
+                onclick="VETA.voltear()" aria-label="${t('tar.voltear')}">
+          ${circuito()}
+          <img class="tar-mono" src="assets/og-mono.png" alt="">
+          <span class="tar-fila-alta">
+            <span class="tar-premium">PREMIUM</span>
+            <span class="tar-visa">VISA</span>
           </span>
-          ${disp != null ? `<b>${tapa(oro(disp))} ORIGEN</b>` : ''}
-        </span>
+          <span class="tar-datos">
+            ${chip()}
+            <span class="tar-campos">
+              <span class="tar-num">${secretoTarjeta?.pan ? esc(agrupaPan(secretoTarjeta.pan)) : `••••  ••••  ••••  ${esc(last4)}`}</span>
+              <span class="tar-valid">
+                <span class="tar-validK">VALID<br>THRU</span>
+                <span class="tar-validV">${esc(secretoTarjeta?.expiry || '••/••')}</span>
+              </span>
+              <span class="tar-titular">${esc((sesion?.nombre || '').toUpperCase() || '—')}</span>
+            </span>
+          </span>
+        </button>
+
+        <button class="tar-cara tar-reverso" onclick="VETA.voltear()" aria-label="${t('tar.voltear')}">
+          ${circuito()}
+          <span class="tar-banda"></span>
+          <span class="tar-firma-fila">
+            <span class="tar-firma"></span>
+            <span class="tar-cvv"><span class="tar-cvvK">CVV</span><b>${esc(secretoTarjeta?.cvv || '•••')}</b></span>
+          </span>
+          <span class="tar-reverso-pie">
+            <span>${t('tar.atrasNota')}</span>
+            <span class="tar-visa" style="font-size:17px">VISA</span>
+          </span>
+        </button>
       </div>
-      <p class="pie" style="margin-top:14px">
-        ${congelada ? t('tar.congelada1') : t('tar.activa1')}
-        ${disp == null ? ' ' + t('tar.sinSaldo') : ''}
-      </p>
+      <p class="tar-pista"><svg viewBox="0 0 24 24">${ICO.voltear}</svg>${t('tar.pista')}</p>
+
+      <div class="tar-estado">
+        <span class="estado ${bloqueada ? 'e-mal' : congelada ? 'e-rev' : 'e-ok'}">
+          ${bloqueada ? t('tar.bloqueada') : congelada ? t('tar.congelada') : t('tar.activa')}
+        </span>
+        ${disp != null ? `<b>${tapa(oro(disp))} ORIGEN</b>` : `<span class="pie">${t('tar.sinSaldo')}</span>`}
+      </div>
+      <p class="pie" style="margin-top:10px">${congelada ? t('tar.congelada1') : t('tar.activa1')}</p>
       ${limites.length ? `<dl class="datos">${limites.map(([k, v]) =>
         `<div><dt>${esc(k)}</dt><dd>${oro(v)} ORIGEN</dd></div>`).join('')}</dl>` : ''}
       <div class="tar-botones">
@@ -903,7 +1052,11 @@ const VETA = (() => {
         <button class="btn btn-linea btn-sm" onclick="VETA.revelar('pin')">${t('tar.verPin')}</button>
       </div>
       <div id="tar-secreto"></div>
-    </div>
+    </div>`;
+  }
+
+  function movimientosTarjeta() {
+    return `
     <div class="bloque vidrio">
       <h3>${t('tar.movs')}</h3>
       ${movsTarjeta.length ? movsTarjeta.map(m => `
@@ -918,6 +1071,32 @@ const VETA = (() => {
       : `<p class="pie" style="margin-top:8px">${t('tar.sinMovs')}</p>`}
     </div>`;
   }
+
+  // El numero de una tarjeta se lee en grupos de cuatro. De corrido no se puede
+  // dictar por telefono ni comprobar de un vistazo.
+  const agrupaPan = p => String(p).replace(/\D/g, '').replace(/(.{4})/g, '$1  ').trim();
+
+  // El circuito grabado y el chip: los mismos del telefono, en SVG.
+  const circuito = () => `
+    <svg class="tar-circuito" viewBox="0 0 320 200" preserveAspectRatio="none" aria-hidden="true">
+      <g fill="none" stroke="rgba(201,169,97,.22)" stroke-width=".8">
+        <path d="M0 44h58l16 16h72M320 150h-70l-18-18h-64M0 128h40l22 22h48"/>
+        <path d="M262 12v34l-16 16v40M74 196v-30l18-18v-44"/>
+      </g>
+      <g fill="none" stroke="rgba(223,192,120,.52)" stroke-width="1.3">
+        <path d="M0 82h96l20-20h84l22 22h98"/>
+        <path d="M140 200v-36l24-24h58"/>
+      </g>
+      <g fill="none" stroke="rgba(223,192,120,.6)" stroke-width="1">
+        <circle cx="96" cy="82" r="2.4"/><circle cx="222" cy="84" r="2.4"/>
+        <circle cx="164" cy="140" r="2.4"/><circle cx="62" cy="150" r="2.4"/>
+      </g>
+    </svg>`;
+
+  const chip = () => `
+    <span class="tar-chip" aria-hidden="true">
+      <span class="tar-chip-l"></span><span class="tar-chip-c"></span>
+    </span>`;
 
   // ── cambiar ───────────────────────────────────────────────────────────────
 
@@ -1030,9 +1209,11 @@ const VETA = (() => {
     <div class="bloque vidrio">
       <h3>${t('aj.cuenta')}</h3>
       <div class="ajustes">
+        ${fila(ICO.persona, t('aj.perfil'), esc(sesion?.nombre || '—'), "VETA.vista('perfil')")}
         ${fila(ICO.id, t('aj.gid'), t('aj.gidP'), "VETA.vista('identidad')")}
         ${fila(ICO.tarjeta, t('aj.tarjeta'), t('aj.tarjetaP'), "VETA.vista('tarjeta')")}
         ${fila(ICO.recibir, t('aj.deposito'), t('aj.depositoP'), "VETA.vista('deposito')")}
+        ${fila(ICO.gente, t('con.t'), t('con.sub'), "VETA.vista('contactos')")}
       </div>
       <dl class="datos" style="margin-top:16px">
         <div><dt>${t('cta.correo')}</dt><dd>${esc(sesion?.correo || '—')}</dd></div>
@@ -1051,7 +1232,11 @@ const VETA = (() => {
 
     <div class="bloque vidrio">
       <h3>${t('aj.seguridad')}</h3>
-      <div class="nota nota-cuidado">${t('aj.clave')}</div>
+      <div class="ajustes">
+        ${fila(ICO.llave, t('seg.frase'), t('seg.fraseP').slice(0, 58) + '…', "VETA.vista('seguridad')")}
+        ${fila(ICO.reloj, t('ses.t'), t('ses.sub'), "VETA.vista('sesiones')")}
+      </div>
+      <div class="nota nota-cuidado" style="margin-top:16px">${t('aj.clave')}</div>
       <div style="margin-top:16px"><button class="btn btn-linea btn-sm" onclick="VETA.salir()">${t('aj.salir')}</button></div>
     </div>
 
@@ -1061,9 +1246,445 @@ const VETA = (() => {
     </div>`;
   }
 
+
+  // ── remesas ───────────────────────────────────────────────────────────────
+
+  /* Un calculador, no una orden de envio: dice cuanto le queda al que recibe
+     despues de la comision y del cambio a su moneda. Los mismos nueve paises y
+     la misma fuente de tasas que el telefono. */
+  const PAISES = [
+    { c: 'HN', n: 'Honduras', b: '🇭🇳', m: 'HNL' },
+    { c: 'SV', n: 'El Salvador', b: '🇸🇻', m: 'USD' },
+    { c: 'GT', n: 'Guatemala', b: '🇬🇹', m: 'GTQ' },
+    { c: 'NI', n: 'Nicaragua', b: '🇳🇮', m: 'NIO' },
+    { c: 'CR', n: 'Costa Rica', b: '🇨🇷', m: 'CRC' },
+    { c: 'PA', n: 'Panamá', b: '🇵🇦', m: 'USD' },
+    { c: 'MX', n: 'México', b: '🇲🇽', m: 'MXN' },
+    { c: 'CO', n: 'Colombia', b: '🇨🇴', m: 'COP' },
+    { c: 'US', n: 'Estados Unidos', b: '🇺🇸', m: 'USD' },
+  ];
+  // Solo se usan si el feed nunca respondio. Van marcadas en pantalla.
+  const TASAS_REF = { HNL: 25.5, GTQ: 7.77, NIO: 36.6, CRC: 512, MXN: 18.5, COP: 4050, USD: 1 };
+  const COMISION_USD = 1;
+
+  let tasas = null, tasasAl = null, paisRem = 'HN', montoRem = '';
+
+  async function cargarTasas() {
+    try {
+      const r = await fetch('https://open.er-api.com/v6/latest/USD');
+      const d = await r.json();
+      if (d?.rates?.USD) { tasas = d.rates; tasasAl = d.time_last_update_utc || null; }
+    } catch {}
+  }
+
+  function remesas() {
+    const p = PAISES.find(x => x.c === paisRem) || PAISES[0];
+    const tasa = (tasas || TASAS_REF)[p.m] ?? null;
+    const precio = origen()?.precio;
+    const n = Number(String(montoRem).replace(',', '.')) || 0;
+    const enUsd = precio != null ? n * precio : null;
+    // La comision se descuenta ANTES de convertir: asi el numero de abajo es lo
+    // que de verdad le llega, no el bruto.
+    const neto = enUsd != null ? Math.max(0, enUsd - COMISION_USD) : null;
+    const local = neto != null && tasa != null ? neto * tasa : null;
+
+    return `
+    <div class="cab"><div><h2>${t('rem.t')}</h2><div class="sub">${t('rem.sub')}</div></div></div>
+    <div class="bloque vidrio">
+      <div class="caja-cambio">
+        <div class="cc-cab"><span>${t('rem.envias')}</span><span>${t('sw.saldo')}: ${oro(origen()?.cant ?? 0)}</span></div>
+        <div class="cc-fila">
+          <input id="rem-monto" type="text" inputmode="decimal" placeholder="0"
+                 value="${esc(montoRem)}" oninput="VETA.remMonto()">
+          <span class="cc-tok">${origen() ? disco(origen()) : ''}<b>ORIGEN</b></span>
+        </div>
+      </div>
+      <div class="cc-flecha"><svg viewBox="0 0 24 24">${ICO.remesa}</svg></div>
+      <div class="caja-cambio">
+        <div class="cc-cab"><span>${t('rem.recibe')}</span><span>${t('rem.pais')}</span></div>
+        <div class="cc-fila">
+          <input type="text" readonly placeholder="0"
+                 value="${local != null && n > 0 ? esc(nfUsd.format(local) + ' ' + p.m) : ''}">
+          <select class="cc-tok cc-sel" onchange="VETA.remPais(this.value)" aria-label="${t('rem.pais')}">
+            ${PAISES.map(x => `<option value="${x.c}" ${x.c === p.c ? 'selected' : ''}>${x.b} ${esc(x.n)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <dl class="datos" style="margin-top:18px">
+        <div><dt>${t('rem.tasa')}</dt><dd>${tasa != null ? `1 USD = ${nfUsd.format(tasa)} ${p.m}` : '—'}</dd></div>
+        <div><dt>${t('rem.comision')}</dt><dd>${usd(COMISION_USD)}</dd></div>
+        <div><dt>${t('sw.precio')} ORIGEN</dt><dd>${precio != null ? esc(usd(precio)) : '—'}</dd></div>
+      </dl>
+      <p class="pie" style="margin-top:12px">
+        ${tasas ? `${t('rem.act')}${tasasAl ? ' · ' + esc(tasasAl) : ''}` : t('rem.actNunca')}
+      </p>
+      <div class="nota" style="margin-top:12px">${t('rem.nota')}</div>
+      <div style="margin-top:14px">
+        <button class="btn btn-linea btn-sm" onclick="VETA.refrescarTasas()">${t('rem.refrescar')}</button>
+      </div>
+    </div>`;
+  }
+
+  function remMonto() { montoRem = $('#rem-monto')?.value || ''; pintarRemesa(); }
+  function remPais(c) { montoRem = $('#rem-monto')?.value || ''; paisRem = c; vista('remesas'); }
+  async function refrescarTasas() { await cargarTasas(); if (vistaActual === 'remesas') vista('remesas'); }
+
+  // Recalcular sin redibujar: escribir un monto no tiene por que mover el foco.
+  function pintarRemesa() {
+    const p = PAISES.find(x => x.c === paisRem) || PAISES[0];
+    const tasa = (tasas || TASAS_REF)[p.m] ?? null;
+    const precio = origen()?.precio;
+    const n = Number(String(montoRem).replace(',', '.')) || 0;
+    const salida = document.querySelectorAll('.caja-cambio input')[1];
+    if (!salida) return;
+    if (!(n > 0) || precio == null || tasa == null) { salida.value = ''; return; }
+    const neto = Math.max(0, n * precio - COMISION_USD);
+    salida.value = nfUsd.format(neto * tasa) + ' ' + p.m;
+  }
+
+  // ── contactos ─────────────────────────────────────────────────────────────
+
+  /* Viven en este navegador, igual que en el telefono viven en el telefono. No
+     se mandan al servidor: es una libreta de direcciones, no una cuenta. */
+  const LLAVE_CON = 'veta.contactos';
+  const leerContactos = () => {
+    try { return JSON.parse(localStorage.getItem(LLAVE_CON) || '[]'); } catch { return []; }
+  };
+  const guardarContactos = l => {
+    try { localStorage.setItem(LLAVE_CON, JSON.stringify(l)); } catch {}
+  };
+
+  function contactos() {
+    const l = leerContactos();
+    return `
+    <div class="cab"><div><h2>${t('con.t')}</h2><div class="sub">${t('con.sub')}</div></div></div>
+    <div class="bloque vidrio">
+      <h3>${t('con.nuevo')}</h3>
+      <form onsubmit="return VETA.nuevoContacto(event)" style="margin-top:14px">
+        <div class="campo">
+          <label for="con-nombre">${t('con.nombre')}</label>
+          <input id="con-nombre" autocomplete="off" required>
+        </div>
+        <div class="campo">
+          <label for="con-dir">${t('con.dir')}</label>
+          <input id="con-dir" class="mono" placeholder="0x…" autocomplete="off" spellcheck="false" required>
+        </div>
+        <div id="con-aviso" class="aviso oculto" role="alert"></div>
+        <button class="btn btn-oro btn-sm" type="submit">${t('con.guardar')}</button>
+      </form>
+    </div>
+    <div class="bloque vidrio">
+      <h3>${t('con.guardados')}</h3>
+      ${l.length ? l.map(c => `
+        <div class="hilera">
+          <div class="ic"><svg viewBox="0 0 24 24">${ICO.gente}</svg></div>
+          <div class="txt">
+            <b>${esc(c.nombre)}</b>
+            <small class="mono">${esc(cortaDir(c.dir))}</small>
+          </div>
+          <div class="con-btns">
+            <button class="btn btn-linea btn-sm" onclick="VETA.enviarA('${esc(c.dir)}')">${t('con.usar')}</button>
+            <button class="btn btn-linea btn-sm" onclick="VETA.borrarContacto('${esc(c.id)}')" aria-label="${t('con.borrar')}">✕</button>
+          </div>
+        </div>`).join('')
+      : `<div class="vacio"><b>${t('con.vacioT')}</b>${t('con.vacioP')}</div>`}
+      <p class="pie" style="margin-top:12px">${t('con.local')}</p>
+    </div>`;
+  }
+
+  function nuevoContacto(ev) {
+    ev.preventDefault();
+    const nombre = $('#con-nombre').value.trim();
+    const dir = $('#con-dir').value.trim();
+    const av = $('#con-aviso');
+    const decir = m => { av.textContent = m; av.className = 'aviso aviso-mal'; av.classList.remove('oculto'); };
+    if (!nombre) return decir(t('con.eNombre')), false;
+    if (!/^0x[a-fA-F0-9]{40}$/.test(dir)) return decir(t('con.eDir')), false;
+    const l = leerContactos();
+    l.unshift({ id: String(Date.now()), nombre, dir });
+    guardarContactos(l);
+    avisar(t('con.guardado'));
+    vista('contactos');
+    return false;
+  }
+
+  function borrarContacto(id) {
+    guardarContactos(leerContactos().filter(c => c.id !== id));
+    avisar(t('con.borrado'));
+    vista('contactos');
+  }
+
+  // Llevar a enviar con la direccion ya puesta es la mitad del valor de tener
+  // contactos: si hay que copiarla igual, no sirvio de nada.
+  function enviarA(dir) {
+    vista('enviar');
+    const c = $('#env-dir');
+    if (c) { c.value = dir; $('#env-monto')?.focus(); }
+  }
+
+  // ── sesiones ──────────────────────────────────────────────────────────────
+
+  const LLAVE_SES = 'veta.sesiones';
+  const leerSesiones = () => {
+    try { return JSON.parse(localStorage.getItem(LLAVE_SES) || '[]'); } catch { return []; }
+  };
+  function anotarSesion() {
+    try {
+      const l = leerSesiones();
+      l.unshift({ id: String(Date.now()), en: new Date().toISOString(), ua: navigator.userAgent });
+      localStorage.setItem(LLAVE_SES, JSON.stringify(l.slice(0, 20)));
+    } catch {}
+  }
+
+  // Un user-agent entero no lo lee nadie. Se resume a lo que importa.
+  function navegadorDe(ua) {
+    const s = String(ua || '');
+    const nav = /Edg\//.test(s) ? 'Edge' : /OPR\//.test(s) ? 'Opera'
+      : /Chrome\//.test(s) ? 'Chrome' : /Safari\//.test(s) ? 'Safari'
+      : /Firefox\//.test(s) ? 'Firefox' : '—';
+    const so = /Android/.test(s) ? 'Android' : /iPhone|iPad/.test(s) ? 'iOS'
+      : /Mac OS X/.test(s) ? 'macOS' : /Windows/.test(s) ? 'Windows'
+      : /Linux/.test(s) ? 'Linux' : '—';
+    return `${nav} · ${so}`;
+  }
+
+  function sesiones() {
+    const l = leerSesiones();
+    return `
+    <div class="cab"><div><h2>${t('ses.t')}</h2><div class="sub">${t('ses.sub')}</div></div></div>
+    <div class="bloque vidrio">
+      ${l.length ? l.map((x, i) => `
+        <div class="hilera">
+          <div class="ic"><svg viewBox="0 0 24 24">${ICO.reloj}</svg></div>
+          <div class="txt">
+            <b>${esc(navegadorDe(x.ua))}${i === 0 ? ` · <span class="estado e-ok">${t('ses.esta')}</span>` : ''}</b>
+            <small>${esc(fechaLarga(x.en))}</small>
+          </div>
+        </div>`).join('')
+      : `<div class="vacio"><b>${t('ses.vacio')}</b></div>`}
+      <div class="nota" style="margin-top:14px">${t('ses.local')}</div>
+      <div style="margin-top:14px">
+        <button class="btn btn-linea btn-sm" onclick="VETA.salir()">${t('ses.cerrarT')}</button>
+      </div>
+    </div>`;
+  }
+
+  const fechaLarga = iso => {
+    const d = new Date(iso);
+    if (isNaN(d)) return '—';
+    return d.toLocaleString(idiomaActivo() === 'es' ? 'es-HN' : 'en-US',
+      { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  // ── el lector de códigos ──────────────────────────────────────────────────
+
+  /* Se usa BarcodeDetector, que trae el propio navegador. No se incrusta una
+     biblioteca de terceros para decodificar: serian cien kilobytes de codigo
+     ajeno leyendo la camara de alguien, en la pantalla donde se escribe una
+     direccion a la que se le va a mandar dinero.
+     Donde no existe — Safari, Firefox — se dice y se ofrece pegar a mano, que
+     es exactamente lo que se haria igual. */
+  let camara = null;
+  const hayLector = () => 'BarcodeDetector' in window;
+
+  function lector() {
+    return `
+    <div class="cab"><div><h2>${t('qr.t')}</h2><div class="sub">${t('qr.sub')}</div></div></div>
+    <div class="bloque vidrio centrado">
+      ${hayLector() ? `
+        <div class="visor"><video id="qr-video" playsinline muted></video><span class="visor-marco"></span></div>
+        <p class="pie" id="qr-estado" style="margin-top:14px">${t('qr.buscando')}</p>
+        <div class="dir-btns">
+          <button class="btn btn-oro btn-sm" onclick="VETA.abrirCamara()">${t('qr.permiso')}</button>
+          <button class="btn btn-linea btn-sm" onclick="VETA.cerrarCamara()">${t('qr.cerrar')}</button>
+        </div>`
+      : `<div class="obra-ic"><svg viewBox="0 0 24 24">${ICO.camara}</svg></div>
+         <h3>${t('qr.noHay')}</h3>
+         <p class="pie" style="margin-top:10px">${t('qr.noHayP')}</p>`}
+      <div style="margin-top:16px">
+        <button class="btn btn-linea btn-sm" onclick="VETA.vista('enviar')">${t('qr.pegar')}</button>
+      </div>
+    </div>`;
+  }
+
+  async function abrirCamara() {
+    const v = $('#qr-video'), est = $('#qr-estado');
+    if (!v) return;
+    try {
+      camara = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      v.srcObject = camara;
+      await v.play();
+    } catch { if (est) est.textContent = t('qr.noPermiso'); return; }
+
+    const det = new window.BarcodeDetector({ formats: ['qr_code'] });
+    const mirar = async () => {
+      if (!camara || vistaActual !== 'lector') return;
+      try {
+        const [c] = await det.detect(v);
+        const dir = (c?.rawValue || '').trim().match(/0x[a-fA-F0-9]{40}/)?.[0];
+        if (dir) {
+          cerrarCamara();
+          avisar(t('qr.leido'));
+          enviarA(dir);
+          return;
+        }
+      } catch {}
+      requestAnimationFrame(mirar);
+    };
+    requestAnimationFrame(mirar);
+  }
+
+  // Apagar la camara de verdad. Una pestaña que deja el piloto encendido
+  // despues de salir de la pantalla asusta, y con razon.
+  function cerrarCamara() {
+    camara?.getTracks().forEach(p => p.stop());
+    camara = null;
+  }
+
+  // ── la frase y la llave ───────────────────────────────────────────────────
+
+  function seguridad() {
+    return `
+    <div class="cab"><div><h2>${t('seg.t')}</h2><div class="sub">${t('seg.sub')}</div></div></div>
+    <div class="bloque vidrio">
+      <h3>${t('seg.frase')}</h3>
+      <p class="pie" style="margin-top:8px">${t('seg.fraseP')}</p>
+      <div id="caja-seed" style="margin-top:14px">
+        <button class="btn btn-linea btn-sm" onclick="VETA.pedirSecreto('seed')">${t('seg.ver')}</button>
+      </div>
+    </div>
+    <div class="bloque vidrio">
+      <h3>${t('seg.llave')}</h3>
+      <p class="pie" style="margin-top:8px">${t('seg.llaveP')}</p>
+      <div id="caja-llave" style="margin-top:14px">
+        <button class="btn btn-linea btn-sm" onclick="VETA.pedirSecreto('llave')">${t('seg.ver')}</button>
+      </div>
+    </div>
+    <div class="bloque vidrio">
+      <div class="nota nota-cuidado">${t('seg.aviso')}</div>
+    </div>`;
+  }
+
+  /* La contraseña se pide cada vez y lo que llega no se guarda: se pinta y se
+     va con la pantalla. La frase de doce palabras y la llave privada son el
+     dinero, no una credencial mas. */
+  async function pedirSecreto(cual, ev) {
+    const caja = $(cual === 'seed' ? '#caja-seed' : '#caja-llave');
+    if (!caja) return false;
+    if (!ev) {
+      caja.innerHTML = `
+        <form onsubmit="return VETA.pedirSecreto('${cual}',event)">
+          <div class="campo">
+            <label for="sec-${cual}">${t('seg.claveP')}</label>
+            <input id="sec-${cual}" type="password" autocomplete="current-password" placeholder="••••••••" required>
+          </div>
+          <div class="aviso oculto" id="av-${cual}" role="alert"></div>
+          <button class="btn btn-oro btn-sm" type="submit">${t('seg.ver')}</button>
+        </form>`;
+      $(`#sec-${cual}`).focus();
+      return false;
+    }
+    ev.preventDefault();
+    const av = $(`#av-${cual}`), btn = ev.target.querySelector('button');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="girando"></span>';
+    try {
+      // Las rutas del backend son estas, con "decript" mal escrito: asi se
+      // llaman del otro lado. Las que parecian obvias (/user/seed) nunca
+      // existieron, y por eso esto devolvia "no disponible" siempre.
+      const ruta = cual === 'seed' ? '/users/decriptSeed' : '/users/decriptPrivate';
+      const d = await pedir(ruta, { metodo: 'POST', cuerpo: { password: $(`#sec-${cual}`).value }, espera: 30000 });
+      const valor = cual === 'seed'
+        ? (d?.seed || d?.mnemonic || d?.phrase || d?.data?.seed || null)
+        : (d?.privateKey || d?.private_key || d?.key || d?.data?.privateKey || null);
+      const bueno = cual === 'seed'
+        ? typeof valor === 'string' && valor.trim().split(/\s+/).length >= 12
+        : typeof valor === 'string' && valor.length >= 32;
+      if (!bueno) throw new Error(t(cual === 'seed' ? 'seg.noHay' : 'seg.noHayLl'));
+      caja.innerHTML = cual === 'seed' ? fraseEnPalabras(valor.trim()) : `
+        <div class="secreto">
+          <p class="mono llave-txt">${esc(valor)}</p>
+          <div class="dir-btns">
+            <button class="btn btn-oro btn-sm" onclick="VETA.copiarTexto(this.dataset.v)" data-v="${esc(valor)}">${t('seg.copiar')}</button>
+            <button class="btn btn-linea btn-sm" onclick="VETA.vista('seguridad')">${t('seg.ocultar')}</button>
+          </div>
+        </div>`;
+    } catch (e) {
+      av.textContent = e.message;
+      av.className = 'aviso aviso-mal';
+      btn.disabled = false;
+      btn.textContent = t('seg.ver');
+    }
+    return false;
+  }
+
+  // Doce palabras numeradas. De corrido es imposible copiarlas a mano sin
+  // equivocarse, y copiarlas a mano es justo lo que hay que hacer con ellas.
+  function fraseEnPalabras(frase) {
+    const p = frase.split(/\s+/);
+    return `
+      <div class="secreto">
+        <ol class="frase">${p.map(w => `<li><span class="mono">${esc(w)}</span></li>`).join('')}</ol>
+        <div class="dir-btns">
+          <button class="btn btn-oro btn-sm" onclick="VETA.copiarTexto(this.dataset.v)" data-v="${esc(frase)}">${t('seg.copiar')}</button>
+          <button class="btn btn-linea btn-sm" onclick="VETA.vista('seguridad')">${t('seg.ocultar')}</button>
+        </div>
+      </div>`;
+  }
+
+  async function copiarTexto(v) {
+    try { await navigator.clipboard.writeText(v); avisar(t('seg.copiado')); }
+    catch { avisar(t('rec.noCopia')); }
+  }
+
+  // ── el perfil ─────────────────────────────────────────────────────────────
+
+  function perfil() {
+    return `
+    <div class="cab"><div><h2>${t('perf.t')}</h2><div class="sub">${esc(sesion?.correo || '')}</div></div></div>
+    <div class="bloque vidrio">
+      <form onsubmit="return VETA.guardarNombre(event)">
+        <div class="campo">
+          <label for="pf-nombre">${t('perf.nombre')}</label>
+          <input id="pf-nombre" value="${esc(sesion?.nombre || '')}" autocomplete="name" required>
+        </div>
+        <p class="pie">${t('perf.nombreP')}</p>
+        <div id="pf-aviso" class="aviso oculto" role="alert"></div>
+        <button class="btn btn-oro btn-sm" type="submit" style="margin-top:14px">${t('perf.guardar')}</button>
+      </form>
+      <dl class="datos" style="margin-top:20px">
+        <div><dt>${t('cta.correo')}</dt><dd>${esc(sesion?.correo || '—')}</dd></div>
+        <div><dt>${t('cta.dir')}</dt><dd class="mono">${esc(sesion?.direccion || t('cta.sinDir'))}</dd></div>
+      </dl>
+    </div>`;
+  }
+
+  function guardarNombre(ev) {
+    ev.preventDefault();
+    const v = $('#pf-nombre').value.trim();
+    const av = $('#pf-aviso');
+    if (!v) {
+      av.textContent = t('perf.eNombre');
+      av.className = 'aviso aviso-mal';
+      return false;
+    }
+    sesion.nombre = v;
+    guardar();
+    avisar(t('perf.guardado'));
+    vista('perfil');
+    return false;
+  }
+
   // ── acciones ──────────────────────────────────────────────────────────────
 
   function tapar() { ocultos = !ocultos; vista(vistaActual); }
+
+  // Voltear no redibuja la vista: se mueve una clase y el navegador anima el
+  // giro. Volver a generar el HTML cortaria la animacion en seco.
+  function voltear() {
+    volteada = !volteada;
+    $('#tar-escena')?.classList.toggle('volteada', volteada);
+  }
 
   async function copiarContrato(c) {
     try { await navigator.clipboard.writeText(c); avisar(t('tok.copiado')); }
@@ -1087,11 +1708,14 @@ const VETA = (() => {
   /* El numero y el PIN se piden con la contraseña cada vez y no se guardan en
      ningun lado: ni en el estado, ni en el almacenamiento del navegador. Se
      pintan, y desaparecen al salir de la pantalla. */
+  /* El numero y el PIN se piden con la contraseña cada vez. Lo que llega NO se
+     guarda en ningun lado: vive en `secretoTarjeta`, en memoria, y se borra al
+     salir de la pantalla. El numero ademas se pinta en la tarjeta misma, que es
+     donde uno lo busca, en vez de en una lista de datos debajo. */
   async function revelar(que, ev) {
     const caja = $('#tar-secreto');
     if (!caja) return false;
 
-    // Primer momento: todavia no hay contraseña, se pide.
     if (!ev) {
       caja.innerHTML = `
         <form class="revelar" onsubmit="return VETA.revelar('${que}',event)">
@@ -1106,7 +1730,6 @@ const VETA = (() => {
       return false;
     }
 
-    // Segundo momento: con la contraseña, se va a buscar el dato.
     ev.preventDefault();
     const av = $('#rev-aviso');
     const btn = ev.target.querySelector('button');
@@ -1114,16 +1737,23 @@ const VETA = (() => {
     btn.innerHTML = '<span class="girando"></span>';
     try {
       const d = await pedir(`/cards/${que}`, { metodo: 'POST', cuerpo: { password: $('#rev-clave').value } });
-      const filas = que === 'pan'
-        ? [[t('tar.verNum'), d?.pan], ['Exp.', d?.expiry], ['CVV', d?.cvv]]
-        : [['PIN', d?.pin]];
-      caja.innerHTML = `
-        <div class="secreto">
-          ${filas.filter(([, v]) => v).map(([k, v]) =>
-            `<div class="sec-fila"><span>${esc(k)}</span><b class="mono">${esc(v)}</b></div>`).join('')}
-          <div class="nota nota-cuidado">${t('tar.cuidado')}</div>
-          <button class="btn btn-linea btn-sm" onclick="document.getElementById('tar-secreto').innerHTML=''">${t('tar.ocultar')}</button>
-        </div>`;
+      if (que === 'pan') {
+        secretoTarjeta = { pan: d?.pan || null, cvv: d?.cvv || null, expiry: d?.expiry || null };
+        vista('tarjeta');                       // el numero aparece en el plastico
+        $('#tar-secreto').innerHTML = `
+          <div class="secreto">
+            <p class="pie">${t('tar.enTarjeta')}</p>
+            <div class="nota nota-cuidado">${t('tar.cuidado')}</div>
+            <button class="btn btn-linea btn-sm" onclick="VETA.olvidar()">${t('tar.ocultar')}</button>
+          </div>`;
+      } else {
+        $('#tar-secreto').innerHTML = `
+          <div class="secreto">
+            <div class="sec-fila"><span>PIN</span><b class="mono">${esc(d?.pin || '—')}</b></div>
+            <div class="nota nota-cuidado">${t('tar.cuidado')}</div>
+            <button class="btn btn-linea btn-sm" onclick="document.getElementById('tar-secreto').innerHTML=''">${t('tar.ocultar')}</button>
+          </div>`;
+      }
     } catch (e) {
       // Un 409 no es culpa de quien escribe: la tarjeta todavia no tiene PIN.
       av.textContent = e.estado === 409 ? t('tar.sinPin') : e.message;
@@ -1132,6 +1762,12 @@ const VETA = (() => {
       btn.textContent = t('tar.mostrar');
     }
     return false;
+  }
+
+  function olvidar() {
+    secretoTarjeta = null;
+    volteada = false;
+    vista('tarjeta');
   }
 
   function pedirTarjeta(ev) {
@@ -1232,6 +1868,8 @@ const VETA = (() => {
 
   return { ir, pestana, ojo, vista, mandar, copiar, compartir, salir, reintentar, avisar, idioma,
            tapar, copiarContrato, congelar, revelar, pedirTarjeta, cambioMonto, elegirDestino,
+           voltear, olvidar, remMonto, remPais, refrescarTasas, nuevoContacto, borrarContacto,
+           enviarA, abrirCamara, cerrarCamara, pedirSecreto, copiarTexto, guardarNombre,
            // Solo para las pruebas y las capturas: aqui no hay salida a la
            // cadena, y hay que poder mirar la pantalla con saldos dentro.
            _sembrar: l => { cartera = l; errCartera = null; },

@@ -64,8 +64,9 @@ await pg.evaluate(llenar, [CANT, PRECIO]);
 // se fuerzan a mano para poder mirar los tres.
 const ESTADOS = {
   'tarjeta-sin': { falta: true },
-  'tarjeta-activa': { status: 'ACTIVE', last4: '4417', balance: 842.5 },
-  'tarjeta-congelada': { status: 'FROZEN', last4: '4417', balance: 842.5 },
+  'tarjeta-activa': { status: 'ACTIVE', last4: '4417', availableOrigen: 842.5,
+                      dailyLimit: 500, weeklyLimit: 2000, monthlyLimit: 6000 },
+  'tarjeta-congelada': { status: 'FROZEN', last4: '4417', availableOrigen: 842.5 },
 };
 for (const [nombre, est] of Object.entries(ESTADOS)) {
   await pg.evaluate(e => { const V = (0, eval)('VETA'); V._tarjeta(e); V.vista('tarjeta'); }, est);
@@ -73,7 +74,13 @@ for (const [nombre, est] of Object.entries(ESTADOS)) {
   await pg.screenshot({ path: `${SALIDA}/${nombre}.png`, fullPage: true });
 }
 
-for (const [v, dato] of [['billetera'], ['token', 'AUKA'], ['cambiar'], ['ajustes'], ['actividad']]) {
+// el reverso, con el CVV
+await pg.evaluate(() => { const V = (0, eval)('VETA'); V._tarjeta({ status: 'ACTIVE', last4: '4417', availableOrigen: 842.5 }); V.vista('tarjeta'); V.voltear(); });
+await pg.waitForTimeout(900);
+await pg.screenshot({ path: `${SALIDA}/tarjeta-reverso.png`, fullPage: true });
+
+for (const [v, dato] of [['billetera'], ['token', 'AUKA'], ['cambiar'], ['ajustes'], ['actividad'],
+                         ['remesas'], ['contactos'], ['sesiones'], ['seguridad'], ['perfil'], ['lector']]) {
   await pg.evaluate(([v, d]) => (0, eval)('VETA').vista(v, d), [v, dato]);
   await pg.waitForTimeout(500);
   await pg.screenshot({ path: `${SALIDA}/${v}${dato ? '-' + dato : ''}.png`, fullPage: true });

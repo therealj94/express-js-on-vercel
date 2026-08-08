@@ -144,6 +144,65 @@ existe: **sin precio real se pinta un guion**, el total solo suma lo que tiene
 precio, y se avisa abajo de la lista. Un feed caido no puede parecerse a una
 perdida.
 
+### La sesion se renueva sola
+
+Esto es lo que hacia que la tarjeta dijera **"invalid token"**. El JWT del
+backend dura poco, y esta pagina guardaba solo el token del login: no lo
+renovaba nunca. Al vencer, *toda* llamada con sesion empezaba a fallar — la
+tarjeta, los depositos, Genesis — y desde afuera parecia un problema de la
+tarjeta nada mas porque es lo que se abre despues de un rato.
+
+Ahora se guarda tambien el `refreshToken` y se llama a `/auth/refresh` antes de
+que venza o al recibir un 401, con un solo reintento. Dos detalles que no son
+adorno: si llegan varias llamadas a la vez con el token vencido **una sola
+renueva** y las demas esperan a esa — el servidor rota el refreshToken, y cinco
+en paralelo dejarian cuatro con uno muerto; y `/transaction/send` va con
+`sinReintento`, porque repetir un envio que quiza ya salio es mandar el dinero
+dos veces.
+
+### La frase y la llave
+
+Se piden con la contraseña cada vez y **no se guardan en ningun lado**: se
+pintan y se van con la pantalla. Las rutas del backend son `/users/decriptSeed`
+y `/users/decriptPrivate` — con "decript" mal escrito, asi se llaman del otro
+lado. Las que parecian obvias (`/user/seed`) nunca existieron, y por eso esto
+devolvia "no disponible" siempre.
+
+La frase sale en doce casillas numeradas, no de corrido: hay que copiarla a mano
+en un papel, y de corrido es imposible hacerlo sin equivocarse.
+
+### La tarjeta
+
+Es la del telefono: negra con el circuito grabado, el monograma de Orden Global
+grande arriba, chip, numero en relieve, VALID THRU y titular. **Se da vuelta** —
+el CVV vive atras, sobre la banda de firma, como en una tarjeta de verdad. El
+giro es una transformacion de CSS sobre la escena, asi que voltear no vuelve a
+generar el HTML: si lo hiciera, cortaria la animacion en seco.
+
+El numero y el CVV solo aparecen despues de escribir la contraseña, viven en
+memoria mientras dura la pantalla y se borran al salir. Salir de la tarjeta la
+deja de frente otra vez: nadie tiene por que volver y encontrarselos puestos.
+
+### El lector de codigos
+
+Usa `BarcodeDetector`, que trae el propio navegador. No se incrusta una
+biblioteca de terceros para decodificar: serian cien kilobytes de codigo ajeno
+leyendo la camara de alguien, en la pantalla donde se escribe una direccion a la
+que se le va a mandar dinero. Donde no existe — Safari, Firefox — se dice y se
+ofrece pegar a mano, que es lo que se haria igual.
+
+Al salir de la pantalla la camara se apaga de verdad. Una pestaña que deja el
+piloto encendido asusta, y con razon.
+
+### Lo que vive solo en este navegador
+
+Los **contactos**, el registro de **sesiones** y el **nombre** que se muestra. En
+el telefono tambien son locales — `updateAccount` escribe en el almacenamiento
+del propio aparato, no en el servidor — asi que la web hace lo mismo y lo dice
+en pantalla. El registro de sesiones solo ve lo que paso en este navegador: si
+alguien entra desde otro aparato, aqui no aparece, y decir lo contrario seria
+vender una seguridad que no existe.
+
 ### Lo que esta abierto y lo que no
 
 `cambiar` calcula la tasa y **no ejecuta**, igual que en el telefono: dentro de

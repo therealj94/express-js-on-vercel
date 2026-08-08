@@ -23,6 +23,7 @@ leer = lambda n: open(os.path.join(ORIGEN, n), encoding='utf-8').read()
 html = leer('index.html')
 
 # --- las imagenes, dentro del HTML ---------------------------------------
+MAX_PNG = 260   # el monograma de la tarjeta se pinta a ~227 px de ancho
 TIPOS = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml'}
 
 
@@ -33,15 +34,22 @@ def como_datos(rel):
     ext = os.path.splitext(rel)[1].lower()
     if ext == '.png':
         try:
-            # 98 kB para un icono de 28 px es tirar 130 kB de base64 a la basura.
+            # Cada kB aqui se paga por triplicado: en base64 son cuatro tercios,
+            # y viajan dentro del HTML en cada carga. Se reduce al tamaño mayor
+            # al que se pinta la imagen (el monograma de la tarjeta manda) y se
+            # baja a paleta, que en un dibujo de lineas no se nota y pesa la
+            # tercera parte.
             from PIL import Image
             import io
             im = Image.open(io.BytesIO(crudo)).convert('RGBA')
-            im.thumbnail((128, 128), Image.LANCZOS)
-            buf = io.BytesIO()
-            im.save(buf, 'PNG', optimize=True)
-            if buf.tell() < len(crudo):
-                crudo = buf.getvalue()
+            im.thumbnail((MAX_PNG, MAX_PNG), Image.LANCZOS)
+            mejor = crudo
+            for intento in (im, im.quantize(colors=128, method=Image.FASTOCTREE)):
+                buf = io.BytesIO()
+                intento.save(buf, 'PNG', optimize=True)
+                if buf.tell() < len(mejor):
+                    mejor = buf.getvalue()
+            crudo = mejor
         except ImportError:
             pass
     return f'data:{TIPOS.get(ext, "application/octet-stream")};base64,' + base64.b64encode(crudo).decode()
