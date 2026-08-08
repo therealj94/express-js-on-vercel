@@ -10,10 +10,23 @@ poniendo la carpeta detras de cualquier servidor estatico.
 | | dominio | app de Amplify | ensayo |
 |---|---|---|---|
 | Veta Wallet | `app.vetawallet.com` y `legal.vetawallet.com` | `d264zjawew1yea` | `main.d289v5ffkexk23.amplifyapp.com` |
+| Veta Wallet · un solo archivo | `www.vetawallet.com` y el apex | `d7ofsbyqsj3d9` | — |
 | MyTokenPay | sin desplegar | `dd486t2t5w516` | `main.d2dr8sh34hni4c.amplifyapp.com` |
 
 Las de ensayo no tienen dominio propio y sirven para mirar los cambios antes de
 tocar los reales. **Se despliega ahi primero, siempre.**
+
+`www` va por un CDN ajeno que solo sabe entregar un documento, asi que se sirve
+una version distinta — el mismo sitio, generado de las mismas fuentes, metido en
+un solo archivo. Se explica abajo. **Un cambio en Veta Wallet son dos
+despliegues**:
+
+```sh
+python3 subir.py veta-wallet d264zjawew1yea            # app. y legal.
+python3 unificar.py veta-wallet /tmp/veta-uno          # y para www:
+node probar-uno.mjs /tmp/veta-uno
+python3 subir.py /tmp/veta-uno d7ofsbyqsj3d9
+```
 
 ### Como se recupero `vetawallet.com`
 
@@ -29,46 +42,52 @@ distribucion ajena. Y servir el sitio a traves de ella tampoco era opcion —
 reescribe cualquier ruta al index, asi que `/app.js` devolvia la portada y la
 pagina cargaba sin su codigo.
 
-Se intento recuperarlo desde esta cuenta y **no se puede**. Queda escrito lo que
-se probo para que nadie lo vuelva a intentar creyendo que le falto un paso.
+**El nombre no se pudo recuperar; el contenido si.** Son dos cosas distintas y
+conviene no confundirlas, porque la primera esta cerrada y la segunda nunca lo
+estuvo: el **origen de esa distribucion es una app de Amplify de esta cuenta**
+(`d7ofsbyqsj3d9`). Lo que sirve lo decidimos aqui.
 
-Esta montada una **distribucion propia** (`E3N96U0LYGO5S3`,
-`d3vq91ahiny6zl.cloudfront.net`) con origen `main.d264zjawew1yea.amplifyapp.com`
-y certificado propio emitido para `vetawallet.com` y `www.vetawallet.com`. Esta
-desplegada y sin alias: lista para recibir el nombre el dia que se libere, pero
-hoy no sirve trafico.
-
-Los tres caminos, y donde muere cada uno:
+Quitarle el alias es imposible, y queda escrito para que nadie lo reintente
+creyendo que le falto un paso:
 
 | intento | respuesta de AWS |
 |---|---|
 | `AssociateAlias` de `www` con el TXT `_www.vetawallet.com` | `IllegalUpdate: Alias move is not allowed since the source distribution is enabled` |
 | `AssociateAlias` del apex | `IllegalUpdate: Invalid or missing alias DNS TXT records` |
-| Alias explicito `www` en la distribucion propia | `CNAMEAlreadyExists` |
+| Alias explicito `www` en una distribucion propia | `CNAMEAlreadyExists` |
 
-El procedimiento de AWS para mover un alias entre cuentas — TXT de propiedad mas
-`AssociateAlias` — exige que la distribucion de origen este **apagada**. La
-ajena esta encendida, asi que el movimiento esta prohibido aunque la propiedad
-del dominio quede demostrada. Y el tercer intento descarta que su reclamo sea un
-comodin `*.vetawallet.com`: si lo fuera, un alias explicito le ganaria. Lo tiene
-tomado exacto.
+El procedimiento de AWS para mover un alias entre cuentas exige que la
+distribucion de origen este **apagada**, y la ajena esta encendida. El tercer
+intento descarta ademas que su reclamo sea un comodin `*.vetawallet.com`: si lo
+fuera, un alias explicito le ganaria. Lo tiene tomado exacto. Con el apex el
+bloqueo es anterior: su TXT tendria que llamarse `_vetawallet.com`, que no es
+hijo de la zona sino hermano, y vive en la de `.com`.
 
-Con el apex el bloqueo es anterior: el TXT tendria que llamarse
-`_vetawallet.com`, que no es hijo de `vetawallet.com` sino hermano, y vive en la
-zona de `.com`. Route 53 rechaza crearlo, y es correcto que lo haga.
+Asi que en vez de pelear por el nombre se cambio lo que el nombre entrega. Ese
+CDN devuelve **el mismo documento para cualquier ruta** — `/app.js`, `/qr.js` y
+hasta las imagenes contestan el index — de modo que se genera una version en la
+que ese unico documento se basta solo: `unificar.py` mete dentro del HTML los
+tres scripts, el icono y las dos paginas legales, y un arranque de tres lineas
+decide por `location.pathname` si toca la aplicacion o un texto legal. Con eso
+`/privacidad` y `/terminos` siguen existiendo aunque el servidor entregue
+siempre lo mismo.
 
-**Depende de la otra cuenta.** Basta con que apague esa distribucion, la borre, o
-le quite los dos alias; despues, aqui es un solo comando. Mientras tanto la
-direccion buena es `app.vetawallet.com`.
+Despues, el registro que faltaba: `www.vetawallet.com` CNAME a
+`d1ceoywtt4iywx.cloudfront.net`. Su certificado es comodin, asi que cubre el
+nombre. El apex sigue de rebote por el 302, que conserva la ruta entera.
 
-Lo que **no** hay que hacer es crear el registro `www` apuntando a la
-distribucion ajena para que al menos resuelva: reescribe cualquier ruta al
-index, asi que la portada se pintaria pero `/app.js` devolveria HTML y la
-aplicacion no funcionaria. Una pagina que carga y no responde es peor que un
-nombre que no resuelve, porque nadie sabe que esta rota.
+Queda tambien montada una **distribucion propia** (`E3N96U0LYGO5S3`,
+`d3vq91ahiny6zl.cloudfront.net`) con certificado para `vetawallet.com` y
+`www.vetawallet.com`, desplegada y sin alias. Hoy no sirve trafico: esta ahi
+para el dia que la otra cuenta suelte el nombre, y ese dia el cambio es repuntar
+un registro.
 
-`app.vetawallet.com` y `legal.vetawallet.com` van directo a Amplify y siguen
-siendo las direcciones que no dependen de nadie mas.
+**Lo que esto deja debiendo.** `www` y el apex dependen de una distribucion que
+no controlamos: si su dueño la apaga, los dos caen y hay que repuntar a la
+propia. Y su cache tampoco es nuestra, asi que un despliegue tarda en verse lo
+que ella quiera. `app.vetawallet.com` y `legal.vetawallet.com` van directo a
+Amplify y no dependen de nadie: son las que hay que usar en las tiendas y en
+cualquier enlace que tenga que durar.
 
 ### Amplify no sirve la extension `.html`
 
@@ -79,10 +98,10 @@ destino se normaliza igual. Los enlaces internos apuntan a `/privacidad` y
 `/terminos`; escribirlos con `.html` es publicar un enlace roto que responde 200
 y por eso no lo delata ninguna prueba de enlaces.
 
-```sh
-AWS_ACCESS_KEY_ID=… AWS_SECRET_ACCESS_KEY=… python3 subir.py veta-wallet  d289v5ffkexk23   # ensayo
-AWS_ACCESS_KEY_ID=… AWS_SECRET_ACCESS_KEY=… python3 subir.py veta-wallet  d264zjawew1yea   # de verdad
-```
+### Al desplegar
+
+Las credenciales van delante de cada orden:
+`AWS_ACCESS_KEY_ID=… AWS_SECRET_ACCESS_KEY=… python3 subir.py …`
 
 **Amplify reemplaza el manifiesto entero en cada despliegue.** En
 `vetawallet.com` esto no es un detalle: ahi viven las paginas de privacidad y
@@ -175,3 +194,18 @@ ocho mascaras con la que salga identica. Cual se uso va escrita dentro del
 codigo y cualquier lector la deshace, asi que la eleccion de mascara es
 cosmetica — en un caso las dos puntuaron 466 contra 467 y cada libreria eligio
 una.
+
+### `unificar.py` y `probar-uno.mjs`
+
+`unificar.py` no es un empaquetador ni el principio de uno: es un unico truco
+contra una unica limitacion ajena. Mete `qr.js`, `i18n.js` y `app.js` dentro del
+HTML, el icono como `data:`, y las dos paginas legales como `<template>`. Los
+scripts van envueltos en `if (!window.__legal)` porque `app.js` se engancha a
+`DOMContentLoaded` y en una pagina legal buscaria elementos que no existen;
+`VETA` vuelve a `window` a mano porque los manejadores en linea del HTML lo
+llaman por su nombre y dentro del bloque seria inalcanzable.
+
+`probar-uno.mjs` levanta un servidor que **contesta el index a lo que sea**,
+como el CDN de alla, y prueba la pagina ahi dentro. Servirla desde una carpeta
+normal la aprobaria por el motivo equivocado, porque en una carpeta los archivos
+sueltos si existen y la prueba no demostraria nada.
