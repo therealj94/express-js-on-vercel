@@ -27,6 +27,10 @@ const PATHS = {
   'chevron-forward': ['M9 4.5L16 12l-7 7.5'],
   'chevron-down': ['M4.5 9L12 16l7.5-7'],
 
+  // Linterna: apagada (contorno) y encendida (con rayos de luz).
+  'flashlight-outline': ['M9 3h6v4l-2 3v11h-2V10L9 7z', 'M11 13h2'],
+  flashlight: ['M9 3h6v4l-2 3v11h-2V10L9 7z', 'M11 13h2', 'M5 3l2 2', 'M19 3l-2 2', 'M12 0v2'],
+
   wallet: [
     'M3 8.5A2.5 2.5 0 0 1 5.5 6H18a2 2 0 0 1 2 2',
     'M3 8.5v9A2.5 2.5 0 0 0 5.5 20h13a2.5 2.5 0 0 0 2.5-2.5v-6A2.5 2.5 0 0 0 18.5 9h-13A2.5 2.5 0 0 1 3 8.5z',

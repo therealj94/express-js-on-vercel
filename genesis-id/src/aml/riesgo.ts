@@ -48,7 +48,17 @@ export interface EntradaRiesgo {
   actividadRiesgo?: 'alta' | 'media' | 'baja' | null
   /** Qué falta del perfil de cumplimiento de una persona. */
   faltanDatos?: string[]
+  /** Cuánto declaró que espera mover al año, en USD. Decide el nivel de diligencia. */
+  volumenEsperadoUsd?: number | null
 }
+
+/**
+ * Umbral que separa la diligencia simplificada de la completa. Es el mismo
+ * umbral de reporte del monitoreo (GENESIS_UMBRAL_USD): por debajo de él, un
+ * perfil de cumplimiento incompleto no bloquea la verificación; por encima
+ * —o sin declarar— sí.
+ */
+export const UMBRAL_DILIGENCIA_USD = Number(process.env.GENESIS_UMBRAL_USD || 10000)
 
 /** Actividades que la normativa considera de mayor riesgo. */
 export const ACTIVIDADES_ALTO_RIESGO = [
@@ -108,12 +118,33 @@ export function evaluarRiesgo(e: EntradaRiesgo): EvaluacionRiesgo {
   // contra lo que se puede comparar un movimiento cuando salte una alerta.
   // Sin eso, «recibió 40 000 dólares» no significa nada — parece normal o
   // parece grave según quién lo mire, y ninguna de las dos es una decisión.
+  //
+  // PERO LA DILIGENCIA ES PROPORCIONAL AL RIESGO, y el volumen ES el riesgo.
+  // Exigirle ocupación y origen de fondos a quien declara mover 300 dólares
+  // al año es el enfoque que la normativa misma descarta (debida diligencia
+  // simplificada). Por debajo del umbral de reporte, el perfil incompleto
+  // cuenta como factor, no como bloqueo. La trampa obvia —declarar poco y
+  // mover mucho— la cubre el monitoreo: cualquier movimiento real que cruce
+  // el umbral abre un caso que exige documentar el origen de los fondos.
   const ESENCIALES = ['ocupacion', 'origenFondos']
   const faltanEsenciales = (e.faltanDatos ?? []).filter((d) => ESENCIALES.includes(d))
+  const volumen = e.volumenEsperadoUsd
+  const bajoUmbral = typeof volumen === 'number' && Number.isFinite(volumen) &&
+    volumen >= 0 && volumen < UMBRAL_DILIGENCIA_USD
   if (faltanEsenciales.length) {
-    bloqueos.push(
-      `Faltan datos del perfil de cumplimiento: ${faltanEsenciales.join(', ')}. ` +
-      'Sin ocupación ni origen de fondos no hay con qué contrastar los movimientos.')
+    if (bajoUmbral) {
+      sumar('perfil.simplificado', 8,
+        `Diligencia simplificada: declara mover ${Math.round(volumen!)} USD al año ` +
+        `(bajo el umbral de ${UMBRAL_DILIGENCIA_USD}) y no aportó ${faltanEsenciales.join(', ')}. ` +
+        'Si sus movimientos reales cruzan el umbral, el monitoreo abre caso y se exige el perfil completo.')
+    } else {
+      bloqueos.push(
+        `Faltan datos del perfil de cumplimiento: ${faltanEsenciales.join(', ')}. ` +
+        (typeof volumen === 'number' && Number.isFinite(volumen)
+          ? `Declara mover ${Math.round(volumen)} USD al año, sobre el umbral de ${UMBRAL_DILIGENCIA_USD}: `
+          : 'No declaró cuánto espera mover: ') +
+        'sin ocupación ni origen de fondos no hay con qué contrastar los movimientos.')
+    }
   }
   const otrosFaltan = (e.faltanDatos ?? []).filter((d) => !ESENCIALES.includes(d))
   if (otrosFaltan.length) sumar('perfil.incompleto', 5, `Sin ${otrosFaltan.join(', ')} en el expediente`)

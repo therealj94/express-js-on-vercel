@@ -26,7 +26,7 @@ import { parecidoNombres } from '../lib/texto.js'
 import { cotejar, sinProveedor, cotejoManual, biometriaConfigurada } from '../kyc/biometria.js'
 import type { ResultadoVivacidad } from '../kyc/vivacidad.js'
 import { tamizarPersona } from '../aml/tamiz.js'
-import { evaluarRiesgo } from '../aml/riesgo.js'
+import { evaluarRiesgo, UMBRAL_DILIGENCIA_USD } from '../aml/riesgo.js'
 import { abrirCasoPorTamiz } from '../aml/casos.js'
 import type { Identidad, EstadoIdentidad, Operador, VinculoApp } from '../types.js'
 
@@ -336,6 +336,7 @@ export function recalcularRiesgo(identidad: Identidad): Identidad {
     biometria: identidad.biometria,
     pais: identidad.nacionalidad || identidad.paisResidencia,
     pep: identidad.pep,
+    volumenEsperadoUsd: identidad.volumenEsperadoUsd,
     faltanDatos: [
       !identidad.telefono && 'telefono',
       !identidad.direccion && 'direccion',
@@ -615,6 +616,12 @@ export function estadoParaUsuario(identidad: Identidad) {
       !identidad.propositoCuenta && 'propositoCuenta',
       identidad.pepDeclarado === null && 'pepDeclarado',
     ].filter(Boolean) as string[],
+    // La diligencia es proporcional al volumen declarado: bajo el umbral de
+    // reporte, el perfil completo es opcional. La app usa esto para no pedir
+    // ocupación y origen de fondos a quien mueve poco.
+    umbralDiligenciaUsd: UMBRAL_DILIGENCIA_USD,
+    diligencia: (typeof identidad.volumenEsperadoUsd === 'number' &&
+      identidad.volumenEsperadoUsd < UMBRAL_DILIGENCIA_USD) ? 'simplificada' as const : 'completa' as const,
     // Al usuario se le dice qué le falta, no el detalle del análisis interno.
     faltan: identidad.estado === 'verificada' ? 0 : pendientes,
     siguientePaso:

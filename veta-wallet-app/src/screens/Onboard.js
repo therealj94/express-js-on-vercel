@@ -50,13 +50,22 @@ export function Kyc({ nav }) {
 
   // Perfil de cumplimiento. No es papeleo: es lo unico contra lo que se puede
   // comparar un movimiento cuando salte una alerta.
+  //
+  // PERO ES PROPORCIONAL. La primera pregunta es cuanto espera mover: por
+  // debajo de 10 000 USD al año rige la diligencia simplificada y el resto
+  // del formulario es opcional — a quien mueve 300 dolares no se le puede
+  // exigir el mismo papeleo que a quien mueve 50 000. Si despues sus
+  // movimientos reales cruzan el umbral, Genesis ID abre caso y pide el
+  // perfil completo: la trampa de declarar poco y mover mucho no funciona.
   const [telefono, setTelefono] = useState('');
   const [direccion, setDireccion] = useState('');
   const [ocupacion, setOcupacion] = useState('');
   const [origenFondos, setOrigenFondos] = useState('');
   const [proposito, setProposito] = useState('');
-  const [volumen, setVolumen] = useState('');
+  const [rangoVolumen, setRangoVolumen] = useState('');   // 'bajo' | 'medio' | 'alto'
+  const [masDatos, setMasDatos] = useState(false);        // desplegar lo opcional
   const [pep, setPep] = useState(null);
+  const requiereCompleto = rangoVolumen === 'alto';
   const refMes = useRef(null);
   const refAnio = useRef(null);
 
@@ -80,6 +89,12 @@ export function Kyc({ nav }) {
   const [problemas, setProblemas] = useState([]);
   const [escaneando, setEscaneando] = useState(false);   // false | 'anverso' | 'reverso'
   const camaraDoc = useRef(null);
+  // Linterna para documentos con poca luz, y el escaneo continuo: la camara
+  // intenta leer sola cada segundo, como cualquier lector comercial. Apretar
+  // un boton en el instante exacto era la causa numero uno de fotos borrosas.
+  const [linterna, setLinterna] = useState(false);
+  const [intentoAuto, setIntentoAuto] = useState(0);
+  const autoActivo = useRef(false);
   // Texto del anverso. Se guarda el TEXTO, nunca la imagen: la foto del
   // documento no sale del telefono, y sin embargo el nombre completo —el que
   // la MRZ corta— si llega a Genesis ID para poder cotejarlo.
@@ -166,15 +181,22 @@ export function Kyc({ nav }) {
 
   // ---- paso 1b: perfil de cumplimiento ----
   async function enviarPerfil() {
-    if (!ocupacion.trim() || !origenFondos) { setAviso({ mal: true, txt: t('gen.needAml') }); return; }
+    if (!rangoVolumen) { setAviso({ mal: true, txt: t('gen.needVolume') }); return; }
+    // Solo por encima del umbral el perfil completo es obligatorio.
+    if (requiereCompleto && (!ocupacion.trim() || !origenFondos)) {
+      setAviso({ mal: true, txt: t('gen.needAml') }); return;
+    }
     hap(); setOcupado(true);
+    // El valor representativo de cada franja. No se pide la cifra exacta:
+    // nadie la sabe, y lo que decide el nivel de diligencia es la franja.
+    const volumenUsd = rangoVolumen === 'bajo' ? 500 : rangoVolumen === 'medio' ? 5000 : 15000;
     const r = await genesis.declararDatos({
       telefono: telefono.trim() || undefined,
       direccion: direccion.trim() || undefined,
-      ocupacion: ocupacion.trim(),
-      origenFondos,
+      ocupacion: ocupacion.trim() || undefined,
+      origenFondos: origenFondos || undefined,
       propositoCuenta: proposito || undefined,
-      volumenEsperadoUsd: volumen ? Number(volumen) : undefined,
+      volumenEsperadoUsd: volumenUsd,
       pepDeclarado: pep,
     });
     setOcupado(false);
@@ -210,8 +232,85 @@ export function Kyc({ nav }) {
 
   async function abrirEscaner(cara) {
     if (!permiso?.granted) { const p = await pedirPermiso(); if (!p?.granted) return; }
-    hap(); setProblemas([]); setAviso(null); setEscaneando(cara);
+    hap(); setProblemas([]); setAviso(null); setIntentoAuto(0); setEscaneando(cara);
   }
+
+  function cerrarEscaner() {
+    autoActivo.current = false;
+    setLinterna(false);
+    setEscaneando(false);
+  }
+
+  /**
+   * Escaneo continuo: un intento por segundo hasta que lea, sin tocar nada.
+   *
+   * La version anterior pedia apretar «Leer» en el momento justo, y ahi se
+   * perdia casi todo el mundo: la mano se mueve al apretar, la foto sale
+   * movida, y el mensaje de error no decia si acercarse, alejarse o buscar
+   * luz. Un lector que intenta solo cada segundo convierte «apunta y aprieta
+   * en el instante perfecto» en «sostene el telefono encima y espera» — que
+   * es lo que cualquiera puede hacer.
+   *
+   * El boton manual sigue existiendo por si el bucle no lo logra: tomar la
+   * foto uno mismo con el documento bien puesto sigue siendo la salida.
+   */
+  useEffect(() => {
+    if (!escaneando) return;
+    autoActivo.current = true;
+    let vivo = true;
+    const cara = escaneando;
+
+    (async () => {
+      // Un respiro para que la persona encuadre antes del primer intento.
+      await new Promise((r) => setTimeout(r, 1600));
+      for (let n = 1; vivo && autoActivo.current && n <= 15; n++) {
+        setIntentoAuto(n);
+        try {
+          const foto = await camaraDoc.current?.takePictureAsync(
+            { quality: 0.85, skipProcessing: true, shutterSound: false });
+          if (!vivo || !autoActivo.current) break;
+          if (foto?.uri) {
+            if (cara === 'reverso') {
+              const r = await leerDeFoto(foto.uri);
+              if (!vivo || !autoActivo.current) break;
+              if (r.ok) {
+                autoActivo.current = false;
+                setMrz(r.mrz); setLinterna(false); setEscaneando(false); setAviso(null);
+                hap(Haptics.ImpactFeedbackStyle.Heavy);
+                toast(r.corregida ? t('gen.scanFixed') : t('gen.scanOk'));
+                return;
+              }
+              // «Cortadas» es corregible al instante: se avisa sin parar el bucle.
+              if (r.motivo === 'cortadas') setAviso({ mal: false, txt: t('gen.scanCut') });
+            } else {
+              const texto = await leerTexto(foto.uri);
+              if (!vivo || !autoActivo.current) break;
+              // Un anverso real trae decenas de caracteres: nombre, etiquetas,
+              // numero. Menos que eso es un encuadre a medias y se sigue.
+              if (texto && texto.replace(/[^A-ZÁÉÍÓÚÑa-z]/g, '').length >= 25) {
+                const pequena = await encoger(foto.uri);
+                if (!vivo || !autoActivo.current) break;
+                autoActivo.current = false;
+                setTextoAnverso(texto); setFotoAnverso(pequena);
+                setLinterna(false); setEscaneando(false); setAviso(null);
+                hap(Haptics.ImpactFeedbackStyle.Heavy);
+                toast(t('gen.frontOk'));
+                return;
+              }
+            }
+          }
+        } catch (e) { /* un intento fallido no corta el bucle */ }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      // Se agotaron los intentos: queda la camara abierta con el boton manual.
+      if (vivo && autoActivo.current) {
+        autoActivo.current = false;
+        setIntentoAuto(-1);
+      }
+    })();
+
+    return () => { vivo = false; autoActivo.current = false; };
+  }, [escaneando]);
 
   /**
    * Anverso del documento: la cara con la foto y el nombre COMPLETO.
@@ -237,7 +336,7 @@ export function Kyc({ nav }) {
       }
       setTextoAnverso(texto);
       setFotoAnverso(pequena);
-      setEscaneando(false);
+      cerrarEscaner();
       setAviso(null);
       toast(t('gen.frontOk'));
     } catch (e) { setOcupado(false); setAviso({ mal: true, txt: t('gen.errPhoto') }); }
@@ -254,7 +353,7 @@ export function Kyc({ nav }) {
 
       if (r.ok) {
         setMrz(r.mrz);
-        setEscaneando(false);
+        cerrarEscaner();
         setAviso(null);
         toast(r.corregida ? t('gen.scanFixed') : t('gen.scanOk'));
         return;
@@ -264,7 +363,7 @@ export function Kyc({ nav }) {
       // teclear ochenta y ocho.
       if (r.mrz) {
         setMrz(r.mrz);
-        setEscaneando(false);
+        cerrarEscaner();
         setAviso({ mal: true, txt: t('gen.scanPartial') });
         return;
       }
@@ -296,7 +395,7 @@ export function Kyc({ nav }) {
       const r = await leerDeFoto(sel.assets[0].uri);
       setOcupado(false);
       if (r.ok || r.mrz) {
-        setMrz(r.mrz); setEscaneando(false);
+        setMrz(r.mrz); cerrarEscaner();
         if (r.ok) toast(r.corregida ? t('gen.scanFixed') : t('gen.scanOk'));
         else setAviso({ mal: true, txt: t('gen.scanPartial') });
         return;
@@ -594,36 +693,25 @@ export function Kyc({ nav }) {
             <Text style={st.h1}>{t('gen.stepAmlT')}</Text>
             <Text style={st.body}>{t('gen.stepAmlP')}</Text>
 
-            <Field label={t('gen.phone')} value={telefono} onChangeText={setTelefono}
-              placeholder={t('gen.phoneHint')} keyboardType="phone-pad" />
-            <Field label={t('gen.address')} value={direccion} onChangeText={setDireccion}
-              placeholder={t('gen.addressHint')} />
-            <Field label={t('gen.job')} value={ocupacion} onChangeText={setOcupacion}
-              placeholder={t('gen.jobHint')} />
-
-            <Text style={st.label}>{t('gen.funds')}</Text>
+            {/* LA PREGUNTA QUE DECIDE TODO LO DEMAS. Bajo el umbral de
+                10 000 USD rige la diligencia simplificada: una sola pregunta
+                y listo. Solo por encima se exige el perfil completo. */}
+            <Text style={st.label}>{t('gen.volumeQ')}</Text>
             <View style={st.paises}>
-              {['salario', 'negocio', 'remesas', 'inversiones', 'pension', 'herencia', 'otro'].map((k) => (
-                <Pressable key={k} onPress={() => { hap(); setOrigenFondos(k); }}
-                  style={[st.pais, origenFondos === k && st.paisSel]}>
-                  <Text style={[st.paisTxt, origenFondos === k && st.paisTxtSel]}>{t(`funds.${k}`)}</Text>
+              {['bajo', 'medio', 'alto'].map((k) => (
+                <Pressable key={k} onPress={() => { hap(); setRangoVolumen(k); }}
+                  style={[st.pais, rangoVolumen === k && st.paisSel]}>
+                  <Text style={[st.paisTxt, rangoVolumen === k && st.paisTxtSel]}>{t(`vol.${k}`)}</Text>
                 </Pressable>
               ))}
             </View>
+            {rangoVolumen ? (
+              <Text style={[st.foot2, { marginTop: 6 }, requiereCompleto && { color: '#FBBF24' }]}>
+                {requiereCompleto ? t('gen.volNoteFull') : t('gen.volNoteSimple')}
+              </Text>
+            ) : null}
 
-            <Text style={st.label}>{t('gen.purpose')}</Text>
-            <View style={st.paises}>
-              {['ahorro', 'remesas', 'pagos', 'negocio', 'inversion'].map((k) => (
-                <Pressable key={k} onPress={() => { hap(); setProposito(k); }}
-                  style={[st.pais, proposito === k && st.paisSel]}>
-                  <Text style={[st.paisTxt, proposito === k && st.paisTxtSel]}>{t(`purpose.${k}`)}</Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <Field label={t('gen.volume')} value={volumen} keyboardType="number-pad"
-              onChangeText={(v) => setVolumen(v.replace(/\D/g, ''))} placeholder="500" />
-
+            {/* PEP se pregunta siempre: no depende del volumen y es un toque. */}
             <Text style={st.label}>{t('gen.pepQ')}</Text>
             <View style={st.paises}>
               <Pressable onPress={() => { hap(); setPep(false); }}
@@ -637,8 +725,49 @@ export function Kyc({ nav }) {
             </View>
             <Text style={st.foot2}>{t('gen.pepNote')}</Text>
 
+            {/* El resto: obligatorio sobre el umbral, plegado y opcional debajo. */}
+            {!requiereCompleto && rangoVolumen ? (
+              <Pressable onPress={() => { hap(); setMasDatos(!masDatos); }} style={st.retry}>
+                <Icon name={masDatos ? 'chevron-down' : 'chevron-forward'} size={14} color={C.gold} />
+                <Text style={st.retryTxt}>{t('gen.addOptional')}</Text>
+              </Pressable>
+            ) : null}
+
+            {(requiereCompleto || masDatos) && (
+              <>
+                <Field label={t('gen.job') + (requiereCompleto ? '' : t('gen.optMark'))} value={ocupacion}
+                  onChangeText={setOcupacion} placeholder={t('gen.jobHint')} />
+
+                <Text style={st.label}>{t('gen.funds')}{requiereCompleto ? '' : t('gen.optMark')}</Text>
+                <View style={st.paises}>
+                  {['salario', 'negocio', 'remesas', 'inversiones', 'pension', 'herencia', 'otro'].map((k) => (
+                    <Pressable key={k} onPress={() => { hap(); setOrigenFondos(k); }}
+                      style={[st.pais, origenFondos === k && st.paisSel]}>
+                      <Text style={[st.paisTxt, origenFondos === k && st.paisTxtSel]}>{t(`funds.${k}`)}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <Text style={st.label}>{t('gen.purpose')}{t('gen.optMark')}</Text>
+                <View style={st.paises}>
+                  {['ahorro', 'remesas', 'pagos', 'negocio', 'inversion'].map((k) => (
+                    <Pressable key={k} onPress={() => { hap(); setProposito(k); }}
+                      style={[st.pais, proposito === k && st.paisSel]}>
+                      <Text style={[st.paisTxt, proposito === k && st.paisTxtSel]}>{t(`purpose.${k}`)}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <Field label={t('gen.phone') + t('gen.optMark')} value={telefono} onChangeText={setTelefono}
+                  placeholder={t('gen.phoneHint')} keyboardType="phone-pad" />
+                <Field label={t('gen.address') + t('gen.optMark')} value={direccion} onChangeText={setDireccion}
+                  placeholder={t('gen.addressHint')} />
+              </>
+            )}
+
             <Button3D title={t('gen.continue')} icon="arrow-forward" onPress={enviarPerfil}
-              disabled={ocupado || !ocupacion.trim() || !origenFondos} style={{ marginTop: 18 }} />
+              disabled={ocupado || !rangoVolumen || (requiereCompleto && (!ocupacion.trim() || !origenFondos))}
+              style={{ marginTop: 18 }} />
           </>
         )}
 
@@ -657,28 +786,69 @@ export function Kyc({ nav }) {
                   {escaneando === 'anverso' ? t('gen.frontTitle') : t('gen.backTitle')}
                 </Text>
                 <View style={st.camaraCaja}>
-                  <CameraView ref={camaraDoc} style={{ flex: 1 }} facing="back" />
-                  <View style={st.guia} pointerEvents="none" />
+                  <CameraView ref={camaraDoc} style={{ flex: 1 }} facing="back"
+                    autofocus="on" enableTorch={linterna} />
+                  {/* Marco con la proporcion real de una cedula (85,6 × 54 mm)
+                      y, en el reverso, la franja donde va la MRZ: encuadrar
+                      bien es la diferencia entre leer a la primera y fallar
+                      tres veces. */}
+                  <View style={st.guiaMarco} pointerEvents="none">
+                    <View style={st.guiaDoc}>
+                      <View style={[st.esquina, { top: -1, left: -1, borderTopWidth: 2.5, borderLeftWidth: 2.5 }]} />
+                      <View style={[st.esquina, { top: -1, right: -1, borderTopWidth: 2.5, borderRightWidth: 2.5 }]} />
+                      <View style={[st.esquina, { bottom: -1, left: -1, borderBottomWidth: 2.5, borderLeftWidth: 2.5 }]} />
+                      <View style={[st.esquina, { bottom: -1, right: -1, borderBottomWidth: 2.5, borderRightWidth: 2.5 }]} />
+                      {escaneando === 'reverso' && <View style={st.franjaMrz} />}
+                    </View>
+                  </View>
+                  {/* Linterna: documentos leidos de noche o en interiores. */}
+                  <Pressable onPress={() => { hap(); setLinterna(!linterna); }} style={st.botonLinterna}>
+                    <Icon name={linterna ? 'flashlight' : 'flashlight-outline'} size={20}
+                      color={linterna ? C.gold : '#fff'} />
+                  </Pressable>
                 </View>
+
+                {/* Que esta pasando, en una linea: buscando, o consejos si no lee. */}
                 <Text style={st.mrzPista}>
-                  {escaneando === 'anverso' ? t('gen.frontAim') : t('gen.scanAim')}
+                  {ocupado ? t('gen.scanReading')
+                    : intentoAuto === -1 ? t('gen.autoNoLuck')
+                    : intentoAuto >= 5 ? t('gen.autoHints')
+                    : intentoAuto > 0 ? t('gen.autoScanning')
+                    : (escaneando === 'anverso' ? t('gen.frontAim') : t('gen.scanAim'))}
                 </Text>
+
                 <Button3D
                   title={ocupado ? t('gen.scanReading') : t('gen.scanShot')}
                   icon="card" disabled={ocupado}
-                  onPress={escaneando === 'anverso' ? leerAnverso : escanearDocumento}
+                  onPress={() => {
+                    autoActivo.current = false;
+                    (escaneando === 'anverso' ? leerAnverso : escanearDocumento)();
+                  }}
                   style={{ marginTop: 12 }} />
                 {escaneando === 'reverso' && (
-                  <Pressable onPress={elegirFoto} style={st.retry} disabled={ocupado}>
+                  <Pressable onPress={() => { autoActivo.current = false; elegirFoto(); }}
+                    style={st.retry} disabled={ocupado}>
                     <Text style={st.retryTxt}>{t('gen.scanGallery')}</Text>
                   </Pressable>
                 )}
-                <Pressable onPress={() => setEscaneando(false)} style={st.retry} disabled={ocupado}>
+                <Pressable onPress={cerrarEscaner} style={st.retry} disabled={ocupado}>
                   <Text style={[st.retryTxt, { color: C.txt3 }]}>{t('gen.cancel')}</Text>
                 </Pressable>
               </>
             ) : (
               <>
+                {/* Tres consejos ANTES de abrir la camara. Son los tres motivos
+                    reales por los que una lectura falla; leerlos antes evita el
+                    ciclo de foto-error-foto-error que hace abandonar. */}
+                <View style={st.tips}>
+                  {['tips1', 'tips2', 'tips3'].map((k, n) => (
+                    <View key={k} style={st.tip}>
+                      <View style={st.tipN}><Text style={st.tipNTxt}>{n + 1}</Text></View>
+                      <Text style={st.tipTxt}>{t(`gen.${k}`)}</Text>
+                    </View>
+                  ))}
+                </View>
+
                 {puedeEscanear() ? (
                   <>
                     {/* Las dos caras, como las pide cualquier verificacion seria:
@@ -1143,16 +1313,42 @@ const st = StyleSheet.create({
   filaPaisTxt: { color: C.txt, fontSize: 14, flex: 1 },
   filaPaisCod: { color: C.txt3, fontSize: 12, fontVariant: ['tabular-nums'] },
 
-  // Franja que marca dónde poner el pie del documento. Encuadrar bien es la
-  // diferencia entre leerlo a la primera y tres intentos.
-  // La franja va de lado a lado y en el centro. La version anterior era un
-  // recuadro pequeño abajo: la gente ponia el documento arriba, fuera de el, y
-  // sobre todo lo acercaba tanto que las lineas salian cortadas por los lados.
-  // Lo que hay que encuadrar es el ANCHO entero.
-  guia: {
-    position: 'absolute', left: 8, right: 8, top: '32%', height: 108,
-    borderWidth: 2, borderColor: C.gold, borderRadius: 8, opacity: 0.8,
+  // El marco tiene la proporcion real de una cedula (85,6 × 54 mm): si el
+  // documento lo llena, la distancia es la correcta y la MRZ cabe entera.
+  // La version anterior era un recuadro generico: la gente acercaba tanto el
+  // telefono que las lineas salian cortadas por los lados.
+  guiaMarco: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10,
   },
+  guiaDoc: {
+    alignSelf: 'stretch', aspectRatio: 85.6 / 54, maxHeight: '86%',
+    borderWidth: 1, borderColor: 'rgba(201,169,97,0.45)', borderRadius: 12,
+  },
+  esquina: {
+    position: 'absolute', width: 26, height: 26, borderColor: C.gold, borderRadius: 2,
+  },
+  // Donde va la MRZ: el tercio de abajo del reverso. Verla marcada hace obvio
+  // que ESA parte es la que tiene que quedar nitida dentro del marco.
+  franjaMrz: {
+    position: 'absolute', left: 6, right: 6, bottom: 6, height: '30%',
+    borderWidth: 1.5, borderColor: 'rgba(62,217,160,0.8)', borderRadius: 6,
+    backgroundColor: 'rgba(62,217,160,0.07)',
+  },
+  botonLinterna: {
+    position: 'absolute', top: 12, right: 12, width: 42, height: 42, borderRadius: 21,
+    backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
+  },
+
+  tips: { gap: 8, marginBottom: 16 },
+  tip: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  tipN: {
+    width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(201,169,97,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  tipNTxt: { color: C.gold, fontWeight: '800', fontSize: 11 },
+  tipTxt: { color: C.txt2, fontSize: 12.5, flex: 1, lineHeight: 17 },
   gestoPaso: { color: C.txt3, fontSize: 12, letterSpacing: 1, marginTop: 14, textTransform: 'uppercase' },
   gestoTxt: { color: C.gold, fontSize: 22, fontWeight: '700', marginTop: 4, marginBottom: 12 },
   puntos: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 12 },

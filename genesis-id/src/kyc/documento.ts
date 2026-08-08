@@ -9,7 +9,7 @@
 // el conjunto va al motor de riesgo, y la decisión final la firma una persona.
 
 import { leerMrz, type DatosMrz } from './mrz.js'
-import { parecidoNombres, normalizar, fichas } from '../lib/texto.js'
+import { parecidoNombres, normalizar, fichas, jaroWinkler } from '../lib/texto.js'
 import { ISO3, nombrePais } from '../aml/paises.js'
 
 export type Gravedad = 'ok' | 'aviso' | 'grave'
@@ -62,10 +62,37 @@ function cotejarAnverso(
   if (declarado.nombreCompleto) {
     // Se piden tres letras o más para no contar partículas ni iniciales.
     partes = fichas(declarado.nombreCompleto).filter((f) => f.length >= 3)
-    // Se acepta que una palabra aparezca cortada o con una letra mal leída: el
-    // anverso está impreso sobre una filigrana de colores y el reconocimiento
-    // se equivoca a menudo. Basta con que el principio coincida.
-    halladas = partes.filter((f) => plano.includes(f) || plano.includes(f.slice(0, Math.max(4, f.length - 2)))).length
+
+    // El anverso está impreso sobre una filigrana de colores, con reflejos, y
+    // el reconocimiento se come letras o las confunde con cifras. Buscar la
+    // palabra EXACTA fallaba justo en los casos reales: «0RDONEZ» con cero,
+    // «ENAMORAD» sin la última letra, «ENAMO RADO» partida por un brillo. Y
+    // cada fallo aquí obligaba a usar el nombre recortado de la MRZ.
+    //
+    // Por eso la búsqueda tolera lo que el OCR rompe — y solo eso:
+    //   · cifras donde van letras (0→O, 1→I…), el error clásico sobre OCR-B;
+    //   · una letra cambiada o comida (Jaro-Winkler alto por palabra);
+    //   · palabras partidas por un reflejo (se busca también sin espacios).
+    // Lo que NO se toleran son palabras distintas: «PEREZ» nunca va a pasar
+    // por «GOMEZ» con estos umbrales.
+    const CIFRA_A_LETRA: Record<string, string> = { 0: 'O', 1: 'I', 2: 'Z', 5: 'S', 6: 'G', 8: 'B' }
+    const sinCifras = (s: string) => s.replace(/[012568]/g, (c) => CIFRA_A_LETRA[c])
+    const texto = sinCifras(plano)
+    const textoJunto = texto.replace(/ /g, '')
+    const palabras = texto.split(' ').filter((p) => p.length >= 3)
+
+    const encontrada = (f: string): boolean => {
+      if (texto.includes(f)) return true
+      // El principio de la palabra, por si el final se perdió en un reflejo.
+      if (texto.includes(f.slice(0, Math.max(4, f.length - 2)))) return true
+      // Partida en dos por el OCR: junta todo y busca de corrido.
+      if (textoJunto.includes(f)) return true
+      // Una letra mal leída o faltante en medio: parecido alto palabra a
+      // palabra. 0,86 tolera un error en nombres cortos, dos en largos.
+      return palabras.some((p) => jaroWinkler(f, p) >= 0.86)
+    }
+
+    halladas = partes.filter(encontrada).length
     // Confirmado si aparecen TODAS. Con la mayoría no se afirma nada: ni que
     // coincide ni que no, porque una lectura incompleta no dice nada de nadie.
     nombre = partes.length > 0 && halladas === partes.length

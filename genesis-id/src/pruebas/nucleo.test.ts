@@ -302,6 +302,36 @@ describe('Riesgo', () => {
     assert.equal(r.bloqueos.length, 0)
     assert.equal(r.recomendacion, 'aprobar')
   })
+
+  // La diligencia es proporcional al volumen: es lo que separa pedirle
+  // papeleo a quien mueve 300 dólares de pedírselo a quien mueve 50 000.
+  const base = () => ({
+    documento: documentoBueno as any,
+    tamiz: { tamizado: true, coincidencias: [], fuertes: 0, posibles: 0, estadoListas: estadoListas() },
+    biometria: { estado: 'ok' as const, parecido: 0.95, vivacidad: 0.99, proveedor: 'x', evaluadoEn: '' },
+    pais: 'HND',
+    faltanDatos: ['ocupacion', 'origenFondos'],
+  })
+
+  test('bajo el umbral, el perfil incompleto NO bloquea: diligencia simplificada', () => {
+    const r = evaluarRiesgo({ ...base(), volumenEsperadoUsd: 500 })
+    assert.equal(r.bloqueos.length, 0)
+    assert.ok(r.factores.some((f) => f.clave === 'perfil.simplificado'),
+      'queda como factor visible en el expediente, no desaparece')
+    assert.equal(r.recomendacion, 'aprobar')
+  })
+
+  test('sobre el umbral, el perfil incompleto sí bloquea', () => {
+    const r = evaluarRiesgo({ ...base(), volumenEsperadoUsd: 15000 })
+    assert.ok(r.bloqueos.some((b) => /perfil de cumplimiento/i.test(b)))
+    assert.notEqual(r.recomendacion, 'aprobar')
+  })
+
+  test('sin declarar volumen, el perfil incompleto también bloquea', () => {
+    // No declarar no puede ser un atajo para esquivar la diligencia completa.
+    const r = evaluarRiesgo(base())
+    assert.ok(r.bloqueos.some((b) => /perfil de cumplimiento/i.test(b)))
+  })
 })
 
 describe('Países', () => {
@@ -506,6 +536,31 @@ test('el anverso levanta el bloqueo del nombre cortado, sin ocultarlo', () => {
 test('un anverso vacio o ilegible no se cuenta como comprobado', () => {
   const r = revisarDocumento(CEDULA, { nombreCompleto: 'Medardo Jose Ordonez' }, '   ')
   assert.equal(r.anverso.aportado, false)
+  assert.notEqual(r.anverso.nombreConfirmado, true)
+})
+
+test('el anverso confirma aunque el OCR rompa letras: ceros, letras comidas, palabras partidas', () => {
+  // Lo que un OCR real devuelve de una cedula con filigrana: «0RDONEZ» con
+  // cero, «ENAMORAD» sin la última letra, «MEDA RDO» partido por un brillo.
+  // Antes cada uno de estos rompía la confirmación y el nombre recortado de
+  // la MRZ acababa mandando.
+  const ANVERSO_SUCIO = `REPUBLICA DE HONDURAS
+Nombres: MEDA RDO J0SE
+Apellidos: 0RDONEZ ENAMORAD
+21/03/1994`
+  const r = revisarDocumento(
+    CEDULA,
+    { nombreCompleto: 'Medardo Jose Ordonez Enamorado', fechaNacimiento: '1994-03-21' },
+    ANVERSO_SUCIO)
+  assert.equal(r.anverso.nombreConfirmado, true)
+  assert.ok(r.aceptable)
+})
+
+test('la tolerancia al OCR no deja pasar un nombre distinto', () => {
+  // Las mismas reglas que perdonan una letra rota NO pueden confundir
+  // apellidos diferentes: PEREZ nunca es GOMEZ.
+  const r = revisarDocumento(
+    CEDULA, { nombreCompleto: 'Medardo Jose Perez Gomez' }, ANVERSO)
   assert.notEqual(r.anverso.nombreConfirmado, true)
 })
 

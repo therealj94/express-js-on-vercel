@@ -55,6 +55,17 @@ Lo mismo con la biometría: sin proveedor configurado el estado es
 `no-configurada`, no "correcta", y obliga a que una persona coteje el rostro y
 lo firme.
 
+### Y la diligencia es proporcional al volumen
+
+Por debajo del umbral de reporte (`GENESIS_UMBRAL_USD`, 10 000 USD por
+defecto) rige la **diligencia simplificada**: si la persona declara mover
+menos que eso al año, un perfil de cumplimiento incompleto (ocupación, origen
+de fondos) cuenta como factor de riesgo visible, no como bloqueo. Por encima
+del umbral —o si no declara volumen— el perfil completo es obligatorio, como
+siempre. La trampa de declarar poco y mover mucho no funciona: el monitoreo
+abre caso en cuanto los movimientos reales cruzan el umbral, y ese caso exige
+documentar el origen de los fondos.
+
 ---
 
 ## Qué verifica de verdad, y qué no

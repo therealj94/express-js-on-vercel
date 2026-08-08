@@ -401,6 +401,11 @@ async function verIdentidad(id) {
       ${campo('Correo', i.email)}
       ${campo('Nombre declarado', i.nombreDeclarado || '—')}
       ${campo('Nombre del documento', i.nombreLegal || '—')}
+      ${campo('Anverso', i.documento?.anverso?.aportado
+        ? (i.documento.anverso.nombreConfirmado === true ? 'confirma el nombre completo'
+          : i.documento.anverso.nombreConfirmado === false ? 'no se pudo leer el nombre ahí'
+          : 'aportado, sin nombre que cotejar')
+        : 'no aportado — solo se cotejó la MRZ')}
       ${campo('Nacimiento', i.fechaNacimiento || i.fechaNacimientoDeclarada || '—')}
       ${campo('Nacionalidad', i.nacionalidad || '—')}
       ${campo('Documento', i.numeroDocumento ? `${i.numeroDocumento} (${i.tipoDocumento || ''})` : '—')}
@@ -411,7 +416,10 @@ async function verIdentidad(id) {
       ${campo('Ocupación', i.ocupacion || '—')}
       ${campo('Origen de fondos', i.origenFondos || '—')}
       ${campo('Propósito de la cuenta', i.propositoCuenta || '—')}
-      ${campo('Volumen esperado', i.volumenEsperadoUsd != null ? `${i.volumenEsperadoUsd.toLocaleString('es')} USD/mes` : '—')}
+      ${campo('Volumen esperado', i.volumenEsperadoUsd != null ? `${i.volumenEsperadoUsd.toLocaleString('es')} USD/año` : 'sin declarar')}
+      ${campo('Diligencia', i.volumenEsperadoUsd != null && i.volumenEsperadoUsd < 10000
+        ? 'simplificada — declara menos de 10 000 USD/año; el perfil completo se exige si sus movimientos cruzan el umbral'
+        : 'completa — sobre el umbral de reporte, u omitió declarar volumen')}
       ${campo('PEP declarado', i.pepDeclarado === null || i.pepDeclarado === undefined ? 'sin declarar' : (i.pepDeclarado ? 'SÍ' : 'no'))}
     </div>
 
