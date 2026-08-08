@@ -38,7 +38,19 @@ Es la ruta crítica. Tarda semanas y bloquea todo lo demás en iOS.
   persona física genera preguntas en revisión.
 - Costo: 99 USD al año.
 
-**Android no depende de esto.** Puede salir antes.
+**Android no depende de esto si la cuenta de Play Console es Individual.**
+Google también pide D-U-N-S en Play Console, pero solo para cuentas de tipo
+Organización — una cuenta Individual pide solo identidad de una persona
+(documento + selfie) y una cuota única de 25 USD, y suele aprobarse en un par
+de días.
+
+Se decidió publicar Android ahora con una cuenta Individual y pedir el D-U-N-S
+de Orden Global en paralelo para Apple. Cuando llegue, Google permite
+**transferir la app publicada** a la cuenta de Organización sin perder
+reseñas ni instalaciones (Play Console → Configuración de la app →
+Transferir), pero es un trámite formal aparte — las dos cuentas tienen que
+estar en regla y alguien tiene que aceptar la transferencia del otro lado. No
+es instantáneo, así que conviene no dejarlo para el final.
 
 ### 2. Documentos legales — LISTO
 
@@ -130,14 +142,16 @@ que revisa Apple.
 
 ## Orden recomendado
 
-1. **Hoy:** iniciar la cuenta de Apple y pedir el D-U-N-S si hace falta
-2. **Hoy:** conseguir un token nuevo de Heroku y desplegar el backend
-3. Publicar los dos documentos legales en el sitio
-4. Decidir qué hacer con Remesas
-5. Compilar y probar el APK de verdad, con la cuenta de demostración
-6. Capturas y textos de ficha
-7. Enviar Android
-8. Enviar iOS cuando la cuenta de Apple esté aprobada
+1. **Hoy:** crear la cuenta Individual de Play Console (identidad + 25 USD)
+2. **Hoy:** iniciar la cuenta de Apple y pedir el D-U-N-S — en paralelo, no bloquea Android
+3. **Hoy:** conseguir un token nuevo de Heroku y desplegar el backend
+4. Publicar los dos documentos legales en el sitio
+5. Decidir qué hacer con Remesas
+6. Compilar el AAB (`eas build -p android --profile production`) y probarlo de verdad con la cuenta de demostración
+7. Capturas y textos de ficha
+8. Enviar Android
+9. Cuando llegue el D-U-N-S: transferir la app a la cuenta de Organización
+10. Enviar iOS cuando la cuenta de Apple esté aprobada
 
 ---
 

@@ -1,9 +1,9 @@
-name: Veta Wallet — compilar APK
+name: Veta Wallet — compilar Android
 
-# Compila un APK de Android en los servidores de Expo. No hace falta tener
-# nada instalado en tu computadora: se lanza desde la pestaña Actions.
+# Compila Android en los servidores de Expo. No hace falta tener nada
+# instalado en tu computadora: se lanza desde la pestaña Actions.
 #
-#   Actions → "Veta Wallet — compilar APK" → Run workflow → elegir perfil
+#   Actions → "Veta Wallet — compilar Android" → Run workflow → elegir perfil
 #
 # Qué perfil elegir:
 #
@@ -19,6 +19,11 @@ name: Veta Wallet — compilar APK
 #   preview      APK para repartir a gente que solo va a usar la app.
 #                Sin recarga en vivo; recibe updates del channel "preview".
 #
+#   production   AAB (App Bundle) para subir a Google Play Console. Este es
+#                el que pide la tienda — Play ya no acepta APK para apps
+#                nuevas. Compilarlo no necesita la cuenta de Play Console
+#                todavía: eso hace falta recién al momento de subirlo.
+#
 # Requisito (ya configurado): el secreto EXPO_TOKEN del repositorio.
 
 on:
@@ -32,6 +37,7 @@ on:
         options:
           - development
           - preview
+          - production
 
 jobs:
   build:
@@ -78,12 +84,16 @@ jobs:
       - name: Dónde descargarlo
         if: always()
         run: |
-          echo "### APK compilado" >> $GITHUB_STEP_SUMMARY
+          echo "### Build de Android lista" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Perfil: **${{ inputs.profile }}**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Descárgalo desde el panel de Expo — el enlace del APK aparece en la fila de la build:" >> $GITHUB_STEP_SUMMARY
+          echo "Descárgala desde el panel de Expo — el enlace aparece en la fila de la build:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "https://expo.dev/accounts/vetawallet/projects/veta-wallet/builds" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Ábrelo desde el teléfono y se instala. Si es el perfil \`development\`, después abre la app y apunta al servidor con \`npx expo start\` o carga el channel \`development\`." >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.profile }}" = "production" ]; then
+            echo "Es un **.aab**, no se instala directo en un teléfono: se sube en Play Console → Producción (o Prueba interna) → Crear versión nueva." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Ábrelo desde el teléfono y se instala. Si es el perfil \`development\`, después abre la app y apunta al servidor con \`npx expo start\` o carga el channel \`development\`." >> $GITHUB_STEP_SUMMARY
+          fi
