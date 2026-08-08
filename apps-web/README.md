@@ -116,8 +116,45 @@ las mismas rutas y el mismo contrato que la app del telefono. No hay una version
 web de los datos: es la misma cuenta, el mismo saldo y la misma identidad vistos
 desde otra pantalla. El backend ya trae las cabeceras CORS para el dominio.
 
-Pantallas: bienvenida, entrar/crear cuenta, inicio con saldo, enviar, recibir
-con codigo QR, actividad, Genesis ID y cuenta.
+Tiene **las mismas cinco pestañas que el telefono** — billetera, tarjeta,
+cambiar, actividad y ajustes — y por el mismo motivo: quien usa la app en el
+bolsillo no tiene que volver a aprenderse donde esta cada cosa al abrirla en una
+pantalla grande. Enviar, recibir, comprar, depositar, la ficha de una moneda y
+Genesis ID no son pestañas: se entra y se vuelve, igual que alla.
+
+### Los saldos salen de la cadena, no de un resumen
+
+`cadena.js` lee los **quince tokens** de la red 8532 por RPC, uno por uno, con
+los mismos contratos que usa el telefono, y saca los precios de las mismas
+fuentes: el oro y la plata de CoinGecko (AUKA sigue la onza de oro, AGKA la de
+plata, ORIGEN es un gramin — 1/55 de gramo), el precio de ONDK del backend, y
+una tabla de referencia para los tokens de sector, que no cotizan en ningun
+mercado publico.
+
+Que esto se pueda hacer desde un navegador no era obvio y se comprobo: el RPC de
+la cadena responde `access-control-allow-origin: *`, y CoinGecko tambien. Si
+algun dia dejaran de hacerlo, esta pantalla se queda sin saldos y hay que mover
+la lectura al backend.
+
+Antes esta pagina pedia `/wallet/origen-balance`: **una sola moneda**, y un
+precio de respaldo de `2.35` escrito en el codigo para cuando el servidor no
+mandaba ninguno. Ese numero entraba al patrimonio sin ninguna marca, asi que se
+podia estar mirando un valor inventado creyendo que era el de mercado. Ya no
+existe: **sin precio real se pinta un guion**, el total solo suma lo que tiene
+precio, y se avisa abajo de la lista. Un feed caido no puede parecerse a una
+perdida.
+
+### Lo que esta abierto y lo que no
+
+`cambiar` calcula la tasa y **no ejecuta**, igual que en el telefono: dentro de
+la red todo se liquida contra ORIGEN y el motor de cambio no esta abierto.
+`comprar` esta en obra, tambien igual. Los dos lo dicen en pantalla. Un boton
+que parece funcionar y no hace nada es peor que no tener la pantalla.
+
+La tarjeta si es real: estado, congelar y descongelar, ver el numero y el PIN
+—cada uno pide la contraseña y no se guarda en ningun lado— y los movimientos.
+Emitirla exige Genesis ID verificado, y se dice antes de enseñar el formulario
+para que nadie lo llene y se lo rechace el emisor.
 
 Enviar dinero pide **dos toques**: el primero enseña a donde va y cuanto, el
 segundo manda. Un solo boton convierte un dedo torpe en una transferencia que no
