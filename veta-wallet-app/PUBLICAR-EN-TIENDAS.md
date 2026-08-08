@@ -1,6 +1,7 @@
 # Publicar Veta Wallet en App Store y Play Store
 
-Estado a v1.18.0 · build 53.
+Estado a v1.32.0 · build 68. El detalle de todo lo listo para Android está en
+`LISTO-PARA-ANDROID.md`.
 
 Lo que se podía cerrar desde el código está cerrado. Lo que queda son trámites
 y decisiones que solo puede hacer Orden Global.
@@ -87,7 +88,8 @@ de acceso).
 ### 4. Formularios de datos
 
 - **Apple — App Privacy:** hay que declarar qué datos se recogen y para qué.
-- **Google — Data Safety:** lo mismo, con otro formulario.
+- **Google — Data Safety:** lo mismo, con otro formulario. Ya está resuelto
+  campo por campo, listo para copiar, en `LISTO-PARA-ANDROID.md`.
 
 La política de privacidad tiene todo lo necesario para completarlos. Los
 puntos clave: se recogen correo, nombre, documento, selfie, teléfono y
@@ -98,8 +100,12 @@ los datos no se venden.
 
 - **iOS:** 6.7" y 5.5", mínimo 3 capturas cada uno
 - **Android:** teléfono y tablet de 7" y 10"
-- Descripción corta y larga, en español e inglés
-- Icono de 512×512 para Play
+- Descripción corta y larga, en español e inglés — **listas** en
+  `LISTO-PARA-ANDROID.md`
+- Icono de 512×512 y gráfico de función 1024×500 para Play — **listos** en
+  `assets/store/`
+- Las capturas reales de la app corriendo hay que sacarlas desde un
+  teléfono — no se pueden generar sin un dispositivo o un emulador
 
 ### 6. Licencias para Remesas
 
@@ -123,20 +129,10 @@ regulatorio.
 `config.json` ya salió del repositorio y su API key de Etherscan dejó de estar
 en el código, pero **ambos siguen en el historial**.
 
-### 8. Desplegar el backend
+### 8. Desplegar el backend — RESUELTO
 
-**El token de Heroku expiró a mitad de sesión.** El commit está hecho y sin
-desplegar. Con un token nuevo:
-
-```bash
-cd vetawallet-backend
-git push origin HEAD:master
-```
-
-Lleva la eliminación de cuenta, el alias de registro, los arreglos de envío y
-todo lo de seguridad. **Sin ese despliegue, la pantalla de eliminar cuenta de
-la app llama a un endpoint que todavía no existe** — y eso es exactamente lo
-que revisa Apple.
+Verificado en vivo: `DELETE /users/me` contra el backend de producción
+devuelve 401 (pide sesión), no 404 (no existe). La ruta está desplegada.
 
 ---
 
@@ -144,11 +140,13 @@ que revisa Apple.
 
 1. **Hoy:** crear la cuenta Individual de Play Console (identidad + 25 USD)
 2. **Hoy:** iniciar la cuenta de Apple y pedir el D-U-N-S — en paralelo, no bloquea Android
-3. **Hoy:** conseguir un token nuevo de Heroku y desplegar el backend
-4. Publicar los dos documentos legales en el sitio
-5. Decidir qué hacer con Remesas
-6. Compilar el AAB (`eas build -p android --profile production`) y probarlo de verdad con la cuenta de demostración
-7. Capturas y textos de ficha
+3. Decidir qué hacer con Remesas (ver la nota sobre política cripto en
+   `LISTO-PARA-ANDROID.md`)
+4. Definir la cuenta de demostración (correo, KYC aprobado, tarjeta y saldo)
+5. Compilar el AAB (`Actions → "Veta Wallet — compilar Android" → production`)
+6. Sacar las capturas reales desde un teléfono con esa build instalada
+7. Pegar la ficha, Data Safety y clasificación de contenido — todo listo en
+   `LISTO-PARA-ANDROID.md`
 8. Enviar Android
 9. Cuando llegue el D-U-N-S: transferir la app a la cuenta de Organización
 10. Enviar iOS cuando la cuenta de Apple esté aprobada
