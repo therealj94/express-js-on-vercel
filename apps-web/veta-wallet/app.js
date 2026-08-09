@@ -334,6 +334,13 @@ const VETA = (() => {
          backend usaría al sincronizar el padrón, y las dos huellas tienen que
          coincidir o el panel enseña «fuera del padrón» para todo el mundo. */
       tele('identificar', { ...c, email: sesion.correo });
+      /* Y se da de alta en el padrón probándolo con esta misma sesión: sin
+         esto el panel ve la conexión pero no de quién es. El token no sale de
+         aquí para nada más — Genesis ID solo lo usa para preguntarle a este
+         backend si lo reconoce. */
+      tele('confirmar', token, {
+        email: sesion.correo, nombre: sesion.nombre, direccionWallet: sesion.direccion,
+      });
       tele('accion', modo === 'crear' ? 'cuenta.creada' : 'sesion.entrar');
       anotarSesion();
       ir('app');
@@ -1885,6 +1892,9 @@ const VETA = (() => {
       // Volver con la sesión guardada es entrar igual: si no se contara, quien
       // no cierra sesión nunca aparecería como que usa la app.
       tele('identificar', { ...abrirToken(sesion.token), email: sesion.correo });
+      tele('confirmar', sesion.token, {
+        email: sesion.correo, nombre: sesion.nombre, direccionWallet: sesion.direccion,
+      });
       tele('accion', 'sesion.recuperada');
       ir('app');
       cargarTodo();

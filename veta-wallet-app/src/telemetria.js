@@ -44,3 +44,57 @@ export const fallo = (e, extra) => motor.error(e, extra)
 export const tardo = (nombre, ms) => motor.rendimiento(nombre, ms)
 
 export default motor
+
+/**
+ * Da de alta a esta persona en el padrón de Genesis ID con su propia sesión.
+ *
+ * No se manda el padrón de nadie: se manda el JWT que firmó el backend de Veta
+ * Wallet, y Genesis ID le pregunta a ESE backend si lo reconoce. Si dice que
+ * no, no se escribe nada. Por eso puede ir con la clave pública sin abrir
+ * ninguna puerta — lo que autoriza no es la clave, es tener sesión de verdad.
+ *
+ * Sin esto el panel ve la conexión pero no sabe de quién es: sale «fuera del
+ * padrón», sin nombre y sin billetera.
+ */
+export async function confirmarEnPadron(token, datos = {}) {
+  try {
+    if (!ACTIVA || !token || !extra.telemetriaClave) return
+    await fetch(
+      (extra.genesisUrl || 'https://genesis-id.onrender.com') + '/api/v1/directorio/confirmar',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Telemetria-Key': extra.telemetriaClave,
+        },
+        body: JSON.stringify({
+          token,
+          // Solo se usan si el token no los trae, y quedan marcados como no
+          // confirmados. El token siempre manda.
+          email: datos.email, nombre: datos.nombre,
+          direccionWallet: datos.direccionWallet,
+        }),
+      },
+    )
+  } catch (e) { /* se reintenta en el próximo ingreso */ }
+}
+
+/**
+ * El identificador de la persona, sacado del token.
+ *
+ * TIENE que coincidir con el que Genesis ID saca de ese mismo token al dar el
+ * alta, o la huella de telemetría no cuadra con la fila del padrón y todo sale
+ * como «fuera del padrón» sin un solo error visible. Por eso se calcula sobre
+ * el token y no sobre el objeto de cuenta local, que podría no llevar el mismo
+ * campo.
+ */
+export function idDelToken(token) {
+  try {
+    const p = String(token || '').split('.')[1]
+    if (!p) return null
+    const json = decodeURIComponent(escape(atob(p.replace(/-/g, '+').replace(/_/g, '/'))))
+    const c = JSON.parse(json)
+    const bruto = c.idExterno ?? c._id ?? c.id ?? c.sub ?? c.userId ?? c.uid ?? c.email
+    return bruto ? String(bruto) : null
+  } catch (e) { return null }
+}

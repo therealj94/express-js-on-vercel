@@ -9,7 +9,7 @@ import { LangProvider, useT, useLang } from './src/i18n';
 import * as Linking from 'expo-linking';
 import NetInfo from '@react-native-community/netinfo';
 import { loadSession, saveSession, clearSession, initAccounts, updateAccount } from './src/accounts';
-import { loadToken, setToken, setRefreshToken, ensureSession, clearCreds, apiPortfolio } from './src/api';
+import { loadToken, setToken, setRefreshToken, ensureSession, clearCreds, apiPortfolio, getToken } from './src/api';
 import { desactivarDesbloqueo } from './src/unlock';
 import { buscarActualizacion, aplicarActualizacion, puedeActualizar } from './src/updates';
 import { recordLogout } from './src/sessionLog';
@@ -38,7 +38,7 @@ import Help from './src/screens/Help';
 import Remesas from './src/screens/Remesas';
 import DeleteAccount from './src/screens/DeleteAccount';
 import ErrorBoundary from './src/ErrorBoundary';
-import { arrancarTelemetria, fallo, identificar, olvidar } from './src/telemetria';
+import { arrancarTelemetria, fallo, identificar, olvidar, confirmarEnPadron, idDelToken } from './src/telemetria';
 
 const SCREENS = {
   splash: Splash, auth: Auth, kyc: Kyc, seedview: SeedView, genesisOffer: GenesisOffer,
@@ -118,7 +118,16 @@ function Root() {
         // «Últimas conexiones» se queda vacío aunque la app esté reportando.
         // Es el caso más común, además: quien no cierra sesión nunca vuelve a
         // pasar por el login.
-        identificar(saved.userId || saved.email);
+        // El identificador sale del TOKEN, no de la cuenta local: Genesis ID
+        // saca el suyo de ese mismo token al dar el alta, y si los dos no
+        // coinciden la huella no cuadra con la fila del padrón.
+        const jwt = getToken();
+        identificar(idDelToken(jwt) || saved.userId || saved.email);
+        if (jwt) {
+          confirmarEnPadron(jwt, {
+            email: saved.email, nombre: saved.name, direccionWallet: saved.addr,
+          });
+        }
         ensureSession(); // renueva el JWT en segundo plano si expiró
       }
     })();
@@ -128,10 +137,15 @@ function Root() {
     login: (a) => {
       setAccount(a);
       saveSession(a.email);
-      // El `userId` es el identificador del backend; el correo es el respaldo.
-      // Tiene que ser el MISMO que el backend manda al sincronizar el padrón o
-      // las dos huellas no coinciden y todo sale como «fuera del padrón».
-      identificar(a.userId || a.email);
+      // El identificador sale del TOKEN, igual que el que Genesis ID saca al
+      // dar el alta: si los dos no coinciden, la huella de telemetría no cuadra
+      // con la fila del padrón y todo sale como «fuera del padrón».
+      const jwt = getToken();
+      identificar(idDelToken(jwt) || a.userId || a.email);
+      // Y se da de alta en el padrón probándolo con esta misma sesión.
+      if (jwt) {
+        confirmarEnPadron(jwt, { email: a.email, nombre: a.name, direccionWallet: a.addr });
+      }
     },
     logout: () => { olvidar(); recordLogout(); setAccount(null); clearSession(); setToken(null); setRefreshToken(null); clearCreds(); desactivarDesbloqueo(); limpiarAvisos(); },
   };

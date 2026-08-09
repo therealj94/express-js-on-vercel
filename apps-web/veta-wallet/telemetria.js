@@ -121,6 +121,37 @@ var TELEMETRIA = (function () {
   function identificar(u) { usuario = idDeUsuario(u); }
 
   /**
+   * Da de alta a esta persona en el padrón de Genesis ID, probándolo con su
+   * propia sesión.
+   *
+   * Aquí NO se manda el padrón de nadie: se manda el token que el backend de
+   * Veta Wallet firmó al iniciar sesión, y Genesis ID le pregunta a ese mismo
+   * backend si lo reconoce. Si dice que no, no se escribe nada. Por eso puede
+   * ir con la clave pública sin abrir ninguna puerta: lo que autoriza no es la
+   * clave, es tener una sesión de verdad.
+   *
+   * Sin esto el panel ve la conexión pero no sabe de quién es — sale «fuera
+   * del padrón», sin nombre y sin billetera.
+   */
+  function confirmar(token, datos) {
+    try {
+      if (!CLAVE || !token) return;
+      datos = datos || {};
+      fetch(URL_GENESIS + '/api/v1/directorio/confirmar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Telemetria-Key': CLAVE },
+        body: JSON.stringify({
+          token: token,
+          // Solo se usan si el token no los trae, y quedan marcados como no
+          // confirmados. El token siempre manda.
+          email: datos.email, nombre: datos.nombre,
+          direccionWallet: datos.direccionWallet
+        })
+      }).catch(function () { /* se reintenta en el próximo ingreso */ });
+    } catch (x) { /* jamás hacia arriba */ }
+  }
+
+  /**
    * Apunta un evento. NUNCA lanza.
    *
    * Un fallo del reportero no puede romper la pantalla que está reportando:
@@ -189,7 +220,7 @@ var TELEMETRIA = (function () {
   }
 
   return {
-    iniciar: iniciar, identificar: identificar, anotar: anotar,
+    iniciar: iniciar, identificar: identificar, confirmar: confirmar, anotar: anotar,
     pantalla: pantalla, accion: accion, fallo: fallo,
     vaciar: vaciar, activa: activa, idDeUsuario: idDeUsuario,
     _cola: function () { return cola.slice(); }

@@ -10,11 +10,44 @@ import { exigeApp, exigeOperador, exigePermiso, limite } from '../middleware/pro
 import { sincronizar, consultar, resumenDirectorio, fichaPorEmail, refrescarSaldos } from '../directorio/padron.js'
 import { registrar } from '../audit/bitacora.js'
 import { historialDe, resumirMovimientos } from '../directorio/movimientos.js'
+import { confirmarPersona, sePuedeConfirmar } from '../directorio/confirmacion.js'
+import { aplicacionDeClavePublica } from '../auth/aplicaciones.js'
 
 export const directorioAppsRouter = Router()
 export const directorioPanelRouter = Router()
 
 // ── Ingesta ──────────────────────────────────────────────────────────────────
+
+/**
+ * Alta de UNA persona, probada con su propia sesión.
+ *
+ * Existe para las apps cuyo backend todavía no manda el padrón. No abre la
+ * puerta de al lado: aquí no se puede escribir a nadie más que a uno mismo, y
+ * solo enseñando un token que el backend de esa app reconozca como suyo.
+ *
+ * Va con la clave PUBLICA porque la llama un navegador o un APK, donde no
+ * cabe un secreto. Lo que impide el abuso no es la clave —esa es pública— sino
+ * el token: sin una sesión real de esa app no se escribe una sola fila.
+ *
+ * El límite es bajo a propósito: esto se llama una vez al entrar, no en bucle.
+ */
+directorioAppsRouter.post('/confirmar', limite(30), async (req, res) => {
+  const publica = String(req.headers['x-telemetria-key'] || '').trim()
+  const app = publica ? aplicacionDeClavePublica(publica) : null
+  if (!app) return res.status(401).json({ error: 'Clave de telemetría inválida o revocada' })
+
+  if (!sePuedeConfirmar(app.clave)) {
+    return res.status(400).json({ error: `No hay forma de verificar sesiones de ${app.clave}` })
+  }
+
+  const { token, email, nombre, direccionWallet, pais } = req.body ?? {}
+  const r = await confirmarPersona(app.clave, String(token || ''), { email, nombre, direccionWallet, pais })
+  if (!r.ok) return res.status(r.estado || 400).json({ error: r.motivo })
+
+  registrar('sistema', 'directorio.confirmado', `${app.clave}|${r.idExterno}`,
+    { correoConfirmado: r.emailConfirmado })
+  res.json({ ok: true, correoConfirmado: r.emailConfirmado })
+})
 
 directorioAppsRouter.post('/sincronizar', limite(120), exigeApp('directorio.enviar'), async (req, res) => {
   const lote = Array.isArray(req.body) ? req.body : req.body?.usuarios
