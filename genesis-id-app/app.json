@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Genesis ID",
+    "slug": "genesis-id",
+    "version": "1.0.0",
+    "owner": "vetawallet",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "genesisid",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#021012",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#021012"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "package": "com.ordenglobal.genesisid",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#021012"
+      },
+      "versionCode": 1,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24
+          }
+        }
+      ]
+    ]
+  }
+}

@@ -1,0 +1,75 @@
+name: Genesis ID — publicar update por aire
+
+# Cada push que toque genesis-id-app/ publica un EAS Update al canal
+# "preview": los APK instalados reciben el cambio al reabrir la app, sin
+# recompilar ni reinstalar nada.
+#
+# OJO: si un cambio agrega una librería NATIVA nueva, el update por aire no
+# alcanza — hay que compilar un APK nuevo con el otro workflow.
+
+on:
+  push:
+    branches:
+      - claude/veta-wallet-phantom-design-7syah8
+      - main
+    paths:
+      - 'genesis-id-app/**'
+      - '.github/workflows/genesis-update.yml'
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Mensaje del update'
+        required: false
+        default: 'update automático'
+
+concurrency:
+  group: genesis-update
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: genesis-id-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Node 20
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      - name: EAS CLI
+        run: npm install -g eas-cli@latest
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Verificar
+        run: npm run verificar
+
+      - name: Publicar
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          set -e
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Falta el secreto EXPO_TOKEN."
+            exit 1
+          fi
+          eas init --force --non-interactive
+          eas update:configure --non-interactive
+          MSG="${{ github.event.inputs.message }}"
+          if [ -z "$MSG" ]; then
+            MSG=$(git log -1 --pretty=format:'%s' | cut -c1-72)
+          fi
+          eas update --branch preview --message "$MSG" --non-interactive
+
+      - name: Resumen
+        if: success()
+        run: |
+          echo "### ✅ Update por aire publicado" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Los APK del canal preview lo reciben al reabrir la app." >> $GITHUB_STEP_SUMMARY

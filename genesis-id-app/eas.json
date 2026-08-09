@@ -1,0 +1,26 @@
+{
+  "cli": {
+    "version": ">= 5.9.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "EXPO_PUBLIC_GENESIS_URL": "https://genesis-id.onrender.com" },
+      "channel": "development"
+    },
+    "preview": {
+      "android": { "buildType": "apk" },
+      "distribution": "internal",
+      "env": { "EXPO_PUBLIC_GENESIS_URL": "https://genesis-id.onrender.com" },
+      "channel": "preview"
+    },
+    "production": {
+      "android": { "buildType": "apk" },
+      "env": { "EXPO_PUBLIC_GENESIS_URL": "https://genesis-id.onrender.com" },
+      "channel": "production"
+    }
+  }
+}

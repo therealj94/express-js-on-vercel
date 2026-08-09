@@ -1,0 +1,95 @@
+name: Genesis ID — compilar APK
+
+# Compila el APK de la app de cumplimiento en los servidores de Expo.
+#
+#   Actions → "Genesis ID — compilar APK" → Run workflow → elegir perfil
+#
+#   preview      El APK para el equipo: se instala una vez y recibe las
+#                actualizaciones por aire del canal "preview".
+#   development  Para desarrollar con recarga en vivo.
+#   production   El APK final, canal "production".
+#
+# La primera vez, `eas init` crea el proyecto en la cuenta de Expo
+# (vetawallet) y `eas update:configure` deja la URL de updates escrita en
+# app.json del workspace de CI — por eso no hace falta tener el projectId
+# guardado en el repositorio.
+#
+# Requisito (ya configurado): el secreto EXPO_TOKEN del repositorio.
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Perfil de build'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - development
+          - production
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: genesis-id-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Node 20
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      - name: EAS CLI
+        run: npm install -g eas-cli@latest
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Verificar
+        run: npm run verificar
+
+      - name: Vincular proyecto EAS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Falta el secreto EXPO_TOKEN."
+            exit 1
+          fi
+          eas init --force --non-interactive
+          eas update:configure --non-interactive
+
+      - name: Compilar
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          eas build \
+            --platform android \
+            --profile "${{ inputs.profile }}" \
+            --non-interactive \
+            --wait
+
+      - name: Dónde descargarlo
+        if: success()
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          URL=$(eas build:list --platform android --limit 1 --json --non-interactive | node -e "
+            let d=''; process.stdin.on('data',c=>d+=c).on('end',()=>{
+              try { console.log(JSON.parse(d)[0]?.artifacts?.buildUrl || '') } catch(e) { console.log('') }
+            })")
+          echo "### ✅ APK de Genesis ID listo" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$URL" ]; then
+            echo "**Descarga directa:** $URL" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "También queda en: https://expo.dev/accounts/vetawallet/projects/genesis-id/builds" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Instalalo en el teléfono (permitir orígenes desconocidos) y las" >> $GITHUB_STEP_SUMMARY
+          echo "siguientes mejoras llegan solas por aire — sin recompilar." >> $GITHUB_STEP_SUMMARY
