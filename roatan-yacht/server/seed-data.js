@@ -9,8 +9,8 @@ export const settings = {
   depositPct: 30,
   balanceDueHours: 48,
   contactEmail: 'reservations@lovecloudroatan.com',
-  contactPhone: '+504 0000-0000',
-  whatsapp: '+504 0000-0000',
+  contactPhone: '+1 (702) 419-4681',
+  whatsapp: '+1 (702) 419-4681',
   departurePoint: 'French Harbour Marina, Roatán, Bay Islands, Honduras',
   cancellationPolicy:
     'Free cancellation up to 7 days before departure. Within 7 days the deposit is non-refundable. Trips cancelled by us for weather are fully refunded or rescheduled at no cost.',
@@ -22,9 +22,12 @@ export const vessels = [
     id: 'v_speedboat_day',
     slug: 'private-speedboat-full-day',
     name: 'Private Luxury Full Day Speedboat Adventure',
-    tagline: 'Your own speedboat, your own island stops, all day long.',
+    boatName: "Li'l Knotty",
+    tagline: 'Twin 200s, a shaded T-top, and the whole island at your pace.',
     description:
-      'Lounge in luxury aboard your very own private speedboat adventure, tailored just for you and your group. We run the island at your pace — snorkel the reef, get pulled on the tube, and swim off the sand at Pigeon Cay.',
+      "Li'l Knotty is our centre console — twin 200 hp Suzukis, shade over the helm and a hull that gets you to the far side of the island before the crowds. We run the day at your pace: snorkel the reef, get pulled on the tube, and swim off the sand at Pigeon Cay.",
+    photo: '/media/lilknotty-running',
+    gallery: ['/media/lilknotty-marina', '/media/lilknotty-dusk', '/media/lilknotty-running-wide'],
     type: 'day',
     durationLabel: '8 hours',
     basePrice: 995,
@@ -33,7 +36,10 @@ export const vessels = [
     capacityMin: 1,
     capacityMax: 10,
     includes: [
+      "Li'l Knotty, a private centre console with twin 200 hp outboards",
       'Private captain and crew',
+      'Shaded T-top over the helm',
+      'Bow seating and cushioned casting deck',
       'Snorkeling gear and guided reef stop',
       'Tubing',
       'Swim stop at Pigeon Cay',
@@ -141,7 +147,7 @@ export const vessels = [
     id: 'v_gold',
     boatName: 'Knotty',
     photo: '/media/knotty-dinner-night',
-    gallery: ['/media/knotty-cabin-night', '/media/knotty-cockpit-table'],
+    gallery: ['/media/knotty-cabin-night', '/media/lilknotty-running'],
     slug: 'gold-package',
     name: 'Gold Package — 6 Nights, 7 Days',
     tagline: 'The whole Caribbean week. Yacht, hotel, and a speedboat on the house.',
@@ -177,14 +183,18 @@ export const categories = [
   { id: 'comfort', label: 'Comfort & Care', blurb: 'The details that make a long day easy.', photo: '/media/knotty-cockpit-wide' },
 ]
 
-// The gallery on the public page, in the order it reads best.
+// The gallery on the public page, in the order it reads best. `boat` labels
+// each frame so nobody has to guess which vessel they are looking at.
 export const gallery = [
-  { src: '/media/knotty-stern', caption: 'Knotty at the dock in French Harbour, tender ready on the teak platform.' },
-  { src: '/media/knotty-cockpit-wide', caption: 'The shaded cockpit — where most of a charter day actually gets spent.' },
-  { src: '/media/knotty-cockpit-table', caption: 'Teak table set for lunch, helm behind it.' },
-  { src: '/media/knotty-helm', caption: 'Helm and wet bar. Ice, sink and the drinks within arm’s reach.' },
-  { src: '/media/knotty-dinner-night', caption: 'Dinner aboard after dark, with the harbour lights behind you.' },
-  { src: '/media/knotty-cabin-night', caption: 'The master stateroom, turned down for an overnight charter.' },
+  { src: '/media/lilknotty-running', boat: "Li'l Knotty", caption: 'On plane off the south shore. This is what most of the speedboat day looks like.' },
+  { src: '/media/knotty-stern', boat: 'Knotty', caption: 'Knotty at the dock in French Harbour, tender ready on the teak platform.' },
+  { src: '/media/knotty-cockpit-wide', boat: 'Knotty', caption: 'The shaded cockpit — where most of a charter day actually gets spent.' },
+  { src: '/media/knotty-cockpit-table', boat: 'Knotty', caption: 'Teak table set for lunch, helm behind it.' },
+  { src: '/media/knotty-helm', boat: 'Knotty', caption: 'Helm and wet bar. Ice, sink and the drinks within arm’s reach.' },
+  { src: '/media/knotty-dinner-night', boat: 'Knotty', caption: 'Dinner aboard after dark, with the harbour lights behind you.' },
+  { src: '/media/knotty-cabin-night', boat: 'Knotty', caption: 'The master stateroom, turned down for an overnight charter.' },
+  { src: '/media/lilknotty-marina', boat: "Li'l Knotty", caption: 'Twin 200 hp Suzukis and a shark on the hull, tied up at the marina.' },
+  { src: '/media/lilknotty-dusk', boat: "Li'l Knotty", caption: 'Dusk at the dock. Console lit, flag up, ready for the morning.' },
 ]
 
 const extra = (id, category, emoji, name, price, unit, description, leadTimeHours = 48) => ({

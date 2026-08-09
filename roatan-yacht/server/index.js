@@ -12,6 +12,9 @@ import * as notify from './notify.js'
 const here = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
 
+// Pick the storage backend before the first request can arrive.
+await store.init()
+
 // Stripe signs the raw body, so the webhook route has to see it before any
 // JSON parsing happens.
 app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }))
@@ -121,7 +124,7 @@ app.post('/api/bookings', wrap(async (req, res) => {
     return fail(res, 409, 'That boat was just booked for those dates. Pick another date.', 'date')
   }
 
-  const ref = store.nextRef('booking')
+  const ref = await store.nextRef('booking')
   const booking = {
     id: `bk_${crypto.randomUUID()}`,
     ref,
@@ -333,7 +336,12 @@ app.get('/api/admin/data', (req, res) => {
     blackouts: store.table('blackouts'),
     bookings: [...store.table('bookings')].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     invoices: [...store.table('invoices')].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    system: { writable: store.isWritable(), paymentMode: payments.mode(), emailMode: notify.emailMode() },
+    system: {
+      writable: store.isWritable(),
+      backend: store.backend(),
+      paymentMode: payments.mode(),
+      emailMode: notify.emailMode(),
+    },
   })
 })
 
@@ -368,7 +376,7 @@ app.post('/api/admin/invoices', wrap(async (req, res) => {
 
   const invoice = {
     id: `inv_${crypto.randomUUID()}`,
-    number: store.nextRef('invoice'),
+    number: await store.nextRef('invoice'),
     customer: {
       name: (customer.name || '').trim(),
       email: String(customer.email).trim().toLowerCase(),
@@ -476,7 +484,13 @@ app.get('/api/admin/stats', (req, res) => {
 })
 
 app.get('/api/health', (req, res) =>
-  ok(res, { service: 'roatan-yacht-getaways', paymentMode: payments.mode(), writable: store.isWritable() }),
+  ok(res, {
+    service: 'roatan-yacht-getaways',
+    backend: store.backend(),
+    paymentMode: payments.mode(),
+    emailMode: notify.emailMode(),
+    writable: store.isWritable(),
+  }),
 )
 
 const PORT = process.env.PORT || 3000

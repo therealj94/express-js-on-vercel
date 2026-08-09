@@ -82,6 +82,12 @@ function loadState() {
   }
 }
 
+/** wa.me wants digits only; the settings hold it the way a human writes it. */
+function waLink(text) {
+  const digits = String(catalog?.settings?.whatsapp || '').replace(/\D/g, '')
+  return digits ? `https://wa.me/${digits}?text=${encodeURIComponent(text)}` : null
+}
+
 /* ------------------------------------------------------------------ api */
 
 async function api(path, options = {}) {
@@ -539,8 +545,11 @@ function renderGallery() {
       const fig = document.createElement('figure')
       fig.className = i === 0 ? 'wide' : ''
       fig.innerHTML = `
-        <img src="${g.src}-card.jpg" alt="${esc(g.caption)}" loading="lazy" width="1400" height="900">
-        <figcaption>${esc(g.caption)}</figcaption>`
+        <img src="${g.src}-card.jpg" alt="${esc(g.caption)}" loading="lazy" width="900" height="600">
+        <figcaption>
+          ${g.boat ? `<span class="chip signal" style="margin-right:7px">${esc(g.boat)}</span>` : ''}
+          ${esc(g.caption)}
+        </figcaption>`
       return fig
     }),
   )
@@ -920,6 +929,18 @@ async function boot() {
 
   $('footContact').textContent = catalog.settings.brand
   $('footDeparture').textContent = catalog.settings.departurePoint
+
+  const ask = waLink('Hi! I have a question about a private charter in Roatán.')
+  for (const id of ['waFooter', 'waAsk']) {
+    const el = $(id)
+    if (!el) continue
+    if (ask) {
+      el.href = ask
+      el.textContent = `WhatsApp ${catalog.settings.whatsapp}`
+    } else {
+      el.classList.add('hidden')
+    }
+  }
 
   renderOccasions()
   renderVessels()

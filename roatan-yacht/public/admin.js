@@ -68,8 +68,12 @@ async function start() {
   $('signOut').classList.remove('hidden')
 
   const notes = []
-  if (!data.system.writable) {
-    notes.push('<div class="notice"><strong>Changes are not being saved to disk.</strong><span class="small">This server has a read-only filesystem, so edits disappear when it restarts. Point DATA_DIR at a writable folder, or connect a database.</span></div>')
+  if (data.system.backend === 'postgres') {
+    notes.push('<div class="notice good"><strong>Connected to the database.</strong><span class="small">Everything you change here is saved for good and shared across servers.</span></div>')
+  } else if (!data.system.writable) {
+    notes.push('<div class="notice"><strong>Changes are not being saved anywhere.</strong><span class="small">This server has a read-only filesystem and no database. Edits will disappear when it restarts — set DATABASE_URL before taking real bookings.</span></div>')
+  } else {
+    notes.push('<div class="notice"><strong>Running on a local file, not a database.</strong><span class="small">Fine for trying things out on one machine. Set DATABASE_URL before going live, or a second server will not see these edits.</span></div>')
   }
   if (data.system.emailMode !== 'resend') {
     notes.push('<div class="notice"><strong>Emails are not going out.</strong><span class="small">No RESEND_API_KEY is set, so confirmations are written to the server log instead of sent. Bookings still work — nobody gets a receipt.</span></div>')

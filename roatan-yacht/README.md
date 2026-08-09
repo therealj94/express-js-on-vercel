@@ -36,6 +36,7 @@ demoable before the Stripe account exists.
 | Variable | Purpose |
 | --- | --- |
 | `ADMIN_PASSWORD` | Admin sign-in. Set this. |
+| `DATABASE_URL` | Postgres. Set this in production — see below |
 | `STRIPE_SECRET_KEY` | Switches on card payments and invoice payment links |
 | `STRIPE_WEBHOOK_SECRET` | Required to mark bookings paid automatically |
 | `RESEND_API_KEY` | Sends confirmations and invoices for real. Without it they print to the log |
@@ -64,7 +65,8 @@ server/
   pricing.js     the only place a total is calculated
   payments.js    payment provider seam — Stripe today, PayPal drops in beside it
   notify.js      email and WhatsApp — Resend when configured, the log when not
-  store.js       storage seam — JSON file today, Postgres later
+  store.js       storage seam — picks the backend, keeps reads synchronous
+  store-postgres.js  Postgres backend, used whenever DATABASE_URL is set
   seed-data.js   the five real Rezdy products, the extras catalog, the bundles
 public/          the guest app and the admin, no build step
 ```
@@ -85,9 +87,10 @@ Three rules the code follows:
 These are fine for a demo and for a first quiet week. They are not fine for a
 busy season, and each one is a small, contained job:
 
-1. **Storage is a JSON file.** On Vercel's serverless filesystem writes do not
-   persist — the admin shows a red banner when it detects this. Move `store.js`
-   to Postgres (Supabase) before taking real money.
+1. **Set `DATABASE_URL` before going live.** With it, the app runs on Postgres
+   and everything survives restarts and multiple servers. Without it, it falls
+   back to a JSON file — fine on one machine, useless on Vercel, where the
+   filesystem resets. The admin says which one is running.
 2. **Admin sessions live in memory.** They reset when the server restarts, and
    across multiple serverless instances a sign-in may not stick. Fine on a single
    long-running host; needs a signed cookie or a session table otherwise. Login
@@ -105,8 +108,24 @@ busy season, and each one is a small, contained job:
 6. **English only.** The copy is written in English on purpose; a Spanish
    translation is a straightforward addition when you want it.
 
+## Storage
+
+`store.js` picks a backend at boot:
+
+- **`DATABASE_URL` set** → Postgres. One `records` table, one row per record,
+  the record itself in JSONB. The catalog is still finding its shape, and a
+  migration for every new field on an extra is a bad trade. Booking and invoice
+  numbers come from a database counter, so two servers cannot hand two guests
+  the same reference. If the database is unreachable at boot the app still
+  starts on the JSON file and says so loudly in the log.
+- **No `DATABASE_URL`** → a JSON file under `DATA_DIR`. Zero setup, good for
+  development, gone on the next serverless cold start.
+
+Reads are synchronous from an in-memory mirror either way; writes are batched
+and flushed. Any hosted Postgres works — Neon, Supabase, Railway, RDS.
+
 ## Deploying
 
 `vercel.json` in this folder deploys the app standalone. Set the environment
-variables in the Vercel dashboard, and read limit #1 above before pointing a
-real domain at it.
+variables in the Vercel dashboard — `DATABASE_URL` and `ADMIN_PASSWORD` at
+minimum — and read the limits above before pointing a real domain at it.
