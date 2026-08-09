@@ -10,6 +10,11 @@
   --linea2:rgba(201,169,97,.14); --oro:#C9A961; --oroLt:#EAD79C; --oroHi:#F8EFCF;
   --cyan:#4FD8E0; --txt:#F1EAD6; --mut:#9BB6B2; --faint:#5d7d7a;
   --ok:#3ED9A0; --warn:#F5B62E; --bad:#F0776B;
+  /* Una serif de alto contraste, del sistema y sin descargas: es la letra de
+     un certificado de ensayo, y aquí lo que se está declarando es respaldo en
+     oro. Se usa SOLO en las cifras del sello y en el título de una ficha; el
+     resto sigue en la sans, que es la que se lee de un vistazo. */
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",ui-serif,Georgia,serif;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden}
@@ -33,9 +38,13 @@ header{
   pointer-events:none;
 }
 header > *{pointer-events:auto}
-.marca b{font-size:15px;letter-spacing:.01em;display:block}
+.marca b{font-family:var(--serif);font-size:19px;font-weight:400;
+  letter-spacing:.005em;display:block;line-height:1.05}
 .marca span{font-size:9.5px;color:var(--faint);letter-spacing:.2em;text-transform:uppercase}
 .marca b em{font-style:italic;color:var(--oro)}
+/* El subtítulo pasa a decir de qué cadena se trata: «el cerebro del
+   ecosistema» era una etiqueta bonita que no informaba de nada. */
+.marca span{white-space:nowrap}
 .vivo{
   display:flex;align-items:center;gap:7px;margin-left:auto;
   background:var(--panel);border:1px solid var(--linea);border-radius:999px;
@@ -107,7 +116,85 @@ header > *{pointer-events:auto}
 }
 #ayuda b{color:var(--mut)}
 
+/* ── el sello ────────────────────────────────────────────────────────────
+   La página abría en puntos: quien la miraba veía un grafo bonito y no sabía
+   qué tenía delante. Esto lo dice antes que nada, con el formato de la marca
+   que va estampada en un lingote — filete, cifra grande, ley debajo.
+
+   No bloquea: se puede girar el cerebro con el sello puesto, y se va solo al
+   primer gesto o a los cinco segundos. Queda un botón para volver a verlo. */
+#sello{
+  position:fixed;inset:0;z-index:11;display:grid;place-items:center;
+  pointer-events:none;background:rgba(2,9,15,.72);
+  backdrop-filter:blur(3px);
+  transition:opacity .7s ease;
+}
+#sello.ido{opacity:0}
+/* El cartucho lleva su propio suelo. La primera versión flotaba sobre un velo
+   y el grafo se veía a través del texto: ilegible, y encima parecía un fallo.
+   Un certificado es un objeto, no una transparencia. */
+.cartucho{
+  text-align:center;padding:32px 46px;
+  background:linear-gradient(180deg,rgba(10,32,40,.97),rgba(4,16,22,.97));
+  border:1px solid var(--linea);border-radius:4px;
+  box-shadow:0 30px 90px rgba(0,0,0,.6),inset 0 1px 0 rgba(201,169,97,.16);
+  animation:surgir .9s cubic-bezier(.2,.8,.3,1) both;
+}
+.cartucho .casa{
+  font-size:10px;letter-spacing:.42em;text-transform:uppercase;
+  color:var(--oro);margin-bottom:18px;
+}
+.cartucho .cifra{
+  font-family:var(--serif);font-size:clamp(46px,9vw,86px);line-height:.94;
+  color:var(--oroHi);font-variant-numeric:tabular-nums;
+  text-shadow:0 0 44px rgba(201,169,97,.34);
+  /* Se reserva el alto de la cifra desde el principio para que al llegar el
+     número no salte todo el cartucho; el texto de espera va centrado dentro
+     de ese hueco en vez de flotar en el borde de arriba. */
+  min-height:1em;display:flex;align-items:center;justify-content:center;
+}
+/* Mientras la cadena no responde se dice qué se está esperando. Un guion del
+   tamaño de la cifra se lee como una barra suelta, no como «cargando». */
+.cartucho .cifra i{
+  font-style:normal;font-family:inherit;font-size:15px;letter-spacing:.06em;
+  color:var(--faint);text-shadow:none;
+}
+.cartucho .ley{
+  font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--mut);margin-top:12px;
+}
+.cartucho .ensayo{
+  margin-top:20px;padding-top:16px;border-top:1px solid var(--linea2);
+  display:flex;gap:26px;justify-content:center;flex-wrap:wrap;
+}
+.cartucho .ensayo div{min-width:58px}
+.cartucho .ensayo b{
+  display:block;font-family:var(--serif);font-size:23px;color:var(--txt);
+  font-variant-numeric:tabular-nums;font-weight:400;
+}
+.cartucho .ensayo span{
+  font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
+}
+@keyframes surgir{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* El botón para volver a verlo, en la barra de arriba. */
+#verSello{
+  background:var(--panel);border:1px solid var(--linea);border-radius:999px;
+  padding:6px 13px;font-size:11.5px;color:var(--oro);backdrop-filter:blur(8px);
+}
+#verSello:hover{border-color:var(--oro)}
+
+@media(prefers-reduced-motion:reduce){
+  .cartucho{animation:none}
+  #sello{transition:none}
+}
+
 @media(max-width:820px){
+  .cartucho{padding:22px 24px}
+  .cartucho .ensayo{gap:16px}
+  /* La serif del logo partía «orden global» en dos líneas y descuadraba la
+     barra entera en un teléfono estrecho. */
+  .marca b{font-size:16px;white-space:nowrap}
   #grupos{display:none}
   #grupos.movil{display:block;top:60px;left:14px;right:14px;width:auto;max-height:38vh}
   #ficha{right:0;left:0;bottom:0;top:auto;width:auto;max-width:none;border-radius:16px 16px 0 0;
@@ -123,11 +210,27 @@ header > *{pointer-events:auto}
 
 <canvas id="lienzo"></canvas>
 
+<!-- Lo primero que se ve: qué es esto y qué tamaño tiene. -->
+<div id="sello">
+  <div class="cartucho">
+    <div class="casa">Orden Global · Cadena 8532</div>
+    <div class="cifra" id="sBloques"><i>leyendo la cadena…</i></div>
+    <div class="ley" id="sLey">bloques firmados en cadena propia</div>
+    <div class="ensayo">
+      <div><b id="sNodos">—</b><span>Nodos</span></div>
+      <div><b id="sMonedas">—</b><span>Monedas</span></div>
+      <div><b id="sApps">—</b><span>Apps y webs</span></div>
+      <div><b id="sPiezas">—</b><span>Piezas</span></div>
+    </div>
+  </div>
+</div>
+
 <header>
   <div class="marca">
     <b>orden <em>global</em></b>
-    <span>el cerebro del ecosistema</span>
+    <span>el ecosistema · cadena 8532</span>
   </div>
+  <button id="verSello" onclick="abrirSello()" title="El resumen de lo que hay">Sello</button>
   <input id="buscar" placeholder="Buscar…" autocomplete="off" spellcheck="false">
   <div class="vivo" id="vivo"><span class="pulso"></span><span id="vivoTxt">conectando…</span></div>
 </header>
@@ -393,15 +496,32 @@ function dibujar() {
 
     // Halo de los que están en primer plano: da la sensación de profundidad
     // sin necesidad de sombras de verdad.
+    //
+    // El halo NO es igual para todos, y esa es la diferencia entre un mapa que
+    // se lee y uno que parece confeti. Antes todo brillaba lo mismo y con trece
+    // capas encendidas a la vez no había nada que llevara la vista. Ahora el
+    // brillo lo marca lo que sostiene al ecosistema —la cadena, sus nodos y las
+    // monedas— y el resto acompaña. No es decoración: es la jerarquía real.
+    const cimiento = n.g === 'cadena' || n.g === 'token' || n.g === 'nodo';
     if (prof > 0.85 && vivo) {
-      ctx.globalAlpha = vivo ? 0.16 : 0.04;
+      ctx.globalAlpha = cimiento ? 0.26 : 0.13;
       ctx.fillStyle = color;
-      ctx.beginPath(); ctx.arc(n.px, n.py, r * 2.5, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(n.px, n.py, r * (cimiento ? 3.4 : 2.3), 0, 7); ctx.fill();
       ctx.globalAlpha = 1;
     }
 
     ctx.fillStyle = color;
     ctx.beginPath(); ctx.arc(n.px, n.py, r, 0, 7); ctx.fill();
+
+    // Un filo claro en las piezas grandes del cimiento: separa la moneda del
+    // halo cuando varias caen juntas, que es donde antes se fundían en una
+    // mancha dorada sin forma.
+    if (cimiento && vivo && r > 5 && prof > 0.8) {
+      ctx.globalAlpha = Math.min(0.75, (prof - 0.8) * 3);
+      ctx.strokeStyle = '#F8EFCF'; ctx.lineWidth = 0.9;
+      ctx.beginPath(); ctx.arc(n.px, n.py, r, 0, 7); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
 
     if (n === sel) {
       ctx.strokeStyle = '#F8EFCF'; ctx.lineWidth = 2;
@@ -755,6 +875,46 @@ function validadoresDe(extraData) {
 
 const nf = (n) => Number(n).toLocaleString('es');
 
+/* ── El sello ─────────────────────────────────────────────────────────────
+   Las cifras salen del mapa y de la cadena, nunca escritas a mano: el día que
+   se sume una moneda o un nodo, esto se actualiza solo. La altura llega tarde
+   —hay que preguntarle a la cadena— así que arranca con un guion y se rellena
+   cuando responde, en vez de enseñar un cero que sería mentira. */
+let selloVisto = false;
+
+function contarGrupo(g) {
+  return NODOS.filter((n) => n.g === g).length;
+}
+
+function pintarSello() {
+  const poner = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  poner('sNodos', contarGrupo('nodo'));
+  poner('sMonedas', contarGrupo('token'));
+  poner('sApps', contarGrupo('app'));
+  // Todas las piezas del mapa: es la medida honesta de cuánto hay montado.
+  poner('sPiezas', NODOS.length);
+}
+
+function cerrarSello() {
+  if (selloVisto) return;
+  selloVisto = true;
+  const e = document.getElementById('sello');
+  if (!e) return;
+  e.classList.add('ido');
+  setTimeout(() => { e.style.display = 'none'; }, 800);
+}
+
+function abrirSello() {
+  const e = document.getElementById('sello');
+  if (!e) return;
+  selloVisto = false;
+  e.style.display = 'grid';
+  // El navegador tiene que ver el display antes que el cambio de opacidad, o
+  // no hay transición y el sello aparece de golpe.
+  requestAnimationFrame(() => e.classList.remove('ido'));
+  setTimeout(cerrarSello, 5000);
+}
+
 async function traerCadena() {
   const [alturaHex, peersHex, bloque] = await Promise.all([
     rpc('eth_blockNumber'), rpc('net_peerCount'), rpc('eth_getBlockByNumber', ['latest', false]),
@@ -784,6 +944,8 @@ async function traerCadena() {
       + `Hay ${parseInt(peersHex, 16) + 1} nodos en la red, pero los demás solo sincronizan y sirven RPC — no firman. `
       + 'Es centralización real, no de papel. Ponerlos a validar mueve tesorería: necesita la Junta.';
   }
+  const cifra = document.getElementById('sBloques');
+  if (cifra) cifra.textContent = nf(altura);
   return { altura, peers: parseInt(peersHex, 16), vals: vals.length };
 }
 
@@ -856,6 +1018,21 @@ async function refrescar() {
 tamano();
 encajar();
 requestAnimationFrame(bucle);
+
+// El sello se pinta con lo que ya se sabe y se retira solo. Cualquier gesto lo
+// cierra antes: quien ya sabe lo que hay quiere el mapa, no el resumen.
+pintarSello();
+if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  // Sin animación no hay «momento»: se deja el sello quieto y que lo cierre
+  // quien mire, en vez de que desaparezca solo sin haberse podido leer.
+  document.getElementById('sello').addEventListener('click', cerrarSello);
+} else {
+  setTimeout(cerrarSello, 5000);
+}
+for (const ev of ['pointerdown', 'wheel', 'keydown', 'touchstart']) {
+  addEventListener(ev, cerrarSello, { once: true, passive: true });
+}
+
 refrescar();
 setInterval(refrescar, 30000);
 </script>
