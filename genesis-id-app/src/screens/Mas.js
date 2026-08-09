@@ -2,14 +2,32 @@
 // servidor y actualizaciones de la app.
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { C } from '../theme';
 import { Card, Boton, BotonPlano, Campo, Cabecera, Dato, hap, useToast } from '../ui';
 import { Icon } from '../icons';
 import * as api from '../api';
 import { puedeActualizar, buscarActualizacion, aplicarActualizacion, updateEnUso } from '../updates';
 
-export function Mas({ operador, salir, avisar }) {
+/**
+ * Las secciones que no caben en la barra de pestañas.
+ *
+ * La barra tiene seis y ya va justa en un teléfono estrecho; meter cuatro más
+ * las volvería ilegibles. Estas son las que la web tenía y el teléfono no, así
+ * que entran por aquí en vez de quedarse fuera de la app.
+ */
+const SECCIONES = [
+  { clave: 'directorio', nombre: 'Directorio', icono: 'people',
+    sub: 'todas las personas del ecosistema, sus billeteras y saldos' },
+  { clave: 'negocios', nombre: 'Negocios', icono: 'storefront',
+    sub: 'verificación de empresas (KYB), beneficiarios y papeles' },
+  { clave: 'operadores', nombre: 'Operadores', icono: 'person-add',
+    sub: 'quién entra al panel y con qué permisos' },
+  { clave: 'aplicaciones', nombre: 'Aplicaciones', icono: 'key',
+    sub: 'las apps del ecosistema y sus claves de API' },
+];
+
+export function Mas({ operador, salir, avisar, irASeccion }) {
   const toast = useToast();
   const [listas, setListas] = useState(null);
   const [bitacora, setBitacora] = useState(null);
@@ -19,6 +37,8 @@ export function Mas({ operador, salir, avisar }) {
   const [claveActual, setClaveActual] = useState('');
   const [claveNueva, setClaveNueva] = useState('');
   const [update, setUpdate] = useState(null); // null | 'buscando' | 'lista' | 'aldia'
+  const [busqueda, setBusqueda] = useState('');
+  const [hallazgos, setHallazgos] = useState(null);
 
   const esAdmin = (operador?.permisos || []).includes('*');
 
@@ -44,6 +64,28 @@ export function Mas({ operador, salir, avisar }) {
     api.listas().then((x) => { if (!x.error) setListas(x); });
   }
 
+  async function traerGafi() {
+    hap(); setOcupado(true);
+    toast('Bajando las listas del GAFI…');
+    const r = await api.traerGafi();
+    setOcupado(false);
+    if (r.error) { toast(r.error, true); return; }
+    toast(`GAFI al día: plenaria del ${r.fecha || '—'}.`);
+    api.listas().then((x) => { if (!x.error) setListas(x); });
+  }
+
+  // Buscar a mano en las listas antes de aceptar a alguien: es la consulta que
+  // hace un operador cuando le llega un nombre por teléfono y quiere saber si
+  // vale la pena siquiera abrir el expediente.
+  async function buscarEnListas() {
+    if (busqueda.trim().length < 3) { toast('Escribí al menos 3 letras.', true); return; }
+    hap(); setOcupado(true);
+    const r = await api.buscarEnListas(busqueda.trim());
+    setOcupado(false);
+    if (r.error) { toast(r.error, true); return; }
+    setHallazgos(r);
+  }
+
   async function cambiarClave() {
     if (claveNueva.length < 12) { toast('La contraseña nueva necesita al menos 12 caracteres.', true); return; }
     hap(); setOcupado(true);
@@ -65,8 +107,24 @@ export function Mas({ operador, salir, avisar }) {
 
   return (
     <View style={{ flex: 1 }}>
-      <Cabecera titulo="Más" sub="listas · bitácora · cuenta" />
+      <Cabecera titulo="Más" sub="directorio · negocios · listas · cuenta" />
       <ScrollView contentContainerStyle={{ padding: 18, paddingTop: 4, paddingBottom: 40 }}>
+
+        {/* ── el resto del panel ─────────────────────────────────────────── */}
+        <Card>
+          <Text style={st.cardT}>Secciones</Text>
+          {SECCIONES.map((s) => (
+            <Pressable key={s.clave} onPress={() => { hap(); irASeccion(s.clave); }}
+              style={st.seccion}>
+              <Icon name={s.icono} size={19} color={C.gold} />
+              <View style={{ flex: 1 }}>
+                <Text style={st.seccionN}>{s.nombre}</Text>
+                <Text style={st.seccionS}>{s.sub}</Text>
+              </View>
+              <Icon name="chevron-forward" size={16} color={C.txt3} />
+            </Pressable>
+          ))}
+        </Card>
 
         {/* ── operador ───────────────────────────────────────────────────── */}
         <Card>
@@ -109,8 +167,52 @@ export function Mas({ operador, salir, avisar }) {
                 Baja la lista SDN oficial, la guarda y vuelve a tamizar todas las
                 identidades. Lo que aparezca abre caso solo.
               </Text>
+              <View style={{ marginTop: 10 }}>
+                <BotonPlano title="Actualizar países del GAFI" icon="earth"
+                  onPress={traerGafi} disabled={ocupado} />
+              </View>
             </View>
           )}
+
+          {/* Buscar a mano, sin abrir un expediente */}
+          <View style={{ marginTop: 14, borderTopWidth: 1, borderTopColor: C.line2, paddingTop: 12 }}>
+            <Text style={st.cardT}>Buscar en las listas</Text>
+            <Campo label="Nombre o alias" value={busqueda} onChangeText={setBusqueda}
+              autoCapitalize="words" placeholder="Al menos 3 letras" />
+            <BotonPlano title={ocupado ? 'Buscando…' : 'Buscar'} icon="search"
+              onPress={buscarEnListas} disabled={ocupado} style={{ alignSelf: 'flex-start' }} />
+
+            {hallazgos ? (
+              !hallazgos.coincidencias?.length ? (
+                <View style={st.limpio}>
+                  <Icon name="checkmark-circle" size={16} color={C.ok} />
+                  <Text style={st.mut}>
+                    Sin coincidencias en {(listas?.estado?.registros ?? 0).toLocaleString('es')} registros.
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={[st.mut, { color: C.warn, marginTop: 10, fontWeight: '700' }]}>
+                    {hallazgos.coincidencias.length} coincidencia
+                    {hallazgos.coincidencias.length > 1 ? 's' : ''}
+                  </Text>
+                  {hallazgos.coincidencias.slice(0, 20).map((c, i) => (
+                    <View key={i} style={st.entrada}>
+                      <Text style={st.entradaQue}>{c.nombre}</Text>
+                      <Text style={st.entradaQuien}>
+                        {[c.fuente, c.programa, c.tipo].filter(Boolean).join(' · ')}
+                        {c.puntaje != null ? ` · parecido ${Math.round(c.puntaje * 100)}%` : ''}
+                      </Text>
+                    </View>
+                  ))}
+                  <Text style={[st.mut, { marginTop: 8 }]}>
+                    Una coincidencia aquí no es una condena: hay homónimos. Sirve
+                    para saber que ese expediente necesita mirarse despacio.
+                  </Text>
+                </>
+              )
+            ) : null}
+          </View>
         </Card>
 
         {/* ── bitácora ───────────────────────────────────────────────────── */}
@@ -169,6 +271,13 @@ export function Mas({ operador, salir, avisar }) {
 
 const st = StyleSheet.create({
   cardT: { color: C.txt, fontWeight: '700', fontSize: 13.5, marginBottom: 8 },
+  seccion: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11,
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)',
+  },
+  seccionN: { color: C.txt, fontSize: 14, fontWeight: '600' },
+  seccionS: { color: C.txt3, fontSize: 11.5, lineHeight: 16, marginTop: 1 },
+  limpio: { flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 10 },
   mut: { color: C.txt3, fontSize: 12, lineHeight: 17, flex: 1 },
   cadena: { flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 8, marginBottom: 6 },
   entrada: { paddingVertical: 6, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },

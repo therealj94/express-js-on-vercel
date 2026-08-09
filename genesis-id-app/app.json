@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "owner": "vetawallet",
     "runtimeVersion": {
-      "policy": "sdkVersion"
+      "policy": "fingerprint"
     },
     "orientation": "portrait",
     "icon": "./assets/icon.png",

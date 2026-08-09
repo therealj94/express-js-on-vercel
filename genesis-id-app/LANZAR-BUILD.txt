@@ -2,4 +2,20 @@ Tocá este archivo (cambiá el número de abajo) y hacé push: eso lanza la
 compilación del APK en EAS con el perfil "preview". El enlace de descarga
 queda en el resumen del workflow "Genesis ID — compilar APK".
 
-build: 2 — suma la pestaña Cerebro (react-native-webview es dependencia nativa, no llega por aire)
+CUÁNDO HACE FALTA UN APK NUEVO Y CUÁNDO NO
+
+Los cambios de JavaScript —pantallas, textos, arreglos— llegan solos por aire
+y no hace falta tocar nada de aquí. Solo hace falta recompilar cuando cambia
+algo NATIVO: una dependencia nueva con código propio, un permiso de Android,
+el icono o la versión del SDK.
+
+Cómo saberlo sin adivinar: desde `genesis-id-app/` corré
+
+    npx @expo/fingerprint fingerprint:generate
+
+Esa huella es la que decide a qué APK le llega cada actualización. Si cambió
+respecto al build anterior, hay que compilar; si no, con empujar alcanza.
+
+build: 3 — el directorio, negocios, operadores y aplicaciones en la app, y la
+huella de runtime pasa a "fingerprint" (ver el commit: con la política vieja
+un APK sin el módulo nativo recibía código que no podía ejecutar)

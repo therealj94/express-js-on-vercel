@@ -26,6 +26,12 @@ import { FichaIdentidad } from './src/screens/FichaIdentidad';
 import { Casos } from './src/screens/Casos';
 import { FichaCaso } from './src/screens/FichaCaso';
 import { Mas } from './src/screens/Mas';
+import { Directorio } from './src/screens/Directorio';
+import { FichaPersona } from './src/screens/FichaPersona';
+import { Negocios } from './src/screens/Negocios';
+import { FichaNegocio } from './src/screens/FichaNegocio';
+import { Operadores } from './src/screens/Operadores';
+import { Aplicaciones } from './src/screens/Aplicaciones';
 
 const PESTANAS = [
   { clave: 'resumen', nombre: 'Resumen', icono: 'pulse' },
@@ -41,8 +47,13 @@ function Cuerpo() {
   const [listo, setListo] = useState(false);
   const [operador, setOperador] = useState(null);
   const [pestana, setPestana] = useState('resumen');
-  // La ficha abierta encima de la pestaña: { tipo: 'identidad'|'caso', id }
+  // La ficha abierta encima de la pestaña:
+  // { tipo: 'identidad'|'caso'|'persona'|'negocio', id }
   const [ficha, setFicha] = useState(null);
+  // Una sección abierta desde «Más» (directorio, negocios, operadores…). Se
+  // guarda aparte de la pestaña para que al volver se caiga en «Más» y no en
+  // el resumen, que es de donde no venías.
+  const [seccion, setSeccion] = useState(null);
   const [datosResumen, setDatosResumen] = useState(null);
   const [cargandoResumen, setCargandoResumen] = useState(false);
 
@@ -51,7 +62,9 @@ function Cuerpo() {
   // Al arrancar: restaurar sesión si la hay, y buscar update en segundo plano.
   useEffect(() => {
     // Cualquier 401 en cualquier pantalla trae a la app de vuelta al login.
-    api.enSesionVencida(() => { setOperador(null); setFicha(null); setPestana('resumen'); });
+    api.enSesionVencida(() => {
+      setOperador(null); setFicha(null); setSeccion(null); setPestana('resumen');
+    });
     (async () => {
       const haySesion = await api.cargarSesion();
       if (haySesion) {
@@ -88,7 +101,8 @@ function Cuerpo() {
 
   async function cerrarSesion() {
     await api.salir();
-    setOperador(null); setFicha(null); setPestana('resumen'); setDatosResumen(null);
+    setOperador(null); setFicha(null); setSeccion(null);
+    setPestana('resumen'); setDatosResumen(null);
   }
 
   if (!listo) return <View style={{ flex: 1, backgroundColor: C.bg }} />;
@@ -107,6 +121,21 @@ function Cuerpo() {
           <FichaCaso id={ficha.id} operador={operador}
             volver={() => { setFicha(null); refrescarResumen(); }}
             abrirIdentidad={(idn) => setFicha({ tipo: 'identidad', id: idn, desde: ficha.id })} />
+        ) : ficha?.tipo === 'persona' ? (
+          <FichaPersona email={ficha.id} avisar={avisar} volver={() => setFicha(null)} />
+        ) : ficha?.tipo === 'negocio' ? (
+          <FichaNegocio id={ficha.id} operador={operador} avisar={avisar}
+            volver={() => { setFicha(null); refrescarResumen(); }} />
+        ) : seccion === 'directorio' ? (
+          <Directorio avisar={avisar} volver={() => setSeccion(null)}
+            abrirPersona={(email) => setFicha({ tipo: 'persona', id: email })} />
+        ) : seccion === 'negocios' ? (
+          <Negocios avisar={avisar} volver={() => setSeccion(null)}
+            abrirNegocio={(id) => setFicha({ tipo: 'negocio', id })} />
+        ) : seccion === 'operadores' ? (
+          <Operadores operador={operador} avisar={avisar} volver={() => setSeccion(null)} />
+        ) : seccion === 'aplicaciones' ? (
+          <Aplicaciones avisar={avisar} volver={() => setSeccion(null)} />
         ) : pestana === 'resumen' ? (
           <Resumen datos={datosResumen} cargando={cargandoResumen}
             refrescar={refrescarResumen} operador={operador}
@@ -120,7 +149,8 @@ function Cuerpo() {
         ) : pestana === 'casos' ? (
           <Casos avisar={avisar} abrirCaso={(id) => setFicha({ tipo: 'caso', id })} />
         ) : (
-          <Mas operador={operador} salir={cerrarSesion} avisar={avisar} />
+          <Mas operador={operador} salir={cerrarSesion} avisar={avisar}
+            irASeccion={(s) => setSeccion(s)} />
         )}
       </View>
 
@@ -132,7 +162,13 @@ function Cuerpo() {
             const activa = pestana === p.clave;
             return (
               <Pressable key={p.clave} style={st.pestana}
-                onPress={() => { hap(); setPestana(p.clave); }}>
+                onPress={() => {
+                  hap();
+                  // Tocar una pestaña sale de la sección abierta: si no, se
+                  // pulsa «Resumen» y se sigue viendo el directorio encima.
+                  setSeccion(null);
+                  setPestana(p.clave);
+                }}>
                 <Icon name={p.icono} size={21} color={activa ? C.gold : C.txt3} />
                 <Text style={[st.pestanaTxt, activa && { color: C.gold }]}
                   numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>{p.nombre}</Text>

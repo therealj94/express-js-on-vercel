@@ -183,22 +183,82 @@ export function sesiones({ app, plataforma, pais, limite = 60 } = {}) {
 
 export const directorioResumen = () => llamar('GET', '/panel/directorio/resumen');
 
-export function directorio({ texto, app, conWallet, limite = 60, orden } = {}) {
+/**
+ * El padrón del ecosistema.
+ *
+ * Acepta los mismos filtros que la web. Los que se dejan sin poner NO se
+ * mandan: el servidor distingue «sin filtro» de «filtro en cero», y mandar
+ * `conSaldo=0` cuando nadie lo pidió esconde a media lista.
+ */
+export function directorio({
+  texto, app, pais, moneda, conWallet, conGid, conSaldo, nuncaEntro,
+  inactivosDias, registradoDias, saldoMin, orden, direccion, limite = 60, desde = 0,
+} = {}) {
   const q = new URLSearchParams();
+  const bool = (k, v) => { if (v !== undefined && v !== '') q.set(k, v ? '1' : '0'); };
   if (texto) q.set('texto', texto);
   if (app && app !== 'todas') q.set('app', app);
-  if (conWallet !== undefined) q.set('conWallet', conWallet ? '1' : '0');
+  if (pais) q.set('pais', pais);
+  if (moneda) q.set('moneda', moneda);
+  bool('conWallet', conWallet);
+  bool('conGid', conGid);
+  bool('conSaldo', conSaldo);
+  bool('nuncaEntro', nuncaEntro);
+  if (inactivosDias) q.set('inactivosDias', String(inactivosDias));
+  if (registradoDias) q.set('registradoDias', String(registradoDias));
+  if (saldoMin) q.set('saldoMin', String(saldoMin));
   if (orden) q.set('orden', orden);
+  if (direccion) q.set('direccion', direccion);
   q.set('limite', String(limite));
+  if (desde) q.set('desde', String(desde));
   return llamar('GET', `/panel/directorio?${q.toString()}`);
 }
 
 export const personaDirectorio = (email) => llamar('GET', `/panel/directorio/persona/${encodeURIComponent(email)}`);
+export const movimientosPersona = (email) =>
+  llamar('GET', `/panel/directorio/persona/${encodeURIComponent(email)}/movimientos`);
 /** Le pide al servidor que vuelva a leer los saldos de la cadena 8532. */
 export const refrescarSaldos = () => llamar('POST', '/panel/directorio/saldos', {});
+
+// ── Negocios (KYB) ──────────────────────────────────────────────────────────
+
+export function negocios({ estado } = {}) {
+  const q = new URLSearchParams();
+  if (estado) q.set('estado', estado);
+  return llamar('GET', `/panel/negocios?${q.toString()}`);
+}
+export const negocio = (id) => llamar('GET', `/panel/negocios/${id}`);
+export const recibirDocumento = (id, clave, referencia) =>
+  llamar('POST', `/panel/negocios/${id}/documento`, { clave, referencia });
+export const aprobarNegocio = (id, motivo, anulacion) =>
+  llamar('POST', `/panel/negocios/${id}/aprobar`, { motivo, anulacion });
+export const rechazarNegocio = (id, motivo) =>
+  llamar('POST', `/panel/negocios/${id}/rechazar`, { motivo });
+
+// ── Operadores y aplicaciones ───────────────────────────────────────────────
+//
+// Las dos piden permiso '*' en el servidor. La app igual las enseña a todo el
+// mundo y deja que el servidor conteste 403: esconder un botón no es un
+// control de acceso, y quien tiene el rol necesita verlo desde el teléfono.
+
+export const operadores = () => llamar('GET', '/panel/operadores');
+export const crearOperador = (datos) => llamar('POST', '/panel/operadores', datos);
+export const activarOperador = (id, activo) =>
+  llamar('POST', `/panel/operadores/${id}/activo`, { activo });
+
+export const aplicaciones = () => llamar('GET', '/panel/aplicaciones');
+export const crearAplicacion = (clave, nombre, alcances) =>
+  llamar('POST', '/panel/aplicaciones', { clave, nombre, alcances });
+export const rotarAplicacion = (id) => llamar('POST', `/panel/aplicaciones/${id}/rotar`, {});
+export const revocarAplicacion = (id) => llamar('POST', `/panel/aplicaciones/${id}/revocar`, {});
+
+// ── Listas de sanciones ─────────────────────────────────────────────────────
 
 export const listas = () => llamar('GET', '/panel/listas');
 export const recargarListas = () => llamar('POST', '/panel/listas/recargar', {});
 export const importarOfac = () => llamar('POST', '/panel/listas/ofac', {});
+export const traerGafi = () => llamar('POST', '/panel/listas/gafi', {});
+export const buscarEnListas = (q) =>
+  llamar('GET', `/panel/listas/buscar?q=${encodeURIComponent(q)}`);
 
 export const bitacora = (limite = 100) => llamar('GET', `/panel/bitacora?limite=${limite}`);

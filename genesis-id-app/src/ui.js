@@ -111,11 +111,20 @@ export function Kpi({ valor, etiqueta, color = C.goldHi, nota }) {
   );
 }
 
-export function Vacio({ icon = 'document-text', texto }) {
+/**
+ * El hueco cuando no hay nada que enseñar.
+ *
+ * Acepta dos formas: `texto` suelto, o `titulo` + `detalle`. La segunda existe
+ * porque un vacío bien explicado hace de ayuda —«el directorio está vacío»
+ * seguido de POR QUÉ y qué hacer— y meter las dos frases en una sola línea las
+ * volvía un párrafo gris que nadie lee.
+ */
+export function Vacio({ icon = 'document-text', texto, titulo, detalle }) {
   return (
     <View style={st.vacio}>
       <Icon name={icon} size={30} color={C.txt3} />
-      <Text style={st.vacioTxt}>{texto}</Text>
+      {titulo ? <Text style={st.vacioTit}>{titulo}</Text> : null}
+      {texto || detalle ? <Text style={st.vacioTxt}>{texto || detalle}</Text> : null}
     </View>
   );
 }
@@ -181,8 +190,9 @@ const st = StyleSheet.create({
   kpiV: { fontSize: 24, fontWeight: '800', fontVariant: ['tabular-nums'] },
   kpiL: { color: C.txt2, fontSize: 11, marginTop: 3 },
   kpiN: { color: C.txt3, fontSize: 10, marginTop: 3 },
-  vacio: { alignItems: 'center', paddingVertical: 42, gap: 10 },
-  vacioTxt: { color: C.txt3, fontSize: 12.5, textAlign: 'center', paddingHorizontal: 30 },
+  vacio: { alignItems: 'center', paddingVertical: 42, gap: 8 },
+  vacioTit: { color: C.txt2, fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  vacioTxt: { color: C.txt3, fontSize: 12.5, textAlign: 'center', paddingHorizontal: 30, lineHeight: 18 },
   cab: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: 18, paddingTop: 8, paddingBottom: 12,
