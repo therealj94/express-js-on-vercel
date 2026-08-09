@@ -220,6 +220,9 @@ export const extras = [
   extra('x_photographer', 'celebrate', '📸', 'Photographer (2 hours)', 250, 'flat', 'A local photographer aboard, edited gallery delivered within 72 hours.'),
   extra('x_drone', 'celebrate', '🚁', 'Drone footage', 180, 'flat', 'Aerial video of the boat, the reef and your group, edited to a short film.'),
   extra('x_music', 'celebrate', '🎶', 'Live guitar', 200, 'flat', 'A local guitarist aboard for two hours of the trip.'),
+  extra('x_playlist', 'celebrate', '🔊', 'Your playlist, our speakers', 0, 'flat', 'Send us your playlist before the trip and the boat is singing your songs when you step aboard. Free — music should be.', 24),
+  extra('x_banner', 'celebrate', '🎉', 'Birthday deck party', 95, 'flat', 'Banner, balloons and a properly embarrassing crew singalong at cake time.', 48),
+  extra('x_bottle_msg', 'celebrate', '💌', 'Message in a bottle', 30, 'flat', 'Write it aboard, seal it with wax, take it home — or let the sea have it. Your call.', 24),
 
   // Eat & Drink
   extra('x_lobster', 'eat_drink', '🦞', 'Lobster lunch', 65, 'per_person', 'Caribbean lobster grilled aboard, with plantain, rice and salad.'),
@@ -230,6 +233,11 @@ export const extras = [
   extra('x_wine_white', 'eat_drink', '🥂', 'White or rosé (bottle)', 55, 'flat', 'Sauvignon Blanc, Chardonnay or Provence rosé, served properly cold.', 24),
   extra('x_premium_bar', 'eat_drink', '🥃', 'Premium open bar', 40, 'per_person', 'Top-shelf rum, whiskey, gin and mixers for the whole trip.'),
   extra('x_bartender', 'eat_drink', '🍹', 'Cocktail bartender', 220, 'flat', 'A bartender aboard making frozen and classic cocktails to order.'),
+  extra('x_prosecco', 'eat_drink', '🍾', 'Prosecco (bottle)', 48, 'flat', 'Cold, dry and dangerous in the sun. Ask for two.', 24),
+  extra('x_michelada', 'eat_drink', '🍺', 'Michelada kit', 35, 'flat', 'Local beer, lime, spiced rim, and the crew\'s secret mix. The island cure for a hot afternoon.', 24),
+  extra('x_rum_tasting', 'eat_drink', '🥃', 'Rum & chocolate tasting', 55, 'per_person', 'Five Honduran rums, island chocolate, and the captain\'s opinions — included at no charge.'),
+  extra('x_ceviche', 'eat_drink', '🐟', 'Ceviche made on deck', 42, 'per_person', 'Caught in the morning, cured with lime in front of you. It does not get fresher.'),
+  extra('x_coco', 'eat_drink', '🥥', 'Cold coconuts', 25, 'flat', 'A cooler of young coconuts, machete-opened on deck. Straw included, rum optional.', 24),
 
   // Adventure
   extra('x_tubing', 'adventure', '🛟', 'Tubing session', 60, 'flat', 'Towable tube and safety gear, as many runs as your group can take.', 24),
@@ -240,6 +248,9 @@ export const extras = [
   extra('x_scuba', 'adventure', '🐠', 'Discover scuba (per diver)', 130, 'per_person', 'One guided dive on the reef with a certified instructor. No experience needed.', 72),
   extra('x_tender', 'adventure', '🛶', 'Tender island hop', 140, 'flat', 'Take the tender off the swim platform and land where the yacht cannot go — sandbars, mangrove cuts, an empty beach.'),
   extra('x_pigeon', 'adventure', '⛱️', 'Pigeon Cay beach stop', 120, 'flat', 'Add the sandbar and beach club stop to your route, entry included.', 24),
+  extra('x_lilypad', 'adventure', '🛟', 'Floating lily pad', 55, 'flat', 'A giant floating mat off the stern. Holds the whole group, guarantees at least one great photo of someone falling off.', 24),
+  extra('x_gopro', 'adventure', '🎥', 'Underwater camera', 65, 'flat', 'A GoPro aboard for the day, footage handed over on a drive before you step off.', 24),
+  extra('x_snorkel_tour', 'adventure', '🐢', 'Turtle spotting run', 90, 'flat', 'The captain\'s own route over the grass flats where the turtles feed. No promises — a very good record.', 24),
 
   // Comfort & Care
   extra('x_pickup', 'comfort', '🚐', 'Hotel or cruise pickup', 60, 'flat', 'Air-conditioned round-trip transfer between your hotel or the cruise terminal and the marina.', 24),
@@ -248,6 +259,8 @@ export const extras = [
   extra('x_towels', 'comfort', '🧺', 'Premium towels and shade', 35, 'flat', 'Oversized towels, extra umbrella and a cushioned bow setup.', 24),
   extra('x_cooler', 'comfort', '🧊', 'Extra cooler of drinks', 50, 'flat', 'A second stocked cooler of water, sodas and local beer.', 24),
   extra('x_wifi', 'comfort', '📶', 'WiFi aboard', 45, 'flat', 'Portable hotspot with island coverage for the trip.', 24),
+  extra('x_hangover', 'comfort', '🧃', 'Morning-after kit', 28, 'flat', 'Electrolytes, cold towels, dark sunglasses and zero judgement. For day two of the packages.', 24),
+  extra('x_robes', 'comfort', '🥽', 'His & hers robes', 40, 'flat', 'Soft robes for the cabin, yours to keep. Monogramming the boat\'s name, not yours — she earned it.', 48),
 ]
 
 export const bundles = [

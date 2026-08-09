@@ -16,6 +16,10 @@ const CARTS = [
   { name: 'speedboat, many guests', cart: { vesselId: 'v_speedboat_day', date: '2027-06-06', guests: 10, items: [{ extraId: 'x_scuba' }], bundleIds: ['b_family'] } },
   { name: 'multi-night package', cart: { vesselId: 'v_gold', date: '2027-06-10', nights: 6, guests: 4, items: [{ extraId: 'x_turndown' }], bundleIds: [] } },
   { name: 'copper minimum nights', cart: { vesselId: 'v_copper', date: '2027-07-01', nights: 4, guests: 2, items: [], bundleIds: ['b_anniversary'] } },
+  { name: 'tip 15% on a day trip', cart: { vesselId: 'v_yacht_day', date: '2027-08-01', guests: 4, items: [{ extraId: 'x_ceviche' }], bundleIds: [], tipPct: 15 } },
+  { name: 'tip 20% with a bundle', cart: { vesselId: 'v_speedboat_day', date: '2027-08-02', guests: 8, items: [{ extraId: 'x_lilypad' }], bundleIds: ['b_family'], tipPct: 20 } },
+  { name: 'tip capped at 30', cart: { vesselId: 'v_yacht_day', date: '2027-08-03', guests: 2, items: [], bundleIds: [], tipPct: 95 } },
+  { name: 'free extra (playlist)', cart: { vesselId: 'v_yacht_day', date: '2027-08-04', guests: 2, items: [{ extraId: 'x_playlist' }, { extraId: 'x_coco' }], bundleIds: [] } },
 ]
 
 let failures = 0
@@ -36,6 +40,7 @@ for (const { name, cart } of CARTS) {
   if (local.total !== server.total) diffs.push(`total ${local.total} vs ${server.total}`)
   if (local.subtotal !== server.subtotal) diffs.push(`subtotal ${local.subtotal} vs ${server.subtotal}`)
   if (local.deposit !== server.deposit) diffs.push(`deposit ${local.deposit} vs ${server.deposit}`)
+  if ((local.tip || 0) !== (server.tip || 0)) diffs.push(`tip ${local.tip} vs ${server.tip}`)
   if (local.lines.length !== server.lines.length) {
     diffs.push(`${local.lines.length} lines vs ${server.lines.length}`)
   } else {

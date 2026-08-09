@@ -16,6 +16,7 @@ import CheckoutScreen from './src/screens/CheckoutScreen'
 import BookingScreen, { remember } from './src/screens/BookingScreen'
 import SettingsScreen from './src/screens/SettingsScreen'
 import { spanDates } from './src/components/Calendar'
+import { LOADING_LINES } from './src/fun'
 
 const emptyCart = {
   vesselId: null, date: '', nights: 0, guests: 2,
@@ -172,7 +173,7 @@ function Shell() {
     return (
       <Centered c={c} insets={insets}>
         <ActivityIndicator color={c.signal} />
-        <Text style={{ fontFamily: mono, fontSize: 12, color: c.inkFaint }}>Loading the fleet…</Text>
+        <LoadingLine c={c} />
       </Centered>
     )
   }
@@ -184,7 +185,7 @@ function Shell() {
       {catalog.source === 'bundled' && screen !== 'settings' && (
         <Pressable onPress={() => setScreen('settings')} style={[styles.offline, { backgroundColor: c.signalSoft, borderBottomColor: c.signal, paddingTop: screen === 'fleet' ? insets.top + 6 : 6 }]}>
           <Text style={[styles.offlineText, { color: c.ink }]}>
-            Offline — showing the boats from this phone. Tap to set the booking server.
+            ⚓ Demo aboard — full experience, prices are estimates. Requests sail out by WhatsApp.
           </Text>
         </Pressable>
       )}
@@ -228,18 +229,23 @@ function Shell() {
       {screen === 'checkout' && quote && (
         <CheckoutScreen
           c={c} cart={cart} quote={quote} settings={catalog.settings} insets={insets}
+          onTip={(tipPct) => setCart((p) => ({ ...p, tipPct }))}
           onBooked={async (ref) => {
-            await remember(ref)
-            setBookedRef(ref)
             setCart(emptyCart)
             setQuote(null)
+            if (!ref) { setScreen('fleet'); return } // demo request: WhatsApp has it
+            await remember(ref)
+            setBookedRef(ref)
             setScreen('booking')
           }}
         />
       )}
 
       {screen === 'booking' && (
-        <BookingScreen c={c} initialRef={bookedRef} settings={catalog.settings} insets={insets} />
+        <BookingScreen
+          c={c} initialRef={bookedRef} celebrate={Boolean(bookedRef)}
+          settings={catalog.settings} insets={insets}
+        />
       )}
 
       {screen === 'settings' && (
@@ -263,6 +269,20 @@ function Shell() {
         </View>
       )}
     </View>
+  )
+}
+
+/** A slow carousel of crew excuses while the fleet loads. */
+function LoadingLine({ c }) {
+  const [i, setI] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setI((n) => n + 1), 1400)
+    return () => clearInterval(t)
+  }, [])
+  return (
+    <Text style={{ fontFamily: mono, fontSize: 12, color: c.inkFaint }}>
+      {LOADING_LINES[i % LOADING_LINES.length]}
+    </Text>
   )
 }
 

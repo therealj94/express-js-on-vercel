@@ -97,7 +97,7 @@ function applyCoupon(code, subtotal) {
  * Price a cart.
  * @param {{vesselId:string,date:string,nights?:number,guests:number,
  *          items?:Array<{extraId:string,qty?:number}>,bundleIds?:string[],
- *          couponCode?:string}} cart
+ *          couponCode?:string,tipPct?:number}} cart
  */
 export function quote(cart) {
   const settings = store.getSettings()
@@ -180,7 +180,13 @@ export function quote(cart) {
 
   const subtotal = round(lines.reduce((sum, l) => sum + l.amount, 0))
   const { discount, coupon } = applyCoupon(cart.couponCode, subtotal)
-  const total = round(subtotal - discount)
+
+  // Crew gratuity, chosen by the guest, applied to the discounted trip. Capped
+  // so a fat-fingered request can never triple a bill.
+  const tipPct = Math.min(Math.max(0, Number(cart.tipPct) || 0), 30)
+  const tip = round(((subtotal - discount) * tipPct) / 100)
+
+  const total = round(subtotal - discount + tip)
   const depositPct = settings.depositPct || 30
   const deposit = round((total * depositPct) / 100)
 
@@ -194,6 +200,8 @@ export function quote(cart) {
     subtotal,
     discount,
     couponCode: coupon ? coupon.code : null,
+    tipPct,
+    tip,
     total,
     depositPct,
     deposit,

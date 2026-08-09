@@ -7,6 +7,7 @@ import { API } from '../api'
 import { Plate, Label, Chip, Button, Notice, Serif } from '../components/ui'
 import DeckPlan, { ZONES, zoneFor } from '../components/DeckPlan'
 import Calendar, { spanDates } from '../components/Calendar'
+import { quipFor, MILESTONES, EMPTY_HINTS } from '../fun'
 
 const SHELF_PREVIEW = 4
 
@@ -17,6 +18,7 @@ export default function BuildScreen({
   const [open, setOpen] = useState({})
   const [lastZone, setLastZone] = useState(null)
   const [code, setCode] = useState(cart.couponCode || '')
+  const [quip, setQuip] = useState(null)
 
   const ready = Boolean(cart.vesselId && cart.date && cart.guests)
 
@@ -34,12 +36,27 @@ export default function BuildScreen({
     b?.extraIds.forEach(tally)
   })
 
+  const aboardCount = cart.items.length + cart.bundleIds.length
+
   const loadExtra = (e) => {
     const already = cart.items.some((i) => i.extraId === e.id)
     Haptics.impactAsync(already ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium)
-    if (!already) setLastZone(zoneFor(e.category).id)
+    if (!already) {
+      setLastZone(zoneFor(e.category).id)
+      // A little voice from the crew. Milestones outrank category quips, and
+      // each one shows once because the count only passes each number once.
+      const next = aboardCount + 1
+      setQuip(MILESTONES[next] || quipFor(e.category, next))
+    }
     onToggleExtra(e.id)
   }
+
+  // The quip fades on its own; lingering jokes stop being jokes.
+  React.useEffect(() => {
+    if (!quip) return
+    const t = setTimeout(() => setQuip(null), 2600)
+    return () => clearTimeout(t)
+  }, [quip])
 
   const fmt = (d) =>
     new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', {
@@ -123,6 +140,11 @@ export default function BuildScreen({
           {ready ? (
             <>
               <DeckPlan c={c} counts={counts} lastZone={lastZone} />
+              {Object.values(counts).every((n) => !n) ? (
+                <Text style={[styles.small, { color: c.inkFaint }]}>
+                  {EMPTY_HINTS[cart.occasion] || EMPTY_HINTS.default}
+                </Text>
+              ) : null}
               <ZoneShot c={c} counts={counts} lastZone={lastZone} catalog={catalog} />
             </>
           ) : (
@@ -200,7 +222,7 @@ export default function BuildScreen({
                         <Text style={[styles.small, { color: c.inkFaint }]}>{e.description}</Text>
                         <View style={styles.extraFoot}>
                           <Text style={[styles.extraRate, { color: item ? c.ok : c.signal }]}>
-                            {money(e.price)}{e.unit === 'per_person' ? ' per guest' : ''}
+                            {e.price === 0 ? 'FREE' : `${money(e.price)}${e.unit === 'per_person' ? ' per guest' : ''}`}
                           </Text>
                           {steppable ? (
                             <Stepper
@@ -280,6 +302,12 @@ export default function BuildScreen({
           </>
         ) : null}
       </ScrollView>
+
+      {quip ? (
+        <View style={[styles.quip, { backgroundColor: c.deep, bottom: (quote ? 96 : 20) + insets.bottom }]} pointerEvents="none">
+          <Text style={[styles.quipText, { color: c.onDeep }]}>{quip}</Text>
+        </View>
+      ) : null}
 
       {/* The total follows you down the page: on a phone the manifest cannot
           sit in a sticky column, so it becomes the bar you always see. */}
@@ -371,6 +399,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingTop: 10,
   },
   barTotal: { fontFamily: mono, fontSize: 19, fontWeight: '700' },
+  quip: {
+    position: 'absolute', left: 16, right: 16, borderRadius: 2,
+    paddingHorizontal: 14, paddingVertical: 11,
+  },
+  quipText: { fontFamily: mono, fontSize: 12.5, textAlign: 'center' },
   zoneShot: { borderWidth: 1, borderRadius: 2, overflow: 'hidden' },
   zoneImg: { width: '100%', height: 96 },
   zoneCap: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(4,20,27,0.82)', paddingHorizontal: 9, paddingVertical: 5 },

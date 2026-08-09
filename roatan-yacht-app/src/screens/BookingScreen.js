@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { mono, serif, money } from '../theme'
 import { getBooking } from '../api'
 import { Plate, Label, Chip, Button, Notice, Serif } from '../components/ui'
+import Confetti from '../components/Confetti'
+import { celebrationFor } from '../fun'
 
 const KEY = 'roatan.bookings'
 
@@ -15,7 +17,7 @@ export async function remember(ref) {
   await AsyncStorage.setItem(KEY, JSON.stringify(next))
 }
 
-export default function BookingScreen({ c, initialRef, settings, insets }) {
+export default function BookingScreen({ c, initialRef, celebrate, settings, insets }) {
   const [ref, setRef] = useState(initialRef || '')
   const [booking, setBooking] = useState(null)
   const [saved, setSaved] = useState([])
@@ -54,6 +56,8 @@ export default function BookingScreen({ c, initialRef, settings, insets }) {
   const owed = booking ? Math.round((booking.total - (booking.amountPaid || 0)) * 100) / 100 : 0
 
   return (
+    <View style={{ flex: 1 }}>
+    {celebrate && booking ? <Confetti burst={1} /> : null}
     <ScrollView
       style={{ backgroundColor: c.chart }}
       contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40, gap: 14 }}
@@ -61,6 +65,11 @@ export default function BookingScreen({ c, initialRef, settings, insets }) {
       <View style={{ gap: 6 }}>
         <Label c={c} signal>Your booking</Label>
         <Serif c={c} size={21}>{booking ? 'You are on the water' : 'Find your trip'}</Serif>
+        {booking && celebrate ? (
+          <Text style={{ fontFamily: mono, fontSize: 12.5, lineHeight: 19, color: c.signal }}>
+            {celebrationFor(booking.ref)}
+          </Text>
+        ) : null}
       </View>
 
       {!booking ? (
@@ -175,6 +184,7 @@ export default function BookingScreen({ c, initialRef, settings, insets }) {
         </>
       )}
     </ScrollView>
+    </View>
   )
 }
 

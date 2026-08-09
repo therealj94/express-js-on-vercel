@@ -350,6 +350,42 @@
       "maxQty": 5
     },
     {
+      "id": "x_playlist",
+      "category": "celebrate",
+      "emoji": "🔊",
+      "name": "Your playlist, our speakers",
+      "price": 0,
+      "unit": "flat",
+      "description": "Send us your playlist before the trip and the boat is singing your songs when you step aboard. Free — music should be.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_banner",
+      "category": "celebrate",
+      "emoji": "🎉",
+      "name": "Birthday deck party",
+      "price": 95,
+      "unit": "flat",
+      "description": "Banner, balloons and a properly embarrassing crew singalong at cake time.",
+      "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_bottle_msg",
+      "category": "celebrate",
+      "emoji": "💌",
+      "name": "Message in a bottle",
+      "price": 30,
+      "unit": "flat",
+      "description": "Write it aboard, seal it with wax, take it home — or let the sea have it. Your call.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
       "id": "x_lobster",
       "category": "eat_drink",
       "emoji": "🦞",
@@ -442,6 +478,66 @@
       "unit": "flat",
       "description": "A bartender aboard making frozen and classic cocktails to order.",
       "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_prosecco",
+      "category": "eat_drink",
+      "emoji": "🍾",
+      "name": "Prosecco (bottle)",
+      "price": 48,
+      "unit": "flat",
+      "description": "Cold, dry and dangerous in the sun. Ask for two.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_michelada",
+      "category": "eat_drink",
+      "emoji": "🍺",
+      "name": "Michelada kit",
+      "price": 35,
+      "unit": "flat",
+      "description": "Local beer, lime, spiced rim, and the crew's secret mix. The island cure for a hot afternoon.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_rum_tasting",
+      "category": "eat_drink",
+      "emoji": "🥃",
+      "name": "Rum & chocolate tasting",
+      "price": 55,
+      "unit": "per_person",
+      "description": "Five Honduran rums, island chocolate, and the captain's opinions — included at no charge.",
+      "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 20
+    },
+    {
+      "id": "x_ceviche",
+      "category": "eat_drink",
+      "emoji": "🐟",
+      "name": "Ceviche made on deck",
+      "price": 42,
+      "unit": "per_person",
+      "description": "Caught in the morning, cured with lime in front of you. It does not get fresher.",
+      "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 20
+    },
+    {
+      "id": "x_coco",
+      "category": "eat_drink",
+      "emoji": "🥥",
+      "name": "Cold coconuts",
+      "price": 25,
+      "unit": "flat",
+      "description": "A cooler of young coconuts, machete-opened on deck. Straw included, rum optional.",
+      "leadTimeHours": 24,
       "active": true,
       "maxQty": 5
     },
@@ -542,6 +638,42 @@
       "maxQty": 5
     },
     {
+      "id": "x_lilypad",
+      "category": "adventure",
+      "emoji": "🛟",
+      "name": "Floating lily pad",
+      "price": 55,
+      "unit": "flat",
+      "description": "A giant floating mat off the stern. Holds the whole group, guarantees at least one great photo of someone falling off.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_gopro",
+      "category": "adventure",
+      "emoji": "🎥",
+      "name": "Underwater camera",
+      "price": 65,
+      "unit": "flat",
+      "description": "A GoPro aboard for the day, footage handed over on a drive before you step off.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_snorkel_tour",
+      "category": "adventure",
+      "emoji": "🐢",
+      "name": "Turtle spotting run",
+      "price": 90,
+      "unit": "flat",
+      "description": "The captain's own route over the grass flats where the turtles feed. No promises — a very good record.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
       "id": "x_pickup",
       "category": "comfort",
       "emoji": "🚐",
@@ -610,6 +742,30 @@
       "unit": "flat",
       "description": "Portable hotspot with island coverage for the trip.",
       "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_hangover",
+      "category": "comfort",
+      "emoji": "🧃",
+      "name": "Morning-after kit",
+      "price": 28,
+      "unit": "flat",
+      "description": "Electrolytes, cold towels, dark sunglasses and zero judgement. For day two of the packages.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_robes",
+      "category": "comfort",
+      "emoji": "🥽",
+      "name": "His & hers robes",
+      "price": 40,
+      "unit": "flat",
+      "description": "Soft robes for the cabin, yours to keep. Monogramming the boat's name, not yours — she earned it.",
+      "leadTimeHours": 48,
       "active": true,
       "maxQty": 5
     }

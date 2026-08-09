@@ -77,8 +77,14 @@ export function quoteLocally(catalog, cart) {
   }
 
   const subtotal = round(lines.reduce((s, l) => s + l.amount, 0))
+
+  // Mirrors the server: gratuity on the (undiscounted, offline) trip, capped.
+  const tipPct = Math.min(Math.max(0, Number(cart.tipPct) || 0), 30)
+  const tip = round((subtotal * tipPct) / 100)
+
+  const total = round(subtotal + tip)
   const depositPct = catalog.settings.depositPct || 30
-  const deposit = round((subtotal * depositPct) / 100)
+  const deposit = round((total * depositPct) / 100)
 
   return {
     estimate: true, // the screen must say so; only the server quotes for real
@@ -93,10 +99,12 @@ export function quoteLocally(catalog, cart) {
     // the expiry, and guessing here would promise a discount we cannot honour.
     discount: 0,
     couponCode: null,
-    total: subtotal,
+    tipPct,
+    tip,
+    total,
     depositPct,
     deposit,
-    balance: round(subtotal - deposit),
+    balance: round(total - deposit),
     currency: catalog.settings.currency || 'USD',
     savings: round(lines.reduce((s, l) => s + (l.saved || 0), 0)),
   }
@@ -120,6 +128,7 @@ export function requestMessage(quote, customer, settings) {
     extras.length ? 'Aboard with us:' : 'Just the boat.',
     ...extras.map((l) => `· ${l.label}${l.detail ? ` (${l.detail})` : ''}`),
     '',
+    quote.tip ? `Crew tip (${quote.tipPct}%): ${quote.currency} ${quote.tip.toLocaleString('en-US')}` : null,
     `Estimated total: ${quote.currency} ${quote.total.toLocaleString('en-US')}`,
     '',
     customer.name ? `Name: ${customer.name}` : null,

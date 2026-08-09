@@ -137,6 +137,8 @@ app.post('/api/bookings', wrap(async (req, res) => {
     subtotal: q.subtotal,
     discount: q.discount,
     couponCode: q.couponCode,
+    tipPct: q.tipPct,
+    tip: q.tip,
     total: q.total,
     deposit: q.deposit,
     balance: q.balance,

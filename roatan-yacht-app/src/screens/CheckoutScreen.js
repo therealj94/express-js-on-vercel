@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import {
-  View, Text, ScrollView, TextInput, StyleSheet, KeyboardAvoidingView, Platform, Linking,
+  View, Text, ScrollView, TextInput, StyleSheet, KeyboardAvoidingView, Platform, Linking, Pressable,
 } from 'react-native'
 import * as WebBrowser from 'expo-web-browser'
 import * as Haptics from 'expo-haptics'
@@ -9,11 +9,14 @@ import { createBooking } from '../api'
 import { requestMessage } from '../pricing'
 import { Plate, Label, Button, Notice, Serif } from '../components/ui'
 import { spanDates } from '../components/Calendar'
+import { TIP_OPTIONS, celebrationFor } from '../fun'
+import Confetti from '../components/Confetti'
 
-export default function CheckoutScreen({ c, cart, quote, settings, onBooked, insets }) {
+export default function CheckoutScreen({ c, cart, quote, settings, onBooked, onTip, insets }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', occasion: '', notes: '' })
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState('')
+  const [sent, setSent] = useState(false)
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }))
   const fmt = (d) =>
@@ -60,6 +63,41 @@ export default function CheckoutScreen({ c, cart, quote, settings, onBooked, ins
       return
     }
     Linking.openURL(`https://wa.me/${digits}?text=${encodeURIComponent(body)}`)
+    // The request is on its way — that deserves the same joy as a paid
+    // booking, not a silent return to a form.
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    setSent(true)
+  }
+
+  if (sent) {
+    return (
+      <View style={{ flex: 1, backgroundColor: c.chart }}>
+        <Confetti burst={1} />
+        <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 40, paddingBottom: insets.bottom + 40, gap: 14 }}>
+          <View style={{ gap: 8 }}>
+            <Label c={c} signal>Request away</Label>
+            <Serif c={c} size={24}>{celebrationFor(form.name || quote.vesselName)}</Serif>
+            <Text style={[styles.small, { color: c.inkSoft }]}>
+              Your manifest just sailed off to the crew on WhatsApp. A human — a real one, probably
+              wearing a captain's hat — replies to confirm the date and the final price.
+            </Text>
+          </View>
+          <Notice c={c} tone="shoal">
+            <Text style={{ fontFamily: serif, fontSize: 15, color: c.ink }}>{quote.vesselName}</Text>
+            <Text style={[styles.small, { color: c.inkSoft }]}>
+              {quote.date} · {quote.guests} guests · estimated {money(quote.total, quote.currency)}
+            </Text>
+          </Notice>
+          <Notice c={c} tone="ok">
+            <Text style={{ fontFamily: mono, fontSize: 12, color: c.ink }}>Meanwhile</Text>
+            <Text style={[styles.small, { color: c.inkSoft }]}>
+              Start arguing about the playlist. It is the only real decision left.
+            </Text>
+          </Notice>
+          <Button c={c} onPress={() => onBooked(null)}>Back to the fleet</Button>
+        </ScrollView>
+      </View>
+    )
   }
 
   return (
@@ -100,10 +138,44 @@ export default function CheckoutScreen({ c, cart, quote, settings, onBooked, ins
                 <Text style={[styles.amt, { color: c.ok }]}>−{money(quote.discount, quote.currency)}</Text>
               </View>
             ) : null}
+            {quote.tip ? (
+              <View style={styles.line}>
+                <Text style={[styles.label, { color: c.inkSoft }]}>Crew tip ({quote.tipPct}%)</Text>
+                <Text style={[styles.amt, { color: c.inkSoft }]}>{money(quote.tip, quote.currency)}</Text>
+              </View>
+            ) : null}
             <View style={styles.line}>
               <Text style={[styles.grand, { color: c.ink }]}>Total</Text>
               <Text style={[styles.grand, { color: c.ink }]}>{money(quote.total, quote.currency)}</Text>
             </View>
+          </View>
+        </Plate>
+
+        <Plate c={c} title="The crew" right={<Label c={c}>Optional, always</Label>}>
+          <Text style={[styles.small, { color: c.inkSoft }]}>
+            Captain, mate and whoever grilled the lobster. A tip is never expected — it is
+            very much noticed.
+          </Text>
+          <View style={styles.tipRow}>
+            {TIP_OPTIONS.map((t) => {
+              const on = (quote.tipPct || 0) === t.pct
+              return (
+                <Pressable
+                  key={t.pct}
+                  onPress={() => {
+                    Haptics.selectionAsync()
+                    onTip(t.pct)
+                  }}
+                  style={[
+                    styles.tipChip,
+                    { borderColor: on ? c.signal : c.rule, backgroundColor: on ? c.signalSoft : c.plate },
+                  ]}
+                >
+                  <Text style={[styles.tipPct, { color: on ? c.signal : c.ink }]}>{t.label}</Text>
+                  <Text style={[styles.tipNote, { color: c.inkFaint }]}>{t.note}</Text>
+                </Pressable>
+              )
+            })}
           </View>
         </Plate>
 
@@ -120,6 +192,7 @@ export default function CheckoutScreen({ c, cart, quote, settings, onBooked, ins
             value={form.notes} onChange={set('notes')} multiline
           />
         </Plate>
+
 
         {error ? <Notice c={c}>{error}</Notice> : null}
 
@@ -177,4 +250,8 @@ const styles = StyleSheet.create({
   totals: { borderTopWidth: 1, paddingTop: 10, gap: 6 },
   grand: { fontFamily: mono, fontSize: 16, fontWeight: '700' },
   input: { borderWidth: 1, borderRadius: 2, paddingHorizontal: 11, paddingVertical: 10, fontFamily: mono, fontSize: 13 },
+  tipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tipChip: { flexBasis: '47%', flexGrow: 1, borderWidth: 1, borderRadius: 2, padding: 10, gap: 2 },
+  tipPct: { fontFamily: mono, fontSize: 15, fontWeight: '700' },
+  tipNote: { fontFamily: mono, fontSize: 9.5, letterSpacing: 0.4 },
 })
