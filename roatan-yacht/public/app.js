@@ -32,7 +32,7 @@ const ZONES = [
   { id: 'platform', category: 'adventure', label: 'Swim platform', x: 8, w: 62 },
   { id: 'cockpit', category: 'comfort', label: 'Cockpit', x: 70, w: 90 },
   { id: 'saloon', category: 'eat_drink', label: 'Galley', x: 160, w: 90 },
-  { id: 'foredeck', category: 'celebrate', label: 'Foredeck', x: 250, w: 102 },
+  { id: 'cabin', category: 'celebrate', label: 'Cabin', x: 250, w: 102 },
 ]
 const zoneFor = (category) => ZONES.find((z) => z.category === category) || ZONES[1]
 
@@ -139,8 +139,12 @@ function renderVessels() {
       el.className = 'vessel'
       el.type = 'button'
       el.setAttribute('aria-pressed', String(cart.vesselId === v.id))
+      const art = v.photo
+        ? `<img src="${v.photo}-card.jpg" alt="${esc(v.boatName || v.name)}" loading="lazy" width="620" height="420">
+           ${v.boatName ? `<span class="stamp">${esc(v.boatName)}</span>` : ''}`
+        : `${soundings(i + 1)}${profileSvg(v)}`
       el.innerHTML = `
-        <span class="profile">${soundings(i + 1)}${profileSvg(v)}</span>
+        <span class="profile">${art}</span>
         <span class="meta">
           <span class="label">${esc(v.durationLabel)} · ${v.capacityMin}–${v.capacityMax} guests</span>
           <span class="name chart-name">${esc(v.name)}</span>
@@ -338,6 +342,7 @@ function renderDeckPlan() {
       <line class="zone-line" x1="6" y1="62" x2="348" y2="62" stroke-dasharray="3 6"/>
       <path class="hull-line" d="${HULL}"/>
     </svg>
+    ${zoneShot()}
     <div class="zone-strip">
       ${ZONES.map((z) => `
         <div class="zone-tab${counts[z.id] ? ' loaded' : ''}">
@@ -361,6 +366,25 @@ function renderDeckPlan() {
   })
 
   renderDeckLegend()
+}
+
+/**
+ * A picture of the part of the boat that is currently carrying the most, so the
+ * plan reads as a real vessel rather than a diagram. Falls back to the cockpit,
+ * where a charter day mostly happens.
+ */
+function zoneShot() {
+  const busiest = [...ZONES]
+    .map((z) => ({ zone: z, n: loadedIn(z.id).length }))
+    .sort((a, b) => b.n - a.n)[0]
+  const zone = busiest.n ? busiest.zone : ZONES.find((z) => z.id === 'cockpit')
+  const cat = catalog.categories.find((c) => c.id === zone.category)
+  if (!cat?.photo) return ''
+  return `
+    <figure class="zone-shot" style="margin:0">
+      <img src="${cat.photo}-card.jpg" alt="${esc(zone.label)} aboard" loading="lazy" width="620" height="200">
+      <figcaption>${esc(zone.label)}${busiest.n ? ` — ${busiest.n} aboard` : ''}</figcaption>
+    </figure>`
 }
 
 function renderDeckLegend() {
@@ -466,10 +490,13 @@ function renderBundles() {
       el.setAttribute('aria-pressed', String(on))
       const names = b.extraIds.map((id) => catalog.extras.find((e) => e.id === id)?.name).filter(Boolean)
       el.innerHTML = `
-        <span class="name">${b.emoji} ${esc(b.name)}</span>
-        <span class="small">${esc(b.tagline)}</span>
-        <span class="small faint">${names.map(esc).join(' · ')}</span>
-        <span class="chip ${on ? 'ok' : 'signal'}" style="align-self:flex-start">${on ? 'Aboard' : `Save ${b.discountPct}%`}</span>`
+        ${b.photo ? `<img src="${b.photo}-card.jpg" alt="" loading="lazy" width="620" height="300">` : ''}
+        <span class="package-body">
+          <span class="name">${b.emoji} ${esc(b.name)}</span>
+          <span class="small">${esc(b.tagline)}</span>
+          <span class="small faint">${names.map(esc).join(' · ')}</span>
+          <span class="chip ${on ? 'ok' : 'signal'}" style="align-self:flex-start">${on ? 'Aboard' : `Save ${b.discountPct}%`}</span>
+        </span>`
       el.addEventListener('click', () => toggleBundle(b.id))
       return el
     }),
@@ -502,6 +529,21 @@ function chooseOccasion(o) {
   renderDeckPlan()
   requestQuote()
   $(cart.vesselId ? 'builder' : 'fleet').scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function renderGallery() {
+  const host = $('gallery')
+  if (!host || !catalog.gallery?.length) return
+  host.replaceChildren(
+    ...catalog.gallery.map((g, i) => {
+      const fig = document.createElement('figure')
+      fig.className = i === 0 ? 'wide' : ''
+      fig.innerHTML = `
+        <img src="${g.src}-card.jpg" alt="${esc(g.caption)}" loading="lazy" width="1400" height="900">
+        <figcaption>${esc(g.caption)}</figcaption>`
+      return fig
+    }),
+  )
 }
 
 function renderFaq() {
@@ -886,6 +928,7 @@ async function boot() {
   renderShelves()
   renderDeckPlan()
   renderFaq()
+  renderGallery()
   renderCalendar()
   applyGates()
   wireSea()

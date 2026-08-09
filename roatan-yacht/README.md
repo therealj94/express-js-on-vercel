@@ -12,6 +12,10 @@ npm start          # → http://localhost:3000
 Admin is at `/admin.html`. The default password is `lovecloud` — change it with
 `ADMIN_PASSWORD` before anyone else can reach the site.
 
+The boat is **Knotty**, a 47-foot two-stateroom express cruiser out of French
+Harbour. Her photographs are in `public/media` and drive the fleet cards, the
+packages, the deck plan and the gallery.
+
 ## What is here
 
 | Page | What it does |
@@ -34,6 +38,8 @@ demoable before the Stripe account exists.
 | `ADMIN_PASSWORD` | Admin sign-in. Set this. |
 | `STRIPE_SECRET_KEY` | Switches on card payments and invoice payment links |
 | `STRIPE_WEBHOOK_SECRET` | Required to mark bookings paid automatically |
+| `RESEND_API_KEY` | Sends confirmations and invoices for real. Without it they print to the log |
+| `MAIL_FROM` | The address guests see. Must be a domain verified in Resend |
 | `PUBLIC_URL` | Canonical origin used in Stripe redirects and invoice links |
 | `DATA_DIR` | Where `db.json` lives (default: `./data`) |
 | `PORT` | Default 3000 |
@@ -57,6 +63,7 @@ server/
   index.js       routes: public catalog/quote/booking, admin CRUD, stripe webhook
   pricing.js     the only place a total is calculated
   payments.js    payment provider seam — Stripe today, PayPal drops in beside it
+  notify.js      email and WhatsApp — Resend when configured, the log when not
   store.js       storage seam — JSON file today, Postgres later
   seed-data.js   the five real Rezdy products, the extras catalog, the bundles
 public/          the guest app and the admin, no build step
@@ -85,12 +92,17 @@ busy season, and each one is a small, contained job:
    across multiple serverless instances a sign-in may not stick. Fine on a single
    long-running host; needs a signed cookie or a session table otherwise. Login
    is rate-limited to six tries per IP per fifteen minutes.
-3. **No email or WhatsApp yet.** Confirmations render on the site but nothing is
-   sent. Resend or Postmark, plus the WhatsApp Business API, is the next piece.
-4. **Photography is a placeholder.** Vessels render line-art profiles over chart
-   soundings — honest, but real photos of the boats will do more for conversion
-   than any feature in this repo.
-5. **English only.** The copy is written in English on purpose; a Spanish
+3. **Email needs a key and a verified domain.** The messages are written and
+   tested; set `RESEND_API_KEY` and verify the sending domain and they go out.
+   Until then every one prints to the server log, and the admin says so.
+4. **WhatsApp is a link, not an integration.** Each booking and invoice produces
+   a `wa.me` link with the message pre-written for the crew to send. Automatic
+   sending needs the WhatsApp Business API, an approved template and a verified
+   number — worth doing, but not on the critical path.
+5. **The speedboat has no photograph.** Knotty is shot properly; the speedboat
+   still falls back to a line drawing. Drop a photo in `public/media` and point
+   the vessel's `photo` field at it from the admin.
+6. **English only.** The copy is written in English on purpose; a Spanish
    translation is a straightforward addition when you want it.
 
 ## Deploying

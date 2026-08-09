@@ -49,9 +49,12 @@ export const vessels = [
     id: 'v_yacht_day',
     slug: 'private-yacht-full-day',
     name: "Private Luxury Full Day Yacht Charter",
+    boatName: 'Knotty',
     tagline: "47 feet of shade, air conditioning and open water.",
     description:
-      "Lounge in luxury and enjoy proper pampering aboard your very own private 47' yacht, tailored just for you and your group. Air-conditioned cabin when the sun gets serious, a captain who knows every reef worth stopping at, and nowhere you have to be.",
+      "Lounge in luxury and enjoy proper pampering aboard Knotty, our private 47' yacht, tailored just for you and your group. Teak cockpit under canvas shade, air-conditioned cabin when the sun gets serious, a tender on the swim platform for the shallow stuff, and a captain who knows every reef worth stopping at.",
+    photo: '/media/knotty-stern',
+    gallery: ['/media/knotty-cockpit-wide', '/media/knotty-cockpit-table', '/media/knotty-helm'],
     type: 'day',
     durationLabel: '8 hours',
     basePrice: 1600,
@@ -60,9 +63,13 @@ export const vessels = [
     capacityMin: 1,
     capacityMax: 12,
     includes: [
-      "Private 47' yacht with two staterooms",
+      "Knotty, a private 47' yacht with two staterooms",
       'Captain and crew',
       'Air-conditioned interior',
+      'Shaded teak cockpit with dining table',
+      'Bow sunpad and teak swim platform',
+      'Tender aboard for shallow-water landings',
+      'Wet bar at the helm',
       'Snorkeling and swim stops',
       'All-inclusive food and drinks',
       'Fuel and park fees',
@@ -74,6 +81,9 @@ export const vessels = [
   },
   {
     id: 'v_copper',
+    boatName: 'Knotty',
+    photo: '/media/knotty-cabin-night',
+    gallery: ['/media/knotty-stern', '/media/knotty-cockpit-wide'],
     slug: 'copper-package',
     name: 'Copper Package — 4 Nights, 5 Days',
     tagline: 'Live aboard for four nights. Wake up somewhere new.',
@@ -100,6 +110,9 @@ export const vessels = [
   },
   {
     id: 'v_silver',
+    boatName: 'Knotty',
+    photo: '/media/knotty-cockpit-wide',
+    gallery: ['/media/knotty-cabin-night', '/media/knotty-stern'],
     slug: 'silver-package',
     name: 'Silver Package — 5 Nights, 6 Days',
     tagline: 'Two islands, five nights, one yacht that is only yours.',
@@ -126,6 +139,9 @@ export const vessels = [
   },
   {
     id: 'v_gold',
+    boatName: 'Knotty',
+    photo: '/media/knotty-dinner-night',
+    gallery: ['/media/knotty-cabin-night', '/media/knotty-cockpit-table'],
     slug: 'gold-package',
     name: 'Gold Package — 6 Nights, 7 Days',
     tagline: 'The whole Caribbean week. Yacht, hotel, and a speedboat on the house.',
@@ -152,11 +168,23 @@ export const vessels = [
   },
 ]
 
+// `photo` is the real corner of the boat this category happens in — the deck
+// plan shows it when you load that zone.
 export const categories = [
-  { id: 'celebrate', label: 'Celebrate', blurb: 'Make the day mean something.' },
-  { id: 'eat_drink', label: 'Eat & Drink', blurb: 'Everything that comes on a tray.' },
-  { id: 'adventure', label: 'Adventure', blurb: 'Things to do off the back of the boat.' },
-  { id: 'comfort', label: 'Comfort & Care', blurb: 'The details that make a long day easy.' },
+  { id: 'celebrate', label: 'Celebrate', blurb: 'Make the day mean something.', photo: '/media/knotty-cabin-night' },
+  { id: 'eat_drink', label: 'Eat & Drink', blurb: 'Everything that comes on a tray.', photo: '/media/knotty-cockpit-table' },
+  { id: 'adventure', label: 'Adventure', blurb: 'Things to do off the back of the boat.', photo: '/media/knotty-stern' },
+  { id: 'comfort', label: 'Comfort & Care', blurb: 'The details that make a long day easy.', photo: '/media/knotty-cockpit-wide' },
+]
+
+// The gallery on the public page, in the order it reads best.
+export const gallery = [
+  { src: '/media/knotty-stern', caption: 'Knotty at the dock in French Harbour, tender ready on the teak platform.' },
+  { src: '/media/knotty-cockpit-wide', caption: 'The shaded cockpit — where most of a charter day actually gets spent.' },
+  { src: '/media/knotty-cockpit-table', caption: 'Teak table set for lunch, helm behind it.' },
+  { src: '/media/knotty-helm', caption: 'Helm and wet bar. Ice, sink and the drinks within arm’s reach.' },
+  { src: '/media/knotty-dinner-night', caption: 'Dinner aboard after dark, with the harbour lights behind you.' },
+  { src: '/media/knotty-cabin-night', caption: 'The master stateroom, turned down for an overnight charter.' },
 ]
 
 const extra = (id, category, emoji, name, price, unit, description, leadTimeHours = 48) => ({
@@ -178,6 +206,7 @@ export const extras = [
   extra('x_flowers', 'celebrate', '🌺', 'Fresh flower setup', 120, 'flat', 'Tropical arrangements through the cabin and deck, cut the morning of your trip.'),
   extra('x_cake', 'celebrate', '🎂', 'Custom cake', 75, 'flat', 'Your message on it. Tell us the occasion and any allergies.', 72),
   extra('x_proposal', 'celebrate', '💍', 'Proposal setup', 350, 'flat', 'Deck lettering, petals, chilled champagne and a crew that knows exactly when to disappear.', 72),
+  extra('x_turndown', 'celebrate', '🕯️', 'Cabin turndown', 160, 'flat', 'Rose petals, candles through the stateroom and a chilled bottle waiting. Overnight charters only.', 72),
   extra('x_photographer', 'celebrate', '📸', 'Photographer (2 hours)', 250, 'flat', 'A local photographer aboard, edited gallery delivered within 72 hours.'),
   extra('x_drone', 'celebrate', '🚁', 'Drone footage', 180, 'flat', 'Aerial video of the boat, the reef and your group, edited to a short film.'),
   extra('x_music', 'celebrate', '🎶', 'Live guitar', 200, 'flat', 'A local guitarist aboard for two hours of the trip.'),
@@ -199,6 +228,7 @@ export const extras = [
   extra('x_kayak', 'adventure', '🛶', 'Double kayak', 45, 'flat', 'Two-person kayak for exploring the mangroves and shallows.', 24),
   extra('x_fishing', 'adventure', '🎣', 'Fishing gear and guide', 150, 'flat', 'Rods, tackle and a crew member who knows where they are biting.'),
   extra('x_scuba', 'adventure', '🐠', 'Discover scuba (per diver)', 130, 'per_person', 'One guided dive on the reef with a certified instructor. No experience needed.', 72),
+  extra('x_tender', 'adventure', '🛶', 'Tender island hop', 140, 'flat', 'Take the tender off the swim platform and land where the yacht cannot go — sandbars, mangrove cuts, an empty beach.'),
   extra('x_pigeon', 'adventure', '⛱️', 'Pigeon Cay beach stop', 120, 'flat', 'Add the sandbar and beach club stop to your route, entry included.', 24),
 
   // Comfort & Care
@@ -216,6 +246,7 @@ export const bundles = [
     name: 'Proposal at Sea',
     tagline: 'Everything you need for the question, and nothing you have to think about.',
     emoji: '💍',
+    photo: '/media/knotty-dinner-night',
     extraIds: ['x_proposal', 'x_champagne', 'x_flowers', 'x_photographer', 'x_music'],
     discountPct: 10,
     active: true,
@@ -225,6 +256,7 @@ export const bundles = [
     name: 'Family Day',
     tagline: 'Built for a boat with kids on it.',
     emoji: '👨‍👩‍👧',
+    photo: '/media/knotty-cockpit-wide',
     extraIds: ['x_tubing', 'x_kids', 'x_bbq', 'x_snorkel_extra'],
     discountPct: 10,
     active: true,
@@ -234,6 +266,7 @@ export const bundles = [
     name: 'Anniversary Sunset',
     tagline: 'Wine, dinner and the good light.',
     emoji: '🌇',
+    photo: '/media/knotty-cabin-night',
     extraIds: ['x_wine_red', 'x_lobster', 'x_flowers', 'x_massage'],
     discountPct: 10,
     active: true,

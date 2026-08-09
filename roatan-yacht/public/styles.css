@@ -147,9 +147,21 @@ a { color: var(--shoal); }
 
 /* -------------------------------------------------------------------- hero */
 
+/* The photograph carries the hero; the contours and the scrim keep the chart
+   typography readable over it in both themes. */
 .hero { position: relative; background: var(--deep); color: var(--on-deep); overflow: hidden; }
-.hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-.hero .wrap { position: relative; padding: 64px 22px 40px; display: flex; flex-direction: column; gap: 22px; }
+.hero .shot {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: 50% 44%;
+}
+.hero .scrim {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(100deg, rgba(4, 20, 27, .92) 0%, rgba(4, 20, 27, .74) 34%, rgba(4, 20, 27, .26) 66%, rgba(4, 20, 27, .34) 100%),
+    linear-gradient(0deg, rgba(4, 20, 27, .62) 0%, transparent 42%);
+}
+.hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .38; }
+.hero .wrap { position: relative; padding: 72px 22px 44px; min-height: 62vh; display: flex; flex-direction: column; gap: 22px; }
 .hero h1 { color: var(--on-deep); max-width: 15ch; }
 .hero .lede { color: var(--on-deep-soft); font-size: .95rem; line-height: 1.75; max-width: 52ch; }
 .hero .label { color: var(--on-deep-soft); }
@@ -206,10 +218,18 @@ section.block > .wrap { display: flex; flex-direction: column; gap: 22px; }
 .vessel:hover, .vessel:focus-visible { border-color: var(--signal); }
 .vessel[aria-pressed="true"] { border-color: var(--signal); box-shadow: inset 0 0 0 1px var(--signal), var(--plate-shadow); }
 
-/* the profile drawing sits on water, with depth soundings behind it */
+/* a photograph if we have one of that boat; the drawing when we do not */
 .vessel .profile {
-  position: relative; height: 128px; background: var(--deep);
+  position: relative; height: 172px; background: var(--deep);
   display: grid; place-items: center; overflow: hidden;
+}
+.vessel .profile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vessel:hover .profile img, .vessel:focus-visible .profile img { transform: scale(1.03); }
+.vessel .stamp {
+  position: absolute; left: 0; bottom: 0; z-index: 3;
+  background: var(--deep); color: var(--on-deep);
+  font-size: .58rem; letter-spacing: .2em; text-transform: uppercase;
+  padding: 4px 9px;
 }
 .vessel .profile svg.boat { width: 78%; max-width: 260px; position: relative; z-index: 2; }
 .vessel .soundings {
@@ -279,6 +299,29 @@ section.block > .wrap { display: flex; flex-direction: column; gap: 22px; }
 }
 .pin button { background: none; border: none; color: var(--ink-faint); cursor: pointer; font: inherit; padding: 0; line-height: 1; }
 .pin button:hover { color: var(--signal); }
+
+/* the photograph of the zone you are loading — the boat is a real boat */
+.zone-shot { position: relative; overflow: hidden; border: var(--hairline); border-radius: 2px; }
+.zone-shot img { width: 100%; height: 96px; object-fit: cover; display: block; }
+.zone-shot figcaption {
+  position: absolute; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(0deg, rgba(4, 20, 27, .9), transparent);
+  color: #E4EDEC; padding: 14px 9px 6px;
+  font-size: .6rem; letter-spacing: .16em; text-transform: uppercase;
+}
+
+/* packages lead with the picture of what they actually look like */
+.package { padding: 0; overflow: hidden; }
+.package img { width: 100%; height: 104px; object-fit: cover; display: block; }
+.package .package-body { padding: 12px 13px; display: flex; flex-direction: column; gap: 6px; }
+
+/* the gallery: one wide plate, the rest in a strip */
+.gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.gallery figure { margin: 0; border: var(--hairline); border-radius: 2px; overflow: hidden; background: var(--plate); }
+.gallery figure.wide { grid-column: span 2; }
+@media (max-width: 620px) { .gallery figure.wide { grid-column: auto; } }
+.gallery img { width: 100%; height: 210px; object-fit: cover; display: block; }
+.gallery figcaption { padding: 9px 11px; font-size: .74rem; color: var(--ink-soft); line-height: 1.5; }
 
 /* ---- extras, shelved by category instead of a wall of cards */
 
@@ -442,6 +485,7 @@ footer.site a { color: var(--on-deep-soft); }
 
 @media (prefers-reduced-motion: no-preference) {
   .extra, .vessel, .occasion, .btn, .cal-day { transition: border-color .15s ease, background .15s ease, opacity .15s ease; }
+  .vessel .profile img { transition: transform .4s ease; }
   @keyframes stow { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
   .mline.fresh, .pin.fresh { animation: stow .2s ease-out; }
 }

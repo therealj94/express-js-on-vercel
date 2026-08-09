@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import * as store from './store.js'
 import { quote, isVesselFree, occupiedDates, holdsDates, QuoteError } from './pricing.js'
 import * as payments from './payments.js'
+import * as notify from './notify.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -69,6 +70,7 @@ app.get('/api/catalog', (req, res) => {
     },
     vessels: store.table('vessels').filter((v) => v.active).sort((a, b) => a.sortOrder - b.sortOrder),
     categories: store.table('categories'),
+    gallery: store.table('gallery'),
     extras: store.table('extras').filter((e) => e.active),
     bundles: store.table('bundles').filter((b) => b.active),
   })
@@ -176,6 +178,15 @@ app.post('/api/bookings', wrap(async (req, res) => {
   booking.checkoutSessionId = checkout.sessionId || null
   store.commit()
 
+  // Never block the response on a mail server. The booking is already saved.
+  notify
+    .bookingConfirmed(booking, store.getSettings(), originOf(req))
+    .then((r) => {
+      booking.notified = { at: new Date().toISOString(), ...r }
+      store.commit()
+    })
+    .catch((err) => console.error('[notify] booking', err.message))
+
   ok(res, {
     booking: { ref: booking.ref, boardingPass: booking.boardingPass },
     amountDue: charge,
@@ -231,6 +242,9 @@ app.post('/api/webhooks/stripe', wrap(async (req, res) => {
           b.couponRedeemed = true
         }
         store.commit()
+        notify
+          .paymentReceived(b, store.getSettings(), originOf(req), paid)
+          .catch((err) => console.error('[notify] payment', err.message))
       }
     }
 
@@ -319,7 +333,7 @@ app.get('/api/admin/data', (req, res) => {
     blackouts: store.table('blackouts'),
     bookings: [...store.table('bookings')].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     invoices: [...store.table('invoices')].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    system: { writable: store.isWritable(), paymentMode: payments.mode() },
+    system: { writable: store.isWritable(), paymentMode: payments.mode(), emailMode: notify.emailMode() },
   })
 })
 
@@ -375,7 +389,19 @@ app.post('/api/admin/invoices', wrap(async (req, res) => {
   invoice.paymentMode = link.mode
   store.insert('invoices', invoice)
 
-  ok(res, { invoice, shareUrl: `${originOf(req)}/invoice.html?n=${invoice.number}` })
+  const shareUrl = `${originOf(req)}/invoice.html?n=${invoice.number}`
+  notify
+    .invoiceIssued(invoice, store.getSettings(), shareUrl)
+    .catch((err) => console.error('[notify] invoice', err.message))
+
+  ok(res, {
+    invoice,
+    shareUrl,
+    whatsappUrl: notify.whatsappLink(
+      invoice.customer.phone,
+      `Invoice ${invoice.number} for ${invoice.currency} ${invoice.total} — ${invoice.paymentUrl || shareUrl}`,
+    ),
+  })
 }))
 
 app.patch('/api/admin/invoices/:id', (req, res) => {

@@ -21,6 +21,7 @@ const emptyDb = () => ({
   vessels: structuredClone(seed.vessels),
   extras: structuredClone(seed.extras),
   categories: structuredClone(seed.categories),
+  gallery: structuredClone(seed.gallery),
   bundles: structuredClone(seed.bundles),
   coupons: structuredClone(seed.coupons),
   blackouts: structuredClone(seed.blackouts),

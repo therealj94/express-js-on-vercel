@@ -71,6 +71,9 @@ async function start() {
   if (!data.system.writable) {
     notes.push('<div class="notice"><strong>Changes are not being saved to disk.</strong><span class="small">This server has a read-only filesystem, so edits disappear when it restarts. Point DATA_DIR at a writable folder, or connect a database.</span></div>')
   }
+  if (data.system.emailMode !== 'resend') {
+    notes.push('<div class="notice"><strong>Emails are not going out.</strong><span class="small">No RESEND_API_KEY is set, so confirmations are written to the server log instead of sent. Bookings still work — nobody gets a receipt.</span></div>')
+  }
   if (data.system.paymentMode !== 'stripe') {
     notes.push('<div class="notice"><strong>Card payments are off.</strong><span class="small">No STRIPE_SECRET_KEY is set, so bookings are confirmed and invoiced by hand instead of charged. Everything else works.</span></div>')
   }
@@ -118,7 +121,9 @@ const SCHEMAS = {
     ['minNights', 'Minimum nights', 'number'],
     ['capacityMin', 'Minimum guests', 'number'],
     ['capacityMax', 'Maximum guests', 'number'],
-    ['heroEmoji', 'Icon', 'text'],
+    ['photo', 'Photo (path under /media, no extension)', 'text'],
+    ['boatName', 'Boat name', 'text'],
+    ['heroEmoji', 'Icon (fallback when there is no photo)', 'text'],
     ['accent', 'Accent colour', 'text'],
     ['includes', 'What it includes (one per line)', 'lines'],
     ['sortOrder', 'Order on the page', 'number'],
@@ -138,6 +143,7 @@ const SCHEMAS = {
   bundles: [
     ['name', 'Name', 'text'],
     ['emoji', 'Icon', 'text'],
+    ['photo', 'Photo (path under /media, no extension)', 'text'],
     ['tagline', 'Tagline', 'text'],
     ['extraIds', 'Extras included', 'extras'],
     ['discountPct', 'Discount %', 'number'],
@@ -596,7 +602,8 @@ function openInvoiceBuilder() {
       const res = await api('/api/admin/invoices', { method: 'POST', body })
       back.remove()
       await refresh(); render()
-      prompt('Invoice created. Send this link to the customer:', res.shareUrl)
+      const wa = res.whatsappUrl ? `\n\nOr send it on WhatsApp:\n${res.whatsappUrl}` : ''
+      prompt(`Invoice created and emailed to ${body.customer.email}. Link:${wa}`, res.shareUrl)
     } catch (err) {
       back.querySelector('#invError').innerHTML = `<div class="notice">${esc(err.message)}</div>`
     }
