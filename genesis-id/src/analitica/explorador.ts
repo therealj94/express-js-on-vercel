@@ -348,11 +348,16 @@ export async function ultimasSesiones(opciones: {
   }
 
   const apps = new Set(filas.map((f) => f.app))
-  const indice = new Map<string, { email: string; nombre?: string; gid?: string | null }>()
+  const indice = new Map<string, {
+    email: string; nombre?: string; gid?: string | null; direccionWallet?: string
+  }>()
   for (const app of apps) {
     for (const p of await entradasDe(app)) {
       if (!p.idExterno) continue
-      indice.set(huella(app, p.idExterno), { email: p.email, nombre: p.nombre, gid: p.gid ?? null })
+      indice.set(huella(app, p.idExterno), {
+        email: p.email, nombre: p.nombre, gid: p.gid ?? null,
+        direccionWallet: p.direccionWallet,
+      })
     }
   }
 
@@ -375,6 +380,9 @@ export async function ultimasSesiones(opciones: {
         email: quien?.email ?? null,
         nombre: quien?.nombre ?? null,
         gid: quien?.gid ?? null,
+        // La billetera es la otra mitad de «quién es esta persona»: el correo
+        // la identifica ante nosotros, la dirección la identifica en la cadena.
+        direccionWallet: quien?.direccionWallet ?? null,
       }
     }),
   }

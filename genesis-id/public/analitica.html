@@ -24,6 +24,10 @@ button.ok{background:var(--ok);color:#022;font-weight:700}
 button.bad{background:var(--bad);color:#2a0a06;font-weight:700}
 button.g{background:transparent;border:1px solid var(--line)}
 button.mini{padding:5px 10px;font-size:12px}
+/* El «seleccionado» de nav está limitado a nav, y los botones de filtro que
+   viven dentro del lienzo se quedaban sin marca: se veían todos iguales y no
+   había forma de saber qué filtro estaba puesto. */
+button.g.sel{border-color:var(--gold);background:rgba(201,169,97,.16);color:var(--gold)}
 input,select,textarea{font:inherit;background:#061e20;color:var(--txt);border:1px solid var(--line);
  border-radius:9px;padding:9px 11px;width:100%}
 a{color:var(--cyan)}
@@ -179,6 +183,10 @@ pre.pila{background:#061e20;border:1px solid var(--line2);border-radius:10px;pad
 let sesion = localStorage.getItem('gid.sesion') || '';
 let yo = null;
 let pestana = 'resumen';
+/** Plataforma elegida en «Conexiones»: '' = todas, 'android', 'web'. */
+let conexPlataforma = '';
+/** Identificador del temporizador que refresca esa pestaña sola. */
+let conexReloj = null;
 let datos = {};      // caché de lo último traído
 let cargando = false;
 
@@ -189,6 +197,7 @@ const PESTANAS = [
   ['paises',    'Países'],
   ['embudo',    'Verificación'],
   ['usuarios2', 'Directorio'],
+  ['conexiones','Conexiones'],
   ['errores',   'Errores'],
   ['seguridad', 'Seguridad'],
   ['salud',     'Salud'],
@@ -467,6 +476,12 @@ async function traer(forzar) {
       api('/panel/directorio/resumen'), api('/panel/directorio?' + q),
     ]);
     Object.assign(r, { resumenDir: rr, lista: ll });
+  } else if (pestana === 'conexiones') {
+    const app = document.getElementById('filtroApp').value;
+    const q = new URLSearchParams({ limite: '100' });
+    if (app !== 'todas') q.set('app', app);
+    if (conexPlataforma) q.set('plataforma', conexPlataforma);
+    Object.assign(r, await p('/sesiones?' + q.toString()));
   } else if (pestana === 'seguridad') {
     Object.assign(r, await p('/seguridad'));
   } else if (pestana === 'salud') {
@@ -488,6 +503,7 @@ async function pintar(forzar) {
       resumen: vistaResumen, apps: vistaApps, usuarios: vistaUsuarios,
       paises: vistaPaises, embudo: vistaEmbudo, errores: vistaErrores,
       seguridad: vistaSeguridad, salud: vistaSalud, usuarios2: vistaDirectorio,
+      conexiones: vistaConexiones,
     })[pestana](d);
   } catch (e) {
     lienzo.innerHTML = `<div class="err">${esc(e.message)}</div>`;
@@ -1113,6 +1129,129 @@ function pintarMovimientos() {
       coinciden, esa diferencia es justo lo que hay que mirar.</p>`;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Conexiones: quién entró, cuándo, desde dónde y con qué billetera
+
+   Es la pregunta que más se hace del panel y la que peor se respondía: había
+   que ir al directorio, ordenar por último acceso y adivinar la plataforma.
+   Aquí sale directa, ordenada por lo más reciente, con el correo entero y la
+   billetera — que es lo que ata a la persona con la cadena.
+
+   El nombre sale de cruzar el padrón con la huella de telemetría, que es
+   anónima. Quien no esté en el padrón sale como «sin identificar»: en una
+   pantalla que se usa para decidir a quién llamar, adivinar es peor que no
+   saber.
+   ───────────────────────────────────────────────────────────────────────── */
+
+function haceCuanto(iso) {
+  if (!iso) return null;
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms)) return null;
+  const min = Math.floor(ms / 60000);
+  if (min < 1) return 'recién';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  return `hace ${Math.floor(h / 24)} d`;
+}
+
+/** Verde si entró en la última hora: la señal de «está dentro ahora». */
+function claseFrescura(iso) {
+  if (!iso) return 'mut';
+  const min = (Date.now() - new Date(iso).getTime()) / 60000;
+  if (min < 60) return 'ok';
+  if (min < 60 * 24) return 'cyan';
+  if (min < 60 * 24 * 7) return 'warn';
+  return 'mut';
+}
+
+function ponPlataforma(v) {
+  conexPlataforma = v;
+  pintar(true);
+}
+
+function vistaConexiones(d) {
+  const filas = d.sesiones || [];
+  const conNombre = filas.filter((s) => s.identificado).length;
+  const conWallet = filas.filter((s) => s.direccionWallet).length;
+
+  const botonera = [['', 'Todo'], ['android', 'App'], ['web', 'Web']].map(([v, t]) =>
+    `<button class="g mini ${conexPlataforma === v ? 'sel' : ''}"
+       onclick="ponPlataforma('${v}')">${t}</button>`).join('');
+
+  if (!filas.length) {
+    return `<div class="tarjeta p" style="margin-bottom:14px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          ${botonera}
+          <button class="g mini" onclick="pintar(true)">Actualizar</button>
+        </div>
+      </div>` + vacio('Todavía nadie',
+      'Ninguna conexión registrada con estos filtros. Si sabés que sí entra gente, lo más probable es que esa app todavía no esté reportando telemetría.');
+  }
+
+  return `
+  <div class="kpis">
+    ${kpi('Personas conectadas', n(filas.length), 'g',
+      `<div class="d">las ${filas.length} más recientes</div>`)}
+    ${kpi('Con nombre', n(conNombre), 'v',
+      `<div class="d">${n(filas.length - conNombre)} fuera del padrón</div>`)}
+    ${kpi('Con billetera', n(conWallet), 'c')}
+  </div>
+
+  <div class="tarjeta p" style="margin-bottom:14px">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      ${botonera}
+      <span style="flex:1"></span>
+      <span style="font-size:11.5px;color:var(--faint)">
+        al día de ${new Date().toLocaleTimeString('es')} · se actualiza sola cada 30 s</span>
+      <button class="g mini" onclick="pintar(true)">Actualizar ahora</button>
+    </div>
+  </div>
+
+  <div class="tarjeta scroll"><table style="min-width:820px">
+    <thead><tr>
+      <th>Quién</th><th>Correo</th><th>Billetera</th>
+      <th>App</th><th>Web</th><th>Desde</th><th>Última conexión</th>
+    </tr></thead>
+    <tbody>${filas.map((s) => {
+      const enApp = s.ultimaEn?.android || s.ultimaEn?.ios;
+      const enWeb = s.ultimaEn?.web;
+      return `<tr>
+        <td>
+          <b${s.identificado ? '' : ' style="color:var(--faint);font-style:italic"'}>${
+            esc(s.nombre || s.email || 'Sin identificar')}</b>
+          ${s.gid ? `<div><span class="eti ok">${esc(s.gid)}</span></div>` : ''}
+        </td>
+        <td style="font-size:12.5px">${s.email ? esc(s.email)
+          : '<span style="color:var(--faint);font-style:italic">fuera del padrón</span>'}</td>
+        <td class="num" style="font-size:11px">${s.direccionWallet
+          ? esc(s.direccionWallet.slice(0, 10)) + '…' + esc(s.direccionWallet.slice(-8))
+          : '<span style="color:var(--faint)">—</span>'}</td>
+        <td style="font-size:11.5px">${enApp
+          ? `<span class="eti ${claseFrescura(enApp)}">${haceCuanto(enApp)}</span>`
+          : '<span style="color:var(--faint)">nunca</span>'}</td>
+        <td style="font-size:11.5px">${enWeb
+          ? `<span class="eti ${claseFrescura(enWeb)}">${haceCuanto(enWeb)}</span>`
+          : '<span style="color:var(--faint)">nunca</span>'}</td>
+        <td style="font-size:11.5px">${esc(s.app)}${
+          // '??' es «no se pudo deducir el país», no un país: enseñarlo es ruido.
+          s.pais && s.pais !== '??' ? ' · ' + esc(s.pais) : ''}${
+          s.version ? ' · v' + esc(s.version) : ''}</td>
+        <td style="font-size:11.5px">
+          <span class="eti ${claseFrescura(s.ultima)}">${haceCuanto(s.ultima)}</span>
+          <div style="color:var(--faint);font-size:10.5px">${
+            new Date(s.ultima).toLocaleString('es')}</div>
+        </td>
+      </tr>`;
+    }).join('')}</tbody></table></div>
+
+  <p style="color:var(--faint);font-size:11.5px;margin-top:12px">
+    El nombre y la billetera salen de cruzar el padrón con la huella de
+    telemetría, que por sí sola no identifica a nadie. Quien no aparezca en el
+    padrón de su app sale como «fuera del padrón» — no se le inventa un nombre.
+  </p>`;
+}
+
 function vistaSeguridad(d) {
   const et = (a) => /revocada|suspendida|rechazada|fallida|ignorado/.test(a) ? 'bad'
     : /creada|rotada|aprobada/.test(a) ? 'gold' : 'mut';
@@ -1296,7 +1435,21 @@ function pintarNav(pendientes = 0) {
       k === 'errores' && pendientes ? `<span class="pip">${pendientes}</span>` : ''}</button>`).join('');
 }
 
-function irA(k) { pestana = k; pintarNav(); pintar(); }
+function irA(k) {
+  pestana = k;
+  pintarNav();
+  pintar();
+  // «Conexiones» se refresca sola cada 30 s, y SOLO mientras se está mirando.
+  // Un temporizador que sigue corriendo en otra pestaña gasta consultas y, lo
+  // peor, repinta por debajo lo que el operador está leyendo.
+  clearInterval(conexReloj);
+  conexReloj = null;
+  if (k === 'conexiones') {
+    conexReloj = setInterval(() => {
+      if (pestana === 'conexiones' && !cargando && !document.hidden) pintar(true);
+    }, 30000);
+  }
+}
 
 async function arrancar() {
   document.getElementById('entrada').classList.add('oculto');

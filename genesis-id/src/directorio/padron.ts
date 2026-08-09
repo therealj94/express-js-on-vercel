@@ -247,21 +247,31 @@ const saldoTotal = (e: EntradaDirectorio) =>
  * Todas las entradas de una app, tal cual.
  *
  * La usa la analítica para poner nombre a una huella de telemetría: se le
- * calcula a cada persona la misma huella y se cruza. Devuelve solo `app`,
- * `idExterno`, `email`, `nombre`, `pais` y `gid` porque es lo único que ese
- * cruce necesita — pasar el resto (teléfono, saldos, dirección) sería repartir
- * datos personales a un módulo que no los pidió.
+ * calcula a cada persona la misma huella y se cruza. Devuelve un puñado de
+ * campos y no la entrada entera — pasar el teléfono, los saldos o el histórico
+ * sería repartir datos personales a un módulo que no los pidió.
+ *
+ * `direccionWallet` está en la lista porque las últimas conexiones se miran
+ * para saber QUIEN entró, y en este ecosistema una persona se reconoce por su
+ * correo y por su billetera: sin ella la pantalla enseña un nombre que no
+ * lleva a la cadena. Va por la misma puerta y con el mismo permiso
+ * (`usuarios.ver`) que el resto del directorio.
  */
 export async function entradasDe(app: string): Promise<Array<
-  Pick<EntradaDirectorio, 'app' | 'idExterno' | 'email' | 'nombre' | 'pais' | 'gid'>
+  Pick<EntradaDirectorio, 'app' | 'idExterno' | 'email' | 'nombre' | 'pais' | 'gid' | 'direccionWallet'>
 >> {
   const c = col()
   const todas: EntradaDirectorio[] = c
-    ? await c.find({ app }, { projection: { app: 1, idExterno: 1, email: 1, nombre: 1, pais: 1, gid: 1 } }).toArray()
+    ? await c.find({ app }, {
+        projection: {
+          app: 1, idExterno: 1, email: 1, nombre: 1, pais: 1, gid: 1, direccionWallet: 1,
+        },
+      }).toArray()
     : [...memoria.values()].filter((e) => e.app === app)
   return todas.map((e) => ({
     app: e.app, idExterno: e.idExterno, email: e.email,
     nombre: e.nombre, pais: e.pais, gid: e.gid ?? null,
+    direccionWallet: e.direccionWallet,
   }))
 }
 
