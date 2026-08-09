@@ -11,7 +11,8 @@ export const settings = {
   contactEmail: 'reservations@lovecloudroatan.com',
   contactPhone: '+1 (702) 419-4681',
   whatsapp: '+1 (702) 419-4681',
-  departurePoint: 'French Harbour Marina, Roatán, Bay Islands, Honduras',
+  departurePoint: 'The Verandas at Pristine Bay, Roatán, Bay Islands, Honduras',
+  departureNote: 'Meet us at the dock below The Verandas at Pristine Bay. Free parking, and the crew will be waiting with your name on the board.',
   cancellationPolicy:
     'Free cancellation up to 7 days before departure. Within 7 days the deposit is non-refundable. Trips cancelled by us for weather are fully refunded or rescheduled at no cost.',
   instantBooking: true,
@@ -255,7 +256,7 @@ export const extras = [
   // Comfort & Care
   extra('x_pickup', 'comfort', '🚐', 'Hotel or cruise pickup', 60, 'flat', 'Air-conditioned round-trip transfer between your hotel or the cruise terminal and the marina.', 24),
   extra('x_massage', 'comfort', '💆', 'Massage aboard', 110, 'per_person', 'A licensed therapist aboard, 50 minutes on the shaded deck.', 72),
-  extra('x_kids', 'comfort', '🧒', 'Kids kit', 40, 'flat', 'Child-size life vests, floats, snacks and shade for the little ones.', 24),
+  extra('x_kids', 'comfort', '🧒', 'Family aboard set-up', 40, 'flat', 'Child-size life vests, pool floats, shaded seating and a snack tray, so the small crew is safe and busy all day.', 24),
   extra('x_towels', 'comfort', '🧺', 'Premium towels and shade', 35, 'flat', 'Oversized towels, extra umbrella and a cushioned bow setup.', 24),
   extra('x_cooler', 'comfort', '🧊', 'Extra cooler of drinks', 50, 'flat', 'A second stocked cooler of water, sodas and local beer.', 24),
   extra('x_wifi', 'comfort', '📶', 'WiFi aboard', 45, 'flat', 'Portable hotspot with island coverage for the trip.', 24),

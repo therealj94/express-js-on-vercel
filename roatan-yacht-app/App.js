@@ -10,6 +10,8 @@ import { light, dark, sans, serif } from './src/theme'
 import { getCatalog, getAvailability, getQuote, loadApiUrl } from './src/api'
 import { quoteLocally } from './src/pricing'
 import { Button, Notice } from './src/components/ui'
+import IntroScreen from './src/screens/IntroScreen'
+import AuthScreen from './src/screens/AuthScreen'
 import FleetScreen from './src/screens/FleetScreen'
 import ExperienceScreen from './src/screens/ExperienceScreen'
 import DateScreen from './src/screens/DateScreen'
@@ -18,6 +20,7 @@ import BookingScreen, { remember } from './src/screens/BookingScreen'
 import SettingsScreen from './src/screens/SettingsScreen'
 import { spanDates } from './src/components/Calendar'
 import { LOADING_LINES } from './src/fun'
+import { loadAccount, hasSeenIntro, markIntroSeen, signOut } from './src/account'
 
 const emptyCart = {
   vesselId: null, date: '', nights: 0, guests: 2,
@@ -44,6 +47,12 @@ function Shell() {
   const [bookedRef, setBookedRef] = useState(null)
   const quoteSeq = useRef(0)
 
+  // Before the app there is an arrival: the drone footage and the pitch, then
+  // a door. `phase` is that. It is separate from `screen` because the intro is
+  // not a place you navigate to — it is what happens once.
+  const [phase, setPhase] = useState('boot')
+  const [account, setAccount] = useState(null)
+
   // Every screen change slides in — an app moves, a page repaints.
   const enter = useRef(new Animated.Value(1)).current
   useEffect(() => {
@@ -64,6 +73,19 @@ function Shell() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    (async () => {
+      const [saved, seen] = await Promise.all([loadAccount(), hasSeenIntro()])
+      setAccount(saved)
+      setPhase(!seen ? 'intro' : saved ? 'app' : 'auth')
+    })()
+  }, [])
+
+  async function introDone() {
+    await markIntroSeen()
+    setPhase(account ? 'app' : 'auth')
+  }
 
   useEffect(() => {
     const back = {
@@ -166,6 +188,36 @@ function Shell() {
         : [...prev.bundleIds, id],
     }))
 
+  // The intro and the door come first, and the catalogue loads behind them —
+  // by the time anyone has read the pitch, the fleet is ready.
+  if (phase === 'boot') {
+    return (
+      <View style={{ flex: 1, backgroundColor: c.deep, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={c.signal} />
+      </View>
+    )
+  }
+  if (phase === 'intro') {
+    return (
+      <>
+        <StatusBar style="light" />
+        <IntroScreen c={c} insets={insets} onDone={introDone} />
+      </>
+    )
+  }
+  if (phase === 'auth') {
+    return (
+      <>
+        <StatusBar style="light" />
+        <AuthScreen
+          c={c}
+          insets={insets}
+          onDone={(a) => { setAccount(a); setPhase('app') }}
+        />
+      </>
+    )
+  }
+
   if (loadError) {
     return (
       <Centered c={c} insets={insets}>
@@ -240,7 +292,7 @@ function Shell() {
         {screen === 'checkout' && quote && (
           <CheckoutScreen
             {...screenProps}
-            quote={quote} settings={catalog.settings}
+            quote={quote} settings={catalog.settings} account={account}
             onTip={(tipPct) => setCart((p) => ({ ...p, tipPct }))}
             onBack={() => setScreen('date')}
             onBooked={async (ref) => {
@@ -274,8 +326,10 @@ function Shell() {
 
         {screen === 'settings' && (
           <SettingsScreen
-            c={c} catalog={catalog} insets={insets}
+            c={c} catalog={catalog} insets={insets} account={account}
             onSaved={async () => { setCatalog(null); await load(); setScreen('fleet') }}
+            onReplayIntro={() => setPhase('intro')}
+            onSignOut={async () => { await signOut(); setAccount(null); setPhase('auth') }}
           />
         )}
       </Animated.View>

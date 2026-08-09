@@ -8,7 +8,8 @@
     "contactEmail": "reservations@lovecloudroatan.com",
     "contactPhone": "+1 (702) 419-4681",
     "whatsapp": "+1 (702) 419-4681",
-    "departurePoint": "French Harbour Marina, Roatán, Bay Islands, Honduras",
+    "departurePoint": "The Verandas at Pristine Bay, Roatán, Bay Islands, Honduras",
+    "departureNote": "Meet us at the dock below The Verandas at Pristine Bay. Free parking, and the crew will be waiting with your name on the board.",
     "cancellationPolicy": "Free cancellation up to 7 days before departure. Within 7 days the deposit is non-refundable. Trips cancelled by us for weather are fully refunded or rescheduled at no cost."
   },
   "vessels": [
@@ -701,10 +702,10 @@
       "id": "x_kids",
       "category": "comfort",
       "emoji": "🧒",
-      "name": "Kids kit",
+      "name": "Family aboard set-up",
       "price": 40,
       "unit": "flat",
-      "description": "Child-size life vests, floats, snacks and shade for the little ones.",
+      "description": "Child-size life vests, pool floats, shaded seating and a snack tray, so the small crew is safe and busy all day.",
       "leadTimeHours": 24,
       "active": true,
       "maxQty": 5

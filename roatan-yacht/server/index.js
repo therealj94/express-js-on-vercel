@@ -67,6 +67,7 @@ app.get('/api/catalog', (req, res) => {
       contactPhone: s.contactPhone,
       whatsapp: s.whatsapp,
       departurePoint: s.departurePoint,
+      departureNote: s.departureNote,
       cancellationPolicy: s.cancellationPolicy,
       instantBooking: s.instantBooking,
       paymentMode: payments.mode(),
@@ -109,7 +110,7 @@ app.post('/api/quote', wrap(async (req, res) => {
 }))
 
 app.post('/api/bookings', wrap(async (req, res) => {
-  const { customer = {}, payNow = 'deposit', ...cart } = req.body || {}
+  const { customer = {}, payNow = 'deposit', paymentMethod = null, ...cart } = req.body || {}
 
   if (!customer.name || !String(customer.name).trim()) {
     return fail(res, 400, 'We need a name for the booking.', 'name')
@@ -161,6 +162,9 @@ app.post('/api/bookings', wrap(async (req, res) => {
         ? new Date(Date.now() + HOLD_MINUTES * 60000).toISOString()
         : null,
     payNow,
+    // Which wallet or card the guest chose in the app. The charge itself
+    // still happens on the processor; this is only what to show them back.
+    paymentMethod: ['card', 'gpay', 'applepay'].includes(paymentMethod) ? paymentMethod : null,
     createdAt: new Date().toISOString(),
     boardingPass: crypto.randomBytes(6).toString('hex').toUpperCase(),
   }
@@ -208,6 +212,7 @@ app.get('/api/bookings/:ref', (req, res) => {
     booking: b,
     settings: {
       departurePoint: s.departurePoint,
+      departureNote: s.departureNote,
       cancellationPolicy: s.cancellationPolicy,
       contactEmail: s.contactEmail,
       whatsapp: s.whatsapp,

@@ -45,7 +45,7 @@ const OCCASIONS = [
 ]
 
 const FAQ = [
-  ['Where do we meet?', 'French Harbour Marina, on the south side of Roatán. Add a transfer on the deck plan and we collect you from your hotel or the cruise terminal instead.'],
+  ['Where do we meet?', 'At the dock below The Verandas at Pristine Bay, on the north-east side of Roatán. Add a transfer on the deck plan and we collect you from your hotel or the cruise terminal instead.'],
   ['What if the weather turns?', 'If we call it off, you choose: a full refund or a new date. We do not argue about weather — the crew makes that call and it is always the safe one.'],
   ['Can we change the route?', 'That is the point of a private charter. Tell the captain what you want and the day bends around it. The reef, the sandbar, a very long lunch — your call.'],
   ['When do we pay the rest?', 'The deposit holds your date. The balance is charged 48 hours before departure, or you can pay the whole thing up front.'],

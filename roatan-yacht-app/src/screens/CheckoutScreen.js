@@ -11,12 +11,19 @@ import { Plate, Label, Button, Notice, Serif } from '../components/ui'
 import { spanDates } from '../components/Calendar'
 import { TIP_OPTIONS, celebrationFor } from '../fun'
 import Confetti from '../components/Confetti'
+import PaySheet from '../components/PaySheet'
+import { createDemoBooking } from '../demo'
 
-export default function CheckoutScreen({ c, cart, quote, settings, onBooked, onTip, onBack, insets }) {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', occasion: '', notes: '' })
+export default function CheckoutScreen({ c, cart, quote, settings, account, onBooked, onTip, onBack, insets }) {
+  const [form, setForm] = useState({
+    name: account?.name || '', email: account?.email || '', phone: account?.phone || '',
+    occasion: '', notes: '',
+  })
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState('')
   const [sent, setSent] = useState(false)
+  // Which amount the pay sheet is open for: 'deposit', 'full', or nothing.
+  const [paying, setPaying] = useState(null)
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }))
   const fmt = (d) =>
@@ -25,11 +32,26 @@ export default function CheckoutScreen({ c, cart, quote, settings, onBooked, onT
     })
   const span = spanDates(quote.date, quote.nights)
 
-  async function pay(payNow) {
+  /** The pay sheet has a method and, on a demo build, an approval. */
+  async function paid({ method }) {
+    const payNow = paying
+    setPaying(null)
+    if (quote.estimate) {
+      // No booking office to call. The booking is made on this phone so the
+      // guest still gets a boarding pass, a captain and a meeting point.
+      const booking = await createDemoBooking({ quote, customer: form, method, payNow, settings })
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      onBooked(booking.ref)
+      return
+    }
+    await pay(payNow, method)
+  }
+
+  async function pay(payNow, method) {
     setError('')
     setBusy(payNow)
     try {
-      const result = await createBooking({ ...cart, payNow, customer: form })
+      const result = await createBooking({ ...cart, payNow, paymentMethod: method, customer: form })
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 
       // Stripe's hosted page opens in the system browser sheet; when the guest
@@ -202,26 +224,48 @@ export default function CheckoutScreen({ c, cart, quote, settings, onBooked, onT
         {error ? <Notice c={c}>{error}</Notice> : null}
 
         {quote.estimate ? (
-          <>
-            <Notice c={c} tone="shoal">
-              This total is an estimate worked out on your phone — we are not connected to the
-              booking office right now. Send it over and the crew confirms the price and the date.
-            </Notice>
-            <Button c={c} onPress={sendByWhatsApp}>Send the request on WhatsApp</Button>
-          </>
-        ) : (
-          <>
-            <Button c={c} busy={busy === 'deposit'} disabled={Boolean(busy)} onPress={() => pay('deposit')}>
-              Pay {money(quote.deposit, quote.currency)} deposit
-            </Button>
-            <Button c={c} ghost busy={busy === 'full'} disabled={Boolean(busy)} onPress={() => pay('full')}>
-              Pay {money(quote.total, quote.currency)} in full
-            </Button>
-          </>
-        )}
+          <Notice c={c} tone="shoal">
+            This total was worked out on your phone — we are not connected to the booking office
+            right now. Pay below to walk through the whole thing as a guest sees it, or send the
+            manifest over on WhatsApp and a human confirms the price and the date.
+          </Notice>
+        ) : null}
+
+        <View style={[styles.methods, { borderColor: c.rule }]}>
+          <Text style={[styles.methodsLabel, { color: c.inkFaint }]}>WE TAKE</Text>
+          {['💳  Debit & credit card', '🤖  Google Pay', '🍎  Apple Pay'].map((m) => (
+            <Text key={m} style={[styles.methodsItem, { color: c.inkSoft }]}>{m}</Text>
+          ))}
+        </View>
+
+        <Button c={c} busy={busy === 'deposit'} disabled={Boolean(busy)} onPress={() => setPaying('deposit')}>
+          Pay {money(quote.deposit, quote.currency)} deposit
+        </Button>
+        <Button c={c} ghost busy={busy === 'full'} disabled={Boolean(busy)} onPress={() => setPaying('full')}>
+          Pay {money(quote.total, quote.currency)} in full
+        </Button>
+
+        {quote.estimate ? (
+          <Pressable onPress={sendByWhatsApp} hitSlop={8}>
+            <Text style={[styles.whatsapp, { color: c.shoal }]}>
+              Rather talk to a human? Send the manifest on WhatsApp
+            </Text>
+          </Pressable>
+        ) : null}
 
         <Text style={[styles.small, { color: c.inkFaint }]}>{settings.cancellationPolicy}</Text>
       </ScrollView>
+
+      {paying ? (
+        <PaySheet
+          c={c}
+          amount={paying === 'full' ? quote.total : quote.deposit}
+          currency={quote.currency}
+          demo={Boolean(quote.estimate)}
+          onClose={() => setPaying(null)}
+          onPay={paid}
+        />
+      ) : null}
     </KeyboardAvoidingView>
   )
 }
@@ -259,4 +303,11 @@ const styles = StyleSheet.create({
   tipChip: { flexBasis: '47%', flexGrow: 1, borderWidth: 1, borderRadius: 2, padding: 10, gap: 2 },
   tipPct: { fontFamily: mono, fontSize: 15, fontWeight: '700' },
   tipNote: { fontFamily: mono, fontSize: 9.5, letterSpacing: 0.4 },
+  methods: {
+    borderWidth: 1, borderRadius: 16, padding: 13, gap: 5,
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center',
+  },
+  methodsLabel: { fontFamily: sans, fontSize: 9.5, fontWeight: '800', letterSpacing: 1.6, width: '100%' },
+  methodsItem: { fontFamily: sans, fontSize: 12.5, marginRight: 12 },
+  whatsapp: { fontFamily: sans, fontSize: 13, fontWeight: '600', textAlign: 'center', paddingVertical: 4 },
 })

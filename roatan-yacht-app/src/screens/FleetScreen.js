@@ -78,7 +78,7 @@ export default function FleetScreen({ c, catalog, cart, insets, onOccasion, onPi
         snapToInterval={CARD_W + 16}
         decelerationRate="fast"
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 24, gap: 16 }}
+        contentContainerStyle={{ paddingHorizontal: 24, gap: 16, alignItems: 'center' }}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
           useNativeDriver: true,
           listener: (e) => setPage(Math.round(e.nativeEvent.contentOffset.x / (CARD_W + 16))),
@@ -146,7 +146,12 @@ const styles = StyleSheet.create({
   subtitle: { fontFamily: sans, fontSize: 14.5, marginTop: 2 },
   iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   occasion: { borderRadius: 999, paddingHorizontal: 15, paddingVertical: 9 },
-  card: { width: CARD_W, borderRadius: 28, overflow: 'hidden', justifyContent: 'flex-end' },
+  // The photographs are cut 3:4. Letting the card stretch to whatever height
+  // the screen has left made `cover` scale them up and slice most of the frame
+  // away — boats lost their bows. Pinning the card to the crop's own shape is
+  // what actually fixes the framing; the crop file only helps if the container
+  // agrees with it.
+  card: { width: CARD_W, aspectRatio: 3 / 4, borderRadius: 28, overflow: 'hidden', justifyContent: 'flex-end' },
   cardBody: { padding: 22, gap: 5 },
   nameTag: {
     alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.92)',

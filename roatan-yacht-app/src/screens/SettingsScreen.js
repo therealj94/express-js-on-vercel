@@ -5,7 +5,7 @@ import { mono } from '../theme'
 import { apiUrl, builtInUrl, setApiUrl, testConnection } from '../api'
 import { Plate, Label, Button, Notice, Serif } from '../components/ui'
 
-export default function SettingsScreen({ c, catalog, onSaved, insets }) {
+export default function SettingsScreen({ c, catalog, account, onSaved, onReplayIntro, onSignOut, insets }) {
   const goBack = () => onSaved()
   const [url, setUrl] = useState(apiUrl())
   const [result, setResult] = useState(null)
@@ -59,6 +59,18 @@ export default function SettingsScreen({ c, catalog, onSaved, insets }) {
         <Label c={c} signal>Settings</Label>
         <Serif c={c} size={21}>Where the app books</Serif>
       </View>
+
+      <Plate c={c} title="You">
+        <Text style={[styles.small, { color: c.inkSoft }]}>
+          {account?.guest || !account?.email
+            ? 'Looking around as a guest. Sign in and the checkout fills itself in.'
+            : `Signed in as ${account.name || account.email}${account.name ? ` · ${account.email}` : ''}.`}
+        </Text>
+        <Button c={c} ghost onPress={onReplayIntro}>Watch the intro again</Button>
+        <Button c={c} ghost onPress={onSignOut}>
+          {account?.guest || !account?.email ? 'Sign in or create an account' : 'Sign out'}
+        </Button>
+      </Plate>
 
       <Plate c={c} title="Booking server">
         <Text style={[styles.small, { color: c.inkSoft }]}>

@@ -18,6 +18,7 @@ const snapshot = {
     contactPhone: seed.settings.contactPhone,
     whatsapp: seed.settings.whatsapp,
     departurePoint: seed.settings.departurePoint,
+    departureNote: seed.settings.departureNote,
     cancellationPolicy: seed.settings.cancellationPolicy,
   },
   vessels: seed.vessels.filter((v) => v.active).sort((a, b) => a.sortOrder - b.sortOrder),
