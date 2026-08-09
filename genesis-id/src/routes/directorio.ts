@@ -48,6 +48,7 @@ directorioPanelRouter.get('/', async (req, res) => {
     moneda: q.moneda || undefined,
     estado: q.estado || undefined,
     nuncaEntro: bool(q.nuncaEntro),
+    tramo: q.tramo || undefined,
     saldoMin: Number(q.saldoMin) || undefined,
     registradoDias: Number(q.registradoDias) || undefined,
     direccion: (q.direccion === 'asc' ? 'asc' : 'desc') as 'asc' | 'desc',

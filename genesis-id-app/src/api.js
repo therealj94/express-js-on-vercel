@@ -191,12 +191,13 @@ export const directorioResumen = () => llamar('GET', '/panel/directorio/resumen'
  * `conSaldo=0` cuando nadie lo pidió esconde a media lista.
  */
 export function directorio({
-  texto, app, pais, moneda, conWallet, conGid, conSaldo, nuncaEntro,
+  texto, app, pais, moneda, conWallet, conGid, conSaldo, nuncaEntro, tramo,
   inactivosDias, registradoDias, saldoMin, orden, direccion, limite = 60, desde = 0,
 } = {}) {
   const q = new URLSearchParams();
   const bool = (k, v) => { if (v !== undefined && v !== '') q.set(k, v ? '1' : '0'); };
   if (texto) q.set('texto', texto);
+  if (tramo) q.set('tramo', tramo);
   if (app && app !== 'todas') q.set('app', app);
   if (pais) q.set('pais', pais);
   if (moneda) q.set('moneda', moneda);

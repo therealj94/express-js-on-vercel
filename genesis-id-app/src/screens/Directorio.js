@@ -26,16 +26,44 @@ const monto = (v) => Number(v).toLocaleString('es', { maximumFractionDigits: 4 }
 
 const corta = (d) => (d ? `${d.slice(0, 8)}…${d.slice(-6)}` : null);
 
+/**
+ * Cuánto hace, en minutos si hace falta.
+ *
+ * La versión anterior empezaba en «hoy», y con eso no se distinguía a quien
+ * está dentro AHORA MISMO de quien entró a las siete de la mañana. Para saber
+ * si alguien está usando la app en este momento —que es media pregunta de las
+ * que se le hacen a esta pantalla— los minutos son justamente lo que importa.
+ */
 function cuando(iso) {
   if (!iso) return null;
-  const dias = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  if (Number.isNaN(dias)) return null;
-  if (dias <= 0) return 'hoy';
-  if (dias === 1) return 'ayer';
-  if (dias < 30) return `hace ${dias} d`;
-  if (dias < 365) return `hace ${Math.floor(dias / 30)} m`;
-  return `hace ${Math.floor(dias / 365)} a`;
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms)) return null;
+  const min = Math.floor(ms / 60000);
+  if (min < 1) return 'ahora';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.floor(h / 24);
+  if (d === 1) return 'ayer';
+  if (d < 30) return `hace ${d} d`;
+  if (d < 365) return `hace ${Math.floor(d / 30)} m`;
+  return `hace ${Math.floor(d / 365)} a`;
 }
+
+/** Los tramos de presencia, en el orden en que se leen. */
+const TRAMOS = [
+  { clave: 'ahora', nombre: 'Ahora', sub: 'última hora', color: C.ok },
+  { clave: 'hoy', nombre: 'Hoy', sub: '24 horas', color: C.cyan },
+  { clave: 'semana', nombre: 'Semana', sub: '7 días', color: C.goldLt },
+  { clave: 'mes', nombre: 'Mes', sub: '30 días', color: C.gold },
+  { clave: 'dormido', nombre: 'Dormidos', sub: '+30 días', color: C.warn },
+  { clave: 'nunca', nombre: 'Nunca', sub: 'sin señal', color: C.txt3 },
+];
+
+const COLOR_TRAMO = Object.fromEntries(TRAMOS.map((t) => [t.clave, t.color]));
+
+/** Cómo se llama cada plataforma en la pantalla. */
+const PLATAFORMA = { android: 'teléfono', ios: 'iPhone', web: 'web', desconocida: '—' };
 
 /** Los filtros que caben en un teléfono sin volverse un formulario. */
 const FILTROS = [
@@ -56,13 +84,17 @@ export function Directorio({ avisar, abrirPersona, volver }) {
   const [filtros, setFiltros] = useState({});
   const [app, setApp] = useState('todas');
   const [moneda, setMoneda] = useState('');
+  const [tramo, setTramo] = useState('');
   const [refrescando, setRefrescando] = useState(false);
 
-  const traer = useCallback(async (busqueda, f, laApp, laMoneda) => {
+  const traer = useCallback(async (busqueda, f, laApp, laMoneda, elTramo) => {
     setCargando(true);
     const [r, l] = await Promise.all([
       api.directorioResumen(),
-      api.directorio({ texto: busqueda, app: laApp, moneda: laMoneda, limite: 60, ...f }),
+      api.directorio({
+        texto: busqueda, app: laApp, moneda: laMoneda, tramo: elTramo || undefined,
+        limite: 60, ...f,
+      }),
     ]);
     setCargando(false);
     if (r.error || l.error) {
@@ -73,14 +105,14 @@ export function Directorio({ avisar, abrirPersona, volver }) {
     setLista(l);
   }, [avisar]);
 
-  useEffect(() => { traer('', {}, 'todas', ''); }, [traer]);
+  useEffect(() => { traer('', {}, 'todas', '', ''); }, [traer]);
 
   // La búsqueda espera a que se deje de escribir. Sin esto cada letra dispara
   // una consulta al padrón entero — y además una línea en la bitácora.
   useEffect(() => {
-    const t = setTimeout(() => { traer(texto, filtros, app, moneda); }, texto ? 450 : 0);
+    const t = setTimeout(() => { traer(texto, filtros, app, moneda, tramo); }, texto ? 450 : 0);
     return () => clearTimeout(t);
-  }, [texto, filtros, app, moneda, traer]);
+  }, [texto, filtros, app, moneda, tramo, traer]);
 
   function alternar(k, v) {
     hap();
@@ -95,14 +127,15 @@ export function Directorio({ avisar, abrirPersona, volver }) {
     avisar(r.error || r.mensaje || 'Consultando la cadena…', Boolean(r.error));
   }
 
-  const puestos = Object.keys(filtros).length + (app !== 'todas' ? 1 : 0) + (moneda ? 1 : 0);
+  const puestos = Object.keys(filtros).length + (app !== 'todas' ? 1 : 0)
+    + (moneda ? 1 : 0) + (tramo ? 1 : 0);
 
   return (
     <View style={{ flex: 1 }}>
       <Cabecera titulo="Directorio" sub="todas las personas del ecosistema"
         onAtras={volver}
         derecha={
-          <Pressable onPress={() => traer(texto, filtros, app, moneda)} hitSlop={8} style={{ padding: 6 }}>
+          <Pressable onPress={() => traer(texto, filtros, app, moneda, tramo)} hitSlop={8} style={{ padding: 6 }}>
             <Icon name="sync" size={17} color={C.gold} />
           </Pressable>
         } />
@@ -137,6 +170,56 @@ export function Directorio({ avisar, abrirPersona, volver }) {
           </View>
         ) : null}
 
+        {/* ── Quién anda por aquí ─────────────────────────────────────────
+            La respuesta a «¿quién entró y hace cuánto?» de un vistazo. Cada
+            tramo es un botón: se toca y la lista se queda con esa gente. Los
+            recuentos se calculan con el resto de filtros puestos pero sin el
+            de tramo, así que al elegir uno los demás siguen enseñando cuánta
+            gente hay — si no, caerían a cero y no habría a dónde volver. */}
+        {lista?.tramos ? (
+          <Card style={{ marginBottom: 12 }}>
+            <View style={st.filaTit}>
+              <Text style={st.h}>Quién anda por aquí</Text>
+              {tramo ? (
+                <Pressable onPress={() => { hap(); setTramo(''); }} hitSlop={8}>
+                  <Text style={st.quitar}>ver todos</Text>
+                </Pressable>
+              ) : null}
+            </View>
+
+            <View style={st.tramos}>
+              {TRAMOS.map((t) => {
+                const cuantos = lista.tramos[t.clave] ?? 0;
+                const puesto = tramo === t.clave;
+                return (
+                  <Pressable key={t.clave}
+                    onPress={() => { hap(); setTramo(puesto ? '' : t.clave); }}
+                    style={[st.tramo, puesto && { borderColor: t.color, backgroundColor: t.color + '1A' }]}>
+                    <Text style={[st.tramoN, { color: cuantos ? t.color : C.txt3 }]}>{n(cuantos)}</Text>
+                    <Text style={[st.tramoT, puesto && { color: C.txt }]}>{t.nombre}</Text>
+                    <Text style={st.tramoS}>{t.sub}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Si NADIE manda telemetría, los tramos son casi todos «nunca» y
+                eso no es un dato sino un montaje a medias. Se dice, porque si
+                no parece que el ecosistema está muerto. */}
+            {resumen && resumen.conTelemetria === 0 ? (
+              <View style={st.aviso}>
+                <Icon name="alert-circle" size={15} color={C.warn} />
+                <Text style={st.avisoTxt}>
+                  Ninguna app está reportando todavía, así que «hace cuánto» solo
+                  puede salir de lo que cada app manda al sincronizar su padrón —
+                  cada seis horas, y solo si su backend escribe la fecha de
+                  entrada. Con la telemetría montada esto pasa a verse al minuto.
+                </Text>
+              </View>
+            ) : null}
+          </Card>
+        ) : null}
+
         {/* Filtros */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}
           contentContainerStyle={st.filaFiltros}>
@@ -158,7 +241,7 @@ export function Directorio({ avisar, abrirPersona, volver }) {
         </ScrollView>
 
         {puestos ? (
-          <Pressable onPress={() => { hap(); setFiltros({}); setApp('todas'); setMoneda(''); }}
+          <Pressable onPress={() => { hap(); setFiltros({}); setApp('todas'); setMoneda(''); setTramo(''); }}
             style={st.limpiar}>
             <Text style={st.limpiarTxt}>
               {puestos} filtro{puestos > 1 ? 's' : ''} puesto{puestos > 1 ? 's' : ''} · limpiar
@@ -212,8 +295,9 @@ export function Directorio({ avisar, abrirPersona, volver }) {
               const saldos = Object.entries(u.saldos || {})
                 .filter(([m, x]) => x > 0 && (!moneda || m === moneda))
                 .sort((a, b) => b[1] - a[1]);
-              const dias = u.ultimoAcceso
-                ? Math.floor((Date.now() - new Date(u.ultimoAcceso).getTime()) / 86400000) : null;
+              // Las plataformas por las que entró, la más reciente primero.
+              const plats = Object.entries(u.plataformas || {})
+                .sort((a, b) => String(b[1]).localeCompare(String(a[1])));
               return (
                 <Pressable key={`${u.email}-${u.app}-${i}`}
                   onPress={() => { hap(); abrirPersona(u.email); }}
@@ -227,8 +311,21 @@ export function Directorio({ avisar, abrirPersona, volver }) {
                       <Pastilla texto={u.app} color={C.txt3} />
                       {u.gid ? <Pastilla texto="verificado" color={C.ok} />
                         : <Pastilla texto="sin verificar" color={C.txt3} />}
+                      {/* El país desde el que entra de verdad manda sobre el
+                          que declaró al registrarse. Cuando no coinciden se
+                          enseñan los dos: esa diferencia es justo lo que un
+                          revisor de cumplimiento necesita ver. */}
+                      {u.paisReal && u.paisReal !== u.pais ? (
+                        <Pastilla texto={`entra desde ${u.paisReal}`} color={C.warn} />
+                      ) : null}
                       {u.pais ? <Pastilla texto={u.pais} color={C.txt3} /> : null}
                     </View>
+                    {plats.length ? (
+                      <Text style={st.plats} numberOfLines={1}>
+                        {plats.map(([p, t]) =>
+                          `${PLATAFORMA[p] || p} ${cuando(t)}`).join('  ·  ')}
+                      </Text>
+                    ) : null}
                     {u.direccionWallet ? (
                       <Text style={st.wallet}>{corta(u.direccionWallet)}</Text>
                     ) : (
@@ -244,9 +341,22 @@ export function Directorio({ avisar, abrirPersona, volver }) {
                     {saldos.length > 3 ? (
                       <Text style={st.mas}>+{saldos.length - 3} más</Text>
                     ) : null}
-                    <Text style={[st.ultimo, dias !== null && dias > 90 && { color: C.warn }]}>
-                      {u.ultimoAcceso ? cuando(u.ultimoAcceso) : 'nunca entró'}
-                    </Text>
+                    {/* El punto de color dice el tramo sin tener que leer la
+                        fecha: verde es que está dentro ahora. */}
+                    <View style={st.visto}>
+                      <View style={[st.punto, { backgroundColor: COLOR_TRAMO[u.tramo] || C.txt3 }]} />
+                      <Text style={[st.ultimo, { color: COLOR_TRAMO[u.tramo] || C.txt3 }]}>
+                        {u.vistoEn ? cuando(u.vistoEn) : 'nunca entró'}
+                      </Text>
+                    </View>
+                    {/* De dónde salió esa fecha. Importa: la del padrón puede
+                        ir seis horas por detrás, la de telemetría es del
+                        minuto. Sin decirlo, las dos parecen igual de fiables. */}
+                    {u.vistoEn ? (
+                      <Text style={st.fuente}>
+                        {u.fuenteVisto === 'telemetria' ? 'en vivo' : 'según su app'}
+                      </Text>
+                    ) : null}
                   </View>
                   <Icon name="chevron-forward" size={15} color={C.txt3} />
                 </Pressable>
@@ -279,6 +389,22 @@ const st = StyleSheet.create({
   limpiarTxt: { color: C.gold, fontSize: 12, fontWeight: '600' },
   h: { color: C.txt, fontSize: 14, fontWeight: '700' },
   sub: { color: C.txt3, fontSize: 11.5, marginBottom: 8 },
+  filaTit: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  quitar: { color: C.gold, fontSize: 11.5, fontWeight: '600' },
+  tramos: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+  tramo: {
+    flexGrow: 1, minWidth: 84, alignItems: 'center', paddingVertical: 9,
+    paddingHorizontal: 6, borderRadius: 10, borderWidth: 1, borderColor: C.line2,
+  },
+  tramoN: { fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  tramoT: { color: C.txt2, fontSize: 11.5, fontWeight: '600', marginTop: 2 },
+  tramoS: { color: C.txt3, fontSize: 9.5 },
+  aviso: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginTop: 12 },
+  avisoTxt: { color: C.txt2, fontSize: 11.5, lineHeight: 16.5, flex: 1 },
+  plats: { color: C.txt3, fontSize: 10.5, marginTop: 3 },
+  visto: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  punto: { width: 6, height: 6, borderRadius: 3 },
+  fuente: { color: C.txt3, fontSize: 9.5 },
   moneda: {
     flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8,
     borderTopWidth: 1, borderTopColor: C.line2,

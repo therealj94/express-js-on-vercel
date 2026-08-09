@@ -31,6 +31,7 @@
 
 import { coleccionAparte, store } from '../store.js'
 import { saldosDe, monedas, emisiones } from './monedas.js'
+import { presenciaDe, ultimaSenal, tramoDe } from './presencia.js'
 
 /** Lo único que se guarda. Todo lo demás que llegue se descarta en silencio. */
 const CAMPOS = [
@@ -186,6 +187,8 @@ export interface FiltroDirectorio {
   /** Saldo mínimo, en la moneda filtrada o sumando todas. */
   saldoMin?: number
   estado?: string
+  /** `ahora` | `hoy` | `semana` | `mes` | `dormido` | `nunca`. */
+  tramo?: string
   orden?: 'ultimoAcceso' | 'creadoEn' | 'saldo' | 'email' | 'nombre' | 'app' | 'pais'
   /** `desc` es mayor a menor y más reciente primero; `asc` al revés. */
   direccion?: 'asc' | 'desc'
@@ -193,7 +196,12 @@ export interface FiltroDirectorio {
   desde?: number
 }
 
-function pasaFiltro(e: EntradaDirectorio, f: FiltroDirectorio): boolean {
+/**
+ * @param visto la señal combinada padrón + telemetría, ya resuelta. Se pasa en
+ *   vez de leerla aquí porque calcularla es un cruce sobre todo el padrón, y
+ *   hacerlo dentro del filtro sería repetirlo una vez por persona.
+ */
+function pasaFiltro(e: EntradaDirectorio, f: FiltroDirectorio, visto: string | null): boolean {
   const t = (f.texto || '').toLowerCase()
   if (t && !(e.email.includes(t) || (e.nombre || '').toLowerCase().includes(t) ||
       (e.direccionWallet || '').includes(t) || (e.gid || '').toLowerCase().includes(t) ||
@@ -209,7 +217,10 @@ function pasaFiltro(e: EntradaDirectorio, f: FiltroDirectorio): boolean {
   }
   if (f.moneda && !((e.saldos || {})[f.moneda.toUpperCase()] > 0)) return false
   if (f.estado && (e.estado || '') !== f.estado) return false
-  if (f.nuncaEntro !== undefined && Boolean(e.ultimoAcceso) === f.nuncaEntro) return false
+  // «Nunca entró» quiere decir que NINGUNA de las dos fuentes le ha visto.
+  // Antes miraba solo el padrón y marcaba como fantasmas a personas que
+  // entraban todos los días desde una app que no escribía ese campo.
+  if (f.nuncaEntro !== undefined && Boolean(visto) === f.nuncaEntro) return false
   if (f.saldoMin !== undefined && f.saldoMin > 0) {
     const s = f.moneda ? ((e.saldos || {})[f.moneda.toUpperCase()] || 0) : saldoTotal(e)
     if (s < f.saldoMin) return false
@@ -221,9 +232,11 @@ function pasaFiltro(e: EntradaDirectorio, f: FiltroDirectorio): boolean {
   }
   if (f.inactivosDias) {
     const corte = Date.now() - f.inactivosDias * 86400000
-    const ult = e.ultimoAcceso ? Date.parse(e.ultimoAcceso) : 0
+    const ult = visto ? Date.parse(visto) : 0
     if (ult >= corte) return false
   }
+  // El tramo de presencia: `ahora`, `hoy`, `semana`, `mes`, `dormido`, `nunca`.
+  if (f.tramo && tramoDe(visto) !== f.tramo) return false
   return true
 }
 
@@ -255,7 +268,20 @@ export async function entradasDe(app: string): Promise<Array<
 export async function consultar(f: FiltroDirectorio = {}) {
   const c = col()
   const todas: EntradaDirectorio[] = c ? await c.find({}).toArray() : [...memoria.values()]
-  const filtradas = todas.filter((e) => pasaFiltro(e, f))
+
+  // La presencia real, de la telemetría, ANTES de filtrar: los filtros de
+  // actividad («nunca entró», «dormidos 90 días») se deciden con la señal
+  // combinada, no con el `ultimoAcceso` del padrón. Filtrar primero y mirar
+  // la presencia después daría justo el fallo que se está arreglando —
+  // esconder a alguien por inactivo cuando entró hace diez minutos.
+  const presencia = await presenciaDe(todas)
+  const vistas = new Map<string, ReturnType<typeof ultimaSenal>>()
+  for (const e of todas) {
+    vistas.set(e._id, ultimaSenal(e.ultimoAcceso, presencia.get(e._id)))
+  }
+  const visto = (e: EntradaDirectorio) => vistas.get(e._id)?.en || null
+
+  const filtradas = todas.filter((e) => pasaFiltro(e, f, visto(e)))
 
   // `desc` significa lo que uno espera de cada columna: en números, mayor a
   // menor; en fechas, lo más reciente arriba; en texto, de la A a la Z. Que
@@ -282,8 +308,8 @@ export async function consultar(f: FiltroDirectorio = {}) {
     } else {
       // Fechas. Quien nunca entró va al final en cualquier sentido: es la
       // ausencia de un dato, no el dato más antiguo.
-      const ka = (orden === 'creadoEn' ? a.creadoEn : a.ultimoAcceso) || ''
-      const kb = (orden === 'creadoEn' ? b.creadoEn : b.ultimoAcceso) || ''
+      const ka = (orden === 'creadoEn' ? a.creadoEn : visto(a)) || ''
+      const kb = (orden === 'creadoEn' ? b.creadoEn : visto(b)) || ''
       if (!ka && !kb) r = 0
       else if (!ka) return 1
       else if (!kb) return -1
@@ -294,7 +320,45 @@ export async function consultar(f: FiltroDirectorio = {}) {
 
   const desde = Math.max(0, f.desde || 0)
   const limite = Math.min(500, f.limite || 100)
-  return { total: filtradas.length, usuarios: filtradas.slice(desde, desde + limite) }
+
+  // Los tramos se cuentan con TODOS los filtros puestos menos el de tramo.
+  //
+  // No sobre la página devuelta —una foto de las cien filas visibles no dice
+  // nada— pero tampoco sobre el directorio entero: si se está mirando Veta
+  // Wallet, los contadores tienen que ser de Veta Wallet. Dejar fuera solo el
+  // filtro de tramo es lo que permite tocar «Hoy» y que los demás tramos
+  // sigan enseñando cuánta gente hay en cada uno; si se contaran ya filtrados,
+  // al elegir uno los otros caerían a cero y no habría a dónde volver.
+  const tramos: Record<string, number> = {
+    ahora: 0, hoy: 0, semana: 0, mes: 0, dormido: 0, nunca: 0,
+  }
+  const sinTramo = { ...f, tramo: undefined }
+  for (const e of todas) {
+    if (pasaFiltro(e, sinTramo, visto(e))) tramos[tramoDe(visto(e))]++
+  }
+
+  return {
+    total: filtradas.length,
+    tramos,
+    usuarios: filtradas.slice(desde, desde + limite).map((e) => {
+      const v = vistas.get(e._id)
+      const p = presencia.get(e._id)
+      return {
+        ...e,
+        // La verdad sobre cuándo se le vio, y de dónde salió ese dato: si
+        // vino de la telemetría es de hace minutos; si vino del padrón puede
+        // ir seis horas por detrás, y quien mira merece saberlo.
+        vistoEn: v?.en ?? null,
+        fuenteVisto: v?.fuente ?? null,
+        tramo: tramoDe(v?.en ?? null),
+        /** La última vez en cada plataforma: `{ android: iso, web: iso }`. */
+        plataformas: p?.plataformas ?? {},
+        eventos: p?.eventos ?? 0,
+        /** El país desde el que entra de verdad, que puede no ser el declarado. */
+        paisReal: p?.pais ?? null,
+      }
+    }),
+  }
 }
 
 /** Los números de arriba de la pantalla, sobre TODO el directorio. */
@@ -304,6 +368,14 @@ export async function resumenDirectorio() {
   const todas: EntradaDirectorio[] = c ? await c.find({}).toArray() : [...memoria.values()]
   const hace30 = Date.now() - 30 * 86400000
   const hace90 = Date.now() - 90 * 86400000
+
+  // Mismo arreglo que en `consultar`: «activos» y «dormidos» se cuentan con la
+  // señal real. Con solo el padrón, una app que no escribe `ultimoAcceso`
+  // aparecía entera como dormida.
+  const presencia = await presenciaDe(todas)
+  const tramos: Record<string, number> = {
+    ahora: 0, hoy: 0, semana: 0, mes: 0, dormido: 0, nunca: 0,
+  }
 
   const porApp: Record<string, number> = {}
   const porPais: Record<string, number> = {}
@@ -319,7 +391,9 @@ export async function resumenDirectorio() {
     porKyc[e.kyc || 'sin dato'] = (porKyc[e.kyc || 'sin dato'] ?? 0) + 1
     if (e.direccionWallet) conWallet++
     if (e.gid) conGid++
-    const ult = e.ultimoAcceso ? Date.parse(e.ultimoAcceso) : 0
+    const senal = ultimaSenal(e.ultimoAcceso, presencia.get(e._id)).en
+    tramos[tramoDe(senal)]++
+    const ult = senal ? Date.parse(senal) : 0
     if (ult >= hace30) activos30++
     if (ult && ult < hace90) dormidos90++
     for (const [m, n] of Object.entries(e.saldos || {})) {
@@ -336,6 +410,10 @@ export async function resumenDirectorio() {
   return {
     total: todas.length,
     conWallet, conGid, conSaldo, activos30, dormidos90,
+    /** Quién anda por aquí, por tramos. Suman el total: cada uno cuenta en el más estrecho. */
+    tramos,
+    /** Cuánta gente del padrón manda telemetría: si es 0, ninguna app la tiene montada. */
+    conTelemetria: presencia.size,
     /** Cuántos NO están en Genesis ID: son los que faltan verificar. */
     sinGid: todas.length - conGid,
     porApp: ordenar(porApp),
@@ -379,9 +457,25 @@ export async function fichaPorEmail(email: string) {
   if (!cuentas.length) return null
 
   const identidad = store.todo().identidades.find((i) => i.email?.toLowerCase() === e) ?? null
+
+  // La presencia de cada cuenta suya. Alguien puede tener cuenta en dos apps y
+  // entrar solo a una: enseñarlo por cuenta —y no una fecha sola para toda la
+  // persona— es lo que deja ver cuál usa de verdad y cuál abandonó.
+  const presencia = await presenciaDe(cuentas)
+
   return {
     email: e,
-    cuentas,
+    cuentas: cuentas.map((x) => {
+      const p = presencia.get(x._id)
+      const v = ultimaSenal(x.ultimoAcceso, p)
+      return {
+        ...x,
+        vistoEn: v.en, fuenteVisto: v.fuente, tramo: tramoDe(v.en),
+        plataformas: p?.plataformas ?? {},
+        eventos: p?.eventos ?? 0,
+        paisReal: p?.pais ?? null,
+      }
+    }),
     genesis: identidad ? {
       gid: identidad.gid, estado: identidad.estado,
       nombreLegal: identidad.nombreLegal, nacionalidad: identidad.nacionalidad,
