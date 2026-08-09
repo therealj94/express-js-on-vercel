@@ -38,7 +38,7 @@ import Help from './src/screens/Help';
 import Remesas from './src/screens/Remesas';
 import DeleteAccount from './src/screens/DeleteAccount';
 import ErrorBoundary from './src/ErrorBoundary';
-import { arrancarTelemetria, fallo } from './src/telemetria';
+import { arrancarTelemetria, fallo, identificar, olvidar } from './src/telemetria';
 
 const SCREENS = {
   splash: Splash, auth: Auth, kyc: Kyc, seedview: SeedView, genesisOffer: GenesisOffer,
@@ -113,14 +113,27 @@ function Root() {
       const saved = await loadSession();
       if (saved) {
         setAccount(saved);
+        // Sin esto la telemetría sale ANONIMA y el panel no puede contar
+        // personas: los eventos llegan pero sin nadie a quien atribuirlos, y
+        // «Últimas conexiones» se queda vacío aunque la app esté reportando.
+        // Es el caso más común, además: quien no cierra sesión nunca vuelve a
+        // pasar por el login.
+        identificar(saved.userId || saved.email);
         ensureSession(); // renueva el JWT en segundo plano si expiró
       }
     })();
   }, []);
   const acctApi = {
     account,
-    login: (a) => { setAccount(a); saveSession(a.email); },
-    logout: () => { recordLogout(); setAccount(null); clearSession(); setToken(null); setRefreshToken(null); clearCreds(); desactivarDesbloqueo(); limpiarAvisos(); },
+    login: (a) => {
+      setAccount(a);
+      saveSession(a.email);
+      // El `userId` es el identificador del backend; el correo es el respaldo.
+      // Tiene que ser el MISMO que el backend manda al sincronizar el padrón o
+      // las dos huellas no coinciden y todo sale como «fuera del padrón».
+      identificar(a.userId || a.email);
+    },
+    logout: () => { olvidar(); recordLogout(); setAccount(null); clearSession(); setToken(null); setRefreshToken(null); clearCreds(); desactivarDesbloqueo(); limpiarAvisos(); },
   };
 
   // Actualizaciones por aire. Se consulta al arrancar y cada vez que la app

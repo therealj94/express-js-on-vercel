@@ -16,6 +16,13 @@ const VETA = (() => {
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+  /* El puente con la telemetría. Va envuelto porque el reportero es opcional:
+     si el archivo no se cargó, o no tiene clave puesta, aquí no se nota nada.
+     Una billetera no puede romperse por culpa de su propia instrumentación. */
+  const tele = (accion, ...args) => {
+    try { window.TELEMETRIA?.[accion]?.(...args); } catch {}
+  };
+
   let sesion = null;          // { token, correo, nombre, direccion }
   let cartera = null;         // los quince tokens, tal como los devuelve CADENA
   let errCartera = null;      // por que no se pudieron leer
@@ -216,6 +223,7 @@ const VETA = (() => {
   // ── navegación entre las tres pantallas grandes ───────────────────────────
 
   function ir(destino, cual) {
+    tele('pantalla', destino === 'app' ? 'app.' + (vistaActual || 'inicio') : destino);
     for (const id of ['portada', 'acceso', 'app']) $('#' + id).classList.toggle('oculto', id !== (destino === 'bienvenida' ? 'portada' : destino));
     $('#techo').classList.toggle('oculto', destino === 'app');
     if (destino === 'acceso') { pestana(cual || 'entrar'); setTimeout(() => $('#i-correo').focus(), 60); }
@@ -322,6 +330,11 @@ const VETA = (() => {
         direccion: c.address || d?.user?.address || d?.user?.wallet || null,
       };
       guardar();
+      /* El identificador sale del token, no del correo: es el `_id` que el
+         backend usaría al sincronizar el padrón, y las dos huellas tienen que
+         coincidir o el panel enseña «fuera del padrón» para todo el mundo. */
+      tele('identificar', { ...c, email: sesion.correo });
+      tele('accion', modo === 'crear' ? 'cuenta.creada' : 'sesion.entrar');
       anotarSesion();
       ir('app');
       cargarTodo();
@@ -342,6 +355,9 @@ const VETA = (() => {
   }
 
   function salir() {
+    tele('accion', 'sesion.salir');
+    tele('vaciar');
+    tele('identificar', null);
     sesion = null; cartera = null; errCartera = null; identidad = null;
     movimientos = []; transferencias = []; tarjeta = null; movsTarjeta = []; ocultos = false;
     try { localStorage.removeItem(LLAVE); } catch {}
@@ -1856,12 +1872,23 @@ const VETA = (() => {
 
   function arrancar() {
     pintarIdioma();
+    /* Se enciende la telemetría antes que nada, para que un fallo del propio
+       arranque también se vea. Sin clave puesta esto no hace absolutamente
+       nada — ni cola, ni peticiones. */
+    tele('iniciar', {});
     pintarQrPortada();
     armarRevelado();
     $('#form-acceso').addEventListener('submit', enviarAcceso);
     $('#i-clave').addEventListener('input', pintarFuerza);
     sesion = recuperar();
-    if (sesion?.token) { ir('app'); cargarTodo(); }
+    if (sesion?.token) {
+      // Volver con la sesión guardada es entrar igual: si no se contara, quien
+      // no cierra sesión nunca aparecería como que usa la app.
+      tele('identificar', { ...abrirToken(sesion.token), email: sesion.correo });
+      tele('accion', 'sesion.recuperada');
+      ir('app');
+      cargarTodo();
+    }
     else ir('bienvenida');
   }
   document.addEventListener('DOMContentLoaded', arrancar);

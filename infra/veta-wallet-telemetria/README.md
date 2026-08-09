@@ -173,3 +173,57 @@ Un aviso que ahorra un rato de desconcierto: **Genesis ID descarta los eventos
 de más de 72 horas** y acota al presente los que vengan con fecha futura. Es
 correcto y defensivo, pero significa que un histórico viejo no se puede cargar
 de golpe — la telemetría empieza a contar desde que se enciende.
+
+---
+
+## Montado desde el cliente (agosto 2026)
+
+El backend de Veta Wallet vive fuera de este repositorio y no se puede tocar
+desde aquí, así que la telemetría se montó **desde los clientes**, que sí están
+aquí. Ya está funcionando en los dos:
+
+| Dónde | Archivo | Estado |
+|---|---|---|
+| Web | `apps-web/veta-wallet/telemetria.js` | montado, con clave |
+| App Android | `veta-wallet-app/src/telemetria.js` | ya existía; le faltaba `identificar()` |
+
+**El fallo que tenía la app**: llamaba a `arrancarTelemetria()` pero nunca a
+`identificar()`. Sin identificador el servidor no puede registrar personas —los
+eventos llegaban pero sin nadie a quien atribuirlos— y «Últimas conexiones»
+salía vacío aunque la app estuviera reportando. Se engancha ahora en el punto
+único de sesión (`acctApi` de `App.js`), incluyendo la sesión restaurada al
+arrancar, que es el caso más común: quien no cierra sesión nunca vuelve a pasar
+por el login.
+
+### La clave es la misma en los dos
+
+`gidp_veta-wallet_…`, la **pública** de ingesta. Está en `app.json` de la app y
+repetida en el archivo de la web. Si un día se rota hay que cambiarla **en los
+dos sitios**, o uno de los dos deja de reportar en silencio.
+
+### Si todo sale como «fuera del padrón»
+
+Es el único fallo silencioso que queda, y tiene una sola causa: el
+identificador que manda el cliente no es el mismo que manda el backend al
+sincronizar el padrón. Genesis ID guarda `huella(app, usuario)` y para poner
+nombre recalcula esa cuenta sobre el padrón; si un lado manda el `_id` de Mongo
+y el otro el correo, las huellas no coinciden y no hay ningún error visible.
+
+Los clientes usan, por este orden: `idExterno`, `_id`, `id`, `sub`, `userId`,
+`email`. El backend (`telemetria.js` de esta carpeta) usa `idExterno`, `_id`,
+`id`, `email`. Deben resolver al mismo valor.
+
+Comprobación: en el panel, Conexiones → si **todas** las filas dicen «fuera del
+padrón» pero hay conexiones, es esto. Si el padrón está sincronizado y algunas
+sí salen con nombre, no lo es.
+
+### Lo que sigue faltando: el padrón
+
+Los clientes **no** pueden sincronizar el padrón — esa puerta exige la clave
+secreta porque son datos personales, y una clave secreta no puede vivir en un
+APK ni en una página. Mientras el backend no monte `directorio.js`, el nombre y
+la billetera solo aparecen para quien ya esté en el padrón por otra vía.
+
+Cuando se monte, todo lo ya recogido se identifica solo **hacia atrás**: la
+huella es determinista, así que no hay que esperar a que la gente vuelva a
+entrar.
