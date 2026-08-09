@@ -92,7 +92,18 @@ app.get('/cerebro-datos.js', (_req, res) => {
  * vigilancia, pero solo dice si el motor está en condiciones de operar — no
  * revela ningún dato de ninguna persona. La versión anterior publicaba aquí, y
  * en `/api/admin/*`, el recuento y la lista entera de identidades sin pedir nada.
+ *
+ * Dice además QUE COMMIT está corriendo. Sin eso, cuando una página nueva
+ * devuelve 404 no hay forma de distinguir dos cosas muy distintas: que el
+ * código esté mal, o que el servidor siga sirviendo una versión vieja porque
+ * el despliegue no se disparó. Se ha perdido más de una hora en esa duda. El
+ * commit no es secreto —el repositorio es público— y saber cuál corre es lo
+ * primero que hace falta para diagnosticar cualquier cosa.
  */
+const COMMIT = process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || 'desconocido'
+const RAMA = process.env.RENDER_GIT_BRANCH || process.env.GIT_BRANCH || 'desconocida'
+const ARRANQUE = new Date().toISOString()
+
 app.get('/healthz', (_req, res) => {
   const cadena = verificarCadena()
   const listas = estadoListas()
@@ -100,6 +111,7 @@ app.get('/healthz', (_req, res) => {
   res.json({
     estado: listo ? 'ok' : 'degradado',
     en: new Date().toISOString(),
+    version: { commit: COMMIT.slice(0, 12), rama: RAMA, arrancadoEn: ARRANQUE },
     comprobaciones: {
       almacenPersistente: motor === 'mongodb',
       listasCargadas: listas.cargadas,
