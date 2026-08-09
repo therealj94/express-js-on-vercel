@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Find your booking — Roatán Private Yacht Getaways</title>
+<link rel="stylesheet" href="/styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛵</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brandmark" href="/"><b>Roatán Yacht Getaways</b><span>by Love Cloud</span></a>
+    <nav><a href="/">Book a trip</a></nav>
+  </div>
+</header>
+<div class="horizon"></div>
+
+<main class="block">
+  <div class="wrap" style="max-width:520px">
+    <div class="stack" style="gap:20px">
+      <div class="stack" style="gap:8px">
+        <p class="eyebrow">Already booked</p>
+        <h1>Find your trip</h1>
+        <p class="small">Enter the booking number from your confirmation email — it looks like LC-1001.</p>
+      </div>
+      <form class="panel" id="form">
+        <div class="panel-body">
+          <label class="field"><span>Booking number</span>
+            <input type="text" id="ref" placeholder="LC-1001" autocomplete="off" required></label>
+          <button class="btn btn-primary btn-block" type="submit">Find it</button>
+          <div id="err"></div>
+        </div>
+      </form>
+      <p class="small faint">Cannot find it? Email us and we will dig it up.</p>
+    </div>
+  </div>
+</main>
+
+<script>
+document.getElementById('form').addEventListener('submit', async (e) => {
+  e.preventDefault()
+  const ref = document.getElementById('ref').value.trim().toUpperCase()
+  const err = document.getElementById('err')
+  err.innerHTML = ''
+  const res = await fetch(`/api/bookings/${encodeURIComponent(ref)}`)
+  const data = await res.json().catch(() => ({ ok: false, error: 'Something went wrong.' }))
+  if (data.ok) window.location.href = `/confirmation.html?ref=${encodeURIComponent(ref)}`
+  else err.innerHTML = `<div class="notice bad">${data.error}</div>`
+})
+</script>
+</body>
+</html>

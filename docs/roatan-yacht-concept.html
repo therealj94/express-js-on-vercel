@@ -1,0 +1,399 @@
+<title>Roatán Private Yacht Getaways — Concepto de Producto</title>
+<style>
+  :root{
+    --ground:#F4F6F5;
+    --paper:#FFFFFF;
+    --ink:#0E2126;
+    --ink-soft:#3D5257;
+    --ink-faint:#6E8288;
+    --rule:#D5DEDC;
+    --deep:#0B2126;
+    --deep-2:#123039;
+    --accent:#C2762F;
+    --accent-soft:#F0E0CC;
+    --sea:#1C6A72;
+    --flag:#C0442C;
+    --ok:#2E7A5A;
+    --on-deep:#E8EFEE;
+    --on-deep-soft:#93AAAD;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0A1519;
+      --paper:#101F24;
+      --ink:#E6EEEC;
+      --ink-soft:#A9BDBE;
+      --ink-faint:#7C9296;
+      --rule:#22383E;
+      --deep:#061013;
+      --deep-2:#0E2429;
+      --accent:#DD9C4F;
+      --accent-soft:#3A2A16;
+      --sea:#4EA8AE;
+      --flag:#E0664B;
+      --ok:#54B189;
+      --on-deep:#E6EEEC;
+      --on-deep-soft:#8CA3A6;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0A1519;
+    --paper:#101F24;
+    --ink:#E6EEEC;
+    --ink-soft:#A9BDBE;
+    --ink-faint:#7C9296;
+    --rule:#22383E;
+    --deep:#061013;
+    --deep-2:#0E2429;
+    --accent:#DD9C4F;
+    --accent-soft:#3A2A16;
+    --sea:#4EA8AE;
+    --flag:#E0664B;
+    --ok:#54B189;
+    --on-deep:#E6EEEC;
+    --on-deep-soft:#8CA3A6;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:17px;
+    line-height:1.65;
+    margin:0;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:940px;margin:0 auto;padding:0 24px;}
+  .prose{max-width:66ch;}
+
+  h1,h2,h3{font-family:Georgia,"Iowan Old Style",ui-serif,serif;text-wrap:balance;line-height:1.15;margin:0;}
+  h1{font-size:clamp(2.3rem,6vw,3.6rem);letter-spacing:-0.02em;font-weight:700;}
+  h2{font-size:clamp(1.6rem,3.4vw,2.1rem);letter-spacing:-0.015em;}
+  h3{font-size:1.15rem;letter-spacing:-0.01em;}
+  p{margin:0;}
+  a{color:var(--sea);}
+
+  .eyebrow{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent);margin:0;
+  }
+  .lede{font-size:1.15rem;color:var(--ink-soft);}
+  .small{font-size:.92rem;color:var(--ink-soft);}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums;}
+
+  header.hero{background:var(--deep);color:var(--on-deep);padding:88px 0 72px;}
+  header.hero .wrap{display:flex;flex-direction:column;gap:20px;}
+  header.hero h1{color:var(--on-deep);}
+  header.hero .lede{color:var(--on-deep-soft);max-width:60ch;}
+  .hero-meta{display:flex;flex-wrap:wrap;gap:10px 28px;font-family:ui-monospace,monospace;font-size:.75rem;letter-spacing:.09em;text-transform:uppercase;color:var(--on-deep-soft);border-top:1px solid rgba(255,255,255,.12);padding-top:20px;margin-top:6px;}
+  .horizon{height:3px;background:linear-gradient(90deg,var(--accent) 0 28%,var(--sea) 28% 62%,var(--flag) 62% 100%);}
+
+  section{padding:64px 0;border-bottom:1px solid var(--rule);}
+  section.band{background:var(--deep-2);color:var(--on-deep);border-bottom:none;}
+  section.band h2,section.band h3{color:var(--on-deep);}
+  section.band .small,section.band .lede{color:var(--on-deep-soft);}
+  section.band .card{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.14);}
+  section > .wrap{display:flex;flex-direction:column;gap:28px;}
+
+  .grid{display:grid;gap:16px;}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr));}
+  .g3{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));}
+
+  .card{
+    background:var(--paper);
+    border:1px solid var(--rule);
+    border-radius:4px;
+    padding:20px;
+    display:flex;flex-direction:column;gap:9px;
+  }
+  .card h3{margin-bottom:2px;}
+  .price{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums;color:var(--accent);font-size:1.05rem;}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--rule);border-radius:4px;background:var(--paper);}
+  table{border-collapse:collapse;width:100%;min-width:600px;font-size:.94rem;}
+  th,td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--rule);vertical-align:top;}
+  th{font-family:ui-monospace,monospace;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);font-weight:400;}
+  tr:last-child td{border-bottom:none;}
+  td.num{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums;white-space:nowrap;}
+
+  .pill{display:inline-block;font-family:ui-monospace,monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid currentColor;}
+  .pill.win{color:var(--ok);}
+  .pill.warn{color:var(--flag);}
+  .pill.mid{color:var(--accent);}
+
+  ul,ol{margin:0;padding-left:1.25em;}
+  li{margin:5px 0;}
+  li::marker{color:var(--accent);}
+
+  .steps{display:flex;flex-direction:column;gap:0;counter-reset:s;}
+  .step{display:grid;grid-template-columns:52px 1fr;gap:18px;padding:20px 0;border-top:1px solid var(--rule);}
+  .step:first-child{border-top:none;}
+  .step .n{font-family:ui-monospace,monospace;font-size:.8rem;color:var(--accent);padding-top:4px;letter-spacing:.08em;}
+  .step .b{display:flex;flex-direction:column;gap:6px;}
+
+  /* mock del builder */
+  .mock{border:1px solid var(--rule);border-radius:6px;overflow:hidden;background:var(--paper);}
+  .mock-bar{background:var(--deep);color:var(--on-deep-soft);font-family:ui-monospace,monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;padding:10px 16px;display:flex;justify-content:space-between;gap:12px;}
+  .mock-body{display:grid;grid-template-columns:1fr 260px;gap:0;}
+  @media (max-width:680px){.mock-body{grid-template-columns:1fr;}}
+  .mock-left{padding:18px;display:flex;flex-direction:column;gap:12px;}
+  .chiprow{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{border:1px dashed var(--rule);border-radius:999px;padding:7px 13px;font-size:.85rem;color:var(--ink-soft);background:var(--ground);}
+  .chip.on{border-style:solid;border-color:var(--accent);color:var(--ink);background:var(--accent-soft);}
+  .mock-right{border-left:1px solid var(--rule);padding:18px;display:flex;flex-direction:column;gap:10px;background:var(--ground);}
+  @media (max-width:680px){.mock-right{border-left:none;border-top:1px solid var(--rule);}}
+  .line{display:flex;justify-content:space-between;gap:12px;font-size:.9rem;}
+  .line .v{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums;}
+  .total{border-top:1px solid var(--rule);padding-top:10px;font-weight:700;}
+  .cta{background:var(--accent);color:#1B1206;text-align:center;padding:11px;border-radius:4px;font-weight:700;font-size:.92rem;}
+
+  .callout{border-left:3px solid var(--flag);background:var(--paper);padding:16px 20px;display:flex;flex-direction:column;gap:8px;border-radius:0 4px 4px 0;}
+  .callout.good{border-left-color:var(--ok);}
+
+  footer{padding:56px 0 80px;color:var(--ink-faint);font-size:.9rem;}
+  @media (prefers-reduced-motion:no-preference){
+    .card,.chip{transition:border-color .18s ease;}
+  }
+</style>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Documento de concepto · v1 · Agosto 2026</p>
+    <h1>Roatán Private Yacht Getaways</h1>
+    <p class="lede">Una web y app propias para reservar el yate: el huésped arma su aventura arrastrando lo que quiere a bordo —vino, comida, flores, fotógrafo— ve el total en vivo, y paga. Vos controlás todo el catálogo, promos e invoices desde un admin.</p>
+    <div class="hero-meta">
+      <span>Base: catálogo Rezdy #639381</span>
+      <span>App en inglés</span>
+      <span>Sin código escrito aún</span>
+    </div>
+  </div>
+</header>
+<div class="horizon"></div>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Punto de partida</p>
+    <h2>Lo que hoy vendés en Rezdy</h2>
+    <p class="prose small">Saqué el catálogo completo de la página que me pasaste. Estos cinco productos son la base del inventario; todo lo demás se construye encima.</p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Producto</th><th>Duración</th><th>Desde</th><th>Incluye</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Private Luxury Full Day Speedboat Adventure</strong></td>
+            <td class="num">8 h</td>
+            <td class="num">$995</td>
+            <td>Capitán, snorkel, tubing, Pigeon Cay, all-inclusive</td>
+          </tr>
+          <tr>
+            <td><strong>Private Luxury Full Day Yacht Charter</strong></td>
+            <td class="num">8 h</td>
+            <td class="num">$1,600</td>
+            <td>Yate 47', capitán, snorkel, aire acondicionado, all-inclusive</td>
+          </tr>
+          <tr>
+            <td><strong>Copper Package</strong></td>
+            <td class="num">4 noches / 5 días</td>
+            <td class="num">$2,000 <span class="small">/noche</span></td>
+            <td>Yate 47' de dos camarotes, all-inclusive</td>
+          </tr>
+          <tr>
+            <td><strong>Silver Package</strong></td>
+            <td class="num">5 noches / 6 días</td>
+            <td class="num">$2,000 <span class="small">/noche</span></td>
+            <td>Dos islas, all-inclusive</td>
+          </tr>
+          <tr>
+            <td><strong>Gold Package</strong></td>
+            <td class="num">6 noches / 7 días</td>
+            <td class="num">$2,000 <span class="small">/noche</span></td>
+            <td>Mix hotel + yate, speedboat de cortesía</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <p><strong>Lo que Rezdy no te deja hacer</strong></p>
+      <ul class="small">
+        <li>Vender extras de verdad: hoy el vino, la comida especial o las flores se acuerdan por WhatsApp y no entran a la reserva ni al cobro.</li>
+        <li>Promos propias, cupones, precios por temporada o por barco sin pelear con su catálogo.</li>
+        <li>Mandar un invoice tuyo, con tu marca, y que paguen en un clic.</li>
+        <li>Los cinco productos se ven como una lista de catálogo. No hay experiencia, no hay marca, no hay upsell.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">La idea central</p>
+    <h2>Build Your Getaway</h2>
+    <p class="prose lede">En vez de una ficha de producto con un botón "Book now", el huésped entra a un armador visual. Elige el barco, la fecha y cuánta gente; y después va arrastrando a la cubierta lo que quiere a bordo. Cada cosa que suelta cae en el "manifiesto" —el carrito— y el total se recalcula solo.</p>
+    <p class="prose small">La metáfora no es un carrito de e-commerce, es <em>cargar el barco</em>. La zona de drop es una cubierta vista desde arriba. En móvil no se arrastra: se toca y el ítem "vuela" a la cubierta con la misma animación. Cero fricción para quien no es técnico.</p>
+
+    <div class="mock" role="img" aria-label="Mockup del armador: chips de extras a la izquierda, manifiesto con total a la derecha">
+      <div class="mock-bar"><span>Build your getaway</span><span>Step 3 of 5 · Extras</span></div>
+      <div class="mock-body">
+        <div class="mock-left">
+          <p class="small" style="margin:0">Drag anything you want aboard →</p>
+          <div class="chiprow">
+            <span class="chip on">🍾 Champagne toast</span>
+            <span class="chip on">🌺 Fresh flower setup</span>
+            <span class="chip">🦞 Lobster lunch</span>
+            <span class="chip on">📸 Photographer (2 h)</span>
+            <span class="chip">🤿 Extra snorkel gear</span>
+            <span class="chip">🎶 Live guitar</span>
+            <span class="chip">🎂 Custom cake</span>
+            <span class="chip">🚐 Hotel pickup</span>
+          </div>
+          <p class="small" style="margin-top:4px">Popular with couples: <span class="mono">Sunset + Champagne + Flowers</span></p>
+        </div>
+        <div class="mock-right">
+          <p class="eyebrow" style="color:var(--ink-faint)">Your manifest</p>
+          <div class="line"><span>47' Yacht · full day</span><span class="v">$1,600</span></div>
+          <div class="line"><span>Champagne toast</span><span class="v">$85</span></div>
+          <div class="line"><span>Flower setup</span><span class="v">$120</span></div>
+          <div class="line"><span>Photographer</span><span class="v">$250</span></div>
+          <div class="line small"><span>6 guests · Mar 14</span><span class="v">—</span></div>
+          <div class="line total"><span>Total</span><span class="v">$2,055</span></div>
+          <div class="cta">Review &amp; pay</div>
+          <p class="small" style="text-align:center">or pay 30% deposit now</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Flujo del huésped</p>
+    <h2>Cinco pasos, sin registro obligatorio</h2>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><div class="b"><h3>Pick your vessel</h3><p class="small">Speedboat, yate de día completo, o los paquetes de varias noches. Fotos grandes, video, capacidad y qué incluye. Precio "desde" siempre visible.</p></div></div>
+      <div class="step"><div class="n">02</div><div class="b"><h3>Date &amp; guests</h3><p class="small">Calendario con disponibilidad real (bloqueos por barco, mantenimiento, clima). Precio por temporada. Si está lleno, ofrece las tres fechas más cercanas en vez de un "no disponible" seco.</p></div></div>
+      <div class="step"><div class="n">03</div><div class="b"><h3>Make it yours</h3><p class="small">El armador drag &amp; drop. Extras agrupados por mood: <span class="mono">Celebrate · Eat &amp; Drink · Adventure · Comfort</span>. Bundles sugeridos con descuento (Proposal Package, Anniversary, Family Day).</p></div></div>
+      <div class="step"><div class="n">04</div><div class="b"><h3>Review</h3><p class="small">Resumen tipo manifiesto de embarque: barco, hora de salida, muelle con mapa, extras, política de cancelación, qué llevar. Aquí entra el cupón y la opción de depósito 30% vs pago total.</p></div></div>
+      <div class="step"><div class="n">05</div><div class="b"><h3>Pay &amp; confirm</h3><p class="small">Pago con tarjeta/Apple Pay/Google Pay. Confirmación al instante por email y WhatsApp, con pase de abordar (QR) que el capitán escanea el día del tour.</p></div></div>
+    </div>
+    <p class="prose small">Todo el estado del carrito vive en el link. Si el huésped abandona a mitad, un email a las 2 h le devuelve exactamente su barco armado. Eso solo recupera un pedazo grande de las reservas perdidas.</p>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <p class="eyebrow">Inventario nuevo</p>
+    <h2>El catálogo de extras</h2>
+    <p class="lede" style="max-width:62ch">Aquí está la plata que hoy se te escapa. Cada extra es un ítem del admin con precio, foto, stock y horas de anticipación mínimas.</p>
+    <div class="grid g3">
+      <div class="card"><h3>Celebrate</h3><p class="small">Champagne toast · torta personalizada · arreglo de flores frescas · decoración de propuesta de matrimonio · letras "MARRY ME" en cubierta · fotógrafo · dron · músico en vivo</p></div>
+      <div class="card"><h3>Eat &amp; Drink</h3><p class="small">Almuerzo de langosta · parrilla caribeña · platón vegetariano · mesa de frutas · barra premium · cava de vinos (tinto / blanco / rosé por botella) · cerveza local · coctelería con bartender</p></div>
+      <div class="card"><h3>Adventure</h3><p class="small">Tubing · equipo extra de snorkel · paddleboard · kayak · pesca con caña · discover scuba con instructor · parada en Pigeon Cay · West Bay sunset loop</p></div>
+      <div class="card"><h3>Comfort &amp; Care</h3><p class="small">Pickup en hotel o crucero · masaje a bordo · toallas y sombrilla premium · kit para niños · chaleco extra · hielera adicional · WiFi a bordo</p></div>
+    </div>
+    <div class="callout good">
+      <p><strong>Bundles = ticket promedio más alto</strong></p>
+      <p class="small">Tres paquetes armados que se venden solos: <span class="mono">Proposal at Sea</span> (flores + champagne + fotógrafo + música), <span class="mono">Family Day</span> (tubing + kit niños + almuerzo), <span class="mono">Anniversary Sunset</span> (vino + cena + masaje). El bundle cuesta ~10% menos que comprar suelto y sube el ticket 40–60%.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Backoffice</p>
+    <h2>El admin</h2>
+    <p class="prose small">Pensado para que lo maneje cualquiera del equipo desde el teléfono, sin tocar código.</p>
+    <div class="grid g2">
+      <div class="card"><h3>Catálogo</h3><p class="small">Crear, editar, ocultar o borrar barcos, tours y extras. Fotos, precios, capacidad, duración, punto de salida, qué incluye y qué no.</p></div>
+      <div class="card"><h3>Precios y promos</h3><p class="small">Precio por temporada alta/baja, precio por día de la semana, cupones (%, monto fijo, primera reserva), ofertas de último minuto, bundles.</p></div>
+      <div class="card"><h3>Calendario</h3><p class="small">Vista por barco. Bloquear días por mantenimiento o clima, ver salidas del día, asignar capitán y tripulación.</p></div>
+      <div class="card"><h3>Reservas</h3><p class="small">Cada reserva con su manifiesto: quién viene, qué extras, qué se pagó, qué falta. Reprogramar, cancelar, reembolsar, agregar extras después.</p></div>
+      <div class="card"><h3>Invoices</h3><p class="small">Armar un invoice a mano para una cotización o un grupo corporativo y mandarlo por email/WhatsApp con link de pago. Estados: enviado, visto, pagado, vencido. Recordatorio automático.</p></div>
+      <div class="card"><h3>Números</h3><p class="small">Ventas del mes, ticket promedio, qué extras se venden más, ocupación por barco, de dónde vienen los clientes.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Decisión crítica</p>
+    <h2>Cómo cobramos</h2>
+    <div class="callout">
+      <p><strong>Stripe no opera en Honduras.</strong></p>
+      <p class="small">Verifiqué la lista oficial: en toda América Latina solo Brasil y México están soportados. Una empresa registrada en Honduras <em>no</em> puede abrir cuenta Stripe. Pero si el negocio factura por una entidad en EE. UU. —y "Love Cloud" ya opera en Las Vegas— Stripe es la mejor opción del mercado hoy, sin discusión. Esta es la pregunta que necesito que me contestes antes de construir el checkout.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Opción</th><th>Requisito</th><th>Comisión aprox.</th><th>Veredicto</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Stripe</strong><br><span class="small">Checkout, Payment Links, Invoicing, Apple/Google Pay</span></td><td>Entidad en EE. UU. (LLC + EIN + banco)</td><td class="num">2.9% + $0.30</td><td><span class="pill win">Primera opción</span><br><span class="small">Invoices, depósitos y reembolsos ya vienen resueltos.</span></td></tr>
+          <tr><td><strong>PayPal / Braintree</strong></td><td>Cuenta business, funciona desde Honduras</td><td class="num">3.5–4.4% + fijo</td><td><span class="pill mid">Respaldo</span><br><span class="small">Más caro y peor UX, pero destraba el cobro sin entidad gringa.</span></td></tr>
+          <tr><td><strong>dLocal / PayU Latam</strong></td><td>Entidad local, proceso de onboarding</td><td class="num">~4–6%</td><td><span class="pill mid">Regional</span><br><span class="small">Suma métodos locales; sirve si vendés también a hondureños.</span></td></tr>
+          <tr><td><strong>BAC Credomatic</strong></td><td>Cuenta comercial en Honduras</td><td class="num">variable</td><td><span class="pill warn">Solo local</span><br><span class="small">Integración vieja, mala experiencia para el turista extranjero.</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="prose small"><strong>Mi recomendación:</strong> arquitectura con capa de pagos intercambiable, Stripe como implementación principal y PayPal como segundo botón. Si mañana cambia la entidad, no se reescribe la app. Y en todos los casos: depósito del 30% al reservar, saldo cobrado automáticamente 48 h antes de zarpar.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Benchmark</p>
+    <h2>Qué le copiamos a quién, y qué mejoramos</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>De</th><th>Copiamos</th><th>Mejoramos</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Boatsetter</strong></td><td>Add-ons dentro del checkout con foto y precio claro</td><td>Ellos usan una lista fija y aburrida. Nosotros: catálogo tuyo, editable, con bundles y drag &amp; drop.</td></tr>
+          <tr><td><strong>GetMyBoat</strong></td><td>Mensajería con el huésped pegada a la reserva</td><td>Sumamos WhatsApp, que es donde realmente escribe el turista en Roatán.</td></tr>
+          <tr><td><strong>FareHarbor</strong></td><td>Waivers y documentos atados a cada booking</td><td>Firma digital del waiver en el mismo flujo, no un PDF suelto por email.</td></tr>
+          <tr><td><strong>Airbnb Experiences</strong></td><td>Fotografía enorme, precio total sin sorpresas, reseñas arriba</td><td>Ellos no dejan personalizar. Nuestro diferencial es exactamente eso.</td></tr>
+          <tr><td><strong>Roatan Sailing / Sun Splash</strong></td><td>Lenguaje de eventos: bodas, corporativos, cumpleaños</td><td>Ellos piden "contactar para cotizar". Nosotros cotizamos y cobramos en línea.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="prose small">El hueco real del mercado: <strong>nadie en Roatán deja armar y pagar la experiencia completa en línea.</strong> Todos terminan en un formulario de contacto. Ese es el diferencial de verdad, no el diseño.</p>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <p class="eyebrow">Construcción</p>
+    <h2>Stack y fases</h2>
+    <div class="grid g2">
+      <div class="card"><h3>Stack propuesto</h3><p class="small">Next.js + TypeScript + Tailwind en el front (una sola base para web y para la app instalable). Supabase para base de datos, auth del admin y fotos. Stripe para pagos e invoices. Resend para email. Deploy en Vercel — el repo ya está apuntando ahí.</p></div>
+      <div class="card"><h3>¿App nativa?</h3><p class="small">Arrancamos con PWA: se instala en el iPhone y Android desde el navegador, funciona offline para el capitán, y no depende de la aprobación de las tiendas. Si después querés App Store, se envuelve la misma base sin rehacer nada.</p></div>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="n">F1</div><div class="b"><h3>Vitrina y armador</h3><p class="small">Los cinco productos reales, el builder drag &amp; drop, carrito y resumen. Sin pagos todavía: el checkout manda la solicitud y el invoice sale del admin.</p></div></div>
+      <div class="step"><div class="n">F2</div><div class="b"><h3>Admin y catálogo</h3><p class="small">Login, CRUD de barcos/tours/extras, precios, promos, calendario y bloqueos. Aquí ya dejás de depender de mí para cambiar cosas.</p></div></div>
+      <div class="step"><div class="n">F3</div><div class="b"><h3>Pagos e invoices</h3><p class="small">Checkout real, depósito 30%, saldo automático, invoices con link de pago, reembolsos. Depende de la respuesta sobre la entidad.</p></div></div>
+      <div class="step"><div class="n">F4</div><div class="b"><h3>Pulido y lanzamiento</h3><p class="small">Emails y WhatsApp de confirmación, pase de abordar con QR, waiver digital, reseñas, español como segundo idioma, SEO y analítica. Revisamos juntos y recién ahí desplegamos.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Antes de escribir código</p>
+    <h2>Lo que necesito de vos</h2>
+    <ol class="prose">
+      <li><strong>¿Con qué entidad se cobra?</strong> Si hay LLC en EE. UU., vamos con Stripe. Si es solo Honduras, arranco con PayPal y dejo Stripe listo para después.</li>
+      <li><strong>Marca y nombre.</strong> ¿Seguimos bajo "Love Cloud Tours &amp; Weddings" o la sección de yates lleva marca propia? Tengo nombres propuestos si querés separarla.</li>
+      <li><strong>Precios reales de los extras.</strong> Los del mockup los inventé como referencia. Pasame los tuyos —vino, comida, flores, fotógrafo— o los dejo editables y los cargás vos en el admin.</li>
+      <li><strong>Fotos y video.</strong> Lo que tengas del yate, el speedboat y Pigeon Cay. La calidad de la foto vende más que cualquier función.</li>
+      <li><strong>¿Reserva instantánea o con aprobación?</strong> ¿El huésped confirma solo, o vos aprobás cada salida antes de cobrar?</li>
+    </ol>
+    <p class="prose small">Contestame la 1 y la 5 y arranco con la Fase 1 de una vez; el resto lo podemos ir llenando sobre la marcha.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap prose">
+    <p>Documento de concepto, no hay código desplegado todavía. Rama de trabajo: <span class="mono">claude/roatan-yacht-booking-app-fxushd</span>. Precios de los cinco productos tomados del catálogo Rezdy #639381; los precios de extras son estimaciones de referencia.</p>
+  </div>
+</footer>

@@ -1,0 +1,18 @@
+{
+  "name": "roatan-yacht-getaways",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Booking web app and admin for Roatan Private Yacht Getaways by Love Cloud",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "seed": "node server/seed.js --force"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^17.3.1",
+    "stripe": "^17.5.0"
+  }
+}
