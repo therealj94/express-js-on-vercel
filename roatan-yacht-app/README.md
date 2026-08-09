@@ -12,11 +12,14 @@ someone's pocket can never disagree with the till.
 ## Build the APK
 
 ```bash
-npm install
-npx expo prebuild --platform android      # generates ./android
-cd android && ./gradlew assembleRelease
-# → android/app/build/outputs/apk/release/app-release.apk
+./scripts/build-apk.sh
+# → android/app/build/outputs/apk/release/app-release.apk   (26 MB)
 ```
+
+The script prebuilds, wires the release key and runs Gradle. It builds
+`arm64-v8a` only — 26 MB instead of 65 MB, and it covers every phone sold in
+roughly the last eight years; the x86 slices are for emulators. Pass
+`ABIS=all` if you need a universal APK.
 
 Requires the Android SDK (platform 36, build-tools 36) and JDK 17+. Copy the
 `.apk` to a phone and open it; Android will ask you to allow installs from that

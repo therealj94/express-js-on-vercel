@@ -3,6 +3,10 @@
 #
 #   ./scripts/build-apk.sh                        → points at the deployed site
 #   API_URL=http://192.168.1.20:3000 ./scripts/build-apk.sh   → your machine
+#   ABIS=all ./scripts/build-apk.sh               → every architecture (~65 MB)
+#
+# Default is arm64-v8a only: 26 MB instead of 65 MB, and it covers every phone
+# sold in roughly the last eight years. The x86 slices exist for emulators.
 #
 # Needs the Android SDK (platform 36, build-tools 36) and JDK 17+.
 # No SDK? Use EAS instead: eas build -p android --profile preview
@@ -55,6 +59,14 @@ s = s.replace("""            // Caution! In production, you need to generate you
             signingConfig signingConfigs.debug""", "            signingConfig signingConfigs.release")
 p.write_text(s)
 PY
+
+if [ "${ABIS:-arm64}" = "all" ]; then
+  ARCHS="armeabi-v7a,arm64-v8a,x86,x86_64"
+else
+  ARCHS="arm64-v8a"
+fi
+sed -i "s/^reactNativeArchitectures=.*/reactNativeArchitectures=$ARCHS/" android/gradle.properties
+echo "Architectures: $ARCHS"
 
 export EXPO_PUBLIC_API_URL="${API_URL:-https://roatan-yacht.vercel.app}"
 echo "Building against $EXPO_PUBLIC_API_URL"
