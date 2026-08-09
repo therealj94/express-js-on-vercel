@@ -134,6 +134,12 @@ const PATHS = {
   earth: [circle(12, 12, 9), 'M3 12h18', 'M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18'],
   'trending-up': ['M3 17l6-6 4 4 8-8', 'M15 7h5v5'],
   search: [circle(11, 11, 6.5), 'M16 16l5 5'],
+  // El cerebro: nodos unidos, que es lo que dibuja la pantalla.
+  cerebro: [
+    circle(12, 5, 2.2), circle(5, 12, 2.2), circle(19, 12, 2.2),
+    circle(9, 19, 2.2), circle(17, 19, 2.2),
+    'M12 7.2v2.6M10.4 11 7 11.6M13.6 11l3.4.6M6.4 13.8 8 16.9M17.6 13.8 16.6 16.9M11.2 19h4.6',
+  ],
 };
 
 // Alias: mismos nombres que usábamos antes.

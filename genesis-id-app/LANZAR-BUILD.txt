@@ -2,4 +2,4 @@ Tocá este archivo (cambiá el número de abajo) y hacé push: eso lanza la
 compilación del APK en EAS con el perfil "preview". El enlace de descarga
 queda en el resumen del workflow "Genesis ID — compilar APK".
 
-build: 1
+build: 2 — suma la pestaña Cerebro (react-native-webview es dependencia nativa, no llega por aire)

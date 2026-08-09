@@ -20,6 +20,7 @@ import { buscarActualizacion } from './src/updates';
 import { Entrar } from './src/screens/Entrar';
 import { Resumen } from './src/screens/Resumen';
 import { Analitica } from './src/screens/Analitica';
+import { Cerebro } from './src/screens/Cerebro';
 import { Identidades } from './src/screens/Identidades';
 import { FichaIdentidad } from './src/screens/FichaIdentidad';
 import { Casos } from './src/screens/Casos';
@@ -30,6 +31,7 @@ const PESTANAS = [
   { clave: 'resumen', nombre: 'Resumen', icono: 'pulse' },
   { clave: 'identidades', nombre: 'Identidades', icono: 'people' },
   { clave: 'analitica', nombre: 'Analítica', icono: 'trending-up' },
+  { clave: 'cerebro', nombre: 'Cerebro', icono: 'cerebro' },
   { clave: 'casos', nombre: 'Casos', icono: 'shield-checkmark' },
   { clave: 'mas', nombre: 'Más', icono: 'settings-sharp' },
 ];
@@ -113,6 +115,8 @@ function Cuerpo() {
           <Identidades avisar={avisar} abrirFicha={(id) => setFicha({ tipo: 'identidad', id })} />
         ) : pestana === 'analitica' ? (
           <Analitica avisar={avisar} />
+        ) : pestana === 'cerebro' ? (
+          <Cerebro avisar={avisar} />
         ) : pestana === 'casos' ? (
           <Casos avisar={avisar} abrirCaso={(id) => setFicha({ tipo: 'caso', id })} />
         ) : (
@@ -130,7 +134,8 @@ function Cuerpo() {
               <Pressable key={p.clave} style={st.pestana}
                 onPress={() => { hap(); setPestana(p.clave); }}>
                 <Icon name={p.icono} size={21} color={activa ? C.gold : C.txt3} />
-                <Text style={[st.pestanaTxt, activa && { color: C.gold }]}>{p.nombre}</Text>
+                <Text style={[st.pestanaTxt, activa && { color: C.gold }]}
+                  numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>{p.nombre}</Text>
               </Pressable>
             );
           })}
@@ -158,6 +163,9 @@ const st = StyleSheet.create({
     flexDirection: 'row', borderTopWidth: 1, borderTopColor: C.line2,
     backgroundColor: C.bg, paddingTop: 6, paddingBottom: 4,
   },
-  pestana: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },
-  pestanaTxt: { color: C.txt3, fontSize: 10, fontWeight: '600' },
+  // Con seis pestañas cada una tiene unos 65 px en un teléfono estrecho:
+  // «Identidades» justo cabe, y el ajuste de fuente evita que se parta en dos
+  // líneas y descuadre la barra entera.
+  pestana: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4, paddingHorizontal: 2 },
+  pestanaTxt: { color: C.txt3, fontSize: 9.5, fontWeight: '600', textAlign: 'center' },
 });
