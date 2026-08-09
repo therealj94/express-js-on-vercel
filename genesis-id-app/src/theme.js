@@ -27,6 +27,18 @@ export const G = {
   gold: ['#F8EFCF', '#DFC078', '#C9A961', '#96793F'],
 };
 
+/**
+ * Colores para marcas de gráfico, en orden fijo.
+ *
+ * NO son los de la interfaz. El oro de marca (#C9A961) tiene el croma
+ * demasiado bajo para una barra: sobre el fondo oscuro lee como gris y dos
+ * series se confunden. Estos dos se eligieron comprobando la separación con
+ * daltonismo (protanopia ΔE 19,7 · tritanopia 25,0 · visión normal 24,5),
+ * muy por encima del mínimo de 8. El orden nunca se recicla: si algún día
+ * hacen falta más de dos series, se separa en varios gráficos.
+ */
+export const SERIES = ['#E5A828', '#3AAFC6'];
+
 /** Color y fondo de cada nivel de riesgo, estado y gravedad. */
 export const SEMAFORO = {
   // riesgo

@@ -131,6 +131,32 @@ export const anotarCaso = (id, texto) => llamar('POST', `/panel/casos/${id}/nota
 export const cerrarCaso = (id, conReporte, conclusion, referencia) =>
   llamar('POST', `/panel/casos/${id}/cerrar`, { conReporte, conclusion, referencia });
 
+// ── Analítica y directorio ──────────────────────────────────────────────────
+//
+// Estas rutas ya existían para el panel web (`/analitica` en el navegador).
+// La app consume las MISMAS: una segunda fuente de cifras que dijera algo
+// distinto sería peor que no tener analítica en el teléfono.
+
+export const analiticaResumen = (dias = 30) => llamar('GET', `/panel/analitica/resumen?dias=${dias}`);
+export const analiticaEmbudo = () => llamar('GET', '/panel/analitica/embudo');
+export const analiticaApps = (dias = 90) => llamar('GET', `/panel/analitica/apps?dias=${dias}`);
+
+export const directorioResumen = () => llamar('GET', '/panel/directorio/resumen');
+
+export function directorio({ texto, app, conWallet, limite = 60, orden } = {}) {
+  const q = new URLSearchParams();
+  if (texto) q.set('texto', texto);
+  if (app && app !== 'todas') q.set('app', app);
+  if (conWallet !== undefined) q.set('conWallet', conWallet ? '1' : '0');
+  if (orden) q.set('orden', orden);
+  q.set('limite', String(limite));
+  return llamar('GET', `/panel/directorio?${q.toString()}`);
+}
+
+export const personaDirectorio = (email) => llamar('GET', `/panel/directorio/persona/${encodeURIComponent(email)}`);
+/** Le pide al servidor que vuelva a leer los saldos de la cadena 8532. */
+export const refrescarSaldos = () => llamar('POST', '/panel/directorio/saldos', {});
+
 export const listas = () => llamar('GET', '/panel/listas');
 export const recargarListas = () => llamar('POST', '/panel/listas/recargar', {});
 export const importarOfac = () => llamar('POST', '/panel/listas/ofac', {});

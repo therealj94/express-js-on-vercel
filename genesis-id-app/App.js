@@ -19,6 +19,7 @@ import * as api from './src/api';
 import { buscarActualizacion } from './src/updates';
 import { Entrar } from './src/screens/Entrar';
 import { Resumen } from './src/screens/Resumen';
+import { Analitica } from './src/screens/Analitica';
 import { Identidades } from './src/screens/Identidades';
 import { FichaIdentidad } from './src/screens/FichaIdentidad';
 import { Casos } from './src/screens/Casos';
@@ -28,6 +29,7 @@ import { Mas } from './src/screens/Mas';
 const PESTANAS = [
   { clave: 'resumen', nombre: 'Resumen', icono: 'pulse' },
   { clave: 'identidades', nombre: 'Identidades', icono: 'people' },
+  { clave: 'analitica', nombre: 'Analítica', icono: 'trending-up' },
   { clave: 'casos', nombre: 'Casos', icono: 'shield-checkmark' },
   { clave: 'mas', nombre: 'Más', icono: 'settings-sharp' },
 ];
@@ -109,6 +111,8 @@ function Cuerpo() {
             irA={(p) => setPestana(p)} />
         ) : pestana === 'identidades' ? (
           <Identidades avisar={avisar} abrirFicha={(id) => setFicha({ tipo: 'identidad', id })} />
+        ) : pestana === 'analitica' ? (
+          <Analitica avisar={avisar} />
         ) : pestana === 'casos' ? (
           <Casos avisar={avisar} abrirCaso={(id) => setFicha({ tipo: 'caso', id })} />
         ) : (
