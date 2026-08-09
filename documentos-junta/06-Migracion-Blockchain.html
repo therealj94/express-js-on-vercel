@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>Orden Global · La migración de la cadena</title>
+<link rel="stylesheet" href="recursos/estilo.css">
+</head><body><section class="portada">
+  <div>
+    <div class="sello"><svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="24" cy="24" r="22" fill="none" stroke="#0A3436" stroke-width="1.6"/>
+  <circle cx="24" cy="24" r="17" fill="none" stroke="#C9A961" stroke-width="1"/>
+  <path d="M24 7 L24 41" stroke="#0A3436" stroke-width="1.6"/>
+  <path d="M12 15 Q24 24 36 15" fill="none" stroke="#C9A961" stroke-width="1.6"/>
+  <path d="M12 33 Q24 24 36 33" fill="none" stroke="#C9A961" stroke-width="1.6"/>
+  <circle cx="24" cy="24" r="3.4" fill="#C9A961"/>
+</svg><div class="marca"><b>Orden Global</b><span>La infraestructura</span></div></div>
+  </div>
+  <div>
+    <div class="filete"></div>
+    <h1>La migración<br>de la cadena</h1>
+    <p class="bajada">El software sobre el que corre la cadena 8532 fue descontinuado por su
+    fabricante. Este documento explica qué significa eso, qué tenemos hoy exactamente, a dónde
+    proponemos movernos, qué se conserva, qué cuesta y qué decisión se le pide a la Junta.</p>
+  </div>
+  <div class="pie">
+    <b>Documento 6 · Junta Directiva</b><br>
+    9 de agosto de 2026 · Elaborado sobre el estado real de los sistemas en producción<br>
+    Todas las cifras de este documento provienen de mediciones, no de estimaciones.
+  </div>
+</section>
+
+<h2>1 · Qué se decide en esta sesión</h2>
+
+<p>Se pide a la Junta <strong>autorizar la migración de la cadena 8532 a un software mantenido</strong>,
+conservando la cadena como propia, su identificador, sus quince monedas y todos los saldos.</p>
+
+<p>No es una decisión urgente por una falla: la cadena funciona hoy con normalidad. Es una decisión
+<strong>oportuna</strong>, y la oportunidad tiene fecha de caducidad. Hoy la cadena está prácticamente
+vacía de actividad, y eso hace que mudarla cueste días. Cada mes de uso real la encarece.</p>
+
+<div class="cifras">
+  <div class="tarjeta"><div class="n">1</div><div class="et">Fin de semana de corte</div></div>
+  <div class="tarjeta"><div class="n">0</div><div class="et">Saldos que se pierden</div></div>
+  <div class="tarjeta"><div class="n">0</div><div class="et">Direcciones que cambian</div></div>
+  <div class="tarjeta"><div class="n">6</div><div class="et">Semanas de plazo total</div></div>
+</div>
+
+<h2>2 · Lo que tenemos hoy, medido</h2>
+
+<p>Todo lo de esta sección se leyó directamente de la cadena el 9 de agosto de 2026. No hay
+ninguna cifra estimada.</p>
+
+<table><thead><tr><th>Qué</th><th>Cuánto</th><th>Cómo se comprobó</th></tr></thead><tbody>
+<tr><td>Identificador de la red</td><td>8532</td><td><code>eth_chainId</code> → <code>0x2154</code></td></tr>
+<tr><td>Altura de la cadena</td><td>4.155.786 bloques</td><td><code>eth_blockNumber</code></td></tr>
+<tr><td>Ritmo</td><td>1 bloque cada ~10 segundos</td><td>medido en vivo sobre la punta</td></tr>
+<tr><td>Servidores</td><td>6 nodos · 2 regiones de AWS</td><td><code>net_peerCount</code> → 5 pares + el propio</td></tr>
+<tr><td>Validadores que firman</td><td><strong>1</strong></td><td>contrato del sistema · <code>validators()</code></td></tr>
+<tr><td>Garantía en depósito</td><td>10 ORIGEN</td><td><code>stakedAmount()</code></td></tr>
+<tr><td>Mínimo para ser validador</td><td>1 ORIGEN</td><td><code>VALIDATOR_THRESHOLD()</code></td></tr>
+<tr><td>Monedas</td><td>ORIGEN nativa + 14 contratos</td><td>los 14 contratos existen y responden</td></tr>
+<tr><td>Coste por transacción</td><td>0</td><td><code>eth_gasPrice</code> → <code>0x0</code></td></tr>
+<tr><td><strong>Transacciones en toda la historia</strong></td><td><strong>~250</strong></td><td>contadores de cada dirección activa</td></tr>
+</tbody></table>
+
+<div class="nota"><b class="t">El dato que cambia toda la conversación</b>
+Se muestrearon 60 bloques repartidos por los cuatro millones de la historia y <strong>no hay
+una sola transacción en ninguno</strong>. Toda la actividad de la cadena cabe en los primeros
+cien bloques: seis transacciones de puesta en marcha. El resto son cuatro millones de páginas
+en blanco. La cadena lleva meses funcionando impecablemente sin que nadie la use todavía.
+</div>
+
+<h3>Las quince monedas, una por una</h3>
+
+<p>Los catorce contratos están desplegados y responden. La emisión declarada es la que consta
+en la cadena, no la que dice ningún documento interno.</p>
+
+<table><thead><tr><th>Símbolo</th><th>Nombre</th><th>Emisión declarada</th></tr></thead><tbody>
+<tr><td><strong>ORIGEN</strong></td><td>Origen · moneda nativa</td><td class="n">—</td></tr>
+<tr><td>ONDK</td><td>Orden Kapital</td><td class="n">555.000.000</td></tr>
+<tr><td>AUKA</td><td>Gold Kapital</td><td class="n">55.000.000</td></tr>
+<tr><td>AGKA</td><td>AGKA Token</td><td class="n">500.000.000</td></tr>
+<tr><td>MNKA</td><td>Monarka</td><td class="n">100.000.000</td></tr>
+<tr><td>AUBEX</td><td>Aubex</td><td class="n">100.000.000</td></tr>
+<tr><td>IBS</td><td>IBS Energy</td><td class="n">500.000.000</td></tr>
+<tr><td>HARV</td><td>Harvi</td><td class="n">1.000.000.000.000</td></tr>
+<tr><td>AGRO</td><td>Agrotech</td><td class="n">33.000.000</td></tr>
+<tr><td>AIT</td><td>Artificial Intelligence</td><td class="n">21.000.000</td></tr>
+<tr><td>ASL</td><td>Athletic</td><td class="n">77.000.000</td></tr>
+<tr><td>REST</td><td>Real State</td><td class="n">50.000.000</td></tr>
+<tr><td>SOL</td><td>Solar</td><td class="n">21.000.000</td></tr>
+<tr><td>LOVE</td><td>Amor Global</td><td class="n">77.000.000</td></tr>
+<tr><td>POLITICAL</td><td>Political</td><td class="n">125.000.000</td></tr>
+</tbody></table>
+
+<h2 class="salto">3 · Por qué hay que moverse</h2>
+
+<h3>Razón primera: el fabricante cerró el producto</h3>
+
+<p>La cadena corre sobre <em>Polygon Edge</em>. El 4 de diciembre de 2024 su fabricante archivó
+el repositorio. El aviso, textual, dice:</p>
+
+<pre>«This repository was archived by the owner on Dec 4, 2024. It is now read-only.»</pre>
+
+<p>En términos prácticos: <strong>no habrá más parches de seguridad</strong>. Si mañana se descubre
+una vulnerabilidad en ese software, no va a existir una corrección oficial. El código sigue
+disponible y se puede mantener por cuenta propia, pero eso significa asumir el mantenimiento de
+un motor de cadena de bloques con equipo propio — que no es el negocio de Orden Global.</p>
+
+<p>Esto no es una falla de hoy. Es una deuda que crece sola y en silencio, y el momento de pagarla
+es cuando cuesta poco.</p>
+
+<h3>Razón segunda: un solo validador</h3>
+
+<p>De los seis servidores, <strong>solo uno firma bloques</strong>. Los otros cinco copian y sirven
+consultas, pero no participan en decidir qué se escribe. Es el punto único de falla y, a la vez,
+centralización real: quien controle ese servidor controla la cadena.</p>
+
+<p>Este problema y el anterior se resuelven en el mismo movimiento, y esa es la razón principal para
+tratarlos juntos: el software al que proponemos migrar trae la gestión de validadores incorporada
+y estándar, mientras que hoy depende de un contrato propietario que solo existe en Polygon Edge.</p>
+
+<h2>4 · Qué se conserva y qué no</h2>
+
+<p>Conviene separar dos cosas que suelen confundirse.</p>
+
+<div class="comparar">
+  <div class="col ahora">
+    <div class="cab">Se conserva íntegro</div>
+    <ul>
+      <li><strong>Todos los saldos</strong>, de ORIGEN y de las catorce monedas</li>
+      <li><strong>Los contratos</strong>, con su mismo código y su mismo contenido</li>
+      <li><strong>Las mismas direcciones</strong>: ni una billetera ni una app cambia una línea</li>
+      <li><strong>El identificador 8532</strong> y el nombre de la red</li>
+      <li>La cadena sigue siendo <strong>propia</strong></li>
+    </ul>
+  </div>
+  <div class="col antes">
+    <div class="cab">No se traslada</div>
+    <ul>
+      <li>La <strong>numeración</strong> de los bloques: la cadena nueva empieza a contar de cero</li>
+      <li>Los bloques pasados dejan de ser parte de la historia oficial de la cadena</li>
+      <li>El contrato de garantía propietario, que se sustituye por el mecanismo estándar</li>
+    </ul>
+  </div>
+</div>
+
+<div class="nota bien"><b class="t">La historia no se pierde: cambia de sitio</b>
+Lo que no se traslada son <strong>unas 250 transacciones</strong>. Se exportan enteras, con su
+fecha y su contenido, y el explorador <em>ordenscan</em> las sigue mostrando como archivo
+histórico. Además el servidor actual puede quedarse encendido en modo consulta todo el tiempo
+que la Junta quiera. Nadie pierde el registro de nada: deja de ser el libro vigente y pasa a ser
+el tomo anterior del mismo libro.
+</div>
+
+<h2>5 · A dónde proponemos ir</h2>
+
+<p><strong>Recomendación: mantener la cadena propia y cambiar el motor a Hyperledger Besu, con
+consenso QBFT.</strong></p>
+
+<table><thead><tr><th>Criterio</th><th>Por qué Besu</th></tr></thead><tbody>
+<tr><td>Mantenimiento</td><td>Proyecto de la Linux Foundation, con desarrollo activo y publicaciones periódicas. No depende de una sola empresa.</td></tr>
+<tr><td>Licencia</td><td>Apache 2.0 — libre, sin coste de licencia y sin atadura a un proveedor.</td></tr>
+<tr><td>Continuidad técnica</td><td>QBFT es el sucesor directo del consenso que ya usamos. No es un cambio de familia, es la versión mantenida de lo mismo.</td></tr>
+<tr><td>Validadores</td><td>Gestión incorporada y estándar. Resuelve el problema del validador único sin contratos propietarios.</td></tr>
+<tr><td>Perfil regulatorio</td><td>Es el motor elegido por bancos centrales y entidades reguladas para redes permisionadas. Encaja con un ecosistema con respaldo en oro y obligaciones de cumplimiento.</td></tr>
+<tr><td>Compatibilidad</td><td>Ethereum estándar, igual que hoy: billeteras, contratos y herramientas siguen funcionando sin cambios.</td></tr>
+</tbody></table>
+
+<h3>Las otras opciones, y por qué no</h3>
+
+<table><thead><tr><th>Opción</th><th>Qué ofrece</th><th>Por qué no se recomienda</th></tr></thead><tbody>
+<tr><td>Quedarse en Polygon Edge y mantenerlo nosotros</td><td>Coste cero hoy</td><td>Asume el mantenimiento de un motor de cadena sin equipo para ello, y sin parches de seguridad de origen. Aplaza el problema y lo encarece.</td></tr>
+<tr><td>Convertirse en <em>rollup</em> sobre una red establecida</td><td>Hereda la seguridad de una red mayor</td><td>Añade dependencia de las comisiones de esa red y termina con la transacción gratuita que hoy tenemos. Más piezas móviles para el mismo resultado.</td></tr>
+<tr><td>Mudar las monedas a una red pública ajena</td><td>Liquidez y seguridad de terceros</td><td>Se deja de tener cadena propia — que es parte central de lo que Orden Global ofrece y de lo que está declarado en los documentos anteriores de esta Junta.</td></tr>
+</tbody></table>
+
+<h2 class="salto">6 · Dónde vamos a estar después</h2>
+
+<figure class="mediana"><svg viewBox="0 0 560 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Comparación entre la cadena actual con un validador y software archivado, y la cadena después de migrar, con seis validadores y software mantenido."><defs><marker id="p6" viewBox="0 0 10 10" refX="9" refY="5"
+  markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+  <path d="M 0 0 L 10 5 L 0 10 z" fill="#9A7B2E"/></marker></defs>
+  <text x="0" y="10" font-size="9" font-family="Helvetica" fill="#5C6B68">LO QUE CAMBIA, Y LO QUE NO</text>
+
+  <rect x="8" y="26" width="240" height="170" rx="8" fill="#F6EDEC" stroke="#D9C4C2" stroke-width="1"/>
+  <text x="20" y="44" font-size="8.5" font-family="Helvetica" font-weight="600" fill="#8C3A32" letter-spacing="1">HOY</text>
+  <rect x="20" y="54" width="216" height="30" rx="5" fill="#FFFFFF" stroke="#8C3A32" stroke-width="1.2"/>
+  <text x="128" y="73" text-anchor="middle" font-size="9.5" font-family="Helvetica" font-weight="600" fill="#8C3A32">Polygon Edge · archivado</text>
+  <rect x="20" y="92" width="216" height="30" rx="5" fill="#FFFFFF" stroke="#8C3A32" stroke-width="1.2"/>
+  <text x="128" y="111" text-anchor="middle" font-size="9.5" font-family="Helvetica" font-weight="600" fill="#8C3A32">1 validador de 6 nodos</text>
+  <rect x="20" y="130" width="216" height="30" rx="5" fill="#FFFFFF" stroke="#5C6B68" stroke-width="1.2"/>
+  <text x="128" y="149" text-anchor="middle" font-size="9.5" font-family="Helvetica" fill="#5C6B68">Cadena 8532 · 15 monedas</text>
+  <text x="128" y="180" text-anchor="middle" font-size="8" font-family="Helvetica" fill="#5C6B68">~250 transacciones en 4,1 M de bloques</text>
+
+  <line x1="256" y1="111" x2="300" y2="111" stroke="#9A7B2E" stroke-width="1.6" marker-end="url(#p6)"/>
+  <text x="278" y="103" text-anchor="middle" font-size="7.5" font-family="Helvetica" fill="#9A7B2E">migración</text>
+
+  <rect x="312" y="26" width="240" height="170" rx="8" fill="#E9F3EF" stroke="#BFD9CE" stroke-width="1"/>
+  <text x="324" y="44" font-size="8.5" font-family="Helvetica" font-weight="600" fill="#1E6B4F" letter-spacing="1">DESPUÉS</text>
+  <rect x="324" y="54" width="216" height="30" rx="5" fill="#FFFFFF" stroke="#1E6B4F" stroke-width="1.2"/>
+  <text x="432" y="73" text-anchor="middle" font-size="9.5" font-family="Helvetica" font-weight="600" fill="#1E6B4F">Hyperledger Besu · mantenido</text>
+  <rect x="324" y="92" width="216" height="30" rx="5" fill="#FFFFFF" stroke="#1E6B4F" stroke-width="1.2"/>
+  <text x="432" y="111" text-anchor="middle" font-size="9.5" font-family="Helvetica" font-weight="600" fill="#1E6B4F">6 validadores firmando</text>
+  <rect x="324" y="130" width="216" height="30" rx="5" fill="#FFFFFF" stroke="#5C6B68" stroke-width="1.2"/>
+  <text x="432" y="149" text-anchor="middle" font-size="9.5" font-family="Helvetica" fill="#5C6B68">Cadena 8532 · 15 monedas</text>
+  <text x="432" y="180" text-anchor="middle" font-size="8" font-family="Helvetica" fill="#1E6B4F">mismas direcciones · mismos saldos</text>
+</svg>
+<figcaption>Lo único que cambia es el motor y quién firma. El identificador de la red, las
+direcciones de las monedas y los saldos de cada persona quedan exactamente igual.</figcaption></figure>
+
+<table><thead><tr><th>Concepto</th><th>Hoy</th><th>Después de migrar</th></tr></thead><tbody>
+<tr><td>Motor</td><td>Polygon Edge (archivado)</td><td>Hyperledger Besu (mantenido)</td></tr>
+<tr><td>Parches de seguridad</td><td>Ninguno</td><td>Del proyecto, con publicaciones periódicas</td></tr>
+<tr><td>Validadores</td><td>1</td><td>Hasta 6, por etapas</td></tr>
+<tr><td>Si cae el servidor que firma</td><td>La cadena se detiene</td><td>Sigue funcionando</td></tr>
+<tr><td>Identificador de la red</td><td>8532</td><td><strong>8532 · sin cambio</strong></td></tr>
+<tr><td>Direcciones de las monedas</td><td>—</td><td><strong>Las mismas · sin cambio</strong></td></tr>
+<tr><td>Saldos</td><td>—</td><td><strong>Los mismos · sin cambio</strong></td></tr>
+<tr><td>Cambios en Veta Wallet o las apps</td><td>—</td><td><strong>Ninguno</strong></td></tr>
+<tr><td>Coste por transacción</td><td>0</td><td>0</td></tr>
+</tbody></table>
+
+<h2>7 · El plan, paso a paso</h2>
+
+<p>Seis semanas en total, de las cuales solo unas horas afectan al servicio.</p>
+
+<table><thead><tr><th>Etapa</th><th>Qué se hace</th><th>Plazo</th><th>Servicio</th></tr></thead><tbody>
+<tr><td><strong>1 · Inventario</strong></td><td>Se listan todos los contratos, todos los saldos y todos los tenedores, y se firma esa foto. Es el documento que se compara al final.</td><td>3 días</td><td>Normal</td></tr>
+<tr><td><strong>2 · Ensayo</strong></td><td>Se monta una cadena de pruebas con Besu y se hace la migración completa sobre ella. Se comprueba que cada saldo coincide, moneda por moneda y dirección por dirección.</td><td>2 semanas</td><td>Normal</td></tr>
+<tr><td><strong>3 · Ensayo con las apps</strong></td><td>Veta Wallet, MyTokenPay, Genesis ID y el explorador se apuntan a la cadena de pruebas y se opera con ellas como un día cualquiera.</td><td>1 semana</td><td>Normal</td></tr>
+<tr><td><strong>4 · Corte</strong></td><td>Se detiene la cadena vieja, se toma la foto final, se arranca la nueva y se apunta el dominio. Se verifica el inventario contra la etapa 1 antes de abrir.</td><td>Un fin de semana</td><td><strong>Detenido unas horas</strong></td></tr>
+<tr><td><strong>5 · Validadores</strong></td><td>Se suman los otros cinco servidores como firmantes, <strong>de uno en uno</strong>, comprobando después de cada alta que la cadena sigue avanzando.</td><td>2 semanas</td><td>Normal</td></tr>
+<tr><td><strong>6 · Archivo</strong></td><td>La cadena vieja se deja encendida solo para consulta, y el explorador sigue mostrando las transacciones históricas.</td><td>Permanente</td><td>Normal</td></tr>
+</tbody></table>
+
+<div class="nota"><b class="t">Por qué los validadores van en la etapa 5 y no antes</b>
+Hoy la cadena no se puede detener por falta de acuerdo: hay un solo firmante y siempre firma.
+Con seis firmantes hace falta que la mayoría esté disponible, y <strong>añadir un validador que
+esté caído o atrasado detiene la producción de bloques</strong>. Por eso se suman de uno en uno y
+después del corte, sobre servidores que ya se sabe que están estables. Hacerlo al revés convierte
+una mejora en una caída.
+</div>
+
+<h2 class="salto">8 · Qué cuesta</h2>
+
+<table><thead><tr><th>Partida</th><th>Importe</th><th>Nota</th></tr></thead><tbody>
+<tr><td>Licencias de software</td><td>0</td><td>Besu es Apache 2.0</td></tr>
+<tr><td>Servidores nuevos</td><td>0</td><td>Se reutilizan los seis nodos actuales</td></tr>
+<tr><td>Servidores de ensayo</td><td>Bajo</td><td>Máquinas temporales durante 3 semanas, se apagan al terminar</td></tr>
+<tr><td>Garantía de los validadores</td><td><strong>6 ORIGEN</strong></td><td>1 ORIGEN por servidor más margen para comisiones</td></tr>
+<tr><td>Trabajo técnico</td><td>6 semanas</td><td>Con el equipo actual, sin contratación</td></tr>
+</tbody></table>
+
+<p>La única partida que mueve fondos son los <strong>6 ORIGEN</strong> de garantía. La dirección
+validadora actual dispone hoy de 28,24 ORIGEN libres, de modo que alcanza sin recurrir a tesorería
+adicional. Aun así, <strong>mover ese saldo requiere instrucción escrita de la Junta</strong> y no
+se hará sin ella.</p>
+
+<h2>9 · Los riesgos, y cómo se controlan</h2>
+
+<table><thead><tr><th>Riesgo</th><th>Cómo se controla</th></tr></thead><tbody>
+<tr><td>Que un saldo no llegue igual a la cadena nueva</td><td>El inventario de la etapa 1 se compara contra la cadena nueva antes de abrirla al público. Si un solo saldo no coincide, no se abre.</td></tr>
+<tr><td>Que algo falle durante el corte</td><td>La cadena vieja no se borra ni se apaga: queda encendida. Si el corte sale mal, se vuelve a apuntar el dominio a la cadena vieja y se sigue como hoy.</td></tr>
+<tr><td>Que una app deje de funcionar</td><td>Se prueban todas contra la cadena de ensayo durante una semana antes del corte (etapa 3).</td></tr>
+<tr><td>Que sumar validadores detenga la cadena</td><td>Se suman de uno en uno, verificando después de cada alta. Si uno da problemas, se retira.</td></tr>
+<tr><td>Perder el registro histórico</td><td>Las ~250 transacciones se exportan enteras y el explorador las sigue mostrando. La cadena vieja queda como archivo consultable.</td></tr>
+</tbody></table>
+
+<div class="nota riesgo"><b class="t">El riesgo de no hacer nada</b>
+No migrar también es una decisión, y tiene su propio riesgo: seguir operando indefinidamente
+sobre un motor que no recibirá parches de seguridad, con un único servidor capaz de firmar. Hoy
+ese riesgo es tolerable porque la cadena está vacía. Deja de serlo el día que haya saldos de
+clientes en volumen — que es exactamente lo que el resto del plan de la organización busca
+conseguir.
+</div>
+
+<h2>10 · Lo que se pide a la Junta</h2>
+
+<ol>
+  <li><strong>Aprobar la migración</strong> de la cadena 8532 a Hyperledger Besu con consenso QBFT,
+  conservando el identificador de la red, las direcciones de las monedas y todos los saldos.</li>
+  <li><strong>Autorizar el uso de 6 ORIGEN</strong> de la dirección validadora actual como garantía
+  de los seis validadores.</li>
+  <li><strong>Fijar la ventana del corte</strong> (etapa 4), que requiere detener el servicio unas horas
+  en fin de semana.</li>
+  <li><strong>Recibir el informe de verificación</strong> de la etapa 2 antes de autorizar el corte:
+  ninguna migración se ejecuta sin que el ensayo haya cuadrado saldo por saldo.</li>
+</ol>
+
+<div class="pie-doc">
+Documento 6 de la serie para la Junta Directiva de Orden Global · 9 de agosto de 2026.<br>
+Las cifras de la cadena se leyeron en vivo el mismo día mediante consultas directas a la red 8532.
+El estado del software de origen se verificó en el repositorio público del fabricante.<br>
+Las etapas 1 a 3 no alteran nada en producción y pueden comenzar sin mover fondos.
+</div>
+
+</body></html>
