@@ -1,0 +1,202 @@
+<title>Roatán Yacht Getaways — Estado de entrega</title>
+<style>
+  :root{
+    --chart:#E4E9E3; --plate:#F3F5F1; --sunk:#DAE1DB;
+    --ink:#082830; --ink-soft:#3B5559; --ink-faint:#6B8388; --rule:#C3CFC8;
+    --deep:#072A38; --shoal:#17607E; --signal:#B4246B; --signal-soft:#F6DDE9;
+    --ok:#1F6B4F; --on-deep:#E4EDEC; --on-deep-soft:#8DAAB0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --chart:#04161D; --plate:#08242E; --sunk:#0C2E3A;
+      --ink:#DFEBE9; --ink-soft:#9FBBBE; --ink-faint:#718D93; --rule:#1B3F4B;
+      --deep:#020D12; --shoal:#3E93AE; --signal:#F0619E; --signal-soft:#3B1226;
+      --ok:#4CAE86; --on-deep:#DFEBE9; --on-deep-soft:#86A2A8;
+    }
+  }
+  :root[data-theme="dark"]{
+    --chart:#04161D; --plate:#08242E; --sunk:#0C2E3A;
+    --ink:#DFEBE9; --ink-soft:#9FBBBE; --ink-faint:#718D93; --rule:#1B3F4B;
+    --deep:#020D12; --shoal:#3E93AE; --signal:#F0619E; --signal-soft:#3B1226;
+    --ok:#4CAE86; --on-deep:#DFEBE9; --on-deep-soft:#86A2A8;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--chart); color:var(--ink);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:15px; line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .serif{font-family:Georgia,"Iowan Old Style",ui-serif,serif; letter-spacing:-.02em; line-height:1.14; text-wrap:balance}
+  h1,h2,h3{margin:0;font-weight:600}
+  h1{font-size:clamp(1.9rem,5vw,3rem)}
+  h2{font-size:clamp(1.15rem,2.4vw,1.5rem)}
+  h3{font-size:.95rem}
+  p{margin:0}
+  a{color:var(--shoal)}
+  .wrap{max-width:940px;margin:0 auto;padding:0 22px}
+  .stack{display:flex;flex-direction:column}
+  .label{font-size:.66rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);margin:0}
+  .label.sig{color:var(--signal)}
+  .small{font-size:.82rem;color:var(--ink-soft);line-height:1.6}
+  .prose{font-size:.88rem;line-height:1.75;color:var(--ink-soft);max-width:64ch}
+
+  header.top{background:var(--deep);color:var(--on-deep);padding:56px 0 44px}
+  header.top .wrap{display:flex;flex-direction:column;gap:16px}
+  header.top h1{color:var(--on-deep)}
+  header.top .label{color:var(--on-deep-soft)}
+  header.top .prose{color:var(--on-deep-soft)}
+  .coords{display:flex;flex-wrap:wrap;gap:6px 26px;border-top:1px solid rgba(255,255,255,.14);padding-top:14px;
+    font-size:.64rem;letter-spacing:.18em;text-transform:uppercase;color:var(--on-deep-soft)}
+  .ticks{height:10px;background:repeating-linear-gradient(90deg,var(--rule) 0 1px,transparent 1px 24px),var(--plate);border-bottom:1px solid var(--rule)}
+
+  section{padding:44px 0;border-top:1px solid var(--rule)}
+  section>.wrap{display:flex;flex-direction:column;gap:18px}
+  .head{display:flex;flex-direction:column;gap:6px}
+
+  .plate{background:var(--plate);border:1px solid var(--rule);border-radius:2px}
+  .plate-head{padding:10px 14px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .plate-body{padding:14px;display:flex;flex-direction:column;gap:10px}
+
+  .grid{display:grid;gap:12px}
+  .c2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .c3{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+
+  .chip{display:inline-block;font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;padding:3px 8px;border:1px solid currentColor;border-radius:2px}
+  .chip.ok{color:var(--ok)} .chip.sig{color:var(--signal)} .chip.sh{color:var(--shoal)}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--rule);border-radius:2px;background:var(--plate)}
+  table{border-collapse:collapse;width:100%;min-width:600px;font-size:.8rem}
+  th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);font-weight:400;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+
+  ol,ul{margin:0;padding-left:1.2em}
+  li{margin:5px 0}
+  li::marker{color:var(--signal)}
+
+  .step{display:grid;grid-template-columns:44px 1fr;gap:14px;padding:16px 0;border-top:1px solid var(--rule)}
+  .step:first-child{border-top:none}
+  .step .n{color:var(--signal);font-size:.78rem;padding-top:2px}
+  .step .b{display:flex;flex-direction:column;gap:5px}
+  code{background:var(--sunk);padding:1px 5px;border-radius:2px;font-size:.86em}
+  .note{border-left:2px solid var(--signal);background:var(--sunk);padding:11px 14px;font-size:.82rem;display:flex;flex-direction:column;gap:5px}
+  .note.ok{border-left-color:var(--ok)}
+  footer{background:var(--deep);color:var(--on-deep-soft);padding:34px 0;font-size:.78rem}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <p class="label">Estado de entrega · Agosto 2026 · rama claude/roatan-yacht-booking-app-fxushd</p>
+    <h1 class="serif">Roatán Private Yacht Getaways</h1>
+    <p class="prose">La app está construida y probada de punta a punta. Falta solo lo que depende de cuentas tuyas: Stripe, el correo y la base de datos. Este documento dice exactamente qué está hecho, qué falta y en qué orden hacerlo.</p>
+    <div class="coords">
+      <span>Knotty · 47'</span>
+      <span>Li'l Knotty · centre console</span>
+      <span>30 extras · 3 paquetes</span>
+      <span>WhatsApp +1 702 419-4681</span>
+    </div>
+  </div>
+</header>
+<div class="ticks"></div>
+
+<section>
+  <div class="wrap">
+    <div class="head">
+      <p class="label sig">Hecho y probado</p>
+      <h2 class="serif">Lo que ya funciona</h2>
+    </div>
+    <div class="grid c2">
+      <div class="plate"><div class="plate-head"><h3>El sitio del huésped</h3><span class="chip ok">Listo</span></div>
+        <div class="plate-body"><p class="small">Arranca por la ocasión, elige barco con fotos reales, calendario con los días tomados rayados, plano del yate donde se arrastra cada extra a su zona, manifiesto con cantidades, cupones, y checkout con depósito o pago total.</p></div></div>
+      <div class="plate"><div class="plate-head"><h3>El admin</h3><span class="chip ok">Listo</span></div>
+        <div class="plate-body"><p class="small">Ocho pestañas: hoy, reservas, barcos y extras, promos, calendario, invoices, números y ajustes. Todo el catálogo se edita sin tocar código, incluidas las fotos.</p></div></div>
+      <div class="plate"><div class="plate-head"><h3>Base de datos</h3><span class="chip ok">Probado</span></div>
+        <div class="plate-body"><p class="small">Postgres cuando existe <code>DATABASE_URL</code>. Verificado contra una base real: una edición de precio, una reserva y un invoice sobrevivieron un reinicio completo sin archivo en disco.</p></div></div>
+      <div class="plate"><div class="plate-head"><h3>Correo y WhatsApp</h3><span class="chip sh">Escrito, sin llave</span></div>
+        <div class="plate-body"><p class="small">Confirmación al huésped, aviso a la tripulación con la ocasión y las alergias, recibo de pago, invoice por correo con link de WhatsApp. Sin llave de Resend, cada mensaje se imprime en el log para que revises la redacción.</p></div></div>
+      <div class="plate"><div class="plate-head"><h3>Pagos</h3><span class="chip sh">Escrito, sin llave</span></div>
+        <div class="plate-body"><p class="small">Stripe Checkout, depósito del 30%, invoices con link de pago, webhook que marca pagado. Sin llave corre en modo cotización: toma la reserva y la facturás a mano.</p></div></div>
+      <div class="plate"><div class="plate-head"><h3>Las dos barcas</h3><span class="chip ok">Con fotos</span></div>
+        <div class="plate-body"><p class="small">Knotty y Li'l Knotty, con sus fotos reales en portada, tarjetas, paquetes, plano y galería. Diez imágenes, cada una recortada a mano para que la tarjeta muestre el barco y no el cielo.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="head">
+      <p class="label sig">Te toca a vos</p>
+      <h2 class="serif">Tres llaves y está en línea</h2>
+      <p class="prose">Nada de esto es programación: son cuentas que solo vos podés abrir. En este orden.</p>
+    </div>
+
+    <div class="stack">
+      <div class="step"><div class="n">01</div><div class="b">
+        <h3>Base de datos — 10 minutos, gratis para empezar</h3>
+        <p class="small">Abrí una base en <a href="https://neon.tech">Neon</a> o Supabase, copiá la cadena de conexión y ponela como <code>DATABASE_URL</code> en Vercel. Sin esto, todo lo que edites en el admin desaparece cuando el servidor se recicla. <strong>Es el único bloqueador real para cobrar de verdad.</strong></p>
+      </div></div>
+      <div class="step"><div class="n">02</div><div class="b">
+        <h3>Stripe — con la entidad de EE. UU.</h3>
+        <p class="small">Creá la cuenta bajo la LLC gringa (Stripe no opera con empresas hondureñas). Poné <code>STRIPE_SECRET_KEY</code>, y agregá un webhook a <code>/api/webhooks/stripe</code> escuchando <code>checkout.session.completed</code> con su <code>STRIPE_WEBHOOK_SECRET</code>. Sin el webhook los pagos entran pero las reservas no se marcan pagadas solas.</p>
+      </div></div>
+      <div class="step"><div class="n">03</div><div class="b">
+        <h3>Correo — Resend con dominio verificado</h3>
+        <p class="small">Verificá el dominio desde el que querés escribir, poné <code>RESEND_API_KEY</code> y <code>MAIL_FROM</code>. Antes de eso, leé los mensajes en el log del servidor: están escritos y probados, pero la redacción es mía y el negocio es tuyo.</p>
+      </div></div>
+      <div class="step"><div class="n">04</div><div class="b">
+        <h3>Y cambiá la contraseña del admin</h3>
+        <p class="small"><code>ADMIN_PASSWORD</code> viene como <code>lovecloud</code>. Cambiala antes de que el sitio sea alcanzable por alguien más.</p>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="head">
+      <p class="label sig">Decisiones que quedan abiertas</p>
+      <h2 class="serif">Lo que necesito de vos, no de una cuenta</h2>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Tema</th><th>Situación</th><th>Qué necesito</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Precios de los extras</strong></td><td>Los 30 extras tienen precios de referencia que yo inventé</td><td>Tus precios reales. Se cambian desde el admin, sin código</td></tr>
+          <tr><td><strong>Correo de contacto</strong></td><td><code>reservations@lovecloudroatan.com</code>, inventado por mí</td><td>El correo real donde querés recibir los avisos de reserva</td></tr>
+          <tr><td><strong>Punto de salida</strong></td><td>French Harbour Marina</td><td>Confirmar, o el muelle exacto si es otro</td></tr>
+          <tr><td><strong>Política de cancelación</strong></td><td>7 días, depósito no reembolsable dentro de ese plazo</td><td>Confirmar que es la tuya</td></tr>
+          <tr><td><strong>Capacidad real</strong></td><td>Knotty 1–12, Li'l Knotty 1–10, paquetes 2–4</td><td>Confirmar contra lo que permite tu licencia</td></tr>
+          <tr><td><strong>Español</strong></td><td>Todo el sitio está en inglés, como acordamos</td><td>Decidir si querés segundo idioma antes o después de lanzar</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <strong>Un detalle que conviene revisar antes de vender</strong>
+      <span class="small">Los paquetes Copper, Silver y Gold cuestan los tres $2,000 por noche y solo se diferencian en la cantidad de noches. Gold además incluye hotel y un día de lancha de cortesía por el mismo precio por noche. Si es así de verdad, perfecto. Si no, es el momento de ajustarlo — el admin lo permite en dos minutos.</span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="head">
+      <p class="label sig">Cómo probarlo hoy</p>
+      <h2 class="serif">Corre sin configurar nada</h2>
+    </div>
+    <div class="plate"><div class="plate-body">
+      <p class="small" style="font-family:inherit">
+        <code>cd roatan-yacht</code><br>
+        <code>npm install</code><br>
+        <code>npm start</code> → <code>http://localhost:3000</code>
+      </p>
+      <p class="small">El admin está en <code>/admin.html</code> con la contraseña <code>lovecloud</code>. Sin llaves, la app corre en modo cotización con una base de datos en archivo: podés reservar, editar el catálogo, emitir invoices y ver los correos en la consola. <code>npm run reset</code> devuelve todo al catálogo original.</p>
+    </div></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Probado en navegador real: flujo completo del huésped, arrastre al plano, calendario, cantidades, checkout, confirmación, móvil y admin. Cero errores de JavaScript. Nada desplegado todavía — la decisión de publicar es tuya.
+  </div>
+</footer>
