@@ -28,6 +28,14 @@ on:
           - preview
           - development
           - production
+  # Tocar genesis-id-app/LANZAR-BUILD.txt en un push también compila (perfil
+  # preview). Sirve para lanzar builds sin entrar a la pestaña Actions.
+  push:
+    branches:
+      - claude/veta-wallet-phantom-design-7syah8
+      - main
+    paths:
+      - 'genesis-id-app/LANZAR-BUILD.txt'
 
 jobs:
   build:
@@ -70,7 +78,7 @@ jobs:
         run: |
           eas build \
             --platform android \
-            --profile "${{ inputs.profile }}" \
+            --profile "${{ inputs.profile || 'preview' }}" \
             --non-interactive \
             --wait
 
