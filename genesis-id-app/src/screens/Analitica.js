@@ -19,10 +19,18 @@ import { Icon } from '../icons';
 import { C, SERIES } from '../theme';
 import { Card, Kpi, Pastilla, Cabecera, Vacio, BotonPlano, hap, useToast } from '../ui';
 import { Barras, Embudo, Serie, Reparto } from '../graficos';
+import { Actividad } from './Actividad';
+import { Sesiones } from './Sesiones';
+import { Errores, FichaError } from './Errores';
 import * as api from '../api';
 
+// El orden no es alfabético: va de lo más consultado a lo más ocasional.
+// «Actividad» y «Sesiones» son las que se abren cuando algo pasa ahora mismo.
 const VISTAS = [
   { clave: 'gente', nombre: 'Gente' },
+  { clave: 'actividad', nombre: 'Actividad' },
+  { clave: 'sesiones', nombre: 'Ingresos' },
+  { clave: 'errores', nombre: 'Errores' },
   { clave: 'billeteras', nombre: 'Billeteras' },
   { clave: 'apps', nombre: 'Apps' },
   { clave: 'monedas', nombre: 'Monedas' },
@@ -39,6 +47,9 @@ export function Analitica({ avisar }) {
   const [billeteras, setBilleteras] = useState(null);
   const [busca, setBusca] = useState('');
   const [soloConSaldo, setSoloConSaldo] = useState(false);
+  // El error abierto encima de la vista. Se guarda de dónde se entró para
+  // devolver a la pestaña correcta: se llega desde Actividad y desde Errores.
+  const [grupoError, setGrupoError] = useState(null);
   const retraso = useRef(null);
 
   const cargar = useCallback(async () => {
@@ -91,20 +102,34 @@ export function Analitica({ avisar }) {
 
   const { resumen: R, embudo: E, apps: A, dir: D } = datos;
 
+  // La ficha de un error se lleva la pantalla entera: es donde se decide a
+  // quién llamar, y una pestaña arriba solo invitaría a perderla de vista.
+  if (grupoError) {
+    return <FichaError huella={grupoError} volver={() => setGrupoError(null)} avisar={avisar} />;
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <Cabecera titulo="Analítica" sub="mismas cifras que el panel web" />
 
-      <View style={st.pestanas}>
+      {/* Siete pestañas no caben repartidas: se deslizan. */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        style={{ flexGrow: 0 }} contentContainerStyle={st.pestanas}>
         {VISTAS.map((v) => (
           <Pressable key={v.clave} onPress={() => { hap(); setVista(v.clave); }}
             style={[st.pest, vista === v.clave && st.pestSel]}>
             <Text style={[st.pestTxt, vista === v.clave && st.pestTxtSel]}>{v.nombre}</Text>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
 
-      {cargando && !R ? (
+      {vista === 'actividad' ? (
+        <Actividad avisar={avisar} verError={setGrupoError} />
+      ) : vista === 'sesiones' ? (
+        <Sesiones avisar={avisar} />
+      ) : vista === 'errores' ? (
+        <Errores avisar={avisar} abrirGrupo={setGrupoError} />
+      ) : cargando && !R ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={C.gold} size="large" />
         </View>
@@ -404,9 +429,9 @@ function VistaMonedas({ D }) {
 }
 
 const st = StyleSheet.create({
-  pestanas: { flexDirection: 'row', gap: 6, paddingHorizontal: 18, paddingBottom: 10 },
+  pestanas: { gap: 6, paddingHorizontal: 18, paddingBottom: 10 },
   pest: {
-    flex: 1, paddingVertical: 8, borderRadius: 9, alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 9, alignItems: 'center',
     borderWidth: 1, borderColor: C.line2, backgroundColor: C.panel2,
   },
   pestSel: { borderColor: C.gold, backgroundColor: 'rgba(201,169,97,0.14)' },

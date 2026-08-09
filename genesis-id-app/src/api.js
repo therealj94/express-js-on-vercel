@@ -141,6 +141,46 @@ export const analiticaResumen = (dias = 30) => llamar('GET', `/panel/analitica/r
 export const analiticaEmbudo = () => llamar('GET', '/panel/analitica/embudo');
 export const analiticaApps = (dias = 90) => llamar('GET', `/panel/analitica/apps?dias=${dias}`);
 
+/**
+ * Consulta libre sobre los eventos, con las cuentas por dimensión.
+ *
+ * Los `undefined` se caen solos al construir la query, así que la pantalla
+ * puede pasar el objeto de filtros entero sin ir limpiándolo.
+ */
+export function eventos(filtros = {}) {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(filtros)) {
+    if (v === undefined || v === null || v === '' || v === 'todas') continue;
+    q.set(k, String(v));
+  }
+  return llamar('GET', `/panel/analitica/eventos?${q.toString()}`);
+}
+
+export const erroresLista = (filtros = {}) => {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(filtros)) {
+    if (v === undefined || v === null || v === '' || v === 'todas') continue;
+    q.set(k, String(v));
+  }
+  return llamar('GET', `/panel/analitica/errores?${q.toString()}`);
+};
+
+export const errorDetalle = (huella) => llamar('GET', `/panel/analitica/errores/${huella}`);
+/** Quién sufrió un error concreto — resuelto contra el padrón. */
+export const errorAfectados = (huella) => llamar('GET', `/panel/analitica/errores/${huella}/afectados`);
+export const marcarError = (huella, estado, nota) =>
+  llamar('POST', `/panel/analitica/errores/${huella}/estado`, { estado, nota });
+
+/** Últimos ingresos. `plataforma` separa la app del teléfono de la web. */
+export function sesiones({ app, plataforma, pais, limite = 60 } = {}) {
+  const q = new URLSearchParams();
+  if (app && app !== 'todas') q.set('app', app);
+  if (plataforma && plataforma !== 'todas') q.set('plataforma', plataforma);
+  if (pais) q.set('pais', pais);
+  q.set('limite', String(limite));
+  return llamar('GET', `/panel/analitica/sesiones?${q.toString()}`);
+}
+
 export const directorioResumen = () => llamar('GET', '/panel/directorio/resumen');
 
 export function directorio({ texto, app, conWallet, limite = 60, orden } = {}) {

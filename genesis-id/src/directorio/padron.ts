@@ -230,6 +230,28 @@ function pasaFiltro(e: EntradaDirectorio, f: FiltroDirectorio): boolean {
 const saldoTotal = (e: EntradaDirectorio) =>
   Object.values(e.saldos || {}).reduce((s, n) => s + (Number(n) || 0), 0)
 
+/**
+ * Todas las entradas de una app, tal cual.
+ *
+ * La usa la analítica para poner nombre a una huella de telemetría: se le
+ * calcula a cada persona la misma huella y se cruza. Devuelve solo `app`,
+ * `idExterno`, `email`, `nombre`, `pais` y `gid` porque es lo único que ese
+ * cruce necesita — pasar el resto (teléfono, saldos, dirección) sería repartir
+ * datos personales a un módulo que no los pidió.
+ */
+export async function entradasDe(app: string): Promise<Array<
+  Pick<EntradaDirectorio, 'app' | 'idExterno' | 'email' | 'nombre' | 'pais' | 'gid'>
+>> {
+  const c = col()
+  const todas: EntradaDirectorio[] = c
+    ? await c.find({ app }, { projection: { app: 1, idExterno: 1, email: 1, nombre: 1, pais: 1, gid: 1 } }).toArray()
+    : [...memoria.values()].filter((e) => e.app === app)
+  return todas.map((e) => ({
+    app: e.app, idExterno: e.idExterno, email: e.email,
+    nombre: e.nombre, pais: e.pais, gid: e.gid ?? null,
+  }))
+}
+
 export async function consultar(f: FiltroDirectorio = {}) {
   const c = col()
   const todas: EntradaDirectorio[] = c ? await c.find({}).toArray() : [...memoria.values()]

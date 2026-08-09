@@ -4,6 +4,15 @@
 // usuarios se cuentan por huella y las huellas no se publican. Es una decisión
 // deliberada — el panel de métricas lo abre mucha más gente que el de
 // cumplimiento, y no tiene por qué ver a nadie en particular.
+//
+// LA EXCEPCION, Y POR QUE EXISTE
+//
+// Dos rutas —`/afectados` y `/sesiones`— sí ponen nombre: son las que
+// responden «a quién le pasó esto» y «quién entró». Sin ellas, instrumentar un
+// error sirve para saber que algo se rompe pero no para llamar a quien lo
+// sufrió, que es la mitad del trabajo. Se resuelven cruzando el padrón, no
+// guardando nada nuevo, y por eso piden el permiso del padrón
+// (`usuarios.ver`), no el de analítica, y quedan escritas en la bitácora.
 
 import { Router } from 'express'
 import { exigeOperador, exigePermiso } from '../middleware/proteger.js'
@@ -11,6 +20,7 @@ import {
   resumen, porApp, paises, retencion, errores, errorDetalle, marcarError,
   embudoKyc, saludEcosistema, serviciosVigilados,
 } from '../analitica/consultas.js'
+import { explorar, afectadosPorError, ultimasSesiones } from '../analitica/explorador.js'
 import { almacen, leerCenso } from '../analitica/eventos.js'
 import { clavePublicaDe, rotarPublica } from '../auth/aplicaciones.js'
 import { consultar as bitacoraConsultar, registrar } from '../audit/bitacora.js'
@@ -29,6 +39,77 @@ const app = (v: unknown) => {
   const s = String(v ?? '').trim()
   return s && s !== 'todas' ? s.slice(0, 40) : undefined
 }
+
+/** Texto acotado: nada de expresiones regulares gigantes en la consulta. */
+const txt = (v: unknown, max = 80) => {
+  const s = String(v ?? '').trim()
+  return s ? s.slice(0, max) : undefined
+}
+const num = (v: unknown) => (v === undefined || v === '' || v === null ? undefined
+  : Number.isFinite(Number(v)) ? Number(v) : undefined)
+const hora = (v: unknown) => {
+  const n = num(v)
+  return n === undefined ? undefined : Math.max(0, Math.min(23, Math.round(n)))
+}
+
+// ── Explorador de eventos ────────────────────────────────────────────────────
+
+/**
+ * Consulta libre sobre los eventos crudos, con las cuentas por dimensión.
+ *
+ * Es lo que permite responder «los pagos fallidos de ayer por la noche, en la
+ * web, desde Honduras, de más de 500 dólares» sin que nadie haya previsto esa
+ * combinación.
+ */
+analiticaRouter.get('/eventos', async (req, res) => {
+  const q = req.query as Record<string, string>
+  res.json(await explorar({
+    app: app(q.app),
+    plataforma: txt(q.plataforma, 40),
+    tipo: txt(q.tipo, 20) as any,
+    gravedad: txt(q.gravedad, 10) as any,
+    pais: txt(q.pais, 2)?.toUpperCase(),
+    moneda: txt(q.moneda, 12)?.toUpperCase(),
+    version: txt(q.version, 30),
+    texto: txt(q.texto),
+    desde: txt(q.desde, 10),
+    hasta: txt(q.hasta, 10),
+    horaDesde: hora(q.horaDesde),
+    horaHasta: hora(q.horaHasta),
+    montoMin: num(q.montoMin),
+    montoMax: num(q.montoMax),
+    grupo: txt(q.grupo, 64),
+    sesion: txt(q.sesion, 64),
+    limite: num(q.limite),
+    saltar: num(q.saltar),
+  }))
+})
+
+/**
+ * A quién le pasó un error concreto.
+ *
+ * Permiso de padrón y bitácora: identificar a alguien no es mirar una métrica.
+ */
+analiticaRouter.get('/errores/:grupo/afectados', exigePermiso('usuarios.ver'), async (req, res) => {
+  const r = await afectadosPorError(req.params.grupo, Math.min(200, Number(req.query.limite) || 50))
+  registrar(req.operador!.email, 'analitica.afectados', req.params.grupo, {
+    total: r.total, identificados: r.identificados,
+  })
+  res.json(r)
+})
+
+/** Los últimos ingresos, con hora exacta y quién fue. */
+analiticaRouter.get('/sesiones', exigePermiso('usuarios.ver'), async (req, res) => {
+  const q = req.query as Record<string, string>
+  const r = await ultimasSesiones({
+    app: app(q.app),
+    plataforma: txt(q.plataforma, 40),
+    pais: txt(q.pais, 2)?.toUpperCase(),
+    limite: num(q.limite),
+  })
+  registrar(req.operador!.email, 'analitica.sesiones', q.app || 'todas', { total: r.total })
+  res.json(r)
+})
 
 // ── Resumen ──────────────────────────────────────────────────────────────────
 
