@@ -16,7 +16,7 @@ Admin is at `/admin.html`. The default password is `lovecloud` — change it wit
 
 | Page | What it does |
 | --- | --- |
-| `/` | The whole guest flow: pick a vessel, pick a date, drag extras onto the deck, pay |
+| `/` | The whole guest flow: occasion, vessel, calendar, deck plan, manifest, pay |
 | `/confirmation.html?ref=LC-1001` | Booking confirmation and boarding pass |
 | `/lookup.html` | Guest looks up an existing booking by reference |
 | `/invoice.html?n=INV-101` | Public invoice with a pay button, printable to PDF |
@@ -62,13 +62,16 @@ server/
 public/          the guest app and the admin, no build step
 ```
 
-Two rules the code follows:
+Three rules the code follows:
 
 - **The browser never sets a price.** It draws a running total so the builder
   feels alive, but every quote and every charge is re-priced on the server from
   the catalog.
 - **Providers sit behind a seam.** Swapping Stripe for PayPal, or the JSON file
   for Postgres, means writing one adapter — not touching the booking flow.
+- **An unpaid booking does not own a date forever.** A card checkout holds the
+  dates for 30 minutes; abandon it and the date frees itself. Promo codes are
+  spent when the money lands, not when the form is submitted.
 
 ## Known limits before a real launch
 
@@ -80,11 +83,13 @@ busy season, and each one is a small, contained job:
    to Postgres (Supabase) before taking real money.
 2. **Admin sessions live in memory.** They reset when the server restarts, and
    across multiple serverless instances a sign-in may not stick. Fine on a single
-   long-running host; needs a signed cookie or a session table otherwise.
+   long-running host; needs a signed cookie or a session table otherwise. Login
+   is rate-limited to six tries per IP per fifteen minutes.
 3. **No email or WhatsApp yet.** Confirmations render on the site but nothing is
    sent. Resend or Postmark, plus the WhatsApp Business API, is the next piece.
-4. **Photography is a placeholder.** Vessels render an icon on a colour wash.
-   Real photos of the boats will do more for conversion than any feature here.
+4. **Photography is a placeholder.** Vessels render line-art profiles over chart
+   soundings — honest, but real photos of the boats will do more for conversion
+   than any feature in this repo.
 5. **English only.** The copy is written in English on purpose; a Spanish
    translation is a straightforward addition when you want it.
 

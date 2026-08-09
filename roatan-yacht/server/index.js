@@ -5,7 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import * as store from './store.js'
-import { quote, isVesselFree, occupiedDates, QuoteError } from './pricing.js'
+import { quote, isVesselFree, occupiedDates, holdsDates, QuoteError } from './pricing.js'
 import * as payments from './payments.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -35,6 +35,18 @@ function wrap(handler) {
       fail(res, 500, 'Something broke on our side. Try again in a moment.')
     }
   }
+}
+
+// How long an unpaid booking keeps its dates while the guest is at the card
+// form. Long enough to find a wallet, short enough that a Saturday in March
+// does not die because someone changed their mind.
+const HOLD_MINUTES = 30
+
+function redeemCoupon(code) {
+  const coupon = store.table('coupons').find((c) => c.code === code)
+  if (!coupon) return
+  coupon.redemptions = (coupon.redemptions || 0) + 1
+  store.commit()
 }
 
 /* ------------------------------------------------------------------ public */
@@ -76,7 +88,7 @@ app.get('/api/availability', (req, res) => {
     if (b.vesselId === vesselId) taken.add(b.date)
   }
   for (const b of store.table('bookings')) {
-    if (b.vesselId !== vesselId || b.status === 'cancelled') continue
+    if (b.vesselId !== vesselId || !holdsDates(b)) continue
     occupiedDates(b.date, b.nights).forEach((d) => taken.add(d))
   }
 
@@ -131,19 +143,23 @@ app.post('/api/bookings', wrap(async (req, res) => {
       notes: (customer.notes || '').trim(),
       occasion: (customer.occasion || '').trim(),
     },
-    // Instant booking: the slot is held the moment the guest commits.
+    // Instant booking: the slot is held the moment the guest commits. When a
+    // card is involved the hold is provisional until the payment lands, so an
+    // abandoned checkout releases the date instead of burning it.
     status: 'confirmed',
     paymentStatus: 'unpaid',
     amountPaid: 0,
+    holdExpiresAt:
+      payments.mode() === 'stripe'
+        ? new Date(Date.now() + HOLD_MINUTES * 60000).toISOString()
+        : null,
     payNow,
     createdAt: new Date().toISOString(),
     boardingPass: crypto.randomBytes(6).toString('hex').toUpperCase(),
   }
 
-  if (q.couponCode) {
-    const coupon = store.table('coupons').find((c) => c.code === q.couponCode)
-    if (coupon) coupon.redemptions = (coupon.redemptions || 0) + 1
-  }
+  // A promo code is spent when money arrives, not when a form is submitted.
+  if (q.couponCode && payments.mode() !== 'stripe') redeemCoupon(q.couponCode)
 
   store.insert('bookings', booking)
 
@@ -209,6 +225,11 @@ app.post('/api/webhooks/stripe', wrap(async (req, res) => {
         b.amountPaid = Math.round((b.amountPaid + paid) * 100) / 100
         b.paymentStatus = b.amountPaid >= b.total - 0.01 ? 'paid' : 'deposit_paid'
         b.paidAt = new Date().toISOString()
+        b.holdExpiresAt = null // paid: the date is theirs for good
+        if (b.couponCode && !b.couponRedeemed) {
+          redeemCoupon(b.couponCode)
+          b.couponRedeemed = true
+        }
         store.commit()
       }
     }
@@ -248,12 +269,32 @@ function requireAdmin(req, res, next) {
   next()
 }
 
+// One shared password guarding real bookings and real money deserves at least
+// a lockout, or it is a weekend of guessing away from being open.
+const attempts = new Map() // ip -> { count, until }
+const MAX_ATTEMPTS = 6
+const LOCKOUT_MS = 15 * 60 * 1000
+
 app.post('/api/admin/login', (req, res) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip
+  const record = attempts.get(ip)
+
+  if (record?.until && record.until > Date.now()) {
+    const minutes = Math.ceil((record.until - Date.now()) / 60000)
+    return fail(res, 429, `Too many tries. Wait ${minutes} minute${minutes === 1 ? '' : 's'}.`)
+  }
+
   const given = Buffer.from(String(req.body?.password || ''))
   const expected = Buffer.from(ADMIN_PASSWORD)
-  const match =
-    given.length === expected.length && crypto.timingSafeEqual(given, expected)
-  if (!match) return fail(res, 401, 'Wrong password.')
+  const match = given.length === expected.length && crypto.timingSafeEqual(given, expected)
+
+  if (!match) {
+    const count = (record?.until > Date.now() ? record.count : (record?.count || 0)) + 1
+    attempts.set(ip, { count, until: count >= MAX_ATTEMPTS ? Date.now() + LOCKOUT_MS : 0 })
+    return fail(res, 401, 'Wrong password.')
+  }
+
+  attempts.delete(ip)
   ok(res, { token: issueToken() })
 })
 

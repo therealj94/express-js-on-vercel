@@ -38,6 +38,20 @@ export function occupiedDates(startDate, nights) {
   return out
 }
 
+/**
+ * Does this booking still own its dates?
+ *
+ * A booking created but never paid holds its dates for a short window only.
+ * Without this, one guest abandoning the card form kills that date forever —
+ * which is exactly how a boat ends up sitting empty on a Saturday in March.
+ */
+export function holdsDates(booking) {
+  if (booking.status === 'cancelled') return false
+  if (booking.paymentStatus !== 'unpaid') return true
+  if (!booking.holdExpiresAt) return true // taken by hand, or quote mode: ours to manage
+  return new Date(booking.holdExpiresAt) > new Date()
+}
+
 export function isVesselFree(vesselId, startDate, nights, { ignoreBookingId } = {}) {
   const wanted = new Set(occupiedDates(startDate, nights))
 
@@ -49,7 +63,7 @@ export function isVesselFree(vesselId, startDate, nights, { ignoreBookingId } = 
   return !store.table('bookings').some((b) => {
     if (b.vesselId !== vesselId) return false
     if (b.id === ignoreBookingId) return false
-    if (b.status === 'cancelled') return false
+    if (!holdsDates(b)) return false
     return occupiedDates(b.date, b.nights).some((d) => wanted.has(d))
   })
 }

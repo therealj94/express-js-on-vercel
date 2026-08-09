@@ -8,9 +8,9 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛵</text></svg>">
 <style>
   @media print {
-    .topbar, .horizon, .no-print { display: none !important; }
+    .topbar, .ticks, .no-print { display: none !important; }
     body { background: #fff; color: #000; }
-    .panel { border-color: #ccc; box-shadow: none; }
+    .plate { border-color: #ccc; box-shadow: none; }
   }
 </style>
 </head>
@@ -22,7 +22,7 @@
     <nav><button class="btn btn-ghost btn-sm no-print" onclick="window.print()">Print / save PDF</button></nav>
   </div>
 </header>
-<div class="horizon"></div>
+<div class="ticks"></div>
 
 <main class="block">
   <div class="wrap" id="out" style="max-width:720px"><p class="small">Loading invoice…</p></div>
@@ -35,27 +35,27 @@ const number = new URLSearchParams(location.search).get('n')
 const out = document.getElementById('out')
 
 async function load() {
-  if (!number) { out.innerHTML = '<div class="notice bad">No invoice number in the link.</div>'; return }
+  if (!number) { out.innerHTML = '<div class="notice">No invoice number in the link.</div>'; return }
   const res = await fetch(`/api/invoices/${encodeURIComponent(number)}`)
   const data = await res.json().catch(() => ({ ok: false, error: 'Something went wrong.' }))
-  if (!data.ok) { out.innerHTML = `<div class="notice bad">${data.error}</div>`; return }
+  if (!data.ok) { out.innerHTML = `<div class="notice">${data.error}</div>`; return }
 
   const inv = data.invoice
   const paid = inv.status === 'paid'
   out.innerHTML = `
     <div class="stack" style="gap:22px">
       <div class="stack" style="gap:8px">
-        <p class="eyebrow">Invoice ${inv.number}</p>
+        <p class="label">Invoice ${inv.number}</p>
         <h1>${paid ? 'Paid. Thank you.' : `${money(inv.total, inv.currency)} due`}</h1>
         <p class="small">From ${data.brand}${inv.dueDate ? ` · due ${inv.dueDate}` : ''}</p>
       </div>
 
-      <div class="panel">
-        <div class="panel-head">
+      <div class="plate">
+        <div class="plate-head">
           <h3>Billed to ${inv.customer.name || inv.customer.email}</h3>
-          <span class="tag ${paid ? 'ok' : 'brass'}">${paid ? 'Paid' : inv.status}</span>
+          <span class="chip ${paid ? 'ok' : 'signal'}">${paid ? 'Paid' : inv.status}</span>
         </div>
-        <div class="panel-body">
+        <div class="plate-body">
           <div class="tablewrap">
             <table>
               <thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Amount</th></tr></thead>

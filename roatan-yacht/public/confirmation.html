@@ -15,7 +15,7 @@
     <nav><a href="/lookup.html">Find another booking</a></nav>
   </div>
 </header>
-<div class="horizon"></div>
+<div class="ticks"></div>
 
 <main class="block">
   <div class="wrap" id="out" style="max-width:760px">
@@ -41,17 +41,17 @@ function render(booking, settings) {
   out.innerHTML = `
     <div class="stack" style="gap:26px">
       <div class="stack" style="gap:10px">
-        <p class="eyebrow">Booking ${booking.ref} · ${paidLabel}</p>
+        <p class="label">Booking ${booking.ref} · ${paidLabel}</p>
         <h1>You are on the water${booking.customer.name ? `, ${booking.customer.name.split(' ')[0]}` : ''}.</h1>
         <p class="small">${justPaid ? 'Payment went through. ' : ''}We sent the details to ${booking.customer.email}. Show this page — or just the booking number — at the marina.</p>
       </div>
 
-      <div class="panel">
-        <div class="panel-head">
+      <div class="plate">
+        <div class="plate-head">
           <h3>${booking.vesselName}</h3>
-          <span class="tag ${booking.paymentStatus === 'paid' ? 'ok' : 'brass'}">${paidLabel}</span>
+          <span class="chip ${booking.paymentStatus === 'paid' ? 'ok' : 'signal'}">${paidLabel}</span>
         </div>
-        <div class="panel-body">
+        <div class="plate-body">
           <div class="grid cols-3">
             <div class="stat"><span class="k">Departure</span><span class="v" style="font-size:1.1rem">${booking.date}</span></div>
             <div class="stat"><span class="k">Guests</span><span class="v" style="font-size:1.1rem">${booking.guests}</span></div>
@@ -91,7 +91,7 @@ function render(booking, settings) {
 
 async function load() {
   if (!ref) {
-    out.innerHTML = '<div class="notice bad">No booking number in the link. <a href="/lookup.html">Look yours up here.</a></div>'
+    out.innerHTML = '<div class="notice">No booking number in the link. <a href="/lookup.html">Look yours up here.</a></div>'
     return
   }
   try {
@@ -100,7 +100,7 @@ async function load() {
     if (!data.ok) throw new Error(data.error)
     render(data.booking, data.settings)
   } catch (err) {
-    out.innerHTML = `<div class="notice bad">${err.message} <a href="/lookup.html">Try looking it up.</a></div>`
+    out.innerHTML = `<div class="notice">${err.message} <a href="/lookup.html">Try looking it up.</a></div>`
   }
 }
 load()

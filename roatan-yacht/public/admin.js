@@ -47,7 +47,7 @@ $('loginForm').addEventListener('submit', async (e) => {
     sessionStorage.setItem('lc_admin_token', token)
     await start()
   } catch (err) {
-    $('loginError').innerHTML = `<div class="notice bad">${esc(err.message)}</div>`
+    $('loginError').innerHTML = `<div class="notice">${esc(err.message)}</div>`
   }
 })
 
@@ -69,7 +69,7 @@ async function start() {
 
   const notes = []
   if (!data.system.writable) {
-    notes.push('<div class="notice bad"><strong>Changes are not being saved to disk.</strong><span class="small">This server has a read-only filesystem, so edits disappear when it restarts. Point DATA_DIR at a writable folder, or connect a database.</span></div>')
+    notes.push('<div class="notice"><strong>Changes are not being saved to disk.</strong><span class="small">This server has a read-only filesystem, so edits disappear when it restarts. Point DATA_DIR at a writable folder, or connect a database.</span></div>')
   }
   if (data.system.paymentMode !== 'stripe') {
     notes.push('<div class="notice"><strong>Card payments are off.</strong><span class="small">No STRIPE_SECRET_KEY is set, so bookings are confirmed and invoiced by hand instead of charged. Everything else works.</span></div>')
@@ -94,7 +94,7 @@ function renderTabs() {
   $('tabs').replaceChildren(
     ...tabs.map(([id, label]) => {
       const b = document.createElement('button')
-      b.className = 'stepdot'
+      b.className = 'tab'
       b.type = 'button'
       b.textContent = label
       b.setAttribute('aria-current', String(tab === id))
@@ -168,12 +168,12 @@ function openEditor(collection, row) {
   back.className = 'modal-back'
   back.innerHTML = `
     <div class="modal" role="dialog" aria-modal="true">
-      <div class="panel-head">
+      <div class="plate-head">
         <h3>${isNew ? 'New' : 'Edit'} ${collection.replace(/s$/, '')}</h3>
         <button class="btn btn-ghost btn-sm" type="button" data-close>Close</button>
       </div>
-      <div class="panel-body" id="editorFields"></div>
-      <div class="panel-body" style="border-top:1px solid var(--rule); flex-direction:row; justify-content:space-between">
+      <div class="plate-body" id="editorFields"></div>
+      <div class="plate-body" style="border-top:1px solid var(--rule); flex-direction:row; justify-content:space-between">
         ${isNew ? '<span></span>' : '<button class="btn btn-danger btn-sm" type="button" data-delete>Delete</button>'}
         <button class="btn btn-primary" type="button" data-save>Save</button>
       </div>
@@ -254,16 +254,16 @@ views.today = () => {
       <div class="stat"><span class="k">Outstanding</span><span class="v" style="color:var(--flag)">${money(stats.outstanding)}</span></div>
     </div>
 
-    <div class="panel" style="margin-top:18px">
-      <div class="panel-head"><h3>Today's departures</h3><span class="small faint">${today}</span></div>
-      <div class="panel-body">
+    <div class="plate" style="margin-top:18px">
+      <div class="plate-head"><h3>Today's departures</h3><span class="small faint">${today}</span></div>
+      <div class="plate-body">
         ${sailing.length ? sailing.map(bookingRow).join('') : '<p class="small faint">No boats out today.</p>'}
       </div>
     </div>
 
-    <div class="panel" style="margin-top:18px">
-      <div class="panel-head"><h3>Coming up</h3></div>
-      <div class="panel-body">
+    <div class="plate" style="margin-top:18px">
+      <div class="plate-head"><h3>Coming up</h3></div>
+      <div class="plate-body">
         ${soon.length ? soon.map(bookingRow).join('') : '<p class="small faint">Nothing on the calendar yet.</p>'}
       </div>
     </div>`
@@ -296,7 +296,7 @@ views.bookings = () => `
             <td class="num">${b.guests}</td>
             <td class="num">${money(b.total)}</td>
             <td class="num">${money(b.amountPaid)}</td>
-            <td><span class="tag ${b.status === 'cancelled' ? 'flag' : b.paymentStatus === 'paid' ? 'ok' : 'brass'}">${b.status === 'cancelled' ? 'cancelled' : b.paymentStatus.replace('_', ' ')}</span></td>
+            <td><span class="chip ${b.status === 'cancelled' ? 'signal' : b.paymentStatus === 'paid' ? 'ok' : 'signal'}">${b.status === 'cancelled' ? 'cancelled' : b.paymentStatus.replace('_', ' ')}</span></td>
             <td>
               <button class="btn btn-ghost btn-sm" data-mark="${b.id}">Mark paid</button>
               <button class="btn btn-ghost btn-sm" data-cancel="${b.id}">Cancel</button>
@@ -308,9 +308,9 @@ views.bookings = () => `
 
 views.catalog = () => `
   <div class="stack" style="gap:22px">
-    <div class="panel">
-      <div class="panel-head"><h3>Boats and packages</h3><button class="btn btn-primary btn-sm" data-new="vessels">Add a boat</button></div>
-      <div class="panel-body">
+    <div class="plate">
+      <div class="plate-head"><h3>Boats and packages</h3><button class="btn btn-primary btn-sm" data-new="vessels">Add a boat</button></div>
+      <div class="plate-body">
         <div class="tablewrap">
           <table>
             <thead><tr><th></th><th>Name</th><th>Duration</th><th>Price</th><th>Guests</th><th>Live</th><th></th></tr></thead>
@@ -321,7 +321,7 @@ views.catalog = () => `
                 <td>${esc(v.durationLabel)}</td>
                 <td class="num">${money(v.basePrice)}${v.priceUnit === 'per_night' ? '/night' : ''}</td>
                 <td class="num">${v.capacityMin}–${v.capacityMax}</td>
-                <td><span class="tag ${v.active ? 'ok' : 'flag'}">${v.active ? 'live' : 'hidden'}</span></td>
+                <td><span class="chip ${v.active ? 'ok' : 'signal'}">${v.active ? 'live' : 'hidden'}</span></td>
                 <td><button class="btn btn-ghost btn-sm" data-edit="vessels:${v.id}">Edit</button></td>
               </tr>`).join('')}
             </tbody>
@@ -330,9 +330,9 @@ views.catalog = () => `
       </div>
     </div>
 
-    <div class="panel">
-      <div class="panel-head"><h3>Extras</h3><button class="btn btn-primary btn-sm" data-new="extras">Add an extra</button></div>
-      <div class="panel-body">
+    <div class="plate">
+      <div class="plate-head"><h3>Extras</h3><button class="btn btn-primary btn-sm" data-new="extras">Add an extra</button></div>
+      <div class="plate-body">
         <div class="tablewrap">
           <table>
             <thead><tr><th></th><th>Name</th><th>Category</th><th>Price</th><th>Charged</th><th>Notice</th><th>Live</th><th></th></tr></thead>
@@ -344,7 +344,7 @@ views.catalog = () => `
                 <td class="num">${money(e.price)}</td>
                 <td>${e.unit === 'per_person' ? 'per guest' : 'flat'}</td>
                 <td class="num">${e.leadTimeHours} h</td>
-                <td><span class="tag ${e.active ? 'ok' : 'flag'}">${e.active ? 'live' : 'hidden'}</span></td>
+                <td><span class="chip ${e.active ? 'ok' : 'signal'}">${e.active ? 'live' : 'hidden'}</span></td>
                 <td><button class="btn btn-ghost btn-sm" data-edit="extras:${e.id}">Edit</button></td>
               </tr>`).join('')}
             </tbody>
@@ -353,9 +353,9 @@ views.catalog = () => `
       </div>
     </div>
 
-    <div class="panel">
-      <div class="panel-head"><h3>Packages</h3><button class="btn btn-primary btn-sm" data-new="bundles">Add a package</button></div>
-      <div class="panel-body">
+    <div class="plate">
+      <div class="plate-head"><h3>Packages</h3><button class="btn btn-primary btn-sm" data-new="bundles">Add a package</button></div>
+      <div class="plate-body">
         <div class="grid cols-3">${data.bundles.map((b) => `
           <div class="stat">
             <span class="k">${b.discountPct}% off</span>
@@ -369,9 +369,9 @@ views.catalog = () => `
   </div>`
 
 views.promos = () => `
-  <div class="panel">
-    <div class="panel-head"><h3>Promo codes</h3><button class="btn btn-primary btn-sm" data-new="coupons">New code</button></div>
-    <div class="panel-body">
+  <div class="plate">
+    <div class="plate-head"><h3>Promo codes</h3><button class="btn btn-primary btn-sm" data-new="coupons">New code</button></div>
+    <div class="plate-body">
       <div class="tablewrap">
         <table>
           <thead><tr><th>Code</th><th>Discount</th><th>Minimum</th><th>Used</th><th>Expires</th><th>Active</th><th></th></tr></thead>
@@ -382,7 +382,7 @@ views.promos = () => `
               <td class="num">${c.minTotal ? money(c.minTotal) : '—'}</td>
               <td class="num">${c.redemptions || 0}${c.maxRedemptions ? ` / ${c.maxRedemptions}` : ''}</td>
               <td class="num">${c.expiresAt ? c.expiresAt.slice(0, 10) : 'never'}</td>
-              <td><span class="tag ${c.active ? 'ok' : 'flag'}">${c.active ? 'on' : 'off'}</span></td>
+              <td><span class="chip ${c.active ? 'ok' : 'signal'}">${c.active ? 'on' : 'off'}</span></td>
               <td><button class="btn btn-ghost btn-sm" data-edit="coupons:${c.id}">Edit</button></td>
             </tr>`).join('') : '<tr><td colspan="7" class="small faint">No codes yet.</td></tr>'}
           </tbody>
@@ -396,10 +396,10 @@ views.calendar = () => {
     const booked = data.bookings.filter((b) => b.vesselId === v.id && b.status !== 'cancelled')
     const blocked = data.blackouts.filter((b) => b.vesselId === v.id)
     return `
-      <div class="panel">
-        <div class="panel-head"><h3>${v.heroEmoji} ${esc(v.name)}</h3><span class="small faint">${booked.length} booked · ${blocked.length} blocked</span></div>
-        <div class="panel-body">
-          ${booked.length ? booked.map((b) => `<div class="mline"><span class="lbl"><span>${b.date}</span><span class="det">${esc(b.customer.name)} · ${b.ref}</span></span><span class="tag sea">booked</span></div>`).join('') : ''}
+      <div class="plate">
+        <div class="plate-head"><h3>${v.heroEmoji} ${esc(v.name)}</h3><span class="small faint">${booked.length} booked · ${blocked.length} blocked</span></div>
+        <div class="plate-body">
+          ${booked.length ? booked.map((b) => `<div class="mline"><span class="lbl"><span>${b.date}</span><span class="det">${esc(b.customer.name)} · ${b.ref}</span></span><span class="chip shoal">booked</span></div>`).join('') : ''}
           ${blocked.map((b) => `<div class="mline"><span class="lbl"><span>${b.date}</span><span class="det">${esc(b.reason || 'Blocked')}</span></span><button class="btn btn-ghost btn-sm" data-unblock="${b.id}">Unblock</button></div>`).join('')}
           ${!booked.length && !blocked.length ? '<p class="small faint">Wide open.</p>' : ''}
         </div>
@@ -422,7 +422,7 @@ views.invoices = () => `
             <td class="num">${i.number}</td>
             <td>${esc(i.customer.name || '')}<br><span class="small faint">${esc(i.customer.email)}</span></td>
             <td class="num">${money(i.total)}</td>
-            <td><span class="tag ${i.status === 'paid' ? 'ok' : 'brass'}">${i.status}</span></td>
+            <td><span class="chip ${i.status === 'paid' ? 'ok' : 'signal'}">${i.status}</span></td>
             <td class="num">${i.createdAt.slice(0, 10)}</td>
             <td>
               <a class="btn btn-ghost btn-sm" href="/invoice.html?n=${i.number}" target="_blank" rel="noopener">Open</a>
@@ -443,15 +443,15 @@ views.numbers = () => `
       <div class="stat"><span class="k">Average trip</span><span class="v">${money(stats.averageTicket)}</span></div>
     </div>
     <div class="grid cols-2">
-      <div class="panel">
-        <div class="panel-head"><h3>Best-selling extras</h3></div>
-        <div class="panel-body">
+      <div class="plate">
+        <div class="plate-head"><h3>Best-selling extras</h3></div>
+        <div class="plate-body">
           ${stats.topExtras.length ? stats.topExtras.map((e) => `<div class="mline"><span class="lbl"><span>${esc(e.label)}</span><span class="det">sold ${e.count}×</span></span><span class="amt">${money(e.revenue)}</span></div>`).join('') : '<p class="small faint">Nothing sold yet.</p>'}
         </div>
       </div>
-      <div class="panel">
-        <div class="panel-head"><h3>By boat</h3></div>
-        <div class="panel-body">
+      <div class="plate">
+        <div class="plate-head"><h3>By boat</h3></div>
+        <div class="plate-body">
           ${stats.byVessel.length ? stats.byVessel.map((v) => `<div class="mline"><span class="lbl"><span>${esc(v.name)}</span><span class="det">${v.trips} trip${v.trips === 1 ? '' : 's'}</span></span><span class="amt">${money(v.revenue)}</span></div>`).join('') : '<p class="small faint">No trips yet.</p>'}
         </div>
       </div>
@@ -463,9 +463,9 @@ views.settings = () => {
   const row = (key, label, type = 'text') =>
     `<label class="field"><span>${label}</span><input type="${type}" data-s="${key}" value="${esc(s[key] ?? '')}"></label>`
   return `
-    <div class="panel">
-      <div class="panel-head"><h3>Business settings</h3><button class="btn btn-primary btn-sm" id="saveSettings">Save</button></div>
-      <div class="panel-body">
+    <div class="plate">
+      <div class="plate-head"><h3>Business settings</h3><button class="btn btn-primary btn-sm" id="saveSettings">Save</button></div>
+      <div class="plate-body">
         <div class="grid cols-2">
           ${row('brand', 'Brand name')}
           ${row('productLine', 'Product line')}
@@ -541,8 +541,8 @@ function openInvoiceBuilder() {
   back.className = 'modal-back'
   back.innerHTML = `
     <div class="modal" role="dialog" aria-modal="true">
-      <div class="panel-head"><h3>New invoice</h3><button class="btn btn-ghost btn-sm" type="button" data-close>Close</button></div>
-      <div class="panel-body">
+      <div class="plate-head"><h3>New invoice</h3><button class="btn btn-ghost btn-sm" type="button" data-close>Close</button></div>
+      <div class="plate-body">
         <div class="grid cols-2">
           <label class="field"><span>Customer name</span><input type="text" id="invName"></label>
           <label class="field"><span>Email</span><input type="email" id="invEmail"></label>
@@ -598,7 +598,7 @@ function openInvoiceBuilder() {
       await refresh(); render()
       prompt('Invoice created. Send this link to the customer:', res.shareUrl)
     } catch (err) {
-      back.querySelector('#invError').innerHTML = `<div class="notice bad">${esc(err.message)}</div>`
+      back.querySelector('#invError').innerHTML = `<div class="notice">${esc(err.message)}</div>`
     }
   })
 
