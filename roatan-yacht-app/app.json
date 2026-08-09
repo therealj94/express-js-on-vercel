@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Roatán Yacht Getaways",
+    "slug": "roatan-yacht-getaways",
+    "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "roatanyacht",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#072A38",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#072A38"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.lovecloud.roatanyacht",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#072A38"
+      },
+      "permissions": [
+        "INTERNET"
+      ],
+      "edgeToEdgeEnabled": true
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lovecloud.roatanyacht",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "plugins": [
+      "expo-web-browser"
+    ],
+    "extra": {
+      "apiUrl": "https://roatan-yacht.vercel.app"
+    }
+  }
+}

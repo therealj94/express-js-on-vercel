@@ -1,4 +1,4 @@
-# Cómo generar el APK (Veta Wallet y MyTokenPay)
+# Cómo generar el APK (Veta Wallet, MyTokenPay y Roatán Yacht)
 
 Las dos apps **ya vienen enlazadas** al Genesis ID en la nube
 (`https://genesis-id.onrender.com`) por defecto — no necesitas configurar nada.
@@ -27,6 +27,33 @@ eas build -p android --profile preview
 ```
 Al terminar, EAS te da una **URL de descarga del .apk**. Ábrela en el teléfono
 y descarga/instala (activa "instalar apps de origen desconocido" si lo pide).
+
+## Compilar Roatán Yacht Getaways
+
+Esta app **también se puede compilar sin cuenta de Expo**, con el SDK de
+Android en tu máquina — el script hace todo:
+
+```bash
+cd roatan-yacht-app
+./scripts/build-apk.sh
+# → android/app/build/outputs/apk/release/app-release.apk
+```
+
+Necesita el SDK de Android (platform 36, build-tools 36) y JDK 17+. Para
+apuntar a un servidor tuyo en vez del sitio desplegado:
+
+```bash
+API_URL=http://192.168.1.20:3000 ./scripts/build-apk.sh
+```
+
+Y si preferís la nube de Expo, igual que las otras:
+
+```bash
+cd roatan-yacht-app
+npm install
+eas init
+eas build -p android --profile preview
+```
 
 ## Actualizaciones por aire (EAS Update)
 
