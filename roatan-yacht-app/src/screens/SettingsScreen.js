@@ -6,6 +6,7 @@ import { apiUrl, builtInUrl, setApiUrl, testConnection } from '../api'
 import { Plate, Label, Button, Notice, Serif } from '../components/ui'
 
 export default function SettingsScreen({ c, catalog, onSaved, insets }) {
+  const goBack = () => onSaved()
   const [url, setUrl] = useState(apiUrl())
   const [result, setResult] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -52,7 +53,7 @@ export default function SettingsScreen({ c, catalog, onSaved, insets }) {
   return (
     <ScrollView
       style={{ backgroundColor: c.chart }}
-      contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40, gap: 14 }}
+      contentContainerStyle={{ padding: 16, paddingTop: insets.top + 12, paddingBottom: insets.bottom + 40, gap: 14 }}
     >
       <View style={{ gap: 6 }}>
         <Label c={c} signal>Settings</Label>

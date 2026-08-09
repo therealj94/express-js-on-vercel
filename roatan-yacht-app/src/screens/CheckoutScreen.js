@@ -4,7 +4,7 @@ import {
 } from 'react-native'
 import * as WebBrowser from 'expo-web-browser'
 import * as Haptics from 'expo-haptics'
-import { mono, serif, money } from '../theme'
+import { mono, serif, sans, money, shadow } from '../theme'
 import { createBooking } from '../api'
 import { requestMessage } from '../pricing'
 import { Plate, Label, Button, Notice, Serif } from '../components/ui'
@@ -12,7 +12,7 @@ import { spanDates } from '../components/Calendar'
 import { TIP_OPTIONS, celebrationFor } from '../fun'
 import Confetti from '../components/Confetti'
 
-export default function CheckoutScreen({ c, cart, quote, settings, onBooked, onTip, insets }) {
+export default function CheckoutScreen({ c, cart, quote, settings, onBooked, onTip, onBack, insets }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', occasion: '', notes: '' })
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState('')
@@ -105,11 +105,16 @@ export default function CheckoutScreen({ c, cart, quote, settings, onBooked, onT
       style={{ flex: 1, backgroundColor: c.chart }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40, gap: 14 }}>
-        <View style={{ gap: 6 }}>
-          <Label c={c} signal>Plate 04 — Review &amp; pay</Label>
-          <Serif c={c} size={21}>Everything before you commit</Serif>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: insets.top + 8, paddingBottom: 4 }}>
+        <Pressable onPress={onBack} style={[{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: c.plate }, shadow]}>
+          <Text style={{ fontSize: 17, color: c.ink }}>←</Text>
+        </Pressable>
+        <View>
+          <Text style={{ fontFamily: sans, fontSize: 10, fontWeight: '800', letterSpacing: 2, color: c.signal }}>LAST STEP</Text>
+          <Serif c={c} size={21}>Make it official</Serif>
         </View>
+      </View>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40, gap: 14 }}>
 
         <Notice c={c} tone="shoal">
           <Text style={{ fontFamily: serif, fontSize: 16, color: c.ink }}>{quote.vesselName}</Text>

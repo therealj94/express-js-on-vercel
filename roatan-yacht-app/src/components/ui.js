@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
-import { mono, serif } from '../theme'
+import { mono, serif, sans, shadow } from '../theme'
 
 export const Plate = ({ c, title, right, children, style }) => (
   <View style={[styles.plate, { backgroundColor: c.plate, borderColor: c.rule }, style]}>
@@ -63,20 +63,20 @@ export const Serif = ({ c, children, size = 22, style }) => (
 )
 
 const styles = StyleSheet.create({
-  plate: { borderWidth: 1, borderRadius: 2 },
+  plate: { borderWidth: 0, borderRadius: 20, ...shadow },
   plateHead: {
-    borderBottomWidth: 1, paddingHorizontal: 14, paddingVertical: 11,
+    borderBottomWidth: 1, paddingHorizontal: 16, paddingVertical: 13,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
   },
   plateTitle: { fontFamily: serif, fontSize: 15, flexShrink: 1 },
-  plateBody: { padding: 14, gap: 12 },
+  plateBody: { padding: 16, gap: 12 },
   label: { fontFamily: mono, fontSize: 10, letterSpacing: 1.8, textTransform: 'uppercase' },
-  chip: { borderWidth: 1, borderRadius: 2, paddingHorizontal: 7, paddingVertical: 3 },
+  chip: { borderWidth: 1.2, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
   chipText: { fontFamily: mono, fontSize: 9, letterSpacing: 1.4, textTransform: 'uppercase' },
   btn: {
-    borderWidth: 1, borderRadius: 2, paddingVertical: 13, paddingHorizontal: 16,
+    borderWidth: 1.5, borderRadius: 999, paddingVertical: 15, paddingHorizontal: 22,
     alignItems: 'center', justifyContent: 'center',
   },
-  btnText: { fontFamily: mono, fontSize: 12, letterSpacing: 1.6, textTransform: 'uppercase', fontWeight: '700' },
-  notice: { borderLeftWidth: 2, padding: 12, gap: 4 },
+  btnText: { fontFamily: sans, fontSize: 15, fontWeight: '700', letterSpacing: 0.2 },
+  notice: { borderLeftWidth: 3, padding: 13, gap: 4, borderRadius: 12 },
 })

@@ -1,17 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  View, Text, ActivityIndicator, useColorScheme, StyleSheet, BackHandler, Pressable,
+  View, Text, ActivityIndicator, useColorScheme, StyleSheet, BackHandler, Pressable, Animated,
 } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as SystemUI from 'expo-system-ui'
 
-import { light, dark, mono, serif } from './src/theme'
+import { light, dark, sans, serif } from './src/theme'
 import { getCatalog, getAvailability, getQuote, loadApiUrl } from './src/api'
 import { quoteLocally } from './src/pricing'
 import { Button, Notice } from './src/components/ui'
 import FleetScreen from './src/screens/FleetScreen'
-import BuildScreen from './src/screens/BuildScreen'
+import ExperienceScreen from './src/screens/ExperienceScreen'
+import DateScreen from './src/screens/DateScreen'
 import CheckoutScreen from './src/screens/CheckoutScreen'
 import BookingScreen, { remember } from './src/screens/BookingScreen'
 import SettingsScreen from './src/screens/SettingsScreen'
@@ -20,8 +21,13 @@ import { LOADING_LINES } from './src/fun'
 
 const emptyCart = {
   vesselId: null, date: '', nights: 0, guests: 2,
-  items: [], bundleIds: [], couponCode: '', occasion: '',
+  items: [], bundleIds: [], couponCode: '', occasion: '', tipPct: 0,
 }
+
+// The experience screen needs a running total before any date exists — the
+// price of the day does not depend on which day it is. A placeholder date
+// keeps the pricing mirror happy until the real one is picked.
+const PLACEHOLDER_DATE = '2099-01-01'
 
 function Shell() {
   const scheme = useColorScheme()
@@ -38,7 +44,14 @@ function Shell() {
   const [bookedRef, setBookedRef] = useState(null)
   const quoteSeq = useRef(0)
 
-  useEffect(() => { SystemUI.setBackgroundColorAsync(c.chart) }, [c])
+  // Every screen change slides in — an app moves, a page repaints.
+  const enter = useRef(new Animated.Value(1)).current
+  useEffect(() => {
+    enter.setValue(0)
+    Animated.spring(enter, { toValue: 1, friction: 9, tension: 60, useNativeDriver: true }).start()
+  }, [screen, enter])
+
+  useEffect(() => { SystemUI.setBackgroundColorAsync(c.deep) }, [c])
 
   const load = useCallback(async () => {
     setLoadError('')
@@ -46,21 +59,19 @@ function Shell() {
       await loadApiUrl()
       setCatalog(await getCatalog())
     } catch (err) {
-      // getCatalog falls back to the bundled copy on its own, so reaching here
-      // means something worse than a missing signal.
       setLoadError(err.message)
     }
   }, [])
 
   useEffect(() => { load() }, [load])
 
-  // Android's back button is a real navigation control, not decoration.
   useEffect(() => {
+    const back = {
+      experience: 'fleet', date: 'experience', checkout: 'date',
+      booking: 'fleet', settings: 'fleet',
+    }
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (screen === 'build') { setScreen('fleet'); return true }
-      if (screen === 'checkout') { setScreen('build'); return true }
-      if (screen === 'booking') { setScreen('fleet'); return true }
-      if (screen === 'settings') { setScreen('fleet'); return true }
+      if (back[screen]) { setScreen(back[screen]); return true }
       return false
     })
     return () => sub.remove()
@@ -71,9 +82,15 @@ function Shell() {
     [catalog, cart.vesselId],
   )
 
-  // The server prices the trip whenever it can be reached, so the app and the
-  // till never disagree. The local mirror below is the offline fallback only,
-  // and everything it produces is labelled an estimate.
+  // The number on the tray while the guest is still packing. Always local,
+  // always instant — the server confirms once a date exists.
+  const runningTotal = useMemo(() => {
+    if (!catalog || !cart.vesselId) return 0
+    const est = quoteLocally(catalog, { ...cart, date: cart.date || PLACEHOLDER_DATE })
+    return est ? est.total : 0
+  }, [catalog, cart])
+
+  // The authoritative quote, once there is a real date to price.
   useEffect(() => {
     if (!cart.vesselId || !cart.date || !cart.guests) {
       setQuote(null)
@@ -87,13 +104,10 @@ function Shell() {
       } catch (err) {
         if (seq !== quoteSeq.current) return
         if (err.offline) {
-          // No server to ask, so show our own arithmetic and label it an
-          // estimate rather than leaving the manifest blank.
           setQuote(quoteLocally(catalog, cart))
           setQuoteError('')
           return
         }
-        // A bad promo code should not wipe the boat they just loaded.
         if (err.field !== 'couponCode') setQuote(null)
         setQuoteError(err.message)
       }
@@ -107,10 +121,7 @@ function Shell() {
     try {
       const { unavailable: days } = await getAvailability(v.id)
       taken = new Set(days)
-    } catch {
-      // Offline we cannot know what is taken. An open calendar with a warning
-      // beats a locked one — the crew confirms the date either way.
-    }
+    } catch { /* offline: every date shows open, the crew confirms */ }
     setUnavailable(taken)
 
     const keepDate =
@@ -123,7 +134,7 @@ function Shell() {
       guests: Math.min(Math.max(prev.guests, v.capacityMin), v.capacityMax),
       date: keepDate,
     }))
-    setScreen('build')
+    setScreen('experience')
   }
 
   function chooseOccasion(o) {
@@ -155,12 +166,6 @@ function Shell() {
         : [...prev.bundleIds, id],
     }))
 
-  const setQty = (extraId, qty) =>
-    setCart((prev) => ({
-      ...prev,
-      items: prev.items.map((i) => (i.extraId === extraId ? { ...i, qty: Math.max(1, qty) } : i)),
-    }))
-
   if (loadError) {
     return (
       <Centered c={c} insets={insets}>
@@ -172,102 +177,108 @@ function Shell() {
   if (!catalog) {
     return (
       <Centered c={c} insets={insets}>
-        <ActivityIndicator color={c.signal} />
+        <ActivityIndicator size="large" color={c.signal} />
         <LoadingLine c={c} />
       </Centered>
     )
   }
 
-  return (
-    <View style={{ flex: 1, backgroundColor: c.chart }}>
-      <StatusBar style={screen === 'fleet' ? 'light' : scheme === 'dark' ? 'light' : 'dark'} />
+  const screenProps = { c, catalog, cart, vessel, insets, runningTotal }
 
-      {catalog.source === 'bundled' && screen !== 'settings' && (
-        <Pressable onPress={() => setScreen('settings')} style={[styles.offline, { backgroundColor: c.signalSoft, borderBottomColor: c.signal, paddingTop: screen === 'fleet' ? insets.top + 6 : 6 }]}>
-          <Text style={[styles.offlineText, { color: c.ink }]}>
-            ⚓ Demo aboard — full experience, prices are estimates. Requests sail out by WhatsApp.
-          </Text>
+  return (
+    <View style={{ flex: 1, backgroundColor: screen === 'fleet' ? c.deep : c.chart }}>
+      <StatusBar style={screen === 'fleet' || scheme === 'dark' ? 'light' : 'dark'} />
+
+      {catalog.source === 'bundled' && screen === 'fleet' && (
+        <Pressable
+          onPress={() => setScreen('settings')}
+          style={[styles.demoBadge, { top: insets.top + 6, backgroundColor: c.signal }]}
+        >
+          <Text style={styles.demoBadgeText}>DEMO</Text>
         </Pressable>
       )}
 
-      {screen !== 'fleet' && (
-        <View style={[styles.bar, { backgroundColor: c.deep, paddingTop: insets.top + 8 }]}>
-          <Pressable
-            onPress={() => setScreen(screen === 'checkout' ? 'build' : 'fleet')}
-            hitSlop={12}
-          >
-            <Text style={[styles.back, { color: c.onDeepSoft }]}>← Back</Text>
-          </Pressable>
-          <Text style={[styles.brand, { color: c.onDeep }]} numberOfLines={1}>Love Cloud Roatán</Text>
-        </View>
-      )}
+      <Animated.View
+        style={{
+          flex: 1,
+          opacity: enter,
+          transform: [{ translateX: enter.interpolate({ inputRange: [0, 1], outputRange: [56, 0] }) }],
+        }}
+      >
+        {screen === 'fleet' && (
+          <FleetScreen
+            {...screenProps}
+            onOccasion={chooseOccasion}
+            onPickVessel={pickVessel}
+            onMyBooking={() => { setBookedRef(null); setScreen('booking') }}
+            onSettings={() => setScreen('settings')}
+          />
+        )}
 
-      {screen === 'fleet' && (
-        <FleetScreen
-          c={c} catalog={catalog} cart={cart}
-          insets={catalog.source === 'bundled' ? { ...insets, top: 0 } : insets}
-          onOccasion={chooseOccasion}
-          onPickVessel={pickVessel}
-        />
-      )}
+        {screen === 'experience' && (
+          <ExperienceScreen
+            {...screenProps}
+            onToggleExtra={toggleExtra}
+            onToggleBundle={toggleBundle}
+            onContinue={() => setScreen('date')}
+            onBack={() => setScreen('fleet')}
+          />
+        )}
 
-      {screen === 'build' && (
-        <BuildScreen
-          c={c} catalog={catalog} cart={cart} quote={quote} quoteError={quoteError}
-          unavailable={unavailable} vessel={vessel} insets={insets}
-          onPickDate={(date) => setCart((p) => ({ ...p, date }))}
-          onGuests={(guests) => setCart((p) => ({ ...p, guests }))}
-          onNights={(nights) => setCart((p) => ({ ...p, nights }))}
-          onToggleExtra={toggleExtra}
-          onToggleBundle={toggleBundle}
-          onQty={setQty}
-          onCoupon={(couponCode) => setCart((p) => ({ ...p, couponCode }))}
-          onCheckout={() => setScreen('checkout')}
-        />
-      )}
+        {screen === 'date' && (
+          <DateScreen
+            {...screenProps}
+            unavailable={unavailable}
+            onPickDate={(date) => setCart((p) => ({ ...p, date }))}
+            onGuests={(guests) => setCart((p) => ({ ...p, guests }))}
+            onNights={(nights) => setCart((p) => ({ ...p, nights }))}
+            onContinue={() => setScreen('checkout')}
+            onBack={() => setScreen('experience')}
+          />
+        )}
 
-      {screen === 'checkout' && quote && (
-        <CheckoutScreen
-          c={c} cart={cart} quote={quote} settings={catalog.settings} insets={insets}
-          onTip={(tipPct) => setCart((p) => ({ ...p, tipPct }))}
-          onBooked={async (ref) => {
-            setCart(emptyCart)
-            setQuote(null)
-            if (!ref) { setScreen('fleet'); return } // demo request: WhatsApp has it
-            await remember(ref)
-            setBookedRef(ref)
-            setScreen('booking')
-          }}
-        />
-      )}
+        {screen === 'checkout' && quote && (
+          <CheckoutScreen
+            {...screenProps}
+            quote={quote} settings={catalog.settings}
+            onTip={(tipPct) => setCart((p) => ({ ...p, tipPct }))}
+            onBack={() => setScreen('date')}
+            onBooked={async (ref) => {
+              setCart(emptyCart)
+              setQuote(null)
+              if (!ref) { setScreen('fleet'); return }
+              await remember(ref)
+              setBookedRef(ref)
+              setScreen('booking')
+            }}
+          />
+        )}
 
-      {screen === 'booking' && (
-        <BookingScreen
-          c={c} initialRef={bookedRef} celebrate={Boolean(bookedRef)}
-          settings={catalog.settings} insets={insets}
-        />
-      )}
+        {screen === 'checkout' && !quote && (
+          <Centered c={c} insets={insets}>
+            <ActivityIndicator color={c.signal} />
+            <Text style={{ fontFamily: sans, fontSize: 13, color: c.inkFaint }}>
+              {quoteError || 'Pricing your day…'}
+            </Text>
+            <Button c={c} ghost onPress={() => setScreen('date')}>Back</Button>
+          </Centered>
+        )}
 
-      {screen === 'settings' && (
-        <SettingsScreen
-          c={c} catalog={catalog} insets={insets}
-          onSaved={async () => { setCatalog(null); await load(); setScreen('fleet') }}
-        />
-      )}
+        {screen === 'booking' && (
+          <BookingScreen
+            c={c} initialRef={bookedRef} celebrate={Boolean(bookedRef)}
+            settings={catalog.settings} insets={insets}
+            onBack={() => setScreen('fleet')}
+          />
+        )}
 
-      {screen === 'fleet' && (
-        <View style={[styles.fabRow, { bottom: insets.bottom + 16 }]}>
-          <Pressable onPress={() => setScreen('settings')} style={[styles.fab, { backgroundColor: c.deep }]}>
-            <Text style={[styles.fabText, { color: c.onDeep }]}>Settings</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => { setBookedRef(null); setScreen('booking') }}
-            style={[styles.fab, { backgroundColor: c.deep }]}
-          >
-            <Text style={[styles.fabText, { color: c.onDeep }]}>My booking</Text>
-          </Pressable>
-        </View>
-      )}
+        {screen === 'settings' && (
+          <SettingsScreen
+            c={c} catalog={catalog} insets={insets}
+            onSaved={async () => { setCatalog(null); await load(); setScreen('fleet') }}
+          />
+        )}
+      </Animated.View>
     </View>
   )
 }
@@ -280,7 +291,7 @@ function LoadingLine({ c }) {
     return () => clearInterval(t)
   }, [])
   return (
-    <Text style={{ fontFamily: mono, fontSize: 12, color: c.inkFaint }}>
+    <Text style={{ fontFamily: sans, fontSize: 14, color: c.inkFaint }}>
       {LOADING_LINES[i % LOADING_LINES.length]}
     </Text>
   )
@@ -293,7 +304,7 @@ const Centered = ({ c, insets, children }) => (
       { backgroundColor: c.chart, paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 },
     ]}
   >
-    <Text style={{ fontFamily: serif, fontSize: 22, color: c.ink }}>Love Cloud Roatán</Text>
+    <Text style={{ fontFamily: serif, fontSize: 24, color: c.ink }}>Love Cloud Roatán</Text>
     {children}
   </View>
 )
@@ -307,16 +318,10 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  bar: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    paddingHorizontal: 16, paddingBottom: 10,
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 },
+  demoBadge: {
+    position: 'absolute', alignSelf: 'center', zIndex: 10,
+    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4,
   },
-  back: { fontFamily: mono, fontSize: 12, letterSpacing: 1.2 },
-  brand: { fontFamily: serif, fontSize: 14, flexShrink: 1 },
-  offline: { borderBottomWidth: 1, paddingHorizontal: 14, paddingBottom: 6, zIndex: 5 },
-  offlineText: { fontFamily: mono, fontSize: 10.5, lineHeight: 15 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 },
-  fabRow: { position: 'absolute', right: 16, flexDirection: 'row', gap: 8 },
-  fab: { paddingHorizontal: 14, paddingVertical: 11, borderRadius: 2 },
-  fabText: { fontFamily: mono, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase' },
+  demoBadgeText: { fontFamily: sans, fontSize: 10, fontWeight: '800', letterSpacing: 2, color: '#fff' },
 })

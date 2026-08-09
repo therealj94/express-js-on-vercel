@@ -38,6 +38,26 @@ export const dark = {
 
 export const mono = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' })
 export const serif = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' })
+export const sans = Platform.select({ ios: 'System', android: 'sans-serif', default: 'sans-serif' })
+export const sansBold = Platform.select({ ios: 'System', android: 'sans-serif-medium', default: 'sans-serif' })
+
+// One colour per category, used on the icon bubbles so a glance tells you
+// what kind of thing you are dragging.
+export const catColor = {
+  bundles: '#C99A3B',
+  celebrate: '#B4246B',
+  eat_drink: '#D97B29',
+  adventure: '#17607E',
+  comfort: '#1F6B4F',
+}
+
+export const shadow = {
+  shadowColor: '#072A38',
+  shadowOpacity: 0.14,
+  shadowRadius: 14,
+  shadowOffset: { width: 0, height: 6 },
+  elevation: 5,
+}
 
 export const money = (n, currency = 'USD') =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n || 0)

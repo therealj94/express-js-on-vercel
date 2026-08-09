@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, ScrollView, TextInput, StyleSheet, Share, Pressable, Linking } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { mono, serif, money } from '../theme'
+import { mono, serif, sans, money, shadow } from '../theme'
 import { getBooking } from '../api'
 import { Plate, Label, Chip, Button, Notice, Serif } from '../components/ui'
 import Confetti from '../components/Confetti'
@@ -17,7 +17,7 @@ export async function remember(ref) {
   await AsyncStorage.setItem(KEY, JSON.stringify(next))
 }
 
-export default function BookingScreen({ c, initialRef, celebrate, settings, insets }) {
+export default function BookingScreen({ c, initialRef, celebrate, settings, onBack, insets }) {
   const [ref, setRef] = useState(initialRef || '')
   const [booking, setBooking] = useState(null)
   const [saved, setSaved] = useState([])
@@ -58,6 +58,11 @@ export default function BookingScreen({ c, initialRef, celebrate, settings, inse
   return (
     <View style={{ flex: 1 }}>
     {celebrate && booking ? <Confetti burst={1} /> : null}
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: insets.top + 8, backgroundColor: c.chart }}>
+      <Pressable onPress={onBack} style={[{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: c.plate }, shadow]}>
+        <Text style={{ fontSize: 17, color: c.ink }}>←</Text>
+      </Pressable>
+    </View>
     <ScrollView
       style={{ backgroundColor: c.chart }}
       contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40, gap: 14 }}
