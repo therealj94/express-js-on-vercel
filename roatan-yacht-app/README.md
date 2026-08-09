@@ -1,13 +1,30 @@
-# Roatán Yacht Getaways — Android app
+# Love Cloud Roatán — Android app
 
 The booking flow as a native app: pick a vessel, pick a date, load the boat,
 pay. Expo SDK 54 / React Native 0.81, the same versions the other apps in this
 repo use, so one toolchain covers all of them.
 
 It talks to the `roatan-yacht` server — the same `/api/catalog`, `/api/quote`
-and `/api/bookings` the website uses. **Prices are never calculated on the
-phone.** The app shows what the server says the trip costs, so an old APK in
-someone's pocket can never disagree with the till.
+and `/api/bookings` the website uses. When the server answers, its number is
+the price; the app never argues with the till.
+
+**It also works with no server at all.** The catalogue ships inside the APK, so
+the fleet, the extras and the prices are there on first launch with no signal.
+Offline the total is worked out on the phone, labelled an estimate, and the
+request goes out over WhatsApp with the whole manifest written into it. Roatán
+is not a place with reliable data, and a booking app that shows an error screen
+when the tower is busy is not an app.
+
+`src/pricing.js` mirrors `server/pricing.js`. Two copies of a formula is a real
+risk, so `scripts/check-pricing-parity.mjs` runs both over the same carts and
+fails on any difference — including the case that matters most, an extra bought
+inside a package not being charged twice:
+
+```bash
+cd ../roatan-yacht && npm start &     # the server on :3000
+cd ../roatan-yacht-app
+API=http://localhost:3000 node scripts/check-pricing-parity.mjs
+```
 
 ## Build the APK
 
@@ -37,8 +54,10 @@ eas build -p android --profile preview    # buildType: apk
 
 ## Pointing it at a server
 
-The API host is baked in per build profile in `eas.json`, and falls back to
-`extra.apiUrl` in `app.json`:
+**Settings inside the app is the first place it looks.** Type the address,
+press Test, press Save — one APK survives the site moving, and nobody has to
+reinstall because a domain changed. Failing that it uses the value baked in at
+build time:
 
 | Profile | Points at |
 | --- | --- |
@@ -55,6 +74,31 @@ Android blocks plaintext HTTP by default. Testing against a `http://` server on
 your LAN needs `usesCleartextTraffic` — fine for development, never for the
 build you hand to guests. The deployed site is HTTPS, so the shipped APK is
 unaffected.
+
+## Over-the-air updates
+
+The APK built today has them **off**. `expo-updates` is compiled in, but the
+updates URL carries an Expo project id that only exists once someone runs
+`eas init` against their own account — so the manifest says
+`expo.modules.updates.ENABLED=false` and the app runs the JavaScript it shipped
+with.
+
+To switch them on:
+
+```bash
+./scripts/enable-ota.sh    # eas login, eas init, eas update:configure
+./scripts/build-apk.sh     # build one more APK
+```
+
+Hand that APK out once. From then on, JavaScript changes reach phones with
+`eas update --branch preview` — no reinstalling. `runtimeVersion` uses the
+`fingerprint` policy, so adding a library with native code correctly stops
+updates from reaching older APKs instead of shipping them JavaScript their
+binary cannot run.
+
+The phones that already have the current APK cannot be fixed over the air —
+they are missing the very component that would fetch the fix. That is the same
+trap `COMO_GENERAR_APK.md` describes for Veta Wallet.
 
 ## What is different from the website
 

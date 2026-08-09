@@ -68,6 +68,14 @@ fi
 sed -i "s/^reactNativeArchitectures=.*/reactNativeArchitectures=$ARCHS/" android/gradle.properties
 echo "Architectures: $ARCHS"
 
+# Say plainly whether this APK will be able to update itself, because the
+# answer is decided here and cannot be fixed afterwards on installed phones.
+if grep -q '"url"' app.json 2>/dev/null; then
+  echo "Over-the-air updates: ON"
+else
+  echo "Over-the-air updates: OFF — run ./scripts/enable-ota.sh first if you want them."
+fi
+
 export EXPO_PUBLIC_API_URL="${API_URL:-https://roatan-yacht.vercel.app}"
 echo "Building against $EXPO_PUBLIC_API_URL"
 ( cd android && ./gradlew assembleRelease --no-daemon -x lint )

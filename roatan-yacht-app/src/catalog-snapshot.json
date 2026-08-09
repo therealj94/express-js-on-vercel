@@ -1,0 +1,665 @@
+{
+  "capturedAt": "2026-08-09",
+  "settings": {
+    "brand": "Love Cloud Tours & Weddings",
+    "productLine": "Roatan Private Yacht Getaways",
+    "currency": "USD",
+    "depositPct": 30,
+    "contactEmail": "reservations@lovecloudroatan.com",
+    "contactPhone": "+1 (702) 419-4681",
+    "whatsapp": "+1 (702) 419-4681",
+    "departurePoint": "French Harbour Marina, Roatán, Bay Islands, Honduras",
+    "cancellationPolicy": "Free cancellation up to 7 days before departure. Within 7 days the deposit is non-refundable. Trips cancelled by us for weather are fully refunded or rescheduled at no cost."
+  },
+  "vessels": [
+    {
+      "id": "v_speedboat_day",
+      "slug": "private-speedboat-full-day",
+      "name": "Private Luxury Full Day Speedboat Adventure",
+      "boatName": "Li'l Knotty",
+      "tagline": "Twin 200s, a shaded T-top, and the whole island at your pace.",
+      "description": "Li'l Knotty is our centre console — twin 200 hp Suzukis, shade over the helm and a hull that gets you to the far side of the island before the crowds. We run the day at your pace: snorkel the reef, get pulled on the tube, and swim off the sand at Pigeon Cay.",
+      "photo": "/media/lilknotty-running",
+      "gallery": [
+        "/media/lilknotty-marina",
+        "/media/lilknotty-dusk",
+        "/media/lilknotty-running-wide"
+      ],
+      "type": "day",
+      "durationLabel": "8 hours",
+      "basePrice": 995,
+      "priceUnit": "flat",
+      "minNights": 0,
+      "capacityMin": 1,
+      "capacityMax": 10,
+      "includes": [
+        "Li'l Knotty, a private centre console with twin 200 hp outboards",
+        "Private captain and crew",
+        "Shaded T-top over the helm",
+        "Bow seating and cushioned casting deck",
+        "Snorkeling gear and guided reef stop",
+        "Tubing",
+        "Swim stop at Pigeon Cay",
+        "All-inclusive food and drinks",
+        "Fuel and park fees"
+      ],
+      "heroEmoji": "🚤",
+      "accent": "#1C6A72",
+      "active": true,
+      "sortOrder": 1
+    },
+    {
+      "id": "v_yacht_day",
+      "slug": "private-yacht-full-day",
+      "name": "Private Luxury Full Day Yacht Charter",
+      "boatName": "Knotty",
+      "tagline": "47 feet of shade, air conditioning and open water.",
+      "description": "Lounge in luxury and enjoy proper pampering aboard Knotty, our private 47' yacht, tailored just for you and your group. Teak cockpit under canvas shade, air-conditioned cabin when the sun gets serious, a tender on the swim platform for the shallow stuff, and a captain who knows every reef worth stopping at.",
+      "photo": "/media/knotty-stern",
+      "gallery": [
+        "/media/knotty-cockpit-wide",
+        "/media/knotty-cockpit-table",
+        "/media/knotty-helm"
+      ],
+      "type": "day",
+      "durationLabel": "8 hours",
+      "basePrice": 1600,
+      "priceUnit": "flat",
+      "minNights": 0,
+      "capacityMin": 1,
+      "capacityMax": 12,
+      "includes": [
+        "Knotty, a private 47' yacht with two staterooms",
+        "Captain and crew",
+        "Air-conditioned interior",
+        "Shaded teak cockpit with dining table",
+        "Bow sunpad and teak swim platform",
+        "Tender aboard for shallow-water landings",
+        "Wet bar at the helm",
+        "Snorkeling and swim stops",
+        "All-inclusive food and drinks",
+        "Fuel and park fees"
+      ],
+      "heroEmoji": "🛥️",
+      "accent": "#C2762F",
+      "active": true,
+      "sortOrder": 2
+    },
+    {
+      "id": "v_copper",
+      "boatName": "Knotty",
+      "photo": "/media/knotty-cabin-night",
+      "gallery": [
+        "/media/knotty-stern",
+        "/media/knotty-cockpit-wide"
+      ],
+      "slug": "copper-package",
+      "name": "Copper Package — 4 Nights, 5 Days",
+      "tagline": "Live aboard for four nights. Wake up somewhere new.",
+      "description": "Escape to paradise on an all-inclusive private yacht getaway. Four nights aboard a 47' two-stateroom yacht, mixing adventure and doing absolutely nothing, in whatever proportion you like.",
+      "type": "multiday",
+      "durationLabel": "4 nights / 5 days",
+      "basePrice": 2000,
+      "priceUnit": "per_night",
+      "minNights": 4,
+      "capacityMin": 2,
+      "capacityMax": 4,
+      "includes": [
+        "47' two-stateroom yacht, exclusively yours",
+        "Captain and crew for the full stay",
+        "All meals and drinks aboard",
+        "Daily snorkeling and island stops",
+        "Fuel, mooring and park fees"
+      ],
+      "heroEmoji": "🌅",
+      "accent": "#B06A3B",
+      "active": true,
+      "sortOrder": 3
+    },
+    {
+      "id": "v_silver",
+      "boatName": "Knotty",
+      "photo": "/media/knotty-cockpit-wide",
+      "gallery": [
+        "/media/knotty-cabin-night",
+        "/media/knotty-stern"
+      ],
+      "slug": "silver-package",
+      "name": "Silver Package — 5 Nights, 6 Days",
+      "tagline": "Two islands, five nights, one yacht that is only yours.",
+      "description": "Luxury and adventure across two islands. Five nights aboard, with the itinerary shaped around what your group actually wants to do — reefs, beaches, or a very slow lunch.",
+      "type": "multiday",
+      "durationLabel": "5 nights / 6 days",
+      "basePrice": 2000,
+      "priceUnit": "per_night",
+      "minNights": 5,
+      "capacityMin": 2,
+      "capacityMax": 4,
+      "includes": [
+        "47' two-stateroom yacht, exclusively yours",
+        "Two-island itinerary",
+        "Captain and crew for the full stay",
+        "All meals and drinks aboard",
+        "Fuel, mooring and park fees"
+      ],
+      "heroEmoji": "🏝️",
+      "accent": "#5B7F86",
+      "active": true,
+      "sortOrder": 4
+    },
+    {
+      "id": "v_gold",
+      "boatName": "Knotty",
+      "photo": "/media/knotty-dinner-night",
+      "gallery": [
+        "/media/knotty-cabin-night",
+        "/media/lilknotty-running"
+      ],
+      "slug": "gold-package",
+      "name": "Gold Package — 6 Nights, 7 Days",
+      "tagline": "The whole Caribbean week. Yacht, hotel, and a speedboat on the house.",
+      "description": "Experience the best of the Caribbean where opulence meets breathtaking natural beauty. Six nights split between the yacht and hotel stays, with a complimentary speedboat day included.",
+      "type": "multiday",
+      "durationLabel": "6 nights / 7 days",
+      "basePrice": 2000,
+      "priceUnit": "per_night",
+      "minNights": 6,
+      "capacityMin": 2,
+      "capacityMax": 4,
+      "includes": [
+        "47' yacht plus hotel nights",
+        "Complimentary speedboat day",
+        "Captain and crew",
+        "All meals and drinks aboard",
+        "Fuel, mooring and park fees"
+      ],
+      "heroEmoji": "👑",
+      "accent": "#C2953F",
+      "active": true,
+      "sortOrder": 5
+    }
+  ],
+  "categories": [
+    {
+      "id": "celebrate",
+      "label": "Celebrate",
+      "blurb": "Make the day mean something.",
+      "photo": "/media/knotty-cabin-night"
+    },
+    {
+      "id": "eat_drink",
+      "label": "Eat & Drink",
+      "blurb": "Everything that comes on a tray.",
+      "photo": "/media/knotty-cockpit-table"
+    },
+    {
+      "id": "adventure",
+      "label": "Adventure",
+      "blurb": "Things to do off the back of the boat.",
+      "photo": "/media/knotty-stern"
+    },
+    {
+      "id": "comfort",
+      "label": "Comfort & Care",
+      "blurb": "The details that make a long day easy.",
+      "photo": "/media/knotty-cockpit-wide"
+    }
+  ],
+  "gallery": [
+    {
+      "src": "/media/lilknotty-running",
+      "boat": "Li'l Knotty",
+      "caption": "On plane off the south shore. This is what most of the speedboat day looks like."
+    },
+    {
+      "src": "/media/knotty-stern",
+      "boat": "Knotty",
+      "caption": "Knotty at the dock in French Harbour, tender ready on the teak platform."
+    },
+    {
+      "src": "/media/knotty-cockpit-wide",
+      "boat": "Knotty",
+      "caption": "The shaded cockpit — where most of a charter day actually gets spent."
+    },
+    {
+      "src": "/media/knotty-cockpit-table",
+      "boat": "Knotty",
+      "caption": "Teak table set for lunch, helm behind it."
+    },
+    {
+      "src": "/media/knotty-helm",
+      "boat": "Knotty",
+      "caption": "Helm and wet bar. Ice, sink and the drinks within arm’s reach."
+    },
+    {
+      "src": "/media/knotty-dinner-night",
+      "boat": "Knotty",
+      "caption": "Dinner aboard after dark, with the harbour lights behind you."
+    },
+    {
+      "src": "/media/knotty-cabin-night",
+      "boat": "Knotty",
+      "caption": "The master stateroom, turned down for an overnight charter."
+    },
+    {
+      "src": "/media/lilknotty-marina",
+      "boat": "Li'l Knotty",
+      "caption": "Twin 200 hp Suzukis and a shark on the hull, tied up at the marina."
+    },
+    {
+      "src": "/media/lilknotty-dusk",
+      "boat": "Li'l Knotty",
+      "caption": "Dusk at the dock. Console lit, flag up, ready for the morning."
+    }
+  ],
+  "extras": [
+    {
+      "id": "x_champagne",
+      "category": "celebrate",
+      "emoji": "🍾",
+      "name": "Champagne toast",
+      "price": 85,
+      "unit": "flat",
+      "description": "A chilled bottle of Moët and proper glassware, poured wherever you tell the captain to stop.",
+      "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_flowers",
+      "category": "celebrate",
+      "emoji": "🌺",
+      "name": "Fresh flower setup",
+      "price": 120,
+      "unit": "flat",
+      "description": "Tropical arrangements through the cabin and deck, cut the morning of your trip.",
+      "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_cake",
+      "category": "celebrate",
+      "emoji": "🎂",
+      "name": "Custom cake",
+      "price": 75,
+      "unit": "flat",
+      "description": "Your message on it. Tell us the occasion and any allergies.",
+      "leadTimeHours": 72,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_proposal",
+      "category": "celebrate",
+      "emoji": "💍",
+      "name": "Proposal setup",
+      "price": 350,
+      "unit": "flat",
+      "description": "Deck lettering, petals, chilled champagne and a crew that knows exactly when to disappear.",
+      "leadTimeHours": 72,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_turndown",
+      "category": "celebrate",
+      "emoji": "🕯️",
+      "name": "Cabin turndown",
+      "price": 160,
+      "unit": "flat",
+      "description": "Rose petals, candles through the stateroom and a chilled bottle waiting. Overnight charters only.",
+      "leadTimeHours": 72,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_photographer",
+      "category": "celebrate",
+      "emoji": "📸",
+      "name": "Photographer (2 hours)",
+      "price": 250,
+      "unit": "flat",
+      "description": "A local photographer aboard, edited gallery delivered within 72 hours.",
+      "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_drone",
+      "category": "celebrate",
+      "emoji": "🚁",
+      "name": "Drone footage",
+      "price": 180,
+      "unit": "flat",
+      "description": "Aerial video of the boat, the reef and your group, edited to a short film.",
+      "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_music",
+      "category": "celebrate",
+      "emoji": "🎶",
+      "name": "Live guitar",
+      "price": 200,
+      "unit": "flat",
+      "description": "A local guitarist aboard for two hours of the trip.",
+      "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_lobster",
+      "category": "eat_drink",
+      "emoji": "🦞",
+      "name": "Lobster lunch",
+      "price": 65,
+      "unit": "per_person",
+      "description": "Caribbean lobster grilled aboard, with plantain, rice and salad.",
+      "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 20
+    },
+    {
+      "id": "x_bbq",
+      "category": "eat_drink",
+      "emoji": "🔥",
+      "name": "Caribbean BBQ",
+      "price": 45,
+      "unit": "per_person",
+      "description": "Grilled fish, chicken and pork with island sides, served on the water.",
+      "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 20
+    },
+    {
+      "id": "x_veg",
+      "category": "eat_drink",
+      "emoji": "🥗",
+      "name": "Vegetarian spread",
+      "price": 38,
+      "unit": "per_person",
+      "description": "Grilled vegetables, fresh cheeses, hummus, breads and island fruit.",
+      "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 20
+    },
+    {
+      "id": "x_fruit",
+      "category": "eat_drink",
+      "emoji": "🍍",
+      "name": "Fruit and cheese table",
+      "price": 90,
+      "unit": "flat",
+      "description": "A full spread of in-season island fruit, cheeses and crackers.",
+      "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_wine_red",
+      "category": "eat_drink",
+      "emoji": "🍷",
+      "name": "Red wine (bottle)",
+      "price": 55,
+      "unit": "flat",
+      "description": "Malbec or Cabernet. Ask the crew for the current list.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_wine_white",
+      "category": "eat_drink",
+      "emoji": "🥂",
+      "name": "White or rosé (bottle)",
+      "price": 55,
+      "unit": "flat",
+      "description": "Sauvignon Blanc, Chardonnay or Provence rosé, served properly cold.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_premium_bar",
+      "category": "eat_drink",
+      "emoji": "🥃",
+      "name": "Premium open bar",
+      "price": 40,
+      "unit": "per_person",
+      "description": "Top-shelf rum, whiskey, gin and mixers for the whole trip.",
+      "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 20
+    },
+    {
+      "id": "x_bartender",
+      "category": "eat_drink",
+      "emoji": "🍹",
+      "name": "Cocktail bartender",
+      "price": 220,
+      "unit": "flat",
+      "description": "A bartender aboard making frozen and classic cocktails to order.",
+      "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_tubing",
+      "category": "adventure",
+      "emoji": "🛟",
+      "name": "Tubing session",
+      "price": 60,
+      "unit": "flat",
+      "description": "Towable tube and safety gear, as many runs as your group can take.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_snorkel_extra",
+      "category": "adventure",
+      "emoji": "🤿",
+      "name": "Extra snorkel sets",
+      "price": 15,
+      "unit": "per_person",
+      "description": "Additional masks, snorkels and fins beyond what the boat carries.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 20
+    },
+    {
+      "id": "x_paddleboard",
+      "category": "adventure",
+      "emoji": "🏄",
+      "name": "Paddleboard",
+      "price": 45,
+      "unit": "flat",
+      "description": "Inflatable SUP aboard for the day.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_kayak",
+      "category": "adventure",
+      "emoji": "🛶",
+      "name": "Double kayak",
+      "price": 45,
+      "unit": "flat",
+      "description": "Two-person kayak for exploring the mangroves and shallows.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_fishing",
+      "category": "adventure",
+      "emoji": "🎣",
+      "name": "Fishing gear and guide",
+      "price": 150,
+      "unit": "flat",
+      "description": "Rods, tackle and a crew member who knows where they are biting.",
+      "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_scuba",
+      "category": "adventure",
+      "emoji": "🐠",
+      "name": "Discover scuba (per diver)",
+      "price": 130,
+      "unit": "per_person",
+      "description": "One guided dive on the reef with a certified instructor. No experience needed.",
+      "leadTimeHours": 72,
+      "active": true,
+      "maxQty": 20
+    },
+    {
+      "id": "x_tender",
+      "category": "adventure",
+      "emoji": "🛶",
+      "name": "Tender island hop",
+      "price": 140,
+      "unit": "flat",
+      "description": "Take the tender off the swim platform and land where the yacht cannot go — sandbars, mangrove cuts, an empty beach.",
+      "leadTimeHours": 48,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_pigeon",
+      "category": "adventure",
+      "emoji": "⛱️",
+      "name": "Pigeon Cay beach stop",
+      "price": 120,
+      "unit": "flat",
+      "description": "Add the sandbar and beach club stop to your route, entry included.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_pickup",
+      "category": "comfort",
+      "emoji": "🚐",
+      "name": "Hotel or cruise pickup",
+      "price": 60,
+      "unit": "flat",
+      "description": "Air-conditioned round-trip transfer between your hotel or the cruise terminal and the marina.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_massage",
+      "category": "comfort",
+      "emoji": "💆",
+      "name": "Massage aboard",
+      "price": 110,
+      "unit": "per_person",
+      "description": "A licensed therapist aboard, 50 minutes on the shaded deck.",
+      "leadTimeHours": 72,
+      "active": true,
+      "maxQty": 20
+    },
+    {
+      "id": "x_kids",
+      "category": "comfort",
+      "emoji": "🧒",
+      "name": "Kids kit",
+      "price": 40,
+      "unit": "flat",
+      "description": "Child-size life vests, floats, snacks and shade for the little ones.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_towels",
+      "category": "comfort",
+      "emoji": "🧺",
+      "name": "Premium towels and shade",
+      "price": 35,
+      "unit": "flat",
+      "description": "Oversized towels, extra umbrella and a cushioned bow setup.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_cooler",
+      "category": "comfort",
+      "emoji": "🧊",
+      "name": "Extra cooler of drinks",
+      "price": 50,
+      "unit": "flat",
+      "description": "A second stocked cooler of water, sodas and local beer.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    },
+    {
+      "id": "x_wifi",
+      "category": "comfort",
+      "emoji": "📶",
+      "name": "WiFi aboard",
+      "price": 45,
+      "unit": "flat",
+      "description": "Portable hotspot with island coverage for the trip.",
+      "leadTimeHours": 24,
+      "active": true,
+      "maxQty": 5
+    }
+  ],
+  "bundles": [
+    {
+      "id": "b_proposal",
+      "name": "Proposal at Sea",
+      "tagline": "Everything you need for the question, and nothing you have to think about.",
+      "emoji": "💍",
+      "photo": "/media/knotty-dinner-night",
+      "extraIds": [
+        "x_proposal",
+        "x_champagne",
+        "x_flowers",
+        "x_photographer",
+        "x_music"
+      ],
+      "discountPct": 10,
+      "active": true
+    },
+    {
+      "id": "b_family",
+      "name": "Family Day",
+      "tagline": "Built for a boat with kids on it.",
+      "emoji": "👨‍👩‍👧",
+      "photo": "/media/knotty-cockpit-wide",
+      "extraIds": [
+        "x_tubing",
+        "x_kids",
+        "x_bbq",
+        "x_snorkel_extra"
+      ],
+      "discountPct": 10,
+      "active": true
+    },
+    {
+      "id": "b_anniversary",
+      "name": "Anniversary Sunset",
+      "tagline": "Wine, dinner and the good light.",
+      "emoji": "🌇",
+      "photo": "/media/knotty-cabin-night",
+      "extraIds": [
+        "x_wine_red",
+        "x_lobster",
+        "x_flowers",
+        "x_massage"
+      ],
+      "discountPct": 10,
+      "active": true
+    }
+  ]
+}

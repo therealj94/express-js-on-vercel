@@ -7,12 +7,14 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import * as SystemUI from 'expo-system-ui'
 
 import { light, dark, mono, serif } from './src/theme'
-import { getCatalog, getAvailability, getQuote } from './src/api'
+import { getCatalog, getAvailability, getQuote, loadApiUrl } from './src/api'
+import { quoteLocally } from './src/pricing'
 import { Button, Notice } from './src/components/ui'
 import FleetScreen from './src/screens/FleetScreen'
 import BuildScreen from './src/screens/BuildScreen'
 import CheckoutScreen from './src/screens/CheckoutScreen'
 import BookingScreen, { remember } from './src/screens/BookingScreen'
+import SettingsScreen from './src/screens/SettingsScreen'
 import { spanDates } from './src/components/Calendar'
 
 const emptyCart = {
@@ -40,8 +42,11 @@ function Shell() {
   const load = useCallback(async () => {
     setLoadError('')
     try {
+      await loadApiUrl()
       setCatalog(await getCatalog())
     } catch (err) {
+      // getCatalog falls back to the bundled copy on its own, so reaching here
+      // means something worse than a missing signal.
       setLoadError(err.message)
     }
   }, [])
@@ -54,6 +59,7 @@ function Shell() {
       if (screen === 'build') { setScreen('fleet'); return true }
       if (screen === 'checkout') { setScreen('build'); return true }
       if (screen === 'booking') { setScreen('fleet'); return true }
+      if (screen === 'settings') { setScreen('fleet'); return true }
       return false
     })
     return () => sub.remove()
@@ -64,8 +70,9 @@ function Shell() {
     [catalog, cart.vesselId],
   )
 
-  // Prices are never computed here. The phone shows what the server says the
-  // trip costs, so a rebuilt APK can never disagree with the till.
+  // The server prices the trip whenever it can be reached, so the app and the
+  // till never disagree. The local mirror below is the offline fallback only,
+  // and everything it produces is labelled an estimate.
   useEffect(() => {
     if (!cart.vesselId || !cart.date || !cart.guests) {
       setQuote(null)
@@ -78,13 +85,20 @@ function Shell() {
         if (seq === quoteSeq.current) { setQuote(q); setQuoteError('') }
       } catch (err) {
         if (seq !== quoteSeq.current) return
+        if (err.offline) {
+          // No server to ask, so show our own arithmetic and label it an
+          // estimate rather than leaving the manifest blank.
+          setQuote(quoteLocally(catalog, cart))
+          setQuoteError('')
+          return
+        }
         // A bad promo code should not wipe the boat they just loaded.
         if (err.field !== 'couponCode') setQuote(null)
         setQuoteError(err.message)
       }
     }, 180)
     return () => clearTimeout(t)
-  }, [cart])
+  }, [cart, catalog])
 
   async function pickVessel(v) {
     const nights = v.priceUnit === 'per_night' ? Math.max(v.minNights, cart.nights || v.minNights) : 0
@@ -92,7 +106,10 @@ function Shell() {
     try {
       const { unavailable: days } = await getAvailability(v.id)
       taken = new Set(days)
-    } catch { /* an empty calendar is better than a blocked one */ }
+    } catch {
+      // Offline we cannot know what is taken. An open calendar with a warning
+      // beats a locked one — the crew confirms the date either way.
+    }
     setUnavailable(taken)
 
     const keepDate =
@@ -164,6 +181,14 @@ function Shell() {
     <View style={{ flex: 1, backgroundColor: c.chart }}>
       <StatusBar style={screen === 'fleet' ? 'light' : scheme === 'dark' ? 'light' : 'dark'} />
 
+      {catalog.source === 'bundled' && screen !== 'settings' && (
+        <Pressable onPress={() => setScreen('settings')} style={[styles.offline, { backgroundColor: c.signalSoft, borderBottomColor: c.signal, paddingTop: screen === 'fleet' ? insets.top + 6 : 6 }]}>
+          <Text style={[styles.offlineText, { color: c.ink }]}>
+            Offline — showing the boats from this phone. Tap to set the booking server.
+          </Text>
+        </Pressable>
+      )}
+
       {screen !== 'fleet' && (
         <View style={[styles.bar, { backgroundColor: c.deep, paddingTop: insets.top + 8 }]}>
           <Pressable
@@ -172,13 +197,14 @@ function Shell() {
           >
             <Text style={[styles.back, { color: c.onDeepSoft }]}>← Back</Text>
           </Pressable>
-          <Text style={[styles.brand, { color: c.onDeep }]}>Roatán Yacht Getaways</Text>
+          <Text style={[styles.brand, { color: c.onDeep }]} numberOfLines={1}>Love Cloud Roatán</Text>
         </View>
       )}
 
       {screen === 'fleet' && (
         <FleetScreen
-          c={c} catalog={catalog} cart={cart} insets={insets}
+          c={c} catalog={catalog} cart={cart}
+          insets={catalog.source === 'bundled' ? { ...insets, top: 0 } : insets}
           onOccasion={chooseOccasion}
           onPickVessel={pickVessel}
         />
@@ -216,13 +242,25 @@ function Shell() {
         <BookingScreen c={c} initialRef={bookedRef} settings={catalog.settings} insets={insets} />
       )}
 
+      {screen === 'settings' && (
+        <SettingsScreen
+          c={c} catalog={catalog} insets={insets}
+          onSaved={async () => { setCatalog(null); await load(); setScreen('fleet') }}
+        />
+      )}
+
       {screen === 'fleet' && (
-        <Pressable
-          onPress={() => { setBookedRef(null); setScreen('booking') }}
-          style={[styles.fab, { backgroundColor: c.deep, bottom: insets.bottom + 16 }]}
-        >
-          <Text style={[styles.fabText, { color: c.onDeep }]}>My booking</Text>
-        </Pressable>
+        <View style={[styles.fabRow, { bottom: insets.bottom + 16 }]}>
+          <Pressable onPress={() => setScreen('settings')} style={[styles.fab, { backgroundColor: c.deep }]}>
+            <Text style={[styles.fabText, { color: c.onDeep }]}>Settings</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => { setBookedRef(null); setScreen('booking') }}
+            style={[styles.fab, { backgroundColor: c.deep }]}
+          >
+            <Text style={[styles.fabText, { color: c.onDeep }]}>My booking</Text>
+          </Pressable>
+        </View>
       )}
     </View>
   )
@@ -235,7 +273,7 @@ const Centered = ({ c, insets, children }) => (
       { backgroundColor: c.chart, paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 },
     ]}
   >
-    <Text style={{ fontFamily: serif, fontSize: 22, color: c.ink }}>Roatán Yacht Getaways</Text>
+    <Text style={{ fontFamily: serif, fontSize: 22, color: c.ink }}>Love Cloud Roatán</Text>
     {children}
   </View>
 )
@@ -255,10 +293,10 @@ const styles = StyleSheet.create({
   },
   back: { fontFamily: mono, fontSize: 12, letterSpacing: 1.2 },
   brand: { fontFamily: serif, fontSize: 14, flexShrink: 1 },
+  offline: { borderBottomWidth: 1, paddingHorizontal: 14, paddingBottom: 6, zIndex: 5 },
+  offlineText: { fontFamily: mono, fontSize: 10.5, lineHeight: 15 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 },
-  fab: {
-    position: 'absolute', right: 16,
-    paddingHorizontal: 16, paddingVertical: 11, borderRadius: 2,
-  },
+  fabRow: { position: 'absolute', right: 16, flexDirection: 'row', gap: 8 },
+  fab: { paddingHorizontal: 14, paddingVertical: 11, borderRadius: 2 },
   fabText: { fontFamily: mono, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase' },
 })

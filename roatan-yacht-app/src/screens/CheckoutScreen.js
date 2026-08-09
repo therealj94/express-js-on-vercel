@@ -1,9 +1,12 @@
 import React, { useState } from 'react'
-import { View, Text, ScrollView, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native'
+import {
+  View, Text, ScrollView, TextInput, StyleSheet, KeyboardAvoidingView, Platform, Linking,
+} from 'react-native'
 import * as WebBrowser from 'expo-web-browser'
 import * as Haptics from 'expo-haptics'
 import { mono, serif, money } from '../theme'
 import { createBooking } from '../api'
+import { requestMessage } from '../pricing'
 import { Plate, Label, Button, Notice, Serif } from '../components/ui'
 import { spanDates } from '../components/Calendar'
 
@@ -35,10 +38,28 @@ export default function CheckoutScreen({ c, cart, quote, settings, onBooked, ins
       onBooked(result.booking.ref)
     } catch (err) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+      if (err.offline) {
+        // No server to take the booking. Rather than lose a guest who has
+        // already chosen a boat and a date, hand the whole manifest to
+        // WhatsApp — which is where they would have written anyway.
+        setError('')
+        sendByWhatsApp()
+        return
+      }
       setError(err.message)
     } finally {
       setBusy(null)
     }
+  }
+
+  function sendByWhatsApp() {
+    const digits = String(settings.whatsapp || '').replace(/\D/g, '')
+    const body = requestMessage(quote, form, settings)
+    if (!digits) {
+      setError('No booking server and no WhatsApp number set. Add one in Settings.')
+      return
+    }
+    Linking.openURL(`https://wa.me/${digits}?text=${encodeURIComponent(body)}`)
   }
 
   return (
@@ -102,12 +123,24 @@ export default function CheckoutScreen({ c, cart, quote, settings, onBooked, ins
 
         {error ? <Notice c={c}>{error}</Notice> : null}
 
-        <Button c={c} busy={busy === 'deposit'} disabled={Boolean(busy)} onPress={() => pay('deposit')}>
-          Pay {money(quote.deposit, quote.currency)} deposit
-        </Button>
-        <Button c={c} ghost busy={busy === 'full'} disabled={Boolean(busy)} onPress={() => pay('full')}>
-          Pay {money(quote.total, quote.currency)} in full
-        </Button>
+        {quote.estimate ? (
+          <>
+            <Notice c={c} tone="shoal">
+              This total is an estimate worked out on your phone — we are not connected to the
+              booking office right now. Send it over and the crew confirms the price and the date.
+            </Notice>
+            <Button c={c} onPress={sendByWhatsApp}>Send the request on WhatsApp</Button>
+          </>
+        ) : (
+          <>
+            <Button c={c} busy={busy === 'deposit'} disabled={Boolean(busy)} onPress={() => pay('deposit')}>
+              Pay {money(quote.deposit, quote.currency)} deposit
+            </Button>
+            <Button c={c} ghost busy={busy === 'full'} disabled={Boolean(busy)} onPress={() => pay('full')}>
+              Pay {money(quote.total, quote.currency)} in full
+            </Button>
+          </>
+        )}
 
         <Text style={[styles.small, { color: c.inkFaint }]}>{settings.cancellationPolicy}</Text>
       </ScrollView>

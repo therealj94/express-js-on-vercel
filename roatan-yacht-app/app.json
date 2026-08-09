@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "Roatán Yacht Getaways",
-    "slug": "roatan-yacht-getaways",
+    "name": "Love Cloud Roatán",
+    "slug": "love-cloud-roatan",
     "version": "1.0.0",
     "runtimeVersion": {
-      "policy": "sdkVersion"
+      "policy": "fingerprint"
     },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "roatanyacht",
+    "scheme": "lovecloudroatan",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#072A38",
     "splash": {
@@ -44,6 +44,10 @@
     ],
     "extra": {
       "apiUrl": "https://roatan-yacht.vercel.app"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_LOAD"
     }
   }
 }
