@@ -178,6 +178,10 @@ export const NODOS = [
 export const ENLACES = [
   // La cadena y sus nodos
   ['cadena', 'rpc', 'se consulta por'],
+  // Todos los demás dominios cuelgan de lo que sirven; a este se le había
+  // olvidado, y quedaba flotando solo en un rincón del cerebro sin decir de
+  // qué era el dominio.
+  ['d-rpc', 'rpc', 'sirve'],
   ['cadena', 'validador', 'la firman', true],
   ...['node1','node2','node3','node4','node5','node6'].map((n) => [n, 'cadena', 'sincronizan']),
   ['validador', 'node1', 'una sola dirección firma', true],

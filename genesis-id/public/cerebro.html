@@ -221,7 +221,7 @@ for (const n of nodos) n.radio = 3.4 + n.peso * 2.6 + Math.min(6, Math.sqrt(n.gr
 // ── estado de la vista ─────────────────────────────────────────────────────
 const vista = {
   giroY: 0.5, giroX: -0.22, zoom: 1, autoGiro: !quieto,
-  centroX: 0, centroY: 0, dpr: Math.min(2, devicePixelRatio || 1),
+  centroX: 0, centroY: 0, estiradoY: 1, dpr: Math.min(2, devicePixelRatio || 1),
 };
 let sel = null, resaltados = null, capasOcultas = new Set();
 let arrastrando = null, arrastreVista = null, movio = false;
@@ -316,9 +316,25 @@ for (let i = 0; i < 320; i++) fisica();
 function encajar() {
   let r = 0;
   for (const n of nodos) r = Math.max(r, Math.hypot(n.x, n.y, n.z));
-  const menor = Math.min(lienzo.clientWidth || innerWidth, lienzo.clientHeight || innerHeight);
+  const A = lienzo.clientWidth || innerWidth;
+  const H = lienzo.clientHeight || innerHeight;
+  const menor = Math.min(A, H);
   // 0.42 deja un margen para las etiquetas, que sobresalen del punto.
   vista.zoom = Math.max(0.35, Math.min(2.2, (menor * 0.42) / (r || 1)));
+
+  // POR QUE SE ESTIRA EN VERTICAL
+  //
+  // La nube de nodos es una bola, y una bola proyectada da un círculo. Un
+  // círculo solo puede llenar el lado CORTO de la pantalla: en un teléfono
+  // vertical eso dejaba el cerebro apretado en el medio con casi media
+  // pantalla negra arriba y abajo. No era un fallo del encaje —era geometría—
+  // así que se corrige estirando la proyección en vertical hasta ocupar el
+  // alto real.
+  //
+  // Se estiran las POSICIONES, nunca los radios: los nodos siguen siendo
+  // redondos y solo se separan entre sí, que es justo lo que hace falta para
+  // que las etiquetas dejen de pisarse en pantalla angosta.
+  vista.estiradoY = Math.max(1, Math.min(1.8, H / (A || 1)));
   vista.centroX = 0; vista.centroY = 0;
 }
 
@@ -336,7 +352,7 @@ function proyectar(n) {
   const esc = (DIST / (DIST + z2)) * vista.zoom;
   return {
     px: lienzo.clientWidth / 2 + x1 * esc + vista.centroX,
-    py: lienzo.clientHeight / 2 + y1 * esc + vista.centroY,
+    py: lienzo.clientHeight / 2 + y1 * esc * (vista.estiradoY || 1) + vista.centroY,
     esc, z: z2,
   };
 }
@@ -365,6 +381,7 @@ function dibujar() {
   }
 
   // Nodos, también de atrás hacia adelante para que la perspectiva se sostenga.
+  const rotulos = [];
   const nord = nodos.filter(visible).sort((p, q) => q.pz - p.pz);
   for (const n of nord) {
     const vivo = activo(n);
@@ -398,19 +415,55 @@ function dibujar() {
     // seleccionado y sus vecinos (que es lo que se está mirando), los nodos
     // importantes que están al frente, y todo cuando ya se acercó lo bastante
     // como para que quepan.
+    //
+    // Aquí NO se dibuja: se apunta y se resuelve después, porque para saber si
+    // un nombre pisa a otro hacen falta todos primero.
     const enfoco = n === sel || (resaltados && resaltados.has(n.id));
     const importante = n.radio > 11 && prof > 0.92;
     if (vivo && (enfoco || importante || vista.zoom > 1.9) && prof > 0.6) {
-      ctx.globalAlpha = enfoco ? 1 : Math.min(0.92, (prof - 0.55) * 3);
-      ctx.fillStyle = n === sel ? '#F8EFCF' : enfoco ? '#e8dcc4' : '#a9c2be';
-      ctx.font = `${enfoco ? 600 : 400} ${Math.max(9.5, Math.min(13, 10.5 * prof))}px system-ui,sans-serif`;
-      ctx.textAlign = 'center';
-      // Un trazo oscuro detrás: sobre una zona con muchos nodos, el texto sin
-      // contorno se pierde encima de los círculos de colores.
-      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(2,9,15,.85)';
-      ctx.strokeText(n.n, n.px, n.py + r + 12);
-      ctx.fillText(n.n, n.px, n.py + r + 12);
+      rotulos.push({ n, r, prof, enfoco });
     }
+  }
+  ctx.globalAlpha = 1;
+
+  // ── etiquetas, con desalojo de las que se pisan ───────────────────────────
+  //
+  // Antes cada nodo escribía su nombre en cuanto le tocaba el turno, y el que
+  // se dibujaba después tapaba al anterior: en el móvil salía «Backend Veta
+  // Wallet» encima de «RPC público», ilegibles los dos. Ahora se ordenan por
+  // importancia y se descarta el que choque con uno ya puesto — así el que
+  // sobrevive es siempre el que más aporta, no el último del bucle.
+  const puestos = [];
+  rotulos.sort((p, q) => {
+    if (p.enfoco !== q.enfoco) return p.enfoco ? -1 : 1;
+    if (p.n === sel) return -1;
+    if (q.n === sel) return 1;
+    return (q.n.radio * q.prof) - (p.n.radio * p.prof);
+  });
+  ctx.textAlign = 'center';
+  for (const t of rotulos) {
+    const { n, r, prof, enfoco } = t;
+    const cuerpo = Math.max(9.5, Math.min(13, 10.5 * prof));
+    ctx.font = `${enfoco ? 600 : 400} ${cuerpo}px system-ui,sans-serif`;
+    const ancho = ctx.measureText(n.n).width;
+    const x = n.px, y = n.py + r + 12;
+    const caja = { x1: x - ancho / 2 - 2, x2: x + ancho / 2 + 2, y1: y - cuerpo, y2: y + 3 };
+
+    // Fuera de pantalla no hace falta ni medirlo.
+    if (caja.x2 < 0 || caja.x1 > A || caja.y2 < 0 || caja.y1 > H) continue;
+    // Lo seleccionado y sus vecinos se escriben siempre: es lo que se está
+    // mirando, y esconderlo por un choque sería esconder la respuesta.
+    if (!enfoco && puestos.some((c) =>
+      caja.x1 < c.x2 && caja.x2 > c.x1 && caja.y1 < c.y2 && caja.y2 > c.y1)) continue;
+    puestos.push(caja);
+
+    ctx.globalAlpha = enfoco ? 1 : Math.min(0.92, (prof - 0.55) * 3);
+    ctx.fillStyle = n === sel ? '#F8EFCF' : enfoco ? '#e8dcc4' : '#a9c2be';
+    // Un trazo oscuro detrás: sobre una zona con muchos nodos, el texto sin
+    // contorno se pierde encima de los círculos de colores.
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(2,9,15,.85)';
+    ctx.strokeText(n.n, x, y);
+    ctx.fillText(n.n, x, y);
   }
   ctx.globalAlpha = 1;
 }
@@ -469,7 +522,11 @@ function mover(e) {
     // Se mueve en el plano de la pantalla, deshaciendo el giro: arrastrar
     // hacia la derecha tiene que llevar el nodo a la derecha aunque el cerebro
     // esté girado, o se vuelve imposible de manejar.
-    const dx = (x - arrastrando.x) / n.pesc, dy = (y - arrastrando.y) / n.pesc;
+    // El vertical se divide además por el estirado, porque la proyección lo
+    // multiplica: sin deshacerlo, en un teléfono el nodo subía más de lo que
+    // subía el dedo y se escapaba solo.
+    const dx = (x - arrastrando.x) / n.pesc;
+    const dy = (y - arrastrando.y) / n.pesc / (vista.estiradoY || 1);
     const cy = Math.cos(-vista.giroY), sy = Math.sin(-vista.giroY);
     const cx = Math.cos(-vista.giroX), sx = Math.sin(-vista.giroX);
     const my = dy * cx, mz = -dy * sx;
