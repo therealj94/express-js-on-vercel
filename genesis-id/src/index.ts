@@ -58,6 +58,34 @@ app.get(['/analitica', '/metricas'], (_req, res) => {
 })
 
 /**
+ * El cerebro: todo el ecosistema como un grafo navegable en 3D.
+ *
+ * Se sirve desde aquí y no como página suelta porque necesita dos cosas que
+ * solo tiene este servidor: hablar con la cadena 8532 sin que un CSP se lo
+ * impida, y preguntarle al panel por el estado real del ecosistema con la
+ * sesión del operador que ya está abierta.
+ */
+app.get(['/cerebro', '/mapa'], (_req, res) => {
+  res.sendFile(join(__dirname, '..', 'public', 'cerebro.html'))
+})
+
+/**
+ * El mapa del ecosistema, aparte de la página.
+ *
+ * Es lo único del cerebro que se edita cuando el ecosistema cambia —una app
+ * nueva, un nodo más— y tenerlo suelto significa que añadir una pieza es
+ * escribir cinco líneas en vez de bucear en el motor gráfico.
+ *
+ * Va como ruta suya y no con `express.static` sobre `public/`: servir una
+ * carpeta entera reparte todo lo que alguien deje ahí dentro algún día, y
+ * aquí solo hace falta este archivo.
+ */
+app.get('/cerebro-datos.js', (_req, res) => {
+  res.type('application/javascript')
+  res.sendFile(join(__dirname, '..', 'public', 'cerebro-datos.js'))
+})
+
+/**
  * Estado del servicio.
  *
  * Se publica sin autenticar porque es lo que consultan los sistemas de
