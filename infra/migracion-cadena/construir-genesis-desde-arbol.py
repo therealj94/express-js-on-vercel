@@ -38,6 +38,11 @@ def ranura_de(clave):
     if t == 'mapa-num':
         base = kc(pad(clave[1]) + pad(clave[2]))
         return ((int.from_bytes(base, 'big') + clave[3]) % (1 << 256)).to_bytes(32, 'big')
+    if t == 'posicion':
+        # Igual que un mapping, salvo que la clave ya viene formada: es el
+        # keccak del empaquetado de 26 bytes que usa Uniswap V3.
+        base = kc(pad(clave[1]) + pad(clave[2]))
+        return ((int.from_bytes(base, 'big') + clave[3]) % (1 << 256)).to_bytes(32, 'big')
     if t == 'anidado':
         interno = kc(pad(clave[1]) + pad(clave[3]))
         return kc(pad(clave[2]) + interno)

@@ -93,6 +93,15 @@ def main():
     cand = json.load(open(a.candidatos))
     dirs = sorted({d.lower() for d in cand['direcciones']})
 
+    # Claves cosechadas de la propia cadena, no inventadas. `cosechar-v3.py`
+    # pregunta a Uniswap V3 por sus posiciones reales y devuelve los ticks que
+    # existen y las claves de posición ya formadas —con el empaquetado de 26
+    # bytes que usa V3, distinto del relleno a 32 de todo lo demás—.
+    extraNum = [int(x) for x in cand.get('numericas', [])]
+    extra32 = [x for x in cand.get('clavesBytes32', [])]
+    if extraNum or extra32:
+        print(f"claves cosechadas de la cadena: {len(extraNum)} numéricas · {len(extra32)} de posición")
+
     # ── 1. direcciones: keccak(dirección de 20 bytes) ────────────────────────
     #
     # Dos rondas. La primera con las direcciones observadas. La segunda genera
@@ -153,10 +162,16 @@ def main():
     # ticks. Los ticks de un pool son enteros CON SIGNO, así que el rango tiene
     # que cubrir los negativos: un tick -200 se codifica en complemento a dos y
     # no se parece en nada a 200.
-    for n in list(range(a.numericas)) + [-x for x in range(1, a.numericas)]:
+    rango = list(range(a.numericas)) + [-x for x in range(1, a.numericas)] + extraNum
+    for n in rango:
         clave = (n % (1 << 256)).to_bytes(32, 'big')
         for i in range(32):
             sembrar(bytes.fromhex(keccak(clave + pad(i))[2:]), ('mapa-num', n, i))
+    # Claves de posición de V3: ya vienen formadas, sólo falta el mapa que las
+    # contiene. Se prueban como clave de mapping en cada ranura base.
+    for k in extra32:
+        for i in range(32):
+            sembrar(bytes.fromhex(keccak(pad(k) + pad(i))[2:]), ('posicion', k, i))
     # Arreglos dinámicos: el elemento k vive en keccak(ranura) + k.
     for i in range(a.ranuras):
         base = int(keccak(pad(i)), 16)
