@@ -162,7 +162,12 @@ def main():
     porContrato = {}
     for t in txs: porContrato.setdefault(t['to'].lower(), []).append(t)
 
-    args = [b''] + [arg32(x) for x in cand.get('direcciones', [])[:400]] \
+    # Sin recorte: el barrido completo dio 1.091 direcciones y quedarse en las
+    # primeras 400 descarta justo a la gente que aparecio tarde en la historia,
+    # que es la que costo encontrar. El barrido es mas lento pero no se salta a
+    # nadie, y aqui eso importa mas que la velocidad.
+    tope_dirs = int(os.environ.get('OG_TOPE_ARGS', '0')) or None
+    args = [b''] + [arg32(x) for x in cand.get('direcciones', [])[:tope_dirs]] \
                  + [arg32(int(x)) for x in cand.get('numericas', [])] \
                  + [arg32(x) for x in cand.get('clavesBytes32', [])]
     codigos = {c['direccion']: c['codigo'] for c in estado['cuentas']
