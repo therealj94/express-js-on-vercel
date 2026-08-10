@@ -5,30 +5,59 @@ de vuelta atrás. La regla que gobierna todo el documento: **ningún paso
 destructivo sin haber verificado el anterior, y ninguna apertura al público
 sin que `verificar.py` cuadre al 100 %.**
 
+> **ALTO — 10-ago-2026.** El ensayo encontró que la cadena tiene **173
+> contratos**, no 14, y que el método de leer el estado por RPC no puede
+> capturarlos. Las etapas 1 y 2 de abajo están **suspendidas** hasta cerrar lo
+> que describe `HALLAZGOS-2026-08-10.md`. No construir ningún génesis con
+> `inventario.py` tal como está: produciría una cadena que parece correcta y
+> ha perdido la mayor parte del estado.
+
 Comprobado antes de empezar:
 
 - El chain ID **8532 está libre** en el registro público (chainid.network,
   2.681 cadenas; los vecinos ocupados son 8545 y 8569). Se conserva.
-- La cadena vieja tiene ~250 transacciones históricas y ~1 bloque/10 s.
+- ~~La cadena vieja tiene ~250 transacciones históricas~~ **desmentido**: el
+  estado real son 332 cuentas, 173 de ellas contratos, y 1.385 ranuras de
+  almacenamiento. Ver `HALLAZGOS-2026-08-10.md`.
 - Polygon Edge está archivado desde el 4-dic-2024 (motivo de la migración).
 
 ## Las piezas de esta carpeta
 
 | Archivo | Qué hace |
 |---|---|
-| `inventario.py` | Etapa 1 — lee TODO el estado de la cadena vieja y lo firma (SHA-256) |
-| `construir-genesis.py` | Convierte el inventario en el génesis Besu, con contratos y saldos |
+| `volcar-estado.go` | **La fuente de verdad**: recorre el árbol de estado del nodo entero y avisa si le falta un solo nodo |
+| `emparejar-preimagenes.py` | Convierte los hashes del árbol en direcciones y ranuras reales; **cuenta lo que no logra** |
+| `inventario.py` | ~~Etapa 1~~ **INSUFICIENTE** — lee por RPC y sólo ve lo que sospecha. Sirve como fuente de candidatos, no como inventario |
+| `construir-genesis.py` | Convierte el inventario en el génesis Besu. **No usar hasta que el emparejamiento cierre en cero** |
 | `verificar.py` | El juez: compara una cadena contra el inventario. Si no cuadra, no se abre |
 | `chainlist/eip155-8532.json` | El registro para Chainlist, listo para el PR |
+| `HALLAZGOS-2026-08-10.md` | Qué encontró el ensayo y qué falta para poder seguir |
 
 ## Etapa 0 · Prerrequisitos (una vez)
 
 - [ ] Credenciales de AWS vigentes (las de la sesión anterior expiraron el 6-ago).
 - [ ] Acuerdo de la Junta sobre el Documento 6 (o al menos: autorización de las
       etapas 1–3, que no tocan producción ni mueven fondos).
-- [ ] Java 21 en las máquinas de ensayo (Besu lo requiere).
+- [x] **Java 25** en las máquinas de ensayo. (Decía «Java 21» y era falso:
+      Besu 26.7.1 está compilado con class file 69 y se niega a arrancar con
+      21. En Amazon Linux 2023: `dnf install java-25-amazon-corretto-headless`.)
 
-## Etapa 1 · Inventario (no toca nada)
+## Etapa 1 · Inventario (no toca nada) — **REHACER, ver HALLAZGOS**
+
+El inventario correcto se toma del árbol de estado del nodo, no del RPC:
+
+```bash
+# en el nodo, sobre una copia del árbol
+go build -o volcar volcar-estado.go
+./volcar -trie ./trie -raiz 0x<stateRoot> -salida estado.json
+python3 emparejar-preimagenes.py estado.json candidatos.json
+```
+
+Sólo cuando el emparejamiento cierre en **cero huérfanas y cero cuentas sin
+dirección** hay un inventario del que se pueda construir un génesis.
+
+Lo de abajo es el método viejo, que se conserva porque su barrido de eventos
+sigue siendo la mejor fuente de direcciones candidatas:
 
 ```bash
 python3 inventario.py            # produce inventario-8532.json + su SHA-256
