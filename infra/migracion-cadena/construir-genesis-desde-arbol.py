@@ -60,6 +60,8 @@ def main():
     ap.add_argument('--informe', default='informe-completitud.json')
     ap.add_argument('--incompletos', action='store_true',
                     help='emitir igual los contratos incompletos (SOLO para ensayo)')
+    ap.add_argument('--ranuras', help='ranuras-cerradas.json de cerrar-ranuras.py: '
+                    'ranuras ya resueltas, ranura -> valor, por contrato')
     a = ap.parse_args()
 
     if a.chain_id == 8532:
@@ -68,6 +70,10 @@ def main():
         sys.exit(2)
 
     est = json.load(open(a.estado))
+    # Las ranuras que cerro el bucle de punto fijo vienen ya como ranura->valor,
+    # sin pasar por una etiqueta: la maquina virtual las calculo, no se
+    # dedujeron. Cuando estan, mandan.
+    directas = json.load(open(a.ranuras)) if a.ranuras else {}
     huerfanasPor = defaultdict(int)
     for h in est.get('huerfanas', []):
         huerfanasPor[h[0]] += 1
@@ -79,10 +85,14 @@ def main():
         d = c.get('direccion')
         alm = c.get('almacen') or {}
         claves = c.get('claves') or {}
-        faltan = len(alm) - len(claves)
+        prop = directas.get(d) if d else None
+        # Si el bucle cerro este contrato, su mapa manda: son ranuras que
+        # calculo la maquina virtual, no etiquetas deducidas.
+        resueltas = len(prop) if prop else len(claves)
+        faltan = len(alm) - resueltas
         es_contrato = bool(c.get('codigo')) and c['hashCodigo'] != VACIO
         filas.append({'direccion': d, 'hash': c['hashDireccion'], 'contrato': es_contrato,
-                      'ranuras': len(alm), 'resueltas': len(claves), 'faltan': faltan,
+                      'ranuras': len(alm), 'resueltas': resueltas, 'faltan': faltan,
                       'saldo': c['saldo'], 'nonce': c['nonce']})
 
         if d is None:
@@ -97,10 +107,13 @@ def main():
         fila = {'balance': hex(int(c['saldo'])), 'nonce': hex(c['nonce'])}
         if es_contrato:
             fila['code'] = c['codigo']
-            almacen = {}
-            for hclave, etiqueta in claves.items():
-                r = ranura_de(tuple(etiqueta))
-                almacen['0x' + r.hex()] = alm[hclave]
+            if prop:
+                almacen = dict(prop)
+            else:
+                almacen = {}
+                for hclave, etiqueta in claves.items():
+                    r = ranura_de(tuple(etiqueta))
+                    almacen['0x' + r.hex()] = alm[hclave]
             if almacen:
                 fila['storage'] = almacen
         alloc[d] = fila

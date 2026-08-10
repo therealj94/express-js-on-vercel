@@ -71,14 +71,20 @@ def selectores(codigo_hex: str):
             vistos.add(s); orden.append(s)
     return orden
 
-def trazar(destino, datos):
+def trazar(destino, datos, desde=None):
+    llamada = {"to": destino, "data": datos}
+    # El remitente importa: muchas ranuras se indexan por msg.sender, y con el
+    # remitente equivocado la maquina virtual calcula una ranura que no existe.
+    if desde: llamada["from"] = desde
     r = rpc(BANCO, 'debug_traceCall',
-            [{"to": destino, "data": datos}, "latest",
+            [llamada, "latest",
              {"disableStorage": False, "disableMemory": True, "disableStack": False}])
     if not isinstance(r, dict): return []
     ranuras = []
     for l in r.get('structLogs') or []:
-        if l.get('op') == 'SLOAD' and l.get('stack'):
+        # SSTORE tambien: una entrada de mapa la ESCRIBE una transaccion, asi
+        # que la ranura aparece al escribir aunque nadie la lea despues.
+        if l.get('op') in ('SLOAD', 'SSTORE') and l.get('stack'):
             v = l['stack'][-1]
             ranuras.append(bytes.fromhex(v[2:].rjust(64, '0')) if v.startswith('0x')
                            else bytes.fromhex(v.rjust(64, '0')))
@@ -114,6 +120,17 @@ def main():
     args = [b''] + args            # primero sin argumento: campos sueltos
     print(f'argumentos a probar por selector: {len(args)}', flush=True)
 
+    # Las transacciones REALES, que es lo que de verdad resuelve el problema.
+    # Adivinar argumentos se agota enseguida; el calldata que de verdad se
+    # ejecuto lleva las claves exactas, porque son las que escribieron el estado.
+    porContrato = {}
+    ruta = os.environ.get('OG_TX', 'tx-pendientes.json')
+    if os.path.exists(ruta):
+        for t in json.load(open(ruta)):
+            porContrato.setdefault(t['to'].lower(), []).append(t)
+        print(f'transacciones reales disponibles: '
+              f'{sum(len(v) for v in porContrato.values())} en {len(porContrato)} contratos', flush=True)
+
     hallado = {}
     total_pendiente = sum(len(v) for v in pendientes.values())
 
@@ -123,6 +140,18 @@ def main():
             continue
         sels = selectores(codigo)
         encontrados = {}
+
+        # Primero las transacciones reales. Suelen bastar.
+        for t in porContrato.get(c, []):
+            if not falta - set(encontrados): break
+            entrada = t.get('input') or '0x'
+            if len(entrada) < 10: continue
+            for ranura in trazar(c, entrada, t.get('from')):
+                h = keccak(ranura)
+                if h in falta and h not in encontrados:
+                    encontrados[h] = '0x' + ranura.hex()
+        reales = len(encontrados)
+
         for sel in sels:
             if not falta - set(encontrados): break
             for a in args:
@@ -135,7 +164,7 @@ def main():
         if encontrados:
             hallado[c] = encontrados
         print(f'  [{n+1}/{len(pendientes)}] {c}: {len(encontrados)} de {len(falta)} '
-              f'· {len(sels)} selectores', flush=True)
+              f'· {reales} por transacciones reales · {len(sels)} selectores', flush=True)
 
     json.dump(hallado, open(salida, 'w'), indent=1)
     resueltas = sum(len(v) for v in hallado.values())
