@@ -44,7 +44,10 @@ export const NODOS = [
     d: 'Blockchain propia del ecosistema, respaldada en oro físico certificado (NI 43-101). 1 ORIGEN = 1 gramín = 1/55 g de oro en bóveda.' },
   { id: 'rpc', n: 'RPC público', g: 'cadena', peso: 2, vivo: 'rpc',
     d: 'rpc.ordenglobal-rpc.com — la puerta por la que todo el ecosistema lee y escribe en la cadena.' },
-  { id: 'validador', n: 'Conjunto validador', g: 'abierto', peso: 3, vivo: 'validadores',
+  // Es una pieza de la cadena, no un problema: el problema abierto está aparte
+  // en 'a-validador'. Tenerlo en rojo hacía que un solo asunto pintara DOS
+  // puntos rojos e inflara la cuenta de «sin resolver».
+  { id: 'validador', n: 'Conjunto validador', g: 'cadena', peso: 3, vivo: 'validadores',
     d: 'Quién firma los bloques de verdad. Se lee del extraData de cada bloque, no de una lista escrita a mano.' },
 
   // Los seis nodos, con su IP elástica real.
@@ -146,7 +149,7 @@ export const NODOS = [
   { id: 'a-corruptos', n: '2 registros corruptos', g: 'abierto',
     d: 'Dos campos cifrados de una cuenta ya estaban rotos antes de la migración. Verificado contra la cadena: nonce 0 y saldo 0 en los cuatro tokens principales, así que no hay fondos en riesgo. La causa sigue sin saberse.' },
   { id: 'a-reporte', n: 'Apps sin reportar', g: 'abierto', peso: 2,
-    d: 'Los módulos de telemetría y padrón están escritos y probados de punta a punta, pero todavía no montados en el backend de Veta Wallet. Hasta que se monten, la analítica está vacía.' },
+    d: 'Ya reportan los DOS clientes de Veta Wallet: la app Android (le faltaba identificar a la persona, por eso llegaban eventos sin dueño) y la web. El alta en el padrón se prueba con la propia sesión del usuario, sin claves secretas en el cliente. Queda: DESPLEGAR la web para que empiece a llegar, y montar el padrón completo en el backend —que sigue fuera de alcance por el token de Heroku— para ver también a quien no abre la app.' },
 
   // ── Decisiones que solo puede tomar Orden Global ─────────────────────────
   { id: 'dec-staking', n: 'Autorizar staking', g: 'decision', peso: 2,
