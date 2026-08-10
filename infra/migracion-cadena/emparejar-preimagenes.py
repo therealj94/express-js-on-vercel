@@ -87,6 +87,11 @@ def main():
     ap.add_argument('--campos', type=int, default=8,
                     help='cuántos campos seguidos puede tener una estructura guardada en un mapa')
     ap.add_argument('--arreglo', type=int, default=1024, help='cuántos elementos de arreglo probar')
+    ap.add_argument('--bases', type=int, default=128,
+                    help='hasta que ranura base se prueban los mapas. Un contrato con '
+                         'mucha herencia declara sus mapas bien abajo: el gestor de '
+                         'posiciones de V3 guarda _poolIds mas alla de la ranura 31, y '
+                         'con el rango corto no encajaba ni una de sus 66 entradas')
     ap.add_argument('--indices', type=int, default=64,
                     help='rango del indice en mapas anidados mapa[direccion][indice]')
     a = ap.parse_args()
@@ -162,7 +167,7 @@ def main():
 
     # Entradas de mapping con clave de dirección: doble keccak.
     for d in dirs:
-        for i in range(32):
+        for i in range(a.bases):
             sembrar(ranura_mapa(d, i), ('mapa', d, i))
     # Entradas de mapping con clave numérica: identificadores de NFT, índices y
     # ticks. Los ticks de un pool son enteros CON SIGNO, así que el rango tiene
@@ -171,12 +176,12 @@ def main():
     rango = list(range(a.numericas)) + [-x for x in range(1, a.numericas)] + extraNum
     for n in rango:
         clave = (n % (1 << 256)).to_bytes(32, 'big')
-        for i in range(32):
+        for i in range(a.bases):
             sembrar(bytes.fromhex(keccak(clave + pad(i))[2:]), ('mapa-num', n, i))
     # Claves de posición de V3: ya vienen formadas, sólo falta el mapa que las
     # contiene. Se prueban como clave de mapping en cada ranura base.
     for k in extra32:
-        for i in range(32):
+        for i in range(a.bases):
             sembrar(bytes.fromhex(keccak(pad(k) + pad(i))[2:]), ('posicion', k, i))
     # Arreglos dinámicos: el elemento k vive en keccak(ranura) + k.
     for i in range(a.ranuras):
