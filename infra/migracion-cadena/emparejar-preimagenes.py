@@ -162,6 +162,28 @@ def main():
         base = int(keccak(pad(i)), 16)
         for k in range(a.arreglo):
             tabla[clave_arbol(((base + k) % (1 << 256)).to_bytes(32, 'big'))] = ('arreglo', i, k)
+    # Control de acceso por roles (el AccessControl de OpenZeppelin). Guarda
+    # _roles[rol].members[cuenta], que es un mapa anidado cuya PRIMERA clave no
+    # es una dirección sino el hash del nombre del rol.
+    #
+    # PROBADO EN LA CADENA 8532: no emparejó ni una ranura. Se conserva porque
+    # la familia es correcta y barata, pero queda dicho para que nadie vuelva a
+    # gastar una tarde en ella: lo que le falta a ONDK y AUKA no es esto. Ahí
+    # se acabó lo que rinde generar candidatos a ciegas — lo que sigue es leer
+    # la disposición real de esos dos contratos.
+    ROLES = ['0x' + '00' * 32] + [keccak(n.encode()) for n in (
+        'MINTER_ROLE', 'PAUSER_ROLE', 'BURNER_ROLE', 'SNAPSHOT_ROLE',
+        'DEFAULT_ADMIN_ROLE', 'ADMIN_ROLE', 'OPERATOR_ROLE', 'UPGRADER_ROLE',
+        'BLACKLISTER_ROLE', 'FREEZER_ROLE', 'GOVERNOR_ROLE', 'TREASURY_ROLE')]
+    for rol in ROLES:
+        for i in range(32):                        # el mapa de roles vive bajo
+            interno = ranura_mapa(rol, i)          # _roles[rol]
+            for d in dirs:
+                # .members[cuenta] — y el campo members puede no ser el primero
+                base = int(keccak(pad(d) + interno), 16)
+                for j in range(a.campos):
+                    tabla[clave_arbol(((base + j) % (1 << 256)).to_bytes(32, 'big'))] = \
+                        ('rol', rol, d, i, j)
     print(f"candidatos de ranura: {len(tabla):,}")
 
     total, resueltas, huerfanas = 0, 0, []
