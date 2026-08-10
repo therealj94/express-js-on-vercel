@@ -42,9 +42,23 @@ def main():
     ap.add_argument('inventario')
     ap.add_argument('--salida', default='genesis-besu-8532.json')
     ap.add_argument('--periodo', type=int, default=10, help='segundos por bloque')
+    # Sin valor por omisión, a propósito: el chain ID es la única defensa
+    # contra que una transacción firmada para una cadena valga en la otra.
+    # Equivocarlo en silencio es peor que no arrancar, así que hay que decirlo.
+    #   5533  · la red principal nueva
+    #   5534  · la red de pruebas
+    #   55330 · el ensayo desechable, que nunca se registra
+    #   8532  · la cadena vieja; NUNCA para una cadena nueva que conviva con ella
+    ap.add_argument('--chain-id', type=int, required=True,
+                    help='5533 red · 5534 pruebas · 55330 ensayo')
     ap.add_argument('--devolver-stake', action='store_true',
                     help='suma al validador los ORIGEN retenidos por el contrato de staking viejo')
     a = ap.parse_args()
+
+    if a.chain_id == 8532:
+        print('ABORTADO: 8532 es la cadena vieja. Si las dos conviven, una firma '
+              'hecha para una vale en la otra. Usar 5533, 5534 o 55330.', file=sys.stderr)
+        sys.exit(2)
 
     inv = json.load(open(a.inventario))
     STAKING = '0x0000000000000000000000000000000000001001'
@@ -86,7 +100,7 @@ def main():
 
     genesis = {
         'config': {
-            'chainId': 8532,
+            'chainId': a.chain_id,
             'homesteadBlock': 0, 'eip150Block': 0, 'eip155Block': 0, 'eip158Block': 0,
             'byzantiumBlock': 0, 'constantinopleBlock': 0, 'petersburgBlock': 0,
             'istanbulBlock': 0, 'berlinBlock': 0, 'londonBlock': 0,
@@ -107,6 +121,7 @@ def main():
         'alloc': alloc,
     }
     json.dump(genesis, open(a.salida, 'w'), indent=1)
+    print(f'chain ID de esta cadena: {a.chain_id}')
     json.dump([VALIDADOR], open('validadores.json', 'w'))
 
     total = sum(int(x['balance'], 16) for x in alloc.values())

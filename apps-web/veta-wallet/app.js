@@ -9,7 +9,11 @@ const VETA = (() => {
   'use strict';
 
   const API = 'https://vetawallet-1a2e38ac52b1.herokuapp.com';
-  const CHAIN = '8532';
+  // El identificador de la red. Hoy 8532; en el corte pasa a 5533, y este es
+  // el único sitio de la billetera web donde cambia. Se puede forzar desde
+  // fuera —definiendo OG_CHAIN_ID antes de este archivo— para apuntar la misma
+  // billetera a la red de pruebas (5534) o a la de ensayo sin recompilar nada.
+  const CHAIN = String(window.OG_CHAIN_ID || 8532);
   const LLAVE = 'veta.sesion';
 
   const $ = s => document.querySelector(s);

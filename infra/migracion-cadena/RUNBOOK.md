@@ -12,10 +12,35 @@ sin que `verificar.py` cuadre al 100 %.**
 > `inventario.py` tal como está: produciría una cadena que parece correcta y
 > ha perdido la mayor parte del estado.
 
+## Los identificadores de red
+
+| Red | Chain ID | Se registra en Chainlist |
+|---|---|---|
+| Orden Global (principal, nueva) | **5533** | sí |
+| Orden Global Testnet | **5534** | sí |
+| Ensayo desechable | **55330** | no, se tira |
+| Cadena vieja (polygon-edge) | 8532 | queda como respaldo caliente |
+
+**El número cambia, y esa es la decisión importante.** Conservar el 8532 en la
+cadena nueva obligaría a apagar la vieja en el corte: con el mismo chain ID,
+una transacción firmada para una vale en la otra, en los dos sentidos y
+mientras las dos existan. Apagar la vieja convierte el respaldo caliente
+—volver reapuntando el DNS, minutos— en uno frío —crear máquinas, restaurar
+2,2 GB, arrancar: horas—. Y un remedio que duele horas, en la práctica, no se
+usa. Con 5533 las dos conviven sin poder contaminarse.
+
+Lo que cuesta: quien agregó la red a mano en MetaMask la vuelve a agregar, y la
+app móvil necesita una actualización OTA. Está todo en un solo punto por
+sistema (ver «El interruptor», abajo).
+
 Comprobado antes de empezar:
 
-- El chain ID **8532 está libre** en el registro público (chainid.network,
-  2.681 cadenas; los vecinos ocupados son 8545 y 8569). Se conserva.
+- **5533 y 5534 están libres** en el registro público (chainid.network,
+  2.681 cadenas, 10-ago-2026). Todo el tramo 5523–5544 está vacío; los
+  ocupados más cercanos son 5522, 5545 y 5551.
+- En `ethereum-lists/chains` **no se puede reservar** un número: se toma cuando
+  se fusiona el PR, y para eso la cadena tiene que estar viva respondiendo por
+  RPC. Por eso cada red se registra en cuanto arranca, no meses después.
 - ~~La cadena vieja tiene ~250 transacciones históricas~~ **desmentido**: el
   estado real son 332 cuentas, 173 de ellas contratos, y 1.385 ranuras de
   almacenamiento. Ver `HALLAZGOS-2026-08-10.md`.
@@ -121,6 +146,26 @@ Operar una semana como un día cualquiera.
 - [ ] El cerebro lee la cadena de ensayo (validadores vía QBFT: ahora sí
       existe `qbft_getValidatorsByBlockNumber` — actualizar `cerebro.html`,
       que hoy decodifica el extraData de Edge a mano).
+
+## El interruptor · dónde cambia el número, sistema por sistema
+
+Hoy **todo sigue en 8532**, a propósito: el backend de producción atiende esa
+red y voltear el número antes del corte rompería la billetera en vivo. Lo que
+está hecho es dejar un solo punto por sistema, para que el corte sea cambiar
+cuatro cosas y no buscar en cuarenta archivos.
+
+| Sistema | Dónde | Hoy | En el corte |
+|---|---|---|---|
+| Billetera web | `apps-web/veta-wallet/app.js` → `window.OG_CHAIN_ID` | 8532 | 5533 |
+| App móvil | `EXPO_PUBLIC_WALLET_CHAIN_ID` (llega por OTA) | 8532 | 5533 |
+| Backend de la wallet | registro en la colección `ChainId` de Mongo | fila 8532 | añadir fila 5533 |
+| Génesis de la cadena | `construir-genesis.py --chain-id` | — | 5533 |
+
+Las otras ~40 apariciones de «8532» en el repositorio son texto de páginas y
+documentos: no rompen nada, se corrigen con el resto de la comunicación.
+
+`construir-genesis.py` **se niega a construir con 8532**. Es a propósito:
+equivocar el chain ID en silencio es peor que no arrancar.
 
 ## Etapa 4 · El corte (fin de semana, requiere autorización de la Junta)
 

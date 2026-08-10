@@ -29,12 +29,38 @@ def pad(x) -> bytes:
         return bytes.fromhex(x[2:].rjust(64, '0')) if x.startswith('0x') else bytes.fromhex(x.rjust(64, '0'))
     return int(x).to_bytes(32, 'big')
 
+# EL DOBLE KECCAK, QUE ES LO QUE HACE FALTA ENTENDER AQUI
+#
+# Hay dos cosas distintas y se confunden con facilidad:
+#
+#   · la RANURA — dónde el contrato guarda el dato. Para un campo suelto es un
+#     número (0, 1, 2…); para un mapping es keccak(clave ++ ranuraDelMapa).
+#   · la CLAVE DEL ARBOL — cómo la encuentra el árbol de Merkle-Patricia, que
+#     es siempre keccak(ranura).
+#
+# O sea que una entrada de mapping lleva keccak DOS VECES: una para calcular la
+# ranura y otra para indexarla en el árbol. La primera versión de este archivo
+# aplicaba sólo la primera, y por eso emparejaba los campos sueltos —donde la
+# ranura es un número y basta un keccak— y no emparejaba ni un solo saldo.
+# El síntoma fue delator: sumar 110 direcciones candidatas no movió el
+# resultado ni en uno.
+
+def clave_arbol(ranura: bytes) -> str:
+    """De la ranura a la clave con la que el árbol la guarda."""
+    return keccak(ranura)
+
+def ranura_mapa(clave, ranura_base: int) -> bytes:
+    """La ranura de mapa[clave], según el esquema de Solidity."""
+    return bytes.fromhex(keccak(pad(clave) + pad(ranura_base))[2:])
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('estado', help='estado.json de volcar-estado.go')
     ap.add_argument('candidatos', help='JSON con {"direcciones": [...]}')
     ap.add_argument('--salida', default='estado-con-claves.json')
     ap.add_argument('--ranuras', type=int, default=128, help='cuántas ranuras fijas probar')
+    ap.add_argument('--numericas', type=int, default=4096, help='rango de claves numéricas de mapping')
+    ap.add_argument('--arreglo', type=int, default=1024, help='cuántos elementos de arreglo probar')
     a = ap.parse_args()
 
     est = json.load(open(a.estado))
@@ -56,18 +82,24 @@ def main():
 
     # ── 2. ranuras ───────────────────────────────────────────────────────────
     # Tabla de candidatos, construida una vez y reutilizada para cada contrato.
-    tabla = {}
-    for i in range(a.ranuras):
-        tabla[keccak(pad(i))] = ('fija', i)          # el hash de una ranura fija
-        tabla[('directa', i)] = None                  # marcador, se resuelve abajo
-    # ranuras fijas: en el árbol la clave es keccak(ranura), no la ranura
-    tabla = {keccak(pad(i)): ('fija', i) for i in range(a.ranuras)}
-    # mapping simple: keccak(clave ++ ranura)
+    # Campos sueltos: la ranura es el número, y la clave del árbol su keccak.
+    tabla = {clave_arbol(pad(i)): ('fija', i) for i in range(a.ranuras)}
+    # Entradas de mapping con clave de dirección: doble keccak.
     for d in dirs:
-        pd = pad(d)
         for i in range(32):
-            tabla[keccak(pd + pad(i))] = ('mapa', d, i)
-    print(f"candidatos de ranura simples: {len(tabla):,}")
+            tabla[clave_arbol(ranura_mapa(d, i))] = ('mapa', d, i)
+    # Entradas de mapping con clave numérica: identificadores de NFT, ticks,
+    # índices. Aparecen en el gestor de posiciones de Uniswap V3 y en cualquier
+    # colección. Se prueba un rango corto, que es donde caen en la práctica.
+    for n in range(a.numericas):
+        for i in range(32):
+            tabla[clave_arbol(ranura_mapa(n, i))] = ('mapa-num', n, i)
+    # Arreglos dinámicos: el elemento k vive en keccak(ranura) + k.
+    for i in range(a.ranuras):
+        base = int(keccak(pad(i)), 16)
+        for k in range(a.arreglo):
+            tabla[clave_arbol(((base + k) % (1 << 256)).to_bytes(32, 'big'))] = ('arreglo', i, k)
+    print(f"candidatos de ranura: {len(tabla):,}")
 
     total, resueltas, huerfanas = 0, 0, []
     for c in cuentas:
@@ -89,14 +121,15 @@ def main():
     if huerfanas:
         internos = {}
         for d in dirs:
-            pd = pad(d)
             for i in range(32):
-                internos[keccak(pd + pad(i))] = (d, i)
+                internos[ranura_mapa(d, i)] = (d, i)
         anidados = {}
         for interno, (dueno, i) in internos.items():
-            bi = bytes.fromhex(interno[2:])
             for g in dirs:
-                anidados[keccak(pad(g) + bi)] = ('anidado', dueno, g, i)
+                # ranura = keccak(gastador ++ keccak(dueño ++ base));
+                # clave del árbol = keccak(ranura). Tres keccak en total.
+                r = bytes.fromhex(keccak(pad(g) + interno)[2:])
+                anidados[clave_arbol(r)] = ('anidado', dueno, g, i)
         print(f"candidatos anidados: {len(anidados):,}")
         quedan = []
         for dirc, h, v in huerfanas:
