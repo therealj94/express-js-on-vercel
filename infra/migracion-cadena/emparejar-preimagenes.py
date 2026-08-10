@@ -45,6 +45,29 @@ def pad(x) -> bytes:
 # El síntoma fue delator: sumar 110 direcciones candidatas no movió el
 # resultado ni en uno.
 
+# LAS DIRECCIONES DE CONTRATO NO SE ADIVINAN: SE CALCULAN
+#
+# Un contrato creado con CREATE vive en keccak(rlp([creador, nonce]))[12:]. O
+# sea que conociendo a los creadores y hasta qué nonce llegaron, se genera la
+# lista EXACTA de todo lo que desplegaron — incluidos los contratos que nunca
+# emitieron un evento ni aparecieron en una transacción, que son justamente los
+# que el barrido no puede ver.
+
+def rlp_creacion(direccion: str, nonce: int) -> bytes:
+    d = bytes.fromhex(direccion[2:])
+    cuerpo = b'\x94' + d
+    if nonce == 0:
+        cuerpo += b'\x80'
+    elif nonce < 0x80:
+        cuerpo += bytes([nonce])
+    else:
+        b = nonce.to_bytes((nonce.bit_length() + 7) // 8, 'big')
+        cuerpo += bytes([0x80 + len(b)]) + b
+    return bytes([0xc0 + len(cuerpo)]) + cuerpo
+
+def direccion_creada(creador: str, nonce: int) -> str:
+    return '0x' + keccak(rlp_creacion(creador, nonce))[-40:]
+
 def clave_arbol(ranura: bytes) -> str:
     """De la ranura a la clave con la que el árbol la guarda."""
     return keccak(ranura)
@@ -59,7 +82,10 @@ def main():
     ap.add_argument('candidatos', help='JSON con {"direcciones": [...]}')
     ap.add_argument('--salida', default='estado-con-claves.json')
     ap.add_argument('--ranuras', type=int, default=128, help='cuántas ranuras fijas probar')
-    ap.add_argument('--numericas', type=int, default=4096, help='rango de claves numéricas de mapping')
+    ap.add_argument('--numericas', type=int, default=2048,
+                    help='rango de claves numéricas de mapping; se prueba en positivo y negativo')
+    ap.add_argument('--campos', type=int, default=8,
+                    help='cuántos campos seguidos puede tener una estructura guardada en un mapa')
     ap.add_argument('--arreglo', type=int, default=1024, help='cuántos elementos de arreglo probar')
     a = ap.parse_args()
 
@@ -68,7 +94,31 @@ def main():
     dirs = sorted({d.lower() for d in cand['direcciones']})
 
     # ── 1. direcciones: keccak(dirección de 20 bytes) ────────────────────────
+    #
+    # Dos rondas. La primera con las direcciones observadas. La segunda genera
+    # las que se pueden CALCULAR: por cada dirección ya identificada, todos los
+    # contratos que pudo desplegar según su nonce. Y se repite, porque una
+    # factoría desplegada así puede a su vez haber desplegado más.
     porHash = {keccak(bytes.fromhex(d[2:])): d for d in dirs}
+    faltan = {c['hashDireccion'] for c in est['cuentas'] if c['hashDireccion'] not in porHash}
+    nonces = {c['hashDireccion']: c['nonce'] for c in est['cuentas']}
+    for vuelta in range(6):
+        if not faltan:
+            break
+        nuevas = 0
+        conocidas = [(h, d) for h, d in porHash.items() if h in nonces]
+        for h, d in conocidas:
+            # +2 de margen: el nonce del volcado es el final, y un despliegue
+            # que revirtió igual consumió el número.
+            for n in range(nonces[h] + 2):
+                hija = direccion_creada(d, n)
+                hh = keccak(bytes.fromhex(hija[2:]))
+                if hh in faltan and hh not in porHash:
+                    porHash[hh] = hija; faltan.discard(hh); nuevas += 1
+        print(f"  vuelta {vuelta + 1} de direcciones calculadas: +{nuevas} (faltan {len(faltan)})")
+        if not nuevas:
+            break
+
     cuentas, sinDireccion = [], []
     for c in est['cuentas']:
         d = porHash.get(c['hashDireccion'])
@@ -76,6 +126,7 @@ def main():
             sinDireccion.append(c)
         c['direccion'] = d
         cuentas.append(c)
+    dirs = sorted(set(dirs) | set(porHash.values()))
     print(f"cuentas en el árbol: {len(cuentas)}")
     print(f"  con dirección conocida: {len(cuentas) - len(sinDireccion)}")
     print(f"  SIN dirección conocida: {len(sinDireccion)}")
@@ -84,16 +135,28 @@ def main():
     # Tabla de candidatos, construida una vez y reutilizada para cada contrato.
     # Campos sueltos: la ranura es el número, y la clave del árbol su keccak.
     tabla = {clave_arbol(pad(i)): ('fija', i) for i in range(a.ranuras)}
+
+    # Cuando el valor de un mapa es una ESTRUCTURA, sus campos no comparten
+    # ranura: ocupan la ranura base y las siguientes. Una posición de Uniswap
+    # V3 son cuatro o cinco campos seguidos. Sin este desplazamiento se empareja
+    # el primer campo de cada estructura y se pierden todos los demás.
+    def sembrar(base: bytes, etiqueta):
+        n = int.from_bytes(base, 'big')
+        for j in range(a.campos):
+            tabla[clave_arbol(((n + j) % (1 << 256)).to_bytes(32, 'big'))] = etiqueta + (j,)
+
     # Entradas de mapping con clave de dirección: doble keccak.
     for d in dirs:
         for i in range(32):
-            tabla[clave_arbol(ranura_mapa(d, i))] = ('mapa', d, i)
-    # Entradas de mapping con clave numérica: identificadores de NFT, ticks,
-    # índices. Aparecen en el gestor de posiciones de Uniswap V3 y en cualquier
-    # colección. Se prueba un rango corto, que es donde caen en la práctica.
-    for n in range(a.numericas):
+            sembrar(ranura_mapa(d, i), ('mapa', d, i))
+    # Entradas de mapping con clave numérica: identificadores de NFT, índices y
+    # ticks. Los ticks de un pool son enteros CON SIGNO, así que el rango tiene
+    # que cubrir los negativos: un tick -200 se codifica en complemento a dos y
+    # no se parece en nada a 200.
+    for n in list(range(a.numericas)) + [-x for x in range(1, a.numericas)]:
+        clave = (n % (1 << 256)).to_bytes(32, 'big')
         for i in range(32):
-            tabla[clave_arbol(ranura_mapa(n, i))] = ('mapa-num', n, i)
+            sembrar(bytes.fromhex(keccak(clave + pad(i))[2:]), ('mapa-num', n, i))
     # Arreglos dinámicos: el elemento k vive en keccak(ranura) + k.
     for i in range(a.ranuras):
         base = int(keccak(pad(i)), 16)
