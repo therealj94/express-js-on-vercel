@@ -104,6 +104,24 @@ def arrancar(script, log):
         if rpc(BANCO, 'eth_blockNumber', []): return True
     return False
 
+def selectores(codigo_hex):
+    """Los selectores del despachador, leidos del bytecode. Saltar el cuerpo de
+    cada PUSH es imprescindible: sin eso un dato de 32 bytes se lee como codigo
+    y salen selectores fantasma."""
+    b = bytes.fromhex(codigo_hex[2:] if codigo_hex.startswith('0x') else codigo_hex)
+    out, i, vistos = [], 0, set()
+    while i < len(b):
+        op = b[i]
+        if op == 0x63 and i + 5 <= len(b):
+            s = '0x' + b[i+1:i+5].hex()
+            if s not in vistos: vistos.add(s); out.append(s)
+        i += 1 + (op - 0x5f) if 0x60 <= op <= 0x7f else 1
+    return out
+
+def arg32(x):
+    if isinstance(x, str): return bytes.fromhex(x[2:].rjust(64, '0'))
+    return (int(x) % (1 << 256)).to_bytes(32, 'big')
+
 def trazar(c, datos, desde=None):
     ll = {"to": c, "data": datos}
     if desde: ll["from"] = desde
@@ -120,6 +138,7 @@ def trazar(c, datos, desde=None):
 def main():
     estado = json.load(open(sys.argv[1]))
     txs = json.load(open(sys.argv[2]))
+    cand = json.load(open(os.environ['OG_CAND'])) if os.environ.get('OG_CAND') else {}
     plantilla = sys.argv[3]
     ruta_gen = sys.argv[4]
     script = sys.argv[5]
@@ -143,6 +162,13 @@ def main():
     porContrato = {}
     for t in txs: porContrato.setdefault(t['to'].lower(), []).append(t)
 
+    args = [b''] + [arg32(x) for x in cand.get('direcciones', [])[:400]] \
+                 + [arg32(int(x)) for x in cand.get('numericas', [])] \
+                 + [arg32(x) for x in cand.get('clavesBytes32', [])]
+    codigos = {c['direccion']: c['codigo'] for c in estado['cuentas']
+               if c.get('direccion') and c.get('codigo')}
+    print(f'argumentos por selector: {len(args)}', flush=True)
+
     print(f'pendientes al empezar: {sum(len(v) for v in pendiente.values())} '
           f'en {len(pendiente)} contratos', flush=True)
 
@@ -154,15 +180,33 @@ def main():
         nuevas = 0
         for c, falta in sorted(pendiente.items(), key=lambda x: -len(x[1])):
             if not falta: continue
+
+            def anotar(ranuras):
+                n = 0
+                for ranura in ranuras:
+                    h = keccak(ranura)
+                    if h in falta:
+                        conocidas[c]['0x' + ranura.hex()] = valor[(c, h)]
+                        falta.discard(h); n += 1
+                return n
+
+            # 1. Las transacciones reales, que escribieron el estado.
             for t in porContrato.get(c, []):
                 if not falta: break
                 ent = t.get('input') or '0x'
                 if len(ent) < 10: continue
-                for ranura in trazar(c, ent, t.get('from')):
-                    h = keccak(ranura)
-                    if h in falta:
-                        conocidas[c]['0x' + ranura.hex()] = valor[(c, h)]
-                        falta.discard(h); nuevas += 1
+                nuevas += anotar(trazar(c, ent, t.get('from')))
+
+            # 2. Los getters, con argumentos reales. Con el estado ya sembrado
+            #    devuelven datos de verdad y llegan mas hondo que en vacio: un
+            #    positions(tokenId) que antes revertia ahora recorre la
+            #    estructura entera y revela sus ranuras una por una.
+            if falta and codigos.get(c):
+                for sel in selectores(codigos[c]):
+                    if not falta: break
+                    for a in args:
+                        if not falta: break
+                        nuevas += anotar(trazar(c, sel + a.hex()))
             print(f'   {c}: quedan {len(falta)}', flush=True)
         print(f'   vuelta {vuelta}: +{nuevas} ranuras · quedan '
               f'{sum(len(v) for v in pendiente.values())}', flush=True)
