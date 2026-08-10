@@ -99,6 +99,10 @@ def main():
     # pregunta a Uniswap V3 por sus posiciones reales y devuelve los ticks que
     # existen y las claves de posición ya formadas —con el empaquetado de 26
     # bytes que usa V3, distinto del relleno a 32 de todo lo demás—.
+    # Claves del arbol ya calculadas por un cosechador especializado. No pasan
+    # por la maquinaria de candidatos: vienen con su ranura resuelta desde el
+    # principio, porque se leyeron de la propia cadena.
+    yaHechas = cand.get('clavesArbol') or {}
     extraNum = [int(x) for x in cand.get('numericas', [])]
     extra32 = [x for x in cand.get('clavesBytes32', [])]
     if extraNum or extra32:
@@ -203,13 +207,15 @@ def main():
                         ('rol', rol, d, i, j)
     print(f"candidatos de ranura: {len(tabla):,}")
 
+    if yaHechas:
+        print(f"claves de arbol ya calculadas: {len(yaHechas):,}")
     total, resueltas, huerfanas = 0, 0, []
     for c in cuentas:
         alm = c.get('almacen') or {}
         claves = {}
         for h, v in alm.items():
             total += 1
-            m = tabla.get(h)
+            m = tabla.get(h) or yaHechas.get(h)
             if m:
                 claves[h] = m; resueltas += 1
             else:

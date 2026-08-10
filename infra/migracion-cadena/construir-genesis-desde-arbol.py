@@ -43,6 +43,11 @@ def ranura_de(clave):
         # keccak del empaquetado de 26 bytes que usa Uniswap V3.
         base = kc(pad(clave[1]) + pad(clave[2]))
         return ((int.from_bytes(base, 'big') + clave[3]) % (1 << 256)).to_bytes(32, 'big')
+    if t == 'triple':
+        # getPool[a][b][fee] de la factoria de Uniswap V3: tres niveles.
+        interno = kc(pad(clave[1]) + pad(clave[4]))
+        medio = kc(pad(clave[2]) + interno)
+        return kc(pad(clave[3]) + medio)
     if t == 'anidado-num':
         # mapa[direccion][indice]: el keccak de adentro lleva la direccion y la
         # ranura base; el de afuera, el indice.
