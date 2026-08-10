@@ -218,14 +218,28 @@ def main():
     # ── 3. segunda pasada: mappings anidados (allowances) ───────────────────
     # keccak(gastador ++ keccak(dueño ++ ranura)). Sólo se prueba sobre las
     # huérfanas, que son pocas: el producto completo sería inabordable.
+    # El paso anidado es cuadrático en el número de direcciones: con 1.091 son
+    # 38 millones de combinaciones, que no caben en la memoria de la máquina y
+    # matan el proceso justo al final, después de horas de trabajo. Se acota a
+    # las direcciones que de verdad pueden ser dueño o gastador — las que ya
+    # aparecieron en alguna entrada de mapa— en vez de al padrón entero.
+    tope = int(os.environ.get('OG_TOPE_ANIDADO', '400'))
+    if huerfanas and len(dirs) > tope:
+        vistas = {v[1] for c in cuentas for v in (c.get('claves') or {}).values()
+                  if v and v[0] == 'mapa'}
+        dirs_anid = sorted(vistas)[:tope] or dirs[:tope]
+        print(f"paso anidado acotado a {len(dirs_anid)} direcciones de {len(dirs)}")
+    else:
+        dirs_anid = dirs
+
     if huerfanas:
         internos = {}
-        for d in dirs:
+        for d in dirs_anid:
             for i in range(32):
                 internos[ranura_mapa(d, i)] = (d, i)
         anidados = {}
         for interno, (dueno, i) in internos.items():
-            for g in dirs:
+            for g in dirs_anid:
                 # ranura = keccak(gastador ++ keccak(dueño ++ base));
                 # clave del árbol = keccak(ranura). Tres keccak en total.
                 r = bytes.fromhex(keccak(pad(g) + interno)[2:])
