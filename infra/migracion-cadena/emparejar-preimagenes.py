@@ -18,7 +18,7 @@
 # génesis sólo puede construirse cuando ese resto es cero. Esa cuenta es la
 # diferencia entre «el estado viaja entero» y «creemos que viaja entero».
 
-import json, sys, argparse
+import json, os, sys, argparse
 from Crypto.Hash import keccak as _K
 
 def keccak(b: bytes) -> str:
