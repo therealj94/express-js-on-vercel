@@ -1,0 +1,22 @@
+{
+  "name": "Orden Global",
+  "chain": "OGB",
+  "rpc": ["https://rpc.ordenglobal-rpc.com"],
+  "faucets": [],
+  "nativeCurrency": {
+    "name": "Origen",
+    "symbol": "ORIGEN",
+    "decimals": 18
+  },
+  "infoURL": "https://ordenglobal.org",
+  "shortName": "ordenglobal",
+  "chainId": 8532,
+  "networkId": 8532,
+  "explorers": [
+    {
+      "name": "ordenscan",
+      "url": "https://ordenscan.com",
+      "standard": "EIP3091"
+    }
+  ]
+}
