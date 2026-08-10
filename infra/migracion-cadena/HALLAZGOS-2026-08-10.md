@@ -131,3 +131,61 @@ los nodos de producción.
 
 Está lista para arrancar una cadena en cuanto haya un génesis que merezca
 arrancarse. Mientras el punto 4 no cierre, no lo hay.
+
+
+## Apéndice · Cómo se obtiene la disposición sin tener el código fuente
+
+La pregunta era si hace falta el Solidity de cada contrato. La respuesta es que
+hay tres caminos, y el tercero **no lo necesita y además es exacto**.
+
+### 1. El fuente original (GitLab de MyTokenPay)
+
+El mejor cuando existe. Se compila con el mismo `solc` y se lee la disposición
+directamente. Sigue haciendo falta para los contratos propios que no
+reconocemos.
+
+### 2. Recompilar el código abierto conocido y comparar el bytecode
+
+Los pools y el gestor de posiciones son **Uniswap V3 estándar** — se comprobó
+por sondeo: responden a `slot0`, `tickSpacing`, `fee`, `maxLiquidityPerTick`.
+Su fuente es público. Se compila y se compara el bytecode; si coincide, la
+disposición es la de ese fuente, sin margen de duda.
+
+Lo mismo con los tokens: quince despliegues del mismo tamaño (3.671 bytes) son
+la misma plantilla compilada quince veces.
+
+### 3. Trazar la ejecución en nuestro propio nodo — el que resuelve el resto
+
+Besu expone `debug_traceCall`. Se llama a un getter y la traza dice **qué
+ranura leyó** el contrato, en ese mismo instante. No es una inferencia sobre el
+bytecode: es la ranura que la máquina virtual fue a buscar.
+
+Comprobado el 10-ago sobre AGKA en la cadena de ensayo. Se llamó
+`balanceOf(0xa07a2ba9…)` y la traza devolvió:
+
+    0x5e13b8b8ff6b44e50627e0a90fc2bba3000cfa002dff98fb2e44f141feda935b
+
+que es exactamente `keccak(dirección ++ ranura 0)` calculado por separado.
+Coincidencia exacta.
+
+Y no hace falta que el contrato tenga su estado cargado: la ranura que la
+máquina virtual calcula depende del **código y del argumento**, no de lo que
+haya guardado. O sea que basta con poner el código en una cadena de usar y
+tirar, llamar a cada getter con los argumentos reales —que se leen de la cadena
+vieja por RPC— y anotar las ranuras que salen.
+
+**Para Uniswap V3 eso cierra el problema entero**, porque casi todo su estado
+es legible: `slot0`, `liquidity`, `ticks`, `tickBitmap`, `positions`,
+`observations`. Y `positions(tokenId)` en el gestor devuelve el dueño y los dos
+ticks de cada posición, que son justamente los argumentos que hacen falta.
+
+Un detalle que explica por qué el emparejamiento a ciegas fallaba con V3: la
+clave de una posición es `keccak(abi.encodePacked(dueño, tickLower, tickUpper))`
+— veintiséis bytes **sin relleno** —, mientras que el emparejador rellena cada
+valor a treinta y dos. Son hashes que no se parecen en nada.
+
+### Lo que queda para el último recurso
+
+Descompilar (heimdall, panoramix) da un Solidity aproximado. Con los tres
+caminos de arriba probablemente no haga falta, y conviene que no haga falta:
+«aproximado» y «migración de saldos» no se llevan bien.
