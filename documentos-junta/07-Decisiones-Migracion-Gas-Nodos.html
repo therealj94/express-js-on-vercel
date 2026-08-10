@@ -19,6 +19,10 @@
   .mono { font-family:"SF Mono",Menlo,Consolas,monospace; font-size:8.6pt; color:var(--verde2); }
   table.decidir td:first-child { font-weight:600; }
   .decision { background:#FFF9E8; }
+  figure { margin:16px 0; page-break-inside:avoid; text-align:center; }
+  figure svg { width:100%; height:auto; max-width:170mm; }
+  figcaption { font-size:8.8pt; color:var(--suave); text-align:left; margin-top:6px;
+               line-height:1.4; border-top:1px solid var(--linea); padding-top:5px; }
 </style>
 </head><body>
 
@@ -50,7 +54,8 @@
 <h2>En una página</h2>
 
 <p>Hay <strong>tres asuntos</strong> sobre la mesa y conviene no mezclarlos, porque
-están en estados muy distintos.</p>
+están en estados muy distintos. Antes de los dos últimos va una explicación de la
+tecnología nueva, porque de ella depende qué se puede ofrecer y qué no.</p>
 
 <p><strong>La migración de la cadena está probada y esperando autorización.</strong>
 Se ejecutó el inventario, se construyó el génesis nuevo y se levantó una cadena de
@@ -158,7 +163,204 @@ siempre.</p>
   <p class="porque"><b>Qué se pide:</b> ratificar el gasto. La red ya demuestra con tres
   validadores lo que producción todavía no tiene.</p></div>
 
-<h2>Parte II · La política de gas</h2>
+<h2>Parte II · Por qué QBFT y no proof of stake</h2>
+
+<p>El cambio de tecnología no es sólo cambiar un programa por otro: cambia
+<strong>cómo se decide qué es verdad</strong> en la cadena. Y de eso depende qué se
+puede ofrecer en el programa de nodos, así que conviene entenderlo bien.</p>
+
+<h3>Lo que había, y lo que realmente era</h3>
+
+<p>La cadena actual corre en modo <em>proof of stake</em>: quien quiere validar deposita
+tokens en un contrato de garantía, y si se porta mal se los quitan. Ese contrato existe
+—es el que retiene los 10 ORIGEN— así que técnicamente la cadena era PoS.</p>
+
+<p>En la práctica <strong>nunca funcionó como tal</strong>: hay un solo validador y nadie
+podía entrar sin autorización de la sociedad. El depósito era una formalidad sobre una
+decisión que ya se tomaba a mano.</p>
+
+<h3>Cómo se hace definitivo un bloque</h3>
+
+<figure>
+<svg viewBox="0 0 640 296" xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-label="Comparación: en proof of stake el bloque se vuelve definitivo sólo después de esperar muchos bloques; en QBFT es definitivo en cuanto firman más de dos tercios de los validadores conocidos.">
+  <defs>
+    <marker id="fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+            orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#5C6B68"/></marker>
+    <marker id="flo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+            orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#9A7B2E"/></marker>
+  </defs>
+
+  <line x1="320" y1="16" x2="320" y2="274" stroke="#D9E0DE" stroke-width="1"/>
+
+  <!-- ── PROOF OF STAKE ── -->
+  <text x="18" y="24" font-size="10" font-weight="700" fill="#0A3436" font-family="Helvetica">PROOF OF STAKE</text>
+  <text x="18" y="38" font-size="8.5" fill="#5C6B68" font-family="Helvetica">validadores anónimos · el depósito es la garantía</text>
+
+  <g font-family="Helvetica">
+    <circle cx="40" cy="72" r="12" fill="#F4F7F6" stroke="#5C6B68"/><text x="40" y="76" font-size="10" text-anchor="middle" fill="#5C6B68">?</text>
+    <circle cx="70" cy="72" r="12" fill="#F4F7F6" stroke="#5C6B68"/><text x="70" y="76" font-size="10" text-anchor="middle" fill="#5C6B68">?</text>
+    <circle cx="100" cy="72" r="12" fill="#F4F7F6" stroke="#5C6B68"/><text x="100" y="76" font-size="10" text-anchor="middle" fill="#5C6B68">?</text>
+    <circle cx="130" cy="72" r="12" fill="#F4F7F6" stroke="#5C6B68"/><text x="130" y="76" font-size="10" text-anchor="middle" fill="#5C6B68">?</text>
+    <text x="152" y="76" font-size="8.5" fill="#5C6B68">cualquiera</text>
+
+    <line x1="85" y1="88" x2="85" y2="108" stroke="#5C6B68" marker-end="url(#fl)"/>
+    <text x="92" y="102" font-size="8" fill="#5C6B68">deposita</text>
+    <rect x="30" y="110" width="120" height="24" rx="3" fill="#FBF6E9" stroke="#C9A961"/>
+    <text x="90" y="126" font-size="8.5" text-anchor="middle" fill="#9A7B2E">contrato de garantía</text>
+
+    <text x="90" y="150" font-size="7.5" text-anchor="middle" fill="#5C6B68">el protocolo sortea,</text>
+    <text x="90" y="161" font-size="7.5" text-anchor="middle" fill="#5C6B68">pesado por el depósito</text>
+    <line x1="152" y1="122" x2="204" y2="122" stroke="#5C6B68" marker-end="url(#fl)"/>
+
+    <rect x="208" y="108" width="56" height="28" rx="3" fill="#0A3436"/>
+    <text x="236" y="126" font-size="9" text-anchor="middle" fill="#FFFFFF">bloque</text>
+
+    <text x="18" y="182" font-size="8.5" fill="#5C6B68">y después hay que ESPERAR:</text>
+    <g>
+      <rect x="18" y="192" width="17" height="20" rx="2" fill="#0A3436"/>
+      <rect x="39" y="192" width="17" height="20" rx="2" fill="#D9E0DE"/>
+      <rect x="60" y="192" width="17" height="20" rx="2" fill="#D9E0DE"/>
+      <rect x="81" y="192" width="17" height="20" rx="2" fill="#D9E0DE"/>
+      <rect x="102" y="192" width="17" height="20" rx="2" fill="#D9E0DE"/>
+      <text x="126" y="200" font-size="9" fill="#5C6B68">…</text>
+      <rect x="140" y="192" width="17" height="20" rx="2" fill="#D9E0DE"/>
+    </g>
+    <line x1="26" y1="220" x2="150" y2="220" stroke="#A8590F" stroke-width="1.2" marker-end="url(#fl)"/>
+    <text x="18" y="236" font-size="8.5" fill="#A8590F">12 a 64 bloques más</text>
+    <text x="18" y="250" font-size="9" font-weight="700" fill="#A8590F">…y aun así es sólo PROBABLE</text>
+    <text x="18" y="266" font-size="8" fill="#5C6B68">se puede revertir si alguien reescribe la punta</text>
+  </g>
+
+  <!-- ── QBFT ── -->
+  <text x="340" y="24" font-size="10" font-weight="700" fill="#0A3436" font-family="Helvetica">QBFT</text>
+  <text x="340" y="38" font-size="8.5" fill="#5C6B68" font-family="Helvetica">validadores conocidos · la mayoría de dos tercios es la garantía</text>
+
+  <g font-family="Helvetica">
+    <circle cx="362" cy="72" r="13" fill="#0A3436"/><text x="362" y="76" font-size="8.5" text-anchor="middle" fill="#FFFFFF">V1</text>
+    <circle cx="404" cy="72" r="13" fill="#F4F7F6" stroke="#0A3436"/><text x="404" y="76" font-size="8.5" text-anchor="middle" fill="#0A3436">V2</text>
+    <circle cx="446" cy="72" r="13" fill="#F4F7F6" stroke="#0A3436"/><text x="446" y="76" font-size="8.5" text-anchor="middle" fill="#0A3436">V3</text>
+    <circle cx="488" cy="72" r="13" fill="#F4F7F6" stroke="#0A3436"/><text x="488" y="76" font-size="8.5" text-anchor="middle" fill="#0A3436">V4</text>
+    <text x="510" y="76" font-size="8" fill="#5C6B68">lista conocida</text>
+    <text x="362" y="52" font-size="7.5" text-anchor="middle" fill="#9A7B2E">propone</text>
+
+    <line x1="362" y1="88" x2="410" y2="120" stroke="#9A7B2E" marker-end="url(#flo)"/>
+    <rect x="414" y="112" width="56" height="28" rx="3" fill="#0A3436"/>
+    <text x="442" y="130" font-size="9" text-anchor="middle" fill="#FFFFFF">bloque</text>
+
+    <path d="M404 88 Q408 104 420 110" fill="none" stroke="#1E7A5A" stroke-width="1.3" marker-end="url(#fl)"/>
+    <path d="M446 88 Q446 100 446 108" fill="none" stroke="#1E7A5A" stroke-width="1.3" marker-end="url(#fl)"/>
+    <path d="M488 88 Q484 104 468 110" fill="none" stroke="#1E7A5A" stroke-width="1.3" marker-end="url(#fl)"/>
+    <text x="500" y="104" font-size="7.5" fill="#1E7A5A">firman</text>
+
+    <rect x="340" y="160" width="240" height="40" rx="3" fill="#EEF6F2" stroke="#1E7A5A"/>
+    <text x="352" y="177" font-size="9" font-weight="700" fill="#1E7A5A">3 de 4 firmaron — más de dos tercios</text>
+    <text x="352" y="192" font-size="8.5" fill="#0A3436">el bloque queda DEFINITIVO en ese instante</text>
+
+    <text x="340" y="226" font-size="9" font-weight="700" fill="#1E7A5A">no se puede revertir nunca</text>
+    <text x="340" y="242" font-size="8" fill="#5C6B68">el comercio cobra y en cinco segundos tiene certeza,</text>
+    <text x="340" y="255" font-size="8" fill="#5C6B68">no una probabilidad alta</text>
+  </g>
+</svg>
+<figcaption>Un bloque se vuelve definitivo de dos maneras muy distintas. En proof of
+stake hay que esperar y la certeza nunca es total; en QBFT basta con que firmen más de
+dos tercios de los validadores, y eso ocurre en el mismo bloque.</figcaption>
+</figure>
+
+<h3>Cómo entra un validador nuevo</h3>
+
+<p>Ésta es la diferencia que decide qué se puede ofrecer en el programa de nodos.</p>
+
+<figure>
+<svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-label="En proof of stake un validador entra depositando fondos; en QBFT entra porque los validadores existentes lo votan.">
+  <defs><marker id="fl2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+    orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#5C6B68"/></marker></defs>
+  <line x1="320" y1="10" x2="320" y2="120" stroke="#D9E0DE"/>
+  <g font-family="Helvetica">
+    <text x="18" y="24" font-size="9" font-weight="700" fill="#0A3436">ANTES · con depósito</text>
+    <circle cx="42" cy="62" r="14" fill="#F4F7F6" stroke="#5C6B68"/><text x="42" y="66" font-size="9" text-anchor="middle" fill="#5C6B68">?</text>
+    <line x1="60" y1="62" x2="104" y2="62" stroke="#5C6B68" marker-end="url(#fl2)"/>
+    <text x="62" y="55" font-size="7.5" fill="#5C6B68">deposita</text>
+    <rect x="108" y="48" width="86" height="28" rx="3" fill="#FBF6E9" stroke="#C9A961"/>
+    <text x="151" y="66" font-size="8" text-anchor="middle" fill="#9A7B2E">garantía</text>
+    <line x1="194" y1="62" x2="234" y2="62" stroke="#5C6B68" marker-end="url(#fl2)"/>
+    <rect x="238" y="48" width="62" height="28" rx="3" fill="#0A3436"/>
+    <text x="269" y="66" font-size="8" text-anchor="middle" fill="#FFFFFF">ya valida</text>
+    <text x="18" y="104" font-size="8" fill="#5C6B68">el dinero es la garantía porque no se sabe quién es</text>
+  </g>
+  <g font-family="Helvetica">
+    <text x="340" y="24" font-size="9" font-weight="700" fill="#0A3436">AHORA · por voto</text>
+    <circle cx="364" cy="62" r="14" fill="#F4F7F6" stroke="#0A3436"/><text x="364" y="66" font-size="8" text-anchor="middle" fill="#0A3436">V5</text>
+    <line x1="382" y1="62" x2="424" y2="62" stroke="#5C6B68" marker-end="url(#fl2)"/>
+    <text x="384" y="55" font-size="7.5" fill="#5C6B68">pide entrar</text>
+    <rect x="428" y="44" width="100" height="36" rx="3" fill="#EEF6F2" stroke="#1E7A5A"/>
+    <text x="478" y="60" font-size="8" text-anchor="middle" fill="#1E7A5A">los validadores</text>
+    <text x="478" y="72" font-size="8" text-anchor="middle" fill="#1E7A5A">existentes votan</text>
+    <line x1="528" y1="62" x2="562" y2="62" stroke="#5C6B68" marker-end="url(#fl2)"/>
+    <rect x="566" y="48" width="58" height="28" rx="3" fill="#0A3436"/>
+    <text x="595" y="66" font-size="8" text-anchor="middle" fill="#FFFFFF">ya valida</text>
+    <text x="340" y="104" font-size="8" fill="#5C6B68">no hace falta depósito: se sabe quién es y se lo puede votar fuera</text>
+  </g>
+</svg>
+<figcaption>Antes se entraba poniendo dinero en garantía. Ahora se entra porque los
+validadores existentes lo votan — y por el mismo mecanismo se lo puede sacar.</figcaption>
+</figure>
+
+<h3>Por qué el depósito no aportaba nada de todos modos</h3>
+
+<p>El depósito tiene sentido cuando los validadores son <strong>anónimos</strong>: como no
+se sabe quiénes son, se les exige dinero en garantía y se les quema si hacen trampa.</p>
+
+<p>Cuando el conjunto es conocido y se lo puede expulsar por voto, el depósito es teatro:
+ya existe el castigo —sacarlo— y es inmediato, mientras que ejecutar una garantía es
+lento y discutible.</p>
+
+<table>
+  <thead><tr><th></th><th>Proof of stake</th><th>QBFT</th></tr></thead>
+  <tbody>
+    <tr><td>Quién puede validar</td><td>Cualquiera que deposite</td><td>Sólo quien el conjunto vote</td></tr>
+    <tr><td>Qué respalda la seguridad</td><td>Dinero en riesgo</td><td>Identidad conocida y mayoría de dos tercios</td></tr>
+    <tr><td>Castigo</td><td>Le queman el depósito</td><td>Lo votan fuera, de inmediato</td></tr>
+    <tr><td><b>Cuándo el bloque es definitivo</b></td><td>Tras 12 a 64 bloques, y sólo probable</td><td><b>En el acto, y para siempre</b></td></tr>
+    <tr><td>Cuántos validadores admite</td><td>Miles</td><td>Unas decenas</td></tr>
+    <tr><td>Para qué sirve mejor</td><td>Redes públicas y anónimas</td><td>Redes de una empresa con participantes identificados</td></tr>
+  </tbody>
+</table>
+
+<div class="prueba">
+  <p style="margin:0"><strong>La finalidad inmediata es la ventaja que casi nadie
+  menciona.</strong> En una cadena pública, un comercio que cobra tiene que esperar
+  varias confirmaciones porque el pago todavía podría revertirse. Aquí no: cuando dos
+  tercios firmaron, se acabó. Para una billetera de pagos eso vale más que cualquier
+  otra diferencia técnica.</p>
+</div>
+
+<h3>Qué se puede ofrecer entonces en el programa de nodos</h3>
+
+<p>Como el protocolo no paga nada por validar, <strong>no se puede ofrecer «deposite y la
+red le paga»</strong>. Hay tres formas honestas de armarlo:</p>
+
+<table>
+  <thead><tr><th>Forma</th><th>De dónde sale el dinero</th><th>Qué es legalmente</th></tr></thead>
+  <tbody>
+    <tr><td><b>Reparto de comisiones de gas</b></td>
+        <td>De las transacciones de la red. Requiere dejar de cobrar cero.</td>
+        <td>Ingreso genuino de la operación. La opción más sana.</td></tr>
+    <tr><td><b>Pago por operar la máquina</b></td>
+        <td>De la sociedad, como cualquier proveedor.</td>
+        <td>Contrato de servicios. El tratamiento más simple.</td></tr>
+    <tr><td><b>Contrato de bloqueo de ORIGEN</b></td>
+        <td>De tesorería, hasta que la red genere ingresos.</td>
+        <td>Instrumento financiero. Requiere opinión legal.</td></tr>
+  </tbody>
+</table>
+
+<p>Las dos primeras se sostienen solas. La tercera —que es lo que la mayoría de los
+programas de nodos son en realidad— es una promesa de la sociedad, y conviene llamarla
+por su nombre antes de anunciarla.</p>
+
+<h2>Parte III · La política de gas</h2>
 
 <p>Hoy la cadena cobra <strong>cero</strong> por transacción. Es una decisión que se
 tomó al construirla y que nunca se revisó. Ahora hay que revisarla, porque de ella
@@ -186,7 +388,7 @@ depende si la red puede pagar recompensas.</p>
   programa que se sostiene solo y uno que drena caja.</p>
 </div>
 
-<h2>Parte III · El programa de nodos validadores</h2>
+<h2>Parte IV · El programa de nodos validadores</h2>
 
 <p>La propuesta es abrir puestos de validador con cuatro niveles de participación y una
 recompensa mensual proporcional. Es viable. Antes de anunciarlo hay que resolver cinco
