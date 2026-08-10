@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>Orden Global · Decisiones: migración, gas y nodos</title>
+<link rel="stylesheet" href="recursos/estilo.css">
+<style>
+  .acuerdo { border:1px solid var(--linea); border-left:4px solid var(--oro-cl);
+             background:var(--fondo2); padding:11px 14px; margin:11px 0;
+             page-break-inside:avoid; border-radius:2px; }
+  .acuerdo h3 { margin:0 0 5px; }
+  .acuerdo .num { color:var(--oro); font-size:15pt; font-weight:700; margin-right:8px; }
+  .acuerdo .porque { font-size:9.4pt; color:var(--suave); border-top:1px solid var(--linea);
+                     margin-top:8px; padding-top:7px; }
+  .acuerdo .porque b { color:var(--verde); }
+  .aviso { border-left:4px solid var(--alerta); background:#FDF6EE; padding:11px 14px;
+           margin:12px 0; page-break-inside:avoid; }
+  .grave-c { border-left:4px solid var(--grave); background:#FCEFEE; padding:11px 14px;
+             margin:12px 0; page-break-inside:avoid; }
+  .prueba { border-left:4px solid var(--ok); background:#EEF6F2; padding:11px 14px; margin:12px 0; }
+  .mono { font-family:"SF Mono",Menlo,Consolas,monospace; font-size:8.6pt; color:var(--verde2); }
+  table.decidir td:first-child { font-weight:600; }
+  .decision { background:#FFF9E8; }
+</style>
+</head><body>
+
+<section class="portada">
+  <div>
+    <div class="sello"><svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="24" cy="24" r="22" fill="none" stroke="#0A3436" stroke-width="1.6"/>
+      <circle cx="24" cy="24" r="17" fill="none" stroke="#C9A961" stroke-width="1"/>
+      <path d="M24 7 L24 41" stroke="#0A3436" stroke-width="1.6"/>
+      <path d="M12 15 Q24 24 36 15" fill="none" stroke="#C9A961" stroke-width="1.6"/>
+      <path d="M12 33 Q24 24 36 33" fill="none" stroke="#C9A961" stroke-width="1.6"/>
+      <circle cx="24" cy="24" r="3.4" fill="#C9A961"/></svg>
+      <div class="marca"><b>Orden Global</b><span>Documento 7 · Junta Directiva</span></div>
+    </div>
+  </div>
+  <div>
+    <div class="filete"></div>
+    <h1>Tres decisiones:<br>la migración,<br>el gas y los nodos</h1>
+    <p class="bajada">Qué está probado y listo, qué hay que votar, y qué hay que
+    resolver antes de anunciar el programa de nodos validadores.</p>
+  </div>
+  <div class="pie">
+    <b>10 de agosto de 2026</b><br>
+    Las cifras de migración provienen de mediciones sobre la cadena real, verificadas
+    contra la raíz criptográfica de cada contrato. Lo que es estimación está marcado como tal.
+  </div>
+</section>
+
+<h2>En una página</h2>
+
+<p>Hay <strong>tres asuntos</strong> sobre la mesa y conviene no mezclarlos, porque
+están en estados muy distintos.</p>
+
+<p><strong>La migración de la cadena está probada y esperando autorización.</strong>
+Se ejecutó el inventario, se construyó el génesis nuevo y se levantó una cadena de
+ensayo. Los catorce tokens oficiales tienen el almacenamiento <em>idéntico</em>, bit
+a bit, verificado por hash. Falta la firma de la Junta para el corte.</p>
+
+<p><strong>La política de gas es una decisión abierta que hoy nadie ha tomado.</strong>
+La cadena cobra cero por transacción. Eso es excelente para el usuario y significa que
+la red no genera ingreso alguno — lo que importa para el tercer asunto.</p>
+
+<p><strong>El programa de nodos validadores necesita trabajo antes de anunciarse.</strong>
+Es viable, pero la tecnología nueva <em>no tiene staking</em>: los validadores se suman
+por voto, no depositando. La recompensa mensual no la paga la cadena; la paga la
+sociedad. Y un puesto de validador conlleva poder de gobierno sobre la red.</p>
+
+<div class="cifras">
+  <div class="tarjeta"><div class="n">14/14</div><div class="et">tokens con almacenamiento idéntico</div></div>
+  <div class="tarjeta"><div class="n">332</div><div class="et">cuentas migradas y verificadas</div></div>
+  <div class="tarjeta"><div class="n">0</div><div class="et">ingreso actual de la red por gas</div></div>
+  <div class="tarjeta"><div class="n">1</div><div class="et">validador en producción hoy</div></div>
+</div>
+
+<h2>Parte I · La migración</h2>
+
+<h3>Lo que está probado</h3>
+
+<p>Las etapas que no requieren autorización —inventario, génesis y ensayo— ya se
+ejecutaron. Estos son sus resultados, medidos y no estimados.</p>
+
+<table>
+  <thead><tr><th>Comprobación</th><th>Resultado</th><th>Estado</th></tr></thead>
+  <tbody>
+    <tr><td>Volcado del estado completo, sin nodos faltantes</td><td>1.385 entradas</td><td class="ok">Verificado</td></tr>
+    <tr><td>Suma de saldos contra la emisión de cada token</td><td>14 de 14</td><td class="ok">Cuadra exacto</td></tr>
+    <tr><td>Raíz de almacenamiento de los tokens</td><td>14 de 14</td><td class="ok">Idéntica</td></tr>
+    <tr><td>Cuentas con dirección identificada</td><td>332 de 332</td><td class="ok">Completo</td></tr>
+    <tr><td>Contratos migrados enteros</td><td>169 de 173</td><td class="ok">Verificado</td></tr>
+    <tr><td>Semillas y llaves que descifran correctamente</td><td>405 de 406</td><td class="ok">Verificado</td></tr>
+    <tr><td>Posiciones de liquidez con dueño y datos correctos</td><td>31 de 31</td><td class="ok">Verificado</td></tr>
+    <tr><td>Índice para listar posiciones en la billetera</td><td>en curso</td><td class="alerta">Último pendiente</td></tr>
+  </tbody>
+</table>
+
+<div class="prueba">
+  <p style="margin:0 0 5px"><strong>La prueba que no admite interpretación.</strong>
+  La raíz del almacenamiento es el hash de todo lo que guarda un contrato. Si coincide
+  entre las dos cadenas, no falta ni sobra una sola entrada.</p>
+  <p class="mono" style="margin:0">ONDK &nbsp;0x0dd44606fc108f6921… → 0x0dd44606fc108f6921…<br>
+  AUKA &nbsp;0x03111b7a5aa74330e5… → 0x03111b7a5aa74330e5…</p>
+  <p style="margin:5px 0 0">Los catorce coinciden. Los 138 tenedores de ONDK y los 39
+  de AUKA viajan con su saldo exacto.</p>
+</div>
+
+<h3>Qué pasa con las personas</h3>
+
+<p>Correos, contraseñas y frases semilla <strong>no están en la cadena</strong>: viven
+en la base de la billetera y el corte no las toca. La dirección de cada persona es la
+misma en la cadena nueva, con el mismo saldo. Entra con su correo y contraseña de
+siempre.</p>
+
+<div class="aviso">
+  <p style="margin:0"><strong>El aviso a los usuarios es parte del corte, no un extra.</strong>
+  Quien no actualice la aplicación seguirá hablándole a la cadena vieja: la verá
+  funcionando, pero congelada. La comunicación tiene que salir antes.</p>
+</div>
+
+<h3>Los seis acuerdos de la migración</h3>
+
+<div class="acuerdo"><h3><span class="num">1</span>El corte</h3>
+  <p>Congelar la escritura, tomar la foto final del estado, arrancar la cadena nueva y
+  mover el DNS. Una ventana de fin de semana.</p>
+  <p class="porque"><b>Por qué necesita acta:</b> interrumpe el servicio, y desde ese
+  momento el registro oficial de saldos pasa a ser la cadena nueva.</p></div>
+
+<div class="acuerdo"><h3><span class="num">2</span>Identificador de red 5533</h3>
+  <p>La red nueva será <strong>5533</strong> y la de pruebas <strong>5534</strong>, ambos
+  verificados libres en el registro público.</p>
+  <p class="porque"><b>Por qué necesita acta:</b> toda persona debe actualizar su
+  billetera. <b>Por qué se hace igual:</b> conservar el número viejo obligaría a apagar
+  la cadena anterior en el corte, y con ella el respaldo que permite volver atrás en
+  minutos en vez de horas.</p></div>
+
+<div class="acuerdo"><h3><span class="num">3</span>El alcance: viaja todo</h3>
+  <p>Los catorce tokens, el ORIGEN nativo, las 332 cuentas y los contratos del
+  intercambio.</p>
+  <p class="porque"><b>Estado:</b> 169 de 173 contratos completos. Los cuatro restantes
+  son estructuras internas del intercambio; el trabajo para cerrarlos está en curso y
+  no depende de esta votación.</p></div>
+
+<div class="acuerdo"><h3><span class="num">4</span>Los 10 ORIGEN del contrato de garantía</h3>
+  <p>El contrato de garantía de la tecnología vieja no viaja. Sus 10 ORIGEN retenidos se
+  devuelven a la dirección validadora en el génesis.</p>
+  <p class="porque"><b>Por qué necesita acta:</b> es un movimiento de fondos, por
+  pequeño que sea.</p></div>
+
+<div class="acuerdo"><h3><span class="num">5</span>Inscripción en el registro público</h3>
+  <p>Registrar 5533 y 5534 en el catálogo que alimenta a las billeteras.</p>
+  <p class="porque"><b>Por qué necesita acta:</b> es un compromiso hacia afuera, y no
+  hay forma de reservar un número por adelantado.</p></div>
+
+<div class="acuerdo"><h3><span class="num">6</span>La red de pruebas permanente</h3>
+  <p><strong>Ya está funcionando</strong> desde hoy: tres validadores, bloques cada cinco
+  segundos, con acceso público cifrado en <span class="mono">rpc-testnet.ordenglobal-rpc.com</span>.
+  Costo real medido: <strong>61 dólares al mes</strong>, por debajo de lo presupuestado.</p>
+  <p class="porque"><b>Qué se pide:</b> ratificar el gasto. La red ya demuestra con tres
+  validadores lo que producción todavía no tiene.</p></div>
+
+<h2>Parte II · La política de gas</h2>
+
+<p>Hoy la cadena cobra <strong>cero</strong> por transacción. Es una decisión que se
+tomó al construirla y que nunca se revisó. Ahora hay que revisarla, porque de ella
+depende si la red puede pagar recompensas.</p>
+
+<table>
+  <thead><tr><th>Opción</th><th>Para el usuario</th><th>Para la red</th></tr></thead>
+  <tbody>
+    <tr><td><b>Mantener el gas en cero</b></td>
+        <td>Envía sin tener saldo para comisiones. La mejor experiencia posible.</td>
+        <td>Ingreso cero. Sin freno contra el abuso: alguien puede llenar bloques sin costo.</td></tr>
+    <tr><td><b>Comisión mínima</b></td>
+        <td>Necesita ORIGEN para mover cualquier cosa, incluso para recibir ayuda.</td>
+        <td>Ingreso que puede financiar a los validadores. Freno natural contra el abuso.</td></tr>
+    <tr><td><b>Cero ahora, comisión al lanzar los nodos</b></td>
+        <td>Sin cambios hasta que haya un motivo.</td>
+        <td>Permite decidir con datos reales de uso en vez de suposiciones.</td></tr>
+  </tbody>
+</table>
+
+<div class="aviso">
+  <p style="margin:0"><strong>El dato que ata las dos partes:</strong> con el gas en cero
+  la red no genera un centavo. Si además se prometen recompensas mensuales, ese dinero
+  sale íntegro de la tesorería. No es un detalle técnico: es la diferencia entre un
+  programa que se sostiene solo y uno que drena caja.</p>
+</div>
+
+<h2>Parte III · El programa de nodos validadores</h2>
+
+<p>La propuesta es abrir puestos de validador con cuatro niveles de participación y una
+recompensa mensual proporcional. Es viable. Antes de anunciarlo hay que resolver cinco
+cosas, y tres de ellas no son técnicas.</p>
+
+<h3>Los niveles propuestos</h3>
+
+<table class="decidir">
+  <thead><tr><th>Nivel</th><th>Monto</th><th>Recompensa mensual</th><th>Puestos</th></tr></thead>
+  <tbody>
+    <tr><td>Nivel 1</td><td>5.000</td><td class="decision">por definir</td><td class="decision">por definir</td></tr>
+    <tr><td>Nivel 2</td><td>2.500</td><td class="decision">por definir</td><td class="decision">por definir</td></tr>
+    <tr><td>Nivel 3</td><td>1.000</td><td class="decision">por definir</td><td class="decision">por definir</td></tr>
+    <tr><td>Nivel 4</td><td>250</td><td class="decision">por definir</td><td class="decision">por definir</td></tr>
+  </tbody>
+</table>
+
+<p style="font-size:9.4pt;color:var(--suave)">Los montos se recibieron sin unidad. Si son
+<b>dólares</b>, el programa capta capital y paga en moneda o en ORIGEN. Si son
+<b>ORIGEN</b>, capta token y el rendimiento diluye la emisión. Son dos productos
+distintos con dos tratamientos contables y legales distintos, y hay que elegir uno
+antes de escribir una sola línea de la oferta.</p>
+
+<h3>Lo que hay que resolver antes de anunciar</h3>
+
+<div class="grave-c">
+  <p style="margin:0 0 6px"><strong>1. La cadena nueva no tiene staking. Ninguno.</strong></p>
+  <p style="margin:0">En la tecnología nueva los validadores se suman <b>por voto de los
+  validadores existentes</b>, no depositando fondos. Eso es una ventaja —se acabó el
+  contrato de garantía que hoy retiene ORIGEN— pero significa que <b>la recompensa
+  mensual no la paga la cadena: la paga la sociedad</b>. No es un rendimiento generado
+  por el protocolo; es una obligación en el balance. Con el gas en cero, sale íntegra de
+  tesorería.</p>
+</div>
+
+<div class="grave-c">
+  <p style="margin:0 0 6px"><strong>2. Un puesto de validador es poder de gobierno.</strong></p>
+  <p style="margin:0">Quien valida <b>vota sobre quién entra y quién sale</b> del conjunto
+  de validadores. Vender puestos a terceros es vender participación en el gobierno de la
+  red, no sólo un rendimiento. Si un grupo externo llegara a sumar dos tercios de los
+  votos, controla quién puede validar. Hay que decidir si los puestos vendidos votan o si
+  se les asigna un rol sin voto — y esa segunda opción hay que construirla, no viene de
+  fábrica.</p>
+</div>
+
+<div class="aviso">
+  <p style="margin:0 0 6px"><strong>3. Un rendimiento mensual prometido a cambio de un
+  aporte es, en la mayoría de las jurisdicciones, un valor negociable.</strong></p>
+  <p style="margin:0">No es una opinión sobre el negocio: es la definición que usan la
+  mayoría de los reguladores. Conviene opinión legal <b>antes</b> de publicar la oferta,
+  no después. Es más barato ajustar la estructura ahora que reestructurar un programa con
+  participantes dentro.</p>
+</div>
+
+<h3>4. Cuántos validadores tolera la red</h3>
+
+<p>El consenso necesita que más de dos tercios de los validadores estén en línea y
+funcionando. Eso pone un límite práctico que conviene tener presente al vender puestos.</p>
+
+<table>
+  <thead><tr><th>Validadores</th><th>Tolera caídos</th><th>Deben estar en línea</th></tr></thead>
+  <tbody>
+    <tr><td>1 <span style="color:var(--grave)">(producción hoy)</span></td><td>0</td><td>1 — si cae, la cadena se detiene</td></tr>
+    <tr><td>4</td><td>1</td><td>3</td></tr>
+    <tr><td>7</td><td>2</td><td>5</td></tr>
+    <tr><td>10</td><td>3</td><td>7</td></tr>
+    <tr><td>22</td><td>7</td><td>15</td></tr>
+  </tbody>
+</table>
+
+<p>Más validadores dan más resistencia, pero también más máquinas que deben mantenerse
+encendidas y más mensajes por bloque. Por encima de unos veinte el consenso se vuelve
+notablemente más lento. <strong>Un programa que venda cien puestos no cabe en esta
+arquitectura</strong>; uno de diez a veinte, sí.</p>
+
+<h3>5. Quién opera la máquina</h3>
+
+<p>Un validador es un servidor que debe estar encendido siempre. Hay dos modelos y
+cambian por completo el producto:</p>
+
+<table>
+  <thead><tr><th>Modelo</th><th>Qué recibe el participante</th><th>Riesgo</th></tr></thead>
+  <tbody>
+    <tr><td><b>La sociedad opera</b></td>
+        <td>Un contrato y una recompensa. No toca nada.</td>
+        <td>El costo de operación es de la sociedad. Se parece más a un instrumento financiero.</td></tr>
+    <tr><td><b>El participante opera</b></td>
+        <td>Su propia máquina y su llave de validador.</td>
+        <td>Si no la mantiene en línea, degrada la red. Requiere soporte y reglas de expulsión.</td></tr>
+  </tbody>
+</table>
+
+<h2>Qué se pide a la Junta</h2>
+
+<table class="decidir">
+  <thead><tr><th>Asunto</th><th>Qué se decide</th><th>Urgencia</th></tr></thead>
+  <tbody>
+    <tr><td>Migración</td><td>Sí o no a los seis acuerdos, y la ventana del corte</td><td><b>Alta</b> — la cadena actual corre sobre software abandonado</td></tr>
+    <tr><td>Gas</td><td>Cero, comisión mínima, o cero hasta lanzar los nodos</td><td>Media — condiciona el programa de nodos</td></tr>
+    <tr><td>Nodos</td><td>Unidad de los montos, cuántos puestos, si votan, y quién opera</td><td>Media — no anunciar sin opinión legal</td></tr>
+  </tbody>
+</table>
+
+<h2>El riesgo que sigue abierto</h2>
+
+<p>La cadena de producción tiene <strong>un solo validador</strong>, y su llave está en
+una única máquina. Mientras eso siga así, esa máquina <em>es</em> la cadena: si se pierde
+su disco, no se produce un bloque más. Hoy hay respaldo cifrado de esa llave, de modo que
+el escenario catastrófico está cubierto, pero la solución de fondo es tener varios
+validadores.</p>
+
+<p>La red de pruebas levantada esta semana ya funciona con tres, y demuestra que la
+arquitectura nueva lo resuelve. <strong>Es la razón de peso para no postergar la
+migración</strong>, y es también el cimiento sobre el que se apoyaría cualquier programa
+de nodos.</p>
+
+<div class="pie-doc">
+  Orden Global Corp · Isla Roatán, Honduras · Documento interno para la Junta Directiva.<br>
+  Cadena 8532 → 5533 · El inventario firmado, el respaldo cifrado y el material técnico
+  están archivados y son auditables.
+</div>
+
+</body></html>
