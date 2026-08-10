@@ -98,7 +98,28 @@ apunta en el acta — es lo que hace al inventario inmutable como referencia.
 
 - [ ] Guardar el archivo y su huella en dos sitios (repo + copia fría).
 
-## Etapa 2 · Génesis y ensayo (máquinas temporales, no toca producción)
+## Etapa 2 · Génesis y ensayo — **HECHA el 10-ago-2026**
+
+La cadena de ensayo (chain ID 55330) arrancó con los 130 contratos completos y
+las 159 cuentas de personas, y `comparar-cadenas.py` dio **968 comprobaciones
+iguales, 0 distintas, 0 sin poder comparar**. Eso cubre código desplegado,
+nombre, símbolo, decimales y emisión de cada contrato, más saldo nativo y nonce
+de cada cuenta.
+
+Dos cosas que costaron y conviene no volver a descubrir:
+
+- **QBFT no produce bloques con `--p2p-enabled=false`.** Aunque el nodo esté
+  solo y no tenga con quién hablar, necesita la capa p2p levantada. Se arranca
+  con `--p2p-host=127.0.0.1 --discovery-enabled=false`, que lo deja aislado
+  igual pero produciendo.
+- **Besu colorea su salida.** `public-key export-address` y `rlp encode`
+  devuelven códigos ANSI mezclados con el valor; si se toman tal cual, el
+  `validadores.json` sale con basura y el `extraData` queda vacío. Hay que
+  filtrarlos.
+
+Lo de abajo es el procedimiento, ya validado.
+
+
 
 ```bash
 python3 construir-genesis.py inventario-8532.json --devolver-stake --periodo 10
