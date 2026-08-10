@@ -87,6 +87,8 @@ def main():
     ap.add_argument('--campos', type=int, default=8,
                     help='cuántos campos seguidos puede tener una estructura guardada en un mapa')
     ap.add_argument('--arreglo', type=int, default=1024, help='cuántos elementos de arreglo probar')
+    ap.add_argument('--indices', type=int, default=64,
+                    help='rango del indice en mapas anidados mapa[direccion][indice]')
     a = ap.parse_args()
 
     est = json.load(open(a.estado))
@@ -238,6 +240,15 @@ def main():
             for i in range(32):
                 internos[ranura_mapa(d, i)] = (d, i)
         anidados = {}
+        # Mapa anidado con clave NUMERICA adentro: mapa[direccion][indice].
+        # Es como ERC-721 lleva la lista de fichas de cada dueño
+        # (_ownedTokens[dueño][i]) y no lo cubre la familia de dos direcciones.
+        # Sin esto, un gestor de posiciones deja sin identificar una entrada por
+        # cada ficha que alguien tenga.
+        for interno, (dueno, i) in internos.items():
+            for n in range(a.indices):
+                r = bytes.fromhex(keccak(pad(n) + interno)[2:])
+                anidados[clave_arbol(r)] = ('anidado-num', dueno, n, i)
         for interno, (dueno, i) in internos.items():
             for g in dirs_anid:
                 # ranura = keccak(gastador ++ keccak(dueño ++ base));
