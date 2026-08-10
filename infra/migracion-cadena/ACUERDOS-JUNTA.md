@@ -30,7 +30,7 @@ momento del congelamiento, o sea que se pierde lo ocurrido después del corte.
 
 ### Acuerdo 2 · El cambio de identificador de red
 
-La cadena nueva es **5533**, no 8532. La de pruebas es **5534**.
+La cadena nueva es **5550**, no 8532. La de pruebas es **5534**.
 
 Por qué necesita acuerdo: **toda persona que use la billetera tiene que
 actualizar**. Quien agregó la red a mano en su MetaMask la vuelve a agregar;
@@ -80,7 +80,7 @@ movimiento de fondos, aunque sea pequeño, y por eso va en el acta.
 
 ### Acuerdo 5 · El registro público de la red
 
-Inscribir 5533 y 5534 en el registro público de cadenas, que es lo que alimenta
+Inscribir 5550 y 5534 en el registro público de cadenas, que es lo que alimenta
 a Chainlist y a las billeteras.
 
 Por qué necesita acuerdo: es un **compromiso hacia afuera**. Declara

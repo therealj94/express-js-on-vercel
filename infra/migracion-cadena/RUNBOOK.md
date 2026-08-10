@@ -16,7 +16,7 @@ sin que `verificar.py` cuadre al 100 %.**
 
 | Red | Chain ID | Se registra en Chainlist |
 |---|---|---|
-| Orden Global (principal, nueva) | **5533** | sí |
+| Orden Global (principal, nueva) | **5550** | sí |
 | Orden Global Testnet | **5534** | sí |
 | Ensayo desechable | **55330** | no, se tira |
 | Cadena vieja (polygon-edge) | 8532 | queda como respaldo caliente |
@@ -27,7 +27,7 @@ una transacción firmada para una vale en la otra, en los dos sentidos y
 mientras las dos existan. Apagar la vieja convierte el respaldo caliente
 —volver reapuntando el DNS, minutos— en uno frío —crear máquinas, restaurar
 2,2 GB, arrancar: horas—. Y un remedio que duele horas, en la práctica, no se
-usa. Con 5533 las dos conviven sin poder contaminarse.
+usa. Con 5550 las dos conviven sin poder contaminarse.
 
 Lo que cuesta: quien agregó la red a mano en MetaMask la vuelve a agregar, y la
 app móvil necesita una actualización OTA. Está todo en un solo punto por
@@ -35,9 +35,10 @@ sistema (ver «El interruptor», abajo).
 
 Comprobado antes de empezar:
 
-- **5533 y 5534 están libres** en el registro público (chainid.network,
-  2.681 cadenas, 10-ago-2026). Todo el tramo 5523–5544 está vacío; los
-  ocupados más cercanos son 5522, 5545 y 5551.
+- **5550 y 5534 están libres** en el registro público (chainid.network,
+  2.684 cadenas, 10-ago-2026). Los ocupados más cercanos al 5550 son 5545
+  (DuckChain) por abajo y 5551 (Nahmii 2) por arriba, así que el número no
+  tiene margen a los lados: es el único libre de su vecindad inmediata.
 - En `ethereum-lists/chains` **no se puede reservar** un número: se toma cuando
   se fusiona el PR, y para eso la cadena tiene que estar viva respondiendo por
   RPC. Por eso cada red se registra en cuanto arranca, no meses después.
@@ -177,10 +178,10 @@ cuatro cosas y no buscar en cuarenta archivos.
 
 | Sistema | Dónde | Hoy | En el corte |
 |---|---|---|---|
-| Billetera web | `apps-web/veta-wallet/app.js` → `window.OG_CHAIN_ID` | 8532 | 5533 |
-| App móvil | `EXPO_PUBLIC_WALLET_CHAIN_ID` (llega por OTA) | 8532 | 5533 |
-| Backend de la wallet | registro en la colección `ChainId` de Mongo | fila 8532 | añadir fila 5533 |
-| Génesis de la cadena | `construir-genesis.py --chain-id` | — | 5533 |
+| Billetera web | `apps-web/veta-wallet/app.js` → `window.OG_CHAIN_ID` | 8532 | 5550 |
+| App móvil | `EXPO_PUBLIC_WALLET_CHAIN_ID` (llega por OTA) | 8532 | 5550 |
+| Backend de la wallet | registro en la colección `ChainId` de Mongo | fila 8532 | añadir fila 5550 |
+| Génesis de la cadena | `construir-genesis.py --chain-id` | — | 5550 |
 
 Las otras ~40 apariciones de «8532» en el repositorio son texto de páginas y
 documentos: no rompen nada, se corrigen con el resto de la comunicación.

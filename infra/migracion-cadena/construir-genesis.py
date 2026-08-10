@@ -45,19 +45,19 @@ def main():
     # Sin valor por omisión, a propósito: el chain ID es la única defensa
     # contra que una transacción firmada para una cadena valga en la otra.
     # Equivocarlo en silencio es peor que no arrancar, así que hay que decirlo.
-    #   5533  · la red principal nueva
+    #   5550  · la red principal nueva
     #   5534  · la red de pruebas
     #   55330 · el ensayo desechable, que nunca se registra
     #   8532  · la cadena vieja; NUNCA para una cadena nueva que conviva con ella
     ap.add_argument('--chain-id', type=int, required=True,
-                    help='5533 red · 5534 pruebas · 55330 ensayo')
+                    help='5550 red · 5534 pruebas · 55330 ensayo')
     ap.add_argument('--devolver-stake', action='store_true',
                     help='suma al validador los ORIGEN retenidos por el contrato de staking viejo')
     a = ap.parse_args()
 
     if a.chain_id == 8532:
         print('ABORTADO: 8532 es la cadena vieja. Si las dos conviven, una firma '
-              'hecha para una vale en la otra. Usar 5533, 5534 o 55330.', file=sys.stderr)
+              'hecha para una vale en la otra. Usar 5550, 5534 o 55330.', file=sys.stderr)
         sys.exit(2)
 
     inv = json.load(open(a.inventario))

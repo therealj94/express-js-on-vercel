@@ -64,7 +64,7 @@ def ranura_de(clave):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('estado', help='estado-final.json de emparejar-preimagenes.py')
-    ap.add_argument('--chain-id', type=int, required=True, help='5533 red · 5534 pruebas · 55330 ensayo')
+    ap.add_argument('--chain-id', type=int, required=True, help='5550 red · 5534 pruebas · 55330 ensayo')
     ap.add_argument('--periodo', type=int, default=10)
     ap.add_argument('--salida', default='genesis-besu.json')
     ap.add_argument('--informe', default='informe-completitud.json')
