@@ -10,8 +10,8 @@
   },
   "infoURL": "https://ordenglobal.org",
   "shortName": "ordenglobal",
-  "chainId": 8532,
-  "networkId": 8532,
+  "chainId": 5533,
+  "networkId": 5533,
   "explorers": [
     {
       "name": "ordenscan",
