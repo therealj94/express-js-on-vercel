@@ -23,6 +23,10 @@
   figure svg { width:100%; height:auto; max-width:170mm; }
   figcaption { font-size:8.8pt; color:var(--suave); text-align:left; margin-top:6px;
                line-height:1.4; border-top:1px solid var(--linea); padding-top:5px; }
+  td.der, th.der { text-align:right; font-variant-numeric:tabular-nums; }
+  .grave { color:var(--grave); font-weight:600; }
+  .ok { color:var(--ok); font-weight:600; }
+  .suave { color:var(--suave); font-size:8.4pt; }
 </style>
 </head><body>
 
@@ -478,6 +482,205 @@ cambian por completo el producto:</p>
     <tr><td><b>El participante opera</b></td>
         <td>Su propia máquina y su llave de validador.</td>
         <td>Si no la mantiene en línea, degrada la red. Requiere soporte y reglas de expulsión.</td></tr>
+  </tbody>
+</table>
+
+<h2>Parte V · La corrida financiera</h2>
+
+<p>Antes de decidir sobre el gas y sobre las recompensas conviene ver los números
+reales de la red. Todo lo que sigue está medido sobre la cadena y sobre la factura de
+infraestructura; lo que es supuesto está marcado como tal.</p>
+
+<h3>Qué hace hoy la cadena</h3>
+
+<table>
+  <thead><tr><th>Medición</th><th>Valor</th></tr></thead>
+  <tbody>
+    <tr><td>Primer bloque</td><td>25 de julio de 2024</td></tr>
+    <tr><td>Edad de la cadena</td><td>747 días (2,05 años)</td></tr>
+    <tr><td>Ritmo</td><td>un bloque cada 15,5 segundos · 5.575 por día</td></tr>
+    <tr><td><b>Transacciones en toda su historia</b></td><td><b>1.871</b></td></tr>
+    <tr><td>Transacciones por día</td><td><b>2,5</b></td></tr>
+    <tr><td>Transacciones por año</td><td>914</td></tr>
+    <tr><td>Bloques que llevan al menos una transacción</td><td>0,045 %</td></tr>
+  </tbody>
+</table>
+
+<p>Dicho de otro modo: <strong>de cada diez mil bloques que la red produce y paga,
+nueve mil novecientos noventa y cinco van vacíos</strong>.</p>
+
+<h3>Cuánto cuesta operarla</h3>
+
+<table>
+  <thead><tr><th>Concepto</th><th>Detalle</th><th class="der">USD/mes</th></tr></thead>
+  <tbody>
+    <tr><td>Seis nodos de producción</td><td>t2.large bajo demanda</td><td class="der">406,44</td></tr>
+    <tr><td>Discos</td><td>200 GB gp3</td><td class="der">16,00</td></tr>
+    <tr><td>Direcciones IP fijas</td><td>seis</td><td class="der">21,90</td></tr>
+    <tr><td><b>Producción</b></td><td></td><td class="der"><b>444,34</b></td></tr>
+    <tr><td>Red de pruebas</td><td>tres t3.small + balanceador</td><td class="der">71,34</td></tr>
+    <tr><td><b>Total</b></td><td></td><td class="der"><b>515,68</b></td></tr>
+  </tbody>
+</table>
+
+<div class="aviso">
+  <p style="margin:0"><strong>El costo por transacción hoy es de 5,91 dólares.</strong>
+  La red gasta 444 dólares al mes para procesar setenta y cinco transacciones. Ése es
+  el punto de partida de cualquier conversación sobre comisiones.</p>
+</div>
+
+<h3>Cuánto rendiría cobrar gas</h3>
+
+<p>Una transferencia de token consume unos 51.000 de gas. Con el ORIGEN a 2,10 dólares
+—el precio configurado hoy en la billetera— la comisión sale así:</p>
+
+<table>
+  <thead><tr><th>Precio del gas</th><th class="der">Costo por transferencia</th><th class="der">Ingreso anual al ritmo de hoy</th></tr></thead>
+  <tbody>
+    <tr><td>1 gwei</td><td class="der">0,00011 USD</td><td class="der">0,10 USD</td></tr>
+    <tr><td>10 gwei</td><td class="der">0,00107 USD</td><td class="der">0,98 USD</td></tr>
+    <tr><td><b>100 gwei</b></td><td class="der"><b>0,0107 USD</b></td><td class="der"><b>9,79 USD</b></td></tr>
+    <tr><td>1.000 gwei</td><td class="der">0,1071 USD</td><td class="der">97,91 USD</td></tr>
+  </tbody>
+</table>
+
+<p>A 100 gwei la comisión es de un centavo por transacción, que es razonable para el
+usuario. <strong>Al volumen de hoy, eso recauda nueve dólares con setenta y nueve
+centavos al año</strong>, contra 5.332 dólares de costo.</p>
+
+<h3>Un año de operación, a distintos volúmenes</h3>
+
+<figure>
+<svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img"
+  aria-label="Ingreso anual por comisiones frente al costo de infraestructura, en escala logarítmica. Al volumen de hoy y hasta cien veces más, el ingreso queda muy por debajo del costo; recién a partir de unas 498.000 transacciones al año el ingreso lo cubre.">
+  <g font-family="Helvetica">
+    <!-- rejilla -->
+    <g stroke="#E8EDEB" stroke-width="1">
+      <line x1="120" y1="40" x2="120" y2="196"/><line x1="200" y1="40" x2="200" y2="196"/>
+      <line x1="280" y1="40" x2="280" y2="196"/><line x1="360" y1="40" x2="360" y2="196"/>
+      <line x1="440" y1="40" x2="440" y2="196"/><line x1="520" y1="40" x2="520" y2="196"/>
+      <line x1="600" y1="40" x2="600" y2="196"/>
+    </g>
+    <g font-size="7.5" fill="#8C9793" text-anchor="middle">
+      <text x="120" y="210">1</text><text x="200" y="210">10</text><text x="280" y="210">100</text>
+      <text x="360" y="210">1.000</text><text x="440" y="210">10.000</text>
+      <text x="520" y="210">100.000</text><text x="600" y="210">1.000.000</text>
+    </g>
+    <text x="360" y="228" font-size="8" fill="#5C6B68" text-anchor="middle">ingreso anual por comisiones, en dólares (escala logarítmica)</text>
+
+    <!-- umbral de costo -->
+    <rect x="120" y="40" width="298" height="156" fill="#A8590F" opacity="0.05"/>
+    <line x1="418" y1="34" x2="418" y2="200" stroke="#A8590F" stroke-width="1.6" stroke-dasharray="4 3"/>
+    <text x="414" y="30" font-size="8" font-weight="700" fill="#A8590F" text-anchor="end">costo anual 5.332 USD</text>
+    <text x="424" y="30" font-size="8" fill="#1E7A5A">cubre el costo →</text>
+
+    <!-- filas -->
+    <g font-size="8.5" fill="#16211F" text-anchor="end">
+      <text x="112" y="56">Hoy · 914 tx</text>
+      <text x="112" y="86">×10 · 9.142 tx</text>
+      <text x="112" y="116">×100 · 91.421 tx</text>
+      <text x="112" y="146">×1.000 · 914.210 tx</text>
+      <text x="112" y="176">×10.000 · 9,1 M tx</text>
+    </g>
+    <g>
+      <circle cx="199" cy="53" r="5" fill="#135054"/>
+      <circle cx="279" cy="83" r="5" fill="#135054"/>
+      <circle cx="359" cy="113" r="5" fill="#135054"/>
+      <circle cx="439" cy="143" r="5" fill="#135054"/>
+      <circle cx="519" cy="173" r="5" fill="#135054"/>
+    </g>
+    <g font-size="8" fill="#5C6B68">
+      <text x="210" y="56">9,79 USD</text>
+      <text x="290" y="86">97,91 USD</text>
+      <text x="370" y="116">979 USD</text>
+      <text x="450" y="146" fill="#1E7A5A" font-weight="700">9.791 USD</text>
+      <text x="530" y="176" fill="#1E7A5A" font-weight="700">97.912 USD</text>
+    </g>
+  </g>
+</svg>
+<figcaption>Cada punto es un año de operación a ese volumen, con la comisión de un
+centavo. La franja sombreada es la zona de pérdida. Sólo a partir de unas mil veces el
+volumen actual el ingreso por comisiones alcanza para pagar la infraestructura.</figcaption>
+</figure>
+
+<table>
+  <thead><tr><th>Escenario</th><th class="der">Transacciones/año</th><th class="der">Ingreso</th><th class="der">Costo</th><th class="der">Resultado</th></tr></thead>
+  <tbody>
+    <tr><td>Hoy</td><td class="der">914</td><td class="der">9,79</td><td class="der">5.332</td><td class="der grave">−5.322</td></tr>
+    <tr><td>Diez veces más</td><td class="der">9.142</td><td class="der">97,91</td><td class="der">5.332</td><td class="der grave">−5.234</td></tr>
+    <tr><td>Cien veces</td><td class="der">91.421</td><td class="der">979</td><td class="der">5.332</td><td class="der grave">−4.353</td></tr>
+    <tr><td>Mil veces</td><td class="der">914.210</td><td class="der">9.791</td><td class="der">5.332</td><td class="der ok">+4.459</td></tr>
+    <tr><td>Diez mil veces</td><td class="der">9.142.102</td><td class="der">97.912</td><td class="der">5.332</td><td class="der ok">+92.580</td></tr>
+  </tbody>
+</table>
+
+<div class="grave-c">
+  <p style="margin:0 0 6px"><strong>El punto de equilibrio son 497.860 transacciones al
+  año.</strong></p>
+  <p style="margin:0">Son 1.364 transacciones por día — <b>545 veces el volumen
+  actual</b>. Y eso sólo para pagar los servidores, sin un centavo de recompensa para
+  nadie.</p>
+</div>
+
+<h3>Y si además se pagan recompensas</h3>
+
+<p>Si el programa de nodos promete un rendimiento mensual, ese dinero se suma al costo.
+Esto es lo que haría falta recaudar para que la red lo pague sola:</p>
+
+<table>
+  <thead><tr><th>Programa</th><th class="der">Rendimiento</th><th class="der">Costo anual</th><th class="der">Transacciones/año necesarias</th></tr></thead>
+  <tbody>
+    <tr><td>10 participantes × 5.000</td><td class="der">1 %/mes</td><td class="der">6.000</td><td class="der">1,1 millones <span class="suave">(1.157×)</span></td></tr>
+    <tr><td>10 participantes × 5.000</td><td class="der">2 %/mes</td><td class="der">12.000</td><td class="der">1,6 millones <span class="suave">(1.770×)</span></td></tr>
+    <tr><td>20 participantes × 5.000</td><td class="der">2 %/mes</td><td class="der">24.000</td><td class="der">2,7 millones <span class="suave">(2.996×)</span></td></tr>
+    <tr><td>50 participantes × 2.500</td><td class="der">2 %/mes</td><td class="der">30.000</td><td class="der">3,3 millones <span class="suave">(3.609×)</span></td></tr>
+    <tr><td>20 participantes × 5.000</td><td class="der">5 %/mes</td><td class="der">60.000</td><td class="der">6,1 millones <span class="suave">(6.673×)</span></td></tr>
+  </tbody>
+</table>
+
+<p>Para poner esas cifras en contexto: <strong>6,1 millones de transacciones al año son
+diecisiete mil por día</strong>. Es el volumen de una aplicación de pagos con decenas de
+miles de usuarios activos.</p>
+
+<h3>Qué dice esta corrida, en tres frases</h3>
+
+<p><strong>Primera.</strong> El gas no es una decisión de ingresos: al volumen que la red
+tiene y al que tendrá en el próximo año, no recauda nada relevante. Es una decisión de
+<em>protección</em> — una comisión mínima impide que alguien llene los bloques sin costo.</p>
+
+<p><strong>Segunda.</strong> Las recompensas del programa de nodos <strong>no las puede
+pagar la red</strong>. Salen de la tesorería o del negocio que la red sirve, y conviene
+que el documento de la oferta lo diga con esas palabras.</p>
+
+<p><strong>Tercera, y es la que da dinero hoy.</strong> La palanca inmediata no está en
+cobrar, está en gastar menos. Seis servidores t2.large para dos transacciones y media
+por día están sobredimensionados por un factor enorme:</p>
+
+<table>
+  <thead><tr><th>Configuración</th><th class="der">USD/mes</th><th class="der">USD/año</th><th class="der">Ahorro anual</th></tr></thead>
+  <tbody>
+    <tr><td>Hoy · seis t2.large</td><td class="der">444</td><td class="der">5.332</td><td class="der">—</td></tr>
+    <tr><td>Seis t3.medium</td><td class="der">220</td><td class="der">2.640</td><td class="der ok">2.692</td></tr>
+    <tr><td>Cuatro t3.medium <span class="suave">(tras la migración)</span></td><td class="der">160</td><td class="der">1.920</td><td class="der ok">3.412</td></tr>
+  </tbody>
+</table>
+
+<p>Ese ahorro de unos <strong>tres mil dólares al año</strong> es más de lo que las
+comisiones recaudarían en los próximos diez años al ritmo actual. Y la migración lo
+facilita: la cadena nueva nace sin los 2,5 GB de historia vieja, así que necesita menos
+disco y menos memoria desde el primer día.</p>
+
+<h3>Recomendación</h3>
+
+<table>
+  <thead><tr><th>Asunto</th><th>Recomendación</th><th>Por qué</th></tr></thead>
+  <tbody>
+    <tr><td><b>Gas</b></td><td>Comisión mínima simbólica al migrar, del orden de 100 gwei</td>
+        <td>Protege contra el abuso y no molesta al usuario. No se justifica por lo que recauda, sino por lo que evita.</td></tr>
+    <tr><td><b>Recompensas</b></td><td>Pagar por servicio medible, no por depósito</td>
+        <td>Un pago por operar un nodo con tiempo en línea comprobado es un gasto operativo, no una promesa de rendimiento.</td></tr>
+    <tr><td><b>Infraestructura</b></td><td>Bajar a t3.medium al migrar</td>
+        <td>Ahorra unos 2.700 dólares al año desde el primer mes, sin depender de que crezca el volumen.</td></tr>
   </tbody>
 </table>
 
