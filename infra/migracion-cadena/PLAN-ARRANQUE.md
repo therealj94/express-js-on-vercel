@@ -12,30 +12,39 @@ hace, qué la da por buena, y cómo se vuelve atrás.
 | Validadores al arrancar | **4** |
 | Período de bloque | **10 s** |
 | Límite de gas por bloque | 10.000.000 |
-| Precio del gas | **93 gwei**, revisado contra el oro (ver abajo) — 0,01 USD por transferencia |
+| Precio del gas | **93 gwei desde el bloque cero**, revisado contra el oro (ver abajo) |
 | Ranuras huérfanas | se cierran antes de construir |
 | Ventana del corte | de noche, apenas esté todo listo |
 | Cadena vieja | queda encendida como respaldo caliente |
 
 ## Los saldos nativos: decidido el 11-ago-2026
 
-**Ningún usuario lleva ORIGEN nativo a la cadena nueva.** Todo el ORIGEN se
-consolida en una sola billetera y se reparte a mano después. **Todos los demás
-tokens migran normal**, con sus tenedores y sus saldos intactos.
+**Cada billetera de persona lleva exactamente 1 ORIGEN.** El resto del ORIGEN
+nativo se consolida en una sola billetera y se reparte a mano después. **Todos
+los demás tokens migran normal**, con sus tenedores y sus saldos intactos.
 
-De eso se desprende algo que no es opcional: **la cadena arranca con el gas en
-cero**. Si nadie tiene ORIGEN y el gas cuesta 93 gwei, nadie puede mover ni sus
-propios tokens — cada transacción se paga en nativo. Los 406 usuarios quedarían
-congelados el día uno.
+**Los contratos conservan su saldo nativo.** No son billeteras: su ORIGEN
+respalda valor de la gente.
 
-El orden correcto es: arrancar con gas 0 (igual que hoy), repartir los ORIGEN a
-mano, y **recién entonces** encender el gas a 93 gwei con una sola llamada
-`miner_setMinGasPrice`, en caliente, sin reiniciar ni reconstruir. El mecanismo
-ya estaba previsto para el ajuste contra el oro.
+| | Saldo nativo en la 5550 |
+|---|---|
+| 320 billeteras de personas | **1 ORIGEN** cada una · 320 en total |
+| 4 contratos con saldo | **el que tienen** · 17.236,9269 en total |
+| La billetera única | **249.999.982.437,1246** |
+| Suma | 249.999.999.994,0515 — cuadra con la emisión medida |
 
-Falta que José dé la dirección de esa billetera única. Mientras tanto se usa la
-del tesoro, `0x3d5510e5081822877d14cd51b356bf01df2c32c9`, que es la que hoy
-tiene 249.999.831.472 ORIGEN.
+El caso que obliga a la excepción es `0xccbe0c6690bf61d1f23f95f3998e4ba0d7b89f75`,
+**Wrapped Origen**: guarda 16.387,76 ORIGEN adentro, y en un envoltorio ese
+ORIGEN *es* el respaldo de los tokens envueltos que la gente tiene afuera.
+Dejarle 1 lo vuelve insolvente y evapora esos 16.387. Lo mismo con
+`0xa22180530d9d52676925e6ad9247ce3c24341fb1`, que guarda 839,17 de liquidez.
+
+**Con esto el gas puede arrancar encendido a 93 gwei**, sin esperar al reparto
+manual: 1 ORIGEN alcanza para **210 transferencias de token**. Nadie queda
+congelado y la comisión funciona desde el bloque cero.
+
+Falta que José dé la dirección de la billetera única. Mientras tanto se usa la
+del tesoro, `0x3d5510e5081822877d14cd51b356bf01df2c32c9`.
 
 ## El hierro: se reutiliza, no se compra
 
