@@ -344,3 +344,45 @@ ninguno lee las ajenas.
 La **copia fría de las cuatro**, cifrada y fuera de AWS. Es la única que
 sobrevive a perder la cuenta, y necesita una persona: no la puede hacer el
 operador automático sin que las llaves pasen por él.
+
+## Etapa del oráculo, hecha · 11-ago-2026
+
+`oraculo-gas.py` implementa la cadena completa: oro por onza → por gramo →
+entre 55 → ORIGEN en dólares → gwei que hace que la transferencia de token
+cueste un centavo.
+
+### El precio de referencia quedó viejo
+
+Los **93 gwei** acordados salían de un ORIGEN a 2,10 USD, que implica el oro a
+3.592 la onza. **El oro está hoy a 4.358**, así que:
+
+| | Acordado | Hoy |
+|---|---:|---:|
+| Oro | 3.592 USD/oz | **4.358 USD/oz** |
+| ORIGEN | 2,10 USD | **2,55 USD** |
+| Gas para que la transferencia cueste 0,01 | 93 gwei | **77 gwei** |
+
+No es un error del acuerdo: es exactamente para esto que el oráculo existe. La
+cadena puede arrancar en 93 y el primer ajuste la baja a 77 —un 17 %, dentro
+del tope—, o arrancar directamente en 77. **Arrancar en 77 es preferible**:
+evita que el primer día alguien pague de más.
+
+### Las defensas, probadas una por una
+
+| Regla | Qué hace | Comprobado |
+|---|---|---|
+| **Mediana de tres fuentes** | oro al contado, PAXG y XAUT | una fuente que devuelve 999.999 se descarta y no mueve el precio |
+| **Mínimo dos fuentes** | con menos, no decide | con una sola viva, aborta |
+| **Cotas de cordura** | descarta fuera de 500–20.000 USD/oz | sí |
+| **Banda muerta 5 %** | no toca por ruido | con 78 vigente y 77 ideal, no toca |
+| **Tope 20 % por ajuste** | un dato malo no dispara el gas | con 1.000 vigente baja a 800, no a 77 |
+| **No aplica sin `--aplicar`** | por omisión sólo dice qué haría | sí |
+| **Registro de cada ajuste** | JSONL con oro, fuentes, motivo y hora | sí |
+
+Con las fuentes caídas **aborta en vez de inventar un precio**. Un oráculo que
+adivina cuando no sabe es peor que uno que se detiene.
+
+### Lo que falta
+
+Programarlo para que corra solo. Va con el corte, porque hasta entonces no hay
+cadena nueva a la que apuntarle.
