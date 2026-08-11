@@ -12,7 +12,7 @@ hace, qué la da por buena, y cómo se vuelve atrás.
 | Validadores al arrancar | **4** |
 | Período de bloque | **10 s** |
 | Límite de gas por bloque | 10.000.000 |
-| Precio del gas | **93 gwei** — 0,01 USD por transferencia de token con el ORIGEN a 2,10 |
+| Precio del gas | **93 gwei**, revisado contra el oro (ver abajo) — 0,01 USD por transferencia |
 | Ranuras huérfanas | se cierran antes de construir |
 | Ventana del corte | de noche, apenas esté todo listo |
 | Cadena vieja | queda encendida como respaldo caliente |
@@ -179,3 +179,44 @@ de noche.
 - Documentar el procedimiento de revisión del precio del gas: cambiarlo exige
   reiniciar los nodos con otro `--min-gas-price`, y con el ORIGEN a 5 dólares
   esos 93 gwei pasan a costar 0,024 en vez de 0,010.
+
+## El precio del gas sigue al oro
+
+**La definición:** un ORIGEN es un gramo de oro dividido en 55.
+
+```
+ORIGEN_USD = (oro_USD_por_onza / 31,1034768) / 55
+gwei       = 0,01 / ORIGEN_USD × 10^18 / 51.000 / 10^9
+```
+
+Los 51.000 son el gas de una transferencia de token, que es la operación normal
+de la billetera. Comprobación: el ORIGEN a 2,10 implica el oro a 3.592 USD/oz,
+y a ese precio la fórmula da **93 gwei** — el número que fijamos.
+
+| Oro USD/oz | USD/gramo | ORIGEN | Gas |
+|---:|---:|---:|---:|
+| 3.000 | 96,45 | 1,7537 | 112 gwei |
+| 3.300 | 106,10 | 1,9290 | 102 gwei |
+| **3.592** | **115,49** | **2,0997** | **93 gwei** |
+| 3.800 | 122,17 | 2,2213 | 88 gwei |
+| 4.200 | 135,03 | 2,4551 | 80 gwei |
+| 5.000 | 160,75 | 2,9228 | 67 gwei |
+
+Sube el oro, baja el gas en gwei, y la transferencia sigue costando un centavo.
+
+**Cómo se aplica.** Besu expone `miner_setMinGasPrice` en la API MINER, que
+cambia el precio en caliente sin reiniciar. Hay que confirmarlo contra la
+versión exacta durante la etapa E; si no funcionara, la alternativa es reinicio
+escalonado de a un nodo, que tampoco corta el servicio.
+
+**Los dos frenos, que van desde el primer día:**
+
+- **Banda muerta del 5 %.** Si el precio nuevo difiere menos de eso del vigente,
+  no se toca. Sin esto se reescribe el gas todos los días por ruido de mercado.
+- **Tope del 20 % por ajuste.** Un dato malo de la fuente no puede disparar el
+  gas de golpe. Si la fuente pide más, se mueve el 20 % y se vuelve a evaluar
+  en el siguiente ciclo.
+
+Y una regla que no es técnica: **cada ajuste queda registrado** —precio del oro
+leído, ORIGEN resultante, gwei anterior y nuevo, hora—. Si nadie puede
+auditarlo después, el usuario no tiene cómo saber por qué pagó lo que pagó.
