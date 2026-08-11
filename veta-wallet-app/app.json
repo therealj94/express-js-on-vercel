@@ -24,11 +24,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.ordenglobal.vetawallet",
       "infoPlist": {
-        "NSCameraUsageDescription": "Veta Wallet usa la c\u00e1mara para escanear c\u00f3digos QR de direcciones de billetera.",
+        "NSCameraUsageDescription": "Veta Wallet usa la cámara para escanear códigos QR de direcciones de billetera.",
         "NSPhotoLibraryUsageDescription": "Veta Wallet accede a tus fotos para que subas la imagen de tu pasaporte Genesis ID.",
         "NSFaceIDUsageDescription": "Veta Wallet usa Face ID para desbloquear tu billetera y proteger tus fondos.",
         "ITSAppUsesNonExemptEncryption": false,
-        "NSPhotoLibraryAddUsageDescription": "Veta Wallet guarda en tus fotos el c\u00f3digo QR de tu direcci\u00f3n cuando eliges descargarlo."
+        "NSPhotoLibraryAddUsageDescription": "Veta Wallet guarda en tus fotos el código QR de tu dirección cuando eliges descargarlo."
       },
       "buildNumber": "70",
       "privacyManifests": {
@@ -102,7 +102,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Veta Wallet usa la c\u00e1mara para escanear c\u00f3digos QR de direcciones de billetera."
+          "cameraPermission": "Veta Wallet usa la cámara para escanear códigos QR de direcciones de billetera."
         }
       ],
       [
@@ -115,7 +115,7 @@
         "expo-image-picker",
         {
           "photosPermission": "Veta Wallet accede a tus fotos para que subas la imagen de tu pasaporte Genesis ID.",
-          "cameraPermission": "Veta Wallet usa la c\u00e1mara para escanear c\u00f3digos QR y capturar tu pasaporte."
+          "cameraPermission": "Veta Wallet usa la cámara para escanear códigos QR y capturar tu pasaporte."
         }
       ],
       "expo-apple-authentication"
