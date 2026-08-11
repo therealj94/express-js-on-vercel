@@ -256,6 +256,34 @@ cuenta de diagnóstico en el mismo momento.
 
 ---
 
+## Comprobado, no supuesto
+
+El empuje de este commit disparó el workflow y **terminó en verde por primera
+vez**: los ocho pasos, incluido el de publicar. Doce corridas van, ésta es la
+primera que llegó al final.
+
+Después le pregunté al servidor de Expo qué tiene guardado, que es la única
+prueba que vale. Hay dos actualizaciones y están **separadas**:
+
+```
+runtimeVersion 1.33.0            publicada 2026-08-11 17:46
+  bundle cJg4ACau…
+
+runtimeVersion exposdk:54.0.0    publicada 2026-08-07 03:17
+  bundle OElr5Cl3…
+```
+
+Dos runtimes distintos, dos bundles distintos. Un teléfono con un binario viejo
+pide `exposdk:54.0.0` y recibe el de agosto 7 —el que su binario sí puede
+correr—; **nunca ve el de la 1.33.0**. Eso es exactamente la pared que había que
+levantar, y ahí está.
+
+Hoy no hay ningún teléfono con la 1.33.0 instalada, así que esta publicación no
+le llega a nadie todavía. Queda esperando a que exista la primera build: en
+cuanto la instales, la recibe.
+
+---
+
 ## Resumen
 
 | | Estado |
