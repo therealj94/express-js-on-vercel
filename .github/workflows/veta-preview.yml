@@ -112,15 +112,11 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           CANAL: ${{ github.event.inputs.channel || 'preview' }}
-          # Aquí van como variables del proceso y no dentro de eas.json, porque
-          # el paquete de JavaScript de un update se arma en esta máquina —no en
-          # los servidores de Expo, como sí pasa al compilar—, y es de aquí de
-          # donde Metro lee las EXPO_PUBLIC_*. Puestas sólo en eas.json, el
-          # update saldría sin ellas y el botón no aparecería aunque estuviera
-          # todo bien configurado.
-          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
-          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ vars.GOOGLE_ANDROID_CLIENT_ID }}
-          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
+          # Las EXPO_PUBLIC_GOOGLE_* NO se declaran aquí: las deja el paso
+          # anterior en el entorno del job, resueltas ya vengan de una variable
+          # de GitHub o de eas.json. Declararlas aquí desde `vars.*` las pisaría
+          # con cadena vacía cuando la variable no existe, y el botón
+          # desaparecería justo en el caso en que sí estaba configurado.
         run: |
           set -e
           if [ -z "$EXPO_TOKEN" ]; then
