@@ -153,12 +153,16 @@ jobs:
       - name: Huella del certificado
         if: success() && steps.compilar.outputs.url != ''
         run: |
-          set -e
+          # `pipefail` no es decorativo: sin él, `programa | tee` devuelve el
+          # estado de `tee`, que siempre es 0. La versión anterior de este paso
+          # se quedó en verde publicando un error de Python porque le faltaba
+          # justo esta línea.
+          set -eo pipefail
           curl -sL --max-time 300 -o app.bin "${{ steps.compilar.outputs.url }}"
           echo "### Huella del certificado" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          python3 scripts/huella-apk.py app.bin | tee -a $GITHUB_STEP_SUMMARY
+          python3 scripts/huella-firma.py app.bin | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Ésta es la huella de la llave con que EAS firma. Sirve para el identificador de Android de Google Cloud junto con el paquete \`com.ordenglobal.vetawallet\`, y es la que vale mientras la app se instale desde un archivo." >> $GITHUB_STEP_SUMMARY

@@ -1,18 +1,29 @@
 #!/usr/bin/env python3
 """
-huella-apk.py — saca la huella del certificado con que está firmado un APK.
+huella-firma.py — saca la huella del certificado con que está firmado un APK o
+un App Bundle.
 
-POR QUÉ NO SE USA `keytool`
+HAY DOS FORMAS DE FIRMAR, Y CADA FORMATO USA LA SUYA
 
-`keytool -printcert -jarfile` responde "Not a signed jar file" ante cualquier
-APK moderno, y no porque el archivo esté mal: entiende sólo la firma vieja al
-estilo JAR (esquema v1), y desde hace años los APK se firman con los esquemas
-v2/v3 de Android, que guardan la firma en un bloque propio entre el contenido
-del zip y su directorio central. Ese bloque es invisible para las herramientas
-de JAR.
+Un APK moderno se firma con los esquemas v2/v3 de Android, que guardan la firma
+en un bloque propio entre el contenido del zip y su directorio central. Ese
+bloque es invisible para las herramientas de JAR, y por eso `keytool` responde
+"Not a signed jar file" ante un APK que está perfectamente firmado.
+
+Un `.aab` es al revés: lleva la firma vieja al estilo JAR (v1), que es
+exactamente la que `keytool` sí entiende, y no tiene bloque v2.
+
+Así que ninguna de las dos herramientas sola alcanza. Esto intenta primero el
+bloque v2/v3 y, si no está, delega en `keytool`. Si fallan las dos, termina con
+error — que es lo que tiene que pasar, porque una huella que no se pudo leer no
+es una huella vacía: es una huella desconocida.
+
+Comprobado contra los dos archivos reales de la 1.33.0, el APK de `preview` y el
+`.aab` de `production`: devuelve la misma huella por los dos caminos, que es lo
+que tenía que pasar porque los firma la misma llave.
 
 La herramienta oficial es `apksigner`, del SDK de Android, que son cientos de
-megas para leer veinte bytes. Este archivo lee el bloque directamente.
+megas para leer veinte bytes, y aun asi no lee `.aab`.
 
 CÓMO ESTÁ ARMADO EL BLOQUE
 
@@ -28,11 +39,13 @@ v3. Los dos llevan, anidada, la lista de certificados del firmante. El primer
 certificado es el del firmante, y su huella SHA-1 —sobre el DER tal cual— es lo
 que pide Google Cloud.
 
-    python3 huella-apk.py app.apk
+    python3 huella-firma.py app.apk
+    python3 huella-firma.py app.aab
 """
 
 import hashlib
 import struct
+import subprocess
 import sys
 
 ID_V2 = 0x7109871A
@@ -40,14 +53,11 @@ ID_V3 = 0xF05368C0
 MAGIC = b"APK Sig Block 42"
 
 
-def bloque_de_firma(datos: bytes) -> bytes:
-    """Devuelve los pares del APK Signing Block."""
+def bloque_de_firma(datos: bytes):
+    """Devuelve los pares del APK Signing Block, o None si el archivo no trae."""
     pos = datos.rfind(MAGIC)
     if pos < 0:
-        raise SystemExit(
-            "Este archivo no trae APK Signing Block: o no está firmado, o está "
-            "firmado sólo con el esquema v1 y entonces sí sirve keytool."
-        )
+        return None
     # Los 8 bytes justo antes del magic repiten el tamaño del bloque; el bloque
     # empieza esos bytes más atrás, contando desde donde termina ese tamaño.
     tam = struct.unpack_from("<Q", datos, pos - 8)[0]
@@ -95,15 +105,39 @@ def certificados(valor: bytes):
                     yield cert
 
 
-def main():
-    if len(sys.argv) != 2:
-        raise SystemExit("uso: huella-apk.py <archivo.apk>")
+def dosp(h: str) -> str:
+    return ":".join(h[i:i + 2] for i in range(0, len(h), 2))
 
-    with open(sys.argv[1], "rb") as f:
-        datos = f.read()
+
+def por_keytool(ruta: str) -> bool:
+    """La firma vieja al estilo JAR, que es la que llevan los `.aab`."""
+    try:
+        salida = subprocess.run(
+            ["keytool", "-printcert", "-jarfile", ruta],
+            capture_output=True, text=True, timeout=120,
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+    lineas = [l.strip() for l in salida.splitlines()
+              if l.strip().startswith(("SHA1:", "SHA256:", "Valid from:"))]
+    if not any(l.startswith("SHA1:") for l in lineas):
+        return False
+
+    print("esquema v1 (firma al estilo JAR)")
+    for l in lineas:
+        print(f"  {l}")
+    return True
+
+
+def por_bloque(datos: bytes) -> bool:
+    """Los esquemas v2/v3, que son los que llevan los APK."""
+    bloque = bloque_de_firma(datos)
+    if bloque is None:
+        return False
 
     vistos = set()
-    for ident, valor in pares(bloque_de_firma(datos)):
+    for ident, valor in pares(bloque):
         if ident not in (ID_V2, ID_V3):
             continue
         esquema = "v2" if ident == ID_V2 else "v3"
@@ -112,14 +146,33 @@ def main():
             if sha1 in vistos:
                 continue
             vistos.add(sha1)
-            dosp = lambda h: ":".join(h[i:i + 2] for i in range(0, len(h), 2))
             print(f"esquema {esquema}")
             print(f"  SHA1:   {dosp(sha1)}")
             print(f"  SHA256: {dosp(hashlib.sha256(cert).hexdigest().upper())}")
             print(f"  MD5:    {dosp(hashlib.md5(cert).hexdigest().upper())}")
+    return bool(vistos)
 
-    if not vistos:
-        raise SystemExit("No se encontró ningún certificado en el bloque de firma.")
+
+def main():
+    if len(sys.argv) != 2:
+        raise SystemExit("uso: huella-firma.py <archivo.apk|.aab>")
+
+    ruta = sys.argv[1]
+    with open(ruta, "rb") as f:
+        datos = f.read()
+
+    if por_bloque(datos):
+        return
+    if por_keytool(ruta):
+        return
+
+    # Terminar en error es lo correcto: una huella que no se pudo leer no es una
+    # huella vacía, es una huella desconocida, y dejar pasar eso en silencio es
+    # como se registra la llave equivocada en Google Cloud.
+    raise SystemExit(
+        f"No se pudo leer la firma de {ruta}. Ni bloque v2/v3 ni firma v1 legible "
+        f"por keytool. ¿Es un archivo firmado?"
+    )
 
 
 if __name__ == "__main__":
