@@ -1,0 +1,181 @@
+# El plan de armado · cadena 5550 sobre Besu QBFT
+
+Escrito el 11-ago-2026 con las decisiones ya tomadas. Cada etapa dice qué se
+hace, qué la da por buena, y cómo se vuelve atrás.
+
+## Las decisiones que ya están cerradas
+
+| Asunto | Decisión |
+|---|---|
+| Motor | Hyperledger Besu, consenso QBFT. Sin proof of stake. |
+| Chain ID | **5550** (red) · 5534 (pruebas) · 55330 (ensayo desechable) |
+| Validadores al arrancar | **4** |
+| Período de bloque | **10 s** |
+| Límite de gas por bloque | 10.000.000 |
+| Precio del gas | **93 gwei** — 0,01 USD por transferencia de token con el ORIGEN a 2,10 |
+| Ranuras huérfanas | se cierran antes de construir |
+| Ventana del corte | de noche, apenas esté todo listo |
+| Cadena vieja | queda encendida como respaldo caliente |
+
+## La decisión que falta
+
+**Qué pasa con los saldos nativos de ORIGEN.** Medido contra la cadena en vivo
+el 11-ago-2026, sobre 438 direcciones conocidas:
+
+| | |
+|---|---|
+| Direcciones sin código (personas) | 321 |
+| De ellas, con ORIGEN > 0 | 151 |
+| La mayor (tesoro/desplegador) | 249.999.831.472 ORIGEN |
+| Personas de verdad con saldo | 150, sumando 151.285 ORIGEN |
+| De ellas, con más de 1 ORIGEN | **109** |
+
+Las dos salidas y lo que cuesta cada una:
+
+- **Migrar todo y completar hasta un piso de 1 ORIGEN.** Nadie pierde nada y
+  nadie queda sin poder pagar el gas. Coste: **184 ORIGEN**, que es lo que
+  falta para subir a los que están por debajo del piso.
+- **No migrar y sembrar 1 a cada uno.** 109 personas pierden **151.149 ORIGEN**
+  entre todas. La mayor pérdida individual es de 104.371.
+
+La primera es la recomendada y la que sostiene lo que se viene diciendo desde
+el principio: que no quede nadie atrás. La segunda es una decisión de Junta,
+no de ingeniería, porque esa gente compró.
+
+**Nada de lo de abajo se ejecuta hasta que esto esté resuelto**, porque
+determina el contenido del génesis.
+
+## Etapa A · Cerrar las 80 ranuras huérfanas
+
+Quedan 66 del índice de enumeración del gestor de posiciones de Uniswap V3 y
+4 en cada uno de 3 contratos gemelos. Afectan a 31 posiciones de liquidez de
+2 personas.
+
+```bash
+python3 cosechar-posiciones.py     # genera las claves exactas de enumeración
+python3 cerrar-ranuras.py          # bucle de punto fijo: traza y realimenta
+python3 emparejar-preimagenes.py estado.json candidatos.json
+```
+
+**Da por buena la etapa:** el emparejamiento cierra en **cero huérfanas**.
+Mientras no cierre, no se construye ningún génesis.
+
+## Etapa B · La foto del estado
+
+```bash
+go build -o volcar volcar-estado.go
+./volcar -trie ./trie -raiz 0x<stateRoot> -salida estado-final.json
+sha256sum estado-final.json          # la huella va al acta
+```
+
+`volcar-estado.go` cuenta los nodos que no puede leer y **termina con error si
+falta uno solo**. Esa es la garantía de que la foto está completa.
+
+**Da por buena la etapa:** 0 nodos faltantes, y la huella guardada en dos
+sitios.
+
+## Etapa C · Las cuatro llaves de validador
+
+Una por nodo, generadas en la propia máquina para que la llave privada nunca
+viaje por la red:
+
+```bash
+besu --data-path=/opt/besu/nodo public-key export-address   # filtrar ANSI
+```
+
+Dónde vive cada una:
+
+1. **En su nodo**, en SSM Parameter Store como `SecureString` con una clave KMS
+   propia. El rol de cada máquina lee **sólo su ruta**: comprometer un nodo se
+   lleva una llave, no las cuatro.
+2. **Copia fría de las cuatro**, cifrada y fuera de AWS. Es la única que
+   sobrevive a perder la cuenta.
+3. Nunca las cuatro juntas en una máquina, ni en el repositorio, ni en una
+   variable de entorno.
+
+Con QBFT, perder **una** llave se repara: las otras tres votan para sacar ese
+validador y meter uno nuevo. Lo que detiene la cadena es perder **dos**.
+
+Con 4 validadores se tolera 1 caída. Con 6 también se tolera 1 —la cuenta es
+f=(N−1)/3—, así que subir a 6 no compra nada. Para tolerar 2 harían falta 7.
+Los 2 nodos restantes quedan sirviendo RPC.
+
+## Etapa D · El génesis
+
+```bash
+python3 construir-genesis-desde-arbol.py estado-final.json \
+    --ranuras ranuras-cerradas.json \
+    --chain-id 5550 --periodo 10 --piso-origen 1 \
+    --validadores validadores.json \
+    --salida genesis-5550.json
+```
+
+Lo que produce:
+
+- cada contrato con su código y **todas** sus ranuras — un contrato viaja
+  entero o no viaja;
+- cada cuenta con su saldo y su **nonce** (el nonce copiado impide que una
+  transacción vieja firmada se reejecute);
+- el piso de 1 ORIGEN aplicado a quien esté por debajo;
+- **sin** el contrato de staking de Edge: los validadores los gestiona QBFT;
+- `extraData` con los 4 validadores, codificado con `besu rlp encode`.
+
+Falta implementar `--piso-origen`; hoy el guion no lo tiene.
+
+## Etapa E · El ensayo, con el génesis de verdad
+
+El mismo génesis, cambiando sólo el chain ID a 5534, sobre cuatro máquinas.
+
+```bash
+python3 comparar-cadenas.py --vieja https://rpc.ordenglobal-rpc.com \
+                            --nueva http://ensayo:8545
+```
+
+**Da por buena la etapa:** la comparación de **raíces de almacenamiento** da
+igual para todos los contratos. Eso es prueba de completitud, no muestreo: si
+la raíz coincide, no falta ni sobra una ranura.
+
+Dos trampas ya conocidas, anotadas para no volver a descubrirlas:
+
+- QBFT **no produce bloques con `--p2p-enabled=false`**. Se arranca con
+  `--p2p-host=127.0.0.1 --discovery-enabled=false`.
+- Besu **colorea su salida**: `public-key export-address` y `rlp encode`
+  devuelven códigos ANSI mezclados con el valor. Hay que filtrarlos o el
+  `extraData` sale vacío.
+
+## Etapa F · Las aplicaciones contra el ensayo
+
+Veta Wallet (web y móvil), Genesis ID y ordenscan apuntando a 5534. Operar una
+semana como un día cualquiera.
+
+**Lo nuevo que hay que probar, y que hoy no existe:** con el gas en 93 gwei,
+por primera vez una transacción puede fallar por saldo insuficiente. Hoy el gas
+es cero y ese camino de código nunca se ejecutó. Hay que comprobar que la
+billetera lo detecta y lo explica en vez de fallar en silencio.
+
+## Etapa G · El corte (de noche)
+
+1. **Congelar**: backend de la billetera en mantenimiento.
+2. **Foto final**: repetir la etapa B. La huella va al acta.
+3. **Génesis final** sobre esa foto, con chain ID 5550.
+4. Arrancar los 4 validadores y los 2 nodos RPC.
+5. `comparar-cadenas.py` contra el nodo nuevo. **Si no cuadra, se aborta**:
+   se levanta el mantenimiento y la cadena vieja sigue siendo la oficial.
+6. Voltear el número en los cuatro sitios: billetera web, app móvil por OTA,
+   fila `ChainId` del backend, DNS del RPC.
+7. Levantar el mantenimiento.
+
+**Vuelta atrás:** reapuntar el DNS a la cadena vieja, que nunca se apagó. Son
+minutos. Lo que se pierde es lo ocurrido después del corte, que por eso se hace
+de noche.
+
+## Etapa H · Después
+
+- Inscribir 5550 y 5534 en `ethereum-lists/chains`. No se puede reservar un
+  número: se toma cuando se fusiona la solicitud, y para eso la cadena tiene
+  que estar viva respondiendo por RPC.
+- La cadena vieja queda encendida como respaldo caliente. No se apaga ni se
+  borra.
+- Documentar el procedimiento de revisión del precio del gas: cambiarlo exige
+  reiniciar los nodos con otro `--min-gas-price`, y con el ORIGEN a 5 dólares
+  esos 93 gwei pasan a costar 0,024 en vez de 0,010.
