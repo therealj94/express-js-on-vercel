@@ -386,3 +386,51 @@ adivina cuando no sabe es peor que uno que se detiene.
 
 Programarlo para que corra solo. Va con el corte, porque hasta entonces no hay
 cadena nueva a la que apuntarle.
+
+## La red de cuatro validadores, probada de verdad · 11-ago-2026
+
+Hasta acá la cadena sólo había corrido con **un** validador. Con cuatro, QBFT
+exige que tres se pongan de acuerdo, y si el `extraData` o las llaves no
+encajan no se produce un solo bloque. Eso no se podía descubrir la noche del
+corte.
+
+Se montaron los cuatro validadores reales —node3, node5, node6 y node4, cada
+uno con su llave en su propia máquina— sobre el chain ID de pruebas 5534, con
+el génesis completo de 331 cuentas.
+
+Preparación: Java 25 y Besu 26.7.1 en los cuatro; el puerto 30303 abierto
+**sólo entre esas cuatro direcciones**, no al mundo; el génesis repartido con
+URLs firmadas de S3, para que ningún nodo necesitara permisos nuevos.
+
+### Las tres pruebas
+
+| Prueba | Esperado | Resultado |
+|---|---|---|
+| Los cuatro en pie | produce bloques | **sí** · 3 pares cada uno, avanzando juntos |
+| Cae **uno** | sigue produciendo | **sí** · +4 bloques en 60 s |
+| Caen **dos** | se detiene | **sí** · 0 bloques en 75 s |
+| Vuelven los dos | se recupera sola | **sí**, pero **tarda minutos** |
+
+### El dato operativo que hay que conocer
+
+**La recuperación no es inmediata.** Al volver los nodos, los cuatro quedan
+repartidos entre rondas distintas —dos en la ronda 2 y dos en la 3— y ninguna
+junta los tres necesarios. La convergencia llega sola, pero tarda **varios
+minutos**, no segundos.
+
+A los 80 segundos la cadena seguía parada y parecía no recuperarse. A los pocos
+minutos había pasado del bloque 18 al 35.
+
+Esto importa para el corte: **si la cadena se detiene, hay que esperar antes de
+tocar nada.** Reiniciar los nodos por impaciencia reinicia también el reloj de
+convergencia y alarga la parada en vez de acortarla. La instrucción para esa
+noche es esperar al menos cinco minutos antes de intervenir.
+
+### Lo que queda comprobado
+
+- El `extraData` de QBFT es correcto y los cuatro se reconocen:
+  `qbft_getValidatorsByBlockNumber` devuelve 4 en los cuatro nodos.
+- Las llaves generadas en cada máquina funcionan como identidad de red y como
+  firma de validador.
+- La tolerancia a fallos es la que se le dijo a la Junta: **aguanta una caída,
+  no dos**.
