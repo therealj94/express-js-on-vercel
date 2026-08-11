@@ -31,17 +31,26 @@ if (Platform.OS === 'ios') {
 
 const extra = Constants.expoConfig?.extra || {};
 
+// Un identificador sólo cuenta si es un texto con forma de identificador. No
+// alcanza con que "tenga algo": los valores nulos de app.json llegan hasta acá
+// convertidos en objetos vacíos, y un objeto vacío es verdadero en JavaScript.
+// Sin esta comprobación el botón aparecía sin estar configurado — que es
+// justo lo que no tiene que pasar.
+const valido = (v) => typeof v === 'string' && v.trim().length > 10;
+
+const soloTexto = (v) => (valido(v) ? v.trim() : null);
+
 export const GOOGLE_IDS = {
   // El cliente "web" es el que fija la audiencia del token que verifica el
   // servidor. Los otros dos son los que cada sistema necesita para abrir la
   // ventana de Google.
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || extra.googleWebClientId || null,
-  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || extra.googleIosClientId || null,
-  androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || extra.googleAndroidClientId || null,
+  webClientId: soloTexto(process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) || soloTexto(extra.googleWebClientId),
+  iosClientId: soloTexto(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID) || soloTexto(extra.googleIosClientId),
+  androidClientId: soloTexto(process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID) || soloTexto(extra.googleAndroidClientId),
 };
 
 /** ¿Se puede ofrecer el botón? Si falta la configuración, no se muestra. */
-export const googleDisponible = () => !!GOOGLE_IDS.webClientId;
+export const googleDisponible = () => valido(GOOGLE_IDS.webClientId);
 
 export async function appleDisponible() {
   if (Platform.OS !== 'ios' || !AppleAuth) return false;
