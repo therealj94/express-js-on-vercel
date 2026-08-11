@@ -364,3 +364,46 @@ bruta sobre dos millones de enteros no las encontró ni las iba a encontrar.
 | `0xf85a57…` (vacío) | `0x018645…` | 47 | 2.192.365 |
 
 Las preimágenes están en `preimagenes-cerradas.json`.
+
+### Las 18 cuentas sin dirección, recuperadas · 11-ago-2026
+
+Cerradas las ranuras, el génesis todavía dejaba **18 contratos fuera**: estaban
+en el árbol sólo por su hash, sin dirección conocida, y sin dirección no hay
+génesis posible.
+
+Los 18 tenían el mismo perfil exacto —contrato, nonce 1, saldo cero, **cinco
+ranuras**— y **un único hash de código**, que ningún contrato con dirección
+conocida compartía.
+
+Su contenido los delató: uno de sus campos apunta a **ONDK**, otro a un
+**Wrapped Origen**, otro a un contrato de 19 KB que usa `CREATE2`, y otro vale
+`1`. Es la forma exacta de un par de AMM estilo Uniswap V2: factoría, los dos
+tokens, y el candado de reentrada.
+
+**Por qué no aparecían.** No se pueden derivar por `CREATE` —se probaron 439
+creadores × 600 nonces, cero coincidencias— porque se despliegan por `CREATE2`,
+donde la dirección depende del hash del código de creación, que no está en la
+cadena.
+
+**Cómo se recuperaron.** Una factoría de pares lleva su propio índice. Se probó
+`allPairsLength()` contra las 439 direcciones conocidas: **doce factorías**
+respondieron, con 1 a 3 pares cada una. Recorriendo `allPairs(i)` de las doce
+salieron **18 direcciones**, y las 18 corresponden exactamente a los 18 hashes
+sin dirección.
+
+Que fueran doce factorías distintas explica por qué ninguna búsqueda centrada
+en una sola las encontraba.
+
+Con las direcciones puestas, sus 5 ranuras se identificaron solas y quedaron
+**cero sin identificar**.
+
+### Estado del génesis de ensayo
+
+```
+cuentas: 332 · contratos: 173
+contratos COMPLETOS: 172
+en el génesis van 331 cuentas · quedan fuera 0
+```
+
+El único incompleto es `0x…1001`, el contrato de staking de Edge, que **no
+viaja**: QBFT gestiona los validadores por voto.

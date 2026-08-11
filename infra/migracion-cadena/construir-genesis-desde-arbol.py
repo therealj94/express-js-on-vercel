@@ -61,6 +61,14 @@ def ranura_de(clave):
         return ((base + clave[2]) % (1 << 256)).to_bytes(32, 'big')
     raise ValueError('etiqueta desconocida: %r' % (clave,))
 
+def clave_arbol(ranura):
+    """Del numero de ranura a la clave con que el arbol la indexa: keccak."""
+    from Crypto.Hash import keccak as K
+    k = K.new(digest_bits=256)
+    k.update(bytes.fromhex(ranura.lower().removeprefix('0x').rjust(64, '0')))
+    return '0x' + k.hexdigest()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('estado', help='estado-final.json de emparejar-preimagenes.py')
@@ -133,9 +141,11 @@ def main():
         alm = c.get('almacen') or {}
         claves = c.get('claves') or {}
         prop = directas.get(d) if d else None
-        # Si el bucle cerro este contrato, su mapa manda: son ranuras que
-        # calculo la maquina virtual, no etiquetas deducidas.
-        resueltas = len(prop) if prop else len(claves)
+        # Las ranuras trazadas COMPLEMENTAN a las etiquetadas, no las
+        # reemplazan: unas salen de la maquina virtual y otras de deducir la
+        # disposicion, y cada contrato suele necesitar las dos. Contarlas por
+        # separado dejaba fuera todo lo ya identificado.
+        resueltas = len(set(claves) | set(clave_arbol(r) for r in (prop or {})))
         faltan = len(alm) - resueltas
         es_contrato = bool(c.get('codigo')) and c['hashCodigo'] != VACIO
         filas.append({'direccion': d, 'hash': c['hashDireccion'], 'contrato': es_contrato,
@@ -154,13 +164,14 @@ def main():
         fila = {'balance': hex(int(c['saldo'])), 'nonce': hex(c['nonce'])}
         if es_contrato:
             fila['code'] = c['codigo']
+            almacen = {}
+            for hclave, etiqueta in claves.items():
+                r = ranura_de(tuple(etiqueta))
+                almacen['0x' + r.hex()] = alm[hclave]
+            # Lo trazado va encima: cuando las dos fuentes hablan de la misma
+            # ranura, manda la que calculo la maquina virtual.
             if prop:
-                almacen = dict(prop)
-            else:
-                almacen = {}
-                for hclave, etiqueta in claves.items():
-                    r = ranura_de(tuple(etiqueta))
-                    almacen['0x' + r.hex()] = alm[hclave]
+                almacen.update(prop)
             if almacen:
                 fila['storage'] = almacen
         alloc[d] = fila
