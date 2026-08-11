@@ -434,3 +434,57 @@ noche es esperar al menos cinco minutos antes de intervenir.
   firma de validador.
 - La tolerancia a fallos es la que se le dijo a la Junta: **aguanta una caída,
   no dos**.
+
+## Veredicto final · 11-ago-2026
+
+El juez corrido **desde node3**, que tiene las dos cadenas a la vez —la vieja
+en el 10002 y la nueva en el 8545—, contra la red real de cuatro validadores y
+con el génesis que lleva la consolidación aplicada:
+
+```
+1206 comprobaciones iguales · 144 distintas · 0 sin poder comparar
+RAÍCES DE ALMACENAMIENTO DISTINTAS: 0
+```
+
+**Las 144 diferencias son todas queridas y ninguna es una sorpresa:**
+
+| Qué | Cuántas |
+|---|---:|
+| Billeteras que pasan a exactamente 1 ORIGEN | 143 |
+| La billetera única, que recibe el resto | 1 |
+| Raíces de almacenamiento distintas | **0** |
+| Código, nombre, símbolo, decimales, emisión, nonces | **todos iguales** |
+
+Que las raíces de almacenamiento den cero sobre la topología real cierra la
+pregunta que abrió todo esto: **cada contrato viaja entero**.
+
+## Estado al cierre de la noche
+
+| Etapa | |
+|---|---|
+| A · ranuras huérfanas | cerrada · 0 sin resolver |
+| B · foto del estado | cerrada · 0 cuentas sin dirección |
+| C · cuatro llaves | generadas, aisladas y funcionando |
+| D · génesis + consolidación | construido, emisión cuadra |
+| E · ensayo y juez | **0 raíces distintas** |
+| Oráculo del oro | probado con todas sus defensas |
+| Red de 4 validadores | probada, con tolerancia a fallos verificada |
+| F · apps contra el ensayo | **pendiente** |
+| G · corte | **necesita autorización** |
+
+Los cuatro validadores quedan corriendo la cadena de pruebas 5534, disponibles
+para apuntarles las aplicaciones (etapa F). `node1` y `node2` no se tocaron: la
+cadena vieja sigue intacta con su respaldo.
+
+## Lo que hace falta de José, y sin lo cual no se puede seguir
+
+1. **La dirección de la billetera única** de ORIGEN. Se está usando la del
+   tesoro, `0x3d5510e5…`, como provisional.
+2. **Qué hacer con las tres asignaciones de 250.000 millones** que nunca se
+   tocaron. La recomendación es dejarlas: tocarlas es mover el tesoro.
+3. **Si el gas arranca en 77 gwei en vez de 93.** El oro subió de 3.592 a
+   4.358 la onza; con 93 el usuario pagaría de más desde el primer día.
+4. **Credenciales de Expo/EAS** para la actualización de la app en el corte.
+5. **La copia fría de las cuatro llaves**, cifrada y fuera de AWS. Necesita una
+   persona: hacerla automáticamente significaría que las llaves pasen por el
+   operador, que es justo lo que se evitó.
