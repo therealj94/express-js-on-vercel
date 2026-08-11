@@ -189,3 +189,75 @@ valor a treinta y dos. Son hashes que no se parecen en nada.
 Descompilar (heimdall, panoramix) da un Solidity aproximado. Con los tres
 caminos de arriba probablemente no haga falta, y conviene que no haga falta:
 «aproximado» y «migración de saldos» no se llevan bien.
+
+---
+
+# Apéndice · 11-ago-2026: el contador de huérfanas mentía
+
+Al retomar el trabajo para construir la 5550 apareció esto, y conviene que
+quede escrito porque es el modo de fallo contra el que se diseñó todo el
+proceso.
+
+## Lo que decía el estado
+
+`estado-final2.json` declaraba **0 huérfanas y 0 cuentas sin dirección**, y con
+eso se construyó el génesis y se dio por buena la etapa 2. Pero el juez daba
+**7 contratos con la raíz de almacenamiento distinta**.
+
+## Lo que pasó
+
+El archivo del que salió, `estado-v3.json`, tiene **160 ranuras sin
+identificar** repartidas en 12 contratos. El paso que unió los estados
+(`estado-v3` → `estado-union`) **vació la lista de huérfanas sin resolverlas**.
+El contador pasó a cero; las ranuras siguieron faltando.
+
+Encima, el génesis se construyó con `--incompletos`, que salta a propósito la
+regla de que un contrato viaja entero o no viaja. Sirve para ensayar; no para
+producción.
+
+Las dos cosas juntas producen exactamente lo que hay que evitar: una cadena que
+parece correcta, con un informe que dice que todo cuadra, y a la que le falta
+estado.
+
+## La prueba de que encaja
+
+Los 7 contratos con la raíz distinta son **los mismos** que cargan las
+huérfanas, y se llevan 144 de las 160:
+
+| Contrato | Huérfanas | ¿raíz distinta? |
+|---|---:|---|
+| `0xaf25c9025ad8bbe86d9d8051afe0192002aec272` | 66 | sí |
+| `0xe80cc7eb524e7cf2877d6a6cca1dd3140695dd41` | 40 | sí |
+| `0xa52a131a192db2f5499bd1df3755d1b1126d3d70` | 20 | sí |
+| `0x6facc8df79cedc6c5065442ce27e915aa3a26b9b` | 10 | no se comparó |
+| `0x16f052c851ab311cfb8f77c08dd06b4bc4bf1748` | 6 | sí |
+| `0xd7f46c7103e107e260a39011ff256c5d898d5527` | 4 | sí |
+| `0x62df6495249c0e074ce785e8a1539c93f000b836` | 4 | sí |
+| `0xf85a573f43262ec0d4ec674a3a05c63d127ed840` | 4 | sí |
+| `0x0000000000000000000000000000000000001001` | 2 | staking, no viaja |
+| `0x3aec4b7004a2604084e204525bba1ede3ffda288` | 2 | no se comparó |
+| `0xf1498640b27a66c0dc505093d70911c060e04fb0` | 1 | no se comparó |
+| `0xfb83eea4b384a4b18e5a1eba7a4bb4c0b7ca19c1` | 1 | no se comparó |
+
+Los tres de 4 huérfanas tienen **la misma raíz vieja y la misma nueva**: son
+gemelos, un solo defecto repetido tres veces.
+
+## Dos hipótesis que se probaron y se descartaron
+
+No se dio nada por supuesto:
+
+1. **«La foto es vieja y esos contratos cambiaron después.»** Falso: el
+   `stateRoot` del bloque 4.164.360 de la cadena viva es
+   `0xd21e29ff024f…`, **idéntico** al de la foto. El estado no se movió.
+2. **«Tuvieron actividad reciente.»** Falso: barrido de eventos sobre los
+   últimos 8.000 bloques (unas 34 horas) para los 7 contratos: **cero
+   eventos**.
+
+## Lo que hay que arreglar
+
+1. **Identificar las 160 ranuras.** Es el trabajo real que queda.
+2. **Que el paso de unión no pueda vaciar la lista de huérfanas.** Si un estado
+   unido declara menos huérfanas que sus fuentes sin haberlas resuelto, tiene
+   que abortar.
+3. **`--incompletos` nunca en producción.** El génesis del corte se construye
+   sin esa opción, y si un contrato no está entero, no arranca.
