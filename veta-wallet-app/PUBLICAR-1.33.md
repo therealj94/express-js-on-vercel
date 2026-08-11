@@ -57,14 +57,14 @@ llenar orígenes ni redirecciones. Guardá el **ID de cliente** (termina en
 *Crear credenciales → ID de cliente de OAuth → Android.*
 
 - **Nombre del paquete:** `com.ordenglobal.vetawallet`
-- **Huella SHA-1:** la del certificado con que EAS firma la app. Se obtiene con:
+- **Huella SHA-1:** la del certificado con que EAS firma la app.
 
-```sh
-cd veta-wallet-app
-npx eas credentials --platform android
-```
-
-Elegí el perfil `production` y copiá el **SHA-1 fingerprint**.
+**Esa huella no existe hasta que haya una primera compilación.** Por eso
+compilar no es un desvío antes de configurar Google: es el paso 1 de
+configurarlo. Corré **Actions → `Veta Wallet — compilar Android`** con el perfil
+`preview`, y al terminar la huella queda impresa en el resumen de la corrida,
+bajo «Huella del certificado». Se lee del archivo compilado, no de lo que diga
+el panel: lo que importa es con qué llave quedó firmado esto.
 
 > **Este es el error más común.** Si se pone la huella de depuración en lugar de
 > la de producción, Google funciona mientras probás y **deja de funcionar en la
@@ -151,21 +151,31 @@ cd veta-wallet-app
 node scripts/verificar.js        # tiene que decir "listo para construir"
 ```
 
-Los identificadores se pasan como variables al construir. En `eas.json`,
-dentro de `build.production.env`, agregá:
+**Ya no hay que editar `eas.json` a mano.** Los tres identificadores se pegan
+una sola vez en GitHub y entran solos a todos los perfiles, tanto al compilar
+como al publicar por aire:
 
-```json
-"EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "<ID-web>",
-"EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "<ID-android>",
-"EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "<ID-ios>"
-```
+> **Settings → Secrets and variables → Actions → pestaña Variables →**
+> **New repository variable**
 
-Y lo mismo en `preview`, para poder probar antes.
+| Nombre de la variable | Valor |
+|---|---|
+| `GOOGLE_WEB_CLIENT_ID` | el ID del cliente **Web** |
+| `GOOGLE_ANDROID_CLIENT_ID` | el ID del cliente **Android** |
+| `GOOGLE_IOS_CLIENT_ID` | el ID del cliente **iOS** |
 
-```sh
-npx eas build --platform android --profile production
-npx eas build --platform ios --profile production
-```
+Son *variables*, no *secretos*: un identificador de cliente viaja dentro del
+paquete de la app y cualquiera puede leerlo. Lo único que hace es decir «este
+token va dirigido a tal aplicación», y sin la firma de Google no sirve para
+entrar a ningún lado. Como variables se pueden ver y corregir; como secretos
+quedarían escritos a ciegas, que es peor.
+
+Se pegan una vez y quedan para siempre. Cada corrida imprime cuáles encontró
+—sin mostrar el valor entero— y avisa si falta el web, que es el que habilita
+el botón.
+
+Después, **Actions → `Veta Wallet — compilar Android` → Run workflow**, eligiendo
+la rama de trabajo y el perfil.
 
 ---
 
