@@ -261,3 +261,63 @@ No se dio nada por supuesto:
    que abortar.
 3. **`--incompletos` nunca en producción.** El génesis del corte se construye
    sin esa opción, y si un contrato no está entero, no arranca.
+
+## Cierre de las huérfanas · 11-ago-2026, madrugada
+
+De las 160, **67 identificadas**. Quedan 80.
+
+### Lo que cerró, y cómo
+
+**Los tres tokens con tenedores de verdad: 12 de 12.** AUKA (10), ONDK (1) y
+AUBEX (1) eran entradas del mapa de saldos de tenedores que el barrido de
+eventos original nunca había capturado. Se resolvió rehaciendo el barrido
+completo desde dentro de un nodo —el RPC público corta en 1.000 bloques, el
+local no—: 4,16 millones de bloques, 339 direcciones únicas.
+
+Dos señales que se vieron en los datos y valían: nueve de las diez ranuras de
+AUKA tienen **el mismo valor exacto** (0,032 tokens), o sea un reparto en lote;
+y AUBEX y ONDK **comparten el hash de ranura**, o sea la misma dirección en la
+misma posición de mapa en los dos contratos.
+
+**Las tres factorías: 60 de 60.** 38, 18 y 4. Eran el mapa triple
+`getPool[token0][token1][fee]`, y la pieza que faltaba es que Uniswap guarda
+**las dos direcciones de cada par** — `[t0][t1]` y `[t1][t0]`. De ahí que sean
+exactamente el doble de los pools de cada factoría: 19, 9 y 2.
+
+Los 30 pools se identificaron llamando `token0()`/`token1()`/`fee()` a cada
+contrato conocido, que es más rápido y más seguro que barrer eventos. Cuidado
+con los precompilados: `0x02`, `0x03` y `0x04` responden a cualquier llamada y
+aparecen como falsos pools.
+
+### El emparejador, validado antes de creerle
+
+Antes de dar por buena una sola coincidencia se comprobó que el cálculo
+reproduce claves que el estado **ya tenía identificadas**: `['fija', 2]`,
+`['fija', 3]` y `['fija', 4]` de un contrato cualquiera. Las tres coinciden
+carácter por carácter. El pipeline es correcto; lo que falla en las que quedan
+es el modelo de la disposición, no la aritmética.
+
+### Las 80 que quedan
+
+| Contrato | Ranuras | Qué es |
+|---|---:|---|
+| `0xaf25c9…` | 66 | gestor de posiciones V3 con las 31 posiciones reales |
+| `0xd7f46c…`, `0x62df64…`, `0xf85a57…` | 4 c/u | gestores de posiciones **vacíos**, `totalSupply = 0` |
+| `0x…1001` | 2 | contrato de staking de Edge, que **no viaja** |
+
+Se probaron y fallaron: mapa de dirección con desplazamiento de estructura,
+mapa numérico con desplazamiento, anidado dueño→índice, arreglo dinámico,
+`_poolIds`, `_poolIdToPoolKey`, `_positions`, y ERC-721 completo — todos sobre
+bases 0–255 y con los candidatos exactos (30 pools, 2 dueños, 31 posiciones).
+
+También se descartó por fuerza bruta que sean ranuras simples: **dos millones**
+de números probados, cero coincidencias. Son derivadas.
+
+**El camino que queda es el que no adivina: trazar.** `cerrar-ranuras.py` corre
+las llamadas de verdad contra un nodo propio y lee del `debug_trace` las
+ranuras que la máquina virtual toca de hecho. Eso no depende de acertarle a la
+disposición del contrato.
+
+Nota sobre las 12 de los gestores vacíos: no son dinero de nadie —esos
+contratos no tienen ni una posición—, pero igual tienen que viajar, porque la
+regla es que un contrato viaja entero o no viaja.
