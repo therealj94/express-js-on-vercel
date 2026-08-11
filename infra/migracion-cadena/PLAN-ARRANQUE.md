@@ -26,12 +26,34 @@ los demás tokens migran normal**, con sus tenedores y sus saldos intactos.
 **Los contratos conservan su saldo nativo.** No son billeteras: su ORIGEN
 respalda valor de la gente.
 
+> **Corrección del 11-ago-2026.** Las cifras de abajo reemplazan a unas
+> anteriores que estaban mal. Se habían medido consultando por RPC una lista de
+> 439 direcciones sacadas de eventos y transacciones; el árbol de estado dice
+> otra cosa, y el árbol manda.
+>
+> | | Se dijo antes | Es en realidad |
+> |---|---|---|
+> | Emisión total | 249.999.999.994 | **1.000.000.000.010** |
+> | Billeteras de persona | 320 | **159** |
+>
+> La diferencia son **tres billeteras de 250.000 millones cada una que nunca
+> enviaron una transacción**. Al no aparecer nunca en un evento ni en una
+> transacción, la medición por direcciones conocidas no podía verlas. La
+> emisión está repartida en cuatro asignaciones de 250.000 millones, no en una.
+
 | | Saldo nativo en la 5550 |
 |---|---|
-| 320 billeteras de personas | **1 ORIGEN** cada una · 320 en total |
-| 4 contratos con saldo | **el que tienen** · 17.236,9269 en total |
-| La billetera única | **249.999.982.437,1246** |
-| Suma | 249.999.999.994,0515 — cuadra con la emisión medida |
+| 155 billeteras de personas | **1 ORIGEN** cada una |
+| 3 contratos con saldo | **el que tienen** · 17.236,9269 |
+| **3 asignaciones de emisión** | **intactas** · 750.000.000.000 |
+| La billetera única | **249.999.982.618,0731** |
+| Suma | 1.000.000.000.000 — comprobado por el constructor, que aborta si no cuadra |
+
+**Las tres asignaciones no se tocan, y eso necesita decisión de José.** Aplicar
+«dejemos 1 en las billeteras» al pie de la letra les sacaría 750.000 millones a
+tres billeteras intactas desde el génesis. Eso no es limpiar saldos de usuario:
+es mover el tesoro, y va con instrucción escrita de la Junta. El constructor
+las preserva con `--preservar` hasta que se diga lo contrario.
 
 El caso que obliga a la excepción es `0xccbe0c6690bf61d1f23f95f3998e4ba0d7b89f75`,
 **Wrapped Origen**: guarda 16.387,76 ORIGEN adentro, y en un envoltorio ese

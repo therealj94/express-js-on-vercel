@@ -80,6 +80,16 @@ def main():
                     help='emitir igual los contratos incompletos (SOLO para ensayo)')
     ap.add_argument('--ranuras', help='ranuras-cerradas.json de cerrar-ranuras.py: '
                     'ranuras ya resueltas, ranura -> valor, por contrato')
+    ap.add_argument('--consolidar-origen', metavar='DIRECCION',
+                    help='deja exactamente --origen-por-billetera en cada billetera de '
+                         'persona y manda todo el resto a esta direccion. Los contratos '
+                         'conservan el suyo: su saldo respalda valor de la gente.')
+    ap.add_argument('--preservar', nargs='*', default=[], metavar='DIRECCION',
+                    help='billeteras que conservan su saldo pese a la consolidacion. '
+                         'Van aca las asignaciones de emision, que no son saldos de '
+                         'usuario: tocarlas es mover el tesoro y lo decide la Junta.')
+    ap.add_argument('--origen-por-billetera', type=int, default=1,
+                    help='ORIGEN enteros que queda en cada billetera de persona (por omision 1)')
     ap.add_argument('--fuentes', nargs='*', default=[],
                     help='los estados de los que salio este, para comprobar que el '
                          'recuento de huerfanas no bajo sin haberlas resuelto')
@@ -175,6 +185,56 @@ def main():
             if almacen:
                 fila['storage'] = almacen
         alloc[d] = fila
+
+    # ---- consolidacion del ORIGEN nativo ----------------------------------
+    # Decidido el 11-ago-2026: cada billetera de persona lleva exactamente un
+    # ORIGEN --alcanza para unas 210 transferencias a 93 gwei, asi que nadie
+    # queda sin poder pagar el gas-- y el resto se junta en una sola direccion.
+    #
+    # Los contratos son la excepcion y conservan su saldo, porque no son
+    # billeteras: el ORIGEN que guarda Wrapped Origen es el respaldo de los
+    # tokens envueltos que la gente tiene afuera, y vaciarlo lo dejaria
+    # insolvente. Lo mismo con la liquidez de los pools.
+    if a.consolidar_origen:
+        destino = a.consolidar_origen.lower()
+        if destino not in alloc:
+            print('ABORTADO: la direccion de consolidacion %s no esta en el genesis.'
+                  % destino, file=sys.stderr)
+            sys.exit(2)
+        UNO = 10 ** 18
+        preservar = {x.lower() for x in a.preservar}
+        faltantes = preservar - set(alloc)
+        if faltantes:
+            print('ABORTADO: estas direcciones a preservar no estan en el genesis: %s'
+                  % ', '.join(sorted(faltantes)), file=sys.stderr)
+            sys.exit(2)
+        antes = sum(int(v['balance'], 16) for v in alloc.values())
+        piso = a.origen_por_billetera * UNO
+        personas = quitado = 0
+        for d, fila in alloc.items():
+            if d == destino or 'code' in fila or d in preservar:
+                continue
+            tenia = int(fila['balance'], 16)
+            fila['balance'] = hex(piso)
+            quitado += tenia - piso
+            personas += 1
+        alloc[destino]['balance'] = hex(int(alloc[destino]['balance'], 16) + quitado)
+        despues = sum(int(v['balance'], 16) for v in alloc.values())
+        # La emision no se crea ni se destruye: si esto no cuadra, algo se perdio
+        # por el camino y no se publica una cadena con la emision cambiada.
+        if antes != despues:
+            print('ABORTADO: la emision cambio en la consolidacion: %d -> %d'
+                  % (antes, despues), file=sys.stderr)
+            sys.exit(2)
+        print('consolidacion del ORIGEN:')
+        print('   billeteras de persona con %d ORIGEN : %d' % (a.origen_por_billetera, personas))
+        print('   contratos que conservan su saldo    : %d'
+              % sum(1 for f in alloc.values() if 'code' in f and int(f['balance'], 16) > 0))
+        print('   billeteras preservadas              : %d  (%.4f ORIGEN)'
+              % (len(preservar), sum(int(alloc[d]['balance'], 16) for d in preservar) / UNO))
+        print('   a la billetera unica                : %.6f'
+              % (int(alloc[destino]['balance'], 16) / UNO))
+        print('   emision antes y despues             : %.6f  (cuadra)' % (antes / UNO))
 
     contratos = [f for f in filas if f['contrato']]
     completos = [f for f in contratos if f['faltan'] == 0 and f['direccion']]
