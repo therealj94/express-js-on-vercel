@@ -17,7 +17,57 @@ hace, qué la da por buena, y cómo se vuelve atrás.
 | Ventana del corte | de noche, apenas esté todo listo |
 | Cadena vieja | queda encendida como respaldo caliente |
 
-## La decisión que falta
+## Los saldos nativos: decidido el 11-ago-2026
+
+**Ningún usuario lleva ORIGEN nativo a la cadena nueva.** Todo el ORIGEN se
+consolida en una sola billetera y se reparte a mano después. **Todos los demás
+tokens migran normal**, con sus tenedores y sus saldos intactos.
+
+De eso se desprende algo que no es opcional: **la cadena arranca con el gas en
+cero**. Si nadie tiene ORIGEN y el gas cuesta 93 gwei, nadie puede mover ni sus
+propios tokens — cada transacción se paga en nativo. Los 406 usuarios quedarían
+congelados el día uno.
+
+El orden correcto es: arrancar con gas 0 (igual que hoy), repartir los ORIGEN a
+mano, y **recién entonces** encender el gas a 93 gwei con una sola llamada
+`miner_setMinGasPrice`, en caliente, sin reiniciar ni reconstruir. El mecanismo
+ya estaba previsto para el ajuste contra el oro.
+
+Falta que José dé la dirección de esa billetera única. Mientras tanto se usa la
+del tesoro, `0x3d5510e5081822877d14cd51b356bf01df2c32c9`, que es la que hoy
+tiene 249.999.831.472 ORIGEN.
+
+## El hierro: se reutiliza, no se compra
+
+Los seis nodos están **sincronizados en la punta**, así que cada uno tiene una
+copia completa de la cadena vieja. Eso permite reutilizar cuatro sin dejar el
+respaldo huérfano.
+
+| Nodo | Zona | Destino |
+|---|---|---|
+| node1 | us-east-1e | **no se toca** · validador y RPC de la vieja |
+| node2 | us-east-2b | **no se toca** · copia completa, respaldo del respaldo |
+| node3 | us-east-1e | validador Besu 1 |
+| node5 | us-east-1d | validador Besu 2 |
+| node6 | us-east-1d | validador Besu 3 |
+| node4 | us-east-2b | validador Besu 4 |
+
+Coste adicional: **cero**. Y la t2.large tiene 8 GB de memoria contra los 4 de
+la t3.medium que se iba a comprar: el hierro que ya existe es mejor para Besu
+que el que se iba a pagar.
+
+Instantáneos EBS tomados antes de tocar nada, el 11-ago-2026:
+`snap-043fc38632a9149ea` (node3), `snap-0663c8fbc2b23fd2f` (node5),
+`snap-0cf5db2ce844b926d` (node6), `snap-00aee0b99990c94b1` (node4).
+
+### Lo que hay que arreglar en el corte, y que hoy está mal
+
+El RPC público `rpc.ordenglobal-rpc.com` apunta a un balanceador con **un solo
+destino**: node1 — que es también el único validador. Si esa máquina cae, la
+cadena deja de producir y la billetera se queda sin RPC a la vez. Los cuatro
+validadores Besu van detrás del balanceador y el punto único desaparece.
+
+## Nota sobre la decisión anterior
 
 **Qué pasa con los saldos nativos de ORIGEN.** Medido contra la cadena en vivo
 el 11-ago-2026, sobre 438 direcciones conocidas:
