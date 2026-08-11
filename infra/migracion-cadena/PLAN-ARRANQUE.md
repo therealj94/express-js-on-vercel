@@ -488,3 +488,26 @@ cadena vieja sigue intacta con su respaldo.
 5. **La copia fría de las cuatro llaves**, cifrada y fuera de AWS. Necesita una
    persona: hacerla automáticamente significaría que las llaves pasen por el
    operador, que es justo lo que se evitó.
+
+## Decisiones de José · 11-ago-2026
+
+| | Decidido |
+|---|---|
+| Billetera única de ORIGEN | `0x3d5510e5081822877d14cd51b356bf01df2c32c9` (la del tesoro) |
+| Gas al arrancar | **77 gwei**, no 93 — el oro subió a 4.358 la onza |
+| Credenciales de Expo | las pasa José |
+| Copia fría de las llaves | procedimiento en `COPIA-FRIA-LLAVES.md`, probado |
+| Las tres asignaciones de 250.000 millones | **pendiente de una palabra**: la respuesta admitía dos lecturas y se siguió con la recomendación, que es dejarlas intactas |
+
+### El génesis candidato de la 5550
+
+Construido con esas decisiones:
+
+```
+chainId 5550 · bloque 10 s · gasLimit 10.000.000 · 331 cuentas
+huella SHA-256: 6b8ab3544660582ce77375bb895786c64f9b637cea4be7594f3b0381178ddd4c
+```
+
+**No es el definitivo.** El del corte se construye sobre la foto del estado que
+se tome al congelar, no sobre la de hoy. Este sirve para ensayar y para dejar
+fijos los parámetros.
