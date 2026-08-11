@@ -407,3 +407,41 @@ en el génesis van 331 cuentas · quedan fuera 0
 
 El único incompleto es `0x…1001`, el contrato de staking de Edge, que **no
 viaja**: QBFT gestiona los validadores por voto.
+
+## VEREDICTO · 11-ago-2026, 05:45
+
+```
+RESULTADO: 1350 comprobaciones iguales · 0 distintas · 0 sin poder comparar
+```
+
+Todas las raíces de almacenamiento coinciden. Cada contrato viaja entero, cada
+saldo y cada nonce cuadran. Comparado con el intento anterior —1.343 iguales y
+**7 distintas**— el estado ahora migra bit por bit.
+
+### Una trampa que casi da un falso resultado
+
+La primera corrida con el génesis nuevo dio **las mismas 7 diferencias, con los
+mismos valores de raíz carácter por carácter**. Eso no podía ser: aunque el
+génesis nuevo estuviera mal, las raíces habrían cambiado.
+
+`comparar-cadenas.py` tenía la dirección de la cadena nueva **fija en el
+código** (`NUEVA = 'http://127.0.0.1:8545'`). La cadena nueva estaba en el
+8547, así que el juez estuvo comparando contra la cadena de ensayo del día
+anterior —la del génesis incompleto— y repitiendo su veredicto.
+
+Ahora lee `OG_NUEVA` del entorno. **Un juez con la dirección fija no juzga lo
+que uno cree que juzga**, y la señal de que algo iba mal fue que el resultado
+era demasiado idéntico al anterior.
+
+### Lo que queda para el génesis de producción
+
+Lo comprobado es la **copia fiel**. Falta aplicarle encima las
+transformaciones deliberadas, en este orden y comprobando cada una:
+
+1. Consolidación del ORIGEN nativo: 1 por billetera de persona, los contratos
+   conservan el suyo, el resto a la billetera única.
+2. Chain ID 5550 y los cuatro validadores en el `extraData`.
+3. El oráculo del oro y el precio del gas.
+
+Primero se probó que la copia es exacta; recién ahora se le cambian cosas a
+propósito. Al revés no se puede distinguir un error de un cambio querido.
