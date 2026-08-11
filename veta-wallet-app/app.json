@@ -2,7 +2,7 @@
   "expo": {
     "name": "Veta Wallet",
     "slug": "veta-wallet",
-    "version": "1.32.0",
+    "version": "1.33.0",
     "owner": "vetawallet",
     "runtimeVersion": {
       "policy": "sdkVersion"
@@ -30,7 +30,7 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryAddUsageDescription": "Veta Wallet guarda en tus fotos el código QR de tu dirección cuando eliges descargarlo."
       },
-      "buildNumber": "68",
+      "buildNumber": "69",
       "privacyManifests": {
         "NSPrivacyAccessedAPITypes": [
           {
@@ -61,6 +61,11 @@
         "NSPrivacyTracking": false,
         "NSPrivacyTrackingDomains": [],
         "NSPrivacyCollectedDataTypes": []
+      },
+      "entitlements": {
+        "com.apple.developer.applesignin": [
+          "Default"
+        ]
       }
     },
     "android": {
@@ -75,7 +80,7 @@
         "RECEIVE_BOOT_COMPLETED",
         "WAKE_LOCK"
       ],
-      "versionCode": 68,
+      "versionCode": 69,
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -112,14 +117,18 @@
           "photosPermission": "Veta Wallet accede a tus fotos para que subas la imagen de tu pasaporte Genesis ID.",
           "cameraPermission": "Veta Wallet usa la cámara para escanear códigos QR y capturar tu pasaporte."
         }
-      ]
+      ],
+      "expo-apple-authentication"
     ],
     "extra": {
       "eas": {
         "projectId": "8d134ab3-cd6b-41e8-8df7-fb3744ce844d"
       },
       "genesisUrl": "https://genesis-id.onrender.com",
-      "telemetriaClave": "gidp_veta-wallet_98cwxS8AnbUIRAEr"
+      "telemetriaClave": "gidp_veta-wallet_98cwxS8AnbUIRAEr",
+      "googleWebClientId": null,
+      "googleIosClientId": null,
+      "googleAndroidClientId": null
     },
     "updates": {
       "url": "https://u.expo.dev/8d134ab3-cd6b-41e8-8df7-fb3744ce844d"

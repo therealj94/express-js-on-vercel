@@ -48,6 +48,7 @@ const PATHS = {
   register: process.env.EXPO_PUBLIC_WALLET_PATH_REGISTER || '/auth/register',
   send: process.env.EXPO_PUBLIC_WALLET_PATH_SEND || '/transaction/send',
   refresh: process.env.EXPO_PUBLIC_WALLET_PATH_REFRESH || '/auth/refresh',
+  social: process.env.EXPO_PUBLIC_WALLET_PATH_SOCIAL || '/auth/social',
 };
 
 // ---------- token + credenciales recordadas (en el llavero) ----------
@@ -483,6 +484,35 @@ export async function apiLogin(emailRaw, password) {
   const address = claims.address || apiUser.address || apiUser.wallet || null;
   if (address) user.address = address;
   return { token: tk, user, address, claims };
+}
+
+// Entrar con Google o con Apple.
+//
+// El teléfono no manda datos de la persona: manda el token que firmó el
+// proveedor, y el servidor comprueba esa firma contra las llaves públicas de
+// Google o Apple. Desde acá el flujo termina igual que apiLogin —misma sesión,
+// mismo refresco, misma forma de usuario— para que el resto de la aplicación
+// no tenga que saber por dónde entró nadie.
+export async function apiSocialLogin(provider, idToken) {
+  if (!idToken) throw new Error('No se recibió la identidad del proveedor');
+  const d = await req(PATHS.social, { method: 'POST', body: { provider, idToken } });
+  const tk = pickToken(d);
+  if (!tk) throw new Error('El servidor no devolvió una sesión válida');
+  await setToken(tk);
+  const rt = pickRefreshToken(d);
+  if (rt) await setRefreshToken(rt);
+  const claims = decodeJwt(tk) || {};
+  const apiUser = pickUser(d) || {};
+  const user = {
+    email: (apiUser?.email || claims.email || '').trim(),
+    ...apiUser,
+    userId: claims.userId || apiUser.userId,
+    role: claims.role,
+    verify: claims.verify,
+  };
+  const address = claims.address || d?.address || apiUser.address || null;
+  if (address) user.address = address;
+  return { token: tk, user, address, claims, creada: !!d?.creada };
 }
 
 // Registro contra el backend oficial. Tras crear la cuenta inicia sesión.

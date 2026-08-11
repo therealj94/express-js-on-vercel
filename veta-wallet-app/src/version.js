@@ -10,15 +10,30 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.32.0';
-export const BUILD = 68;
-export const RELEASED = '2026-08-05';
+export const VERSION = '1.33.0';
+export const BUILD = 69;
+export const RELEASED = '2026-08-11';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.33.0',
+    build: 69,
+    date: '2026-08-11',
+    es: [
+      'Ya podés entrar con tu cuenta de Google, y en iPhone también con Apple. Un toque y estás adentro: sin inventar otra contraseña ni esperar el correo de verificación.',
+      'Si ya tenías cuenta con ese mismo correo, entrás a la tuya de siempre, con tus mismos fondos. No se crea una segunda.',
+      'Tu identidad la comprueba el servidor contra Google o Apple directamente. La app no ve ni guarda tu contraseña de esas cuentas.',
+    ],
+    en: [
+      'You can now sign in with your Google account, and on iPhone with Apple too. One tap and you are in: no new password to invent, no verification email to wait for.',
+      'If you already had an account with that same email, you land in yours, with the same funds. No second account is created.',
+      'Your identity is checked by the server against Google or Apple directly. The app never sees or stores those passwords.',
+    ],
+  },
   {
     v: '1.32.0',
     build: 68,
