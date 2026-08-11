@@ -301,3 +301,46 @@ escalonado de a un nodo, que tampoco corta el servicio.
 Y una regla que no es técnica: **cada ajuste queda registrado** —precio del oro
 leído, ORIGEN resultante, gwei anterior y nuevo, hora—. Si nadie puede
 auditarlo después, el usuario no tiene cómo saber por qué pagó lo que pagó.
+
+## Etapa C, hecha · las cuatro llaves de validador · 11-ago-2026
+
+| Nodo | Zona | Dirección de validador |
+|---|---|---|
+| node3 | us-east-1e | `0x69e8a7b25586511a0c14430b45100e9439aae36c` |
+| node5 | us-east-1d | `0x65f987264bd77c3a094badfd88e4ba84c0b36382` |
+| node6 | us-east-1d | `0xc548464725d5fd4a15b882a221da67b9cfd29514` |
+| node4 | us-east-2b | `0x48ccec9a54b9357623458f26afadcd7412a6a833` |
+
+`extraData` de QBFT generado con las cuatro, en orden ascendente de dirección,
+en `/opt/v2/extradata.txt` de la máquina de ensayo.
+
+**Cada llave se generó dentro de su propio nodo y la parte privada nunca salió
+de ahí.** Sólo viajó la parte pública, con la que se deriva la dirección. La
+privada se guarda cifrada en SSM Parameter Store, en `/og/5550/<nodo>/`, con la
+clave KMS `alias/og-validadores-5550` (rotación anual activada), y el propio
+nodo la escribe con su rol: en ningún momento pasa por el operador.
+
+### Dos errores que aparecieron al comprobar, y por qué conviene comprobar
+
+**La primera extracción truncaba las llaves.** Salían de 62 caracteres en vez
+de 64 porque el `grep` que las leía sólo tomaba los bytes seguidos de dos
+puntos, y el último byte de cada campo no lleva. Una llave truncada guardada
+como respaldo es peor que no tener respaldo. Se rehizo leyendo el DER, que no
+depende del formato de texto, y se comprobó que la privada guardada deriva
+exactamente a la pública de la que sale la dirección.
+
+**El aislamiento no existía hasta que se probó.** Con el permiso acotado a
+`/og/5550/<nodo>/*` puesto, **cada nodo seguía leyendo las llaves de los otros
+tres**. La causa es que `AmazonSSMManagedInstanceCore` —la política estándar de
+AWS, necesaria para que el agente funcione— concede `ssm:GetParameter` sobre
+`Resource: "*"`. Acotar en una política no sirve si otra abre todo.
+
+Se arregló con una **denegación explícita** de las rutas de los otros tres. En
+IAM, un Deny gana siempre. Comprobado en los cuatro: cada uno lee la suya y
+ninguno lee las ajenas.
+
+### Lo que falta de esta etapa
+
+La **copia fría de las cuatro**, cifrada y fuera de AWS. Es la única que
+sobrevive a perder la cuenta, y necesita una persona: no la puede hacer el
+operador automático sin que las llaves pasen por él.
