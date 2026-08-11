@@ -178,7 +178,7 @@ export default function Auth({ nav }) {
             </View>
 
             {!login && <Input label={t('auth.name')} placeholder={t('auth.namePh')} value={regName} onChangeText={setRegName} />}
-            <Input label={t('auth.email')} placeholder="tu@correo.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+            <Input label={t('auth.email')} placeholder={t('auth.emailPh')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
             <View style={{ marginBottom: 6 }}>
               <Text style={styles.label}>{t('auth.password')}</Text>
               <View>
