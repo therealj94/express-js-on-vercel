@@ -321,3 +321,46 @@ disposición del contrato.
 Nota sobre las 12 de los gestores vacíos: no son dinero de nadie —esos
 contratos no tienen ni una posición—, pero igual tienen que viajar, porque la
 regla es que un contrato viaja entero o no viaja.
+
+### Cerradas las 160 · 11-ago-2026
+
+**158 resueltas. Las 2 que quedan son del contrato de staking de Edge, que no
+viaja.** Entre los contratos que sí migran: cero sin resolver.
+
+Lo que cerró el tramo final fue dejar de adivinar la disposición y **leer lo
+que la máquina virtual toca de hecho**. La cadena vieja expone
+`debug_traceCall` y `debug_traceTransaction`; eso vale más que cualquier
+modelo del contrato.
+
+**Las 62 del gestor de posiciones.** Trazando llamadas reales — primero las de
+lectura (`positions`, `ownerOf`, `tokenURI`, `tokenOfOwnerByIndex`), y como
+esas no tocan todo el almacenamiento, después simulando las que escriben
+(`transferFrom`, `approve`, `burn`, `collect`, `decreaseLiquidity`) con el
+`from` puesto en el dueño real para que pasen la autorización. 356 llamadas,
+cero fallos, 454 ranuras vistas.
+
+**Las 4 del constructor, que valen por 16.** Los cuatro gestores de posiciones
+—el que tiene 31 posiciones y los tres vacíos— comparten **los mismos cuatro
+hashes con el mismo valor `0x01`**. Eso sólo puede venir del constructor.
+
+Para trazarlo hacía falta la transacción de despliegue, y no estaba entre las
+1.521 guardadas. Se encontró sin barrer la cadena:
+
+1. **Quién los creó**, por derivación CREATE: `keccak(rlp([creador, nonce]))[12:]`
+   contra las 439 direcciones conocidas × nonce 0–300.
+2. **En qué bloque**, por **búsqueda binaria sobre `eth_getTransactionCount`** —
+   el primer bloque donde el nonce del creador supera al de la creación. Unas
+   22 consultas en lugar de 4,16 millones de bloques.
+
+Las cuatro ranuras resultaron ser **derivadas, no números**: valores como
+`0x77b7bbe0e49b…`, o sea `keccak` de una cadena de texto. Por eso la fuerza
+bruta sobre dos millones de enteros no las encontró ni las iba a encontrar.
+
+| Gestor | Creador | Nonce | Bloque |
+|---|---|---:|---:|
+| `0xaf25c9…` (31 posiciones) | `0x3063a2…` | 42 | 2.004.924 |
+| `0xd7f46c…` (vacío) | `0x3063a2…` | 41 | 2.004.916 |
+| `0x62df64…` (vacío) | `0x018645…` | 3 | 2.187.442 |
+| `0xf85a57…` (vacío) | `0x018645…` | 47 | 2.192.365 |
+
+Las preimágenes están en `preimagenes-cerradas.json`.
