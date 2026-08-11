@@ -511,3 +511,63 @@ huella SHA-256: 6b8ab3544660582ce77375bb895786c64f9b637cea4be7594f3b0381178ddd4c
 **No es el definitivo.** El del corte se construye sobre la foto del estado que
 se tome al congelar, no sobre la de hoy. Este sirve para ensayar y para dejar
 fijos los parámetros.
+
+## Las llaves de las billeteras grandes · 11-ago-2026
+
+Decidido dejar las tres asignaciones intactas y **asignarlas después**. Es lo
+correcto, pero tiene una condición que hay que comprobar antes del corte, no
+después.
+
+**El génesis es el único momento en que un saldo se mueve sin tener la llave
+privada.** Una vez viva la cadena, para mover esos 750.000 millones hace falta
+firmar, y firmar exige la llave.
+
+### Lo que dice la cadena
+
+| Dirección | ORIGEN | Nonce | Qué prueba |
+|---|---:|---:|---|
+| `0xacc03b…44b8` | 250.000.000.000 | **0** | nunca firmó · no hay prueba de que exista su llave |
+| `0x3011f7…5718` | 250.000.000.000 | **0** | nunca firmó · ídem |
+| `0x502191…7f74` | 250.000.000.000 | **0** | nunca firmó · ídem |
+| `0x3d5510…32c9` | 249.999.831.471 | **27** | **alguien tiene la llave**: ya firmó 27 veces |
+| `0x48986b…e8ff` | 126 | **0** | es el `TREASURY_OG_ADDRESS` del backend |
+
+Un nonce en cero no demuestra que la llave se haya perdido —puede estar
+guardada y sin usar—, pero **tampoco demuestra que exista**. Y por 750.000
+millones eso no se supone: se comprueba.
+
+Que la billetera única elegida tenga nonce 27 es una buena señal y no fue
+casualidad: es la única de las cuatro con prueba de que alguien puede firmar.
+
+### La comprobación, que no mueve un solo ORIGEN
+
+Firmar un mensaje demuestra que se tiene la llave sin gastar gas ni mover
+fondos. Desde la billetera o desde una consola con la frase de recuperación:
+
+```
+Orden Global · prueba de control de esta billetera · 11-ago-2026
+```
+
+Con la firma de cada una se verifica que corresponde a su dirección. Si las
+tres responden, se dejan intactas y se asignan cuando se quiera. Si alguna no,
+**el corte es la última oportunidad** de reasignar ese saldo a una billetera
+con llave conocida, y eso lo decide la Junta.
+
+## Un hallazgo aparte, que no es de la migración
+
+El backend usa `TREASURY_OG_ADDRESS` = `0x48986b3a…e8ff` para **recibir el
+ORIGEN de los usuarios** en los canjes. Su propio código lo dice:
+
+> «El treasury de Orden Global hoy sólo tiene dirección
+> (`TREASURY_OG_ADDRESS`), **no clave privada**, así que el backend no puede
+> emitir ORIGEN on-chain aunque quisiera.»
+
+El guion que la creó imprime la llave **una sola vez** y sólo guarda la
+dirección en la configuración. La billetera tiene nonce 0: nunca firmó.
+
+Es decir: **el ORIGEN que los usuarios mandan ahí no puede volver a salir**, a
+menos que alguien haya guardado esa llave cuando se generó. Hoy son 126 ORIGEN.
+Crece con cada canje.
+
+Esto no lo causa la migración y no se arregla con ella. Va aparte, y conviene
+mirarlo pronto porque sigue recibiendo fondos.
