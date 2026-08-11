@@ -72,6 +72,9 @@ def main():
                     help='emitir igual los contratos incompletos (SOLO para ensayo)')
     ap.add_argument('--ranuras', help='ranuras-cerradas.json de cerrar-ranuras.py: '
                     'ranuras ya resueltas, ranura -> valor, por contrato')
+    ap.add_argument('--fuentes', nargs='*', default=[],
+                    help='los estados de los que salio este, para comprobar que el '
+                         'recuento de huerfanas no bajo sin haberlas resuelto')
     a = ap.parse_args()
 
     if a.chain_id == 8532:
@@ -79,7 +82,41 @@ def main():
               'hecha para una vale en la otra.', file=sys.stderr)
         sys.exit(2)
 
+    # La 5550 es la cadena de produccion: no se construye a medias. El 11-ago-2026
+    # un estado unido declaro cero huerfanas sin haberlas resuelto, se construyo
+    # con --incompletos, y salieron siete contratos con la raiz distinta. El
+    # informe decia que todo cuadraba. Que no vuelva a poder pasar.
+    if a.incompletos and a.chain_id == 5550:
+        print('ABORTADO: --incompletos es para ensayar. La cadena de produccion '
+              'no se construye con contratos a medias.', file=sys.stderr)
+        sys.exit(2)
+
     est = json.load(open(a.estado))
+
+    # Un contador de huerfanas que puede bajar solo es peor que no tenerlo: da
+    # por buena una migracion incompleta. Si este estado declara menos que sus
+    # fuentes, las que faltan tienen que estar resueltas de verdad, o aborta.
+    if a.fuentes:
+        mias = {(h[0].lower(), h[1].lower()) for h in est.get('huerfanas', [])}
+        resueltas = set()
+        for c in est['cuentas']:
+            d = (c.get('direccion') or '').lower()
+            for k in (c.get('claves') or {}):
+                resueltas.add((d, k.lower()))
+        perdidas = []
+        for f in a.fuentes:
+            for h in json.load(open(f)).get('huerfanas', []):
+                par = (h[0].lower(), h[1].lower())
+                if par not in mias and par not in resueltas:
+                    perdidas.append(par)
+        if perdidas:
+            print('ABORTADO: %d ranuras que las fuentes daban por huerfanas '
+                  'desaparecieron sin quedar resueltas.' % len(perdidas), file=sys.stderr)
+            for c, k in perdidas[:8]:
+                print('   %s  %s' % (c, k), file=sys.stderr)
+            if len(perdidas) > 8:
+                print('   … y %d mas' % (len(perdidas) - 8), file=sys.stderr)
+            sys.exit(2)
     # Las ranuras que cerro el bucle de punto fijo vienen ya como ranura->valor,
     # sin pasar por una etiqueta: la maquina virtual las calculo, no se
     # dedujeron. Cuando estan, mandan.
