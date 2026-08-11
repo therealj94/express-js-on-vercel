@@ -11,7 +11,7 @@
 // ============================================================
 
 export const VERSION = '1.33.0';
-export const BUILD = 69;
+export const BUILD = 70;
 export const RELEASED = '2026-08-11';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
@@ -21,7 +21,7 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 export const CHANGELOG = [
   {
     v: '1.33.0',
-    build: 69,
+    build: 70,
     date: '2026-08-11',
     es: [
       'Ya podés entrar con tu cuenta de Google, y en iPhone también con Apple. Un toque y estás adentro: sin inventar otra contraseña ni esperar el correo de verificación.',
