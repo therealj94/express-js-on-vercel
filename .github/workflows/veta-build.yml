@@ -138,32 +138,32 @@ jobs:
       # primera compilación: por eso compilar es el paso 1 de configurar Google,
       # no un desvío antes de configurarlo.
       #
-      # Se saca del archivo compilado con `keytool`, que lee la firma de verdad.
-      # Es a propósito no preguntarle a la API de Expo: lo que importa no es qué
-      # llave dice Expo que tiene guardada, sino con cuál quedó firmado esto.
+      # Se lee del archivo compilado y no de la API de Expo, a propósito: lo que
+      # importa no es qué llave dice Expo que tiene guardada, sino con cuál
+      # quedó firmado esto.
       #
-      # Nunca tumba la corrida: si algo falla, la huella también está en el
-      # panel de credenciales de Expo.
-      - name: Huella SHA-1
+      # No se usa `keytool`: ante un APK moderno responde "Not a signed jar
+      # file", porque entiende sólo la firma vieja al estilo JAR y los APK de
+      # hoy se firman con los esquemas v2/v3 de Android, en un bloque propio que
+      # las herramientas de JAR no ven. El script lee ese bloque.
+      #
+      # Si falla, la corrida se marca en rojo. La versión anterior de este paso
+      # se tragaba el error y seguía en verde escribiendo "no se pudo leer",
+      # que es la peor de las dos opciones: parecía que había funcionado.
+      - name: Huella del certificado
         if: success() && steps.compilar.outputs.url != ''
-        continue-on-error: true
         run: |
           set -e
           curl -sL --max-time 300 -o app.bin "${{ steps.compilar.outputs.url }}"
           echo "### Huella del certificado" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          keytool -printcert -jarfile app.bin 2>/dev/null \
-            | grep -iE 'SHA1:|SHA-1:|SHA256:|SHA-256:|Owner:' \
-            | sed 's/^[[:space:]]*//' >> $GITHUB_STEP_SUMMARY || \
-            echo "no se pudo leer la firma de este archivo" >> $GITHUB_STEP_SUMMARY
+          python3 scripts/huella-apk.py app.bin | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "La **SHA1** es la que pide Google Cloud al crear el identificador de Android, junto con el paquete \`com.ordenglobal.vetawallet\`." >> $GITHUB_STEP_SUMMARY
+          echo "Ésta es la huella de la llave con que EAS firma. Sirve para el identificador de Android de Google Cloud junto con el paquete \`com.ordenglobal.vetawallet\`, y es la que vale mientras la app se instale desde un archivo." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.perfil.outputs.perfil }}" != "production" ]; then
-            echo "> Ojo: ésta es la huella del perfil **${{ steps.perfil.outputs.perfil }}**. La app publicada se firma con la de \`production\`, y si se registra la equivocada, Google funciona mientras probás y deja de funcionar en la tienda. Registrá **las dos** en Google Cloud — se pueden agregar varias huellas al mismo identificador." >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "> **La app bajada de Google Play NO se firma con ésta.** Play la vuelve a firmar con su propia llave, y la huella de ESA llave aparece en Play Console → Integridad de la app → Certificado de la clave de firma de app, recién después de subir el primer paquete. Hay que registrar **las dos** en el mismo identificador de Google Cloud. Registrar sólo ésta es el motivo clásico de que entrar con Google ande mientras se prueba y deje de andar en la tienda." >> $GITHUB_STEP_SUMMARY
 
       - name: Dónde descargarlo
         if: always()
