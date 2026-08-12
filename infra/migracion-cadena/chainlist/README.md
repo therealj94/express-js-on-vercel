@@ -20,10 +20,11 @@ python3 verificar.py eip155-5534.json
 | shortName libre | sí (`ogb-test`) | sí (`ogb`) |
 | RPC que responde el chainId correcto | **sí, dos** | **no existe todavía** |
 | Explorador con rutas EIP-3091 | sí | sí |
-| `verificar.py` | **verde** | rojo, a propósito |
+| `verificar.py` | **verde** | **verde**, como `incubating` |
 
-**La 5534 se puede enviar hoy.** La 5550 no, y no debe intentarse hasta que la
-cadena exista.
+**Las dos se pueden enviar hoy**, pero no dicen lo mismo. La 5534 se registra
+entera, con RPC y explorador. La 5550 se registra **vacía y en estado
+`incubating`**: reserva el número y no promete nada.
 
 ## Lo que este archivo arregló
 
@@ -57,7 +58,30 @@ Lo que había aquí antes prometía tres cosas. Dos eran falsas.
    archivo de la 5550 declara `rpc5550.ordenglobal-rpc.com`, un nombre que
    **todavía no existe** y que hay que crear apuntando a la cadena nueva.
 
-## Lo que hay que hacer antes de enviar la 5550
+## Por qué la 5550 se envía vacía, y por qué conviene enviarla ya
+
+Un `chainId` es **primero que llega, primero que se queda**. El propio
+repositorio lo dice: no puede haber dos cadenas con el mismo número, *«esto
+abriría la puerta a ataques de repetición»*. Hoy el 5550 está libre. El día que
+arranquemos la cadena podría no estarlo, y entonces habría que cambiarle el
+número a una cadena ya migrada — con las apps, las billeteras y el explorador
+ya apuntando.
+
+Registrarla **vacía** quita el único riesgo que tenía hacerlo pronto:
+
+- `"rpc": []` — no hay ninguna dirección que pueda hacer que una billetera
+  firme contra la cadena equivocada. Ese era el peligro real:
+  `rpc.ordenglobal-rpc.com` sirve hoy la **8532**.
+- Sin explorador — `ordenscan.com` indexa hoy la cadena vieja; declararlo como
+  explorador de la 5550 enseñaría datos de otra cadena.
+- `"status": "incubating"` — el campo existe exactamente para esto. En la lista
+  publicada hay **99 cadenas en `incubating`** y **163 sin ningún RPC**, varias
+  con las dos cosas: Neura, Neura Devnet, Redbelly Devnet.
+
+Cuando la 5550 esté produciendo bloques se abre un **segundo pull request**
+mínimo: añadir el RPC y el explorador, y cambiar `incubating` por `active`.
+
+## Lo que hay que hacer antes de ese segundo envío
 
 1. La 5550 tiene que estar produciendo bloques con sus cuatro validadores.
 2. Crear `rpc5550.ordenglobal-rpc.com` con TLS, apuntando **sólo** a nodos de

@@ -103,8 +103,22 @@ def forma(ruta, c):
             ojo('explorador %r declara standard %r' % (e.get('name'), e.get('standard')))
         if str(e.get('url', '')).endswith('/'):
             mal('explorador %s: sobra la barra final' % e.get('url'))
+    incubando = c.get('status') == 'incubating'
     if not c.get('explorers'):
-        ojo('sin explorador declarado: la cadena aparece pero no se puede mirar')
+        if incubando:
+            ojo('sin explorador: correcto mientras la cadena no exista')
+        else:
+            ojo('sin explorador declarado: la cadena aparece pero no se puede mirar')
+    if not c.get('rpc'):
+        if incubando:
+            # No es un descuido: es la unica forma honesta de reservar un
+            # chainId antes de que la cadena exista. En la lista publicada hay
+            # 163 cadenas sin RPC y 99 en estado incubating, varias con las dos
+            # cosas a la vez. Declarar un RPC que no responde --o peor, que
+            # responde OTRA cadena-- es lo que no se puede hacer.
+            ojo('sin RPC y en estado incubating: se reserva el chainId, nada mas')
+        else:
+            mal('sin RPC y sin declararse incubating: nadie puede usar la cadena')
 
 
 # ---- comprobaciones contra la realidad ------------------------------------
@@ -145,6 +159,14 @@ def alturas(u):
 
 def realidad(c):
     idc = c['chainId']
+    if c.get('status') == 'incubating' and not c.get('rpc') and not c.get('explorers'):
+        bien('incubating sin extremos: no hay nada que probar contra la realidad')
+        try:
+            s, _ = http(c['infoURL'], tiempo=25)
+            bien('infoURL %s responde %d' % (c['infoURL'], s))
+        except Exception as e:
+            mal('infoURL %s no abre: %s' % (c['infoURL'], e))
+        return
 
     for u in c.get('rpc', []):
         if u.startswith('wss://'):

@@ -59,9 +59,33 @@ Adds the Orden Global testnet, chain ID 5534.
 | El explorador existe y cumple EIP-3091 | sí |
 | Los grifos que declara, abren | no declara ninguno |
 
-## Cuando toque la 5550
+## La 5550 · en dos pasos
 
-El mismo procedimiento, pero **no antes** de que se cumpla la lista del
-`README.md` de esta carpeta: la cadena produciendo bloques, un nombre de RPC
-propio que no apunte a la 8532, `ordenscan.com` indexando la 5550, y
-`"status": "active"` en vez de `"incubating"`.
+**Paso 1, ahora: reservar el número.** Mismo procedimiento, con
+`eip155-5550.json` tal como está en esta carpeta: sin RPC, sin explorador y en
+`incubating`. No promete nada que no exista, y deja el 5550 a nuestro nombre.
+
+Título:
+
+```
+Add Orden Global (eip155-5550)
+```
+
+Cuerpo:
+
+```
+Reserves chain ID 5550 for Orden Global, a Besu QBFT chain currently being
+migrated from an older network.
+
+Submitted as "incubating" with no RPC and no explorer on purpose: the chain
+is not producing blocks yet, and we would rather reserve the ID than publish
+endpoints that do not serve it. A follow-up PR will add the RPC and explorer
+and flip the status to active once the chain is live.
+
+The testnet is in #8593.
+```
+
+**Paso 2, después del corte:** añadir el RPC y el explorador y poner
+`"status": "active"`, cuando se cumpla la lista del `README.md`: la cadena
+produciendo bloques, un nombre de RPC propio que no apunte a la 8532, y
+`ordenscan.com` indexando la 5550.
