@@ -47,6 +47,7 @@ on:
           - development
           - preview
           - production
+          - ensayo
   push:
     paths:
       - 'veta-wallet-app/.solicitud-de-build'
@@ -76,8 +77,8 @@ jobs:
             P=$(grep -vE '^\s*(#|$)' .solicitud-de-build | head -1 | tr -d '[:space:]')
           fi
           case "$P" in
-            development|preview|production) ;;
-            *) echo "::error::Perfil no reconocido: '$P'. Tiene que ser development, preview o production."; exit 1 ;;
+            development|preview|production|ensayo) ;;
+            *) echo "::error::Perfil no reconocido: '$P'. Tiene que ser development, preview, production o ensayo."; exit 1 ;;
           esac
           echo "perfil=$P" >> $GITHUB_OUTPUT
           echo "Compilando el perfil: $P"
