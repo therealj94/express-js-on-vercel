@@ -61,6 +61,73 @@ def ranura_de(clave):
         return ((base + clave[2]) % (1 << 256)).to_bytes(32, 'big')
     raise ValueError('etiqueta desconocida: %r' % (clave,))
 
+# ---- el extraData de QBFT ------------------------------------------------
+#
+# Hasta hoy este archivo escribia un texto de relleno y dejaba el trabajo a un
+# `besu rlp encode` que habia que acordarse de correr a mano. El fallo era
+# benigno --Besu se niega a arrancar con el relleno-- pero pasaba en la noche
+# del corte, con el reloj corriendo, y es justo cuando no se quiere pensar.
+#
+# El formato es RLP de cinco cosas: los 32 bytes de vanidad, la lista de
+# validadores ORDENADA, la lista de votos (vacia en el bloque cero), la ronda
+# (cero) y los sellos (vacios en el bloque cero).
+#
+# Comprobado contra la realidad, no contra la documentacion: lo que sale de
+# aqui para los cuatro validadores de la 5534 es byte por byte lo mismo que
+# tiene el bloque cero de la 5534 en marcha, que lo escribio `besu rlp encode`.
+# Ese vector esta abajo y se comprueba en cada ejecucion.
+
+VECTOR_5534 = (
+    ['0x69e8a7b25586511a0c14430b45100e9439aae36c',
+     '0x65f987264bd77c3a094badfd88e4ba84c0b36382',
+     '0xc548464725d5fd4a15b882a221da67b9cfd29514',
+     '0x48ccec9a54b9357623458f26afadcd7412a6a833'],
+    '0xf87aa00000000000000000000000000000000000000000000000000000000000000000'
+    'f8549448ccec9a54b9357623458f26afadcd7412a6a8339465f987264bd77c3a094badfd'
+    '88e4ba84c0b363829469e8a7b25586511a0c14430b45100e9439aae36c94c548464725d5'
+    'fd4a15b882a221da67b9cfd29514c080c0')
+
+
+def _cabecera(n, base):
+    if n < 56:
+        return bytes([base + n])
+    b = n.to_bytes((n.bit_length() + 7) // 8, 'big')
+    return bytes([base + 55 + len(b)]) + b
+
+
+def rlp(x):
+    if isinstance(x, (bytes, bytearray)):
+        x = bytes(x)
+        if len(x) == 1 and x[0] < 0x80:
+            return x
+        return _cabecera(len(x), 0x80) + x
+    dentro = b''.join(rlp(i) for i in x)
+    return _cabecera(len(dentro), 0xc0) + dentro
+
+
+def extra_data_qbft(validadores):
+    dirs = []
+    for v in validadores:
+        d = v.lower().removeprefix('0x')
+        if len(d) != 40 or any(c not in '0123456789abcdef' for c in d):
+            raise ValueError('no es una direccion: %r' % v)
+        dirs.append(d)
+    if len(set(dirs)) != len(dirs):
+        raise ValueError('hay un validador repetido en la lista')
+    orden = [bytes.fromhex(d) for d in sorted(set(dirs))]
+    return '0x' + rlp([b'\x00' * 32, orden, [], b'', []]).hex()
+
+
+def comprobar_extra_data():
+    v, esperado = VECTOR_5534
+    salio = extra_data_qbft(v)
+    if salio != esperado:
+        print('ABORTADO: el codificador de extraData no reproduce el bloque cero '
+              'de la 5534.\n  esperado %s\n  salio    %s' % (esperado, salio),
+              file=sys.stderr)
+        sys.exit(2)
+
+
 def clave_arbol(ranura):
     """Del numero de ranura a la clave con que el arbol la indexa: keccak."""
     from Crypto.Hash import keccak as K
@@ -90,10 +157,20 @@ def main():
                          'usuario: tocarlas es mover el tesoro y lo decide la Junta.')
     ap.add_argument('--origen-por-billetera', type=int, default=1,
                     help='ORIGEN enteros que queda en cada billetera de persona (por omision 1)')
+    ap.add_argument('--validadores', metavar='ARCHIVO',
+                    help='JSON nombre->direccion (validadores-5550.json) o una '
+                         'lista de direcciones separadas por coma. Con esto el '
+                         'extraData de QBFT sale calculado y no hay que correr '
+                         '`besu rlp encode` a mano.')
+    ap.add_argument('--sin-shanghai', action='store_true',
+                    help='deja la cadena en London, sin PUSH0. Solo para '
+                         'reproducir el genesis viejo: ver la nota en el codigo.')
     ap.add_argument('--fuentes', nargs='*', default=[],
                     help='los estados de los que salio este, para comprobar que el '
                          'recuento de huerfanas no bajo sin haberlas resuelto')
     a = ap.parse_args()
+
+    comprobar_extra_data()
 
     if a.chain_id == 8532:
         print('ABORTADO: 8532 es la cadena vieja; con el mismo número una firma '
@@ -107,6 +184,16 @@ def main():
     if a.incompletos and a.chain_id == 5550:
         print('ABORTADO: --incompletos es para ensayar. La cadena de produccion '
               'no se construye con contratos a medias.', file=sys.stderr)
+        sys.exit(2)
+
+    if a.chain_id == 5550 and not a.validadores:
+        print('ABORTADO: la 5550 se construye con --validadores. Un genesis con '
+              'el extraData de relleno no arranca, y descubrirlo la noche del '
+              'corte cuesta media hora que no hay.', file=sys.stderr)
+        sys.exit(2)
+    if a.chain_id == 5550 and a.sin_shanghai:
+        print('ABORTADO: --sin-shanghai deja la 5550 sin PUSH0, y solc >= 0.8.20 '
+              'lo emite por omision: no compilaria nada moderno.', file=sys.stderr)
         sys.exit(2)
 
     est = json.load(open(a.estado))
@@ -211,13 +298,37 @@ def main():
         antes = sum(int(v['balance'], 16) for v in alloc.values())
         piso = a.origen_por_billetera * UNO
         personas = quitado = 0
+        rellenadas = []
         for d, fila in alloc.items():
             if d == destino or 'code' in fila or d in preservar:
                 continue
             tenia = int(fila['balance'], 16)
             fila['balance'] = hex(piso)
             quitado += tenia - piso
+            if tenia < piso:
+                rellenadas.append((d, tenia))
             personas += 1
+
+        # La consolidacion no solo baja saldos: a quien tenia MENOS del piso se
+        # lo sube, y ese ORIGEN sale de la billetera unica. La suma seguia
+        # cuadrando --por eso el invariante de abajo no lo veia-- pero son
+        # cuentas que reciben dinero que no tenian, y si fueran muchas o el
+        # piso fuera alto, la billetera unica podia quedar en negativo y
+        # hex() de un numero negativo produce un genesis que Besu no lee.
+        # Se dice en voz alta y se comprueba.
+        if rellenadas:
+            print('   billeteras que RECIBEN para llegar al piso: %d  (%.6f ORIGEN '
+                  'en total, sale de la billetera unica)'
+                  % (len(rellenadas), sum(piso - t for _, t in rellenadas) / UNO))
+            for d, t in sorted(rellenadas, key=lambda x: x[1])[:5]:
+                print('      %s  tenia %.6f' % (d, t / UNO))
+            if len(rellenadas) > 5:
+                print('      … y %d mas' % (len(rellenadas) - 5))
+        if int(alloc[destino]['balance'], 16) + quitado < 0:
+            print('ABORTADO: rellenar hasta el piso de %d ORIGEN deja la billetera '
+                  'de consolidacion en negativo. Bajar --origen-por-billetera.'
+                  % a.origen_por_billetera, file=sys.stderr)
+            sys.exit(2)
         alloc[destino]['balance'] = hex(int(alloc[destino]['balance'], 16) + quitado)
         despues = sum(int(v['balance'], 16) for v in alloc.values())
         # La emision no se crea ni se destruye: si esto no cuadra, algo se perdio
@@ -249,21 +360,61 @@ def main():
         for f in peores:
             print(f"   {f['direccion'] or f['hash']}  {f['faltan']:>4} de {f['ranuras']}")
 
+    cfg = {
+        'chainId': a.chain_id,
+        'homesteadBlock': 0, 'eip150Block': 0, 'eip155Block': 0, 'eip158Block': 0,
+        'byzantiumBlock': 0, 'constantinopleBlock': 0, 'petersburgBlock': 0,
+        'istanbulBlock': 0, 'berlinBlock': 0, 'londonBlock': 0,
+        'zeroBaseFee': True,
+        'qbft': {'blockperiodseconds': a.periodo, 'epochlength': 30000,
+                 'requesttimeoutseconds': max(4, a.periodo * 2)},
+    }
+    # SHANGHAI, o por que una cadena que nace en 2026 no puede quedarse en London.
+    #
+    # El genesis anterior llegaba hasta London. London no tiene PUSH0, que es
+    # de Shanghai. Y solc, desde la 0.8.20, EMITE PUSH0 por omision. Es decir:
+    # cualquiera que compile un contrato hoy con la configuracion de fabrica
+    # obtiene bytecode que esta cadena rechaza.
+    #
+    # No es una suposicion. Medido el 12-ago-2026 contra las dos cadenas, con
+    # eth_call de un codigo que solo hace PUSH0:
+    #   5534  -> "Invalid opcode: 0x5f"
+    #   8532  -> "opcode not found"
+    # y el mismo codigo con PUSH1 pasa en las dos. Heredar eso a la 5550 seria
+    # estrenar en 2026 una cadena donde no compila nada moderno.
+    #
+    # Va a 0 --activo desde el bloque cero-- porque en una cadena que nace no
+    # hay historia que respetar. Cancun queda fuera a proposito: trae mas
+    # superficie (blobs, TSTORE) y no resuelve ningun problema que tengamos.
+    if not a.sin_shanghai:
+        cfg['shanghaiTime'] = 0
+
+    if a.validadores:
+        if a.validadores.endswith('.json'):
+            v = json.load(open(a.validadores))
+            lista = list(v.values()) if isinstance(v, dict) else list(v)
+        else:
+            lista = [x.strip() for x in a.validadores.split(',') if x.strip()]
+        if len(lista) < 4:
+            print('ABORTADO: %d validadores. QBFT tolera un caido con cuatro; '
+                  'con tres, cualquier reinicio para la cadena.' % len(lista),
+                  file=sys.stderr)
+            sys.exit(2)
+        extra = extra_data_qbft(lista)
+        print('\nextraData de QBFT calculado para %d validadores:' % len(lista))
+        for d in sorted(x.lower() for x in lista):
+            print('   ' + d)
+    else:
+        extra = ('PENDIENTE: correr de nuevo con --validadores validadores-%d.json'
+                 % a.chain_id)
+
     genesis = {
-        'config': {
-            'chainId': a.chain_id,
-            'homesteadBlock': 0, 'eip150Block': 0, 'eip155Block': 0, 'eip158Block': 0,
-            'byzantiumBlock': 0, 'constantinopleBlock': 0, 'petersburgBlock': 0,
-            'istanbulBlock': 0, 'berlinBlock': 0, 'londonBlock': 0,
-            'zeroBaseFee': True,
-            'qbft': {'blockperiodseconds': a.periodo, 'epochlength': 30000,
-                     'requesttimeoutseconds': max(4, a.periodo * 2)},
-        },
+        'config': cfg,
         'nonce': '0x0', 'timestamp': '0x0',
         'gasLimit': '0x989680', 'difficulty': '0x1',
         'coinbase': '0x0000000000000000000000000000000000000000',
         'mixHash': '0x63746963616c2062797a616e74696e65206661756c7420746f6c6572616e6365',
-        'extraData': 'PENDIENTE: besu rlp encode --from=validadores.json --type=QBFT_EXTRA_DATA',
+        'extraData': extra,
         'alloc': alloc,
     }
     json.dump(genesis, open(a.salida, 'w'), indent=1)
