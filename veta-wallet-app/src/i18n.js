@@ -1537,7 +1537,11 @@ export function LangProvider({ children }) {
   };
   const t = (key, vars) => {
     let s = (S[lang] && S[lang][key]) || S.en[key] || S.es[key] || key;
-    if (vars) for (const k of Object.keys(vars)) s = s.replace(`{${k}}`, String(vars[k]));
+    // `split`+`join` en vez de `replace`: replace con una cadena sustituye
+    // SOLO la primera aparición, así que un texto que nombra la misma
+    // variable dos veces salía con el hueco a medio rellenar --se vio en
+    // pantalla: "se paga en ORIGEN, no en {s}"--.
+    if (vars) for (const k of Object.keys(vars)) s = s.split(`{${k}}`).join(String(vars[k]));
     return s;
   };
   return <LangCtx.Provider value={{ lang, t, setLang }}>{children}</LangCtx.Provider>;

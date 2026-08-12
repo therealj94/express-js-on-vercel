@@ -104,7 +104,7 @@ export default function Contacts({ nav, params }) {
 
       {/* alta / edición */}
       <Modal visible={!!edit} transparent animationType="slide" onRequestClose={() => setEdit(null)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <Pressable style={st.sheetBg} onPress={() => setEdit(null)}>
           <Pressable style={st.sheet} onPress={() => {}}>
             <View style={st.grab} />

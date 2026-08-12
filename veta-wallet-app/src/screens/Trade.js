@@ -274,7 +274,19 @@ export function Send({ nav, params }) {
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title={t('send.title')} onBack={() => nav.back()} />
-      <ScrollView contentContainerStyle={{ padding: 22 }} keyboardShouldPersistTaps="handled">
+      {/* Con el teclado abierto, los campos de abajo —la dirección, el memo—
+          quedaban tapados y uno escribía a ciegas. En Android hace falta
+          `height`: sin `behavior` no hace nada cuando la app dibuja de borde a
+          borde, que es lo normal desde Android 15. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+      <ScrollView
+        contentContainerStyle={{ padding: 22, paddingBottom: 40 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         <Selector token={tok} onPress={() => setPick(true)} />
 
         {/* Al mover un token, la comisión no sale del token: sale del ORIGEN.
@@ -350,8 +362,9 @@ export function Send({ nav, params }) {
         </Card>
         {insufficient && <Text style={styles.errTxt}>{t('send.insufficient', { q: qtyFmt(tok.qty), s: tok.s })}</Text>}
 
-        <Button3D title={t('send.review')} disabled={!isNative} onPress={revisar} />
+        <Button3D title={t('send.review')} onPress={revisar} />
       </ScrollView>
+      </KeyboardAvoidingView>
       <TokenPicker visible={pick} tokens={tokens} onClose={() => setPick(false)} onPick={setTok} />
       {/* La cámara va en modal: así el formulario sigue montado y la
           dirección leída se escribe directamente en el campo. */}
@@ -514,7 +527,7 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={enviando ? () => {} : onCancel}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.revBg}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.revBg}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Animated.View style={[styles.revCard, { transform: [{ translateX: shake }] }]}>
           <View style={styles.grab} />

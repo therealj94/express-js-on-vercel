@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, Pressable, TextInput, Modal, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Pressable, TextInput, Modal, ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { Icon } from './icons';
 import { C } from './theme';
 import { Button3D, hap } from './ui';
@@ -120,6 +120,12 @@ export default function PedirClave({ visible, titulo, subtitulo, ctaTexto, onCan
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
+      {/* La hoja vive pegada abajo, justo donde sale el teclado: sin esto el
+          campo de la contraseña quedaba tapado y se escribía a ciegas. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <Pressable style={st.bg} onPress={yendo ? undefined : onCancel}>
         <Pressable style={st.sheet} onPress={() => {}}>
           <View style={st.grab} />
@@ -215,6 +221,7 @@ export default function PedirClave({ visible, titulo, subtitulo, ctaTexto, onCan
           </Pressable>
         </Pressable>
       </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

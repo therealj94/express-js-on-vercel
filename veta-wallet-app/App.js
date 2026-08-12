@@ -461,7 +461,14 @@ function Root() {
         <View style={{ flex: 1 }}>{content}</View>
       ) : (
         <SafeAreaView style={{ flex: 1, paddingTop: Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0) }}>
-          {content}
+          {/* El margen de ABAJO solo lo ponia la barra de pestañas. Las
+              pantallas que no la llevan —Enviar, Recibir, la ficha de un
+              token— quedaban sin nada, y en Android su ultimo boton se metia
+              debajo de los tres botones del sistema: se veia a medias y no se
+              podia pulsar. Cuando no hay pestañas, el margen lo pone esto. */}
+          <View style={{ flex: 1, paddingBottom: showTabs ? 0 : Math.max(insets.bottom, 0) }}>
+            {content}
+          </View>
           {/* La barra de navegacion de Android —los tres botones, o la raya de
               gestos— tapaba el menu: `SafeAreaView` no la contempla en Android.
               `insets.bottom` da su altura real en cada telefono. */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable, TextInput, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, TextInput, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Icon } from '../icons';
 import { C } from '../theme';
@@ -160,7 +160,17 @@ export default function Auth({ nav }) {
 
   return (
     <AppBackground intensity="hero">
-      <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+      {/* Sin esto, al escribir la contraseña el teclado tapaba el campo y el
+          botón de entrar, y no había forma de ver lo que se estaba tecleando. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+      <ScrollView
+        contentContainerStyle={styles.wrap}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         <View style={{ alignItems: 'center', marginBottom: 22 }}>
           <Logo size={92} />
           <Text style={styles.brand}>veta <Text style={styles.italic}>wallet</Text></Text>
@@ -266,6 +276,7 @@ export default function Auth({ nav }) {
         <Text style={styles.foot}>{t('auth.foot')}</Text>
         <Text style={styles.ver}>{versionLabel()}</Text>
       </ScrollView>
+      </KeyboardAvoidingView>
     </AppBackground>
   );
 }
