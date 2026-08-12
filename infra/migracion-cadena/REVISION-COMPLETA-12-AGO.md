@@ -168,9 +168,30 @@ y el mismo código con PUSH1 pasa en las dos. Estrenar la 5550 en 2026 con esa
 limitación heredada sería un error caro y difícil de deshacer después.
 
 **Arreglado en el generador**: `shanghaiTime: 0`, y la 5550 se niega a
-construirse sin él. **Falta probarlo**: hay que levantar Shanghai en la 5534 y
-comprobar que QBFT sigue produciendo bloques, *antes* del corte. Es un cambio
-de génesis, así que la 5534 hay que rearrancarla desde cero para probarlo.
+construirse sin él.
+
+**Y probado en la 5534 el mismo día, sin rearrancar nada.** Un fork por
+timestamp se puede programar en una cadena viva, porque el bloque `config` del
+génesis **no entra en el hash del bloque cero**: se le añadió `shanghaiTime` a
+los seis nodos, con activación 25 minutos más tarde, y los seis siguieron con
+el mismo bloque cero `0x9fe069fa…` — misma base de datos, mismo estado, cero
+resincronización.
+
+A la hora señalada:
+
+| | Antes | Después |
+|---|---|---|
+| `eth_call` de PUSH0 | `Invalid opcode: 0x5f` | **ejecuta** |
+| `withdrawalsRoot` en la cabecera | no existía | `0x56e81f17…` |
+| Producción de bloques | 6 por minuto | **6 por minuto, sin un salto** |
+
+Los seis nodos: mismo bloque, `/readiness` 200, PUSH0 aceptado. **QBFT y
+Shanghai conviven en Besu 26.7.1**, que era lo que había que averiguar antes de
+construir la 5550 con ese ajuste.
+
+*(Lo que sigue en pie del párrafo original: era un cambio
+de génesis, y se pensaba que obligaba a rearrancar desde cero. No hacía
+falta.)*
 
 Cancun queda fuera a propósito: trae más superficie (blobs, TSTORE) y no
 resuelve ningún problema que tengamos.
@@ -272,9 +293,6 @@ principal del archivo de Chainlist.
 
 Sigue bloqueado:
 
-- **Probar Shanghai en la 5534** (§2.3). Es un cambio de génesis: hay que
-  rearrancar la cadena de pruebas desde cero, y conviene hacerlo cuando no se
-  esté usando para probar la app.
 - **Heroku**, con el token caducado. Los arreglos del backend —el precio de
   0,01 y el gas— están escritos, comprobados de sintaxis y **sin desplegar**.
   **Producción sigue cobrando el ORIGEN a 2,57 USD.**
@@ -287,8 +305,8 @@ Sigue bloqueado:
    seguirá con la fórmula del oro. Con Junta de por medio, porque cambia la
    tasa a la que la tarjeta consume ORIGEN.
 2. ~~`--min-gas-price` en todos los nodos~~ — **hecho** (§5).
-3. **Probar Shanghai en la 5534** con un rearranque desde cero, y sólo después
-   construir la 5550 con `shanghaiTime`.
+3. ~~Probar Shanghai en la 5534~~ — **hecho** (§2.3), y sin rearrancar. La
+   5550 se construye con `shanghaiTime` sin dudas.
 4. ~~Arreglar el balanceador~~ — **hecho** (§5): dos nodos sincronizados y un
    chequeo de salud que ya no deja entrar a uno vacío.
 5. **Enviar la 5534 a Chainlist** —ya está en verde— y aprender del proceso
