@@ -47,6 +47,7 @@ const PATHS = {
   login: process.env.EXPO_PUBLIC_WALLET_PATH_LOGIN || '/auth/login',
   register: process.env.EXPO_PUBLIC_WALLET_PATH_REGISTER || '/auth/register',
   send: process.env.EXPO_PUBLIC_WALLET_PATH_SEND || '/transaction/send',
+  sendToken: process.env.EXPO_PUBLIC_WALLET_PATH_SEND_TOKEN || '/transaction/sendToken',
   refresh: process.env.EXPO_PUBLIC_WALLET_PATH_REFRESH || '/auth/refresh',
   social: process.env.EXPO_PUBLIC_WALLET_PATH_SOCIAL || '/auth/social',
 };
@@ -873,6 +874,29 @@ export async function apiSend({ to, amount, password, idem }) {
 // Comisión de red por defecto (gasPrice 400 gwei × 21000 gas). Sirve de
 // respaldo si la lectura de gasPrice del RPC falla. En condiciones normales
 // la app llama a estimateNetworkFee() y usa el valor real de la chain.
+// Envío de un token ERC-20. El backend ya lo sabía hacer desde siempre
+// —`POST /transaction/sendToken`, con el contrato como parámetro— pero la app
+// nunca lo llamaba: la pantalla de enviar cortaba con un aviso de
+// "próximamente" en cuanto el activo no era ORIGEN. Una billetera cuyo
+// ecosistema entero son tokens no podía mover ni uno.
+//
+// La comisión se paga en ORIGEN, no en el token: mover ONDK gasta ORIGEN.
+export async function apiSendToken({ to, amount, password, contract, idem }) {
+  if (!contract) throw new Error('falta la dirección del contrato del token');
+  const body = {
+    chain_id: String(CHAIN_ID),
+    recipientAddress: to,
+    tokenContractAddress: contract,
+    password,
+    amount: String(amount),
+    ...(idem ? { idempotencyKey: idem } : {}),
+  };
+  const r = await req(PATHS.sendToken, { method: 'POST', body, timeout: 90000, noRetry: true });
+  const hash = r?.hash || r?.transactionHash || r?.txId || null;
+  const ok = r?.status === 1 || r?.status === '1' || r?.status === true || !!hash;
+  return { hash, ok, receipt: r };
+}
+
 export const NETWORK_FEE_ORIGEN = 0.0084;
 
 /**
