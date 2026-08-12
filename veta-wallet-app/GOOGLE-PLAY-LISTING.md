@@ -97,7 +97,8 @@ nothing.
 | Tags | Digital wallet · Cryptocurrency · Payments |
 | Email | *(your support address)* |
 | Website | `https://vetawallet.com` |
-| Privacy policy | `https://vetawallet.com/privacidad` |
+| Privacy policy | `https://legal.vetawallet.com/privacidad` |
+| Delete account URL | `https://legal.vetawallet.com/eliminar-cuenta` |
 
 ---
 
