@@ -120,12 +120,32 @@ La causa es que **ningún nodo tiene puesto `--min-gas-price`**. Los 93 gwei
 acordados hoy no los exige nada: son una convención que respeta el backend
 porque está escrita en el backend. `eth_gasPrice` de la cadena contesta **0**.
 
-**Qué hay que hacer** (necesita SSM, que ahora mismo no responde — ver §5):
-poner `--min-gas-price=93000000000` en la unidad de systemd de **los cuatro
-validadores y también del nodo RPC**, y añadir al runbook la comprobación de
-que `eth_gasPrice` contesta 93 gwei en todos. Así el RPC rechaza en el momento
-del envío, con un error que se puede mostrar, en vez de dar un comprobante
-falso.
+**Arreglado esa misma tarde, en los seis nodos.** Los cinco llevaban
+`--min-gas-price=0` **escrito explícitamente** en su unidad de systemd. Ahora
+llevan `93000000000`, y `eth_gasPrice` contesta 93 gwei en los seis.
+
+Con eso solo no bastaba, y es un detalle que vale la pena saber: **Besu trata
+como «locales» las transacciones que entran por su propio RPC y les perdona el
+precio mínimo.** Con el suelo puesto, la de 0 gwei seguía entrando. Hace falta
+además `--tx-pool-no-local-priority`, que quita ese trato especial. Con las dos
+banderas:
+
+```
+0 gwei  -> RECHAZADA: Gas price below configured minimum gas price
+93 gwei -> ACEPTADA
+```
+
+**Lo que sigue sin ser cierto, y hay que decirlo:** el suelo que la cadena
+aplica de verdad es **«mayor que cero», no 93 gwei**. Probado gwei a gwei: 1,
+10, 46, 50 y 92 se aceptan igual. Es efecto de `zeroBaseFee`, que deja el
+mercado de comisiones sin base y con él la comprobación del mínimo. Los 93 gwei
+son ahora el suelo del **cliente** —lo pone `lib/gas.js` en el backend— y la
+cadena solo garantiza que nadie transacciona gratis.
+
+Subirlo a un suelo real exigiría quitar `zeroBaseFee` y dejar que EIP-1559
+ponga una base… que **se quema**. Eso reduciría la emisión con cada bloque, y
+la emisión es de las cosas que no se tocan sin la Junta. Queda anotado como
+decisión, no como pendiente técnico.
 
 *(La prueba fue una transferencia de 21.000 de gas en la cadena de pruebas, y
 no se repitió.)*
@@ -168,10 +188,10 @@ cosas y dos eran falsas**.
 2. **`rpc-testnet.ordenglobal-rpc.com` contesta bloque 0 la mitad de las
    veces.** Es el nombre del balanceador y detrás tiene dos máquinas: una al
    día y otra vacía. Preguntando seis veces, **tres contestaron altura 0**.
-   Una billetera que caiga en la vacía ve saldo cero y nonce cero. Quitado de
-   la lista hasta arreglar el balanceador; mientras tanto se publica
-   `pruebas.ordenglobal-rpc.com`, que es una sola máquina y contesta bien las
-   seis veces.
+   Una billetera que caiga en la vacía ve saldo cero y nonce cero.
+   **Arreglado** esa misma tarde (§5): el chequeo de salud del balanceador pasó
+   de `/liveness` a `/readiness`, y el nodo vacío se sincronizó. Vuelve a estar
+   en el archivo, ahora acompañado de `pruebas.ordenglobal-rpc.com`.
 
 3. **`rpc.ordenglobal-rpc.com` sirve la cadena vieja 8532.** Ese era el RPC
    declarado para la 5550. Publicarlo haría que una billetera configurada para
@@ -223,23 +243,41 @@ cadena, con suelo en el precio acordado.
 
 ---
 
-## 5 · Lo que no se pudo comprobar hoy
+## 5 · Lo que se ejecutó en la red, y lo que sigue bloqueado
 
-**AWS dejó de responder a mitad de la revisión** (`InvalidClientTokenId` en
-cualquier llamada, incluido `sts:GetCallerIdentity`). Todo lo que necesita SSM
-quedó sin tocar:
+AWS se cayó a mitad de la revisión (`InvalidClientTokenId` en cualquier
+llamada) y volvió con llaves nuevas. Con SSM de vuelta se hizo:
 
-- Poner `--min-gas-price` en los cinco nodos (§2.2). **Es el arreglo más
-  urgente de esta lista.**
-- Terminar de convertir `testnet-1` en segundo nodo RPC de la 5534, o sacarlo
-  del grupo del balanceador. Hasta entonces `rpc-testnet` sigue contestando
-  bloque 0 la mitad de las veces (§3.2) y **no debe usarse en la app ni
-  publicarse**.
-- Probar Shanghai en la 5534 (§2.3).
+**El suelo de gas en los seis nodos** (§2.2), uno a uno para no perder el
+quórum, comprobando después de cada reinicio que la cadena seguía avanzando —
+avanzó entre 3 y 4 bloques en cada paso.
 
-**Heroku sigue bloqueado** con el token caducado, así que los arreglos del
-backend —el precio de 0,01 y el gas— están escritos y probados de sintaxis pero
-**no desplegados**. Producción sigue cobrando el ORIGEN a 2,57 USD.
+**El balanceador, arreglado de raíz.** El chequeo de salud era `/liveness`, que
+sólo dice «el proceso vive»: por eso un nodo en el bloque 0 figuraba como sano y
+recibía la mitad del tráfico. Besu tiene `/readiness`, que además mira peers y
+sincronía. Medido antes de cambiar nada: `/liveness` daba 200 en los dos nodos,
+`/readiness` daba **200 en el bueno y 503 en el vacío**. El grupo pasó a
+`/readiness?minPeers=1&maxBlocksBehind=5`. Ahora un nodo atrasado **no puede**
+volver a servir tráfico aunque alguien lo añada por error.
+
+**testnet-1 pasó a ser el segundo nodo RPC de verdad.** Le faltaba
+`static-nodes.json` —descubrimiento por sí solo no bastaba— y las reglas de
+entrada al puerto 30303 en los cuatro validadores. Su génesis tiene el mismo
+md5 que el bueno. Está sincronizado, con 4 peers, y de vuelta en el grupo.
+
+Los seis nodos, al terminar: **mismo bloque, 93 gwei, `/readiness` 200, arranque
+automático activado**, malla completa. Y `rpc-testnet.ordenglobal-rpc.com`
+contesta la punta en diez de diez llamadas, así que vuelve a ser el RPC
+principal del archivo de Chainlist.
+
+Sigue bloqueado:
+
+- **Probar Shanghai en la 5534** (§2.3). Es un cambio de génesis: hay que
+  rearrancar la cadena de pruebas desde cero, y conviene hacerlo cuando no se
+  esté usando para probar la app.
+- **Heroku**, con el token caducado. Los arreglos del backend —el precio de
+  0,01 y el gas— están escritos, comprobados de sintaxis y **sin desplegar**.
+  **Producción sigue cobrando el ORIGEN a 2,57 USD.**
 
 ---
 
@@ -248,11 +286,11 @@ backend —el precio de 0,01 y el gas— están escritos y probados de sintaxis 
 1. **Cerrar el precio.** Confirmar 0,01 y desplegar el backend, o producción
    seguirá con la fórmula del oro. Con Junta de por medio, porque cambia la
    tasa a la que la tarjeta consume ORIGEN.
-2. **`--min-gas-price` en todos los nodos**, y la comprobación en el runbook.
+2. ~~`--min-gas-price` en todos los nodos~~ — **hecho** (§5).
 3. **Probar Shanghai en la 5534** con un rearranque desde cero, y sólo después
    construir la 5550 con `shanghaiTime`.
-4. **Arreglar el balanceador**: dos nodos sincronizados o uno solo, nunca uno
-   vacío detrás del mismo nombre.
+4. ~~Arreglar el balanceador~~ — **hecho** (§5): dos nodos sincronizados y un
+   chequeo de salud que ya no deja entrar a uno vacío.
 5. **Enviar la 5534 a Chainlist** —ya está en verde— y aprender del proceso
    antes de mandar la de producción.
 6. **Crear `rpc5550.ordenglobal-rpc.com`** apuntando sólo a nodos de la 5550, y

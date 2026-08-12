@@ -18,7 +18,7 @@ python3 verificar.py eip155-5534.json
 |---|---|---|
 | chainId libre en la lista publicada | sí | sí |
 | shortName libre | sí (`ogb-test`) | sí (`ogb`) |
-| RPC que responde el chainId correcto | **sí** | **no existe todavía** |
+| RPC que responde el chainId correcto | **sí, dos** | **no existe todavía** |
 | Explorador con rutas EIP-3091 | sí | sí |
 | `verificar.py` | **verde** | rojo, a propósito |
 
@@ -40,10 +40,16 @@ Lo que había aquí antes prometía tres cosas. Dos eran falsas.
 
    Esto es peor que un pull request rechazado. Una billetera que caiga en el
    nodo vacío ve saldo cero y nonce cero: cree que la cuenta no tiene nada, y
-   si aun así firma, firma con un nonce ya usado. **Quitado de la lista** hasta
-   que el segundo nodo del balanceador esté sincronizado o fuera del grupo.
-   Mientras tanto se publica `pruebas.ordenglobal-rpc.com`, que es una sola
-   máquina y contesta la altura correcta en las seis llamadas.
+   si aun así firma, firma con un nonce ya usado.
+
+   **Arreglado el mismo día.** La causa de fondo era el chequeo de salud del
+   balanceador: usaba `/liveness`, que sólo dice que el proceso vive, así que
+   un nodo en el bloque 0 figuraba como sano. Besu tiene `/readiness`, que
+   además mira peers y sincronía —medido: 200 en el nodo bueno, **503** en el
+   vacío—. El grupo pasó a `/readiness?minPeers=1&maxBlocksBehind=5`, y el
+   segundo nodo se sincronizó de verdad. Ahora un nodo atrasado no puede
+   servir tráfico aunque alguien lo añada por error. Las dos direcciones están
+   en el archivo.
 
 3. **`rpc.ordenglobal-rpc.com` sirve la cadena 8532, no la 5550.** Ese nombre
    apunta al balanceador de la cadena vieja. Si se publicara como RPC de la

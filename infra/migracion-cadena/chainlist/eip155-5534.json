@@ -3,6 +3,7 @@
   "title": "Orden Global Testnet",
   "chain": "OGB",
   "rpc": [
+    "https://rpc-testnet.ordenglobal-rpc.com",
     "https://pruebas.ordenglobal-rpc.com"
   ],
   "faucets": [],
