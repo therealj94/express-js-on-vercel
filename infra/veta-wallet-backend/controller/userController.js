@@ -1,0 +1,459 @@
+import Users from "../models/Users";
+import bcrypt from "bcrypt";
+import CryptoJS from "crypto-js";
+import { descifrarLlavePrivada, descifrarFraseSemilla } from "../lib/cripto";
+import jwt from "jsonwebtoken";
+import crypto from "crypto";
+
+// ============================================================
+// Vista publica de un usuario.
+//
+// El documento de Mongo lleva el hash de la contrasena, la clave privada y la
+// seed —las tres cifradas, pero cifradas con una clave que vive en el mismo
+// servidor—. Devolverlo entero convierte cualquier endpoint tonto (bloquear a
+// alguien, cambiar un flag) en una filtracion del material con el que se
+// firman transacciones.
+//
+// Todo lo que salga hacia el cliente pasa por aqui.
+// ============================================================
+function vistaPublica(user) {
+  if (!user) return null;
+  return {
+    _id: user._id,
+    email: user.email,
+    address: user.address,
+    username: user.username,
+    name: user.name,
+    phone: user.phone,
+    country: user.country,
+    private: user.private,
+    tokens: user.tokens,
+    nfts: user.nfts,
+    blocked_users: user.blocked_users,
+    role: user.role,
+    createdAt: user.createdAt,
+  };
+}
+
+
+export const getUserPublic = async (req, res) => {
+  try {
+    const token = req.headers.authorization;
+    const decodedToken = jwt.verify(
+      token.split(" ")[1],
+      process.env.PASS_TOKEN,
+      { algorithm: "HS256" }
+    );
+    const address = decodedToken.address;
+
+    const user = await Users.findOne({ address: address });
+    if (!user) {
+      return res.status(400).json({ message: "User does not exist" });
+    }
+
+    res.json(user.private);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const getDateUser = async (req, res) => {
+  try {
+    const token = req.headers.authorization;
+    const decodedToken = jwt.verify(
+      token.split(" ")[1],
+      process.env.PASS_TOKEN,
+      { algorithm: "HS256" }
+    );
+    const address = decodedToken.address;
+
+    const user = await Users.findOne({ address: address });
+    if (!user) {
+      return res.status(400).json({ message: "User does not exist" });
+    }
+
+    const date = {
+      username: user.username,
+      email: user.email,
+      phone: user.phone,
+      country: user.country,
+      name: user.name,
+    };
+
+    res.json(date);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const token = req.headers.authorization;
+    const decodedToken = jwt.verify(
+      token.split(" ")[1],
+      process.env.PASS_TOKEN,
+      { algorithm: "HS256" }
+    );
+    const address = decodedToken.address;
+
+    const user = await Users.findOne({ address: address });
+    if (!user) {
+      return res.status(400).json({ message: "User does not exist" });
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+    if (!isPasswordValid) {
+      return res
+        .status(401)
+        .json({ message: "The current password is incorrect" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    // Cambiar la contrasena cierra la sesion en los demas telefonos. Si
+    // alguien la cambia porque sospecha que le entraron, dejar vivos los
+    // refresh tokens viejos hace que el cambio no sirva de nada.
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+
+    await user.save();
+
+    res.send("contraseña cambiada exitosamente");
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const decryptedPrivateKey = async (req, res) => {
+  try {
+    const { password } = req.body;
+    const token = req.headers.authorization;
+    const decodedToken = jwt.verify(
+      token.split(" ")[1],
+      process.env.PASS_TOKEN,
+      { algorithm: "HS256" }
+    );
+    const address = decodedToken.address;
+
+    const user = await Users.findOne({ address: address });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+      return res.status(401).json({ message: "Incorrect password" });
+    }
+
+    const decryptedPrivateKey = descifrarLlavePrivada(user.privateKey);
+    res.send({ privateKey: decryptedPrivateKey });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const decryptedSeed = async (req, res) => {
+  try {
+    const { password } = req.body;
+    const token = req.headers.authorization;
+    const decodedToken = jwt.verify(
+      token.split(" ")[1],
+      process.env.PASS_TOKEN,
+      { algorithm: "HS256" }
+    );
+    const address = decodedToken.address;
+
+    const user = await Users.findOne({ address: address });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const passwordMatch = await bcrypt.compare(password, user.password);
+
+    if (!passwordMatch) {
+      return res.status(401).json({ message: "Incorrect password" });
+    }
+
+    const decryptedSeed = descifrarFraseSemilla(user.seed);
+    res.send({ seed: decryptedSeed });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const updateUser = async (req, res) => {
+  try {
+    const { phone, country, username, name } = req.body;
+    const token = req.headers.authorization;
+    const decodedToken = jwt.verify(
+      token.split(" ")[1],
+      process.env.PASS_TOKEN,
+      { algorithm: "HS256" }
+    );
+    const address = decodedToken.address;
+
+    const existingUser = await Users.findOne({ username: username });
+    if (existingUser && existingUser.address !== address) {
+      return res.status(400).json({ message: "Username already exists" });
+    }
+
+    const user = await Users.findOne({ address: address });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.phone = phone || user.phone;
+    user.country = country || user.country;
+    user.username = username || user.username;
+    user.name = name || user.name;
+
+    await user.save();
+
+    res.json("cambio echo");
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error updating user" });
+  }
+};
+
+export const noPrivate = async (req, res) => {
+  try {
+    const token = req.headers.authorization;
+
+    const decodedToken = jwt.verify(
+      token.split(" ")[1],
+      process.env.PASS_TOKEN,
+      { algorithm: "HS256" }
+    );
+    const address = decodedToken.address;
+    const user = await Users.findOne({ address: address });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.private = false;
+
+    await user.save();
+
+    res.json(vistaPublica(user));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error updating user" });
+  }
+};
+
+export const yesPrivate = async (req, res) => {
+  try {
+    const token = req.headers.authorization;
+    const decodedToken = jwt.verify(
+      token.split(" ")[1],
+      process.env.PASS_TOKEN,
+      { algorithm: "HS256" }
+    );
+    const address = decodedToken.address;
+    console.log(address);
+    const user = await Users.findOne({ address: address });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.private = true;
+
+    await user.save();
+
+    res.json(vistaPublica(user));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error updating user" });
+  }
+};
+
+export const addUserBloqued = async (req, res) => {
+  try {
+    const { userBlocked } = req.body;
+    const token = req.headers.authorization;
+    const decodedToken = jwt.verify(
+      token.split(" ")[1],
+      process.env.PASS_TOKEN,
+      { algorithm: "HS256" }
+    );
+    const address = decodedToken.address;
+
+    const user = await Users.findOne({ address: address });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.blocked_users.includes(userBlocked)) {
+      return res.status(400).json({ message: "User already blocked" });
+    }
+
+    user.blocked_users.push(userBlocked);
+
+    await user.save();
+
+    res.json(vistaPublica(user));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error blocking user" });
+  }
+};
+
+export const getUserBloqued = async (req, res) => {
+  try {
+    const token = req.headers.authorization;
+    const decodedToken = jwt.verify(
+      token.split(" ")[1],
+      process.env.PASS_TOKEN,
+      { algorithm: "HS256" }
+    );
+    const address = decodedToken.address;
+
+    const user = await Users.findOne({ address: address });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const blockedUsers = user.blocked_users;
+    res.json(blockedUsers);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error retrieving blocked users" });
+  }
+};
+
+export const removeUserBloqued = async (req, res) => {
+  try {
+    const { userUnblocked } = req.body;
+    const token = req.headers.authorization;
+    const decodedToken = jwt.verify(
+      token.split(" ")[1],
+      process.env.PASS_TOKEN,
+      { algorithm: "HS256" }
+    );
+    const address = decodedToken.address;
+
+    const user = await Users.findOne({ address: address });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const index = user.blocked_users.indexOf(userUnblocked);
+    if (index === -1) {
+      return res.status(400).json({ message: "User is not blocked" });
+    }
+
+    user.blocked_users.splice(index, 1);
+
+    await user.save();
+
+    res.json(vistaPublica(user));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error unblocking user" });
+  }
+};
+
+// ============================================================
+// DELETE /users/me — eliminar la cuenta.
+//
+// Obligatorio en ambas tiendas: Apple lo exige desde 2022 y Google desde
+// 2024. Sin esto la app se rechaza en revision, sin discusion.
+//
+// Lo que NO se hace: borrar la fila y listo. Esta es una wallet custodia —
+// si el usuario todavia tiene fondos on-chain y borramos la clave privada
+// cifrada, ese dinero queda inaccesible para siempre, para el y para
+// nosotros. Por eso:
+//
+//   1. Se exige la contrasena. Una cuenta no se borra por un toque mal dado.
+//   2. Se exige confirmacion explicita de que entendio lo de los fondos.
+//   3. Se anonimiza en vez de destruir: se borran los datos personales
+//      (email, nombre, telefono, pais) y se conserva la direccion con su
+//      material cifrado, marcada como eliminada.
+//
+// El punto 3 es lo que permite cumplir con la tienda sin convertir un
+// arrepentimiento en una perdida irreversible. El email se libera para que
+// pueda registrarse de nuevo; la wallet vieja queda huerfana pero recuperable
+// con la seed, que el usuario ya tenia.
+// ============================================================
+export const deleteAccount = async (req, res) => {
+  try {
+    const { password, confirm } = req.body;
+
+    const token = req.headers.authorization;
+    const decodedToken = jwt.verify(token.split(" ")[1], process.env.PASS_TOKEN, {
+      algorithm: "HS256",
+    });
+
+    const user = await Users.findOne({ address: decodedToken.address });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (typeof password !== "string" || !password) {
+      return res.status(400).json({ code: "PASSWORD_REQUIRED", message: "Falta la contraseña." });
+    }
+
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) {
+      return res.status(401).json({ code: "BAD_PASSWORD", message: "Contraseña incorrecta." });
+    }
+
+    // Confirmacion explicita: la app manda la palabra que el usuario escribio.
+    if (confirm !== "ELIMINAR") {
+      return res.status(400).json({
+        code: "CONFIRM_REQUIRED",
+        message: "Escribí ELIMINAR para confirmar.",
+      });
+    }
+
+    if (user.deletedAt) {
+      return res.status(409).json({ code: "ALREADY_DELETED", message: "La cuenta ya fue eliminada." });
+    }
+
+    const sufijo = String(user._id);
+
+    // Datos personales fuera. La direccion y su material cifrado se conservan
+    // para que los fondos sigan siendo recuperables con la seed.
+    user.email = `eliminado+${sufijo}@vetawallet.invalid`;
+    // Un valor unico, no nulo. En Mongo sobrevive un indice unico
+    // `username_1` de un esquema anterior --el actual declara unique:false-- y
+    // con `undefined` la segunda cuenta que se borrara chocaria contra el nulo
+    // que dejo la primera. Se sigue el mismo patron que el correo de arriba.
+    user.username = `eliminado+${sufijo}`;
+    user.name = undefined;
+    user.phone = undefined;
+    user.country = undefined;
+    user.token = undefined;
+    // Invalida de golpe todos los refresh tokens ya emitidos.
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    user.blocked_users = [];
+    user.deletedAt = new Date();
+
+    // Contrasena a un valor imposible de adivinar: la cuenta no vuelve a
+    // abrirse ni por accidente ni con la contrasena vieja.
+    user.password = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
+
+    await user.save();
+
+    console.log(`[delete-account] cuenta ${sufijo} anonimizada`);
+
+    return res.json({
+      deleted: true,
+      message: "Tu cuenta fue eliminada. Tus fondos siguen siendo recuperables con tu frase de respaldo.",
+    });
+  } catch (error) {
+    console.error("[delete-account]", error);
+    return res.status(500).json({ message: "No se pudo eliminar la cuenta" });
+  }
+};
