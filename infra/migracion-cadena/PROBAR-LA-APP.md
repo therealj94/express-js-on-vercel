@@ -37,7 +37,14 @@ ensayo no hereda el `PASS_TOKEN` corto que sigue pendiente en producción.
 ### 1. Instala el APK de ensayo
 
 **Descarga:**
-`https://expo.dev/artifacts/eas/lh-ibWMa-Q0QF51rTjQHIY44U3lwxGsKDP5DginWyF4.apk`
+`https://expo.dev/artifacts/eas/-LumwEioXzBCnTjT_geb6ad5cbJmNNnJA7FaGHABfaU.apk`
+
+> **Tercera versión, 12-ago.** La segunda seguía sin dejar enviar tokens: quité
+> el bloqueo dentro de la función pero dejé el botón deshabilitado, así que
+> «Revisar y enviar» salía gris. Medio arreglo, y el medio que faltaba era el
+> que se veía. Van también el margen inferior —el botón se metía debajo de los
+> botones de Android—, el teclado tapando los campos de contraseña, y el hueco
+> «{s}» sin rellenar.
 
 > **Segunda versión, 12-ago.** La primera no podía enviar tokens: la
 > pantalla de enviar cortaba con un aviso de «próximamente» en cuanto el
