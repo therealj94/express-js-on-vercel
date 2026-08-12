@@ -1,0 +1,356 @@
+From b7fffb5a5d3229cbca22c3356036e08a098880ff Mon Sep 17 00:00:00 2001
+From: Veta Wallet Backend <j.ordonez@ordenglobal.org>
+Date: Wed, 12 Aug 2026 20:46:05 +0000
+Subject: [PATCH] Precio fijo de 0,01 y el gas leido de la cadena
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+El precio de ORIGEN se calculaba con el oro en vivo: 1/55 de gramo.
+Con la onza a 4.397,97 eso da 2,5709 USD por ORIGEN, 257 veces el
+precio fijado de 0,01 para la 5550. Lo usan tres caminos que mueven
+dinero --depositar USDT, fondear la tarjeta y canjear-- asi que la
+decision de precio no es un documento, es este archivo. Queda fijo y
+configurable con OG_ORIGEN_USD; el oro sigue disponible con
+OG_PRECIO_MODO=oro. De paso: Binance devuelve 451 a las IP de EE.UU.,
+que es donde corre este servidor, asi que la primera fuente de precio
+no funcionaba nunca en produccion.
+
+El gas estaba escrito a mano y distinto en cada sitio: 400 gwei en
+send, 600 en sendToken, 2000 en el canje, contra los 93 acordados. El
+gasLimit de 210.000 era el que hacia daño: la comprobacion de fondos
+usa el limite, no el gasto, asi que obligaba a tener 0,084 ORIGEN
+libres para mover cualquier cantidad, con billeteras de 1 ORIGEN.
+Ahora salen de la cadena, con suelo en el precio acordado.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01K37q5QjnAm7tkAy4TCCnU3
+---
+ controller/swapController.js        |  6 +-
+ controller/transactionController.js | 39 ++++++++----
+ lib/gas.js                          | 85 +++++++++++++++++++++++++
+ lib/origenPrice.js                  | 97 ++++++++++++++++++++++-------
+ 4 files changed, 190 insertions(+), 37 deletions(-)
+ create mode 100644 lib/gas.js
+
+diff --git a/controller/swapController.js b/controller/swapController.js
+index a12ab05..60b64a1 100644
+--- a/controller/swapController.js
++++ b/controller/swapController.js
+@@ -39,6 +39,7 @@ import Card from "../models/Card";
+ import CardFunding from "../models/CardFunding";
+ import OrigenBalance from "../models/OrigenBalance";
+ import { getOrigenPriceUsd } from "../lib/origenPrice";
++import { precioDeGas } from "../lib/gas";
+ 
+ // ─── USDT on Polygon (PoS) ────────────────────────────────────────────────────
+ const USDT_POLYGON  = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
+@@ -65,7 +66,10 @@ async function sendOrigenToTreasury({ provider, decryptedKey, treasuryAddress, a
+     new Promise((_, reject) => setTimeout(() => reject(new Error("OG chain nonce timeout")), 8000)),
+   ]);
+ 
+-  const gasPrice = BigInt(2000 * 10 ** 9); // 2000 Gwei — same as ico-back's BlockchainService
++  // Eran 2000 gwei fijos —21,5 veces el precio acordado de 93— heredados de
++  // ico-back. Con el limite de 21.000 eso reservaba 0,042 ORIGEN por canje.
++  // Ahora se le pregunta a la cadena; ver lib/gas.js.
++  const gasPrice = await precioDeGas(provider);
+ 
+   // sendTransaction con timeout de 15s
+   const tx = await Promise.race([
+diff --git a/controller/transactionController.js b/controller/transactionController.js
+index 407ca83..23c5da9 100644
+--- a/controller/transactionController.js
++++ b/controller/transactionController.js
+@@ -9,6 +9,7 @@ import { parseEther } from "ethers/utils";
+ import Tx from "../models/Tx";
+ import jwt from "jsonwebtoken";
+ import abi from "../ABI/abi.json";
++import { precioDeGas, limiteDeGas, LIMITE_POR_OMISION_TOKEN } from "../lib/gas";
+ 
+ // ============================================================
+ // Traduce un fallo de envio a algo que el usuario pueda entender y actuar.
+@@ -95,14 +96,22 @@ export const send = async (req, res) => {
+     ).toString(CryptoJS.enc.Utf8);
+ 
+     const wallet = new Wallet(decryptedPrivateKey, provider);
+-    const gasLimit = 210000;
+     const nonce = await provider.getTransactionCount(wallet.address, "latest");
+-    const gasPriceGwei = 400;
+-    const gasPriceWei = gasPriceGwei * 10 ** 9;
++    const valor = parseEther(amount).toString();
++
++    // El precio y el limite salen de la cadena. Antes eran 400 gwei y 210.000
++    // fijos: 4,3 veces el precio acordado, y un limite diez veces el gasto
++    // real que obligaba a tener 0,084 ORIGEN libres para mover un centavo.
++    // Ver lib/gas.js.
++    const gasPriceWei = await precioDeGas(provider);
++    const gasLimit = await limiteDeGas(
++      provider,
++      { from: wallet.address, to: recipientAddress, value: valor }
++    );
+ 
+     const data = {
+       to: recipientAddress,
+-      value: parseEther(amount).toString(),
++      value: valor,
+       gasLimit: gasLimit,
+       nonce: nonce,
+       gasPrice: gasPriceWei,
+@@ -189,19 +198,23 @@ export const sendToken = async (req, res) => {
+       process.env.PASS_ADM
+     ).toString(CryptoJS.enc.Utf8);
+     const wallet = new Wallet(decryptedPrivateKey, provider);
+-    const gasLimit = 210000;
+     const nonce = await provider.getTransactionCount(wallet.address, "latest");
+     const amount1 = parseEther(amount).toString();
+     const tokenContract = new Contract(tokenContractAddress, abi, wallet);
+ 
+-    const gasPriceGwei = 600;
+-    const gasPriceWei = gasPriceGwei * 10 ** 9;
+-    const data = {
+-      gasPrice: gasPriceWei,
+-      gasLimit: gasLimit,
+-      nonce: nonce,
+-    };
+-    console.log(data);
++    // Igual que en send(): de la cadena. Eran 600 gwei fijos, 6,5 veces el
++    // precio acordado. El limite se estima sobre la transferencia real, que en
++    // un ERC-20 depende de si el destinatario ya tenia saldo o no.
++    const gasPriceWei = await precioDeGas(provider);
++    const datosTransferencia = tokenContract.interface.encodeFunctionData(
++      "transfer",
++      [recipientAddress, amount1]
++    );
++    const gasLimit = await limiteDeGas(
++      provider,
++      { from: wallet.address, to: tokenContractAddress, data: datosTransferencia },
++      LIMITE_POR_OMISION_TOKEN
++    );
+ 
+     const transferTx = await tokenContract.transfer(recipientAddress, amount1, {
+       gasPrice: gasPriceWei,
+diff --git a/lib/gas.js b/lib/gas.js
+new file mode 100644
+index 0000000..496b1b2
+--- /dev/null
++++ b/lib/gas.js
+@@ -0,0 +1,85 @@
++// ============================================================
++// El gas: se le pregunta a la cadena, no se escribe a mano.
++//
++// LO QUE HABIA
++//
++//   transactionController.send()       400 gwei · gasLimit 210.000
++//   transactionController.sendToken()  600 gwei · gasLimit 210.000
++//   swapController                    2000 gwei · gasLimit  21.000
++//
++// Tres numeros distintos para la misma cadena, ninguno atado a nada. El
++// acordado para la 5550 es **93 gwei**: los de arriba son 4,3 · 6,5 y 21,5
++// veces eso.
++//
++// El gasLimit de 210.000 hace mas daño que el precio. Una transferencia nativa
++// gasta 21.000; el limite solo reserva. Pero la comprobacion de fondos usa el
++// LIMITE, no el gasto: con 210.000 a 400 gwei hay que tener 0,084 ORIGEN
++// libres para mover cualquier cantidad. Con las billeteras a 1 ORIGEN que deja
++// la consolidacion, eso es el 8,4% del saldo bloqueado por envio — y en el
++// canje, 210.000 a 2000 gwei serian 0,42 ORIGEN, el 42% del saldo de una
++// persona reservado para una sola operacion. Se ve como "no alcanza para
++// cubrir el monto mas el gas" cuando si alcanzaba.
++//
++// LO QUE HACE ESTE ARCHIVO
++//
++// Pregunta el precio a la cadena (eth_gasPrice) y el limite al simulador
++// (estimateGas), con un suelo y un techo para no quedar a merced de un nodo
++// que conteste cualquier cosa. Si la cadena no contesta, usa el suelo: no
++// inventa un numero grande "por si acaso", porque ese por-si-acaso es el que
++// bloqueaba el saldo del usuario.
++// ============================================================
++
++const GWEI = 1000000000n;
++
++// Suelo y techo, en gwei. El suelo es el precio acordado para la red: por
++// debajo de --min-gas-price el nodo ni acepta la transaccion. El techo esta
++// para que un nodo mal configurado no vacie una billetera.
++const SUELO_GWEI = BigInt(process.env.OG_GAS_SUELO_GWEI || 93);
++const TECHO_GWEI = BigInt(process.env.OG_GAS_TECHO_GWEI || 1000);
++
++// Margenes de seguridad sobre lo estimado. La estimacion puede quedarse corta
++// si el estado cambia entre estimar y minar (un `approve` que se gasta, una
++// ranura que pasa de cero a distinto de cero).
++const MARGEN_LIMITE = 130n; // %
++const LIMITE_NATIVO = 21000n;
++const LIMITE_TOKEN = 120000n; // respaldo si estimateGas no contesta
++
++export async function precioDeGas(provider) {
++  let gwei = SUELO_GWEI;
++  try {
++    const f = await provider.getFeeData();
++    // Con zeroBaseFee la cadena no cobra base: todo el precio es propina y va
++    // al validador que propone el bloque. gasPrice es el numero que manda.
++    const p = f?.gasPrice;
++    if (p && p > 0n) gwei = p / GWEI;
++  } catch {
++    // Se queda en el suelo: es el precio que la red exige de todas formas.
++  }
++  if (gwei < SUELO_GWEI) gwei = SUELO_GWEI;
++  if (gwei > TECHO_GWEI) gwei = TECHO_GWEI;
++  return gwei * GWEI;
++}
++
++export async function limiteDeGas(provider, tx, porOmision = LIMITE_NATIVO) {
++  try {
++    const est = await provider.estimateGas(tx);
++    if (est && est > 0n) {
++      const conMargen = (est * MARGEN_LIMITE) / 100n;
++      return conMargen < LIMITE_NATIVO ? LIMITE_NATIVO : conMargen;
++    }
++  } catch {
++    // Una estimacion que falla suele significar que la transaccion revertiria.
++    // No es este el sitio para decidirlo: se sigue con el limite por omision y
++    // que hable la cadena, con un mensaje que el usuario entienda.
++  }
++  return porOmision;
++}
++
++export const LIMITE_POR_OMISION_TOKEN = LIMITE_TOKEN;
++
++// Lo que hay que tener libre para poder enviar `valor`: el monto mas el gas
++// reservado. Se expone para poder decirle al usuario cuanto le falta en vez de
++// un "no alcanza" a secas.
++export function reservaNecesaria(valorWei, limite, precioWei) {
++  return BigInt(valorWei) + BigInt(limite) * BigInt(precioWei);
++}
+diff --git a/lib/origenPrice.js b/lib/origenPrice.js
+index fbad36c..2b91cad 100644
+--- a/lib/origenPrice.js
++++ b/lib/origenPrice.js
+@@ -3,52 +3,103 @@ import axios from "axios";
+ // ============================================================
+ // Precio de ORIGEN en USD.
+ //
+-//   ORIGEN = (precio de la onza de oro / 31.1035) / 55
++// DECIDIDO EL 12-AGO-2026: PRECIO FIJO DE 0,01 USD PARA LA 5550.
+ //
+-// Un ORIGEN es 1/55 de gramo de oro; 31.1035 es la onza troy en gramos.
+-// El precio del oro se toma de PAXG, que cotiza 1:1 contra la onza.
++// Hasta hoy este archivo calculaba el precio del oro en vivo:
+ //
+-// Vive aparte porque lo usan tres flujos que mueven dinero —fondear la
+-// tarjeta, mostrar consumos y convertir depositos de USDT— y tenian una copia
+-// cada uno. Copias distintas del mismo precio significan comprar a una tasa y
+-// gastar a otra, y esa diferencia sale del bolsillo de alguien.
++//     ORIGEN = (onza de oro / 31,1035) / 55        // 1/55 de gramo de oro
++//
++// Con el oro a 4.397,97 la onza —medido el 12-ago-2026— eso da **2,5709 USD
++// por ORIGEN**. Contra el precio fijado de 0,01, la diferencia es de **257
++// veces**, y no es un numero de informe: lo usan tres caminos que mueven
++// dinero de verdad.
++//
++//   · Depositar USDT      El usuario pone 100 USDT y se le acreditan
++//                         100 / 2,5709 = 38,9 ORIGEN. Si el ORIGEN vale 0,01,
++//                         acaba de pagar 100 dolares por 39 centavos.
++//   · Fondear la tarjeta  Al reves: el usuario entrega 1 ORIGEN y se le
++//                         cargan 2,57 dolares en la tarjeta. Cada ORIGEN que
++//                         entra por ahi le cuesta a la empresa 2,56 dolares.
++//   · Canje (swap)        Valora lo enviado con el mismo precio.
++//
++// Mientras las dos puntas usaran la misma formula el error se cancelaba. En el
++// momento en que el precio publico de la 5550 es 0,01 y este modulo dice 2,57,
++// deja de cancelarse y alguien paga la diferencia. Por eso el cambio de precio
++// NO es una linea en un documento: es este archivo.
++//
++// De paso desaparecen dos cosas que no deberian estar en un camino de dinero:
++//
++//   1. Binance contesta **451** a las IP de Estados Unidos, que es donde corre
++//      Heroku. La primera fuente de precio no funcionaba nunca en produccion:
++//      cada consulta gastaba sus 4 segundos de espera para acabar en el
++//      respaldo. Comprobado el 12-ago-2026.
++//   2. Con precio fijo no hay llamada de red, asi que el precio no puede
++//      cambiar entre que se cotiza una operacion y se ejecuta.
++//
++// Para volver al oro: OG_PRECIO_MODO=oro. Se deja escrito porque la decision
++// de precio es de la Junta y puede cambiar; lo que no puede es estar en dos
++// sitios a la vez.
+ // ============================================================
+ 
+ const ONZA_EN_GRAMOS = 31.1035;
+ const GRAMOS_POR_ORIGEN = 55;
+ 
++// El precio acordado. Se puede mover con OG_ORIGEN_USD sin tocar codigo, pero
++// tiene un valor por omision a proposito: un precio que depende de que alguien
++// se acuerde de poner una variable de entorno es un precio que un dia vale
++// cero.
++const PRECIO_FIJO_USD = 0.01;
++
+ function porOnza(precioOnza) {
+   return precioOnza / ONZA_EN_GRAMOS / GRAMOS_POR_ORIGEN;
+ }
+ 
+-export async function getOrigenPriceUsd() {
+-  // Binance PAXG/USDT: no pide clave y es la que menos falla.
++function precioFijado() {
++  const v = parseFloat(process.env.OG_ORIGEN_USD);
++  if (!isNaN(v) && v > 0) return v;
++  return PRECIO_FIJO_USD;
++}
++
++async function precioPorOro() {
++  // CoinGecko primero: Binance devuelve 451 desde las IP de EE.UU., que es
++  // donde vive este servidor.
+   try {
+     const res = await axios.get(
+-      "https://api.binance.com/api/v3/ticker/price?symbol=PAXGUSDT",
++      "https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd",
+       { timeout: 4000 }
+     );
+-    const oz = parseFloat(res.data?.price);
+-    if (!isNaN(oz) && oz > 0) return porOnza(oz);
++    const oz = res.data?.["pax-gold"]?.usd;
++    if (oz && !isNaN(oz) && oz > 0) return porOnza(oz);
+   } catch { /* siguiente fuente */ }
+ 
+-  // CoinGecko como segunda opinion.
+   try {
+     const res = await axios.get(
+-      "https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd",
++      "https://api.binance.com/api/v3/ticker/price?symbol=PAXGUSDT",
+       { timeout: 4000 }
+     );
+-    const oz = res.data?.["pax-gold"]?.usd;
+-    if (oz && !isNaN(oz) && oz > 0) return porOnza(oz);
++    const oz = parseFloat(res.data?.price);
++    if (!isNaN(oz) && oz > 0) return porOnza(oz);
+   } catch { /* respaldo */ }
+ 
+-  // Sin fuentes: el precio fijado a mano en el entorno, y si no lo hay, una
+-  // onza a $2000. Es conservador a proposito — subestimar el oro hace que el
+-  // usuario reciba MENOS ORIGEN por su USDT, no mas.
+-  const fijo = parseFloat(process.env.OG_TOKEN_PRICE_USD);
+-  if (fijo && !isNaN(fijo) && fijo > 0) return fijo;
+-  console.warn("[origenPrice] sin fuentes de precio de oro — usando $2000/oz");
+-  return porOnza(2000);
++  // Sin fuentes no se inventa un precio: devolver uno equivocado en un camino
++  // de dinero es peor que fallar. Antes se caia a "una onza a 2000", que con
++  // el oro a 4.400 acreditaba al usuario la mitad de lo que le tocaba.
++  const e = new Error("PRECIO_NO_DISPONIBLE");
++  e.code = "PRECIO_NO_DISPONIBLE";
++  throw e;
++}
++
++export async function getOrigenPriceUsd() {
++  if ((process.env.OG_PRECIO_MODO || "fijo").toLowerCase() === "oro") {
++    return precioPorOro();
++  }
++  return precioFijado();
++}
++
++// Para mostrar en pantalla y en los recibos: de donde salio el numero.
++export function origenPriceFuente() {
++  const modo = (process.env.OG_PRECIO_MODO || "fijo").toLowerCase();
++  return modo === "oro" ? "oro" : "fijo";
+ }
+ 
+ export default getOrigenPriceUsd;
+-- 
+2.43.0
+
