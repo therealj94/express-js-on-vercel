@@ -142,14 +142,40 @@ En una máquina de ensayo (basta una t3.medium):
 # 1. instalar Besu (empaquetado oficial) y Java 21
 # 2. generar la llave del nodo y sacar su dirección:
 besu --data-path=nodo1 public-key export-address
-# 3. poner esa dirección en validadores.json y codificar el extraData:
-besu rlp encode --from=validadores.json --type=QBFT_EXTRA_DATA
-#    → pegar el resultado en el campo extraData del génesis
+# 3. poner esa dirección en validadores.json. El extraData YA NO se codifica a
+#    mano: lo calcula construir-genesis-desde-arbol.py con --validadores, y se
+#    comprueba en cada ejecución contra el bloque cero de la 5534.
 # 4. arrancar:
-besu --data-path=nodo1 --genesis-file=genesis-besu-8532.json \
+besu --data-path=nodo1 --genesis-file=genesis-besu-5550.json \
      --rpc-http-enabled --rpc-http-api=ETH,NET,WEB3,QBFT \
-     --min-gas-price=0
+     --min-gas-price=93000000000 \
+     --tx-pool-no-local-priority
 ```
+
+**Las dos banderas del gas van juntas o no sirven.** Los nodos de la 5534
+arrancaron con `--min-gas-price=0` copiado de este mismo runbook, y el
+resultado fue que la red aceptaba transacciones gratis. Al poner el suelo,
+seguían entrando: **Besu exime del precio mínimo a las transacciones que llegan
+por su propio RPC**, y hace falta `--tx-pool-no-local-priority` para quitarles
+ese trato. Con las dos, una transacción a 0 gwei se rechaza en el envío con
+«Gas price below configured minimum gas price», que es un error que la app
+puede mostrar, en vez de devolver un comprobante de algo que nunca se minará.
+
+*(Con `zeroBaseFee`, el suelo que la cadena aplica de verdad es «mayor que
+cero». Los 93 gwei son el suelo del cliente. Ver §2.2 de
+`REVISION-COMPLETA-12-AGO.md`.)*
+
+**Cada nodo necesita `<data-path>/static-nodes.json`.** El descubrimiento por
+sí solo no arma la malla: con `--bootnodes` y nada más, los nodos se quedaron
+en cero peers. El archivo es una lista de enodes con IP y puerto 30303, y el
+30303 tiene que estar abierto **en los dos sentidos**, TCP y UDP, entre todas
+las máquinas.
+
+**Si hay balanceador, el chequeo de salud es `/readiness`, nunca
+`/liveness`.** `/liveness` sólo dice que el proceso vive: un nodo parado en el
+bloque 0 lo pasa, entra al grupo y sirve la mitad de las peticiones con saldo
+cero y nonce cero. `/readiness?minPeers=1&maxBlocksBehind=5` mira peers y
+sincronía —comprobado: 200 en el nodo al día, 503 en el vacío.
 
 - [ ] La cadena de ensayo produce bloques.
 - [ ] `python3 verificar.py inventario-8532.json http://ensayo:8545` → TODO CUADRA.
