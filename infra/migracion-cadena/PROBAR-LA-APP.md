@@ -36,9 +36,21 @@ ensayo no hereda el `PASS_TOKEN` corto que sigue pendiente en producción.
 
 ### 1. Instala el APK de ensayo
 
-Sale de Actions → «Veta Wallet — compilar APK» → perfil `ensayo`. Se llama
-**Veta Wallet ENSAYO** y tiene su propio icono; tu Veta Wallet de siempre se
-queda donde está.
+**Descarga:**
+`https://expo.dev/artifacts/eas/lbDdGQp1l9D-qU86HYKbpbVcYg_7yTLXTIYo27o19wg.apk`
+
+Se llama **Veta Wallet ENSAYO** y tiene su propio icono; tu Veta Wallet de
+siempre se queda donde está. Comprobado abriendo el APK ya compilado:
+
+| Comprobación | |
+|---|---|
+| Paquete `com.ordenglobal.vetawallet.ensayo` | sí |
+| Permite tráfico sin cifrar | sí |
+| Apunta a `32.192.209.12:3000` | sí |
+| Lleva la URL de producción | **no** |
+
+Para volver a generarlo: Actions → «Veta Wallet — compilar Android» → perfil
+`ensayo`.
 
 ### 2. Crea una cuenta
 
