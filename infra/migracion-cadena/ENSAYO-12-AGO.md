@@ -41,6 +41,36 @@ temporal. Anotado porque es el tipo de detalle que detiene una noche de corte.
 
 ## Hallazgo 4 · El que cambia el plan: **el cierre de ranuras caduca**
 
+> ## ⚠ Corregido el 12-ago por la tarde — este hallazgo estaba mal
+>
+> **El cierre no caduca, porque la cadena vieja está parada.**
+>
+> La raíz de estado de la 8532 es **idéntica desde el bloque 4.149.261**, del
+> **8-ago-2026 a las 11:45 UTC**. Comprobado por búsqueda binaria sobre
+> `stateRoot`: no es que haya poca actividad, es que el estado **no ha cambiado
+> en 3,9 días**. En los últimos 12.000 bloques hay **cero transacciones**
+> —12.000 bloques leídos, cero fallos—; la cadena produce bloques vacíos.
+>
+> Con el estado congelado, los volcados del 11 y del 12 de agosto son **el mismo
+> estado**. Así que las 78 huérfanas **no son ranuras nuevas**: son ranuras que
+> nunca se identificaron. Es un trabajo de una vez, no una carrera contra el
+> reloj.
+>
+> **Lo que sigue en pie:** las 78 hay que cerrarlas antes de construir el
+> génesis, y eso no cambia. **Lo que se cae:** que la ventana de una hora sea
+> inalcanzable, y que haga falta un cierre diario.
+>
+> **Lo que lo sustituye, y es exacto:** guardar el `stateRoot` del momento del
+> cierre y volver a leerlo antes del corte. Si coincide, el cierre sigue siendo
+> válido, sin repetir nada. Si no coincide, es que hubo movimiento y hay que
+> rehacerlo. Es una comparación de dos cadenas de texto, no un proceso nocturno.
+>
+> Cómo me equivoqué, que importa para no repetirlo: mi primer barrido dijo «cero
+> transacciones en toda la cadena» y era falso. Este nodo **acepta lotes de
+> hasta 20 peticiones** y yo mandaba 100 y 200; todas fallaban, y mi contador
+> sumaba *peticiones enviadas* en vez de *bloques leídos*. Contaba trabajo que
+> no se había hecho. Lo de arriba está medido contando sólo respuestas válidas.
+
 Al emparejar las preimágenes contra el estado de hoy aparecieron **156 ranuras
 huérfanas**. No es un fallo del método: la lista de candidatos es del 11-ago y
 desde entonces la cadena avanzó unos 6.000 bloques. Cada transacción nueva crea
@@ -61,6 +91,9 @@ hora.**
 
 ### Qué significa para el corte
 
+*(Reemplazado por la corrección de arriba. Se deja escrito lo que se pensó, para
+que se vea de dónde salió la conclusión.)*
+
 La ventana de 50–70 minutos del plan **no es alcanzable** si el cierre se hace
 dentro de ella. Y el cierre no se puede hacer «el día antes» y reutilizar,
 porque cada bloque nuevo vuelve a abrir ranuras.
@@ -74,6 +107,18 @@ ser cuestión de minutos.
 
 El banco ya existe y está encendido: tres cadenas Besu en la máquina de ensayo,
 con `debug_traceTransaction` respondiendo.
+
+### Cómo queda de verdad
+
+El cierre de las 78 se hace **fuera de la ventana, con calma**, y se guarda con
+el `stateRoot` de la 8532 al que corresponde. La noche del corte sólo se
+comprueba que ese `stateRoot` sigue siendo el de la punta. La ventana de una
+hora vuelve a estar en pie.
+
+Un detalle que conviene mirar de todas formas: **que la cadena lleve cuatro días
+sin una sola transacción no es normal en una red con usuarios**. O no hay
+actividad real, o algo dejó de enviar. No bloquea el corte, pero merece
+respuesta antes de dar la migración por buena.
 
 ## Lo que queda por ensayar
 
