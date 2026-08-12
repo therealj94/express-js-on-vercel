@@ -66,8 +66,14 @@ La cuenta nueva nace a cero. Desde MetaMask —con la red 5534 puesta según
 `PROBAR-LA-5534.md`— envíale ORIGEN y algún token desde una dirección tuya que
 sí tenga.
 
-Con **0,1 ORIGEN** sobra: el backend paga el gas a 400 gwei y un envío cuesta
-unos 0,084.
+Con **0,1 ORIGEN** sobra de largo. Un envío de ORIGEN cuesta **0,0084**:
+21.000 de gas a 400 gwei.
+
+> **Corrección del 12-ago.** Antes decía aquí que costaba 0,084 —diez veces
+> más—. Ese número es el *máximo que el backend reserva* (210.000 de límite ×
+> 400 gwei), no lo que se paga. Se paga el gas que se usa, y una transferencia
+> simple usa 21.000. Por culpa de ese error di por imposible un envío de 0,09
+> con 0,1 en la cuenta, y sí era posible.
 
 ### 4. Prueba
 
