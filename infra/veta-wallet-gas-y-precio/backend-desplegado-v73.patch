@@ -1,88 +1,86 @@
-From 04cfc974b1b5c9f18980545a08b12f91d2864cf9 Mon Sep 17 00:00:00 2001
+From 84a7f4b67c0d8a69226b744dee4aa85a59aa12e6 Mon Sep 17 00:00:00 2001
 From: Veta Wallet Backend <j.ordonez@ordenglobal.org>
-Date: Wed, 12 Aug 2026 22:04:29 +0000
-Subject: [PATCH 1/2] Decir en cada arranque que los secretos son cortos
+Date: Wed, 12 Aug 2026 22:35:25 +0000
+Subject: [PATCH] Gas de la cadena, precio configurable y la guarda de secretos
 
-PASS_TOKEN firma todas las sesiones y PASS_ADM cifra todas las llaves
-privadas. Los dos han sido cadenas de siete caracteres, que se prueban
-por fuerza bruta en un rato. No bloquea el arranque a proposito
---dejar el servicio caido no protege a nadie-- pero deja de ser
-invisible: sale en el log con el nombre y la longitud hasta que
-alguien lo rote.
+Rehecho sobre el codigo que de verdad estaba desplegado, no sobre el
+clon obsoleto.
+
+- lib/gas.js: precio y limite salen de la cadena, con suelo en los 93
+  gwei acordados. Eran 400 gwei en send, 600 en sendToken y 2000 en el
+  canje, y un gasLimit de 210.000 que reservaba 0,084 ORIGEN por envio
+  con billeteras de 1 ORIGEN.
+- lib/origenPrice.js: el precio deja de estar en dos sitios. Fijo y
+  configurable con OG_ORIGEN_USD; el oro sigue disponible con
+  OG_PRECIO_MODO=oro, que es como queda hoy para no cambiar ninguna
+  tasa sin decidirlo. Ya no se inventa una onza a 2000 cuando fallan
+  las fuentes: falla, que en un camino de dinero es lo correcto.
+  Y CoinGecko va primero: Binance devuelve 451 a las IP de EE.UU.
+- app.js: avisa en el log si PASS_TOKEN o la clave de cifrado son
+  cortas. Reconoce la rotacion en dos etapas de lib/cripto.js: que
+  PASS_ADM ya no este es lo normal, y si estuviera avisa de que la
+  rotacion no ha terminado.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01K37q5QjnAm7tkAy4TCCnU3
 ---
- app.js | 28 ++++++++++++++++++++++++++++
- 1 file changed, 28 insertions(+)
+ app.js                              | 35 +++++++++++
+ controller/swapController.js        |  4 +-
+ controller/transactionController.js | 34 +++++++---
+ lib/origenPrice.js                  | 97 ++++++++++++++++++++++-------
+ 4 files changed, 139 insertions(+), 31 deletions(-)
 
 diff --git a/app.js b/app.js
-index 7ecd3b6..7198c79 100644
+index 704fa26..0af0d36 100644
 --- a/app.js
 +++ b/app.js
-@@ -20,6 +20,34 @@ var cardsRouter = require("./routes/cards");
- var walletRouter = require("./routes/wallet");
+@@ -22,6 +22,41 @@ const { routerGenesis, parserRostro } = require("./lib/genesisPuente");
+ const sesionGenesis = require("./middleware/sesionGenesis");
  
  require("./db");
 +
 +// ── Los secretos, revisados al arrancar ─────────────────────────────────────
 +//
-+// PASS_TOKEN firma TODAS las sesiones de la billetera y PASS_ADM cifra las
-+// llaves privadas de TODOS los usuarios. Los dos han sido, en algun momento de
-+// este proyecto, cadenas de siete caracteres. Siete caracteres se prueban por
-+// fuerza bruta en un rato; con PASS_TOKEN se falsifica la sesion de cualquiera
-+// y con PASS_ADM se descifran las llaves.
++// PASS_TOKEN firma TODAS las sesiones. La clave de cifrado --PASS_ADM_NUEVA, y
++// PASS_ADM la vieja mientras dure la rotacion en dos etapas de lib/cripto.js--
++// protege la llave privada y la frase semilla de cada usuario. Los dos han
++// sido, en algun momento de este proyecto, cadenas de siete caracteres, que se
++// prueban por fuerza bruta en un rato.
 +//
-+// Esto no bloquea el arranque a proposito: dejar el servicio caido no protege
-+// a nadie y solo cambia un problema por otro. Lo que hace es que el problema
-+// deje de ser invisible: sale en el log en cada arranque, con el nombre y la
-+// longitud, hasta que alguien lo rote.
++// Que PASS_ADM ya no este puesta es lo NORMAL: es la tercera etapa de la
++// rotacion. Lo que se vigila es que haya al menos una clave de cifrado y que
++// la que mande sea larga.
++//
++// No bloquea el arranque a proposito: dejar el servicio caido no protege a
++// nadie. Lo que hace es que el problema deje de ser invisible.
 +(function revisarSecretos() {
 +  const MINIMO = 32;
-+  for (const nombre of ["PASS_TOKEN", "PASS_ADM"]) {
-+    const v = process.env[nombre] || "";
-+    if (!v) {
-+      console.error(`[secretos] ${nombre} NO ESTA PUESTO`);
-+    } else if (v.length < MINIMO) {
++  const cifrado = process.env.PASS_ADM_NUEVA || process.env.PASS_ADM;
++  const revisar = (nombre, valor) => {
++    if (!valor) console.error(`[secretos] ${nombre} NO ESTA PUESTO`);
++    else if (valor.length < MINIMO)
 +      console.error(
-+        `[secretos] ${nombre} tiene ${v.length} caracteres; el minimo son ${MINIMO}. ` +
-+          `ROTAR: ver infra/veta-wallet-gas-y-precio/ROTAR-SECRETOS.md`
++        `[secretos] ${nombre} tiene ${valor.length} caracteres; el minimo son ${MINIMO}`
 +      );
-+    }
++  };
++  revisar("PASS_TOKEN", process.env.PASS_TOKEN);
++  revisar("la clave de cifrado (PASS_ADM_NUEVA)", cifrado);
++  if (process.env.PASS_ADM) {
++    console.warn(
++      "[secretos] PASS_ADM (la vieja) sigue configurada: la rotacion no ha " +
++        "terminado. Borrarla cuando no quede ningun registro cifrado con ella."
++    );
 +  }
 +})();
 +
  var app = express();
  
  // ── CORS debe ir PRIMERO — antes de helmet y todo lo demás ───────────────────
--- 
-2.43.0
-
-
-From 9e24b9eca9494cce506c2c8ff609b13d4a0717b1 Mon Sep 17 00:00:00 2001
-From: Veta Wallet Backend <j.ordonez@ordenglobal.org>
-Date: Wed, 12 Aug 2026 22:04:59 +0000
-Subject: [PATCH 2/2] Precio fijo de 0,01 y el gas leido de la cadena
-
-Reaplicado: el contenedor se reinicio y perdio el arbol de trabajo.
-El parche vivia en el repositorio de infraestructura, que es donde
-tiene que vivir mientras Heroku siga bloqueado.
-
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01K37q5QjnAm7tkAy4TCCnU3
----
- controller/swapController.js        |  6 +-
- controller/transactionController.js | 39 ++++++++----
- lib/gas.js                          | 85 +++++++++++++++++++++++++
- lib/origenPrice.js                  | 97 ++++++++++++++++++++++-------
- 4 files changed, 190 insertions(+), 37 deletions(-)
- create mode 100644 lib/gas.js
-
 diff --git a/controller/swapController.js b/controller/swapController.js
-index a12ab05..60b64a1 100644
+index 048653f..613c863 100644
 --- a/controller/swapController.js
 +++ b/controller/swapController.js
-@@ -39,6 +39,7 @@ import Card from "../models/Card";
+@@ -40,6 +40,7 @@ import Card from "../models/Card";
  import CardFunding from "../models/CardFunding";
  import OrigenBalance from "../models/OrigenBalance";
  import { getOrigenPriceUsd } from "../lib/origenPrice";
@@ -90,32 +88,30 @@ index a12ab05..60b64a1 100644
  
  // ─── USDT on Polygon (PoS) ────────────────────────────────────────────────────
  const USDT_POLYGON  = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
-@@ -65,7 +66,10 @@ async function sendOrigenToTreasury({ provider, decryptedKey, treasuryAddress, a
+@@ -66,7 +67,8 @@ async function sendOrigenToTreasury({ provider, decryptedKey, treasuryAddress, a
      new Promise((_, reject) => setTimeout(() => reject(new Error("OG chain nonce timeout")), 8000)),
    ]);
  
 -  const gasPrice = BigInt(2000 * 10 ** 9); // 2000 Gwei — same as ico-back's BlockchainService
-+  // Eran 2000 gwei fijos —21,5 veces el precio acordado de 93— heredados de
-+  // ico-back. Con el limite de 21.000 eso reservaba 0,042 ORIGEN por canje.
-+  // Ahora se le pregunta a la cadena; ver lib/gas.js.
++  // Eran 2000 gwei fijos, 21,5 veces el precio acordado, heredados de ico-back.
 +  const gasPrice = await precioDeGas(provider);
  
    // sendTransaction con timeout de 15s
    const tx = await Promise.race([
 diff --git a/controller/transactionController.js b/controller/transactionController.js
-index 407ca83..23c5da9 100644
+index 15d8361..28773cb 100644
 --- a/controller/transactionController.js
 +++ b/controller/transactionController.js
-@@ -9,6 +9,7 @@ import { parseEther } from "ethers/utils";
+@@ -10,6 +10,7 @@ import { parseEther } from "ethers/utils";
  import Tx from "../models/Tx";
  import jwt from "jsonwebtoken";
  import abi from "../ABI/abi.json";
 +import { precioDeGas, limiteDeGas, LIMITE_POR_OMISION_TOKEN } from "../lib/gas";
- 
- // ============================================================
- // Traduce un fallo de envio a algo que el usuario pueda entender y actuar.
-@@ -95,14 +96,22 @@ export const send = async (req, res) => {
-     ).toString(CryptoJS.enc.Utf8);
+ import {
+   reservar,
+   completar,
+@@ -118,14 +119,22 @@ export const send = async (req, res) => {
+     const decryptedPrivateKey = descifrarLlavePrivada(user.privateKey);
  
      const wallet = new Wallet(decryptedPrivateKey, provider);
 -    const gasLimit = 210000;
@@ -124,15 +120,15 @@ index 407ca83..23c5da9 100644
 -    const gasPriceWei = gasPriceGwei * 10 ** 9;
 +    const valor = parseEther(amount).toString();
 +
-+    // El precio y el limite salen de la cadena. Antes eran 400 gwei y 210.000
-+    // fijos: 4,3 veces el precio acordado, y un limite diez veces el gasto
-+    // real que obligaba a tener 0,084 ORIGEN libres para mover un centavo.
-+    // Ver lib/gas.js.
++    // El precio y el limite salen de la cadena. Eran 400 gwei y 210.000 fijos:
++    // 4,3 veces el precio acordado, y un limite diez veces el gasto real que
++    // obligaba a tener 0,084 ORIGEN libres para mover un centavo. Ver lib/gas.js.
 +    const gasPriceWei = await precioDeGas(provider);
-+    const gasLimit = await limiteDeGas(
-+      provider,
-+      { from: wallet.address, to: recipientAddress, value: valor }
-+    );
++    const gasLimit = await limiteDeGas(provider, {
++      from: wallet.address,
++      to: recipientAddress,
++      value: valor,
++    });
  
      const data = {
        to: recipientAddress,
@@ -141,9 +137,9 @@ index 407ca83..23c5da9 100644
        gasLimit: gasLimit,
        nonce: nonce,
        gasPrice: gasPriceWei,
-@@ -189,19 +198,23 @@ export const sendToken = async (req, res) => {
-       process.env.PASS_ADM
-     ).toString(CryptoJS.enc.Utf8);
+@@ -237,13 +246,24 @@ export const sendToken = async (req, res) => {
+ 
+     const decryptedPrivateKey = descifrarLlavePrivada(user.privateKey);
      const wallet = new Wallet(decryptedPrivateKey, provider);
 -    const gasLimit = 210000;
      const nonce = await provider.getTransactionCount(wallet.address, "latest");
@@ -152,119 +148,23 @@ index 407ca83..23c5da9 100644
  
 -    const gasPriceGwei = 600;
 -    const gasPriceWei = gasPriceGwei * 10 ** 9;
--    const data = {
--      gasPrice: gasPriceWei,
--      gasLimit: gasLimit,
--      nonce: nonce,
--    };
--    console.log(data);
-+    // Igual que en send(): de la cadena. Eran 600 gwei fijos, 6,5 veces el
-+    // precio acordado. El limite se estima sobre la transferencia real, que en
-+    // un ERC-20 depende de si el destinatario ya tenia saldo o no.
++    // Igual que en send(). Eran 600 gwei fijos, 6,5 veces lo acordado.
 +    const gasPriceWei = await precioDeGas(provider);
-+    const datosTransferencia = tokenContract.interface.encodeFunctionData(
-+      "transfer",
-+      [recipientAddress, amount1]
-+    );
 +    const gasLimit = await limiteDeGas(
 +      provider,
-+      { from: wallet.address, to: tokenContractAddress, data: datosTransferencia },
++      {
++        from: wallet.address,
++        to: tokenContractAddress,
++        data: tokenContract.interface.encodeFunctionData("transfer", [
++          recipientAddress,
++          amount1,
++        ]),
++      },
 +      LIMITE_POR_OMISION_TOKEN
 +    );
- 
-     const transferTx = await tokenContract.transfer(recipientAddress, amount1, {
+     const data = {
        gasPrice: gasPriceWei,
-diff --git a/lib/gas.js b/lib/gas.js
-new file mode 100644
-index 0000000..496b1b2
---- /dev/null
-+++ b/lib/gas.js
-@@ -0,0 +1,85 @@
-+// ============================================================
-+// El gas: se le pregunta a la cadena, no se escribe a mano.
-+//
-+// LO QUE HABIA
-+//
-+//   transactionController.send()       400 gwei · gasLimit 210.000
-+//   transactionController.sendToken()  600 gwei · gasLimit 210.000
-+//   swapController                    2000 gwei · gasLimit  21.000
-+//
-+// Tres numeros distintos para la misma cadena, ninguno atado a nada. El
-+// acordado para la 5550 es **93 gwei**: los de arriba son 4,3 · 6,5 y 21,5
-+// veces eso.
-+//
-+// El gasLimit de 210.000 hace mas daño que el precio. Una transferencia nativa
-+// gasta 21.000; el limite solo reserva. Pero la comprobacion de fondos usa el
-+// LIMITE, no el gasto: con 210.000 a 400 gwei hay que tener 0,084 ORIGEN
-+// libres para mover cualquier cantidad. Con las billeteras a 1 ORIGEN que deja
-+// la consolidacion, eso es el 8,4% del saldo bloqueado por envio — y en el
-+// canje, 210.000 a 2000 gwei serian 0,42 ORIGEN, el 42% del saldo de una
-+// persona reservado para una sola operacion. Se ve como "no alcanza para
-+// cubrir el monto mas el gas" cuando si alcanzaba.
-+//
-+// LO QUE HACE ESTE ARCHIVO
-+//
-+// Pregunta el precio a la cadena (eth_gasPrice) y el limite al simulador
-+// (estimateGas), con un suelo y un techo para no quedar a merced de un nodo
-+// que conteste cualquier cosa. Si la cadena no contesta, usa el suelo: no
-+// inventa un numero grande "por si acaso", porque ese por-si-acaso es el que
-+// bloqueaba el saldo del usuario.
-+// ============================================================
-+
-+const GWEI = 1000000000n;
-+
-+// Suelo y techo, en gwei. El suelo es el precio acordado para la red: por
-+// debajo de --min-gas-price el nodo ni acepta la transaccion. El techo esta
-+// para que un nodo mal configurado no vacie una billetera.
-+const SUELO_GWEI = BigInt(process.env.OG_GAS_SUELO_GWEI || 93);
-+const TECHO_GWEI = BigInt(process.env.OG_GAS_TECHO_GWEI || 1000);
-+
-+// Margenes de seguridad sobre lo estimado. La estimacion puede quedarse corta
-+// si el estado cambia entre estimar y minar (un `approve` que se gasta, una
-+// ranura que pasa de cero a distinto de cero).
-+const MARGEN_LIMITE = 130n; // %
-+const LIMITE_NATIVO = 21000n;
-+const LIMITE_TOKEN = 120000n; // respaldo si estimateGas no contesta
-+
-+export async function precioDeGas(provider) {
-+  let gwei = SUELO_GWEI;
-+  try {
-+    const f = await provider.getFeeData();
-+    // Con zeroBaseFee la cadena no cobra base: todo el precio es propina y va
-+    // al validador que propone el bloque. gasPrice es el numero que manda.
-+    const p = f?.gasPrice;
-+    if (p && p > 0n) gwei = p / GWEI;
-+  } catch {
-+    // Se queda en el suelo: es el precio que la red exige de todas formas.
-+  }
-+  if (gwei < SUELO_GWEI) gwei = SUELO_GWEI;
-+  if (gwei > TECHO_GWEI) gwei = TECHO_GWEI;
-+  return gwei * GWEI;
-+}
-+
-+export async function limiteDeGas(provider, tx, porOmision = LIMITE_NATIVO) {
-+  try {
-+    const est = await provider.estimateGas(tx);
-+    if (est && est > 0n) {
-+      const conMargen = (est * MARGEN_LIMITE) / 100n;
-+      return conMargen < LIMITE_NATIVO ? LIMITE_NATIVO : conMargen;
-+    }
-+  } catch {
-+    // Una estimacion que falla suele significar que la transaccion revertiria.
-+    // No es este el sitio para decidirlo: se sigue con el limite por omision y
-+    // que hable la cadena, con un mensaje que el usuario entienda.
-+  }
-+  return porOmision;
-+}
-+
-+export const LIMITE_POR_OMISION_TOKEN = LIMITE_TOKEN;
-+
-+// Lo que hay que tener libre para poder enviar `valor`: el monto mas el gas
-+// reservado. Se expone para poder decirle al usuario cuanto le falta en vez de
-+// un "no alcanza" a secas.
-+export function reservaNecesaria(valorWei, limite, precioWei) {
-+  return BigInt(valorWei) + BigInt(limite) * BigInt(precioWei);
-+}
+       gasLimit: gasLimit,
 diff --git a/lib/origenPrice.js b/lib/origenPrice.js
 index fbad36c..2b91cad 100644
 --- a/lib/origenPrice.js

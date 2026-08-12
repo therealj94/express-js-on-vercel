@@ -18,33 +18,42 @@ var transactionRouter = require("./routes/transaction");
 var kycRouter = require("./routes/kyc");
 var cardsRouter = require("./routes/cards");
 var walletRouter = require("./routes/wallet");
+const { routerGenesis, parserRostro } = require("./lib/genesisPuente");
+const sesionGenesis = require("./middleware/sesionGenesis");
 
 require("./db");
 
 // ── Los secretos, revisados al arrancar ─────────────────────────────────────
 //
-// PASS_TOKEN firma TODAS las sesiones de la billetera y PASS_ADM cifra las
-// llaves privadas de TODOS los usuarios. Los dos han sido, en algun momento de
-// este proyecto, cadenas de siete caracteres. Siete caracteres se prueban por
-// fuerza bruta en un rato; con PASS_TOKEN se falsifica la sesion de cualquiera
-// y con PASS_ADM se descifran las llaves.
+// PASS_TOKEN firma TODAS las sesiones. La clave de cifrado --PASS_ADM_NUEVA, y
+// PASS_ADM la vieja mientras dure la rotacion en dos etapas de lib/cripto.js--
+// protege la llave privada y la frase semilla de cada usuario. Los dos han
+// sido, en algun momento de este proyecto, cadenas de siete caracteres, que se
+// prueban por fuerza bruta en un rato.
 //
-// Esto no bloquea el arranque a proposito: dejar el servicio caido no protege
-// a nadie y solo cambia un problema por otro. Lo que hace es que el problema
-// deje de ser invisible: sale en el log en cada arranque, con el nombre y la
-// longitud, hasta que alguien lo rote.
+// Que PASS_ADM ya no este puesta es lo NORMAL: es la tercera etapa de la
+// rotacion. Lo que se vigila es que haya al menos una clave de cifrado y que
+// la que mande sea larga.
+//
+// No bloquea el arranque a proposito: dejar el servicio caido no protege a
+// nadie. Lo que hace es que el problema deje de ser invisible.
 (function revisarSecretos() {
   const MINIMO = 32;
-  for (const nombre of ["PASS_TOKEN", "PASS_ADM"]) {
-    const v = process.env[nombre] || "";
-    if (!v) {
-      console.error(`[secretos] ${nombre} NO ESTA PUESTO`);
-    } else if (v.length < MINIMO) {
+  const cifrado = process.env.PASS_ADM_NUEVA || process.env.PASS_ADM;
+  const revisar = (nombre, valor) => {
+    if (!valor) console.error(`[secretos] ${nombre} NO ESTA PUESTO`);
+    else if (valor.length < MINIMO)
       console.error(
-        `[secretos] ${nombre} tiene ${v.length} caracteres; el minimo son ${MINIMO}. ` +
-          `ROTAR: ver infra/veta-wallet-gas-y-precio/ROTAR-SECRETOS.md`
+        `[secretos] ${nombre} tiene ${valor.length} caracteres; el minimo son ${MINIMO}`
       );
-    }
+  };
+  revisar("PASS_TOKEN", process.env.PASS_TOKEN);
+  revisar("la clave de cifrado (PASS_ADM_NUEVA)", cifrado);
+  if (process.env.PASS_ADM) {
+    console.warn(
+      "[secretos] PASS_ADM (la vieja) sigue configurada: la rotacion no ha " +
+        "terminado. Borrarla cuando no quede ningun registro cifrado con ella."
+    );
   }
 })();
 
@@ -131,6 +140,11 @@ app.use("/auth/recuperarPassword", authLimiter);
 app.use("/auth/resetPassword", authLimiter);
 app.use("/auth/refresh", authLimiter);
 
+// Los fotogramas del rostro y la foto de la credencial no caben en el
+// limite general, y el cuerpo lo parsea el PRIMER parser que lo alcanza.
+app.use("/genesis/biometria", parserRostro);
+app.use("/genesis/foto", parserRostro);
+
 app.use(bodyParser.json({ limit: "100kb" })); // reducido de 5mb — no hay razón para aceptar más
 // view engine setup
 app.set("views", path.join(__dirname, "views"));
@@ -181,6 +195,15 @@ app.use("/kyc", kycRouter);
 app.use("/cards", cardsRouter);
 app.use("/wallet", walletRouter);
 
+// Puente con Genesis ID. La clave de API vive SOLO aqui: un APK se
+// descomprime y cualquiera la sacaria de la aplicacion movil.
+//
+//   telefono --JWT--> este servidor (/genesis/*) --X-API-Key--> Genesis ID
+//
+// Ninguna de estas rutas verifica a nadie: eso lo decide un operador en el
+// panel de Genesis ID. Aqui solo se aportan datos.
+app.use("/genesis", routerGenesis({ exigirSesion: sesionGenesis }));
+
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
   next(createError(404));
@@ -196,6 +219,10 @@ app.use(function (err, req, res, next) {
   res.status(err.status || 500);
   res.render("error");
 });
+// Padrón para el panel de analítica de Genesis ID.
+import { arrancarCenso } from "./lib/censoGenesis";
+arrancarCenso();
+
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Servidor escuchando en el puerto ${port}`);

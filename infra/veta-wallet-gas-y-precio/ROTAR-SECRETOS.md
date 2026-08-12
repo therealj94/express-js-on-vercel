@@ -39,7 +39,17 @@ días.
 **Atajo si no importa que todos vuelvan a entrar:** cambiar `PASS_TOKEN` por el
 nuevo y ya está. Es un solo paso, y avisar antes.
 
-## `PASS_ADM` · no es lo mismo, y no se puede hacer a lo bruto
+## `PASS_ADM` · **ya está hecho** (comprobado el 12-ago-2026)
+
+La rotación de la clave de cifrado **está terminada**. `lib/cripto.js` la hizo
+en dos etapas y en producción `PASS_ADM` ya no existe. Contado dentro de la red
+de Heroku, sin sacar ni una llave: de **435 usuarios**, **434 llaves privadas y
+434 frases semilla** descifran con `PASS_ADM_NUEVA`. El único que falla es un
+registro que ya constaba corrupto de antes de la rotación.
+
+Lo de abajo se deja escrito por si hay que volver a rotarla.
+
+## `PASS_ADM` · cómo se hizo, y cómo se haría otra vez
 
 Aquí no se firma: se **cifra**. Si se cambia el valor, lo ya guardado deja de
 poder descifrarse, y eso es perder las llaves de los usuarios. Hace falta una
