@@ -1,27 +1,72 @@
-From b7fffb5a5d3229cbca22c3356036e08a098880ff Mon Sep 17 00:00:00 2001
+From 04cfc974b1b5c9f18980545a08b12f91d2864cf9 Mon Sep 17 00:00:00 2001
 From: Veta Wallet Backend <j.ordonez@ordenglobal.org>
-Date: Wed, 12 Aug 2026 20:46:05 +0000
-Subject: [PATCH] Precio fijo de 0,01 y el gas leido de la cadena
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Date: Wed, 12 Aug 2026 22:04:29 +0000
+Subject: [PATCH 1/2] Decir en cada arranque que los secretos son cortos
 
-El precio de ORIGEN se calculaba con el oro en vivo: 1/55 de gramo.
-Con la onza a 4.397,97 eso da 2,5709 USD por ORIGEN, 257 veces el
-precio fijado de 0,01 para la 5550. Lo usan tres caminos que mueven
-dinero --depositar USDT, fondear la tarjeta y canjear-- asi que la
-decision de precio no es un documento, es este archivo. Queda fijo y
-configurable con OG_ORIGEN_USD; el oro sigue disponible con
-OG_PRECIO_MODO=oro. De paso: Binance devuelve 451 a las IP de EE.UU.,
-que es donde corre este servidor, asi que la primera fuente de precio
-no funcionaba nunca en produccion.
+PASS_TOKEN firma todas las sesiones y PASS_ADM cifra todas las llaves
+privadas. Los dos han sido cadenas de siete caracteres, que se prueban
+por fuerza bruta en un rato. No bloquea el arranque a proposito
+--dejar el servicio caido no protege a nadie-- pero deja de ser
+invisible: sale en el log con el nombre y la longitud hasta que
+alguien lo rote.
 
-El gas estaba escrito a mano y distinto en cada sitio: 400 gwei en
-send, 600 en sendToken, 2000 en el canje, contra los 93 acordados. El
-gasLimit de 210.000 era el que hacia daño: la comprobacion de fondos
-usa el limite, no el gasto, asi que obligaba a tener 0,084 ORIGEN
-libres para mover cualquier cantidad, con billeteras de 1 ORIGEN.
-Ahora salen de la cadena, con suelo en el precio acordado.
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01K37q5QjnAm7tkAy4TCCnU3
+---
+ app.js | 28 ++++++++++++++++++++++++++++
+ 1 file changed, 28 insertions(+)
+
+diff --git a/app.js b/app.js
+index 7ecd3b6..7198c79 100644
+--- a/app.js
++++ b/app.js
+@@ -20,6 +20,34 @@ var cardsRouter = require("./routes/cards");
+ var walletRouter = require("./routes/wallet");
+ 
+ require("./db");
++
++// ── Los secretos, revisados al arrancar ─────────────────────────────────────
++//
++// PASS_TOKEN firma TODAS las sesiones de la billetera y PASS_ADM cifra las
++// llaves privadas de TODOS los usuarios. Los dos han sido, en algun momento de
++// este proyecto, cadenas de siete caracteres. Siete caracteres se prueban por
++// fuerza bruta en un rato; con PASS_TOKEN se falsifica la sesion de cualquiera
++// y con PASS_ADM se descifran las llaves.
++//
++// Esto no bloquea el arranque a proposito: dejar el servicio caido no protege
++// a nadie y solo cambia un problema por otro. Lo que hace es que el problema
++// deje de ser invisible: sale en el log en cada arranque, con el nombre y la
++// longitud, hasta que alguien lo rote.
++(function revisarSecretos() {
++  const MINIMO = 32;
++  for (const nombre of ["PASS_TOKEN", "PASS_ADM"]) {
++    const v = process.env[nombre] || "";
++    if (!v) {
++      console.error(`[secretos] ${nombre} NO ESTA PUESTO`);
++    } else if (v.length < MINIMO) {
++      console.error(
++        `[secretos] ${nombre} tiene ${v.length} caracteres; el minimo son ${MINIMO}. ` +
++          `ROTAR: ver infra/veta-wallet-gas-y-precio/ROTAR-SECRETOS.md`
++      );
++    }
++  }
++})();
++
+ var app = express();
+ 
+ // ── CORS debe ir PRIMERO — antes de helmet y todo lo demás ───────────────────
+-- 
+2.43.0
+
+
+From 9e24b9eca9494cce506c2c8ff609b13d4a0717b1 Mon Sep 17 00:00:00 2001
+From: Veta Wallet Backend <j.ordonez@ordenglobal.org>
+Date: Wed, 12 Aug 2026 22:04:59 +0000
+Subject: [PATCH 2/2] Precio fijo de 0,01 y el gas leido de la cadena
+
+Reaplicado: el contenedor se reinicio y perdio el arbol de trabajo.
+El parche vivia en el repositorio de infraestructura, que es donde
+tiene que vivir mientras Heroku siga bloqueado.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01K37q5QjnAm7tkAy4TCCnU3
