@@ -1,3 +1,9 @@
+
+// El nodo de la cadena sale de OG_RPC. Estaba escrito a fuego en cinco
+// archivos, asi que apuntar el explorador a otra red obligaba a editar
+// codigo. Sin la variable puesta se comporta igual que siempre.
+const RPC_CADENA = process.env.OG_RPC || "https://ordenglobal-rpc.com/";
+
 var createError = require("http-errors");
 var express = require("express");
 var path = require("path");
@@ -64,7 +70,8 @@ app.get("/health", async (req, res) => {
   } catch (e) { salud.mongo = "error"; }
   try {
     const { Web3 } = require("web3");
-    const w = new Web3("https://ordenglobal-rpc.com/");
+
+    const w = new Web3(RPC_CADENA);
     const n = await w.eth.getBlockNumber();
     salud.rpc = "ok";
     salud.ultimoBloque = n.toString();
