@@ -58,9 +58,9 @@ te las pide, no es ésta.</p>
 </div>
 
 <div id="paso3" style="display:none">
-  <label>Firma &mdash; copiá esto y envialo</label>
+  <label>Copiá esto entero y envialo</label>
   <div class="caja ok" id="firma">—</div>
-  <button class="sec" id="copiar">Copiar la firma</button>
+  <button class="sec" id="copiar">Copiar dirección y firma</button>
 </div>
 
 <hr>
@@ -113,9 +113,9 @@ $('conectar').onclick = async () => {
 $('firmar').onclick = async () => {
   try {
     const firma = await window.ethereum.request({ method: 'personal_sign', params: [texto, cuenta] });
-    $('firma').textContent = firma;
+    $('firma').textContent = `Dirección: ${cuenta}\nFirma: ${firma}`;
     $('paso3').style.display = 'block';
-    estado('Firmado. Copiá la firma de abajo y envíala junto con la dirección.', true);
+    estado('Firmado. Copiá el bloque de abajo entero — lleva la dirección y la firma.', true);
   } catch (e) {
     // Cancelar no es un error: es una decision.
     const m = (e && e.message ? e.message : String(e));
@@ -125,7 +125,7 @@ $('firmar').onclick = async () => {
 
 $('copiar').onclick = async () => {
   const t = $('firma').textContent;
-  try { await navigator.clipboard.writeText(t); estado('Firma copiada.', true); }
+  try { await navigator.clipboard.writeText(t); estado('Copiado. Pegalo tal cual, con las dos líneas.', true); }
   catch (e) { estado('No se pudo copiar sola. Seleccioná el texto y copialo a mano.', false); }
 };
 </script>

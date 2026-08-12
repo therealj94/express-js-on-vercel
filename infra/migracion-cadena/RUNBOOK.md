@@ -189,6 +189,18 @@ documentos: no rompen nada, se corrigen con el resto de la comunicación.
 `construir-genesis.py` **se niega a construir con 8532**. Es a propósito:
 equivocar el chain ID en silencio es peor que no arrancar.
 
+> **CORRECCIONES DEL ENSAYO DEL 12-AGO — leer antes de ejecutar la etapa 4.**
+> Ver `ENSAYO-12-AGO.md`.
+>
+> 1. El directorio de datos del nodo es **`/home/ec2-user/node-x`**, no `node-1`.
+>    `node-1` está abandonado y volcarlo da 0 cuentas.
+> 2. Las herramientas ya están en `/opt/migracion` de node1 (Go, el volcador
+>    compilado, `pycryptodome`, el kit).
+> 3. **El cierre de ranuras caduca.** Cada bloque nuevo abre ranuras que la
+>    lista de candidatos no conoce, y cerrarlas exige el banco de trazado y
+>    varias vueltas. La ventana de una hora sólo es posible si el cierre se
+>    corre a diario y la distancia al corte es de horas.
+
 ## Etapa 4 · El corte (fin de semana, requiere autorización de la Junta)
 
 1. **Congelar**: parar la escritura (backend de la wallet en mantenimiento).

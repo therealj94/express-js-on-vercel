@@ -24,6 +24,19 @@ coincidió con la publicada de node3. El par de prueba se borró.
 
 ## Los pasos
 
+### 0 · Si no tenés una computadora a mano
+
+`legal.vetawallet.com/copia-fria` hace lo mismo dentro del navegador, sin
+servidor y sin que nada viaje: sirve desde un teléfono o un iPad. Se puede usar
+con el aparato en modo avión, y ésa es la forma de comprobar que no manda nada
+a ningún lado. También descifra, así que el paso 4 se hace en el mismo sitio.
+
+> **La máscara va fijada en SHA-256 a propósito.** OpenSSL deja la máscara de
+> OAEP en SHA-1 por defecto en varias versiones, aunque se le fije el hash. Si
+> el nodo cifrara así, el descifrado fallaría sin decir por qué. Comprobado el
+> 12-ago-2026: en la versión de estas máquinas los dos caminos funcionan, pero
+> se fija igual para no depender de un valor por defecto.
+
 ### 1 · En tu computadora, generá el par (una sola vez)
 
 ```sh
@@ -44,6 +57,7 @@ Sólo la pública. Es inofensiva: con ella únicamente se puede cifrar.
 ```sh
 openssl pkeyutl -encrypt -pubin -inkey og-respaldo-publica.pem \
   -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 \
+  -pkeyopt rsa_mgf1_md:sha256 \
   -in /opt/besu-validador/llave.hex -out llave-<nodo>.cif
 ```
 
