@@ -37,7 +37,12 @@ ensayo no hereda el `PASS_TOKEN` corto que sigue pendiente en producción.
 ### 1. Instala el APK de ensayo
 
 **Descarga:**
-`https://expo.dev/artifacts/eas/lbDdGQp1l9D-qU86HYKbpbVcYg_7yTLXTIYo27o19wg.apk`
+`https://expo.dev/artifacts/eas/lh-ibWMa-Q0QF51rTjQHIY44U3lwxGsKDP5DginWyF4.apk`
+
+> **Segunda versión, 12-ago.** La primera no podía enviar tokens: la
+> pantalla de enviar cortaba con un aviso de «próximamente» en cuanto el
+> activo no era ORIGEN, y el selector no tenía scroll, así que con dieciséis
+> tokens en la red no se llegaba a los de abajo. Las dos cosas arregladas.
 
 Se llama **Veta Wallet ENSAYO** y tiene su propio icono; tu Veta Wallet de
 siempre se queda donde está. Comprobado abriendo el APK ya compilado:
