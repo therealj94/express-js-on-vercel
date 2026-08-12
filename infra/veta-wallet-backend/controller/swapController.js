@@ -41,6 +41,7 @@ import CardFunding from "../models/CardFunding";
 import OrigenBalance from "../models/OrigenBalance";
 import { getOrigenPriceUsd } from "../lib/origenPrice";
 import { precioDeGas } from "../lib/gas";
+import { proveedorPolygon } from "../lib/polygon";
 
 // ─── USDT on Polygon (PoS) ────────────────────────────────────────────────────
 const USDT_POLYGON  = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
@@ -88,9 +89,8 @@ async function sendOrigenToTreasury({ provider, decryptedKey, treasuryAddress, a
 
 // ─── Helper: treasury Polygon wallet sends USDT → CryptoMate card top-up ─────
 async function sendUSDTFromTreasury({ usdtAmountWei, toAddress }) {
-  const polygonProvider = new ethers.JsonRpcProvider(
-    process.env.POLYGON_CHAIN_PROVIDER || "https://polygon-rpc.com"
-  );
+  // Igual que en depositController: varios sitios, no uno. Ver lib/polygon.js.
+  const polygonProvider = await proveedorPolygon();
 
   const treasuryWallet  = new ethers.Wallet(process.env.TREASURY_POLYGON_PRIVATE_KEY, polygonProvider);
   const usdtContract    = new ethers.Contract(USDT_POLYGON, ERC20_ABI, treasuryWallet);

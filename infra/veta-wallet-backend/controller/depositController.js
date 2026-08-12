@@ -24,6 +24,7 @@
 
 import jwt from "jsonwebtoken";
 import { ethers } from "ethers";
+import { proveedorPolygon } from "../lib/polygon";
 import Users from "../models/Users";
 import OrigenBalance from "../models/OrigenBalance";
 import Deposit from "../models/Deposit";
@@ -42,10 +43,12 @@ const MIN_DEPOSITO_WEI = 500000n;
 const RED = "POLYGON";
 const TOKEN = "USDT";
 
-function polygonProvider() {
-  return new ethers.JsonRpcProvider(
-    process.env.POLYGON_CHAIN_PROVIDER || "https://polygon-rpc.com"
-  );
+// Varios proveedores por orden, y el que responda se recuerda un rato. Antes
+// habia uno con un respaldo escrito a mano que llevaba muerto: cuando los dos
+// se cayeron a la vez, esto reintentaba en bucle sin decirselo a nadie.
+// Ver lib/polygon.js.
+async function polygonProvider() {
+  return proveedorPolygon();
 }
 
 // ─── usuario del token ────────────────────────────────────────────────────────
@@ -95,7 +98,7 @@ async function revisarYAcreditar(user) {
 
   let enCadenaWei;
   try {
-    const contrato = new ethers.Contract(USDT_POLYGON, ERC20_ABI, polygonProvider());
+    const contrato = new ethers.Contract(USDT_POLYGON, ERC20_ABI, await polygonProvider());
     enCadenaWei = await Promise.race([
       contrato.balanceOf(user.address),
       new Promise((_, rej) =>
