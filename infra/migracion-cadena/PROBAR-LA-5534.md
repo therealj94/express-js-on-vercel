@@ -11,13 +11,21 @@ Ajustes → Redes → **Agregar red manualmente**:
 | Campo | Valor |
 |---|---|
 | Nombre | Orden Global · pruebas |
-| URL del RPC | `http://18.234.39.26:8545` |
+| URL del RPC | `https://pruebas.ordenglobal-rpc.com` |
 | ID de cadena | **5534** |
 | Símbolo | ORIGEN |
 | Explorador | *(déjalo vacío)* |
 
-Es **`http://`**, no `https://`. Algunas billeteras se quejan de eso; MetaMask
-lo acepta.
+> **Corregido el 12-ago.** Aquí decía `http://18.234.39.26:8545` y que MetaMask
+> lo aceptaba. **La app del móvil no lo acepta**: exige HTTPS y contesta «Los
+> identificadores URI requieren el prefijo HTTPS adecuado». De paso marca el ID
+> de cadena como inválido, que despista, porque no puede consultárselo a un RPC
+> que rechazó.
+>
+> Ya tiene certificado de verdad —Let's Encrypt, renovación automática— detrás
+> del nombre `pruebas.ordenglobal-rpc.com`. Y al ir por nombre y no por IP, si
+> la máquina cambia de dirección se arregla en el DNS sin tocar el teléfono de
+> nadie.
 
 ## Qué vas a ver
 
