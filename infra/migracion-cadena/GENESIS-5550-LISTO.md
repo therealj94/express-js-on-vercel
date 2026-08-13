@@ -78,12 +78,15 @@ Y una cosa que antes pasaba en silencio y ahora se informa: **33 billeteras
 tenían menos de 1 ORIGEN y se les rellena hasta el piso**, con 17,27 ORIGEN
 que salen de la billetera única. Tres de ellas tenían exactamente cero.
 
-## Lo único que falta para que sea el definitivo
+## La billetera única: confirmada
 
-**La dirección de la billetera única.** Hoy va la del tesoro,
-`0x3d5510e5081822877d14cd51b356bf01df2c32c9`, como marcador de posición desde
-el `PLAN-ARRANQUE`. Cuando digas cuál es, se reconstruye en un minuto y el
-juez se vuelve a pasar.
+**Ya no falta.** José lo dijo el 13-ago: la billetera única es
+`0x3d5510e5081822877d14cd51b356bf01df2c32c9` —la misma que ya estaba puesta—.
+No hay que reconstruir nada: el génesis que se juzgó con cero diferencias es el
+definitivo.
+
+Y dónde corre, que era la otra pregunta abierta, está resuelto en
+`DONDE-CORRE-CADA-CADENA.md`: **no hacen falta máquinas nuevas.**
 
 Las tres asignaciones preservadas —750.000 millones— **no se tocan**. Aplicar
 «dejemos 1 en cada billetera» a esas tres sería mover el tesoro, y eso va con

@@ -17,16 +17,17 @@
     "Corriendo el verificador oficial de Chainlist apareció un fallo que habría hundido la solicitud: el símbolo de la moneda de pruebas tenía siete caracteres y el máximo son seis. Corregido a ORIGEN, y las cuatro comprobaciones del repositorio pasan aquí en verde",
     "Backend respaldado entero y la avería de Polygon arreglada con proveedores de reserva",
     "Formado el equipo de vigilancia: siete agentes que revisan solos las cadenas, el dinero, la seguridad, lo desplegado, el coste y las solicitudes de Chainlist, y dejan su parte aquí. Ninguno mueve fondos ni despliega: miran y avisan",
-    "Tres de los siete ya entregaron su primer parte con mediciones reales"
+    "Tres de los siete ya entregaron su primer parte con mediciones reales",
+    "Descubierto mirando los procesos de las maquinas, no un documento: los cuatro validadores de la red de pruebas corren DENTRO de las maquinas de la cadena vieja. Nadie lo habia escrito nunca",
+    "Con eso se resuelve lo que bloqueaba el corte: la red principal no necesita maquinas nuevas. Las cuatro que hacen falta ya existen, con Besu instalado, direcciones fijas y seis gigas de memoria libres cada una"
   ],
   "pendiente": [
-    "Lo único que bloquea el corte: decidir en qué máquinas corre la 5550. Las cuatro de hoy llevan la red de pruebas",
     "Borrar las dos llaves de Amazon en el panel de identidades, revocar el token de GitHub y rotar el secreto de Google",
     "Cuenta de organización en Play Console y número de identificación de empresa para las tiendas",
     "Crear el nombre de dominio del RPC de la 5550 con certificado, cuando existan los nodos",
     "El corte: repuntar la billetera a la cadena nueva, contigo delante",
     "Poner el explorador a indexar la 5550 y encender la comisión al arrancar",
-    "Retirar las seis máquinas de la cadena vieja: son cuatrocientos catorce de los quinientos veinticuatro dólares al mes",
+    "Retirar solo los nodos uno y dos, que son los unicos que llevan nada mas la cadena vieja: unos ciento treinta y ocho dolares al mes, no cuatrocientos catorce. Apagar los otros cuatro mataria la red de pruebas",
     "Enseñar la comisión en la pantalla de envío de la aplicación, que el backend ya la devuelve",
     "Dos decisiones de Junta: cómo se presenta el respaldo en oro, y si el suelo de gas debe ser real, que obligaría a quemar comisión",
     "Aprobar las siete tareas programadas para que el equipo empiece a revisar solo. Hasta que las apruebes, los agentes existen pero nadie los llama",
