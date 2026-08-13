@@ -1,746 +1,1049 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>EL CEREBRO · Orden Global</title>
+<title>J.A.R.V.I.S · Orden Global</title>
 <style>
 /* ══════════════════════════════════════════════════════════════════════════
-   EL CEREBRO · Orden Global
-   Cada región es un sistema real del ecosistema, con sus datos en vivo.
-   El dibujo imita la referencia: mallas angulares de líneas finas, destellos
-   que radian desde el centro, y etiquetas con el pulso de cada región.
+   EL CEREBRO · núcleo de control de Orden Global
+   ─────────────────────────────────────────────────────────────────────────
+   El dibujo no es decoración. Cada racimo es un sistema real, cada axón una
+   dependencia real, y cada impulso que viaja es algo que está pasando: una
+   consulta que se resolvió, un agente que habló, una falla que apareció.
+   Cuando JARVIS nombra un sistema, sale un impulso DE ESE racimo. Así se ve
+   de qué está hablando sin leer nada.
    ══════════════════════════════════════════════════════════════════════════ */
 :root{
-  --bg:#010308; --tinta:#e6eef5; --mut:#61788c; --faint:#33445a;
-  --panel:rgba(4,10,18,.88); --borde:rgba(120,170,215,.18);
-  --cian:#35d6ff; --rojo:#ff4d42;
-  --mono:"SF Mono",ui-monospace,Menlo,Consolas,"Cascadia Mono",monospace;
+  --void:#010509; --ink:#dceaf5; --mut:#5d7d93; --faint:#26404f;
+  --arc:#5ad9ff; --arc-deep:#1a7fa8;
+  --gold:#ffb347; --red:#ff4a3d; --green:#48e39b;
+  --panel:rgba(2,9,16,.9); --edge:rgba(90,217,255,.16);
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Cascadia Mono",monospace;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;overflow:hidden;background:var(--bg)}
-body{color:var(--tinta);font:12px/1.5 var(--mono);-webkit-font-smoothing:antialiased;
+html,body{height:100%;overflow:hidden;background:var(--void)}
+body{color:var(--ink);font:12px/1.5 var(--mono);-webkit-font-smoothing:antialiased;
   overscroll-behavior:none}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
-#fondo,#lienzo{position:fixed;inset:0;display:block}
-#lienzo{touch-action:none;cursor:grab}
-#lienzo.girando{cursor:grabbing}
+canvas{position:fixed;inset:0;display:block}
+#lienzo{touch-action:none;cursor:grab}#lienzo.gira{cursor:grabbing}
 
-/* ── etiqueta de región, como en la referencia ──────────────────────────── */
-.eti{position:fixed;z-index:6;transform:translateY(-50%);opacity:0;
-  transition:opacity .5s;cursor:pointer;white-space:nowrap}
-.eti.viva{opacity:1}
-.eti b{display:block;font-size:10px;font-weight:700;letter-spacing:.13em;
-  padding:2px 8px;border:1px solid;background:rgba(1,3,8,.9);line-height:1.5}
-.eti s{display:block;text-decoration:none;font-size:8.5px;color:#8fa8bd;
-  letter-spacing:.04em;padding:1px 8px;background:rgba(1,3,8,.82);
-  border:1px solid rgba(120,170,215,.12);border-top:0}
-.eti:hover b{background:rgba(255,255,255,.08)}
-.eti.mal b{color:var(--rojo)!important;border-color:var(--rojo)!important;
-  animation:parpadeo 1s steps(2) infinite}
-@keyframes parpadeo{50%{opacity:.35}}
-
-/* ── HUD ────────────────────────────────────────────────────────────────── */
+/* ── cabecera ───────────────────────────────────────────────────────────── */
 .hud{position:fixed;z-index:10;letter-spacing:.1em}
-#hudNO{top:max(12px,env(safe-area-inset-top));left:16px}
-#hudNO h1{font-size:14px;font-weight:800;letter-spacing:.34em}
-#hudNO h1 i{font-style:normal;color:var(--cian);animation:parpadeo 1.6s steps(2) infinite}
-#hudNO .sub{font-size:8px;color:var(--mut);letter-spacing:.3em;margin-top:2px}
-#hudNE{top:max(12px,env(safe-area-inset-top));right:16px;text-align:right}
-#reloj{font-size:17px;font-weight:300}
-#fecha{font-size:8px;color:var(--mut);letter-spacing:.2em;text-transform:uppercase}
+#izq{top:max(12px,env(safe-area-inset-top));left:16px}
+#izq h1{font-size:13px;font-weight:800;letter-spacing:.42em}
+#izq h1 i{font-style:normal;color:var(--arc)}
+#izq .s{font-size:7.5px;color:var(--mut);letter-spacing:.28em;margin-top:3px}
+#der{top:max(12px,env(safe-area-inset-top));right:16px;text-align:right}
+#reloj{font-size:16px;font-weight:300;font-variant-numeric:tabular-nums}
+#fecha{font-size:7.5px;color:var(--mut);letter-spacing:.2em;text-transform:uppercase}
 
-/* píldora LIVE, como la referencia */
-#vivo{position:fixed;z-index:10;top:max(14px,env(safe-area-inset-top));left:50%;
-  transform:translateX(-50%);display:flex;align-items:center;gap:8px;
-  border:1px solid rgba(255,77,66,.5);background:rgba(1,3,8,.9);
-  padding:5px 14px;font-size:9.5px;letter-spacing:.2em;font-weight:700}
-#vivo .p{width:6px;height:6px;border-radius:50%;background:var(--rojo);
-  box-shadow:0 0 8px var(--rojo);animation:parpadeo 1.4s steps(2) infinite}
-#vivo .c{color:var(--mut)}
+#pulso{position:fixed;z-index:10;top:max(15px,env(safe-area-inset-top));left:50%;
+  transform:translateX(-50%);display:flex;align-items:center;gap:9px;
+  border:1px solid var(--edge);background:var(--panel);backdrop-filter:blur(10px);
+  padding:5px 15px;font-size:9px;letter-spacing:.22em;font-weight:700;white-space:nowrap}
+#pulso .p{width:6px;height:6px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 9px var(--green);animation:late 1.5s steps(2) infinite}
+@keyframes late{50%{opacity:.3}}
+#pulso .c{color:var(--mut);font-weight:400}
 
-/* ── libro de sistemas ──────────────────────────────────────────────────── */
-#libro{position:fixed;z-index:10;right:14px;top:50%;transform:translateY(-50%);
-  width:242px;max-height:76vh;overflow-y:auto;border:1px solid var(--borde);
-  background:var(--panel);backdrop-filter:blur(10px);padding:9px 0 3px}
-#libro h3{font-size:8px;letter-spacing:.3em;color:var(--mut);padding:0 12px 6px;
-  border-bottom:1px solid var(--borde)}
-.fila{display:flex;align-items:center;gap:8px;padding:4.5px 12px;cursor:pointer;
-  border-bottom:1px solid rgba(120,170,215,.05)}
-.fila:hover{background:rgba(255,255,255,.05)}
+/* ── raíles ─────────────────────────────────────────────────────────────── */
+.rail{position:fixed;z-index:10;top:50%;transform:translateY(-50%);width:224px;
+  max-height:74vh;overflow-y:auto;border:1px solid var(--edge);
+  background:var(--panel);backdrop-filter:blur(11px);scrollbar-width:none}
+.rail::-webkit-scrollbar{display:none}
+#agentes{left:14px}#sistemas{right:14px}
+.rail h3{font-size:7.5px;letter-spacing:.3em;color:var(--mut);padding:9px 12px 6px;
+  border-bottom:1px solid var(--edge);position:sticky;top:0;background:var(--panel)}
+.fila{display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;
+  border-bottom:1px solid rgba(90,217,255,.05)}
+.fila:hover,.fila:focus-visible{background:rgba(90,217,255,.08);outline:none}
 .fila .cn{width:6px;height:6px;flex:none;transform:rotate(45deg)}
 .fila .nom{font-size:9px;letter-spacing:.09em;font-weight:700}
-.fila .est{display:block;font-size:7.5px;letter-spacing:.12em;color:var(--mut)}
+.fila .est{display:block;font-size:7.5px;letter-spacing:.1em;color:var(--mut)}
 .fila .met{font-size:8px;color:var(--mut);margin-left:auto;text-align:right;
-  max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font-variant-numeric:tabular-nums}
-.fila.mal .nom,.fila.mal .est{color:var(--rojo)!important}
+.fila.mal .nom,.fila.mal .est{color:var(--red)}
+.fila.avi .nom{color:var(--gold)}
+.fila.habla{background:rgba(90,217,255,.14);box-shadow:inset 2px 0 0 var(--arc)}
 
 /* ── consola ────────────────────────────────────────────────────────────── */
 #consola{position:fixed;z-index:10;left:50%;transform:translateX(-50%);
   bottom:max(14px,env(safe-area-inset-bottom));display:flex;flex-direction:column;
-  align-items:center;gap:7px;width:min(760px,94vw)}
-#subt{text-align:center;font-size:11.5px;color:var(--cian);min-height:34px;
-  text-shadow:0 0 16px rgba(53,214,255,.45);line-height:1.5}
-#botones{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-.tecla{display:flex;align-items:center;gap:8px;border:1px solid var(--borde);
-  background:var(--panel);backdrop-filter:blur(10px);padding:10px 18px;
-  font-size:10px;letter-spacing:.2em;font-weight:700}
+  align-items:center;gap:8px;width:min(720px,92vw)}
+#sub{text-align:center;font-size:12px;color:var(--arc);min-height:38px;line-height:1.55;
+  text-shadow:0 0 18px rgba(90,217,255,.4)}
+#sub .quien{color:var(--mut);font-size:9px;letter-spacing:.2em;display:block;margin-bottom:3px}
+#oido{text-align:center;font-size:10.5px;color:var(--gold);min-height:16px;letter-spacing:.04em}
+#teclas{display:flex;gap:7px;flex-wrap:wrap;justify-content:center}
+.tecla{display:flex;align-items:center;gap:7px;border:1px solid var(--edge);
+  background:var(--panel);backdrop-filter:blur(10px);padding:9px 15px;
+  font-size:9.5px;letter-spacing:.18em;font-weight:700}
 .tecla:active{transform:scale(.97)}
-#btnVoz{border-color:rgba(53,214,255,.5);color:var(--cian);
-  box-shadow:0 0 22px rgba(53,214,255,.12)}
-#btnVoz.hablando{border-color:var(--rojo);color:var(--rojo)}
+.tecla:focus-visible{outline:1px solid var(--arc);outline-offset:2px}
+#hablar{border-color:rgba(90,217,255,.5);color:var(--arc);box-shadow:0 0 24px rgba(90,217,255,.12)}
+#hablar.on{border-color:var(--red);color:var(--red)}
+#mic.on{border-color:var(--gold);color:var(--gold);box-shadow:0 0 24px rgba(255,179,71,.18)}
 #onda{display:inline-flex;gap:2px;align-items:center;height:11px}
 #onda i{width:2px;background:currentColor;height:3px}
-.hablando #onda i{animation:onda .62s ease-in-out infinite}
-.hablando #onda i:nth-child(2){animation-delay:.1s}
-.hablando #onda i:nth-child(3){animation-delay:.2s}
-.hablando #onda i:nth-child(4){animation-delay:.3s}
-.hablando #onda i:nth-child(5){animation-delay:.4s}
+.on #onda i{animation:onda .6s ease-in-out infinite}
+.on #onda i:nth-child(2){animation-delay:.09s}.on #onda i:nth-child(3){animation-delay:.18s}
+.on #onda i:nth-child(4){animation-delay:.27s}.on #onda i:nth-child(5){animation-delay:.36s}
 @keyframes onda{50%{height:11px}}
-#voces{border:1px solid var(--borde);background:rgba(4,10,18,.95);color:var(--tinta);
-  font:inherit;font-size:9.5px;padding:9px 10px;max-width:190px}
-#pista{font-size:7.5px;color:var(--faint);letter-spacing:.18em;text-transform:uppercase}
+select{border:1px solid var(--edge);background:rgba(2,9,16,.96);color:var(--ink);
+  font:inherit;font-size:9px;padding:8px 9px;max-width:150px}
 
-/* ── panel de detalle ───────────────────────────────────────────────────── */
+/* ── panel ──────────────────────────────────────────────────────────────── */
 #det{position:fixed;z-index:20;inset:0;display:none;place-items:center;
-  background:rgba(1,3,8,.74);backdrop-filter:blur(7px);padding:16px}
-#det.abierto{display:grid}
-#det article{width:min(660px,96vw);max-height:84vh;overflow-y:auto;
-  border:1px solid var(--borde);background:var(--panel);padding:22px 26px}
-#det h2{font-size:12px;letter-spacing:.28em;margin-bottom:2px}
-#det .cuando{font-size:8.5px;color:var(--mut);letter-spacing:.16em;margin-bottom:14px}
-#det h4{font-size:8.5px;letter-spacing:.24em;color:#c9a961;margin:15px 0 5px}
-#det li,#det p{font-size:11.5px;line-height:1.72;list-style:none}
-#det li::before{content:"▸ ";color:var(--faint)}
-#det li.malo::before{content:"✗ ";color:var(--rojo)}
-#det li.malo{color:var(--rojo)}
+  background:rgba(1,5,9,.78);backdrop-filter:blur(8px);padding:16px}
+#det.abre{display:grid}
+#det article{width:min(680px,96vw);max-height:84vh;overflow-y:auto;
+  border:1px solid var(--edge);background:var(--panel);padding:22px 26px}
+#det h2{font-size:12px;letter-spacing:.3em;margin-bottom:2px}
+#det .sub2{font-size:8.5px;color:var(--mut);letter-spacing:.16em;margin-bottom:15px}
+#det h4{font-size:8.5px;letter-spacing:.24em;color:var(--gold);margin:16px 0 6px}
+#det li{font-size:11.5px;line-height:1.72;list-style:none}
+#det li::before{content:"› ";color:var(--faint)}
+#det li.mala::before{content:"✕ ";color:var(--red)}#det li.mala{color:var(--red)}
+#det li.ojo::before{content:"! ";color:var(--gold)}
 #det .kv{display:flex;gap:10px;font-size:11px;padding:3px 0;
-  border-bottom:1px solid rgba(120,170,215,.06)}
-#det .kv b{font-weight:400;color:var(--mut);min-width:150px}
+  border-bottom:1px solid rgba(90,217,255,.07)}
+#det .kv b{font-weight:400;color:var(--mut);min-width:158px}
 #det .kv span{font-variant-numeric:tabular-nums}
-#cerrarDet{position:sticky;float:right;top:0;color:var(--mut);font-size:17px;padding:0 6px}
+#cerrar{position:sticky;float:right;top:0;color:var(--mut);font-size:18px;padding:0 6px}
 
-@media (max-width:900px){
-  #libro{top:auto;bottom:150px;transform:none;right:10px;left:10px;width:auto;
-    max-height:30vh;display:grid;grid-template-columns:1fr 1fr;padding:5px 0}
-  #libro h3{grid-column:1/-1}
-  .fila .met{display:none}
-  .eti s{display:none}
-  #subt{font-size:10px}
-  #voces{max-width:130px}
+@media (max-width:1000px){
+  .rail{top:auto;bottom:158px;transform:none;width:auto;max-height:24vh}
+  #agentes{left:8px;right:auto;width:47%}#sistemas{right:8px;width:47%}
+  .fila .met{display:none}#sub{font-size:10.5px}
 }
-@media (max-width:640px){#fecha{display:none}#reloj{font-size:13px}#hudNO h1{font-size:12px}}
+@media (max-width:640px){#fecha{display:none}#reloj{font-size:12px}#izq h1{font-size:11px}}
+@media (prefers-reduced-motion:reduce){#pulso .p,.on #onda i{animation:none}}
 </style>
 </head>
 <body>
 <canvas id="fondo"></canvas>
 <canvas id="lienzo"></canvas>
 
-<div class="hud" id="hudNO">
-  <h1>EL CEREBRO <i>▮</i></h1>
-  <div class="sub">ORDEN GLOBAL · NÚCLEO DE CONTROL</div>
+<div class="hud" id="izq">
+  <h1>J.A.R.V.I.S<i>_</i></h1>
+  <div class="s" id="lema">ORDEN GLOBAL · CONTROL CORE</div>
 </div>
-<div id="vivo"><span class="p"></span><span>EN VIVO</span><span class="c" id="cuenta">— / —</span></div>
-<div class="hud" id="hudNE"><div id="reloj">--:--:--</div><div id="fecha">—</div></div>
+<div id="pulso"><span class="p"></span><span id="modo">ONLINE</span><span class="c" id="cuenta">— / —</span></div>
+<div class="hud" id="der"><div id="reloj">--:--:--</div><div id="fecha"></div></div>
 
-<aside id="libro"><h3>ECOSISTEMA</h3></aside>
+<aside class="rail" id="agentes"><h3 id="tAg">THE TEAM</h3></aside>
+<aside class="rail" id="sistemas"><h3 id="tSis">SYSTEMS</h3></aside>
 
 <div id="consola">
-  <div id="subt"></div>
-  <div id="botones">
-    <button class="tecla" id="btnVoz"><span id="onda"><i></i><i></i><i></i><i></i><i></i></span> INFORME</button>
-    <select id="voces" title="voz"></select>
-    <button class="tecla" id="btnTexto">TEXTO</button>
+  <div id="sub"></div>
+  <div id="oido"></div>
+  <div id="teclas">
+    <button class="tecla" id="hablar"><span id="onda"><i></i><i></i><i></i><i></i><i></i></span><span id="lblHablar">BRIEF ME</span></button>
+    <button class="tecla" id="mic">◉ <span id="lblMic">SPEAK</span></button>
+    <button class="tecla" id="btnTexto">▤ <span id="lblTexto">REPORT</span></button>
+    <select id="voces" title="voice"></select>
+    <select id="idioma" title="language">
+      <option value="en">EN</option><option value="es">ES</option>
+    </select>
   </div>
-  <div id="pista">toca una región para verla en detalle</div>
 </div>
 
-<div id="det"><article>
-  <button id="cerrarDet">✕</button>
-  <h2 id="detTit">—</h2>
-  <div class="cuando" id="detSub"></div>
-  <div id="detCuerpo"></div>
+<div id="det"><article><button id="cerrar">✕</button>
+  <h2 id="detTit"></h2><div class="sub2" id="detSub"></div><div id="detCuerpo"></div>
 </article></div>
 
 <script>
-'use strict';
-/* ═══ 1 · EL ECOSISTEMA ENTERO ════════════════════════════════════════════
-   Cada región del cerebro es un sistema de verdad. `det` es lo que se enseña
-   al tocarla; `vivo` lo rellena el sondeo cuando hay datos en vivo. */
-const REG=[
- {id:'n5534', nom:'NÚCLEO 5534', col:'#35d6ff', a:[ .30, .52, .62], n:58,
-  que:'Cadena de pruebas · Hyperledger Besu · consenso QBFT',
-  det:['4 validadores: node3, node4, node5, node6','2 nodos RPC: ordenscan-rpc y testnet-1',
-       'Período de bloque: 10 segundos','Shanghai activo desde el bloque 0 · PUSH0 funciona',
-       'Suelo de gas: 93 gwei en los seis nodos','Malla completa: cada validador con 5 peers',
-       'RPC público: rpc-testnet y pruebas.ordenglobal-rpc.com']},
- {id:'g5550', nom:'GÉNESIS 5550', col:'#e8c15c', a:[-.34, .56, .54], n:52,
-  que:'La cadena de producción · construida y juzgada, sin arrancar',
-  det:['331 cuentas · 172 con código','1.375 ranuras de almacenamiento',
-       'Emisión: 1.000.000.000.000 ORIGEN exacto','Juez contra la 8532: 0 diferencias en 662 códigos, 175 saldos y 1.375 ranuras',
-       'md5 89a1ec6b15d584525326ca11951d87df','Respaldado en S3 con el estado y las ranuras',
-       'Billetera única: 0x3d5510e5… con 249.999.982.618,07']},
- {id:'m8532', nom:'MEMORIA 8532', col:'#f0a835', a:[ .02,-.06,-.06], n:54,
-  que:'La cadena vieja · congelada, esperando el corte',
-  det:['polygon-edge · 6 nodos t2.large','Sin transacciones desde el 8 de agosto',
-       'Raíz de estado idéntica a la del cierre de ranuras','Es la fuente del génesis de la 5550',
-       'Se retira después del corte']},
- {id:'wallet',nom:'VETA WALLET', col:'#3ee89a', a:[ .48, .18, .38], n:56,
-  que:'La billetera · app móvil y backend en Heroku',
-  det:['435 usuarios · 434 con llave y semilla descifrables','26 con KYC aprobado',
-       'Gas y límite leídos de la cadena, ya no fijos','Idempotencia por sello contra el doble pago',
-       'Rotación de clave de cifrado terminada','Login social y borrado de cuenta']},
- {id:'scan',  nom:'ORDENSCAN', col:'#a986ff', a:[-.50, .12,-.44], n:50,
-  que:'El explorador de bloques',
-  det:['Indexa bloque a bloque y guarda el progreso','testnet.ordenscan.com sirve la 5534',
-       'ordenscan.com sigue en la cadena vieja','Rutas EIP-3091: /tx, /address, /block']},
- {id:'gid',   nom:'GENESIS ID', col:'#ff8a3d', a:[-.62,-.16, .30], n:46,
-  que:'Identidad · KYC, KYB, AML y SSO',
-  det:['Verificación con Veriff','Puente con el backend de la billetera',
-       'SSO para el ecosistema','Censo de identidades']},
- {id:'pago',  nom:'MYTOKENPAY', col:'#ff5f9e', a:[ .64,-.16, .26], n:44,
-  que:'Cobros con token · API y punto de venta',
-  det:['mytokenpay-api en Heroku','mytokenpay-pos.com','pos-wallet, el punto de venta']},
- {id:'tarjeta',nom:'TARJETA',   col:'#5ee7c8', a:[ .40,-.46,-.30], n:40,
-  que:'Tarjeta Visa virtual · CryptoMate',
-  det:['24 tarjetas activas de 25 emitidas','Se fondea con ORIGEN convertido a USDT',
-       'Requiere KYC aprobado','2 fondeos en toda la historia']},
- {id:'polygon',nom:'POLYGON',   col:'#8b7dff', a:[ .58, .40,-.34], n:38,
-  que:'La red de salida · USDT para la tarjeta',
-  det:['Pasarela de entrada: depositar USDT y recibir ORIGEN','Tesoro en Polygon envía el USDT',
-       'Varios proveedores RPC con reserva automática','Alchemy quedó limitado: hoy va por publicnode']},
- {id:'chainl',nom:'CHAINLIST',  col:'#ff4d9d', a:[-.62, .34,-.12], n:36,
-  que:'El registro público de cadenas',
-  det:['#8593 · Orden Global Testnet, con RPC y explorador','#8594 · reserva del chainId 5550, incubating',
-       'Las CUATRO comprobaciones del CI corridas aquí con el repositorio real: esquema, prettier, cadena única y lista completa',
-       'FALLO ATRAPADO · el símbolo tORIGEN tenía 7 caracteres y el CI exige menos de 7. Corregido a ORIGEN',
-       'Falta subir esa línea al pull request: necesita permiso de GitHub, o editarla desde la página',
-       'El CI conectó a los dos RPC: besu 26.7.1, bloque 20.066, gas 93 gwei',
-       'Los chainId 5534, 5550 y 8532 estaban libres entre las 2.689 publicadas',
-       'Los workflows esperan aprobación de un mantenedor: es la cola normal del primer aporte',
-       'No es un rechazo: hay solicitudes desde el 10 de julio en esa misma cola',
-       'El bot avisa: sólo miran los pull request con el CI en verde',
-       'Quien revisa el repositorio es ligi']},
- {id:'nodos', nom:'INFRAESTRUCTURA',col:'#7fb6d8',a:[-.30,-.50,-.34], n:48,
-  que:'Las máquinas · AWS',
-  det:['10 instancias encendidas · 523,71 USD en julio','6 t2.large en la cadena vieja',
-       '4 máquinas en la de pruebas','Balanceador con chequeo /readiness',
-       'IP elásticas fijas · arranque automático comprobado con reinicio',
-       'Sin desperdicio: cero IP sueltas, cero discos huérfanos']},
- {id:'tesoro',nom:'TESORO',     col:'#e6eef5', a:[ .00,-.62, .34], n:34,
-  que:'Precio, comisión y emisión',
-  det:['ORIGEN = el gramo de oro en dólares, dividido entre 55','Hoy: 2,5728 USD por ORIGEN',
-       'Comisión: 0,001 ORIGEN por transacción, sea cual sea el monto',
-       'La comisión va al tesoro; el gas va al validador, y cuesta el doble',
-       'Con 1 ORIGEN (2,57 USD): 339 envíos nativos o 170 de token',
-       'Emisión total: un billón de ORIGEN']},
- {id:'equipo',nom:'EL EQUIPO',  col:'#ffd166', a:[ .52, .50, .18], n:42,
-  que:'Siete agentes que vigilan solos',
-  det:['VIGÍA · las cadenas, cada hora','CENTINELA · el dinero, cada dos horas',
-       'ESCUDERO · Chainlist, cada seis horas','CIRUJANO · lo desplegado contra lo escrito, a diario',
-       'CRONISTA · redacta este parte, a diario','CERRAJERO · seguridad, cada semana',
-       'CONTADOR · lo que cuesta, cada semana',
-       'Ninguno mueve fondos, despliega ni cambia configuración: miran y avisan',
-       'Cada uno existe por algo que ya falló sin que nadie mirara']},
+/* ═══ 0 · IDIOMA ══════════════════════════════════════════════════════════
+   Inglés primero, porque JARVIS habla inglés. El español está entero
+   detrás del selector: no es una traducción a medias. */
+let IDI = localStorage.getItem('idiomaCerebro') || 'en';
+const T = {
+  en:{equipo:'THE TEAM',sistemas:'SYSTEMS',brief:'BRIEF ME',stop:'STOP',speak:'SPEAK',
+      listening:'LISTENING',report:'REPORT',online:'ONLINE',degraded:'DEGRADED',
+      lema:'ORDEN GLOBAL · CONTROL CORE',reporte:'DAILY REPORT',
+      estado:'Status',dentro:'WHAT IS INSIDE',vivo:'LIVE',fallas:'FAILURES',
+      ahora:'RIGHT NOW',hecho:'DONE TODAY',falta:'OUTSTANDING',
+      necesita:'NEEDS YOU',equipoT:'THE TEAM',hace:'ago',
+      noOigo:'Voice input is not available in this browser.',
+      nada:'I did not catch that. Try: status, chains, money, security, cost, team, or bots.'},
+  es:{equipo:'EL EQUIPO',sistemas:'SISTEMAS',brief:'EL PARTE',stop:'PARAR',speak:'HABLAR',
+      listening:'ESCUCHANDO',report:'INFORME',online:'EN LÍNEA',degraded:'CON FALLAS',
+      lema:'ORDEN GLOBAL · NÚCLEO DE CONTROL',reporte:'PARTE DEL DÍA',
+      estado:'Estado',dentro:'QUÉ HAY DENTRO',vivo:'EN VIVO',fallas:'FALLAS',
+      ahora:'AHORA MISMO',hecho:'HECHO HOY',falta:'PENDIENTE',
+      necesita:'NECESITA A JOSÉ',equipoT:'EL EQUIPO',hace:'hace',
+      noOigo:'Este navegador no permite escuchar la voz.',
+      nada:'No entendí. Prueba: estado, cadenas, dinero, seguridad, coste, equipo o bots.'}
+};
+const t = k => T[IDI][k];
+
+/* ═══ 1 · LOS SISTEMAS ════════════════════════════════════════════════════
+   `a` es la dirección del racimo dentro del cerebro; `n` cuántas neuronas
+   lo forman. Los que más cosas hacen tienen más neuronas: el tamaño dice
+   algo, no es decorativo. */
+const SIS=[
+ {id:'n5534', nom:'TESTNET 5534', es:'RED DE PRUEBAS', col:'#5ad9ff', a:[-.72,.30,.34], n:16,
+  que:{en:'Besu QBFT · 4 validators',es:'Besu QBFT · 4 validadores'},
+  det:{en:['Live chain, one block every 10 seconds','Two independent RPC endpoints, both HTTPS',
+      'Gas floor at 93 gwei, enforced on all nodes','Shanghai activated in place, no block lost',
+      'The validators run inside the old chain machines'],
+   es:['Cadena viva, un bloque cada 10 segundos','Dos RPC independientes, los dos con certificado',
+      'Suelo de gas en 93 gwei, aplicado en todos los nodos','Shanghai activado en caliente, sin perder un bloque',
+      'Los validadores corren dentro de las máquinas de la cadena vieja']}},
+ {id:'g5550', nom:'MAINNET 5550', es:'RED PRINCIPAL', col:'#8affd4', a:[-.34,.62,.16], n:14,
+  que:{en:'Genesis built and judged',es:'Génesis construido y juzgado'},
+  det:{en:['331 accounts, 172 contracts, 1,375 storage slots','Judged against the closed chain: zero differences',
+      'Total supply: one trillion ORIGEN, exact','No new machines needed — nodes 3 to 6 have room',
+      'Starting it IS the cutover, and that is done with José'],
+   es:['331 cuentas, 172 contratos, 1.375 ranuras','Juzgado contra la cadena cerrada: cero diferencias',
+      'Emisión total: un billón de ORIGEN, exacta','No hacen falta máquinas nuevas: los nodos 3 a 6 tienen sitio',
+      'Arrancarla ES el corte, y eso se hace contigo']}},
+ {id:'m8532', nom:'LEGACY 8532', es:'CADENA VIEJA', col:'#7a93a8', a:[-.10,-.50,.62], n:12,
+  que:{en:'Frozen · the source of truth',es:'Congelada · el origen de todo'},
+  det:{en:['Frozen at block 4,178,763','State root identical to the closing snapshot',
+      'The 5550 genesis was built from this exact state','One single transaction here invalidates the migration',
+      'Board agreement 1: stays on as a backup'],
+   es:['Congelada en el bloque 4.178.763','Raíz de estado idéntica a la del cierre',
+      'De este estado exacto salió el génesis de la 5550','Una sola transacción aquí invalida la migración',
+      'Acuerdo 1 de la Junta: se queda encendida como respaldo']}},
+ {id:'wallet',nom:'VETA WALLET', es:'VETA WALLET', col:'#ffd166', a:[ .62,.34,-.20], n:18,
+  que:{en:'435 users · the product',es:'435 usuarios · el producto'},
+  det:{en:['Send, receive, swap, card funding, USDT deposits','Keys encrypted with a 64-character secret',
+      'Two-stage key rotation finished and verified','Signs with the chain the node reports, not the database',
+      'The cutover is one MongoDB field'],
+   es:['Enviar, recibir, canjear, fondeo de tarjeta, depósitos','Llaves cifradas con un secreto de 64 caracteres',
+      'Rotación de claves en dos etapas terminada y comprobada','Firma con la cadena que dice el nodo, no la base de datos',
+      'El corte es un solo campo en la base de datos']}},
+ {id:'scan',  nom:'ORDENSCAN',   es:'ORDENSCAN',   col:'#a78bfa', a:[-.62,-.24,-.42], n:12,
+  que:{en:'Block explorer · EIP-3091',es:'Explorador · EIP-3091'},
+  det:{en:['Indexes the testnet block by block','EIP-3091 routes live: /tx, /address, /block',
+      'Must index the 5550 before the old chain is retired'],
+   es:['Indexa la red de pruebas bloque a bloque','Rutas EIP-3091 vivas: /tx, /address, /block',
+      'Tiene que indexar la 5550 antes de retirar la vieja']}},
+ {id:'gid',   nom:'GENESIS ID',  es:'GENESIS ID',  col:'#4ade80', a:[ .34,.16,-.68], n:13,
+  que:{en:'Identity · KYC, KYB, AML, SSO',es:'Identidad · KYC, KYB, AML, SSO'},
+  det:{en:['Issues verified identities, now behind authentication','Bridged into the wallet backend',
+      'A 401 without a session is the correct answer'],
+   es:['Emite identidades verificadas, ya con autenticación','Con puente hacia el backend de la billetera',
+      'Un 401 sin sesión es la respuesta correcta']}},
+ {id:'pago',  nom:'MYTOKENPAY',  es:'MYTOKENPAY',  col:'#f472b6', a:[ .70,-.16,.30], n:11,
+  que:{en:'Payments · API and point of sale',es:'Pagos · API y punto de venta'},
+  det:{en:['Charge in ORIGEN from any shop','Settlement into the treasury'],
+   es:['Cobrar en ORIGEN desde cualquier comercio','Liquidación contra el tesoro']}},
+ {id:'tarjeta',nom:'CARDS',      es:'TARJETAS',    col:'#fb923c', a:[ .46,-.52,-.20], n:10,
+  que:{en:'24 cards issued',es:'24 tarjetas emitidas'},
+  det:{en:['Funded with ORIGEN, spent in fiat','A stale fallback price of 2.10 still lives in the config',
+      'That fallback is 18 per cent below the real price'],
+   es:['Se fondean con ORIGEN y se gastan en moneda corriente','Queda un precio de respaldo viejo de 2,10 en la configuración',
+      'Ese respaldo está un 18 por ciento por debajo del bueno']}},
+ {id:'polygon',nom:'POLYGON',    es:'POLYGON',     col:'#818cf8', a:[ .22,-.70,.16], n:9,
+  que:{en:'USDT gateway · chain 137',es:'Pasarela USDT · cadena 137'},
+  det:{en:['Two of three providers answer','Both working ones are public and free, with no agreement',
+      'An outage here silently kills card funding'],
+   es:['Contestan dos de tres proveedores','Los dos que funcionan son públicos y gratuitos, sin acuerdo',
+      'Una caída aquí mata el fondeo de tarjeta sin avisar']}},
+ {id:'chainl', nom:'CHAINLIST',  es:'CHAINLIST',   col:'#ff4d9d', a:[-.60,.36,-.14], n:10,
+  que:{en:'The public chain registry',es:'El registro público de cadenas'},
+  det:{en:['#8593 testnet 5534 · #8594 reserves 5550','All four CI checks pass against the submitted file',
+      'The symbol had 7 characters and would have failed','Waiting for a maintainer — requests from July are still queued'],
+   es:['#8593 red de pruebas 5534 · #8594 reserva del 5550','Las cuatro pruebas del CI pasan contra el archivo enviado',
+      'El símbolo tenía 7 caracteres y habría fallado','Esperando a un mantenedor: hay solicitudes de julio en cola']}},
+ {id:'nodos', nom:'INFRASTRUCTURE',es:'INFRAESTRUCTURA',col:'#7fb6d8',a:[-.30,-.52,-.34],n:15,
+  que:{en:'10 machines · AWS',es:'10 máquinas · AWS'},
+  det:{en:['Nodes 3 to 6 run BOTH chains at once','Retiring the six old machines would kill the testnet',
+      'Only nodes 1 and 2 are exclusively legacy','Elastic IPs fixed, automatic restart verified'],
+   es:['Los nodos 3 a 6 llevan LAS DOS cadenas a la vez','Retirar las seis máquinas viejas mataría la red de pruebas',
+      'Solo los nodos 1 y 2 son exclusivamente de la vieja','IP elásticas fijas, arranque automático comprobado']}},
+ {id:'tesoro',nom:'TREASURY',    es:'TESORO',      col:'#e6eef5', a:[ .00,-.64,.36], n:12,
+  que:{en:'Price, fee and supply',es:'Precio, comisión y emisión'},
+  det:{en:['ORIGEN = one gram of gold in dollars, divided by 55','Fee: 0.001 ORIGEN flat, whatever the amount',
+      'The fee is NOT configured in production — it charges zero','Its destination is not the single wallet. Do not turn it on yet'],
+   es:['ORIGEN = el gramo de oro en dólares, dividido entre 55','Comisión: 0,001 ORIGEN fijos, sea cual sea el monto',
+      'La comisión NO está configurada en producción: cobra cero','Su destino no es la billetera única. No encenderla todavía']}},
+ {id:'bots',  nom:'TEST BOTS',   es:'BOTS DE PRUEBA',col:'#22d3ee', a:[-.44,-.06,.66], n:9,
+  que:{en:'Two wallets, every 3 hours',es:'Dos billeteras, cada 3 horas'},
+  det:{en:['They use the testnet so it is not only observed, but used','Refuse to sign unless the chain is 5534',
+      'Funded by the validators from the gas they had collected','The one with more balance sends, so neither dries up',
+      'Phase 2 adds ONDK and the other tokens'],
+   es:['Usan la red de pruebas: no solo se mira, se usa','Se niegan a firmar si la cadena no es la 5534',
+      'Los fondearon los validadores con el gas que habían cobrado','Manda el que más saldo tiene, así ninguno se seca',
+      'La fase 2 añade ONDK y los demás tokens']}},
 ];
-const E={};for(const r of REG)E[r.id]={est:'ESPERA',met:'—',fuego:.12,mal:false,vivo:[]};
 
-/* ═══ 2 · DIBUJO ══════════════════════════════════════════════════════════ */
-const L=document.getElementById('lienzo'),cx=L.getContext('2d');
-const F=document.getElementById('fondo'),fx=F.getContext('2d');
-let W,H,DPR,cxp,cyp,esc;
-function centro(){const an=W>900?W-270:W;cxp=an*.5;cyp=W>900?H*.5:H*.40;
-  esc=Math.min(an,H)*(W>900?.50:.40);}
-function medir(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
-  for(const c of[L,F]){c.width=W*DPR;c.height=H*DPR;}centro();fondo();}
-addEventListener('resize',medir);
-function fondo(){fx.setTransform(DPR,0,0,DPR,0,0);fx.fillStyle='#010308';fx.fillRect(0,0,W,H);
-  let s=7;const r=()=>((s=s*16807%2147483647)/2147483647);
-  for(let i=0;i<190;i++){const a=r();fx.fillStyle=`rgba(190,215,240,${.04+a*.15})`;
-    fx.fillRect(r()*W,r()*H,a>.95?1.5:1,a>.95?1.5:1);}}
-
-function gauss(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();
-  return Math.sqrt(-2*Math.log(u))*Math.cos(6.283185*v);}
-
-/* nodos y aristas por región: la malla angular de la referencia */
-const COMPACTA=.70;                    // acerca las regiones al centro
-for(const r of REG){r.a=r.a.map(v=>v*COMPACTA);}
-for(const r of REG){
-  r.pts=[];
-  for(let i=0;i<r.n;i++)r.pts.push([r.a[0]+gauss()*.115,r.a[1]+gauss()*.10,r.a[2]+gauss()*.115]);
-  r.ar=[];
-  for(let i=0;i<r.pts.length;i++){
-    const d=[];
-    for(let j=0;j<r.pts.length;j++){if(i===j)continue;
-      const A=r.pts[i],B=r.pts[j];
-      d.push([(A[0]-B[0])**2+(A[1]-B[1])**2+(A[2]-B[2])**2,j]);}
-    d.sort((a,b)=>a[0]-b[0]);
-    for(let k=0;k<3;k++)if(d[k]&&d[k][1]>i)r.ar.push([i,d[k][1]]);
-  }
-}
-/* destellos que radian desde el centro — el rasgo más marcado del vídeo */
-const rayos=[];
-for(let i=0;i<46;i++){
-  const t=Math.random()*6.283,f=Math.acos(2*Math.random()-1);
-  rayos.push({d:[Math.sin(f)*Math.cos(t),Math.cos(f)*.75,Math.sin(f)*Math.sin(t)],
-    l:.85+Math.random()*1.15, v:.05+Math.random()*.12, fase:Math.random()});
-}
-const EJES=[['n5534','g5550'],['n5534','scan'],['n5534','m8532'],['g5550','m8532'],
+/* Los axones: dependencias reales, no líneas bonitas. */
+const AXONES=[['n5534','g5550'],['n5534','scan'],['n5534','m8532'],['g5550','m8532'],
  ['g5550','tesoro'],['wallet','gid'],['wallet','tarjeta'],['tarjeta','polygon'],
  ['wallet','n5534'],['pago','wallet'],['pago','gid'],['scan','m8532'],
  ['chainl','n5534'],['chainl','g5550'],['nodos','n5534'],['nodos','m8532'],
- ['tesoro','wallet'],['polygon','wallet'],['nodos','scan'],
- /* el equipo mira a todos, y por eso toca casi todo el cerebro */
- ['equipo','n5534'],['equipo','wallet'],['equipo','tesoro'],['equipo','chainl'],
- ['equipo','nodos'],['equipo','m8532']];
-const R=id=>REG.find(x=>x.id===id);
-const chispas=[];
+ ['tesoro','wallet'],['polygon','wallet'],['nodos','scan'],['bots','n5534'],
+ ['bots','nodos'],['tesoro','pago']];
 
-let rY=.5,rX=-.10,arr=null;
-L.addEventListener('pointerdown',e=>{arr=[e.clientX,e.clientY];L.classList.add('girando');
+/* Los siete agentes. El color los distingue en el raíl y en la voz. */
+const AGENTES=[
+ {id:'vigia',    nom:'VIGÍA',    col:'#5ad9ff', mira:{en:'the chains',es:'las cadenas'},   cada:{en:'hourly',es:'cada hora'}},
+ {id:'centinela',nom:'CENTINELA',col:'#ffd166', mira:{en:'the money',es:'el dinero'},      cada:{en:'every 2 hours',es:'cada 2 horas'}},
+ {id:'escudero', nom:'ESCUDERO', col:'#ff4d9d', mira:{en:'Chainlist',es:'Chainlist'},      cada:{en:'every 6 hours',es:'cada 6 horas'}},
+ {id:'cirujano', nom:'CIRUJANO', col:'#4ade80', mira:{en:'what is deployed',es:'lo desplegado'},cada:{en:'daily',es:'a diario'}},
+ {id:'cronista', nom:'CRONISTA', col:'#a78bfa', mira:{en:'the daily report',es:'el parte del día'},cada:{en:'daily',es:'a diario'}},
+ {id:'cerrajero',nom:'CERRAJERO',col:'#fb923c', mira:{en:'security',es:'la seguridad'},    cada:{en:'weekly',es:'cada semana'}},
+ {id:'contador', nom:'CONTADOR', col:'#8affd4', mira:{en:'what it costs',es:'lo que cuesta'},cada:{en:'weekly',es:'cada semana'}},
+];
+
+const E={};for(const s of SIS)E[s.id]={est:'STANDBY',met:'—',mal:false,avi:false,fuego:.12,vivo:[]};
+const S=id=>SIS.find(x=>x.id===id);
+
+/* ═══ 2 · LA GEOMETRÍA DEL CEREBRO ════════════════════════════════════════
+   Tres capas, y las tres hacen falta para que se lea como UN órgano y no
+   como puntos sueltos —que era el problema del dibujo anterior—:
+     · la CORTEZA, una piel de dos lóbulos con su fisura;
+     · los RACIMOS, un núcleo por sistema con sus neuronas alrededor;
+     · los AXONES, que unen racimo con racimo y con el centro. */
+const L=document.getElementById('lienzo'), cx=L.getContext('2d');
+const F=document.getElementById('fondo'),  fx=F.getContext('2d');
+let W,H,ESC;
+function medir(){
+  const d=Math.min(window.devicePixelRatio||1,2);
+  W=innerWidth;H=innerHeight;
+  for(const c of [L,F]){c.width=W*d;c.height=H*d;c.style.width=W+'px';c.style.height=H+'px';}
+  cx.setTransform(d,0,0,d,0,0);fx.setTransform(d,0,0,d,0,0);
+  ESC=Math.min(W,H)*0.36; fondo();
+}
+addEventListener('resize',medir);
+
+const az=()=>Math.random();
+function gauss(){let u=0,v=0;while(!u)u=az();while(!v)v=az();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(6.283185*v);}
+
+/* La superficie del cerebro: elipsoide alargado, aplastado arriba, con la
+   fisura longitudinal que separa los dos lóbulos. */
+function piel(){
+  let v=[gauss(),gauss(),gauss()];
+  const m=Math.hypot(...v)||1; v=v.map(x=>x/m);
+  v[0]*=1.00; v[1]*=0.76; v[2]*=1.22;
+  const s=v[0]>=0?1:-1;                       // la fisura: se aparta del centro
+  v[0]=s*(Math.abs(v[0])*0.80+0.17);
+  if(v[1]>0)v[1]*=0.88;                        // aplastado por arriba
+  const r=1+0.035*Math.sin(v[2]*11)*Math.cos(v[1]*9);   // los surcos
+  return v.map(x=>x*r);
+}
+
+const NEU=[];           // todas las neuronas: {p:[x,y,z], sis, nucleo}
+const HILOS=[];         // enlaces finos: [i,j,alfa]
+const CORTEZA=[];
+for(let i=0;i<560;i++){CORTEZA.push(NEU.length);NEU.push({p:piel(),sis:null,nucleo:false});}
+
+/* Cada racimo: un núcleo hacia dentro y sus neuronas alrededor. */
+const NUCLEO={};
+for(const s of SIS){
+  const d=Math.hypot(...s.a)||1;
+  const c=s.a.map(x=>x/d*0.62);
+  NUCLEO[s.id]=NEU.length;
+  NEU.push({p:c,sis:s.id,nucleo:true});
+  for(let i=0;i<s.n;i++){
+    const o=[gauss(),gauss(),gauss()];const m=Math.hypot(...o)||1;
+    const r=0.11+az()*0.15;
+    NEU.push({p:c.map((x,k)=>x+o[k]/m*r),sis:s.id,nucleo:false});
+    HILOS.push([NUCLEO[s.id],NEU.length-1,0.5]);
+  }
+}
+/* La piel se cose a sí misma con sus tres vecinos más cercanos. Sin esto la
+   corteza es confeti; con esto es una superficie. */
+for(const i of CORTEZA){
+  const d=CORTEZA.map(j=>[j===i?9:dist(NEU[i].p,NEU[j].p),j]).sort((a,b)=>a[0]-b[0]);
+  for(let k=0;k<3;k++)if(d[k][0]<0.42)HILOS.push([i,d[k][1],0.14]);
+}
+function dist(a,b){return Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);}
+/* Y cada racimo se ancla a la corteza que tiene encima. */
+for(const s of SIS){
+  const i=NUCLEO[s.id];
+  const d=CORTEZA.map(j=>[dist(NEU[i].p,NEU[j].p),j]).sort((a,b)=>a[0]-b[0]);
+  for(let k=0;k<4;k++)HILOS.push([i,d[k][1],0.2]);
+}
+
+/* ═══ 3 · IMPULSOS ═══════════════════════════════════════════════════════
+   Un impulso recorre un axón de punta a punta. Salen cuando pasa algo:
+   JARVIS nombra un sistema, un agente habla, llega un bloque nuevo. En
+   reposo hay tráfico tenue, para que el cerebro respire sin gritar. */
+const IMPULSOS=[];
+function impulso(de,a,col,vel){
+  IMPULSOS.push({de:NUCLEO[de],a:a==='centro'?-1:NUCLEO[a],t:0,
+    vel:vel||(0.011+az()*0.006),col:col||'#5ad9ff'});
+}
+function disparar(id,fuerte){
+  const s=S(id); if(!s)return;
+  E[id].fuego=1;
+  impulso(id,'centro',s.col,fuerte?0.02:0.013);
+  for(const [a,b] of AXONES){
+    if(a===id)impulso(a,b,s.col);
+    else if(b===id)impulso(b,a,s.col);
+  }
+}
+setInterval(()=>{                    // tráfico de fondo
+  if(document.hidden)return;
+  const e=AXONES[(az()*AXONES.length)|0];
+  IMPULSOS.push({de:NUCLEO[e[0]],a:NUCLEO[e[1]],t:0,vel:0.006,col:'#1a7fa8',tenue:true});
+},900);
+
+/* ═══ 4 · DIBUJO ═════════════════════════════════════════════════════════ */
+let rY=.55,rX=-.12,arr=null,giroLibre=true;
+L.addEventListener('pointerdown',e=>{arr=[e.clientX,e.clientY];L.classList.add('gira');
   L.setPointerCapture(e.pointerId);});
-L.addEventListener('pointermove',e=>{if(!arr)return;rY+=(e.clientX-arr[0])*.005;
-  rX=Math.max(-.9,Math.min(.9,rX+(e.clientY-arr[1])*.003));arr=[e.clientX,e.clientY];});
-L.addEventListener('pointerup',()=>{arr=null;L.classList.remove('girando');});
+L.addEventListener('pointermove',e=>{if(!arr)return;giroLibre=false;
+  rY+=(e.clientX-arr[0])*.005;rX=Math.max(-.9,Math.min(.9,rX+(e.clientY-arr[1])*.003));
+  arr=[e.clientX,e.clientY];});
+L.addEventListener('pointerup',e=>{
+  if(arr&&Math.abs(e.clientX-arr[0])<4&&Math.abs(e.clientY-arr[1])<4)tocar(e.clientX,e.clientY);
+  arr=null;L.classList.remove('gira');setTimeout(()=>giroLibre=true,2600);});
 
-function pr(p){
+const pr=[];    // proyección de cada neurona, recalculada cada cuadro
+function proyectar(){
   const c1=Math.cos(rY),s1=Math.sin(rY),c2=Math.cos(rX),s2=Math.sin(rX);
-  let x=p[0]*c1+p[2]*s1,z=-p[0]*s1+p[2]*c1,y=p[1]*c2-z*s2;z=p[1]*s2+z*c2;
-  const q=3.0/(3.0+z);
-  return [cxp+x*esc*q,cyp-y*esc*q,q,z];
+  for(let i=0;i<NEU.length;i++){
+    const[x0,y0,z0]=NEU[i].p;
+    const x=x0*c1-z0*s1, z1=x0*s1+z0*c1;
+    const y=y0*c2-z1*s2, z=y0*s2+z1*c2;
+    const f=2.9/(2.9+z);
+    pr[i]=[W/2+x*ESC*f, H/2+y*ESC*f, f, z];
+  }
 }
-const etis={};
-for(const r of REG){
-  const d=document.createElement('div');d.className='eti';
-  d.innerHTML=`<b style="color:${r.col};border-color:${r.col}66">${r.nom}</b><s>—</s>`;
-  d.onclick=()=>abrirDet(r);document.body.appendChild(d);etis[r.id]=d;
+function centro(){return [W/2,H/2,1,0];}
+
+function fondo(){
+  fx.clearRect(0,0,W,H);
+  const g=fx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*.72);
+  g.addColorStop(0,'rgba(12,44,68,.5)');g.addColorStop(.55,'rgba(4,16,26,.3)');
+  g.addColorStop(1,'rgba(1,5,9,0)');
+  fx.fillStyle=g;fx.fillRect(0,0,W,H);
 }
-let t0=performance.now();
-function cuadro(t){
-  const dt=Math.min(.05,(t-t0)/1000);t0=t;if(!arr)rY+=dt*.10;
-  cx.setTransform(DPR,0,0,DPR,0,0);cx.clearRect(0,0,W,H);
+
+let ultimo=0;
+function cuadro(ts){
+  const dt=Math.min(60,ts-ultimo)||16; ultimo=ts;
+  if(giroLibre&&!document.hidden)rY+=0.00022*dt;
+  proyectar();
+  cx.clearRect(0,0,W,H);
   cx.globalCompositeOperation='lighter';
-  const seg=t/1000;
 
-  /* núcleo brillante */
-  const g=cx.createRadialGradient(cxp,cyp,0,cxp,cyp,esc*.55);
-  g.addColorStop(0,'rgba(215,240,255,.30)');g.addColorStop(.35,'rgba(120,180,230,.10)');
-  g.addColorStop(1,'rgba(0,0,0,0)');cx.fillStyle=g;
-  cx.fillRect(cxp-esc,cyp-esc,esc*2,esc*2);
-
-  /* destellos radiales */
-  cx.lineWidth=1;
-  for(const y of rayos){
-    y.fase=(y.fase+dt*y.v)%1;
-    const br=Math.sin(y.fase*Math.PI);
-    const A=pr([y.d[0]*.15,y.d[1]*.15,y.d[2]*.15]);
-    const B=pr([y.d[0]*y.l,y.d[1]*y.l,y.d[2]*y.l]);
-    const lg=cx.createLinearGradient(A[0],A[1],B[0],B[1]);
-    lg.addColorStop(0,`rgba(215,240,255,${.42*br})`);
-    lg.addColorStop(1,'rgba(160,200,240,0)');
-    cx.strokeStyle=lg;cx.beginPath();cx.moveTo(A[0],A[1]);cx.lineTo(B[0],B[1]);cx.stroke();
-    cx.globalAlpha=br*.85;cx.fillStyle='#eaf4ff';
-    cx.beginPath();cx.arc(B[0],B[1],2.1*B[2],0,7);cx.fill();
-    cx.globalAlpha=br*.20;cx.beginPath();cx.arc(B[0],B[1],6*B[2],0,7);cx.fill();cx.globalAlpha=1;
+  /* los hilos finos: la carne del cerebro */
+  for(const[i,j,al] of HILOS){
+    const A=pr[i],B=pr[j];
+    if(A[3]>1.5&&B[3]>1.5)continue;
+    const p=Math.max(0,Math.min(1,(A[2]+B[2])/2-.55));
+    cx.strokeStyle='rgba(90,217,255,'+(al*p*0.5).toFixed(3)+')';
+    cx.lineWidth=.5;
+    cx.beginPath();cx.moveTo(A[0],A[1]);cx.lineTo(B[0],B[1]);cx.stroke();
   }
 
-  /* axones entre sistemas */
-  cx.lineWidth=.7;cx.strokeStyle='rgba(130,175,215,.14)';
-  cx.beginPath();
-  for(const[a,b]of EJES){const A=pr(R(a).a),B=pr(R(b).a);cx.moveTo(A[0],A[1]);cx.lineTo(B[0],B[1]);}
-  cx.stroke();
-
-  /* la malla de cada región: un solo trazo por color */
-  for(const r of REG){
-    const e=E[r.id],col=e.mal?'#ff4d42':r.col;
-    const lat=.45+.55*Math.sin(seg*1.9+r.a[0]*3);
-    cx.lineWidth=.85;
-    cx.strokeStyle=col;cx.globalAlpha=Math.min(.95,.26+.55*(e.fuego)*lat+.12);
-    cx.beginPath();
-    for(const[i,j]of r.ar){const A=pr(r.pts[i]),B=pr(r.pts[j]);
-      cx.moveTo(A[0],A[1]);cx.lineTo(B[0],B[1]);}
-    cx.stroke();
-    cx.fillStyle=col;
-    for(const p of r.pts){const P=pr(p);
-      cx.globalAlpha=Math.min(1,(.5+.5*e.fuego)*Math.max(.25,P[2]-.25));
-      const s=1.8*P[2];cx.fillRect(P[0]-s/2,P[1]-s/2,s,s);}
-    /* halo del núcleo de la región */
-    const C=pr(r.a);
-    const rg=cx.createRadialGradient(C[0],C[1],0,C[0],C[1],38*C[2]*(.6+e.fuego));
-    rg.addColorStop(0,col+'77');rg.addColorStop(1,col+'00');
-    cx.globalAlpha=.7;cx.fillStyle=rg;
-    cx.fillRect(C[0]-40*C[2],C[1]-40*C[2],80*C[2],80*C[2]);
+  /* los axones: gruesos, y se encienden con el estado del sistema */
+  for(const[a,b] of AXONES){
+    const A=pr[NUCLEO[a]],B=pr[NUCLEO[b]];
+    const mal=E[a].mal||E[b].mal;
+    const v=Math.max(E[a].fuego,E[b].fuego);
+    cx.strokeStyle=mal?'rgba(255,74,61,'+(.20+v*.5).toFixed(2)+')'
+                      :'rgba(90,217,255,'+(.09+v*.30).toFixed(2)+')';
+    cx.lineWidth=mal?1.2:.9;
+    cx.beginPath();cx.moveTo(A[0],A[1]);cx.lineTo(B[0],B[1]);cx.stroke();
   }
-  cx.globalAlpha=1;
 
-  /* impulsos */
-  for(const r of REG){const e=E[r.id];
-    if(Math.random()<dt*(e.mal?7:e.fuego*4)){
-      const s=EJES.filter(x=>x[0]===r.id||x[1]===r.id);
-      if(s.length){const[a,b]=s[(Math.random()*s.length)|0];
-        chispas.push({de:R(a).a,a:R(b).a,t:0,v:.55+Math.random()*.6,c:e.mal?'#ff4d42':r.col});}}}
-  for(let i=chispas.length-1;i>=0;i--){const s=chispas[i];s.t+=dt*s.v;
-    if(s.t>=1){chispas.splice(i,1);continue;}
-    const P=pr([0,1,2].map(k=>s.de[k]+(s.a[k]-s.de[k])*s.t));
-    const b=Math.sin(s.t*Math.PI);
-    cx.globalAlpha=.95*b;cx.fillStyle=s.c;
-    cx.beginPath();cx.arc(P[0],P[1],1.9*P[2],0,7);cx.fill();
-    cx.globalAlpha=.22*b;cx.beginPath();cx.arc(P[0],P[1],5.5*P[2],0,7);cx.fill();}
-  cx.globalCompositeOperation='source-over';cx.globalAlpha=1;
-
-  /* etiquetas: se colocan y despues se separan para que no se pisen */
-  const puestas=[];
-  for(const r of REG){
-    const P=pr(r.a),d=etis[r.id];
-    if(P[3]>.62){d.classList.remove('viva');continue;}
-    d.classList.add('viva');d.classList.toggle('mal',E[r.id].mal);
-    const an=d.offsetWidth||150, al=d.offsetHeight||30;
-    const izq=P[0]<cxp;
-    let x=P[0]+(izq?-an-16:16)*P[2];
-    let y=Math.max(58,Math.min(H-170,P[1]));
-    puestas.push({d,x:Math.max(6,Math.min(W-an-6,x)),y,an,al,izq});
-  }
-  /* dos pasadas de separacion: basta para que no quede ninguna encima de otra */
-  for(let paso=0;paso<4;paso++){
-    puestas.sort((a,b)=>a.y-b.y);
-    for(let i=1;i<puestas.length;i++){
-      const A=puestas[i-1],B=puestas[i];
-      const seSolapanX=!(B.x+B.an<A.x-10||B.x>A.x+A.an+10);
-      const falta=(A.y+A.al+10)-B.y;
-      if(seSolapanX&&falta>0){B.y+=falta;}
+  /* las neuronas */
+  for(let i=0;i<NEU.length;i++){
+    const n=NEU[i],P=pr[i];
+    if(n.sis){
+      const e=E[n.sis],s=S(n.sis);
+      const r=(n.nucleo?3.1:1.35)*P[2];
+      cx.fillStyle=e.mal?'rgba(255,74,61,'+(.55+e.fuego*.45).toFixed(2)+')'
+        :hexA(s.col,(n.nucleo?.55:.30)+e.fuego*.45);
+      if(n.nucleo){cx.shadowColor=e.mal?'#ff4a3d':s.col;cx.shadowBlur=16*e.fuego+7;}
+      cx.beginPath();cx.arc(P[0],P[1],r,0,6.283);cx.fill();cx.shadowBlur=0;
+    }else{
+      cx.fillStyle='rgba(120,200,240,'+(0.05+P[2]*0.09).toFixed(3)+')';
+      cx.beginPath();cx.arc(P[0],P[1],0.9*P[2],0,6.283);cx.fill();
     }
   }
-  for(const q of puestas){
-    q.d.style.left=q.x+'px';
-    q.d.style.top=Math.max(58,Math.min(H-150,q.y))+'px';
+
+  /* los impulsos: esto es lo que hace que se vea que está haciendo algo */
+  for(let k=IMPULSOS.length-1;k>=0;k--){
+    const m=IMPULSOS[k];
+    m.t+=m.vel*dt/16;
+    if(m.t>=1){IMPULSOS.splice(k,1);continue;}
+    const A=pr[m.de], B=m.a<0?centro():pr[m.a];
+    const x=A[0]+(B[0]-A[0])*m.t, y=A[1]+(B[1]-A[1])*m.t;
+    const cola=Math.max(0,m.t-0.16);
+    const xc=A[0]+(B[0]-A[0])*cola, yc=A[1]+(B[1]-A[1])*cola;
+    cx.strokeStyle=hexA(m.col,m.tenue?.22:.7);
+    cx.lineWidth=m.tenue?1:2;
+    cx.beginPath();cx.moveTo(xc,yc);cx.lineTo(x,y);cx.stroke();
+    if(!m.tenue){
+      cx.fillStyle=m.col;cx.shadowColor=m.col;cx.shadowBlur=12;
+      cx.beginPath();cx.arc(x,y,2.1,0,6.283);cx.fill();cx.shadowBlur=0;
+    }
   }
+
+  /* el núcleo: late más fuerte cuando habla */
+  const lat=0.5+0.5*Math.sin(ts/620)+(hablando?0.7:0);
+  cx.fillStyle='rgba(90,217,255,'+(0.08+lat*0.07).toFixed(3)+')';
+  cx.shadowColor='#5ad9ff';cx.shadowBlur=30+lat*30;
+  cx.beginPath();cx.arc(W/2,H/2,5+lat*3,0,6.283);cx.fill();cx.shadowBlur=0;
+
+  cx.globalCompositeOperation='source-over';
+  etiquetas();
+  for(const s of SIS)E[s.id].fuego=Math.max(E[s.id].mal?.42:.12,E[s.id].fuego-0.0016*dt);
   requestAnimationFrame(cuadro);
 }
+function hexA(h,a){const n=parseInt(h.slice(1),16);
+  return 'rgba('+(n>>16)+','+((n>>8)&255)+','+(n&255)+','+a.toFixed(3)+')';}
 
-/* ═══ 3 · DATOS EN VIVO ═══════════════════════════════════════════════════ */
+/* Etiquetas en el propio lienzo, y solo las que miran hacia delante. Si dos
+   se pisan, gana la que está más cerca: mejor menos texto que texto ilegible. */
+const cajas=[];
+function etiquetas(){
+  cajas.length=0;
+  const orden=SIS.map(s=>[pr[NUCLEO[s.id]],s]).sort((a,b)=>a[0][3]-b[0][3]);
+  cx.textBaseline='middle';
+  for(const [P,s] of orden){
+    if(P[3]>0.35)continue;
+    const e=E[s.id];
+    const nom=IDI==='en'?s.nom:s.es;
+    cx.font='700 9.5px '+getComputedStyle(document.body).fontFamily;
+    const w=cx.measureText(nom).width+12, x=P[0]+11, y=P[1];
+    if(cajas.some(c=>x<c[0]+c[2]&&x+w>c[0]&&y-9<c[1]+c[3]&&y+9>c[1]))continue;
+    cajas.push([x,y-9,w,18]);
+    s._caja=[x,y-9,w,26];
+    cx.fillStyle='rgba(1,5,9,.82)';cx.fillRect(x,y-9,w,18);
+    cx.fillStyle=e.mal?'#ff4a3d':s.col;cx.fillRect(x,y-9,1.5,18);
+    cx.fillStyle=e.mal?'#ff4a3d':s.col;
+    cx.fillText(nom,x+7,y-1);
+    cx.font='400 7.5px '+getComputedStyle(document.body).fontFamily;
+    cx.fillStyle='#5d7d93';cx.fillText(e.met.slice(0,26),x+7,y+9);
+  }
+}
+function tocar(x,y){
+  for(const s of SIS){const c=s._caja;
+    if(c&&x>=c[0]&&x<=c[0]+c[2]&&y>=c[1]&&y<=c[1]+c[3]){abrirSis(s);return;}}
+  let mejor=null,dm=34;
+  for(const s of SIS){const P=pr[NUCLEO[s.id]];
+    const d=Math.hypot(P[0]-x,P[1]-y);if(d<dm){dm=d;mejor=s;}}
+  if(mejor)abrirSis(mejor);
+}
+
+/* ═══ 5 · DATOS EN VIVO ══════════════════════════════════════════════════ */
 const RAIZ='0xd21e29ff024fd135656a54ee3581bda080f716836d0e0243f0e8ec3a0b277882';
-const nf=n=>Number(n).toLocaleString('es-MX');
 const $=s=>document.querySelector(s);
-const V={};
+const nf=n=>Number(n).toLocaleString(IDI==='en'?'en-US':'es-MX');
+const V={}; let I={}; let PARTES=[]; let BOTS=null;
+
 async function rpc(ruta,m,p=[]){
   const r=await fetch(ruta,{method:'POST',headers:{'content-type':'application/json'},
     body:JSON.stringify({jsonrpc:'2.0',id:1,method:m,params:p}),cache:'no-store'});
-  const j=await r.json();if(j.error)throw new Error(j.error.message);return j.result;}
-function set(id,est,met,mal=false,fuego,vivo){
-  const e=E[id];e.est=est;e.met=met;e.mal=mal;
-  if(fuego!==undefined)e.fuego=fuego; if(vivo)e.vivo=vivo;
-  const d=etis[id];if(d)d.querySelector('s').textContent=met;
-  libro();}
-let alt0=0;
+  const j=await r.json(); if(j.error)throw new Error(j.error.message); return j.result;
+}
+function set(id,est,met,mal=false,avi=false,vivo){
+  const e=E[id]; e.est=est; e.met=met; e.mal=mal; e.avi=avi; if(vivo)e.vivo=vivo;
+  railSistemas();
+}
+let altAnt=0;
 async function verNucleo(){try{
   const[c,a,gp]=await Promise.all([rpc('/rpc','eth_chainId'),rpc('/rpc','eth_blockNumber'),
     rpc('/rpc','eth_gasPrice')]);
   if(parseInt(c,16)!==5534)throw new Error('chainId');
   const b=await rpc('/rpc','eth_getBlockByNumber',['latest',false]);
-  const alt=parseInt(a,16),ed=Math.max(0,Date.now()/1000-parseInt(b.timestamp,16));
-  V.b5534=alt;V.gas=parseInt(gp,16)/1e9;V.edad=Math.round(ed);
-  if(alt>alt0&&alt0)E.n5534.fuego=1;
-  setTimeout(()=>{if(!E.n5534.mal)E.n5534.fuego=.5;},1500);alt0=alt;
-  set('n5534',ed>45?'ATRASADA':'EN VIVO',`${nf(alt)} bloques · ${V.gas} gwei`,ed>45,undefined,
-    [['Bloque',nf(alt)],['Precio de gas',V.gas+' gwei'],['Último bloque','hace '+Math.round(ed)+' s'],
-     ['Chain ID','5534']]);
- }catch(e){set('n5534','FALLA','sin respuesta',true);}}
+  const alt=parseInt(a,16), ed=Math.max(0,Date.now()/1000-parseInt(b.timestamp,16));
+  V.b5534=alt; V.gas=parseInt(gp,16)/1e9; V.edad=Math.round(ed);
+  if(altAnt&&alt>altAnt)disparar('n5534');       // un bloque nuevo = un impulso
+  altAnt=alt;
+  set('n5534',ed>45?'LAGGING':'LIVE',nf(alt)+' blk · '+V.gas+' gwei',ed>45,false,
+    [['Block',nf(alt)],['Gas price',V.gas+' gwei'],['Last block',Math.round(ed)+'s ago'],['Chain ID','5534']]);
+ }catch(e){set('n5534','FAIL','no answer',true);}}
 async function verMemoria(){try{
   const a=await rpc('/rpc-vieja','eth_blockNumber');
   const b=await rpc('/rpc-vieja','eth_getBlockByNumber',['latest',false]);
-  const q=b.stateRoot.toLowerCase()===RAIZ;V.b8532=parseInt(a,16);V.quieta=q;
-  set('m8532',q?'CONGELADA':'¡SE MOVIÓ!',`${nf(V.b8532)} · ${q?'raíz intacta':'RAÍZ DISTINTA'}`,!q,.12,
-   [['Bloque',nf(V.b8532)],['Raíz de estado',q?'idéntica a la del cierre':'DISTINTA — revisar'],
-    ['Chain ID','8532']]);
- }catch(e){set('m8532','FALLA','sin respuesta',true);}}
+  const q=b.stateRoot.toLowerCase()===RAIZ; V.b8532=parseInt(a,16); V.quieta=q;
+  set('m8532',q?'FROZEN':'IT MOVED!',nf(V.b8532)+(q?' · root intact':' · ROOT CHANGED'),!q,false,
+    [['Block',nf(V.b8532)],['State root',q?'identical to the closing snapshot':'DIFFERENT — investigate'],
+     ['Chain ID','8532']]);
+  if(!q)disparar('m8532',true);
+ }catch(e){set('m8532','FAIL','no answer',true);}}
 async function verScan(){try{
   const j=await(await fetch('/explorador/block/totalBlock',{cache:'no-store'})).json();
-  const t=parseInt(j.blockTotal||j.total||0);V.idx=t;
-  const atras=V.b5534&&(V.b5534-t)>40;
-  set('scan',atras?'ATRASADO':'INDEXANDO',`${nf(t)} bloques`,atras,.35,
-    [['Bloques indexados',nf(t)],['Distancia a la punta',V.b5534?nf(Math.max(0,V.b5534-t)):'—']]);
- }catch(e){set('scan','FALLA','sin respuesta',true);}}
-async function verSalud(ruta,id,est,met,fuego){try{
-  const r=await fetch(ruta,{cache:'no-store'});if(!r.ok)throw 0;
-  set(id,est,met,false,fuego);return true;
- }catch(e){set(id,'FALLA','no responde',true);return false;}}
+  const tt=parseInt(j.blockTotal||j.total||0); V.idx=tt;
+  const atras=V.b5534&&(V.b5534-tt)>40;
+  set('scan',atras?'BEHIND':'INDEXING',nf(tt)+' blk',atras,false,
+    [['Blocks indexed',nf(tt)],['Behind the tip',V.b5534?nf(Math.max(0,V.b5534-tt)):'—']]);
+ }catch(e){set('scan','FAIL','no answer',true);}}
+async function verSalud(ruta,id,est,met){try{
+  const r=await fetch(ruta,{cache:'no-store'}); if(!r.ok)throw 0;
+  set(id,est,met,false); return true;
+ }catch(e){set(id,'FAIL','no answer',true); return false;}}
 async function verChainlist(){try{
   const[a,b]=await Promise.all([8593,8594].map(n=>fetch(
     'https://api.github.com/repos/ethereum-lists/chains/pulls/'+n,{cache:'no-store'})
     .then(r=>r.ok?r.json():null)));
-  const s=p=>!p?'?':p.merged?'FUSIONADO':p.state==='open'?'abierto':'cerrado';
-  V.pr93=s(a);V.pr94=s(b);
-  set('chainl',(a&&a.merged)||(b&&b.merged)?'FUSIONADO':'EN REVISIÓN',
-    `#8593 ${V.pr93} · #8594 ${V.pr94}`,false,.3,
-    [['#8593 · testnet 5534',V.pr93],['#8594 · reserva 5550',V.pr94]]);
- }catch(e){set('chainl','SIN DATOS','GitHub no responde',false,.15);}}
-
-/* ── el equipo ────────────────────────────────────────────────────────────
-   Cada agente deja su parte en /partes.json (lo publica infra/equipo/parte.py).
-   La región muestra el PEOR veredicto: si uno solo encontró una falla, el
-   equipo entero sale en rojo. Un tablero que promedia esconde justo lo que
-   hay que ver. */
-let PARTES=[];
-const HACE=iso=>{const s=(Date.now()-Date.parse(iso))/1000;
-  if(!isFinite(s))return '—';
-  if(s<5400)return Math.max(1,Math.round(s/60))+' min';
-  if(s<172800)return Math.round(s/3600)+' h';
-  return Math.round(s/86400)+' días';};
-async function verEquipo(){try{
-  PARTES=await(await fetch('/partes.json',{cache:'no-store'})).json();
-  if(!Array.isArray(PARTES)||!PARTES.length){
-    set('equipo','SIN PARTES','ningún agente ha reportado',false,.15);return;}
-  const mal=PARTES.filter(p=>p.veredicto==='falla'),avi=PARTES.filter(p=>p.veredicto==='aviso');
-  const esc=PARTES.reduce((n,p)=>n+((p.escala||[]).length),0);
-  /* un agente que lleva más de tres días callado no está vigilando nada */
-  const mudos=PARTES.filter(p=>(Date.now()-Date.parse(p.cuando))>2.6e8);
-  set('equipo',
-    mal.length?'CON FALLAS':avi.length?'CON AVISOS':mudos.length?'ALGUNO CALLADO':'TODO EN ORDEN',
-    `${PARTES.length} agentes · ${mal.length} fallas · ${esc} para José`,
-    mal.length>0,mal.length?.6:.3,
-    PARTES.map(p=>[p.nombre||p.agente,`${p.veredicto} · hace ${HACE(p.cuando)}`]));
- }catch(e){set('equipo','SIN PARTES','todavía no hay partes',false,.15);}}
-
+  const q=p=>!p?'?':p.merged?'MERGED':p.state==='open'?'open':'closed';
+  V.pr93=q(a);V.pr94=q(b);
+  set('chainl',(a&&a.merged)||(b&&b.merged)?'MERGED':'IN REVIEW',
+    '#8593 '+V.pr93+' · #8594 '+V.pr94,false,false,
+    [['#8593 · testnet 5534',V.pr93],['#8594 · reserves 5550',V.pr94],['CI, run here','4 of 4 pass']]);
+ }catch(e){set('chainl','NO DATA','GitHub unreachable',false);}}
+async function verBots(){try{
+  BOTS=await(await fetch('/ordenes/bots',{cache:'no-store'})).json();
+  const b=BOTS, viejo=(Date.now()-Date.parse(b.cuando))>4*3600e3;
+  const mal=b.estado!=='bien'||viejo, pocos=(b.enviosQueQuedan||0)<20;
+  set('bots',mal?'STALLED':'RUNNING',
+    (b.enviosQueQuedan||0)+' sends left',mal,pocos,
+    [['Last run',hace(b.cuando)],['Result',b.estado],['Block',b.bloque?nf(b.bloque):'—'],
+     ['Confirmed in',b.segundos!=null?b.segundos+'s':'—'],
+     ['Sends remaining',b.enviosQueQuedan!=null?b.enviosQueQuedan:'—']]);
+  if(b.estado==='bien')disparar('bots');
+ }catch(e){set('bots','NO DATA','cannot read',false);}}
 function verFijos(){
-  set('g5550',I.genesisListo?'LISTA':'EN OBRA',
-    I.genesisListo?'juez: 0 diferencias':'construyendo',false,.45);
-  set('tesoro','FIJADO',`$${I.precio} · ${I.comision}`,false,.25);
-  set('nodos','ACTIVA','10 máquinas · 6 en la vieja',false,.2);
-  set('polygon','CONECTADA','USDT · proveedores con reserva',false,.2);
-  set('pago','ACTIVO','API · punto de venta',false,.2);
-  set('tarjeta','ACTIVA','24 tarjetas',false,.2);
+  set('g5550',I.genesisListo?'READY':'BUILDING',I.genesisListo?'judge: 0 diffs':'building');
+  set('tesoro','FIXED','$'+(I.precio||'—')+' · '+(I.comision||'—'),false,!I.comisionEncendida);
+  set('nodos','ACTIVE','10 machines');
+  set('polygon','CONNECTED','USDT · 2 of 3 providers');
+  set('pago','ACTIVE','API · point of sale');
+  set('tarjeta','ACTIVE','24 cards');
+}
+const hace=iso=>{const s=(Date.now()-Date.parse(iso))/1000;
+  if(!isFinite(s))return '—';
+  if(s<5400)return Math.max(1,Math.round(s/60))+' min '+t('hace');
+  if(s<172800)return Math.round(s/3600)+' h '+t('hace');
+  return Math.round(s/86400)+' d '+t('hace');};
+
+async function cargar(){
+  try{I=await(await fetch('/informe.json',{cache:'no-store'})).json();}catch(e){I={};}
+  try{PARTES=await(await fetch('/partes.json',{cache:'no-store'})).json();}catch(e){PARTES=[];}
+  verFijos(); railAgentes();
+}
+const fallas=()=>SIS.filter(s=>E[s.id].mal);
+const parteDe=id=>PARTES.find(p=>p.agente===id);
+
+/* ═══ 6 · LOS RAÍLES ═════════════════════════════════════════════════════ */
+function railSistemas(){
+  const r=$('#sistemas'); r.querySelectorAll('.fila').forEach(f=>f.remove());
+  let mal=0,ok=0;
+  for(const s of SIS){const e=E[s.id];
+    if(e.mal)mal++;else if(e.est!=='STANDBY')ok++;
+    const f=document.createElement('div');
+    f.className='fila'+(e.mal?' mal':e.avi?' avi':''); f.tabIndex=0;
+    f.onclick=()=>abrirSis(s); f.onkeydown=ev=>{if(ev.key==='Enter')abrirSis(s);};
+    f.innerHTML='<span class="cn" style="background:'+(e.mal?'transparent':s.col)+
+      ';border:1px solid '+(e.mal?'#ff4a3d':s.col)+'"></span>'+
+      '<span><span class="nom" style="color:'+(e.mal?'#ff4a3d':s.col)+'">'+
+      (IDI==='en'?s.nom:s.es)+'</span><span class="est">'+e.est+'</span></span>'+
+      '<span class="met">'+e.met+'</span>';
+    f.dataset.sis=s.id; r.appendChild(f);
+  }
+  $('#cuenta').textContent=ok+' / '+SIS.length;
+  $('#modo').textContent=mal?t('degraded'):t('online');
+  const p=$('#pulso .p');
+  p.style.background=mal?'var(--red)':'var(--green)';
+  p.style.boxShadow='0 0 9px '+(mal?'#ff4a3d':'#48e39b');
+  $('#pulso').style.borderColor=mal?'rgba(255,74,61,.5)':'var(--edge)';
+}
+function railAgentes(){
+  const r=$('#agentes'); r.querySelectorAll('.fila').forEach(f=>f.remove());
+  for(const a of AGENTES){
+    const p=parteDe(a.id);
+    const v=p?p.veredicto:null;
+    const f=document.createElement('div');
+    f.className='fila'+(v==='falla'?' mal':v==='aviso'?' avi':''); f.tabIndex=0;
+    f.dataset.ag=a.id;
+    f.onclick=()=>abrirAgente(a); f.onkeydown=ev=>{if(ev.key==='Enter')abrirAgente(a);};
+    f.innerHTML='<span class="cn" style="background:'+(v==='falla'?'transparent':a.col)+
+      ';border:1px solid '+a.col+'"></span>'+
+      '<span><span class="nom" style="color:'+a.col+'">'+a.nom+'</span>'+
+      '<span class="est">'+(v?v.toUpperCase():'NO REPORT')+'</span></span>'+
+      '<span class="met">'+(p?hace(p.cuando):a.cada[IDI])+'</span>';
+    r.appendChild(f);
+  }
 }
 
-/* ═══ 4 · INFORME ═════════════════════════════════════════════════════════ */
-let I={precio:'0.01',comision:'0.01 ORIGEN',genesisListo:true,hechoHoy:[],pendiente:[]};
-async function cargar(){try{I=await(await fetch('/informe.json',{cache:'no-store'})).json();}catch(e){}
-  verFijos();}
-const fallas=()=>REG.filter(r=>E[r.id].mal);
-
-/* ═══ 5 · LA VOZ ══════════════════════════════════════════════════════════
-   Se busca la voz más natural que tenga el aparato: primero las neurales de
-   Microsoft y las de Google, después Mónica y Paulina de Apple. El usuario
-   puede cambiarla en el selector; la elección se recuerda.
-   Cada frase va suelta y con una pausa detrás: leer un párrafo entero de
-   corrido es lo que hace que suene a robot. */
-const BUENAS=[/Natural/i,/Neural/i,/Online/i,/Google/i,/Mónica|Monica/i,/Paulina/i,
-  /Sabina/i,/Jorge/i,/Juan/i,/Helena/i,/Laura/i];
-let voces=[],voz=null;
+/* ═══ 7 · LA VOZ ═════════════════════════════════════════════════════════
+   JARVIS es inglés británico, grave y sin prisa. Los agentes llevan cada
+   uno una voz distinta, para que se sepa quién habla sin mirar la pantalla.
+   Se elige la mejor que tenga el aparato, y la elección se recuerda. */
+const JARVIS=[/Daniel/i,/Arthur/i,/Oliver/i,/George/i,/Ryan/i,/Brian/i,
+  /UK English Male/i,/British/i,/en-GB/i];
+const BUENAS_EN=[/Natural/i,/Neural/i,/Online/i,/Google/i,/Alex/i,/Samantha/i];
+const BUENAS_ES=[/Natural/i,/Neural/i,/Online/i,/Google/i,/Mónica|Monica/i,/Paulina/i,
+  /Jorge/i,/Juan/i,/Helena/i,/Laura/i,/Sabina/i];
+let voces=[],vozJarvis=null,vozAgente={};
+function puntua(v){
+  let p=0;
+  if(IDI==='en'){
+    JARVIS.forEach((r,i)=>{if(r.test(v.name)||r.test(v.lang))p+=60-i*4;});
+    BUENAS_EN.forEach((r,i)=>{if(r.test(v.name))p+=22-i*2;});
+    if(/^en/i.test(v.lang))p+=25;
+    if(/en-GB/i.test(v.lang))p+=30;
+  }else{
+    BUENAS_ES.forEach((r,i)=>{if(r.test(v.name))p+=24-i*2;});
+    if(/^es/i.test(v.lang))p+=30;
+  }
+  if(v.localService)p+=3;
+  return p;
+}
 function cargarVoces(){
-  voces=speechSynthesis.getVoices().filter(v=>/^es/i.test(v.lang));
-  if(!voces.length)voces=speechSynthesis.getVoices();
+  const todas=speechSynthesis.getVoices();
+  if(!todas.length)return;
+  const idio=IDI==='en'?/^en/i:/^es/i;
+  voces=todas.filter(v=>idio.test(v.lang));
+  if(!voces.length)voces=todas;
   voces.sort((a,b)=>puntua(b)-puntua(a));
-  const sel=$('#voces');sel.innerHTML='';
+  const sel=$('#voces'); sel.innerHTML='';
   voces.forEach((v,i)=>{const o=document.createElement('option');o.value=i;
-    o.textContent=v.name.replace(/Microsoft |Google /,'').slice(0,26);sel.appendChild(o);});
-  const guardada=localStorage.getItem('vozCerebro');
-  const idx=guardada!==null&&voces[guardada]?+guardada:0;
-  sel.value=idx;voz=voces[idx]||null;
+    o.textContent=v.name.replace(/Microsoft |Google /,'').slice(0,24);sel.appendChild(o);});
+  const g=localStorage.getItem('vozCerebro-'+IDI);
+  const idx=g!==null&&voces[g]?+g:0;
+  sel.value=idx; vozJarvis=voces[idx]||null;
+  /* A cada agente, una voz distinta de las siguientes de la lista. */
+  vozAgente={};
+  AGENTES.forEach((a,k)=>{vozAgente[a.id]=voces[(k+1)%Math.max(1,voces.length)]||vozJarvis;});
 }
-function puntua(v){let p=0;BUENAS.forEach((re,i)=>{if(re.test(v.name))p+=100-i*4;});
-  if(/es-MX|es-US/i.test(v.lang))p+=25; if(/es-ES/i.test(v.lang))p+=12;
-  if(v.localService===false)p+=30; return p;}
-if('speechSynthesis' in window){speechSynthesis.onvoiceschanged=cargarVoces;cargarVoces();}
-$('#voces').addEventListener('change',e=>{voz=voces[e.target.value]||null;
-  localStorage.setItem('vozCerebro',e.target.value);
-  decir([{t:'Voz cambiada. Así sueno.',p:0}]);});
+speechSynthesis.addEventListener('voiceschanged',cargarVoces);
+cargarVoces(); setTimeout(cargarVoces,400);
+$('#voces').addEventListener('change',e=>{
+  vozJarvis=voces[e.target.value]||null;
+  localStorage.setItem('vozCerebro-'+IDI,e.target.value);
+  decir([{q:'JARVIS',x:IDI==='en'?'Voice set.':'Voz cambiada.'}]);
+});
+$('#idioma').addEventListener('change',e=>{
+  IDI=e.target.value; localStorage.setItem('idiomaCerebro',IDI);
+  cargarVoces(); traducirUI(); railSistemas(); railAgentes();
+});
 
-/* el guion: ordenado, con pausas, y sin siglas que se lean mal */
-const dic=n=>String(Math.round(Number(n)));  // numero limpio para hablar
-function guion(){
-  const f=fallas(),L=[];
-  const P=(t,p=380)=>L.push({t,p});
+/* Que la voz no lea símbolos ni siglas raras. En español "gwei" suena como
+   una palabrota mexicana; en inglés se lee "gway" y tampoco es. */
+function limpiar(x){
+  return String(x)
+    .replace(/·/g,',').replace(/—/g,',').replace(/\bgwei\b/gi,'gigawei')
+    .replace(/\bRPC\b/g,IDI==='en'?'R P C':'erre pe ce')
+    .replace(/\bUSD\b/g,IDI==='en'?'dollars':'dólares')
+    .replace(/(\d),(\d{3})/g,'$1$2').replace(/\$/g,'').replace(/%/g,IDI==='en'?' percent':' por ciento')
+    .replace(/0x[0-9a-fA-F]{6,}/g,IDI==='en'?'an address':'una dirección')
+    .replace(/\s+/g,' ').trim();
+}
+let cola=[],hablando=false,quienHabla=null;
+function decir(lineas){
+  parar();
+  cola=lineas.filter(l=>l&&l.x);
+  hablando=true; $('#hablar').classList.add('on'); $('#lblHablar').textContent=t('stop');
+  siguiente();
+}
+function siguiente(){
+  if(!cola.length){parar();return;}
+  const l=cola.shift();
+  marcar(l.q);
+  $('#sub').innerHTML='<span class="quien">'+(l.q||'JARVIS')+'</span>'+l.x;
+  if(l.foco)disparar(l.foco,true);
+  const u=new SpeechSynthesisUtterance(limpiar(l.x));
+  const v=l.ag?vozAgente[l.ag]:vozJarvis;
+  if(v)u.voice=v;
+  u.lang=(v&&v.lang)||(IDI==='en'?'en-GB':'es-MX');
+  u.rate=l.ag?0.99:0.93;          // JARVIS habla más despacio: es el que manda
+  u.pitch=l.ag?1.0:0.86;
+  u.onend=()=>setTimeout(()=>{if(hablando)siguiente();},l.p||320);
+  u.onerror=()=>setTimeout(()=>{if(hablando)siguiente();},220);
+  speechSynthesis.speak(u);
+}
+function marcar(q){
+  quienHabla=q;
+  document.querySelectorAll('.fila.habla').forEach(f=>f.classList.remove('habla'));
+  const a=AGENTES.find(x=>x.nom===q);
+  if(a){const f=document.querySelector('.fila[data-ag="'+a.id+'"]');if(f)f.classList.add('habla');}
+}
+function parar(){
+  hablando=false;cola=[];speechSynthesis.cancel();
+  $('#hablar').classList.remove('on');$('#lblHablar').textContent=t('brief');
+  $('#sub').textContent='';marcar(null);
+}
+$('#hablar').addEventListener('click',()=>hablando?parar():decir(guion()));
+
+/* ═══ 8 · EL PARTE HABLADO ═══════════════════════════════════════════════ */
+function saludo(){
   const h=new Date().getHours();
-  P(h<12?'Buenos días, José.':h<19?'Buenas tardes, José.':'Buenas noches, José.',550);
-  P('Soy el cerebro de Orden Global. Este es el parte del día.',650);
+  if(IDI==='en')return h<12?'Good morning, sir.':h<19?'Good afternoon, sir.':'Good evening, sir.';
+  return h<12?'Buenos días, José.':h<19?'Buenas tardes, José.':'Buenas noches, José.';
+}
+function guion(){
+  const L=[],f=fallas();
+  const P=(x,o={})=>L.push(Object.assign({q:'JARVIS',x},o));
+  P(saludo(),{p:520});
+  P(IDI==='en'?'All systems reporting. Here is where we stand.'
+              :'Todos los sistemas reportando. Este es el estado.',{p:520});
 
-  P('Primero, el estado general.',420);
-  if(!f.length)P('Los doce sistemas del ecosistema están en verde. No hay ninguna falla.',600);
-  else{P(`Atención. Hay ${f.length===1?'un sistema':f.length+' sistemas'} con falla.`,420);
-    f.forEach(r=>P(`${r.nom.toLowerCase()}: ${E[r.id].est.toLowerCase()}.`,340));P('',400);}
+  if(f.length){
+    P(IDI==='en'?('Attention. '+f.length+(f.length===1?' system has':' systems have')+' failed.')
+                :('Atención. Hay '+f.length+(f.length===1?' sistema':' sistemas')+' con falla.'),{p:400});
+    f.forEach(s=>P((IDI==='en'?s.nom:s.es)+': '+E[s.id].est+'.',{foco:s.id,p:340}));
+  }else{
+    P(IDI==='en'?('All '+SIS.length+' systems are green. No failures.')
+                :('Los '+SIS.length+' sistemas están en verde. Ninguna falla.'),{p:480});
+  }
 
-  P('Ahora, las cadenas.',420);
-  if(V.b5534)P(`La cadena de pruebas está en vivo, en el bloque ${dic(V.b5534)}, con el gas en ${V.gas} gigawei. El último bloque llegó hace ${V.edad} segundos.`,600);
+  if(V.b5534)P(IDI==='en'
+    ?('The testnet is live at block '+nf(V.b5534)+', gas at '+V.gas+' gigawei. Last block '+V.edad+' seconds ago.')
+    :('La red de pruebas está viva en el bloque '+nf(V.b5534)+', con el gas en '+V.gas+' gigawei. El último bloque llegó hace '+V.edad+' segundos.'),
+    {foco:'n5534',p:520});
   if(V.b8532)P(V.quieta
-    ?`La cadena vieja sigue congelada, en el bloque ${dic(V.b8532)}, con la raíz de estado idéntica a la del cierre. Todo listo para migrar.`
-    :`Atención: la cadena vieja se movió. La raíz de estado ya no coincide con la del cierre. Hay que rehacer el trabajo de ranuras.`,600);
-  if(I.genesisListo)P('El génesis de la cinco mil quinientos cincuenta está construido y juzgado, con cero diferencias contra la cadena vieja. Está respaldado fuera del servidor.',650);
+    ?(IDI==='en'?('The legacy chain remains frozen at block '+nf(V.b8532)+', state root identical to the closing snapshot.')
+                :('La cadena vieja sigue congelada en el bloque '+nf(V.b8532)+', con la raíz de estado idéntica a la del cierre.'))
+    :(IDI==='en'?'Warning. The legacy chain has moved. The state root no longer matches. The migration must be rebuilt.'
+                :'Atención. La cadena vieja se movió. La raíz ya no coincide. Hay que rehacer la migración.'),
+    {foco:'m8532',p:520});
+  if(BOTS&&BOTS.estado)P(IDI==='en'
+    ?('The test bots are '+(BOTS.estado==='bien'?'running':'stalled')+'. '+(BOTS.enviosQueQuedan||0)+' sends remaining before they need refunding.')
+    :('Los bots de prueba están '+(BOTS.estado==='bien'?'corriendo':'parados')+'. Les quedan '+(BOTS.enviosQueQuedan||0)+' envíos antes de que haya que rellenarlos.'),
+    {foco:'bots',p:460});
 
-  P('Los productos.',420);
-  P(`Veta Wallet, en línea, versión ${I.versionBackend||''}. Cuatrocientos treinta y cinco usuarios.`,450);
-  if(V.idx)P(`El explorador va indexando: ${dic(V.idx)} bloques.`,450);
-  P('Genesis ID, MyTokenPay y las tarjetas, activos.',450);
-
-  P('El dinero.',420);
-  P(`El ORIGEN vale el gramo de oro dividido entre cincuenta y cinco: hoy, dos dólares con cincuenta y siete.`,520);
-  P(`La comisión es de cero punto cero cero uno ORIGEN por transacción, sea cual sea el monto, y ${I.comisionEncendida?'está encendida':'está lista pero todavía apagada'}. Son un cuarto de centavo.`,600);
-  if(V.pr93)P(`En el registro público, la solicitud de la red de pruebas está ${V.pr93}, y la de la red principal, ${V.pr94}.`,550);
-
-  /* el equipo: primero lo que encontró mal, que es para lo que existe */
+  /* El equipo. Primero lo que encontró mal, que es para lo que existe. */
   if(PARTES.length){
     const mal=PARTES.filter(p=>p.veredicto==='falla'),avi=PARTES.filter(p=>p.veredicto==='aviso');
-    P('El equipo de vigilancia.',450);
-    if(mal.length){
-      P(`Atención. ${mal.length===1?'Un agente encontró':mal.length+' agentes encontraron'} una falla.`,450);
-      mal.forEach(p=>P(`${(p.nombre||'').toLowerCase()}: ${limpiar(p.resumen)}.`,420));
-    }else{
-      P(`Los ${dic(PARTES.length)} agentes revisaron y no encontraron ninguna falla.`,500);
-    }
-    avi.forEach(p=>P(`${(p.nombre||'').toLowerCase()} deja un aviso: ${limpiar(p.resumen)}.`,420));
-    const esc=PARTES.flatMap(p=>(p.escala||[]).map(x=>[p.nombre,x]));
+    P(IDI==='en'?'Now, the team.':'Ahora, el equipo.',{p:420});
+    if(!mal.length&&!avi.length)
+      P(IDI==='en'?('All '+PARTES.length+' agents reported. Nothing found.')
+                  :('Los '+PARTES.length+' agentes reportaron. Sin hallazgos.'),{p:420});
+    /* que hable cada agente con su propia voz */
+    [...mal,...avi].forEach(p=>{
+      const a=AGENTES.find(x=>x.id===p.agente)||{};
+      L.push({q:p.nombre||a.nom,ag:p.agente,x:p.resumen+'.',p:400});
+    });
+    const esc=PARTES.flatMap(p=>(p.escala||[]).map(x=>({n:p.nombre,ag:p.agente,x})));
     if(esc.length){
-      P(`Hay ${esc.length===1?'una cosa':dic(esc.length)+' cosas'} que necesitan tu mano.`,450);
-      esc.forEach(([q,x])=>P(`${(q||'').toLowerCase()}: ${limpiar(x)}.`,380));
+      P(IDI==='en'?('There '+(esc.length===1?'is one thing':'are '+esc.length+' things')+' that need you.')
+                  :('Hay '+(esc.length===1?'una cosa':esc.length+' cosas')+' que necesitan tu mano.'),{p:440});
+      esc.forEach(e=>L.push({q:e.n,ag:e.ag,x:e.x+'.',p:380}));
     }
     const mudos=PARTES.filter(p=>(Date.now()-Date.parse(p.cuando))>2.6e8);
-    mudos.forEach(p=>P(`${(p.nombre||'').toLowerCase()} lleva días sin reportar. Habría que mirar por qué.`,420));
-    P('',400);
+    mudos.forEach(p=>P((IDI==='en'?(p.nombre+' has been silent for days. Worth checking why.')
+                                  :(p.nombre+' lleva días sin reportar. Habría que mirar por qué.')),{p:400}));
   }
 
   if(I.hechoHoy&&I.hechoHoy.length){
-    P('Esto es lo que se hizo hoy.',450);
-    I.hechoHoy.forEach(x=>P(limpiar(x)+'.',300));
-    P('',350);
+    P(IDI==='en'?'This is what was completed today.':'Esto es lo que se hizo hoy.',{p:440});
+    I.hechoHoy.forEach(x=>P(x+'.',{p:290}));
   }
   if(I.pendiente&&I.pendiente.length){
-    P('Y esto es lo que falta.',450);
-    I.pendiente.forEach(x=>P(limpiar(x)+'.',300));
+    P(IDI==='en'?'And this is what is still outstanding.':'Y esto es lo que falta.',{p:440});
+    I.pendiente.forEach(x=>P(x+'.',{p:290}));
   }
-  P(f.length?'Fin del parte. Hay fallas que revisar.':'Fin del parte. Todo bajo control.',0);
-  return L.filter(x=>x.t);
+  P(f.length?(IDI==='en'?'End of report. There are failures to review.':'Fin del parte. Hay fallas que revisar.')
+            :(IDI==='en'?'End of report. Everything under control.':'Fin del parte. Todo bajo control.'),{p:0});
+  return L;
 }
-/* que la voz no lea símbolos ni siglas raras */
-function limpiar(t){
-  return String(t)
-    .replace(/·/g,',').replace(/—/g,',').replace(/\//g,' de ')
-    .replace(/\bgwei\b/gi,'gigawei').replace(/\bRPC\b/g,'erre pe ce')
-    .replace(/\bTLS\b/g,'te ele ese').replace(/\bAPI\b/g,'a pe i')
-    .replace(/\bS3\b/g,'ese tres').replace(/\bAKIA\b/g,'a ka i a')
-    .replace(/\bKYC\b/g,'ka i ce').replace(/\bSSO\b/g,'ese ese o')
-    .replace(/\bPUSH0\b/gi,'push cero').replace(/\bmd5\s*\S+/gi,'')
-    .replace(/#(\d+)/g,'número $1').replace(/\bv(\d+)\b/g,'versión $1')
-    .replace(/\b[A-Z][A-Z0-9_]{3,}\b/g,x=>x.replace(/_/g,' ').toLowerCase())
-    .replace(/=/g,' igual a ').replace(/\s+,/g,',').replace(/\(\s*/g,'(').replace(/\s*\)/g,')')
-    .replace(/(\d)\.(\d{3})\b/g,'$1$2')
-    .replace(/0x[0-9a-fA-F]{6,}…?/g,'una dirección').replace(/\s{2,}/g,' ').trim();
-}
-let hablando=false,cola=[];
-function decir(lista){
-  if(!('speechSynthesis' in window)){abrirTexto();return;}
-  speechSynthesis.cancel();cola=lista.slice();hablando=true;
-  $('#btnVoz').classList.add('hablando');siguiente();
-}
-function siguiente(){
-  if(!hablando||!cola.length){parar();return;}
-  const {t,p}=cola.shift();
-  const u=new SpeechSynthesisUtterance(t);
-  if(voz)u.voice=voz;
-  u.lang=(voz&&voz.lang)||'es-MX';
-  u.rate=.97; u.pitch=1.0; u.volume=1;   /* natural: ni grave ni acelerado */
-  u.onstart=()=>{$('#subt').textContent=t;};
-  u.onend=()=>{ if(hablando) setTimeout(siguiente,p); };
-  u.onerror=()=>{ if(hablando) setTimeout(siguiente,120); };
-  speechSynthesis.speak(u);
-}
-function parar(){hablando=false;cola=[];speechSynthesis.cancel();
-  $('#btnVoz').classList.remove('hablando');$('#subt').textContent='';}
-$('#btnVoz').addEventListener('click',()=>{hablando?parar():decir(guion());});
 
-/* ═══ 6 · DETALLE ═════════════════════════════════════════════════════════ */
-function abrirDet(r){
-  const e=E[r.id];
-  $('#detTit').textContent=r.nom;$('#detTit').style.color=r.col;
-  $('#detSub').textContent=r.que;
-  const c=$('#detCuerpo');c.innerHTML='';
-  const est=document.createElement('div');est.className='kv';
-  est.innerHTML=`<b>Estado</b><span style="color:${e.mal?'var(--rojo)':r.col}">${e.est}</span>`;
-  c.appendChild(est);
-  if(e.vivo&&e.vivo.length){const h=document.createElement('h4');h.textContent='EN VIVO';c.appendChild(h);
-    for(const[k,v]of e.vivo){const d=document.createElement('div');d.className='kv';
-      d.innerHTML=`<b>${k}</b><span>${v}</span>`;c.appendChild(d);}}
-  /* el equipo no tiene una ficha fija: tiene los partes que dejó cada agente */
-  if(r.id==='equipo'&&PARTES.length){
-    for(const p of PARTES){
-      const h=document.createElement('h4');
-      h.textContent=`${p.nombre||p.agente} · ${p.veredicto.toUpperCase()} · hace ${HACE(p.cuando)}`;
-      h.style.color=p.veredicto==='falla'?'var(--rojo)':p.veredicto==='aviso'?'#ffd166':'#c9a961';
-      c.appendChild(h);
-      const li=document.createElement('li');
-      li.textContent=p.resumen;
-      if(p.veredicto==='falla')li.className='malo';
-      c.appendChild(li);
-      for(const x of (p.hallazgos||[])){
-        const d=document.createElement('li');d.textContent=x;
-        d.style.color='var(--mut)';c.appendChild(d);}
-      for(const x of (p.escala||[])){
-        const d=document.createElement('li');d.className='malo';
-        d.textContent='Para José: '+x;c.appendChild(d);}
+/* Respuestas cortas, para cuando preguntas algo concreto. */
+function responder(tema){
+  const en=IDI==='en';
+  const A=(x,o={})=>Object.assign({q:'JARVIS',x},o);
+  switch(tema){
+    case 'cadenas':return [
+      A(V.b5534?(en?('Testnet at block '+nf(V.b5534)+', gas '+V.gas+' gigawei, last block '+V.edad+' seconds ago.')
+                   :('Red de pruebas en el bloque '+nf(V.b5534)+', gas '+V.gas+' gigawei, último bloque hace '+V.edad+' segundos.'))
+                 :(en?'No answer from the testnet.':'La red de pruebas no contesta.'),{foco:'n5534'}),
+      A(V.quieta?(en?'Legacy chain frozen, state root intact.':'Cadena vieja congelada, raíz intacta.')
+                :(en?'Warning: the legacy chain moved.':'Atención: la cadena vieja se movió.'),{foco:'m8532'})];
+    case 'dinero':{
+      const c=parteDe('centinela');
+      return [A(en?('ORIGEN is one gram of gold divided by fifty five. Today, '+(I.precio||'unknown')+'.')
+                  :('El ORIGEN es el gramo de oro entre cincuenta y cinco. Hoy, '+(I.precio||'sin dato')+'.'),{foco:'tesoro'}),
+        A(en?('The fee is '+(I.comision||'0.001 ORIGEN')+', and it is not configured in production, so it charges nothing.')
+            :('La comisión es de '+(I.comision||'cero coma cero cero uno ORIGEN')+', y no está configurada en producción, así que cobra cero.'),{foco:'tesoro'}),
+        c?{q:c.nombre,ag:'centinela',x:c.resumen+'.'}:null].filter(Boolean);}
+    case 'equipo':{
+      if(!PARTES.length)return [A(en?'No agent has reported yet.':'Ningún agente ha reportado todavía.')];
+      const mal=PARTES.filter(p=>p.veredicto==='falla').length;
+      return [A(en?(PARTES.length+' agents reporting, '+mal+' with failures.')
+                  :(PARTES.length+' agentes reportando, '+mal+' con fallas.')),
+        ...PARTES.map(p=>({q:p.nombre,ag:p.agente,x:p.resumen+'.',p:340}))];}
+    case 'seguridad':{const c=parteDe('cerrajero');
+      return c?[{q:c.nombre,ag:'cerrajero',x:c.resumen+'.'},
+        ...(c.escala||[]).map(x=>({q:c.nombre,ag:'cerrajero',x,p:340}))]
+        :[A(en?'The locksmith has not reported yet.':'El cerrajero no ha reportado todavía.')];}
+    case 'coste':{const c=parteDe('contador');
+      return c?[{q:c.nombre,ag:'contador',x:c.resumen+'.'},
+        ...(c.hallazgos||[]).slice(0,2).map(x=>({q:c.nombre,ag:'contador',x,p:340}))]
+        :[A(en?'The accountant has not reported yet.':'El contador no ha reportado todavía.')];}
+    case 'chainlist':return [A(en?('Testnet request is '+(V.pr93||'unknown')+', mainnet reservation is '+(V.pr94||'unknown')+'. All four checks pass. It is waiting for a maintainer.')
+                                 :('La solicitud de pruebas está '+(V.pr93||'sin dato')+', y la reserva de la principal '+(V.pr94||'sin dato')+'. Las cuatro pruebas pasan. Espera a un mantenedor.'),{foco:'chainl'})];
+    case 'bots':return [A(BOTS?(en?('The bots are '+(BOTS.estado==='bien'?'running':'stalled')+'. Last run '+hace(BOTS.cuando)+', '+(BOTS.enviosQueQuedan||0)+' sends left.')
+                                  :('Los bots están '+(BOTS.estado==='bien'?'corriendo':'parados')+'. Última carrera '+hace(BOTS.cuando)+', quedan '+(BOTS.enviosQueQuedan||0)+' envíos.'))
+                            :(en?'I cannot read the bots right now.':'Ahora mismo no puedo leer los bots.'),{foco:'bots'})];
+    case 'pendiente':{
+      const esc=PARTES.flatMap(p=>(p.escala||[]).map(x=>({q:p.nombre,ag:p.agente,x,p:360})));
+      const pen=(I.pendiente||[]).map(x=>A(x+'.',{p:300}));
+      if(!esc.length&&!pen.length)return [A(en?'Nothing is waiting on you.':'No hay nada esperándote.')];
+      return [A(en?'These need you.':'Esto necesita tu mano.',{p:400}),...esc,...pen];}
+  }
+  return [A(t('nada'))];
+}
+
+/* ═══ 9 · ESCUCHAR Y OBEDECER ════════════════════════════════════════════
+   Lo que se puede pedir por voz es una lista CERRADA. Preguntar es libre;
+   actuar, no. Desde aquí no se despliega, no se mueven fondos, no se
+   reinicia un nodo y no se cambia configuración: esta página vive en
+   internet, y una consola remota sobre producción es exactamente lo que el
+   Cerrajero marcaría como el peor agujero del sistema. */
+const INTENCIONES=[
+  [/\b(status|report|brief|everything|parte|estado general|inform)/i,'PARTE'],
+  [/\b(chain|block|testnet|legacy|cadena|bloque|red)/i,'cadenas'],
+  [/\b(money|price|treasury|fee|origen|dinero|precio|tesoro|comisi)/i,'dinero'],
+  [/\b(team|agent|equipo|agente)/i,'equipo'],
+  [/\b(secur|lock|key|segur|cerrajero|llave)/i,'seguridad'],
+  [/\b(cost|spend|bill|aws|coste|costo|gasto|factura)/i,'coste'],
+  [/\b(chainlist|pull request|solicitud)/i,'chainlist'],
+  [/\b(bot)/i,'bots'],
+  [/\b(need|pending|outstanding|falta|pendiente|necesita)/i,'pendiente'],
+  [/\b(stop|quiet|silence|para|c[aá]llate|silencio)/i,'PARAR'],
+];
+const ORDENES=[
+  [/\b(run|start|fire|corre|lanza|ejecuta).{0,14}\bbot/i,'bots-ahora'],
+  [/\b(refresh|reload|update|actualiza|recarga)/i,'refrescar'],
+];
+let oyendo=false,rec=null;
+function escuchar(){
+  const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!R){$('#oido').textContent=t('noOigo');return;}
+  if(oyendo){rec&&rec.stop();return;}
+  parar();
+  rec=new R(); rec.lang=IDI==='en'?'en-GB':'es-MX';
+  rec.interimResults=true; rec.maxAlternatives=1;
+  rec.onstart=()=>{oyendo=true;$('#mic').classList.add('on');
+    $('#lblMic').textContent=t('listening');$('#oido').textContent='…';};
+  rec.onresult=ev=>{
+    let txt='';for(const r of ev.results)txt+=r[0].transcript;
+    $('#oido').textContent='“'+txt+'”';
+    if(ev.results[ev.results.length-1].isFinal)atender(txt);
+  };
+  rec.onerror=ev=>{$('#oido').textContent=IDI==='en'?'Could not hear you.':'No pude oírte.';};
+  rec.onend=()=>{oyendo=false;$('#mic').classList.remove('on');$('#lblMic').textContent=t('speak');};
+  rec.start();
+}
+$('#mic').addEventListener('click',escuchar);
+
+async function atender(txt){
+  for(const [re,acc] of ORDENES){
+    if(re.test(txt)){ejecutar(acc);return;}
+  }
+  for(const [re,tema] of INTENCIONES){
+    if(re.test(txt)){
+      if(tema==='PARAR'){parar();return;}
+      if(tema==='PARTE'){decir(guion());return;}
+      decir(responder(tema));return;
     }
   }
-  const h=document.createElement('h4');h.textContent='QUÉ HAY DENTRO';c.appendChild(h);
-  for(const x of r.det){const li=document.createElement('li');li.textContent=x;c.appendChild(li);}
-  $('#det').classList.add('abierto');
+  decir([{q:'JARVIS',x:t('nada')}]);
 }
-function abrirTexto(){
-  $('#detTit').textContent='PARTE DEL DÍA';$('#detTit').style.color='var(--cian)';
-  $('#detSub').textContent=(I.fecha||'')+' · GENERADO POR EL CEREBRO';
+async function ejecutar(accion){
+  const en=IDI==='en';
+  if(accion==='refrescar'){
+    decir([{q:'JARVIS',x:en?'Refreshing.':'Actualizando.'}]);
+    await todo(); return;
+  }
+  if(accion==='bots-ahora'){
+    decir([{q:'JARVIS',x:en?'Running the test bots now.':'Lanzando los bots de prueba.'}]);
+    try{
+      const r=await fetch('/ordenes/bots/ahora',{method:'POST'});
+      const j=await r.json();
+      await verBots();
+      decir([{q:'JARVIS',foco:'bots',x: j.estado==='bien'
+        ?(en?('Done. The transaction confirmed in block '+nf(j.bloque)+', in '+j.segundos+' seconds.')
+            :('Hecho. La transacción confirmó en el bloque '+nf(j.bloque)+', en '+j.segundos+' segundos.'))
+        :(en?('The run finished as '+j.estado+'. '+(j.detalle||''))
+            :('La carrera terminó como '+j.estado+'. '+(j.detalle||'')))}]);
+    }catch(e){
+      decir([{q:'JARVIS',x:en?'I could not reach the bots.':'No pude alcanzar los bots.'}]);
+    }
+  }
+}
+
+/* ═══ 10 · PANELES ═══════════════════════════════════════════════════════ */
+function panel(tit,sub,col){
+  $('#detTit').textContent=tit;$('#detTit').style.color=col||'var(--arc)';
+  $('#detSub').textContent=sub;
   const c=$('#detCuerpo');c.innerHTML='';
-  const sec=(t,items,cl)=>{if(!items.length)return;
-    const h=document.createElement('h4');h.textContent=t;c.appendChild(h);
-    for(const x of items){const li=document.createElement('li');if(cl)li.className=cl;
-      li.textContent=x;c.appendChild(li);}};
-  sec('FALLAS',fallas().map(r=>`${r.nom} — ${E[r.id].est} (${E[r.id].met})`),'malo');
-  const v=[];
-  if(V.b5534)v.push(`Cadena 5534: bloque ${nf(V.b5534)} · gas ${V.gas} gwei · último hace ${V.edad}s`);
-  if(V.b8532)v.push(`Cadena 8532: bloque ${nf(V.b8532)} · ${V.quieta?'congelada, raíz intacta':'¡RAÍZ DISTINTA!'}`);
-  if(V.idx)v.push(`Ordenscan: ${nf(V.idx)} bloques indexados`);
-  if(V.pr93)v.push(`Chainlist: #8593 ${V.pr93} · #8594 ${V.pr94}`);
-  v.push(`ORIGEN $${I.precio} · comisión ${I.comision} ${I.comisionEncendida?'(encendida)':'(lista, apagada)'}`);
-  sec('AHORA MISMO',v);
-  sec('LO QUE NECESITA A JOSÉ',
-      PARTES.flatMap(p=>(p.escala||[]).map(x=>`${p.nombre||p.agente} — ${x}`)),'malo');
-  sec('EL EQUIPO',PARTES.map(p=>
-      `${p.nombre||p.agente} · ${p.veredicto} · hace ${HACE(p.cuando)} — ${p.resumen}`));
-  sec('HECHO HOY',I.hechoHoy||[]);
-  sec('PENDIENTE',I.pendiente||[]);
-  $('#det').classList.add('abierto');
+  $('#det').classList.add('abre');
+  return c;
 }
-$('#btnTexto').addEventListener('click',abrirTexto);
-$('#cerrarDet').addEventListener('click',()=>$('#det').classList.remove('abierto'));
-$('#det').addEventListener('click',e=>{if(e.target.id==='det')e.target.classList.remove('abierto')});
+const h4=(c,x)=>{const h=document.createElement('h4');h.textContent=x;c.appendChild(h);};
+const li=(c,x,cl)=>{const l=document.createElement('li');if(cl)l.className=cl;l.textContent=x;c.appendChild(l);};
+const kv=(c,k,v,col)=>{const d=document.createElement('div');d.className='kv';
+  d.innerHTML='<b>'+k+'</b><span'+(col?' style="color:'+col+'"':'')+'>'+v+'</span>';c.appendChild(d);};
 
-/* ═══ 7 · LIBRO Y RELOJ ═══════════════════════════════════════════════════ */
-function libro(){
-  const l=$('#libro');l.querySelectorAll('.fila').forEach(f=>f.remove());
-  let mal=0,ok=0;
-  for(const r of REG){const e=E[r.id];if(e.mal)mal++;else if(e.est!=='ESPERA')ok++;
-    const f=document.createElement('div');f.className='fila'+(e.mal?' mal':'');
-    f.onclick=()=>abrirDet(r);
-    f.innerHTML=`<span class="cn" style="background:${e.mal?'transparent':r.col};border:1px solid ${r.col}"></span>
-      <span><span class="nom" style="color:${r.col}">${r.nom}</span><span class="est">${e.est}</span></span>
-      <span class="met">${e.met}</span>`;
-    l.appendChild(f);}
-  $('#cuenta').textContent=`${ok} / ${REG.length}`;
-  $('#vivo').style.borderColor=mal?'rgba(255,77,66,.6)':'rgba(62,232,154,.45)';
-  $('#vivo').querySelector('.p').style.background=mal?'var(--rojo)':'#3ee89a';
-  $('#vivo').querySelector('.p').style.boxShadow='0 0 8px '+(mal?'var(--rojo)':'#3ee89a');
+function abrirSis(s){
+  const e=E[s.id];
+  disparar(s.id,true);
+  const c=panel(IDI==='en'?s.nom:s.es,s.que[IDI],e.mal?'var(--red)':s.col);
+  kv(c,t('estado'),e.est,e.mal?'var(--red)':s.col);
+  if(e.vivo&&e.vivo.length){h4(c,t('vivo'));for(const[k,v] of e.vivo)kv(c,k,v);}
+  h4(c,t('dentro'));for(const x of s.det[IDI])li(c,x);
 }
+function abrirAgente(a){
+  const p=parteDe(a.id);
+  const c=panel(a.nom,(IDI==='en'?'Watches ':'Vigila ')+a.mira[IDI]+' · '+a.cada[IDI],a.col);
+  if(!p){li(c,IDI==='en'?'This agent has not reported yet.':'Este agente no ha reportado todavía.');return;}
+  kv(c,IDI==='en'?'Verdict':'Veredicto',p.veredicto.toUpperCase(),
+     p.veredicto==='falla'?'var(--red)':p.veredicto==='aviso'?'var(--gold)':a.col);
+  kv(c,IDI==='en'?'Last run':'Última revisión',hace(p.cuando));
+  h4(c,IDI==='en'?'SUMMARY':'RESUMEN');
+  li(c,p.resumen,p.veredicto==='falla'?'mala':p.veredicto==='aviso'?'ojo':'');
+  if((p.hallazgos||[]).length){h4(c,IDI==='en'?'WHAT IT MEASURED':'LO QUE MIDIÓ');
+    p.hallazgos.forEach(x=>li(c,x));}
+  if((p.hizo||[]).length){h4(c,IDI==='en'?'WHAT IT DID':'LO QUE HIZO');p.hizo.forEach(x=>li(c,x));}
+  if((p.escala||[]).length){h4(c,t('necesita'));p.escala.forEach(x=>li(c,x,'mala'));}
+}
+function abrirInforme(){
+  const c=panel(t('reporte'),(I.fecha||'')+' · '+(IDI==='en'?'COMPILED BY THE BRAIN':'GENERADO POR EL CEREBRO'));
+  const f=fallas();
+  if(f.length){h4(c,t('fallas'));f.forEach(s=>li(c,(IDI==='en'?s.nom:s.es)+' — '+E[s.id].est,'mala'));}
+  h4(c,t('ahora'));
+  if(V.b5534)li(c,(IDI==='en'?'Testnet: block ':'Red de pruebas: bloque ')+nf(V.b5534)+' · '+V.gas+' gwei');
+  if(V.b8532)li(c,(IDI==='en'?'Legacy: block ':'Cadena vieja: bloque ')+nf(V.b8532)+(V.quieta?(IDI==='en'?' · frozen, root intact':' · congelada, raíz intacta'):' · ROOT CHANGED'));
+  if(BOTS)li(c,(IDI==='en'?'Test bots: ':'Bots: ')+BOTS.estado+' · '+(BOTS.enviosQueQuedan||0)+(IDI==='en'?' sends left':' envíos restantes'));
+  li(c,'ORIGEN $'+(I.precio||'—')+' · '+(I.comision||'—'));
+  const esc=PARTES.flatMap(p=>(p.escala||[]).map(x=>p.nombre+' — '+x));
+  if(esc.length){h4(c,t('necesita'));esc.forEach(x=>li(c,x,'mala'));}
+  if(PARTES.length){h4(c,t('equipoT'));
+    PARTES.forEach(p=>li(c,p.nombre+' · '+p.veredicto+' · '+hace(p.cuando)+' — '+p.resumen,
+      p.veredicto==='falla'?'mala':p.veredicto==='aviso'?'ojo':''));}
+  if((I.hechoHoy||[]).length){h4(c,t('hecho'));I.hechoHoy.forEach(x=>li(c,x));}
+  if((I.pendiente||[]).length){h4(c,t('falta'));I.pendiente.forEach(x=>li(c,x));}
+}
+$('#btnTexto').addEventListener('click',abrirInforme);
+$('#cerrar').addEventListener('click',()=>$('#det').classList.remove('abre'));
+$('#det').addEventListener('click',e=>{if(e.target.id==='det')e.target.classList.remove('abre');});
+addEventListener('keydown',e=>{if(e.key==='Escape'){$('#det').classList.remove('abre');parar();}});
+
+function traducirUI(){
+  $('#tAg').textContent=t('equipo');$('#tSis').textContent=t('sistemas');
+  $('#lblHablar').textContent=hablando?t('stop'):t('brief');
+  $('#lblMic').textContent=oyendo?t('listening'):t('speak');
+  $('#lblTexto').textContent=t('report');$('#lema').textContent=t('lema');
+  document.documentElement.lang=IDI;
+}
+
+/* ═══ 11 · ARRANQUE ══════════════════════════════════════════════════════ */
 setInterval(()=>{const d=new Date();
-  $('#reloj').textContent=d.toLocaleTimeString('es-MX',{hour12:false});
-  $('#fecha').textContent=d.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});},500);
+  $('#reloj').textContent=d.toLocaleTimeString(IDI==='en'?'en-GB':'es-MX',{hour12:false});
+  $('#fecha').textContent=d.toLocaleDateString(IDI==='en'?'en-GB':'es-MX',
+    {weekday:'long',day:'numeric',month:'long'});},500);
 
-/* ═══ 8 · ARRANQUE ════════════════════════════════════════════════════════ */
-medir();requestAnimationFrame(cuadro);libro();
-(async()=>{await cargar();
-  verNucleo();verMemoria();verScan();verChainlist();verEquipo();
-  verSalud('/salud-wallet','wallet','EN LÍNEA',`v${I.versionBackend||'—'} · 435 usuarios`,.4);
-  verSalud('/salud-genesis','gid','EN LÍNEA','KYC · SSO · puente',.3);
-})();
-setInterval(verNucleo,10000);setInterval(verMemoria,30000);setInterval(verScan,20000);
-setInterval(()=>{verSalud('/salud-wallet','wallet','EN LÍNEA',`v${I.versionBackend||'—'} · 435 usuarios`,.4);
-  verSalud('/salud-genesis','gid','EN LÍNEA','KYC · SSO · puente',.3);},60000);
-setInterval(verChainlist,300000);setInterval(verEquipo,120000);
+async function todo(){
+  await cargar();
+  verNucleo();verMemoria();verScan();verChainlist();verBots();
+  verSalud('/salud-wallet','wallet','ONLINE','v'+(I.versionBackend||'—')+' · 435 users');
+  verSalud('/salud-genesis','gid','ONLINE','KYC · SSO · bridge');
+}
+$('#idioma').value=IDI; traducirUI();
+medir(); requestAnimationFrame(cuadro); railSistemas(); railAgentes();
+todo();
+setInterval(verNucleo,10000); setInterval(verMemoria,30000); setInterval(verScan,20000);
+setInterval(verBots,120000); setInterval(cargar,120000); setInterval(verChainlist,300000);
+setInterval(()=>{
+  verSalud('/salud-wallet','wallet','ONLINE','v'+(I.versionBackend||'—')+' · 435 users');
+  verSalud('/salud-genesis','gid','ONLINE','KYC · SSO · bridge');},60000);
 </script>
 </body>
 </html>

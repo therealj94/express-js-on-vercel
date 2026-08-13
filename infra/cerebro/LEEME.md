@@ -90,3 +90,67 @@ dan **401 sin clave y 200 con ella**.
 
 Copia del archivo anterior en `/etc/caddy/Caddyfile.antes-de-la-clave`. Para
 quitarla: borrar el bloque `basic_auth` y `systemctl reload caddy`.
+
+## JARVIS · la reescritura del 13-ago-2026
+
+El dibujo anterior eran regiones sueltas y por eso se veía desordenado: no
+había nada que las hiciera leerse como **un solo órgano**. Ahora hay tres
+capas, y las tres hacen falta:
+
+- **la corteza** — 560 neuronas sobre una superficie de dos lóbulos con su
+  fisura y sus surcos, cosidas a sus tres vecinas más cercanas. Sin este
+  cosido la corteza es confeti; con él, es una piel.
+- **los racimos** — cada sistema es un núcleo con sus neuronas alrededor. El
+  número de neuronas dice cuánto hace ese sistema: no es decorativo.
+- **los axones** — dependencias reales entre sistemas, no líneas bonitas.
+
+### La firma: los impulsos
+
+Cuando JARVIS nombra un sistema, **sale un impulso de ese racimo** y viaja por
+sus axones hasta el centro. Así se ve de qué está hablando sin leer nada. Un
+bloque nuevo en la cadena también dispara uno, y en reposo hay tráfico tenue
+cada 900 ms para que respire sin gritar.
+
+### La voz
+
+- **JARVIS habla inglés británico**, más despacio y más grave que los demás
+  (`rate .93`, `pitch .86`). Se busca Daniel, Arthur, Oliver, Ryan o cualquier
+  voz `en-GB`, y se prefieren las neuronales.
+- **Cada agente tiene voz propia**, tomada del resto de la lista, para que se
+  sepa quién habla sin mirar. Cuando un agente habla, su fila del raíl se
+  ilumina.
+- **Español entero** detrás del selector: no es una traducción a medias, son
+  dos guiones completos.
+- `limpiar()` sigue arreglando lo que la voz leería mal: `gwei` («güey» en
+  español, «gway» en inglés) pasa a *gigawei*, los separadores de millares se
+  quitan, y las direcciones largas se leen «una dirección».
+
+### Hablarle
+
+El botón **SPEAK** escucha una orden. Preguntar es libre —estado, cadenas,
+dinero, seguridad, coste, equipo, Chainlist, bots, qué falta—; **actuar no**.
+
+## El canal de órdenes · lo que puede y lo que no
+
+`ordenes.py` escucha **sólo en 127.0.0.1** y sale a internet por Caddy, dentro
+del sitio del cerebro, así que **hereda su contraseña**. Su lista es cerrada y
+está escrita como constantes:
+
+| | |
+|---|---|
+| `GET /ordenes/bots` | leer la última carrera de los bots |
+| `POST /ordenes/bots/ahora` | lanzar una carrera de los bots |
+
+Y nada más. **No hay ninguna ruta que acepte un nombre de comando, un
+argumento ni una ruta de archivo**, no se construye ningún comando con texto
+de fuera, y no se usa el shell. Cualquier otra ruta devuelve 404 —comprobado.
+
+Desde aquí **no se despliega, no se mueven fondos, no se reinicia un nodo y no
+se cambia configuración**. Una consola remota sobre producción colgada de una
+página web sería el peor agujero del sistema, y el primero que marcaría el
+Cerrajero. Lo único que se dispara es una prueba en la red de **pruebas**, que
+ya corre sola cada tres horas: adelantarla no provoca nada que no fuera a
+pasar igualmente.
+
+Si algún día hace falta otra acción, se añade **una constante más, a mano**
+—nunca un parámetro.
