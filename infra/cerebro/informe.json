@@ -23,7 +23,8 @@
     "El equipo entero trabajo por primera vez: seis agentes con mediciones reales. Dos en verde, dos con avisos y dos con fallas",
     "Hallazgo mas grave del dia: si se encendiera la comision, cada cobro iria a una direccion que NO es la billetera unica, con nonce cero, que nunca ha firmado nada. Hoy no cobra nada porque la comision ni siquiera esta configurada, y eso es lo que nos salva",
     "Cerrado el peor pendiente de seguridad que llevaba semanas: la clave que firma todas las sesiones ya mide sesenta y cuatro caracteres, no siete",
-    "El tablero del cerebro ya pide contrasena. Estaba publicando a cualquiera los hallazgos de los agentes, que son un mapa de por donde entrar. El erre pe ce publico de pruebas sigue abierto a proposito, porque MetaMask no sabe mandar credenciales"
+    "El tablero del cerebro ya pide contrasena. Estaba publicando a cualquiera los hallazgos de los agentes, que son un mapa de por donde entrar. El erre pe ce publico de pruebas sigue abierto a proposito, porque MetaMask no sabe mandar credenciales",
+    "Jose subio la correccion del simbolo a la solicitud de Chainlist. Comprobadas otra vez las cuatro pruebas del repositorio real contra el archivo que esta en la solicitud, no contra nuestra copia: las cuatro en verde"
   ],
   "pendiente": [
     "ANTES DE ENCENDER LA COMISION: decidir la direccion de tesoreria. La que hay puesta no es la billetera unica y nadie ha demostrado tener su llave",
@@ -34,9 +35,9 @@
     "Averiguar quien encargo las doscientas trece imagenes de reconocimiento de los dias cinco, seis y ocho de agosto: no aparece en ninguna documentacion",
     "Encender GuardDuty en la segunda region del este, donde viven dos nodos",
     "Poner fecha a la retirada formal de la cadena vieja: cada semana de retraso son noventa y tres dolares con cincuenta",
-    "Subir el simbolo corregido a la solicitud de Chainlist: hace falta permiso de GitHub, o editar esa linea desde la pagina",
     "Aprobar las siete tareas programadas para que el equipo revise solo, sin que yo los llame",
     "Un proveedor propio de la red Polygon: los dos que funcionan son publicos y gratuitos",
-    "El corte a la cadena nueva, contigo delante"
+    "El corte a la cadena nueva, contigo delante",
+    "Chainlist: ya solo queda esperar el turno. Las dos solicitudes estan en verde y hay peticiones de julio todavia en la misma cola"
   ]
 }
