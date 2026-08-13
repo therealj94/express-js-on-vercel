@@ -4,7 +4,7 @@ El núcleo de control de Orden Global: un cerebro de partículas donde **cada
 región es un sistema real con sus datos en vivo**, y una voz que da el parte
 del día. Nada de lo que se ve es decorado.
 
-## Las ocho regiones
+## Las doce regiones · el ecosistema entero
 
 | Región | Qué es | De dónde salen sus datos |
 |---|---|---|
@@ -16,6 +16,13 @@ del día. Nada de lo que se ve es decorado.
 | CHAINLIST | los PR #8593/#8594 | api.github.com (desde el navegador) |
 | GENESIS ID | KYC/SSO | `/salud-genesis` → Render |
 | TESORO | precio y comisión | `informe.json` |
+| MYTOKENPAY | API de cobros y punto de venta | ficha fija |
+| TARJETA | Visa virtual · CryptoMate | ficha fija |
+| POLYGON | la red de salida · USDT | ficha fija |
+| INFRAESTRUCTURA | las 10 máquinas de AWS | ficha fija |
+
+**Toca cualquier región** —en el cerebro o en la lista— y se abre su ficha:
+qué es, sus datos en vivo, y qué hay dentro.
 
 Cuando llega un bloque nuevo, la región del NÚCLEO **dispara**: los impulsos
 que viajan por los axones son actividad real, no animación al azar. Una región
@@ -23,11 +30,25 @@ en falla se pone roja y dispara en alarma.
 
 ## La voz
 
-Botón **INFORME DEL DÍA**: la voz del propio dispositivo (Web Speech, no sale
-nada a ningún servicio) lee el parte: estado de las cadenas con los números en
-vivo, lo hecho hoy, lo pendiente, y las fallas si las hay. **TEXTO** enseña lo
-mismo escrito. La voz necesita un toque porque los navegadores no dejan hablar
-solos.
+Botón **INFORME**: la voz del propio dispositivo (Web Speech, no sale nada a
+ningún servicio) lee el parte **en orden**: saludo, estado general, las
+cadenas, los productos, el dinero, lo hecho hoy y lo que falta.
+
+Para que suene a asistente y no a robot:
+
+- **Se elige la voz más natural que tenga el aparato** — primero las neurales
+  de Microsoft y las de Google, después Mónica y Paulina de Apple — y hay un
+  **selector** para cambiarla. La elección se recuerda.
+- **Cada frase va suelta, con una pausa detrás.** Leer un párrafo de corrido
+  es lo que hace que suene a máquina.
+- Tono natural: `rate 0.97`, `pitch 1.0`. La versión anterior iba a `pitch
+  0.85` y sonaba cavernosa.
+- **`limpiar()` quita lo que se leería mal**: símbolos, direcciones, hashes,
+  siglas. Un ejemplo real que había que arreglar: `gwei` se leía **«güey»** —
+  ahora dice «gigawei». Los separadores de miles se quitan, porque «15,400» se
+  leería «quince coma cuatrocientos».
+
+**TEXTO** enseña el mismo parte escrito.
 
 ## Dónde vive
 
