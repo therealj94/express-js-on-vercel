@@ -6,23 +6,26 @@
   "comisionEncendida": false,
   "genesisListo": true,
   "hechoHoy": [
-    "Génesis definitivo de la 5550: 331 cuentas · 1.375 ranuras · emisión de un billón exacta, juzgado contra la cadena vieja con cero diferencias",
-    "Billetera única confirmada y respaldo del génesis · estado · ranuras en S3",
-    "Comisión fijada en 0,001 ORIGEN por transacción, implementada y desplegada, apagada hasta el arranque de la 5550",
-    "Precio del ORIGEN de vuelta en la fórmula del oro: el gramo dividido entre 55, dos coma cincuenta y siete dólares",
-    "Shanghai activado en la 5534 en caliente, sin perder un bloque: PUSH0 funciona en los seis nodos",
-    "Suelo de gas de 93 gwei puesto en los seis nodos, con rechazo real de transacciones a 0 gwei",
-    "Balanceador arreglado de raíz: chequeo /readiness, dos nodos RPC sincronizados",
-    "Las dos solicitudes a Chainlist abiertas: #8593 la testnet y #8594 la reserva de la 5550",
-    "Backend respaldado entero en el repositorio y avería de Polygon arreglada con proveedores de reserva"
+    "Génesis definitivo de la 5550: 331 cuentas, 1.375 ranuras, emisión de un billón exacta, juzgado contra la cadena vieja con cero diferencias",
+    "Billetera única confirmada, y el génesis, el estado y las ranuras respaldados fuera del servidor",
+    "Precio del ORIGEN de vuelta en la fórmula del oro: el gramo dividido entre cincuenta y cinco",
+    "Comisión fijada en cero punto cero cero uno ORIGEN por transacción, desplegada y todavía apagada",
+    "Shanghai activado en la cadena de pruebas en caliente, sin perder un bloque",
+    "Suelo de gas de noventa y tres gigawei en los seis nodos, con rechazo real de transacciones gratis",
+    "Balanceador arreglado de raíz y dos nodos RPC sincronizados",
+    "Las dos solicitudes a Chainlist abiertas y comprobadas con las herramientas del propio repositorio",
+    "Backend respaldado entero y la avería de Polygon arreglada con proveedores de reserva"
   ],
   "pendiente": [
-    "Decidir en qué máquinas corre la 5550: las cuatro de hoy llevan la testnet",
-    "Crear rpc5550.ordenglobal-rpc.com con TLS cuando existan los nodos",
-    "El corte: repuntar la billetera a la 5550, con José delante",
-    "Poner ordenscan a indexar la 5550 tras el corte",
-    "Encender la comisión con OG_COMISION_ORIGEN=0.001 al arrancar la 5550",
-    "Cuenta de organización en Play Console y número D-U-N-S",
-    "Rotar el secreto del cliente web de Google y borrar las llaves AKIA cuando José lo autorice"
+    "Lo único que bloquea el corte: decidir en qué máquinas corre la 5550. Las cuatro de hoy llevan la red de pruebas",
+    "Borrar las dos llaves de Amazon en el panel de identidades, revocar el token de GitHub y rotar el secreto de Google",
+    "Cuenta de organización en Play Console y número de identificación de empresa para las tiendas",
+    "Crear el nombre de dominio del RPC de la 5550 con certificado, cuando existan los nodos",
+    "El corte: repuntar la billetera a la cadena nueva, contigo delante",
+    "Poner el explorador a indexar la 5550 y encender la comisión al arrancar",
+    "Retirar las seis máquinas de la cadena vieja: son cuatrocientos catorce de los quinientos veinticuatro dólares al mes",
+    "Enseñar la comisión en la pantalla de envío de la aplicación, que el backend ya la devuelve",
+    "Dos decisiones de Junta: cómo se presenta el respaldo en oro, y si el suelo de gas debe ser real, que obligaría a quemar comisión",
+    "Chainlist sólo se puede esperar: hay solicitudes del diez de julio todavía en la misma cola"
   ]
 }
