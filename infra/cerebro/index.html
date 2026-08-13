@@ -333,18 +333,18 @@ function piel(){
 const NEU=[];           // todas las neuronas: {p:[x,y,z], sis, nucleo}
 const HILOS=[];         // enlaces finos: [i,j,alfa]
 const CORTEZA=[];
-for(let i=0;i<560;i++){CORTEZA.push(NEU.length);NEU.push({p:piel(),sis:null,nucleo:false});}
+for(let i=0;i<950;i++){CORTEZA.push(NEU.length);NEU.push({p:piel(),sis:null,nucleo:false});}
 
 /* Cada racimo: un núcleo hacia dentro y sus neuronas alrededor. */
 const NUCLEO={};
 for(const s of SIS){
   const d=Math.hypot(...s.a)||1;
-  const c=s.a.map(x=>x/d*0.62);
+  const c=s.a.map(x=>x/d*(0.74+((s.n%3)*0.06)));
   NUCLEO[s.id]=NEU.length;
   NEU.push({p:c,sis:s.id,nucleo:true});
   for(let i=0;i<s.n;i++){
     const o=[gauss(),gauss(),gauss()];const m=Math.hypot(...o)||1;
-    const r=0.11+az()*0.15;
+    const r=0.13+az()*0.17;
     NEU.push({p:c.map((x,k)=>x+o[k]/m*r),sis:s.id,nucleo:false});
     HILOS.push([NUCLEO[s.id],NEU.length-1,0.5]);
   }
@@ -353,7 +353,7 @@ for(const s of SIS){
    corteza es confeti; con esto es una superficie. */
 for(const i of CORTEZA){
   const d=CORTEZA.map(j=>[j===i?9:dist(NEU[i].p,NEU[j].p),j]).sort((a,b)=>a[0]-b[0]);
-  for(let k=0;k<3;k++)if(d[k][0]<0.42)HILOS.push([i,d[k][1],0.14]);
+  for(let k=0;k<3;k++)if(d[k][0]<0.40)HILOS.push([i,d[k][1],0.34]);
 }
 function dist(a,b){return Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);}
 /* Y cada racimo se ancla a la corteza que tiene encima. */
@@ -432,7 +432,7 @@ function cuadro(ts){
     const A=pr[i],B=pr[j];
     if(A[3]>1.5&&B[3]>1.5)continue;
     const p=Math.max(0,Math.min(1,(A[2]+B[2])/2-.55));
-    cx.strokeStyle='rgba(90,217,255,'+(al*p*0.5).toFixed(3)+')';
+    cx.strokeStyle='rgba(90,217,255,'+(al*p*1.15).toFixed(3)+')';
     cx.lineWidth=.5;
     cx.beginPath();cx.moveTo(A[0],A[1]);cx.lineTo(B[0],B[1]);cx.stroke();
   }
@@ -459,8 +459,8 @@ function cuadro(ts){
       if(n.nucleo){cx.shadowColor=e.mal?'#ff4a3d':s.col;cx.shadowBlur=16*e.fuego+7;}
       cx.beginPath();cx.arc(P[0],P[1],r,0,6.283);cx.fill();cx.shadowBlur=0;
     }else{
-      cx.fillStyle='rgba(120,200,240,'+(0.05+P[2]*0.09).toFixed(3)+')';
-      cx.beginPath();cx.arc(P[0],P[1],0.9*P[2],0,6.283);cx.fill();
+      cx.fillStyle='rgba(140,215,250,'+(0.10+P[2]*0.20).toFixed(3)+')';
+      cx.beginPath();cx.arc(P[0],P[1],1.05*P[2],0,6.283);cx.fill();
     }
   }
 
@@ -670,7 +670,20 @@ const JARVIS=[/Daniel/i,/Arthur/i,/Oliver/i,/George/i,/Ryan/i,/Brian/i,
 const BUENAS_EN=[/Natural/i,/Neural/i,/Online/i,/Google/i,/Alex/i,/Samantha/i];
 const BUENAS_ES=[/Natural/i,/Neural/i,/Online/i,/Google/i,/Mónica|Monica/i,/Paulina/i,
   /Jorge/i,/Juan/i,/Helena/i,/Laura/i,/Sabina/i];
-let voces=[],vozJarvis=null,vozAgente={};
+/* Las voces se guardan POR NOMBRE, no por objeto. En iOS un objeto de voz
+   obtenido antes de un 'voiceschanged' se queda rancio: asignarlo enmudece la
+   frase sin dar ningún error. Se vuelve a buscar por nombre al hablar. */
+let voces=[],nombreJarvis=null,nombreAgente={};
+const vozPorNombre=n=>n?(speechSynthesis.getVoices().find(v=>v.name===n)||null):null;
+
+/* iOS exige que la PRIMERA llamada a speak() nazca dentro de un toque. No se
+   desbloquea con una frase muda seguida de un cancel --eso vuelve a bloquearlo
+   en iPad--: se desbloquea hablando de verdad, sin cancelar nada antes. */
+let desbloqueada=false;
+
+/* Safari y Chrome suspenden el sintetizador solos a los pocos segundos y la
+   cola se queda a medias, en silencio. Esto lo despierta. */
+setInterval(()=>{if(hablando&&speechSynthesis.paused)speechSynthesis.resume();},2500);
 function puntua(v){
   let p=0;
   if(IDI==='en'){
@@ -697,17 +710,29 @@ function cargarVoces(){
     o.textContent=v.name.replace(/Microsoft |Google /,'').slice(0,24);sel.appendChild(o);});
   const g=localStorage.getItem('vozCerebro-'+IDI);
   const idx=g!==null&&voces[g]?+g:0;
-  sel.value=idx; vozJarvis=voces[idx]||null;
+  sel.value=idx; nombreJarvis=voces[idx]?voces[idx].name:null;
   /* A cada agente, una voz distinta de las siguientes de la lista. */
-  vozAgente={};
-  AGENTES.forEach((a,k)=>{vozAgente[a.id]=voces[(k+1)%Math.max(1,voces.length)]||vozJarvis;});
+  nombreAgente={};
+  AGENTES.forEach((a,k)=>{const v=voces[(k+1)%Math.max(1,voces.length)];
+    nombreAgente[a.id]=v?v.name:nombreJarvis;});
+  diagnostico();
+}
+/* Si el aparato no tiene ni una voz, hay que DECIRLO. El fallo anterior fue
+   justo este: silencio absoluto y ninguna pista de por qué. */
+function diagnostico(){
+  const n=speechSynthesis.getVoices().length;
+  $('#oido').textContent = n===0
+    ? (IDI==='en'?'No speech voices found on this device.'
+                 :'Este aparato no tiene ninguna voz instalada.')
+    : '';
 }
 speechSynthesis.addEventListener('voiceschanged',cargarVoces);
 cargarVoces(); setTimeout(cargarVoces,400);
 $('#voces').addEventListener('change',e=>{
-  vozJarvis=voces[e.target.value]||null;
+  nombreJarvis=voces[e.target.value]?voces[e.target.value].name:null;
   localStorage.setItem('vozCerebro-'+IDI,e.target.value);
-  decir([{q:'JARVIS',x:IDI==='en'?'Voice set.':'Voz cambiada.'}]);
+  decir([{q:'JARVIS',x:IDI==='en'
+    ?'Voice set. This is how I will sound.':'Voz cambiada. Así es como voy a sonar.'}]);
 });
 $('#idioma').addEventListener('change',e=>{
   IDI=e.target.value; localStorage.setItem('idiomaCerebro',IDI);
@@ -726,11 +751,26 @@ function limpiar(x){
     .replace(/\s+/g,' ').trim();
 }
 let cola=[],hablando=false,quienHabla=null;
+
+/* AQUÍ ESTABA EL FALLO del 13-ago: `decir` llamaba a `parar`, que hace
+   `speechSynthesis.cancel()`, y hablaba en el MISMO tick. Safari --y iPad
+   sobre todo-- se queda en estado cancelado y se traga la frase: silencio
+   absoluto, sin un solo error en la consola. Cancelar y hablar tienen que ir
+   en ticks distintos, y si no había nada sonando NO se cancela nada. */
 function decir(lineas){
-  parar();
-  cola=lineas.filter(l=>l&&l.x);
-  hablando=true; $('#hablar').classList.add('on'); $('#lblHablar').textContent=t('stop');
-  siguiente();
+  const arrancar=()=>{
+    cola=lineas.filter(l=>l&&l.x);
+    if(!cola.length)return;
+    hablando=true; $('#hablar').classList.add('on'); $('#lblHablar').textContent=t('stop');
+    siguiente();
+  };
+  if(!desbloqueada){         // la primera vez: directo, dentro del toque
+    desbloqueada=true; arrancar(); return;
+  }
+  if(hablando||speechSynthesis.speaking||speechSynthesis.pending){
+    hablando=false; cola=[]; speechSynthesis.cancel();
+    setTimeout(arrancar,200);
+  }else arrancar();
 }
 function siguiente(){
   if(!cola.length){parar();return;}
@@ -738,15 +778,51 @@ function siguiente(){
   marcar(l.q);
   $('#sub').innerHTML='<span class="quien">'+(l.q||'JARVIS')+'</span>'+l.x;
   if(l.foco)disparar(l.foco,true);
+
   const u=new SpeechSynthesisUtterance(limpiar(l.x));
-  const v=l.ag?vozAgente[l.ag]:vozJarvis;
-  if(v)u.voice=v;
-  u.lang=(v&&v.lang)||(IDI==='en'?'en-GB':'es-MX');
+  u.lang=IDI==='en'?'en-GB':'es-MX';
+  /* ESTE try NO es por si acaso. Asignar `voice` LANZA una excepción si el
+     objeto no es una SpeechSynthesisVoice válida --y una voz obtenida antes
+     de un 'voiceschanged' deja de serlo--. Sin este try la excepción sale
+     ANTES de speak(), y el asistente se queda mudo del todo sin decir por
+     qué: eso fue exactamente el fallo del 13-ago. Antes que quedarse callado,
+     se habla con la voz del sistema. */
+  try{
+    const v=vozPorNombre(l.ag?nombreAgente[l.ag]:nombreJarvis);
+    if(v){u.voice=v; if(v.lang)u.lang=v.lang;}
+  }catch(e){
+    $('#oido').textContent=(IDI==='en'?'Falling back to the system voice.'
+                                      :'Uso la voz del sistema.');
+  }
   u.rate=l.ag?0.99:0.93;          // JARVIS habla más despacio: es el que manda
   u.pitch=l.ag?1.0:0.86;
-  u.onend=()=>setTimeout(()=>{if(hablando)siguiente();},l.p||320);
-  u.onerror=()=>setTimeout(()=>{if(hablando)siguiente();},220);
-  speechSynthesis.speak(u);
+  u.volume=1;
+
+  let arranco=false, pasado=false;
+  const seguir=(ms)=>{if(pasado)return;pasado=true;
+    setTimeout(()=>{if(hablando)siguiente();},ms);};
+  u.onstart=()=>{arranco=true;};
+  u.onend=()=>seguir(l.p||320);
+  u.onerror=ev=>{
+    /* Un fallo mudo es peor que un fallo ruidoso: que se vea. */
+    $('#oido').textContent=(IDI==='en'?'Voice error: ':'Fallo de la voz: ')+
+      ((ev&&ev.error)||'unknown');
+    seguir(220);
+  };
+  try{ speechSynthesis.speak(u); }
+  catch(e){ $('#oido').textContent=(IDI==='en'?'Voice failed: ':'La voz falló: ')+e.message;
+            seguir(220); return; }
+
+  /* Vigilante: si en dos segundos no ha empezado a sonar, no se queda la cola
+     colgada en silencio para siempre. */
+  setTimeout(()=>{
+    if(!arranco&&hablando&&!speechSynthesis.speaking){
+      $('#oido').textContent=IDI==='en'
+        ? 'The voice did not start. Try another voice in the selector.'
+        : 'La voz no arrancó. Prueba otra voz en el selector.';
+      seguir(0);
+    }
+  },2000);
 }
 function marcar(q){
   quienHabla=q;
@@ -908,10 +984,19 @@ function escuchar(){
   if(!R){$('#oido').textContent=t('noOigo');return;}
   if(oyendo){rec&&rec.stop();return;}
   parar();
-  rec=new R(); rec.lang=IDI==='en'?'en-GB':'es-MX';
+  rec=new R();
+  /* El idioma se lee del selector en el momento, no de una variable que
+     pudiera haberse quedado atrás. Aun así, Safari en iPad suele IGNORAR
+     esto y transcribir con el idioma de dictado del aparato. Por eso las
+     órdenes se reconocen en los dos idiomas a la vez (ver INTENCIONES) y la
+     respuesta sale siempre en el idioma del selector: que transcriba en
+     inglés deja de importar. */
+  const pedido=$('#idioma').value==='en'?'en-GB':'es-MX';
+  rec.lang=pedido;
   rec.interimResults=true; rec.maxAlternatives=1;
   rec.onstart=()=>{oyendo=true;$('#mic').classList.add('on');
-    $('#lblMic').textContent=t('listening');$('#oido').textContent='…';};
+    $('#lblMic').textContent=t('listening');
+    $('#oido').textContent=(IDI==='en'?'Listening · ':'Escuchando · ')+pedido;};
   rec.onresult=ev=>{
     let txt='';for(const r of ev.results)txt+=r[0].transcript;
     $('#oido').textContent='“'+txt+'”';
@@ -921,7 +1006,20 @@ function escuchar(){
   rec.onend=()=>{oyendo=false;$('#mic').classList.remove('on');$('#lblMic').textContent=t('speak');};
   rec.start();
 }
-$('#mic').addEventListener('click',escuchar);
+/* Si lo primero que tocas es el micrófono, el sintetizador todavía está
+   bloqueado. Se desbloquea con un acuse corto --que además es lo que haría
+   JARVIS-- y se empieza a escuchar en cuanto termina de decirlo. */
+$('#mic').addEventListener('click',()=>{
+  if(oyendo||desbloqueada){escuchar();return;}
+  desbloqueada=true;
+  const u=new SpeechSynthesisUtterance(IDI==='en'?'Yes, sir?':'¿Sí, José?');
+  const v=vozPorNombre(nombreJarvis); if(v)u.voice=v;
+  u.lang=(v&&v.lang)||(IDI==='en'?'en-GB':'es-MX'); u.rate=.95; u.pitch=.86;
+  $('#sub').innerHTML='<span class="quien">JARVIS</span>'+u.text;
+  u.onend=escuchar; u.onerror=escuchar;
+  try{speechSynthesis.speak(u);}catch(e){escuchar();}
+  setTimeout(()=>{if(!oyendo)escuchar();},2200);   // por si no suena, no bloquear el micro
+});
 
 async function atender(txt){
   for(const [re,acc] of ORDENES){
