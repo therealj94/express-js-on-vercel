@@ -67,3 +67,26 @@ Editar `informe.json` (aquí en el repositorio) y subirlo:
    enlace firmado, como hace el guion de despliegue).
 
 Los datos vivos (bloques, gas, raíz de estado, PRs) se actualizan solos.
+
+## La contraseña · puesta el 13-ago-2026
+
+El tablero **ya no está abierto a internet**. Lo señaló el Cerrajero en su
+primera auditoría, y tenía razón: `partes.json` publicaba a quien lo pidiera
+los hallazgos de los siete agentes —cuentas sin segundo factor, qué puertos
+escuchan, qué secretos son cortos—. Eso es un mapa de por dónde entrar.
+
+- Usuario **`jose`**. La contraseña **no está escrita en este repositorio, ni
+  en el servidor, ni en S3**: en el `Caddyfile` sólo vive su hash bcrypt. Se le
+  entregó a José directamente. Si se pierde se genera otra; la que había no se
+  puede recuperar.
+- Cubre **todo el sitio**, proxies incluidos (`/salud-wallet`, `/rpc`,
+  `/explorador/*`…): filtran lo mismo que la página.
+- **`pruebas.ordenglobal-rpc.com` sigue sin contraseña, a propósito.** Es otro
+  bloque del `Caddyfile` y es el RPC público que usa MetaMask, que no sabe
+  mandar credenciales. Comprobado tras el cambio: contesta 200.
+
+Comprobado desde fuera: `/`, `/informe.json`, `/partes.json` y `/salud-wallet`
+dan **401 sin clave y 200 con ella**.
+
+Copia del archivo anterior en `/etc/caddy/Caddyfile.antes-de-la-clave`. Para
+quitarla: borrar el bloque `basic_auth` y `systemctl reload caddy`.

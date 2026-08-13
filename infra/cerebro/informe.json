@@ -22,14 +22,14 @@
     "Con eso se resuelve lo que bloqueaba el corte: la red principal no necesita maquinas nuevas. Las cuatro que hacen falta ya existen, con Besu instalado, direcciones fijas y seis gigas de memoria libres cada una",
     "El equipo entero trabajo por primera vez: seis agentes con mediciones reales. Dos en verde, dos con avisos y dos con fallas",
     "Hallazgo mas grave del dia: si se encendiera la comision, cada cobro iria a una direccion que NO es la billetera unica, con nonce cero, que nunca ha firmado nada. Hoy no cobra nada porque la comision ni siquiera esta configurada, y eso es lo que nos salva",
-    "Cerrado el peor pendiente de seguridad que llevaba semanas: la clave que firma todas las sesiones ya mide sesenta y cuatro caracteres, no siete"
+    "Cerrado el peor pendiente de seguridad que llevaba semanas: la clave que firma todas las sesiones ya mide sesenta y cuatro caracteres, no siete",
+    "El tablero del cerebro ya pide contrasena. Estaba publicando a cualquiera los hallazgos de los agentes, que son un mapa de por donde entrar. El erre pe ce publico de pruebas sigue abierto a proposito, porque MetaMask no sabe mandar credenciales"
   ],
   "pendiente": [
     "ANTES DE ENCENDER LA COMISION: decidir la direccion de tesoreria. La que hay puesta no es la billetera unica y nadie ha demostrado tener su llave",
     "Quitar el segundo precio de dos con diez que sigue en la configuracion y que las tarjetas usan de respaldo: hoy el precio del ORIGEN esta en dos sitios a la vez",
     "Poner segundo factor a las dos cuentas con administrador total, o quitarles la contrasena de consola",
     "Autorizar el borrado de la llave permanente que el cierre del doce de agosto dejo pendiente, y la del usuario de auditoria que nadie usa",
-    "Decidir si el tablero del cerebro sigue abierto a internet sin contrasena: hoy publica los hallazgos de los agentes a quien los pida",
     "Subir por encima de treinta y dos los cuatro secretos cortos que quedan",
     "Averiguar quien encargo las doscientas trece imagenes de reconocimiento de los dias cinco, seis y ocho de agosto: no aparece en ninguna documentacion",
     "Encender GuardDuty en la segunda region del este, donde viven dos nodos",
