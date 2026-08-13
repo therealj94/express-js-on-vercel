@@ -6,133 +6,186 @@
 <title>J.A.R.V.I.S · Orden Global</title>
 <style>
 /* ══════════════════════════════════════════════════════════════════════════
-   EL CEREBRO · núcleo de control de Orden Global
-   ─────────────────────────────────────────────────────────────────────────
-   El dibujo no es decoración. Cada racimo es un sistema real, cada axón una
-   dependencia real, y cada impulso que viaja es algo que está pasando: una
-   consulta que se resolvió, un agente que habló, una falla que apareció.
-   Cuando JARVIS nombra un sistema, sale un impulso DE ESE racimo. Así se ve
-   de qué está hablando sin leer nada.
+   J.A.R.V.I.S · rediseño 14-ago
+   Tres decisiones que lo cambian todo:
+   1) JERARQUÍA: una tipografía de pantalla para identidad y frases; la mono
+      queda SOLO para números y datos. Un dock, no dos raíles gemelos.
+   2) PRESENCIA: el núcleo es un reactor que respira cuando habla, y la
+      información se materializa en tarjetas mientras la voz la nombra.
+   3) PROFUNDIDAD: niebla por distancia, bloom y paralaje. El cerebro es el
+      héroe y ocupa el centro sin muebles encima.
    ══════════════════════════════════════════════════════════════════════════ */
 :root{
-  --void:#010509; --ink:#dceaf5; --mut:#5d7d93; --faint:#26404f;
-  --arc:#5ad9ff; --arc-deep:#1a7fa8;
-  --gold:#ffb347; --red:#ff4a3d; --green:#48e39b;
-  --panel:rgba(2,9,16,.9); --edge:rgba(90,217,255,.16);
-  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Cascadia Mono",monospace;
+  --void:#020610; --ink:#e8f2fb; --mut:#6d8ba1; --faint:#31485c;
+  --arc:#56d9ff; --arc2:#2a9fd4; --gold:#ffc46b; --red:#ff5246; --green:#4fe6a4;
+  --glass:rgba(6,16,28,.72); --glass2:rgba(8,20,34,.86); --edge:rgba(86,217,255,.14);
+  --disp:"Avenir Next","SF Pro Display",-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:var(--void)}
-body{color:var(--ink);font:12px/1.5 var(--mono);-webkit-font-smoothing:antialiased;
+body{color:var(--ink);font:14px/1.5 var(--disp);-webkit-font-smoothing:antialiased;
   overscroll-behavior:none}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 canvas{position:fixed;inset:0;display:block}
 #lienzo{touch-action:none;cursor:grab}#lienzo.gira{cursor:grabbing}
 
 /* ── cabecera ───────────────────────────────────────────────────────────── */
-.hud{position:fixed;z-index:10;letter-spacing:.1em}
-#izq{top:max(12px,env(safe-area-inset-top));left:16px}
-#izq h1{font-size:13px;font-weight:800;letter-spacing:.42em}
+.hud{position:fixed;z-index:10}
+#izq{top:max(16px,env(safe-area-inset-top));left:22px}
+#izq h1{font-size:17px;font-weight:600;letter-spacing:.5em;font-family:var(--disp)}
 #izq h1 i{font-style:normal;color:var(--arc)}
-#izq .s{font-size:7.5px;color:var(--mut);letter-spacing:.28em;margin-top:3px}
-#der{top:max(12px,env(safe-area-inset-top));right:16px;text-align:right}
-#reloj{font-size:16px;font-weight:300;font-variant-numeric:tabular-nums}
-#fecha{font-size:7.5px;color:var(--mut);letter-spacing:.2em;text-transform:uppercase}
+#izq .s{font-size:9px;color:var(--mut);letter-spacing:.34em;margin-top:4px;font-weight:500}
+#der{top:max(16px,env(safe-area-inset-top));right:22px;text-align:right}
+#reloj{font:300 22px/1.1 var(--disp);font-variant-numeric:tabular-nums;letter-spacing:.06em}
+#fecha{font-size:9px;color:var(--mut);letter-spacing:.22em;text-transform:uppercase;margin-top:2px}
+#act{font-size:8.5px;color:var(--faint);letter-spacing:.16em;margin-top:3px;text-transform:uppercase}
 
-#pulso{position:fixed;z-index:10;top:max(15px,env(safe-area-inset-top));left:50%;
-  transform:translateX(-50%);display:flex;align-items:center;gap:9px;
-  border:1px solid var(--edge);background:var(--panel);backdrop-filter:blur(10px);
-  padding:5px 15px;font-size:9px;letter-spacing:.22em;font-weight:700;white-space:nowrap}
-#pulso .p{width:6px;height:6px;border-radius:50%;background:var(--green);
-  box-shadow:0 0 9px var(--green);animation:late 1.5s steps(2) infinite}
-@keyframes late{50%{opacity:.3}}
-#pulso .c{color:var(--mut);font-weight:400}
+/* identidad: quién entró */
+#yo{position:fixed;z-index:10;top:max(16px,env(safe-area-inset-top));left:50%;
+  transform:translateX(-50%);display:flex;align-items:center;gap:10px;
+  background:var(--glass);border:1px solid var(--edge);border-radius:999px;
+  padding:6px 16px 6px 7px;backdrop-filter:blur(14px)}
+#yo .disco{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--arc2),var(--arc));color:#02131f;
+  font:700 12px var(--disp)}
+#yo .qn{font-size:11px;font-weight:600;letter-spacing:.14em}
+#yo .qs{display:block;font-size:8px;color:var(--mut);letter-spacing:.2em}
+#yo .p{width:7px;height:7px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 10px var(--green);animation:late 1.6s steps(2) infinite;margin-left:4px}
+@keyframes late{50%{opacity:.35}}
+#yo.mal .p{background:var(--red);box-shadow:0 0 10px var(--red)}
 
-/* ── raíles ─────────────────────────────────────────────────────────────── */
-.rail{position:fixed;z-index:10;top:50%;transform:translateY(-50%);width:224px;
-  max-height:74vh;overflow-y:auto;border:1px solid var(--edge);
-  background:var(--panel);backdrop-filter:blur(11px);scrollbar-width:none}
-.rail::-webkit-scrollbar{display:none}
-#agentes{left:14px}#sistemas{right:14px}
-.rail h3{font-size:7.5px;letter-spacing:.3em;color:var(--mut);padding:9px 12px 6px;
-  border-bottom:1px solid var(--edge);position:sticky;top:0;background:var(--panel)}
-.fila{display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;
-  border-bottom:1px solid rgba(90,217,255,.05)}
-.fila:hover,.fila:focus-visible{background:rgba(90,217,255,.08);outline:none}
-.fila .cn{width:6px;height:6px;flex:none;transform:rotate(45deg)}
-.fila .nom{font-size:9px;letter-spacing:.09em;font-weight:700}
-.fila .est{display:block;font-size:7.5px;letter-spacing:.1em;color:var(--mut)}
-.fila .met{font-size:8px;color:var(--mut);margin-left:auto;text-align:right;
-  max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  font-variant-numeric:tabular-nums}
+/* ── el dock (derecha): equipo + sistemas, con jerarquía ────────────────── */
+#dock{position:fixed;z-index:10;right:16px;top:50%;transform:translateY(-50%);
+  width:250px;max-height:82vh;overflow-y:auto;border-radius:14px;
+  background:var(--glass);border:1px solid var(--edge);backdrop-filter:blur(16px);
+  scrollbar-width:none;padding-bottom:6px}
+#dock::-webkit-scrollbar{display:none}
+#dock h3{font:600 9px var(--disp);letter-spacing:.3em;color:var(--mut);
+  padding:12px 14px 7px;position:sticky;top:0;background:var(--glass2);z-index:2}
+.fila{display:flex;align-items:center;gap:9px;padding:6px 14px;cursor:pointer;
+  transition:background .15s}
+.fila:hover,.fila:focus-visible{background:rgba(86,217,255,.07);outline:none}
+.fila .cn{width:7px;height:7px;flex:none;border-radius:50%}
+.fila .nom{font:600 10.5px var(--disp);letter-spacing:.08em}
+.fila .est{display:block;font:500 8px var(--disp);letter-spacing:.14em;color:var(--mut);
+  text-transform:uppercase}
+.fila .met{font:10px var(--mono);color:var(--mut);margin-left:auto;text-align:right;
+  max-width:86px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fila.mal .nom,.fila.mal .est{color:var(--red)}
 .fila.avi .nom{color:var(--gold)}
-.fila.habla{background:rgba(90,217,255,.14);box-shadow:inset 2px 0 0 var(--arc)}
+.fila.habla{background:rgba(86,217,255,.12);box-shadow:inset 2px 0 0 var(--arc)}
 
-/* ── consola ────────────────────────────────────────────────────────────── */
+/* ── tarjetas holográficas: lo que aparece mientras habla ───────────────── */
+#tarjetas{position:fixed;z-index:9;left:22px;bottom:170px;display:flex;
+  flex-direction:column;gap:10px;width:min(290px,42vw);pointer-events:none}
+.tarj{background:var(--glass2);border:1px solid var(--edge);border-radius:12px;
+  padding:12px 14px;backdrop-filter:blur(16px);opacity:0;transform:translateY(14px);
+  transition:opacity .45s,transform .45s;border-left:3px solid var(--arc);
+  box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.tarj.viva{opacity:1;transform:none}
+.tarj .cab{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.tarj img{width:20px;height:20px;border-radius:5px;object-fit:cover}
+.tarj .tn{font:600 12px var(--disp);letter-spacing:.1em}
+.tarj .te{margin-left:auto;font:600 8px var(--disp);letter-spacing:.16em;color:var(--mut);
+  text-transform:uppercase}
+.tarj .kv{display:flex;justify-content:space-between;font-size:11px;padding:2.5px 0;
+  border-top:1px solid rgba(86,217,255,.07)}
+.tarj .kv b{font-weight:500;color:var(--mut);font-family:var(--disp)}
+.tarj .kv span{font-family:var(--mono);font-size:10.5px}
+
+/* ── la consola del asistente ───────────────────────────────────────────── */
 #consola{position:fixed;z-index:10;left:50%;transform:translateX(-50%);
-  bottom:max(14px,env(safe-area-inset-bottom));display:flex;flex-direction:column;
-  align-items:center;gap:8px;width:min(720px,92vw)}
-#sub{text-align:center;font-size:12px;color:var(--arc);min-height:38px;line-height:1.55;
-  text-shadow:0 0 18px rgba(90,217,255,.4)}
-#sub .quien{color:var(--mut);font-size:9px;letter-spacing:.2em;display:block;margin-bottom:3px}
-#oido{text-align:center;font-size:10.5px;color:var(--gold);min-height:16px;letter-spacing:.04em}
-#teclas{display:flex;gap:7px;flex-wrap:wrap;justify-content:center}
-.tecla{display:flex;align-items:center;gap:7px;border:1px solid var(--edge);
-  background:var(--panel);backdrop-filter:blur(10px);padding:9px 15px;
-  font-size:9.5px;letter-spacing:.18em;font-weight:700}
-.tecla:active{transform:scale(.97)}
+  bottom:max(16px,env(safe-area-inset-bottom));display:flex;flex-direction:column;
+  align-items:center;gap:10px;width:min(760px,94vw)}
+#sub{text-align:center;font:400 15px/1.6 var(--disp);min-height:46px;
+  color:var(--ink);text-shadow:0 2px 24px rgba(86,217,255,.25);max-width:640px}
+#sub .quien{display:block;font:600 9px var(--disp);letter-spacing:.3em;color:var(--arc);
+  margin-bottom:4px;text-transform:uppercase}
+#oido{text-align:center;font:italic 12px var(--disp);color:var(--gold);min-height:16px}
+#pistas{font:11px var(--disp);color:var(--mut);min-height:16px;text-align:center;
+  transition:opacity .5s;letter-spacing:.03em}
+#teclas{display:flex;gap:10px;align-items:center;justify-content:center}
+.tecla{display:flex;align-items:center;gap:8px;border-radius:999px;
+  background:var(--glass);border:1px solid var(--edge);backdrop-filter:blur(14px);
+  padding:11px 20px;font:600 10px var(--disp);letter-spacing:.2em;transition:all .2s}
+.tecla:hover{border-color:rgba(86,217,255,.4)}
+.tecla:active{transform:scale(.96)}
 .tecla:focus-visible{outline:1px solid var(--arc);outline-offset:2px}
-#hablar{border-color:rgba(90,217,255,.5);color:var(--arc);box-shadow:0 0 24px rgba(90,217,255,.12)}
+#mic{width:64px;height:64px;border-radius:50%;padding:0;justify-content:center;
+  font-size:22px;border-color:rgba(86,217,255,.45);color:var(--arc);
+  box-shadow:0 0 34px rgba(86,217,255,.16),inset 0 0 18px rgba(86,217,255,.06)}
+#mic.on{border-color:var(--gold);color:var(--gold);
+  box-shadow:0 0 40px rgba(255,196,107,.3);animation:resp 1.6s ease-in-out infinite}
+@keyframes resp{50%{transform:scale(1.06)}}
 #hablar.on{border-color:var(--red);color:var(--red)}
-#mic.on{border-color:var(--gold);color:var(--gold);box-shadow:0 0 24px rgba(255,179,71,.18)}
 #onda{display:inline-flex;gap:2px;align-items:center;height:11px}
-#onda i{width:2px;background:currentColor;height:3px}
+#onda i{width:2px;background:currentColor;height:3px;border-radius:1px}
 .on #onda i{animation:onda .6s ease-in-out infinite}
 .on #onda i:nth-child(2){animation-delay:.09s}.on #onda i:nth-child(3){animation-delay:.18s}
 .on #onda i:nth-child(4){animation-delay:.27s}.on #onda i:nth-child(5){animation-delay:.36s}
 @keyframes onda{50%{height:11px}}
-select{border:1px solid var(--edge);background:rgba(2,9,16,.96);color:var(--ink);
-  font:inherit;font-size:9px;padding:8px 9px;max-width:150px}
 
-/* ── panel ──────────────────────────────────────────────────────────────── */
+/* ajustes: voz, velocidad e idioma, fuera del medio */
+#ajustes{position:fixed;z-index:15;right:16px;bottom:max(16px,env(safe-area-inset-bottom));
+  display:none;flex-direction:column;gap:12px;background:var(--glass2);
+  border:1px solid var(--edge);border-radius:14px;padding:16px;width:240px;
+  backdrop-filter:blur(18px)}
+#ajustes.abre{display:flex}
+#ajustes label{font:600 8.5px var(--disp);letter-spacing:.24em;color:var(--mut)}
+select{border:1px solid var(--edge);border-radius:8px;background:rgba(4,12,22,.9);
+  color:var(--ink);font:12px var(--disp);padding:9px 10px;width:100%}
+.vels{display:flex;gap:6px}
+.vels button{flex:1;border:1px solid var(--edge);border-radius:8px;padding:8px 0;
+  font:600 10px var(--disp);letter-spacing:.1em;color:var(--mut)}
+.vels button.on{color:var(--arc);border-color:rgba(86,217,255,.5);
+  background:rgba(86,217,255,.08)}
+
+/* ── panel de detalle ───────────────────────────────────────────────────── */
 #det{position:fixed;z-index:20;inset:0;display:none;place-items:center;
-  background:rgba(1,5,9,.78);backdrop-filter:blur(8px);padding:16px}
+  background:rgba(2,6,16,.8);backdrop-filter:blur(10px);padding:18px}
 #det.abre{display:grid}
-#det article{width:min(680px,96vw);max-height:84vh;overflow-y:auto;
-  border:1px solid var(--edge);background:var(--panel);padding:22px 26px}
-#det h2{font-size:12px;letter-spacing:.3em;margin-bottom:2px}
-#det .sub2{font-size:8.5px;color:var(--mut);letter-spacing:.16em;margin-bottom:15px}
-#det h4{font-size:8.5px;letter-spacing:.24em;color:var(--gold);margin:16px 0 6px}
-#det li{font-size:11.5px;line-height:1.72;list-style:none}
-#det li::before{content:"› ";color:var(--faint)}
+#det article{width:min(700px,96vw);max-height:84vh;overflow-y:auto;border-radius:16px;
+  border:1px solid var(--edge);background:var(--glass2);padding:26px 30px;
+  box-shadow:0 30px 80px rgba(0,0,0,.6)}
+#det h2{font:600 16px var(--disp);letter-spacing:.24em;margin-bottom:3px}
+#det .sub2{font-size:10px;color:var(--mut);letter-spacing:.18em;margin-bottom:16px;
+  text-transform:uppercase}
+#det h4{font:600 9.5px var(--disp);letter-spacing:.26em;color:var(--gold);margin:18px 0 7px}
+#det li{font-size:13.5px;line-height:1.75;list-style:none;color:#c9dcec}
+#det li::before{content:"— ";color:var(--faint)}
 #det li.mala::before{content:"✕ ";color:var(--red)}#det li.mala{color:var(--red)}
 #det li.ojo::before{content:"! ";color:var(--gold)}
-#det .kv{display:flex;gap:10px;font-size:11px;padding:3px 0;
-  border-bottom:1px solid rgba(90,217,255,.07)}
-#det .kv b{font-weight:400;color:var(--mut);min-width:158px}
-#det .kv span{font-variant-numeric:tabular-nums}
-#cerrar{position:sticky;float:right;top:0;color:var(--mut);font-size:18px;padding:0 6px}
+#det .kv{display:flex;gap:12px;font-size:12.5px;padding:4px 0;
+  border-bottom:1px solid rgba(86,217,255,.06)}
+#det .kv b{font-weight:500;color:var(--mut);min-width:170px}
+#det .kv span{font-family:var(--mono);font-size:12px}
+#cerrar{position:sticky;float:right;top:0;color:var(--mut);font-size:19px;padding:0 6px}
 
+/* ── la puerta ──────────────────────────────────────────────────────────── */
 #puerta{position:fixed;z-index:40;inset:0;display:none;place-items:center;
-  background:rgba(1,5,9,.94);backdrop-filter:blur(10px)}
+  background:radial-gradient(ellipse at 50% 42%,rgba(16,52,80,.55),rgba(2,6,16,.97) 68%)}
 #puerta.abre{display:grid}
-#puerta .caja{text-align:center;padding:30px}
-#puerta h2{font-size:15px;letter-spacing:.44em;margin-bottom:10px}
-#puerta .p1{font-size:10px;color:var(--mut);letter-spacing:.16em;margin-bottom:18px}
-#puerta .p2{font-size:8.5px;color:var(--faint);margin-top:18px;line-height:1.8}
-#puerta .botones{display:flex;gap:12px;justify-content:center}
-.tecla.grande{padding:15px 30px;font-size:11px;border-color:rgba(90,217,255,.45);color:var(--arc)}
-#pistas{font-size:8.5px;color:var(--mut);letter-spacing:.06em;min-height:14px;
-  text-align:center;transition:opacity .5s}
-#act{font-size:7.5px;color:var(--faint);letter-spacing:.14em;margin-top:2px}
+#puerta .caja{text-align:center;padding:30px;max-width:520px}
+#puerta h2{font:200 34px var(--disp);letter-spacing:.55em;margin-bottom:6px;
+  text-shadow:0 0 40px rgba(86,217,255,.5)}
+#puerta .p1{font-size:11px;color:var(--mut);letter-spacing:.3em;margin-bottom:34px;
+  text-transform:uppercase}
+#puerta .botones{display:flex;gap:14px;justify-content:center}
+.tecla.grande{padding:18px 38px;font-size:12px;letter-spacing:.26em;border-radius:14px;
+  border-color:rgba(86,217,255,.35);color:var(--arc)}
+.tecla.grande:hover{background:rgba(86,217,255,.09);box-shadow:0 0 40px rgba(86,217,255,.18)}
+#puerta .p2{font-size:10px;color:var(--faint);margin-top:30px;line-height:1.9}
+
 @media (max-width:1000px){
-  .rail{top:auto;bottom:158px;transform:none;width:auto;max-height:24vh}
-  #agentes{left:8px;right:auto;width:47%}#sistemas{right:8px;width:47%}
-  .fila .met{display:none}#sub{font-size:10.5px}
+  #dock{top:auto;bottom:172px;transform:none;right:10px;left:auto;width:230px;max-height:32vh}
+  #tarjetas{bottom:172px;width:min(250px,46vw)}
+  #yo .qs{display:none}
+  #sub{font-size:12.5px}#reloj{font-size:15px}#izq h1{font-size:13px}
 }
-@media (max-width:640px){#fecha{display:none}#reloj{font-size:12px}#izq h1{font-size:11px}}
-@media (prefers-reduced-motion:reduce){#pulso .p,.on #onda i{animation:none}}
+@media (max-width:640px){#fecha,#act{display:none}#tarjetas{display:none}}
+@media (prefers-reduced-motion:reduce){#yo .p,.on #onda i,#mic.on{animation:none}}
 </style>
 </head>
 <body>
@@ -143,12 +196,18 @@ select{border:1px solid var(--edge);background:rgba(2,9,16,.96);color:var(--ink)
   <h1>J.A.R.V.I.S<i>_</i></h1>
   <div class="s" id="lema">ORDEN GLOBAL · CONTROL CORE</div>
 </div>
-<div id="pulso"><span class="p"></span><span id="modo">ONLINE</span><span class="c" id="cuenta">— / —</span></div>
+<div id="yo"><div class="disco" id="disco">·</div>
+  <span><span class="qn" id="quienNom">ORDEN GLOBAL</span>
+  <span class="qs"><span id="modo">ONLINE</span> · <span id="cuenta">— / —</span></span></span>
+  <span id="pulso"><span class="p"></span></span></div>
 <div class="hud" id="der"><div id="reloj">--:--:--</div><div id="fecha"></div>
   <div id="act"></div></div>
 
-<aside class="rail" id="agentes"><h3 id="tAg">THE TEAM</h3></aside>
-<aside class="rail" id="sistemas"><h3 id="tSis">SYSTEMS</h3></aside>
+<aside id="dock">
+  <h3 id="tAg">THE TEAM</h3><div id="agentes"></div>
+  <h3 id="tSis">SYSTEMS</h3><div id="sistemas"></div>
+</aside>
+<div id="tarjetas"></div>
 
 <div id="consola">
   <div id="sub"></div>
@@ -156,20 +215,17 @@ select{border:1px solid var(--edge);background:rgba(2,9,16,.96);color:var(--ink)
   <div id="pistas"></div>
   <div id="teclas">
     <button class="tecla" id="hablar"><span id="onda"><i></i><i></i><i></i><i></i><i></i></span><span id="lblHablar">BRIEF ME</span></button>
-    <button class="tecla" id="mic">◉ <span id="lblMic">SPEAK</span></button>
+    <button class="tecla" id="mic" title="speak">◉<span id="lblMic" style="display:none"></span></button>
     <button class="tecla" id="btnTexto">▤ <span id="lblTexto">REPORT</span></button>
     <button class="tecla" id="btnAyuda">?</button>
-    <select id="voces" title="voice"></select>
-    <select id="idioma" title="language">
-      <option value="en">EN</option><option value="es">ES</option>
-    </select>
+    <button class="tecla" id="btnAjustes">⚙</button>
   </div>
 </div>
 
 <div id="puerta">
   <div class="caja">
     <h2>J.A.R.V.I.S</h2>
-    <p class="p1">Choose your language · Elige tu idioma</p>
+    <p class="p1">Orden Global · Control Core</p>
     <div class="botones">
       <button class="tecla grande" data-idi="es">ESPAÑOL</button>
       <button class="tecla grande" data-idi="en">ENGLISH</button>
@@ -177,6 +233,18 @@ select{border:1px solid var(--edge);background:rgba(2,9,16,.96);color:var(--ink)
     <p class="p2">Se mantiene en todo: la voz, las respuestas y la pantalla.<br>
        It sticks everywhere: voice, answers and screen.</p>
   </div>
+</div>
+
+<div id="ajustes">
+  <label id="lblVoz">VOICE</label><select id="voces" title="voice"></select>
+  <label id="lblVel">SPEED</label>
+  <div class="vels">
+    <button data-vel="0.82">LENTO</button><button data-vel="1">NORMAL</button><button data-vel="1.15">RÁPIDO</button>
+  </div>
+  <label id="lblIdi">LANGUAGE</label>
+  <select id="idioma" title="language">
+    <option value="en">ENGLISH</option><option value="es">ESPAÑOL</option>
+  </select>
 </div>
 
 <div id="det"><article><button id="cerrar">✕</button>
@@ -200,6 +268,8 @@ async function quienEs(){try{
   const j=await(await fetch('/ordenes/quien',{cache:'no-store'})).json();
   QUIEN.usuario=(j.usuario||'').toLowerCase();
   const q=JUNTA[QUIEN.usuario]; QUIEN.nombre=q?q.es:'';
+  if(QUIEN.nombre){$('#quienNom').textContent=QUIEN.nombre.toUpperCase();
+    $('#disco').textContent=QUIEN.nombre[0].toUpperCase();}
 }catch(e){}}
 
 /* La velocidad de la voz, ajustable por voz («más despacio») y recordada. */
@@ -433,7 +503,9 @@ setInterval(()=>{                    // tráfico de fondo
 },900);
 
 /* ═══ 4 · DIBUJO ═════════════════════════════════════════════════════════ */
-let rY=.55,rX=-.12,arr=null,giroLibre=true;
+let rY=.55,rX=-.12,arr=null,giroLibre=true,paraX=0,paraY=0;
+addEventListener('pointermove',e=>{if(arr)return;
+  paraX=(e.clientX/W-.5)*.09; paraY=(e.clientY/H-.5)*.05;},{passive:true});
 L.addEventListener('pointerdown',e=>{arr=[e.clientX,e.clientY];L.classList.add('gira');
   L.setPointerCapture(e.pointerId);});
 L.addEventListener('pointermove',e=>{if(!arr)return;giroLibre=false;
@@ -468,6 +540,7 @@ let ultimo=0;
 function cuadro(ts){
   const dt=Math.min(60,ts-ultimo)||16; ultimo=ts;
   if(giroLibre&&!document.hidden)rY+=0.00022*dt;
+  rX+=((paraY-.12)-rX)*.02;                     // el cabeceo sigue al puntero
   proyectar();
   cx.clearRect(0,0,W,H);
   cx.globalCompositeOperation='lighter';
@@ -504,8 +577,11 @@ function cuadro(ts){
       if(n.nucleo){cx.shadowColor=e.mal?'#ff4a3d':s.col;cx.shadowBlur=16*e.fuego+7;}
       cx.beginPath();cx.arc(P[0],P[1],r,0,6.283);cx.fill();cx.shadowBlur=0;
     }else{
-      cx.fillStyle='rgba(140,215,250,'+(0.10+P[2]*0.20).toFixed(3)+')';
-      cx.beginPath();cx.arc(P[0],P[1],1.05*P[2],0,6.283);cx.fill();
+      /* niebla de profundidad: lo cercano es claro y grande, lo lejano se
+         hunde en azul oscuro. Esto es lo que hace que se lea 3D. */
+      const z=Math.max(0,Math.min(1,(P[2]-.55)*1.6));
+      cx.fillStyle='rgba('+(90+z*90)+','+(160+z*70)+','+(210+z*45)+','+(0.04+z*0.30).toFixed(3)+')';
+      cx.beginPath();cx.arc(P[0],P[1],(0.6+z*1.1),0,6.283);cx.fill();
     }
   }
 
@@ -527,11 +603,22 @@ function cuadro(ts){
     }
   }
 
-  /* el núcleo: late más fuerte cuando habla */
-  const lat=0.5+0.5*Math.sin(ts/620)+(hablando?0.7:0);
-  cx.fillStyle='rgba(90,217,255,'+(0.08+lat*0.07).toFixed(3)+')';
-  cx.shadowColor='#5ad9ff';cx.shadowBlur=30+lat*30;
-  cx.beginPath();cx.arc(W/2,H/2,5+lat*3,0,6.283);cx.fill();cx.shadowBlur=0;
+  /* EL REACTOR. Cuando habla, respira: tres anillos concéntricos y un arco
+     que gira. Es la presencia física del asistente. */
+  const amp=hablando?(0.75+0.25*Math.sin(ts/95)+0.12*Math.sin(ts/41)):(0.28+0.08*Math.sin(ts/900));
+  const cxx=W/2,cyy=H/2;
+  cx.shadowColor='#56d9ff';
+  for(const[r0,g0,a0] of [[46,26,.05],[26,14,.10],[11,30,.30]]){
+    cx.fillStyle='rgba(86,217,255,'+(a0*amp*2).toFixed(3)+')';
+    cx.shadowBlur=g0+amp*34;
+    cx.beginPath();cx.arc(cxx,cyy,r0*(.75+amp*.5),0,6.283);cx.fill();
+  }
+  cx.shadowBlur=0;
+  cx.strokeStyle='rgba(86,217,255,'+(.14+amp*.5).toFixed(3)+')';
+  cx.lineWidth=1.6;
+  cx.beginPath();cx.arc(cxx,cyy,34+amp*10,ts/700,ts/700+4.4);cx.stroke();
+  cx.strokeStyle='rgba(255,196,107,'+(.06+amp*.24).toFixed(3)+')';
+  cx.beginPath();cx.arc(cxx,cyy,42+amp*12,-ts/1100,-ts/1100+2.2);cx.stroke();
 
   cx.globalCompositeOperation='source-over';
   etiquetas();
@@ -772,6 +859,16 @@ function cargarVoces(){
   voces=todas.filter(v=>idio.test(v.lang));
   if(!voces.length)voces=todas;
   voces.sort((a,b)=>puntua(b)-puntua(a));
+  /* Treinta voces del sistema en un selector es basura visual: se enseñan
+     las MEJORES. Primero las conocidas buenas; si hay pocas, las mejor
+     puntuadas hasta seis. */
+  const FINAS=IDI==='en'
+    ?[/Daniel/i,/Arthur/i,/Oliver/i,/Serena/i,/Kate/i,/Samantha/i,/Alex/i,/Ava/i,
+      /Natural/i,/Neural/i,/Online/i,/Google UK/i,/Google US/i]
+    :[/Mónica|Monica/i,/Paulina/i,/Marisol/i,/Angélica|Angelica/i,/Jorge/i,/Juan/i,
+      /Natural/i,/Neural/i,/Online/i,/Google español/i,/Google Español/i];
+  const finas=voces.filter(v=>FINAS.some(r=>r.test(v.name)));
+  if(finas.length>=2)voces=finas.slice(0,6); else voces=voces.slice(0,6);
   const sel=$('#voces'); sel.innerHTML='';
   voces.forEach((v,i)=>{const o=document.createElement('option');o.value=i;
     o.textContent=v.name.replace(/Microsoft |Google /,'').slice(0,24);sel.appendChild(o);});
@@ -844,7 +941,8 @@ function siguiente(){
   const l=cola.shift();
   marcar(l.q);
   $('#sub').innerHTML='<span class="quien">'+(l.q||'JARVIS')+'</span>'+l.x;
-  if(l.foco)disparar(l.foco,true);
+  if(l.foco){disparar(l.foco,true);tarjetaSis(l.foco);}
+  if(l.ag)tarjetaAg(l.ag);
 
   const u=new SpeechSynthesisUtterance(limpiar(l.x));
   /* Con qué voz. NO basta con el idioma del selector: los partes de los
@@ -899,6 +997,35 @@ function siguiente(){
     }
   },2000);
 }
+/* Las tarjetas: cuando la voz nombra un sistema o habla un agente, su
+   ficha se materializa al lado del cerebro con los datos vivos. Esto es lo
+   que convierte «una página que habla» en «un asistente que te enseña». */
+const LOGO={scan:'/img/ordenscan.ico',chainl:'/img/chainlist.ico'};
+function tarjetaBase(col,titulo,estado,filas,img){
+  const cont=$('#tarjetas');
+  while(cont.children.length>=3)cont.firstChild.remove();
+  const d=document.createElement('div');d.className='tarj';d.style.borderLeftColor=col;
+  d.innerHTML='<div class="cab">'+(img?'<img src="'+img+'" onerror="this.remove()">':'')+
+    '<span class="tn" style="color:'+col+'">'+titulo+'</span>'+
+    '<span class="te">'+estado+'</span></div>'+
+    filas.map(([k,v])=>'<div class="kv"><b>'+k+'</b><span>'+v+'</span></div>').join('');
+  cont.appendChild(d);
+  requestAnimationFrame(()=>d.classList.add('viva'));
+  setTimeout(()=>{d.classList.remove('viva');setTimeout(()=>d.remove(),500);},9000);
+}
+function tarjetaSis(id){
+  const sx=S(id); if(!sx)return;
+  const e=E[id];
+  const filas=(e.vivo&&e.vivo.length?e.vivo.slice(0,3):[[IDI==='en'?'About':'Qué es',sx.que[IDI]]]);
+  tarjetaBase(e.mal?'#ff5246':sx.col,IDI==='en'?sx.nom:sx.es,e.est,filas,LOGO[id]);
+}
+function tarjetaAg(id){
+  const a=AGENTES.find(x=>x.id===id), p=parteDe(id); if(!a)return;
+  tarjetaBase(a.col,a.nom,p?p.veredicto.toUpperCase():'',
+    p?[[IDI==='en'?'Last run':'Última revisión',hace(p.cuando)],
+       [IDI==='en'?'Watches':'Vigila',a.mira[IDI]]]:[[' ',a.mira[IDI]]]);
+}
+
 function marcar(q){
   quienHabla=q;
   document.querySelectorAll('.fila.habla').forEach(f=>f.classList.remove('habla'));
@@ -1076,8 +1203,13 @@ const SABER={
   'The planned fee is one thousandth of an ORIGEN per transaction, but it is not configured today: it charges zero. And it does not go on until its destination is decided, because the configured address is not the single wallet.',
   'The treasury holds nearly two hundred fifty billion ORIGEN and does not move without a written Board instruction.']},
 };
+const RELS={ecosistema:['n5534','wallet','gid','pago','tesoro'],
+  apps:['wallet','scan','pago','tarjeta'],webs:['scan','gid','chainl'],
+  infra:['nodos','n5534','m8532'],tokens:['tesoro','bots','n5534'],
+  flujo:['tarjeta','polygon','wallet','tesoro']};
 function temaSaber(id){ultimoTema=id;
-  return SABER[id][IDI].map((x,i)=>J(x,{p:i?380:460}));}
+  const r=RELS[id]||[];
+  return SABER[id][IDI].map((x,i)=>J(x,{p:i?380:460,foco:r[i%Math.max(1,r.length)]}));}
 const en=()=>IDI==='en';
 const J=(x,o={})=>Object.assign({q:'JARVIS',x},o);
 
@@ -1580,6 +1712,15 @@ function abrirAyuda(){
   }
 }
 $('#btnAyuda').addEventListener('click',abrirAyuda);
+$('#btnAjustes').addEventListener('click',()=>$('#ajustes').classList.toggle('abre'));
+document.querySelectorAll('.vels button').forEach(b=>{
+  const marca=()=>document.querySelectorAll('.vels button').forEach(x=>
+    x.classList.toggle('on',Math.abs(parseFloat(x.dataset.vel)-VEL)<.09));
+  marca();
+  b.addEventListener('click',()=>{VEL=parseFloat(b.dataset.vel);
+    localStorage.setItem('velCerebro',VEL);marca();
+    decir([J(IDI==='en'?'Like this.':'Así.')]);});
+});
 $('#btnTexto').addEventListener('click',abrirInforme);
 $('#cerrar').addEventListener('click',()=>$('#det').classList.remove('abre'));
 $('#det').addEventListener('click',e=>{if(e.target.id==='det')e.target.classList.remove('abre');});
