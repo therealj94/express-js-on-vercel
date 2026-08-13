@@ -154,3 +154,41 @@ pasar igualmente.
 
 Si algún día hace falta otra acción, se añade **una constante más, a mano**
 —nunca un parámetro.
+
+## Conversar de verdad · Claude detrás del cerebro
+
+El cerebro de reglas conoce el sistema y contesta bien, pero no improvisa. Con
+una llave de Anthropic puesta, la pregunta va a **Claude** con el estado que la
+página ya tiene en pantalla, y contesta él.
+
+- **La llave vive sólo en el nodo**, en `/etc/cerebro/anthropic.key`, de root y
+  sólo de root. **No está en este repositorio, ni en S3, ni llega nunca al
+  navegador.** La página pregunta a `ordenes.py` y es él quien habla con
+  Anthropic.
+- El modelo es **`claude-sonnet-5`**, fijo. `/hablar` **no deja elegir modelo,
+  ni carácter, ni parámetros**: sólo acepta una pregunta, el idioma y el estado.
+  El resto lo pone el servidor, así que desde el navegador no se le puede sacar
+  de su papel.
+- **Si no hay llave, no hay saldo o falla la red, se cae al cerebro de reglas
+  sin avisar.** Peor que una respuesta menos rica es no tener respuesta. Y si
+  el fallo es de llave o de saldo, no se reintenta en toda la sesión: no tiene
+  sentido esperar cuarenta segundos en cada pregunta.
+- Las **órdenes nunca pasan por el modelo**. Se resuelven antes, en local, y
+  siguen siendo la misma lista cerrada de dos acciones.
+- Se guarda el hilo de los últimos seis turnos, así que las preguntas de
+  seguimiento tienen sentido.
+
+El carácter de JARVIS está en `ordenes.py` y es explícito en tres cosas: que le
+van a **escuchar** y no leer, que **no se invente ni un número** —hay dinero
+real dentro—, y que la 8532 está congelada y arrancar la 5550 es el corte.
+
+### Poner la llave
+
+```
+mkdir -p /etc/cerebro && chmod 700 /etc/cerebro
+umask 077; printf '%s' 'LA-LLAVE' > /etc/cerebro/anthropic.key
+systemctl restart cerebro-ordenes
+```
+
+Comprobarlo: `curl -sS -X POST http://127.0.0.1:8790/hablar -H 'content-type:
+application/json' -d '{"pregunta":"hola","idioma":"es","estado":{}}'`

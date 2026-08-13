@@ -1209,11 +1209,63 @@ $('#mic').addEventListener('click',()=>{
   setTimeout(()=>{if(!oyendo)escuchar();},2200);
 });
 
-function atender(txt){
+/* ── conversar de verdad ──────────────────────────────────────────────────
+   Si hay llave de Anthropic en el servidor, la pregunta va a Claude con el
+   estado que la página ya tiene en pantalla, y contesta él. Si no hay llave,
+   no hay saldo o la red falla, se cae al cerebro de reglas SIN avisar: peor
+   que una respuesta menos rica es no tener respuesta. Las órdenes nunca pasan
+   por aquí: se resuelven antes, en local, y siguen siendo una lista cerrada. */
+let HISTORIAL=[], hayModelo=null;   // null = todavía no se sabe
+function estadoParaElModelo(){
+  return {
+    idioma:IDI, fecha:I.fecha,
+    cadenas:{pruebas5534:{bloque:V.b5534,gasGwei:V.gas,segundosDesdeElUltimoBloque:V.edad},
+             vieja8532:{bloque:V.b8532,congelada:V.quieta},
+             indexadosPorElExplorador:V.idx},
+    chainlist:{solicitudTestnet8593:V.pr93, reservaMainnet8594:V.pr94},
+    precioORIGEN:I.precio, comision:I.comision, comisionEncendida:I.comisionEncendida,
+    botsDePrueba:BOTS,
+    sistemas:SIS.map(s=>({nombre:s.nom, estado:E[s.id].est, dato:E[s.id].met,
+                          fallando:E[s.id].mal, queEs:s.que.es, detalle:s.det.es})),
+    agentes:PARTES.map(p=>({nombre:p.nombre, veredicto:p.veredicto, cuando:p.cuando,
+                            resumen:p.resumen, hallazgos:p.hallazgos, escala:p.escala})),
+    hechoHoy:I.hechoHoy, pendiente:I.pendiente
+  };
+}
+async function conversar(pregunta){
+  if(hayModelo===false)return false;
+  $('#sub').innerHTML='<span class="quien">JARVIS</span><span style="opacity:.5">…</span>';
+  try{
+    const r=await fetch('/ordenes/hablar',{method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({pregunta, idioma:IDI, historial:HISTORIAL,
+                           estado:estadoParaElModelo()})});
+    const j=await r.json();
+    if(!r.ok||!j.respuesta){
+      /* Sin llave o sin saldo no se vuelve a intentar en toda la sesión: no
+         tiene sentido esperar cuarenta segundos en cada pregunta. */
+      if(j.error==='sin-llave'||/credit|balance|authentication/i.test(j.error+' '+(j.detalle||'')))
+        hayModelo=false;
+      return false;
+    }
+    hayModelo=true;
+    HISTORIAL.push({rol:'jose',texto:pregunta},{rol:'jarvis',texto:j.respuesta});
+    if(HISTORIAL.length>12)HISTORIAL=HISTORIAL.slice(-12);
+    /* Se parte en frases para que la voz respire, igual que el resto. */
+    const frases=j.respuesta.split(/(?<=[.!?…])\s+/).filter(x=>x.trim());
+    responderCon(frases.map(x=>J(x,{p:300})));
+    return true;
+  }catch(e){ return false; }
+}
+
+async function atender(txt){
   const s=sinTildes(txt);
   if(!s.trim())return;
 
   for(const [re,acc] of ORDENES) if(re.test(s)) return ejecutar(acc);
+  if(/(stop|be quiet|silence|shut up|^para$|callate|silencio|basta)/i.test(s))return parar();
+
+  if(await conversar(txt))return;      // si hay modelo, contesta él
 
   for(const [re,id] of CONV){
     if(!re.test(s))continue;

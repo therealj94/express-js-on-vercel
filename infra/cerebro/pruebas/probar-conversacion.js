@@ -46,6 +46,13 @@ const PRUEBAS_ES = ['hola', '¿cómo estás?', 'cuánto cuesta', 'cuéntame más
          hallazgos:['Sin politica de contrasenas'],escala:['Poner segundo factor']},
         {agente:'vigia',nombre:'VIGÍA',veredicto:'bien',cuando:new Date().toISOString(),
          resumen:'Las dos cadenas como deben',hallazgos:['Bloque veinte mil']}]);
+      if(url.includes('/ordenes/hablar')){
+        if(window.__conModelo)
+          return J({respuesta:'Todo en orden, José. La red de pruebas avanza. El tesoro no se ha movido.'});
+        return new Response(JSON.stringify({error:'invalid_request_error',
+          detalle:'Your credit balance is too low'}),{status:502,
+          headers:{'content-type':'application/json'}});
+      }
       if(url.includes('/ordenes/bots'))return J({cuando:new Date().toISOString(),estado:'bien',
         bloque:22541,segundos:12.1,enviosQueQuedan:55});
       if(url.includes('/rpc-vieja'))return J({jsonrpc:'2.0',id:1,result:'0x1'});
@@ -101,6 +108,22 @@ const PRUEBAS_ES = ['hola', '¿cómo estás?', 'cuánto cuesta', 'cuéntame más
   const d = await preguntar('what is the cost');
   console.log('\n───── EL CASO DE LA QUEJA · "what is the cost" en modo inglés');
   d.forEach(x => console.log('   [' + (x.voz||'sistema') + ' · ' + x.lang + '] ' + x.txt.slice(0,62)));
+
+  // ── con el modelo respondiendo
+  await p.evaluate(() => { window.__conModelo = true; hayModelo = null; });
+  const conM = await preguntar('cuentame como va todo');
+  console.log('\n───── CON MODELO (simulado)');
+  conM.forEach(x => console.log('   ' + x.txt.slice(0,70)));
+  const hist = await p.evaluate(() => HISTORIAL.length);
+  console.log('   historial guardado:', hist, 'turnos');
+  if (!conM.length) mal++;
+
+  // ── y sin saldo, que es el caso de hoy: tiene que contestar IGUAL
+  await p.evaluate(() => { window.__conModelo = false; hayModelo = null; HISTORIAL = []; });
+  const sinM = await preguntar('cuanto cuesta');
+  console.log('\n───── SIN SALDO · cae al cerebro de reglas');
+  sinM.forEach(x => console.log('   ' + x.txt.slice(0,70)));
+  if (!sinM.length) { console.log('   ✕ SE QUEDO SIN CONTESTAR'); mal++; }
 
   console.log('\nfallos: ' + mal);
   console.log('errores de página: ' + (err.length ? err.join(' | ').slice(0,300) : 'ninguno'));
