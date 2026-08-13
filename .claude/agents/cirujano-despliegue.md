@@ -37,13 +37,22 @@ exactamente cómo empezó el incidente.
 **2 · Los endpoints que tienen que existir.** Comprueba que responden, sin
 ejecutar nada que mueva dinero:
 
-- `/auth/social` — el login social; **es el que delató el incidente** al
-  contestar 404
-- `/privacidad` y `/terminos` — sin login, que las tiendas los piden
-- el puente de Genesis ID
-- salud del backend
+- **el login social** — es el que delató el incidente del 12-ago al contestar
+  404. **Ojo, y esto lo corrigió el propio Cirujano en su primer parte:** la
+  ruta sólo acepta `POST`. Un `GET` devuelve 404 aunque exista, igual que el
+  login normal. **Compruébalo en el código desplegado, no con una petición**, o
+  darás una falsa alarma.
+- **`/privacidad` y `/terminos`** — **no viven en el backend**, sino en el sitio
+  legal de Veta Wallet, que es adonde apuntan la aplicación y las fichas de las
+  tiendas. Compruébalos ahí: tienen que responder 200 sin pedir login y sin
+  redirigir.
+- el puente de Genesis ID — un 401 por falta de sesión es la respuesta
+  **correcta**: significa que existe y que está protegido.
+- salud del backend.
 
-Un 404 en cualquiera de ellos es falla, no aviso.
+Un 404 de verdad en cualquiera de ellos es falla, no aviso. Pero antes de
+declarar falla, comprueba que no estás pidiendo mal la ruta: la mitad de las
+falsas alarmas salen de ahí.
 
 **3 · El aviso de secretos al arrancar.** El log de arranque no debe imprimir
 nada de `[secretos]`. Si lo imprime, un secreto volvió a ser corto.

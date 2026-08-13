@@ -3,6 +3,42 @@
 Corregido el 13-ago-2026 por José, después de que yo me equivocara con los dos
 números. Esto es lo que vale.
 
+---
+
+## ⚠ NO ENCENDER LA COMISIÓN TODAVÍA
+
+Encontrado por el Centinela el 13-ago y comprobado contra la cadena:
+
+**La dirección a la que el backend cobraría la comisión no es la billetera
+única.** `lib/comision.js` envía a `TREASURY_OG_ADDRESS`, y en producción esa
+variable vale `0x48986B3a75E7DA51087F60A2E06F8Eb5445cE8fF`, que **no** es
+`0x3d5510e5081822877d14cd51b356bf01df2c32c9`.
+
+Medido en la cadena 8532:
+
+| | saldo | nonce | ha firmado algo |
+|---|---|---|---|
+| `0x4898…E8fF` — a donde iría la comisión | 126 ORIGEN | **0** | **nunca** |
+| `0x3d55…32c9` — la billetera única | 249.999.831.471 ORIGEN | 27 | sí |
+
+Nonce cero significa que **nadie ha demostrado nunca tener su llave**. Si se
+enciende la comisión con esto así, cada cobro cae ahí y no vuelve a salir.
+
+**Hoy no cobra nada, y eso es lo que nos salva:** `OG_COMISION_ORIGEN` **no
+existe** en la configuración de Heroku, así que el importe es cero y
+`cobrarComision` devuelve `null` sin enviar nada. El 0,001 vive sólo en el
+código y en este documento.
+
+*(Corrección: en el parte del 13-ago escribí que la comisión estaba
+«configurada y apagada». No está configurada. Comprobado leyendo las variables
+de Heroku, no deducido.)*
+
+**Antes de encenderla, en este orden:** decidir la dirección de tesorería,
+ponerla en `TREASURY_OG_ADDRESS`, comprobar que su llave está en la copia fría,
+y sólo entonces poner `OG_COMISION_ORIGEN=0.001`.
+
+---
+
 ## El precio del ORIGEN · la fórmula del oro
 
 ```

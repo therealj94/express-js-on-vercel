@@ -19,19 +19,24 @@
     "Formado el equipo de vigilancia: siete agentes que revisan solos las cadenas, el dinero, la seguridad, lo desplegado, el coste y las solicitudes de Chainlist, y dejan su parte aquí. Ninguno mueve fondos ni despliega: miran y avisan",
     "Tres de los siete ya entregaron su primer parte con mediciones reales",
     "Descubierto mirando los procesos de las maquinas, no un documento: los cuatro validadores de la red de pruebas corren DENTRO de las maquinas de la cadena vieja. Nadie lo habia escrito nunca",
-    "Con eso se resuelve lo que bloqueaba el corte: la red principal no necesita maquinas nuevas. Las cuatro que hacen falta ya existen, con Besu instalado, direcciones fijas y seis gigas de memoria libres cada una"
+    "Con eso se resuelve lo que bloqueaba el corte: la red principal no necesita maquinas nuevas. Las cuatro que hacen falta ya existen, con Besu instalado, direcciones fijas y seis gigas de memoria libres cada una",
+    "El equipo entero trabajo por primera vez: seis agentes con mediciones reales. Dos en verde, dos con avisos y dos con fallas",
+    "Hallazgo mas grave del dia: si se encendiera la comision, cada cobro iria a una direccion que NO es la billetera unica, con nonce cero, que nunca ha firmado nada. Hoy no cobra nada porque la comision ni siquiera esta configurada, y eso es lo que nos salva",
+    "Cerrado el peor pendiente de seguridad que llevaba semanas: la clave que firma todas las sesiones ya mide sesenta y cuatro caracteres, no siete"
   ],
   "pendiente": [
-    "Borrar las dos llaves de Amazon en el panel de identidades, revocar el token de GitHub y rotar el secreto de Google",
-    "Cuenta de organización en Play Console y número de identificación de empresa para las tiendas",
-    "Crear el nombre de dominio del RPC de la 5550 con certificado, cuando existan los nodos",
-    "El corte: repuntar la billetera a la cadena nueva, contigo delante",
-    "Poner el explorador a indexar la 5550 y encender la comisión al arrancar",
-    "Retirar solo los nodos uno y dos, que son los unicos que llevan nada mas la cadena vieja: unos ciento treinta y ocho dolares al mes, no cuatrocientos catorce. Apagar los otros cuatro mataria la red de pruebas",
-    "Enseñar la comisión en la pantalla de envío de la aplicación, que el backend ya la devuelve",
-    "Dos decisiones de Junta: cómo se presenta el respaldo en oro, y si el suelo de gas debe ser real, que obligaría a quemar comisión",
-    "Aprobar las siete tareas programadas para que el equipo empiece a revisar solo. Hasta que las apruebes, los agentes existen pero nadie los llama",
-    "Chainlist, y esto sí necesita tu mano: hay que subir el símbolo corregido a la solicitud de la red de pruebas. Hace falta un permiso de GitHub, o cambiar esa sola línea desde la página. Sin eso el CI la rechaza cuando llegue su turno",
-    "Chainlist, lo demás sólo se puede esperar: hay solicitudes del diez de julio todavía en la misma cola"
+    "ANTES DE ENCENDER LA COMISION: decidir la direccion de tesoreria. La que hay puesta no es la billetera unica y nadie ha demostrado tener su llave",
+    "Quitar el segundo precio de dos con diez que sigue en la configuracion y que las tarjetas usan de respaldo: hoy el precio del ORIGEN esta en dos sitios a la vez",
+    "Poner segundo factor a las dos cuentas con administrador total, o quitarles la contrasena de consola",
+    "Autorizar el borrado de la llave permanente que el cierre del doce de agosto dejo pendiente, y la del usuario de auditoria que nadie usa",
+    "Decidir si el tablero del cerebro sigue abierto a internet sin contrasena: hoy publica los hallazgos de los agentes a quien los pida",
+    "Subir por encima de treinta y dos los cuatro secretos cortos que quedan",
+    "Averiguar quien encargo las doscientas trece imagenes de reconocimiento de los dias cinco, seis y ocho de agosto: no aparece en ninguna documentacion",
+    "Encender GuardDuty en la segunda region del este, donde viven dos nodos",
+    "Poner fecha a la retirada formal de la cadena vieja: cada semana de retraso son noventa y tres dolares con cincuenta",
+    "Subir el simbolo corregido a la solicitud de Chainlist: hace falta permiso de GitHub, o editar esa linea desde la pagina",
+    "Aprobar las siete tareas programadas para que el equipo revise solo, sin que yo los llame",
+    "Un proveedor propio de la red Polygon: los dos que funcionan son publicos y gratuitos",
+    "El corte a la cadena nueva, contigo delante"
   ]
 }
