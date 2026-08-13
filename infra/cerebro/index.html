@@ -235,6 +235,14 @@ const REG=[
        'La comisión va al tesoro; el gas va al validador, y cuesta el doble',
        'Con 1 ORIGEN (2,57 USD): 339 envíos nativos o 170 de token',
        'Emisión total: un billón de ORIGEN']},
+ {id:'equipo',nom:'EL EQUIPO',  col:'#ffd166', a:[ .52, .50, .18], n:42,
+  que:'Siete agentes que vigilan solos',
+  det:['VIGÍA · las cadenas, cada hora','CENTINELA · el dinero, cada dos horas',
+       'ESCUDERO · Chainlist, cada seis horas','CIRUJANO · lo desplegado contra lo escrito, a diario',
+       'CRONISTA · redacta este parte, a diario','CERRAJERO · seguridad, cada semana',
+       'CONTADOR · lo que cuesta, cada semana',
+       'Ninguno mueve fondos, despliega ni cambia configuración: miran y avisan',
+       'Cada uno existe por algo que ya falló sin que nadie mirara']},
 ];
 const E={};for(const r of REG)E[r.id]={est:'ESPERA',met:'—',fuego:.12,mal:false,vivo:[]};
 
@@ -282,7 +290,10 @@ const EJES=[['n5534','g5550'],['n5534','scan'],['n5534','m8532'],['g5550','m8532
  ['g5550','tesoro'],['wallet','gid'],['wallet','tarjeta'],['tarjeta','polygon'],
  ['wallet','n5534'],['pago','wallet'],['pago','gid'],['scan','m8532'],
  ['chainl','n5534'],['chainl','g5550'],['nodos','n5534'],['nodos','m8532'],
- ['tesoro','wallet'],['polygon','wallet'],['nodos','scan']];
+ ['tesoro','wallet'],['polygon','wallet'],['nodos','scan'],
+ /* el equipo mira a todos, y por eso toca casi todo el cerebro */
+ ['equipo','n5534'],['equipo','wallet'],['equipo','tesoro'],['equipo','chainl'],
+ ['equipo','nodos'],['equipo','m8532']];
 const R=id=>REG.find(x=>x.id===id);
 const chispas=[];
 
@@ -464,6 +475,33 @@ async function verChainlist(){try{
     `#8593 ${V.pr93} · #8594 ${V.pr94}`,false,.3,
     [['#8593 · testnet 5534',V.pr93],['#8594 · reserva 5550',V.pr94]]);
  }catch(e){set('chainl','SIN DATOS','GitHub no responde',false,.15);}}
+
+/* ── el equipo ────────────────────────────────────────────────────────────
+   Cada agente deja su parte en /partes.json (lo publica infra/equipo/parte.py).
+   La región muestra el PEOR veredicto: si uno solo encontró una falla, el
+   equipo entero sale en rojo. Un tablero que promedia esconde justo lo que
+   hay que ver. */
+let PARTES=[];
+const HACE=iso=>{const s=(Date.now()-Date.parse(iso))/1000;
+  if(!isFinite(s))return '—';
+  if(s<5400)return Math.max(1,Math.round(s/60))+' min';
+  if(s<172800)return Math.round(s/3600)+' h';
+  return Math.round(s/86400)+' días';};
+async function verEquipo(){try{
+  PARTES=await(await fetch('/partes.json',{cache:'no-store'})).json();
+  if(!Array.isArray(PARTES)||!PARTES.length){
+    set('equipo','SIN PARTES','ningún agente ha reportado',false,.15);return;}
+  const mal=PARTES.filter(p=>p.veredicto==='falla'),avi=PARTES.filter(p=>p.veredicto==='aviso');
+  const esc=PARTES.reduce((n,p)=>n+((p.escala||[]).length),0);
+  /* un agente que lleva más de tres días callado no está vigilando nada */
+  const mudos=PARTES.filter(p=>(Date.now()-Date.parse(p.cuando))>2.6e8);
+  set('equipo',
+    mal.length?'CON FALLAS':avi.length?'CON AVISOS':mudos.length?'ALGUNO CALLADO':'TODO EN ORDEN',
+    `${PARTES.length} agentes · ${mal.length} fallas · ${esc} para José`,
+    mal.length>0,mal.length?.6:.3,
+    PARTES.map(p=>[p.nombre||p.agente,`${p.veredicto} · hace ${HACE(p.cuando)}`]));
+ }catch(e){set('equipo','SIN PARTES','todavía no hay partes',false,.15);}}
+
 function verFijos(){
   set('g5550',I.genesisListo?'LISTA':'EN OBRA',
     I.genesisListo?'juez: 0 diferencias':'construyendo',false,.45);
@@ -539,6 +577,27 @@ function guion(){
   P(`La comisión es de cero punto cero cero uno ORIGEN por transacción, sea cual sea el monto, y ${I.comisionEncendida?'está encendida':'está lista pero todavía apagada'}. Son un cuarto de centavo.`,600);
   if(V.pr93)P(`En el registro público, la solicitud de la red de pruebas está ${V.pr93}, y la de la red principal, ${V.pr94}.`,550);
 
+  /* el equipo: primero lo que encontró mal, que es para lo que existe */
+  if(PARTES.length){
+    const mal=PARTES.filter(p=>p.veredicto==='falla'),avi=PARTES.filter(p=>p.veredicto==='aviso');
+    P('El equipo de vigilancia.',450);
+    if(mal.length){
+      P(`Atención. ${mal.length===1?'Un agente encontró':mal.length+' agentes encontraron'} una falla.`,450);
+      mal.forEach(p=>P(`${(p.nombre||'').toLowerCase()}: ${limpiar(p.resumen)}.`,420));
+    }else{
+      P(`Los ${dic(PARTES.length)} agentes revisaron y no encontraron ninguna falla.`,500);
+    }
+    avi.forEach(p=>P(`${(p.nombre||'').toLowerCase()} deja un aviso: ${limpiar(p.resumen)}.`,420));
+    const esc=PARTES.flatMap(p=>(p.escala||[]).map(x=>[p.nombre,x]));
+    if(esc.length){
+      P(`Hay ${esc.length===1?'una cosa':dic(esc.length)+' cosas'} que necesitan tu mano.`,450);
+      esc.forEach(([q,x])=>P(`${(q||'').toLowerCase()}: ${limpiar(x)}.`,380));
+    }
+    const mudos=PARTES.filter(p=>(Date.now()-Date.parse(p.cuando))>2.6e8);
+    mudos.forEach(p=>P(`${(p.nombre||'').toLowerCase()} lleva días sin reportar. Habría que mirar por qué.`,420));
+    P('',400);
+  }
+
   if(I.hechoHoy&&I.hechoHoy.length){
     P('Esto es lo que se hizo hoy.',450);
     I.hechoHoy.forEach(x=>P(limpiar(x)+'.',300));
@@ -600,6 +659,25 @@ function abrirDet(r){
   if(e.vivo&&e.vivo.length){const h=document.createElement('h4');h.textContent='EN VIVO';c.appendChild(h);
     for(const[k,v]of e.vivo){const d=document.createElement('div');d.className='kv';
       d.innerHTML=`<b>${k}</b><span>${v}</span>`;c.appendChild(d);}}
+  /* el equipo no tiene una ficha fija: tiene los partes que dejó cada agente */
+  if(r.id==='equipo'&&PARTES.length){
+    for(const p of PARTES){
+      const h=document.createElement('h4');
+      h.textContent=`${p.nombre||p.agente} · ${p.veredicto.toUpperCase()} · hace ${HACE(p.cuando)}`;
+      h.style.color=p.veredicto==='falla'?'var(--rojo)':p.veredicto==='aviso'?'#ffd166':'#c9a961';
+      c.appendChild(h);
+      const li=document.createElement('li');
+      li.textContent=p.resumen;
+      if(p.veredicto==='falla')li.className='malo';
+      c.appendChild(li);
+      for(const x of (p.hallazgos||[])){
+        const d=document.createElement('li');d.textContent=x;
+        d.style.color='var(--mut)';c.appendChild(d);}
+      for(const x of (p.escala||[])){
+        const d=document.createElement('li');d.className='malo';
+        d.textContent='Para José: '+x;c.appendChild(d);}
+    }
+  }
   const h=document.createElement('h4');h.textContent='QUÉ HAY DENTRO';c.appendChild(h);
   for(const x of r.det){const li=document.createElement('li');li.textContent=x;c.appendChild(li);}
   $('#det').classList.add('abierto');
@@ -620,6 +698,10 @@ function abrirTexto(){
   if(V.pr93)v.push(`Chainlist: #8593 ${V.pr93} · #8594 ${V.pr94}`);
   v.push(`ORIGEN $${I.precio} · comisión ${I.comision} ${I.comisionEncendida?'(encendida)':'(lista, apagada)'}`);
   sec('AHORA MISMO',v);
+  sec('LO QUE NECESITA A JOSÉ',
+      PARTES.flatMap(p=>(p.escala||[]).map(x=>`${p.nombre||p.agente} — ${x}`)),'malo');
+  sec('EL EQUIPO',PARTES.map(p=>
+      `${p.nombre||p.agente} · ${p.veredicto} · hace ${HACE(p.cuando)} — ${p.resumen}`));
   sec('HECHO HOY',I.hechoHoy||[]);
   sec('PENDIENTE',I.pendiente||[]);
   $('#det').classList.add('abierto');
@@ -651,14 +733,14 @@ setInterval(()=>{const d=new Date();
 /* ═══ 8 · ARRANQUE ════════════════════════════════════════════════════════ */
 medir();requestAnimationFrame(cuadro);libro();
 (async()=>{await cargar();
-  verNucleo();verMemoria();verScan();verChainlist();
+  verNucleo();verMemoria();verScan();verChainlist();verEquipo();
   verSalud('/salud-wallet','wallet','EN LÍNEA',`v${I.versionBackend||'—'} · 435 usuarios`,.4);
   verSalud('/salud-genesis','gid','EN LÍNEA','KYC · SSO · puente',.3);
 })();
 setInterval(verNucleo,10000);setInterval(verMemoria,30000);setInterval(verScan,20000);
 setInterval(()=>{verSalud('/salud-wallet','wallet','EN LÍNEA',`v${I.versionBackend||'—'} · 435 usuarios`,.4);
   verSalud('/salud-genesis','gid','EN LÍNEA','KYC · SSO · puente',.3);},60000);
-setInterval(verChainlist,300000);
+setInterval(verChainlist,300000);setInterval(verEquipo,120000);
 </script>
 </body>
 </html>
