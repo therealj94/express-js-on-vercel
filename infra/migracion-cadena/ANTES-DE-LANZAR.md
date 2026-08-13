@@ -1,7 +1,8 @@
 # Antes de lanzar la 5550 · qué está hecho y qué falta
 
-13-ago-2026, de madrugada. José confirmó la billetera única y el precio de
-0,01. Esto es el estado real, sin adornos.
+13-ago-2026, de madrugada. José confirmó la billetera única, el precio —el
+gramo de oro dividido entre 55— y la comisión de 0,001 ORIGEN. Esto es el
+estado real, sin adornos.
 
 ## Hecho y comprobado
 
@@ -79,7 +80,7 @@ es cambiar `OG_RPC` y vaciar la colección de progreso.
 - **Congelar la cadena vieja**: lleva días sin una sola transacción y con la
   raíz de estado idéntica. En la práctica ya está congelada.
 - **El génesis**: está y cuadra.
-- **El precio**: puesto.
+- **El precio y la comisión**: puestos y desplegados.
 - **La mecánica de arranque**: probada entera en la 5534 — systemd,
   `static-nodes.json`, suelo de gas, Shanghai en caliente, reinicio de máquina.
 
