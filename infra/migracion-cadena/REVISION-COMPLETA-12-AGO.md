@@ -2,14 +2,21 @@
 
 12-ago-2026. Encargo: *revisar todo el código de la blockchain de prueba y de
 la 5550, dejar todo listo para que Chainlist lo apruebe, criticarlo, mejorarlo
-y entregar.* Y fijar el precio en **0,01 USD** y ver a dónde llega la comisión.
+y entregar.* Y fijar el precio y ver a dónde llega la comisión.
+
+> **Corregido el 13-ago.** Esta sección se escribió con el ORIGEN a 0,01 USD y
+> la comisión a 0,01 ORIGEN. Los dos números eran míos y estaban mal. Lo que
+> vale: el ORIGEN es **el gramo de oro dividido entre 55** —hoy 2,5728 USD— y
+> la comisión son **0,001 ORIGEN**. Las cuentas rehechas están en
+> `../veta-wallet-gas-y-precio/LA-COMISION.md`; abajo se deja lo que se pensó,
+> con los números tachados, para que se vea de dónde salió cada conclusión.
 
 Todo lo que sigue está **medido contra las cadenas encendidas**, no deducido.
 Cuando algo no se pudo comprobar, lo dice.
 
 ---
 
-## 1 · La comisión con ORIGEN a 0,01 USD
+## 1 · La comisión ~~con ORIGEN a 0,01 USD~~ · números superados
 
 Medido en la 5534, no estimado. Una transferencia de ONDK real gastó
 **52.472 de gas** (bloque 13.206); una transferencia nativa gasta 21.000.

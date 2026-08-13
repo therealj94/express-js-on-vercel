@@ -2,7 +2,7 @@ import { parseEther } from "ethers";
 import { precioDeGas } from "./gas";
 
 // ============================================================
-// La comision de Orden Global: 0,01 ORIGEN fijos por transaccion.
+// La comision de Orden Global: 0,001 ORIGEN fijos por transaccion.
 //
 // QUE ES Y QUE NO ES
 //
@@ -12,9 +12,13 @@ import { precioDeGas } from "./gas";
 // acumulando--. Esta comision es otra cosa: un cobro fijo de la billetera, que
 // va al tesoro, y que NO cambia el gas.
 //
-//   comision   0,010000 ORIGEN  fija, la mande quien la mande
+//   comision   0,001000 ORIGEN  fija, la mande quien la mande
 //   gas nativo 0,001953 ORIGEN  21.000 a 93 gwei
 //   gas token  0,004880 ORIGEN  52.472 a 93 gwei
+//
+// Con el ORIGEN a 2,5728 --el gramo de oro dividido entre 55-- la comision son
+// 0,0026 dolares. Notese que el GAS de un envio nativo cuesta el DOBLE que la
+// comision: quien mas cobra por mover ORIGEN es la propia red, no nosotros.
 //
 // Fija de verdad quiere decir eso: da igual que se envie 1 ORIGEN o un millon,
 // y da igual que sea ORIGEN o un token. Eso el gas no lo puede hacer --un
@@ -23,20 +27,21 @@ import { precioDeGas } from "./gas";
 //
 // COMO SE COBRA
 //
-// Con una transaccion aparte de 0,01 ORIGEN al tesoro, DESPUES de la del
+// Con una transaccion aparte de 0,001 ORIGEN al tesoro, DESPUES de la del
 // usuario. El orden importa: si se cobrara primero y el envio fallara, se le
 // habria cobrado por nada. Al reves, lo peor que pasa es que perdemos la
 // comision de un envio que si salio, que es el lado correcto en el que
 // equivocarse.
 //
-// Con 1 ORIGEN --lo que deja la consolidacion en cada billetera-- salen 84
-// envios nativos o 67 de token, comision y gas incluidos.
+// Con 1 ORIGEN --lo que deja la consolidacion en cada billetera, y que al
+// precio del oro son 2,57 dolares-- salen 339 envios nativos o 170 de token,
+// comision y gas incluidos.
 //
 // COMO SE ENCIENDE
 //
 // `OG_COMISION_ORIGEN`. Sin esa variable NO se cobra nada, que es como queda
 // hasta que arranque la 5550: encender un cobro a 435 personas sin avisarles
-// no se hace de madrugada. Ponerla a 0.01 lo activa.
+// no se hace de madrugada. Ponerla a 0.001 lo activa.
 // ============================================================
 
 const DESTINO = () => process.env.TREASURY_OG_ADDRESS;
@@ -47,9 +52,10 @@ export function comisionEnWei() {
   if (!v) return 0n;
   const n = Number(v);
   if (!isFinite(n) || n <= 0) return 0n;
-  // Un tope de cordura: una comision de mas de 1 ORIGEN seria un dedazo, y a
-  // 0,01 de precio serian mas de 1 centavo por movimiento.
-  if (n > 1) {
+  // Un tope de cordura. Con el ORIGEN atado al oro, 0,1 ORIGEN ya son 26
+  // centavos por movimiento: cualquier cosa por encima es un dedazo, no una
+  // decision.
+  if (n > 0.1) {
     console.error(`[comision] OG_COMISION_ORIGEN=${v} es demasiado alta; se ignora`);
     return 0n;
   }

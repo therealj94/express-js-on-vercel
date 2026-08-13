@@ -17,15 +17,18 @@ que duré cinco minutos en producción, y una comprobación que hacía falta.
 - **`app.js`** — avisa en el log de arranque si `PASS_TOKEN` o la clave de
   cifrado son más cortas de 32 caracteres.
 
-**El precio quedó primero en modo oro y esa misma noche pasó a 0,01.** José lo
-confirmó, así que se puso `OG_ORIGEN_USD=0.01` y se quitó `OG_PRECIO_MODO`.
-Comprobado ejecutando el propio módulo dentro de Heroku: **0,01 USD por ORIGEN,
-modo fijo**.
+**El precio: me equivoqué y está revertido.** Esa noche lo puse en 0,01 USD
+fijo creyendo que era lo acordado. No lo era: el ORIGEN vale **el gramo de oro
+dividido entre 55**, que es la fórmula que el código tenía desde siempre. José
+lo corrigió y quedó de vuelta en modo oro — comprobado ejecutando el módulo
+dentro de Heroku: *2.5728469610990876, modo oro*.
 
-Antes de tocarlo se midió a quién afectaba, que era lo que preocupaba: de 435
-usuarios hay **26 con KYC aprobado, 24 tarjetas activas, 2 fondeos en toda la
-historia y cero depósitos de USDT**. El cambio es grande en porcentaje y
-practicamente inocuo en gente. Se revierte con una variable.
+Nadie salió perjudicado, y no es una suposición: mientras estuvo mal, de las
+00:15 a las 02:01 UTC, hubo **cero fondeos de tarjeta, cero depósitos, cero
+transacciones y cero pagos**, contados contra la base de datos.
+
+La lección es la de siempre en esta sesión: *confirmar el número antes de
+escribirlo en producción, no después.*
 
 ## La avería que estaba corriendo desde antes
 

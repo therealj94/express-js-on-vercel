@@ -13,7 +13,8 @@
 | Cuentas · ranuras · emisión | 331 · 1.375 · **1.000.000.000.000 exacto** |
 | `chainId` · `shanghaiTime` · período | 5550 · 0 · 10 s |
 | El juez contra la cadena vieja | **0 diferencias** en 662 códigos y nonces, 175 saldos intocables y las 1.375 ranuras |
-| Precio en producción | **0,01 USD por ORIGEN, modo fijo** — comprobado ejecutando el propio módulo en Heroku |
+| Precio en producción | **el gramo de oro / 55 = 2,5728 USD** — comprobado ejecutando el módulo en Heroku |
+| Comisión | **0,001 ORIGEN** por transacción · desplegada y apagada |
 | Respaldo fuera de node1 | génesis, estado, ranuras e informe en `s3://og-5550-arranque-548380372606/definitivo/` |
 
 La raíz de estado de la 8532 sigue siendo la del cierre, así que nada de esto

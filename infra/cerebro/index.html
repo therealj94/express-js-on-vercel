@@ -223,9 +223,10 @@ const REG=[
        'Sin desperdicio: cero IP sueltas, cero discos huérfanos']},
  {id:'tesoro',nom:'TESORO',     col:'#e6eef5', a:[ .00,-.62, .34], n:34,
   que:'Precio, comisión y emisión',
-  det:['ORIGEN: 0,01 USD fijo','Comisión: 0,01 ORIGEN por transacción, sea cual sea el monto',
-       'La comisión va al tesoro; el gas va al validador',
-       'Con 1 ORIGEN: 84 envíos nativos o 67 de token',
+  det:['ORIGEN = el gramo de oro en dólares, dividido entre 55','Hoy: 2,5728 USD por ORIGEN',
+       'Comisión: 0,001 ORIGEN por transacción, sea cual sea el monto',
+       'La comisión va al tesoro; el gas va al validador, y cuesta el doble',
+       'Con 1 ORIGEN (2,57 USD): 339 envíos nativos o 170 de token',
        'Emisión total: un billón de ORIGEN']},
 ];
 const E={};for(const r of REG)E[r.id]={est:'ESPERA',met:'—',fuego:.12,mal:false,vivo:[]};
@@ -527,7 +528,8 @@ function guion(){
   P('Genesis ID, MyTokenPay y las tarjetas, activos.',450);
 
   P('El dinero.',420);
-  P(`El ORIGEN está fijado en un centavo de dólar. La comisión es de cero punto cero uno ORIGEN por transacción, sea cual sea el monto, y ${I.comisionEncendida?'está encendida':'está lista pero todavía apagada'}.`,600);
+  P(`El ORIGEN vale el gramo de oro dividido entre cincuenta y cinco: hoy, dos dólares con cincuenta y siete.`,520);
+  P(`La comisión es de cero punto cero cero uno ORIGEN por transacción, sea cual sea el monto, y ${I.comisionEncendida?'está encendida':'está lista pero todavía apagada'}. Son un cuarto de centavo.`,600);
   if(V.pr93)P(`En el registro público, la solicitud de la red de pruebas está ${V.pr93}, y la de la red principal, ${V.pr94}.`,550);
 
   if(I.hechoHoy&&I.hechoHoy.length){

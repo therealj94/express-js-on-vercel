@@ -1,15 +1,15 @@
 {
-  "fecha": "miércoles 13 de agosto de 2026",
-  "versionBackend": "76",
-  "precio": "0.01",
-  "comision": "0.01 ORIGEN",
+  "fecha": "jueves 13 de agosto de 2026",
+  "versionBackend": "79",
+  "precio": "2.5728 (gramo de oro / 55)",
+  "comision": "0.001 ORIGEN",
   "comisionEncendida": false,
   "genesisListo": true,
   "hechoHoy": [
     "Génesis definitivo de la 5550: 331 cuentas · 1.375 ranuras · emisión de un billón exacta, juzgado contra la cadena vieja con cero diferencias",
     "Billetera única confirmada y respaldo del génesis · estado · ranuras en S3",
-    "Precio del ORIGEN fijado en 0,01 USD en producción, comprobado ejecutando el módulo en Heroku",
-    "Comisión de 0,01 ORIGEN por transacción implementada y desplegada (v76) · apagada hasta el arranque de la 5550",
+    "Comisión fijada en 0,001 ORIGEN por transacción, implementada y desplegada, apagada hasta el arranque de la 5550",
+    "Precio del ORIGEN de vuelta en la fórmula del oro: el gramo dividido entre 55, dos coma cincuenta y siete dólares",
     "Shanghai activado en la 5534 en caliente, sin perder un bloque: PUSH0 funciona en los seis nodos",
     "Suelo de gas de 93 gwei puesto en los seis nodos, con rechazo real de transacciones a 0 gwei",
     "Balanceador arreglado de raíz: chequeo /readiness, dos nodos RPC sincronizados",
@@ -21,7 +21,7 @@
     "Crear rpc5550.ordenglobal-rpc.com con TLS cuando existan los nodos",
     "El corte: repuntar la billetera a la 5550, con José delante",
     "Poner ordenscan a indexar la 5550 tras el corte",
-    "Encender la comisión con OG_COMISION_ORIGEN=0.01 al arrancar la 5550",
+    "Encender la comisión con OG_COMISION_ORIGEN=0.001 al arrancar la 5550",
     "Cuenta de organización en Play Console y número D-U-N-S",
     "Rotar el secreto del cliente web de Google y borrar las llaves AKIA cuando José lo autorice"
   ]
