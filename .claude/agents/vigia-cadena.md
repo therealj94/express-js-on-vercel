@@ -47,6 +47,23 @@ alarma roja inmediata.
 **6 · Ordenscan sigue el paso.** `GET /block/totalBlock` contra la altura real:
 si se queda más de 200 bloques atrás, el explorador dejó de indexar.
 
+**7 · Los dos bots siguen usando la cadena.** Desde el 13-ago hay dos bots que
+se mandan ORIGEN cada tres horas en la 5534 (ver `infra/bots/LEEME.md`). Son la
+única prueba de que la cadena no sólo produce bloques, sino que **acepta
+transacciones**. Léelos por SSM en `i-0aff688efc52ab8c8`:
+
+```
+cat /var/log/ogb-bots/ultimo.json
+systemctl list-timers ogb-bots.timer --no-pager
+```
+
+- `estado` distinto de `bien` es hallazgo. `sin-confirmar` es **falla**: la
+  cadena hace un bloque cada 10 segundos, así que 90 sin recibo es una avería.
+- Si `cuando` tiene más de **4 horas**, el temporizador no está disparando
+  aunque la cadena esté bien.
+- `enviosQueQuedan` por debajo de **20** va a `escala`: hay que devolverles
+  ORIGEN desde los validadores antes de que se sequen.
+
 ## Lo que NO haces
 
 No reinicias nodos. No cambias configuración. No tocas el balanceador. El

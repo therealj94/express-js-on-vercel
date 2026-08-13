@@ -24,7 +24,8 @@
     "Hallazgo mas grave del dia: si se encendiera la comision, cada cobro iria a una direccion que NO es la billetera unica, con nonce cero, que nunca ha firmado nada. Hoy no cobra nada porque la comision ni siquiera esta configurada, y eso es lo que nos salva",
     "Cerrado el peor pendiente de seguridad que llevaba semanas: la clave que firma todas las sesiones ya mide sesenta y cuatro caracteres, no siete",
     "El tablero del cerebro ya pide contrasena. Estaba publicando a cualquiera los hallazgos de los agentes, que son un mapa de por donde entrar. El erre pe ce publico de pruebas sigue abierto a proposito, porque MetaMask no sabe mandar credenciales",
-    "Jose subio la correccion del simbolo a la solicitud de Chainlist. Comprobadas otra vez las cuatro pruebas del repositorio real contra el archivo que esta en la solicitud, no contra nuestra copia: las cuatro en verde"
+    "Jose subio la correccion del simbolo a la solicitud de Chainlist. Comprobadas otra vez las cuatro pruebas del repositorio real contra el archivo que esta en la solicitud, no contra nuestra copia: las cuatro en verde",
+    "Montados dos bots que se mandan ORIGEN cada tres horas en la red de pruebas, para que la cadena no solo produzca bloques sino que reciba transacciones de verdad. La primera entro en el bloque veintidos mil quinientos cuarenta y uno y confirmo en doce segundos"
   ],
   "pendiente": [
     "ANTES DE ENCENDER LA COMISION: decidir la direccion de tesoreria. La que hay puesta no es la billetera unica y nadie ha demostrado tener su llave",
@@ -38,6 +39,7 @@
     "Aprobar las siete tareas programadas para que el equipo revise solo, sin que yo los llame",
     "Un proveedor propio de la red Polygon: los dos que funcionan son publicos y gratuitos",
     "El corte a la cadena nueva, contigo delante",
-    "Chainlist: ya solo queda esperar el turno. Las dos solicitudes estan en verde y hay peticiones de julio todavia en la misma cola"
+    "Chainlist: ya solo queda esperar el turno. Las dos solicitudes estan en verde y hay peticiones de julio todavia en la misma cola",
+    "Fase dos de los bots: para que se manden ONDK y los otros tokens hay que reconstruir el genesis de la red de pruebas, y eso la reinicia desde cero. Se hace cuando Chainlist acepte las solicitudes, no antes"
   ]
 }
