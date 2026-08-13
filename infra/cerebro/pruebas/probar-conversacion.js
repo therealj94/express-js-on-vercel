@@ -1,0 +1,108 @@
+// Le habla al cerebro como le hablaría José y comprueba TRES cosas por cada
+// frase: que conteste, en qué IDIOMA contesta, y con qué voz lo dice. El fallo
+// que se persigue es el de la queja: preguntar "cost" en inglés y que conteste
+// en castellano con voz inglesa, que suena a robot.
+const {chromium} = require('playwright');
+const RUTA = '/home/user/express-js-on-vercel/infra/cerebro/index.html';
+
+const PRUEBAS_EN = ['hello', 'how are you', 'what can you do', 'what is the cost',
+  'tell me more', 'how are the chains', 'security', 'the team', 'what needs me',
+  'chainlist', 'the bots', 'what is failing', 'the wallet', 'thank you'];
+const PRUEBAS_ES = ['hola', '¿cómo estás?', 'cuánto cuesta', 'cuéntame más',
+  'cómo van las cadenas', 'seguridad', 'el equipo', 'qué me falta', 'gracias'];
+
+(async () => {
+  const b = await chromium.launch({
+    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    args: ['--no-sandbox']});
+  const p = await (await b.newContext()).newPage();
+  const err = [];
+  p.on('pageerror', e => err.push('PAGEERROR: ' + e.message));
+
+  await p.addInitScript(() => {
+    window.__d = [];
+    const V = [
+      {name:'Daniel', lang:'en-GB'}, {name:'Samantha', lang:'en-US'},
+      {name:'Mónica', lang:'es-ES'}, {name:'Paulina', lang:'es-MX'}];
+    const s = window.speechSynthesis;
+    s.getVoices = () => V;
+    s.speak = u => { window.__d.push({txt:u.text, lang:u.lang, voz:u.voice&&u.voice.name});
+      setTimeout(() => { u.onstart&&u.onstart(); u.onend&&u.onend(); }, 5); };
+    s.cancel = () => {};
+    Object.defineProperty(s,'speaking',{get:()=>false});
+    Object.defineProperty(s,'pending',{get:()=>false});
+    Object.defineProperty(s,'paused',{get:()=>false});
+    window.fetch = async u => {
+      const url=String(u), J=x=>new Response(JSON.stringify(x),{headers:{'content-type':'application/json'}});
+      if(url.includes('informe.json'))return J({fecha:'13 aug',versionBackend:'79',precio:'2.55',
+        comision:'0.001 ORIGEN',comisionEncendida:false,genesisListo:true,
+        hechoHoy:['Algo hecho hoy'],pendiente:['Algo pendiente']});
+      if(url.includes('partes.json'))return J([
+        {agente:'contador',nombre:'CONTADOR',veredicto:'aviso',cuando:new Date().toISOString(),
+         resumen:'El gasto de julio fue de quinientos veintitres dolares y agosto sube',
+         hallazgos:['Las seis maquinas viejas siguen encendidas'],escala:['Poner fecha a la retirada']},
+        {agente:'cerrajero',nombre:'CERRAJERO',veredicto:'falla',cuando:new Date().toISOString(),
+         resumen:'Dos cuentas con administrador total sin segundo factor',
+         hallazgos:['Sin politica de contrasenas'],escala:['Poner segundo factor']},
+        {agente:'vigia',nombre:'VIGÍA',veredicto:'bien',cuando:new Date().toISOString(),
+         resumen:'Las dos cadenas como deben',hallazgos:['Bloque veinte mil']}]);
+      if(url.includes('/ordenes/bots'))return J({cuando:new Date().toISOString(),estado:'bien',
+        bloque:22541,segundos:12.1,enviosQueQuedan:55});
+      if(url.includes('/rpc-vieja'))return J({jsonrpc:'2.0',id:1,result:'0x1'});
+      if(url.includes('/rpc'))return J({jsonrpc:'2.0',id:1,result:'0x159e'});
+      if(url.includes('totalBlock'))return J({blockTotal:22500});
+      if(url.includes('api.github.com'))return J({state:'open',merged:false});
+      return new Response('ok');
+    };
+  });
+
+  await p.goto('file://' + RUTA, {waitUntil:'domcontentloaded', timeout:30000});
+  await p.waitForTimeout(1500);
+  await p.evaluate(() => { desbloqueada = true; });
+
+  async function preguntar(frase){
+    await p.evaluate(() => { parar(); window.__d = []; });
+    await p.waitForTimeout(60);
+    await p.evaluate(f => atender(f), frase);
+    await p.waitForTimeout(450);
+    return p.evaluate(() => window.__d.slice(0, 3));
+  }
+  const idiomaTexto = x0 => { const x=' '+x0.toLowerCase()+' '; return /[ñáéíóú¿¡]/.test(x) ||
+    (x.match(/ (que|de|la|el|los|con|para|una|del|por|se|no|es|y|en) /gi)||[]).length >
+    (x.match(/ (the|and|of|is|to|in|for|with|that|are|it|on|at) /gi)||[]).length ? 'es' : 'en'; };
+
+  let mal = 0;
+  for (const [modo, lista, esperado] of [['EN', PRUEBAS_EN, 'en'], ['ES', PRUEBAS_ES, 'es']]) {
+    await p.evaluate(m => { document.querySelector('#idioma').value = m;
+      document.querySelector('#idioma').dispatchEvent(new Event('change')); }, esperado);
+    await p.waitForTimeout(350);
+    console.log('\n───── ' + modo + ' ─────');
+    for (const f of lista) {
+      const d = await preguntar(f);
+      if (!d.length) { console.log('  ✕ "' + f + '" → SIN RESPUESTA'); mal++; continue; }
+      const prim = d[0];
+      const idi = idiomaTexto(prim.txt);
+      // la voz tiene que ir con el idioma DEL TEXTO, no con el del selector
+      const vozOk = prim.voz ? new RegExp('^' + idi, 'i').test(
+        ({Daniel:'en-GB', Samantha:'en-US', 'Mónica':'es-ES', Paulina:'es-MX'})[prim.voz] || '') : true;
+      const jarvisOk = idi === esperado;   // JARVIS contesta en el idioma del selector
+      if (!jarvisOk || !vozOk) mal++;
+      console.log('  ' + (jarvisOk && vozOk ? '✓' : '✕') + ' "' + f + '" → ' +
+        (prim.txt || '').slice(0, 58) + (prim.txt.length > 58 ? '…' : ''));
+      if (!jarvisOk) console.log('      contesta en ' + idi + ' y esperaba ' + esperado);
+      if (!vozOk) console.log('      voz ' + prim.voz + ' para texto en ' + idi);
+    }
+  }
+
+  // el caso de la queja: una cita de agente en castellano dentro del modo inglés
+  await p.evaluate(() => { document.querySelector('#idioma').value='en';
+    document.querySelector('#idioma').dispatchEvent(new Event('change')); });
+  await p.waitForTimeout(300);
+  const d = await preguntar('what is the cost');
+  console.log('\n───── EL CASO DE LA QUEJA · "what is the cost" en modo inglés');
+  d.forEach(x => console.log('   [' + (x.voz||'sistema') + ' · ' + x.lang + '] ' + x.txt.slice(0,62)));
+
+  console.log('\nfallos: ' + mal);
+  console.log('errores de página: ' + (err.length ? err.join(' | ').slice(0,300) : 'ninguno'));
+  await b.close();
+})().catch(e => console.log('FALLO DEL TEST:', e.message));

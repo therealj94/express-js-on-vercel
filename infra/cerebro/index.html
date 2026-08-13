@@ -283,13 +283,13 @@ const AXONES=[['n5534','g5550'],['n5534','scan'],['n5534','m8532'],['g5550','m85
 
 /* Los siete agentes. El color los distingue en el raíl y en la voz. */
 const AGENTES=[
- {id:'vigia',    nom:'VIGÍA',    col:'#5ad9ff', mira:{en:'the chains',es:'las cadenas'},   cada:{en:'hourly',es:'cada hora'}},
- {id:'centinela',nom:'CENTINELA',col:'#ffd166', mira:{en:'the money',es:'el dinero'},      cada:{en:'every 2 hours',es:'cada 2 horas'}},
- {id:'escudero', nom:'ESCUDERO', col:'#ff4d9d', mira:{en:'Chainlist',es:'Chainlist'},      cada:{en:'every 6 hours',es:'cada 6 horas'}},
- {id:'cirujano', nom:'CIRUJANO', col:'#4ade80', mira:{en:'what is deployed',es:'lo desplegado'},cada:{en:'daily',es:'a diario'}},
- {id:'cronista', nom:'CRONISTA', col:'#a78bfa', mira:{en:'the daily report',es:'el parte del día'},cada:{en:'daily',es:'a diario'}},
- {id:'cerrajero',nom:'CERRAJERO',col:'#fb923c', mira:{en:'security',es:'la seguridad'},    cada:{en:'weekly',es:'cada semana'}},
- {id:'contador', nom:'CONTADOR', col:'#8affd4', mira:{en:'what it costs',es:'lo que cuesta'},cada:{en:'weekly',es:'cada semana'}},
+ {id:'vigia',    nom:'VIGÍA',    col:'#5ad9ff', ing:'The watchman',  mira:{en:'the chains',es:'las cadenas'},   cada:{en:'hourly',es:'cada hora'}},
+ {id:'centinela',nom:'CENTINELA',col:'#ffd166', ing:'The sentinel',  mira:{en:'the money',es:'el dinero'},      cada:{en:'every 2 hours',es:'cada 2 horas'}},
+ {id:'escudero', nom:'ESCUDERO', col:'#ff4d9d', ing:'The squire',    mira:{en:'Chainlist',es:'Chainlist'},      cada:{en:'every 6 hours',es:'cada 6 horas'}},
+ {id:'cirujano', nom:'CIRUJANO', col:'#4ade80', ing:'The surgeon',   mira:{en:'what is deployed',es:'lo desplegado'},cada:{en:'daily',es:'a diario'}},
+ {id:'cronista', nom:'CRONISTA', col:'#a78bfa', ing:'The chronicler',mira:{en:'the daily report',es:'el parte del día'},cada:{en:'daily',es:'a diario'}},
+ {id:'cerrajero',nom:'CERRAJERO',col:'#fb923c', ing:'The locksmith', mira:{en:'security',es:'la seguridad'},    cada:{en:'weekly',es:'cada semana'}},
+ {id:'contador', nom:'CONTADOR', col:'#8affd4', ing:'The accountant',mira:{en:'what it costs',es:'lo que cuesta'},cada:{en:'weekly',es:'cada semana'}},
 ];
 
 const E={};for(const s of SIS)E[s.id]={est:'STANDBY',met:'—',mal:false,avi:false,fuego:.12,vivo:[]};
@@ -676,6 +676,27 @@ const BUENAS_ES=[/Natural/i,/Neural/i,/Online/i,/Google/i,/Mónica|Monica/i,/Pau
 let voces=[],nombreJarvis=null,nombreAgente={};
 const vozPorNombre=n=>n?(speechSynthesis.getVoices().find(v=>v.name===n)||null):null;
 
+/* En qué idioma está escrito ESTE texto. Los partes de los agentes vienen en
+   castellano aunque el tablero esté en inglés, y leerlos con voz inglesa es
+   lo que sonaba a robot. Se cuentan marcas propias de cada idioma; con la ñ,
+   los acentos y los signos de apertura sobra casi siempre. */
+function idiomaDe(x){
+  const s=' '+String(x).toLowerCase()+' ';
+  if(/[ñáéíóú¿¡]/.test(s))return 'es';
+  const es=(s.match(/ (que|de|la|el|los|las|con|para|una|del|por|se|no|es|y|en|al|su|lo|sin|ya) /g)||[]).length;
+  const en=(s.match(/ (the|and|of|is|to|in|for|with|that|are|was|it|on|as|at|by|from|has|not) /g)||[]).length;
+  if(es===en)return IDI;
+  return es>en?'es':'en';
+}
+/* Una voz de ese idioma, y distinta para los agentes si se puede. */
+function vozDeIdioma(idi,agente){
+  const todas=speechSynthesis.getVoices().filter(v=>new RegExp('^'+idi,'i').test(v.lang||''));
+  if(!todas.length)return null;
+  if(!agente)return todas[0];
+  const k=AGENTES.findIndex(a=>a.id===agente);
+  return todas[(Math.max(0,k)+1)%todas.length];
+}
+
 /* iOS exige que la PRIMERA llamada a speak() nazca dentro de un toque. No se
    desbloquea con una frase muda seguida de un cancel --eso vuelve a bloquearlo
    en iPad--: se desbloquea hablando de verdad, sin cancelar nada antes. */
@@ -780,7 +801,12 @@ function siguiente(){
   if(l.foco)disparar(l.foco,true);
 
   const u=new SpeechSynthesisUtterance(limpiar(l.x));
-  u.lang=IDI==='en'?'en-GB':'es-MX';
+  /* Con qué voz. NO basta con el idioma del selector: los partes de los
+     agentes vienen escritos en castellano, y una voz inglesa leyendo
+     castellano suena exactamente a robot --que fue justo la queja--. Se mira
+     el idioma DEL TEXTO y se le pone una voz de ese idioma. */
+  const idiT=idiomaDe(l.x);
+  u.lang=idiT==='en'?'en-GB':'es-MX';
   /* ESTE try NO es por si acaso. Asignar `voice` LANZA una excepción si el
      objeto no es una SpeechSynthesisVoice válida --y una voz obtenida antes
      de un 'voiceschanged' deja de serlo--. Sin este try la excepción sale
@@ -788,7 +814,8 @@ function siguiente(){
      qué: eso fue exactamente el fallo del 13-ago. Antes que quedarse callado,
      se habla con la voz del sistema. */
   try{
-    const v=vozPorNombre(l.ag?nombreAgente[l.ag]:nombreJarvis);
+    let v=vozPorNombre(l.ag?nombreAgente[l.ag]:nombreJarvis);
+    if(!v||!new RegExp('^'+idiT,'i').test(v.lang||''))v=vozDeIdioma(idiT,l.ag);
     if(v){u.voice=v; if(v.lang)u.lang=v.lang;}
   }catch(e){
     $('#oido').textContent=(IDI==='en'?'Falling back to the system voice.'
@@ -910,74 +937,239 @@ function guion(){
   return L;
 }
 
-/* Respuestas cortas, para cuando preguntas algo concreto. */
-function responder(tema){
-  const en=IDI==='en';
-  const A=(x,o={})=>Object.assign({q:'JARVIS',x},o);
-  switch(tema){
-    case 'cadenas':return [
-      A(V.b5534?(en?('Testnet at block '+nf(V.b5534)+', gas '+V.gas+' gigawei, last block '+V.edad+' seconds ago.')
-                   :('Red de pruebas en el bloque '+nf(V.b5534)+', gas '+V.gas+' gigawei, último bloque hace '+V.edad+' segundos.'))
-                 :(en?'No answer from the testnet.':'La red de pruebas no contesta.'),{foco:'n5534'}),
-      A(V.quieta?(en?'Legacy chain frozen, state root intact.':'Cadena vieja congelada, raíz intacta.')
-                :(en?'Warning: the legacy chain moved.':'Atención: la cadena vieja se movió.'),{foco:'m8532'})];
-    case 'dinero':{
-      const c=parteDe('centinela');
-      return [A(en?('ORIGEN is one gram of gold divided by fifty five. Today, '+(I.precio||'unknown')+'.')
-                  :('El ORIGEN es el gramo de oro entre cincuenta y cinco. Hoy, '+(I.precio||'sin dato')+'.'),{foco:'tesoro'}),
-        A(en?('The fee is '+(I.comision||'0.001 ORIGEN')+', and it is not configured in production, so it charges nothing.')
-            :('La comisión es de '+(I.comision||'cero coma cero cero uno ORIGEN')+', y no está configurada en producción, así que cobra cero.'),{foco:'tesoro'}),
-        c?{q:c.nombre,ag:'centinela',x:c.resumen+'.'}:null].filter(Boolean);}
-    case 'equipo':{
-      if(!PARTES.length)return [A(en?'No agent has reported yet.':'Ningún agente ha reportado todavía.')];
-      const mal=PARTES.filter(p=>p.veredicto==='falla').length;
-      return [A(en?(PARTES.length+' agents reporting, '+mal+' with failures.')
-                  :(PARTES.length+' agentes reportando, '+mal+' con fallas.')),
-        ...PARTES.map(p=>({q:p.nombre,ag:p.agente,x:p.resumen+'.',p:340}))];}
-    case 'seguridad':{const c=parteDe('cerrajero');
-      return c?[{q:c.nombre,ag:'cerrajero',x:c.resumen+'.'},
-        ...(c.escala||[]).map(x=>({q:c.nombre,ag:'cerrajero',x,p:340}))]
-        :[A(en?'The locksmith has not reported yet.':'El cerrajero no ha reportado todavía.')];}
-    case 'coste':{const c=parteDe('contador');
-      return c?[{q:c.nombre,ag:'contador',x:c.resumen+'.'},
-        ...(c.hallazgos||[]).slice(0,2).map(x=>({q:c.nombre,ag:'contador',x,p:340}))]
-        :[A(en?'The accountant has not reported yet.':'El contador no ha reportado todavía.')];}
-    case 'chainlist':return [A(en?('Testnet request is '+(V.pr93||'unknown')+', mainnet reservation is '+(V.pr94||'unknown')+'. All four checks pass. It is waiting for a maintainer.')
-                                 :('La solicitud de pruebas está '+(V.pr93||'sin dato')+', y la reserva de la principal '+(V.pr94||'sin dato')+'. Las cuatro pruebas pasan. Espera a un mantenedor.'),{foco:'chainl'})];
-    case 'bots':return [A(BOTS?(en?('The bots are '+(BOTS.estado==='bien'?'running':'stalled')+'. Last run '+hace(BOTS.cuando)+', '+(BOTS.enviosQueQuedan||0)+' sends left.')
-                                  :('Los bots están '+(BOTS.estado==='bien'?'corriendo':'parados')+'. Última carrera '+hace(BOTS.cuando)+', quedan '+(BOTS.enviosQueQuedan||0)+' envíos.'))
-                            :(en?'I cannot read the bots right now.':'Ahora mismo no puedo leer los bots.'),{foco:'bots'})];
-    case 'pendiente':{
-      const esc=PARTES.flatMap(p=>(p.escala||[]).map(x=>({q:p.nombre,ag:p.agente,x,p:360})));
-      const pen=(I.pendiente||[]).map(x=>A(x+'.',{p:300}));
-      if(!esc.length&&!pen.length)return [A(en?'Nothing is waiting on you.':'No hay nada esperándote.')];
-      return [A(en?'These need you.':'Esto necesita tu mano.',{p:400}),...esc,...pen];}
-  }
-  return [A(t('nada'))];
+/* ═══ 8b · LA CONVERSACIÓN ═══════════════════════════════════════════════
+   Diez frases hechas no son una conversación. Aquí hay tres cosas:
+
+     · JARVIS contesta SIEMPRE en el idioma del selector, aunque le hables en
+       el otro. Lo que no traduce son los partes de los agentes --están
+       escritos en castellano-- así que los presenta él en tu idioma y deja
+       que el agente los diga con su propia voz castellana. Suena a dos
+       personas, que es lo que son, y no a un robot leyendo mal.
+     · Se acuerda de lo último que dijo. «Cuéntame más» amplía ESO.
+     · Las respuestas se componen con los números de ahora mismo. Nada de
+       texto enlatado que envejece. */
+
+let ultimoTema=null, ultimasLineas=[];
+const en=()=>IDI==='en';
+const J=(x,o={})=>Object.assign({q:'JARVIS',x},o);
+
+/* Una frase con los números del momento, no una plantilla. */
+function frase(pares){ return pares.filter(Boolean).join(' '); }
+const sino=(x,alt)=>x!=null&&x!==''?x:alt;
+
+/* Presenta a un agente en tu idioma y le deja hablar en el suyo. */
+function citar(id){
+  const p=parteDe(id); if(!p)return [];
+  const a=AGENTES.find(x=>x.id===id)||{};
+  const como={falla:en()?'found a failure':'encontró una falla',
+              aviso:en()?'leaves a warning':'deja un aviso',
+              bien:en()?'reports everything in order':'dice que todo está en orden'}[p.veredicto];
+  return [J(en()?((a.ing||'The agent')+' '+como+', '+hace(p.cuando)+'. In its own words, in Spanish:')
+              :('El agente que vigila '+(a.mira?a.mira.es:'')+' '+como+', '+hace(p.cuando)+'. En sus palabras:'),{p:380}),
+          {q:p.nombre,ag:id,x:p.resumen+'.',p:420}];
+}
+function detalleDe(id,cuantos){
+  const p=parteDe(id); if(!p)return [];
+  return (p.hallazgos||[]).slice(0,cuantos||3).map(x=>({q:p.nombre,ag:id,x,p:360}));
 }
 
-/* ═══ 9 · ESCUCHAR Y OBEDECER ════════════════════════════════════════════
-   Lo que se puede pedir por voz es una lista CERRADA. Preguntar es libre;
-   actuar, no. Desde aquí no se despliega, no se mueven fondos, no se
-   reinicia un nodo y no se cambia configuración: esta página vive en
-   internet, y una consola remota sobre producción es exactamente lo que el
-   Cerrajero marcaría como el peor agujero del sistema. */
-const INTENCIONES=[
-  [/\b(status|report|brief|everything|parte|estado general|inform)/i,'PARTE'],
-  [/\b(chain|block|testnet|legacy|cadena|bloque|red)/i,'cadenas'],
-  [/\b(money|price|treasury|fee|origen|dinero|precio|tesoro|comisi)/i,'dinero'],
-  [/\b(team|agent|equipo|agente)/i,'equipo'],
-  [/\b(secur|lock|key|segur|cerrajero|llave)/i,'seguridad'],
-  [/\b(cost|spend|bill|aws|coste|costo|gasto|factura)/i,'coste'],
-  [/\b(chainlist|pull request|solicitud)/i,'chainlist'],
-  [/\b(bot)/i,'bots'],
-  [/\b(need|pending|outstanding|falta|pendiente|necesita)/i,'pendiente'],
-  [/\b(stop|quiet|silence|para|c[aá]llate|silencio)/i,'PARAR'],
+/* ── los temas ─────────────────────────────────────────────────────────── */
+function tema(id){
+  ultimoTema=id;
+  switch(id){
+
+  case 'saludo':{
+    const f=fallas().length, esc=PARTES.reduce((n,p)=>n+((p.escala||[]).length),0);
+    return [J(saludo(),{p:420}),
+      J(f? (en()?('We have '+f+(f===1?' system':' systems')+' down. Say "status" and I will take you through it.')
+                :('Tenemos '+f+(f===1?' sistema caído':' sistemas caídos')+'. Dime «estado» y te lo cuento.'))
+         : (en()?('All '+SIS.length+' systems are green.')
+                :('Los '+SIS.length+' sistemas están en verde.')),{p:400}),
+      esc?J(en()?('There '+(esc===1?'is one thing':'are '+esc+' things')+' waiting on you, whenever you want them.')
+                :('Hay '+(esc===1?'una cosa':esc+' cosas')+' esperándote, cuando quieras.'),{p:0}):null];}
+
+  case 'ayuda':return [
+    J(en()?'Ask me about the chains, the money, the treasury, security, cost, the team, Chainlist, the bots, the wallet, the explorer, or the migration.'
+          :'Pregúntame por las cadenas, el dinero, el tesoro, la seguridad, el coste, el equipo, Chainlist, los bots, la billetera, el explorador o la migración.',{p:480}),
+    J(en()?'You can also ask what needs you, name any agent, say "run the bots", or just say "tell me more" after anything I say.'
+          :'También puedes preguntar qué te falta, nombrar a cualquier agente, decir «lanza los bots», o decir «cuéntame más» después de cualquier cosa que diga.',{p:0})];
+
+  case 'comoestas':{
+    const f=fallas().length;
+    return [J(en()?(f?'Operational, though I would rather we had fewer failures.':'Operational, sir. Everything is where it should be.')
+                  :(f?'Operativo, aunque preferiría tener menos fallas.':'Operativo, José. Todo está donde debe estar.'),{p:380}),
+      J(en()?('Thirteen systems and seven agents under watch. '+(BOTS?'The test bots ran '+hace(BOTS.cuando)+'.':''))
+            :('Trece sistemas y siete agentes vigilados. '+(BOTS?'Los bots corrieron '+hace(BOTS.cuando)+'.':'')),{p:0})];}
+
+  case 'gracias':return [J(en()?'A pleasure, sir.':'Un placer, José.',{p:0})];
+
+  case 'cadenas':return [
+    J(V.b5534?(en()?frase(['The testnet is live at block '+nf(V.b5534)+'.',
+        'Gas is holding at '+V.gas+' gigawei, the floor we agreed.',
+        'The last block landed '+V.edad+' seconds ago; it makes one every ten.'])
+      :frase(['La red de pruebas está viva en el bloque '+nf(V.b5534)+'.',
+        'El gas se mantiene en '+V.gas+' gigawei, el suelo acordado.',
+        'El último bloque llegó hace '+V.edad+' segundos; hace uno cada diez.']))
+      :(en()?'The testnet is not answering.':'La red de pruebas no contesta.'),{foco:'n5534',p:520}),
+    J(V.quieta?(en()?'The legacy chain is frozen at block '+nf(V.b8532)+', with the state root identical to the closing snapshot. That is exactly what we need: the 5550 genesis was built from that state.'
+                    :'La cadena vieja sigue congelada en el bloque '+nf(V.b8532)+', con la raíz de estado idéntica a la del cierre. Eso es justo lo que hace falta: el génesis de la 5550 salió de ese estado.')
+              :(en()?'Warning. The legacy chain moved. The state root no longer matches, and the migration has to be rebuilt.'
+                    :'Atención. La cadena vieja se movió. La raíz ya no coincide y hay que rehacer la migración.'),{foco:'m8532',p:480}),
+    BOTS?J(en()?('The test bots keep it honest: they last ran '+hace(BOTS.cuando)+' and the chain accepted the transaction.')
+               :('Los bots lo mantienen honesto: corrieron '+hace(BOTS.cuando)+' y la cadena aceptó la transacción.'),{foco:'bots',p:0}):null];
+
+  case 'dinero':return [
+    J(en()?frase(['ORIGEN is one gram of gold in dollars, divided by fifty five.',
+        'Today that puts it at '+sino(I.precio,'an unknown figure')+'.'])
+      :frase(['El ORIGEN es el gramo de oro en dólares dividido entre cincuenta y cinco.',
+        'Hoy eso lo deja en '+sino(I.precio,'un valor sin dato')+'.']),{foco:'tesoro',p:480}),
+    J(en()?'The fee is one thousandth of an ORIGEN, flat, whatever the amount. But it is not configured in production, so right now it charges nothing.'
+          :'La comisión es de una milésima de ORIGEN, fija, sea cual sea el monto. Pero no está configurada en producción, así que ahora mismo cobra cero.',{foco:'tesoro',p:460}),
+    J(en()?'And that is fortunate, because the address it would pay into is not the single wallet. Nobody has ever proved they hold its key. Do not turn the fee on until that is decided.'
+          :'Y eso es una suerte, porque la dirección a la que pagaría no es la billetera única. Nadie ha demostrado nunca tener su llave. No enciendas la comisión hasta decidir eso.',{foco:'tesoro',p:420}),
+    ...citar('centinela')];
+
+  case 'seguridad':{
+    const c=parteDe('cerrajero');
+    if(!c)return [J(en()?'The locksmith has not reported yet.':'El cerrajero no ha reportado todavía.')];
+    return [...citar('cerrajero'),
+      J(en()?'The long-standing one is closed: the secret that signs every session now has sixty four characters, not seven.'
+            :'El de siempre está cerrado: la clave que firma todas las sesiones ya tiene sesenta y cuatro caracteres, no siete.',{p:400}),
+      ...(c.escala||[]).map(x=>({q:c.nombre,ag:'cerrajero',x,p:360}))];}
+
+  case 'coste':{
+    const c=parteDe('contador');
+    if(!c)return [J(en()?'The accountant has not reported yet.':'El contador no ha reportado todavía.')];
+    return [...citar('contador'),
+      J(en()?'The headline is that the bill is going up, not down, because the six legacy machines are all still running. And retiring them is not as simple as it sounds: four of them also carry the testnet validators.'
+            :'Lo importante es que la factura sube en vez de bajar, porque las seis máquinas viejas siguen encendidas. Y retirarlas no es tan simple: cuatro de ellas llevan además los validadores de la red de pruebas.',{foco:'nodos',p:420}),
+      ...detalleDe('contador',2)];}
+
+  case 'equipo':{
+    if(!PARTES.length)return [J(en()?'No agent has reported yet.':'Ningún agente ha reportado todavía.')];
+    const mal=PARTES.filter(p=>p.veredicto==='falla'),avi=PARTES.filter(p=>p.veredicto==='aviso');
+    const L=[J(en()?(PARTES.length+' of the seven agents have reported. '+
+        (mal.length?mal.length+' found failures.':'None found a failure.')+
+        (avi.length?' '+avi.length+' left warnings.':''))
+      :(PARTES.length+' de los siete agentes han reportado. '+
+        (mal.length?mal.length+' encontraron fallas.':'Ninguno encontró una falla.')+
+        (avi.length?' '+avi.length+' dejaron avisos.':'')),{foco:'nodos',p:440})];
+    [...mal,...avi,...PARTES.filter(p=>p.veredicto==='bien')].forEach(p=>
+      L.push({q:p.nombre,ag:p.agente,x:p.resumen+'.',p:380}));
+    return L;}
+
+  case 'chainlist':return [
+    J(en()?frase(['The testnet request is '+sino(V.pr93,'unknown')+' and the mainnet reservation is '+sino(V.pr94,'unknown')+'.',
+        'All four checks pass, run here against the file that is actually in the request.'])
+      :frase(['La solicitud de la red de pruebas está '+sino(V.pr93,'sin dato')+' y la reserva de la principal '+sino(V.pr94,'sin dato')+'.',
+        'Las cuatro pruebas pasan, corridas aquí contra el archivo que está en la solicitud.']),{foco:'chainl',p:480}),
+    J(en()?'The symbol had seven characters and would have failed after weeks in the queue. You fixed it. Now it is only a matter of waiting: there are requests from July still in that same queue.'
+          :'El símbolo tenía siete caracteres y habría fallado tras semanas de cola. Lo corregiste. Ahora es solo esperar: hay solicitudes de julio todavía en esa misma cola.',{foco:'chainl',p:0})];
+
+  case 'bots':return [
+    J(BOTS?(en()?frase(['The two bots are '+(BOTS.estado==='bien'?'running':'stalled')+'.',
+        'Last run '+hace(BOTS.cuando)+(BOTS.bloque?', into block '+nf(BOTS.bloque):'')+
+        (BOTS.segundos!=null?', confirmed in '+BOTS.segundos+' seconds':'')+'.',
+        (BOTS.enviosQueQuedan||0)+' sends left before they need refunding.'])
+      :frase(['Los dos bots están '+(BOTS.estado==='bien'?'corriendo':'parados')+'.',
+        'Última carrera '+hace(BOTS.cuando)+(BOTS.bloque?', en el bloque '+nf(BOTS.bloque):'')+
+        (BOTS.segundos!=null?', confirmada en '+BOTS.segundos+' segundos':'')+'.',
+        'Les quedan '+(BOTS.enviosQueQuedan||0)+' envíos antes de rellenarlos.']))
+      :(en()?'I cannot read the bots right now.':'Ahora mismo no puedo leer los bots.'),{foco:'bots',p:460}),
+    J(en()?'They only run on the testnet, and they refuse to sign if the chain is not 5534. One transaction on the frozen chain would invalidate the whole migration.'
+          :'Solo corren en la red de pruebas, y se niegan a firmar si la cadena no es la 5534. Una transacción en la cadena congelada invalidaría toda la migración.',{p:0})];
+
+  case 'migracion':return [
+    J(en()?'The 5550 genesis is built and judged against the closed chain with zero differences: three hundred thirty one accounts, one hundred seventy two contracts, one thousand three hundred seventy five storage slots.'
+          :'El génesis de la 5550 está construido y juzgado contra la cadena cerrada con cero diferencias: trescientas treinta y una cuentas, ciento setenta y dos contratos, mil trescientas setenta y cinco ranuras.',{foco:'g5550',p:500}),
+    J(en()?'It needs no new machines. Nodes three to six already run Besu, with fixed addresses and six gigabytes of memory free each. That was the last thing blocking the cutover, and it is answered.'
+          :'No hacen falta máquinas nuevas. Los nodos tres a seis ya llevan Besu, con direcciones fijas y seis gigas de memoria libres cada uno. Era lo último que bloqueaba el corte, y está resuelto.',{foco:'nodos',p:460}),
+    J(en()?'Starting those four validators is the cutover, and that is done with you present. Not before.'
+          :'Arrancar esos cuatro validadores es el corte, y eso se hace contigo delante. No antes.',{foco:'g5550',p:0})];
+
+  case 'billetera':return [
+    J(en()?'Veta Wallet is online with four hundred thirty five users. Send, receive, swap, card funding and USDT deposits.'
+          :'Veta Wallet está en línea con cuatrocientos treinta y cinco usuarios. Enviar, recibir, canjear, fondeo de tarjeta y depósitos de USDT.',{foco:'wallet',p:460}),
+    J(en()?'The keys are encrypted with a sixty four character secret, and the two-stage rotation finished and was verified against every record.'
+          :'Las llaves están cifradas con un secreto de sesenta y cuatro caracteres, y la rotación en dos etapas terminó y se comprobó contra todos los registros.',{foco:'wallet',p:420}),
+    J(en()?'It signs with whatever chain the node reports, not what the database says. That is why the cutover is one field, not a release.'
+          :'Firma con la cadena que dice el nodo, no con lo que dice la base de datos. Por eso el corte es un campo, no una versión.',{foco:'wallet',p:0})];
+
+  case 'pendiente':{
+    const esc=PARTES.flatMap(p=>(p.escala||[]).map(x=>({q:p.nombre,ag:p.agente,x,p:380})));
+    const pen=(I.pendiente||[]).slice(0,6).map(x=>J(x+'.',{p:300}));
+    if(!esc.length&&!pen.length)return [J(en()?'Nothing is waiting on you.':'No hay nada esperándote.')];
+    return [J(en()?'These are waiting on you, most pressing first.':'Esto está esperándote, lo más urgente primero.',{p:420}),...esc,...pen];}
+
+  case 'fallas':{
+    const f=fallas();
+    if(!f.length)return [J(en()?'Nothing is failing. All systems green.':'No falla nada. Todos los sistemas en verde.')];
+    return [J(en()?(f.length+(f.length===1?' system is':' systems are')+' down.'):(f.length+(f.length===1?' sistema está':' sistemas están')+' caídos.'),{p:400}),
+      ...f.map(s=>J((en()?s.nom:s.es)+': '+E[s.id].est+', '+E[s.id].met+'.',{foco:s.id,p:340}))];}
+  }
+  return null;
+}
+
+/* «Cuéntame más» amplía lo último, no repite. */
+function ampliar(){
+  const mapa={seguridad:'cerrajero',coste:'contador',dinero:'centinela',
+              chainlist:'escudero',cadenas:'vigia'};
+  const ag=mapa[ultimoTema];
+  if(ag&&parteDe(ag)){
+    const d=detalleDe(ag,5);
+    if(d.length)return [J(en()?'The detail, then.':'El detalle, entonces.',{p:360}),...d];
+  }
+  const s=SIS.find(x=>x.id===ultimoTema);
+  if(s)return [J(en()?'In more detail.':'Con más detalle.',{p:360}),
+               ...s.det[IDI].map(x=>J(x+'.',{foco:s.id,p:340}))];
+  if(ultimoTema)return tema(ultimoTema);
+  return [J(en()?'More about what, sir?':'¿Más sobre qué, José?')];
+}
+
+/* Un sistema concreto, cuando lo nombras. */
+function temaSistema(s){
+  ultimoTema=s.id;
+  const e=E[s.id];
+  return [J((en()?s.nom:s.es)+': '+e.est+'. '+e.met+'.',{foco:s.id,p:420}),
+    ...s.det[IDI].slice(0,3).map(x=>J(x+'.',{foco:s.id,p:340}))];
+}
+
+/* ═══ 9 · ESCUCHAR Y ENTENDER ════════════════════════════════════════════
+   Cada patrón lleva las dos lenguas dentro a propósito: Safari en el iPad
+   transcribe con el idioma de dictado del aparato y no con el que se le pide,
+   así que hablándole en español puede llegar texto en inglés. Reconociendo
+   las dos, eso deja de importar --y la respuesta sale siempre en el idioma
+   del selector.
+
+   Preguntar es libre. ACTUAR es una lista cerrada, y está más abajo. */
+const sinTildes=x=>String(x).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+
+const CONV=[
+ [/^\s*(hi|hello|hey|good (morning|afternoon|evening)|jarvis|hola|buenas|buenos dias|buenas (tardes|noches))\b/i,'saludo'],
+ [/(what can you|what do you do|help me|your options|que puedes|que sabes|ayuda|opciones|comandos|que te puedo preguntar)/i,'ayuda'],
+ [/(how are you|how do you feel|como estas|que tal|todo bien)/i,'comoestas'],
+ [/(thank|thanks|cheers|gracias|bien hecho|buen trabajo|perfecto)/i,'gracias'],
+ [/(tell me more|more detail|go on|expand|elaborate|cuentame mas|mas detalle|amplia|sigue|explicame|explica)/i,'MAS'],
+ [/(repeat|say that again|repite|otra vez|de nuevo)/i,'REPETIR'],
+ [/(status|report|brief|overview|how are things|how is everything|estado|el parte|informe|como va todo|resumen general)/i,'PARTE'],
+ [/(fail|down|broken|what.s wrong|falla|fallo|roto|caido|que va mal)/i,'fallas'],
+ [/(chainlist|pull request|listing|solicitud|registro publico)/i,'chainlist'],
+ [/(chain|block|testnet|legacy|frozen|cadena|bloque|red de prueba|congelad)/i,'cadenas'],
+ [/(money|price|treasur|fee|commission|gold|dinero|precio|tesoro|comisi|oro|cuanto vale)/i,'dinero'],
+ [/(secur|lock|keys|secret|two.factor|segur|cerrajero|llave|secreto|contrase|segundo factor)/i,'seguridad'],
+ [/(cost|spend|bill|budget|expensive|how much are we paying|coste|costo|gasto|factura|caro|cuanto (cuesta|pagamos|gastamos)|que cuesta)/i,'coste'],
+ [/(team|agents|who is watching|equipo|agentes|quien vigila)/i,'equipo'],
+ [/\bbots?\b/i,'bots'],
+ [/(migrat|cutover|mainnet|genesis|5550|migraci|el corte|red principal)/i,'migracion'],
+ [/(wallet|users|the app|billetera|usuarios|la aplicacion)/i,'billetera'],
+ [/(need|pending|outstanding|waiting on me|what.s left|falta|pendiente|necesita|esperando|que me toca)/i,'pendiente'],
+ [/(stop|be quiet|silence|shut up|para|callate|silencio|basta)/i,'PARAR'],
 ];
 const ORDENES=[
-  [/\b(run|start|fire|corre|lanza|ejecuta).{0,14}\bbot/i,'bots-ahora'],
-  [/\b(refresh|reload|update|actualiza|recarga)/i,'refrescar'],
+ [/\b(run|start|fire|launch|corre|lanza|ejecuta|dispara).{0,16}\bbot/i,'bots-ahora'],
+ [/(refresh|reload|update everything|actualiza|recarga|refresca)/i,'refrescar'],
 ];
+
 let oyendo=false,rec=null;
 function escuchar(){
   const R=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -985,12 +1177,8 @@ function escuchar(){
   if(oyendo){rec&&rec.stop();return;}
   parar();
   rec=new R();
-  /* El idioma se lee del selector en el momento, no de una variable que
-     pudiera haberse quedado atrás. Aun así, Safari en iPad suele IGNORAR
-     esto y transcribir con el idioma de dictado del aparato. Por eso las
-     órdenes se reconocen en los dos idiomas a la vez (ver INTENCIONES) y la
-     respuesta sale siempre en el idioma del selector: que transcriba en
-     inglés deja de importar. */
+  /* El idioma se lee del selector en el momento. Aun así Safari en iPad suele
+     IGNORARLO: por eso los patrones de arriba reconocen los dos idiomas. */
   const pedido=$('#idioma').value==='en'?'en-GB':'es-MX';
   rec.lang=pedido;
   rec.interimResults=true; rec.maxAlternatives=1;
@@ -1002,7 +1190,7 @@ function escuchar(){
     $('#oido').textContent='“'+txt+'”';
     if(ev.results[ev.results.length-1].isFinal)atender(txt);
   };
-  rec.onerror=ev=>{$('#oido').textContent=IDI==='en'?'Could not hear you.':'No pude oírte.';};
+  rec.onerror=()=>{$('#oido').textContent=IDI==='en'?'Could not hear you.':'No pude oírte.';};
   rec.onend=()=>{oyendo=false;$('#mic').classList.remove('on');$('#lblMic').textContent=t('speak');};
   rec.start();
 }
@@ -1013,46 +1201,74 @@ $('#mic').addEventListener('click',()=>{
   if(oyendo||desbloqueada){escuchar();return;}
   desbloqueada=true;
   const u=new SpeechSynthesisUtterance(IDI==='en'?'Yes, sir?':'¿Sí, José?');
-  const v=vozPorNombre(nombreJarvis); if(v)u.voice=v;
-  u.lang=(v&&v.lang)||(IDI==='en'?'en-GB':'es-MX'); u.rate=.95; u.pitch=.86;
+  try{const v=vozDeIdioma(IDI)||vozPorNombre(nombreJarvis); if(v)u.voice=v;}catch(e){}
+  u.lang=IDI==='en'?'en-GB':'es-MX'; u.rate=.95; u.pitch=.86;
   $('#sub').innerHTML='<span class="quien">JARVIS</span>'+u.text;
   u.onend=escuchar; u.onerror=escuchar;
   try{speechSynthesis.speak(u);}catch(e){escuchar();}
-  setTimeout(()=>{if(!oyendo)escuchar();},2200);   // por si no suena, no bloquear el micro
+  setTimeout(()=>{if(!oyendo)escuchar();},2200);
 });
 
-async function atender(txt){
-  for(const [re,acc] of ORDENES){
-    if(re.test(txt)){ejecutar(acc);return;}
+function atender(txt){
+  const s=sinTildes(txt);
+  if(!s.trim())return;
+
+  for(const [re,acc] of ORDENES) if(re.test(s)) return ejecutar(acc);
+
+  for(const [re,id] of CONV){
+    if(!re.test(s))continue;
+    if(id==='PARAR')return parar();
+    if(id==='PARTE'){ultimoTema='parte';return responderCon(guion());}
+    if(id==='REPETIR')return responderCon(ultimasLineas.slice());
+    if(id==='MAS')return responderCon(ampliar());
+    const r=tema(id);
+    if(r)return responderCon(r);
   }
-  for(const [re,tema] of INTENCIONES){
-    if(re.test(txt)){
-      if(tema==='PARAR'){parar();return;}
-      if(tema==='PARTE'){decir(guion());return;}
-      decir(responder(tema));return;
-    }
+
+  /* ¿nombras a un agente? entonces habla él */
+  const ag=AGENTES.find(a=>s.includes(sinTildes(a.nom))||s.includes(a.id)||
+                           s.includes(sinTildes(a.mira.es))||s.includes(sinTildes(a.mira.en)));
+  if(ag&&parteDe(ag.id)){
+    ultimoTema=ag.id==='cerrajero'?'seguridad':ag.id==='contador'?'coste':ag.id;
+    const p=parteDe(ag.id);
+    return responderCon([...citar(ag.id),...detalleDe(ag.id,3)]);
   }
-  decir([{q:'JARVIS',x:t('nada')}]);
+
+  /* ¿nombras un sistema? */
+  const sis=SIS.find(x=>s.includes(sinTildes(x.nom))||s.includes(sinTildes(x.es)));
+  if(sis)return responderCon(temaSistema(sis));
+
+
+  /* No entendido: no se calla ni suelta un error. Ofrece. */
+  responderCon([J(IDI==='en'
+    ? 'I did not catch that. You can ask me about the chains, the money, security, cost, the team, Chainlist, the bots, or what needs you.'
+    : 'No te entendí. Puedes preguntarme por las cadenas, el dinero, la seguridad, el coste, el equipo, Chainlist, los bots, o qué te falta.')]);
+}
+function responderCon(lineas){
+  const L=(lineas||[]).filter(Boolean);
+  if(!L.length)return;
+  ultimasLineas=L.slice();
+  decir(L);
 }
 async function ejecutar(accion){
-  const en=IDI==='en';
   if(accion==='refrescar'){
-    decir([{q:'JARVIS',x:en?'Refreshing.':'Actualizando.'}]);
-    await todo(); return;
+    responderCon([J(IDI==='en'?'Refreshing everything.':'Actualizando todo.')]);
+    await todo();
+    return responderCon([J(IDI==='en'?'Done. Everything is current.':'Hecho. Todo está al día.')]);
   }
   if(accion==='bots-ahora'){
-    decir([{q:'JARVIS',x:en?'Running the test bots now.':'Lanzando los bots de prueba.'}]);
+    responderCon([J(IDI==='en'?'Running the test bots now.':'Lanzando los bots de prueba.',{foco:'bots'})]);
     try{
       const r=await fetch('/ordenes/bots/ahora',{method:'POST'});
       const j=await r.json();
       await verBots();
-      decir([{q:'JARVIS',foco:'bots',x: j.estado==='bien'
-        ?(en?('Done. The transaction confirmed in block '+nf(j.bloque)+', in '+j.segundos+' seconds.')
-            :('Hecho. La transacción confirmó en el bloque '+nf(j.bloque)+', en '+j.segundos+' segundos.'))
-        :(en?('The run finished as '+j.estado+'. '+(j.detalle||''))
-            :('La carrera terminó como '+j.estado+'. '+(j.detalle||'')))}]);
+      responderCon([J(j.estado==='bien'
+        ?(IDI==='en'?('Done. The transaction confirmed in block '+nf(j.bloque)+', in '+j.segundos+' seconds. '+(j.enviosQueQuedan||0)+' sends left.')
+                    :('Hecho. La transacción confirmó en el bloque '+nf(j.bloque)+', en '+j.segundos+' segundos. Quedan '+(j.enviosQueQuedan||0)+' envíos.'))
+        :(IDI==='en'?('The run finished as '+j.estado+'. '+(j.detalle||''))
+                    :('La carrera terminó como '+j.estado+'. '+(j.detalle||''))),{foco:'bots'})]);
     }catch(e){
-      decir([{q:'JARVIS',x:en?'I could not reach the bots.':'No pude alcanzar los bots.'}]);
+      responderCon([J(IDI==='en'?'I could not reach the bots.':'No pude alcanzar los bots.')]);
     }
   }
 }
