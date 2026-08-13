@@ -17,11 +17,15 @@ que duré cinco minutos en producción, y una comprobación que hacía falta.
 - **`app.js`** — avisa en el log de arranque si `PASS_TOKEN` o la clave de
   cifrado son más cortas de 32 caracteres.
 
-**El precio queda como estaba.** Se puso `OG_PRECIO_MODO=oro`, así que hoy la
-aplicación sigue calculando el ORIGEN por la fórmula del oro, exactamente igual
-que ayer. Pasar a los 0,01 fijos es cambiar **una variable**, y no se hizo
-porque lo acordado es 0,01 **para la 5550**, que todavía no existe. Hacerlo hoy
-recortaría 257 veces lo que cada usuario recibe al fondear su tarjeta.
+**El precio quedó primero en modo oro y esa misma noche pasó a 0,01.** José lo
+confirmó, así que se puso `OG_ORIGEN_USD=0.01` y se quitó `OG_PRECIO_MODO`.
+Comprobado ejecutando el propio módulo dentro de Heroku: **0,01 USD por ORIGEN,
+modo fijo**.
+
+Antes de tocarlo se midió a quién afectaba, que era lo que preocupaba: de 435
+usuarios hay **26 con KYC aprobado, 24 tarjetas activas, 2 fondeos en toda la
+historia y cero depósitos de USDT**. El cambio es grande en porcentaje y
+practicamente inocuo en gente. Se revierte con una variable.
 
 ## La avería que estaba corriendo desde antes
 
