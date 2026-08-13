@@ -13,6 +13,34 @@ Si no sale «Listo para enviar», no se sigue. Cada falla es un motivo por el qu
 el pull request se cierra —o algo peor, como publicar un RPC que sirve otra
 cadena.
 
+## Y además, correr el CI de verdad
+
+`verificar.py` es nuestro. El que decide es el del repositorio, y el bot de
+Chainlist lo dice al abrir el pull request: *«sólo miraremos los PR con los que
+el CI esté contento»*. Se puede correr entero aquí, y **hay que hacerlo**: el
+13-ago así apareció que el símbolo `tORIGEN` tenía siete caracteres y el CI
+exige menos de siete. Ninguna comprobación nuestra lo había visto.
+
+```
+git clone --depth 1 https://github.com/ethereum-lists/chains.git chains-ci
+cp eip155-5534.json eip155-5550.json chains-ci/_data/chains/
+cd chains-ci
+
+npx prettier --check '_data/chains/eip155-5534.json'      # 1 · formato
+cd tools && npm install && node schemaCheck.js && cd ..    # 2 · esquema
+./gradlew run --args="verbose singleChainCheck _data/chains/eip155-5534.json"
+./gradlew run                                              # 4 · lista entera
+```
+
+La tercera es la importante: **se conecta de verdad** a cada RPC declarado y
+falla si contesta otro chainId, y abre el explorador. Necesita Java; tarda unos
+dos minutos la primera vez.
+
+Las reglas que aplica están en `processor/.../Main.kt` y `Env.kt`. Las que más
+se olvidan: el símbolo de la moneda con **menos de 7 caracteres**, ningún campo
+fuera de la lista de obligatorios y opcionales, y los nombres sólo con letras,
+números, guión, punto, paréntesis y espacio —nada de acentos ni comas.
+
 ## Los cinco pasos
 
 1. Entrar a <https://github.com/ethereum-lists/chains> y pulsar **Fork**.

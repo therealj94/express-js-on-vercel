@@ -69,8 +69,24 @@ def catalogo():
 
 # ---- comprobaciones de forma (no necesitan red) ---------------------------
 
+# Las dos listas son las de Env.kt en ethereum-lists/chains. Un campo que no
+# esté en ninguna de las dos revienta el CI con ShouldHaveNoExtraFields.
 OBLIGATORIOS = ['name', 'chain', 'rpc', 'faucets', 'nativeCurrency', 'infoURL',
                 'shortName', 'chainId', 'networkId']
+OPCIONALES = ['features', 'slip44', 'ens', 'icon', 'explorers', 'title',
+              'parent', 'status', 'redFlags']
+
+# El CI valida nombres contra esta expresión: nada de acentos, comas ni dos
+# puntos. "Orden Global" pasa; "Orden Global, S.A." no.
+NOMBRE = re.compile(r'^[a-zA-Z0-9\-.() ]+$')
+
+
+def texto(valor, que):
+    """Las mismas dos reglas que checkString() en Main.kt."""
+    if not str(valor).strip():
+        mal('%s está en blanco' % que)
+    elif str(valor) != str(valor).strip():
+        mal('%s tiene espacios de sobra en los extremos: %r' % (que, valor))
 
 
 def forma(ruta, c):
@@ -81,15 +97,45 @@ def forma(ruta, c):
     for k in OBLIGATORIOS:
         if k not in c:
             mal('falta el campo obligatorio %r' % k)
+    sobran = set(c.keys()) - set(OBLIGATORIOS) - set(OPCIONALES)
+    if sobran:
+        mal('campos que el CI no admite: %s. Sólo valen %s'
+            % (', '.join(sorted(sobran)), ', '.join(OBLIGATORIOS + OPCIONALES)))
     if c.get('chainId') != c.get('networkId'):
         mal('chainId %s y networkId %s no coinciden'
             % (c.get('chainId'), c.get('networkId')))
+
+    if not NOMBRE.fullmatch(str(c.get('name', ''))):
+        mal('name %r: el CI sólo admite letras, números, guión, punto, '
+            'paréntesis y espacio' % c.get('name'))
+    texto(c.get('name', ''), 'name')
+
     m = c.get('nativeCurrency') or {}
     for k in ('name', 'symbol', 'decimals'):
         if k not in m:
             mal('nativeCurrency sin %r' % k)
-    if m.get('decimals') != 18:
+    if set(m.keys()) - {'name', 'symbol', 'decimals'}:
+        mal('nativeCurrency sólo admite name, symbol y decimals; sobra %s'
+            % ', '.join(sorted(set(m.keys()) - {'name', 'symbol', 'decimals'})))
+    # ESTA es la que se escapó el 13-ago: el símbolo era "tORIGEN", de siete
+    # caracteres, y el CI de Chainlist rechaza siete o más
+    # (NativeCurrencySymbolMustHaveLessThan7Chars). El pull request habría
+    # muerto en el CI tras semanas de cola, porque el propio bot del
+    # repositorio avisa de que sólo miran los que tienen el CI en verde.
+    sim = str(m.get('symbol', ''))
+    if len(sim) >= 7:
+        mal('nativeCurrency.symbol %r tiene %d caracteres: el CI exige MENOS '
+            'de 7. La convención en testnets es reusar el símbolo de la red '
+            'principal (Sepolia usa ETH, no tETH).' % (sim, len(sim)))
+    texto(sim, 'nativeCurrency.symbol')
+    if not NOMBRE.fullmatch(str(m.get('name', ''))):
+        mal('nativeCurrency.name %r no pasa la expresión del CI' % m.get('name'))
+    if not isinstance(m.get('decimals'), int) or isinstance(m.get('decimals'), bool):
+        mal('nativeCurrency.decimals tiene que ser un entero, y es %r'
+            % m.get('decimals'))
+    elif m.get('decimals') != 18:
         ojo('nativeCurrency.decimals = %r (lo normal es 18)' % m.get('decimals'))
+
     if not re.fullmatch(r'[a-zA-Z0-9\-]{1,20}', str(c.get('shortName', ''))):
         mal('shortName %r: sólo letras, números y guiones, hasta 20'
             % c.get('shortName'))
@@ -99,10 +145,17 @@ def forma(ruta, c):
         if u.endswith('/'):
             mal('RPC %s: sobra la barra final' % u)
     for e in c.get('explorers', []):
-        if e.get('standard') != 'EIP3091':
-            ojo('explorador %r declara standard %r' % (e.get('name'), e.get('standard')))
-        if str(e.get('url', '')).endswith('/'):
-            mal('explorador %s: sobra la barra final' % e.get('url'))
+        if not e.get('name'):
+            mal('un explorador va sin name, y el CI lo exige')
+        if e.get('standard') not in ('EIP3091', 'none'):
+            mal('explorador %r declara standard %r: el CI sólo admite EIP3091 '
+                'o none' % (e.get('name'), e.get('standard')))
+        u = str(e.get('url', ''))
+        if not u.startswith(('https://', 'http://')):
+            mal('explorador %r: la url tiene que empezar por http:// o https://' % u)
+        if u.endswith('/'):
+            mal('explorador %s: sobra la barra final' % u)
+        texto(u, 'url del explorador')
     incubando = c.get('status') == 'incubating'
     if not c.get('explorers'):
         if incubando:

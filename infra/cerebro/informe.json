@@ -14,6 +14,7 @@
     "Suelo de gas de noventa y tres gigawei en los seis nodos, con rechazo real de transacciones gratis",
     "Balanceador arreglado de raíz y dos nodos RPC sincronizados",
     "Las dos solicitudes a Chainlist abiertas y comprobadas con las herramientas del propio repositorio",
+    "Corriendo el verificador oficial de Chainlist apareció un fallo que habría hundido la solicitud: el símbolo de la moneda de pruebas tenía siete caracteres y el máximo son seis. Corregido a ORIGEN, y las cuatro comprobaciones del repositorio pasan aquí en verde",
     "Backend respaldado entero y la avería de Polygon arreglada con proveedores de reserva"
   ],
   "pendiente": [
@@ -26,6 +27,7 @@
     "Retirar las seis máquinas de la cadena vieja: son cuatrocientos catorce de los quinientos veinticuatro dólares al mes",
     "Enseñar la comisión en la pantalla de envío de la aplicación, que el backend ya la devuelve",
     "Dos decisiones de Junta: cómo se presenta el respaldo en oro, y si el suelo de gas debe ser real, que obligaría a quemar comisión",
-    "Chainlist sólo se puede esperar: hay solicitudes del diez de julio todavía en la misma cola"
+    "Chainlist, y esto sí necesita tu mano: hay que subir el símbolo corregido a la solicitud de la red de pruebas. Hace falta un permiso de GitHub, o cambiar esa sola línea desde la página. Sin eso el CI la rechaza cuando llegue su turno",
+    "Chainlist, lo demás sólo se puede esperar: hay solicitudes del diez de julio todavía en la misma cola"
   ]
 }
