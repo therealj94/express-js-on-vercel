@@ -46,6 +46,7 @@ const PRUEBAS_ES = ['hola', '¿cómo estás?', 'cuánto cuesta', 'cuéntame más
          hallazgos:['Sin politica de contrasenas'],escala:['Poner segundo factor']},
         {agente:'vigia',nombre:'VIGÍA',veredicto:'bien',cuando:new Date().toISOString(),
          resumen:'Las dos cadenas como deben',hallazgos:['Bloque veinte mil']}]);
+      if(url.includes('/ordenes/quien'))return J({usuario:'melany'});
       if(url.includes('/ordenes/hablar')){
         if(window.__conModelo)
           return J({respuesta:'Todo en orden, José. La red de pruebas avanza. El tesoro no se ha movido.'});
@@ -75,7 +76,7 @@ const PRUEBAS_ES = ['hola', '¿cómo estás?', 'cuánto cuesta', 'cuéntame más
     return p.evaluate(() => window.__d.slice(0, 3));
   }
   const idiomaTexto = x0 => { const x=' '+x0.toLowerCase()+' '; return /[ñáéíóú¿¡]/.test(x) ||
-    (x.match(/ (que|de|la|el|los|con|para|una|del|por|se|no|es|y|en) /gi)||[]).length >
+    (x.match(/ ?(que|de|la|el|los|con|para|una|del|por|se|no|es|y|en|buenas|buenos|noches|dias|tardes|placer|un) /gi)||[]).length >
     (x.match(/ (the|and|of|is|to|in|for|with|that|are|it|on|at) /gi)||[]).length ? 'es' : 'en'; };
 
   let mal = 0;
@@ -124,6 +125,37 @@ const PRUEBAS_ES = ['hola', '¿cómo estás?', 'cuánto cuesta', 'cuéntame más
   console.log('\n───── SIN SALDO · cae al cerebro de reglas');
   sinM.forEach(x => console.log('   ' + x.txt.slice(0,70)));
   if (!sinM.length) { console.log('   ✕ SE QUEDO SIN CONTESTAR'); mal++; }
+
+  // ── lo nuevo de hoy
+  console.log('\n───── LO NUEVO');
+  await p.evaluate(() => { document.querySelector('#idioma').value='es';
+    document.querySelector('#idioma').dispatchEvent(new Event('change')); HISTORIAL=[]; });
+  await p.waitForTimeout(300);
+  // saludo por nombre (entro como melany)
+  const sal = await preguntar('hola');
+  const porNombre = /Melany/.test((sal[0]||{}).txt||'');
+  console.log('   saludo: "'+((sal[0]||{}).txt||'').slice(0,44)+'" '+(porNombre?'✓ por nombre':'✕ SIN NOMBRE'));
+  if(!porNombre) mal++;
+  // conocimiento
+  for (const [f,marca] of [['explícame el ecosistema',/ecosistema financiero completo/],
+                           ['las máquinas',/Diez máquinas en Amazon/],
+                           ['el flujo del dinero',/de punta a punta/],
+                           ['los tokens',/un billón/]]){
+    const d = await preguntar(f);
+    const ok = d.some(x=>marca.test(x.txt));
+    console.log('   "'+f+'" '+(ok?'✓':'✕ NO CONTESTO DEL SABER: '+((d[0]||{}).txt||'').slice(0,50)));
+    if(!ok) mal++;
+  }
+  // velocidad
+  await preguntar('más despacio');
+  const vel = await p.evaluate(() => VEL);
+  console.log('   "más despacio" -> VEL '+vel+' '+(vel<1?'✓':'✕'));
+  if(vel>=1) mal++;
+  // lo desconocido: honesto, no un error
+  const des = await preguntar('cuando llega el cometa halley');
+  const hon = /no me lo han enseñado|not something I have been taught/i.test((des[0]||{}).txt||'');
+  console.log('   desconocido -> '+(hon?'✓ honesto':'✕ '+((des[0]||{}).txt||'').slice(0,50)));
+  if(!hon) mal++;
 
   console.log('\nfallos: ' + mal);
   console.log('errores de página: ' + (err.length ? err.join(' | ').slice(0,300) : 'ninguno'));

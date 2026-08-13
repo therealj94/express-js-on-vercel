@@ -192,3 +192,23 @@ systemctl restart cerebro-ordenes
 
 Comprobarlo: `curl -sS -X POST http://127.0.0.1:8790/hablar -H 'content-type:
 application/json' -d '{"pregunta":"hola","idioma":"es","estado":{}}'`
+
+## La Junta dentro · 13-ago-2026, segunda tanda
+
+- **Cuatro usuarios**: `jose`, `leonardo`, `melany`, `medardo`, cada uno con su
+  contraseña (entregadas en mano, no escritas aquí). Caddy pasa el usuario
+  autenticado en `X-Usuario` y **JARVIS saluda por el nombre de quien entró**.
+- **El idioma se elige la primera vez** en una puerta de entrada, y se mantiene
+  fiel en todo: voz, respuestas y pantalla. Elegirlo es además el primer toque,
+  así que desbloquea el audio y JARVIS se presenta.
+- **El saber**: el cerebro de reglas conoce el ecosistema entero —qué es Orden
+  Global, las aplicaciones, las webs, las máquinas, los tokens y el flujo del
+  dinero— y se le puede pedir «explícame X». El mismo saber viaja al modelo
+  cuando hay crédito: enseñarle a uno es enseñarles a los dos.
+- **La voz obedece**: «más despacio», «más rápido» (se recuerda), «pausa»,
+  «continúa», «repite». La base bajó a 0,85 porque leía rápido.
+- **Si no sabe algo, lo dice** y pide que se le enseñe en la próxima
+  actualización del parte — no finge un error.
+- El botón **?** abre las instrucciones completas, y una línea de pistas rota
+  cada seis segundos con cosas que se le pueden decir.
+- La fecha del parte del día sale bajo el reloj: es la última actualización.

@@ -114,6 +114,18 @@ select{border:1px solid var(--edge);background:rgba(2,9,16,.96);color:var(--ink)
 #det .kv span{font-variant-numeric:tabular-nums}
 #cerrar{position:sticky;float:right;top:0;color:var(--mut);font-size:18px;padding:0 6px}
 
+#puerta{position:fixed;z-index:40;inset:0;display:none;place-items:center;
+  background:rgba(1,5,9,.94);backdrop-filter:blur(10px)}
+#puerta.abre{display:grid}
+#puerta .caja{text-align:center;padding:30px}
+#puerta h2{font-size:15px;letter-spacing:.44em;margin-bottom:10px}
+#puerta .p1{font-size:10px;color:var(--mut);letter-spacing:.16em;margin-bottom:18px}
+#puerta .p2{font-size:8.5px;color:var(--faint);margin-top:18px;line-height:1.8}
+#puerta .botones{display:flex;gap:12px;justify-content:center}
+.tecla.grande{padding:15px 30px;font-size:11px;border-color:rgba(90,217,255,.45);color:var(--arc)}
+#pistas{font-size:8.5px;color:var(--mut);letter-spacing:.06em;min-height:14px;
+  text-align:center;transition:opacity .5s}
+#act{font-size:7.5px;color:var(--faint);letter-spacing:.14em;margin-top:2px}
 @media (max-width:1000px){
   .rail{top:auto;bottom:158px;transform:none;width:auto;max-height:24vh}
   #agentes{left:8px;right:auto;width:47%}#sistemas{right:8px;width:47%}
@@ -132,7 +144,8 @@ select{border:1px solid var(--edge);background:rgba(2,9,16,.96);color:var(--ink)
   <div class="s" id="lema">ORDEN GLOBAL · CONTROL CORE</div>
 </div>
 <div id="pulso"><span class="p"></span><span id="modo">ONLINE</span><span class="c" id="cuenta">— / —</span></div>
-<div class="hud" id="der"><div id="reloj">--:--:--</div><div id="fecha"></div></div>
+<div class="hud" id="der"><div id="reloj">--:--:--</div><div id="fecha"></div>
+  <div id="act"></div></div>
 
 <aside class="rail" id="agentes"><h3 id="tAg">THE TEAM</h3></aside>
 <aside class="rail" id="sistemas"><h3 id="tSis">SYSTEMS</h3></aside>
@@ -140,14 +153,29 @@ select{border:1px solid var(--edge);background:rgba(2,9,16,.96);color:var(--ink)
 <div id="consola">
   <div id="sub"></div>
   <div id="oido"></div>
+  <div id="pistas"></div>
   <div id="teclas">
     <button class="tecla" id="hablar"><span id="onda"><i></i><i></i><i></i><i></i><i></i></span><span id="lblHablar">BRIEF ME</span></button>
     <button class="tecla" id="mic">◉ <span id="lblMic">SPEAK</span></button>
     <button class="tecla" id="btnTexto">▤ <span id="lblTexto">REPORT</span></button>
+    <button class="tecla" id="btnAyuda">?</button>
     <select id="voces" title="voice"></select>
     <select id="idioma" title="language">
       <option value="en">EN</option><option value="es">ES</option>
     </select>
+  </div>
+</div>
+
+<div id="puerta">
+  <div class="caja">
+    <h2>J.A.R.V.I.S</h2>
+    <p class="p1">Choose your language · Elige tu idioma</p>
+    <div class="botones">
+      <button class="tecla grande" data-idi="es">ESPAÑOL</button>
+      <button class="tecla grande" data-idi="en">ENGLISH</button>
+    </div>
+    <p class="p2">Se mantiene en todo: la voz, las respuestas y la pantalla.<br>
+       It sticks everywhere: voice, answers and screen.</p>
   </div>
 </div>
 
@@ -160,6 +188,23 @@ select{border:1px solid var(--edge);background:rgba(2,9,16,.96);color:var(--ink)
    Inglés primero, porque JARVIS habla inglés. El español está entero
    detrás del selector: no es una traducción a medias. */
 let IDI = localStorage.getItem('idiomaCerebro') || 'en';
+const IDIOMA_ELEGIDO = !!localStorage.getItem('idiomaCerebro');
+
+/* Quién entró. Caddy pasa el usuario autenticado y JARVIS saluda por su
+   nombre: no es lo mismo hablarle a José que a un miembro de la Junta. */
+let QUIEN={usuario:'',nombre:''};
+const JUNTA={jose:{es:'José',en:'sir'},leonardo:{es:'Leonardo',en:'Leonardo'},
+             melany:{es:'Melany',en:'Melany'},medardo:{es:'Medardo',en:'Medardo'}};
+const NOM=()=>{const q=JUNTA[QUIEN.usuario];return q?q[IDI]:(IDI==='en'?'sir':'José');};
+async function quienEs(){try{
+  const j=await(await fetch('/ordenes/quien',{cache:'no-store'})).json();
+  QUIEN.usuario=(j.usuario||'').toLowerCase();
+  const q=JUNTA[QUIEN.usuario]; QUIEN.nombre=q?q.es:'';
+}catch(e){}}
+
+/* La velocidad de la voz, ajustable por voz («más despacio») y recordada. */
+let VEL=parseFloat(localStorage.getItem('velCerebro'))||1;
+let pausadoAdrede=false;
 const T = {
   en:{equipo:'THE TEAM',sistemas:'SYSTEMS',brief:'BRIEF ME',stop:'STOP',speak:'SPEAK',
       listening:'LISTENING',report:'REPORT',online:'ONLINE',degraded:'DEGRADED',
@@ -614,6 +659,7 @@ const hace=iso=>{const s=(Date.now()-Date.parse(iso))/1000;
 
 async function cargar(){
   try{I=await(await fetch('/informe.json',{cache:'no-store'})).json();}catch(e){I={};}
+  if(I.fecha)$('#act').textContent=(IDI==='en'?'REPORT · ':'PARTE · ')+I.fecha;
   try{PARTES=await(await fetch('/partes.json',{cache:'no-store'})).json();}catch(e){PARTES=[];}
   verFijos(); railAgentes();
 }
@@ -704,7 +750,7 @@ let desbloqueada=false;
 
 /* Safari y Chrome suspenden el sintetizador solos a los pocos segundos y la
    cola se queda a medias, en silencio. Esto lo despierta. */
-setInterval(()=>{if(hablando&&speechSynthesis.paused)speechSynthesis.resume();},2500);
+setInterval(()=>{if(hablando&&speechSynthesis.paused&&!pausadoAdrede)speechSynthesis.resume();},2500);
 function puntua(v){
   let p=0;
   if(IDI==='en'){
@@ -821,7 +867,9 @@ function siguiente(){
     $('#oido').textContent=(IDI==='en'?'Falling back to the system voice.'
                                       :'Uso la voz del sistema.');
   }
-  u.rate=l.ag?0.99:0.93;          // JARVIS habla más despacio: es el que manda
+  /* La queja fue «leen súper rápido»: se baja la base y además se puede
+     pedir «más despacio» o «más rápido» de viva voz; VEL se recuerda. */
+  u.rate=Math.max(.55,Math.min(1.4,(l.ag?0.93:0.85)*VEL));
   u.pitch=l.ag?1.0:0.86;
   u.volume=1;
 
@@ -829,7 +877,7 @@ function siguiente(){
   const seguir=(ms)=>{if(pasado)return;pasado=true;
     setTimeout(()=>{if(hablando)siguiente();},ms);};
   u.onstart=()=>{arranco=true;};
-  u.onend=()=>seguir(l.p||320);
+  u.onend=()=>seguir(l.p||500);
   u.onerror=ev=>{
     /* Un fallo mudo es peor que un fallo ruidoso: que se vea. */
     $('#oido').textContent=(IDI==='en'?'Voice error: ':'Fallo de la voz: ')+
@@ -867,8 +915,8 @@ $('#hablar').addEventListener('click',()=>hablando?parar():decir(guion()));
 /* ═══ 8 · EL PARTE HABLADO ═══════════════════════════════════════════════ */
 function saludo(){
   const h=new Date().getHours();
-  if(IDI==='en')return h<12?'Good morning, sir.':h<19?'Good afternoon, sir.':'Good evening, sir.';
-  return h<12?'Buenos días, José.':h<19?'Buenas tardes, José.':'Buenas noches, José.';
+  if(IDI==='en')return h<12?'Good morning, '+NOM()+'.':h<19?'Good afternoon, '+NOM()+'.':'Good evening, '+NOM()+'.';
+  return h<12?'Buenos días, '+NOM()+'.':h<19?'Buenas tardes, '+NOM()+'.':'Buenas noches, '+NOM()+'.';
 }
 function guion(){
   const L=[],f=fallas();
@@ -950,6 +998,86 @@ function guion(){
        texto enlatado que envejece. */
 
 let ultimoTema=null, ultimasLineas=[];
+
+/* ═══ EL CONOCIMIENTO ════════════════════════════════════════════════════
+   Lo que el cerebro sabe del ecosistema AUNQUE NO HAYA CRÉDITO en el modelo:
+   qué existe, dónde corre y cómo encaja. Escrito para ser escuchado. Esto
+   mismo se le pasa al modelo cuando hay crédito, así que enseñarle aquí es
+   enseñarles a los dos. */
+const SABER={
+ ecosistema:{es:[
+  'Orden Global es un ecosistema financiero completo construido sobre cadena propia.',
+  'El corazón son dos cadenas: la vieja, la ocho cinco tres dos, congelada y cerrada; y la cinco cinco cinco cero, la nueva, con su génesis ya construido y juzgado.',
+  'Encima viven los productos: Veta Wallet con cuatrocientos treinta y cinco usuarios, Genesis ID para la identidad, MyTokenPay para cobrar, veinticuatro tarjetas, y el explorador ordenscan.',
+  'La moneda es el ORIGEN: vale el gramo de oro en dólares dividido entre cincuenta y cinco.',
+  'Todo corre en diez máquinas de Amazon, y siete agentes automáticos lo revisan cada pocas horas y dejan su parte aquí.'],
+ en:[
+  'Orden Global is a complete financial ecosystem built on its own chain.',
+  'At the heart are two chains: the legacy eight five three two, frozen and closed; and the five five five zero, the new one, its genesis built and judged.',
+  'On top live the products: Veta Wallet with four hundred thirty five users, Genesis ID for identity, MyTokenPay for payments, twenty four cards, and the ordenscan explorer.',
+  'The currency is ORIGEN: one gram of gold in dollars divided by fifty five.',
+  'Everything runs on ten Amazon machines, and seven automated agents review it all every few hours and leave their reports here.']},
+ apps:{es:[
+  'Cinco servicios corren en Heroku.',
+  'Vetawallet es el backend de la billetera: enviar, recibir, canjear, tarjetas y depósitos. Va por la versión setenta y nueve.',
+  'Orden global scan es el backend del explorador. Mytokenpay api es la pasarela de cobros.',
+  'Pos wallet es el punto de venta, dormido desde marzo del año pasado. Ico back fue el de la venta inicial.',
+  'Y la aplicación móvil de Veta Wallet está preparada para las tiendas: falta la cuenta de organización en Play Console.'],
+ en:[
+  'Five services run on Heroku.',
+  'Vetawallet is the wallet backend: send, receive, swap, cards and deposits. It is on version seventy nine.',
+  'Orden global scan is the explorer backend. Mytokenpay api is the payments gateway.',
+  'Pos wallet is the point of sale, dormant since March last year. Ico back served the initial sale.',
+  'And the Veta Wallet mobile app is ready for the stores: what is missing is the Play Console organisation account.']},
+ webs:{es:[
+  'Ordenglobal punto org es la casa: la información pública del proyecto.',
+  'Ordenscan punto com es el explorador de la cadena, y testnet punto ordenscan la copia para la red de pruebas.',
+  'Genesisid punto online es el portal de identidad: registro, verificación y acceso único.',
+  'Cerebro punto ordenscan punto com es esto: el núcleo de control, con contraseña por persona.',
+  'Y los nombres del erre pe ce: rpc guion testnet y pruebas punto ordenglobal guion rpc punto com, los dos con certificado.'],
+ en:[
+  'Ordenglobal dot org is the home: the public face of the project.',
+  'Ordenscan dot com is the chain explorer, and testnet dot ordenscan the testnet copy.',
+  'Genesisid dot online is the identity portal: registration, verification and single sign on.',
+  'Cerebro dot ordenscan dot com is this: the control core, one password per person.',
+  'And the R P C names: rpc dash testnet and pruebas dot ordenglobal dash rpc dot com, both with certificates.']},
+ infra:{es:[
+  'Diez máquinas en Amazon, en dos regiones.',
+  'Los nodos uno a seis, grandes, llevan la cadena vieja. Y dentro de los nodos tres a seis viven además los cuatro validadores de la red de pruebas: dos cadenas en la misma máquina.',
+  'Tres máquinas pequeñas sirven el erre pe ce de pruebas; la segunda aloja también este cerebro y los bots.',
+  'Todas tienen dirección fija y arranque automático comprobado, y un vigilante que las repara solo cada tres minutos.',
+  'La factura ronda los quinientos veinticuatro dólares al mes; las seis máquinas viejas son cuatrocientos catorce de eso.'],
+ en:[
+  'Ten machines on Amazon, across two regions.',
+  'Nodes one to six, the large ones, carry the legacy chain. And inside nodes three to six also live the four testnet validators: two chains on the same machine.',
+  'Three small machines serve the testnet R P C; the second one also hosts this brain and the bots.',
+  'All have fixed addresses and verified automatic restart, and a watchdog that self-repairs them every three minutes.',
+  'The bill is around five hundred twenty four dollars a month; the six legacy machines are four hundred fourteen of that.']},
+ tokens:{es:[
+  'La moneda nativa es el ORIGEN, con emisión total de un billón, exacta.',
+  'En la red de pruebas viven además ochenta y cinco contratos de token con veintisiete símbolos distintos: entre ellos ONDK, HARVI, MONARKA, AUBEX y USDK.',
+  'Los bots de prueba hoy solo se mandan ORIGEN; la fase dos les dará ONDK y los demás, cuando Chainlist acepte, porque exige reconstruir el génesis de pruebas.',
+  'Y el respaldo: la fórmula del oro. Un ORIGEN es el gramo de oro entre cincuenta y cinco.'],
+ en:[
+  'The native currency is ORIGEN, with a total supply of one trillion, exact.',
+  'The testnet also hosts eighty five token contracts under twenty seven distinct symbols: among them ONDK, HARVI, MONARKA, AUBEX and USDK.',
+  'The test bots only send ORIGEN today; phase two adds ONDK and the rest once Chainlist accepts, because it requires rebuilding the testnet genesis.',
+  'And the backing: the gold formula. One ORIGEN is a gram of gold divided by fifty five.']},
+ flujo:{es:[
+  'Así se mueve el dinero, de punta a punta.',
+  'Entra por la tarjeta o por un depósito de USDT en la red Polygon. El backend lo convierte a ORIGEN al precio del oro del día.',
+  'Dentro, la billetera firma contra el nodo: envíos, canjes y pagos con MyTokenPay.',
+  'La comisión prevista es de una milésima de ORIGEN por transacción, pero hoy no está configurada: cobra cero. Y no se enciende hasta decidir su destino, porque la dirección puesta no es la billetera única.',
+  'El tesoro guarda casi doscientos cincuenta mil millones de ORIGEN y no se mueve sin instrucción escrita de la Junta.'],
+ en:[
+  'This is how the money moves, end to end.',
+  'It enters through the card or a USDT deposit on Polygon. The backend converts it to ORIGEN at the day gold price.',
+  'Inside, the wallet signs against the node: sends, swaps and MyTokenPay payments.',
+  'The planned fee is one thousandth of an ORIGEN per transaction, but it is not configured today: it charges zero. And it does not go on until its destination is decided, because the configured address is not the single wallet.',
+  'The treasury holds nearly two hundred fifty billion ORIGEN and does not move without a written Board instruction.']},
+};
+function temaSaber(id){ultimoTema=id;
+  return SABER[id][IDI].map((x,i)=>J(x,{p:i?380:460}));}
 const en=()=>IDI==='en';
 const J=(x,o={})=>Object.assign({q:'JARVIS',x},o);
 
@@ -997,11 +1125,11 @@ function tema(id){
   case 'comoestas':{
     const f=fallas().length;
     return [J(en()?(f?'Operational, though I would rather we had fewer failures.':'Operational, sir. Everything is where it should be.')
-                  :(f?'Operativo, aunque preferiría tener menos fallas.':'Operativo, José. Todo está donde debe estar.'),{p:380}),
+                  :(f?'Operativo, aunque preferiría tener menos fallas.':'Operativo, '+NOM()+'. Todo está donde debe estar.'),{p:380}),
       J(en()?('Thirteen systems and seven agents under watch. '+(BOTS?'The test bots ran '+hace(BOTS.cuando)+'.':''))
             :('Trece sistemas y siete agentes vigilados. '+(BOTS?'Los bots corrieron '+hace(BOTS.cuando)+'.':'')),{p:0})];}
 
-  case 'gracias':return [J(en()?'A pleasure, sir.':'Un placer, José.',{p:0})];
+  case 'gracias':return [J(en()?'A pleasure, '+NOM()+'.':'Un placer, '+NOM()+'.',{p:0})];
 
   case 'cadenas':return [
     J(V.b5534?(en()?frase(['The testnet is live at block '+nf(V.b5534)+'.',
@@ -1123,7 +1251,7 @@ function ampliar(){
   if(s)return [J(en()?'In more detail.':'Con más detalle.',{p:360}),
                ...s.det[IDI].map(x=>J(x+'.',{foco:s.id,p:340}))];
   if(ultimoTema)return tema(ultimoTema);
-  return [J(en()?'More about what, sir?':'¿Más sobre qué, José?')];
+  return [J(en()?'More about what, '+NOM()+'?':'¿Más sobre qué, '+NOM()+'?')];
 }
 
 /* Un sistema concreto, cuando lo nombras. */
@@ -1153,6 +1281,16 @@ const CONV=[
  [/(repeat|say that again|repite|otra vez|de nuevo)/i,'REPETIR'],
  [/(status|report|brief|overview|how are things|how is everything|estado|el parte|informe|como va todo|resumen general)/i,'PARTE'],
  [/(fail|down|broken|what.s wrong|falla|fallo|roto|caido|que va mal)/i,'fallas'],
+ [/(pause|hold on|wait|pausa|espera|un momento)/i,'PAUSA'],
+ [/(continue|resume|go on|keep going|continua|sigue|reanuda)/i,'SEGUIR'],
+ [/(slower|slow down|mas despacio|mas lento|habla lento)/i,'LENTO'],
+ [/(faster|speed up|mas rapido|acelera)/i,'RAPIDO'],
+ [/(ecosystem|everything we have|the whole|all we built|ecosistema|todo lo que (tenemos|hemos)|vision general|que es orden global)/i,'K:ecosistema'],
+ [/(apps|applications|services|backend|heroku|aplicacion|servicios)/i,'K:apps'],
+ [/(webs?|websites?|domains?|paginas|dominios|sitios)/i,'K:webs'],
+ [/(machines|servers|infrastructure|maquinas|servidores|infraestructura|nodos|amazon)/i,'K:infra'],
+ [/(tokens?|ondk|harvi|monarka|aubex|usdk)/i,'K:tokens'],
+ [/(how does the money|money flow|flow|como (entra|se mueve|fluye) el dinero|flujo)/i,'K:flujo'],
  [/(chainlist|pull request|listing|solicitud|registro publico)/i,'chainlist'],
  [/(chain|block|testnet|legacy|frozen|cadena|bloque|red de prueba|congelad)/i,'cadenas'],
  [/(money|price|treasur|fee|commission|gold|dinero|precio|tesoro|comisi|oro|cuanto vale)/i,'dinero'],
@@ -1200,7 +1338,7 @@ function escuchar(){
 $('#mic').addEventListener('click',()=>{
   if(oyendo||desbloqueada){escuchar();return;}
   desbloqueada=true;
-  const u=new SpeechSynthesisUtterance(IDI==='en'?'Yes, sir?':'¿Sí, José?');
+  const u=new SpeechSynthesisUtterance(IDI==='en'?('Yes, '+NOM()+'?'):('¿Sí, '+NOM()+'?'));
   try{const v=vozDeIdioma(IDI)||vozPorNombre(nombreJarvis); if(v)u.voice=v;}catch(e){}
   u.lang=IDI==='en'?'en-GB':'es-MX'; u.rate=.95; u.pitch=.86;
   $('#sub').innerHTML='<span class="quien">JARVIS</span>'+u.text;
@@ -1229,7 +1367,12 @@ function estadoParaElModelo(){
                           fallando:E[s.id].mal, queEs:s.que.es, detalle:s.det.es})),
     agentes:PARTES.map(p=>({nombre:p.nombre, veredicto:p.veredicto, cuando:p.cuando,
                             resumen:p.resumen, hallazgos:p.hallazgos, escala:p.escala})),
-    hechoHoy:I.hechoHoy, pendiente:I.pendiente
+    hechoHoy:I.hechoHoy, pendiente:I.pendiente,
+    /* el mismo saber que usa el cerebro de reglas: enseñarle a uno es
+       enseñarles a los dos */
+    conocimiento:{queEsOrdenGlobal:SABER.ecosistema.es, aplicaciones:SABER.apps.es,
+      webs:SABER.webs.es, maquinas:SABER.infra.es, tokens:SABER.tokens.es,
+      flujoDelDinero:SABER.flujo.es}
   };
 }
 async function conversar(pregunta){
@@ -1238,7 +1381,7 @@ async function conversar(pregunta){
   try{
     const r=await fetch('/ordenes/hablar',{method:'POST',
       headers:{'content-type':'application/json'},
-      body:JSON.stringify({pregunta, idioma:IDI, historial:HISTORIAL,
+      body:JSON.stringify({pregunta, idioma:IDI, historial:HISTORIAL, usuario:QUIEN.nombre||QUIEN.usuario,
                            estado:estadoParaElModelo()})});
     const j=await r.json();
     if(!r.ok||!j.respuesta){
@@ -1267,9 +1410,32 @@ async function atender(txt){
 
   if(await conversar(txt))return;      // si hay modelo, contesta él
 
+  /* «explícame X»: se busca X en el conocimiento, en los temas y en los
+     sistemas, y se cuenta entero. */
+  const mExp=s.match(/(?:explica(?:me)?|explain|como funciona|how does|how do)\s+(?:el |la |los |las |the )?(.*)/);
+  if(mExp&&mExp[1]){
+    const q=mExp[1];
+    const kk={ecosistema:/(ecosistema|todo|orden global|ecosystem|everything)/,
+      apps:/(app|servicio|backend|service)/, webs:/(web|pagina|dominio|site|domain)/,
+      infra:/(maquina|nodo|servidor|infra|machine|server|node)/,
+      tokens:/(token|ondk|origen)/, flujo:/(dinero|money|flujo|flow|pago|payment)/};
+    for(const k in kk)if(kk[k].test(q))return responderCon(temaSaber(k));
+    const sis2=SIS.find(x=>q.includes(sinTildes(x.nom).toLowerCase())||q.includes(sinTildes(x.es).toLowerCase()));
+    if(sis2)return responderCon([...temaSistema(sis2),
+      ...sis2.det[IDI].slice(3).map(x=>J(x+'.',{p:340}))]);
+  }
+
   for(const [re,id] of CONV){
     if(!re.test(s))continue;
     if(id==='PARAR')return parar();
+    if(id==='PAUSA'){if(speechSynthesis.speaking){pausadoAdrede=true;speechSynthesis.pause();
+      $('#oido').textContent=IDI==='en'?'Paused. Say "continue".':'En pausa. Di «continúa».';}return;}
+    if(id==='SEGUIR'){pausadoAdrede=false;speechSynthesis.resume();$('#oido').textContent='';return;}
+    if(id==='LENTO'){VEL=Math.max(.6,VEL-.1);localStorage.setItem('velCerebro',VEL);
+      return responderCon([J(IDI==='en'?'Slower. Like this.':'Más despacio. Así.')]);}
+    if(id==='RAPIDO'){VEL=Math.min(1.4,VEL+.1);localStorage.setItem('velCerebro',VEL);
+      return responderCon([J(IDI==='en'?'Faster. Like this.':'Más rápido. Así.')]);}
+    if(id.startsWith('K:'))return responderCon(temaSaber(id.slice(2)));
     if(id==='PARTE'){ultimoTema='parte';return responderCon(guion());}
     if(id==='REPETIR')return responderCon(ultimasLineas.slice());
     if(id==='MAS')return responderCon(ampliar());
@@ -1292,9 +1458,13 @@ async function atender(txt){
 
 
   /* No entendido: no se calla ni suelta un error. Ofrece. */
+  /* No lo sabe. No se disfraza de error: dice qué haría falta. */
   responderCon([J(IDI==='en'
-    ? 'I did not catch that. You can ask me about the chains, the money, security, cost, the team, Chainlist, the bots, or what needs you.'
-    : 'No te entendí. Puedes preguntarme por las cadenas, el dinero, la seguridad, el coste, el equipo, Chainlist, los bots, o qué te falta.')]);
+    ? 'That is not something I have been taught yet.'
+    : 'Eso todavía no me lo han enseñado.',{p:380}),
+    J(IDI==='en'
+    ? 'Note it for the next daily update and it becomes part of what I know. Meanwhile, ask me about the ecosystem, the apps, the webs, the machines, the tokens, the money flow, security, cost, the team, or what needs you.'
+    : 'Apúntalo para la próxima actualización del parte y pasará a ser parte de lo que sé. Mientras, pregúntame por el ecosistema, las aplicaciones, las webs, las máquinas, los tokens, el flujo del dinero, la seguridad, el coste, el equipo, o qué te falta.')]);
 }
 function responderCon(lineas){
   const L=(lineas||[]).filter(Boolean);
@@ -1377,6 +1547,39 @@ function abrirInforme(){
   if((I.hechoHoy||[]).length){h4(c,t('hecho'));I.hechoHoy.forEach(x=>li(c,x));}
   if((I.pendiente||[]).length){h4(c,t('falta'));I.pendiente.forEach(x=>li(c,x));}
 }
+function abrirAyuda(){
+  const c=panel(IDI==='en'?'HOW TO TALK TO ME':'CÓMO HABLARME',
+    IDI==='en'?'Speak or tap. I answer with live data.':'Habla o toca. Contesto con datos vivos.');
+  const B=(tit,items)=>{h4(c,tit);items.forEach(x=>li(c,x));};
+  if(IDI==='en'){
+    B('THE BASICS',['Press SPEAK and talk, or press BRIEF ME for the full daily picture.',
+      'I greet you by name: each Board member has their own password.',
+      'The language selector keeps everything — voice, answers, screen — in that language.']);
+    B('ASK ME ABOUT',['the ecosystem · the apps · the webs · the machines · the tokens · the money flow',
+      'the chains · the money · security · cost · the team · Chainlist · the bots · the migration · the wallet',
+      'what needs me — everything waiting on the Board, most urgent first',
+      'any agent by name, or any system on the right rail']);
+    B('CONTROL MY VOICE',['"slower" / "faster" — I remember your preference',
+      '"pause" / "continue" · "repeat" · "tell me more" goes deeper into the last thing I said',
+      'Change my voice in the selector below — pick the one that sounds most natural on your device.']);
+    B('WHAT I WILL NOT DO',['I never deploy, move funds, restart nodes or change configuration.',
+      'The only order I take is running the test bots, on the test network.']);
+  }else{
+    B('LO BÁSICO',['Pulsa HABLAR y dime, o pulsa EL PARTE para el cuadro completo del día.',
+      'Te saludo por tu nombre: cada miembro de la Junta tiene su propia contraseña.',
+      'El selector de idioma lo mantiene todo — voz, respuestas y pantalla — en ese idioma.']);
+    B('PREGÚNTAME POR',['el ecosistema · las aplicaciones · las webs · las máquinas · los tokens · el flujo del dinero',
+      'las cadenas · el dinero · la seguridad · el coste · el equipo · Chainlist · los bots · la migración · la billetera',
+      'qué me falta — todo lo que espera a la Junta, lo urgente primero',
+      'cualquier agente por su nombre, o cualquier sistema del raíl derecho']);
+    B('CONTROLA MI VOZ',['«más despacio» / «más rápido» — recuerdo tu preferencia',
+      '«pausa» / «continúa» · «repite» · «cuéntame más» profundiza en lo último que dije',
+      'Cambia mi voz en el selector de abajo: elige la que suene más natural en tu aparato.']);
+    B('LO QUE NO HAGO',['Nunca despliego, muevo fondos, reinicio nodos ni cambio configuración.',
+      'La única orden que acepto es lanzar los bots de prueba, en la red de pruebas.']);
+  }
+}
+$('#btnAyuda').addEventListener('click',abrirAyuda);
 $('#btnTexto').addEventListener('click',abrirInforme);
 $('#cerrar').addEventListener('click',()=>$('#det').classList.remove('abre'));
 $('#det').addEventListener('click',e=>{if(e.target.id==='det')e.target.classList.remove('abre');});
@@ -1404,7 +1607,38 @@ async function todo(){
 }
 $('#idioma').value=IDI; traducirUI();
 medir(); requestAnimationFrame(cuadro); railSistemas(); railAgentes();
+quienEs().then(()=>{ if(IDIOMA_ELEGIDO&&QUIEN.nombre)
+  $('#lema').textContent=t('lema')+' · '+QUIEN.nombre.toUpperCase(); });
 todo();
+
+/* La puerta de idioma: solo la primera vez. Elegir es también el primer
+   toque, así que desbloquea el audio y JARVIS saluda por tu nombre. */
+if(!IDIOMA_ELEGIDO){
+  $('#puerta').classList.add('abre');
+  document.querySelectorAll('#puerta [data-idi]').forEach(b=>b.addEventListener('click',()=>{
+    IDI=b.dataset.idi; localStorage.setItem('idiomaCerebro',IDI);
+    $('#idioma').value=IDI; cargarVoces(); traducirUI(); railSistemas(); railAgentes();
+    $('#puerta').classList.remove('abre');
+    if(QUIEN.nombre)$('#lema').textContent=t('lema')+' · '+QUIEN.nombre.toUpperCase();
+    desbloqueada=true;
+    decir([J(saludo(),{p:400}),
+      J(IDI==='en'?'I am JARVIS, the control core of Orden Global. Press the question mark whenever you want to know what to say to me.'
+                  :'Soy JARVIS, el núcleo de control de Orden Global. Pulsa el interrogante cuando quieras saber qué puedes decirme.')]);
+  }));
+}
+
+/* Pistas que rotan: la instrucción visible sin abrir nada. */
+const PISTAS={
+ es:['Di: «el parte» — te lo cuento todo','Di: «explícame el ecosistema»','Di: «cómo van las cadenas»',
+     'Di: «el flujo del dinero»','Di: «qué me falta»','Di: «más despacio» si leo rápido',
+     'Di: «pausa» y «continúa» cuando quieras','Di: «lanza los bots»','Nombra a un agente: «cerrajero», «contador»…'],
+ en:['Say: "brief me" — the full picture','Say: "explain the ecosystem"','Say: "how are the chains"',
+     'Say: "the money flow"','Say: "what needs me"','Say: "slower" if I read fast',
+     'Say: "pause" and "continue" anytime','Say: "run the bots"','Name an agent: "locksmith", "accountant"…']};
+let nPista=0;
+setInterval(()=>{if(hablando||oyendo)return;
+  const l=PISTAS[IDI]; $('#pistas').textContent=l[nPista++%l.length];},6000);
+$('#pistas').textContent=PISTAS[IDI][0];
 setInterval(verNucleo,10000); setInterval(verMemoria,30000); setInterval(verScan,20000);
 setInterval(verBots,120000); setInterval(cargar,120000); setInterval(verChainlist,300000);
 setInterval(()=>{

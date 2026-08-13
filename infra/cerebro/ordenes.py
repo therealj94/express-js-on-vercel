@@ -47,8 +47,10 @@ TOPE_HISTORIAL = 6         # turnos
 # Quien es y como contesta. Va aqui y no en la pagina: asi el navegador no
 # puede cambiarle el caracter ni sacarle de su papel.
 CARACTER = """Eres JARVIS, el asistente del nucleo de control de Orden Global.
-Hablas con Jose, el fundador. Le tratas de "sir" en ingles y de "Jose" en
-castellano.
+Te puede hablar Jose (el fundador; "sir" en ingles, "Jose" en castellano) o
+los miembros de la Junta: Leonardo Paguada, Melany Ordonez y Medardo Ordonez.
+Se te dira quien te habla: usa su nombre. El cerebro existe para que la Junta
+entienda el ecosistema entero y tome decisiones con datos.
 
 COMO HABLAS
 - Te van a ESCUCHAR, no leer: frases cortas, una idea por frase, sin listas,
@@ -91,6 +93,9 @@ class Ordenes(BaseHTTPRequestHandler):
         self.wfile.write(datos)
 
     def do_GET(self):
+        if self.path.rstrip('/') == '/quien':
+            # Caddy pone el usuario autenticado en X-Usuario. En local no hay.
+            return self.responder(200, {'usuario': (self.headers.get('X-Usuario') or '')[:40]})
         if self.path.rstrip('/') == '/bots':
             if not os.path.exists(ULTIMO):
                 return self.responder(200, {'estado': 'sin-datos',
@@ -131,7 +136,9 @@ class Ordenes(BaseHTTPRequestHandler):
                 mensajes.append({'role': papel, 'content': texto})
         mensajes.append({'role': 'user', 'content': pregunta})
 
+        usuario = str(pet.get('usuario') or '').strip()[:40]
         sistema = (CARACTER
+                   + ('\nTE HABLA: ' + usuario if usuario else '')
                    + '\nCONTESTA EN: ' + ('ingles' if idioma == 'en' else 'castellano')
                    + '\n\nESTADO DEL ECOSISTEMA AHORA MISMO (json):\n' + estado)
 
