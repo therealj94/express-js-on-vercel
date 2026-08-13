@@ -11,6 +11,7 @@ import Tx from "../models/Tx";
 import jwt from "jsonwebtoken";
 import abi from "../ABI/abi.json";
 import { precioDeGas, limiteDeGas, LIMITE_POR_OMISION_TOKEN } from "../lib/gas";
+import { cobrarComision, comisionEnOrigen } from "../lib/comision";
 import {
   reservar,
   completar,
@@ -142,6 +143,11 @@ export const send = async (req, res) => {
 
     const transaction = await wallet.sendTransaction(data);
 
+    // La comision de 0,01 ORIGEN, en una transaccion aparte y DESPUES del
+    // envio: si fallara, preferimos perderla a haberle cobrado por un envio
+    // que no salio. Ver lib/comision.js.
+    const hashComision = await cobrarComision(wallet, nonce + 1);
+
     // NO se espera el minado.
     //
     // `transaction.wait()` bloquea hasta que la tx entre en un bloque, y eso
@@ -171,6 +177,8 @@ export const send = async (req, res) => {
       chain_id,
       coin: chain.name,
       status: "pending",
+      comision: comisionEnOrigen(),
+      hashComision,
     };
     // Se guarda la respuesta para devolver EXACTAMENTE esta si el mismo sello
     // vuelve a llegar. Asi un reintento ve el hash del envio que si salio, en
@@ -277,6 +285,9 @@ export const sendToken = async (req, res) => {
       nonce: nonce,
     });
 
+    // La misma comision, en ORIGEN, aunque lo enviado sea un token: es fija.
+    const hashComision = await cobrarComision(wallet, nonce + 1);
+
 
     // Mismo criterio que en send(): no se espera el minado. Ademas, antes se
     // respondia ANTES de guardar el registro — si el guardado fallaba, el
@@ -299,6 +310,8 @@ export const sendToken = async (req, res) => {
       chain_id,
       contract: tokenContractAddress,
       status: "pending",
+      comision: comisionEnOrigen(),
+      hashComision,
     };
     if (sello) await completar(sello, quien, salida);
     return res.json(salida);
