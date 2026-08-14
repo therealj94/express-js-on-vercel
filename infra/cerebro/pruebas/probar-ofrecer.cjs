@@ -56,8 +56,11 @@ const {chromium}=require('playwright');
 
  // 2 · decir «sí» -> reporte completo
  await p.evaluate(()=>{window.__d=[];atender('sí');});
- d=await hasta(d=>d.length>=2&&/VETA WALLET|BILLETERA/i.test(d.join(' ')),6000);
- const reporta=d.length>=2 && /VETA WALLET|BILLETERA/i.test(d.join(' '));
+ /* Ojo: se compara contra lo PRONUNCIADO, y ahi «Veta Wallet» suena
+    «Veta Wolet» a proposito --una voz mexicana leyendo el nombre en ingles
+    sonaba fatal--. En pantalla se sigue escribiendo bien. */
+ d=await hasta(d=>d.length>=2&&/VETA W[AÓO]L[EL]|BILLETERA/i.test(d.join(' ')),6000);
+ const reporta=d.length>=2 && /VETA W[AÓO]L[EL]|BILLETERA/i.test(d.join(' '));
  console.log('2 · decir sí        '+(reporta?'✓ da el reporte ('+d.length+' frases)':'✕ '+JSON.stringify(d.slice(0,2))));
  if(!reporta)mal++;
 
