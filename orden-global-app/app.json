@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Orden Global",
+    "slug": "orden-global",
+    "version": "1.0.0",
+    "scheme": "og",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#021B1C",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#021B1C"
+    },
+    "android": {
+      "package": "com.ordenglobal.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#021B1C"
+      },
+      "softwareKeyboardLayoutMode": "resize"
+    },
+    "ios": { "bundleIdentifier": "com.ordenglobal.app", "supportsTablet": false },
+    "extra": {
+      "walletApi": "https://vetawallet-1a2e38ac52b1.herokuapp.com",
+      "genesisUrl": "https://genesis-id.onrender.com",
+      "webVeta": "https://app.vetawallet.com",
+      "webPay": "https://main.d2dr8sh34hni4c.amplifyapp.com",
+      "webScan": "https://testnet.ordenscan.com",
+      "webCerebro": "https://cerebro.ordenscan.com/demo",
+      "mensajesApi": "https://cerebro.ordenscan.com/mensajes"
+    }
+  }
+}
