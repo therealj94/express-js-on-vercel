@@ -31,7 +31,9 @@ import numpy as np
 # cuatrocientas frases. La de Mexico es la que hay para espanol latino.
 VOCES = {
     'es': 'es_MX-claude-high',
-    'en': 'en_GB-alan-medium',
+    # `alan` sonaba muerta --palabras de Jose el 14-ago-- y se cambio por
+    # `ryan`, que es la mas natural que tiene Piper en ingles.
+    'en': 'en_US-ryan-high',
 }
 MODELOS = os.environ.get('PIPER_VOCES', os.path.dirname(os.path.abspath(__file__)) + '/modelos')
 

@@ -24,7 +24,14 @@ const RUTA='file:///home/user/express-js-on-vercel/infra/cerebro/index.html';
     ['speaking','pending','paused'].forEach(k=>
       Object.defineProperty(s,k,{get:()=>false}));
   });
-  await p.goto(RUTA,{waitUntil:'domcontentloaded'});
+  /* Se carga COMO INVITADO SIN NOMBRE --?demo=1-- a proposito. Asi `VOC()`
+     devuelve vacio y lo que se graba es la version NEUTRA de cada frase:
+     «Bienvenido a Orden Global.» y no «..., Jose.». Al reproducir, la frase
+     con nombre no existe en el manifiesto, se busca la neutra y suena
+     grabada. Cargandolo de otra forma se grababa «Jose» dentro y todas las
+     frases con nombre caian a la voz del navegador --que fue exactamente la
+     queja: «cuando me saluda y al final me sale robotico»--. */
+  await p.goto(RUTA+'?demo=1',{waitUntil:'domcontentloaded'});
   await p.waitForTimeout(1500);
   await p.evaluate(()=>{document.querySelector('#puerta').classList.remove('abre');
                         desbloqueada=true;});
@@ -54,6 +61,11 @@ const RUTA='file:///home/user/express-js-on-vercel/infra/cerebro/index.html';
          la voz --si esa sale robotica, el boton que existe para juzgar la
          voz la juzga mal-- y las que dice al pararse a preguntar. */
       mete('suelta:probar',FRASE_PRUEBA());
+      /* Los tres saludos del dia, sin nombre. Sin esto, el saludo --lo
+         PRIMERO que se oye-- salia siempre con la voz del navegador. */
+      (IDI==='en'?['Good morning.','Good afternoon.','Good evening.']
+                 :['Buenos días.','Buenas tardes.','Buenas noches.'])
+        .forEach((x,i)=>mete('suelta:saludo'+i,x));
       mete('suelta:control', IDI==='en'
         ? 'Anything you want to ask me so far? Or shall I carry on?'
         : '¿Hasta aquí alguna pregunta? ¿O sigo?');

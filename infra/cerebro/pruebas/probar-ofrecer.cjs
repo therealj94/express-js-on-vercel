@@ -1,4 +1,4 @@
-// Toca cosas del ecosistema y comprueba que JARVIS OFRECE el reporte, que el
+// Toca cosas del ecosistema y comprueba que FLUX OFRECE el reporte, que el
 // «sí» lo dispara, que el «no» lo cancela, y que un «sí» suelto SIN pregunta
 // en el aire no hace nada raro.
 const {chromium}=require('playwright');

@@ -125,7 +125,7 @@ const HTML=require('fs').readFileSync(
   const limpio=await p.evaluate(()=>{
     parar(); PRESENTANDO=true;
     const antes=colaGuardada?colaGuardada.length:0;
-    decir([{q:'JARVIS',x:'Una frase cualquiera que no es del recorrido.'}]);
+    decir([{q:'FLUX',x:'Una frase cualquiera que no es del recorrido.'}]);
     return {antes, guardada:colaGuardada?colaGuardada.length:0};
   });
   await p.waitForTimeout(600);

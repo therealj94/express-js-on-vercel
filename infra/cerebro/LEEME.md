@@ -91,7 +91,7 @@ dan **401 sin clave y 200 con ella**.
 Copia del archivo anterior en `/etc/caddy/Caddyfile.antes-de-la-clave`. Para
 quitarla: borrar el bloque `basic_auth` y `systemctl reload caddy`.
 
-## JARVIS · la reescritura del 13-ago-2026
+## FLUX · la reescritura del 13-ago-2026
 
 El dibujo anterior eran regiones sueltas y por eso se veía desordenado: no
 había nada que las hiciera leerse como **un solo órgano**. Ahora hay tres
@@ -106,14 +106,14 @@ capas, y las tres hacen falta:
 
 ### La firma: los impulsos
 
-Cuando JARVIS nombra un sistema, **sale un impulso de ese racimo** y viaja por
+Cuando FLUX nombra un sistema, **sale un impulso de ese racimo** y viaja por
 sus axones hasta el centro. Así se ve de qué está hablando sin leer nada. Un
 bloque nuevo en la cadena también dispara uno, y en reposo hay tráfico tenue
 cada 900 ms para que respire sin gritar.
 
 ### La voz
 
-- **JARVIS habla inglés británico**, más despacio y más grave que los demás
+- **FLUX habla inglés británico**, más despacio y más grave que los demás
   (`rate .93`, `pitch .86`). Se busca Daniel, Arthur, Oliver, Ryan o cualquier
   voz `en-GB`, y se prefieren las neuronales.
 - **Cada agente tiene voz propia**, tomada del resto de la lista, para que se
@@ -178,7 +178,7 @@ página ya tiene en pantalla, y contesta él.
 - Se guarda el hilo de los últimos seis turnos, así que las preguntas de
   seguimiento tienen sentido.
 
-El carácter de JARVIS está en `ordenes.py` y es explícito en tres cosas: que le
+El carácter de FLUX está en `ordenes.py` y es explícito en tres cosas: que le
 van a **escuchar** y no leer, que **no se invente ni un número** —hay dinero
 real dentro—, y que la 8532 está congelada y arrancar la 5550 es el corte.
 
@@ -197,10 +197,10 @@ application/json' -d '{"pregunta":"hola","idioma":"es","estado":{}}'`
 
 - **Cuatro usuarios**: `jose`, `leonardo`, `melany`, `medardo`, cada uno con su
   contraseña (entregadas en mano, no escritas aquí). Caddy pasa el usuario
-  autenticado en `X-Usuario` y **JARVIS saluda por el nombre de quien entró**.
+  autenticado en `X-Usuario` y **FLUX saluda por el nombre de quien entró**.
 - **El idioma se elige la primera vez** en una puerta de entrada, y se mantiene
   fiel en todo: voz, respuestas y pantalla. Elegirlo es además el primer toque,
-  así que desbloquea el audio y JARVIS se presenta.
+  así que desbloquea el audio y FLUX se presenta.
 - **El saber**: el cerebro de reglas conoce el ecosistema entero —qué es Orden
   Global, las aplicaciones, las webs, las máquinas, los tokens y el flujo del
   dinero— y se le puede pedir «explícame X». El mismo saber viaja al modelo
@@ -217,7 +217,7 @@ application/json' -d '{"pregunta":"hola","idioma":"es","estado":{}}'`
 
 Tocas **cualquier cosa del ecosistema** —un sistema del dock, una etiqueta del
 cerebro, un agente— y pasan dos cosas a la vez: se abre su ficha con los datos,
-y **JARVIS pregunta en voz alta si quieres el reporte**.
+y **FLUX pregunta en voz alta si quieres el reporte**.
 
 > *¿Quieres que te dé el reporte de VETA WALLET?*
 

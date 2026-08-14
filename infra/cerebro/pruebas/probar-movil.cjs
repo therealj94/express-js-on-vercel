@@ -123,7 +123,7 @@ const VOZ=()=>{
   d=await p.evaluate(()=>{
     window.__d=[];
     parar(); PRESENTANDO=false;
-    decir([{q:'JARVIS',x:'Buenas noches. Así es como sueno: tranquilo, con aire entre las frases, y sin atropellar los números.'}]);
+    decir([{q:'FLUX',x:'Buenas noches. Así es como sueno: tranquilo, con aire entre las frases, y sin atropellar los números.'}]);
     return null;
   });
   // se espera a que la cadena de trozos SE ASIENTE, no a un reloj: con un
@@ -149,7 +149,7 @@ const VOZ=()=>{
 
   // modo DIRECTA
   await p.evaluate(()=>{RESPIRA=false;window.__d=[];parar();
-    decir([{q:'JARVIS',x:'Buenas noches. Así es como sueno: tranquilo, con aire, y sin prisa.'}]);});
+    decir([{q:'FLUX',x:'Buenas noches. Así es como sueno: tranquilo, con aire, y sin prisa.'}]);});
   await p.waitForTimeout(1400);
   d=await p.evaluate(()=>window.__d.length);
   console.log('   modo DIRECTA: '+d+' trozo(s) '+(d===1?'✓':'✕'));
@@ -157,8 +157,8 @@ const VOZ=()=>{
 
   // interrumpir no debe pintar un error
   await p.evaluate(()=>{RESPIRA=true;parar();
-    decir([{q:'JARVIS',x:'Una frase larga, con varias comas, que voy a cortar a la mitad.'}]);
-    setTimeout(()=>decir([{q:'JARVIS',x:'Otra cosa.'}]),120);});
+    decir([{q:'FLUX',x:'Una frase larga, con varias comas, que voy a cortar a la mitad.'}]);
+    setTimeout(()=>decir([{q:'FLUX',x:'Otra cosa.'}]),120);});
   await p.waitForTimeout(1600);
   const oido=await p.evaluate(()=>document.querySelector('#oido').textContent);
   console.log('   al interrumpir NO dice "interrupted": '+(/interrupt|Fallo/i.test(oido)?'✕ "'+oido+'"':'✓'));

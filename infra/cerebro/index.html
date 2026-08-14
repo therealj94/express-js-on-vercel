@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>J.A.R.V.I.S · Orden Global</title>
+<title>F.L.U.X · Orden Global</title>
 <style>
 /* ══════════════════════════════════════════════════════════════════════════
-   J.A.R.V.I.S · rediseño 14-ago
+   F.L.U.X · rediseño 14-ago
    Tres decisiones que lo cambian todo:
    1) JERARQUÍA: una tipografía de pantalla para identidad y frases; la mono
       queda SOLO para números y datos. Un dock, no dos raíles gemelos.
@@ -405,7 +405,7 @@ body.invitado .tarj{width:250px}
 
 /* ── EL TELÉFONO ─────────────────────────────────────────────────────────
    Lo que se veía mal en la captura del 14-ago, punto por punto:
-   · «J.A.R.V.I.S» a la izquierda y la chapa ORDEN GLOBAL centrada se pisaban
+   · «F.L.U.X» a la izquierda y la chapa ORDEN GLOBAL centrada se pisaban
      --con 393 px no caben las dos, y la chapa ya dice quién eres--;
    · los siete botones del muelle en UNA fila se cortaban por los dos lados,
      así que el de ajustes ni existía;
@@ -487,7 +487,7 @@ body.invitado .tarj{width:250px}
 <canvas id="lienzo"></canvas>
 
 <div class="hud" id="izq">
-  <h1>J.A.R.V.I.S<i>_</i></h1>
+  <h1>F.L.U.X<i>_</i></h1>
   <div class="s" id="lema">ORDEN GLOBAL · CONTROL CORE</div>
 </div>
 <div id="yo"><div class="disco" id="disco">·</div>
@@ -544,7 +544,7 @@ body.invitado .tarj{width:250px}
 
 <div id="puerta">
   <div class="caja">
-    <h2>J.A.R.V.I.S</h2>
+    <h2>F.L.U.X</h2>
     <p class="p1">Orden Global · Control Core</p>
     <input id="nombreVisita" maxlength="24" autocomplete="given-name"
            placeholder="¿Cómo te llamas?  ·  Your name">
@@ -598,12 +598,12 @@ body.invitado .tarj{width:250px}
 
 <script>
 /* ═══ 0 · IDIOMA ══════════════════════════════════════════════════════════
-   Inglés primero, porque JARVIS habla inglés. El español está entero
+   Inglés primero, porque FLUX habla inglés. El español está entero
    detrás del selector: no es una traducción a medias. */
 let IDI = localStorage.getItem('idiomaCerebro') || 'en';
 const IDIOMA_ELEGIDO = !!localStorage.getItem('idiomaCerebro');
 
-/* Quién entró. Caddy pasa el usuario autenticado y JARVIS saluda por su
+/* Quién entró. Caddy pasa el usuario autenticado y FLUX saluda por su
    nombre: no es lo mismo hablarle a José que a un miembro de la Junta. */
 let QUIEN={usuario:'',nombre:''};
 const JUNTA={jose:{es:'José',en:'sir'},leonardo:{es:'Leonardo',en:'Leonardo'},
@@ -619,7 +619,10 @@ const JUNTA={jose:{es:'José',en:'sir'},leonardo:{es:'Leonardo',en:'Leonardo'},
    formulario obligatorio en la puerta de una demostración pierde visitas. */
 let VISITA=localStorage.getItem('nombreVisita')||'';
 const NOM=()=>{
-  if(INVITADO)return VISITA||(IDI==='en'?'guest':'invitado');
+  /* Sin nombre se devuelve VACIO, no «invitado». Dos razones: llamar
+     «invitado» a alguien en voz alta es frio, y --la que importa para la
+     voz-- asi la frase neutra es la que se graba y la que suena. */
+  if(INVITADO)return VISITA||'';
   const q=JUNTA[QUIEN.usuario];return q?q[IDI]:(IDI==='en'?'sir':'José');};
 /* Vocativo: «, Carlos» o nada. Repetir el nombre en cada frase cansa, así
    que se usa donde suma --el saludo, los puntos de control, el cierre-- y
@@ -869,7 +872,7 @@ for(const s of SIS){
 
 /* ═══ 3 · IMPULSOS ═══════════════════════════════════════════════════════
    Un impulso recorre un axón de punta a punta. Salen cuando pasa algo:
-   JARVIS nombra un sistema, un agente habla, llega un bloque nuevo. En
+   FLUX nombra un sistema, un agente habla, llega un bloque nuevo. En
    reposo hay tráfico tenue, para que el cerebro respire sin gritar. */
 const IMPULSOS=[];
 function impulso(de,a,col,vel){
@@ -1442,10 +1445,10 @@ function railAgentes(){
 }
 
 /* ═══ 7 · LA VOZ ═════════════════════════════════════════════════════════
-   JARVIS es inglés británico, grave y sin prisa. Los agentes llevan cada
+   FLUX es inglés británico, grave y sin prisa. Los agentes llevan cada
    uno una voz distinta, para que se sepa quién habla sin mirar la pantalla.
    Se elige la mejor que tenga el aparato, y la elección se recuerda. */
-const JARVIS=[/Daniel/i,/Arthur/i,/Oliver/i,/George/i,/Ryan/i,/Brian/i,
+const VOZ_PRINCIPAL=[/Daniel/i,/Arthur/i,/Oliver/i,/George/i,/Ryan/i,/Brian/i,
   /UK English Male/i,/British/i,/en-GB/i];
 const BUENAS_EN=[/Natural/i,/Neural/i,/Online/i,/Google/i,/Alex/i,/Samantha/i];
 const BUENAS_ES=[/Natural/i,/Neural/i,/Online/i,/Google/i,/Mónica|Monica/i,/Paulina/i,
@@ -1453,7 +1456,7 @@ const BUENAS_ES=[/Natural/i,/Neural/i,/Online/i,/Google/i,/Mónica|Monica/i,/Pau
 /* Las voces se guardan POR NOMBRE, no por objeto. En iOS un objeto de voz
    obtenido antes de un 'voiceschanged' se queda rancio: asignarlo enmudece la
    frase sin dar ningún error. Se vuelve a buscar por nombre al hablar. */
-let voces=[],nombreJarvis=null,nombreAgente={};
+let voces=[],nombreFlux=null,nombreAgente={};
 const vozPorNombre=n=>n?(speechSynthesis.getVoices().find(v=>v.name===n)||null):null;
 
 /* En qué idioma está escrito ESTE texto. Los partes de los agentes vienen en
@@ -1488,7 +1491,7 @@ setInterval(()=>{if(hablando&&speechSynthesis.paused&&!pausadoAdrede)speechSynth
 function puntua(v){
   let p=0;
   if(IDI==='en'){
-    JARVIS.forEach((r,i)=>{if(r.test(v.name)||r.test(v.lang))p+=60-i*4;});
+    VOZ_PRINCIPAL.forEach((r,i)=>{if(r.test(v.name)||r.test(v.lang))p+=60-i*4;});
     BUENAS_EN.forEach((r,i)=>{if(r.test(v.name))p+=22-i*2;});
     if(/^en/i.test(v.lang))p+=25;
     if(/en-GB/i.test(v.lang))p+=30;
@@ -1525,7 +1528,7 @@ function cargarVoces(){
      las MEJORES. Primero las conocidas buenas; si hay pocas, las mejor
      puntuadas hasta seis. */
   const FINAS=IDI==='en'
-    ?[/Daniel/i,/Arthur/i,/Oliver/i,/Serena/i,/Kate/i,/Samantha/i,/Alex/i,/Ava/i,
+    ?[/Daniel/i,/Arthur/i,/Oliver/i,/Serena/i,/Kate/i,/Samantha/i,/Alex/i,/Ava/i,
       /Natural/i,/Neural/i,/Online/i,/Google UK/i,/Google US/i]
     :[/Paulina/i,/Angélica|Angelica/i,/Marisol/i,/Juan/i,/Jorge/i,/Mónica|Monica/i,
       /Natural/i,/Neural/i,/Online/i,/Google español/i,/Google Español/i];
@@ -1536,11 +1539,11 @@ function cargarVoces(){
     o.textContent=v.name.replace(/Microsoft |Google /,'').slice(0,24);sel.appendChild(o);});
   const g=localStorage.getItem('vozCerebro-'+IDI);
   const idx=g!==null&&voces[g]?+g:0;
-  sel.value=idx; nombreJarvis=voces[idx]?voces[idx].name:null;
+  sel.value=idx; nombreFlux=voces[idx]?voces[idx].name:null;
   /* A cada agente, una voz distinta de las siguientes de la lista. */
   nombreAgente={};
   AGENTES.forEach((a,k)=>{const v=voces[(k+1)%Math.max(1,voces.length)];
-    nombreAgente[a.id]=v?v.name:nombreJarvis;});
+    nombreAgente[a.id]=v?v.name:nombreFlux;});
   diagnostico();
 }
 /* Si el aparato no tiene ni una voz, hay que DECIRLO. El fallo anterior fue
@@ -1555,9 +1558,9 @@ function diagnostico(){
 speechSynthesis.addEventListener('voiceschanged',cargarVoces);
 cargarVoces(); setTimeout(cargarVoces,400);
 $('#voces').addEventListener('change',e=>{
-  nombreJarvis=voces[e.target.value]?voces[e.target.value].name:null;
+  nombreFlux=voces[e.target.value]?voces[e.target.value].name:null;
   localStorage.setItem('vozCerebro-'+IDI,e.target.value);
-  decir([{q:'JARVIS',x:IDI==='en'
+  decir([{q:'FLUX',x:IDI==='en'
     ?'Voice set. This is how I will sound.':'Voz cambiada. Así es como voy a sonar.'}]);
 });
 $('#idioma').addEventListener('change',e=>{
@@ -1568,8 +1571,41 @@ $('#idioma').addEventListener('change',e=>{
 
 /* Que la voz no lea símbolos ni siglas raras. En español "gwei" suena como
    una palabrota mexicana; en inglés se lee "gway" y tampoco es. */
+/* ═══ COMO SE PRONUNCIA ═══════════════════════════════════════════════════
+   Una voz mexicana leyendo «MyTokenPay» dice «mi-to-ken-pai» con acento de
+   maquina, y «KYC» lo deletrea en ingles a medias. Suena mal y --peor-- no
+   se entiende. Aqui se escribe como se DICE, no como se escribe.
+
+   Las siglas se deletrean con los nombres de las letras EN CASTELLANO. Es
+   deliberado: el publico es latinoamericano, y «ka, ye, ce» se entiende a
+   la primera mientras que «kei uai si» obliga a traducir mentalmente.
+
+   Esto SOLO toca lo que se pronuncia. En pantalla se sigue leyendo
+   «MyTokenPay», que es como se escribe. */
+const COMO_SUENA=[
+  [/\bVeta ?Wallet\b/gi,        'Veta Wólet'],
+  [/\bMy ?Token ?Pay\b/gi,      'Mai Tóken Pei'],
+  [/\bGenesis ?ID\b/gi,         'Génesis Ai Di'],
+  [/\bgenesisid\b/gi,           'génesis ai di'],
+  [/\bordenscan\b/gi,           'Órden Escán'],
+  [/\bKYC\b/g,                  'ka ye ce'],
+  [/\bKYB\b/g,                  'ka ye be'],
+  [/\bAML\b/g,                  'a eme ele'],
+  [/\bSSO\b/g,                  'ese ese o'],
+  [/\bQBFT\b/g,                 'cu be efe te'],
+  [/\bEVM\b/g,                  'e ve eme'],
+  [/\bUSDT\b/g,                 'u ese de te'],
+  [/\bBesu\b/g,                 'Bésu'],
+  [/\bShanghai\b/gi,            'Shanghái'],
+  [/\bPolygon\b/gi,             'Póligon'],
+  [/\bChainlist\b/gi,           'Chéinlist'],
+  [/\bHeroku\b/gi,              'Heróku'],
+  [/\btestnet\b/gi,             'tesnet'],
+];
 function limpiar(x){
-  return String(x)
+  let t=String(x);
+  if(idiomaDe(t)==='es')for(const [re,por] of COMO_SUENA)t=t.replace(re,por);
+  return t
     .replace(/·/g,',').replace(/—/g,',').replace(/\bgwei\b/gi,'gigawei')
     .replace(/\bRPC\b/g,IDI==='en'?'R P C':'erre pe ce')
     .replace(/\bUSD\b/g,IDI==='en'?'dollars':'dólares')
@@ -1636,7 +1672,9 @@ function trozos(x){
    voz del navegador. A propósito: mejor la voz de siempre que un audio
    diciendo algo distinto de lo que pone el subtítulo. */
 let MANIFIESTO=null, audioActual=null;
-const VOZ_GRABADA={es:'es_MX-claude-high', en:'en_GB-alan-medium'};
+/* La voz de FLUX. La inglesa se cambio el 14-ago: `alan` sonaba muerta,
+   y `ryan` es la mas natural que tiene Piper en ingles. */
+const VOZ_GRABADA={es:'es_MX-claude-high', en:'en_US-ryan-high'};
 function claveVoz(texto,voz){
   let h=0x811c9dc5;
   const s=voz+'|'+texto;
@@ -1668,15 +1706,23 @@ function audioDe(textoLimpio){
    se DICE Y SE ESCRIBE la generica, las dos cosas--. Nunca un audio que
    diga algo distinto del subtitulo: esa regla no se rompe ni por esto. */
 function conVoz(texto){
+  /* Se devuelven DOS cosas distintas a proposito:
+       `mostrar` -> lo que se lee en pantalla, tal cual se escribe;
+       `decir`   -> lo que se pronuncia, con «MyTokenPay» convertido en
+                    «Mai Token Pei» y las siglas deletreadas.
+     Mezclarlas pondria la pronunciacion en el subtitulo, que es ridiculo. */
   const t=limpiar(texto);
   let url=audioDe(t);
-  if(url)return {texto:t,url};
+  if(url)return {mostrar:texto, decir:t, url};
   const v=VOC();
   if(v){
+    /* Sin nombre grabado se usa la version neutra --y se dice Y SE ESCRIBE
+       la neutra--. Nunca un audio que diga algo distinto del subtitulo. */
     const gen=t.split(v).join('');
-    if(gen!==t){ url=audioDe(gen); if(url)return {texto:gen,url}; }
+    if(gen!==t){ url=audioDe(gen);
+      if(url)return {mostrar:String(texto).split(v).join(''), decir:gen, url}; }
   }
-  return {texto:t,url:null};
+  return {mostrar:texto, decir:t, url:null};
 }
 (function cargarManifiesto(){
   /* Sin manifiesto no pasa nada: se habla como siempre. Por eso ni se avisa
@@ -1832,7 +1878,7 @@ function siguiente(){
     return;
   }
   marcar(l.q);
-  $('#sub').innerHTML='<span class="quien">'+(l.q||'JARVIS')+'</span>'+l.x;
+  $('#sub').innerHTML='<span class="quien">'+(l.q||'FLUX')+'</span>'+l.x;
   if(l.foco){disparar(l.foco,true);tarjetaSis(l.foco);
     if(PRESENTANDO)volarA(l.foco,l.zoom);}
   if(l.ag)tarjetaAg(l.ag);
@@ -1848,9 +1894,9 @@ function siguiente(){
   pintarRecorrido();
 
   const res=conVoz(l.x);
-  const texto=res.texto;
-  if(texto!==limpiar(l.x))                 // se cayo a la version generica
-    $('#sub').innerHTML='<span class="quien">'+(l.q||'JARVIS')+'</span>'+texto;
+  const texto=res.decir;
+  if(res.mostrar!==l.x)                    // se cayo a la version neutra
+    $('#sub').innerHTML='<span class="quien">'+(l.q||'FLUX')+'</span>'+res.mostrar;
   const partes=trozos(texto);
   const mio=++TURNO;
   let pasado=false;
@@ -1891,7 +1937,7 @@ function hablarTrozo(partes,i,l,mio,seguir){
      qué: eso fue exactamente el fallo del 13-ago. Antes que quedarse callado,
      se habla con la voz del sistema. */
   try{
-    let v=vozPorNombre(l.ag?nombreAgente[l.ag]:nombreJarvis);
+    let v=vozPorNombre(l.ag?nombreAgente[l.ag]:nombreFlux);
     if(!v||!new RegExp('^'+idiT,'i').test(v.lang||''))v=vozDeIdioma(idiT,l.ag);
     if(v){u.voice=v; if(v.lang)u.lang=v.lang;}
   }catch(e){
@@ -2017,12 +2063,13 @@ $('#hablar').addEventListener('click',()=>hablando?parar():decir(guion()));
 /* ═══ 8 · EL PARTE HABLADO ═══════════════════════════════════════════════ */
 function saludo(){
   const h=new Date().getHours();
-  if(IDI==='en')return h<12?'Good morning, '+NOM()+'.':h<19?'Good afternoon, '+NOM()+'.':'Good evening, '+NOM()+'.';
-  return h<12?'Buenos días, '+NOM()+'.':h<19?'Buenas tardes, '+NOM()+'.':'Buenas noches, '+NOM()+'.';
+  const v=VOC();
+  if(IDI==='en')return (h<12?'Good morning':h<19?'Good afternoon':'Good evening')+v+'.';
+  return (h<12?'Buenos días':h<19?'Buenas tardes':'Buenas noches')+v+'.';
 }
 function guion(){
   const L=[],f=fallas();
-  const P=(x,o={})=>L.push(Object.assign({q:'JARVIS',x},o));
+  const P=(x,o={})=>L.push(Object.assign({q:'FLUX',x},o));
   P(saludo(),{p:520});
   P(IDI==='en'?'All systems reporting. Here is where we stand.'
               :'Todos los sistemas reportando. Este es el estado.',{p:520});
@@ -2090,7 +2137,7 @@ function guion(){
 /* ═══ 8b · LA CONVERSACIÓN ═══════════════════════════════════════════════
    Diez frases hechas no son una conversación. Aquí hay tres cosas:
 
-     · JARVIS contesta SIEMPRE en el idioma del selector, aunque le hables en
+     · FLUX contesta SIEMPRE en el idioma del selector, aunque le hables en
        el otro. Lo que no traduce son los partes de los agentes --están
        escritos en castellano-- así que los presenta él en tu idioma y deja
        que el agente los diga con su propia voz castellana. Suena a dos
@@ -2453,7 +2500,7 @@ function temaSaber(id){ultimoTema=id;
   const r=RELS[id]||[];
   return SABER[id][IDI].map((x,i)=>J(x,{p:i?380:460,foco:r[i%Math.max(1,r.length)]}));}
 const en=()=>IDI==='en';
-const J=(x,o={})=>Object.assign({q:'JARVIS',x},o);
+const J=(x,o={})=>Object.assign({q:'FLUX',x},o);
 
 /* Una frase con los números del momento, no una plantilla. */
 function frase(pares){ return pares.filter(Boolean).join(' '); }
@@ -2708,14 +2755,14 @@ function escuchar(){
 }
 /* Si lo primero que tocas es el micrófono, el sintetizador todavía está
    bloqueado. Se desbloquea con un acuse corto --que además es lo que haría
-   JARVIS-- y se empieza a escuchar en cuanto termina de decirlo. */
+   FLUX-- y se empieza a escuchar en cuanto termina de decirlo. */
 $('#mic').addEventListener('click',()=>{
   if(oyendo||desbloqueada){escuchar();return;}
   desbloqueada=true;
   const u=new SpeechSynthesisUtterance(IDI==='en'?('Yes, '+NOM()+'?'):('¿Sí, '+NOM()+'?'));
-  try{const v=vozDeIdioma(IDI)||vozPorNombre(nombreJarvis); if(v)u.voice=v;}catch(e){}
+  try{const v=vozDeIdioma(IDI)||vozPorNombre(nombreFlux); if(v)u.voice=v;}catch(e){}
   u.lang=IDI==='en'?'en-GB':'es-MX'; u.rate=.95; u.pitch=.86;
-  $('#sub').innerHTML='<span class="quien">JARVIS</span>'+u.text;
+  $('#sub').innerHTML='<span class="quien">FLUX</span>'+u.text;
   u.onend=escuchar; u.onerror=escuchar;
   try{speechSynthesis.speak(u);}catch(e){escuchar();}
   setTimeout(()=>{if(!oyendo)escuchar();},2200);
@@ -2751,7 +2798,7 @@ function estadoParaElModelo(){
 }
 async function conversar(pregunta){
   if(INVITADO||hayModelo===false)return false;
-  $('#sub').innerHTML='<span class="quien">JARVIS</span><span style="opacity:.5">…</span>';
+  $('#sub').innerHTML='<span class="quien">FLUX</span><span style="opacity:.5">…</span>';
   try{
     const r=await fetch('/ordenes/hablar',{method:'POST',
       headers:{'content-type':'application/json'},
@@ -2931,7 +2978,7 @@ function loMasCercano(s){
 }
 
 /* ═══ EL ENSAYO ═══════════════════════════════════════════════════════════
-   Practicar antes de la reunión. JARVIS suelta una pregunta de inversionista
+   Practicar antes de la reunión. FLUX suelta una pregunta de inversionista
    --de las duras, no de las cómodas-- y espera. Cuando dices «contesta» o
    «siguiente», da la respuesta modelo y puedes compararla con la tuya.
    Se pregunta en tu idioma y no repite hasta agotar la baraja. */
@@ -3084,7 +3131,7 @@ const ocultarContadores=()=>$('#cifras').classList.remove('abre');
    `cifras`, que dispara los contadores. */
 function guionPresentacion(){
   const es=IDI!=='en', P=[];
-  const F=(x,o={})=>P.push(Object.assign({q:'JARVIS',x},o));
+  const F=(x,o={})=>P.push(Object.assign({q:'FLUX',x},o));
   /* La parada: aquí el recorrido pregunta si quieres preguntar. Van al final
      de cada capítulo, donde una persona levantaría la mano de todos modos. */
   const PARA=()=>P.push({control:true});
@@ -3094,7 +3141,7 @@ function guionPresentacion(){
   if(es){
     /* ── 1 · quién eres y qué estás viendo ─────────────────────────────── */
     F('Bienvenido a Orden Global'+VOC()+'.',{cap:'QUÉ ES',p:600});
-    F('Soy JARVIS. Puedes interrumpirme cuando quieras: si preguntas, te contesto, te lo enseño, y volvemos justo a donde íbamos.',{p:680});
+    F('Soy FLUX. Puedes interrumpirme cuando quieras: si preguntas, te contesto, te lo enseño, y volvemos justo a donde íbamos.',{p:680});
     F('Lo que ves es el ecosistema entero, vivo. Nada de esto es una maqueta: cada número que voy a decir sale de un sistema que está funcionando ahora mismo.',{p:700});
     F('Empecemos por lo que ya existe.',{p:400,cifras:[[4180872,'bloques de historia'],[2,'años en producción'],[435,'usuarios reales']]});
     F('Cuatro millones ciento ochenta mil bloques. Dos años y un mes de cadena en producción, sin parar, desde julio de dos mil veinticuatro.',{p:650});
@@ -3164,7 +3211,7 @@ function guionPresentacion(){
     F('Y para que no me creas por la voz'+VOC()+', te lo demuestro.',{cap:'LA PRUEBA',p:600,cifras:null});
   }else{
     F('Welcome to Orden Global'+VOC()+'.',{cap:'WHAT IT IS',p:600});
-    F('I am JARVIS. Interrupt me whenever you like: ask, I answer, I show you, and we go straight back to where we were.',{p:680});
+    F('I am FLUX. Interrupt me whenever you like: ask, I answer, I show you, and we go straight back to where we were.',{p:680});
     F('What you are looking at is the entire ecosystem, live. None of this is a mock-up: every number I am about to say comes from a system that is running right now.',{p:700});
     F('Let us start with what already exists.',{p:400,cifras:[[4180872,'blocks of history'],[2,'years in production'],[435,'real users']]});
     F('Four million one hundred eighty thousand blocks. Two years and one month of chain in production, without stopping, since July twenty twenty four.',{p:650});
@@ -3449,8 +3496,8 @@ async function transaccionEnVivo(){
       $('#vivoLink').textContent=en?'Verify it yourself in the explorer →':'Compruébalo tú mismo en el explorador →';
       $('#vivoLink').href=u;
     }
-    decir([J(en?('Done. It went into block '+nf(j.bloque)+' and confirmed in '+j.segundos+' seconds.')
-              :('Hecho. Entró en el bloque '+nf(j.bloque)+' y confirmó en '+j.segundos+' segundos.'),{foco:'n5534',p:520}),
+    decir([J(en?'Done. It is in a block, confirmed, and the numbers are on screen.'
+              :'Hecho. Ya está en un bloque, confirmada, y los números están en pantalla.',{foco:'n5534',p:520}),
       J(en?'That hash is on screen. Open it in the explorer, from your own phone. It is not a simulation.'
           :'Ese identificador está en pantalla. Ábrelo en el explorador, desde tu propio teléfono. No es una simulación.',{p:0})],
       /* El segundo acto va SIEMPRE detrás de la transacción, también cuando
@@ -3491,7 +3538,7 @@ addEventListener('keydown',e=>{
    «tenemos» en vez de «equivale» sería una afirmación que no toca hacer. */
 function segundoActo(){
   const es=IDI!=='en', P=[];
-  const F=(x,o={})=>P.push(Object.assign({q:'JARVIS',x},o));
+  const F=(x,o={})=>P.push(Object.assign({q:'FLUX',x},o));
   const PARA=()=>P.push({control:true});
 
   if(es){
@@ -3542,7 +3589,17 @@ function segundoActo(){
     F('Nuestra historia se está escribiendo ahora, y el bloque en el que estamos tiene fecha de hoy.',{foco:'n5534',p:700});
     PARA();
 
-    F('Gracias por tu tiempo'+VOC()+'. Pregúntame lo que quieras: el negocio, el token, el oro, la tecnología, los riesgos. Contesto con datos, y cuando no los tengo, lo digo.',{p:0,cifras:null});
+    F('Gracias por tu tiempo'+VOC()+'. Pregúntame lo que quieras: el negocio, el token, el oro, la tecnología, los riesgos. Contesto con datos, y cuando no los tengo, lo digo.',{p:700,cifras:null});
+
+    /* El cierre. Se dice después de haberlo enseñado todo --incluidos los
+       riesgos-- y por eso se puede decir sin sonar a folleto: quien ha
+       llegado hasta aquí ya vio la parte incómoda. */
+    F('Y una última cosa, antes de que te vayas.',{p:600});
+    F('Si estás viendo esto, no es casualidad. Nadie llega aquí por accidente: esto no se anuncia, se enseña.',{foco:'n5534',p:760});
+    F('Lo que acabas de ver no es una idea buscando dinero. Es infraestructura construida, funcionando, con dinero real dentro y dos años de historia que cualquiera puede auditar desde fuera.',{foco:'scan',p:780});
+    F('Lo que falta no es la parte difícil. Lo difícil ya está hecho. Lo que falta es la gente que decida construir encima.',{foco:'gid',p:780});
+    F('Seiscientos millones de personas en América Latina siguen atadas a una moneda que pierde valor mientras duermen. Cambiar eso no es una frase bonita: es una cadena, una billetera, una identidad y un comercio que cobra. Y las cuatro ya existen.',{foco:'pago',p:820});
+    F('La historia de esto se está escribiendo ahora mismo, y todavía caben nombres. El tuyo puede ser uno.',{foco:'g5550',p:0});
   }else{
     F('Now, what you have just seen.',{cap:'LAYER ONE',p:520,cifras:null});
     F('Orden Global is not an application on somebody else chain. It is a layer one chain: the base layer, the one that holds the ledger and sets its own rules.',{foco:'n5534',p:700});
@@ -3583,7 +3640,14 @@ function segundoActo(){
     F('Our history is being written right now, and the block we are standing on is dated today.',{foco:'n5534',p:700});
     PARA();
 
-    F('Thank you for your time'+VOC()+'. Ask me anything: the business, the token, the gold, the technology, the risks. I answer with data, and when I do not have it, I say so.',{p:0,cifras:null});
+    F('Thank you for your time'+VOC()+'. Ask me anything: the business, the token, the gold, the technology, the risks. I answer with data, and when I do not have it, I say so.',{p:700,cifras:null});
+
+    F('And one last thing, before you go.',{p:600});
+    F('If you are seeing this, it is not by chance. Nobody lands here by accident: this is not advertised, it is shown.',{foco:'n5534',p:760});
+    F('What you have just seen is not an idea looking for money. It is infrastructure built, running, with real money inside and two years of history anyone can audit from outside.',{foco:'scan',p:780});
+    F('What is missing is not the hard part. The hard part is done. What is missing is the people who decide to build on top.',{foco:'gid',p:780});
+    F('Six hundred million people in Latin America are still tied to a currency that loses value while they sleep. Changing that is not a nice phrase: it is a chain, a wallet, an identity and a merchant getting paid. And all four already exist.',{foco:'pago',p:820});
+    F('The history of this is being written right now, and there is still room for names. Yours could be one of them.',{foco:'g5550',p:0});
   }
   const fin=()=>{PRESENTANDO=false;$('#btnPresenta').classList.remove('on');document.body.classList.remove('narrando');
                  $('#lblPresenta').textContent=IDI==='en'?'TOUR':'RECORRIDO';
@@ -3639,7 +3703,7 @@ const kv=(c,k,v,col)=>{const d=document.createElement('div');d.className='kv';
   d.innerHTML='<b>'+k+'</b><span'+(col?' style="color:'+col+'"':'')+'>'+v+'</span>';c.appendChild(d);};
 
 /* ═══ TOCAR Y QUE PREGUNTE ════════════════════════════════════════════════
-   Tocas cualquier cosa del ecosistema y JARVIS te ofrece el reporte en voz.
+   Tocas cualquier cosa del ecosistema y FLUX te ofrece el reporte en voz.
    Se abre la ficha para que veas los datos, y él pregunta si quieres que te
    lo cuente. «Sí» dispara el reporte hablado completo; «no» lo deja estar.
    La pregunta queda ARMADA hasta que contestas o tocas otra cosa: así el
@@ -3881,7 +3945,7 @@ quienEs().then(()=>{ if(IDIOMA_ELEGIDO&&QUIEN.nombre)
 todo();
 
 /* La puerta de idioma: solo la primera vez. Elegir es también el primer
-   toque, así que desbloquea el audio y JARVIS saluda por tu nombre. */
+   toque, así que desbloquea el audio y FLUX saluda por tu nombre. */
 /* El permiso del micrófono se pide EN LA PUERTA, dentro del toque de elegir
    idioma. Dos razones y las dos importan:
    · el navegador solo lo concede desde un gesto de la persona, y este es el
@@ -3936,8 +4000,8 @@ if(INVITADO){
     if(QUIEN.nombre)$('#lema').textContent=t('lema')+' · '+QUIEN.nombre.toUpperCase();
     desbloqueada=true;
     decir([J(saludo(),{p:400}),
-      J(IDI==='en'?'I am JARVIS, the control core of Orden Global. Press the question mark whenever you want to know what to say to me.'
-                  :'Soy JARVIS, el núcleo de control de Orden Global. Pulsa el interrogante cuando quieras saber qué puedes decirme.')]);
+      J(IDI==='en'?'I am FLUX, the control core of Orden Global. Press the question mark whenever you want to know what to say to me.'
+                  :'Soy FLUX, el núcleo de control de Orden Global. Pulsa el interrogante cuando quieras saber qué puedes decirme.')]);
   }));
 }
 

@@ -82,7 +82,7 @@ async function montar(b,{manifiesto,audio}){
 async function decirY(p,txt,quiero,ms){
   await p.evaluate(()=>{parar();window.__nav=[];window.__aud=[];});
   await p.waitForTimeout(60);
-  await p.evaluate(t=>decir([{q:'JARVIS',x:t}]),txt);
+  await p.evaluate(t=>decir([{q:'FLUX',x:t}]),txt);
   const listo=quiero==='nav'  ? r=>r.nav.length
             : quiero==='aud'  ? r=>r.aud.length
             :                   r=>r.nav.length||r.aud.length;

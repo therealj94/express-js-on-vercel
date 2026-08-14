@@ -108,7 +108,7 @@ const PRUEBAS_ES = ['hola', '¿cómo estás?', 'cuánto cuesta', 'cuéntame más
       // la voz tiene que ir con el idioma DEL TEXTO, no con el del selector
       const vozOk = prim.voz ? new RegExp('^' + idi, 'i').test(
         ({Daniel:'en-GB', Samantha:'en-US', 'Mónica':'es-ES', Paulina:'es-MX'})[prim.voz] || '') : true;
-      const jarvisOk = idi === esperado;   // JARVIS contesta en el idioma del selector
+      const jarvisOk = idi === esperado;   // FLUX contesta en el idioma del selector
       if (!jarvisOk || !vozOk) mal++;
       console.log('  ' + (jarvisOk && vozOk ? '✓' : '✕') + ' "' + f + '" → ' +
         (prim.txt || '').slice(0, 58) + (prim.txt.length > 58 ? '…' : ''));

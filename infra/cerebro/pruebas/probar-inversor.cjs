@@ -116,7 +116,7 @@ const INVENTOS=/(facturaci[oó]n de|revenue of|valoraci[oó]n de \d|valued at|li
       if(quieto>=2)break;
     }
     return p.evaluate(()=>({tema:ultimoTema,
-      dicho:[...new Set(window.__d)].join(' ').replace(/JARVIS/g,' ')}));
+      dicho:[...new Set(window.__d)].join(' ').replace(/FLUX/g,' ')}));
   };
 
   for(const [modo,lista] of [['ES',ES],['EN',EN]]){
