@@ -81,6 +81,10 @@ const MAN=process.argv[2]||'/tmp/claude-0/-home-user-express-js-on-vercel/'+
         ? 'Anything you want to ask me so far'+VOC()+'? Or shall I carry on?'
         : '¿Hasta aquí alguna pregunta'+VOC()+'? ¿O sigo?');
       mira('vuelve', IDI==='en'?'Back to where we were.':'Volvemos a donde íbamos.');
+      /* Y TODO lo fijo de fuera de los guiones. Aqui esta el fallo que se
+         escapo dos veces: la transaccion se queda muda porque sus frases no
+         estaban en ningun guion y nadie las grababa. */
+      FRASES_FIJAS().forEach((x,i)=>mira('fija:'+i,x));
       return {faltan,sinPronunciar,
         man:MANIFIESTO?Object.keys(MANIFIESTO).length:0};
     },nombre);

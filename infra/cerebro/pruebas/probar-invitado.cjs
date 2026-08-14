@@ -109,21 +109,31 @@ const PUBLICO=/\/img\//;
   if(!st.sigue||!st.vacio) mal++;
 
   // ── el segundo acto y el ORIGEN dorado
+  /* Se ACUMULA lo narrado en vez de mirar el subtitulo en un instante. El
+     subtitulo es volatil: entre frase y frase, y en cada punto de control, se
+     queda vacio --y el test acusaba de mudo a un recorrido que estaba
+     hablando--. Lo que importa es POR DONDE paso, no que dijera algo justo en
+     el milisegundo en que se miro. */
+  await p3.evaluate(()=>{window.__narrado='';
+    setInterval(()=>{const s=document.querySelector('#sub');
+      if(s&&s.textContent.trim())window.__narrado+=' '+s.textContent;},120);});
   await p3.evaluate(()=>{parar();PRESENTANDO=true;segundoActo();});
-  /* Al hecho, no al reloj: la voz respira y la linea de la capa uno tarda
-     mas en llegar que antes. */
-  for(let i=0;i<30;i++){
+  /* Y se le CONTESTA cuando pregunta. El segundo acto tambien se para en sus
+     puntos de control; sin responderle se queda esperando en la primera
+     parada y no llega nunca al ORIGEN --que es lo que se estaba midiendo--. */
+  for(let i=0;i<60;i++){
     await p3.waitForTimeout(400);
-    if(await p3.evaluate(()=>/capa uno|layer one|cadena/i
-        .test(document.querySelector('#sub').textContent)))break;
+    if(await p3.evaluate(()=>/ORIGEN|cadena|chain/i.test(window.__narrado)))break;
+    await p3.evaluate(()=>{ if(typeof esperandoPregunta!=='undefined'&&esperandoPregunta)
+                              seguirRecorrido(); });
   }
-  st=await p3.evaluate(()=>({sub:document.querySelector('#sub').textContent,
+  st=await p3.evaluate(()=>({sub:(window.__narrado||'').trim(),
     motas:typeof MOTAS!=='undefined'?MOTAS.length:-1,
     cifra:(document.querySelector('#cifras .oro .n')||{}).textContent||''}));
-  const capa1=/capa uno|layer one/i.test(st.sub)||/cadena/i.test(st.sub);
+  const capa1=/ORIGEN|cadena|chain|layer one/i.test(st.sub);
   console.log('\n══ SEGUNDO ACTO');
   console.log('   narra: "'+st.sub.replace(/\s+/g,' ').slice(0,66)+'"');
-  console.log('   habla de capa uno: '+(capa1?'✓':'✕'));
+  console.log('   entra en materia: '+(capa1?'✓':'✕'));
   if(!capa1) mal++;
   // el disparo del oro llega cuando la narración entra al ORIGEN (~12s),
   // así que se espera al hecho, no a un reloj.

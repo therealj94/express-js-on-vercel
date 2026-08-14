@@ -2663,16 +2663,26 @@ function tema(id){
 function ampliar(){
   const mapa={seguridad:'cerrajero',coste:'contador',dinero:'centinela',
               chainlist:'escudero',cadenas:'vigia'};
-  const ag=mapa[ultimoTema];
+  /* El tema puede venir del banco del inversionista, y ahi se guarda con
+     prefijo: «inv:coste». Sin quitarlo, nada de lo de abajo lo reconocia,
+     `tema()` devolvia null y «cuéntame más» se quedaba MUDO justo despues de
+     la respuesta que mas se usa en una reunion. */
+  const t0=String(ultimoTema||'').replace(/^inv:/,'');
+  if(!t0)return [J(en()?'More about what'+VOC()+'?':'¿Más sobre qué'+VOC()+'?')];
+  const ag=mapa[t0];
   if(ag&&parteDe(ag)){
     const d=detalleDe(ag,5);
     if(d.length)return [J(en()?'The detail, then.':'El detalle, entonces.',{p:360}),...d];
   }
-  const s=SIS.find(x=>x.id===ultimoTema);
+  const s=SIS.find(x=>x.id===t0);
   if(s)return [J(en()?'In more detail.':'Con más detalle.',{p:360}),
                ...s.det[IDI].map(x=>J(x+'.',{foco:s.id,p:340}))];
-  if(ultimoTema)return tema(ultimoTema);
-  return [J(en()?'More about what, '+NOM()+'?':'¿Más sobre qué, '+NOM()+'?')];
+  const r=tema(t0);
+  if(r&&r.length)return r;
+  /* Nunca callarse. Quedarse sin nada que anadir es legitimo; quedarse mudo
+     delante de un inversionista parece que se rompio. */
+  return [J(en()?'That is as deep as I have it measured. Ask me anything else and I will carry on.'
+              :'Hasta ahí lo tengo medido. Pregúntame por cualquier otra cosa y seguimos.')];
 }
 
 /* Un sistema concreto, cuando lo nombras. */
@@ -3180,20 +3190,21 @@ function guionPresentacion(){
 
   if(es){
     /* ── 1 · quién eres y qué estás viendo ─────────────────────────────── */
-    F('Bienvenido a Orden Global'+VOC()+'.',{cap:'QUIÉN SOY',p:600});
-    F('Soy FLUX, el cerebro de este ecosistema.',{p:620});
-    F('No soy una grabación ni una página de presentación. Estoy conectado a todo lo que ves: las dos cadenas, la billetera, la identidad, la pasarela y las diez máquinas donde corre.',{foco:'nodos',p:800,
+    F('Hola'+VOC()+'. Soy FLUX.',{cap:'QUIÉN SOY',p:620});
+    F('Existo por una razón muy concreta: alguien tenía que estar mirando esto todo el tiempo.',{p:700});
+    F('Orden Global son dos cadenas, cinco servicios, diez máquinas y unos cuantos miles de cosas que pueden salir mal a las tres de la mañana. Yo soy el cerebro que las vigila.',{foco:'nodos',p:820,
       ficha:['FLUX','ok',[
         ['Vigila','13 sistemas'],['Agentes','7, automáticos'],
         ['Revisa','cada pocas horas'],['Cadenas','5534 · 5550 · 8532'],
         ['Datos','en vivo, no guardados'],['Habla','español e inglés']]]});
-    F('Cada pocas horas siete agentes automáticos revisan las cadenas, el dinero, la seguridad, lo desplegado y el coste, y me dejan su parte escrito. Yo lo leo, lo junto y te lo cuento.',{foco:'nodos',p:800});
-    F('Y cuando algo falla, lo digo. No estoy hecho para vender: estoy hecho para que lo que se diga aquí se pueda comprobar.',{foco:'scan',p:760});
-    F('Puedes interrumpirme cuando quieras. Si preguntas, te contesto, te lo enseño en pantalla, y volvemos justo a donde íbamos. Y si quieres ver algo por tu cuenta, dime «abre Veta Wallet» y te lo abro.',{p:780});
+    F('Siete agentes automáticos me dejan su parte cada pocas horas: cómo van las cadenas, dónde está el dinero, qué encontró la revisión de seguridad, qué corre en producción y cuánto cuesta. Yo lo leo todo y te lo cuento.',{foco:'nodos',p:840});
+    F('Y cuando algo está mal, te lo digo. No estoy hecho para vender: estoy hecho para que lo que se diga aquí se pueda comprobar. Es más aburrido y dura más.',{foco:'scan',p:800});
+    F('Así que esto no es una presentación. Es un paseo por dentro, conmigo de guía.',{p:700});
+    F('Párame cuando quieras. Si preguntas te contesto, te lo enseño en pantalla y seguimos donde íbamos. Y si quieres verlo tú mismo, dime «abre Veta Wallet» y te lo abro.',{p:780});
     PARA();
 
-    F('Esto es lo que vigilo.',{cap:'QUÉ ES',p:520,cifras:null});
-    F('El ecosistema entero, vivo. Nada de esto es una maqueta: cada número que voy a decir sale de un sistema que está funcionando ahora mismo.',{p:700});
+    F('Empecemos por lo que hay.',{cap:'QUÉ HAY',p:540,cifras:null});
+    F('Todo lo que ves está vivo. Ningún número de los que voy a decir está guardado en una diapositiva: salen de sistemas que están funcionando ahora mismo, mientras hablamos.',{p:760});
     F('Empecemos por lo que ya existe.',{p:400,cifras:[[4180872,'bloques de historia'],[2,'años en producción'],[435,'usuarios reales']]});
     F('Cuatro millones ciento ochenta mil bloques. Dos años y un mes de cadena en producción, sin parar, desde julio de dos mil veinticuatro.',{p:650});
     F('Y cuatrocientas treinta y cinco personas con dinero de verdad dentro.',{p:700});
@@ -3254,27 +3265,28 @@ function guionPresentacion(){
     /* ── 6 · las máquinas y los agentes ────────────────────────────────── */
     F('Todo esto corre sobre diez máquinas, y se vigila solo.',{cap:'LAS MÁQUINAS',foco:'nodos',p:500,
       cifras:[[7,'agentes automáticos'],[24,'revisiones al día'],[10,'máquinas']]});
-    F('Siete agentes automáticos revisan las cadenas, el dinero, la seguridad, lo desplegado y el coste. Cada uno deja su parte escrito, y si algo falla lo dicen sin adornarlo.',{foco:'nodos',p:700});
+    F('Te acordarás de los siete agentes que te nombré al principio. Aquí es donde trabajan: cada uno mira su parcela y deja su parte escrito, y si algo está mal lo dice sin adornarlo.',{foco:'nodos',p:700});
     F('Eso es raro y quiero que lo notes: la mayoría de los proyectos te enseñan lo que funciona. Aquí el sistema publica sus propios fallos, con fecha, y yo te los leo si me los pides.',{foco:'nodos',p:720});
     PARA();
 
     /* ── 7 · la demostración ───────────────────────────────────────────── */
-    F('Y para que no me creas por la voz'+VOC()+', te lo demuestro.',{cap:'LA PRUEBA',p:600,cifras:null});
+    F('Y ahora, en vez de seguir contándotelo, te lo enseño.',{cap:'LA PRUEBA',p:600,cifras:null});
   }else{
-    F('Welcome to Orden Global'+VOC()+'.',{cap:'WHO I AM',p:600});
-    F('I am FLUX, the brain of this ecosystem.',{p:620});
-    F('I am not a recording or a brochure page. I am wired into everything you see: both chains, the wallet, identity, the gateway, and the ten machines it runs on.',{foco:'nodos',p:800,
+    F('Hello'+VOC()+'. I am FLUX.',{cap:'WHO I AM',p:620});
+    F('I exist for one very concrete reason: somebody had to be watching this all the time.',{p:700});
+    F('Orden Global is two chains, five services, ten machines and a few thousand things that can go wrong at three in the morning. I am the brain that watches them.',{foco:'nodos',p:820,
       ficha:['FLUX','ok',[
         ['Watches','13 systems'],['Agents','7, automated'],
         ['Reviews','every few hours'],['Chains','5534 · 5550 · 8532'],
         ['Data','live, not cached'],['Speaks','Spanish and English']]]});
-    F('Every few hours seven automated agents review the chains, the money, security, what is deployed and the cost, and file their reports with me. I read them, put them together, and tell you.',{foco:'nodos',p:800});
-    F('And when something fails, I say so. I am not built to sell: I am built so that what gets said here can be checked.',{foco:'scan',p:760});
-    F('Interrupt me whenever you like. Ask, I answer, I show you on screen, and we go straight back to where we were. And if you want to see something yourself, say "open Veta Wallet" and I will.',{p:780});
+    F('Seven automated agents file their reports with me every few hours: how the chains are doing, where the money is, what the security review found, what is running in production and what it costs. I read all of it and tell you.',{foco:'nodos',p:840});
+    F('And when something is wrong, I tell you. I am not built to sell: I am built so that what gets said here can be checked. It is duller and it lasts longer.',{foco:'scan',p:800});
+    F('So this is not a presentation. It is a walk through the inside, with me as your guide.',{p:700});
+    F('Stop me whenever you like. Ask and I answer, I show you on screen, and we carry on where we were. And if you want to see it yourself, say "open Veta Wallet" and I will.',{p:780});
     PARA();
 
-    F('This is what I watch.',{cap:'WHAT IT IS',p:520,cifras:null});
-    F('The entire ecosystem, live. None of this is a mock-up: every number I am about to say comes from a system that is running right now.',{p:700});
+    F('Let us start with what is here.',{cap:'WHAT IS HERE',p:540,cifras:null});
+    F('Everything you see is live. Not one of the numbers I am about to say is stored in a slide: they come from systems that are running right now, while we talk.',{p:760});
     F('Let us start with what already exists.',{p:400,cifras:[[4180872,'blocks of history'],[2,'years in production'],[435,'real users']]});
     F('Four million one hundred eighty thousand blocks. Two years and one month of chain in production, without stopping, since July twenty twenty four.',{p:650});
     F('And four hundred thirty five people with real money inside.',{p:700});
@@ -3330,11 +3342,11 @@ function guionPresentacion(){
 
     F('All of this runs on ten machines, and watches itself.',{cap:'THE MACHINES',foco:'nodos',p:500,
       cifras:[[7,'automated agents'],[24,'checks per day'],[10,'machines']]});
-    F('Seven automated agents review the chains, the money, security, what is deployed and the cost. Each one files a written report, and if something fails they say so without dressing it up.',{foco:'nodos',p:700});
+    F('You will remember the seven agents I named at the start. This is where they work: each one watches its own patch and files a written report, and if something is wrong it says so without dressing it up.',{foco:'nodos',p:700});
     F('That is unusual and I want you to notice it: most projects show you what works. Here the system publishes its own failures, dated, and I will read them to you if you ask.',{foco:'nodos',p:720});
     PARA();
 
-    F('And so you do not take my word for it'+VOC()+', let me show you.',{cap:'THE PROOF',p:600});
+    F('And now, instead of telling you more, let me show you.',{cap:'THE PROOF',p:600});
   }
   return P;
 }
@@ -3527,12 +3539,80 @@ function pararPresentacion(){
    donde nace la pregunta «¿y esto que es?». Marcado con `pesePendiente`
    porque tiene que correr aunque quede algo guardado. */
 function trasLaTransaccion(){
+  /* Se CIERRA el panel de la transaccion antes de seguir. Estaba a pantalla
+     completa y encima de todo: al acabar el envio el segundo acto narraba por
+     DETRAS, con el panel tapando el tablero y tragandose cada toque. Desde
+     fuera eso no se lee como «esta hablando», se lee como «se trabo ahi y no
+     sigue» --que fue la queja, dos veces--.
+     El comprobante no se pierde: el hash se queda como enlace en pantalla,
+     que es donde de verdad se usa --se abre desde el propio telefono--. */
+  const h=$('#vivoHash').textContent.trim();
+  $('#vivo').classList.remove('abre');
+  if(/^0x[0-9a-fA-F]{10,}$/.test(h))
+    mostrarEnlaces([[(IDI==='en'?'Your transaction in the explorer':'Tu transacción en el explorador'),
+                     'https://testnet.ordenscan.com/tx/'+h]]);
   PRESENTANDO=true;
   $('#btnPresenta').classList.add('on');document.body.classList.add('narrando');
   $('#lblPresenta').textContent=IDI==='en'?'PAUSE':'PAUSAR';
   segundoActo();
 }
 trasLaTransaccion.pesePendiente=true;
+/* ═══ TODO LO FIJO QUE PUEDE DECIR ═══════════════════════════════════════
+   Un solo sitio con TODAS las frases fijas que no estan en un guion. El
+   extractor las lee de aqui y la prueba comprueba que estan grabadas.
+
+   Existe por un fallo que costo dos entregas: las frases de la transaccion
+   --las tres que se dicen en el momento que gana la reunion-- no estaban en
+   ningun guion, asi que nadie las grababa. Resultado: en mitad de la
+   demostracion la voz se callaba y los subtitulos seguian solos, y los
+   nombres en ingles volvian a sonar mal porque los leia el navegador.
+
+   Regla: si escribes una frase nueva que FLUX pueda decir y no esta en un
+   guion, AÑADELA AQUI. Si no, sonara distinta al resto. */
+function FRASES_FIJAS(){
+  const en=IDI==='en', L=[];
+  const A=x=>L.push(x);
+  /* la transaccion en vivo */
+  A(en?'I am sending a real transaction on the chain, right now.'
+     :'Estoy enviando una transacción de verdad en la cadena, ahora mismo.');
+  A(en?'Done. It is in a block, confirmed, and the numbers are on screen.'
+     :'Hecho. Ya está en un bloque, confirmada, y los números están en pantalla.');
+  A(en?'That hash is on screen. Open it in the explorer, from your own phone. It is not a simulation.'
+     :'Ese identificador está en pantalla. Ábrelo en el explorador, desde tu propio teléfono. No es una simulación.');
+  A(en?'I could not send it this time. The chain is fine; the request did not go through. You can check any transaction in the public explorer yourself.'
+     :'Esta vez no salió. La cadena está bien; fue la petición. Puedes comprobar cualquier transacción en el explorador público por tu cuenta.');
+  /* abrir los sitios: el juego de frases es finito, asi que se graba entero */
+  SITIOS.forEach(x=>{
+    A(en?'Opening '+x.nom+' in another tab. The presentation stays here.'
+       :'Abro '+x.nom+' en otra pestaña. La presentación se queda aquí.');
+    A(en?'Your browser blocked the tab. The link is on screen: '+x.nom+'.'
+       :'El navegador bloqueó la pestaña. Tienes el enlace en pantalla: '+x.nom+'.');
+  });
+  /* respuestas cortas que salen a cada rato */
+  A(en?'As you wish.':'Como quieras.');
+  A(en?'Slower. Like this.':'Más despacio. Así.');
+  A(en?'Faster. Like this.':'Más rápido. Así.');
+  A(en?'Like this.':'Así.');
+  A(en?'Back to where we were.':'Volvemos a donde íbamos.');
+  A(en?'This is how I would answer it.':'Así la contestaría yo.');
+  A(en?'An investor asks you this.':'Un inversionista te pregunta esto.');
+  A(en?'The closest thing I have measured is this.':'Lo más cercano que tengo medido es esto.');
+  A(en?'I do not have that measured, and I would rather say so than invent a number for you.'
+     :'Eso no lo tengo medido, y prefiero decírtelo antes que inventarte un número.');
+  A(en?'Refreshing everything.':'Actualizando todo.');
+  A(en?'Done. Everything is current.':'Hecho. Todo está al día.');
+  /* el viaje del dolar */
+  A(en?'A dollar enters through the card.':'Un dólar entra por la tarjeta.');
+  A(en?'It crosses the Polygon gateway as USDT.':'Cruza la pasarela de Polygon como USDT.');
+  A(en?'It becomes ORIGEN at the day gold price.':'Se convierte en ORIGEN al precio del oro del día.');
+  A(en?'It lands in the user wallet.':'Aterriza en la billetera del usuario.');
+  A(en?'And it is spent at a merchant through MyTokenPay.':'Y se gasta en un comercio por MyTokenPay.');
+  /* la pregunta del punto de control, sin nombre --con nombre cae a la
+     version neutra, que es esta misma-- */
+  A(en?'Anything you want to ask me so far? Or shall I carry on?'
+     :'¿Hasta aquí alguna pregunta? ¿O sigo?');
+  return L;
+}
 async function transaccionEnVivo(){
   const en=IDI==='en';
   $('#vivo').classList.add('abre');

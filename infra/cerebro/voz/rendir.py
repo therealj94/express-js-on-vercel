@@ -104,17 +104,33 @@ def main():
         trozos = f.get('trozos') or [[f['texto'], 300]]
         piezas, hz = [], 22050
         for i, (txt, espera) in enumerate(trozos):
+            # Un trozo que no tiene ni una letra --un «?» suelto, restos de
+            # una frase que se arma por partes-- no produce sonido: Piper
+            # devuelve un wav SIN cabecera y `wave` revienta. Antes eso
+            # tumbaba la grabacion entera en la frase numero ciento y pico y
+            # habia que empezar de cero.
+            if not any(c.isalnum() for c in txt):
+                continue
             buf = io.BytesIO()
             with wave.open(buf, 'wb') as w:
                 voz.synthesize_wav(txt, w, syn_config=ajuste)
             buf.seek(0)
-            with wave.open(buf) as w:
-                hz = w.getframerate()
-                cru = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16)
+            try:
+                with wave.open(buf) as w:
+                    hz = w.getframerate()
+                    cru = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16)
+            except wave.Error:
+                print('  (sin sonido, se salta) %r' % txt[:40], flush=True)
+                continue
             piezas.append(cru.astype(np.float32) / 32768.0)
             if i < len(trozos) - 1:
                 piezas.append(silencio(espera / 1000.0, hz))
-        audio = np.concatenate(piezas) if piezas else silencio(0.2, hz)
+        if not piezas:
+            # nada que grabar: fuera del manifiesto, que caiga a la voz viva
+            manifiesto.pop(k, None)
+            print('  (frase sin audio posible) %r' % f['texto'][:40], flush=True)
+            continue
+        audio = np.concatenate(piezas)
         # mp3 por tamano: en wav la presentacion entera pasa de treinta megas
         sf.write(ruta, audio, hz, format='MP3')
         hechas += 1

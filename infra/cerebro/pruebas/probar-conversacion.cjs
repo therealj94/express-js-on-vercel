@@ -87,9 +87,30 @@ const PRUEBAS_ES = ['hola', '¿cómo estás?', 'cuánto cuesta', 'cuéntame más
     }
     return p.evaluate(() => window.__d.slice());
   }
-  const idiomaTexto = x0 => { const x=' '+x0.toLowerCase()+' '; return /[ñáéíóú¿¡]/.test(x) ||
-    (x.match(/ ?(que|de|la|el|los|con|para|una|del|por|se|no|es|y|en|buenas|buenos|noches|dias|tardes|placer|un) /gi)||[]).length >
-    (x.match(/ (the|and|of|is|to|in|for|with|that|are|it|on|at) /gi)||[]).length ? 'es' : 'en'; };
+  /* De que idioma es una frase. Se cuenta por PALABRAS ENTERAS, no por trozos
+     de palabra: la version anterior buscaba « ?es » y « ?y », que aparecen
+     dentro de «decid-es» y «treasur-y», asi que clasificaba como espanol
+     frases inglesas perfectas --«Direction sits with the Board, which decides
+     and signs...»-- y acusaba al producto de un fallo que no tenia.
+     La ene con virgulilla y los signos de apertura si deciden solos; una
+     vocal acentuada no, porque un nombre propio como «Jose» aparece dentro de
+     frases en ingles. */
+  const ES=new Set('que de la el los las con para una uno del por se no es y en o a su sus lo al eso esto esta este como mas muy hay son esta buenas buenos noches dias tardes placer un dinero cadena'.split(' '));
+  const EN=new Set('the and of is to in for with that are it on at a an you i we they this these those what how not have has can will'.split(' '));
+  const idiomaTexto = x00 => {
+    /* El subtitulo pega la etiqueta al texto --«FLUXEl detalle, entonces.»--
+       y sin separarla la primera palabra se pierde: «fluxel» no es «el» y la
+       frase se quedaba sin su unica pista de idioma. */
+    const x0=String(x00).replace(/^\s*FLUX/,' ');
+    if(/[ñ¿¡]/.test(x0))return 'es';
+    /* Cada vocal acentuada suma UN punto al espanol, no lo decide: «Un placer,
+       Jose.» y «A pleasure, Jose.» llevan la misma tilde y son idiomas
+       distintos, y las gana quien tenga mas palabras suyas. */
+    let es=(x0.match(/[áéíóú]/gi)||[]).length, en=0;
+    for(const w of x0.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+                   .split(/[^a-z]+/)){ if(ES.has(w))es++; if(EN.has(w))en++; }
+    return es>en?'es':'en';
+  };
 
   let mal = 0;
   for (const [modo, lista, esperado] of [['EN', PRUEBAS_EN, 'en'], ['ES', PRUEBAS_ES, 'es']]) {
@@ -168,7 +189,10 @@ const PRUEBAS_ES = ['hola', '¿cómo estás?', 'cuánto cuesta', 'cuéntame más
   if(vel>=1) mal++;
   // lo desconocido: honesto, no un error
   const des = await preguntar('cuando llega el cometa halley');
-  const hon = /no me lo han enseñado|not something I have been taught/i.test((des[0]||{}).txt||'');
+  /* La honestidad puede sonar de varias formas y el guion se reescribe: se
+     acepta cualquiera de las que hoy dice, no una sola frase literal. */
+  const hon = /no me lo han enseñado|not something I have been taught|no lo tengo medido|do not have that measured|prefiero decírtelo|rather say so/i
+              .test(des.map(x=>x.txt).join(' '));
   console.log('   desconocido -> '+(hon?'✓ honesto':'✕ '+((des[0]||{}).txt||'').slice(0,50)));
   if(!hon) mal++;
 

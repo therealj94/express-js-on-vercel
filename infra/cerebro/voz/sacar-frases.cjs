@@ -10,7 +10,45 @@
  *   node infra/cerebro/voz/sacar-frases.cjs  >  frases.json
  */
 const {chromium}=require('playwright');
-const RUTA='file:///home/user/express-js-on-vercel/infra/cerebro/index.html';
+const fs=require('fs');
+const FICHERO='/home/user/express-js-on-vercel/infra/cerebro/index.html';
+const RUTA='file://'+FICHERO;
+
+/* ── LAS FRASES SUELTAS DEL PROPIO FICHERO ────────────────────────────────
+   Las listas de arriba cubren los guiones, pero el cerebro dice muchas mas
+   cosas: «En pausa. Di continua.», «Lanzando los bots de prueba.», la ayuda,
+   los avisos... Un barrido con el manifiesto en la mano encontro CIENTO UNA
+   frases fijas que nadie grababa y que por tanto sonaban con la voz del
+   navegador --el corte que se oye y que se describio como «se vuelve
+   robotico»--.
+   Copiarlas a mano aqui seria empezar otra lista que se queda vieja. Se sacan
+   del propio fichero: cualquier frase nueva que alguien escriba manana entra
+   sola. Si alguna no llega a decirse nunca, lo unico que cuesta es un mp3. */
+function literalesDelFichero(){
+  const html=fs.readFileSync(FICHERO,'utf8');
+  const re=/'((?:[^'\\\n]|\\.){22,300}?)'/g, es=[], en=[]; let m;
+  const vistos=new Set();
+  const ES=new Set('que de la el los las con para una uno del por se no es y en su sus lo al eso esto esta este como mas muy hay son buenas buenos noches dias tardes placer un'.split(' '));
+  const EN=new Set('the and of is to in for with that are it on at an you we they this these those what how not have has can will'.split(' '));
+  while((m=re.exec(html))){
+    const t=m[1].replace(/\\'/g,"'").replace(/\\\\/g,'\\');
+    if(!/[.?!]$/.test(t)||!/ /.test(t))continue;   // una frase acaba en punto
+    if(/[<>{}=]|https?:|function|px|rgba?\(/.test(t))continue;
+    /* Tiene que EMPEZAR como empieza una frase. «? Or shall I carry on?» es
+       la cola de un texto que se arma con el nombre en medio; grabar ese
+       trozo suelto no sirve, y el «?» solo no produce ni un sonido: Piper
+       devuelve un wav vacio y la grabacion entera se caia ahi. */
+    if(!/^[A-ZÁÉÍÓÚÑ¿¡«"']/.test(t))continue;
+    if(vistos.has(t))continue; vistos.add(t);
+    let pe=(t.match(/[áéíóúñ¿¡]/gi)||[]).length, pi=0;
+    for(const w of t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+                  .split(/[^a-z]+/)){ if(ES.has(w))pe++; if(EN.has(w))pi++; }
+    /* En la duda va a los dos: grabar de mas no rompe nada, no grabar si. */
+    if(pe>=pi)es.push(t);
+    if(pi>=pe)en.push(t);
+  }
+  return {es,en};
+}
 
 (async()=>{
   const b=await chromium.launch({
@@ -37,9 +75,11 @@ const RUTA='file:///home/user/express-js-on-vercel/infra/cerebro/index.html';
                         desbloqueada=true;});
 
   const salida=[];
+  const LIT=literalesDelFichero();
   for(const idi of ['es','en']){
     await p.evaluate(x=>{const s=document.querySelector('#idioma');
       s.value=x; s.dispatchEvent(new Event('change'));},idi);
+    await p.evaluate(L=>{window.__LIT=L;},LIT[idi]);
     await p.waitForTimeout(400);
     const frases=await p.evaluate(()=>{
       const out=[];
@@ -61,6 +101,11 @@ const RUTA='file:///home/user/express-js-on-vercel/infra/cerebro/index.html';
          la voz --si esa sale robotica, el boton que existe para juzgar la
          voz la juzga mal-- y las que dice al pararse a preguntar. */
       mete('suelta:probar',FRASE_PRUEBA());
+      /* TODO lo fijo que puede decir fuera de un guion --la transaccion, el
+         viaje del dolar, abrir los sitios, las respuestas cortas--. Vive en
+         una sola lista dentro del cerebro justo para que esto no se olvide:
+         cuando se olvido, la voz se callaba en mitad de la transaccion. */
+      FRASES_FIJAS().forEach((x,i)=>mete('fija:'+i,x));
       /* Los tres saludos del dia, sin nombre. Sin esto, el saludo --lo
          PRIMERO que se oye-- salia siempre con la voz del navegador. */
       (IDI==='en'?['Good morning.','Good afternoon.','Good evening.']
@@ -72,6 +117,8 @@ const RUTA='file:///home/user/express-js-on-vercel/infra/cerebro/index.html';
       mete('suelta:vuelve', IDI==='en'?'Back to where we were.':'Volvemos a donde íbamos.');
       mete('suelta:asi', IDI==='en'?'This is how I would answer it.':'Así la contestaría yo.');
       mete('suelta:inv', IDI==='en'?'An investor asks you this.':'Un inversionista te pregunta esto.');
+      /* Y todo lo suelto que vive escrito en el propio fichero. */
+      (window.__LIT||[]).forEach((x,i)=>mete('literal:'+i,x));
       return out;
     });
     /* Duplicados fuera: la misma frase no se graba dos veces. */

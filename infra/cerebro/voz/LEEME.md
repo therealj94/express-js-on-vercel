@@ -32,10 +32,32 @@ una línea, sin que nadie se enterara hasta oírlo delante de un inversionista.
 | idioma | modelo | por qué |
 |---|---|---|
 | español | `es_MX-claude-high` | es la de México, que es el latino que hay |
-| inglés | `en_GB-alan-medium` | británico, que es como habla JARVIS |
+| inglés | `en_US-ryan-high` | `alan` sonaba muerta; ésta es la más natural que hay |
 
 Los modelos **no van en el repositorio** (61 MB cada uno). Se bajan de
 `huggingface.co/rhasspy/piper-voices` a `voz/modelos/`.
+
+## De dónde salen las frases
+
+Tres fuentes, y la tercera existe por un fallo que costó dos entregas:
+
+1. **Los guiones** —el recorrido, el segundo acto, el banco del inversionista,
+   el saber, las preguntas—, preguntándoselos al propio cerebro.
+2. **`FRASES_FIJAS()`**, dentro de `index.html`: todo lo fijo que FLUX dice
+   fuera de un guion —la transacción, el viaje del dólar, abrir los sitios,
+   las respuestas cortas—. Cuando esto no existía, la voz **se callaba en
+   mitad de la transacción** y los subtítulos seguían solos.
+3. **Un barrido del propio fichero**: `literalesDelFichero()` saca toda cadena
+   que parezca una frase entera —empieza como frase y acaba en punto— y la
+   manda a grabar en el idioma que le toca. Un recuento contra el manifiesto
+   encontró **ciento una frases** más que nadie grababa —«En pausa. Di
+   continúa.», «Lanzando los bots de prueba.», la ayuda, los avisos— y que por
+   tanto salían con la voz del navegador. Ése es el corte que se oye y que se
+   describió como «se vuelve robótico».
+
+   La tercera fuente se mantiene sola: una frase nueva que alguien escriba
+   mañana entra sin tocar nada. Si alguna nunca llega a decirse, lo único que
+   cuesta es un mp3 de más.
 
 ## La respiración va dentro del fichero
 
