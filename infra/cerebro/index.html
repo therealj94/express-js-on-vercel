@@ -2212,6 +2212,32 @@ const SABER={
   'The testnet also hosts eighty five token contracts under twenty seven distinct symbols: among them ONDK, HARVI, MONARKA, AUBEX and USDK.',
   'The test bots only send ORIGEN today; phase two adds ONDK and the rest once Chainlist accepts, because it requires rebuilding the testnet genesis.',
   'And the backing: the gold formula. One ORIGEN is a gram of gold divided by fifty five.']},
+ mineria:{es:[
+  'El brazo minero existe por una razón muy concreta: para que el respaldo del ORIGEN sea oro de verdad y no una promesa.',
+  'Orden Global tiene el sesenta por ciento de INDEXSA, una minera junior hondureña. Y lo que se compró ahí no es una mina: es una base de datos geológica de la que salen prospectos nuevos, que es lo que de verdad escasea.',
+  'Con esa base, INDEXSA midió ciento treinta y ocho vetas en la zona sur de Honduras, con un potencial de campo de treinta y cuatro millones de onzas.',
+  'Del portafolio hay tres proyectos ancla: Pantaleona, Buena Vista Monarka y Travesía. Entre los tres, un potencial mínimo cercano a dos millones y medio de onzas de oro.',
+  'Y aquí va la parte que no me salto nunca: eso es potencial geológico, no reserva certificada. Ninguna de esas onzas está probada bajo norma internacional; para eso hacen falta perforación y estudios de factibilidad.',
+  'La segunda vía es más simple que la minería: comprar oro en el mercado y dejarlo en custodia. Las dos construyen la misma reserva.'],
+ en:[
+  'The mining arm exists for one very concrete reason: so that the backing of ORIGEN is real gold and not a promise.',
+  'Orden Global holds sixty percent of INDEXSA, a Honduran junior miner. And what was bought there is not a mine: it is a geological database that keeps producing new prospects, which is the thing that is actually scarce.',
+  'With that database, INDEXSA measured one hundred thirty eight veins in southern Honduras, with a field potential of thirty four million ounces.',
+  'The portfolio has three anchor projects: Pantaleona, Buena Vista Monarka and Travesia. Between them, a minimum potential close to two and a half million ounces of gold.',
+  'And here is the part I never skip: that is geological potential, not certified reserve. Not one of those ounces is proven under international standards; that needs drilling and feasibility studies.',
+  'The second route is simpler than mining: buy gold on the market and place it in custody. Both build the same reserve.']},
+ minas:{es:[
+  'Los tres proyectos, uno por uno, con lo que hay medido de cada uno.',
+  'Pantaleona está en San Marcos de Colón, Choluteca, a seis kilómetros de la frontera con Nicaragua: mil hectáreas, depósito epitermal de baja sulfuración, con una veta seguida por más de tres kilómetros y medio. Doscientas ochenta y ocho muestras de canal analizadas en laboratorio certificado, con leyes de hasta ochenta gramos de oro por tonelada. Estimado central: seiscientas cincuenta y cinco mil onzas, y está en camino de listarse en la bolsa de Toronto.',
+  'Buena Vista Monarka está en Danlí, El Paraíso: otras mil hectáreas, oro orogénico en vetas de cuarzo. Es el único con estimación formal de recursos: dos millones y medio de toneladas a cinco coma siete dos gramos por tonelada, o sea cuatrocientas treinta y seis mil novecientas sesenta onzas entre indicado e inferido, más un potencial adicional que sostiene la cifra de un millón y medio.',
+  'Travesía se cuenta con cuatrocientas mil onzas de potencial, pero te lo digo con todas las letras: no tengo informe técnico propio de ese proyecto. Es un dato aportado, no verificado.',
+  'De los tres, el único con plan minero y números económicos completos es Monarka: tajo abierto, ochocientas toneladas al día, unos diez años de vida de mina y un costo estimado de seiscientos treinta y nueve dólares la onza.'],
+ en:[
+  'The three projects, one by one, with what is actually measured on each.',
+  'Pantaleona sits in San Marcos de Colon, Choluteca, six kilometres from the Nicaraguan border: one thousand hectares, a low sulphidation epithermal deposit, with a vein traced for more than three and a half kilometres. Two hundred eighty eight channel samples assayed at a certified lab, with grades up to eighty grams of gold per tonne. Central estimate: six hundred fifty five thousand ounces, and it is on its way to listing in Toronto.',
+  'Buena Vista Monarka sits in Danli, El Paraiso: another thousand hectares, orogenic gold in quartz veins. It is the only one with a formal resource estimate: two and a half million tonnes at five point seven two grams per tonne, that is four hundred thirty six thousand nine hundred sixty ounces indicated and inferred, plus additional potential that supports the one and a half million figure.',
+  'Travesia is counted at four hundred thousand ounces of potential, but let me say it plainly: I do not have a technical report of my own for that project. It is a supplied figure, not a verified one.',
+  'Of the three, the only one with a mine plan and full economics is Monarka: open pit, eight hundred tonnes a day, about ten years of mine life and an estimated cost of six hundred thirty nine dollars an ounce.']},
  flujo:{es:[
   'Así se mueve el dinero, de punta a punta.',
   'Entra con dinero corriente --tarjeta o transferencia-- o con criptomoneda; hoy la puerta cripto es un depósito de USDT en la red Polygon. El backend lo convierte a ORIGEN al precio del oro del día.',
@@ -2315,15 +2341,57 @@ const INVERSOR=[
       'The treasury holds nearly two hundred fifty billion, and it does not move on its own: every outflow needs a written Board instruction.',
       'The price comes from a public formula, not from a decision: one gram of gold in dollars, divided by fifty five.']},
 
+ /* ── el brazo minero ────────────────────────────────────────────────
+    Van ANTES que «oro» a proposito: la pregunta por el oro es mas general y
+    se lo tragaria todo. Aqui la regla de la casa aprieta mas que en ningun
+    otro sitio --potencial geologico NO es reserva-- porque es justo el sitio
+    donde una cifra grande dicha con voz de asistente suena a hecho probado. */
+ {id:'mina', foco:'tesoro',
+  re:/(miner|mina(s)?\b|\bmines?\b|indexsa|yacimiento|concesion|honduras|mining)/,
+  es:['Sí, y conviene entender por qué existe: la minería no es el negocio de Orden Global, es cómo se construye el respaldo.',
+      'La pieza es INDEXSA, una minera junior hondureña de la que Orden Global tiene el sesenta por ciento. Lo valioso ahí no es una mina concreta: es una base de datos geológica regional de la que salen prospectos nuevos de forma continua.',
+      'De esa base salieron ciento treinta y ocho vetas medidas en la zona sur de Honduras, y tres proyectos ancla en los que ya hay trabajo de campo: Pantaleona, Buena Vista Monarka y Travesía.',
+      'Y el contexto de mercado, que ayuda: Honduras tiene tres minas industriales activas frente a más de cuarenta sitios de alto potencial documentado.',
+      'Lo que yo no te voy a dar por bueno de memoria son los papeles: el sesenta por ciento y los títulos de concesión son documentos, y si te los piden, se enseñan.'],
+  en:['Yes, and it helps to understand why it exists: mining is not the business of Orden Global, it is how the backing gets built.',
+      'The piece is INDEXSA, a Honduran junior miner in which Orden Global holds sixty percent. What is valuable there is not one particular mine: it is a regional geological database that keeps producing new prospects.',
+      'Out of that database came one hundred thirty eight measured veins in southern Honduras, and three anchor projects with field work already done: Pantaleona, Buena Vista Monarka and Travesia.',
+      'And the market context helps: Honduras has three active industrial mines against more than forty documented high potential sites.',
+      'What I will not vouch for from memory is the paperwork: the sixty percent and the concession titles are documents, and if you ask for them, they get shown.']},
+
+ {id:'onzas', foco:'tesoro',
+  re:/(cuantas onzas|onzas de oro|ounces|reserva(s)? (certificad|probad|comprobad)|certified reserve|proven reserve|43.?101|ni 43|recurso(s)? (mineral|indicado|inferido)|perforacion|drilling|feasibility|factibilidad)/,
+  es:['Te doy la cifra y, pegada, lo que vale esa cifra. Las dos cosas juntas o ninguna.',
+      'El potencial mínimo conjunto de los tres proyectos ronda los dos millones y medio de onzas de oro: seiscientas cincuenta y cinco mil en Pantaleona, un millón y medio en Buena Vista Monarka y cuatrocientas mil en Travesía. Y el potencial regional identificado por INDEXSA llega a treinta y cuatro millones de onzas en ciento treinta y ocho vetas.',
+      'Ahora lo que vale: eso NO son reservas certificadas. Son estimaciones de campo y recursos en categoría indicado e inferido. Solo Buena Vista Monarka tiene estimación formal de recursos, cuatrocientas treinta y seis mil onzas, y ninguna de las tres tiene informe bajo norma internacional, que es lo que un banco te va a pedir.',
+      'Para convertir potencial en reserva hace falta perforación, factibilidad y un informe NI cuarenta y tres guion ciento uno o equivalente. Pantaleona tiene propuesta una campaña inicial de dos mil quinientos metros de perforación diamantina.',
+      'Y de Travesía te lo digo aparte: esas cuatrocientas mil onzas son un dato aportado, sin informe técnico que yo haya visto.'],
+  en:['I will give you the number and, attached to it, what that number is worth. Both together or neither.',
+      'The combined minimum potential of the three projects is around two and a half million ounces of gold: six hundred fifty five thousand at Pantaleona, one and a half million at Buena Vista Monarka and four hundred thousand at Travesia. And the regional potential identified by INDEXSA reaches thirty four million ounces across one hundred thirty eight veins.',
+      'Now what it is worth: those are NOT certified reserves. They are field estimates and resources in the indicated and inferred categories. Only Buena Vista Monarka has a formal resource estimate, four hundred thirty six thousand ounces, and none of the three has a report under international standards, which is what a bank will ask for.',
+      'Turning potential into reserve needs drilling, feasibility and an N I forty three dash one hundred one report or equivalent. Pantaleona has an initial campaign of two thousand five hundred metres of diamond drilling proposed.',
+      'And on Travesia let me be separate about it: those four hundred thousand ounces are a supplied figure, with no technical report I have seen.']},
+
+ {id:'auka', foco:'tesoro',
+  re:/(auka|agka|token de oro|token de plata|gold token|silver token|onza de plata|gramin)/,
+  es:['En el diseño del portafolio hay dos tokens de metal: AUKA, que representa una onza de oro, y AGKA, una onza de plata.',
+      'Y ahora la parte incómoda, que prefiero decir yo: en la cadena, hoy, no los veo desplegados. Los ochenta y cinco contratos de token que hay en la red de pruebas van con otros símbolos.',
+      'Así que AUKA y AGKA están diseñados, no emitidos. Cuando existan, se verán en el explorador con su dirección, y ese día lo podrás comprobar tú sin preguntarme a mí.'],
+  en:['The portfolio design includes two metal tokens: AUKA, representing one ounce of gold, and AGKA, one ounce of silver.',
+      'And now the uncomfortable part, which I would rather say myself: on the chain, today, I do not see them deployed. The eighty five token contracts on the testnet carry other symbols.',
+      'So AUKA and AGKA are designed, not issued. When they exist, they will show in the explorer with their address, and that day you will be able to check it without asking me.']},
+
  {id:'oro', foco:'tesoro',
   re:/(respald|backed|backing|el oro|gold|reserva|reserve|hay oro|donde esta el oro|custodia|custody)/,
   es:['Aquí te voy a ser muy preciso, porque es la pregunta donde más fácil se exagera.',
       'Lo que está montado y funcionando es la REFERENCIA de precio: el ORIGEN se calcula con el gramo de oro en dólares dividido entre cincuenta y cinco. Esa fórmula es pública y el precio se puede recalcular desde fuera cualquier día.',
       'Lo que NO está cerrado es la figura jurídica del respaldo: quién custodia, bajo qué contrato, con qué auditoría y con qué derecho de canje. Eso está en manos de la Junta y del área legal, y hasta que no esté firmado yo no voy a decirte que la moneda está respaldada en oro.',
+      'Lo que sí existe es el brazo que construye ese respaldo: el sesenta por ciento de una minera junior, tres proyectos de oro y la compra de oro en mercado para custodia. Pregúntame por la minería y te lo cuento entero, con lo que está medido y lo que no.',
       'Si alguien te lo cuenta de otra forma, pide el documento. Es exactamente lo que pediría yo.'],
   en:['I am going to be very precise here, because this is the question where it is easiest to overstate.',
       'What is built and working is the price REFERENCE: ORIGEN is calculated from one gram of gold in dollars divided by fifty five. That formula is public and the price can be recomputed from outside on any given day.',
       'What is NOT settled is the legal figure of the backing: who holds custody, under what contract, with what audit and what redemption right. That sits with the Board and with legal, and until it is signed I am not going to tell you the currency is gold backed.',
+      'What does exist is the arm that builds that backing: sixty percent of a junior miner, three gold projects, and buying gold on the market for custody. Ask me about the mining and I will tell you the whole thing, with what is measured and what is not.',
       'If anyone tells you otherwise, ask for the document. That is exactly what I would do.']},
 
  {id:'precio', foco:'tesoro',
@@ -2677,6 +2745,14 @@ function ampliar(){
   const s=SIS.find(x=>x.id===t0);
   if(s)return [J(en()?'In more detail.':'Con más detalle.',{p:360}),
                ...s.det[IDI].map(x=>J(x+'.',{foco:s.id,p:340}))];
+  /* Un tema del banco del inversionista suele tener su version larga en el
+     saber. Sin esto, «cuentame mas» despues de la mineria se rendia teniendo
+     los tres proyectos escritos uno por uno dos pantallas mas abajo. */
+  const masHondo={mina:'minas',onzas:'minas',oro:'mineria',auka:'tokens',
+                  token:'tokens',tech:'infra',quees:'ecosistema'};
+  const k=SABER[t0]?t0:masHondo[t0];
+  if(k&&SABER[k])return [J(en()?'The long version, then.':'La versión larga, entonces.',{p:360}),
+                         ...temaSaber(k)];
   const r=tema(t0);
   if(r&&r.length)return r;
   /* Nunca callarse. Quedarse sin nada que anadir es legitimo; quedarse mudo
@@ -2897,7 +2973,9 @@ async function atender(txt){
     const kk={ecosistema:/(ecosistema|todo|orden global|ecosystem|everything)/,
       apps:/(app|servicio|backend|service)/, webs:/(web|pagina|dominio|site|domain)/,
       infra:/(maquina|nodo|servidor|infra|machine|server|node)/,
-      tokens:/(token|ondk|origen)/, flujo:/(dinero|money|flujo|flow|pago|payment)/};
+      tokens:/(token|ondk|origen)/, flujo:/(dinero|money|flujo|flow|pago|payment)/,
+      mineria:/(miner|mina|indexsa|oro propio|yacimiento|mining|gold mine)/,
+      minas:/(proyecto minero|pantaleona|monarka|buena vista|travesia|mining project)/};
     for(const k in kk)if(kk[k].test(q))return responderCon(temaSaber(k));
     const sis2=SIS.find(x=>q.includes(sinTildes(x.nom).toLowerCase())||q.includes(sinTildes(x.es).toLowerCase()));
     if(sis2)return responderCon([...temaSistema(sis2),
@@ -3007,6 +3085,8 @@ const PREGUNTAS={
      mercado:'¿A quién le venden esto?',
      token:'¿Qué es el ORIGEN y cuánto hay emitido?',
      oro:'¿Está respaldado en oro? ¿Dónde está ese oro?',
+     mina:'¿Tienen minas de verdad? ¿Qué es INDEXSA?',
+     onzas:'¿Cuántas onzas de oro? ¿Son reservas certificadas?',
      precio:'¿Quién pone el precio del ORIGEN?',
      liquidez:'Si entro, ¿cómo salgo? ¿Dónde hay liquidez?',
      tesoroQuien:'¿Quién controla el tesoro?',
@@ -3029,6 +3109,8 @@ const PREGUNTAS={
      mercado:'Who are you selling this to?',
      token:'What is ORIGEN and how much is issued?',
      oro:'Is it gold backed? Where is that gold?',
+     mina:'Do you actually own mines? What is INDEXSA?',
+     onzas:'How many ounces of gold? Are they certified reserves?',
      precio:'Who sets the price of ORIGEN?',
      liquidez:'If I come in, how do I get out? Where is the liquidity?',
      tesoroQuien:'Who controls the treasury?',

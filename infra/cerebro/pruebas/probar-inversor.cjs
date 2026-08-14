@@ -18,6 +18,10 @@ const ES=[
  ['mercado','a quien le venden esto'],
  ['token','que es el origen y cuanta emision hay'],
  ['oro','esto esta respaldado en oro'],
+ ['mina','tienen minas de verdad, que es indexsa'],
+ ['onzas','cuantas onzas de oro tienen'],
+ ['onzas','esas onzas son reservas certificadas'],
+ ['auka','que son auka y agka'],
  ['oro','donde esta el oro guardado'],
  ['precio','quien pone el precio del origen'],
  ['liquidez','si entro como salgo, hay liquidez'],
@@ -40,6 +44,8 @@ const EN=[
  ['gana','how do you make money'],
  ['traccion','how many users do you have'],
  ['oro','is this backed by gold'],
+ ['mina','do you actually own mines'],
+ ['onzas','how many ounces of gold do you have'],
  ['token','what is origen and what is the total supply'],
  ['riesgos','what could go wrong here'],
  ['ronda','how much are you raising'],
@@ -71,6 +77,19 @@ const MATICES=[
                 'la liquidez tiene que seguir diciendo que no hay secundario'],
  ['escala',     /no tenemos una prueba de carga|do not have a published load test/i,
                 'la escala no puede inventarse un TPS'],
+ /* La mineria es donde una cifra grande hace mas dano: dos millones y medio
+    de onzas dichas con voz de asistente suenan a hecho probado. El matiz no
+    es un adorno del texto, es lo que separa una tesis de un fraude. */
+ ['onzas',      /no son reservas certificadas|NOT certified reserves/i,
+                'las onzas tienen que seguir diciendo que no son reserva certificada'],
+ ['onzas',      /indicado e inferido|indicated and inferred/i,
+                'las onzas tienen que decir en que categoria estan'],
+ ['onzas',      /dato aportado|supplied figure/i,
+                'Travesia tiene que seguir diciendo que no tiene informe propio'],
+ ['mina',       /documento|paperwork|se ensen|get shown/i,
+                'la mina tiene que seguir diciendo que los titulos son papeles que se ensenan'],
+ ['auka',       /no los veo desplegados|do not see them deployed|dise(n|ñ)ados, no emitidos|designed, not issued/i,
+                'AUKA y AGKA tienen que seguir diciendo que no estan emitidos'],
 ];
 // numeros que NO existen: si aparecen es que alguien se los invento
 const INVENTOS=/(facturaci[oó]n de|revenue of|valoraci[oó]n de \d|valued at|licencia n[uú]mero|licence number|auditad[oa] por [A-Z])/;

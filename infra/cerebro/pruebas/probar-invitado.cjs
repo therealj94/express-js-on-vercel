@@ -124,8 +124,13 @@ const PUBLICO=/\/img\//;
   for(let i=0;i<60;i++){
     await p3.waitForTimeout(400);
     if(await p3.evaluate(()=>/ORIGEN|cadena|chain/i.test(window.__narrado)))break;
-    await p3.evaluate(()=>{ if(typeof esperandoPregunta!=='undefined'&&esperandoPregunta)
-                              seguirRecorrido(); });
+    /* Y se le contesta SIN INTERRUMPIRLE: `esperandoPregunta` se pone a true
+       cuando empieza a preguntar, no cuando acaba, y contestar en ese mismo
+       instante pisa la pregunta a medias. */
+    if(await p3.evaluate(()=>typeof esperandoPregunta!=='undefined'&&esperandoPregunta)){
+      await p3.waitForTimeout(900);
+      await p3.evaluate(()=>{ if(esperandoPregunta)seguirRecorrido(); });
+    }
   }
   st=await p3.evaluate(()=>({sub:(window.__narrado||'').trim(),
     motas:typeof MOTAS!=='undefined'?MOTAS.length:-1,
