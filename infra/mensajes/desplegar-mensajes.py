@@ -60,7 +60,9 @@ def main():
         'mkdir -p /srv/mensajes',
         "curl -fsS '%s' -o /srv/mensajes/servidor.py" % url,
         "curl -fsS '%s' -o /etc/systemd/system/mensajes.service" % url2,
-        'systemctl daemon-reload && systemctl enable --now mensajes',
+        # restart, no enable --now: con el servicio ya activo, enable --now es
+        # un no-op y el proceso VIEJO sigue sirviendo el codigo viejo.
+        'systemctl daemon-reload && systemctl enable mensajes && systemctl restart mensajes',
         'sleep 1 && systemctl is-active mensajes',
         # ── Caddy: /mensajes/* publico y proxy al puerto local
         'cp -n /etc/caddy/Caddyfile /etc/caddy/Caddyfile.antes-de-mensajes || true',

@@ -128,6 +128,52 @@ class Relevo(BaseHTTPRequestHandler):
                         or (m['de'] == desde and m['para'] == correo)]
                 return self._json(200, {'mensajes': hilo[-TOPE_BANDEJA:]})
 
+            if ruta == '/buscar':
+                # El directorio del ecosistema: buscar gente por nombre o
+                # correo entre quienes ya tienen Genesis en el chat. Devuelve
+                # poco (10) y solo lo publico: nombre, correo, direccion.
+                q = str(b.get('q', '')).lower().strip()
+                if len(q) < 2:
+                    return self._json(200, {'gente': []})
+                gente = [{'correo': c, 'nombre': g['nombre'], 'addr': g['addr']}
+                         for c, g in fichas.items()
+                         if q in c or q in g['nombre'].lower()]
+                gente = [x for x in gente if x['correo'] != correo][:10]
+                return self._json(200, {'gente': gente})
+
+            if ruta == '/conversaciones':
+                # Todas mis charlas: con quien, lo ultimo dicho y cuantos sin
+                # leer. Es lo que pinta la lista principal del chat.
+                vistos = d.setdefault('vistos', {}).get(correo, {})
+                hilos = {}
+                for m in d['mensajes']:
+                    if m['de'] == correo:
+                        otro = m['para']
+                    elif m['para'] == correo:
+                        otro = m['de']
+                    else:
+                        continue
+                    h = hilos.setdefault(otro, {'ultimo': None, 'sinLeer': 0})
+                    h['ultimo'] = m
+                    if m['para'] == correo and m['cuando'] > vistos.get(otro, 0):
+                        h['sinLeer'] += 1
+                lista = []
+                for otro, h in hilos.items():
+                    g = fichas.get(otro, {})
+                    lista.append({'correo': otro,
+                                  'nombre': g.get('nombre', otro.split('@')[0]),
+                                  'addr': g.get('addr', ''),
+                                  'ultimo': h['ultimo'], 'sinLeer': h['sinLeer']})
+                lista.sort(key=lambda x: -(x['ultimo'] or {}).get('cuando', 0))
+                return self._json(200, {'conversaciones': lista})
+
+            if ruta == '/leido':
+                # Marca la charla con alguien como vista hasta ahora.
+                de = str(b.get('de', '')).lower()
+                d.setdefault('vistos', {}).setdefault(correo, {})[de] = int(time.time() * 1000)
+                guardar(d)
+                return self._json(200, {'ok': True})
+
             if ruta == '/ficha':
                 de = str(b.get('de', '')).lower()
                 g = fichas.get(de)

@@ -17,6 +17,7 @@ import { useT } from './i18n';
 import { traducir } from './intencion';
 import { aUri, MAPA } from './rutas';
 import { decir, callar } from './voz';
+import { elAsistente } from './api';
 
 export default function BarraGenesis({ contactos, abrir, ordenExterna }) {
   const t = useT();
@@ -40,7 +41,7 @@ export default function BarraGenesis({ contactos, abrir, ordenExterna }) {
   const micro = () => {
     latir();
     caja.current?.focus();
-    decir(t('gen.escucho'));
+    decir(elAsistente() + '. ' + t('gen.escucho'));
   };
 
   const atender = (frase) => {
@@ -103,7 +104,7 @@ export default function BarraGenesis({ contactos, abrir, ordenExterna }) {
           <View>
             <Animated.View style={[s.halo, halo]} />
             <LinearGradient colors={G.gold} style={s.bola} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-              <Text style={s.bolaTxt}>G</Text>
+              <Text style={s.bolaTxt}>{elAsistente()[0]}</Text>
             </LinearGradient>
           </View>
         </Pressable>

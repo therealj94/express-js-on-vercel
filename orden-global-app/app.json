@@ -37,6 +37,12 @@
         "projectId": "3017e984-a8ac-479c-8b75-33f8b8e69b25"
       }
     },
-    "owner": "ordenglobal"
+    "owner": "ordenglobal",
+    "updates": {
+      "url": "https://u.expo.dev/3017e984-a8ac-479c-8b75-33f8b8e69b25"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }

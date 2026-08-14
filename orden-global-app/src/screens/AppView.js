@@ -12,7 +12,7 @@ import { WebView } from 'react-native-webview';
 import * as Clipboard from 'expo-clipboard';
 import { C } from '../theme';
 import { useT } from '../i18n';
-import { WEBS, genesisCompleto } from '../api';
+import { WEBS, genesisCompleto, inyeccionSesion } from '../api';
 import { BotonOro, Tarjeta, Entra } from '../ui';
 
 const URLDE = {
@@ -84,6 +84,9 @@ export default function AppView({ vista, params, entrada, abrir, volver }) {
         ref={web}
         source={{ uri: url }}
         style={{ flex: 1, backgroundColor: C.negro }}
+        // La sesión de Orden Global entra ANTES de que la web cargue: al
+        // abrirse Veta Wallet o MyTokenPay, ya estás dentro. Un solo login.
+        injectedJavaScriptBeforeContentLoaded={inyeccionSesion(vista) || undefined}
         onLoadEnd={() => setCargando(false)}
         allowsBackForwardNavigationGestures
         setSupportMultipleWindows={false}

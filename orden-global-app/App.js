@@ -12,7 +12,7 @@ import * as SplashScreen from 'expo-splash-screen';
 
 import { C, G } from './src/theme';
 import { useT, cargarIdioma } from './src/i18n';
-import { sesionGuardada, salir, listaContactos, WEBS } from './src/api';
+import { sesionGuardada, salir, listaContactos, cargarNombreAsistente, elAsistente, chatAlta, chatConversaciones } from './src/api';
 import { deUri } from './src/rutas';
 import BarraGenesis from './src/BarraGenesis';
 import Splash from './src/screens/Splash';
@@ -27,8 +27,10 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const TITULOS = {
   home: 'ORDEN GLOBAL', veta: 'VETA WALLET', pay: 'MYTOKENPAY', gid: 'GENESIS ID',
-  scan: 'ORDENSCAN', cerebro: 'EL CEREBRO', cerebroWeb: 'EL CEREBRO', chat: 'CHAT', asistente: 'GENESIS',
+  scan: 'ORDENSCAN', cerebro: 'EL CEREBRO', cerebroWeb: 'EL CEREBRO', chat: 'CHAT',
 };
+// el título del asistente es el nombre que le pusiste
+const tituloDe = (v) => (v === 'asistente' ? elAsistente() : TITULOS[v] || 'ORDEN GLOBAL');
 
 export default function App() {
   return (
@@ -51,6 +53,7 @@ function Raiz() {
   useEffect(() => {
     (async () => {
       await cargarIdioma();
+      await cargarNombreAsistente();
       const cuenta = await sesionGuardada();
       await new Promise((r) => setTimeout(r, 1400)); // que el logo se vea llegar
       SplashScreen.hideAsync().catch(() => {});
@@ -58,7 +61,20 @@ function Raiz() {
     })();
   }, []);
 
-  useEffect(() => { if (fase === 'dentro') listaContactos().then(setContactos); }, [fase]);
+  // La libreta de GENESIS es la gente REAL del chat: con quien ya hablas,
+  // con su dirección de wallet del directorio. Se refresca al volver a casa.
+  useEffect(() => {
+    if (fase !== 'dentro') return;
+    (async () => {
+      try {
+        await chatAlta();
+        const d = await chatConversaciones();
+        const gente = (d?.conversaciones || []).map((c) => ({ nombre: c.nombre, correo: c.correo, addr: c.addr }));
+        if (gente.length) { setContactos(gente); return; }
+      } catch { /* sin red: la libreta local de abajo */ }
+      setContactos(await listaContactos());
+    })();
+  }, [fase, cima.v === 'home']);
 
   const transicion = useCallback((cambia) => {
     Animated.timing(anim, { toValue: 0, duration: 130, useNativeDriver: true }).start(() => {
@@ -124,7 +140,7 @@ function Raiz() {
           {pila.length > 1 ? (
             <Pressable onPress={atras} hitSlop={12}><Text style={s.volver}>‹</Text></Pressable>
           ) : <View style={{ width: 20 }} />}
-          <Text style={s.tit}>{TITULOS[cima.v] || 'ORDEN GLOBAL'}</Text>
+          <Text style={s.tit}>{tituloDe(cima.v)}</Text>
           <Pressable onPress={() => abrir('og://asistente/abrir')} hitSlop={12}>
             <Text style={s.ayuda}>?</Text>
           </Pressable>
