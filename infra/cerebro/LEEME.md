@@ -212,3 +212,29 @@ application/json' -d '{"pregunta":"hola","idioma":"es","estado":{}}'`
 - El botón **?** abre las instrucciones completas, y una línea de pistas rota
   cada seis segundos con cosas que se le pueden decir.
 - La fecha del parte del día sale bajo el reloj: es la última actualización.
+
+## Tocar y que pregunte · 14-ago-2026
+
+Tocas **cualquier cosa del ecosistema** —un sistema del dock, una etiqueta del
+cerebro, un agente— y pasan dos cosas a la vez: se abre su ficha con los datos,
+y **JARVIS pregunta en voz alta si quieres el reporte**.
+
+> *¿Quieres que te dé el reporte de VETA WALLET?*
+
+Contestas con la voz —«sí», «dale», «cuéntame», «no», «ahora no»— o con los dos
+botones que aparecen bajo el subtítulo. Un «sí» dispara el reporte hablado
+completo: estado, todos los datos vivos y lo que hay dentro.
+
+Tres detalles que importan:
+
+- **El «sí» solo cuenta si hay una pregunta en el aire.** Fuera de contexto un
+  «sí» suelto no significa nada, así que la oferta queda *armada* hasta que
+  contestas. Si en vez de contestar preguntas otra cosa, la oferta se cae sola
+  y se atiende lo nuevo.
+- **La oferta vale igual para los agentes**: tocas al Cerrajero y te ofrece su
+  parte entero, con sus mediciones y lo que necesita de ti.
+- Mientras habla, **las tarjetas se materializan** y el racimo correspondiente
+  se enciende en el cerebro. Ves de qué habla sin leer.
+
+Probado con `pruebas/probar-ofrecer.js`: ofrece al tocar, el sí reporta, el no
+lo deja, un sí sin contexto no rompe nada, y cambiar de tema cancela la oferta.

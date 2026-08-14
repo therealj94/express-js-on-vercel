@@ -104,6 +104,9 @@ canvas{position:fixed;inset:0;display:block}
 #sub .quien{display:block;font:600 9px var(--disp);letter-spacing:.3em;color:var(--arc);
   margin-bottom:4px;text-transform:uppercase}
 #oido{text-align:center;font:italic 12px var(--disp);color:var(--gold);min-height:16px}
+#siono{display:none;gap:10px}
+#siono.abre{display:flex}
+#siono .tecla{padding:9px 26px;border-color:rgba(86,217,255,.35)}
 #pistas{font:11px var(--disp);color:var(--mut);min-height:16px;text-align:center;
   transition:opacity .5s;letter-spacing:.03em}
 #teclas{display:flex;gap:10px;align-items:center;justify-content:center}
@@ -212,6 +215,7 @@ select{border:1px solid var(--edge);border-radius:8px;background:rgba(4,12,22,.9
 <div id="consola">
   <div id="sub"></div>
   <div id="oido"></div>
+  <div id="siono"><button class="tecla" id="btnSi">SÍ</button><button class="tecla" id="btnNo">NO</button></div>
   <div id="pistas"></div>
   <div id="teclas">
     <button class="tecla" id="hablar"><span id="onda"><i></i><i></i><i></i><i></i><i></i></span><span id="lblHablar">BRIEF ME</span></button>
@@ -1537,6 +1541,15 @@ async function atender(txt){
   const s=sinTildes(txt);
   if(!s.trim())return;
 
+  /* Un «sí» suelto solo significa algo si hay una pregunta en el aire. */
+  if(ofrecido){
+    if(/^\s*(si|s|yes|yeah|yep|ok|okay|dale|claro|por favor|please|adelante|hazlo|cuentame|tell me|go ahead)\b/i.test(s))
+      return void aceptarOfrecido();
+    if(/^\s*(no|nope|nah|luego|despues|ahora no|not now|later)\b/i.test(s))
+      return void rechazarOfrecido();
+    ofrecido=null; $('#oido').textContent=''; $('#siono').classList.remove('abre');
+  }
+
   for(const [re,acc] of ORDENES) if(re.test(s)) return ejecutar(acc);
   if(/(stop|be quiet|silence|shut up|^para$|callate|silencio|basta)/i.test(s))return parar();
 
@@ -1640,6 +1653,43 @@ const li=(c,x,cl)=>{const l=document.createElement('li');if(cl)l.className=cl;l.
 const kv=(c,k,v,col)=>{const d=document.createElement('div');d.className='kv';
   d.innerHTML='<b>'+k+'</b><span'+(col?' style="color:'+col+'"':'')+'>'+v+'</span>';c.appendChild(d);};
 
+/* ═══ TOCAR Y QUE PREGUNTE ════════════════════════════════════════════════
+   Tocas cualquier cosa del ecosistema y JARVIS te ofrece el reporte en voz.
+   Se abre la ficha para que veas los datos, y él pregunta si quieres que te
+   lo cuente. «Sí» dispara el reporte hablado completo; «no» lo deja estar.
+   La pregunta queda ARMADA hasta que contestas o tocas otra cosa: así el
+   micrófono entiende un «sí» suelto, que fuera de contexto no significa nada. */
+let ofrecido=null;                       // {tipo:'sis'|'ag', id}
+function ofrecer(tipo,id,nombre){
+  ofrecido={tipo,id}; $('#siono').classList.add('abre');
+  const q=IDI==='en' ? 'Would you like the full report on '+nombre+'?'
+                     : '¿Quieres que te dé el reporte de '+nombre+'?';
+  decir([J(q,{foco:tipo==='sis'?id:null, ag:tipo==='ag'?id:null, p:0})]);
+  $('#oido').textContent=IDI==='en'?'Say yes or no':'Di sí o no';
+}
+function aceptarOfrecido(){
+  const o=ofrecido; ofrecido=null; $('#oido').textContent='';
+  $('#siono').classList.remove('abre');
+  if(!o)return false;
+  if(o.tipo==='ag'){
+    ultimoTema=o.id;
+    responderCon([...citar(o.id),...detalleDe(o.id,4),
+      ...((parteDe(o.id)||{}).escala||[]).map(x=>({q:(parteDe(o.id)||{}).nombre,ag:o.id,x,p:360}))]);
+  }else{
+    const sx=S(o.id); if(!sx)return true;
+    ultimoTema=o.id;
+    const e=E[o.id];
+    responderCon([J((IDI==='en'?sx.nom:sx.es)+': '+e.est+'. '+e.met+'.',{foco:o.id,p:420}),
+      ...(e.vivo||[]).map(([k,v])=>J(k+': '+v+'.',{foco:o.id,p:300})),
+      ...sx.det[IDI].map(x=>J(x+'.',{foco:o.id,p:340}))]);
+  }
+  return true;
+}
+function rechazarOfrecido(){
+  ofrecido=null; $('#oido').textContent=''; $('#siono').classList.remove('abre');
+  responderCon([J(IDI==='en'?'As you wish.':'Como quieras.')]);
+}
+
 function abrirSis(s){
   const e=E[s.id];
   disparar(s.id,true);
@@ -1647,6 +1697,7 @@ function abrirSis(s){
   kv(c,t('estado'),e.est,e.mal?'var(--red)':s.col);
   if(e.vivo&&e.vivo.length){h4(c,t('vivo'));for(const[k,v] of e.vivo)kv(c,k,v);}
   h4(c,t('dentro'));for(const x of s.det[IDI])li(c,x);
+  ofrecer('sis',s.id,IDI==='en'?s.nom:s.es);
 }
 function abrirAgente(a){
   const p=parteDe(a.id);
@@ -1661,6 +1712,7 @@ function abrirAgente(a){
     p.hallazgos.forEach(x=>li(c,x));}
   if((p.hizo||[]).length){h4(c,IDI==='en'?'WHAT IT DID':'LO QUE HIZO');p.hizo.forEach(x=>li(c,x));}
   if((p.escala||[]).length){h4(c,t('necesita'));p.escala.forEach(x=>li(c,x,'mala'));}
+  ofrecer('ag',a.id,a.nom);
 }
 function abrirInforme(){
   const c=panel(t('reporte'),(I.fecha||'')+' · '+(IDI==='en'?'COMPILED BY THE BRAIN':'GENERADO POR EL CEREBRO'));
@@ -1711,6 +1763,8 @@ function abrirAyuda(){
       'La única orden que acepto es lanzar los bots de prueba, en la red de pruebas.']);
   }
 }
+$('#btnSi').addEventListener('click',()=>{$('#siono').classList.remove('abre');aceptarOfrecido();});
+$('#btnNo').addEventListener('click',()=>{$('#siono').classList.remove('abre');rechazarOfrecido();});
 $('#btnAyuda').addEventListener('click',abrirAyuda);
 $('#btnAjustes').addEventListener('click',()=>$('#ajustes').classList.toggle('abre'));
 document.querySelectorAll('.vels button').forEach(b=>{
