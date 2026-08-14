@@ -429,6 +429,10 @@ body.invitado .tarj{width:250px}
   <div class="vels otros">
     <button id="btnSala">SALA</button><button id="btnDolar">EL DÓLAR</button>
   </div>
+  <label id="lblInv2">ANTES DE LA REUNIÓN</label>
+  <div class="vels otros">
+    <button id="btnPreguntas">LAS PREGUNTAS</button><button id="btnEnsayo">ENSAYO</button>
+  </div>
   <label id="lblInv">INVITAR</label>
   <button class="tecla" id="btnInvitar" style="justify-content:center">CREAR ENLACE · 24 H</button>
   <div id="invit"></div>
@@ -1303,6 +1307,82 @@ function trozos(x){
   }
   return out.length?out:[[String(x),320]];
 }
+/* ═══ LA VOZ GRABADA ══════════════════════════════════════════════════════
+   La presentación es un GUION: no cambia entre una reunión y la siguiente.
+   Así que sus frases se graban de antemano con Piper --un modelo que corre
+   en nuestras propias máquinas, sin enviar nada a nadie-- y aquí solo se
+   reproducen. Sale mejor por tres razones:
+
+     · se puede usar el modelo lento y bueno, porque tarda una vez;
+     · en la reunión no hay latencia ni dependencia de la red;
+     · y suena igual en todos los teléfonos, que es lo que no conseguía la
+       voz del navegador --cada aparato traía la suya--.
+
+   LA REGLA QUE NO SE ROMPE: si el fichero no está, no carga, o tarda, se
+   habla con la voz del navegador y no se nota. Un audio que falla en
+   silencio delante de un inversionista es peor que una voz mediocre, y ese
+   error ya nos costó un día entero.
+
+   La clave es un FNV-1a del texto ya limpio, con gemelo en rendir.py. Si el
+   texto cambia una coma, la clave cambia, el audio no aparece y vuelve la
+   voz del navegador. A propósito: mejor la voz de siempre que un audio
+   diciendo algo distinto de lo que pone el subtítulo. */
+let MANIFIESTO=null, audioActual=null;
+const VOZ_GRABADA={es:'es_MX-claude-high', en:'en_GB-alan-medium'};
+function claveVoz(texto,voz){
+  let h=0x811c9dc5;
+  const s=voz+'|'+texto;
+  for(let i=0;i<s.length;i++){
+    /* Se recorre por BYTES de UTF-8, como en Python: con acentos y eñes un
+       recorrido por caracteres da otra clave y no encontraría nada. */
+    let c=s.codePointAt(i), bs;
+    if(c<0x80)bs=[c];
+    else if(c<0x800)bs=[0xc0|(c>>6),0x80|(c&63)];
+    else if(c<0x10000)bs=[0xe0|(c>>12),0x80|((c>>6)&63),0x80|(c&63)];
+    else {bs=[0xf0|(c>>18),0x80|((c>>12)&63),0x80|((c>>6)&63),0x80|(c&63)];i++;}
+    for(const b of bs){h^=b; h=Math.imul(h,0x01000193)>>>0;}
+  }
+  return ('0000000'+h.toString(16)).slice(-8);
+}
+function audioDe(textoLimpio){
+  if(!MANIFIESTO)return null;
+  const e=MANIFIESTO[claveVoz(textoLimpio,VOZ_GRABADA[idiomaDe(textoLimpio)]||'')];
+  return e?'/voz/'+e.f:null;
+}
+(function cargarManifiesto(){
+  /* Sin manifiesto no pasa nada: se habla como siempre. Por eso ni se avisa
+     del fallo --no es un fallo, es el modo normal de antes--. */
+  fetch('/voz/manifiesto.json',{cache:'force-cache'})
+    .then(r=>r.ok?r.json():null)
+    .then(j=>{if(j&&typeof j==='object')MANIFIESTO=j;})
+    .catch(()=>{});
+})();
+/* Reproduce y avisa. Si algo va mal --o si en dos segundos no ha empezado--
+   se llama a `alFallar` UNA sola vez y habla el navegador. */
+function reproducir(url,mio,alAcabar,alFallar){
+  let muerto=false;
+  const rendirse=()=>{ if(muerto)return; muerto=true;
+    try{a.pause();}catch(e){}
+    if(audioActual===a)audioActual=null;
+    alFallar(); };
+  const a=new Audio(url);
+  a.preload='auto';
+  try{a.playbackRate=Math.max(.6,Math.min(1.6,velSana(VEL)));}catch(e){}
+  a.onended=()=>{ if(muerto||mio!==TURNO)return; muerto=true;
+                  if(audioActual===a)audioActual=null; alAcabar(); };
+  a.onerror=rendirse;
+  audioActual=a;
+  const arranque=setTimeout(()=>{if(!a.currentTime)rendirse();},2000);
+  a.onplaying=()=>clearTimeout(arranque);
+  const pr=a.play();
+  if(pr&&pr.catch)pr.catch(rendirse);
+  return a;
+}
+function callarAudio(){
+  if(!audioActual)return;
+  try{audioActual.pause();audioActual.currentTime=0;}catch(e){}
+  audioActual=null;
+}
 let cola=[],hablando=false,quienHabla=null;
 
 /* AQUÍ ESTABA EL FALLO del 13-ago: `decir` llamaba a `parar`, que hace
@@ -1361,7 +1441,7 @@ function decir(lineas,fin){
     desbloqueada=true; arrancar(); return;
   }
   if(hablando||speechSynthesis.speaking||speechSynthesis.pending){
-    hablando=false; cola=[]; TURNO++; speechSynthesis.cancel();
+    hablando=false; cola=[]; TURNO++; callarAudio(); speechSynthesis.cancel();
     setTimeout(arrancar,200);
   }else arrancar();
 }
@@ -1384,11 +1464,21 @@ function siguiente(){
   if(l.oro)lluviaDeOrigen(l.oro);
   pintarRecorrido();
 
-  const partes=trozos(limpiar(l.x));
+  const texto=limpiar(l.x);
+  const partes=trozos(texto);
   const mio=++TURNO;
   let pasado=false;
   const seguir=(ms)=>{if(pasado)return;pasado=true;
     setTimeout(()=>{if(hablando&&mio===TURNO)siguiente();},ms);};
+
+  /* Si esta frase está grabada, se pone el fichero. Si falla por lo que sea,
+     habla el navegador y nadie se entera: eso es lo único que importa. */
+  const url=audioDe(texto);
+  if(url){
+    reproducir(url,mio,()=>seguir(l.p||500),
+               ()=>{if(hablando&&mio===TURNO)hablarTrozo(partes,0,l,mio,seguir);});
+    return;
+  }
   hablarTrozo(partes,0,l,mio,seguir);
 }
 /* Dice el trozo i y encadena el siguiente cuando termina. Cada trozo es una
@@ -1511,7 +1601,7 @@ function parar(){
   const f=alTerminar; alTerminar=null;
   TURNO++;                      // los eventos del turno en vuelo dejan de contar
   guardarSitio(f);
-  hablando=false;cola=[];lineaActual=null;speechSynthesis.cancel();
+  hablando=false;cola=[];lineaActual=null;callarAudio();speechSynthesis.cancel();
   if(f&&!hayPendiente())setTimeout(f,60);
   $('#hablar').classList.remove('on');$('#lblHablar').textContent=t('brief');
   $('#sub').textContent='';marcar(null);
@@ -1683,6 +1773,273 @@ const SABER={
   'The planned fee is one thousandth of an ORIGEN per transaction, but it is not configured today: it charges zero. And it does not go on until its destination is decided, because the configured address is not the single wallet.',
   'The treasury holds nearly two hundred fifty billion ORIGEN and does not move without a written Board instruction.']},
 };
+/* ═══ LO QUE PREGUNTA UN INVERSIONISTA ════════════════════════════════════
+   Treinta preguntas que salen en una reunión de verdad, con su respuesta.
+   Se busca aquí ANTES que en los sistemas, porque «¿está respaldado en oro?»
+   no nombra ningún sistema y antes caía al «eso no me lo han enseñado».
+
+   ═══ LA REGLA QUE NO SE ROMPE ═══
+   «Que siempre conteste» NO significa «que se invente». Delante de alguien
+   que va a poner dinero, un número inventado no es un fallo: es un fraude, y
+   además se descubre en la primera diligencia. Así que hay dos clases de
+   respuesta y las dos son respuestas:
+
+     · lo que está MEDIDO se dice con su número y dónde comprobarlo;
+     · lo que está ABIERTO se dice como está --qué hay decidido, qué falta y
+       quién lo decide--. Eso no es un «no sé»: es la respuesta que hace que
+       se crean las otras.
+
+   Lo que NUNCA sale de aquí: facturación, valoración, licencias, custodia
+   del oro, auditorías o términos de ronda. Ninguna de esas cosas está
+   cerrada, y ponerle voz de asistente a una cifra inventada la vuelve más
+   creíble, no menos peligrosa. Cuando la Junta cierre alguna, se escribe
+   aquí y deja de ser «abierta» --a mano, con el dato delante--. */
+const INVERSOR=[
+ /* ── el negocio ─────────────────────────────────────────────────────── */
+ {id:'quees', foco:'wallet',
+  re:/(que (es|hace|vende|ofrece) orden global|orden global.{0,14}que (es|hace)|a que se dedica|en que consiste|what (is|does) orden global|orden global.{0,14}what is|what do you (do|sell)|elevator|pitch)/,
+  es:['Orden Global es infraestructura financiera propia para América Latina: cadena, billetera, identidad verificada, pasarela de cobro y tarjeta.',
+      'No es una aplicación sobre la cadena de otro. La capa base es nuestra, y por eso el coste, las reglas y el ritmo los ponemos nosotros.',
+      'Hoy lo usan cuatrocientas treinta y cinco personas con dinero de verdad dentro, sobre una cadena con dos años en producción.'],
+  en:['Orden Global is our own financial infrastructure for Latin America: chain, wallet, verified identity, payment gateway and card.',
+      'It is not an application on somebody else chain. The base layer is ours, so the cost, the rules and the pace are ours to set.',
+      'Today four hundred thirty five people use it with real money inside, on a chain with two years in production.']},
+
+ {id:'gana', foco:'tesoro',
+  re:/(como gana(n|is)? dinero|modelo de negocio|de que viven|monetiza|como cobran|business model|how do you make money|revenue model)/,
+  es:['Hay tres fuentes previstas, y conviene separar cuáles están vivas.',
+      'La comisión de red: una milésima de ORIGEN por transacción. Está escrita, pero HOY NO está configurada: cobra cero. Y no se enciende hasta que la Junta decida su destino, porque la dirección puesta no es la billetera única.',
+      'La segunda es la pasarela de cobro, MyTokenPay: el comercio cobra en ORIGEN y ahí hay margen.',
+      'Y la tercera es la tarjeta, que es donde entra dinero de fuera al ecosistema.',
+      'Prefiero decírtelo así de crudo: la infraestructura está construida y usándose, y el cobro está por encender. Eso es exactamente lo que hay.'],
+  en:['There are three intended sources, and it is worth separating which ones are live.',
+      'The network fee: one thousandth of an ORIGEN per transaction. It is written, but TODAY it is not configured: it charges zero. And it does not go on until the Board decides where it lands, because the configured address is not the single wallet.',
+      'The second is the payment gateway, MyTokenPay: merchants charge in ORIGEN and there is margin there.',
+      'And the third is the card, which is where outside money enters the ecosystem.',
+      'I would rather put it bluntly: the infrastructure is built and in use, and the charging is yet to be switched on. That is exactly where we are.']},
+
+ {id:'traccion', foco:'wallet',
+  re:/(traccion|traction|cuantos usuarios|cuanta gente|numero de usuarios|how many users|crecimiento|growth|metricas|metrics|kpi)/,
+  es:['Lo que se puede contar hoy, y todo es comprobable en el explorador público.',
+      'Cuatrocientos treinta y cinco usuarios con saldo, veinticuatro tarjetas emitidas y ochenta y cinco contratos de token desplegados.',
+      'Cuatro millones ciento ochenta mil bloques de historia, dos años y un mes de cadena sin parar desde julio de dos mil veinticuatro.',
+      'No te voy a dar una curva de crecimiento, porque la que tengo medida es el saldo de la cadena, no una gráfica de marketing. El número que importa es que hay dinero real dentro y lleva dos años sin caerse.'],
+  en:['What can be counted today, and all of it is checkable in the public explorer.',
+      'Four hundred thirty five users with a balance, twenty four cards issued and eighty five token contracts deployed.',
+      'Four million one hundred eighty thousand blocks of history, two years and one month of chain without stopping since July twenty twenty four.',
+      'I am not going to hand you a growth curve, because what I have measured is the chain balance, not a marketing chart. The number that matters is that there is real money inside and it has not fallen over in two years.']},
+
+ {id:'competencia', foco:'n5534',
+  re:/(competencia|competidor|competitor|por que no [a-z ]{0,24}(usar|usan|montan|construyen|hacen|polygon|ethereum|solana|stellar|celo|otra cadena)|why not [a-z ]{0,24}(use|build|polygon|ethereum|solana)|diferencia con|versus|frente a|en vez de (polygon|ethereum|solana))/,
+  es:['La comparación honesta no es contra Ethereum: es contra montar esto encima de la cadena de otro.',
+      'Sobre cadena ajena pagas peaje al dueño, heredas su congestión y aceptas lo que decida cambiar mañana. Para un sistema de pagos en países con inflación, el coste variable de la transacción es un problema de negocio, no técnico.',
+      'Aquí el gas está fijo en noventa y tres gigawei. Un envío cuesta lo mismo hoy que el mes que viene, y eso se puede prometer a un comercio.',
+      'Lo que sí usamos de otros donde tiene sentido: Polygon para que entre el USDT. No hay ideología, hay reparto de trabajo.'],
+  en:['The honest comparison is not against Ethereum: it is against building this on top of somebody else chain.',
+      'On somebody else chain you pay a toll to the owner, you inherit their congestion, and you accept whatever they change tomorrow. For a payments system in high inflation countries, a variable transaction cost is a business problem, not a technical one.',
+      'Here gas is fixed at ninety three gigawei. A transfer costs the same today as next month, and that is something you can promise a merchant.',
+      'What we do use from others where it makes sense: Polygon, so USDT can come in. There is no ideology, there is division of labour.']},
+
+ {id:'mercado', foco:'pago',
+  re:/(mercado|market\b|\btam\b|a quien le venden|clientela|customer|publico objetivo|target market)/,
+  es:['El cliente son dos, y se necesitan el uno al otro.',
+      'La persona que cobra o ahorra en una moneda que pierde valor, y que hoy no tiene una alternativa que pueda usar desde el teléfono sin abrir cuenta fuera.',
+      'Y el comercio que quiere cobrar sin depender del banco de su país. Para ese está MyTokenPay.',
+      'El tamaño de mercado en cifras es un dato que no tengo medido y no te lo voy a estimar de memoria. Lo que sí tengo es el arranque: cuatrocientas treinta y cinco personas y veinticuatro tarjetas, en el mercado que conocemos.'],
+  en:['There are two customers, and they need each other.',
+      'The person who earns or saves in a currency that loses value, and who today has no alternative they can use from a phone without opening an account abroad.',
+      'And the merchant who wants to get paid without depending on their country bank. That is what MyTokenPay is for.',
+      'A market size figure is something I do not have measured and I am not going to estimate it from memory. What I do have is the start: four hundred thirty five people and twenty four cards, in the market we know.']},
+
+ /* ── el ORIGEN ──────────────────────────────────────────────────────── */
+ {id:'token', foco:'tesoro',
+  re:/(que es el origen|el token|tokenomic|emision|supply|cuantos origen|how many origen|total supply|que respalda el token)/,
+  es:['El ORIGEN es la moneda de la cadena. La emisión total es de un billón, exacta, escrita en el bloque cero.',
+      'No hay emisión adicional. Eso no es una promesa que alguien pueda romper: está en el génesis y cualquiera puede contarla desde fuera.',
+      'El tesoro guarda casi doscientos cincuenta mil millones, y no se mueve solo: cada salida necesita instrucción escrita de la Junta Directiva.',
+      'El precio sale de una fórmula pública, no de una decisión: el gramo de oro en dólares dividido entre cincuenta y cinco.'],
+  en:['ORIGEN is the chain currency. Total supply is one trillion, exact, written into the genesis block.',
+      'There is no further issuance. That is not a promise somebody can break: it is in the genesis and anyone can count it from outside.',
+      'The treasury holds nearly two hundred fifty billion, and it does not move on its own: every outflow needs a written Board instruction.',
+      'The price comes from a public formula, not from a decision: one gram of gold in dollars, divided by fifty five.']},
+
+ {id:'oro', foco:'tesoro',
+  re:/(respald|backed|backing|el oro|gold|reserva|reserve|hay oro|donde esta el oro|custodia|custody)/,
+  es:['Aquí te voy a ser muy preciso, porque es la pregunta donde más fácil se exagera.',
+      'Lo que está montado y funcionando es la REFERENCIA de precio: el ORIGEN se calcula con el gramo de oro en dólares dividido entre cincuenta y cinco. Esa fórmula es pública y el precio se puede recalcular desde fuera cualquier día.',
+      'Lo que NO está cerrado es la figura jurídica del respaldo: quién custodia, bajo qué contrato, con qué auditoría y con qué derecho de canje. Eso está en manos de la Junta y del área legal, y hasta que no esté firmado yo no voy a decirte que la moneda está respaldada en oro.',
+      'Si alguien te lo cuenta de otra forma, pide el documento. Es exactamente lo que pediría yo.'],
+  en:['I am going to be very precise here, because this is the question where it is easiest to overstate.',
+      'What is built and working is the price REFERENCE: ORIGEN is calculated from one gram of gold in dollars divided by fifty five. That formula is public and the price can be recomputed from outside on any given day.',
+      'What is NOT settled is the legal figure of the backing: who holds custody, under what contract, with what audit and what redemption right. That sits with the Board and with legal, and until it is signed I am not going to tell you the currency is gold backed.',
+      'If anyone tells you otherwise, ask for the document. That is exactly what I would do.']},
+
+ {id:'precio', foco:'tesoro',
+  re:/(precio|price|cuanto vale|how much is|valuation del token|cotiza|cotizacion|quien pone el precio)/,
+  es:['El precio no lo pone una persona: sale de una fórmula. El gramo de oro en dólares, dividido entre cincuenta y cinco.',
+      'La ventaja de eso es que se puede auditar. Coges el precio del oro del día, divides, y te tiene que dar lo mismo que digo yo.',
+      'Y la limitación, que también te la digo: una fórmula de referencia no es un mercado. Mientras no haya un libro de órdenes con volumen, ese precio es la referencia contable, no un precio de mercado. Son cosas distintas y no conviene mezclarlas.'],
+  en:['The price is not set by a person: it comes from a formula. One gram of gold in dollars, divided by fifty five.',
+      'The advantage is that it can be audited. Take the gold price for the day, divide, and it has to match what I say.',
+      'And the limitation, which I will also tell you: a reference formula is not a market. Until there is an order book with volume, that price is the accounting reference, not a market price. They are different things and it is better not to mix them.']},
+
+ {id:'liquidez',
+  re:/(liquidez|liquidity|donde se compra|donde se vende|exchange|listado|listing|mercado secundario|como salgo|exit|como recupero)/,
+  es:['Hoy no hay mercado secundario con volumen, y esa es la respuesta corta.',
+      'Lo que hay montado es la entrada y la salida por producto: entra por tarjeta o por USDT en Polygon, y se gasta en un comercio o con la tarjeta.',
+      'En listados públicos, lo que está en marcha son las dos solicitudes en Chainlist, que es el registro de cadenas. Eso da reconocimiento a la red, no liquidez al token: no lo confundas.',
+      'La liquidez y los términos de salida de un inversionista son cosa de la Junta, y no hay nada firmado que yo pueda contarte.'],
+  en:['There is no secondary market with volume today, and that is the short answer.',
+      'What is built is in and out through the product: it comes in by card or USDT on Polygon, and it is spent at a merchant or on the card.',
+      'On public listings, what is in motion are the two Chainlist requests, which is the chain registry. That gives the network recognition, not the token liquidity: do not confuse the two.',
+      'Liquidity and an investor exit are Board matters, and there is nothing signed that I can tell you about.']},
+
+ {id:'tesoroQuien', foco:'tesoro',
+  re:/(quien controla|quien maneja el tesoro|quien firma|multifirma|multisig|quien decide|governance|gobernanza)/,
+  es:['El tesoro no se mueve solo. Cada salida necesita instrucción escrita de la Junta Directiva.',
+      'Eso está puesto también en cómo trabajo yo: tengo prohibido mover fondos, y si alguien me lo pide por voz me niego. La única orden de dinero que acepto es lanzar los bots de prueba, y solo en la red de pruebas.',
+      'La custodia técnica de las llaves y el esquema de firmas es una cuestión de la Junta que ni yo debo detallar en una presentación. Es la clase de dato que se enseña en diligencia, con acuerdo firmado, no por voz.'],
+  en:['The treasury does not move on its own. Every outflow needs a written Board instruction.',
+      'That is baked into how I work too: I am not allowed to move funds, and if someone asks me by voice I refuse. The only money order I accept is launching the test bots, and only on the test network.',
+      'The technical custody of the keys and the signing scheme is a Board matter that I should not detail in a presentation. That is the kind of thing shown in diligence, under a signed agreement, not out loud.']},
+
+ /* ── la tecnología ──────────────────────────────────────────────────── */
+ {id:'tech', foco:'n5534',
+  re:/(como funciona la cadena|consenso|consensus|validador|validator|besu|arquitectura|architecture|tecnologia|stack)/,
+  es:['Consenso Besu con validadores propios, un bloque cada diez segundos y el precio del gas fijo en noventa y tres gigawei.',
+      'Sin minería y sin consumo de energía: no dependemos de que alguien más quiera confirmarnos una transacción.',
+      'Hay tres cadenas en juego. La ocho cinco tres dos es la vieja, congelada. La cinco cinco tres cuatro es la red de pruebas, viva. Y la cinco cinco cinco cero es la que la reemplaza.',
+      'El génesis de la nueva ya está construido y comprobado contra la vieja con cero diferencias: trescientas treinta y una cuentas, ciento setenta y dos contratos y mil trescientas setenta y cinco ranuras de memoria. Cada saldo, exacto.'],
+  en:['Besu consensus with our own validators, one block every ten seconds, and the gas price fixed at ninety three gigawei.',
+      'No mining and no energy burn: we do not depend on anyone else wanting to confirm a transaction for us.',
+      'There are three chains in play. Eight five three two is the legacy one, frozen. Five five three four is the test network, live. And five five five zero is the one that replaces it.',
+      'The new genesis is already built and checked against the old chain with zero differences: three hundred thirty one accounts, one hundred seventy two contracts and one thousand three hundred seventy five storage slots. Every balance, exact.']},
+
+ {id:'escala', foco:'nodos',
+  re:/(escala|escalab|scale|cuantas transacciones|tps|throughput|aguanta|capacidad|capacity|si crece)/,
+  es:['Un bloque cada diez segundos con el límite de gas actual da margen de sobra para el volumen de hoy, que es de cuatrocientas treinta y cinco personas.',
+      'Te voy a dar el dato honesto: no tenemos una prueba de carga publicada con un número de transacciones por segundo. Decirte una cifra ahora sería inventármela.',
+      'Lo que sí es cierto es que la palanca la tenemos nosotros. En cadena propia, el tamaño de bloque y el ritmo se cambian con un acuerdo de validadores, no pidiendo permiso. Ese es justo el argumento de tener capa uno.'],
+  en:['One block every ten seconds with the current gas limit leaves plenty of headroom for today volume, which is four hundred thirty five people.',
+      'Here is the honest part: we do not have a published load test with a transactions per second number. Giving you a figure now would be making it up.',
+      'What is true is that the lever is ours. On our own chain, block size and pace change by validator agreement, not by asking permission. That is exactly the argument for owning layer one.']},
+
+ {id:'caida', foco:'nodos',
+  re:/(si se cae|que pasa si|caida|downtime|disponibilidad|availability|respaldo tecnico|backup|redundancia|un solo punto)/,
+  es:['La red está repartida en diez máquinas y dos regiones de Amazon, con direcciones fijas y los nodos semilla reescritos, así que se rearma sola después de un reinicio.',
+      'Y hay un vigilante instalado en cada nodo que comprueba cada tres minutos que la altura avanza y lo repara solo si se atasca. Eso no lo puse por elegancia: hubo estancamientos de sincronía y se diagnosticó la causa.',
+      'Además siete agentes automáticos revisan cadenas, dinero, seguridad, despliegue y coste, y dejan su parte escrito. Si algo está mal, lo dicen sin adornarlo, y eso lo puedes ver aquí mismo.'],
+  en:['The network is spread across ten machines and two Amazon regions, with fixed addresses and rewritten bootnodes, so it reassembles itself after a restart.',
+      'And there is a watchdog on every node that checks every three minutes that the height is advancing and repairs it on its own if it stalls. I did not add that for elegance: there were sync stalls and the cause was diagnosed.',
+      'On top of that, seven automated agents review chains, money, security, deployment and cost, and file written reports. If something is wrong they say so without dressing it up, and you can see that right here.']},
+
+ {id:'auditoria',
+  re:/(auditor|audit|codigo revisado|code review|pentest|certificacion|certification|quien reviso)/,
+  es:['No hay una auditoría externa de contratos publicada. Te lo digo tal cual, porque es lo primero que verificaría cualquiera.',
+      'Lo que sí hay es revisión continua propia y con constancia escrita: un agente compara a diario lo que corre en producción contra el repositorio, otro audita la seguridad de la nube y las dependencias, y todo queda en un parte con fecha.',
+      'Y hay cosas encontradas y arregladas, que es la prueba de que la revisión sirve: claves de sesión demasiado cortas, un endpoint que emitía identidad sin autenticación y un doble cobro en la billetera. Puedo enseñarte la lista.',
+      'Una auditoría externa es una decisión de Junta, con su coste. No está contratada.'],
+  en:['There is no published external contract audit. I am telling you straight, because it is the first thing anyone would check.',
+      'What there is, is continuous in house review with a written record: one agent compares daily what runs in production against the repository, another audits cloud security and dependencies, and it all lands in a dated report.',
+      'And there are things found and fixed, which is the proof the review works: session keys that were too short, an endpoint issuing identity without authentication, and a double charge in the wallet. I can show you the list.',
+      'An external audit is a Board decision, with its cost. It is not contracted.']},
+
+ {id:'seguridad', foco:'gid',
+  re:/(seguridad|security|hackeo|hack|robo|fraude|proteccion|como protegen)/,
+  es:['La seguridad se mira todos los días y queda escrita, no es una promesa.',
+      'Un agente audita secretos cortos, llaves sin usar, puertos y buckets abiertos, hallazgos de la nube y dependencias con fallos conocidos. Nunca imprime el valor de un secreto ni rota nada solo.',
+      'De lo encontrado y arreglado: las semillas y llaves privadas se cifraban con una contraseña de siete caracteres, y las sesiones de la billetera se firmaban con otra igual de corta. Las dos están corregidas.',
+      'Y hay cosas abiertas que también te digo: dos cuentas de administración sin doble factor y una llave de acceso permanente que sigue viva. Están en la lista de la Junta con nombre y fecha.'],
+  en:['Security is reviewed every day and written down; it is not a promise.',
+      'One agent audits short secrets, unused keys, open ports and buckets, cloud findings and dependencies with known flaws. It never prints the value of a secret and never rotates anything on its own.',
+      'Of what was found and fixed: seeds and private keys were encrypted with a seven character password, and wallet sessions were signed with an equally short one. Both are corrected.',
+      'And there are open items I will also tell you about: two admin accounts without two factor, and a permanent access key still alive. They are on the Board list with a name and a date.']},
+
+ /* ── regulación ─────────────────────────────────────────────────────── */
+ {id:'legal', foco:'gid',
+  re:/(legal|licencia|licence|license|regulacion|regulator|permiso|cumplimiento|compliance|es legal|autorizacion)/,
+  es:['La parte de cumplimiento que está construida y funcionando es la identidad: Genesis ID verifica personas y empresas, con prevención de blanqueo y acceso único. Sin eso no hay conversación regulatoria posible, y está hecho.',
+      'La parte que está abierta es el encuadre jurídico: qué figura tiene el token en cada país, qué licencia hace falta para la pasarela y para la tarjeta, y bajo qué sociedad se emite.',
+      'Eso lo lleva el área legal y no está cerrado. No te voy a decir que estamos regulados, porque no sería cierto, y es la clase de cosa que se comprueba en cinco minutos.'],
+  en:['The compliance piece that is built and working is identity: Genesis ID verifies people and companies, with anti money laundering and single sign on. Without that there is no regulatory conversation at all, and it is done.',
+      'The piece that is open is the legal framing: what the token is in each country, what licence the gateway and the card require, and under which company it is issued.',
+      'That sits with legal and it is not closed. I am not going to tell you we are regulated, because it would not be true, and it is the kind of thing that gets checked in five minutes.']},
+
+ {id:'kyc', foco:'gid',
+  re:/(kyc|kyb|aml|blanqueo|lavado|identidad|identity|verificacion de usuarios|onboarding)/,
+  es:['Genesis ID es la pieza de identidad: verificación de personas, verificación de empresas, prevención de blanqueo y acceso único para todo el ecosistema.',
+      'Está construido como producto, no como formulario: un usuario verificado en Genesis ID entra a la billetera y a la pasarela sin repetir el proceso.',
+      'El puente entre Genesis ID y el portal público estuvo roto y se rehízo. Lo digo porque es el tipo de detalle que te importa: no es una función anunciada, es una función montada.'],
+  en:['Genesis ID is the identity piece: people verification, company verification, anti money laundering, and single sign on across the ecosystem.',
+      'It is built as a product, not as a form: a user verified in Genesis ID gets into the wallet and the gateway without repeating the process.',
+      'The bridge between Genesis ID and the public portal was broken and it was rebuilt. I mention it because it is the kind of detail that matters to you: it is not an announced feature, it is a wired one.']},
+
+ /* ── riesgo, equipo, dinero ─────────────────────────────────────────── */
+ {id:'riesgos',
+  re:/(riesgo|risk|que puede salir mal|what could go wrong|preocupa|debilidad|weakness|contra|peor caso)/,
+  es:['Te los digo yo antes de que los encuentres, que es como se hace bien.',
+      'Uno: el encuadre jurídico del token y del respaldo no está cerrado. Es el riesgo mayor y no es técnico.',
+      'Dos: no hay mercado secundario con volumen, así que el precio de hoy es una referencia contable y no un precio de mercado.',
+      'Tres: el cobro no está encendido. La infraestructura funciona y la comisión está a cero.',
+      'Cuatro: no hay auditoría externa de contratos publicada.',
+      'Y cinco: la concentración. Cuatrocientos treinta y cinco usuarios es un arranque real, no una escala probada.',
+      'La contrapartida de todo eso es que la infraestructura ya existe y lleva dos años en producción, que suele ser la parte cara y lenta.'],
+  en:['I will give them to you before you find them, which is how it is done properly.',
+      'One: the legal framing of the token and of the backing is not settled. That is the biggest risk and it is not a technical one.',
+      'Two: there is no secondary market with volume, so today price is an accounting reference and not a market price.',
+      'Three: charging is not switched on. The infrastructure works and the fee is at zero.',
+      'Four: there is no published external contract audit.',
+      'And five: concentration. Four hundred thirty five users is a real start, not proven scale.',
+      'The other side of all that is that the infrastructure already exists and has two years in production, which is usually the slow, expensive part.']},
+
+ {id:'equipo',
+  re:/(quien esta detras|el equipo|team|fundador|founder|quienes son|junta|board|cuantas personas)/,
+  es:['La dirección está en la Junta Directiva, que es quien decide y quien firma cualquier movimiento del tesoro.',
+      'La composición nominal del equipo y de la Junta no es algo que yo deba recitar en una presentación: eso va en el documento, con nombres y cargos, no por voz.',
+      'Lo que sí te puedo enseñar es cómo trabaja: siete agentes automáticos revisando el sistema cada pocas horas, con parte escrito y fechado. La disciplina de operación se ve en los partes mejor que en un organigrama.'],
+  en:['Direction sits with the Board, which decides and signs any treasury movement.',
+      'The named composition of the team and the Board is not something I should recite in a presentation: that goes in the document, with names and roles, not out loud.',
+      'What I can show you is how it operates: seven automated agents reviewing the system every few hours, with dated written reports. Operating discipline shows up in the reports better than in an org chart.']},
+
+ {id:'coste', foco:'nodos',
+  re:/(cuesta|coste|costo|\bcost\b|gasto|burn rate|quemar|opex|cuanto gastan|operar esto)/,
+  es:['El coste de operar esto es infraestructura, y está medido: diez máquinas de Amazon en dos regiones y cinco servicios en Heroku.',
+      'Hay un agente dedicado solo a esto: lleva la cuenta, busca lo que se paga sin usar y sigue el plan de retirada de las máquinas de la cadena vieja. Su parte tiene la cifra del día, y te lo puedo leer entero.',
+      'La retirada de dos máquinas viejas está identificada como ahorro y pendiente de fecha, que es una decisión de Junta.'],
+  en:['The cost of running this is infrastructure, and it is measured: ten Amazon machines across two regions and five Heroku services.',
+      'There is an agent dedicated to just this: it keeps the count, finds what is paid for and unused, and tracks the retirement plan for the legacy chain machines. Its report has the figure for the day, and I can read you the whole thing.',
+      'Retiring two legacy machines is identified as a saving and pending a date, which is a Board decision.']},
+
+ {id:'ronda',
+  re:/(cuanto (buscan|levantan|necesitan|piden)|levantar|ronda|round|rais(e|ing)|inversion|valoracion|valuation|ticket|para que (quieren|usarian) el dinero|use of funds|dilucion)/,
+  es:['Los términos de la ronda, la valoración y el destino de los fondos son decisión de la Junta Directiva, y no hay nada firmado que yo pueda contarte.',
+      'Te lo digo directo porque es mejor que darte una cifra que luego no coincida con el documento. Esa conversación es con la Junta, y va con papel.',
+      'Lo que sí te puedo dar es la lista de lo que está construido, lo que está por encender y lo que está abierto. Si quieres, te la doy entera ahora mismo y decides tú si merece la conversación.'],
+  en:['Round terms, valuation and use of funds are Board decisions, and there is nothing signed that I can tell you about.',
+      'I say it plainly because it is better than giving you a figure that later fails to match the document. That conversation is with the Board, and it comes with paper.',
+      'What I can give you is the list of what is built, what is yet to be switched on, and what is open. If you want, I will give it to you in full right now and you decide whether it is worth the conversation.']},
+
+ {id:'porQueCreer', foco:'scan',
+  re:/(por que (te|les|deberia) (creo|creeria|creer)|creerte|creerles|como (se|lo) compruebo|como verifico|prove it|why should i (believe|trust)|demuestr|evidencia|evidence)/,
+  es:['Porque casi nada de esto depende de que me creas.',
+      'La cadena es pública: el explorador ordenscan enseña cada bloque y cada transacción, y el precio se recalcula con el oro del día en una división.',
+      'Puedo firmar y enviar una transacción de verdad ahora mismo, delante de ti, y darte el identificador para que lo abras en el explorador desde tu propio teléfono. Pídemelo y lo hago.',
+      'Y lo que no es comprobable desde fuera te lo he marcado como abierto en vez de dártelo por hecho. Esa distinción es la parte que sí te pido que valores.'],
+  en:['Because almost none of this depends on you believing me.',
+      'The chain is public: the ordenscan explorer shows every block and every transaction, and the price is recomputed from the day gold price with one division.',
+      'I can sign and broadcast a real transaction right now, in front of you, and hand you the hash so you can open it in the explorer from your own phone. Ask me and I will.',
+      'And what cannot be checked from outside, I have marked as open instead of handing it to you as settled. That distinction is the part I do ask you to weigh.']},
+];
+
+/* Busca la pregunta del inversionista. Devuelve las líneas o null. */
+function respuestaInversor(s){
+  for(const q of INVERSOR){
+    if(!q.re.test(s))continue;
+    ultimoTema='inv:'+q.id;
+    return q[IDI].map((x,i)=>J(x,{p:i===q[IDI].length-1?0:420,foco:i?null:q.foco}));
+  }
+  return null;
+}
 const RELS={ecosistema:['n5534','wallet','gid','pago','tesoro'],
   apps:['wallet','scan','pago','tarjeta'],webs:['scan','gid','chainl'],
   infra:['nodos','n5534','m8532'],tokens:['tesoro','bots','n5534'],
@@ -2029,7 +2386,28 @@ async function atender(txt){
   for(const [re,acc] of ORDENES) if(re.test(s)) return ejecutar(acc);
   if(/(stop|be quiet|silence|shut up|^para$|callate|silencio|basta)/i.test(s))return parar();
 
+  /* El ensayo: practicar delante del espejo antes de la reunión. Con una
+     pregunta en el aire, «contesta» y «siguiente» son del ensayo y no
+     significan otra cosa. */
+  if(enEnsayo&&/^\s*(contesta|responde|la respuesta|answer|show me|siguiente|next|otra|another)\b/.test(s))
+    return void ensayo();
+  if(/(ensay|practic|rehears|preguntame|quiz|drill|hazme una pregunta|ask me)/.test(s))
+    return void ensayo();
+  if(/(que (te|le)? ?pueden preguntar|que preguntas|what (can|could) (they|people) ask|lista de preguntas|questions)/.test(s))
+    return void listaDePreguntas();
+
   if(await conversar(txt))return;      // si hay modelo, contesta él
+
+  /* ═══ LA PREGUNTA DE INVERSIONISTA VA PRIMERO ═══════════════════════════
+     Antes que TODO lo general. Dos cosas se la comían:
+     · el patrón de «dinero», que contestaba la fórmula del precio a
+       «¿está respaldado en oro?» --verdad, pero no es esa la pregunta, y
+       ahí es justo donde hay que ser preciso--;
+     · y el manejador de «explícame X», cuyo patrón incluye «how do»: con
+       «how do you make money» se quedaba con «you make money», veía
+       «money» y soltaba el flujo del dinero en vez del modelo de negocio.
+     Lo específico gana a lo general. Esa es toda la regla. */
+  { const r=respuestaInversor(s); if(r)return responderCon(r); }
 
   /* «explícame X»: se busca X en el conocimiento, en los temas y en los
      sistemas, y se cuenta entero. */
@@ -2049,9 +2427,15 @@ async function atender(txt){
   for(const [re,id] of CONV){
     if(!re.test(s))continue;
     if(id==='PARAR')return parar();
-    if(id==='PAUSA'){if(speechSynthesis.speaking){pausadoAdrede=true;speechSynthesis.pause();
-      $('#oido').textContent=IDI==='en'?'Paused. Say "continue".':'En pausa. Di «continúa».';}return;}
-    if(id==='SEGUIR'){pausadoAdrede=false;speechSynthesis.resume();$('#oido').textContent='';return;}
+    if(id==='PAUSA'){
+      /* La pausa vale para las dos voces: la grabada y la del navegador. */
+      if(audioActual){pausadoAdrede=true;try{audioActual.pause();}catch(e){}}
+      else if(speechSynthesis.speaking){pausadoAdrede=true;speechSynthesis.pause();}
+      if(pausadoAdrede)$('#oido').textContent=IDI==='en'?'Paused. Say "continue".':'En pausa. Di «continúa».';
+      return;}
+    if(id==='SEGUIR'){pausadoAdrede=false;
+      if(audioActual){try{audioActual.play();}catch(e){}}
+      speechSynthesis.resume();$('#oido').textContent='';return;}
     if(id==='LENTO'){VEL=velSana(VEL-.1);localStorage.setItem('velCerebro',VEL);
       return responderCon([J(IDI==='en'?'Slower. Like this.':'Más despacio. Así.')]);}
     if(id==='RAPIDO'){VEL=velSana(VEL+.1);localStorage.setItem('velCerebro',VEL);
@@ -2078,14 +2462,145 @@ async function atender(txt){
   if(sis)return responderCon(temaSistema(sis));
 
 
-  /* No entendido: no se calla ni suelta un error. Ofrece. */
-  /* No lo sabe. No se disfraza de error: dice qué haría falta. */
+  /* ═══ EL PUENTE ═══════════════════════════════════════════════════════
+     Antes esto decía «eso todavía no me lo han enseñado» y se acababa la
+     conversación. Delante de un inversionista, un callejón sin salida vale
+     lo mismo que una respuesta mala.
+
+     Ahora nunca es un callejón: se busca la palabra de la pregunta en todo
+     lo que sí se sabe --sistemas, temas y preguntas de inversionista--, se
+     contesta con lo más cercano y se ofrece seguir. Y si de verdad no hay
+     nada cerca, se dice qué SÍ se puede contestar, que también es contestar.
+
+     Lo que NO hace, a propósito: inventarse el dato. Un número inventado
+     delante de alguien que va a poner dinero no es un fallo, es un fraude,
+     y se descubre en la primera diligencia. */
+  const cerca=loMasCercano(s);
+  if(cerca)return responderCon(cerca);
+
   responderCon([J(IDI==='en'
-    ? 'That is not something I have been taught yet.'
-    : 'Eso todavía no me lo han enseñado.',{p:380}),
+    ? 'I do not have that measured, and I would rather say so than invent a number for you.'
+    : 'Eso no lo tengo medido, y prefiero decírtelo antes que inventarte un número.',{p:380}),
     J(IDI==='en'
-    ? 'Note it for the next daily update and it becomes part of what I know. Meanwhile, ask me about the ecosystem, the apps, the webs, the machines, the tokens, the money flow, security, cost, the team, or what needs you.'
-    : 'Apúntalo para la próxima actualización del parte y pasará a ser parte de lo que sé. Mientras, pregúntame por el ecosistema, las aplicaciones, las webs, las máquinas, los tokens, el flujo del dinero, la seguridad, el coste, el equipo, o qué te falta.')]);
+    ? 'What I can answer with real data: the business and how it makes money, the ORIGEN and its supply, the gold reference, the technology, the traction, security, compliance, the cost, and the open risks. Name any of those.'
+    : 'Lo que sí puedo contestarte con datos de verdad: el negocio y cómo gana dinero, el ORIGEN y su emisión, la referencia del oro, la tecnología, la tracción, la seguridad, el cumplimiento, el coste y los riesgos abiertos. Dime cualquiera.',{p:0})]);
+}
+
+/* Lo más cercano: puntúa por palabras compartidas. Cinco letras mínimo, que
+   «que» y «como» aparecen en todo y no distinguen nada. */
+function loMasCercano(s){
+  const pal=[...new Set(String(s).toLowerCase().split(/[^a-z0-9áéíóúñ]+/i)
+             .filter(w=>w.length>=5))];
+  if(!pal.length)return null;
+  let mejor=null, alto=0;
+  const mira=(texto,dar)=>{
+    const t=sinTildes(texto).toLowerCase();
+    const n=pal.filter(w=>t.includes(sinTildes(w).toLowerCase())).length;
+    if(n>alto){alto=n;mejor=dar;}
+  };
+  for(const q of INVERSOR)
+    mira(q.re.source+' '+q.es.join(' ')+' '+q.en.join(' '),
+         ()=>q[IDI].map((x,i)=>J(x,{p:i===q[IDI].length-1?0:420,foco:i?null:q.foco})));
+  for(const k in SABER)
+    mira(k+' '+SABER[k][IDI].join(' '), ()=>temaSaber(k));
+  for(const x of SIS)
+    mira(x.nom+' '+x.es+' '+x.que[IDI]+' '+x.det[IDI].join(' '), ()=>temaSistema(x));
+  /* Con UNA palabra suelta en común no se llama «lo más cercano»: eso es
+     ruido, y ponerle voz de asistente a un parecido casual es peor que
+     decir que no lo tienes medido. Hacen falta dos. */
+  if(!mejor||alto<2)return null;
+  return [J(IDI==='en'?'The closest thing I have measured is this.'
+                      :'Lo más cercano que tengo medido es esto.',{p:340}),
+          ...mejor()];
+}
+
+/* ═══ EL ENSAYO ═══════════════════════════════════════════════════════════
+   Practicar antes de la reunión. JARVIS suelta una pregunta de inversionista
+   --de las duras, no de las cómodas-- y espera. Cuando dices «contesta» o
+   «siguiente», da la respuesta modelo y puedes compararla con la tuya.
+   Se pregunta en tu idioma y no repite hasta agotar la baraja. */
+const PREGUNTAS={
+ es:{quees:'¿Qué es Orden Global exactamente?',
+     gana:'¿Cómo ganan dinero?',
+     traccion:'¿Cuánta tracción tienen de verdad?',
+     competencia:'¿Por qué no montan esto sobre Polygon y se ahorran la cadena?',
+     mercado:'¿A quién le venden esto?',
+     token:'¿Qué es el ORIGEN y cuánto hay emitido?',
+     oro:'¿Está respaldado en oro? ¿Dónde está ese oro?',
+     precio:'¿Quién pone el precio del ORIGEN?',
+     liquidez:'Si entro, ¿cómo salgo? ¿Dónde hay liquidez?',
+     tesoroQuien:'¿Quién controla el tesoro?',
+     tech:'¿Cómo funciona la cadena por dentro?',
+     escala:'¿Cuántas transacciones por segundo aguanta?',
+     caida:'¿Qué pasa si se les cae un nodo?',
+     auditoria:'¿Quién auditó el código?',
+     seguridad:'¿Cómo protegen el dinero de la gente?',
+     legal:'¿Esto es legal? ¿Qué licencias tienen?',
+     kyc:'¿Cómo verifican la identidad de los usuarios?',
+     riesgos:'¿Qué es lo que puede salir mal?',
+     equipo:'¿Quién está detrás de esto?',
+     coste:'¿Cuánto les cuesta operar esto al mes?',
+     ronda:'¿Cuánto buscan y para qué van a usar el dinero?',
+     porQueCreer:'¿Por qué debería creerme nada de esto?'},
+ en:{quees:'What is Orden Global exactly?',
+     gana:'How do you make money?',
+     traccion:'How much traction do you really have?',
+     competencia:'Why not build this on Polygon and skip the chain?',
+     mercado:'Who are you selling this to?',
+     token:'What is ORIGEN and how much is issued?',
+     oro:'Is it gold backed? Where is that gold?',
+     precio:'Who sets the price of ORIGEN?',
+     liquidez:'If I come in, how do I get out? Where is the liquidity?',
+     tesoroQuien:'Who controls the treasury?',
+     tech:'How does the chain work under the hood?',
+     escala:'How many transactions per second does it handle?',
+     caida:'What happens if a node goes down?',
+     auditoria:'Who audited the code?',
+     seguridad:'How do you protect people money?',
+     legal:'Is this legal? What licences do you hold?',
+     kyc:'How do you verify user identity?',
+     riesgos:'What can go wrong?',
+     equipo:'Who is behind this?',
+     coste:'What does it cost you to run this per month?',
+     ronda:'How much are you raising and what for?',
+     porQueCreer:'Why should I believe any of this?'}};
+let barajaEnsayo=[], enEnsayo=null;
+function ensayo(){
+  if(enEnsayo){                       // ya había una en el aire: se contesta
+    const q=INVERSOR.find(x=>x.id===enEnsayo); enEnsayo=null;
+    if(q)return responderCon([J(IDI==='en'?'This is how I would answer it.'
+                                          :'Así la contestaría yo.',{p:360}),
+      ...q[IDI].map((x,i)=>J(x,{p:i===q[IDI].length-1?0:420,foco:i?null:q.foco}))]);
+  }
+  if(!barajaEnsayo.length)barajaEnsayo=INVERSOR.map(q=>q.id);
+  const k=Math.floor(Math.random()*barajaEnsayo.length);
+  enEnsayo=barajaEnsayo.splice(k,1)[0];
+  const texto=PREGUNTAS[IDI][enEnsayo]||enEnsayo;
+  $('#oido').textContent=IDI==='en'?'Answer out loud, then say "answer" to compare.'
+                                   :'Contesta en voz alta y luego di «contesta» para comparar.';
+  responderCon([J(IDI==='en'?'An investor asks you this.':'Un inversionista te pregunta esto.',{p:340}),
+                J(texto,{p:0})]);
+}
+function listaDePreguntas(){
+  const P=PREGUNTAS[IDI];
+  const c=panel(IDI==='en'?'WHAT THEY WILL ASK':'LO QUE TE VAN A PREGUNTAR',
+    IDI==='en'?String(INVERSOR.length)+' investor questions · say "rehearse" to practise'
+              :INVERSOR.length+' preguntas de inversionista · di «ensayo» para practicar');
+  const grupos=IDI==='en'
+    ?[['THE BUSINESS',['quees','gana','traccion','competencia','mercado']],
+      ['THE TOKEN',['token','oro','precio','liquidez','tesoroQuien']],
+      ['THE TECHNOLOGY',['tech','escala','caida','auditoria','seguridad']],
+      ['COMPLIANCE',['legal','kyc']],
+      ['RISK AND MONEY',['riesgos','equipo','coste','ronda','porQueCreer']]]
+    :[['EL NEGOCIO',['quees','gana','traccion','competencia','mercado']],
+      ['EL TOKEN',['token','oro','precio','liquidez','tesoroQuien']],
+      ['LA TECNOLOGÍA',['tech','escala','caida','auditoria','seguridad']],
+      ['CUMPLIMIENTO',['legal','kyc']],
+      ['RIESGO Y DINERO',['riesgos','equipo','coste','ronda','porQueCreer']]];
+  for(const [tit,ids] of grupos){h4(c,tit);ids.forEach(i=>P[i]&&li(c,P[i]));}
+  responderCon([J(IDI==='en'
+    ? 'These are the '+INVERSOR.length+' questions I can answer with real data. Ask me any of them, or say "rehearse" and I will fire one at you.'
+    : 'Estas son las '+INVERSOR.length+' preguntas que puedo contestar con datos de verdad. Pregúntame cualquiera, o di «ensayo» y te suelto una.',{p:0})]);
 }
 function responderCon(lineas){
   const L=(lineas||[]).filter(Boolean);
@@ -2252,7 +2767,7 @@ function reproducirDesde(i){
   $('#btnPresenta').classList.add('on');document.body.classList.add('narrando');
   $('#btnPresenta').classList.remove('sigue');
   $('#lblPresenta').textContent=IDI==='en'?'PAUSE':'PAUSAR';
-  hablando=false; cola=[]; TURNO++; speechSynthesis.cancel();
+  hablando=false; cola=[]; TURNO++; callarAudio(); speechSynthesis.cancel();
   setTimeout(()=>{
     alTerminar=RECORRIDO.fin;
     cola=RECORRIDO.lineas.slice(i);
@@ -2675,6 +3190,8 @@ document.querySelectorAll('.vels button[data-resp]').forEach(b=>{
     decir([J(FRASE_PRUEBA())]);});
 });
 $('#btnProbar').addEventListener('click',()=>decir([J(FRASE_PRUEBA())]));
+$('#btnPreguntas').addEventListener('click',()=>{$('#ajustes').classList.remove('abre');listaDePreguntas();});
+$('#btnEnsayo').addEventListener('click',()=>{$('#ajustes').classList.remove('abre');ensayo();});
 $('#btnTexto').addEventListener('click',abrirInforme);
 $('#cerrar').addEventListener('click',()=>$('#det').classList.remove('abre'));
 $('#det').addEventListener('click',e=>{if(e.target.id==='det')e.target.classList.remove('abre');});
@@ -2702,6 +3219,9 @@ function traducirUI(){
   $('#lblIdi').textContent=IDI==='en'?'LANGUAGE':'IDIOMA';
   $('#lblSala').textContent=IDI==='en'?'PRESENTATION':'PRESENTACIÓN';
   $('#lblInv').textContent=IDI==='en'?'INVITE':'INVITAR';
+  $('#lblInv2').textContent=IDI==='en'?'BEFORE THE MEETING':'ANTES DE LA REUNIÓN';
+  $('#btnPreguntas').textContent=IDI==='en'?'THE QUESTIONS':'LAS PREGUNTAS';
+  $('#btnEnsayo').textContent=IDI==='en'?'REHEARSE':'ENSAYO';
   $('#btnDolar').textContent=IDI==='en'?'THE DOLLAR':'EL DÓLAR';
   $('#btnSala').textContent=IDI==='en'?'ROOM':'SALA';
   $('#btnInvitar').textContent=IDI==='en'?'CREATE LINK · 24 H':'CREAR ENLACE · 24 H';
