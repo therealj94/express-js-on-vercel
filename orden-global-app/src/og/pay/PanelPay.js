@@ -26,6 +26,7 @@ import { listContacts, nameFor } from '../../addressBook';
 
 const TXT = {
   es: {
+    miNegocio: 'Mi negocio', bonos: 'Bonos y regalos',
     titulo: 'MyTokenPay', sub: 'Tu negocio cobra en ORIGEN',
     comercio: 'MI COMERCIO', personal: 'Comercio personal',
     genesisOk: 'Genesis · verificado', genesisNo: 'Genesis pendiente — complétalo',
@@ -41,6 +42,7 @@ const TXT = {
     de: 'De', refrescado: 'Cobros actualizados',
   },
   en: {
+    miNegocio: 'My business', bonos: 'Rewards',
     titulo: 'MyTokenPay', sub: 'Your business charges in ORIGEN',
     comercio: 'MY BUSINESS', personal: 'Personal storefront',
     genesisOk: 'Genesis · verified', genesisNo: 'Genesis pending — complete it',
@@ -236,6 +238,23 @@ export default function PanelPay({ nav }) {
             <Text style={st.verActTxt}>{t.actividad}</Text>
             <Icon name="chevron-forward" size={15} color={C.txt3} />
           </Pressable>
+          <Pressable
+            onPress={() => { hap(); nav.go('pay-negocio'); }}
+            accessibilityRole="button" accessibilityLabel="Mi negocio"
+            style={st.verAct}>
+            <View style={st.verActIc}><Icon name="storefront" size={17} color={C.gold} /></View>
+            <Text style={st.verActTxt}>{t.miNegocio}</Text>
+            <Icon name="chevron-forward" size={15} color={C.txt3} />
+          </Pressable>
+          <Pressable
+            onPress={() => { hap(); nav.go('pay-bonos'); }}
+            accessibilityRole="button" accessibilityLabel="Bonos"
+            style={st.verAct}>
+            <View style={st.verActIc}><Icon name="gift" size={17} color={C.gold} /></View>
+            <Text style={st.verActTxt}>{t.bonos}</Text>
+            <Icon name="chevron-forward" size={15} color={C.txt3} />
+          </Pressable>
+
         </Entrada>
 
         {/* ── los tres últimos cobros, de un vistazo ────────────────────── */}

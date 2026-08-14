@@ -39,11 +39,15 @@ export function Scanner({ mode = 'address', onResult, onClose }) {
     if (done.current) return;
     // Un QR de Orden Global --un cobro, un chat-- navega por el mapa: el
     // cobro cae en ENVIAR ya preparado, el chat abre el hilo.
+    // Un QR de Orden Global --un cobro, un chat-- se devuelve TAL CUAL a
+    // quien abrió la cámara: el escáner no navega. Antes llamaba aquí a
+    // abrirOG(uri, nav) y `nav` no existe en este ámbito --Scanner recibe
+    // callbacks, no el router--, así que leer un QR og:// reventaba.
     if (/^og:\/\//.test(String(data || ''))) {
       done.current = true;
       hap();
+      onResult && onResult(String(data).trim());
       onClose && onClose();
-      abrirOG(String(data).trim(), nav);
       return;
     }
     const value = mode === 'text' ? String(data || '').trim() : parseAddress(data);
@@ -128,7 +132,12 @@ export default function Scan({ nav, params }) {
   return (
     <Scanner
       mode={params?.mode}
-      onResult={params?.onResult}
+      onResult={(valor) => {
+        // Aquí sí hay router. Un QR de Orden Global navega por el mapa; lo
+        // demás se devuelve a quien pidió el escaneo, como siempre.
+        if (/^og:\/\//.test(String(valor || ''))) { nav.back(); abrirOG(valor, nav); return; }
+        params?.onResult && params.onResult(valor);
+      }}
       onClose={() => nav.back()}
     />
   );

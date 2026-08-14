@@ -41,7 +41,13 @@ import ChatOG from './src/og/ChatOG';
 import CobrarOG from './src/og/CobrarOG';
 import FlotanteOG from './src/og/FlotanteOG';
 import ReporteOG from './src/og/ReporteOG';
+import Nucleo from './src/og/Nucleo';
 import PanelPay from './src/og/pay/PanelPay';
+import CobroPay from './src/og/pay/CobroPay';
+import PagarPay from './src/og/pay/PagarPay';
+import ExplorarPay from './src/og/pay/ExplorarPay';
+import MiNegocio from './src/og/pay/MiNegocio';
+import BonosPay from './src/og/pay/BonosPay';
 import ActividadPay from './src/og/pay/ActividadPay';
 import { abrir as abrirOG } from './src/og/rutas';
 import { cargarNombre } from './src/og/asistente';
@@ -58,14 +64,15 @@ const SCREENS = {
   scan: Scan, contacts: Contacts, about: About,
   onboarding: Onboarding, watchOnly: WatchOnly, sessions: Sessions, help: Help,
   remesas: Remesas, deleteAccount: DeleteAccount,
-  ecosistema: Ecosistema, chat: ChatOG, cobrar: CobrarOG,
+  ecosistema: Nucleo, lista: Ecosistema, chat: ChatOG, cobrar: CobrarOG,
   reporte: ReporteOG, 'pay-panel': PanelPay, 'pay-actividad': ActividadPay,
+  'pay-cobro': CobroPay, 'pay-pagar': PagarPay, 'pay-explorar': ExplorarPay,
+  'pay-negocio': MiNegocio, 'pay-bonos': BonosPay,
 };
 const SECCION_TABS = {
   og: [
     { r: 'ecosistema', label: 'tab.eco', icon: 'planet' },
     { r: 'chat', label: 'tab.chat', icon: 'chatbubbles' },
-    { r: 'cobrar', label: 'tab.cobrar', icon: 'qr-code' },
     { r: 'settings', label: 'tab.settings', icon: 'settings-sharp' },
   ],
   veta: [
@@ -78,8 +85,9 @@ const SECCION_TABS = {
   pay: [
     { r: 'ecosistema', label: 'tab.eco', icon: 'planet' },
     { r: 'pay-panel', label: 'tab.negocio', icon: 'storefront' },
-    { r: 'cobrar', label: 'tab.cobrar', icon: 'qr-code' },
-    { r: 'pay-actividad', label: 'tab.cobros', icon: 'pulse' },
+    { r: 'pay-cobro', label: 'tab.cobrar', icon: 'qr-code' },
+    { r: 'pay-pagar', label: 'tab.pagar', icon: 'scan' },
+    { r: 'pay-explorar', label: 'tab.explorar', icon: 'compass' },
   ],
 };
 const TAB_ROUTES = [...new Set(Object.values(SECCION_TABS).flat().map((t) => t.r))];
@@ -90,6 +98,9 @@ const SECCION_DE = {
   send: 'veta', receive: 'veta', buy: 'veta', deposit: 'veta', fundCard: 'veta',
   cardSettings: 'veta', remesas: 'veta', reporte: 'veta',
   'pay-panel': 'pay', 'pay-actividad': 'pay', mytokenpay: 'pay',
+  'pay-cobro': 'pay', 'pay-pagar': 'pay', 'pay-explorar': 'pay',
+  'pay-negocio': 'pay', 'pay-bonos': 'pay',
+  lista: 'og',
 };
 const FULLSCREEN = ['splash', 'auth']; // sin barra de estado propia / sin tabbar
 

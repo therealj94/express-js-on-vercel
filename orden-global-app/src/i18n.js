@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const S = {
   es: {
     // tabs
-    'tab.eco': 'Orden', 'tab.chat': 'Chat', 'tab.cobrar': 'Cobrar', 'tab.negocio': 'Negocio', 'tab.cobros': 'Cobros', 'tab.home': 'Billetera', 'tab.card': 'Tarjeta', 'tab.swap': 'Swap', 'tab.activity': 'Actividad', 'tab.settings': 'Ajustes',
+    'tab.eco': 'Orden', 'tab.chat': 'Chat', 'tab.cobrar': 'Cobrar', 'tab.negocio': 'Negocio', 'tab.cobros': 'Cobros', 'tab.pagar': 'Pagar', 'tab.explorar': 'Explorar', 'tab.home': 'Billetera', 'tab.card': 'Tarjeta', 'tab.swap': 'Swap', 'tab.activity': 'Actividad', 'tab.settings': 'Ajustes',
     // auth
     'auth.login': 'Iniciar sesión', 'auth.register': 'Crear cuenta', 'auth.name': 'Nombre completo', 'auth.namePh': 'Tu nombre',
     'auth.email': 'Correo electrónico', 'auth.password': 'Contraseña', 'auth.remember': 'Mantener mi sesión iniciada',
@@ -761,7 +761,7 @@ const S = {
     'chart.noMarket': '{s} todavía no cotiza en un mercado público, así que no hay velas que mostrar. Su precio dentro del ecosistema sí es real.',
   },
   en: {
-    'tab.eco': 'Orden', 'tab.chat': 'Chat', 'tab.cobrar': 'Charge', 'tab.negocio': 'Business', 'tab.cobros': 'Payments', 'tab.home': 'Wallet', 'tab.card': 'Card', 'tab.swap': 'Swap', 'tab.activity': 'Activity', 'tab.settings': 'Settings',
+    'tab.eco': 'Orden', 'tab.chat': 'Chat', 'tab.cobrar': 'Charge', 'tab.negocio': 'Business', 'tab.cobros': 'Payments', 'tab.pagar': 'Pay', 'tab.explorar': 'Explore', 'tab.home': 'Wallet', 'tab.card': 'Card', 'tab.swap': 'Swap', 'tab.activity': 'Activity', 'tab.settings': 'Settings',
     'auth.login': 'Sign in', 'auth.register': 'Create account', 'auth.name': 'Full name', 'auth.namePh': 'Your name',
     'auth.email': 'Email', 'auth.password': 'Password', 'auth.remember': 'Keep me signed in',
     'auth.pw.weakEmpty': 'PASSWORD TOO SHORT',

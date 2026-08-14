@@ -5,6 +5,9 @@
 // PREPARADO y se detiene: la persona firma, siempre.
 export const MAPA = {
   'inicio':          { p: 'ecosistema' },
+  'pay/pagar':       { p: 'pay-pagar' },
+  'pay/explorar':    { p: 'pay-explorar' },
+  'pay/negocio':     { p: 'pay-negocio' },
   'wallet/abrir':    { p: 'home' },
   'wallet/enviar':   { p: 'send', firma: true },   // to, amount
   'wallet/recibir':  { p: 'receive' },
@@ -13,7 +16,7 @@ export const MAPA = {
   'wallet/actividad':{ p: 'activity' },
   'wallet/reporte':  { p: 'reporte' },             // el resumen hablado de la wallet
   'pay/abrir':       { p: 'pay-panel' },
-  'pay/cobrar':      { p: 'cobrar' },
+  'pay/cobrar':      { p: 'pay-cobro' },
   'id/abrir':        { p: 'passport' },
   'chat/abrir':      { p: 'chat', gid: true },     // con=correo
   'asistente/abrir': { p: 'ecosistema' },
