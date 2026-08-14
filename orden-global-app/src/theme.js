@@ -1,14 +1,18 @@
-// La paleta de la casa — la misma de veta-wallet-app/src/theme.js, porque
-// Orden Global es el contenedor de esas apps y no puede sentirse de otra
-// familia. Sobre negro profundo (la "pantalla negra" pedida), con el oro de
-// la marca como único acento.
+// Paleta Orden Global. Los paneles son translúcidos a propósito: la app se
+// dibuja sobre la fotografía de marca (ver AppBackground) y esa transparencia
+// es la que le da la profundidad de vidrio sin restar legibilidad.
 export const C = {
-  negro: '#010D0E',
   bg: '#021B1C',
+  bg2: 'rgba(6,42,43,0.88)',
+  // Vidrio: los paneles dejan pasar la fotografía de marca, igual que la
+  // tarjeta del login. Los contenedores grandes además llevan desenfoque.
+  // Al dejar la foto más visible (velo bajo en AppBackground), las tarjetas
+  // suben de cuerpo para que el texto encima siga leyéndose sin esfuerzo.
   panel: 'rgba(6,40,42,0.82)',
   panel2: 'rgba(12,54,56,0.86)',
+  panel3: 'rgba(22,78,80,0.74)',
   line: 'rgba(201,169,97,0.34)',
-  line2: 'rgba(201,169,97,0.18)',
+  line2: 'rgba(201,169,97,0.26)',
   input: 'rgba(8,44,46,0.88)',
   inputBr: '#2E7477',
   gold: '#C9A961',
@@ -23,16 +27,17 @@ export const C = {
   darkText: '#3A2C08',
 };
 
+// gradient stop arrays
 export const G = {
   gold: ['#F8EFCF', '#DFC078', '#C9A961', '#96793F'],
-  pantalla: ['#04262A', '#021B1C', '#010D0E'],
+  green: ['rgba(13,88,79,0.86)', 'rgba(9,52,55,0.84)', 'rgba(4,25,27,0.88)'],
+  greenCard: ['#0E6155', '#0A463F', '#063430'],
+  // Tarjeta Visa: negro con calidez, para que el dorado del monograma y los
+  // relieves no queden grises encima. Un negro puro apaga el oro.
+  blackCard: ['#221D15', '#12100C', '#050505'],
 };
 
-// Los logos canónicos de cada app (sus propios assets) y el fondo sobre el
-// que cada ficha los enseña como fueron diseñados.
-export const MARCAS = {
-  veta: { fondo: '#F2EFE9', logo: require('../assets/veta-wallet.png') },
-  pay: { fondo: '#0B1220', logo: require('../assets/mytokenpay.png') },
-  gid: { fondo: '#14304A', logo: require('../assets/genesis-id.png') },
-  og: { fondo: '#021B1C', logo: require('../assets/og.png') },
+export const F = {
+  // font families fall back to system; expo uses system by default
+  h: undefined,
 };

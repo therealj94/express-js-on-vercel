@@ -4,7 +4,6 @@
 // la mejor voz del teléfono; elegimos es-MX / en-US y bajamos un poco el
 // ritmo, que es lo que más humaniza una voz de sistema.
 import * as Speech from 'expo-speech';
-import { idiomaActual } from './i18n';
 
 let turno = 0; // habla nueva mata a la anterior, sin reportarlo como error
 
@@ -18,9 +17,8 @@ function trozos(texto) {
 
 const pausaDe = (trozo) => (/[.!?]$/.test(trozo) ? 300 : /[;:]$/.test(trozo) ? 190 : 110);
 
-export function decir(texto) {
+export function decir(texto, idi = 'es') {
   const mio = ++turno;
-  const idi = idiomaActual();
   const lang = idi === 'en' ? 'en-US' : 'es-MX';
   Speech.stop();
   const lista = trozos(texto);

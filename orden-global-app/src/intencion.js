@@ -49,7 +49,7 @@ export function traducir(frase, contactos) {
     const monto = sacarMonto(s);
     if (!quien) return { falla: 'sinContacto' };
     if (!monto) return { falla: 'sinMonto' };
-    return { ruta: 'wallet/enviar', params: { to: quien.addr || quien.correo, nombre: quien.nombre, monto } };
+    return { ruta: 'wallet/enviar', params: { to: quien.addr || quien.correo, nombre: quien.nombre, amount: monto } };
   }
 
   // ── cobrar ─────────────────────────────────────────────────────────
@@ -69,10 +69,12 @@ export function traducir(frase, contactos) {
     [/veta ?wallet|billetera|cartera|wallet|mi dinero|my money|saldo|balance/, 'wallet/abrir'],
     [/my ?token ?pay|pasarela|punto de venta|negocio|comercio|merchant/, 'pay/abrir'],
     [/genesis|identidad|identity|verificar|kyc|pasaporte|passport/, 'id/abrir'],
-    [/explorador|explorer|ordenscan|scan\b|bloque|block|transaccion|transaction|hash/, 'scan/abrir'],
-    [/cerebro|brain|neuronas?|neurons?|agentes|la red\b/, 'cerebro/abrir'],
+    [/recib(e|ir)|mi direccion|receive|mi qr/, 'wallet/recibir'],
+    [/tarjeta|card|visa/, 'wallet/tarjeta'],
+    
     [/\bchat\b|mensajes|conversacion|messages/, 'chat/abrir'],
     [/asistente|assistant|ayuda|help|que puedes|what can you/, 'asistente/abrir'],
+    [/actividad|movimientos|historial|activity/, 'wallet/actividad'],
     [/inicio|principal|home|volver|vuelve|back/, 'inicio'],
   ];
   const abre = /\b(abre(me)?|abrir|open|quiero (ver|ir|entrar|chatear)|muestra(me)?|show( me)?|ensename|llevame|ve a|go to|enseñame|vamos a|entra(r)? a|mis\b|my\b)\b/.test(s);
@@ -87,9 +89,9 @@ export function traducir(frase, contactos) {
 // de node comprueba exactamente eso.
 export const EJEMPLOS = {
   es: ['quiero ver veta wallet', 'envía 15 a Juan', 'abre mytokenpay',
-       'muéstrame el explorador', 'abre el cerebro', 'quiero chatear con María',
+       'muéstrame mi tarjeta', 'quiero recibir', 'quiero chatear con María',
        'cóbrale 200', 'abre genesis id'],
   en: ['i want to see veta wallet', 'send 15 to Juan', 'open mytokenpay',
-       'show me the explorer', 'open the brain', 'chat with María',
+       'show me my card', 'i want to receive', 'chat with María',
        'charge 200', 'open genesis id'],
 };
