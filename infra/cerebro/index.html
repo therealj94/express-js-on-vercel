@@ -194,6 +194,21 @@ select{border:1px solid var(--edge);border-radius:8px;background:rgba(4,12,22,.9
 #puerta .p1{font-size:11px;color:var(--mut);letter-spacing:.3em;margin-bottom:34px;
   text-transform:uppercase}
 #puerta .botones{display:flex;gap:14px;justify-content:center}
+#nombreVisita{display:block;width:100%;max-width:340px;margin:0 auto 22px;
+  background:rgba(4,12,22,.72);border:1px solid var(--edge);border-radius:12px;
+  color:var(--ink);font:15px var(--disp);letter-spacing:.04em;padding:14px 16px;
+  text-align:center;outline:none;transition:border-color .2s,box-shadow .2s}
+#nombreVisita::placeholder{color:var(--faint);font-size:12.5px;letter-spacing:.1em}
+#nombreVisita:focus{border-color:rgba(86,217,255,.5);
+  box-shadow:0 0 28px rgba(86,217,255,.14)}
+.micPide{display:flex;align-items:center;gap:9px;justify-content:center;
+  margin-top:22px;font-size:10.5px;color:var(--mut);line-height:1.6;
+  max-width:400px;margin-left:auto;margin-right:auto;cursor:pointer}
+.micPide input{width:15px;height:15px;flex:none;accent-color:var(--arc)}
+@media (max-width:640px){
+  #nombreVisita{font-size:16px;padding:13px 14px}   /* 16px o iOS hace zoom */
+  .micPide{font-size:9.5px}
+}
 .tecla.grande{padding:18px 38px;font-size:12px;letter-spacing:.26em;border-radius:14px;
   border-color:rgba(86,217,255,.35);color:var(--arc)}
 .tecla.grande:hover{background:rgba(86,217,255,.09);box-shadow:0 0 40px rgba(86,217,255,.18)}
@@ -219,6 +234,114 @@ select{border:1px solid var(--edge);border-radius:8px;background:rgba(4,12,22,.9
   text-shadow:0 0 60px rgba(255,196,107,.5)}
 #cifras .c.oro .e{color:#c79a5a}
 #btnPresenta.sigue{border-color:rgba(255,196,107,.5);color:var(--gold)}
+
+/* ── LOS PANELES: el instrumental alrededor del cerebro ─────────────────
+   La referencia que trajo José es un puesto de mando: el cerebro en el
+   centro y, alrededor, paneles con lo que cada zona está haciendo --su
+   actividad, su pulso, su estado--. Eso es exactamente lo que le faltaba
+   a esto: se veía un salvapantallas bonito, no un sistema vigilado.
+
+   Lo que va dentro es real: el estado que devuelven los sistemas y su
+   métrica del momento. La línea de actividad es historia de verdad --se
+   apunta cada lectura--, no ruido decorativo. Si alguien mira de cerca,
+   tiene que encontrar datos, no adornos. */
+.panel{position:fixed;z-index:8;width:224px;pointer-events:none;
+  opacity:0;transform:translateY(10px);transition:opacity .6s,transform .6s}
+.panel.viva{opacity:1;transform:none}
+#panIzq{left:max(18px,env(safe-area-inset-left));top:104px}
+#panDer{right:max(18px,env(safe-area-inset-right));top:104px}
+body.narrando #panDer{top:158px}          /* deja sitio a la ficha tecnica */
+.pz{position:relative;margin-bottom:12px;padding:11px 13px 11px;
+  /* Opaco a proposito. Traslucido quedaba «de diseno» y era ilegible:
+     el cerebro se veia a traves y las cifras se perdian. Un instrumento
+     se lee de un vistazo o no sirve de nada. */
+  background:linear-gradient(155deg,rgba(17,44,70,.97),rgba(9,25,44,.96));
+  border:1px solid rgba(86,217,255,.42);border-radius:3px;
+  /* franja del color del sistema: en la referencia cada panel se
+     reconoce por su color antes de leer el titulo */
+  border-left:2px solid currentColor;
+  backdrop-filter:blur(16px);
+  box-shadow:0 6px 32px rgba(0,0,0,.6),inset 0 1px 0 rgba(86,217,255,.12)}
+.pz::before,.pz::after{content:'';position:absolute;width:11px;height:11px;
+  border:1px solid currentColor;opacity:.9}
+.pz::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+.pz::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+.pz .t{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
+.pz .t b{font:600 11.5px var(--disp);letter-spacing:.14em;text-transform:uppercase;
+  text-shadow:0 0 18px currentColor}
+.pz .t i{font-style:normal;font:600 7px var(--disp);letter-spacing:.1em;
+  color:currentColor;margin-left:auto;text-transform:uppercase;
+  border:1px solid currentColor;border-radius:999px;padding:2px 7px;
+  background:rgba(0,0,0,.25);
+  white-space:nowrap;max-width:96px;overflow:hidden;text-overflow:ellipsis;flex:none}
+.pz .s{font:8.5px var(--disp);letter-spacing:.09em;color:#b9d2e2;
+  margin-bottom:8px;text-transform:uppercase;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.pz .m{display:flex;justify-content:space-between;gap:10px;
+  font:9.5px var(--disp);color:#b3c9da;padding:2.5px 0;align-items:baseline}
+.pz .m u{text-decoration:none;color:var(--ink);font-family:var(--mono);
+  font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  max-width:118px;text-align:right}
+.pz .h{font:7px var(--disp);letter-spacing:.2em;color:#6d8ba1;
+  margin:9px 0 3px;text-transform:uppercase}
+.pz .lienzo{position:relative;height:28px;
+  background:rgba(2,8,16,.5);border:1px solid rgba(86,217,255,.1);
+  border-radius:2px}
+.pz canvas{position:absolute;inset:0;display:block;width:100%;height:28px}
+.pz.mal{border-color:rgba(255,82,70,.45)}
+/* el que esta hablando se enciende: la voz y la pantalla, lo mismo */
+.pz.habla{border-color:currentColor;
+  box-shadow:0 0 34px rgba(86,217,255,.26),inset 0 0 22px rgba(86,217,255,.05)}
+
+/* ── la ficha de especificaciones: el panel holográfico ─────────────────
+   Un dato dicho se olvida; un dato dicho MIENTRAS se ve, no. Aquí van las
+   cosas que un técnico quiere leer con calma --consenso, máquina virtual,
+   identificadores de cadena-- mientras la voz cuenta lo que significan. */
+#ficha{position:fixed;z-index:12;right:max(20px,env(safe-area-inset-right));
+  top:50%;transform:translateY(-50%) translateX(26px);width:290px;
+  opacity:0;pointer-events:none;transition:opacity .55s,transform .55s}
+#ficha.abre{opacity:1;transform:translateY(-50%);pointer-events:auto}
+/* La ficha y el panel derecho viven en el mismo sitio: cuando sale la
+   ficha, el panel se aparta. Dos cosas encima una de otra no son dos
+   cosas, son un borron. */
+body.conFicha #panDer{opacity:0}
+#ficha .marco{position:relative;background:linear-gradient(160deg,
+    rgba(8,22,38,.92),rgba(4,12,24,.88));
+  border:1px solid rgba(86,217,255,.3);border-radius:4px;
+  padding:15px 16px 14px;backdrop-filter:blur(18px);
+  box-shadow:0 0 60px rgba(86,217,255,.14),inset 0 1px 0 rgba(86,217,255,.14)}
+/* las esquinas cortadas del panel de la referencia */
+#ficha .marco::before,#ficha .marco::after{content:'';position:absolute;
+  width:13px;height:13px;border:1px solid var(--arc);opacity:.85}
+#ficha .marco::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+#ficha .marco::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+#ficha .cab{display:flex;align-items:center;gap:9px;padding-bottom:10px;
+  margin-bottom:10px;border-bottom:1px solid rgba(86,217,255,.16)}
+#ficha .pip{width:16px;height:16px;border-radius:50%;flex:none;display:grid;
+  place-items:center;border:1px solid var(--arc);font-size:8px;color:var(--arc)}
+#ficha h4{font:600 11px var(--disp);letter-spacing:.22em;color:var(--arc);
+  text-transform:uppercase}
+#ficha .r{display:flex;justify-content:space-between;gap:12px;padding:4.5px 0;
+  font-size:11px;align-items:baseline}
+#ficha .r b{font-weight:400;color:var(--mut);white-space:nowrap}
+#ficha .r span{font-family:var(--mono);font-size:10.5px;color:var(--ink);
+  text-align:right}
+#ficha .r.nueva{animation:entraFila .5s ease both}
+@keyframes entraFila{from{opacity:0;transform:translateX(10px)}}
+
+/* ── los enlaces: que pueda abrirlo él mismo mientras hablo ───────────── */
+#enlaces{position:fixed;z-index:12;left:50%;transform:translateX(-50%);
+  bottom:calc(max(16px,env(safe-area-inset-bottom)) + 218px);
+  display:none;gap:9px;flex-wrap:wrap;justify-content:center;max-width:92vw}
+#enlaces.abre{display:flex}
+#enlaces a{display:flex;align-items:center;gap:7px;text-decoration:none;
+  background:var(--glass2);border:1px solid rgba(86,217,255,.3);
+  border-radius:999px;padding:8px 15px;color:var(--arc);
+  font:600 10px var(--disp);letter-spacing:.16em;backdrop-filter:blur(14px);
+  animation:entraFila .45s ease both;transition:all .2s}
+#enlaces a:hover{background:rgba(86,217,255,.12);
+  box-shadow:0 0 26px rgba(86,217,255,.24)}
+#enlaces a::after{content:'↗';font-size:10px;opacity:.7}
 
 /* ── la transacción en vivo: el momento que cierra ──────────────────────── */
 #vivo{position:fixed;z-index:22;inset:0;display:none;place-items:center;
@@ -268,6 +391,10 @@ body.invitado #tarjetas{left:50%;transform:translateX(-50%);bottom:150px;
   flex-direction:row;width:auto;max-width:92vw}
 body.invitado .tarj{width:250px}
 
+@media (max-width:1240px){
+  /* con menos de 1240 px los paneles y el muelle se pisan: manda el muelle */
+  #panDer{display:none}
+}
 @media (max-width:1000px){
   #cifras{gap:20px}#cifras .n{font-size:38px}
   #dock{top:auto;bottom:200px;transform:none;right:10px;left:auto;width:230px;max-height:30vh}
@@ -328,6 +455,21 @@ body.invitado .tarj{width:250px}
   #ajustes{left:12px;right:12px;width:auto;bottom:auto;top:50%;
     transform:translateY(-50%);max-height:78vh;overflow-y:auto}
 
+  /* Los paneles de alrededor son de pantalla grande. En un teléfono
+     rodearían al cerebro hasta taparlo: el cerebro es el héroe. */
+  .panel{display:none}
+
+  /* la ficha no cabe en un lateral de 393 px: se pone arriba, ancha */
+  #ficha{right:8px;left:8px;width:auto;top:58px;transform:translateY(-14px)}
+  #ficha.abre{transform:none}
+  #ficha .marco{padding:11px 13px 10px}
+  #ficha h4{font-size:9.5px;letter-spacing:.18em}
+  #ficha .r{font-size:10px;padding:3px 0}
+  #ficha .r span{font-size:9.5px}
+  body.narrando #dock{display:none}
+  #enlaces{bottom:calc(max(10px,env(safe-area-inset-bottom)) + 176px);gap:7px}
+  #enlaces a{padding:7px 12px;font-size:9px;letter-spacing:.1em}
+
   #vivo .caja{padding:18px}
   #vivo .estado{font-size:21px;margin-bottom:18px}
   #vivo .rej{gap:18px;margin:16px 0 6px}
@@ -359,8 +501,15 @@ body.invitado .tarj{width:250px}
   <h3 id="tAg">THE TEAM</h3><div id="agentes"></div>
   <h3 id="tSis">SYSTEMS</h3><div id="sistemas"></div>
 </aside>
+<aside class="panel" id="panIzq"></aside>
+<aside class="panel" id="panDer"></aside>
 <div id="tarjetas"></div>
 <div id="cifras"></div>
+<div id="ficha"><div class="marco">
+  <div class="cab"><span class="pip">◈</span><h4 id="fichaTit"></h4></div>
+  <div id="fichaCuerpo"></div>
+</div></div>
+<div id="enlaces"></div>
 
 <div id="vivo"><div class="caja">
   <div class="et" id="vivoEt">TRANSACCIÓN EN VIVO · RED DE PRUEBAS</div>
@@ -397,10 +546,15 @@ body.invitado .tarj{width:250px}
   <div class="caja">
     <h2>J.A.R.V.I.S</h2>
     <p class="p1">Orden Global · Control Core</p>
+    <input id="nombreVisita" maxlength="24" autocomplete="given-name"
+           placeholder="¿Cómo te llamas?  ·  Your name">
     <div class="botones">
       <button class="tecla grande" data-idi="es">ESPAÑOL</button>
       <button class="tecla grande" data-idi="en">ENGLISH</button>
     </div>
+    <label class="micPide"><input type="checkbox" id="pideMic" checked>
+      <span id="micTxt">Que pueda oírte para preguntar durante el recorrido ·
+      Let me hear you, so you can ask along the way</span></label>
     <p class="p2">Se mantiene en todo: la voz, las respuestas y la pantalla.<br>
        It sticks everywhere: voice, answers and screen.</p>
   </div>
@@ -454,7 +608,23 @@ const IDIOMA_ELEGIDO = !!localStorage.getItem('idiomaCerebro');
 let QUIEN={usuario:'',nombre:''};
 const JUNTA={jose:{es:'José',en:'sir'},leonardo:{es:'Leonardo',en:'Leonardo'},
              melany:{es:'Melany',en:'Melany'},medardo:{es:'Medardo',en:'Medardo'}};
-const NOM=()=>{const q=JUNTA[QUIEN.usuario];return q?q[IDI]:(IDI==='en'?'sir':'José');};
+/* ═══ EL NOMBRE DEL INVITADO ══════════════════════════════════════════════
+   A un invitado el servidor no le dice quién es --no tiene cuenta--, así que
+   se lo pregunta la puerta. Y se usa TODO el rato: «Bienvenido, Carlos» y
+   «Carlos, hasta aquí, ¿alguna pregunta?» no es lo mismo que un texto
+   recitado. Es la diferencia entre una grabación y una conversación, y
+   cuesta un campo de texto.
+
+   Si no lo escribe, se le llama Invitado. Sin cortarle el paso: un
+   formulario obligatorio en la puerta de una demostración pierde visitas. */
+let VISITA=localStorage.getItem('nombreVisita')||'';
+const NOM=()=>{
+  if(INVITADO)return VISITA||(IDI==='en'?'guest':'invitado');
+  const q=JUNTA[QUIEN.usuario];return q?q[IDI]:(IDI==='en'?'sir':'José');};
+/* Vocativo: «, Carlos» o nada. Repetir el nombre en cada frase cansa, así
+   que se usa donde suma --el saludo, los puntos de control, el cierre-- y
+   no en medio de una explicación. */
+const VOC=()=>{const n=NOM();return n?', '+n:'';};
 async function quienEs(){if(INVITADO){$('#quienNom').textContent='ORDEN GLOBAL';$('#disco').textContent='◈';return;} try{
   const j=await(await fetch('/ordenes/quien',{cache:'no-store'})).json();
   QUIEN.usuario=(j.usuario||'').toLowerCase();
@@ -739,6 +909,137 @@ function lluviaDeOrigen(segundos){
     setTimeout(soltar,150);
   })();
 }
+/* ═══ LOS PANELES DE ALREDEDOR ════════════════════════════════════════════
+   Seis zonas del ecosistema, tres a cada lado, con lo que están haciendo
+   ahora. La línea es historia REAL: cada lectura se apunta y se dibuja. Un
+   gráfico de ruido bonito habría sido más fácil y habría sido mentira, que
+   es justo lo que no puede haber en una pantalla que mira un inversionista.
+
+   Se muestran seis y no trece a propósito: trece cajitas alrededor del
+   cerebro son un tablero de aeropuerto, no un puesto de mando. */
+const ZONAS=[
+ {id:'n5534',  lado:'i', es:'RED DE PRUEBAS',   en:'TEST NETWORK',  sub:{es:'Cadena viva · 5534',en:'Live chain · 5534'}},
+ {id:'g5550',  lado:'i', es:'RED PRINCIPAL',    en:'MAIN NETWORK',  sub:{es:'Génesis juzgado · 5550',en:'Genesis judged · 5550'}},
+ {id:'wallet', lado:'i', es:'VETA WALLET',      en:'VETA WALLET',   sub:{es:'Billetera · 435 usuarios',en:'Wallet · 435 users'}},
+ {id:'gid',    lado:'d', es:'GENESIS ID',       en:'GENESIS ID',    sub:{es:'KYC · KYB · AML · SSO',en:'KYC · KYB · AML · SSO'}},
+ {id:'tesoro', lado:'d', es:'TESORO',           en:'TREASURY',      sub:{es:'ORIGEN · respaldo oro',en:'ORIGEN · gold reference'}},
+ {id:'nodos',  lado:'d', es:'INFRAESTRUCTURA',  en:'INFRASTRUCTURE',sub:{es:'10 máquinas · 2 regiones',en:'10 machines · 2 regions'}},
+];
+const HIST={};                 // historia de actividad, por zona
+function pintarPaneles(){
+  if(!$('#panIzq'))return;
+  for(const lado of ['i','d']){
+    const c=$(lado==='i'?'#panIzq':'#panDer');
+    const mias=ZONAS.filter(z=>z.lado===lado);
+    if(c.childElementCount!==mias.length){
+      c.innerHTML='';
+      mias.forEach(()=>{
+        const d=document.createElement('div');
+        d.className='pz';
+        d.innerHTML='<div class="t"><b></b><i></i></div><div class="s"></div>'+
+          '<div class="m m1"><span></span><u></u></div>'+
+          '<div class="m m2"><span></span><u></u></div>'+
+          '<div class="h"></div><div class="lienzo"><canvas></canvas></div>';
+        c.appendChild(d);
+      });
+      c.classList.add('viva');
+    }
+    mias.forEach((z,k)=>{
+      const d=c.children[k], sx=S(z.id), e=E[z.id]||{};
+      const col=(sx&&sx.col)||'#56d9ff';
+      const tinte=e.mal?'#ff5246':col;
+      d.style.color=tinte;
+      d.classList.toggle('mal',!!e.mal);
+      d.classList.toggle('habla',FOCO===z.id);
+      const b=d.querySelector('b');
+      b.textContent=IDI==='en'?z.en:z.es; b.style.color=tinte;
+      d.querySelector('i').textContent=(e.est||'—');
+      d.querySelector('.s').textContent=z.sub[IDI]||z.sub.es;
+      /* Las dos filas son DATOS DE VERDAD: lo que ese sistema esta midiendo
+         ahora. Un porcentaje inventado habria quedado mas bonito y habria
+         sido justo lo que no puede haber en la pantalla que mira alguien
+         que va a poner dinero. */
+      const vivo=(e.vivo||[]).slice(0,2);
+      const filas=vivo.length?vivo:[[IDI==='en'?'state':'estado', e.met||'—']];
+      [0,1].forEach(n=>{
+        const f=d.querySelector('.m'+(n+1));
+        if(!filas[n]){f.style.display='none';return;}
+        f.style.display='flex';
+        f.querySelector('span').textContent=String(filas[n][0]).slice(0,16);
+        f.querySelector('u').textContent=String(filas[n][1]).slice(0,22);
+      });
+      d.querySelector('.h').textContent=IDI==='en'?'ACTIVITY HISTORY':'HISTORIAL DE ACTIVIDAD';
+      /* El pulso: el fuego del racimo --sube cuando ese sistema se nombra o
+         se mueve-- y un suelo que respira con el reactor. Se APUNTA cada
+         lectura: la linea es historia, no ruido dibujado. */
+      /* El suelo se levanta al 18 % para que la linea en reposo se VEA.
+         Pegada al borde de abajo no se distingue de una raya muerta, y
+         un instrumento que parece apagado da la impresion contraria a la
+         que hay: el sistema esta vivo. El pico sigue siendo el pico. */
+      const act=Math.max(0,Math.min(1,(e.fuego||0)));
+      const h=HIST[z.id]||(HIST[z.id]=[]);
+      h.push(Math.round((0.18+0.82*act)*100)); if(h.length>46)h.shift();
+      dibujaLinea(d.querySelector('canvas'),h,tinte);
+    });
+  }
+}
+function dibujaLinea(cv,datos,col){
+  const dpr=Math.min(devicePixelRatio||1,2);
+  const w=Math.round(cv.getBoundingClientRect().width)||198, hh=28;
+  if(cv.width!==Math.round(w*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(hh*dpr);}
+  const g=cv.getContext('2d');
+  g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,hh);
+  /* rejilla tenue, como en un instrumento */
+  g.strokeStyle='rgba(109,139,161,.13)'; g.lineWidth=1;
+  for(let y=1;y<3;y++){g.beginPath();g.moveTo(0,y*hh/3);g.lineTo(w,y*hh/3);g.stroke();}
+  if(datos.length<2)return;
+  const paso=w/(datos.length-1);
+  const y=v=>hh-2.5-(v/100)*(hh-6);
+  g.beginPath();
+  datos.forEach((v,i)=>{i?g.lineTo(i*paso,y(v)):g.moveTo(i*paso,y(v));});
+  g.strokeStyle=col; g.lineWidth=1.4; g.stroke();
+  g.lineTo(w,hh); g.lineTo(0,hh); g.closePath();
+  g.globalAlpha=.16; g.fillStyle=col; g.fill(); g.globalAlpha=1;
+  /* el punto de ahora, como en la referencia */
+  const ul=datos[datos.length-1];
+  g.beginPath(); g.arc(w-1.5,y(ul),2,0,6.283); g.fillStyle=col; g.fill();
+}
+setInterval(pintarPaneles,700);
+
+/* La ficha técnica. Las filas no salen de golpe: entran una detrás de otra,
+   al ritmo de la voz. Que se lean, no que se vean. */
+let relojFicha=[];
+function fichaTecnica(titulo,icono,pares){
+  relojFicha.forEach(clearTimeout); relojFicha=[];
+  $('#fichaTit').textContent=titulo;
+  const c=$('#fichaCuerpo'); c.innerHTML='';
+  $('#ficha').classList.add('abre'); document.body.classList.add('conFicha');
+  pares.forEach(([k,v],i)=>{
+    relojFicha.push(setTimeout(()=>{
+      const d=document.createElement('div'); d.className='r nueva';
+      d.innerHTML='<b></b><span></span>';
+      d.querySelector('b').textContent=k;
+      d.querySelector('span').textContent=v;
+      c.appendChild(d);
+    }, 180+i*230));
+  });
+}
+const cerrarFicha=()=>{relojFicha.forEach(clearTimeout);relojFicha=[];
+                       $('#ficha').classList.remove('abre');
+                       document.body.classList.remove('conFicha');};
+/* Los enlaces. Se abren en otra pestaña a propósito: que mire ordenscan sin
+   perder la presentación es justo lo que hace que se lo crea. */
+function mostrarEnlaces(lista){
+  const c=$('#enlaces'); c.innerHTML='';
+  (lista||[]).forEach(([nom,url],i)=>{
+    const a=document.createElement('a');
+    a.href=url; a.target='_blank'; a.rel='noopener';
+    a.textContent=nom; a.style.animationDelay=(i*90)+'ms';
+    c.appendChild(a);
+  });
+  c.classList.toggle('abre',!!(lista&&lista.length));
+}
+const cerrarEnlaces=()=>$('#enlaces').classList.remove('abre');
 function cifraGrande(txt,sub){
   const c=$('#cifras'); c.innerHTML=''; c.classList.add('abre');
   const d=document.createElement('div'); d.className='c oro';
@@ -1432,7 +1733,10 @@ function decir(lineas,fin){
   guardarSitio();
   alTerminar=fin||null;
   const arrancar=()=>{
-    cola=lineas.filter(l=>l&&l.x);
+    /* Los puntos de control NO tienen texto --son una parada, no una
+       frase-- y el filtro de siempre se los comía enteros: el recorrido
+       pasaba de largo sin preguntar nunca nada. */
+    cola=lineas.filter(l=>l&&(l.x||l.control));
     if(!cola.length)return;
     hablando=true; $('#hablar').classList.add('on'); $('#lblHablar').textContent=t('stop');
     siguiente();
@@ -1454,6 +1758,14 @@ let TURNO=0;
 function siguiente(){
   if(!cola.length){lineaActual=null;parar();return;}
   const l=cola.shift(); lineaActual=l;
+  /* Un punto de control no es una frase: es una parada. Lo que queda se
+     guarda ANTES de preguntar, para que volver sea instantáneo. */
+  if(l.control){
+    lineaActual=null;
+    if(cola.length){colaGuardada=cola.slice();finGuardado=alTerminar;cola=[];}
+    puntoDeControl();
+    return;
+  }
   marcar(l.q);
   $('#sub').innerHTML='<span class="quien">'+(l.q||'JARVIS')+'</span>'+l.x;
   if(l.foco){disparar(l.foco,true);tarjetaSis(l.foco);
@@ -1462,6 +1774,12 @@ function siguiente(){
   if(l.cifras)contadores(l.cifras); else if(l.cifras===null)ocultarContadores();
   if(l.cifra)cifraGrande(l.cifra[0],l.cifra[1]);
   if(l.oro)lluviaDeOrigen(l.oro);
+  /* Ficha y enlaces viven mientras dura su capítulo. Se cierran ANTES de
+     abrir los nuevos, o al saltar de capítulo se quedarían dos pantallas
+     contradiciéndose. */
+  if(l.cap){cerrarFicha();cerrarEnlaces();}
+  if(l.ficha)fichaTecnica(l.ficha[0],l.ficha[1],l.ficha[2]);
+  if(l.enlaces)mostrarEnlaces(l.enlaces);
   pintarRecorrido();
 
   const texto=limpiar(l.x);
@@ -1592,6 +1910,11 @@ function marcar(q){
    depender de por dónde te cortaron. */
 function guardarSitio(f){
   if(!PRESENTANDO)return;
+  /* Contestando una pregunta de un punto de control NO se guarda nada: el
+     sitio bueno ya está guardado --el del recorrido-- y guardar ahora lo
+     pisaría con las frases de la respuesta. Volverías al medio de la
+     contestación en vez de a donde ibas. */
+  if(volverTrasResponder)return;
   /* La frase a medias vuelve a la cola: continuar en mitad de una idea no es
      continuar, es empezar la siguiente. */
   const resto=(lineaActual?[lineaActual]:[]).concat(cola);
@@ -1602,7 +1925,14 @@ function parar(){
   TURNO++;                      // los eventos del turno en vuelo dejan de contar
   guardarSitio(f);
   hablando=false;cola=[];lineaActual=null;callarAudio();speechSynthesis.cancel();
-  if(f&&!hayPendiente())setTimeout(f,60);
+  /* `trasResponder` es la excepción: precisamente corre CUANDO hay algo
+     pendiente, porque su trabajo es volver a ello. */
+  /* Normalmente el `fin` NO corre si queda algo pendiente --el recorrido se
+     paro a medias y su cierre no toca todavia--. Pero hay callbacks cuyo
+     trabajo es precisamente ese: retomar, o preguntar antes de retomar.
+     Se marcan con `pesePendiente` en vez de listarlos aqui por nombre:
+     listarlos por nombre ya me costo dos fallos identicos. */
+  if(f&&(!hayPendiente()||f.pesePendiente))setTimeout(f,60);
   $('#hablar').classList.remove('on');$('#lblHablar').textContent=t('brief');
   $('#sub').textContent='';marcar(null);
   pintarRecorrido();
@@ -2374,6 +2704,17 @@ async function atender(txt){
   const s=sinTildes(txt);
   if(!s.trim())return;
 
+  /* En un punto de control, «sigue» y «no» son del recorrido y no de otra
+     cosa. Cualquier otra frase es la pregunta, y al contestarla se vuelve
+     solo al sitio: por eso se marca aquí. */
+  if(esperandoPregunta){
+    clearTimeout(relojControl);
+    if(/^\s*(sigue|siga|continua|adelante|no|nada|ninguna|todo bien|vamos|next|carry on|continue|go on|nope|nothing|all good)\b/.test(s))
+      return void seguirRecorrido();
+    esperandoPregunta=false; volverTrasResponder=true;
+    $('#siono').classList.remove('abre'); restaurarSiNo();
+  }
+
   /* Un «sí» suelto solo significa algo si hay una pregunta en el aire. */
   if(ofrecido){
     if(/^\s*(si|s|yes|yeah|yep|ok|okay|dale|claro|por favor|please|adelante|hazlo|cuentame|tell me|go ahead)\b/i.test(s))
@@ -2606,7 +2947,10 @@ function responderCon(lineas){
   const L=(lineas||[]).filter(Boolean);
   if(!L.length)return;
   ultimasLineas=L.slice();
-  decir(L);
+  /* Si la pregunta salió de un punto de control, al acabar la respuesta se
+     vuelve solo. Preguntar no puede costar perder el sitio: si cuesta,
+     nadie pregunta, y entonces esto vuelve a ser una grabación. */
+  decir(L, volverTrasResponder?trasResponder:null);
 }
 async function ejecutar(accion){
   if(accion==='refrescar'){
@@ -2666,68 +3010,145 @@ const ocultarContadores=()=>$('#cifras').classList.remove('abre');
 function guionPresentacion(){
   const es=IDI!=='en', P=[];
   const F=(x,o={})=>P.push(Object.assign({q:'JARVIS',x},o));
+  /* La parada: aquí el recorrido pregunta si quieres preguntar. Van al final
+     de cada capítulo, donde una persona levantaría la mano de todos modos. */
+  const PARA=()=>P.push({control:true});
   const b5534=V.b5534?nf(V.b5534):'—';
+  const n=NOM();
 
   if(es){
-    F('Bienvenido a Orden Global.',{cap:'QUÉ ES',p:600});
+    /* ── 1 · quién eres y qué estás viendo ─────────────────────────────── */
+    F('Bienvenido a Orden Global'+VOC()+'.',{cap:'QUÉ ES',p:600});
+    F('Soy JARVIS. Puedes interrumpirme cuando quieras: si preguntas, te contesto, te lo enseño, y volvemos justo a donde íbamos.',{p:680});
     F('Lo que ves es el ecosistema entero, vivo. Nada de esto es una maqueta: cada número que voy a decir sale de un sistema que está funcionando ahora mismo.',{p:700});
     F('Empecemos por lo que ya existe.',{p:400,cifras:[[4180872,'bloques de historia'],[2,'años en producción'],[435,'usuarios reales']]});
     F('Cuatro millones ciento ochenta mil bloques. Dos años y un mes de cadena en producción, sin parar, desde julio de dos mil veinticuatro.',{p:650});
-    F('Y cuatrocientos treinta y cinco personas con dinero de verdad dentro.',{p:700});
+    F('Y cuatrocientas treinta y cinco personas con dinero de verdad dentro.',{p:700});
+    PARA();
 
-    F('Esta es la cadena de pruebas, viva.',{cap:'LA CADENA',foco:'n5534',p:500,cifras:null});
-    F('Bloque '+b5534+', un bloque cada diez segundos, con el precio del gas fijado en noventa y tres gigawei. Cuatro validadores propios, con consenso Besu.',{foco:'n5534',p:650});
-    F('Y aquí está la cadena que la reemplaza.',{foco:'g5550',p:500});
-    F('Su génesis ya está construido y comprobado contra la cadena anterior con cero diferencias: trescientas treinta y una cuentas, ciento setenta y dos contratos, mil trescientas setenta y cinco ranuras de memoria. Cada saldo, exacto.',{foco:'g5550',p:700});
+    /* ── 2 · la capa uno, con sus especificaciones ─────────────────────── */
+    F('Vamos a lo de abajo del todo: la cadena.',{cap:'LA CAPA UNO',foco:'n5534',p:500,cifras:null});
+    F('Orden Global es una cadena de capa uno. Eso quiere decir que la capa base es nuestra: el registro, las reglas y el precio del gas los ponemos nosotros, no los alquilamos.',{foco:'n5534',p:700});
+    F('Estas son las especificaciones, y son comprobables desde fuera.',{foco:'n5534',p:420,
+      ficha:['LA CADENA','specs',[
+        ['Tipo','Capa 1 · EVM propia'],['Consenso','Besu QBFT'],
+        ['Máquina virtual','EVM Shanghai'],['Bloque','10 segundos'],
+        ['Gas','93 gwei, fijo'],['Finalidad','inmediata, sin bifurcaciones'],
+        ['Validadores','4 propios'],['Red de pruebas','chain ID 5534'],
+        ['Red nueva','chain ID 5550'],['Cadena anterior','8532 · congelada']]]});
+    F('Consenso Besu QBFT: tolerancia bizantina a fallos con validadores conocidos. En cristiano, un bloque se da por definitivo en cuanto lo firman, y no existe la reorganización de cadena que en otras redes obliga a esperar veinte confirmaciones.',{foco:'nodos',p:720});
+    F('Máquina virtual EVM en versión Shanghái. Eso importa por una razón práctica: cualquier contrato, cualquier herramienta y cualquier billetera del mundo Ethereum funcionan aquí sin tocar una línea.',{foco:'g5550',p:720});
+    F('Sin minería y sin consumo de energía. Ni dependemos de que a alguien le salga rentable confirmarnos una transacción.',{foco:'nodos',p:640});
+    F('Y sobre todo: podemos cambiar las reglas cuando el negocio lo pida, sin pedir permiso. En un sistema de pagos, esa es la diferencia entre tener producto y alquilarlo.',{foco:'g5550',p:700});
+    PARA();
 
-    F('Sobre la cadena viven los productos.',{cap:'LOS PRODUCTOS',foco:'wallet',p:450,
+    /* ── 3 · Genesis ID, la pieza que lo cose todo ─────────────────────── */
+    F('Ahora la pieza que casi nadie tiene, y que lo cose todo: la identidad.',{cap:'GENESIS ID',foco:'gid',p:560});
+    F('Genesis ID es nuestro sistema de identidad verificada. No es un formulario de registro: es la capa que permite que dinero y persona sean la misma cosa comprobable.',{foco:'gid',p:700});
+    F('Hace cuatro trabajos.',{foco:'gid',p:400,
+      ficha:['GENESIS ID','gid',[
+        ['KYC','identidad de personas'],['KYB','identidad de empresas'],
+        ['AML','prevención de blanqueo'],['SSO','un acceso, todo el ecosistema'],
+        ['Portal','genesisid.online'],['Puente','conectado a la billetera']]]});
+    F('KYC verifica a una persona. KYB verifica a una empresa. AML vigila el origen del dinero. Y el acceso único hace que quien se verifica una vez entre en todo lo demás sin repetir nada.',{foco:'gid',p:720});
+    F('Fíjate en cómo se conecta, porque aquí está el valor.',{foco:'gid',p:460});
+    F('La billetera pregunta a Genesis ID quién eres antes de mover dinero. La pasarela de cobro le pregunta si el comercio está verificado. Y la cadena guarda la transacción, que queda pública para siempre.',{foco:'wallet',p:740});
+    F('Identidad verificada, dinero propio y registro público, en el mismo sitio. Esas tres cosas juntas son lo que un banco tarda años en montar, y lo que ninguna aplicación sobre la cadena de otro puede prometer.',{foco:'gid',p:740});
+    PARA();
+
+    /* ── 4 · los productos, con sus enlaces ───────────────────────────── */
+    F('Encima de esa base viven los productos, y todos están abiertos ahora mismo.',{cap:'LOS PRODUCTOS',foco:'wallet',p:480,
       cifras:[[435,'usuarios'],[24,'tarjetas'],[85,'contratos de token']]});
-    F('Veta Wallet: enviar, recibir, canjear, y una tarjeta que se fondea con ORIGEN y se gasta en moneda corriente.',{foco:'wallet',p:600});
-    F('Genesis ID verifica identidad de personas y de empresas, con prevención de blanqueo y acceso único.',{foco:'gid',p:600});
-    F('MyTokenPay permite a cualquier comercio cobrar en ORIGEN.',{foco:'pago',p:600});
-    F('Y ordenscan es el explorador: cualquiera puede auditar cada transacción.',{foco:'scan',p:650});
+    F('Veta Wallet: enviar, recibir, canjear, y una tarjeta que se fondea con ORIGEN y se gasta en moneda corriente.',{foco:'wallet',p:620,
+      enlaces:[['Veta Wallet','https://vetawallet.com'],['Genesis ID','https://genesisid.online']]});
+    F('MyTokenPay permite a cualquier comercio cobrar en ORIGEN, con su interfaz de punto de venta.',{foco:'pago',p:620,
+      enlaces:[['MyTokenPay','https://mytokenpay.com'],['ordenscan','https://ordenscan.com']]});
+    F('Y ordenscan es el explorador público: cualquiera puede auditar cada bloque y cada transacción sin pedirnos permiso ni credenciales.',{foco:'scan',p:660});
+    F('Abre cualquiera de esos enlaces mientras hablo. No hay nada que esconder: ese es justo el argumento.',{foco:'scan',p:640});
+    F('Y algo que suele pasar desapercibido: como la máquina virtual es la de Ethereum, cualquier aplicación de terceros puede conectarse a este ecosistema. Se conectan al erre pe ce, verifican con Genesis ID y cobran con MyTokenPay.',{foco:'pago',p:740});
+    F('Es decir: esto no es un producto, es una plataforma sobre la que otros pueden construir.',{foco:'gid',p:700});
+    PARA();
 
+    /* ── 5 · el dinero ─────────────────────────────────────────────────── */
     F('Ahora, cómo se mueve el dinero.',{cap:'EL DINERO',p:450,cifras:null});
     F('Entra por la tarjeta, o por un depósito de USDT en la red Polygon.',{foco:'tarjeta',p:520});
     F('Cruza la pasarela.',{foco:'polygon',p:450});
     F('Y se convierte en ORIGEN al precio del oro del día: el gramo de oro en dólares dividido entre cincuenta y cinco.',{foco:'tesoro',p:650});
     F('Desde la billetera se envía, se canjea, o se paga en un comercio.',{foco:'wallet',p:650});
+    PARA();
 
+    /* ── 6 · las máquinas y los agentes ────────────────────────────────── */
     F('Todo esto corre sobre diez máquinas, y se vigila solo.',{cap:'LAS MÁQUINAS',foco:'nodos',p:500,
       cifras:[[7,'agentes automáticos'],[24,'revisiones al día'],[10,'máquinas']]});
     F('Siete agentes automáticos revisan las cadenas, el dinero, la seguridad, lo desplegado y el coste. Cada uno deja su parte escrito, y si algo falla lo dicen sin adornarlo.',{foco:'nodos',p:700});
+    F('Eso es raro y quiero que lo notes: la mayoría de los proyectos te enseñan lo que funciona. Aquí el sistema publica sus propios fallos, con fecha, y yo te los leo si me los pides.',{foco:'nodos',p:720});
+    PARA();
 
-    F('Y para que no me creas por la voz, te lo demuestro.',{cap:'LA PRUEBA',p:600,cifras:null});
+    /* ── 7 · la demostración ───────────────────────────────────────────── */
+    F('Y para que no me creas por la voz'+VOC()+', te lo demuestro.',{cap:'LA PRUEBA',p:600,cifras:null});
   }else{
-    F('Welcome to Orden Global.',{cap:'WHAT IT IS',p:600});
+    F('Welcome to Orden Global'+VOC()+'.',{cap:'WHAT IT IS',p:600});
+    F('I am JARVIS. Interrupt me whenever you like: ask, I answer, I show you, and we go straight back to where we were.',{p:680});
     F('What you are looking at is the entire ecosystem, live. None of this is a mock-up: every number I am about to say comes from a system that is running right now.',{p:700});
     F('Let us start with what already exists.',{p:400,cifras:[[4180872,'blocks of history'],[2,'years in production'],[435,'real users']]});
     F('Four million one hundred eighty thousand blocks. Two years and one month of chain in production, without stopping, since July twenty twenty four.',{p:650});
     F('And four hundred thirty five people with real money inside.',{p:700});
+    PARA();
 
-    F('This is the test network, live.',{cap:'THE CHAIN',foco:'n5534',p:500});
-    F('Block '+b5534+', one block every ten seconds, with gas fixed at ninety three gigawei. Four of our own validators, running Besu consensus.',{foco:'n5534',p:650});
-    F('And this is the chain that replaces it.',{foco:'g5550',p:500});
-    F('Its genesis is already built and checked against the previous chain with zero differences: three hundred thirty one accounts, one hundred seventy two contracts, one thousand three hundred seventy five storage slots. Every balance, exact.',{foco:'g5550',p:700});
+    F('Let us go all the way down: the chain.',{cap:'LAYER ONE',foco:'n5534',p:500,cifras:null});
+    F('Orden Global is a layer one chain. That means the base layer is ours: the ledger, the rules and the gas price are ours to set, not to rent.',{foco:'n5534',p:700});
+    F('These are the specifications, and they are checkable from outside.',{foco:'n5534',p:420,
+      ficha:['THE CHAIN','specs',[
+        ['Type','Layer 1 · own EVM'],['Consensus','Besu QBFT'],
+        ['Virtual machine','EVM Shanghai'],['Block','10 seconds'],
+        ['Gas','93 gwei, fixed'],['Finality','immediate, no forks'],
+        ['Validators','4 of our own'],['Test network','chain ID 5534'],
+        ['New network','chain ID 5550'],['Legacy chain','8532 · frozen']]]});
+    F('Besu QBFT consensus: byzantine fault tolerance with known validators. In plain terms, a block is final the moment it is signed, and the chain reorganisation that forces you to wait twenty confirmations elsewhere simply does not exist here.',{foco:'nodos',p:720});
+    F('Ethereum virtual machine, Shanghai. That matters for one practical reason: any contract, any tool and any wallet from the Ethereum world works here without changing a line.',{foco:'g5550',p:720});
+    F('No mining and no energy burn. And no depending on it being profitable for somebody else to confirm our transactions.',{foco:'nodos',p:640});
+    F('And above all: we can change the rules when the business needs it, without asking permission. In a payments system, that is the difference between owning the product and renting it.',{foco:'g5550',p:700});
+    PARA();
 
-    F('On top of the chain live the products.',{cap:'THE PRODUCTS',foco:'wallet',p:450,
+    F('Now the piece almost nobody has, and the one that stitches it all together: identity.',{cap:'GENESIS ID',foco:'gid',p:560});
+    F('Genesis ID is our verified identity system. It is not a signup form: it is the layer that lets money and person be the same checkable thing.',{foco:'gid',p:700});
+    F('It does four jobs.',{foco:'gid',p:400,
+      ficha:['GENESIS ID','gid',[
+        ['KYC','people verification'],['KYB','company verification'],
+        ['AML','anti money laundering'],['SSO','one login, whole ecosystem'],
+        ['Portal','genesisid.online'],['Bridge','wired into the wallet']]]});
+    F('KYC verifies a person. KYB verifies a company. AML watches where the money came from. And single sign on means whoever verifies once gets into everything else without repeating anything.',{foco:'gid',p:720});
+    F('Watch how it connects, because the value is right here.',{foco:'gid',p:460});
+    F('The wallet asks Genesis ID who you are before moving money. The gateway asks whether the merchant is verified. And the chain records the transaction, public forever.',{foco:'wallet',p:740});
+    F('Verified identity, our own money and a public ledger, in one place. Those three together are what takes a bank years to build, and what no application on somebody else chain can promise.',{foco:'gid',p:740});
+    PARA();
+
+    F('On top of that base live the products, and all of them are open right now.',{cap:'THE PRODUCTS',foco:'wallet',p:480,
       cifras:[[435,'users'],[24,'cards'],[85,'token contracts']]});
-    F('Veta Wallet: send, receive, swap, and a card funded with ORIGEN and spent in ordinary currency.',{foco:'wallet',p:600});
-    F('Genesis ID verifies the identity of people and companies, with anti money laundering and single sign on.',{foco:'gid',p:600});
-    F('MyTokenPay lets any merchant charge in ORIGEN.',{foco:'pago',p:600});
-    F('And ordenscan is the explorer: anyone can audit every transaction.',{foco:'scan',p:650});
+    F('Veta Wallet: send, receive, swap, and a card funded with ORIGEN and spent in ordinary currency.',{foco:'wallet',p:620,
+      enlaces:[['Veta Wallet','https://vetawallet.com'],['Genesis ID','https://genesisid.online']]});
+    F('MyTokenPay lets any merchant charge in ORIGEN, with its own point of sale.',{foco:'pago',p:620,
+      enlaces:[['MyTokenPay','https://mytokenpay.com'],['ordenscan','https://ordenscan.com']]});
+    F('And ordenscan is the public explorer: anyone can audit every block and every transaction without asking us for permission or credentials.',{foco:'scan',p:660});
+    F('Open any of those links while I talk. There is nothing to hide: that is exactly the argument.',{foco:'scan',p:640});
+    F('And something that usually goes unnoticed: because the virtual machine is Ethereum, any third party application can plug into this ecosystem. They connect to the R P C, verify with Genesis ID and charge with MyTokenPay.',{foco:'pago',p:740});
+    F('In other words: this is not a product, it is a platform other people can build on.',{foco:'gid',p:700});
+    PARA();
 
     F('Now, how the money moves.',{cap:'THE MONEY',p:450});
     F('It comes in through the card, or through a USDT deposit on Polygon.',{foco:'tarjeta',p:520});
     F('It crosses the gateway.',{foco:'polygon',p:450});
     F('And it becomes ORIGEN at the day gold price: one gram of gold in dollars, divided by fifty five.',{foco:'tesoro',p:650});
     F('From the wallet it is sent, swapped, or spent at a merchant.',{foco:'wallet',p:650});
+    PARA();
 
     F('All of this runs on ten machines, and watches itself.',{cap:'THE MACHINES',foco:'nodos',p:500,
       cifras:[[7,'automated agents'],[24,'checks per day'],[10,'machines']]});
     F('Seven automated agents review the chains, the money, security, what is deployed and the cost. Each one files a written report, and if something fails they say so without dressing it up.',{foco:'nodos',p:700});
+    F('That is unusual and I want you to notice it: most projects show you what works. Here the system publishes its own failures, dated, and I will read them to you if you ask.',{foco:'nodos',p:720});
+    PARA();
 
-    F('And so you do not take my word for it, let me show you.',{cap:'THE PROOF',p:600});
+    F('And so you do not take my word for it'+VOC()+', let me show you.',{cap:'THE PROOF',p:600});
   }
   return P;
 }
@@ -2741,6 +3162,67 @@ function guionPresentacion(){
    El sitio actual NO se lleva en un contador aparte: se deduce de lo que
    queda en la cola. Un contador paralelo se desincroniza en cuanto algo
    interrumpe, y esto no puede fallar delante de nadie. */
+let MIC_OK=false;
+
+/* ═══ LOS PUNTOS DE CONTROL ═══════════════════════════════════════════════
+   Lo que separa una grabación de una conversación: cada pocos minutos el
+   recorrido se detiene y pregunta «¿hasta aquí alguna pregunta, o seguimos?».
+   Si preguntas, contesta --con lo que haya que enseñar en pantalla-- y
+   VUELVE SOLO al punto exacto donde se paró. Si callas unos segundos,
+   sigue. Nadie tiene que buscar un botón.
+
+   La vuelta automática es la parte que lo hace posible: sin ella, preguntar
+   costaría perder el sitio, y entonces nadie pregunta. */
+let volverTrasResponder=false, esperandoPregunta=false, relojControl=null;
+function puntoDeControl(){
+  esperandoPregunta=true;
+  $('#siono').classList.add('abre');
+  $('#btnSi').textContent =IDI==='en'?'I HAVE A QUESTION':'TENGO UNA PREGUNTA';
+  $('#btnNo').textContent =IDI==='en'?'CARRY ON':'SIGUE';
+  const q=IDI==='en'
+    ? 'Anything you want to ask me so far'+VOC()+'? Or shall I carry on?'
+    : '¿Hasta aquí alguna pregunta'+VOC()+'? ¿O sigo?';
+  decir([J(q,{p:0})],abrirEscucha);
+}
+function abrirEscucha(){
+    if(!esperandoPregunta)return;
+    /* Con micrófono se abre solo: preguntar tiene que costar cero. */
+    if(MIC_OK&&!oyendo)try{escuchar();}catch(e){}
+    $('#oido').textContent=IDI==='en'
+      ? (MIC_OK?'Speak, or I carry on in a moment.':'Ask with the button, or I carry on.')
+      : (MIC_OK?'Habla, o sigo en un momento.':'Pregunta con el botón, o sigo.');
+    /* El silencio también contesta: quince segundos y continúa. Si no,
+       una demostración se queda parada esperando a alguien que ya dijo
+       que no con la cara. */
+    clearTimeout(relojControl);
+    relojControl=setTimeout(()=>{if(esperandoPregunta)seguirRecorrido();},15000);
+}
+abrirEscucha.pesePendiente=true;
+function seguirRecorrido(){
+  clearTimeout(relojControl);
+  esperandoPregunta=false; volverTrasResponder=false;
+  $('#siono').classList.remove('abre'); $('#oido').textContent='';
+  restaurarSiNo();
+  if(oyendo&&rec)try{rec.stop();}catch(e){}
+  if(hayPendiente())continuar();
+}
+/* Cuando se contesta una pregunta hecha en un punto de control, al terminar
+   la respuesta se vuelve solo. No se pregunta «¿seguimos?» otra vez: ya
+   dijo que sí al preguntar. */
+function retomar(){ if(hayPendiente())continuar(); }
+retomar.pesePendiente=true;
+function trasResponder(){
+  if(!volverTrasResponder||!hayPendiente())return;
+  volverTrasResponder=false;
+  const donde=RECORRIDO&&RECORRIDO.caps[capActual()];
+  decir([J(IDI==='en'?'Back to where we were.':'Volvemos a donde íbamos.',{p:260})],
+        retomar);
+  if(donde)$('#capNom').textContent=donde.tit;
+}
+trasResponder.pesePendiente=true;
+const restaurarSiNo=()=>{$('#btnSi').textContent=IDI==='en'?'YES':'SÍ';
+                         $('#btnNo').textContent='NO';};
+
 let RECORRIDO=null;              // {lineas, caps:[{i,tit}], fin}
 function montarRecorrido(lineas,fin){
   const caps=[];
@@ -2749,8 +3231,14 @@ function montarRecorrido(lineas,fin){
   RECORRIDO={lineas,caps,fin};
   return lineas;
 }
-const sitioActual=()=>RECORRIDO
-  ? Math.max(0,RECORRIDO.lineas.length-cola.length-1) : 0;
+const sitioActual=()=>{
+  if(!RECORRIDO)return 0;
+  /* Lo que queda por decir esta en `cola` mientras habla, y en
+     `colaGuardada` cuando esta parado o preguntando --en un punto de
+     control la cola se vacia a proposito--. Mirando solo `cola` creia
+     estar siempre en el ultimo capitulo. */
+  const quedan=cola.length||(colaGuardada?colaGuardada.length:0);
+  return Math.max(0,RECORRIDO.lineas.length-quedan-1);};
 const capActual=()=>{
   if(!RECORRIDO)return 0;
   const i=sitioActual(); let k=0;
@@ -2915,6 +3403,7 @@ addEventListener('keydown',e=>{
 function segundoActo(){
   const es=IDI!=='en', P=[];
   const F=(x,o={})=>P.push(Object.assign({q:'JARVIS',x},o));
+  const PARA=()=>P.push({control:true});
 
   if(es){
     F('Ahora, qué es lo que acabas de ver.',{cap:'CAPA UNO',p:520,cifras:null});
@@ -2939,7 +3428,32 @@ function segundoActo(){
     F('Las piezas ya están puestas. La cadena, la billetera, la identidad verificada, la pasarela de cobro y la tarjeta que se gasta en moneda corriente.',{foco:'wallet',p:700});
     F('Cuatrocientas treinta y cinco personas ya lo usan. Ese es el punto de partida, no el destino.',{foco:'wallet',p:700,
       cifra:['435','personas usándolo hoy']});
-    F('Gracias por tu tiempo. Si quieres profundizar en cualquier pieza, dímela y te la cuento entera.',{p:0,cifras:null});
+
+    /* La ambición. Va marcada como ambición EN VOZ ALTA, no colada entre
+       los datos: identidad verificada más registro público permiten cosas
+       que hoy NO existen aquí, y decir «se puede votar» cuando no hay
+       producto sería exactamente la clase de frase que hunde una ronda en
+       la primera diligencia. Se dice lo que la tecnología permite y se dice
+       que está por construir. Las dos mitades, siempre juntas. */
+    F('Y ahora déjame contarte lo que esto PERMITE, separándolo con cuidado de lo que ya existe.',{p:560,cifras:null});
+    F('Identidad verificada, más un registro público que nadie puede reescribir, más una moneda propia. Esas tres piezas juntas son la receta de algo más grande que pagar un café.',{foco:'gid',p:740});
+    F('Con eso se puede construir un padrón que no se falsifica. Una votación donde cada persona vota una vez, cualquiera puede contar los votos y nadie puede cambiarlos después. Presupuesto público que se sigue peso a peso hasta donde se gastó.',{foco:'gid',p:800});
+    F('Eso no está construido. Que quede clarísimo: hoy no hay producto de votación ni contrato público con ningún gobierno. Lo que hay es la base sobre la que se construiría, y es la parte difícil.',{foco:'gid',p:780});
+    F('Lo digo porque es la diferencia entre un proyecto serio y un folleto. La transparencia no es un valor que se anuncia: es una propiedad técnica, y o la tiene la cadena o no la tiene.',{foco:'scan',p:760});
+
+    /* La comparación histórica. También con cuidado: la comparación es con
+       el MOMENTO, no con el tamaño. Decirle a un inversionista «somos como
+       Visa» es una frase que se ríe solo; decirle «esto se parece a cuando
+       Visa era una idea» es una tesis que se puede discutir. */
+    F('Una última cosa, sobre el momento.',{cap:'LA HISTORIA',p:520,cifras:null});
+    F('Visa empezó siendo un acuerdo entre bancos para que un papel valiera en otra ciudad. Swift empezó siendo un formato de mensaje. M-Pesa empezó con gente mandándose saldo de teléfono en Kenia, y hoy mueve la mitad de la economía de ese país.',{foco:'pago',p:800});
+    F('Ninguno empezó siendo grande. Empezaron resolviendo una cosa concreta que dolía, con la infraestructura puesta antes de que nadie la pidiera.',{foco:'nodos',p:740});
+    F('No te voy a decir que somos eso. Te voy a decir que estamos en esa parte de la historia: la infraestructura construida, funcionando, con dinero real dentro, y la escala todavía por delante.',{foco:'g5550',p:780});
+    F('América Latina tiene seiscientos millones de personas y una relación difícil con su propia moneda. Esa es la puerta.',{foco:'pago',p:740});
+    F('Nuestra historia se está escribiendo ahora, y el bloque en el que estamos tiene fecha de hoy.',{foco:'n5534',p:700});
+    PARA();
+
+    F('Gracias por tu tiempo'+VOC()+'. Pregúntame lo que quieras: el negocio, el token, el oro, la tecnología, los riesgos. Contesto con datos, y cuando no los tengo, lo digo.',{p:0,cifras:null});
   }else{
     F('Now, what you have just seen.',{cap:'LAYER ONE',p:520,cifras:null});
     F('Orden Global is not an application on somebody else chain. It is a layer one chain: the base layer, the one that holds the ledger and sets its own rules.',{foco:'n5534',p:700});
@@ -2963,7 +3477,24 @@ function segundoActo(){
     F('The pieces are already in place. The chain, the wallet, verified identity, the payment gateway, and a card you spend in ordinary money.',{foco:'wallet',p:700});
     F('Four hundred thirty five people already use it. That is the starting point, not the destination.',{foco:'wallet',p:700,
       cifra:['435','people using it today']});
-    F('Thank you for your time. If you want to go deeper into any piece, name it and I will walk you through it.',{p:0,cifras:null});
+
+    /* La misma regla que en castellano: la ambicion va marcada COMO
+       ambicion, en voz alta y separada de lo que ya existe. */
+    F('And now let me tell you what this ENABLES, keeping it carefully apart from what already exists.',{p:560,cifras:null});
+    F('Verified identity, plus a public ledger nobody can rewrite, plus a currency of our own. Those three together are the recipe for something bigger than paying for coffee.',{foco:'gid',p:740});
+    F('With that you can build a voter roll that cannot be forged. A vote where each person votes once, anyone can count the votes, and nobody can change them afterwards. Public spending you can follow, peso by peso, all the way to where it went.',{foco:'gid',p:800});
+    F('That is not built. Let me be completely clear: there is no voting product today and no public contract with any government. What exists is the base you would build it on, and that is the hard part.',{foco:'gid',p:780});
+    F('I say it because it is the difference between a serious project and a brochure. Transparency is not a value you announce: it is a technical property, and either the chain has it or it does not.',{foco:'scan',p:760});
+
+    F('One last thing, about timing.',{cap:'THE HISTORY',p:520,cifras:null});
+    F('Visa started as an agreement between banks so a piece of paper would be good in another city. Swift started as a message format. M-Pesa started with people sending each other phone credit in Kenya, and today it moves half of that country economy.',{foco:'pago',p:800});
+    F('None of them started big. They started by solving one concrete thing that hurt, with the infrastructure in place before anyone asked for it.',{foco:'nodos',p:740});
+    F('I am not going to tell you we are that. I am going to tell you we are at that part of the story: infrastructure built, running, with real money inside, and the scale still ahead.',{foco:'g5550',p:780});
+    F('Latin America has six hundred million people and a difficult relationship with its own currency. That is the door.',{foco:'pago',p:740});
+    F('Our history is being written right now, and the block we are standing on is dated today.',{foco:'n5534',p:700});
+    PARA();
+
+    F('Thank you for your time'+VOC()+'. Ask me anything: the business, the token, the gold, the technology, the risks. I answer with data, and when I do not have it, I say so.',{p:0,cifras:null});
   }
   const fin=()=>{PRESENTANDO=false;$('#btnPresenta').classList.remove('on');document.body.classList.remove('narrando');
                  $('#lblPresenta').textContent=IDI==='en'?'TOUR':'RECORRIDO';
@@ -3156,8 +3687,21 @@ function abrirAyuda(){
       'La única orden que acepto es lanzar los bots de prueba, en la red de pruebas.']);
   }
 }
-$('#btnSi').addEventListener('click',()=>{$('#siono').classList.remove('abre');aceptarOfrecido();});
-$('#btnNo').addEventListener('click',()=>{$('#siono').classList.remove('abre');rechazarOfrecido();});
+$('#btnSi').addEventListener('click',()=>{
+  if(esperandoPregunta){                 // «tengo una pregunta»
+    clearTimeout(relojControl);
+    esperandoPregunta=false; volverTrasResponder=true;
+    $('#siono').classList.remove('abre'); restaurarSiNo();
+    parar();
+    if(MIC_OK&&!oyendo){try{escuchar();}catch(e){}}
+    $('#oido').textContent=IDI==='en'?'I am listening. Ask away.'
+                                     :'Te escucho. Pregunta.';
+    return;
+  }
+  $('#siono').classList.remove('abre');aceptarOfrecido();});
+$('#btnNo').addEventListener('click',()=>{
+  if(esperandoPregunta)return void seguirRecorrido();
+  $('#siono').classList.remove('abre');rechazarOfrecido();});
 $('#btnAyuda').addEventListener('click',abrirAyuda);
 $('#btnAjustes').addEventListener('click',()=>$('#ajustes').classList.toggle('abre'));
 document.querySelectorAll('.vels button[data-vel]').forEach(b=>{
@@ -3249,14 +3793,47 @@ todo();
 
 /* La puerta de idioma: solo la primera vez. Elegir es también el primer
    toque, así que desbloquea el audio y JARVIS saluda por tu nombre. */
+/* El permiso del micrófono se pide EN LA PUERTA, dentro del toque de elegir
+   idioma. Dos razones y las dos importan:
+   · el navegador solo lo concede desde un gesto de la persona, y este es el
+     único gesto garantizado antes de que empiece a hablar;
+   · y si se pidiera a mitad del recorrido, la ventana del navegador saldría
+     encima de la presentación --el mismo error de forma que la ventana de
+     contraseña, y ya sabemos cómo sienta--.
+   Se pide, no se exige: si dice que no, el recorrido va igual y las
+   preguntas se hacen con los botones. */
+async function pedirMicrofono(){
+  if(!$('#pideMic')||!$('#pideMic').checked)return false;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return false;
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({audio:true});
+    /* Concedido el permiso, la pista se cierra: no hay que tener el
+       micrófono abierto todo el rato, y una luz encendida sin motivo en el
+       teléfono de un inversionista es exactamente lo que no queremos. */
+    s.getTracks().forEach(t=>t.stop());
+    return true;
+  }catch(e){ return false; }
+}
+function guardarNombre(){
+  const v=($('#nombreVisita')&&$('#nombreVisita').value||'').trim().slice(0,24);
+  if(v){VISITA=v.charAt(0).toUpperCase()+v.slice(1); localStorage.setItem('nombreVisita',VISITA);}
+  if(INVITADO){
+    $('#quienNom').textContent=(VISITA||'ORDEN GLOBAL').toUpperCase();
+    $('#disco').textContent=VISITA?VISITA[0].toUpperCase():'◈';
+  }
+}
 if(INVITADO){
   /* Al invitado se le pregunta el idioma igual, porque es lo primero que hay
      que acertar, y al elegir arranca el recorrido solo. */
   $('#puerta').classList.add('abre');
+  setTimeout(()=>{try{$('#nombreVisita').focus();}catch(e){}},300);
   document.querySelectorAll('#puerta [data-idi]').forEach(b=>b.addEventListener('click',()=>{
     IDI=b.dataset.idi; $('#idioma').value=IDI; cargarVoces(); traducirUI();
     $('#pistas').textContent=PISTAS[IDI][0]; verFijos(); railSistemas();
+    guardarNombre();
     $('#puerta').classList.remove('abre'); desbloqueada=true;
+    /* el permiso va en paralelo: nadie espera mirando una pantalla vacía */
+    pedirMicrofono().then(ok=>{MIC_OK=ok;});
     setTimeout(presentar,600);
   }));
 }else if(!IDIOMA_ELEGIDO){
@@ -3264,6 +3841,8 @@ if(INVITADO){
   document.querySelectorAll('#puerta [data-idi]').forEach(b=>b.addEventListener('click',()=>{
     IDI=b.dataset.idi; localStorage.setItem('idiomaCerebro',IDI);
     $('#idioma').value=IDI; cargarVoces(); traducirUI(); railSistemas(); railAgentes();
+    guardarNombre();
+    pedirMicrofono().then(ok=>{MIC_OK=ok;});
     $('#puerta').classList.remove('abre');
     if(QUIEN.nombre)$('#lema').textContent=t('lema')+' · '+QUIEN.nombre.toUpperCase();
     desbloqueada=true;

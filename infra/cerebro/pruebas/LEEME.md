@@ -6,11 +6,11 @@ suponiendo causas hasta que cargué la página en un navegador y el error salió
 en una línea.
 
 ```
-node infra/cerebro/pruebas/probar-voz.js
-node infra/cerebro/pruebas/probar-conversacion.js
+node infra/cerebro/pruebas/probar-voz.cjs
+node infra/cerebro/pruebas/probar-conversacion.cjs
 ```
 
-## `probar-voz.js`
+## `probar-voz.cjs`
 
 Espía las llamadas a `speechSynthesis` y comprueba la **secuencia**, que es
 donde estaba el fallo:
@@ -24,7 +24,7 @@ Así se cazó el fallo de verdad: asignar `u.voice` **lanza** si el objeto no es
 una `SpeechSynthesisVoice` válida, y la excepción salía antes de `speak()`.
 `speak() llamado 0 veces`.
 
-## `probar-conversacion.js`
+## `probar-conversacion.cjs`
 
 Le habla como le hablaría José —23 frases en los dos idiomas— y comprueba tres
 cosas de cada respuesta:
@@ -40,7 +40,7 @@ Los fallos que encontró y que ya están arreglados: «The what it costs agent»
 (un engendro, ahora *The accountant*), «cuánto cuesta» que no se reconocía, y
 «chainlist» que caía en el patrón de «chain» porque lo contiene.
 
-## `probar-invitado.js`
+## `probar-invitado.cjs`
 
 Lo que ve —y lo que NO ve— quien entra por `/demo` sin cuenta. Cuatro cosas:
 
@@ -60,7 +60,7 @@ Las dos últimas se esperan **al hecho, no al reloj**: el oro se dispara cuando
 la narración entra al ORIGEN (~12 s), y una espera fija de 11,5 s daba un fallo
 que no existía en el producto.
 
-## `probar-movil.js`
+## `probar-movil.cjs`
 
 Carga el cerebro en un teléfono de verdad —393×851, táctil, con agente de
 Android— porque la queja llegó con una foto y **la maquetación no se comprueba
@@ -81,6 +81,39 @@ Comprueba:
    baje hacia el final, que el modo DIRECTA la diga de un tirón, y que
    interrumpir **no** pinte «Fallo de la voz: interrupted».
 6. **el segundo acto**, recorrido por capítulos, con captura de cada uno.
+
+## `probar-inversor.cjs`
+
+Las preguntas que hace alguien que va a poner dinero. Tres bloques, y el
+tercero es el que importa:
+
+1. que las 32 preguntas conocidas caigan en **su** respuesta —escritas como
+   las diría una persona, no como están en el código;
+2. que ninguna pregunta se quede sin contestar, ni las raras («¿cuántos
+   empleados tienen?», «do you have a cap table»), y que cuando no hay dato
+   **no se invente uno**;
+3. **los matices que no se pueden perder.** Si alguien «mejora» la respuesta
+   del oro y le quita el *«la figura jurídica no está cerrada»*, esto se pone
+   rojo. Igual con la comisión a cero, la auditoría que no existe, la ronda
+   que es cosa de la Junta, la liquidez sin secundario y el TPS que no
+   tenemos medido. **Esa es la prueba que evita un problema legal, no un
+   error de software.**
+
+## `probar-voz-grabada.cjs`
+
+La red de la voz grabada. Lo único que puede salir catastróficamente mal es
+que un audio que no carga deje al asistente **mudo**. Cinco escenarios: audio
+bueno, frase no grabada, 404, fichero colgado, y que parar calle también el
+fichero. En los tres primeros tiene que acabar hablando el navegador.
+
+## `probar-interactivo.cjs`
+
+Lo que separa una grabación de una conversación: que el recorrido **se pare a
+preguntar**, que conteste si preguntas, y que **vuelva solo** al punto exacto.
+Si volver costara, nadie preguntaría. También comprueba que el silencio
+contesta (a los 15 s sigue), que el nombre del invitado se usa de verdad, y
+que salen la ficha técnica —con Besu QBFT y EVM Shanghai— y los enlaces, y
+que los enlaces abren en otra pestaña.
 
 ## Una regla que se repite
 

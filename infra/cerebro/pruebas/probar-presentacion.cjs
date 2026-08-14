@@ -58,9 +58,15 @@ function entorno(invitado){
      enciende los contadores: con esperas fijas el test acusaba de rotas
      cosas que solo iban dos segundos por detras. Y ademas asi se puede
      saltar de capitulo, que es como se ve de verdad. */
+  /* Desde que el recorrido tiene PUNTOS DE CONTROL, se para a preguntar y
+     no llega solo al final. Aqui se hace lo que haria una persona: cuando
+     pregunta, se le dice que siga. Sin esto el test creia que la camara no
+     volaba cuando en realidad el recorrido estaba esperando respuesta. */
   const hasta=async(pred,ms)=>{const t=Date.now();
-    while(Date.now()-t<(ms||14000)){
+    while(Date.now()-t<(ms||20000)){
       const v=await p.evaluate(pred); if(v)return v;
+      if(await p.evaluate(()=>typeof esperandoPregunta!=='undefined'&&esperandoPregunta))
+        await p.evaluate(()=>seguirRecorrido());
       await p.waitForTimeout(250);}
     return null;};
 
@@ -108,7 +114,9 @@ function entorno(invitado){
 
   // el viaje del dólar
   await p.evaluate(()=>{document.querySelector('#vivo').classList.remove('abre');window.__d=[];viajeDelDolar();});
-  await p.waitForTimeout(3400);
+  /* Al hecho, no al reloj: con la voz respirando, la ruta tarda mas en
+     recorrerse y 3,4 s fijos median a mitad del primer tramo. */
+  await hasta(()=>/Polygon/i.test(window.__d.join(' ')),22000);
   const dolar=await p.evaluate(()=>window.__d.join(' | '));
   const dOk=/tarjeta/i.test(dolar)&&/Polygon/i.test(dolar);
   console.log('  viaje del dólar: '+(dOk?'✓ recorre la ruta':'✕ '+dolar.slice(0,60)));
