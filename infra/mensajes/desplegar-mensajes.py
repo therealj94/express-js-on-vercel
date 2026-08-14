@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+"""Sube el relevo de mensajes al nodo del cerebro y lo deja corriendo.
+
+Mismo molde que desplegar-voz.py: S3 + SSM, Caddyfile con copia de respaldo
+y `caddy validate` antes de recargar --si no valida, se restaura y se avisa--.
+Al final se comprueba desde FUERA que /mensajes/salud contesta 200 sin
+contraseña y que lo interno sigue en 401.
+"""
+import json, time, boto3, os, sys
+
+S = '/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad'
+AQUI = os.path.dirname(os.path.abspath(__file__))
+CUBO = 'og-5550-arranque-548380372606'
+NODO = 'i-0aff688efc52ab8c8'
+
+UNIDAD = """[Unit]
+Description=Relevo de mensajes de Orden Global
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /srv/mensajes/servidor.py
+Environment=MENSAJES_DATOS=/srv/mensajes/datos.json
+Environment=MENSAJES_PUERTO=8390
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+"""
+
+
+def espera(ssm, cid):
+    for _ in range(40):
+        time.sleep(4)
+        o = ssm.get_command_invocation(CommandId=cid, InstanceId=NODO)
+        if o['Status'] not in ('Pending', 'InProgress', 'Delayed'):
+            return o
+    return o
+
+
+def main():
+    k = json.load(open(S + '/aws_llaves.json'))
+    ses = boto3.Session(aws_access_key_id=k['AccessKeyId'],
+                        aws_secret_access_key=k['SecretAccessKey'],
+                        region_name='us-east-1')
+    s3, ssm = ses.client('s3'), ses.client('ssm')
+
+    cuerpo = open(AQUI + '/servidor.py', 'rb').read()
+    s3.put_object(Bucket=CUBO, Key='cerebro/mensajes-servidor.py', Body=cuerpo)
+    url = s3.generate_presigned_url('get_object',
+                                    Params={'Bucket': CUBO, 'Key': 'cerebro/mensajes-servidor.py'},
+                                    ExpiresIn=1800)
+    s3.put_object(Bucket=CUBO, Key='cerebro/mensajes.service', Body=UNIDAD.encode())
+    url2 = s3.generate_presigned_url('get_object',
+                                     Params={'Bucket': CUBO, 'Key': 'cerebro/mensajes.service'},
+                                     ExpiresIn=1800)
+
+    cmds = [
+        'set -e',
+        'mkdir -p /srv/mensajes',
+        "curl -fsS '%s' -o /srv/mensajes/servidor.py" % url,
+        "curl -fsS '%s' -o /etc/systemd/system/mensajes.service" % url2,
+        'systemctl daemon-reload && systemctl enable --now mensajes',
+        'sleep 1 && systemctl is-active mensajes',
+        # ── Caddy: /mensajes/* publico y proxy al puerto local
+        'cp -n /etc/caddy/Caddyfile /etc/caddy/Caddyfile.antes-de-mensajes || true',
+        'cp /etc/caddy/Caddyfile /tmp/Caddyfile.previo',
+        'if ! grep -q "/mensajes/\\*" /etc/caddy/Caddyfile; then '
+        '  sed -i "s|@interno not path |@interno not path /mensajes/* |" /etc/caddy/Caddyfile; '
+        '  sed -i "0,/basic_auth @interno/s||handle /mensajes/* {\\n\\t\\treverse_proxy 127.0.0.1:8390\\n\\t}\\n\\tbasic_auth @interno|" /etc/caddy/Caddyfile; '
+        'fi',
+        'grep -n "mensajes" /etc/caddy/Caddyfile',
+        'if caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/tmp/val.log 2>&1; then '
+        '  systemctl reload caddy && echo CADDY_OK; '
+        'else '
+        '  cp /tmp/Caddyfile.previo /etc/caddy/Caddyfile; echo CADDY_RESTAURADO; cat /tmp/val.log; '
+        'fi',
+        'sleep 1',
+        'echo -n "salud sin clave: "; '
+        'curl -s -o /dev/null -w "%{http_code}\\n" https://cerebro.ordenscan.com/mensajes/salud',
+        'echo -n "lo interno sigue cerrado: "; '
+        'curl -s -o /dev/null -w "%{http_code}\\n" https://cerebro.ordenscan.com/partes.json',
+    ]
+    r = ssm.send_command(InstanceIds=[NODO], DocumentName='AWS-RunShellScript',
+                         Parameters={'commands': cmds})
+    o = espera(ssm, r['Command']['CommandId'])
+    print('servidor:', o['Status'])
+    print(o['StandardOutputContent'])
+    if o['StandardErrorContent']:
+        print('errores:', o['StandardErrorContent'][:800])
+    sal = o['StandardOutputContent']
+    print('relevo público:', 'sí' if 'salud sin clave: 200' in sal else 'NO — revisar')
+    print('lo interno sigue cerrado:', 'sí' if 'lo interno sigue cerrado: 401' in sal else 'NO — PARA Y REVISA')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
