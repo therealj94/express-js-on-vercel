@@ -64,6 +64,9 @@ const RUTA = '/home/user/express-js-on-vercel/infra/cerebro/index.html';
 
   await p.goto('file://' + RUTA, {waitUntil:'domcontentloaded', timeout:30000});
   await p.waitForTimeout(1500);
+  // la puerta de idioma tapa todo hasta que se elige: se elige.
+  if(await p.$('#puerta.abre')) await p.click('#puerta [data-idi="es"]');
+  await p.waitForTimeout(400);
 
   console.log('errores al cargar:', err.length ? err.join(' | ').slice(0,400) : 'ninguno');
   console.log('estado:', JSON.stringify(await p.evaluate(() => ({
@@ -98,7 +101,10 @@ const RUTA = '/home/user/express-js-on-vercel/infra/cerebro/index.html';
   // ── 3 · en español
   await p.evaluate(() => { parar(); });          // vaciar la cola de verdad
   await p.waitForTimeout(700);
-  await p.selectOption('#idioma', 'es');
+  // el selector vive dentro del panel de ajustes, que esta cerrado: se
+  // cambia el valor y se avisa, que es justo lo que hace el usuario al abrirlo.
+  await p.evaluate(()=>{const s=document.querySelector('#idioma');
+    s.value='es'; s.dispatchEvent(new Event('change'));});
   await p.waitForTimeout(600);
   await p.evaluate(() => window.__d = []);
   await p.click('#hablar');

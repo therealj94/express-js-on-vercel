@@ -7,6 +7,7 @@ const {chromium}=require('playwright');
 const fs=require('fs');
 const HTML=fs.readFileSync('/home/user/express-js-on-vercel/infra/cerebro/index.html','utf8');
 const INTERNO=/\/rpc|\/rpc-vieja|salud-|informe\.json|partes\.json|\/ordenes\/bots|\/ordenes\/quien|\/ordenes\/hablar|explorador/;
+const PUBLICO=/\/img\//;
 
 (async()=>{
   const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome',args:['--no-sandbox']});
@@ -31,6 +32,7 @@ const INTERNO=/\/rpc|\/rpc-vieja|salud-|informe\.json|partes\.json|\/ordenes\/bo
       if(u.includes('/ordenes/demo/tx'))
         return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
           estado:'bien',bloque:24310,segundos:4.2,hash:'0xdeadbeef'})});
+      if(PUBLICO.test(u))return r.fulfill({status:200,contentType:'image/x-icon',body:''});
       if(INTERNO.test(u)){        // EXACTAMENTE como el servidor de verdad
         pedidasInternas.push(u.replace(/^https?:\/\/[^/]+/,''));
         return r.fulfill({status:401,headers:{'WWW-Authenticate':'Basic realm="restricted"'},body:''});
@@ -66,6 +68,71 @@ const INTERNO=/\/rpc|\/rpc-vieja|salud-|informe\.json|partes\.json|\/ordenes\/bo
     if(conVale ? st.vivo==='none' : st.vivo!=='none') mal++;
     if(err.length){console.log('   errores: '+err.join(' | ').slice(0,160)); mal++;}
   }
+  // ── reanudar donde se quedo
+  const p3=await (await b.newContext({viewport:{width:1440,height:900}})).newPage();
+  await p3.route('**/*', r=>{
+    const u=r.request().url();
+    if(/\/demo(\?|$)/.test(u)&&!u.includes('ordenes'))
+      return r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:HTML});
+    if(u.includes('/ordenes/demo/datos'))
+      return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+        fecha:'14 de agosto',precioORIGEN:'2.5455',bloque5534:24300,gasGwei:93,chainId:5534})});
+    if(u.includes('/ordenes/demo/tx'))
+      return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+        estado:'bien',bloque:24310,segundos:4.2,hash:'0xdead'})});
+    return r.fulfill({status:200,body:'ok'});
+  });
+  await p3.addInitScript(()=>{
+    const V=[{name:'Mónica',lang:'es-ES'}];
+    const s=window.speechSynthesis; s.getVoices=()=>V;
+    s.speak=u=>{setTimeout(()=>{u.onstart&&u.onstart();setTimeout(()=>u.onend&&u.onend(),200);},8);};
+    s.cancel=()=>{};
+    ['speaking','pending','paused'].forEach(k=>Object.defineProperty(s,k,{get:()=>false}));
+  });
+  await p3.goto('http://cerebro.local/demo?t=V',{waitUntil:'domcontentloaded'});
+  await p3.waitForTimeout(1200);
+  await p3.click('[data-idi="es"]');
+  await p3.waitForTimeout(2500);
+  // parar a mitad, como quien se va a mirar el explorador
+  await p3.click('#btnPresenta');
+  await p3.waitForTimeout(500);
+  let st=await p3.evaluate(()=>({pend:typeof colaGuardada!=='undefined'&&!!(colaGuardada&&colaGuardada.length),
+    etiqueta:document.querySelector('#lblPresenta').textContent}));
+  console.log('\n══ REANUDAR');
+  console.log('   guarda lo pendiente: '+(st.pend?'✓':'✕'));
+  console.log('   el botón dice: "'+st.etiqueta+'" '+(/CONTINUAR|RESUME/.test(st.etiqueta)?'✓':'✕'));
+  if(!st.pend||!/CONTINUAR|RESUME/.test(st.etiqueta)) mal++;
+  await p3.click('#btnPresenta');
+  await p3.waitForTimeout(900);
+  st=await p3.evaluate(()=>({sigue:PRESENTANDO,vacio:!(colaGuardada&&colaGuardada.length)}));
+  console.log('   al pulsar, continúa: '+(st.sigue&&st.vacio?'✓':'✕'));
+  if(!st.sigue||!st.vacio) mal++;
+
+  // ── el segundo acto y el ORIGEN dorado
+  await p3.evaluate(()=>{parar();PRESENTANDO=true;segundoActo();});
+  await p3.waitForTimeout(2500);
+  st=await p3.evaluate(()=>({sub:document.querySelector('#sub').textContent,
+    motas:typeof MOTAS!=='undefined'?MOTAS.length:-1,
+    cifra:(document.querySelector('#cifras .oro .n')||{}).textContent||''}));
+  const capa1=/capa uno|layer one/i.test(st.sub)||/cadena/i.test(st.sub);
+  console.log('\n══ SEGUNDO ACTO');
+  console.log('   narra: "'+st.sub.replace(/\s+/g,' ').slice(0,66)+'"');
+  console.log('   habla de capa uno: '+(capa1?'✓':'✕'));
+  if(!capa1) mal++;
+  // el disparo del oro llega cuando la narración entra al ORIGEN (~12s),
+  // así que se espera al hecho, no a un reloj.
+  st={motas:0,cifra:''};
+  for(let i=0;i<40;i++){
+    await p3.waitForTimeout(600);
+    st=await p3.evaluate(()=>({motas:MOTAS.length,
+      cifra:(document.querySelector('#cifras .oro .n')||{}).textContent||''}));
+    if(st.motas>0&&st.cifra) break;
+  }
+  console.log('   motas de ORIGEN volando: '+(st.motas>0?'✓ '+st.motas:'✕ 0'));
+  console.log('   cifra en pantalla: "'+st.cifra+'" '+(st.cifra?'✓':'✕'));
+  if(!st.motas) mal++;
+  if(!st.cifra) mal++;
+
   console.log('\nfallos: '+mal);
   await b.close();
 })().catch(e=>console.log('FALLO DEL TEST:',e.message));

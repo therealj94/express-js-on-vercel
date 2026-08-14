@@ -191,6 +191,10 @@ select{border:1px solid var(--edge);border-radius:8px;background:rgba(4,12,22,.9
   text-shadow:0 0 50px rgba(86,217,255,.55);font-variant-numeric:tabular-nums}
 #cifras .e{font:600 10px var(--disp);letter-spacing:.28em;color:var(--mut);
   margin-top:10px;text-transform:uppercase}
+#cifras .c.oro .n{color:var(--gold);font-size:52px;letter-spacing:.02em;
+  text-shadow:0 0 60px rgba(255,196,107,.5)}
+#cifras .c.oro .e{color:#c79a5a}
+#btnPresenta.sigue{border-color:rgba(255,196,107,.5);color:var(--gold)}
 
 /* ── la transacción en vivo: el momento que cierra ──────────────────────── */
 #vivo{position:fixed;z-index:22;inset:0;display:none;place-items:center;
@@ -605,6 +609,31 @@ setInterval(()=>{                    // tráfico de fondo
   IMPULSOS.push({de:NUCLEO[e[0]],a:NUCLEO[e[1]],t:0,vel:0.006,col:'#1a7fa8',tenue:true});
 },900);
 
+/* ═══ EL ORIGEN, EN MOVIMIENTO ═══════════════════════════════════════════
+   Cuando se habla del ORIGEN, la moneda se ve: motas doradas que recorren la
+   red por los axones de verdad. No es adorno -- es la única parte del
+   ecosistema que no se puede enseñar con una captura de pantalla. */
+const MOTAS=[];
+function lluviaDeOrigen(segundos){
+  const fin=performance.now()+(segundos||9)*1000;
+  (function soltar(){
+    if(performance.now()>fin)return;
+    for(let i=0;i<3;i++){
+      const e=AXONES[(Math.random()*AXONES.length)|0];
+      const alReves=Math.random()<.5;
+      MOTAS.push({de:NUCLEO[alReves?e[1]:e[0]], a:NUCLEO[alReves?e[0]:e[1]],
+                  t:0, vel:0.004+Math.random()*0.005, r:1+Math.random()*1.6});
+    }
+    setTimeout(soltar,150);
+  })();
+}
+function cifraGrande(txt,sub){
+  const c=$('#cifras'); c.innerHTML=''; c.classList.add('abre');
+  const d=document.createElement('div'); d.className='c oro';
+  d.innerHTML='<div class="n">'+txt+'</div><div class="e">'+sub+'</div>';
+  c.appendChild(d); requestAnimationFrame(()=>d.classList.add('viva'));
+}
+
 /* ═══ 4 · DIBUJO ═════════════════════════════════════════════════════════ */
 let rY=.55,rX=-.12,arr=null,giroLibre=true,paraX=0,paraY=0;
 
@@ -731,6 +760,18 @@ function cuadro(ts){
       cx.fillStyle=m.col;cx.shadowColor=m.col;cx.shadowBlur=12;
       cx.beginPath();cx.arc(x,y,2.1,0,6.283);cx.fill();cx.shadowBlur=0;
     }
+  }
+
+  /* las motas de ORIGEN, por encima de los impulsos */
+  for(let k=MOTAS.length-1;k>=0;k--){
+    const m=MOTAS[k]; m.t+=m.vel*dt/16;
+    if(m.t>=1){MOTAS.splice(k,1);continue;}
+    const A=pr[m.de], B=pr[m.a];
+    const x=A[0]+(B[0]-A[0])*m.t, y=A[1]+(B[1]-A[1])*m.t;
+    const op=Math.sin(m.t*3.1416);
+    cx.fillStyle='rgba(255,196,107,'+(op*.85).toFixed(3)+')';
+    cx.shadowColor='#ffc46b'; cx.shadowBlur=14*op;
+    cx.beginPath();cx.arc(x,y,m.r*op+.5,0,6.283);cx.fill();cx.shadowBlur=0;
   }
 
   /* EL REACTOR. Cuando habla, respira: tres anillos concéntricos y un arco
@@ -1088,6 +1129,38 @@ let cola=[],hablando=false,quienHabla=null;
    sobre todo-- se queda en estado cancelado y se traga la frase: silencio
    absoluto, sin un solo error en la consola. Cancelar y hablar tienen que ir
    en ticks distintos, y si no había nada sonando NO se cancela nada. */
+/* ═══ REANUDAR ═══════════════════════════════════════════════════════════
+   Si te sales --a comprobar el hash en el explorador, por ejemplo-- o paras a
+   mitad, lo que quedaba por decir se guarda y el botón pasa a CONTINUAR.
+   Perder el sitio en una presentación de seis minutos era lo peor que podía
+   pasar delante de un inversionista. */
+let colaGuardada=null, finGuardado=null;
+const hayPendiente=()=>!!(colaGuardada&&colaGuardada.length);
+function marcarContinuar(){
+  const b=$('#lblPresenta');
+  if(hayPendiente()){b.textContent=IDI==='en'?'RESUME':'CONTINUAR';
+    $('#btnPresenta').classList.add('sigue');}
+  else{b.textContent=IDI==='en'?'TOUR':'RECORRIDO';
+    $('#btnPresenta').classList.remove('sigue');}
+}
+function continuar(){
+  if(!hayPendiente())return false;
+  const c=colaGuardada, f=finGuardado;
+  colaGuardada=null; finGuardado=null;
+  PRESENTANDO=true; $('#btnPresenta').classList.add('on');
+  $('#btnPresenta').classList.remove('sigue');
+  $('#lblPresenta').textContent=IDI==='en'?'STOP':'PARAR';
+  $('#oido').textContent='';
+  decir(c,f);
+  return true;
+}
+/* Al volver a la pestaña --de mirar el explorador-- se avisa sin buscar nada. */
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden||!hayPendiente())return;
+  $('#oido').textContent=IDI==='en'?'Press RESUME to carry on where we left off.'
+                                   :'Pulsa CONTINUAR para seguir donde lo dejamos.';
+});
+
 let alTerminar=null;
 function decir(lineas,fin){
   alTerminar=fin||null;
@@ -1114,6 +1187,8 @@ function siguiente(){
     if(PRESENTANDO)volarA(l.foco,l.zoom);}
   if(l.ag)tarjetaAg(l.ag);
   if(l.cifras)contadores(l.cifras); else if(l.cifras===null)ocultarContadores();
+  if(l.cifra)cifraGrande(l.cifra[0],l.cifra[1]);
+  if(l.oro)lluviaDeOrigen(l.oro);
 
   const u=new SpeechSynthesisUtterance(limpiar(l.x));
   /* Con qué voz. NO basta con el idioma del selector: los partes de los
@@ -1205,8 +1280,10 @@ function marcar(q){
 }
 function parar(){
   const f=alTerminar; alTerminar=null;
+  /* lo que quedaba por decir NO se tira: se guarda para poder continuar */
+  if(PRESENTANDO&&cola.length){colaGuardada=cola.slice();finGuardado=f;}
   hablando=false;cola=[];speechSynthesis.cancel();
-  if(f)setTimeout(f,60);
+  if(f&&!hayPendiente())setTimeout(f,60);
   $('#hablar').classList.remove('on');$('#lblHablar').textContent=t('brief');
   $('#sub').textContent='';marcar(null);
 }
@@ -1912,6 +1989,7 @@ function guionPresentacion(){
 
 function presentar(){
   if(PRESENTANDO){pararPresentacion();return;}
+  if(continuar())return;              // seguir donde se quedó, si hay algo
   PRESENTANDO=true;
   $('#btnPresenta').classList.add('on');
   $('#lblPresenta').textContent=IDI==='en'?'STOP':'PARAR';
@@ -1929,10 +2007,10 @@ function presentar(){
   });
 }
 function pararPresentacion(){
+  parar();                       // PRIMERO: así parar() aún ve PRESENTANDO y guarda
   PRESENTANDO=false; ocultarContadores(); soltarCamara();
   $('#btnPresenta').classList.remove('on');
-  $('#lblPresenta').textContent=IDI==='en'?'TOUR':'RECORRIDO';
-  parar();
+  marcarContinuar();
 }
 
 /* ═══ LA TRANSACCIÓN EN VIVO ══════════════════════════════════════════════
@@ -1961,6 +2039,8 @@ async function transaccionEnVivo(){
     $('#vivoHash').textContent=j.hash||'';
     if(j.hash){
       const u='https://testnet.ordenscan.com/tx/'+j.hash;
+      /* se abre en otra pestaña a proposito: la presentación se queda donde
+         está, y al volver el botón ya dice CONTINUAR */
       $('#vivoLink').textContent=en?'Verify it yourself in the explorer →':'Compruébalo tú mismo en el explorador →';
       $('#vivoLink').href=u;
     }
@@ -1968,8 +2048,13 @@ async function transaccionEnVivo(){
               :('Hecho. Entró en el bloque '+nf(j.bloque)+' y confirmó en '+j.segundos+' segundos.'),{foco:'n5534',p:520}),
       J(en?'That hash is on screen. Open it in the explorer, from your own phone. It is not a simulation.'
           :'Ese identificador está en pantalla. Ábrelo en el explorador, desde tu propio teléfono. No es una simulación.',{p:0})],
-      ()=>{PRESENTANDO=false;$('#btnPresenta').classList.remove('on');
-           $('#lblPresenta').textContent=IDI==='en'?'TOUR':'RECORRIDO';});
+      /* El segundo acto va SIEMPRE detrás de la transacción, también cuando
+         alguien pulsa EN VIVO por su cuenta sin venir del recorrido: es
+         justo ahí donde nace la pregunta «¿y esto qué es?». */
+      ()=>{ PRESENTANDO=true;
+            $('#btnPresenta').classList.add('on');
+            $('#lblPresenta').textContent=IDI==='en'?'STOP':'PARAR';
+            segundoActo(); });
   }catch(e){
     $('#vivoEstado').textContent=en?'Could not send right now.':'No se pudo enviar ahora mismo.';
     $('#vivoHash').textContent=String(e.message||e).slice(0,180);
@@ -1981,6 +2066,73 @@ $('#vivoCerrar').addEventListener('click',()=>$('#vivo').classList.remove('abre'
 $('#btnVivo').addEventListener('click',transaccionEnVivo);
 if(INVITADO&&!PUEDE_TX)$('#btnVivo').style.display='none';   // sin vale, no se gasta nada
 $('#btnPresenta').addEventListener('click',presentar);
+
+/* ═══ EL SEGUNDO ACTO ═════════════════════════════════════════════════════
+   Después de ver una transacción de verdad, la pregunta del inversionista
+   deja de ser «¿funciona?» y pasa a ser «¿y esto qué es, y a dónde va?».
+   Aquí se contesta: qué significa tener cadena propia, qué se gana con ella,
+   cuánto ORIGEN hay, y hacia dónde apunta.
+
+   Sobre las cifras: se dicen SIEMPRE «al precio de referencia», porque eso es
+   lo que son. El ORIGEN se calcula con el gramo de oro entre cincuenta y
+   cinco, y mientras la Junta no cierre la figura jurídica del respaldo, decir
+   «tenemos» en vez de «equivale» sería una afirmación que no toca hacer. */
+function segundoActo(){
+  const es=IDI!=='en', P=[];
+  const F=(x,o={})=>P.push(Object.assign({q:'JARVIS',x},o));
+
+  if(es){
+    F('Ahora, qué es lo que acabas de ver.',{p:520,cifras:null});
+    F('Orden Global no es una aplicación sobre la cadena de otro. Es una cadena de capa uno: la capa base, la que guarda el registro y la que decide sus propias reglas.',{foco:'n5534',p:700});
+    F('La diferencia es de fondo. En una cadena ajena se paga peaje al dueño, se hereda su congestión y se acepta lo que decida cambiar mañana.',{foco:'n5534',p:650});
+    F('Aquí no. El precio del gas lo fijamos nosotros: noventa y tres gigawei, estable, sin subastas ni sorpresas. Un envío cuesta lo mismo hoy que el mes que viene.',{foco:'tesoro',p:700});
+    F('Un bloque cada diez segundos, con cuatro validadores propios y consenso Besu. Ni minería, ni consumo de energía, ni depender de que alguien más quiera confirmarnos.',{foco:'nodos',p:700});
+    F('Y sobre todo: podemos cambiar las reglas cuando el negocio lo pida, sin pedir permiso a nadie. Eso, en un sistema de pagos, es la diferencia entre tener producto y alquilarlo.',{foco:'g5550',p:750});
+
+    F('Hablemos del ORIGEN.',{p:520,oro:9});
+    F('La emisión total es de un billón de ORIGEN. Exacta, verificada en el bloque cero, y comprobable por cualquiera.',{foco:'tesoro',p:650,
+      cifra:['1 000 000 000 000','ORIGEN · emisión total, fija']});
+    F('No hay emisión adicional. La cantidad no es una promesa que alguien pueda romper: está escrita en el génesis y cualquiera puede contarla.',{foco:'tesoro',p:700});
+    F('El tesoro guarda doscientos cincuenta mil millones de ORIGEN, que al precio de referencia de hoy equivalen a unos seiscientos treinta y seis mil millones de dólares.',{foco:'tesoro',p:750,
+      cifra:['636 000 000 000','dólares · al precio de referencia']});
+    F('Y no se mueve solo. Cada salida del tesoro necesita instrucción escrita de la Junta Directiva.',{foco:'tesoro',p:700});
+    F('El precio sale de una fórmula pública, no de una decisión: el gramo de oro en dólares, dividido entre cincuenta y cinco. Hoy, dos dólares con cincuenta y cinco.',{foco:'tesoro',p:750,
+      cifra:['2,55','dólares por ORIGEN · hoy']});
+
+    F('Y hacia dónde va esto.',{p:520,cifras:null});
+    F('Apuntamos a que el ORIGEN sea moneda de curso en América Latina: que se pueda cobrar, guardar y gastar sin depender del banco de cada país ni de su inflación.',{foco:'pago',p:750});
+    F('Las piezas ya están puestas. La cadena, la billetera, la identidad verificada, la pasarela de cobro y la tarjeta que se gasta en moneda corriente.',{foco:'wallet',p:700});
+    F('Cuatrocientas treinta y cinco personas ya lo usan. Ese es el punto de partida, no el destino.',{foco:'wallet',p:700,
+      cifra:['435','personas usándolo hoy']});
+    F('Gracias por tu tiempo. Si quieres profundizar en cualquier pieza, dímela y te la cuento entera.',{p:0,cifras:null});
+  }else{
+    F('Now, what you have just seen.',{p:520,cifras:null});
+    F('Orden Global is not an application on somebody else chain. It is a layer one chain: the base layer, the one that holds the ledger and sets its own rules.',{foco:'n5534',p:700});
+    F('The difference runs deep. On somebody else chain you pay a toll to the owner, you inherit their congestion, and you accept whatever they decide to change tomorrow.',{foco:'n5534',p:650});
+    F('Not here. We set the gas price: ninety three gigawei, stable, no auctions and no surprises. A transfer costs the same today as next month.',{foco:'tesoro',p:700});
+    F('One block every ten seconds, four of our own validators, Besu consensus. No mining, no energy burn, and no depending on anyone else to confirm us.',{foco:'nodos',p:700});
+    F('And above all: we can change the rules when the business needs it, without asking permission. In a payments system, that is the difference between owning the product and renting it.',{foco:'g5550',p:750});
+
+    F('Let us talk about ORIGEN.',{p:520,oro:9});
+    F('Total supply is one trillion ORIGEN. Exact, verified in the genesis block, and checkable by anyone.',{foco:'tesoro',p:650,
+      cifra:['1 000 000 000 000','ORIGEN · total supply, fixed']});
+    F('There is no further issuance. The amount is not a promise somebody can break: it is written in the genesis and anyone can count it.',{foco:'tesoro',p:700});
+    F('The treasury holds two hundred fifty billion ORIGEN, which at the reference price today is equivalent to roughly six hundred thirty six billion dollars.',{foco:'tesoro',p:750,
+      cifra:['636 000 000 000','dollars · at the reference price']});
+    F('And it does not move on its own. Every outflow from the treasury needs a written instruction from the Board.',{foco:'tesoro',p:700});
+    F('The price comes from a public formula, not from a decision: one gram of gold in dollars, divided by fifty five. Today, two dollars fifty five.',{foco:'tesoro',p:750,
+      cifra:['2.55','dollars per ORIGEN · today']});
+
+    F('And where this is going.',{p:520,cifras:null});
+    F('We are aiming for ORIGEN to be a working currency across Latin America: something you can charge in, hold and spend without depending on each country bank or its inflation.',{foco:'pago',p:750});
+    F('The pieces are already in place. The chain, the wallet, verified identity, the payment gateway, and a card you spend in ordinary money.',{foco:'wallet',p:700});
+    F('Four hundred thirty five people already use it. That is the starting point, not the destination.',{foco:'wallet',p:700,
+      cifra:['435','people using it today']});
+    F('Thank you for your time. If you want to go deeper into any piece, name it and I will walk you through it.',{p:0,cifras:null});
+  }
+  decir(P, ()=>{PRESENTANDO=false;$('#btnPresenta').classList.remove('on');
+                marcarContinuar(); soltarCamara();});
+}
 
 /* ═══ EL VIAJE DEL DÓLAR ══════════════════════════════════════════════════
    El modelo de negocio, visible en veinte segundos: un impulso que recorre

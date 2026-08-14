@@ -28,6 +28,9 @@ const {chromium}=require('playwright');
  });
  await p.goto('file:///home/user/express-js-on-vercel/infra/cerebro/index.html',{waitUntil:'domcontentloaded'});
  await p.waitForTimeout(2000);
+ // la puerta de idioma tapa todo hasta que se elige: se elige. 
+ if(await p.$('#puerta.abre')) await p.click('#puerta [data-idi="es"]'); 
+ await p.waitForTimeout(400);
  await p.evaluate(()=>{desbloqueada=true;});
  let mal=0;
  const dicho=()=>p.evaluate(()=>window.__d.slice());

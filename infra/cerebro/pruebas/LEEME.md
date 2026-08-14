@@ -39,3 +39,23 @@ conteste el parte del Contador, escrito en castellano, con voz inglesa.
 Los fallos que encontró y que ya están arreglados: «The what it costs agent»
 (un engendro, ahora *The accountant*), «cuánto cuesta» que no se reconocía, y
 «chainlist» que caía en el patrón de «chain» porque lo contiene.
+
+## `probar-invitado.js`
+
+Lo que ve —y lo que NO ve— quien entra por `/demo` sin cuenta. Cuatro cosas:
+
+1. **que no pida nada interno.** Una sola petición a `/rpc` o a `/partes.json`
+   devuelve 401, y un 401 con `WWW-Authenticate` abre la ventana de contraseña
+   del navegador encima de la presentación. Pasó dos veces: primero los
+   temporizadores, después los iconos de `/img`. La prueba mira **todas** las
+   peticiones durante 26 s y falla si alguna toca lo interno.
+2. **que nada salga en rojo.** El invitado no puede leer los proxies, así que
+   antes salía «CON FALLAS 10/13». Ahora los estados son descriptivos.
+3. **que se pueda continuar.** Se para el recorrido a mitad, se comprueba que
+   el botón pase a decir CONTINUAR y que al pulsarlo siga desde donde iba.
+4. **el segundo acto.** Que narre lo de la capa uno, que vuelen las motas de
+   ORIGEN y que la cifra grande aparezca en pantalla.
+
+Las dos últimas se esperan **al hecho, no al reloj**: el oro se dispara cuando
+la narración entra al ORIGEN (~12 s), y una espera fija de 11,5 s daba un fallo
+que no existía en el producto.
