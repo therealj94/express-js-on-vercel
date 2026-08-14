@@ -21,7 +21,10 @@
       },
       "softwareKeyboardLayoutMode": "resize"
     },
-    "ios": { "bundleIdentifier": "com.ordenglobal.app", "supportsTablet": false },
+    "ios": {
+      "bundleIdentifier": "com.ordenglobal.app",
+      "supportsTablet": false
+    },
     "extra": {
       "walletApi": "https://vetawallet-1a2e38ac52b1.herokuapp.com",
       "genesisUrl": "https://genesis-id.onrender.com",
@@ -29,7 +32,11 @@
       "webPay": "https://main.d2dr8sh34hni4c.amplifyapp.com",
       "webScan": "https://testnet.ordenscan.com",
       "webCerebro": "https://cerebro.ordenscan.com/demo",
-      "mensajesApi": "https://cerebro.ordenscan.com/mensajes"
-    }
+      "mensajesApi": "https://cerebro.ordenscan.com/mensajes",
+      "eas": {
+        "projectId": "3017e984-a8ac-479c-8b75-33f8b8e69b25"
+      }
+    },
+    "owner": "ordenglobal"
   }
 }
