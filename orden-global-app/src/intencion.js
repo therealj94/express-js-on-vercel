@@ -42,6 +42,35 @@ export function traducir(frase, contactos) {
   const buscar = () => lib.find((c) => c.nombre && s.includes(' ' + sinTildes(c.nombre) + ' ')
     || (c.nombre && s.includes(sinTildes(c.nombre))));
 
+  // ── mandar un MENSAJE ──────────────────────────────────────────────
+  // Va ANTES que el envío de dinero porque comparten verbo: «envíale un
+  // mensaje a María» no es «envíale ORIGEN a María». El texto del mensaje
+  // (si vino) se saca de la frase ORIGINAL --con mayúsculas y tildes--,
+  // y el contacto se busca solo en la parte ANTERIOR al texto: así un
+  // nombre mencionado DENTRO del mensaje no cambia el destinatario.
+  if (/\b(envia(le|r|me)?|envio|manda(le|r)?|send)\b/.test(s)
+      && /\b(mensaje|mensajito|message|text(o)?)\b/.test(s)) {
+    const orig = String(frase || '');
+    const m = orig.match(/[:：]\s*(.+)$/s)
+      || orig.match(/\b(?:que\s+diga|que\s+dice|diciendo|saying|that\s+says)\s+(.+)$/is);
+    const antes = ' ' + sinTildes(m ? orig.slice(0, m.index) : orig) + ' ';
+    const quien = lib.find((c) => c.nombre && antes.includes(sinTildes(c.nombre)));
+    if (!quien) return { falla: 'sinContacto' };
+    const params = { con: quien.correo };
+    const txt = m && m[1].trim();
+    if (txt) params.txt = txt;
+    return { ruta: 'chat/abrir', params };
+  }
+
+  // ── reporte de la billetera ────────────────────────────────────────
+  // También antes que «enviar»: «envíame un reporte de mi billetera» es un
+  // reporte, no un envío. Sin params: la pantalla lee la cuenta viva.
+  if (/\b(reporte|resumen|report|summary)\b/.test(s)
+      || /\bcomo (va|esta|anda|quedo) mi (billetera|cartera|cuenta|dinero|veta ?wallet|wallet)\b/.test(s)
+      || /\bhow('s| is| are)? my (wallet|account|money) (doing|going)\b/.test(s)) {
+    return { ruta: 'wallet/reporte', params: {} };
+  }
+
   // ── enviar ─────────────────────────────────────────────────────────
   if (/\b(envia(le|r|me)?|envio|manda(le|r)?|transfiere(le)?|pasale|send|transfer|pay)\b/.test(s)
       && !/\b(cobra|charge)\b/.test(s)) {
@@ -90,8 +119,10 @@ export function traducir(frase, contactos) {
 export const EJEMPLOS = {
   es: ['quiero ver veta wallet', 'envía 15 a Juan', 'abre mytokenpay',
        'muéstrame mi tarjeta', 'quiero recibir', 'quiero chatear con María',
-       'cóbrale 200', 'abre genesis id'],
+       'cóbrale 200', 'abre genesis id',
+       'hazme un reporte de mi billetera', 'envíale un mensaje a María'],
   en: ['i want to see veta wallet', 'send 15 to Juan', 'open mytokenpay',
        'show me my card', 'i want to receive', 'chat with María',
-       'charge 200', 'open genesis id'],
+       'charge 200', 'open genesis id',
+       'give me a summary of my wallet', 'send a message to María'],
 };

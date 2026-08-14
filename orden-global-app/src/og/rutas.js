@@ -11,6 +11,7 @@ export const MAPA = {
   'wallet/tarjeta':  { p: 'card' },
   'wallet/swap':     { p: 'swap', firma: true },
   'wallet/actividad':{ p: 'activity' },
+  'wallet/reporte':  { p: 'reporte' },             // el resumen hablado de la wallet
   'pay/abrir':       { p: 'mytokenpay', gid: true },
   'pay/cobrar':      { p: 'cobrar' },
   'id/abrir':        { p: 'passport' },
