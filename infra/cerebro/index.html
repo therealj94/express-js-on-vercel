@@ -366,7 +366,12 @@ let VEL=velSana(parseFloat(localStorage.getItem('velCerebro')));
    esconde con CSS --el servidor ya se niega a servirlo con un vale-- pero la
    página tampoco lo pide, para no dejar peticiones fallidas por ahí. */
 const VALE=new URLSearchParams(location.search).get('t')||'';
-const INVITADO=VALE&&/\/demo/.test(location.pathname);
+/* Se entra de invitado por /demo. El VALE es opcional y solo desbloquea la
+   transaccion en vivo: sin el, la presentacion se ve entera pero de solo
+   lectura. Asi el enlace se puede ensenar sin miedo, y solo quien lleva vale
+   puede gastar fondos de los bots. */
+const INVITADO=/\/demo/.test(location.pathname)||location.search.includes('demo=1');
+const PUEDE_TX=INVITADO&&!!VALE;
 if(INVITADO)document.body.classList.add('invitado');
 const RUTAS={tx:'bots/ahora', bots:'bots'};
 const api=(r)=>INVITADO
@@ -834,7 +839,7 @@ async function verSalud(ruta,id,est,met){try{
   const r=await fetch(ruta,{cache:'no-store'}); if(!r.ok)throw 0;
   set(id,est,met,false); return true;
  }catch(e){set(id,'FAIL','no answer',true); return false;}}
-async function verChainlist(){try{
+async function verChainlist(){if(INVITADO)return; try{
   const[a,b]=await Promise.all([8593,8594].map(n=>fetch(
     'https://api.github.com/repos/ethereum-lists/chains/pulls/'+n,{cache:'no-store'})
     .then(r=>r.ok?r.json():null)));
@@ -1676,7 +1681,7 @@ function estadoParaElModelo(){
   };
 }
 async function conversar(pregunta){
-  if(hayModelo===false)return false;
+  if(INVITADO||hayModelo===false)return false;
   $('#sub').innerHTML='<span class="quien">JARVIS</span><span style="opacity:.5">…</span>';
   try{
     const r=await fetch('/ordenes/hablar',{method:'POST',
@@ -1910,7 +1915,18 @@ function presentar(){
   PRESENTANDO=true;
   $('#btnPresenta').classList.add('on');
   $('#lblPresenta').textContent=IDI==='en'?'STOP':'PARAR';
-  decir(guionPresentacion(), ()=>{ if(PRESENTANDO)transaccionEnVivo(); });
+  decir(guionPresentacion(), ()=>{
+    if(!PRESENTANDO)return;
+    if(INVITADO&&!PUEDE_TX){       // sin vale se cierra con palabras, no con gasto
+      decir([J(IDI==='en'
+        ?'That is the ecosystem. Everything you saw is live, and every number is verifiable in the public explorer.'
+        :'Ese es el ecosistema. Todo lo que viste está vivo, y cada número se puede comprobar en el explorador público.',{p:0})],
+        ()=>{PRESENTANDO=false;$('#btnPresenta').classList.remove('on');
+             $('#lblPresenta').textContent=IDI==='en'?'TOUR':'RECORRIDO';});
+      return;
+    }
+    transaccionEnVivo();
+  });
 }
 function pararPresentacion(){
   PRESENTANDO=false; ocultarContadores(); soltarCamara();
@@ -1963,6 +1979,7 @@ async function transaccionEnVivo(){
 }
 $('#vivoCerrar').addEventListener('click',()=>$('#vivo').classList.remove('abre'));
 $('#btnVivo').addEventListener('click',transaccionEnVivo);
+if(INVITADO&&!PUEDE_TX)$('#btnVivo').style.display='none';   // sin vale, no se gasta nada
 $('#btnPresenta').addEventListener('click',presentar);
 
 /* ═══ EL VIAJE DEL DÓLAR ══════════════════════════════════════════════════
@@ -2214,11 +2231,16 @@ let nPista=0;
 setInterval(()=>{if(hablando||oyendo)return;
   const l=PISTAS[IDI]; $('#pistas').textContent=l[nPista++%l.length];},6000);
 $('#pistas').textContent=PISTAS[IDI][0];
-setInterval(verNucleo,10000); setInterval(verMemoria,30000); setInterval(verScan,20000);
-setInterval(verBots,120000); setInterval(cargar,120000); setInterval(verChainlist,300000);
-setInterval(()=>{
-  verSalud('/salud-wallet','wallet','ONLINE','v'+(I.versionBackend||'—')+' · 435 users');
-  verSalud('/salud-genesis','gid','ONLINE','KYC · SSO · bridge');},60000);
+if(INVITADO){
+  /* El invitado solo refresca lo suyo, que no pide contrasena. */
+  setInterval(cargarInvitado,20000);
+}else{
+  setInterval(verNucleo,10000); setInterval(verMemoria,30000); setInterval(verScan,20000);
+  setInterval(verBots,120000); setInterval(cargar,120000); setInterval(verChainlist,300000);
+  setInterval(()=>{
+    verSalud('/salud-wallet','wallet','ONLINE','v'+(I.versionBackend||'—')+' · 435 users');
+    verSalud('/salud-genesis','gid','ONLINE','KYC · SSO · bridge');},60000);
+}
 </script>
 </body>
 </html>

@@ -311,3 +311,38 @@ son 18.182 toneladas: más del doble de la reserva de Estados Unidos. Cualquier
 inversionista con criterio hace esa multiplicación, probablemente delante de
 ti. Si no hay una respuesta exacta y sostenible, la demostración en vivo no
 salva la reunión. Está en `PROMPT-LEGAL-MINERIA.md`, la primera pregunta.
+
+## El acceso, y el invitado sin contraseña · 14-ago
+
+### El fallo que hubo que arreglar
+
+Un invitado abría su enlace y **a los diez segundos el navegador le pedía
+usuario y contraseña**. La causa no estaba en el enlace: los temporizadores del
+modo interno seguían corriendo y pedían `/rpc` cada diez segundos. Esa ruta
+devuelve **401 con cabecera `WWW-Authenticate`**, y ante eso el navegador saca
+su ventana de acceso él solo, sin que la página pueda evitarlo.
+
+Ahora el invitado tiene **sus propios temporizadores**, que sólo piden lo suyo.
+Comprobado con un servidor simulado que responde exactamente igual que el de
+verdad: **cero peticiones internas en veintiséis segundos**, en los dos modos.
+
+### La pantalla de acceso
+
+Antes, quien llegaba sin contraseña veía la página en blanco del navegador.
+Ahora hay una pantalla propia —`401.html`, servida por Caddy en los errores 401—
+que dice dónde está y ofrece dos caminos: **ENTRAR** y **VER LA PRESENTACIÓN**.
+
+### Dos niveles de invitado
+
+| | ve la presentación | transacción en vivo |
+|---|---|---|
+| `/demo` — **sin vale, público** | sí | **no** |
+| `/demo?t=<vale>` — con vale, 24 h | sí | sí |
+
+La presentación es pública a propósito: dice en voz alta lo mismo que diría
+cualquier lámina de una reunión, y así el enlace se puede mandar sin miedo.
+
+**La transacción en vivo sí pide vale**, y no por secreto: **gasta ORIGEN de
+los bots**. Sin vale, cualquiera que encontrara la dirección podría secarlos.
+
+Sin vale, el recorrido no termina en la demostración: cierra con palabras.

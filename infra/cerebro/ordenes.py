@@ -196,8 +196,9 @@ class Ordenes(BaseHTTPRequestHandler):
     def do_GET(self):
         ruta = urllib.parse.urlparse(self.path).path.rstrip('/')
         if ruta == '/demo/datos':
-            if not self.vale():
-                return self.responder(403, {'error': 'vale-no-valido'})
+            # Publico a proposito: es lo mismo que la presentacion dice en voz
+            # alta. Sigue sin llevar NADA interno, porque se construye con una
+            # lista blanca escrita a mano.
             return self.responder(200, datos_de_invitado())
         if self.path.rstrip('/') == '/quien':
             # Caddy pone el usuario autenticado en X-Usuario. En local no hay.
@@ -285,6 +286,8 @@ class Ordenes(BaseHTTPRequestHandler):
                                         'horas': HORAS_VALE})
 
         if ruta == '/demo/tx':
+            # Esta SI pide vale: gasta ORIGEN de los bots, y sin vale
+            # cualquiera podria secarlos.
             # Una transaccion de verdad, en la red de PRUEBAS. Es la misma que
             # los bots hacen solos cada tres horas: adelantarla no provoca nada
             # que no fuera a pasar igual.
