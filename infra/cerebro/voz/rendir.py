@@ -35,6 +35,14 @@ VOCES = {
 }
 MODELOS = os.environ.get('PIPER_VOCES', os.path.dirname(os.path.abspath(__file__)) + '/modelos')
 
+# Como lee. Elegido de oido por Jose el 14-ago entre cinco variantes: esta es
+# la que sonaba mas humana sin sonar lenta.
+#   length_scale  1.12 -> un poco mas despacio; en narracion se lee humano
+#   noise_scale   0.75 -> algo mas de color en la voz
+#   noise_w_scale 1.00 -> cada fonema no dura siempre exactamente lo mismo,
+#                         que es la diferencia entre una persona y un reloj
+COMO_LEE = dict(length_scale=1.12, noise_scale=0.75, noise_w_scale=1.0)
+
 
 def clave(texto, voz):
     """FNV-1a de 32 bits. Tiene gemelo en index.html; si cambia uno, cambia
@@ -61,8 +69,9 @@ def main():
         solo = set(sys.argv[sys.argv.index('--solo') + 1].split(','))
     os.makedirs(destino, exist_ok=True)
 
-    from piper import PiperVoice
+    from piper import PiperVoice, SynthesisConfig
     import soundfile as sf
+    ajuste = SynthesisConfig(**COMO_LEE)
 
     cargadas = {}
     def voz_de(idi):
@@ -95,7 +104,7 @@ def main():
         for i, (txt, espera) in enumerate(trozos):
             buf = io.BytesIO()
             with wave.open(buf, 'wb') as w:
-                voz.synthesize_wav(txt, w)
+                voz.synthesize_wav(txt, w, syn_config=ajuste)
             buf.seek(0)
             with wave.open(buf) as w:
                 hz = w.getframerate()

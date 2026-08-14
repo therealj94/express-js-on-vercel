@@ -50,6 +50,16 @@ const RUTA='file:///home/user/express-js-on-vercel/infra/cerebro/index.html';
       INVERSOR.forEach(q=>q[IDI].forEach(x=>mete('inversor:'+q.id,x)));
       for(const k in SABER)SABER[k][IDI].forEach(x=>mete('saber:'+k,x));
       const P=PREGUNTAS[IDI]; for(const k in P)mete('pregunta:'+k,P[k]);
+      /* Las frases sueltas que tambien tienen que sonar bien: la de probar
+         la voz --si esa sale robotica, el boton que existe para juzgar la
+         voz la juzga mal-- y las que dice al pararse a preguntar. */
+      mete('suelta:probar',FRASE_PRUEBA());
+      mete('suelta:control', IDI==='en'
+        ? 'Anything you want to ask me so far? Or shall I carry on?'
+        : '¿Hasta aquí alguna pregunta? ¿O sigo?');
+      mete('suelta:vuelve', IDI==='en'?'Back to where we were.':'Volvemos a donde íbamos.');
+      mete('suelta:asi', IDI==='en'?'This is how I would answer it.':'Así la contestaría yo.');
+      mete('suelta:inv', IDI==='en'?'An investor asks you this.':'Un inversionista te pregunta esto.');
       return out;
     });
     /* Duplicados fuera: la misma frase no se graba dos veces. */

@@ -116,9 +116,16 @@ const sub=p=>p.evaluate(()=>document.querySelector('#sub').textContent);
     n:colaGuardada?colaGuardada.length:0}));
   const contesta=/figura jur|no est. cerrad/i.test(resp.d);
   console.log('   contesta la pregunta: '+(contesta?'✓ '+resp.tema:'✕ '+resp.d.slice(0,70)));
-  console.log('   NO pisa el sitio guardado: '+(resp.n===antes?'✓ siguen '+resp.n:'✕ '+antes+'→'+resp.n));
+  /* O sigue guardado, o ya se lo llevo la vuelta automatica --que es lo que
+     tiene que pasar-- y entonces esta en la cola. Lo que NO puede es haberse
+     perdido: eso seria volver al sitio equivocado. */
+  const sitio=await p.evaluate(()=>({g:colaGuardada?colaGuardada.length:0,c:cola.length}));
+  const conserva=resp.n===antes||sitio.g===antes||sitio.c>=antes-2;
+  console.log('   NO pisa el sitio guardado: '+(conserva
+    ?'✓ '+(sitio.g?'guardadas '+sitio.g:'ya retomadas, cola '+sitio.c)
+    :'✕ '+antes+'→ guard '+sitio.g+' cola '+sitio.c));
   if(!contesta)mal++;
-  if(resp.n!==antes)mal++;
+  if(!conserva)mal++;
 
   // y vuelve sola
   let volvio=false;

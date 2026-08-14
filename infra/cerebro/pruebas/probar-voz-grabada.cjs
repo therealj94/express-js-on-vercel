@@ -21,16 +21,12 @@ const {chromium}=require('playwright');
 const HTML=require('fs').readFileSync(
   '/home/user/express-js-on-vercel/infra/cerebro/index.html','utf8');
 
-/* un mp3 de verdad, corto y silencioso, en base64: los navegadores se niegan
-   a reproducir bytes inventados y el test daria un falso negativo */
-const MP3=Buffer.from(
- '//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAADAAAGQABVVVVVVVVVVVVVVVVVVVVVVVVV'+
- 'Vaqqqqqqqqqqqqqqqqqqqqqqqqqq//////////////////////////8AAAA5TEFNRTMuOTlyAaUA'+
- 'AAAALjUAABRAJATiQgAAQAAABkAoGvUeAAAAAAAAAAAAAAAAAAAA//uQxAADwAABpAAAACAAADSA'+
- 'AAAETEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV'+
- 'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//uQxA6DwAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVV'+
- 'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV'+
- 'VVVVVVVVVVVVVVVVVVVV','base64');
+/* Un MP3 DE VERDAD, salido de la propia grabacion. El primer intento fue un
+   base64 escrito a mano, y Chromium no podia decodificarlo: disparaba
+   `onerror`, el cerebro se caia --correctamente-- a la voz del navegador, y
+   el test acusaba al producto de hablar encima cuando el producto estaba
+   haciendo justo lo que debe con un fichero roto. */
+const MP3=require('fs').readFileSync(__dirname+'/muestra.mp3');
 
 const espiaVoz=()=>{
   const s=window.speechSynthesis;

@@ -1495,6 +1495,13 @@ function puntua(v){
   }else{
     BUENAS_ES.forEach((r,i)=>{if(r.test(v.name))p+=24-i*2;});
     if(/^es/i.test(v.lang))p+=30;
+    /* ESPANOL LATINO, no de Espana. Cuando una frase no esta grabada habla
+       el navegador, y si ahi sale una voz peninsular en mitad de una
+       presentacion hecha en mexicano el corte se oye a un kilometro. Se
+       premia es-MX y el resto de America, y se penaliza es-ES. */
+    if(/^es[-_](mx|419|us|co|ar|cl|pe|ve)/i.test(v.lang))p+=34;
+    if(/^es[-_]es/i.test(v.lang))p-=26;
+    if(/(Paulina|Juan|Angelica|Ang.lica|Marisol|Jorge|Mexic|Latin)/i.test(v.name))p+=12;
   }
   /* Las voces buenas de Android y Chrome son las de RED --«Google …», las
      «Natural» y «Neural» de Microsoft--; las locales son el sintetizador
@@ -1520,7 +1527,7 @@ function cargarVoces(){
   const FINAS=IDI==='en'
     ?[/Daniel/i,/Arthur/i,/Oliver/i,/Serena/i,/Kate/i,/Samantha/i,/Alex/i,/Ava/i,
       /Natural/i,/Neural/i,/Online/i,/Google UK/i,/Google US/i]
-    :[/Mónica|Monica/i,/Paulina/i,/Marisol/i,/Angélica|Angelica/i,/Jorge/i,/Juan/i,
+    :[/Paulina/i,/Angélica|Angelica/i,/Marisol/i,/Juan/i,/Jorge/i,/Mónica|Monica/i,
       /Natural/i,/Neural/i,/Online/i,/Google español/i,/Google Español/i];
   const finas=voces.filter(v=>FINAS.some(r=>r.test(v.name)));
   if(finas.length>=2)voces=finas.slice(0,6); else voces=voces.slice(0,6);
@@ -1650,6 +1657,27 @@ function audioDe(textoLimpio){
   const e=MANIFIESTO[claveVoz(textoLimpio,VOZ_GRABADA[idiomaDe(textoLimpio)]||'')];
   return e?'/voz/'+e.f:null;
 }
+/* ═══ EL NOMBRE Y LA VOZ ══════════════════════════════════════════════════
+   Las frases llevan tu nombre --«Bienvenido a Orden Global, Carlos»-- y ese
+   texto no puede estar grabado: no sabemos como te llamas hasta que llegas.
+   Resultado: justo esas frases caian a la voz del navegador y sonaban a
+   robot de Espana en mitad de la presentacion. Eso era peor que no decir el
+   nombre.
+
+   Asi que si la version con nombre no esta grabada, se usa la generica --y
+   se DICE Y SE ESCRIBE la generica, las dos cosas--. Nunca un audio que
+   diga algo distinto del subtitulo: esa regla no se rompe ni por esto. */
+function conVoz(texto){
+  const t=limpiar(texto);
+  let url=audioDe(t);
+  if(url)return {texto:t,url};
+  const v=VOC();
+  if(v){
+    const gen=t.split(v).join('');
+    if(gen!==t){ url=audioDe(gen); if(url)return {texto:gen,url}; }
+  }
+  return {texto:t,url:null};
+}
 (function cargarManifiesto(){
   /* Sin manifiesto no pasa nada: se habla como siempre. Por eso ni se avisa
      del fallo --no es un fallo, es el modo normal de antes--. */
@@ -1673,8 +1701,45 @@ function reproducir(url,mio,alAcabar,alFallar){
                   if(audioActual===a)audioActual=null; alAcabar(); };
   a.onerror=rendirse;
   audioActual=a;
-  const arranque=setTimeout(()=>{if(!a.currentTime)rendirse();},2000);
-  a.onplaying=()=>clearTimeout(arranque);
+  /* El vigilante se rinde solo si el fichero NO HA LLEGADO. Antes miraba
+     `currentTime`, y hay navegadores --y el headless de las pruebas-- donde
+     el audio suena sin que ese contador se mueva a tiempo: el vigilante lo
+     daba por muerto y se ponia a hablar ENCIMA del audio. Dos voces a la
+     vez es peor que ninguna. */
+  /* Que se rinda solo si el fichero NO HA LLEGADO, y ni un caso mas.
+     · `currentTime` a secas no vale: hay navegadores donde suena sin que ese
+       contador se mueva a tiempo, y el vigilante se ponia a hablar ENCIMA
+       del audio. Dos voces a la vez es peor que ninguna.
+     · Y `!paused` TAMPOCO vale, aunque lo parezca: `play()` deja `paused`
+       en falso aunque el fichero se quede colgado sin llegar nunca. Con esa
+       condicion el vigilante no saltaba jamas y se quedaba mudo, que es
+       justo lo que existe para evitar.
+     Lo que si vale es que hayan llegado datos. */
+  /* Hay que separar DOS averias distintas, y confundirlas fue el error:
+
+     1) EL FICHERO NO LLEGA --404, red colgada--. Aqui hay que rendirse
+        pronto y hablar con la voz del navegador, o el asistente se queda
+        mudo. Se detecta porque no llega ni la cabecera del audio.
+
+     2) EL FICHERO LLEGA PERO NO SUENA --sin salida de audio, permiso
+        denegado--. Aqui NO se puede hablar encima: sonarian las dos cosas.
+        Se deja terminar y, si `onended` no llega nunca, se pasa de frase
+        cuando ya deberia haber acabado. Se sigue adelante en silencio, que
+        es lo unico razonable si el aparato no reproduce nada.
+
+     `!paused` no sirve para distinguirlas, aunque lo parezca: `play()` lo
+     deja en falso aunque el fichero se quede colgado sin llegar jamas. */
+  let llegó=false;
+  const arranque=setTimeout(()=>{if(!llegó)rendirse();},2500);
+  const listo=()=>{
+    if(llegó)return; llegó=true; clearTimeout(arranque);
+    const dura=(isFinite(a.duration)&&a.duration>0?a.duration:12)*1000
+               /Math.max(.6,velSana(VEL));
+    setTimeout(()=>{ if(muerto||mio!==TURNO)return; muerto=true;
+                     if(audioActual===a)audioActual=null; alAcabar(); }, dura+3000);
+  };
+  a.onloadedmetadata=listo; a.onloadeddata=listo; a.oncanplay=listo;
+  a.onplaying=listo; a.ontimeupdate=listo;
   const pr=a.play();
   if(pr&&pr.catch)pr.catch(rendirse);
   return a;
@@ -1782,7 +1847,10 @@ function siguiente(){
   if(l.enlaces)mostrarEnlaces(l.enlaces);
   pintarRecorrido();
 
-  const texto=limpiar(l.x);
+  const res=conVoz(l.x);
+  const texto=res.texto;
+  if(texto!==limpiar(l.x))                 // se cayo a la version generica
+    $('#sub').innerHTML='<span class="quien">'+(l.q||'JARVIS')+'</span>'+texto;
   const partes=trozos(texto);
   const mio=++TURNO;
   let pasado=false;
@@ -1791,7 +1859,7 @@ function siguiente(){
 
   /* Si esta frase está grabada, se pone el fichero. Si falla por lo que sea,
      habla el navegador y nadie se entera: eso es lo único que importa. */
-  const url=audioDe(texto);
+  const url=res.url;
   if(url){
     reproducir(url,mio,()=>seguir(l.p||500),
                ()=>{if(hablando&&mio===TURNO)hablarTrozo(partes,0,l,mio,seguir);});
@@ -1915,6 +1983,13 @@ function guardarSitio(f){
      pisaría con las frases de la respuesta. Volverías al medio de la
      contestación en vez de a donde ibas. */
   if(volverTrasResponder)return;
+  /* Y SOLO se guarda lo que es del recorrido. Sin esto, cualquier cosa que
+     hablara con PRESENTANDO todavia puesto se guardaba como «donde ibas»
+     --la narracion de la transaccion en vivo se guardaba a si misma-- y a
+     partir de ahi `parar()` veia algo pendiente y dejaba de llamar al fin.
+     La demostracion se quedaba clavada en la transaccion. */
+  const suyo=lineaActual||cola[0];
+  if(!RECORRIDO||!suyo||RECORRIDO.lineas.indexOf(suyo)<0)return;
   /* La frase a medias vuelve a la cola: continuar en mitad de una idea no es
      continuar, es empezar la siguiente. */
   const resto=(lineaActual?[lineaActual]:[]).concat(cola);
@@ -2092,13 +2167,13 @@ const SABER={
   'And the backing: the gold formula. One ORIGEN is a gram of gold divided by fifty five.']},
  flujo:{es:[
   'Así se mueve el dinero, de punta a punta.',
-  'Entra por la tarjeta o por un depósito de USDT en la red Polygon. El backend lo convierte a ORIGEN al precio del oro del día.',
+  'Entra con dinero corriente --tarjeta o transferencia-- o con criptomoneda; hoy la puerta cripto es un depósito de USDT en la red Polygon. El backend lo convierte a ORIGEN al precio del oro del día.',
   'Dentro, la billetera firma contra el nodo: envíos, canjes y pagos con MyTokenPay.',
   'La comisión prevista es de una milésima de ORIGEN por transacción, pero hoy no está configurada: cobra cero. Y no se enciende hasta decidir su destino, porque la dirección puesta no es la billetera única.',
   'El tesoro guarda casi doscientos cincuenta mil millones de ORIGEN y no se mueve sin instrucción escrita de la Junta.'],
  en:[
   'This is how the money moves, end to end.',
-  'It enters through the card or a USDT deposit on Polygon. The backend converts it to ORIGEN at the day gold price.',
+  'It comes in with ordinary money --card or transfer-- or with crypto; today the crypto door is a USDT deposit on Polygon. The backend converts it to ORIGEN at the day gold price.',
   'Inside, the wallet signs against the node: sends, swaps and MyTokenPay payments.',
   'The planned fee is one thousandth of an ORIGEN per transaction, but it is not configured today: it charges zero. And it does not go on until its destination is decided, because the configured address is not the single wallet.',
   'The treasury holds nearly two hundred fifty billion ORIGEN and does not move without a written Board instruction.']},
@@ -2216,11 +2291,11 @@ const INVERSOR=[
  {id:'liquidez',
   re:/(liquidez|liquidity|donde se compra|donde se vende|exchange|listado|listing|mercado secundario|como salgo|exit|como recupero)/,
   es:['Hoy no hay mercado secundario con volumen, y esa es la respuesta corta.',
-      'Lo que hay montado es la entrada y la salida por producto: entra por tarjeta o por USDT en Polygon, y se gasta en un comercio o con la tarjeta.',
+      'Lo que hay montado es la entrada y la salida por producto: se entra con dinero corriente o con cripto --tarjeta, transferencia o USDT en Polygon-- y se gasta en un comercio o con la tarjeta.',
       'En listados públicos, lo que está en marcha son las dos solicitudes en Chainlist, que es el registro de cadenas. Eso da reconocimiento a la red, no liquidez al token: no lo confundas.',
       'La liquidez y los términos de salida de un inversionista son cosa de la Junta, y no hay nada firmado que yo pueda contarte.'],
   en:['There is no secondary market with volume today, and that is the short answer.',
-      'What is built is in and out through the product: it comes in by card or USDT on Polygon, and it is spent at a merchant or on the card.',
+      'What is built is in and out through the product: it comes in with ordinary money or crypto --card, transfer or USDT on Polygon-- and it is spent at a merchant or on the card.',
       'On public listings, what is in motion are the two Chainlist requests, which is the chain registry. That gives the network recognition, not the token liquidity: do not confuse the two.',
       'Liquidity and an investor exit are Board matters, and there is nothing signed that I can tell you about.']},
 
@@ -3071,9 +3146,10 @@ function guionPresentacion(){
 
     /* ── 5 · el dinero ─────────────────────────────────────────────────── */
     F('Ahora, cómo se mueve el dinero.',{cap:'EL DINERO',p:450,cifras:null});
-    F('Entra por la tarjeta, o por un depósito de USDT en la red Polygon.',{foco:'tarjeta',p:520});
-    F('Cruza la pasarela.',{foco:'polygon',p:450});
-    F('Y se convierte en ORIGEN al precio del oro del día: el gramo de oro en dólares dividido entre cincuenta y cinco.',{foco:'tesoro',p:650});
+    F('Se puede entrar de las dos formas: con dinero corriente --tarjeta o transferencia-- o con criptomoneda.',{foco:'tarjeta',p:620});
+    F('Con dinero corriente entra por la tarjeta. Con cripto, hoy por depósito de USDT en la red Polygon, y la pasarela admite más monedas según se abran.',{foco:'polygon',p:660});
+    F('Sea cual sea la puerta, cruza la pasarela y sale convertido en ORIGEN.',{foco:'polygon',p:560});
+    F('La conversión va al precio del oro del día: el gramo de oro en dólares dividido entre cincuenta y cinco. La misma cuenta para todos, entre por donde entre.',{foco:'tesoro',p:680});
     F('Desde la billetera se envía, se canjea, o se paga en un comercio.',{foco:'wallet',p:650});
     PARA();
 
@@ -3136,9 +3212,10 @@ function guionPresentacion(){
     PARA();
 
     F('Now, how the money moves.',{cap:'THE MONEY',p:450});
-    F('It comes in through the card, or through a USDT deposit on Polygon.',{foco:'tarjeta',p:520});
-    F('It crosses the gateway.',{foco:'polygon',p:450});
-    F('And it becomes ORIGEN at the day gold price: one gram of gold in dollars, divided by fifty five.',{foco:'tesoro',p:650});
+    F('You can come in either way: with ordinary money --card or transfer-- or with crypto.',{foco:'tarjeta',p:620});
+    F('With ordinary money it comes in through the card. With crypto, today through a USDT deposit on Polygon, and the gateway takes more coins as they are opened.',{foco:'polygon',p:660});
+    F('Whichever door it uses, it crosses the gateway and comes out as ORIGEN.',{foco:'polygon',p:560});
+    F('The conversion runs at the day gold price: one gram of gold in dollars, divided by fifty five. The same arithmetic for everyone, whichever door they used.',{foco:'tesoro',p:680});
     F('From the wallet it is sent, swapped, or spent at a merchant.',{foco:'wallet',p:650});
     PARA();
 
@@ -3176,6 +3253,10 @@ let MIC_OK=false;
 let volverTrasResponder=false, esperandoPregunta=false, relojControl=null;
 function puntoDeControl(){
   esperandoPregunta=true;
+  /* La barra tiene que decir donde estas TAMBIEN mientras pregunta: al
+     pararse, `siguiente()` sale antes de pintarla y se quedaba mostrando el
+     capitulo anterior. */
+  pintarRecorrido();
   $('#siono').classList.add('abre');
   $('#btnSi').textContent =IDI==='en'?'I HAVE A QUESTION':'TENGO UNA PREGUNTA';
   $('#btnNo').textContent =IDI==='en'?'CARRY ON':'SIGUE';
@@ -3332,6 +3413,17 @@ function pararPresentacion(){
    en el explorador desde su propio teléfono. Es la misma que los bots hacen
    solos cada tres horas: adelantarla no provoca nada nuevo. Y va en la red de
    PRUEBAS, nunca en la cadena congelada. */
+/* El segundo acto va SIEMPRE detras de la transaccion, tambien cuando
+   alguien pulsa EN VIVO por su cuenta sin venir del recorrido: es justo ahi
+   donde nace la pregunta «¿y esto que es?». Marcado con `pesePendiente`
+   porque tiene que correr aunque quede algo guardado. */
+function trasLaTransaccion(){
+  PRESENTANDO=true;
+  $('#btnPresenta').classList.add('on');document.body.classList.add('narrando');
+  $('#lblPresenta').textContent=IDI==='en'?'PAUSE':'PAUSAR';
+  segundoActo();
+}
+trasLaTransaccion.pesePendiente=true;
 async function transaccionEnVivo(){
   const en=IDI==='en';
   $('#vivo').classList.add('abre');
@@ -3364,10 +3456,7 @@ async function transaccionEnVivo(){
       /* El segundo acto va SIEMPRE detrás de la transacción, también cuando
          alguien pulsa EN VIVO por su cuenta sin venir del recorrido: es
          justo ahí donde nace la pregunta «¿y esto qué es?». */
-      ()=>{ PRESENTANDO=true;
-            $('#btnPresenta').classList.add('on');document.body.classList.add('narrando');
-            $('#lblPresenta').textContent=IDI==='en'?'PAUSE':'PAUSAR';
-            segundoActo(); });
+      trasLaTransaccion);
   }catch(e){
     $('#vivoEstado').textContent=en?'Could not send right now.':'No se pudo enviar ahora mismo.';
     $('#vivoHash').textContent=String(e.message||e).slice(0,180);
