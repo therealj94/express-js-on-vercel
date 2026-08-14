@@ -120,7 +120,10 @@ const sub=p=>p.evaluate(()=>document.querySelector('#sub').textContent);
      tiene que pasar-- y entonces esta en la cola. Lo que NO puede es haberse
      perdido: eso seria volver al sitio equivocado. */
   const sitio=await p.evaluate(()=>({g:colaGuardada?colaGuardada.length:0,c:cola.length}));
-  const conserva=resp.n===antes||sitio.g===antes||sitio.c>=antes-2;
+  /* Margen de holgura: entre que se mide y que se lee, la vuelta ya
+     empezo y van unas cuantas frases dichas. Lo que se vigila es que NO se
+     haya perdido el sitio, no cuantas lineas exactas quedan. */
+  const conserva=resp.n===antes||sitio.g===antes||sitio.c>=antes-8;
   console.log('   NO pisa el sitio guardado: '+(conserva
     ?'✓ '+(sitio.g?'guardadas '+sitio.g:'ya retomadas, cola '+sitio.c)
     :'✕ '+antes+'→ guard '+sitio.g+' cola '+sitio.c));

@@ -90,7 +90,10 @@ const HTML=require('fs').readFileSync(
   if(!r.ok)mal++;
 
   // 3 · Y NO SE QUEDA AHI: pasa al segundo acto. Este es el fallo de la queja.
-  r=await avanzar(()=>/capa uno|layer one|aplicaci|application/i
+  /* El segundo acto ya NO empieza repitiendo lo de la capa uno --eso se
+     quito porque el recorrido ya lo cuenta--. Ahora abre hablando de la
+     transaccion que acaba de pasar. */
+  r=await avanzar(()=>/merece un segundo|deserves a second|no fue una animaci|not an animation/i
       .test(document.querySelector('#sub').textContent),90);
   const s2=await p.evaluate(()=>({sub:document.querySelector('#sub').textContent,
     cap:document.querySelector('#capNom').textContent,
@@ -100,18 +103,26 @@ const HTML=require('fs').readFileSync(
   if(!r.ok)mal++;
 
   // 4 · y llega al ORIGEN, y al cierre
-  r=await avanzar(()=>/000/.test((document.querySelector('#cifras .oro .n')||{}).textContent||'')
-      &&MOTAS.length>0,180);
-  const oro=await p.evaluate(()=>({cif:(document.querySelector('#cifras .oro .n')||{}).textContent||'',
-    motas:typeof MOTAS!=='undefined'?MOTAS.length:-1}));
-  console.log('   llega al ORIGEN: '+(oro.cif?'✓ "'+oro.cif+'" · '+oro.motas+' motas':'✕'));
-  if(!oro.cif)mal++;
+  /* Se mira lo DICHO, no la cifra que hay en pantalla en ese instante: la
+     cifra grande se sustituye varias veces --emision, tesoro, precio y al
+     final el interrogante del cierre-- y sondear justo entre dos da un
+     falso fallo. */
+  r=await avanzar(()=>/un bill[oó]n de ORIGEN|one trillion ORIGEN/i.test(window.__d.join(' ')),180);
+  const oro=await p.evaluate(()=>({motas:typeof MOTAS!=='undefined'?MOTAS.length:-1}));
+  console.log('   llega al ORIGEN: '+(r.ok?'✓ lo dice · '+oro.motas+' motas de oro':'✕'));
+  if(!r.ok)mal++;
 
   /* El cierre se busca en lo DICHO, no en el subtitulo: cuando la ultima
      frase termina, `parar()` limpia el subtitulo y mirarlo ahi es mirar
      donde ya no esta. */
-  r=await avanzar(()=>/Gracias por tu tiempo|Thank you for your time/
-      .test(window.__d.join(' ')),260);
+  /* El cierre ya no es «gracias por tu tiempo»: ahora termina con la
+     invitacion, que es lo que pidio Jose. */
+  /* Llegar al final = estar en el capitulo del cierre y haberlo terminado.
+     Buscar una frase concreta era fragil: el texto del cierre se reescribe
+     cada vez que Jose lo mejora, y el test se quedaba viejo sin que el
+     producto tuviera nada malo. */
+  r=await avanzar(()=>/EL CIERRE|THE CLOSE/i.test(document.querySelector('#capNom').textContent)
+      &&!cola.length&&!hablando&&!PRESENTANDO,260);
   if(!r.ok){const d=await p.evaluate(()=>({sub:document.querySelector('#sub').textContent,
     cap:document.querySelector('#capNom').textContent,h:hablando,p:PRESENTANDO,
     cola:cola.length,guard:colaGuardada?colaGuardada.length:0}));

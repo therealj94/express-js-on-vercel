@@ -2846,6 +2846,13 @@ async function atender(txt){
     ofrecido=null; $('#oido').textContent=''; $('#siono').classList.remove('abre');
   }
 
+  /* «abre veta wallet» y abre la pestaña. Va ANTES que todo lo demas
+     porque «abre X» es una orden, no una pregunta sobre X: si cayera en el
+     buscador de temas, contestaria hablando de la billetera en vez de
+     abrirla. Se abre en otra pestaña siempre: la presentacion se queda
+     donde esta. */
+  { const sitio=sitioPedido(s); if(sitio)return void abrirSitio(sitio); }
+
   for(const [re,acc] of ORDENES) if(re.test(s)) return ejecutar(acc);
   if(/(stop|be quiet|silence|shut up|^para$|callate|silencio|basta)/i.test(s))return parar();
 
@@ -3065,6 +3072,39 @@ function listaDePreguntas(){
     ? 'These are the '+INVERSOR.length+' questions I can answer with real data. Ask me any of them, or say "rehearse" and I will fire one at you.'
     : 'Estas son las '+INVERSOR.length+' preguntas que puedo contestar con datos de verdad. Pregúntame cualquiera, o di «ensayo» y te suelto una.',{p:0})]);
 }
+/* ═══ ABRIR LOS SITIOS DE VIVA VOZ ═══════════════════════════════════════
+   «Abre Veta Wallet» y se abre. En una reunion esto vale mas que cualquier
+   explicacion: quien duda deja de dudar cuando ve la pagina de verdad, en
+   su propia pantalla, sin que nadie le pase un enlace. */
+const SITIOS=[
+  {id:'wallet', url:'https://vetawallet.com',       nom:'Veta Wallet',
+   re:/(veta ?wallet|billetera|wallet)/},
+  {id:'pago',   url:'https://mytokenpay.com',       nom:'MyTokenPay',
+   re:/(my ?token ?pay|pasarela|gateway)/},
+  {id:'scan',   url:'https://ordenscan.com',        nom:'ordenscan',
+   /* sin «el» delante: la gente dice «llevame AL explorador» */
+   re:/(orden ?scan|explorador|explorer)/},
+  {id:'gid',    url:'https://genesisid.online',     nom:'Genesis ID',
+   re:/(genesis ?id|identidad|identity)/},
+  {id:'n5534',  url:'https://testnet.ordenscan.com',nom:'testnet ordenscan',
+   re:/(testnet|red de pruebas|test network)/},
+];
+function sitioPedido(s){
+  if(!/(abre|abrir|abreme|muestrame la pagina|llevame a|entra a|open|show me the site|take me to)/.test(s))return null;
+  return SITIOS.find(x=>x.re.test(s))||null;
+}
+function abrirSitio(x){
+  /* La camara vuela al racimo y la ficha se queda: al volver de la pestaña
+     se sabe de que se estaba hablando. */
+  try{disparar(x.id,true);volarA(x.id,1.5);tarjetaSis(x.id);}catch(e){}
+  mostrarEnlaces([[x.nom,x.url]]);
+  const v=window.open(x.url,'_blank','noopener');
+  responderCon([J(IDI==='en'
+    ? (v?'Opening '+x.nom+' in another tab. The presentation stays here.'
+        :'Your browser blocked the tab. The link is on screen: '+x.nom+'.')
+    : (v?'Abro '+x.nom+' en otra pestaña. La presentación se queda aquí.'
+        :'El navegador bloqueó la pestaña. Tienes el enlace en pantalla: '+x.nom+'.'),{p:0})]);
+}
 function responderCon(lineas){
   const L=(lineas||[]).filter(Boolean);
   if(!L.length)return;
@@ -3140,9 +3180,20 @@ function guionPresentacion(){
 
   if(es){
     /* ── 1 · quién eres y qué estás viendo ─────────────────────────────── */
-    F('Bienvenido a Orden Global'+VOC()+'.',{cap:'QUÉ ES',p:600});
-    F('Soy FLUX. Puedes interrumpirme cuando quieras: si preguntas, te contesto, te lo enseño, y volvemos justo a donde íbamos.',{p:680});
-    F('Lo que ves es el ecosistema entero, vivo. Nada de esto es una maqueta: cada número que voy a decir sale de un sistema que está funcionando ahora mismo.',{p:700});
+    F('Bienvenido a Orden Global'+VOC()+'.',{cap:'QUIÉN SOY',p:600});
+    F('Soy FLUX, el cerebro de este ecosistema.',{p:620});
+    F('No soy una grabación ni una página de presentación. Estoy conectado a todo lo que ves: las dos cadenas, la billetera, la identidad, la pasarela y las diez máquinas donde corre.',{foco:'nodos',p:800,
+      ficha:['FLUX','ok',[
+        ['Vigila','13 sistemas'],['Agentes','7, automáticos'],
+        ['Revisa','cada pocas horas'],['Cadenas','5534 · 5550 · 8532'],
+        ['Datos','en vivo, no guardados'],['Habla','español e inglés']]]});
+    F('Cada pocas horas siete agentes automáticos revisan las cadenas, el dinero, la seguridad, lo desplegado y el coste, y me dejan su parte escrito. Yo lo leo, lo junto y te lo cuento.',{foco:'nodos',p:800});
+    F('Y cuando algo falla, lo digo. No estoy hecho para vender: estoy hecho para que lo que se diga aquí se pueda comprobar.',{foco:'scan',p:760});
+    F('Puedes interrumpirme cuando quieras. Si preguntas, te contesto, te lo enseño en pantalla, y volvemos justo a donde íbamos. Y si quieres ver algo por tu cuenta, dime «abre Veta Wallet» y te lo abro.',{p:780});
+    PARA();
+
+    F('Esto es lo que vigilo.',{cap:'QUÉ ES',p:520,cifras:null});
+    F('El ecosistema entero, vivo. Nada de esto es una maqueta: cada número que voy a decir sale de un sistema que está funcionando ahora mismo.',{p:700});
     F('Empecemos por lo que ya existe.',{p:400,cifras:[[4180872,'bloques de historia'],[2,'años en producción'],[435,'usuarios reales']]});
     F('Cuatro millones ciento ochenta mil bloques. Dos años y un mes de cadena en producción, sin parar, desde julio de dos mil veinticuatro.',{p:650});
     F('Y cuatrocientas treinta y cinco personas con dinero de verdad dentro.',{p:700});
@@ -3158,7 +3209,7 @@ function guionPresentacion(){
         ['Gas','93 gwei, fijo'],['Finalidad','inmediata, sin bifurcaciones'],
         ['Validadores','4 propios'],['Red de pruebas','chain ID 5534'],
         ['Red nueva','chain ID 5550'],['Cadena anterior','8532 · congelada']]]});
-    F('Consenso Besu QBFT: tolerancia bizantina a fallos con validadores conocidos. En cristiano, un bloque se da por definitivo en cuanto lo firman, y no existe la reorganización de cadena que en otras redes obliga a esperar veinte confirmaciones.',{foco:'nodos',p:720});
+    F('Consenso Besu QBFT: tolerancia bizantina a fallos con validadores conocidos. Dicho simple: un bloque es definitivo en cuanto lo firman, y aquí no existe la reorganización de cadena que en otras redes obliga a esperar veinte confirmaciones.',{foco:'nodos',p:720});
     F('Máquina virtual EVM en versión Shanghái. Eso importa por una razón práctica: cualquier contrato, cualquier herramienta y cualquier billetera del mundo Ethereum funcionan aquí sin tocar una línea.',{foco:'g5550',p:720});
     F('Sin minería y sin consumo de energía. Ni dependemos de que a alguien le salga rentable confirmarnos una transacción.',{foco:'nodos',p:640});
     F('Y sobre todo: podemos cambiar las reglas cuando el negocio lo pida, sin pedir permiso. En un sistema de pagos, esa es la diferencia entre tener producto y alquilarlo.',{foco:'g5550',p:700});
@@ -3210,9 +3261,20 @@ function guionPresentacion(){
     /* ── 7 · la demostración ───────────────────────────────────────────── */
     F('Y para que no me creas por la voz'+VOC()+', te lo demuestro.',{cap:'LA PRUEBA',p:600,cifras:null});
   }else{
-    F('Welcome to Orden Global'+VOC()+'.',{cap:'WHAT IT IS',p:600});
-    F('I am FLUX. Interrupt me whenever you like: ask, I answer, I show you, and we go straight back to where we were.',{p:680});
-    F('What you are looking at is the entire ecosystem, live. None of this is a mock-up: every number I am about to say comes from a system that is running right now.',{p:700});
+    F('Welcome to Orden Global'+VOC()+'.',{cap:'WHO I AM',p:600});
+    F('I am FLUX, the brain of this ecosystem.',{p:620});
+    F('I am not a recording or a brochure page. I am wired into everything you see: both chains, the wallet, identity, the gateway, and the ten machines it runs on.',{foco:'nodos',p:800,
+      ficha:['FLUX','ok',[
+        ['Watches','13 systems'],['Agents','7, automated'],
+        ['Reviews','every few hours'],['Chains','5534 · 5550 · 8532'],
+        ['Data','live, not cached'],['Speaks','Spanish and English']]]});
+    F('Every few hours seven automated agents review the chains, the money, security, what is deployed and the cost, and file their reports with me. I read them, put them together, and tell you.',{foco:'nodos',p:800});
+    F('And when something fails, I say so. I am not built to sell: I am built so that what gets said here can be checked.',{foco:'scan',p:760});
+    F('Interrupt me whenever you like. Ask, I answer, I show you on screen, and we go straight back to where we were. And if you want to see something yourself, say "open Veta Wallet" and I will.',{p:780});
+    PARA();
+
+    F('This is what I watch.',{cap:'WHAT IT IS',p:520,cifras:null});
+    F('The entire ecosystem, live. None of this is a mock-up: every number I am about to say comes from a system that is running right now.',{p:700});
     F('Let us start with what already exists.',{p:400,cifras:[[4180872,'blocks of history'],[2,'years in production'],[435,'real users']]});
     F('Four million one hundred eighty thousand blocks. Two years and one month of chain in production, without stopping, since July twenty twenty four.',{p:650});
     F('And four hundred thirty five people with real money inside.',{p:700});
@@ -3505,10 +3567,15 @@ async function transaccionEnVivo(){
          justo ahí donde nace la pregunta «¿y esto qué es?». */
       trasLaTransaccion);
   }catch(e){
+    /* Que falle el envio NO puede matar la presentacion. Sin vale, sin bots
+       o con la red del sitio caida, esto se quedaba clavado aqui y la demo
+       terminaba en un mensaje de error. Ahora se dice lo que pasa --sin
+       disfrazarlo-- y se sigue al segundo acto igual. */
     $('#vivoEstado').textContent=en?'Could not send right now.':'No se pudo enviar ahora mismo.';
     $('#vivoHash').textContent=String(e.message||e).slice(0,180);
-    decir([J(en?'I could not send it right now. The chain is fine; the request did not go through.'
-              :'No pude enviarla ahora mismo. La cadena está bien; la petición no salió.',{p:0})]);
+    decir([J(en?'I could not send it this time. The chain is fine; the request did not go through. You can check any transaction in the public explorer yourself.'
+              :'Esta vez no salió. La cadena está bien; fue la petición. Puedes comprobar cualquier transacción en el explorador público por tu cuenta.',{p:520})],
+      trasLaTransaccion);
   }
 }
 $('#vivoCerrar').addEventListener('click',()=>$('#vivo').classList.remove('abre'));
@@ -3537,117 +3604,124 @@ addEventListener('keydown',e=>{
    cinco, y mientras la Junta no cierre la figura jurídica del respaldo, decir
    «tenemos» en vez de «equivale» sería una afirmación que no toca hacer. */
 function segundoActo(){
+  /* ═══ EL SEGUNDO ACTO ═══════════════════════════════════════════════════
+     Va DESPUES de la transaccion, cuando la pregunta ya no es «¿funciona?»
+     sino «¿y esto que es, y a donde va?».
+
+     Reescrito el 14-ago porque se repetia: explicaba otra vez la capa uno,
+     el gas a noventa y tres, los validadores y lo de cambiar las reglas
+     --todo eso ya se conto en el recorrido, capitulo LA CAPA UNO--, y
+     ademas los seiscientos millones de latinoamericanos salian dos veces y
+     habia dos «una ultima cosa». Escuchado seguido sonaba a que no habia
+     mas que decir.
+
+     Ahora cada capitulo dice algo que no se ha dicho:
+       LO QUE VISTE  · que significa la transaccion que acaba de pasar
+       EL ORIGEN     · la moneda: cuanta hay, quien la mueve, como se valora
+       A DONDE VA    · la ambicion, y la linea de lo que aun no existe
+       LA HISTORIA   · el momento, comparado con quien empezo igual
+       EL CIERRE     · la invitacion, con el resumen en pantalla
+
+     Sobre las cifras: se dicen SIEMPRE «al precio de referencia». Mientras
+     la Junta no cierre la figura juridica del respaldo, decir «tenemos» en
+     vez de «equivale» seria una afirmacion que no toca hacer. */
   const es=IDI!=='en', P=[];
   const F=(x,o={})=>P.push(Object.assign({q:'FLUX',x},o));
   const PARA=()=>P.push({control:true});
 
   if(es){
-    F('Ahora, qué es lo que acabas de ver.',{cap:'CAPA UNO',p:520,cifras:null});
-    F('Orden Global no es una aplicación sobre la cadena de otro. Es una cadena de capa uno: la capa base, la que guarda el registro y la que decide sus propias reglas.',{foco:'n5534',p:700});
-    F('La diferencia es de fondo. En una cadena ajena se paga peaje al dueño, se hereda su congestión y se acepta lo que decida cambiar mañana.',{foco:'n5534',p:650});
-    F('Aquí no. El precio del gas lo fijamos nosotros: noventa y tres gigawei, estable, sin subastas ni sorpresas. Un envío cuesta lo mismo hoy que el mes que viene.',{foco:'tesoro',p:700});
-    F('Un bloque cada diez segundos, con cuatro validadores propios y consenso Besu. Ni minería, ni consumo de energía, ni depender de que alguien más quiera confirmarnos.',{foco:'nodos',p:700});
-    F('Y sobre todo: podemos cambiar las reglas cuando el negocio lo pida, sin pedir permiso a nadie. Eso, en un sistema de pagos, es la diferencia entre tener producto y alquilarlo.',{foco:'g5550',p:750});
+    F('Eso que acabas de ver merece un segundo.',{cap:'LO QUE VISTE',p:560,cifras:null});
+    F('No fue una animación. Se firmó una transacción, salió a la red, cuatro validadores la aceptaron y quedó escrita para siempre. El identificador está en pantalla y lo puedes abrir tú mismo.',{foco:'n5534',p:760});
+    F('Eso, que parece pequeño, es lo que separa un proyecto real de una presentación bonita: aquí puedes comprobar lo que digo sin pedirme permiso.',{foco:'scan',p:740});
+    PARA();
 
     F('Hablemos del ORIGEN.',{cap:'EL ORIGEN',p:520,oro:9});
-    F('La emisión total es de un billón de ORIGEN. Exacta, verificada en el bloque cero, y comprobable por cualquiera.',{foco:'tesoro',p:650,
+    F('La emisión total es de un billón de ORIGEN. Exacta, escrita en el bloque cero, y contable por cualquiera desde fuera.',{foco:'tesoro',p:680,
       cifra:['1 000 000 000 000','ORIGEN · emisión total, fija']});
-    F('No hay emisión adicional. La cantidad no es una promesa que alguien pueda romper: está escrita en el génesis y cualquiera puede contarla.',{foco:'tesoro',p:700});
-    F('El tesoro guarda doscientos cincuenta mil millones de ORIGEN, que al precio de referencia de hoy equivalen a unos seiscientos treinta y seis mil millones de dólares.',{foco:'tesoro',p:750,
+    F('No hay emisión adicional. Eso no es una promesa que alguien pueda romper: está en el génesis.',{foco:'tesoro',p:660});
+    F('El tesoro guarda doscientos cincuenta mil millones, que al precio de referencia de hoy equivalen a unos seiscientos treinta y seis mil millones de dólares. Y no se mueve solo: cada salida necesita instrucción escrita de la Junta Directiva.',{foco:'tesoro',p:800,
       cifra:['636 000 000 000','dólares · al precio de referencia']});
-    F('Y no se mueve solo. Cada salida del tesoro necesita instrucción escrita de la Junta Directiva.',{foco:'tesoro',p:700});
-    F('El precio sale de una fórmula pública, no de una decisión: el gramo de oro en dólares, dividido entre cincuenta y cinco. Hoy, dos dólares con cincuenta y cinco.',{foco:'tesoro',p:750,
+    F('El precio sale de una fórmula pública, no de una decisión: el gramo de oro en dólares dividido entre cincuenta y cinco. Coge el oro de hoy, divide, y te tiene que dar lo mismo que yo.',{foco:'tesoro',p:780,
       cifra:['2,55','dólares por ORIGEN · hoy']});
-
-    F('Y hacia dónde va esto.',{cap:'A DÓNDE VA',p:520,cifras:null});
-    F('Apuntamos a que el ORIGEN sea moneda de curso en América Latina: que se pueda cobrar, guardar y gastar sin depender del banco de cada país ni de su inflación.',{foco:'pago',p:750});
-    F('Las piezas ya están puestas. La cadena, la billetera, la identidad verificada, la pasarela de cobro y la tarjeta que se gasta en moneda corriente.',{foco:'wallet',p:700});
-    F('Cuatrocientas treinta y cinco personas ya lo usan. Ese es el punto de partida, no el destino.',{foco:'wallet',p:700,
-      cifra:['435','personas usándolo hoy']});
-
-    /* La ambición. Va marcada como ambición EN VOZ ALTA, no colada entre
-       los datos: identidad verificada más registro público permiten cosas
-       que hoy NO existen aquí, y decir «se puede votar» cuando no hay
-       producto sería exactamente la clase de frase que hunde una ronda en
-       la primera diligencia. Se dice lo que la tecnología permite y se dice
-       que está por construir. Las dos mitades, siempre juntas. */
-    F('Y ahora déjame contarte lo que esto PERMITE, separándolo con cuidado de lo que ya existe.',{p:560,cifras:null});
-    F('Identidad verificada, más un registro público que nadie puede reescribir, más una moneda propia. Esas tres piezas juntas son la receta de algo más grande que pagar un café.',{foco:'gid',p:740});
-    F('Con eso se puede construir un padrón que no se falsifica. Una votación donde cada persona vota una vez, cualquiera puede contar los votos y nadie puede cambiarlos después. Presupuesto público que se sigue peso a peso hasta donde se gastó.',{foco:'gid',p:800});
-    F('Eso no está construido. Que quede clarísimo: hoy no hay producto de votación ni contrato público con ningún gobierno. Lo que hay es la base sobre la que se construiría, y es la parte difícil.',{foco:'gid',p:780});
-    F('Lo digo porque es la diferencia entre un proyecto serio y un folleto. La transparencia no es un valor que se anuncia: es una propiedad técnica, y o la tiene la cadena o no la tiene.',{foco:'scan',p:760});
-
-    /* La comparación histórica. También con cuidado: la comparación es con
-       el MOMENTO, no con el tamaño. Decirle a un inversionista «somos como
-       Visa» es una frase que se ríe solo; decirle «esto se parece a cuando
-       Visa era una idea» es una tesis que se puede discutir. */
-    F('Una última cosa, sobre el momento.',{cap:'LA HISTORIA',p:520,cifras:null});
-    F('Visa empezó siendo un acuerdo entre bancos para que un papel valiera en otra ciudad. Swift empezó siendo un formato de mensaje. M-Pesa empezó con gente mandándose saldo de teléfono en Kenia, y hoy mueve la mitad de la economía de ese país.',{foco:'pago',p:800});
-    F('Ninguno empezó siendo grande. Empezaron resolviendo una cosa concreta que dolía, con la infraestructura puesta antes de que nadie la pidiera.',{foco:'nodos',p:740});
-    F('No te voy a decir que somos eso. Te voy a decir que estamos en esa parte de la historia: la infraestructura construida, funcionando, con dinero real dentro, y la escala todavía por delante.',{foco:'g5550',p:780});
-    F('América Latina tiene seiscientos millones de personas y una relación difícil con su propia moneda. Esa es la puerta.',{foco:'pago',p:740});
-    F('Nuestra historia se está escribiendo ahora, y el bloque en el que estamos tiene fecha de hoy.',{foco:'n5534',p:700});
     PARA();
 
-    F('Gracias por tu tiempo'+VOC()+'. Pregúntame lo que quieras: el negocio, el token, el oro, la tecnología, los riesgos. Contesto con datos, y cuando no los tengo, lo digo.',{p:700,cifras:null});
+    F('Y hacia dónde va.',{cap:'A DÓNDE VA',p:520,cifras:null});
+    F('Apuntamos a que el ORIGEN sea moneda de curso en América Latina: seiscientos millones de personas que hoy cobran, ahorran y pierden en una moneda que se devalúa mientras duermen.',{foco:'pago',p:800});
+    F('Y hay algo más grande que un pago, que quiero contarte separando con cuidado lo que existe de lo que no.',{foco:'gid',p:700});
+    F('Identidad verificada, más un registro público que nadie puede reescribir, más moneda propia. Con esas tres piezas se construye un padrón que no se falsifica, una votación que cualquiera puede contar, y presupuesto público seguido peso a peso.',{foco:'gid',p:840});
+    F('Eso NO está construido, y quiero que quede clarísimo: hoy no hay producto de votación ni contrato con ningún gobierno. Lo que hay es la base sobre la que se construiría, que es la parte difícil y lenta.',{foco:'gid',p:820});
+    F('Lo digo porque es la diferencia entre un proyecto serio y un folleto. La transparencia no es un valor que se anuncia: o la tiene la cadena, o no la tiene.',{foco:'scan',p:760});
+    PARA();
 
-    /* El cierre. Se dice después de haberlo enseñado todo --incluidos los
-       riesgos-- y por eso se puede decir sin sonar a folleto: quien ha
-       llegado hasta aquí ya vio la parte incómoda. */
-    F('Y una última cosa, antes de que te vayas.',{p:600});
-    F('Si estás viendo esto, no es casualidad. Nadie llega aquí por accidente: esto no se anuncia, se enseña.',{foco:'n5534',p:760});
-    F('Lo que acabas de ver no es una idea buscando dinero. Es infraestructura construida, funcionando, con dinero real dentro y dos años de historia que cualquiera puede auditar desde fuera.',{foco:'scan',p:780});
-    F('Lo que falta no es la parte difícil. Lo difícil ya está hecho. Lo que falta es la gente que decida construir encima.',{foco:'gid',p:780});
-    F('Seiscientos millones de personas en América Latina siguen atadas a una moneda que pierde valor mientras duermen. Cambiar eso no es una frase bonita: es una cadena, una billetera, una identidad y un comercio que cobra. Y las cuatro ya existen.',{foco:'pago',p:820});
-    F('La historia de esto se está escribiendo ahora mismo, y todavía caben nombres. El tuyo puede ser uno.',{foco:'g5550',p:0});
+    F('Una cosa más, sobre el momento.',{cap:'LA HISTORIA',p:520,cifras:null});
+    F('Visa empezó siendo un acuerdo entre bancos para que un papel valiera en otra ciudad. Swift, un formato de mensaje. M-Pesa, gente mandándose saldo de teléfono en Kenia; hoy mueve la mitad de esa economía.',{foco:'pago',p:840});
+    F('Ninguno empezó siendo grande. Empezaron resolviendo una cosa concreta que dolía, con la infraestructura puesta antes de que nadie la pidiera.',{foco:'nodos',p:760});
+    F('No te voy a decir que somos eso. Te voy a decir que estamos en esa parte de la historia, y que esa parte solo se ve clara mirando hacia atrás.',{foco:'g5550',p:780});
+    PARA();
+
+    /* El cierre. En pantalla, el resumen de lo que ya existe: la voz invita
+       y el tablero respalda. Decir «esta construido» mientras se lee la
+       lista pesa mas que decirlo a secas. */
+    F('Y una última cosa, antes de que te vayas.',{cap:'EL CIERRE',p:620,cifras:null,
+      ficha:['LO QUE YA EXISTE','ok',[
+        ['Cadena propia','2 años en producción'],
+        ['Bloques','4 180 872'],
+        ['Usuarios','435 con saldo'],
+        ['Tarjetas','24 emitidas'],
+        ['Identidad','KYC · KYB · AML · SSO'],
+        ['Pasarela','MyTokenPay, en línea'],
+        ['Explorador','público, auditable'],
+        ['Vigilancia','7 agentes, a diario']]]});
+    F('Si estás viendo esto, no es casualidad. Nadie llega aquí por accidente: esto no se anuncia, se enseña.',{foco:'n5534',p:780});
+    F('Lo que falta no es la parte difícil. Lo difícil ya está hecho, y lo tienes en pantalla. Lo que falta es la gente que decida construir encima.',{foco:'gid',p:800,oro:7});
+    F('La historia de esto se está escribiendo ahora mismo, y todavía caben nombres'+VOC()+'.',{foco:'g5550',p:760,
+      cifra:['?','y el siguiente nombre']});
+    F('Pregúntame lo que quieras: el negocio, el token, el oro, la tecnología, los riesgos. Contesto con datos, y cuando no los tengo, lo digo. Y si quieres verlo por tu cuenta, dime «abre Veta Wallet» y te lo abro.',{p:0,cifras:null});
   }else{
-    F('Now, what you have just seen.',{cap:'LAYER ONE',p:520,cifras:null});
-    F('Orden Global is not an application on somebody else chain. It is a layer one chain: the base layer, the one that holds the ledger and sets its own rules.',{foco:'n5534',p:700});
-    F('The difference runs deep. On somebody else chain you pay a toll to the owner, you inherit their congestion, and you accept whatever they decide to change tomorrow.',{foco:'n5534',p:650});
-    F('Not here. We set the gas price: ninety three gigawei, stable, no auctions and no surprises. A transfer costs the same today as next month.',{foco:'tesoro',p:700});
-    F('One block every ten seconds, four of our own validators, Besu consensus. No mining, no energy burn, and no depending on anyone else to confirm us.',{foco:'nodos',p:700});
-    F('And above all: we can change the rules when the business needs it, without asking permission. In a payments system, that is the difference between owning the product and renting it.',{foco:'g5550',p:750});
+    F('What you just saw deserves a second.',{cap:'WHAT YOU SAW',p:560,cifras:null});
+    F('That was not an animation. A transaction was signed, it went out to the network, four validators accepted it, and it is written for good. The hash is on screen and you can open it yourself.',{foco:'n5534',p:760});
+    F('That small thing is what separates a real project from a nice presentation: here you can check what I say without asking me for permission.',{foco:'scan',p:740});
+    PARA();
 
     F('Let us talk about ORIGEN.',{cap:'ORIGEN',p:520,oro:9});
-    F('Total supply is one trillion ORIGEN. Exact, verified in the genesis block, and checkable by anyone.',{foco:'tesoro',p:650,
+    F('Total supply is one trillion ORIGEN. Exact, written into the genesis block, and countable by anyone from outside.',{foco:'tesoro',p:680,
       cifra:['1 000 000 000 000','ORIGEN · total supply, fixed']});
-    F('There is no further issuance. The amount is not a promise somebody can break: it is written in the genesis and anyone can count it.',{foco:'tesoro',p:700});
-    F('The treasury holds two hundred fifty billion ORIGEN, which at the reference price today is equivalent to roughly six hundred thirty six billion dollars.',{foco:'tesoro',p:750,
+    F('There is no further issuance. That is not a promise somebody can break: it is in the genesis.',{foco:'tesoro',p:660});
+    F('The treasury holds two hundred fifty billion, which at today reference price is equivalent to roughly six hundred thirty six billion dollars. And it does not move on its own: every outflow needs a written Board instruction.',{foco:'tesoro',p:800,
       cifra:['636 000 000 000','dollars · at the reference price']});
-    F('And it does not move on its own. Every outflow from the treasury needs a written instruction from the Board.',{foco:'tesoro',p:700});
-    F('The price comes from a public formula, not from a decision: one gram of gold in dollars, divided by fifty five. Today, two dollars fifty five.',{foco:'tesoro',p:750,
+    F('The price comes from a public formula, not from a decision: one gram of gold in dollars divided by fifty five. Take today gold price, divide, and it has to match what I say.',{foco:'tesoro',p:780,
       cifra:['2.55','dollars per ORIGEN · today']});
-
-    F('And where this is going.',{cap:'WHERE IT GOES',p:520,cifras:null});
-    F('We are aiming for ORIGEN to be a working currency across Latin America: something you can charge in, hold and spend without depending on each country bank or its inflation.',{foco:'pago',p:750});
-    F('The pieces are already in place. The chain, the wallet, verified identity, the payment gateway, and a card you spend in ordinary money.',{foco:'wallet',p:700});
-    F('Four hundred thirty five people already use it. That is the starting point, not the destination.',{foco:'wallet',p:700,
-      cifra:['435','people using it today']});
-
-    /* La misma regla que en castellano: la ambicion va marcada COMO
-       ambicion, en voz alta y separada de lo que ya existe. */
-    F('And now let me tell you what this ENABLES, keeping it carefully apart from what already exists.',{p:560,cifras:null});
-    F('Verified identity, plus a public ledger nobody can rewrite, plus a currency of our own. Those three together are the recipe for something bigger than paying for coffee.',{foco:'gid',p:740});
-    F('With that you can build a voter roll that cannot be forged. A vote where each person votes once, anyone can count the votes, and nobody can change them afterwards. Public spending you can follow, peso by peso, all the way to where it went.',{foco:'gid',p:800});
-    F('That is not built. Let me be completely clear: there is no voting product today and no public contract with any government. What exists is the base you would build it on, and that is the hard part.',{foco:'gid',p:780});
-    F('I say it because it is the difference between a serious project and a brochure. Transparency is not a value you announce: it is a technical property, and either the chain has it or it does not.',{foco:'scan',p:760});
-
-    F('One last thing, about timing.',{cap:'THE HISTORY',p:520,cifras:null});
-    F('Visa started as an agreement between banks so a piece of paper would be good in another city. Swift started as a message format. M-Pesa started with people sending each other phone credit in Kenya, and today it moves half of that country economy.',{foco:'pago',p:800});
-    F('None of them started big. They started by solving one concrete thing that hurt, with the infrastructure in place before anyone asked for it.',{foco:'nodos',p:740});
-    F('I am not going to tell you we are that. I am going to tell you we are at that part of the story: infrastructure built, running, with real money inside, and the scale still ahead.',{foco:'g5550',p:780});
-    F('Latin America has six hundred million people and a difficult relationship with its own currency. That is the door.',{foco:'pago',p:740});
-    F('Our history is being written right now, and the block we are standing on is dated today.',{foco:'n5534',p:700});
     PARA();
 
-    F('Thank you for your time'+VOC()+'. Ask me anything: the business, the token, the gold, the technology, the risks. I answer with data, and when I do not have it, I say so.',{p:700,cifras:null});
+    F('And where it is going.',{cap:'WHERE IT GOES',p:520,cifras:null});
+    F('We are aiming for ORIGEN to be a working currency across Latin America: six hundred million people who today earn, save and lose in a currency that devalues while they sleep.',{foco:'pago',p:800});
+    F('And there is something bigger than a payment, which I want to tell you while keeping carefully apart what exists from what does not.',{foco:'gid',p:700});
+    F('Verified identity, plus a public ledger nobody can rewrite, plus a currency of our own. With those three you can build a voter roll that cannot be forged, a vote anyone can count, and public spending followed peso by peso.',{foco:'gid',p:840});
+    F('That is NOT built, and I want it crystal clear: there is no voting product today and no contract with any government. What exists is the base you would build it on, which is the slow, hard part.',{foco:'gid',p:820});
+    F('I say it because it is the difference between a serious project and a brochure. Transparency is not a value you announce: either the chain has it, or it does not.',{foco:'scan',p:760});
+    PARA();
 
-    F('And one last thing, before you go.',{p:600});
-    F('If you are seeing this, it is not by chance. Nobody lands here by accident: this is not advertised, it is shown.',{foco:'n5534',p:760});
-    F('What you have just seen is not an idea looking for money. It is infrastructure built, running, with real money inside and two years of history anyone can audit from outside.',{foco:'scan',p:780});
-    F('What is missing is not the hard part. The hard part is done. What is missing is the people who decide to build on top.',{foco:'gid',p:780});
-    F('Six hundred million people in Latin America are still tied to a currency that loses value while they sleep. Changing that is not a nice phrase: it is a chain, a wallet, an identity and a merchant getting paid. And all four already exist.',{foco:'pago',p:820});
-    F('The history of this is being written right now, and there is still room for names. Yours could be one of them.',{foco:'g5550',p:0});
+    F('One more thing, about timing.',{cap:'THE HISTORY',p:520,cifras:null});
+    F('Visa started as an agreement between banks so a piece of paper would be good in another city. Swift, a message format. M-Pesa, people sending phone credit in Kenya; today it moves half that economy.',{foco:'pago',p:840});
+    F('None of them started big. They started by solving one concrete thing that hurt, with the infrastructure in place before anyone asked for it.',{foco:'nodos',p:760});
+    F('I am not going to tell you we are that. I am going to tell you we are at that part of the story, and that part only looks obvious in hindsight.',{foco:'g5550',p:780});
+    PARA();
+
+    F('And one last thing, before you go.',{cap:'THE CLOSE',p:620,cifras:null,
+      ficha:['WHAT ALREADY EXISTS','ok',[
+        ['Own chain','2 years in production'],
+        ['Blocks','4 180 872'],
+        ['Users','435 with a balance'],
+        ['Cards','24 issued'],
+        ['Identity','KYC · KYB · AML · SSO'],
+        ['Gateway','MyTokenPay, online'],
+        ['Explorer','public, auditable'],
+        ['Watch','7 agents, daily']]]});
+    F('If you are seeing this, it is not by chance. Nobody lands here by accident: this is not advertised, it is shown.',{foco:'n5534',p:780});
+    F('What is missing is not the hard part. The hard part is done, and it is on your screen. What is missing is the people who decide to build on top.',{foco:'gid',p:800,oro:7});
+    F('The history of this is being written right now, and there is still room for names'+VOC()+'.',{foco:'g5550',p:760,
+      cifra:['?','and the next name']});
+    F('Ask me anything: the business, the token, the gold, the technology, the risks. I answer with data, and when I do not have it, I say so. And if you want to see it yourself, say "open Veta Wallet" and I will.',{p:0,cifras:null});
   }
   const fin=()=>{PRESENTANDO=false;$('#btnPresenta').classList.remove('on');document.body.classList.remove('narrando');
                  $('#lblPresenta').textContent=IDI==='en'?'TOUR':'RECORRIDO';
