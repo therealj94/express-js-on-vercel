@@ -53,26 +53,39 @@ function entorno(invitado){
     document.querySelector('#puerta').classList.remove('abre');});
 
   console.log('══ MODO INTERNO ══');
+  /* Se espera AL HECHO, no al reloj. Desde que la voz respira, cada frase
+     sale en varios trozos y el guion tarda mas en llegar a la linea que
+     enciende los contadores: con esperas fijas el test acusaba de rotas
+     cosas que solo iban dos segundos por detras. Y ademas asi se puede
+     saltar de capitulo, que es como se ve de verdad. */
+  const hasta=async(pred,ms)=>{const t=Date.now();
+    while(Date.now()-t<(ms||14000)){
+      const v=await p.evaluate(pred); if(v)return v;
+      await p.waitForTimeout(250);}
+    return null;};
+
   // el recorrido
   await p.click('#btnPresenta');
-  await p.waitForTimeout(2600);
+  await p.waitForTimeout(1500);
+  await hasta(()=>document.querySelector('#cifras').classList.contains('abre'));
   let st=await p.evaluate(()=>({presenta:PRESENTANDO,dichas:window.__d.length,
     cifras:document.querySelector('#cifras').classList.contains('abre'),
     nCifras:document.querySelectorAll('#cifras .c').length, foco:FOCO, zoom:+ZOOM.toFixed(2)}));
-  console.log('  recorrido: '+(st.presenta?'✓ activo':'✕')+' · '+st.dichas+' frases dichas');
+  console.log('  recorrido: '+(st.presenta?'✓ activo':'✕')+' · '+st.dichas+' trozos dichos');
   console.log('  contadores: '+(st.cifras?'✓ visibles ('+st.nCifras+')':'✕ no aparecen'));
   if(!st.presenta||st.dichas<3) mal++;
   if(!st.cifras||st.nCifras<3) mal++;
 
   // que el valor de un contador suba de verdad
-  await p.waitForTimeout(1700);
+  await hasta(()=>{const n=document.querySelector('#cifras .n');
+    return n&&/[1-9]/.test(n.textContent);});
   const val=await p.evaluate(()=>{const n=document.querySelector('#cifras .n');return n?n.textContent:'';});
   const subio=/[1-9]/.test(val);
   console.log('  el contador sube: '+(subio?'✓ '+val:'✕ '+JSON.stringify(val)));
   if(!subio) mal++;
 
   // la cámara vuela y hace foco
-  await p.waitForTimeout(4000);
+  await hasta(()=>FOCO&&ZOOM>1.05);
   st=await p.evaluate(()=>({foco:FOCO,zoom:+ZOOM.toFixed(2),destino:!!camDestino}));
   console.log('  cámara: foco='+st.foco+' zoom='+st.zoom+' '+((st.foco&&st.zoom>1.05)?'✓ voló y acercó':'✕ no se movió'));
   if(!st.foco||st.zoom<=1.05) mal++;

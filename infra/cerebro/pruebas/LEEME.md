@@ -59,3 +59,32 @@ Lo que ve —y lo que NO ve— quien entra por `/demo` sin cuenta. Cuatro cosas:
 Las dos últimas se esperan **al hecho, no al reloj**: el oro se dispara cuando
 la narración entra al ORIGEN (~12 s), y una espera fija de 11,5 s daba un fallo
 que no existía en el producto.
+
+## `probar-movil.js`
+
+Carga el cerebro en un teléfono de verdad —393×851, táctil, con agente de
+Android— porque la queja llegó con una foto y **la maquetación no se comprueba
+leyendo CSS**. Deja las capturas en el directorio de trabajo.
+
+Comprueba:
+
+1. **que nada se salga de la pantalla.** Mide la caja de cada botón del muelle,
+   de la cabecera y de la barra del recorrido, y falla si alguna cruza el borde
+   o si aparece scroll lateral. Ese era el estado de la foto: siete botones en
+   una fila, cortados por los dos lados.
+2. **que la cabecera no se pise.** «J.A.R.V.I.S» a la izquierda y la chapa
+   centrada no caben juntas en 393 px.
+3. **que tocar un sistema a media narración NO reinicie el recorrido** —el
+   fallo de la foto— y que no salte el sí/no ni se abra el panel grande.
+4. **que se pueda saltar de capítulo** adelante y atrás, y parar y continuar.
+5. **la voz**: que una frase con comas salga en varios trozos, que el tono
+   baje hacia el final, que el modo DIRECTA la diga de un tirón, y que
+   interrumpir **no** pinte «Fallo de la voz: interrupted».
+6. **el segundo acto**, recorrido por capítulos, con captura de cada uno.
+
+## Una regla que se repite
+
+**Esperar al hecho, no al reloj.** Desde que la voz respira, cada frase sale en
+varios trozos y todo llega un poco más tarde. Cuatro de estas pruebas dieron
+fallos que no existían en el producto por medir a mitad de frase. Si una espera
+fija falla, mira primero si estás midiendo antes de tiempo.

@@ -104,6 +104,24 @@ canvas{position:fixed;inset:0;display:block}
 #sub .quien{display:block;font:600 9px var(--disp);letter-spacing:.3em;color:var(--arc);
   margin-bottom:4px;text-transform:uppercase}
 #oido{text-align:center;font:italic 12px var(--disp);color:var(--gold);min-height:16px}
+
+/* ── la ruta del recorrido: dónde vas y cómo moverte ────────────────────── */
+#ruta{display:none;align-items:center;gap:10px;background:var(--glass);
+  border:1px solid var(--edge);border-radius:999px;padding:7px 8px;
+  backdrop-filter:blur(14px);max-width:100%;flex-wrap:wrap;justify-content:center}
+#ruta.abre{display:flex}
+#ruta button{width:30px;height:30px;flex:none;border-radius:50%;color:var(--mut);
+  font-size:11px;display:grid;place-items:center;transition:color .2s,background .2s}
+#ruta button:hover,#ruta button:focus-visible{color:var(--arc);
+  background:rgba(86,217,255,.1);outline:none}
+#capBarra{display:flex;gap:5px;align-items:center}
+#capBarra i{width:26px;height:4px;border-radius:2px;background:rgba(109,139,161,.32);
+  cursor:pointer;transition:background .3s,transform .2s}
+#capBarra i:hover{transform:scaleY(1.9)}
+#capBarra i.hecho{background:rgba(86,217,255,.45)}
+#capBarra i.aqui{background:var(--arc);box-shadow:0 0 12px rgba(86,217,255,.7)}
+#capNom{font:600 8.5px var(--disp);letter-spacing:.22em;color:var(--mut);
+  text-transform:uppercase;min-width:82px}
 #siono{display:none;gap:10px}
 #siono.abre{display:flex}
 #siono .tecla{padding:9px 26px;border-color:rgba(86,217,255,.35)}
@@ -183,7 +201,13 @@ select{border:1px solid var(--edge);border-radius:8px;background:rgba(4,12,22,.9
 
 /* ── modo presentación: contadores que suben ────────────────────────────── */
 #cifras{position:fixed;z-index:11;left:50%;top:50%;transform:translate(-50%,-50%);
-  display:none;gap:38px;pointer-events:none;text-align:center}
+  display:none;gap:38px;pointer-events:none;text-align:center;
+  /* Un velo detrás de la cifra. Sin él, los axones del cerebro cruzaban por
+     encima de los ceros y el número --que es lo único que se recuerda de una
+     presentación-- se leía a trompicones. */
+  padding:26px 42px;
+  background:radial-gradient(ellipse at 50% 50%,rgba(2,7,15,.88) 0%,
+             rgba(2,7,15,.62) 55%,rgba(2,7,15,0) 78%)}
 #cifras.abre{display:flex}
 #cifras .c{opacity:0;transform:translateY(20px);transition:opacity .7s,transform .7s}
 #cifras .c.viva{opacity:1;transform:none}
@@ -246,12 +270,73 @@ body.invitado .tarj{width:250px}
 
 @media (max-width:1000px){
   #cifras{gap:20px}#cifras .n{font-size:38px}
-  #dock{top:auto;bottom:172px;transform:none;right:10px;left:auto;width:230px;max-height:32vh}
-  #tarjetas{bottom:172px;width:min(250px,46vw)}
+  #dock{top:auto;bottom:200px;transform:none;right:10px;left:auto;width:230px;max-height:30vh}
+  #tarjetas{bottom:200px;width:min(250px,46vw)}
   #yo .qs{display:none}
   #sub{font-size:12.5px}#reloj{font-size:15px}#izq h1{font-size:13px}
 }
-@media (max-width:640px){#fecha,#act{display:none}#tarjetas{display:none}}
+
+/* ── EL TELÉFONO ─────────────────────────────────────────────────────────
+   Lo que se veía mal en la captura del 14-ago, punto por punto:
+   · «J.A.R.V.I.S» a la izquierda y la chapa ORDEN GLOBAL centrada se pisaban
+     --con 393 px no caben las dos, y la chapa ya dice quién eres--;
+   · los siete botones del muelle en UNA fila se cortaban por los dos lados,
+     así que el de ajustes ni existía;
+   · las cifras grandes, una al lado de otra, se salían de la pantalla.
+   La regla de fondo: en un teléfono el cerebro es el héroe y todo lo demás
+   se aparta o se apila. */
+@media (max-width:640px){
+  #fecha,#act{display:none}
+  #tarjetas{display:none}
+  #izq{display:none}                       /* la chapa de arriba ya es la identidad */
+  #yo{padding:5px 12px 5px 6px}
+  #yo .disco{width:22px;height:22px;font-size:10px}
+  #yo .qn{font-size:10px;letter-spacing:.1em}
+  #der{right:12px}#reloj{font-size:13px;font-weight:400}
+
+  #consola{width:100%;gap:7px;padding:0 8px;
+    bottom:max(10px,env(safe-area-inset-bottom))}
+  #sub{font-size:13px;line-height:1.55;min-height:40px}
+  #pistas{display:none}                    /* el sitio es para los botones */
+
+  /* el muelle se apila en dos filas en vez de salirse por los lados */
+  #teclas{flex-wrap:wrap;gap:7px}
+  .tecla{padding:9px 14px;font-size:9px;letter-spacing:.14em;gap:6px}
+  #mic{width:50px;height:50px;font-size:18px}
+  #siono .tecla{padding:9px 22px}
+
+  #ruta{gap:7px;padding:6px 7px}
+  #ruta button{width:34px;height:34px}     /* dedo, no ratón */
+  #capBarra i{width:16px;height:5px}
+  #capNom{min-width:0;font-size:8px;letter-spacing:.16em;width:100%;text-align:center}
+
+  #cifras{flex-direction:column;gap:12px;width:88vw}
+  #cifras .n{font-size:30px}
+  #cifras .c.oro .n{font-size:23px}
+  #cifras .e{font-size:8.5px;letter-spacing:.18em;margin-top:5px}
+
+  #dock{right:8px;left:8px;width:auto;bottom:auto;top:64px;max-height:26vh}
+  /* mientras narra, el muelle se aparta: en un teléfono tapaba media cabeza
+     del cerebro justo cuando el cerebro es lo que hay que mirar */
+  body.narrando #dock{display:none}
+  /* PARAR (la voz) y PAUSAR (el recorrido) juntos es una pregunta que nadie
+     debería tener que hacerse a mitad de una reunión: mientras narra, manda
+     PAUSAR y el otro sobra. */
+  body.narrando #teclas .tecla:not(#mic):not(#btnPresenta){display:none}
+
+  /* los ajustes como hoja centrada: pegados a la esquina no se leían */
+  #ajustes{left:12px;right:12px;width:auto;bottom:auto;top:50%;
+    transform:translateY(-50%);max-height:78vh;overflow-y:auto}
+
+  #vivo .caja{padding:18px}
+  #vivo .estado{font-size:21px;margin-bottom:18px}
+  #vivo .rej{gap:18px;margin:16px 0 6px}
+  #vivo .rej b{font-size:24px}
+  #vivo .hash{font-size:11px;padding:11px}
+}
+@media (max-width:640px) and (max-height:680px){
+  #dock{display:none}                      /* pantalla corta: manda el cerebro */
+}
 @media (prefers-reduced-motion:reduce){#yo .p,.on #onda i,#mic.on{animation:none}}
 </style>
 </head>
@@ -287,6 +372,12 @@ body.invitado .tarj{width:250px}
 </div></div>
 
 <div id="consola">
+  <div id="ruta">
+    <button id="capAtras" title="anterior">◀</button>
+    <div id="capBarra"></div>
+    <button id="capAdelante" title="siguiente">▶</button>
+    <span id="capNom"></span>
+  </div>
   <div id="sub"></div>
   <div id="oido"></div>
   <div id="siono"><button class="tecla" id="btnSi">SÍ</button><button class="tecla" id="btnNo">NO</button></div>
@@ -321,6 +412,15 @@ body.invitado .tarj{width:250px}
   <div class="vels">
     <button data-vel="0.82">LENTO</button><button data-vel="1">NORMAL</button><button data-vel="1.15">RÁPIDO</button>
   </div>
+  <label id="lblTono">TONO</label>
+  <div class="vels">
+    <button data-tono="0.72">GRAVE</button><button data-tono="0.86">NATURAL</button><button data-tono="1.02">CLARO</button>
+  </div>
+  <label id="lblResp">FORMA DE HABLAR</label>
+  <div class="vels">
+    <button data-resp="1">HUMANA</button><button data-resp="0">DIRECTA</button>
+  </div>
+  <button class="tecla" id="btnProbar" style="justify-content:center">◉ PROBAR LA VOZ</button>
   <label id="lblIdi">LANGUAGE</label>
   <select id="idioma" title="language">
     <option value="en">ENGLISH</option><option value="es">ESPAÑOL</option>
@@ -362,6 +462,14 @@ async function quienEs(){if(INVITADO){$('#quienNom').textContent='ORDEN GLOBAL';
 /* La velocidad de la voz, ajustable por voz («más despacio») y recordada. */
 const velSana=v=>(isFinite(v)&&v>0)?Math.max(.55,Math.min(1.6,v)):1;
 let VEL=velSana(parseFloat(localStorage.getItem('velCerebro')));
+/* El tono y la respiración. La queja fue «suena robótico», y de las tres
+   palancas que da el navegador la que más cambia el resultado NO es la voz:
+   es la RESPIRACIÓN. Un párrafo entero en una sola frase sale plano y sin
+   aire; troceado por comas y puntos, con una pausa corta en cada junta, la
+   misma voz pasa por persona. Por eso HUMANA viene puesta. */
+const tonoSano=v=>(isFinite(v)&&v>0)?Math.max(.6,Math.min(1.4,v)):.86;
+let TONO=tonoSano(parseFloat(localStorage.getItem('tonoCerebro')));
+let RESPIRA=localStorage.getItem('respiraCerebro')!=='0';
 
 /* ═══ MODO INVITADO ═══════════════════════════════════════════════════════
    Un invitado llega por /demo con un vale en la dirección. Ve el ecosistema
@@ -806,12 +914,39 @@ function etiquetas(){
   cajas.length=0;
   const orden=SIS.map(s=>[pr[NUCLEO[s.id]],s]).sort((a,b)=>a[0][3]-b[0][3]);
   cx.textBaseline='middle';
+  const angosta=W<560;
+  /* Mientras hay una cifra grande en pantalla, las etiquetas que caen encima
+     no se dibujan. Con el billón de ORIGEN detrás, «MYTOKENPAY» cruzándole
+     los ceros no es información: es ruido justo en el momento que más pesa. */
+  let veto=null;
+  const cf=$('#cifras');
+  if(cf&&cf.classList.contains('abre')){
+    const r=cf.getBoundingClientRect();
+    if(r.width)veto=[r.left-14,r.top-10,r.right+14,r.bottom+10];
+  }
   for(const [P,s] of orden){
+    /* La caja de toque se borra ANTES de decidir si se dibuja: si no, una
+       etiqueta que dejó de pintarse seguía siendo tocable donde ya no está. */
+    s._caja=null;
     if(P[3]>0.35)continue;
     const e=E[s.id];
     const nom=IDI==='en'?s.nom:s.es;
     cx.font='700 9.5px '+getComputedStyle(document.body).fontFamily;
-    const w=cx.measureText(nom).width+12, x=P[0]+11, y=P[1];
+    const met=angosta?e.met.slice(0,14):e.met.slice(0,26);
+    /* El ancho lo manda el texto MÁS LARGO de los dos, no solo el nombre: con
+       el nombre solo, la línea de abajo se salía de su propia caja. */
+    const wn=cx.measureText(nom).width;
+    cx.font='400 7.5px '+getComputedStyle(document.body).fontFamily;
+    const w=Math.max(wn,cx.measureText(met).width)+12;
+    cx.font='700 9.5px '+getComputedStyle(document.body).fontFamily;
+    /* En un teléfono la mitad de las etiquetas caían fuera de la pantalla y
+       se leían a medias --«MYTOKE»--. Si no cabe a la derecha del nodo, se
+       dibuja a su izquierda; y si tampoco, se pega al borde. */
+    let x=P[0]+11;
+    if(x+w>W-8) x=(P[0]-11-w>=8) ? P[0]-11-w : Math.max(8,W-8-w);
+    const y=P[1];
+    if(w>W-16)continue;                 // no cabe ni pegada: mejor no dibujarla
+    if(veto&&x<veto[2]&&x+w>veto[0]&&y-9<veto[3]&&y+9>veto[1])continue;
     if(cajas.some(c=>x<c[0]+c[2]&&x+w>c[0]&&y-9<c[1]+c[3]&&y+9>c[1]))continue;
     cajas.push([x,y-9,w,18]);
     s._caja=[x,y-9,w,26];
@@ -820,7 +955,7 @@ function etiquetas(){
     cx.fillStyle=e.mal?'#ff4a3d':s.col;
     cx.fillText(nom,x+7,y-1);
     cx.font='400 7.5px '+getComputedStyle(document.body).fontFamily;
-    cx.fillStyle='#5d7d93';cx.fillText(e.met.slice(0,26),x+7,y+9);
+    cx.fillStyle='#5d7d93';cx.fillText(met,x+7,y+9);
   }
 }
 function tocar(x,y){
@@ -1056,7 +1191,15 @@ function puntua(v){
     BUENAS_ES.forEach((r,i)=>{if(r.test(v.name))p+=24-i*2;});
     if(/^es/i.test(v.lang))p+=30;
   }
-  if(v.localService)p+=3;
+  /* Las voces buenas de Android y Chrome son las de RED --«Google …», las
+     «Natural» y «Neural» de Microsoft--; las locales son el sintetizador
+     viejo y son justo las que suenan a robot. Antes esto premiaba a las
+     locales por ser más rápidas de arrancar, que es optimizar lo que no
+     importa. En Apple manda otra cosa: allí las buenas SON locales (Daniel,
+     Mónica), y ya las premia el nombre unas líneas más arriba. */
+  const APPLE=/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent||'');
+  if(!APPLE&&!v.localService)p+=16;
+  if(APPLE&&v.localService)p+=4;
   return p;
 }
 function cargarVoces(){
@@ -1122,6 +1265,44 @@ function limpiar(x){
     .replace(/0x[0-9a-fA-F]{6,}/g,IDI==='en'?'an address':'una dirección')
     .replace(/\s+/g,' ').trim();
 }
+/* ═══ LA RESPIRACIÓN ══════════════════════════════════════════════════════
+   Por qué sonaba a robot, de verdad: el navegador lee una frase larga de un
+   tirón, con una entonación plana de principio a fin y sin una sola pausa
+   donde una persona respiraría. No hay SSML en la Web Speech API, así que la
+   prosodia hay que fabricarla: se parte la frase por sus juntas naturales
+   --coma, punto y coma, dos puntos, punto-- y cada trozo va como una frase
+   suya, con un silencio detrás del tamaño de su signo.
+
+   Y una segunda cosa: la DECLINACIÓN. Al hablar, el tono baja según avanza la
+   oración y cae del todo en el punto final. Aquí se imita con un descenso
+   pequeño por trozo. Es sutil a propósito: exagerarlo suena a locutor. */
+function trozos(x){
+  if(!RESPIRA)return [[x,320]];
+  /* Se recorre a mano en vez de partir con lookbehind: Safari no lo entendió
+     hasta la 16.4 y un iPad de hace dos años dejaría la voz muda sin decir
+     por qué --que es exactamente el fallo que ya nos costó un día--. */
+  const bruto=[]; let acc='';
+  const s0=String(x);
+  for(let i=0;i<s0.length;i++){
+    acc+=s0[i];
+    if('.;:,!?'.indexOf(s0[i])>=0 && (i+1>=s0.length || /\s/.test(s0[i+1]))){
+      bruto.push(acc); acc='';
+    }
+  }
+  if(acc.trim())bruto.push(acc);
+  const out=[];
+  for(let s of bruto){
+    s=s.trim(); if(!s)continue;
+    const fin=s.slice(-1);
+    const espera=/[.!?]/.test(fin)?300:/[;:]/.test(fin)?190:110;
+    /* Un trozo de tres letras no es una junta, es un tropiezo: se pega al
+       anterior en vez de quedarse solo respirando. */
+    if(out.length&&s.replace(/\W/g,'').length<8){
+      out[out.length-1][0]+=' '+s; out[out.length-1][1]=espera;
+    }else out.push([s,espera]);
+  }
+  return out.length?out:[[String(x),320]];
+}
 let cola=[],hablando=false,quienHabla=null;
 
 /* AQUÍ ESTABA EL FALLO del 13-ago: `decir` llamaba a `parar`, que hace
@@ -1147,11 +1328,12 @@ function continuar(){
   if(!hayPendiente())return false;
   const c=colaGuardada, f=finGuardado;
   colaGuardada=null; finGuardado=null;
-  PRESENTANDO=true; $('#btnPresenta').classList.add('on');
+  PRESENTANDO=true; $('#btnPresenta').classList.add('on');document.body.classList.add('narrando');
   $('#btnPresenta').classList.remove('sigue');
-  $('#lblPresenta').textContent=IDI==='en'?'STOP':'PARAR';
+  $('#lblPresenta').textContent=IDI==='en'?'PAUSE':'PAUSAR';
   $('#oido').textContent='';
   decir(c,f);
+  pintarRecorrido();
   return true;
 }
 /* Al volver a la pestaña --de mirar el explorador-- se avisa sin buscar nada. */
@@ -1161,8 +1343,13 @@ document.addEventListener('visibilitychange',()=>{
                                    :'Pulsa CONTINUAR para seguir donde lo dejamos.';
 });
 
-let alTerminar=null;
+let alTerminar=null, lineaActual=null;
 function decir(lineas,fin){
+  /* Antes de pisar la cola, se guarda el sitio del recorrido. Este es el
+     fallo que reinició todo: tocar un sistema llamaba a decir(), decir()
+     reemplazaba la cola sin más, y los cinco minutos que quedaban de
+     presentación desaparecían sin dejar rastro ni forma de volver. */
+  guardarSitio();
   alTerminar=fin||null;
   const arrancar=()=>{
     cola=lineas.filter(l=>l&&l.x);
@@ -1174,13 +1361,19 @@ function decir(lineas,fin){
     desbloqueada=true; arrancar(); return;
   }
   if(hablando||speechSynthesis.speaking||speechSynthesis.pending){
-    hablando=false; cola=[]; speechSynthesis.cancel();
+    hablando=false; cola=[]; TURNO++; speechSynthesis.cancel();
     setTimeout(arrancar,200);
   }else arrancar();
 }
+/* Un turno de habla se identifica con un número. Cuando algo cancela la voz
+   --tocar otra cosa, saltar de capítulo-- el turno viejo sigue recibiendo sus
+   eventos `error: interrupted` un rato después; comparando el turno se sabe
+   que ese error es NUESTRO y no un fallo, y ni se enseña ni hace avanzar
+   nada. Ese aviso amarillo en pantalla era exactamente esto. */
+let TURNO=0;
 function siguiente(){
-  if(!cola.length){parar();return;}
-  const l=cola.shift();
+  if(!cola.length){lineaActual=null;parar();return;}
+  const l=cola.shift(); lineaActual=l;
   marcar(l.q);
   $('#sub').innerHTML='<span class="quien">'+(l.q||'JARVIS')+'</span>'+l.x;
   if(l.foco){disparar(l.foco,true);tarjetaSis(l.foco);
@@ -1189,8 +1382,26 @@ function siguiente(){
   if(l.cifras)contadores(l.cifras); else if(l.cifras===null)ocultarContadores();
   if(l.cifra)cifraGrande(l.cifra[0],l.cifra[1]);
   if(l.oro)lluviaDeOrigen(l.oro);
+  pintarRecorrido();
 
-  const u=new SpeechSynthesisUtterance(limpiar(l.x));
+  const partes=trozos(limpiar(l.x));
+  const mio=++TURNO;
+  let pasado=false;
+  const seguir=(ms)=>{if(pasado)return;pasado=true;
+    setTimeout(()=>{if(hablando&&mio===TURNO)siguiente();},ms);};
+  hablarTrozo(partes,0,l,mio,seguir);
+}
+/* Dice el trozo i y encadena el siguiente cuando termina. Cada trozo es una
+   frase suya para el sintetizador: por eso hay aire entre ellas. */
+function hablarTrozo(partes,i,l,mio,seguir){
+  if(mio!==TURNO||!hablando)return;
+  /* La pausa del último trozo YA es el silencio del punto final: sumarle
+     encima la pausa entre frases es silencio duplicado, y alargaba el
+     recorrido casi medio minuto sin que sonara mejor. */
+  if(i>=partes.length){
+    seguir(RESPIRA?Math.max(140,(l.p||500)-260):(l.p||500));return;}
+  const [txt,espera]=partes[i];
+  const u=new SpeechSynthesisUtterance(txt);
   /* Con qué voz. NO basta con el idioma del selector: los partes de los
      agentes vienen escritos en castellano, y una voz inglesa leyendo
      castellano suena exactamente a robot --que fue justo la queja--. Se mira
@@ -1214,19 +1425,26 @@ function siguiente(){
   /* La queja fue «leen súper rápido»: se baja la base y además se puede
      pedir «más despacio» o «más rápido» de viva voz; VEL se recuerda. */
   u.rate=Math.max(.55,Math.min(1.4,(l.ag?0.93:0.85)*velSana(VEL)));
-  u.pitch=l.ag?1.0:0.86;
+  /* La declinación: el tono baja un poco por trozo, como al hablar. Poco a
+     propósito --0,06 de recorrido total--: más que eso suena a locutor. */
+  const base=l.ag?tonoSano(TONO)+.14:tonoSano(TONO);
+  const n=Math.max(1,partes.length-1);
+  u.pitch=Math.max(.6,Math.min(1.6, base + .03 - .06*(i/n) ));
   u.volume=1;
 
-  let arranco=false, pasado=false;
-  const seguir=(ms)=>{if(pasado)return;pasado=true;
-    setTimeout(()=>{if(hablando)siguiente();},ms);};
+  let arranco=false;
   u.onstart=()=>{arranco=true;};
-  u.onend=()=>seguir(l.p||500);
+  u.onend=()=>{ if(mio!==TURNO)return;
+                setTimeout(()=>hablarTrozo(partes,i+1,l,mio,seguir),
+                           Math.round(espera/Math.max(.6,velSana(VEL)))); };
   u.onerror=ev=>{
-    /* Un fallo mudo es peor que un fallo ruidoso: que se vea. */
-    $('#oido').textContent=(IDI==='en'?'Voice error: ':'Fallo de la voz: ')+
-      ((ev&&ev.error)||'unknown');
-    seguir(220);
+    const q=(ev&&ev.error)||'unknown';
+    /* interrupted y canceled los provocamos nosotros al cancelar: no son un
+       fallo y no se enseñan. Cualquier otro sí, porque un fallo mudo es peor
+       que uno ruidoso. */
+    if(mio!==TURNO||q==='interrupted'||q==='canceled')return;
+    $('#oido').textContent=(IDI==='en'?'Voice error: ':'Fallo de la voz: ')+q;
+    setTimeout(()=>hablarTrozo(partes,i+1,l,mio,seguir),160);
   };
   try{ speechSynthesis.speak(u); }
   catch(e){ $('#oido').textContent=(IDI==='en'?'Voice failed: ':'La voz falló: ')+e.message;
@@ -1235,7 +1453,7 @@ function siguiente(){
   /* Vigilante: si en dos segundos no ha empezado a sonar, no se queda la cola
      colgada en silencio para siempre. */
   setTimeout(()=>{
-    if(!arranco&&hablando&&!speechSynthesis.speaking){
+    if(!arranco&&hablando&&mio===TURNO&&!speechSynthesis.speaking){
       $('#oido').textContent=IDI==='en'
         ? 'The voice did not start. Try another voice in the selector.'
         : 'La voz no arrancó. Prueba otra voz en el selector.';
@@ -1278,14 +1496,26 @@ function marcar(q){
   const a=AGENTES.find(x=>x.nom===q);
   if(a){const f=document.querySelector('.fila[data-ag="'+a.id+'"]');if(f)f.classList.add('habla');}
 }
+/* Guarda el sitio exacto. Se llama desde TODO lo que puede cortar la voz, no
+   solo desde el botón de parar: tocar un sistema, hablarle al micrófono,
+   cualquier cosa. Perder el sitio delante de un inversionista no puede
+   depender de por dónde te cortaron. */
+function guardarSitio(f){
+  if(!PRESENTANDO)return;
+  /* La frase a medias vuelve a la cola: continuar en mitad de una idea no es
+     continuar, es empezar la siguiente. */
+  const resto=(lineaActual?[lineaActual]:[]).concat(cola);
+  if(resto.length){colaGuardada=resto;finGuardado=(f!==undefined?f:alTerminar);}
+}
 function parar(){
   const f=alTerminar; alTerminar=null;
-  /* lo que quedaba por decir NO se tira: se guarda para poder continuar */
-  if(PRESENTANDO&&cola.length){colaGuardada=cola.slice();finGuardado=f;}
-  hablando=false;cola=[];speechSynthesis.cancel();
+  TURNO++;                      // los eventos del turno en vuelo dejan de contar
+  guardarSitio(f);
+  hablando=false;cola=[];lineaActual=null;speechSynthesis.cancel();
   if(f&&!hayPendiente())setTimeout(f,60);
   $('#hablar').classList.remove('on');$('#lblHablar').textContent=t('brief');
   $('#sub').textContent='';marcar(null);
+  pintarRecorrido();
 }
 $('#hablar').addEventListener('click',()=>hablando?parar():decir(guion()));
 
@@ -1924,93 +2154,173 @@ function guionPresentacion(){
   const b5534=V.b5534?nf(V.b5534):'—';
 
   if(es){
-    F('Bienvenido a Orden Global.',{p:600});
+    F('Bienvenido a Orden Global.',{cap:'QUÉ ES',p:600});
     F('Lo que ves es el ecosistema entero, vivo. Nada de esto es una maqueta: cada número que voy a decir sale de un sistema que está funcionando ahora mismo.',{p:700});
     F('Empecemos por lo que ya existe.',{p:400,cifras:[[4180872,'bloques de historia'],[2,'años en producción'],[435,'usuarios reales']]});
     F('Cuatro millones ciento ochenta mil bloques. Dos años y un mes de cadena en producción, sin parar, desde julio de dos mil veinticuatro.',{p:650});
     F('Y cuatrocientos treinta y cinco personas con dinero de verdad dentro.',{p:700});
 
-    F('Esta es la cadena de pruebas, viva.',{foco:'n5534',p:500,cifras:null});
+    F('Esta es la cadena de pruebas, viva.',{cap:'LA CADENA',foco:'n5534',p:500,cifras:null});
     F('Bloque '+b5534+', un bloque cada diez segundos, con el precio del gas fijado en noventa y tres gigawei. Cuatro validadores propios, con consenso Besu.',{foco:'n5534',p:650});
     F('Y aquí está la cadena que la reemplaza.',{foco:'g5550',p:500});
     F('Su génesis ya está construido y comprobado contra la cadena anterior con cero diferencias: trescientas treinta y una cuentas, ciento setenta y dos contratos, mil trescientas setenta y cinco ranuras de memoria. Cada saldo, exacto.',{foco:'g5550',p:700});
 
-    F('Sobre la cadena viven los productos.',{foco:'wallet',p:450,
+    F('Sobre la cadena viven los productos.',{cap:'LOS PRODUCTOS',foco:'wallet',p:450,
       cifras:[[435,'usuarios'],[24,'tarjetas'],[85,'contratos de token']]});
     F('Veta Wallet: enviar, recibir, canjear, y una tarjeta que se fondea con ORIGEN y se gasta en moneda corriente.',{foco:'wallet',p:600});
     F('Genesis ID verifica identidad de personas y de empresas, con prevención de blanqueo y acceso único.',{foco:'gid',p:600});
     F('MyTokenPay permite a cualquier comercio cobrar en ORIGEN.',{foco:'pago',p:600});
     F('Y ordenscan es el explorador: cualquiera puede auditar cada transacción.',{foco:'scan',p:650});
 
-    F('Ahora, cómo se mueve el dinero.',{p:450,cifras:null});
+    F('Ahora, cómo se mueve el dinero.',{cap:'EL DINERO',p:450,cifras:null});
     F('Entra por la tarjeta, o por un depósito de USDT en la red Polygon.',{foco:'tarjeta',p:520});
     F('Cruza la pasarela.',{foco:'polygon',p:450});
     F('Y se convierte en ORIGEN al precio del oro del día: el gramo de oro en dólares dividido entre cincuenta y cinco.',{foco:'tesoro',p:650});
     F('Desde la billetera se envía, se canjea, o se paga en un comercio.',{foco:'wallet',p:650});
 
-    F('Todo esto corre sobre diez máquinas, y se vigila solo.',{foco:'nodos',p:500,
+    F('Todo esto corre sobre diez máquinas, y se vigila solo.',{cap:'LAS MÁQUINAS',foco:'nodos',p:500,
       cifras:[[7,'agentes automáticos'],[24,'revisiones al día'],[10,'máquinas']]});
     F('Siete agentes automáticos revisan las cadenas, el dinero, la seguridad, lo desplegado y el coste. Cada uno deja su parte escrito, y si algo falla lo dicen sin adornarlo.',{foco:'nodos',p:700});
 
-    F('Y para que no me creas por la voz, te lo demuestro.',{p:600,cifras:null});
+    F('Y para que no me creas por la voz, te lo demuestro.',{cap:'LA PRUEBA',p:600,cifras:null});
   }else{
-    F('Welcome to Orden Global.',{p:600});
+    F('Welcome to Orden Global.',{cap:'WHAT IT IS',p:600});
     F('What you are looking at is the entire ecosystem, live. None of this is a mock-up: every number I am about to say comes from a system that is running right now.',{p:700});
     F('Let us start with what already exists.',{p:400,cifras:[[4180872,'blocks of history'],[2,'years in production'],[435,'real users']]});
     F('Four million one hundred eighty thousand blocks. Two years and one month of chain in production, without stopping, since July twenty twenty four.',{p:650});
     F('And four hundred thirty five people with real money inside.',{p:700});
 
-    F('This is the test network, live.',{foco:'n5534',p:500});
+    F('This is the test network, live.',{cap:'THE CHAIN',foco:'n5534',p:500});
     F('Block '+b5534+', one block every ten seconds, with gas fixed at ninety three gigawei. Four of our own validators, running Besu consensus.',{foco:'n5534',p:650});
     F('And this is the chain that replaces it.',{foco:'g5550',p:500});
     F('Its genesis is already built and checked against the previous chain with zero differences: three hundred thirty one accounts, one hundred seventy two contracts, one thousand three hundred seventy five storage slots. Every balance, exact.',{foco:'g5550',p:700});
 
-    F('On top of the chain live the products.',{foco:'wallet',p:450,
+    F('On top of the chain live the products.',{cap:'THE PRODUCTS',foco:'wallet',p:450,
       cifras:[[435,'users'],[24,'cards'],[85,'token contracts']]});
     F('Veta Wallet: send, receive, swap, and a card funded with ORIGEN and spent in ordinary currency.',{foco:'wallet',p:600});
     F('Genesis ID verifies the identity of people and companies, with anti money laundering and single sign on.',{foco:'gid',p:600});
     F('MyTokenPay lets any merchant charge in ORIGEN.',{foco:'pago',p:600});
     F('And ordenscan is the explorer: anyone can audit every transaction.',{foco:'scan',p:650});
 
-    F('Now, how the money moves.',{p:450});
+    F('Now, how the money moves.',{cap:'THE MONEY',p:450});
     F('It comes in through the card, or through a USDT deposit on Polygon.',{foco:'tarjeta',p:520});
     F('It crosses the gateway.',{foco:'polygon',p:450});
     F('And it becomes ORIGEN at the day gold price: one gram of gold in dollars, divided by fifty five.',{foco:'tesoro',p:650});
     F('From the wallet it is sent, swapped, or spent at a merchant.',{foco:'wallet',p:650});
 
-    F('All of this runs on ten machines, and watches itself.',{foco:'nodos',p:500,
+    F('All of this runs on ten machines, and watches itself.',{cap:'THE MACHINES',foco:'nodos',p:500,
       cifras:[[7,'automated agents'],[24,'checks per day'],[10,'machines']]});
     F('Seven automated agents review the chains, the money, security, what is deployed and the cost. Each one files a written report, and if something fails they say so without dressing it up.',{foco:'nodos',p:700});
 
-    F('And so you do not take my word for it, let me show you.',{p:600});
+    F('And so you do not take my word for it, let me show you.',{cap:'THE PROOF',p:600});
   }
   return P;
 }
+
+/* ═══ MOVERSE POR EL RECORRIDO ════════════════════════════════════════════
+   Una presentación de seis minutos que solo se puede ver de principio a fin
+   no sirve en una reunión: el inversionista pregunta por los productos y hay
+   que llegar ahí, no esperar. El guion se guarda entero con sus capítulos y
+   se puede saltar a cualquiera --y volver--.
+
+   El sitio actual NO se lleva en un contador aparte: se deduce de lo que
+   queda en la cola. Un contador paralelo se desincroniza en cuanto algo
+   interrumpe, y esto no puede fallar delante de nadie. */
+let RECORRIDO=null;              // {lineas, caps:[{i,tit}], fin}
+function montarRecorrido(lineas,fin){
+  const caps=[];
+  lineas.forEach((l,i)=>{if(l.cap)caps.push({i,tit:l.cap});});
+  if(!caps.length||caps[0].i>0)caps.unshift({i:0,tit:IDI==='en'?'START':'INICIO'});
+  RECORRIDO={lineas,caps,fin};
+  return lineas;
+}
+const sitioActual=()=>RECORRIDO
+  ? Math.max(0,RECORRIDO.lineas.length-cola.length-1) : 0;
+const capActual=()=>{
+  if(!RECORRIDO)return 0;
+  const i=sitioActual(); let k=0;
+  RECORRIDO.caps.forEach((c,j)=>{if(c.i<=i)k=j;});
+  return k;
+};
+/* Saltar es una decisión, no una pausa: lo guardado se descarta a propósito
+   --si no, al parar después volverías al sitio viejo y no al nuevo--. */
+function reproducirDesde(i){
+  if(!RECORRIDO)return;
+  i=Math.max(0,Math.min(RECORRIDO.lineas.length-1,i));
+  colaGuardada=null; finGuardado=null; lineaActual=null;
+  PRESENTANDO=true;
+  $('#btnPresenta').classList.add('on');document.body.classList.add('narrando');
+  $('#btnPresenta').classList.remove('sigue');
+  $('#lblPresenta').textContent=IDI==='en'?'PAUSE':'PAUSAR';
+  hablando=false; cola=[]; TURNO++; speechSynthesis.cancel();
+  setTimeout(()=>{
+    alTerminar=RECORRIDO.fin;
+    cola=RECORRIDO.lineas.slice(i);
+    hablando=true; $('#hablar').classList.add('on');
+    $('#lblHablar').textContent=t('stop');
+    siguiente();
+  },200);
+}
+/* La barra: una raya por capítulo, la de ahora encendida. Se pinta desde
+   cero cada frase --son ocho rayas, no hay nada que optimizar-- para que
+   nunca se quede describiendo un sitio donde ya no estás. */
+function pintarRecorrido(){
+  const r=$('#ruta'); if(!r)return;
+  const vivo=!!RECORRIDO&&(PRESENTANDO||hayPendiente());
+  r.classList.toggle('abre',vivo);
+  if(!vivo)return;
+  const k=capActual(), b=$('#capBarra');
+  if(b.childElementCount!==RECORRIDO.caps.length){
+    b.innerHTML='';
+    RECORRIDO.caps.forEach((c,j)=>{const i=document.createElement('i');
+      i.title=c.tit; i.addEventListener('click',()=>irACapitulo(j)); b.appendChild(i);});
+  }
+  [...b.children].forEach((el,j)=>{
+    el.className=j===k?'aqui':j<k?'hecho':'';
+    el.title=RECORRIDO.caps[j].tit;});
+  $('#capNom').textContent=RECORRIDO.caps[k].tit;
+}
+const irACapitulo=k=>{ if(!RECORRIDO)return;
+  k=Math.max(0,Math.min(RECORRIDO.caps.length-1,k));
+  reproducirDesde(RECORRIDO.caps[k].i); };
+function capSiguiente(){ if(!RECORRIDO)return;
+  const k=capActual();
+  if(k>=RECORRIDO.caps.length-1){          // del último capítulo se salta al final
+    reproducirDesde(RECORRIDO.lineas.length-1); return;}
+  irACapitulo(k+1); }
+function capAnterior(){ if(!RECORRIDO)return;
+  const k=capActual(), c=RECORRIDO.caps[k];
+  /* Como en un reproductor: si ya llevas rato dentro del capítulo, «atrás» lo
+     repite; si acabas de entrar, va al anterior. */
+  irACapitulo(sitioActual()-c.i>1?k:k-1); }
 
 function presentar(){
   if(PRESENTANDO){pararPresentacion();return;}
   if(continuar())return;              // seguir donde se quedó, si hay algo
   PRESENTANDO=true;
-  $('#btnPresenta').classList.add('on');
-  $('#lblPresenta').textContent=IDI==='en'?'STOP':'PARAR';
-  decir(guionPresentacion(), ()=>{
+  $('#btnPresenta').classList.add('on');document.body.classList.add('narrando');
+  $('#lblPresenta').textContent=IDI==='en'?'PAUSE':'PAUSAR';
+  const fin=()=>{
     if(!PRESENTANDO)return;
     if(INVITADO&&!PUEDE_TX){       // sin vale se cierra con palabras, no con gasto
       decir([J(IDI==='en'
         ?'That is the ecosystem. Everything you saw is live, and every number is verifiable in the public explorer.'
         :'Ese es el ecosistema. Todo lo que viste está vivo, y cada número se puede comprobar en el explorador público.',{p:0})],
-        ()=>{PRESENTANDO=false;$('#btnPresenta').classList.remove('on');
-             $('#lblPresenta').textContent=IDI==='en'?'TOUR':'RECORRIDO';});
+        ()=>{PRESENTANDO=false;$('#btnPresenta').classList.remove('on');document.body.classList.remove('narrando');
+             $('#lblPresenta').textContent=IDI==='en'?'TOUR':'RECORRIDO';
+             pintarRecorrido();});
       return;
     }
     transaccionEnVivo();
-  });
+  };
+  decir(montarRecorrido(guionPresentacion(),fin), fin);
+  pintarRecorrido();
 }
 function pararPresentacion(){
   parar();                       // PRIMERO: así parar() aún ve PRESENTANDO y guarda
   PRESENTANDO=false; ocultarContadores(); soltarCamara();
-  $('#btnPresenta').classList.remove('on');
-  marcarContinuar();
+  $('#btnPresenta').classList.remove('on');document.body.classList.remove('narrando');
+  marcarContinuar(); pintarRecorrido();
 }
 
 /* ═══ LA TRANSACCIÓN EN VIVO ══════════════════════════════════════════════
@@ -2052,8 +2362,8 @@ async function transaccionEnVivo(){
          alguien pulsa EN VIVO por su cuenta sin venir del recorrido: es
          justo ahí donde nace la pregunta «¿y esto qué es?». */
       ()=>{ PRESENTANDO=true;
-            $('#btnPresenta').classList.add('on');
-            $('#lblPresenta').textContent=IDI==='en'?'STOP':'PARAR';
+            $('#btnPresenta').classList.add('on');document.body.classList.add('narrando');
+            $('#lblPresenta').textContent=IDI==='en'?'PAUSE':'PAUSAR';
             segundoActo(); });
   }catch(e){
     $('#vivoEstado').textContent=en?'Could not send right now.':'No se pudo enviar ahora mismo.';
@@ -2066,6 +2376,16 @@ $('#vivoCerrar').addEventListener('click',()=>$('#vivo').classList.remove('abre'
 $('#btnVivo').addEventListener('click',transaccionEnVivo);
 if(INVITADO&&!PUEDE_TX)$('#btnVivo').style.display='none';   // sin vale, no se gasta nada
 $('#btnPresenta').addEventListener('click',presentar);
+$('#capAtras').addEventListener('click',capAnterior);
+$('#capAdelante').addEventListener('click',capSiguiente);
+/* Con el teclado también: en una sala con portátil y proyector es lo natural. */
+addEventListener('keydown',e=>{
+  if(/^(INPUT|TEXTAREA|SELECT)$/.test((e.target||{}).tagName||''))return;
+  if(!RECORRIDO||(!PRESENTANDO&&!hayPendiente()))return;
+  if(e.key==='ArrowRight'){e.preventDefault();capSiguiente();}
+  else if(e.key==='ArrowLeft'){e.preventDefault();capAnterior();}
+  else if(e.key===' '){e.preventDefault();presentar();}
+});
 
 /* ═══ EL SEGUNDO ACTO ═════════════════════════════════════════════════════
    Después de ver una transacción de verdad, la pregunta del inversionista
@@ -2082,14 +2402,14 @@ function segundoActo(){
   const F=(x,o={})=>P.push(Object.assign({q:'JARVIS',x},o));
 
   if(es){
-    F('Ahora, qué es lo que acabas de ver.',{p:520,cifras:null});
+    F('Ahora, qué es lo que acabas de ver.',{cap:'CAPA UNO',p:520,cifras:null});
     F('Orden Global no es una aplicación sobre la cadena de otro. Es una cadena de capa uno: la capa base, la que guarda el registro y la que decide sus propias reglas.',{foco:'n5534',p:700});
     F('La diferencia es de fondo. En una cadena ajena se paga peaje al dueño, se hereda su congestión y se acepta lo que decida cambiar mañana.',{foco:'n5534',p:650});
     F('Aquí no. El precio del gas lo fijamos nosotros: noventa y tres gigawei, estable, sin subastas ni sorpresas. Un envío cuesta lo mismo hoy que el mes que viene.',{foco:'tesoro',p:700});
     F('Un bloque cada diez segundos, con cuatro validadores propios y consenso Besu. Ni minería, ni consumo de energía, ni depender de que alguien más quiera confirmarnos.',{foco:'nodos',p:700});
     F('Y sobre todo: podemos cambiar las reglas cuando el negocio lo pida, sin pedir permiso a nadie. Eso, en un sistema de pagos, es la diferencia entre tener producto y alquilarlo.',{foco:'g5550',p:750});
 
-    F('Hablemos del ORIGEN.',{p:520,oro:9});
+    F('Hablemos del ORIGEN.',{cap:'EL ORIGEN',p:520,oro:9});
     F('La emisión total es de un billón de ORIGEN. Exacta, verificada en el bloque cero, y comprobable por cualquiera.',{foco:'tesoro',p:650,
       cifra:['1 000 000 000 000','ORIGEN · emisión total, fija']});
     F('No hay emisión adicional. La cantidad no es una promesa que alguien pueda romper: está escrita en el génesis y cualquiera puede contarla.',{foco:'tesoro',p:700});
@@ -2099,21 +2419,21 @@ function segundoActo(){
     F('El precio sale de una fórmula pública, no de una decisión: el gramo de oro en dólares, dividido entre cincuenta y cinco. Hoy, dos dólares con cincuenta y cinco.',{foco:'tesoro',p:750,
       cifra:['2,55','dólares por ORIGEN · hoy']});
 
-    F('Y hacia dónde va esto.',{p:520,cifras:null});
+    F('Y hacia dónde va esto.',{cap:'A DÓNDE VA',p:520,cifras:null});
     F('Apuntamos a que el ORIGEN sea moneda de curso en América Latina: que se pueda cobrar, guardar y gastar sin depender del banco de cada país ni de su inflación.',{foco:'pago',p:750});
     F('Las piezas ya están puestas. La cadena, la billetera, la identidad verificada, la pasarela de cobro y la tarjeta que se gasta en moneda corriente.',{foco:'wallet',p:700});
     F('Cuatrocientas treinta y cinco personas ya lo usan. Ese es el punto de partida, no el destino.',{foco:'wallet',p:700,
       cifra:['435','personas usándolo hoy']});
     F('Gracias por tu tiempo. Si quieres profundizar en cualquier pieza, dímela y te la cuento entera.',{p:0,cifras:null});
   }else{
-    F('Now, what you have just seen.',{p:520,cifras:null});
+    F('Now, what you have just seen.',{cap:'LAYER ONE',p:520,cifras:null});
     F('Orden Global is not an application on somebody else chain. It is a layer one chain: the base layer, the one that holds the ledger and sets its own rules.',{foco:'n5534',p:700});
     F('The difference runs deep. On somebody else chain you pay a toll to the owner, you inherit their congestion, and you accept whatever they decide to change tomorrow.',{foco:'n5534',p:650});
     F('Not here. We set the gas price: ninety three gigawei, stable, no auctions and no surprises. A transfer costs the same today as next month.',{foco:'tesoro',p:700});
     F('One block every ten seconds, four of our own validators, Besu consensus. No mining, no energy burn, and no depending on anyone else to confirm us.',{foco:'nodos',p:700});
     F('And above all: we can change the rules when the business needs it, without asking permission. In a payments system, that is the difference between owning the product and renting it.',{foco:'g5550',p:750});
 
-    F('Let us talk about ORIGEN.',{p:520,oro:9});
+    F('Let us talk about ORIGEN.',{cap:'ORIGEN',p:520,oro:9});
     F('Total supply is one trillion ORIGEN. Exact, verified in the genesis block, and checkable by anyone.',{foco:'tesoro',p:650,
       cifra:['1 000 000 000 000','ORIGEN · total supply, fixed']});
     F('There is no further issuance. The amount is not a promise somebody can break: it is written in the genesis and anyone can count it.',{foco:'tesoro',p:700});
@@ -2123,15 +2443,18 @@ function segundoActo(){
     F('The price comes from a public formula, not from a decision: one gram of gold in dollars, divided by fifty five. Today, two dollars fifty five.',{foco:'tesoro',p:750,
       cifra:['2.55','dollars per ORIGEN · today']});
 
-    F('And where this is going.',{p:520,cifras:null});
+    F('And where this is going.',{cap:'WHERE IT GOES',p:520,cifras:null});
     F('We are aiming for ORIGEN to be a working currency across Latin America: something you can charge in, hold and spend without depending on each country bank or its inflation.',{foco:'pago',p:750});
     F('The pieces are already in place. The chain, the wallet, verified identity, the payment gateway, and a card you spend in ordinary money.',{foco:'wallet',p:700});
     F('Four hundred thirty five people already use it. That is the starting point, not the destination.',{foco:'wallet',p:700,
       cifra:['435','people using it today']});
     F('Thank you for your time. If you want to go deeper into any piece, name it and I will walk you through it.',{p:0,cifras:null});
   }
-  decir(P, ()=>{PRESENTANDO=false;$('#btnPresenta').classList.remove('on');
-                marcarContinuar(); soltarCamara();});
+  const fin=()=>{PRESENTANDO=false;$('#btnPresenta').classList.remove('on');document.body.classList.remove('narrando');
+                 $('#lblPresenta').textContent=IDI==='en'?'TOUR':'RECORRIDO';
+                 marcarContinuar(); soltarCamara(); pintarRecorrido();};
+  decir(montarRecorrido(P,fin), fin);
+  pintarRecorrido();
 }
 
 /* ═══ EL VIAJE DEL DÓLAR ══════════════════════════════════════════════════
@@ -2188,6 +2511,7 @@ const kv=(c,k,v,col)=>{const d=document.createElement('div');d.className='kv';
    micrófono entiende un «sí» suelto, que fuera de contexto no significa nada. */
 let ofrecido=null;                       // {tipo:'sis'|'ag', id}
 function ofrecer(tipo,id,nombre){
+  if(PRESENTANDO)return;         // durante el recorrido no se interrumpe (ver abrirSis)
   ofrecido={tipo,id}; $('#siono').classList.add('abre');
   const q=IDI==='en' ? 'Would you like the full report on '+nombre+'?'
                      : '¿Quieres que te dé el reporte de '+nombre+'?';
@@ -2217,7 +2541,28 @@ function rechazarOfrecido(){
   responderCon([J(IDI==='en'?'As you wish.':'Como quieras.')]);
 }
 
+/* Un aviso corto que se borra solo, sin pisar lo que ponga otro después. */
+function soplo(txt,ms){
+  $('#oido').textContent=txt;
+  setTimeout(()=>{if($('#oido').textContent===txt)$('#oido').textContent='';},ms||4000);
+}
+/* ═══ TOCAR ALGO MIENTRAS NARRA ═══════════════════════════════════════════
+   Este era el reinicio de la captura del 14-ago: tocabas un sistema por
+   curiosidad a mitad del recorrido, saltaba la pregunta «¿quieres el
+   reporte?», esa pregunta pisaba la cola y los minutos que quedaban se
+   perdían sin dejar rastro ni forma de volver.
+
+   Ahora tocar durante el recorrido hace lo que uno espera que haga: la cámara
+   vuela ahí y sale la ficha flotante, y la voz sigue su camino. El panel
+   grande y el reporte hablado se quedan para cuando no está narrando --si no,
+   una tapa el cerebro y el otro tapa la voz--. */
 function abrirSis(s){
+  if(PRESENTANDO){
+    disparar(s.id,true); volarA(s.id,1.5); tarjetaSis(s.id);
+    soplo(IDI==='en'?'The tour carries on. Stop it for the full report.'
+                    :'El recorrido sigue. Párala para el reporte entero.');
+    return;
+  }
   const e=E[s.id];
   disparar(s.id,true);
   const c=panel(IDI==='en'?s.nom:s.es,s.que[IDI],e.mal?'var(--red)':s.col);
@@ -2227,6 +2572,12 @@ function abrirSis(s){
   ofrecer('sis',s.id,IDI==='en'?s.nom:s.es);
 }
 function abrirAgente(a){
+  if(PRESENTANDO){
+    tarjetaAg(a.id);
+    soplo(IDI==='en'?'The tour carries on. Stop it for the full report.'
+                    :'El recorrido sigue. Párala para el reporte entero.');
+    return;
+  }
   const p=parteDe(a.id);
   const c=panel(a.nom,(IDI==='en'?'Watches ':'Vigila ')+a.mira[IDI]+' · '+a.cada[IDI],a.col);
   if(!p){li(c,IDI==='en'?'This agent has not reported yet.':'Este agente no ha reportado todavía.');return;}
@@ -2302,6 +2653,28 @@ document.querySelectorAll('.vels button[data-vel]').forEach(b=>{
     localStorage.setItem('velCerebro',VEL);marca();
     decir([J(IDI==='en'?'Like this.':'Así.')]);});
 });
+/* Tono y forma de hablar. Se prueban con una frase con comas a propósito:
+   es donde se nota la diferencia entre HUMANA y DIRECTA. */
+const FRASE_PRUEBA=()=>IDI==='en'
+  ? 'Good evening. This is how I sound: calm, with room to breathe, and without rushing the numbers.'
+  : 'Buenas noches. Así es como sueno: tranquilo, con aire entre las frases, y sin atropellar los números.';
+document.querySelectorAll('.vels button[data-tono]').forEach(b=>{
+  const marca=()=>document.querySelectorAll('.vels button[data-tono]').forEach(x=>
+    x.classList.toggle('on',Math.abs(parseFloat(x.dataset.tono)-TONO)<.07));
+  marca();
+  b.addEventListener('click',()=>{TONO=tonoSano(parseFloat(b.dataset.tono));
+    localStorage.setItem('tonoCerebro',TONO);marca();
+    decir([J(FRASE_PRUEBA())]);});
+});
+document.querySelectorAll('.vels button[data-resp]').forEach(b=>{
+  const marca=()=>document.querySelectorAll('.vels button[data-resp]').forEach(x=>
+    x.classList.toggle('on',(x.dataset.resp==='1')===RESPIRA));
+  marca();
+  b.addEventListener('click',()=>{RESPIRA=b.dataset.resp==='1';
+    localStorage.setItem('respiraCerebro',RESPIRA?'1':'0');marca();
+    decir([J(FRASE_PRUEBA())]);});
+});
+$('#btnProbar').addEventListener('click',()=>decir([J(FRASE_PRUEBA())]));
 $('#btnTexto').addEventListener('click',abrirInforme);
 $('#cerrar').addEventListener('click',()=>$('#det').classList.remove('abre'));
 $('#det').addEventListener('click',e=>{if(e.target.id==='det')e.target.classList.remove('abre');});
@@ -2312,11 +2685,20 @@ function traducirUI(){
   $('#lblHablar').textContent=hablando?t('stop'):t('brief');
   $('#lblMic').textContent=oyendo?t('listening'):t('speak');
   $('#lblTexto').textContent=t('report');$('#lema').textContent=t('lema');
-  $('#lblPresenta').textContent=PRESENTANDO?(IDI==='en'?'STOP':'PARAR')
+  $('#lblPresenta').textContent=PRESENTANDO?(IDI==='en'?'PAUSE':'PAUSAR')
                                            :(IDI==='en'?'TOUR':'RECORRIDO');
   $('#lblVivo').textContent=IDI==='en'?'LIVE':'EN VIVO';
   $('#lblVoz').textContent=IDI==='en'?'VOICE':'VOZ';
   $('#lblVel').textContent=IDI==='en'?'SPEED':'VELOCIDAD';
+  $('#lblTono').textContent=IDI==='en'?'PITCH':'TONO';
+  $('#lblResp').textContent=IDI==='en'?'DELIVERY':'FORMA DE HABLAR';
+  $('#btnProbar').textContent=IDI==='en'?'◉ TEST THE VOICE':'◉ PROBAR LA VOZ';
+  document.querySelectorAll('.vels button[data-tono]').forEach((x,i)=>
+    x.textContent=(IDI==='en'?['DEEP','NATURAL','BRIGHT']:['GRAVE','NATURAL','CLARO'])[i]);
+  document.querySelectorAll('.vels button[data-resp]').forEach((x,i)=>
+    x.textContent=(IDI==='en'?['HUMAN','DIRECT']:['HUMANA','DIRECTA'])[i]);
+  document.querySelectorAll('.vels button[data-vel]').forEach((x,i)=>
+    x.textContent=(IDI==='en'?['SLOW','NORMAL','FAST']:['LENTO','NORMAL','RÁPIDO'])[i]);
   $('#lblIdi').textContent=IDI==='en'?'LANGUAGE':'IDIOMA';
   $('#lblSala').textContent=IDI==='en'?'PRESENTATION':'PRESENTACIÓN';
   $('#lblInv').textContent=IDI==='en'?'INVITE':'INVITAR';

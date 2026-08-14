@@ -26,7 +26,9 @@ const PRUEBAS_ES = ['hola', '¿cómo estás?', 'cuánto cuesta', 'cuéntame más
       {name:'Mónica', lang:'es-ES'}, {name:'Paulina', lang:'es-MX'}];
     const s = window.speechSynthesis;
     s.getVoices = () => V;
-    s.speak = u => { window.__d.push({txt:u.text, lang:u.lang, voz:u.voice&&u.voice.name});
+    s.speak = u => { const sb=document.querySelector('#sub');
+      /* la frase entera vive en el subtitulo; el trozo solo es un pedazo */
+      window.__d.push({txt:u.text, linea:sb?sb.textContent:'', lang:u.lang, voz:u.voice&&u.voice.name});
       setTimeout(() => { u.onstart&&u.onstart(); u.onend&&u.onend(); }, 5); };
     s.cancel = () => {};
     Object.defineProperty(s,'speaking',{get:()=>false});
@@ -68,12 +70,22 @@ const PRUEBAS_ES = ['hola', '¿cómo estás?', 'cuánto cuesta', 'cuéntame más
   await p.waitForTimeout(1500);
   await p.evaluate(() => { desbloqueada = true; });
 
+  /* Desde que la voz RESPIRA, una frase sale en varios trozos: «Asi se mueve
+     el dinero,» / «de punta a punta.» Un reloj fijo de 450 ms mide a mitad de
+     frase y acusa de mudo a quien esta hablando. Se espera a que la cadena de
+     trozos se asiente y se devuelve TODO lo dicho, no los tres primeros. */
   async function preguntar(frase){
     await p.evaluate(() => { parar(); window.__d = []; });
     await p.waitForTimeout(60);
     await p.evaluate(f => atender(f), frase);
-    await p.waitForTimeout(450);
-    return p.evaluate(() => window.__d.slice(0, 3));
+    let prev=-1, quieto=0;
+    for(let k=0;k<14;k++){
+      await p.waitForTimeout(320);
+      const n=await p.evaluate(() => window.__d.length);
+      quieto=(n===prev&&n>0)?quieto+1:0; prev=n;
+      if(quieto>=2)break;
+    }
+    return p.evaluate(() => window.__d.slice());
   }
   const idiomaTexto = x0 => { const x=' '+x0.toLowerCase()+' '; return /[ñáéíóú¿¡]/.test(x) ||
     (x.match(/ ?(que|de|la|el|los|con|para|una|del|por|se|no|es|y|en|buenas|buenos|noches|dias|tardes|placer|un) /gi)||[]).length >
@@ -88,7 +100,10 @@ const PRUEBAS_ES = ['hola', '¿cómo estás?', 'cuánto cuesta', 'cuéntame más
     for (const f of lista) {
       const d = await preguntar(f);
       if (!d.length) { console.log('  ✕ "' + f + '" → SIN RESPUESTA'); mal++; continue; }
-      const prim = d[0];
+      /* Una frase sale en varios trozos: «Operativo,» sola no tiene idioma.
+         Se toma la TIRADA inicial de trozos que comparten voz e idioma --que
+         es la primera frase entera-- y se clasifica eso. */
+      const prim = Object.assign({}, d[0], {txt: d[0].linea || d[0].txt});
       const idi = idiomaTexto(prim.txt);
       // la voz tiene que ir con el idioma DEL TEXTO, no con el del selector
       const vozOk = prim.voz ? new RegExp('^' + idi, 'i').test(
@@ -142,7 +157,7 @@ const PRUEBAS_ES = ['hola', '¿cómo estás?', 'cuánto cuesta', 'cuéntame más
                            ['el flujo del dinero',/de punta a punta/],
                            ['los tokens',/un billón/]]){
     const d = await preguntar(f);
-    const ok = d.some(x=>marca.test(x.txt));
+    const ok = marca.test(d.map(x=>x.txt).join(' '));   // la marca puede caer en cualquier trozo
     console.log('   "'+f+'" '+(ok?'✓':'✕ NO CONTESTO DEL SABER: '+((d[0]||{}).txt||'').slice(0,50)));
     if(!ok) mal++;
   }

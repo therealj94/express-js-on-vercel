@@ -34,23 +34,29 @@ const {chromium}=require('playwright');
  await p.evaluate(()=>{desbloqueada=true;});
  let mal=0;
  const dicho=()=>p.evaluate(()=>window.__d.slice());
+ /* La voz sale en trozos desde que respira: se espera a que aparezca lo que
+    se busca, no a un reloj. Con 400 ms fijos el test media a media frase. */
+ const hasta=async(pred,ms)=>{const t=Date.now();
+   while(Date.now()-t<(ms||4000)){
+     const d=await dicho(); if(pred(d))return d;
+     await p.waitForTimeout(200);}
+   return dicho();};
+ const dijo=re=>hasta(d=>re.test(d.join(' ')));
  const limpiar=async()=>{await p.evaluate(()=>{window.__d=[];parar();
    document.querySelector('#det').classList.remove('abre');});await p.waitForTimeout(120);};
 
  // 1 · tocar un sistema del dock -> ofrece
  await limpiar();
  await p.click('#sistemas .fila:nth-child(4)');   // VETA WALLET
- await p.waitForTimeout(400);
- let d=await dicho();
- const ofrece=/¿Quieres que te dé el reporte de/.test(d[0]||'');
+ let d=await dijo(/¿Quieres que te dé el reporte de/);
+ const ofrece=/¿Quieres que te dé el reporte de/.test(d.join(' '));
  const botones=await p.evaluate(()=>document.querySelector('#siono').classList.contains('abre'));
  console.log('1 · tocar sistema   '+(ofrece?'✓ ofrece':'✕ '+(d[0]||'nada'))+' · botones '+(botones?'✓':'✕'));
  if(!ofrece||!botones)mal++;
 
  // 2 · decir «sí» -> reporte completo
  await p.evaluate(()=>{window.__d=[];atender('sí');});
- await p.waitForTimeout(2600);
- d=await dicho();
+ d=await hasta(d=>d.length>=2&&/VETA WALLET|BILLETERA/i.test(d.join(' ')),6000);
  const reporta=d.length>=2 && /VETA WALLET|BILLETERA/i.test(d.join(' '));
  console.log('2 · decir sí        '+(reporta?'✓ da el reporte ('+d.length+' frases)':'✕ '+JSON.stringify(d.slice(0,2))));
  if(!reporta)mal++;
@@ -58,21 +64,18 @@ const {chromium}=require('playwright');
  // 3 · tocar un agente -> ofrece; decir «no» -> lo deja
  await limpiar();
  await p.click('#agentes .fila:nth-child(6)');    // CERRAJERO
- await p.waitForTimeout(400);
- d=await dicho();
- const of2=/reporte de CERRAJERO/.test(d[0]||'');
+ d=await dijo(/reporte de CERRAJERO/);
+ const of2=/reporte de CERRAJERO/.test(d.join(' '));
  await p.evaluate(()=>{window.__d=[];atender('no');});
- await p.waitForTimeout(400);
- d=await dicho();
- const rechaza=/Como quieras/.test(d[0]||'');
+ d=await dijo(/Como quieras/);
+ const rechaza=/Como quieras/.test(d.join(' '));
  console.log('3 · agente y decir no '+(of2?'✓ ofrece':'✕')+' · '+(rechaza?'✓ lo deja':'✕ '+(d[0]||'nada')));
  if(!of2||!rechaza)mal++;
 
  // 4 · «sí» sin pregunta en el aire -> no debe romper nada
  await limpiar();
  await p.evaluate(()=>{window.__d=[];atender('sí');});
- await p.waitForTimeout(400);
- d=await dicho();
+ d=await hasta(d=>d.length>0);
  const sano=d.length>0 && !/reporte de/.test(d[0]);
  console.log('4 · sí sin contexto  '+(sano?'✓ contesta algo sensato':'✕ '+(d[0]||'SILENCIO')));
  if(!sano)mal++;

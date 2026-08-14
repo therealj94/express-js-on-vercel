@@ -110,7 +110,13 @@ const PUBLICO=/\/img\//;
 
   // ── el segundo acto y el ORIGEN dorado
   await p3.evaluate(()=>{parar();PRESENTANDO=true;segundoActo();});
-  await p3.waitForTimeout(2500);
+  /* Al hecho, no al reloj: la voz respira y la linea de la capa uno tarda
+     mas en llegar que antes. */
+  for(let i=0;i<30;i++){
+    await p3.waitForTimeout(400);
+    if(await p3.evaluate(()=>/capa uno|layer one|cadena/i
+        .test(document.querySelector('#sub').textContent)))break;
+  }
   st=await p3.evaluate(()=>({sub:document.querySelector('#sub').textContent,
     motas:typeof MOTAS!=='undefined'?MOTAS.length:-1,
     cifra:(document.querySelector('#cifras .oro .n')||{}).textContent||''}));
@@ -121,6 +127,12 @@ const PUBLICO=/\/img\//;
   if(!capa1) mal++;
   // el disparo del oro llega cuando la narración entra al ORIGEN (~12s),
   // así que se espera al hecho, no a un reloj.
+  /* Se SALTA al capitulo del ORIGEN en vez de esperar a que llegue. En el
+     emulador cada linea tarda ~10 s --el lienzo se come el hilo-- y esperar
+     siete lineas eran noventa segundos de test para comprobar una cosa. Y de
+     paso se ejercita la barra de capitulos, que es como se usa de verdad. */
+  await p3.evaluate(()=>{const k=RECORRIDO.caps.findIndex(c=>/ORIGEN/i.test(c.tit));
+    if(k>0)irACapitulo(k);});
   st={motas:0,cifra:''};
   for(let i=0;i<40;i++){
     await p3.waitForTimeout(600);
