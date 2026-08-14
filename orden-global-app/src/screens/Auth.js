@@ -3,6 +3,7 @@ import { View, Text, Pressable, TextInput, ScrollView, KeyboardAvoidingView, Pla
 import { BlurView } from 'expo-blur';
 import { Icon } from '../icons';
 import { C } from '../theme';
+import { Image } from 'react-native';
 import { Logo, Button3D, hap, useAccount, useToast, AppBackground } from '../ui';
 import { upsertApiAccount, saveSession } from '../accounts';
 import { apiLogin, apiRegister, apiPortfolio, saveCreds, clearCreds, apiSocialLogin } from '../api';
@@ -172,8 +173,8 @@ export default function Auth({ nav }) {
         keyboardDismissMode="on-drag"
       >
         <View style={{ alignItems: 'center', marginBottom: 22 }}>
-          <Logo size={92} />
-          <Text style={styles.brand}>veta <Text style={styles.italic}>wallet</Text></Text>
+          <Image source={require('../../assets/og-logo.png')} style={{ width: 92, height: 63 }} resizeMode="contain" />
+          <Text style={styles.brand}>ORDEN <Text style={styles.italic}>GLOBAL</Text></Text>
           <Text style={styles.tag}>ORDEN GLOBAL</Text>
         </View>
 

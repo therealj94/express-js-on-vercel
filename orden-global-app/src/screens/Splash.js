@@ -3,6 +3,7 @@ import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, RadialGradient, Stop, Defs } from 'react-native-svg';
 import { C } from '../theme';
+import { Image } from 'react-native';
 import { Logo, useAccount, AppBackground, BG_SPLASH } from '../ui';
 import { versionLabel } from '../version';
 
@@ -86,13 +87,13 @@ export default function Splash({ nav }) {
           </Animated.View>
 
           <Animated.View style={[styles.logoShadow, { opacity: op, transform: [{ scale }] }]}>
-            <Logo size={176} />
+            <Image source={require('../../assets/og-logo.png')} style={{ width: 176, height: 121 }} resizeMode="contain" />
           </Animated.View>
         </View>
 
         <Animated.View style={{ opacity: textOp, transform: [{ translateY: textY }], alignItems: 'center', marginTop: 10 }}>
-          <Text style={styles.brand}>veta <Text style={styles.brandItalic}>wallet</Text></Text>
-          <Text style={styles.tag}>ORDEN GLOBAL</Text>
+          <Text style={styles.brand}>ORDEN <Text style={styles.brandItalic}>GLOBAL</Text></Text>
+          <Text style={styles.tag}>UNA IDENTIDAD · TODO EL ECOSISTEMA</Text>
         </Animated.View>
 
         <View style={styles.progTrack}>
@@ -100,7 +101,7 @@ export default function Splash({ nav }) {
             <LinearGradient colors={['#F8EFCF', '#C9A961']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.progFill} />
           </Animated.View>
         </View>
-        <Text style={styles.loading}>Cargando tu billetera…</Text>
+        <Text style={styles.loading}>Cargando tu ecosistema…</Text>
         <Text style={styles.ver}>{versionLabel()}</Text>
       </View>
     </AppBackground>
