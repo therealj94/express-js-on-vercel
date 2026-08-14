@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { C, G } from '../theme';
 import { useLang } from '../i18n';
 import { useAccount, hap } from '../ui';
-import { nombreAsistente, ponerNombre } from './asistente';
+import { nombreAsistente, ponerNombre, suscribirNombre } from './asistente';
 
 const TXT = {
   es: {
@@ -18,7 +18,7 @@ const TXT = {
     cobrar: 'Cobrar con QR', cobrarSub: 'un código, un pago',
     gid: 'Genesis ID', gidSub: 'tu identidad verificada',
     chat: 'Chat', chatSub: 'gente real, con Genesis ID',
-    asis: 'Tu asistente', asisSub: 'háblale en la barra de abajo',
+    asis: 'Tu asistente', asisSub: 'toca su núcleo flotante y háblale',
     renombrar: 'Ponerle mi nombre', guardar: 'GUARDAR',
   },
   en: {
@@ -28,7 +28,7 @@ const TXT = {
     cobrar: 'Charge with QR', cobrarSub: 'one code, one payment',
     gid: 'Genesis ID', gidSub: 'your verified identity',
     chat: 'Chat', chatSub: 'real people, with Genesis ID',
-    asis: 'Your assistant', asisSub: 'talk to it in the bar below',
+    asis: 'Your assistant', asisSub: 'tap its floating core and speak',
     renombrar: 'Give it my name', guardar: 'SAVE',
   },
 };
@@ -40,7 +40,9 @@ export default function Ecosistema({ nav }) {
   const [nombre, setNombre] = useState(nombreAsistente());
   const [editando, setEditando] = useState(false);
   const [borrador, setBorrador] = useState('');
-  useEffect(() => { setNombre(nombreAsistente()); }, []);
+  // el nombre puede llegar DESPUÉS (se lee de SecureStore al arrancar la app):
+  // con la suscripción esta ficha no se queda enseñando el nombre por defecto
+  useEffect(() => suscribirNombre(setNombre), []);
 
   const F = ({ icono, color, titulo, sub, a }) => (
     <Pressable style={st.ficha} onPress={() => { hap(); nav.go(a.p, a.params || {}); }}>
@@ -72,7 +74,7 @@ export default function Ecosistema({ nav }) {
       {/* el asistente, con nombre propio */}
       <View style={st.asis}>
         <LinearGradient colors={G.gold} style={st.orbe} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <Text style={st.orbeTxt}>{nombre[0]}</Text>
+          <Text style={st.orbeTxt}>{(nombre || 'N').trim()[0] || 'N'}</Text>
         </LinearGradient>
         <View style={{ flex: 1 }}>
           <Text style={st.fTit}>{nombre}</Text>

@@ -1,0 +1,504 @@
+// CobroPay — la caja del comercio: se escribe el monto y sale el código.
+//
+// Es el port de `cobro.tsx` de mytokenpay-app (Expo 51, expo-router) a este
+// contenedor. Se conserva SU flujo y SUS textos —factura con referencia,
+// propina por porcentaje, QR de cobro, dividir la cuenta hasta entre cuatro—
+// porque es su producto; lo que cambia es la piel (oro sobre verde) y, sobre
+// todo, DE DÓNDE SALE EL DINERO.
+//
+// Dos diferencias de fondo con el original, y el porqué:
+//   1. Allí la factura se armaba desde un carrito de catálogo servido por su
+//      backend. Aquí no hay ese backend enchufado (su `api.ts` corre con
+//      USE_MOCK_API = true), así que pedir el monto de una vez es lo único
+//      honesto: no se inventa un menú con precios que nadie mantiene.
+//   2. Allí había botones de "Simular pago" que acreditaban la venta en
+//      memoria. Aquí el QR es og://wallet/enviar hacia la dirección REAL del
+//      comercio: quien lo escanea con Orden Global cae en ENVIAR preparado y
+//      firma él. Esta pantalla no transmite nada ni puede saber sola que le
+//      pagaron — por eso, en vez de fingir un "cobro acreditado", manda a
+//      Cobros, donde aparece el movimiento de verdad cuando llega a la cadena.
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  View, Text, TextInput, Pressable, ScrollView, StyleSheet, Animated, BackHandler, Platform,
+} from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
+import { LinearGradient } from 'expo-linear-gradient';
+import { C, G } from '../../theme';
+import { Header, Button3D, Card, useAccount, useToast, hap } from '../../ui';
+import { Icon } from '../../icons';
+import { useLang } from '../../i18n';
+import { qtyFmt, money, normalizeAmtInput, parseAmt } from '../../data';
+import { aUri } from '../rutas';
+
+const TXT = {
+  es: {
+    titulo: 'Factura', tituloQr: 'QR de cobro', tituloDiv: 'Dividir cuenta',
+    sub: 'MyTokenPay · cobra en ORIGEN',
+    monto: 'MONTO EN ORIGEN', concepto: 'Concepto (opcional)', conceptoK: 'Concepto',
+    conceptoPh: 'Ej. Cena, habitación 204…',
+    propina: 'Propina', sinPropina: 'Sin',
+    subtotal: 'Subtotal', total: 'Total',
+    qrBtn: 'QR DE COBRO', qrHint: 'Escanéalo con Orden Global',
+    divBtn: 'DIVIDIR CUENTA', divHint: 'Hasta 4 personas, un QR cada una',
+    qrNota: 'Pídele al cliente que lo escanee con Orden Global. Cae en ENVIAR ya preparado —tu dirección y el monto— y firma en su teléfono.',
+    volverFactura: 'Volver a la factura',
+    entreCuantos: '¿Entre cuántos dividen {t} ORIGEN?',
+    iguales: 'Partes iguales', manuales: 'Montos manuales',
+    persona: 'Persona', cadaQuien: 'Cada quien paga ≈ {m} ORIGEN',
+    sumaDebe: 'La suma debe dar exactamente {t} ORIGEN.',
+    generar: 'GENERAR CÓDIGOS QR', cambiarDiv: 'Cambiar la división',
+    errCero: 'Cada persona debe pagar un monto mayor a 0.',
+    errSuma: 'La suma ({s}) debe ser igual al total ({t} ORIGEN).',
+    errMonto: 'Escribe primero cuánto vas a cobrar.',
+    verCobros: 'Ver mis cobros',
+    llega: 'Este código no cobra solo: el cobro aparece en Cobros cuando la persona firma el envío y la cadena lo confirma.',
+    sinAddrT: 'Todavía no tienes dirección de cobro',
+    sinAddrP: 'Tu cuenta no devolvió una dirección de billetera, y sin ella el código no puede apuntar a ningún lado. Abre tu billetera y vuelve a entrar.',
+    refer: 'Referencia',
+  },
+  en: {
+    titulo: 'Invoice', tituloQr: 'Charge QR', tituloDiv: 'Split the bill',
+    sub: 'MyTokenPay · charge in ORIGEN',
+    monto: 'AMOUNT IN ORIGEN', concepto: 'Note (optional)', conceptoK: 'Note',
+    conceptoPh: 'E.g. Dinner, room 204…',
+    propina: 'Tip', sinPropina: 'None',
+    subtotal: 'Subtotal', total: 'Total',
+    qrBtn: 'CHARGE QR', qrHint: 'Scan it with Orden Global',
+    divBtn: 'SPLIT THE BILL', divHint: 'Up to 4 people, one QR each',
+    qrNota: 'Ask the customer to scan it with Orden Global. They land on SEND already prepared —your address and the amount— and sign on their phone.',
+    volverFactura: 'Back to the invoice',
+    entreCuantos: 'Between how many are you splitting {t} ORIGEN?',
+    iguales: 'Equal parts', manuales: 'Manual amounts',
+    persona: 'Person', cadaQuien: 'Each one pays ≈ {m} ORIGEN',
+    sumaDebe: 'The sum must be exactly {t} ORIGEN.',
+    generar: 'GENERATE QR CODES', cambiarDiv: 'Change the split',
+    errCero: 'Each person must pay an amount greater than 0.',
+    errSuma: 'The sum ({s}) must equal the total ({t} ORIGEN).',
+    errMonto: 'Type how much you are charging first.',
+    verCobros: 'See my payments',
+    llega: 'This code does not charge by itself: the payment shows in Payments once the person signs the send and the chain confirms it.',
+    sinAddrT: 'You have no charging address yet',
+    sinAddrP: 'Your account returned no wallet address, and without it the code has nowhere to point. Open your wallet and come back.',
+    refer: 'Reference',
+  },
+};
+
+const PROPINAS = [0, 5, 10, 15];
+const MAX_PERSONAS = 4;
+
+// El monto viaja por la URI y de ahí al campo de ENVIAR: se recorta a 6
+// decimales (lo que la cadena distingue en pantalla) y se manda como texto
+// canónico con punto, que es lo que parseAmt del envío entiende sin dudar.
+const enTexto = (n) => String(Math.round((Number(n) || 0) * 1e6) / 1e6);
+const rellena = (s, vals) => Object.keys(vals).reduce((a, k) => a.replace('{' + k + '}', vals[k]), s);
+
+// Entrada en cascada. Solo opacity/transform ⇒ useNativeDriver: la animación
+// corre en el hilo nativo y no compite con el teclado ni con el dibujo del QR.
+function Entrada({ delay = 0, style, children }) {
+  const op = useRef(new Animated.Value(0)).current;
+  const y = useRef(new Animated.Value(16)).current;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(op, { toValue: 1, duration: 400, delay, useNativeDriver: true }),
+      Animated.spring(y, { toValue: 0, delay, speed: 12, bounciness: 6, useNativeDriver: true }),
+    ]).start();
+  }, [op, y, delay]);
+  return <Animated.View style={[{ opacity: op, transform: [{ translateY: y }] }, style]}>{children}</Animated.View>;
+}
+
+function Fila({ k, v, fuerte }) {
+  return (
+    <View style={st.fila}>
+      <Text style={[st.filaK, fuerte && st.filaKF]}>{k}</Text>
+      <Text style={[st.filaV, fuerte && st.filaVF]}>{v}</Text>
+    </View>
+  );
+}
+
+export default function CobroPay({ nav }) {
+  const { lang } = useLang();
+  const t = TXT[lang] || TXT.es;
+  const { account } = useAccount();
+  const toast = useToast();
+
+  const [etapa, setEtapa] = useState('factura');   // factura | qr | dividir
+  const [monto, setMonto] = useState('');
+  const [concepto, setConcepto] = useState('');
+  const [propina, setPropina] = useState(0);
+  const [error, setError] = useState(null);
+
+  // Dividir la cuenta: igual que en el original, hasta cuatro personas, en
+  // partes iguales o con montos escritos a mano que deben cuadrar al total.
+  const [personas, setPersonas] = useState(2);
+  const [manual, setManual] = useState(false);
+  const [manuales, setManuales] = useState(['', '', '', '']);
+  const [reparto, setReparto] = useState(null);
+
+  // La referencia de la factura se fija UNA vez por pantalla (useState con
+  // función), no en cada render: si cambiara al teclear, el QR ya enseñado
+  // dejaría de corresponder al papel que el comercio tiene en la mano.
+  const [referencia] = useState(() => 'INV-' + Date.now().toString(36).toUpperCase().slice(-6));
+
+  // El QR y el reparto son etapas DENTRO de esta pantalla, no rutas: sin esto
+  // el botón físico de Android se llevaría al comercio fuera de la caja de un
+  // salto, en vez de devolverlo a su factura. Se registra solo cuando hay algo
+  // que cerrar, y el listener más reciente gana sobre el global de App.js.
+  useEffect(() => {
+    if (Platform.OS !== 'android' || etapa === 'factura') return undefined;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setEtapa('factura'); setReparto(null); setError(null);
+      return true;
+    });
+    return () => sub.remove();
+  }, [etapa]);
+
+  const subtotal = parseAmt(monto);
+  const propinaOr = Math.round(subtotal * propina) / 100;
+  const total = Math.round((subtotal + propinaOr) * 1e6) / 1e6;
+
+  // El precio sale del portafolio real de la cuenta. Si el feed no lo trae,
+  // NO se enseña un equivalente inventado — mejor sin dólares que con un
+  // número congelado (misma regla que el resto de la billetera).
+  const precio = useMemo(() => {
+    const b = (account?.balances || []).find((x) => (x.symbol || '').toUpperCase() === 'ORIGEN');
+    const p = b && b.priceUsd != null ? Number(b.priceUsd) : null;
+    return p != null && p > 0 ? p : null;
+  }, [account?.balances]);
+  const enDolares = (n) => (precio != null ? ' ≈ ' + money(n * precio) : '');
+
+  const addr = account?.addr || null;
+
+  // ── sin dirección no hay cobro posible: se dice, no se disimula ────────
+  if (!addr) {
+    return (
+      <View style={st.screen}>
+        <Header title={t.titulo} sub={t.sub} onBack={nav.back} />
+        <View style={st.vacioCentro}>
+          <View style={st.vacioIc}><Icon name="qr-code" size={32} color={C.gold} /></View>
+          <Text style={st.vacioT}>{t.sinAddrT}</Text>
+          <Text style={st.vacioP}>{t.sinAddrP}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const uriDe = (m) => aUri('wallet/enviar', { to: addr, amount: enTexto(m) });
+
+  // Partes iguales: se redondea hacia abajo y la última persona carga con el
+  // sobrante, para que la suma de los QR sea EXACTAMENTE el total y nadie
+  // pague de más ni el comercio cobre de menos por un decimal perdido.
+  function repartoIgual(n) {
+    const base = Math.floor((total / n) * 1e6) / 1e6;
+    const filas = [];
+    let acumulado = 0;
+    for (let i = 0; i < n; i++) {
+      const m = i === n - 1 ? Math.round((total - acumulado) * 1e6) / 1e6 : base;
+      acumulado = Math.round((acumulado + m) * 1e6) / 1e6;
+      filas.push({ etiqueta: `${t.persona} ${i + 1}`, monto: m });
+    }
+    return filas;
+  }
+
+  function generarReparto() {
+    if (total <= 0) { setError(t.errMonto); return; }
+    if (!manual) { setReparto(repartoIgual(personas)); setError(null); hap(); return; }
+    const montos = manuales.slice(0, personas).map((v) => parseAmt(v));
+    if (montos.some((m) => m <= 0)) { setError(t.errCero); return; }
+    const suma = Math.round(montos.reduce((a, b) => a + b, 0) * 1e6) / 1e6;
+    if (Math.abs(suma - total) > 0.000001) {
+      setError(rellena(t.errSuma, { s: qtyFmt(suma), t: qtyFmt(total) }));
+      return;
+    }
+    setError(null); hap();
+    setReparto(montos.map((m, i) => ({ etiqueta: `${t.persona} ${i + 1}`, monto: m })));
+  }
+
+  function irA(etapaNueva) {
+    if (total <= 0) { setError(t.errMonto); toast(t.errMonto); return; }
+    setError(null); hap();
+    setReparto(null);
+    setEtapa(etapaNueva);
+  }
+
+  const titulo = etapa === 'qr' ? t.tituloQr : etapa === 'dividir' ? t.tituloDiv : t.titulo;
+  const atras = etapa === 'factura' ? nav.back : () => { setEtapa('factura'); setReparto(null); setError(null); };
+
+  return (
+    <View style={st.screen}>
+      <Header title={titulo} sub={`${t.refer} ${referencia}`} onBack={atras} />
+      <ScrollView contentContainerStyle={st.dentro} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+
+        {/* ══ FACTURA: monto, concepto y propina ══════════════════════════ */}
+        {etapa === 'factura' && (
+          <>
+            <Entrada delay={0}>
+              <Text style={st.eti}>{t.monto}</Text>
+              <TextInput
+                value={monto}
+                onChangeText={(v) => { setMonto(normalizeAmtInput(v)); setError(null); }}
+                keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={C.txt3}
+                style={st.montoInput} accessibilityLabel={t.monto}
+              />
+              {precio != null && subtotal > 0 ? <Text style={st.usd}>{money(subtotal * precio)}</Text> : null}
+            </Entrada>
+
+            <Entrada delay={80}>
+              <Text style={[st.eti, { marginTop: 18 }]}>{t.concepto}</Text>
+              <TextInput
+                value={concepto} onChangeText={setConcepto}
+                placeholder={t.conceptoPh} placeholderTextColor={C.txt3}
+                style={st.texto} maxLength={60}
+              />
+            </Entrada>
+
+            <Entrada delay={150}>
+              <Text style={[st.eti, { marginTop: 18 }]}>{t.propina}</Text>
+              <View style={st.chips}>
+                {PROPINAS.map((p) => {
+                  const on = propina === p;
+                  return (
+                    <Pressable key={p} onPress={() => { hap(); setPropina(p); }}
+                      accessibilityRole="button" accessibilityState={{ selected: on }}
+                      style={[st.chip, on && st.chipOn]}>
+                      <Text style={[st.chipTxt, on && st.chipTxtOn]}>{p === 0 ? t.sinPropina : `${p}%`}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </Entrada>
+
+            <Entrada delay={220}>
+              <Card style={st.resumen}>
+                <Fila k={t.subtotal} v={`${qtyFmt(subtotal)} ORIGEN`} />
+                <Fila k={`${t.propina} (${propina}%)`} v={`${qtyFmt(propinaOr)} ORIGEN`} />
+                {concepto.trim() ? <Fila k={t.conceptoK} v={concepto.trim()} /> : null}
+                <View style={st.linea} />
+                <Fila k={t.total} v={`${qtyFmt(total)} ORIGEN${enDolares(total)}`} fuerte />
+              </Card>
+            </Entrada>
+
+            {error ? <Entrada delay={0}><Text style={st.error}>{error}</Text></Entrada> : null}
+
+            <Entrada delay={290}>
+              <Button3D title={t.qrBtn} icon="qr-code" onPress={() => irA('qr')} style={{ marginTop: 18 }} />
+              <Text style={st.bajoBoton}>{t.qrHint}</Text>
+              <Button3D title={t.divBtn} icon="people" variant="teal" onPress={() => irA('dividir')} style={{ marginTop: 14 }} />
+              <Text style={st.bajoBoton}>{t.divHint}</Text>
+            </Entrada>
+          </>
+        )}
+
+        {/* ══ QR ÚNICO ════════════════════════════════════════════════════ */}
+        {etapa === 'qr' && (
+          <Entrada delay={0} style={{ alignItems: 'center' }}>
+            <Text style={st.granMonto}>{qtyFmt(total)} <Text style={st.moneda}>ORIGEN</Text></Text>
+            {precio != null ? <Text style={st.usd}>{money(total * precio)}</Text> : null}
+            {concepto.trim() ? <Text style={st.conceptoQr}>{concepto.trim()}</Text> : null}
+
+            {/* El QR va sobre blanco puro a propósito: sobre el verde de la
+                casa muchos lectores fallan por falta de contraste. */}
+            <View style={st.qrBlanco}>
+              <QRCode value={uriDe(total)} size={228} color="#04211d" backgroundColor="#ffffff" ecl="M" />
+            </View>
+
+            <Text style={st.nota}>{t.qrNota}</Text>
+            <Text style={st.notaTenue}>{t.llega}</Text>
+
+            <Pressable onPress={() => { hap(); nav.go('pay-actividad'); }} style={st.enlace}>
+              <Icon name="pulse" size={15} color={C.gold} />
+              <Text style={st.enlaceTxt}>{t.verCobros}</Text>
+            </Pressable>
+            <Pressable onPress={() => { hap(); setEtapa('factura'); }} style={st.enlace}>
+              <Icon name="chevron-back" size={15} color={C.txt2} />
+              <Text style={[st.enlaceTxt, { color: C.txt2 }]}>{t.volverFactura}</Text>
+            </Pressable>
+          </Entrada>
+        )}
+
+        {/* ══ DIVIDIR: elegir el reparto ══════════════════════════════════ */}
+        {etapa === 'dividir' && !reparto && (
+          <>
+            <Entrada delay={0}>
+              <Card style={st.resumen}>
+                <Text style={st.divTitulo}>{rellena(t.entreCuantos, { t: qtyFmt(total) })}</Text>
+                <View style={[st.chips, { justifyContent: 'center', marginTop: 14 }]}>
+                  {[2, 3, MAX_PERSONAS].map((n) => {
+                    const on = personas === n;
+                    return (
+                      <Pressable key={n} onPress={() => { hap(); setPersonas(n); setError(null); }}
+                        accessibilityRole="button" accessibilityState={{ selected: on }}
+                        style={[st.chipN, on && st.chipOn]}>
+                        <Icon name="people" size={15} color={on ? C.darkText : C.txt2} />
+                        <Text style={[st.chipTxt, on && st.chipTxtOn]}>{n}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <View style={st.modos}>
+                  <Pressable onPress={() => { hap(); setManual(false); setError(null); }} style={[st.modo, !manual && st.modoOn]}>
+                    <Text style={[st.modoTxt, !manual && st.modoTxtOn]}>{t.iguales}</Text>
+                  </Pressable>
+                  <Pressable onPress={() => { hap(); setManual(true); setError(null); }} style={[st.modo, manual && st.modoOn]}>
+                    <Text style={[st.modoTxt, manual && st.modoTxtOn]}>{t.manuales}</Text>
+                  </Pressable>
+                </View>
+
+                {manual ? (
+                  <View style={{ marginTop: 6 }}>
+                    {Array.from({ length: personas }).map((_, i) => (
+                      <View key={i} style={st.manualFila}>
+                        <Text style={st.manualEti}>{t.persona} {i + 1}</Text>
+                        <TextInput
+                          value={manuales[i]}
+                          onChangeText={(v) => {
+                            const otros = manuales.slice();
+                            otros[i] = normalizeAmtInput(v);
+                            setManuales(otros); setError(null);
+                          }}
+                          keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={C.txt3}
+                          style={st.manualInput}
+                        />
+                        <Text style={st.manualUnidad}>ORIGEN</Text>
+                      </View>
+                    ))}
+                    <Text style={st.notaTenue}>{rellena(t.sumaDebe, { t: qtyFmt(total) })}</Text>
+                  </View>
+                ) : (
+                  <Text style={st.previo}>
+                    {rellena(t.cadaQuien, { m: qtyFmt(Math.round((total / personas) * 1e6) / 1e6) })}
+                  </Text>
+                )}
+              </Card>
+            </Entrada>
+
+            {error ? <Entrada delay={0}><Text style={st.error}>{error}</Text></Entrada> : null}
+
+            <Entrada delay={80}>
+              <Button3D title={t.generar} icon="qr-code" onPress={generarReparto} style={{ marginTop: 18 }} />
+            </Entrada>
+          </>
+        )}
+
+        {/* ══ DIVIDIR: un QR por persona ══════════════════════════════════ */}
+        {etapa === 'dividir' && reparto && (
+          <>
+            {reparto.map((p, i) => (
+              <Entrada key={i} delay={i * 90}>
+                <View style={st.persona}>
+                  <View style={st.qrChico}>
+                    <QRCode value={uriDe(p.monto)} size={124} color="#04211d" backgroundColor="#ffffff" ecl="M" />
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={st.personaEti}>{p.etiqueta}</Text>
+                    <Text style={st.personaMonto}>{qtyFmt(p.monto)} <Text style={st.moneda}>ORIGEN</Text></Text>
+                    {precio != null ? <Text style={st.usdChico}>{money(p.monto * precio)}</Text> : null}
+                    <LinearGradient colors={G.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.sello}>
+                      <Text style={st.selloTxt}>{referencia}·{i + 1}</Text>
+                    </LinearGradient>
+                  </View>
+                </View>
+              </Entrada>
+            ))}
+            <Entrada delay={reparto.length * 90}>
+              <Text style={st.notaTenue}>{t.llega}</Text>
+              <Pressable onPress={() => { hap(); setReparto(null); }} style={st.enlace}>
+                <Icon name="chevron-back" size={15} color={C.txt2} />
+                <Text style={[st.enlaceTxt, { color: C.txt2 }]}>{t.cambiarDiv}</Text>
+              </Pressable>
+            </Entrada>
+          </>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+const st = StyleSheet.create({
+  screen: { flex: 1 },
+  dentro: { paddingHorizontal: 20, paddingBottom: 120 },
+
+  eti: { color: C.txt3, fontSize: 10, fontWeight: '700', letterSpacing: 2.6, marginBottom: 8 },
+  montoInput: {
+    backgroundColor: C.input, borderWidth: 1, borderColor: C.inputBr, borderRadius: 16,
+    paddingHorizontal: 16, paddingVertical: 14, color: C.txt, fontSize: 30, textAlign: 'center',
+    fontVariant: ['tabular-nums'],
+  },
+  texto: {
+    backgroundColor: C.input, borderWidth: 1, borderColor: C.inputBr, borderRadius: 14,
+    paddingHorizontal: 14, paddingVertical: 12, color: C.txt, fontSize: 14.5,
+  },
+  usd: { color: C.txt3, fontSize: 12.5, textAlign: 'center', marginTop: 8 },
+  usdChico: { color: C.txt3, fontSize: 11.5, marginTop: 2 },
+
+  chips: { flexDirection: 'row', gap: 8 },
+  chip: {
+    flex: 1, alignItems: 'center', paddingVertical: 11, borderRadius: 13,
+    borderWidth: 1, borderColor: C.line2, backgroundColor: C.panel,
+  },
+  chipN: {
+    flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 20, paddingVertical: 11,
+    borderRadius: 13, borderWidth: 1, borderColor: C.line2, backgroundColor: C.panel,
+  },
+  chipOn: { backgroundColor: C.gold, borderColor: C.gold },
+  chipTxt: { color: C.txt2, fontSize: 13, fontWeight: '700' },
+  chipTxtOn: { color: C.darkText },
+
+  resumen: { padding: 16, marginTop: 18, borderWidth: 1, borderColor: C.line2 },
+  fila: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingVertical: 6 },
+  filaK: { color: C.txt2, fontSize: 12.5, flexShrink: 1 },
+  filaKF: { color: C.txt, fontSize: 14.5, fontWeight: '700' },
+  filaV: { color: C.txt, fontSize: 12.5, fontWeight: '600', textAlign: 'right', flexShrink: 1, fontVariant: ['tabular-nums'] },
+  filaVF: { color: C.goldLt, fontSize: 15.5, fontWeight: '800' },
+  linea: { height: 1, backgroundColor: 'rgba(255,255,255,0.07)', marginVertical: 8 },
+
+  error: { color: C.down, fontSize: 12.5, lineHeight: 18, marginTop: 12 },
+  bajoBoton: { color: C.txt3, fontSize: 11.5, textAlign: 'center', marginTop: 7 },
+
+  granMonto: { color: C.txt, fontSize: 34, fontWeight: '200', marginTop: 4, fontVariant: ['tabular-nums'] },
+  moneda: { fontSize: 14, color: C.gold, fontWeight: '700' },
+  conceptoQr: { color: C.txt2, fontSize: 13, marginTop: 6, textAlign: 'center' },
+  qrBlanco: { backgroundColor: '#fff', padding: 16, borderRadius: 20, marginTop: 18 },
+  qrChico: { backgroundColor: '#fff', padding: 9, borderRadius: 14 },
+  nota: { color: C.txt2, fontSize: 12.5, lineHeight: 19, textAlign: 'center', marginTop: 16, maxWidth: 300 },
+  notaTenue: { color: C.txt3, fontSize: 11.5, lineHeight: 18, textAlign: 'center', marginTop: 10, maxWidth: 320, alignSelf: 'center' },
+
+  enlace: { flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'center', paddingVertical: 12 },
+  enlaceTxt: { color: C.gold, fontSize: 13, fontWeight: '600' },
+
+  divTitulo: { color: C.txt, fontSize: 15, fontWeight: '700', textAlign: 'center' },
+  modos: {
+    flexDirection: 'row', gap: 5, borderWidth: 1, borderColor: C.line2, borderRadius: 13,
+    padding: 4, marginTop: 14, marginBottom: 12,
+  },
+  modo: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 10 },
+  modoOn: { backgroundColor: C.panel3 },
+  modoTxt: { color: C.txt3, fontSize: 12.5, fontWeight: '600' },
+  modoTxtOn: { color: C.txt },
+  manualFila: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 9 },
+  manualEti: { color: C.txt2, fontSize: 12.5, width: 80 },
+  manualInput: {
+    flex: 1, backgroundColor: C.input, borderWidth: 1, borderColor: C.inputBr, borderRadius: 11,
+    paddingHorizontal: 12, paddingVertical: 9, color: C.txt, fontSize: 14.5, textAlign: 'right',
+    fontVariant: ['tabular-nums'],
+  },
+  manualUnidad: { color: C.txt3, fontSize: 10.5, fontWeight: '700', width: 50 },
+  previo: { color: C.txt, fontSize: 13.5, fontWeight: '600', textAlign: 'center', marginTop: 4 },
+
+  persona: {
+    flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: C.panel,
+    borderWidth: 1, borderColor: C.line2, borderRadius: 18, padding: 13, marginTop: 12,
+  },
+  personaEti: { color: C.txt3, fontSize: 10, fontWeight: '700', letterSpacing: 2 },
+  personaMonto: { color: C.txt, fontSize: 21, fontWeight: '300', marginTop: 3, fontVariant: ['tabular-nums'] },
+  sello: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginTop: 8 },
+  selloTxt: { color: C.darkText, fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
+
+  vacioCentro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 },
+  vacioIc: {
+    width: 84, height: 84, borderRadius: 26, backgroundColor: 'rgba(201,169,97,0.12)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 18,
+  },
+  vacioT: { color: C.txt, fontWeight: '800', fontSize: 18, textAlign: 'center' },
+  vacioP: { color: C.txt2, fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 8 },
+});
