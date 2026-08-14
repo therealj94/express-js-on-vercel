@@ -238,3 +238,76 @@ Tres detalles que importan:
 
 Probado con `pruebas/probar-ofrecer.js`: ofrece al tocar, el sí reporta, el no
 lo deja, un sí sin contexto no rompe nada, y cambiar de tema cancela la oferta.
+
+## La presentación para inversionistas · 14-ago-2026
+
+El cerebro es un cuarto de control, y un cuarto de control **es lo contrario de
+un pitch**: lo primero que enseña son las fallas. Por eso esto no es otra
+aplicación, es **un modo**. Mismo cerebro, mismos datos vivos, otra narrativa.
+
+### El recorrido · botón RECORRIDO
+
+Unos seis minutos. La voz narra, **la cámara vuela sola** al racimo que se está
+nombrando, las tarjetas se materializan y los contadores suben. Todo con datos
+vivos: el bloque que dice es el bloque que hay.
+
+Termina en la demostración en vivo, que es lo que gana la reunión.
+
+### La transacción en vivo · botón EN VIVO
+
+Una transacción **de verdad**, firmada y confirmada delante de quien mira, con
+el identificador en pantalla **para que lo abra en el explorador desde su
+propio teléfono**. Es la misma que los bots hacen solos cada tres horas:
+adelantarla no provoca nada nuevo. Y va en la red de **pruebas**, nunca en la
+cadena congelada.
+
+Nadie puede fingir eso. Un inversionista que verifica un hash en su móvil deja
+de escuchar promesas.
+
+### El viaje del dólar · ajustes → EL DÓLAR
+
+El modelo de negocio en veinte segundos: un impulso recorre tarjeta, pasarela
+de Polygon, tesoro, billetera y comercio, **por los axones de verdad**.
+
+### El enlace de invitado · ajustes → CREAR ENLACE
+
+No se le pide una contraseña a un inversionista. Se crea un enlace que **caduca
+en veinticuatro horas**:
+
+```
+https://cerebro.ordenscan.com/demo?t=<vale>
+```
+
+**Cómo está protegido, que es lo que importa:**
+
+- Caddy saca de la contraseña **sólo dos rutas**: `/demo` y `/ordenes/demo/*`.
+  Todo lo demás sigue pidiendo clave.
+- Quien protege esas dos rutas es **el propio servicio**, comprobando un vale
+  con caducidad. No Caddy.
+- Lo que devuelve `/ordenes/demo/datos` está **escrito a mano, campo por
+  campo**. Es una lista blanca, no un filtro: si mañana el informe interno gana
+  un campo, no se escapa solo.
+- Comprobado contra el servidor: con un vale válido, `/partes.json` y
+  `/ordenes/bots` siguen devolviendo **401**. Lo interno no sale por ahí.
+- Y la página del invitado **ni siquiera pide** lo interno, para no dejar
+  peticiones fallidas por el camino.
+
+### Modo sala · ajustes → SALA
+
+Tipografía grande para una tele o un proyector: se lee a tres metros.
+
+### Lo que NO se hace, y es deliberado
+
+**No se esconden los problemas, se separan.** Un inversionista serio hace
+diligencia, y descubrir que se le ocultó algo mata el trato más rápido que el
+problema. El modo interno —con las fallas, los pendientes, los costes y la
+seguridad— se abre a propósito cuando llegue esa fase. Enseñar que hay siete
+agentes automáticos encontrando los propios fallos **es un argumento de venta**.
+
+### Antes de enseñarlo
+
+**Resuelve el respaldo en oro.** Un billón de ORIGEN entre cincuenta y cinco
+son 18.182 toneladas: más del doble de la reserva de Estados Unidos. Cualquier
+inversionista con criterio hace esa multiplicación, probablemente delante de
+ti. Si no hay una respuesta exacta y sostenible, la demostración en vivo no
+salva la reunión. Está en `PROMPT-LEGAL-MINERIA.md`, la primera pregunta.

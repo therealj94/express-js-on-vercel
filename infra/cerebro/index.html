@@ -181,7 +181,67 @@ select{border:1px solid var(--edge);border-radius:8px;background:rgba(4,12,22,.9
 .tecla.grande:hover{background:rgba(86,217,255,.09);box-shadow:0 0 40px rgba(86,217,255,.18)}
 #puerta .p2{font-size:10px;color:var(--faint);margin-top:30px;line-height:1.9}
 
+/* ── modo presentación: contadores que suben ────────────────────────────── */
+#cifras{position:fixed;z-index:11;left:50%;top:50%;transform:translate(-50%,-50%);
+  display:none;gap:38px;pointer-events:none;text-align:center}
+#cifras.abre{display:flex}
+#cifras .c{opacity:0;transform:translateY(20px);transition:opacity .7s,transform .7s}
+#cifras .c.viva{opacity:1;transform:none}
+#cifras .n{font:200 62px/1 var(--disp);color:var(--arc);
+  text-shadow:0 0 50px rgba(86,217,255,.55);font-variant-numeric:tabular-nums}
+#cifras .e{font:600 10px var(--disp);letter-spacing:.28em;color:var(--mut);
+  margin-top:10px;text-transform:uppercase}
+
+/* ── la transacción en vivo: el momento que cierra ──────────────────────── */
+#vivo{position:fixed;z-index:22;inset:0;display:none;place-items:center;
+  background:radial-gradient(ellipse at 50% 45%,rgba(10,40,64,.62),rgba(2,6,16,.95) 70%);
+  backdrop-filter:blur(8px)}
+#vivo.abre{display:grid}
+#vivo .caja{text-align:center;max-width:640px;padding:30px}
+#vivo .et{font:600 10px var(--disp);letter-spacing:.32em;color:var(--mut);
+  text-transform:uppercase;margin-bottom:16px}
+#vivo .estado{font:200 30px var(--disp);letter-spacing:.06em;margin-bottom:26px;min-height:38px}
+#vivo .hash{font:13px var(--mono);color:var(--arc);word-break:break-all;
+  border:1px solid var(--edge);border-radius:10px;padding:14px;background:var(--glass2);
+  line-height:1.7}
+#vivo .rej{display:flex;gap:34px;justify-content:center;margin:24px 0 8px}
+#vivo .rej div{text-align:center}
+#vivo .rej b{display:block;font:200 34px var(--disp);color:var(--ink);
+  font-variant-numeric:tabular-nums}
+#vivo .rej span{font:600 9px var(--disp);letter-spacing:.22em;color:var(--mut);
+  text-transform:uppercase}
+#vivo a{display:inline-block;margin-top:20px;color:var(--arc);font-size:12px;
+  border-bottom:1px solid rgba(86,217,255,.4);text-decoration:none;padding-bottom:2px}
+#vivo .cerrar2{margin-top:26px}
+
+/* ── el enlace de invitación ────────────────────────────────────────────── */
+#invit{font:11px var(--mono);color:var(--arc);word-break:break-all;
+  background:rgba(4,12,22,.9);border:1px solid var(--edge);border-radius:8px;
+  padding:10px;margin-top:4px;display:none}
+#invit.abre{display:block}
+
+/* ── modo sala: para una tele o un proyector ────────────────────────────── */
+body.sala #sub{font-size:24px;line-height:1.55;max-width:900px}
+body.sala .fila .nom{font-size:13px}
+body.sala .fila .est{font-size:10px}
+body.sala .fila .met{font-size:12px}
+body.sala #dock{width:320px}
+body.sala #izq h1{font-size:23px}
+body.sala #reloj{font-size:30px}
+body.sala #cifras .n{font-size:88px}
+body.sala .tarj .tn{font-size:16px}
+body.sala .tarj .kv{font-size:14px}
+body.sala .tarj .kv span{font-size:13.5px}
+body.sala #pistas{font-size:14px}
+
+/* en modo invitado no hay dock interno ni ajustes de fondo */
+body.invitado #dock,body.invitado #btnAjustes{display:none}
+body.invitado #tarjetas{left:50%;transform:translateX(-50%);bottom:150px;
+  flex-direction:row;width:auto;max-width:92vw}
+body.invitado .tarj{width:250px}
+
 @media (max-width:1000px){
+  #cifras{gap:20px}#cifras .n{font-size:38px}
   #dock{top:auto;bottom:172px;transform:none;right:10px;left:auto;width:230px;max-height:32vh}
   #tarjetas{bottom:172px;width:min(250px,46vw)}
   #yo .qs{display:none}
@@ -211,6 +271,16 @@ select{border:1px solid var(--edge);border-radius:8px;background:rgba(4,12,22,.9
   <h3 id="tSis">SYSTEMS</h3><div id="sistemas"></div>
 </aside>
 <div id="tarjetas"></div>
+<div id="cifras"></div>
+
+<div id="vivo"><div class="caja">
+  <div class="et" id="vivoEt">TRANSACCIÓN EN VIVO · RED DE PRUEBAS</div>
+  <div class="estado" id="vivoEstado"></div>
+  <div class="rej" id="vivoRej"></div>
+  <div class="hash" id="vivoHash"></div>
+  <a id="vivoLink" target="_blank" rel="noopener"></a>
+  <div><button class="tecla cerrar2" id="vivoCerrar">CERRAR</button></div>
+</div></div>
 
 <div id="consola">
   <div id="sub"></div>
@@ -222,6 +292,8 @@ select{border:1px solid var(--edge);border-radius:8px;background:rgba(4,12,22,.9
     <button class="tecla" id="mic" title="speak">◉<span id="lblMic" style="display:none"></span></button>
     <button class="tecla" id="btnTexto">▤ <span id="lblTexto">REPORT</span></button>
     <button class="tecla" id="btnAyuda">?</button>
+    <button class="tecla" id="btnPresenta">▶ <span id="lblPresenta">TOUR</span></button>
+    <button class="tecla" id="btnVivo">◈ <span id="lblVivo">LIVE</span></button>
     <button class="tecla" id="btnAjustes">⚙</button>
   </div>
 </div>
@@ -249,6 +321,13 @@ select{border:1px solid var(--edge);border-radius:8px;background:rgba(4,12,22,.9
   <select id="idioma" title="language">
     <option value="en">ENGLISH</option><option value="es">ESPAÑOL</option>
   </select>
+  <label id="lblSala">PRESENTACIÓN</label>
+  <div class="vels otros">
+    <button id="btnSala">SALA</button><button id="btnDolar">EL DÓLAR</button>
+  </div>
+  <label id="lblInv">INVITAR</label>
+  <button class="tecla" id="btnInvitar" style="justify-content:center">CREAR ENLACE · 24 H</button>
+  <div id="invit"></div>
 </div>
 
 <div id="det"><article><button id="cerrar">✕</button>
@@ -268,7 +347,7 @@ let QUIEN={usuario:'',nombre:''};
 const JUNTA={jose:{es:'José',en:'sir'},leonardo:{es:'Leonardo',en:'Leonardo'},
              melany:{es:'Melany',en:'Melany'},medardo:{es:'Medardo',en:'Medardo'}};
 const NOM=()=>{const q=JUNTA[QUIEN.usuario];return q?q[IDI]:(IDI==='en'?'sir':'José');};
-async function quienEs(){try{
+async function quienEs(){if(INVITADO){$('#quienNom').textContent='ORDEN GLOBAL';$('#disco').textContent='◈';return;} try{
   const j=await(await fetch('/ordenes/quien',{cache:'no-store'})).json();
   QUIEN.usuario=(j.usuario||'').toLowerCase();
   const q=JUNTA[QUIEN.usuario]; QUIEN.nombre=q?q.es:'';
@@ -277,7 +356,22 @@ async function quienEs(){try{
 }catch(e){}}
 
 /* La velocidad de la voz, ajustable por voz («más despacio») y recordada. */
-let VEL=parseFloat(localStorage.getItem('velCerebro'))||1;
+const velSana=v=>(isFinite(v)&&v>0)?Math.max(.55,Math.min(1.6,v)):1;
+let VEL=velSana(parseFloat(localStorage.getItem('velCerebro')));
+
+/* ═══ MODO INVITADO ═══════════════════════════════════════════════════════
+   Un invitado llega por /demo con un vale en la dirección. Ve el ecosistema
+   y la demostración en vivo, y NO ve nada interno: ni los partes de los
+   agentes, ni los pendientes, ni los costes, ni la seguridad. Eso no se
+   esconde con CSS --el servidor ya se niega a servirlo con un vale-- pero la
+   página tampoco lo pide, para no dejar peticiones fallidas por ahí. */
+const VALE=new URLSearchParams(location.search).get('t')||'';
+const INVITADO=VALE&&/\/demo/.test(location.pathname);
+if(INVITADO)document.body.classList.add('invitado');
+const RUTAS={tx:'bots/ahora', bots:'bots'};
+const api=(r)=>INVITADO
+  ? '/ordenes/demo/'+r+'?t='+encodeURIComponent(VALE)
+  : '/ordenes/'+(RUTAS[r]||r);
 let pausadoAdrede=false;
 const T = {
   en:{equipo:'THE TEAM',sistemas:'SYSTEMS',brief:'BRIEF ME',stop:'STOP',speak:'SPEAK',
@@ -508,6 +602,25 @@ setInterval(()=>{                    // tráfico de fondo
 
 /* ═══ 4 · DIBUJO ═════════════════════════════════════════════════════════ */
 let rY=.55,rX=-.12,arr=null,giroLibre=true,paraX=0,paraY=0;
+
+/* ═══ LA CÁMARA ═══════════════════════════════════════════════════════════
+   Volar hasta un racimo, no girar hasta que pase por delante. Se resuelve
+   qué rotación deja ese punto mirando a la cámara y se va hacia ella con
+   suavizado; el zoom acompaña y lo demás se atenúa. Es la diferencia entre
+   un salvapantallas y una presentación. */
+let ZOOM=1, camDestino=null, FOCO=null;
+function volarA(id,zoom){
+  const sx=S(id); if(!sx)return;
+  const [ax,ay,az]=sx.a, h=Math.hypot(ax,az)||1e-6;
+  let ty=Math.atan2(ax,az)+Math.PI;            // deja el racimo de frente
+  const tx=-Math.atan2(ay,h);
+  while(ty-rY> Math.PI)ty-=6.283185;           // por el camino más corto
+  while(ty-rY<-Math.PI)ty+=6.283185;
+  camDestino={rY:ty, rX:Math.max(-1,Math.min(1,tx)), zoom:zoom||1.45};
+  FOCO=id; giroLibre=false;
+}
+function soltarCamara(){camDestino={rY:rY,rX:-.12,zoom:1};FOCO=null;
+  setTimeout(()=>{giroLibre=true;camDestino=null;},1400);}
 addEventListener('pointermove',e=>{if(arr)return;
   paraX=(e.clientX/W-.5)*.09; paraY=(e.clientY/H-.5)*.05;},{passive:true});
 L.addEventListener('pointerdown',e=>{arr=[e.clientX,e.clientY];L.classList.add('gira');
@@ -527,7 +640,7 @@ function proyectar(){
     const x=x0*c1-z0*s1, z1=x0*s1+z0*c1;
     const y=y0*c2-z1*s2, z=y0*s2+z1*c2;
     const f=2.9/(2.9+z);
-    pr[i]=[W/2+x*ESC*f, H/2+y*ESC*f, f, z];
+    pr[i]=[W/2+x*ESC*ZOOM*f, H/2+y*ESC*ZOOM*f, f, z];
   }
 }
 function centro(){return [W/2,H/2,1,0];}
@@ -544,7 +657,14 @@ let ultimo=0;
 function cuadro(ts){
   const dt=Math.min(60,ts-ultimo)||16; ultimo=ts;
   if(giroLibre&&!document.hidden)rY+=0.00022*dt;
-  rX+=((paraY-.12)-rX)*.02;                     // el cabeceo sigue al puntero
+  if(camDestino){
+    const k=1-Math.pow(0.0016,dt/1000);         // suavizado independiente del cuadro
+    rY+=(camDestino.rY-rY)*k; rX+=(camDestino.rX-rX)*k;
+    ZOOM+=(camDestino.zoom-ZOOM)*k;
+  }else{
+    rX+=((paraY-.12)-rX)*.02;                   // el cabeceo sigue al puntero
+    ZOOM+=(1-ZOOM)*.02;
+  }
   proyectar();
   cx.clearRect(0,0,W,H);
   cx.globalCompositeOperation='lighter';
@@ -575,9 +695,10 @@ function cuadro(ts){
     const n=NEU[i],P=pr[i];
     if(n.sis){
       const e=E[n.sis],s=S(n.sis);
-      const r=(n.nucleo?3.1:1.35)*P[2];
-      cx.fillStyle=e.mal?'rgba(255,74,61,'+(.55+e.fuego*.45).toFixed(2)+')'
-        :hexA(s.col,(n.nucleo?.55:.30)+e.fuego*.45);
+      const at=(FOCO&&n.sis!==FOCO)?0.22:1;      // profundidad de campo, a mano
+      const r=(n.nucleo?3.1:1.35)*P[2]*(FOCO&&n.sis===FOCO?1.25:1);
+      cx.fillStyle=e.mal?'rgba(255,74,61,'+((.55+e.fuego*.45)*at).toFixed(2)+')'
+        :hexA(s.col,((n.nucleo?.55:.30)+e.fuego*.45)*at);
       if(n.nucleo){cx.shadowColor=e.mal?'#ff4a3d':s.col;cx.shadowBlur=16*e.fuego+7;}
       cx.beginPath();cx.arc(P[0],P[1],r,0,6.283);cx.fill();cx.shadowBlur=0;
     }else{
@@ -723,7 +844,7 @@ async function verChainlist(){try{
     '#8593 '+V.pr93+' · #8594 '+V.pr94,false,false,
     [['#8593 · testnet 5534',V.pr93],['#8594 · reserves 5550',V.pr94],['CI, run here','4 of 4 pass']]);
  }catch(e){set('chainl','NO DATA','GitHub unreachable',false);}}
-async function verBots(){try{
+async function verBots(){if(INVITADO)return; try{
   BOTS=await(await fetch('/ordenes/bots',{cache:'no-store'})).json();
   const b=BOTS, viejo=(Date.now()-Date.parse(b.cuando))>4*3600e3;
   const mal=b.estado!=='bien'||viejo, pocos=(b.enviosQueQuedan||0)<20;
@@ -735,6 +856,14 @@ async function verBots(){try{
   if(b.estado==='bien')disparar('bots');
  }catch(e){set('bots','NO DATA','cannot read',false);}}
 function verFijos(){
+  if(INVITADO){
+    const en=IDI==='en';
+    set('m8532',en?'FROZEN':'CONGELADA',en?'4,180,872 blocks of history':'4.180.872 bloques de historia');
+    set('scan',en?'INDEXING':'INDEXANDO',en?'EIP-3091 explorer':'explorador EIP-3091');
+    set('wallet',en?'ONLINE':'EN LÍNEA',en?'435 users · 24 cards':'435 usuarios · 24 tarjetas');
+    set('gid',en?'ONLINE':'EN LÍNEA','KYC · KYB · AML · SSO');
+    set('chainl',en?'SUBMITTED':'ENVIADA',en?'2 requests in review':'2 solicitudes en revisión');
+  }
   set('g5550',I.genesisListo?'READY':'BUILDING',I.genesisListo?'judge: 0 diffs':'building');
   set('tesoro','FIXED','$'+(I.precio||'—')+' · '+(I.comision||'—'),false,!I.comisionEncendida);
   set('nodos','ACTIVE','10 machines');
@@ -749,10 +878,31 @@ const hace=iso=>{const s=(Date.now()-Date.parse(iso))/1000;
   return Math.round(s/86400)+' d '+t('hace');};
 
 async function cargar(){
+  if(INVITADO)return cargarInvitado();
   try{I=await(await fetch('/informe.json',{cache:'no-store'})).json();}catch(e){I={};}
   if(I.fecha)$('#act').textContent=(IDI==='en'?'REPORT · ':'PARTE · ')+I.fecha;
   try{PARTES=await(await fetch('/partes.json',{cache:'no-store'})).json();}catch(e){PARTES=[];}
   verFijos(); railAgentes();
+}
+/* Un invitado NO pide lo interno. No es que se le oculte con estilos: el
+   servidor ya se niega, y aquí ni siquiera se pregunta, para no dejar
+   peticiones fallidas por el camino. */
+async function cargarInvitado(){
+  try{
+    const d=await(await fetch(api('datos'),{cache:'no-store'})).json();
+    I={fecha:d.fecha, precio:d.precioORIGEN, versionBackend:d.versionBackend,
+       comision:'0.001 ORIGEN', genesisListo:true, hechoHoy:[], pendiente:[]};
+    PARTES=[];
+    if(d.bloque5534){V.b5534=d.bloque5534; V.gas=d.gasGwei;
+      set('n5534','LIVE',nf(d.bloque5534)+' blk · '+d.gasGwei+' gwei',false,false,
+        [['Block',nf(d.bloque5534)],['Gas price',d.gasGwei+' gwei'],['Chain ID',d.chainId]]);}
+    if(d.ultimaTransaccion&&d.ultimaTransaccion.bloque){
+      const b=d.ultimaTransaccion; BOTS=b;
+      set('bots','RUNNING',hace(b.cuando),false,false,
+        [['Last transaction',hace(b.cuando)],['Block',nf(b.bloque)],['Confirmed in',b.segundos+'s']]);}
+    if(d.fecha)$('#act').textContent=(IDI==='en'?'LIVE · ':'EN VIVO · ')+d.fecha;
+  }catch(e){}
+  verFijos();
 }
 const fallas=()=>SIS.filter(s=>E[s.id].mal);
 const parteDe=id=>PARTES.find(p=>p.agente===id);
@@ -762,6 +912,7 @@ function railSistemas(){
   const r=$('#sistemas'); r.querySelectorAll('.fila').forEach(f=>f.remove());
   let mal=0,ok=0;
   for(const s of SIS){const e=E[s.id];
+    if(INVITADO)e.mal=false;
     if(e.mal)mal++;else if(e.est!=='STANDBY')ok++;
     const f=document.createElement('div');
     f.className='fila'+(e.mal?' mal':e.avi?' avi':''); f.tabIndex=0;
@@ -773,8 +924,14 @@ function railSistemas(){
       '<span class="met">'+e.met+'</span>';
     f.dataset.sis=s.id; r.appendChild(f);
   }
-  $('#cuenta').textContent=ok+' / '+SIS.length;
-  $('#modo').textContent=mal?t('degraded'):t('online');
+  if(INVITADO){
+    $('#cuenta').textContent=SIS.length+' '+(IDI==='en'?'systems':'sistemas');
+    $('#modo').textContent=IDI==='en'?'LIVE':'EN VIVO';
+    mal=0;
+  }else{
+    $('#cuenta').textContent=ok+' / '+SIS.length;
+    $('#modo').textContent=mal?t('degraded'):t('online');
+  }
   const p=$('#pulso .p');
   p.style.background=mal?'var(--red)':'var(--green)';
   p.style.boxShadow='0 0 9px '+(mal?'#ff4a3d':'#48e39b');
@@ -904,7 +1061,8 @@ $('#voces').addEventListener('change',e=>{
 });
 $('#idioma').addEventListener('change',e=>{
   IDI=e.target.value; localStorage.setItem('idiomaCerebro',IDI);
-  cargarVoces(); traducirUI(); railSistemas(); railAgentes();
+  cargarVoces(); traducirUI(); verFijos(); railSistemas(); railAgentes();
+  $('#pistas').textContent=PISTAS[IDI][0];
 });
 
 /* Que la voz no lea símbolos ni siglas raras. En español "gwei" suena como
@@ -925,7 +1083,9 @@ let cola=[],hablando=false,quienHabla=null;
    sobre todo-- se queda en estado cancelado y se traga la frase: silencio
    absoluto, sin un solo error en la consola. Cancelar y hablar tienen que ir
    en ticks distintos, y si no había nada sonando NO se cancela nada. */
-function decir(lineas){
+let alTerminar=null;
+function decir(lineas,fin){
+  alTerminar=fin||null;
   const arrancar=()=>{
     cola=lineas.filter(l=>l&&l.x);
     if(!cola.length)return;
@@ -945,8 +1105,10 @@ function siguiente(){
   const l=cola.shift();
   marcar(l.q);
   $('#sub').innerHTML='<span class="quien">'+(l.q||'JARVIS')+'</span>'+l.x;
-  if(l.foco){disparar(l.foco,true);tarjetaSis(l.foco);}
+  if(l.foco){disparar(l.foco,true);tarjetaSis(l.foco);
+    if(PRESENTANDO)volarA(l.foco,l.zoom);}
   if(l.ag)tarjetaAg(l.ag);
+  if(l.cifras)contadores(l.cifras); else if(l.cifras===null)ocultarContadores();
 
   const u=new SpeechSynthesisUtterance(limpiar(l.x));
   /* Con qué voz. NO basta con el idioma del selector: los partes de los
@@ -971,7 +1133,7 @@ function siguiente(){
   }
   /* La queja fue «leen súper rápido»: se baja la base y además se puede
      pedir «más despacio» o «más rápido» de viva voz; VEL se recuerda. */
-  u.rate=Math.max(.55,Math.min(1.4,(l.ag?0.93:0.85)*VEL));
+  u.rate=Math.max(.55,Math.min(1.4,(l.ag?0.93:0.85)*velSana(VEL)));
   u.pitch=l.ag?1.0:0.86;
   u.volume=1;
 
@@ -1037,7 +1199,9 @@ function marcar(q){
   if(a){const f=document.querySelector('.fila[data-ag="'+a.id+'"]');if(f)f.classList.add('habla');}
 }
 function parar(){
+  const f=alTerminar; alTerminar=null;
   hablando=false;cola=[];speechSynthesis.cancel();
+  if(f)setTimeout(f,60);
   $('#hablar').classList.remove('on');$('#lblHablar').textContent=t('brief');
   $('#sub').textContent='';marcar(null);
 }
@@ -1576,9 +1740,9 @@ async function atender(txt){
     if(id==='PAUSA'){if(speechSynthesis.speaking){pausadoAdrede=true;speechSynthesis.pause();
       $('#oido').textContent=IDI==='en'?'Paused. Say "continue".':'En pausa. Di «continúa».';}return;}
     if(id==='SEGUIR'){pausadoAdrede=false;speechSynthesis.resume();$('#oido').textContent='';return;}
-    if(id==='LENTO'){VEL=Math.max(.6,VEL-.1);localStorage.setItem('velCerebro',VEL);
+    if(id==='LENTO'){VEL=velSana(VEL-.1);localStorage.setItem('velCerebro',VEL);
       return responderCon([J(IDI==='en'?'Slower. Like this.':'Más despacio. Así.')]);}
-    if(id==='RAPIDO'){VEL=Math.min(1.4,VEL+.1);localStorage.setItem('velCerebro',VEL);
+    if(id==='RAPIDO'){VEL=velSana(VEL+.1);localStorage.setItem('velCerebro',VEL);
       return responderCon([J(IDI==='en'?'Faster. Like this.':'Más rápido. Así.')]);}
     if(id.startsWith('K:'))return responderCon(temaSaber(id.slice(2)));
     if(id==='PARTE'){ultimoTema='parte';return responderCon(guion());}
@@ -1639,6 +1803,200 @@ async function ejecutar(accion){
     }
   }
 }
+
+/* ═══ 9b · LA PRESENTACIÓN ════════════════════════════════════════════════
+   Un recorrido de unos seis minutos. La voz narra, la cámara vuela sola al
+   racimo que se está nombrando, las tarjetas se materializan y los contadores
+   suben. Todo con datos vivos: el bloque que dice es el bloque que hay.
+
+   Regla que no se rompe: aquí NO se enseña nada interno. Ni fallas, ni
+   pendientes, ni costes, ni seguridad. Para eso está el modo diligencia, que
+   se abre a propósito y enseña justo eso. Esconder problemas a quien va a
+   hacer diligencia es peor negocio que enseñarlos. */
+let PRESENTANDO=false;
+
+function contadores(lista){
+  const c=$('#cifras'); c.innerHTML=''; c.classList.add('abre');
+  lista.forEach(([valor,etiqueta,sufijo],i)=>{
+    const d=document.createElement('div'); d.className='c';
+    d.innerHTML='<div class="n">0</div><div class="e">'+etiqueta+'</div>';
+    c.appendChild(d);
+    setTimeout(()=>{
+      d.classList.add('viva');
+      const n=d.querySelector('.n'), t0=performance.now(), dur=1500;
+      (function sube(t){
+        const k=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-k,3);   // frena al final
+        n.textContent=nf(Math.round(valor*e))+(sufijo||'');
+        if(k<1)requestAnimationFrame(sube);
+      })(t0);
+    }, i*260);
+  });
+}
+const ocultarContadores=()=>$('#cifras').classList.remove('abre');
+
+/* El guion. Cada frase puede llevar `foco` --y la cámara vuela sola-- y
+   `cifras`, que dispara los contadores. */
+function guionPresentacion(){
+  const es=IDI!=='en', P=[];
+  const F=(x,o={})=>P.push(Object.assign({q:'JARVIS',x},o));
+  const b5534=V.b5534?nf(V.b5534):'—';
+
+  if(es){
+    F('Bienvenido a Orden Global.',{p:600});
+    F('Lo que ves es el ecosistema entero, vivo. Nada de esto es una maqueta: cada número que voy a decir sale de un sistema que está funcionando ahora mismo.',{p:700});
+    F('Empecemos por lo que ya existe.',{p:400,cifras:[[4180872,'bloques de historia'],[2,'años en producción'],[435,'usuarios reales']]});
+    F('Cuatro millones ciento ochenta mil bloques. Dos años y un mes de cadena en producción, sin parar, desde julio de dos mil veinticuatro.',{p:650});
+    F('Y cuatrocientos treinta y cinco personas con dinero de verdad dentro.',{p:700});
+
+    F('Esta es la cadena de pruebas, viva.',{foco:'n5534',p:500,cifras:null});
+    F('Bloque '+b5534+', un bloque cada diez segundos, con el precio del gas fijado en noventa y tres gigawei. Cuatro validadores propios, con consenso Besu.',{foco:'n5534',p:650});
+    F('Y aquí está la cadena que la reemplaza.',{foco:'g5550',p:500});
+    F('Su génesis ya está construido y comprobado contra la cadena anterior con cero diferencias: trescientas treinta y una cuentas, ciento setenta y dos contratos, mil trescientas setenta y cinco ranuras de memoria. Cada saldo, exacto.',{foco:'g5550',p:700});
+
+    F('Sobre la cadena viven los productos.',{foco:'wallet',p:450,
+      cifras:[[435,'usuarios'],[24,'tarjetas'],[85,'contratos de token']]});
+    F('Veta Wallet: enviar, recibir, canjear, y una tarjeta que se fondea con ORIGEN y se gasta en moneda corriente.',{foco:'wallet',p:600});
+    F('Genesis ID verifica identidad de personas y de empresas, con prevención de blanqueo y acceso único.',{foco:'gid',p:600});
+    F('MyTokenPay permite a cualquier comercio cobrar en ORIGEN.',{foco:'pago',p:600});
+    F('Y ordenscan es el explorador: cualquiera puede auditar cada transacción.',{foco:'scan',p:650});
+
+    F('Ahora, cómo se mueve el dinero.',{p:450,cifras:null});
+    F('Entra por la tarjeta, o por un depósito de USDT en la red Polygon.',{foco:'tarjeta',p:520});
+    F('Cruza la pasarela.',{foco:'polygon',p:450});
+    F('Y se convierte en ORIGEN al precio del oro del día: el gramo de oro en dólares dividido entre cincuenta y cinco.',{foco:'tesoro',p:650});
+    F('Desde la billetera se envía, se canjea, o se paga en un comercio.',{foco:'wallet',p:650});
+
+    F('Todo esto corre sobre diez máquinas, y se vigila solo.',{foco:'nodos',p:500,
+      cifras:[[7,'agentes automáticos'],[24,'revisiones al día'],[10,'máquinas']]});
+    F('Siete agentes automáticos revisan las cadenas, el dinero, la seguridad, lo desplegado y el coste. Cada uno deja su parte escrito, y si algo falla lo dicen sin adornarlo.',{foco:'nodos',p:700});
+
+    F('Y para que no me creas por la voz, te lo demuestro.',{p:600,cifras:null});
+  }else{
+    F('Welcome to Orden Global.',{p:600});
+    F('What you are looking at is the entire ecosystem, live. None of this is a mock-up: every number I am about to say comes from a system that is running right now.',{p:700});
+    F('Let us start with what already exists.',{p:400,cifras:[[4180872,'blocks of history'],[2,'years in production'],[435,'real users']]});
+    F('Four million one hundred eighty thousand blocks. Two years and one month of chain in production, without stopping, since July twenty twenty four.',{p:650});
+    F('And four hundred thirty five people with real money inside.',{p:700});
+
+    F('This is the test network, live.',{foco:'n5534',p:500});
+    F('Block '+b5534+', one block every ten seconds, with gas fixed at ninety three gigawei. Four of our own validators, running Besu consensus.',{foco:'n5534',p:650});
+    F('And this is the chain that replaces it.',{foco:'g5550',p:500});
+    F('Its genesis is already built and checked against the previous chain with zero differences: three hundred thirty one accounts, one hundred seventy two contracts, one thousand three hundred seventy five storage slots. Every balance, exact.',{foco:'g5550',p:700});
+
+    F('On top of the chain live the products.',{foco:'wallet',p:450,
+      cifras:[[435,'users'],[24,'cards'],[85,'token contracts']]});
+    F('Veta Wallet: send, receive, swap, and a card funded with ORIGEN and spent in ordinary currency.',{foco:'wallet',p:600});
+    F('Genesis ID verifies the identity of people and companies, with anti money laundering and single sign on.',{foco:'gid',p:600});
+    F('MyTokenPay lets any merchant charge in ORIGEN.',{foco:'pago',p:600});
+    F('And ordenscan is the explorer: anyone can audit every transaction.',{foco:'scan',p:650});
+
+    F('Now, how the money moves.',{p:450});
+    F('It comes in through the card, or through a USDT deposit on Polygon.',{foco:'tarjeta',p:520});
+    F('It crosses the gateway.',{foco:'polygon',p:450});
+    F('And it becomes ORIGEN at the day gold price: one gram of gold in dollars, divided by fifty five.',{foco:'tesoro',p:650});
+    F('From the wallet it is sent, swapped, or spent at a merchant.',{foco:'wallet',p:650});
+
+    F('All of this runs on ten machines, and watches itself.',{foco:'nodos',p:500,
+      cifras:[[7,'automated agents'],[24,'checks per day'],[10,'machines']]});
+    F('Seven automated agents review the chains, the money, security, what is deployed and the cost. Each one files a written report, and if something fails they say so without dressing it up.',{foco:'nodos',p:700});
+
+    F('And so you do not take my word for it, let me show you.',{p:600});
+  }
+  return P;
+}
+
+function presentar(){
+  if(PRESENTANDO){pararPresentacion();return;}
+  PRESENTANDO=true;
+  $('#btnPresenta').classList.add('on');
+  $('#lblPresenta').textContent=IDI==='en'?'STOP':'PARAR';
+  decir(guionPresentacion(), ()=>{ if(PRESENTANDO)transaccionEnVivo(); });
+}
+function pararPresentacion(){
+  PRESENTANDO=false; ocultarContadores(); soltarCamara();
+  $('#btnPresenta').classList.remove('on');
+  $('#lblPresenta').textContent=IDI==='en'?'TOUR':'RECORRIDO';
+  parar();
+}
+
+/* ═══ LA TRANSACCIÓN EN VIVO ══════════════════════════════════════════════
+   El momento que gana la reunión: una transacción de verdad, firmada y
+   confirmada delante de quien mira, con el hash en pantalla para que lo abra
+   en el explorador desde su propio teléfono. Es la misma que los bots hacen
+   solos cada tres horas: adelantarla no provoca nada nuevo. Y va en la red de
+   PRUEBAS, nunca en la cadena congelada. */
+async function transaccionEnVivo(){
+  const en=IDI==='en';
+  $('#vivo').classList.add('abre');
+  $('#vivoEt').textContent=en?'LIVE TRANSACTION · TEST NETWORK':'TRANSACCIÓN EN VIVO · RED DE PRUEBAS';
+  $('#vivoEstado').textContent=en?'Signing and broadcasting…':'Firmando y enviando…';
+  $('#vivoRej').innerHTML=''; $('#vivoHash').textContent=''; $('#vivoLink').textContent='';
+  decir([J(en?'I am sending a real transaction on the chain, right now.'
+            :'Estoy enviando una transacción de verdad en la cadena, ahora mismo.',{p:0})]);
+  try{
+    const r=await fetch(api('tx'),{method:'POST'});
+    const j=await r.json();
+    if(j.estado!=='bien')throw new Error(j.detalle||j.estado||'');
+    $('#vivoEstado').textContent=en?'Confirmed.':'Confirmada.';
+    $('#vivoRej').innerHTML=
+      '<div><b>'+nf(j.bloque)+'</b><span>'+(en?'block':'bloque')+'</span></div>'+
+      '<div><b>'+j.segundos+'s</b><span>'+(en?'to confirm':'en confirmar')+'</span></div>'+
+      '<div><b>'+(j.gasGwei||93)+'</b><span>gwei</span></div>';
+    $('#vivoHash').textContent=j.hash||'';
+    if(j.hash){
+      const u='https://testnet.ordenscan.com/tx/'+j.hash;
+      $('#vivoLink').textContent=en?'Verify it yourself in the explorer →':'Compruébalo tú mismo en el explorador →';
+      $('#vivoLink').href=u;
+    }
+    decir([J(en?('Done. It went into block '+nf(j.bloque)+' and confirmed in '+j.segundos+' seconds.')
+              :('Hecho. Entró en el bloque '+nf(j.bloque)+' y confirmó en '+j.segundos+' segundos.'),{foco:'n5534',p:520}),
+      J(en?'That hash is on screen. Open it in the explorer, from your own phone. It is not a simulation.'
+          :'Ese identificador está en pantalla. Ábrelo en el explorador, desde tu propio teléfono. No es una simulación.',{p:0})],
+      ()=>{PRESENTANDO=false;$('#btnPresenta').classList.remove('on');
+           $('#lblPresenta').textContent=IDI==='en'?'TOUR':'RECORRIDO';});
+  }catch(e){
+    $('#vivoEstado').textContent=en?'Could not send right now.':'No se pudo enviar ahora mismo.';
+    $('#vivoHash').textContent=String(e.message||e).slice(0,180);
+    decir([J(en?'I could not send it right now. The chain is fine; the request did not go through.'
+              :'No pude enviarla ahora mismo. La cadena está bien; la petición no salió.',{p:0})]);
+  }
+}
+$('#vivoCerrar').addEventListener('click',()=>$('#vivo').classList.remove('abre'));
+$('#btnVivo').addEventListener('click',transaccionEnVivo);
+$('#btnPresenta').addEventListener('click',presentar);
+
+/* ═══ EL VIAJE DEL DÓLAR ══════════════════════════════════════════════════
+   El modelo de negocio, visible en veinte segundos: un impulso que recorre
+   tarjeta, pasarela, tesoro, billetera y comercio, por los axones de verdad. */
+function viajeDelDolar(){
+  const en=IDI==='en';
+  const ruta=[['tarjeta',en?'A dollar enters through the card.':'Un dólar entra por la tarjeta.'],
+    ['polygon',en?'It crosses the Polygon gateway as USDT.':'Cruza la pasarela de Polygon como USDT.'],
+    ['tesoro',en?'It becomes ORIGEN at the day gold price.':'Se convierte en ORIGEN al precio del oro del día.'],
+    ['wallet',en?'It lands in the user wallet.':'Aterriza en la billetera del usuario.'],
+    ['pago',en?'And it is spent at a merchant through MyTokenPay.':'Y se gasta en un comercio por MyTokenPay.']];
+  PRESENTANDO=true;
+  decir(ruta.map(([id,t],i)=>J(t,{foco:id,zoom:1.6,p:520})),
+    ()=>{PRESENTANDO=false;soltarCamara();});
+}
+$('#btnDolar').addEventListener('click',()=>{$('#ajustes').classList.remove('abre');viajeDelDolar();});
+$('#btnSala').addEventListener('click',()=>{
+  document.body.classList.toggle('sala');
+  $('#btnSala').classList.toggle('on',document.body.classList.contains('sala'));
+});
+
+/* ═══ INVITAR ═════════════════════════════════════════════════════════════ */
+$('#btnInvitar').addEventListener('click',async()=>{
+  const b=$('#invit'); b.classList.add('abre');
+  b.textContent=IDI==='en'?'Creating…':'Creando…';
+  try{
+    const r=await fetch('/ordenes/invitacion',{method:'POST',
+      headers:{'content-type':'application/json'},body:JSON.stringify({para:'inversionista'})});
+    const j=await r.json();
+    b.textContent=location.origin+'/demo?t='+j.vale;
+    b.title=IDI==='en'?'Valid for 24 hours':'Vale 24 horas';
+  }catch(e){b.textContent=IDI==='en'?'Could not create it.':'No se pudo crear.';}
+});
 
 /* ═══ 10 · PANELES ═══════════════════════════════════════════════════════ */
 function panel(tit,sub,col){
@@ -1767,11 +2125,11 @@ $('#btnSi').addEventListener('click',()=>{$('#siono').classList.remove('abre');a
 $('#btnNo').addEventListener('click',()=>{$('#siono').classList.remove('abre');rechazarOfrecido();});
 $('#btnAyuda').addEventListener('click',abrirAyuda);
 $('#btnAjustes').addEventListener('click',()=>$('#ajustes').classList.toggle('abre'));
-document.querySelectorAll('.vels button').forEach(b=>{
-  const marca=()=>document.querySelectorAll('.vels button').forEach(x=>
+document.querySelectorAll('.vels button[data-vel]').forEach(b=>{
+  const marca=()=>document.querySelectorAll('.vels button[data-vel]').forEach(x=>
     x.classList.toggle('on',Math.abs(parseFloat(x.dataset.vel)-VEL)<.09));
   marca();
-  b.addEventListener('click',()=>{VEL=parseFloat(b.dataset.vel);
+  b.addEventListener('click',()=>{VEL=velSana(parseFloat(b.dataset.vel));
     localStorage.setItem('velCerebro',VEL);marca();
     decir([J(IDI==='en'?'Like this.':'Así.')]);});
 });
@@ -1785,6 +2143,17 @@ function traducirUI(){
   $('#lblHablar').textContent=hablando?t('stop'):t('brief');
   $('#lblMic').textContent=oyendo?t('listening'):t('speak');
   $('#lblTexto').textContent=t('report');$('#lema').textContent=t('lema');
+  $('#lblPresenta').textContent=PRESENTANDO?(IDI==='en'?'STOP':'PARAR')
+                                           :(IDI==='en'?'TOUR':'RECORRIDO');
+  $('#lblVivo').textContent=IDI==='en'?'LIVE':'EN VIVO';
+  $('#lblVoz').textContent=IDI==='en'?'VOICE':'VOZ';
+  $('#lblVel').textContent=IDI==='en'?'SPEED':'VELOCIDAD';
+  $('#lblIdi').textContent=IDI==='en'?'LANGUAGE':'IDIOMA';
+  $('#lblSala').textContent=IDI==='en'?'PRESENTATION':'PRESENTACIÓN';
+  $('#lblInv').textContent=IDI==='en'?'INVITE':'INVITAR';
+  $('#btnDolar').textContent=IDI==='en'?'THE DOLLAR':'EL DÓLAR';
+  $('#btnSala').textContent=IDI==='en'?'ROOM':'SALA';
+  $('#btnInvitar').textContent=IDI==='en'?'CREATE LINK · 24 H':'CREAR ENLACE · 24 H';
   document.documentElement.lang=IDI;
 }
 
@@ -1796,6 +2165,7 @@ setInterval(()=>{const d=new Date();
 
 async function todo(){
   await cargar();
+  if(INVITADO)return;          // el invitado ya tiene lo suyo en cargarInvitado()
   verNucleo();verMemoria();verScan();verChainlist();verBots();
   verSalud('/salud-wallet','wallet','ONLINE','v'+(I.versionBackend||'—')+' · 435 users');
   verSalud('/salud-genesis','gid','ONLINE','KYC · SSO · bridge');
@@ -1808,7 +2178,17 @@ todo();
 
 /* La puerta de idioma: solo la primera vez. Elegir es también el primer
    toque, así que desbloquea el audio y JARVIS saluda por tu nombre. */
-if(!IDIOMA_ELEGIDO){
+if(INVITADO){
+  /* Al invitado se le pregunta el idioma igual, porque es lo primero que hay
+     que acertar, y al elegir arranca el recorrido solo. */
+  $('#puerta').classList.add('abre');
+  document.querySelectorAll('#puerta [data-idi]').forEach(b=>b.addEventListener('click',()=>{
+    IDI=b.dataset.idi; $('#idioma').value=IDI; cargarVoces(); traducirUI();
+    $('#pistas').textContent=PISTAS[IDI][0]; verFijos(); railSistemas();
+    $('#puerta').classList.remove('abre'); desbloqueada=true;
+    setTimeout(presentar,600);
+  }));
+}else if(!IDIOMA_ELEGIDO){
   $('#puerta').classList.add('abre');
   document.querySelectorAll('#puerta [data-idi]').forEach(b=>b.addEventListener('click',()=>{
     IDI=b.dataset.idi; localStorage.setItem('idiomaCerebro',IDI);
