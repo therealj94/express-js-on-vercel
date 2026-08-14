@@ -70,7 +70,7 @@ export default function Auth({ nav }) {
       await clearCreds();
       setAccount(acc);
       toast(r.creada ? t('auth.welcomeNew') : t('auth.welcome'));
-      nav(seenOnboarding() ? 'home' : 'onboarding');
+      nav(seenOnboarding() ? 'ecosistema' : 'onboarding');
     } catch (e) {
       // Un fallo aquí casi siempre es de configuración (el identificador de
       // cliente no coincide con el que espera el servidor), y eso no lo puede
@@ -141,7 +141,7 @@ export default function Auth({ nav }) {
       // Después, cuenta nueva → oferta Genesis ID; sesión ya conocida → home.
       const done = await seenOnboarding();
       if (!done) nav.go('onboarding');
-      else nav.go(kind === 'register' ? 'genesisOffer' : 'home');
+      else nav.go(kind === 'register' ? 'genesisOffer' : 'ecosistema');
       toast(`${t('auth.welcome')}, ${acc.name.split(' ')[0]}`);
     } catch (e) {
       // Prioridad: casos conocidos con mensaje amigable. Si no coinciden,

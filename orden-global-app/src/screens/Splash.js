@@ -46,7 +46,7 @@ export default function Splash({ nav }) {
     Animated.timing(prog, { toValue: 1, duration: 2600, easing: Easing.inOut(Easing.cubic), useNativeDriver: false }).start();
 
     // Si hay sesión guardada entra directo a Inicio; si no, al login.
-    const t = setTimeout(() => nav.go(accountRef.current ? 'home' : 'auth'), 3300);
+    const t = setTimeout(() => nav.go(accountRef.current ? 'ecosistema' : 'auth'), 3300);
     return () => clearTimeout(t);
   }, []);
 

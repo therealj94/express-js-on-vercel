@@ -12,7 +12,7 @@ export const MAPA = {
   'wallet/swap':     { p: 'swap', firma: true },
   'wallet/actividad':{ p: 'activity' },
   'wallet/reporte':  { p: 'reporte' },             // el resumen hablado de la wallet
-  'pay/abrir':       { p: 'mytokenpay', gid: true },
+  'pay/abrir':       { p: 'pay-panel' },
   'pay/cobrar':      { p: 'cobrar' },
   'id/abrir':        { p: 'passport' },
   'chat/abrir':      { p: 'chat', gid: true },     // con=correo

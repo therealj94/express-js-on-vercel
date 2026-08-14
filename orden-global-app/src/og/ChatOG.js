@@ -4,17 +4,22 @@
 //     cada quien tiene su QR (og://chat/abrir?con=correo) y al escanearlo
 //     se abre el hilo y queda el contacto;
 //   · conversaciones con no-leídos, hilo con días y horas, emojis, y
-//     ENVIAR ORIGEN que abre la pantalla nativa de envío YA PREPARADA.
+//     ENVIAR ORIGEN que abre la pantalla nativa de envío YA PREPARADA;
+//   · adjuntos (📎): imagen inline con pantalla completa al tocar, video y
+//     archivo como tarjeta que abre el enlace del relevo (el id es el permiso).
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View, Text, TextInput, Pressable, FlatList, StyleSheet, Modal,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as Linking from 'expo-linking';
 import { C, G } from '../theme';
-import { Header, useAccount, hap } from '../ui';
+import { Header, useAccount, useToast, hap } from '../ui';
 import { useLang } from '../i18n';
 import { genesis } from '../genesis';
 import * as M from './mensajes';
@@ -32,6 +37,11 @@ const TXT = {
     gateBtn: 'COMPLETAR MI GENESIS ID', mirando: 'Comprobando tu Genesis ID…',
     qrTuyo: 'Este es tu código. Quien lo escanee abre un chat contigo.',
     apunta: 'Apunta al código de la otra persona',
+    adjImagen: 'Imagen', adjVideo: 'Video', adjArchivo: 'Archivo',
+    ultImagen: 'Imagen', ultVideo: 'Video', ultArchivo: 'Archivo',
+    grande: 'Pesa más de 8 MB y el relevo no lo acepta. Comparte una versión más ligera.',
+    noSubio: 'No se pudo subir. Revisa tu conexión e intenta de nuevo.',
+    noAbre: 'No se pudo abrir el archivo.',
   },
   en: {
     titulo: 'Chat', sub: 'Real people, with Genesis ID',
@@ -44,8 +54,26 @@ const TXT = {
     gateBtn: 'COMPLETE MY GENESIS ID', mirando: 'Checking your Genesis ID…',
     qrTuyo: 'This is your code. Whoever scans it opens a chat with you.',
     apunta: 'Point at the other person’s code',
+    adjImagen: 'Image', adjVideo: 'Video', adjArchivo: 'File',
+    ultImagen: 'Image', ultVideo: 'Video', ultArchivo: 'File',
+    grande: 'It is over 8 MB and the relay won’t take it. Share a lighter version.',
+    noSubio: 'Upload failed. Check your connection and try again.',
+    noAbre: 'Could not open the file.',
   },
 };
+
+// El relevo rechaza adjuntos de más de 8MB — mismo número aquí para avisar
+// ANTES de gastar datos subiendo algo que va a rebotar.
+const TOPE_ADJUNTO = 8_000_000;
+
+// blob → base64 pelado (sin el prefijo data:...;base64,). FileReader existe
+// en React Native y evita cargar el binario entero como string intermedio.
+const blobABase64 = (blob) => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onerror = () => rej(new Error('lector'));
+  r.onload = () => res(String(r.result).split(',')[1] || '');
+  r.readAsDataURL(blob);
+});
 
 const hora = (ms) => { const d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
 const TONOS = [['#F8EFCF', '#C9A961'], ['#9FE3C9', '#2E8F6E'], ['#BFD8F5', '#4A78B0'], ['#F2C4B3', '#B0674A']];
@@ -74,7 +102,11 @@ export default function ChatOG({ nav, params }) {
   const [hilo, setHilo] = useState([]);
   const [texto, setTexto] = useState('');
   const [qr, setQr] = useState(null);                    // 'mio' | 'scan' | null
+  const [hoja, setHoja] = useState(false);               // la hojita del 📎
+  const [subiendo, setSubiendo] = useState(false);
+  const [foto, setFoto] = useState(null);                // url de imagen a pantalla completa
   const [permiso, pedirPermiso] = useCameraPermissions();
+  const toast = useToast();
   const lista = useRef(null);
   const leido = useRef(false);
 
@@ -151,6 +183,78 @@ export default function ChatOG({ nav, params }) {
     catch { setHilo((h) => h.map((m) => (m === mio ? { ...m, fallo: true } : m))); }
   };
 
+  // ── adjuntos ──────────────────────────────────────────────────────────
+  // Leer la uri como blob y pasarla a base64. Si pesa de más se avisa AQUÍ,
+  // antes de subir nada: gastar megas del plan para recibir un 413 es cruel.
+  const leerUri = async (uri) => {
+    const res = await fetch(uri);
+    const blob = await res.blob();
+    if (blob.size > TOPE_ADJUNTO) { toast(t.grande, 'error'); return null; }
+    return blobABase64(blob);
+  };
+
+  // Subir el binario al relevo y mandar el mensaje que lo referencia. El
+  // hilo se refresca del servidor (sin burbuja optimista): el adjunto igual
+  // necesita la URL real del relevo para pintarse.
+  const subirYMandar = async (tipo, nombre, mime, datos) => {
+    if (!datos) return;
+    if (datos.length * 0.75 > TOPE_ADJUNTO) { toast(t.grande, 'error'); return; }
+    setSubiendo(true);
+    try {
+      const { id } = await M.subir(nombre, tipo, mime, datos);
+      await M.enviar(con.correo, '', { tipo, archivo: id, nombre });
+      hap(); traerHilo();
+    } catch { toast(t.noSubio, 'error'); }
+    finally { setSubiendo(false); }
+  };
+
+  const elegirImagen = async () => {
+    setHoja(false);
+    const r = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'], base64: true, quality: 0.8,
+    }).catch(() => null);
+    const a = r?.assets?.[0];
+    if (!a) return;
+    // el picker ya trae el base64 de la imagen; la uri es solo el respaldo
+    const datos = a.base64 || (await leerUri(a.uri).catch(() => null));
+    await subirYMandar('imagen', a.fileName || 'imagen.jpg', a.mimeType || 'image/jpeg', datos);
+  };
+
+  const elegirVideo = async () => {
+    setHoja(false);
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'] }).catch(() => null);
+    const a = r?.assets?.[0];
+    if (!a) return;
+    // primer filtro con el peso que reporta el picker; el definitivo lo da
+    // el blob, que es lo que de verdad viajaría
+    if (a.fileSize && a.fileSize > TOPE_ADJUNTO) { toast(t.grande, 'error'); return; }
+    const datos = await leerUri(a.uri).catch(() => { toast(t.noSubio, 'error'); return null; });
+    if (datos) await subirYMandar('video', a.fileName || 'video.mp4', a.mimeType || 'video/mp4', datos);
+  };
+
+  const elegirArchivo = async () => {
+    setHoja(false);
+    const r = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true }).catch(() => null);
+    const a = r?.assets?.[0];
+    if (!a || r?.canceled) return;
+    if (a.size && a.size > TOPE_ADJUNTO) { toast(t.grande, 'error'); return; }
+    const datos = await leerUri(a.uri).catch(() => { toast(t.noSubio, 'error'); return null; });
+    if (datos) await subirYMandar('archivo', a.name || 'archivo', a.mimeType || 'application/octet-stream', datos);
+  };
+
+  const abrirAdjunto = (id) => {
+    hap();
+    Linking.openURL(M.urlArchivo(id)).catch(() => toast(t.noAbre, 'error'));
+  };
+
+  // cómo se resume un 'ultimo' con adjunto en la lista de conversaciones
+  const resumen = (u) => {
+    if (u.tipo === 'imagen') return '📷 ' + t.ultImagen;
+    if (u.tipo === 'video') return '🎬 ' + t.ultVideo;
+    if (u.tipo === 'archivo') return '📎 ' + (u.nombre || t.ultArchivo);
+    return u.texto;
+  };
+
   const alEscanear = ({ data }) => {
     const m = String(data || '').match(/^og:\/\/chat\/abrir\?con=(.+)$/);
     if (!m) return;
@@ -219,9 +323,23 @@ export default function ChatOG({ nav, params }) {
               </Text></View>
             );
             const mio = item.de === account.email;
+            const conAdj = !!item.archivo && ['imagen', 'video', 'archivo'].includes(item.tipo);
             return (
               <View style={[st.burbuja, mio ? st.mia : st.suya, item.fallo && { opacity: 0.45 }]}>
-                <Text style={[st.msg, mio && { color: '#3A2C08' }]}>{item.texto}</Text>
+                {conAdj && item.tipo === 'imagen' && (
+                  <Pressable onPress={() => { hap(); setFoto(M.urlArchivo(item.archivo)); }}>
+                    <Image source={{ uri: M.urlArchivo(item.archivo) }} style={st.foto} resizeMode="cover" />
+                  </Pressable>
+                )}
+                {conAdj && item.tipo !== 'imagen' && (
+                  <Pressable style={st.adjCard} onPress={() => abrirAdjunto(item.archivo)}>
+                    <Text style={st.adjIco}>{item.tipo === 'video' ? '🎬' : '📄'}</Text>
+                    <Text style={[st.adjNom, mio && { color: '#3A2C08' }]} numberOfLines={2}>
+                      {item.nombre || (item.tipo === 'video' ? t.ultVideo : t.ultArchivo)}
+                    </Text>
+                  </Pressable>
+                )}
+                {!!item.texto && <Text style={[st.msg, mio && { color: '#3A2C08' }]}>{item.texto}</Text>}
                 <Text style={[st.msgHora, mio && { color: 'rgba(58,44,8,0.55)' }]}>
                   {hora(item.cuando)}{mio ? (item.pendiente ? ' ·' : ' ✓') : ''}
                 </Text>
@@ -235,6 +353,9 @@ export default function ChatOG({ nav, params }) {
           ))}
         </View>
         <View style={st.filaEscribe}>
+          <Pressable onPress={() => { hap(); setHoja(true); }} disabled={subiendo} style={st.clip}>
+            {subiendo ? <ActivityIndicator color={C.gold} size="small" /> : <Text style={st.clipTxt}>📎</Text>}
+          </Pressable>
           <TextInput value={texto} onChangeText={setTexto} placeholder={t.escribe}
             placeholderTextColor={C.txt3} style={st.caja} onSubmitEditing={mandar} returnKeyType="send" multiline />
           <Pressable onPress={mandar}>
@@ -243,6 +364,30 @@ export default function ChatOG({ nav, params }) {
             </LinearGradient>
           </Pressable>
         </View>
+
+        {/* la hojita del clip: tres opciones y nada más */}
+        <Modal visible={hoja} transparent animationType="fade" onRequestClose={() => setHoja(false)}>
+          <Pressable style={st.veloBajo} onPress={() => setHoja(false)}>
+            <View style={st.hoja}>
+              <Pressable style={st.hojaBtn} onPress={elegirImagen}>
+                <Text style={st.hojaIco}>🖼</Text><Text style={st.hojaTxt}>{t.adjImagen}</Text>
+              </Pressable>
+              <Pressable style={st.hojaBtn} onPress={elegirVideo}>
+                <Text style={st.hojaIco}>🎬</Text><Text style={st.hojaTxt}>{t.adjVideo}</Text>
+              </Pressable>
+              <Pressable style={[st.hojaBtn, { borderBottomWidth: 0 }]} onPress={elegirArchivo}>
+                <Text style={st.hojaIco}>📄</Text><Text style={st.hojaTxt}>{t.adjArchivo}</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Modal>
+
+        {/* imagen a pantalla completa; tocar en cualquier lado la cierra */}
+        <Modal visible={!!foto} transparent animationType="fade" onRequestClose={() => setFoto(null)}>
+          <Pressable style={st.fotoVelo} onPress={() => setFoto(null)}>
+            {!!foto && <Image source={{ uri: foto }} style={st.fotoLlena} resizeMode="contain" />}
+          </Pressable>
+        </Modal>
       </KeyboardAvoidingView>
     );
   }
@@ -280,7 +425,7 @@ export default function ChatOG({ nav, params }) {
                 </View>
                 <View style={st.filaSup}>
                   <Text style={st.ult} numberOfLines={1}>
-                    {item.ultimo ? (item.ultimo.de === account.email ? '✓ ' : '') + item.ultimo.texto : item.correo}
+                    {item.ultimo ? (item.ultimo.de === account.email ? '✓ ' : '') + resumen(item.ultimo) : item.correo}
                   </Text>
                   {item.sinLeer > 0 && <View style={st.globo}><Text style={st.globoTxt}>{item.sinLeer}</Text></View>}
                 </View>
@@ -354,6 +499,21 @@ const st = StyleSheet.create({
   emojis: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 7, borderTopWidth: 1, borderTopColor: C.line2 },
   emoji: { fontSize: 21 },
   filaEscribe: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingBottom: 10, alignItems: 'flex-end' },
+  clip: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
+  clipTxt: { fontSize: 19 },
+  // la imagen adentro de la burbuja: ancho fijo cómodo, el server no manda
+  // dimensiones así que un rectángulo estable evita saltos en el scroll
+  foto: { width: 210, height: 210, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.25)' },
+  adjCard: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 4, maxWidth: 220 },
+  adjIco: { fontSize: 26 },
+  adjNom: { color: C.txt, fontSize: 13.5, fontWeight: '600', flexShrink: 1 },
+  veloBajo: { flex: 1, backgroundColor: 'rgba(1,10,11,0.55)', justifyContent: 'flex-end' },
+  hoja: { backgroundColor: '#0A3436', borderWidth: 1, borderColor: C.line2, borderRadius: 18, margin: 12, marginBottom: 26, overflow: 'hidden' },
+  hojaBtn: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(201,169,97,0.12)' },
+  hojaIco: { fontSize: 21 },
+  hojaTxt: { color: C.txt, fontSize: 14.5, fontWeight: '600' },
+  fotoVelo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.96)', alignItems: 'center', justifyContent: 'center' },
+  fotoLlena: { width: '100%', height: '100%' },
   caja: { flex: 1, backgroundColor: C.input, borderWidth: 1, borderColor: C.inputBr, borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, color: C.txt, fontSize: 14.5, maxHeight: 110 },
   mandar: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
   mandarTxt: { color: '#3A2C08', fontSize: 18, fontWeight: '800' },

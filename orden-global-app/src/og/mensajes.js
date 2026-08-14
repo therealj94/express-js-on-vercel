@@ -8,9 +8,9 @@ const BASE = ((Constants.expoConfig?.extra || {}).mensajesApi || 'https://cerebr
 let llave = null;
 let yo = null; // {correo, nombre, addr}
 
-async function pedir(ruta, body) {
+async function pedir(ruta, body, ms = 15000) {
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 15000);
+  const t = setTimeout(() => ctrl.abort(), ms);
   try {
     const res = await fetch(BASE + ruta, {
       method: 'POST', signal: ctrl.signal,
@@ -33,7 +33,16 @@ export async function alta(cuenta) {
 }
 const firmado = (b) => ({ ...b, correo: yo?.correo, llave });
 
-export const enviar = (para, texto) => pedir('/enviar', firmado({ para, texto }));
+// `extra` lleva el adjunto opcional {tipo, archivo, nombre}: el binario ya
+// subió por /subir y aquí solo viaja su id — el mensaje sigue siendo ligero.
+export const enviar = (para, texto, extra) => pedir('/enviar', firmado({ para, texto, ...(extra || {}) }));
+// Subir un adjunto (base64, ≤8MB). Timeout largo: 8MB en datos móviles no
+// caben en los 15s de una petición normal.
+export const subir = (nombre, tipo, mime, datos) =>
+  pedir('/subir', firmado({ nombre, tipo, mime, datos }), 120000);
+// La URL pública de un adjunto: el id largo ES el permiso (capability URL),
+// por eso sirve tal cual para <Image> o para abrir en el navegador.
+export const urlArchivo = (id) => BASE + '/archivo/' + id;
 export const bandeja = (desde) => pedir('/bandeja', firmado({ desde }));
 export const buscar = (q) => pedir('/buscar', firmado({ q }));
 export const conversaciones = () => pedir('/conversaciones', firmado({}));

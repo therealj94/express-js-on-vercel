@@ -39,7 +39,10 @@ import Help from './src/screens/Help';
 import Ecosistema from './src/og/Ecosistema';
 import ChatOG from './src/og/ChatOG';
 import CobrarOG from './src/og/CobrarOG';
-import BarraOG from './src/og/BarraOG';
+import FlotanteOG from './src/og/FlotanteOG';
+import ReporteOG from './src/og/ReporteOG';
+import PanelPay from './src/og/pay/PanelPay';
+import ActividadPay from './src/og/pay/ActividadPay';
 import { abrir as abrirOG } from './src/og/rutas';
 import { cargarNombre } from './src/og/asistente';
 import Remesas from './src/screens/Remesas';
@@ -56,15 +59,38 @@ const SCREENS = {
   onboarding: Onboarding, watchOnly: WatchOnly, sessions: Sessions, help: Help,
   remesas: Remesas, deleteAccount: DeleteAccount,
   ecosistema: Ecosistema, chat: ChatOG, cobrar: CobrarOG,
+  reporte: ReporteOG, 'pay-panel': PanelPay, 'pay-actividad': ActividadPay,
 };
-const TABS = [
-  { r: 'ecosistema', label: 'tab.eco', icon: 'planet' },
-  { r: 'home', label: 'tab.home', icon: 'wallet' },
-  { r: 'card', label: 'tab.card', icon: 'card' },
-  { r: 'activity', label: 'tab.activity', icon: 'pulse' },
-  { r: 'settings', label: 'tab.settings', icon: 'settings-sharp' },
-];
-const TAB_ROUTES = TABS.map((t) => t.r);
+const SECCION_TABS = {
+  og: [
+    { r: 'ecosistema', label: 'tab.eco', icon: 'planet' },
+    { r: 'chat', label: 'tab.chat', icon: 'chatbubbles' },
+    { r: 'cobrar', label: 'tab.cobrar', icon: 'qr-code' },
+    { r: 'settings', label: 'tab.settings', icon: 'settings-sharp' },
+  ],
+  veta: [
+    { r: 'ecosistema', label: 'tab.eco', icon: 'planet' },
+    { r: 'home', label: 'tab.home', icon: 'wallet' },
+    { r: 'card', label: 'tab.card', icon: 'card' },
+    { r: 'swap', label: 'tab.swap', icon: 'swap-horizontal' },
+    { r: 'activity', label: 'tab.activity', icon: 'pulse' },
+  ],
+  pay: [
+    { r: 'ecosistema', label: 'tab.eco', icon: 'planet' },
+    { r: 'pay-panel', label: 'tab.negocio', icon: 'storefront' },
+    { r: 'cobrar', label: 'tab.cobrar', icon: 'qr-code' },
+    { r: 'pay-actividad', label: 'tab.cobros', icon: 'pulse' },
+  ],
+};
+const TAB_ROUTES = [...new Set(Object.values(SECCION_TABS).flat().map((t) => t.r))];
+// a que seccion pertenece cada pantalla que NO es compartida
+const SECCION_DE = {
+  ecosistema: 'og', chat: 'og',
+  home: 'veta', card: 'veta', swap: 'veta', activity: 'veta', token: 'veta',
+  send: 'veta', receive: 'veta', buy: 'veta', deposit: 'veta', fundCard: 'veta',
+  cardSettings: 'veta', remesas: 'veta', reporte: 'veta',
+  'pay-panel': 'pay', 'pay-actividad': 'pay', mytokenpay: 'pay',
+};
 const FULLSCREEN = ['splash', 'auth']; // sin barra de estado propia / sin tabbar
 
 export default function App() {
@@ -300,7 +326,9 @@ function Root() {
     handleRef.current(url);
   }, [account]);
 
+  const [seccion, setSeccion] = useState('og');
   const go = useCallback((r, params) => {
+    if (SECCION_DE[r]) setSeccion(SECCION_DE[r]);
     if (TAB_ROUTES.includes(r)) { setDir(1); setStack([{ r, params }]); }
     else { setDir(1); setStack((s) => [...s, { r, params }]); }
   }, []);
@@ -442,6 +470,7 @@ function Root() {
   useEffect(() => { cargarNombre(); }, []);
 
   const Screen = SCREENS[cur.r] || Home;
+  const TABS = SECCION_TABS[seccion] || SECCION_TABS.og;
   const showTabs = TAB_ROUTES.includes(cur.r);
   const isFull = FULLSCREEN.includes(cur.r);
 
@@ -487,7 +516,7 @@ function Root() {
           {/* La barra de navegacion de Android —los tres botones, o la raya de
               gestos— tapaba el menu: `SafeAreaView` no la contempla en Android.
               `insets.bottom` da su altura real en cada telefono. */}
-          {showTabs && <BarraOG nav={{ go, back, route: cur.r }} />}
+          {!isFull && <FlotanteOG nav={{ go, back, route: cur.r }} />}
           {showTabs && (
             <View style={[styles.tabbar, { paddingBottom: Math.max(insets.bottom, 10) + 6 }]}>
               {TABS.map((t) => {
