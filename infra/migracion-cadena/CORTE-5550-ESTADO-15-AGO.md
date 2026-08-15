@@ -180,3 +180,30 @@ cada 15 s y no hace nada, sin lanzar ningún error. Comprobarlo es una línea:
 
 Mientras tanto el explorador enseña la altura correcta (la lee del RPC) pero
 cero transacciones. **No inventa nada: calla lo que no sabe.**
+
+## 9 · La web mostraba 0 · era CORS, no los saldos
+
+Síntoma: en vetawallet.com todos los activos a 0,00 mientras los **precios sí
+cargaban**. La app del teléfono, con la misma dirección, mostraba bien 0,988.
+
+Esa asimetría es la pista entera: los precios vienen del backend y los saldos
+se leen **de la cadena desde el navegador**. Un navegador solo acepta una
+respuesta si el servidor le da permiso de origen (CORS); una app nativa no
+aplica esa regla. El RPC anterior pasaba por un proxy que enviaba la cabecera;
+al arrancar la 5550 se copió la unidad de systemd de la **red de pruebas**, que
+nunca sirvió a un navegador, y salió sin `--rpc-http-cors-origins`. Besu
+rechazaba a la web en silencio y la web, correctamente, no inventaba: pintaba 0.
+
+Arreglo: `--rpc-http-cors-origins=all` en los cuatro validadores. Comprobado
+con una petición que lleva `Origin`:
+
+```
+access-control-allow-origin: https://www.vetawallet.com
+result: 0xdb63f82f863f000   (0,988047 ORIGEN)
+```
+
+No abre nada nuevo: el RPC ya era público de lectura.
+
+**Para la próxima migración:** al clonar la configuración de un nodo, mirar qué
+clientes tenía el original. Una unidad pensada para nodos entre sí no sirve tal
+cual para atender a un navegador.
