@@ -219,6 +219,12 @@ const S = {
     'recv.share': 'Compartir',
     'recv.copyLink': 'Copiar link',
     'recv.linkCopied': 'Link de pago copiado',
+    // Vista previa: el enlace que se comparte lleva el esquema del APK
+    // (vetawallet://), y en Expo Go el esquema real del teléfono es exp://.
+    // Quien lo reciba por WhatsApp no abrirá nada, así que se avisa ANTES de
+    // mandarlo. El QR de arriba sí funciona: lo lee el escáner de la propia
+    // app, que es la cámara leyendo texto y no el sistema abriendo un enlace.
+    'recv.goLink': 'Vista previa: este enlace solo abre desde el APK instalado. Aquí usa el código QR y que lo escaneen con el escáner de la app.',
     'recv.shareAddr': 'Esta es mi dirección de Veta Wallet:',
     'recv.shareMsg': 'Te pido {amount} {sym} en Veta Wallet. Motivo: {memo}',
     'recv.shareMsgNoMemo': 'Te pido {amount} {sym} en Veta Wallet.',
@@ -607,6 +613,12 @@ const S = {
     'gen.scanPartial': 'Se leyó casi todo. Revisa los caracteres marcados y corrige lo que falte.',
     'gen.scanRetry': 'No se distinguen las líneas. Prueba con más luz y sin reflejos.',
     'gen.scanNoReader': 'Esta versión de la app no puede escanear. Escríbelo a mano o actualiza.',
+    // La vista previa (Expo Go) no trae el lector del documento. No se
+    // esconde el paso ni se promete una lectura que no va a ocurrir: se dice
+    // qué se escribe a mano aquí y qué hace sola la app instalada.
+    'gen.previewScanT': 'Vista previa: el documento se escribe',
+    'gen.previewScanData': 'Aquí no está el lector del documento. Escribí tu nombre igual que aparece en él; con la app instalada, la cámara lo lee sola del frente.',
+    'gen.previewScanDoc': 'Aquí escribís a mano las dos líneas del pie del documento —abajo tenés el ejemplo—. Con la app instalada, la cámara las lee y comprueba sus dígitos de control sola. Las fotos, la selfie y el envío funcionan igual en la vista previa.',
 
     'gen.stepFaceT': 'Tu rostro',
     'gen.stepFaceP': 'Centra tu cara con buena luz. Se compara con la foto de tu documento.',
@@ -764,9 +776,14 @@ const S = {
     'nav.exit': 'Toca atrás otra vez para salir',
     'notif.gotToast': '¡Recibiste tokens! Saldo actualizado',
     // notificaciones
-    'set.notifsSub': 'Avisos cuando recibes tokens, con la app abierta o cerrada',
-    'set.notifsGo': 'En Expo Go solo llegan con la app abierta. En el APK también con la app cerrada.',
+    'set.notifsSub': 'Avisos cuando recibes tokens y cuando llega un mensaje de AURO CHAT, con la app abierta o cerrada',
+    // La vista previa no da NINGÚN aviso del teléfono: expo-notifications no
+    // se puede cargar allí (ver la cabecera de notify.js), así que tampoco
+    // los locales. La versión anterior de este texto prometía avisos «con la
+    // app abierta» y lo que salía era un toast dentro de la app.
+    'set.notifsGo': 'Vista previa (Expo Go): el teléfono no te avisará de nada, ni del dinero ni del chat. Con la app abierta lo verás dentro de la app. En el APK instalado sí llegan los avisos.',
     'set.notifsOn': 'Avisos activados', 'set.notifsOff': 'Avisos desactivados',
+    'set.notifsGoOn': 'Guardado. En esta vista previa el teléfono no avisa; se encenderá solo en el APK.',
     'set.notifsDenied': 'Permite las notificaciones en los ajustes del teléfono',
     // versión
     'set.privacy': 'Política de privacidad',
@@ -987,6 +1004,7 @@ const S = {
     'recv.share': 'Share',
     'recv.copyLink': 'Copy link',
     'recv.linkCopied': 'Payment link copied',
+    'recv.goLink': 'Preview: this link only opens from the installed APK. Here, use the QR code and have them scan it with the app scanner.',
     'recv.shareAddr': 'This is my Veta Wallet address:',
     'recv.shareMsg': 'I am requesting {amount} {sym} on Veta Wallet. Reason: {memo}',
     'recv.shareMsgNoMemo': 'I am requesting {amount} {sym} on Veta Wallet.',
@@ -1362,6 +1380,9 @@ const S = {
     'gen.scanPartial': 'Almost all of it was read. Check the characters and fix what is missing.',
     'gen.scanRetry': 'The lines are not legible. Try with more light and no glare.',
     'gen.scanNoReader': 'This version of the app cannot scan. Type it by hand or update.',
+    'gen.previewScanT': 'Preview: the document is typed',
+    'gen.previewScanData': 'The document reader is not part of the preview. Type your name exactly as it appears on it; with the app installed, the camera reads it off the front for you.',
+    'gen.previewScanDoc': 'Here you type the two lines from the bottom of your document by hand — the example is below. With the app installed, the camera reads them and checks their control digits by itself. Photos, the selfie and sending all work the same in the preview.',
 
     'gen.stepFaceT': 'Your face',
     'gen.stepFaceP': 'Center your face in good light. It is compared with the photo on your document.',
@@ -1510,9 +1531,10 @@ const S = {
     'send.doneP': 'The transaction is recorded on the Orden Global blockchain. The recipient gets a notification in their app.',
     'nav.exit': 'Press back again to exit',
     'notif.gotToast': 'Tokens received! Balance updated',
-    'set.notifsSub': 'Alerts when you receive tokens, with the app open or closed',
-    'set.notifsGo': 'In Expo Go they only arrive with the app open. In the APK, also when closed.',
+    'set.notifsSub': 'Alerts when you receive tokens and when an AURO CHAT message arrives, with the app open or closed',
+    'set.notifsGo': 'Preview (Expo Go): your phone will not alert you about anything — not money, not chat. With the app open you will see it inside the app. In the installed APK alerts do arrive.',
     'set.notifsOn': 'Alerts enabled', 'set.notifsOff': 'Alerts disabled',
+    'set.notifsGoOn': 'Saved. In this preview your phone does not alert you; it will turn on in the APK.',
     'set.notifsDenied': 'Allow notifications in your phone settings',
     'set.privacy': 'Privacy policy',
     'set.terms': 'Terms and conditions',

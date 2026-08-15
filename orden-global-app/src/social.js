@@ -18,6 +18,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import Constants from 'expo-constants';
+import { enExpoGo } from './entorno';
 
 // Cierra la ventana del navegador al volver a la app.
 WebBrowser.maybeCompleteAuthSession();
@@ -49,8 +50,27 @@ export const GOOGLE_IDS = {
   androidClientId: soloTexto(process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID) || soloTexto(extra.googleAndroidClientId),
 };
 
-/** ¿Se puede ofrecer el botón? Si falta la configuración, no se muestra. */
-export const googleDisponible = () => valido(GOOGLE_IDS.webClientId);
+/**
+ * ¿Se puede ofrecer el botón? Si falta la configuración, no se muestra.
+ *
+ * Y tampoco se muestra dentro de Expo Go, aunque los identificadores estén
+ * puestos. El motivo: en Expo Go la app no es dueña del esquema, así que el
+ * redirect de vuelta pasa a ser host.exp.exponent:/oauthredirect, que no está
+ * registrado en la consola de Google y Google RECHAZA con un «error 400:
+ * redirect_uri_mismatch» a pantalla completa dentro del navegador. Quien está
+ * probando la app no tiene forma de saber que eso es de la vista previa y no
+ * de la app: parece que el acceso está roto.
+ *
+ * Hoy no hay identificadores configurados (ni en .env ni en el `extra` de
+ * app.json), así que esto no cambia nada todavía. Está puesto para el día que
+ * se configuren: mejor «este botón no sale en la vista previa» que un error de
+ * Google que nadie sabe leer. El acceso por CORREO sigue entero en Expo Go —
+ * ese no toca ningún proveedor externo.
+ *
+ * Para habilitarlo también en Expo Go habría que registrar el redirect de
+ * Expo Go en la consola de Google; entonces se quita este `enExpoGo`.
+ */
+export const googleDisponible = () => !enExpoGo && valido(GOOGLE_IDS.webClientId);
 
 export async function appleDisponible() {
   if (Platform.OS !== 'ios' || !AppleAuth) return false;

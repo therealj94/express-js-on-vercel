@@ -21,6 +21,9 @@ import { Header, Button3D, tono, useAccount, useToast, hap } from '../ui';
 import { useLang } from '../i18n';
 import * as M from './mensajes';
 import { aUri } from './rutas';
+// Se pide a entorno.js y no a notify.js: aquí solo hace falta saber DÓNDE
+// corre la app, y notify.js arrastraría expo-task-manager entero para eso.
+import { enExpoGo } from '../entorno';
 
 const TXT = {
   es: {
@@ -46,6 +49,14 @@ const TXT = {
     qrTxt: 'Quien lo escanee abre un chat contigo, sin dictar el correo ni buscarte.',
     copiar: 'COPIAR ENLACE', compartir: 'COMPARTIR', copiado: 'Enlace copiado',
     invito: 'Escríbeme por AURO CHAT:',
+    // El enlace se fabrica con el esquema og://, que es el del APK. En Expo
+    // Go el esquema real del teléfono es exp://, o sea que quien reciba este
+    // enlace por WhatsApp no abrirá nada — y quien lo mandó creerá que sí.
+    // El QR de arriba entra igual: lo lee el escáner de la propia app, que es
+    // la cámara leyendo texto y no el sistema abriendo un enlace.
+    qrGo: 'Vista previa: el enlace solo abre desde el APK instalado. Aquí comparte el código de arriba y que lo escaneen con el escáner de la app.',
+
+    avisosGo: 'Vista previa: en Expo Go el teléfono no te avisa de los mensajes nuevos. Los verás al abrir la app. En el APK instalado sí llega el aviso.',
 
     veTit: 'LO QUE SE VE DE MÍ',
     veTxt: 'Quien te busque en AURO CHAT ve tu nombre, tu foto, tu correo, tu Genesis ID y tu dirección de wallet — nada más: ni tu teléfono, ni tus documentos, ni con quién hablas.',
@@ -77,6 +88,9 @@ const TXT = {
     qrTxt: 'Whoever scans it opens a chat with you, no need to dictate your email.',
     copiar: 'COPY LINK', compartir: 'SHARE', copiado: 'Link copied',
     invito: 'Write to me on AURO CHAT:',
+    qrGo: 'Preview: the link only opens from the installed APK. Here, share the code above and have them scan it with the app scanner.',
+
+    avisosGo: 'Preview: in Expo Go your phone does not alert you about new messages. You will see them when you open the app. In the installed APK the alert does arrive.',
 
     veTit: 'WHAT OTHERS SEE OF ME',
     veTxt: 'Anyone searching for you on AURO CHAT sees your name, your photo, your email, your Genesis ID and your wallet address — nothing else: not your phone, not your documents, not who you talk to.',
@@ -245,6 +259,9 @@ export default function AjustesAuro({ nav }) {
             <Pressable style={st.btnLinea} onPress={copiar}><Text style={st.btnLineaTxt}>{t.copiar}</Text></Pressable>
             <Pressable style={st.btnLinea} onPress={compartir}><Text style={st.btnLineaTxt}>{t.compartir}</Text></Pressable>
           </View>
+          {/* El aviso va PEGADO a los botones y no en una nota al pie: el
+              momento de saber que el enlace no abrirá es antes de mandarlo. */}
+          {enExpoGo && <Text style={st.avisoGo}>{t.qrGo}</Text>}
         </View>
 
         {/* lo que se ve de mí: una línea, sin letra chica */}
@@ -261,6 +278,11 @@ export default function AjustesAuro({ nav }) {
           <Text style={st.seccion}>{t.privTit}</Text>
           <Text style={st.tarTxt}>{t.privTxt}</Text>
           <Text style={[st.tarTxt, { marginBottom: 0 }]}>{t.privTxt2}</Text>
+          {/* Los avisos de mensaje nuevo son notificaciones LOCALES y en Expo
+              Go no salen: expo-notifications no se puede cargar allí (ver la
+              cabecera de notify.js). Callarlo dejaría a la persona esperando
+              un aviso que no va a sonar nunca. */}
+          {enExpoGo && <Text style={[st.avisoGo, { marginTop: 14 }]}>{t.avisosGo}</Text>}
         </View>
       </CuerpoDesplazable>
 
@@ -295,6 +317,9 @@ const st = StyleSheet.create({
   // pero sin flex:1 — aquí va solo, a lo ancho de la tarjeta
   btnGid: { borderWidth: 1, borderColor: C.line, borderRadius: 12, paddingVertical: 11, alignItems: 'center', justifyContent: 'center' },
   tarTxt: { color: C.txt2, fontSize: 13, lineHeight: 19.5, marginBottom: 14 },
+  // Aviso de vista previa: ámbar, para que se lea como «ojo con esto» y no
+  // como una explicación más de la tarjeta.
+  avisoGo: { color: '#FBBF24', fontSize: 11.5, lineHeight: 17, marginTop: 12 },
   fotoCentro: { alignItems: 'center', gap: 10 },
   retrato: { width: 108, height: 108, borderRadius: 54, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.25)' },
   inicial: { color: '#12312b', fontWeight: '800', fontSize: 42 },

@@ -19,6 +19,9 @@ import { reproducir } from '../og/sonidos';
 import { renombrarContacto } from '../og/contactos';
 import { ScanModal } from './Scan';
 import { useT } from '../i18n';
+// Solo para saber DÓNDE corre la app. entorno.js no importa nada nativo
+// aparte de expo-constants, así que pedirlo aquí no cambia el arranque.
+import { enExpoGo } from '../entorno';
 import { capacidadBiometrica, desbloqueoActivo, desbloquearClave, activarDesbloqueo, TIPO } from '../unlock';
 import { nombreBiometria } from '../PedirClave';
 
@@ -998,6 +1001,18 @@ export function Receive({ nav }) {
             />
           )}
         </View>
+
+        {/* Solo cuando lo que se comparte es un ENLACE pagable
+            (vetawallet://pay?…). Sin monto, lo que viaja es la dirección
+            pelada, que es texto y se pega en cualquier parte: ahí no hay nada
+            que advertir. Con monto sí: en Expo Go el esquema del teléfono es
+            exp://, así que el enlace no abrirá en el móvil de quien lo reciba
+            y el que lo mandó creerá que pidió el cobro. El QR de arriba entra
+            igual — lo lee el escáner de la propia app, que es la cámara
+            leyendo texto y no el sistema abriendo un enlace. */}
+        {isRequest && enExpoGo && (
+          <Text style={styles.avisoGo}>{t('recv.goLink')}</Text>
+        )}
       </ScrollView>
     </View>
   );
@@ -1493,5 +1508,8 @@ const styles = StyleSheet.create({
   },
   reqTitle: { color: C.txt, fontSize: 14, fontWeight: '800', marginBottom: 4 },
   reqHint: { color: C.txt3, fontSize: 11.5, lineHeight: 16, marginBottom: 12 },
+  // Aviso de vista previa (Expo Go): ámbar, para que se lea como advertencia
+  // y no como una explicación más de la tarjeta.
+  avisoGo: { color: '#FBBF24', fontSize: 11.5, lineHeight: 17, marginTop: 14, alignSelf: 'stretch' },
   reqSym: { position: 'absolute', right: 15, top: 15, color: C.gold, fontWeight: '800', fontSize: 12.5, letterSpacing: 1 },
 });

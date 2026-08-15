@@ -242,7 +242,11 @@ function Root() {
   // aplicarlo. Nunca se reinicia sola: hacerlo a mitad de un envío seria peor
   // que esperar al proximo arranque.
   useEffect(() => {
-    if (!puedeActualizar()) return;   // Expo Go y desarrollo: no aplica
+    // La consulta se corta AQUÍ en Expo Go y en desarrollo: puedeActualizar()
+    // devuelve false y checkForUpdateAsync() no llega a llamarse nunca, así
+    // que no aparece el banner de «hay una versión nueva» —que en la vista
+    // previa sería mentira, porque ahí el código llega por el dev server—.
+    if (!puedeActualizar()) return;
     let vivo = true;
     let ultima = 0;
 
@@ -566,6 +570,15 @@ function Root() {
   //   app en segundo plano → notificación local que abre el hilo al tocarla;
   //   app al frente, fuera del chat → toast + el sonido suave;
   //   app al frente, EN el chat → nada: AuroChat ya pinta y suena lo suyo.
+  //
+  // EN EXPO GO la primera rama no hace nada, y conviene tenerlo claro:
+  // notificarMensaje() devuelve false porque allí expo-notifications no se
+  // puede cargar (ver la cabecera de notify.js), así que en segundo plano no
+  // suena nada — tampoco siendo una notificación LOCAL. No se pierde el
+  // mensaje: el vigía no lo borra de ningún sitio y sigue contando como sin
+  // leer en la lista de AURO CHAT, o sea que aparece al abrir la app. No se
+  // disimula tampoco: los ajustes del chat (AjustesAuro) y los de la app
+  // (set.notifsGo) lo dicen con todas sus letras en la vista previa.
   useEffect(() => {
     if (!account?.email) return undefined;
     const parar = vigilarMensajes({

@@ -23,6 +23,9 @@ import { useLang } from '../i18n';
 import { genesis } from '../genesis';
 import * as M from './mensajes';
 import { aUri } from './rutas';
+// Solo para saber DÓNDE corre la app: entorno.js no arrastra nada nativo
+// aparte de expo-constants (notify.js sí traería expo-task-manager).
+import { enExpoGo } from '../entorno';
 
 const TXT = {
   es: {
@@ -44,6 +47,11 @@ const TXT = {
     miembrosTit: 'MIEMBROS', verTodos: 'VER LOS {n}',
     enlaceTit: 'ENLACE DE INVITACIÓN',
     enlaceTxt: 'Quien escanee este código o abra el enlace entra al grupo. El enlace ES el permiso: compártelo solo con quien quieras dentro.',
+    // El enlace lleva el esquema og://, que es el del APK. En Expo Go el
+    // esquema real del teléfono es exp://: un og:// mandado por WhatsApp no
+    // abre nada, y el que lo manda se queda creyendo que invitó a alguien. El
+    // QR sí entra — lo lee el escáner de la propia app, no el sistema.
+    enlaceGo: 'Vista previa: el enlace solo abre desde el APK instalado. Aquí enseña el código de arriba y que lo escaneen con el escáner de la app; así sí entran.',
     copiar: 'COPIAR', compartir: 'COMPARTIR', copiado: 'Enlace copiado',
     invito: 'Te invito al grupo «{g}» en AURO CHAT.',
     invitarTit: 'INVITAR POR CORREO', correoPh: 'correo@ejemplo.com', invitar: 'INVITAR',
@@ -100,6 +108,7 @@ const TXT = {
     miembrosTit: 'MEMBERS', verTodos: 'SEE ALL {n}',
     enlaceTit: 'INVITATION LINK',
     enlaceTxt: 'Whoever scans this code or opens the link joins the group. The link IS the permission: share it only with who you want inside.',
+    enlaceGo: 'Preview: the link only opens from the installed APK. Here, show the code above and have them scan it with the app scanner — that way they do get in.',
     copiar: 'COPY', compartir: 'SHARE', copiado: 'Link copied',
     invito: 'I invite you to the group “{g}” on AURO CHAT.',
     invitarTit: 'INVITE BY EMAIL', correoPh: 'name@example.com', invitar: 'INVITE',
@@ -518,6 +527,9 @@ export default function GruposAuro({ nav, params }) {
             <Pressable style={[st.btnLinea, st.mitad]} onPress={copiar}><Text style={st.btnLineaTxt}>{t.copiar}</Text></Pressable>
             <Pressable style={[st.btnLinea, st.mitad]} onPress={compartir}><Text style={st.btnLineaTxt}>{t.compartir}</Text></Pressable>
           </View>
+          {/* Junto a los botones y no al pie: el momento de enterarse de que
+              el enlace no va a abrir es antes de mandarlo, no después. */}
+          {enExpoGo && <Text style={st.avisoGo}>{t.enlaceGo}</Text>}
           {soyAdmin && (
             <Pressable style={st.btnSoltar} onPress={regenerar}>
               <Text style={st.btnSoltarTxt}>{t.regenerar}</Text>
@@ -573,6 +585,8 @@ const st = StyleSheet.create({
   tarjeta: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 18, padding: 18, marginBottom: 16 },
   tarTit: { color: C.goldLt, fontSize: 17, fontWeight: '600', marginBottom: 8 },
   tarTxt: { color: C.txt2, fontSize: 13, lineHeight: 19.5, marginBottom: 14 },
+  // Ámbar: se lee como «ojo con esto» y no como una explicación más.
+  avisoGo: { color: '#FBBF24', fontSize: 11.5, lineHeight: 17, marginTop: 12 },
   invIco: { fontSize: 40, textAlign: 'center', marginBottom: 10 },
   invTit: { color: C.goldLt, fontSize: 19, fontWeight: '700', textAlign: 'center', marginBottom: 10 },
   fotoCentro: { alignItems: 'center', gap: 9, marginTop: 6, marginBottom: 16 },

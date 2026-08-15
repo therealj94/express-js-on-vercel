@@ -29,6 +29,7 @@ import { C, G } from '../theme';
 import { useLang } from '../i18n';
 import { hap } from '../ui';
 import { traducir, EJEMPLOS } from '../intencion';
+import { enExpoGo } from './entorno';
 import { aUri, MAPA, abrir } from './rutas';
 import { decir, callar } from '../voz';
 import { nombreAsistente, suscribirNombre } from './asistente';
@@ -53,6 +54,15 @@ try {
 }
 const HAY_VOZ = !!ExpoSpeechRecognitionModule;
 
+// Sin oídos hay dos motivos distintos y la persona merece saber cuál es el
+// suyo: en la VISTA PREVIA (Expo Go) el micrófono no está porque ese binario
+// no lleva módulos de terceros —se dice, y se dice que con la app instalada
+// sí escucha—; en un APK viejo que recibió esto por aire no se explica nada,
+// que es el comportamiento de siempre y no hay nada útil que contar ahí.
+// Se resuelve una vez al cargar el módulo: ni el entorno ni el nativo cambian
+// mientras la app vive.
+const VISTA_PREVIA = enExpoGo();
+
 const TXT = {
   es: {
     // dos fases más y ninguna miente: sin micrófono el kicker dice ESCRIBE
@@ -64,6 +74,12 @@ const TXT = {
     dime: 'Dime…',
     dimeSub: 'Habla, te estoy oyendo. También puedes escribir.',
     dimeSubMudo: 'Escríbeme aquí lo que quieres hacer.',
+    // La línea de la vista previa. Una sola, en gris, sin alarma: aquí no ha
+    // fallado nada ni hay nada que arreglar — es que este envoltorio no trae
+    // micrófono. Lleva el nombre del asistente porque es suyo y se puede
+    // cambiar en Ajustes: «NEXUS te escucha» tiene que seguir siendo verdad
+    // aunque se llame de otra forma.
+    previa: (n) => `En la vista previa se escribe; con la app instalada, ${n} te escucha.`,
     sinMicTit: 'No me diste el micrófono',
     sinMic: 'Sin permiso de micrófono no puedo oírte. Puedes dármelo en los ajustes del teléfono. Mientras tanto escríbeme aquí abajo: te obedezco igual.',
     sinMicVoz: 'No tengo permiso del micrófono. Escríbeme y te obedezco igual.',
@@ -111,6 +127,7 @@ const TXT = {
     dime: 'Tell me…',
     dimeSub: 'Speak, I am listening. You can also type.',
     dimeSubMudo: 'Type here what you want to do.',
+    previa: (n) => `In preview you type; with the app installed, ${n} listens.`,
     sinMicTit: 'You did not give me the microphone',
     sinMic: 'Without microphone permission I cannot hear you. You can grant it in your phone settings. Meanwhile type below: I obey just the same.',
     sinMicVoz: 'I do not have microphone permission. Type and I obey just the same.',
@@ -421,7 +438,13 @@ export default function FlotanteOG({ nav }) {
     hap(); limpiar();
     abierta.current = true;
     setTexto(''); setOido(null); setParcial(''); setAvisoVoz('');
-    setPermiso(null); setOyendo(false); setFase('permiso'); setVisible(true);
+    setPermiso(null); setOyendo(false);
+    // Sin módulo de voz la hoja NO pasa por PERMISO: pedir un micrófono que
+    // no existe es una promesa de medio segundo —«Te pido el micrófono…» con
+    // su ruedita— que enseguida hay que retirar. Se abre directamente en
+    // ESCRIBE, que aquí es el único camino de verdad.
+    setFase(HAY_VOZ ? 'permiso' : 'escribe');
+    setVisible(true);
     sube.setValue(0);
     Animated.timing(sube, { toValue: 1, duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
     // sin saludo hablado: en cuanto haya permiso se abre el micrófono, y el
@@ -616,6 +639,14 @@ export default function FlotanteOG({ nav }) {
                       sin módulo nativo no hubo pregunta que negar */}
                   <Text style={st.dime}>{HAY_VOZ && permiso === 'no' ? t.sinMicTit : t.dime}</Text>
                   <Text style={st.dimeSub}>{oyendo ? t.dimeSub : t.dimeSubMudo}</Text>
+                  {/* La vista previa se dice AQUÍ y en una línea: quien abre
+                      la hoja esperando hablar entiende en el acto por qué solo
+                      hay una caja de texto, y que no es un fallo suyo. En un
+                      APK sin el nativo (OTA sobre binario viejo) no sale nada:
+                      allí no habría nada cierto que contar. */}
+                  {!HAY_VOZ && VISTA_PREVIA && (
+                    <Text style={st.previa}>{t.previa(nombre)}</Text>
+                  )}
 
                   {/* lo que va oyendo, en gris: la prueba de que el micro está abierto */}
                   {!!parcial && <Text style={st.parcial}>«{parcial}»</Text>}
@@ -726,6 +757,13 @@ const st = StyleSheet.create({
   centro: { alignItems: 'center' },
   dime: { color: C.txt, fontSize: 21, fontWeight: '700', marginTop: 10, textAlign: 'center' },
   dimeSub: { color: C.txt3, fontSize: 12, marginTop: 4, marginBottom: 12, textAlign: 'center', lineHeight: 17 },
+  // La nota de la vista previa cuelga del subtítulo —de ahí el margen
+  // negativo, que se come el aire de abajo del anterior— y va un punto más
+  // apagada: informa, no avisa de nada.
+  previa: {
+    color: C.txt3, fontSize: 11.5, lineHeight: 16.5, textAlign: 'center',
+    marginTop: -6, marginBottom: 12, opacity: 0.9, paddingHorizontal: 6,
+  },
   parcial: { color: C.txt3, fontSize: 15, fontStyle: 'italic', textAlign: 'center', marginBottom: 12, lineHeight: 21 },
   avisoVoz: { color: C.txt2, fontSize: 12.5, textAlign: 'center', marginBottom: 12, lineHeight: 18 },
   caja: {

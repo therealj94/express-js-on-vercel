@@ -25,6 +25,13 @@ import { C, G } from '../theme';
 import { useLang } from '../i18n';
 import { useAccount, hap } from '../ui';
 import { Icon } from '../icons';
+import { enExpoGo } from './entorno';
+
+// ¿Esto es la vista previa (Expo Go)? Se resuelve UNA vez al cargar el
+// módulo: el entorno no cambia mientras la app vive, y esta pantalla se
+// repinta en cada cuadro mientras un dedo arrastra un mundo — preguntarlo ahí
+// sesenta veces por segundo sería pagar por una respuesta que ya se sabe.
+const VISTA_PREVIA = enExpoGo();
 
 // react-native-webview es un módulo NATIVO: vive en el binario, no en el
 // paquete de JavaScript. Si la app instalada se compiló sin él, una
@@ -106,6 +113,19 @@ const TXT = {
     sinLeer: 'sin leer',
     kycPend: 'verificación pendiente',
     fichaGid: 'Completa tu Genesis ID',
+    // ── EL SELLO DE LA VISTA PREVIA ────────────────────────────────────
+    // Se lee como un precinto de la casa, no como una advertencia: quien
+    // abre esto por un QR tiene que saber en qué está mirando y qué le
+    // falta, sin que parezca que algo se rompió.
+    previa: 'VISTA PREVIA',
+    previaA11y: 'Vista previa: ver qué es y qué falta aquí',
+    previaTit: 'Estás en la vista previa',
+    previaCuerpo: 'Esto es Orden Global funcionando dentro de Expo Go, para que puedas verla sin instalar nada. Todo lo que hay aquí es real. Dos cosas necesitan la app instalada:',
+    previaFalta: [
+      'El micrófono de NEXUS. Aquí se le escribe y obedece igual.',
+      'La lectura del documento en Genesis ID. Aquí el nombre y las líneas se escriben a mano.',
+    ],
+    previaCierre: 'Con la app instalada las dos funcionan solas.',
   },
   en: {
     manana: 'Good morning', tarde: 'Good afternoon', noche: 'Good evening',
@@ -133,6 +153,15 @@ const TXT = {
     sinLeer: 'unread',
     kycPend: 'verification pending',
     fichaGid: 'Complete your Genesis ID',
+    previa: 'PREVIEW',
+    previaA11y: 'Preview: see what this is and what is missing here',
+    previaTit: 'You are in the preview',
+    previaCuerpo: 'This is Orden Global running inside Expo Go, so you can see it without installing anything. Everything here is real. Two things need the installed app:',
+    previaFalta: [
+      'NEXUS listening. Here you type to it and it obeys just the same.',
+      'Reading your document in Genesis ID. Here the name and the lines are typed by hand.',
+    ],
+    previaCierre: 'With the app installed, both work on their own.',
   },
 };
 
@@ -1415,10 +1444,19 @@ function HojaInfo({ hoja, t, onCerrar }) {
       .start(() => onCerrar());
   }, [anim, onCerrar]);
 
+  // La hoja de la VISTA PREVIA entra por aquí y no por un diálogo aparte: es
+  // la misma tela —el mismo velo, la misma subida, la misma salida serena— y
+  // así el sello no se lee como un cartel del sistema pegado encima de la
+  // app, sino como una parte de ella. Toma prestados los colores del núcleo
+  // (la billetera, el oro de la casa), que es de donde cuelga todo.
+  const esPrevia = hoja === 'previa';
   const m = MUNDOS.find((x) => x.id === hoja) || MUNDOS[0];
   const esMas = hoja === 'mas';
-  const nombre = esMas ? t.masTitulo : (hoja === 'aubank' ? t.aubank : t.oxch);
-  const cuerpo = esMas ? t.masCuerpo : t.prontoCuerpo.replace('{app}', hoja === 'aubank' ? t.aubank : t.oxch);
+  const icono = esPrevia ? 'eye' : m.icono;
+  const nombre = esPrevia ? t.previaTit
+    : esMas ? t.masTitulo : (hoja === 'aubank' ? t.aubank : t.oxch);
+  const cuerpo = esPrevia ? t.previaCuerpo
+    : esMas ? t.masCuerpo : t.prontoCuerpo.replace('{app}', hoja === 'aubank' ? t.aubank : t.oxch);
   const subir = anim.interpolate({ inputRange: [0, 1], outputRange: [280, 0] });
 
   return (
@@ -1435,15 +1473,33 @@ function HojaInfo({ hoja, t, onCerrar }) {
         {/* La misma lente de las esferas, con el icono del mundo: la hoja no
             es un diálogo genérico, es ESE mundo hablando. */}
         <View style={[st.hojaLente, { backgroundColor: m.lente, borderColor: conAlfa(m.halo, 0.5) }]}>
-          <Icon name={m.icono} size={26} color={m.halo} />
+          <Icon name={icono} size={26} color={m.halo} />
         </View>
+        {/* El «+» es lo único que no lleva precinto: no anuncia un mundo
+            concreto. La vista previa sí lleva el suyo, y es el mismo que la
+            píldora de la cabecera — se toca una cosa y sube la misma. */}
         {!esMas && (
           <View style={st.hojaChip}>
-            <Text style={st.hojaChipTxt}>{t.pronto}</Text>
+            <Text style={st.hojaChipTxt}>{esPrevia ? t.previa : t.pronto}</Text>
           </View>
         )}
         <Text style={st.hojaTit}>{nombre}</Text>
         <Text style={st.hojaTxt}>{cuerpo}</Text>
+        {/* Lo que falta, en dos líneas y alineadas a la izquierda: centradas
+            bailan y hay que leerlas en orden. Es la parte que la gente va a
+            buscar — «¿por qué el micrófono no me oye?» — así que se dice con
+            nombre y apellido, y con el remedio al lado. */}
+        {esPrevia && (
+          <View style={st.previaLista}>
+            {t.previaFalta.map((linea, i) => (
+              <View key={i} style={st.previaFila}>
+                <View style={st.previaPunto} />
+                <Text style={st.previaItem}>{linea}</Text>
+              </View>
+            ))}
+            <Text style={st.previaCierre}>{t.previaCierre}</Text>
+          </View>
+        )}
         <Pressable
           onPress={cerrar}
           accessibilityRole="button"
@@ -1768,6 +1824,23 @@ export default function Nucleo({ nav }) {
           {saludo}, <Text style={st.nombre}>{nombre}</Text>
         </Text>
         <Text style={st.pista} numberOfLines={2}>{t.pista}</Text>
+        {/* EL SELLO DE LA VISTA PREVIA. Va en la CABECERA, junto a la pista,
+            por la misma razón que la ficha de Genesis: abajo los mundos se
+            mueven a gusto del dueño y cualquier cosa fija sobre el tablero
+            acabaría tapando uno o comiéndose un arrastre. Aquí no estorba a
+            nadie y se ve a la primera. Pequeño y dorado: es un precinto de la
+            casa, no una advertencia del sistema. */}
+        {VISTA_PREVIA && (
+          <Pressable
+            onPress={() => { hap(); setHoja('previa'); }}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={t.previaA11y}
+            style={({ pressed }) => [st.previaPill, pressed && { opacity: 0.7 }]}>
+            <Icon name="eye" size={11} color={C.goldLt} />
+            <Text style={st.previaPillTxt}>{t.previa}</Text>
+          </Pressable>
+        )}
         {/* La ficha de Genesis pendiente: UNA línea, tocable, que lleva al
             mismo destino que el nodo (el KYC — irDestino ya sabe el camino).
             Vive en la cabecera y no flotando sobre el tablero porque abajo
@@ -1948,6 +2021,29 @@ const st = StyleSheet.create({
     backgroundColor: 'rgba(251,191,36,0.10)',
   },
   fichaTxt: { color: '#FBBF24', fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
+
+  // La píldora VISTA PREVIA. Del tamaño de la ficha de Genesis para que las
+  // dos convivan sin pelearse, pero en el dorado de la casa y no en el ámbar
+  // del aviso: aquí no falta nada que la persona pueda hacer.
+  previaPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8,
+    paddingHorizontal: 11, paddingVertical: 4.5, borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(234,215,156,0.55)',
+    backgroundColor: 'rgba(4,10,12,0.7)',
+  },
+  previaPillTxt: { color: C.goldLt, fontSize: 8.8, fontWeight: '800', letterSpacing: 1.7 },
+
+  // Lo que falta en la vista previa, dentro de la hoja: a la izquierda, con
+  // su punto dorado, para que se lean como dos cosas concretas y no como un
+  // párrafo de disculpas.
+  previaLista: { alignSelf: 'stretch', marginTop: -6, marginBottom: 16 },
+  previaFila: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
+  previaPunto: {
+    width: 4, height: 4, borderRadius: 2, backgroundColor: C.gold,
+    marginTop: 7,
+  },
+  previaItem: { color: C.txt2, fontSize: 12.5, lineHeight: 18, flex: 1 },
+  previaCierre: { color: C.goldLt, fontSize: 12.5, lineHeight: 18, marginTop: 2 },
 
   // El precinto PRONTO, cabalgando el canto de la esfera.
   chip: {

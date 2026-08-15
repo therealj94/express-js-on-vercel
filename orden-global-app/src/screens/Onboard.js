@@ -10,6 +10,7 @@ import { C, G } from '../theme';
 import { Header, Button3D, Card, Field, hap, useToast, useAccount } from '../ui';
 import { genesis, revisarFormaMrz } from '../genesis';
 import { leerDeFoto, leerTexto, puedeEscanear, nombreDeAnverso, datosDeMrz, mismoNombre } from '../mrzOcr';
+import { enExpoGo } from '../og/entorno';
 import { FRECUENTES, buscarPaises, nombrePais } from '../paises';
 import { SenaGesto, OvaloRostro } from '../RostroGuia';
 import { setPassport } from '../accounts';
@@ -24,6 +25,26 @@ import { useT } from '../i18n';
 // existe.
 //
 // Cuatro pasos: datos → documento → rostro → revisión.
+
+/**
+ * La nota de «aquí esto se escribe a mano».
+ *
+ * No usa el rojo de `warn` y es la diferencia que importa: en la vista previa
+ * no ha fallado nada. Falta un módulo que ese envoltorio no puede traer, y un
+ * recuadro rojo diría «error» — mandaría a alguien a buscar un problema en su
+ * teléfono que no existe. Vidrio dorado y texto tranquilo: informa.
+ */
+function NotaPrevia({ titulo, texto }) {
+  return (
+    <View style={st.nota}>
+      <Icon name="information-circle" size={20} color={C.gold} />
+      <View style={{ flex: 1 }}>
+        {titulo ? <Text style={st.notaTit}>{titulo}</Text> : null}
+        <Text style={[st.notaTxt, !titulo && { marginTop: 0 }]}>{texto}</Text>
+      </View>
+    </View>
+  );
+}
 
 export function Kyc({ nav }) {
   const t = useT();
@@ -469,7 +490,15 @@ export function Kyc({ nav }) {
         setAviso({ mal: true, txt: t('gen.scanPartial') });
         return;
       }
-      setAviso({ mal: true, txt: r.motivo === 'cortadas' ? t('gen.scanCut') : t('gen.scanRetry') });
+      // «Sin lector» no es «no se distinguen las líneas»: mandar a alguien a
+      // buscar mejor luz cuando el problema es que aquí no hay OCR es hacerle
+      // perder la tarde. Cada motivo, su frase.
+      setAviso({
+        mal: true,
+        txt: r.motivo === 'cortadas' ? t('gen.scanCut')
+          : r.motivo === 'sin-lector' ? t('gen.scanNoReader')
+          : t('gen.scanRetry'),
+      });
     } catch (e) { setOcupado(false); setAviso({ mal: true, txt: t('gen.scanRetry') }); }
   }
 
@@ -766,7 +795,7 @@ export function Kyc({ nav }) {
             {/* La verificación que pasa sola empieza aquí: la cámara lee el
                 nombre del frente del documento y el campo se llena solo,
                 EDITABLE. Teclear queda como salida, no como norma. */}
-            {puedeEscanear() && (
+            {puedeEscanear() ? (
               <Pressable onPress={() => abrirEscaner('anverso')} disabled={ocupado}
                 style={[st.cara, nombreOcr && st.caraLista]}>
                 <Icon name={nombreOcr ? 'checkmark-circle' : 'scan'} size={22}
@@ -778,7 +807,13 @@ export function Kyc({ nav }) {
                   <Text style={st.caraD}>{t('gen.scanFromDataHint')}</Text>
                 </View>
               </Pressable>
-            )}
+            ) : enExpoGo() ? (
+              // En la vista previa la tarjeta NO se ofrece: sería un botón que
+              // abre la cámara para no leer nada. En su sitio va la verdad —el
+              // nombre se escribe aquí, la app instalada lo lee sola— y justo
+              // debajo queda el campo, que es lo que hay que hacer ahora.
+              <NotaPrevia titulo={t('gen.previewScanT')} texto={t('gen.previewScanData')} />
+            ) : null}
             <Field label={t('prof.name')} value={nombre} onChangeText={setNombre}
               placeholder={t('gen.nameHint')} autoCapitalize="words" />
             <Text style={st.foot2}>{t('gen.nameAsDoc')}</Text>
@@ -1007,13 +1042,15 @@ export function Kyc({ nav }) {
                   </View>
                 </Pressable>
               </>
+            ) : enExpoGo() ? (
+              // Vista previa: las dos tarjetas de escaneo se caen, pero el
+              // paso NO. Debajo siguen el ejemplo de la MRZ y el cuadro de
+              // texto, que aquí pasan de ser la salida de emergencia a ser el
+              // camino. Se dice tal cual, y se dice que el resto del KYC
+              // —fotos, selfie, envío— funciona igual.
+              <NotaPrevia titulo={t('gen.previewScanT')} texto={t('gen.previewScanDoc')} />
             ) : (
-              <View style={st.warn}>
-                <Icon name="information-circle" size={20} color={C.gold} />
-                <View style={{ flex: 1 }}>
-                  <Text style={st.warnTxt}>{t('gen.scanNeedsApk')}</Text>
-                </View>
-              </View>
+              <NotaPrevia texto={t('gen.scanNeedsApk')} />
             )}
 
             <Card style={{ padding: 14, marginBottom: 14 }}>
@@ -1533,6 +1570,17 @@ const st = StyleSheet.create({
     marginTop: 14, alignItems: 'center',
   },
   warnTxt: { color: '#f4b4ac', fontSize: 12.5, flex: 1, lineHeight: 17 },
+
+  // La nota de la vista previa: mismo cuerpo que `warn` pero en el dorado de
+  // la casa, no en rojo. El color es el mensaje — esto no es una avería.
+  nota: {
+    flexDirection: 'row', gap: 12, alignItems: 'center',
+    backgroundColor: 'rgba(201,169,97,0.08)',
+    borderWidth: 1, borderColor: 'rgba(201,169,97,0.4)', borderRadius: 16,
+    padding: 14, marginBottom: 12,
+  },
+  notaTit: { color: C.txt, fontSize: 13.5, fontWeight: '700' },
+  notaTxt: { color: C.txt2, fontSize: 12.5, lineHeight: 17.5, marginTop: 4 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   cell: {
     width: '48%', flexDirection: 'row', alignItems: 'center', gap: 10,

@@ -28,24 +28,63 @@
 // El resultado práctico: una foto torcida y con reflejos se convierte en una
 // MRZ exacta, o en un «no se pudo leer, inténtalo otra vez» honesto.
 
+import { NativeModules } from 'react-native';
+
 const CARGA = { modulo: null, intentado: false };
 
 /**
  * ML Kit se carga a la primera y en un try: si el binario no lo trae —Expo Go,
  * o un APK viejo— la pantalla tiene que seguir funcionando a mano en vez de
  * reventar al abrirse.
+ *
+ * PERO EL TRY NO ALCANZA, Y ESE ERA EL FALLO.
+ *
+ * En Expo Go el require() NO lanza. El paquete está escrito al estilo viejo de
+ * React Native: cuando `NativeModules.TextRecognition` falta, en vez de fallar
+ * deja un Proxy que solo lanza al llamar a un método. Así que `m.default`
+ * seguía siendo un objeto de verdad, con su `recognize` puesto, y
+ * `puedeEscanear()` contestaba que SÍ.
+ *
+ * Lo que se veía: salían los dos botones de escáner; el bucle automático
+ * gastaba sus quince fotos sin decir palabra —cada `recognize` lanzaba y el
+ * catch de leerDeFoto lo convertía en un «no se encontró» más—; y el escáner
+ * manual acababa diciendo «prueba con más luz» a alguien cuyo problema no era
+ * la luz sino que ahí no hay lector. Un cuarto de hora de fotos para nada.
+ *
+ * Lo único que distingue de verdad un caso del otro es el módulo nativo, así
+ * que es lo que se comprueba. No es una heurística: es exactamente la misma
+ * condición que usa el propio paquete para decidir si devuelve el módulo o el
+ * Proxy de mentira, o sea que no puede dar un falso negativo en un binario
+ * donde el escáner sí funcionaría.
  */
 function reconocedor() {
   if (!CARGA.intentado) {
     CARGA.intentado = true;
     try {
       const m = require('@react-native-ml-kit/text-recognition');
-      CARGA.modulo = m?.default || m;
+      CARGA.modulo = NativeModules?.TextRecognition ? (m?.default || m) : null;
     } catch (e) {
       CARGA.modulo = null;
     }
   }
   return CARGA.modulo;
+}
+
+/**
+ * Segunda línea de defensa: reconocer el error de enlazado cuando ya se llamó.
+ *
+ * La comprobación de arriba cubre el caso conocido, pero un binario a medio
+ * hacer podría registrar el módulo y fallar igual al usarlo. Si eso pasa se
+ * apaga el lector para el resto de la sesión —quince fotos dando el mismo
+ * error de enlazado no ayudan a nadie— y quien llamó se entera con el motivo
+ * 'sin-lector', que es el que la pantalla sabe traducir a «esta versión de la
+ * app no puede escanear» en vez de a «prueba con más luz».
+ */
+function sinEnlace(e) {
+  const msg = String(e?.message || e || '');
+  if (!/seem to be linked|NativeModule|native module/i.test(msg)) return false;
+  CARGA.modulo = null;
+  return true;
 }
 
 export const puedeEscanear = () => Boolean(reconocedor());
@@ -325,6 +364,10 @@ export async function leerTexto(uri) {
       .filter(Boolean).join('\n');
     return (porBloques || r?.text || '').slice(0, 4000);
   } catch (e) {
+    // Devuelve '' igual —el anverso no tiene motivos que contar, solo texto o
+    // nada—, pero si el fallo fue de enlazado el lector queda apagado y la
+    // siguiente foto ni se toma: `puedeEscanear()` ya dice que no.
+    sinEnlace(e);
     return '';
   }
 }
@@ -560,6 +603,10 @@ export async function leerDeFoto(uri) {
       cuadran: yaCuadra,
     };
   } catch (e) {
+    // Un fallo de enlazado no es «no se pudo leer»: es «aquí no hay lector».
+    // Se distingue porque la pantalla dice cosas distintas — repetir la foto
+    // frente a escribirlo a mano.
+    if (sinEnlace(e)) return { ok: false, motivo: 'sin-lector' };
     return { ok: false, motivo: 'error' };
   }
 }

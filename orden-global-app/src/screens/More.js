@@ -241,7 +241,17 @@ export function Settings({ nav }) {
           <ListRow icon="finger-print" title={t('set.pk')} onPress={() => nav.go('privatekey')} />
           <ListRow icon="time" title={t('sess.title')} sub={t('sess.subtitle')} onPress={() => nav.go('sessions')} />
           {/* El interruptor enciende de verdad los avisos: pide permiso y
-              registra la tarea que revisa la red con la app cerrada. */}
+              registra la tarea que revisa la red con la app cerrada.
+
+              En Expo Go va por su propia rama, y no por elegancia: allí no
+              hay expo-notifications que cargar (ver la cabecera de
+              notify.js), así que no hay permiso que pedir. Con la rama común
+              el interruptor se caía solo —activarAvisos devolvía false sin
+              haber preguntado nada— y encima acusaba a la persona con «permite
+              las notificaciones en los ajustes del teléfono», que además no
+              arreglaba nada porque el permiso nunca fue el problema. Ahora la
+              preferencia se guarda igual, para que ya esté puesta el día que
+              se instale el APK, y el mensaje dice lo que pasa de verdad. */}
           <ListRow
             icon="notifications"
             title={t('set.notifs')}
@@ -252,14 +262,19 @@ export function Settings({ nav }) {
                 value={notif}
                 onValueChange={async (v) => {
                   setNotif(v);
-                  if (v) {
-                    const ok = await activarAvisos(acc.email);
-                    if (!ok) { setNotif(false); toast(t('set.notifsDenied')); return; }
-                    toast(t('set.notifsOn'));
-                  } else {
+                  if (!v) {
                     await desactivarAvisos();
                     toast(t('set.notifsOff'));
+                    return;
                   }
+                  if (enExpoGo) {
+                    await activarAvisos(acc.email);   // guarda la preferencia; en Expo Go no hay más que hacer
+                    toast(t('set.notifsGoOn'));
+                    return;
+                  }
+                  const ok = await activarAvisos(acc.email);
+                  if (!ok) { setNotif(false); toast(t('set.notifsDenied')); return; }
+                  toast(t('set.notifsOn'));
                 }}
               />
             }

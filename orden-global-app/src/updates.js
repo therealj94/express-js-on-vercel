@@ -24,15 +24,30 @@ import * as Updates from 'expo-updates';
 // que compilar un APK nuevo.
 // ============================================================
 
-/** ¿Este binario puede recibir updates por aire? */
-export const puedeActualizar = () => !!Updates.isEnabled;
+/**
+ * ¿Este binario puede recibir updates por aire?
+ *
+ * En Expo Go y en desarrollo devuelve false, y con eso el efecto de App.js
+ * que consulta actualizaciones se corta en su primera línea:
+ * checkForUpdateAsync() no llega a llamarse nunca y el banner de «hay una
+ * versión nueva» no aparece — que es lo que debe pasar, porque ahí el update
+ * llega por el dev server.
+ *
+ * El try no es adorno aunque expo-updates viaje dentro de Expo Go: esta
+ * función se llama en el arranque de la raíz, y es el sitio donde un módulo
+ * que no responda dejaría la app sin pintar nada. Ante la duda, «no hay
+ * updates»: perder el banner es un inconveniente, no arrancar es una app rota.
+ */
+export const puedeActualizar = () => {
+  try { return !!Updates.isEnabled; } catch (e) { return false; }
+};
 
 /**
  * Busca y descarga una actualización. Devuelve true solo si quedó una lista
  * para aplicarse. Nunca lanza: un fallo acá no debe romper el arranque.
  */
 export async function buscarActualizacion() {
-  if (!Updates.isEnabled) return false;
+  if (!puedeActualizar()) return false;
   try {
     const r = await Updates.checkForUpdateAsync();
     if (!r?.isAvailable) return false;

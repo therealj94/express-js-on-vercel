@@ -1,12 +1,14 @@
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
+import { enExpoGo } from './entorno';
 
-// ¿Estamos dentro de Expo Go? Se calcula acá arriba porque de ello depende
-// si se puede cargar expo-notifications siquiera (ver justo debajo).
-export const enExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+// Se reexporta porque media app lo pide desde aquí (More.js, entre otras) y
+// mover el cálculo a entorno.js no tiene por qué obligar a nadie a cambiar
+// su import. Quien no necesite notificaciones que lo pida a './entorno'
+// directamente: así no arrastra expo-task-manager solo para saber dónde está.
+export { enExpoGo };
 
 // expo-notifications NO se importa de forma estática, y esto es importante:
 // su index.js reexporta desde `DevicePushTokenAutoRegistration.fx` — el
@@ -17,8 +19,17 @@ export const enExpoGo = Constants.executionEnvironment === ExecutionEnvironment.
 // sin haber llamado a ninguna función de notificaciones.
 //
 // Cargándolo con require() y solo fuera de Expo Go, el módulo nunca se
-// evalúa allí y la app abre normal. Las notificaciones no funcionan en Expo
-// Go de todas formas — eso ya estaba asumido y documentado.
+// evalúa allí y la app abre normal.
+//
+// EL PRECIO, QUE NO ES PEQUEÑO Y HAY QUE DECIRLO: este guard apaga
+// expo-notifications ENTERO, no solo el push remoto. En Expo Go las
+// notificaciones LOCALES sí funcionarían —las del dinero entrante y las de
+// AURO CHAT lo son— pero aquí quedan apagadas junto con el resto, porque no
+// hay forma de cargar media librería. No hay arreglo barato: mientras el
+// índice lance al importarse, el guard se queda. Lo que NO se hace es
+// disimularlo: Ajustes dice, con todas sus letras, que en Expo Go no llega
+// ningún aviso del teléfono — ni de dinero ni de chat, ni siquiera local
+// (ver `set.notifsGo` en i18n.js y la tarjeta de avisos de AjustesAuro).
 let _N;
 function notif() {
   if (_N !== undefined) return _N;
@@ -230,10 +241,13 @@ export async function marcarVisto(email, transfers) {
 // La tarea se define en el ámbito del módulo (requisito de expo-task-manager:
 // tiene que existir antes de que el sistema despierte la app). Importa
 // apiPortfolio de forma diferida para no arrastrar toda la app al arrancar.
-// En Expo Go no hay trabajo en segundo plano: los módulos nativos que lo
-// hacen no vienen dentro. Registrar la tarea allí lanza un error, así que se
-// detecta el entorno y se omite. (`enExpoGo` se declara arriba del todo,
-// porque de él depende si se puede cargar expo-notifications siquiera.)
+// En Expo Go la tarea NI SE DEFINE, y conviene entender que eso deja el
+// segundo plano muerto por partida doble: aunque el sistema despertara la
+// app, `notif()` es null allí y no habría con qué lanzar el aviso. O sea que
+// en la vista previa no hay aviso de dinero con la app cerrada, punto. Con
+// la app ABIERTA sí se entera: watchIncoming() sigue consultando la red cada
+// 25 s y App.js lo enseña como toast dentro de la app — que es un toast, no
+// una notificación del teléfono, y así se dice en Ajustes.
 if (!enExpoGo) {
   TaskManager.defineTask(TASK, async () => {
     try {
@@ -255,11 +269,29 @@ if (!enExpoGo) {
 
 /** Enciende los avisos para esta cuenta (permiso + tarea en segundo plano). */
 export async function activarAvisos(email) {
+  // Expo Go sale ANTES de pedir permiso, y el orden es el arreglo.
+  //
+  // Estaba al revés y por eso el interruptor de Ajustes se caía solo: en Expo
+  // Go `notif()` es null, así que pedirPermiso() devolvía false SIN haber
+  // preguntado nada, activarAvisos() se iba en la línea siguiente y More.js
+  // leía ese false como «lo negaste» — devolvía el interruptor a apagado y
+  // mostraba «permite las notificaciones en los ajustes del teléfono». La
+  // persona no había negado nada, y ningún ajuste del teléfono lo arreglaba.
+  //
+  // Aquí no hay permiso que pedir ni tarea que registrar. Lo único real es
+  // dejar la preferencia guardada para cuando la app corra en el APK, así
+  // que es lo único que se hace. Que en Expo Go no llegue NINGÚN aviso del
+  // sistema —tampoco los locales— se dice en Ajustes; no se disimula acá
+  // devolviendo un true a secas y que el usuario lo descubra esperando.
+  if (enExpoGo) {
+    await AsyncStorage.setItem(WATCH_EMAIL, (email || '').toLowerCase()).catch(() => {});
+    await AsyncStorage.setItem(ENABLED, '1').catch(() => {});
+    return true;
+  }
   const ok = await pedirPermiso();
   if (!ok) return false;
   await AsyncStorage.setItem(WATCH_EMAIL, (email || '').toLowerCase()).catch(() => {});
   await AsyncStorage.setItem(ENABLED, '1').catch(() => {});
-  if (enExpoGo) return true; // en Expo Go solo hay avisos con la app abierta
   try {
     const ya = await TaskManager.isTaskRegisteredAsync(TASK);
     // minimumInterval va en MINUTOS (antes, en background-fetch, eran segundos).
