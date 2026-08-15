@@ -120,7 +120,11 @@ const TXT = {
 // nuestro set de iconos es SVG propio y no tiene esos quince dibujos, así que
 // el rubro se distingue por su emoji — se lee igual de rápido y no depende de
 // ninguna fuente que pueda no cargar.
-const RUBROS = [
+// Se exportan (RUBROS, PAISES, DIAS, leerFicha) porque el panel del negocio y
+// la ficha pública tienen que leer EXACTAMENTE la misma ficha con las mismas
+// etiquetas. Duplicar la lista de países o el orden de los días haría que la
+// ficha guardada aquí se enseñara allá con otro nombre de ciudad.
+export const RUBROS = [
   { slug: 'restaurantes', es: 'Restaurantes', en: 'Restaurants', ico: '🍽' },
   { slug: 'cafeterias', es: 'Cafeterías', en: 'Coffee shops', ico: '☕️' },
   { slug: 'hoteles', es: 'Hoteles y hospedaje', en: 'Hotels & lodging', ico: '🛏' },
@@ -143,7 +147,7 @@ const RUBROS = [
 // lista y no la de `paises.js` (los 249 códigos ISO del KYC) porque aquella
 // no trae ciudades, y una ficha de comercio sin ciudad no sirve para que la
 // encuentren.
-const PAISES = [
+export const PAISES = [
   { slug: 'honduras', label: 'Honduras', bandera: '🇭🇳', ciudades: [
     { slug: 'tegucigalpa', label: 'Tegucigalpa', lat: 14.0723, lng: -87.1921 },
     { slug: 'san-pedro-sula', label: 'San Pedro Sula', lat: 15.5049, lng: -88.0253 },
@@ -231,7 +235,7 @@ const PAISES = [
   ] },
 ];
 
-const DIAS = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom'];
+export const DIAS = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom'];
 // El horario que el original traía por defecto: la semana comercial de la
 // región, con el domingo cerrado. Se rellena así para que nadie tenga que
 // teclear catorce horas antes de poder registrarse.
@@ -245,14 +249,14 @@ const HORARIO_BASE = {
   dom: { abre: '00:00', cierra: '00:00', cerrado: true },
 };
 
-const LLAVE = 'og.negocio';
+export const LLAVE = 'og.negocio';
 // La descripción se corta a 400 caracteres: SecureStore avisa (y en Android
 // puede fallar) cuando un valor pasa de unos 2 KB, y la ficha entera tiene
 // que caber ahí. 400 alcanzan de sobra para contar a qué se dedica el
 // negocio, y así el registro nunca se pierde por largo.
 const TOPE_DESC = 400;
 
-async function leerFicha() {
+export async function leerFicha() {
   try {
     const crudo = await SecureStore.getItemAsync(LLAVE);
     return crudo ? JSON.parse(crudo) : null;
