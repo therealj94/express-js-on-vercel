@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, Pressable, TextInput, Modal, ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { View, Text, Pressable, TextInput, Modal, ActivityIndicator, StyleSheet } from 'react-native';
+import { useTeclado } from './og/Teclado';
 import { Icon } from './icons';
 import { C } from './theme';
 import { Button3D, hap } from './ui';
@@ -117,17 +118,24 @@ export default function PedirClave({ visible, titulo, subtitulo, ctaTexto, onCan
   }, [visible]);
 
   const mostrandoBio = activo && !modoManual;
+  // La altura que anuncia el propio teclado: es el único dato fiable dentro
+  // de un Modal en Android (ver el comentario de abajo).
+  const tec = useTeclado();
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
-      {/* La hoja vive pegada abajo, justo donde sale el teclado: sin esto el
-          campo de la contraseña quedaba tapado y se escribía a ciegas. */}
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      {/* EL TECLADO TAPABA LA CONTRASEÑA, y se firmaba a ciegas.
+          Aquí vivía un KeyboardAvoidingView con behavior 'height' en Android.
+          No funciona DENTRO de un Modal: el modal es una ventana aparte del
+          sistema, no la redimensiona el adjustResize de la actividad, y
+          'height' mide una pantalla que para él nunca encoge. Da igual lo
+          bien puesto que esté: no se entera de que el teclado subió.
+          Se sustituye por la altura REAL que anuncia el propio teclado
+          (useTeclado escucha keyboardDidShow) empujando la hoja hacia arriba
+          exactamente eso. Funciona igual en modal y fuera de él. */}
+      <View style={{ flex: 1 }}>
       <Pressable style={st.bg} onPress={yendo ? undefined : onCancel}>
-        <Pressable style={st.sheet} onPress={() => {}}>
+        <Pressable style={[st.sheet, { paddingBottom: 28 + tec.alto }]} onPress={() => {}}>
           <View style={st.grab} />
           <Text style={st.titulo}>{titulo}</Text>
           <Text style={st.sub}>{subtitulo || t('clave.por')}</Text>
@@ -221,7 +229,7 @@ export default function PedirClave({ visible, titulo, subtitulo, ctaTexto, onCan
           </Pressable>
         </Pressable>
       </Pressable>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

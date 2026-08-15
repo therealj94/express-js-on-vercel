@@ -8,11 +8,13 @@ import { Header, Button3D, hap, useToast, useAccount } from '../ui';
 import { listContacts, addContact, removeContact, toggleFav, isAddress, parseAddress } from '../addressBook';
 import { ScanModal } from './Scan';
 import { useT } from '../i18n';
+import { useTeclado } from '../og/Teclado';
 
 const short = (a) => (a && a.length > 14 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a || '');
 
 /** Libreta de direcciones: contactos guardados para enviar más rápido. */
 export default function Contacts({ nav, params }) {
+  const tec = useTeclado();   // altura real del teclado: dentro de un Modal es el único dato fiable
   const t = useT();
   const toast = useToast();
   const { account } = useAccount();
@@ -118,9 +120,11 @@ export default function Contacts({ nav, params }) {
 
       {/* alta / edición */}
       <Modal visible={!!edit} transparent animationType="slide" onRequestClose={() => setEdit(null)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        {/* La altura real del teclado: dentro de un Modal, Android ignora
+            KeyboardAvoidingView y el campo quedaba tapado. */}
+        <View style={{ flex: 1 }}>
         <Pressable style={st.sheetBg} onPress={() => setEdit(null)}>
-          <Pressable style={st.sheet} onPress={() => {}}>
+          <Pressable style={[st.sheet, { paddingBottom: 34 + tec.alto }]} onPress={() => {}}>
             <View style={st.grab} />
             <Text style={st.sheetT}>{t('con.newT')}</Text>
 
@@ -164,7 +168,7 @@ export default function Contacts({ nav, params }) {
             <Button3D title={t('prof.save')} icon="checkmark" onPress={guardar} style={{ marginTop: 16 }} />
           </Pressable>
         </Pressable>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* Cámara sobre la ficha: al leer el QR rellena la dirección sin perder el nombre. */}

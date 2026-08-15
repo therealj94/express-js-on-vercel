@@ -4,6 +4,7 @@ import { PantallaConTeclado } from '../og/Teclado';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
 import { Icon } from '../icons';
+import { useTeclado } from '../og/Teclado';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { C } from '../theme';
@@ -608,11 +609,15 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
   const enviando = fase > 0;
   const destino = data.contacto || `${data.to.slice(0, 12)}…${data.to.slice(-10)}`;
 
+  const tec = useTeclado();   // el teclado dice su altura: dentro de un Modal es el único dato fiable
   return (
     <Modal visible transparent animationType="slide" onRequestClose={enviando ? () => {} : onCancel}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.revBg}>
+      {/* Sin KeyboardAvoidingView: dentro de un Modal, Android no lo
+          redimensiona y el teclado tapaba lo que se escribe. Se empuja con
+          la altura real que anuncia el teclado. */}
+      <View style={styles.revBg}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <Animated.View style={[styles.revCard, { transform: [{ translateX: shake }] }]}>
+        <Animated.View style={[styles.revCard, { paddingBottom: 32 + tec.alto }, { transform: [{ translateX: shake }] }]}>
           <View style={styles.grab} />
           <Text style={styles.revT}>{enviando ? t('send.sendingT') : t('send.reviewT')}</Text>
 
@@ -757,7 +762,7 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
           )}
         </Animated.View>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

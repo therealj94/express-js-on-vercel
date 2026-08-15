@@ -23,7 +23,7 @@ import {
   Dimensions, PanResponder, ActivityIndicator, KeyboardAvoidingView, Platform,
   Keyboard,
 } from 'react-native';
-import { COMPORTAMIENTO } from './Teclado';
+import { useTeclado } from './Teclado';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C, G } from '../theme';
 import { useLang } from '../i18n';
@@ -285,6 +285,7 @@ function Onda({ activa, vol }) {
 }
 
 export default function FlotanteOG({ nav }) {
+  const tec = useTeclado();   // altura real del teclado: dentro de un Modal es el único dato fiable
   const { lang } = useLang();
   const t = TXT[lang] || TXT.es;
   const [visible, setVisible] = useState(false);
@@ -607,11 +608,13 @@ export default function FlotanteOG({ nav }) {
       <Modal visible={visible} transparent animationType="none" onRequestClose={cerrar}>
         {/* `undefined` en Android dejaba esto MUERTO y la hoja del asistente
             se quedaba debajo del teclado. Ver src/og/Teclado.js. */}
-        <KeyboardAvoidingView behavior={COMPORTAMIENTO} style={{ flex: 1 }}>
+        {/* La altura real del teclado: dentro de un Modal, Android ignora
+            KeyboardAvoidingView y la caja de escribir quedaba tapada. */}
+        <View style={{ flex: 1 }}>
           <Animated.View style={[st.velo, { opacity: sube }]}>
             <Pressable style={{ flex: 1 }} onPress={cerrar} />
           </Animated.View>
-          <View style={st.abajo} pointerEvents="box-none">
+          <View style={[st.abajo, { bottom: tec.alto }]} pointerEvents="box-none">
             <Animated.View style={[st.hoja, {
               transform: [{ translateY: sube.interpolate({ inputRange: [0, 1], outputRange: [Math.min(alto, 520), 0] }) }],
             }]}>
@@ -721,7 +724,7 @@ export default function FlotanteOG({ nav }) {
               )}
             </Animated.View>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </>
   );

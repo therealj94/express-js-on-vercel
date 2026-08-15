@@ -8,6 +8,7 @@ import { apiPortfolio, ONCHAIN_TOKENS, rpcBalance, erc20Balance, RPC_FALLBACK, w
 import { money, qtyFmt, tokensFromBalances } from '../data';
 import { ScanModal } from './Scan';
 import { useT } from '../i18n';
+import { useTeclado } from '../og/Teclado';
 
 const short = (a) => (a && a.length > 14 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a || '');
 
@@ -32,6 +33,7 @@ async function readAddress(address) {
 }
 
 export default function WatchOnly({ nav }) {
+  const tec = useTeclado();   // altura real del teclado: dentro de un Modal es el único dato fiable
   const t = useT();
   const toast = useToast();
   const [list, setList] = useState([]);
@@ -142,9 +144,11 @@ export default function WatchOnly({ nav }) {
       </ScrollView>
 
       <Modal visible={!!edit} transparent animationType="slide" onRequestClose={() => setEdit(null)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        {/* La altura real del teclado: dentro de un Modal, Android ignora
+            KeyboardAvoidingView y el campo quedaba tapado. */}
+        <View style={{ flex: 1 }}>
           <Pressable style={st.sheetBg} onPress={() => setEdit(null)}>
-            <Pressable style={st.sheet} onPress={() => {}}>
+            <Pressable style={[st.sheet, { paddingBottom: 34 + tec.alto }]} onPress={() => {}}>
               <View style={st.grab} />
               <Text style={st.sheetT}>{t('watch.new')}</Text>
 
@@ -176,7 +180,7 @@ export default function WatchOnly({ nav }) {
               <Button3D title={t('prof.save')} icon="checkmark" onPress={guardar} style={{ marginTop: 16 }} />
             </Pressable>
           </Pressable>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       <ScanModal

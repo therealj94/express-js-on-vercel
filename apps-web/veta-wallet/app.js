@@ -1273,6 +1273,11 @@ const VETA = (() => {
     return 1;
   }
 
+  /* Si el expediente sigue en blanco. Es la condicion para recolocar el punto de
+     partida o para sacar a alguien del tramite: mientras no haya escrito ni
+     fotografiado nada no se le quita nada de las manos. */
+  const intacta = () => sol && !sol.nombre && !sol.frente && !sol.reverso && !sol.mrz && !sol.selfie;
+
   const TIPOS_DOC = [['pasaporte', 'ver.tdPas'], ['dni', 'ver.tdDni'], ['licencia', 'ver.tdLic'], ['residencia', 'ver.tdRes']];
   // El volumen se manda como una cifra porque Genesis decide con ella si la
   // diligencia es simplificada o completa (su umbral son 10.000 USD). Se manda
@@ -1286,6 +1291,14 @@ const VETA = (() => {
   // ── la vista ──────────────────────────────────────────────────────────────
 
   function verificar() {
+    /* Ya verificada: no se la vuelve a pasear por los tres pasos.
+       La tarjeta esconde el boton cuando el tramite esta cerrado, pero a esta
+       pantalla tambien se entra por /#verificar —el enlace de la pagina publica
+       de Genesis ID, que no sabe quien lo pulsa—. Sin este corte, a quien ya
+       tiene su GID se le pedian otra vez el documento y la selfie, y al mandarlos
+       se reabre un expediente que cumplimiento ya cerro. Se corta solo al ENTRAR
+       (`!sol`): a quien esta a mitad del tramite no se lo saca de la pantalla. */
+    if (!sol && esVerificada()) return vIdentidad();
     if (!sol) { sol = nuevaSolicitud(); sol.paso = pasoDeEntrada(); sol.colocado = Boolean(identidad); }
     /* Quien llega por /#verificar entra antes de que conteste /genesis/estado, y
        en ese instante todavia no se sabe por que paso le toca empezar. Cuando la
@@ -1295,7 +1308,14 @@ const VETA = (() => {
        al paso 1 a corregir un nombre mal escrito. */
     if (!sol.colocado && identidad) {
       sol.colocado = true;
-      if (sol.paso === 1 && !sol.nombre && !sol.frente && !sol.mrz && !sol.selfie) sol.paso = pasoDeEntrada();
+      /* Y si lo que llega es que ya estaba verificada, se sale del tramite: por
+         /#verificar se entra antes de saberlo, y el corte de arriba no pudo
+         mirarlo porque `identidad` todavia era null. Solo con el expediente
+         intacto — nadie escribio ni fotografio nada. */
+      if (intacta()) {
+        if (esVerificada()) { sol = null; return vIdentidad(); }
+        if (sol.paso === 1) sol.paso = pasoDeEntrada();
+      }
     }
     if (sol.enviando) return verEnviando();
     if (sol.paso === 4) return verFinal();
@@ -1622,10 +1642,25 @@ const VETA = (() => {
      camara directamente y en el escritorio el explorador de archivos, y funciona
      en todos los navegadores. Un visor propio con getUserMedia se ve mejor y se
      rompe en la mitad de los iPhone: en una pantalla que hay que pasar UNA vez
-     en la vida, funcionar gana. */
+     en la vida, funcionar gana.
+
+     `capture` SOLO va en la selfie, y por dos motivos distintos.
+
+     En el DOCUMENTO estorba. En Safari de iPhone —que es donde estaba Jose— la
+     sola presencia del atributo abre la camara y QUITA la opcion de elegir un
+     archivo: no aparece la hoja de Fototeca / Hacer foto / Elegir archivo, se va
+     derecho al visor. Eso deja fuera a quien ya le tiene la foto o el escaneo
+     guardado, y encima debajo del boton decia «o elegir un archivo», que en ese
+     navegador era falso. Sin el atributo iOS ofrece las tres opciones —la camara
+     entre ellas— y el texto vuelve a ser cierto.
+
+     En la SELFIE se queda a proposito: tiene que ser una foto de ahora. Poder
+     sacarla de la galeria es poder mandar la cara de otra persona, y esa foto
+     existe unicamente para probar que sos vos. Por eso ahi tampoco se ofrece
+     elegir un archivo: no seria un atajo, seria el agujero. */
   const CAPTURAS = {
-    frente: { titulo: 'ver.frente', boton: 'ver.tomar', lado: 'environment', nota: 'ver.frenteViaja', marco: '' },
-    reverso: { titulo: 'ver.reverso', boton: 'ver.tomar', lado: 'environment', nota: 'ver.reversoQueda', marco: '' },
+    frente: { titulo: 'ver.frente', boton: 'ver.tomar', lado: null, nota: 'ver.frenteViaja', marco: '' },
+    reverso: { titulo: 'ver.reverso', boton: 'ver.tomar', lado: null, nota: 'ver.reversoQueda', marco: '' },
     // Sin titulo propio: el de la seccion ya dice «Tu selfie» dos centimetros
     // mas arriba, y repetirlo no informa de nada.
     selfie: { titulo: '', boton: 'ver.caraBtn', lado: 'user', nota: '', marco: 'cara' },
@@ -1644,13 +1679,13 @@ const VETA = (() => {
       </div>`
     : `
       <label class="capt-caja">
-        <input type="file" accept="image/*" capture="${c.lado}"
+        <input type="file" accept="image/*"${c.lado ? ` capture="${c.lado}"` : ''}
                onchange="VETA.verFoto('${cual}', this)">
         <span class="capt-dentro">
           <span class="capt-marco ${c.marco}">
             <svg viewBox="0 0 24 24">${icono}</svg>
             <b>${t(c.boton)}</b>
-            <small>${t('ver.archivo')}</small>
+            ${c.lado ? '' : `<small>${t('ver.archivo')}</small>`}
           </span>
         </span>
       </label>`}
