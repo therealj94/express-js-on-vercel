@@ -6,6 +6,7 @@ import { Icon } from './icons';
 import Svg, { Rect, Line, Path, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { C, G } from './theme';
+import { useCampoAuto } from './og/Teclado';
 
 export const LOGO = require('../assets/logo.png');
 // Logo corporativo de la empresa dueña del ecosistema (marca en el pie).
@@ -154,11 +155,24 @@ export function Header({ title, sub, onBack, right }) {
   );
 }
 
-export function Field({ label, ...props }) {
+// `Field` es el campo compartido de media app —Mi Negocio, Cobro, la ficha
+// del comercio, los ajustes—. Por eso el arreglo del teclado se enchufa AQUÍ
+// y no en cada pantalla: al enfocarlo avisa por contexto a la
+// <PantallaConTeclado> que lo contenga y ésta lo sube por encima del teclado.
+// Fuera de una pantalla así, `useCampoAuto` devuelve un onFocus vacío y el
+// campo se comporta exactamente como antes.
+export function Field({ label, onFocus, ...props }) {
+  const campo = useCampoAuto();
   return (
     <View style={{ marginBottom: 15 }}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <TextInput placeholderTextColor="#6f938f" style={styles.input} {...props} />
+      <TextInput
+        placeholderTextColor="#6f938f"
+        style={styles.input}
+        {...props}
+        ref={campo.ref}
+        onFocus={(e) => { campo.onFocus(); if (onFocus) onFocus(e); }}
+      />
     </View>
   );
 }

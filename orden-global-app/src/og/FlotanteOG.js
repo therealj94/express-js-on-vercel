@@ -23,6 +23,7 @@ import {
   Dimensions, PanResponder, ActivityIndicator, KeyboardAvoidingView, Platform,
   Keyboard,
 } from 'react-native';
+import { COMPORTAMIENTO } from './Teclado';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { C, G } from '../theme';
@@ -490,7 +491,9 @@ export default function FlotanteOG({ nav }) {
 
       {/* la hoja de los estados */}
       <Modal visible={visible} transparent animationType="none" onRequestClose={cerrar}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        {/* `undefined` en Android dejaba esto MUERTO y la hoja del asistente
+            se quedaba debajo del teclado. Ver src/og/Teclado.js. */}
+        <KeyboardAvoidingView behavior={COMPORTAMIENTO} style={{ flex: 1 }}>
           <Animated.View style={[st.velo, { opacity: sube }]}>
             <Pressable style={{ flex: 1 }} onPress={cerrar} />
           </Animated.View>

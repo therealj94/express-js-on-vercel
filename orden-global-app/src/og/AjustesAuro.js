@@ -8,8 +8,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, Image, Modal,
-  ActivityIndicator, Share, StyleSheet, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Share, StyleSheet,
 } from 'react-native';
+import { PantallaConTeclado, CuerpoDesplazable } from './Teclado';
 import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
 import * as ImagePicker from 'expo-image-picker';
@@ -159,9 +160,10 @@ export default function AjustesAuro({ nav }) {
 
   const cambiado = !!nombre.trim() && nombre.trim() !== original;
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={st.screen}>
+    // La cabecera no se mueve y el cuerpo cede el alto que ocupa el teclado.
+    <PantallaConTeclado desplaza={false} style={st.screen}>
       <Header title={t.titulo} sub={t.sub} onBack={nav.back} />
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 30 }} keyboardShouldPersistTaps="handled">
+      <CuerpoDesplazable contentContainerStyle={{ padding: 16, paddingBottom: 30 }}>
 
         {/* mi perfil */}
         <View style={st.tarjeta}>
@@ -222,7 +224,7 @@ export default function AjustesAuro({ nav }) {
           <Text style={st.seccion}>{t.telTit}</Text>
           <Text style={[st.tarTxt, { marginBottom: 0 }]}>{t.telTxt}</Text>
         </View>
-      </ScrollView>
+      </CuerpoDesplazable>
 
       <Modal visible={preguntar} transparent animationType="fade" onRequestClose={() => setPreguntar(false)}>
         <View style={st.velo}>
@@ -240,7 +242,7 @@ export default function AjustesAuro({ nav }) {
           </View>
         </View>
       </Modal>
-    </KeyboardAvoidingView>
+    </PantallaConTeclado>
   );
 }
 

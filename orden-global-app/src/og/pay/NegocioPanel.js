@@ -38,6 +38,7 @@ import {
   View, Text, TextInput, Pressable, ScrollView, StyleSheet, Modal, Animated,
   RefreshControl, BackHandler, Platform,
 } from 'react-native';
+import { PantallaConTeclado, CuerpoDesplazable, useCampoAuto } from '../Teclado';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as SecureStore from 'expo-secure-store';
 import { C, G } from '../../theme';
@@ -49,6 +50,7 @@ import { apiPortfolio } from '../../api';
 import { upsertApiAccount } from '../../accounts';
 import { listContacts, nameFor } from '../../addressBook';
 import { leerFicha, PAISES, RUBROS } from './MiNegocio';
+import { useCambio, precioOrigenDe } from '../cambio';
 
 const TXT = {
   es: {
@@ -123,6 +125,11 @@ const TXT = {
 // unidades por dólar y los bancos de cada país. Se copia tal cual porque es
 // SU dato de producto; los países que su tabla no cubría caen en el envío
 // internacional, igual que allá.
+// El `porUsd` de esta tabla es de referencia y envejece: el 24.75 de Honduras
+// que venía en el original ya se quedó casi dos lempiras corto contra el
+// mercado. Para HNL —la moneda de la casa— el número se reemplaza en vivo con
+// el cambio del día (cambio.js) y se dice de cuándo es; los demás países
+// siguen con su valor de tabla mientras nadie pida lo mismo para ellos.
 const PAGOS = {
   honduras: { moneda: 'HNL', simbolo: 'L', porUsd: 24.75, bancos: ['Banco Atlántida', 'BAC Credomatic', 'Banpaís', 'Ficohsa', 'Banco de Occidente'] },
   guatemala: { moneda: 'GTQ', simbolo: 'Q', porUsd: 7.75, bancos: ['Banco Industrial', 'Banrural', 'BAM', 'G&T Continental'] },
@@ -275,7 +282,11 @@ export default function NegocioPanel({ nav }) {
     [account?.balances],
   );
   const saldo = origen ? origen.qty : 0;
-  const precio = origen && origen.hasPrice ? origen.price : null;
+  // Mismo ayudante que las otras pantallas de MyTokenPay: las cuatro tienen
+  // que convertir con el MISMO precio o el comercio ve cifras que no cuadran
+  // entre sí. (Se conserva `origen` para el saldo, que sale de tokensFromBalances.)
+  const precio = useMemo(() => precioOrigenDe(account), [account]);
+  const cambio = useCambio(lang);
 
   const transfers = account?.transfers;
   const entrantes = useMemo(() => (transfers || [])
@@ -291,7 +302,13 @@ export default function NegocioPanel({ nav }) {
   const enOrigen = entrantes.filter(esOrigen);
   const ticket = enOrigen.length ? enOrigen.reduce((a, x) => a + (Number(x.value) || 0), 0) / enOrigen.length : 0;
 
-  const pago = pagoDe(ficha?.pais, t.sinBancos);
+  // Para Honduras el "por dólar" de la tabla se cambia por el del día. Se
+  // hace aquí y no dentro de PAGOS para que la tabla siga siendo el dato
+  // estático del original y esta línea sea el único sitio donde el lempira
+  // se vuelve vivo — así se ve de un vistazo qué se está pisando.
+  const pagoTabla = pagoDe(ficha?.pais, t.sinBancos);
+  const hnlVivo = pagoTabla.moneda === 'HNL' && cambio.listo;
+  const pago = hnlVivo ? { ...pagoTabla, porUsd: cambio.hnl } : pagoTabla;
   const aLocal = (o) => (precio == null ? null : Math.round(o * precio * pago.porUsd * 100) / 100);
   const montoNum = parseAmt(monto);
   const montoLocal = aLocal(montoNum);
@@ -363,8 +380,10 @@ export default function NegocioPanel({ nav }) {
     );
   }
 
+    // Cabecera fija y cuerpo desplazable: al enfocar un campo la pantalla
+    // lo sube por encima del teclado (ver src/og/Teclado.js).
   return (
-    <View style={st.screen}>
+    <PantallaConTeclado desplaza={false} style={st.screen}>
       <Header
         title={etapa === 'retiro' ? t.tituloRetiro : t.titulo}
         sub={nombre}
@@ -373,10 +392,8 @@ export default function NegocioPanel({ nav }) {
           ? <IconBtn icon="open-outline" label={t.verFicha} onPress={() => nav.go('pay-negocio-detalle', { id: 'mio' })} />
           : undefined}
       />
-      <ScrollView
+      <CuerpoDesplazable
         contentContainerStyle={st.dentro}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refrescando} tintColor={C.gold} colors={[C.gold]}
@@ -399,6 +416,10 @@ export default function NegocioPanel({ nav }) {
                 </Text>
               </LinearGradient>
               <Text style={st.nota}>{precio == null ? t.sinPrecio : t.saldoNota}</Text>
+              {/* De cuándo es el lempira con el que se pintó ese "≈". Solo
+                  cuando el cambio es el vivo: bajo el 24.75 de tabla sería
+                  mentira poner una fecha de hoy. */}
+              {hnlVivo && cambio.pie ? <Text style={st.pie}>{cambio.pie}</Text> : null}
             </Entrada>
 
             {/* credencial Genesis: la de verdad, no un GEN-… de ejemplo */}
@@ -530,6 +551,7 @@ export default function NegocioPanel({ nav }) {
               <Text style={st.rotuloAlto}>{t.disponible}</Text>
               <Text style={st.dispNum}>{qtyFmt(saldo)} ORIGEN</Text>
               {precio != null ? <Text style={st.dispSub}>≈ {fmtLocal(aLocal(saldo), pago)}</Text> : null}
+              {hnlVivo && cambio.pie ? <Text style={st.pie}>{cambio.pie}</Text> : null}
             </Card>
 
             <View style={{ marginTop: 16 }}>
@@ -541,6 +563,7 @@ export default function NegocioPanel({ nav }) {
                   placeholder="0.00" placeholderTextColor={C.txt3}
                   keyboardType="decimal-pad" style={st.montoInput}
                   accessibilityLabel={t.montoLbl}
+                  ref={campoMonto.ref} onFocus={campoMonto.onFocus}
                 />
                 <Pressable onPress={() => { hap(); setMonto(String(saldo)); setError(null); }}
                   accessibilityRole="button" accessibilityLabel={t.todo} style={st.todo}>
@@ -550,11 +573,14 @@ export default function NegocioPanel({ nav }) {
               {precio == null ? (
                 <Text style={st.nota}>{t.sinPrecio}</Text>
               ) : (
-                <Text style={st.nota}>
-                  {rellena(t.recibiras, { l: fmtLocal(montoLocal || 0, pago) })}
-                  {'  '}
-                  {rellena(t.tasa, { r: fmtLocal(aLocal(1), pago) })}
-                </Text>
+                <>
+                  <Text style={st.nota}>
+                    {rellena(t.recibiras, { l: fmtLocal(montoLocal || 0, pago) })}
+                    {'  '}
+                    {rellena(t.tasa, { r: fmtLocal(aLocal(1), pago) })}
+                  </Text>
+                  {hnlVivo && cambio.pie ? <Text style={st.pie}>{cambio.pie}</Text> : null}
+                </>
               )}
             </View>
 
@@ -571,6 +597,7 @@ export default function NegocioPanel({ nav }) {
                 placeholder={t.cuentaPh} placeholderTextColor={C.txt3}
                 keyboardType="number-pad" style={st.cuentaInput}
                 accessibilityLabel={t.cuentaLbl}
+                ref={campoCuenta.ref} onFocus={campoCuenta.onFocus}
               />
             </View>
 
@@ -614,8 +641,8 @@ export default function NegocioPanel({ nav }) {
             <Button3D title={t.volverBtn} icon="chevron-back" onPress={() => setEtapa('panel')} style={{ marginTop: 16 }} />
           </Entrada>
         ) : null}
-      </ScrollView>
-    </View>
+      </CuerpoDesplazable>
+    </PantallaConTeclado>
   );
 }
 
@@ -634,6 +661,9 @@ const st = StyleSheet.create({
   saldoMon: { fontSize: 15, color: C.gold, fontWeight: '700' },
   saldoSub: { color: C.txt2, fontSize: 12.5, marginTop: 4 },
   nota: { color: C.txt3, fontSize: 11.5, lineHeight: 17.5, marginTop: 10 },
+  // El pie del cambio: discreto pero siempre visible, para que ninguna cifra
+  // en lempiras se lea como un dato sin fecha ni dueño.
+  pie: { color: C.txt3, fontSize: 10, marginTop: 6 },
 
   cred: {
     flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.panel,

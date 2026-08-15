@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, Animated, StyleSheet } from 'react-native';
+import { PantallaConTeclado, CuerpoDesplazable, useCampoAuto } from '../og/Teclado';
 import { Icon } from '../icons';
 import { C } from '../theme';
 import { Header, Button3D, useToast, useAccount, hap } from '../ui';
@@ -28,6 +29,8 @@ const CADA_MS = 4000;
 const ESPERA_MAX_MS = 3 * 60 * 1000;
 
 export default function FundCard({ nav }) {
+  // Se sube por encima del teclado al enfocarlo (ver src/og/Teclado.js).
+  const campoMonto = useCampoAuto();
   const t = useT();
   const toast = useToast();
   const { account } = useAccount();
@@ -158,9 +161,11 @@ export default function FundCard({ nav }) {
   }
 
   return (
-    <View style={{ flex: 1, paddingTop: 6 }}>
+    // Cabecera fija y cuerpo desplazable: al enfocar un campo la pantalla
+    // lo sube por encima del teclado (ver src/og/Teclado.js).
+    <PantallaConTeclado desplaza={false} style={{ flex: 1, paddingTop: 6 }}>
       <Header title={t('fund.title')} onBack={() => nav.back()} />
-      <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+      <CuerpoDesplazable contentContainerStyle={{ padding: 22, paddingBottom: 60 }}>
 
         <Text style={st.intro}>{t('fund.intro')}</Text>
 
@@ -175,6 +180,8 @@ export default function FundCard({ nav }) {
               placeholderTextColor="#3a5c58"
               style={st.montoIn}
               accessibilityLabel={t('fund.cuanto')}
+              ref={campoMonto.ref}
+              onFocus={campoMonto.onFocus}
             />
             <Text style={st.montoSym}>ORIGEN</Text>
           </View>
@@ -204,7 +211,7 @@ export default function FundCard({ nav }) {
 
         <View style={{ height: 18 }} />
         <Button3D title={t('fund.cta')} disabled={!(cantidad > 0) || !suficiente || !precio} onPress={continuar} />
-      </ScrollView>
+      </CuerpoDesplazable>
 
       <PedirClave
         visible={pedir}
@@ -214,7 +221,7 @@ export default function FundCard({ nav }) {
         onCancel={() => setPedir(false)}
         onSubmit={autorizar}
       />
-    </View>
+    </PantallaConTeclado>
   );
 }
 

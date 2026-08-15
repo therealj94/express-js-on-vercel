@@ -3,6 +3,7 @@
 // --tu dirección, el monto--, y firma con su dedo. Un código, un pago.
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView } from 'react-native';
+import { PantallaConTeclado, CuerpoDesplazable, useCampoAuto } from './Teclado';
 import QRCode from 'react-native-qrcode-svg';
 import { C } from '../theme';
 import { Header, useAccount } from '../ui';
@@ -15,6 +16,8 @@ const TXT = {
 };
 
 export default function CobrarOG({ nav }) {
+  // Se sube por encima del teclado al enfocarlo (ver src/og/Teclado.js).
+  const campoMonto = useCampoAuto();
   const { lang } = useLang();
   const t = TXT[lang] || TXT.es;
   const { account } = useAccount();
@@ -22,12 +25,15 @@ export default function CobrarOG({ nav }) {
   const limpio = monto.replace(',', '.').replace(/[^0-9.]/g, '');
   const valido = /^\d+(\.\d{1,2})?$/.test(limpio) && Number(limpio) > 0 && account?.addr;
   return (
-    <View style={st.screen}>
+    // Cabecera fija y cuerpo desplazable: al enfocar un campo la pantalla
+    // lo sube por encima del teclado (ver src/og/Teclado.js).
+    <PantallaConTeclado desplaza={false} style={st.screen}>
       <Header title={t.titulo} onBack={nav.back} />
-      <ScrollView contentContainerStyle={st.dentro}>
+      <CuerpoDesplazable contentContainerStyle={st.dentro}>
         <Text style={st.eti}>{t.monto}</Text>
         <TextInput value={monto} onChangeText={setMonto} keyboardType="decimal-pad"
-          placeholder="0.00" placeholderTextColor={C.txt3} style={st.input} />
+          placeholder="0.00" placeholderTextColor={C.txt3} style={st.input}
+          ref={campoMonto.ref} onFocus={campoMonto.onFocus} />
         {valido ? (
           <View style={st.qrCaja}>
             <View style={st.qrBlanco}>
@@ -38,8 +44,8 @@ export default function CobrarOG({ nav }) {
             <Text style={st.nota}>{t.nota}</Text>
           </View>
         ) : <Text style={st.nota}>{t.sin}</Text>}
-      </ScrollView>
-    </View>
+      </CuerpoDesplazable>
+    </PantallaConTeclado>
   );
 }
 

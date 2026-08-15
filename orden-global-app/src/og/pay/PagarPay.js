@@ -28,6 +28,7 @@ import { Icon } from '../../icons';
 import { useLang } from '../../i18n';
 import { qtyFmt, money } from '../../data';
 import { parseAddress, listContacts, nameFor } from '../../addressBook';
+import { useCambio, aLempiras, precioOrigenDe, lempirasFmt } from '../cambio';
 import { deUri, abrir } from '../rutas';
 
 const TXT = {
@@ -143,7 +144,17 @@ export default function PagarPay({ nav }) {
     [account?.balances],
   );
   const saldo = Number(origen?.qty) || 0;
-  const precio = origen && origen.priceUsd != null && Number(origen.priceUsd) > 0 ? Number(origen.priceUsd) : null;
+  const precio = useMemo(() => precioOrigenDe(account), [account]);
+
+  // El cliente que paga también piensa en lempiras: ver "≈ L 1,234.56" al
+  // lado del saldo es lo que le dice si le alcanza para la cena, sin tener
+  // que multiplicar de cabeza por el precio del oro. Si falta el cambio o el
+  // precio, la línea simplemente no sale — nunca una cifra inventada.
+  const cambio = useCambio(lang);
+  const enLps = (o) => {
+    const l = aLempiras(o, precio);
+    return l != null ? lempirasFmt(l) : null;
+  };
 
   const salientes = useMemo(() => (account?.transfers || [])
     .filter(esSaliente)
@@ -294,6 +305,8 @@ export default function PagarPay({ nav }) {
             </View>
             <Text style={st.saldoNum}>{qtyFmt(saldo)}</Text>
             <Text style={st.saldoLbl}>{t.saldo}</Text>
+            {enLps(saldo) ? <Text style={st.saldoLps}>≈ {enLps(saldo)}</Text> : null}
+            {cambio.pie ? <Text style={st.pie}>{cambio.pie}</Text> : null}
           </LinearGradient>
         </Entrada>
 
@@ -334,7 +347,15 @@ export default function PagarPay({ nav }) {
                   <Text style={st.pagoA} numberOfLines={1}>{t.para}: {etiqueta(x.to)}</Text>
                   <Text style={st.pagoCuando}>{fmtCuando(x.timeStamp)}</Text>
                 </View>
-                <Text style={st.pagoMonto}>-{qtyFmt(Number(x.value) || 0)} {x.symbol || 'ORIGEN'}</Text>
+                {/* La lempira solo se pinta cuando el movimiento ES en
+                    ORIGEN: convertir un pago hecho en AUKA con el precio del
+                    ORIGEN daría una cifra falsa con toda la pinta de real. */}
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={st.pagoMonto}>-{qtyFmt(Number(x.value) || 0)} {x.symbol || 'ORIGEN'}</Text>
+                  {(!x.symbol || String(x.symbol).toUpperCase() === 'ORIGEN') && enLps(Number(x.value) || 0)
+                    ? <Text style={st.pagoLps}>≈ {enLps(Number(x.value) || 0)}</Text>
+                    : null}
+                </View>
               </View>
             ))
           )}
@@ -358,6 +379,10 @@ const st = StyleSheet.create({
   saldoUsd: { color: C.txt2, fontSize: 12, fontWeight: '600' },
   saldoNum: { color: C.txt, fontSize: 36, fontWeight: '200', marginTop: 12, fontVariant: ['tabular-nums'] },
   saldoLbl: { color: C.txt2, fontSize: 12, marginTop: 2 },
+  saldoLps: { color: C.goldLt, fontSize: 13.5, fontWeight: '700', marginTop: 7, fontVariant: ['tabular-nums'] },
+  // Tenue y pequeño: el origen del dato tiene que estar, pero sin robarle
+  // la vista al saldo.
+  pie: { color: C.txt3, fontSize: 10, marginTop: 4 },
 
   modos: { flexDirection: 'row', gap: 12, marginTop: 16 },
   modo: {
@@ -380,6 +405,7 @@ const st = StyleSheet.create({
   pagoA: { color: C.txt, fontSize: 13.5, fontWeight: '600' },
   pagoCuando: { color: C.txt3, fontSize: 11, marginTop: 2 },
   pagoMonto: { color: C.txt, fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  pagoLps: { color: C.txt3, fontSize: 11, marginTop: 2, fontVariant: ['tabular-nums'] },
 
   vacio: {
     alignItems: 'center', backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2,

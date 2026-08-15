@@ -25,6 +25,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View, Text, TextInput, Pressable, ScrollView, StyleSheet, Animated, RefreshControl,
 } from 'react-native';
+import { PantallaConTeclado, CuerpoDesplazable, useCampoAuto } from '../Teclado';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C, G } from '../../theme';
 import { Header, Button3D, IconBtn, useAccount, useToast, hap } from '../../ui';
@@ -138,6 +139,8 @@ function Entrada({ delay = 0, style, children }) {
 }
 
 export default function InicioPay({ nav }) {
+  // Se sube por encima del teclado al enfocarlo (ver src/og/Teclado.js).
+  const campoBusca = useCampoAuto();
   const { lang } = useLang();
   const t = TXT[lang] || TXT.es;
   const { account, login } = useAccount();
@@ -178,18 +181,18 @@ export default function InicioPay({ nav }) {
     nav.go('pay-explorar', busca.trim() ? { q: busca.trim() } : undefined);
   };
 
+    // Cabecera fija y cuerpo desplazable: al enfocar un campo la pantalla
+    // lo sube por encima del teclado (ver src/og/Teclado.js).
   return (
-    <View style={st.screen}>
+    <PantallaConTeclado desplaza={false} style={st.screen}>
       <Header
         title={t.titulo}
         sub={t.sub}
         right={<IconBtn icon="notifications" badge={sinLeer > 0} label={t.titulo}
           onPress={() => nav.go('pay-notificaciones')} />}
       />
-      <ScrollView
+      <CuerpoDesplazable
         contentContainerStyle={st.dentro}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refrescando} tintColor={C.gold} colors={[C.gold]}
@@ -212,6 +215,7 @@ export default function InicioPay({ nav }) {
                 placeholder={t.buscarPh} placeholderTextColor={C.txt3}
                 style={st.busca} autoCapitalize="none" returnKeyType="search"
                 onSubmitEditing={buscar} accessibilityLabel={t.buscarPh}
+                ref={campoBusca.ref} onFocus={campoBusca.onFocus}
               />
               <Pressable onPress={buscar} accessibilityRole="button" accessibilityLabel={t.buscarPh}>
                 <LinearGradient colors={G.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.buscaBtn}>
@@ -361,8 +365,8 @@ export default function InicioPay({ nav }) {
             <Icon name="chevron-forward" size={15} color={C.txt3} />
           </Pressable>
         </Entrada>
-      </ScrollView>
-    </View>
+      </CuerpoDesplazable>
+    </PantallaConTeclado>
   );
 }
 

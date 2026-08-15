@@ -17,18 +17,36 @@
 //      firma él. Esta pantalla no transmite nada ni puede saber sola que le
 //      pagaron — por eso, en vez de fingir un "cobro acreditado", manda a
 //      Cobros, donde aparece el movimiento de verdad cuando llega a la cadena.
+//   3. La caja se escribe EN LEMPIRAS o EN ORIGEN, con un botón para saltar
+//      entre las dos. Un comercio hondureño piensa en lempiras ("son 500"),
+//      no en gramos de oro; pedirle que traduzca de cabeza es pedirle que se
+//      equivoque. Pero el QR SIEMPRE lleva ORIGEN: es lo que se firma en la
+//      cadena, y firmar lempiras no significa nada ahí. Por eso la lempira es
+//      la MÁSCARA de entrada y el ORIGEN el número de verdad: lo tecleado se
+//      convierte a ORIGEN una sola vez y TODO lo demás —propina, total,
+//      división de la cuenta, QR— se calcula sobre ese ORIGEN, nunca sobre la
+//      lempira. Que la cadena de cálculo no vuelva a pasar por el tipo de
+//      cambio es lo que garantiza que el papel del comercio y lo que firma el
+//      cliente digan lo mismo; y como el cambio se fija una vez al día
+//      (cambio.js), tampoco puede moverse entre que se arma la factura y se
+//      enseña el código.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet, Animated, BackHandler, Platform,
+  View, Text, TextInput, Pressable, StyleSheet, Animated, BackHandler, Platform,
 } from 'react-native';
+import { PantallaConTeclado, CuerpoDesplazable, useCampoAuto } from '../Teclado';
 import QRCode from 'react-native-qrcode-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C, G } from '../../theme';
 import { Header, Button3D, Card, useAccount, useToast, hap } from '../../ui';
 import { Icon } from '../../icons';
 import { useLang } from '../../i18n';
-import { qtyFmt, money, normalizeAmtInput, parseAmt } from '../../data';
+import { money, normalizeAmtInput, parseAmt } from '../../data';
 import { aUri } from '../rutas';
+import {
+  useCambio, aOrigen, aLempiras, precioOrigenDe,
+  origenTexto, origenFmt, lempirasFmt, aPaso, PASO,
+} from '../cambio';
 
 const TXT = {
   es: {
@@ -55,6 +73,14 @@ const TXT = {
     sinAddrT: 'Todavía no tienes dirección de cobro',
     sinAddrP: 'Tu cuenta no devolvió una dirección de billetera, y sin ella el código no puede apuntar a ningún lado. Abre tu billetera y vuelve a entrar.',
     refer: 'Referencia',
+    montoL: 'MONTO EN LEMPIRAS',
+    enLempiras: 'Lempiras', enOrigen: 'ORIGEN',
+    cobrasEnL: 'Escribes en lempiras · el QR cobra en ORIGEN',
+    cobrasEnO: 'Escribes en ORIGEN · así viaja en el QR',
+    sinCambioT: 'Sin tipo de cambio',
+    sinCambio: 'No pudimos traer el cambio del lempira y no vamos a inventar uno. Escribe el monto en ORIGEN y cobra igual.',
+    sinPrecio: 'El precio del ORIGEN no llegó del feed, así que no se puede convertir desde lempiras. Escribe el monto en ORIGEN.',
+    equivale: 'Equivale a',
   },
   en: {
     titulo: 'Invoice', tituloQr: 'Charge QR', tituloDiv: 'Split the bill',
@@ -80,16 +106,35 @@ const TXT = {
     sinAddrT: 'You have no charging address yet',
     sinAddrP: 'Your account returned no wallet address, and without it the code has nowhere to point. Open your wallet and come back.',
     refer: 'Reference',
+    montoL: 'AMOUNT IN LEMPIRAS',
+    enLempiras: 'Lempiras', enOrigen: 'ORIGEN',
+    cobrasEnL: 'You type in lempiras · the QR charges in ORIGEN',
+    cobrasEnO: 'You type in ORIGEN · that is how it travels in the QR',
+    sinCambioT: 'No exchange rate',
+    sinCambio: 'We could not fetch the lempira rate and we will not make one up. Type the amount in ORIGEN and charge as usual.',
+    sinPrecio: 'The ORIGEN price did not arrive from the feed, so we cannot convert from lempiras. Type the amount in ORIGEN.',
+    equivale: 'Equals',
   },
 };
 
 const PROPINAS = [0, 5, 10, 15];
 const MAX_PERSONAS = 4;
 
-// El monto viaja por la URI y de ahí al campo de ENVIAR: se recorta a 6
-// decimales (lo que la cadena distingue en pantalla) y se manda como texto
-// canónico con punto, que es lo que parseAmt del envío entiende sin dudar.
-const enTexto = (n) => String(Math.round((Number(n) || 0) * 1e6) / 1e6);
+// Un TextInput que se sube solo por encima del teclado al enfocarlo. Se saca
+// a componente porque `useCampoAuto` es un hook y el reparto manual crea
+// hasta cuatro de estos dentro de un bucle: uno por campo, no uno para todos.
+function CampoTeclado(props) {
+  const campo = useCampoAuto();
+  return <TextInput {...props} ref={campo.ref} onFocus={campo.onFocus} />;
+}
+
+// El monto viaja por la URI y de ahí al campo de ENVIAR como texto canónico
+// con punto, que es lo que parseAmt del envío entiende sin dudar. Antes se
+// recortaba a 6 decimales; ahora la caja entera trabaja a 2 (cambio.js:PASO)
+// porque con lempiras de por medio la sexta cifra decimal es ruido —una
+// centésima de ORIGEN anda por un cuarto de lempira— y arrastrarla solo
+// servía para que la cuenta dividida no cuadrara por un decimal invisible.
+const enTexto = origenTexto;
 const rellena = (s, vals) => Object.keys(vals).reduce((a, k) => a.replace('{' + k + '}', vals[k]), s);
 
 // Entrada en cascada. Solo opacity/transform ⇒ useNativeDriver: la animación
@@ -106,11 +151,17 @@ function Entrada({ delay = 0, style, children }) {
   return <Animated.View style={[{ opacity: op, transform: [{ translateY: y }] }, style]}>{children}</Animated.View>;
 }
 
-function Fila({ k, v, fuerte }) {
+function Fila({ k, v, sub, fuerte }) {
   return (
     <View style={st.fila}>
       <Text style={[st.filaK, fuerte && st.filaKF]}>{k}</Text>
-      <Text style={[st.filaV, fuerte && st.filaVF]}>{v}</Text>
+      <View style={st.filaDer}>
+        <Text style={[st.filaV, fuerte && st.filaVF]}>{v}</Text>
+        {/* La lempira va DEBAJO del ORIGEN, no al lado: el ORIGEN es lo que
+            se cobra y la lempira lo que el comercio entiende — la jerarquía
+            visual tiene que decir cuál de los dos manda. */}
+        {sub ? <Text style={st.filaSub}>{sub}</Text> : null}
+      </View>
     </View>
   );
 }
@@ -123,6 +174,7 @@ export default function CobroPay({ nav }) {
 
   const [etapa, setEtapa] = useState('factura');   // factura | qr | dividir
   const [monto, setMonto] = useState('');
+  const [moneda, setMoneda] = useState('HNL');     // HNL | ORIGEN — en qué se TECLEA
   const [concepto, setConcepto] = useState('');
   const [propina, setPropina] = useState(0);
   const [error, setError] = useState(null);
@@ -152,19 +204,50 @@ export default function CobroPay({ nav }) {
     return () => sub.remove();
   }, [etapa]);
 
-  const subtotal = parseAmt(monto);
-  const propinaOr = Math.round(subtotal * propina) / 100;
-  const total = Math.round((subtotal + propinaOr) * 1e6) / 1e6;
+  // El precio sale del portafolio real de la cuenta (el mismo priceUsd que
+  // alimenta el saldo). Si el feed no lo trae, NO se enseña un equivalente
+  // inventado — mejor sin dólares que con un número congelado (misma regla
+  // que el resto de la billetera).
+  const precio = useMemo(() => precioOrigenDe(account), [account]);
+  const cambio = useCambio(lang);
 
-  // El precio sale del portafolio real de la cuenta. Si el feed no lo trae,
-  // NO se enseña un equivalente inventado — mejor sin dólares que con un
-  // número congelado (misma regla que el resto de la billetera).
-  const precio = useMemo(() => {
-    const b = (account?.balances || []).find((x) => (x.symbol || '').toUpperCase() === 'ORIGEN');
-    const p = b && b.priceUsd != null ? Number(b.priceUsd) : null;
-    return p != null && p > 0 ? p : null;
-  }, [account?.balances]);
+  // Solo se puede teclear en lempiras si los DOS tramos del puente están:
+  // el cambio del día y el precio del ORIGEN. Falta uno y el campo vuelve
+  // solo a ORIGEN, que siempre se puede cobrar.
+  const puedeHnl = cambio.listo && precio != null;
+  useEffect(() => {
+    if (!puedeHnl && moneda === 'HNL') setMoneda('ORIGEN');
+  }, [puedeHnl, moneda]);
+  const enHnl = moneda === 'HNL' && puedeHnl;
+
+  // ── el número de verdad ────────────────────────────────────────────────
+  // Se teclee en lo que se teclee, el subtotal se fija EN ORIGEN y ya
+  // cuantizado a centésimas. De aquí en adelante nadie vuelve a mirar el
+  // tipo de cambio para calcular: propina, total, división y QR salen todos
+  // de este mismo número, así el papel del comercio y lo que firma el
+  // cliente no se pueden separar aunque el cambio se mueva a media venta.
+  const tecleado = parseAmt(monto);
+  const subtotal = aPaso(enHnl ? (aOrigen(tecleado, precio) ?? 0) : tecleado);
+  const propinaOr = aPaso((subtotal * propina) / 100);
+  const total = aPaso(subtotal + propinaOr);
+
   const enDolares = (n) => (precio != null ? ' ≈ ' + money(n * precio) : '');
+  // La equivalencia larga que pidió José: "L 500.00 ≈ 19.65 ORIGEN ≈ $18.64".
+  // Se arma siempre desde el ORIGEN ya fijado (nunca desde lo tecleado), que
+  // es lo único que el cliente va a firmar.
+  const equivalencia = (o) => {
+    const l = aLempiras(o, precio);
+    const partes = [];
+    if (l != null) partes.push(lempirasFmt(l));
+    partes.push(`${origenFmt(o)} ORIGEN`);
+    if (precio != null) partes.push(money(o * precio));
+    return partes.join(' ≈ ');
+  };
+  // En lempiras a secas, para las líneas donde el ORIGEN ya está a la vista.
+  const enLps = (o) => {
+    const l = aLempiras(o, precio);
+    return l != null ? lempirasFmt(l) : null;
+  };
 
   const addr = account?.addr || null;
 
@@ -188,12 +271,12 @@ export default function CobroPay({ nav }) {
   // sobrante, para que la suma de los QR sea EXACTAMENTE el total y nadie
   // pague de más ni el comercio cobre de menos por un decimal perdido.
   function repartoIgual(n) {
-    const base = Math.floor((total / n) * 1e6) / 1e6;
+    const base = Math.floor((total / n) * PASO) / PASO;
     const filas = [];
     let acumulado = 0;
     for (let i = 0; i < n; i++) {
-      const m = i === n - 1 ? Math.round((total - acumulado) * 1e6) / 1e6 : base;
-      acumulado = Math.round((acumulado + m) * 1e6) / 1e6;
+      const m = i === n - 1 ? aPaso(total - acumulado) : base;
+      acumulado = aPaso(acumulado + m);
       filas.push({ etiqueta: `${t.persona} ${i + 1}`, monto: m });
     }
     return filas;
@@ -202,11 +285,15 @@ export default function CobroPay({ nav }) {
   function generarReparto() {
     if (total <= 0) { setError(t.errMonto); return; }
     if (!manual) { setReparto(repartoIgual(personas)); setError(null); hap(); return; }
-    const montos = manuales.slice(0, personas).map((v) => parseAmt(v));
+    // Los montos manuales se cuantizan a centésimas ANTES de sumarse y la
+    // comparación se hace en centésimas enteras: comparar floats con una
+    // tolerancia dejaba pasar repartos que sumaban un pelo de más, y ese pelo
+    // acababa dentro de un QR firmado.
+    const montos = manuales.slice(0, personas).map((v) => aPaso(parseAmt(v)));
     if (montos.some((m) => m <= 0)) { setError(t.errCero); return; }
-    const suma = Math.round(montos.reduce((a, b) => a + b, 0) * 1e6) / 1e6;
-    if (Math.abs(suma - total) > 0.000001) {
-      setError(rellena(t.errSuma, { s: qtyFmt(suma), t: qtyFmt(total) }));
+    const suma = aPaso(montos.reduce((a, b) => a + b, 0));
+    if (Math.round(suma * PASO) !== Math.round(total * PASO)) {
+      setError(rellena(t.errSuma, { s: origenFmt(suma), t: origenFmt(total) }));
       return;
     }
     setError(null); hap();
@@ -224,27 +311,56 @@ export default function CobroPay({ nav }) {
   const atras = etapa === 'factura' ? nav.back : () => { setEtapa('factura'); setReparto(null); setError(null); };
 
   return (
-    <View style={st.screen}>
+    // La cabecera lleva la referencia del cobro: tiene que quedarse a la
+    // vista mientras se teclea el monto, así que es fija y solo se desplaza
+    // el cuerpo. El monto y el concepto se suben solos al enfocarlos.
+    <PantallaConTeclado desplaza={false} style={st.screen}>
       <Header title={titulo} sub={`${t.refer} ${referencia}`} onBack={atras} />
-      <ScrollView contentContainerStyle={st.dentro} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <CuerpoDesplazable contentContainerStyle={st.dentro}>
 
         {/* ══ FACTURA: monto, concepto y propina ══════════════════════════ */}
         {etapa === 'factura' && (
           <>
             <Entrada delay={0}>
-              <Text style={st.eti}>{t.monto}</Text>
-              <TextInput
-                value={monto}
-                onChangeText={(v) => { setMonto(normalizeAmtInput(v)); setError(null); }}
-                keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={C.txt3}
-                style={st.montoInput} accessibilityLabel={t.monto}
-              />
-              {precio != null && subtotal > 0 ? <Text style={st.usd}>{money(subtotal * precio)}</Text> : null}
+              <View style={st.etiFila}>
+                <Text style={st.eti}>{enHnl ? t.montoL : t.monto}</Text>
+                {/* El botón de moneda solo aparece cuando hay con qué
+                    convertir: ofrecer "lempiras" y que al tocarlo no pase
+                    nada sería peor que no ofrecerlo. */}
+                {puedeHnl ? (
+                  <Pressable
+                    onPress={() => { hap(); setMoneda(enHnl ? 'ORIGEN' : 'HNL'); setMonto(''); setError(null); }}
+                    accessibilityRole="button" style={st.swap}>
+                    <Icon name="swap-horizontal" size={14} color={C.gold} />
+                    <Text style={st.swapTxt}>{enHnl ? t.enOrigen : t.enLempiras}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              <View style={st.montoCaja}>
+                <Text style={st.montoSigno}>{enHnl ? 'L' : 'Ø'}</Text>
+                <CampoTeclado
+                  value={monto}
+                  onChangeText={(v) => { setMonto(normalizeAmtInput(v)); setError(null); }}
+                  keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={C.txt3}
+                  style={st.montoInput} accessibilityLabel={enHnl ? t.montoL : t.monto}
+                />
+              </View>
+
+              {/* La equivalencia va SIEMPRE debajo, no solo cuando se teclea
+                  en lempiras: el comercio cobra en ORIGEN pero piensa en
+                  lempiras, y necesita ver las dos caras del mismo monto sin
+                  tocar nada. */}
+              {subtotal > 0 ? <Text style={st.equiv}>{equivalencia(subtotal)}</Text> : null}
+              <Text style={st.bajoCampo}>{enHnl ? t.cobrasEnL : t.cobrasEnO}</Text>
+              {/* Sin cambio del día no se ofrece lempiras y se DICE por qué. */}
+              {!puedeHnl ? (
+                <Text style={st.avisoTenue}>{precio == null ? t.sinPrecio : t.sinCambio}</Text>
+              ) : null}
             </Entrada>
 
             <Entrada delay={80}>
               <Text style={[st.eti, { marginTop: 18 }]}>{t.concepto}</Text>
-              <TextInput
+              <CampoTeclado
                 value={concepto} onChangeText={setConcepto}
                 placeholder={t.conceptoPh} placeholderTextColor={C.txt3}
                 style={st.texto} maxLength={60}
@@ -269,11 +385,12 @@ export default function CobroPay({ nav }) {
 
             <Entrada delay={220}>
               <Card style={st.resumen}>
-                <Fila k={t.subtotal} v={`${qtyFmt(subtotal)} ORIGEN`} />
-                <Fila k={`${t.propina} (${propina}%)`} v={`${qtyFmt(propinaOr)} ORIGEN`} />
+                <Fila k={t.subtotal} v={`${origenFmt(subtotal)} ORIGEN`} sub={enLps(subtotal)} />
+                <Fila k={`${t.propina} (${propina}%)`} v={`${origenFmt(propinaOr)} ORIGEN`} sub={enLps(propinaOr)} />
                 {concepto.trim() ? <Fila k={t.conceptoK} v={concepto.trim()} /> : null}
                 <View style={st.linea} />
-                <Fila k={t.total} v={`${qtyFmt(total)} ORIGEN${enDolares(total)}`} fuerte />
+                <Fila k={t.total} v={`${origenFmt(total)} ORIGEN${enDolares(total)}`} sub={enLps(total)} fuerte />
+                {cambio.pie ? <Text style={st.pie}>{cambio.pie}</Text> : null}
               </Card>
             </Entrada>
 
@@ -291,8 +408,12 @@ export default function CobroPay({ nav }) {
         {/* ══ QR ÚNICO ════════════════════════════════════════════════════ */}
         {etapa === 'qr' && (
           <Entrada delay={0} style={{ alignItems: 'center' }}>
-            <Text style={st.granMonto}>{qtyFmt(total)} <Text style={st.moneda}>ORIGEN</Text></Text>
-            {precio != null ? <Text style={st.usd}>{money(total * precio)}</Text> : null}
+            {/* El titular es el ORIGEN porque es lo que va dentro del código
+                y lo que el cliente va a firmar; la lempira queda debajo como
+                lectura, no como la cifra que manda. */}
+            <Text style={st.granMonto}>{origenFmt(total)} <Text style={st.moneda}>ORIGEN</Text></Text>
+            <Text style={st.equiv}>{equivalencia(total)}</Text>
+            {cambio.pie ? <Text style={st.pie}>{cambio.pie}</Text> : null}
             {concepto.trim() ? <Text style={st.conceptoQr}>{concepto.trim()}</Text> : null}
 
             {/* El QR va sobre blanco puro a propósito: sobre el verde de la
@@ -320,7 +441,8 @@ export default function CobroPay({ nav }) {
           <>
             <Entrada delay={0}>
               <Card style={st.resumen}>
-                <Text style={st.divTitulo}>{rellena(t.entreCuantos, { t: qtyFmt(total) })}</Text>
+                <Text style={st.divTitulo}>{rellena(t.entreCuantos, { t: origenFmt(total) })}</Text>
+                <Text style={st.equiv}>{equivalencia(total)}</Text>
                 <View style={[st.chips, { justifyContent: 'center', marginTop: 14 }]}>
                   {[2, 3, MAX_PERSONAS].map((n) => {
                     const on = personas === n;
@@ -349,7 +471,7 @@ export default function CobroPay({ nav }) {
                     {Array.from({ length: personas }).map((_, i) => (
                       <View key={i} style={st.manualFila}>
                         <Text style={st.manualEti}>{t.persona} {i + 1}</Text>
-                        <TextInput
+                        <CampoTeclado
                           value={manuales[i]}
                           onChangeText={(v) => {
                             const otros = manuales.slice();
@@ -362,13 +484,17 @@ export default function CobroPay({ nav }) {
                         <Text style={st.manualUnidad}>ORIGEN</Text>
                       </View>
                     ))}
-                    <Text style={st.notaTenue}>{rellena(t.sumaDebe, { t: qtyFmt(total) })}</Text>
+                    <Text style={st.notaTenue}>{rellena(t.sumaDebe, { t: origenFmt(total) })}</Text>
                   </View>
                 ) : (
-                  <Text style={st.previo}>
-                    {rellena(t.cadaQuien, { m: qtyFmt(Math.round((total / personas) * 1e6) / 1e6) })}
-                  </Text>
+                  <>
+                    <Text style={st.previo}>
+                      {rellena(t.cadaQuien, { m: origenFmt(aPaso(total / personas)) })}
+                    </Text>
+                    <Text style={st.equiv}>{equivalencia(aPaso(total / personas))}</Text>
+                  </>
                 )}
+                {cambio.pie ? <Text style={st.pie}>{cambio.pie}</Text> : null}
               </Card>
             </Entrada>
 
@@ -391,8 +517,8 @@ export default function CobroPay({ nav }) {
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={st.personaEti}>{p.etiqueta}</Text>
-                    <Text style={st.personaMonto}>{qtyFmt(p.monto)} <Text style={st.moneda}>ORIGEN</Text></Text>
-                    {precio != null ? <Text style={st.usdChico}>{money(p.monto * precio)}</Text> : null}
+                    <Text style={st.personaMonto}>{origenFmt(p.monto)} <Text style={st.moneda}>ORIGEN</Text></Text>
+                    <Text style={st.usdChico}>{equivalencia(p.monto)}</Text>
                     <LinearGradient colors={G.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.sello}>
                       <Text style={st.selloTxt}>{referencia}·{i + 1}</Text>
                     </LinearGradient>
@@ -409,8 +535,8 @@ export default function CobroPay({ nav }) {
             </Entrada>
           </>
         )}
-      </ScrollView>
-    </View>
+      </CuerpoDesplazable>
+    </PantallaConTeclado>
   );
 }
 
@@ -419,17 +545,37 @@ const st = StyleSheet.create({
   dentro: { paddingHorizontal: 20, paddingBottom: 120 },
 
   eti: { color: C.txt3, fontSize: 10, fontWeight: '700', letterSpacing: 2.6, marginBottom: 8 },
-  montoInput: {
+  etiFila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  swap: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8,
+    paddingHorizontal: 11, paddingVertical: 6, borderRadius: 999,
+    borderWidth: 1, borderColor: C.line2, backgroundColor: C.panel,
+  },
+  swapTxt: { color: C.gold, fontSize: 11.5, fontWeight: '700' },
+  montoCaja: {
+    flexDirection: 'row', alignItems: 'center',
     backgroundColor: C.input, borderWidth: 1, borderColor: C.inputBr, borderRadius: 16,
-    paddingHorizontal: 16, paddingVertical: 14, color: C.txt, fontSize: 30, textAlign: 'center',
+    paddingHorizontal: 16,
+  },
+  montoSigno: { color: C.gold, fontSize: 20, fontWeight: '700', marginRight: 8 },
+  montoInput: {
+    flex: 1, paddingVertical: 14, color: C.txt, fontSize: 30, textAlign: 'center',
     fontVariant: ['tabular-nums'],
   },
+  equiv: {
+    color: C.goldLt, fontSize: 12.5, textAlign: 'center', marginTop: 9,
+    fontVariant: ['tabular-nums'],
+  },
+  bajoCampo: { color: C.txt3, fontSize: 11, textAlign: 'center', marginTop: 6 },
+  avisoTenue: { color: C.txt2, fontSize: 11.5, lineHeight: 17, textAlign: 'center', marginTop: 8 },
+  // El pie del cambio va tenue a propósito: tiene que estar SIEMPRE a la
+  // vista pero sin competir con el monto. Es una garantía, no un titular.
+  pie: { color: C.txt3, fontSize: 10.5, textAlign: 'center', marginTop: 10 },
   texto: {
     backgroundColor: C.input, borderWidth: 1, borderColor: C.inputBr, borderRadius: 14,
     paddingHorizontal: 14, paddingVertical: 12, color: C.txt, fontSize: 14.5,
   },
-  usd: { color: C.txt3, fontSize: 12.5, textAlign: 'center', marginTop: 8 },
-  usdChico: { color: C.txt3, fontSize: 11.5, marginTop: 2 },
+  usdChico: { color: C.txt3, fontSize: 11.5, marginTop: 2, fontVariant: ['tabular-nums'] },
 
   chips: { flexDirection: 'row', gap: 8 },
   chip: {
@@ -448,8 +594,10 @@ const st = StyleSheet.create({
   fila: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingVertical: 6 },
   filaK: { color: C.txt2, fontSize: 12.5, flexShrink: 1 },
   filaKF: { color: C.txt, fontSize: 14.5, fontWeight: '700' },
-  filaV: { color: C.txt, fontSize: 12.5, fontWeight: '600', textAlign: 'right', flexShrink: 1, fontVariant: ['tabular-nums'] },
+  filaDer: { flexShrink: 1, alignItems: 'flex-end' },
+  filaV: { color: C.txt, fontSize: 12.5, fontWeight: '600', textAlign: 'right', fontVariant: ['tabular-nums'] },
   filaVF: { color: C.goldLt, fontSize: 15.5, fontWeight: '800' },
+  filaSub: { color: C.txt3, fontSize: 11, textAlign: 'right', marginTop: 2, fontVariant: ['tabular-nums'] },
   linea: { height: 1, backgroundColor: 'rgba(255,255,255,0.07)', marginVertical: 8 },
 
   error: { color: C.down, fontSize: 12.5, lineHeight: 18, marginTop: 12 },

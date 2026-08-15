@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Alert, ActivityIndicator, StyleSheet } from 'react-native';
+import { PantallaConTeclado, CuerpoDesplazable, useCampoAuto } from '../og/Teclado';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { Icon } from '../icons';
@@ -64,6 +65,8 @@ async function wipeLocal() {
 }
 
 export default function DeleteAccount({ nav }) {
+  // Se sube por encima del teclado al enfocarlo (ver src/og/Teclado.js).
+  const campoClave = useCampoAuto();
   const t = useT();
   const toast = useToast();
   const { account, logout } = useAccount();
@@ -142,9 +145,11 @@ export default function DeleteAccount({ nav }) {
   }
 
   return (
-    <View style={{ flex: 1, paddingTop: 6 }}>
+    // Cabecera fija y cuerpo desplazable: al enfocar un campo la pantalla
+    // lo sube por encima del teclado (ver src/og/Teclado.js).
+    <PantallaConTeclado desplaza={false} style={{ flex: 1, paddingTop: 6 }}>
       <Header title={t('delAcc.title')} onBack={irAtras} />
-      <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+      <CuerpoDesplazable contentContainerStyle={{ padding: 22, paddingBottom: 40 }}>
 
         {/* Progreso — 5 pasos, el actual dorado, los completados verdes tenues */}
         <View style={st.dots}>
@@ -218,6 +223,8 @@ export default function DeleteAccount({ nav }) {
                   autoCorrect={false}
                   autoFocus
                   style={[st.input, { paddingRight: 46 }]}
+                  ref={campoClave.ref}
+                  onFocus={campoClave.onFocus}
                 />
                 <Pressable
                   onPress={() => setShowPw(!showPw)}
@@ -256,8 +263,8 @@ export default function DeleteAccount({ nav }) {
             </Pressable>
           </>
         )}
-      </ScrollView>
-    </View>
+      </CuerpoDesplazable>
+    </PantallaConTeclado>
   );
 }
 

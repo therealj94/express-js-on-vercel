@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal, Animated, ActivityIndicator, KeyboardAvoidingView, Platform, Share, StyleSheet } from 'react-native';
+import { PantallaConTeclado } from '../og/Teclado';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
 import { Icon } from '../icons';
@@ -294,13 +295,8 @@ export function Send({ nav, params }) {
           quedaban tapados y uno escribía a ciegas. En Android hace falta
           `height`: sin `behavior` no hace nada cuando la app dibuja de borde a
           borde, que es lo normal desde Android 15. */}
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-      <ScrollView
+      <PantallaConTeclado
         contentContainerStyle={{ padding: 22, paddingBottom: 40 }}
-        keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
         <Selector token={tok} onPress={() => setPick(true)} />
@@ -379,8 +375,7 @@ export function Send({ nav, params }) {
         {insufficient && <Text style={styles.errTxt}>{t('send.insufficient', { q: qtyFmt(tok.qty), s: tok.s })}</Text>}
 
         <Button3D title={t('send.review')} onPress={revisar} />
-      </ScrollView>
-      </KeyboardAvoidingView>
+      </PantallaConTeclado>
       <TokenPicker visible={pick} tokens={tokens} onClose={() => setPick(false)} onPick={setTok} />
       {/* La cámara va en modal: así el formulario sigue montado y la
           dirección leída se escribe directamente en el campo. */}

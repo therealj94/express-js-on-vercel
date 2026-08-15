@@ -34,8 +34,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, StyleSheet, Modal, Image,
-  Animated, KeyboardAvoidingView, Platform, ActivityIndicator,
+  Animated, ActivityIndicator,
 } from 'react-native';
+import { PantallaConTeclado, CuerpoDesplazable, useCampoAuto } from '../Teclado';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as SecureStore from 'expo-secure-store';
 import * as ImagePicker from 'expo-image-picker';
@@ -349,6 +350,7 @@ function Selector({ label, valor, texto, opciones, onElegir, deshabilitado, avis
 // añade con el + o con la tecla de enviar del teclado.
 function Etiquetas({ label, ph, valores, onCambiar }) {
   const [texto, setTexto] = useState('');
+  const campo = useCampoAuto();
   const anadir = () => {
     const v = texto.trim();
     if (!v || valores.includes(v)) { setTexto(''); return; }
@@ -359,7 +361,8 @@ function Etiquetas({ label, ph, valores, onCambiar }) {
       <Rotulo>{label}</Rotulo>
       <View style={st.tagFila}>
         <TextInput value={texto} onChangeText={setTexto} placeholder={ph} placeholderTextColor={C.txt3}
-          style={st.tagInput} onSubmitEditing={anadir} returnKeyType="done" />
+          style={st.tagInput} onSubmitEditing={anadir} returnKeyType="done"
+          ref={campo.ref} onFocus={campo.onFocus} />
         <Pressable onPress={anadir} style={st.tagMas} accessibilityRole="button" accessibilityLabel="+">
           <Icon name="add" size={18} color={C.darkText} />
         </Pressable>
@@ -406,6 +409,15 @@ function CampoFoto({ label, valor, onCambiar, redondo, t, toast }) {
   );
 }
 
+// Las horas viven al FINAL de un formulario muy largo: son justo los campos
+// que el teclado se comía enteros. Se saca a su propio componente porque
+// `useCampoAuto` es un hook y hay catorce de estas casillas: uno por casilla,
+// no uno para todas.
+function HoraInput(props) {
+  const campo = useCampoAuto();
+  return <TextInput {...props} ref={campo.ref} onFocus={campo.onFocus} />;
+}
+
 // El HoursEditor, tal cual: siete filas, dos horas y un "cerrado".
 function Horario({ horario, onCambiar, t }) {
   const tocar = (dia, parche) => onCambiar({ ...horario, [dia]: { ...horario[dia], ...parche } });
@@ -418,10 +430,10 @@ function Horario({ horario, onCambiar, t }) {
           return (
             <View key={dia} style={st.horaFila}>
               <Text style={st.horaDia}>{t.dias[i]}</Text>
-              <TextInput value={d.abre} editable={!d.cerrado} onChangeText={(v) => tocar(dia, { abre: v })}
+              <HoraInput value={d.abre} editable={!d.cerrado} onChangeText={(v) => tocar(dia, { abre: v })}
                 placeholder="08:00" placeholderTextColor={C.txt3}
                 style={[st.horaInput, d.cerrado && { opacity: 0.35 }]} maxLength={5} />
-              <TextInput value={d.cierra} editable={!d.cerrado} onChangeText={(v) => tocar(dia, { cierra: v })}
+              <HoraInput value={d.cierra} editable={!d.cerrado} onChangeText={(v) => tocar(dia, { cierra: v })}
                 placeholder="18:00" placeholderTextColor={C.txt3}
                 style={[st.horaInput, d.cerrado && { opacity: 0.35 }]} maxLength={5} />
               <Pressable onPress={() => { hap(); tocar(dia, { cerrado: !d.cerrado }); }} style={st.horaCerrado}>
@@ -685,7 +697,11 @@ export default function MiNegocio({ nav }) {
     ];
     const ultimo = paso === t.pasos.length - 1;
     return (
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={st.screen}>
+      // Cabecera y botonera se quedan fijas y solo se desplaza el tramo de en
+      // medio: por eso `desplaza={false}` arriba y <CuerpoDesplazable/> dentro.
+      // Así el botón de seguir sube con el teclado en lugar de quedarse
+      // enterrado debajo, que era justo lo que se quejaba José.
+      <PantallaConTeclado desplaza={false} style={st.screen}>
         <Header title={t.titulo} sub={t.subAlta} onBack={() => (paso === 0 ? nav.back() : setPaso((p) => p - 1))} />
         {/* el paso a paso: una barrita por tramo, las hechas en oro */}
         <View style={st.pasos}>
@@ -694,8 +710,7 @@ export default function MiNegocio({ nav }) {
           ))}
         </View>
         <Text style={st.pasoTxt}>{t.pasos[paso]}</Text>
-        <ScrollView contentContainerStyle={st.dentro} keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
+        <CuerpoDesplazable contentContainerStyle={st.dentro}>
           <Entrada llave={paso}>
             {paso === 0 ? bloqueDatos : null}
             {paso === 1 ? bloqueUbicacion : null}
@@ -704,7 +719,7 @@ export default function MiNegocio({ nav }) {
             {paso === 4 ? bloqueVerificacion : null}
             {paso === 5 ? bloqueRevision : null}
           </Entrada>
-        </ScrollView>
+        </CuerpoDesplazable>
         <View style={st.pie}>
           <Button3D
             title={guardando ? t.guardando : (ultimo ? t.guardarAlta : t.seguir)}
@@ -713,16 +728,17 @@ export default function MiNegocio({ nav }) {
             onPress={() => { if (ultimo) guardar(true); else setPaso((p) => p + 1); }}
           />
         </View>
-      </KeyboardAvoidingView>
+      </PantallaConTeclado>
     );
   }
 
   // ════ FICHA: lo mismo, ya sin pasos, todo editable ══════════════════
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={st.screen}>
+    // Aquí el botón de guardar va DENTRO del desplazamiento, así que la
+    // cabecera es lo único fijo; el resto es un cuerpo desplazable normal.
+    <PantallaConTeclado desplaza={false} style={st.screen}>
       <Header title={t.titulo} sub={t.subFicha} onBack={nav.back} />
-      <ScrollView contentContainerStyle={st.dentro} keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
+      <CuerpoDesplazable contentContainerStyle={st.dentro}>
         {/* la portada con el logo encima: la tarjeta de comercio del original,
             que era su gesto más reconocible, en verde y oro */}
         <View style={st.hero}>
@@ -797,8 +813,8 @@ export default function MiNegocio({ nav }) {
           disabled={guardando} onPress={() => guardar(false)} style={{ marginTop: 18 }} />
         <Text style={st.nota}>{t.notaGuardar}</Text>
         {guardando ? <ActivityIndicator color={C.gold} style={{ marginTop: 12 }} /> : null}
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </CuerpoDesplazable>
+    </PantallaConTeclado>
   );
 }
 

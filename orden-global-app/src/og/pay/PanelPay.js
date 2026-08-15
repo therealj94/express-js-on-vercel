@@ -24,6 +24,7 @@ import { apiPortfolio } from '../../api';
 import { upsertApiAccount } from '../../accounts';
 import { listContacts, nameFor } from '../../addressBook';
 import { avisosDe, leerVisto, noLeidos } from './avisos';
+import { useCambio, aLempiras, precioOrigenDe, lempirasFmt } from '../cambio';
 
 const TXT = {
   es: {
@@ -163,6 +164,18 @@ export default function PanelPay({ nav }) {
   const saldo = origenTok ? origenTok.qty : 0;
   const saldoUsd = origenTok && origenTok.hasPrice ? origenTok.qty * origenTok.price : null;
 
+  // El comercio lleva su caja en lempiras: "cobré 3,200 hoy" es la frase que
+  // usa, no "cobré 126 ORIGEN". Se enseñan las dos, con el ORIGEN de titular
+  // (es lo que de verdad tiene en la cadena) y la lempira debajo. El precio
+  // se lee con el mismo ayudante que las otras tres pantallas de MyTokenPay
+  // para que las cuatro conviertan con el MISMO número.
+  const precio = useMemo(() => precioOrigenDe(account), [account]);
+  const cambio = useCambio(lang);
+  const enLps = (o) => {
+    const l = aLempiras(o, precio);
+    return l != null ? lempirasFmt(l) : null;
+  };
+
   const fmtCuando = (ts) => {
     const d = new Date((Number(ts) || 0) * 1000);
     return d.toLocaleDateString(lang === 'en' ? 'en-US' : 'es-HN', { day: 'numeric', month: 'short' })
@@ -245,6 +258,7 @@ export default function PanelPay({ nav }) {
                 {qtyFmt(saldo)} ORIGEN
                 {saldoUsd != null ? <Text style={st.saldoUsd}>{'  ≈ ' + money(saldoUsd)}</Text> : null}
               </Text>
+              {enLps(saldo) ? <Text style={st.saldoLps}>≈ {enLps(saldo)}</Text> : null}
             </View>
             <View style={st.saldoBtn}>
               <Text style={st.saldoBtnTxt}>{t.saldoPagar}</Text>
@@ -269,11 +283,15 @@ export default function PanelPay({ nav }) {
                 <Text style={st.granNumero}>
                   {qtyFmt(origenHoy)} <Text style={st.moneda}>ORIGEN</Text>
                 </Text>
+                {enLps(origenHoy) ? <Text style={st.granLps}>≈ {enLps(origenHoy)}</Text> : null}
                 <Text style={st.granSub}>{t.cobradoHoy}</Text>
                 {/* el ticket promedio que enseñaba negocio-panel.tsx: dice si
                     los cobros son muchos y pequeños o pocos y grandes */}
                 {enOrigen.length > 0 ? (
-                  <Text style={st.granSub}>{t.ticket}: {qtyFmt(ticket)} ORIGEN</Text>
+                  <Text style={st.granSub}>
+                    {t.ticket}: {qtyFmt(ticket)} ORIGEN
+                    {enLps(ticket) ? ` ≈ ${enLps(ticket)}` : ''}
+                  </Text>
                 ) : null}
                 {hayOtrosHoy ? <Text style={st.nota}>{t.otrosHoy}</Text> : null}
                 {entrantes.length === 0 ? (
@@ -293,8 +311,13 @@ export default function PanelPay({ nav }) {
                   <View style={st.stat}>
                     <Text style={st.statNum}>{qtyFmt(origenTotal)}</Text>
                     <Text style={st.statLbl}>{t.totalRecibido}</Text>
+                    {enLps(origenTotal) ? <Text style={st.statLps}>≈ {enLps(origenTotal)}</Text> : null}
                   </View>
                 </View>
+                {/* De cuándo es el cambio con el que se pintaron todas las
+                    lempiras de arriba. Va una sola vez, al pie del bloque,
+                    en vez de repetirse bajo cada cifra. */}
+                {cambio.pie ? <Text style={st.pie}>{cambio.pie}</Text> : null}
               </>
             )}
           </View>
@@ -390,7 +413,14 @@ export default function PanelPay({ nav }) {
                   <Text style={st.cobroDe} numberOfLines={1}>{t.de}: {etiqueta(x.from)}</Text>
                   <Text style={st.cobroCuando}>{fmtCuando(x.timeStamp)}</Text>
                 </View>
-                <Text style={st.cobroMonto}>+{qtyFmt(Number(x.value) || 0)} {x.symbol || 'ORIGEN'}</Text>
+                {/* Solo se convierte lo que ES ORIGEN: pasar un cobro en otro
+                    token por el precio del ORIGEN daría una lempira falsa. */}
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={st.cobroMonto}>+{qtyFmt(Number(x.value) || 0)} {x.symbol || 'ORIGEN'}</Text>
+                  {esOrigen(x) && enLps(Number(x.value) || 0)
+                    ? <Text style={st.cobroLps}>≈ {enLps(Number(x.value) || 0)}</Text>
+                    : null}
+                </View>
               </View>
             ))
           )}
@@ -422,6 +452,7 @@ const st = StyleSheet.create({
   resumen: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, borderRadius: 20, padding: 18, marginTop: 14 },
   grupo: { color: C.txt3, fontSize: 10, fontWeight: '700', letterSpacing: 2.6 },
   granNumero: { color: C.goldLt, fontSize: 34, fontWeight: '300', marginTop: 8, fontVariant: ['tabular-nums'] },
+  granLps: { color: C.txt, fontSize: 15, fontWeight: '700', marginTop: 2, fontVariant: ['tabular-nums'] },
   moneda: { fontSize: 15, color: C.gold, fontWeight: '700' },
   granSub: { color: C.txt2, fontSize: 12, marginTop: 2 },
   nota: { color: C.txt3, fontSize: 12, lineHeight: 18, marginTop: 10 },
@@ -430,6 +461,10 @@ const st = StyleSheet.create({
   statMedio: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
   statNum: { color: C.txt, fontSize: 15.5, fontWeight: '800', fontVariant: ['tabular-nums'] },
   statLbl: { color: C.txt3, fontSize: 10, textAlign: 'center' },
+  statLps: { color: C.goldLt, fontSize: 10.5, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  // El pie del cambio: tenue, una sola vez por bloque, pero siempre presente
+  // para que ninguna lempira de arriba se lea como un dato sin fecha.
+  pie: { color: C.txt3, fontSize: 10, marginTop: 12 },
 
   verAct: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 16, padding: 13, marginTop: 11 },
   verActIc: { width: 36, height: 36, borderRadius: 11, backgroundColor: 'rgba(201,169,97,0.12)', alignItems: 'center', justifyContent: 'center' },
@@ -444,6 +479,7 @@ const st = StyleSheet.create({
   saldoLbl: { color: C.txt3, fontSize: 9.5, fontWeight: '700', letterSpacing: 1.6 },
   saldoVal: { color: C.txt, fontSize: 15, fontWeight: '700', marginTop: 3, fontVariant: ['tabular-nums'] },
   saldoUsd: { color: C.txt3, fontSize: 11.5, fontWeight: '400' },
+  saldoLps: { color: C.goldLt, fontSize: 12, fontWeight: '700', marginTop: 2, fontVariant: ['tabular-nums'] },
   saldoBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.gold, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
   saldoBtnTxt: { color: C.darkText, fontSize: 11.5, fontWeight: '700' },
 
@@ -457,4 +493,5 @@ const st = StyleSheet.create({
   cobroDe: { color: C.txt, fontSize: 13.5, fontWeight: '600' },
   cobroCuando: { color: C.txt3, fontSize: 11, marginTop: 2 },
   cobroMonto: { color: C.up, fontSize: 13.5, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  cobroLps: { color: C.txt3, fontSize: 11, marginTop: 2, fontVariant: ['tabular-nums'] },
 });

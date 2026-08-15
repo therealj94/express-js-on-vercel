@@ -11,8 +11,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, FlatList, Modal, Image,
-  ActivityIndicator, Share, StyleSheet, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Share, StyleSheet,
 } from 'react-native';
+import { PantallaConTeclado, CuerpoDesplazable } from './Teclado';
 import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
 import * as ImagePicker from 'expo-image-picker';
@@ -423,7 +424,9 @@ export default function GruposAuro({ nav, params }) {
     const gente = (convos || []).filter((c) => !c.esGrupo);
     const filas = gente.filter((c) => !q || String(c.nombre || '').toLowerCase().includes(q) || c.correo.includes(q));
     return (
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={st.screen}>
+      // La lista se queda con el alto que sobra del teclado; el campo del
+      // nombre viaja en su cabecera y sube con ella.
+      <PantallaConTeclado desplaza={false} style={st.screen}>
         <Header title={t.tituloNuevo} sub={t.subNuevo} onBack={nav.back} />
         <FlatList
           data={filas}
@@ -471,7 +474,7 @@ export default function GruposAuro({ nav, params }) {
         <View style={st.pie}>
           <Button3D title={ocupado ? t.creando : t.crear} onPress={crear} disabled={ocupado || !nombre.trim()} />
         </View>
-      </KeyboardAvoidingView>
+      </PantallaConTeclado>
     );
   }
 
@@ -498,9 +501,9 @@ export default function GruposAuro({ nav, params }) {
   const lista = todos ? miembros : miembros.slice(0, ASOMO_MIEMBROS);
   const cambiado = soyAdmin && !!nom.trim() && nom.trim() !== info.nombre;
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={st.screen}>
+    <PantallaConTeclado desplaza={false} style={st.screen}>
       <Header title={info.nombre} sub={cuantos === 1 ? t.unMiembro : t.miembrosN.replace('{n}', String(cuantos))} onBack={nav.back} />
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 30 }} keyboardShouldPersistTaps="handled">
+      <CuerpoDesplazable contentContainerStyle={{ padding: 16, paddingBottom: 30 }}>
         <Pressable style={st.fotoCentro} onPress={soyAdmin ? guardarFoto : undefined} disabled={!soyAdmin || subiendo}>
           {subiendo ? <ActivityIndicator color={C.gold} /> : <Avatar nombre={info.nombre} correo={info.id} foto={info.foto} tam={104} />}
           {soyAdmin && <Text style={st.fotoTxt}>{info.foto ? t.cambiarFoto : t.anadirFoto}</Text>}
@@ -573,9 +576,9 @@ export default function GruposAuro({ nav, params }) {
         <Pressable style={[st.btnSoltar, { marginTop: 14 }]} onPress={salir}>
           <Text style={[st.btnSoltarTxt, { color: C.down }]}>{t.salir}</Text>
         </Pressable>
-      </ScrollView>
+      </CuerpoDesplazable>
       {dialogo}
-    </KeyboardAvoidingView>
+    </PantallaConTeclado>
   );
 }
 

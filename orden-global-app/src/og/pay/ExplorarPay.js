@@ -22,6 +22,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, StyleSheet, Animated, BackHandler, Platform,
 } from 'react-native';
+import { PantallaConTeclado, CuerpoDesplazable, useCampoAuto } from '../Teclado';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C, G } from '../../theme';
 import { Header, Button3D, Card, hap } from '../../ui';
@@ -93,6 +94,8 @@ function Entrada({ indice = 0, delay = null, style, children }) {
 // Los params solo SIEMBRAN el estado inicial: a partir de ahí la pantalla es
 // dueña de sus filtros y "Limpiar" los borra como siempre.
 export default function ExplorarPay({ nav, params }) {
+  // Se sube por encima del teclado al enfocarlo (ver src/og/Teclado.js).
+  const campoBusca = useCampoAuto();
   const { lang } = useLang();
   const t = TXT[lang] || TXT.es;
   const et = (dic, clave) => etiquetaDe(dic, clave, lang);
@@ -195,9 +198,11 @@ export default function ExplorarPay({ nav, params }) {
 
   // ── listado ────────────────────────────────────────────────────────────
   return (
-    <View style={st.screen}>
+    // Cabecera fija y cuerpo desplazable: al enfocar un campo la pantalla
+    // lo sube por encima del teclado (ver src/og/Teclado.js).
+    <PantallaConTeclado desplaza={false} style={st.screen}>
       <Header title={t.titulo} sub={t.sub} onBack={nav.back} />
-      <ScrollView contentContainerStyle={st.dentro} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <CuerpoDesplazable contentContainerStyle={st.dentro}>
 
         {/* El aviso va arriba y no se puede cerrar: quien entra tiene que
             saber qué está mirando ANTES de ilusionarse con un comercio. */}
@@ -217,6 +222,7 @@ export default function ExplorarPay({ nav, params }) {
             placeholder={t.buscar} placeholderTextColor={C.txt3}
             style={st.busca} autoCapitalize="none" returnKeyType="search"
             accessibilityLabel={t.buscar}
+            ref={campoBusca.ref} onFocus={campoBusca.onFocus}
           />
         </Entrada>
 
@@ -309,8 +315,8 @@ export default function ExplorarPay({ nav, params }) {
             </Entrada>
           ))
         )}
-      </ScrollView>
-    </View>
+      </CuerpoDesplazable>
+    </PantallaConTeclado>
   );
 }
 

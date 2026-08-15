@@ -15,7 +15,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View, Text, TextInput, Pressable, FlatList, StyleSheet, Modal, Animated,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Image,
+  ActivityIndicator, Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
@@ -28,6 +28,7 @@ import { C, G } from '../theme';
 import { Header, useAccount, useToast, hap } from '../ui';
 import { Icon } from '../icons';
 import { useLang } from '../i18n';
+import { PantallaConTeclado, useTeclado } from './Teclado';
 import { genesis } from '../genesis';
 import { addContact, isAddress } from '../addressBook';
 import * as M from './mensajes';
@@ -242,6 +243,20 @@ export default function AuroChat({ nav, params }) {
   const leido = useRef(false);
   const destino = idDe(con);
   const enGrupo = esGrupoDe(con);
+  const tecla = useTeclado();
+
+  // Al abrirse el teclado la lista pierde alto por abajo, y el último
+  // mensaje —que es el que se estaba leyendo— se queda fuera de cuadro. Se
+  // vuelve al final en cuanto el teclado termina de subir. El retardo no es
+  // capricho: sin él el desplazamiento se calcula con el alto viejo y la
+  // lista se queda a media pantalla.
+  useEffect(() => {
+    if (!tecla.alto) return undefined;
+    const id = setTimeout(() => {
+      try { lista.current?.scrollToEnd({ animated: true }); } catch (e) {}
+    }, 60);
+    return () => clearTimeout(id);
+  }, [tecla.alto]);
 
   // La lista de nombres solo se reemplaza si de verdad cambió: si no, cada
   // vuelta del sondeo repintaría el hilo entero sin haber novedad.
@@ -503,7 +518,13 @@ export default function AuroChat({ nav, params }) {
       conDias.push(m);
     }
     return (
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={st.screen}>
+      // El hilo NO es un formulario: aquí no se desplaza la pantalla entera,
+      // se ENCOGE. La cabecera se queda arriba, la lista cede el alto que
+      // ocupa el teclado y la caja de escribir queda pegada justo encima de
+      // las teclas —que es donde José espera verla mientras escribe—. De eso
+      // se encarga `desplaza={false}`: KeyboardAvoidingView manda sobre el
+      // alto y la FlatList, al ser el único hijo con flex:1, es la que paga.
+      <PantallaConTeclado desplaza={false} style={st.screen}>
         <View style={st.cabHilo}>
           <Pressable onPress={() => { setCon(null); setHilo([]); setOfrecido(null); }} hitSlop={10}>
             <Text style={st.volver}>‹</Text>
@@ -555,6 +576,11 @@ export default function AuroChat({ nav, params }) {
           ref={lista} data={conDias}
           keyExtractor={(m, i) => (m.sep ? 'd' + m.sep : (m.cuando || i) + '·' + (m.de || ''))}
           contentContainerStyle={{ padding: 14, gap: 4 }}
+          // Sin esto, con el teclado abierto el primer toque en un
+          // comprobante solo cierra el teclado: había que tocar dos veces
+          // para abrir el explorador.
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           onContentSizeChange={() => lista.current?.scrollToEnd({ animated: true })}
           renderItem={({ item }) => {
             if (item.sep) return (
@@ -639,7 +665,7 @@ export default function AuroChat({ nav, params }) {
             {!!foto && <Image source={{ uri: foto }} style={st.fotoLlena} resizeMode="contain" />}
           </Pressable>
         </Modal>
-      </KeyboardAvoidingView>
+      </PantallaConTeclado>
     );
   }
 

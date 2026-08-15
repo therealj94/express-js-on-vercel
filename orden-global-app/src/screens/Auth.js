@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable, TextInput, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, Pressable, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
+import { PantallaConTeclado, useCampoVisible } from '../og/Teclado';
 import { BlurView } from 'expo-blur';
 import { Icon } from '../icons';
 import { C } from '../theme';
@@ -48,6 +49,12 @@ export default function Auth({ nav }) {
   const toast = useToast();
   const t = useT();
   const login = tab === 'login';
+  // Una referencia por campo: son las que permiten medir dónde ha quedado
+  // cada uno y subirlo por encima del teclado al enfocarlo.
+  const { refScroll, alDesplazar, alEnfocar } = useCampoVisible();
+  const cNombre = useRef(null);
+  const cCorreo = useRef(null);
+  const cClave = useRef(null);
 
   // ---- entrar con Google / Apple -------------------------------------
   const [social, setSocial] = useState(null);      // 'google' | 'apple' | null
@@ -161,15 +168,15 @@ export default function Auth({ nav }) {
 
   return (
     <AppBackground intensity="hero">
-      {/* Sin esto, al escribir la contraseña el teclado tapaba el campo y el
-          botón de entrar, y no había forma de ver lo que se estaba tecleando. */}
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-      <ScrollView
+      {/* Formulario largo y el campo que más duele es el último: la
+          contraseña, escondida detrás de puntitos y con el botón de entrar
+          justo debajo. No basta con que el teclado deje de taparlo todo —hay
+          que ARRASTRAR el campo enfocado a la vista—, y de eso se ocupa
+          `alEnfocar`, que cada Input dispara al recibir el foco. */}
+      <PantallaConTeclado
         contentContainerStyle={styles.wrap}
-        keyboardShouldPersistTaps="handled"
+        refScroll={refScroll}
+        alDesplazar={alDesplazar}
         keyboardDismissMode="on-drag"
       >
         <View style={{ alignItems: 'center', marginBottom: 22 }}>
@@ -188,12 +195,16 @@ export default function Auth({ nav }) {
               ))}
             </View>
 
-            {!login && <Input label={t('auth.name')} placeholder={t('auth.namePh')} value={regName} onChangeText={setRegName} />}
-            <Input label={t('auth.email')} placeholder={t('auth.emailPh')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+            {!login && <Input label={t('auth.name')} placeholder={t('auth.namePh')} value={regName} onChangeText={setRegName} campo={cNombre} alEnfocar={alEnfocar} />}
+            <Input label={t('auth.email')} placeholder={t('auth.emailPh')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} campo={cCorreo} alEnfocar={alEnfocar} />
             <View style={{ marginBottom: 6 }}>
               <Text style={styles.label}>{t('auth.password')}</Text>
               <View>
-                <TextInput placeholderTextColor="#6f938f" secureTextEntry={!showPw} value={pw} onChangeText={setPw} placeholder="••••••••" autoCapitalize="none" style={[styles.input, { paddingRight: 44 }]} />
+                <TextInput
+                  ref={cClave}
+                  onFocus={() => alEnfocar(cClave)}
+                  placeholderTextColor="#6f938f" secureTextEntry={!showPw} value={pw} onChangeText={setPw}
+                  placeholder="••••••••" autoCapitalize="none" style={[styles.input, { paddingRight: 44 }]} />
                 <Pressable onPress={() => setShowPw(!showPw)} style={styles.eye}>
                   <Icon name={showPw ? 'eye-off' : 'eye'} size={20} color={C.txt2} />
                 </Pressable>
@@ -276,8 +287,7 @@ export default function Auth({ nav }) {
         </BlurView>
         <Text style={styles.foot}>{t('auth.foot')}</Text>
         <Text style={styles.ver}>{versionLabel()}</Text>
-      </ScrollView>
-      </KeyboardAvoidingView>
+      </PantallaConTeclado>
     </AppBackground>
   );
 }
@@ -294,11 +304,21 @@ function GoogleG() {
   );
 }
 
-function Input({ label, ...props }) {
+// `campo` es la referencia al TextInput y `alEnfocar` el aviso que sube al
+// formulario para que lo desplace a la vista. Van DESPUÉS del spread a
+// propósito: así ningún uso suelto los pisa sin querer y el campo siempre
+// queda visible.
+function Input({ label, campo, alEnfocar, ...props }) {
   return (
     <View style={{ marginBottom: 14 }}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput placeholderTextColor="#6f938f" style={styles.input} {...props} />
+      <TextInput
+        placeholderTextColor="#6f938f"
+        style={styles.input}
+        {...props}
+        ref={campo}
+        onFocus={() => { if (alEnfocar) alEnfocar(campo); }}
+      />
     </View>
   );
 }
