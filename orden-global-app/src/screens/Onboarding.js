@@ -55,6 +55,8 @@ const TXT = {
     entrar: 'Entrar a mi Núcleo',
     gidFalta: 'Todo empieza con tu Genesis ID: una sola identidad para todo el ecosistema.',
     gidListo: 'Tu Genesis ID ya está activo: todas las puertas están abiertas.',
+    redK: 'NUESTRA PROPIA CADENA', redT: 'Orden Global · 5550',
+    redP: 'Ya no vivimos prestados en la red de otro: Orden Global corre sobre su propia Layer 1, con Hyperledger Besu, consenso QBFT y máquina Shanghai. Más rápida, más barata y nuestra. Aquí empieza todo.',
     ecoK: 'BIENVENIDO', ecoT: 'Esto es Orden Global',
     ecoP: 'No es una app: es un ecosistema. Tu dinero, tu negocio, tu gente y tu identidad, conectados en un mismo núcleo.',
     dinK: 'TU DINERO', dinT: 'Veta Wallet',
@@ -73,6 +75,8 @@ const TXT = {
     entrar: 'Enter my Nucleus',
     gidFalta: 'It all starts with your Genesis ID: one identity for the whole ecosystem.',
     gidListo: 'Your Genesis ID is active: every door is already open.',
+    redK: 'OUR OWN CHAIN', redT: 'Orden Global · 5550',
+    redP: 'We no longer live borrowed on someone else\u2019s network: Orden Global runs on its own Layer 1, with Hyperledger Besu, QBFT consensus and the Shanghai machine. Faster, cheaper and ours. Everything starts here.',
     ecoK: 'WELCOME', ecoT: 'This is Orden Global',
     ecoP: 'Not an app — an ecosystem. Your money, your business, your people and your identity, wired into one nucleus.',
     dinK: 'YOUR MONEY', dinT: 'Veta Wallet',
@@ -93,6 +97,10 @@ const TXT = {
 // Colores por marca: los MISMOS que usan las esferas del Núcleo, para que
 // al aterrizar en el tablero cada mundo se reconozca al primer vistazo.
 const TARJETAS = [
+  // La cadena propia abre la bienvenida: es la noticia, y explica por qué el
+  // ecosistema que viene después puede existir. Mismo lenguaje visual que el
+  // resto — la esfera de la casa, sin logo, con el oro del núcleo.
+  { k: 'red', vis: 'og' },
   { k: 'eco', vis: 'og' },
   {
     k: 'din', vis: 'esfera', logo: 'wallet', zoom: 0.84,
