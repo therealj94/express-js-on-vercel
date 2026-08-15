@@ -17,6 +17,17 @@ Junta para rotarse (tarea 27): cuando se rote, aquí se añade la
 comprobación. Escrito en el LEEME y dicho en la entrega — no es E2E y no se
 promete E2E.
 
+Los grupos ('g:'+16hex) son la segunda mitad de AURO CHAT. Dos permisos y
+nada más: ser MIEMBRO (leer y escribir en el hilo) y ser ADMIN (renombrar,
+cambiar la foto, regenerar la invitación). La invitación es una capability:
+el token de 24 hex ES el permiso de entrar, y regenerarlo invalida el
+anterior — sin listas de invitados que mantener. La pertenencia se comprueba
+en CADA petición, nunca solo al abrir el hilo: quien sale del grupo deja de
+leer en el mismo instante.
+
+El /pago no mueve dinero: NEXUS jamás transmite. La wallet firma y transmite,
+la cadena confirma, y solo DESPUÉS el relevo deja el comprobante en el hilo.
+
 Corre detrás de Caddy en /mensajes/*. Estado en un JSON con candado; a
 este tamaño (mensajes de texto entre cientos de usuarios) sobra. Los
 adjuntos (imagen/video/archivo, ≤8MB) van como binarios en disco y se
@@ -39,7 +50,13 @@ TOPE_ARCHIVO = 8_000_000   # 8MB por adjunto: chat, no disco duro ajeno
 # abierto todas las rutas a cuerpos gigantes sin motivo.
 TOPE_POST = 64_000
 TOPE_POST_SUBIR = 11_000_000
+TOPE_NOMBRE = 64           # el nombre de un grupo cabe en la cabecera del hilo
+TOPE_GRUPOS = 200          # ningún usuario en más de 200 grupos
+# El JSON entero se reescribe en cada mensaje: un grupo de miles de miembros
+# haría lento cada guardado de todo el relevo. 500 sobra para lo que esto es.
+TOPE_MIEMBROS = 500
 ID_ARCHIVO = re.compile(r'[0-9a-f]{32}')
+ID_GRUPO = re.compile(r'g:[0-9a-f]{16}')
 candado = threading.Lock()
 
 
@@ -60,6 +77,51 @@ def guardar(d):
 
 def correo_valido(x):
     return bool(re.fullmatch(r'[^@\s]{1,64}@[^@\s]{3,255}', str(x or '').lower()))
+
+
+def foto_valida(d, x):
+    """Una foto es el id de un adjunto YA subido por /subir. Un id inventado
+    se descarta en vez de guardarse: pintaría un hueco gris en cada lista y
+    nadie sabría por qué. Cadena vacía = sin foto, y así se quita."""
+    x = str(x or '')
+    return x if (ID_ARCHIVO.fullmatch(x) and x in d.get('archivos', {})) else ''
+
+
+def miembro(g, correo):
+    return any(m['correo'] == correo for m in g.get('miembros', []))
+
+
+def grupo_de(d, gid, correo):
+    """El grupo, pero solo si quien firma es miembro AHORA. Un grupo que no
+    existe y un grupo del que no soy miembro devuelven lo mismo (None → 403)
+    a propósito: quien pruebe ids al azar no averigua cuáles existen."""
+    g = d.get('grupos', {}).get(str(gid or ''))
+    return g if (g and miembro(g, correo)) else None
+
+
+def cuantos_grupos(d, correo):
+    return sum(1 for g in d.get('grupos', {}).values() if miembro(g, correo))
+
+
+def sumar_miembros(d, g, correos, ahora):
+    """Mete en el grupo a los correos que se pueda y devuelve cuántos entraron.
+
+    Solo gente ya dada de alta en el relevo: un correo sin ficha no podría
+    leer nada y dejaría un miembro fantasma, sin nombre ni foto, en la ficha
+    del grupo. Los que ya están, los que no caben y los que llegaron a sus
+    200 grupos se saltan en silencio — invitar a diez y que entren siete no
+    es un error, por eso la respuesta cuenta los añadidos.
+    """
+    n = 0
+    for c in (correos if isinstance(correos, list) else [])[:TOPE_MIEMBROS]:
+        c = str(c).lower()
+        if not correo_valido(c) or c not in d['fichas'] or miembro(g, c):
+            continue
+        if len(g['miembros']) >= TOPE_MIEMBROS or cuantos_grupos(d, c) >= TOPE_GRUPOS:
+            continue
+        g['miembros'].append({'correo': c, 'desde': ahora})
+        n += 1
+    return n
 
 
 class Relevo(BaseHTTPRequestHandler):
@@ -114,8 +176,13 @@ class Relevo(BaseHTTPRequestHandler):
 
     def do_POST(self):
         # la ruta se decide ANTES de leer el cuerpo: el tope grande es solo
-        # para /subir y el resto de rutas conserva su límite de siempre
-        ruta = '/' + self.path.split('?')[0].strip('/').split('/')[-1]
+        # para /subir y el resto de rutas conserva su límite de siempre.
+        # Se lee por el final porque delante puede venir el prefijo de Caddy
+        # (/mensajes/...); 'grupo' es la única familia de dos niveles.
+        partes = [p for p in self.path.split('?')[0].split('/') if p]
+        ruta = '/' + (partes[-1] if partes else '')
+        if len(partes) >= 2 and partes[-2] == 'grupo':
+            ruta = '/grupo/' + partes[-1]
         try:
             n = int(self.headers.get('Content-Length', 0))
             if n > (TOPE_POST_SUBIR if ruta == '/subir' else TOPE_POST):
@@ -137,6 +204,7 @@ class Relevo(BaseHTTPRequestHandler):
                     f = {'llave': secrets.token_hex(24),
                          'nombre': str(b.get('nombre', ''))[:80],
                          'addr': str(b.get('addr', ''))[:64],
+                         'foto': foto_valida(d, b.get('foto')),
                          'desde': int(time.time())}
                     fichas[correo] = f
                     guardar(d)
@@ -145,6 +213,7 @@ class Relevo(BaseHTTPRequestHandler):
                 if b.get('llave') == f['llave']:
                     f['nombre'] = str(b.get('nombre', f['nombre']))[:80]
                     f['addr'] = str(b.get('addr', f['addr']))[:64]
+                    f['foto'] = foto_valida(d, b.get('foto', f.get('foto', '')))
                     guardar(d)
                     return self._json(200, {'llave': f['llave']})
                 return self._json(409, {'error': 'ese correo ya tiene llave'})
@@ -154,6 +223,18 @@ class Relevo(BaseHTTPRequestHandler):
             f = fichas.get(correo)
             if not f or b.get('llave') != f['llave']:
                 return self._json(401, {'error': 'llave incorrecta'})
+
+            if ruta == '/perfil':
+                # Mi nombre y mi foto, lo único mío que ve el resto. Se mira
+                # si la clave VIENE, no si trae algo: mandar {foto:''} es la
+                # forma de quitarse la foto, y eso no puede confundirse con
+                # "no toques la foto" (que es no mandar la clave).
+                if 'nombre' in b:
+                    f['nombre'] = str(b.get('nombre', ''))[:80]
+                if 'foto' in b:
+                    f['foto'] = foto_valida(d, b.get('foto'))
+                guardar(d)
+                return self._json(200, {'ok': True})
 
             if ruta == '/subir':
                 # Sube un adjunto y devuelve su id. El binario NO viaja en el
@@ -195,8 +276,16 @@ class Relevo(BaseHTTPRequestHandler):
                 archivo = str(b.get('archivo', ''))
                 adj = (tipo in ('imagen', 'video', 'archivo')
                        and archivo in d.get('archivos', {}))
+                if ID_GRUPO.fullmatch(para):
+                    # el permiso de escribir en un grupo es ser miembro AHORA:
+                    # se comprueba en cada envío, no al abrir el hilo, para que
+                    # salir del grupo corte de verdad y en el acto
+                    if not grupo_de(d, para, correo):
+                        return self._json(403, {'error': 'no eres del grupo'})
+                elif not correo_valido(para):
+                    return self._json(400, {'error': 'faltan datos'})
                 # un mensaje puede ser solo texto, solo adjunto, o ambos
-                if not correo_valido(para) or (not texto and not adj):
+                if not texto and not adj:
                     return self._json(400, {'error': 'faltan datos'})
                 m = {'de': correo, 'para': para, 'texto': texto,
                      'cuando': int(time.time() * 1000)}
@@ -211,11 +300,63 @@ class Relevo(BaseHTTPRequestHandler):
                 guardar(d)
                 return self._json(200, {'ok': True})
 
+            if ruta == '/pago':
+                # El comprobante de un envío que la cadena YA confirmó. Aquí
+                # no se mueve dinero ni se verifica la cadena: el relevo solo
+                # deja la tarjeta en el hilo con el hash para que cualquiera
+                # lo compruebe en el explorador. La wallet llama DESPUÉS de la
+                # confirmación, nunca antes — un comprobante de algo que aún
+                # no pasó sería una mentira firmada por nosotros.
+                para = str(b.get('para', '')).lower()
+                # el monto se guarda como TEXTO: pasarlo por un float de JSON
+                # redondearía los decimales de ORIGEN y el comprobante diría
+                # una cantidad distinta de la que firmó la persona
+                monto = str(b.get('monto', '')).strip()[:32]
+                if (not re.fullmatch(r'\d{1,20}(\.\d{1,18})?', monto)
+                        or not any(c in '123456789' for c in monto)):
+                    return self._json(400, {'error': 'monto inválido'})
+                moneda = str(b.get('moneda', '') or 'ORIGEN').upper()[:12]
+                if not re.fullmatch(r'[A-Z0-9]{2,12}', moneda):
+                    return self._json(400, {'error': 'moneda inválida'})
+                # el hash acaba dentro de una URL del explorador: si no parece
+                # un hash no entra — mejor tarjeta sin enlace que enlace roto
+                hh = str(b.get('hash', '')).strip()[:80]
+                if hh and not re.fullmatch(r'(0x)?[0-9a-fA-F]{16,78}', hh):
+                    return self._json(400, {'error': 'hash inválido'})
+                if ID_GRUPO.fullmatch(para):
+                    if not grupo_de(d, para, correo):
+                        return self._json(403, {'error': 'no eres del grupo'})
+                elif not correo_valido(para):
+                    return self._json(400, {'error': 'destino inválido'})
+                # tipo 'pago' solo puede nacer aquí: /enviar únicamente acepta
+                # los tipos de adjunto, así que nadie fabrica un comprobante
+                # falso mandando un mensaje normal con tipo:'pago'
+                m = {'de': correo, 'para': para, 'tipo': 'pago',
+                     'monto': monto, 'moneda': moneda,
+                     'texto': str(b.get('nota', ''))[:TOPE_TEXTO].strip(),
+                     'cuando': int(time.time() * 1000)}
+                if hh:
+                    m['hash'] = hh
+                d['mensajes'].append(m)
+                if len(d['mensajes']) > 20_000:
+                    d['mensajes'] = d['mensajes'][-20_000:]
+                guardar(d)
+                # se devuelve el mensaje entero para que el hilo pinte la
+                # tarjeta al instante, sin esperar a la siguiente /bandeja
+                return self._json(200, {'ok': True, 'mensaje': m})
+
             if ruta == '/bandeja':
                 desde = str(b.get('desde', '')).lower()
-                hilo = [m for m in d['mensajes']
-                        if (m['de'] == correo and m['para'] == desde)
-                        or (m['de'] == desde and m['para'] == correo)]
+                if ID_GRUPO.fullmatch(desde):
+                    if not grupo_de(d, desde, correo):
+                        return self._json(403, {'error': 'no eres del grupo'})
+                    # en un grupo el hilo es uno solo y lo comparten todos:
+                    # cada mensaje lleva su 'de' para pintar quién habla
+                    hilo = [m for m in d['mensajes'] if m['para'] == desde]
+                else:
+                    hilo = [m for m in d['mensajes']
+                            if (m['de'] == correo and m['para'] == desde)
+                            or (m['de'] == desde and m['para'] == correo)]
                 return self._json(200, {'mensajes': hilo[-TOPE_BANDEJA:]})
 
             if ruta == '/buscar':
@@ -232,34 +373,60 @@ class Relevo(BaseHTTPRequestHandler):
                 return self._json(200, {'gente': gente})
 
             if ruta == '/conversaciones':
-                # Todas mis charlas: con quien, lo ultimo dicho y cuantos sin
+                # Todas mis charlas —personas y grupos en la misma lista, que
+                # es como se usan—: con quien, lo ultimo dicho y cuantos sin
                 # leer. Es lo que pinta la lista principal del chat.
                 vistos = d.setdefault('vistos', {}).get(correo, {})
-                hilos = {}
+                grupos = d.get('grupos', {})
+                mios = {gid for gid, g in grupos.items() if miembro(g, correo)}
+                # los grupos entran aunque nadie haya hablado todavía: un grupo
+                # recién creado tiene que verse, si no parece que no se creó
+                hilos = {gid: {'ultimo': None, 'sinLeer': 0} for gid in mios}
                 for m in d['mensajes']:
-                    if m['de'] == correo:
-                        otro = m['para']
-                    elif m['para'] == correo:
+                    para = m['para']
+                    if ID_GRUPO.fullmatch(para):
+                        # de un grupo del que me fui no vuelve a asomar nada,
+                        # ni su último mensaje ni sus sin-leer
+                        if para not in mios:
+                            continue
+                        otro = para
+                    elif m['de'] == correo:
+                        otro = para
+                    elif para == correo:
                         otro = m['de']
                     else:
                         continue
                     h = hilos.setdefault(otro, {'ultimo': None, 'sinLeer': 0})
                     h['ultimo'] = m
-                    if m['para'] == correo and m['cuando'] > vistos.get(otro, 0):
+                    ajeno = m['de'] != correo if otro in mios else para == correo
+                    if ajeno and m['cuando'] > vistos.get(otro, 0):
                         h['sinLeer'] += 1
                 lista = []
                 for otro, h in hilos.items():
+                    if otro in mios:
+                        g = grupos[otro]
+                        lista.append({'correo': otro, 'id': otro, 'esGrupo': True,
+                                      'nombre': g['nombre'], 'foto': g.get('foto', ''),
+                                      'miembros': len(g['miembros']),
+                                      'creado': g.get('creado', 0),
+                                      'ultimo': h['ultimo'], 'sinLeer': h['sinLeer']})
+                        continue
                     g = fichas.get(otro, {})
                     lista.append({'correo': otro,
                                   'nombre': g.get('nombre', otro.split('@')[0]),
                                   'addr': g.get('addr', ''),
                                   'ultimo': h['ultimo'], 'sinLeer': h['sinLeer']})
-                lista.sort(key=lambda x: -(x['ultimo'] or {}).get('cuando', 0))
+                # por lo último dicho; el grupo callado se ordena por cuándo se
+                # creó, así el recién hecho aparece arriba y no en el sótano
+                lista.sort(key=lambda x: -((x['ultimo'] or {}).get('cuando')
+                                           or x.get('creado', 0)))
                 return self._json(200, {'conversaciones': lista})
 
             if ruta == '/leido':
-                # Marca la charla con alguien como vista hasta ahora.
+                # Marca la charla con alguien (o un grupo) como vista hasta ahora.
                 de = str(b.get('de', '')).lower()
+                if ID_GRUPO.fullmatch(de) and not grupo_de(d, de, correo):
+                    return self._json(403, {'error': 'no eres del grupo'})
                 d.setdefault('vistos', {}).setdefault(correo, {})[de] = int(time.time() * 1000)
                 guardar(d)
                 return self._json(200, {'ok': True})
@@ -271,7 +438,119 @@ class Relevo(BaseHTTPRequestHandler):
                 # declaró su dueño para ser encontrado. La llave jamás sale.
                 if not g:
                     return self._json(404, {'error': 'no está'})
-                return self._json(200, {'nombre': g['nombre'], 'addr': g['addr']})
+                return self._json(200, {'nombre': g['nombre'], 'addr': g['addr'],
+                                        'foto': g.get('foto', '')})
+
+            if ruta == '/grupo/crear':
+                nombre = str(b.get('nombre', '')).strip()[:TOPE_NOMBRE]
+                if not nombre:
+                    return self._json(400, {'error': 'falta el nombre'})
+                if cuantos_grupos(d, correo) >= TOPE_GRUPOS:
+                    return self._json(409, {'error': 'demasiados grupos'})
+                ahora = int(time.time() * 1000)
+                gid = 'g:' + secrets.token_hex(8)      # 16 hex
+                inv = secrets.token_hex(12)            # 24 hex = el permiso de entrar
+                g = {'id': gid, 'nombre': nombre, 'foto': foto_valida(d, b.get('foto')),
+                     'admin': correo, 'invitacion': inv, 'creado': ahora,
+                     # el orden de esta lista es el orden de llegada, y de ahí
+                     # sale el heredero cuando el admin se va
+                     'miembros': [{'correo': correo, 'desde': ahora}]}
+                d.setdefault('grupos', {})[gid] = g
+                d.setdefault('invitaciones', {})[inv] = gid
+                sumar_miembros(d, g, b.get('miembros'), ahora)
+                guardar(d)
+                return self._json(200, {'id': gid, 'invitacion': inv})
+
+            if ruta == '/grupo/info':
+                g = grupo_de(d, b.get('id'), correo)
+                if not g:
+                    return self._json(403, {'error': 'no eres del grupo'})
+                gente = []
+                for m in g['miembros']:
+                    ficha = fichas.get(m['correo'], {})
+                    gente.append({'correo': m['correo'],
+                                  'nombre': ficha.get('nombre') or m['correo'].split('@')[0],
+                                  'foto': ficha.get('foto', '')})
+                # la invitación va dentro porque cualquier miembro puede
+                # invitar: esconderla al no-admin sería teatro, no seguridad
+                return self._json(200, {'id': g['id'], 'nombre': g['nombre'],
+                                        'foto': g.get('foto', ''), 'admin': g['admin'],
+                                        'invitacion': g['invitacion'], 'miembros': gente})
+
+            if ruta == '/grupo/editar':
+                g = grupo_de(d, b.get('id'), correo)
+                if not g:
+                    return self._json(403, {'error': 'no eres del grupo'})
+                if g['admin'] != correo:
+                    return self._json(403, {'error': 'solo el admin'})
+                if 'nombre' in b:
+                    nombre = str(b.get('nombre', '')).strip()[:TOPE_NOMBRE]
+                    if not nombre:
+                        return self._json(400, {'error': 'falta el nombre'})
+                    g['nombre'] = nombre
+                if 'foto' in b:
+                    g['foto'] = foto_valida(d, b.get('foto'))
+                if b.get('nuevaInvitacion'):
+                    # la invitación es una capability: la única forma de
+                    # revocarla es que deje de existir. Se borra del índice y
+                    # nace otra — el enlace viejo, el QR viejo y la captura
+                    # que anda circulando dejan de abrir la puerta.
+                    d.setdefault('invitaciones', {}).pop(g['invitacion'], None)
+                    g['invitacion'] = secrets.token_hex(12)
+                    d['invitaciones'][g['invitacion']] = g['id']
+                guardar(d)
+                # el admin acaba de tocar el grupo: devolver la invitación
+                # vigente le ahorra un /grupo/info para repintar el QR
+                return self._json(200, {'ok': True, 'invitacion': g['invitacion']})
+
+            if ruta == '/grupo/invitar':
+                g = grupo_de(d, b.get('id'), correo)
+                if not g:
+                    return self._json(403, {'error': 'no eres del grupo'})
+                n = sumar_miembros(d, g, b.get('correos'), int(time.time() * 1000))
+                guardar(d)
+                return self._json(200, {'ok': True, 'añadidos': n})
+
+            if ruta == '/grupo/unirse':
+                # El token ES el permiso: quien lo tiene entra, venga de un
+                # enlace o de un QR. Por eso no hay lista de invitados que
+                # mantener — y por eso regenerarlo es la forma de cerrar.
+                inv = str(b.get('invitacion', ''))
+                gid = d.get('invitaciones', {}).get(inv)
+                g = d.get('grupos', {}).get(gid or '')
+                if not inv or not g or g['invitacion'] != inv:
+                    return self._json(404, {'error': 'invitación no válida'})
+                if not miembro(g, correo):
+                    if len(g['miembros']) >= TOPE_MIEMBROS:
+                        return self._json(409, {'error': 'grupo lleno'})
+                    if cuantos_grupos(d, correo) >= TOPE_GRUPOS:
+                        return self._json(409, {'error': 'demasiados grupos'})
+                    g['miembros'].append({'correo': correo, 'desde': int(time.time() * 1000)})
+                    guardar(d)
+                # ya ser miembro no es un error: el que abre el enlace dos
+                # veces entra al grupo igual, no a una pantalla de fallo
+                return self._json(200, {'id': g['id'], 'nombre': g['nombre']})
+
+            if ruta == '/grupo/salir':
+                g = grupo_de(d, b.get('id'), correo)
+                if not g:
+                    return self._json(403, {'error': 'no eres del grupo'})
+                gid = g['id']
+                g['miembros'] = [m for m in g['miembros'] if m['correo'] != correo]
+                if not g['miembros']:
+                    # el último apagó la luz: sin miembros nadie podrá volver a
+                    # leer ese hilo jamás, así que el grupo, su invitación y sus
+                    # mensajes se van con él en vez de quedar de basura eterna
+                    d['grupos'].pop(gid, None)
+                    d.setdefault('invitaciones', {}).pop(g['invitacion'], None)
+                    d['mensajes'] = [m for m in d['mensajes'] if m['para'] != gid]
+                elif g['admin'] == correo:
+                    # sin admin nadie podría renombrar ni cerrar la invitación:
+                    # hereda el miembro más antiguo (min devuelve el primero de
+                    # la lista si empatan, que es el que entró antes)
+                    g['admin'] = min(g['miembros'], key=lambda m: m['desde'])['correo']
+                guardar(d)
+                return self._json(200, {'ok': True})
 
         return self._json(404, {'error': 'no existe'})
 
