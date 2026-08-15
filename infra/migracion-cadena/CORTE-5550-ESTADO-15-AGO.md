@@ -94,3 +94,63 @@ exactamente el que se temía. Mientras la app siga hablando con la 8532, el
 génesis caduca cada vez que alguien envía. Por eso el paso 2 no es opcional y
 el corte no se puede estirar en el tiempo: se congela, se reconstruye y se
 arranca **en la misma ventana**.
+
+---
+
+## 6 · Ejecutado el 15-ago · la 5550 es la red oficial
+
+| Paso | Resultado |
+|---|---|
+| Génesis instalado en nodos 3, 4, 5 y 6 | md5 `89a1ec6b…` idéntico en los cuatro |
+| Identidad de cada nodo | conservada (se copió su `key`), la malla se rearmó sola |
+| Arranque | chainId **5550**, 4 validadores QBFT, período 10 s, bloques subiendo |
+| Billetera única | 249.999.982.618,0731 ORIGEN — la cifra del acuerdo |
+| RPC público | `rpc.`, `www.` y la raíz de ordenglobal-rpc.com → 5550 |
+| App y web | identificador 5550 y 16 rótulos con la ficha técnica |
+| Explorador | frontend a 5550; backend ya leía la 5550 solo (apunta al mismo nombre) |
+
+La 5534 de pruebas queda **parada**, con su carpeta intacta: volver es cambiar
+la unidad de systemd y arrancar.
+
+### El tropiezo, por si vuelve a pasar
+`rpc.ordenglobal-rpc.com` cuelga del balanceador **OrdenKapital**, no del que
+lleva el nombre `ogb-testnet-rpc`. Al cortar por el sitio correcto salió 502:
+node5 y node6 estaban en una subred que ese balanceador no cubría. Se revirtió
+en segundos, se añadió la subred y el segundo intento entró limpio. **Un
+balanceador solo puede alcanzar instancias de las subredes que tiene
+asignadas** — comprobarlo antes, no después.
+
+## 7 · Lo que queda, y por qué no lo puedo hacer yo
+
+### a) La base del explorador mezcla dos cadenas — IMPORTANTE
+El indexador (`revisarNuevosBloques`, cada 15 s) ya guarda bloques de la 5550
+en la **misma** base de Mongo que tiene el histórico de la 8532. Y los números
+de bloque **se solapan**: el bloque 100 de la 5550 y el 100 de la vieja son
+distintos y comparten número. Hoy el explorador enseña 207 bloques (5550) junto
+a 1.532 transacciones y direcciones con `blockNumber: 206376` (8532): datos que
+en la cadena oficial no existen.
+
+**El arreglo:** vaciar las colecciones `blocks`, `transactions`, `addresses` y
+`tokentxs` y dejar que reindexe desde el bloque 0 de la 5550.
+
+```sh
+# con la URI que ya vive en la variable MONGODB_URI de Heroku
+mongosh "$MONGODB_URI" --eval 'db.blocks.deleteMany({}); db.transactions.deleteMany({}); db.addresses.deleteMany({}); db.tokentxs.deleteMany({})'
+heroku restart -a orden-global-scan
+```
+
+No lo ejecuto porque **no tengo acceso a Heroku** (el token está caducado desde
+el 12-ago) y la URI de Mongo vive ahí. Es de José o de quien tenga esa cuenta.
+
+El histórico de la 8532 se pierde **del explorador**, no de la cadena: la 8532
+sigue en pie como respaldo caliente y su historia entera está en sus nodos.
+
+### b) node3 no atiende consultas
+Pasa a `unhealthy` en el balanceador (`Target.FailedHealthChecks`) aunque
+responde bien en local y **valida bloques con normalidad**. La red sirve con
+node5 y node6. Queda por mirar.
+
+### c) Falta el envío real y parar la 8532
+Un envío de punta a punta desde la app —lo tiene que hacer una persona, no se
+puede firmar desde aquí— y, solo si sale bien, parar `polygon-edge` en los seis
+nodos. La 8532 queda apagada pero restaurable.
