@@ -20,6 +20,10 @@ export const MAPA = {
   'id/abrir':        { p: 'passport' },
   'chat/abrir':      { p: 'chat', gid: true },     // con=correo
   'asistente/abrir': { p: 'ecosistema' },
+  // Ajustes es uno de los cinco mundos del Núcleo: si el tablero lo enseña,
+  // el asistente tiene que poder abrirlo — «abre los ajustes» no puede
+  // contestar «eso no lo puedo hacer».
+  'ajustes':         { p: 'settings' },
 };
 
 export function aUri(ruta, params) {

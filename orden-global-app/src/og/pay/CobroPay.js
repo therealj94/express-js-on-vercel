@@ -166,14 +166,22 @@ function Fila({ k, v, sub, fuerte }) {
   );
 }
 
-export default function CobroPay({ nav }) {
+export default function CobroPay({ nav, params }) {
   const { lang } = useLang();
   const t = TXT[lang] || TXT.es;
   const { account } = useAccount();
   const toast = useToast();
 
   const [etapa, setEtapa] = useState('factura');   // factura | qr | dividir
-  const [monto, setMonto] = useState('');
+  // «Cóbrale 200» desde NEXUS llega como params.monto: se SIEMBRA la caja
+  // con ese número para no hacérselo teclear dos veces. Solo siembra — la
+  // moneda queda en la de la pantalla y el comercio puede corregir antes de
+  // generar el QR, igual que si lo hubiera escrito él. Un param roto (letras,
+  // tres decimales) se ignora: mejor caja vacía que un cobro malformado.
+  const [monto, setMonto] = useState(() => {
+    const m = String(params?.monto || '').replace(',', '.');
+    return /^\d+(\.\d{1,2})?$/.test(m) ? m : '';
+  });
   const [moneda, setMoneda] = useState('HNL');     // HNL | ORIGEN — en qué se TECLEA
   const [concepto, setConcepto] = useState('');
   const [propina, setPropina] = useState(0);
