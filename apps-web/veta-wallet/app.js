@@ -1790,7 +1790,10 @@ const VETA = (() => {
       sol.error = verFalla(e);
     } finally {
       sol.enviando = false;
-      vista('verificar');
+      /* Se repinta lo que la persona esté mirando, no la verificación a la
+         fuerza: subir las fotos tarda, y a quien se fue a ver su saldo mientras
+         tanto no se le arrastra de vuelta. El resultado le espera acá. */
+      vista(vistaActual);
     }
   }
 
@@ -1872,6 +1875,9 @@ const VETA = (() => {
   function verVolverA(paso) {
     sol.error = '';
     sol.resultado = null;
+    // Volver a por la cara es volver a TOMARLA: dejar puesta la que no sirvió,
+    // con un botón de repetir al lado, invita a mandar la misma otra vez.
+    if (paso === 3) sol.selfie = null;
     sol.paso = paso;
     vista('verificar');
   }

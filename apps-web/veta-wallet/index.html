@@ -732,8 +732,11 @@ px;
   box-shadow:0 0 0 3px rgba(201,169,97,.14)}
 /* La MRZ se copia caracter a caracter: monoespaciada y holgada, o se confunde
    un 0 con una O justo donde eso invalida el documento entero. */
-.campo textarea{min-height:110px;resize:vertical;font-family:var(--mono);
+.campo textarea{display:block;min-height:110px;resize:vertical;font-family:var(--mono);
   font-size:14px;letter-spacing:.08em;line-height:1.9}
+/* Un enlace con pinta de boton no lleva subrayado; el reset general solo toca
+   los <a> del pie y del riel. */
+a.btn{text-decoration:none}
 .campo .ayuda{display:block;font-size:11.5px;color:var(--humo);margin-top:7px;line-height:1.55}
 .campo-tres{display:flex;gap:10px}
 .campo-tres .campo{flex:1;min-width:0;margin-bottom:0}
