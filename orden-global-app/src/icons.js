@@ -137,6 +137,18 @@ const PATHS = {
   heart: ['M12 21s-8-5.3-8-11.3a4.7 4.7 0 0 1 8-3.3 4.7 4.7 0 0 1 8 3.3c0 6-8 11.3-8 11.3z'],
   earth: [circle(12, 12, 9), 'M3 12h18', 'M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18'],
   'trending-up': ['M3 17l6-6 4 4 8-8', 'M15 7h5v5'],
+
+  // Estos cinco los citaban pantallas ya entregadas (la barra de pestañas de
+  // App.js pide 'planet', 'scan', 'compass' y 'home'; el panel y la portada de
+  // MyTokenPay pedían 'gift' para los bonos) y NO existían en el set: Icon
+  // devuelve un <Svg/> vacío cuando no encuentra el nombre, así que esos
+  // botones se veían como un hueco. Dibujados sobre la misma rejilla de 24×24
+  // y con el mismo trazo que el resto.
+  home: ['M3.5 10.6L12 3.6l8.5 7', 'M5.5 9.4V20h13V9.4', 'M9.8 20v-5.6h4.4V20'],
+  planet: [circle(12, 12, 6.4), 'M4.6 16.4c-2.2 1.5-3.4 2.9-3 3.6.7 1.2 5.2-.3 10-3.3s8.2-6.4 7.5-7.6c-.4-.7-2.2-.5-4.6.4'],
+  compass: [circle(12, 12, 8.6), 'M15.4 8.6l-2 4.8-4.8 2 2-4.8z'],
+  scan: ['M3.5 8.6V5.6a2 2 0 0 1 2-2h3', 'M15.5 3.6h3a2 2 0 0 1 2 2v3', 'M20.5 15.4v3a2 2 0 0 1-2 2h-3', 'M8.5 20.4h-3a2 2 0 0 1-2-2v-3', 'M3.5 12h17'],
+  gift: ['M3.6 11.4h16.8v3H3.6z', 'M5.2 14.4V20h13.6v-5.6', 'M12 11.4V20', 'M12 11.4C10.4 8.6 9 7.2 7.6 7.2a2.2 2.2 0 0 0 0 4.2h8.8a2.2 2.2 0 0 0 0-4.2c-1.4 0-2.8 1.4-4.4 4.2z'],
 };
 
 // Alias: mismos nombres que usábamos antes.

@@ -230,8 +230,32 @@ export default function PanelPay({ nav }) {
           </LinearGradient>
         </Entrada>
 
+        {/* ── el saldo de la billetera: la "Saldo Veta Wallet" del original,
+            que además era el atajo a pagar. Aquí es el mismo ORIGEN con el
+            que se cobra: en Orden Global no hay dos bolsas. ─────────────── */}
+        <Entrada delay={70}>
+          <Pressable
+            onPress={() => { hap(); nav.go('pay-pagar'); }}
+            accessibilityRole="button" accessibilityLabel={t.saldoTit}
+            style={st.saldo}>
+            <View style={st.saldoIc}><Icon name="wallet" size={18} color={C.gold} /></View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={st.saldoLbl}>{t.saldoTit}</Text>
+              <Text style={st.saldoVal} numberOfLines={1}>
+                {qtyFmt(saldo)} ORIGEN
+                {saldoUsd != null ? <Text style={st.saldoUsd}>{'  ≈ ' + money(saldoUsd)}</Text> : null}
+              </Text>
+            </View>
+            <View style={st.saldoBtn}>
+              <Text style={st.saldoBtnTxt}>{t.saldoPagar}</Text>
+              <Icon name="arrow-forward" size={13} color={C.darkText} />
+            </View>
+          </Pressable>
+          <Text style={st.nota}>{saldoUsd == null ? t.sinPrecio : t.saldoNota}</Text>
+        </Entrada>
+
         {/* ── resumen del día ───────────────────────────────────────────── */}
-        <Entrada delay={90}>
+        <Entrada delay={110}>
           <View style={st.resumen}>
             <Text style={st.grupo}>{t.hoy}</Text>
             {transfers === undefined ? (
@@ -246,6 +270,11 @@ export default function PanelPay({ nav }) {
                   {qtyFmt(origenHoy)} <Text style={st.moneda}>ORIGEN</Text>
                 </Text>
                 <Text style={st.granSub}>{t.cobradoHoy}</Text>
+                {/* el ticket promedio que enseñaba negocio-panel.tsx: dice si
+                    los cobros son muchos y pequeños o pocos y grandes */}
+                {enOrigen.length > 0 ? (
+                  <Text style={st.granSub}>{t.ticket}: {qtyFmt(ticket)} ORIGEN</Text>
+                ) : null}
                 {hayOtrosHoy ? <Text style={st.nota}>{t.otrosHoy}</Text> : null}
                 {entrantes.length === 0 ? (
                   <Text style={st.nota}>{transfers.length === 0 ? t.sinDatos : t.nadieAun}</Text>
@@ -294,8 +323,40 @@ export default function PanelPay({ nav }) {
             onPress={() => { hap(); nav.go('pay-bonos'); }}
             accessibilityRole="button" accessibilityLabel="Bonos"
             style={st.verAct}>
+            {/* 'gift' se pedía aquí desde la primera entrega pero no estaba
+                dibujado en el set, así que Icon devolvía un hueco invisible.
+                Ahora existe (src/icons.js) y el regalo se ve. */}
             <View style={st.verActIc}><Icon name="gift" size={17} color={C.gold} /></View>
             <Text style={st.verActTxt}>{t.bonos}</Text>
+            <Icon name="chevron-forward" size={15} color={C.txt3} />
+          </Pressable>
+          <Pressable
+            onPress={() => { hap(); nav.go('pay-negocio-panel'); }}
+            accessibilityRole="button" accessibilityLabel={t.panelNeg}
+            style={st.verAct}>
+            <View style={st.verActIc}><Icon name="cash" size={17} color={C.gold} /></View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={st.verActTxt}>{t.panelNeg}</Text>
+              <Text style={st.verActSub}>{t.panelNegS}</Text>
+            </View>
+            <Icon name="chevron-forward" size={15} color={C.txt3} />
+          </Pressable>
+          {/* La casilla de notificaciones de panel.tsx, con su misma pista:
+              "N nuevas" cuando hay cobros sin ver, "Al día" cuando no. */}
+          <Pressable
+            onPress={() => { hap(); nav.go('pay-notificaciones'); }}
+            accessibilityRole="button" accessibilityLabel={t.notis}
+            style={st.verAct}>
+            <View style={st.verActIc}>
+              <Icon name="notifications" size={17} color={C.gold} />
+              {sinLeer > 0 ? <View style={st.punto} /> : null}
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={st.verActTxt}>{t.notis}</Text>
+              <Text style={st.verActSub}>
+                {sinLeer > 0 ? t.notisNuevas.replace('{n}', sinLeer) : t.notisAlDia}
+              </Text>
+            </View>
             <Icon name="chevron-forward" size={15} color={C.txt3} />
           </Pressable>
 
@@ -373,6 +434,18 @@ const st = StyleSheet.create({
   verAct: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 16, padding: 13, marginTop: 11 },
   verActIc: { width: 36, height: 36, borderRadius: 11, backgroundColor: 'rgba(201,169,97,0.12)', alignItems: 'center', justifyContent: 'center' },
   verActTxt: { flex: 1, color: C.txt, fontSize: 13.5, fontWeight: '600' },
+  verActSub: { color: C.txt3, fontSize: 11, marginTop: 2 },
+  punto: { position: 'absolute', top: -2, right: -2, width: 9, height: 9, borderRadius: 5, backgroundColor: C.up },
+
+  saludo: { color: C.txt, fontSize: 22, fontWeight: '800' },
+  bienvenido: { color: C.txt2, fontSize: 12.5, marginTop: 3, marginBottom: 14 },
+  saldo: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, borderRadius: 18, padding: 14, marginTop: 14 },
+  saldoIc: { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(201,169,97,0.12)', alignItems: 'center', justifyContent: 'center' },
+  saldoLbl: { color: C.txt3, fontSize: 9.5, fontWeight: '700', letterSpacing: 1.6 },
+  saldoVal: { color: C.txt, fontSize: 15, fontWeight: '700', marginTop: 3, fontVariant: ['tabular-nums'] },
+  saldoUsd: { color: C.txt3, fontSize: 11.5, fontWeight: '400' },
+  saldoBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.gold, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
+  saldoBtnTxt: { color: C.darkText, fontSize: 11.5, fontWeight: '700' },
 
   ultCab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 22, marginBottom: 10, paddingHorizontal: 2 },
   verTodo: { color: C.gold, fontSize: 12.5, fontWeight: '600' },

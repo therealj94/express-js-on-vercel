@@ -118,7 +118,7 @@ const ACCESOS = [
   { k: 'aExplorar', ruta: 'pay-explorar', icono: 'earth' },
   { k: 'aPanel', ruta: 'pay-panel', icono: 'trending-up' },
   { k: 'aNegocio', ruta: 'pay-negocio', icono: 'storefront' },
-  { k: 'aBonos', ruta: 'pay-bonos', icono: 'star' },
+  { k: 'aBonos', ruta: 'pay-bonos', icono: 'gift' },
   { k: 'aActividad', ruta: 'pay-actividad', icono: 'pulse' },
 ];
 
@@ -267,7 +267,7 @@ export default function InicioPay({ nav }) {
           <Pressable onPress={() => { hap(); nav.go('pay-bonos'); }}
             accessibilityRole="button" accessibilityLabel={t.ctaTit}>
             <LinearGradient colors={G.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.cta}>
-              <Icon name="star" size={20} color={C.darkText} />
+              <Icon name="gift" size={20} color={C.darkText} />
               <Text style={st.ctaTit}>{t.ctaTit}</Text>
               <Text style={st.ctaTxt}>{t.ctaTxt}</Text>
               <View style={st.ctaPills}>
