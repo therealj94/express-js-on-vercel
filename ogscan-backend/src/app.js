@@ -15,7 +15,15 @@ const bodyParser = require("body-parser");
 const addressRouter = require("./routes/address");
 const blockRouter = require("./routes/blocks");
 const transactionRouter = require("./routes/transactions");
-const revisarNuevosBloques = require("./controller/EventBlockchain");
+// EventBlockchain.js exporta con `module.exports` PERO tiene `import` dentro, y
+// el arranque es con babel-node: segun como transpile, este require puede
+// devolver la funcion o el objeto del modulo con la funcion en `.default`. Si
+// llega el objeto, setInterval programa algo que no es funcion: no indexa nada
+// y no da ni un error. Eso paso de verdad —el explorador se quedo sin indexar
+// la primera transaccion de la 5550—, asi que se aceptan las dos formas.
+const _modIndexador = require("./controller/EventBlockchain");
+const revisarNuevosBloques =
+  typeof _modIndexador === "function" ? _modIndexador : _modIndexador.default;
 
 require("../db");
 
@@ -88,7 +96,14 @@ app.use("/transaction", transactionRouter);
 app.use(function (req, res, next) {
   next(createError(404));
 });
-setInterval(revisarNuevosBloques, 15000);
+if (typeof revisarNuevosBloques !== "function") {
+  // Ruidoso a proposito: sin esto el fallo es invisible.
+  console.error("[indexador] NO se pudo cargar revisarNuevosBloques:", typeof _modIndexador);
+} else {
+  console.log("[indexador] cargado; primera vuelta ya");
+  revisarNuevosBloques();                       // sin esperar los 15s
+  setInterval(revisarNuevosBloques, 15000);
+}
 
 // error handler
 app.use(function (err, req, res, next) {
