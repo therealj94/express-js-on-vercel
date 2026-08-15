@@ -42,8 +42,14 @@ export default function TokenDetail({ nav, params }) {
   // Variación del periodo mostrado (no solo 24 h).
   const varPeriodo = velas.length > 1 ? ((velas[velas.length - 1].c - velas[0].o) / velas[0].o) * 100 : null;
 
-  // Historial real de la red para este token (hoy la red reporta transferencias nativas).
-  const transfers = (account?.transfers || []).filter((x) => (x.symbol || 'ORIGEN') === t.s || t.s === 'ORIGEN');
+  /* Historial de la red PARA ESTE TOKEN.
+     El `|| t.s === 'ORIGEN'` de antes tenía sentido cuando la lista solo traía
+     transferencias nativas: sin símbolo, todas eran ORIGEN y la pantalla de
+     ORIGEN las enseñaba todas. Desde que el backend dejó de descartar los
+     ERC-20, cada fila viene con su símbolo de verdad — y con aquella condición
+     la pantalla de ORIGEN pasó a listar también los envíos de ONDK, con el
+     saldo de ORIGEN arriba. Cada token enseña lo suyo. */
+  const transfers = (account?.transfers || []).filter((x) => (x.symbol || 'ORIGEN') === t.s);
   const isIn = (x) => x.type === 'recive' || x.type === 'receive' || x.type === 'in';
 
   return (

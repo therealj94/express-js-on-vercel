@@ -145,7 +145,7 @@ const PATHS = {
   // botones se veían como un hueco. Dibujados sobre la misma rejilla de 24×24
   // y con el mismo trazo que el resto.
   home: ['M3.5 10.6L12 3.6l8.5 7', 'M5.5 9.4V20h13V9.4', 'M9.8 20v-5.6h4.4V20'],
-  // El clip y la cámara de video entraron cuando AURO CHAT dejó los emojis
+  // El clip y la cámara de video entraron cuando PULSE CHAT dejó los emojis
   // (📎🖼🎬📄⌖) como iconos de botón: en Android salen a color y rompen la
   // paleta oro/verde. Mismo trazo y rejilla 24×24 que el resto del set.
   attach: ['M21.2 11.2l-8.9 8.9a5.7 5.7 0 0 1-8.1-8.1l8.9-8.9a3.8 3.8 0 0 1 5.4 5.4l-8.9 8.9a1.9 1.9 0 0 1-2.7-2.7l8.2-8.2'],

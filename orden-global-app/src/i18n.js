@@ -83,7 +83,7 @@ const S = {
     'rem.s1t': 'Escanea o pega la dirección',
     'rem.s1p': 'Pide al destinatario su código QR desde Recibir. También podés compartir un link con el monto ya listo.',
     'rem.s2t': 'Firma con tu contraseña',
-    'rem.s2p': 'La transacción sale de tu billetera y viaja por la blockchain de Orden Global (chain 8532).',
+    'rem.s2p': 'La transacción sale de tu billetera y viaja por la blockchain de Orden Global (cadena 5550).',
     'rem.s3t': 'Llega al destino en segundos',
     'rem.s3p': 'El destinatario ve el saldo en su billetera al instante. Puede convertirlo a moneda local en cualquier casa de cambio del ecosistema.',
     'rem.foot': 'Las remesas son transferencias directas en la blockchain. No hay control de cambios, límites bancarios ni horarios: funcionan 24/7.',
@@ -208,7 +208,7 @@ const S = {
     'send.notConfirmed': 'La transacción no se confirmó. Revisa en Actividad.', 'send.available': 'Disponible',
     'send.insufficient': 'Saldo insuficiente: tienes {q} {s}.',
     // receive
-    'recv.title': 'Recibir', 'recv.scan': 'Escanea para recibir ORIGEN y tokens de la red Orden Global (8532)',
+    'recv.title': 'Recibir', 'recv.scan': 'Escanea para recibir ORIGEN y tokens de la red Orden Global (5550)',
     'recv.scanReq': 'Escanea para pagar {amount} ORIGEN',
     'recv.copy': 'Copiar dirección', 'recv.copied': 'Dirección copiada', 'recv.copyErr': 'No se pudo copiar',
     'recv.reqTitle': 'Solicitar un pago',
@@ -452,7 +452,7 @@ const S = {
     'set.card': 'Mi tarjeta', 'set.addr': 'Mi dirección (recibir)', 'set.mtp': 'MyTokenPay', 'set.mtpSub': 'Pagos en comercios con ORIGEN',
     'set.seed': 'Frase de recuperación (Seed)', 'set.pk': 'Llave privada', 'set.notifs': 'Notificaciones',
     'set.lang': 'Idioma / Language', 'set.logout': 'Cerrar sesión',
-    'set.foot': 'Veta Wallet · Orden Global\nConectada a la blockchain Orden Global (8532)',
+    'set.foot': 'Veta Wallet · Orden Global\nConectada a la blockchain Orden Global (5550)',
     // passport
     'pass.title': 'Pasaporte Genesis ID', 'pass.holder': 'Titular', 'pass.uid': 'UID Genesis', 'pass.verified': 'Verificado',
     'pass.gidCopied': 'GID copiado',
@@ -791,7 +791,7 @@ const S = {
     'nav.exit': 'Toca atrás otra vez para salir',
     'notif.gotToast': '¡Recibiste tokens! Saldo actualizado',
     // notificaciones
-    'set.notifsSub': 'Avisos cuando recibes tokens y cuando llega un mensaje de AURO CHAT, con la app abierta o cerrada',
+    'set.notifsSub': 'Avisos cuando recibes tokens y cuando llega un mensaje de PULSE CHAT, con la app abierta o cerrada',
     // La vista previa no da NINGÚN aviso del teléfono: expo-notifications no
     // se puede cargar allí (ver la cabecera de notify.js), así que tampoco
     // los locales. La versión anterior de este texto prometía avisos «con la
@@ -889,7 +889,7 @@ const S = {
     'rem.s1t': 'Scan or paste the address',
     'rem.s1p': 'Ask the recipient for their QR from Receive. You can also share a link with the amount already set.',
     'rem.s2t': 'Sign with your password',
-    'rem.s2p': 'The transaction leaves your wallet and travels the Orden Global blockchain (chain 8532).',
+    'rem.s2p': 'The transaction leaves your wallet and travels the Orden Global blockchain (chain 5550).',
     'rem.s3t': 'Arrives at destination in seconds',
     'rem.s3p': 'The recipient sees the balance in their wallet instantly. They can convert to local currency at any ecosystem exchange.',
     'rem.foot': 'Remittances are direct transfers on the blockchain. No FX controls, bank limits or opening hours: they work 24/7.',
@@ -1012,7 +1012,7 @@ const S = {
     'send.errBal': 'Insufficient balance (includes network fee)', 'send.errPw': 'Enter your password to sign',
     'send.notConfirmed': 'The transaction was not confirmed. Check Activity.', 'send.available': 'Available',
     'send.insufficient': 'Insufficient balance: you have {q} {s}.',
-    'recv.title': 'Receive', 'recv.scan': 'Scan to receive ORIGEN and Orden Global network tokens (8532)',
+    'recv.title': 'Receive', 'recv.scan': 'Scan to receive ORIGEN and Orden Global network tokens (5550)',
     'recv.scanReq': 'Scan to pay {amount} ORIGEN',
     'recv.copy': 'Copy address', 'recv.copied': 'Address copied', 'recv.copyErr': 'Could not copy',
     'recv.reqTitle': 'Request a payment',
@@ -1244,7 +1244,7 @@ const S = {
     'set.card': 'My card', 'set.addr': 'My address (receive)', 'set.mtp': 'MyTokenPay', 'set.mtpSub': 'Pay merchants with ORIGEN',
     'set.seed': 'Recovery phrase (Seed)', 'set.pk': 'Private key', 'set.notifs': 'Notifications',
     'set.lang': 'Idioma / Language', 'set.logout': 'Log out',
-    'set.foot': 'Veta Wallet · Orden Global\nConnected to the Orden Global blockchain (8532)',
+    'set.foot': 'Veta Wallet · Orden Global\nConnected to the Orden Global blockchain (5550)',
     'pass.title': 'Genesis ID Passport', 'pass.holder': 'Holder', 'pass.uid': 'Genesis UID', 'pass.verified': 'Verified',
     'pass.gidCopied': 'GID copied',
     'pass.gidCopy': 'COPY GID',
@@ -1557,7 +1557,7 @@ const S = {
     'send.doneP': 'The transaction is recorded on the Orden Global blockchain. The recipient gets a notification in their app.',
     'nav.exit': 'Press back again to exit',
     'notif.gotToast': 'Tokens received! Balance updated',
-    'set.notifsSub': 'Alerts when you receive tokens and when an AURO CHAT message arrives, with the app open or closed',
+    'set.notifsSub': 'Alerts when you receive tokens and when a PULSE CHAT message arrives, with the app open or closed',
     'set.notifsGo': 'Preview (Expo Go): your phone will not alert you about anything — not money, not chat. With the app open you will see it inside the app. In the installed APK alerts do arrive.',
     'set.notifsOn': 'Alerts enabled', 'set.notifsOff': 'Alerts disabled',
     'set.notifsGoOn': 'Saved. In this preview your phone does not alert you; it will turn on in the APK.',

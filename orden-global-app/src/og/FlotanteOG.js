@@ -1,4 +1,4 @@
-// NEXUS, el asistente flotante de Orden Global. Reemplaza a la barra fija
+// AU-RA, el asistente flotante de Orden Global. Reemplaza a la barra fija
 // (BarraOG): un núcleo dorado SIEMPRE visible, que se arrastra y se imanta al
 // borde --como la burbuja de un chat--, y al tocarlo sube una hoja con los
 // estados que pidió José, para que nunca haya duda de en qué punto está:
@@ -77,7 +77,7 @@ const TXT = {
     // La línea de la vista previa. Una sola, en gris, sin alarma: aquí no ha
     // fallado nada ni hay nada que arreglar — es que este envoltorio no trae
     // micrófono. Lleva el nombre del asistente porque es suyo y se puede
-    // cambiar en Ajustes: «NEXUS te escucha» tiene que seguir siendo verdad
+    // cambiar en Ajustes: «AU-RA te escucha» tiene que seguir siendo verdad
     // aunque se llame de otra forma.
     previa: (n) => `En la vista previa se escribe; con la app instalada, ${n} te escucha.`,
     sinMicTit: 'No me diste el micrófono',

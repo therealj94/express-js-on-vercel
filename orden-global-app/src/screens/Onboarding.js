@@ -1,7 +1,7 @@
 // ═══ BIENVENIDO A ORDEN GLOBAL ══════════════════════════════════════════
 // La bienvenida de primera vez (PLAN-V6.md §3). Ya no presenta "una wallet":
 // presenta el ECOSISTEMA — el núcleo, tu dinero, tu negocio, tu gente y
-// NEXUS — con los logos reales de cada marca. Es la primera impresión del
+// AU-RA — con los logos reales de cada marca. Es la primera impresión del
 // organismo completo, así que habla el mismo idioma visual que el Núcleo:
 // esferas con lente, halos que laten y la red de neuronas de fondo.
 //
@@ -63,10 +63,10 @@ const TXT = {
     dinP: 'Guarda, envía y recibe en segundos. Tus tokens, tu tarjeta y tus remesas, en la billetera del ecosistema.',
     negK: 'TU NEGOCIO', negT: 'MyTokenPay',
     negP: 'Cobra con un QR, explora comercios y haz crecer lo tuyo. La caja registradora que cabe en el bolsillo.',
-    genK: 'TU GENTE', genT: 'AURO CHAT',
+    genK: 'TU GENTE', genT: 'PULSE CHAT',
     genP: 'Conversa con los tuyos y manda dinero sin salir del hilo. Tu gente del ecosistema, a un toque.',
-    nexK: 'TU ASISTENTE', nexT: 'NEXUS',
-    nexP: 'Pídeselo con la voz: «envía 15 a Juan», «abre mi tarjeta». NEXUS te lleva; firmar, siempre te toca a ti.',
+    nexK: 'TU ASISTENTE', nexT: 'AU-RA',
+    nexP: 'Pídeselo con la voz: «envía 15 a Juan», «abre mi tarjeta». AU-RA te lleva; firmar, siempre te toca a ti.',
   },
   en: {
     saltar: 'SKIP',
@@ -83,10 +83,10 @@ const TXT = {
     dinP: 'Store, send and receive in seconds. Your tokens, your card and your remittances, in the ecosystem’s wallet.',
     negK: 'YOUR BUSINESS', negT: 'MyTokenPay',
     negP: 'Charge with a QR, explore merchants and grow what’s yours. The cash register that fits in your pocket.',
-    genK: 'YOUR PEOPLE', genT: 'AURO CHAT',
+    genK: 'YOUR PEOPLE', genT: 'PULSE CHAT',
     genP: 'Talk with your people and send money without leaving the thread. Your ecosystem contacts, one tap away.',
-    nexK: 'YOUR ASSISTANT', nexT: 'NEXUS',
-    nexP: 'Just say it: “send 15 to Juan”, “open my card”. NEXUS takes you there; signing is always yours.',
+    nexK: 'YOUR ASSISTANT', nexT: 'AU-RA',
+    nexP: 'Just say it: “send 15 to Juan”, “open my card”. AU-RA takes you there; signing is always yours.',
   },
 };
 
@@ -111,7 +111,7 @@ const TARJETAS = [
     grad: ['#D8F7FF', '#5FC6EA', '#453398'], halo: '#5FC6EA', lente: '#0A0812',
   },
   {
-    // AURO CHAT aún no tiene PNG en assets/: lleva la misma lente con su
+    // PULSE CHAT aún no tiene PNG en assets/: lleva la misma lente con su
     // icono dentro, igual que hace el Núcleo — un solo lenguaje visual.
     k: 'gen', vis: 'esfera', icono: 'chatbubbles', zoom: 0,
     grad: ['#FBE0D4', '#E0937A', '#8A4A38'], halo: '#E0937A', lente: '#20100A',
@@ -272,7 +272,7 @@ function EsferaMarca({ tam = 150, grad, lente, halo, logo, icono, zoom }) {
   );
 }
 
-// ── EL NÚCLEO DE NEXUS ──────────────────────────────────────────────────
+// ── EL NÚCLEO DE AU-RA ──────────────────────────────────────────────────
 // El mismo truco de la burbuja flotante: cada anillo se aplasta en Y y
 // luego rota — como RN aplica las transformaciones de derecha a izquierda,
 // la elipse ya aplastada es la que gira y se lee como un aro en 3D. Los

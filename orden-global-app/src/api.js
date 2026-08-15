@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 
 // ============================================================
 // Veta Wallet — capa de conexión con el backend oficial de
-// Orden Global (Heroku) y la blockchain (nodo RPC, chain 8532).
+// Orden Global (Heroku) y la blockchain (nodo RPC, cadena 5550).
 // Nada simulado: login, saldos, historial y envíos son reales.
 //
 // SECRETOS EN EL DISPOSITIVO
@@ -258,7 +258,7 @@ export const walletApi = {
 // y el backend le acredita ORIGEN.
 //
 // Ese ORIGEN es un saldo interno del backend y NO es el ORIGEN nativo de la
-// chain 8532 que la app lee por RPC en apiPortfolio(). Son dos saldos
+// cadena 5550 que la app lee por RPC en apiPortfolio(). Son dos saldos
 // distintos a propósito y no hay que sumarlos como si fueran uno: el on-chain
 // se puede firmar y enviar, este todavía no. Más adelante se conectan.
 //
@@ -714,7 +714,7 @@ export async function livePrices() {
   return { prices, changes };
 }
 
-// ---------- registro de tokens on-chain (red Orden Global 8532) ----------
+// ---------- registro de tokens on-chain (red Orden Global 5550) ----------
 // La red oficial de Orden Global es la 5550 desde el corte del 15-ago-2026:
 // Layer 1 propia sobre Hyperledger Besu con consenso QBFT y EVM Shanghai.
 // La variable sigue existiendo para poder apuntar a otra red sin recompilar.

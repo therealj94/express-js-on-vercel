@@ -1,4 +1,4 @@
-// Los ajustes de AURO CHAT: lo mío y lo que de mí ve el resto.
+// Los ajustes de PULSE CHAT: lo mío y lo que de mí ve el resto.
 //   · mi foto y mi nombre — es TODO lo que el otro lado ve de mí;
 //   · mi GID, visible, copiable al toque y con su botón de compartir: es la
 //     seña que viaja por el chat y por eso vive aquí y en el pasaporte;
@@ -27,7 +27,7 @@ import { enExpoGo } from '../entorno';
 
 const TXT = {
   es: {
-    titulo: 'AURO CHAT', sub: 'Mi perfil y lo que se ve de mí',
+    titulo: 'PULSE CHAT', sub: 'Mi perfil y lo que se ve de mí',
     perfilTit: 'MI PERFIL',
     nombrePh: 'Tu nombre',
     cambiarFoto: 'CAMBIAR FOTO', anadirFoto: 'AÑADIR FOTO', quitarFoto: 'QUITAR',
@@ -40,20 +40,20 @@ const TXT = {
     quitarTxt: 'Vuelves a la inicial de tu nombre. Puedes poner otra cuando quieras.',
 
     gidTit: 'MI GENESIS ID',
-    gidTxt: 'Quien lo tenga te encuentra en AURO CHAT buscándolo tal cual.',
+    gidTxt: 'Quien lo tenga te encuentra en PULSE CHAT buscándolo tal cual.',
     gidCopiar: 'COPIAR GID',
     gidCopiado: 'GID copiado',
     // El gesto real es MANTENER PULSADO: un toque no selecciona nada.
     gidMano: 'También puedes mantenerlo pulsado y copiarlo a mano.',
     gidNoListo: 'Tu Genesis ID todavía no está listo: aparecerá aquí en cuanto Genesis lo emita.',
     gidCompartir: 'COMPARTIR MI GID',
-    gidInvito: 'Búscame en AURO CHAT con mi Genesis ID:',
+    gidInvito: 'Búscame en PULSE CHAT con mi Genesis ID:',
 
     qrTit: 'MI CÓDIGO',
     qrTxt: 'Quien lo escanee abre un chat contigo, sin dictar el correo ni buscarte.',
     copiar: 'COPIAR ENLACE', compartir: 'COMPARTIR', copiado: 'Enlace copiado',
     noCopia: 'No se pudo copiar. Inténtalo de nuevo.',
-    invito: 'Escríbeme por AURO CHAT:',
+    invito: 'Escríbeme por PULSE CHAT:',
     // El enlace se fabrica con el esquema og://, que es el del APK. En Expo
     // Go el esquema real del teléfono es exp://, o sea que quien reciba este
     // enlace por WhatsApp no abrirá nada — y quien lo mandó creerá que sí.
@@ -64,14 +64,14 @@ const TXT = {
     avisosGo: 'Vista previa: en Expo Go el teléfono no te avisa de los mensajes nuevos. Los verás al abrir la app. En el APK instalado sí llega el aviso.',
 
     veTit: 'LO QUE SE VE DE MÍ',
-    veTxt: 'Quien te busque en AURO CHAT ve tu nombre, tu foto, tu correo, tu Genesis ID y tu dirección de wallet — nada más: ni tu teléfono, ni tus documentos, ni con quién hablas.',
+    veTxt: 'Quien te busque en PULSE CHAT ve tu nombre, tu foto, tu correo, tu Genesis ID y tu dirección de wallet — nada más: ni tu teléfono, ni tus documentos, ni con quién hablas.',
 
     privTit: 'PRIVACIDAD Y SEGURIDAD',
     privTxt: 'Tus mensajes viajan cifrados hasta el servidor de Orden Global. El cifrado de extremo a extremo llegará en una próxima versión.',
     privTxt2: 'Tus conversaciones viven en ese servidor, no en este teléfono: se piden cada vez que abres un hilo. Aquí solo quedan tu llave de AURO —la que prueba que tu buzón es tuyo— y tu libreta, con los nombres que tú le pusiste a tu gente; esa se edita manteniendo pulsado un contacto en la lista del chat.',
   },
   en: {
-    titulo: 'AURO CHAT', sub: 'My profile and what others see',
+    titulo: 'PULSE CHAT', sub: 'My profile and what others see',
     perfilTit: 'MY PROFILE',
     nombrePh: 'Your name',
     cambiarFoto: 'CHANGE PHOTO', anadirFoto: 'ADD PHOTO', quitarFoto: 'REMOVE',
@@ -84,26 +84,26 @@ const TXT = {
     quitarTxt: 'You go back to the initial of your name. You can set another one whenever you want.',
 
     gidTit: 'MY GENESIS ID',
-    gidTxt: 'Anyone who has it can find you on AURO CHAT by searching it as is.',
+    gidTxt: 'Anyone who has it can find you on PULSE CHAT by searching it as is.',
     gidCopiar: 'COPY GID',
     gidCopiado: 'GID copied',
     // Ver la nota en español: el gesto es mantener pulsado, no tocar.
     gidMano: 'You can also press and hold it to copy it by hand.',
     gidNoListo: 'Your Genesis ID is not ready yet: it will show up here as soon as Genesis issues it.',
     gidCompartir: 'SHARE MY GID',
-    gidInvito: 'Find me on AURO CHAT with my Genesis ID:',
+    gidInvito: 'Find me on PULSE CHAT with my Genesis ID:',
 
     qrTit: 'MY CODE',
     qrTxt: 'Whoever scans it opens a chat with you, no need to dictate your email.',
     copiar: 'COPY LINK', compartir: 'SHARE', copiado: 'Link copied',
     noCopia: 'Could not copy. Try again.',
-    invito: 'Write to me on AURO CHAT:',
+    invito: 'Write to me on PULSE CHAT:',
     qrGo: 'Preview: the link only opens from the installed APK. Here, share the code above and have them scan it with the app scanner.',
 
     avisosGo: 'Preview: in Expo Go your phone does not alert you about new messages. You will see them when you open the app. In the installed APK the alert does arrive.',
 
     veTit: 'WHAT OTHERS SEE OF ME',
-    veTxt: 'Anyone searching for you on AURO CHAT sees your name, your photo, your email, your Genesis ID and your wallet address — nothing else: not your phone, not your documents, not who you talk to.',
+    veTxt: 'Anyone searching for you on PULSE CHAT sees your name, your photo, your email, your Genesis ID and your wallet address — nothing else: not your phone, not your documents, not who you talk to.',
 
     privTit: 'PRIVACY AND SECURITY',
     privTxt: 'Your messages travel encrypted to the Orden Global server. End-to-end encryption will arrive in an upcoming version.',

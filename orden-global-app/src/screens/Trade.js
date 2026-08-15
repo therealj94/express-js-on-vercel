@@ -261,7 +261,7 @@ export function Send({ nav, params }) {
             .catch(() => {});
         }
 
-        // Si el envío nació de una conversación de AURO CHAT, el comprobante
+        // Si el envío nació de una conversación de PULSE CHAT, el comprobante
         // se publica ALLÍ, y solo ahora: cuando la cadena ya confirmó. Antes
         // sería prometer un pago que todavía puede fallar. Que no se pueda
         // avisar --sin red, por ejemplo-- no invalida el envío: el dinero ya
@@ -399,11 +399,11 @@ export function Send({ nav, params }) {
             style={[styles.input, { marginTop: 9, fontSize: 13.5 }]}
           />
         )}
-        {/* Cuando el envío nace de AURO CHAT y el destino YA está guardado,
+        {/* Cuando el envío nace de PULSE CHAT y el destino YA está guardado,
             se ofrece renombrarlo aquí mismo: es el momento en que uno nota
             que «pedro@…» merece llamarse Pedro. La hoja escribe en las DOS
             libretas (la del teléfono y la del chat) para que Enviar,
-            Actividad y AURO CHAT digan siempre el mismo nombre. */}
+            Actividad y PULSE CHAT digan siempre el mismo nombre. */}
         {params?.avisarChat && contactoDest ? (
           <Pressable onPress={() => { hap(); setNombreEd(contactoDest.name); setEditaNombre(true); }} style={styles.editNombre}>
             <Icon name="create" size={15} color={C.gold} />
@@ -414,7 +414,7 @@ export function Send({ nav, params }) {
         <View style={{ height: 14 }} />
         <Card style={{ padding: 14, marginBottom: 16 }}>
           <Row k={t('send.fee')} v={`${fee.toFixed(6)} ORIGEN`} />
-          <Row k={t('send.network')} v="Orden Global · 8532" />
+          <Row k={t('send.network')} v="Orden Global · 5550" />
           <Row k={t('send.total')} v={`${amount ? (amount + (isNative ? fee : 0)).toFixed(4) : '—'} ${tok.s}`} />
           <Row k={t('send.after')} v={`${amount ? Math.max(0, tok.qty - amount - (isNative ? fee : 0)).toFixed(4) : qtyFmt(tok.qty)} ${tok.s}`} />
         </Card>
@@ -465,7 +465,7 @@ export function Send({ nav, params }) {
         data={done}
         contacts={contacts}
         onClose={() => { setDone(null); nav.go('home'); }}
-        // El envío que nació en AURO CHAT vuelve a su charla, no a la
+        // El envío que nació en PULSE CHAT vuelve a su charla, no a la
         // billetera: el comprobante ya cayó en ese hilo y es ahí donde la
         // conversación sigue. AuroChat abre el hilo con params.con.
         onChat={done?.alChat ? () => { const c = done.alChat; setDone(null); nav.go('chat', { con: c }); } : null}
@@ -638,7 +638,7 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
             <Row k={t('send.fee')} v={`${qtyExacto(data.fee)} ORIGEN`} />
             <Row k={t('send.total')} v={`${data.total.toFixed(4)} ${data.symbol}`} />
             <Row k={t('send.after')} v={`${Math.max(0, data.saldoAntes - data.total).toFixed(4)} ${data.symbol}`} />
-            <Row k={t('send.network')} v="Orden Global · 8532" />
+            <Row k={t('send.network')} v="Orden Global · 5550" />
           </View>
 
           {fase === 0 ? (
@@ -812,7 +812,7 @@ function SentReceipt({ data, contacts, onClose, onChat }) {
             {data.saldoAntes != null ? (
               <DoneRow k={t('send.after')} v={`${Math.max(0, data.saldoAntes - (data.total || 0)).toFixed(4)} ${data.symbol}`} />
             ) : null}
-            <DoneRow k={t('send.network')} v="Orden Global · 8532" />
+            <DoneRow k={t('send.network')} v="Orden Global · 5550" />
             {data.bloque != null ? <DoneRow k={t('send.block')} v={`#${data.bloque}`} /> : null}
             {data.gas != null ? <DoneRow k={t('send.gas')} v={String(data.gas)} /> : null}
             <DoneRow k={t('send.date')} v={new Date(data.fecha || Date.now()).toLocaleString()} />
@@ -833,7 +833,7 @@ function SentReceipt({ data, contacts, onClose, onChat }) {
               style={{ alignSelf: 'stretch', marginTop: 18 }}
             />
           ) : null}
-          {/* El envío que nació en AURO CHAT ofrece volver a la charla: el
+          {/* El envío que nació en PULSE CHAT ofrece volver a la charla: el
               comprobante ya cayó en ese hilo, y dejar al usuario varado en
               la billetera era perder la conversación que lo trajo aquí. */}
           {data.alChat && onChat ? (

@@ -12,7 +12,7 @@
 //     es un binario que publica Expo, no uno nuestro.
 //
 // De todo lo que usa esta app, en Expo Go faltan exactamente DOS cosas:
-//   · expo-speech-recognition → el micrófono de NEXUS;
+//   · expo-speech-recognition → el micrófono de AU-RA;
 //   · @react-native-ml-kit/text-recognition → el lector del documento del KYC.
 // Cámara, sonido, QR, red, almacenamiento… todo lo demás sí está, así que la
 // vista previa enseña la app casi entera.

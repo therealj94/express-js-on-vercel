@@ -86,6 +86,18 @@ export const bandeja = (desde) => pedir('/bandeja', firmado({ desde }));
 export const buscar = (q) => pedir('/buscar', firmado({ q }));
 export const conversaciones = () => pedir('/conversaciones', firmado({}));
 export const leido = (de) => pedir('/leido', firmado({ de }));
+
+/* Vaciar un hilo, o quitarlo de la lista. Y hay que decirlo con todas las
+   letras porque la pantalla lo dice: esto NO borra los mensajes. El hilo es de
+   dos y solo se decide sobre la vista propia — el relevo guarda una fecha de
+   corte y de ahí para atrás esta cuenta deja de verlo. La otra persona
+   conserva su copia. Prometer otra cosa sería mentir justo donde la gente
+   cree que borró algo.
+
+   `quitar` además saca la fila de la lista hasta que llegue algo nuevo: esa es
+   toda la diferencia entre «vaciar los mensajes» y «borrar la conversación». */
+export const olvidar = (con, quitar = false) => pedir('/olvidar', firmado({ con, quitar }));
+
 export const ficha = (de) => pedir('/ficha', firmado({ de }));
 // Mi nombre y mi foto — y mi gid, que el relevo también acepta aquí.
 // JSON.stringify se come las claves `undefined`, así que perfil({ foto })
@@ -100,7 +112,7 @@ export const grupoEditar = (id, cambios) => pedir('/grupo/editar', firmado({ id,
 export const grupoInvitar = (id, correos) => pedir('/grupo/invitar', firmado({ id, correos }));
 export const grupoUnirse = (invitacion) => pedir('/grupo/unirse', firmado({ invitacion }));
 export const grupoSalir = (id) => pedir('/grupo/salir', firmado({ id }));
-// El comprobante se manda DESPUÉS de que la cadena confirmó: NEXUS no
+// El comprobante se manda DESPUÉS de que la cadena confirmó: AU-RA no
 // transmite y el hilo no debe enseñar un pago que todavía puede fallar.
 export const pago = (para, monto, extra) => pedir('/pago', firmado({ para, monto, ...(extra || {}) }));
 // Un id de grupo se distingue de un correo por la forma, sin preguntar nada.

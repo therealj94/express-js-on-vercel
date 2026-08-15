@@ -5,7 +5,7 @@
 // local en segundo plano, toast + sonido en primero) lo decide App.js, que
 // es quien sabe qué pantalla está a la vista.
 //
-// No registra a nadie: si en este teléfono nunca se entró a AURO CHAT no hay
+// No registra a nadie: si en este teléfono nunca se entró a PULSE CHAT no hay
 // llave guardada y el vigía se queda quieto — dar de alta un buzón de chat
 // solo para vigilarlo sería crear identidades que el usuario no pidió.
 import { AppState } from 'react-native';

@@ -92,7 +92,7 @@ export function TokenIcon({ t, size = 44 }) {
   );
 }
 
-// ---- Avatar de AURO CHAT ----
+// ---- Avatar de PULSE CHAT ----
 // Vivía triplicado en AuroChat, GruposAuro y AjustesAuro; ahora es una sola
 // pieza para que las tres pantallas pinten a la misma persona igual. Sirve a
 // las tres cosas que hay en una lista de chat: una persona con foto (el id

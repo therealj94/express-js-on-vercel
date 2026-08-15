@@ -123,7 +123,7 @@ const TXT = {
     previaCuerpo: 'Esto es Orden Global funcionando dentro de Expo Go, para que puedas verla sin instalar nada. Todo lo que hay aquí es real; esto es lo único que pide la app instalada:',
     previaCuerpoOk: 'Esto es Orden Global funcionando dentro de Expo Go, para que puedas verla sin instalar nada. Todo lo que ves aquí funciona.',
     previaFalta: {
-      voz: 'El micrófono de NEXUS. Aquí se le escribe y obedece igual.',
+      voz: 'El micrófono de AU-RA. Aquí se le escribe y obedece igual.',
       ocr: 'La lectura del documento en Genesis ID. Aquí el nombre y las líneas se escriben a mano.',
     },
     previaCierre: 'La app instalada lo trae todo.',
@@ -160,7 +160,7 @@ const TXT = {
     previaCuerpo: 'This is Orden Global running inside Expo Go, so you can see it without installing anything. Everything here is real; this is all that needs the installed app:',
     previaCuerpoOk: 'This is Orden Global running inside Expo Go, so you can see it without installing anything. Everything you see here works.',
     previaFalta: {
-      voz: 'NEXUS listening. Here you type to it and it obeys just the same.',
+      voz: 'AU-RA listening. Here you type to it and it obeys just the same.',
       ocr: 'Reading your document in Genesis ID. Here the name and the lines are typed by hand.',
     },
     previaCierre: 'The installed app brings it all.',

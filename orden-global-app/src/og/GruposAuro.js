@@ -1,4 +1,4 @@
-// Los grupos de AURO CHAT. Tres caras del mismo grupo en una sola pantalla,
+// Los grupos de PULSE CHAT. Tres caras del mismo grupo en una sola pantalla,
 // porque son el mismo grupo en momentos distintos y comparten todo (subir la
 // foto, pintar miembros, el candado de Genesis):
 //   · sin params → crearlo: nombre, foto y a quién meto de mis conversaciones;
@@ -54,10 +54,10 @@ const TXT = {
     enlaceGo: 'Vista previa: el enlace solo abre desde el APK instalado. Aquí enseña el código de arriba y que lo escaneen con el escáner de la app; así sí entran.',
     copiar: 'COPIAR', compartir: 'COMPARTIR', copiado: 'Enlace copiado',
     noCopia: 'No se pudo copiar. Inténtalo de nuevo.',
-    invito: 'Te invito al grupo «{g}» en AURO CHAT.',
+    invito: 'Te invito al grupo «{g}» en PULSE CHAT.',
     invitarTit: 'INVITAR POR CORREO', correoPh: 'correo@ejemplo.com', invitar: 'INVITAR',
     invitado: 'Ya está dentro del grupo.',
-    noEsta: 'Ese correo no está en AURO CHAT todavía, o ya es del grupo. Mándale el enlace.',
+    noEsta: 'Ese correo no está en PULSE CHAT todavía, o ya es del grupo. Mándale el enlace.',
     correoMal: 'Ese correo no se ve bien.',
     regenerar: 'REGENERAR INVITACIÓN',
     regTit: '¿Regenerar la invitación?',
@@ -112,10 +112,10 @@ const TXT = {
     enlaceGo: 'Preview: the link only opens from the installed APK. Here, show the code above and have them scan it with the app scanner — that way they do get in.',
     copiar: 'COPY', compartir: 'SHARE', copiado: 'Link copied',
     noCopia: 'Could not copy. Try again.',
-    invito: 'I invite you to the group “{g}” on AURO CHAT.',
+    invito: 'I invite you to the group “{g}” on PULSE CHAT.',
     invitarTit: 'INVITE BY EMAIL', correoPh: 'name@example.com', invitar: 'INVITE',
     invitado: 'They are in the group now.',
-    noEsta: 'That email is not on AURO CHAT yet, or is already in the group. Send them the link.',
+    noEsta: 'That email is not on PULSE CHAT yet, or is already in the group. Send them the link.',
     correoMal: 'That email does not look right.',
     regenerar: 'REGENERATE INVITATION',
     regTit: 'Regenerate the invitation?',
@@ -163,7 +163,7 @@ const ASOMO_MIEMBROS = 24;
 const CORREO = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 
 // El Avatar es el de src/ui.js: estaba triplicado en las tres pantallas de
-// AURO CHAT y tres copias acaban pintando a la misma persona distinto. La
+// PULSE CHAT y tres copias acaban pintando a la misma persona distinto. La
 // foto que se guarda sigue siendo el id de /subir: la url se arma al pintarla
 // (dentro del Avatar), así un cambio de dominio del relevo no rompe nada.
 

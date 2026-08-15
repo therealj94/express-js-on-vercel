@@ -1,13 +1,13 @@
 // El nombre del asistente: tuyo. Se guarda en el teléfono y lo usan el
 // flotante, el hub y la voz.
 //
-// Por defecto se llama NEXUS. El valor por defecto SOLO manda cuando no hay
+// Por defecto se llama AU-RA. El valor por defecto SOLO manda cuando no hay
 // nada guardado: si la persona ya le puso nombre --incluido el viejo GENESIS
 // escrito a mano--, ese nombre se respeta. Renombrar de oficio lo guardado
 // sería pisarle una decisión suya.
 import * as SecureStore from 'expo-secure-store';
 
-export const NOMBRE_POR_DEFECTO = 'NEXUS';
+export const NOMBRE_POR_DEFECTO = 'AU-RA';
 let nombre = NOMBRE_POR_DEFECTO;
 
 // ── quién quiere enterarse ────────────────────────────────────────────────

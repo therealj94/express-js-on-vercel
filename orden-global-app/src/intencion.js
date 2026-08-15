@@ -26,7 +26,7 @@ function esc(x) {
 
 // ── RESPONDE A SU NOMBRE ──────────────────────────────────────────────────
 // «Nexus, envía 15 a Juan» ES «envía 15 a Juan»: si la frase empieza con el
-// nombre del asistente (el que la persona le puso, o el NEXUS de fábrica) se
+// nombre del asistente (el que la persona le puso, o el AU-RA de fábrica) se
 // le quita antes de traducir. Se hace palabra a palabra sobre la frase
 // ORIGINAL --con mayúsculas y tildes-- porque el texto de un mensaje dictado
 // se saca de ahí y recortar sobre la copia pelada descuadraría los índices.
@@ -69,7 +69,7 @@ function sacarMonto(s) {
 // categorías son las REALES de src/og/pay/comerciosDemo.js (CATS): lo que
 // tiene categoría se filtra por `cat`, y lo que es un plato o una palabra
 // concreta («pizza», «china», «surf») viaja como búsqueda libre `q`, que
-// ExplorarPay ya siembra en su caja. `et` es la etiqueta que NEXUS dice:
+// ExplorarPay ya siembra en su caja. `et` es la etiqueta que AU-RA dice:
 // «te llevo a los comercios de comida china».
 const NEGOCIOS = [
   [/\b(comida china|arroz chino|chino|china|chinese)\b/, { q: 'china' }, { es: 'comida china', en: 'Chinese food' }],

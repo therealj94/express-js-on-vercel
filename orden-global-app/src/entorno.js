@@ -10,7 +10,7 @@
 //
 // Expo Go trae los módulos nativos del SDK oficial y NADA más. De lo que usa
 // esta app, allí no existen:
-//   · expo-speech-recognition  → el micrófono de NEXUS (FlotanteOG)
+//   · expo-speech-recognition  → el micrófono de AU-RA (FlotanteOG)
 //   · @react-native-ml-kit/text-recognition → el OCR del documento (KYC)
 // Y hay un tercer caso, más traicionero: expo-notifications SÍ viaja dentro
 // de Expo Go, pero su índice lanza al importarse en Android desde el SDK 53
@@ -43,7 +43,7 @@
 // expo-audio, expo-camera, expo-speech, expo-font, expo-navigation-bar,
 // expo-updates (apagado: isEnabled es false), react-native-webview,
 // react-native-svg, async-storage, netinfo. O sea: la app se puede probar
-// entera salvo la voz de NEXUS, el OCR del KYC y los avisos del sistema.
+// entera salvo la voz de AU-RA, el OCR del KYC y los avisos del sistema.
 
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 

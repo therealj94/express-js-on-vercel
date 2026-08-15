@@ -103,7 +103,7 @@ function TxDetail({ data, etiqueta, onClose, onToast }) {
   const filas = [
     [inbound ? t('act.from') : t('act.to'), etiqueta(otra), otra],
     [t('send.date'), fmtDate(data.timeStamp, localeDe(lang))],
-    [t('send.network'), 'Orden Global · 8532'],
+    [t('send.network'), 'Orden Global · 5550'],
     data.blockNumber != null ? [t('send.block'), `#${data.blockNumber}`] : null,
     data.gasUsed != null ? [t('send.gas'), String(data.gasUsed)] : null,
     data.fee ? [t('send.fee'), `${data.fee} ORIGEN`] : null,

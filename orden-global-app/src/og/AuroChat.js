@@ -1,4 +1,4 @@
-// ═══ AURO CHAT ═════════════════════════════════════════════════════════
+// ═══ PULSE CHAT ═════════════════════════════════════════════════════════
 // La mensajería de Orden Global. Lo que la define:
 //   · SOLO se abre con Genesis ID aprobado — es la red de gente real;
 //   · personas Y grupos en la MISMA lista: un grupo es otra conversación,
@@ -39,7 +39,7 @@ import { reproducir } from './sonidos';
 
 const TXT = {
   es: {
-    marca: 'AURO CHAT', sub: 'Personas y grupos, con Genesis ID',
+    marca: 'PULSE CHAT', sub: 'Personas y grupos, con Genesis ID',
     buscar: 'Buscar por nombre, correo o GID…', dir: 'EN EL ECOSISTEMA',
     nadie: 'Nadie con ese nombre o GID todavía.',
     vacio: 'Aún no tienes conversaciones.',
@@ -49,7 +49,7 @@ const TXT = {
     gateTit: 'El chat es de gente verificada',
     gateTxt: 'Para chatear necesitas tu Genesis ID aprobado. Así todos saben que del otro lado hay una persona real.',
     gateBtn: 'COMPLETAR MI GENESIS ID', mirando: 'Comprobando tu Genesis ID…',
-    qrTuyo: 'Este es tu código. Quien lo escanee abre un chat contigo en AURO CHAT.',
+    qrTuyo: 'Este es tu código. Quien lo escanee abre un chat contigo en PULSE CHAT.',
     apunta: 'Apunta al código de la otra persona',
     adjImagen: 'Imagen', adjVideo: 'Video', adjArchivo: 'Archivo',
     ultImagen: 'Imagen', ultVideo: 'Video', ultArchivo: 'Archivo',
@@ -67,6 +67,14 @@ const TXT = {
     renombrado: 'Nombre guardado en tu libreta.',
     eliminado: 'Se quitó de tu libreta.',
     editarNota: 'Así lo verás tú en tu libreta; su perfil no cambia.',
+    // Vaciar y borrar. El texto dice lo que PASA, no lo que suena bien:
+    // el hilo es de dos y esto solo cambia lo que ve quien lo pide.
+    vaciar: 'Vaciar los mensajes', borrarConv: 'Borrar la conversación',
+    vaciarQ: '¿Vaciar los mensajes de esta conversación? Dejarás de verlos tú; la otra persona conserva su copia.',
+    borrarQ: '¿Borrar esta conversación de tu lista? Dejarás de ver lo hablado; la otra persona conserva su copia, y si te escribe volverá a aparecer.',
+    vaciado: 'Conversación vaciada.', borrado: 'Se quitó de tu lista.',
+    noOlvido: 'No se pudo. Revisa tu conexión e intenta de nuevo.',
+    siVaciar: 'VACIAR', siBorrar: 'BORRAR', cancelar: 'Cancelar',
     fallo: 'No se envió', reintentar: 'Reintentar',
     nuevos: 'Mensajes nuevos ↓',
     sinRedT: 'Sin conexión',
@@ -81,7 +89,7 @@ const TXT = {
     otraTxt: 'Tus conversaciones están a salvo en el servidor, pero esta instalación de la app todavía no puede abrirlas: la sesión del chat se quedó en la anterior. Estamos habilitando la recuperación; mientras tanto, el resto de la app funciona con normalidad.',
   },
   en: {
-    marca: 'AURO CHAT', sub: 'People and groups, with Genesis ID',
+    marca: 'PULSE CHAT', sub: 'People and groups, with Genesis ID',
     buscar: 'Search by name, email or GID…', dir: 'IN THE ECOSYSTEM',
     nadie: 'Nobody with that name or GID yet.',
     vacio: 'No conversations yet.',
@@ -91,7 +99,7 @@ const TXT = {
     gateTit: 'The chat is for verified people',
     gateTxt: 'You need your approved Genesis ID to chat. That way everyone knows there is a real person on the other side.',
     gateBtn: 'COMPLETE MY GENESIS ID', mirando: 'Checking your Genesis ID…',
-    qrTuyo: 'This is your code. Whoever scans it opens a chat with you on AURO CHAT.',
+    qrTuyo: 'This is your code. Whoever scans it opens a chat with you on PULSE CHAT.',
     apunta: 'Point at the other person’s code',
     adjImagen: 'Image', adjVideo: 'Video', adjArchivo: 'File',
     ultImagen: 'Image', ultVideo: 'Video', ultArchivo: 'File',
@@ -109,6 +117,12 @@ const TXT = {
     renombrado: 'Name saved to your contacts.',
     eliminado: 'Removed from your contacts.',
     editarNota: 'This is how YOU will see them; their profile does not change.',
+    vaciar: 'Clear the messages', borrarConv: 'Delete the conversation',
+    vaciarQ: 'Clear the messages in this conversation? You will stop seeing them; the other person keeps their copy.',
+    borrarQ: 'Remove this conversation from your list? You will stop seeing what was said; the other person keeps their copy, and if they write it comes back.',
+    vaciado: 'Conversation cleared.', borrado: 'Removed from your list.',
+    noOlvido: 'It did not work. Check your connection and try again.',
+    siVaciar: 'CLEAR', siBorrar: 'DELETE', cancelar: 'Cancel',
     fallo: 'Not sent', reintentar: 'Retry',
     nuevos: 'New messages ↓',
     sinRedT: 'No connection',
@@ -420,7 +434,7 @@ export default function AuroChat({ nav, params }) {
   }, [aprenderNombres]);
 
   // llegar con ?con=correo (del QR o del asistente) abre el hilo directo.
-  // Y si además viene ?txt= (el mensaje DICTADO a NEXUS: «…que diga llego en
+  // Y si además viene ?txt= (el mensaje DICTADO a AU-RA: «…que diga llego en
   // diez minutos»), el texto se deja ESCRITO en la caja, jamás enviado: José
   // lo pidió con todas las letras — «solo toque enviar». El último control
   // sobre lo que sale de su teléfono es su dedo, no el asistente.
@@ -501,7 +515,7 @@ export default function AuroChat({ nav, params }) {
   }, [destino, traerHilo]);
 
   // El botón ATRÁS de Android dentro de una conversación vuelve a la LISTA,
-  // no afuera de AURO CHAT: el hilo no es una ruta del router (vive en el
+  // no afuera de PULSE CHAT: el hilo no es una ruta del router (vive en el
   // estado `con`), así que sin esto el handler global de App.js hacía pop de
   // 'chat' entero — en WhatsApp atrás = lista, y esa es la expectativa.
   // Misma convención de la casa que ExplorarPay y NegocioPanel: el listener
@@ -709,6 +723,31 @@ export default function AuroChat({ nav, params }) {
     } catch { toast(t.noGuardo, 'error'); }
   };
 
+  /* Vaciar o quitar la conversación. Se pide confirmación SIEMPRE y con las
+     palabras exactas de lo que pasa: nadie debería descubrir después que «lo
+     borré» solo valía para su lado. Al terminar se refresca la lista y, si el
+     hilo abierto era ése, se cierra — dejarlo abierto y vacío parece un fallo
+     de carga, no una acción que salió bien. */
+  const [olvidando, setOlvidando] = useState(null);   // {correo, nombre, quitar}
+
+  const confirmarOlvidar = async () => {
+    const o = olvidando;
+    if (!o) return;
+    setOlvidando(null);
+    try {
+      await M.olvidar(o.correo, o.quitar);
+      hap();
+      toast(o.quitar ? t.borrado : t.vaciado);
+      if (idDe(con) === o.correo) {
+        // el hilo abierto era ése: vaciado se queda pero sin nada dentro, y
+        // quitado se cierra — dejarlo abierto y vacío parece un fallo de carga
+        setHilo([]); setPendientes([]);
+        if (o.quitar) { setCon(null); setOfrecido(null); }
+      }
+      traerConvos();
+    } catch { toast(t.noOlvido, 'error'); }
+  };
+
   const quitarDeLibreta = async () => {
     if (!menuContacto) return;
     try {
@@ -740,9 +779,25 @@ export default function AuroChat({ nav, params }) {
               <Icon name="create" size={19} color={C.gold} />
               <Text style={st.hojaTxt}>{t.editarNombre}</Text>
             </Pressable>
-            <Pressable style={[st.hojaBtn, { borderBottomWidth: 0 }]} onPress={quitarDeLibreta}>
-              <Icon name="trash" size={19} color={C.down} />
-              <Text style={[st.hojaTxt, { color: C.down }]}>{t.quitarLibreta}</Text>
+            <Pressable style={st.hojaBtn} onPress={quitarDeLibreta}>
+              <Icon name="trash" size={19} color={C.txt2} />
+              <Text style={st.hojaTxt}>{t.quitarLibreta}</Text>
+            </Pressable>
+            <Pressable style={st.hojaBtn} onPress={() => {
+              hap();
+              setOlvidando({ ...menuContacto, quitar: false });
+              setMenuContacto(null);
+            }}>
+              <Icon name="refresh" size={19} color={C.gold} />
+              <Text style={st.hojaTxt}>{t.vaciar}</Text>
+            </Pressable>
+            <Pressable style={[st.hojaBtn, { borderBottomWidth: 0 }]} onPress={() => {
+              hap();
+              setOlvidando({ ...menuContacto, quitar: true });
+              setMenuContacto(null);
+            }}>
+              <Icon name="close-circle" size={19} color={C.down} />
+              <Text style={[st.hojaTxt, { color: C.down }]}>{t.borrarConv}</Text>
             </Pressable>
           </View>
         </Pressable>
@@ -759,6 +814,29 @@ export default function AuroChat({ nav, params }) {
               onSubmitEditing={renombrar} returnKeyType="done" />
             <Text style={st.editNota}>{t.editarNota}</Text>
             <Button3D title={t.guardarNombre} onPress={renombrar} disabled={!nombreEd.trim()} />
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Vaciar o borrar: se pregunta con las palabras exactas de lo que pasa.
+          Nadie debería enterarse DESPUÉS de que «lo borré» valía solo para su
+          lado — por eso la pregunta lo dice, y no una nota al pie. */}
+      <Modal visible={!!olvidando} transparent animationType="fade" onRequestClose={() => setOlvidando(null)}>
+        <Pressable style={st.velo} onPress={() => setOlvidando(null)}>
+          <Pressable style={st.editCaja} onPress={() => {}}>
+            <Text style={st.editTit}>{olvidando?.quitar ? t.borrarConv : t.vaciar}</Text>
+            <Text style={st.mini} numberOfLines={1}>{olvidando?.nombre || olvidando?.correo}</Text>
+            <Text style={[st.editNota, { marginTop: 12 }]}>
+              {olvidando?.quitar ? t.borrarQ : t.vaciarQ}
+            </Text>
+            <Button3D
+              title={olvidando?.quitar ? t.siBorrar : t.siVaciar}
+              onPress={confirmarOlvidar}
+              style={{ marginTop: 14 }}
+            />
+            <Pressable onPress={() => setOlvidando(null)} style={{ paddingVertical: 12, alignItems: 'center' }}>
+              <Text style={st.mini}>{t.cancelar}</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
