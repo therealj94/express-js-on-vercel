@@ -28,7 +28,11 @@ process.on('uncaughtException', e => { console.log('FALLO:', e.message); fin(); 
 process.on('unhandledRejection', e => { console.log('FALLO:', e?.message || e); fin(); process.exit(1); });
 setTimeout(() => { console.log('FALLO: se pasó de tiempo'); fin(); process.exit(1); }, 120000).unref();
 const err = [];
-const p = await b.newPage({ viewport: {width:1280,height:860}, deviceScaleFactor: 2, reducedMotion: 'reduce' });
+// bypassCSP: la pagina declara a que servidores puede hablar, y aqui se la
+// apunta a un relevo DE MENTIRA en 127.0.0.1 que la politica —con razon—
+// no deja. Se levanta solo para las pruebas; que la politica de verdad
+// siga estando y siga nombrando a los nuestros lo comprueba probar.mjs.
+const p = await b.newPage({ viewport: {width:1280,height:860}, deviceScaleFactor: 2, reducedMotion: 'reduce', bypassCSP: true });
 p.on('pageerror', e => err.push('pageerror: ' + e.message));
 p.on('console', m => { if (m.type()==='error') err.push('consola: ' + m.text()); });
 // apuntar el cliente al relevo local ANTES de que carguen los scripts
@@ -86,7 +90,7 @@ console.log('sin Genesis ID aprobado:', await p.evaluate(() => document.querySel
 await p.screenshot({ path: 'chat-puerta.png' });
 
 // movil: la lista y el hilo son dos pantallas
-const m = await b.newPage({ viewport: {width:390,height:844}, deviceScaleFactor: 2, reducedMotion: 'reduce' });
+const m = await b.newPage({ viewport: {width:390,height:844}, deviceScaleFactor: 2, reducedMotion: 'reduce', bypassCSP: true });
 await m.addInitScript(pt => { window.OG_MENSAJES_API = 'http://127.0.0.1:' + pt; }, PUERTO);
 await m.goto('http://127.0.0.1:8899/index.html');
 await m.waitForTimeout(800);

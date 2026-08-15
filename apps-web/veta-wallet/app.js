@@ -2794,12 +2794,25 @@ const VETA = (() => {
        el canvas y los botones comparten el mismo cuadro y las mismas
        coordenadas en tanto por ciento, asi que el ganglio dibujado y la
        esfera que se toca son EL MISMO punto. */
+    /* LA CAJA SEGURA. La constelación no ocupa el cuadro entero: arriba vive
+       el saludo y abajo el sello de la cadena con los botones del recorrido.
+       Sin este margen, las esferas de la fila de abajo —Genesis ID, Ajustes,
+       AUBANK— caían DEBAJO de esa banda y en un teléfono chico no se podían
+       ni tocar: medido con elementFromPoint en el centro de cada botón, a
+       1280x860, 390x844, 360x740 y 320x568.
+
+       Se calcula aquí y de aquí salen las DOS cosas: el botón del DOM y el
+       ganglio del canvas. Si alguien las separa, el cerebro deja de coincidir
+       con lo que se toca — que es justo lo que hace que esto parezca una
+       sola pieza y no dos capas que se ignoran. */
+    const { enCaja, enAncho } = cajaNucleo();
+
     const esferas = MUNDOS.map((m, i) => {
       const cerrado = m.pideGid && !verificada;
       return `
       <button class="nu-mundo${m.pronto ? ' nu-pronto' : ''}${cerrado ? ' nu-cerrado' : ''}"
               data-mundo="${m.id}"
-              style="left:${m.x}%;top:${m.y}%;--t:${m.tam};--d:${i * 420}ms;
+              style="left:${enAncho(m.x)}%;top:${enCaja(m.y)}%;--t:${m.tam};--d:${i * 420}ms;
                      --g1:${m.grad[0]};--g2:${m.grad[1]};--g3:${m.grad[2]};
                      --halo:${m.halo};--lente:${m.lente}"
               onclick="VETA.nuAbrir(${jsTxt(m.id)})"
@@ -2849,6 +2862,36 @@ const VETA = (() => {
      ya existe y tiene medidas. Los ganglios son las esferas navegables — las
      dormidas (pronto) tambien laten, mas tenue, porque un organo que se ve
      antes de existir es el mensaje del ecosistema. */
+  /* LA CAJA SEGURA DE LA CONSTELACIÓN — y se calcula UNA sola vez porque de
+     aquí salen TRES cosas que tienen que coincidir al píxel: el botón del DOM,
+     el ganglio del canvas y el foco del recorrido. Si se separan, el cerebro
+     deja de estar donde están los botones y el conjunto se cae.
+
+     La constelación no ocupa el cuadro entero: arriba vive el saludo y abajo
+     el sello de la cadena con los botones del recorrido. Sin este margen las
+     esferas de la fila de abajo caían debajo de esa banda y no se podían ni
+     tocar — medido con elementFromPoint en el centro de cada botón, a
+     1280x860, 390x844, 360x740 y 320x568.
+
+     El alto que cuenta es el del cerebro, no el de la ventana: en el teléfono
+     la barra de pestañas se lleva 76px, y no descontarlos dejaba a un
+     360x740 usando el reparto de una pantalla grande. */
+  function cajaNucleo() {
+    const alto = innerWidth < 901 ? innerHeight - 76 : innerHeight;
+    const corta = alto < 620, baja = alto < 700;
+    const arriba = corta ? 14 : baja ? 13 : 11;
+    const abajo = corta ? 64 : baja ? 72 : 79;
+    /* Y a lo ancho lo mismo: el nombre de una esfera pegada al borde
+       —«Ordenexchange» es el más largo— se salía del cuadro en un teléfono
+       angosto. Se mete la constelación hacia dentro en vez de recortar el
+       nombre: una app del ecosistema no se presenta con puntos suspensivos. */
+    const angosto = innerWidth < 700;
+    return {
+      enCaja: y => arriba + (y / 100) * (abajo - arriba),
+      enAncho: x => (angosto ? 15 + (x / 100) * 70 : x),
+    };
+  }
+
   function encenderCerebro(despertar) {
     const c = $('#red-nucleo');
     if (!c) return;
@@ -2858,8 +2901,10 @@ const VETA = (() => {
     document.querySelectorAll('.nu-mundo[data-mundo]').forEach(el => {
       elementos[el.dataset.mundo] = el;
     });
+    const { enCaja, enAncho } = cajaNucleo();
     AURA.montarRed(c, MUNDOS.map(m => ({
-      id: m.id, x: m.x, y: m.y, tam: m.tam,
+      // la MISMA caja que usan los botones: una sola cuenta para los dos
+      id: m.id, x: enAncho(m.x), y: enCaja(m.y), tam: m.tam,
       tinte: tinteDe(m.halo),
     })), {
       elementos,
@@ -4442,7 +4487,10 @@ const VETA = (() => {
       const m = MUNDOS.find(x => x.id === p.id);
       const esfera = document.querySelector(`.nu-mundo[data-mundo="${p.id}"]`);
       if (esfera) esfera.classList.add('nu-foco');
-      if (m) velo = `radial-gradient(circle at ${m.x}% ${m.y}%, rgba(1,7,8,0) 90px, rgba(1,7,8,.82) 300px)`;
+      if (m) {
+        const { enCaja, enAncho } = cajaNucleo();
+        velo = `radial-gradient(circle at ${enAncho(m.x)}% ${enCaja(m.y)}%, rgba(1,7,8,0) 90px, rgba(1,7,8,.82) 300px)`;
+      }
       AURA.latirHacia(p.id, 6);
       // AUBANK y Ordenexchange comparten parada: laten los dos
       if (p.id === 'aubank') AURA.latirHacia('oxch', 4);
