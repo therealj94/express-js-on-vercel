@@ -209,6 +209,52 @@ L898902C36UTO9008122F1204159ZE184226B<<<<<10`
     assert.ok(r.cuerpo.documento.problemas.some((p: string) => /dígitos de control/i.test(p)))
   })
 
+  test('desde el navegador, el documento entra como dos fotos', async () => {
+    // Quien se verifica en un navegador no tiene lector de MRZ, asi que sube
+    // las dos caras y las lee un operador. Se hace sobre una identidad aparte
+    // para no pisar el flujo de la MRZ de arriba.
+    const alta = await pedir('/api/v1/identidades', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ email: 'porfotos@prueba.local' }),
+    })
+    const otra = alta.cuerpo.identidad.id
+    await pedir(`/api/v1/identidades/${otra}/datos`, {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ nombreCompleto: 'Persona Por Fotos', fechaNacimiento: '1990-01-01' }),
+    })
+    const foto = 'data:image/jpeg;base64,' + 'A'.repeat(2000)
+    const r = await pedir(`/api/v1/identidades/${otra}/documento-fotos`, {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ anverso: foto, reverso: foto }),
+    })
+    assert.equal(r.estado, 200)
+    assert.equal(r.cuerpo.identidad.estado, 'documento')
+    // Las dos claves se leen juntas: `aceptable` en falso aqui no quiere decir
+    // rechazado, quiere decir que todavia no lo miro nadie.
+    assert.equal(r.cuerpo.documento.via, 'fotos')
+    assert.equal(r.cuerpo.documento.aceptable, false)
+    assert.equal(r.cuerpo.documento.pendienteDeLectura, true)
+    assert.deepEqual(r.cuerpo.documento.problemas, [])
+  })
+
+  test('media cara, o algo que no es una imagen, no entra', async () => {
+    const alta = await pedir('/api/v1/identidades', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ email: 'mediacara@prueba.local' }),
+    })
+    const otra = alta.cuerpo.identidad.id
+    const foto = 'data:image/jpeg;base64,' + 'A'.repeat(2000)
+    const soloUna = await pedir(`/api/v1/identidades/${otra}/documento-fotos`, {
+      method: 'POST', headers: conClave(), body: JSON.stringify({ anverso: foto }),
+    })
+    assert.equal(soloUna.estado, 400)
+    const noEsFoto = await pedir(`/api/v1/identidades/${otra}/documento-fotos`, {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ anverso: 'https://algun.sitio/foto.jpg', reverso: foto }),
+    })
+    assert.equal(noEsFoto.estado, 400)
+  })
+
   test('la app NO puede aprobar la identidad', async () => {
     // Aunque tenga una clave de API perfectamente válida.
     const r = await pedir(`/api/panel/identidades/${identidadId}/aprobar`, {

@@ -339,6 +339,59 @@ px;
   max-width:90vw;text-align:center}
 #tostada.ver{transform:translate(-50%,0);opacity:1;visibility:visible}
 
+/* ── EL NUCLEO ────────────────────────────────────────────────────────────
+   La constelacion del ecosistema. Las esferas van colocadas en tanto por
+   ciento sobre un cuadro cuadrado, con las MISMAS coordenadas que el
+   telefono, y las lineas se dibujan en un SVG que ocupa ese mismo cuadro en
+   el mismo sistema: asi el dibujo y los botones no se separan a ningun
+   tamaño de pantalla. */
+.nu-campo{position:relative;width:min(560px,100%);aspect-ratio:1;margin:6px auto 4px}
+.nu-hilos{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.nu-hilos line{stroke:var(--linea2);stroke-width:.28;vector-effect:non-scaling-stroke}
+
+.nu-mundo{position:absolute;transform:translate(-50%,-50%);display:flex;
+  flex-direction:column;align-items:center;gap:8px;padding:0;cursor:pointer}
+.nu-esfera{width:calc(var(--t) * clamp(74px,17vw,104px));aspect-ratio:1;border-radius:50%;
+  display:grid;place-items:center;
+  background:radial-gradient(circle at 32% 26%,var(--g1),var(--g2) 52%,var(--g3));
+  box-shadow:0 0 0 1px rgba(255,255,255,.12),0 0 40px -8px var(--halo),
+    inset 0 -10px 22px -12px rgba(0,0,0,.6);
+  animation:nuFlota 5s ease-in-out infinite;animation-delay:var(--d);transition:transform .2s}
+.nu-mundo:hover .nu-esfera{transform:scale(1.06)}
+@keyframes nuFlota{0%,100%{translate:0 0}50%{translate:0 -7px}}
+.nu-lente{width:46%;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;
+  background:var(--lente);box-shadow:inset 0 2px 9px rgba(0,0,0,.7)}
+.nu-lente svg{width:56%;height:56%;fill:none;stroke:var(--halo);stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+/* El nombre puede ser mas ancho que su esfera —«Ordenexchange» lo es— y las
+   esferas del borde lo empujaban fuera de la pantalla. Se le pone tope y se
+   deja partir en dos lineas: un nombre en dos renglones se lee; uno cortado a
+   la mitad por el borde, no. */
+.nu-nombre{font-size:11.5px;font-weight:700;letter-spacing:.04em;color:var(--crema);
+  max-width:min(32vw,124px);text-align:center;line-height:1.25;
+  text-shadow:0 1px 6px rgba(0,0,0,.8)}
+.nu-chip{position:absolute;top:-6px;padding:2px 8px;border-radius:100px;font-size:9px;
+  font-weight:800;letter-spacing:.12em;background:rgba(2,20,20,.9);color:var(--oroLt);
+  border:1px solid var(--linea2)}
+.nu-pronto .nu-esfera{opacity:.5;animation-duration:8s}
+.nu-pronto .nu-nombre{color:var(--humo)}
+.nu-candado{position:absolute;right:-2px;top:calc(var(--t) * clamp(50px,11.5vw,70px));
+  width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
+  background:rgba(2,20,20,.92);border:1px solid var(--linea)}
+.nu-candado svg{width:12px;height:12px;fill:none;stroke:var(--oro);stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round}
+.nu-cerrado .nu-esfera{opacity:.72}
+
+.nu-puerta{display:flex;gap:14px;align-items:flex-start}
+.nu-puerta-ic{flex:none;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;
+  background:rgba(201,169,97,.16);border:1px solid var(--linea)}
+.nu-puerta-ic svg{width:22px;height:22px;fill:none;stroke:var(--oro);stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round}
+
+@media(max-width:560px){
+  .nu-nombre{font-size:10.5px}
+}
+
 /* ── AURO CHAT ────────────────────────────────────────────────────────────
    Dos columnas cuando la pantalla da para las dos: la lista a la izquierda y
    el hilo a la derecha, como cualquier mensajeria de escritorio. En el movil
@@ -485,6 +538,19 @@ px;
   font-size:clamp(28px,6.4vw,40px);margin:10px 0 14px}
 .bien-caja p{color:var(--bruma);font-size:clamp(14px,3.4vw,16px);line-height:1.72;
   max-width:44ch;margin:0 auto}
+/* La frase de recuperacion usa la misma caja que la bienvenida: es una sola
+   pantalla que tapa todo, que es lo que hay que hacer con doce palabras que no
+   se vuelven a enseñar. */
+.sem-rejilla{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;
+  margin:clamp(20px,4vw,26px) 0 4px}
+.sem-rejilla span{display:flex;align-items:baseline;gap:6px;padding:9px 10px;border-radius:11px;
+  border:1px solid var(--linea2);background:rgba(2,20,20,.5);
+  font-family:var(--mono);font-size:13px;color:var(--crema)}
+.sem-rejilla em{font-style:normal;font-size:10px;color:var(--humo);min-width:1.2em}
+.sem-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:18px}
+.sem-pie{margin-top:14px;font-size:11.5px;line-height:1.6;color:var(--humo);max-width:44ch}
+@media(max-width:420px){.sem-rejilla{grid-template-columns:repeat(2,1fr)}}
+
 .bien-puntos{display:flex;gap:7px;justify-content:center;margin:clamp(22px,5vw,30px) 0 18px}
 .bien-punto{width:7px;height:7px;border-radius:50%;background:rgba(201,169,97,.26);transition:.3s}
 .bien-punto[data-aqui]{width:22px;border-radius:100px;background:var(--oro)}
@@ -628,6 +694,7 @@ px;
     justify-content:center;text-align:center;border-radius:12px}
   .tabs .nav svg{width:21px;height:21px}
   .tabs .nav[aria-current=page]::before{display:none}
+  .tabs .nav[data-vista=tarjeta],.tabs .nav[data-vista=cambiar]{display:none}
   .acciones{grid-template-columns:repeat(4,1fr)}
   .acc-btn{padding:14px 4px;font-size:11px}
 }
@@ -1210,7 +1277,8 @@ a.btn{text-decoration:none}
 <main id="app" class="oculto">
   <nav class="riel" aria-label="Secciones">
     <div class="riel-marca marca"><img src="assets/veta-logo.png" alt="">veta <em>wallet</em></div>
-    <button class="nav" data-vista="billetera" aria-current="page" onclick="VETA.vista('billetera')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.billetera"></span></button>
+    <button class="nav" aria-current="page" data-vista="nucleo" onclick="VETA.vista('nucleo')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="3.7" r="1.7"/><circle cx="20.3" cy="12" r="1.7"/><circle cx="12" cy="20.3" r="1.7"/><circle cx="3.7" cy="12" r="1.7"/><path d="M12 5.4v3.4M15.2 12h3.4M12 15.2v3.4M5.4 12h3.4"/></svg><span data-t="nav.nucleo"></span></button>
+    <button class="nav" data-vista="billetera" onclick="VETA.vista('billetera')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.billetera"></span></button>
     <button class="nav" data-vista="tarjeta" onclick="VETA.vista('tarjeta')"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20M6 15h4"/></svg><span data-t="nav.tarjeta"></span></button>
     <button class="nav" data-vista="cambiar" onclick="VETA.vista('cambiar')"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg><span data-t="nav.swap"></span></button>
     <button class="nav" data-vista="actividad" onclick="VETA.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>
@@ -1229,7 +1297,8 @@ a.btn{text-decoration:none}
   </nav>
   <div class="lienzo" id="lienzo"></div>
   <nav class="tabs" aria-label="Secciones">
-    <button class="nav" data-vista="billetera" aria-current="page" onclick="VETA.vista('billetera')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.billetera"></span></button>
+    <button class="nav" aria-current="page" data-vista="nucleo" onclick="VETA.vista('nucleo')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="3.7" r="1.7"/><circle cx="20.3" cy="12" r="1.7"/><circle cx="12" cy="20.3" r="1.7"/><circle cx="3.7" cy="12" r="1.7"/><path d="M12 5.4v3.4M15.2 12h3.4M12 15.2v3.4M5.4 12h3.4"/></svg><span data-t="nav.nucleo"></span></button>
+    <button class="nav" data-vista="billetera" onclick="VETA.vista('billetera')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.billetera"></span></button>
     <button class="nav" data-vista="tarjeta" onclick="VETA.vista('tarjeta')"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20M6 15h4"/></svg><span data-t="nav.tarjeta"></span></button>
     <button class="nav" data-vista="cambiar" onclick="VETA.vista('cambiar')"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg><span data-t="nav.swap"></span></button>
     <button class="nav" data-vista="actividad" onclick="VETA.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>

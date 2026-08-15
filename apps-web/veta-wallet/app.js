@@ -46,7 +46,9 @@ const VETA = (() => {
   let transferencias = [];   // el historial de la cadena
   let tokenAbierto = null;    // simbolo del token cuya ficha se esta mirando
   let ocultos = false;        // el ojo: esconde todas las cifras de una vez
-  let vistaActual = 'billetera';
+  // La portada de la sesion es el NUCLEO, no la billetera: la web es la puerta
+  // al ecosistema entero y la billetera es una de sus salas, la mas usada.
+  let vistaActual = 'nucleo';
   let modo = 'entrar';
 
   /* El saldo total solo suma lo que tiene precio de mercado. Un feed caido no
@@ -89,6 +91,10 @@ const VETA = (() => {
       if (!r.ok) {
         const e = new Error(datos?.message || datos?.error || `El servidor respondió ${r.status}`);
         e.estado = r.status;
+        // Algunos errores traen un motivo en clave, aparte del texto para leer.
+        // Sin arrastrarlo hasta aqui, quien atrapa el error solo tiene la frase
+        // y acaba adivinando con expresiones regulares sobre la traduccion.
+        if (datos?.motivo) e.motivo = datos.motivo;
         throw e;
       }
       return datos;
@@ -177,6 +183,53 @@ const VETA = (() => {
       const p = token.split('.')[1];
       return JSON.parse(atob(p.replace(/-/g, '+').replace(/_/g, '/')));
     } catch { return {}; }
+  }
+
+  /* La frase de recuperacion recien acuñada, entre que se crea la cuenta y se
+     entra. Vive en memoria y nada mas: no se guarda, no se manda a ningun
+     sitio, y se borra en cuanto la persona confirma que la anoto. */
+  let semillaNueva = null;
+
+  // El alta la devuelve dentro de un sello firmado; aqui solo se abre para
+  // leerla. Si viene rara no se inventa nada: no se enseña y punto — la frase
+  // se puede volver a pedir en Seguridad con la contraseña.
+  function leerSemilla(sello) {
+    if (!sello || typeof sello !== 'string') return null;
+    try {
+      const d = abrirToken(sello);
+      const s = d?.seed || d?.semilla || null;
+      return (typeof s === 'string' && s.split(/\s+/).length >= 12) ? s : null;
+    } catch { return null; }
+  }
+
+  function mostrarSemilla(frase) {
+    const palabras = frase.split(/\s+/).filter(Boolean);
+    $('#bienve').innerHTML = `
+      <div class="bien-caja" style="--bE1:#F8EFCF;--bE2:#C9A961;--bE3:#96793F;--bHalo:#EAD79C;--bLente:#05201B">
+        <div class="bien-esfera" aria-hidden="true"><div class="bien-lente">
+          <svg viewBox="0 0 24 24">${ICO.llave}</svg></div></div>
+        <div class="bien-k">${t('sem.k')}</div>
+        <h2 id="bien-tit">${t('sem.t')}</h2>
+        <p>${t('sem.p')}</p>
+        <div class="sem-rejilla">
+          ${palabras.map((w, i) => `<span><em>${i + 1}</em>${esc(w)}</span>`).join('')}
+        </div>
+        <div class="sem-btns">
+          <button class="btn btn-linea btn-sm" onclick="VETA.semCopiar()">${t('sem.copiar')}</button>
+          <button class="btn btn-oro btn-sm" onclick="VETA.semListo()">${t('sem.listo')}</button>
+        </div>
+        <p class="sem-pie">${t('sem.pie')}</p>
+      </div>`;
+    $('#bienve').classList.remove('oculto');
+    document.body.style.overflow = 'hidden';
+  }
+
+  const semCopiar = () => copiarTexto(semillaNueva || '', t('sem.copiada'));
+  function semListo() {
+    semillaNueva = null;          // fuera de la memoria en cuanto se confirma
+    $('#bienve').classList.add('oculto');
+    $('#bienve').innerHTML = '';
+    document.body.style.overflow = '';
   }
 
   function guardar() {
@@ -328,7 +381,13 @@ const VETA = (() => {
     b.innerHTML = '<span class="girando"></span> ' + (modo === 'crear' ? t('acc.creando') : t('acc.entrando'));
     try {
       if (modo === 'crear') {
-        await pedir('/auth/register', { metodo: 'POST', cuerpo: { name: nombre, email: correo, password: clave }, conSesion: false });
+        /* La respuesta del alta trae la frase de recuperacion dentro de un
+           sello que vale cinco minutos. Se leia y se tiraba: quien creaba su
+           cuenta nunca veia su respaldo en el momento, que es justo cuando
+           tiene sentido apuntarlo. Se guarda para enseñarla en cuanto entre. */
+        const alta = await pedir('/auth/register', {
+          metodo: 'POST', cuerpo: { name: nombre, email: correo, password: clave }, conSesion: false });
+        semillaNueva = leerSemilla(alta?.semilla);
       }
       const d = await pedir('/auth/login', { metodo: 'POST', cuerpo: { email: correo, password: clave }, conSesion: false });
       const token = d?.token || d?.accessToken || d?.access_token || d?.data?.token;
@@ -359,6 +418,10 @@ const VETA = (() => {
       anotarSesion();
       ir('app');
       cargarTodo();
+      // La frase se enseña ENCIMA de la billetera ya pintada, no antes de
+      // entrar: quien la ve entiende que ya tiene cuenta y que esto es lo que
+      // hay que guardar, no un tramite mas de la puerta.
+      if (semillaNueva) setTimeout(() => mostrarSemilla(semillaNueva), 600);
       avisar(modo === 'crear' ? `${t('ok.creada')}, ${sesion.nombre.split(' ')[0]}` : `${t('ok.hola')}, ${sesion.nombre.split(' ')[0]}`);
     } catch (e) {
       // El servidor devuelve "credenciales inválidas" para un correo que no
@@ -468,6 +531,13 @@ const VETA = (() => {
   async function cargarIdentidad() {
     try { identidad = aVistaId(await pedir('/genesis/estado')); }
     catch (e) { identidad = { error: e.message, estado: null }; }
+    /* Verificarse y quedar atado al GID son dos cosas distintas, y la web solo
+       hacia la primera: la tarjeta decia «Verificada» y el GID salia, pero la
+       cuenta nunca quedaba unida a esa identidad. Sin ese vinculo el pase a
+       MyTokenPay sin repetir el KYC no funciona para quien se verifico por web.
+       El telefono lo llama en el mismo momento. Se hace sin esperar y sin
+       ruido: si falla, se reintenta en la siguiente carga. */
+    if (esVerificada()) pedir('/genesis/vincular', { metodo: 'POST', cuerpo: {} }).catch(() => {});
   }
 
   /* La traduccion del servidor a lo que la pantalla necesita, calcada del
@@ -532,11 +602,11 @@ const VETA = (() => {
      token y Genesis ID no son pestañas: se entra a ellas desde algun lado y se
      vuelve, igual que alla. */
   const VISTAS = {
-    billetera, tarjeta: vTarjeta, cambiar, actividad, chat, ajustes,
+    nucleo, billetera, tarjeta: vTarjeta, cambiar, actividad, chat, ajustes,
     enviar, recibir, comprar, deposito, token: vToken, identidad: vIdentidad,
     remesas, contactos, sesiones, lector, seguridad, perfil, verificar, cobrar,
   };
-  const PESTANAS = ['billetera', 'tarjeta', 'cambiar', 'actividad', 'chat', 'ajustes'];
+  const PESTANAS = ['nucleo', 'billetera', 'tarjeta', 'cambiar', 'actividad', 'chat', 'ajustes'];
   // A que pestaña se le enciende la luz cuando estas en una vista que no es una.
   const DENTRO_DE = {
     enviar: 'billetera', recibir: 'billetera', comprar: 'billetera',
@@ -546,7 +616,7 @@ const VETA = (() => {
   };
 
   function vista(cual, dato) {
-    if (!VISTAS[cual]) cual = 'billetera';
+    if (!VISTAS[cual]) cual = 'nucleo';
     // Salir de la tarjeta borra el numero y el CVV de la memoria y la deja de
     // frente otra vez. Nadie tiene por que volver y encontrarselos puestos.
     if (vistaActual === 'tarjeta' && cual !== 'tarjeta') { secretoTarjeta = null; volteada = false; }
@@ -739,9 +809,22 @@ const VETA = (() => {
      desde acá: la levanta un operador. */
   function botonGid(estado) {
     if (estado === 'en-revision' || estado === 'biometria' || estado === 'suspendida') {
-      return identidad?.rostroPendiente
-        ? `<div style="margin-top:16px"><button class="btn btn-oro btn-sm" onclick="VETA.vista('verificar')">${t('ver.repetirCara')}</button></div>`
-        : '';
+      /* Un expediente en revision no lleva boton: no hay nada que hacer mas que
+         esperar. Con DOS excepciones, y las dos existen porque sin ellas la
+         persona se queda encerrada:
+
+           · el rostro no cotejo — se repite la foto;
+           · el documento quedo marcado como no valido — hay que volver a
+             subirlo. Esto pasaba y no habia salida: la pantalla decia «En
+             revision», que es tranquilizador, sobre un expediente que iba
+             derecho al rechazo. */
+      if (identidad?.rostroPendiente) {
+        return `<div style="margin-top:16px"><button class="btn btn-oro btn-sm" onclick="VETA.vista('verificar')">${t('ver.repetirCara')}</button></div>`;
+      }
+      if (identidad?.documentoAceptable === false) {
+        return `<div style="margin-top:16px"><button class="btn btn-oro btn-sm" onclick="VETA.vista('verificar')">${t('ver.arreglarDoc')}</button></div>`;
+      }
+      return '';
     }
     const etiqueta = estado === 'rechazada' ? t('gid.rehacer')
       : ['iniciada', 'datos', 'documento'].includes(estado) ? t('gid.seguir')
@@ -1690,13 +1773,20 @@ const VETA = (() => {
 
   // ── paso 2: tu documento ──────────────────────────────────────────────────
 
-  /* El reverso hace falta en una cedula y no en un pasaporte: en el pasaporte
-     las lineas del pie estan en la misma hoja de datos que la foto. Pedir una
-     foto del reverso en blanco de un pasaporte es pedir por pedir. */
-  const pideReverso = () => sol.tipoDoc !== 'pasaporte';
+  /* AQUI SE PIDEN LAS DOS CARAS, SIEMPRE.
+
+     Antes se pedia la foto y ADEMAS teclear a mano la zona de lectura mecanica
+     del documento: cuarenta y cuatro columnas por linea, con sus digitos de
+     control. En el telefono eso lo lee ML Kit sin que nadie escriba nada; en un
+     navegador ese lector no existe, y pedirselo a la persona era pedir un
+     imposible. El tramite se caia justo ahi.
+
+     Ahora suben el anverso y el reverso y los lee un operador. En el pasaporte
+     tambien se piden los dos: la hoja de datos y la pagina de la firma. Un
+     documento entero es lo que se le da a un banco, y esto es lo mismo. */
+  const pideReverso = () => true;
 
   function verDocumento() {
-    const f = formaMrz(sol.mrz);
     return `
     <h3>${t('ver.docT')}</h3>
     <p class="pie" style="margin-top:8px">${t('ver.docP')}</p>
@@ -1704,20 +1794,9 @@ const VETA = (() => {
     <div class="capt" id="capt-frente">${capturaHtml('frente')}</div>
     ${pideReverso() ? `<div class="capt" id="capt-reverso">${capturaHtml('reverso')}</div>` : ''}
 
-    <h3 style="margin-top:26px">${t('ver.mrzT')}</h3>
-    <p class="pie" style="margin-top:8px">${t('ver.mrzP')}</p>
-    <div class="campo" style="margin-top:14px">
-      <label for="ver-mrz">${t('ver.mrzT')}</label>
-      <textarea id="ver-mrz" spellcheck="false" autocapitalize="characters" autocomplete="off"
-                oninput="VETA.verMrz(this.value)"
-                placeholder="P&lt;HND&lt;&lt;…">${esc(sol.mrz)}</textarea>
-      <span class="ayuda">${t('ver.mrzAyuda')}</span>
-    </div>
-    <div id="ver-mrz-eco">${ecoMrzHtml(f)}</div>
-
     <div class="nota" style="margin-top:18px">
-      <b style="display:block;margin-bottom:6px;color:var(--crema)">${t('ver.mrzSinT')}</b>
-      ${t('ver.mrzSinP')}
+      <b style="display:block;margin-bottom:6px;color:var(--crema)">${t('ver.fotoT')}</b>
+      ${t('ver.fotoP')}
     </div>
 
     ${avisoVer()}
@@ -1903,6 +1982,12 @@ const VETA = (() => {
     return e.message;
   }
 
+  /* Mientras Genesis ID no sepa recibir las dos caras, el puente contesta con
+     este motivo en vez de un error a secas. No es un fallo de la persona ni de
+     su documento, y decirle «revisá tu conexión» seria mandarla a arreglar algo
+     que no esta roto de su lado. */
+  const SIN_FOTOS = 'genesis-sin-fotos';
+
   async function verMandar() {
     if (sol.enviando) return;
     if (!sol.selfie) { sol.error = t('ver.eCara'); return vista('verificar'); }
@@ -1937,18 +2022,36 @@ const VETA = (() => {
         });
       }
 
-      // 2. El documento, como texto. `textoAnverso` va vacio a proposito: ver la
-      //    nota de arriba.
+      /* 2. El documento, como DOS FOTOS. En el telefono sube el texto de la
+            zona mecanica —que ya leyo ML Kit— y aqui no hay lector, asi que
+            suben las dos caras y las lee un operador. Ver `pideReverso`. */
       verEtapa(t('ver.pDoc'), 34);
-      const doc = await pedir('/genesis/documento', {
-        metodo: 'POST', espera: 40000, cuerpo: { mrz: limpiarMrz(sol.mrz) },
+      const doc = await pedir('/genesis/documento-fotos', {
+        metodo: 'POST', espera: 120000,
+        cuerpo: { anverso: sol.frente, reverso: sol.reverso },
       });
 
-      // 3. Las fotos, que es lo unico que pesa. Sin reto de vivacidad —eso son
-      //    cuatro gestos grabados y vive en la app—, asi que esto NUNCA aprueba
-      //    sola: el expediente queda esperando a una persona.
+      /* Genesis rechaza un documento con un 200, no con un error: devuelve
+         `aceptable: false` y la lista de lo que falla. Seguir adelante sin
+         mirarlo dejaba el expediente en «En revision» —tranquilizador y falso—
+         con el documento ya marcado como no valido, y sin ningun boton para
+         volver a intentarlo. Se para aqui, como hace el telefono.
+
+         La via `fotos` es la excepcion: ahi `aceptable` en falso no significa
+         rechazado, significa que todavia no lo ha mirado nadie. Las dos claves
+         se leen juntas o ninguna. */
+      const porFotos = doc?.documento?.via === 'fotos';
+      if (!porFotos && doc?.documento?.aceptable === false) {
+        sol.resultado = { aceptable: false, problemas: doc?.documento?.problemas || [] };
+        sol.paso = 4;
+        return;
+      }
+
+      // 3. Las fotos de la cara. Sin reto de vivacidad —eso son cuatro gestos
+      //    grabados y vive en la app—, asi que esto NUNCA aprueba sola: el
+      //    expediente queda esperando a una persona.
       verEtapa(t('ver.pCara'), 58);
-      await pedir('/genesis/biometria', {
+      const bio = await pedir('/genesis/biometria', {
         metodo: 'POST', espera: 120000,
         cuerpo: { selfie: sol.selfie, fotoDocumento: sol.frente },
       });
@@ -1956,12 +2059,17 @@ const VETA = (() => {
       verEtapa(t('ver.pFin'), 100);
       await cargarIdentidad();
       sol.resultado = {
-        aceptable: Boolean(doc?.documento?.aceptable),
+        aceptable: porFotos ? null : Boolean(doc?.documento?.aceptable),
+        porFotos,
         problemas: doc?.documento?.problemas || [],
+        // La respuesta del rostro trae el motivo exacto —«no se detecta ningun
+        // rostro», «movida», «a contraluz»—. Tirarlo dejaba a la persona
+        // repitiendo la misma foto sin saber que corregir.
+        rostro: bio?.biometria?.motivo || null,
       };
       sol.paso = 4;
     } catch (e) {
-      sol.error = verFalla(e);
+      sol.error = e.motivo === SIN_FOTOS ? t('ver.sinFotos') : verFalla(e);
     } finally {
       sol.enviando = false;
       /* Se repinta lo que la persona esté mirando, no la verificación a la
@@ -1980,6 +2088,10 @@ const VETA = (() => {
   function verFinal() {
     const problemas = sol.resultado?.problemas || [];
     const rostroMal = Boolean(identidad?.rostroPendiente);
+    // Lo que dijo el cotejo del rostro, con sus palabras. Un «repetir la foto»
+    // a secas deja a la persona mandando la misma otra vez.
+    const motivo = sol.resultado?.rostro || '';
+    const porFotos = Boolean(sol.resultado?.porFotos);
     return `
     <div class="cab"><div><h2>${t('ver.t')}</h2><div class="sub">${t('ver.sub')}</div></div></div>
 
@@ -1991,20 +2103,27 @@ const VETA = (() => {
           ${problemas.map(p => `<div class="aviso aviso-mal">${esc(p)}</div>`).join('')}
         </div>
         <div style="margin-top:16px">
-          <button class="btn btn-oro btn-sm" onclick="VETA.verVolverA(2)">${t('ver.arreglarMrz')}</button>
+          <button class="btn btn-oro btn-sm" onclick="VETA.verVolverA(2)">${t('ver.arreglarDoc')}</button>
         </div>
+      </div>` : ''}
+
+    ${porFotos ? `
+      <div class="bloque vidrio">
+        <h3>${t('ver.leeraT')}</h3>
+        <p class="pie" style="margin-top:8px">${t('ver.leeraP')}</p>
       </div>` : ''}
 
     ${rostroMal ? `
       <div class="bloque vidrio">
         <h3>${t('ver.caraMal')}</h3>
+        ${motivo ? `<div class="aviso aviso-mal" style="margin-top:10px">${esc(motivo)}</div>` : ''}
         <p class="pie" style="margin-top:8px">${t('ver.caraMalP')}</p>
         <div style="margin-top:16px">
           <button class="btn btn-oro btn-sm" onclick="VETA.verVolverA(3)">${t('ver.repetirCara')}</button>
         </div>
       </div>` : ''}
 
-    ${!problemas.length && !rostroMal ? `
+    ${!problemas.length && !rostroMal && !porFotos ? `
       <div class="bloque vidrio">
         <h3>${t('ver.listoT')}</h3>
         <p class="pie" style="margin-top:8px">${t('ver.listoP')}</p>
@@ -2031,8 +2150,7 @@ const VETA = (() => {
     }
     if (sol.paso === 2) {
       if (!sol.frente) { sol.error = t('ver.eFrente'); return vista('verificar'); }
-      if (pideReverso() && !sol.reverso) { sol.error = t('ver.eReverso'); return vista('verificar'); }
-      if (!formaMrz(sol.mrz).ok) { sol.error = t('ver.eMrz'); return vista('verificar'); }
+      if (!sol.reverso) { sol.error = t('ver.eReverso'); return vista('verificar'); }
       sol.error = '';
       sol.paso = 3;
       return vista('verificar');
@@ -2489,6 +2607,130 @@ const VETA = (() => {
     if (e.key === 'ArrowLeft' && bienPaso > 0) { e.preventDefault(); bienPaso--; bienPintar(); }
   });
 
+
+  // ── EL NUCLEO ─────────────────────────────────────────────────────────────
+
+  /* El tablero del ecosistema, el mismo que el telefono: una constelacion de
+     esferas colgando de la billetera, que es el centro. Las coordenadas, los
+     colores y el orden salen de orden-global-app/src/og/Nucleo.js tal cual —si
+     alla la esfera de MyTokenPay esta arriba a la derecha y es cian, aca
+     tambien, porque la gente que salta de un lado al otro reconoce por sitio y
+     por color antes que por el nombre.
+
+     Es la PORTADA: a esto se entra al abrir sesion, y de aqui salen todas las
+     puertas. Lo que en el telefono son secciones, aca son destinos.
+
+     LO QUE CAMBIA RESPECTO AL TELEFONO: alla las esferas laten sobre una red
+     de neuronas dibujada en un lienzo. Aca las lineas son un SVG estatico y el
+     latido es una animacion de CSS. Ni canvas ni WebView: la misma imagen sin
+     una dependencia mas, que es la regla de esta web. */
+  const MUNDOS = [
+    { id: 'wallet', x: 50, y: 47, tam: 1.00, va: 'billetera',
+      grad: ['#F8EFCF', '#DFC078', '#96793F'], halo: '#EAD79C', lente: '#05201B',
+      ico: '<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/>' },
+    { id: 'chat', x: 19, y: 17, tam: 0.72, va: 'chat', pideGid: true,
+      grad: ['#FBE0D4', '#E0937A', '#8A4A38'], halo: '#E0937A', lente: '#20100A',
+      ico: '<path d="M3.5 6.6h12.2v8.2H8.1L4.4 18v-3.2H3.5z"/><path d="M18.6 9.4h1.9v8.2h-.9V20l-3-2.4H12"/>' },
+    { id: 'pay', x: 81, y: 21, tam: 0.76, fuera: 'https://www.mytokenpay-pos.com', pideGid: true,
+      grad: ['#D8F7FF', '#5FC6EA', '#453398'], halo: '#5FC6EA', lente: '#0A0812',
+      ico: '<path d="M4 9h16l-1.2 11.2H5.2z"/><path d="M8.4 9V6.6a3.6 3.6 0 0 1 7.2 0V9"/>' },
+    { id: 'gid', x: 18, y: 79, tam: 0.72, va: 'identidad',
+      grad: ['#D6EBE2', '#63A493', '#123B39'], halo: '#7FD8C4', lente: '#062123',
+      ico: '<path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/>' },
+    { id: 'ajustes', x: 82, y: 81, tam: 0.68, va: 'ajustes',
+      grad: ['#E4E8EE', '#93A0AE', '#2E3844'], halo: '#A9B6C4', lente: '#0C1116',
+      ico: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/>' },
+    { id: 'scan', x: 50, y: 12, tam: 0.60, fuera: 'https://ordenscan.com',
+      grad: ['#D6F3EC', '#74E6C8', '#1B5A50'], halo: '#74E6C8', lente: '#07211D',
+      ico: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7 9h10M7 13h6M7 17h8"/>' },
+    { id: 'aubank', x: 50, y: 86, tam: 0.60, pronto: true,
+      grad: ['#E8E0C8', '#A5936A', '#463B24'], halo: '#CBBB8C', lente: '#141007',
+      ico: '<rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20M6 15h4"/>' },
+    { id: 'oxch', x: 86, y: 49, tam: 0.52, pronto: true,
+      grad: ['#DCD4F2', '#8D7EC9', '#372B63'], halo: '#A99CDE', lente: '#0D0A1D',
+      ico: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>' },
+  ];
+
+  const CENTRO = { x: 50, y: 47 };
+
+  function nucleo() {
+    const nombre = (sesion?.nombre || '').split(' ')[0];
+    const verificada = esVerificada();
+
+    /* Las lineas salen del centro a cada mundo. Se dibujan en un SVG que ocupa
+       el mismo cuadro que las esferas y en las MISMAS coordenadas, en tanto por
+       ciento: asi el dibujo y los botones no se separan a ningun tamaño. */
+    const hilos = MUNDOS.filter(m => m.id !== 'wallet').map(m =>
+      `<line x1="${CENTRO.x}" y1="${CENTRO.y}" x2="${m.x}" y2="${m.y}"/>`).join('');
+
+    const esferas = MUNDOS.map((m, i) => {
+      const cerrado = m.pideGid && !verificada;
+      return `
+      <button class="nu-mundo${m.pronto ? ' nu-pronto' : ''}${cerrado ? ' nu-cerrado' : ''}"
+              style="left:${m.x}%;top:${m.y}%;--t:${m.tam};--d:${i * 420}ms;
+                     --g1:${m.grad[0]};--g2:${m.grad[1]};--g3:${m.grad[2]};
+                     --halo:${m.halo};--lente:${m.lente}"
+              onclick="VETA.nuAbrir('${m.id}')"
+              aria-label="${esc(t('nu.' + m.id))}">
+        <span class="nu-esfera"><span class="nu-lente"><svg viewBox="0 0 24 24">${m.ico}</svg></span></span>
+        <span class="nu-nombre">${esc(t('nu.' + m.id))}</span>
+        ${m.pronto ? `<span class="nu-chip">${t('nu.pronto')}</span>` : ''}
+        ${cerrado ? `<span class="nu-candado"><svg viewBox="0 0 24 24">${ICO.llave}</svg></span>` : ''}
+      </button>`;
+    }).join('');
+
+    return `
+    <div class="cab"><div>
+      <h2>${nombre ? `${t('nu.hola')}, ${esc(nombre)}` : t('nu.t')}</h2>
+      <div class="sub">${t('nu.sub')}</div>
+    </div></div>
+
+    ${verificada ? '' : tarjetaPuerta()}
+
+    <div class="nu-campo">
+      <svg class="nu-hilos" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${hilos}</svg>
+      ${esferas}
+    </div>
+
+    <div class="bloque vidrio">
+      <h3>${t('nu.quees')}</h3>
+      <p class="pie" style="margin-top:8px">${t('nu.queesP')}</p>
+    </div>`;
+  }
+
+  /* La puerta del ecosistema, y la decision de fondo de la web: a la BILLETERA
+     se entra sin Genesis ID —es tu dinero, y pedirte papeles para mirar tu
+     propio saldo no tiene defensa—, pero al resto del ecosistema no. Asi que
+     no se cierra la puerta: se cuenta que hay una y como se abre. */
+  function tarjetaPuerta() {
+    const e = (identidad?.estado || '').toLowerCase();
+    const enCurso = ['datos', 'documento', 'biometria', 'en-revision'].includes(e);
+    return `
+    <div class="bloque vidrio nu-puerta">
+      <div class="nu-puerta-ic"><svg viewBox="0 0 24 24">${ICO.id}</svg></div>
+      <div>
+        <h3>${enCurso ? t('nu.puertaCursoT') : t('nu.puertaT')}</h3>
+        <p class="pie" style="margin-top:6px">${enCurso ? t('nu.puertaCursoP') : t('nu.puertaP')}</p>
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-oro btn-sm" onclick="VETA.vista('verificar')">
+            ${enCurso ? t('gid.seguir') : t('gid.btn')}</button>
+          <button class="btn btn-linea btn-sm" onclick="VETA.vista('billetera')">${t('nu.igual')}</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* Un mundo cerrado no se abre a la fuerza ni se queda mudo: lleva a la
+     verificacion, que es lo unico que lo abre. Uno que todavia no existe lo
+     dice y no finge una pantalla vacia. */
+  function nuAbrir(id) {
+    const m = MUNDOS.find(x => x.id === id);
+    if (!m) return;
+    if (m.pronto) return avisar(t('nu.prontoP'));
+    if (m.pideGid && !esVerificada()) { avisar(t('nu.cerrado')); return vista('verificar'); }
+    if (m.fuera) return window.open(m.fuera, '_blank', 'noopener');
+    vista(m.va);
+  }
 
   // ── cobrar ────────────────────────────────────────────────────────────────
 
@@ -3695,9 +3937,13 @@ const VETA = (() => {
            envElegir, envContacto, envMax, envMonto,
            // Cobrar: el codigo que ya lleva la cantidad puesta.
            cobElegir, cobEscribir, cobCopiar, cobCompartir,
+           // El Nucleo: la portada del ecosistema.
+           nuAbrir,
            // La bienvenida del ecosistema: sale sola la primera vez y se puede
            // volver a abrir desde Ajustes.
            bienvenida, bienSig, bienCerrar,
+           // La frase de recuperacion, al crear la cuenta.
+           semCopiar, semListo,
            // AURO CHAT. Los manejadores van en el HTML que genera la vista, asi
            // que sin figurar aca los botones del chat no hacen nada.
            chatEntrar, chatAbrir, chatCerrar, chatMandar, chatBuscar, chatGrupo,
@@ -3712,6 +3958,8 @@ const VETA = (() => {
            _tarjeta: c => { tarjeta = c; },
            _sesion: x => { sesion = x; },
            _leerCobro: c => { const x = leerCobro(c); if (x) irACobro(x); return x; },
+           _sol: x => { sol = { ...(sol || {}), ...x }; },
+           _semilla: f => { semillaNueva = f; mostrarSemilla(f); },
            _identidad: x => { identidad = x; },
            _estado: () => ({ sesion, cartera, identidad, movimientos, tarjeta, vistaActual, modo, ocultos }) };
 })();

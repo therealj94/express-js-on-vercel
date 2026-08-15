@@ -15,9 +15,19 @@ require("dotenv").config();
 // Siguen expuestas ahi: hay que revocarlas y generar unas nuevas.
 
 
+// De donde cuelgan los enlaces que van dentro de un correo. Se puede fijar
+// desde el entorno (BACKEND_URL) porque el dominio del backend cambia cuando
+// se mueve de sitio, y un enlace muerto dentro de un correo no se puede
+// corregir despues: ya salio.
+const URL_BACKEND = (process.env.BACKEND_URL || 'https://vetawallet-1a2e38ac52b1.herokuapp.com').replace(/\/$/, '');
+
 export const registerUserWallet = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    // El nombre viaja desde el primer dia en el formulario de crear cuenta,
+    // pero aqui no se leia: se guardaba una cuenta sin nombre y, al entrar
+    // desde otro dispositivo, la pantalla saludaba con el trozo del correo
+    // anterior a la arroba.
+    const { email, password, name } = req.body;
 
     const existingUser = await User.findOne({ email: email });
     if (existingUser) {
@@ -28,7 +38,10 @@ export const registerUserWallet = async (req, res) => {
 
     const token = uuidv4();
 
-    const verificationLink = `https://api.vetawallet.com:443/auth/verifyMail?token=${token}`;
+    // api.vetawallet.com NO EXISTE: no resuelve en DNS. El enlace se calculaba
+    // contra ese nombre y ademas nunca se metia en el correo, asi que nadie
+    // podia confirmar su cuenta y el padron entero quedaba sin verificar.
+    const verificationLink = `${URL_BACKEND}/auth/verifyMail?token=${token}`;
     const transporter = nodemailer.createTransport({
       service: "gmail",
 
@@ -41,9 +54,16 @@ export const registerUserWallet = async (req, res) => {
     const mailOptions = {
       from: process.env.GMAIL_USER,
       to: email,
-      subject: "Veta Wallet verification",
-      text: `Welcome to Veta Wallet!
-      Your account has been successfully verified.`,
+      subject: "Confirma tu cuenta de Veta Wallet",
+      text: `Bienvenido a Veta Wallet.
+
+Para confirmar tu cuenta, entra en este enlace:
+${verificationLink}
+
+Si no creaste esta cuenta, no hagas nada: sin confirmar, el enlace caduca solo.
+
+--
+Orden Global`,
     };
 
     transporter.sendMail(mailOptions, async (error, info) => {
@@ -72,6 +92,7 @@ export const registerUserWallet = async (req, res) => {
       email: email,
       user: email,
       username: email,
+      name: typeof name === "string" ? name.trim().slice(0, 120) : "",
       password: hashedPassword,
       address: address,
       privateKey: encryptedPrivateKey,
@@ -191,7 +212,14 @@ export const login = async (req, res) => {
 
     await user.save();
 
-    res.send({ token, refreshToken });
+    // El nombre y la direccion viajan con la sesion: sin esto, quien entra
+    // desde otro dispositivo no tiene forma de saber como se llama, y la
+    // pantalla lo saluda con el trozo del correo anterior a la arroba.
+    res.send({
+      token,
+      refreshToken,
+      user: { email: user.email, name: user.name || "", address: user.address || "" },
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server error" });

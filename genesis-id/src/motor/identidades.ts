@@ -260,6 +260,91 @@ export function adjuntarDocumento(
   return identidad
 }
 
+/**
+ * El documento entrado como DOS FOTOS, para quien se verifica desde un
+ * navegador.
+ *
+ * POR QUE EXISTE ESTE CAMINO
+ *
+ * La lectura de la zona mecánica la hace ML Kit dentro del teléfono. En un
+ * navegador ese lector no existe, y pedirle a la gente que teclee a mano las
+ * dos líneas de su pasaporte —cuarenta y cuatro caracteres cada una, con los
+ * dígitos de control— era pedir un imposible: el trámite se caía ahí.
+ *
+ * Así que por la web entran las dos caras y **las lee una persona**. Aquí no se
+ * comprueba nada del documento, y por eso este camino no rellena `datos` ni
+ * toca `nombreLegal`: lo que no se leyó, no se sabe.
+ *
+ * LO QUE SI SE HACE, PORQUE NO PUEDE NO HACERSE
+ *
+ * El tamizado contra listas de sanciones se ejecuta igual, con el nombre
+ * DECLARADO. Es peor que tamizar con el del documento —quien miente su nombre
+ * esquiva la lista—, pero saltárselo del todo sería dejar una puerta sin
+ * cerrar, y el operador va a cotejar el nombre contra la foto de todas formas.
+ *
+ * LAS IMAGENES
+ *
+ * Genesis ID no guarda fotos de documentos: se comparan y se descartan. Este es
+ * el único sitio donde se conservan, y es a la fuerza, porque un operador tiene
+ * que verlas para decidir. Se borran solas en cuanto hay decisión —aprobada o
+ * rechazada—, así que no se acumulan.
+ */
+export function adjuntarDocumentoPorFotos(
+  idn: string, anverso: string, reverso: string, origen: string,
+): Identidad | null {
+  const identidad = porId(idn)
+  if (!identidad) return null
+
+  identidad.documento = {
+    // `aceptable` en falso NO significa aquí «el documento no sirve»: significa
+    // «todavía no lo ha mirado nadie». La diferencia la marca `via`, y el
+    // cliente tiene que leer las dos.
+    aceptable: false,
+    datos: null,
+    hallazgos: [{
+      clave: 'documento.porFotos',
+      gravedad: 'aviso',
+      detalle: 'Documento aportado como fotografías: hace falta que un operador lo lea y lo coteje.',
+    }],
+    edad: null,
+    anverso: { aportado: true, nombreConfirmado: null, fechaConfirmada: null },
+    via: 'fotos',
+    imagenes: { anverso, reverso },
+  }
+
+  if (identidad.nombreDeclarado) {
+    identidad.tamiz = tamizarPersona(identidad.nombreDeclarado, {
+      fechaNacimiento: identidad.fechaNacimientoDeclarada,
+      nacionalidades: [],
+    })
+    if (identidad.tamiz.fuertes > 0 || identidad.tamiz.posibles > 0) {
+      abrirCasoPorTamiz(identidad)
+    }
+  }
+
+  if (identidad.estado !== 'verificada') identidad.estado = 'documento'
+  recalcularRiesgo(identidad)
+  identidad.actualizadaEn = ahora()
+  store.guardar()
+
+  registrar(origen, 'identidad.documentoPorFotos', identidad.id, {
+    coincidenciasTamiz: identidad.tamiz?.coincidencias.length ?? 0,
+  })
+  return identidad
+}
+
+/**
+ * Suelta las fotos del documento en cuanto hay decisión.
+ *
+ * Se llama desde `aprobar` y desde `rechazar`: una vez que el operador
+ * decidió, las imágenes ya no hacen falta y conservarlas solo sería acumular
+ * documentos de identidad ajenos. Lo que queda en el expediente es que el
+ * documento entró por fotos y quién decidió con ellas delante.
+ */
+function soltarFotosDocumento(identidad: Identidad): void {
+  if (identidad.documento?.imagenes) identidad.documento.imagenes = null
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Biometría
 // ─────────────────────────────────────────────────────────────────────────────
@@ -451,6 +536,7 @@ export async function aprobar(
 
   identidad.gid = identidad.gid ?? gidPersonal()
   identidad.verificadaEn = ahora()
+  soltarFotosDocumento(identidad)
   anotar(identidad, 'verificada', operador.email,
     anulacion ? `${motivo} — ANULACION DE BLOQUEOS: ${anulacion}` : motivo)
 
@@ -473,6 +559,7 @@ export async function rechazar(idn: string, operador: Operador, motivo: string):
     return { ok: false, motivo: 'Hay que escribir el motivo del rechazo' }
   }
   anotar(identidad, 'rechazada', operador.email, motivo)
+  soltarFotosDocumento(identidad)
   await store.guardarYa()
   registrar(operador.email, 'identidad.rechazada', identidad.id, { motivo })
   return { ok: true, identidad }

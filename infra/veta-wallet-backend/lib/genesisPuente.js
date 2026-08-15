@@ -162,6 +162,36 @@ export function routerGenesis({ exigirSesion } = {}) {
   })
 
   /**
+   * El documento como dos fotos, para quien se verifica desde un navegador.
+   *
+   * En el telefono la zona de lectura mecanica la lee ML Kit y aqui arriba solo
+   * viaja el texto, que es un dato personal menos en riesgo. En un navegador
+   * ese lector no existe, y pedirle a la gente que teclee a mano las cuarenta y
+   * cuatro columnas de su pasaporte era pedir un imposible: el tramite se caia
+   * ahi. Asi que por la web suben las dos caras y las lee una persona.
+   */
+  router.post('/documento-fotos', async (req, res) => {
+    const idn = await idDe(req.usuario.email)
+    if (!idn) return res.status(404).json({ error: 'Identidad no encontrada' })
+    const r = await llamar(`/api/v1/identidades/${idn}/documento-fotos`, {
+      method: 'POST',
+      body: JSON.stringify({ anverso: req.body?.anverso, reverso: req.body?.reverso }),
+    })
+    /* Genesis ID y esta aplicacion se despliegan por separado, asi que puede
+       haber un rato —o un vuelta atras— en que este puente ya sepa mandar las
+       dos caras y el motor todavia no sepa recibirlas. Un 404 crudo llegaria a
+       la pantalla como «no se encontro tu identidad», que es mentira y ademas
+       asusta. Se traduce a un motivo que la web sabe explicar. */
+    if (r.estado === 404) {
+      return res.status(503).json({
+        error: 'La revisión del documento por fotografías todavía no está disponible',
+        motivo: 'genesis-sin-fotos',
+      })
+    }
+    responder(res)(r)
+  })
+
+  /**
    * Pide el reto de vivacidad.
    *
    * La secuencia de gestos la sortea Genesis ID, no la app: si la eligiera el

@@ -139,10 +139,12 @@ const authLimiter = rateLimit({
   message: { message: "Too many login attempts, please wait 15 minutes" },
 });
 app.use("/auth/login", authLimiter);
-// La ruta real es /auth/registryWallet — "/auth/register" no existe, asi que
-// el registro estuvo sin limite todo este tiempo. Cada intento crea una
-// wallet y manda un correo, o sea que era un buen sitio para abusar.
+// Las DOS rutas de registro. /auth/register se anadio despues como alias —es
+// el nombre obvio y la web llama a ese— y se quedo fuera del limitador: el
+// registro estuvo sin freno por la puerta que mas se usa. Cada intento crea
+// una wallet y manda un correo, o sea que era un buen sitio para abusar.
 app.use("/auth/registryWallet", authLimiter);
+app.use("/auth/register", authLimiter);
 app.use("/auth/recuperarPassword", authLimiter);
 app.use("/auth/resetPassword", authLimiter);
 app.use("/auth/refresh", authLimiter);
@@ -151,6 +153,9 @@ app.use("/auth/refresh", authLimiter);
 // limite general, y el cuerpo lo parsea el PRIMER parser que lo alcanza.
 app.use("/genesis/biometria", parserRostro);
 app.use("/genesis/foto", parserRostro);
+// Las dos caras del documento, para quien se verifica desde el navegador: son
+// dos fotografias de telefono y tampoco caben en el limite general.
+app.use("/genesis/documento-fotos", parserRostro);
 
 app.use(bodyParser.json({ limit: "100kb" })); // reducido de 5mb — no hay razón para aceptar más
 // view engine setup

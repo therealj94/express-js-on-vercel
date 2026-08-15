@@ -28,6 +28,22 @@ export interface RevisionDocumento {
   edad: number | null
   /** Qué se pudo confirmar con el anverso, si se aportó. */
   anverso: { aportado: boolean; nombreConfirmado: boolean | null; fechaConfirmada: boolean | null }
+
+  /**
+   * Por dónde entró el documento.
+   *
+   * `mrz` es el camino bueno: el teléfono lee la zona de lectura mecánica y
+   * aquí se comprueban dígitos de control, fechas y nombre sin que nadie mire.
+   *
+   * `fotos` es el camino del NAVEGADOR, donde no hay lector: la persona sube el
+   * anverso y el reverso y **los lee un operador**. Nada de esto se comprueba
+   * solo, así que una identidad que entró por aquí NO puede quedar verificada
+   * sin que alguien la apruebe a mano — que es exactamente lo que ya exige
+   * `aprobar()`.
+   */
+  via?: 'mrz' | 'fotos'
+  /** Las dos caras, solo en la vía `fotos`. Se borran al decidir. */
+  imagenes?: { anverso: string; reverso: string } | null
 }
 
 /**
