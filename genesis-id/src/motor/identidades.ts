@@ -689,6 +689,15 @@ export function estadoParaUsuario(identidad: Identidad) {
     gid: identidad.gid,
     nombreLegal: identidad.nombreLegal,
     documentoAceptable: identidad.documento?.aceptable ?? null,
+    /* POR DONDE ENTRO EL DOCUMENTO, y hace falta decirlo.
+     *
+     * En la via `fotos` —la del navegador— `aceptable` viene en falso porque
+     * todavia no lo ha mirado nadie, NO porque el documento este mal. Un
+     * cliente que lea solo `documentoAceptable` le enseña a la persona un
+     * «tu documento no sirve, volve a subirlo» sobre un expediente que esta
+     * perfectamente en orden y esperando turno. Las dos claves se leen juntas
+     * o ninguna. */
+    documentoPorFotos: identidad.documento?.via === 'fotos',
     rostroPendiente,
     // La credencial viaja con la identidad: sin esto se ve a medias en
     // cualquier teléfono que no sea el que subió la foto.

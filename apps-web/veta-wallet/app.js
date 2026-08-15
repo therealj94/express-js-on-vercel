@@ -558,6 +558,11 @@ const VETA = (() => {
       gid: i.gid || null,
       nombreLegal: i.nombreLegal || null,
       documentoAceptable: i.documentoAceptable,
+      // El documento que entro como fotos no esta rechazado: esta esperando a
+      // que lo lea una persona. Sin distinguirlo, la tarjeta le enseñaba a
+      // TODO el que se verifica por web un «volve a subir el documento» sobre
+      // un expediente que esta bien.
+      documentoPorFotos: Boolean(i.documentoPorFotos),
       rostroPendiente: Boolean(i.rostroPendiente),
       fotoCredencial: i.fotoCredencial || null,
       faltanDatos: i.faltanDatos || [],
@@ -821,7 +826,7 @@ const VETA = (() => {
       if (identidad?.rostroPendiente) {
         return `<div style="margin-top:16px"><button class="btn btn-oro btn-sm" onclick="VETA.vista('verificar')">${t('ver.repetirCara')}</button></div>`;
       }
-      if (identidad?.documentoAceptable === false) {
+      if (identidad?.documentoAceptable === false && !identidad?.documentoPorFotos) {
         return `<div style="margin-top:16px"><button class="btn btn-oro btn-sm" onclick="VETA.vista('verificar')">${t('ver.arreglarDoc')}</button></div>`;
       }
       return '';
