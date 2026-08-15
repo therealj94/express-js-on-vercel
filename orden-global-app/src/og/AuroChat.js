@@ -116,6 +116,8 @@ const TXT = {
     sinRedHilo: 'We could not fetch the messages of this conversation.',
     sinRedBusca: 'The search did not go through. Check your connection and try again.',
     reint: 'RETRY', bannerRed: 'Offline — retrying…',
+    otraTit: 'This chat stayed in your previous install',
+    otraTxt: 'Your conversations are safe on the server, but this install of the app cannot open them yet: the chat session stayed in the previous one. We are enabling recovery; meanwhile the rest of the app works normally.',
   },
 };
 
@@ -243,6 +245,7 @@ export default function AuroChat({ nav, params }) {
   const [hilo, setHilo] = useState([]);
   const [pendientes, setPendientes] = useState([]);      // burbujas mías aún sin entrar (o fallidas)
   const [sinRed, setSinRed] = useState(false);           // el relevo no contesta: se DICE, no se finge vacío
+  const [llaveOtra, setLlaveOtra] = useState(false);     // el relevo SÍ contesta: la llave quedó en la instalación anterior
   const [buscaMal, setBuscaMal] = useState(false);       // la búsqueda falló por red, no por "nadie"
   const [nuevos, setNuevos] = useState(false);           // chip «mensajes nuevos ↓» si el scroll no está al fondo
   const [nombres, setNombres] = useState({});            // correo → nombre, para saber quién habla
@@ -353,12 +356,22 @@ export default function AuroChat({ nav, params }) {
       }
       fotoConvos.current = foto;
       if (hayNuevo) reproducir('recibido', { suave: true });
-      setSinRed(false);
-    } catch {
+      // Salió bien: se apagan los DOS avisos, o el de la llave se quedaría
+      // pegado en pantalla después de recuperarse.
+      setSinRed(false); setLlaveOtra(false);
+    } catch (e) {
       // Sin red NO se finge una lista vacía: `convos` se queda como estaba
       // (null pinta el estado de «sin conexión», nunca el «aún no tienes
       // conversaciones») y el banner avisa mientras el sondeo reintenta.
-      setSinRed(true);
+      //
+      // Pero hay un fallo que NO es la red y que estaba disfrazado de red: al
+      // reinstalar la app se borra el almacén seguro, y con él la llave del
+      // chat. El correo sigue reclamado por la instalación anterior, así que
+      // el relevo contesta 401 (llave que no coincide) o 409 (ese correo ya
+      // tiene llave). Decirle «revisa tu conexión» a alguien con wifi perfecto
+      // lo manda a pelear con su router durante horas. Se distingue.
+      if (e && (e.code === 401 || e.code === 409)) setLlaveOtra(true);
+      else setSinRed(true);
     }
   }, [aprenderNombres, account?.email]);
   useEffect(() => {
@@ -1033,7 +1046,15 @@ export default function AuroChat({ nav, params }) {
       {convos === null ? (
         // Nunca se ha podido leer el relevo: sin red se DICE (con reintentar),
         // no se pinta el «aún no tienes conversaciones» de una cuenta nueva.
-        sinRed ? (
+        llaveOtra ? (
+          // El relevo contestó: no es la red. Se dice lo que pasa y —lo que
+          // más importa— que los mensajes NO se perdieron.
+          <View style={st.redCaja}>
+            <Icon name="key" size={22} color={C.gold} />
+            <Text style={st.redTit}>{t.otraTit}</Text>
+            <Text style={st.redTxt}>{t.otraTxt}</Text>
+          </View>
+        ) : sinRed ? (
           <View style={st.redCaja}>
             <Icon name="cloud-offline" size={22} color={C.down} />
             <Text style={st.redTit}>{t.sinRedT}</Text>
