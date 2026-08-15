@@ -74,6 +74,11 @@ const TXT = {
     sinRedHilo: 'No pudimos traer los mensajes de esta conversación.',
     sinRedBusca: 'La búsqueda no salió. Revisa tu conexión e intenta de nuevo.',
     reint: 'REINTENTAR', bannerRed: 'Sin conexión — reintentando…',
+    // Culpar a la red cuando el servidor SÍ contestó —y contestó que esta
+    // instalación no es la de antes— manda a la persona a revisar su wifi
+    // durante horas. Se dice lo que pasa y dónde están sus mensajes.
+    otraTit: 'Este chat quedó en tu instalación anterior',
+    otraTxt: 'Tus conversaciones están a salvo en el servidor, pero esta instalación de la app todavía no puede abrirlas: la sesión del chat se quedó en la anterior. Estamos habilitando la recuperación; mientras tanto, el resto de la app funciona con normalidad.',
   },
   en: {
     marca: 'AURO CHAT', sub: 'People and groups, with Genesis ID',

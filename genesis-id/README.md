@@ -410,11 +410,13 @@ contar como coincidencia fuerte.
 
 ## Qué falta
 
-- **Montar el puente en el backend de Veta Wallet.** El router está listo y
-  probado en `infra/genesis-proxy/`, y el cliente móvil ya apunta a él, pero
-  añadirlo al backend exige un despliegue en Heroku — bloqueado por el mismo
-  token vencido que la rotación de `PASS_ADM`. Hasta entonces la app enseña
-  "el servidor todavía no tiene activada la conexión", que es la verdad.
+- ~~**Montar el puente en el backend de Veta Wallet.**~~ Ya está montado y
+  responde: `infra/veta-wallet-backend/app.js` monta `routerGenesis` en
+  `/genesis`, y `GET /genesis/estado` contesta con el middleware de sesión, no
+  con el 404 del catch-all. Esta nota se quedó vieja y desviaba el diagnóstico
+  —quien la leía buscaba el fallo donde ya no estaba—. Lo que sí faltaba era el
+  nombre de la ruta: la web pedía `/genesis/status`, que no existe. Corregido en
+  `apps-web/veta-wallet/app.js`. Ver `ENTRAR.md`.
 - **Probar el flujo en un teléfono.** La lógica está verificada de punta a
   punta contra el servidor real, pero la cámara y el teclado solo se pueden
   comprobar ejecutando la app.

@@ -16,7 +16,15 @@ const MTP = (() => {
   const ORIGEN_USD = 2.35;              // 1 ORIGEN = 1/55 de gramo de oro
   const LLAVE = 'mtp.estado';
   const VETA_WEB = 'https://www.vetawallet.com';
-  const GENESIS_WEB = 'https://genesis-id.onrender.com';
+  // A donde se manda a alguien que quiere verificarse.
+  //
+  // Antes era https://genesis-id.onrender.com, que NO es una pagina para el
+  // publico: es el panel de cumplimiento del equipo. Quien pulsaba «Empezar la
+  // verificacion» aterrizaba en un formulario de Correo y Contraseña de
+  // operador, escribia los suyos, y el servidor lo rechazaba —con razon: no es
+  // operador— sin que nada le explicara por que. La pagina de Genesis ID de
+  // Veta Wallet si esta escrita para el publico y explica el tramite entero.
+  const GENESIS_WEB = 'https://www.vetawallet.com/genesis-id';
 
   // El neón de cada categoría. Los tres colores de la marca se reparten por
   // familias de negocio para que la lista se lea como una calle y no como una

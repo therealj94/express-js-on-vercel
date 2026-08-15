@@ -8,9 +8,9 @@
 # contestan el index. Solo hay un archivo alcanzable.
 #
 # Como el origen de ese CDN si es nuestro, la salida es que ese unico archivo se
-# baste solo: los tres scripts y el icono viajan dentro del HTML, y las dos
-# paginas legales van de acompañantes para que /privacidad y /terminos sigan
-# existiendo aunque el CDN entregue siempre lo mismo.
+# baste solo: los tres scripts y el icono viajan dentro del HTML, y las paginas
+# sueltas van de acompañantes para que /privacidad, /terminos y /genesis-id
+# sigan existiendo aunque el CDN entregue siempre lo mismo.
 #
 # No hay una segunda copia del sitio que mantener: esto se genera de las mismas
 # fuentes que el resto, en cada despliegue.
@@ -74,6 +74,7 @@ window.__legal = (function () {
   var p = location.pathname.replace(/\\/+$/, '').toLowerCase();
   if (p === '/privacidad' || p === '/privacidad.html') return 'privacidad';
   if (p === '/terminos' || p === '/terminos.html') return 'terminos';
+  if (p === '/genesis-id' || p === '/genesis-id.html') return 'genesis-id';
   return null;
 })();
 </script>
@@ -116,7 +117,11 @@ def pagina(nombre):
             f'<style>{estilo}</style>{cuerpo}</template>')
 
 
-legales = pagina('privacidad.html') + pagina('terminos.html')
+# genesis-id.html no es una pagina legal, pero viaja por el mismo carril y por
+# el mismo motivo: es una pagina suelta, y en www.vetawallet.com no hay forma de
+# alcanzarla si no va dentro del unico documento que ese CDN entrega. Sin esto,
+# /genesis-id responde 200 con la portada — un enlace roto que no lo parece.
+legales = pagina('privacidad.html') + pagina('terminos.html') + pagina('genesis-id.html')
 
 # El intercambio va al final del cuerpo, cuando las plantillas ya existen.
 # Los estilos de la aplicacion se retiran: los de la pagina legal son de otro

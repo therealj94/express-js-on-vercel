@@ -63,6 +63,13 @@ var app = express();
 const allowedOrigins = [
   "https://www.vetawallet.com",
   "https://vetawallet.com",
+  // app.vetawallet.com va directo a Amplify y es la que se usa en las tiendas y
+  // en los enlaces que tienen que durar (ver apps-web/README.md), pero faltaba
+  // en esta lista: el preflight desde ahi respondia sin Access-Control-Allow-
+  // Origin, o sea que el navegador bloqueaba TODAS las llamadas, incluido el
+  // login y la consulta del estado de Genesis ID. Desde ese dominio la web no
+  // servia para nada, y por fuera parecia un fallo de Genesis.
+  "https://app.vetawallet.com",
   ...(process.env.CORS_ALLOW_LOCALHOST === "true" ? ["http://localhost:3000"] : []),
 ];
 

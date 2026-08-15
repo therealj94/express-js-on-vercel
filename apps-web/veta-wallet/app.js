@@ -440,9 +440,49 @@ const VETA = (() => {
     }
   }
 
+  // El puente del backend publica /genesis/estado. Esta pantalla pedia
+  // /genesis/status —una ruta que no existe— y traducia el 404 a 'sin-iniciar',
+  // asi que la tarjeta decia «Sin verificar» a TODO el mundo, tuviera Genesis ID
+  // aprobado o no. De ahi salia la cadena entera: como nunca constaba verificado,
+  // siempre se pintaba el boton de verificar, y ese boton llevaba al panel de
+  // operadores. Un 404 no es un estado del tramite: es la integracion rota, y
+  // como tal hay que ensenarlo, no disfrazarlo de «sin verificar».
+  /* Y la respuesta viene ANIDADA: {identidad:{estado,gid,…}}. Leyendo
+     `identidad.estado` sobre el sobre —y no sobre la carta— sale `undefined`
+     para todo el mundo, que es la misma mentira de antes con otra causa: el
+     404 ya no la produce, pero el sobre sin abrir sí. Se desenvuelve una sola
+     vez, aca, y el resto de la pantalla trabaja con un objeto plano. */
   async function cargarIdentidad() {
-    try { identidad = await pedir('/genesis/status'); }
-    catch (e) { identidad = e.estado === 404 ? { estado: 'sin-iniciar' } : { error: e.message }; }
+    try { identidad = aVistaId(await pedir('/genesis/estado')); }
+    catch (e) { identidad = { error: e.message, estado: null }; }
+  }
+
+  /* La traduccion del servidor a lo que la pantalla necesita, calcada del
+     cliente del telefono (orden-global-app/src/genesis.js) para que las dos
+     lean lo mismo. `rostroPendiente` manda sobre el estado: un cotejo fallido
+     se repite en veinte segundos y mandar a esa persona a la sala de espera
+     serian dias perdidos por una foto con un reflejo. */
+  const PASOS_GID = {
+    iniciada: 'datos', datos: 'documento', documento: 'rostro',
+    biometria: 'revision', 'en-revision': 'revision',
+    verificada: 'listo', rechazada: 'rechazada', suspendida: 'suspendida',
+  };
+  function aVistaId(sobre) {
+    const i = sobre?.identidad || (sobre?.estado ? sobre : null);
+    if (!i) return { error: t('gid.errP'), estado: null };
+    return {
+      estado: i.estado,
+      gid: i.gid || null,
+      nombreLegal: i.nombreLegal || null,
+      documentoAceptable: i.documentoAceptable,
+      rostroPendiente: Boolean(i.rostroPendiente),
+      fotoCredencial: i.fotoCredencial || null,
+      faltanDatos: i.faltanDatos || [],
+      umbral: Number(i.umbralDiligenciaUsd) || 10000,
+      siguientePaso: i.siguientePaso || null,
+      paso: i.rostroPendiente ? 'rostro' : (PASOS_GID[i.estado] || 'datos'),
+      actualizadaEn: i.actualizadaEn || null,
+    };
   }
 
   async function cargarMovimientos() {
@@ -624,14 +664,32 @@ const VETA = (() => {
 
   function tarjetaIdentidad(compacta) {
     const e = (identidad?.estado || identidad?.status || (identidad?.verified ? 'verificada' : 'sin-iniciar') || '').toLowerCase();
+    /* Los OCHO estados del servidor, no cuatro. `biometria` es la sala de
+       espera igual que `en-revision` —el expediente esta completo y le toca a
+       una persona— y pintarlo como «sin verificar» le decia a alguien que ya
+       habia mandado todo que no habia empezado. Y `iniciada`, `datos` y
+       `documento` son un tramite a medio hacer: la salida no es empezar, es
+       seguir. */
     const mapa = {
       verificada: ['e-ok', t('gid.ok'), t('gid.okP')],
       verified: ['e-ok', t('gid.ok'), t('gid.okP')],
       'en-revision': ['e-rev', t('gid.rev'), t('gid.revP')],
+      biometria: ['e-rev', t('gid.rev'), t('gid.revP')],
+      iniciada: ['e-no', t('gid.curso'), t('gid.cursoP')],
+      datos: ['e-no', t('gid.curso'), t('gid.cursoP')],
+      documento: ['e-no', t('gid.curso'), t('gid.cursoP')],
       rechazada: ['e-mal', t('gid.mal'), t('gid.malP')],
       suspendida: ['e-mal', t('gid.sus'), t('gid.susP')],
     };
-    const [clase, titulo, texto] = mapa[e] || ['e-no', t('gid.no'), t('gid.noP')];
+    /* Si la consulta al puente falla, se dice que fallo. Ensenar «Sin
+       verificar» cuando en realidad no se pudo preguntar es lo que tuvo
+       escondido este fallo de integracion: la pantalla daba una respuesta
+       tranquilizadora —y falsa— en lugar de un error que alguien habria
+       mirado. */
+    const fallo = Boolean(identidad?.error);
+    const [clase, titulo, texto] = fallo
+      ? ['e-mal', t('gid.err'), t('gid.errP')]
+      : (mapa[e] || ['e-no', t('gid.no'), t('gid.noP')]);
     const listo = clase === 'e-ok';
     /* El boton lleva a la verificacion de esta misma web. Antes salia a
        genesis-id.onrender.com, que es el panel de cumplimiento del equipo: se
@@ -648,10 +706,29 @@ const VETA = (() => {
           </div>
           <p class="pie" style="margin-top:8px">${texto}</p>
           ${identidad?.gid ? `<p class="pie mono" style="margin-top:8px;color:var(--oroLt)">${esc(identidad.gid)}</p>` : ''}
-          ${listo || compacta ? '' : `<div style="margin-top:16px"><button class="btn btn-oro btn-sm" onclick="VETA.vista('verificar')">${t('gid.btn')}</button></div>`}
+          ${listo || compacta ? '' : fallo
+            ? `<div style="margin-top:16px"><button class="btn btn-linea btn-sm" onclick="VETA.reintentar()">${t('saldo.re')}</button></div>`
+            : botonGid(e)}
         </div>
       </div>
     </div>`;
+  }
+
+  /* Que ofrece la tarjeta segun donde este el tramite.
+     Con el expediente ya entregado NO se ofrece nada: un boton de «verificar mi
+     identidad» debajo de «en revision» le dice a alguien que lo mandado no
+     valio y que hay que repetirlo. Y una identidad suspendida no se arregla
+     desde acá: la levanta un operador. */
+  function botonGid(estado) {
+    if (estado === 'en-revision' || estado === 'biometria' || estado === 'suspendida') {
+      return identidad?.rostroPendiente
+        ? `<div style="margin-top:16px"><button class="btn btn-oro btn-sm" onclick="VETA.vista('verificar')">${t('ver.repetirCara')}</button></div>`
+        : '';
+    }
+    const etiqueta = estado === 'rechazada' ? t('gid.rehacer')
+      : ['iniciada', 'datos', 'documento'].includes(estado) ? t('gid.seguir')
+        : t('gid.btn');
+    return `<div style="margin-top:16px"><button class="btn btn-oro btn-sm" onclick="VETA.vista('verificar')">${etiqueta}</button></div>`;
   }
 
   function listaMovimientos(limite) {
