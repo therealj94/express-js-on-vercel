@@ -56,7 +56,7 @@ const TXT = {
     guardarBtn: 'AGREGAR CONTACTO', guardado: 'Guardado en tus contactos.',
     noGuardo: 'No se pudo guardar el contacto.',
     pagoEnviaste: 'ENVIASTE', pagoRecibiste: 'RECIBISTE', pagoEnvio: 'ENVIÓ',
-    confirmado: 'confirmado', explorador: 'Ver en el explorador', ultPago: 'Pago',
+    confirmado: 'confirmado', explorador: 'Ver en el explorador',
   },
   en: {
     marca: 'AURO CHAT', sub: 'People and groups, with Genesis ID',
@@ -80,7 +80,7 @@ const TXT = {
     guardarBtn: 'ADD CONTACT', guardado: 'Saved to your contacts.',
     noGuardo: 'The contact could not be saved.',
     pagoEnviaste: 'YOU SENT', pagoRecibiste: 'YOU RECEIVED', pagoEnvio: 'SENT',
-    confirmado: 'confirmed', explorador: 'View on the explorer', ultPago: 'Payment',
+    confirmado: 'confirmed', explorador: 'View on the explorer',
   },
 };
 
@@ -428,6 +428,9 @@ export default function AuroChat({ nav, params }) {
     Linking.openURL(M.urlArchivo(id)).catch(() => toast(t.noAbre, 'error'));
   };
 
+  // Quién habla, en corto. Los nombres se van aprendiendo de las charlas y de
+  // la ficha del grupo; mientras no se sepa el de alguien se usa lo que va
+  // antes de la arroba — feo, pero nunca deja una frase sin dueño.
   const nombreCorto = (correo) => {
     const n = nombres[String(correo || '').toLowerCase()];
     return (n || String(correo || '').split('@')[0]).split(' ')[0];
@@ -559,7 +562,7 @@ export default function AuroChat({ nav, params }) {
                 {new Date(item.cuando).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-HN', { weekday: 'short', day: 'numeric', month: 'short' })}
               </Text></View>
             );
-            const mio = item.de === account.email;
+            const mio = item.de === account?.email;
             // en un grupo cada burbuja ajena se firma; en un cara a cara no
             // hace falta decir quién habla, ya está en la cabecera
             const autor = enGrupo && !mio ? nombreCorto(item.de) : '';
@@ -753,6 +756,7 @@ const st = StyleSheet.create({
   qrFila: { flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 6 },
   qrBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderWidth: 1, borderColor: C.line, borderRadius: 12, paddingVertical: 9 },
   qrBtnTxt: { color: C.goldLt, fontSize: 11, fontWeight: '700', letterSpacing: 1 },
+  qrMira: { color: C.goldLt, fontSize: 15, lineHeight: 16 },
   dir: { color: C.txt3, fontSize: 10, fontWeight: '700', letterSpacing: 3, marginVertical: 8 },
   vacio: { color: C.txt3, fontSize: 13, lineHeight: 20, marginTop: 16, textAlign: 'center' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: 'rgba(201,169,97,0.08)' },
