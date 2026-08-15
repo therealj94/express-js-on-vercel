@@ -247,6 +247,20 @@ const AURA = (() => {
       p.x += p.vx * red.energia; p.y += p.vy * red.energia;
     }
 
+    /* Las orbitas. El canvas y el DOM leen LA MISMA formula en el mismo
+       cuadro: el halo dibujado y el boton que se toca son un solo cuerpo,
+       no dos capas que se persiguen. Con movimiento reducido no hay orbita:
+       la constelacion se queda quieta y digna. */
+    if (!REDUCIDO) {
+      for (const g of red.ganglios) {
+        const ang = red.cuadro * g.orbV + g.orbF;
+        const dx = Math.cos(ang) * g.orbR * red.energia;
+        const dy = Math.sin(ang * 0.83) * g.orbR * red.energia;
+        g.x = g.ax + dx; g.y = g.ay + dy;
+        if (g.el) g.el.style.translate = dx.toFixed(1) + 'px ' + dy.toFixed(1) + 'px';
+      }
+    }
+
     // vecinos: cada 10 cuadros basta — el drift es lento
     if (red.cuadro % 10 === 0) { armarRejilla(); tejerSinapsis(); }
 
@@ -312,6 +326,25 @@ const AURA = (() => {
       const r = p.r + p.brillo * 1.6;
       c.fillStyle = `rgba(${p.tinte[0]},${p.tinte[1]},${p.tinte[2]},${a})`;
       c.beginPath(); c.arc(p.x, p.y, r, 0, 6.2832); c.fill();
+    }
+
+    // las avenidas: curvas tenues entre organos vecinos, con una gota de
+    // luz recorriendolas — el «todo esta conectado» dicho en un trazo
+    for (const g of red.ganglios) {
+      for (const o of g.union || []) {
+        if (o.ax < g.ax) continue;                 // cada avenida una vez
+        const mx = (g.x + o.x) / 2, my = (g.y + o.y) / 2 - 34;
+        c.strokeStyle = `rgba(201,169,97,${0.17 * E})`;
+        c.lineWidth = 1;
+        c.beginPath(); c.moveTo(g.x, g.y); c.quadraticCurveTo(mx, my, o.x, o.y); c.stroke();
+        // la gota: recorre la curva con el reloj de la red
+        const t2 = ((red.cuadro * 0.004 + (g.ax + o.ay) * 0.001) % 1 + 1) % 1;
+        const u = 1 - t2;
+        const gx = u * u * g.x + 2 * u * t2 * mx + t2 * t2 * o.x;
+        const gy = u * u * g.y + 2 * u * t2 * my + t2 * t2 * o.y;
+        c.fillStyle = `rgba(234,215,156,${0.9 * E})`;
+        c.beginPath(); c.arc(gx, gy, 2.1, 0, 6.2832); c.fill();
+      }
     }
 
     // halos de ganglio: el aliento de cada órgano
@@ -382,13 +415,31 @@ const AURA = (() => {
       }, { passive: true });
       addEventListener('pointerleave', () => { red.puntero.x = red.puntero.y = -9999; });
     }
-    red.ganglios = (ganglios || []).map(g => ({
+    red.ganglios = (ganglios || []).map((g, i) => ({
       id: g.id,
+      // el ANCLA es fija; la posicion viva (x,y) orbita alrededor
+      ax: (g.x / 100) * red.ancho,
+      ay: (g.y / 100) * red.alto,
       x: (g.x / 100) * red.ancho,
       y: (g.y / 100) * red.alto,
       r: (g.tam || 1) * Math.min(red.ancho, red.alto) * 0.06,
       tinte: g.tinte || [201, 169, 97],
+      // La orbita de cada organo: radios y velocidades distintas y primas
+      // entre si, para que la constelacion nunca repita la misma foto. El
+      // centro (la billetera) casi no se mueve: es el corazon, no un satelite.
+      orbR: (g.id === 'wallet' ? 4 : 10 + (i % 3) * 4),
+      orbV: 0.0021 + (i % 5) * 0.0007,
+      orbF: i * 2.39996,               // el angulo aureo: reparte las fases
+      el: (opciones.elementos || {})[g.id] || null,
     }));
+    // La constelacion: cada ganglio se une a sus dos vecinos mas cercanos.
+    // Son las avenidas del cerebro — por ellas tambien viajan senales.
+    for (const g of red.ganglios) {
+      g.union = red.ganglios
+        .filter(o => o !== g)
+        .sort((a2, b2) => Math.hypot(a2.ax - g.ax, a2.ay - g.ay) - Math.hypot(b2.ax - g.ax, b2.ay - g.ay))
+        .slice(0, 2);
+    }
     red.energia = opciones.despertar ? 0 : 1;
     red.energiaMeta = 1;
     red.alDestellar = opciones.alDestellar || null;
@@ -527,61 +578,59 @@ const AURA = (() => {
   const VOZ_BASE = 'https://cerebro.ordenscan.com/voz/aura/';
   const VOZ_NOMBRE = { es: 'es_MX-claude-high', en: 'en_US-ryan-high' };
   const VOZ_MAPA = {
-    '020fde62': 1,
     '02e6279d': 1,
-    '079c56ac': 1,
     '0a698dd6': 1,
     '0aa8d602': 1,
-    '1e9a2322': 1,
+    '0abc7817': 1,
+    '11243db2': 1,
+    '1192a5d0': 1,
+    '1eef45ee': 1,
     '1fa91c50': 1,
     '2453771b': 1,
     '252cd472': 1,
+    '27893a96': 1,
     '2b30e4f6': 1,
     '2d74f75e': 1,
-    '30a7df32': 1,
-    '3318cd7c': 1,
+    '3101125c': 1,
+    '310fbb99': 1,
+    '332361ae': 1,
     '36c255d7': 1,
     '3c6e2bfd': 1,
-    '3d1f2ff9': 1,
     '4f5bde62': 1,
     '5282566d': 1,
     '53061f13': 1,
-    '5414d17d': 1,
     '553f3f65': 1,
     '59321a82': 1,
     '612e9ecd': 1,
     '63614b00': 1,
     '66d9368a': 1,
     '677d2a34': 1,
-    '69f02325': 1,
     '725dd181': 1,
     '7800d0d3': 1,
     '7c4f68af': 1,
     '82715749': 1,
-    '869ba1bb': 1,
-    '8d412da0': 1,
     '8d89f9e6': 1,
     '8dc001b9': 1,
     '8dc9a96e': 1,
     '98f8ef44': 1,
+    'a27b1467': 1,
     'a4356c62': 1,
     'a6789581': 1,
-    'a7936484': 1,
     'ae407c8f': 1,
+    'b07bb38d': 1,
     'b43b4c43': 1,
     'bab54a0a': 1,
     'bcb5c233': 1,
     'bf2a7740': 1,
-    'c066e24b': 1,
     'c31085c2': 1,
     'd1605a1e': 1,
     'd53038d9': 1,
     'd64dfe40': 1,
     'd6c5fd6e': 1,
     'd7e0b3e7': 1,
-    'e1302e99': 1,
     'e4c0c0ec': 1,
-    'e4f3c394': 1,
+    'eb4090e0': 1,
+    'ec73b95b': 1,
     'f9539766': 1,
     'fd0e7868': 1,
     'ff1bf3db': 1
@@ -618,21 +667,36 @@ const AURA = (() => {
   }
 
   function hablarConNavegador(texto, lang, alTerminar) {
+    /* EL VIGILANTE, y es lo que salva todo lo que espera a esta promesa.
+       En un navegador sin voces instaladas, speak() se traga la frase y
+       jamas dispara onend ni onerror: la promesa quedaria colgada y con
+       ella el autoavance del recorrido y la bienvenida entera. Se vigila
+       dos veces: a los 900ms (¿arranco siquiera?) y con un tope duro
+       proporcional al texto (¿termino alguna vez?). El cerebro de los
+       inversionistas usa el mismo truco por la misma cicatriz. */
+    let termino = false;
+    const terminar = () => {
+      if (termino) return;
+      termino = true;
+      animoOrbe('dormida'); nivelOrbe(0);
+      if (alTerminar) alTerminar();
+    };
     try {
       const u = new SpeechSynthesisUtterance(texto);
       const voz = mejorVozLocal(lang);
       if (voz) u.voice = voz;
       u.lang = lang === 'en' ? 'en-US' : 'es-419';
       u.rate = 1.0; u.pitch = 1.0;
-      u.onend = u.onerror = () => { animoOrbe('dormida'); nivelOrbe(0); if (alTerminar) alTerminar(); };
-      // sin analizador de audio: se simula el nivel con la propia habla
+      u.onend = u.onerror = terminar;
       const reloj = setInterval(() => {
-        if (!speechSynthesis.speaking) return clearInterval(reloj);
+        if (termino || !speechSynthesis.speaking) return clearInterval(reloj);
         nivelOrbe(0.3 + Math.random() * 0.5);
       }, 90);
       animoOrbe('hablando');
       speechSynthesis.speak(u);
-    } catch { if (alTerminar) alTerminar(); }
+      setTimeout(() => { if (!speechSynthesis.speaking) terminar(); }, 900);
+      setTimeout(terminar, 4000 + texto.length * 95);
+    } catch { terminar(); }
   }
 
   /**
@@ -664,6 +728,15 @@ const AURA = (() => {
         // el cerebro no contestó: la del navegador, sin drama
         arranco ? terminar() : hablarConNavegador(texto, lang, terminar);
       };
+      // la red tambien sabe colgarse sin decir error: a los 5s sin sonar,
+      // la frase pasa a la voz del navegador y nadie espera a un mudo
+      setTimeout(() => {
+        if (!arranco && sonando === a) {
+          try { a.pause(); } catch {}
+          sonando = null;
+          hablarConNavegador(texto, lang, terminar);
+        }
+      }, 5000);
       a.play().catch(() => {
         sonando = null;
         hablarConNavegador(texto, lang, terminar);
@@ -683,19 +756,28 @@ const AURA = (() => {
 
   const puedeEscuchar = () => Boolean(Reconocedor);
 
-  function escuchar(lang, alTexto, alFallar) {
+  function escuchar(lang, alTexto, alFallar, alParcial) {
     if (!Reconocedor) return alFallar && alFallar('sin-microfono');
     try {
       pararVoz();                       // no se escucha a sí misma
       oido = new Reconocedor();
       oido.lang = lang === 'en' ? 'en-US' : 'es-419';
-      oido.interimResults = false;
+      /* Los resultados intermedios se piden y se ENSEÑAN: sin el eco de lo
+         que va oyendo, la persona habla a un orbe mudo sin saber si la
+         detecta — que es exactamente la queja que trajo este cambio. */
+      oido.interimResults = true;
       oido.maxAlternatives = 1;
       animoOrbe('escuchando');
       oido.onresult = ev => {
+        let final = '', parcial = '';
+        for (let i = 0; i < ev.results.length; i++) {
+          const r = ev.results[i];
+          if (r.isFinal) final += r[0].transcript;
+          else parcial += r[0].transcript;
+        }
+        if (!final) { if (alParcial) alParcial(parcial); return; }
         animoOrbe('pensando');
-        const dicho = ev.results?.[0]?.[0]?.transcript || '';
-        alTexto(dicho);
+        alTexto(final);
       };
       oido.onerror = ev => { animoOrbe('dormida'); if (alFallar) alFallar(ev.error || 'error'); };
       oido.onend = () => { if (orbe.animo === 'escuchando') animoOrbe('dormida'); };
