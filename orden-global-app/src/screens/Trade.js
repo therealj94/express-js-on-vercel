@@ -605,11 +605,16 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
     await enviar(clave, { deBio: true });
   }
 
+  // OJO: este hook va ANTES del `if (!data) return null` de abajo. Puesto
+  // después, el componente lo saltaba cuando no había datos y React contaba
+  // un número de hooks distinto entre renders: «Rendered more hooks than
+  // during the previous render», y la app entera caía a la pantalla de error.
+  const tec = useTeclado();
+
   if (!data) return null;
   const enviando = fase > 0;
   const destino = data.contacto || `${data.to.slice(0, 12)}…${data.to.slice(-10)}`;
 
-  const tec = useTeclado();   // el teclado dice su altura: dentro de un Modal es el único dato fiable
   return (
     <Modal visible transparent animationType="slide" onRequestClose={enviando ? () => {} : onCancel}>
       {/* Sin KeyboardAvoidingView: dentro de un Modal, Android no lo
