@@ -24,7 +24,12 @@ html = leer('index.html')
 
 # --- las imagenes, dentro del HTML ---------------------------------------
 MAX_PNG = 260   # el monograma de la tarjeta se pinta a ~227 px de ancho
-TIPOS = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml'}
+# La tipografia de display viaja por el mismo carril que las imagenes: en
+# www.vetawallet.com solo se entrega un documento, asi que un @font-face que
+# apunte a un archivo suelto no llegaria nunca y la marca caeria a la letra
+# del sistema.
+TIPOS = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml',
+         '.woff2': 'font/woff2'}
 
 
 def como_datos(rel):

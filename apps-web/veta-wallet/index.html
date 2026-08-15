@@ -9,7 +9,7 @@
 <meta property="og:description" content="Tu oro, en tu bolsillo. En cualquier parte del mundo.">
 <meta property="og:image" content="https://app.vetawallet.com/assets/veta.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,600;1,6..96,400;1,6..96,500&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -20,36 +20,58 @@
    dorada atraviesa la pantalla, se abre donde hay que decidir y se ensancha
    donde está el valor.
 
-   La letra grande es una didona (Bodoni Moda): la tipografía de las casas de
-   joyería y de los billetes grabados, con ese contraste fino/grueso que ya es
-   oro tallado. El texto de trabajo va en Archivo, seca y neutra, para que la
-   didona sea la única voz alta. Los números del saldo también van en didona:
-   un saldo en oro merece cifras de grabado, no de hoja de cálculo.
+   La letra grande es Cinzel: la MISMA que firma la app en el teléfono, un
+   trazo lapidario que casa con el dorado de la marca. Viaja dentro de la
+   página, así que no depende de ningún CDN. El texto de trabajo va en
+   Archivo, seca y neutra, para que la lapidaria sea la única voz alta.
+
+   Dentro de la billetera no hay lapidaria: los títulos de pantalla son secos
+   y en negrita, del tamaño que tienen en el teléfono. Ese fue el motivo real
+   de que la web se viera de otra casa — no el color, que ya era el mismo.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* La tipografia de display de la app. Cinzel Bold: el mismo archivo que
+   viaja dentro del telefono, convertido a woff2 y servido desde aqui — no
+   depende de ningun CDN, asi que la marca nunca cae a la letra del sistema.
+   Solo hay negrita: la fuente no sintetiza pesos, por eso todo lo que la use
+   va en 700. */
+@font-face{
+  font-family:'Cinzel';src:url('assets/fonts/Cinzel-Bold.woff2') format('woff2');
+  font-weight:700;font-style:normal;font-display:swap;
+}
+
+/* Los valores son los de orden-global-app/src/theme.js, uno a uno. La web se
+   veia de otra casa por dos motivos, y ninguno era el color: la letra grande
+   era una didona en vez de la lapidaria de la marca, y el fondo era un verde
+   plano en vez de la fotografia sobre la que se dibuja la app. */
 :root{
   --pozo:#021B1C; --veta:#063430;
-  --panel:rgba(6,40,42,.82); --panel2:rgba(12,54,56,.86);
-  --linea:rgba(201,169,97,.28); --linea2:rgba(201,169,97,.15);
-  --campo:rgba(8,44,46,.9); --campoBr:#2E7477;
+  --panel:rgba(6,40,42,.82); --panel2:rgba(12,54,56,.86); --panel3:rgba(22,78,80,.74);
+  --linea:rgba(201,169,97,.34); --linea2:rgba(201,169,97,.26);
+  --campo:rgba(8,44,46,.88); --campoBr:#2E7477;
   --oro:#C9A961; --oroLt:#EAD79C; --oroHi:#F8EFCF; --oroDp:#96793F;
   --crema:#F3ECD9; --bruma:#AEC7C3; --humo:#6E938F;
-  --jade:#3ED9A0; --coral:#F0776B;
-  --serif:'Bodoni Moda',Didot,'Times New Roman',serif;
+  --jade:#3ED9A0; --coral:#F0776B; --tinta:#3A2C08;
+  --serif:'Cinzel','Bodoni Moda',Didot,'Times New Roman',serif;
   --sans:'Archivo',system-ui,sans-serif;
   --mono:'JetBrains Mono',ui-monospace,monospace;
-  --r:16px; --r2:22px;
+  --r:18px; --r2:26px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
+/* La app se dibuja sobre una fotografia de marca con un velo encima, y la
+   legibilidad la resuelven las tarjetas de vidrio, no oscureciendo la foto
+   entera. El velo son los mismos tres pasos que usa AppBackground. */
 body{
   background:var(--pozo); color:var(--crema); font-family:var(--sans); font-weight:400;
   min-height:100svh; overflow-x:hidden; -webkit-font-smoothing:antialiased;
   background-image:
-    radial-gradient(120% 80% at 78% -10%, rgba(14,90,82,.55), transparent 60%),
-    radial-gradient(90% 60% at 8% 105%, rgba(201,169,97,.10), transparent 62%),
-    radial-gradient(140% 100% at 50% 40%, rgba(6,52,48,.6), transparent 70%);
-  background-attachment:fixed;
+    linear-gradient(180deg, rgba(4,30,30,.26), rgba(2,20,21,.50) 46%, rgba(1,12,13,.66)),
+    url('assets/fondo.jpg');
+  background-size:cover, cover;
+  background-position:center, center;
+  background-repeat:no-repeat, no-repeat;
+  background-attachment:fixed, fixed;
 }
 button,input,select{font:inherit;color:inherit}
 button{background:none;border:0;cursor:pointer}
@@ -57,6 +79,13 @@ a{color:inherit}
 :focus-visible{outline:2px solid var(--oro);outline-offset:3px;border-radius:6px}
 .oculto{display:none!important}
 .mono{font-family:var(--mono);font-variant-ligatures:none}
+
+/* La veta es de la PORTADA: es su idea —una franja de mineral que sube a la
+   superficie— y ahi se queda. Dentro de la billetera la app no tiene ninguna
+   linea cruzando la pantalla, y dejarla era la mitad de por que la web se
+   veia de otra casa. */
+#app:not(.oculto) ~ .veta-svg,
+body:has(#app:not(.oculto)) .veta-svg{display:none}
 
 /* ── la veta ─────────────────────────────────────────────────────────────── */
 .veta-svg{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
@@ -80,8 +109,8 @@ a{color:inherit}
 
 /* ── marca ───────────────────────────────────────────────────────────────── */
 .marca{display:flex;align-items:baseline;gap:.34ch;
-  font-family:var(--serif);font-weight:500;letter-spacing:.005em;line-height:1;color:var(--crema)}
-.marca em{font-style:italic;font-weight:400;
+  font-family:var(--serif);font-weight:700;letter-spacing:.04em;line-height:1;color:var(--crema)}
+.marca em{font-style:normal;font-weight:700;
   background:linear-gradient(100deg,var(--oroLt),var(--oroHi) 42%,var(--oro) 72%,var(--oroLt));
   background-size:220% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
   animation:brillo 6s linear infinite}
@@ -102,9 +131,9 @@ a{color:inherit}
 .sello{font-size:11px;font-weight:700;letter-spacing:.34em;color:var(--oroDp);text-transform:uppercase;
   display:flex;align-items:center;gap:14px}
 .sello::after{content:"";height:1px;width:74px;background:linear-gradient(90deg,var(--oroDp),transparent)}
-.bv h1{margin-top:22px;font-family:var(--serif);font-weight:500;letter-spacing:0;
+.bv h1{margin-top:22px;font-family:var(--serif);font-weight:700;letter-spacing:0;
   font-size:clamp(40px,7vw,82px);line-height:1.04;color:var(--crema)}
-.bv h1 i{font-style:italic;font-weight:400;color:var(--oroLt)}
+.bv h1 i{font-style:normal;font-weight:700;color:var(--oroLt)}
 .bv p{margin-top:22px;color:var(--bruma);font-size:clamp(14.5px,1.6vw,16.5px);line-height:1.66;max-width:46ch;
   opacity:0;animation:aparece .8s 1s ease forwards}
 .bv-btns{margin-top:32px;display:flex;gap:12px;flex-wrap:wrap;
@@ -115,7 +144,7 @@ a{color:inherit}
 .hechos{margin-top:clamp(34px,6vh,58px);display:flex;gap:clamp(18px,3vw,38px);flex-wrap:wrap;
   opacity:0;animation:aparece .9s 1.5s ease forwards}
 .hecho{padding-left:16px;border-left:1px solid var(--linea2)}
-.hecho b{display:block;font-family:var(--serif);font-weight:500;font-size:clamp(20px,2.6vw,27px);color:var(--oroLt)}
+.hecho b{display:block;font-family:var(--serif);font-weight:700;font-size:clamp(20px,2.6vw,27px);color:var(--oroLt)}
 .hecho small{display:block;margin-top:4px;font-size:11.5px;color:var(--humo);letter-spacing:.04em;max-width:17ch;line-height:1.5}
 
 /* El lingote: una tarjeta de vidrio con la equivalencia del gramo y un QR real
@@ -125,7 +154,7 @@ a{color:inherit}
 @keyframes flota{0%,100%{transform:translateY(0) rotate(-.4deg)}50%{transform:translateY(-
 12px) rotate(.4deg)}}
 .lingote .l-lbl{font-size:10.5px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;color:var(--humo)}
-.lingote .l-uno{margin-top:10px;font-family:var(--serif);font-weight:500;font-size:44px;line-height:1;color:var(--oroHi)}
+.lingote .l-uno{margin-top:10px;font-family:var(--serif);font-weight:700;font-size:44px;line-height:1;color:var(--oroHi)}
 .lingote .l-eq{margin-top:8px;font-size:13px;color:var(--bruma);line-height:1.6}
 .lingote .l-qr{margin-top:18px;display:flex;align-items:center;gap:14px;padding-top:18px;border-top:1px solid var(--linea2)}
 .lingote .l-qr>div{width:74px;flex:0 0 auto;border-radius:10px;overflow:hidden}
@@ -162,8 +191,8 @@ ur(18px);-webkit-backdrop-filter:blur(18px);
   padding:clamp(86px,13vh,110px) clamp(20px,5vw,64px) 48px}
 .acc-lado{max-width:430px;justify-self:end}
 .acc-lado .sello{margin-bottom:18px}
-.acc-lado h2{font-family:var(--serif);font-weight:500;font-size:clamp(30px,4.2vw,50px);line-height:1.08}
-.acc-lado h2 i{font-style:italic;font-weight:400;color:var(--oroLt)}
+.acc-lado h2{font-family:var(--serif);font-weight:700;font-size:clamp(30px,4.2vw,50px);line-height:1.08}
+.acc-lado h2 i{font-style:normal;font-weight:700;color:var(--oroLt)}
 .acc-lado p{margin-top:16px;color:var(--bruma);font-size:15px;line-height:1.65;max-width:38ch}
 .acc-lado .gid-mini{margin-top:26px;display:flex;gap:12px;align-items:flex-start;padding:16px;
   border:1px solid var(--linea2);border-radius:var(--r);background:rgba(2,22,23,.4)}
@@ -230,20 +259,22 @@ amp(26px,5vw,38px);justify-self:start;
 .lienzo>*:nth-child(5){animation-delay:.28s}
 @keyframes bloqueSube{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 .cab{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px}
-.cab h2{font-family:var(--serif);font-weight:500;font-size:clamp(27px,3.8vw,38px)}
-.cab .sub{font-size:13px;color:var(--humo);margin-top:6px}
+/* Header de orden-global-app/src/ui.js: hTitle 19/800, hSub 11.5. En una
+   pantalla grande sube un poco, pero sigue siendo un titulo de pantalla y no
+   un titular. */
+.cab h2{font-family:var(--sans);font-weight:800;font-size:clamp(19px,2.2vw,24px);
+  letter-spacing:-.01em;color:var(--crema)}
+.cab .sub{font-size:12px;color:var(--bruma);margin-top:5px}
 
 /* ── el saldo ────────────────────────────────────────────────────────────── */
 .saldo{padding:clamp(24px,4vw,34px);position:relative;overflow:hidden}
-.saldo::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;
-  background:linear-gradient(180deg,transparent,var(--oro) 22%,var(--oroHi) 50%,var(--oro) 78%,transparent)}
-.saldo-lbl{font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--humo);font-weight:600}
+
+.saldo-lbl{font-size:11.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--oro);font-weight:600;opacity:.9}
 .saldo-cifra{margin-top:12px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-.saldo-cifra b{font-family:var(--serif);font-weight:500;font-size:clamp(44px,8.4vw,72px);
-  line-height:1;font-variant-numeric:lining-nums;
-  background:linear-gradient(105deg,var(--oroHi),var(--oroLt) 40%,var(--oro) 75%,var(--oroHi));
-  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
-  animation:brillo 8s linear infinite}
+.saldo-cifra b{font-family:var(--sans);font-weight:800;font-size:clamp(40px,7.6vw,58px);
+  line-height:1;letter-spacing:-1px;color:var(--oroHi);
+  font-variant-numeric:lining-nums tabular-nums;
+  text-shadow:0 2px 10px rgba(0,0,0,.45)}
 .saldo-cifra span{font-size:14px;font-weight:700;color:var(--oroDp);letter-spacing:.14em}
 .saldo-fiat{margin-top:10px;font-size:15px;color:var(--bruma)}
 .saldo-fiat .pastilla{display:inline-block;margin-left:8px;padding:3px 9px;border-radius:100
@@ -259,7 +290,7 @@ px;
 .acc-btn svg{width:21px;height:21px;stroke:var(--oro);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
 .bloque{margin-top:22px;padding:clamp(20px,3vw,26px)}
-.bloque h3{font-size:15px;font-weight:700;margin-bottom:4px}
+.bloque h3{font-size:16.5px;font-weight:700;margin-bottom:4px;color:var(--crema)}
 /* .pie nombra dos cosas: el pie de pagina del sitio y la letra pequeña de
    dentro de un bloque. La primera trae relleno y un borde superior que la
    segunda heredaba, asi que cada aclaracion dentro de una tarjeta salia
@@ -339,7 +370,7 @@ px;
 .cha-fila:hover{background:rgba(255,255,255,.04)}
 .cha-fila[data-aqui]{background:rgba(201,169,97,.13)}
 .cha-av{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
-  overflow:hidden;font-family:var(--serif);font-size:16px;color:var(--oroHi);
+  overflow:hidden;font-family:var(--sans);font-weight:700;font-size:16px;color:var(--oroHi);
   background:linear-gradient(140deg,#1E8C74,#0A463F)}
 .cha-av img{width:100%;height:100%;object-fit:cover}
 .cha-txt{min-width:0;flex:1}
@@ -406,7 +437,7 @@ px;
 
 .cha-puerta{margin:auto;padding:30px 24px;text-align:center;max-width:420px;
   display:flex;flex-direction:column;align-items:center;gap:12px}
-.cha-puerta h3{font-family:var(--serif);font-weight:500;font-size:22px;color:var(--crema)}
+.cha-puerta h3{font-family:var(--sans);font-weight:800;font-size:19px;color:var(--crema)}
 .cha-puerta p{font-size:14px;line-height:1.7;color:var(--bruma)}
 .cha-escudo{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;
   background:rgba(201,169,97,.12);border:1px solid var(--linea)}
@@ -450,7 +481,7 @@ px;
 .bien-lente svg{width:56%;height:56%;fill:none;stroke:var(--bHalo);stroke-width:1.8;
   stroke-linecap:round;stroke-linejoin:round}
 .bien-k{font-size:11px;font-weight:700;letter-spacing:.2em;color:var(--oro)}
-.bien-caja h2{font-family:var(--serif);font-weight:500;line-height:1.08;
+.bien-caja h2{font-family:var(--serif);font-weight:700;line-height:1.08;
   font-size:clamp(28px,6.4vw,40px);margin:10px 0 14px}
 .bien-caja p{color:var(--bruma);font-size:clamp(14px,3.4vw,16px);line-height:1.72;
   max-width:44ch;margin:0 auto}
@@ -490,8 +521,8 @@ px;
 .tramo{position:relative;z-index:2;padding:clamp(64px,11vh,120px) clamp(20px,5vw,64px);max-width:1420px;margin:0 auto}
 .tramo-cab{max-width:44ch}
 .tramo-cab .sello{margin-bottom:20px}
-.tramo-cab h2{font-family:var(--serif);font-weight:500;font-size:clamp(28px,4.6vw,54px);line-height:1.08}
-.tramo-cab h2 i{font-style:italic;font-weight:400;color:var(--oroLt)}
+.tramo-cab h2{font-family:var(--serif);font-weight:700;font-size:clamp(28px,4.6vw,54px);line-height:1.08}
+.tramo-cab h2 i{font-style:normal;font-weight:700;color:var(--oroLt)}
 .tramo-cab p{margin-top:18px;color:var(--bruma);font-size:15.5px;line-height:1.68}
 
 /* ── qué es ORIGEN: una escalera, no una rejilla ────────────────────────────
@@ -505,15 +536,15 @@ px;
 .peldano:hover{border-color:var(--linea);transform:translateY(-3px);background:rgba(6,40,42,.72)}
 .peldano:nth-child(2){margin-left:clamp(0px,6vw,90px)}
 .peldano:nth-child(3){margin-left:clamp(0px,12vw,180px)}
-.peldano .num{font-family:var(--serif);font-weight:500;font-size:clamp(28px,3.4vw,42px);
+.peldano .num{font-family:var(--serif);font-weight:700;font-size:clamp(28px,3.4vw,42px);
   line-height:1;color:var(--oroDp);min-width:1.4ch}
-.peldano h3{font-family:var(--serif);font-weight:500;font-size:clamp(19px,2.2vw,25px);line-height:1.2}
+.peldano h3{font-family:var(--serif);font-weight:700;font-size:clamp(19px,2.2vw,25px);line-height:1.2}
 .peldano p{margin-top:9px;color:var(--bruma);font-size:14.5px;line-height:1.66;max-width:52ch}
 
 /* ── la bóveda: cifra enorme a un lado, lista de garantías al otro ────────── */
 .par{margin-top:clamp(34px,6vh,64px);display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);
   gap:clamp(26px,5vw,72px);align-items:center}
-.par .cifrona{font-family:var(--serif);font-weight:500;font-size:clamp(64px,13vw,160px);line-height:.86;
+.par .cifrona{font-family:var(--serif);font-weight:700;font-size:clamp(64px,13vw,160px);line-height:.86;
   letter-spacing:-.02em;
   background:linear-gradient(150deg,var(--oroHi),var(--oro) 55%,var(--oroDp));
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
@@ -533,7 +564,7 @@ px;
   background:rgba(6,40,42,.5);transition:transform .3s,border-color .3s}
 .eco-f::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--acento,var(--oro));opacity:.55}
 .eco-f:hover{transform:translateY(-4px);border-color:var(--linea)}
-.eco-f h3{font-family:var(--serif);font-weight:500;font-size:22px}
+.eco-f h3{font-family:var(--serif);font-weight:700;font-size:22px}
 .eco-f p{margin-top:10px;color:var(--bruma);font-size:14px;line-height:1.62}
 .eco-f a{display:inline-flex;align-items:center;gap:6px;margin-top:16px;font-size:13px;font-weight:700;color:var(--oroLt)}
 .eco-f a::after{content:"→";transition:transform .25s}
@@ -542,8 +573,8 @@ px;
 /* ── el cierre: una sola frase grande y el botón ───────────────────────────── */
 .cierre{padding:clamp(70px,13vh,140px) clamp(20px,5vw,64px) clamp(80px,14vh,150px);
   max-width:1420px;margin:0 auto;position:relative;z-index:2}
-.cierre h2{font-family:var(--serif);font-weight:500;font-size:clamp(34px,6.4vw,88px);line-height:1.02;max-width:16ch}
-.cierre h2 i{font-style:italic;font-weight:400;
+.cierre h2{font-family:var(--serif);font-weight:700;font-size:clamp(34px,6.4vw,88px);line-height:1.02;max-width:16ch}
+.cierre h2 i{font-style:normal;font-weight:700;
   background:linear-gradient(100deg,var(--oroLt),var(--oroHi) 45%,var(--oro) 72%,var(--oroLt));
   background-size:220% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
   animation:brillo 7s linear infinite}
@@ -630,7 +661,7 @@ px;
 /* la lista de monedas */
 .monedas{display:flex;flex-direction:column;gap:8px}
 .moneda{display:flex;align-items:center;gap:13px;width:100%;text-align:left;cursor:pointer;
-  background:var(--panel);border:1px solid var(--linea);border-radius:16px;padding:11px 13px;
+  background:var(--panel);border:1px solid var(--linea);border-radius:18px;padding:13px;
   color:inherit;font:inherit;transition:border-color .18s,transform .18s,background .18s}
 .moneda:hover{border-color:var(--linea);background:var(--panel2);transform:translateX(2px)}
 .moneda:focus-visible{outline:2px solid var(--oro);outline-offset:2px}
@@ -650,7 +681,7 @@ px;
 .volver svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;
   stroke-linecap:round;stroke-linejoin:round}
 .ficha-cab{display:flex;align-items:center;gap:15px;margin-bottom:22px}
-.ficha-cab h2{font-size:23px;margin:0}
+.ficha-cab h2{font-family:var(--sans);font-weight:800;font-size:20px;margin:0;color:var(--crema)}
 .ficha-cifra{display:grid;grid-template-columns:1fr 1fr;gap:14px;
   padding:18px 0;border-top:1px solid var(--linea);border-bottom:1px solid var(--linea)}
 .ficha-cifra .et{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
@@ -692,7 +723,8 @@ px;
   border:1px solid var(--linea);background:rgba(201,169,97,.08);
   font-size:13px;font-weight:700;color:var(--oroLt)}
 #cob-qr{max-width:270px;margin-inline:auto}
-.cob-cifra{margin-top:16px;font-family:var(--serif);font-size:30px;color:var(--crema)}
+.cob-cifra{margin-top:16px;font-family:var(--sans);font-weight:800;font-size:28px;
+  letter-spacing:-.5px;color:var(--oroHi);font-variant-numeric:tabular-nums}
 .cob-cifra em{font-style:normal;font-size:.45em;color:var(--humo);letter-spacing:.08em}
 
 /* fichas de datos, en dos columnas */
@@ -868,14 +900,15 @@ px;
 
 .atajos{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
 .atajo{display:flex;align-items:center;gap:13px;text-align:left;cursor:pointer;
-  background:var(--panel);border:1px solid var(--linea);border-radius:18px;padding:14px;
+  background:var(--panel2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border:1px solid var(--linea);border-radius:20px;padding:15px;
   color:inherit;font:inherit;transition:border-color .18s,transform .18s,background .18s}
 .atajo:hover{border-color:var(--oro);background:var(--panel2);transform:translateY(-1px)}
 .atajo:focus-visible{outline:2px solid var(--oro);outline-offset:2px}
-.atajo b{display:block;font-size:14px;font-weight:600;color:var(--crema)}
-.atajo small{display:block;font-size:11.5px;color:var(--humo);margin-top:2px;line-height:1.4}
-.atajo-ic{width:40px;height:40px;border-radius:13px;flex:none;display:flex;align-items:center;
-  justify-content:center;background:rgba(201,169,97,.1);border:1px solid var(--linea)}
+.atajo b{display:block;font-size:14.5px;font-weight:700;color:var(--crema)}
+.atajo small{display:block;font-size:12px;color:var(--bruma);margin-top:2px;line-height:1.35}
+.atajo-ic{width:46px;height:46px;border-radius:14px;flex:none;display:flex;align-items:center;
+  justify-content:center;background:rgba(201,169,97,.16);border:1px solid var(--linea)}
 .atajo-ic svg{width:19px;height:19px;fill:none;stroke:var(--oro);stroke-width:1.7;
   stroke-linecap:round;stroke-linejoin:round}
 
