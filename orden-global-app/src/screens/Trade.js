@@ -225,6 +225,20 @@ export function Send({ nav, params }) {
             .catch(() => {});
         }
 
+        // Si el envío nació de una conversación de AURO CHAT, el comprobante
+        // se publica ALLÍ, y solo ahora: cuando la cadena ya confirmó. Antes
+        // sería prometer un pago que todavía puede fallar. Que no se pueda
+        // avisar --sin red, por ejemplo-- no invalida el envío: el dinero ya
+        // se movió, así que el fallo se traga en silencio y el comprobante
+        // de esta pantalla sigue siendo la verdad.
+        if (params?.avisarChat) {
+          import('../og/mensajes')
+            .then((M) => M.pago(params.avisarChat, String(tx.amount), {
+              moneda: tx.symbol || 'ORIGEN', hash: r.hash || null,
+            }))
+            .catch(() => {});
+        }
+
         setDone({
           ...tx,
           hash: r.hash || null,
@@ -234,6 +248,8 @@ export function Send({ nav, params }) {
           // Si el pago lo pidió MyTokenPay, el comprobante ofrece volver con
           // el hash para que el cobro se confirme allá.
           volver: params?.volver || null,
+          // …y si nació de un chat, el comprobante ofrece volver a la charla.
+          alChat: params?.avisarChat || null,
         });
         return { ok: true };
       }
