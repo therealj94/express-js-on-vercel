@@ -159,6 +159,17 @@ def miembro(g, correo):
     return any(m['correo'] == correo for m in g.get('miembros', []))
 
 
+def corte_de(d, correo, con):
+    """Desde cuándo ve ESTA cuenta el hilo con `con`.
+
+    Vaciar o quitar una conversación no borra mensajes —el hilo es de dos y
+    solo se puede decidir sobre la propia vista—: deja una fecha, y de ahí
+    para atrás esta cuenta no lo ve. 0 = nunca se vació, se ve todo.
+    """
+    c = d.get('cortes', {}).get(correo, {}).get(con)
+    return c.get('en', 0) if isinstance(c, dict) else 0
+
+
 def grupo_de(d, gid, correo):
     """El grupo, pero solo si quien firma es miembro AHORA. Un grupo que no
     existe y un grupo del que no soy miembro devuelven lo mismo (None → 403)
@@ -471,7 +482,35 @@ class Relevo(BaseHTTPRequestHandler):
                     hilo = [m for m in d['mensajes']
                             if (m['de'] == correo and m['para'] == desde)
                             or (m['de'] == desde and m['para'] == correo)]
+                hilo = [m for m in hilo if m['cuando'] > corte_de(d, correo, desde)]
                 return self._json(200, {'mensajes': hilo[-TOPE_BANDEJA:]})
+
+            if ruta == '/olvidar':
+                """Vaciar un hilo, o quitarlo de mi lista. SOLO DE MI LADO.
+
+                El hilo es uno solo y lo comparten los dos: borrarlo de verdad
+                seria borrarselo tambien a la otra persona, y eso no es una
+                opcion que le toque a nadie mas que a su dueño. Asi que esto
+                no borra nada: pone un CORTE con la fecha de hoy, y de ahi en
+                adelante esta cuenta ya no ve lo anterior. La otra conserva su
+                copia entera, y la pantalla lo dice con esas palabras — es la
+                diferencia entre una funcion honesta y una mentira comoda.
+
+                `quitar` ademas saca la fila de la lista hasta que llegue algo
+                nuevo: eso es «borrar la conversacion». Sin el, la fila queda
+                vacia: eso es «vaciar los mensajes».
+                """
+                con = str(b.get('con', '')).lower()
+                if not con:
+                    return self._json(400, {'error': 'falta con'})
+                if ID_GRUPO.fullmatch(con) and not grupo_de(d, con, correo):
+                    return self._json(403, {'error': 'no eres del grupo'})
+                d.setdefault('cortes', {}).setdefault(correo, {})[con] = {
+                    'en': int(time.time() * 1000),
+                    'quitar': bool(b.get('quitar')),
+                }
+                guardar(d)
+                return self._json(200, {'ok': True})
 
             if ruta == '/buscar':
                 # El directorio del ecosistema: buscar gente por nombre o
@@ -484,7 +523,7 @@ class Relevo(BaseHTTPRequestHandler):
                 # identificador que se teclea del principio, no prosa donde
                 # pescar trozos sueltos
                 gente = [{'correo': c, 'nombre': g['nombre'], 'addr': g['addr'],
-                          'gid': g.get('gid', '')}
+                          'gid': g.get('gid', ''), 'foto': g.get('foto', '')}
                          for c, g in fichas.items()
                          if q in c or q in g['nombre'].lower()
                          or g.get('gid', '').lower().startswith(q)]
@@ -501,6 +540,14 @@ class Relevo(BaseHTTPRequestHandler):
                 # los grupos entran aunque nadie haya hablado todavía: un grupo
                 # recién creado tiene que verse, si no parece que no se creó
                 hilos = {gid: {'ultimo': None, 'sinLeer': 0} for gid in mios}
+                cortes = d.get('cortes', {}).get(correo, {})
+                # Una conversación VACIADA sigue en la lista aunque no quede
+                # nada dentro —se pidió vaciarla, no perderla—, así que se
+                # siembra igual que un grupo recién creado. La QUITADA no se
+                # siembra: solo vuelve si llega un mensaje nuevo.
+                for otro, c in cortes.items():
+                    if isinstance(c, dict) and not c.get('quitar') and not ID_GRUPO.fullmatch(otro):
+                        hilos.setdefault(otro, {'ultimo': None, 'sinLeer': 0})
                 for m in d['mensajes']:
                     para = m['para']
                     if ID_GRUPO.fullmatch(para):
@@ -514,6 +561,13 @@ class Relevo(BaseHTTPRequestHandler):
                     elif para == correo:
                         otro = m['de']
                     else:
+                        continue
+                    # lo que quedó del otro lado del corte no cuenta para nada:
+                    # ni como último dicho ni —sobre todo— como sin leer. Una
+                    # burbuja con un número que al abrir el hilo no enseña nada
+                    # es peor que no tener la función.
+                    c = cortes.get(otro)
+                    if isinstance(c, dict) and m['cuando'] <= c.get('en', 0):
                         continue
                     h = hilos.setdefault(otro, {'ultimo': None, 'sinLeer': 0})
                     h['ultimo'] = m
@@ -531,10 +585,15 @@ class Relevo(BaseHTTPRequestHandler):
                                       'ultimo': h['ultimo'], 'sinLeer': h['sinLeer']})
                         continue
                     g = fichas.get(otro, {})
+                    # la foto viaja también aquí: sin ella la lista de gente se
+                    # pintaba con iniciales mientras el grupo de al lado sí
+                    # tenía cara, y pedirla ficha por ficha era una llamada por
+                    # cada fila
                     lista.append({'correo': otro,
                                   'nombre': g.get('nombre', otro.split('@')[0]),
                                   'addr': g.get('addr', ''),
                                   'gid': g.get('gid', ''),
+                                  'foto': g.get('foto', ''),
                                   'ultimo': h['ultimo'], 'sinLeer': h['sinLeer']})
                 # por lo último dicho; el grupo callado se ordena por cuándo se
                 # creó, así el recién hecho aparece arriba y no en el sótano

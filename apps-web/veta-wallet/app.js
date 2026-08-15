@@ -318,8 +318,16 @@ const VETA = (() => {
     if (destino === 'app') auraDespertar();
     else {
       $('#aura-orbe').setAttribute('data-oculto', '');
-      auraAbierta = false; pintarAura();
+      auraAbierta = false;
+      /* La conversacion con AU-RA se VA con la sesion. Sin esto, la siguiente
+         cuenta que entrara en el mismo navegador abria el panel y encontraba
+         el hilo de la anterior — con su nombre y con los saldos que AU-RA le
+         habia contestado. */
+      auraCharla = [];
+      pintarAura();
+      tourApagar();
       AURA.pararVoz(); AURA.pararRed();
+      AURA.dejarDeEscuchar();     // el microfono tampoco sobrevive a la salida
       document.body.classList.remove('en-cerebro');
     }
   }
@@ -698,8 +706,14 @@ const VETA = (() => {
        negro va y viene con el: la orden fue que el resto de la billetera
        quede como esta. */
     document.body.classList.toggle('en-cerebro', cual === 'nucleo');
+    /* Mientras la bienvenida esta encima, EL CEREBRO ES SUYO: hay una sola
+       red y montarla de nuevo aqui la mataria. Pasaba de verdad — los datos
+       terminaban de cargar, cargarTodo() repintaba la vista, y el cerebro de
+       la bienvenida se quedaba congelado a media frase. Cuando la bienvenida
+       se va, ella misma enciende el del Nucleo. */
+    if (!$('#aura-bienvenida').classList.contains('oculto')) return;
     if (cual === 'nucleo') encenderCerebro(false);
-    else AURA.pararRed();
+    else { AURA.pararRed(); tourApagar(); }
     window.scrollTo(0, 0);
   }
 
@@ -4110,14 +4124,24 @@ const VETA = (() => {
 
   function auraTourVa(d) { AURA.pararVoz(); tourPaso += d; pintarTour(); }
 
-  function auraTourFin() {
-    const T = aTxt();
+  /* Apagar el recorrido SIN despedida. Se usa cuando la persona se fue a otra
+     vista o cerro sesion: ahi el velo y la narracion quedaban encima de la
+     pantalla nueva —AU-RA explicando el Nucleo sobre la pantalla de enviar—
+     y el epilogo del final no viene a cuento porque nadie lo pidio. */
+  function tourApagar() {
+    const el = $('#aura-tour');
+    if (tourPaso < 0 && el.classList.contains('oculto')) return;
     tourPaso = -1;
     AURA.pararVoz();
     document.querySelectorAll('.nu-mundo').forEach(m => m.classList.remove('nu-foco'));
-    const el = $('#aura-tour');
     el.classList.add('oculto');
     el.innerHTML = '';
+  }
+
+  function auraTourFin() {
+    const T = aTxt();
+    if ($('#aura-tour').classList.contains('oculto') && tourPaso < 0) return;
+    tourApagar();
     // el cierre: honesto con quien todavia no tiene su llave
     auraAbierta = true;
     auraCharla.push(esVerificada()

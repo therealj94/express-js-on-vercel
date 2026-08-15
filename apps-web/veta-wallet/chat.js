@@ -140,13 +140,19 @@ const CHAT = (() => {
     pedir('/pago', firmado({ para, monto, moneda, hash, nota: nota || '' }))
       .then(d => d.mensaje || null);
 
-  // ── grupos ──────────────────────────────────────────────────────────────
+  /* ── grupos ────────────────────────────────────────────────────────────
+     Los nombres de los campos son los que lee el relevo, ni uno más: el
+     grupo se identifica con `id` (no `gid`, que allá es el Genesis ID de una
+     persona) y la gente que se suma viaja en `correos`. Mandar otro nombre
+     no da un error claro —el relevo simplemente no encuentra el grupo y
+     contesta 403—, así que esto se comprueba contra servidor.py, no de
+     memoria. */
   const grupoCrear = (nombre, correos) =>
     pedir('/grupo/crear', firmado({ nombre, miembros: correos || [] }));
-  const grupoInfo = gid => pedir('/grupo/info', firmado({ gid }));
-  const grupoEditar = (gid, datos) => pedir('/grupo/editar', firmado({ gid, ...datos }));
-  const grupoInvitar = (gid, correos) => pedir('/grupo/invitar', firmado({ gid, miembros: correos }));
-  const grupoSalir = gid => pedir('/grupo/salir', firmado({ gid }));
+  const grupoInfo = id => pedir('/grupo/info', firmado({ id }));
+  const grupoEditar = (id, datos) => pedir('/grupo/editar', firmado({ id, ...datos }));
+  const grupoInvitar = (id, correos) => pedir('/grupo/invitar', firmado({ id, correos }));
+  const grupoSalir = id => pedir('/grupo/salir', firmado({ id }));
 
   const esGrupo = id => /^g:[0-9a-f]{16}$/.test(String(id || ''));
   const urlArchivo = id => BASE + '/archivo/' + id;

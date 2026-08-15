@@ -426,6 +426,9 @@ const AURA = (() => {
     }
     red.ganglios = (ganglios || []).map((g, i) => ({
       id: g.id,
+      // el sitio en TANTO POR CIENTO se guarda: es lo único que sobrevive a
+      // un giro de pantalla, y de ahí se vuelven a sacar los píxeles
+      px: g.x, py: g.y, tam: g.tam || 1,
       // el ANCLA es fija; la posicion viva (x,y) orbita alrededor
       ax: (g.x / 100) * red.ancho,
       ay: (g.y / 100) * red.alto,
@@ -455,7 +458,9 @@ const AURA = (() => {
     for (const g of red.ganglios) {
       if (!g.el || REDUCIDO) continue;
       g.el.style.touchAction = 'none';
-      g.el.addEventListener('pointerdown', ev => {
+      // guardado en el ganglio para poder quitarlo en pararRed(): sin eso,
+      // volver al Núcleo sumaba un oyente más sobre el mismo botón
+      g.soltarOyente = ev => {
         const x0 = ev.clientX, y0 = ev.clientY, off0x = g.offX || 0, off0y = g.offY || 0;
         let jalo = false;
         const mover = e2 => {
@@ -481,7 +486,8 @@ const AURA = (() => {
         addEventListener('pointermove', mover);
         addEventListener('pointerup', soltar);
         addEventListener('pointercancel', soltar);
-      });
+      };
+      g.el.addEventListener('pointerdown', g.soltarOyente);
     }
     sembrar(); armarRejilla(); tejerSinapsis();
     if (REDUCIDO) {
@@ -496,13 +502,59 @@ const AURA = (() => {
   function pararRed() {
     red.viva = false;
     if (red.raf) cancelAnimationFrame(red.raf);
+    red.raf = 0;
     red.pulsos.length = 0; red.destellos.length = 0;
+    /* Cada esfera se lleva su oyente. Montar la red dos veces —entrar al
+       Núcleo, salir y volver— dejaba dos escuchas de puntero en el mismo
+       botón, y arrastrar movía la esfera al doble de velocidad. */
+    for (const g of red.ganglios) {
+      if (g.el && g.soltarOyente) { g.el.removeEventListener('pointerdown', g.soltarOyente); }
+      g.soltarOyente = null;
+    }
+    red.ganglios = [];
+    /* Y se suelta el canvas: si no, el vigilante de la pestaña resucitaba el
+       bucle de dibujo al volver, con la sesión ya cerrada y el canvas fuera
+       del documento. */
+    red.canvas = null; red.ctx = null;
   }
 
   /** Manda una ráfaga de señales hacia un ganglio: "mirá ESTO". */
   function latirHacia(id, cuantas = 5) {
     for (let i = 0; i < cuantas; i++) setTimeout(() => nacerPulso(id), i * 130);
   }
+
+  /* Girar el teléfono cambia el cuadro, y hasta ahora el canvas se quedaba con
+     la medida vieja: las neuronas se estiraban y —lo que se ve feo de
+     verdad— los ganglios dejaban de coincidir con las esferas del DOM, que
+     sí se recolocan solas porque están en tanto por ciento. Se vuelve a
+     medir y a sembrar; el retardo es para no hacerlo sesenta veces mientras
+     alguien arrastra el borde de la ventana. */
+  let relojMedida = 0;
+  addEventListener('resize', () => {
+    if (!red.canvas) return;
+    clearTimeout(relojMedida);
+    relojMedida = setTimeout(() => {
+      if (!red.canvas || !red.canvas.isConnected) return;
+      const anchoAntes = red.ancho, altoAntes = red.alto;
+      medir();
+      if (red.ancho === anchoAntes && red.alto === altoAntes) return;
+      for (const g of red.ganglios) {
+        g.ax = (g.px / 100) * red.ancho;
+        g.ay = (g.py / 100) * red.alto;
+        g.x = g.ax; g.y = g.ay;
+        g.r = g.tam * Math.min(red.ancho, red.alto) * 0.06;
+      }
+      for (const g of red.ganglios) {
+        g.union = red.ganglios
+          .filter(o => o !== g)
+          .sort((a2, b2) => Math.hypot(a2.ax - g.ax, a2.ay - g.ay) - Math.hypot(b2.ax - g.ax, b2.ay - g.ay))
+          .slice(0, 2);
+      }
+      red.pulsos.length = 0; red.destellos.length = 0;
+      sembrar(); armarRejilla(); tejerSinapsis();
+      if (REDUCIDO) { paso(); dibujar(); }
+    }, 220);
+  });
 
   // La pestaña escondida no gasta batería en pensar.
   document.addEventListener('visibilitychange', () => {
@@ -690,12 +742,25 @@ const AURA = (() => {
   }
 
   let sonando = null;         // el <audio> vivo, para poder cortarlo
-  let alTerminarVoz = null;
+  let alTerminarVoz = null;   // cómo se cierra la frase EN CURSO si la cortan
+
+  /* Cada frase tiene su turno. Cortar la voz sube el número, y con eso todo
+     lo que venía en camino de la frase anterior —el error del audio, el
+     vigilante de los 5s, el rechazo de play()— sabe que ya no es su momento
+     y se calla en vez de arrancar la voz del navegador con una frase que
+     acababan de mandar callar. Sin esto, saltar la bienvenida o adelantar
+     una parada del recorrido dejaba a AU-RA hablando sola, y a veces dos
+     voces encima. */
+  let turnoVoz = 0;
 
   function pararVoz() {
+    turnoVoz++;
     if (sonando) { try { sonando.pause(); } catch {} sonando = null; }
     try { speechSynthesis.cancel(); } catch {}
     animoOrbe('dormida'); nivelOrbe(0);
+    // pause() no dispara ni `ended` ni `error`, así que la promesa de la
+    // frase cortada se quedaría colgada para siempre —y con ella el
+    // recorrido, que espera a que termine— si no se cierra aquí a mano.
     if (alTerminarVoz) { const f = alTerminarVoz; alTerminarVoz = null; f(); }
   }
 
@@ -769,9 +834,19 @@ const AURA = (() => {
    */
   function hablar(texto, lang = 'es') {
     return new Promise(fin => {
-      pararVoz();
-      alTerminarVoz = null;
-      const terminar = () => { animoOrbe('dormida'); nivelOrbe(0); fin(); };
+      pararVoz();                       // corta lo anterior y sube el turno
+      const mio = turnoVoz;             // el turno de ESTA frase
+      const vigente = () => mio === turnoVoz;
+      let acabo = false;
+      const terminar = () => {
+        if (acabo) return;
+        acabo = true;
+        if (alTerminarVoz === terminar) alTerminarVoz = null;
+        // si ya la cortaron, el orbe es de la frase nueva: no tocarlo
+        if (vigente()) { animoOrbe('dormida'); nivelOrbe(0); }
+        fin();
+      };
+      alTerminarVoz = terminar;
       const k = claveVoz(texto, lang);
       if (!VOZ_MAPA[k]) return hablarConNavegador(texto, lang, terminar);
       // la voz de la casa: el fichero grabado
@@ -789,20 +864,26 @@ const AURA = (() => {
       a.onended = () => { sonando = null; terminar(); };
       a.onerror = () => {
         sonando = null;
+        if (!vigente()) return terminar();   // ya la cortaron: ni una palabra
         // el cerebro no contestó: la del navegador, sin drama
         arranco ? terminar() : hablarConNavegador(texto, lang, terminar);
       };
       // la red tambien sabe colgarse sin decir error: a los 5s sin sonar,
       // la frase pasa a la voz del navegador y nadie espera a un mudo
       setTimeout(() => {
+        if (!vigente()) return;
         if (!arranco && sonando === a) {
           try { a.pause(); } catch {}
           sonando = null;
           hablarConNavegador(texto, lang, terminar);
         }
       }, 5000);
+      /* pause() sobre un play() todavía en el aire RECHAZA la promesa
+         (AbortError), así que cortar la voz caía justo aquí — y sin el turno
+         esto arrancaba el sintetizador con la frase recién callada. */
       a.play().catch(() => {
         sonando = null;
+        if (!vigente()) return terminar();
         hablarConNavegador(texto, lang, terminar);
       });
     });
