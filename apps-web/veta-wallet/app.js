@@ -333,6 +333,9 @@ const VETA = (() => {
     // La bienvenida se pinta aparte del resto, asi que hay que repintarla a
     // mano o se queda a medio traducir encima de todo lo demas.
     if (!$('#bienve').classList.contains('oculto')) bienPintar();
+    // El panel de AU-RA tambien vive fuera de #lienzo: abierto, sus chips y
+    // su placeholder se quedarian en el idioma viejo si no se repinta aqui.
+    if (auraAbierta) pintarAura();
   }
 
   function ojo() {
