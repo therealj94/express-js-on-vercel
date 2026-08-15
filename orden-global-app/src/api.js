@@ -715,7 +715,10 @@ export async function livePrices() {
 }
 
 // ---------- registro de tokens on-chain (red Orden Global 8532) ----------
-export const CHAIN_ID = process.env.EXPO_PUBLIC_WALLET_CHAIN_ID || '8532';
+// La red oficial de Orden Global es la 5550 desde el corte del 15-ago-2026:
+// Layer 1 propia sobre Hyperledger Besu con consenso QBFT y EVM Shanghai.
+// La variable sigue existiendo para poder apuntar a otra red sin recompilar.
+export const CHAIN_ID = process.env.EXPO_PUBLIC_WALLET_CHAIN_ID || '5550';
 // Ya no hay `fallbackPrice`: si CoinGecko y gold-api caen, es preferible
 // mostrar "—" que un número congelado que un usuario podría confundir con
 // precio de mercado y usar para vender/comprar mal. La app pinta el estado

@@ -9,11 +9,11 @@ const VETA = (() => {
   'use strict';
 
   const API = 'https://vetawallet-1a2e38ac52b1.herokuapp.com';
-  // El identificador de la red. Hoy 8532; en el corte pasa a 5550, y este es
+  // El identificador de la red. Desde el corte del 15-ago-2026 es la 5550, y este es
   // el único sitio de la billetera web donde cambia. Se puede forzar desde
   // fuera —definiendo OG_CHAIN_ID antes de este archivo— para apuntar la misma
   // billetera a la red de pruebas (5534) o a la de ensayo sin recompilar nada.
-  const CHAIN = String(window.OG_CHAIN_ID || 8532);
+  const CHAIN = String(window.OG_CHAIN_ID || 5550);   // red oficial desde el corte del 15-ago-2026
   const LLAVE = 'veta.sesion';
 
   const $ = s => document.querySelector(s);
@@ -817,7 +817,7 @@ const VETA = (() => {
     const filas = [
       [t('tok.tipo'), f.t],
       [t('tok.resp'), f.r],
-      [t('tok.red'), 'Orden Global · 8532'],
+      [t('tok.red'), 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai'],
       [t('tok.contrato'), x.nativo ? t('tok.nativo') : cortaDir(x.contrato)],
     ];
     return volver + `
@@ -2196,7 +2196,7 @@ const VETA = (() => {
         <button class="btn btn-linea btn-sm" onclick="VETA.compartir()">${t('rec.compartir')}</button>
       </div>
       <dl class="datos" style="margin-top:20px;text-align:left">
-        <div><dt>${t('dep.red')}</dt><dd>Orden Global · 8532</dd></div>
+        <div><dt>${t('dep.red')}</dt><dd>Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai</dd></div>
       </dl>
       <div class="nota nota-cuidado" style="margin-top:16px">${t('dep.aviso')}</div>
     </div>`;
