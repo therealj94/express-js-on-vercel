@@ -65,6 +65,45 @@ candado = threading.Lock()
 # recibía la respuesta y el navegador la tiraba a la basura antes de que el
 # código la viera. Es una lista corta y cerrada; con '*' cualquier página
 # ajena podría hablar por el relevo desde el navegador de quien la visite.
+# El backend de la wallet, para comprobar una sesion. Se puede apuntar a otro
+# desde el entorno, que es como lo prueban las pruebas sin tocar produccion.
+WALLET_URL = os.environ.get(
+    'MENSAJES_WALLET_URL', 'https://vetawallet-1a2e38ac52b1.herokuapp.com').rstrip('/')
+
+
+def correo_de_sesion(token):
+    """Le pregunta al backend de la wallet de quien es esta sesion.
+
+    Es lo que arregla el chat de raiz. La llave del relevo se acuna UNA vez y
+    se la queda el primer dispositivo; el segundo recibia un 409 sin salida
+    —«tu chat esta en otro lado»— aunque fuera la MISMA persona con la MISMA
+    cuenta. La sesion de la wallet ya prueba quien es (el backend valida el
+    token y devuelve el correo), asi que al dueno demostrado se le devuelve
+    su llave existente en vez de un portazo.
+
+    El relevo no valida el token por su cuenta a proposito: la firma y su
+    vigencia son asunto del backend de la wallet, y duplicar esa logica aqui
+    es tener dos versiones que un dia discrepan. Aqui solo se pregunta.
+
+    Devuelve el correo en minusculas, o None si la sesion no vale o el
+    backend no contesta. None NUNCA se distingue de una sesion mala hacia
+    fuera: en ambos casos queda el 409 de siempre.
+    """
+    if not token or not isinstance(token, str) or len(token) > 4096:
+        return None
+    try:
+        import urllib.request
+        pet = urllib.request.Request(
+            WALLET_URL + '/users/userDate',
+            headers={'Authorization': 'Bearer ' + token})
+        with urllib.request.urlopen(pet, timeout=6) as r:
+            datos = json.loads(r.read() or b'{}')
+        correo = str(datos.get('email', '')).strip().lower()
+        return correo if correo_valido(correo) else None
+    except Exception:
+        return None
+
+
 ORIGENES = {
     'https://www.vetawallet.com',
     'https://vetawallet.com',
@@ -229,6 +268,14 @@ class Relevo(BaseHTTPRequestHandler):
         except Exception:
             return self._json(400, {'error': 'json inválido'})
 
+        # La sesion de la wallet se comprueba AQUI, antes del candado: es una
+        # llamada de red y el candado es de todo el relevo — con ella dentro,
+        # seis segundos de Heroku lento serian seis segundos de chat parado
+        # para todo el mundo.
+        correo_probado = None
+        if ruta == '/alta' and b.get('sesion'):
+            correo_probado = correo_de_sesion(b.get('sesion'))
+
         with candado:
             d = cargar()
             fichas = d['fichas']
@@ -252,8 +299,13 @@ class Relevo(BaseHTTPRequestHandler):
                     fichas[correo] = f
                     guardar(d)
                     return self._json(200, {'llave': f['llave']})
-                # el correo ya existe: solo su dueño (con la llave) refresca datos
-                if b.get('llave') == f['llave']:
+                # el correo ya existe: su dueño refresca datos y recibe su
+                # llave. Dueño es quien LA TIENE — o quien lo PRUEBA con su
+                # sesión de la wallet, que es lo que salva al segundo
+                # dispositivo del 409 eterno. La llave devuelta es SIEMPRE la
+                # existente: acuñar otra mataría al primer dispositivo, que
+                # sigue firmando con la vieja.
+                if b.get('llave') == f['llave'] or correo_probado == correo:
                     f['nombre'] = str(b.get('nombre', f['nombre']))[:80]
                     f['addr'] = str(b.get('addr', f['addr']))[:64]
                     f['gid'] = str(b.get('gid', f.get('gid', ''))).strip()[:64]
