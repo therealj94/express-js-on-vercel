@@ -157,7 +157,8 @@
       },
       "genesisUrl": "https://genesis-id.onrender.com",
       "telemetriaClave": "gidp_veta-wallet_98cwxS8AnbUIRAEr",
-      "mensajesApi": "https://cerebro.ordenscan.com/mensajes"
+      "mensajesApi": "https://cerebro.ordenscan.com/mensajes",
+      "exploradorTx": "https://testnet.ordenscan.com/tx/"
     },
     "updates": {
       "url": "https://u.expo.dev/3017e984-a8ac-479c-8b75-33f8b8e69b25"

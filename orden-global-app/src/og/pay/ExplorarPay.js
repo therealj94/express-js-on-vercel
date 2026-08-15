@@ -18,20 +18,26 @@
 // prellenar un envío: el botón lleva a PagarPay a escanear el QR que el
 // comercio enseñe. El monto y el destinatario salen siempre de ahí, nunca de
 // esta lista.
+//
+// LA FICHA ES UNA SOLA: tocar un comercio navega a pay-negocio-detalle
+// (NegocioDetalle), la misma ficha que abre la portada. Antes este fichero
+// tenía su propia ficha inline recortada —sin favorito, sin portada, sin
+// aviso— y el mismo comercio se veía distinto según por dónde se entrara.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet, Animated, BackHandler, Platform,
+  View, Text, TextInput, Pressable, ScrollView, StyleSheet, Animated,
 } from 'react-native';
 import { PantallaConTeclado, CuerpoDesplazable, useCampoAuto } from '../Teclado';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C, G } from '../../theme';
-import { Header, Button3D, Card, hap } from '../../ui';
+import { Header, hap } from '../../ui';
 import { Icon } from '../../icons';
 import { useLang } from '../../i18n';
 import {
   CATS, PAISES, CIUDADES, COMERCIOS, CATS_USADAS, PAISES_USADOS,
   iconoDe, pelado, etiquetaDe,
 } from './comerciosDemo';
+import { leerFavoritos } from './NegocioDetalle';
 
 const TXT = {
   es: {
@@ -41,12 +47,11 @@ const TXT = {
     buscar: 'Busca por nombre, comida, servicio…',
     uno: '1 comercio', varios: '{n} comercios',
     sinResT: 'Sin resultados', sinResP: 'Prueba con otros términos, país o categoría.',
+    sinFavT: 'Sin favoritos todavía',
+    sinFavP: 'Toca el corazón en la ficha de un comercio y aparecerá aquí.',
     limpiar: 'Limpiar filtros',
+    favoritos: 'Favoritos',
     verificado: 'Verificado en MyTokenPay', pendiente: 'Pendiente',
-    sobre: 'Sobre este comercio', servicios: 'Servicios', ubicacion: 'Ubicación',
-    pagarBtn: 'PAGAR EN ESTE COMERCIO',
-    pagarNota: 'Este comercio de ejemplo no tiene dirección de cobro en la cadena. Al tocar, se abre la cámara: escanea el QR que te enseñe el negocio y el envío se prepara con SU dirección y SU monto.',
-    volver: 'Directorio',
   },
   en: {
     titulo: 'Directory', sub: 'MyTokenPay · sample businesses',
@@ -55,12 +60,11 @@ const TXT = {
     buscar: 'Search by name, food, service…',
     uno: '1 business', varios: '{n} businesses',
     sinResT: 'No results', sinResP: 'Try other terms, country or category.',
+    sinFavT: 'No favorites yet',
+    sinFavP: 'Tap the heart on a business listing and it will show up here.',
     limpiar: 'Clear filters',
+    favoritos: 'Favorites',
     verificado: 'Verified in MyTokenPay', pendiente: 'Pending',
-    sobre: 'About this business', servicios: 'Services', ubicacion: 'Location',
-    pagarBtn: 'PAY AT THIS BUSINESS',
-    pagarNota: 'This sample business has no charging address on chain. Tapping opens the camera: scan the QR the business shows you and the send is prepared with THEIR address and THEIR amount.',
-    volver: 'Directory',
   },
 };
 
@@ -103,11 +107,17 @@ export default function ExplorarPay({ nav, params }) {
   const [busca, setBusca] = useState(() => String(params?.q || ''));
   const [cat, setCat] = useState(() => (CATS[params?.cat] ? params.cat : ''));
   const [pais, setPais] = useState('');
-  const [ficha, setFicha] = useState(null);   // el detalle vive dentro de la pantalla
+  // Los favoritos que marcó el corazón de NegocioDetalle: se leen al montar
+  // (volver de una ficha remonta esta pantalla, así que el chip siempre está
+  // al día). Antes esos ids no los listaba NADIE: función muerta.
+  const [favs, setFavs] = useState([]);
+  const [soloFav, setSoloFav] = useState(false);
+  useEffect(() => { leerFavoritos().then(setFavs).catch(() => {}); }, []);
 
   const visibles = useMemo(() => {
     const q = pelado(busca.trim());
     return COMERCIOS.filter((c) => {
+      if (soloFav && !favs.includes(c.id)) return false;
       if (cat && c.cat !== cat) return false;
       if (pais && c.pais !== pais) return false;
       if (!q) return true;
@@ -116,87 +126,13 @@ export default function ExplorarPay({ nav, params }) {
       const heno = pelado([c.nom, c.desc, c.serv.join(' '), et(CATS, c.cat), CIUDADES[c.ciudad] || ''].join(' '));
       return heno.includes(q);
     });
-  }, [busca, cat, pais, lang]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [busca, cat, pais, soloFav, favs, lang]);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  // La ficha ampliada es una etapa DENTRO de esta pantalla, no una ruta: el
-  // botón físico de Android debe cerrarla y devolver al listado, no sacar al
-  // usuario del directorio. El listener más reciente gana al global de App.js.
-  useEffect(() => {
-    if (Platform.OS !== 'android' || !ficha) return undefined;
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => { setFicha(null); return true; });
-    return () => sub.remove();
-  }, [ficha]);
-
-  const hayFiltros = !!(busca || cat || pais);
-  const limpiar = () => { hap(); setBusca(''); setCat(''); setPais(''); };
-
-  // ── ficha ampliada ─────────────────────────────────────────────────────
-  if (ficha) {
-    return (
-      <View style={st.screen}>
-        <Header title={ficha.nom} sub={`${et(CATS, ficha.cat)} · ${CIUDADES[ficha.ciudad] || ''}`} onBack={() => setFicha(null)} />
-        <ScrollView contentContainerStyle={st.dentro} showsVerticalScrollIndicator={false}>
-          <Entrada delay={0}>
-            <LinearGradient colors={G.greenCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.portada}>
-              <View style={st.portadaIc}><Icon name={iconoDe(ficha.cat)} size={26} color={C.gold} /></View>
-              <Text style={st.portadaNom}>{ficha.nom}</Text>
-              <View style={st.pills}>
-                <View style={[st.pill, ficha.ver ? st.pillOk : st.pillPend]}>
-                  <Icon name={ficha.ver ? 'shield-checkmark' : 'time'} size={12} color={ficha.ver ? C.up : '#FBBF24'} />
-                  <Text style={[st.pillTxt, { color: ficha.ver ? C.up : '#FBBF24' }]}>{ficha.ver ? t.verificado : t.pendiente}</Text>
-                </View>
-                <View style={st.pillPais}>
-                  <Text style={st.pillTxt}>{PAISES[ficha.pais].bandera} {PAISES[ficha.pais].et}</Text>
-                </View>
-              </View>
-            </LinearGradient>
-          </Entrada>
-
-          <Entrada delay={90}>
-            <View style={st.aviso}>
-              <Icon name="information-circle" size={16} color={C.gold} />
-              <Text style={st.avisoP}>{t.avisoP}</Text>
-            </View>
-          </Entrada>
-
-          <Entrada delay={160}>
-            <Text style={st.grupo}>{t.sobre.toUpperCase()}</Text>
-            <Card style={st.bloque}><Text style={st.cuerpo}>{ficha.desc}</Text></Card>
-          </Entrada>
-
-          <Entrada delay={220}>
-            <Text style={st.grupo}>{t.servicios.toUpperCase()}</Text>
-            <View style={st.servFila}>
-              {ficha.serv.map((s) => (
-                <View key={s} style={st.serv}><Text style={st.servTxt}>{s}</Text></View>
-              ))}
-            </View>
-          </Entrada>
-
-          <Entrada delay={280}>
-            <Text style={st.grupo}>{t.ubicacion.toUpperCase()}</Text>
-            <Card style={st.bloque}>
-              <Text style={st.cuerpo}>{ficha.dir}</Text>
-              <Text style={st.cuerpoTenue}>{CIUDADES[ficha.ciudad] || ''} · {PAISES[ficha.pais].et}</Text>
-            </Card>
-          </Entrada>
-
-          <Entrada delay={340}>
-            {/* No se prellena un envío desde aquí: no hay dirección que poner.
-                El camino honesto es la cámara, donde el QR trae los datos. */}
-            <Button3D title={t.pagarBtn} icon="qr-code" onPress={() => { hap(); nav.go('pay-pagar'); }} style={{ marginTop: 20 }} />
-            <Text style={st.nota}>{t.pagarNota}</Text>
-            <Pressable onPress={() => { hap(); setFicha(null); }} style={st.enlace}>
-              <Icon name="chevron-back" size={15} color={C.txt2} />
-              <Text style={st.enlaceTxt}>{t.volver}</Text>
-            </Pressable>
-          </Entrada>
-        </ScrollView>
-      </View>
-    );
-  }
+  const hayFiltros = !!(busca || cat || pais || soloFav);
+  const limpiar = () => { hap(); setBusca(''); setCat(''); setPais(''); setSoloFav(false); };
 
   // ── listado ────────────────────────────────────────────────────────────
+  // (la ficha ampliada vive en NegocioDetalle: una sola ficha por comercio)
   return (
     // Cabecera fija y cuerpo desplazable: al enfocar un campo la pantalla
     // lo sube por encima del teclado (ver src/og/Teclado.js).
@@ -228,6 +164,14 @@ export default function ExplorarPay({ nav, params }) {
 
         <Entrada delay={130}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.chipsFila}>
+            {/* el chip de favoritos: la lista que el corazón de la ficha
+                llevaba guardando sin que nadie la enseñara */}
+            <Pressable onPress={() => { hap(); setSoloFav((x) => !x); }}
+              accessibilityRole="button" accessibilityState={{ selected: soloFav }}
+              style={[st.chip, soloFav && st.chipOn]}>
+              <Icon name="heart" size={13} color={soloFav ? C.darkText : C.txt2} />
+              <Text style={[st.chipTxt, soloFav && st.chipTxtOn]}>{t.favoritos}</Text>
+            </Pressable>
             {CATS_USADAS.map((c) => {
               const on = cat === c;
               return (
@@ -271,15 +215,19 @@ export default function ExplorarPay({ nav, params }) {
         {visibles.length === 0 ? (
           <Entrada delay={0}>
             <View style={st.vacio}>
-              <View style={st.vacioIc}><Icon name="storefront" size={26} color={C.txt3} /></View>
-              <Text style={st.vacioT}>{t.sinResT}</Text>
-              <Text style={st.vacioP}>{t.sinResP}</Text>
+              <View style={st.vacioIc}>
+                <Icon name={soloFav ? 'heart' : 'storefront'} size={26} color={C.txt3} />
+              </View>
+              <Text style={st.vacioT}>{soloFav && favs.length === 0 ? t.sinFavT : t.sinResT}</Text>
+              <Text style={st.vacioP}>{soloFav && favs.length === 0 ? t.sinFavP : t.sinResP}</Text>
             </View>
           </Entrada>
         ) : (
           visibles.map((c, i) => (
             <Entrada key={c.id} indice={i}>
-              <Pressable onPress={() => { hap(); setFicha(c); }}
+              {/* a la MISMA ficha que abre la portada (pay-negocio-detalle):
+                  el directorio ya no tiene una ficha propia recortada */}
+              <Pressable onPress={() => { hap(); nav.go('pay-negocio-detalle', { id: c.id }); }}
                 accessibilityRole="button" accessibilityLabel={c.nom}
                 style={st.ficha}>
                 <View style={st.fichaTop}>
@@ -362,28 +310,10 @@ const st = StyleSheet.create({
   serv: { backgroundColor: C.panel2, borderWidth: 1, borderColor: C.line2, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
   servTxt: { color: C.txt2, fontSize: 11 },
 
-  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12, justifyContent: 'center' },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1 },
   pillOk: { backgroundColor: 'rgba(62,217,160,0.13)', borderColor: 'rgba(62,217,160,0.3)' },
   pillPend: { backgroundColor: 'rgba(251,191,36,0.12)', borderColor: 'rgba(251,191,36,0.35)' },
-  pillPais: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: C.line2, backgroundColor: 'rgba(0,0,0,0.18)' },
   pillTxt: { color: C.txt2, fontSize: 10.5, fontWeight: '700' },
-
-  portada: { borderRadius: 22, padding: 20, borderWidth: 1, borderColor: C.line, alignItems: 'center' },
-  portadaIc: {
-    width: 62, height: 62, borderRadius: 20, backgroundColor: 'rgba(201,169,97,0.14)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  portadaNom: { color: C.txt, fontSize: 19, fontWeight: '800', marginTop: 12, textAlign: 'center' },
-
-  grupo: { color: C.txt3, fontSize: 10, fontWeight: '700', letterSpacing: 2.6, marginTop: 22, marginBottom: 10 },
-  bloque: { padding: 15, borderWidth: 1, borderColor: C.line2 },
-  cuerpo: { color: C.txt2, fontSize: 13, lineHeight: 20 },
-  cuerpoTenue: { color: C.txt3, fontSize: 12, marginTop: 6 },
-  nota: { color: C.txt3, fontSize: 11.5, lineHeight: 18, textAlign: 'center', marginTop: 12 },
-
-  enlace: { flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'center', paddingVertical: 14 },
-  enlaceTxt: { color: C.txt2, fontSize: 13, fontWeight: '600' },
 
   vacio: {
     alignItems: 'center', backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2,

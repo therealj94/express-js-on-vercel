@@ -2,8 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Pressable, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
 import { PantallaConTeclado, useCampoVisible } from '../og/Teclado';
 import { BlurView } from 'expo-blur';
+import Svg, { Path } from 'react-native-svg';
+import * as Linking from 'expo-linking';
 import { Icon } from '../icons';
-import { C } from '../theme';
+import { C, F } from '../theme';
+import { useFuenteDisplay } from '../fuentes';
 import { Image } from 'react-native';
 import { Logo, Button3D, hap, useAccount, useToast, AppBackground } from '../ui';
 import { upsertApiAccount, saveSession } from '../accounts';
@@ -48,6 +51,7 @@ export default function Auth({ nav }) {
   const { login: setAccount } = useAccount();
   const toast = useToast();
   const t = useT();
+  const fuente = useFuenteDisplay();
   const login = tab === 'login';
   // Una referencia por campo: son las que permiten medir dónde ha quedado
   // cada uno y subirlo por encima del teclado al enfocarlo.
@@ -77,7 +81,12 @@ export default function Auth({ nav }) {
       await clearCreds();
       setAccount(acc);
       toast(r.creada ? t('auth.welcomeNew') : t('auth.welcome'));
-      nav(seenOnboarding() ? 'ecosistema' : 'onboarding');
+      // Igual que enter(): `nav` es el objeto {go,back}, no una función —
+      // llamarlo reventaba justo después de un login social exitoso—, y
+      // seenOnboarding es async: sin await la Promise siempre era truthy y
+      // el tour de primera vez no salía nunca por esta vía.
+      const done = await seenOnboarding();
+      nav.go(done ? 'ecosistema' : 'onboarding');
     } catch (e) {
       // Un fallo aquí casi siempre es de configuración (el identificador de
       // cliente no coincide con el que espera el servidor), y eso no lo puede
@@ -181,8 +190,14 @@ export default function Auth({ nav }) {
       >
         <View style={{ alignItems: 'center', marginBottom: 22 }}>
           <Image source={require('../../assets/og-logo.png')} style={{ width: 92, height: 63 }} resizeMode="contain" />
-          <Text style={styles.brand}>ORDEN <Text style={styles.italic}>GLOBAL</Text></Text>
-          <Text style={styles.tag}>ORDEN GLOBAL</Text>
+          {/* El mismo lockup del splash: fuente de display cuando está lista
+              (Cinzel no trae itálica/pesos sintéticos en Android) y debajo el
+              LEMA vía i18n — antes decía «ORDEN GLOBAL» dos veces seguidas,
+              como un placeholder sin reemplazar. */}
+          <Text style={[styles.brand, fuente && { fontFamily: F.h, fontWeight: 'normal' }]}>
+            ORDEN <Text style={[styles.italic, fuente && { fontFamily: F.h, fontWeight: 'normal', fontStyle: 'normal' }]}>GLOBAL</Text>
+          </Text>
+          <Text style={styles.tag}>{t('brand.tag')}</Text>
         </View>
 
         <BlurView intensity={55} tint="dark" style={styles.glass}>
@@ -248,7 +263,18 @@ export default function Auth({ nav }) {
             />
             {busy && <ActivityIndicator color={C.gold} style={{ marginTop: 14 }} />}
 
-            {login && <Text style={styles.forgot}>{t('auth.forgot')}</Text>}
+            {/* Recuperación: es un ENLACE de verdad, no un texto que parece
+                enlace y no hace nada — y apunta al dominio de Orden Global,
+                no a la marca vieja, justo en la pantalla más sensible. */}
+            {login && (
+              <Pressable
+                onPress={() => { hap(); Linking.openURL('https://ordenglobal.org').catch(() => {}); }}
+                accessibilityRole="link"
+                hitSlop={8}
+              >
+                <Text style={styles.forgot}>{t('auth.forgot')}</Text>
+              </Pressable>
+            )}
 
             {(googleDisponible() || hayApple) && (
               <>
@@ -292,15 +318,18 @@ export default function Auth({ nav }) {
   );
 }
 
-// La G de Google en sus cuatro colores. Se dibuja con vistas para no cargar
-// una imagen: las normas de marca exigen estos colores exactos y este trazo.
+// La G de Google: el TRAZADO oficial del asset de marca, con sus cuatro
+// colores, incrustado como SVG (react-native-svg ya viaja en la app). Antes
+// era una «G» del sistema pintada de azul — justo lo que las normas de
+// Google prohíben: piden el logo real, no una letra que se le parezca.
 function GoogleG() {
   return (
-    <View style={styles.gWrap}>
-      <Text style={styles.gTxt}>
-        <Text style={{ color: '#4285F4' }}>G</Text>
-      </Text>
-    </View>
+    <Svg width={19} height={19} viewBox="0 0 48 48">
+      <Path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <Path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <Path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <Path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </Svg>
   );
 }
 
@@ -338,8 +367,6 @@ const styles = StyleSheet.create({
   socialApple: { backgroundColor: '#000000' },
   socialTxtG: { color: '#1F1F1F', fontSize: 15.5, fontWeight: '600' },
   socialTxtA: { color: '#FFFFFF', fontSize: 15.5, fontWeight: '600' },
-  gWrap: { width: 20, alignItems: 'center' },
-  gTxt: { fontSize: 19, fontWeight: '700' },
 
   wrap: { flexGrow: 1, justifyContent: 'center', padding: 22, paddingTop: 80 },
   brand: { fontSize: 26, fontWeight: '800', color: '#EAD79C', letterSpacing: 1, marginTop: 6 },

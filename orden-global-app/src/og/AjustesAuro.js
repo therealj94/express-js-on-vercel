@@ -13,10 +13,9 @@ import {
 import { PantallaConTeclado, CuerpoDesplazable } from './Teclado';
 import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
-import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import { C } from '../theme';
-import { Header, Button3D, useAccount, useToast, hap } from '../ui';
+import { Header, Button3D, tono, useAccount, useToast, hap } from '../ui';
 import { useLang } from '../i18n';
 import * as M from './mensajes';
 import { aUri } from './rutas';
@@ -31,6 +30,7 @@ const TXT = {
     noGuarda: 'No se pudo guardar. Revisa tu conexión.',
     grande: 'La foto pesa más de 8 MB y el relevo no la acepta. Elige una más ligera.',
     noSubio: 'No se pudo subir la foto. Revisa tu conexión.',
+    sinPicker: 'Esta versión de la app no puede abrir tu galería. Actualiza la app para cambiar la foto.',
     quitarTit: '¿Quitar tu foto?',
     quitarTxt: 'Vuelves a la inicial de tu nombre. Puedes poner otra cuando quieras.',
 
@@ -47,7 +47,7 @@ const TXT = {
     cifTxt2: 'Para lo que no soportaría ser leído por un tercero, esta no es la vía todavía.',
 
     telTit: 'EN ESTE TELÉFONO',
-    telTxt: 'Ninguna conversación se guarda aquí: viven en el relevo y se piden cada vez que abres el hilo, así que no hay nada que vaciar. Lo único guardado en el teléfono es tu llave de AURO, la que prueba que ese buzón es tuyo — si se borrara, ese correo se quedaría sin dueño para siempre, y por eso no hay un botón que lo haga.',
+    telTxt: 'Ninguna conversación se guarda aquí: viven en el relevo y se piden cada vez que abres el hilo, así que no hay nada que vaciar. En el teléfono quedan dos cosas: tu llave de AURO, la que prueba que ese buzón es tuyo — si se borrara, ese correo se quedaría sin dueño para siempre, y por eso no hay un botón que lo haga — y tu libreta de contactos, con los nombres que tú les pusiste; esa sí se edita contacto por contacto, manteniéndolo pulsado en la lista del chat.',
   },
   en: {
     titulo: 'AURO CHAT', sub: 'My profile and what others see',
@@ -58,6 +58,7 @@ const TXT = {
     noGuarda: 'Could not save. Check your connection.',
     grande: 'The photo is over 8 MB and the relay won’t take it. Pick a lighter one.',
     noSubio: 'Could not upload the photo. Check your connection.',
+    sinPicker: 'This version of the app cannot open your gallery. Update the app to change the photo.',
     quitarTit: 'Remove your photo?',
     quitarTxt: 'You go back to the initial of your name. You can set another one whenever you want.',
 
@@ -74,7 +75,7 @@ const TXT = {
     cifTxt2: 'For anything that could not stand being read by a third party, this is not the way yet.',
 
     telTit: 'ON THIS PHONE',
-    telTxt: 'No conversation is stored here: they live on the relay and are fetched each time you open a thread, so there is nothing to clear. The only thing kept on the phone is your AURO key, the one proving that mailbox is yours — erasing it would leave that email ownerless forever, which is why there is no button for it.',
+    telTxt: 'No conversation is stored here: they live on the relay and are fetched each time you open a thread, so there is nothing to clear. Two things stay on the phone: your AURO key, the one proving that mailbox is yours — erasing it would leave that email ownerless forever, which is why there is no button for it — and your contact book, with the names you gave people; that one you edit contact by contact, long-pressing them in the chat list.',
   },
 };
 
@@ -82,8 +83,8 @@ const TOPE_ARCHIVO = 8_000_000;
 // El relevo corta el nombre a 80: cortarlo aquí evita escribir uno y recibir otro.
 const TOPE_NOMBRE = 80;
 
-const TONOS = [['#F8EFCF', '#C9A961'], ['#9FE3C9', '#2E8F6E'], ['#BFD8F5', '#4A78B0'], ['#F2C4B3', '#B0674A']];
-const tono = (c) => TONOS[String(c).split('').reduce((a, x) => a + x.charCodeAt(0), 0) % TONOS.length];
+// `tono` viene de src/ui.js: estaba triplicado en las tres pantallas de AURO
+// CHAT y tres copias acaban pintando a la misma persona con colores distintos.
 
 export default function AjustesAuro({ nav }) {
   const { lang } = useLang();
@@ -132,6 +133,15 @@ export default function AjustesAuro({ nav }) {
   // El recorte cuadrado lo hace la persona en el picker: la foto se pinta en
   // un círculo y así elige ella qué se pierde, no nosotros.
   const cambiarFoto = async () => {
+    // REGLA DEL AIRE: expo-image-picker es un módulo NATIVO y esta pantalla
+    // llega por OTA a binarios que quizá no lo traen (Expo Go, APK
+    // pre-fusión). El require vive DENTRO del gesto —como en More.js— para
+    // que un import en la cabecera no tumbe el arranque entero: sin módulo,
+    // los ajustes abren igual y aquí solo se avisa que la foto no se puede
+    // cambiar en esta versión.
+    let ImagePicker = null;
+    try { ImagePicker = require('expo-image-picker'); } catch (e) { ImagePicker = null; }
+    if (!ImagePicker?.launchImageLibraryAsync) { toast(t.sinPicker, 'error'); return; }
     const r = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'], base64: true, quality: 0.7, allowsEditing: true, aspect: [1, 1],
     }).catch(() => null);

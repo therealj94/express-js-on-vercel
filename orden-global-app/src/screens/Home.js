@@ -20,7 +20,9 @@ export default function Home({ nav }) {
   const { account, login } = useAccount();
   const refreshedOnce = useRef(false);
 
-  const acc = account || { name: 'Cuenta', initials: 'VW', addr: '', balances: [], genesisUid: null };
+  // Respaldo 'OG' (Orden Global): el 'VW' del fork era un monograma de Veta
+  // Wallet suelto en una app que se firma Orden Global.
+  const acc = account || { name: 'Cuenta', initials: 'OG', addr: '', balances: [], genesisUid: null };
   const shortAddr = acc.addr && acc.addr.length > 14 ? `${acc.addr.slice(0, 6)}…${acc.addr.slice(-4)}` : acc.addr || '';
 
   const list = tokensFromBalances(acc.balances);

@@ -20,11 +20,14 @@ import { versionLabel } from '../version';
 import { useT, useLang } from '../i18n';
 
 const shortAddr = (a) => (a && a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a || '');
-const fmtDate = (ts) => {
+// El locale sigue al idioma elegido, como ya hace AuroChat: con la app en
+// inglés las fechas no pueden salir en formato hondureño en español.
+const localeDe = (lang) => (lang === 'en' ? 'en-US' : 'es-HN');
+const fmtDate = (ts, loc = 'es-HN') => {
   if (!ts) return '';
   const d = new Date(Number(ts) * 1000);
-  return d.toLocaleDateString('es-HN', { day: '2-digit', month: 'short', year: 'numeric' }) + ' · ' +
-    d.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString(loc, { day: '2-digit', month: 'short', year: 'numeric' }) + ' · ' +
+    d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
 };
 
 // ================= ACTIVIDAD (historial real de la blockchain) =================
@@ -34,6 +37,8 @@ export function Activity({ nav }) {
   const [contactos, setContactos] = useState([]);    // libreta para nombrar direcciones
   const toast = useToast();
   const t = useT();
+  const { lang } = useLang();
+  const loc = localeDe(lang);
   const { account } = useAccount();
   const txns = account?.transfers || [];
   const filters = [['all', t('act.all')], ['in', t('act.in')], ['out', t('act.out')]];
@@ -47,7 +52,9 @@ export function Activity({ nav }) {
 
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header title={t('act.title')} sub={t('act.sub')} onBack={() => nav.go('home')} />
+      {/* Actividad es PESTAÑA de la barra veta: sin flecha de atrás — la
+          heredada del apilado pre-fusión teletransportaba a la billetera. */}
+      <Header title={t('act.title')} sub={t('act.sub')} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
           {filters.map(([k, l]) => (
@@ -71,7 +78,7 @@ export function Activity({ nav }) {
               <View style={styles.txnIc}><Icon name={inbound ? 'arrow-down' : 'arrow-up'} size={19} color={inbound ? C.up : C.gold} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.txnT}>{inbound ? t('act.in') : t('act.out')} {x.symbol || 'ORIGEN'}</Text>
-                <Text style={styles.txnD}>{fmtDate(x.timeStamp)}</Text>
+                <Text style={styles.txnD}>{fmtDate(x.timeStamp, loc)}</Text>
                 <Text style={styles.txnD}>{inbound ? t('act.from') : t('act.to')}: {etiqueta(otra)}</Text>
               </View>
               <Text style={[styles.txnV, inbound && { color: C.up }]}>{inbound ? '+' : '-'}{qtyFmt(Number(x.value) || 0)}</Text>
@@ -88,13 +95,14 @@ export function Activity({ nav }) {
 // Es lo que antes salía solo como un toast con el hash cortado.
 function TxDetail({ data, etiqueta, onClose, onToast }) {
   const t = useT();
+  const { lang } = useLang();
   if (!data) return null;
   const inbound = data.inbound;
   const otra = inbound ? data.from : data.to;
   const copiar = async (v) => { if (!v) return; hap(); try { await Clipboard.setStringAsync(String(v)); onToast(t('recv.copied')); } catch (e) {} };
   const filas = [
     [inbound ? t('act.from') : t('act.to'), etiqueta(otra), otra],
-    [t('send.date'), fmtDate(data.timeStamp)],
+    [t('send.date'), fmtDate(data.timeStamp, localeDe(lang))],
     [t('send.network'), 'Orden Global · 8532'],
     data.blockNumber != null ? [t('send.block'), `#${data.blockNumber}`] : null,
     data.gasUsed != null ? [t('send.gas'), String(data.gasUsed)] : null,
@@ -166,10 +174,13 @@ export function Settings({ nav }) {
   const t = useT();
   const { lang, setLang } = useLang();
   const { account, logout } = useAccount();
-  const acc = account || { name: 'Cuenta', email: '', initials: 'VW', addr: '', genesisUid: null };
+  const acc = account || { name: 'Cuenta', email: '', initials: 'OG', addr: '', genesisUid: null };
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header title={t('set.title')} onBack={() => nav.go('home')} />
+      {/* Ajustes es PESTAÑA de la sección og: sin flecha de atrás. La que
+          había mandaba nav.go('home') y desde el hub «atrás» te
+          teletransportaba a la billetera. */}
+      <Header title={t('set.title')} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 110 }}>
         <LinearGradient colors={G.green} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.prof}>
           {acc.passport?.photoUrl ? (
@@ -335,6 +346,7 @@ export function Passport({ nav }) {
   const { account, login } = useAccount();
   const toast = useToast();
   const t = useT();
+  const { lang } = useLang();
   const acc = account || {};
 
   /**
@@ -436,7 +448,7 @@ export function Passport({ nav }) {
     p?.nationality ? [t('pass.nat'), p.nationality] : null,
     p?.birthDate ? [t('pass.dob'), p.birthDate] : null,
     [t('auth.email'), p?.email || acc.email || '—'],
-    [t('pass.issued'), fmtIssued(p?.issuedAt) || acc.since || '—'],
+    [t('pass.issued'), fmtIssued(p?.issuedAt, localeDe(lang)) || acc.since || '—'],
     [t('pass.status'), statusLbl],
   ].filter(Boolean);
 
@@ -461,7 +473,7 @@ export function Passport({ nav }) {
               <Image source={{ uri: p.photoUrl }} style={styles.passPhotoImg} />
             ) : (
               <LinearGradient colors={G.gold} style={styles.passPhoto}>
-                <Text style={{ color: C.darkText, fontWeight: '800', fontSize: 26 }}>{acc.initials || 'VW'}</Text>
+                <Text style={{ color: C.darkText, fontWeight: '800', fontSize: 26 }}>{acc.initials || 'OG'}</Text>
               </LinearGradient>
             )}
             <View style={{ flex: 1 }}>
@@ -534,11 +546,11 @@ export function Passport({ nav }) {
   );
 }
 
-function fmtIssued(iso) {
+function fmtIssued(iso, loc = 'es-HN') {
   if (!iso) return null;
   const d = new Date(iso);
   if (isNaN(d)) return null;
-  return d.toLocaleDateString('es-HN', { day: '2-digit', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString(loc, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 // ================= PERFIL (datos reales de la cuenta) =================
@@ -600,7 +612,7 @@ export function Profile({ nav }) {
           {p?.photoUrl ? (
             <Image source={{ uri: p.photoUrl }} style={styles.profAvBig} />
           ) : (
-            <LinearGradient colors={G.gold} style={styles.profAvBig}><Text style={{ color: C.darkText, fontWeight: '800', fontSize: 26 }}>{acc.initials || 'VW'}</Text></LinearGradient>
+            <LinearGradient colors={G.gold} style={styles.profAvBig}><Text style={{ color: C.darkText, fontWeight: '800', fontSize: 26 }}>{acc.initials || 'OG'}</Text></LinearGradient>
           )}
           {verificado ? (
             <View style={styles.verifPill}>

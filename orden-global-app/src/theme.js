@@ -38,6 +38,10 @@ export const G = {
 };
 
 export const F = {
-  // font families fall back to system; expo uses system by default
-  h: undefined,
+  // La fuente de display del lockup de marca (splash y login). Se carga con
+  // expo-font en src/fuentes.js; mientras no está lista —o si el binario no
+  // trae el módulo— las pantallas caen a la del sistema. Nota: las fuentes
+  // propias en Android no sintetizan negrita ni itálica, así que al aplicarla
+  // hay que poner fontWeight 'normal' y fontStyle 'normal' explícitos.
+  h: 'Cinzel-Bold',
 };

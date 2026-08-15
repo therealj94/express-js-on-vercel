@@ -24,24 +24,26 @@ import { listContacts, nameFor } from '../../addressBook';
 
 const TXT = {
   es: {
-    titulo: 'Cobros', sub: 'Recibidos en la cadena · Orden Global',
-    total: 'TOTAL RECIBIDO', numCobros: '{n} cobros', unCobro: '1 cobro',
+    titulo: 'Entradas', sub: 'Todo lo que entró a tu billetera · Orden Global',
+    total: 'ORIGEN RECIBIDO', numCobros: '{n} entradas de ORIGEN', unCobro: '1 entrada de ORIGEN',
     otros: 'Además de ORIGEN también recibiste otros tokens; aparecen abajo con su símbolo.',
-    de: 'De', leyendo: 'Leyendo tus cobros en la cadena…',
+    honesto: 'Sin el backend de MyTokenPay la cadena no distingue una venta de una remesa o un depósito tuyo: esta lista es TODO lo que entra, no solo tus cobros.',
+    de: 'De', leyendo: 'Leyendo tus entradas en la cadena…',
     sinDatos: 'La cadena no devolvió movimientos: puede que tu cuenta sea nueva o que no hubiera conexión. Desliza hacia abajo para reintentar.',
-    vacioT: 'Sin cobros todavía',
+    vacioT: 'Sin entradas todavía',
     vacioP: 'Cuando alguien escanee tu QR y firme el pago, el cobro aparece aquí con su fecha, su monto y de quién vino.',
-    cobrarBtn: 'COBRAR CON QR', refrescado: 'Cobros actualizados',
+    cobrarBtn: 'COBRAR CON QR', refrescado: 'Entradas actualizadas',
   },
   en: {
-    titulo: 'Payments', sub: 'Received on chain · Orden Global',
-    total: 'TOTAL RECEIVED', numCobros: '{n} payments', unCobro: '1 payment',
+    titulo: 'Incoming', sub: 'Everything that came into your wallet · Orden Global',
+    total: 'ORIGEN RECEIVED', numCobros: '{n} ORIGEN deposits', unCobro: '1 ORIGEN deposit',
     otros: 'Besides ORIGEN you also received other tokens; they show below with their symbol.',
-    de: 'From', leyendo: 'Reading your payments on chain…',
+    honesto: 'Without the MyTokenPay backend the chain cannot tell a sale from a remittance or your own deposit: this list is EVERYTHING coming in, not just your charges.',
+    de: 'From', leyendo: 'Reading your incoming transfers on chain…',
     sinDatos: 'The chain returned no movements: your account may be new, or the connection failed. Pull down to retry.',
-    vacioT: 'No payments yet',
+    vacioT: 'Nothing has come in yet',
     vacioP: 'When someone scans your QR and signs the payment, it shows up here with its date, amount and who it came from.',
-    cobrarBtn: 'CHARGE WITH QR', refrescado: 'Payments refreshed',
+    cobrarBtn: 'CHARGE WITH QR', refrescado: 'Incoming refreshed',
   },
 };
 
@@ -101,7 +103,11 @@ export default function ActividadPay({ nav }) {
     .sort((a, b) => (Number(b.timeStamp) || 0) - (Number(a.timeStamp) || 0)), [transfers]);
 
   const esOrigen = (x) => (x.symbol || 'ORIGEN') === 'ORIGEN';
-  const totalOrigen = entrantes.filter(esOrigen).reduce((a, x) => a + (Number(x.value) || 0), 0);
+  // La tarjeta del total y su contador hablan del MISMO conjunto (entradas de
+  // ORIGEN): antes el «n cobros» contaba todos los tokens debajo de un total
+  // que solo sumaba ORIGEN, y las dos cifras no podían cuadrar.
+  const enOrigen = entrantes.filter(esOrigen);
+  const totalOrigen = enOrigen.reduce((a, x) => a + (Number(x.value) || 0), 0);
   const hayOtros = entrantes.some((x) => !esOrigen(x));
 
   // La lista se agrupa por día (como el hilo del chat): un separador por
@@ -170,11 +176,13 @@ export default function ActividadPay({ nav }) {
                     {qtyFmt(totalOrigen)} <Text style={st.resumenMon}>ORIGEN</Text>
                   </Text>
                   <Text style={st.resumenSub}>
-                    {entrantes.length === 1 ? t.unCobro : t.numCobros.replace('{n}', String(entrantes.length))}
+                    {enOrigen.length === 1 ? t.unCobro : t.numCobros.replace('{n}', String(enOrigen.length))}
                   </Text>
                 </View>
                 <View style={st.resumenIc}><Icon name="trending-up" size={22} color={C.gold} /></View>
               </LinearGradient>
+              {/* la etiqueta honesta de toda la lista: entradas, no ventas */}
+              <Text style={st.nota}>{t.honesto}</Text>
               {hayOtros ? <Text style={st.nota}>{t.otros}</Text> : null}
             </Fila>
           ) : null
@@ -185,7 +193,9 @@ export default function ActividadPay({ nav }) {
               <View style={st.vacioIc}><Icon name="qr-code" size={30} color={C.gold} /></View>
               <Text style={st.vacioT}>{t.vacioT}</Text>
               <Text style={st.vacioP}>{transfers.length === 0 ? t.sinDatos : t.vacioP}</Text>
-              <Button3D title={t.cobrarBtn} icon="qr-code" onPress={() => nav.go('cobrar')}
+              {/* a la caja NUEVA (lempiras, propina, dividir): CobrarOG es la
+                  vieja y queda solo para el atajo del ecosistema */}
+              <Button3D title={t.cobrarBtn} icon="qr-code" onPress={() => nav.go('pay-cobro')}
                 style={{ alignSelf: 'stretch', marginTop: 18 }} />
             </View>
           </Fila>

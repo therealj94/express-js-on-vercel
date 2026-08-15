@@ -71,18 +71,24 @@ async function guardarCrudo(txt) {
 // respaldo mutuo. La principal es open.er-api.com —la misma casa que ya usa
 // src/fx.js para el simulador de remesas, así que la app no estrena
 // proveedor— y la segunda es el espejo en jsDelivr de currency-api.
+//
+// Las MONEDAS son las del retiro de MyTokenPay (NegocioPanel): las dos
+// fuentes devuelven TODAS las tasas en la misma respuesta, así que traer las
+// hermanas del lempira no cuesta ni una petición más — y con ellas el retiro
+// de Guatemala o México deja de convertir con la tabla congelada del original.
+const MONEDAS = ['HNL', 'GTQ', 'NIO', 'CRC', 'MXN'];
 const FUENTES = [
   {
     nombre: 'open.er-api.com',
     url: 'https://open.er-api.com/v6/latest/USD',
     // { result:"success", time_last_update_utc:"…", rates:{ HNL: 26.817151, … } }
-    saca: (d) => (d?.result === 'success' ? Number(d?.rates?.HNL) : NaN),
+    saca: (d, m) => (d?.result === 'success' ? Number(d?.rates?.[m]) : NaN),
   },
   {
     nombre: 'currency-api',
     url: 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',
     // { date:"2026-08-14", usd:{ hnl: 26.81128701, … } }
-    saca: (d) => Number(d?.usd?.hnl),
+    saca: (d, m) => Number(d?.usd?.[m.toLowerCase()]),
   },
 ];
 
@@ -91,6 +97,9 @@ const FUENTES = [
 // Number() vuelve 0) antes de que se convierta en el cambio del día y el
 // comercio cobre con él. Si no pasa el filtro, se prueba la otra fuente.
 const creible = (n) => Number.isFinite(n) && n > 5 && n < 200;
+// Para las demás monedas basta con «finito y positivo»: el colón ronda 500 y
+// el quetzal 7.7, así que el rango del lempira no les sirve de filtro.
+const sanaTasa = (n) => (Number.isFinite(n) && n > 0 ? n : null);
 
 async function pedir(fuente) {
   // Sin corte, un teléfono con red mala deja la promesa colgada y la caja
@@ -101,8 +110,15 @@ async function pedir(fuente) {
     if (ctrl) corte = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, 8000);
     const r = await fetch(fuente.url, ctrl ? { signal: ctrl.signal } : undefined);
     const d = await r.json();
-    const n = fuente.saca(d);
-    return creible(n) ? n : null;
+    // La validez de la respuesta la decide el HNL (la moneda de la casa, la
+    // única con rango conocido); las demás entran si son finitas y positivas.
+    if (!creible(fuente.saca(d, 'HNL'))) return null;
+    const tasas = {};
+    for (const m of MONEDAS) {
+      const n = sanaTasa(fuente.saca(d, m));
+      if (n != null) tasas[m] = n;
+    }
+    return tasas;
   } catch (e) {
     return null;
   } finally {
@@ -128,8 +144,20 @@ function sano(o) {
   if (!o || !creible(Number(o.valor))) return null;
   const cuando = o.cuando ? new Date(o.cuando) : null;
   if (!cuando || Number.isNaN(cuando.getTime())) return null;
+  // `tasas` puede faltar en lo guardado por versiones viejas de este módulo:
+  // en ese caso solo se conoce el HNL y las demás monedas quedan sin dato
+  // (la pantalla lo dice en vez de convertir con una tabla congelada).
+  const tasas = {};
+  if (o.tasas && typeof o.tasas === 'object') {
+    for (const m of MONEDAS) {
+      const n = sanaTasa(Number(o.tasas[m]));
+      if (n != null) tasas[m] = n;
+    }
+  }
+  if (tasas.HNL == null) tasas.HNL = Number(o.valor);
   return {
     valor: Number(o.valor),
+    tasas,
     cuando: cuando.toISOString(),
     fuente: String(o.fuente || '—'),
     dia: o.dia || diaDe(cuando),
@@ -162,10 +190,10 @@ export async function cargarCambio(forzar = false) {
 
     // 2) las fuentes, en orden. La primera que conteste algo creíble manda.
     for (const f of FUENTES) {
-      const n = await pedir(f);
-      if (n != null) {
+      const tasas = await pedir(f);
+      if (tasas != null) {
         const ahora = new Date();
-        CAMBIO = { valor: n, cuando: ahora.toISOString(), fuente: f.nombre, dia: diaDe(ahora) };
+        CAMBIO = { valor: tasas.HNL, tasas, cuando: ahora.toISOString(), fuente: f.nombre, dia: diaDe(ahora) };
         await guardarCrudo(JSON.stringify(CAMBIO));
         return CAMBIO;
       }
@@ -183,6 +211,20 @@ export async function cargarCambio(forzar = false) {
 /** Lempiras por dólar, o null si todavía no hay dato. Nunca un valor de relleno. */
 export function hnlPorUsd() {
   return CAMBIO ? CAMBIO.valor : null;
+}
+
+/**
+ * Unidades de `moneda` por dólar, del MISMO día y la MISMA fuente que el
+ * lempira — o null si no se tiene (moneda fuera de la lista, o guardado de
+ * una versión vieja sin `tasas`). USD siempre es 1: no necesita fuente.
+ * Con esto el retiro de NegocioPanel convierte GTQ/NIO/CRC/MXN en vivo en
+ * vez de con la tabla congelada del original.
+ */
+export function tasaPorUsd(moneda) {
+  const m = String(moneda || '').toUpperCase();
+  if (m === 'USD') return 1;
+  const n = CAMBIO?.tasas?.[m];
+  return sanaTasa(Number(n));
 }
 
 /** ¿De cuándo es el cambio que se está usando? null si no hay ninguno. */

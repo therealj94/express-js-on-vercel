@@ -19,6 +19,11 @@ export const MAPA = {
   'pay/cobrar':      { p: 'pay-cobro' },
   'id/abrir':        { p: 'passport' },
   'chat/abrir':      { p: 'chat', gid: true },     // con=correo
+  // El QR y el enlace de invitación de un grupo (GruposAuro) se imprimen como
+  // og://chat/grupo?inv=… — sin esta entrada la app los descartaba en
+  // silencio y la pantalla «me invitaron» era inalcanzable (PLAN-AURO.md:63).
+  'chat/grupo':      { p: 'auro-grupo', gid: true }, // inv=token
+
   'asistente/abrir': { p: 'ecosistema' },
   // Ajustes es uno de los cinco mundos del Núcleo: si el tablero lo enseña,
   // el asistente tiene que poder abrirlo — «abre los ajustes» no puede

@@ -50,7 +50,7 @@ import { apiPortfolio } from '../../api';
 import { upsertApiAccount } from '../../accounts';
 import { listContacts, nameFor } from '../../addressBook';
 import { leerFicha, PAISES, RUBROS } from './MiNegocio';
-import { useCambio, precioOrigenDe } from '../cambio';
+import { useCambio, precioOrigenDe, tasaPorUsd } from '../cambio';
 
 const TXT = {
   es: {
@@ -65,9 +65,10 @@ const TXT = {
     credT: 'Genesis ID · negocio verificado', credPend: 'Genesis ID pendiente',
     credPendP: 'Tu comercio aparece SIN VERIFICAR hasta que tu Genesis ID esté aprobado. Toca para continuar.',
     titular: 'Titular',
-    hoy: 'ORIGEN hoy', cobros: 'Cobros totales', ticket: 'Ticket promedio',
+    hoy: 'ORIGEN hoy', cobros: 'Entradas de ORIGEN', ticket: 'Ticket promedio',
     retirarBtn: 'RETIRAR A MI BANCO', editar: 'Editar perfil',
-    cobrosT: 'COBROS RECIBIDOS',
+    cobrosT: 'ENTRADAS A TU BILLETERA',
+    cobrosNota: 'La cadena no distingue una venta de una remesa o un depósito tuyo: aquí está TODO lo que entra, no solo tus cobros.',
     cobrosVacio: 'Todavía no hay cobros. Genera tu QR y el primer cobro aparece aquí.',
     sinDatos: 'La cadena no devolvió movimientos: puede que tu cuenta sea nueva o que no hubiera conexión. Desliza hacia abajo para reintentar.',
     de: 'De', retirosT: 'RETIROS',
@@ -85,6 +86,7 @@ const TXT = {
     pendiente: 'Pendiente · sin pasarela', volverBtn: 'VOLVER AL PANEL',
     verFicha: 'Ver ficha pública', refrescado: 'Panel actualizado',
     sinBancos: 'Banco internacional (SWIFT)',
+    tasaRef: 'Tasa de referencia de la tabla del original — NO es el cambio vigente de hoy.',
   },
   en: {
     titulo: 'Business panel', tituloRetiro: 'Withdraw funds', sinNombre: 'Your business',
@@ -98,9 +100,10 @@ const TXT = {
     credT: 'Genesis ID · verified business', credPend: 'Genesis ID pending',
     credPendP: 'Your business shows as UNVERIFIED until your Genesis ID is approved. Tap to continue.',
     titular: 'Holder',
-    hoy: 'ORIGEN today', cobros: 'Total payments', ticket: 'Average ticket',
+    hoy: 'ORIGEN today', cobros: 'ORIGEN deposits', ticket: 'Average ticket',
     retirarBtn: 'WITHDRAW TO MY BANK', editar: 'Edit profile',
-    cobrosT: 'PAYMENTS RECEIVED',
+    cobrosT: 'INCOMING TO YOUR WALLET',
+    cobrosNota: 'The chain cannot tell a sale from a remittance or your own deposit: this is EVERYTHING coming in, not just your charges.',
     cobrosVacio: 'No payments yet. Generate your QR and the first payment appears here.',
     sinDatos: 'The chain returned no movements: your account may be new, or the connection failed. Pull down to retry.',
     de: 'From', retirosT: 'WITHDRAWALS',
@@ -118,6 +121,7 @@ const TXT = {
     pendiente: 'Pending · no rail', volverBtn: 'BACK TO PANEL',
     verFicha: 'See public listing', refrescado: 'Panel refreshed',
     sinBancos: 'International bank (SWIFT)',
+    tasaRef: 'Reference rate from the original’s table — NOT today’s exchange rate.',
   },
 };
 
@@ -127,9 +131,10 @@ const TXT = {
 // internacional, igual que allá.
 // El `porUsd` de esta tabla es de referencia y envejece: el 24.75 de Honduras
 // que venía en el original ya se quedó casi dos lempiras corto contra el
-// mercado. Para HNL —la moneda de la casa— el número se reemplaza en vivo con
-// el cambio del día (cambio.js) y se dice de cuándo es; los demás países
-// siguen con su valor de tabla mientras nadie pida lo mismo para ellos.
+// mercado. Por eso HNL, GTQ, NIO, CRC y MXN se reemplazan en vivo con el
+// cambio del día (cambio.js trae todas las tasas en la misma respuesta) y se
+// dice de cuándo es; la tabla solo queda como último recurso, y cuando manda
+// ella la pantalla lo confiesa con el pie «tasa de referencia».
 const PAGOS = {
   honduras: { moneda: 'HNL', simbolo: 'L', porUsd: 24.75, bancos: ['Banco Atlántida', 'BAC Credomatic', 'Banpaís', 'Ficohsa', 'Banco de Occidente'] },
   guatemala: { moneda: 'GTQ', simbolo: 'Q', porUsd: 7.75, bancos: ['Banco Industrial', 'Banrural', 'BAM', 'G&T Continental'] },
@@ -306,13 +311,25 @@ export default function NegocioPanel({ nav }) {
   const enOrigen = entrantes.filter(esOrigen);
   const ticket = enOrigen.length ? enOrigen.reduce((a, x) => a + (Number(x.value) || 0), 0) / enOrigen.length : 0;
 
-  // Para Honduras el "por dólar" de la tabla se cambia por el del día. Se
-  // hace aquí y no dentro de PAGOS para que la tabla siga siendo el dato
-  // estático del original y esta línea sea el único sitio donde el lempira
-  // se vuelve vivo — así se ve de un vistazo qué se está pisando.
+  // El "por dólar" de la tabla se cambia por el del día para TODA moneda que
+  // cambio.js traiga (HNL, GTQ, NIO, CRC, MXN — las dos fuentes devuelven
+  // todas las tasas en la misma respuesta). Se hace aquí y no dentro de PAGOS
+  // para que la tabla siga siendo el dato estático del original y esta línea
+  // sea el único sitio donde una tasa se vuelve viva. Si la tasa viva no
+  // está (sin red y sin guardado), se cae a la tabla Y SE DICE con el pie
+  // «tasa de referencia»: una tasa congelada sin aviso hace que el comercio
+  // se crea una cifra que ya envejeció.
   const pagoTabla = pagoDe(ficha?.pais, t.sinBancos);
-  const hnlVivo = pagoTabla.moneda === 'HNL' && cambio.listo;
-  const pago = hnlVivo ? { ...pagoTabla, porUsd: cambio.hnl } : pagoTabla;
+  const esUsd = pagoTabla.moneda === 'USD'; // el dólar no necesita tasa: 1 es 1
+  const tasaViva = cambio.listo ? tasaPorUsd(pagoTabla.moneda) : null;
+  const pago = tasaViva != null ? { ...pagoTabla, porUsd: tasaViva } : pagoTabla;
+  // hnlVivo: hay tasa del día para la moneda del país (el pie del cambio con
+  // fecha y fuente solo se enseña entonces; el dólar no lleva pie: no hay
+  // conversión que fechar). Cuando NO la hay y la moneda no es USD, toda
+  // cifra convertida lleva el pie «tasa de referencia» — jamás una cifra
+  // congelada disfrazada de dato del día.
+  const hnlVivo = tasaViva != null && !esUsd;
+  const tasaVieja = tasaViva == null && !esUsd;
   const aLocal = (o) => (precio == null ? null : Math.round(o * precio * pago.porUsd * 100) / 100);
   const montoNum = parseAmt(monto);
   const montoLocal = aLocal(montoNum);
@@ -420,10 +437,11 @@ export default function NegocioPanel({ nav }) {
                 </Text>
               </LinearGradient>
               <Text style={st.nota}>{precio == null ? t.sinPrecio : t.saldoNota}</Text>
-              {/* De cuándo es el lempira con el que se pintó ese "≈". Solo
-                  cuando el cambio es el vivo: bajo el 24.75 de tabla sería
-                  mentira poner una fecha de hoy. */}
+              {/* De cuándo es la tasa con la que se pintó ese "≈". Solo
+                  cuando el cambio es el vivo: bajo una tasa de tabla sería
+                  mentira poner una fecha de hoy — ahí va el otro pie. */}
               {hnlVivo && cambio.pie ? <Text style={st.pie}>{cambio.pie}</Text> : null}
+              {tasaVieja && precio != null ? <Text style={st.pie}>{t.tasaRef}</Text> : null}
             </Entrada>
 
             {/* credencial Genesis: la de verdad, no un GEN-… de ejemplo */}
@@ -465,7 +483,10 @@ export default function NegocioPanel({ nav }) {
                 </View>
                 <View style={[st.metrica, st.metMedio]}>
                   <Icon name="document-text" size={16} color={C.goldLt} />
-                  <Text style={st.metNum}>{entrantes.length}</Text>
+                  {/* el mismo conjunto que las otras dos métricas (ORIGEN):
+                      contar todos los tokens junto a un «hoy» y un ticket
+                      que solo suman ORIGEN daba tres cifras que no cuadraban */}
+                  <Text style={st.metNum}>{enOrigen.length}</Text>
                   <Text style={st.metLbl}>{t.cobros}</Text>
                 </View>
                 <View style={st.metrica}>
@@ -498,6 +519,7 @@ export default function NegocioPanel({ nav }) {
 
             <Entrada llave="panel" delay={260}>
               <Text style={st.grupo}>{t.cobrosT}</Text>
+              <Text style={st.nota}>{t.cobrosNota}</Text>
               {transfers === undefined ? (
                 <View style={{ gap: 9 }}>
                   <Skeleton width="100%" height={58} radius={16} />
@@ -556,6 +578,7 @@ export default function NegocioPanel({ nav }) {
               <Text style={st.dispNum}>{qtyFmt(saldo)} ORIGEN</Text>
               {precio != null ? <Text style={st.dispSub}>≈ {fmtLocal(aLocal(saldo), pago)}</Text> : null}
               {hnlVivo && cambio.pie ? <Text style={st.pie}>{cambio.pie}</Text> : null}
+              {tasaVieja && precio != null ? <Text style={st.pie}>{t.tasaRef}</Text> : null}
             </Card>
 
             <View style={{ marginTop: 16 }}>
@@ -584,6 +607,7 @@ export default function NegocioPanel({ nav }) {
                     {rellena(t.tasa, { r: fmtLocal(aLocal(1), pago) })}
                   </Text>
                   {hnlVivo && cambio.pie ? <Text style={st.pie}>{cambio.pie}</Text> : null}
+                  {tasaVieja ? <Text style={st.pie}>{t.tasaRef}</Text> : null}
                 </>
               )}
             </View>

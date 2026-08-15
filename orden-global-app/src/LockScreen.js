@@ -17,7 +17,11 @@ const RE_LOCK_MS = 2 * 60 * 1000; // 2 minutos
 
 export function useAppLock() {
   const [locked, setLocked] = useState(true);
-  const [available, setAvailable] = useState(true);
+  // `available` arranca en false: hasta no confirmar hardware Y huella
+  // enrolada, nadie debe disparar authenticateAsync. Arrancar en true hacía
+  // que LockScreen pidiera biometría al instante, antes del chequeo — hasta
+  // en teléfonos que no la tienen.
+  const [available, setAvailable] = useState(false);
   const lastActive = useRef(Date.now());
   const state = useRef(AppState.currentState);
 
@@ -72,7 +76,10 @@ export default function LockScreen({ onUnlock, available }) {
     } finally { setTrying(false); }
   };
 
-  useEffect(() => { authenticate(); /* eslint-disable-next-line */ }, []);
+  // El prompt se dispara cuando `available` ya está CONFIRMADO, no al montar:
+  // con el chequeo de hardware aún en el aire, authenticate() habría tomado
+  // `available=false` por «no hay biometría» y desbloqueado sin pedir nada.
+  useEffect(() => { if (available) authenticate(); /* eslint-disable-next-line */ }, [available]);
 
   // El anillo late mientras el sistema espera la cara o el dedo: da señal de
   // que la app está pidiendo algo, no colgada.

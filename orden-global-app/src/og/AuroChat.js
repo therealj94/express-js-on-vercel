@@ -15,7 +15,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View, Text, TextInput, Pressable, FlatList, StyleSheet, Modal, Animated,
-  ActivityIndicator, Image,
+  ActivityIndicator, Image, Platform, BackHandler,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
@@ -23,16 +23,17 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Linking from 'expo-linking';
-import * as SecureStore from 'expo-secure-store';
+import Constants from 'expo-constants';
 import { C, G } from '../theme';
-import { Header, useAccount, useToast, hap } from '../ui';
+import { Header, Button3D, Avatar, useAccount, useToast, hap } from '../ui';
 import { Icon } from '../icons';
 import { useLang } from '../i18n';
 import { PantallaConTeclado, useTeclado } from './Teclado';
 import { genesis } from '../genesis';
-import { addContact, isAddress } from '../addressBook';
 import * as M from './mensajes';
 import { aUri } from './rutas';
+import { guardarContacto, renombrarContacto, eliminarContacto, leerLibreta, comoMapa } from './contactos';
+import { reproducir } from './sonidos';
 
 const TXT = {
   es: {
@@ -58,6 +59,18 @@ const TXT = {
     noGuardo: 'No se pudo guardar el contacto.',
     pagoEnviaste: 'ENVIASTE', pagoRecibiste: 'RECIBISTE', pagoEnvio: 'ENVIÓ',
     confirmado: 'confirmado', explorador: 'Ver en el explorador',
+    editarNombre: 'Editar nombre', quitarLibreta: 'Eliminar de mi libreta',
+    guardarNombre: 'GUARDAR', nombrePh: 'Nombre',
+    renombrado: 'Nombre guardado en tu libreta.',
+    eliminado: 'Se quitó de tu libreta.',
+    editarNota: 'Así lo verás tú en tu libreta; su perfil no cambia.',
+    fallo: 'No se envió', reintentar: 'Reintentar',
+    nuevos: 'Mensajes nuevos ↓',
+    sinRedT: 'Sin conexión',
+    sinRedConvos: 'No pudimos traer tus conversaciones. Puede ser tu conexión o el relevo; tus chats siguen ahí.',
+    sinRedHilo: 'No pudimos traer los mensajes de esta conversación.',
+    sinRedBusca: 'Sin conexión: la búsqueda no llegó al relevo. Intenta de nuevo.',
+    reint: 'REINTENTAR', bannerRed: 'Sin conexión — reintentando…',
   },
   en: {
     marca: 'AURO CHAT', sub: 'People and groups, with Genesis ID',
@@ -82,6 +95,18 @@ const TXT = {
     noGuardo: 'The contact could not be saved.',
     pagoEnviaste: 'YOU SENT', pagoRecibiste: 'YOU RECEIVED', pagoEnvio: 'SENT',
     confirmado: 'confirmed', explorador: 'View on the explorer',
+    editarNombre: 'Edit name', quitarLibreta: 'Remove from my contacts',
+    guardarNombre: 'SAVE', nombrePh: 'Name',
+    renombrado: 'Name saved to your contacts.',
+    eliminado: 'Removed from your contacts.',
+    editarNota: 'This is how YOU will see them; their profile does not change.',
+    fallo: 'Not sent', reintentar: 'Retry',
+    nuevos: 'New messages ↓',
+    sinRedT: 'No connection',
+    sinRedConvos: 'We could not fetch your conversations. It may be your connection or the relay; your chats are still there.',
+    sinRedHilo: 'We could not fetch the messages of this conversation.',
+    sinRedBusca: 'No connection: the search never reached the relay. Try again.',
+    reint: 'RETRY', bannerRed: 'Offline — retrying…',
   },
 };
 
@@ -90,18 +115,16 @@ const TXT = {
 const TOPE_ADJUNTO = 8_000_000;
 
 // El explorador de la cadena. El comprobante no se cree a sí mismo: enseña el
-// hash y lleva a donde cualquiera puede comprobarlo por su cuenta.
-const EXPLORADOR = 'https://testnet.ordenscan.com/tx/';
+// hash y lleva a donde cualquiera puede comprobarlo por su cuenta. La URL
+// sale de expoConfig.extra —igual que la del relevo en mensajes.js— con el
+// testnet solo como valor por defecto: el día que la cadena salga de testnet
+// basta cambiar app.json y ningún comprobante viejo queda con el enlace roto.
+const EXPLORADOR = ((Constants.expoConfig?.extra || {}).exploradorTx || 'https://testnet.ordenscan.com/tx/');
 
-// La libreta del chat va en SecureStore por encargo. Los valores de SecureStore
-// se pueden quedar cortos pasados unos 2 KB, así que cada contacto guarda solo
-// lo que hace falta para escribirle o pagarle, y la lista se queda con los 30
-// más recientes: mejor una libreta que siempre escribe que una que un día
-// falla en silencio. La dirección de cadena, además, se copia a la libreta del
-// teléfono (addressBook), que es la que pone nombre a un 0x en Enviar y en
-// Actividad — src/api.js no exporta guardarContacto, se comprobó.
-const LIBRETA = 'og.contactos';
-const TOPE_LIBRETA = 30;
+// La libreta del chat (og.contactos) se mudó a ./contactos.js: antes solo se
+// ESCRIBÍA desde aquí y ninguna pantalla la leía. Ahora esta pantalla la lee
+// —el nombre que tú le pusiste a alguien pinta encima del que esa persona se
+// puso en el relevo— y Enviar la renombra cuando el pago nace de una charla.
 
 // blob → base64 pelado (sin el prefijo data:...;base64,). FileReader existe
 // en React Native y evita cargar el binario entero como string intermedio.
@@ -113,8 +136,6 @@ const blobABase64 = (blob) => new Promise((res, rej) => {
 });
 
 const hora = (ms) => { const d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
-const TONOS = [['#F8EFCF', '#C9A961'], ['#9FE3C9', '#2E8F6E'], ['#BFD8F5', '#4A78B0'], ['#F2C4B3', '#B0674A']];
-const tono = (c) => TONOS[String(c).split('').reduce((a, x) => a + x.charCodeAt(0), 0) % TONOS.length];
 // Una conversación se identifica por su id de grupo o por el correo, y de ahí
 // en adelante el destino es UNO SOLO: enviar, bandeja, leído y el aviso del
 // pago hablan todos del mismo string.
@@ -143,27 +164,9 @@ function Entrada({ delay = 0, style, children }) {
   return <Animated.View style={[{ opacity: op, transform: [{ translateY: y }] }, style]}>{children}</Animated.View>;
 }
 
-// El avatar sirve a las tres cosas que hay en la lista: una persona con foto,
-// una persona sin foto (su inicial sobre un tono estable sacado del correo) y
-// un grupo, que se reconoce de un vistazo por la silueta de gente.
-function Avatar({ nombre, correo, foto, grupo, tam = 42 }) {
-  if (foto) {
-    return (
-      <Image source={{ uri: M.urlArchivo(foto) }} resizeMode="cover"
-        style={{ width: tam, height: tam, borderRadius: tam / 2, backgroundColor: C.panel2 }} />
-    );
-  }
-  return (
-    <LinearGradient colors={tono(correo)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-      style={{ width: tam, height: tam, borderRadius: tam / 2, alignItems: 'center', justifyContent: 'center' }}>
-      {grupo ? <Icon name="people" size={tam * 0.5} color="#12312b" /> : (
-        <Text style={{ color: '#12312b', fontWeight: '800', fontSize: tam * 0.4 }}>
-          {String(nombre || correo || '?')[0].toUpperCase()}
-        </Text>
-      )}
-    </LinearGradient>
-  );
-}
+// El Avatar vive ahora en src/ui.js: estaba triplicado aquí, en GruposAuro y
+// en AjustesAuro, y tres copias del mismo dibujo acaban pintando a la misma
+// persona de tres maneras.
 
 // ── La tarjeta de pago ────────────────────────────────────────────────────
 // Un pago NO es un mensaje de texto y no debe parecerlo: monto grande en oro,
@@ -205,21 +208,6 @@ function TarjetaPago({ m, mio, autor, t, toast }) {
   );
 }
 
-// Guardar a alguien en la libreta. Se hace idempotente por correo: escanear
-// dos veces al mismo actualiza su ficha en vez de duplicarla.
-async function guardarContacto(correo, nombre, addr, emailCuenta) {
-  const crudo = await SecureStore.getItemAsync(LIBRETA).catch(() => null);
-  let lista = [];
-  try { const p = JSON.parse(crudo || '[]'); if (Array.isArray(p)) lista = p; } catch { lista = []; }
-  const rec = { nombre: nombre || correo.split('@')[0], correo, addr: addr || '' };
-  const i = lista.findIndex((x) => String(x && x.correo || '').toLowerCase() === correo);
-  if (i >= 0) lista[i] = { ...lista[i], ...rec }; else lista.push(rec);
-  await SecureStore.setItemAsync(LIBRETA, JSON.stringify(lista.slice(-TOPE_LIBRETA)));
-  // si además sabemos su dirección de cadena, entra en la libreta del teléfono
-  // y su nombre aparecerá en Enviar y en Actividad, no solo aquí
-  if (isAddress(rec.addr)) await addContact(emailCuenta, { name: rec.nombre, address: rec.addr }).catch(() => {});
-}
-
 export default function AuroChat({ nav, params }) {
   const { lang } = useLang();
   const t = TXT[lang] || TXT.es;
@@ -230,6 +218,10 @@ export default function AuroChat({ nav, params }) {
   const [gente, setGente] = useState(null);
   const [con, setCon] = useState(null);                  // la conversación abierta
   const [hilo, setHilo] = useState([]);
+  const [pendientes, setPendientes] = useState([]);      // burbujas mías aún sin entrar (o fallidas)
+  const [sinRed, setSinRed] = useState(false);           // el relevo no contesta: se DICE, no se finge vacío
+  const [buscaMal, setBuscaMal] = useState(false);       // la búsqueda falló por red, no por "nadie"
+  const [nuevos, setNuevos] = useState(false);           // chip «mensajes nuevos ↓» si el scroll no está al fondo
   const [nombres, setNombres] = useState({});            // correo → nombre, para saber quién habla
   const [texto, setTexto] = useState('');
   const [qr, setQr] = useState(null);                    // 'mio' | 'scan' | null
@@ -237,10 +229,18 @@ export default function AuroChat({ nav, params }) {
   const [subiendo, setSubiendo] = useState(false);
   const [foto, setFoto] = useState(null);                // url de imagen a pantalla completa
   const [ofrecido, setOfrecido] = useState(null);        // a quién ofrecemos guardar tras escanear
+  const [libreta, setLibreta] = useState({});            // correo → ficha de MI libreta (og.contactos)
+  const [menuContacto, setMenuContacto] = useState(null); // {correo, nombre, addr}: la hojita de mantener pulsado
+  const [editar, setEditar] = useState(null);            // a quién se le edita el nombre
+  const [nombreEd, setNombreEd] = useState('');          // el nombre en la hoja de editar
   const [permiso, pedirPermiso] = useCameraPermissions();
   const toast = useToast();
   const lista = useRef(null);
   const leido = useRef(false);
+  const fotoConvos = useRef(null);                       // id → cuando del último; para oír solo lo NUEVO
+  const alFondo = useRef(true);                          // ¿el scroll del hilo está pegado al final?
+  const prevLargo = useRef(0);                           // cuántas filas tenía el hilo en el último repintado
+  const enviando = useRef(false);                        // un envío en vuelo: no se dispara dos veces
   const destino = idDe(con);
   const enGrupo = esGrupoDe(con);
   const tecla = useTeclado();
@@ -253,6 +253,9 @@ export default function AuroChat({ nav, params }) {
   useEffect(() => {
     if (!tecla.alto) return undefined;
     const id = setTimeout(() => {
+      // solo si ya se estaba al fondo: abrir el teclado mientras se lee el
+      // historial no debe robar el scroll igual que no lo roba el sondeo
+      if (!alFondo.current) return;
       try { lista.current?.scrollToEnd({ animated: true }); } catch (e) {}
     }, 60);
     return () => clearTimeout(id);
@@ -272,6 +275,19 @@ export default function AuroChat({ nav, params }) {
       return nuevo || prev;
     });
   }, []);
+
+  // ── mi libreta: el nombre que YO le puse manda sobre el del relevo ──
+  const cargarLibreta = useCallback(async () => {
+    setLibreta(comoMapa(await leerLibreta().catch(() => [])));
+  }, []);
+  useEffect(() => { cargarLibreta(); }, [cargarLibreta]);
+
+  // El nombre con el que se pinta a alguien: primero mi libreta, luego lo
+  // que diga el relevo, y de último lo que va antes de la arroba.
+  const nombreDe = useCallback((correo, delRelevo) => {
+    const c = String(correo || '').toLowerCase();
+    return (libreta[c] && libreta[c].nombre) || delRelevo || c.split('@')[0] || '?';
+  }, [libreta]);
 
   // ── el candado de Genesis: primero lo guardado (rápido), luego la red ──
   useEffect(() => {
@@ -297,8 +313,31 @@ export default function AuroChat({ nav, params }) {
       const cs = d.conversaciones || [];
       setConvos(cs);
       aprenderNombres(cs.filter((c) => !esGrupoDe(c)).map((c) => [c.correo, c.nombre]));
-    } catch { setConvos((x) => x || []); }
-  }, [aprenderNombres]);
+      // El tono suave del chat: solo cuando un mensaje AJENO llega estando
+      // esta lista a la vista (el sondeo se detiene con un hilo abierto, así
+      // que aquí nunca se suena encima de la conversación que se está
+      // leyendo). La primera pasada solo toma la foto: el historial no suena.
+      const mio = String(account?.email || '').toLowerCase();
+      const previa = fotoConvos.current;
+      const foto = {};
+      let hayNuevo = false;
+      for (const c of cs) {
+        const u = c.ultimo;
+        const cuando = u ? Number(u.cuando) || 0 : 0;
+        foto[idDe(c)] = cuando;
+        if (previa && u && c.sinLeer > 0 && String(u.de || '').toLowerCase() !== mio
+          && cuando > (previa[idDe(c)] || 0)) hayNuevo = true;
+      }
+      fotoConvos.current = foto;
+      if (hayNuevo) reproducir('recibido', { suave: true });
+      setSinRed(false);
+    } catch {
+      // Sin red NO se finge una lista vacía: `convos` se queda como estaba
+      // (null pinta el estado de «sin conexión», nunca el «aún no tienes
+      // conversaciones») y el banner avisa mientras el sondeo reintenta.
+      setSinRed(true);
+    }
+  }, [aprenderNombres, account?.email]);
   useEffect(() => {
     if (puerta !== 'abierta' || con) return;
     traerConvos();
@@ -324,10 +363,17 @@ export default function AuroChat({ nav, params }) {
     } catch {}
   }, [aprenderNombres]);
 
-  // llegar con ?con=correo (del QR o del asistente) abre el hilo directo
+  // llegar con ?con=correo (del QR o del asistente) abre el hilo directo.
+  // Y si además viene ?txt= (el mensaje DICTADO a NEXUS: «…que diga llego en
+  // diez minutos»), el texto se deja ESCRITO en la caja, jamás enviado: José
+  // lo pidió con todas las letras — «solo toque enviar». El último control
+  // sobre lo que sale de su teléfono es su dedo, no el asistente.
   useEffect(() => {
-    if (params?.con && puerta === 'abierta') abrirPersona(params.con);
-  }, [params?.con, puerta, abrirPersona]);
+    if (params?.con && puerta === 'abierta') {
+      abrirPersona(params.con);
+      if (params?.txt) setTexto(String(params.txt));
+    }
+  }, [params?.con, params?.txt, puerta, abrirPersona]);
 
   // La ficha del grupo: de aquí salen los nombres con los que se firma cada
   // burbuja ajena. Sin esto un grupo sería un montón de correos hablando.
@@ -348,7 +394,10 @@ export default function AuroChat({ nav, params }) {
   useEffect(() => {
     if (busca.trim().length < 2) { setGente(null); return; }
     const r = setTimeout(async () => {
-      try { const d = await M.buscar(busca.trim()); setGente(d.gente || []); } catch { setGente([]); }
+      // Sin red la búsqueda NO dice «nadie con ese nombre» — eso sería
+      // afirmar algo que el relevo nunca contestó. `buscaMal` pinta la verdad.
+      try { const d = await M.buscar(busca.trim()); setGente(d.gente || []); setBuscaMal(false); }
+      catch { setGente([]); setBuscaMal(true); }
     }, 350);
     return () => clearTimeout(r);
   }, [busca]);
@@ -358,25 +407,80 @@ export default function AuroChat({ nav, params }) {
     try {
       const d = await M.bandeja(destino);
       setHilo(d.mensajes || []);
+      setSinRed(false);
       if (!leido.current) { leido.current = true; M.leido(destino).catch(() => {}); }
-    } catch {}
+    } catch {
+      // El catch vacío dejaba la pantalla en blanco sin decir por qué. Ahora
+      // `sinRed` pinta el aviso y el sondeo de 3s sigue reintentando solo.
+      setSinRed(true);
+    }
   }, [destino]);
   useEffect(() => {
     if (!destino) return;
     leido.current = false;
+    // hilo nuevo, scroll nuevo: se arranca pegado al fondo y sin chip
+    alFondo.current = true;
+    prevLargo.current = 0;
+    setNuevos(false);
     traerHilo();
     const r = setInterval(traerHilo, 3000);
     return () => clearInterval(r);
   }, [destino, traerHilo]);
 
+  // El botón ATRÁS de Android dentro de una conversación vuelve a la LISTA,
+  // no afuera de AURO CHAT: el hilo no es una ruta del router (vive en el
+  // estado `con`), así que sin esto el handler global de App.js hacía pop de
+  // 'chat' entero — en WhatsApp atrás = lista, y esa es la expectativa.
+  // Misma convención de la casa que ExplorarPay y NegocioPanel: el listener
+  // más reciente gana al global mientras haya hilo abierto.
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !con) return undefined;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setCon(null); setHilo([]); setPendientes([]); setOfrecido(null);
+      return true;
+    });
+    return () => sub.remove();
+  }, [con]);
+
+  // Enviar sin que el texto pueda perderse JAMÁS. Tres reglas:
+  //   · la burbuja optimista vive en `pendientes`, NO en `hilo`: el sondeo de
+  //     3s puede reemplazar el hilo entero sin llevársela;
+  //   · la caja no se vacía hasta que el envío ENTRA en el relevo;
+  //   · si falla, la burbuja queda en rojo con «Reintentar» al toque.
   const mandar = async () => {
     const cuerpo = texto.trim();
-    if (!cuerpo || !destino) return;
-    setTexto('');
-    const mio = { de: account.email, texto: cuerpo, cuando: Date.now(), pendiente: true };
-    setHilo((h) => [...h, mio]);
-    try { await M.enviar(destino, cuerpo); traerHilo(); }
-    catch { setHilo((h) => h.map((m) => (m === mio ? { ...m, fallo: true } : m))); }
+    if (!cuerpo || !destino || enviando.current) return;
+    enviando.current = true;
+    const mio = {
+      idLocal: 'p' + Date.now() + Math.random().toString(36).slice(2, 6),
+      de: account.email, texto: cuerpo, cuando: Date.now(), pendiente: true,
+    };
+    setPendientes((p) => [...p, mio]);
+    try {
+      await M.enviar(destino, cuerpo);
+      // solo AHORA se vacía la caja — y sin pisar lo que se haya tecleado
+      // encima mientras el envío viajaba
+      setTexto((x) => (x.trim() === cuerpo ? '' : x));
+      await traerHilo();
+      setPendientes((p) => p.filter((x) => x.idLocal !== mio.idLocal));
+    } catch {
+      // la burbuja roja conserva el texto y ofrece reintentar: la caja se
+      // libera para lo siguiente, el mensaje ya no puede desaparecer
+      setPendientes((p) => p.map((x) => (x.idLocal === mio.idLocal ? { ...x, pendiente: false, fallo: true } : x)));
+      setTexto((x) => (x.trim() === cuerpo ? '' : x));
+    } finally { enviando.current = false; }
+  };
+
+  const reintentar = async (m) => {
+    hap();
+    setPendientes((p) => p.map((x) => (x.idLocal === m.idLocal ? { ...x, pendiente: true, fallo: false } : x)));
+    try {
+      await M.enviar(destino, m.texto);
+      await traerHilo();
+      setPendientes((p) => p.filter((x) => x.idLocal !== m.idLocal));
+    } catch {
+      setPendientes((p) => p.map((x) => (x.idLocal === m.idLocal ? { ...x, pendiente: false, fallo: true } : x)));
+    }
   };
 
   // ── adjuntos ──────────────────────────────────────────────────────────
@@ -443,12 +547,14 @@ export default function AuroChat({ nav, params }) {
     Linking.openURL(M.urlArchivo(id)).catch(() => toast(t.noAbre, 'error'));
   };
 
-  // Quién habla, en corto. Los nombres se van aprendiendo de las charlas y de
-  // la ficha del grupo; mientras no se sepa el de alguien se usa lo que va
-  // antes de la arroba — feo, pero nunca deja una frase sin dueño.
+  // Quién habla, en corto. Primero MI libreta (el nombre que yo le puse),
+  // luego los nombres aprendidos de las charlas y de la ficha del grupo;
+  // mientras no se sepa el de alguien se usa lo que va antes de la arroba —
+  // feo, pero nunca deja una frase sin dueño.
   const nombreCorto = (correo) => {
-    const n = nombres[String(correo || '').toLowerCase()];
-    return (n || String(correo || '').split('@')[0]).split(' ')[0];
+    const c = String(correo || '').toLowerCase();
+    const n = (libreta[c] && libreta[c].nombre) || nombres[c];
+    return (n || c.split('@')[0]).split(' ')[0];
   };
 
   // Cómo se resume la última línea de una conversación. En un grupo lleva
@@ -469,12 +575,23 @@ export default function AuroChat({ nav, params }) {
   };
 
   const alEscanear = ({ data }) => {
-    const m = String(data || '').match(/^og:\/\/chat\/abrir\?con=(.+)$/);
-    if (!m) return;
-    hap(); setQr(null); setBusca(''); setGente(null);
-    // se abre el hilo Y se ofrece guardarlo: escanear a alguien y que no quede
-    // nada obliga a volver a buscar el papel del QR la próxima vez
-    abrirPersona(decodeURIComponent(m[1]), true);
+    const s = String(data || '');
+    const persona = s.match(/^og:\/\/chat\/abrir\?con=(.+)$/);
+    if (persona) {
+      hap(); setQr(null); setBusca(''); setGente(null);
+      // se abre el hilo Y se ofrece guardarlo: escanear a alguien y que no
+      // quede nada obliga a volver a buscar el papel del QR la próxima vez
+      abrirPersona(decodeURIComponent(persona[1]), true);
+      return;
+    }
+    // El QR de invitación de un grupo (GruposAuro) es og://chat/grupo?inv=…:
+    // el escáner interno lo acepta igual que la cámara del teléfono — antes
+    // solo entendía chat/abrir y la invitación escaneada moría en silencio.
+    const grupo = s.match(/^og:\/\/chat\/grupo\?inv=(.+)$/);
+    if (grupo) {
+      hap(); setQr(null); setBusca(''); setGente(null);
+      nav.go('auro-grupo', { inv: decodeURIComponent(grupo[1]) });
+    }
   };
 
   const guardarOfrecido = async () => {
@@ -482,8 +599,85 @@ export default function AuroChat({ nav, params }) {
     try {
       await guardarContacto(ofrecido.correo, ofrecido.nombre, ofrecido.addr, account?.email);
       hap(); setOfrecido(null); toast(t.guardado);
+      cargarLibreta();
     } catch { toast(t.noGuardo, 'error'); }
   };
+
+  // ── editar nombre / eliminar de mi libreta ────────────────────────────
+  // La hojita sale de mantener pulsado un contacto en la lista o de tocar la
+  // cabecera de un hilo 1 a 1 (en un grupo la cabecera abre su ficha).
+  const abrirMenuContacto = (correo, delRelevo, addr) => {
+    const c = String(correo || '').toLowerCase();
+    if (!c || M.esGrupo(c)) return;
+    hap();
+    setMenuContacto({ correo: c, nombre: nombreDe(c, delRelevo), addr: addr || (libreta[c] && libreta[c].addr) || '' });
+  };
+
+  const renombrar = async () => {
+    const n = nombreEd.trim();
+    if (!n || !editar) return;
+    try {
+      await renombrarContacto(editar.correo, n, editar.addr, account?.email);
+      hap(); setEditar(null); toast(t.renombrado);
+      cargarLibreta(); // el hilo y la lista se repintan solos con el nombre nuevo
+    } catch { toast(t.noGuardo, 'error'); }
+  };
+
+  const quitarDeLibreta = async () => {
+    if (!menuContacto) return;
+    try {
+      await eliminarContacto(menuContacto.correo, account?.email);
+      hap(); setMenuContacto(null); toast(t.eliminado);
+      cargarLibreta();
+    } catch { toast(t.noGuardo, 'error'); }
+  };
+
+  // Las dos hojas del contacto viven en una sola pieza porque se llegan a
+  // ellas desde DOS pantallas de este mismo fichero: la lista (mantener
+  // pulsada una fila) y el hilo (tocar la cabecera).
+  const hojasContacto = (
+    <>
+      {/* la hojita: editar nombre / eliminar de mi libreta */}
+      <Modal visible={!!menuContacto} transparent animationType="fade" onRequestClose={() => setMenuContacto(null)}>
+        <Pressable style={st.veloBajo} onPress={() => setMenuContacto(null)}>
+          <View style={st.hoja}>
+            <View style={st.menuQuien}>
+              <Avatar nombre={menuContacto?.nombre} correo={menuContacto?.correo || ''} tam={36} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={st.nom} numberOfLines={1}>{menuContacto?.nombre}</Text>
+                <Text style={st.mini} numberOfLines={1}>{menuContacto?.correo}</Text>
+              </View>
+            </View>
+            <Pressable style={st.hojaBtn} onPress={() => {
+              hap(); setNombreEd(menuContacto?.nombre || ''); setEditar(menuContacto); setMenuContacto(null);
+            }}>
+              <Icon name="create" size={19} color={C.gold} />
+              <Text style={st.hojaTxt}>{t.editarNombre}</Text>
+            </Pressable>
+            <Pressable style={[st.hojaBtn, { borderBottomWidth: 0 }]} onPress={quitarDeLibreta}>
+              <Icon name="trash" size={19} color={C.down} />
+              <Text style={[st.hojaTxt, { color: C.down }]}>{t.quitarLibreta}</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* la hoja pequeña de renombrar */}
+      <Modal visible={!!editar} transparent animationType="fade" onRequestClose={() => setEditar(null)}>
+        <Pressable style={st.velo} onPress={() => setEditar(null)}>
+          <Pressable style={st.editCaja} onPress={() => {}}>
+            <Text style={st.editTit}>{t.editarNombre}</Text>
+            <Text style={st.mini} numberOfLines={1}>{editar?.correo}</Text>
+            <TextInput value={nombreEd} onChangeText={setNombreEd} placeholder={t.nombrePh}
+              placeholderTextColor={C.txt3} style={st.editInput} autoFocus maxLength={60}
+              onSubmitEditing={renombrar} returnKeyType="done" />
+            <Text style={st.editNota}>{t.editarNota}</Text>
+            <Button3D title={t.guardarNombre} onPress={renombrar} disabled={!nombreEd.trim()} />
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
+  );
 
   // ════ el candado ═════════════════════════════════════════════════════
   if (puerta !== 'abierta') {
@@ -497,11 +691,9 @@ export default function AuroChat({ nav, params }) {
             <View style={st.gate}>
               <Text style={st.gateTit}>{t.gateTit}</Text>
               <Text style={st.gateTxt}>{t.gateTxt}</Text>
-              <Pressable onPress={() => nav.go('kyc')}>
-                <LinearGradient colors={G.gold} style={st.btnOro} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                  <Text style={st.btnOroTxt}>{t.gateBtn}</Text>
-                </LinearGradient>
-              </Pressable>
+              {/* el mismo Button3D de la casa que usa GruposAuro para este
+                  mismo CTA: dos pantallas, un solo botón */}
+              <Button3D title={t.gateBtn} onPress={() => nav.go('kyc')} />
             </View>
           )}
         </View>
@@ -511,8 +703,12 @@ export default function AuroChat({ nav, params }) {
 
   // ════ hilo abierto ═══════════════════════════════════════════════════
   if (con) {
+    // Los pendientes/fallidos se FUSIONAN al final del hilo del relevo: así
+    // el sondeo puede reemplazar `hilo` completo sin llevarse ninguna burbuja
+    // mía que todavía no entró (o que falló y espera su reintento).
+    const todos = hilo.concat(pendientes);
     const conDias = []; let dPrev = '';
-    for (const m of hilo) {
+    for (const m of todos) {
       const d = new Date(m.cuando).toDateString();
       if (d !== dPrev) { conDias.push({ sep: d, cuando: m.cuando }); dPrev = d; }
       conDias.push(m);
@@ -526,16 +722,21 @@ export default function AuroChat({ nav, params }) {
       // alto y la FlatList, al ser el único hijo con flex:1, es la que paga.
       <PantallaConTeclado desplaza={false} style={st.screen}>
         <View style={st.cabHilo}>
-          <Pressable onPress={() => { setCon(null); setHilo([]); setOfrecido(null); }} hitSlop={10}>
+          <Pressable onPress={() => { setCon(null); setHilo([]); setPendientes([]); setOfrecido(null); }} hitSlop={10}>
             <Text style={st.volver}>‹</Text>
           </Pressable>
           {/* en un grupo la cabecera es la puerta a su ficha: nombre, foto,
-              miembros e invitación viven allí, no aquí */}
-          <Pressable style={st.cabQuien} disabled={!enGrupo}
-            onPress={() => { hap(); nav.go('auro-grupo', { id: destino }); }}>
-            <Avatar nombre={con.nombre} correo={destino} foto={con.foto} grupo={enGrupo} tam={38} />
+              miembros e invitación viven allí, no aquí. En un cara a cara la
+              cabecera abre la hojita del contacto: editar su nombre en MI
+              libreta o quitarlo de ella. */}
+          <Pressable style={st.cabQuien}
+            onPress={() => {
+              if (enGrupo) { hap(); nav.go('auro-grupo', { id: destino }); }
+              else abrirMenuContacto(destino, con.nombre, con.addr);
+            }}>
+            <Avatar nombre={enGrupo ? con.nombre : nombreDe(destino, con.nombre)} correo={destino} foto={con.foto} grupo={enGrupo} tam={38} />
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={st.nom} numberOfLines={1}>{con.nombre}</Text>
+              <Text style={st.nom} numberOfLines={1}>{enGrupo ? con.nombre : nombreDe(destino, con.nombre)}</Text>
               <Text style={st.mini} numberOfLines={1}>
                 {enGrupo
                   ? (con.miembros ? con.miembros + ' ' + t.miembros : t.grupo)
@@ -572,16 +773,50 @@ export default function AuroChat({ nav, params }) {
           </Entrada>
         )}
 
+        {/* el relevo no contesta pero hay historial: banner, como WhatsApp */}
+        {sinRed && todos.length > 0 && (
+          <View style={st.bannerRed}>
+            <Icon name="cloud-offline" size={13} color="#fff" />
+            <Text style={st.bannerRedTxt}>{t.bannerRed}</Text>
+          </View>
+        )}
+
         <FlatList
           ref={lista} data={conDias}
-          keyExtractor={(m, i) => (m.sep ? 'd' + m.sep : (m.cuando || i) + '·' + (m.de || ''))}
+          keyExtractor={(m, i) => (m.sep ? 'd' + m.sep : m.idLocal || ((m.cuando || i) + '·' + (m.de || '')))}
           contentContainerStyle={{ padding: 14, gap: 4 }}
           // Sin esto, con el teclado abierto el primer toque en un
           // comprobante solo cierra el teclado: había que tocar dos veces
           // para abrir el explorador.
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          onContentSizeChange={() => lista.current?.scrollToEnd({ animated: true })}
+          // ¿Dónde anda el scroll? Si está pegado al fondo, un mensaje nuevo
+          // sí desplaza; si se está leyendo el historial, NO se roba el
+          // scroll: sale el chip «mensajes nuevos ↓» (como WhatsApp).
+          onScroll={(e) => {
+            const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+            const fondo = contentOffset.y + layoutMeasurement.height >= contentSize.height - 60;
+            alFondo.current = fondo;
+            if (fondo && nuevos) setNuevos(false);
+          }}
+          scrollEventThrottle={90}
+          onContentSizeChange={() => {
+            if (alFondo.current) lista.current?.scrollToEnd({ animated: true });
+            else if (conDias.length > prevLargo.current) setNuevos(true);
+            prevLargo.current = conDias.length;
+          }}
+          // Sin mensajes hay dos verdades distintas: conversación nueva
+          // (nada que decir) o SIN RED (se dice y se ofrece reintentar).
+          ListEmptyComponent={sinRed ? (
+            <View style={st.redCaja}>
+              <Icon name="cloud-offline" size={22} color={C.down} />
+              <Text style={st.redTit}>{t.sinRedT}</Text>
+              <Text style={st.redTxt}>{t.sinRedHilo}</Text>
+              <Pressable style={st.redBtn} onPress={() => { hap(); traerHilo(); }}>
+                <Text style={st.redBtnTxt}>{t.reint}</Text>
+              </Pressable>
+            </View>
+          ) : null}
           renderItem={({ item }) => {
             if (item.sep) return (
               <View style={st.dia}><Text style={st.diaTxt}>
@@ -600,7 +835,9 @@ export default function AuroChat({ nav, params }) {
             const conAdj = !!item.archivo && ['imagen', 'video', 'archivo'].includes(item.tipo);
             return (
               <Entrada style={[st.linea, mio ? st.der : st.izq]}>
-                <View style={[st.burbuja, mio ? st.mia : st.suya, item.fallo && { opacity: 0.45 }]}>
+                {/* Un envío fallido NO se desvanece: burbuja marcada en rojo
+                    con «Reintentar» al toque — el texto nunca se pierde. */}
+                <View style={[st.burbuja, mio ? st.mia : st.suya, item.fallo && st.burbujaFallo]}>
                   {!!autor && <Text style={st.autor}>{autor}</Text>}
                   {conAdj && item.tipo === 'imagen' && (
                     <Pressable onPress={() => { hap(); setFoto(M.urlArchivo(item.archivo)); }}>
@@ -609,29 +846,48 @@ export default function AuroChat({ nav, params }) {
                   )}
                   {conAdj && item.tipo !== 'imagen' && (
                     <Pressable style={st.adjCard} onPress={() => abrirAdjunto(item.archivo)}>
-                      <Text style={st.adjIco}>{item.tipo === 'video' ? '🎬' : '📄'}</Text>
+                      <Icon name={item.tipo === 'video' ? 'videocam' : 'document-text'} size={24}
+                        color={mio ? '#3A2C08' : C.gold} />
                       <Text style={[st.adjNom, mio && { color: '#3A2C08' }]} numberOfLines={2}>
                         {item.nombre || (item.tipo === 'video' ? t.ultVideo : t.ultArchivo)}
                       </Text>
                     </Pressable>
                   )}
-                  {!!item.texto && <Text style={[st.msg, mio && { color: '#3A2C08' }]}>{item.texto}</Text>}
-                  <Text style={[st.msgHora, mio && { color: 'rgba(58,44,8,0.55)' }]}>
-                    {hora(item.cuando)}{mio ? (item.pendiente ? ' ·' : ' ✓') : ''}
-                  </Text>
+                  {!!item.texto && <Text style={[st.msg, mio && { color: item.fallo ? C.txt : '#3A2C08' }]}>{item.texto}</Text>}
+                  {item.fallo ? (
+                    <Pressable onPress={() => reintentar(item)} hitSlop={8} style={st.reintentar}>
+                      <Icon name="refresh" size={12} color={C.down} />
+                      <Text style={st.reintentarTxt}>{t.fallo} · {t.reintentar}</Text>
+                    </Pressable>
+                  ) : (
+                    <Text style={[st.msgHora, mio && { color: 'rgba(58,44,8,0.55)' }]}>
+                      {hora(item.cuando)}{mio ? (item.pendiente ? ' ·' : ' ✓') : ''}
+                    </Text>
+                  )}
                 </View>
               </Entrada>
             );
           }}
         />
+        {/* el chip que avisa sin robar el scroll: tocarlo baja al final */}
+        {nuevos && (
+          <Pressable style={st.chipNuevos} onPress={() => {
+            hap(); setNuevos(false); alFondo.current = true;
+            try { lista.current?.scrollToEnd({ animated: true }); } catch (e) {}
+          }}>
+            <Text style={st.chipNuevosTxt}>{t.nuevos}</Text>
+          </Pressable>
+        )}
         <View style={st.emojis}>
           {['👍', '🙏', '🎉', '💛', '😂', '🤝', '🔥', '✨', '💰', '🚀'].map((e) => (
             <Pressable key={e} onPress={() => setTexto((x) => x + e)} hitSlop={4}><Text style={st.emoji}>{e}</Text></Pressable>
           ))}
         </View>
         <View style={st.filaEscribe}>
+          {/* el clip es del set de la casa: el emoji 📎 salía a color en
+              Android y desentonaba con la paleta oro/verde */}
           <Pressable onPress={() => { hap(); setHoja(true); }} disabled={subiendo} style={st.clip}>
-            {subiendo ? <ActivityIndicator color={C.gold} size="small" /> : <Text style={st.clipTxt}>📎</Text>}
+            {subiendo ? <ActivityIndicator color={C.gold} size="small" /> : <Icon name="attach" size={20} color={C.goldLt} />}
           </Pressable>
           <TextInput value={texto} onChangeText={setTexto} placeholder={t.escribe}
             placeholderTextColor={C.txt3} style={st.caja} onSubmitEditing={mandar} returnKeyType="send" multiline />
@@ -646,14 +902,16 @@ export default function AuroChat({ nav, params }) {
         <Modal visible={hoja} transparent animationType="fade" onRequestClose={() => setHoja(false)}>
           <Pressable style={st.veloBajo} onPress={() => setHoja(false)}>
             <View style={st.hoja}>
+              {/* iconos de la casa, no emojis: en Android el emoji sale a
+                  color y rompe la paleta oro/verde de toda la hojita */}
               <Pressable style={st.hojaBtn} onPress={elegirImagen}>
-                <Text style={st.hojaIco}>🖼</Text><Text style={st.hojaTxt}>{t.adjImagen}</Text>
+                <Icon name="image" size={20} color={C.gold} /><Text style={st.hojaTxt}>{t.adjImagen}</Text>
               </Pressable>
               <Pressable style={st.hojaBtn} onPress={elegirVideo}>
-                <Text style={st.hojaIco}>🎬</Text><Text style={st.hojaTxt}>{t.adjVideo}</Text>
+                <Icon name="videocam" size={20} color={C.gold} /><Text style={st.hojaTxt}>{t.adjVideo}</Text>
               </Pressable>
               <Pressable style={[st.hojaBtn, { borderBottomWidth: 0 }]} onPress={elegirArchivo}>
-                <Text style={st.hojaIco}>📄</Text><Text style={st.hojaTxt}>{t.adjArchivo}</Text>
+                <Icon name="document-text" size={20} color={C.gold} /><Text style={st.hojaTxt}>{t.adjArchivo}</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -665,6 +923,8 @@ export default function AuroChat({ nav, params }) {
             {!!foto && <Image source={{ uri: foto }} style={st.fotoLlena} resizeMode="contain" />}
           </Pressable>
         </Modal>
+
+        {hojasContacto}
       </PantallaConTeclado>
     );
   }
@@ -699,19 +959,39 @@ export default function AuroChat({ nav, params }) {
             if (!permiso?.granted) await pedirPermiso();
             setQr('scan');
           }}>
-            {/* la retícula va como glifo: el set de iconos de la casa no
-                tiene "escanear" y no se le añade uno por un botón */}
-            <Text style={st.qrMira}>⌖</Text>
+            {/* 'scan' existe en el set desde 1.10 (la pestaña Pagar lo usa):
+                el glifo ⌖ salía con otra fuente y otro grosor que el resto */}
+            <Icon name="scan" size={14} color={C.goldLt} />
             <Text style={st.qrBtnTxt}>{t.escanear}</Text>
           </Pressable>
         </View>
       </View>
-      {convos === null ? <ActivityIndicator color={C.gold} style={{ marginTop: 28 }} /> : (
+      {/* el relevo no contesta pero hay lista vieja a la vista: banner */}
+      {sinRed && convos !== null && (
+        <View style={st.bannerRed}>
+          <Icon name="cloud-offline" size={13} color="#fff" />
+          <Text style={st.bannerRedTxt}>{t.bannerRed}</Text>
+        </View>
+      )}
+      {convos === null ? (
+        // Nunca se ha podido leer el relevo: sin red se DICE (con reintentar),
+        // no se pinta el «aún no tienes conversaciones» de una cuenta nueva.
+        sinRed ? (
+          <View style={st.redCaja}>
+            <Icon name="cloud-offline" size={22} color={C.down} />
+            <Text style={st.redTit}>{t.sinRedT}</Text>
+            <Text style={st.redTxt}>{t.sinRedConvos}</Text>
+            <Pressable style={st.redBtn} onPress={() => { hap(); traerConvos(); }}>
+              <Text style={st.redBtnTxt}>{t.reint}</Text>
+            </Pressable>
+          </View>
+        ) : <ActivityIndicator color={C.gold} style={{ marginTop: 28 }} />
+      ) : (
         <FlatList
           data={filas} keyExtractor={(c) => idDe(c)}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
           ListHeaderComponent={gente !== null ? <Text style={st.dir}>{t.dir}</Text> : null}
-          ListEmptyComponent={<Text style={st.vacio}>{gente !== null ? t.nadie : t.vacio}</Text>}
+          ListEmptyComponent={<Text style={st.vacio}>{gente !== null ? (buscaMal ? t.sinRedBusca : t.nadie) : t.vacio}</Text>}
           renderItem={({ item, index }) => {
             const grupo = esGrupoDe(item);
             return (
@@ -721,11 +1001,15 @@ export default function AuroChat({ nav, params }) {
                 <Pressable style={st.fila} onPress={() => {
                   hap(); setBusca(''); setGente(null); setOfrecido(null);
                   setCon(grupo ? { ...item, esGrupo: true } : item);
-                }}>
-                  <Avatar nombre={item.nombre} correo={idDe(item)} foto={item.foto} grupo={grupo} />
+                }}
+                  // mantener pulsada a una persona abre su hojita: editar el
+                  // nombre con el que YO la veo, o quitarla de mi libreta
+                  onLongPress={grupo ? undefined : () => abrirMenuContacto(idDe(item), item.nombre, item.addr)}
+                  delayLongPress={350}>
+                  <Avatar nombre={grupo ? item.nombre : nombreDe(idDe(item), item.nombre)} correo={idDe(item)} foto={item.foto} grupo={grupo} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <View style={st.filaSup}>
-                      <Text style={st.nom} numberOfLines={1}>{item.nombre}</Text>
+                      <Text style={st.nom} numberOfLines={1}>{grupo ? item.nombre : nombreDe(idDe(item), item.nombre)}</Text>
                       {!!item.ultimo && <Text style={st.hora}>{hora(item.ultimo.cuando)}</Text>}
                     </View>
                     <View style={st.filaSup}>
@@ -762,6 +1046,8 @@ export default function AuroChat({ nav, params }) {
           </View>
         </Pressable>
       </Modal>
+
+      {hojasContacto}
     </View>
   );
 }
@@ -773,8 +1059,6 @@ const st = StyleSheet.create({
   gate: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 18, padding: 20 },
   gateTit: { color: C.goldLt, fontSize: 17, fontWeight: '600', marginBottom: 8 },
   gateTxt: { color: C.txt2, fontSize: 13.5, lineHeight: 20, marginBottom: 16 },
-  btnOro: { borderRadius: 13, paddingVertical: 13, alignItems: 'center' },
-  btnOroTxt: { color: '#3A2C08', fontWeight: '800', fontSize: 12, letterSpacing: 1.5 },
   accesos: { flexDirection: 'row', gap: 8 },
   acceso: { width: 38, height: 38, borderRadius: 13, borderWidth: 1, borderColor: C.line2, backgroundColor: 'rgba(201,169,97,0.07)', alignItems: 'center', justifyContent: 'center' },
   masChico: { position: 'absolute', top: 4, right: 5, color: C.goldHi, fontSize: 12, fontWeight: '900' },
@@ -782,8 +1066,18 @@ const st = StyleSheet.create({
   qrFila: { flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 6 },
   qrBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderWidth: 1, borderColor: C.line, borderRadius: 12, paddingVertical: 9 },
   qrBtnTxt: { color: C.goldLt, fontSize: 11, fontWeight: '700', letterSpacing: 1 },
-  qrMira: { color: C.goldLt, fontSize: 15, lineHeight: 16 },
   dir: { color: C.txt3, fontSize: 10, fontWeight: '700', letterSpacing: 3, marginVertical: 8 },
+  // ── los estados de red honestos ──
+  // El banner dice «sin conexión» ENCIMA de lo ya cargado (que sigue siendo
+  // legible); la caja roja es para cuando no hay nada que enseñar y lo único
+  // honesto es decirlo y ofrecer reintentar.
+  bannerRed: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: '#8A2A21', paddingVertical: 5 },
+  bannerRedTxt: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  redCaja: { alignItems: 'center', gap: 6, marginTop: 30, marginHorizontal: 24, padding: 20, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(240,119,107,0.35)', backgroundColor: 'rgba(52,20,18,0.35)' },
+  redTit: { color: C.txt, fontWeight: '800', fontSize: 14.5 },
+  redTxt: { color: C.txt2, fontSize: 12.5, lineHeight: 18, textAlign: 'center' },
+  redBtn: { marginTop: 8, borderWidth: 1, borderColor: C.line, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 9 },
+  redBtnTxt: { color: C.goldLt, fontSize: 10.5, fontWeight: '800', letterSpacing: 1.2 },
   vacio: { color: C.txt3, fontSize: 13, lineHeight: 20, marginTop: 16, textAlign: 'center' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: 'rgba(201,169,97,0.08)' },
   filaSup: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
@@ -817,6 +1111,14 @@ const st = StyleSheet.create({
   burbuja: { borderRadius: 16, paddingHorizontal: 13, paddingVertical: 8, marginVertical: 1.5 },
   mia: { backgroundColor: C.goldLt, borderBottomRightRadius: 5 },
   suya: { backgroundColor: C.panel2, borderBottomLeftRadius: 5 },
+  // el envío fallido se marca, no se desvanece: borde y fondo rojizos con el
+  // texto legible, y debajo su «Reintentar»
+  burbujaFallo: { backgroundColor: 'rgba(52,20,18,0.55)', borderWidth: 1.5, borderColor: 'rgba(240,119,107,0.6)' },
+  reintentar: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6, alignSelf: 'flex-end' },
+  reintentarTxt: { color: C.down, fontSize: 11, fontWeight: '800', letterSpacing: 0.3 },
+  // el chip que baja al final sin robar el scroll mientras se lee historial
+  chipNuevos: { alignSelf: 'center', marginTop: 2, marginBottom: 4, backgroundColor: C.gold, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, shadowColor: '#C9A961', shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
+  chipNuevosTxt: { color: '#3A2C08', fontSize: 11.5, fontWeight: '800' },
   autor: { color: C.gold, fontSize: 11, fontWeight: '700', marginBottom: 2 },
   msg: { color: C.txt, fontSize: 14.5, lineHeight: 20 },
   msgHora: { color: C.txt3, fontSize: 9.5, alignSelf: 'flex-end', marginTop: 2 },
@@ -838,18 +1140,22 @@ const st = StyleSheet.create({
   emoji: { fontSize: 21 },
   filaEscribe: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingBottom: 10, alignItems: 'flex-end' },
   clip: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
-  clipTxt: { fontSize: 19 },
   // la imagen adentro de la burbuja: ancho fijo cómodo, el server no manda
   // dimensiones así que un rectángulo estable evita saltos en el scroll
   foto: { width: 210, height: 210, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.25)' },
   adjCard: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 4, maxWidth: 220 },
-  adjIco: { fontSize: 26 },
   adjNom: { color: C.txt, fontSize: 13.5, fontWeight: '600', flexShrink: 1 },
   veloBajo: { flex: 1, backgroundColor: 'rgba(1,10,11,0.55)', justifyContent: 'flex-end' },
   hoja: { backgroundColor: '#0A3436', borderWidth: 1, borderColor: C.line2, borderRadius: 18, margin: 12, marginBottom: 26, overflow: 'hidden' },
   hojaBtn: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(201,169,97,0.12)' },
-  hojaIco: { fontSize: 21 },
   hojaTxt: { color: C.txt, fontSize: 14.5, fontWeight: '600' },
+  // la hojita del contacto: quién es arriba, sus dos acciones debajo
+  menuQuien: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 18, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: 'rgba(201,169,97,0.18)', backgroundColor: 'rgba(201,169,97,0.06)' },
+  // la hoja pequeña de renombrar, centrada: es un solo campo y un botón
+  editCaja: { alignSelf: 'stretch', marginHorizontal: 26, backgroundColor: '#0A3436', borderWidth: 1, borderColor: C.line2, borderRadius: 18, padding: 18 },
+  editTit: { color: C.goldLt, fontSize: 15, fontWeight: '700', marginBottom: 2 },
+  editInput: { backgroundColor: C.input, borderWidth: 1, borderColor: C.inputBr, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 11, color: C.txt, fontSize: 14.5, marginTop: 12 },
+  editNota: { color: C.txt3, fontSize: 11.5, lineHeight: 16, marginTop: 8, marginBottom: 12 },
   fotoVelo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.96)', alignItems: 'center', justifyContent: 'center' },
   fotoLlena: { width: '100%', height: '100%' },
   caja: { flex: 1, backgroundColor: C.input, borderWidth: 1, borderColor: C.inputBr, borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, color: C.txt, fontSize: 14.5, maxHeight: 110 },

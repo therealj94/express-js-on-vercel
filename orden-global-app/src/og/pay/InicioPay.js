@@ -41,7 +41,10 @@ const TXT = {
     titulo: 'MyTokenPay', sub: 'La capa de comercio del ecosistema',
     insignia: 'Capa de comercio del Sistema Financiero Social',
     h1: 'Encuentra dónde pagar con ORIGEN',
-    p1: 'El directorio de comercios afiliados en toda Latinoamérica, de México a la Patagonia.',
+    // La región que el directorio de HOY de verdad cubre (seis países de
+    // Centroamérica): prometer «de México a la Patagonia» sobre 30 comercios
+    // demo centroamericanos era una portada que mentía.
+    p1: 'El directorio de comercios afiliados en Centroamérica — y creciendo hacia toda Latinoamérica.',
     buscarPh: 'Restaurantes, hoteles, gimnasios…',
     comercios: 'Comercios', verificados: 'Verificados', paises: 'Países',
     cifrasNota: 'Estas cifras cuentan los comercios de ejemplo que trae MyTokenPay: su directorio real todavía no está enchufado a esta app.',
@@ -55,6 +58,7 @@ const TXT = {
     aActividad: 'Cobros', aActividadS: 'Lo que entró',
     ctaTit: 'Tus beneficios por comprar',
     ctaTxt: 'Gana puntos ORIGEN en cada compra en comercios afiliados y accede a promociones exclusivas para usuarios.',
+    ctaNota: 'Programa por conectar: los puntos y las promos se activan cuando el servidor de MyTokenPay esté enchufado a la app.',
     ctaP1: 'Descuentos', ctaP2: 'Promos exclusivas', ctaLink: 'Ver bonos y regalos',
     categorias: 'EXPLORA POR CATEGORÍA',
     destacados: 'COMERCIOS DESTACADOS', deEjemplo: 'de ejemplo',
@@ -76,7 +80,7 @@ const TXT = {
     titulo: 'MyTokenPay', sub: 'The commerce layer of the ecosystem',
     insignia: 'Commerce layer of the Social Financial System',
     h1: 'Find where to pay with ORIGEN',
-    p1: 'The directory of affiliated businesses across Latin America, from Mexico to Patagonia.',
+    p1: 'The directory of affiliated businesses in Central America — growing towards all of Latin America.',
     buscarPh: 'Restaurants, hotels, gyms…',
     comercios: 'Businesses', verificados: 'Verified', paises: 'Countries',
     cifrasNota: 'These figures count the sample businesses MyTokenPay ships with: their real directory is not wired into this app yet.',
@@ -90,6 +94,7 @@ const TXT = {
     aActividad: 'Payments', aActividadS: 'What came in',
     ctaTit: 'Your rewards for shopping',
     ctaTxt: 'Earn ORIGEN points on every purchase at affiliated businesses and unlock promotions exclusive to users.',
+    ctaNota: 'Program not connected yet: points and promos go live once the MyTokenPay server is wired into the app.',
     ctaP1: 'Discounts', ctaP2: 'Exclusive promos', ctaLink: 'See rewards and gifts',
     categorias: 'EXPLORE BY CATEGORY',
     destacados: 'FEATURED BUSINESSES', deEjemplo: 'sample',
@@ -274,6 +279,10 @@ export default function InicioPay({ nav }) {
               <Icon name="gift" size={20} color={C.darkText} />
               <Text style={st.ctaTit}>{t.ctaTit}</Text>
               <Text style={st.ctaTxt}>{t.ctaTxt}</Text>
+              {/* la misma marca de honestidad que ya llevan las cifras y los
+                  destacados: BonosPay confiesa que el programa no está
+                  conectado, y esta tarjeta no puede prometer lo contrario */}
+              <Text style={st.ctaNota}>{t.ctaNota}</Text>
               <View style={st.ctaPills}>
                 <View style={st.ctaPill}><Text style={st.ctaPillTxt}>{t.ctaP1}</Text></View>
                 <View style={st.ctaPill}><Text style={st.ctaPillTxt}>{t.ctaP2}</Text></View>
@@ -417,6 +426,7 @@ const st = StyleSheet.create({
   cta: { borderRadius: 22, padding: 18, marginTop: 20 },
   ctaTit: { color: C.darkText, fontSize: 17, fontWeight: '800', marginTop: 10 },
   ctaTxt: { color: 'rgba(58,44,8,0.82)', fontSize: 12.5, lineHeight: 18.5, marginTop: 5 },
+  ctaNota: { color: 'rgba(58,44,8,0.66)', fontSize: 10.5, lineHeight: 15, marginTop: 7, fontStyle: 'italic' },
   ctaPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   ctaPill: { backgroundColor: 'rgba(58,44,8,0.14)', borderRadius: 999, paddingHorizontal: 11, paddingVertical: 5 },
   ctaPillTxt: { color: C.darkText, fontSize: 10.5, fontWeight: '700' },

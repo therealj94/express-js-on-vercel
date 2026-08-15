@@ -14,7 +14,9 @@ import { desactivarDesbloqueo } from './src/unlock';
 import { buscarActualizacion, aplicarActualizacion, puedeActualizar } from './src/updates';
 import { recordLogout } from './src/sessionLog';
 import { primerArranque } from './src/backupNudge';
-import { activarAvisos, limpiarAvisos, watchIncoming, marcarVisto, stopWatch, alTocarNotificacion, avisosActivos } from './src/notify';
+import { activarAvisos, limpiarAvisos, watchIncoming, marcarVisto, stopWatch, alTocarNotificacion, avisosActivos, notificarMensaje } from './src/notify';
+import { vigilarMensajes } from './src/og/vigiaChat';
+import { reproducir } from './src/og/sonidos';
 import LockScreen, { useAppLock } from './src/LockScreen';
 
 import Splash from './src/screens/Splash';
@@ -105,6 +107,9 @@ const TAB_ROUTES = [...new Set(Object.values(SECCION_TABS).flat().map((t) => t.r
 // a que seccion pertenece cada pantalla que NO es compartida
 const SECCION_DE = {
   ecosistema: 'og', chat: 'og',
+  // Ajustes es pestaña de la sección og: sin esta fila, entrar por el avatar
+  // de Home dejaba la barra veta debajo con ninguna pestaña encendida.
+  settings: 'og',
   home: 'veta', card: 'veta', swap: 'veta', activity: 'veta', token: 'veta',
   send: 'veta', receive: 'veta', buy: 'veta', deposit: 'veta', fundCard: 'veta',
   cardSettings: 'veta', remesas: 'veta', reporte: 'veta',
@@ -135,11 +140,18 @@ function Root() {
   const [stack, setStack] = useState([{ r: 'splash' }]);
   const [dir, setDir] = useState(1);
   const [account, setAccount] = useState(null);
+  // true cuando loadSession TERMINÓ (haya o no cuenta guardada): el splash
+  // espera esta bandera para decidir ruta con la sesión en la mano.
+  const [sesionLista, setSesionLista] = useState(false);
   const cur = stack[stack.length - 1];
-  const anim = useRef(new Animated.Value(0)).current;
+  // Arranca en 1: la primera pantalla (splash) no llega navegando y debe
+  // verse entera; el valor se resetea a 0 en cada transición real.
+  const anim = useRef(new Animated.Value(1)).current;
 
-  // Candado biométrico: se pide al arrancar y al volver del segundo plano
-  // tras más de 2 minutos afuera. Sin biometría configurada arranca abierto.
+  // Candado biométrico: protege una SESIÓN abierta al arrancar y al volver
+  // del segundo plano tras más de 2 minutos afuera. Solo se pinta con cuenta
+  // y después del splash (ver render): recién instalada no hay nada que
+  // proteger y la primera impresión no puede ser un candado.
   const { locked, setLocked, available } = useAppLock();
 
   // Banner sin internet: aparece en la parte superior cuando NetInfo
@@ -165,6 +177,7 @@ function Root() {
   // (con "Recordarme" el JWT vencido se renueva solo — la app no te saca).
   useEffect(() => {
     (async () => {
+      try {
       await loadToken();
       await initAccounts();
       await primerArranque(); // marca por dispositivo, para el nudge de respaldo
@@ -188,10 +201,26 @@ function Root() {
         }
         ensureSession(); // renueva el JWT en segundo plano si expiró
       }
+      } finally {
+        // Con o sin cuenta guardada —y aunque algo fallara a medio camino—,
+        // el splash necesita saber que la carga TERMINÓ: decide la ruta con
+        // esta bandera y no con un timer que apuesta a que ya estará.
+        setSesionLista(true);
+      }
     })();
   }, []);
+
+  // Sin sesión guardada no hay nada que el candado proteja: recién instalada
+  // (o tras cerrar sesión) la app no puede recibir con una petición de huella.
+  useEffect(() => {
+    if (sesionLista && !account) setLocked(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sesionLista, account]);
+
   const acctApi = {
     account,
+    // el splash espera esta bandera antes de decidir ruta (ver arriba)
+    ready: sesionLista,
     login: (a) => {
       setAccount(a);
       saveSession(a.email);
@@ -352,16 +381,51 @@ function Root() {
 
   const [seccion, setSeccion] = useState('og');
   const go = useCallback((r, params) => {
-    if (SECCION_DE[r]) setSeccion(SECCION_DE[r]);
     if (TAB_ROUTES.includes(r)) { setDir(1); setStack([{ r, params }]); }
     else { setDir(1); setStack((s) => [...s, { r, params }]); }
   }, []);
   const back = useCallback(() => { setDir(-1); setStack((s) => (s.length > 1 ? s.slice(0, -1) : s)); }, []);
 
+  // La barra de pestañas se DERIVA de la ruta visible, no de por dónde se
+  // navegó: antes `seccion` solo cambiaba dentro de go(), así que back(), el
+  // botón atrás de Android, el swipe de regreso y el toque de una
+  // notificación (todos hacen setStack directo) dejaban la barra de otra
+  // sección bajo la pantalla nueva — chat con la barra de la billetera,
+  // Home con las pestañas de Pay. Las pantallas compartidas (scan, ayuda,
+  // contactos…) no están en SECCION_DE y conservan la última sección, que es
+  // exactamente lo que hacía go() con ellas.
   useEffect(() => {
+    const s = SECCION_DE[cur.r];
+    if (s) setSeccion(s);
+  }, [cur.r]);
+
+  // ---- transición direccional con DOS capas ----
+  // Durante los 380ms se pintan la pantalla SALIENTE y la ENTRANTE y se
+  // animan las dos: entrar a una app SUBE con un leve zoom; volver BAJA.
+  // Antes había una sola capa: la saliente desaparecía de golpe, la entrante
+  // nacía en opacity 0 y en cada navegación destellaba el fondo de marca.
+  const [saliente, setSaliente] = useState(null);
+  const prevCur = useRef(cur);
+  // Llave estable POR ENTRADA del stack: cuando la pantalla actual pasa a
+  // saliente, React la reconoce por su llave y conserva la instancia — se va
+  // animando CON su estado (scroll, inputs) puesto, no como una copia vacía.
+  const llaves = useRef({ mapa: new WeakMap(), seq: 0 }).current;
+  const llaveDe = (e) => {
+    let k = llaves.mapa.get(e);
+    if (!k) { k = `pantalla-${++llaves.seq}`; llaves.mapa.set(e, k); }
+    return k;
+  };
+  useEffect(() => {
+    if (prevCur.current === cur) return; // primer render: nada que animar
+    const anterior = prevCur.current;
+    prevCur.current = cur;
+    setSaliente(anterior);
     anim.setValue(0);
-    Animated.timing(anim, { toValue: 1, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
-  }, [cur.r, stack.length]);
+    Animated.timing(anim, { toValue: 1, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(({ finished }) => {
+      if (finished) setSaliente(null); // la capa saliente se retira al terminar
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cur]);
 
   // ---- Toast con variantes ----
   // Antes había un solo estilo (borde dorado + tick verde) sin importar el
@@ -388,14 +452,21 @@ function Root() {
   // ---- swipe entre pestañas ----
   const stackRef = useRef(stack);
   stackRef.current = stack;
+  // El swipe navega DENTRO de la sección visible y frena en sus extremos:
+  // la lista global (TAB_ROUTES) mezclaba las tres apps y desde Actividad un
+  // swipe más te soltaba en el Inicio de MyTokenPay sin aviso. El regreso con
+  // setStack directo ya no desincroniza la barra: la sección se deriva de la
+  // ruta visible (ver arriba).
+  const seccionRef = useRef('og');
   const pan = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 20 && Math.abs(g.dx) > Math.abs(g.dy) * 1.8,
       onPanResponderRelease: (_, g) => {
-        const i = TAB_ROUTES.indexOf(stackRef.current[stackRef.current.length - 1].r);
+        const tabs = (SECCION_TABS[seccionRef.current] || SECCION_TABS.og).map((t) => t.r);
+        const i = tabs.indexOf(stackRef.current[stackRef.current.length - 1].r);
         if (i < 0) return;
-        if (g.dx < -55 && i < TAB_ROUTES.length - 1) go(TAB_ROUTES[i + 1]);
-        else if (g.dx > 55 && i > 0) { setDir(-1); setStack([{ r: TAB_ROUTES[i - 1] }]); }
+        if (g.dx < -55 && i < tabs.length - 1) go(tabs[i + 1]);
+        else if (g.dx > 55 && i > 0) { setDir(-1); setStack([{ r: tabs[i - 1] }]); }
       },
     })
   ).current;
@@ -460,6 +531,8 @@ function Root() {
           if (!vivo) return;
           if (upd) setAccount({ ...upd });
           showToast(tr('notif.gotToast'));
+          // El sonido de la casa: dinero entrando se OYE, no solo se lee.
+          reproducir('recibido');
         },
       });
     };
@@ -486,9 +559,44 @@ function Root() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.email, lang]);
 
-  // Tocar la notificación abre Actividad.
-  useEffect(() => alTocarNotificacion((pantalla) => {
-    if (accountRef.current) { setDir(1); setStack([{ r: pantalla || 'activity' }]); }
+  // ---- avisos de mensajes de AURO CHAT ----
+  // El vigía (src/og/vigiaChat.js) sondea las conversaciones del relevo y
+  // avisa de los sinLeer nuevos. Qué hacer con ellos se decide AQUÍ, porque
+  // solo la raíz sabe qué pantalla está a la vista:
+  //   app en segundo plano → notificación local que abre el hilo al tocarla;
+  //   app al frente, fuera del chat → toast + el sonido suave;
+  //   app al frente, EN el chat → nada: AuroChat ya pinta y suena lo suyo.
+  useEffect(() => {
+    if (!account?.email) return undefined;
+    const parar = vigilarMensajes({
+      account,
+      lang,
+      alNuevo: (avisos, estado) => {
+        if (!avisos.length) return;
+        if (estado === 'active') {
+          const visible = stackRef.current[stackRef.current.length - 1]?.r;
+          if (visible === 'chat') return;
+          const a = avisos[avisos.length - 1];
+          showToast(`AURO CHAT · ${a.quien}: ${a.texto}`, 'info');
+          reproducir('recibido', { suave: true });
+        } else {
+          for (const a of avisos) notificarMensaje(a);
+        }
+      },
+    });
+    return parar;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.email, lang]);
+
+  // Tocar una notificación abre su pantalla: la de dinero lleva a Actividad;
+  // la de chat trae `con` y abre el hilo exacto. Se pasa por go() y no por
+  // setStack directo para que la barra de pestañas cambie de sección junto
+  // con la pantalla (antes quedaba la barra de la billetera bajo el chat).
+  useEffect(() => alTocarNotificacion((pantalla, data) => {
+    if (!accountRef.current) return;
+    if (pantalla === 'chat') go('chat', data?.con ? { con: data.con } : undefined);
+    else go(pantalla || 'activity');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
 
   useEffect(() => { cargarNombre(); }, []);
@@ -506,25 +614,48 @@ function Root() {
   }, []);
 
   const Screen = SCREENS[cur.r] || Home;
+  const SalientePantalla = saliente ? (SCREENS[saliente.r] || Home) : null;
   const TABS = SECCION_TABS[seccion] || SECCION_TABS.og;
+  seccionRef.current = seccion; // para el swipe entre pestañas, sin re-crear el PanResponder
   const showTabs = TAB_ROUTES.includes(cur.r);
   const isFull = FULLSCREEN.includes(cur.r);
 
-  const tx = anim.interpolate({ inputRange: [0, 1], outputRange: [dir * 42, 0] });
-  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] });
+  // La coreografía direccional. ENTRAR (dir 1): la nueva sube desde abajo con
+  // un leve zoom mientras la vieja se aparta hacia arriba, apenas crecida.
+  // VOLVER (dir -1): todo el movimiento es hacia abajo — la que se va cae y
+  // se encoge un pelo, la que regresa asienta bajando desde arriba.
+  const entraY = anim.interpolate({ inputRange: [0, 1], outputRange: [dir > 0 ? 36 : -24, 0] });
+  const entraEscala = anim.interpolate({ inputRange: [0, 1], outputRange: [dir > 0 ? 0.965 : 1.02, 1] });
+  const saleY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, dir > 0 ? -28 : 64] });
+  const saleEscala = anim.interpolate({ inputRange: [0, 1], outputRange: [1, dir > 0 ? 1.02 : 0.97] });
+  const saleOp = anim.interpolate({ inputRange: [0, 0.8, 1], outputRange: [1, 0, 0] });
 
+  const navApi = { go, back, route: cur.r };
   const content = (
-    <Animated.View
-      style={{ flex: 1, opacity: anim, transform: [{ translateX: tx }, { scale }] }}
-      {...(showTabs ? pan.panHandlers : !isFull ? backPan.panHandlers : {})}>
-      <Nav.Provider value={{ go, back, route: cur.r }}>
+    <View style={{ flex: 1 }} {...(showTabs ? pan.panHandlers : !isFull ? backPan.panHandlers : {})}>
+      <Nav.Provider value={navApi}>
         <AccountCtx.Provider value={acctApi}>
           <ToastCtx.Provider value={showToast}>
-            <Screen nav={{ go, back, route: cur.r }} params={cur.params || {}} />
+            {/* la capa saliente vive solo los 380ms de la transición y no
+                recibe toques; su llave estable hace que React la conserve
+                con su estado puesto mientras se despide */}
+            {saliente && SalientePantalla && (
+              <Animated.View
+                key={llaveDe(saliente)}
+                pointerEvents="none"
+                style={[StyleSheet.absoluteFill, { opacity: saleOp, transform: [{ translateY: saleY }, { scale: saleEscala }] }]}>
+                <SalientePantalla nav={navApi} params={saliente.params || {}} />
+              </Animated.View>
+            )}
+            <Animated.View
+              key={llaveDe(cur)}
+              style={{ flex: 1, opacity: anim, transform: [{ translateY: entraY }, { scale: entraEscala }] }}>
+              <Screen nav={navApi} params={cur.params || {}} />
+            </Animated.View>
           </ToastCtx.Provider>
         </AccountCtx.Provider>
       </Nav.Provider>
-    </Animated.View>
+    </View>
   );
 
   return (
@@ -609,7 +740,11 @@ function Root() {
         </View>
       )}
 
-      {locked && (
+      {/* El candado SOLO con sesión y nunca encima del splash: antes se
+          montaba opaco sobre la animación de arranque —la primera impresión
+          era una petición de huella con el splash invisible debajo— y hasta
+          en un teléfono recién instalado, sin cuenta que proteger. */}
+      {locked && account && cur.r !== 'splash' && (
         <View style={StyleSheet.absoluteFill}>
           <LockScreen onUnlock={() => setLocked(false)} available={available} />
         </View>

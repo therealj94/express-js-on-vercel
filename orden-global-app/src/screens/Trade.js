@@ -12,6 +12,11 @@ import { money, qtyFmt, qtyExacto, tokensFromBalances, parseAmt, normalizeAmtInp
 import { apiSend, apiSendToken, apiPortfolio, estimateNetworkFee, NETWORK_FEE_ORIGEN, CHAIN_ID } from '../api';
 import { updateAccount } from '../accounts';
 import { listContacts, touchContact, addContact, parseAddress } from '../addressBook';
+// El sonido del dinero y la libreta del chat: los dos con camino alternativo
+// adentro (sonidos.js aplica la REGLA DEL AIRE con expo-audio), así que
+// importarlos aquí no puede tumbar la pantalla en ningún binario.
+import { reproducir } from '../og/sonidos';
+import { renombrarContacto } from '../og/contactos';
 import { ScanModal } from './Scan';
 import { useT } from '../i18n';
 import { capacidadBiometrica, desbloqueoActivo, desbloquearClave, activarDesbloqueo, TIPO } from '../unlock';
@@ -94,6 +99,8 @@ export function Send({ nav, params }) {
   const [scan, setScan] = useState(false);    // cámara abierta
   const [book, setBook] = useState(false);    // libreta de contactos abierta
   const [done, setDone] = useState(null);     // comprobante del envío
+  const [editaNombre, setEditaNombre] = useState(false); // la hoja de renombrar al contacto
+  const [nombreEd, setNombreEd] = useState('');
   const toast = useToast();
   const t = useT();
   const { account, login } = useAccount();
@@ -134,6 +141,26 @@ export function Send({ nav, params }) {
   const origenDisponible = (tokens.find((x) => x.s === 'ORIGEN') || { qty: 0 }).qty;
   const insufficient = amount > 0 && (isNative ? amount + fee > tok.qty : amount > tok.qty);
   const sinGas = amount > 0 && !isNative && fee > origenDisponible;
+
+  // El contacto guardado del destino actual, si lo hay: es a quien la hoja
+  // de «editar nombre» renombra cuando el envío nació de una charla.
+  const addrDest = parseAddress(to);
+  const contactoDest = addrDest ? contacts.find((c) => c.address.toLowerCase() === addrDest.toLowerCase()) : null;
+
+  const guardarNombre = async () => {
+    const n = nombreEd.trim();
+    if (!n || !addrDest) { setEditaNombre(false); return; }
+    try {
+      await addContact(account?.email, { name: n, address: addrDest });
+      // La libreta del chat guarda el mismo nombre cuando el envío nació de
+      // una charla 1 a 1 (un grupo g:… no es un contacto que renombrar).
+      if (params?.avisarChat && String(params.avisarChat).includes('@')) {
+        await renombrarContacto(params.avisarChat, n, addrDest, account?.email).catch(() => {});
+      }
+      setContacts(await listContacts(account?.email));
+      hap(); setEditaNombre(false); toast(t('send.nombreListo'));
+    } catch (e) { setEditaNombre(false); }
+  };
 
   // Paso 1: revisar. Solo comprueba los datos y abre la ficha de revisión;
   // la contraseña se pide allí, junto al resumen de lo que se va a firmar.
@@ -194,6 +221,10 @@ export function Send({ nav, params }) {
         touchContact(account?.email, tx.to);
         if (saveAs.trim()) addContact(account?.email, { name: saveAs.trim(), address: tx.to }).catch(() => {});
         hap();
+        // El sonido de la casa: el envío confirmado se OYE, no solo se lee.
+        // Suena aquí, junto al comprobante, y nunca antes: sonar sobre una
+        // transacción que todavía puede fallar sería mentir con música.
+        reproducir('enviado');
         setReview(null);
 
         // Añade el envío al historial LOCAL al instante para que aparezca en
@@ -364,6 +395,17 @@ export function Send({ nav, params }) {
             style={[styles.input, { marginTop: 9, fontSize: 13.5 }]}
           />
         )}
+        {/* Cuando el envío nace de AURO CHAT y el destino YA está guardado,
+            se ofrece renombrarlo aquí mismo: es el momento en que uno nota
+            que «pedro@…» merece llamarse Pedro. La hoja escribe en las DOS
+            libretas (la del teléfono y la del chat) para que Enviar,
+            Actividad y AURO CHAT digan siempre el mismo nombre. */}
+        {params?.avisarChat && contactoDest ? (
+          <Pressable onPress={() => { hap(); setNombreEd(contactoDest.name); setEditaNombre(true); }} style={styles.editNombre}>
+            <Icon name="create" size={15} color={C.gold} />
+            <Text style={styles.editNombreTxt}>{t('send.editarNombre', { name: contactoDest.name })}</Text>
+          </Pressable>
+        ) : null}
 
         <View style={{ height: 14 }} />
         <Card style={{ padding: 14, marginBottom: 16 }}>
@@ -419,7 +461,34 @@ export function Send({ nav, params }) {
         data={done}
         contacts={contacts}
         onClose={() => { setDone(null); nav.go('home'); }}
+        // El envío que nació en AURO CHAT vuelve a su charla, no a la
+        // billetera: el comprobante ya cayó en ese hilo y es ahí donde la
+        // conversación sigue. AuroChat abre el hilo con params.con.
+        onChat={done?.alChat ? () => { const c = done.alChat; setDone(null); nav.go('chat', { con: c }); } : null}
       />
+
+      {/* La hoja pequeña de renombrar al contacto (envíos nacidos del chat).
+          Escribe en la libreta del teléfono y en la del chat a la vez. */}
+      <Modal visible={editaNombre} transparent animationType="fade" onRequestClose={() => setEditaNombre(false)}>
+        <Pressable style={styles.editVelo} onPress={() => setEditaNombre(false)}>
+          <Pressable style={styles.editCaja} onPress={() => {}}>
+            <Text style={styles.editTit}>{t('send.editarNombreT')}</Text>
+            {contactoDest ? <Text style={styles.editSub} numberOfLines={1}>{contactoDest.address.slice(0, 12)}…{contactoDest.address.slice(-6)}</Text> : null}
+            <TextInput
+              value={nombreEd}
+              onChangeText={setNombreEd}
+              placeholder={t('send.saveAs')}
+              placeholderTextColor="#6f938f"
+              style={[styles.input, { marginTop: 12 }]}
+              autoFocus
+              maxLength={60}
+              onSubmitEditing={guardarNombre}
+              returnKeyType="done"
+            />
+            <Button3D title={t('send.guardarNombre')} onPress={guardarNombre} disabled={!nombreEd.trim()} style={{ marginTop: 14 }} />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -693,7 +762,7 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
 // -------- comprobante de envío --------
 // Aparece al confirmarse la transacción: monto, destino, comisión y hash.
 // No se cierra solo — el usuario lee y da OK.
-function SentReceipt({ data, contacts, onClose }) {
+function SentReceipt({ data, contacts, onClose, onChat }) {
   const t = useT();
   const toast = useToast();
   const check = useRef(new Animated.Value(0)).current;
@@ -750,7 +819,18 @@ function SentReceipt({ data, contacts, onClose }) {
               style={{ alignSelf: 'stretch', marginTop: 18 }}
             />
           ) : null}
-          <Button3D title={t('send.ok')} icon="checkmark" onPress={onClose} style={{ alignSelf: 'stretch', marginTop: data.volver && data.hash ? 10 : 18 }} />
+          {/* El envío que nació en AURO CHAT ofrece volver a la charla: el
+              comprobante ya cayó en ese hilo, y dejar al usuario varado en
+              la billetera era perder la conversación que lo trajo aquí. */}
+          {data.alChat && onChat ? (
+            <Button3D
+              title={t('send.volverChat')}
+              icon="chatbubbles"
+              onPress={onChat}
+              style={{ alignSelf: 'stretch', marginTop: data.volver && data.hash ? 10 : 18 }}
+            />
+          ) : null}
+          <Button3D title={t('send.ok')} icon="checkmark" onPress={onClose} style={{ alignSelf: 'stretch', marginTop: (data.volver && data.hash) || (data.alChat && onChat) ? 10 : 18 }} />
         </View>
       </View>
     </Modal>
@@ -995,7 +1075,8 @@ export function Buy({ nav }) {
     // el pago aunque la red no soporte memo/tag.
     const tag = Math.floor(1000 + Math.random() * 8999);
     const exact = (usd + tag / 10000).toFixed(4);
-    const id = `VW-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    // Prefijo 'OG-' de Orden Global: el 'VW-' era la marca del fork.
+    const id = `OG-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     setOrder({ id, exact, qty, tokenSym: tok.s, tokenName: tok.n, chain, createdAt: Date.now() });
     setExpiresAt(Date.now() + 30 * 60 * 1000);
     setStatus('waiting');
@@ -1363,6 +1444,13 @@ const styles = StyleSheet.create({
   flip: { width: 44, height: 44, borderRadius: 14, backgroundColor: C.panel3, borderWidth: 3, borderColor: C.bg, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginVertical: -14, zIndex: 3 },
   swapIn: { flex: 1, color: C.txt, fontWeight: '800', fontSize: 28, padding: 0 },
   swapTok: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.panel2, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 12 },
+  // «editar nombre» bajo el destino (envíos nacidos del chat) y su hoja
+  editNombre: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 10, alignSelf: 'flex-start' },
+  editNombreTxt: { color: C.gold, fontSize: 12.5, fontWeight: '700' },
+  editVelo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.62)', justifyContent: 'center', padding: 26 },
+  editCaja: { backgroundColor: '#06282B', borderWidth: 1, borderColor: C.line, borderRadius: 20, padding: 18 },
+  editTit: { color: C.txt, fontSize: 15.5, fontWeight: '700' },
+  editSub: { color: C.txt3, fontSize: 11.5, marginTop: 3, fontVariant: ['tabular-nums'] },
   sheetBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.62)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: C.bg2, borderTopLeftRadius: 28, borderTopRightRadius: 28, borderTopWidth: 1, borderColor: C.line2, padding: 22, paddingBottom: 34 },
   grab: { width: 40, height: 4, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.2)', alignSelf: 'center', marginBottom: 16 },

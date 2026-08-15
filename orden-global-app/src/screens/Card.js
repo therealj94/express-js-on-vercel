@@ -66,14 +66,11 @@ export default function CardScreen({ nav }) {
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <View style={styles.top}>
-        <Pressable
-          onPress={() => nav.go('home')}
-          style={styles.iconBtn}
-          accessibilityRole="button"
-          accessibilityLabel={t('card.back')}
-        >
-          <Icon name="chevron-back" size={20} color={C.txt} />
-        </Pressable>
+        {/* La tarjeta es PESTAÑA de la barra veta: sin flecha de atrás. La
+            heredada del apilado pre-fusión mandaba a la billetera, y como
+            'card' resetea el stack, abrirla desde Ajustes dejaba sin regreso
+            a Ajustes. El hueco vacío mantiene el título centrado. */}
+        <View style={styles.iconBtn} />
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Text style={styles.title}>{t('card.title')}</Text>
         </View>

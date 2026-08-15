@@ -16,40 +16,26 @@
 // ejemplo — presentarlos como negocios reales sería mentirle a quien busca
 // dónde gastar su ORIGEN.
 
-// Etiquetas del original (sus mismas categorías, países y ciudades).
-export const CATS = {
-  restaurantes: { es: 'Restaurantes', en: 'Restaurants' },
-  cafeterias: { es: 'Cafeterías', en: 'Coffee shops' },
-  hoteles: { es: 'Hoteles y hospedaje', en: 'Hotels & stays' },
-  gimnasios: { es: 'Gimnasios y fitness', en: 'Gyms & fitness' },
-  belleza: { es: 'Belleza y spa', en: 'Beauty & spa' },
-  'vida-nocturna': { es: 'Vida nocturna', en: 'Nightlife' },
-  conveniencia: { es: 'Tiendas de conveniencia', en: 'Convenience stores' },
-  moda: { es: 'Moda y accesorios', en: 'Fashion & accessories' },
-  tecnologia: { es: 'Electrónica y tecnología', en: 'Electronics & tech' },
-  salud: { es: 'Salud y bienestar', en: 'Health & wellness' },
-  educacion: { es: 'Educación', en: 'Education' },
-  automotriz: { es: 'Automotriz', en: 'Automotive' },
-  turismo: { es: 'Turismo y experiencias', en: 'Tourism & experiences' },
-};
+// Las etiquetas DERIVAN del catálogo único (./catalogo.js): antes este
+// fichero llevaba su propia copia de categorías, países y ciudades, casi
+// igual pero no igual a la de MiNegocio ('supermercados' y 'servicios' se
+// podían elegir en el alta y no existían aquí). Derivar en vez de copiar
+// garantiza que toda categoría del alta existe también en el directorio, y
+// que el mismo comercio se etiqueta igual en todas las pantallas. La forma
+// pública de CATS/PAISES/CIUDADES no cambió: nadie más tuvo que tocarse.
+import { RUBROS, PAISES as PAISES_CATALOGO } from './catalogo';
 
-export const PAISES = {
-  honduras: { et: 'Honduras', bandera: '🇭🇳' },
-  guatemala: { et: 'Guatemala', bandera: '🇬🇹' },
-  'el-salvador': { et: 'El Salvador', bandera: '🇸🇻' },
-  nicaragua: { et: 'Nicaragua', bandera: '🇳🇮' },
-  'costa-rica': { et: 'Costa Rica', bandera: '🇨🇷' },
-  panama: { et: 'Panamá', bandera: '🇵🇦' },
-};
+export const CATS = RUBROS.reduce((a, r) => { a[r.slug] = { es: r.es, en: r.en }; return a; }, {});
 
-export const CIUDADES = {
-  tegucigalpa: 'Tegucigalpa', 'san-pedro-sula': 'San Pedro Sula', 'la-ceiba': 'La Ceiba', roatan: 'Roatán',
-  'ciudad-de-guatemala': 'Ciudad de Guatemala', antigua: 'Antigua Guatemala', quetzaltenango: 'Quetzaltenango',
-  'san-salvador': 'San Salvador', 'santa-ana': 'Santa Ana', 'la-libertad': 'La Libertad',
-  managua: 'Managua', granada: 'Granada', leon: 'León',
-  'san-jose': 'San José', tamarindo: 'Tamarindo', liberia: 'Liberia',
-  'ciudad-de-panama': 'Ciudad de Panamá', 'bocas-del-toro': 'Bocas del Toro',
-};
+export const PAISES = PAISES_CATALOGO.reduce((a, p) => {
+  a[p.slug] = { et: p.label, bandera: p.bandera };
+  return a;
+}, {});
+
+export const CIUDADES = PAISES_CATALOGO.reduce((a, p) => {
+  for (const c of p.ciudades) a[c.slug] = c.label;
+  return a;
+}, {});
 
 // El set de iconos de la casa es SVG propio y corto a propósito (ver
 // src/icons.js: los iconos por fuente dejaban la pantalla en blanco cuando

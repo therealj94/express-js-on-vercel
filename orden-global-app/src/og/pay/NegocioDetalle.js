@@ -90,8 +90,10 @@ const TXT = {
 // Los favoritos son una preferencia de lectura, no un secreto: AsyncStorage,
 // no el almacén cifrado. Se guardan los ids del directorio; la ficha propia
 // no entra (nadie marca como favorito su propio negocio).
+// `leerFavoritos` se exporta: el directorio (ExplorarPay) pinta el chip
+// «Favoritos» con esta misma lista — el corazón dejó de ser función muerta.
 const LLAVE_FAV = 'og.pay.favoritos';
-async function leerFavoritos() {
+export async function leerFavoritos() {
   try {
     const crudo = await AsyncStorage.getItem(LLAVE_FAV);
     const l = crudo ? JSON.parse(crudo) : [];

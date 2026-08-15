@@ -1,16 +1,20 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, RadialGradient, Stop, Defs } from 'react-native-svg';
-import { C } from '../theme';
+import { C, F } from '../theme';
 import { Image } from 'react-native';
 import { Logo, useAccount, AppBackground, BG_SPLASH } from '../ui';
+import { useT } from '../i18n';
+import { useFuenteDisplay } from '../fuentes';
 import { versionLabel } from '../version';
 
 export default function Splash({ nav }) {
-  const { account } = useAccount();
-  const accountRef = useRef(account);
-  accountRef.current = account;
+  // `ready` la pone la raíz cuando loadSession TERMINÓ: la ruta se decide con
+  // la sesión en la mano, nunca con un timer que le apueste a que ya cargó.
+  const { account, ready } = useAccount();
+  const t = useT();
+  const fuente = useFuenteDisplay();
   const scale = useRef(new Animated.Value(0.55)).current;
   const op = useRef(new Animated.Value(0)).current;
   const ring = useRef(new Animated.Value(0)).current;
@@ -19,6 +23,7 @@ export default function Splash({ nav }) {
   const textOp = useRef(new Animated.Value(0)).current;
   const glow = useRef(new Animated.Value(0)).current;
   const pop = useRef(new Animated.Value(0)).current;
+  const [esperaLista, setEsperaLista] = useState(false);
 
   useEffect(() => {
     Animated.parallel([
@@ -43,12 +48,35 @@ export default function Splash({ nav }) {
         Animated.timing(textY, { toValue: 0, duration: 700, useNativeDriver: true }),
       ]),
     ]).start();
-    Animated.timing(prog, { toValue: 1, duration: 2600, easing: Easing.inOut(Easing.cubic), useNativeDriver: false }).start();
-
-    // Si hay sesión guardada entra directo a Inicio; si no, al login.
-    const t = setTimeout(() => nav.go(accountRef.current ? 'ecosistema' : 'auth'), 3300);
-    return () => clearTimeout(t);
+    // La barra sigue el progreso REAL. Antes era un timer fijo de 3.3s: la
+    // barra (2.6s) llegaba al 100% y se quedaba llena ~700ms —se leía como
+    // cuelgue—, cada apertura costaba 3.3s aun con sesión, y si loadSession
+    // tardaba más que el timer, un usuario CON sesión caía al login. Ahora
+    // avanza casi entera durante la espera mínima y, si la sesión aún no
+    // está, sigue arrastrándose despacio: movimiento lento dice «trabajando»,
+    // barra llena parada dice «colgado».
+    Animated.timing(prog, { toValue: 0.82, duration: 1450, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start(({ finished }) => {
+      if (finished) Animated.timing(prog, { toValue: 0.96, duration: 5000, easing: Easing.linear, useNativeDriver: false }).start();
+    });
+    // Espera mínima de cortesía para que el lockup respire; con la sesión ya
+    // cargada no se paga ni un segundo más que esto.
+    const tm = setTimeout(() => setEsperaLista(true), 1600);
+    return () => clearTimeout(tm);
   }, []);
+
+  // Se navega cuando las DOS cosas están: sesión cargada Y espera mínima
+  // (el Promise.all de este arranque, escrito con estados).
+  const fue = useRef(false);
+  useEffect(() => {
+    if (!esperaLista || !ready || fue.current) return;
+    fue.current = true;
+    prog.stopAnimation(() => {
+      Animated.timing(prog, { toValue: 1, duration: 240, easing: Easing.out(Easing.quad), useNativeDriver: false }).start(() => {
+        nav.go(account ? 'ecosistema' : 'auth');
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [esperaLista, ready, account]);
 
   const spin = ring.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const spinBack = ring.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-360deg'] });
@@ -92,8 +120,14 @@ export default function Splash({ nav }) {
         </View>
 
         <Animated.View style={{ opacity: textOp, transform: [{ translateY: textY }], alignItems: 'center', marginTop: 10 }}>
-          <Text style={styles.brand}>ORDEN <Text style={styles.brandItalic}>GLOBAL</Text></Text>
-          <Text style={styles.tag}>UNA IDENTIDAD · TODO EL ECOSISTEMA</Text>
+          {/* El lockup con la fuente de display cuando está lista (Cinzel no
+              trae itálica ni pesos sintéticos en Android: se neutralizan).
+              El lema y el «cargando» pasan por i18n como el resto de la app:
+              la primera pantalla no puede ser la única que mezcle idiomas. */}
+          <Text style={[styles.brand, fuente && { fontFamily: F.h, fontWeight: 'normal' }]}>
+            ORDEN <Text style={[styles.brandItalic, fuente && { fontFamily: F.h, fontWeight: 'normal', fontStyle: 'normal' }]}>GLOBAL</Text>
+          </Text>
+          <Text style={styles.tag}>{t('brand.tag')}</Text>
         </Animated.View>
 
         <View style={styles.progTrack}>
@@ -101,7 +135,7 @@ export default function Splash({ nav }) {
             <LinearGradient colors={['#F8EFCF', '#C9A961']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.progFill} />
           </Animated.View>
         </View>
-        <Text style={styles.loading}>Cargando tu ecosistema…</Text>
+        <Text style={styles.loading}>{t('splash.loading')}</Text>
         <Text style={styles.ver}>{versionLabel()}</Text>
       </View>
     </AppBackground>

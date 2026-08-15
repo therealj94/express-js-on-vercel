@@ -39,14 +39,15 @@ const TXT = {
     ticket: 'Ticket promedio',
     comercio: 'MI COMERCIO', personal: 'Comercio personal',
     genesisOk: 'Genesis · verificado', genesisNo: 'Genesis pendiente — complétalo',
-    hoy: 'RESUMEN DE HOY', cobradoHoy: 'ORIGEN cobrado hoy',
+    hoy: 'RESUMEN DE HOY', cobradoHoy: 'ORIGEN que entró hoy a tu billetera',
     otrosHoy: 'Hoy también entraron otros tokens: míralos en la actividad.',
-    cobrosHoy: 'Cobros hoy', historico: 'Cobros en total', totalRecibido: 'ORIGEN recibido',
-    vacioHoy: 'Hoy todavía no has cobrado. Genera tu QR y el primer cobro aparece aquí.',
+    cobrosHoy: 'Entradas hoy', historico: 'Entradas en total', totalRecibido: 'ORIGEN recibido',
+    entradasNota: 'Sin el backend de MyTokenPay, la cadena no distingue una venta de una remesa o un depósito tuyo: aquí se cuenta TODO el ORIGEN que entra a tu billetera, no solo lo que cobraste.',
+    vacioHoy: 'Hoy todavía no ha entrado nada. Genera tu QR y el primer cobro aparece aquí.',
     sinDatos: 'La cadena no devolvió movimientos: puede que tu cuenta sea nueva o que no hubiera conexión. Desliza hacia abajo para reintentar.',
     leyendo: 'Leyendo tus cobros en la cadena…',
     cobrarBtn: 'COBRAR CON QR', actividad: 'Ver toda la actividad',
-    ultimos: 'ÚLTIMOS COBROS', verTodo: 'Ver todo',
+    ultimos: 'ÚLTIMAS ENTRADAS', verTodo: 'Ver todo',
     nadieAun: 'Aún no has recibido ningún cobro. Cuando alguien pague tu QR, aparece aquí al instante.',
     de: 'De', refrescado: 'Cobros actualizados',
   },
@@ -62,14 +63,15 @@ const TXT = {
     ticket: 'Average ticket',
     comercio: 'MY BUSINESS', personal: 'Personal storefront',
     genesisOk: 'Genesis · verified', genesisNo: 'Genesis pending — complete it',
-    hoy: "TODAY'S SUMMARY", cobradoHoy: 'ORIGEN collected today',
+    hoy: "TODAY'S SUMMARY", cobradoHoy: 'ORIGEN that came into your wallet today',
     otrosHoy: 'Other tokens also came in today: see them in the activity.',
-    cobrosHoy: 'Payments today', historico: 'Payments overall', totalRecibido: 'ORIGEN received',
-    vacioHoy: 'Nothing collected yet today. Generate your QR and the first payment shows up here.',
+    cobrosHoy: 'Incoming today', historico: 'Incoming overall', totalRecibido: 'ORIGEN received',
+    entradasNota: 'Without the MyTokenPay backend, the chain cannot tell a sale from a remittance or your own deposit: this counts ALL the ORIGEN coming into your wallet, not just what you charged.',
+    vacioHoy: 'Nothing has come in yet today. Generate your QR and the first payment shows up here.',
     sinDatos: 'The chain returned no movements: your account may be new, or the connection failed. Pull down to retry.',
     leyendo: 'Reading your payments on chain…',
     cobrarBtn: 'CHARGE WITH QR', actividad: 'See all activity',
-    ultimos: 'LATEST PAYMENTS', verTodo: 'See all',
+    ultimos: 'LATEST INCOMING', verTodo: 'See all',
     nadieAun: 'No payments received yet. When someone pays your QR, it appears here instantly.',
     de: 'From', refrescado: 'Payments refreshed',
   },
@@ -142,10 +144,13 @@ export default function PanelPay({ nav }) {
   const inicioHoy = new Date(); inicioHoy.setHours(0, 0, 0, 0);
   const deHoy = entrantes.filter((x) => (Number(x.timeStamp) || 0) * 1000 >= inicioHoy.getTime());
   const esOrigen = (x) => (x.symbol || 'ORIGEN') === 'ORIGEN';
-  const origenHoy = deHoy.filter(esOrigen).reduce((a, x) => a + (Number(x.value) || 0), 0);
+  // TODO el bloque del resumen cuenta el MISMO conjunto: entradas de ORIGEN.
+  // Antes los contadores («n cobros») mezclaban todos los tokens debajo de un
+  // total que sumaba solo ORIGEN — dos cifras del mismo recuadro que no
+  // podían cuadrar entre sí. Si hoy entró otro token, se dice en una línea.
+  const deHoyOrigen = deHoy.filter(esOrigen);
+  const origenHoy = deHoyOrigen.reduce((a, x) => a + (Number(x.value) || 0), 0);
   const origenTotal = entrantes.filter(esOrigen).reduce((a, x) => a + (Number(x.value) || 0), 0);
-  // El titular del día suma SOLO ORIGEN (mezclar símbolos daría un número
-  // falso); si hoy entró otro token, se dice en una línea en vez de callarlo.
   const hayOtrosHoy = deHoy.some((x) => !esOrigen(x));
 
   // El ticket promedio del panel del negocio original, sobre cobros en
@@ -294,6 +299,11 @@ export default function PanelPay({ nav }) {
                   </Text>
                 ) : null}
                 {hayOtrosHoy ? <Text style={st.nota}>{t.otrosHoy}</Text> : null}
+                {/* La verdad sobre qué se está contando: entradas, no ventas.
+                    Va SIEMPRE, no solo en el vacío — es la etiqueta honesta
+                    del bloque entero mientras no exista referencia que
+                    distinga un cobro de una remesa. */}
+                <Text style={st.nota}>{t.entradasNota}</Text>
                 {entrantes.length === 0 ? (
                   <Text style={st.nota}>{transfers.length === 0 ? t.sinDatos : t.nadieAun}</Text>
                 ) : deHoy.length === 0 ? (
@@ -301,11 +311,11 @@ export default function PanelPay({ nav }) {
                 ) : null}
                 <View style={st.statsFila}>
                   <View style={st.stat}>
-                    <Text style={st.statNum}>{deHoy.length}</Text>
+                    <Text style={st.statNum}>{deHoyOrigen.length}</Text>
                     <Text style={st.statLbl}>{t.cobrosHoy}</Text>
                   </View>
                   <View style={[st.stat, st.statMedio]}>
-                    <Text style={st.statNum}>{entrantes.length}</Text>
+                    <Text style={st.statNum}>{enOrigen.length}</Text>
                     <Text style={st.statLbl}>{t.historico}</Text>
                   </View>
                   <View style={st.stat}>
@@ -325,7 +335,10 @@ export default function PanelPay({ nav }) {
 
         {/* ── acciones: cobrar es EL botón; la actividad, el camino al detalle ── */}
         <Entrada delay={180}>
-          <Button3D title={t.cobrarBtn} icon="qr-code" onPress={() => nav.go('cobrar')} style={{ marginTop: 16 }} />
+          {/* A 'pay-cobro' (la caja NUEVA con lempiras, propina, dividir y
+              referencia), no a 'cobrar': CobrarOG es la caja vieja y queda
+              solo para el atajo del ecosistema (Ecosistema.js). */}
+          <Button3D title={t.cobrarBtn} icon="qr-code" onPress={() => nav.go('pay-cobro')} style={{ marginTop: 16 }} />
           <Pressable
             onPress={() => { hap(); nav.go('pay-actividad'); }}
             accessibilityRole="button" accessibilityLabel={t.actividad}

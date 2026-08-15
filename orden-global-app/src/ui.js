@@ -7,6 +7,7 @@ import Svg, { Rect, Line, Path, Defs, LinearGradient as SvgGrad, Stop } from 're
 import * as Haptics from 'expo-haptics';
 import { C, G } from './theme';
 import { useCampoAuto } from './og/Teclado';
+import { urlArchivo } from './og/mensajes';
 
 export const LOGO = require('../assets/logo.png');
 // Logo corporativo de la empresa dueña del ecosistema (marca en el pie).
@@ -75,6 +76,35 @@ export function TokenIcon({ t, size = 44 }) {
   return (
     <LinearGradient colors={t.grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: size, height: size, borderRadius: r, alignItems: 'center', justifyContent: 'center' }}>
       <Text style={{ color: t.fg, fontWeight: '800', fontSize: t.glyph.length > 1 ? size * 0.3 : size * 0.4 }}>{t.glyph}</Text>
+    </LinearGradient>
+  );
+}
+
+// ---- Avatar de AURO CHAT ----
+// Vivía triplicado en AuroChat, GruposAuro y AjustesAuro; ahora es una sola
+// pieza para que las tres pantallas pinten a la misma persona igual. Sirve a
+// las tres cosas que hay en una lista de chat: una persona con foto (el id
+// del relevo se resuelve a URL aquí), una persona sin foto (su inicial sobre
+// un tono ESTABLE sacado del correo — mismo correo, mismo color, siempre) y
+// un grupo, que se reconoce de un vistazo por la silueta de gente.
+export const TONOS = [['#F8EFCF', '#C9A961'], ['#9FE3C9', '#2E8F6E'], ['#BFD8F5', '#4A78B0'], ['#F2C4B3', '#B0674A']];
+export const tono = (c) => TONOS[String(c).split('').reduce((a, x) => a + x.charCodeAt(0), 0) % TONOS.length];
+
+export function Avatar({ nombre, correo, foto, grupo, tam = 42 }) {
+  if (foto) {
+    return (
+      <Image source={{ uri: urlArchivo(foto) }} resizeMode="cover"
+        style={{ width: tam, height: tam, borderRadius: tam / 2, backgroundColor: C.panel2 }} />
+    );
+  }
+  return (
+    <LinearGradient colors={tono(correo || nombre)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+      style={{ width: tam, height: tam, borderRadius: tam / 2, alignItems: 'center', justifyContent: 'center' }}>
+      {grupo ? <Icon name="people" size={tam * 0.5} color="#12312b" /> : (
+        <Text style={{ color: '#12312b', fontWeight: '800', fontSize: tam * 0.4 }}>
+          {String(nombre || correo || '?')[0].toUpperCase()}
+        </Text>
+      )}
     </LinearGradient>
   );
 }

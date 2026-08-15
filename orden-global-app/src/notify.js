@@ -53,6 +53,7 @@ const WATCH_EMAIL = 'veta-notify-email';
 const ENABLED = 'veta-notify-on';
 
 const CANAL = 'veta-in'; // canal de Android para los avisos de dinero recibido
+const CANAL_CHAT = 'auro-chat'; // canal aparte: el usuario puede silenciar el chat sin callar el dinero
 
 // Valores de los enums de expo-notifications, con respaldo literal. Si una
 // versión de la librería dejara de exportarlos, `X.MAX` sería un TypeError y
@@ -287,12 +288,67 @@ export async function limpiarAvisos() {
   await AsyncStorage.removeItem(WATCH_EMAIL).catch(() => {});
 }
 
-/** Se dispara al tocar la notificación: devuelve la pantalla a abrir. */
+// ============================================================
+// Mensajes de AURO CHAT: la notificación local que lanza el vigía
+// (src/og/vigiaChat.js) cuando llegan sin leer con la app en segundo plano.
+// ============================================================
+
+// El canal se crea la primera vez que hace falta, no al arrancar: quien no
+// usa el chat no necesita un canal de chat en los ajustes de Android.
+let canalChatListo = false;
+async function asegurarCanalChat(N) {
+  if (Platform.OS !== 'android' || canalChatListo) return;
+  await N.setNotificationChannelAsync(CANAL_CHAT, {
+    name: 'AURO CHAT',
+    description: 'Mensajes nuevos en AURO CHAT',
+    importance: IMPORTANCIA_MAX,
+    vibrationPattern: [0, 180, 80, 180],
+    lightColor: '#C9A961',
+    lockscreenVisibility: VISIBLE_EN_BLOQUEO,
+    sound: 'default',
+    enableVibrate: true,
+    showBadge: true,
+  });
+  canalChatListo = true;
+}
+
+/**
+ * «AURO CHAT · quien: texto corto». `con` viaja en data: al tocarla, App.js
+ * abre el hilo exacto de esa conversación, no la lista.
+ */
+export async function notificarMensaje({ quien, texto, con }) {
+  const N = notif();
+  if (!N) return false;
+  try {
+    await asegurarCanalChat(N);
+    await N.scheduleNotificationAsync({
+      content: {
+        title: `AURO CHAT · ${quien}`,
+        body: texto || '',
+        sound: 'default',
+        priority: PRIORIDAD_MAX,
+        color: '#C9A961',
+        autoDismiss: false,
+        sticky: false,
+        data: { screen: 'chat', con },
+      },
+      trigger: Platform.OS === 'android' ? { channelId: CANAL_CHAT } : null,
+    });
+    return true;
+  } catch (e) {
+    if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('[notify] no salió el aviso de chat:', e?.message || e);
+    return false;
+  }
+}
+
+/** Se dispara al tocar la notificación: devuelve la pantalla a abrir y los
+ *  datos del aviso (el de chat trae `con`, la conversación a abrir). */
 export function alTocarNotificacion(cb) {
   const N = notif();
   if (!N) return () => {};       // en Expo Go no hay notificaciones que tocar
   const sub = N.addNotificationResponseReceivedListener((r) => {
-    cb(r?.notification?.request?.content?.data?.screen || 'activity');
+    const data = r?.notification?.request?.content?.data || {};
+    cb(data.screen || 'activity', data);
   });
   return () => sub.remove();
 }

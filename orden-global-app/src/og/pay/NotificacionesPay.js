@@ -20,7 +20,7 @@
 // premios se suman en `avisosDe` y esta pantalla los pinta sin cambiar.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, Pressable, ScrollView, StyleSheet, Animated, RefreshControl,
+  View, Text, Pressable, FlatList, StyleSheet, Animated, RefreshControl,
 } from 'react-native';
 import { C } from '../../theme';
 import { Header, Skeleton, useAccount, useToast, hap } from '../../ui';
@@ -45,6 +45,7 @@ const TXT = {
     gidNoT: 'Completa tu Genesis ID',
     gidNoP: 'Es la identidad única del ecosistema: con ella tu comercio aparece verificado en el directorio. Toca para continuar.',
     verCobros: 'Ver todos los cobros',
+    recorte: 'Aquí se enseñan solo los {n} avisos más recientes: el historial completo vive en «Ver todos los cobros».',
     pie: 'Las promociones y los premios de los comercios llegarán a esta bandeja cuando el servidor de MyTokenPay esté conectado a la app. Hasta entonces aquí solo aparece lo que de verdad ocurre en tu cuenta.',
     refrescado: 'Avisos actualizados',
   },
@@ -60,12 +61,19 @@ const TXT = {
     gidNoT: 'Complete your Genesis ID',
     gidNoP: 'It is the single identity of the ecosystem: with it your business shows as verified in the directory. Tap to continue.',
     verCobros: 'See all payments',
+    recorte: 'Only the {n} most recent alerts show here: the full history lives under “See all payments”.',
     pie: 'Promotions and prizes from businesses will land in this tray once the MyTokenPay server is connected to the app. Until then only what truly happens in your account shows here.',
     refrescado: 'Notifications refreshed',
   },
 };
 
 const shortAddr = (a) => (a && a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a || '');
+
+// La bandeja se corta a los 30 avisos más recientes: pintar CIENTOS de
+// tarjetas animadas en cada apertura (una por cobro histórico) trababa la
+// pantalla, y lo leído de hace meses ya vive en Cobros — esta bandeja avisa,
+// no duplica el historial. El corte va con FlatList, que además virtualiza.
+const TOPE_BANDEJA = 30;
 
 // Entrada en cascada, como el resto de la sección: solo opacity y transform,
 // así que useNativeDriver.
@@ -130,10 +138,15 @@ export default function NotificacionesPay({ nav }) {
   const hayTransfers = Array.isArray(account?.transfers);
   const gidOk = !!account?.genesisUid;
 
+  // Solo los TOPE_BANDEJA más recientes se montan como tarjetas.
+  const recortados = (avisos || []).slice(0, TOPE_BANDEJA);
+
   return (
     <View style={st.screen}>
       <Header title={t.titulo} sub={t.sub} onBack={nav.back} />
-      <ScrollView
+      <FlatList
+        data={recortados}
+        keyExtractor={(a) => String(a.id)}
         contentContainerStyle={st.dentro}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -141,78 +154,86 @@ export default function NotificacionesPay({ nav }) {
             refreshing={refrescando} tintColor={C.gold} colors={[C.gold]}
             onRefresh={async () => { setRefrescando(true); await refrescar(true); setRefrescando(false); }}
           />
-        }>
-
-        {/* ── el estado de la identidad: no es un aviso con fecha, es una
-            condición de la cuenta, así que va fijo arriba y no cuenta como
-            "no leído" (si contara, el globo no se apagaría nunca). ─────── */}
-        <Entrada indice={0}>
-          <Pressable
-            onPress={gidOk ? undefined : () => { hap(); nav.go('kyc'); }}
-            accessibilityRole={gidOk ? undefined : 'button'}
-            accessibilityLabel={gidOk ? t.gidOkT : t.gidNoT}
-            style={[st.tarjeta, gidOk ? st.tarjetaOk : st.tarjetaPend]}>
-            <View style={[st.ic, gidOk ? st.icOk : st.icPend]}>
-              <Icon name={gidOk ? 'shield-checkmark' : 'finger-print'} size={17} color={gidOk ? C.up : '#FBBF24'} />
-            </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={st.tit}>{gidOk ? t.gidOkT : t.gidNoT}</Text>
-              <Text style={st.cuerpo}>{gidOk ? t.gidOkP : t.gidNoP}</Text>
-              {gidOk ? <Text style={st.uid}>{account.genesisUid}</Text> : null}
-            </View>
-            {gidOk ? null : <Icon name="chevron-forward" size={15} color={C.txt3} />}
-          </Pressable>
-        </Entrada>
-
-        {/* ── los cobros: lo único con fecha propia ───────────────────── */}
-        {avisos === null ? (
-          <View style={{ gap: 10, marginTop: 12 }}>
-            <Skeleton width="100%" height={74} radius={16} />
-            <Skeleton width="100%" height={74} radius={16} />
-            <Text style={st.nota}>{t.leyendo}</Text>
-          </View>
-        ) : avisos.length === 0 ? (
-          <Entrada indice={1}>
-            <View style={st.vacio}>
-              <View style={st.vacioIc}><Icon name="notifications" size={26} color={C.txt3} /></View>
-              <Text style={st.vacioT}>{t.vacio}</Text>
-              <Text style={st.vacioP}>{hayTransfers && account.transfers.length === 0 ? t.sinDatos : t.vacioP}</Text>
-            </View>
-          </Entrada>
-        ) : (
-          avisos.map((a, i) => (
-            <Entrada key={a.id} indice={i + 1}>
-              <View style={[st.tarjeta, sinLeer(a) && st.tarjetaNueva]}>
-                <View style={[st.ic, sinLeer(a) && st.icNuevo]}>
-                  <Icon name="arrow-down" size={17} color={sinLeer(a) ? C.up : C.txt3} />
+        }
+        ListHeaderComponent={
+          <>
+            {/* ── el estado de la identidad: no es un aviso con fecha, es una
+                condición de la cuenta, así que va fijo arriba y no cuenta como
+                "no leído" (si contara, el globo no se apagaría nunca). ───── */}
+            <Entrada indice={0}>
+              <Pressable
+                onPress={gidOk ? undefined : () => { hap(); nav.go('kyc'); }}
+                accessibilityRole={gidOk ? undefined : 'button'}
+                accessibilityLabel={gidOk ? t.gidOkT : t.gidNoT}
+                style={[st.tarjeta, gidOk ? st.tarjetaOk : st.tarjetaPend]}>
+                <View style={[st.ic, gidOk ? st.icOk : st.icPend]}>
+                  <Icon name={gidOk ? 'shield-checkmark' : 'finger-print'} size={17} color={gidOk ? C.up : '#FBBF24'} />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <View style={st.titFila}>
-                    <Text style={st.tit} numberOfLines={1}>{t.cobroT}</Text>
-                    {sinLeer(a) ? <View style={st.punto} /> : null}
-                  </View>
-                  <Text style={st.cuerpo}>
-                    +{qtyFmt(a.valor)} {a.simbolo} {t.cobroDe} {etiqueta(a.de)}
-                  </Text>
-                  <Text style={st.cuando}>{haceCuanto(a.ts, lang)}</Text>
+                  <Text style={st.tit}>{gidOk ? t.gidOkT : t.gidNoT}</Text>
+                  <Text style={st.cuerpo}>{gidOk ? t.gidOkP : t.gidNoP}</Text>
+                  {gidOk ? <Text style={st.uid}>{account.genesisUid}</Text> : null}
                 </View>
-              </View>
+                {gidOk ? null : <Icon name="chevron-forward" size={15} color={C.txt3} />}
+              </Pressable>
             </Entrada>
-          ))
+
+            {avisos === null ? (
+              <View style={{ gap: 10, marginTop: 12 }}>
+                <Skeleton width="100%" height={74} radius={16} />
+                <Skeleton width="100%" height={74} radius={16} />
+                <Text style={st.nota}>{t.leyendo}</Text>
+              </View>
+            ) : avisos.length === 0 ? (
+              <Entrada indice={1}>
+                <View style={st.vacio}>
+                  <View style={st.vacioIc}><Icon name="notifications" size={26} color={C.txt3} /></View>
+                  <Text style={st.vacioT}>{t.vacio}</Text>
+                  <Text style={st.vacioP}>{hayTransfers && account.transfers.length === 0 ? t.sinDatos : t.vacioP}</Text>
+                </View>
+              </Entrada>
+            ) : null}
+          </>
+        }
+        renderItem={({ item: a, index: i }) => (
+          <Entrada indice={i + 1}>
+            <View style={[st.tarjeta, sinLeer(a) && st.tarjetaNueva]}>
+              <View style={[st.ic, sinLeer(a) && st.icNuevo]}>
+                <Icon name="arrow-down" size={17} color={sinLeer(a) ? C.up : C.txt3} />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <View style={st.titFila}>
+                  <Text style={st.tit} numberOfLines={1}>{t.cobroT}</Text>
+                  {sinLeer(a) ? <View style={st.punto} /> : null}
+                </View>
+                <Text style={st.cuerpo}>
+                  +{qtyFmt(a.valor)} {a.simbolo} {t.cobroDe} {etiqueta(a.de)}
+                </Text>
+                <Text style={st.cuando}>{haceCuanto(a.ts, lang)}</Text>
+              </View>
+            </View>
+          </Entrada>
         )}
-
-        {avisos && avisos.length > 0 ? (
-          <Pressable
-            onPress={() => { hap(); nav.go('pay-actividad'); }}
-            accessibilityRole="button" accessibilityLabel={t.verCobros}
-            style={st.enlace}>
-            <Icon name="pulse" size={15} color={C.gold} />
-            <Text style={st.enlaceTxt}>{t.verCobros}</Text>
-          </Pressable>
-        ) : null}
-
-        <Text style={st.pie}>{t.pie}</Text>
-      </ScrollView>
+        ListFooterComponent={
+          <>
+            {/* si hubo recorte se dice, y el camino al historial completo es
+                el enlace de siempre a Cobros */}
+            {avisos && avisos.length > TOPE_BANDEJA ? (
+              <Text style={st.nota}>{t.recorte.replace('{n}', String(TOPE_BANDEJA))}</Text>
+            ) : null}
+            {avisos && avisos.length > 0 ? (
+              <Pressable
+                onPress={() => { hap(); nav.go('pay-actividad'); }}
+                accessibilityRole="button" accessibilityLabel={t.verCobros}
+                style={st.enlace}>
+                <Icon name="pulse" size={15} color={C.gold} />
+                <Text style={st.enlaceTxt}>{t.verCobros}</Text>
+              </Pressable>
+            ) : null}
+            <Text style={st.pie}>{t.pie}</Text>
+          </>
+        }
+      />
     </View>
   );
 }

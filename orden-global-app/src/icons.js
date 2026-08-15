@@ -145,6 +145,11 @@ const PATHS = {
   // botones se veían como un hueco. Dibujados sobre la misma rejilla de 24×24
   // y con el mismo trazo que el resto.
   home: ['M3.5 10.6L12 3.6l8.5 7', 'M5.5 9.4V20h13V9.4', 'M9.8 20v-5.6h4.4V20'],
+  // El clip y la cámara de video entraron cuando AURO CHAT dejó los emojis
+  // (📎🖼🎬📄⌖) como iconos de botón: en Android salen a color y rompen la
+  // paleta oro/verde. Mismo trazo y rejilla 24×24 que el resto del set.
+  attach: ['M21.2 11.2l-8.9 8.9a5.7 5.7 0 0 1-8.1-8.1l8.9-8.9a3.8 3.8 0 0 1 5.4 5.4l-8.9 8.9a1.9 1.9 0 0 1-2.7-2.7l8.2-8.2'],
+  videocam: ['M2.5 7.5A1.5 1.5 0 0 1 4 6h9a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 13 18H4a1.5 1.5 0 0 1-1.5-1.5z', 'M14.5 10.2l7-3.7v11l-7-3.7'],
   planet: [circle(12, 12, 6.4), 'M4.6 16.4c-2.2 1.5-3.4 2.9-3 3.6.7 1.2 5.2-.3 10-3.3s8.2-6.4 7.5-7.6c-.4-.7-2.2-.5-4.6.4'],
   compass: [circle(12, 12, 8.6), 'M15.4 8.6l-2 4.8-4.8 2 2-4.8z'],
   scan: ['M3.5 8.6V5.6a2 2 0 0 1 2-2h3', 'M15.5 3.6h3a2 2 0 0 1 2 2v3', 'M20.5 15.4v3a2 2 0 0 1-2 2h-3', 'M8.5 20.4h-3a2 2 0 0 1-2-2v-3', 'M3.5 12h17'],

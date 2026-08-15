@@ -36,6 +36,7 @@ import {
 } from 'react-native';
 import { PantallaConTeclado, CuerpoDesplazable, useCampoAuto } from '../Teclado';
 import QRCode from 'react-native-qrcode-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C, G } from '../../theme';
 import { Header, Button3D, Card, useAccount, useToast, hap } from '../../ui';
@@ -119,6 +120,27 @@ const TXT = {
 
 const PROPINAS = [0, 5, 10, 15];
 const MAX_PERSONAS = 4;
+
+// ── el registro local de facturas emitidas ────────────────────────────────
+// La referencia INV-… no viaja por la cadena (la transferencia no lleva memo
+// visible), así que sin guardarla en ningún lado el cobro llegaba sin nada
+// que lo atara a la factura. Ahora cada QR emitido se apunta AQUÍ (monto,
+// referencia, concepto, cuándo): es el papel del comercio para cuadrar caja,
+// y el día que el backend de MyTokenPay exista, la conciliación arranca de
+// este registro. AsyncStorage y no SecureStore: no es un secreto y la lista
+// crece más de los ~2 KB que SecureStore aguanta bien.
+const LLAVE_FACTURAS = 'og.pay.facturas';
+const TOPE_FACTURAS = 50;
+async function apuntarFactura(rec) {
+  try {
+    const crudo = await AsyncStorage.getItem(LLAVE_FACTURAS);
+    const l = JSON.parse(crudo || '[]');
+    const lista = [rec, ...(Array.isArray(l) ? l : [])].slice(0, TOPE_FACTURAS);
+    await AsyncStorage.setItem(LLAVE_FACTURAS, JSON.stringify(lista));
+  } catch (e) {
+    // el registro es un apoyo, nunca la condición para poder cobrar
+  }
+}
 
 // Un TextInput que se sube solo por encima del teclado al enfocarlo. Se saca
 // a componente porque `useCampoAuto` es un hook y el reparto manual crea
@@ -273,7 +295,15 @@ export default function CobroPay({ nav, params }) {
     );
   }
 
-  const uriDe = (m) => aUri('wallet/enviar', { to: addr, amount: enTexto(m) });
+  // La referencia y el concepto VIAJAN en el QR: og://wallet/enviar pasa
+  // todos sus params a la pantalla Enviar (rutas.js:abrir), donde el memo se
+  // enseña al que paga y la ref queda en el enlace para cuando el backend
+  // pueda conciliar. En la cuenta dividida cada persona lleva SU referencia
+  // (INV-X-1, INV-X-2…): antes los QR de partes iguales eran IDÉNTICOS y el
+  // sello por persona fingía códigos distintos que no existían.
+  const uriDe = (m, refExt) => aUri('wallet/enviar', {
+    to: addr, amount: enTexto(m), ref: refExt || referencia, memo: concepto.trim() || undefined,
+  });
 
   // Partes iguales: se redondea hacia abajo y la última persona carga con el
   // sobrante, para que la suma de los QR sea EXACTAMENTE el total y nadie
@@ -290,9 +320,23 @@ export default function CobroPay({ nav, params }) {
     return filas;
   }
 
+  // Cada parte del reparto entra al registro local con SU referencia (la
+  // misma que viaja en su QR): así el papel del comercio y los códigos que
+  // firma cada persona cuentan la misma historia.
+  function apuntarReparto(filas) {
+    filas.forEach((p, i) => apuntarFactura({
+      ref: `${referencia}-${i + 1}`, monto: enTexto(p.monto),
+      concepto: concepto.trim(), cuando: Date.now(),
+    }));
+  }
+
   function generarReparto() {
     if (total <= 0) { setError(t.errMonto); return; }
-    if (!manual) { setReparto(repartoIgual(personas)); setError(null); hap(); return; }
+    if (!manual) {
+      const filas = repartoIgual(personas);
+      apuntarReparto(filas);
+      setReparto(filas); setError(null); hap(); return;
+    }
     // Los montos manuales se cuantizan a centésimas ANTES de sumarse y la
     // comparación se hace en centésimas enteras: comparar floats con una
     // tolerancia dejaba pasar repartos que sumaban un pelo de más, y ese pelo
@@ -305,13 +349,19 @@ export default function CobroPay({ nav, params }) {
       return;
     }
     setError(null); hap();
-    setReparto(montos.map((m, i) => ({ etiqueta: `${t.persona} ${i + 1}`, monto: m })));
+    const filas = montos.map((m, i) => ({ etiqueta: `${t.persona} ${i + 1}`, monto: m }));
+    apuntarReparto(filas);
+    setReparto(filas);
   }
 
   function irA(etapaNueva) {
     if (total <= 0) { setError(t.errMonto); toast(t.errMonto); return; }
     setError(null); hap();
     setReparto(null);
+    // el QR único que se va a enseñar queda apuntado en el registro local
+    if (etapaNueva === 'qr') {
+      apuntarFactura({ ref: referencia, monto: enTexto(total), concepto: concepto.trim(), cuando: Date.now() });
+    }
     setEtapa(etapaNueva);
   }
 
@@ -521,14 +571,17 @@ export default function CobroPay({ nav, params }) {
               <Entrada key={i} delay={i * 90}>
                 <View style={st.persona}>
                   <View style={st.qrChico}>
-                    <QRCode value={uriDe(p.monto)} size={124} color="#04211d" backgroundColor="#ffffff" ecl="M" />
+                    {/* cada QR lleva SU referencia (INV-X-1, INV-X-2…): el
+                        sello de abajo dice exactamente lo que hay dentro del
+                        código, no un número decorativo */}
+                    <QRCode value={uriDe(p.monto, `${referencia}-${i + 1}`)} size={124} color="#04211d" backgroundColor="#ffffff" ecl="M" />
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={st.personaEti}>{p.etiqueta}</Text>
                     <Text style={st.personaMonto}>{origenFmt(p.monto)} <Text style={st.moneda}>ORIGEN</Text></Text>
                     <Text style={st.usdChico}>{equivalencia(p.monto)}</Text>
                     <LinearGradient colors={G.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.sello}>
-                      <Text style={st.selloTxt}>{referencia}·{i + 1}</Text>
+                      <Text style={st.selloTxt}>{referencia}-{i + 1}</Text>
                     </LinearGradient>
                   </View>
                 </View>

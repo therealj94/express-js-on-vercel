@@ -10,16 +10,15 @@
 // la única forma de cerrarle la puerta a quien ya lo tenga.
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, ScrollView, FlatList, Modal, Image,
+  View, Text, TextInput, Pressable, ScrollView, FlatList, Modal,
   ActivityIndicator, Share, StyleSheet,
 } from 'react-native';
 import { PantallaConTeclado, CuerpoDesplazable } from './Teclado';
-import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import { C } from '../theme';
-import { Header, Button3D, useAccount, useToast, hap } from '../ui';
+import { Header, Button3D, Avatar, useAccount, useToast, hap } from '../ui';
 import { useLang } from '../i18n';
 import { genesis } from '../genesis';
 import * as M from './mensajes';
@@ -152,25 +151,10 @@ const TOPE_NOMBRE = 64;
 const ASOMO_MIEMBROS = 24;
 const CORREO = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 
-const TONOS = [['#F8EFCF', '#C9A961'], ['#9FE3C9', '#2E8F6E'], ['#BFD8F5', '#4A78B0'], ['#F2C4B3', '#B0674A']];
-const tono = (c) => TONOS[String(c).split('').reduce((a, x) => a + x.charCodeAt(0), 0) % TONOS.length];
-
-// La foto que se guarda es el id de /subir: la url se arma al pintarla, así
-// un cambio de dominio del relevo no deja fotos rotas guardadas.
-function Avatar({ nombre, correo, foto, tam = 44 }) {
-  if (foto) {
-    return <Image source={{ uri: M.urlArchivo(foto) }} resizeMode="cover"
-      style={{ width: tam, height: tam, borderRadius: tam / 2, backgroundColor: 'rgba(0,0,0,0.25)' }} />;
-  }
-  return (
-    <LinearGradient colors={tono(correo || nombre)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-      style={{ width: tam, height: tam, borderRadius: tam / 2, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ color: '#12312b', fontWeight: '800', fontSize: tam * 0.4 }}>
-        {String(nombre || correo || '?')[0].toUpperCase()}
-      </Text>
-    </LinearGradient>
-  );
-}
+// El Avatar es el de src/ui.js: estaba triplicado en las tres pantallas de
+// AURO CHAT y tres copias acaban pintando a la misma persona distinto. La
+// foto que se guarda sigue siendo el id de /subir: la url se arma al pintarla
+// (dentro del Avatar), así un cambio de dominio del relevo no rompe nada.
 
 export default function GruposAuro({ nav, params }) {
   const { lang } = useLang();
