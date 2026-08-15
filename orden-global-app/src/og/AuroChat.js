@@ -661,24 +661,33 @@ export default function AuroChat({ nav, params }) {
     return (mio ? '✓ ' : '') + cuerpo;
   };
 
+  /* Lee un código de PULSE CHAT venga de donde venga.
+     Hay dos formatos vivos y son el mismo ecosistema: og://chat/… lo imprime
+     el APK, y https://…/#chat?… lo imprime la web. La web ya entendía los dos;
+     el teléfono solo el suyo, así que quien enseñaba su código desde la web y
+     lo escaneaban con la app no pasaba NADA — sin error, sin nada, que es la
+     peor forma de fallar. Ahora los dos leen los dos. */
+  const leerCodigo = (crudo) => {
+    const s = String(crudo || '').trim();
+    const m = s.match(/(?:og:\/\/chat\/(?:abrir|grupo)|#chat)\?([^\s]+)/);
+    if (!m) return null;
+    let q;
+    try { q = new URLSearchParams(m[1]); } catch { return null; }
+    const inv = String(q.get('inv') || '').trim();
+    // la invitación es un permiso de 24 hex: si no tiene esa forma, no lo es
+    if (/^[0-9a-f]{24}$/.test(inv)) return { inv };
+    const con = String(q.get('con') || '').trim().toLowerCase();
+    return con.includes('@') ? { con } : null;
+  };
+
   const alEscanear = ({ data }) => {
-    const s = String(data || '');
-    const persona = s.match(/^og:\/\/chat\/abrir\?con=(.+)$/);
-    if (persona) {
-      hap(); setQr(null); setBusca(''); setGente(null);
-      // se abre el hilo Y se ofrece guardarlo: escanear a alguien y que no
-      // quede nada obliga a volver a buscar el papel del QR la próxima vez
-      abrirPersona(decodeURIComponent(persona[1]), true);
-      return;
-    }
-    // El QR de invitación de un grupo (GruposAuro) es og://chat/grupo?inv=…:
-    // el escáner interno lo acepta igual que la cámara del teléfono — antes
-    // solo entendía chat/abrir y la invitación escaneada moría en silencio.
-    const grupo = s.match(/^og:\/\/chat\/grupo\?inv=(.+)$/);
-    if (grupo) {
-      hap(); setQr(null); setBusca(''); setGente(null);
-      nav.go('auro-grupo', { inv: decodeURIComponent(grupo[1]) });
-    }
+    const leido = leerCodigo(data);
+    if (!leido) return;
+    hap(); setQr(null); setBusca(''); setGente(null);
+    if (leido.inv) { nav.go('auro-grupo', { inv: leido.inv }); return; }
+    // se abre el hilo Y se ofrece guardarlo: escanear a alguien y que no
+    // quede nada obliga a volver a buscar el papel del QR la próxima vez
+    abrirPersona(leido.con, true);
   };
 
   const guardarOfrecido = async () => {
