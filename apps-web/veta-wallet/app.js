@@ -852,6 +852,14 @@ const VETA = (() => {
           ${x.chg != null ? `<span class="pastilla ${x.chg < 0 ? 'baja-p' : 'sube-p'}">${x.chg > 0 ? '+' : ''}${x.chg.toFixed(2)}% · ${t('tok.cambio24')}</span>` : ''}
         </div>`
       : `<p class="pie sin-precio">${t('tok.sinPrecio')}</p>`}
+      ${/* Leer que es una moneda y no poder moverla desde ahi es hacer volver
+            atras por gusto. Enviar arranca ya con esta moneda elegida. */''}
+      <div class="ficha-btns">
+        <button class="btn btn-oro btn-sm" onclick="VETA.envElegir('${x.s}')">
+          <svg viewBox="0 0 24 24" class="btn-ic">${ICO.enviar}</svg>${t('a.enviar')}</button>
+        <button class="btn btn-linea btn-sm" onclick="VETA.vista('recibir')">
+          <svg viewBox="0 0 24 24" class="btn-ic">${ICO.recibir}</svg>${t('a.recibir')}</button>
+      </div>
       <p class="ficha-desc">${esc(f.d)}</p>
       <dl class="datos">
         ${filas.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd class="${k === t('tok.contrato') && !x.nativo ? 'mono' : ''}">${esc(v || '—')}</dd></div>`).join('')}
@@ -861,22 +869,79 @@ const VETA = (() => {
     </div>`;
   }
 
-  // ORIGEN es lo unico que mueve este endpoint: transfiere la moneda nativa.
   const origen = () => (cartera || []).find(x => x.s === 'ORIGEN') || null;
 
+  /* Lo que cuesta una transferencia nativa a 400 gwei por 21000 de gas. Es el
+     mismo numero que usa el telefono como respaldo. Solo se usa para no dejar
+     el saldo en cero al pulsar MAX: el importe real lo pone la cadena. */
+  const COMISION_RED = 0.0084;
+
+  /* Qué moneda se está enviando. Vive fuera de la vista porque la pantalla se
+     redibuja entera al elegir otra y hay que acordarse de cuál era. */
+  let envSim = 'ORIGEN';
+  const envActivo = () => (cartera || []).find(x => x.s === envSim) || origen();
+
+  /* Hasta hoy esta pantalla solo movía ORIGEN: quien tenía ONDK, AUKA o
+     cualquiera de los otros catorce no podía mandarlos desde el navegador. El
+     backend sabía hacerlo desde siempre —`/transaction/sendToken`, con el
+     contrato como parámetro—; simplemente nadie lo llamaba desde acá.
+
+     La comisión se paga SIEMPRE en ORIGEN, tambien cuando lo que viaja es un
+     token. Por eso se avisa antes, y no despues de un envio que se cae. */
   function enviar() {
-    const disp = origen()?.cant ?? 0;
+    if (!cartera) return `
+      <div class="cab"><div><h2>${t('env.tX')}</h2></div></div>
+      <div class="bloque vidrio"><div class="vacio">
+        <b>${t('env.sinCartera')}</b>
+        <div style="margin-top:16px"><button class="btn btn-linea btn-sm" onclick="VETA.reintentar()">${t('ini.act')}</button></div>
+      </div></div>`;
+
+    const x = envActivo();
+    if (!x) return `
+      <div class="cab"><div><h2>${t('env.tX')}</h2></div></div>
+      <div class="bloque vidrio"><p class="pie">${t('ini.errSaldos')}</p></div>`;
+
+    // Solo se ofrecen las monedas que se tienen: un selector lleno de ceros es
+    // un catalogo, no una eleccion.
+    const conSaldo = cartera.filter(m => (m.cant ?? 0) > 0);
+    const lista = conSaldo.length ? conSaldo : cartera.slice(0, 1);
+    const sinOrigen = (origen()?.cant ?? 0) <= 0;
+    const contactos = leerContactos();
+
+    const fichas = lista.map(m => `
+      <button type="button" class="env-ficha" ${m.s === x.s ? 'data-elegida' : ''}
+              onclick="VETA.envElegir('${m.s}')" aria-pressed="${m.s === x.s}">
+        ${disco(m)}
+        <span><b>${esc(m.s)}</b><small>${tapa(oro(m.cant ?? 0))}</small></span>
+      </button>`).join('');
+
     return `
-    <div class="cab"><div><h2>${t('env.t')}</h2><div class="sub">${t('env.tenes')} ${oro(disp)} ${t('env.disp')}</div></div></div>
+    <div class="cab"><div>
+      <h2>${t('env.tX')} ${esc(x.s)}</h2>
+      <div class="sub">${t('env.tenes')} ${tapa(oro(x.cant ?? 0))} ${esc(x.s)} ${t('env.dispX')}</div>
+    </div></div>
+    <div class="bloque vidrio">
+      <h3>${t('env.moneda')}</h3>
+      <div class="env-fichas">${fichas}</div>
+    </div>
     <div class="bloque vidrio">
       <form onsubmit="return VETA.mandar(event)">
         <div class="campo">
           <label for="env-dir">${t('env.dir')}</label>
           <input id="env-dir" class="mono" placeholder="0x…" autocomplete="off" spellcheck="false" required>
+          ${contactos.length ? `<select class="env-contactos" onchange="VETA.envContacto(this.value); this.selectedIndex=0">
+            <option value="">${t('env.contactos')}</option>
+            ${contactos.map(c => `<option value="${esc(c.dir)}">${esc(c.nombre)}</option>`).join('')}
+          </select>` : ''}
         </div>
         <div class="campo">
           <label for="env-monto">${t('env.cant')}</label>
-          <input id="env-monto" type="text" inputmode="decimal" placeholder="0,00" required>
+          <div class="env-monto">
+            <input id="env-monto" type="text" inputmode="decimal" placeholder="0,00"
+                   oninput="VETA.envMonto()" required>
+            <button type="button" class="env-max" onclick="VETA.envMax()">${t('env.max')}</button>
+          </div>
+          <div class="env-usd" id="env-usd"></div>
         </div>
         <div class="campo">
           <label for="env-clave">${t('env.clave')}</label>
@@ -885,8 +950,47 @@ const VETA = (() => {
         <div id="env-aviso" class="aviso oculto" role="alert"></div>
         <button class="btn btn-oro btn-full" id="env-btn" type="submit">${t('env.revisar')}</button>
       </form>
+      ${x.nativo ? '' : `<div class="nota" style="margin-top:16px">${t('env.comision')}</div>`}
+      ${sinOrigen ? `<div class="nota nota-cuidado" style="margin-top:12px">${t('env.sinOrigen')}</div>` : ''}
       <p class="pie" style="margin-top:16px">${t('env.nota')}</p>
     </div>`;
+  }
+
+  /* Cambiar de moneda tira lo escrito a proposito: la cantidad que tenia
+     sentido en ORIGEN no lo tiene en ONDK, y arrastrarla es como se manda de
+     mas. Tambien se olvida la confirmacion pendiente, para que el segundo
+     toque no confirme un envio que ya no es el que se leyo. */
+  function envElegir(sim) {
+    if (!(cartera || []).some(m => m.s === sim)) return;
+    envSim = sim;
+    pendiente = null;
+    vista('enviar');
+  }
+
+  function envContacto(dir) {
+    if (!dir) return;
+    const c = $('#env-dir');
+    if (c) { c.value = dir; $('#env-monto')?.focus(); }
+  }
+
+  // El maximo de un token es su saldo entero. En ORIGEN no: hay que dejar con
+  // que pagar la comision, o el envio se cae despues de haberlo confirmado.
+  function envMax() {
+    const x = envActivo();
+    if (!x || x.cant == null) return;
+    const tope = x.nativo ? Math.max(0, x.cant - COMISION_RED) : x.cant;
+    const c = $('#env-monto');
+    if (c) { c.value = String(Number(tope.toFixed(6))); envMonto(); c.focus(); }
+  }
+
+  // El equivalente en dolares, debajo del campo, mientras se escribe. Sin
+  // precio no se inventa nada: se deja el hueco vacio.
+  function envMonto() {
+    const d = $('#env-usd');
+    if (!d) return;
+    const x = envActivo();
+    const n = Number(String($('#env-monto')?.value || '').replace(',', '.'));
+    d.textContent = (x?.precio != null && n > 0) ? '≈ ' + usd(n * x.precio) : '';
   }
 
   /* Enviar dinero pide dos confirmaciones distintas: primero se enseña lo que
@@ -895,26 +999,32 @@ const VETA = (() => {
   let enviando = false, pendiente = null;
   async function mandar(ev) {
     ev.preventDefault();
+    const x = envActivo();
     const dir = $('#env-dir').value.trim();
     const monto = Number(String($('#env-monto').value).replace(',', '.'));
     const clave = $('#env-clave').value;
     const a = $('#env-aviso'), b = $('#env-btn');
     const decir = t => { a.textContent = t; a.className = 'aviso aviso-mal'; a.classList.remove('oculto'); };
 
+    if (!x) return decir(t('ini.errSaldos'));
     if (!/^0x[a-fA-F0-9]{40}$/.test(dir)) return decir(t('env.eDir'));
     if (!(monto > 0)) return decir(t('env.eCant'));
-    const disp = origen()?.cant;
-    if (disp != null && monto > disp) return decir(`${t('env.eAlcanza')} ${oro(disp)} ORIGEN.`);
+    const disp = x.cant;
+    if (disp != null && monto > disp) return decir(`${t('env.eAlcanza')} ${oro(disp)} ${x.s}.`);
     if (!clave) return decir(t('env.eClave'));
+    // Mover un token gasta ORIGEN. Sin ORIGEN el envio se cae en la cadena,
+    // asi que se corta antes en vez de dejarlo llegar hasta el rechazo.
+    if (!x.nativo && (origen()?.cant ?? 0) <= 0) return decir(t('env.sinOrigen'));
 
-    if (!pendiente || pendiente.dir !== dir || pendiente.monto !== monto) {
-      pendiente = { dir, monto, sello: 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) };
+    if (!pendiente || pendiente.dir !== dir || pendiente.monto !== monto || pendiente.sim !== x.s) {
+      pendiente = { dir, monto, sim: x.s, contrato: x.contrato || null, nativo: !!x.nativo,
+                    sello: 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) };
       a.className = 'aviso aviso-ok';
       // Sin precio real no se muestra un equivalente en dolares: mas vale no
       // decir nada que decir un numero que nadie puede sostener.
-      const pu = origen()?.precio;
+      const pu = x.precio;
       const enUsd = pu != null ? ` (${esc(usd(monto * pu))})` : '';
-      a.innerHTML = `${t('env.vas')} <b>${oro(monto)} ORIGEN</b>${enUsd} ${t('env.a')} <span class="mono">${esc(cortaDir(dir))}</span>. ${t('env.toca')}`;
+      a.innerHTML = `${t('env.vas')} <b>${oro(monto)} ${esc(x.s)}</b>${enUsd} ${t('env.a')} <span class="mono">${esc(cortaDir(dir))}</span>. ${t('env.toca')}`;
       a.classList.remove('oculto');
       b.textContent = t('env.confirmar');
       return;
@@ -925,7 +1035,10 @@ const VETA = (() => {
     b.disabled = true;
     b.innerHTML = '<span class="girando"></span> ' + t('env.enviando');
     try {
-      const r = await pedir('/transaction/send', {
+      /* La moneda de la casa va por una ruta y los tokens por otra: la nativa
+         se transfiere sola, un ERC-20 necesita saber en que contrato vive. */
+      const ruta = pendiente.nativo ? '/transaction/send' : '/transaction/sendToken';
+      const r = await pedir(ruta, {
         // Sin reintento automatico: si el token vencio a mitad del envio, este
         // POST pudo haber salido igual. Repetirlo seria mandar el dinero dos
         // veces; es preferible enseñar el error y que se compruebe.
@@ -933,19 +1046,26 @@ const VETA = (() => {
         cuerpo: {
           chain_id: CHAIN, recipientAddress: dir, amount: String(monto),
           password: clave,
+          ...(pendiente.nativo ? {} : { tokenContractAddress: pendiente.contrato }),
           // El mismo envío reintentado lleva el mismo sello: el backend
           // descarta el segundo en vez de transferir dos veces.
           idempotencyKey: pendiente.sello,
         },
       });
       const hash = r?.hash || r?.transactionHash || r?.txId || null;
+      const sim = pendiente.sim;
       pendiente = null;
       a.className = 'aviso aviso-ok';
-      a.innerHTML = `${t('env.hecho')} ${oro(monto)} ORIGEN.${hash ? ` <span class="mono">${esc(cortaDir(hash))}</span>` : ''}`;
+      a.innerHTML = `${t('env.hecho')} ${oro(monto)} ${esc(sim)}.${hash ? ` <span class="mono">${esc(cortaDir(hash))}</span>` : ''}`;
       $('#env-dir').value = ''; $('#env-monto').value = ''; $('#env-clave').value = '';
+      envMonto();
       b.textContent = t('env.revisar');
       avisar(t('env.avHecho'));
-      cargarCartera().then(() => { if (vistaActual === 'enviar') $('.cab .sub').textContent = `${t('env.tenes')} ${oro(origen()?.cant ?? 0)} ${t('env.disp')}`; });
+      cargarCartera().then(() => {
+        if (vistaActual !== 'enviar') return;
+        const y = envActivo();
+        $('.cab .sub').textContent = `${t('env.tenes')} ${tapa(oro(y?.cant ?? 0))} ${y?.s || ''} ${t('env.dispX')}`;
+      });
       cargarMovimientos();
     } catch (e) {
       // No se ofrece reintentar: la transferencia pudo haber salido y volver a
@@ -3007,6 +3127,8 @@ const VETA = (() => {
            tapar, copiarContrato, congelar, revelar, pedirTarjeta, cambioMonto, elegirDestino,
            voltear, olvidar, remMonto, remPais, refrescarTasas, nuevoContacto, borrarContacto,
            enviarA, abrirCamara, cerrarCamara, pedirSecreto, copiarTexto, guardarNombre,
+           // Enviar cualquier token, no solo ORIGEN.
+           envElegir, envContacto, envMax, envMonto,
            // La bienvenida del ecosistema: sale sola la primera vez y se puede
            // volver a abrir desde Ajustes.
            bienvenida, bienSig, bienCerrar,
