@@ -28,6 +28,25 @@ node probar-uno.mjs /tmp/veta-uno
 python3 subir.py /tmp/veta-uno d7ofsbyqsj3d9
 ```
 
+### La regla comodin de Amplify se come lo que no reconoce
+
+`d264zjawew1yea` manda al index todo lo que no case con una lista de
+extensiones. **Si se agrega un tipo de archivo nuevo hay que meterlo en esa
+lista**, o vuelve como una pagina HTML con estado 200 — que es peor que un 404,
+porque el navegador no avisa: simplemente descarta el archivo y sigue.
+
+Paso el 15-ago con `.woff2` (la tipografia de la marca) y con `/genesis-id`.
+Las dos cosas estan arregladas en las reglas de la app.
+
+Y dos avisos mas, del mismo susto:
+
+- CloudFront guarda la respuesta **un año** (`s-maxage=31536000`) y **no
+  reenvia la query**, asi que `?v=2` no sirve para saltarse la cache. Arreglar
+  la regla no basta: hay que **volver a desplegar**, que es lo que invalida.
+- El ensayo (`d289v5ffkexk23`) usa `404-200`, que solo reescribe cuando el
+  archivo NO existe. Por eso ahi funciona y en produccion no: **el ensayo no
+  sirve para probar esto**.
+
 ### Como se recupero `vetawallet.com`
 
 El dominio estaba muerto, y no por falta de contenido. `vetawallet.com` era un
