@@ -254,10 +254,19 @@ const AURA = (() => {
     if (!REDUCIDO) {
       for (const g of red.ganglios) {
         const ang = red.cuadro * g.orbV + g.orbF;
-        const dx = Math.cos(ang) * g.orbR * red.energia;
-        const dy = Math.sin(ang * 0.83) * g.orbR * red.energia;
-        g.x = g.ax + dx; g.y = g.ay + dy;
-        if (g.el) g.el.style.translate = dx.toFixed(1) + 'px ' + dy.toFixed(1) + 'px';
+        // el objetivo de cada organo: su orbita — o la mano que lo agarro
+        let ox = Math.cos(ang) * g.orbR * red.energia;
+        let oy = Math.sin(ang * 0.83) * g.orbR * red.energia;
+        if (g.agarrado) { ox = g.manoX; oy = g.manoY; }
+        /* El resorte. Agarrado sigue a la mano casi pegado; suelto REGRESA
+           elastico a su orbita — se puede jalar una esfera, soltarla, y
+           verla volver a su lugar en la constelacion. Eso es lo que vuelve
+           juguete un tablero: se toca, responde, y nada se rompe. */
+        const k = g.agarrado ? 0.55 : 0.055;
+        g.offX = (g.offX || 0) + (ox - (g.offX || 0)) * k;
+        g.offY = (g.offY || 0) + (oy - (g.offY || 0)) * k;
+        g.x = g.ax + g.offX; g.y = g.ay + g.offY;
+        if (g.el) g.el.style.translate = g.offX.toFixed(1) + 'px ' + g.offY.toFixed(1) + 'px';
       }
     }
 
@@ -443,6 +452,37 @@ const AURA = (() => {
     red.energia = opciones.despertar ? 0 : 1;
     red.energiaMeta = 1;
     red.alDestellar = opciones.alDestellar || null;
+    for (const g of red.ganglios) {
+      if (!g.el || REDUCIDO) continue;
+      g.el.style.touchAction = 'none';
+      g.el.addEventListener('pointerdown', ev => {
+        const x0 = ev.clientX, y0 = ev.clientY, off0x = g.offX || 0, off0y = g.offY || 0;
+        let jalo = false;
+        const mover = e2 => {
+          const dx = e2.clientX - x0, dy = e2.clientY - y0;
+          if (!jalo && dx * dx + dy * dy < 36) return;    // aun puede ser un clic
+          jalo = true;
+          g.agarrado = true;
+          // la correa: hasta 90px de estiron; mas alla la esfera no sigue
+          g.manoX = Math.max(-90, Math.min(90, off0x + dx));
+          g.manoY = Math.max(-90, Math.min(90, off0y + dy));
+        };
+        const soltar = () => {
+          removeEventListener('pointermove', mover);
+          removeEventListener('pointerup', soltar);
+          removeEventListener('pointercancel', soltar);
+          if (jalo) {
+            g.agarrado = false;
+            // el clic que viene detras de un jalon no es un clic: se anula
+            // aqui y nuAbrir lo consulta antes de navegar
+            red.jalonHasta = Date.now() + 350;
+          }
+        };
+        addEventListener('pointermove', mover);
+        addEventListener('pointerup', soltar);
+        addEventListener('pointercancel', soltar);
+      });
+    }
     sembrar(); armarRejilla(); tejerSinapsis();
     if (REDUCIDO) {
       // Un solo cuadro, quieto y con energía plena: el cerebro se VE, no marea.
@@ -620,9 +660,11 @@ const AURA = (() => {
     'b07bb38d': 1,
     'b43b4c43': 1,
     'bab54a0a': 1,
+    'bba90ea2': 1,
     'bcb5c233': 1,
     'bf2a7740': 1,
     'c31085c2': 1,
+    'c60ebae7': 1,
     'd1605a1e': 1,
     'd53038d9': 1,
     'd64dfe40': 1,
@@ -666,6 +708,28 @@ const AURA = (() => {
         || del.find(v => !v.localService) || del[0] || null;
   }
 
+  /* COMO SE PRONUNCIA LA CASA. Las marcas escritas no se leen solas:
+     «AU-RA» sale deletreado, «AUBANK» masticado y «Ordenexchange» de
+     corrido. Este mapa es SOLO para la boca — el texto en pantalla y la
+     clave del audio grabado siguen siendo los originales. El gemelo de este
+     mapa vive en el guion de grabacion (sacar-frases-aura.mjs): si cambia
+     uno, cambia el otro. */
+  const DICCION = {
+    es: [
+      [/AU-RA/g, 'Aura'], [/AUBANK/g, 'Au Banc'], [/Ordenexchange/g, 'Orden Exchéinch'],
+      [/PULSE CHAT/g, 'Puls Chat'], [/MyTokenPay/g, 'Mai Token Péi'],
+      [/Veta Wallet/g, 'Veta Wálet'], [/ordenscan/g, 'orden scan'],
+      [/Genesis ID/g, 'Génesis Aidí'], [/Layer 1/g, 'Léyer Uan'],
+      [/Hyperledger Besu/g, 'Jaiper Ledyer Besu'], [/QBFT/g, 'Cu Be Efe Te'],
+    ],
+    en: [
+      [/AU-RA/g, 'Aura'], [/AUBANK/g, 'A U Bank'], [/Ordenexchange/g, 'Orden Exchange'],
+      [/ORIGEN/g, 'Oreehen'], [/Orden Global/g, 'Orden Global'],
+    ],
+  };
+  const pronunciar = (texto, lang) =>
+    (DICCION[lang] || []).reduce((t2, [re, con]) => t2.replace(re, con), texto);
+
   function hablarConNavegador(texto, lang, alTerminar) {
     /* EL VIGILANTE, y es lo que salva todo lo que espera a esta promesa.
        En un navegador sin voces instaladas, speak() se traga la frase y
@@ -682,7 +746,7 @@ const AURA = (() => {
       if (alTerminar) alTerminar();
     };
     try {
-      const u = new SpeechSynthesisUtterance(texto);
+      const u = new SpeechSynthesisUtterance(pronunciar(texto, lang));
       const voz = mejorVozLocal(lang);
       if (voz) u.voice = voz;
       u.lang = lang === 'en' ? 'en-US' : 'es-419';
@@ -786,8 +850,11 @@ const AURA = (() => {
   }
   function dejarDeEscuchar() { try { oido && oido.stop(); } catch {} }
 
+  /** true justo despues de soltar un jalon: ese clic no cuenta. */
+  const jalando = () => Date.now() < (red.jalonHasta || 0);
+
   return {
-    montarRed, pararRed, latirHacia,
+    montarRed, pararRed, latirHacia, jalando,
     gangliosVivos: () => red.ganglios,
     energia: v => { red.energiaMeta = v; },
     montarOrbe, animoOrbe, nivelOrbe,

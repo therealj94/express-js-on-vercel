@@ -235,9 +235,9 @@ amp(26px,5vw,38px);justify-self:start;
   border-right:1px solid var(--linea2);background:rgba(2,22,23,.72);
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   display:flex;flex-direction:column;gap:6px}
-.riel-marca{display:flex;align-items:center;gap:9px;padding:6px 8px 22px;font-size:16.5px;
-  letter-spacing:.02em;white-space:nowrap;overflow:hidden}
-.riel-marca img{height:26px;width:auto;border-radius:0;flex:none}
+.riel-marca{display:flex;align-items:center;gap:8px;padding:6px 6px 22px;font-size:14.5px;
+  letter-spacing:.01em;white-space:nowrap}
+.riel-marca img{height:24px;width:auto;border-radius:0;flex:none}
 .nav{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;
   font-size:14.5px;font-weight:600;color:var(--bruma);transition:.18s;width:100%;text-align:left;position:relative}
 .nav svg{width:19px;height:19px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -360,6 +360,14 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
   padding:clamp(18px,3vw,30px) clamp(18px,4vw,40px);pointer-events:none}
 .cerebro-cab h2{font-family:var(--sans);font-weight:800;font-size:clamp(19px,2.2vw,24px);color:var(--crema)}
 .cerebro-cab .sub{font-size:12px;color:var(--bruma);margin-top:5px}
+.nu-power{display:inline-flex;align-items:center;gap:7px;margin-top:12px;pointer-events:auto;
+  padding:7px 13px;border-radius:100px;border:1px solid rgba(201,169,97,.3);
+  background:rgba(2,18,18,.72);font-size:10.5px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--oroLt);text-decoration:none;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.nu-power:hover{border-color:var(--oro);color:var(--oroHi)}
+.nu-power svg{width:12px;height:12px;fill:var(--oro);stroke:none}
+@media(max-width:560px){.nu-power{font-size:9px;letter-spacing:.06em}}
 
 /* Las esferas: los mismos botones de antes, ahora sobre el cuadro entero. */
 .cerebro .nu-mundo{z-index:3}
@@ -514,6 +522,43 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
   .nu-nombre{font-size:10.5px}
 }
 
+/* ── MYTOKENPAY, adentro ──────────────────────────────────────────────────
+   El comercio con el neon frio de su marca: cian sobre el vidrio de la casa.
+   Las tarjetas son fichas de negocio, no botones — mas aire, jerarquia de
+   nombre, y el sello de verificado en jade. */
+.pay-logo{height:30px;width:auto;vertical-align:-6px;margin-right:10px}
+.pay-busca{width:100%;padding:14px 18px;border-radius:100px;border:1px solid rgba(95,198,234,.3);
+  background:rgba(4,18,26,.75);font-size:14.5px;color:var(--crema)}
+.pay-busca:focus{outline:none;border-color:#5FC6EA;box-shadow:0 0 0 3px rgba(95,198,234,.12)}
+.pay-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.pay-chip{padding:8px 13px;border-radius:100px;font-size:12px;font-weight:600;color:var(--bruma);
+  border:1px solid var(--linea2);background:rgba(255,255,255,.03);transition:.18s}
+.pay-chip:hover{color:var(--crema);border-color:rgba(95,198,234,.5)}
+.pay-chip.va{background:rgba(95,198,234,.16);color:#D8F7FF;border-color:#5FC6EA}
+.pay-rejilla{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));margin-top:4px}
+.pay-caja{display:block;text-align:left;padding:15px;border-radius:18px;cursor:pointer;
+  border:1px solid var(--linea2);background:var(--panel2);transition:border-color .18s,transform .18s}
+.pay-caja:hover{border-color:rgba(95,198,234,.55);transform:translateY(-2px)}
+.pay-cab{display:flex;align-items:center;gap:11px}
+.pay-emo{flex:none;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;
+  font-size:20px;background:rgba(95,198,234,.1);border:1px solid rgba(95,198,234,.25)}
+.pay-emo-g{width:54px;height:54px;font-size:26px}
+.pay-cab b{display:block;font-size:14.5px;font-weight:700;color:var(--crema);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pay-cab small{display:block;font-size:11.5px;color:var(--humo);margin-top:2px}
+.pay-ver{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
+  background:rgba(62,217,160,.14)}
+.pay-ver svg{width:13px;height:13px;stroke:var(--jade);fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round}
+.pay-caja p{margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--bruma)}
+.pay-filtros{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+.pay-filtros select{flex:1;min-width:150px;padding:11px 12px;border-radius:12px;
+  border:1px solid var(--linea2);background:var(--campo);font-size:13px;color:var(--crema)}
+.pay-ofrece{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
+.pay-ofrece span{padding:6px 11px;border-radius:100px;font-size:11.5px;font-weight:600;
+  color:#D8F7FF;background:rgba(95,198,234,.1);border:1px solid rgba(95,198,234,.25)}
+.pay-cobra{display:flex;align-items:center;gap:16px;justify-content:space-between;flex-wrap:wrap}
+
 /* ── PULSE CHAT ────────────────────────────────────────────────────────────
    Dos columnas cuando la pantalla da para las dos: la lista a la izquierda y
    el hilo a la derecha, como cualquier mensajeria de escritorio. En el movil
@@ -526,9 +571,12 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 .chat{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);
   gap:14px;height:calc(100svh - 190px);min-height:420px}
 .chat-lista{display:flex;flex-direction:column;overflow-y:auto;
-  border:1px solid var(--linea2);border-radius:var(--r2);background:#052A2B;padding:10px}
-.chat-hilo{display:flex;flex-direction:column;min-width:0;
-  border:1px solid var(--linea2);border-radius:var(--r2);background:#052A2B;overflow:hidden}
+  border:1px solid rgba(224,147,122,.22);border-radius:var(--r2);background:#041D1F;padding:10px}
+.chat-hilo{display:flex;flex-direction:column;min-width:0;position:relative;
+  border:1px solid rgba(224,147,122,.22);border-radius:var(--r2);overflow:hidden;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cg fill='none' stroke='%237ED8C4' stroke-width='1' opacity='.05'%3E%3Cpath d='M20 0v54h60v40M20 220v-70h44M140 220v-44h60M220 60h-52V20M110 0v30M180 0v60h40'/%3E%3C/g%3E%3Cg fill='%237ED8C4' opacity='.09'%3E%3Ccircle cx='80' cy='94' r='2'/%3E%3Ccircle cx='64' cy='150' r='2'/%3E%3Ccircle cx='168' cy='60' r='2'/%3E%3Ccircle cx='200' cy='176' r='2'/%3E%3Ccircle cx='110' cy='30' r='2'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(165deg,#06282B 0%,#031416 58%,#020D10 100%)}
 
 .cha-cab{display:flex;gap:8px;padding:4px 4px 10px;position:sticky;top:-10px;z-index:2;
   background:#052A2B}
@@ -543,11 +591,13 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 .cha-fila{display:flex;align-items:center;gap:11px;width:100%;text-align:left;
   padding:10px;border-radius:13px;transition:background .18s}
 .cha-fila:hover{background:rgba(255,255,255,.04)}
-.cha-fila[data-aqui]{background:rgba(201,169,97,.13)}
+.cha-fila[data-aqui]{background:rgba(224,147,122,.12);box-shadow:inset 2px 0 0 #E0937A}
 .cha-av{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
   overflow:hidden;font-family:var(--sans);font-weight:700;font-size:16px;color:var(--oroHi);
   background:linear-gradient(140deg,#1E8C74,#0A463F)}
 .cha-av img{width:100%;height:100%;object-fit:cover}
+.cha-fila:hover .cha-av{box-shadow:0 0 0 2px rgba(224,147,122,.4),0 0 16px -2px rgba(224,147,122,.5);
+  transition:box-shadow .25s}
 .cha-txt{min-width:0;flex:1}
 .cha-txt b{display:block;font-size:14px;font-weight:600;color:var(--crema);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -558,8 +608,15 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
   display:grid;place-items:center;font-size:11px;font-weight:700;
   background:var(--oro);color:#1B1403}
 
-.cha-hcab{display:flex;align-items:center;gap:11px;padding:12px 14px;
-  border-bottom:1px solid var(--linea2)}
+.cha-hcab{display:flex;align-items:center;gap:11px;padding:12px 14px;position:relative;
+  border-bottom:1px solid rgba(224,147,122,.25);background:rgba(4,20,22,.6)}
+/* el electro: una linea de pulso cruzando la cabecera, viva pero discreta */
+.cha-hcab::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:14px;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='14'%3E%3Cpath d='M0 7h44l6-5 7 10 6-8 4 3h93' fill='none' stroke='%23E0937A' stroke-width='1.4' stroke-linejoin='round' opacity='.55'/%3E%3C/svg%3E") repeat-x 0 0;
+  background-size:160px 14px;opacity:.5;pointer-events:none;
+  animation:pulsoCorre 6s linear infinite}
+@keyframes pulsoCorre{to{background-position:-160px 0}}
+@media(prefers-reduced-motion:reduce){.cha-hcab::after{animation:none}}
 .cha-quien{min-width:0}
 .cha-quien b{display:block;font-size:14.5px;color:var(--crema)}
 .cha-quien small{display:block;font-size:12px;color:var(--humo);
@@ -574,11 +631,13 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 .cha-b{max-width:min(76%,520px);align-self:flex-start;display:flex;flex-direction:column;gap:3px}
 .cha-b.cha-mio{align-self:flex-end;align-items:flex-end}
 .cha-globo{padding:10px 13px;border-radius:16px 16px 16px 5px;
-  background:rgba(8,52,50,.9);border:1px solid var(--linea2);
+  background:rgba(9,42,44,.88);border:1px solid rgba(126,216,196,.16);
+  box-shadow:0 4px 18px -8px rgba(0,0,0,.6);
   font-size:14px;line-height:1.6;color:var(--crema);word-break:break-word}
 .cha-mio .cha-globo{border-radius:16px 16px 5px 16px;
-  background:linear-gradient(140deg,rgba(201,169,97,.22),rgba(150,121,63,.18));
-  border-color:var(--linea)}
+  background:linear-gradient(140deg,rgba(224,147,122,.2),rgba(138,74,56,.16));
+  border-color:rgba(224,147,122,.34);
+  box-shadow:0 0 22px -8px rgba(224,147,122,.35)}
 .cha-globo p{margin:0;white-space:pre-wrap}
 .cha-de{display:block;font-size:11.5px;font-weight:700;color:var(--oroLt);margin-bottom:4px}
 .cha-b time{font-size:10.5px;color:var(--humo);padding:0 4px;font-variant-numeric:tabular-nums}
@@ -1458,6 +1517,7 @@ a.btn{text-decoration:none}
 <script src="telemetria.js"></script>
 <script src="qr.js"></script>
 <script src="cadena.js"></script>
+<script src="datos.js"></script>
 <script src="aura.js"></script>
 <script src="chat.js"></script>
 <script src="i18n.js"></script>

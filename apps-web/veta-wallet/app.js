@@ -634,6 +634,7 @@ const VETA = (() => {
      vuelve, igual que alla. */
   const VISTAS = {
     nucleo, billetera, tarjeta: vTarjeta, cambiar, actividad, chat, ajustes,
+    pay, payex, payneg,
     enviar, recibir, comprar, deposito, token: vToken, identidad: vIdentidad,
     remesas, contactos, sesiones, lector, seguridad, perfil, verificar, cobrar,
   };
@@ -643,6 +644,7 @@ const VETA = (() => {
     enviar: 'billetera', recibir: 'billetera', comprar: 'billetera',
     deposito: 'billetera', token: 'billetera', identidad: 'ajustes',
     remesas: 'billetera', lector: 'billetera', verificar: 'ajustes', cobrar: 'billetera',
+    pay: 'nucleo', payex: 'nucleo', payneg: 'nucleo',
     contactos: 'ajustes', sesiones: 'ajustes', seguridad: 'ajustes', perfil: 'ajustes',
   };
 
@@ -2529,7 +2531,7 @@ const VETA = (() => {
       <h3>${t('aj.ecosistema')}</h3>
       <div class="ajustes">
         ${fila(ICO.obra, t('aj.bien'), t('aj.bienP'), "VETA.bienvenida()")}
-        ${fila(ICO.tienda, t('aj.mtp'), t('aj.mtpP'), "window.open(VETA._mtp(),'_blank','noopener')")}
+        ${fila(ICO.tienda, t('aj.mtp'), t('aj.mtpP'), "VETA.vista('pay')")}
         ${fila(ICO.globo, t('aj.idioma'), t('aj.idiomaP'), "VETA.idioma('" + (idiomaActivo() === 'es' ? 'en' : 'es') + "')")}
         ${fila(ICO.doc, t('aj.legal'), t('aj.legalP'), "window.open('/terminos','_blank','noopener')")}
       </div>
@@ -2671,7 +2673,7 @@ const VETA = (() => {
     { id: 'chat', x: 19, y: 17, tam: 0.72, va: 'chat', pideGid: true,
       grad: ['#FBE0D4', '#E0937A', '#8A4A38'], halo: '#E0937A', lente: '#20100A',
       ico: '<path d="M3.5 6.6h12.2v8.2H8.1L4.4 18v-3.2H3.5z"/><path d="M18.6 9.4h1.9v8.2h-.9V20l-3-2.4H12"/>' },
-    { id: 'pay', x: 81, y: 21, tam: 0.76, paraFuera: 'pay', pideGid: true,
+    { id: 'pay', x: 81, y: 21, tam: 0.76, va: 'pay',
       grad: ['#D8F7FF', '#5FC6EA', '#453398'], halo: '#5FC6EA', lente: '#0A0812',
       logo: 'assets/apps/pay.png', zoom: 1.15,
       ico: '<path d="M4 9h16l-1.2 11.2H5.2z"/><path d="M8.4 9V6.6a3.6 3.6 0 0 1 7.2 0V9"/>' },
@@ -2733,6 +2735,9 @@ const VETA = (() => {
       <div class="cerebro-cab">
         <h2>${nombre ? `${t('nu.hola')}, ${esc(nombre)}` : t('nu.t')}</h2>
         <div class="sub">${t('nu.sub')}</div>
+        <a class="nu-power" href="https://ordenscan.com" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24"><path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5z"/></svg>
+          ${t('nu.power')}</a>
       </div>
       ${esferas}
       <div class="cerebro-pie">
@@ -2784,6 +2789,8 @@ const VETA = (() => {
      verificacion, que es lo unico que lo abre. Uno que todavia no existe lo
      dice y no finge una pantalla vacia. */
   function nuAbrir(id) {
+    // el clic que llega pegado a un jalon es el final del jalon, no un clic
+    if (AURA.jalando()) return;
     const m = MUNDOS.find(x => x.id === id);
     if (!m) return;
     if (m.pronto) return avisar(t('nu.prontoP'));
@@ -2792,6 +2799,185 @@ const VETA = (() => {
     if (fuera) return window.open(fuera, '_blank', 'noopener');
     vista(m.va);
   }
+
+  // ── MYTOKENPAY · el comercio, adentro de la casa ──────────────────────────
+
+  /* MyTokenPay deja de ser un enlace que te saca de la web: vive ADENTRO,
+     como el chat. El directorio es el mismo catalogo de la app —los mismos
+     comercios, categorias y ciudades— y el cobro es el REAL de la wallet: el
+     codigo que ya lleva la cantidad puesta.
+
+     Lo que todavia no se finge: pagarle EN LINEA a un comercio del directorio
+     exige que ese comercio haya registrado su direccion de cobro, y eso
+     todavia no existe en el catalogo. A esos se les enseñan sus datos y sus
+     redes — el puente honesto mientras el registro de comercios llega. */
+  let payQ = '', payPais = '', payCat = '', payNeg = null;
+
+  const PAY_EMOJI = {
+    restaurantes: '🍽', cafeterias: '☕', hoteles: '🏨', gimnasios: '🏋',
+    belleza: '💇', 'vida-nocturna': '🍸', conveniencia: '🛍', supermercados: '🛒',
+    moda: '👗', tecnologia: '📱', salud: '🩺', educacion: '🎓',
+    automotriz: '🚗', turismo: '🌴', servicios: '💼',
+  };
+  const payCiudad = (pais, ciudad) =>
+    (PAY_CIUDADES[pais] || []).find(c => c.slug === ciudad)?.label || ciudad;
+  const payCatNom = slug => PAY_CATEGORIAS.find(c => c.slug === slug)?.label || slug;
+
+  function payFiltrados() {
+    const q = sinTildes(payQ.trim());
+    return PAY_COMERCIOS.filter(c => {
+      if (payPais && c.pais !== payPais) return false;
+      if (payCat && c.cat !== payCat) return false;
+      if (!q) return true;
+      return sinTildes(`${c.nombre} ${c.desc} ${payCatNom(c.cat)} ${payCiudad(c.pais, c.ciudad)}`).includes(q);
+    });
+  }
+
+  function payTarjeta(c) {
+    const verificado = c.estado === 'verified';
+    return `
+    <button class="pay-caja" onclick="VETA.payAbrir('${c.id}')">
+      <div class="pay-cab">
+        <span class="pay-emo">${PAY_EMOJI[c.cat] || '🏪'}</span>
+        <div style="flex:1;min-width:0">
+          <b>${esc(c.nombre)}</b>
+          <small>${esc(payCatNom(c.cat))} · ${esc(payCiudad(c.pais, c.ciudad))}</small>
+        </div>
+        ${verificado ? `<span class="pay-ver" title="${t('pay.verif')}">
+          <svg viewBox="0 0 24 24"><path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/></svg></span>` : ''}
+      </div>
+      <p>${esc(c.desc.slice(0, 92))}${c.desc.length > 92 ? '…' : ''}</p>
+    </button>`;
+  }
+
+  function pay() {
+    const destacados = PAY_COMERCIOS.filter(c => c.estado === 'verified').slice(0, 4);
+    return `
+    <button class="volver" onclick="VETA.vista('nucleo')">
+      <svg viewBox="0 0 24 24">${ICO.atras}</svg>${t('pay.alNucleo')}
+    </button>
+    <div class="cab"><div>
+      <h2><img src="assets/apps/pay.png" alt="" class="pay-logo">MyTokenPay</h2>
+      <div class="sub">${t('pay.sub')}</div>
+    </div></div>
+
+    <div class="bloque vidrio">
+      <input class="pay-busca" placeholder="${t('pay.buscar')}" value="${esc(payQ)}"
+             autocomplete="off" oninput="VETA.payBuscar(this.value)">
+      <div class="pay-chips">
+        ${PAY_CATEGORIAS.slice(0, 8).map(c => `
+          <button class="pay-chip${payCat === c.slug ? ' va' : ''}"
+                  onclick="VETA.payCategoria('${c.slug}')">${PAY_EMOJI[c.slug] || ''} ${esc(c.label)}</button>`).join('')}
+      </div>
+    </div>
+
+    <div class="bloque vidrio">
+      <div class="bloque-cab"><h3>${t('pay.destacados')}</h3>
+        <button class="btn btn-linea btn-sm" onclick="VETA.payVerTodos()">${t('pay.todos')} (${PAY_COMERCIOS.length})</button>
+      </div>
+      <div class="pay-rejilla">${destacados.map(payTarjeta).join('')}</div>
+    </div>
+
+    ${/* El COBRO del comerciante es el real de la wallet, no una maqueta:
+         el mismo codigo con la cantidad puesta que ya mueve dinero. */''}
+    <div class="bloque vidrio pay-cobra">
+      <div>
+        <h3>${t('pay.cobraT')}</h3>
+        <p class="pie" style="margin-top:6px">${t('pay.cobraP')}</p>
+      </div>
+      <button class="btn btn-oro" onclick="VETA.vista('cobrar')">${t('cob.t')}</button>
+    </div>`;
+  }
+
+  function payex() {
+    const lista = payFiltrados();
+    return `
+    <button class="volver" onclick="VETA.vista('pay')">
+      <svg viewBox="0 0 24 24">${ICO.atras}</svg>MyTokenPay
+    </button>
+    <div class="cab"><div><h2>${t('pay.dirT')}</h2>
+      <div class="sub">${lista.length} ${t('pay.de')} ${PAY_COMERCIOS.length} · ${t('pay.dirSub')}</div>
+    </div></div>
+    <div class="bloque vidrio">
+      <input class="pay-busca" placeholder="${t('pay.buscar')}" value="${esc(payQ)}"
+             autocomplete="off" oninput="VETA.payBuscar(this.value)">
+      <div class="pay-filtros">
+        <select onchange="VETA.payDePais(this.value)">
+          <option value="">${t('pay.todosPais')}</option>
+          ${PAY_PAISES.map(x => `<option value="${x.slug}" ${payPais === x.slug ? 'selected' : ''}>${x.flag} ${esc(x.label)}</option>`).join('')}
+        </select>
+        <select onchange="VETA.payCategoria(this.value)">
+          <option value="">${t('pay.todasCat')}</option>
+          ${PAY_CATEGORIAS.map(x => `<option value="${x.slug}" ${payCat === x.slug ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    ${lista.length ? `<div class="pay-rejilla">${lista.map(payTarjeta).join('')}</div>`
+      : `<div class="bloque vidrio"><div class="vacio"><b>${t('pay.nadaT')}</b>${t('pay.nadaP')}</div></div>`}`;
+  }
+
+  function payneg() {
+    const c = PAY_COMERCIOS.find(x => x.id === payNeg);
+    if (!c) return payex();
+    const redes = Object.entries(c.redes || {}).filter(([, u]) => u && !/example\.com/.test(u));
+    const ROTULO = { instagram: 'Instagram', facebook: 'Facebook', whatsapp: 'WhatsApp', website: t('pay.web'), tiktok: 'TikTok' };
+    const enlace = ([k, u]) => k === 'whatsapp'
+      ? ['https://wa.me/' + String(u).replace(/[^\d]/g, ''), 'WhatsApp']
+      : [u, ROTULO[k] || k];
+    return `
+    <button class="volver" onclick="VETA.vista('payex')">
+      <svg viewBox="0 0 24 24">${ICO.atras}</svg>${t('pay.dirT')}
+    </button>
+    <div class="bloque vidrio">
+      <div class="pay-cab" style="margin-bottom:14px">
+        <span class="pay-emo pay-emo-g">${PAY_EMOJI[c.cat] || '🏪'}</span>
+        <div style="flex:1;min-width:0">
+          <h2 style="font-size:20px;font-weight:800">${esc(c.nombre)}</h2>
+          <small style="color:var(--humo)">${esc(payCatNom(c.cat))} · ${esc(payCiudad(c.pais, c.ciudad))}</small>
+        </div>
+        ${c.estado === 'verified' ? `<span class="pay-ver"><svg viewBox="0 0 24 24"><path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/></svg></span>` : ''}
+      </div>
+      <p class="ficha-desc" style="margin-top:0">${esc(c.desc)}</p>
+      <div class="pay-ofrece">${(c.ofrece || []).map(o => `<span>${esc(o)}</span>`).join('')}</div>
+      <dl class="datos" style="margin-top:16px">
+        <div><dt>${t('pay.dire')}</dt><dd>${esc(c.dir)}</dd></div>
+        <div><dt>${t('pay.razon')}</dt><dd>${esc(c.razon)}</dd></div>
+      </dl>
+      ${redes.length ? `<div class="ficha-btns">${redes.map(r => {
+        const [u, nom] = enlace(r);
+        return `<a class="btn btn-linea btn-sm" href="${esc(u)}" target="_blank" rel="noopener">${esc(nom)}</a>`;
+      }).join('')}</div>` : ''}
+    </div>
+    <div class="bloque vidrio">
+      <h3>${t('pay.pagarT')}</h3>
+      <p class="pie" style="margin-top:8px">${t('pay.pagarP')}</p>
+      <div class="ficha-btns">
+        <button class="btn btn-oro btn-sm" onclick="VETA.vista('lector')">
+          <svg viewBox="0 0 24 24" class="btn-ic">${ICO.camara}</svg>${t('pay.escanear')}</button>
+      </div>
+    </div>`;
+  }
+
+  const payBuscar = v => {
+    payQ = v;
+    // se repinta solo la rejilla para no matar el foco de la caja
+    const cual = vistaActual === 'pay' ? 'pay' : 'payex';
+    if (cual === 'payex') {
+      const l = payFiltrados();
+      const caja = document.querySelector('.pay-rejilla');
+      if (caja) caja.innerHTML = l.map(payTarjeta).join('');
+      const sub = document.querySelector('.cab .sub');
+      if (sub) sub.textContent = `${l.length} ${t('pay.de')} ${PAY_COMERCIOS.length} · ${t('pay.dirSub')}`;
+    } else if (payQ.trim().length > 1) {
+      // escribir en la portada ya es buscar: se pasa al directorio
+      vista('payex');
+      $('.pay-busca')?.focus();
+    }
+  };
+  const payCategoria = v => { payCat = payCat === v ? '' : v; vista(vistaActual === 'pay' && !payCat ? 'pay' : 'payex'); };
+  const payDePais = v => { payPais = v; vista('payex'); };
+  const payVerTodos = () => { payQ = ''; payCat = ''; payPais = ''; vista('payex'); };
+  const payAbrir = id => { payNeg = id; vista('payneg'); };
 
   // ── cobrar ────────────────────────────────────────────────────────────────
 
@@ -2951,7 +3137,9 @@ const VETA = (() => {
   function chat() {
     return `
     <div class="cab">
-      <div><h2>PULSE CHAT</h2><div class="sub">${t('cha.sub')}</div></div>
+      <div><h2>PULSE CHAT <svg viewBox="0 0 60 14" style="width:52px;height:14px;vertical-align:-1px">
+        <path d="M0 7h18l4-5 5 9 4-6 3 2h26" fill="none" stroke="#E0937A" stroke-width="1.6" stroke-linejoin="round"/>
+      </svg></h2><div class="sub">${t('cha.sub')}</div></div>
     </div>
     <div class="chat" id="chat-caja" ${chatSt.con ? 'data-abierto' : ''}>
       <aside class="chat-lista" id="chat-lista">${chatLista()}</aside>
@@ -3416,6 +3604,7 @@ const VETA = (() => {
       bienv1: 'Hola, {nombre}. Soy AU-RA, la inteligencia de Orden Global.',
       bienv1Voz: 'Hola. Soy AU-RA, la inteligencia de Orden Global.',
       bienv2: 'Este es tu Núcleo: el cerebro donde vive todo tu ecosistema. Tocá cualquier esfera para entrar, y si me necesitás, estoy siempre abajo a la derecha.',
+      bienv3: 'Y todo esto late sobre nuestra propia cadena: una Layer 1 hecha en casa, más rápida, más barata y nuestra. Bienvenido a Orden Global.',
       micNo: 'Este navegador no me deja escuchar. Escribime y te leo igual de bien.',
       micErr: 'No te pude escuchar. Probá otra vez, o escribime.',
       chips: ['Hacé el recorrido', '¿Qué es ORIGEN?', 'Llevame a cobrar', '¿Cómo creo mi Genesis ID?'],
@@ -3448,10 +3637,11 @@ const VETA = (() => {
         pronto: 'AUBANK y Ordenexchange ya laten en el Núcleo pero todavía no abren: son lo que viene. El ecosistema no es una lista cerrada — crece.',
       },
       teEscucho: 'Te escucho…',
-      ayuda: 'Podés pedirme, con la voz o escribiendo:\n\n· «Llevame a cobrar» — te abro cualquier parte\n· «Envía 15 a María» — te dejo el envío listo (firmás vos)\n· «¿Cuánto tengo?» — tu saldo\n· «¿Qué es ORIGEN?» — te explico el ecosistema\n· «Hacé el recorrido» — te lo enseño todo\n\nY si no me entiende el micrófono, escribime: leo igual de bien.',
+      ayuda: 'Podés pedirme, con la voz o escribiendo:\n\n· «Llevame a cobrar» — te abro cualquier parte\n· «Envía 15 a María» — te dejo el envío listo (firmás vos)\n· «¿Cuánto tengo?» — tu saldo\n· «¿Qué es ORIGEN?» — te explico el ecosistema\n· «Buscá cafeterías» — te encuentro negocios\n· «Hacé el recorrido» — te lo enseño todo\n\nY si no me entiende el micrófono, escribime: leo igual de bien.',
       tour: [
         { id: null, k: 'TU NÚCLEO', t: 'El cerebro del ecosistema', p: 'Bienvenido a tu Núcleo. Cada esfera es un órgano vivo, y todas laten conectadas a una sola cuenta: la tuya.' },
         { id: 'wallet', k: 'TU DINERO', t: 'Veta Wallet', p: 'Oro real hecho dinero, sobre nuestra propia cadena. Enviás, recibís y cobrás en segundos.' },
+        { id: 'scan', k: 'NUESTRA CADENA', t: 'Layer 1 · 5550', p: 'Ya no vivimos prestados en la red de otro: una Layer 1 hecha en casa. Y cada movimiento se comprueba en ordenscan, a cualquier hora.' },
         { id: 'chat', k: 'TU GENTE', t: 'PULSE CHAT', p: 'Solo gente verificada, y el dinero viaja dentro de la conversación, con comprobante en la cadena.' },
         { id: 'pay', k: 'TU NEGOCIO', t: 'MyTokenPay', p: 'La caja registradora del ecosistema: cobrás con un código y tu negocio crece acá adentro.' },
         { id: 'gid', k: 'TU IDENTIDAD', t: 'Genesis ID', p: 'Te verificás una sola vez y todo Orden Global te reconoce. Es la llave que abre las demás esferas.' },
@@ -3463,6 +3653,7 @@ const VETA = (() => {
       bienv1: 'Hello, {nombre}. I am AU-RA, the intelligence of Orden Global.',
       bienv1Voz: 'Hello. I am AU-RA, the intelligence of Orden Global.',
       bienv2: 'This is your Nucleus: the brain where your whole ecosystem lives. Tap any sphere to enter — and if you need me, I am always at the bottom right.',
+      bienv3: 'And all of it beats on our own chain: a Layer 1 built in-house — faster, cheaper, and ours. Welcome to Orden Global.',
       micNo: 'This browser will not let me listen. Type to me — I read just as well.',
       micErr: 'I could not hear you. Try again, or type to me.',
       chips: ['Take the tour', 'What is ORIGEN?', 'Take me to charge', 'How do I create my Genesis ID?'],
@@ -3495,10 +3686,11 @@ const VETA = (() => {
         pronto: 'AUBANK and Ordenexchange already pulse in the Nucleus but are not open yet: they are what is coming. The ecosystem is not a closed list — it grows.',
       },
       teEscucho: 'Listening…',
-      ayuda: 'You can ask me, by voice or typing:\n\n· “Take me to charge” — I open any part\n· “Send 15 to Maria” — I leave the transfer ready (you sign)\n· “How much do I have?” — your balance\n· “What is ORIGEN?” — I explain the ecosystem\n· “Take the tour” — I show you everything\n\nAnd if the microphone misses you, type: I read just as well.',
+      ayuda: 'You can ask me, by voice or typing:\n\n· “Take me to charge” — I open any part\n· “Send 15 to Maria” — I leave the transfer ready (you sign)\n· “How much do I have?” — your balance\n· “What is ORIGEN?” — I explain the ecosystem\n· “Find coffee shops” — I find businesses\n· “Take the tour” — I show you everything\n\nAnd if the microphone misses you, type: I read just as well.',
       tour: [
         { id: null, k: 'YOUR NUCLEUS', t: 'The brain of the ecosystem', p: 'Welcome to your Nucleus. Each sphere is a living organ, and they all pulse connected to a single account: yours.' },
         { id: 'wallet', k: 'YOUR MONEY', t: 'Veta Wallet', p: 'Real gold turned into money, on our own chain. Send, receive and charge in seconds.' },
+        { id: 'scan', k: 'OUR CHAIN', t: 'Layer 1 · 5550', p: 'We no longer live borrowed on someone else’s network: a Layer 1 built in-house. And every movement can be checked on ordenscan, at any hour.' },
         { id: 'chat', k: 'YOUR PEOPLE', t: 'PULSE CHAT', p: 'Verified people only, and money travels inside the conversation, with a receipt on the chain.' },
         { id: 'pay', k: 'YOUR BUSINESS', t: 'MyTokenPay', p: 'The ecosystem’s cash register: you charge with a code and your business grows in here.' },
         { id: 'gid', k: 'YOUR IDENTITY', t: 'Genesis ID', p: 'Verify once and all of Orden Global recognises you. It is the key that opens the other spheres.' },
@@ -3691,8 +3883,29 @@ const VETA = (() => {
       return auraDecir(T.saldo.replace('{total}', cartera ? usd(total()) : '—'), { voz });
     }
     if (!pregunta && /mytokenpay|negocio|comercio|merchant|business/.test(d)) {
-      window.open(URL_MYTOKENPAY, '_blank', 'noopener');
+      vista('pay'); auraApartar();
       return auraDecir(T.con.pay, { voz });
+    }
+    /* «busca cafeterias», «quiero comer», «find hotels»: el directorio con
+       el filtro ya puesto. La categoria sale de lo dicho; lo demas queda
+       como busqueda de texto. */
+    const negocio = d.match(/(?:busca(?:r|me)?|encontra(?:r|me)?|quiero|find|search)\s+(.+)/);
+    if (negocio) {
+      const dicho2 = negocio[1].replace(/(un|una|unos|unas|a|some|el|la|los|las)/g, ' ').trim();
+      const CATS = [
+        [/cafe|coffee/, 'cafeterias'], [/restauran|comer|comida|food|eat/, 'restaurantes'],
+        [/hotel|hosped|stay/, 'hoteles'], [/gym|gimnasio|fitness/, 'gimnasios'],
+        [/belleza|spa|beauty|salon/, 'belleza'], [/bar|noche|nightlife|drink/, 'vida-nocturna'],
+        [/super|mercado|market/, 'supermercados'], [/ropa|moda|fashion/, 'moda'],
+        [/tecno|celular|tech|phone/, 'tecnologia'], [/salud|clinica|health|doctor/, 'salud'],
+        [/tour|turismo|viaje|travel|surf/, 'turismo'], [/auto|carro|car/, 'automotriz'],
+      ];
+      const cat = (CATS.find(([re]) => re.test(dicho2)) || [])[1];
+      if (cat || /negocio|tienda|shop|store/.test(dicho2)) {
+        payCat = cat || ''; payPais = ''; payQ = cat ? '' : dicho2;
+        vista('payex'); auraApartar();
+        return auraDecir(T.con.pay, { voz });
+      }
     }
     if (!pregunta && /ordenscan|explorador|explorer/.test(d)) {
       window.open('https://ordenscan.com', '_blank', 'noopener');
@@ -3784,6 +3997,11 @@ const VETA = (() => {
     if (!$('#aurab-sub')) return;     // la saltaron a mitad de frase
     $('#aurab-sub').textContent = T.bienv2;
     await Promise.all([AURA.hablar(T.bienv2, idiomaActivo()), espera(4600)]);
+    if (!$('#aurab-sub')) return;
+    // La cadena tambien se presenta: es la noticia del ecosistema, y quien
+    // entra tiene que saber sobre QUE late todo esto.
+    $('#aurab-sub').textContent = T.bienv3;
+    await Promise.all([AURA.hablar(T.bienv3, idiomaActivo()), espera(4600)]);
     auraBienFin();
   }
 
@@ -4570,6 +4788,8 @@ const VETA = (() => {
            envElegir, envContacto, envMax, envMonto,
            // Cobrar: el codigo que ya lleva la cantidad puesta.
            cobElegir, cobEscribir, cobCopiar, cobCompartir,
+           // MyTokenPay adentro: directorio, ficha y cobro real.
+           payBuscar, payCategoria, payDePais, payVerTodos, payAbrir,
            // El Nucleo: la portada del ecosistema.
            nuAbrir,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
