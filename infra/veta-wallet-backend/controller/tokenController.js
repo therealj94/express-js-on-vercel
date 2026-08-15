@@ -24,7 +24,7 @@ export const allTokens = async (req, res) => {
       return res.status(404).json({ message: "chain not found" });
     }
 
-    if (chain.chain_id === 8532) {
+    if (chain.chain_id === 5550 || chain.chain_id === 8532) {
       res.json([]);
     } else {
       const apiUrl = `${chain.api_scan}/api?module=account&action=tokentx&address=${address}&apikey=${chain.api_key}`;
@@ -135,7 +135,7 @@ export const tokenAddre2 = async (req, res) => {
       return res.status(404).json({ message: "chain not found" });
     }
 
-    if (chain.chain_id === 8532) {
+    if (chain.chain_id === 5550 || chain.chain_id === 8532) {
       const response = await axios.get(
         `https://orden-global-scan-c4abe71e8024.herokuapp.com/address/${address}`
       );

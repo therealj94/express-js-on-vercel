@@ -62,7 +62,11 @@ export const getAllChain = async (req, res) => {
         (token) => token.symbol.toLowerCase() === symbol.toLowerCase()
       );
       let priceData;
-      if (chain.chain_id === 8532) {
+      // El precio de ONDK no cotiza en ningun mercado publico: lo fija la casa.
+      // Estaba atado al numero de la red vieja, asi que al pasar a la 5550 el
+      // codigo se iba a buscarlo fuera, no lo encontraba y devolvia 0 — la web
+      // enseñaba un guion donde debia haber 2,10. Se aceptan las dos redes.
+      if (chain.chain_id === 5550 || chain.chain_id === 8532) {
         priceData = "2.10";
       } else {
         priceData = filteredToken ? filteredToken.quote.USD.price : "0";
@@ -101,7 +105,7 @@ export const getChainForId = async (req, res) => {
       return res.status(404).json({ message: "Chain not found" });
     }
 
-    if (chain.chain_id === 8532) {
+    if (chain.chain_id === 5550 || chain.chain_id === 8532) {
       console.log(address)
       const response = await axios.get(
         `https://orden-global-scan-c4abe71e8024.herokuapp.com/address/${address}`
