@@ -27,15 +27,24 @@ export default function Contacts({ nav, params }) {
   useEffect(load, [load]);
 
   // Al elegir un contacto: si venimos desde Enviar, devuelve la dirección.
+  // Copiar vive en su propia función `async` con la red por dentro: una función
+  // `async` NUNCA lanza de forma síncrona, así que llamarla no puede reventar a
+  // quien la llama, y como el try cubre todo su cuerpo tampoco deja una promesa
+  // rechazada suelta. `choose` se queda SÍNCRONA a propósito: si se volviera
+  // `async`, lo que lanzaran `onPick` o `nav.back()` dejaría de ser una
+  // excepción normal y pasaría a ser una promesa rechazada sin dueño.
+  const copiarDir = async (dir) => {
+    try { await Clipboard.setStringAsync(String(dir)); toast(t('recv.copied')); }
+    catch { toast(t('recv.copyErr'), 'error'); }
+  };
+
   function choose(c) {
     hap();
     if (params?.onPick) { params.onPick(c.address); nav.back(); return; }
     // Sin dirección no se intenta copiar, y si falla se avisa: el `.catch`
     // vacío de antes se tragaba el fallo y nada se movía en pantalla.
     if (!c?.address) return;
-    Clipboard.setStringAsync(String(c.address))
-      .then(() => toast(t('recv.copied')))
-      .catch(() => toast(t('recv.copyErr'), 'error'));
+    copiarDir(c.address);
   }
 
   async function guardar() {

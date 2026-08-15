@@ -509,21 +509,21 @@ export function Passport({ nav }) {
               <Text style={styles.passName} numberOfLines={2}>{p?.fullName || acc.name}</Text>
               <Text style={styles.passLabel2}>{t('pass.uid')}</Text>
               {/* El GID viaja por el chat, así que copiarlo tiene que ser
-                  imposible de fallar: número en campo SELECCIONABLE (se marca
-                  y se copia con el gesto del teléfono) más un botón visible
-                  encima del gesto invisible de antes —tocar el número a secas
-                  no se veía—. El mismo trato que en los ajustes de AURO CHAT,
-                  para que la seña se aprenda una sola vez en toda la app. */}
+                  imposible de fallar: el botón visible manda, y debajo queda la
+                  salida a mano por si el botón fallara.
+                  Esa salida es un <Text selectable>, NO un TextInput apagado.
+                  Un `<TextInput editable={false}>` con `selectTextOnFocus` no
+                  selecciona nada en Android: React Native solo llama a focus()
+                  cuando `editable !== false` (Libraries/Components/TextInput/
+                  TextInput.js), o sea que con el campo apagado el toque no
+                  enfoca y `selectTextOnFocus` no llega a ejecutarse jamás. El
+                  letrero prometía «tócalo y cópialo a mano» y el dedo no
+                  conseguía nada. `selectable` sí es el gesto del sistema:
+                  mantener pulsado abre el menú de copiar del teléfono. */}
               {gid ? (
                 <>
-                  <TextInput
-                    value={gid}
-                    editable={false}
-                    selectTextOnFocus
-                    showSoftInputOnFocus={false}
-                    style={styles.passUid}
-                  />
-                  <Pressable onPress={copiarGid} hitSlop={8} style={styles.passCopia}
+                  <Text selectable style={styles.passUid}>{gid}</Text>
+                  <Pressable onPress={copiarGid} hitSlop={12} style={styles.passCopia}
                     accessibilityRole="button" accessibilityLabel={t('pass.gidCopy')}>
                     <Icon name="copy" size={13} color={C.gold} />
                     <Text style={styles.passCopiaTxt}>{t('pass.gidCopy')}</Text>
@@ -982,13 +982,16 @@ const styles = StyleSheet.create({
   passLabel: { color: C.txt3, fontSize: 9.5, letterSpacing: 1.4 },
   passLabel2: { color: C.txt3, fontSize: 9.5, letterSpacing: 1.4, marginTop: 8 },
   passName: { color: C.txt, fontWeight: '700', fontSize: 16.5, marginTop: 2 },
-  // El GID va en un TextInput no editable para poder marcarlo con el dedo,
-  // pero tiene que SEGUIR pareciendo el número de la credencial: sin fondo, sin
-  // borde y con los paddings de Android a cero, que si no baja la línea sola.
+  // El GID es un <Text selectable>: se mantiene pulsado y sale el menú de
+  // copiar del teléfono. Al ser Text y no TextInput ya no hacen falta los
+  // paddings de Android a cero, pero se dejan para que la línea quede pegada a
+  // su etiqueta como en el resto de la credencial.
   passUid: { color: C.gold, fontWeight: '800', fontSize: 15, letterSpacing: 1, marginTop: 2, padding: 0, margin: 0 },
   // Botón de copiar: pequeño pero VISIBLE — antes copiar era tocar el número
-  // pelado, un gesto que nadie adivina.
-  passCopia: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 9, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 11, borderWidth: 1, borderColor: C.line, backgroundColor: 'rgba(201,169,97,0.12)' },
+  // pelado, un gesto que nadie adivina. El alto sale de 13 del ícono + 9 y 9 de
+  // relleno ≈ 31, y con hitSlop 12 el área real del dedo pasa de 48: el mínimo
+  // que Android pide para no fallar el toque.
+  passCopia: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 9, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 11, borderWidth: 1, borderColor: C.line, backgroundColor: 'rgba(201,169,97,0.12)' },
   passCopiaTxt: { color: C.gold, fontSize: 9.5, fontWeight: '800', letterSpacing: 1.2 },
   passMano: { color: C.txt3, fontSize: 10.5, lineHeight: 15, marginTop: 7 },
   passFoot: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },

@@ -43,7 +43,8 @@ const TXT = {
     gidTxt: 'Quien lo tenga te encuentra en AURO CHAT buscándolo tal cual.',
     gidCopiar: 'COPIAR GID',
     gidCopiado: 'GID copiado',
-    gidMano: 'También puedes tocarlo y copiarlo a mano.',
+    // El gesto real es MANTENER PULSADO: un toque no selecciona nada.
+    gidMano: 'También puedes mantenerlo pulsado y copiarlo a mano.',
     gidNoListo: 'Tu Genesis ID todavía no está listo: aparecerá aquí en cuanto Genesis lo emita.',
     gidCompartir: 'COMPARTIR MI GID',
     gidInvito: 'Búscame en AURO CHAT con mi Genesis ID:',
@@ -86,7 +87,8 @@ const TXT = {
     gidTxt: 'Anyone who has it can find you on AURO CHAT by searching it as is.',
     gidCopiar: 'COPY GID',
     gidCopiado: 'GID copied',
-    gidMano: 'You can also tap it and copy it by hand.',
+    // Ver la nota en español: el gesto es mantener pulsado, no tocar.
+    gidMano: 'You can also press and hold it to copy it by hand.',
     gidNoListo: 'Your Genesis ID is not ready yet: it will show up here as soon as Genesis issues it.',
     gidCompartir: 'SHARE MY GID',
     gidInvito: 'Find me on AURO CHAT with my Genesis ID:',
@@ -288,17 +290,16 @@ export default function AjustesAuro({ nav }) {
           <Text style={st.seccion}>{t.gidTit}</Text>
           {gid ? (
             <>
-              {/* El camino a mano: el GID también en un campo seleccionable
-                  —no editable— para marcarlo y copiarlo con el gesto del
-                  teléfono aunque el botón de arriba fallara. Es la salida que
-                  pidió José: copiar y pegar donde sea. */}
-              <TextInput
-                value={String(gid)}
-                editable={false}
-                selectTextOnFocus
-                showSoftInputOnFocus={false}
-                style={st.gidCampo}
-              />
+              {/* El camino a mano, la salida que pidió José: copiar y pegar
+                  donde sea aunque el botón de arriba fallara.
+                  Va como <Text selectable> y NO como `<TextInput
+                  editable={false} selectTextOnFocus>`: React Native solo enfoca
+                  el campo cuando `editable !== false` (se ve en
+                  Libraries/Components/TextInput/TextInput.js), así que con el
+                  campo apagado el toque no enfoca, `selectTextOnFocus` no corre
+                  nunca y no se seleccionaba nada. Con `selectable` el gesto es
+                  el del sistema: mantener pulsado abre el menú de copiar. */}
+              <Text selectable style={st.gidCampo}>{String(gid)}</Text>
               <Text style={st.gidMano}>{t.gidMano}</Text>
               <Button3D title={t.gidCopiar} icon="copy" onPress={copiarGid} style={{ marginTop: 14 }} />
               <Text style={[st.tarTxt, { textAlign: 'center', marginTop: 16, marginBottom: 0 }]}>{t.gidTxt}</Text>
@@ -377,9 +378,10 @@ const st = StyleSheet.create({
   tarjeta: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 18, padding: 18, marginBottom: 16 },
   seccion: { color: C.txt3, fontSize: 10, fontWeight: '700', letterSpacing: 2.6, marginBottom: 12 },
   // el GID en grande y tabular: es una seña para dictar o copiar, no un
-  // párrafo — cada glifo tiene que distinguirse al primer vistazo. Va en un
-  // campo con el trazo de los demás de la casa (C.input / C.inputBr) para que
-  // se lea como algo que se puede marcar con el dedo, no como un título.
+  // párrafo — cada glifo tiene que distinguirse al primer vistazo. Lleva el
+  // trazo de los campos de la casa (C.input / C.inputBr) para que se lea como
+  // algo que se puede marcar con el dedo y no como un título, aunque por dentro
+  // sea un <Text selectable> y no un TextInput (ver la nota de arriba).
   gidCampo: {
     backgroundColor: C.input, borderWidth: 1, borderColor: C.inputBr, borderRadius: 14,
     paddingHorizontal: 12, paddingVertical: 12, textAlign: 'center',

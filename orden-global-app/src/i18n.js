@@ -460,7 +460,9 @@ const S = {
     // botón propio, aviso de fallo y una salida a mano por si el botón falla.
     'pass.gidCopy': 'COPIAR GID',
     'pass.gidCopyErr': 'No se pudo copiar. Inténtalo de nuevo.',
-    'pass.gidByHand': 'También puedes tocarlo y copiarlo a mano.',
+    // «Tocarlo» no: un toque no selecciona nada. El gesto que de verdad abre el
+    // menú de copiar del teléfono es MANTENER PULSADO, y así se dice.
+    'pass.gidByHand': 'También puedes mantenerlo pulsado y copiarlo a mano.',
     'pass.gidNotReady': 'Tu Genesis ID todavía no está listo.',
     'pass.type': 'Tipo', 'pass.typeV': 'Identidad personal', 'pass.issued': 'Emitido', 'pass.eco': 'Ecosistema',
     'pass.note': 'Credencial válida en Veta Wallet, MyTokenPay y todas las apps de Orden Global.',
@@ -1247,7 +1249,8 @@ const S = {
     'pass.gidCopied': 'GID copied',
     'pass.gidCopy': 'COPY GID',
     'pass.gidCopyErr': 'Could not copy. Try again.',
-    'pass.gidByHand': 'You can also tap it and copy it by hand.',
+    // Ver la nota en español: el gesto es mantener pulsado, no tocar.
+    'pass.gidByHand': 'You can also press and hold it to copy it by hand.',
     'pass.gidNotReady': 'Your Genesis ID is not ready yet.',
     'pass.type': 'Type', 'pass.typeV': 'Personal identity', 'pass.issued': 'Issued', 'pass.eco': 'Ecosystem',
     'pass.note': 'Credential valid in Veta Wallet, MyTokenPay and every Orden Global app.',

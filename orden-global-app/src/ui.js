@@ -14,7 +14,19 @@ export const LOGO = require('../assets/logo.png');
 export const LOGO_ORDEN = require('../assets/orden-global.png');
 export const BG = require('../assets/login-bg.jpg');       // iniciar sesión y contenido
 export const BG_SPLASH = require('../assets/splash-bg.jpg'); // al abrir la app
-export const hap = (style = Haptics.ImpactFeedbackStyle.Light) => { try { Haptics.impactAsync(style); } catch (e) {} };
+// La vibración de toda la app. El try/catch de antes NO protegía nada y por eso
+// se cambia: `Haptics.impactAsync` está declarada `async`, así que su fallo
+// —`UnavailabilityError` cuando el módulo nativo no responde, o un error del
+// vibrador del teléfono— NUNCA se lanza de forma síncrona: sale como promesa
+// RECHAZADA, y una promesa rechazada no la atrapa ningún try/catch de fuera.
+// Importa aquí más que en ningún sitio: `hap()` es la PRIMERA línea de todos
+// los botones de copiar y compartir (y del propio Button3D al hundirse), o sea
+// que se ejecuta antes de que empiece el try que sí protege al portapapeles.
+// El `.catch` vacío es el único que recoge esa promesa; el `?.` deja pasar sin
+// romper si un día la función devolviera algo que no es promesa.
+export const hap = (style = Haptics.ImpactFeedbackStyle.Light) => {
+  try { Haptics.impactAsync(style)?.catch(() => {}); } catch (e) {}
+};
 
 // Fondo de marca de toda la app: la fotografía del ecosistema con un velo
 // oscuro encima. `intensity` controla cuánta imagen se deja ver:
