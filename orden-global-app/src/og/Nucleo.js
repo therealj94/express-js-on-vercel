@@ -134,7 +134,10 @@ const TXT = {
   },
 };
 
-// ── LOS CINCO MUNDOS ────────────────────────────────────────────────────
+// ── LOS MUNDOS ──────────────────────────────────────────────────────────
+// Cinco vivos (Chat, Veta Wallet, MyTokenPay, Genesis ID, Ajustes), dos
+// dormidos con letrero PRONTO (AUBANK, Ordenexchange) y el «+» que anuncia
+// que vendrán más.
 // `x` e `y` son fracciones del tablero, no píxeles: la constelación se ve
 // igual en un teléfono estrecho y en una tableta. La billetera va en el
 // centro y más grande porque es el corazón — el dinero — y el ojo tiene
@@ -1510,6 +1513,81 @@ export default function Nucleo({ nav }) {
     return () => { vivo = false; };
   }, []);
 
+  // ══ LOS USOS ═══════════════════════════════════════════════════════════
+  // Se leen una vez al abrir. Un fichero corrupto o sin almacén deja todos
+  // los factores en 1 y el tablero se ve como el del primer día: el tamaño
+  // por uso es un premio, jamás un requisito.
+  const usosRef = useRef({});
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      if (!ALMACEN) return;
+      try {
+        const crudo = await ALMACEN.getItem(LLAVE_USOS);
+        if (!vivo || !crudo) return;
+        const leido = JSON.parse(crudo);
+        const limpio = {};
+        NAVEGABLES.forEach((id) => {
+          const n = Number(leido && leido[id]);
+          if (Number.isFinite(n) && n > 0) limpio[id] = Math.min(n, 99999);
+        });
+        usosRef.current = limpio;
+        setUsos(limpio);
+      } catch (e) {
+        // Contador ilegible: se empieza a contar de cero, sin drama.
+      }
+    })();
+    return () => { vivo = false; };
+  }, []);
+
+  const anotarUso = useCallback((id) => {
+    if (NAVEGABLES.indexOf(id) < 0) return;
+    const u = { ...usosRef.current, [id]: (usosRef.current[id] || 0) + 1 };
+    usosRef.current = u;
+    // A propósito NO se llama a setUsos aquí: cambiar el tamaño de la esfera
+    // en el instante en que se está yendo a otra pantalla es un parpadeo que
+    // nadie pidió. El tamaño nuevo se ve a la próxima visita al Núcleo.
+    if (ALMACEN) ALMACEN.setItem(LLAVE_USOS, JSON.stringify(u)).catch(() => {});
+  }, []);
+
+  // De cuentas a TAMAÑO: el más usado llega a 1.35x y el resto sube en
+  // proporción, con raíz cuadrada para que la diferencia se note pronto pero
+  // nunca se dispare — "suave" quiere decir que el tablero respira con el
+  // uso, no que un mundo se coma a los demás.
+  const factores = useMemo(() => {
+    const u = usos || {};
+    let max = 0;
+    NAVEGABLES.forEach((id) => { if ((u[id] || 0) > max) max = u[id]; });
+    const f = {};
+    NAVEGABLES.forEach((id) => {
+      f[id] = max > 0 ? 1 + 0.35 * Math.sqrt((u[id] || 0) / max) : 1;
+    });
+    return f;
+  }, [usos]);
+
+  // ══ LOS DATOS VIVOS ════════════════════════════════════════════════════
+  // El globo del chat enseña los sin-leer DE VERDAD, no un adorno. Solo se
+  // pregunta si la puerta del chat ya está abierta (Genesis aprobado y
+  // correo): el alta es la misma que hace AuroChat, así que no crea nada
+  // nuevo. Cualquier tropiezo —sin red, sin módulo, sin alta— deja el globo
+  // sin salir y el tablero ni se entera.
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      if (!MENS || !account?.email || !account?.genesisUid) return;
+      try {
+        await MENS.alta(account);
+        const d = await MENS.conversaciones();
+        if (!vivo) return;
+        const n = (d.conversaciones || []).reduce((a, c) => a + (Number(c.sinLeer) || 0), 0);
+        setSinLeer(n);
+      } catch (e) {
+        // Sin relevo no hay globo. El tablero nunca depende de un contador.
+      }
+    })();
+    return () => { vivo = false; };
+  }, [account?.email, account?.genesisUid]);
+
   // Los hilos se redibujan como mucho UNA vez por cuadro. El oyente del valor
   // animado puede dispararse varias veces seguidas (x e y son dos valores
   // distintos), y sin esta brida se pedirían dos repintados para el mismo
@@ -1561,7 +1639,17 @@ export default function Nucleo({ nav }) {
     bucle.start();
     return () => bucle.stop();
   }, [latido]);
-  const opHilo = latido.interpolate({ inputRange: [0, 1], outputRange: [0.34, 0.86] });
+  // En useMemo para que su identidad no cambie por render: son props de los
+  // hilos memoizados y un interpolate nuevo cada vez los repintaría en balde.
+  const opHilo = useMemo(
+    () => latido.interpolate({ inputRange: [0, 1], outputRange: [0.34, 0.86] }),
+    [latido],
+  );
+  // El mismo latido, a media luz, para los hilos de los mundos PRONTO.
+  const opHiloTenue = useMemo(
+    () => latido.interpolate({ inputRange: [0, 1], outputRange: [0.14, 0.38] }),
+    [latido],
+  );
 
   // El saludo cambia con la hora del teléfono. Cuesta una línea y es lo que
   // separa "una app" de "mi app".
@@ -1576,7 +1664,7 @@ export default function Nucleo({ nav }) {
   // del banco; "Buenas tardes, José" suena a alguien que te conoce.
   const nombre = (account?.name || '').trim().split(/\s+/)[0] || t.invitado;
 
-  const onIr = useCallback((id) => {
+  const irDestino = useCallback((id) => {
     if (id === 'chat') return nav.go('chat');
     if (id === 'wallet') return nav.go('home');
     if (id === 'pay') return nav.go('pay-inicio');
@@ -1586,16 +1674,77 @@ export default function Nucleo({ nav }) {
     return nav.go('settings');
   }, [nav, account?.genesisUid]);
 
-  const ETIQ = { chat: t.chat, wallet: t.wallet, pay: t.pay, gid: t.gid, ajustes: t.ajustes };
-  const A11Y = { chat: t.irChat, wallet: t.irWallet, pay: t.irPay, gid: t.irGid, ajustes: t.irAjustes };
+  // ══ ABRIR UN MUNDO ═════════════════════════════════════════════════════
+  // Tres cosas pasan en orden y las tres nacen del MISMO punto de la
+  // pantalla — el centro vivo del nodo tocado, arrastre incluido:
+  //   1. la red del fondo recibe la cascada: las neuronas más cercanas al
+  //      mundo elegido disparan y el resplandor se abre ahí;
+  //   2. el PORTAL: un halo del color del mundo crece desde el nodo hasta
+  //      llenar la pantalla (escala + opacidad, controlador nativo);
+  //   3. y solo entonces nav.go — entrar a una app se siente ENTRAR, no
+  //      cambiar de pantalla.
+  // Los mundos PRONTO y el «+» se desvían a su hoja antes del paso 1: no
+  // navegan, anuncian.
+  const onIr = useCallback((id, punto) => {
+    const m = MUNDOS.find((x) => x.id === id);
+    if (m && m.pronto) { setHoja(id); return; }
+    anotarUso(id);
+    // La cascada quiere coordenadas de PANTALLA y el punto viene en las del
+    // tablero: se le suma dónde empieza el tablero. Si el fondo no está
+    // (plan B), cascada() es un no-op y aquí nadie lo nota.
+    if (punto && fondo.current) {
+      fondo.current.cascada(punto.x, punto.y + campoY.current);
+    }
+    if (!punto || !campo.w || !campo.h) { irDestino(id); return; }
+    setPortal(punto);
+    portalAnim.setValue(0);
+    Animated.timing(portalAnim, {
+      toValue: 1, duration: 320, easing: Easing.in(Easing.cubic), useNativeDriver: true,
+    }).start(({ finished }) => {
+      irDestino(id);
+      if (!finished) { setPortal(null); return; }
+      // El Núcleo puede seguir montado por detrás (pestañas): el portal se
+      // disuelve con calma para que al VOLVER no siga tapando el tablero.
+      Animated.timing(portalAnim, {
+        toValue: 0, duration: 260, delay: 140, easing: Easing.out(Easing.quad), useNativeDriver: true,
+      }).start(() => setPortal(null));
+    });
+  }, [anotarUso, irDestino, campo.w, campo.h, portalAnim]);
+
+  const ETIQ = {
+    chat: t.chat, wallet: t.wallet, pay: t.pay, gid: t.gid, ajustes: t.ajustes,
+    aubank: t.aubank, oxch: t.oxch, mas: t.mas,
+  };
+  // La etiqueta de accesibilidad LLEVA el dato vivo: quien navega con el
+  // lector oye "abrir el chat, 3 sin leer" — el globo no es solo visual.
+  const kycPendiente = !account?.genesisUid;
+  const A11Y = {
+    chat: t.irChat + (sinLeer > 0 ? `, ${sinLeer} ${t.sinLeer}` : ''),
+    wallet: t.irWallet, pay: t.irPay,
+    gid: t.irGid + (kycPendiente ? `, ${t.kycPend}` : ''),
+    ajustes: t.irAjustes,
+    aubank: t.irAubank, oxch: t.irOxch, mas: t.irMas,
+  };
 
   // El diámetro sale del lado más corto del tablero: en un teléfono bajo las
   // esferas encogen en vez de pisarse unas a otras.
   const base = Math.max(78, Math.min(campo.w * 0.31, campo.h * 0.245, 136));
 
+  // Cuánto tiene que crecer el portal para tapar la pantalla entera desde el
+  // punto donde nació: la distancia a la esquina más lejana, con margen. Se
+  // calcula al pintar porque depende de dónde esté el nodo en ese momento.
+  let portalEsc = 1;
+  if (portal) {
+    const px = portal.x;
+    const py = campoY.current + portal.y;
+    const dx = Math.max(px, campo.w - px);
+    const dy = Math.max(py, campoY.current + campo.h - py) + 40;
+    portalEsc = (Math.sqrt(dx * dx + dy * dy) / Math.max(portal.r, 1)) * 1.15;
+  }
+
   return (
     <View style={st.raiz}>
-      <Fondo />
+      <Fondo ref={fondo} />
 
       <View style={st.cab} pointerEvents="box-none">
         <Image source={require('../../assets/og-logo.png')} style={st.logo} resizeMode="contain" />
@@ -1621,9 +1770,12 @@ export default function Nucleo({ nav }) {
       </View>
 
       <View style={st.campo} onLayout={(e) => {
-        const { width, height } = e.nativeEvent.layout;
+        const { width, height, y } = e.nativeEvent.layout;
+        // Dónde empieza el tablero dentro de la pantalla: la cascada del
+        // fondo y el portal viven en coordenadas de pantalla y lo necesitan.
+        campoY.current = y;
         // Sólo se guarda si cambió de verdad: onLayout se dispara también al
-        // rotar y al abrir el teclado, y cada set repinta las cinco esferas.
+        // rotar y al abrir el teclado, y cada set repinta las esferas.
         setCampo((p) => (Math.abs(p.w - width) < 1 && Math.abs(p.h - height) < 1 ? p : { w: width, h: height }));
       }}>
         {/* Los hilos van DEBAJO de los mundos: si cruzaran por encima de una
@@ -1633,6 +1785,7 @@ export default function Nucleo({ nav }) {
             campo={campo}
             base={base}
             brillo={opHilo}
+            brilloTenue={opHiloTenue}
             desplaz={desplaz.current}
             activo={enMano}
           />
@@ -1651,6 +1804,10 @@ export default function Nucleo({ nav }) {
             ix={colocacion[m.id] ? colocacion[m.id].fx : m.x}
             iy={colocacion[m.id] ? colocacion[m.id].fy : m.y}
             reponer={reponer}
+            tamUso={factores[m.id] || 1}
+            chip={m.pronto && m.id !== 'mas' ? t.pronto : null}
+            globo={m.id === 'chat' ? sinLeer : 0}
+            alerta={m.id === 'gid' && kycPendiente}
             onIr={onIr}
             onMover={onMover}
             onTomar={onTomar}
@@ -1658,6 +1815,28 @@ export default function Nucleo({ nav }) {
           />
         ))}
       </View>
+
+      {/* EL PORTAL. Nace del tamaño y el color del nodo tocado y crece hasta
+          llenar la pantalla; nav.go llega cuando el halo ya lo cubre todo,
+          así que la pantalla nueva aparece DENTRO de la luz del mundo que la
+          abrió. pointerEvents none: es luz, no un muro para el dedo. */}
+      {portal && (
+        <Animated.View
+          pointerEvents="none"
+          style={[st.portal, {
+            left: portal.x - portal.r,
+            top: campoY.current + portal.y - portal.r,
+            width: portal.r * 2,
+            height: portal.r * 2,
+            borderRadius: portal.r,
+            backgroundColor: portal.halo,
+            opacity: portalAnim.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 0.55, 1] }),
+            transform: [{ scale: portalAnim.interpolate({ inputRange: [0, 1], outputRange: [1, portalEsc] }) }],
+          }]}
+        />
+      )}
+
+      {hoja && <HojaInfo hoja={hoja} t={t} onCerrar={() => setHoja(null)} />}
     </View>
   );
 }
@@ -1712,4 +1891,61 @@ const st = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
+
+  // El globo de datos vivos: dorado para números (sin leer), ámbar para el
+  // aviso de verificación. Borde negro fino para despegarlo de la esfera.
+  globo: {
+    position: 'absolute', minWidth: 21, height: 21, borderRadius: 11,
+    paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: C.gold, borderWidth: 1.5, borderColor: '#000',
+    zIndex: 3,
+  },
+  globoTxt: { color: '#1E1503', fontSize: 10.5, fontWeight: '800' },
+  globoAmbar: { backgroundColor: '#FBBF24' },
+  globoAmbarTxt: { color: '#442E05' },
+
+  // El precinto PRONTO, cabalgando el canto de la esfera.
+  chip: {
+    position: 'absolute', alignSelf: 'center',
+    backgroundColor: 'rgba(4,10,12,0.86)',
+    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(234,215,156,0.65)',
+    borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2.5,
+    zIndex: 3,
+  },
+  chipTxt: { color: C.goldLt, fontSize: 8.5, fontWeight: '800', letterSpacing: 1.6 },
+
+  // El halo que llena la pantalla al abrir un mundo. zIndex por encima de
+  // todo lo del tablero; la hoja (40) queda aún más arriba, pero nunca
+  // coinciden: la hoja es de los mundos que NO navegan.
+  portal: { position: 'absolute', zIndex: 30 },
+
+  // La hoja de anuncio: vidrio oscuro con canto dorado, pegada abajo.
+  hoja: {
+    position: 'absolute', left: 14, right: 14, bottom: 18,
+    backgroundColor: 'rgba(4,22,24,0.96)',
+    borderWidth: 1, borderColor: C.line,
+    borderRadius: 22, padding: 22, alignItems: 'center',
+  },
+  hojaLente: {
+    width: 58, height: 58, borderRadius: 29,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, marginBottom: 12,
+  },
+  hojaChip: {
+    backgroundColor: 'rgba(201,169,97,0.14)',
+    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(234,215,156,0.6)',
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, marginBottom: 8,
+  },
+  hojaChipTxt: { color: C.goldLt, fontSize: 9.5, fontWeight: '800', letterSpacing: 2 },
+  hojaTit: { color: C.txt, fontSize: 18, fontWeight: '700', letterSpacing: 0.4, textAlign: 'center' },
+  hojaTxt: {
+    color: C.txt2, fontSize: 13.5, lineHeight: 20, textAlign: 'center',
+    marginTop: 8, marginBottom: 16,
+  },
+  hojaBoton: {
+    backgroundColor: 'rgba(201,169,97,0.16)',
+    borderWidth: 1, borderColor: C.line,
+    borderRadius: 999, paddingHorizontal: 26, paddingVertical: 10,
+  },
+  hojaBotonTxt: { color: C.goldLt, fontSize: 13, fontWeight: '700', letterSpacing: 0.6 },
 });

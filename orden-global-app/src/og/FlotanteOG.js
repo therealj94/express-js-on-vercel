@@ -25,19 +25,40 @@ import {
 } from 'react-native';
 import { COMPORTAMIENTO } from './Teclado';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { C, G } from '../theme';
 import { useLang } from '../i18n';
 import { hap } from '../ui';
-import { traducir } from '../intencion';
+import { traducir, EJEMPLOS } from '../intencion';
 import { aUri, MAPA, abrir } from './rutas';
 import { decir, callar } from '../voz';
 import { nombreAsistente, suscribirNombre } from './asistente';
 import * as M from './mensajes';
 
+// REGLA DEL AIRE: expo-speech-recognition es un módulo NATIVO y este
+// componente se monta en TODA la app (App.js). Un APK viejo que reciba el
+// bundle por OTA no lleva ese nativo en el binario: el import estático
+// reventaba el arranque entero. Require defensivo; sin módulo el asistente
+// esconde el micrófono y vive de la caja de texto, que el flujo ya soporta.
+// El hook de eventos cae a un no-op ESTABLE (misma función siempre): el
+// módulo o está o no está desde el arranque, así que el orden de hooks de
+// React no cambia nunca entre renders.
+let ExpoSpeechRecognitionModule = null;
+let useSpeechRecognitionEvent = () => {};
+try {
+  const vozNativa = require('expo-speech-recognition');
+  ExpoSpeechRecognitionModule = vozNativa.ExpoSpeechRecognitionModule || null;
+  if (vozNativa.useSpeechRecognitionEvent) useSpeechRecognitionEvent = vozNativa.useSpeechRecognitionEvent;
+} catch (e) {
+  ExpoSpeechRecognitionModule = null;
+}
+const HAY_VOZ = !!ExpoSpeechRecognitionModule;
+
 const TXT = {
   es: {
-    k: { permiso: 'PERMISO', escucha: 'ESCUCHANDO', entendi: 'ENTENDÍ', ejecuta: 'EJECUTANDO', hecho: 'HECHO' },
+    // dos fases más y ninguna miente: sin micrófono el kicker dice ESCRIBE
+    // (no «escuchando» sobre un micrófono negado) y cuando NO se entendió
+    // dice NO ENTENDÍ (no «entendí» sobre un «eso no lo puedo hacer»)
+    k: { permiso: 'PERMISO', escucha: 'ESCUCHANDO', escribe: 'ESCRIBE', entendi: 'ENTENDÍ', noEntendi: 'NO ENTENDÍ', ejecuta: 'EJECUTANDO', hecho: 'HECHO' },
     pidiendo: 'Te pido el micrófono…',
     pidiendoSub: 'Sin él no te puedo oír. Escribir siempre es una opción.',
     dime: 'Dime…',
@@ -53,9 +74,17 @@ const TXT = {
     entendiVoz: 'Entendido.',
     si: 'SÍ, ABRE', no: 'NO', otra: 'INTENTAR DE NUEVO',
     fuera: 'Eso no lo puedo hacer. Puedo abrir tus apps, preparar envíos, cobrar y enseñarte tus cosas.',
+    // lo hablado va en UNA frase corta; el texto largo se queda en pantalla
+    fueraVoz: 'Eso no lo puedo hacer.',
     sinContacto: 'No encuentro a esa persona en tu chat. Búscala primero o escanea su código.',
+    sinContactoVoz: 'No encuentro a esa persona en tu chat.',
     sinMonto: 'No entendí el monto. Dímelo con número: envía 15 a Juan.',
+    ayuda: 'Pídeme cosas así:',
+    ayudaVoz: 'Mira, esto me puedes pedir.',
     confirma: (m, q) => `Preparar envío de ${m} ORIGEN a ${q}`,
+    confirmaSwap: (m) => (m ? `Preparar un cambio de ${m} en tu billetera` : 'Preparar un cambio en tu billetera'),
+    burbujaA11y: (n) => `${n}, tu asistente. Toca para hablarle o escribirle.`,
+    hizoNegocio: (x) => `Te llevo a los comercios de ${x}.`,
     hizo: {
       'inicio': 'Volvimos al inicio.',
       'wallet/abrir': 'Abrí tu billetera.',
@@ -66,14 +95,17 @@ const TXT = {
       'wallet/reporte': 'Aquí está el reporte de tu billetera.',
       'pay/abrir': 'Abrí MyTokenPay.',
       'pay/cobrar': 'Abrí el cobro con QR.',
+      'pay/explorar': 'Te llevo a los comercios.',
+      'wallet/swap': 'Te dejé el cambio preparado. La firma es tuya.',
       'id/abrir': 'Abrí tu Genesis ID.',
       'chat/abrir': 'Abrí el chat.',
       'asistente/abrir': 'Aquí estoy.',
+      'ajustes': 'Abrí los ajustes.',
     },
     hizoDef: 'Hecho.',
   },
   en: {
-    k: { permiso: 'PERMISSION', escucha: 'LISTENING', entendi: 'GOT IT', ejecuta: 'WORKING', hecho: 'DONE' },
+    k: { permiso: 'PERMISSION', escucha: 'LISTENING', escribe: 'TYPE IT', entendi: 'GOT IT', noEntendi: 'DID NOT GET IT', ejecuta: 'WORKING', hecho: 'DONE' },
     pidiendo: 'Asking for the microphone…',
     pidiendoSub: 'Without it I cannot hear you. Typing is always an option.',
     dime: 'Tell me…',
@@ -89,9 +121,16 @@ const TXT = {
     entendiVoz: 'Got it.',
     si: 'YES, OPEN', no: 'NO', otra: 'TRY AGAIN',
     fuera: 'I cannot do that. I can open your apps, prepare sends, charge, and show you your things.',
+    fueraVoz: 'I cannot do that.',
     sinContacto: 'I cannot find that person in your chat. Search them first or scan their code.',
+    sinContactoVoz: 'I cannot find that person in your chat.',
     sinMonto: 'I did not catch the amount. Say it with a number: send 15 to Juan.',
+    ayuda: 'Ask me things like:',
+    ayudaVoz: 'Here is what you can ask me.',
     confirma: (m, q) => `Prepare sending ${m} ORIGEN to ${q}`,
+    confirmaSwap: (m) => (m ? `Prepare a swap of ${m} in your wallet` : 'Prepare a swap in your wallet'),
+    burbujaA11y: (n) => `${n}, your assistant. Tap to talk or type.`,
+    hizoNegocio: (x) => `Taking you to the ${x} places.`,
     hizo: {
       'inicio': 'Back to the start.',
       'wallet/abrir': 'I opened your wallet.',
@@ -102,9 +141,12 @@ const TXT = {
       'wallet/reporte': 'Here is your wallet report.',
       'pay/abrir': 'I opened MyTokenPay.',
       'pay/cobrar': 'I opened the QR charge.',
+      'pay/explorar': 'Taking you to the merchants.',
+      'wallet/swap': 'The swap is prepared. You sign it.',
       'id/abrir': 'I opened your Genesis ID.',
       'chat/abrir': 'I opened the chat.',
       'asistente/abrir': 'Here I am.',
+      'ajustes': 'I opened settings.',
     },
     hizoDef: 'Done.',
   },
@@ -229,8 +271,9 @@ export default function FlotanteOG({ nav }) {
   const { lang } = useLang();
   const t = TXT[lang] || TXT.es;
   const [visible, setVisible] = useState(false);
-  const [fase, setFase] = useState('permiso');   // permiso | escucha | entendi | ejecuta | hecho
-  const [oido, setOido] = useState(null);        // { frase, uri, ruta, aviso, confirma, hecho }
+  // permiso | escucha | escribe | entendi | noEntendi | ejecuta | hecho
+  const [fase, setFase] = useState('permiso');
+  const [oido, setOido] = useState(null);        // { frase, uri, ruta, aviso, confirma, hecho, etq, ejemplos }
   const [texto, setTexto] = useState('');
   const [libreta, setLibreta] = useState([]);
   const caja = useRef(null);
@@ -261,7 +304,7 @@ export default function FlotanteOG({ nav }) {
   // el micrófono no se queda abierto ni aunque la app se desmonte de golpe.
   // Al desmontar se para el módulo A SECAS: tocar el estado de un componente
   // que ya no existe no arregla nada y ensucia.
-  const detenerModulo = () => { try { ExpoSpeechRecognitionModule.stop(); } catch (e) {} };
+  const detenerModulo = () => { try { if (HAY_VOZ) ExpoSpeechRecognitionModule.stop(); } catch (e) {} };
   const pararVoz = () => { setOyendo(false); detenerModulo(); };
   useEffect(() => () => { limpiar(); detenerModulo(); }, []);
 
@@ -280,8 +323,11 @@ export default function FlotanteOG({ nav }) {
   }, []);
 
   // ══ la burbuja: arrastre con PanResponder + imán al borde ══════════════
-  // Se distingue toque de arrastre por cuánto se movió el dedo: menos de
-  // ~6 px es un toque. El imán decide borde por el CENTRO de la burbuja.
+  // Reparto de papeles: el TOQUE lo atiende un Pressable accesible (role
+  // button, con el nombre del asistente — TalkBack/VoiceOver ven la puerta
+  // al asistente de voz) y el PanResponder solo reclama el dedo cuando de
+  // verdad se arrastra (>6 px). Así el imán jamás recoloca la burbuja por
+  // un simple toque. El imán decide borde por el CENTRO de la burbuja.
   const ini = (() => {
     const w = Dimensions.get('window');
     return { x: w.width - TAM - MARGEN, y: w.height * 0.55 };
@@ -297,20 +343,24 @@ export default function FlotanteOG({ nav }) {
   // no quedarse con la versión vieja de abrirHoja del primer render
   const abrirRef = useRef(() => {});
   const pan = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
+    // NO se reclama el dedo al posarse: si el gesto se queda en toque, el
+    // responder nunca se activa, el Pressable de dentro dispara su onPress
+    // y no hay spring que valga. Solo el movimiento real entra aquí.
+    onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 6 || Math.abs(g.dy) > 6,
     onPanResponderGrant: () => {
       pos.setOffset({ x: donde.current.x, y: donde.current.y });
       pos.setValue({ x: 0, y: 0 });
     },
     onPanResponderMove: Animated.event([null, { dx: pos.x, dy: pos.y }], { useNativeDriver: false }),
-    onPanResponderRelease: (_, g) => {
+    onPanResponderRelease: () => {
       pos.flattenOffset();
       const w = Dimensions.get('window');
-      // el imán: al borde más cercano, sin salirse ni tapar la zona de tabs
+      // el imán: al borde más cercano, sin salirse ni tapar la zona de tabs.
+      // Aquí solo llegan arrastres de verdad, así que el spring nunca
+      // recoloca la burbuja por un toque.
       const metaX = donde.current.x + TAM / 2 < w.width / 2 ? MARGEN : w.width - TAM - MARGEN;
       const metaY = Math.min(Math.max(donde.current.y, 60), w.height - TAM - 120);
       Animated.spring(pos, { toValue: { x: metaX, y: metaY }, friction: 6, useNativeDriver: false }).start();
-      if (Math.abs(g.dx) < 6 && Math.abs(g.dy) < 6) abrirRef.current();
     },
     onPanResponderTerminate: () => { pos.flattenOffset(); },
   })).current;
@@ -331,15 +381,25 @@ export default function FlotanteOG({ nav }) {
       });
       setOyendo(true);
     } catch (e) {
-      // sin reconocedor (emulador sin servicio de voz, build sin el módulo)
-      // no se deja la pantalla muerta: queda la caja
+      // sin reconocedor (emulador sin servicio de voz): no se deja la
+      // pantalla muerta ni el kicker mintiendo ESCUCHANDO — a ESCRIBE
       setOyendo(false);
+      setFase('escribe');
       setAvisoVoz(t.falloVoz);
       luego(() => caja.current?.focus(), 120);
     }
   };
 
   const pedirYEscuchar = async () => {
+    // sin el módulo nativo (APK viejo que recibió esto por aire) no hay
+    // micrófono que pedir: directo a ESCRIBE, sin regaño — la persona no
+    // negó nada, es el teléfono el que no trae los oídos
+    if (!HAY_VOZ) {
+      setPermiso('no');
+      setFase('escribe');
+      luego(() => caja.current?.focus(), 250);
+      return;
+    }
     let ok = false;
     try {
       const r = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
@@ -347,7 +407,9 @@ export default function FlotanteOG({ nav }) {
     } catch (e) { ok = false; }
     if (!abierta.current) return;   // se cerró mientras el sistema preguntaba
     setPermiso(ok ? 'si' : 'no');
-    setFase('escucha');
+    // micrófono denegado = fase ESCRIBE: el kicker no puede gritar
+    // ESCUCHANDO encima de «no me diste el micrófono»
+    setFase(ok ? 'escucha' : 'escribe');
     if (ok) { arrancarVoz(); return; }
     // negado: se dice con todas las letras y se ofrece el otro camino
     setAvisoVoz(t.sinMic);
@@ -375,11 +437,13 @@ export default function FlotanteOG({ nav }) {
     Animated.timing(sube, { toValue: 0, duration: 200, easing: Easing.in(Easing.cubic), useNativeDriver: true }).start(() => setVisible(false));
   };
 
-  // volver a ESCUCHANDO (tras un NO, un aviso o un «no te oí»)
+  // volver a ESCUCHANDO (tras un NO, un aviso o un «no te oí») — o a
+  // ESCRIBE, si nunca hubo micrófono que reabrir
   const otraVez = () => {
     limpiar(); callar();
-    setOido(null); setTexto(''); setFase('escucha');
-    if (permiso === 'si') { hap(); arrancarVoz(); return; }
+    setOido(null); setTexto('');
+    if (permiso === 'si' && HAY_VOZ) { setFase('escucha'); hap(); arrancarVoz(); return; }
+    setFase('escribe');
     luego(() => caja.current?.focus(), 120);
   };
 
@@ -390,31 +454,47 @@ export default function FlotanteOG({ nav }) {
     atendido.current = true;
     pararVoz();                       // el asistente no puede oírse hablar
     setTexto(''); setParcial(''); setAvisoVoz(''); Keyboard.dismiss(); callar();
-    const r = traducir(f, libreta);
-    if (!r) { setOido({ frase: f, aviso: t.fuera }); setFase('entendi'); decir(t.fuera, lang); return; }
+    // el traductor conoce el nombre del asistente: «Nexus, envía 15 a Juan»
+    // es «envía 15 a Juan»
+    const r = traducir(f, libreta, nombre);
+    // no entendido = fase NO ENTENDÍ, nunca «entendí» sobre lo contrario;
+    // y la voz contesta en UNA frase corta — el detalle queda escrito
+    if (!r) { setOido({ frase: f, aviso: t.fuera }); setFase('noEntendi'); decir(t.fueraVoz, lang); return; }
     if (r.falla) {
       const msg = r.falla === 'sinContacto' ? t.sinContacto : t.sinMonto;
-      setOido({ frase: f, aviso: msg }); setFase('entendi'); decir(msg, lang); return;
+      const voz = r.falla === 'sinContacto' ? t.sinContactoVoz : t.sinMonto;
+      setOido({ frase: f, aviso: msg }); setFase('noEntendi'); decir(voz, lang); return;
+    }
+    // «ayuda» se contesta AQUÍ, con los EJEMPLOS en la propia hoja: navegar
+    // al tablero para decir «aquí estoy» era responder con una mudanza
+    if (r.ruta === 'asistente/ayuda') {
+      setOido({ frase: f, ejemplos: (EJEMPLOS[lang] || EJEMPLOS.es).slice(0, 6) });
+      setFase('entendi'); decir(t.ayudaVoz, lang);
+      return;
     }
     const uri = aUri(r.ruta, r.params);
+    // la etiqueta hablada del directorio: «te llevo a los comercios de …»
+    const etq = r.negocio ? (r.negocio[lang] || r.negocio.es) : null;
     if (MAPA[r.ruta]?.firma) {
       // dinero: se enseña y se DETIENE — sin un SÍ explícito no se abre nada
-      const msg = t.confirma(r.params.amount, r.params.nombre || '');
+      const msg = r.ruta === 'wallet/swap'
+        ? t.confirmaSwap(r.params.amount)
+        : t.confirma(r.params.amount, r.params.nombre || '');
       setOido({ frase: f, uri, ruta: r.ruta, confirma: msg });
       setFase('entendi'); decir(msg, lang);
       return;
     }
     // sin dinero de por medio: se enseña lo entendido un instante y sigue solo
-    setOido({ frase: f, uri, ruta: r.ruta });
+    setOido({ frase: f, uri, ruta: r.ruta, etq });
     setFase('entendi'); decir(t.entendiVoz, lang);
-    luego(() => ejecutar(uri, r.ruta), 900);
+    luego(() => ejecutar(uri, r.ruta, etq), 900);
   };
 
-  const ejecutar = (uri, ruta) => {
+  const ejecutar = (uri, ruta, etq) => {
     setFase('ejecuta');
     luego(() => {
       abrir(uri, nav);
-      const msg = t.hizo[ruta] || t.hizoDef;
+      const msg = etq ? t.hizoNegocio(etq) : (t.hizo[ruta] || t.hizoDef);
       setOido((o) => ({ ...(o || {}), hecho: msg }));
       setFase('hecho'); decir(msg, lang);
       luego(cerrar, 1700);
@@ -454,7 +534,9 @@ export default function FlotanteOG({ nav }) {
     const cod = e?.error;
     if (cod === 'aborted' || atendido.current) return;   // lo paramos nosotros
     if (cod === 'not-allowed' || cod === 'service-not-allowed') {
-      setPermiso('no'); setAvisoVoz(t.sinMic); decir(t.sinMicVoz, lang);
+      // sin permiso el kicker no puede seguir en ESCUCHANDO: a ESCRIBE
+      setPermiso('no'); setFase('escribe');
+      setAvisoVoz(t.sinMic); decir(t.sinMicVoz, lang);
       luego(() => caja.current?.focus(), 200);
       return;
     }
@@ -482,11 +564,20 @@ export default function FlotanteOG({ nav }) {
 
   return (
     <>
-      {/* la burbuja, siempre encima de todo */}
+      {/* la burbuja, siempre encima de todo. El Pressable de dentro es la
+          puerta ACCESIBLE al asistente: role button y el nombre en la
+          etiqueta, para que TalkBack/VoiceOver la anuncien en vez de ver un
+          adorno mudo. El toque abre; el arrastre lo pesca el PanResponder. */}
       <Animated.View
         {...pan.panHandlers}
         style={[st.burbuja, { transform: [{ translateX: pos.x }, { translateY: pos.y }] }]}>
-        <NucleoAsistente tam={TAM} inicial={inicial} latiendo={oyendo} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t.burbujaA11y(nombre)}
+          hitSlop={8}
+          onPress={() => abrirRef.current()}>
+          <NucleoAsistente tam={TAM} inicial={inicial} latiendo={oyendo} />
+        </Pressable>
       </Animated.View>
 
       {/* la hoja de los estados */}
@@ -513,18 +604,24 @@ export default function FlotanteOG({ nav }) {
                 </View>
               )}
 
-              {fase === 'escucha' && (
+              {/* ESCUCHANDO y ESCRIBE comparten cuerpo, no kicker: en escribe
+                  no hay onda ni botón de micrófono — solo la caja, que es el
+                  único camino real cuando no hay oídos (sin módulo nativo o
+                  sin permiso) */}
+              {(fase === 'escucha' || fase === 'escribe') && (
                 <View style={st.centro}>
                   <NucleoAsistente tam={72} inicial={inicial} latiendo={oyendo} />
-                  <Onda activa={oyendo} vol={vol} />
-                  <Text style={st.dime}>{permiso === 'no' ? t.sinMicTit : t.dime}</Text>
+                  {fase === 'escucha' && <Onda activa={oyendo} vol={vol} />}
+                  {/* el título del micrófono negado solo si de verdad se negó:
+                      sin módulo nativo no hubo pregunta que negar */}
+                  <Text style={st.dime}>{HAY_VOZ && permiso === 'no' ? t.sinMicTit : t.dime}</Text>
                   <Text style={st.dimeSub}>{oyendo ? t.dimeSub : t.dimeSubMudo}</Text>
 
                   {/* lo que va oyendo, en gris: la prueba de que el micro está abierto */}
                   {!!parcial && <Text style={st.parcial}>«{parcial}»</Text>}
                   {!!avisoVoz && <Text style={st.avisoVoz}>{avisoVoz}</Text>}
 
-                  {permiso === 'si' && !oyendo && (
+                  {fase === 'escucha' && permiso === 'si' && !oyendo && (
                     <Pressable style={st.otra} onPress={() => { hap(); arrancarVoz(); }}>
                       <Text style={st.otraTxt}>{t.otraVoz}</Text>
                     </Pressable>
@@ -540,12 +637,23 @@ export default function FlotanteOG({ nav }) {
                 </View>
               )}
 
-              {fase === 'entendi' && !!oido && (
+              {(fase === 'entendi' || fase === 'noEntendi') && !!oido && (
                 <View style={st.centro}>
                   <Text style={st.frase}>«{oido.frase}»</Text>
                   {!!oido.uri && <Text style={st.uri}>{oido.uri}</Text>}
                   {!!oido.confirma && <Text style={st.confirma}>{oido.confirma}</Text>}
                   {!!oido.aviso && <Text style={st.aviso}>{oido.aviso}</Text>}
+                  {/* «ayuda»: los EJEMPLOS aquí mismo, sin navegar a ninguna
+                      parte — la respuesta a «¿qué puedes hacer?» son frases
+                      que el traductor entiende de verdad */}
+                  {!!oido.ejemplos && (
+                    <View style={st.listaEj}>
+                      <Text style={st.ejTit}>{t.ayuda}</Text>
+                      {oido.ejemplos.map((e, i) => (
+                        <Text key={i} style={st.ej}>«{e}»</Text>
+                      ))}
+                    </View>
+                  )}
                   {!!oido.confirma && (
                     <View style={st.par}>
                       <Pressable style={{ flex: 1 }} onPress={() => { hap(); ejecutar(oido.uri, oido.ruta); }}>
@@ -558,7 +666,7 @@ export default function FlotanteOG({ nav }) {
                       </Pressable>
                     </View>
                   )}
-                  {!!oido.aviso && (
+                  {(!!oido.aviso || !!oido.ejemplos) && (
                     <Pressable style={st.otra} onPress={otraVez}>
                       <Text style={st.otraTxt}>{t.otra}</Text>
                     </Pressable>
@@ -626,6 +734,11 @@ const st = StyleSheet.create({
   },
   frase: { color: C.txt, fontSize: 15.5, textAlign: 'center' },
   uri: { color: C.goldLt, fontSize: 11.5, fontFamily: 'monospace', marginTop: 6, textAlign: 'center' },
+  // la lista de EJEMPLOS de «ayuda»: alineada a la izquierda dentro de la
+  // hoja centrada, porque seis frases centradas bailan y no se leen en orden
+  listaEj: { alignSelf: 'stretch', marginTop: 12 },
+  ejTit: { color: C.txt2, fontSize: 12.5, marginBottom: 6 },
+  ej: { color: C.goldLt, fontSize: 13.5, lineHeight: 22 },
   confirma: { color: C.txt2, fontSize: 13.5, marginTop: 12, textAlign: 'center' },
   aviso: { color: C.txt2, fontSize: 13.5, marginTop: 12, textAlign: 'center', lineHeight: 19 },
   par: { flexDirection: 'row', gap: 10, marginTop: 16, alignSelf: 'stretch' },
