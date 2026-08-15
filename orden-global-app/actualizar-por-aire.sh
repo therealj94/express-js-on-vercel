@@ -15,7 +15,7 @@ npx expo export --platform android --clear >/dev/null
 rm -rf dist
 
 echo "── publicando en el canal preview"
-npx eas update --branch preview --message "$MENSAJE" --non-interactive
+npx --yes eas-cli@latest update --branch preview --message "$MENSAJE" --non-interactive
 
 echo
 echo "Listo. Los teléfonos lo reciben al abrir la app (o al volver del"

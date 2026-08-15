@@ -18,7 +18,7 @@ const CADENA = (() => {
   const COINGECKO = 'https://api.coingecko.com/api/v3';
   const OZ_GRAMOS = 31.1035;
 
-  // Los quince tokens reales de la red 8532. Los contratos estan confirmados
+  // Los quince tokens reales de la red 5550. Los contratos estan confirmados
   // contra la cadena y todos usan 18 decimales: se fija el valor para no
   // gastar una llamada extra por token en cada carga.
   const TOKENS = [

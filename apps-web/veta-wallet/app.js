@@ -233,6 +233,10 @@ const VETA = (() => {
     if (destino === 'acceso') { pestana(cual || 'entrar'); setTimeout(() => $('#i-correo').focus(), 60); }
     if (destino === 'app') vista(vistaActual);
     window.scrollTo(0, 0);
+    /* La bienvenida sale una sola vez, al entrar, y con un respiro: encima de
+       una billetera ya pintada se entiende que es una capa que se va, no una
+       pared antes de la puerta. */
+    if (destino === 'app' && !bienVisto()) setTimeout(bienvenida, 450);
   }
 
   function pestana(cual) {
@@ -258,6 +262,9 @@ const VETA = (() => {
     pintarIdioma();
     pestana(modo);
     if (!$('#app').classList.contains('oculto')) vista(vistaActual);
+    // La bienvenida se pinta aparte del resto, asi que hay que repintarla a
+    // mano o se queda a medio traducir encima de todo lo demas.
+    if (!$('#bienve').classList.contains('oculto')) bienPintar();
   }
 
   function ojo() {
@@ -2232,6 +2239,7 @@ const VETA = (() => {
     <div class="bloque vidrio">
       <h3>${t('aj.ecosistema')}</h3>
       <div class="ajustes">
+        ${fila(ICO.obra, t('aj.bien'), t('aj.bienP'), "VETA.bienvenida()")}
         ${fila(ICO.tienda, t('aj.mtp'), t('aj.mtpP'), "window.open('https://www.mytokenpay-pos.com','_blank','noopener')")}
         ${fila(ICO.globo, t('aj.idioma'), t('aj.idiomaP'), "VETA.idioma('" + (idiomaActivo() === 'es' ? 'en' : 'es') + "')")}
         ${fila(ICO.doc, t('aj.legal'), t('aj.legalP'), "window.open('/terminos','_blank','noopener')")}
@@ -2253,6 +2261,101 @@ const VETA = (() => {
       <p class="pie" style="margin-top:8px">${t('cta.appP')}</p>
     </div>`;
   }
+
+
+  // ── la bienvenida del ecosistema ──────────────────────────────────────────
+
+  /* Las mismas seis tarjetas que la app y en el mismo orden, que cuenta una
+     historia: primero la cadena propia —que es la noticia y la razon de que
+     lo demas pueda existir—, despues el ecosistema entero, y luego cada
+     mundo. Sale una sola vez por navegador al entrar, y queda en Ajustes
+     para el que quiera volver a leerla.
+
+     Cada tarjeta trae su propia paleta: son los mismos colores con los que
+     el telefono pinta las esferas del Nucleo, para que quien salte de un
+     lado al otro reconozca cada mundo antes de leer el titulo. */
+  const LLAVE_BIEN = 'veta.bienvenida.v1';
+
+  const BIEN = [
+    { k: 'red', e1: '#F8EFCF', e2: '#C9A961', e3: '#6B5220', halo: '#C9A961', lente: '#05201B',
+      ico: '<path d="M12 2.5 4 6.2v5.6c0 4.9 3.3 8.4 8 9.7 4.7-1.3 8-4.8 8-9.7V6.2z"/><path d="M12 7.6v8.8M8.2 9.8l7.6 4.4M15.8 9.8l-7.6 4.4"/>' },
+    /* Los logotipos de marca no entran aca: son PNG con mucho aire alrededor y
+       dentro de la lente quedan del tamano de una mosca. Un trazo dibujado a
+       esta medida se lee, que es de lo que se trata. */
+    { k: 'eco', e1: '#F8EFCF', e2: '#C9A961', e3: '#5C4A22', halo: '#EAD79C', lente: '#05201B',
+      ico: '<circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="3.7" r="1.7"/><circle cx="20.3" cy="12" r="1.7"/><circle cx="12" cy="20.3" r="1.7"/><circle cx="3.7" cy="12" r="1.7"/><path d="M12 5.4v3.4M15.2 12h3.4M12 15.2v3.4M5.4 12h3.4"/>' },
+    { k: 'din', e1: '#F8EFCF', e2: '#C9A961', e3: '#96793F', halo: '#EAD79C', lente: '#05201B',
+      ico: '<path d="M3.4 17 6.1 9h11.8l2.7 8z"/><path d="M6.6 13.4h10.8"/>' },
+    { k: 'neg', e1: '#D8F7FF', e2: '#5FC6EA', e3: '#453398', halo: '#5FC6EA', lente: '#0A0812',
+      ico: '<path d="M4 9h16l-1.2 11.2H5.2z"/><path d="M8.4 9V6.6a3.6 3.6 0 0 1 7.2 0V9"/>' },
+    { k: 'gen', e1: '#FBE0D4', e2: '#E0937A', e3: '#8A4A38', halo: '#E0937A', lente: '#20100A',
+      ico: '<path d="M3.5 6.6h12.2v8.2H8.1L4.4 18v-3.2H3.5z"/><path d="M8.9 10.6h5.6M18.6 9.4h1.9v8.2h-.9V20l-3-2.4H12"/>' },
+    { k: 'nex', e1: '#E4DAFF', e2: '#9E86F0', e3: '#3B2C7A', halo: '#9E86F0', lente: '#0B0818',
+      ico: '<path d="M3 12h2.4l2-6 3 12 2.6-9 2 5h6"/>' },
+  ];
+
+  let bienPaso = 0;
+
+  function bienVisto() {
+    try { return localStorage.getItem(LLAVE_BIEN) === '1'; } catch { return false; }
+  }
+  function bienMarcar() {
+    try { localStorage.setItem(LLAVE_BIEN, '1'); } catch {}
+  }
+
+  function bienPintar() {
+    const c = BIEN[bienPaso];
+    const ultima = bienPaso === BIEN.length - 1;
+    const dentro = `<svg viewBox="0 0 24 24">${c.ico}</svg>`;
+    const puntos = BIEN.map((_, i) =>
+      `<span class="bien-punto"${i === bienPaso ? ' data-aqui' : ''}></span>`).join('');
+    $('#bienve').innerHTML = `
+      <div class="bien-caja" style="--bE1:${c.e1};--bE2:${c.e2};--bE3:${c.e3};--bHalo:${c.halo};--bLente:${c.lente}">
+        <button class="bien-saltar" onclick="VETA.bienCerrar()">${t('bien.saltar')}</button>
+        <div class="bien-esfera" aria-hidden="true"><div class="bien-lente">${dentro}</div></div>
+        <div class="bien-k">${t('bien.' + c.k + 'K')}</div>
+        <h2 id="bien-tit">${esc(t('bien.' + c.k + 'T'))}</h2>
+        <p>${esc(t('bien.' + c.k + 'P'))}</p>
+        <div class="bien-puntos" role="img"
+             aria-label="${t('bien.paso')} ${bienPaso + 1}/${BIEN.length}">${puntos}</div>
+        <button class="btn btn-oro" onclick="VETA.bienSig()">${ultima ? t('bien.fin') : t('bien.sig')}</button>
+      </div>`;
+    $('#bienve').querySelector('.btn')?.focus();
+  }
+
+  /* Se abre de dos maneras y hay que distinguirlas: sola al entrar la primera
+     vez, o a mano desde Ajustes. Abrirla a mano no debe reiniciar nada mas
+     que el paso; la marca de "ya la vio" se pone igual, porque verla es
+     verla. */
+  function bienvenida() {
+    bienPaso = 0;
+    $('#bienve').classList.remove('oculto');
+    document.body.style.overflow = 'hidden';
+    bienPintar();
+    tele('accion', 'bienvenida.abierta');
+  }
+
+  function bienSig() {
+    if (bienPaso >= BIEN.length - 1) return bienCerrar();
+    bienPaso++;
+    bienPintar();
+  }
+
+  function bienCerrar() {
+    bienMarcar();
+    $('#bienve').classList.add('oculto');
+    $('#bienve').innerHTML = '';
+    document.body.style.overflow = '';
+  }
+
+  // Escape cierra, como cualquier ventana modal; las flechas avanzan para
+  // quien no usa el raton.
+  addEventListener('keydown', e => {
+    if ($('#bienve')?.classList.contains('oculto')) return;
+    if (e.key === 'Escape') { e.preventDefault(); bienCerrar(); }
+    if (e.key === 'ArrowRight' || e.key === 'Enter') { e.preventDefault(); bienSig(); }
+    if (e.key === 'ArrowLeft' && bienPaso > 0) { e.preventDefault(); bienPaso--; bienPintar(); }
+  });
 
 
   // ── remesas ───────────────────────────────────────────────────────────────
@@ -2904,6 +3007,9 @@ const VETA = (() => {
            tapar, copiarContrato, congelar, revelar, pedirTarjeta, cambioMonto, elegirDestino,
            voltear, olvidar, remMonto, remPais, refrescarTasas, nuevoContacto, borrarContacto,
            enviarA, abrirCamara, cerrarCamara, pedirSecreto, copiarTexto, guardarNombre,
+           // La bienvenida del ecosistema: sale sola la primera vez y se puede
+           // volver a abrir desde Ajustes.
+           bienvenida, bienSig, bienCerrar,
            // La verificación por web. Los manejadores van en el HTML (onclick,
            // onchange), así que sin figurar acá los botones no hacen nada.
            verSeguir, verAtras, verVolverA, verSalir, verOpc, verVol,
