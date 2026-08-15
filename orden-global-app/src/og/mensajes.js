@@ -25,6 +25,11 @@ async function pedir(ruta, body, ms = 15000) {
 
 export async function alta(cuenta) {
   yo = { correo: (cuenta.email || '').toLowerCase(), nombre: cuenta.name || cuenta.nombre || '', addr: cuenta.addr || '' };
+  // El GID viaja en el alta cuando la cuenta ya lo tiene: con él /buscar
+  // encuentra a la persona por su Genesis ID y /ficha lo devuelve para
+  // pintarlo bajo el nombre. Sin GID la clave ni aparece (JSON.stringify se
+  // come los undefined) y el relevo no toca la que ya tuviera guardada.
+  if (cuenta.genesisUid) yo.gid = cuenta.genesisUid;
   const g = await SecureStore.getItemAsync('og.llaveChat').catch(() => null);
   if (g) { llave = g; pedir('/alta', { ...yo, llave }).catch(() => {}); return; }
   const d = await pedir('/alta', yo);
@@ -44,13 +49,16 @@ export const subir = (nombre, tipo, mime, datos) =>
 // por eso sirve tal cual para <Image> o para abrir en el navegador.
 export const urlArchivo = (id) => BASE + '/archivo/' + id;
 export const bandeja = (desde) => pedir('/bandeja', firmado({ desde }));
+// /buscar encuentra por nombre, correo o GID (empieza-por, sin distinguir
+// mayúsculas) y cada persona del resultado ya trae su gid — se pasa tal cual.
 export const buscar = (q) => pedir('/buscar', firmado({ q }));
 export const conversaciones = () => pedir('/conversaciones', firmado({}));
 export const leido = (de) => pedir('/leido', firmado({ de }));
 export const ficha = (de) => pedir('/ficha', firmado({ de }));
-// Mi nombre y mi foto. JSON.stringify se come las claves `undefined`, así que
-// perfil({ foto }) cambia la foto y deja el nombre en paz — es justo lo que el
-// relevo entiende: la clave que no viaja es la que no se toca.
+// Mi nombre y mi foto — y mi gid, que el relevo también acepta aquí.
+// JSON.stringify se come las claves `undefined`, así que perfil({ foto })
+// cambia la foto y deja el nombre en paz — es justo lo que el relevo
+// entiende: la clave que no viaja es la que no se toca.
 export const perfil = (cambios) => pedir('/perfil', firmado({ ...(cambios || {}) }));
 // Grupos. `para` de enviar/pago y `desde` de bandeja aceptan el id 'g:…' igual
 // que un correo: para el resto del cliente un grupo es un destinatario más.

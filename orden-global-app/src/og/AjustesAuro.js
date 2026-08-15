@@ -1,10 +1,12 @@
 // Los ajustes de AURO CHAT: lo mío y lo que de mí ve el resto.
 //   · mi foto y mi nombre — es TODO lo que el otro lado ve de mí;
+//   · mi GID, visible, copiable al toque y con su botón de compartir: es la
+//     seña que viaja por el chat y por eso vive aquí y en el pasaporte;
 //   · mi código QR, para que me agreguen sin dictar el correo;
 //   · qué se ve de mí, en una línea y sin letra chica;
-//   · el cifrado: NO hay extremo a extremo en esta versión. Va en su propia
-//     tarjeta y con todas las letras, porque una promesa de privacidad que no
-//     se cumple es peor que no prometer nada.
+//   · «Privacidad y seguridad»: la verdad del cifrado vive AQUÍ y no en las
+//     pantallas de uso diario. No hay extremo a extremo todavía y no se dice
+//     lo contrario — pero se dice en lenguaje de producto, no de laboratorio.
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, Image, Modal,
@@ -28,11 +30,17 @@ const TXT = {
     cambiarFoto: 'CAMBIAR FOTO', anadirFoto: 'AÑADIR FOTO', quitarFoto: 'QUITAR',
     guardar: 'GUARDAR NOMBRE', guardado: 'Guardado', cancelar: 'CANCELAR',
     noGuarda: 'No se pudo guardar. Revisa tu conexión.',
-    grande: 'La foto pesa más de 8 MB y el relevo no la acepta. Elige una más ligera.',
+    grande: 'La foto pesa más de 8 MB. Elige una más ligera.',
     noSubio: 'No se pudo subir la foto. Revisa tu conexión.',
     sinPicker: 'Esta versión de la app no puede abrir tu galería. Actualiza la app para cambiar la foto.',
     quitarTit: '¿Quitar tu foto?',
     quitarTxt: 'Vuelves a la inicial de tu nombre. Puedes poner otra cuando quieras.',
+
+    gidTit: 'MI GENESIS ID',
+    gidTxt: 'Tócalo y queda copiado. Quien lo tenga te encuentra en AURO CHAT buscándolo tal cual.',
+    gidCopiado: 'GID copiado',
+    gidCompartir: 'COMPARTIR MI GID',
+    gidInvito: 'Búscame en AURO CHAT con mi Genesis ID:',
 
     qrTit: 'MI CÓDIGO',
     qrTxt: 'Quien lo escanee abre un chat contigo, sin dictar el correo ni buscarte.',
@@ -40,14 +48,11 @@ const TXT = {
     invito: 'Escríbeme por AURO CHAT:',
 
     veTit: 'LO QUE SE VE DE MÍ',
-    veTxt: 'Quien te busque en AURO CHAT ve tu nombre, tu foto, tu correo y tu dirección de wallet — nada más: ni tu teléfono, ni tus documentos, ni con quién hablas.',
+    veTxt: 'Quien te busque en AURO CHAT ve tu nombre, tu foto, tu correo, tu Genesis ID y tu dirección de wallet — nada más: ni tu teléfono, ni tus documentos, ni con quién hablas.',
 
-    cifTit: 'SIN CIFRADO DE EXTREMO A EXTREMO',
-    cifTxt: 'En esta versión no lo hay, y no vamos a decir lo contrario. Tus mensajes viajan protegidos hasta el relevo (HTTPS), pero ahí se guardan legibles: quien administre ese servidor puede leerlos. Los adjuntos igual — su enlace largo es todo el permiso, y quien lo tenga abre el archivo.',
-    cifTxt2: 'Para lo que no soportaría ser leído por un tercero, esta no es la vía todavía.',
-
-    telTit: 'EN ESTE TELÉFONO',
-    telTxt: 'Ninguna conversación se guarda aquí: viven en el relevo y se piden cada vez que abres el hilo, así que no hay nada que vaciar. En el teléfono quedan dos cosas: tu llave de AURO, la que prueba que ese buzón es tuyo — si se borrara, ese correo se quedaría sin dueño para siempre, y por eso no hay un botón que lo haga — y tu libreta de contactos, con los nombres que tú les pusiste; esa sí se edita contacto por contacto, manteniéndolo pulsado en la lista del chat.',
+    privTit: 'PRIVACIDAD Y SEGURIDAD',
+    privTxt: 'Tus mensajes viajan cifrados hasta el servidor de Orden Global. El cifrado de extremo a extremo llegará en una próxima versión.',
+    privTxt2: 'Tus conversaciones viven en ese servidor, no en este teléfono: se piden cada vez que abres un hilo. Aquí solo quedan tu llave de AURO —la que prueba que tu buzón es tuyo— y tu libreta, con los nombres que tú le pusiste a tu gente; esa se edita manteniendo pulsado un contacto en la lista del chat.',
   },
   en: {
     titulo: 'AURO CHAT', sub: 'My profile and what others see',
@@ -56,11 +61,17 @@ const TXT = {
     cambiarFoto: 'CHANGE PHOTO', anadirFoto: 'ADD PHOTO', quitarFoto: 'REMOVE',
     guardar: 'SAVE NAME', guardado: 'Saved', cancelar: 'CANCEL',
     noGuarda: 'Could not save. Check your connection.',
-    grande: 'The photo is over 8 MB and the relay won’t take it. Pick a lighter one.',
+    grande: 'The photo is over 8 MB. Pick a lighter one.',
     noSubio: 'Could not upload the photo. Check your connection.',
     sinPicker: 'This version of the app cannot open your gallery. Update the app to change the photo.',
     quitarTit: 'Remove your photo?',
     quitarTxt: 'You go back to the initial of your name. You can set another one whenever you want.',
+
+    gidTit: 'MY GENESIS ID',
+    gidTxt: 'Tap it and it is copied. Anyone who has it can find you on AURO CHAT by searching it as is.',
+    gidCopiado: 'GID copied',
+    gidCompartir: 'SHARE MY GID',
+    gidInvito: 'Find me on AURO CHAT with my Genesis ID:',
 
     qrTit: 'MY CODE',
     qrTxt: 'Whoever scans it opens a chat with you, no need to dictate your email.',
@@ -68,14 +79,11 @@ const TXT = {
     invito: 'Write to me on AURO CHAT:',
 
     veTit: 'WHAT OTHERS SEE OF ME',
-    veTxt: 'Anyone searching for you on AURO CHAT sees your name, your photo, your email and your wallet address — nothing else: not your phone, not your documents, not who you talk to.',
+    veTxt: 'Anyone searching for you on AURO CHAT sees your name, your photo, your email, your Genesis ID and your wallet address — nothing else: not your phone, not your documents, not who you talk to.',
 
-    cifTit: 'NO END-TO-END ENCRYPTION',
-    cifTxt: 'There is none in this version, and we are not going to say otherwise. Your messages travel protected to the relay (HTTPS), but there they are stored readable: whoever runs that server can read them. Attachments too — their long link is the whole permission, and whoever holds it opens the file.',
-    cifTxt2: 'For anything that could not stand being read by a third party, this is not the way yet.',
-
-    telTit: 'ON THIS PHONE',
-    telTxt: 'No conversation is stored here: they live on the relay and are fetched each time you open a thread, so there is nothing to clear. Two things stay on the phone: your AURO key, the one proving that mailbox is yours — erasing it would leave that email ownerless forever, which is why there is no button for it — and your contact book, with the names you gave people; that one you edit contact by contact, long-pressing them in the chat list.',
+    privTit: 'PRIVACY AND SECURITY',
+    privTxt: 'Your messages travel encrypted to the Orden Global server. End-to-end encryption will arrive in an upcoming version.',
+    privTxt2: 'Your conversations live on that server, not on this phone: they are fetched each time you open a thread. Only two things stay here — your AURO key, the one proving that mailbox is yours, and your contact book with the names you gave people; you edit that one by long-pressing a contact in the chat list.',
   },
 };
 
@@ -168,6 +176,13 @@ export default function AjustesAuro({ nav }) {
   const copiar = async () => { await Clipboard.setStringAsync(enlace); hap(); toast(t.copiado); };
   const compartir = () => { hap(); Share.share({ message: t.invito + '\n' + enlace }).catch(() => {}); };
 
+  // Mi GID: la seña con la que me encuentran en el buscador del chat. Tocar
+  // = copiar (expo-clipboard ya viene en el binario: lo usa COPIAR ENLACE
+  // aquí arriba) y compartir sale con el texto ya escrito — nada que teclear.
+  const gid = account?.genesisUid || '';
+  const copiarGid = async () => { await Clipboard.setStringAsync(gid); hap(); toast(t.gidCopiado); };
+  const compartirGid = () => { hap(); Share.share({ message: t.gidInvito + '\n' + gid }).catch(() => {}); };
+
   const cambiado = !!nombre.trim() && nombre.trim() !== original;
   return (
     // La cabecera no se mueve y el cuerpo cede el alto que ocupa el teclado.
@@ -201,6 +216,22 @@ export default function AjustesAuro({ nav }) {
           {cambiado && <Button3D title={t.guardar} onPress={guardarNombre} style={{ marginTop: 12 }} />}
         </View>
 
+        {/* mi GID: grande, copiable al toque —el mismo gesto que en el
+            pasaporte— y con su botón de compartir. Solo se pinta si Genesis
+            ya lo emitió: un hueco vacío aquí no le dice nada a nadie. */}
+        {!!gid && (
+          <View style={st.tarjeta}>
+            <Text style={st.seccion}>{t.gidTit}</Text>
+            <Pressable onPress={copiarGid} hitSlop={8}>
+              <Text style={st.gid}>{gid}</Text>
+            </Pressable>
+            <Text style={[st.tarTxt, { textAlign: 'center' }]}>{t.gidTxt}</Text>
+            <Pressable style={st.btnGid} onPress={compartirGid}>
+              <Text style={st.btnLineaTxt}>{t.gidCompartir}</Text>
+            </Pressable>
+          </View>
+        )}
+
         {/* mi código, para que me agreguen */}
         <View style={st.tarjeta}>
           <Text style={st.seccion}>{t.qrTit}</Text>
@@ -222,17 +253,14 @@ export default function AjustesAuro({ nav }) {
           <Text style={[st.tarTxt, { marginBottom: 0 }]}>{t.veTxt}</Text>
         </View>
 
-        {/* la verdad sobre el cifrado, en su propia tarjeta y marcada */}
-        <View style={[st.tarjeta, st.tarjetaAviso]}>
-          <Text style={[st.seccion, { color: C.down }]}>{t.cifTit}</Text>
-          <Text style={st.tarTxt}>{t.cifTxt}</Text>
-          <Text style={[st.tarTxt, { color: C.txt, marginBottom: 0 }]}>{t.cifTxt2}</Text>
-        </View>
-
-        {/* qué queda en el teléfono: nada que vaciar, y por qué */}
+        {/* Privacidad y seguridad: aquí vive la verdad del cifrado (§5 del
+            plan). Se mudó de las pantallas de uso diario —donde asustaba sin
+            ayudar— a esta tarjeta, en lenguaje de producto y sin perder la
+            honestidad: no hay E2E todavía y se dice con fecha de promesa. */}
         <View style={st.tarjeta}>
-          <Text style={st.seccion}>{t.telTit}</Text>
-          <Text style={[st.tarTxt, { marginBottom: 0 }]}>{t.telTxt}</Text>
+          <Text style={st.seccion}>{t.privTit}</Text>
+          <Text style={st.tarTxt}>{t.privTxt}</Text>
+          <Text style={[st.tarTxt, { marginBottom: 0 }]}>{t.privTxt2}</Text>
         </View>
       </CuerpoDesplazable>
 
@@ -259,10 +287,13 @@ export default function AjustesAuro({ nav }) {
 const st = StyleSheet.create({
   screen: { flex: 1 },
   tarjeta: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 18, padding: 18, marginBottom: 16 },
-  // el aviso del cifrado no se disfraza de tarjeta más: se marca en rojo para
-  // que no se lea de paso
-  tarjetaAviso: { borderColor: 'rgba(240,119,107,0.42)', backgroundColor: 'rgba(52,20,18,0.42)' },
   seccion: { color: C.txt3, fontSize: 10, fontWeight: '700', letterSpacing: 2.6, marginBottom: 12 },
+  // el GID en grande y tabular: es una seña para dictar o copiar, no un
+  // párrafo — cada glifo tiene que distinguirse al primer vistazo
+  gid: { color: C.goldHi, fontSize: 21, fontWeight: '800', letterSpacing: 1.4, textAlign: 'center', marginBottom: 10, fontVariant: ['tabular-nums'] },
+  // el botón de compartir el GID: mismo trazo que COPIAR/COMPARTIR del QR,
+  // pero sin flex:1 — aquí va solo, a lo ancho de la tarjeta
+  btnGid: { borderWidth: 1, borderColor: C.line, borderRadius: 12, paddingVertical: 11, alignItems: 'center', justifyContent: 'center' },
   tarTxt: { color: C.txt2, fontSize: 13, lineHeight: 19.5, marginBottom: 14 },
   fotoCentro: { alignItems: 'center', gap: 10 },
   retrato: { width: 108, height: 108, borderRadius: 54, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.25)' },

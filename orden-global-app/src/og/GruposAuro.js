@@ -75,7 +75,7 @@ const TXT = {
     noEntra: 'No se pudo entrar. Revisa tu conexión.',
 
     cancelar: 'CANCELAR',
-    grande: 'La foto pesa más de 8 MB y el relevo no la acepta. Elige una más ligera.',
+    grande: 'La foto pesa más de 8 MB. Elige una más ligera.',
     noSubio: 'No se pudo subir la foto. Revisa tu conexión.',
     gateTit: 'Los grupos son de gente verificada',
     gateTxt: 'Para entrar necesitas tu Genesis ID aprobado. Así todos saben que del otro lado hay personas reales.',
@@ -131,7 +131,7 @@ const TXT = {
     noEntra: 'Could not join. Check your connection.',
 
     cancelar: 'CANCEL',
-    grande: 'The photo is over 8 MB and the relay won’t take it. Pick a lighter one.',
+    grande: 'The photo is over 8 MB. Pick a lighter one.',
     noSubio: 'Could not upload the photo. Check your connection.',
     gateTit: 'Groups are for verified people',
     gateTxt: 'You need your approved Genesis ID to join. That way everyone knows there are real people on the other side.',

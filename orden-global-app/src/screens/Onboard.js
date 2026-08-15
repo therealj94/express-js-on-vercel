@@ -9,7 +9,7 @@ import { Icon } from '../icons';
 import { C, G } from '../theme';
 import { Header, Button3D, Card, Field, hap, useToast, useAccount } from '../ui';
 import { genesis, revisarFormaMrz } from '../genesis';
-import { leerDeFoto, leerTexto, puedeEscanear } from '../mrzOcr';
+import { leerDeFoto, leerTexto, puedeEscanear, nombreDeAnverso, datosDeMrz, mismoNombre } from '../mrzOcr';
 import { FRECUENTES, buscarPaises, nombrePais } from '../paises';
 import { SenaGesto, OvaloRostro } from '../RostroGuia';
 import { setPassport } from '../accounts';
@@ -104,6 +104,19 @@ export function Kyc({ nav }) {
   // comparar dos caras exige dos caras. Se manda una sola vez, en el momento
   // del cotejo, y Genesis ID no la guarda — compara y la descarta.
   const [fotoAnverso, setFotoAnverso] = useState(null);
+  // El nombre tal como lo leyó el OCR (del anverso o, si este no se dejó, de
+  // la MRZ). Es la referencia del cotejo local: se compara con lo declarado
+  // y, si cuadran y hay selfie, la solicitud viaja marcada 'automatico'.
+  // La marca informa; aprobar sigue siendo del servidor Genesis.
+  const [nombreOcr, setNombreOcr] = useState('');
+  // Intentos de anverso que no dieron nombre. Al segundo se ofrece el
+  // reverso: la MRZ trae dígitos de control y se deja leer donde el texto
+  // impreso no. El ref lleva la cuenta exacta dentro del bucle asíncrono,
+  // donde el estado de React llega tarde.
+  const [fallosAnverso, setFallosAnverso] = useState(0);
+  const fallosAnv = useRef(0);
+  // Qué cotejo viajó con el rostro, para contarlo en la sala de espera.
+  const [cotejoEnviado, setCotejoEnviado] = useState(null);
 
   // Paso 3 — rostro y prueba de vida
   const [permiso, pedirPermiso] = useCameraPermissions();
@@ -231,6 +244,56 @@ export function Kyc({ nav }) {
   // viaja es el texto. Es lo que permite que la pantalla prometa «nunca la foto
   // de tu documento» y sea verdad.
 
+  /** Un anverso más sin nombre legible. Al segundo, el camino cambia: se
+   *  ofrece el reverso, cuya MRZ trae dígitos de control y casi siempre sale. */
+  function falloAnverso() {
+    fallosAnv.current += 1;
+    setFallosAnverso(fallosAnv.current);
+    if (fallosAnv.current === 2) setAviso({ mal: false, txt: t('gen.frontFallback') });
+  }
+
+  /**
+   * El anverso se da por bueno SOLO aquí: con un nombre leído. Aceptar texto
+   * sin nombre era mandar basura a la revisión manual — mejor repetir la foto.
+   *
+   * El nombre PRECARGA el campo si está vacío; si la persona ya escribió otra
+   * cosa, no se le pisa: se le ofrece adoptarlo con un toque.
+   */
+  function aceptarAnverso(texto, pequena, nombreLeido) {
+    setTextoAnverso(texto);
+    setFotoAnverso(pequena);
+    setNombreOcr(nombreLeido);
+    if (!nombre.trim()) setNombre(nombreLeido);
+    cerrarEscaner();
+    setAviso(null);
+    hap(Haptics.ImpactFeedbackStyle.Heavy);
+    toast(t('gen.readName', { n: nombreLeido }));
+  }
+
+  /**
+   * El reverso vale por sí solo: de la MRZ salen nombre, fecha y número, y los
+   * dígitos de control ya los comprobó `leerDeFoto`. Precarga lo que esté
+   * vacío —nunca pisa lo tecleado— y deja la MRZ lista para el paso del
+   * documento. Ojo: la MRZ recorta nombres largos; por eso el anverso, si ya
+   * se leyó, manda sobre ella como referencia del cotejo.
+   */
+  function aceptarReverso(mrzTexto, corregida) {
+    setMrz(mrzTexto);
+    const d = datosDeMrz(mrzTexto);
+    if (d?.nombre) {
+      if (!textoAnverso) setNombreOcr(d.nombre);
+      if (!nombre.trim()) setNombre(d.nombre);
+      if (d.nacimiento && !dia && !mes && !anio) {
+        setDia(d.nacimiento.dia); setMes(d.nacimiento.mes); setAnio(d.nacimiento.anio);
+      }
+    }
+    cerrarEscaner();
+    setAviso(null);
+    hap(Haptics.ImpactFeedbackStyle.Heavy);
+    toast(d?.nombre ? t('gen.readName', { n: d.nombre })
+      : corregida ? t('gen.scanFixed') : t('gen.scanOk'));
+  }
+
   async function abrirEscaner(cara) {
     if (!permiso?.granted) { const p = await pedirPermiso(); if (!p?.granted) return; }
     hap(); setProblemas([]); setAviso(null); setIntentoAuto(0); setEscaneando(cara);
@@ -264,6 +327,10 @@ export function Kyc({ nav }) {
     (async () => {
       // Un respiro para que la persona encuadre antes del primer intento.
       await new Promise((r) => setTimeout(r, 1600));
+      // No hay luxómetro sin módulo nativo, pero el propio OCR hace de
+      // fotómetro barato: un encuadre a oscuras devuelve casi cero caracteres.
+      // Tres frames casi vacíos seguidos = aviso de luz, una sola vez.
+      let oscuros = 0;
       for (let n = 1; vivo && autoActivo.current && n <= 15; n++) {
         setIntentoAuto(n);
         try {
@@ -276,9 +343,7 @@ export function Kyc({ nav }) {
               if (!vivo || !autoActivo.current) break;
               if (r.ok) {
                 autoActivo.current = false;
-                setMrz(r.mrz); setLinterna(false); setEscaneando(false); setAviso(null);
-                hap(Haptics.ImpactFeedbackStyle.Heavy);
-                toast(r.corregida ? t('gen.scanFixed') : t('gen.scanOk'));
+                aceptarReverso(r.mrz, r.corregida);
                 return;
               }
               // «Cortadas» es corregible al instante: se avisa sin parar el bucle.
@@ -286,16 +351,17 @@ export function Kyc({ nav }) {
             } else {
               const texto = await leerTexto(foto.uri);
               if (!vivo || !autoActivo.current) break;
-              // Un anverso real trae decenas de caracteres: nombre, etiquetas,
-              // numero. Menos que eso es un encuadre a medias y se sigue.
-              if (texto && texto.replace(/[^A-ZÁÉÍÓÚÑa-z]/g, '').length >= 25) {
+              const letras = texto.replace(/[^A-ZÁÉÍÓÚÑa-z]/g, '').length;
+              oscuros = letras < 12 ? oscuros + 1 : 0;
+              if (oscuros === 3) setAviso({ mal: false, txt: t('gen.lowLight') });
+              // El frente solo se acepta con un NOMBRE leído: texto suelto sin
+              // nombre es basura camino de la revisión manual. Mejor otra foto.
+              const nombreLeido = letras >= 25 ? nombreDeAnverso(texto) : null;
+              if (nombreLeido) {
                 const pequena = await encoger(foto.uri);
                 if (!vivo || !autoActivo.current) break;
                 autoActivo.current = false;
-                setTextoAnverso(texto); setFotoAnverso(pequena);
-                setLinterna(false); setEscaneando(false); setAviso(null);
-                hap(Haptics.ImpactFeedbackStyle.Heavy);
-                toast(t('gen.frontOk'));
+                aceptarAnverso(texto, pequena, nombreLeido);
                 return;
               }
             }
@@ -307,6 +373,9 @@ export function Kyc({ nav }) {
       if (vivo && autoActivo.current) {
         autoActivo.current = false;
         setIntentoAuto(-1);
+        // Un ciclo entero de anverso sin nombre cuenta como un intento fallido:
+        // al segundo se ofrece el reverso, que es el camino que sí sale.
+        if (cara === 'anverso') falloAnverso();
       }
     })();
 
@@ -329,17 +398,19 @@ export function Kyc({ nav }) {
       const foto = await camaraDoc.current?.takePictureAsync({ quality: 1, skipProcessing: true });
       if (!foto?.uri) { setAviso({ mal: true, txt: t('gen.errPhoto') }); setOcupado(false); return; }
       const texto = await leerTexto(foto.uri);
-      const pequena = await encoger(foto.uri);
-      setOcupado(false);
-      if (!texto || texto.length < 12) {
-        setAviso({ mal: true, txt: t('gen.frontRetry') });
+      // Sin NOMBRE no hay trato: un frente que no dice quién es no sirve para
+      // cotejar nada y acabaría en revisión manual. Se distingue «no se leyó
+      // casi nada» (luz, encuadre) de «se leyó texto pero ningún nombre».
+      const nombreLeido = nombreDeAnverso(texto);
+      if (!nombreLeido) {
+        setOcupado(false);
+        setAviso({ mal: true, txt: texto && texto.length >= 12 ? t('gen.frontNoName') : t('gen.frontRetry') });
+        falloAnverso();
         return;
       }
-      setTextoAnverso(texto);
-      setFotoAnverso(pequena);
-      cerrarEscaner();
-      setAviso(null);
-      toast(t('gen.frontOk'));
+      const pequena = await encoger(foto.uri);
+      setOcupado(false);
+      aceptarAnverso(texto, pequena, nombreLeido);
     } catch (e) { setOcupado(false); setAviso({ mal: true, txt: t('gen.errPhoto') }); }
   }
 
@@ -353,10 +424,7 @@ export function Kyc({ nav }) {
       setOcupado(false);
 
       if (r.ok) {
-        setMrz(r.mrz);
-        cerrarEscaner();
-        setAviso(null);
-        toast(r.corregida ? t('gen.scanFixed') : t('gen.scanOk'));
+        aceptarReverso(r.mrz, r.corregida);
         return;
       }
       // Si se leyó algo con forma de MRZ pero los dígitos no cuadran, se deja
@@ -395,10 +463,10 @@ export function Kyc({ nav }) {
       setOcupado(true);
       const r = await leerDeFoto(sel.assets[0].uri);
       setOcupado(false);
-      if (r.ok || r.mrz) {
+      if (r.ok) { aceptarReverso(r.mrz, r.corregida); return; }
+      if (r.mrz) {
         setMrz(r.mrz); cerrarEscaner();
-        if (r.ok) toast(r.corregida ? t('gen.scanFixed') : t('gen.scanOk'));
-        else setAviso({ mal: true, txt: t('gen.scanPartial') });
+        setAviso({ mal: true, txt: t('gen.scanPartial') });
         return;
       }
       setAviso({ mal: true, txt: r.motivo === 'cortadas' ? t('gen.scanCut') : t('gen.scanRetry') });
@@ -496,8 +564,14 @@ export function Kyc({ nav }) {
 
       setCuenta(null);
       setOcupado(true);
+      // Cotejo local honesto: si el nombre leído por OCR y el declarado son la
+      // misma firma Y hay foto del documento para comparar el rostro, la
+      // solicitud viaja marcada 'automatico'. Es una marca, no una aprobación:
+      // el servidor Genesis coteja de nuevo y la decisión sigue siendo suya.
+      const cotejo = (fotoAnverso && coincide) ? 'automatico' : undefined;
+      setCotejoEnviado(cotejo || null);
       const res = await genesis.enviarRostro({
-        reto: r.id, fotogramas: tomados, fotoDocumento: fotoAnverso,
+        reto: r.id, fotogramas: tomados, fotoDocumento: fotoAnverso, cotejo,
       });
       setOcupado(false);
       if (!corriendo.current) return;
@@ -544,6 +618,9 @@ export function Kyc({ nav }) {
   }, [paso]);
 
   const forma = revisarFormaMrz(mrz);
+  // ¿Lo leído y lo declarado son la misma firma? Se recalcula en cada render
+  // porque cambia si la persona edita el campo después de escanear.
+  const coincide = Boolean(nombreOcr && nombre.trim() && mismoNombre(nombreOcr, nombre));
 
   // Poder volver atrás. No lo habia en ningun paso: si algo fallaba —un dato
   // mal escrito, un documento que no cuadraba— la unica salida era abandonar
@@ -610,15 +687,109 @@ export function Kyc({ nav }) {
           </View>
         )}
 
+        {/* ---- escáner del documento (compartido) ----
+            Vive FUERA de los pasos porque sirve a dos: en «datos» lee el
+            frente para PRECARGAR el nombre —que nadie teclee lo que la cámara
+            puede leer— y en «documento» completa anverso y MRZ. El marco guía
+            tiene la proporción real del documento (85,6 × 54 mm). */}
+        {escaneando && (paso === 'datos' || paso === 'documento') ? (
+          <>
+            <Text style={st.gestoTxt}>
+              {escaneando === 'anverso' ? t('gen.frontTitle') : t('gen.backTitle')}
+            </Text>
+            <View style={st.camaraCaja}>
+              <CameraView ref={camaraDoc} style={{ flex: 1 }} facing="back"
+                autofocus="on" enableTorch={linterna} />
+              {/* Marco con la proporcion real de una cedula (85,6 × 54 mm)
+                  y, en el reverso, la franja donde va la MRZ: encuadrar
+                  bien es la diferencia entre leer a la primera y fallar
+                  tres veces. */}
+              <View style={st.guiaMarco} pointerEvents="none">
+                <View style={st.guiaDoc}>
+                  <View style={[st.esquina, { top: -1, left: -1, borderTopWidth: 2.5, borderLeftWidth: 2.5 }]} />
+                  <View style={[st.esquina, { top: -1, right: -1, borderTopWidth: 2.5, borderRightWidth: 2.5 }]} />
+                  <View style={[st.esquina, { bottom: -1, left: -1, borderBottomWidth: 2.5, borderLeftWidth: 2.5 }]} />
+                  <View style={[st.esquina, { bottom: -1, right: -1, borderBottomWidth: 2.5, borderRightWidth: 2.5 }]} />
+                  {escaneando === 'reverso' && <View style={st.franjaMrz} />}
+                </View>
+              </View>
+              {/* Linterna: documentos leidos de noche o en interiores. */}
+              <Pressable onPress={() => { hap(); setLinterna(!linterna); }} style={st.botonLinterna}>
+                <Icon name={linterna ? 'flashlight' : 'flashlight-outline'} size={20}
+                  color={linterna ? C.gold : '#fff'} />
+              </Pressable>
+            </View>
+
+            {/* Que esta pasando, en una linea: buscando, o consejos si no lee. */}
+            <Text style={st.mrzPista}>
+              {ocupado ? t('gen.scanReading')
+                : intentoAuto === -1 ? t('gen.autoNoLuck')
+                : intentoAuto >= 5 ? t('gen.autoHints')
+                : intentoAuto > 0 ? t('gen.autoScanning')
+                : (escaneando === 'anverso' ? t('gen.frontAim') : t('gen.scanAim'))}
+            </Text>
+
+            <Button3D
+              title={ocupado ? t('gen.scanReading') : t('gen.scanShot')}
+              icon="card" disabled={ocupado}
+              onPress={() => {
+                autoActivo.current = false;
+                (escaneando === 'anverso' ? leerAnverso : escanearDocumento)();
+              }}
+              style={{ marginTop: 12 }} />
+            {/* Dos anversos sin nombre y el camino cambia AQUI mismo: el
+                reverso trae dígitos de control y se deja leer casi siempre. */}
+            {escaneando === 'anverso' && fallosAnverso >= 2 && (
+              <Pressable onPress={() => { hap(); setIntentoAuto(0); setEscaneando('reverso'); }}
+                style={st.retry} disabled={ocupado}>
+                <Text style={st.retryTxt}>{t('gen.tryBack')}</Text>
+              </Pressable>
+            )}
+            {escaneando === 'reverso' && (
+              <Pressable onPress={() => { autoActivo.current = false; elegirFoto(); }}
+                style={st.retry} disabled={ocupado}>
+                <Text style={st.retryTxt}>{t('gen.scanGallery')}</Text>
+              </Pressable>
+            )}
+            <Pressable onPress={cerrarEscaner} style={st.retry} disabled={ocupado}>
+              <Text style={[st.retryTxt, { color: C.txt3 }]}>{t('gen.cancel')}</Text>
+            </Pressable>
+          </>
+        ) : null}
+
         {/* ---- 1. datos ---- */}
-        {paso === 'datos' && (
+        {paso === 'datos' && !escaneando && (
           <>
             <View style={st.heroIcon}><Icon name="person" size={30} color={C.gold} /></View>
             <Text style={st.h1}>{t('gen.stepDataT')}</Text>
             <Text style={st.body}>{t('gen.stepDataP')}</Text>
+            {/* La verificación que pasa sola empieza aquí: la cámara lee el
+                nombre del frente del documento y el campo se llena solo,
+                EDITABLE. Teclear queda como salida, no como norma. */}
+            {puedeEscanear() && (
+              <Pressable onPress={() => abrirEscaner('anverso')} disabled={ocupado}
+                style={[st.cara, nombreOcr && st.caraLista]}>
+                <Icon name={nombreOcr ? 'checkmark-circle' : 'scan'} size={22}
+                  color={nombreOcr ? C.up || '#3ED9A0' : C.gold} />
+                <View style={{ flex: 1 }}>
+                  <Text style={st.caraT}>
+                    {nombreOcr ? t('gen.readName', { n: nombreOcr }) : t('gen.scanFromData')}
+                  </Text>
+                  <Text style={st.caraD}>{t('gen.scanFromDataHint')}</Text>
+                </View>
+              </Pressable>
+            )}
             <Field label={t('prof.name')} value={nombre} onChangeText={setNombre}
               placeholder={t('gen.nameHint')} autoCapitalize="words" />
             <Text style={st.foot2}>{t('gen.nameAsDoc')}</Text>
+            {/* Si lo leído y lo tecleado no son la misma firma, adoptar lo del
+                documento es un toque: lo declarado tiene que coincidir con el
+                documento o el servidor lo rebota después. */}
+            {nombreOcr && nombre.trim() && !coincide ? (
+              <Pressable onPress={() => { hap(); setNombre(nombreOcr); }} style={st.retry}>
+                <Text style={st.retryTxt}>{t('gen.useDocName', { n: nombreOcr })}</Text>
+              </Pressable>
+            ) : null}
 
             {/* Tres casillas y salto automático: se teclea sin pensar en formatos. */}
             <Text style={st.label}>{t('gen.dob')}</Text>
@@ -775,138 +946,84 @@ export function Kyc({ nav }) {
         )}
 
         {/* ---- 2. documento ---- */}
-        {paso === 'documento' && (
+        {paso === 'documento' && !escaneando && (
           <>
             <View style={st.heroIcon}><Icon name="card" size={30} color={C.gold} /></View>
             <Text style={st.h1}>{t('gen.stepDocT')}</Text>
             <Text style={st.body}>{t('gen.stepDocP')}</Text>
 
             {/* La cámara va primero y a mano queda como salida de emergencia:
-                teclear 88 caracteres llenos de «<» es donde la gente abandona. */}
-            {escaneando ? (
-              <>
-                <Text style={st.gestoTxt}>
-                  {escaneando === 'anverso' ? t('gen.frontTitle') : t('gen.backTitle')}
-                </Text>
-                <View style={st.camaraCaja}>
-                  <CameraView ref={camaraDoc} style={{ flex: 1 }} facing="back"
-                    autofocus="on" enableTorch={linterna} />
-                  {/* Marco con la proporcion real de una cedula (85,6 × 54 mm)
-                      y, en el reverso, la franja donde va la MRZ: encuadrar
-                      bien es la diferencia entre leer a la primera y fallar
-                      tres veces. */}
-                  <View style={st.guiaMarco} pointerEvents="none">
-                    <View style={st.guiaDoc}>
-                      <View style={[st.esquina, { top: -1, left: -1, borderTopWidth: 2.5, borderLeftWidth: 2.5 }]} />
-                      <View style={[st.esquina, { top: -1, right: -1, borderTopWidth: 2.5, borderRightWidth: 2.5 }]} />
-                      <View style={[st.esquina, { bottom: -1, left: -1, borderBottomWidth: 2.5, borderLeftWidth: 2.5 }]} />
-                      <View style={[st.esquina, { bottom: -1, right: -1, borderBottomWidth: 2.5, borderRightWidth: 2.5 }]} />
-                      {escaneando === 'reverso' && <View style={st.franjaMrz} />}
-                    </View>
-                  </View>
-                  {/* Linterna: documentos leidos de noche o en interiores. */}
-                  <Pressable onPress={() => { hap(); setLinterna(!linterna); }} style={st.botonLinterna}>
-                    <Icon name={linterna ? 'flashlight' : 'flashlight-outline'} size={20}
-                      color={linterna ? C.gold : '#fff'} />
-                  </Pressable>
+                teclear 88 caracteres llenos de «<» es donde la gente abandona.
+                El escáner en sí vive arriba, compartido con el paso de datos:
+                este bloque entero se esconde mientras se escanea. */}
+            {/* Tres consejos ANTES de abrir la camara. Son los tres motivos
+                reales por los que una lectura falla; leerlos antes evita el
+                ciclo de foto-error-foto-error que hace abandonar. */}
+            <View style={st.tips}>
+              {['tips1', 'tips2', 'tips3'].map((k, n) => (
+                <View key={k} style={st.tip}>
+                  <View style={st.tipN}><Text style={st.tipNTxt}>{n + 1}</Text></View>
+                  <Text style={st.tipTxt}>{t(`gen.${k}`)}</Text>
                 </View>
+              ))}
+            </View>
 
-                {/* Que esta pasando, en una linea: buscando, o consejos si no lee. */}
-                <Text style={st.mrzPista}>
-                  {ocupado ? t('gen.scanReading')
-                    : intentoAuto === -1 ? t('gen.autoNoLuck')
-                    : intentoAuto >= 5 ? t('gen.autoHints')
-                    : intentoAuto > 0 ? t('gen.autoScanning')
-                    : (escaneando === 'anverso' ? t('gen.frontAim') : t('gen.scanAim'))}
-                </Text>
+            {puedeEscanear() ? (
+              <>
+                {/* Las dos caras, como las pide cualquier verificacion seria:
+                    el anverso lleva el nombre completo y el reverso el codigo
+                    que se puede comprobar solo. */}
+                <Pressable onPress={() => abrirEscaner('anverso')} disabled={ocupado}
+                  style={[st.cara, textoAnverso && st.caraLista]}>
+                  <Icon name={textoAnverso ? 'checkmark-circle' : 'card'} size={22}
+                    color={textoAnverso ? C.up || '#3ED9A0' : C.gold} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={st.caraT}>{t('gen.frontTitle')}</Text>
+                    <Text style={st.caraD}>
+                      {textoAnverso ? t('gen.frontDone') : t('gen.frontHint')}
+                    </Text>
+                    {/* Se enseña lo que importa de lo leído: EL NOMBRE, no un
+                        volcado de OCR. Si salió mal, se ve y se repite la foto
+                        sabiendo por qué. */}
+                    {textoAnverso ? (
+                      <Text style={[st.caraD, { fontSize: 11, marginTop: 4 }, nombreOcr && { color: C.up }]}
+                        numberOfLines={2}>
+                        {nombreOcr ? t('gen.readName', { n: nombreOcr })
+                          : textoAnverso.replace(/\s+/g, ' ').slice(0, 120)}
+                      </Text>
+                    ) : null}
+                  </View>
+                </Pressable>
 
-                <Button3D
-                  title={ocupado ? t('gen.scanReading') : t('gen.scanShot')}
-                  icon="card" disabled={ocupado}
-                  onPress={() => {
-                    autoActivo.current = false;
-                    (escaneando === 'anverso' ? leerAnverso : escanearDocumento)();
-                  }}
-                  style={{ marginTop: 12 }} />
-                {escaneando === 'reverso' && (
-                  <Pressable onPress={() => { autoActivo.current = false; elegirFoto(); }}
-                    style={st.retry} disabled={ocupado}>
-                    <Text style={st.retryTxt}>{t('gen.scanGallery')}</Text>
-                  </Pressable>
-                )}
-                <Pressable onPress={cerrarEscaner} style={st.retry} disabled={ocupado}>
-                  <Text style={[st.retryTxt, { color: C.txt3 }]}>{t('gen.cancel')}</Text>
+                <Pressable onPress={() => abrirEscaner('reverso')} disabled={ocupado}
+                  style={[st.cara, forma.ok && st.caraLista]}>
+                  <Icon name={forma.ok ? 'checkmark-circle' : 'card'} size={22}
+                    color={forma.ok ? C.up || '#3ED9A0' : C.gold} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={st.caraT}>{t('gen.backTitle')}</Text>
+                    <Text style={st.caraD}>
+                      {forma.ok ? t('gen.backDone', { f: forma.formato }) : t('gen.backHint')}
+                    </Text>
+                  </View>
                 </Pressable>
               </>
             ) : (
-              <>
-                {/* Tres consejos ANTES de abrir la camara. Son los tres motivos
-                    reales por los que una lectura falla; leerlos antes evita el
-                    ciclo de foto-error-foto-error que hace abandonar. */}
-                <View style={st.tips}>
-                  {['tips1', 'tips2', 'tips3'].map((k, n) => (
-                    <View key={k} style={st.tip}>
-                      <View style={st.tipN}><Text style={st.tipNTxt}>{n + 1}</Text></View>
-                      <Text style={st.tipTxt}>{t(`gen.${k}`)}</Text>
-                    </View>
-                  ))}
+              <View style={st.warn}>
+                <Icon name="information-circle" size={20} color={C.gold} />
+                <View style={{ flex: 1 }}>
+                  <Text style={st.warnTxt}>{t('gen.scanNeedsApk')}</Text>
                 </View>
-
-                {puedeEscanear() ? (
-                  <>
-                    {/* Las dos caras, como las pide cualquier verificacion seria:
-                        el anverso lleva el nombre completo y el reverso el codigo
-                        que se puede comprobar solo. */}
-                    <Pressable onPress={() => abrirEscaner('anverso')} disabled={ocupado}
-                      style={[st.cara, textoAnverso && st.caraLista]}>
-                      <Icon name={textoAnverso ? 'checkmark-circle' : 'card'} size={22}
-                        color={textoAnverso ? C.up || '#3ED9A0' : C.gold} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={st.caraT}>{t('gen.frontTitle')}</Text>
-                        <Text style={st.caraD}>
-                          {textoAnverso ? t('gen.frontDone') : t('gen.frontHint')}
-                        </Text>
-                        {/* Se enseña lo que se leyo: si algo falla, la persona
-                            lo ve y puede repetir la foto sabiendo por que. */}
-                        {textoAnverso ? (
-                          <Text style={[st.caraD, { fontSize: 10.5, marginTop: 4 }]} numberOfLines={3}>
-                            {textoAnverso.replace(/\s+/g, ' ').slice(0, 160)}
-                          </Text>
-                        ) : null}
-                      </View>
-                    </Pressable>
-
-                    <Pressable onPress={() => abrirEscaner('reverso')} disabled={ocupado}
-                      style={[st.cara, forma.ok && st.caraLista]}>
-                      <Icon name={forma.ok ? 'checkmark-circle' : 'card'} size={22}
-                        color={forma.ok ? C.up || '#3ED9A0' : C.gold} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={st.caraT}>{t('gen.backTitle')}</Text>
-                        <Text style={st.caraD}>
-                          {forma.ok ? t('gen.backDone', { f: forma.formato }) : t('gen.backHint')}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  </>
-                ) : (
-                  <View style={st.warn}>
-                    <Icon name="information-circle" size={20} color={C.gold} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={st.warnTxt}>{t('gen.scanNeedsApk')}</Text>
-                    </View>
-                  </View>
-                )}
-
-                <Card style={{ padding: 14, marginBottom: 14 }}>
-                  <Text style={st.cardTitle}>{t('gen.mrzWhere')}</Text>
-                  <Text style={[st.foot2, { marginTop: 6, marginBottom: 10 }]}>{t('gen.docBack')}</Text>
-                  <Text style={st.mrzEjemplo} numberOfLines={2}>
-                    P&lt;HNDPEREZ&lt;&lt;JUAN&lt;CARLOS&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;{'\n'}
-                    A123456781HND9005236M3012159&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;06
-                  </Text>
-                </Card>
-              </>
+              </View>
             )}
+
+            <Card style={{ padding: 14, marginBottom: 14 }}>
+              <Text style={st.cardTitle}>{t('gen.mrzWhere')}</Text>
+              <Text style={[st.foot2, { marginTop: 6, marginBottom: 10 }]}>{t('gen.docBack')}</Text>
+              <Text style={st.mrzEjemplo} numberOfLines={2}>
+                P&lt;HNDPEREZ&lt;&lt;JUAN&lt;CARLOS&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;{'\n'}
+                A123456781HND9005236M3012159&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;06
+              </Text>
+            </Card>
 
             <Text style={st.label}>{t('gen.mrzLabel')}</Text>
             <TextInput
@@ -972,6 +1089,14 @@ export function Kyc({ nav }) {
                     </View>
                   </View>
                 )}
+                {/* El estado del cotejo, dicho ANTES del selfie: si ya cuadra,
+                    la solicitud saldrá marcada para el pase automático; si no,
+                    se avisa que la mirará una persona — sin sorpresas luego. */}
+                {nombreOcr ? (
+                  <Text style={[st.mrzPista, coincide && { color: C.up }]}>
+                    {coincide ? t('gen.matchOk') : t('gen.matchNo')}
+                  </Text>
+                ) : null}
                 <Button3D title={t('gen.liveStart')} icon="finger-print" onPress={comenzarReto}
                   disabled={ocupado} style={{ marginTop: 16 }} />
               </>
@@ -1034,6 +1159,11 @@ export function Kyc({ nav }) {
             </View>
             <Text style={[st.h1, { textAlign: 'center' }]}>{t('gen.reviewT')}</Text>
             <Text style={[st.body, { textAlign: 'center' }]}>{t('gen.reviewP')}</Text>
+            {/* Si todo cuadró en el teléfono se dice — y se dice también que
+                la palabra final es de Genesis ID: estados honestos. */}
+            {cotejoEnviado === 'automatico' && (
+              <Text style={[st.body, { textAlign: 'center', color: C.up }]}>{t('gen.reviewAuto')}</Text>
+            )}
             <Button3D title={t('gen.recheck')} icon="refresh" onPress={() => refrescar(true)}
               style={{ alignSelf: 'stretch', marginTop: 10 }} />
             <Pressable onPress={() => nav.go(account ? 'home' : 'auth')} style={st.retry}>
@@ -1132,7 +1262,10 @@ export function GenesisOffer({ nav }) {
 
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
-      <Header title={t('gen.title')} sub={t('gen.sub')} onBack={() => nav.go('home')} />
+      {/* Salir sin verificar lleva al ECOSISTEMA, no a la billetera: es donde
+          el nodo Genesis ID con su anillo ámbar sigue recordando lo que quedó
+          pendiente. Mandarlo a la wallet era esconder el recordatorio. */}
+      <Header title={t('gen.title')} sub={t('gen.sub')} onBack={() => nav.go('ecosistema')} />
       <ScrollView contentContainerStyle={{ padding: 22, flexGrow: 1, justifyContent: 'center' }}>
         <View style={{ alignItems: 'center' }}>
           <LinearGradient colors={G.gold} style={st.offerIcon}>
@@ -1147,7 +1280,9 @@ export function GenesisOffer({ nav }) {
             </View>
           ) : null}
           <Button3D title={t('offer.now')} icon="finger-print" onPress={() => nav.go('kyc')} style={{ alignSelf: 'stretch', marginTop: 22 }} />
-          <Pressable onPress={() => { hap(); nav.go('home'); }} style={st.retry}>
+          {/* «Ahora no» también cae al ecosistema por la misma razón que la
+              flecha de atrás: el Núcleo es quien recuerda, sin regañar. */}
+          <Pressable onPress={() => { hap(); nav.go('ecosistema'); }} style={st.retry}>
             <Text style={st.retryTxt}>{t('offer.later')}</Text>
           </Pressable>
         </View>

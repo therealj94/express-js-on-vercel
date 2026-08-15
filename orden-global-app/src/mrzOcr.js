@@ -329,6 +329,189 @@ export async function leerTexto(uri) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// El nombre impreso del anverso, y los datos que trae la MRZ
+// ---------------------------------------------------------------------------
+
+/**
+ * Palabras que aparecen impresas en un documento y NUNCA son el nombre del
+ * titular: membretes, etiquetas de campo, meses, estados civiles. Una línea
+ * que traiga cualquiera se descarta como candidata a nombre.
+ *
+ * La lista peca de larga a propósito: descartar de más solo obliga a repetir
+ * la foto; aceptar de menos manda «COMISIONADOS PROPIETARIOS» como nombre a
+ * la revisión manual — pasó con documentos hondureños reales.
+ */
+const NO_ES_NOMBRE = new RegExp(
+  '(REPUBLIC|HONDURAS|GUATEMALA|NICARAGUA|NACIONAL|IDENTIDAD|IDENTIFICACION' +
+  '|REGISTRO|TRIBUNAL|INSTITUTO|DOCUMENTO|CEDULA|PASAPORTE|PASSPORT|TARJETA' +
+  '|IDENTITY|FECHA|NACIMIENTO|BIRTH|LUGAR|SEXO|SANGRE|EXPEDICION|EMISION' +
+  '|VENCIMIENTO|EXPIRA|DOMICILIO|DIRECCION|MUNICIPIO|DEPARTAMENTO|GOBIERNO' +
+  '|ELECTORAL|CLAVE|CURP|FIRMA|NACIONALIDAD|COMISIONADO|PROPIETARIO|SUPLENTE' +
+  '|MASCULINO|FEMENINO|SOLTER|CASAD|NOMBRE|APELLIDO|SURNAME|GIVEN' +
+  '|ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|OCTUBRE' +
+  '|NOVIEMBRE|DICIEMBRE)'
+);
+
+/**
+ * Saca el nombre impreso del ANVERSO del documento.
+ *
+ * Dos estrategias, por orden de confianza:
+ *
+ *   1. Etiquetas: «APELLIDOS» / «NOMBRES» (o SURNAME / GIVEN NAMES). El valor
+ *      viene en la misma línea o en la de abajo. Es la vía fiable porque la
+ *      propia cédula dice qué es cada cosa.
+ *   2. Sin etiquetas, la línea con más pinta de nombre completo: solo letras,
+ *      de 2 a 6 palabras, ninguna de membrete. Gana la de más palabras: un
+ *      nombre centroamericano completo trae 3 o 4, un rótulo suelto trae 2.
+ *
+ * Devuelve el nombre en orden natural («JOSE ENAMORADO») o `null`. `null`
+ * significa «repite la foto»: es preferible a precargar un membrete.
+ */
+export function nombreDeAnverso(textoOcr) {
+  const lineas = String(textoOcr || '')
+    .toUpperCase()
+    .split(/[\r\n]+/)
+    .map((l) => l.replace(/[^A-ZÁÉÍÓÚÜÑ ]/g, ' ').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+
+  // ¿Vale esta cadena como valor de una etiqueta? Un apellido puede ser UNA
+  // sola palabra («PEREZ»), así que aquí basta con una.
+  const valorEtiqueta = (l) => {
+    if (!l || NO_ES_NOMBRE.test(l)) return '';
+    const palabras = l.split(' ').filter((w) => w.length >= 2 && /^[A-ZÁÉÍÓÚÜÑ]+$/.test(w));
+    return palabras.length >= 1 && palabras.length <= 5 ? palabras.join(' ') : '';
+  };
+
+  const ETIQUETAS = [
+    ['apellidos', /^APELLIDOS?\b/],
+    ['nombres', /^NOMBRES?\b/],
+    ['apellidos', /^SURNAMES?\b/],
+    ['nombres', /^GIVEN ?NAMES?\b/],
+  ];
+  const partes = {};
+  for (let i = 0; i < lineas.length; i++) {
+    for (const [campo, re] of ETIQUETAS) {
+      if (partes[campo] || !re.test(lineas[i])) continue;
+      const v = valorEtiqueta(lineas[i].replace(re, '').trim()) || valorEtiqueta(lineas[i + 1]);
+      if (v) partes[campo] = v;
+    }
+  }
+  if (partes.apellidos && partes.nombres) return `${partes.nombres} ${partes.apellidos}`;
+  // Cédulas con una sola etiqueta «NOMBRE» y el nombre completo debajo: vale
+  // si trae al menos dos palabras — una sola no identifica a nadie.
+  const suelto = partes.nombres || partes.apellidos || '';
+  if (suelto.split(' ').length >= 2) return suelto;
+
+  // Sin etiquetas: la mejor línea con pinta de nombre. Es un mejor-esfuerzo
+  // honesto — lo que salga se enseña EDITABLE y se coteja contra lo declarado,
+  // nunca se da por bueno a ciegas.
+  let mejor = null;
+  for (const l of lineas) {
+    if (NO_ES_NOMBRE.test(l)) continue;
+    const palabras = l.split(' ').filter((w) => w.length >= 2);
+    if (palabras.length < 2 || palabras.length > 6) continue;
+    if (!palabras.every((w) => /^[A-ZÁÉÍÓÚÜÑ]+$/.test(w))) continue;
+    if (!mejor || palabras.length > mejor.cuenta) mejor = { nombre: palabras.join(' '), cuenta: palabras.length };
+  }
+  return mejor ? mejor.nombre : null;
+}
+
+/**
+ * Los datos personales que trae una MRZ ya validada: nombre, fecha de
+ * nacimiento y número de documento.
+ *
+ * Existe para el camino de rescate: cuando el anverso no se deja leer, el
+ * reverso da estos tres datos con dígitos de control — más fiable que
+ * cualquier OCR de texto impreso. OJO: la MRZ tiene ancho fijo y RECORTA los
+ * nombres largos; por eso el resultado precarga campos editables y nunca se
+ * declara a espaldas de la persona.
+ */
+export function datosDeMrz(mrzTexto) {
+  const lineas = String(mrzTexto || '').toUpperCase().split(/[\r\n]+/)
+    .map((l) => l.trim()).filter(Boolean);
+  const formato =
+    lineas.length === 2 && lineas.every((l) => l.length === 44) ? 'TD3'
+      : lineas.length === 2 && lineas.every((l) => l.length === 36) ? 'TD2'
+        : lineas.length === 3 && lineas.every((l) => l.length === 30) ? 'TD1'
+          : null;
+  if (!formato) return null;
+
+  // La zona de nombres: toda la tercera línea en una cédula TD1; en pasaporte
+  // y TD2, la primera línea tras tipo y país. «<<» separa apellidos de
+  // nombres; «<» suelto es un espacio.
+  const zona = formato === 'TD1' ? lineas[2] : lineas[0].slice(5);
+  const [apRaw, noRaw = ''] = zona.split('<<');
+  const limpiar = (s) => s.replace(/</g, ' ').replace(/\s+/g, ' ').trim();
+  const apellidos = limpiar(apRaw);
+  const nombres = limpiar(noRaw);
+  const nombre = [nombres, apellidos].filter(Boolean).join(' ');
+  if (!nombre) return null;
+
+  const numeroDocumento =
+    (formato === 'TD1' ? lineas[0].slice(5, 14) : lineas[1].slice(0, 9))
+      .replace(/</g, '').trim() || null;
+
+  // YYMMDD sin siglo. La regla estándar: si el año de dos cifras es mayor que
+  // el actual, es del siglo pasado. Falla con alguien de 100+ años — la
+  // validación de edad de la pantalla ya acota ese caso.
+  const f = formato === 'TD1' ? lineas[1].slice(0, 6) : lineas[1].slice(13, 19);
+  let nacimiento = null;
+  if (/^\d{6}$/.test(f)) {
+    const yy = Number(f.slice(0, 2));
+    const hoyYY = new Date().getFullYear() % 100;
+    nacimiento = {
+      anio: String(yy > hoyYY ? 1900 + yy : 2000 + yy),
+      mes: f.slice(2, 4),
+      dia: f.slice(4, 6),
+    };
+  }
+
+  return { formato, nombre, apellidos, nombres, numeroDocumento, nacimiento };
+}
+
+// Partículas que van y vienen entre cómo se declara un nombre y cómo lo
+// imprime el documento («DE LA CRUZ» vs «CRUZ»). Se ignoran en el cotejo.
+const CONECTORES = new Set(['DE', 'DEL', 'LA', 'LAS', 'LOS', 'DA', 'DO', 'DOS', 'DAS', 'VAN', 'VON', 'DER']);
+
+/** Palabras comparables de un nombre: mayúsculas, sin tildes y con Ñ→N —
+ *  exactamente como translitera la MRZ—, sin partículas. */
+function palabrasDeNombre(s) {
+  return String(s || '')
+    .toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z ]+/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= 2 && !CONECTORES.has(w));
+}
+
+/**
+ * ¿El nombre que leyó el OCR y el declarado son la misma firma?
+ *
+ * Cotejo honesto, no adivino: palabras normalizadas SIN exigir el orden
+ * —«PEREZ LOPEZ JUAN» y «JUAN PEREZ LOPEZ» son la misma persona; el orden de
+ * apellidos baila entre formularios—. Se tolera que un lado traiga palabras
+ * de más, porque la gente declara menos apellidos de los que imprime su
+ * documento; pero TODAS las del lado corto deben estar en el largo, y deben
+ * ser al menos dos.
+ *
+ * Esto NO aprueba nada. Decide si la solicitud puede llevar la marca de
+ * cotejo automático; la comprobación que vale la hace el servidor Genesis.
+ */
+export function mismoNombre(a, b) {
+  const A = palabrasDeNombre(a);
+  const B = palabrasDeNombre(b);
+  const [corto, largo] = A.length <= B.length ? [A, B] : [B, A];
+  if (corto.length < 2) return false;
+  const resto = [...largo];
+  for (const w of corto) {
+    const i = resto.indexOf(w);
+    if (i === -1) return false;
+    resto.splice(i, 1);
+  }
+  return true;
+}
+
 /**
  * Lee la MRZ de una imagen ya guardada en el teléfono.
  *

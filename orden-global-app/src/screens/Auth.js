@@ -74,10 +74,16 @@ export default function Auth({ nav }) {
     setErr(null);
     try {
       const r = await apiSocialLogin(proveedor, idToken);
-      const acc = await upsertApiAccount(r);
-      try { await apiPortfolio(acc); } catch (e) {}
-      await saveSession(acc);
-      await recordLogin(acc);
+      // Igual que enter(): apiSocialLogin devuelve el sobre {user, address,…},
+      // y upsertApiAccount espera el usuario y la dirección por separado —
+      // pasarle el sobre entero creaba una cuenta con correo vacío. Y la
+      // sesión y la bitácora reciben el CORREO, no el objeto de la cuenta:
+      // recordLogin hace toLowerCase() sobre lo que le llega y reventaba.
+      let portfolio = { balances: [], transfers: [] };
+      try { portfolio = await apiPortfolio(); } catch (e) {}
+      const acc = await upsertApiAccount(r.user, r.address, portfolio);
+      await saveSession(acc.email);
+      await recordLogin(acc.email);
       await clearCreds();
       setAccount(acc);
       toast(r.creada ? t('auth.welcomeNew') : t('auth.welcome'));
@@ -85,8 +91,13 @@ export default function Auth({ nav }) {
       // llamarlo reventaba justo después de un login social exitoso—, y
       // seenOnboarding es async: sin await la Promise siempre era truthy y
       // el tour de primera vez no salía nunca por esta vía.
+      // Y el MISMO destino que el correo: si la cuenta aún no tiene Genesis
+      // ID se pasa por la oferta. Antes esta vía saltaba directo al
+      // ecosistema y a quien entraba con Google/Apple no se le ofrecía el
+      // GID jamás — la oferta era un privilegio del registro por correo.
       const done = await seenOnboarding();
-      nav.go(done ? 'ecosistema' : 'onboarding');
+      if (!done) nav.go('onboarding');
+      else nav.go(acc.genesisUid ? 'ecosistema' : 'genesisOffer');
     } catch (e) {
       // Un fallo aquí casi siempre es de configuración (el identificador de
       // cliente no coincide con el que espera el servidor), y eso no lo puede
@@ -154,10 +165,14 @@ export default function Auth({ nav }) {
       await recordLogin(acc.email);
       setAccount(acc);
       // Primera vez en el teléfono: tour de 3 pantallas antes de entrar.
-      // Después, cuenta nueva → oferta Genesis ID; sesión ya conocida → home.
+      // Después, el criterio ya no es "¿registro?" sino "¿tiene Genesis ID?":
+      // la cuenta vieja que entra por correo sin GID también pasa por la
+      // oferta — antes iba directa al ecosistema y nunca se enteraba de que
+      // le faltaba. La cuenta recién creada no trae genesisUid, así que el
+      // registro sigue viendo la oferta exactamente igual que siempre.
       const done = await seenOnboarding();
       if (!done) nav.go('onboarding');
-      else nav.go(kind === 'register' ? 'genesisOffer' : 'ecosistema');
+      else nav.go(acc.genesisUid ? 'ecosistema' : 'genesisOffer');
       toast(`${t('auth.welcome')}, ${acc.name.split(' ')[0]}`);
     } catch (e) {
       // Prioridad: casos conocidos con mensaje amigable. Si no coinciden,

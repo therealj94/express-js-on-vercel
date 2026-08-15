@@ -6,12 +6,14 @@
 //   · el pago vive DENTRO de la charla: un mensaje tipo:'pago' no se pinta
 //     como texto sino como comprobante, con su hash y su enlace al
 //     explorador. Eso es lo que ninguna otra mensajería puede enseñar;
-//   · a alguien se le encuentra por el directorio o ESCANEANDO SU CÓDIGO, y
+//   · a alguien se le encuentra por el directorio (nombre, correo o su
+//     GID de Genesis) o ESCANEANDO SU CÓDIGO, y
 //     al escanear se ofrece guardarlo — un contacto que se pierde obliga a
 //     volver a escanear, y eso ya no es una red;
 //   · adjuntos (📎) ≤ 8 MB: el id largo del archivo ES su permiso.
 // Sin cifrado de extremo a extremo en esta versión: no se promete en ningún
-// texto de esta pantalla.
+// texto de esta pantalla — y la verdad completa no se calla, vive en
+// AjustesAuro → «Privacidad y seguridad», que es donde se va a buscarla.
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View, Text, TextInput, Pressable, FlatList, StyleSheet, Modal, Animated,
@@ -38,10 +40,11 @@ import { reproducir } from './sonidos';
 const TXT = {
   es: {
     marca: 'AURO CHAT', sub: 'Personas y grupos, con Genesis ID',
-    buscar: 'Buscar por nombre o correo…', dir: 'EN EL ECOSISTEMA',
-    nadie: 'Nadie con ese nombre todavía. Compartan su código QR para conectarse.',
-    vacio: 'Aún no tienes conversaciones.\nBusca a alguien, escanea su código o crea un grupo.',
+    buscar: 'Buscar por nombre, correo o GID…', dir: 'EN EL ECOSISTEMA',
+    nadie: 'Nadie con ese nombre o GID todavía.',
+    vacio: 'Aún no tienes conversaciones.',
     escribe: 'Escribe…', origen: 'ENVIAR ORIGEN', miqr: 'MI CÓDIGO', escanear: 'ESCANEAR',
+    agregar: 'AGREGAR', ayer: 'ayer',
     ajustes: 'Mi perfil y ajustes', nuevoGrupo: 'Nuevo grupo',
     gateTit: 'El chat es de gente verificada',
     gateTxt: 'Para chatear necesitas tu Genesis ID aprobado. Así todos saben que del otro lado hay una persona real.',
@@ -50,7 +53,7 @@ const TXT = {
     apunta: 'Apunta al código de la otra persona',
     adjImagen: 'Imagen', adjVideo: 'Video', adjArchivo: 'Archivo',
     ultImagen: 'Imagen', ultVideo: 'Video', ultArchivo: 'Archivo',
-    grande: 'Pesa más de 8 MB y el relevo no lo acepta. Comparte una versión más ligera.',
+    grande: 'Pesa más de 8 MB. Comparte una versión más ligera.',
     noSubio: 'No se pudo subir. Revisa tu conexión e intenta de nuevo.',
     noAbre: 'No se pudo abrir el archivo.',
     tu: 'Tú', miembros: 'miembros', grupo: 'Grupo',
@@ -67,17 +70,18 @@ const TXT = {
     fallo: 'No se envió', reintentar: 'Reintentar',
     nuevos: 'Mensajes nuevos ↓',
     sinRedT: 'Sin conexión',
-    sinRedConvos: 'No pudimos traer tus conversaciones. Puede ser tu conexión o el relevo; tus chats siguen ahí.',
+    sinRedConvos: 'No pudimos traer tus conversaciones. Revisa tu conexión; tus chats siguen ahí.',
     sinRedHilo: 'No pudimos traer los mensajes de esta conversación.',
-    sinRedBusca: 'Sin conexión: la búsqueda no llegó al relevo. Intenta de nuevo.',
+    sinRedBusca: 'La búsqueda no salió. Revisa tu conexión e intenta de nuevo.',
     reint: 'REINTENTAR', bannerRed: 'Sin conexión — reintentando…',
   },
   en: {
     marca: 'AURO CHAT', sub: 'People and groups, with Genesis ID',
-    buscar: 'Search by name or email…', dir: 'IN THE ECOSYSTEM',
-    nadie: 'Nobody with that name yet. Share your QR codes to connect.',
-    vacio: 'No conversations yet.\nSearch someone, scan their code or create a group.',
+    buscar: 'Search by name, email or GID…', dir: 'IN THE ECOSYSTEM',
+    nadie: 'Nobody with that name or GID yet.',
+    vacio: 'No conversations yet.',
     escribe: 'Type…', origen: 'SEND ORIGEN', miqr: 'MY CODE', escanear: 'SCAN',
+    agregar: 'ADD', ayer: 'yesterday',
     ajustes: 'My profile and settings', nuevoGrupo: 'New group',
     gateTit: 'The chat is for verified people',
     gateTxt: 'You need your approved Genesis ID to chat. That way everyone knows there is a real person on the other side.',
@@ -86,7 +90,7 @@ const TXT = {
     apunta: 'Point at the other person’s code',
     adjImagen: 'Image', adjVideo: 'Video', adjArchivo: 'File',
     ultImagen: 'Image', ultVideo: 'Video', ultArchivo: 'File',
-    grande: 'It is over 8 MB and the relay won’t take it. Share a lighter version.',
+    grande: 'It is over 8 MB. Share a lighter version.',
     noSubio: 'Upload failed. Check your connection and try again.',
     noAbre: 'Could not open the file.',
     tu: 'You', miembros: 'members', grupo: 'Group',
@@ -103,9 +107,9 @@ const TXT = {
     fallo: 'Not sent', reintentar: 'Retry',
     nuevos: 'New messages ↓',
     sinRedT: 'No connection',
-    sinRedConvos: 'We could not fetch your conversations. It may be your connection or the relay; your chats are still there.',
+    sinRedConvos: 'We could not fetch your conversations. Check your connection; your chats are still there.',
     sinRedHilo: 'We could not fetch the messages of this conversation.',
-    sinRedBusca: 'No connection: the search never reached the relay. Try again.',
+    sinRedBusca: 'The search did not go through. Check your connection and try again.',
     reint: 'RETRY', bannerRed: 'Offline — retrying…',
   },
 };
@@ -136,6 +140,20 @@ const blobABase64 = (blob) => new Promise((res, rej) => {
 });
 
 const hora = (ms) => { const d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+// El cuándo de la LISTA, dicho como lo diría una persona: la hora si fue hoy,
+// «ayer», el día corto («lun») dentro de la semana y la fecha corta después.
+// Dentro del hilo la hora exacta sí importa; aquí solo orienta.
+const cuandoHumano = (ms, lang, ayer) => {
+  const d = new Date(ms);
+  const hoy = new Date();
+  const dia0 = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const dias = Math.round((dia0(hoy) - dia0(d)) / 86400000);
+  if (dias <= 0) return hora(ms);
+  if (dias === 1) return ayer;
+  const loc = lang === 'en' ? 'en-US' : 'es-HN';
+  if (dias < 7) return d.toLocaleDateString(loc, { weekday: 'short' });
+  return d.toLocaleDateString(loc, { day: 'numeric', month: 'short' });
+};
 // Una conversación se identifica por su id de grupo o por el correo, y de ahí
 // en adelante el destino es UNO SOLO: enviar, bandeja, leído y el aviso del
 // pago hablan todos del mismo string.
@@ -356,7 +374,9 @@ export default function AuroChat({ nav, params }) {
     if (ofrecerGuardar) setOfrecido(base);
     try {
       const f = await M.ficha(correo);
-      const lleno = { correo, nombre: f.nombre || base.nombre, addr: f.addr || '', foto: f.foto || '' };
+      // /ficha ya devuelve gid: con él la cabecera del hilo firma a la
+      // persona con su Genesis ID pequeño debajo del nombre.
+      const lleno = { correo, nombre: f.nombre || base.nombre, addr: f.addr || '', foto: f.foto || '', gid: f.gid || '' };
       setCon((x) => (x && x.correo === correo ? { ...x, ...lleno } : x));
       setOfrecido((x) => (x && x.correo === correo ? { ...x, ...lleno } : x));
       aprenderNombres([[correo, lleno.nombre]]);
@@ -390,6 +410,23 @@ export default function AuroChat({ nav, params }) {
     }).catch(() => {});
     return () => { vivo = false; };
   }, [destino, enGrupo, aprenderNombres]);
+
+  // La ficha del cara a cara: un hilo abierto desde la LISTA llega sin gid
+  // (la fila de conversaciones no lo trae) y la cabecera lo quiere pequeño
+  // bajo el nombre. Se pide una sola vez por hilo; abrirPersona ya lo hace
+  // por su cuenta y entonces `con.gid` existe y esto no dispara.
+  useEffect(() => {
+    if (!destino || enGrupo || con?.gid !== undefined) return;
+    let vivo = true;
+    M.ficha(destino).then((f) => {
+      if (!vivo || !f) return;
+      setCon((x) => (x && idDe(x) === destino
+        ? { ...x, nombre: f.nombre || x.nombre, addr: f.addr || x.addr || '', foto: x.foto || f.foto || '', gid: f.gid || '' }
+        : x));
+    }).catch(() => {});
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [destino, enGrupo]);
 
   useEffect(() => {
     if (busca.trim().length < 2) { setGente(null); return; }
@@ -603,6 +640,19 @@ export default function AuroChat({ nav, params }) {
     } catch { toast(t.noGuardo, 'error'); }
   };
 
+  // AGREGAR desde el buscador: UN toque y la persona queda en la libreta del
+  // chat (og.contactos) Y —si su ficha trae dirección de cadena— en la de la
+  // wallet, porque guardarContacto ya hace los dos asientos de un solo
+  // guardado. Un contacto que solo existe en una de las dos libretas acaba
+  // contando historias distintas en Enviar y en el chat.
+  const agregarBuscado = async (p) => {
+    try {
+      await guardarContacto(p.correo, p.nombre, p.addr, account?.email);
+      hap(); toast(t.guardado);
+      cargarLibreta();
+    } catch { toast(t.noGuardo, 'error'); }
+  };
+
   // ── editar nombre / eliminar de mi libreta ────────────────────────────
   // La hojita sale de mantener pulsado un contacto en la lista o de tocar la
   // cabecera de un hilo 1 a 1 (en un grupo la cabecera abre su ficha).
@@ -737,10 +787,12 @@ export default function AuroChat({ nav, params }) {
             <Avatar nombre={enGrupo ? con.nombre : nombreDe(destino, con.nombre)} correo={destino} foto={con.foto} grupo={enGrupo} tam={38} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={st.nom} numberOfLines={1}>{enGrupo ? con.nombre : nombreDe(destino, con.nombre)}</Text>
+              {/* la seña bajo el nombre: primero el GID (la identidad de la
+                  casa), luego la cadena, y el correo solo si no hay más */}
               <Text style={st.mini} numberOfLines={1}>
                 {enGrupo
                   ? (con.miembros ? con.miembros + ' ' + t.miembros : t.grupo)
-                  : (con.addr ? '⛓ ' + con.addr.slice(0, 8) + '…' + con.addr.slice(-4) : con.correo)}
+                  : (con.gid || (con.addr ? '⛓ ' + con.addr.slice(0, 8) + '…' + con.addr.slice(-4) : con.correo))}
               </Text>
             </View>
           </Pressable>
@@ -994,6 +1046,8 @@ export default function AuroChat({ nav, params }) {
           ListEmptyComponent={<Text style={st.vacio}>{gente !== null ? (buscaMal ? t.sinRedBusca : t.nadie) : t.vacio}</Text>}
           renderItem={({ item, index }) => {
             const grupo = esGrupoDe(item);
+            const enBusca = gente !== null;
+            const yaMio = enBusca && !!libreta[String(idDe(item)).toLowerCase()];
             return (
               // la cascada solo escalona las primeras filas: más abajo el
               // retraso se notaría como lentitud, no como elegancia
@@ -1010,13 +1064,32 @@ export default function AuroChat({ nav, params }) {
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <View style={st.filaSup}>
                       <Text style={st.nom} numberOfLines={1}>{grupo ? item.nombre : nombreDe(idDe(item), item.nombre)}</Text>
-                      {!!item.ultimo && <Text style={st.hora}>{hora(item.ultimo.cuando)}</Text>}
+                      {!enBusca && !!item.ultimo && <Text style={st.hora}>{cuandoHumano(item.ultimo.cuando, lang, t.ayer)}</Text>}
                     </View>
-                    <View style={st.filaSup}>
-                      <Text style={[st.ult, item.sinLeer > 0 && st.ultVivo]} numberOfLines={1}>{resumen(item)}</Text>
-                      {item.sinLeer > 0 && <View style={st.globo}><Text style={st.globoTxt}>{item.sinLeer}</Text></View>}
-                    </View>
+                    {enBusca ? (
+                      // el resultado enseña SOLO el nombre; debajo, pequeño,
+                      // su GID — y el correo únicamente cuando no tiene GID.
+                      // El correo en grande convertía el directorio en una
+                      // guía telefónica; el nombre es lo que se busca.
+                      <Text style={[st.mini, { marginTop: 2 }]} numberOfLines={1}>{item.gid || item.correo}</Text>
+                    ) : (
+                      <View style={st.filaSup}>
+                        <Text style={[st.ult, item.sinLeer > 0 && st.ultVivo]} numberOfLines={1}>{resumen(item)}</Text>
+                        {item.sinLeer > 0 && <View style={st.globo}><Text style={st.globoTxt}>{item.sinLeer}</Text></View>}
+                      </View>
+                    )}
                   </View>
+                  {/* AGREGAR guarda en mis dos libretas de un toque; si ya es
+                      mío, la marca lo dice y no se ofrece guardarlo de nuevo */}
+                  {enBusca && (yaMio ? (
+                    <Icon name="checkmark-circle" size={20} color={C.up} />
+                  ) : (
+                    <Pressable onPress={() => agregarBuscado(item)} hitSlop={6}>
+                      <LinearGradient colors={G.gold} style={st.guardaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                        <Text style={st.guardaBtnTxt}>{t.agregar}</Text>
+                      </LinearGradient>
+                    </Pressable>
+                  ))}
                 </Pressable>
               </Entrada>
             );

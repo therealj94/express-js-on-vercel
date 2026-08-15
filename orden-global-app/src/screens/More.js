@@ -480,7 +480,15 @@ export function Passport({ nav }) {
               <Text style={styles.passLabel}>{t('pass.holder')}</Text>
               <Text style={styles.passName} numberOfLines={2}>{p?.fullName || acc.name}</Text>
               <Text style={styles.passLabel2}>{t('pass.uid')}</Text>
-              <Text style={styles.passUid}>{p?.genesisUid || acc.genesisUid}</Text>
+              {/* El GID viaja por el chat: tocarlo lo copia — el mismo gesto
+                  que en los ajustes de AURO CHAT, para que la seña se aprenda
+                  una sola vez en toda la app. */}
+              <Pressable onPress={async () => {
+                hap();
+                try { await Clipboard.setStringAsync(String(p?.genesisUid || acc.genesisUid || '')); toast(t('pass.gidCopied')); } catch (e) {}
+              }} hitSlop={8}>
+                <Text style={styles.passUid}>{p?.genesisUid || acc.genesisUid}</Text>
+              </Pressable>
             </View>
           </View>
 

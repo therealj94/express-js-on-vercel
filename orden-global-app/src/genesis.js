@@ -268,11 +268,19 @@ export const genesis = {
    * Van en el mismo orden que los gestos. El servidor comprueba gesto a gesto
    * y decide; la app no puntúa nada, solo enseña el resultado.
    */
-  async enviarRostro({ reto, fotogramas, fotoDocumento }) {
+  async enviarRostro({ reto, fotogramas, fotoDocumento, cotejo }) {
     // `fotoDocumento` es la foto del anverso, reducida. Viaja SOLO en este
     // momento y solo para el cotejo: Genesis ID compara y la descarta, no la
     // almacena en ningun sitio. Sin ella no hay con que comparar el rostro.
-    const r = await puente('/biometria', { reto, fotogramas, fotoDocumento });
+    //
+    // `cotejo: 'automatico'` dice que el nombre leido por OCR y el declarado
+    // coincidieron EN EL TELEFONO. Es informacion, no un veredicto: el
+    // servidor coteja de nuevo y la aprobacion sigue siendo suya. Solo viaja
+    // cuando existe, para no cambiar la forma que el puente ya conoce.
+    const r = await puente('/biometria', {
+      reto, fotogramas, fotoDocumento,
+      ...(cotejo ? { cotejo } : {}),
+    });
     if (!r.ok) return { error: r.error, code: r.code };
     const vista = aVista(r.datos?.identidad);
     if (vista) await writeLocal(vista);

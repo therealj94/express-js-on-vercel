@@ -105,6 +105,7 @@ const TXT = {
     cerrarHoja: 'Cerrar',
     sinLeer: 'sin leer',
     kycPend: 'verificación pendiente',
+    fichaGid: 'Completa tu Genesis ID',
   },
   en: {
     manana: 'Good morning', tarde: 'Good afternoon', noche: 'Good evening',
@@ -131,6 +132,7 @@ const TXT = {
     cerrarHoja: 'Close',
     sinLeer: 'unread',
     kycPend: 'verification pending',
+    fichaGid: 'Complete your Genesis ID',
   },
 };
 
@@ -1146,6 +1148,11 @@ const Nodo = React.memo(function Nodo({
   // acercado a la cámara.
   const haloMano = sujeto.interpolate({ inputRange: [0, 1], outputRange: [1, 1.9] });
   const haloOp = Animated.multiply(haloBase, haloMano);
+  // El aviso de Genesis pendiente es un ANILLO ámbar que late con la MISMA
+  // respiración del nodo: otra interpolación, ningún bucle nuevo. Un aro que
+  // respira dice "aquí falta algo" sin gritar; el globo con «!» de antes se
+  // leía como un error, y esto no es un error: es una invitación pendiente.
+  const anilloOp = resp.interpolate({ inputRange: [0, 1], outputRange: [0.28, 0.85] });
 
   // Los datos que necesita el PanResponder cambian en cada render (el tamaño
   // del campo, el destino al que navegar), pero el PanResponder se crea UNA
@@ -1310,6 +1317,19 @@ const Nodo = React.memo(function Nodo({
           <Animated.View style={[st.aro, { width: s * 1.32, height: s * 1.32, borderRadius: s * 0.66, backgroundColor: m.halo, opacity: Animated.multiply(haloOp, 0.13) }]} />
           <Animated.View style={[st.aro, { width: s * 1.12, height: s * 1.12, borderRadius: s * 0.56, backgroundColor: m.halo, opacity: Animated.multiply(haloOp, 0.20) }]} />
 
+          {/* El anillo ámbar de la verificación pendiente. Más ancho que la
+              esfera para que nunca tape la marca, y sin offsets: igual que
+              los aros del halo, se centra por la alineación del padre. */}
+          {alerta && (
+            <Animated.View
+              pointerEvents="none"
+              style={[st.anillo, {
+                width: s * 1.18, height: s * 1.18, borderRadius: s * 0.59,
+                opacity: anilloOp,
+              }]}
+            />
+          )}
+
           <LinearGradient
             colors={m.grad}
             // La luz entra por arriba a la izquierda, como en el mundo real:
@@ -1353,17 +1373,12 @@ const Nodo = React.memo(function Nodo({
           </LinearGradient>
 
           {/* Los DATOS VIVOS del mundo, encima de la esfera. El globo dorado
-              son los chats sin leer; el punto ámbar, la verificación que
-              falta en Genesis. Un tablero que enseña números de verdad deja
-              de ser un menú bonito y pasa a ser un panel. */}
+              son los chats sin leer; la verificación que falta en Genesis va
+              en el anillo ámbar de arriba. Un tablero que enseña datos de
+              verdad deja de ser un menú bonito y pasa a ser un panel. */}
           {globo > 0 && (
             <View style={[st.globo, { top: -2, right: -2 }]} pointerEvents="none">
               <Text style={st.globoTxt}>{globo > 99 ? '99+' : globo}</Text>
-            </View>
-          )}
-          {!globo && alerta && (
-            <View style={[st.globo, st.globoAmbar, { top: -2, right: -2 }]} pointerEvents="none">
-              <Text style={[st.globoTxt, st.globoAmbarTxt]}>!</Text>
             </View>
           )}
 
@@ -1753,6 +1768,24 @@ export default function Nucleo({ nav }) {
           {saludo}, <Text style={st.nombre}>{nombre}</Text>
         </Text>
         <Text style={st.pista} numberOfLines={2}>{t.pista}</Text>
+        {/* La ficha de Genesis pendiente: UNA línea, tocable, que lleva al
+            mismo destino que el nodo (el KYC — irDestino ya sabe el camino).
+            Vive en la cabecera y no flotando sobre el tablero porque abajo
+            los mundos se mueven a gusto del dueño y cualquier sitio fijo
+            acabaría tapando uno. Desaparece sola cuando el GID existe:
+            recuerda, no regaña. */}
+        {kycPendiente && (
+          <Pressable
+            onPress={() => { hap(); irDestino('gid'); }}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={t.fichaGid}
+            style={({ pressed }) => [st.ficha, pressed && { opacity: 0.7 }]}>
+            <Icon name="finger-print" size={12} color="#FBBF24" />
+            <Text style={st.fichaTxt} numberOfLines={1}>{t.fichaGid}</Text>
+            <Icon name="chevron-forward" size={11} color="rgba(251,191,36,0.8)" />
+          </Pressable>
+        )}
         {/* El enlace sólo aparece cuando hay algo que reponer. Un botón de
             "deshacer" siempre visible es ruido en una pantalla que sólo tiene
             cinco cosas. */}
@@ -1892,8 +1925,8 @@ const st = StyleSheet.create({
     textShadowRadius: 3,
   },
 
-  // El globo de datos vivos: dorado para números (sin leer), ámbar para el
-  // aviso de verificación. Borde negro fino para despegarlo de la esfera.
+  // El globo de datos vivos (dorado, los sin-leer del chat). Borde negro
+  // fino para despegarlo de la esfera.
   globo: {
     position: 'absolute', minWidth: 21, height: 21, borderRadius: 11,
     paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center',
@@ -1901,8 +1934,20 @@ const st = StyleSheet.create({
     zIndex: 3,
   },
   globoTxt: { color: '#1E1503', fontSize: 10.5, fontWeight: '800' },
-  globoAmbar: { backgroundColor: '#FBBF24' },
-  globoAmbarTxt: { color: '#442E05' },
+
+  // El anillo ámbar del Genesis pendiente: solo el trazo, nada de relleno —
+  // la esfera y su marca se ven ENTERAS a través de él.
+  anillo: { position: 'absolute', borderWidth: 1.5, borderColor: '#FBBF24' },
+
+  // La ficha «Completa tu Genesis ID»: el mismo ámbar del anillo, en píldora
+  // pequeña. Del tamaño del enlace de reponer: aviso, no protagonista.
+  ficha: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8,
+    paddingHorizontal: 12, paddingVertical: 5.5, borderRadius: 999,
+    borderWidth: 1, borderColor: 'rgba(251,191,36,0.45)',
+    backgroundColor: 'rgba(251,191,36,0.10)',
+  },
+  fichaTxt: { color: '#FBBF24', fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
 
   // El precinto PRONTO, cabalgando el canto de la esfera.
   chip: {
