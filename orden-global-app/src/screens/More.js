@@ -99,7 +99,7 @@ function TxDetail({ data, etiqueta, onClose, onToast }) {
   if (!data) return null;
   const inbound = data.inbound;
   const otra = inbound ? data.from : data.to;
-  const copiar = async (v) => { if (!v) return; hap(); try { await Clipboard.setStringAsync(String(v)); onToast(t('recv.copied')); } catch (e) {} };
+  const copiar = async (v) => { if (!v) return; hap(); try { await Clipboard.setStringAsync(String(v)); onToast(t('recv.copied')); } catch { onToast(t('recv.copyErr'), 'error'); } };
   const filas = [
     [inbound ? t('act.from') : t('act.to'), etiqueta(otra), otra],
     [t('send.date'), fmtDate(data.timeStamp, localeDe(lang))],
