@@ -3,6 +3,10 @@
 // que firma cada petición. Sin E2E en v1 — no se promete en ningún texto.
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
+// El JWT de la wallet. Es la ÚNICA prueba de identidad que el relevo sabe
+// comprobar por su cuenta, y con ella devuelve la llave de un correo que ya
+// tiene dueño en vez de dar el portazo del 409.
+import { getToken } from '../api';
 
 const BASE = ((Constants.expoConfig?.extra || {}).mensajesApi || 'https://cerebro.ordenscan.com/mensajes').replace(/\/$/, '');
 let llave = null;
@@ -46,7 +50,25 @@ export async function alta(cuenta) {
   // el correo es nuevo, ignora la llave que le mandes y acuña la suya: si no
   // se lee lo que devuelve, la app se queda usando una llave que el servidor
   // jamás aceptó. Ese era el fallo.
-  const d = await pedir('/alta', g ? { ...yo, llave: g } : yo);
+  /* EL RESCATE DE LA LLAVE.
+     El relevo acuña UNA llave por correo y se la queda el primer dispositivo.
+     Reinstalar la app borra el almacén seguro y con él la llave: el correo
+     sigue reclamado, el relevo contesta 409, y la persona veía «este chat
+     quedó en tu instalación anterior» sin forma de salir de ahí — con sus
+     conversaciones intactas del otro lado del cristal.
+
+     La salida es probar QUIÉN SOY: la sesión de la wallet ya lo demuestra. El
+     relevo se la lleva al backend, le pregunta de quién es ese token, y si el
+     correo verificado coincide devuelve la llave que YA existe. Nunca acuña
+     una nueva: eso mataría al primer dispositivo, que es el fallo contrario.
+
+     Va siempre que haya sesión, también con llave local: no molesta, y cubre
+     el caso de una llave vieja que el relevo ya no reconoce. */
+  const cuerpo = { ...yo };
+  if (g) cuerpo.llave = g;
+  const sesion = cuenta.sesion || getToken();
+  if (sesion) cuerpo.sesion = sesion;
+  const d = await pedir('/alta', cuerpo);
   llave = (d && d.llave) || g;
   if (llave) await SecureStore.setItemAsync(donde, llave).catch(() => {});
 }

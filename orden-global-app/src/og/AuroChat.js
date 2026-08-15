@@ -86,7 +86,7 @@ const TXT = {
     // instalación no es la de antes— manda a la persona a revisar su wifi
     // durante horas. Se dice lo que pasa y dónde están sus mensajes.
     otraTit: 'Este chat quedó en tu instalación anterior',
-    otraTxt: 'Tus conversaciones están a salvo en el servidor, pero esta instalación de la app todavía no puede abrirlas: la sesión del chat se quedó en la anterior. Estamos habilitando la recuperación; mientras tanto, el resto de la app funciona con normalidad.',
+    otraTxt: 'Tus conversaciones están a salvo en el servidor. Intentamos recuperarlas con tu sesión de la wallet y no se pudo: entrá de nuevo a tu cuenta desde Ajustes y volvé a abrir el chat. Mientras tanto, el resto de la app funciona con normalidad.',
   },
   en: {
     marca: 'PULSE CHAT', sub: 'People and groups, with Genesis ID',
@@ -131,7 +131,7 @@ const TXT = {
     sinRedBusca: 'The search did not go through. Check your connection and try again.',
     reint: 'RETRY', bannerRed: 'Offline — retrying…',
     otraTit: 'This chat stayed in your previous install',
-    otraTxt: 'Your conversations are safe on the server, but this install of the app cannot open them yet: the chat session stayed in the previous one. We are enabling recovery; meanwhile the rest of the app works normally.',
+    otraTxt: 'Your conversations are safe on the server. We tried to recover them with your wallet session and could not: sign in to your account again from Settings and reopen the chat. Meanwhile the rest of the app works normally.',
   },
 };
 
@@ -386,13 +386,18 @@ export default function AuroChat({ nav, params }) {
       // tiene llave). Decirle «revisa tu conexión» a alguien con wifi perfecto
       // lo manda a pelear con su router durante horas. Se distingue.
       if (e && (e.code === 401 || e.code === 409)) {
-        // Un 401 casi siempre es una llave local que el relevo no reconoce
-        // (cambio de cuenta, o un alta que no se llegó a completar). Eso se
-        // arregla SOLO: se tira la llave y se pide una nueva. Se intenta UNA
-        // vez —con `reparando` de cerrojo— para no entrar en bucle si el
-        // correo de verdad tiene otro dueño; en ese caso el relevo responde
-        // 409 y ahí sí toca decírselo a la persona.
-        if (e.code === 401 && !reparando.current && account?.email) {
+        /* Los DOS se intentan reparar solos, y el 409 también desde que existe
+           el rescate por sesión: el alta manda el JWT de la wallet, el relevo
+           le pregunta al backend de quién es, y al dueño demostrado le
+           devuelve su llave EXISTENTE. Antes un 409 era un callejón sin
+           salida —«este chat quedó en tu instalación anterior», con las
+           conversaciones intactas del otro lado del cristal— y lo único que
+           hacía falta era probar quién eres, que la sesión ya lo hace.
+
+           Se intenta UNA vez, con `reparando` de cerrojo: si el correo tiene
+           otro dueño de verdad, el relevo vuelve a decir 409 y ahí sí toca
+           decírselo a la persona en vez de girar en bucle. */
+        if (!reparando.current && account?.email) {
           reparando.current = true;
           try {
             await M.rehacerAlta(account);
