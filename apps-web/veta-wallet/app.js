@@ -534,14 +534,14 @@ const VETA = (() => {
   const VISTAS = {
     billetera, tarjeta: vTarjeta, cambiar, actividad, chat, ajustes,
     enviar, recibir, comprar, deposito, token: vToken, identidad: vIdentidad,
-    remesas, contactos, sesiones, lector, seguridad, perfil, verificar,
+    remesas, contactos, sesiones, lector, seguridad, perfil, verificar, cobrar,
   };
   const PESTANAS = ['billetera', 'tarjeta', 'cambiar', 'actividad', 'chat', 'ajustes'];
   // A que pestaña se le enciende la luz cuando estas en una vista que no es una.
   const DENTRO_DE = {
     enviar: 'billetera', recibir: 'billetera', comprar: 'billetera',
     deposito: 'billetera', token: 'billetera', identidad: 'ajustes',
-    remesas: 'billetera', lector: 'billetera', verificar: 'ajustes',
+    remesas: 'billetera', lector: 'billetera', verificar: 'ajustes', cobrar: 'billetera',
     contactos: 'ajustes', sesiones: 'ajustes', seguridad: 'ajustes', perfil: 'ajustes',
   };
 
@@ -563,6 +563,7 @@ const VETA = (() => {
     l.innerHTML = VISTAS[cual]();
     l.querySelectorAll('[data-al-cargar]').forEach(el => window[el.dataset.alCargar]?.(el));
     if (cual === 'recibir' || cual === 'deposito') pintarQr();
+    if (cual === 'cobrar') pintarCobro();
     if (cual === 'enviar') $('#env-monto')?.focus();
     if (cual === 'cambiar') cambioMonto();
     if (cual === 'tarjeta' && !tarjeta) cargarTarjeta().then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
@@ -793,6 +794,10 @@ const VETA = (() => {
       <button class="atajo" onclick="VETA.vista('lector')">
         <span class="atajo-ic"><svg viewBox="0 0 24 24">${ICO.camara}</svg></span>
         <span><b>${t('qr.t')}</b><small>${t('qr.sub')}</small></span>
+      </button>
+      <button class="atajo" onclick="VETA.vista('cobrar')">
+        <span class="atajo-ic"><svg viewBox="0 0 24 24">${ICO.tienda}</svg></span>
+        <span><b>${t('cob.t')}</b><small>${t('cob.sub')}</small></span>
       </button>
     </div>
     ${identidad && !esVerificada() ? tarjetaIdentidad(true) : ''}
@@ -2485,6 +2490,133 @@ const VETA = (() => {
   });
 
 
+  // ── cobrar ────────────────────────────────────────────────────────────────
+
+  /* Recibir enseña una direccion. Cobrar enseña una CANTIDAD: quien paga no
+     tiene que teclear cuanto, y por tanto no puede equivocarse tecleandolo.
+     Es la diferencia entre dar tu numero de cuenta y pasar la factura.
+
+     El codigo no lleva un formato inventado: lleva un enlace de verdad a esta
+     misma web. Asi funciona en tres niveles, del mejor al peor:
+       · esta web y la app lo leen entero — direccion, cantidad y moneda;
+       · un lector viejo que solo busca una direccion encuentra la 0x dentro;
+       · la camara del telefono, sin ninguna app nuestra, abre el enlace y
+         lleva a Veta Wallet.
+     Un formato propio solo habria servido para el primer caso. */
+  let cobSim = 'ORIGEN', cobMonto = '';
+
+  const enlaceCobro = (dir, monto, sim) =>
+    `https://www.vetawallet.com/#pagar?a=${dir}&m=${encodeURIComponent(monto)}&s=${encodeURIComponent(sim)}`;
+
+  /* Lo contrario: de lo que se leyo, a lo que hay que rellenar. Acepta el
+     enlace entero y tambien una direccion suelta, que es lo que llevan los
+     codigos de «recibir» de toda la vida. */
+  function leerCobro(crudo) {
+    const txt = String(crudo || '').trim();
+    const dir = txt.match(/0x[a-fA-F0-9]{40}/)?.[0];
+    if (!dir) return null;
+    let monto = '', sim = '';
+    try {
+      const q = txt.includes('?') ? new URLSearchParams(txt.slice(txt.indexOf('?') + 1)) : null;
+      if (q) { monto = q.get('m') || ''; sim = (q.get('s') || '').toUpperCase(); }
+    } catch {}
+    return { dir, monto, sim };
+  }
+
+  // Se abre enviar con todo puesto menos la contraseña: lo que hay que
+  // comprobar antes de firmar se comprueba en la pantalla de siempre.
+  function irACobro({ dir, monto, sim }) {
+    if (sim && (cartera || []).some(m => m.s === sim)) envSim = sim;
+    pendiente = null;
+    vista('enviar');
+    const d = $('#env-dir');
+    if (d) d.value = dir;
+    if (monto && $('#env-monto')) { $('#env-monto').value = monto; envMonto(); }
+    $('#env-clave')?.focus();
+  }
+
+  function cobrar() {
+    const dir = sesion?.direccion;
+    if (!dir) return `
+      <div class="cab"><div><h2>${t('cob.t')}</h2></div></div>
+      <div class="bloque vidrio"><div class="vacio">
+        <b>${t('rec.sinT')}</b>${t('rec.sinP')}
+        <div style="margin-top:16px"><button class="btn btn-linea btn-sm" onclick="VETA.reintentar()">${t('ini.act')}</button></div>
+      </div></div>`;
+
+    const lista = (cartera || []).length ? cartera : [{ s: 'ORIGEN', n: 'ORIGEN', nativo: true }];
+    const x = lista.find(m => m.s === cobSim) || lista[0];
+    const n = Number(String(cobMonto).replace(',', '.'));
+    const vale = n > 0;
+
+    return `
+    <div class="cab"><div><h2>${t('cob.t')}</h2><div class="sub">${t('cob.sub')}</div></div></div>
+    <div class="bloque vidrio">
+      <div class="campo">
+        <label for="cob-monto">${t('cob.cuanto')}</label>
+        <div class="env-monto">
+          <input id="cob-monto" type="text" inputmode="decimal" placeholder="0,00"
+                 value="${esc(cobMonto)}" oninput="VETA.cobEscribir(this.value)">
+          <select class="cob-sim" onchange="VETA.cobElegir(this.value)">
+            ${lista.map(m => `<option value="${esc(m.s)}" ${m.s === x.s ? 'selected' : ''}>${esc(m.s)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="env-usd">${x.precio != null && vale ? '≈ ' + usd(n * x.precio) : ''}</div>
+      </div>
+    </div>
+    <div class="bloque vidrio" style="text-align:center">
+      ${vale ? `
+        <div class="qr-caja" id="cob-qr"></div>
+        <div class="cob-cifra">${oro(n)} <em>${esc(x.s)}</em></div>
+        <div class="dir mono">${esc(cortaDir(dir))}</div>
+        <div style="margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-oro btn-sm" onclick="VETA.cobCopiar()">${t('cob.copiar')}</button>
+          <button class="btn btn-linea btn-sm" onclick="VETA.cobCompartir()">${t('rec.compartir')}</button>
+        </div>`
+      : `<div class="vacio"><b>${t('cob.pon')}</b>${t('cob.ponP')}</div>`}
+      <p class="pie" style="margin-top:18px">${t('cob.nota')}</p>
+    </div>`;
+  }
+
+  function cobElegir(v) { cobSim = v; vista('cobrar'); }
+
+  /* La cantidad NO repinta la vista entera: repintarla en cada tecla mata el
+     foco del campo. Solo se redibuja el codigo y las dos cifras de debajo. */
+  function cobEscribir(v) {
+    cobMonto = v;
+    const n = Number(String(v).replace(',', '.'));
+    const antes = !!$('#cob-qr');
+    if ((n > 0) !== antes) return vista('cobrar');   // aparece o desaparece
+    pintarCobro();
+  }
+
+  function pintarCobro() {
+    const c = $('#cob-qr');
+    if (!c || !sesion?.direccion) return;
+    const n = Number(String(cobMonto).replace(',', '.'));
+    if (!(n > 0)) return;
+    const x = (cartera || []).find(m => m.s === cobSim);
+    try {
+      c.innerHTML = QR.svg(enlaceCobro(sesion.direccion, n, cobSim),
+                           { claro: '#F3ECD9', oscuro: '#021B1C', margen: 2 });
+    } catch { c.innerHTML = ''; }
+    const cifra = $('.cob-cifra');
+    if (cifra) cifra.innerHTML = `${oro(n)} <em>${esc(cobSim)}</em>`;
+    const eu = $('.env-usd');
+    if (eu) eu.textContent = x?.precio != null ? '≈ ' + usd(n * x.precio) : '';
+  }
+
+  const textoCobro = () => {
+    const n = Number(String(cobMonto).replace(',', '.'));
+    return enlaceCobro(sesion?.direccion || '', n, cobSim);
+  };
+  const cobCopiar = () => copiarTexto(textoCobro(), t('cob.copiado'));
+  function cobCompartir() {
+    const url = textoCobro();
+    if (navigator.share) navigator.share({ title: 'Veta Wallet', text: t('cob.pide'), url }).catch(() => {});
+    else cobCopiar();
+  }
+
   // ── AURO CHAT ─────────────────────────────────────────────────────────────
 
   /* La mensajeria del ecosistema, la misma que el telefono y contra el mismo
@@ -3174,11 +3306,12 @@ const VETA = (() => {
       if (!camara || vistaActual !== 'lector') return;
       try {
         const [c] = await det.detect(v);
-        const dir = (c?.rawValue || '').trim().match(/0x[a-fA-F0-9]{40}/)?.[0];
-        if (dir) {
+        const crudo = (c?.rawValue || '').trim();
+        const cobro = leerCobro(crudo);
+        if (cobro) {
           cerrarCamara();
           avisar(t('qr.leido'));
-          enviarA(dir);
+          irACobro(cobro);
           return;
         }
       } catch {}
@@ -3285,8 +3418,8 @@ const VETA = (() => {
       </div>`;
   }
 
-  async function copiarTexto(v) {
-    try { await navigator.clipboard.writeText(v); avisar(t('seg.copiado')); }
+  async function copiarTexto(v, aviso) {
+    try { await navigator.clipboard.writeText(v); avisar(aviso || t('seg.copiado')); }
     catch { avisar(t('rec.noCopia')); }
   }
 
@@ -3527,6 +3660,12 @@ const VETA = (() => {
     const pideVerificar = location.hash === '#verificar';
     if (pideVerificar) vistaActual = 'verificar';
 
+    /* Un enlace de cobro (#pagar?a=…&m=…&s=…) es alguien pasando una factura.
+       Se guarda para rellenar el envio en cuanto haya sesion; sin sesion, se
+       manda a la puerta y el cobro espera ahi hasta que entre. */
+    const cobroEntrante = location.hash.startsWith('#pagar') ? leerCobro(location.hash) : null;
+    if (cobroEntrante) vistaActual = 'enviar';
+
     sesion = recuperar();
     if (sesion?.token) {
       // Volver con la sesión guardada es entrar igual: si no se contara, quien
@@ -3538,10 +3677,13 @@ const VETA = (() => {
       tele('accion', 'sesion.recuperada');
       ir('app');
       cargarTodo();
+      // Despues de cargarTodo, para que la moneda del cobro exista en la
+      // cartera cuando se intente elegir.
+      if (cobroEntrante) cargarCartera().then(() => irACobro(cobroEntrante));
     }
     /* Sin sesion no hay identidad que verificar todavia: al que venia a eso se
        le abre el acceso, no la portada, para que no tenga que buscar la puerta. */
-    else ir(pideVerificar ? 'acceso' : 'bienvenida', 'entrar');
+    else ir(pideVerificar || cobroEntrante ? 'acceso' : 'bienvenida', 'entrar');
   }
   document.addEventListener('DOMContentLoaded', arrancar);
 
@@ -3551,6 +3693,8 @@ const VETA = (() => {
            enviarA, abrirCamara, cerrarCamara, pedirSecreto, copiarTexto, guardarNombre,
            // Enviar cualquier token, no solo ORIGEN.
            envElegir, envContacto, envMax, envMonto,
+           // Cobrar: el codigo que ya lleva la cantidad puesta.
+           cobElegir, cobEscribir, cobCopiar, cobCompartir,
            // La bienvenida del ecosistema: sale sola la primera vez y se puede
            // volver a abrir desde Ajustes.
            bienvenida, bienSig, bienCerrar,
@@ -3567,6 +3711,7 @@ const VETA = (() => {
            _sembrar: l => { cartera = l; errCartera = null; },
            _tarjeta: c => { tarjeta = c; },
            _sesion: x => { sesion = x; },
+           _leerCobro: c => { const x = leerCobro(c); if (x) irACobro(x); return x; },
            _identidad: x => { identidad = x; },
            _estado: () => ({ sesion, cartera, identidad, movimientos, tarjeta, vistaActual, modo, ocultos }) };
 })();

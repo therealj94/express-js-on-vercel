@@ -1,23 +1,32 @@
 # La web al nivel de la app · plan
 
-## La medida del trabajo, contada
+## Dónde va
 
 | | |
 |---|---|
 | Pantallas en la app | **51** |
-| Vistas en la web hoy | **18** |
-| Faltan | **33** |
+| Vistas en la web hoy | **21** |
+| Faltan | **30** |
 
-La web tiene la billetera y sus alrededores. Le falta **todo lo demás**:
+**Ya está hecho** (15-ago, después de la migración a la 5550):
+
+| | |
+|---|---|
+| **La bienvenida** | Las seis tarjetas del teléfono, palabra por palabra. Sale una vez y queda en Ajustes. |
+| **Enviar cualquier token** | Ya no solo ORIGEN. Fichas de moneda, MÁX que respeta la comisión, equivalente en dólares y aviso de que el gas se paga en ORIGEN. |
+| **AURO CHAT** | Conversaciones y grupos, búsqueda por nombre/correo/Genesis ID, adjuntos hasta 8 MB, tarjeta de comprobante con enlace a ordenscan, y el botón de desbloquear. Puerta de Genesis ID aprobado, igual que en la app. |
+| **Cobrar** | Un código con la cantidad ya puesta. Es un enlace de verdad: lo leen esta web y la app, y la cámara del teléfono lo abre sin ninguna app nuestra. |
+
+## Lo que falta
 
 | Bloque | Pantallas | Qué es |
 |---|---|---|
-| **AURO CHAT** | chat · auro-grupo · auro-nuevo · auro-ajustes | mensajería, grupos, pagos en el hilo, adjuntos |
-| **MyTokenPay** | pay-inicio · panel · cobro · pagar · explorar · negocio · bonos · actividad · notificaciones · negocio-panel · negocio-detalle | el negocio entero: cobrar, pagar, directorio |
+| **MyTokenPay** | pay-inicio · panel · explorar · negocio · bonos · actividad · notificaciones · negocio-panel · negocio-detalle | el directorio de comercios y el panel del negocio |
 | **El Núcleo** | ecosistema · lista | el tablero de neuronas que abre las apps |
 | **NEXUS** | (flotante) | el asistente por voz |
-| **Wallet que falta** | swap · token · seedview · privatekey · passport · watchOnly · reporte · cobrar · notifs | |
-| **Entrada** | onboarding · help · about · blocked | |
+| **Wallet que falta** | passport · watchOnly · reporte · notifs | |
+| **Chat que falta** | auro-grupo · auro-ajustes | administrar un grupo, invitar, salir |
+| **Entrada** | help · about · blocked | |
 
 ## Lo que decide cómo se hace
 
@@ -33,37 +42,37 @@ La web tiene la billetera y sus alrededores. Le falta **todo lo demás**:
   no en iPhone salvo que se instale como aplicación. Conviene no prometerlo.
 - **Sonidos y hápticos**: el navegador los da a medias. Se pueden imitar.
 
-Todo lo demás —chat, grupos, cobros, QR, directorio, el Núcleo— **sí se puede
-hacer igual de bien en web**.
+## Una decisión pendiente, del chat
 
-## El orden que propongo
+El relevo de mensajes da **una llave por correo, y solo una**. El primer
+dispositivo que entra se la queda; el segundo recibe un 409 y no hay forma de
+recuperarla. En el teléfono se notaba poco —una persona, un teléfono—, pero en
+la web es cuestión de tiempo: quien ya usa el chat en la app y abra la web
+verá «tu chat está en otro lado».
 
-Por lo que la gente usa, no por lo que es fácil:
+Se dice con todas las letras en pantalla y no se le ofrece un botón que no
+puede funcionar, pero **eso no lo arregla**. Arreglarlo es una decisión de
+diseño del relevo, no un parche: o la llave se deriva de la sesión de la wallet
+(que ya prueba quién es), o se admiten varias llaves por correo. Lo primero es
+más limpio y quita el problema de raíz.
 
-1. **Enviar cualquier token** (hoy la web solo manda ORIGEN). Es lo que más
-   duele y es media jornada.
-2. **AURO CHAT** completo. Es lo que hace comunidad.
-3. **MyTokenPay**: cobrar con QR y pagar. Es lo que da dinero a los comercios.
-4. **El Núcleo** como portada, con las apps.
-5. **El resto de la wallet** (swap, reporte, pasaporte, observadas).
-6. **NEXUS**, al final: es lo más frágil en navegador.
+## El orden de lo que queda
+
+1. **El Núcleo** como portada: es lo que da sentido a que todo esté junto.
+2. **MyTokenPay**: cobrar ya está; falta el directorio y el panel del negocio.
+3. **Administrar grupos** en el chat (invitar, editar, salir).
+4. **El resto de la wallet** (pasaporte, observadas, reporte).
+5. **NEXUS**, al final: es lo más frágil en navegador.
 
 ## Cómo debe verse
 
-La web de hoy es **un solo fichero sin compilar** (index.html + app.js + i18n +
-cadena + qr), y eso hay que conservarlo: se despliega en segundos, no tiene
-dependencias que se rompan y cabe en el CDN ajeno que sirve `www`.
+La web es **un solo fichero sin compilar** (index.html + app.js + i18n +
+cadena + chat + qr), y eso hay que conservarlo: se despliega en segundos, no
+tiene dependencias que se rompan y cabe en el CDN ajeno que sirve `www`.
 
 - **Móvil primero**: la mayoría entra desde el teléfono. Barra inferior como en
   la app, pantallas a una columna, botones grandes.
 - **Escritorio**: no estirar el móvil. Dos columnas —lista a la izquierda,
-  detalle a la derecha— en chat, actividad y directorio.
-- **El mismo lenguaje visual que la app**: verde profundo, oro, Cinzel para los
-  títulos. Que se note que es la misma casa.
-
-## Antes de escribir una línea
-
-Falta una decisión de José: **¿la web debe poder hacer TODO, o es el sitio donde
-se mira y se cobra, y lo delicado (semilla, llave privada, borrar cuenta) se
-queda solo en la app?** Lo segundo es más seguro y quita tres pantallas de
-riesgo. Yo recomiendo eso.
+  detalle a la derecha— como ya hace el chat.
+- **El mismo lenguaje visual que la app**: verde profundo, oro, la didona para
+  los títulos. Que se note que es la misma casa.
