@@ -56,6 +56,7 @@ import MiNegocio from './src/og/pay/MiNegocio';
 import BonosPay from './src/og/pay/BonosPay';
 import ActividadPay from './src/og/pay/ActividadPay';
 import { abrir as abrirOG } from './src/og/rutas';
+import { activarInmersivo, vigilarInmersivo } from './src/og/Inmersivo';
 import { cargarNombre } from './src/og/asistente';
 import Remesas from './src/screens/Remesas';
 import DeleteAccount from './src/screens/DeleteAccount';
@@ -492,6 +493,18 @@ function Root() {
 
   useEffect(() => { cargarNombre(); }, []);
 
+  // Pantalla completa: se esconde la barra de navegación de Android y se deja
+  // que vuelva al deslizar. Va aquí, al montar la raíz, y no en cada pantalla,
+  // porque es un ajuste de la VENTANA y no de ninguna vista en concreto.
+  // `vigilarInmersivo` la vuelve a esconder al regresar del segundo plano:
+  // Android la saca por su cuenta cada vez que se mira una notificación.
+  // Si el módulo nativo no está en el binario instalado, las dos funciones no
+  // hacen nada y la app arranca igual (ver src/og/Inmersivo.js).
+  useEffect(() => {
+    activarInmersivo();
+    return vigilarInmersivo();
+  }, []);
+
   const Screen = SCREENS[cur.r] || Home;
   const TABS = SECCION_TABS[seccion] || SECCION_TABS.og;
   const showTabs = TAB_ROUTES.includes(cur.r);
@@ -532,8 +545,15 @@ function Root() {
               pantallas que no la llevan —Enviar, Recibir, la ficha de un
               token— quedaban sin nada, y en Android su ultimo boton se metia
               debajo de los tres botones del sistema: se veia a medias y no se
-              podia pulsar. Cuando no hay pestañas, el margen lo pone esto. */}
-          <View style={{ flex: 1, paddingBottom: showTabs ? 0 : Math.max(insets.bottom, 0) }}>
+              podia pulsar. Cuando no hay pestañas, el margen lo pone esto.
+
+              El SUELO de 12 es nuevo y es por el modo inmersivo: con la barra
+              de navegacion escondida `insets.bottom` se va a 0, y sin este
+              minimo el ultimo boton quedaba pegado al filo del cristal —en
+              las pantallas curvas se deforma y cuesta acertarle—. Sigue
+              mandando `insets.bottom` cuando la barra esta a la vista, asi
+              que nada se tapa en los telefonos donde el modulo no exista. */}
+          <View style={{ flex: 1, paddingBottom: showTabs ? 0 : Math.max(insets.bottom, 12) }}>
             {content}
           </View>
           {/* La barra de navegacion de Android —los tres botones, o la raya de

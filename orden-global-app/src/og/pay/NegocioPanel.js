@@ -228,6 +228,10 @@ function FilaKV({ k, v }) {
 }
 
 export default function NegocioPanel({ nav }) {
+  // El monto y el número de cuenta viven al final del formulario de retiro:
+  // son justo los dos que el teclado tapaba (ver src/og/Teclado.js).
+  const campoMonto = useCampoAuto();
+  const campoCuenta = useCampoAuto();
   const { lang } = useLang();
   const t = TXT[lang] || TXT.es;
   const { account, login } = useAccount();

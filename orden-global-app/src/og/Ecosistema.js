@@ -3,6 +3,7 @@
 // mismo camino que usa el asistente y el escáner de QR.
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, Pressable, ScrollView, TextInput, StyleSheet } from 'react-native';
+import { PantallaConTeclado, useCampoAuto } from './Teclado';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { C, G } from '../theme';
@@ -34,6 +35,9 @@ const TXT = {
 };
 
 export default function Ecosistema({ nav }) {
+  // El campo del nombre del asistente vive al final de la lista: sin esto el
+  // teclado lo tapaba justo al abrirlo (ver src/og/Teclado.js).
+  const campoNombre = useCampoAuto();
   const { lang } = useLang();
   const t = TXT[lang] || TXT.es;
   const { account } = useAccount();
@@ -58,7 +62,7 @@ export default function Ecosistema({ nav }) {
   );
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={st.dentro}>
+    <PantallaConTeclado contentContainerStyle={st.dentro}>
       <View style={st.cab}>
         <Image source={require('../../assets/og-logo.png')} style={st.logo} resizeMode="contain" />
         <Text style={st.marca}>ORDEN GLOBAL</Text>
@@ -89,6 +93,7 @@ export default function Ecosistema({ nav }) {
       {editando && (
         <View style={st.renFila}>
           <TextInput value={borrador} onChangeText={setBorrador} placeholder={nombre}
+            ref={campoNombre.ref} onFocus={campoNombre.onFocus}
             placeholderTextColor={C.txt3} style={st.renInput} maxLength={16} autoFocus
             onSubmitEditing={async () => { setNombre(await ponerNombre(borrador)); setEditando(false); }} />
           <Pressable onPress={async () => { setNombre(await ponerNombre(borrador)); setEditando(false); }}>
@@ -98,7 +103,7 @@ export default function Ecosistema({ nav }) {
           </Pressable>
         </View>
       )}
-    </ScrollView>
+    </PantallaConTeclado>
   );
 }
 

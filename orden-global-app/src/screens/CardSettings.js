@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal, ActivityIndicator, Share, Alert, StyleSheet } from 'react-native';
+import { PantallaConTeclado, useCampoAuto } from '../og/Teclado';
 import { Icon } from '../icons';
 import { C } from '../theme';
 import { Header, Button3D, ListRow, SectionHead, useToast, hap } from '../ui';
@@ -365,6 +366,9 @@ function EditarLimites({ visible, card, t, onCancel, onGuardado, onError }) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
+      {/* La hoja vive pegada abajo, justo donde sale el teclado. Sin esto
+          el campo quedaba tapado y se escribia a ciegas (src/og/Teclado.js). */}
+      <PantallaConTeclado desplaza={false}>
       <Pressable style={st.hojaBg} onPress={onCancel}>
         <Pressable style={st.hoja} onPress={() => {}}>
           <View style={st.agarre} />
@@ -380,6 +384,7 @@ function EditarLimites({ visible, card, t, onCancel, onGuardado, onError }) {
           <Pressable onPress={onCancel} style={st.cancelar}><Text style={st.cancelarTxt}>{t('card.cancel')}</Text></Pressable>
         </Pressable>
       </Pressable>
+      </PantallaConTeclado>
     </Modal>
   );
 }
@@ -410,6 +415,9 @@ function EditarTelefono({ visible, card, t, onCancel, onGuardado, onError }) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
+      {/* La hoja vive pegada abajo, justo donde sale el teclado. Sin esto
+          el campo quedaba tapado y se escribia a ciegas (src/og/Teclado.js). */}
+      <PantallaConTeclado desplaza={false}>
       <Pressable style={st.hojaBg} onPress={onCancel}>
         <Pressable style={st.hoja} onPress={() => {}}>
           <View style={st.agarre} />
@@ -430,11 +438,13 @@ function EditarTelefono({ visible, card, t, onCancel, onGuardado, onError }) {
           <Pressable onPress={onCancel} style={st.cancelar}><Text style={st.cancelarTxt}>{t('card.cancel')}</Text></Pressable>
         </Pressable>
       </Pressable>
+      </PantallaConTeclado>
     </Modal>
   );
 }
 
 function Campo({ label, value, onChange }) {
+  const campo = useCampoAuto();
   return (
     <>
       <Text style={st.campoK}>{label}</Text>
@@ -446,6 +456,8 @@ function Campo({ label, value, onChange }) {
         placeholderTextColor="#6f938f"
         style={st.campo}
         accessibilityLabel={label}
+        ref={campo.ref}
+        onFocus={campo.onFocus}
       />
     </>
   );

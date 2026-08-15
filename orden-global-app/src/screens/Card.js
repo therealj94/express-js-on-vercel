@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, Animated, Easing, Modal, TextInput, ActivityIndicator, Image, StyleSheet } from 'react-native';
+import { PantallaConTeclado, useCampoAuto } from '../og/Teclado';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '../icons';
 import Svg, { Path, Circle } from 'react-native-svg';
@@ -910,6 +911,9 @@ function ElegirPin({ visible, t, onCancel, onListo }) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
+      {/* La hoja vive pegada abajo, justo donde sale el teclado. Sin esto
+          el campo quedaba tapado y se escribia a ciegas (src/og/Teclado.js). */}
+      <PantallaConTeclado desplaza={false}>
       <Pressable style={styles.pinBg} onPress={onCancel}>
         <Pressable style={styles.pinSheet} onPress={() => {}}>
           <View style={styles.pinGrab} />
@@ -953,6 +957,7 @@ function ElegirPin({ visible, t, onCancel, onListo }) {
           </Pressable>
         </Pressable>
       </Pressable>
+      </PantallaConTeclado>
     </Modal>
   );
 }

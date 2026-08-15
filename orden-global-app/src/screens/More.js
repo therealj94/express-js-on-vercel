@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Image, Modal, StyleSheet } from 'react-native';
+import { PantallaConTeclado, CuerpoDesplazable, useCampoAuto } from '../og/Teclado';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
@@ -590,9 +591,11 @@ export function Profile({ nav }) {
   ].filter(Boolean);
 
   return (
-    <View style={{ flex: 1, paddingTop: 6 }}>
+    // Cabecera fija y cuerpo desplazable: al enfocar un campo la pantalla
+    // lo sube por encima del teclado (ver src/og/Teclado.js).
+    <PantallaConTeclado desplaza={false} style={{ flex: 1, paddingTop: 6 }}>
       <Header title={t('prof.title')} onBack={() => nav.back()} />
-      <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+      <CuerpoDesplazable contentContainerStyle={{ padding: 22, paddingBottom: 40 }}>
         <View style={{ alignItems: 'center', marginBottom: 18 }}>
           {p?.photoUrl ? (
             <Image source={{ uri: p.photoUrl }} style={styles.profAvBig} />
@@ -637,16 +640,25 @@ export function Profile({ nav }) {
         <Field label={t('prof.addr')} value={addr2} onChangeText={setAddr2} placeholder="—" />
         <View style={{ height: 8 }} />
         <Button3D title={t('prof.save')} icon="checkmark" onPress={save} />
-      </ScrollView>
-    </View>
+      </CuerpoDesplazable>
+    </PantallaConTeclado>
   );
 }
 
-function Field({ label, editable = true, ...props }) {
+// El Field local del Perfil. Igual que el compartido de ui.js: al enfocarse
+// avisa a su <PantallaConTeclado> y ésta lo sube por encima del teclado.
+function Field({ label, editable = true, onFocus, ...props }) {
+  const campo = useCampoAuto();
   return (
     <View style={{ marginBottom: 14 }}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput placeholderTextColor="#6f938f" editable={editable} style={[styles.input, !editable && { opacity: 0.6 }]} {...props} />
+      <TextInput
+        placeholderTextColor="#6f938f" editable={editable}
+        style={[styles.input, !editable && { opacity: 0.6 }]}
+        {...props}
+        ref={campo.ref}
+        onFocus={(e) => { campo.onFocus(); if (onFocus) onFocus(e); }}
+      />
     </View>
   );
 }

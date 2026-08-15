@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, StyleSheet, TextInput, Platform } from 'react-native';
+import { PantallaConTeclado, CuerpoDesplazable, useCampoAuto } from '../og/Teclado';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -556,9 +557,11 @@ export function Kyc({ nav }) {
   }
 
   return (
-    <View style={{ flex: 1, paddingTop: 6 }}>
+    // Cabecera fija y cuerpo desplazable: al enfocar un campo la pantalla
+    // lo sube por encima del teclado (ver src/og/Teclado.js).
+    <PantallaConTeclado desplaza={false} style={{ flex: 1, paddingTop: 6 }}>
       <Header title={t('gen.title')} sub={t('gen.sub')} onBack={() => nav.go(account ? 'settings' : 'auth')} />
-      <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+      <CuerpoDesplazable contentContainerStyle={{ padding: 22, paddingBottom: 40 }}>
 
         {paso !== 'cargando' && paso !== 'listo' && paso !== 'fallo' && (
           <Pasos actual={paso} />
@@ -1095,8 +1098,8 @@ export function Kyc({ nav }) {
               style={{ alignSelf: 'stretch', marginTop: 20 }} />
           </View>
         )}
-      </ScrollView>
-    </View>
+      </CuerpoDesplazable>
+    </PantallaConTeclado>
   );
 }
 
