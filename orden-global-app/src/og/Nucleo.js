@@ -52,8 +52,22 @@ try {
 
 // La versión va en la llave a propósito: si mañana cambian los mundos o el
 // formato, la colocación vieja se ignora sola en vez de colocar nodos donde
-// ya no hay nada.
-const LLAVE_COLOCACION = 'og.nucleo.colocacion.v1';
+// ya no hay nada. v2: entraron AUBANK, Ordenexchange y el nodo «+», y una
+// colocación de la v1 podía dejar un mundo viejo encima de uno nuevo.
+const LLAVE_COLOCACION = 'og.nucleo.colocacion.v2';
+// El contador de usos por mundo. De aquí sale que EL MÁS USADO SE VEA MÁS
+// GRANDE: no es un ajuste que nadie configura, el tablero aprende solo.
+const LLAVE_USOS = 'og.usos';
+
+// El cliente del chat es JavaScript puro, pero por dentro toca nativos
+// (expo-secure-store): mismo trato defensivo que el resto. Sin él, el globo
+// de no-leídos simplemente no sale — el tablero nunca depende de un contador.
+let MENS = null;
+try {
+  MENS = require('./mensajes');
+} catch (e) {
+  MENS = null;
+}
 
 // ── LOS LOGOS DE MARCA ──────────────────────────────────────────────────
 // `require` con ruta literal y en el cuerpo del módulo porque Metro resuelve
@@ -74,11 +88,23 @@ const TXT = {
     irReponer: 'Devolver los mundos a su posición original',
     chat: 'Chat', wallet: 'Veta Wallet', pay: 'MyTokenPay',
     gid: 'Genesis ID', ajustes: 'Ajustes',
+    aubank: 'AUBANK', oxch: 'Ordenexchange', mas: 'más apps',
     irChat: 'Abrir el chat de Orden Global',
     irWallet: 'Abrir Veta Wallet, tu billetera',
     irPay: 'Abrir MyTokenPay, tu negocio',
     irGid: 'Abrir tu Genesis ID',
     irAjustes: 'Abrir los ajustes',
+    irAubank: 'AUBANK, disponible pronto',
+    irOxch: 'Ordenexchange, disponible pronto',
+    irMas: 'Conocer las próximas apps del ecosistema',
+    pronto: 'PRONTO',
+    prontoCuerpo: '{app} ya es parte de la red. Muy pronto este mundo se encenderá aquí, en tu Núcleo, junto a todo lo demás.',
+    masTitulo: 'El ecosistema crecerá',
+    masCuerpo: 'Aquí irán llegando nuevas apps de Orden Global. Cada una aparecerá como un mundo nuevo, conectado a esta misma red.',
+    entendido: 'Entendido',
+    cerrarHoja: 'Cerrar',
+    sinLeer: 'sin leer',
+    kycPend: 'verificación pendiente',
   },
   en: {
     manana: 'Good morning', tarde: 'Good afternoon', noche: 'Good evening',
@@ -88,11 +114,23 @@ const TXT = {
     irReponer: 'Return the worlds to their original places',
     chat: 'Chat', wallet: 'Veta Wallet', pay: 'MyTokenPay',
     gid: 'Genesis ID', ajustes: 'Settings',
+    aubank: 'AUBANK', oxch: 'Ordenexchange', mas: 'more apps',
     irChat: 'Open the Orden Global chat',
     irWallet: 'Open Veta Wallet, your wallet',
     irPay: 'Open MyTokenPay, your business',
     irGid: 'Open your Genesis ID',
     irAjustes: 'Open settings',
+    irAubank: 'AUBANK, coming soon',
+    irOxch: 'Ordenexchange, coming soon',
+    irMas: 'See the upcoming ecosystem apps',
+    pronto: 'SOON',
+    prontoCuerpo: '{app} is already part of the network. Very soon this world will light up here in your Nucleus, next to everything else.',
+    masTitulo: 'The ecosystem will grow',
+    masCuerpo: 'New Orden Global apps will keep arriving here. Each one will appear as a new world, wired into this same network.',
+    entendido: 'Got it',
+    cerrarHoja: 'Close',
+    sinLeer: 'unread',
+    kycPend: 'verification pending',
   },
 };
 
@@ -167,7 +205,41 @@ const MUNDOS = [
     lente: '#0C1116', zoom: 0,
     ritmo: 3800, flota: 4.5, retraso: 2100,
   },
+  // ── LOS QUE VIENEN ────────────────────────────────────────────────────
+  // AUBANK y Ordenexchange ya son parte de la red — se ven, laten, cuelgan
+  // del núcleo — pero todavía no se entra: `pronto` hace tres cosas a la
+  // vez: el chip PRONTO sobre la esfera, el latido más tenue (un mundo
+  // dormido no puede brillar como uno despierto) y que el toque abra la
+  // hoja de anuncio en vez de navegar. Que se VEAN antes de existir es el
+  // mensaje: el ecosistema no es una lista cerrada, es algo que crece.
+  {
+    // AUBANK late en un oro viejo, apagado: es banca, familia del oro de la
+    // billetera, pero sin competirle el brillo mientras duerme.
+    id: 'aubank', icono: 'card', x: 0.50, y: 0.12, tam: 0.60, pronto: true,
+    grad: ['#E8E0C8', '#A5936A', '#463B24'], halo: '#CBBB8C', tinta: '#241D0E',
+    lente: '#141007', zoom: 0,
+    ritmo: 4300, flota: 3.5, retraso: 1200,
+  },
+  {
+    // Ordenexchange en violeta: el color que ninguno de los vivos usa, para
+    // que se lea como territorio nuevo.
+    id: 'oxch', icono: 'swap-horizontal', x: 0.50, y: 0.86, tam: 0.60, pronto: true,
+    grad: ['#DCD4F2', '#8D7EC9', '#372B63'], halo: '#A99CDE', tinta: '#1D1540',
+    lente: '#0D0A1D', zoom: 0,
+    ritmo: 4600, flota: 3.5, retraso: 2700,
+  },
+  {
+    // El «+» es la puerta al futuro: pequeño a propósito (es una promesa, no
+    // una app) y con `pronto` para que herede el latido tenue y la hoja.
+    id: 'mas', icono: 'add', x: 0.91, y: 0.49, tam: 0.38, pronto: true,
+    grad: ['#2E4148', '#1B2A31', '#0C1418'], halo: 'rgba(234,215,156,0.8)', tinta: C.goldLt,
+    lente: '#071013', zoom: 0,
+    ritmo: 5000, flota: 3, retraso: 3300,
+  },
 ];
+
+// Los mundos por los que de verdad se navega: los únicos que acumulan usos.
+const NAVEGABLES = ['chat', 'wallet', 'pay', 'gid', 'ajustes'];
 
 // Se reutiliza el MISMO objeto para "este nodo no se ha movido": así la
 // comparación de props de los hilos memoizados no ve un objeto nuevo por
@@ -298,6 +370,37 @@ const HTML_NEURONAS = `<!doctype html>
    return c;
  }
  var SP_VERDE=sello('120,232,210'), SP_ORO=sello('240,203,128');
+
+ /* ═══ 3b. LAS ESTRELLAS ═══════════════════════════════════════════════
+    Cuarenta puntos fijos y tenues DETRAS de la esfera. Sin ellas el negro
+    es una pared; con ellas es espacio, y la esfera flota en profundidad.
+    En fracciones de pantalla: sobreviven a cualquier resize sin recalculo.
+    Cuarenta fillRect por cuadro no se notan ni en gama baja. */
+ var STARS=[];
+ for(var s2=0;s2<40;s2++){
+   STARS.push({x:az(),y:az(),r:az()<0.22?1.6:1,fa:az()*6.283,ve:0.00022+az()*0.00042});
+ }
+
+ /* El PULSO DE APERTURA: la app nativa avisa por aqui de que un mundo se
+    ha tocado, y la red responde — un resplandor que se abre en ese punto y
+    las dos neuronas mas cercanas disparando su cascada hacia dentro. Es lo
+    que convierte el fondo en parte del tablero y no en un salvapantallas:
+    tocar ARRIBA enciende la red ARRIBA. Se define en window porque llega
+    por injectJavaScript desde React Native. */
+ var FLX=0,FLY=0,FLV=0;
+ window.__cascada=function(px,py){
+   FLX=px; FLY=py; FLV=1;
+   var m1=-1,d1=1e18,m2=-1,d2=1e18;
+   for(var i=0;i<N;i++){
+     var dx=NEU[i].sx-px,dy=NEU[i].sy-py,dd=dx*dx+dy*dy;
+     if(dd<d1){ d2=d1;m2=m1; d1=dd;m1=i; }
+     else if(dd<d2){ d2=dd;m2=i; }
+   }
+   /* disp a 0 antes de disparar: si justo estaba encendida, el guardian de
+      "no se apila" se tragaria el disparo y el toque no responderia. */
+   if(m1>=0){ NEU[m1].disp=0; disparar(m1,0); }
+   if(m2>=0){ NEU[m2].disp=0; NEU[m2].carga=1; disparar(m2,1); }
+ };
 
  function medir(){
    W=window.innerWidth||360; H=window.innerHeight||640;
@@ -430,6 +533,15 @@ const HTML_NEURONAS = `<!doctype html>
       orden, asi que nos ahorramos un sort de 70 elementos por cuadro. */
    g.globalCompositeOperation='lighter';
 
+   /* ── estrellas ── (antes que la red: son lo mas lejano que hay) */
+   g.fillStyle='rgb(186,226,218)';
+   for(var s3=0;s3<40;s3++){
+     var es0=STARS[s3];
+     var tw=Math.sin(ts*es0.ve+es0.fa); if(tw<0) tw=0;
+     g.globalAlpha=0.03+tw*0.09;
+     g.fillRect(es0.x*W,es0.y*H,es0.r,es0.r);
+   }
+
    /* ── sinapsis ── */
    for(var k0=0;k0<NB;k0++) CUBOS[k0].length=0;
    for(var e2=0;e2<ARIS.length;e2++){
@@ -534,6 +646,18 @@ const HTML_NEURONAS = `<!doctype html>
      g.stroke();
    }
 
+   /* ── el resplandor del toque ──
+      Se abre y se apaga a la vez: el sello precocinado estampado cada vez
+      mas grande con cada vez menos alfa. Cero shadowBlur, cero degradados
+      nuevos — el pulso de apertura cuesta un drawImage por cuadro. */
+   if(FLV>0){
+     FLV-=dt/620; if(FLV<0) FLV=0;
+     var fr=90+(1-FLV)*240;
+     g.globalAlpha=FLV*0.42;
+     g.drawImage(SP_ORO,FLX-fr,FLY-fr,fr*2,fr*2);
+     g.globalAlpha=1;
+   }
+
    /* ── el termometro ──────────────────────────────────────────────────
       Se miden DOS cosas porque son dos averias distintas y el remedio no
       es el mismo:
@@ -610,6 +734,18 @@ const ESFERA_FIJA = [];
   }
 }());
 
+// Las estrellas del plan B: mismas razones que en el canvas (el negro sin
+// nada detrás es una pared) y mismas reglas que el resto del plan B — nada
+// de Math.random, un generador sembrado para que salgan SIEMPRE iguales.
+const ESTRELLAS_FIJAS = [];
+(function sembrarEstrellas() {
+  let sem = 7;
+  const rnd = () => { sem = (sem * 16807) % 2147483647; return sem / 2147483647; };
+  for (let i = 0; i < 22; i += 1) {
+    ESTRELLAS_FIJAS.push({ fx: rnd(), fy: rnd(), d: rnd() < 0.3 ? 2 : 1, o: 0.05 + rnd() * 0.11 });
+  }
+}());
+
 function FondoQuieto() {
   // Se mide el hueco porque el radio tiene que ser el MISMO en píxeles a lo
   // ancho y a lo alto: con porcentajes la esfera saldría ovalada.
@@ -674,6 +810,19 @@ function FondoQuieto() {
         colors={['rgba(18,74,70,0.50)', 'rgba(10,46,47,0.26)', 'rgba(0,0,0,0)']}
         style={st.velo} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
       />
+      {caja.w > 0 && ESTRELLAS_FIJAS.map((e, i) => (
+        <View
+          key={`e${i}`}
+          style={{
+            position: 'absolute',
+            left: e.fx * caja.w,
+            top: e.fy * caja.h,
+            width: e.d, height: e.d, borderRadius: e.d / 2,
+            opacity: e.o,
+            backgroundColor: '#BAE2DA',
+          }}
+        />
+      ))}
       {capa(false)}
       {capa(true)}
     </View>
@@ -691,6 +840,8 @@ class Fondo extends React.PureComponent {
   constructor(props) {
     super(props);
     this.state = { roto: !WebViewNativo };
+    this.wv = null;
+    this.guardarWv = (r) => { this.wv = r; };
   }
 
   static getDerivedStateFromError() {
@@ -702,6 +853,22 @@ class Fondo extends React.PureComponent {
     // usuario: el tablero sigue funcionando con el fondo de reserva.
   }
 
+  // El puente hacia la red: el tablero avisa de que se tocó un mundo en
+  // (px, py) —píxeles de pantalla, que en el WebView son los mismos— y el
+  // canvas responde con su cascada. Si no hay WebView (plan B) o el inject
+  // falla, no pasa NADA: el pulso del fondo es un adorno, nunca una
+  // dependencia. Misma filosofía que el resto del fichero.
+  cascada(px, py) {
+    if (this.state.roto || !this.wv || !this.wv.injectJavaScript) return;
+    try {
+      this.wv.injectJavaScript(
+        `window.__cascada&&window.__cascada(${Math.round(px)},${Math.round(py)});true;`,
+      );
+    } catch (e) {
+      // La red no respondió: la app ya está navegando, nadie lo echa de menos.
+    }
+  }
+
   render() {
     if (this.state.roto) return <FondoQuieto />;
     const WV = WebViewNativo;
@@ -711,6 +878,7 @@ class Fondo extends React.PureComponent {
       // se respeta en Android.
       <View style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }]} pointerEvents="none">
         <WV
+          ref={this.guardarWv}
           source={FUENTE_NEURONAS}
           originWhitelist={['*']}
           pointerEvents="none"
@@ -786,7 +954,10 @@ const Hilo = React.memo(function Hilo({ ax, ay, bx, by, tono, brillo, tenso }) {
   );
 });
 
-function Vinculos({ campo, base, brillo, desplaz, activo }) {
+// `brilloTenue` es el latido rebajado de los mundos PRONTO: la misma
+// animación base con otra interpolación, no un bucle nuevo — los hilos
+// dormidos laten al mismo compás que los vivos, solo que más bajo.
+function Vinculos({ campo, base, brillo, brilloTenue, desplaz, activo }) {
   const nucleo = MUNDOS.find((m) => m.id === 'wallet') || MUNDOS[0];
   // El núcleo también se puede arrastrar: si se mueve la billetera, los cuatro
   // hilos la siguen desde su nuevo sitio.
@@ -818,7 +989,7 @@ function Vinculos({ campo, base, brillo, desplaz, activo }) {
             bx={x2 - ux * r2 * 1.34}
             by={y2 - uy * r2 * 1.34}
             tono={m.halo}
-            brillo={brillo}
+            brillo={m.pronto ? brilloTenue : brillo}
             tenso={activo === m.id || activo === nucleo.id}
           />
         );
@@ -855,6 +1026,12 @@ function desdeFraccion(fx, fy, campo, s, m) {
 // sus logos— se reconciliarían sesenta veces por segundo por mover uno.
 const Nodo = React.memo(function Nodo({
   m, etiqueta, a11y, campo, base, ix, iy, reponer, onIr, onMover, onTomar, onSoltar,
+  // Todo escalares, aposta: un objeto aquí rompería la memoización.
+  //   tamUso: 1..1.35 — el mundo más usado se ve más grande (ver LLAVE_USOS)
+  //   chip:   'PRONTO' o null — el letrero de los mundos dormidos
+  //   globo:  número — datos vivos (chats sin leer); 0 = sin globo
+  //   alerta: aviso ámbar (verificación pendiente en Genesis)
+  tamUso, chip, globo, alerta,
 }) {
   const resp = useRef(new Animated.Value(0)).current;   // respiración
   const cerca = useRef(new Animated.Value(0)).current;  // acercamiento al tocar
@@ -883,7 +1060,11 @@ const Nodo = React.memo(function Nodo({
     return () => { vivo.current = false; clearTimeout(t); bucle.stop(); };
   }, [m.ritmo, m.retraso, resp]);
 
-  const s = Math.round(base * m.tam);
+  // El diámetro lleva el factor de USO encima del tamaño de diseño: el
+  // tablero aprende — lo que más abres, más grande se ve. Entra en `s` y no
+  // en un transform para que el hilo, la acotación de bordes y el área de
+  // toque crezcan CON la esfera, no solo su pintura.
+  const s = Math.round(base * m.tam * (tamUso || 1));
   const izq = Math.round(campo.w * m.x - s / 2);
   const arr = Math.round(campo.h * m.y - s / 2);
 
@@ -952,7 +1133,12 @@ const Nodo = React.memo(function Nodo({
   const escMano = sujeto.interpolate({ inputRange: [0, 1], outputRange: [1, 1.13] });
   const escala = Animated.multiply(Animated.multiply(escResp, escToque), escMano);
   const subeBaja = resp.interpolate({ inputRange: [0, 1], outputRange: [m.flota, -m.flota] });
-  const haloBase = resp.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0.95] });
+  // Los mundos PRONTO laten a media luz: mismos bucles, otra interpolación.
+  // Dormidos pero respirando — que se note que están vivos, no disponibles.
+  const haloBase = resp.interpolate({
+    inputRange: [0, 1],
+    outputRange: m.pronto ? [0.20, 0.40] : [0.55, 0.95],
+  });
   // Y el halo se abre: el nodo levantado proyecta más luz, como si se hubiera
   // acercado a la cámara.
   const haloMano = sujeto.interpolate({ inputRange: [0, 1], outputRange: [1, 1.9] });
@@ -968,10 +1154,23 @@ const Nodo = React.memo(function Nodo({
     // no al final — así el viaje se siente sin que la pantalla se retrase.
     Animated.timing(cerca, { toValue: 1, duration: 145, easing: Easing.out(Easing.quad), useNativeDriver: true })
       .start(({ finished }) => {
-        if (finished) hoy.current.onIr(m.id);
+        if (finished) {
+          // Junto al id viaja DÓNDE está el nodo ahora mismo (con arrastre
+          // incluido) y de qué color brilla: de ahí nacen el portal que llena
+          // la pantalla y la cascada de neuronas del fondo. Lo calcula el
+          // nodo porque es el único que sabe su posición viva sin pasar por
+          // el estado de React.
+          const d = hoy.current;
+          d.onIr(m.id, {
+            x: d.campo.w * m.x + donde.current.x,
+            y: d.campo.h * m.y + donde.current.y,
+            r: d.s / 2,
+            halo: m.halo,
+          });
+        }
         Animated.timing(cerca, { toValue: 0, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
       });
-  }, [cerca, m.id]);
+  }, [cerca, m]);
   hoy.current = { campo, s, onIr, onTomar, onSoltar, tocar };
 
   const arrastrando = useRef(false);
@@ -1098,7 +1297,9 @@ const Nodo = React.memo(function Nodo({
       }]}>
       <Animated.View
         pointerEvents="none"
-        style={{ width: s, alignItems: 'center', transform: [{ translateY: subeBaja }, { scale: escala }] }}>
+        // Los dormidos van un punto apagados en conjunto: el chip PRONTO
+        // dice "todavía no", la penumbra lo hace sentir sin leerlo.
+        style={{ width: s, alignItems: 'center', opacity: m.pronto ? 0.88 : 1, transform: [{ translateY: subeBaja }, { scale: escala }] }}>
         <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
           {/* El halo son tres discos concéntricos y no una sombra: Android
               ignora shadowColor y `elevation` sólo sabe pintar gris. */}
@@ -1147,12 +1348,95 @@ const Nodo = React.memo(function Nodo({
                 oscuro parece un agujero en la esfera. */}
             <View style={[st.canto, { width: dl, height: dl, borderRadius: dl / 2 }]} pointerEvents="none" />
           </LinearGradient>
+
+          {/* Los DATOS VIVOS del mundo, encima de la esfera. El globo dorado
+              son los chats sin leer; el punto ámbar, la verificación que
+              falta en Genesis. Un tablero que enseña números de verdad deja
+              de ser un menú bonito y pasa a ser un panel. */}
+          {globo > 0 && (
+            <View style={[st.globo, { top: -2, right: -2 }]} pointerEvents="none">
+              <Text style={st.globoTxt}>{globo > 99 ? '99+' : globo}</Text>
+            </View>
+          )}
+          {!globo && alerta && (
+            <View style={[st.globo, st.globoAmbar, { top: -2, right: -2 }]} pointerEvents="none">
+              <Text style={[st.globoTxt, st.globoAmbarTxt]}>!</Text>
+            </View>
+          )}
+
+          {/* El letrero PRONTO cabalga el borde de abajo de la esfera: dentro
+              taparía la marca, fuera parecería otra etiqueta. En el canto se
+              lee como un precinto. */}
+          {chip ? (
+            <View style={[st.chip, { bottom: -s * 0.06 }]} pointerEvents="none">
+              <Text style={st.chipTxt}>{chip}</Text>
+            </View>
+          ) : null}
         </View>
         <Text style={st.etiqueta} numberOfLines={1}>{etiqueta}</Text>
       </Animated.View>
     </Animated.View>
   );
 });
+
+// ── LA HOJA ─────────────────────────────────────────────────────────────
+// El anuncio de los mundos que vienen (y del «+»). Es una hoja propia y no
+// un Alert porque un Alert dice "error del sistema" y esto tiene que decir
+// "invitación": sube desde abajo con el color del mundo que la abrió, su
+// icono en la misma lente que usan las esferas y una sola salida serena.
+// No navega a ningún sitio — se cierra y el tablero sigue donde estaba.
+function HojaInfo({ hoja, t, onCerrar }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(anim, { toValue: 1, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [anim]);
+  // El cierre anima ANTES de desmontar: la hoja se despide bajando, no
+  // desaparece de golpe como si hubiera fallado algo.
+  const cerrar = useCallback(() => {
+    Animated.timing(anim, { toValue: 0, duration: 190, easing: Easing.in(Easing.quad), useNativeDriver: true })
+      .start(() => onCerrar());
+  }, [anim, onCerrar]);
+
+  const m = MUNDOS.find((x) => x.id === hoja) || MUNDOS[0];
+  const esMas = hoja === 'mas';
+  const nombre = esMas ? t.masTitulo : (hoja === 'aubank' ? t.aubank : t.oxch);
+  const cuerpo = esMas ? t.masCuerpo : t.prontoCuerpo.replace('{app}', hoja === 'aubank' ? t.aubank : t.oxch);
+  const subir = anim.interpolate({ inputRange: [0, 1], outputRange: [280, 0] });
+
+  return (
+    <View style={[StyleSheet.absoluteFill, { zIndex: 40 }]}>
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.62)', opacity: anim }]}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={cerrar}
+          accessibilityRole="button"
+          accessibilityLabel={t.cerrarHoja}
+        />
+      </Animated.View>
+      <Animated.View style={[st.hoja, { opacity: anim, transform: [{ translateY: subir }] }]}>
+        {/* La misma lente de las esferas, con el icono del mundo: la hoja no
+            es un diálogo genérico, es ESE mundo hablando. */}
+        <View style={[st.hojaLente, { backgroundColor: m.lente, borderColor: conAlfa(m.halo, 0.5) }]}>
+          <Icon name={m.icono} size={26} color={m.halo} />
+        </View>
+        {!esMas && (
+          <View style={st.hojaChip}>
+            <Text style={st.hojaChipTxt}>{t.pronto}</Text>
+          </View>
+        )}
+        <Text style={st.hojaTit}>{nombre}</Text>
+        <Text style={st.hojaTxt}>{cuerpo}</Text>
+        <Pressable
+          onPress={cerrar}
+          accessibilityRole="button"
+          accessibilityLabel={t.entendido}
+          style={({ pressed }) => [st.hojaBoton, pressed && { opacity: 0.75 }]}>
+          <Text style={st.hojaBotonTxt}>{t.entendido}</Text>
+        </Pressable>
+      </Animated.View>
+    </View>
+  );
+}
 
 export default function Nucleo({ nav }) {
   const { lang } = useLang();
@@ -1170,6 +1454,15 @@ export default function Nucleo({ nav }) {
   const [movidos, setMovidos] = useState(false);   // ¿hay algo fuera de su sitio?
   const [reponer, setReponer] = useState(0);       // contador de "vuelve a tu sitio"
   const [enMano, setEnMano] = useState(null);      // qué mundo lleva el dedo
+  const [hoja, setHoja] = useState(null);          // qué anuncio está abierto (aubank/oxch/mas)
+  const [usos, setUsos] = useState(null);          // contador de aperturas por mundo
+  const [sinLeer, setSinLeer] = useState(0);       // chats sin leer, para el globo
+
+  // El portal de apertura: qué mundo se está expandiendo y desde dónde.
+  const [portal, setPortal] = useState(null);
+  const portalAnim = useRef(new Animated.Value(0)).current;
+  const fondo = useRef(null);      // la clase Fondo, para inyectar la cascada
+  const campoY = useRef(0);        // dónde empieza el tablero dentro de la pantalla
 
   // Las posiciones VIVAS de los cinco mundos, en un ref y no en el estado: se
   // escriben en cada cuadro del arrastre y sólo las leen los hilos.

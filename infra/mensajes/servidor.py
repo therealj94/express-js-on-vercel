@@ -201,9 +201,14 @@ class Relevo(BaseHTTPRequestHandler):
                     return self._json(400, {'error': 'correo inválido'})
                 f = fichas.get(correo)
                 if f is None:
+                    # el gid (Genesis ID) es un identificador PÚBLICO que la
+                    # persona declara, como el nombre: texto recortado y punto.
+                    # Las fichas de antes de este campo no lo tienen — por eso
+                    # todas las lecturas usan .get('gid', '') y nada se migra.
                     f = {'llave': secrets.token_hex(24),
                          'nombre': str(b.get('nombre', ''))[:80],
                          'addr': str(b.get('addr', ''))[:64],
+                         'gid': str(b.get('gid', '')).strip()[:64],
                          'foto': foto_valida(d, b.get('foto')),
                          'desde': int(time.time())}
                     fichas[correo] = f
@@ -213,6 +218,7 @@ class Relevo(BaseHTTPRequestHandler):
                 if b.get('llave') == f['llave']:
                     f['nombre'] = str(b.get('nombre', f['nombre']))[:80]
                     f['addr'] = str(b.get('addr', f['addr']))[:64]
+                    f['gid'] = str(b.get('gid', f.get('gid', ''))).strip()[:64]
                     f['foto'] = foto_valida(d, b.get('foto', f.get('foto', '')))
                     guardar(d)
                     return self._json(200, {'llave': f['llave']})
@@ -233,6 +239,10 @@ class Relevo(BaseHTTPRequestHandler):
                     f['nombre'] = str(b.get('nombre', ''))[:80]
                 if 'foto' in b:
                     f['foto'] = foto_valida(d, b.get('foto'))
+                if 'gid' in b:
+                    # misma regla que la foto: mandar {gid:''} lo quita, y no
+                    # mandar la clave lo deja en paz
+                    f['gid'] = str(b.get('gid', '')).strip()[:64]
                 guardar(d)
                 return self._json(200, {'ok': True})
 
@@ -366,9 +376,14 @@ class Relevo(BaseHTTPRequestHandler):
                 q = str(b.get('q', '')).lower().strip()
                 if len(q) < 2:
                     return self._json(200, {'gente': []})
-                gente = [{'correo': c, 'nombre': g['nombre'], 'addr': g['addr']}
+                # el GID se busca por empieza-por, no por contiene: es un
+                # identificador que se teclea del principio, no prosa donde
+                # pescar trozos sueltos
+                gente = [{'correo': c, 'nombre': g['nombre'], 'addr': g['addr'],
+                          'gid': g.get('gid', '')}
                          for c, g in fichas.items()
-                         if q in c or q in g['nombre'].lower()]
+                         if q in c or q in g['nombre'].lower()
+                         or g.get('gid', '').lower().startswith(q)]
                 gente = [x for x in gente if x['correo'] != correo][:10]
                 return self._json(200, {'gente': gente})
 
@@ -415,6 +430,7 @@ class Relevo(BaseHTTPRequestHandler):
                     lista.append({'correo': otro,
                                   'nombre': g.get('nombre', otro.split('@')[0]),
                                   'addr': g.get('addr', ''),
+                                  'gid': g.get('gid', ''),
                                   'ultimo': h['ultimo'], 'sinLeer': h['sinLeer']})
                 # por lo último dicho; el grupo callado se ordena por cuándo se
                 # creó, así el recién hecho aparece arriba y no en el sótano
@@ -439,6 +455,7 @@ class Relevo(BaseHTTPRequestHandler):
                 if not g:
                     return self._json(404, {'error': 'no está'})
                 return self._json(200, {'nombre': g['nombre'], 'addr': g['addr'],
+                                        'gid': g.get('gid', ''),
                                         'foto': g.get('foto', '')})
 
             if ruta == '/grupo/crear':
