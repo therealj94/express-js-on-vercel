@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Icon } from './icons';
 import { C } from './theme';
+import { Image } from 'react-native';
 import { Logo, hap } from './ui';
 import { useT } from './i18n';
 
@@ -96,7 +97,7 @@ export default function LockScreen({ onUnlock, available }) {
         pointerEvents="none"
       />
       <View style={st.wrap}>
-        <Logo size={104} />
+        <Image source={require('../assets/og-logo.png')} style={{ width: 132, height: 91 }} resizeMode="contain" />
 
         <View style={st.anilloZona}>
           {trying && <Animated.View style={[st.anillo, { transform: [{ scale: anilloEscala }], opacity: anilloOpaco }]} />}

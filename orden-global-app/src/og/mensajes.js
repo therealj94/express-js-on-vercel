@@ -48,4 +48,21 @@ export const buscar = (q) => pedir('/buscar', firmado({ q }));
 export const conversaciones = () => pedir('/conversaciones', firmado({}));
 export const leido = (de) => pedir('/leido', firmado({ de }));
 export const ficha = (de) => pedir('/ficha', firmado({ de }));
+// Mi nombre y mi foto. JSON.stringify se come las claves `undefined`, así que
+// perfil({ foto }) cambia la foto y deja el nombre en paz — es justo lo que el
+// relevo entiende: la clave que no viaja es la que no se toca.
+export const perfil = (cambios) => pedir('/perfil', firmado({ ...(cambios || {}) }));
+// Grupos. `para` de enviar/pago y `desde` de bandeja aceptan el id 'g:…' igual
+// que un correo: para el resto del cliente un grupo es un destinatario más.
+export const grupoCrear = (nombre, foto, miembros) => pedir('/grupo/crear', firmado({ nombre, foto, miembros: miembros || [] }));
+export const grupoInfo = (id) => pedir('/grupo/info', firmado({ id }));
+export const grupoEditar = (id, cambios) => pedir('/grupo/editar', firmado({ id, ...(cambios || {}) }));
+export const grupoInvitar = (id, correos) => pedir('/grupo/invitar', firmado({ id, correos }));
+export const grupoUnirse = (invitacion) => pedir('/grupo/unirse', firmado({ invitacion }));
+export const grupoSalir = (id) => pedir('/grupo/salir', firmado({ id }));
+// El comprobante se manda DESPUÉS de que la cadena confirmó: NEXUS no
+// transmite y el hilo no debe enseñar un pago que todavía puede fallar.
+export const pago = (para, monto, extra) => pedir('/pago', firmado({ para, monto, ...(extra || {}) }));
+// Un id de grupo se distingue de un correo por la forma, sin preguntar nada.
+export const esGrupo = (x) => /^g:[0-9a-f]{16}$/.test(String(x || ''));
 export const quien = () => yo;
