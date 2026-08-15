@@ -25,7 +25,7 @@ import { C, G } from '../theme';
 import { useLang } from '../i18n';
 import { useAccount, hap } from '../ui';
 import { Icon } from '../icons';
-import { enExpoGo } from './entorno';
+import { enExpoGo, hayVoz, hayOcr } from './entorno';
 
 // ¿Esto es la vista previa (Expo Go)? Se resuelve UNA vez al cargar el
 // módulo: el entorno no cambia mientras la app vive, y esta pantalla se
@@ -120,12 +120,13 @@ const TXT = {
     previa: 'VISTA PREVIA',
     previaA11y: 'Vista previa: ver qué es y qué falta aquí',
     previaTit: 'Estás en la vista previa',
-    previaCuerpo: 'Esto es Orden Global funcionando dentro de Expo Go, para que puedas verla sin instalar nada. Todo lo que hay aquí es real. Dos cosas necesitan la app instalada:',
-    previaFalta: [
-      'El micrófono de NEXUS. Aquí se le escribe y obedece igual.',
-      'La lectura del documento en Genesis ID. Aquí el nombre y las líneas se escriben a mano.',
-    ],
-    previaCierre: 'Con la app instalada las dos funcionan solas.',
+    previaCuerpo: 'Esto es Orden Global funcionando dentro de Expo Go, para que puedas verla sin instalar nada. Todo lo que hay aquí es real; esto es lo único que pide la app instalada:',
+    previaCuerpoOk: 'Esto es Orden Global funcionando dentro de Expo Go, para que puedas verla sin instalar nada. Todo lo que ves aquí funciona.',
+    previaFalta: {
+      voz: 'El micrófono de NEXUS. Aquí se le escribe y obedece igual.',
+      ocr: 'La lectura del documento en Genesis ID. Aquí el nombre y las líneas se escriben a mano.',
+    },
+    previaCierre: 'La app instalada lo trae todo.',
   },
   en: {
     manana: 'Good morning', tarde: 'Good afternoon', noche: 'Good evening',
@@ -156,12 +157,13 @@ const TXT = {
     previa: 'PREVIEW',
     previaA11y: 'Preview: see what this is and what is missing here',
     previaTit: 'You are in the preview',
-    previaCuerpo: 'This is Orden Global running inside Expo Go, so you can see it without installing anything. Everything here is real. Two things need the installed app:',
-    previaFalta: [
-      'NEXUS listening. Here you type to it and it obeys just the same.',
-      'Reading your document in Genesis ID. Here the name and the lines are typed by hand.',
-    ],
-    previaCierre: 'With the app installed, both work on their own.',
+    previaCuerpo: 'This is Orden Global running inside Expo Go, so you can see it without installing anything. Everything here is real; this is all that needs the installed app:',
+    previaCuerpoOk: 'This is Orden Global running inside Expo Go, so you can see it without installing anything. Everything you see here works.',
+    previaFalta: {
+      voz: 'NEXUS listening. Here you type to it and it obeys just the same.',
+      ocr: 'Reading your document in Genesis ID. Here the name and the lines are typed by hand.',
+    },
+    previaCierre: 'The installed app brings it all.',
   },
 };
 
@@ -1453,9 +1455,17 @@ function HojaInfo({ hoja, t, onCerrar }) {
   const m = MUNDOS.find((x) => x.id === hoja) || MUNDOS[0];
   const esMas = hoja === 'mas';
   const icono = esPrevia ? 'eye' : m.icono;
+  // Lo que falta NO va escrito a mano en una lista: se le PREGUNTA a los
+  // módulos, uno por uno. Una lista fija es verdad hasta el día que deja de
+  // serlo —que Expo Go incorpore uno de los dos, o que esta hoja acabe
+  // enseñándose en un binario donde sí estén— y una hoja que existe para
+  // decir la verdad no puede ser el último sitio en enterarse.
+  const faltan = esPrevia
+    ? [!hayVoz() && t.previaFalta.voz, !hayOcr() && t.previaFalta.ocr].filter(Boolean)
+    : [];
   const nombre = esPrevia ? t.previaTit
     : esMas ? t.masTitulo : (hoja === 'aubank' ? t.aubank : t.oxch);
-  const cuerpo = esPrevia ? t.previaCuerpo
+  const cuerpo = esPrevia ? (faltan.length ? t.previaCuerpo : t.previaCuerpoOk)
     : esMas ? t.masCuerpo : t.prontoCuerpo.replace('{app}', hoja === 'aubank' ? t.aubank : t.oxch);
   const subir = anim.interpolate({ inputRange: [0, 1], outputRange: [280, 0] });
 
@@ -1489,9 +1499,9 @@ function HojaInfo({ hoja, t, onCerrar }) {
             bailan y hay que leerlas en orden. Es la parte que la gente va a
             buscar — «¿por qué el micrófono no me oye?» — así que se dice con
             nombre y apellido, y con el remedio al lado. */}
-        {esPrevia && (
+        {esPrevia && faltan.length > 0 && (
           <View style={st.previaLista}>
-            {t.previaFalta.map((linea, i) => (
+            {faltan.map((linea, i) => (
               <View key={i} style={st.previaFila}>
                 <View style={st.previaPunto} />
                 <Text style={st.previaItem}>{linea}</Text>
