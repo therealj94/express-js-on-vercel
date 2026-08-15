@@ -394,14 +394,26 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
   padding:clamp(18px,3vw,30px) clamp(18px,4vw,40px);pointer-events:none}
 .cerebro-cab h2{font-family:var(--sans);font-weight:800;font-size:clamp(19px,2.2vw,24px);color:var(--crema)}
 .cerebro-cab .sub{font-size:12px;color:var(--bruma);margin-top:5px}
-.nu-power{display:inline-flex;align-items:center;gap:7px;margin-top:12px;pointer-events:auto;
-  padding:7px 13px;border-radius:100px;border:1px solid rgba(201,169,97,.3);
-  background:rgba(2,18,18,.72);font-size:10.5px;font-weight:700;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--oroLt);text-decoration:none;
-  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.nu-power:hover{border-color:var(--oro);color:var(--oroHi)}
-.nu-power svg{width:12px;height:12px;fill:var(--oro);stroke:none}
-@media(max-width:560px){.nu-power{font-size:9px;letter-spacing:.06em}}
+/* El sello de la cadena. Vive en la banda de abajo (.cerebro-pie), no en la
+   cabecera flotante: allí arriba se posaba encima de la esfera de PULSE CHAT
+   y se comía el toque del botón. Aquí abajo tiene sitio propio y se lee
+   entero — que es lo que se le pide a un sello: decir sobre qué está hecho
+   todo lo de arriba. */
+.nu-power{display:inline-flex;align-items:center;gap:10px;pointer-events:auto;
+  padding:9px 15px;border-radius:14px;border:1px solid rgba(201,169,97,.3);
+  background:linear-gradient(135deg,rgba(2,22,22,.86),rgba(2,14,15,.8));
+  color:var(--oroLt);text-decoration:none;max-width:min(92vw,420px);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transition:border-color .2s,transform .2s}
+.nu-power:hover{border-color:var(--oro);transform:translateY(-1px)}
+.nu-power svg{flex:none;width:15px;height:15px;fill:var(--oro);stroke:none}
+.nup-txt{min-width:0;display:flex;flex-direction:column;gap:2px}
+.nup-txt b{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--oroHi);line-height:1.2}
+.nup-txt small{font-size:10.5px;letter-spacing:.02em;color:var(--bruma);line-height:1.35}
+@media(max-width:560px){
+  .nup-txt b{font-size:9.5px;letter-spacing:.07em}
+  .nup-txt small{font-size:9.5px}}
 
 /* Las esferas: los mismos botones de antes, ahora sobre el cuadro entero. */
 .cerebro .nu-mundo{z-index:3}
@@ -409,8 +421,12 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
   inset 0 -10px 22px -12px rgba(0,0,0,.6)}
 .nu-lente img{width:calc(64% * var(--zoom,1));height:auto;display:block}
 .cerebro-pie{position:absolute;left:clamp(18px,4vw,40px);bottom:clamp(18px,3vw,30px);z-index:4;
-  display:flex;gap:10px;flex-wrap:wrap}
+  display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.cerebro-botones{display:flex;gap:10px;flex-wrap:wrap}
 @media(max-width:560px){.cerebro-pie{right:96px}}
+/* En pantallas bajas el sello se recoge a una línea para no comerse el
+   cuadro: la esfera manda, el sello acompaña. */
+@media(max-height:620px){.nup-txt small{display:none}}
 
 /* ── el orbe flotante ── AU-RA vive en TODO el ecosistema ─────────────────── */
 #aura-orbe{position:fixed;right:18px;bottom:88px;z-index:70;width:64px;height:64px;
@@ -651,10 +667,83 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
   animation:pulsoCorre 6s linear infinite}
 @keyframes pulsoCorre{to{background-position:-160px 0}}
 @media(prefers-reduced-motion:reduce){.cha-hcab::after{animation:none}}
+/* la cabecera ENTERA es el botón de "quién es esto": es donde la mano va a
+   buscarlo, y era el gesto que faltaba para que el chat dejara de ser un hilo
+   ciego */
+.cha-quien-btn{flex:1;min-width:0;display:flex;align-items:center;gap:11px;
+  background:none;border:0;padding:2px 4px;border-radius:12px;text-align:left;cursor:pointer;
+  transition:background .18s}
+.cha-quien-btn:hover{background:rgba(224,147,122,.09)}
+.cha-hmas{flex:none;margin-left:auto}
 .cha-quien{min-width:0}
 .cha-quien b{display:block;font-size:14.5px;color:var(--crema)}
 .cha-quien small{display:block;font-size:12px;color:var(--humo);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── la ficha: quién es el otro, encima del hilo ──────────────────────────
+   Va sobre el hilo y no en su lugar: al cerrarla la conversación sigue con su
+   scroll y con lo escrito a medias en la caja. */
+.cha-ficha{position:absolute;inset:0;z-index:6;display:flex;align-items:flex-end;
+  justify-content:center;background:rgba(1,7,8,.62);backdrop-filter:blur(3px);
+  animation:fichaEntra .22s ease-out}
+@keyframes fichaEntra{from{opacity:0}to{opacity:1}}
+.chaf-hoja{position:relative;width:min(100%,420px);max-height:92%;overflow-y:auto;
+  padding:26px 20px 20px;text-align:center;
+  background:linear-gradient(180deg,rgba(8,32,34,.98),rgba(3,18,20,.99));
+  border:1px solid rgba(224,147,122,.3);border-radius:20px 20px 0 0;
+  box-shadow:0 -18px 50px -20px rgba(0,0,0,.8);
+  animation:hojaSube .26s cubic-bezier(.2,.8,.3,1)}
+@keyframes hojaSube{from{transform:translateY(24px)}to{transform:none}}
+@media(min-width:700px){.cha-ficha{align-items:center}
+  .chaf-hoja{border-radius:20px;animation:hojaSube .2s ease-out}}
+@media(prefers-reduced-motion:reduce){.cha-ficha,.chaf-hoja{animation:none}}
+.chaf-x{position:absolute;top:10px;right:12px;width:30px;height:30px;border-radius:9px;
+  background:none;border:0;color:var(--humo);font-size:15px;cursor:pointer}
+.chaf-x:hover{color:var(--crema);background:rgba(224,147,122,.12)}
+.chaf-cara{display:flex;justify-content:center;margin-bottom:12px}
+.chaf-cara .cha-av{width:76px;height:76px;font-size:26px}
+.chaf-hoja h3{font-size:19px;color:var(--crema);margin:0 0 3px}
+.chaf-sub{font-size:12.5px;color:var(--humo);margin:0 0 16px;word-break:break-all}
+.chaf-datos{display:grid;grid-template-columns:auto 1fr;gap:7px 14px;text-align:left;
+  margin:0 0 16px;padding:12px 14px;border-radius:13px;
+  background:rgba(126,216,196,.05);border:1px solid rgba(126,216,196,.14)}
+.chaf-datos dt{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--humo);
+  align-self:center}
+.chaf-datos dd{margin:0;font-size:13px;color:var(--crema);word-break:break-all;
+  display:flex;align-items:center;gap:7px}
+.chaf-nada{color:var(--humo);font-style:italic}
+.chaf-gente{list-style:none;margin:0 0 16px;padding:0;max-height:180px;overflow-y:auto;text-align:left}
+.chaf-gente li{display:flex;align-items:center;gap:9px;padding:5px 2px;font-size:13px;color:var(--bruma)}
+.chaf-gente .cha-av{width:28px;height:28px;font-size:12px}
+.chaf-gente em{margin-left:auto;font-style:normal;font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--oro)}
+.chaf-inv{margin:0 0 16px;padding:14px;border-radius:13px;
+  background:rgba(224,147,122,.06);border:1px solid rgba(224,147,122,.2)}
+.chaf-qr{max-width:170px;margin:0 auto 10px}
+.chaf-qr svg{width:100%;height:auto;display:block;border-radius:8px}
+.chaf-nota{font-size:11.5px;color:var(--humo);margin:0 0 10px;line-height:1.5}
+.chaf-acciones{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chaf-acciones .btn{flex:1 1 46%;min-width:130px}
+.chaf-malo{border-color:rgba(220,120,110,.4)!important;color:#E5A79E!important}
+.chaf-malo:hover{background:rgba(220,120,110,.12)!important}
+/* La letra chica que no es letra chica: dice exactamente qué pasa al borrar. */
+.chaf-honesto{font-size:11px;line-height:1.55;color:var(--humo);margin:14px 0 0;
+  padding-top:12px;border-top:1px solid rgba(126,216,196,.12)}
+
+/* mi perfil de chat */
+.cha-yo .chaf-datos{max-width:340px;margin-inline:auto}
+.chay-cara{position:relative;width:96px;height:96px;margin:0 auto 12px;border-radius:50%;
+  display:grid;place-items:center;overflow:hidden;font-size:32px;color:var(--verde-hondo);
+  background:linear-gradient(135deg,var(--oro),#E0937A);
+  box-shadow:0 0 0 3px rgba(224,147,122,.25),0 10px 30px -12px rgba(224,147,122,.6)}
+.chay-cara img{width:100%;height:100%;object-fit:cover}
+.chay-subiendo{position:absolute;inset:0;display:grid;place-items:center;background:rgba(1,7,8,.6)}
+.chay-fotobtn{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
+.chay-fotobtn label{cursor:pointer}
+.chay-lapiz{background:none;border:0;padding:2px;cursor:pointer;line-height:0}
+.chay-lapiz svg{width:14px;height:14px;stroke:var(--humo);fill:none;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+.chay-lapiz:hover svg{stroke:var(--oro)}
 .cha-volver{display:none;flex:none;width:32px;height:32px;border-radius:10px}
 .cha-volver svg{width:20px;height:20px;stroke:var(--bruma);fill:none;stroke-width:1.8;
   stroke-linecap:round;stroke-linejoin:round}

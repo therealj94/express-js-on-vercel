@@ -639,17 +639,52 @@ const VETA = (() => {
      cadena. Antes solo salian los depositos, asi que un envio recien hecho no
      aparecia por ningun lado — y no hay nada que uno quiera comprobar mas que
      eso, justo despues de mandarlo. */
+  /* Los tres lectores de un movimiento, en un solo sitio.
+
+     Las dos fuentes de la Actividad —los depósitos del backend y las
+     transferencias de la cadena— llaman distinto a lo mismo, y cada pantalla
+     que lo adivinaba por su cuenta se equivocaba en algo: la fecha de la
+     cadena viene en `timestamp` EN SEGUNDOS (y por un tiempo solo con la S
+     grande, `timeStamp`), mientras que la de un depósito viene en `at`; el
+     monto de un depósito está en `origenAmount`, no en `amount`, así que la
+     lista enseñaba ceros. Se lee todo aquí y una sola vez. */
+  function movCuando(m) {
+    const seg = m.timestamp ?? m.timeStamp;
+    // la cadena da segundos; Date quiere milisegundos. Diez cifras = segundos.
+    if (seg != null && seg !== '' && /^\d+$/.test(String(seg))) {
+      const n = Number(seg);
+      return new Date(n < 1e12 ? n * 1000 : n).getTime();
+    }
+    return new Date(m.createdAt || m.date || m.at || 0).getTime() || 0;
+  }
+
+  const movMonto = m => Number(m.amount ?? m.value ?? m.origenAmount ?? m.usdtAmount ?? 0) || 0;
+
+  /* Entra o sale. La cadena manda `from` y `to` en los dos sentidos, así que
+     lo que decide es cuál de los dos soy yo — antes, cuando solo venía `from`,
+     el respaldo daba «sale» a todo lo recibido. */
+  function movEntra(m) {
+    const mia = (sesion?.direccion || '').toLowerCase();
+    if (mia && m.to && String(m.to).toLowerCase() === mia) return true;
+    if (mia && m.from && String(m.from).toLowerCase() === mia) return false;
+    const d = (m.direction || m.type || '').toLowerCase();
+    // «recive» está escrito así en el backend desde el principio: se acepta
+    if (d.includes('in') || d.includes('reciv') || d.includes('recib')) return true;
+    if (d.includes('out') || d.includes('send')) return false;
+    // un depósito es dinero que llega, y no trae ni `from` ni `to`
+    return m.usdtAmount != null || m.origenAmount != null;
+  }
+
   function todoMovimiento() {
-    const cuando_ = m => new Date(m.createdAt || m.date || m.timestamp || 0).getTime() || 0;
     const vistos = new Set();
     return [...movimientos, ...transferencias]
       .filter(m => {
-        const llave = m.hash || m.txHash || `${m.from}-${m.to}-${m.amount}-${cuando_(m)}`;
+        const llave = m.hash || m.txHash || `${m.from}-${m.to}-${movMonto(m)}-${movCuando(m)}`;
         if (vistos.has(llave)) return false;
         vistos.add(llave);
         return true;
       })
-      .sort((a, b) => cuando_(b) - cuando_(a));
+      .sort((a, b) => movCuando(b) - movCuando(a));
   }
 
   // ── las vistas ────────────────────────────────────────────────────────────
@@ -916,17 +951,18 @@ const VETA = (() => {
         ${t('ini.vacioP')}
       </div>`;
     return l.map(m => {
-      const mia = (sesion?.direccion || '').toLowerCase();
-      const entra = m.to && mia
-        ? String(m.to).toLowerCase() === mia
-        : (m.direction || m.type || '').toLowerCase().includes('in') || (Number(m.amount) > 0 && !m.to);
-      const monto = Math.abs(Number(m.amount ?? m.value ?? 0));
+      const entra = movEntra(m);
+      const monto = Math.abs(movMonto(m));
+      // el símbolo importa: sin él, medio ONDK y medio ORIGEN son la misma fila
+      const sim = m.symbol || m.token || (m.usdtAmount != null ? 'ORIGEN' : '');
+      // en un envío interesa a quién fue; en lo recibido, de quién vino
+      const contra = entra ? (m.from || m.to) : (m.to || m.from);
       return `
       <div class="hilera">
         <div class="ic"><svg viewBox="0 0 24 24">${entra ? ICO.recibir : ICO.enviar}</svg></div>
         <div class="txt">
-          <b>${entra ? t('act.entra') : t('act.sale')}</b>
-          <small class="mono">${esc(cortaDir(m.from || m.to || m.hash || ''))} · ${esc(cuando(m.createdAt || m.date || m.timestamp))}</small>
+          <b>${entra ? t('act.entra') : t('act.sale')}${sim ? ` <em class="act-sim">${esc(sim)}</em>` : ''}</b>
+          <small class="mono">${esc(cortaDir(contra || m.hash || ''))} · ${esc(cuando(movCuando(m)))}</small>
         </div>
         <div class="val ${entra ? 'entra' : 'sale'}">${entra ? '+' : '−'}${oro(monto)}</div>
       </div>`;
@@ -1225,6 +1261,20 @@ const VETA = (() => {
       const hash = r?.hash || r?.transactionHash || r?.txId || null;
       const sim = pendiente.sim;
       pendiente = null;
+      /* Si este envío salió DESDE un hilo del chat, el comprobante se publica
+         allí — y solo ahora, con la cadena ya confirmada y el hash en la mano.
+         No mueve dinero: deja la tarjeta con el hash para que cualquiera lo
+         compruebe en el explorador. Si el relevo no está, el envío ya está
+         hecho igual: esto no puede hacer fallar una transferencia. */
+      if (avisarChat && hash && CHAT.listo()) {
+        const destino = avisarChat;
+        avisarChat = null;
+        CHAT.pago({ para: destino.id, monto: String(monto), moneda: sim, hash })
+          .then(() => { if (vistaActual === 'chat') chatCargarMsgs(true); })
+          .catch(() => {});
+      } else {
+        avisarChat = null;
+      }
       a.className = 'aviso aviso-ok';
       a.innerHTML = `${t('env.hecho')} ${oro(monto)} ${esc(sim)}.${hash ? ` <span class="mono">${esc(cortaDir(hash))}</span>` : ''}`;
       $('#env-dir').value = ''; $('#env-monto').value = ''; $('#env-clave').value = '';
@@ -2769,15 +2819,28 @@ const VETA = (() => {
       <div class="cerebro-cab">
         <h2>${nombre ? `${t('nu.hola')}, ${esc(nombre)}` : t('nu.t')}</h2>
         <div class="sub">${t('nu.sub')}</div>
-        <a class="nu-power" href="https://ordenscan.com" target="_blank" rel="noopener">
-          <svg viewBox="0 0 24 24"><path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5z"/></svg>
-          ${t('nu.power')}</a>
       </div>
       ${esferas}
       <div class="cerebro-pie">
-        <button class="btn btn-oro btn-sm" onclick="VETA.auraChip(${jsTxt(aTxt().chips[0])})">
-          ▶ ${t('nu.recorrer')}</button>
-        <button class="btn btn-linea btn-sm" onclick="VETA.auraAyuda()">${t('nu.decirle')}</button>
+        <!-- El sello de la cadena vive ABAJO, y no en la cabecera flotante:
+             ahí arriba caía justo encima de la esfera de PULSE CHAT y se comía
+             el toque —medido con elementFromPoint en el centro exacto del
+             botón, en tres tamaños de teléfono—. Un adorno que impide entrar a
+             una app no es un adorno, es una avería. Aquí abajo tiene su propia
+             banda, no estorba a nadie, y de paso se lee mejor: es lo que
+             sostiene todo lo de arriba. -->
+        <a class="nu-power" href="https://ordenscan.com" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24"><path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5z"/></svg>
+          <span class="nup-txt">
+            <b>${t('nu.powerT')}</b>
+            <small>${t('nu.powerP')}</small>
+          </span>
+        </a>
+        <div class="cerebro-botones">
+          <button class="btn btn-oro btn-sm" onclick="VETA.auraChip(${jsTxt(aTxt().chips[0])})">
+            ▶ ${t('nu.recorrer')}</button>
+          <button class="btn btn-linea btn-sm" onclick="VETA.auraAyuda()">${t('nu.decirle')}</button>
+        </div>
       </div>
     </div>`;
   }
@@ -3245,9 +3308,18 @@ const VETA = (() => {
     // La invitacion que trajo hasta aca: se abre UNA vez, con el chat ya
     // de pie, y se olvida — un enlace no es una orden permanente.
     if (chatPendiente && CHAT.listo()) {
-      const con = chatPendiente;
+      const p = chatPendiente;
       chatPendiente = null;
-      chatAbrir(con);
+      if (p.inv) {
+        /* Una invitacion de grupo se canjea UNA vez: el relevo suma a esta
+           cuenta al grupo y dice cual es, y recien ahi se abre. Si ya no vale
+           —la regeneraron— se dice, en vez de dejar la pantalla en blanco. */
+        CHAT.grupoUnirse(p.inv)
+          .then(async g => { await chatCargarConvs(); if (g?.id) chatAbrir(g.id); avisar(t('cha.entraste')); })
+          .catch(() => avisar(t('cha.invMala')));
+      } else {
+        chatAbrir(p.con);
+      }
     }
   }
 
@@ -3360,15 +3432,17 @@ const VETA = (() => {
     }, 320);
   }
 
-  function chatCodigo() {
+  async function chatCodigo() {
     chatSt.verCodigo = !chatSt.verCodigo;
-    if (chatSt.verCodigo) chatSt.con = null;
+    if (chatSt.verCodigo) { chatSt.con = null; chatSt.ficha = null; }
     pintarChat();
-    const c = $('#chat-qr');
-    if (c) {
-      try { c.innerHTML = QR.svg(enlaceChat(), { claro: '#F3ECD9', oscuro: '#021B1C', margen: 2 }); }
-      catch { c.remove(); }
-    }
+    if (!chatSt.verCodigo) return;
+    // mi ficha tal como la ve el resto: si el relevo no contesta, la pantalla
+    // sigue sirviendo con lo que ya sabe la sesion
+    try {
+      const yo = await CHAT.ficha((sesion?.correo || '').toLowerCase());
+      if (chatSt.verCodigo) { chatSt.yo = yo; pintarChat(); }
+    } catch {}
   }
 
   const chatCodigoCopiar = () => copiarTexto(enlaceChat(), t('cha.codCopiado'));
@@ -3382,6 +3456,162 @@ const VETA = (() => {
       if (g?.id) chatAbrir(g.id);
       avisar(t('cha.grHecho'));
     } catch (e) { chatSt.error = chatMotivo(e); pintarChat(); }
+  }
+
+  /* ── LA FICHA ────────────────────────────────────────────────────────────
+     Tocar la cabecera del hilo abre quién es el otro: su cara, su Genesis ID,
+     su dirección en la cadena, y lo que se puede hacer con esta conversación.
+     Hasta ahora el chat de la web era un hilo y nada más — no había forma de
+     ver a nadie, ni de mandarle ORIGEN, ni de vaciar lo hablado. El relevo ya
+     sabía contestar todo esto (/ficha, /grupo/info): lo que faltaba era la
+     pantalla. */
+
+  async function chatVerFicha() {
+    const c = chatSt.con;
+    if (!c) return;
+    chatSt.ficha = { cargando: true };
+    pintarChat();
+    try {
+      chatSt.ficha = c.esGrupo
+        ? { grupo: await CHAT.grupoInfo(c.id) }
+        : { persona: { correo: c.id, ...(await CHAT.ficha(c.id)) } };
+    } catch (e) {
+      chatSt.ficha = { error: chatMotivo(e) };
+    }
+    // mientras llegaba la respuesta pudieron cambiar de hilo o cerrarlo
+    if (chatSt.con?.id !== c.id) { chatSt.ficha = null; return; }
+    pintarChat();
+  }
+
+  function chatFichaCerrar() { chatSt.ficha = null; pintarChat(); }
+
+  /* Mandarle ORIGEN a alguien SIN copiar una dirección a mano — que es donde
+     la gente se equivoca y pierde el dinero. La dirección sale de su ficha,
+     nunca de algo escrito; y se deja anotado a quién era, para publicar el
+     comprobante en ESTE hilo cuando la cadena confirme. Antes no: un
+     comprobante de algo que todavía no pasó sería una mentira firmada por
+     nosotros. */
+  let avisarChat = null;
+
+  function chatEnviarOrigen() {
+    const c = chatSt.con;
+    const dir = chatSt.ficha?.persona?.addr || c?.addr;
+    if (!dir) return avisar(t('cha.sinDir'));
+    avisarChat = { id: c.id, nombre: c.nombre };
+    chatSt.ficha = null;
+    enviarA(dir);
+  }
+
+  function chatGuardarContacto() {
+    const c = chatSt.con;
+    const f = chatSt.ficha?.persona || {};
+    const dir = f.addr || c?.addr;
+    if (!dir) return avisar(t('cha.sinDir'));
+    const l = leerContactos();
+    // la misma dirección no se guarda dos veces: la libreta es para encontrar
+    // gente, no para coleccionar la misma fila
+    if (l.some(x => x.dir.toLowerCase() === dir.toLowerCase())) return avisar(t('cha.contactoYa'));
+    l.unshift({ id: String(Date.now()), nombre: c.nombre || f.correo || c.id, dir });
+    guardarContactos(l);
+    avisar(t('cha.contactoOk'));
+  }
+
+  /* Vaciar y borrar. La pantalla lo dice sin adornos: el hilo es de dos y
+     esto solo cambia MI vista. La otra persona conserva su copia — decirlo
+     aquí es más barato que un juicio después. */
+  async function chatOlvidar(quitar) {
+    const c = chatSt.con;
+    if (!c) return;
+    if (!confirm(quitar ? t('cha.borrarQ') : t('cha.vaciarQ'))) return;
+    try {
+      await CHAT.olvidar(c.id, quitar);
+      chatSt.ficha = null;
+      if (quitar) { chatSt.con = null; chatSt.msgs = null; }
+      else chatSt.msgs = [];
+      await chatCargarConvs();
+      pintarChat();
+      avisar(quitar ? t('cha.borrado') : t('cha.vaciado'));
+    } catch (e) { avisar(chatMotivo(e)); }
+  }
+
+  // ── grupos: lo que ya sabía el relevo y nadie podía tocar ────────────────
+
+  async function chatGrupoInvitar() {
+    const quien = (prompt(t('cha.invPide')) || '').trim().toLowerCase();
+    if (!quien) return;
+    try {
+      await CHAT.grupoInvitar(chatSt.con.id, [quien]);
+      avisar(t('cha.invHecho'));
+      chatVerFicha();
+    } catch (e) { avisar(chatMotivo(e)); }
+  }
+
+  async function chatGrupoNombre() {
+    const n = (prompt(t('cha.grPide'), chatSt.ficha?.grupo?.nombre || '') || '').trim();
+    if (!n) return;
+    try {
+      await CHAT.grupoEditar(chatSt.con.id, { nombre: n });
+      chatSt.con.nombre = n;
+      await chatCargarConvs();
+      chatVerFicha();
+    } catch (e) { avisar(chatMotivo(e)); }
+  }
+
+  async function chatGrupoSalir() {
+    if (!confirm(t('cha.salirQ'))) return;
+    try {
+      await CHAT.grupoSalir(chatSt.con.id);
+      chatSt.ficha = null; chatSt.con = null; chatSt.msgs = null;
+      await chatCargarConvs();
+      pintarChat();
+      avisar(t('cha.saliste'));
+    } catch (e) { avisar(chatMotivo(e)); }
+  }
+
+  const chatInvCopiar = () => {
+    const inv = chatSt.ficha?.grupo?.invitacion;
+    if (inv) copiarTexto(enlaceGrupo(inv), t('cha.codCopiado'));
+  };
+
+  // ── mi perfil de chat: mi cara, mi nombre y mi código ────────────────────
+
+  /* La foto sube como un adjunto cualquiera y después el perfil la referencia
+     por su id: el relevo no guarda un binario aparte para esto. Es el mismo
+     camino que usa la app, así que la misma cara se ve desde los dos lados. */
+  async function chatMiFoto(input) {
+    const f = input.files?.[0];
+    input.value = '';
+    if (!f) return;
+    if (!/^image\//.test(f.type)) return avisar(t('cha.soloImg'));
+    chatSt.subiendoFoto = true; pintarChat();
+    try {
+      const adj = await CHAT.subir(f);
+      await CHAT.perfil({ foto: adj.id });
+      chatSt.yo = { ...(chatSt.yo || {}), foto: adj.id };
+      await chatCargarConvs();
+      avisar(t('cha.fotoOk'));
+    } catch (e) { avisar(chatMotivo(e)); }
+    finally { chatSt.subiendoFoto = false; pintarChat(); }
+  }
+
+  async function chatMiFotoQuitar() {
+    try {
+      await CHAT.perfil({ foto: '' });
+      chatSt.yo = { ...(chatSt.yo || {}), foto: '' };
+      await chatCargarConvs();
+      pintarChat();
+    } catch (e) { avisar(chatMotivo(e)); }
+  }
+
+  async function chatMiNombre() {
+    const n = (prompt(t('cha.nombrePide'), chatSt.yo?.nombre || sesion?.nombre || '') || '').trim();
+    if (!n) return;
+    try {
+      await CHAT.perfil({ nombre: n });
+      chatSt.yo = { ...(chatSt.yo || {}), nombre: n };
+      pintarChat();
+      avisar(t('cha.nombreOk'));
+    } catch (e) { avisar(chatMotivo(e)); }
   }
 
   // ── el dibujo ───────────────────────────────────────────────────────────
@@ -3402,6 +3632,19 @@ const VETA = (() => {
       const c = $('#chat-txt');
       if (c && txt) c.value = txt;
     }
+    /* Los códigos se dibujan DESPUÉS de pintar, y aquí y no en quien los pide:
+       cualquier repintado —el latido cada cinco segundos, sin ir más lejos—
+       se llevaba por delante el QR y dejaba el hueco blanco. */
+    pintarQrChat('#chat-qr', enlaceChat());
+    const inv = chatSt.ficha?.grupo?.invitacion;
+    if (inv) pintarQrChat('#chat-qr-grupo', enlaceGrupo(inv));
+  }
+
+  function pintarQrChat(donde, texto) {
+    const c = $(donde);
+    if (!c) return;
+    try { c.innerHTML = QR.svg(texto, { claro: '#F3ECD9', oscuro: '#021B1C', margen: 2 }); }
+    catch { c.remove(); }
   }
 
   function chatAlFinal() {
@@ -3417,12 +3660,22 @@ const VETA = (() => {
     'https://www.vetawallet.com/#chat?con=' + encodeURIComponent((sesion?.correo || '').toLowerCase())
     + (identidad?.gid ? '&gid=' + encodeURIComponent(identidad.gid) : '');
 
+  /* La invitación a un grupo es un permiso, no un nombre: quien tiene el
+     enlace entra. Por eso se puede regenerar desde la ficha —eso invalida el
+     viejo al instante— y por eso no lleva el nombre del grupo pegado. */
+  const enlaceGrupo = inv =>
+    'https://www.vetawallet.com/#chat?inv=' + encodeURIComponent(inv || '');
+
   function leerInvitacion(crudo) {
     const txt = String(crudo || '').trim();
-    const m = txt.match(/(?:og:\/\/chat\/abrir|#chat)\?([^\s]+)/);
+    // og://chat/grupo?inv= es el formato que ya imprime la app en sus QR de
+    // grupo; #chat?inv= es el de la web. Los dos se entienden aquí.
+    const m = txt.match(/(?:og:\/\/chat\/(?:abrir|grupo)|#chat)\?([^\s]+)/);
     if (!m) return null;
     try {
       const q = new URLSearchParams(m[1]);
+      const inv = (q.get('inv') || '').trim();
+      if (/^[0-9a-f]{24}$/.test(inv)) return { inv };
       const con = (q.get('con') || '').toLowerCase();
       return /@/.test(con) ? { con, gid: q.get('gid') || '' } : null;
     } catch { return null; }
@@ -3523,9 +3776,36 @@ const VETA = (() => {
       </div>`;
     }
 
-    if (chatSt.verCodigo) return `
-      <div class="cha-puerta">
-        <h3>${t('cha.miCod')}</h3>
+    /* MI PERFIL DE CHAT. Antes esto era solo el código QR; ahora es lo que la
+       gente ve de mí: la cara, el nombre con el que me encuentran y mi
+       Genesis ID. La foto va aquí y no en Ajustes porque es la del chat —la
+       identidad de la wallet no se toca desde una pantalla de mensajes. */
+    if (chatSt.verCodigo) {
+      const yo = chatSt.yo || {};
+      return `
+      <div class="cha-puerta cha-yo">
+        <h3>${t('cha.miPerfil')}</h3>
+        <div class="chay-cara">
+          ${yo.foto
+            ? `<img src="${esc(CHAT.urlArchivo(yo.foto))}" alt="">`
+            : `<span>${esc(chatIni(yo.nombre || sesion?.nombre || sesion?.correo))}</span>`}
+          ${chatSt.subiendoFoto ? '<div class="chay-subiendo"><span class="girando"></span></div>' : ''}
+        </div>
+        <div class="chay-fotobtn">
+          <label class="btn btn-linea btn-sm">
+            ${yo.foto ? t('cha.cambiarFoto') : t('cha.ponerFoto')}
+            <input type="file" accept="image/*" onchange="VETA.chatMiFoto(this)" hidden>
+          </label>
+          ${yo.foto ? `<button class="btn btn-linea btn-sm" onclick="VETA.chatMiFotoQuitar()">${t('cha.quitarFoto')}</button>` : ''}
+        </div>
+        <dl class="chaf-datos">
+          <dt>${t('cha.nombre')}</dt>
+          <dd>${esc(yo.nombre || sesion?.nombre || '')}
+            <button class="chay-lapiz" onclick="VETA.chatMiNombre()" aria-label="${t('cha.cambiarNombre')}">
+              <svg viewBox="0 0 24 24">${ICO.lapiz}</svg></button></dd>
+          <dt>${t('cha.gid')}</dt>
+          <dd class="mono">${identidad?.gid ? esc(identidad.gid) : `<span class="chaf-nada">${t('cha.sinGid')}</span>`}</dd>
+        </dl>
         <p>${t('cha.miCodP')}</p>
         <div class="qr-caja" style="max-width:240px" id="chat-qr"></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
@@ -3533,6 +3813,7 @@ const VETA = (() => {
           <button class="btn btn-linea btn-sm" onclick="VETA.chatCodigo()">${t('tok.volver')}</button>
         </div>
       </div>`;
+    }
 
     if (!chatSt.con) return `
       <div class="cha-puerta">
@@ -3552,12 +3833,18 @@ const VETA = (() => {
         <button class="cha-volver" onclick="VETA.chatCerrar()" aria-label="${t('tok.volver')}">
           <svg viewBox="0 0 24 24">${ICO.atras}</svg>
         </button>
-        ${chatAvatar(c)}
-        <div class="cha-quien">
-          <b>${esc(c.nombre)}</b>
-          <small>${esc(c.esGrupo ? t('cha.esGrupo') : (c.gid || c.id))}</small>
-        </div>
+        <button class="cha-quien-btn" onclick="VETA.chatVerFicha()" title="${t('cha.verFicha')}">
+          ${chatAvatar(c)}
+          <span class="cha-quien">
+            <b>${esc(c.nombre)}</b>
+            <small>${esc(c.esGrupo ? t('cha.esGrupo') : (c.gid || c.id))}</small>
+          </span>
+        </button>
+        <button class="cha-mas cha-hmas" onclick="VETA.chatVerFicha()" aria-label="${t('cha.verFicha')}">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+        </button>
       </div>
+      ${chatSt.ficha ? chatFicha() : ''}
       <div class="cha-msgs" id="chat-msgs">${cuerpo}</div>
       <form class="cha-pie" onsubmit="return VETA.chatMandar(event)">
         <label class="cha-clip" title="${t('cha.adjuntar')}">
@@ -3571,6 +3858,69 @@ const VETA = (() => {
         </button>
       </form>
       <p class="cha-aviso">${t('cha.sinE2E')}</p>`;
+  }
+
+  /* La hoja de la ficha. Se dibuja ENCIMA del hilo, no en lugar de él: al
+     cerrarla la conversación sigue donde estaba, con su scroll y lo escrito
+     a medias en la caja. */
+  function chatFicha() {
+    const f = chatSt.ficha, c = chatSt.con;
+    const marco = dentro => `
+      <div class="cha-ficha" onclick="if(event.target===this)VETA.chatFichaCerrar()">
+        <div class="chaf-hoja">
+          <button class="chaf-x" onclick="VETA.chatFichaCerrar()" aria-label="${t('tok.volver')}">✕</button>
+          ${dentro}
+        </div>
+      </div>`;
+
+    if (f.cargando) return marco(`<div class="cha-cargando"><span class="girando"></span></div>`);
+    if (f.error) return marco(`<p class="aviso aviso-mal">${esc(f.error)}</p>`);
+
+    if (f.grupo) {
+      const g = f.grupo;
+      const soyAdmin = (g.admin || '').toLowerCase() === (sesion?.correo || '').toLowerCase();
+      return marco(`
+        <div class="chaf-cara">${chatAvatar({ foto: g.foto, nombre: g.nombre })}</div>
+        <h3>${esc(g.nombre || '')}</h3>
+        <p class="chaf-sub">${g.miembros?.length || 0} ${t('cha.miembros')}${soyAdmin ? ` · ${t('cha.soyAdmin')}` : ''}</p>
+        ${(g.miembros || []).length ? `<ul class="chaf-gente">${g.miembros.slice(0, 30).map(m => `
+          <li>${chatAvatar({ nombre: m.nombre || m.correo })}<span>${esc(m.nombre || m.correo)}</span>
+            ${(m.correo || '').toLowerCase() === (g.admin || '').toLowerCase()
+              ? `<em>${t('cha.admin')}</em>` : ''}</li>`).join('')}</ul>` : ''}
+        ${g.invitacion ? `
+          <div class="chaf-inv">
+            <div class="chaf-qr" id="chat-qr-grupo"></div>
+            <p class="chaf-nota">${t('cha.invNota')}</p>
+            <button class="btn btn-linea btn-sm" onclick="VETA.chatInvCopiar()">${t('cha.codCopiar')}</button>
+          </div>` : ''}
+        <div class="chaf-acciones">
+          <button class="btn btn-linea btn-sm" onclick="VETA.chatGrupoInvitar()">${t('cha.invitar')}</button>
+          ${soyAdmin ? `<button class="btn btn-linea btn-sm" onclick="VETA.chatGrupoNombre()">${t('cha.cambiarNombre')}</button>` : ''}
+          <button class="btn btn-linea btn-sm" onclick="VETA.chatOlvidar(false)">${t('cha.vaciar')}</button>
+          <button class="btn btn-linea btn-sm chaf-malo" onclick="VETA.chatGrupoSalir()">${t('cha.salir')}</button>
+        </div>
+        <p class="chaf-honesto">${t('cha.olvidarNota')}</p>`);
+    }
+
+    const p = f.persona || {};
+    const dir = p.addr || c?.addr || '';
+    return marco(`
+      <div class="chaf-cara">${chatAvatar({ foto: p.foto, nombre: p.nombre || c?.nombre })}</div>
+      <h3>${esc(p.nombre || c?.nombre || '')}</h3>
+      <p class="chaf-sub">${esc(p.correo || c?.id || '')}</p>
+      <dl class="chaf-datos">
+        <dt>${t('cha.gid')}</dt>
+        <dd class="mono">${p.gid ? esc(p.gid) : `<span class="chaf-nada">${t('cha.sinGid')}</span>`}</dd>
+        <dt>${t('cha.enCadena')}</dt>
+        <dd class="mono">${dir ? esc(cortaDir(dir)) : `<span class="chaf-nada">${t('cha.sinDirC')}</span>`}</dd>
+      </dl>
+      <div class="chaf-acciones">
+        ${dir ? `<button class="btn btn-oro btn-sm" onclick="VETA.chatEnviarOrigen()">${t('cha.mandarOrigen')}</button>` : ''}
+        ${dir ? `<button class="btn btn-linea btn-sm" onclick="VETA.chatGuardarContacto()">${t('cha.guardarCon')}</button>` : ''}
+        <button class="btn btn-linea btn-sm" onclick="VETA.chatOlvidar(false)">${t('cha.vaciar')}</button>
+        <button class="btn btn-linea btn-sm chaf-malo" onclick="VETA.chatOlvidar(true)">${t('cha.borrarConv')}</button>
+      </div>
+      <p class="chaf-honesto">${t('cha.olvidarNota')}</p>`);
   }
 
   function chatBurbuja(m) {
@@ -3675,7 +4025,7 @@ const VETA = (() => {
       tour: [
         { id: null, k: 'TU NÚCLEO', t: 'El cerebro del ecosistema', p: 'Bienvenido a tu Núcleo. Cada esfera es un órgano vivo, y todas laten conectadas a una sola cuenta: la tuya.' },
         { id: 'wallet', k: 'TU DINERO', t: 'Veta Wallet', p: 'Oro real hecho dinero, sobre nuestra propia cadena. Enviás, recibís y cobrás en segundos.' },
-        { id: 'scan', k: 'NUESTRA CADENA', t: 'Layer 1 · 5550', p: 'Ya no vivimos prestados en la red de otro: una Layer 1 hecha en casa. Y cada movimiento se comprueba en ordenscan, a cualquier hora.' },
+        { id: 'scan', k: 'NUESTRA CADENA', t: 'Layer 1 · 5550', p: 'Ya no vivimos prestados en la red de otro: una Layer 1 hecha en casa. Y cada movimiento se comprueba en ORDENSCAN, a cualquier hora.' },
         { id: 'chat', k: 'TU GENTE', t: 'PULSE CHAT', p: 'Solo gente verificada, y el dinero viaja dentro de la conversación, con comprobante en la cadena.' },
         { id: 'pay', k: 'TU NEGOCIO', t: 'MyTokenPay', p: 'La caja registradora del ecosistema: cobrás con un código y tu negocio crece acá adentro.' },
         { id: 'gid', k: 'TU IDENTIDAD', t: 'Genesis ID', p: 'Te verificás una sola vez y todo Orden Global te reconoce. Es la llave que abre las demás esferas.' },
@@ -3708,7 +4058,7 @@ const VETA = (() => {
       ecoTitulo: 'THE ORDEN GLOBAL ECOSYSTEM',
       escribi: 'Ask me or tell me…',
       con: {
-        origen: 'ORIGEN is real gold turned into money: each one is a gramin, an exact fraction of a certified gram of gold held in a vault. Not a promise of gold — the gold itself, with a new way to travel. It moves in seconds over our own chain.',
+        origen: 'ORIGEN — spelled with an E, and said the Spanish way: oh-REE-hen — is real gold turned into money. Each one is a gramin, an exact fraction of a certified gram of gold held in a vault. Not a promise of gold: the gold itself, with a new way to travel. It moves in seconds over our own chain.',
         cadena: 'Orden Global runs on its own Layer 1: chain 5550, with Hyperledger Besu, QBFT consensus and the Shanghai machine. We no longer live borrowed on someone else’s network. Everything is public at ordenscan.com.',
         gid: 'Genesis ID is your identity for the whole ecosystem: verify ONCE and you are verified everywhere. It is what guarantees there is a real person on the other side of every chat and every charge.',
         chat: 'PULSE CHAT is the ecosystem’s messenger: only people with an approved Genesis ID get in, you can send money without leaving the thread, and every payment leaves a verifiable receipt on the chain.',
@@ -3724,7 +4074,7 @@ const VETA = (() => {
       tour: [
         { id: null, k: 'YOUR NUCLEUS', t: 'The brain of the ecosystem', p: 'Welcome to your Nucleus. Each sphere is a living organ, and they all pulse connected to a single account: yours.' },
         { id: 'wallet', k: 'YOUR MONEY', t: 'Veta Wallet', p: 'Real gold turned into money, on our own chain. Send, receive and charge in seconds.' },
-        { id: 'scan', k: 'OUR CHAIN', t: 'Layer 1 · 5550', p: 'We no longer live borrowed on someone else’s network: a Layer 1 built in-house. And every movement can be checked on ordenscan, at any hour.' },
+        { id: 'scan', k: 'OUR CHAIN', t: 'Layer 1 · 5550', p: 'We no longer live borrowed on someone else’s network: a Layer 1 built in-house. And every movement can be checked on ORDENSCAN, at any hour.' },
         { id: 'chat', k: 'YOUR PEOPLE', t: 'PULSE CHAT', p: 'Verified people only, and money travels inside the conversation, with a receipt on the chain.' },
         { id: 'pay', k: 'YOUR BUSINESS', t: 'MyTokenPay', p: 'The ecosystem’s cash register: you charge with a code and your business grows in here.' },
         { id: 'gid', k: 'YOUR IDENTITY', t: 'Genesis ID', p: 'Verify once and all of Orden Global recognises you. It is the key that opens the other spheres.' },
@@ -3955,7 +4305,10 @@ const VETA = (() => {
 
     // conocimiento
     const SABE = [
-      [/origen|oro|gold|gramin/, T.con.origen],
+      // «origin» sin la E es como lo teclea quien lee la palabra en inglés,
+      // y hasta ahora caía en «todavía no sé eso»: la pregunta más nuestra
+      // de todas quedaba sin respuesta en medio idioma.
+      [/origen|origin|oro|gold|gramin/, T.con.origen],
       [/cadena|chain|5550|besu|qbft|shanghai|blockchain|layer/, T.con.cadena],
       [/genesis/, T.con.gid],
       [/pulse|chat/, T.con.chat],
@@ -4432,7 +4785,7 @@ const VETA = (() => {
         if (inv) {
           cerrarCamara();
           avisar(t('qr.leido'));
-          chatPendiente = inv.con;
+          chatPendiente = inv;
           vista('chat');
           return;
         }
@@ -4798,7 +5151,7 @@ const VETA = (() => {
     /* Una invitacion de chat (#chat?con=…) apunta directo al hilo: quien la
        escaneo quiere hablar con ALGUIEN, no ver una lista. */
     const invEntrante = location.hash.startsWith('#chat') ? leerInvitacion(location.hash) : null;
-    if (invEntrante) { vistaActual = 'chat'; chatPendiente = invEntrante.con; }
+    if (invEntrante) { vistaActual = 'chat'; chatPendiente = invEntrante; }
 
     sesion = recuperar();
     if (sesion?.token) {
@@ -4848,6 +5201,9 @@ const VETA = (() => {
            // que sin figurar aca los botones del chat no hacen nada.
            chatEntrar, chatAbrir, chatCerrar, chatMandar, chatBuscar, chatGrupo,
            chatAdjuntar, chatReparar, chatCodigo, chatCodigoCopiar,
+           chatVerFicha, chatFichaCerrar, chatEnviarOrigen, chatGuardarContacto,
+           chatOlvidar, chatGrupoInvitar, chatGrupoNombre, chatGrupoSalir,
+           chatInvCopiar, chatMiFoto, chatMiFotoQuitar, chatMiNombre,
            // La verificación por web. Los manejadores van en el HTML (onclick,
            // onchange), así que sin figurar acá los botones no hacen nada.
            verSeguir, verAtras, verVolverA, verSalir, verOpc, verVol,

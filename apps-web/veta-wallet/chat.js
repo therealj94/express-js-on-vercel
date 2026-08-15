@@ -30,7 +30,7 @@ const CHAT = (() => {
 
   const guardar = (correo, k) => { try { localStorage.setItem(donde(correo), k); } catch {} };
   const leer = correo => { try { return localStorage.getItem(donde(correo)); } catch { return null; } };
-  const olvidar = correo => { try { localStorage.removeItem(donde(correo)); } catch {} };
+  const olvidarLlave = correo => { try { localStorage.removeItem(donde(correo)); } catch {} };
 
   async function pedir(ruta, cuerpo, ms = 15000) {
     const ctrl = new AbortController();
@@ -80,7 +80,7 @@ const CHAT = (() => {
      se arregla desde aqui y hay que decirlo en pantalla, no reintentar en
      bucle. */
   async function rehacerAlta(cuenta) {
-    olvidar(cuenta.correo);
+    olvidarLlave(cuenta.correo);
     llave = null;
     return alta(cuenta);
   }
@@ -127,6 +127,14 @@ const CHAT = (() => {
     pedir('/enviar', firmado({ para, texto: texto || '', tipo: adj.tipo,
                                archivo: adj.id, nombre: adj.nombre }));
   const leido = de => pedir('/leido', firmado({ de })).catch(() => null);
+
+  /* Vaciar un hilo, o quitarlo de la lista. Y hay que decirlo con todas las
+     letras porque la pantalla lo dice: esto NO borra los mensajes. El hilo es
+     de dos y solo se decide sobre la vista propia — el relevo guarda una fecha
+     de corte y de ahí para atrás esta cuenta deja de verlo. La otra persona
+     conserva su copia. Prometer otra cosa sería mentir en un sitio donde la
+     gente cree que borró algo. */
+  const olvidar = (con, quitar = false) => pedir('/olvidar', firmado({ con, quitar }));
   const buscar = q => pedir('/buscar', firmado({ q })).then(d => d.gente || []);
   const ficha = de => pedir('/ficha', firmado({ de }));
   const perfil = datos => pedir('/perfil', firmado(datos));
@@ -153,12 +161,16 @@ const CHAT = (() => {
   const grupoEditar = (id, datos) => pedir('/grupo/editar', firmado({ id, ...datos }));
   const grupoInvitar = (id, correos) => pedir('/grupo/invitar', firmado({ id, correos }));
   const grupoSalir = id => pedir('/grupo/salir', firmado({ id }));
+  // El token de la invitación ES el permiso: quien lo tiene entra. Por eso
+  // regenerarlo desde la ficha cierra la puerta al instante.
+  const grupoUnirse = invitacion => pedir('/grupo/unirse', firmado({ invitacion }));
 
   const esGrupo = id => /^g:[0-9a-f]{16}$/.test(String(id || ''));
   const urlArchivo = id => BASE + '/archivo/' + id;
 
-  return { alta, rehacerAlta, listo, quienSoy, olvidar,
-           conversaciones, bandeja, enviar, subir, enviarAdjunto, leido, buscar, ficha, perfil, pago,
-           grupoCrear, grupoInfo, grupoEditar, grupoInvitar, grupoSalir,
+  return { alta, rehacerAlta, listo, quienSoy, olvidarLlave,
+           conversaciones, bandeja, enviar, subir, enviarAdjunto, leido, olvidar,
+           buscar, ficha, perfil, pago,
+           grupoCrear, grupoInfo, grupoEditar, grupoInvitar, grupoSalir, grupoUnirse,
            esGrupo, urlArchivo };
 })();

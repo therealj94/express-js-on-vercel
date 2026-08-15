@@ -60,6 +60,8 @@ const AURA = (() => {
     puntero: { x: -9999, y: -9999 },
     energia: 0,         // 0 = dormida (bienvenida arranca aquí) · 1 = plena
     energiaMeta: 1,
+    voz: 0, vozMeta: 0, // lo alto que está hablando AU-RA ahora mismo
+
     viva: false, raf: 0,
     alDestellar: null,  // aviso hacia fuera: un ganglio recibió señal
   };
@@ -225,6 +227,11 @@ const AURA = (() => {
   function paso() {
     const t = red.cuadro * 0.006;
     red.energia += (red.energiaMeta - red.energia) * 0.02;
+    /* La voz sube rápido y baja despacio, como un vúmetro: si siguiera
+       el audio muestra a muestra, la red parpadearía en vez de respirar.
+       0.35 al subir para que la sílaba se sienta; 0.08 al bajar para que
+       el silencio se apague en vez de cortarse. */
+    red.voz += (red.vozMeta - red.voz) * (red.vozMeta > red.voz ? 0.35 : 0.08);
 
     // El campo de flujo: dos senos cruzados. Es la marea que hace que el
     // cerebro RESPIRE en corrientes y no en temblor aleatorio.
@@ -308,6 +315,13 @@ const AURA = (() => {
     c.clearRect(0, 0, red.ancho, red.alto);
 
     const E = red.energia;
+    /* LA VOZ SE VE. Mientras AU-RA habla, la red respira con ella:
+       los hilos se encienden en las sílabas y se apagan en los
+       silencios. No es un adorno suelto — es lo que hace que la voz
+       y el cerebro parezcan la misma criatura y no dos cosas que
+       pasan a la vez. El valor viene del audio DE VERDAD (ver VOZ),
+       así que el ritmo es el de lo que está diciendo. */
+    const V = red.voz;
 
     // sinapsis primero: los hilos van DEBAJO de las cuentas
     c.lineWidth = 0.55;
@@ -319,7 +333,7 @@ const AURA = (() => {
         const d = Math.sqrt(dx * dx + dy * dy);
         if (d > red.celda) continue;
         const cerca = 1 - d / red.celda;
-        const a = (0.10 + cerca * 0.18 + (p.brillo + q.brillo) * 0.16) * p.z * E;
+        const a = (0.10 + cerca * 0.18 + (p.brillo + q.brillo) * 0.16) * p.z * E * (1 + V * 1.15);
         if (a < 0.012) continue;
         c.strokeStyle = `rgba(${p.tinte[0]},${p.tinte[1]},${p.tinte[2]},${a})`;
         c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(q.x, q.y); c.stroke();
@@ -330,7 +344,7 @@ const AURA = (() => {
     for (let i = 0; i < red.n.length; i++) {
       const p = red.n[i];
       const lat = 0.72 + 0.28 * Math.sin(red.cuadro * 0.02 + p.fase);
-      const a = (0.32 + p.brillo * 0.68) * p.z * lat * E;
+      const a = (0.32 + p.brillo * 0.68) * p.z * lat * E * (1 + V * 0.75);
       if (a < 0.02) continue;
       const r = p.r + p.brillo * 1.6;
       c.fillStyle = `rgba(${p.tinte[0]},${p.tinte[1]},${p.tinte[2]},${a})`;
@@ -343,7 +357,7 @@ const AURA = (() => {
       for (const o of g.union || []) {
         if (o.ax < g.ax) continue;                 // cada avenida una vez
         const mx = (g.x + o.x) / 2, my = (g.y + o.y) / 2 - 34;
-        c.strokeStyle = `rgba(201,169,97,${0.17 * E})`;
+        c.strokeStyle = `rgba(201,169,97,${0.17 * E * (1 + V * 1.6)})`;
         c.lineWidth = 1;
         c.beginPath(); c.moveTo(g.x, g.y); c.quadraticCurveTo(mx, my, o.x, o.y); c.stroke();
         // la gota: recorre la curva con el reloj de la red
@@ -741,6 +755,94 @@ const AURA = (() => {
     return h.toString(16).padStart(8, '0');
   }
 
+  /* ════════════════════════════════════════════════════════════════════
+     EL VÚMETRO DE VERDAD
+
+     Hasta ahora el orbe «ondulaba al ritmo» con Math.random() cada 90ms: se
+     movía, sí, pero no al ritmo de nada. Ahora se lee el audio REAL con un
+     AnalyserNode, y ese mismo número mueve también las neuronas del Núcleo:
+     cuando AU-RA habla, el cerebro entero late con sus sílabas y se apaga en
+     sus silencios. Eso es lo que hace que la voz y el cerebro parezcan la
+     misma criatura.
+
+     Dos cosas lo hacen posible y ninguna es gratis:
+
+     · El <audio> se REUTILIZA. createMediaElementSource solo puede llamarse
+       una vez por elemento, así que un <audio> nuevo por frase iría dejando
+       nodos colgados hasta que el navegador se rinda.
+     · El servidor de la voz manda Access-Control-Allow-Origin (se le puso a
+       Caddy en /voz/*). Sin esa cabecera el navegador entrega el sonido pero
+       PROHÍBE leer sus muestras, y el analizador devolvería silencio para
+       siempre — audio que suena y vúmetro plano.
+
+     Si algo de esto falla —navegador viejo, permiso denegado, el contexto que
+     no arranca— se vuelve al movimiento simulado. Que el vúmetro no funcione
+     jamás puede dejar a AU-RA muda. */
+  let elAudio = null, ctxAudio = null, analizador = null, muestras = null, relojNivel = 0;
+
+  function audioDeLaCasa() {
+    if (elAudio) return elAudio;
+    elAudio = new Audio();
+    elAudio.crossOrigin = 'anonymous';   // ANTES de cualquier src: si no, no sirve
+    elAudio.preload = 'auto';
+    return elAudio;
+  }
+
+  function engancharAnalizador() {
+    if (analizador) return true;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    try {
+      ctxAudio = new AC();
+      const fuente = ctxAudio.createMediaElementSource(audioDeLaCasa());
+      analizador = ctxAudio.createAnalyser();
+      analizador.fftSize = 256;
+      analizador.smoothingTimeConstant = 0.6;
+      muestras = new Uint8Array(analizador.fftSize);
+      fuente.connect(analizador);
+      // y del analizador a los altavoces: sin esto se analiza el silencio
+      analizador.connect(ctxAudio.destination);
+      return true;
+    } catch {
+      analizador = null;
+      return false;
+    }
+  }
+
+  /* El nivel: la desviación de la onda respecto al centro (RMS). Se mira la
+     forma de onda y no el espectro porque lo que se quiere es «cuánto suena»,
+     no «de qué color suena». */
+  function nivelReal() {
+    if (!analizador) return 0;
+    analizador.getByteTimeDomainData(muestras);
+    let suma = 0;
+    for (let i = 0; i < muestras.length; i++) {
+      const v = (muestras[i] - 128) / 128;
+      suma += v * v;
+    }
+    const rms = Math.sqrt(suma / muestras.length);
+    // la voz vive en una franja estrecha: se estira para que se note
+    return Math.min(1, rms * 3.6);
+  }
+
+  function mirarNivel(deVerdad) {
+    clearInterval(relojNivel);
+    relojNivel = setInterval(() => {
+      const n = deVerdad && analizador ? nivelReal()
+        // sin analizador, una onda mansa: no finge precisión que no tiene
+        : 0.34 + Math.sin(Date.now() / 110) * 0.16 + Math.random() * 0.12;
+      nivelOrbe(n);
+      red.vozMeta = n;
+    }, 60);
+  }
+
+  function soltarNivel() {
+    clearInterval(relojNivel);
+    relojNivel = 0;
+    nivelOrbe(0);
+    red.vozMeta = 0;
+  }
+
   let sonando = null;         // el <audio> vivo, para poder cortarlo
   let alTerminarVoz = null;   // cómo se cierra la frase EN CURSO si la cortan
 
@@ -757,7 +859,8 @@ const AURA = (() => {
     turnoVoz++;
     if (sonando) { try { sonando.pause(); } catch {} sonando = null; }
     try { speechSynthesis.cancel(); } catch {}
-    animoOrbe('dormida'); nivelOrbe(0);
+    soltarNivel();
+    animoOrbe('dormida');
     // pause() no dispara ni `ended` ni `error`, así que la promesa de la
     // frase cortada se quedaría colgada para siempre —y con ella el
     // recorrido, que espera a que termine— si no se cierra aquí a mano.
@@ -789,7 +892,16 @@ const AURA = (() => {
     ],
     en: [
       [/AU-RA/g, 'Aura'], [/AUBANK/g, 'A U Bank'], [/Ordenexchange/g, 'Orden Exchange'],
-      [/ORIGEN/g, 'Oreehen'], [/Orden Global/g, 'Orden Global'],
+      /* ORIGEN es un nombre español y se dice en español, también cuando el
+         resto de la frase va en inglés: «oh-REE-hen». «Oreehen» hacía que la
+         voz inglesa arrancara con «or-», que es justo lo que no es. Se separa
+         en sílabas para que el acento caiga donde tiene que caer. */
+      [/ORIGEN/g, 'oh REE hen'],
+      [/PULSE CHAT/g, 'Pulse Chat'], [/MyTokenPay/g, 'My Token Pay'],
+      [/Genesis ID/g, 'Genesis I D'], [/Layer 1/g, 'Layer One'],
+      [/Hyperledger Besu/g, 'Hyperledger Bessoo'], [/QBFT/g, 'Q B F T'],
+      [/ORDENSCAN/g, 'Orden Scan'], [/ordenscan/g, 'Orden Scan'],
+      [/Orden Global/g, 'Orden Global'],
     ],
   };
   const pronunciar = (texto, lang) =>
@@ -807,7 +919,8 @@ const AURA = (() => {
     const terminar = () => {
       if (termino) return;
       termino = true;
-      animoOrbe('dormida'); nivelOrbe(0);
+      soltarNivel();
+      animoOrbe('dormida');
       if (alTerminar) alTerminar();
     };
     try {
@@ -817,10 +930,11 @@ const AURA = (() => {
       u.lang = lang === 'en' ? 'en-US' : 'es-419';
       u.rate = 1.0; u.pitch = 1.0;
       u.onend = u.onerror = terminar;
-      const reloj = setInterval(() => {
-        if (termino || !speechSynthesis.speaking) return clearInterval(reloj);
-        nivelOrbe(0.3 + Math.random() * 0.5);
-      }, 90);
+      /* La voz del sintetizador no es un elemento que se pueda analizar: no
+         hay muestras que leer por ningún lado. Ahí el vúmetro es simulado, y
+         se dice — pero mueve la red igual, para que el Núcleo respire también
+         cuando la frase no tiene grabación propia. */
+      mirarNivel(false);
       animoOrbe('hablando');
       speechSynthesis.speak(u);
       setTimeout(() => { if (!speechSynthesis.speaking) terminar(); }, 900);
@@ -849,19 +963,23 @@ const AURA = (() => {
       alTerminarVoz = terminar;
       const k = claveVoz(texto, lang);
       if (!VOZ_MAPA[k]) return hablarConNavegador(texto, lang, terminar);
-      // la voz de la casa: el fichero grabado
-      const a = new Audio();
+      // la voz de la casa: el fichero grabado. UN solo elemento para todas
+      // las frases — ver el vúmetro, arriba: uno nuevo por frase dejaría un
+      // nodo de audio colgado cada vez.
+      const a = audioDeLaCasa();
+      const hayAnalizador = engancharAnalizador();
+      // el contexto arranca dormido hasta que hay un gesto; el saludo llega
+      // detrás de un toque en el orbe, así que aquí ya se puede despertar
+      if (ctxAudio && ctxAudio.state === 'suspended') ctxAudio.resume().catch(() => {});
       sonando = a;
+      try { a.pause(); a.currentTime = 0; } catch {}
       a.src = VOZ_BASE + k + '.mp3';
       let arranco = false;
       a.onplaying = () => {
         arranco = true; animoOrbe('hablando');
-        const reloj = setInterval(() => {
-          if (a.paused || a.ended) return clearInterval(reloj);
-          nivelOrbe(0.3 + Math.random() * 0.5);
-        }, 90);
+        mirarNivel(hayAnalizador);
       };
-      a.onended = () => { sonando = null; terminar(); };
+      a.onended = () => { sonando = null; soltarNivel(); terminar(); };
       a.onerror = () => {
         sonando = null;
         if (!vigente()) return terminar();   // ya la cortaron: ni una palabra

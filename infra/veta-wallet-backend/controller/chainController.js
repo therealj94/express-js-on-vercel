@@ -115,36 +115,42 @@ export const getChainForId = async (req, res) => {
 
       const allTransfers = [];
 
+      /* Antes aquí había un `if (tx.addressContract === null)` que descartaba
+         TODA transferencia de token antes de mandarla: una transferencia de
+         ERC-20 siempre trae la dirección de su contrato, así que ninguna
+         pasaba. Por eso la Actividad enseñaba solo ORIGEN y un envío de ONDK
+         hecho de verdad no aparecía en ningún lado — ni en la web ni en el
+         teléfono, que leen esta misma lista.
+
+         El explorador ya entrega el token decodificado (símbolo, unidades
+         humanas, y `from`/`to` con los TITULARES, no el contrato), así que lo
+         único que había que hacer era dejarlo pasar y arrastrar el símbolo.
+
+         Se mandan además las dos formas de cada campo —`timeStamp` y
+         `timestamp`, `type` y `direction`— porque lo que ya está instalado
+         ahí fuera lee las viejas: quitarlas dejaría sin fecha a quien no haya
+         actualizado. Las nuevas son las que se leen bien. */
       for (const tx of txOndk) {
-        if (tx.addressContract === null) {
-          if (
-            tx.from &&
-            address &&
-            tx.from.toLowerCase() === address.toLowerCase()
-          ) {
-            const transferSend = {
-              value: tx.value,
-              timeStamp: tx.timestamp,
-              to: tx.to,
-              hash: tx.hash,
-              type: "send",
-            };
-            allTransfers.push(transferSend);
-          } else if (
-            tx.to &&
-            address &&
-            tx.to.toLowerCase() === address.toLowerCase()
-          ) {
-            const transferRecive = {
-              value: tx.value,
-              timeStamp: tx.timestamp,
-              from: tx.from,
-              hash: tx.hash,
-              type: "recive",
-            };
-            allTransfers.push(transferRecive);
-          }
-        }
+        const mia = (x) => x && x.toLowerCase() === address.toLowerCase();
+        const sale = mia(tx.from);
+        const entra = mia(tx.to);
+        if (!sale && !entra) continue;
+
+        allTransfers.push({
+          value: tx.value,
+          // en segundos, como lo guarda el explorador
+          timeStamp: tx.timestamp,
+          timestamp: tx.timestamp,
+          from: tx.from || null,
+          to: tx.to || null,
+          hash: tx.hash,
+          // el símbolo es lo que separa 0,5 ORIGEN de 0,5 ONDK en la lista
+          symbol: tx.symbol || null,
+          addressContract: tx.addressContract || null,
+          esToken: Boolean(tx.addressContract),
+          type: sale ? "send" : "recive",
+          direction: sale ? "out" : "in",
+        });
       }
       const priceData = "2.10";
       const { api_key: _k1, ...chainPublico } = chain.toObject();
