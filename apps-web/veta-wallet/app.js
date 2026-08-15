@@ -8,7 +8,12 @@
 const VETA = (() => {
   'use strict';
 
-  const API = 'https://vetawallet-1a2e38ac52b1.herokuapp.com';
+  // El backend de la billetera. Se puede apuntar a otro —definiendo OG_API
+  // antes de este archivo— igual que OG_CHAIN_ID con la red y
+  // OG_MENSAJES_API con el relevo: es lo que deja probar contra un backend
+  // de mentira que se puede romper a voluntad, sin tocar el de produccion.
+  const API = String(window.OG_API || 'https://vetawallet-1a2e38ac52b1.herokuapp.com')
+    .replace(/\/$/, '');
   // El identificador de la red. Desde el corte del 15-ago-2026 es la 5550, y este es
   // el único sitio de la billetera web donde cambia. Se puede forzar desde
   // fuera —definiendo OG_CHAIN_ID antes de este archivo— para apuntar la misma
@@ -183,12 +188,22 @@ const VETA = (() => {
     } catch (e) {
       const vencio = e.estado === 401 || e.estado === 403 ||
                      /jwt|expired|invalid token|unauthor/i.test(e.message || '');
-      if (!sinReintento && conSesion && vencio && await renovar()) {
-        return await crudo(ruta, opciones);
+      if (vencio && conSesion) {
+        /* Un token vencido se renueva y la peticion se repite. Pero si la
+           RENOVACION tampoco sirve, la sesion esta muerta de verdad y hay que
+           pedir la contraseña.
+
+           Antes bastaba con TENER refresco para no cerrar sesion —se miraba si
+           existia, no si servia—. Y el dia que se rota la clave que firma las
+           sesiones eso le pasa a todo el mundo de golpe: el refresco viejo
+           tampoco vale, nadie sale de la sesion muerta, y la persona se queda
+           dentro viendo «Reintentar» en la tarjeta de Genesis ID —verificada
+           desde hace meses— con un boton que no puede funcionar nunca. El
+           sintoma no se parecia en nada a la causa. */
+        const renovado = await renovar();
+        if (renovado) { if (!sinReintento) return await crudo(ruta, opciones); }
+        else caduco();
       }
-      // Sin refresco posible, la sesion esta muerta: mejor pedir la contraseña
-      // que dejar la pantalla dando errores en cada gesto.
-      if (vencio && conSesion && !sesion?.refresco) caduco();
       throw e;
     }
   }
@@ -576,6 +591,8 @@ const VETA = (() => {
      404 ya no la produce, pero el sobre sin abrir sí. Se desenvuelve una sola
      vez, aca, y el resto de la pantalla trabaja con un objeto plano. */
   async function cargarIdentidad() {
+    // lo ultimo que se supo de esta persona, para no borrarselo por un tropiezo
+    const antes = identidad && !identidad.error ? identidad : null;
     try { identidad = aVistaId(await pedir('/genesis/estado')); }
     catch (e) {
       /* Genesis ID se reinicia con cada despliegue y en ese minuto contesta
@@ -583,7 +600,16 @@ const VETA = (() => {
          la diferencia entre «se cayo Genesis» y un parpadeo que nadie ve. */
       await new Promise(r => setTimeout(r, 2500));
       try { identidad = aVistaId(await pedir('/genesis/estado')); }
-      catch (e2) { identidad = { error: e2.message, estado: null }; }
+      catch (e2) {
+        /* Si ya sabiamos que esta persona esta verificada, un fallo al
+           REFRESCAR no lo desmiente: se conserva lo ultimo que dijo el
+           servidor. Sin esto, un tropiezo de red le cambiaba la tarjeta a
+           alguien verificado desde hace meses por un «Reintentar», y de paso
+           le cerraba el chat —la puerta mira esVerificada()— hasta que
+           recargara. Un estado que costo un tramite entero no se tira por una
+           peticion que no llego. */
+        identidad = antes || { error: e2.message, estado: null };
+      }
     }
     /* Verificarse y quedar atado al GID son dos cosas distintas, y la web solo
        hacia la primera: la tarjeta decia «Verificada» y el GID salia, pero la
@@ -5301,6 +5327,9 @@ const VETA = (() => {
            // Solo para las pruebas y las capturas: aqui no hay salida a la
            // cadena, y hay que poder mirar la pantalla con saldos dentro.
            _sembrar: l => { cartera = l; errCartera = null; },
+           // Solo para las pruebas: saber si la persona consta verificada sin
+           // tener que deducirlo del texto de una tarjeta.
+           _esVerificada: () => esVerificada(),
            _tarjeta: c => { tarjeta = c; },
            _sesion: x => { sesion = x; },
            _leerCobro: c => { const x = leerCobro(c); if (x) irACobro(x); return x; },
