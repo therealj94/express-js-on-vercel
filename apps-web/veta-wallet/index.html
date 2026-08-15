@@ -3,6 +3,40 @@
 <title>Orden Global · Un ecosistema entero, en una sola cuenta</title>
 <meta name="description" content="Orden Global: tu dinero respaldado en oro (Veta Wallet), tu gente (PULSE CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), sobre nuestra propia cadena y con AU-RA, la inteligencia del ecosistema.">
 <meta name="theme-color" content="#021B1C">
+
+<!-- A dónde puede hablar esta página, y desde dónde puede traer cosas.
+
+     Esto NO reemplaza escapar bien los datos —los manejadores en línea que
+     usa toda la app obligan a permitir 'unsafe-inline' en los guiones, así
+     que una inyección seguiría ejecutándose—. Lo que sí hace, y por eso está,
+     es cortarle las piernas: aunque alguien logre ejecutar algo, connect-src
+     solo deja hablar con NUESTROS servicios y los tres precios de fuera, así
+     que no hay a dónde mandarse la sesión de nadie. form-action y base-uri
+     cierran las otras dos salidas clásicas.
+
+     Cada dominio de la lista está porque algo concreto lo necesita; si se
+     agrega un servicio nuevo hay que agregarlo aquí o dejará de funcionar en
+     silencio. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' data: https://fonts.gstatic.com;
+  img-src 'self' data: blob: https://cerebro.ordenscan.com;
+  media-src 'self' blob: https://cerebro.ordenscan.com;
+  connect-src 'self'
+    https://vetawallet-1a2e38ac52b1.herokuapp.com
+    https://cerebro.ordenscan.com
+    https://genesis-id.onrender.com
+    https://rpc.ordenglobal-rpc.com
+    https://api.coingecko.com
+    https://api.gold-api.com
+    https://open.er-api.com;
+  object-src 'none';
+  base-uri 'self';
+  form-action 'self';
+  frame-src 'none';
+">
 <link rel="icon" href="assets/veta-logo.png">
 <link rel="apple-touch-icon" href="assets/veta-logo.png">
 <meta property="og:title" content="Orden Global">

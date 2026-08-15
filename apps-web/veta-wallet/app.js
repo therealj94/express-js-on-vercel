@@ -29,6 +29,23 @@ const VETA = (() => {
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+  /* Un dato que viaja DENTRO de una cadena de JavaScript que a su vez vive en
+     un atributo (onclick="VETA.algo(AQUI)") pasa por DOS lectores: primero el
+     de HTML, que des-escapa las entidades, y después el de JS. esc() sirve
+     para el primero y NO para el segundo: escribe &#39;, el lector de HTML lo
+     devuelve a ' y esa comilla cierra la cadena — el resto del dato se
+     ejecuta como código. Con un correo del relevo (que puede traer comillas)
+     eso es una puerta abierta.
+
+     Así que se escapa al revés: primero para JS —JSON.stringify, que además
+     pone las comillas— y después para HTML. Las comillas dobles quedan como
+     &quot;, que el lector de HTML devuelve a " dentro del atributo sin
+     cerrarlo, y el JS recibe una cadena entera y correcta.
+
+     Se usa SIN comillas alrededor: onclick="VETA.algo(${jsTxt(x)})". */
+  const jsTxt = s => esc(JSON.stringify(String(s == null ? '' : s))
+    .replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029'));
+
   /* El puente con la telemetría. Va envuelto porque el reportero es opcional:
      si el archivo no se cargó, o no tiene clave puesta, aquí no se nota nada.
      Una billetera no puede romperse por culpa de su propia instrumentación. */
@@ -779,7 +796,7 @@ const VETA = (() => {
       const chg = x.chg != null
         ? `<span class="${x.chg < 0 ? 'baja' : 'sube'}">${x.chg > 0 ? '+' : ''}${x.chg.toFixed(2)}%</span>` : '';
       return `
-      <button class="moneda" onclick="VETA.vista('token','${x.s}')"
+      <button class="moneda" onclick="VETA.vista('token',${jsTxt(x.s)})"
               aria-label="${esc(x.n)}, ${esc(oro(x.cant))} ${x.s}">
         ${disco(x)}
         <div class="m-txt">
@@ -994,7 +1011,7 @@ const VETA = (() => {
       ${/* Leer que es una moneda y no poder moverla desde ahi es hacer volver
             atras por gusto. Enviar arranca ya con esta moneda elegida. */''}
       <div class="ficha-btns">
-        <button class="btn btn-oro btn-sm" onclick="VETA.envElegir('${x.s}')">
+        <button class="btn btn-oro btn-sm" onclick="VETA.envElegir(${jsTxt(x.s)})">
           <svg viewBox="0 0 24 24" class="btn-ic">${ICO.enviar}</svg>${t('a.enviar')}</button>
         <button class="btn btn-linea btn-sm" onclick="VETA.vista('recibir')">
           <svg viewBox="0 0 24 24" class="btn-ic">${ICO.recibir}</svg>${t('a.recibir')}</button>
@@ -1003,7 +1020,7 @@ const VETA = (() => {
       <dl class="datos">
         ${filas.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd class="${k === t('tok.contrato') && !x.nativo ? 'mono' : ''}">${esc(v || '—')}</dd></div>`).join('')}
       </dl>
-      ${x.nativo ? '' : `<button class="btn btn-linea btn-sm" onclick="VETA.copiarContrato('${x.contrato}')">
+      ${x.nativo ? '' : `<button class="btn btn-linea btn-sm" onclick="VETA.copiarContrato(${jsTxt(x.contrato)})">
         <svg viewBox="0 0 24 24" class="btn-ic">${ICO.copiar}</svg>${t('tok.copiarC')}</button>`}
     </div>`;
   }
@@ -1049,7 +1066,7 @@ const VETA = (() => {
 
     const fichas = lista.map(m => `
       <button type="button" class="env-ficha" ${m.s === x.s ? 'data-elegida' : ''}
-              onclick="VETA.envElegir('${m.s}')" aria-pressed="${m.s === x.s}">
+              onclick="VETA.envElegir(${jsTxt(m.s)})" aria-pressed="${m.s === x.s}">
         ${disco(m)}
         <span><b>${esc(m.s)}</b><small>${tapa(oro(m.cant ?? 0))}</small></span>
       </button>`).join('');
@@ -1672,7 +1689,7 @@ const VETA = (() => {
         ${VOLUMENES.map(([v, k]) => `
           <label class="opcion">
             <input type="radio" name="ver-vol" value="${v}"${v === sol.volumen ? ' checked' : ''}
-                   onchange="VETA.verVol('${v}')">
+                   onchange="VETA.verVol(${jsTxt(v)})">
             <span>${t(k)}</span>
           </label>`).join('')}
       </div>
@@ -1937,12 +1954,12 @@ const VETA = (() => {
     ${foto ? `
       <img class="capt-previa" src="${esc(foto)}" alt="">
       <div class="capt-pie">
-        <button class="btn btn-linea btn-sm" onclick="VETA.verQuitar('${cual}')">${t('ver.repetir')}</button>
+        <button class="btn btn-linea btn-sm" onclick="VETA.verQuitar(${jsTxt(cual)})">${t('ver.repetir')}</button>
       </div>`
     : `
       <label class="capt-caja">
         <input type="file" accept="image/*"${c.lado ? ` capture="${c.lado}"` : ''}
-               onchange="VETA.verFoto('${cual}', this)">
+               onchange="VETA.verFoto(${jsTxt(cual)}, this)">
         <span class="capt-dentro">
           <span class="capt-marco ${c.marco}">
             <svg viewBox="0 0 24 24">${icono}</svg>
@@ -2721,7 +2738,7 @@ const VETA = (() => {
               style="left:${m.x}%;top:${m.y}%;--t:${m.tam};--d:${i * 420}ms;
                      --g1:${m.grad[0]};--g2:${m.grad[1]};--g3:${m.grad[2]};
                      --halo:${m.halo};--lente:${m.lente}"
-              onclick="VETA.nuAbrir('${m.id}')"
+              onclick="VETA.nuAbrir(${jsTxt(m.id)})"
               aria-label="${esc(t('nu.' + m.id))}">
         <span class="nu-esfera"><span class="nu-lente">${m.logo
           ? `<img src="${m.logo}" alt="" style="--zoom:${m.zoom || 1}">`
@@ -2744,7 +2761,7 @@ const VETA = (() => {
       </div>
       ${esferas}
       <div class="cerebro-pie">
-        <button class="btn btn-oro btn-sm" onclick="VETA.auraChip('${esc(aTxt().chips[0])}')">
+        <button class="btn btn-oro btn-sm" onclick="VETA.auraChip(${jsTxt(aTxt().chips[0])})">
           ▶ ${t('nu.recorrer')}</button>
         <button class="btn btn-linea btn-sm" onclick="VETA.auraAyuda()">${t('nu.decirle')}</button>
       </div>
@@ -2839,7 +2856,7 @@ const VETA = (() => {
   function payTarjeta(c) {
     const verificado = c.estado === 'verified';
     return `
-    <button class="pay-caja" onclick="VETA.payAbrir('${c.id}')">
+    <button class="pay-caja" onclick="VETA.payAbrir(${jsTxt(c.id)})">
       <div class="pay-cab">
         <span class="pay-emo">${PAY_EMOJI[c.cat] || '🏪'}</span>
         <div style="flex:1;min-width:0">
@@ -2870,7 +2887,7 @@ const VETA = (() => {
       <div class="pay-chips">
         ${PAY_CATEGORIAS.slice(0, 8).map(c => `
           <button class="pay-chip${payCat === c.slug ? ' va' : ''}"
-                  onclick="VETA.payCategoria('${c.slug}')">${PAY_EMOJI[c.slug] || ''} ${esc(c.label)}</button>`).join('')}
+                  onclick="VETA.payCategoria(${jsTxt(c.slug)})">${PAY_EMOJI[c.slug] || ''} ${esc(c.label)}</button>`).join('')}
       </div>
     </div>
 
@@ -3438,7 +3455,7 @@ const VETA = (() => {
     if (chatSt.gente) {
       const g = chatSt.gente;
       return cab + (g.length ? g.map(x => `
-        <button class="cha-fila" onclick="VETA.chatAbrir('${esc(x.correo)}')">
+        <button class="cha-fila" onclick="VETA.chatAbrir(${jsTxt(x.correo)})">
           ${chatAvatar(x)}
           <span class="cha-txt"><b>${esc(x.nombre || x.correo)}</b>
             <small>${esc(x.gid || x.correo)}</small></span>
@@ -3459,7 +3476,7 @@ const VETA = (() => {
       const id = c.id || c.correo;
       return `
       <button class="cha-fila" ${chatSt.con?.id === id ? 'data-aqui' : ''}
-              onclick="VETA.chatAbrir('${esc(id)}')">
+              onclick="VETA.chatAbrir(${jsTxt(id)})">
         ${chatAvatar(c)}
         <span class="cha-txt">
           <b>${esc(c.nombre || c.correo)}${c.esGrupo ? ` <em>· ${c.miembros}</em>` : ''}</b>
@@ -3752,10 +3769,10 @@ const VETA = (() => {
         ${auraCharla.map(m => `<div class="aura-b${m.de === 'yo' ? ' mio' : ''}">${esc(m.txt)}${
           m.botones ? `<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">${
             m.botones.map(b => `<button class="btn btn-oro btn-sm" style="padding:8px 14px;font-size:12px"
-              onclick="VETA.auraChip('${esc(b.di)}')">${esc(b.txt)}</button>`).join('')}</div>` : ''}</div>`).join('')}
+              onclick="VETA.auraChip(${jsTxt(b.di)})">${esc(b.txt)}</button>`).join('')}</div>` : ''}</div>`).join('')}
       </div>
       <div class="aura-chips">${T.chips.map(c =>
-        `<button class="aura-chip" onclick="VETA.auraChip('${esc(c)}')">${esc(c)}</button>`).join('')}</div>
+        `<button class="aura-chip" onclick="VETA.auraChip(${jsTxt(c)})">${esc(c)}</button>`).join('')}</div>
       <form class="aura-pie" onsubmit="return VETA.auraManda(event)">
         ${AURA.puedeEscuchar() ? `
         <button type="button" class="aura-mic${auraOyendo ? ' oyendo' : ''}" onclick="VETA.auraMic()"
@@ -4248,8 +4265,8 @@ const VETA = (() => {
             <small class="mono">${esc(cortaDir(c.dir))}</small>
           </div>
           <div class="con-btns">
-            <button class="btn btn-linea btn-sm" onclick="VETA.enviarA('${esc(c.dir)}')">${t('con.usar')}</button>
-            <button class="btn btn-linea btn-sm" onclick="VETA.borrarContacto('${esc(c.id)}')" aria-label="${t('con.borrar')}">✕</button>
+            <button class="btn btn-linea btn-sm" onclick="VETA.enviarA(${jsTxt(c.dir)})">${t('con.usar')}</button>
+            <button class="btn btn-linea btn-sm" onclick="VETA.borrarContacto(${jsTxt(c.id)})" aria-label="${t('con.borrar')}">✕</button>
           </div>
         </div>`).join('')
       : `<div class="vacio"><b>${t('con.vacioT')}</b>${t('con.vacioP')}</div>`}
@@ -4447,7 +4464,7 @@ const VETA = (() => {
     if (!caja) return false;
     if (!ev) {
       caja.innerHTML = `
-        <form onsubmit="return VETA.pedirSecreto('${cual}',event)">
+        <form onsubmit="return VETA.pedirSecreto(${jsTxt(cual)},event)">
           <div class="campo">
             <label for="sec-${cual}">${t('seg.claveP')}</label>
             <input id="sec-${cual}" type="password" autocomplete="current-password" placeholder="••••••••" required>
@@ -4592,7 +4609,7 @@ const VETA = (() => {
 
     if (!ev) {
       caja.innerHTML = `
-        <form class="revelar" onsubmit="return VETA.revelar('${que}',event)">
+        <form class="revelar" onsubmit="return VETA.revelar(${jsTxt(que)},event)">
           <div class="campo">
             <label for="rev-clave">${t('tar.claveP')}</label>
             <input id="rev-clave" type="password" autocomplete="current-password" placeholder="••••••••" required>

@@ -129,8 +129,22 @@ def guardar(d):
     os.replace(tmp, RUTA)
 
 
+# Un correo se guarda aquí y después se pinta en la pantalla de OTRA persona.
+# La regla de antes —«cualquier cosa sin arroba ni espacios»— dejaba entrar
+# comillas, paréntesis y punto y coma, y con eso un correo dado de alta a mano
+# podía salirse de la cadena en la que la web lo pinta. La web ya escapa bien
+# ese sitio, pero un dato con forma de correo tiene que tener forma de correo:
+# es la mitad del arreglo que vive de este lado.
+#
+# El apóstrofo SÍ se permite: o'brien@example.com es un correo de verdad y
+# negárselo a alguien por culpa nuestra sería el error contrario.
+CORREO = re.compile(r"[A-Za-z0-9!#$%&'*+/=?^_~.-]{1,64}"
+                    r"@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+                    r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+")
+
+
 def correo_valido(x):
-    return bool(re.fullmatch(r'[^@\s]{1,64}@[^@\s]{3,255}', str(x or '').lower()))
+    return bool(CORREO.fullmatch(str(x or '').lower()))
 
 
 def foto_valida(d, x):
