@@ -18,6 +18,9 @@ const VETA = (() => {
   // El explorador publico de la cadena. Un comprobante de pago sin enlace a
   // donde comprobarlo es solo una afirmacion nuestra.
   const EXPLORADOR = 'https://ordenscan.com';
+  // Adonde lleva la esfera de MyTokenPay. Se puede pisar desde fuera igual
+  // que la cadena y el relevo, porque su web propia esta por estrenarse.
+  const URL_MYTOKENPAY = window.OG_MYTOKENPAY || 'https://www.mytokenpay-pos.com';
 
   const $ = s => document.querySelector(s);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
@@ -289,10 +292,16 @@ const VETA = (() => {
     if (destino === 'acceso') { pestana(cual || 'entrar'); setTimeout(() => $('#i-correo').focus(), 60); }
     if (destino === 'app') vista(vistaActual);
     window.scrollTo(0, 0);
-    /* La bienvenida sale una sola vez, al entrar, y con un respiro: encima de
-       una billetera ya pintada se entiende que es una capa que se va, no una
-       pared antes de la puerta. */
-    if (destino === 'app' && !bienVisto()) setTimeout(bienvenida, 450);
+    /* AU-RA acompaña toda la sesion; fuera de ella no existe. Las seis
+       tarjetas de la bienvenida vieja ya no salen solas: quedaron en Ajustes
+       para quien quiera leerlas — la puerta de entrada ahora es de AU-RA. */
+    if (destino === 'app') auraDespertar();
+    else {
+      $('#aura-orbe').setAttribute('data-oculto', '');
+      auraAbierta = false; pintarAura();
+      AURA.pararVoz(); AURA.pararRed();
+      document.body.classList.remove('en-cerebro');
+    }
   }
 
   function pestana(cual) {
@@ -418,6 +427,18 @@ const VETA = (() => {
       anotarSesion();
       ir('app');
       cargarTodo();
+      /* El login es un gesto del dedo: el audio puede arrancar de ahi. La
+         presentacion de AU-RA sale UNA vez por dia por navegador — todos los
+         dias no es una bienvenida, es un peaje. */
+      let vista_hoy = null;
+      try { vista_hoy = localStorage.getItem('aura.bienvenida'); } catch {}
+      const hoy = new Date().toDateString();
+      if (vista_hoy !== hoy && !semillaNueva) {
+        try { localStorage.setItem('aura.bienvenida', hoy); } catch {}
+        setTimeout(() => auraBienvenida(true), 300);
+      } else {
+        setTimeout(auraOfrecerGid, 1200);
+      }
       // La frase se enseña ENCIMA de la billetera ya pintada, no antes de
       // entrar: quien la ve entiende que ya tiene cuenta y que esto es lo que
       // hay que guardar, no un tramite mas de la puerta.
@@ -644,6 +665,14 @@ const VETA = (() => {
     if (cual === 'tarjeta' && !tarjeta) cargarTarjeta().then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
     if (cual === 'remesas' && !tasas) cargarTasas().then(() => { if (vistaActual === 'remesas') vista('remesas'); });
     if (cual === 'chat') chatEntrar();
+    /* El cerebro solo respira cuando se lo mira: al entrar al Nucleo se monta
+       sobre su canvas recien pintado, y al salir se para — un cerebro animando
+       detras de la pantalla de enviar seria gastar bateria en nada. El fondo
+       negro va y viene con el: la orden fue que el resto de la billetera
+       quede como esta. */
+    document.body.classList.toggle('en-cerebro', cual === 'nucleo');
+    if (cual === 'nucleo') encenderCerebro(false);
+    else AURA.pararRed();
     window.scrollTo(0, 0);
   }
 
@@ -2636,7 +2665,7 @@ const VETA = (() => {
     { id: 'chat', x: 19, y: 17, tam: 0.72, va: 'chat', pideGid: true,
       grad: ['#FBE0D4', '#E0937A', '#8A4A38'], halo: '#E0937A', lente: '#20100A',
       ico: '<path d="M3.5 6.6h12.2v8.2H8.1L4.4 18v-3.2H3.5z"/><path d="M18.6 9.4h1.9v8.2h-.9V20l-3-2.4H12"/>' },
-    { id: 'pay', x: 81, y: 21, tam: 0.76, fuera: 'https://www.mytokenpay-pos.com', pideGid: true,
+    { id: 'pay', x: 81, y: 21, tam: 0.76, paraFuera: 'pay', pideGid: true,
       grad: ['#D8F7FF', '#5FC6EA', '#453398'], halo: '#5FC6EA', lente: '#0A0812',
       ico: '<path d="M4 9h16l-1.2 11.2H5.2z"/><path d="M8.4 9V6.6a3.6 3.6 0 0 1 7.2 0V9"/>' },
     { id: 'gid', x: 18, y: 79, tam: 0.72, va: 'identidad',
@@ -2662,16 +2691,15 @@ const VETA = (() => {
     const nombre = (sesion?.nombre || '').split(' ')[0];
     const verificada = esVerificada();
 
-    /* Las lineas salen del centro a cada mundo. Se dibujan en un SVG que ocupa
-       el mismo cuadro que las esferas y en las MISMAS coordenadas, en tanto por
-       ciento: asi el dibujo y los botones no se separan a ningun tamaño. */
-    const hilos = MUNDOS.filter(m => m.id !== 'wallet').map(m =>
-      `<line x1="${CENTRO.x}" y1="${CENTRO.y}" x2="${m.x}" y2="${m.y}"/>`).join('');
-
+    /* Las esferas son las de siempre, ahora flotando sobre el cerebro entero:
+       el canvas y los botones comparten el mismo cuadro y las mismas
+       coordenadas en tanto por ciento, asi que el ganglio dibujado y la
+       esfera que se toca son EL MISMO punto. */
     const esferas = MUNDOS.map((m, i) => {
       const cerrado = m.pideGid && !verificada;
       return `
       <button class="nu-mundo${m.pronto ? ' nu-pronto' : ''}${cerrado ? ' nu-cerrado' : ''}"
+              data-mundo="${m.id}"
               style="left:${m.x}%;top:${m.y}%;--t:${m.tam};--d:${i * 420}ms;
                      --g1:${m.grad[0]};--g2:${m.grad[1]};--g3:${m.grad[2]};
                      --halo:${m.halo};--lente:${m.lente}"
@@ -2685,44 +2713,44 @@ const VETA = (() => {
     }).join('');
 
     return `
-    <div class="cab"><div>
-      <h2>${nombre ? `${t('nu.hola')}, ${esc(nombre)}` : t('nu.t')}</h2>
-      <div class="sub">${t('nu.sub')}</div>
-    </div></div>
-
-    ${verificada ? '' : tarjetaPuerta()}
-
-    <div class="nu-campo">
-      <svg class="nu-hilos" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${hilos}</svg>
+    <div class="cerebro" id="cerebro">
+      <canvas id="red-nucleo"></canvas>
+      <div class="cerebro-cab">
+        <h2>${nombre ? `${t('nu.hola')}, ${esc(nombre)}` : t('nu.t')}</h2>
+        <div class="sub">${t('nu.sub')}</div>
+      </div>
       ${esferas}
-    </div>
-
-    <div class="bloque vidrio">
-      <h3>${t('nu.quees')}</h3>
-      <p class="pie" style="margin-top:8px">${t('nu.queesP')}</p>
     </div>`;
   }
 
-  /* La puerta del ecosistema, y la decision de fondo de la web: a la BILLETERA
-     se entra sin Genesis ID —es tu dinero, y pedirte papeles para mirar tu
-     propio saldo no tiene defensa—, pero al resto del ecosistema no. Asi que
-     no se cierra la puerta: se cuenta que hay una y como se abre. */
-  function tarjetaPuerta() {
-    const e = (identidad?.estado || '').toLowerCase();
-    const enCurso = ['datos', 'documento', 'biometria', 'en-revision'].includes(e);
-    return `
-    <div class="bloque vidrio nu-puerta">
-      <div class="nu-puerta-ic"><svg viewBox="0 0 24 24">${ICO.id}</svg></div>
-      <div>
-        <h3>${enCurso ? t('nu.puertaCursoT') : t('nu.puertaT')}</h3>
-        <p class="pie" style="margin-top:6px">${enCurso ? t('nu.puertaCursoP') : t('nu.puertaP')}</p>
-        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn btn-oro btn-sm" onclick="VETA.vista('verificar')">
-            ${enCurso ? t('gid.seguir') : t('gid.btn')}</button>
-          <button class="btn btn-linea btn-sm" onclick="VETA.vista('billetera')">${t('nu.igual')}</button>
-        </div>
-      </div>
-    </div>`;
+  /* Encender el cerebro: se llama DESPUES de pintar la vista, cuando el canvas
+     ya existe y tiene medidas. Los ganglios son las esferas navegables — las
+     dormidas (pronto) tambien laten, mas tenue, porque un organo que se ve
+     antes de existir es el mensaje del ecosistema. */
+  function encenderCerebro(despertar) {
+    const c = $('#red-nucleo');
+    if (!c) return;
+    AURA.montarRed(c, MUNDOS.map(m => ({
+      id: m.id, x: m.x, y: m.y, tam: m.tam,
+      tinte: tinteDe(m.halo),
+    })), {
+      despertar: Boolean(despertar),
+      // El destello de llegada enciende la esfera del DOM un instante: el
+      // canvas y los botones se contestan, que es lo que vuelve VIVO el
+      // conjunto en vez de dos capas que se ignoran.
+      alDestellar: id => {
+        const el = document.querySelector(`.nu-mundo[data-mundo="${id}"] .nu-esfera`);
+        if (!el) return;
+        el.style.filter = 'brightness(1.5)';
+        setTimeout(() => { el.style.filter = ''; }, 320);
+      },
+    });
+  }
+
+  // '#7ED8C4' -> [126,216,196] · el canvas pinta con numeros, no con CSS
+  function tinteDe(hex) {
+    const h = String(hex || '#C9A961').replace('#', '');
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
   }
 
   /* Un mundo cerrado no se abre a la fuerza ni se queda mudo: lleva a la
@@ -2733,7 +2761,8 @@ const VETA = (() => {
     if (!m) return;
     if (m.pronto) return avisar(t('nu.prontoP'));
     if (m.pideGid && !esVerificada()) { avisar(t('nu.cerrado')); return vista('verificar'); }
-    if (m.fuera) return window.open(m.fuera, '_blank', 'noopener');
+    const fuera = m.paraFuera === 'pay' ? URL_MYTOKENPAY : m.fuera;
+    if (fuera) return window.open(fuera, '_blank', 'noopener');
     vista(m.va);
   }
 
@@ -2864,7 +2893,7 @@ const VETA = (() => {
     else cobCopiar();
   }
 
-  // ── AURO CHAT ─────────────────────────────────────────────────────────────
+  // ── PULSE CHAT ─────────────────────────────────────────────────────────────
 
   /* La mensajeria del ecosistema, la misma que el telefono y contra el mismo
      relevo. Dos reglas heredadas de alla y que aqui no se relajan:
@@ -2895,7 +2924,7 @@ const VETA = (() => {
   function chat() {
     return `
     <div class="cab">
-      <div><h2>AURO CHAT</h2><div class="sub">${t('cha.sub')}</div></div>
+      <div><h2>PULSE CHAT</h2><div class="sub">${t('cha.sub')}</div></div>
     </div>
     <div class="chat" id="chat-caja" ${chatSt.con ? 'data-abierto' : ''}>
       <aside class="chat-lista" id="chat-lista">${chatLista()}</aside>
@@ -3278,6 +3307,461 @@ const VETA = (() => {
       </div>`;
   }
 
+
+  // ── AU-RA · la asistente ──────────────────────────────────────────────────
+
+  /* AU-RA es la voz del ecosistema: navega, explica y guia. Tres reglas que
+     no se negocian, heredadas de NEXUS en el telefono:
+
+       · PREPARA, NUNCA FIRMA. Puede dejar un envio listo hasta el ultimo
+         campo; la contraseña la pone la persona, siempre.
+       · NADA SE INVENTA. Un monto sale de lo que la persona dijo; un
+         destinatario, de su lista de contactos. Si no esta, se dice.
+       · ES BETA Y LO DICE. Cuando no sabe, contesta que no sabe. Un
+         asistente que finge saber es peor que ninguno.
+
+     Los textos viven aca y no en i18n.js a proposito: AU-RA es un organismo
+     completo —seso, voz y palabras— y se lee entero o no se entiende. */
+  const AURA_TXT = {
+    es: {
+      hola: 'Hola. Soy AU-RA, la inteligencia del ecosistema — modelo 1, en beta. Puedo llevarte a cualquier parte, dejarte un envío preparado o explicarte cómo funciona todo. ¿Empezamos con un recorrido?',
+      bienv1: 'Hola, {nombre}. Soy AU-RA, la inteligencia de Orden Global.',
+      bienv1Voz: 'Hola. Soy AU-RA, la inteligencia de Orden Global.',
+      bienv2: 'Este es tu Núcleo: el cerebro donde vive todo tu ecosistema. Tocá cualquier esfera para entrar, y si me necesitás, estoy siempre abajo a la derecha.',
+      micNo: 'Este navegador no me deja escuchar. Escribime y te leo igual de bien.',
+      micErr: 'No te pude escuchar. Probá otra vez, o escribime.',
+      chips: ['Hacé el recorrido', '¿Qué es ORIGEN?', 'Llevame a cobrar', '¿Cómo creo mi Genesis ID?'],
+      sinGid: 'Veo que todavía no tenés tu Genesis ID. Tu billetera funciona igual — es tu dinero —, pero el chat, los comercios y el resto del ecosistema piden identidad verificada. ¿Querés que te lleve a crearlo? Toma unos minutos y vale para todo Orden Global.',
+      sinGidSi: 'Crear mi Genesis ID', sinGidNo: 'Ahora no',
+      listoEnvio: 'Listo: te dejé preparado el envío de {monto} {sim} a {quien}. Revisá todo y confirmalo vos con tu contraseña — firmar siempre te toca a vos.',
+      sinContacto: 'No encuentro a «{quien}» en tus contactos, y yo no invento destinos: agregalo primero en Contactos y lo mando en un segundo.',
+      teLlevo: 'Te llevo.',
+      saldo: 'Tenés {total} en la billetera. Te la abro para que la veas entera.',
+      okAsi: 'Perfecto. Cuando quieras, acá estoy — abajo a la derecha.',
+      nose: 'Eso todavía no lo sé — soy el modelo 1 y sigo aprendiendo. Probá preguntarme por ORIGEN, la cadena, tu Genesis ID o pedime que te lleve a alguna parte.',
+      seguridad: 'Nunca, jamás, le digas tu frase de recuperación ni tu contraseña a nadie — ni siquiera a mí. Yo no las necesito para nada: yo preparo, vos firmás. Te llevo a Seguridad.',
+      tourFin: 'Ese es tu ecosistema. Yo me quedo acá abajo, a un toque, para lo que necesites.',
+      tourFinGid: 'Ese es tu ecosistema. Solo te falta una llave: tu Genesis ID. ¿Lo creamos ahora?',
+      sig: 'Siguiente', atras: 'Atrás', salir: 'Salir del recorrido', fin: 'Entrar a mi Núcleo',
+      toca: 'Tocá el orbe para escucharla',
+      saltar: 'SALTAR',
+      ecoTitulo: 'EL ECOSISTEMA ORDEN GLOBAL',
+      escribi: 'Preguntame o pedime…',
+      con: {
+        origen: 'ORIGEN es oro real hecho dinero: cada uno es un gramin, una fracción exacta de un gramo de oro certificado y guardado en bóveda. No es una promesa de oro — es el oro, con otra forma de viajar. Se envía en segundos por nuestra propia cadena.',
+        cadena: 'Orden Global corre sobre su propia Layer 1: la cadena 5550, con Hyperledger Besu, consenso QBFT y máquina Shanghai. Ya no vivimos prestados en la red de otro — más rápida, más barata y nuestra. Todo se puede ver en ordenscan.com.',
+        gid: 'Genesis ID es tu identidad para todo el ecosistema: te verificás UNA vez y quedás verificado en todas partes. Es lo que hace que del otro lado del chat o de un cobro siempre haya una persona real.',
+        chat: 'PULSE CHAT es la mensajería del ecosistema: solo entra gente con Genesis ID aprobado, podés mandar dinero sin salir del hilo y cada pago deja su comprobante verificable en la cadena.',
+        pay: 'MyTokenPay es la capa de comercio: cobrás con un QR, explorás negocios que aceptan ORIGEN y pagás desde tu misma billetera.',
+        aura: 'Soy AU-RA: la inteligencia de Orden Global, modelo 1, en beta. Navego por vos, te explico el ecosistema y te dejo pagos preparados — pero nunca firmo: tu dinero se mueve solo con tu contraseña. Y sigo creciendo: cada versión voy a saber hacer más.',
+        og: 'Orden Global es un ecosistema completo: tu dinero (Veta Wallet), tu gente (PULSE CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), todos conectados sobre nuestra propia cadena. Una cuenta, todas las puertas.',
+        comision: 'La comisión de red se paga siempre en ORIGEN, también cuando enviás otro token, y es mínima: nuestra cadena es propia. El equivalente lo ves antes de confirmar cualquier envío.',
+        remesas: 'Con remesas ves cuánto llega del otro lado después de la comisión y del cambio, en nueve países. Te abro el calculador.',
+        pronto: 'AUBANK y Ordenexchange ya laten en el Núcleo pero todavía no abren: son lo que viene. El ecosistema no es una lista cerrada — crece.',
+      },
+      tour: [
+        { id: null, k: 'TU NÚCLEO', t: 'El cerebro de tu ecosistema', p: 'Cada esfera es un órgano vivo: se encienden, laten y se hablan entre ellas. Tocás una y entrás. Dejame mostrarte qué hace cada una.' },
+        { id: 'wallet', k: 'TU DINERO', t: 'Veta Wallet', p: 'Tu oro y tus tokens. Guardás, enviás, recibís y cobrás con un código que ya lleva la cantidad puesta. Todo sobre nuestra propia cadena, la 5550.' },
+        { id: 'chat', k: 'TU GENTE', t: 'PULSE CHAT', p: 'La mensajería del ecosistema. Solo gente verificada con Genesis ID, y podés mandar dinero sin salir de la conversación — con comprobante en la cadena.' },
+        { id: 'pay', k: 'TU NEGOCIO', t: 'MyTokenPay', p: 'La caja registradora del ecosistema: cobrá con QR, explorá comercios y hacé crecer lo tuyo.' },
+        { id: 'gid', k: 'TU IDENTIDAD', t: 'Genesis ID', p: 'Te verificás una sola vez y quedás verificado en todo Orden Global. Es la llave que abre el resto de las esferas.' },
+        { id: 'scan', k: 'LA TRANSPARENCIA', t: 'ordenscan', p: 'El explorador público de la cadena. Cada bloque y cada transacción, a la vista de cualquiera, a cualquier hora. No pedimos confianza: se comprueba.' },
+        { id: 'aubank', k: 'LO QUE VIENE', t: 'AUBANK y Ordenexchange', p: 'Ya laten en el Núcleo aunque todavía no abren. El ecosistema no es una lista cerrada: es algo que crece, y lo vas a ver crecer desde acá.' },
+      ],
+    },
+    en: {
+      hola: 'Hi. I am AU-RA, the intelligence of the ecosystem — model 1, in beta. I can take you anywhere, leave a transfer ready for you, or explain how everything works. Shall we start with a tour?',
+      bienv1: 'Hello, {nombre}. I am AU-RA, the intelligence of Orden Global.',
+      bienv1Voz: 'Hello. I am AU-RA, the intelligence of Orden Global.',
+      bienv2: 'This is your Nucleus: the brain where your whole ecosystem lives. Tap any sphere to enter — and if you need me, I am always at the bottom right.',
+      micNo: 'This browser will not let me listen. Type to me — I read just as well.',
+      micErr: 'I could not hear you. Try again, or type to me.',
+      chips: ['Take the tour', 'What is ORIGEN?', 'Take me to charge', 'How do I create my Genesis ID?'],
+      sinGid: 'I see you do not have your Genesis ID yet. Your wallet works anyway — it is your money — but the chat, the merchants and the rest of the ecosystem need a verified identity. Want me to take you there? It takes minutes and works across all of Orden Global.',
+      sinGidSi: 'Create my Genesis ID', sinGidNo: 'Not now',
+      listoEnvio: 'Done: I prepared the transfer of {monto} {sim} to {quien}. Review it and confirm with your password — signing is always yours.',
+      sinContacto: 'I cannot find “{quien}” in your contacts, and I never make up destinations: add them in Contacts first and I will have it ready in a second.',
+      teLlevo: 'Taking you there.',
+      saldo: 'You have {total} in your wallet. Opening it so you can see everything.',
+      okAsi: 'All right. Whenever you want, I am right here — bottom right.',
+      nose: 'I do not know that yet — I am model 1 and still learning. Try asking me about ORIGEN, the chain, your Genesis ID, or tell me where to take you.',
+      seguridad: 'Never, ever tell anyone your recovery phrase or your password — not even me. I do not need them: I prepare, you sign. Taking you to Security.',
+      tourFin: 'That is your ecosystem. I stay right down here, one tap away.',
+      tourFinGid: 'That is your ecosystem. You are missing one key: your Genesis ID. Shall we create it now?',
+      sig: 'Next', atras: 'Back', salir: 'Exit tour', fin: 'Enter my Nucleus',
+      toca: 'Tap the orb to hear her',
+      saltar: 'SKIP',
+      ecoTitulo: 'THE ORDEN GLOBAL ECOSYSTEM',
+      escribi: 'Ask me or tell me…',
+      con: {
+        origen: 'ORIGEN is real gold turned into money: each one is a gramin, an exact fraction of a certified gram of gold held in a vault. Not a promise of gold — the gold itself, with a new way to travel. It moves in seconds over our own chain.',
+        cadena: 'Orden Global runs on its own Layer 1: chain 5550, with Hyperledger Besu, QBFT consensus and the Shanghai machine. We no longer live borrowed on someone else’s network. Everything is public at ordenscan.com.',
+        gid: 'Genesis ID is your identity for the whole ecosystem: verify ONCE and you are verified everywhere. It is what guarantees there is a real person on the other side of every chat and every charge.',
+        chat: 'PULSE CHAT is the ecosystem’s messenger: only people with an approved Genesis ID get in, you can send money without leaving the thread, and every payment leaves a verifiable receipt on the chain.',
+        pay: 'MyTokenPay is the commerce layer: charge with a QR, explore businesses that accept ORIGEN and pay from this same wallet.',
+        aura: 'I am AU-RA: the intelligence of Orden Global, model 1, in beta. I navigate for you, explain the ecosystem and leave payments ready — but I never sign: your money moves only with your password. And I keep growing.',
+        og: 'Orden Global is a complete ecosystem: your money (Veta Wallet), your people (PULSE CHAT), your business (MyTokenPay) and your identity (Genesis ID), all wired over our own chain. One account, every door.',
+        comision: 'The network fee is always paid in ORIGEN, even when you send another token, and it is minimal: the chain is ours. You see the equivalent before confirming any transfer.',
+        remesas: 'Remittances shows how much arrives on the other side after fees and exchange, in nine countries. Opening the calculator.',
+        pronto: 'AUBANK and Ordenexchange already pulse in the Nucleus but are not open yet: they are what is coming. The ecosystem is not a closed list — it grows.',
+      },
+      tour: [
+        { id: null, k: 'YOUR NUCLEUS', t: 'The brain of your ecosystem', p: 'Each sphere is a living organ: they light up, pulse and talk to each other. Tap one and you are in. Let me show you what each one does.' },
+        { id: 'wallet', k: 'YOUR MONEY', t: 'Veta Wallet', p: 'Your gold and your tokens. Store, send, receive and charge with a code that already carries the amount. All on our own chain, 5550.' },
+        { id: 'chat', k: 'YOUR PEOPLE', t: 'PULSE CHAT', p: 'The ecosystem’s messenger. Only Genesis-verified people, and you can send money without leaving the conversation — with a receipt on the chain.' },
+        { id: 'pay', k: 'YOUR BUSINESS', t: 'MyTokenPay', p: 'The ecosystem’s cash register: charge with a QR, explore merchants, grow what is yours.' },
+        { id: 'gid', k: 'YOUR IDENTITY', t: 'Genesis ID', p: 'Verify once, verified across all of Orden Global. It is the key that opens the other spheres.' },
+        { id: 'scan', k: 'THE TRANSPARENCY', t: 'ordenscan', p: 'The public explorer of the chain. Every block and every transaction, in plain sight, at any hour. We do not ask for trust: it can be checked.' },
+        { id: 'aubank', k: 'WHAT IS COMING', t: 'AUBANK and Ordenexchange', p: 'They already pulse in the Nucleus even though they are not open yet. The ecosystem is not a closed list: it grows, and you will watch it grow from here.' },
+      ],
+    },
+  };
+  const aTxt = () => AURA_TXT[idiomaActivo() === 'en' ? 'en' : 'es'];
+
+  let auraMontada = false, auraAbierta = false, auraCharla = [], auraOyendo = false;
+
+  /* El orbe aparece con la sesion y se monta UNA vez: es el mismo organismo
+     toda la vida de la pagina, no un dibujo que se rehace por vista. */
+  function auraDespertar() {
+    const orbe = $('#aura-orbe');
+    orbe.removeAttribute('data-oculto');
+    if (!auraMontada) {
+      AURA.montarOrbe(orbe.querySelector('canvas'));
+      auraMontada = true;
+    }
+  }
+
+  function auraToca() {
+    auraAbierta = !auraAbierta;
+    if (!auraAbierta) { AURA.pararVoz(); AURA.dejarDeEscuchar(); }
+    if (auraAbierta && !auraCharla.length) auraCharla.push({ de: 'aura', txt: aTxt().hola });
+    pintarAura();
+  }
+
+  function pintarAura() {
+    const p = $('#aura-panel');
+    const T = aTxt();
+    p.classList.toggle('ver', auraAbierta);
+    if (!auraAbierta) return;
+    p.innerHTML = `
+      <div class="aura-cab">
+        <div><b>AU-RA</b> <span class="aura-beta">MODELO 1 · BETA</span>
+          <small>${T.ecoTitulo}</small></div>
+        <button class="aura-x" onclick="VETA.auraToca()" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="aura-hilo" id="aura-hilo">
+        ${auraCharla.map(m => `<div class="aura-b${m.de === 'yo' ? ' mio' : ''}">${esc(m.txt)}${
+          m.botones ? `<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">${
+            m.botones.map(b => `<button class="btn btn-oro btn-sm" style="padding:8px 14px;font-size:12px"
+              onclick="VETA.auraChip('${esc(b.di)}')">${esc(b.txt)}</button>`).join('')}</div>` : ''}</div>`).join('')}
+      </div>
+      <div class="aura-chips">${T.chips.map(c =>
+        `<button class="aura-chip" onclick="VETA.auraChip('${esc(c)}')">${esc(c)}</button>`).join('')}</div>
+      <form class="aura-pie" onsubmit="return VETA.auraManda(event)">
+        ${AURA.puedeEscuchar() ? `
+        <button type="button" class="aura-mic${auraOyendo ? ' oyendo' : ''}" onclick="VETA.auraMic()"
+                aria-label="Hablar">
+          <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        </button>` : ''}
+        <input id="aura-in" placeholder="${T.escribi}" autocomplete="off" maxlength="300">
+        <button class="aura-manda" type="submit" aria-label="Mandar">
+          <svg viewBox="0 0 24 24"><path d="M22 3 11 14M22 3l-7 19-4-8-8-4z"/></svg>
+        </button>
+      </form>`;
+    const h = $('#aura-hilo');
+    if (h) h.scrollTop = h.scrollHeight;
+  }
+
+  function auraDecir(txt, opciones = {}) {
+    auraCharla.push({ de: 'aura', txt, botones: opciones.botones });
+    if (auraCharla.length > 40) auraCharla = auraCharla.slice(-40);
+    pintarAura();
+    if (opciones.voz) AURA.hablar(txt, idiomaActivo());
+  }
+
+  function auraManda(ev) {
+    ev.preventDefault();
+    const c = $('#aura-in');
+    const txt = (c?.value || '').trim();
+    if (!txt) return;
+    c.value = '';
+    auraCharla.push({ de: 'yo', txt });
+    pintarAura();
+    auraSeso(txt);
+  }
+
+  const auraChip = txt => {
+    auraAbierta = true;
+    auraCharla.push({ de: 'yo', txt });
+    pintarAura();
+    auraSeso(txt);
+  };
+
+  /* En el telefono el panel tapa la pantalla entera: si AU-RA te lleva a una
+     vista, se aparta para que VEAS el viaje. En escritorio flota a un lado y
+     puede quedarse. */
+  function auraApartar() {
+    if (matchMedia('(max-width: 900px)').matches) { auraAbierta = false; pintarAura(); }
+  }
+
+  function auraMic() {
+    if (auraOyendo) { AURA.dejarDeEscuchar(); auraOyendo = false; return pintarAura(); }
+    auraOyendo = true; pintarAura();
+    AURA.escuchar(idiomaActivo(), dicho => {
+      auraOyendo = false;
+      if (dicho) { auraCharla.push({ de: 'yo', txt: dicho }); pintarAura(); auraSeso(dicho); }
+      else pintarAura();
+    }, () => { auraOyendo = false; auraDecir(aTxt().micErr); });
+  }
+
+  // ── el seso ───────────────────────────────────────────────────────────────
+  const sinTildes = x => x.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+  function auraSeso(dicho) {
+    const T = aTxt();
+    const d = sinTildes(dicho);
+    const voz = true;
+
+    // el recorrido
+    if (/recorrido|tour|conoce|ensename|muestrame|show me|take the tour/.test(d)) return auraTour();
+
+    /* Un envio dictado: "envia 15 a maria", "manda 2 ondk a carlos".
+       El monto sale de lo dicho; el destino, SOLO de los contactos. */
+    const env = d.match(/(?:envia|enviar|manda|mandar|transfiere|send|transfer)\s+([\d.,]+)\s*([a-z]{2,10})?\s*(?:a|para|to)\s+(.+)/);
+    if (env) {
+      const monto = env[1].replace(',', '.');
+      const simDicho = (env[2] || '').toUpperCase();
+      const sim = (cartera || []).find(m => m.s === simDicho)?.s || 'ORIGEN';
+      const quien = env[3].trim();
+      const con = leerContactos().find(x => sinTildes(x.nombre).includes(sinTildes(quien)));
+      if (!con) return auraDecir(T.sinContacto.replace('{quien}', quien), { voz });
+      auraAbierta = false; pintarAura();
+      irACobro({ dir: con.dir, monto, sim });
+      return auraDecir(T.listoEnvio.replace('{monto}', monto).replace('{sim}', sim).replace('{quien}', con.nombre), { voz });
+    }
+
+    /* «¿Que es X?» es una pregunta, no un viaje: si la frase pregunta, el
+       conocimiento gana y la navegacion se calla. Sin esto, «¿que es Genesis
+       ID?» te arrastraba a la pantalla de verificar sin contestar nada. */
+    const pregunta = /que es|what is|que significa|como funciona|how does|explica|explain/.test(d);
+
+    if (/ahora no|not now|luego|despues|later/.test(d) && d.length < 22) {
+      return auraDecir(T.okAsi, { voz });
+    }
+
+    // navegacion directa
+    const IR = [
+      [/cobra|charge|factur/, () => vista('cobrar')],
+      [/recib|deposit|receive/, () => vista('recibir')],
+      [/envia|manda|send|transfer/, () => vista('enviar')],
+      [/cambi|swap|convert/, () => vista('cambiar')],
+      [/tarjeta|card/, () => vista('tarjeta')],
+      [/activid|movimient|histor|activity/, () => vista('actividad')],
+      [/chat|mensaje|pulse|message/, () => vista('chat')],
+      [/remesa|remit/, () => { vista('remesas'); return 'remesas'; }],
+      [/contacto|contact/, () => vista('contactos')],
+      [/verific|genesis|identidad|identity|kyc/, () => vista('verificar')],
+      [/ajust|config|setting/, () => vista('ajustes')],
+      [/nucleo|nucleus|inicio|cerebro|brain|home/, () => vista('nucleo')],
+    ];
+    // seguridad ANTES que navegacion: si alguien pregunta por su frase, la
+    // respuesta importa mas que el viaje
+    if (/semilla|frase|seed|llave privada|private key|segurid|security/.test(d)) {
+      vista('seguridad');
+      return auraDecir(T.seguridad, { voz });
+    }
+    if (/saldo|cuanto tengo|balance|how much/.test(d)) {
+      vista('billetera');
+      return auraDecir(T.saldo.replace('{total}', cartera ? usd(total()) : '—'), { voz });
+    }
+    if (!pregunta && /mytokenpay|negocio|comercio|merchant|business/.test(d)) {
+      window.open(URL_MYTOKENPAY, '_blank', 'noopener');
+      return auraDecir(T.con.pay, { voz });
+    }
+    if (!pregunta && /ordenscan|explorador|explorer/.test(d)) {
+      window.open('https://ordenscan.com', '_blank', 'noopener');
+      return auraDecir(T.con.cadena, { voz });
+    }
+    for (const [re, f] of IR) {
+      if (!pregunta && re.test(d)) {
+        const especial = f();
+        auraApartar();
+        return auraDecir(especial === 'remesas' ? T.con.remesas : T.teLlevo, { voz });
+      }
+    }
+
+    // conocimiento
+    const SABE = [
+      [/origen|oro|gold|gramin/, T.con.origen],
+      [/cadena|chain|5550|besu|qbft|shanghai|blockchain|layer/, T.con.cadena],
+      [/genesis/, T.con.gid],
+      [/pulse|chat/, T.con.chat],
+      [/mytokenpay|negocio|comercio/, T.con.pay],
+      [/au-?ra|quien sos|quien eres|who are you|vos que|tu que/, T.con.aura],
+      [/orden global|ecosistema|ecosystem/, T.con.og],
+      [/comision|fee|gas/, T.con.comision],
+      [/aubank|ordenexchange|pronto|coming/, T.con.pronto],
+    ];
+    for (const [re, r] of SABE) if (re.test(d)) return auraDecir(r, { voz });
+
+    auraDecir(T.nose, { voz });
+  }
+
+  // ── la invitacion del Genesis ID ─────────────────────────────────────────
+  /* Al entrar sin identidad, AU-RA pregunta UNA vez por sesion de navegador.
+     Pregunta, no bloquea: la billetera es de la persona con o sin papeles. */
+  function auraOfrecerGid() {
+    try { if (sessionStorage.getItem('aura.gidOfrecido')) return; } catch {}
+    if (esVerificada() || !identidad || identidad.error) return;
+    try { sessionStorage.setItem('aura.gidOfrecido', '1'); } catch {}
+    const T = aTxt();
+    auraAbierta = true;
+    auraCharla.push({ de: 'aura', txt: T.sinGid, botones: [
+      { txt: T.sinGidSi, di: T.chips[3] },
+      { txt: T.sinGidNo, di: T.sinGidNo },
+    ]});
+    pintarAura();
+  }
+
+  // ── la bienvenida en negro ────────────────────────────────────────────────
+  /* Despues del login: pantalla negra, el cerebro despertando detras y AU-RA
+     presentandose con voz. El audio arranca del gesto del login; si el
+     navegador igual lo bloquea, el orbe pide un toque — nunca una pantalla
+     muda que parece rota. */
+  let bienvCanvas = null;
+
+  function auraBienvenida(conVoz) {
+    const T = aTxt();
+    const el = $('#aura-bienvenida');
+    el.classList.remove('oculto', 'irse');
+    el.innerHTML = `
+      <canvas class="red"></canvas>
+      <button class="aurab-saltar" onclick="VETA.auraBienFin()">${T.saltar}</button>
+      <div class="aurab-caja">
+        <div class="orbe-grande" onclick="VETA.auraBienToca()"><canvas></canvas></div>
+        <div class="aurab-nombre">AU-RA</div>
+        <div class="aurab-linaje">${T.ecoTitulo} · <b>MODELO 1 · BETA</b></div>
+        <p class="aurab-sub" id="aurab-sub"></p>
+        <p class="aurab-toca oculto" id="aurab-toca">${T.toca}</p>
+      </div>`;
+    bienvCanvas = el.querySelector('canvas.red');
+    AURA.montarRed(bienvCanvas, MUNDOS.map(m => ({
+      id: m.id, x: m.x, y: m.y, tam: m.tam, tinte: tinteDe(m.halo),
+    })), { despertar: true });
+    AURA.montarOrbe(el.querySelector('.orbe-grande canvas'));
+    auraMontada = false;          // el orbe chico se re-monta al cerrar esto
+    if (conVoz) auraBienHablar();
+    else $('#aurab-toca').classList.remove('oculto');
+  }
+
+  const espera = ms => new Promise(r => setTimeout(r, ms));
+
+  async function auraBienHablar() {
+    const T = aTxt();
+    const nombre = (sesion?.nombre || '').split(' ')[0] || '';
+    const sub = $('#aurab-sub');
+    if (sub) sub.textContent = T.bienv1.replace('{nombre}', nombre ? nombre : '').replace(', .', '.');
+    // La voz dice la frase NEUTRA (una sola grabacion para todos); el nombre
+    // va en el subtitulo. Y cada frase vive en pantalla un minimo legible:
+    // sin esto, un navegador sin voces cerraba la bienvenida en un suspiro.
+    await Promise.all([AURA.hablar(T.bienv1Voz, idiomaActivo()), espera(3400)]);
+    if (!$('#aurab-sub')) return;     // la saltaron a mitad de frase
+    $('#aurab-sub').textContent = T.bienv2;
+    await Promise.all([AURA.hablar(T.bienv2, idiomaActivo()), espera(4600)]);
+    auraBienFin();
+  }
+
+  function auraBienToca() {
+    const t = $('#aurab-toca');
+    if (t) t.classList.add('oculto');
+    auraBienHablar();
+  }
+
+  function auraBienFin() {
+    const el = $('#aura-bienvenida');
+    if (el.classList.contains('oculto')) return;
+    AURA.pararVoz();
+    el.classList.add('irse');
+    setTimeout(() => {
+      el.classList.add('oculto');
+      el.innerHTML = '';
+      AURA.pararRed();
+      auraDespertar();
+      // el cerebro de verdad, ya con energia plena
+      if (vistaActual === 'nucleo') encenderCerebro(false);
+      auraOfrecerGid();
+    }, 900);
+  }
+
+  // ── el recorrido ──────────────────────────────────────────────────────────
+  /* AU-RA se mueve por el ecosistema y lo explica: oscurece todo menos la
+     esfera de la que habla, le manda señales por la red, y va contando con
+     voz y con letras. Se entra y se sale cuando se quiera. */
+  let tourPaso = -1;
+
+  function auraTour() {
+    auraAbierta = false; pintarAura();
+    if (vistaActual !== 'nucleo') vista('nucleo');
+    tourPaso = 0;
+    pintarTour();
+  }
+
+  function pintarTour() {
+    const T = aTxt();
+    const paradas = T.tour;
+    const el = $('#aura-tour');
+    if (tourPaso < 0 || tourPaso >= paradas.length) return auraTourFin();
+    const p = paradas[tourPaso];
+    el.classList.remove('oculto');
+
+    // el foco: la esfera de la que se habla, iluminada; el resto, en penumbra
+    document.querySelectorAll('.nu-mundo').forEach(m => m.classList.remove('nu-foco'));
+    let velo = 'rgba(1,7,8,.72)';
+    if (p.id) {
+      const m = MUNDOS.find(x => x.id === p.id);
+      const esfera = document.querySelector(`.nu-mundo[data-mundo="${p.id}"]`);
+      if (esfera) esfera.classList.add('nu-foco');
+      if (m) velo = `radial-gradient(circle at ${m.x}% ${m.y}%, rgba(1,7,8,0) 90px, rgba(1,7,8,.82) 300px)`;
+      AURA.latirHacia(p.id, 6);
+      // AUBANK y Ordenexchange comparten parada: laten los dos
+      if (p.id === 'aubank') AURA.latirHacia('oxch', 4);
+    }
+    el.innerHTML = `
+      <div class="velo" style="background:${velo}"></div>
+      <div class="letras">
+        <div class="paso">${esc(p.k)} · ${tourPaso + 1}/${paradas.length}</div>
+        <h3>${esc(p.t)}</h3>
+        <p>${esc(p.p)}</p>
+        <div class="fila">
+          ${tourPaso > 0 ? `<button class="btn btn-linea btn-sm" onclick="VETA.auraTourVa(-1)">${T.atras}</button>` : ''}
+          <button class="btn btn-oro btn-sm" onclick="VETA.auraTourVa(1)">
+            ${tourPaso === paradas.length - 1 ? T.fin : T.sig}</button>
+          <button class="salirse" onclick="VETA.auraTourFin()">${T.salir}</button>
+        </div>
+      </div>`;
+    AURA.hablar(p.p, idiomaActivo());
+  }
+
+  function auraTourVa(d) { tourPaso += d; pintarTour(); }
+
+  function auraTourFin() {
+    const T = aTxt();
+    tourPaso = -1;
+    AURA.pararVoz();
+    document.querySelectorAll('.nu-mundo').forEach(m => m.classList.remove('nu-foco'));
+    const el = $('#aura-tour');
+    el.classList.add('oculto');
+    el.innerHTML = '';
+    // el cierre: honesto con quien todavia no tiene su llave
+    auraAbierta = true;
+    auraCharla.push(esVerificada()
+      ? { de: 'aura', txt: T.tourFin }
+      : { de: 'aura', txt: T.tourFinGid, botones: [
+          { txt: T.sinGidSi, di: T.chips[3] },
+          { txt: T.sinGidNo, di: T.sinGidNo },
+        ]});
+    pintarAura();
+  }
 
   // ── remesas ───────────────────────────────────────────────────────────────
 
@@ -3924,6 +4408,7 @@ const VETA = (() => {
       tele('accion', 'sesion.recuperada');
       ir('app');
       cargarTodo();
+      setTimeout(auraOfrecerGid, 2000);
       // Despues de cargarTodo, para que la moneda del cobro exista en la
       // cartera cuando se intente elegir.
       if (cobroEntrante) cargarCartera().then(() => irACobro(cobroEntrante));
@@ -3944,12 +4429,15 @@ const VETA = (() => {
            cobElegir, cobEscribir, cobCopiar, cobCompartir,
            // El Nucleo: la portada del ecosistema.
            nuAbrir,
+           // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
+           auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
+           auraBienFin, auraBienToca,
            // La bienvenida del ecosistema: sale sola la primera vez y se puede
            // volver a abrir desde Ajustes.
            bienvenida, bienSig, bienCerrar,
            // La frase de recuperacion, al crear la cuenta.
            semCopiar, semListo,
-           // AURO CHAT. Los manejadores van en el HTML que genera la vista, asi
+           // PULSE CHAT. Los manejadores van en el HTML que genera la vista, asi
            // que sin figurar aca los botones del chat no hacen nada.
            chatEntrar, chatAbrir, chatCerrar, chatMandar, chatBuscar, chatGrupo,
            chatAdjuntar, chatReparar,
@@ -3965,6 +4453,9 @@ const VETA = (() => {
            _leerCobro: c => { const x = leerCobro(c); if (x) irACobro(x); return x; },
            _sol: x => { sol = { ...(sol || {}), ...x }; },
            _semilla: f => { semillaNueva = f; mostrarSemilla(f); },
+           _ofrecerGid: () => auraOfrecerGid(),
+           _bienvenidaAura: () => auraBienvenida(true),
+           _auraTxt: () => AURA_TXT,
            _identidad: x => { identidad = x; },
            _estado: () => ({ sesion, cartera, identidad, movimientos, tarjeta, vistaActual, modo, ocultos }) };
 })();

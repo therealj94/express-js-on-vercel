@@ -339,6 +339,121 @@ px;
   max-width:90vw;text-align:center}
 #tostada.ver{transform:translate(-50%,0);opacity:1;visibility:visible}
 
+/* ── AU-RA Y EL CEREBRO ───────────────────────────────────────────────────
+   El Nucleo deja de ser un tablero con fichas: es una pantalla inmersiva en
+   negro donde el cerebro (canvas) ocupa todo y las esferas flotan encima como
+   ganglios. El resto de la aplicacion NO cambia de piel — la orden fue clara:
+   el ecosistema de la billetera se queda como esta. El negro es del Nucleo y
+   de la bienvenida, que son el territorio de AU-RA. */
+body.en-cerebro{background:#010708}
+body.en-cerebro .lienzo{max-width:none;padding:0}
+
+.cerebro{position:relative;height:calc(100svh - 0px);min-height:520px;overflow:hidden;
+  background:radial-gradient(120% 90% at 50% 30%, #06201f 0%, #010708 62%)}
+@media(max-width:900px){.cerebro{height:calc(100svh - 76px)}}
+.cerebro canvas{position:absolute;inset:0;width:100%;height:100%}
+
+.cerebro-cab{position:absolute;top:0;left:0;right:0;z-index:4;
+  padding:clamp(18px,3vw,30px) clamp(18px,4vw,40px);pointer-events:none}
+.cerebro-cab h2{font-family:var(--sans);font-weight:800;font-size:clamp(19px,2.2vw,24px);color:var(--crema)}
+.cerebro-cab .sub{font-size:12px;color:var(--bruma);margin-top:5px}
+
+/* Las esferas: los mismos botones de antes, ahora sobre el cuadro entero. */
+.cerebro .nu-mundo{z-index:3}
+.nu-foco .nu-esfera{transform:scale(1.22);box-shadow:0 0 0 2px var(--halo),0 0 70px -4px var(--halo),
+  inset 0 -10px 22px -12px rgba(0,0,0,.6)}
+
+/* ── el orbe flotante ── AU-RA vive en TODO el ecosistema ─────────────────── */
+#aura-orbe{position:fixed;right:18px;bottom:88px;z-index:70;width:64px;height:64px;
+  border-radius:50%;cursor:pointer;padding:0;
+  filter:drop-shadow(0 6px 24px rgba(126,216,196,.35))}
+@media(min-width:901px){#aura-orbe{right:26px;bottom:26px;width:72px;height:72px}}
+#aura-orbe canvas{width:100%;height:100%;display:block}
+#aura-orbe .aura-nombre{position:absolute;left:50%;bottom:-16px;transform:translateX(-50%);
+  font-size:9px;font-weight:800;letter-spacing:.22em;color:var(--oroLt);opacity:.85;white-space:nowrap}
+#aura-orbe[data-oculto]{display:none}
+
+/* ── el panel de conversacion ─────────────────────────────────────────────── */
+#aura-panel{position:fixed;z-index:75;right:16px;bottom:160px;width:min(400px,calc(100vw - 32px));
+  max-height:min(600px,calc(100svh - 200px));display:flex;flex-direction:column;
+  border-radius:var(--r2);border:1px solid rgba(126,216,196,.25);overflow:hidden;
+  background:linear-gradient(180deg,rgba(4,20,21,.97),rgba(1,10,11,.98));
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.95);
+  transform:translateY(14px);opacity:0;visibility:hidden;transition:.28s cubic-bezier(.2,.9,.3,1)}
+#aura-panel.ver{transform:none;opacity:1;visibility:visible}
+@media(max-width:900px){#aura-panel{right:8px;left:8px;width:auto;bottom:150px}}
+.aura-cab{display:flex;align-items:center;gap:11px;padding:14px 16px;
+  border-bottom:1px solid rgba(126,216,196,.16)}
+.aura-cab b{font-size:14px;letter-spacing:.14em;color:var(--crema)}
+.aura-beta{font-size:9px;font-weight:800;letter-spacing:.14em;padding:3px 8px;border-radius:100px;
+  background:rgba(158,134,240,.16);color:#C9BCF5;border:1px solid rgba(158,134,240,.35)}
+.aura-cab small{display:block;font-size:10.5px;color:var(--humo);margin-top:2px}
+.aura-x{margin-left:auto;width:30px;height:30px;border-radius:10px;color:var(--humo);font-size:16px}
+.aura-x:hover{color:var(--crema)}
+.aura-hilo{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;min-height:120px}
+.aura-b{max-width:88%;padding:10px 13px;border-radius:15px 15px 15px 5px;
+  background:rgba(126,216,196,.09);border:1px solid rgba(126,216,196,.14);
+  font-size:13.5px;line-height:1.6;color:var(--crema);white-space:pre-wrap;word-break:break-word}
+.aura-b.mio{align-self:flex-end;border-radius:15px 15px 5px 15px;
+  background:rgba(201,169,97,.13);border-color:rgba(201,169,97,.2)}
+.aura-chips{display:flex;flex-wrap:wrap;gap:7px;padding:0 16px 10px}
+.aura-chip{padding:7px 12px;border-radius:100px;font-size:11.5px;font-weight:600;
+  color:var(--bruma);border:1px solid rgba(126,216,196,.22);background:rgba(126,216,196,.05)}
+.aura-chip:hover{color:var(--crema);border-color:rgba(126,216,196,.5)}
+.aura-pie{display:flex;align-items:center;gap:8px;padding:10px 12px;
+  border-top:1px solid rgba(126,216,196,.16)}
+.aura-pie input{flex:1;min-width:0;padding:11px 14px;border-radius:100px;
+  border:1px solid rgba(126,216,196,.2);background:rgba(2,14,15,.8);font-size:13.5px;color:var(--crema)}
+.aura-pie input:focus{outline:none;border-color:rgba(126,216,196,.5)}
+.aura-mic,.aura-manda{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center}
+.aura-mic svg,.aura-manda svg{width:18px;height:18px;fill:none;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+.aura-mic{border:1px solid rgba(126,216,196,.3)}
+.aura-mic svg{stroke:#7ED8C4}
+.aura-mic.oyendo{background:rgba(126,216,196,.18);animation:auraOye 1.1s ease-in-out infinite}
+@keyframes auraOye{0%,100%{box-shadow:0 0 0 0 rgba(126,216,196,.35)}50%{box-shadow:0 0 0 9px rgba(126,216,196,0)}}
+.aura-manda{background:linear-gradient(140deg,#7ED8C4,#4FA391)}
+.aura-manda svg{stroke:#04211D}
+
+/* ── la bienvenida en negro ───────────────────────────────────────────────── */
+#aura-bienvenida{position:fixed;inset:0;z-index:90;background:#010708;
+  display:grid;place-items:center;overflow:hidden}
+#aura-bienvenida canvas.red{position:absolute;inset:0;width:100%;height:100%;opacity:.8}
+.aurab-caja{position:relative;z-index:2;text-align:center;padding:24px;
+  display:flex;flex-direction:column;align-items:center;gap:0}
+.aurab-caja .orbe-grande{width:clamp(130px,30vw,180px);height:clamp(130px,30vw,180px);cursor:pointer;
+  filter:drop-shadow(0 0 60px rgba(126,216,196,.35))}
+.aurab-caja .orbe-grande canvas{width:100%;height:100%}
+.aurab-nombre{margin-top:26px;font-family:var(--serif);font-weight:700;letter-spacing:.3em;
+  font-size:clamp(26px,6vw,38px);color:var(--crema)}
+.aurab-linaje{margin-top:10px;font-size:10.5px;font-weight:700;letter-spacing:.26em;color:var(--humo);
+  text-transform:uppercase}
+.aurab-linaje b{color:#C9BCF5}
+.aurab-sub{margin-top:26px;min-height:54px;max-width:52ch;font-size:clamp(14px,3.6vw,16.5px);
+  line-height:1.75;color:var(--bruma)}
+.aurab-toca{margin-top:8px;font-size:12px;color:var(--oroLt);animation:tocaLate 1.6s ease-in-out infinite}
+@keyframes tocaLate{0%,100%{opacity:.5}50%{opacity:1}}
+.aurab-saltar{position:absolute;top:18px;right:22px;z-index:3;font-size:11px;font-weight:700;
+  letter-spacing:.14em;color:var(--humo);padding:8px}
+.aurab-saltar:hover{color:var(--crema)}
+#aura-bienvenida.irse{transition:opacity .9s ease;opacity:0;pointer-events:none}
+
+/* ── el recorrido ─────────────────────────────────────────────────────────── */
+#aura-tour{position:fixed;inset:0;z-index:80;pointer-events:none}
+#aura-tour .velo{position:absolute;inset:0;transition:background .5s}
+#aura-tour .letras{position:absolute;left:50%;bottom:calc(30px + env(safe-area-inset-bottom));
+  transform:translateX(-50%);width:min(620px,calc(100vw - 28px));pointer-events:auto;
+  border-radius:var(--r2);border:1px solid rgba(126,216,196,.25);
+  background:linear-gradient(180deg,rgba(3,17,18,.96),rgba(1,9,10,.97));
+  padding:18px 20px;box-shadow:0 30px 80px -30px rgba(0,0,0,.95)}
+#aura-tour .letras .paso{font-size:10px;font-weight:800;letter-spacing:.22em;color:#7ED8C4}
+#aura-tour .letras h3{margin-top:6px;font-size:17px;font-weight:800;color:var(--crema)}
+#aura-tour .letras p{margin-top:8px;font-size:13.5px;line-height:1.7;color:var(--bruma);min-height:44px}
+#aura-tour .letras .fila{display:flex;gap:10px;margin-top:14px;align-items:center}
+#aura-tour .letras .fila .btn{padding:10px 18px;font-size:13px}
+#aura-tour .letras .salirse{margin-left:auto;font-size:11.5px;color:var(--humo)}
+#aura-tour .letras .salirse:hover{color:var(--crema)}
+
 /* ── EL NUCLEO ────────────────────────────────────────────────────────────
    La constelacion del ecosistema. Las esferas van colocadas en tanto por
    ciento sobre un cuadro cuadrado, con las MISMAS coordenadas que el
@@ -392,7 +507,7 @@ px;
   .nu-nombre{font-size:10.5px}
 }
 
-/* ── AURO CHAT ────────────────────────────────────────────────────────────
+/* ── PULSE CHAT ────────────────────────────────────────────────────────────
    Dos columnas cuando la pantalla da para las dos: la lista a la izquierda y
    el hilo a la derecha, como cualquier mensajeria de escritorio. En el movil
    son dos pantallas —la caja lleva data-abierto y la lista se aparta—, porque
@@ -1310,6 +1425,18 @@ a.btn{text-decoration:none}
 
 <div id="tostada" role="status" aria-live="polite"></div>
 
+<!-- ══════════════════════ AU-RA ═══════════════════════════════════════════
+     El orbe flotante vive FUERA de #app a propósito: acompaña en todas las
+     vistas de la sesión y no se lo lleva ningún repintado del lienzo. El
+     panel, la bienvenida en negro y el recorrido los arma app.js aquí. -->
+<button id="aura-orbe" data-oculto onclick="VETA.auraToca()" aria-label="AU-RA">
+  <canvas></canvas>
+  <span class="aura-nombre">AU-RA</span>
+</button>
+<div id="aura-panel" role="dialog" aria-label="AU-RA"></div>
+<div id="aura-bienvenida" class="oculto"></div>
+<div id="aura-tour" class="oculto"></div>
+
 <!-- ══════════════════════ LA BIENVENIDA DEL ECOSISTEMA ════════════════════
      Las mismas seis tarjetas que la app, con las mismas palabras. Sale una
      sola vez por navegador al entrar, y despues vive en Ajustes para el que
@@ -1319,6 +1446,7 @@ a.btn{text-decoration:none}
 <script src="telemetria.js"></script>
 <script src="qr.js"></script>
 <script src="cadena.js"></script>
+<script src="aura.js"></script>
 <script src="chat.js"></script>
 <script src="i18n.js"></script>
 <script src="app.js"></script>
