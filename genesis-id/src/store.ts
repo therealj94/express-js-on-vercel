@@ -115,12 +115,34 @@ export async function iniciar(): Promise<void> {
   }
 }
 
+/**
+ * Cómo fue el último volcado.
+ *
+ * Hasta ahora, un guardado que fallaba solo dejaba un `console.error` en el
+ * registro y el servicio seguía respondiendo 200 a todo: los datos vivían en
+ * memoria y morían en el siguiente reinicio, sin que nada lo delatara. Es
+ * exactamente la forma de perder un operador recién creado —o una identidad
+ * aprobada— sin que nadie se entere. Se publica en /healthz para que un fallo
+ * de escritura se vea desde fuera.
+ */
+let ultimoVolcado: { en: string; ok: boolean; error?: string } | null = null
+
+export function saludAlmacen(): { motor: string; ultimoVolcado: typeof ultimoVolcado } {
+  return { motor, ultimoVolcado }
+}
+
 async function volcar(): Promise<void> {
   const copia = datos
-  if (motor === 'mongodb' && coleccion) {
-    await coleccion.updateOne({ _id: 'genesis' }, { $set: { datos: copia, actualizado: new Date() } }, { upsert: true })
-  } else {
-    escribirArchivo(copia)
+  try {
+    if (motor === 'mongodb' && coleccion) {
+      await coleccion.updateOne({ _id: 'genesis' }, { $set: { datos: copia, actualizado: new Date() } }, { upsert: true })
+    } else {
+      escribirArchivo(copia)
+    }
+    ultimoVolcado = { en: new Date().toISOString(), ok: true }
+  } catch (e: any) {
+    ultimoVolcado = { en: new Date().toISOString(), ok: false, error: e?.message || 'desconocido' }
+    throw e
   }
 }
 

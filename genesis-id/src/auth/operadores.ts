@@ -115,15 +115,32 @@ export function asegurarAdministrador(): { creado: boolean; email?: string; cont
 const fallos = new Map<string, { veces: number; hasta: number }>()
 const MAX_FALLOS = 5
 const BLOQUEO_MS = 15 * 60 * 1000
+// Los fallos se cuentan dentro de una ventana, y al vencer se vuelve a cero.
+//
+// POR QUE HACIA FALTA: antes el contador no bajaba nunca. Se sumaba en cada
+// fallo y solo se borraba al entrar bien, así que al llegar a cinco la cuenta
+// quedaba en una trampa: pasado el cuarto de hora, el PRIMER intento fallido
+// volvía a poner el contador en seis y el bloqueo empezaba otra vez entero.
+// Quien no recuerda su contraseña —o quien no es operador y nunca va a poder
+// entrar— se quedaba encerrado en ciclos de quince minutos sin salida, y con
+// el motivo tapado por el «La sesión caducó» del panel no había manera de
+// saberlo. Además, sin ventana, cinco despistes repartidos en tres meses
+// acababan bloqueando a un operador que jamás falló dos veces seguidas.
+const VENTANA_MS = 15 * 60 * 1000
 
 export function entrar(email: string, contrasena: string, ip: string | null): {
-  ok: boolean; sesion?: Sesion; operador?: Operador; motivo?: string
+  ok: boolean; sesion?: Sesion; operador?: Operador; motivo?: string; bloqueado?: boolean
 } {
   const correo = String(email || '').toLowerCase().trim()
-  const bloqueo = fallos.get(correo)
-  if (bloqueo && bloqueo.veces >= MAX_FALLOS && Date.now() < bloqueo.hasta) {
-    const minutos = Math.ceil((bloqueo.hasta - Date.now()) / 60000)
-    return { ok: false, motivo: `Demasiados intentos. Vuelva a probar en ${minutos} minuto(s).` }
+  const ahoraMs = Date.now()
+  const previo = fallos.get(correo)
+  const vigente = Boolean(previo && ahoraMs < previo.hasta)
+
+  // El bloqueo no se alarga por reintentar: se responde y se sale sin tocar el
+  // contador.
+  if (previo && vigente && previo.veces >= MAX_FALLOS) {
+    const minutos = Math.ceil((previo.hasta - ahoraMs) / 60000)
+    return { ok: false, bloqueado: true, motivo: `Demasiados intentos. Vuelva a probar en ${minutos} minuto(s).` }
   }
 
   const operador = store.todo().operadores.find((o) => o.email === correo)
@@ -132,9 +149,18 @@ export function entrar(email: string, contrasena: string, ip: string | null): {
   // distinguirlos permitiría averiguar qué correos son operadores válidos.
   const valido = operador?.activo && verificarContrasena(contrasena, operador.hashContrasena)
   if (!valido) {
-    const previo = fallos.get(correo) ?? { veces: 0, hasta: 0 }
-    fallos.set(correo, { veces: previo.veces + 1, hasta: Date.now() + BLOQUEO_MS })
-    registrar(correo, 'sesion.fallida', correo, { ip })
+    const veces = (vigente ? previo!.veces : 0) + 1
+    const alcanzaElTope = veces >= MAX_FALLOS
+    fallos.set(correo, { veces, hasta: ahoraMs + (alcanzaElTope ? BLOQUEO_MS : VENTANA_MS) })
+    // La bitácora sí distingue los tres casos que la respuesta junta a
+    // propósito: sin eso no hay forma de diagnosticar por qué alguien no entra.
+    const causa = !operador ? 'sin-operador' : !operador.activo ? 'desactivado' : 'contrasena'
+    registrar(correo, 'sesion.fallida', correo, { ip, causa, veces })
+    // El bloqueo se anota una sola vez, al cerrarse: anotar cada intento
+    // rechazado engordaría la bitácora sin decir nada nuevo.
+    if (alcanzaElTope) {
+      registrar(correo, 'sesion.bloqueada', correo, { ip, minutos: Math.round(BLOQUEO_MS / 60000) })
+    }
     return { ok: false, motivo: 'Correo o contraseña incorrectos' }
   }
 

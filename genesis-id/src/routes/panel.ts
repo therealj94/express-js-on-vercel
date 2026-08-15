@@ -373,7 +373,7 @@ panelRouter.get('/operadores', exigePermiso('*'), (_req, res) => {
   })
 })
 
-panelRouter.post('/operadores', exigePermiso('*'), (req, res) => {
+panelRouter.post('/operadores', exigePermiso('*'), async (req, res) => {
   const { email, nombre, rol, contrasena } = req.body ?? {}
   if (!email || !nombre || !rol || !contrasena) {
     return res.status(400).json({ error: 'Faltan email, nombre, rol y contraseña' })
@@ -382,13 +382,36 @@ panelRouter.post('/operadores', exigePermiso('*'), (req, res) => {
   if (String(contrasena).length < 12) {
     return res.status(400).json({ error: 'La contraseña debe tener al menos 12 caracteres' })
   }
+  let o
   try {
-    const o = crearOperador({ email, nombre, rol, contrasena })
-    registrar(req.operador!.email, 'operador.creado', o.email, { rol })
-    res.json({ ok: true, operador: { id: o.id, email: o.email, rol: o.rol } })
+    o = crearOperador({ email, nombre, rol, contrasena })
   } catch (e: any) {
-    res.status(400).json({ error: e.message })
+    return res.status(400).json({ error: e.message })
   }
+
+  // Se espera al volcado antes de decir «creado». Con el guardado diferido, la
+  // respuesta salía con 100 ms de ventaja sobre la escritura: si el proceso se
+  // reiniciaba en esa ventana —un despliegue, el apagado por inactividad del
+  // plan gratuito— el operador recién creado desaparecía y nadie se enteraba,
+  // porque el administrador ya había visto un «ok». Decir que existe una cuenta
+  // que no existe es la peor forma de este fallo: la persona intenta entrar
+  // durante días con unos datos que el servidor nunca llegó a guardar.
+  try {
+    await store.guardarYa()
+  } catch (e: any) {
+    // Si no se pudo guardar, tampoco se deja a medias en memoria: se deshace y
+    // se dice la verdad. Un operador que vive solo en RAM es una cuenta que
+    // funciona hoy y desaparece en el próximo reinicio.
+    const datos = store.todo()
+    datos.operadores = datos.operadores.filter((x) => x.id !== o!.id)
+    console.error('[genesis-id] no se pudo guardar el operador nuevo:', e?.message)
+    return res.status(503).json({
+      error: 'No se pudo guardar en la base: el operador NO quedó creado. Inténtelo otra vez.',
+    })
+  }
+
+  registrar(req.operador!.email, 'operador.creado', o.email, { rol })
+  res.json({ ok: true, operador: { id: o.id, email: o.email, rol: o.rol } })
 })
 
 panelRouter.post('/operadores/:id/activo', exigePermiso('*'), (req, res) => {

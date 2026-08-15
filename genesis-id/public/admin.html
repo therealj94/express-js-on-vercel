@@ -127,6 +127,19 @@ pre{background:#061e20;border:1px solid var(--line2);border-radius:10px;padding:
     <input id="eClave" type="password" autocomplete="current-password" required>
     <button class="p" style="width:100%;margin-top:18px" type="submit">Entrar</button>
     <p id="eError" class="sub" style="color:var(--bad);margin-top:12px;display:none"></p>
+    <!--
+      Esta aclaración no sobra: la raíz del servicio sirve este panel, y las
+      webs del ecosistema han estado mandando aquí a los usuarios con un botón
+      de «Verificar mi identidad». Quien llega así escribe el correo y la
+      contraseña de su billetera, y no puede entrar por la sencilla razón de
+      que no es operador. Decirlo antes ahorra el intento y el bloqueo.
+    -->
+    <p class="sub" style="margin-top:16px;margin-bottom:0;line-height:1.5">
+      Esta entrada es solo para operadores del equipo de cumplimiento.
+      Si viene a verificar su identidad, no necesita una cuenta aquí: la
+      verificación se hace desde la aplicación de su billetera en el teléfono,
+      que es la que puede leer el documento y comprobar el rostro con la cámara.
+    </p>
   </form>
 </div>
 
@@ -175,21 +188,56 @@ function avisar(texto, mal) {
   a._t = setTimeout(() => { a.className = 'aguja' }, 4200)
 }
 
+// La puerta se trata aparte del resto de las rutas.
+//
+// Antes, CUALQUIER 401 se anunciaba como «La sesión caducó» y el cuerpo de la
+// respuesta se tiraba sin leerlo. Como entrar() pasa por aquí, un login
+// rechazado —contraseña equivocada, correo que no es de ningún operador,
+// cuenta desactivada, bloqueo por intentos— salía en rojo hablando de una
+// sesión que nunca llegó a existir. Quien lo leía no tenía forma de saber qué
+// arreglar, y el único dato útil —el motivo, que el servidor sí manda— se
+// perdía por el camino. Un mensaje que miente cuesta días de diagnóstico.
+const RUTA_ENTRAR = '/sesion/entrar'
+
 async function api(ruta, opciones = {}) {
-  const r = await fetch('/api' + ruta, {
-    ...opciones,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(sesion ? { Authorization: 'Bearer ' + sesion } : {}),
-      ...(opciones.headers || {}),
-    },
-  })
-  if (r.status === 401) {
-    sesion = ''; localStorage.removeItem('gid.sesion'); mostrarEntrada()
-    throw new Error('La sesión caducó')
+  const enLaPuerta = ruta === RUTA_ENTRAR
+  const habiaSesion = Boolean(sesion)
+
+  let r
+  try {
+    r = await fetch('/api' + ruta, {
+      ...opciones,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(sesion ? { Authorization: 'Bearer ' + sesion } : {}),
+        ...(opciones.headers || {}),
+      },
+    })
+  } catch {
+    // Que no haya red no es un rechazo del servidor. Decirlo tal cual evita que
+    // alguien empiece a cambiar contraseñas para arreglar lo que es una raya de
+    // cobertura.
+    throw Object.assign(
+      new Error('No se pudo conectar con el servidor. Compruebe la conexión e inténtelo otra vez.'),
+      { red: true })
   }
+
+  // El cuerpo se lee SIEMPRE, también en 401: ahí viaja el motivo verdadero.
   const cuerpo = await r.json().catch(() => ({}))
-  if (!r.ok) throw Object.assign(new Error(cuerpo.error || 'Error'), { datos: cuerpo })
+
+  if (r.status === 401 && !enLaPuerta) {
+    // Fuera de la puerta un 401 sí cierra el panel. Pero «caducó» solo se dice
+    // cuando de verdad había una sesión guardada; si no la había, se repite lo
+    // que dice el servidor.
+    sesion = ''; localStorage.removeItem('gid.sesion'); mostrarEntrada()
+    throw Object.assign(
+      new Error(habiaSesion
+        ? 'La sesión caducó. Vuelva a entrar.'
+        : (cuerpo.error || 'Hace falta entrar con una cuenta de operador.')),
+      { datos: cuerpo, http: 401 })
+  }
+
+  if (!r.ok) throw Object.assign(new Error(cuerpo.error || 'Error'), { datos: cuerpo, http: r.status })
   return cuerpo
 }
 
@@ -197,8 +245,15 @@ const puede = (p) => yo && (yo.permisos.includes('*') || yo.permisos.includes(p)
 
 async function entrar(ev) {
   ev.preventDefault()
+  const error = $('#eError')
+  const boton = ev.target.querySelector('button[type=submit]')
+  error.style.display = 'none'
+  // El botón se bloquea mientras se pregunta. En el móvil es fácil pulsar dos
+  // veces sin querer, y cada pulsación gasta uno de los cinco intentos que
+  // bloquean la cuenta un cuarto de hora.
+  if (boton) { boton.disabled = true; boton.textContent = 'Entrando…' }
   try {
-    const r = await api('/sesion/entrar', {
+    const r = await api(RUTA_ENTRAR, {
       method: 'POST',
       body: JSON.stringify({ email: $('#eMail').value, contrasena: $('#eClave').value }),
     })
@@ -208,8 +263,16 @@ async function entrar(ev) {
     arrancar()
     if (yo.debeCambiarContrasena) avisar('Debe cambiar la contraseña inicial', true)
   } catch (e) {
-    $('#eError').textContent = e.message
-    $('#eError').style.display = 'block'
+    // Se enseña lo que dice el servidor, sin adornarlo: «Correo o contraseña
+    // incorrectos» (que a propósito no distingue cuál de los dos falla, para
+    // no revelar qué correos son de operadores), «Demasiados intentos…» o el
+    // fallo de red. Este formulario es solo para operadores del panel de
+    // cumplimiento: quien venga a verificar su identidad no tiene cuenta aquí,
+    // y también merece leerlo.
+    error.textContent = e.message
+    error.style.display = 'block'
+  } finally {
+    if (boton) { boton.disabled = false; boton.textContent = 'Entrar' }
   }
 }
 

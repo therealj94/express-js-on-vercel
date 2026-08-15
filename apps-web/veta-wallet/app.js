@@ -633,6 +633,11 @@ const VETA = (() => {
     };
     const [clase, titulo, texto] = mapa[e] || ['e-no', t('gid.no'), t('gid.noP')];
     const listo = clase === 'e-ok';
+    /* El boton lleva a la verificacion de esta misma web. Antes salia a
+       genesis-id.onrender.com, que es el panel de cumplimiento del equipo: se
+       le pedia correo y contraseña de operador a quien solo queria verificarse,
+       y ahi no hay forma de registrarse. Ahora se queda en casa, con la sesion
+       que ya tiene puesta. */
     return `
     <div class="bloque vidrio">
       <div class="gid">
@@ -643,7 +648,7 @@ const VETA = (() => {
           </div>
           <p class="pie" style="margin-top:8px">${texto}</p>
           ${identidad?.gid ? `<p class="pie mono" style="margin-top:8px;color:var(--oroLt)">${esc(identidad.gid)}</p>` : ''}
-          ${listo || compacta ? '' : `<div style="margin-top:16px"><a class="btn btn-oro btn-sm" href="https://genesis-id.onrender.com" target="_blank" rel="noopener">${t('gid.btn')}</a></div>`}
+          ${listo || compacta ? '' : `<div style="margin-top:16px"><button class="btn btn-oro btn-sm" onclick="VETA.vista('verificar')">${t('gid.btn')}</button></div>`}
         </div>
       </div>
     </div>`;
@@ -1891,6 +1896,16 @@ const VETA = (() => {
     armarRevelado();
     $('#form-acceso').addEventListener('submit', enviarAcceso);
     $('#i-clave').addEventListener('input', pintarFuerza);
+
+    /* Quien llega con /#verificar viene de la pagina publica de Genesis ID y
+       viene a verificarse, no a mirar el saldo. Basta con dejar marcada la
+       vista antes de arrancar: las dos puertas de entrada —sesion recuperada
+       aqui abajo y sesion recien creada en enviarAcceso— terminan en ir('app'),
+       que pinta vistaActual. Si la vista todavia no existe, vista() cae sola en
+       la billetera, asi que esto nunca deja una pantalla en blanco. */
+    const pideVerificar = location.hash === '#verificar';
+    if (pideVerificar) vistaActual = 'verificar';
+
     sesion = recuperar();
     if (sesion?.token) {
       // Volver con la sesión guardada es entrar igual: si no se contara, quien
@@ -1903,7 +1918,9 @@ const VETA = (() => {
       ir('app');
       cargarTodo();
     }
-    else ir('bienvenida');
+    /* Sin sesion no hay identidad que verificar todavia: al que venia a eso se
+       le abre el acceso, no la portada, para que no tenga que buscar la puerta. */
+    else ir(pideVerificar ? 'acceso' : 'bienvenida', 'entrar');
   }
   document.addEventListener('DOMContentLoaded', arrancar);
 

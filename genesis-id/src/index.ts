@@ -3,7 +3,7 @@ import cors from 'cors'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 
-import { store, iniciar, motor } from './store.js'
+import { store, iniciar, motor, saludAlmacen } from './store.js'
 import { asegurarAdministrador, limpiarSesiones } from './auth/operadores.js'
 import { asegurarAplicaciones, alinearAlcances } from './auth/aplicaciones.js'
 import { prepararTelemetria, hayMongo as telemetriaEnMongo } from './analitica/eventos.js'
@@ -21,6 +21,16 @@ import { prepararDirectorio } from './directorio/padron.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
+
+// Render pone un balanceador delante. Sin declararlo, `req.ip` es SIEMPRE la
+// dirección de ese balanceador, y eso rompe dos cosas a la vez: el límite de
+// peticiones cuenta a todo el mundo en el mismo cubo —diez intentos de entrada
+// por minuto para el planeta entero, así que dos operadores a la vez se echan
+// mutuamente con un 429— y la dirección que queda escrita en la bitácora de
+// sesión es la del proxy, o sea inservible para auditar quién entró desde
+// dónde. El 1 significa «hay un proxy de confianza»: se toma la dirección que
+// Render añade a la derecha, no la que pueda inventarse el cliente.
+app.set('trust proxy', 1)
 
 // CORS abierto solo tiene sentido para las apps del ecosistema, que se
 // identifican con clave de API; el panel se sirve desde el mismo origen.
@@ -107,13 +117,20 @@ const ARRANQUE = new Date().toISOString()
 app.get('/healthz', (_req, res) => {
   const cadena = verificarCadena()
   const listas = estadoListas()
-  const listo = hayListas() && cadena.integra && motor === 'mongodb'
+  const almacen = saludAlmacen()
+  // Un guardado que falla no cambia nada visible desde fuera: el servicio sigue
+  // respondiendo, con los datos vivos solo en memoria hasta el próximo
+  // reinicio. Por eso cuenta para el estado: es la avería que se paga tarde.
+  const guardaBien = almacen.ultimoVolcado?.ok !== false
+  const listo = hayListas() && cadena.integra && motor === 'mongodb' && guardaBien
   res.json({
     estado: listo ? 'ok' : 'degradado',
     en: new Date().toISOString(),
     version: { commit: COMMIT.slice(0, 12), rama: RAMA, arrancadoEn: ARRANQUE },
     comprobaciones: {
       almacenPersistente: motor === 'mongodb',
+      guardadoOk: guardaBien,
+      ultimoGuardado: almacen.ultimoVolcado?.en ?? null,
       listasCargadas: listas.cargadas,
       listasVencidas: listas.vencidas,
       biometria: biometriaConfigurada(),
@@ -176,7 +193,38 @@ const __filename = fileURLToPath(import.meta.url)
 const debeEscuchar =
   process.argv[1] === __filename || Boolean(process.env.PORT) || Boolean(process.env.RENDER)
 
+/**
+ * En un servidor de verdad, sin base de datos no se arranca.
+ *
+ * El motor cae al archivo en cuanto GENESIS_MONGO_URL falta, está vacía o
+ * viene mal escrita, y hasta ahora eso solo dejaba un AVISO entre los demás
+ * mensajes de arranque: el servicio respondía 200, la semilla creaba de nuevo
+ * a admin@ordenglobal.link con otra contraseña, y todos los demás operadores e
+ * identidades desaparecían del mapa. Nadie mira los registros de arranque de un
+ * servicio que responde bien; lo que se nota es a la gente que ya no puede
+ * entrar, y para entonces nadie relaciona una cosa con la otra.
+ *
+ * Negarse a arrancar convierte una pérdida silenciosa de datos en una avería
+ * ruidosa, que es lo que hay que preferir en el servicio que aprueba
+ * identidades reales. Para desarrollo el motor de archivo sigue intacto: esto
+ * solo se aplica cuando corre en Render, y hay salida expresa con
+ * GENESIS_PERMITIR_ARCHIVO=si por si alguna vez hace falta arrancar sin base.
+ */
+function exigirAlmacenPersistente(): void {
+  const enRender = Boolean(process.env.RENDER)
+  const permitido = /^(si|sí|1|true)$/i.test(String(process.env.GENESIS_PERMITIR_ARCHIVO || ''))
+  if (motor === 'archivo' && enRender && !permitido) {
+    throw new Error(
+      'SIN ALMACEN PERSISTENTE: falta GENESIS_MONGO_URL (o está mal escrita) y el disco de ' +
+      'Render es efímero. Arrancar así borraría operadores e identidades en el próximo ' +
+      'despliegue. Defina GENESIS_MONGO_URL en el panel de Render, o GENESIS_PERMITIR_ARCHIVO=si ' +
+      'si de verdad quiere arrancar sin base de datos.',
+    )
+  }
+}
+
 export async function arrancar(): Promise<void> {
+  exigirAlmacenPersistente()
   await iniciar()
 
   // Las listas se cargan DESPUES de abrir el almacen: viven en Mongo, en su
@@ -263,6 +311,31 @@ export async function arrancar(): Promise<void> {
   setInterval(limpiarSesiones, 3600000).unref?.()
 }
 
+/**
+ * Cierre ordenado.
+ *
+ * El almacén vuelca en diferido —100 ms después de cada cambio— y Render manda
+ * SIGTERM en cada despliegue y al dormir el servicio del plan gratuito. Sin
+ * este manejador, todo lo que estuviera en esa ventana se perdía sin dejar
+ * rastro: justo el operador que se acababa de crear, o la identidad que se
+ * acababa de aprobar.
+ */
+let cerrando = false
+async function cerrarConOrden(senal: string): Promise<void> {
+  if (cerrando) return
+  cerrando = true
+  console.log(`[genesis-id] ${senal}: guardando lo pendiente antes de cerrar…`)
+  try {
+    await store.guardarYa()
+    console.log('[genesis-id] guardado. Cerrando.')
+  } catch (e: any) {
+    console.error('[genesis-id] NO se pudo guardar al cerrar:', e?.message)
+  }
+  process.exit(0)
+}
+process.on('SIGTERM', () => void cerrarConOrden('SIGTERM'))
+process.on('SIGINT', () => void cerrarConOrden('SIGINT'))
+
 if (debeEscuchar) {
   arrancar()
     .then(() => {
@@ -271,7 +344,7 @@ if (debeEscuchar) {
       })
     })
     .catch((e) => {
-      console.error('[genesis-id] no se pudo arrancar:', e)
+      console.error('[genesis-id] no se pudo arrancar:', e?.message || e)
       process.exit(1)
     })
 }

@@ -34,7 +34,7 @@ es: {
   'ini.vacioT': 'Todavía no hay movimientos', 'ini.vacioP': 'Cuando recibas o envíes ORIGEN, todo va a aparecer acá.',
   'gid.ok': 'Verificada', 'gid.rev': 'En revisión', 'gid.no': 'Sin verificar', 'gid.mal': 'Rechazada', 'gid.sus': 'Suspendida',
   'gid.okP': 'Tu Genesis ID está activa. Vale en Veta Wallet, MyTokenPay y todo el ecosistema.',
-  'gid.revP': 'Un operador de cumplimiento está revisando tus datos. Suele tardar menos de 24 horas.',
+  'gid.revP': 'Tu solicitud llegó a Genesis. La revisa una persona del equipo de cumplimiento, así que puede tardar. Te avisamos apenas haya respuesta.',
   'gid.noP': 'Verificá tu identidad una sola vez y quedás verificado en todo el ecosistema.',
   'gid.malP': 'La verificación no pasó. Escribinos y lo revisamos con vos.',
   'gid.susP': 'Tu identidad quedó suspendida. Escribinos para reactivarla.',
@@ -102,6 +102,9 @@ es: {
   'e.mtp': 'La capa de comercio. Encontrá negocios que aceptan ORIGEN y pagá desde esta misma billetera.',
   'e.scan': 'El explorador de la cadena 8532. Cada bloque y cada transacción, a la vista de cualquiera.',
   'e.ver': 'Abrir',
+  // MyTokenPay y ordenscan se abren y ya. Genesis ID no: primero hay que contar
+  // que es y que datos pide, y por eso este enlace se llama distinto.
+  'e.gidVer': 'Qué es Genesis ID',
   'c.t1': 'Tu oro empieza', 'c.t2': 'con una cuenta.',
   'pw.0': 'Muy corta', 'pw.1': 'Débil', 'pw.2': 'Aceptable', 'pw.3': 'Buena', 'pw.4': 'Fuerte',
 
@@ -243,7 +246,7 @@ en: {
   'ini.vacioT': 'No transactions yet', 'ini.vacioP': 'When you receive or send ORIGEN, everything shows up here.',
   'gid.ok': 'Verified', 'gid.rev': 'Under review', 'gid.no': 'Not verified', 'gid.mal': 'Rejected', 'gid.sus': 'Suspended',
   'gid.okP': 'Your Genesis ID is active. It works in Veta Wallet, MyTokenPay and the whole ecosystem.',
-  'gid.revP': 'A compliance officer is reviewing your data. It usually takes less than 24 hours.',
+  'gid.revP': 'Your request reached Genesis. A person from the compliance team reviews it, so it can take a while. We will let you know as soon as there is an answer.',
   'gid.noP': 'Verify your identity once and you are verified across the whole ecosystem.',
   'gid.malP': 'Verification did not pass. Write to us and we will review it with you.',
   'gid.susP': 'Your identity was suspended. Write to us to reactivate it.',
@@ -311,6 +314,7 @@ en: {
   'e.mtp': 'The commerce layer. Find businesses that accept ORIGEN and pay from this same wallet.',
   'e.scan': 'The chain 8532 explorer. Every block and every transaction, in plain sight.',
   'e.ver': 'Open',
+  'e.gidVer': 'What Genesis ID is',
   'c.t1': 'Your gold starts', 'c.t2': 'with an account.',
   'pw.0': 'Too short', 'pw.1': 'Weak', 'pw.2': 'Acceptable', 'pw.3': 'Good', 'pw.4': 'Strong',
 
