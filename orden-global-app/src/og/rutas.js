@@ -15,7 +15,7 @@ export const MAPA = {
   'wallet/swap':     { p: 'swap', firma: true },
   'wallet/actividad':{ p: 'activity' },
   'wallet/reporte':  { p: 'reporte' },             // el resumen hablado de la wallet
-  'pay/abrir':       { p: 'pay-panel' },
+  'pay/abrir':       { p: 'pay-inicio' },
   'pay/cobrar':      { p: 'pay-cobro' },
   'id/abrir':        { p: 'passport' },
   'chat/abrir':      { p: 'chat', gid: true },     // con=correo

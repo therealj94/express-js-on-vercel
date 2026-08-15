@@ -19,15 +19,23 @@ import { C, G } from '../../theme';
 import { Header, Button3D, Skeleton, useAccount, useToast, hap } from '../../ui';
 import { Icon } from '../../icons';
 import { useLang } from '../../i18n';
-import { qtyFmt } from '../../data';
+import { qtyFmt, money, tokensFromBalances } from '../../data';
 import { apiPortfolio } from '../../api';
 import { upsertApiAccount } from '../../accounts';
 import { listContacts, nameFor } from '../../addressBook';
+import { avisosDe, leerVisto, noLeidos } from './avisos';
 
 const TXT = {
   es: {
     miNegocio: 'Mi negocio', bonos: 'Bonos y regalos',
     titulo: 'MyTokenPay', sub: 'Tu negocio cobra en ORIGEN',
+    saludo: 'Hola, {n}', bienvenido: 'Bienvenido de nuevo a MyTokenPay.',
+    saldoTit: 'SALDO DE TU BILLETERA', saldoPagar: 'Pagar',
+    saldoNota: 'Es el ORIGEN real de tu Veta Wallet en la cadena: la misma bolsa con la que cobras y con la que pagas. Toca para pagar en un comercio.',
+    sinPrecio: 'El feed de precios no respondió, así que no se enseña el equivalente en dólares en vez de una cifra congelada.',
+    notis: 'Notificaciones', notisNuevas: '{n} nuevas', notisAlDia: 'Al día',
+    panelNeg: 'Panel del negocio', panelNegS: 'Saldo, métricas y retiros',
+    ticket: 'Ticket promedio',
     comercio: 'MI COMERCIO', personal: 'Comercio personal',
     genesisOk: 'Genesis · verificado', genesisNo: 'Genesis pendiente — complétalo',
     hoy: 'RESUMEN DE HOY', cobradoHoy: 'ORIGEN cobrado hoy',
@@ -44,6 +52,13 @@ const TXT = {
   en: {
     miNegocio: 'My business', bonos: 'Rewards',
     titulo: 'MyTokenPay', sub: 'Your business charges in ORIGEN',
+    saludo: 'Hi, {n}', bienvenido: 'Welcome back to MyTokenPay.',
+    saldoTit: 'YOUR WALLET BALANCE', saldoPagar: 'Pay',
+    saldoNota: 'This is the real ORIGEN in your Veta Wallet on chain: the same pocket you charge into and pay from. Tap to pay at a business.',
+    sinPrecio: 'The price feed did not answer, so the dollar equivalent is not shown rather than showing a frozen figure.',
+    notis: 'Notifications', notisNuevas: '{n} new', notisAlDia: 'Up to date',
+    panelNeg: 'Business panel', panelNegS: 'Balance, metrics and payouts',
+    ticket: 'Average ticket',
     comercio: 'MY BUSINESS', personal: 'Personal storefront',
     genesisOk: 'Genesis · verified', genesisNo: 'Genesis pending — complete it',
     hoy: "TODAY'S SUMMARY", cobradoHoy: 'ORIGEN collected today',
@@ -94,6 +109,13 @@ export default function PanelPay({ nav }) {
   }, [account?.email]);
   const etiqueta = (addr) => nameFor(contactos, addr) || shortAddr(addr);
 
+  // El globo de la bandeja: cuántos cobros han entrado desde la última vez
+  // que se abrieron las notificaciones. El cálculo vive en avisos.js para que
+  // la portada, esta pantalla y la bandeja cuenten exactamente lo mismo.
+  const [visto, setVisto] = useState(0);
+  useEffect(() => { leerVisto(account?.email).then(setVisto); }, [account?.email]);
+  const sinLeer = noLeidos(avisosDe(account), visto);
+
   // La sección pay puede abrirse sin pasar por Home, y Home es quien solía
   // refrescar el portafolio. Aquí se refresca también: al entrar y al tirar.
   // Si falla, no se rompe nada — queda lo cacheado y los textos son honestos.
@@ -125,6 +147,22 @@ export default function PanelPay({ nav }) {
   // falso); si hoy entró otro token, se dice en una línea en vez de callarlo.
   const hayOtrosHoy = deHoy.some((x) => !esOrigen(x));
 
+  // El ticket promedio del panel del negocio original, sobre cobros en
+  // ORIGEN: promediar símbolos distintos daría un número sin significado.
+  const enOrigen = entrantes.filter(esOrigen);
+  const ticket = enOrigen.length ? origenTotal / enOrigen.length : 0;
+
+  // El saldo de la billetera, que panel.tsx enseñaba como "Saldo Veta Wallet".
+  // Aquí sale de los balances REALES de la cadena, y si el feed de precios no
+  // respondió no se pinta un equivalente en dólares inventado (data.js:
+  // un precio ausente nunca se sustituye por un valor congelado).
+  const origenTok = useMemo(
+    () => tokensFromBalances(account?.balances).find((x) => x.s === 'ORIGEN') || null,
+    [account?.balances],
+  );
+  const saldo = origenTok ? origenTok.qty : 0;
+  const saldoUsd = origenTok && origenTok.hasPrice ? origenTok.qty * origenTok.price : null;
+
   const fmtCuando = (ts) => {
     const d = new Date((Number(ts) || 0) * 1000);
     return d.toLocaleDateString(lang === 'en' ? 'en-US' : 'es-HN', { day: 'numeric', month: 'short' })
@@ -147,8 +185,14 @@ export default function PanelPay({ nav }) {
           />
         }>
 
-        {/* ── la tarjeta del comercio: la persona ES el negocio ─────────── */}
+        {/* ── el saludo con el que abría panel.tsx ("Hola, Nombre") ─────── */}
         <Entrada delay={0}>
+          <Text style={st.saludo}>{t.saludo.replace('{n}', (acc.name || '').split(' ')[0] || acc.email)}</Text>
+          <Text style={st.bienvenido}>{t.bienvenido}</Text>
+        </Entrada>
+
+        {/* ── la tarjeta del comercio: la persona ES el negocio ─────────── */}
+        <Entrada delay={40}>
           <LinearGradient colors={G.greenCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.negocio}>
             <View style={st.negocioTop}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>

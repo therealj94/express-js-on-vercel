@@ -103,11 +103,16 @@ const MUNDOS = [
 ];
 
 // Los colores del tema vienen en hexadecimal y los hilos necesitan alfa.
-// Se convierte una vez por color, no en cada render.
-function conAlfa(hex, a) {
-  const h = String(hex).replace('#', '');
+// El tema MEZCLA formatos (C.gold es hex, C.line ya es rgba): si a esto le
+// entra un rgba y se le pasa por parseInt, sale un color inventado y nadie
+// se entera. Por eso lo que no sea un hex de 3 o 6 se devuelve tal cual.
+function conAlfa(color, a) {
+  const s = String(color).trim();
+  if (s[0] !== '#') return s;
+  const h = s.slice(1);
   const seis = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
-  const n = parseInt(seis, 16) || 0;
+  if (!/^[0-9a-fA-F]{6}$/.test(seis)) return s;
+  const n = parseInt(seis, 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
@@ -266,7 +271,11 @@ const HTML_NEURONAS = `<!doctype html>
     Esto es lo que separa una red VIVA de un adorno: una neurona se
     enciende, manda pulsos por sus sinapsis, y la que los recibe acumula
     carga hasta que ella tambien se enciende. */
- var PULSOS=[], TOPE=64;
+ /* El tope acota el peor caso, pero holgado: si se corta a mitad de una
+    cascada hay pulsos que nacen y no llegan a ninguna parte, y eso es
+    exactamente lo contrario de lo que la escena tiene que contar. En
+    treinta segundos de vida el pico medido ronda los 45. */
+ var PULSOS=[], TOPE=96;
  function disparar(i,gen){
    var n=NEU[i];
    if(n.disp>0.6) return;          /* ya esta encendida: no se apila */
@@ -301,8 +310,12 @@ const HTML_NEURONAS = `<!doctype html>
               'rgba(126,240,214,0.09)','rgba(126,240,214,0.19)',
               'rgba(142,246,222,0.33)','rgba(172,250,232,0.50)'];
 
- var ultimo=0, objetivo=1000/60, ligero=false;
- var emaCosto=0, emaSalto=0, malo=0, bueno=0;
+ var ultimo=0, objetivo=1000/60, podar=false, techo30=false;
+ /* Arrancan en -1 y no en 0: hay WebViews de Android que redondean
+    performance.now() al milisegundo, asi que el primer coste medido puede
+    ser 0 clavado — y una media que empieza en 0 con "si es 0, siembrala"
+    no arranca nunca y el termometro se queda ciego para siempre. */
+ var emaCosto=-1, emaSalto=-1, malo=0, bueno=0, lento=0;
  var desdeSemilla=0, proxSemilla=600;
 
  function cuadro(ts){
@@ -323,7 +336,7 @@ const HTML_NEURONAS = `<!doctype html>
       cuanto se acaba el ultimo contagio. */
    desdeSemilla+=dt;
    if(desdeSemilla>proxSemilla){
-     desdeSemilla=0; proxSemilla=700+az()*900;
+     desdeSemilla=0; proxSemilla=520+az()*700;
      disparar((az()*N)|0,0);
    }
    for(var i0=0;i0<N;i0++){
@@ -377,9 +390,9 @@ const HTML_NEURONAS = `<!doctype html>
         transparente (desenfoque); el de las de delante, ceñido y vivo. */
      var rh=nuc*(3.6-p1*1.8)+2;
      var op=(0.055+p1*0.200)*(1+ds*1.9); if(op>0.85) op=0.85;
-     /* En modo ligero las del fondo pierden el halo: son las que menos se
-        ven y las que mas pixeles cuestan (el sello estampado grande). */
-     if(!(ligero&&p1<0.28)){
+     /* Al podar, las del fondo pierden el halo: son las que menos se ven y
+        las que mas pixeles cuestan (el sello estampado grande y tenue). */
+     if(!(podar&&p1<0.28)){
        g.globalAlpha=op;
        g.drawImage(n1.oro?SP_ORO:SP_VERDE, n1.sx-rh, n1.sy-rh, rh*2, rh*2);
      }
@@ -447,20 +460,34 @@ const HTML_NEURONAS = `<!doctype html>
    }
 
    /* ── el termometro ──────────────────────────────────────────────────
-      Se mide lo que TARDA el cuadro y tambien el hueco entre cuadros: lo
-      primero dice si nos pasamos nosotros, lo segundo si el telefono anda
-      ocupado con otra cosa. Bajar a 30 tarda medio segundo; volver a 60
-      exige cuatro segundos buenos seguidos, para no oscilar entre los dos
-      ritmos, que se nota muchisimo mas que ir siempre a 30. */
+      Se miden DOS cosas porque son dos averias distintas y el remedio no
+      es el mismo:
+       · lo que TARDA el cuadro (emaCosto): si nos pasamos de presupuesto,
+         la culpa es nuestra. Se poda el dibujo y se baja a 30. En cuanto
+         el coste vuelve a estar holgado, se recupera todo.
+       · el hueco ENTRE cuadros con el coste bajo (emaSalto): entonces no
+         hay nada que podar — la pantalla o el sistema no dan 60 y punto.
+         Se fija el techo en 30 y NO se vuelve a intentar: reintentarlo
+         cada pocos segundos hacia que el fondo cambiara de calidad una y
+         otra vez, y ese parpadeo se nota muchisimo mas que ir siempre
+         a 30 cuadros. */
    var costo=reloj()-t0;
-   emaCosto=emaCosto?emaCosto*0.92+costo*0.08:costo;
-   emaSalto=emaSalto?emaSalto*0.90+dt*0.10:dt;
-   if(!ligero){
-     if(emaCosto>11||emaSalto>objetivo*1.8) malo+=dt; else malo=0;
-     if(malo>600){ ligero=true; objetivo=1000/30; bueno=0; }
+   emaCosto=emaCosto<0?costo:emaCosto*0.92+costo*0.08;
+   emaSalto=emaSalto<0?dt:emaSalto*0.90+dt*0.10;
+
+   if(!techo30){
+     /* Un segundo y medio seguido, no un bache: durante una transicion de
+        pantalla cualquier telefono pierde cuadros y seria injusto
+        condenarlo a 30 para siempre por eso. */
+     if(emaSalto>objetivo*1.8&&emaCosto<7) lento+=dt; else lento=0;
+     if(lento>1500){ techo30=true; objetivo=1000/30; }
+   }
+   if(!podar){
+     if(emaCosto>11) malo+=dt; else malo=0;
+     if(malo>600){ podar=true; objetivo=1000/30; bueno=0; }
    }else{
      if(emaCosto<5.5) bueno+=dt; else bueno=0;
-     if(bueno>4000){ ligero=false; objetivo=1000/60; malo=0; }
+     if(bueno>4000){ podar=false; objetivo=techo30?1000/30:1000/60; malo=0; }
    }
  }
 
@@ -505,6 +532,26 @@ function FondoQuieto() {
   // Se mide el hueco porque el radio tiene que ser el MISMO en píxeles a lo
   // ancho y a lo alto: con porcentajes la esfera saldría ovalada.
   const [caja, setCaja] = useState({ w: 0, h: 0 });
+
+  // Las posiciones NO se animan: mover 48 vistas por cuadro es justo lo que
+  // un fondo de emergencia no puede permitirse. Lo único que late son DOS
+  // opacidades — las verdes y las doradas, en contrafase — con controlador
+  // nativo. Cuesta dos animaciones en total y basta para que la esfera
+  // parezca respirar en vez de parecer una captura de pantalla.
+  const pulso = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const bucle = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulso, { toValue: 1, duration: 3200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulso, { toValue: 0, duration: 3200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ]),
+    );
+    bucle.start();
+    return () => bucle.stop();
+  }, [pulso]);
+  const opVerde = pulso.interpolate({ inputRange: [0, 1], outputRange: [0.70, 1] });
+  const opOro = pulso.interpolate({ inputRange: [0, 1], outputRange: [1, 0.58] });
+
   const puntos = useMemo(() => {
     if (!caja.w || !caja.h) return [];
     const esc = Math.min(caja.w * 0.44, caja.h * 0.30);
@@ -514,6 +561,24 @@ function FondoQuieto() {
       py: caja.h * 0.55 + n.y * esc,
     }));
   }, [caja.w, caja.h]);
+
+  const capa = (oro) => (
+    <Animated.View style={[StyleSheet.absoluteFill, { opacity: oro ? opOro : opVerde }]}>
+      {puntos.filter((p) => !!p.oro === oro).map((p, i) => (
+        <View
+          key={i}
+          style={{
+            position: 'absolute',
+            left: p.px - p.d / 2,
+            top: p.py - p.d / 2,
+            width: p.d, height: p.d, borderRadius: p.d / 2,
+            opacity: p.o,
+            backgroundColor: oro ? C.goldLt : '#7EECD4',
+          }}
+        />
+      ))}
+    </Animated.View>
+  );
 
   return (
     <View
@@ -527,19 +592,8 @@ function FondoQuieto() {
         colors={['rgba(18,74,70,0.50)', 'rgba(10,46,47,0.26)', 'rgba(0,0,0,0)']}
         style={st.velo} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
       />
-      {puntos.map((p, i) => (
-        <View
-          key={i}
-          style={{
-            position: 'absolute',
-            left: p.px - p.d / 2,
-            top: p.py - p.d / 2,
-            width: p.d, height: p.d, borderRadius: p.d / 2,
-            opacity: p.o,
-            backgroundColor: p.oro ? C.goldLt : '#7EECD4',
-          }}
-        />
-      ))}
+      {capa(false)}
+      {capa(true)}
     </View>
   );
 }
@@ -780,7 +834,7 @@ export default function Nucleo({ nav }) {
   const onIr = useCallback((id) => {
     if (id === 'chat') return nav.go('chat');
     if (id === 'wallet') return nav.go('home');
-    if (id === 'pay') return nav.go('pay-panel');
+    if (id === 'pay') return nav.go('pay-inicio');
     // Genesis ID abre el pasaporte si ya existe; si no, lleva al KYC, que es
     // el único camino para que exista.
     if (id === 'gid') return nav.go(account?.genesisUid ? 'passport' : 'kyc');

@@ -37,13 +37,19 @@ import Sessions from './src/screens/Sessions';
 import Help from './src/screens/Help';
 // ── La fusión Orden Global: hub, chat, cobrar y el asistente ──
 import Ecosistema from './src/og/Ecosistema';
-import ChatOG from './src/og/ChatOG';
+import AuroChat from './src/og/AuroChat';
+import GruposAuro from './src/og/GruposAuro';
+import AjustesAuro from './src/og/AjustesAuro';
 import CobrarOG from './src/og/CobrarOG';
 import FlotanteOG from './src/og/FlotanteOG';
 import ReporteOG from './src/og/ReporteOG';
 import Nucleo from './src/og/Nucleo';
 import PanelPay from './src/og/pay/PanelPay';
 import CobroPay from './src/og/pay/CobroPay';
+import InicioPay from './src/og/pay/InicioPay';
+import NegocioPanel from './src/og/pay/NegocioPanel';
+import NegocioDetalle from './src/og/pay/NegocioDetalle';
+import NotificacionesPay from './src/og/pay/NotificacionesPay';
 import PagarPay from './src/og/pay/PagarPay';
 import ExplorarPay from './src/og/pay/ExplorarPay';
 import MiNegocio from './src/og/pay/MiNegocio';
@@ -64,10 +70,13 @@ const SCREENS = {
   scan: Scan, contacts: Contacts, about: About,
   onboarding: Onboarding, watchOnly: WatchOnly, sessions: Sessions, help: Help,
   remesas: Remesas, deleteAccount: DeleteAccount,
-  ecosistema: Nucleo, lista: Ecosistema, chat: ChatOG, cobrar: CobrarOG,
+  ecosistema: Nucleo, lista: Ecosistema, chat: AuroChat, cobrar: CobrarOG,
   reporte: ReporteOG, 'pay-panel': PanelPay, 'pay-actividad': ActividadPay,
   'pay-cobro': CobroPay, 'pay-pagar': PagarPay, 'pay-explorar': ExplorarPay,
-  'pay-negocio': MiNegocio, 'pay-bonos': BonosPay,
+  'pay-negocio': MiNegocio, 'pay-bonos': BonosPay, 'pay-inicio': InicioPay,
+  'auro-grupo': GruposAuro, 'auro-nuevo': GruposAuro, 'auro-ajustes': AjustesAuro,
+  'pay-negocio-panel': NegocioPanel, 'pay-negocio-detalle': NegocioDetalle,
+  'pay-notificaciones': NotificacionesPay,
 };
 const SECCION_TABS = {
   og: [
@@ -84,6 +93,7 @@ const SECCION_TABS = {
   ],
   pay: [
     { r: 'ecosistema', label: 'tab.eco', icon: 'planet' },
+    { r: 'pay-inicio', label: 'tab.inicio', icon: 'home' },
     { r: 'pay-panel', label: 'tab.negocio', icon: 'storefront' },
     { r: 'pay-cobro', label: 'tab.cobrar', icon: 'qr-code' },
     { r: 'pay-pagar', label: 'tab.pagar', icon: 'scan' },
@@ -99,7 +109,9 @@ const SECCION_DE = {
   cardSettings: 'veta', remesas: 'veta', reporte: 'veta',
   'pay-panel': 'pay', 'pay-actividad': 'pay', mytokenpay: 'pay',
   'pay-cobro': 'pay', 'pay-pagar': 'pay', 'pay-explorar': 'pay',
-  'pay-negocio': 'pay', 'pay-bonos': 'pay',
+  'pay-negocio': 'pay', 'pay-bonos': 'pay', 'pay-inicio': 'pay',
+  'auro-grupo': 'og', 'auro-nuevo': 'og', 'auro-ajustes': 'og',
+  'pay-negocio-panel': 'pay', 'pay-negocio-detalle': 'pay', 'pay-notificaciones': 'pay',
   lista: 'og',
 };
 const FULLSCREEN = ['splash', 'auth']; // sin barra de estado propia / sin tabbar
