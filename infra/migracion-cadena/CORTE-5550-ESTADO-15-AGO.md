@@ -154,3 +154,29 @@ node5 y node6. Queda por mirar.
 Un envío de punta a punta desde la app —lo tiene que hacer una persona, no se
 puede firmar desde aquí— y, solo si sale bien, parar `polygon-edge` en los seis
 nodos. La 8532 queda apagada pero restaurable.
+
+## 8 · El reindexado de ordenscan · diagnóstico (15-ago, madrugada)
+
+**La primera transacción de la 5550 existe y está bien**: bloque 369, éxito,
+0,01 ORIGEN de `0x7462…3ad8` a `0xdb11…bdd4`, hash
+`0xebf2d01717fb629ac6b38c8c009004c2bbd4caf8809fe20feaec5bf6b865191a`. El
+destino quedó con 1,010000 ORIGEN. Comprobado contra el nodo, no contra el
+explorador.
+
+**El explorador no la muestra, y no es por la marca de progreso.** Probado:
+borrarla, y ponerla en `-1` para forzar `desde = 0`. Ninguna de las dos cambió
+nada. La prueba de por qué está en los registros del dyno web:
+
+- aparece `New block: 408, 409, 411…` sin parar → algo procesa bloques nuevos;
+- **nunca** aparece `indexados X..Y de Z` (EventBlockchain.js:120) → el bucle
+  de `revisarNuevosBloques` **no se está ejecutando**.
+
+Sospecha, para quien lo retome: `src/controller/EventBlockchain.js` mezcla
+`const { Web3 } = require(...)` con `import mongoose from ...`, y `app.js:18`
+lo carga con `require(...)`. Si el módulo se resuelve como ESM, lo que recibe
+`setInterval` (app.js:91) es el objeto del módulo y no la función — se programa
+cada 15 s y no hace nada, sin lanzar ningún error. Comprobarlo es una línea:
+`console.log(typeof revisarNuevosBloques)` al arrancar.
+
+Mientras tanto el explorador enseña la altura correcta (la lee del RPC) pero
+cero transacciones. **No inventa nada: calla lo que no sabe.**
