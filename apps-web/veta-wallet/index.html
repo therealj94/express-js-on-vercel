@@ -308,6 +308,118 @@ px;
   max-width:90vw;text-align:center}
 #tostada.ver{transform:translate(-50%,0);opacity:1;visibility:visible}
 
+/* ── AURO CHAT ────────────────────────────────────────────────────────────
+   Dos columnas cuando la pantalla da para las dos: la lista a la izquierda y
+   el hilo a la derecha, como cualquier mensajeria de escritorio. En el movil
+   son dos pantallas —la caja lleva data-abierto y la lista se aparta—, porque
+   una columna de 200px al lado de un hilo no sirve para nada.
+
+   La altura se calcula, no se deja crecer: un hilo que empuja el pie de la
+   pagina obliga a bajar con la rueda para escribir, que es lo contrario de un
+   chat. */
+.chat{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);
+  gap:14px;height:calc(100svh - 190px);min-height:420px}
+.chat-lista{display:flex;flex-direction:column;overflow-y:auto;
+  border:1px solid var(--linea2);border-radius:var(--r2);background:#052A2B;padding:10px}
+.chat-hilo{display:flex;flex-direction:column;min-width:0;
+  border:1px solid var(--linea2);border-radius:var(--r2);background:#052A2B;overflow:hidden}
+
+.cha-cab{display:flex;gap:8px;padding:4px 4px 10px;position:sticky;top:-10px;z-index:2;
+  background:#052A2B}
+.cha-cab input{flex:1;min-width:0;padding:10px 12px;border-radius:12px;
+  border:1px solid var(--linea2);background:var(--campo);font-size:13.5px;color:var(--crema)}
+.cha-cab input:focus{outline:none;border-color:var(--campoBr)}
+.cha-mas{flex:none;width:40px;border-radius:12px;border:1px solid var(--linea);
+  background:rgba(201,169,97,.08);display:grid;place-items:center}
+.cha-mas svg{width:18px;height:18px;stroke:var(--oroLt);fill:none;stroke-width:2;stroke-linecap:round}
+.cha-mas:hover{background:rgba(201,169,97,.18)}
+
+.cha-fila{display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+  padding:10px;border-radius:13px;transition:background .18s}
+.cha-fila:hover{background:rgba(255,255,255,.04)}
+.cha-fila[data-aqui]{background:rgba(201,169,97,.13)}
+.cha-av{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
+  overflow:hidden;font-family:var(--serif);font-size:16px;color:var(--oroHi);
+  background:linear-gradient(140deg,#1E8C74,#0A463F)}
+.cha-av img{width:100%;height:100%;object-fit:cover}
+.cha-txt{min-width:0;flex:1}
+.cha-txt b{display:block;font-size:14px;font-weight:600;color:var(--crema);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cha-txt b em{font-style:normal;font-weight:400;color:var(--humo);font-size:12px}
+.cha-txt small{display:block;font-size:12.5px;color:var(--humo);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cha-bola{flex:none;min-width:20px;height:20px;padding:0 6px;border-radius:100px;
+  display:grid;place-items:center;font-size:11px;font-weight:700;
+  background:var(--oro);color:#1B1403}
+
+.cha-hcab{display:flex;align-items:center;gap:11px;padding:12px 14px;
+  border-bottom:1px solid var(--linea2)}
+.cha-quien{min-width:0}
+.cha-quien b{display:block;font-size:14.5px;color:var(--crema)}
+.cha-quien small{display:block;font-size:12px;color:var(--humo);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cha-volver{display:none;flex:none;width:32px;height:32px;border-radius:10px}
+.cha-volver svg{width:20px;height:20px;stroke:var(--bruma);fill:none;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+
+.cha-msgs{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:10px;
+  scroll-behavior:smooth}
+.cha-cargando{margin:auto;color:var(--humo)}
+.cha-b{max-width:min(76%,520px);align-self:flex-start;display:flex;flex-direction:column;gap:3px}
+.cha-b.cha-mio{align-self:flex-end;align-items:flex-end}
+.cha-globo{padding:10px 13px;border-radius:16px 16px 16px 5px;
+  background:rgba(8,52,50,.9);border:1px solid var(--linea2);
+  font-size:14px;line-height:1.6;color:var(--crema);word-break:break-word}
+.cha-mio .cha-globo{border-radius:16px 16px 5px 16px;
+  background:linear-gradient(140deg,rgba(201,169,97,.22),rgba(150,121,63,.18));
+  border-color:var(--linea)}
+.cha-globo p{margin:0;white-space:pre-wrap}
+.cha-de{display:block;font-size:11.5px;font-weight:700;color:var(--oroLt);margin-bottom:4px}
+.cha-b time{font-size:10.5px;color:var(--humo);padding:0 4px;font-variant-numeric:tabular-nums}
+.cha-img{display:block;max-width:100%;border-radius:12px;margin-bottom:6px}
+.cha-arch{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--oroLt);
+  text-decoration:none}
+.cha-arch svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.7}
+
+/* El comprobante de un pago no es un mensaje con formato: es una tarjeta, y
+   se distingue del resto porque lo que dice se puede comprobar. */
+.cha-pago{padding:13px 15px;border-radius:16px;border:1px solid var(--linea);
+  background:linear-gradient(150deg,rgba(201,169,97,.16),rgba(6,40,42,.9))}
+.cha-pk{display:block;font-size:10.5px;letter-spacing:.16em;color:var(--oro);font-weight:700}
+.cha-pago b{display:block;margin-top:5px;font-family:var(--mono);font-size:19px;color:var(--crema)}
+.cha-pago p{margin-top:6px;font-size:13px;color:var(--bruma)}
+.cha-pago a{display:inline-block;margin-top:9px;font-size:12.5px;color:var(--oroLt)}
+
+.cha-pie{display:flex;align-items:center;gap:9px;padding:11px 12px;border-top:1px solid var(--linea2)}
+.cha-pie input{flex:1;min-width:0;padding:12px 14px;border-radius:100px;
+  border:1px solid var(--linea2);background:var(--campo);font-size:14px;color:var(--crema)}
+.cha-pie input:focus{outline:none;border-color:var(--campoBr)}
+.cha-clip,.cha-manda{flex:none;width:42px;height:42px;border-radius:50%;display:grid;
+  place-items:center;cursor:pointer}
+.cha-clip svg,.cha-manda svg{width:19px;height:19px;fill:none;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+.cha-clip svg{stroke:var(--humo)}
+.cha-clip:hover svg{stroke:var(--oroLt)}
+.cha-manda{background:linear-gradient(140deg,var(--oroLt),var(--oro));}
+.cha-manda svg{stroke:#1B1403}
+.cha-aviso{padding:0 14px 12px;font-size:11.5px;line-height:1.55;color:var(--humo)}
+
+.cha-puerta{margin:auto;padding:30px 24px;text-align:center;max-width:420px;
+  display:flex;flex-direction:column;align-items:center;gap:12px}
+.cha-puerta h3{font-family:var(--serif);font-weight:500;font-size:22px;color:var(--crema)}
+.cha-puerta p{font-size:14px;line-height:1.7;color:var(--bruma)}
+.cha-escudo{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;
+  background:rgba(201,169,97,.12);border:1px solid var(--linea)}
+.cha-escudo svg{width:26px;height:26px;stroke:var(--oro);fill:none;stroke-width:1.6;
+  stroke-linecap:round;stroke-linejoin:round}
+
+@media(max-width:900px){
+  .chat{grid-template-columns:1fr;height:calc(100svh - 232px)}
+  .chat[data-abierto] .chat-lista{display:none}
+  .chat:not([data-abierto]) .chat-hilo{display:none}
+  .cha-volver{display:grid;place-items:center}
+}
+
 /* ── la bienvenida del ecosistema ─────────────────────────────────────────
    Seis tarjetas a pantalla completa, las mismas que el telefono. En el
    movil ocupa todo; en escritorio se recoge en una tarjeta centrada, porque
@@ -1061,6 +1173,7 @@ a.btn{text-decoration:none}
     <button class="nav" data-vista="tarjeta" onclick="VETA.vista('tarjeta')"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20M6 15h4"/></svg><span data-t="nav.tarjeta"></span></button>
     <button class="nav" data-vista="cambiar" onclick="VETA.vista('cambiar')"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg><span data-t="nav.swap"></span></button>
     <button class="nav" data-vista="actividad" onclick="VETA.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>
+    <button class="nav" data-vista="chat" onclick="VETA.vista('chat')"><svg viewBox="0 0 24 24"><path d="M3.5 6.6h12.2v8.2H8.1L4.4 18v-3.2H3.5z"/><path d="M18.6 9.4h1.9v8.2h-.9V20l-3-2.4H12"/></svg><span data-t="nav.chat"></span></button>
     <button class="nav" data-vista="ajustes" onclick="VETA.vista('ajustes')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg><span data-t="nav.ajustes"></span></button>
 
     <div class="riel-pie">
@@ -1079,6 +1192,7 @@ a.btn{text-decoration:none}
     <button class="nav" data-vista="tarjeta" onclick="VETA.vista('tarjeta')"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20M6 15h4"/></svg><span data-t="nav.tarjeta"></span></button>
     <button class="nav" data-vista="cambiar" onclick="VETA.vista('cambiar')"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg><span data-t="nav.swap"></span></button>
     <button class="nav" data-vista="actividad" onclick="VETA.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>
+    <button class="nav" data-vista="chat" onclick="VETA.vista('chat')"><svg viewBox="0 0 24 24"><path d="M3.5 6.6h12.2v8.2H8.1L4.4 18v-3.2H3.5z"/><path d="M18.6 9.4h1.9v8.2h-.9V20l-3-2.4H12"/></svg><span data-t="nav.chat"></span></button>
     <button class="nav" data-vista="ajustes" onclick="VETA.vista('ajustes')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg><span data-t="nav.ajustes"></span></button>
 
   </nav>
@@ -1095,5 +1209,6 @@ a.btn{text-decoration:none}
 <script src="telemetria.js"></script>
 <script src="qr.js"></script>
 <script src="cadena.js"></script>
+<script src="chat.js"></script>
 <script src="i18n.js"></script>
 <script src="app.js"></script>

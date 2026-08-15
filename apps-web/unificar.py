@@ -86,7 +86,7 @@ html = html.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n' + arran
 # se engancha a DOMContentLoaded y buscaria elementos que ahi no existen.
 # VETA vuelve a window a mano porque los manejadores en linea del HTML lo
 # llaman por su nombre, y dentro del bloque seria inalcanzable.
-SCRIPTS = [n for n in ('telemetria.js', 'qr.js', 'cadena.js', 'datos.js', 'i18n.js', 'app.js')
+SCRIPTS = [n for n in ('telemetria.js', 'qr.js', 'cadena.js', 'datos.js', 'chat.js', 'i18n.js', 'app.js')
            if os.path.exists(os.path.join(ORIGEN, n))]
 codigo = '\n'.join(leer(n) for n in SCRIPTS)
 assert '</script' not in codigo, 'un script cierra la etiqueta y romperia el HTML'

@@ -15,6 +15,9 @@ const VETA = (() => {
   // billetera a la red de pruebas (5534) o a la de ensayo sin recompilar nada.
   const CHAIN = String(window.OG_CHAIN_ID || 5550);   // red oficial desde el corte del 15-ago-2026
   const LLAVE = 'veta.sesion';
+  // El explorador publico de la cadena. Un comprobante de pago sin enlace a
+  // donde comprobarlo es solo una afirmacion nuestra.
+  const EXPLORADOR = 'https://ordenscan.com';
 
   const $ = s => document.querySelector(s);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
@@ -529,11 +532,11 @@ const VETA = (() => {
      token y Genesis ID no son pestañas: se entra a ellas desde algun lado y se
      vuelve, igual que alla. */
   const VISTAS = {
-    billetera, tarjeta: vTarjeta, cambiar, actividad, ajustes,
+    billetera, tarjeta: vTarjeta, cambiar, actividad, chat, ajustes,
     enviar, recibir, comprar, deposito, token: vToken, identidad: vIdentidad,
     remesas, contactos, sesiones, lector, seguridad, perfil, verificar,
   };
-  const PESTANAS = ['billetera', 'tarjeta', 'cambiar', 'actividad', 'ajustes'];
+  const PESTANAS = ['billetera', 'tarjeta', 'cambiar', 'actividad', 'chat', 'ajustes'];
   // A que pestaña se le enciende la luz cuando estas en una vista que no es una.
   const DENTRO_DE = {
     enviar: 'billetera', recibir: 'billetera', comprar: 'billetera',
@@ -548,6 +551,9 @@ const VETA = (() => {
     // frente otra vez. Nadie tiene por que volver y encontrarselos puestos.
     if (vistaActual === 'tarjeta' && cual !== 'tarjeta') { secretoTarjeta = null; volteada = false; }
     if (vistaActual === 'lector' && cual !== 'lector') cerrarCamara();
+    // El latido del chat solo late mientras el chat esta en pantalla: un
+    // intervalo vivo en segundo plano es trafico que nadie mira.
+    if (vistaActual === 'chat' && cual !== 'chat') chatParar();
     vistaActual = cual;
     if (cual === 'token' && dato) tokenAbierto = dato;
     const encendida = PESTANAS.includes(cual) ? cual : DENTRO_DE[cual];
@@ -561,6 +567,7 @@ const VETA = (() => {
     if (cual === 'cambiar') cambioMonto();
     if (cual === 'tarjeta' && !tarjeta) cargarTarjeta().then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
     if (cual === 'remesas' && !tasas) cargarTasas().then(() => { if (vistaActual === 'remesas') vista('remesas'); });
+    if (cual === 'chat') chatEntrar();
     window.scrollTo(0, 0);
   }
 
@@ -2478,6 +2485,421 @@ const VETA = (() => {
   });
 
 
+  // ── AURO CHAT ─────────────────────────────────────────────────────────────
+
+  /* La mensajeria del ecosistema, la misma que el telefono y contra el mismo
+     relevo. Dos reglas heredadas de alla y que aqui no se relajan:
+
+       · SOLO se abre con Genesis ID aprobado. Es la red de gente real, y esa
+         es toda la garantia que da: que del otro lado hay alguien verificado.
+       · NO hay cifrado de punta a punta, y no se dice en ningun sitio que lo
+         haya.
+
+     En el telefono la lista y el hilo son dos pantallas. Aqui son dos
+     columnas cuando la pantalla da para las dos, y dos pantallas cuando no:
+     estirar una lista de conversaciones a 1400px no la mejora, y meter una
+     columna de 200px en un movil la vuelve inservible. */
+
+  const chatSt = {
+    puerta: null,        // null = sin mirar · 'abierta' · 'falta' · 'rota'
+    error: null,         // el fallo del relevo, si lo hubo
+    convs: null,
+    con: null,           // {id, nombre, esGrupo, gid, addr} — el hilo abierto
+    msgs: null,
+    busca: '',
+    gente: null,
+    mandando: false,
+    subiendo: false,
+  };
+  let chatReloj = null, chatDebounce = null;
+
+  function chat() {
+    return `
+    <div class="cab">
+      <div><h2>AURO CHAT</h2><div class="sub">${t('cha.sub')}</div></div>
+    </div>
+    <div class="chat" id="chat-caja" ${chatSt.con ? 'data-abierto' : ''}>
+      <aside class="chat-lista" id="chat-lista">${chatLista()}</aside>
+      <section class="chat-hilo" id="chat-hilo">${chatHilo()}</section>
+    </div>`;
+  }
+
+  /* Arrancar el chat es darse de alta en el relevo y pedir las charlas. El
+     alta se espera SIEMPRE y se lee lo que devuelve: cuando el correo es
+     nuevo el relevo acuña su propia llave e ignora la que le mandes, asi que
+     no leerla deja al navegador usando una que el servidor jamas acepto. */
+  async function chatEntrar() {
+    if (!esVerificada()) {
+      // Puede que la identidad aun no haya llegado; se pide y se vuelve a mirar
+      // antes de cerrarle la puerta a alguien que si esta verificado.
+      if (!identidad) await cargarIdentidad();
+      if (!esVerificada()) { chatSt.puerta = 'falta'; return pintarChat(); }
+    }
+    chatSt.puerta = 'abierta';
+    try {
+      if (!CHAT.listo()) {
+        await CHAT.alta({ correo: sesion?.correo, nombre: sesion?.nombre,
+                          direccion: sesion?.direccion, gid: identidad?.gid || '' });
+      }
+      chatSt.error = null;
+      await chatCargarConvs();
+    } catch (e) {
+      chatSt.error = chatMotivo(e);
+      pintarChat();
+    }
+    chatLatir();
+  }
+
+  /* El 401 y el 409 no son el mismo problema y no se arreglan igual: el 401
+     es una llave que este navegador tiene y el relevo ya no reconoce —se
+     rehace sola—; el 409 es que el correo YA tiene dueño en otra instalacion,
+     y eso no lo arregla un reintento. Todo lo demas es la red. */
+  function chatMotivo(e) {
+    if (e?.code === 401) return 'llave';
+    if (e?.code === 409) return 'otra';
+    return 'red';
+  }
+
+  // El boton de desatascar: tira la llave guardada y vuelve a darse de alta.
+  // Existe porque «sin conexion» con el wifi perfecto es lo mas exasperante
+  // que puede pasarle a alguien, y hasta ahora habia que arreglarlo a mano.
+  async function chatReparar() {
+    chatSt.error = null;
+    pintarChat();
+    try {
+      await CHAT.rehacerAlta({ correo: sesion?.correo, nombre: sesion?.nombre,
+                               direccion: sesion?.direccion, gid: identidad?.gid || '' });
+      await chatCargarConvs();
+      avisar(t('cha.repOk'));
+    } catch (e) {
+      chatSt.error = chatMotivo(e);
+      pintarChat();
+    }
+  }
+
+  async function chatCargarConvs() {
+    try {
+      chatSt.convs = await CHAT.conversaciones();
+      chatSt.error = null;
+    } catch (e) { chatSt.error = chatMotivo(e); }
+    pintarChat();
+  }
+
+  /* El latido: mientras el chat esta en pantalla se refresca solo. Cinco
+     segundos con el hilo abierto y quince con solo la lista — mirar una lista
+     no es esperar una respuesta. */
+  function chatLatir() {
+    chatParar();
+    chatReloj = setInterval(() => {
+      if (vistaActual !== 'chat' || document.hidden) return;
+      if (chatSt.con) chatCargarMsgs(true); else chatCargarConvs();
+    }, 5000);
+  }
+  function chatParar() { if (chatReloj) { clearInterval(chatReloj); chatReloj = null; } }
+
+  async function chatAbrir(id) {
+    /* Sin llave no se abre nada. Sin esta guarda, una peticion hecha sin llave
+       vuelve con 401 y tapa el motivo verdadero: quien tiene el correo tomado
+       en otro dispositivo (409) veria «el chat se trabo» y un boton de
+       desbloquear que no puede funcionar. */
+    if (!CHAT.listo()) return;
+    const c = (chatSt.convs || []).find(x => (x.id || x.correo) === id)
+      || (chatSt.gente || []).find(x => x.correo === id);
+    chatSt.con = c
+      ? { id, nombre: c.nombre || id, esGrupo: !!c.esGrupo, gid: c.gid || '', addr: c.addr || '' }
+      : { id, nombre: id, esGrupo: CHAT.esGrupo(id), gid: '', addr: '' };
+    chatSt.msgs = null;
+    chatSt.gente = null;
+    chatSt.busca = '';
+    pintarChat();
+    await chatCargarMsgs();
+    CHAT.leido(id);
+  }
+
+  function chatCerrar() {
+    chatSt.con = null;
+    chatSt.msgs = null;
+    pintarChat();
+    chatCargarConvs();
+  }
+
+  async function chatCargarMsgs(callado) {
+    const quien = chatSt.con?.id;
+    if (!quien) return;
+    try {
+      const m = await CHAT.bandeja(quien);
+      // Si mientras llegaba la respuesta se cambio de hilo, se descarta: pintar
+      // los mensajes de otra conversacion es peor que no pintar nada.
+      if (chatSt.con?.id !== quien) return;
+      // Con el mismo numero de mensajes no se repinta: repintar en cada latido
+      // roba el foco del campo y tira el scroll a quien esta leyendo.
+      const igual = callado && chatSt.msgs && chatSt.msgs.length === m.length;
+      chatSt.msgs = m;
+      chatSt.error = null;
+      if (!igual) { pintarChat(); chatAlFinal(); }
+    } catch (e) {
+      chatSt.error = chatMotivo(e);
+      if (!callado) pintarChat();
+    }
+  }
+
+  async function chatMandar(ev) {
+    ev.preventDefault();
+    const c = $('#chat-txt');
+    const texto = (c?.value || '').trim();
+    if (!texto || chatSt.mandando || !chatSt.con) return;
+    chatSt.mandando = true;
+    c.value = '';
+    try {
+      await CHAT.enviar(chatSt.con.id, texto);
+      await chatCargarMsgs();
+      chatCargarConvs();
+    } catch (e) {
+      // Lo escrito vuelve al campo: perder un mensaje por un fallo de red es
+      // hacerle escribirlo otra vez a quien ya lo escribio.
+      if (c) c.value = texto;
+      chatSt.error = chatMotivo(e);
+      pintarChat();
+    } finally { chatSt.mandando = false; $('#chat-txt')?.focus(); }
+  }
+
+  async function chatAdjuntar(input) {
+    const f = input?.files?.[0];
+    input.value = '';
+    if (!f || !chatSt.con || chatSt.subiendo) return;
+    chatSt.subiendo = true;
+    pintarChat();
+    try {
+      const adj = await CHAT.subir(f);
+      await CHAT.enviarAdjunto(chatSt.con.id, adj, '');
+      await chatCargarMsgs();
+      chatCargarConvs();
+    } catch (e) {
+      avisar(e?.code === 413 ? t('cha.pesa') : t('cha.errAdj'));
+    } finally { chatSt.subiendo = false; pintarChat(); }
+  }
+
+  function chatBuscar(valor) {
+    chatSt.busca = valor;
+    clearTimeout(chatDebounce);
+    // Se espera a que deje de escribir: una peticion por tecla es ruido para
+    // el relevo y parpadeo para quien busca.
+    chatDebounce = setTimeout(async () => {
+      const q = chatSt.busca.trim();
+      if (q.length < 2) { chatSt.gente = null; return pintarChat(); }
+      try { chatSt.gente = await CHAT.buscar(q); }
+      catch (e) { chatSt.gente = []; chatSt.error = chatMotivo(e); }
+      pintarChat();
+    }, 320);
+  }
+
+  async function chatGrupo() {
+    const nombre = (prompt(t('cha.grPide')) || '').trim();
+    if (!nombre) return;
+    try {
+      const g = await CHAT.grupoCrear(nombre, []);
+      await chatCargarConvs();
+      if (g?.id) chatAbrir(g.id);
+      avisar(t('cha.grHecho'));
+    } catch (e) { chatSt.error = chatMotivo(e); pintarChat(); }
+  }
+
+  // ── el dibujo ───────────────────────────────────────────────────────────
+
+  /* Se repintan las dos columnas por dentro y no la vista entera: repintar la
+     vista tira lo escrito en el campo y devuelve el scroll del hilo arriba
+     del todo cada cinco segundos. */
+  function pintarChat() {
+    if (vistaActual !== 'chat') return;
+    const caja = $('#chat-caja');
+    if (!caja) return;
+    caja.toggleAttribute('data-abierto', !!chatSt.con);
+    const l = $('#chat-lista'), h = $('#chat-hilo');
+    if (l) l.innerHTML = chatLista();
+    if (h) {
+      const txt = $('#chat-txt')?.value;
+      h.innerHTML = chatHilo();
+      const c = $('#chat-txt');
+      if (c && txt) c.value = txt;
+    }
+  }
+
+  function chatAlFinal() {
+    const m = $('#chat-msgs');
+    if (m) m.scrollTop = m.scrollHeight;
+  }
+
+  const chatIni = s => (String(s || '?').trim()[0] || '?').toUpperCase();
+
+  function chatAvatar(x) {
+    if (x?.foto) return `<span class="cha-av"><img src="${esc(CHAT.urlArchivo(x.foto))}" alt="" loading="lazy"></span>`;
+    return `<span class="cha-av">${esc(chatIni(x?.nombre || x?.correo))}</span>`;
+  }
+
+  // Lo ultimo dicho, resumido para la lista. Un adjunto no tiene texto, asi
+  // que se nombra por lo que es en vez de dejar la fila muda.
+  function chatResumen(m) {
+    if (!m) return t('cha.nada');
+    if (m.tipo === 'pago') return `${t('cha.pago')} ${m.monto} ${m.moneda}`;
+    if (m.tipo === 'imagen') return t('cha.unaFoto');
+    if (m.tipo === 'video') return t('cha.unVideo');
+    if (m.tipo === 'archivo') return t('cha.unArchivo');
+    return m.texto || '';
+  }
+
+  function chatLista() {
+    if (chatSt.puerta === 'falta') return '';
+    const cab = `
+      <div class="cha-cab">
+        <input id="chat-busca" placeholder="${t('cha.buscar')}" value="${esc(chatSt.busca)}"
+               autocomplete="off" oninput="VETA.chatBuscar(this.value)">
+        <button class="cha-mas" onclick="VETA.chatGrupo()" title="${t('cha.grupo')}"
+                aria-label="${t('cha.grupo')}">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>`;
+
+    if (chatSt.gente) {
+      const g = chatSt.gente;
+      return cab + (g.length ? g.map(x => `
+        <button class="cha-fila" onclick="VETA.chatAbrir('${esc(x.correo)}')">
+          ${chatAvatar(x)}
+          <span class="cha-txt"><b>${esc(x.nombre || x.correo)}</b>
+            <small>${esc(x.gid || x.correo)}</small></span>
+        </button>`).join('')
+        : `<div class="vacio"><b>${t('cha.nadie')}</b>${t('cha.nadieP')}</div>`);
+    }
+
+    if (chatSt.convs === null) {
+      return cab + [0, 1, 2].map(() => `
+        <div class="cha-fila"><span class="cha-av esqueleto"></span>
+          <span class="cha-txt"><b class="esqueleto">Cargando</b><small class="esqueleto">…</small></span>
+        </div>`).join('');
+    }
+    if (!chatSt.convs.length) {
+      return cab + `<div class="vacio"><b>${t('cha.vacioT')}</b>${t('cha.vacioP')}</div>`;
+    }
+    return cab + chatSt.convs.map(c => {
+      const id = c.id || c.correo;
+      return `
+      <button class="cha-fila" ${chatSt.con?.id === id ? 'data-aqui' : ''}
+              onclick="VETA.chatAbrir('${esc(id)}')">
+        ${chatAvatar(c)}
+        <span class="cha-txt">
+          <b>${esc(c.nombre || c.correo)}${c.esGrupo ? ` <em>· ${c.miembros}</em>` : ''}</b>
+          <small>${esc(chatResumen(c.ultimo))}</small>
+        </span>
+        ${c.sinLeer ? `<span class="cha-bola">${c.sinLeer}</span>` : ''}
+      </button>`;
+    }).join('');
+  }
+
+  function chatHilo() {
+    if (chatSt.puerta === 'falta') return `
+      <div class="cha-puerta">
+        <div class="cha-escudo"><svg viewBox="0 0 24 24">${ICO.escudo}</svg></div>
+        <h3>${t('cha.gateT')}</h3>
+        <p>${t('cha.gateP')}</p>
+        <button class="btn btn-oro btn-sm" onclick="VETA.vista('verificar')">${t('gid.btn')}</button>
+      </div>`;
+
+    if (chatSt.error) {
+      const k = chatSt.error;
+      return `
+      <div class="cha-puerta">
+        <h3>${t('cha.e' + k + 'T')}</h3>
+        <p>${t('cha.e' + k + 'P')}</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+          ${k === 'otra' ? '' : `<button class="btn btn-oro btn-sm" onclick="VETA.chatReparar()">${t('cha.desbloquear')}</button>`}
+          <button class="btn btn-linea btn-sm" onclick="VETA.chatEntrar()">${t('ini.act')}</button>
+        </div>
+      </div>`;
+    }
+
+    if (!chatSt.con) return `
+      <div class="cha-puerta">
+        <h3>${t('cha.elegiT')}</h3>
+        <p>${t('cha.elegiP')}</p>
+      </div>`;
+
+    const c = chatSt.con;
+    const cuerpo = chatSt.msgs === null
+      ? `<div class="cha-cargando"><span class="girando"></span></div>`
+      : (chatSt.msgs.length
+          ? chatSt.msgs.map(chatBurbuja).join('')
+          : `<div class="vacio"><b>${t('cha.hiloT')}</b>${t('cha.hiloP')}</div>`);
+
+    return `
+      <div class="cha-hcab">
+        <button class="cha-volver" onclick="VETA.chatCerrar()" aria-label="${t('tok.volver')}">
+          <svg viewBox="0 0 24 24">${ICO.atras}</svg>
+        </button>
+        ${chatAvatar(c)}
+        <div class="cha-quien">
+          <b>${esc(c.nombre)}</b>
+          <small>${esc(c.esGrupo ? t('cha.esGrupo') : (c.gid || c.id))}</small>
+        </div>
+      </div>
+      <div class="cha-msgs" id="chat-msgs">${cuerpo}</div>
+      <form class="cha-pie" onsubmit="return VETA.chatMandar(event)">
+        <label class="cha-clip" title="${t('cha.adjuntar')}">
+          <svg viewBox="0 0 24 24"><path d="M21 11.5 12.5 20a5 5 0 0 1-7-7l8.5-8.5a3.4 3.4 0 0 1 4.8 4.8L10.3 17.8a1.8 1.8 0 0 1-2.5-2.5l7.8-7.8"/></svg>
+          <input type="file" onchange="VETA.chatAdjuntar(this)" hidden>
+        </label>
+        <input id="chat-txt" placeholder="${t('cha.escribi')}" autocomplete="off" maxlength="2000">
+        <button class="cha-manda" type="submit" aria-label="${t('cha.mandar')}">
+          ${chatSt.subiendo ? '<span class="girando"></span>'
+            : `<svg viewBox="0 0 24 24"><path d="M22 3 11 14M22 3l-7 19-4-8-8-4z"/></svg>`}
+        </button>
+      </form>
+      <p class="cha-aviso">${t('cha.sinE2E')}</p>`;
+  }
+
+  function chatBurbuja(m) {
+    const mio = m.de === (sesion?.correo || '').toLowerCase();
+    const hora = new Date(m.cuando).toLocaleTimeString(idiomaActivo() === 'en' ? 'en-US' : 'es-HN',
+      { hour: '2-digit', minute: '2-digit' });
+
+    /* El comprobante de un pago no es un mensaje con formato: es una tarjeta.
+       Lleva el hash porque el hash es lo unico que hace verificable lo que
+       dice, y por eso enlaza al explorador en vez de pedir que se confie. */
+    if (m.tipo === 'pago') {
+      const url = EXPLORADOR + '/tx/' + m.hash;
+      return `
+      <div class="cha-b ${mio ? 'cha-mio' : ''}">
+        <div class="cha-pago">
+          <span class="cha-pk">${t('cha.pago')}</span>
+          <b>${esc(m.monto)} ${esc(m.moneda)}</b>
+          ${m.texto ? `<p>${esc(m.texto)}</p>` : ''}
+          ${m.hash ? `<a href="${esc(url)}" target="_blank" rel="noopener">${t('cha.verTx')}</a>` : ''}
+        </div>
+        <time>${hora}</time>
+      </div>`;
+    }
+
+    let adj = '';
+    if (m.tipo === 'imagen') {
+      adj = `<a href="${esc(CHAT.urlArchivo(m.archivo))}" target="_blank" rel="noopener">
+               <img class="cha-img" src="${esc(CHAT.urlArchivo(m.archivo))}" alt="" loading="lazy"></a>`;
+    } else if (m.tipo === 'video') {
+      adj = `<video class="cha-img" src="${esc(CHAT.urlArchivo(m.archivo))}" controls preload="metadata"></video>`;
+    } else if (m.tipo === 'archivo') {
+      adj = `<a class="cha-arch" href="${esc(CHAT.urlArchivo(m.archivo))}" target="_blank" rel="noopener">
+               <svg viewBox="0 0 24 24">${ICO.doc}</svg>${esc(m.nombre || t('cha.unArchivo'))}</a>`;
+    }
+
+    // En un grupo hace falta saber quien habla; en un cara a cara sobra.
+    const firma = (!mio && chatSt.con?.esGrupo)
+      ? `<span class="cha-de">${esc(m.de.split('@')[0])}</span>` : '';
+
+    return `
+      <div class="cha-b ${mio ? 'cha-mio' : ''}">
+        <div class="cha-globo">${firma}${adj}${m.texto ? `<p>${esc(m.texto)}</p>` : ''}</div>
+        <time>${hora}</time>
+      </div>`;
+  }
+
+
   // ── remesas ───────────────────────────────────────────────────────────────
 
   /* Un calculador, no una orden de envio: dice cuanto le queda al que recibe
@@ -3132,6 +3554,10 @@ const VETA = (() => {
            // La bienvenida del ecosistema: sale sola la primera vez y se puede
            // volver a abrir desde Ajustes.
            bienvenida, bienSig, bienCerrar,
+           // AURO CHAT. Los manejadores van en el HTML que genera la vista, asi
+           // que sin figurar aca los botones del chat no hacen nada.
+           chatEntrar, chatAbrir, chatCerrar, chatMandar, chatBuscar, chatGrupo,
+           chatAdjuntar, chatReparar,
            // La verificación por web. Los manejadores van en el HTML (onclick,
            // onchange), así que sin figurar acá los botones no hacen nada.
            verSeguir, verAtras, verVolverA, verSalir, verOpc, verVol,
@@ -3140,5 +3566,7 @@ const VETA = (() => {
            // cadena, y hay que poder mirar la pantalla con saldos dentro.
            _sembrar: l => { cartera = l; errCartera = null; },
            _tarjeta: c => { tarjeta = c; },
+           _sesion: x => { sesion = x; },
+           _identidad: x => { identidad = x; },
            _estado: () => ({ sesion, cartera, identidad, movimientos, tarjeta, vistaActual, modo, ocultos }) };
 })();

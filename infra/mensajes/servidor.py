@@ -59,6 +59,21 @@ ID_ARCHIVO = re.compile(r'[0-9a-f]{32}')
 ID_GRUPO = re.compile(r'g:[0-9a-f]{16}')
 candado = threading.Lock()
 
+# Los navegadores no dejan a una página llamar a otro dominio si el dominio no
+# lo autoriza. La app nativa nunca tuvo que pedir permiso —fetch en React
+# Native no aplica CORS— y por eso el relevo vivió sin esto: el chat de la web
+# recibía la respuesta y el navegador la tiraba a la basura antes de que el
+# código la viera. Es una lista corta y cerrada; con '*' cualquier página
+# ajena podría hablar por el relevo desde el navegador de quien la visite.
+ORIGENES = {
+    'https://www.vetawallet.com',
+    'https://vetawallet.com',
+    'https://app.vetawallet.com',
+    'https://main.d289v5ffkexk23.amplifyapp.com',   # el ensayo
+    'http://localhost:8899',                        # y el escritorio de quien lo hace
+    'http://127.0.0.1:8899',
+}
+
 
 def cargar():
     try:
@@ -127,13 +142,35 @@ def sumar_miembros(d, g, correos, ahora):
 class Relevo(BaseHTTPRequestHandler):
     server_version = 'relevo/1'
 
+    def _permiso(self):
+        """Autoriza al navegador, si quien pregunta es una de nuestras webs."""
+        o = self.headers.get('Origin')
+        if o in ORIGENES:
+            self.send_header('Access-Control-Allow-Origin', o)
+            # el origen decide la respuesta, asi que las caches intermedias
+            # tienen que guardar una copia por origen y no mezclarlas
+            self.send_header('Vary', 'Origin')
+
     def _json(self, codigo, cuerpo):
         datos = json.dumps(cuerpo, ensure_ascii=False).encode()
         self.send_response(codigo)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', str(len(datos)))
+        self._permiso()
         self.end_headers()
         self.wfile.write(datos)
+
+    def do_OPTIONS(self):
+        # El vuelo previo: el navegador pregunta antes de mandar el POST de
+        # verdad porque lleva Content-Type: application/json. Sin esto, el
+        # POST ni sale.
+        self.send_response(204)
+        self._permiso()
+        self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Access-Control-Max-Age', '86400')
+        self.send_header('Content-Length', '0')
+        self.end_headers()
 
     def log_message(self, *a):   # el journal no necesita cada GET
         pass
@@ -171,6 +208,7 @@ class Relevo(BaseHTTPRequestHandler):
         # el binario de un id jamás cambia: que el teléfono lo cachee y no
         # vuelva a bajar la misma foto en cada scroll del hilo
         self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
+        self._permiso()
         self.end_headers()
         self.wfile.write(cuerpo)
 
