@@ -246,6 +246,7 @@ export default function AuroChat({ nav, params }) {
   const [pendientes, setPendientes] = useState([]);      // burbujas mías aún sin entrar (o fallidas)
   const [sinRed, setSinRed] = useState(false);           // el relevo no contesta: se DICE, no se finge vacío
   const [llaveOtra, setLlaveOtra] = useState(false);     // el relevo SÍ contesta: la llave quedó en la instalación anterior
+  const reparando = useRef(false);                       // cerrojo: la reparación de la llave se intenta UNA vez
   const [buscaMal, setBuscaMal] = useState(false);       // la búsqueda falló por red, no por "nadie"
   const [nuevos, setNuevos] = useState(false);           // chip «mensajes nuevos ↓» si el scroll no está al fondo
   const [nombres, setNombres] = useState({});            // correo → nombre, para saber quién habla
@@ -370,8 +371,25 @@ export default function AuroChat({ nav, params }) {
       // el relevo contesta 401 (llave que no coincide) o 409 (ese correo ya
       // tiene llave). Decirle «revisa tu conexión» a alguien con wifi perfecto
       // lo manda a pelear con su router durante horas. Se distingue.
-      if (e && (e.code === 401 || e.code === 409)) setLlaveOtra(true);
-      else setSinRed(true);
+      if (e && (e.code === 401 || e.code === 409)) {
+        // Un 401 casi siempre es una llave local que el relevo no reconoce
+        // (cambio de cuenta, o un alta que no se llegó a completar). Eso se
+        // arregla SOLO: se tira la llave y se pide una nueva. Se intenta UNA
+        // vez —con `reparando` de cerrojo— para no entrar en bucle si el
+        // correo de verdad tiene otro dueño; en ese caso el relevo responde
+        // 409 y ahí sí toca decírselo a la persona.
+        if (e.code === 401 && !reparando.current && account?.email) {
+          reparando.current = true;
+          try {
+            await M.rehacerAlta(account);
+            await traerConvos();          // con la llave nueva, otra vez
+            return;
+          } catch (e2) {
+            if (!(e2 && e2.code === 409)) { setSinRed(true); return; }
+          }
+        }
+        setLlaveOtra(true);
+      } else setSinRed(true);
     }
   }, [aprenderNombres, account?.email]);
   useEffect(() => {

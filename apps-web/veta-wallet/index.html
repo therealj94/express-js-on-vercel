@@ -710,6 +710,86 @@ px;
   .atajos{grid-template-columns:1fr}
   .frase{grid-template-columns:repeat(2,1fr)}
 }
+
+/* ── verificar la identidad ───────────────────────────────────────────────── */
+
+/* Los tres pasos, siempre a la vista. Saber cuantos faltan antes de empezar es
+   la diferencia entre un tramite y un pozo sin fondo. */
+.pasos{display:flex;align-items:flex-start;gap:10px;margin-bottom:20px}
+.paso-p{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;
+  font-size:11.5px;line-height:1.4;color:var(--humo)}
+.paso-p i{display:block;height:3px;border-radius:2px;background:rgba(255,255,255,.07)}
+.paso-p.ya i{background:rgba(201,169,97,.45)}
+.paso-p.va i{background:linear-gradient(120deg,var(--oroLt),var(--oro))}
+.paso-p.va{color:var(--oroLt)}
+
+/* Un select y un textarea con la misma piel que los input: tres pieles
+   distintas en un formulario parecen tres formularios pegados con cinta. */
+.campo select,.campo textarea{width:100%;padding:14px 15px;background:var(--campo);
+  border:1px solid var(--campoBr);border-radius:var(--r);font-size:15.5px;color:var(--crema);
+  transition:border-color .2s,box-shadow .2s}
+.campo select:focus,.campo textarea:focus{outline:none;border-color:var(--oro);
+  box-shadow:0 0 0 3px rgba(201,169,97,.14)}
+/* La MRZ se copia caracter a caracter: monoespaciada y holgada, o se confunde
+   un 0 con una O justo donde eso invalida el documento entero. */
+.campo textarea{min-height:110px;resize:vertical;font-family:var(--mono);
+  font-size:14px;letter-spacing:.08em;line-height:1.9}
+.campo .ayuda{display:block;font-size:11.5px;color:var(--humo);margin-top:7px;line-height:1.55}
+.campo-tres{display:flex;gap:10px}
+.campo-tres .campo{flex:1;min-width:0;margin-bottom:0}
+
+/* Elegir entre dos o tres respuestas, sin desplegable: se ven todas de una vez
+   y se toca la que es. */
+.opciones{display:flex;flex-wrap:wrap;gap:8px}
+.opcion{flex:1 1 120px;cursor:pointer;position:relative}
+.opcion input{position:absolute;opacity:0;width:100%;height:100%;left:0;top:0;cursor:pointer}
+.opcion span{display:block;text-align:center;padding:12px 13px;border-radius:var(--r);
+  border:1px solid var(--campoBr);background:var(--campo);font-size:13.5px;color:var(--bruma);
+  transition:border-color .18s,color .18s,background .18s}
+.opcion input:checked+span{border-color:var(--oro);color:var(--crema);background:rgba(201,169,97,.1)}
+.opcion input:focus-visible+span{outline:2px solid var(--oro);outline-offset:2px}
+
+/* La captura de una foto. El hueco tiene la forma del documento —o de una
+   cara— para que se sepa como encuadrar ANTES de disparar, y no despues de
+   mirar una foto cortada. */
+.capt{margin-top:18px}
+.capt-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}
+.capt-h b{font-size:13.5px;font-weight:600;color:var(--crema)}
+.capt-caja{display:block;position:relative;cursor:pointer;border-radius:17px;overflow:hidden;
+  border:1px dashed var(--campoBr);background:var(--campo);
+  transition:border-color .18s,background .18s}
+.capt-caja:hover{border-color:var(--oro);background:var(--panel2)}
+.capt-caja:focus-within{border-color:var(--oro);box-shadow:0 0 0 3px rgba(201,169,97,.14)}
+.capt-caja input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.capt-dentro{display:flex;justify-content:center;padding:20px 16px;pointer-events:none}
+.capt-marco{width:min(100%,290px);aspect-ratio:1.586;border:1px solid rgba(201,169,97,.32);
+  border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:7px;padding:14px;text-align:center}
+.capt-marco.cara{width:min(100%,178px);aspect-ratio:.8;border-radius:50%/42%}
+.capt-marco svg{width:26px;height:26px;fill:none;stroke:var(--oro);stroke-width:1.6;
+  stroke-linecap:round;stroke-linejoin:round}
+.capt-marco b{font-size:14px;font-weight:600;color:var(--crema)}
+.capt-marco small{font-size:11.5px;color:var(--humo)}
+.capt-previa{display:block;width:100%;max-height:320px;object-fit:contain;
+  background:#04191A;border:1px solid var(--linea);border-radius:17px}
+.capt-pie{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+
+/* La barra del envio. Avanza por etapas cumplidas, no con un temporizador. */
+.ver-barra{height:5px;border-radius:3px;background:rgba(255,255,255,.07);
+  overflow:hidden;margin-bottom:14px}
+.ver-barra i{display:block;height:100%;width:0;border-radius:3px;
+  background:linear-gradient(120deg,var(--oroLt),var(--oro));transition:width .45s ease}
+.ver-etapa{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--bruma)}
+
+.ver-botones{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.ver-botones .btn{flex:1 1 170px}
+/* Un titulo de seccion fuera de un bloque: el de dentro es `.bloque h3`. */
+.cab-mini{font-size:15px;font-weight:700;color:var(--crema)}
+
+@media (max-width:520px){
+  .pasos{gap:7px}
+  .paso-p span{font-size:10.5px}
+}
 </style>
 
 <svg class="veta-svg" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">

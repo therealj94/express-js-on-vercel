@@ -371,6 +371,9 @@ const VETA = (() => {
     tele('identificar', null);
     sesion = null; cartera = null; errCartera = null; identidad = null;
     movimientos = []; transferencias = []; tarjeta = null; movsTarjeta = []; ocultos = false;
+    // El expediente de verificación se va con la sesión: dentro hay un número de
+    // documento y dos fotografías, y no tienen por qué sobrevivir a un «salir».
+    sol = null;
     try { localStorage.removeItem(LLAVE); } catch {}
     ir('bienvenida');
   }
@@ -521,14 +524,14 @@ const VETA = (() => {
   const VISTAS = {
     billetera, tarjeta: vTarjeta, cambiar, actividad, ajustes,
     enviar, recibir, comprar, deposito, token: vToken, identidad: vIdentidad,
-    remesas, contactos, sesiones, lector, seguridad, perfil,
+    remesas, contactos, sesiones, lector, seguridad, perfil, verificar,
   };
   const PESTANAS = ['billetera', 'tarjeta', 'cambiar', 'actividad', 'ajustes'];
   // A que pestaña se le enciende la luz cuando estas en una vista que no es una.
   const DENTRO_DE = {
     enviar: 'billetera', recibir: 'billetera', comprar: 'billetera',
     deposito: 'billetera', token: 'billetera', identidad: 'ajustes',
-    remesas: 'billetera', lector: 'billetera',
+    remesas: 'billetera', lector: 'billetera', verificar: 'ajustes',
     contactos: 'ajustes', sesiones: 'ajustes', seguridad: 'ajustes', perfil: 'ajustes',
   };
 
@@ -1024,6 +1027,861 @@ const VETA = (() => {
           <div class="txt"><b>${t('id.todo')}</b><small>${t('id.r3')}</small></div></div>
       </div>
     </div>`;
+  }
+
+  // ── verificar la identidad, desde el navegador ────────────────────────────
+
+  /* POR QUE EXISTE ESTA PANTALLA
+   *
+   * El boton «Verificar mi identidad» salia a genesis-id.onrender.com, que es el
+   * PANEL DE CUMPLIMIENTO DEL EQUIPO —donde se aprueban las identidades ajenas—.
+   * A quien solo queria verificarse se le pedia un correo y una contraseña de
+   * operador que nunca tuvo, y ahi no hay forma de registrarse. Ahora el tramite
+   * se hace aca entero, con la sesion que la web ya tiene puesta, y viaja por el
+   * mismo puente que usa la app del telefono:
+   *
+   *   navegador ──JWT──▶ backend de Veta Wallet (/genesis/*) ──X-API-Key──▶ Genesis ID
+   *
+   * ESTA PANTALLA NO APRUEBA NADA, y ningun texto de aca puede insinuarlo. Reune
+   * lo que hace falta, lo manda y enseña lo que conteste el servidor. Quien
+   * decide es una persona del equipo de cumplimiento, del lado de Genesis.
+   *
+   * LO QUE UN NAVEGADOR NO PUEDE HACER
+   *
+   * El puente solo acepta el documento como TEXTO: /genesis/documento pide la
+   * MRZ —las lineas del pie— y Genesis devuelve 400 sin ella. Toda la tuberia se
+   * diseño dando por hecho que el reconocimiento optico se hace en el telefono y
+   * que la foto del documento no viaja nunca. Aca no hay ese lector, asi que la
+   * MRZ se copia a mano. Se dice sin rodeos en el primer paso, y se ofrece la app
+   * a quien prefiera el otro camino: esconderlo seria vender un lector que no
+   * existe y dejar a la gente peleandose con una foto que no se lee sola.
+   *
+   * Y `textoAnverso` NO se manda. Ese campo es donde el telefono pone lo que LEYO
+   * del anverso, y Genesis lo usa para confirmar que el nombre declarado esta
+   * de verdad impreso en el documento. Poner ahi el nombre que la persona acaba
+   * de teclear seria confirmarlo consigo mismo: una comprobacion inventada
+   * metida en un expediente de cumplimiento.
+   */
+
+  /* Los paises, con el codigo de TRES letras, que es el que guarda Genesis y el
+     que lleva la MRZ. Los nombres los pone Intl.DisplayNames, que el navegador ya
+     trae en los dos idiomas: doscientas cincuenta traducciones escritas a mano
+     serian doscientos cincuenta sitios donde equivocarse. La tabla de tres letras
+     a dos existe porque Intl solo entiende las de dos y no hay forma de deducirla.
+     La lista es la misma que usa la app del telefono (orden-global-app/src/paises.js),
+     que a su vez es la de Genesis: asi el codigo que se manda siempre es uno que
+     el servidor reconoce. */
+  const ISO_PAISES = (
+    'ABWAW AFGAF AGOAO AIAAI ALAAX ALBAL ANDAD AREAE ARGAR ARMAM ASMAS ATAAQ ATFTF ATGAG ' +
+    'AUSAU AUTAT AZEAZ BDIBI BELBE BENBJ BESBQ BFABF BGDBD BGRBG BHRBH BHSBS BIHBA BLMBL ' +
+    'BLRBY BLZBZ BMUBM BOLBO BRABR BRBBB BRNBN BTNBT BVTBV BWABW CAFCF CANCA CCKCC CHECH ' +
+    'CHLCL CHNCN CIVCI CMRCM CODCD COGCG COKCK COLCO COMKM CPVCV CRICR CUBCU CUWCW CXRCX ' +
+    'CYMKY CYPCY CZECZ DEUDE DJIDJ DMADM DNKDK DOMDO DZADZ ECUEC EGYEG ERIER ESHEH ESPES ' +
+    'ESTEE ETHET FINFI FJIFJ FLKFK FRAFR FROFO FSMFM GABGA GBRGB GEOGE GGYGG GHAGH GIBGI ' +
+    'GINGN GLPGP GMBGM GNBGW GNQGQ GRCGR GRDGD GRLGL GTMGT GUFGF GUMGU GUYGY HKGHK HMDHM ' +
+    'HNDHN HRVHR HTIHT HUNHU IDNID IMNIM INDIN IOTIO IRLIE IRNIR IRQIQ ISLIS ISRIL ITAIT ' +
+    'JAMJM JEYJE JORJO JPNJP KAZKZ KENKE KGZKG KHMKH KIRKI KNAKN KORKR KWTKW LAOLA LBNLB ' +
+    'LBRLR LBYLY LCALC LIELI LKALK LSOLS LTULT LUXLU LVALV MACMO MAFMF MARMA MCOMC MDAMD ' +
+    'MDGMG MDVMV MEXMX MHLMH MKDMK MLIML MLTMT MMRMM MNEME MNGMN MNPMP MOZMZ MRTMR MSRMS ' +
+    'MTQMQ MUSMU MWIMW MYSMY MYTYT NAMNA NCLNC NERNE NFKNF NGANG NICNI NIUNU NLDNL NORNO ' +
+    'NPLNP NRUNR NZLNZ OMNOM PAKPK PANPA PCNPN PERPE PHLPH PLWPW PNGPG POLPL PRIPR PRKKP ' +
+    'PRTPT PRYPY PSEPS PYFPF QATQA REURE ROURO RUSRU RWARW SAUSA SDNSD SENSN SGPSG SGSGS ' +
+    'SHNSH SJMSJ SLBSB SLESL SLVSV SMRSM SOMSO SPMPM SRBRS SSDSS STPST SURSR SVKSK SVNSI ' +
+    'SWESE SWZSZ SXMSX SYCSC SYRSY TCATC TCDTD TGOTG THATH TJKTJ TKLTK TKMTM TLSTL TONTO ' +
+    'TTOTT TUNTN TURTR TUVTV TWNTW TZATZ UGAUG UKRUA UMIUM URYUY USAUS UZBUZ VATVA VCTVC ' +
+    'VENVE VGBVG VIRVI VNMVN VUTVU WLFWF WSMWS YEMYE ZAFZA ZMBZM ZWEZW').split(' ');
+
+  let paisesCache = null;
+  function paises() {
+    if (paisesCache?.i === idiomaActivo()) return paisesCache.l;
+    // Navegador sin Intl.DisplayNames: se queda el codigo de tres letras. Es
+    // feo, pero es cierto — y sigue siendo elegible.
+    let nombre = c => c;
+    try {
+      const dn = new Intl.DisplayNames([idiomaActivo()], { type: 'region' });
+      nombre = c => dn.of(c) || c;
+    } catch {}
+    const l = ISO_PAISES
+      .map(p => ({ c: p.slice(0, 3), n: nombre(p.slice(3)) }))
+      .sort((a, b) => a.n.localeCompare(b.n, idiomaActivo()));
+    paisesCache = { i: idiomaActivo(), l };
+    return l;
+  }
+
+  const opcionesPais = elegido => `<option value="">${t('ver.elegi')}</option>` +
+    paises().map(p => `<option value="${p.c}"${p.c === elegido ? ' selected' : ''}>${esc(p.n)}</option>`).join('');
+
+  // ── la MRZ ────────────────────────────────────────────────────────────────
+
+  /* Las mismas reglas que el telefono (orden-global-app/src/genesis.js): en
+     mayusculas, sin espacios y una linea por renglon. Los «<» se teclean mal con
+     frecuencia, asi que se aceptan tambien los caracteres con los que la gente
+     los sustituye por error. */
+  function limpiarMrz(texto) {
+    return String(texto || '').toUpperCase()
+      .replace(/[«»‹›]/g, '<')
+      .split(/[\r\n]+/)
+      .map(l => l.replace(/[^A-Z0-9<]/g, ''))
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  /* Solo la FORMA: cuantas lineas y de que largo. Los digitos de control los
+     comprueba Genesis, que es donde deben comprobarse; esto unicamente evita
+     gastar un viaje al servidor para que conteste lo que ya se ve desde aca. */
+  function formaMrz(texto) {
+    const lineas = limpiarMrz(texto).split('\n').filter(Boolean);
+    const largos = lineas.map(l => l.length);
+    const formato = lineas.length === 2 && largos.every(l => l === 44) ? 'TD3'
+      : lineas.length === 2 && largos.every(l => l === 36) ? 'TD2'
+        : lineas.length === 3 && largos.every(l => l === 30) ? 'TD1' : null;
+    return { ok: Boolean(formato), formato, lineas, largos };
+  }
+
+  /* Donde estan el numero, la nacionalidad y la fecha de nacimiento dentro de la
+     MRZ, segun el formato. Sirve para una sola cosa: avisar en el momento de que
+     lo copiado no cuadra con lo declarado arriba. Un caracter mal transcrito se
+     arregla mirando el documento, que se tiene en la mano; enterarse dias
+     despues, por un rechazo, es perder el trámite por una letra. */
+  function datosMrz(f) {
+    if (!f.ok) return null;
+    const sin = s => s.replace(/</g, '').trim();
+    if (f.formato === 'TD1') {
+      return { num: sin(f.lineas[0].slice(5, 14)), nacion: sin(f.lineas[1].slice(15, 18)), nacim: f.lineas[1].slice(0, 6) };
+    }
+    // TD2 y TD3 comparten la segunda linea en las posiciones que importan.
+    return { num: sin(f.lineas[1].slice(0, 9)), nacion: sin(f.lineas[1].slice(10, 13)), nacim: f.lineas[1].slice(13, 19) };
+  }
+
+  const soloAlfa = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+  /* Los desajustes entre lo declarado y lo copiado. Son AVISOS, no bloqueos: la
+     MRZ de un documento raro puede traer el numero en otro sitio, y frenar a
+     alguien por eso seria peor que dejarlo mandar y que el servidor lo mire. */
+  function avisosMrz() {
+    const f = formaMrz(sol.mrz);
+    const d = datosMrz(f);
+    if (!d) return [];
+    const avisos = [];
+    /* El hueco del numero son NUEVE caracteres, y una cedula hondureña tiene
+       trece: lo que no cabe se pasa al campo opcional, asi que la MRZ trae el
+       principio del numero y nada mas. Por eso se compara por el comienzo y no
+       por igualdad — exigirla convertiria a media Honduras en un aviso falso. */
+    const nDic = soloAlfa(sol.numDoc), nMrz = soloAlfa(d.num);
+    if (nDic && nMrz && !nDic.startsWith(nMrz) && !nMrz.startsWith(nDic)) avisos.push(t('ver.mrzNum'));
+    if (sol.nacion && d.nacion && sol.nacion !== d.nacion) avisos.push(t('ver.mrzNacion'));
+    if (sol.dia && sol.mes && sol.anio && /^\d{6}$/.test(d.nacim)) {
+      const yy = Number(d.nacim.slice(0, 2));
+      const siglo = yy > Number(String(new Date().getFullYear()).slice(2)) ? 1900 : 2000;
+      const mismo = siglo + yy === Number(sol.anio) &&
+        Number(d.nacim.slice(2, 4)) === Number(sol.mes) &&
+        Number(d.nacim.slice(4, 6)) === Number(sol.dia);
+      if (!mismo) avisos.push(t('ver.mrzFecha'));
+    }
+    return avisos;
+  }
+
+  // ── achicar las fotos antes de mandarlas ──────────────────────────────────
+
+  /* Una foto de un movil de hoy pesa entre tres y ocho megas, y en base64 crece
+     un tercio mas. La tuberia la rechaza —Genesis corta en 5 MB por imagen ya
+     decodificada— y, aunque entrara, subir eso por datos moviles son minutos.
+     Asi que se reduce en el navegador ANTES de enviar: 1600 px de lado mayor,
+     que es de sobra para leer un documento, y calidad 0,85. Si aun asi no entra,
+     se baja la calidad y despues el tamaño; y si ni asi entra, se dice —no se
+     manda algo que se sabe que va a rebotar. */
+  const VER_LADO = [1600, 1200, 900];
+  const VER_CALIDAD = [0.85, 0.7, 0.55, 0.42];
+  // El tope se mide sobre el texto base64, que es lo que viaja de verdad. Con un
+  // mega por imagen el cuerpo entero queda muy por debajo de los 25 MB del
+  // puente y de los 5 MB por imagen de Genesis, y sube en un tiempo razonable.
+  const VER_TOPE = 1100000;
+
+  function achicar(archivo) {
+    return new Promise((salir_, fallar) => {
+      if (!archivo) return fallar(new Error(t('ver.eNoImg')));
+      if (!/^image\//.test(archivo.type || '')) return fallar(new Error(t('ver.eNoImg')));
+      const url = URL.createObjectURL(archivo);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let d = null;
+        try { d = aLienzo(img); } catch { return fallar(new Error(t('ver.eImg'))); }
+        // `null` no es un error de lectura: es una foto que no hay forma de
+        // meter en el limite, y se dice con otras palabras.
+        d ? salir_(d) : fallar(new Error(t('ver.ePeso')));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); fallar(new Error(t('ver.eImg'))); };
+      img.src = url;
+    });
+  }
+
+  function aLienzo(img) {
+    const ancho = img.naturalWidth || img.width;
+    const alto = img.naturalHeight || img.height;
+    if (!ancho || !alto) throw new Error('sin medidas');
+    for (const lado of VER_LADO) {
+      const k = Math.min(1, lado / Math.max(ancho, alto));
+      const l = document.createElement('canvas');
+      l.width = Math.max(1, Math.round(ancho * k));
+      l.height = Math.max(1, Math.round(alto * k));
+      const cx = l.getContext('2d');
+      // Fondo blanco: un JPEG no tiene transparencia y, sin esto, un PNG con
+      // fondo transparente sale con el documento sobre negro.
+      cx.fillStyle = '#FFFFFF';
+      cx.fillRect(0, 0, l.width, l.height);
+      cx.drawImage(img, 0, 0, l.width, l.height);
+      for (const q of VER_CALIDAD) {
+        const d = l.toDataURL('image/jpeg', q);
+        if (d.length <= VER_TOPE) return d;
+      }
+    }
+    return null;
+  }
+
+  // ── el expediente a medio llenar ──────────────────────────────────────────
+
+  /* Vive en memoria y en ningun sitio mas. Adentro hay un numero de documento,
+     una fecha de nacimiento y dos fotografias: escribir eso en localStorage lo
+     dejaria en el disco de una maquina que puede ser de un cibercafe, y ahi
+     sigue mañana. Se pierde al recargar, y eso es lo correcto. */
+  let sol = null;
+
+  function nuevaSolicitud() {
+    return {
+      paso: 1,
+      nombre: '', tipoDoc: 'pasaporte', numDoc: '', dia: '', mes: '', anio: '',
+      nacion: '', reside: '', volumen: '', pep: null,
+      opc: false, ocupacion: '', fondos: '', proposito: '', tel: '', domicilio: '',
+      frente: null, reverso: null, mrz: '', selfie: null,
+      error: '', enviando: false, etapa: '', hecho: 0, resultado: null,
+      // Si el punto de partida ya se fijó con el estado del servidor en la mano.
+      colocado: false,
+    };
+  }
+
+  /* Por donde se entra. Quien ya declaro sus datos no tiene que volver a
+     escribirlos: el servidor los guardo. Se empieza en el documento incluso
+     cuando lo unico que fallo fue el rostro, y no en la selfie: el cotejo
+     necesita la foto del documento para comparar contra algo, y esa foto no se
+     guarda en ningun lado — mandar una selfie sola dejaria el cotejo fallando
+     otra vez, ahora por culpa nuestra. */
+  function pasoDeEntrada() {
+    const e = String(identidad?.estado || '').toLowerCase();
+    if (identidad?.rostroPendiente) return 2;
+    if (e === 'datos' || e === 'documento') return 2;
+    return 1;
+  }
+
+  const TIPOS_DOC = [['pasaporte', 'ver.tdPas'], ['dni', 'ver.tdDni'], ['licencia', 'ver.tdLic'], ['residencia', 'ver.tdRes']];
+  // El volumen se manda como una cifra porque Genesis decide con ella si la
+  // diligencia es simplificada o completa (su umbral son 10.000 USD). Se manda
+  // el punto medio de cada tramo: es lo mas parecido a lo que la persona dijo.
+  const VOLUMENES = [['1', 'ver.vol1', 500], ['2', 'ver.vol2', 5000], ['3', 'ver.vol3', 25000]];
+  const FONDOS = [['salario', 'ver.fSalario'], ['negocio', 'ver.fNegocio'], ['remesas', 'ver.fRemesas'],
+                  ['inversiones', 'ver.fInversiones'], ['pension', 'ver.fPension'], ['herencia', 'ver.fHerencia'], ['otro', 'ver.fOtro']];
+  const PROPOSITOS = [['ahorro', 'ver.pAhorro'], ['remesas', 'ver.pRemesas'], ['pagos', 'ver.pPagos'],
+                      ['negocio', 'ver.pNegocio'], ['inversion', 'ver.pInversion']];
+
+  // ── la vista ──────────────────────────────────────────────────────────────
+
+  function verificar() {
+    if (!sol) { sol = nuevaSolicitud(); sol.paso = pasoDeEntrada(); sol.colocado = Boolean(identidad); }
+    /* Quien llega por /#verificar entra antes de que conteste /genesis/estado, y
+       en ese instante todavia no se sabe por que paso le toca empezar. Cuando la
+       respuesta llega, la vista se repinta y el punto de partida se recoloca —UNA
+       sola vez—. Sin esto, a quien ya declaro sus datos se le pedirian otra vez
+       por una carrera de milisegundos; y recolocando siempre, nadie podria volver
+       al paso 1 a corregir un nombre mal escrito. */
+    if (!sol.colocado && identidad) {
+      sol.colocado = true;
+      if (sol.paso === 1 && !sol.nombre && !sol.frente && !sol.mrz && !sol.selfie) sol.paso = pasoDeEntrada();
+    }
+    if (sol.enviando) return verEnviando();
+    if (sol.paso === 4) return verFinal();
+
+    const cuerpo = sol.paso === 2 ? verDocumento() : sol.paso === 3 ? verCara() : verDatos();
+    return `
+    <button class="volver" onclick="VETA.verSalir()">
+      <svg viewBox="0 0 24 24">${ICO.atras}</svg>${t('ver.salir')}
+    </button>
+    <div class="cab"><div><h2>${t('ver.t')}</h2><div class="sub">${t('ver.sub')}</div></div></div>
+    ${rielPasos()}
+    <div class="bloque vidrio">${cuerpo}</div>
+    <p class="pie" style="margin-top:16px">${t('ver.nunca')}</p>`;
+  }
+
+  function rielPasos() {
+    return `
+    <div class="pasos">
+      ${[['ver.paso1', 1], ['ver.paso2', 2], ['ver.paso3', 3]].map(([k, n]) => `
+        <div class="paso-p ${sol.paso === n ? 'va' : sol.paso > n ? 'ya' : ''}">
+          <i></i><span>${t('ver.paso')} ${n} ${t('ver.de')} 3 · ${t(k)}</span>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  const avisoVer = () => '<div id="ver-aviso" class="aviso ' + (sol.error ? 'aviso-mal' : 'oculto') + '" role="alert">' +
+    esc(sol.error) + '</div>';
+
+  // ── paso 1: tus datos ─────────────────────────────────────────────────────
+
+  function verDatos() {
+    const campo = (id, etiqueta, valor, extra = '', ayuda = '') => `
+      <div class="campo">
+        <label for="${id}">${etiqueta}</label>
+        <input id="${id}" value="${esc(valor)}" ${extra}>
+        ${ayuda ? `<span class="ayuda">${ayuda}</span>` : ''}
+      </div>`;
+
+    return `
+    <div class="nota nota-obra">
+      <b style="display:block;margin-bottom:6px;color:var(--crema)">${t('ver.honestoT')}</b>
+      ${t('ver.honestoP')}
+      <div style="margin-top:12px">
+        <a class="btn btn-linea btn-sm" href="/genesis-id">${t('ver.honestoApp')}</a>
+      </div>
+    </div>
+
+    <h3 style="margin-top:22px">${t('ver.quienT')}</h3>
+    <p class="pie" style="margin-top:8px;margin-bottom:18px">${t('ver.quienP')}</p>
+
+    ${campo('ver-nombre', t('ver.nombre'), sol.nombre, 'autocomplete="name" spellcheck="false"', t('ver.nombreP'))}
+
+    <div class="campo">
+      <label for="ver-tipo">${t('ver.tipoDoc')}</label>
+      <select id="ver-tipo">
+        ${TIPOS_DOC.map(([v, k]) => `<option value="${v}"${v === sol.tipoDoc ? ' selected' : ''}>${t(k)}</option>`).join('')}
+      </select>
+    </div>
+
+    ${campo('ver-num', t('ver.numDoc'), sol.numDoc, 'autocomplete="off" spellcheck="false" class="mono"', t('ver.numDocP'))}
+
+    <div class="campo">
+      <label for="ver-dia">${t('ver.nacim')}</label>
+      <div class="campo-tres">
+        <div class="campo"><input id="ver-dia" inputmode="numeric" maxlength="2" placeholder="${t('ver.dia')}" aria-label="${t('ver.dia')}" value="${esc(sol.dia)}"></div>
+        <div class="campo"><input id="ver-mes" inputmode="numeric" maxlength="2" placeholder="${t('ver.mes')}" aria-label="${t('ver.mes')}" value="${esc(sol.mes)}"></div>
+        <div class="campo"><input id="ver-anio" inputmode="numeric" maxlength="4" placeholder="${t('ver.anio')}" aria-label="${t('ver.anio')}" value="${esc(sol.anio)}"></div>
+      </div>
+    </div>
+
+    <div class="campo">
+      <label for="ver-nacion">${t('ver.nacion')}</label>
+      <select id="ver-nacion">${opcionesPais(sol.nacion)}</select>
+    </div>
+
+    <div class="campo">
+      <label for="ver-reside">${t('ver.reside')}</label>
+      <select id="ver-reside">${opcionesPais(sol.reside)}</select>
+      <span class="ayuda">${t('ver.resideP')}</span>
+    </div>
+
+    <h3 style="margin-top:26px">${t('ver.perfilT')}</h3>
+    <p class="pie" style="margin-top:8px;margin-bottom:18px">${t('ver.perfilP')}</p>
+
+    <div class="campo">
+      <label>${t('ver.volumen')}</label>
+      <div class="opciones">
+        ${VOLUMENES.map(([v, k]) => `
+          <label class="opcion">
+            <input type="radio" name="ver-vol" value="${v}"${v === sol.volumen ? ' checked' : ''}
+                   onchange="VETA.verVol('${v}')">
+            <span>${t(k)}</span>
+          </label>`).join('')}
+      </div>
+      <span class="ayuda" id="ver-volNota">${sol.volumen === '3' ? t('ver.volCompleto') : t('ver.volSimple')}</span>
+    </div>
+
+    <div class="campo">
+      <label>${t('ver.pep')}</label>
+      <div class="opciones">
+        <label class="opcion"><input type="radio" name="ver-pep" value="no"${sol.pep === false ? ' checked' : ''}><span>${t('ver.pepNo')}</span></label>
+        <label class="opcion"><input type="radio" name="ver-pep" value="si"${sol.pep === true ? ' checked' : ''}><span>${t('ver.pepSi')}</span></label>
+      </div>
+      <span class="ayuda">${t('ver.pepP')}</span>
+    </div>
+
+    ${sol.opc ? `
+      <div class="campo">
+        <label for="ver-ocupacion">${t('ver.ocupacion')}${sol.volumen === '3' ? '' : t('ver.opc')}</label>
+        <input id="ver-ocupacion" value="${esc(sol.ocupacion)}" placeholder="${t('ver.ocupacionPh')}">
+      </div>
+      <div class="campo">
+        <label for="ver-fondos">${t('ver.fondos')}${sol.volumen === '3' ? '' : t('ver.opc')}</label>
+        <select id="ver-fondos">
+          <option value="">—</option>
+          ${FONDOS.map(([v, k]) => `<option value="${v}"${v === sol.fondos ? ' selected' : ''}>${t(k)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="campo">
+        <label for="ver-proposito">${t('ver.proposito')}${t('ver.opc')}</label>
+        <select id="ver-proposito">
+          <option value="">—</option>
+          ${PROPOSITOS.map(([v, k]) => `<option value="${v}"${v === sol.proposito ? ' selected' : ''}>${t(k)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="campo">
+        <label for="ver-tel">${t('ver.tel')}${t('ver.opc')}</label>
+        <input id="ver-tel" inputmode="tel" value="${esc(sol.tel)}" placeholder="${t('ver.telPh')}">
+      </div>
+      <div class="campo">
+        <label for="ver-domicilio">${t('ver.domicilio')}${t('ver.opc')}</label>
+        <input id="ver-domicilio" value="${esc(sol.domicilio)}" placeholder="${t('ver.domicilioPh')}">
+      </div>`
+    : ''}
+
+    <button class="btn btn-linea btn-sm" onclick="VETA.verOpc()">${sol.opc ? t('ver.menos') : t('ver.mas')}</button>
+
+    ${avisoVer()}
+    <div class="ver-botones">
+      <button class="btn btn-oro" onclick="VETA.verSeguir()">${t('ver.seguir')}</button>
+    </div>`;
+  }
+
+  /* Lo escrito se recoge del DOM y no se guarda tecla a tecla: repintar la vista
+     entera en cada pulsacion le quitaria el foco al campo, que es lo que hace
+     que un formulario se sienta roto. */
+  function leerPaso1() {
+    const v = id => ($('#' + id)?.value ?? '').trim();
+    if (!$('#ver-nombre')) return;
+    sol.nombre = v('ver-nombre');
+    sol.tipoDoc = v('ver-tipo') || 'pasaporte';
+    sol.numDoc = v('ver-num');
+    sol.dia = v('ver-dia'); sol.mes = v('ver-mes'); sol.anio = v('ver-anio');
+    sol.nacion = v('ver-nacion');
+    sol.reside = v('ver-reside');
+    const vol = document.querySelector('input[name="ver-vol"]:checked');
+    if (vol) sol.volumen = vol.value;
+    const pep = document.querySelector('input[name="ver-pep"]:checked');
+    if (pep) sol.pep = pep.value === 'si';
+    if (sol.opc) {
+      sol.ocupacion = v('ver-ocupacion');
+      sol.fondos = v('ver-fondos');
+      sol.proposito = v('ver-proposito');
+      sol.tel = v('ver-tel');
+      sol.domicilio = v('ver-domicilio');
+    }
+  }
+
+  function verOpc() {
+    leerPaso1();
+    sol.opc = !sol.opc;
+    vista('verificar');
+  }
+
+  /* Sobre el umbral, la ocupacion y el origen de los fondos dejan de ser
+     opcionales: se abre el bloque en el momento en vez de dejar que la persona
+     pulse «Continuar» y se coma un error por unos campos que ni sabia que
+     existian, escondidos detras de un boton. */
+  function verVol(v) {
+    if (v === '3' && !sol.opc) {
+      leerPaso1();
+      sol.volumen = v;
+      sol.opc = true;
+      return vista('verificar');
+    }
+    sol.volumen = v;
+    const n = $('#ver-volNota');
+    if (n) n.textContent = v === '3' ? t('ver.volCompleto') : t('ver.volSimple');
+    document.querySelectorAll('#ver-ocupacion, #ver-fondos').forEach(el => {
+      const l = el.previousElementSibling;
+      if (l && l.tagName === 'LABEL') {
+        l.textContent = (el.id === 'ver-ocupacion' ? t('ver.ocupacion') : t('ver.fondos')) +
+          (v === '3' ? '' : t('ver.opc'));
+      }
+    });
+  }
+
+  /* La fecha se comprueba de verdad, no con una expresion regular: el 31 de
+     febrero pasa cualquier patron de dos digitos y lo rechaza el servidor tres
+     pasos despues. */
+  function fechaValida(d, m, a) {
+    const dd = Number(d), mm = Number(m), aa = Number(a);
+    if (!dd || !mm || !aa || String(a).length !== 4) return null;
+    const f = new Date(Date.UTC(aa, mm - 1, dd));
+    if (f.getUTCFullYear() !== aa || f.getUTCMonth() !== mm - 1 || f.getUTCDate() !== dd) return null;
+    return f;
+  }
+
+  const aniosDesde = f => {
+    const h = new Date();
+    let n = h.getUTCFullYear() - f.getUTCFullYear();
+    const m = h.getUTCMonth() - f.getUTCMonth();
+    if (m < 0 || (m === 0 && h.getUTCDate() < f.getUTCDate())) n--;
+    return n;
+  };
+
+  function faltaPaso1() {
+    if (!sol.nombre || sol.nombre.split(/\s+/).filter(Boolean).length < 2) return t('ver.eNombre');
+    if (!sol.tipoDoc) return t('ver.eTipo');
+    if (!sol.numDoc) return t('ver.eNum');
+    const f = fechaValida(sol.dia, sol.mes, sol.anio);
+    if (!f) return t('ver.eFecha');
+    if (aniosDesde(f) < 18) return t('ver.eEdad');
+    if (!sol.nacion) return t('ver.eNacion');
+    if (!sol.reside) return t('ver.eReside');
+    if (!sol.volumen) return t('ver.eVolumen');
+    if (sol.pep === null) return t('ver.ePep');
+    // Sobre el umbral de diligencia, Genesis pide el perfil entero. Decirlo aca
+    // ahorra un expediente que se queda parado esperando dos campos.
+    if (sol.volumen === '3' && (!sol.ocupacion || !sol.fondos)) return t('ver.eAml');
+    return '';
+  }
+
+  // ── paso 2: tu documento ──────────────────────────────────────────────────
+
+  /* El reverso hace falta en una cedula y no en un pasaporte: en el pasaporte
+     las lineas del pie estan en la misma hoja de datos que la foto. Pedir una
+     foto del reverso en blanco de un pasaporte es pedir por pedir. */
+  const pideReverso = () => sol.tipoDoc !== 'pasaporte';
+
+  function verDocumento() {
+    const f = formaMrz(sol.mrz);
+    return `
+    <h3>${t('ver.docT')}</h3>
+    <p class="pie" style="margin-top:8px">${t('ver.docP')}</p>
+
+    <div class="capt" id="capt-frente">${capturaHtml('frente')}</div>
+    ${pideReverso() ? `<div class="capt" id="capt-reverso">${capturaHtml('reverso')}</div>` : ''}
+
+    <h3 style="margin-top:26px">${t('ver.mrzT')}</h3>
+    <p class="pie" style="margin-top:8px">${t('ver.mrzP')}</p>
+    <div class="campo" style="margin-top:14px">
+      <label for="ver-mrz">${t('ver.mrzT')}</label>
+      <textarea id="ver-mrz" spellcheck="false" autocapitalize="characters" autocomplete="off"
+                oninput="VETA.verMrz(this.value)"
+                placeholder="P&lt;HND&lt;&lt;…">${esc(sol.mrz)}</textarea>
+      <span class="ayuda">${t('ver.mrzAyuda')}</span>
+    </div>
+    <div id="ver-mrz-eco">${ecoMrzHtml(f)}</div>
+
+    <div class="nota" style="margin-top:18px">
+      <b style="display:block;margin-bottom:6px;color:var(--crema)">${t('ver.mrzSinT')}</b>
+      ${t('ver.mrzSinP')}
+    </div>
+
+    ${avisoVer()}
+    <div class="ver-botones">
+      <button class="btn btn-linea" onclick="VETA.verAtras()">${t('ver.atras')}</button>
+      <button class="btn btn-oro" onclick="VETA.verSeguir()">${t('ver.seguir')}</button>
+    </div>`;
+  }
+
+  /* El estado de la MRZ se repinta solo en su hueco, no repintando la vista: si
+     se redibujara entera, el cursor se saldria del recuadro en la primera letra. */
+  function verMrz(valor) {
+    sol.mrz = valor;
+    const eco = $('#ver-mrz-eco');
+    if (eco) eco.innerHTML = ecoMrzHtml(formaMrz(valor));
+  }
+
+  function ecoMrzHtml(f) {
+    if (!f.lineas.length) return '';
+    if (!f.ok) {
+      return `<div class="aviso aviso-mal">
+        <b>${t('ver.mrzMal')}.</b> ${t('ver.mrzLei')} ${f.lineas.length} ${t('ver.mrzLineas')}
+        ${f.largos.join('/')} ${t('ver.mrzCar')} ${t('ver.mrzAyuda')}
+      </div>`;
+    }
+    const avisos = avisosMrz();
+    return `<div class="aviso aviso-ok"><b>${t('ver.mrzOk')}</b> · ${esc(f.formato)}</div>` +
+      avisos.map(a => `<div class="aviso aviso-mal">${a}</div>`).join('');
+  }
+
+  // ── paso 3: tu selfie ─────────────────────────────────────────────────────
+
+  function verCara() {
+    return `
+    <h3>${t('ver.caraT')}</h3>
+    <p class="pie" style="margin-top:8px">${t('ver.caraP')}</p>
+
+    <div class="capt" id="capt-selfie">${capturaHtml('selfie')}</div>
+
+    <h3 style="margin-top:26px">${t('ver.viajaT')}</h3>
+    <div style="margin-top:6px">
+      <div class="hilera"><div class="ic"><svg viewBox="0 0 24 24">${ICO.doc}</svg></div>
+        <div class="txt"><b>${t('ver.viaja1')}</b></div></div>
+      <div class="hilera"><div class="ic"><svg viewBox="0 0 24 24">${ICO.camara}</svg></div>
+        <div class="txt"><b>${t('ver.viaja2')}</b></div></div>
+      <div class="hilera"><div class="ic"><svg viewBox="0 0 24 24">${ICO.persona}</svg></div>
+        <div class="txt"><b>${t('ver.viaja3')}</b></div></div>
+    </div>
+    <p class="pie" style="margin-top:14px">${t('ver.tarda')}</p>
+
+    ${avisoVer()}
+    <div class="ver-botones">
+      <button class="btn btn-linea" onclick="VETA.verAtras()">${t('ver.atras')}</button>
+      <button class="btn btn-oro" onclick="VETA.verMandar()">${sol.error ? t('ver.reintentar') : t('ver.enviar')}</button>
+    </div>`;
+  }
+
+  // ── las capturas ──────────────────────────────────────────────────────────
+
+  /* Se usa <input type="file"> y no getUserMedia. En el movil, `capture` abre la
+     camara directamente y en el escritorio el explorador de archivos, y funciona
+     en todos los navegadores. Un visor propio con getUserMedia se ve mejor y se
+     rompe en la mitad de los iPhone: en una pantalla que hay que pasar UNA vez
+     en la vida, funcionar gana. */
+  const CAPTURAS = {
+    frente: { titulo: 'ver.frente', boton: 'ver.tomar', lado: 'environment', nota: 'ver.frenteViaja', marco: '' },
+    reverso: { titulo: 'ver.reverso', boton: 'ver.tomar', lado: 'environment', nota: 'ver.reversoQueda', marco: '' },
+    // Sin titulo propio: el de la seccion ya dice «Tu selfie» dos centimetros
+    // mas arriba, y repetirlo no informa de nada.
+    selfie: { titulo: '', boton: 'ver.caraBtn', lado: 'user', nota: '', marco: 'cara' },
+  };
+
+  function capturaHtml(cual) {
+    const c = CAPTURAS[cual];
+    const foto = sol[cual];
+    const icono = cual === 'selfie' ? ICO.persona : ICO.doc;
+    return `
+    ${c.titulo ? `<div class="capt-h"><b>${t(c.titulo)}</b></div>` : ''}
+    ${foto ? `
+      <img class="capt-previa" src="${esc(foto)}" alt="">
+      <div class="capt-pie">
+        <button class="btn btn-linea btn-sm" onclick="VETA.verQuitar('${cual}')">${t('ver.repetir')}</button>
+      </div>`
+    : `
+      <label class="capt-caja">
+        <input type="file" accept="image/*" capture="${c.lado}"
+               onchange="VETA.verFoto('${cual}', this)">
+        <span class="capt-dentro">
+          <span class="capt-marco ${c.marco}">
+            <svg viewBox="0 0 24 24">${icono}</svg>
+            <b>${t(c.boton)}</b>
+            <small>${t('ver.archivo')}</small>
+          </span>
+        </span>
+      </label>`}
+    ${c.nota ? `<p class="pie" style="margin-top:9px">${t(c.nota)}</p>` : ''}`;
+  }
+
+  /* Al recibir la foto se repinta SOLO su recuadro. Repintar la vista entera
+     borraria la MRZ a medio copiar del paso 2. */
+  function repintarCaptura(cual) {
+    const caja = $('#capt-' + cual);
+    if (caja) caja.innerHTML = capturaHtml(cual);
+  }
+
+  async function verFoto(cual, campo) {
+    const archivo = campo?.files?.[0];
+    if (!archivo) return;
+    sol.error = '';
+    const caja = $('#capt-' + cual);
+    if (caja) caja.innerHTML =
+      (CAPTURAS[cual].titulo ? `<div class="capt-h"><b>${t(CAPTURAS[cual].titulo)}</b></div>` : '') +
+      `<p class="pie"><span class="girando"></span> ${t('ver.preparando')}</p>`;
+    try {
+      sol[cual] = await achicar(archivo);
+    } catch (e) {
+      sol[cual] = null;
+      sol.error = e.message;
+    }
+    const a = $('#ver-aviso');
+    if (a) {
+      a.textContent = sol.error;
+      a.className = 'aviso ' + (sol.error ? 'aviso-mal' : 'oculto');
+    }
+    repintarCaptura(cual);
+  }
+
+  function verQuitar(cual) {
+    sol[cual] = null;
+    repintarCaptura(cual);
+  }
+
+  // ── el envío ──────────────────────────────────────────────────────────────
+
+  function verEnviando() {
+    return `
+    <div class="cab"><div><h2>${t('ver.t')}</h2><div class="sub">${t('ver.sub')}</div></div></div>
+    <div class="bloque vidrio">
+      <div class="ver-barra"><i id="ver-hecho" style="width:${sol.hecho}%"></i></div>
+      <div class="ver-etapa"><span class="girando"></span><span id="ver-etapa">${esc(sol.etapa)}</span></div>
+      <p class="pie" style="margin-top:16px">${t('ver.tarda')}</p>
+    </div>
+    <p class="pie" style="margin-top:16px">${t('ver.nunca')}</p>`;
+  }
+
+  /* La barra avanza por etapas cumplidas, no por bytes: `fetch` no informa del
+     progreso de subida, y una barra que se mueve sola con un temporizador seria
+     una animacion disfrazada de informacion. Cada tramo se pinta cuando el
+     servidor ya contesto el anterior, asi que lo que enseña es cierto. */
+  function verEtapa(texto, hecho) {
+    sol.etapa = texto;
+    sol.hecho = hecho;
+    const b = $('#ver-hecho'), e = $('#ver-etapa');
+    if (b) b.style.width = hecho + '%';
+    if (e) e.textContent = texto;
+  }
+
+  /* Los codigos del puente, traducidos a algo que se pueda leer. Se mira el
+     ESTADO y no el mensaje: el 413 y el 404 del backend salen en HTML, no en
+     JSON, asi que el texto que llega es una pagina entera de Jade. */
+  function verFalla(e) {
+    if (e.estado === 404) return t('ver.ePuente');
+    if (e.estado === 503) return t('ver.eClaveSrv');
+    if (e.estado === 413) return t('ver.e413');
+    if (e.estado >= 500) return t('ver.eServidor');
+    // Un 400 de Genesis SÍ trae un motivo util —que digito de control falla, por
+    // ejemplo—, y ese se enseña tal cual.
+    return e.message;
+  }
+
+  async function verMandar() {
+    if (sol.enviando) return;
+    if (!sol.selfie) { sol.error = t('ver.eCara'); return vista('verificar'); }
+    if (!sol.frente) { sol.paso = 2; sol.error = t('ver.eFrente'); return vista('verificar'); }
+
+    sol.enviando = true;
+    sol.error = '';
+    sol.etapa = t('ver.pDatos');
+    sol.hecho = 6;
+    vista('verificar');
+
+    try {
+      // 1. Lo declarado. Solo si se lleno en esta sesion: quien vuelve a mitad
+      //    del tramite no tiene por que reescribir lo que el servidor ya guardo.
+      if (sol.nombre) {
+        verEtapa(t('ver.pDatos'), 12);
+        const vol = VOLUMENES.find(v => v[0] === sol.volumen);
+        await pedir('/genesis/datos', {
+          metodo: 'POST', espera: 40000,
+          cuerpo: {
+            nombreCompleto: sol.nombre,
+            fechaNacimiento: `${sol.anio}-${String(sol.mes).padStart(2, '0')}-${String(sol.dia).padStart(2, '0')}`,
+            paisResidencia: sol.reside,
+            telefono: sol.tel || undefined,
+            direccion: sol.domicilio || undefined,
+            ocupacion: sol.ocupacion || undefined,
+            origenFondos: sol.fondos || undefined,
+            propositoCuenta: sol.proposito || undefined,
+            volumenEsperadoUsd: vol ? vol[2] : undefined,
+            pepDeclarado: sol.pep,
+          },
+        });
+      }
+
+      // 2. El documento, como texto. `textoAnverso` va vacio a proposito: ver la
+      //    nota de arriba.
+      verEtapa(t('ver.pDoc'), 34);
+      const doc = await pedir('/genesis/documento', {
+        metodo: 'POST', espera: 40000, cuerpo: { mrz: limpiarMrz(sol.mrz) },
+      });
+
+      // 3. Las fotos, que es lo unico que pesa. Sin reto de vivacidad —eso son
+      //    cuatro gestos grabados y vive en la app—, asi que esto NUNCA aprueba
+      //    sola: el expediente queda esperando a una persona.
+      verEtapa(t('ver.pCara'), 58);
+      await pedir('/genesis/biometria', {
+        metodo: 'POST', espera: 120000,
+        cuerpo: { selfie: sol.selfie, fotoDocumento: sol.frente },
+      });
+
+      verEtapa(t('ver.pFin'), 100);
+      await cargarIdentidad();
+      sol.resultado = {
+        aceptable: Boolean(doc?.documento?.aceptable),
+        problemas: doc?.documento?.problemas || [],
+      };
+      sol.paso = 4;
+    } catch (e) {
+      sol.error = verFalla(e);
+    } finally {
+      sol.enviando = false;
+      vista('verificar');
+    }
+  }
+
+  // ── lo que dijo el servidor ───────────────────────────────────────────────
+
+  /* Aca no se resume ni se suaviza: se enseña el estado que devolvio Genesis con
+     las mismas palabras que la tarjeta de identidad. «En revision» es «en
+     revision»; nada en esta pantalla puede parecerse a una aprobacion, porque
+     esta pantalla no aprueba. */
+  function verFinal() {
+    const problemas = sol.resultado?.problemas || [];
+    const rostroMal = Boolean(identidad?.rostroPendiente);
+    return `
+    <div class="cab"><div><h2>${t('ver.t')}</h2><div class="sub">${t('ver.sub')}</div></div></div>
+
+    ${problemas.length ? `
+      <div class="bloque vidrio">
+        <h3>${t('ver.docProb')}</h3>
+        <p class="pie" style="margin-top:8px">${t('ver.docProbP')}</p>
+        <div style="margin-top:14px">
+          ${problemas.map(p => `<div class="aviso aviso-mal">${esc(p)}</div>`).join('')}
+        </div>
+        <div style="margin-top:16px">
+          <button class="btn btn-oro btn-sm" onclick="VETA.verVolverA(2)">${t('ver.arreglarMrz')}</button>
+        </div>
+      </div>` : ''}
+
+    ${rostroMal ? `
+      <div class="bloque vidrio">
+        <h3>${t('ver.caraMal')}</h3>
+        <p class="pie" style="margin-top:8px">${t('ver.caraMalP')}</p>
+        <div style="margin-top:16px">
+          <button class="btn btn-oro btn-sm" onclick="VETA.verVolverA(3)">${t('ver.repetirCara')}</button>
+        </div>
+      </div>` : ''}
+
+    ${!problemas.length && !rostroMal ? `
+      <div class="bloque vidrio">
+        <h3>${t('ver.listoT')}</h3>
+        <p class="pie" style="margin-top:8px">${t('ver.listoP')}</p>
+      </div>` : ''}
+
+    <div class="bloque-cab" style="margin:26px 0 0"><h3 class="cab-mini">${t('ver.listoEst')}</h3></div>
+    ${tarjetaIdentidad(true)}
+
+    <div class="ver-botones">
+      <button class="btn btn-oro" onclick="VETA.verSalir('identidad')">${t('ver.verId')}</button>
+    </div>
+    <p class="pie" style="margin-top:16px">${t('ver.nunca')}</p>`;
+  }
+
+  // ── la navegación del trámite ─────────────────────────────────────────────
+
+  function verSeguir() {
+    if (sol.paso === 1) {
+      leerPaso1();
+      sol.error = faltaPaso1();
+      if (sol.error) return vista('verificar');
+      sol.paso = 2;
+      return vista('verificar');
+    }
+    if (sol.paso === 2) {
+      if (!sol.frente) { sol.error = t('ver.eFrente'); return vista('verificar'); }
+      if (pideReverso() && !sol.reverso) { sol.error = t('ver.eReverso'); return vista('verificar'); }
+      if (!formaMrz(sol.mrz).ok) { sol.error = t('ver.eMrz'); return vista('verificar'); }
+      sol.error = '';
+      sol.paso = 3;
+      return vista('verificar');
+    }
+  }
+
+  function verAtras() {
+    if (sol.paso === 1) return verSalir();
+    sol.error = '';
+    sol.paso -= 1;
+    vista('verificar');
+  }
+
+  function verVolverA(paso) {
+    sol.error = '';
+    sol.resultado = null;
+    sol.paso = paso;
+    vista('verificar');
+  }
+
+  /* Salir del tramite tira el expediente. Es lo que hay que hacer: dentro hay un
+     numero de documento y dos fotografias, y dejarlos en memoria «por si vuelve»
+     es guardarlos sin haberlo pedido. Lo ya enviado esta en el servidor. */
+  function verSalir(destino) {
+    sol = null;
+    vista(destino || 'identidad');
   }
 
   // ── la tarjeta ────────────────────────────────────────────────────────────
@@ -2005,6 +2863,10 @@ const VETA = (() => {
            tapar, copiarContrato, congelar, revelar, pedirTarjeta, cambioMonto, elegirDestino,
            voltear, olvidar, remMonto, remPais, refrescarTasas, nuevoContacto, borrarContacto,
            enviarA, abrirCamara, cerrarCamara, pedirSecreto, copiarTexto, guardarNombre,
+           // La verificación por web. Los manejadores van en el HTML (onclick,
+           // onchange), así que sin figurar acá los botones no hacen nada.
+           verSeguir, verAtras, verVolverA, verSalir, verOpc, verVol,
+           verFoto, verQuitar, verMrz, verMandar,
            // Solo para las pruebas y las capturas: aqui no hay salida a la
            // cadena, y hay que poder mirar la pantalla con saldos dentro.
            _sembrar: l => { cartera = l; errCartera = null; },

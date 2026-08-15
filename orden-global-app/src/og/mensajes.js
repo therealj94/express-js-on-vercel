@@ -30,11 +30,43 @@ export async function alta(cuenta) {
   // pintarlo bajo el nombre. Sin GID la clave ni aparece (JSON.stringify se
   // come los undefined) y el relevo no toca la que ya tuviera guardada.
   if (cuenta.genesisUid) yo.gid = cuenta.genesisUid;
-  const g = await SecureStore.getItemAsync('og.llaveChat').catch(() => null);
-  if (g) { llave = g; pedir('/alta', { ...yo, llave }).catch(() => {}); return; }
-  const d = await pedir('/alta', yo);
-  llave = d.llave;
-  await SecureStore.setItemAsync('og.llaveChat', llave).catch(() => {});
+  // La llave se guarda ATADA AL CORREO. Antes vivía en una sola etiqueta
+  // global, y eso rompía a quien cambiaba de cuenta: la app le presentaba al
+  // relevo la llave de la cuenta anterior, el relevo no la reconocía, y todo
+  // —conversaciones, mensajes que llegan, buscar gente— respondía 401 para
+  // siempre. La persona veía «sin conexión» con el wifi perfecto.
+  const donde = 'og.llaveChat.' + yo.correo;
+  let g = await SecureStore.getItemAsync(donde).catch(() => null);
+  if (!g) {
+    // Migración de la etiqueta vieja: se hereda SOLO si el relevo la valida
+    // (abajo), nunca a ciegas — heredarla a ciegas es justo el fallo de antes.
+    g = await SecureStore.getItemAsync('og.llaveChat').catch(() => null);
+  }
+  // El alta SIEMPRE se espera y SIEMPRE se lee la respuesta. El relevo, cuando
+  // el correo es nuevo, ignora la llave que le mandes y acuña la suya: si no
+  // se lee lo que devuelve, la app se queda usando una llave que el servidor
+  // jamás aceptó. Ese era el fallo.
+  const d = await pedir('/alta', g ? { ...yo, llave: g } : yo);
+  llave = (d && d.llave) || g;
+  if (llave) await SecureStore.setItemAsync(donde, llave).catch(() => {});
+}
+
+/**
+ * Vuelve a darse de alta desde cero cuando la llave guardada ya no sirve.
+ *
+ * Se usa al recibir un 401: la llave local no la reconoce el relevo. Si el
+ * correo no tiene dueño, esto lo deja funcionando solo, sin que nadie tenga
+ * que tocar nada. Si YA tiene dueño (otra instalación se lo quedó), el relevo
+ * responde 409 y entonces sí hace falta recuperar la cuenta — la pantalla lo
+ * dice con todas las letras en vez de culpar a la red.
+ */
+export async function rehacerAlta(cuenta) {
+  const correo = (cuenta.email || '').toLowerCase();
+  await SecureStore.deleteItemAsync('og.llaveChat.' + correo).catch(() => {});
+  await SecureStore.deleteItemAsync('og.llaveChat').catch(() => {});
+  llave = null;
+  await alta(cuenta);
+  return !!llave;
 }
 const firmado = (b) => ({ ...b, correo: yo?.correo, llave });
 
