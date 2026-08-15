@@ -181,3 +181,27 @@ Hay que mandar el APK, no el enlace, si la persona tiene que:
 Para todo lo demás —ver la app, moverse por el Núcleo, chatear, mirar la
 billetera, cobrar por QR, probar los idiomas— la vista previa enseña la app
 entera y se abre en un minuto.
+
+## Una trampa del código, escrita para quien venga
+
+Hay **dos** ficheros que contestan «¿esto es Expo Go?», y no son un
+duplicado: son dos capas. Pero exportan el mismo nombre con **forma
+distinta**, así que un import copiado del sitio equivocado no da error —
+hace algo peor: mentir en silencio.
+
+| Fichero | Qué exporta | Cómo se usa |
+|---|---|---|
+| `src/entorno.js` | `enExpoGo` — **constante** booleana | `if (enExpoGo)` |
+| `src/og/entorno.js` | `enExpoGo()` — **función**, más `hayVoz()` y `hayOcr()` | `if (enExpoGo())` |
+
+El de arriba no importa nada pesado (lo llama `notify.js` al arrancar); el de
+abajo sí toca los módulos de terceros para saber si hay micrófono y lector.
+
+Si alguien escribe `if (enExpoGo)` habiendo importado la **función**, la
+condición es siempre cierta —una función es un valor verdadero— y la app se
+comporta como si estuviera en la vista previa aunque sea el APK: escondería
+el micrófono de NEXUS justo después de lo que costó arreglarlo. Al revés
+(`enExpoGo()` con la constante) al menos revienta y se ve.
+
+Hoy los nueve sitios que lo usan están correctos —comprobado uno por uno—.
+Al tocar cualquiera, mirar primero de cuál de los dos viene el import.
