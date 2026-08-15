@@ -1,12 +1,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Veta Wallet · Tu oro, en tu bolsillo</title>
-<meta name="description" content="Veta Wallet: guardá, enviá y pagá con ORIGEN, oro real digitalizado sobre la Layer 1 de Orden Global. Verificá tu identidad una sola vez con Genesis ID.">
+<title>Orden Global · Un ecosistema entero, en una sola cuenta</title>
+<meta name="description" content="Orden Global: tu dinero respaldado en oro (Veta Wallet), tu gente (PULSE CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), sobre nuestra propia cadena y con AU-RA, la inteligencia del ecosistema.">
 <meta name="theme-color" content="#021B1C">
 <link rel="icon" href="assets/veta-logo.png">
 <link rel="apple-touch-icon" href="assets/veta-logo.png">
-<meta property="og:title" content="Veta Wallet">
-<meta property="og:description" content="Tu oro, en tu bolsillo. En cualquier parte del mundo.">
+<meta property="og:title" content="Orden Global">
+<meta property="og:description" content="Un ecosistema entero, en una sola cuenta.">
 <meta property="og:image" content="https://app.vetawallet.com/assets/veta.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -142,6 +142,8 @@ body:has(#app:not(.oculto)) .veta-svg{display:none}
 /* La fila de hechos: alineada a la izquierda, separada por hilos, cada dato
    con su cifra en didona. Es la línea de "por qué creerle" y entra la última. */
 .hechos{margin-top:clamp(34px,6vh,58px);display:flex;gap:clamp(18px,3vw,38px);flex-wrap:wrap;
+.bv-marcas{margin-top:22px;font-size:11px;font-weight:700;letter-spacing:.14em;
+  color:var(--humo);text-transform:uppercase}
   opacity:0;animation:aparece .9s 1.5s ease forwards}
 .hecho{padding-left:16px;border-left:1px solid var(--linea2)}
 .hecho b{display:block;font-family:var(--serif);font-weight:700;font-size:clamp(20px,2.6vw,27px);color:var(--oroLt)}
@@ -1236,7 +1238,7 @@ a.btn{text-decoration:none}
 <div id="portada">
 <section id="bienvenida">
   <div class="bv">
-    <div class="sello">Orden Global</div>
+    <div class="sello" data-t="bv.h3"></div>
     <h1 id="bv-titulo" aria-live="polite"></h1>
     <p data-t="bv.p"></p>
     <div class="bv-btns">
@@ -1248,6 +1250,7 @@ a.btn{text-decoration:none}
       <div class="hecho"><b>5550</b><small data-t="bv.h2"></small></div>
       <div class="hecho"><b>1</b><small data-t="bv.h3"></small></div>
     </div>
+    <div class="bv-marcas" data-t="bv.marcas"></div>
   </div>
   <aside class="lingote vidrio" aria-hidden="true">
     <div class="l-lbl">ORIGEN</div>
@@ -1317,10 +1320,14 @@ a.btn{text-decoration:none}
       <a href="/genesis-id" data-t="e.gidVer"></a></article>
     <article class="eco-f rev der" style="--acento:#C266F5">
       <h3>MyTokenPay</h3><p data-t="e.mtp"></p>
-      <a href="https://mytokenpay-pos.com" target="_blank" rel="noopener" data-t="e.ver"></a></article>
+      <a href="https://main.d2dr8sh34hni4c.amplifyapp.com" target="_blank" rel="noopener" data-t="e.ver"></a></article>
     <article class="eco-f rev der" style="--acento:#74E6C8">
       <h3>ordenscan</h3><p data-t="e.scan"></p>
       <a href="https://ordenscan.com" target="_blank" rel="noopener" data-t="e.ver"></a></article>
+    <article class="eco-f rev izq" style="--acento:#E0937A">
+      <h3>PULSE CHAT</h3><p data-t="e.chat"></p></article>
+    <article class="eco-f rev der" style="--acento:#9E86F0">
+      <h3>AU-RA</h3><p data-t="e.aura"></p></article>
   </div>
 </section>
 

@@ -450,8 +450,8 @@ const AURA = (() => {
 
     // el vidrio de fondo
     const fondo = c.createRadialGradient(m, m, R * 0.1, m, m, R);
-    fondo.addColorStop(0, 'rgba(10,30,30,0.9)');
-    fondo.addColorStop(1, 'rgba(2,10,11,0.95)');
+    fondo.addColorStop(0, 'rgba(16,46,44,0.92)');
+    fondo.addColorStop(1, 'rgba(3,14,15,0.95)');
     c.fillStyle = fondo;
     c.beginPath(); c.arc(m, m, R, 0, 6.2832); c.fill();
 
@@ -464,7 +464,7 @@ const AURA = (() => {
       const x = m + Math.cos(a) * R * l.d;
       const y = m + Math.sin(a * 1.3) * R * l.d;
       const g = c.createRadialGradient(x, y, 0, x, y, R * 0.9);
-      g.addColorStop(0, `rgba(${l.tinte[0]},${l.tinte[1]},${l.tinte[2]},0.55)`);
+      g.addColorStop(0, `rgba(${l.tinte[0]},${l.tinte[1]},${l.tinte[2]},0.78)`);
       g.addColorStop(1, 'rgba(0,0,0,0)');
       c.fillStyle = g;
       c.fillRect(0, 0, L, L);

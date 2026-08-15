@@ -20,7 +20,10 @@ const VETA = (() => {
   const EXPLORADOR = 'https://ordenscan.com';
   // Adonde lleva la esfera de MyTokenPay. Se puede pisar desde fuera igual
   // que la cadena y el relevo, porque su web propia esta por estrenarse.
-  const URL_MYTOKENPAY = window.OG_MYTOKENPAY || 'https://www.mytokenpay-pos.com';
+  /* La vitrina web de MyTokenPay (el ensayo de Amplify, mientras no tenga
+     dominio propio). El POS viejo de mytokenpay-pos.com quedo con el backend
+     caido: enlazarlo era mandar a la gente a un login que no puede funcionar. */
+  const URL_MYTOKENPAY = window.OG_MYTOKENPAY || 'https://main.d2dr8sh34hni4c.amplifyapp.com';
 
   const $ = s => document.querySelector(s);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
@@ -2524,7 +2527,7 @@ const VETA = (() => {
       <h3>${t('aj.ecosistema')}</h3>
       <div class="ajustes">
         ${fila(ICO.obra, t('aj.bien'), t('aj.bienP'), "VETA.bienvenida()")}
-        ${fila(ICO.tienda, t('aj.mtp'), t('aj.mtpP'), "window.open('https://www.mytokenpay-pos.com','_blank','noopener')")}
+        ${fila(ICO.tienda, t('aj.mtp'), t('aj.mtpP'), "window.open(VETA._mtp(),'_blank','noopener')")}
         ${fila(ICO.globo, t('aj.idioma'), t('aj.idiomaP'), "VETA.idioma('" + (idiomaActivo() === 'es' ? 'en' : 'es') + "')")}
         ${fila(ICO.doc, t('aj.legal'), t('aj.legalP'), "window.open('/terminos','_blank','noopener')")}
       </div>
@@ -2947,7 +2950,8 @@ const VETA = (() => {
     try {
       if (!CHAT.listo()) {
         await CHAT.alta({ correo: sesion?.correo, nombre: sesion?.nombre,
-                          direccion: sesion?.direccion, gid: identidad?.gid || '' });
+                          direccion: sesion?.direccion, gid: identidad?.gid || '',
+                          sesion: sesion?.token });
       }
       chatSt.error = null;
       await chatCargarConvs();
@@ -2976,7 +2980,8 @@ const VETA = (() => {
     pintarChat();
     try {
       await CHAT.rehacerAlta({ correo: sesion?.correo, nombre: sesion?.nombre,
-                               direccion: sesion?.direccion, gid: identidad?.gid || '' });
+                               direccion: sesion?.direccion, gid: identidad?.gid || '',
+                               sesion: sesion?.token });
       await chatCargarConvs();
       avisar(t('cha.repOk'));
     } catch (e) {
@@ -2991,6 +2996,13 @@ const VETA = (() => {
       chatSt.error = null;
     } catch (e) { chatSt.error = chatMotivo(e); }
     pintarChat();
+    // La invitacion que trajo hasta aca: se abre UNA vez, con el chat ya
+    // de pie, y se olvida — un enlace no es una orden permanente.
+    if (chatPendiente && CHAT.listo()) {
+      const con = chatPendiente;
+      chatPendiente = null;
+      chatAbrir(con);
+    }
   }
 
   /* El latido: mientras el chat esta en pantalla se refresca solo. Cinco
@@ -3019,6 +3031,7 @@ const VETA = (() => {
     chatSt.msgs = null;
     chatSt.gente = null;
     chatSt.busca = '';
+    chatSt.verCodigo = false;
     pintarChat();
     await chatCargarMsgs();
     CHAT.leido(id);
@@ -3101,6 +3114,19 @@ const VETA = (() => {
     }, 320);
   }
 
+  function chatCodigo() {
+    chatSt.verCodigo = !chatSt.verCodigo;
+    if (chatSt.verCodigo) chatSt.con = null;
+    pintarChat();
+    const c = $('#chat-qr');
+    if (c) {
+      try { c.innerHTML = QR.svg(enlaceChat(), { claro: '#F3ECD9', oscuro: '#021B1C', margen: 2 }); }
+      catch { c.remove(); }
+    }
+  }
+
+  const chatCodigoCopiar = () => copiarTexto(enlaceChat(), t('cha.codCopiado'));
+
   async function chatGrupo() {
     const nombre = (prompt(t('cha.grPide')) || '').trim();
     if (!nombre) return;
@@ -3137,6 +3163,29 @@ const VETA = (() => {
     if (m) m.scrollTop = m.scrollHeight;
   }
 
+  /* La invitacion de contacto. Se GENERA como enlace web —la camara del
+     telefono lo abre sin ninguna app nuestra, igual que el de cobrar— y se
+     ENTIENDEN los dos formatos: este y el og://chat/abrir?con=… que los QR
+     de la app ya llevan impresos por ahi. */
+  const enlaceChat = () =>
+    'https://www.vetawallet.com/#chat?con=' + encodeURIComponent((sesion?.correo || '').toLowerCase())
+    + (identidad?.gid ? '&gid=' + encodeURIComponent(identidad.gid) : '');
+
+  function leerInvitacion(crudo) {
+    const txt = String(crudo || '').trim();
+    const m = txt.match(/(?:og:\/\/chat\/abrir|#chat)\?([^\s]+)/);
+    if (!m) return null;
+    try {
+      const q = new URLSearchParams(m[1]);
+      const con = (q.get('con') || '').toLowerCase();
+      return /@/.test(con) ? { con, gid: q.get('gid') || '' } : null;
+    } catch { return null; }
+  }
+
+  // El hilo que hay que abrir en cuanto el chat este de pie: quien llega por
+  // una invitacion no tiene por que volver a buscar a la persona.
+  let chatPendiente = null;
+
   const chatIni = s => (String(s || '?').trim()[0] || '?').toUpperCase();
 
   function chatAvatar(x) {
@@ -3161,6 +3210,10 @@ const VETA = (() => {
       <div class="cha-cab">
         <input id="chat-busca" placeholder="${t('cha.buscar')}" value="${esc(chatSt.busca)}"
                autocomplete="off" oninput="VETA.chatBuscar(this.value)">
+        <button class="cha-mas" onclick="VETA.chatCodigo()" title="${t('cha.miCod')}"
+                aria-label="${t('cha.miCod')}">
+          <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h3v3h-3zM20 14v2M17 20h3M14 19v1"/></svg>
+        </button>
         <button class="cha-mas" onclick="VETA.chatGrupo()" title="${t('cha.grupo')}"
                 aria-label="${t('cha.grupo')}">
           <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
@@ -3223,6 +3276,17 @@ const VETA = (() => {
         </div>
       </div>`;
     }
+
+    if (chatSt.verCodigo) return `
+      <div class="cha-puerta">
+        <h3>${t('cha.miCod')}</h3>
+        <p>${t('cha.miCodP')}</p>
+        <div class="qr-caja" style="max-width:240px" id="chat-qr"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+          <button class="btn btn-oro btn-sm" onclick="VETA.chatCodigoCopiar()">${t('cha.codCopiar')}</button>
+          <button class="btn btn-linea btn-sm" onclick="VETA.chatCodigo()">${t('tok.volver')}</button>
+        </div>
+      </div>`;
 
     if (!chatSt.con) return `
       <div class="cha-puerta">
@@ -4038,6 +4102,14 @@ const VETA = (() => {
       try {
         const [c] = await det.detect(v);
         const crudo = (c?.rawValue || '').trim();
+        const inv = leerInvitacion(crudo);
+        if (inv) {
+          cerrarCamara();
+          avisar(t('qr.leido'));
+          chatPendiente = inv.con;
+          vista('chat');
+          return;
+        }
         const cobro = leerCobro(crudo);
         if (cobro) {
           cerrarCamara();
@@ -4397,6 +4469,11 @@ const VETA = (() => {
     const cobroEntrante = location.hash.startsWith('#pagar') ? leerCobro(location.hash) : null;
     if (cobroEntrante) vistaActual = 'enviar';
 
+    /* Una invitacion de chat (#chat?con=…) apunta directo al hilo: quien la
+       escaneo quiere hablar con ALGUIEN, no ver una lista. */
+    const invEntrante = location.hash.startsWith('#chat') ? leerInvitacion(location.hash) : null;
+    if (invEntrante) { vistaActual = 'chat'; chatPendiente = invEntrante.con; }
+
     sesion = recuperar();
     if (sesion?.token) {
       // Volver con la sesión guardada es entrar igual: si no se contara, quien
@@ -4440,7 +4517,7 @@ const VETA = (() => {
            // PULSE CHAT. Los manejadores van en el HTML que genera la vista, asi
            // que sin figurar aca los botones del chat no hacen nada.
            chatEntrar, chatAbrir, chatCerrar, chatMandar, chatBuscar, chatGrupo,
-           chatAdjuntar, chatReparar,
+           chatAdjuntar, chatReparar, chatCodigo, chatCodigoCopiar,
            // La verificación por web. Los manejadores van en el HTML (onclick,
            // onchange), así que sin figurar acá los botones no hacen nada.
            verSeguir, verAtras, verVolverA, verSalir, verOpc, verVol,
@@ -4454,6 +4531,7 @@ const VETA = (() => {
            _sol: x => { sol = { ...(sol || {}), ...x }; },
            _semilla: f => { semillaNueva = f; mostrarSemilla(f); },
            _ofrecerGid: () => auraOfrecerGid(),
+           _mtp: () => URL_MYTOKENPAY,
            _bienvenidaAura: () => auraBienvenida(true),
            _auraTxt: () => AURA_TXT,
            _identidad: x => { identidad = x; },

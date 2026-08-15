@@ -1,4 +1,4 @@
-/* El cliente del relevo de mensajes — AURO CHAT en el navegador.
+/* El cliente del relevo de mensajes — PULSE CHAT en el navegador.
  *
  * El mismo servidor que usa el telefono (infra/mensajes, en el nodo del
  * cerebro): identidad = el correo de la cuenta de la wallet, y una llave que
@@ -60,7 +60,15 @@ const CHAT = (() => {
     yo = { correo, nombre: cuenta.nombre || '', addr: cuenta.direccion || '' };
     if (cuenta.gid) yo.gid = cuenta.gid;
     const g = leer(correo);
-    const d = await pedir('/alta', g ? { ...yo, llave: g } : yo);
+    /* La sesion de la wallet viaja SIEMPRE que exista: es la prueba de
+       identidad que le permite al relevo devolver la llave existente cuando
+       este navegador no la tiene — el arreglo de raiz del «tu chat esta en
+       otro lado». Con llave local igual se manda: no molesta y cubre el caso
+       de una llave local vieja que el relevo ya no reconoce. */
+    const cuerpo = { ...yo };
+    if (g) cuerpo.llave = g;
+    if (cuenta.sesion) cuerpo.sesion = cuenta.sesion;
+    const d = await pedir('/alta', cuerpo);
     llave = (d && d.llave) || g;
     if (llave) guardar(correo, llave);
     return llave;

@@ -235,7 +235,9 @@ const MTP = (() => {
     });
     $('#lienzo').innerHTML = ({ inicio, explorar, comercio, pagar, cobro: vCobro, cuenta, billetera, identidad: vIdentidad })[cual]();
     $('#barra-der').innerHTML =
-      `<div class="idiomas" role="group" aria-label="Idioma">
+      `<a class="btn btn-linea btn-sm" href="https://www.vetawallet.com/">${t('x.eco')}</a>
+       <span class="chapa ch-rev" title="${t('x.demoP')}">${t('x.demo')}</span>
+       <div class="idiomas" role="group" aria-label="Idioma">
          <button data-lang="es" aria-pressed="${idiomaActual === 'es'}" onclick="MTP.idioma('es')">ES</button>
          <button data-lang="en" aria-pressed="${idiomaActual === 'en'}" onclick="MTP.idioma('en')">EN</button>
        </div>` + (E.sesion

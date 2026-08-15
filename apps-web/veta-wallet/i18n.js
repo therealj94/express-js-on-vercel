@@ -7,10 +7,11 @@
 
 const I18N = {
 es: {
-  'bv.t1': 'Tu oro,', 'bv.t2': 'en tu bolsillo.',
-  'bv.p': 'ORIGEN es oro real, certificado y guardado, que viaja a la velocidad de un mensaje. Guardalo, enviálo, pagá con él.',
+  'bv.t1': 'ORDEN', 'bv.t2': 'GLOBAL.',
+  'bv.p': 'Un ecosistema entero en una sola cuenta: tu dinero respaldado en oro real, tu gente, tu negocio y tu identidad — sobre nuestra propia cadena, con AU-RA, la inteligencia de la casa, guiándote adentro. Entrás con tu usuario de Veta Wallet.',
   'bv.crear': 'Crear mi cuenta', 'bv.entrar': 'Ya tengo cuenta',
   'bv.h1': 'respaldo en oro físico', 'bv.h2': 'nuestra propia cadena', 'bv.h3': 'identidad para todo el ecosistema',
+  'bv.marcas': 'Veta Wallet · PULSE CHAT · MyTokenPay · Genesis ID · ordenscan · AU-RA',
   'bv.eq': 'Un gramin: la división exacta del gramo de oro certificado.',
   'bv.qr': 'Escanealo y abrí Veta Wallet en tu teléfono.',
   // La bienvenida del ecosistema. Las mismas seis tarjetas y las mismas
@@ -269,6 +270,8 @@ es: {
   'e.gid': 'Tu identidad digital. Verificate una sola vez y quedás verificado en todos los servicios del grupo.',
   'e.mtp': 'La capa de comercio. Encontrá negocios que aceptan ORIGEN y pagá desde esta misma billetera.',
   'e.scan': 'El explorador de la cadena 5550. Cada bloque y cada transacción, a la vista de cualquiera.',
+  'e.chat': 'La mensajería del ecosistema: solo gente verificada, y el dinero viaja dentro de la conversación, con comprobante en la cadena.',
+  'e.aura': 'La inteligencia de Orden Global — modelo 1, en beta. Te guía, te explica y te deja los pagos preparados. Firmar, siempre te toca a vos.',
   'e.ver': 'Abrir',
   // MyTokenPay y ordenscan se abren y ya. Genesis ID no: primero hay que contar
   // que es y que datos pide, y por eso este enlace se llama distinto.
@@ -383,6 +386,8 @@ es: {
   'cha.eredT': 'Sin conexión con el chat',
   'cha.eredP': 'No llegamos al servidor de mensajes. Revisá tu conexión y probá otra vez.',
   'cha.errAdj': 'No pudimos mandar el archivo.', 'cha.pesa': 'El archivo pesa más de 8 MB.',
+  'cha.miCod': 'Mi código', 'cha.miCodP': 'Quien lo escanee —o abra el enlace— te encuentra directo, sin buscarte. También sirve tu Genesis ID.',
+  'cha.codCopiar': 'Copiar mi enlace', 'cha.codCopiado': 'Enlace copiado',
   // Cobrar: el código que ya lleva la cantidad puesta
   'cob.t': 'Cobrar', 'cob.sub': 'Un código con la cantidad ya puesta',
   'cob.cuanto': '¿Cuánto vas a cobrar?',
@@ -440,10 +445,11 @@ es: {
   'perf.eNombre': 'Escribí un nombre.',
 },
 en: {
-  'bv.t1': 'Your gold,', 'bv.t2': 'in your pocket.',
-  'bv.p': 'ORIGEN is real, certified, vaulted gold that travels at the speed of a message. Hold it, send it, pay with it.',
+  'bv.t1': 'ORDEN', 'bv.t2': 'GLOBAL.',
+  'bv.p': 'A whole ecosystem in a single account: your money backed by real gold, your people, your business and your identity — on our own chain, with AU-RA, the intelligence of the house, guiding you inside. You enter with your Veta Wallet user.',
   'bv.crear': 'Create my account', 'bv.entrar': 'I have an account',
   'bv.h1': 'backed by physical gold', 'bv.h2': 'our own chain', 'bv.h3': 'one identity for the whole ecosystem',
+  'bv.marcas': 'Veta Wallet · PULSE CHAT · MyTokenPay · Genesis ID · ordenscan · AU-RA',
   'bv.eq': 'One gramin: the exact division of a certified gram of gold.',
   'bv.qr': 'Scan it to open Veta Wallet on your phone.',
   'bien.saltar': 'SKIP', 'bien.sig': 'Next', 'bien.fin': 'Enter my wallet',
@@ -688,6 +694,8 @@ en: {
   'e.gid': 'Your digital identity. Verify once and stay verified across every service of the group.',
   'e.mtp': 'The commerce layer. Find businesses that accept ORIGEN and pay from this same wallet.',
   'e.scan': 'The chain 5550 explorer. Every block and every transaction, in plain sight.',
+  'e.chat': 'The ecosystem’s messenger: verified people only, and money travels inside the conversation with a receipt on the chain.',
+  'e.aura': 'The intelligence of Orden Global — model 1, in beta. She guides you, explains and leaves payments ready. Signing is always yours.',
   'e.ver': 'Open',
   'e.gidVer': 'What Genesis ID is',
   'c.t1': 'Your gold starts', 'c.t2': 'with an account.',
@@ -792,6 +800,8 @@ en: {
   'cha.eredT': 'No connection to the chat',
   'cha.eredP': 'We could not reach the message server. Check your connection and try again.',
   'cha.errAdj': 'We could not send the file.', 'cha.pesa': 'The file is larger than 8 MB.',
+  'cha.miCod': 'My code', 'cha.miCodP': 'Whoever scans it — or opens the link — finds you directly, no searching. Your Genesis ID works too.',
+  'cha.codCopiar': 'Copy my link', 'cha.codCopiado': 'Link copied',
   'cob.t': 'Charge', 'cob.sub': 'A code with the amount already in it',
   'cob.cuanto': 'How much are you charging?',
   'cob.pon': 'Enter the amount',
