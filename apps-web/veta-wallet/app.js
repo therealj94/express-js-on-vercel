@@ -2876,25 +2876,67 @@ const VETA = (() => {
      El alto que cuenta es el del cerebro, no el de la ventana: en el teléfono
      la barra de pestañas se lleva 76px, y no descontarlos dejaba a un
      360x740 usando el reparto de una pantalla grande. */
+  let relojCerebro = 0;
+  addEventListener('resize', () => {
+    if (vistaActual !== 'nucleo') return;
+    clearTimeout(relojCerebro);
+    // el mismo respiro que usa la red para no medirse sesenta veces mientras
+    // alguien arrastra el borde de la ventana
+    relojCerebro = setTimeout(() => { if (vistaActual === 'nucleo') vista('nucleo'); }, 260);
+  });
+
   function cajaNucleo() {
     const alto = innerWidth < 901 ? innerHeight - 76 : innerHeight;
+    const angosto = innerWidth < 700;
     const corta = alto < 620, baja = alto < 700;
     const arriba = corta ? 14 : baja ? 13 : 11;
-    const abajo = corta ? 64 : baja ? 72 : 79;
+    /* En el teléfono el sello y los botones se apilan en vertical y ocupan
+       mucho más que en una pantalla grande, así que la banda de abajo se
+       reserva por ANCHO y no solo por alto: un 390x844 tiene sitio de sobra a
+       lo alto y aun así la fila de abajo caía sobre el sello. */
+    const abajo = corta ? 60 : baja ? 69 : angosto ? 68 : 79;
     /* Y a lo ancho lo mismo: el nombre de una esfera pegada al borde
        —«Ordenexchange» es el más largo— se salía del cuadro en un teléfono
        angosto. Se mete la constelación hacia dentro en vez de recortar el
        nombre: una app del ecosistema no se presenta con puntos suspensivos. */
-    const angosto = innerWidth < 700;
     return {
       enCaja: y => arriba + (y / 100) * (abajo - arriba),
       enAncho: x => (angosto ? 15 + (x / 100) * 70 : x),
     };
   }
 
+  /* El cerebro tiene que caber en LO QUE QUEDA de pantalla, y eso no se puede
+     escribir en el CSS: depende de lo alto que sea el techo de la página, que
+     cambia con el idioma y con el ancho. Antes era `100svh - 76px` a ojo, y en
+     un teléfono el cuadro se pasaba de largo por el alto del techo — el
+     segundo botón del pie quedaba DEBAJO de la barra de pestañas, tapado y sin
+     forma de tocarlo. Se mide y se pone, que es lo único que no se equivoca. */
+  function medirCerebro() {
+    const el = $('#cerebro');
+    if (!el) return;
+    const arriba = el.getBoundingClientRect().top;
+    const tabs = $('.tabs');
+    const pestanas = tabs && getComputedStyle(tabs).display !== 'none' ? tabs.offsetHeight : 0;
+    /* Si no cabe, que se deslice. Apretar la constelación hasta que un
+       botón quede debajo de las pestañas es peor que pedir un gesto de
+       dedo que todo el mundo ya conoce. */
+    const cabe = Math.round(innerHeight - arriba - pestanas);
+    const alto = Math.max(560, cabe);
+    el.style.height = alto + 'px';
+    /* Si el cerebro se pasa de largo, la página tiene que poder deslizarse
+       ENTERA: en modo cerebro el lienzo va sin relleno, y ese relleno era
+       justo el hueco que dejaba libre la barra de pestañas. Sin él, los
+       botones del pie quedaban debajo de la barra y no se alcanzaban ni
+       bajando del todo — comprobado a 320x568, que es la pantalla más
+       pequeña que sigue viva ahí fuera. */
+    const lienzo = $('#lienzo');
+    if (lienzo) lienzo.style.paddingBottom = alto > cabe ? pestanas + 'px' : '';
+  }
+
   function encenderCerebro(despertar) {
     const c = $('#red-nucleo');
     if (!c) return;
+    medirCerebro();
     /* Cada esfera del DOM se entrega al canvas: la orbita del ganglio y el
        boton que se toca se mueven con LA MISMA formula, en el mismo cuadro. */
     const elementos = {};

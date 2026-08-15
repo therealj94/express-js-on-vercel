@@ -424,9 +424,17 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
   display:flex;flex-direction:column;align-items:flex-start;gap:12px}
 .cerebro-botones{display:flex;gap:10px;flex-wrap:wrap}
 @media(max-width:560px){.cerebro-pie{right:96px}}
-/* En pantallas bajas el sello se recoge a una línea para no comerse el
-   cuadro: la esfera manda, el sello acompaña. */
-@media(max-height:620px){.nup-txt small{display:none}}
+/* En pantallas bajas el sello se recoge: primero pierde el detalle, y si
+   todavía no cabe se pone en la misma fila que los botones. La esfera manda —
+   un sello que empuja un botón fuera de la pantalla dejó de ser un sello. */
+@media(max-height:660px){.nup-txt small{display:none}}
+@media(max-height:620px){
+  .cerebro-pie{flex-direction:row;align-items:center;flex-wrap:wrap;gap:8px}
+  .nu-power{padding:6px 11px;border-radius:11px}
+  .nup-txt b{font-size:8.5px;letter-spacing:.05em}}
+/* y en el teléfono no se estira hasta el centro, que es donde caen los
+   nombres de la fila de abajo */
+@media(max-width:700px){.nu-power{max-width:66vw}}
 
 /* ── el orbe flotante ── AU-RA vive en TODO el ecosistema ─────────────────── */
 #aura-orbe{position:fixed;right:18px;bottom:88px;z-index:70;width:64px;height:64px;
