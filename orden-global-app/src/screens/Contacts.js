@@ -30,7 +30,12 @@ export default function Contacts({ nav, params }) {
   function choose(c) {
     hap();
     if (params?.onPick) { params.onPick(c.address); nav.back(); return; }
-    Clipboard.setStringAsync(c.address).then(() => toast(t('recv.copied'))).catch(() => {});
+    // Sin dirección no se intenta copiar, y si falla se avisa: el `.catch`
+    // vacío de antes se tragaba el fallo y nada se movía en pantalla.
+    if (!c?.address) return;
+    Clipboard.setStringAsync(String(c.address))
+      .then(() => toast(t('recv.copied')))
+      .catch(() => toast(t('recv.copyErr'), 'error'));
   }
 
   async function guardar() {

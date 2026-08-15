@@ -53,6 +53,7 @@ const TXT = {
     // QR sí entra — lo lee el escáner de la propia app, no el sistema.
     enlaceGo: 'Vista previa: el enlace solo abre desde el APK instalado. Aquí enseña el código de arriba y que lo escaneen con el escáner de la app; así sí entran.',
     copiar: 'COPIAR', compartir: 'COMPARTIR', copiado: 'Enlace copiado',
+    noCopia: 'No se pudo copiar. Inténtalo de nuevo.',
     invito: 'Te invito al grupo «{g}» en AURO CHAT.',
     invitarTit: 'INVITAR POR CORREO', correoPh: 'correo@ejemplo.com', invitar: 'INVITAR',
     invitado: 'Ya está dentro del grupo.',
@@ -110,6 +111,7 @@ const TXT = {
     enlaceTxt: 'Whoever scans this code or opens the link joins the group. The link IS the permission: share it only with who you want inside.',
     enlaceGo: 'Preview: the link only opens from the installed APK. Here, show the code above and have them scan it with the app scanner — that way they do get in.',
     copiar: 'COPY', compartir: 'SHARE', copiado: 'Link copied',
+    noCopia: 'Could not copy. Try again.',
     invito: 'I invite you to the group “{g}” on AURO CHAT.',
     invitarTit: 'INVITE BY EMAIL', correoPh: 'name@example.com', invitar: 'INVITE',
     invitado: 'They are in the group now.',
@@ -255,10 +257,27 @@ export default function GruposAuro({ nav, params }) {
     finally { setSubiendo(false); }
   };
 
-  const copiar = async () => { await Clipboard.setStringAsync(enlace); hap(); toast(t.copiado); };
-  const compartir = () => {
+  // Mismo blindaje que en AjustesAuro, y por lo mismo: `setStringAsync` es
+  // async y su fallo llega como promesa rechazada —sin try/catch la persona
+  // toca y no pasa nada—, mientras que `Share.share` NO es async y sus
+  // comprobaciones se lanzan SÍNCRONAS, antes de que exista la promesa: un
+  // `.catch()` detrás no las atrapa y la excepción cierra la app instalada.
+  // El `t.invito.replace(...)` iba además fuera de toda red: si un día falta
+  // esa clave en un idioma, es un TypeError síncrono con el mismo final.
+  const copiar = async () => {
+    const v = String(enlace || '');
+    if (!v) return;
     hap();
-    Share.share({ message: t.invito.replace('{g}', info?.nombre || '') + '\n' + enlace }).catch(() => {});
+    try { await Clipboard.setStringAsync(v); toast(t.copiado); }
+    catch { toast(t.noCopia || TXT.es.noCopia, 'error'); }
+  };
+  const compartir = async () => {
+    const v = String(enlace || '');
+    if (!v) return;
+    hap();
+    const plantilla = t.invito || TXT.es.invito;
+    try { await Share.share({ message: String(plantilla).replace('{g}', info?.nombre || '') + '\n' + v }); }
+    catch (e) {}
   };
 
   // ── crear ────────────────────────────────────────────────────────────

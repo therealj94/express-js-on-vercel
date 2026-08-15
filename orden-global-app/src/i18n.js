@@ -456,6 +456,12 @@ const S = {
     // passport
     'pass.title': 'Pasaporte Genesis ID', 'pass.holder': 'Titular', 'pass.uid': 'UID Genesis', 'pass.verified': 'Verificado',
     'pass.gidCopied': 'GID copiado',
+    // Copiar el GID es la acción principal de la credencial: por eso tiene
+    // botón propio, aviso de fallo y una salida a mano por si el botón falla.
+    'pass.gidCopy': 'COPIAR GID',
+    'pass.gidCopyErr': 'No se pudo copiar. Inténtalo de nuevo.',
+    'pass.gidByHand': 'También puedes tocarlo y copiarlo a mano.',
+    'pass.gidNotReady': 'Tu Genesis ID todavía no está listo.',
     'pass.type': 'Tipo', 'pass.typeV': 'Identidad personal', 'pass.issued': 'Emitido', 'pass.eco': 'Ecosistema',
     'pass.note': 'Credencial válida en Veta Wallet, MyTokenPay y todas las apps de Orden Global.',
     'pass.share': 'Compartir credencial', 'pass.sharing': 'Compartiendo credencial…',
@@ -663,7 +669,14 @@ const S = {
     'gen.h1': 'Una identidad para todo el ecosistema',
     'gen.body': 'Verifícate una sola vez con Genesis ID y queda válida en Veta Wallet, MyTokenPay y todas las apps de Orden Global. Si sales a mitad del proceso, continuarás donde quedaste.',
     'gen.start': 'Comenzar verificación', 'gen.resume': 'Continuando donde quedaste', 'gen.resume2': 'No empiezas de cero.',
-    'gen.docFront': 'Frente de tu documento', 'gen.docBack': 'Reverso de tu documento',
+    // 'gen.docBack' vivía también aquí, como etiqueta corta, y al ser la
+    // SEGUNDA con ese nombre pisaba en silencio a la buena (la de arriba, que
+    // explica que solo se usan las líneas del reverso). En el paso del
+    // documento se leía «Reverso de tu documento» justo debajo de un título
+    // que ya decía lo mismo, y la explicación no salía en ninguna parte. Duele
+    // más en la vista previa: sin lector, teclear esas líneas es el ÚNICO
+    // camino, y esa frase es la que dice dónde mirar.
+    'gen.docFront': 'Frente de tu documento',
     'gen.docBody': 'Coloca el documento dentro del marco. Tienes {n} segundos por lado — el contador está a la vista.',
     'gen.capFront': 'Capturar frente', 'gen.capBack': 'Capturar reverso',
     'gen.faceT': 'Verificación de rostro', 'gen.faceP': 'Centra tu rostro dentro del óvalo con buena luz. Prueba de vida activa.',
@@ -786,7 +799,11 @@ const S = {
     'set.notifsGoOn': 'Guardado. En esta vista previa el teléfono no avisa; se encenderá solo en el APK.',
     'set.notifsDenied': 'Permite las notificaciones en los ajustes del teléfono',
     // versión
-    'set.privacy': 'Política de privacidad',
+    // Antes esta llave se llamaba 'set.privacy' igual que la CABECERA de la
+    // sección («PRIVACIDAD»), y por ser la segunda la pisaba: el título del
+    // grupo salía «Política de privacidad» y justo debajo, en otro grupo, la
+    // fila repetía esas mismas palabras. Dos textos distintos, dos llaves.
+    'set.privacyDoc': 'Política de privacidad',
     'set.terms': 'Términos y condiciones',
     'set.about': 'Acerca de esta versión',
     'about.title': 'Versión y novedades', 'about.build': 'build {b}',
@@ -1228,6 +1245,10 @@ const S = {
     'set.foot': 'Veta Wallet · Orden Global\nConnected to the Orden Global blockchain (8532)',
     'pass.title': 'Genesis ID Passport', 'pass.holder': 'Holder', 'pass.uid': 'Genesis UID', 'pass.verified': 'Verified',
     'pass.gidCopied': 'GID copied',
+    'pass.gidCopy': 'COPY GID',
+    'pass.gidCopyErr': 'Could not copy. Try again.',
+    'pass.gidByHand': 'You can also tap it and copy it by hand.',
+    'pass.gidNotReady': 'Your Genesis ID is not ready yet.',
     'pass.type': 'Type', 'pass.typeV': 'Personal identity', 'pass.issued': 'Issued', 'pass.eco': 'Ecosystem',
     'pass.note': 'Credential valid in Veta Wallet, MyTokenPay and every Orden Global app.',
     'pass.share': 'Share credential', 'pass.sharing': 'Sharing credential…',
@@ -1427,7 +1448,9 @@ const S = {
     'gen.h1': 'One identity for the whole ecosystem',
     'gen.body': 'Verify once with Genesis ID and it is valid in Veta Wallet, MyTokenPay and every Orden Global app. If you leave mid-process, you will continue where you left off.',
     'gen.start': 'Start verification', 'gen.resume': 'Continuing where you left off', 'gen.resume2': "You don't start over.",
-    'gen.docFront': 'Front of your document', 'gen.docBack': 'Back of your document',
+    // Ver la nota de la versión en español: 'gen.docBack' estaba dos veces y
+    // la corta pisaba a la que explica dónde mirar.
+    'gen.docFront': 'Front of your document',
     'gen.docBody': 'Place the document inside the frame. You have {n} seconds per side — the timer is visible.',
     'gen.capFront': 'Capture front', 'gen.capBack': 'Capture back',
     'gen.faceT': 'Face verification', 'gen.faceP': 'Center your face inside the oval with good light. Liveness check active.',
@@ -1536,7 +1559,8 @@ const S = {
     'set.notifsOn': 'Alerts enabled', 'set.notifsOff': 'Alerts disabled',
     'set.notifsGoOn': 'Saved. In this preview your phone does not alert you; it will turn on in the APK.',
     'set.notifsDenied': 'Allow notifications in your phone settings',
-    'set.privacy': 'Privacy policy',
+    // Ver la nota en español: la cabecera y el documento son textos distintos.
+    'set.privacyDoc': 'Privacy policy',
     'set.terms': 'Terms and conditions',
     'set.about': 'About this version',
     'about.title': 'Version & what’s new', 'about.build': 'build {b}',

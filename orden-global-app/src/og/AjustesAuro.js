@@ -40,14 +40,18 @@ const TXT = {
     quitarTxt: 'Vuelves a la inicial de tu nombre. Puedes poner otra cuando quieras.',
 
     gidTit: 'MI GENESIS ID',
-    gidTxt: 'Tócalo y queda copiado. Quien lo tenga te encuentra en AURO CHAT buscándolo tal cual.',
+    gidTxt: 'Quien lo tenga te encuentra en AURO CHAT buscándolo tal cual.',
+    gidCopiar: 'COPIAR GID',
     gidCopiado: 'GID copiado',
+    gidMano: 'También puedes tocarlo y copiarlo a mano.',
+    gidNoListo: 'Tu Genesis ID todavía no está listo: aparecerá aquí en cuanto Genesis lo emita.',
     gidCompartir: 'COMPARTIR MI GID',
     gidInvito: 'Búscame en AURO CHAT con mi Genesis ID:',
 
     qrTit: 'MI CÓDIGO',
     qrTxt: 'Quien lo escanee abre un chat contigo, sin dictar el correo ni buscarte.',
     copiar: 'COPIAR ENLACE', compartir: 'COMPARTIR', copiado: 'Enlace copiado',
+    noCopia: 'No se pudo copiar. Inténtalo de nuevo.',
     invito: 'Escríbeme por AURO CHAT:',
     // El enlace se fabrica con el esquema og://, que es el del APK. En Expo
     // Go el esquema real del teléfono es exp://, o sea que quien reciba este
@@ -79,14 +83,18 @@ const TXT = {
     quitarTxt: 'You go back to the initial of your name. You can set another one whenever you want.',
 
     gidTit: 'MY GENESIS ID',
-    gidTxt: 'Tap it and it is copied. Anyone who has it can find you on AURO CHAT by searching it as is.',
+    gidTxt: 'Anyone who has it can find you on AURO CHAT by searching it as is.',
+    gidCopiar: 'COPY GID',
     gidCopiado: 'GID copied',
+    gidMano: 'You can also tap it and copy it by hand.',
+    gidNoListo: 'Your Genesis ID is not ready yet: it will show up here as soon as Genesis issues it.',
     gidCompartir: 'SHARE MY GID',
     gidInvito: 'Find me on AURO CHAT with my Genesis ID:',
 
     qrTit: 'MY CODE',
     qrTxt: 'Whoever scans it opens a chat with you, no need to dictate your email.',
     copiar: 'COPY LINK', compartir: 'SHARE', copiado: 'Link copied',
+    noCopia: 'Could not copy. Try again.',
     invito: 'Write to me on AURO CHAT:',
     qrGo: 'Preview: the link only opens from the installed APK. Here, share the code above and have them scan it with the app scanner.',
 
@@ -187,15 +195,53 @@ export default function AjustesAuro({ nav }) {
     catch { toast(t.noGuarda, 'error'); }
   };
 
-  const copiar = async () => { await Clipboard.setStringAsync(enlace); hap(); toast(t.copiado); };
-  const compartir = () => { hap(); Share.share({ message: t.invito + '\n' + enlace }).catch(() => {}); };
+  // Copiar y compartir, a prueba de cierres. Las dos reglas que salieron del
+  // fallo que reportó José:
+  //   · `Clipboard.setStringAsync` es `async`: cualquier fallo suyo llega como
+  //     promesa RECHAZADA. Sin try/catch nadie la recoge, y lo que la persona
+  //     ve es que toca, no vibra, no sale aviso y no se copió nada.
+  //   · `Share.share` NO es async: sus comprobaciones —que el contenido sea un
+  //     objeto, que el mensaje sea texto y, en Android, que el módulo del
+  //     sistema esté registrado— se lanzan de forma SÍNCRONA, ANTES de que
+  //     exista la promesa. Por eso un `.catch()` colgado detrás no las atrapa:
+  //     la excepción sube al manejador global y en la app instalada eso la
+  //     cierra. La única red que sirve es el try/catch alrededor de la llamada.
+  // `vibrar` es false cuando quien llama es un Button3D: ese botón ya vibra
+  // solo al hundirse, y dos toques seguidos se sienten como un fallo.
+  const copiarAlPapel = async (valor, avisoOk, vibrar = true) => {
+    const v = String(valor || '');
+    if (!v) return false;
+    if (vibrar) hap();  // la vibración confirma el TOQUE: va antes del viaje al portapapeles
+    try { await Clipboard.setStringAsync(v); toast(avisoOk); return true; }
+    catch { toast(t.noCopia || TXT.es.noCopia, 'error'); return false; }
+  };
 
-  // Mi GID: la seña con la que me encuentran en el buscador del chat. Tocar
-  // = copiar (expo-clipboard ya viene en el binario: lo usa COPIAR ENLACE
-  // aquí arriba) y compartir sale con el texto ya escrito — nada que teclear.
+  // El mensaje se arma con respaldo en español si faltara la clave del idioma:
+  // mandarle "undefined" a un desconocido es peor que mandarlo en otro idioma.
+  const compartirTexto = async (texto) => {
+    hap();
+    try { await Share.share({ message: String(texto || '') }); } catch (e) {}
+  };
+
+  const copiar = () => copiarAlPapel(enlace, t.copiado);
+  const compartir = () => {
+    if (!enlace) return;
+    return compartirTexto((t.invito || TXT.es.invito) + '\n' + enlace);
+  };
+
+  // Mi GID: la seña con la que me encuentran en el buscador del chat. COPIAR es
+  // la acción principal y por eso es el botón grande; compartir queda aparte.
   const gid = account?.genesisUid || '';
-  const copiarGid = async () => { await Clipboard.setStringAsync(gid); hap(); toast(t.gidCopiado); };
-  const compartirGid = () => { hap(); Share.share({ message: t.gidInvito + '\n' + gid }).catch(() => {}); };
+  // Sin GID no se intenta nada: se dice por qué, en vez de copiar el vacío o
+  // mandar un mensaje con el hueco.
+  const copiarGid = () => {
+    if (!gid) { toast(t.gidNoListo || TXT.es.gidNoListo, 'info'); return; }
+    return copiarAlPapel(gid, t.gidCopiado, false);
+  };
+  const compartirGid = () => {
+    if (!gid) { toast(t.gidNoListo || TXT.es.gidNoListo, 'info'); return; }
+    return compartirTexto((t.gidInvito || TXT.es.gidInvito) + '\n' + String(gid));
+  };
 
   const cambiado = !!nombre.trim() && nombre.trim() !== original;
   return (
@@ -230,21 +276,41 @@ export default function AjustesAuro({ nav }) {
           {cambiado && <Button3D title={t.guardar} onPress={guardarNombre} style={{ marginTop: 12 }} />}
         </View>
 
-        {/* mi GID: grande, copiable al toque —el mismo gesto que en el
-            pasaporte— y con su botón de compartir. Solo se pinta si Genesis
-            ya lo emitió: un hueco vacío aquí no le dice nada a nadie. */}
-        {!!gid && (
-          <View style={st.tarjeta}>
-            <Text style={st.seccion}>{t.gidTit}</Text>
-            <Pressable onPress={copiarGid} hitSlop={8}>
-              <Text style={st.gid}>{gid}</Text>
-            </Pressable>
-            <Text style={[st.tarTxt, { textAlign: 'center' }]}>{t.gidTxt}</Text>
-            <Pressable style={st.btnGid} onPress={compartirGid}>
-              <Text style={st.btnLineaTxt}>{t.gidCompartir}</Text>
-            </Pressable>
-          </View>
-        )}
+        {/* mi GID. Antes el único BOTÓN de esta tarjeta decía «COMPARTIR» y
+            copiar era tocar el número pelado: el dedo iba a lo que parecía un
+            botón, se abría el diálogo de compartir y nadie copiaba nada. Ahora
+            el orden es el de la vida real: COPIAR manda —botón grande, con
+            ícono— y compartir baja a segundo plano, separado por el texto y
+            por una línea, para que no se confundan al tacto.
+            La tarjeta se pinta SIEMPRE: si Genesis aún no emitió el GID, el
+            hueco vacío de antes no explicaba nada. */}
+        <View style={st.tarjeta}>
+          <Text style={st.seccion}>{t.gidTit}</Text>
+          {gid ? (
+            <>
+              {/* El camino a mano: el GID también en un campo seleccionable
+                  —no editable— para marcarlo y copiarlo con el gesto del
+                  teléfono aunque el botón de arriba fallara. Es la salida que
+                  pidió José: copiar y pegar donde sea. */}
+              <TextInput
+                value={String(gid)}
+                editable={false}
+                selectTextOnFocus
+                showSoftInputOnFocus={false}
+                style={st.gidCampo}
+              />
+              <Text style={st.gidMano}>{t.gidMano}</Text>
+              <Button3D title={t.gidCopiar} icon="copy" onPress={copiarGid} style={{ marginTop: 14 }} />
+              <Text style={[st.tarTxt, { textAlign: 'center', marginTop: 16, marginBottom: 0 }]}>{t.gidTxt}</Text>
+              <View style={st.separa} />
+              <Pressable style={st.btnGid} onPress={compartirGid} hitSlop={6}>
+                <Text style={st.btnLineaTxt}>{t.gidCompartir}</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Text style={[st.tarTxt, { marginBottom: 0 }]}>{t.gidNoListo}</Text>
+          )}
+        </View>
 
         {/* mi código, para que me agreguen */}
         <View style={st.tarjeta}>
@@ -311,8 +377,18 @@ const st = StyleSheet.create({
   tarjeta: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 18, padding: 18, marginBottom: 16 },
   seccion: { color: C.txt3, fontSize: 10, fontWeight: '700', letterSpacing: 2.6, marginBottom: 12 },
   // el GID en grande y tabular: es una seña para dictar o copiar, no un
-  // párrafo — cada glifo tiene que distinguirse al primer vistazo
-  gid: { color: C.goldHi, fontSize: 21, fontWeight: '800', letterSpacing: 1.4, textAlign: 'center', marginBottom: 10, fontVariant: ['tabular-nums'] },
+  // párrafo — cada glifo tiene que distinguirse al primer vistazo. Va en un
+  // campo con el trazo de los demás de la casa (C.input / C.inputBr) para que
+  // se lea como algo que se puede marcar con el dedo, no como un título.
+  gidCampo: {
+    backgroundColor: C.input, borderWidth: 1, borderColor: C.inputBr, borderRadius: 14,
+    paddingHorizontal: 12, paddingVertical: 12, textAlign: 'center',
+    color: C.goldHi, fontSize: 19, fontWeight: '800', letterSpacing: 1.2, fontVariant: ['tabular-nums'],
+  },
+  gidMano: { color: C.txt3, fontSize: 11.5, lineHeight: 17, textAlign: 'center', marginTop: 8 },
+  // La línea que separa lo principal (copiar) de lo secundario (compartir):
+  // sin ella los dos botones se leían como una misma fila de opciones.
+  separa: { height: 1, backgroundColor: C.line2, marginTop: 18, marginBottom: 16 },
   // el botón de compartir el GID: mismo trazo que COPIAR/COMPARTIR del QR,
   // pero sin flex:1 — aquí va solo, a lo ancho de la tarjeta
   btnGid: { borderWidth: 1, borderColor: C.line, borderRadius: 12, paddingVertical: 11, alignItems: 'center', justifyContent: 'center' },

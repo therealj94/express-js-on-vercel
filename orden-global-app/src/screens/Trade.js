@@ -779,7 +779,8 @@ function SentReceipt({ data, contacts, onClose, onChat }) {
   const guardado = contacts.find((c) => c.address.toLowerCase() === data.to.toLowerCase());
   const destino = guardado ? guardado.name : `${data.to.slice(0, 10)}…${data.to.slice(-8)}`;
 
-  const copiar = async (v) => { hap(); try { await Clipboard.setStringAsync(v); toast(t('recv.copied')); } catch (e) {} };
+  // Si copiar falla, se dice: un catch mudo deja creyendo que se copió.
+  const copiar = async (v) => { hap(); try { await Clipboard.setStringAsync(String(v || '')); toast(t('recv.copied')); } catch { toast(t('recv.copyErr'), 'error'); } };
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -1116,11 +1117,13 @@ export function Buy({ nav }) {
 
   async function copyAddr() {
     hap();
-    try { await Clipboard.setStringAsync(chain.addr); toast(t('buy.addrCopied')); } catch { toast(t('recv.copyErr'), 'error'); }
+    try { await Clipboard.setStringAsync(String(chain.addr || '')); toast(t('buy.addrCopied')); } catch { toast(t('recv.copyErr'), 'error'); }
   }
   async function copyAmt() {
     hap();
-    try { await Clipboard.setStringAsync(order.exact); toast(t('buy.amtCopied')); } catch {}
+    // El importe exacto es lo que hace cuadrar la orden: si no se copió, hay
+    // que decirlo — el catch mudo mandaba a pegar algo que no estaba.
+    try { await Clipboard.setStringAsync(String(order.exact || '')); toast(t('buy.amtCopied')); } catch { toast(t('recv.copyErr'), 'error'); }
   }
 
   const remaining = Math.max(0, Math.floor((expiresAt - now) / 1000));

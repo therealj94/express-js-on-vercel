@@ -318,7 +318,7 @@ export function Settings({ nav }) {
               público, sin sesión. */}
           <ListRow
             icon="shield-checkmark"
-            title={t('set.privacy')}
+            title={t('set.privacyDoc')}
             onPress={() => { hap(); abrir('https://legal.vetawallet.com/privacidad'); }}
           />
           <ListRow
@@ -441,6 +441,19 @@ export function Passport({ nav }) {
   const verified = p?.status === 'verified' || (!!acc.genesisUid && !p);
   const statusLbl = p?.status === 'review' ? t('pass.review') : verified ? t('pass.verified') : t('pass.pending');
 
+  // Copiar el GID no puede fallar en silencio ni tumbar la app:
+  //   · si todavía no hay GID no se intenta copiar, se dice por qué;
+  //   · `Clipboard.setStringAsync` es async y su fallo llega como promesa
+  //     rechazada — el try la recoge y AVISA, en vez de tragárselo y dejar a
+  //     la persona sin saber si copió (era un `catch (e) {}` mudo).
+  const gid = String(p?.genesisUid || acc.genesisUid || '');
+  const copiarGid = async () => {
+    if (!gid) { toast(t('pass.gidNotReady'), 'info'); return; }
+    hap();
+    try { await Clipboard.setStringAsync(gid); toast(t('pass.gidCopied')); }
+    catch { toast(t('pass.gidCopyErr'), 'error'); }
+  };
+
   if (!acc.genesisUid && !p) {
     return (
       <View style={{ flex: 1, paddingTop: 6 }}>
@@ -495,15 +508,31 @@ export function Passport({ nav }) {
               <Text style={styles.passLabel}>{t('pass.holder')}</Text>
               <Text style={styles.passName} numberOfLines={2}>{p?.fullName || acc.name}</Text>
               <Text style={styles.passLabel2}>{t('pass.uid')}</Text>
-              {/* El GID viaja por el chat: tocarlo lo copia — el mismo gesto
-                  que en los ajustes de AURO CHAT, para que la seña se aprenda
-                  una sola vez en toda la app. */}
-              <Pressable onPress={async () => {
-                hap();
-                try { await Clipboard.setStringAsync(String(p?.genesisUid || acc.genesisUid || '')); toast(t('pass.gidCopied')); } catch (e) {}
-              }} hitSlop={8}>
-                <Text style={styles.passUid}>{p?.genesisUid || acc.genesisUid}</Text>
-              </Pressable>
+              {/* El GID viaja por el chat, así que copiarlo tiene que ser
+                  imposible de fallar: número en campo SELECCIONABLE (se marca
+                  y se copia con el gesto del teléfono) más un botón visible
+                  encima del gesto invisible de antes —tocar el número a secas
+                  no se veía—. El mismo trato que en los ajustes de AURO CHAT,
+                  para que la seña se aprenda una sola vez en toda la app. */}
+              {gid ? (
+                <>
+                  <TextInput
+                    value={gid}
+                    editable={false}
+                    selectTextOnFocus
+                    showSoftInputOnFocus={false}
+                    style={styles.passUid}
+                  />
+                  <Pressable onPress={copiarGid} hitSlop={8} style={styles.passCopia}
+                    accessibilityRole="button" accessibilityLabel={t('pass.gidCopy')}>
+                    <Icon name="copy" size={13} color={C.gold} />
+                    <Text style={styles.passCopiaTxt}>{t('pass.gidCopy')}</Text>
+                  </Pressable>
+                  <Text style={styles.passMano}>{t('pass.gidByHand')}</Text>
+                </>
+              ) : (
+                <Text style={styles.passMano}>{t('pass.gidNotReady')}</Text>
+              )}
             </View>
           </View>
 
@@ -524,7 +553,9 @@ export function Passport({ nav }) {
             <Text style={styles.pairT}>{t('pass.linked')}</Text>
             <Text style={styles.pairV} numberOfLines={1}>{p?.walletAddress || acc.addr || '—'}</Text>
           </View>
-          <Pressable onPress={async () => { hap(); try { await Clipboard.setStringAsync(p?.walletAddress || acc.addr || ''); toast(t('recv.copied')); } catch (e) {} }}>
+          {/* El catch mudo dejaba a la persona sin saber si copió: ahora si
+              falla lo dice. */}
+          <Pressable onPress={async () => { hap(); try { await Clipboard.setStringAsync(String(p?.walletAddress || acc.addr || '')); toast(t('recv.copied')); } catch { toast(t('recv.copyErr'), 'error'); } }} hitSlop={10}>
             <Icon name="copy" size={18} color={C.gold} />
           </Pressable>
         </View>
@@ -844,7 +875,7 @@ export function PrivateKey({ nav }) {
         <Text style={styles.label}>{t('pk.pub')}</Text>
         <View style={styles.pkBox}>
           <Text style={styles.pkTxt} numberOfLines={1}>{acc.addr || '—'}</Text>
-          <Pressable onPress={async () => { hap(); try { await Clipboard.setStringAsync(acc.addr || ''); toast(t('recv.copied')); } catch (e) {} }}>
+          <Pressable onPress={async () => { hap(); try { await Clipboard.setStringAsync(String(acc.addr || '')); toast(t('recv.copied')); } catch { toast(t('recv.copyErr'), 'error'); } }} hitSlop={10}>
             <Icon name="copy" size={20} color={C.gold} />
           </Pressable>
         </View>
@@ -951,7 +982,15 @@ const styles = StyleSheet.create({
   passLabel: { color: C.txt3, fontSize: 9.5, letterSpacing: 1.4 },
   passLabel2: { color: C.txt3, fontSize: 9.5, letterSpacing: 1.4, marginTop: 8 },
   passName: { color: C.txt, fontWeight: '700', fontSize: 16.5, marginTop: 2 },
-  passUid: { color: C.gold, fontWeight: '800', fontSize: 15, letterSpacing: 1, marginTop: 2 },
+  // El GID va en un TextInput no editable para poder marcarlo con el dedo,
+  // pero tiene que SEGUIR pareciendo el número de la credencial: sin fondo, sin
+  // borde y con los paddings de Android a cero, que si no baja la línea sola.
+  passUid: { color: C.gold, fontWeight: '800', fontSize: 15, letterSpacing: 1, marginTop: 2, padding: 0, margin: 0 },
+  // Botón de copiar: pequeño pero VISIBLE — antes copiar era tocar el número
+  // pelado, un gesto que nadie adivina.
+  passCopia: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 9, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 11, borderWidth: 1, borderColor: C.line, backgroundColor: 'rgba(201,169,97,0.12)' },
+  passCopiaTxt: { color: C.gold, fontSize: 9.5, fontWeight: '800', letterSpacing: 1.2 },
+  passMano: { color: C.txt3, fontSize: 10.5, lineHeight: 15, marginTop: 7 },
   passFoot: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
   passMeta: { color: C.txt, fontSize: 11.5, fontWeight: '600', marginTop: 2 },
   passNote: { color: C.txt3, fontSize: 11.5, lineHeight: 16, textAlign: 'center', marginVertical: 14 },

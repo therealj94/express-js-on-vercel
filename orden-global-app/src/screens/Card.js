@@ -440,7 +440,7 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
       copiadoRef.current = String(valor);
       hap();
       toast(aviso, 'success');
-    } catch (e) {}
+    } catch { toast(t('recv.copyErr'), 'error'); }
   };
 
   const titular = (card.cardHolderName || account?.name || '').toUpperCase();

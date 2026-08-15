@@ -106,7 +106,7 @@ export default function TokenDetail({ nav, params }) {
               misma cantidad de filas. Si es un ERC-20, la dirección se
               copia al tocar; ORIGEN es nativa y aparece como "Token nativo". */}
           <Pressable
-            onPress={t.contract ? async () => { hap(); try { await Clipboard.setStringAsync(t.contract); toast(tr('tok.copied')); } catch (e) {} } : undefined}
+            onPress={t.contract ? async () => { hap(); try { await Clipboard.setStringAsync(String(t.contract)); toast(tr('tok.copied')); } catch { toast(tr('recv.copyErr'), 'error'); } } : undefined}
             style={styles.infoRow}
           >
             <Text style={styles.infoK}>{tr('tok.contract')}</Text>
