@@ -14,9 +14,11 @@
 //   · los NODOS-APP van ENCIMA en React Native de verdad, para que
 //     respondan al dedo al instante y con háptica, cosa que un toque
 //     rebotado desde el WebView por postMessage nunca consigue.
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback, useEffect, useMemo, useReducer, useRef, useState,
+} from 'react';
 import {
-  View, Text, Image, Pressable, Animated, Easing, StyleSheet,
+  View, Text, Image, Pressable, Animated, Easing, StyleSheet, PanResponder,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C, G } from '../theme';
@@ -36,11 +38,40 @@ try {
   WebViewNativo = null;
 }
 
+// AsyncStorage TAMBIÉN es un módulo nativo. En la práctica siempre está —lo
+// importan accounts.js y api.js, que se cargan al arrancar la app—, pero la
+// misma red va debajo: si algún día no respondiera, la colocación deja de
+// recordarse entre sesiones y ya está. Los nodos se siguen arrastrando. Un
+// adorno de memoria no vale una pantalla en rojo.
+let ALMACEN = null;
+try {
+  ALMACEN = require('@react-native-async-storage/async-storage').default;
+} catch (e) {
+  ALMACEN = null;
+}
+
+// La versión va en la llave a propósito: si mañana cambian los mundos o el
+// formato, la colocación vieja se ignora sola en vez de colocar nodos donde
+// ya no hay nada.
+const LLAVE_COLOCACION = 'og.nucleo.colocacion.v1';
+
+// ── LOS LOGOS DE MARCA ──────────────────────────────────────────────────
+// `require` con ruta literal y en el cuerpo del módulo porque Metro resuelve
+// las imágenes al empaquetar: una ruta calculada no se empaqueta y en el
+// teléfono llega como `undefined`.
+const LOGOS = {
+  wallet: require('../../assets/veta-wallet.png'),
+  pay: require('../../assets/mytokenpay.png'),
+  gid: require('../../assets/genesis-id.png'),
+};
+
 const TXT = {
   es: {
     manana: 'Buenos días', tarde: 'Buenas tardes', noche: 'Buenas noches',
     invitado: 'bienvenido',
-    pista: 'Toca un mundo para entrar',
+    pista: 'Toca un mundo para entrar · arrástralo para moverlo',
+    reponer: 'volver a poner en su sitio',
+    irReponer: 'Devolver los mundos a su posición original',
     chat: 'Chat', wallet: 'Veta Wallet', pay: 'MyTokenPay',
     gid: 'Genesis ID', ajustes: 'Ajustes',
     irChat: 'Abrir el chat de Orden Global',
@@ -52,7 +83,9 @@ const TXT = {
   en: {
     manana: 'Good morning', tarde: 'Good afternoon', noche: 'Good evening',
     invitado: 'welcome',
-    pista: 'Tap a world to enter',
+    pista: 'Tap a world to enter · drag it to move it',
+    reponer: 'put them back',
+    irReponer: 'Return the worlds to their original places',
     chat: 'Chat', wallet: 'Veta Wallet', pay: 'MyTokenPay',
     gid: 'Genesis ID', ajustes: 'Settings',
     irChat: 'Open the Orden Global chat',
@@ -72,35 +105,77 @@ const TXT = {
 // es literalmente el centro de la red.
 // NO hay "cobrar con QR": eso vive DENTRO de MyTokenPay, que es de donde
 // nunca debió salir.
+//
+// LA LENTE. Dentro de cada esfera hay un disco OSCURO recortado en círculo, y
+// ahí vive la marca. Nace de un problema concreto: los logos reales de
+// MyTokenPay y Genesis ID vienen en PNG cuadrado y SIN transparencia, sobre
+// su propio fondo casi negro. Pegados tal cual sobre una esfera clara se ven
+// como un sello cuadrado encima de una canica — exactamente lo que José no
+// quiere. Con la lente, ese fondo del PNG ES el disco: se recorta en círculo,
+// no hay borde que delate el cuadrado, y el logo queda flotando en su propia
+// noche. `lente` copia el fondo que trae cada imagen para que el recorte no
+// deje ni una uña de color distinto, y `zoom` la agranda hasta que la marca
+// llena el disco en vez de nadar en él.
+// Los `zoom` NO son a ojo: se midió en cada PNG a qué distancia del centro
+// llega el píxel más lejano de la marca y se dejó un margen por debajo del
+// tope. Pasarse recorta una esquina del logo contra el círculo, que es
+// justo el defecto que esto viene a arreglar.
+// Chat y Ajustes no tienen logo, pero llevan la MISMA lente con su icono
+// dentro: el lenguaje visual es uno solo, no dos.
 const MUNDOS = [
   {
     // El oro de la billetera es el degradado de marca tal cual (G.gold), no
     // una copia parecida: es la esfera que la Junta va a mirar primero.
+    // La V de Veta viene con transparencia, así que va "contain" y sin
+    // recortar: se apoya en la lente en vez de rellenarla.
     id: 'wallet', icono: 'wallet', x: 0.50, y: 0.47, tam: 1.00,
     grad: G.gold, halo: C.goldLt, tinta: C.darkText,
+    lente: '#05201B', zoom: 0.84,   // tope medido: 0.89
     ritmo: 2600, flota: 4.5, retraso: 0,
   },
   {
     id: 'chat', icono: 'chatbubbles', x: 0.19, y: 0.17, tam: 0.72,
     grad: ['#FBE0D4', '#E0937A', '#8A4A38'], halo: '#E0937A', tinta: '#3B1A11',
+    lente: '#20100A', zoom: 0,
     ritmo: 3100, flota: 5.5, retraso: 420,
   },
   {
+    // El verde menta de antes peleaba con la marca de verdad: MyTokenPay es
+    // cian, azul y violeta. La esfera pasa a ser del color del logo que
+    // sostiene, porque una esfera verde con un logo cian dentro se lee como
+    // una pegatina de otra app. `lente` es el negro azulado exacto del PNG.
     id: 'pay', icono: 'storefront', x: 0.81, y: 0.21, tam: 0.76,
-    grad: ['#D2F6E6', '#6FCFAE', '#1B6553'], halo: '#6FCFAE', tinta: '#06251D',
+    grad: ['#D8F7FF', '#5FC6EA', '#453398'], halo: '#5FC6EA', tinta: '#07203A',
+    lente: '#0A0812', zoom: 1.15,   // tope medido: 1.23
     ritmo: 2900, flota: 5, retraso: 900,
   },
   {
+    // El emblema de Genesis ID es ORO sobre verde profundo. La esfera repite
+    // ese verde para que el sello dorado sea lo único que brilla dentro; el
+    // azul pálido de antes le robaba el oro.
     id: 'gid', icono: 'finger-print', x: 0.18, y: 0.79, tam: 0.72,
-    grad: ['#DEEBFC', '#8FB6E6', '#2C5280'], halo: '#8FB6E6', tinta: '#0B2340',
+    grad: ['#D6EBE2', '#63A493', '#123B39'], halo: '#7FD8C4', tinta: '#062A26',
+    lente: '#062123', zoom: 1.42,   // tope medido: 1.56
     ritmo: 3400, flota: 5.5, retraso: 1500,
   },
   {
+    // Ajustes se va al gris pizarra: no es una marca, es la herramienta. Y de
+    // paso deja de parecerse al verde nuevo de Genesis ID, que antes tenía
+    // casi el mismo tono.
     id: 'ajustes', icono: 'settings-sharp', x: 0.82, y: 0.81, tam: 0.68,
-    grad: ['#D8E9E7', '#7FA9A6', '#284A49'], halo: '#7FA9A6', tinta: '#082322',
+    grad: ['#E4E8EE', '#93A0AE', '#2E3844'], halo: '#A9B6C4', tinta: '#161C24',
+    lente: '#0C1116', zoom: 0,
     ritmo: 3800, flota: 4.5, retraso: 2100,
   },
 ];
+
+// Se reutiliza el MISMO objeto para "este nodo no se ha movido": así la
+// comparación de props de los hilos memoizados no ve un objeto nuevo por
+// render y no repinta lo que no ha cambiado.
+const SIN_MOVER = { x: 0, y: 0 };
+// Identidad estable para "no hay nada guardado": si fuera un `{}` literal en
+// el cuerpo del componente, cada render lo daría por cambiado.
+const SIN_COLOCACION = {};
 
 // Los colores del tema vienen en hexadecimal y los hilos necesitan alfa.
 // El tema MEZCLA formatos (C.gold es hex, C.line ya es rgba): si a esto le
@@ -503,6 +578,13 @@ const HTML_NEURONAS = `<!doctype html>
 </script>
 </body></html>`;
 
+// El `source` es una constante del módulo por la misma razón que el HTML: al
+// arrastrar un nodo el tablero se repinta muchas veces por segundo, y si esta
+// pantalla le pasara al WebView un objeto NUEVO en cada repintado, el WebView
+// lo tomaría por otra página y recargaría la red de neuronas sin parar. Con
+// una constante, el fondo ni se entera de que hay un dedo arrastrando.
+const FUENTE_NEURONAS = { html: HTML_NEURONAS, baseUrl: '' };
+
 // Plan B del fondo, en React Native puro. Es la MISMA esfera de Fibonacci
 // con la misma inclinación y la misma perspectiva, pero congelada: si el
 // plan B fuera un fondo distinto, el salto entre un teléfono con WebView y
@@ -601,7 +683,11 @@ function FondoQuieto() {
 // Frontera de error alrededor del WebView: si el componente nativo no está
 // en el binario, React lanza al RENDERIZARLO (no al importarlo), y sin esto
 // se llevaría por delante toda la pantalla. Aquí sólo se cae el fondo.
-class Fondo extends React.Component {
+// PURE y no Component: el tablero se repinta en cada cuadro mientras un dedo
+// arrastra un nodo, y sin esta barrera el WebView entraría en la comparación
+// de React sesenta veces por segundo para nada. No recibe props, así que la
+// comparación superficial siempre da "igual" y el fondo se queda quieto.
+class Fondo extends React.PureComponent {
   constructor(props) {
     super(props);
     this.state = { roto: !WebViewNativo };
@@ -625,7 +711,7 @@ class Fondo extends React.Component {
       // se respeta en Android.
       <View style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }]} pointerEvents="none">
         <WV
-          source={{ html: HTML_NEURONAS, baseUrl: '' }}
+          source={FUENTE_NEURONAS}
           originWhitelist={['*']}
           pointerEvents="none"
           style={st.web}
@@ -656,18 +742,66 @@ class Fondo extends React.Component {
 // los mundos están enganchados a él, no flotando por encima.
 // Se dibuja con Views rotadas (cuatro, y ninguna recibe toques) en vez de
 // traer react-native-svg sólo para esto.
-function Vinculos({ campo, base, brillo }) {
+//
+// Un hilo por separado y MEMOIZADO. Mientras un dedo arrastra un nodo, este
+// componente se repinta a la velocidad de la pantalla; si los cuatro hilos se
+// recalcularan cada vez, se estarían rehaciendo tres degradados que no se han
+// movido ni un píxel. Todas las props son números y cadenas salvo `brillo`,
+// que es un Animated.Value de identidad fija, así que la comparación
+// superficial de React.memo basta: sólo se rehace el hilo que se estira.
+const Hilo = React.memo(function Hilo({ ax, ay, bx, by, tono, brillo, tenso }) {
+  const largo = Math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay));
+  // Nodo casi encima del núcleo: no queda hilo que dibujar, y un segmento de
+  // tres píxeles girando se ve como un parpadeo sucio.
+  if (largo < 10) return null;
+  const ang = Math.atan2(by - ay, bx - ax);
+  const gr = Math.round(tenso ? 3 : 2);
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        // Se coloca por el CENTRO del segmento y se gira sobre su
+        // propio centro: así no hace falta transformOrigin, que no
+        // está en todas las versiones de React Native.
+        left: (ax + bx) / 2 - largo / 2,
+        top: (ay + by) / 2 - gr / 2,
+        width: largo,
+        height: gr,
+        opacity: brillo,
+        transform: [{ rotate: `${ang}rad` }],
+      }}>
+      <LinearGradient
+        // El hilo del nodo que se está arrastrando se enciende: es la señal de
+        // que lo que se mueve sigue colgando del núcleo, que la sinapsis se
+        // ESTIRA en vez de romperse.
+        colors={tenso
+          ? [conAlfa(C.gold, 0.10), conAlfa(C.goldLt, 0.62), conAlfa(tono, 0.92)]
+          : [conAlfa(C.gold, 0), conAlfa(C.gold, 0.26), conAlfa(tono, 0.5)]}
+        locations={[0, 0.45, 1]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={st.hilo}
+      />
+    </Animated.View>
+  );
+});
+
+function Vinculos({ campo, base, brillo, desplaz, activo }) {
   const nucleo = MUNDOS.find((m) => m.id === 'wallet') || MUNDOS[0];
-  const cx = campo.w * nucleo.x;
-  const cy = campo.h * nucleo.y;
+  // El núcleo también se puede arrastrar: si se mueve la billetera, los cuatro
+  // hilos la siguen desde su nuevo sitio.
+  const d0 = desplaz[nucleo.id] || SIN_MOVER;
+  const cx = campo.w * nucleo.x + d0.x;
+  const cy = campo.h * nucleo.y + d0.y;
   const rc = (base * nucleo.tam) / 2;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {MUNDOS.map((m) => {
         if (m.id === nucleo.id) return null;
-        const x2 = campo.w * m.x;
-        const y2 = campo.h * m.y;
+        const d = desplaz[m.id] || SIN_MOVER;
+        const x2 = campo.w * m.x + d.x;
+        const y2 = campo.h * m.y + d.y;
         const r2 = (base * m.tam) / 2;
         const dx = x2 - cx;
         const dy = y2 - cy;
@@ -676,46 +810,58 @@ function Vinculos({ campo, base, brillo }) {
         const uy = dy / L;
         // Se recorta en los dos extremos: un hilo que entra en la esfera la
         // apuñala, y lo que tiene que parecer es que se acopla a ella.
-        const ax = cx + ux * rc * 1.20;
-        const ay = cy + uy * rc * 1.20;
-        const bx = x2 - ux * r2 * 1.34;
-        const by = y2 - uy * r2 * 1.34;
-        const largo = Math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay));
-        if (largo < 10) return null;
-        const ang = Math.atan2(by - ay, bx - ax);
         return (
-          <Animated.View
+          <Hilo
             key={m.id}
-            style={{
-              position: 'absolute',
-              // Se coloca por el CENTRO del segmento y se gira sobre su
-              // propio centro: así no hace falta transformOrigin, que no
-              // está en todas las versiones de React Native.
-              left: (ax + bx) / 2 - largo / 2,
-              top: (ay + by) / 2 - 1,
-              width: largo,
-              height: 2,
-              opacity: brillo,
-              transform: [{ rotate: `${ang}rad` }],
-            }}>
-            <LinearGradient
-              colors={[conAlfa(C.gold, 0), conAlfa(C.gold, 0.26), conAlfa(m.halo, 0.5)]}
-              locations={[0, 0.45, 1]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={st.hilo}
-            />
-          </Animated.View>
+            ax={cx + ux * rc * 1.20}
+            ay={cy + uy * rc * 1.20}
+            bx={x2 - ux * r2 * 1.34}
+            by={y2 - uy * r2 * 1.34}
+            tono={m.halo}
+            brillo={brillo}
+            tenso={activo === m.id || activo === nucleo.id}
+          />
         );
       })}
     </View>
   );
 }
 
+// Cuánto se le permite al dedo temblar antes de que esto deje de ser un toque
+// y pase a ser un arrastre. Seis píxeles es lo que ya usa la burbuja flotante
+// (FlotanteOG): el mismo número en toda la app para que el dedo aprenda una
+// sola regla.
+const UMBRAL_ARRASTRE = 6;
+
+const acotar = (v, lo, hi) => (v < lo ? lo : (v > hi ? hi : v));
+
+// Fracción del tablero → desplazamiento en píxeles desde el sitio de fábrica,
+// ACOTADO para que la esfera y su etiqueta quepan enteras.
+// Se acota aquí y no sólo al soltar porque el tablero cambia de forma: un
+// mundo guardado junto al borde de arriba en una pantalla alta se asomaba
+// fuera al girar el teléfono, donde el tablero es mucho más bajo y la misma
+// esfera ocupa proporcionalmente el doble. La fracción se respeta mientras
+// quepa; cuando no cabe, gana el borde.
+function desdeFraccion(fx, fy, campo, s, m) {
+  const r = s / 2;
+  const cx = acotar(campo.w * fx, r + 6, Math.max(r + 6, campo.w - r - 6));
+  const cy = acotar(campo.h * fy, r + 6, Math.max(r + 6, campo.h - r - 28));
+  return { x: cx - campo.w * m.x, y: cy - campo.h * m.y };
+}
+
 // ── UN MUNDO ────────────────────────────────────────────────────────────
-function Nodo({ m, etiqueta, a11y, campo, base, onIr }) {
+// MEMOIZADO: arrastrar un nodo repinta la pantalla en cada cuadro para que el
+// hilo se estire, y sin esta barrera los CINCO mundos —con sus degradados y
+// sus logos— se reconciliarían sesenta veces por segundo por mover uno.
+const Nodo = React.memo(function Nodo({
+  m, etiqueta, a11y, campo, base, ix, iy, reponer, onIr, onMover, onTomar, onSoltar,
+}) {
   const resp = useRef(new Animated.Value(0)).current;   // respiración
   const cerca = useRef(new Animated.Value(0)).current;  // acercamiento al tocar
+  const sujeto = useRef(new Animated.Value(0)).current; // en el aire, en la mano
+  // El desplazamiento del arrastre, en PÍXELES desde el sitio de nacimiento.
+  const desp = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const [alzado, setAlzado] = useState(false);
   const vivo = useRef(true);
 
   useEffect(() => {
@@ -741,66 +887,372 @@ function Nodo({ m, etiqueta, a11y, campo, base, onIr }) {
   const izq = Math.round(campo.w * m.x - s / 2);
   const arr = Math.round(campo.h * m.y - s / 2);
 
+  // ══ COLOCAR Y REPONER ══════════════════════════════════════════════════
+  // La VERDAD de dónde vive este mundo es una FRACCIÓN del tablero, no unos
+  // píxeles: los píxeles se van de sitio al girar el teléfono, y lo que en un
+  // móvil estrecho es "arriba a la derecha" en una tableta serían unos nodos
+  // apelotonados en una esquina. Los píxeles se derivan de la fracción cada
+  // vez que el tablero cambia de tamaño.
+  const fraccion = useRef({ fx: ix, fy: iy });
+
+  // 1) El tablero cambió de tamaño (arranque, giro, teclado). Se recolocan los
+  //    píxeles a partir de la fracción VIVA — la de ahora, no la de fábrica.
+  //    Sin este efecto, girar el teléfono después de mover un mundo lo
+  //    devolvía de un salto a su sitio original y el trabajo se perdía.
+  useEffect(() => {
+    if (!campo.w || !campo.h) return;
+    const f = fraccion.current;
+    desp.setValue(desdeFraccion(f.fx, f.fy, campo, s, m));
+  }, [campo, s, m, desp]);
+
+  // 2) Una orden que viene de FUERA: la colocación que se leyó del teléfono al
+  //    abrir, o el "volver a poner en su sitio". `campo` no está en las
+  //    dependencias a propósito — de los cambios de tamaño se ocupa el efecto
+  //    de arriba, y este sólo tiene que reaccionar a la orden. Cuando corre, lo
+  //    hace con el `campo` del render que la trajo, que es el bueno.
+  const reponerAntes = useRef(reponer);
+  useEffect(() => {
+    const esReposicion = reponer !== reponerAntes.current;
+    reponerAntes.current = reponer;
+    fraccion.current = { fx: ix, fy: iy };
+    if (!campo.w || !campo.h) return;
+    const meta = desdeFraccion(ix, iy, campo, s, m);
+    if (esReposicion) {
+      // Volver a su sitio se ANIMA: si los mundos aparecieran de golpe en su
+      // posición original nadie entendería que han vuelto — parecería que la
+      // pantalla se ha recargado.
+      Animated.spring(desp, {
+        toValue: meta, friction: 7, tension: 55, useNativeDriver: false,
+      }).start();
+    } else {
+      // Al abrir, en cambio, sin animación: nadie ha pedido un espectáculo,
+      // sólo su tablero como lo dejó.
+      desp.setValue(meta);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ix, iy, reponer]);
+
+  // El tablero necesita saber dónde está este nodo AHORA para estirar su
+  // hilo. Se entera por el oyente del propio valor animado, así que sirve
+  // igual para el dedo que arrastra y para el muelle que devuelve a su sitio:
+  // un solo mecanismo para los dos.
+  const donde = useRef({ x: 0, y: 0 });
+  useEffect(() => {
+    const id = desp.addListener((v) => {
+      donde.current = v;
+      onMover(m.id, v.x, v.y);
+    });
+    return () => desp.removeListener(id);
+  }, [desp, m.id, onMover]);
+
   const escResp = resp.interpolate({ inputRange: [0, 1], outputRange: [1, 1.045] });
   const escToque = cerca.interpolate({ inputRange: [0, 1], outputRange: [1, 1.17] });
-  const escala = Animated.multiply(escResp, escToque);
+  // En la mano crece: es la única forma de que el dedo sepa que ha AGARRADO
+  // algo y no que lo está rozando.
+  const escMano = sujeto.interpolate({ inputRange: [0, 1], outputRange: [1, 1.13] });
+  const escala = Animated.multiply(Animated.multiply(escResp, escToque), escMano);
   const subeBaja = resp.interpolate({ inputRange: [0, 1], outputRange: [m.flota, -m.flota] });
-  const haloOp = resp.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0.95] });
+  const haloBase = resp.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0.95] });
+  // Y el halo se abre: el nodo levantado proyecta más luz, como si se hubiera
+  // acercado a la cámara.
+  const haloMano = sujeto.interpolate({ inputRange: [0, 1], outputRange: [1, 1.9] });
+  const haloOp = Animated.multiply(haloBase, haloMano);
 
-  const tocar = () => {
+  // Los datos que necesita el PanResponder cambian en cada render (el tamaño
+  // del campo, el destino al que navegar), pero el PanResponder se crea UNA
+  // vez. El puente entre los dos es este ref, que se refresca al pintar.
+  const hoy = useRef(null);
+  const tocar = useCallback(() => {
     hap();
     // El acercamiento: la esfera se te viene encima y se navega EN EL PICO,
     // no al final — así el viaje se siente sin que la pantalla se retrase.
     Animated.timing(cerca, { toValue: 1, duration: 145, easing: Easing.out(Easing.quad), useNativeDriver: true })
       .start(({ finished }) => {
-        if (finished) onIr(m.id);
+        if (finished) hoy.current.onIr(m.id);
         Animated.timing(cerca, { toValue: 0, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
       });
-  };
+  }, [cerca, m.id]);
+  hoy.current = { campo, s, onIr, onTomar, onSoltar, tocar };
+
+  const arrastrando = useRef(false);
+  const pan = useRef(PanResponder.create({
+    // Se coge el dedo desde que toca: si sólo se cogiera al moverse, el toque
+    // corto no llegaría nunca aquí y habría que repartirlo entre dos
+    // componentes.
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+
+    // ═══ ESTA LÍNEA ES LA QUE HACE QUE EL ARRASTRE FUNCIONE ═══════════════
+    // App.js tiene su propio PanResponder envolviendo la pantalla para cambiar
+    // de pestaña con un barrido horizontal (|dx| > 20). Sin negarse aquí,
+    // React Native le CEDE el dedo a ese padre en cuanto el nodo se arrastra
+    // veinte píxeles de lado: el mundo se quedaba a medio camino y la app
+    // saltaba a la pestaña siguiente. Mientras este nodo esté en la mano, el
+    // dedo es suyo y de nadie más.
+    onPanResponderTerminationRequest: () => false,
+    onShouldBlockNativeResponder: () => true,
+
+    onPanResponderGrant: () => {
+      arrastrando.current = false;
+      // El desplazamiento acumulado pasa a ser el ORIGEN, y el valor vuelve a
+      // cero: así `g.dx` del gesto se puede escribir tal cual, sin sumar.
+      desp.setOffset({ x: donde.current.x, y: donde.current.y });
+      desp.setValue({ x: 0, y: 0 });
+    },
+
+    onPanResponderMove: (_, g) => {
+      desp.setValue({ x: g.dx, y: g.dy });
+      if (arrastrando.current) return;
+      if (Math.abs(g.dx) <= UMBRAL_ARRASTRE && Math.abs(g.dy) <= UMBRAL_ARRASTRE) return;
+      // Se ha pasado del temblor: esto ya es un arrastre y deja de ser un
+      // toque. Un golpecito para avisar de que el mundo se ha despegado.
+      arrastrando.current = true;
+      hap();
+      setAlzado(true);
+      hoy.current.onTomar(m.id);
+      Animated.spring(sujeto, { toValue: 1, friction: 6, tension: 90, useNativeDriver: true }).start();
+    },
+
+    onPanResponderRelease: (_, g) => {
+      desp.flattenOffset();
+      // Un toque corto: ni se movió ni se despegó. Sigue siendo el botón de
+      // siempre y abre su app.
+      if (!arrastrando.current) {
+        if (Math.abs(g.dx) <= UMBRAL_ARRASTRE && Math.abs(g.dy) <= UMBRAL_ARRASTRE) hoy.current.tocar();
+        return;
+      }
+      arrastrando.current = false;
+      setAlzado(false);
+      Animated.spring(sujeto, { toValue: 0, friction: 7, tension: 80, useNativeDriver: true }).start();
+
+      const d = hoy.current;
+      if (!d.campo.w || !d.campo.h) return;
+      const r = d.s / 2;
+      const cx = d.campo.w * m.x + donde.current.x;
+      const cy = d.campo.h * m.y + donde.current.y;
+      // Se acota DENTRO del tablero, con hueco abajo para la etiqueta: un
+      // mundo soltado en el borde se quedaba medio fuera y ya no había forma
+      // de volver a cogerlo.
+      const cxOk = acotar(cx, r + 6, d.campo.w - r - 6);
+      const cyOk = acotar(cy, r + 6, d.campo.h - r - 28);
+      if (cxOk !== cx || cyOk !== cy) {
+        // Se pasó del borde: vuelve dentro con un muelle. Un recorte seco se
+        // lee como un fallo; el muelle se lee como un límite.
+        Animated.spring(desp, {
+          toValue: { x: cxOk - d.campo.w * m.x, y: cyOk - d.campo.h * m.y },
+          friction: 7, tension: 60, useNativeDriver: false,
+        }).start();
+      }
+      // La fracción nueva se apunta AQUÍ y no pasa por el estado de React: el
+      // efecto de arriba la usará si el teléfono gira, y así el muelle del
+      // recorte no se corta a media carrera por un repintado.
+      const fx = cxOk / d.campo.w;
+      const fy = cyOk / d.campo.h;
+      fraccion.current = { fx, fy };
+      hap();
+      d.onSoltar(m.id, fx, fy);
+    },
+
+    // Si el sistema se lleva el dedo de todas formas (una llamada entrante,
+    // una notificación a pantalla completa) el nodo se queda donde estaba y
+    // no se guarda nada. Mejor eso que dejarlo pegado al borde.
+    onPanResponderTerminate: () => {
+      desp.flattenOffset();
+      arrastrando.current = false;
+      setAlzado(false);
+      Animated.spring(sujeto, { toValue: 0, friction: 7, tension: 80, useNativeDriver: true }).start();
+    },
+  })).current;
+
+  const logo = LOGOS[m.id] || null;
+  // La lente ocupa poco menos de dos tercios de la esfera: más grande se come
+  // el borde de vidrio y la esfera deja de leerse como esfera.
+  const dl = Math.round(s * 0.62);
+  const dz = Math.round(dl * (m.zoom || 1));
 
   return (
+    // DOS capas de animación y no una, y es obligatorio: el arrastre lo mueve
+    // el hilo de JavaScript (el dedo manda) y la respiración va por el
+    // controlador NATIVO. React Native no deja mezclar los dos en la misma
+    // lista de `transform` —revienta con "animated node has been moved to
+    // native"—, así que el arrastre va fuera y la vida va dentro.
     <Animated.View
-      style={[st.nodo, { left: izq, top: arr, width: s, transform: [{ translateY: subeBaja }, { scale: escala }] }]}>
-      <Pressable
-        onPress={tocar}
-        accessibilityRole="button"
-        accessibilityLabel={a11y}
-        // El área de toque se estira más allá de la esfera: un círculo de
-        // 90 px con el dedo encima deja poco margen para acertar.
-        hitSlop={10}
-        style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
-        {/* El halo son tres discos concéntricos y no una sombra: Android
-            ignora shadowColor y `elevation` sólo sabe pintar gris. */}
-        <Animated.View style={[st.aro, { width: s * 1.62, height: s * 1.62, borderRadius: s * 0.81, backgroundColor: m.halo, opacity: Animated.multiply(haloOp, 0.07) }]} />
-        <Animated.View style={[st.aro, { width: s * 1.32, height: s * 1.32, borderRadius: s * 0.66, backgroundColor: m.halo, opacity: Animated.multiply(haloOp, 0.13) }]} />
-        <Animated.View style={[st.aro, { width: s * 1.12, height: s * 1.12, borderRadius: s * 0.56, backgroundColor: m.halo, opacity: Animated.multiply(haloOp, 0.20) }]} />
+      {...pan.panHandlers}
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel={a11y}
+      // Con lector de pantalla no hay arrastre que valga: el toque de
+      // accesibilidad tiene que abrir la app igual que antes.
+      onAccessibilityTap={tocar}
+      // El área de toque se estira más allá de la esfera: un círculo de
+      // 90 px con el dedo encima deja poco margen para acertar.
+      hitSlop={10}
+      style={[st.nodo, {
+        left: izq,
+        top: arr,
+        width: s,
+        // El que va en la mano pasa por ENCIMA de los demás: si no, arrastrar
+        // un mundo pequeño por detrás de la billetera lo hacía desaparecer.
+        zIndex: alzado ? 20 : 1,
+        transform: [{ translateX: desp.x }, { translateY: desp.y }],
+      }]}>
+      <Animated.View
+        pointerEvents="none"
+        style={{ width: s, alignItems: 'center', transform: [{ translateY: subeBaja }, { scale: escala }] }}>
+        <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
+          {/* El halo son tres discos concéntricos y no una sombra: Android
+              ignora shadowColor y `elevation` sólo sabe pintar gris. */}
+          <Animated.View style={[st.aro, { width: s * 1.62, height: s * 1.62, borderRadius: s * 0.81, backgroundColor: m.halo, opacity: Animated.multiply(haloOp, 0.07) }]} />
+          <Animated.View style={[st.aro, { width: s * 1.32, height: s * 1.32, borderRadius: s * 0.66, backgroundColor: m.halo, opacity: Animated.multiply(haloOp, 0.13) }]} />
+          <Animated.View style={[st.aro, { width: s * 1.12, height: s * 1.12, borderRadius: s * 0.56, backgroundColor: m.halo, opacity: Animated.multiply(haloOp, 0.20) }]} />
 
-        <LinearGradient
-          colors={m.grad}
-          // La luz entra por arriba a la izquierda, como en el mundo real:
-          // ese único detalle es lo que convierte un círculo en una esfera.
-          start={{ x: 0.14, y: 0.04 }}
-          end={{ x: 0.88, y: 1 }}
-          style={[st.esfera, { width: s, height: s, borderRadius: s / 2 }]}>
-          <View style={[st.brillo, { width: s * 0.42, height: s * 0.30, borderRadius: s * 0.21, top: s * 0.09, left: s * 0.14 }]} />
-          <Icon name={m.icono} size={Math.round(s * 0.34)} color={m.tinta} />
           <LinearGradient
-            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.10)', 'rgba(0,0,0,0.34)']}
-            style={[StyleSheet.absoluteFill, { borderRadius: s / 2 }]}
-            pointerEvents="none"
-          />
-        </LinearGradient>
-      </Pressable>
-      <Text style={st.etiqueta} numberOfLines={1}>{etiqueta}</Text>
+            colors={m.grad}
+            // La luz entra por arriba a la izquierda, como en el mundo real:
+            // ese único detalle es lo que convierte un círculo en una esfera.
+            start={{ x: 0.14, y: 0.04 }}
+            end={{ x: 0.88, y: 1 }}
+            style={[st.esfera, { width: s, height: s, borderRadius: s / 2 }]}>
+            <View style={[st.brillo, { width: s * 0.42, height: s * 0.30, borderRadius: s * 0.21, top: s * 0.09, left: s * 0.14 }]} />
+            {/* La sombra del volumen va ANTES que la lente: si pasara por
+                encima, el logo saldría medio apagado por abajo. La lente es
+                vidrio hundido, no pintura sobre la esfera. */}
+            <LinearGradient
+              colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.10)', 'rgba(0,0,0,0.34)']}
+              style={[StyleSheet.absoluteFill, { borderRadius: s / 2 }]}
+              pointerEvents="none"
+            />
+            <View style={[st.lente, {
+              width: dl, height: dl, borderRadius: dl / 2, backgroundColor: m.lente,
+            }]}>
+              {logo ? (
+                // `overflow: hidden` de la lente es el recorte circular: el PNG
+                // cuadrado se agranda hasta tapar el disco entero y lo que
+                // sobra por las esquinas se va. No queda cuadrado a la vista,
+                // sólo la marca.
+                // El `borderRadius` de la propia imagen es el cinturón además
+                // de los tirantes: si algún Android se hiciera el remolón con
+                // el recorte del padre, lo peor que puede pasar es un logo
+                // redondo un pelín grande. Nunca el cuadrado pegado.
+                <Image
+                  source={logo}
+                  style={{ width: dz, height: dz, borderRadius: dz / 2 }}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Icon name={m.icono} size={Math.round(dl * 0.52)} color={m.halo} />
+              )}
+            </View>
+            {/* Un aro finísimo de luz en el canto de la lente: sin él el disco
+                oscuro parece un agujero en la esfera. */}
+            <View style={[st.canto, { width: dl, height: dl, borderRadius: dl / 2 }]} pointerEvents="none" />
+          </LinearGradient>
+        </View>
+        <Text style={st.etiqueta} numberOfLines={1}>{etiqueta}</Text>
+      </Animated.View>
     </Animated.View>
   );
-}
+});
 
 export default function Nucleo({ nav }) {
   const { lang } = useLang();
   const t = TXT[lang] || TXT.es;
   const { account } = useAccount();
   const [campo, setCampo] = useState({ w: 0, h: 0 });
+
+  // ══ LA COLOCACIÓN ══════════════════════════════════════════════════════
+  // `colocacion` es sólo el punto de PARTIDA: lo que se leyó del teléfono al
+  // abrir. Mientras el dedo arrastra, la posición viva está en el valor
+  // animado de cada nodo, no aquí — si cada píxel del arrastre pasara por el
+  // estado de React, el tablero iría a tirones. El estado se toca dos veces:
+  // al cargar y al reponer.
+  const [colocacion, setColocacion] = useState(SIN_COLOCACION);
+  const [movidos, setMovidos] = useState(false);   // ¿hay algo fuera de su sitio?
+  const [reponer, setReponer] = useState(0);       // contador de "vuelve a tu sitio"
+  const [enMano, setEnMano] = useState(null);      // qué mundo lleva el dedo
+
+  // Las posiciones VIVAS de los cinco mundos, en un ref y no en el estado: se
+  // escriben en cada cuadro del arrastre y sólo las leen los hilos.
+  const desplaz = useRef({});
+  // Lo que hay escrito en el teléfono, tal cual. Se mantiene aparte del estado
+  // porque al soltar un mundo hay que reescribir el fichero ENTERO: si sólo se
+  // guardara el que se acaba de mover, los otros cuatro se perderían.
+  const guardado = useRef({});
+  const [, redibujar] = useReducer((n) => (n + 1) % 1000000, 0);
+  const pedido = useRef(false);
+  const raf = useRef(null);
+
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      if (!ALMACEN) return;
+      try {
+        const crudo = await ALMACEN.getItem(LLAVE_COLOCACION);
+        if (!vivo || !crudo) return;
+        const leido = JSON.parse(crudo);
+        // Se filtra mundo a mundo y por rango. Un fichero de una versión vieja
+        // —o corrupto— no puede colocar un nodo fuera de la pantalla, que es
+        // la única avería de esto que no tendría arreglo desde la propia app:
+        // no se puede arrastrar lo que no se ve.
+        const limpio = {};
+        let hay = false;
+        MUNDOS.forEach((m) => {
+          const p = leido && leido[m.id];
+          if (!p) return;
+          const fx = Number(p.fx);
+          const fy = Number(p.fy);
+          if (!Number.isFinite(fx) || !Number.isFinite(fy)) return;
+          if (fx <= 0 || fx >= 1 || fy <= 0 || fy >= 1) return;
+          limpio[m.id] = { fx, fy };
+          hay = true;
+        });
+        if (!hay) return;
+        guardado.current = limpio;
+        setColocacion(limpio);
+        setMovidos(true);
+      } catch (e) {
+        // Colocación ilegible: se abre el tablero como el primer día.
+      }
+    })();
+    return () => { vivo = false; };
+  }, []);
+
+  // Los hilos se redibujan como mucho UNA vez por cuadro. El oyente del valor
+  // animado puede dispararse varias veces seguidas (x e y son dos valores
+  // distintos), y sin esta brida se pedirían dos repintados para el mismo
+  // movimiento.
+  const onMover = useCallback((id, x, y) => {
+    const antes = desplaz.current[id];
+    if (antes && antes.x === x && antes.y === y) return;
+    desplaz.current[id] = { x, y };
+    if (pedido.current) return;
+    pedido.current = true;
+    raf.current = requestAnimationFrame(() => { pedido.current = false; redibujar(); });
+  }, []);
+  useEffect(() => () => { if (raf.current != null) cancelAnimationFrame(raf.current); }, []);
+
+  const onTomar = useCallback((id) => setEnMano(id), []);
+
+  const onSoltar = useCallback((id, fx, fy) => {
+    guardado.current = { ...guardado.current, [id]: { fx, fy } };
+    setEnMano(null);
+    setMovidos(true);
+    // Se escribe al SOLTAR y no durante el arrastre: guardar en disco sesenta
+    // veces por segundo es la forma más rápida de que un teléfono modesto
+    // empiece a dar tirones.
+    if (ALMACEN) {
+      ALMACEN.setItem(LLAVE_COLOCACION, JSON.stringify(guardado.current)).catch(() => {});
+    }
+  }, []);
+
+  const reponerTodo = useCallback(() => {
+    hap();
+    guardado.current = {};
+    setColocacion(SIN_COLOCACION);
+    setMovidos(false);
+    setReponer((n) => n + 1);
+    if (ALMACEN) ALMACEN.removeItem(LLAVE_COLOCACION).catch(() => {});
+  }, []);
 
   // Un ÚNICO latido para los cuatro hilos, con controlador nativo. Cuatro
   // bucles independientes serían cuatro animaciones más en el puente para
@@ -858,7 +1310,21 @@ export default function Nucleo({ nav }) {
         <Text style={st.saludo}>
           {saludo}, <Text style={st.nombre}>{nombre}</Text>
         </Text>
-        <Text style={st.pista}>{t.pista}</Text>
+        <Text style={st.pista} numberOfLines={2}>{t.pista}</Text>
+        {/* El enlace sólo aparece cuando hay algo que reponer. Un botón de
+            "deshacer" siempre visible es ruido en una pantalla que sólo tiene
+            cinco cosas. */}
+        {movidos && (
+          <Pressable
+            onPress={reponerTodo}
+            hitSlop={14}
+            accessibilityRole="button"
+            accessibilityLabel={t.irReponer}>
+            {({ pressed }) => (
+              <Text style={[st.reponer, pressed && st.reponerTocado]}>{t.reponer}</Text>
+            )}
+          </Pressable>
+        )}
       </View>
 
       <View style={st.campo} onLayout={(e) => {
@@ -870,7 +1336,13 @@ export default function Nucleo({ nav }) {
         {/* Los hilos van DEBAJO de los mundos: si cruzaran por encima de una
             esfera se verían como un arañazo. */}
         {campo.w > 0 && campo.h > 0 && (
-          <Vinculos campo={campo} base={base} brillo={opHilo} />
+          <Vinculos
+            campo={campo}
+            base={base}
+            brillo={opHilo}
+            desplaz={desplaz.current}
+            activo={enMano}
+          />
         )}
         {campo.w > 0 && campo.h > 0 && MUNDOS.map((m) => (
           <Nodo
@@ -880,7 +1352,16 @@ export default function Nucleo({ nav }) {
             a11y={A11Y[m.id]}
             campo={campo}
             base={base}
+            // Números sueltos y no un objeto: el nodo está memoizado y un
+            // objeto nuevo en cada render tiraría por tierra la memoización
+            // justo cuando más falta hace, que es mientras se arrastra.
+            ix={colocacion[m.id] ? colocacion[m.id].fx : m.x}
+            iy={colocacion[m.id] ? colocacion[m.id].fy : m.y}
+            reponer={reponer}
             onIr={onIr}
+            onMover={onMover}
+            onTomar={onTomar}
+            onSoltar={onSoltar}
           />
         ))}
       </View>
@@ -900,12 +1381,30 @@ const st = StyleSheet.create({
   marca: { color: C.txt, fontSize: 12.5, letterSpacing: 5.5, marginTop: 6, fontWeight: '600' },
   saludo: { color: C.txt2, fontSize: 14, marginTop: 10 },
   nombre: { color: C.gold, fontWeight: '700' },
-  pista: { color: C.txt3, fontSize: 11, marginTop: 3, letterSpacing: 0.3 },
+  pista: { color: C.txt3, fontSize: 11, marginTop: 3, letterSpacing: 0.3, textAlign: 'center' },
+  // En minúsculas y subrayado: es un enlace, no un botón. Que no compita con
+  // los cinco mundos, que son lo único que hay que mirar aquí.
+  reponer: {
+    color: C.gold, fontSize: 11, marginTop: 7, letterSpacing: 0.2,
+    textDecorationLine: 'underline',
+  },
+  reponerTocado: { color: C.goldHi },
 
   campo: { flex: 1, marginTop: 6, marginBottom: 6 },
-  hilo: { flex: 1, borderRadius: 1 },
+  hilo: { flex: 1, borderRadius: 1.5 },
   nodo: { position: 'absolute', alignItems: 'center' },
   aro: { position: 'absolute' },
+  // El recorte circular de los logos vive aquí: `overflow: hidden` sobre un
+  // borde redondo es lo que convierte un PNG cuadrado en una marca redonda.
+  lente: {
+    alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  canto: {
+    position: 'absolute',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.34)',
+  },
   esfera: {
     alignItems: 'center', justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)',

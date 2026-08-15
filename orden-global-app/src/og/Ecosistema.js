@@ -5,7 +5,12 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Image, Pressable, ScrollView, TextInput, StyleSheet } from 'react-native';
 import { PantallaConTeclado, useCampoAuto } from './Teclado';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+// Los iconos son los de la casa (src/icons.js, SVG puro). Antes esta pantalla
+// —y sólo esta— seguía tirando de @expo/vector-icons, que ya NO está en
+// package.json ni en node_modules: App.js la importa arriba del todo, así que
+// el paquete entero se quedaba sin poder construirse. Los cinco nombres que
+// usa existen tal cual en el juego propio.
+import { Icon } from '../icons';
 import { C, G } from '../theme';
 import { useLang } from '../i18n';
 import { useAccount, hap } from '../ui';
@@ -51,7 +56,7 @@ export default function Ecosistema({ nav }) {
   const F = ({ icono, color, titulo, sub, a }) => (
     <Pressable style={st.ficha} onPress={() => { hap(); nav.go(a.p, a.params || {}); }}>
       <View style={[st.icono, { backgroundColor: color }]}>
-        <Ionicons name={icono} size={21} color="#04211d" />
+        <Icon name={icono} size={21} color="#04211d" />
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={st.fTit}>{titulo}</Text>
