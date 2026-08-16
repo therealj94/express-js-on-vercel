@@ -8,7 +8,10 @@
 #     cadena y contra los servicios el mismo dia que se genero el documento, y
 #     se escriben abajo con su fecha. No hay usuarios, ingresos ni proyecciones
 #     financieras porque no los tenemos medidos: un dossier que se inventa una
-#     metrica se cae entero en la primera pregunta.
+#     metrica se cae entero en la primera pregunta. Las unicas cifras de
+#     personas que aparecen -435 usuarios, 24 tarjetas, 10 paises- salen del
+#     expediente de la Secretaria de la Junta del 14/08/2026, y van con esa
+#     fuente escrita en el cierre.
 #
 # 2 · GENESIS CORE NO SE FOTOGRAFIA. El cerebro interno se explica —es parte de
 #     lo que hace fuerte a la casa— pero no se ensena. Una captura de un panel
@@ -27,6 +30,7 @@ import textwrap
 AQUI = Path(__file__).parent
 CAPTURAS = AQUI / 'capturas'
 MARCAS = AQUI.parent / 'apps-web' / 'veta-wallet' / 'assets'
+MARCA_NX = AQUI / 'marca'
 SALIDA = AQUI / 'Orden-Global-dossier.pdf'
 
 A, AL = A4
@@ -57,8 +61,8 @@ for archivo, nombre in [('Cinzel-Regular.ttf', 'Marca'), ('Cinzel-Bold.ttf', 'Ma
 
 c = lienzo.Canvas(str(SALIDA), pagesize=A4)
 c.setTitle('Orden Global · el ecosistema')
-c.setAuthor('Orden Global Corp')
-c.setSubject('Dossier de producto y tecnologia')
+c.setAuthor('Nexus Coder · Fráncfort del Meno, Alemania')
+c.setSubject('Dossier de producto y tecnologia · Orden Global Corp, construido por Nexus Coder')
 
 pagina = [0]
 
@@ -112,6 +116,22 @@ def imagen(nombre, x, y, ancho, marco=True):
         c.saveState(); c.setStrokeColorRGB(*ORO); c.setStrokeAlpha(0.45); c.setLineWidth(0.8)
         c.rect(x - 1.5, y - 1.5, ancho + 3, alto + 3, fill=0, stroke=1); c.restoreState()
     c.drawImage(im, x, y, width=ancho, height=alto, mask='auto')
+    return alto
+
+
+def logo_nx(nombre, x, y, ancho, alpha=1.0):
+    """El neon de Nexus Coder. Viene con transparencia: el negro del original se
+    recorto a alfa para que el halo se funda con el fondo de la casa en vez de
+    dejar un rectangulo negro encima del verde."""
+    ruta = MARCA_NX / nombre
+    if not ruta.exists():
+        return 0
+    im = ImageReader(str(ruta))
+    iw, ih = im.getSize()
+    alto = ancho * ih / iw
+    c.saveState(); c.setFillAlpha(alpha)
+    c.drawImage(im, x, y, width=ancho, height=alto, mask='auto')
+    c.restoreState()
     return alto
 
 
@@ -170,11 +190,21 @@ y = parrafo(
     'mensajería, comercio— construido, desplegado y funcionando hoy.',
     y - 8, ancho=68, tam=11.5, inter=16.5, color=BRUMA)
 
-hilo(58*mm)
-c.setFillColorRGB(*HUMO); c.setFont(SANS, 8.5)
-c.drawString(18*mm, 50*mm, 'Dossier de producto y tecnología · ' + FECHA)
+hilo(62*mm)
 c.setFillColorRGB(*BRUMA); c.setFont(SANS_B, 8.5)
-c.drawString(18*mm, 43*mm, 'Veta Wallet · Genesis ID · PULSE CHAT · MyTokenPay · AU-RA · Cadena 5550')
+c.drawString(18*mm, 54*mm, 'Veta Wallet · Genesis ID · PULSE CHAT · MyTokenPay · AU-RA · Cadena 5550')
+c.setFillColorRGB(*HUMO); c.setFont(SANS, 8.5)
+c.drawString(18*mm, 47*mm, 'Dossier de producto y tecnología · ' + FECHA)
+
+# La firma de quien lo construyo, abajo a la derecha: no compite con el titular
+# y es lo ultimo que se mira antes de pasar la pagina.
+logo_nx('nexus-n.png', A - 39*mm, 43*mm, 13*mm, alpha=0.95)
+c.setFillColorRGB(*HUMO); c.setFont(SANS, 6.8)
+c.drawRightString(A - 18*mm, 37*mm, 'D I S E Ñ A D O   Y   C O N S T R U I D O   P O R')
+c.setFillColorRGB(0.36, 0.90, 0.94); c.setFont(SANS_B, 10)
+c.drawRightString(A - 18*mm, 29*mm, 'NEXUS CODER')
+c.setFillColorRGB(*HUMO); c.setFont(SANS, 7.2)
+c.drawRightString(A - 18*mm, 23*mm, 'Fráncfort del Meno, Alemania')
 hoja('')
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -630,7 +660,171 @@ parrafo('Lo caro de un ecosistema es el primer producto que de verdad funciona. 
 hoja()
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 12 · CIERRE
+# 12 · IR POR TODO EL MUNDO
+#
+# La unica pagina del documento que mira hacia afuera, y por eso la que mas
+# facil se llena de humo. Regla: cada cifra de aqui existe. Los diez paises son
+# los que la Secretaria de la Junta consigno el 14/08; los 435 usuarios y las
+# 24 tarjetas, tambien. Es poco, y se dice que es poco: 435 personas que
+# llegaron sin una sola campana valen mas en una conversacion honesta que un
+# millon proyectado en una diapositiva.
+# ═══════════════════════════════════════════════════════════════════════════
+fondo()
+sello('El mundo', AL - 24*mm)
+titulo('Ya llegó a diez países', AL - 38*mm, 25)
+titulo('sin haberlo intentado.', AL - 51*mm, 25, color=ORO)
+
+y = parrafo(
+    'Nadie hizo una campaña. No hay presupuesto de adquisición, ni red de afiliados, ni '
+    'un anuncio pagado. Y aun así hay cuentas abiertas en tres continentes, porque el '
+    'producto viaja por donde viaja la gente que lo usa.',
+    AL - 68*mm, ancho=88, tam=10, inter=14.5, color=CREMA)
+
+# El mapa, dicho en palabras: cuatro columnas de nombres pesan menos que un SVG
+# y no mienten sobre cobertura que no tenemos.
+y -= 20
+paises = ['Honduras', 'México', 'Guatemala', 'El Salvador', 'Costa Rica',
+          'Canadá', 'España', 'Italia', 'Reino Unido', 'Nueva Zelanda']
+c.saveState()
+col_x = [18*mm, 62*mm, 106*mm, 150*mm]
+for i, pais in enumerate(paises):
+    x = col_x[i % 4]; yy = y - (i // 4) * 17
+    c.setFillColorRGB(*ORO); c.setFillAlpha(0.55)
+    c.circle(x + 1.4*mm, yy + 1.1*mm, 1.4*mm, fill=1, stroke=0)
+    c.setFillAlpha(1); c.setFillColorRGB(*CREMA); c.setFont(SANS, 9)
+    c.drawString(x + 5*mm, yy, pais)
+c.restoreState()
+y -= 2 * 17 + 24
+
+hilo(y)
+y -= 26
+yc = y
+cifra('435', 'Usuarios activos, sin una sola campaña', 18*mm, yc, 32, anchoPie=19)
+cifra('24', 'Tarjetas emitidas y en uso', 68*mm, yc, 32, anchoPie=19)
+cifra('10', 'Países, en tres continentes', 112*mm, yc, 32, anchoPie=19)
+cifra('2', 'Idiomas, en todo el producto', 152*mm, yc, 32, anchoPie=19)
+y = yc - 46
+hilo(y)
+
+y = parrafo(
+    'La arquitectura ya está pensada para eso. Orden Global Corp opera desde Próspera '
+    'hacia el mundo, y esa capa es descentralizada: el marco regulatorio aplicable es el '
+    'de la jurisdicción, no uno distinto por cada país donde vive un usuario.',
+    y - 20, ancho=88, tam=9.8, inter=14, color=CREMA)
+
+y -= 12
+c.setFillColorRGB(*ORO); c.setFont(SANS_B, 8)
+c.drawString(18*mm, y, 'E L   C A M I N O   R E G U L A T O R I O   ·   E N   P R E P A R A C I Ó N')
+y -= 17
+tramites = [
+    ('FinTech ATS, Clase B', 'Ampara el intercambio del ecosistema.'),
+    ('Aviso de Oferta Exenta', 'Cubre ORIGEN, AUKA, AGKA y ONDK en colocación privada.'),
+    ('Licencia de Compañía de Inversión', 'La más robusta: tokenización de activos reales.'),
+    ('Prestamista No Bancario', 'Complementa la actividad del intercambio.'),
+]
+for nombre, que in tramites:
+    c.setFillColorRGB(*ORO); c.setFillAlpha(0.5)
+    c.rect(18*mm, y - 1, 1.6*mm, 8, fill=1, stroke=0); c.setFillAlpha(1)
+    c.setFillColorRGB(*CREMA); c.setFont(SANS_B, 9)
+    c.drawString(22*mm, y, nombre)
+    c.setFillColorRGB(*HUMO); c.setFont(SANS, 8.6)
+    c.drawString(88*mm, y, que)
+    y -= 15
+c.setFillColorRGB(*HUMO); c.setFont(SANS, 7.6)
+c.drawString(22*mm, y - 2, 'Ninguna emitida a la fecha. El paquete completo está en preparación ante la RFSA de Próspera.')
+
+y -= 20
+hilo(y)
+parrafo('Lo difícil de un producto global no es traducirlo: es que funcione igual de bien '
+        'cuando nadie de la casa está mirando. Eso ya está construido.',
+        y - 16, ancho=88, tam=10, inter=14, color=CREMA, fuente=SANS_B)
+hoja()
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 13 · QUIEN LO CONSTRUYO · NEXUS CODER
+# ═══════════════════════════════════════════════════════════════════════════
+fondo()
+logo_nx('nexus-n.png', 130*mm, AL - 120*mm, 54*mm, alpha=0.92)
+
+sello('Quién lo construyó', AL - 24*mm)
+titulo('Nexus Coder.', AL - 40*mm, 27)
+c.setFillColorRGB(0.36, 0.90, 0.94); c.setFont(SERIF_B, 27)
+c.drawString(18*mm, AL - 53*mm, 'Fráncfort, Alemania.')
+
+y = parrafo(
+    'Todo lo que se ha visto en estas páginas —la cadena, la billetera, la identidad, la '
+    'mensajería, el comercio y la inteligencia que lo explica— lo diseñó y lo construyó '
+    'Nexus Coder.',
+    AL - 71*mm, ancho=56, tam=10.5, inter=15, color=CREMA)
+
+y = parrafo(
+    'No integramos piezas de terceros y les ponemos una portada encima. La capa uno es '
+    'nuestra, el consenso es nuestro, el explorador es nuestro y el asistente es nuestro. '
+    'Por eso el ecosistema se puede enseñar corriendo en vez de en una maqueta.',
+    y - 8, ancho=56, tam=9.6, inter=13.8, color=BRUMA)
+
+y = min(y, AL - 126*mm) - 6
+hilo(y)
+y -= 18
+c.setFillColorRGB(*ORO); c.setFont(SANS_B, 8)
+c.drawString(18*mm, y, 'L O   Q U E   S A B E M O S   C O N S T R U I R')
+y -= 18
+
+# Dos columnas de capacidades: es lo que un cliente de fuera busca en la pagina
+# del estudio, y cada linea de aqui existe en el ecosistema que acaba de ver.
+capacidades = [
+    ('Capa uno propia', 'Cadena, consenso, génesis y validadores.'),
+    ('Explorador y datos', 'Indexado, API pública y panel en vivo.'),
+    ('Billeteras y custodia', 'Claves, firmas, saldos y tarjetas.'),
+    ('Identidad y cumplimiento', 'KYC, KYB, AML y sesión única.'),
+    ('Pagos y comercio', 'Cobro por código, directorio y pasarela.'),
+    ('Asistentes sobre producto', 'Con frontera entre lo interno y lo público.'),
+]
+y0 = y
+for i, (nombre, que) in enumerate(capacidades):
+    x = 18*mm if i % 2 == 0 else 105*mm
+    yy = y0 - (i // 2) * 26
+    c.setFillColorRGB(0.36, 0.90, 0.94); c.setFont(SANS_B, 9.4)
+    c.drawString(x, yy, nombre)
+    c.setFillColorRGB(*HUMO); c.setFont(SANS, 8.6)
+    c.drawString(x, yy - 11, que)
+y = y0 - 3 * 26 - 6
+
+hilo(y)
+y -= 18
+c.setFillColorRGB(*ORO); c.setFont(SANS_B, 8)
+c.drawString(18*mm, y, 'C Ó M O   T R A B A J A M O S')
+y -= 17
+
+principios = [
+    ('Ni un dato inventado.',
+     'En este documento no hay una cifra que no se haya medido contra la cadena o contra '
+     'el servicio, el mismo día que se generó. Es la misma regla que gobierna el '
+     'producto: cuando el precio del oro no llega, la pantalla enseña un guion — nunca '
+     'un número inventado.'),
+    ('Lo que se dice, se puede comprobar.',
+     'Cada afirmación del producto tiene detrás una prueba automática que se pone roja si '
+     'alguien la deshace sin querer. No es documentación: es un guardia que corre en cada '
+     'cambio.'),
+    ('Se despliega desde la fuente, siempre.',
+     'Nada de paquetes armados a mano ni copias desfasadas. Lo que corre en producción es '
+     'exactamente lo que está en el repositorio, y se comprueba después de cada subida.'),
+]
+for nombre, que in principios:
+    c.setFillColorRGB(*CREMA); c.setFont(SANS_B, 9.4)
+    c.drawString(18*mm, y, nombre)
+    y -= 12
+    y = parrafo(que, y, x=18*mm, ancho=100, tam=8.8, inter=12)
+    y -= 8
+
+hilo(y + 2)
+parrafo('Construimos sistemas financieros que aguantan que los abran y los miren por '
+        'dentro. Es lo que hicimos aquí, y es lo que hacemos.',
+        y - 13, ancho=96, tam=10, inter=14, color=CREMA, fuente=SANS_B)
+hoja('Nexus Coder · Fráncfort del Meno, Alemania')
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 14 · CIERRE
 # ═══════════════════════════════════════════════════════════════════════════
 fondo()
 im = CAPTURAS / 'portada.png'
@@ -640,7 +834,7 @@ if im.exists():
     c.saveState(); c.setFillAlpha(0.22)
     c.drawImage(r, 0, AL - alto - 20*mm, width=A, height=alto, mask='auto')
     c.restoreState()
-c.setFillColorRGB(*POZO); c.setFillAlpha(0.62); c.rect(0, 0, A, AL, fill=1, stroke=0); c.setFillAlpha(1)
+c.setFillColorRGB(*POZO); c.setFillAlpha(0.80); c.rect(0, 0, A, AL, fill=1, stroke=0); c.setFillAlpha(1)
 
 sello('El cierre', AL - 60*mm)
 c.setFillColorRGB(*OROHI); c.setFont(SERIF_B, 30)
@@ -659,16 +853,27 @@ y = parrafo(
     'Lo que sigue no es empezar: es escalar lo que ya funciona.',
     y - 6, ancho=76, tam=11, inter=16, color=BRUMA, fuente=SANS_B)
 
-hilo(64*mm)
+hilo(72*mm)
 c.setFillColorRGB(*BRUMA); c.setFont(SANS_B, 9.5)
-c.drawString(18*mm, 56*mm, 'Orden Global Corp · Isla Roatán, Honduras')
+c.drawString(18*mm, 64*mm, 'Orden Global Corp · Isla Roatán, Honduras')
 c.setFillColorRGB(*HUMO); c.setFont(SANS, 9)
-c.drawString(18*mm, 48*mm, 'www.ordenglobal.org  ·  www.vetawallet.com  ·  ordenscan.com')
-c.drawString(18*mm, 41*mm, 'info@ordenglobal.org')
+c.drawString(18*mm, 56*mm, 'www.ordenglobal.org  ·  www.vetawallet.com  ·  ordenscan.com')
+c.drawString(18*mm, 49*mm, 'info@ordenglobal.org')
+
+# Las dos firmas, separadas: la casa a la izquierda, el estudio a la derecha.
+logo_nx('nexus-texto.png', A - 62*mm, 62*mm, 44*mm, alpha=0.95)
+c.setFillColorRGB(*HUMO); c.setFont(SANS, 7.2)
+c.drawRightString(A - 18*mm, 56*mm, 'Diseñado y construido por Nexus Coder')
+c.drawRightString(A - 18*mm, 49*mm, 'Fráncfort del Meno, Alemania')
+
+hilo(45*mm, alpha=0.18)
 c.setFillColorRGB(*HUMO); c.setFont(SANS, 7.4)
-c.drawString(18*mm, 30*mm, 'Documento de producto y tecnología. No contiene proyecciones financieras ni '
+c.drawString(18*mm, 37*mm, 'Documento de producto y tecnología. No contiene proyecciones financieras ni '
                            'constituye una oferta de valores.')
-c.drawString(18*mm, 25*mm, 'Cifras comprobadas contra la cadena y los servicios el ' + FECHA + '.')
+c.drawString(18*mm, 32*mm, 'ORIGEN, AUKA y AGKA son instrumentos referenciados a un precio de metal; no son '
+                           'instrumentos respaldados. ONDK es un valor negociable bajo Próspera.')
+c.drawString(18*mm, 27*mm, 'Cifras comprobadas contra la cadena y los servicios el ' + FECHA + '.')
+c.drawString(18*mm, 22*mm, 'Datos de usuarios y países según el expediente de la Secretaría de la Junta, 14/08/2026.')
 hoja()
 
 c.save()
