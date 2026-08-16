@@ -4,6 +4,7 @@ import CryptoJS from "crypto-js";
 import { descifrarLlavePrivada, descifrarFraseSemilla } from "../lib/cripto";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import { saldosDe, decidirBorrado } from "../lib/saldos";
 
 // ============================================================
 // Vista publica de un usuario.
@@ -455,5 +456,134 @@ export const deleteAccount = async (req, res) => {
   } catch (error) {
     console.error("[delete-account]", error);
     return res.status(500).json({ message: "No se pudo eliminar la cuenta" });
+  }
+};
+
+
+// ============================================================
+// Borrado por un administrador, con la cadena de por medio.
+//
+// POR QUE NO BASTA CON EL BORRADO DE ARRIBA
+//
+// `deleteAccount` lo hace la propia persona: entra con su contrasena, escribe
+// ELIMINAR y sabe lo que tiene. Un administrador borrando la cuenta de otro no
+// sabe nada de eso, y la cuenta que borra puede tener oro dentro.
+//
+// El borrado NO quema fondos —la direccion y su material cifrado se conservan,
+// igual que en el borrado propio, para que la seed siga abriendo la direccion—
+// pero deja a esa persona sin la puerta por la que entraba. Si tiene saldo, eso
+// no es limpieza: es encerrar a alguien fuera de su dinero.
+//
+// Asi que se le pregunta a la cadena, y se pregunta por TODO: el ORIGEN nativo
+// y los catorce tokens del ecosistema. Con cualquier cantidad, se niega y dice
+// exactamente que encontro.
+//
+// Y SI NO SE PUEDE PREGUNTAR, TAMPOCO SE BORRA
+//
+// Un nodo caido no es una cuenta vacia. `saldosDe` nunca devuelve cero por
+// averia —devuelve que no se pudo comprobar— y aqui eso corta la operacion con
+// un 503. Es la diferencia entre «esta vacia» y «no lo se», y es justo la
+// diferencia que se paga con el dinero de otro.
+// ============================================================
+export const adminDeleteAccount = async (req, res) => {
+  try {
+    const { email, confirm, motivo } = req.body || {};
+
+    if (typeof email !== "string" || !email.includes("@")) {
+      return res.status(400).json({ code: "EMAIL_REQUIRED", message: "Falta el correo de la cuenta." });
+    }
+    // La misma confirmacion escrita que en el borrado propio: nadie borra la
+    // cuenta de otro por un dedo mal puesto en una consola.
+    if (confirm !== "ELIMINAR") {
+      return res.status(400).json({ code: "CONFIRM_REQUIRED", message: 'Mandá confirm:"ELIMINAR".' });
+    }
+    if (typeof motivo !== "string" || motivo.trim().length < 10) {
+      return res.status(400).json({
+        code: "MOTIVO_REQUIRED",
+        message: "Hace falta un motivo: queda escrito en el registro del servidor.",
+      });
+    }
+
+    const user = await Users.findOne({ email: String(email).trim().toLowerCase() });
+    // Solo se consulta la cadena si hay una cuenta que mirar.
+    const saldo = user ? await saldosDe(user.address) : null;
+
+    // Toda la decision vive en una funcion pura y comprobable. Aqui solo se
+    // obedece: si dice que no, no se toca nada.
+    const veredicto = decidirBorrado({ user, saldo });
+    if (!veredicto.permitido) {
+      return res.status(veredicto.http).json({
+        code: veredicto.codigo,
+        message: veredicto.mensaje,
+        ...(veredicto.codigo === "TIENE_FONDOS" ? { saldos: saldo.saldos } : {}),
+        ...(veredicto.codigo === "NO_SE_PUDO_COMPROBAR" ? { detalle: saldo?.error } : {}),
+      });
+    }
+
+    const sufijo = String(user._id);
+
+    // A partir de aqui, exactamente el mismo trato que el borrado propio: fuera
+    // los datos personales, y la direccion con su material cifrado intactos
+    // para que los fondos —si algun dia llegan— sigan siendo recuperables con
+    // la seed.
+    user.email = `eliminado+${sufijo}@vetawallet.invalid`;
+    user.username = `eliminado+${sufijo}`;
+    user.name = undefined;
+    user.phone = undefined;
+    user.country = undefined;
+    user.token = undefined;
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    user.blocked_users = [];
+    user.deletedAt = new Date();
+    user.password = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
+
+    await user.save();
+
+    // Quien lo hizo y por que: si manana alguien pregunta por esta cuenta, la
+    // respuesta tiene que estar en algun sitio.
+    console.log(
+      `[admin-delete] cuenta ${sufijo} anonimizada por ${req.adminEmail || "admin"} · motivo: ${motivo.trim()}`
+    );
+
+    return res.json({
+      deleted: true,
+      cuenta: sufijo,
+      direccion: user.address,
+      message: "Cuenta eliminada. Estaba vacia en la cadena y su direccion se conserva.",
+    });
+  } catch (error) {
+    console.error("[admin-delete]", error);
+    return res.status(500).json({ message: "No se pudo eliminar la cuenta" });
+  }
+};
+
+// ============================================================
+// Mirar sin tocar: que tiene una cuenta en la cadena.
+//
+// Existe para poder responder «¿esta vacia?» antes de decidir un borrado, sin
+// tener que intentarlo para averiguarlo.
+// ============================================================
+export const adminSaldoCuenta = async (req, res) => {
+  try {
+    const email = String(req.query.email || "").trim().toLowerCase();
+    if (!email.includes("@")) {
+      return res.status(400).json({ code: "EMAIL_REQUIRED", message: "Falta el correo." });
+    }
+    const user = await Users.findOne({ email });
+    if (!user) return res.status(404).json({ code: "NOT_FOUND", message: "No hay ninguna cuenta con ese correo." });
+
+    const saldo = await saldosDe(user.address);
+    if (!saldo.ok) {
+      return res.status(503).json({ code: "NO_SE_PUDO_COMPROBAR", detalle: saldo.error });
+    }
+    return res.json({
+      direccion: user.address,
+      eliminada: Boolean(user.deletedAt),
+      vacia: saldo.vacia,
+      saldos: saldo.saldos,
+    });
+  } catch (error) {
+    console.error("[admin-saldo]", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };

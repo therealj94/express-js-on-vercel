@@ -29,6 +29,12 @@ const isAdmin = async (req, res, next) => {
         return res.status(401).json({ message: "invalid role" });
       }
 
+    // Quien es el admin, para que las operaciones que dejan rastro puedan
+    // escribir un nombre y no un "admin" generico. Sin esto, el registro de un
+    // borrado dice que lo hizo "un administrador" y no sirve para nada.
+    req.adminEmail = user.email;
+    req.adminId = String(user._id);
+
     next();
   } catch (error) {
     console.log(error)
