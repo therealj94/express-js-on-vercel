@@ -91,7 +91,14 @@ const cubos = new Map<string, { fichas: number; ultimo: number }>()
 export function limite(porMinuto: number) {
   const relleno = porMinuto / 60000
   return (req: Request, res: Response, siguiente: NextFunction) => {
-    const llave = `${req.ip}|${req.baseUrl}`
+    /* EL LIMITE VA EN LA LLAVE, y no es un detalle: sin él, todas las rutas de
+       un mismo router comparten cubo —la llave era solo IP + router— y el cubo
+       se queda con el tope de la ÚLTIMA que lo tocó. En la práctica eso
+       significaba que `/identidades`, declarada a 60 por minuto, se recortaba
+       sola a 20 en cuanto alguien subía una foto, porque `/foto` está a 20.
+       Un límite que dice 60 y aplica 20 no protege mejor: engaña a quien lee
+       el código y echa a gente que no estaba abusando de nada. */
+    const llave = `${req.ip}|${req.baseUrl}|${porMinuto}`
     const ahora = Date.now()
     const cubo = cubos.get(llave) ?? { fichas: porMinuto, ultimo: ahora }
     cubo.fichas = Math.min(porMinuto, cubo.fichas + (ahora - cubo.ultimo) * relleno)

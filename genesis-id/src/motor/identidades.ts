@@ -25,6 +25,13 @@ import { revisarDocumento } from '../kyc/documento.js'
 import { parecidoNombres } from '../lib/texto.js'
 import { cotejar, sinProveedor, cotejoManual, biometriaConfigurada } from '../kyc/biometria.js'
 import { guardarFotos, borrarFotos } from '../kyc/fotosDocumento.js'
+import { guardarFoto, leerFoto, borrarFoto } from '../kyc/fotoCredencial.js'
+
+/* Una credencial necesita un cuadrado de 320 px. Aceptar más sería convertir el
+   expediente en un álbum, y cada byte guardado de una persona hay que
+   justificarlo. El mensaje de error se arma desde esta constante para que no
+   pueda volver a mentir sobre el tope, como pasó con el de las fotos. */
+const TOPE_CREDENCIAL = 400 * 1024
 import type { ResultadoVivacidad } from '../kyc/vivacidad.js'
 import { tamizarPersona } from '../aml/tamiz.js'
 import { evaluarRiesgo, UMBRAL_DILIGENCIA_USD } from '../aml/riesgo.js'
@@ -170,22 +177,33 @@ export function declararDatos(idn: string, datos: DatosDeclarados, origen: strin
  * aceptar más sería convertir el expediente en un álbum, y cada byte guardado
  * de una persona hay que justificarlo.
  */
-export function guardarFotoCredencial(idn: string, base64: string, origen: string):
-  { ok: boolean; error?: string; identidad?: Identidad } {
+export async function guardarFotoCredencial(idn: string, base64: string, origen: string):
+  Promise<{ ok: boolean; error?: string; identidad?: Identidad }> {
   const identidad = porId(idn)
   if (!identidad) return { ok: false, error: 'Identidad no encontrada' }
 
   const limpio = String(base64 || '').replace(/^data:image\/[a-z+]+;base64,/i, '').replace(/\s+/g, '')
-  if (!limpio) {
-    identidad.fotoCredencial = null
-  } else {
+  if (limpio) {
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(limpio)) return { ok: false, error: 'La foto no es base64 válido' }
     const bytes = Math.floor((limpio.length * 3) / 4)
-    if (bytes > 400 * 1024) {
-      return { ok: false, error: `La foto pesa ${Math.round(bytes / 1024)} kB y el máximo son 400 kB` }
+    if (bytes > TOPE_CREDENCIAL) {
+      return { ok: false, error: `La foto pesa ${Math.round(bytes / 1024)} kB y el máximo son ${Math.round(TOPE_CREDENCIAL / 1024)} kB` }
     }
-    identidad.fotoCredencial = limpio
   }
+
+  /* EL RETRATO NO ENTRA EN EL EXPEDIENTE. Vivía dentro, y con él dentro cada
+     persona verificada dejaba hasta medio megabyte permanente en el documento
+     de estado; con unas treinta se pasaba de los 16 MB de MongoDB y `volcar()`
+     empezaba a fallar en silencio. Se guarda aparte ANTES de tocar nada, y si
+     ese guardado falla no se toca el expediente: mejor un retrato que no se
+     pudo cambiar que un expediente que dice tener uno que no existe. */
+  try {
+    if (limpio) await guardarFoto(identidad.id, limpio)
+    else await borrarFoto(identidad.id)
+  } catch (e: any) {
+    return { ok: false, error: 'No se pudo guardar la foto ahora mismo. Probá de nuevo.' }
+  }
+  identidad.fotoCredencial = null
 
   identidad.actualizadaEn = ahora()
   store.guardar()
@@ -746,10 +764,12 @@ export function estadoParaUsuario(identidad: Identidad) {
      * o ninguna. */
     documentoPorFotos: identidad.documento?.via === 'fotos',
     rostroPendiente,
-    // La credencial viaja con la identidad: sin esto se ve a medias en
-    // cualquier teléfono que no sea el que subió la foto.
-    fotoCredencial: identidad.fotoCredencial
-      ? `data:image/jpeg;base64,${identidad.fotoCredencial}` : null,
+    /* El retrato ya no vive en el expediente, y esta función es síncrona, así
+       que aquí sale siempre en null. Lo rellena `estadoParaUsuarioConFoto`,
+       que es lo que usan las rutas: la credencial sigue viajando entera hacia
+       las apps —sin eso se vería a medias en cualquier teléfono que no fuera
+       el que subió la foto—, solo que ahora se busca donde de verdad está. */
+    fotoCredencial: null as string | null,
     // Qué falta del perfil de cumplimiento, para que la app lo pida.
     faltanDatos: [
       !identidad.telefono && 'telefono',
@@ -778,4 +798,26 @@ export function estadoParaUsuario(identidad: Identidad) {
         : 'Identidad suspendida',
     actualizadaEn: identidad.actualizadaEn,
   }
+}
+
+/**
+ * Lo mismo, con el retrato de la credencial ya buscado en su almacén.
+ *
+ * Es lo que devuelven las rutas. Existe como función aparte, y no dentro de
+ * `estadoParaUsuario`, porque leer el retrato es una consulta a otra colección
+ * —o sea, asíncrona— y hay sitios que necesitan el estado sin esperar a nadie.
+ *
+ * Si el almacén del retrato no contesta, la identidad sale igual sin foto: que
+ * una credencial se vea sin retrato es un defecto; que la app no pueda saber si
+ * alguien está verificado porque una imagen no cargó es una avería.
+ */
+export async function estadoParaUsuarioConFoto(identidad: Identidad) {
+  const base = estadoParaUsuario(identidad)
+  try {
+    const foto = await leerFoto(identidad.id)
+    if (foto) base.fotoCredencial = `data:image/jpeg;base64,${foto}`
+  } catch (e: any) {
+    console.error('[fotoCredencial] no se pudo leer el retrato:', e?.message)
+  }
+  return base
 }

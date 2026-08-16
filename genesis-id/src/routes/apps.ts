@@ -28,16 +28,16 @@ const MINUTOS_TOKEN = Number(process.env.GENESIS_SSO_MINUTOS || 15)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Inicia o retoma la identidad de un usuario. */
-appsRouter.post('/identidades', limite(60), exigeApp('identidad.crear'), (req, res) => {
+appsRouter.post('/identidades', limite(60), exigeApp('identidad.crear'), async (req, res) => {
   const { email } = req.body ?? {}
   if (!email || typeof email !== 'string' || !email.includes('@')) {
     return res.status(400).json({ error: 'Hace falta un correo válido' })
   }
   const identidad = ids.iniciar(email, `app:${req.app_ecosistema!.clave}`)
-  res.json({ identidad: ids.estadoParaUsuario(identidad) })
+  res.json({ identidad: await ids.estadoParaUsuarioConFoto(identidad) })
 })
 
-appsRouter.post('/identidades/:id/datos', limite(60), exigeApp('identidad.crear'), (req, res) => {
+appsRouter.post('/identidades/:id/datos', limite(60), exigeApp('identidad.crear'), async (req, res) => {
   const b = req.body ?? {}
   // Se enumeran uno por uno a propósito: así el cuerpo de la petición no puede
   // escribir campos que no le corresponden —estado, gid, riesgo— por el simple
@@ -55,7 +55,7 @@ appsRouter.post('/identidades/:id/datos', limite(60), exigeApp('identidad.crear'
     pepDeclarado: typeof b.pepDeclarado === 'boolean' ? b.pepDeclarado : undefined,
   }, `app:${req.app_ecosistema!.clave}`)
   if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
-  res.json({ identidad: ids.estadoParaUsuario(identidad) })
+  res.json({ identidad: await ids.estadoParaUsuarioConFoto(identidad) })
 })
 
 /**
@@ -65,7 +65,7 @@ appsRouter.post('/identidades/:id/datos', limite(60), exigeApp('identidad.crear'
  * hace en el teléfono: así la foto del documento no viaja ni se almacena aquí,
  * que es menos dato personal en riesgo por cada usuario.
  */
-appsRouter.post('/identidades/:id/documento', limite(30), exigeApp('identidad.documento'), (req, res) => {
+appsRouter.post('/identidades/:id/documento', limite(30), exigeApp('identidad.documento'), async (req, res) => {
   const { mrz, textoAnverso } = req.body ?? {}
   if (!mrz || typeof mrz !== 'string') {
     return res.status(400).json({ error: 'Hace falta el texto de la MRZ del documento' })
@@ -83,7 +83,7 @@ appsRouter.post('/identidades/:id/documento', limite(30), exigeApp('identidad.do
   // interesado de que saltó una coincidencia es justamente lo que no se debe
   // hacer.
   res.json({
-    identidad: ids.estadoParaUsuario(identidad),
+    identidad: await ids.estadoParaUsuarioConFoto(identidad),
     documento: {
       aceptable: identidad.documento?.aceptable ?? false,
       anverso: identidad.documento?.anverso ?? null,
@@ -141,7 +141,7 @@ appsRouter.post('/identidades/:id/documento-fotos', limite(20), exigeApp('identi
   if (!r.identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
   if (!r.ok) return res.status(503).json({ error: r.motivo })
   res.json({
-    identidad: ids.estadoParaUsuario(r.identidad),
+    identidad: await ids.estadoParaUsuarioConFoto(r.identidad),
     documento: { via: 'fotos', aceptable: false, pendienteDeLectura: true, problemas: [] },
   })
 })
@@ -153,7 +153,7 @@ appsRouter.post('/identidades/:id/documento-fotos', limite(20), exigeApp('identi
  * que impide responder con un vídeo preparado de antemano. La app la muestra
  * gesto a gesto y graba un fotograma por cada uno.
  */
-appsRouter.post('/identidades/:id/vivacidad', limite(20), exigeApp('identidad.documento'), (req, res) => {
+appsRouter.post('/identidades/:id/vivacidad', limite(20), exigeApp('identidad.documento'), async (req, res) => {
   const identidad = ids.porId(req.params.id)
   if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
   if (!biometriaConfigurada()) {
@@ -205,7 +205,7 @@ appsRouter.post('/identidades/:id/biometria', limite(20), exigeApp('identidad.do
   if (!actualizada) return res.status(404).json({ error: 'Identidad no encontrada' })
 
   res.json({
-    identidad: ids.estadoParaUsuario(actualizada),
+    identidad: await ids.estadoParaUsuarioConFoto(actualizada),
     biometria: {
       estado: actualizada.biometria?.estado,
       motivo: actualizada.biometria?.motivo,
@@ -225,27 +225,34 @@ appsRouter.post('/identidades/:id/biometria', limite(20), exigeApp('identidad.do
  * compara y se descarta, esta se conserva porque la credencial tiene que verse
  * completa en cualquier app del ecosistema, no solo en el teléfono que la subió.
  */
-appsRouter.post('/identidades/:id/foto', limite(20), exigeApp('identidad.documento'), (req, res) => {
-  const r = ids.guardarFotoCredencial(
+appsRouter.post('/identidades/:id/foto', limite(20), exigeApp('identidad.documento'), async (req, res) => {
+  const r = await ids.guardarFotoCredencial(
     req.params.id, String(req.body?.foto || ''), `app:${req.app_ecosistema!.clave}`)
-  if (!r.ok) return res.status(400).json({ error: r.error })
-  res.json({ ok: true, identidad: ids.estadoParaUsuario(r.identidad!) })
+  if (!r.ok) {
+    // «No se pudo guardar ahora mismo» es un tropiezo del almacen, no una foto
+    // mal formada: se contesta 503 para que el cliente reintente en vez de
+    // ensenarle a la persona que su foto no vale.
+    const codigo = /no se pudo guardar/i.test(r.error || '') ? 503
+      : /pesa/i.test(r.error || '') ? 413 : 400
+    return res.status(codigo).json({ error: r.error })
+  }
+  res.json({ ok: true, identidad: await ids.estadoParaUsuarioConFoto(r.identidad!) })
 })
 
-appsRouter.get('/identidades/:id', limite(120), exigeApp('identidad.leer'), (req, res) => {
+appsRouter.get('/identidades/:id', limite(120), exigeApp('identidad.leer'), async (req, res) => {
   const identidad = ids.porId(req.params.id)
   if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
-  res.json({ identidad: ids.estadoParaUsuario(identidad) })
+  res.json({ identidad: await ids.estadoParaUsuarioConFoto(identidad) })
 })
 
-appsRouter.get('/identidades/por-email/:email', limite(120), exigeApp('identidad.leer'), (req, res) => {
+appsRouter.get('/identidades/por-email/:email', limite(120), exigeApp('identidad.leer'), async (req, res) => {
   const identidad = ids.porEmail(req.params.email)
   if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
-  res.json({ identidad: ids.estadoParaUsuario(identidad) })
+  res.json({ identidad: await ids.estadoParaUsuarioConFoto(identidad) })
 })
 
 /** Ata una cuenta de la app al GID. Es la base del inicio de sesión único. */
-appsRouter.post('/vinculos', limite(60), exigeApp('vinculo.crear'), (req, res) => {
+appsRouter.post('/vinculos', limite(60), exigeApp('vinculo.crear'), async (req, res) => {
   const { identidadId, cuenta, direccion } = req.body ?? {}
   if (!identidadId || !cuenta) {
     return res.status(400).json({ error: 'Hacen falta identidadId y cuenta' })
@@ -267,7 +274,7 @@ appsRouter.post('/vinculos', limite(60), exigeApp('vinculo.crear'), (req, res) =
  * Devuelve lo mínimo: sí o no, y el nivel de riesgo. Un explorador de bloques
  * no necesita saber el nombre ni la nacionalidad de nadie.
  */
-appsRouter.get('/gid/:gid', limite(300), exigeApp('gid.verificar'), (req, res) => {
+appsRouter.get('/gid/:gid', limite(300), exigeApp('gid.verificar'), async (req, res) => {
   const gid = normalizarGid(req.params.gid)
   if (!gidValido(gid)) {
     return res.status(400).json({ error: 'GID mal formado (falla el dígito verificador)' })
@@ -286,14 +293,14 @@ appsRouter.get('/gid/:gid', limite(300), exigeApp('gid.verificar'), (req, res) =
 })
 
 /** ¿Hay identidad verificada detrás de esta dirección on-chain? */
-appsRouter.get('/direccion/:direccion', limite(300), exigeApp('gid.verificar'), (req, res) => {
+appsRouter.get('/direccion/:direccion', limite(300), exigeApp('gid.verificar'), async (req, res) => {
   const identidad = ids.porDireccion(req.params.direccion)
   if (!identidad) return res.json({ verificada: false, gid: null })
   res.json({ verificada: identidad.estado === 'verificada', gid: identidad.gid })
 })
 
 /** Tamizado de una dirección contra listas de sanciones. */
-appsRouter.get('/tamiz/direccion/:direccion', limite(300), exigeApp('tamiz.direccion'), (req, res) => {
+appsRouter.get('/tamiz/direccion/:direccion', limite(300), exigeApp('tamiz.direccion'), async (req, res) => {
   const r = tamizarDireccion(req.params.direccion)
   res.json({
     tamizado: r.tamizado,
@@ -319,7 +326,7 @@ appsRouter.get('/tamiz/direccion/:direccion', limite(300), exigeApp('tamiz.direc
  * persona. Es un modelo de cliente de confianza, válido porque las tres apps
  * son del mismo ecosistema; no sería aceptable para aplicaciones de terceros.
  */
-appsRouter.post('/sso/token', limite(60), exigeApp('gid.verificar'), (req, res) => {
+appsRouter.post('/sso/token', limite(60), exigeApp('gid.verificar'), async (req, res) => {
   if (!SECRETO_SSO) {
     return res.status(503).json({ error: 'El inicio de sesión único no está configurado (falta GENESIS_SSO_SECRETO)' })
   }
@@ -353,7 +360,7 @@ appsRouter.post('/sso/token', limite(60), exigeApp('gid.verificar'), (req, res) 
 })
 
 /** Cualquier app del ecosistema valida aquí un token emitido por otra. */
-appsRouter.post('/sso/verificar', limite(300), exigeApp('gid.verificar'), (req, res) => {
+appsRouter.post('/sso/verificar', limite(300), exigeApp('gid.verificar'), async (req, res) => {
   if (!SECRETO_SSO) return res.status(503).json({ error: 'El inicio de sesión único no está configurado' })
   const reclamos = verificarToken(String(req.body?.token || ''), SECRETO_SSO)
   if (!reclamos) return res.status(401).json({ valido: false, error: 'Token inválido o vencido' })
@@ -376,7 +383,7 @@ appsRouter.post('/sso/verificar', limite(300), exigeApp('gid.verificar'), (req, 
 // Negocios
 // ─────────────────────────────────────────────────────────────────────────────
 
-appsRouter.post('/negocios', limite(30), exigeApp('negocio.crear'), (req, res) => {
+appsRouter.post('/negocios', limite(30), exigeApp('negocio.crear'), async (req, res) => {
   const b = req.body ?? {}
   const faltan = ['emailDueno', 'razonSocial', 'nombreComercial', 'identificadorFiscal', 'categoria', 'pais', 'ciudad', 'direccion']
     .filter((c) => !b[c])
@@ -391,7 +398,7 @@ appsRouter.post('/negocios', limite(30), exigeApp('negocio.crear'), (req, res) =
   })
 })
 
-appsRouter.post('/negocios/:id/beneficiarios', limite(30), exigeApp('negocio.crear'), (req, res) => {
+appsRouter.post('/negocios/:id/beneficiarios', limite(30), exigeApp('negocio.crear'), async (req, res) => {
   const { nombreCompleto, porcentaje, via, fechaNacimiento, nacionalidad, gid } = req.body ?? {}
   if (!nombreCompleto || typeof porcentaje !== 'number') {
     return res.status(400).json({ error: 'Hacen falta nombreCompleto y porcentaje' })
@@ -403,7 +410,7 @@ appsRouter.post('/negocios/:id/beneficiarios', limite(30), exigeApp('negocio.cre
   res.json({ ok: true, pendientes: r.negocio!.riesgo?.bloqueos ?? [] })
 })
 
-appsRouter.get('/negocios/:id', limite(120), exigeApp('negocio.crear'), (req, res) => {
+appsRouter.get('/negocios/:id', limite(120), exigeApp('negocio.crear'), async (req, res) => {
   const negocio = biz.porId(req.params.id)
   if (!negocio) return res.status(404).json({ error: 'Negocio no encontrado' })
   res.json({
@@ -424,7 +431,7 @@ appsRouter.get('/negocios/:id', limite(120), exigeApp('negocio.crear'), (req, re
  * regla de monitoreo es contraproducente —le enseña a esquivarla— y en muchas
  * jurisdicciones está expresamente prohibido avisarle.
  */
-appsRouter.post('/movimientos', limite(120), exigeApp('movimiento.enviar'), (req, res) => {
+appsRouter.post('/movimientos', limite(120), exigeApp('movimiento.enviar'), async (req, res) => {
   const { gid, movimientos } = req.body ?? {}
   const g = normalizarGid(String(gid || ''))
   if (!gidValido(g) || !Array.isArray(movimientos)) {

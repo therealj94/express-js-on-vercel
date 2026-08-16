@@ -11,6 +11,7 @@ import { estadoListas, hayListas, iniciarListas } from './aml/listas.js'
 import { cargarGafiDesdeMongo, estadoGafi, listasVencidas } from './aml/paises.js'
 import { biometriaConfigurada, proveedorBiometria } from './kyc/biometria.js'
 import { migrarFotosDelEstado } from './kyc/fotosDocumento.js'
+import { migrarFotosCredencialDelEstado } from './kyc/fotoCredencial.js'
 import { verificarCadena } from './audit/bitacora.js'
 import { sesionRouter } from './routes/sesion.js'
 import { appsRouter } from './routes/apps.js'
@@ -241,6 +242,21 @@ export async function arrancar(): Promise<void> {
     console.log(
       `[genesis-id] fotos de documento fuera del estado: ${mudanza.movidas} mudadas, ` +
       `${mudanza.sueltas} sueltas por expediente ya decidido, ${mudanza.fallidas} sin mover`)
+  }
+
+  // Y la MISMA mudanza para el retrato de la credencial, que es la bomba lenta:
+  // las fotos del documento se sueltan al decidir el expediente, pero el retrato
+  // no se suelta nunca —es la credencial— y cada persona verificada dejaba hasta
+  // medio megabyte permanente ahi dentro. Con unas treinta se pasaba de los
+  // 16 MB otra vez.
+  const retratos = await migrarFotosCredencialDelEstado().catch((e) => {
+    console.error('[genesis-id] no se pudieron mudar los retratos:', e?.message)
+    return null
+  })
+  if (retratos && (retratos.movidas || retratos.fallidas)) {
+    console.log(
+      `[genesis-id] retratos de credencial fuera del estado: ${retratos.movidas} mudados, ` +
+      `${retratos.fallidas} sin mover`)
   }
 
   // Las listas se cargan DESPUES de abrir el almacen: viven en Mongo, en su

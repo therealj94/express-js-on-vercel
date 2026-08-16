@@ -16,6 +16,7 @@ import { crearOperador, PERMISOS } from '../auth/operadores.js'
 import { crearAplicacion, revocar, rotar, ALCANCES } from '../auth/aplicaciones.js'
 import { biometriaConfigurada, proveedorBiometria } from '../kyc/biometria.js'
 import { leerFotos } from '../kyc/fotosDocumento.js'
+import { leerFoto as leerRetrato } from '../kyc/fotoCredencial.js'
 import { estadoGafi, aplicarGafi, guardarGafiEnMongo, fechaListasGafi, diasDesdeActualizacion } from '../aml/paises.js'
 import { DOCUMENTOS_EXIGIDOS, UMBRAL_UBO } from '../motor/negocios.js'
 import type { Rol } from '../types.js'
@@ -112,8 +113,12 @@ panelRouter.get('/identidades/:id', exigePermiso('identidad.ver'), async (req, r
   // metería otra vez en el estado en el siguiente guardado, que es exactamente
   // el fallo que se está arreglando.
   const imagenes = await leerFotos(i.id).catch(() => null)
+  // El retrato de la credencial vive en OTRO almacen aparte, por la misma razon
+  // y con el mismo cuidado: se adosa a la copia, nunca al objeto de memoria.
+  const fotoCredencial = await leerRetrato(i.id).catch(() => null)
+  const copia = { ...i, fotoCredencial }
   res.json({
-    identidad: i.documento ? { ...i, documento: { ...i.documento, imagenes } } : i,
+    identidad: copia.documento ? { ...copia, documento: { ...copia.documento, imagenes } } : copia,
   })
 })
 

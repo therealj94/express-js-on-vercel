@@ -497,6 +497,98 @@ describe('Las fotos del documento viven fuera del estado', () => {
   })
 })
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LA BOMBA LENTA: EL RETRATO DE LA CREDENCIAL
+//
+// Las fotos del documento se sueltan al decidir el expediente, asi que solo
+// pesan mientras hay cola. El retrato de la credencial NO se suelta nunca —es
+// la credencial— y cada persona verificada dejaba hasta medio megabyte
+// permanente dentro del documento de estado. Con unas treinta se pasaba otra
+// vez de los 16 MB de MongoDB, y con ellos se caia el guardado de TODO:
+// identidades, aprobaciones y la cadena de hashes de la bitacora, que vive ahi
+// dentro.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('El retrato de la credencial vive fuera del estado', () => {
+  const retrato = 'data:image/jpeg;base64,' + 'K'.repeat(20000)
+  const aparte = () => JSON.parse(readFileSync(join(carpeta, 'fotosCredencial.json'), 'utf8'))
+  const estadoEnDisco = () => readFileSync(process.env.GENESIS_DATA_FILE!, 'utf8')
+  let conRetrato = ''
+
+  test('subirlo no lo mete en el documento de estado', async () => {
+    const alta = await pedir('/api/v1/identidades', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ email: 'retrato.fuera@prueba.local' }),
+    })
+    conRetrato = alta.cuerpo.identidad.id
+    const r = await pedir(`/api/v1/identidades/${conRetrato}/foto`, {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ foto: retrato }),
+    })
+    assert.equal(r.estado, 200)
+
+    const identidad = store.todo().identidades.find((i) => i.id === conRetrato)!
+    assert.equal(identidad.fotoCredencial, null, 'el expediente no puede llevar el retrato')
+
+    await store.guardarYa()
+    assert.equal(estadoEnDisco().includes('K'.repeat(20000)), false, 'el retrato acabo dentro del estado')
+    assert.ok(aparte()[conRetrato], 'tiene que estar guardado aparte')
+  })
+
+  test('la app lo sigue recibiendo entero: la credencial no se ve a medias', async () => {
+    const r = await pedir(`/api/v1/identidades/${conRetrato}`, { headers: conClave() })
+    assert.equal(r.estado, 200)
+    assert.equal(r.cuerpo.identidad.fotoCredencial, retrato)
+    // y mirarlo no lo devuelve al estado
+    await store.guardarYa()
+    assert.equal(estadoEnDisco().includes('K'.repeat(20000)), false, 'leerlo lo devolvio al estado')
+  })
+
+  test('el operador lo ve en la ficha', async () => {
+    const r = await pedir(`/api/panel/identidades/${conRetrato}`, { headers: conSesion() })
+    assert.equal(r.estado, 200)
+    assert.equal(r.cuerpo.identidad.fotoCredencial, retrato.replace(/^data:image\/[a-z+]+;base64,/i, ''))
+  })
+
+  test('mandar el retrato vacio lo borra', async () => {
+    const r = await pedir(`/api/v1/identidades/${conRetrato}/foto`, {
+      method: 'POST', headers: conClave(), body: JSON.stringify({ foto: '' }),
+    })
+    assert.equal(r.estado, 200)
+    assert.equal(aparte()[conRetrato] ?? null, null, 'tenia que desaparecer del almacen')
+    const v = await pedir(`/api/v1/identidades/${conRetrato}`, { headers: conClave() })
+    assert.equal(v.cuerpo.identidad.fotoCredencial, null)
+  })
+
+  test('un retrato de mas de 400 kB se rechaza con 413 y el mensaje cuadra', async () => {
+    const enorme = 'data:image/jpeg;base64,' + 'K'.repeat(600 * 1024)
+    const r = await pedir(`/api/v1/identidades/${conRetrato}/foto`, {
+      method: 'POST', headers: conClave(), body: JSON.stringify({ foto: enorme }),
+    })
+    assert.equal(r.estado, 413)
+    assert.match(r.cuerpo.error, /400 kB/)
+  })
+
+  test('un retrato viejo plantado dentro del estado se muda al arrancar', async () => {
+    const viejo = 'W'.repeat(20000)
+    const alta = await pedir('/api/v1/identidades', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ email: 'retrato.viejo@prueba.local' }),
+    })
+    const identidad = store.todo().identidades.find((i) => i.id === alta.cuerpo.identidad.id)!
+    identidad.fotoCredencial = viejo
+    await store.guardarYa()
+    assert.equal(estadoEnDisco().includes('W'.repeat(20000)), true, 'la prueba parte del estado sucio')
+
+    const { migrarFotosCredencialDelEstado } = await import('../kyc/fotoCredencial.js')
+    const r = await migrarFotosCredencialDelEstado()
+    assert.equal(r.movidas, 1)
+    assert.equal(identidad.fotoCredencial, null)
+    assert.equal(estadoEnDisco().includes('W'.repeat(20000)), false, 'el estado sigue pesado')
+    assert.equal(aparte()[identidad.id], viejo)
+  })
+})
+
 describe('Alcances de las aplicaciones', () => {
   test('ordenscan no puede crear identidades', async () => {
     const scan = store.todo().aplicaciones.find((a) => a.clave === 'ordenscan')!
