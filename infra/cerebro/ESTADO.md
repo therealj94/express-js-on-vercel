@@ -67,6 +67,9 @@ pierde el contenedor, se recupera de ahí y solo se graba lo nuevo.
 | Inversionista | `INVERSOR` | 25 preguntas con su respuesta, incluidas las 3 de minería |
 | Saber | `SABER` | ecosistema · apps · webs · infra · tokens · minería · minas · flujo |
 | Minería | `conocimiento/portafolio-minero.md` | fuente entregada por la compañía |
+| Legal · voz | `conocimiento/legal.json` | 12 bloques y las 8 decisiones para la Junta — Secretaría, 14/08/2026 |
+| Legal · detalle | `conocimiento/legal-detalle.md` | el respaldo largo: sociedad, licencias, tesoro, riesgos |
+| Choques | `conocimiento/legal-contradicciones.md` | **dónde lo legal desmiente lo que publicamos**, con citas y rutas |
 
 **La regla que no se rompe:** lo medido se dice con su número y dónde
 comprobarlo; lo abierto se dice como está. Nunca sale de ahí una cifra de
@@ -117,8 +120,15 @@ vez por medir mal, no porque fallara el producto. Las tres trampas conocidas:
 - La **figura jurídica del respaldo en oro**: custodia, contrato, auditoría y
   derecho de canje. Hasta que se firme, FLUX no dice que la moneda esté
   respaldada. Detalle en `conocimiento/mineria-pendiente-legal.md`.
-- El **destino de la comisión** (hoy cobra cero; la dirección puesta no es la
-  billetera única).
+  **Resuelto por la Secretaría el 14/08: la figura es _referenciado_, y no hay
+  oro en bóveda.** Lo que queda abierto es el dictamen escrito (Decisión 4) y
+  corregir los textos que aún dicen lo contrario en la web, en las fichas
+  públicas de AU-RA y en el PDF para inversionistas —
+  `conocimiento/legal-contradicciones.md`, punto 1.
+- El **destino de la comisión**. La de la casa sigue apagada
+  (`OG_COMISION_ORIGEN` sin poner en Heroku); lo que sí cobra es el suelo de
+  gas de la cadena, 93 gwei ≈ 0,001953 ORIGEN por envío, que va al validador.
+  Comprobado el 16/08.
 - **Crédito de Anthropic** para que FLUX tenga cerebro de reserva cuando la
   base local no cubra una pregunta. Sin crédito no hay forma de conectar un
   modelo: toda vía necesita credencial.

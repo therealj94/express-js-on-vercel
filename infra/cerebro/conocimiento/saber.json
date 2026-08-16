@@ -161,6 +161,137 @@
       "palabras": ["pendiente", "deuda", "arreglar"],
       "es": "Pendiente: rotar las claves de Expo, Heroku y Render; borrar las cuatro cuentas de prueba; sellar la bitácora de Genesis ID tras la rotura de los 16 MB. Nada de esto sale al público: los pendientes de una casa se arreglan, no se anuncian.",
       "en": "Pending: rotate the Expo, Heroku and Render keys; delete the four test accounts; seal the Genesis ID audit log after the 16 MB break. None of this goes public: a house's pending work gets fixed, not announced."
+    },
+
+    {
+      "id": "interno-legal-figura",
+      "tema": "INTERNO · qué es ORIGEN en derecho",
+      "publico": false,
+      "revisadoPor": "melany@ordenglobal.org",
+      "revisadoEn": "2026-08-16",
+      "palabras": ["referenciado", "respaldado", "figura juridica", "boveda", "ni 43-101", "dictamen"],
+      "es": "La figura es REFERENCIADO, nunca respaldado: terminología no negociable en todos los documentos, y quien obtiene tokens es adquirente, no inversionista. No existe oro físico extraído ni custodiado en bóveda; el oro está en etapa de recurso o potencial minero dentro de concesiones sin formalizar. La NI 43-101 es un estándar canadiense de reporte de recursos mineros, NO una certificación de barras en bóveda: eso lo hacen estándares de refinería tipo LBMA. No hay dictamen jurídico externo escrito; la definición se construyó en casa. Excepción deliberada: ONDK sí se declara respaldado, porque es un valor negociable bajo Próspera y tiene otra naturaleza. Fuente: expediente de la Secretaria de la Junta, 14/08/2026.",
+      "en": "The legal figure is REFERENCED, never backed: non-negotiable wording across every document, and whoever obtains tokens is an acquirer, not an investor. There is no physical gold extracted or held in a vault; the gold sits as a resource or mining potential inside concessions that are not yet formalised. NI 43-101 is a Canadian mining-resource reporting standard, NOT a certification of bars in a vault: that is done by refinery standards such as LBMA. There is no external written legal opinion; the definition was built in-house. Deliberate exception: ONDK is declared backed, because it is a security under Próspera with a different nature. Source: Board Secretary's file, 14/08/2026."
+    },
+    {
+      "id": "interno-contradiccion-respaldo",
+      "tema": "INTERNO · lo que publicamos contradice al expediente legal",
+      "publico": false,
+      "revisadoPor": "melany@ordenglobal.org",
+      "revisadoEn": "2026-08-16",
+      "palabras": ["contradiccion", "discrepancia", "web", "dossier", "correccion"],
+      "es": "ALERTA ABIERTA. Cuatro sitios vivos afirman hoy respaldo uno a uno, custodia en bóveda y certificación NI 43-101: las fichas públicas origen y boveda de este mismo archivo, el texto de la portada en i18n.js, y el PDF para inversionistas de armar-dossier.py. El expediente legal dice que las tres afirmaciones son incorrectas. Es la Decisión 4 de la Junta: fijar por dictamen la naturaleza referenciada y corregir los textos. No se corrige por mantenimiento, porque el expediente pide dictamen. Mientras tanto, el PDF para inversionistas NO debe circular. Detalle con citas y rutas en legal-contradicciones.md.",
+      "en": "OPEN ALERT. Four live places today claim one-to-one backing, vault custody and NI 43-101 certification: the public origen and boveda cards in this very file, the landing copy in i18n.js, and the investor PDF from armar-dossier.py. The legal file says all three claims are wrong. This is Board Decision 4: settle the referenced nature by written opinion and correct the texts. Maintenance does not correct it, because the file asks for a legal opinion. Until then the investor PDF must not circulate. Detail with quotes and file paths in legal-contradicciones.md."
+    },
+    {
+      "id": "interno-licencias",
+      "tema": "INTERNO · licencias y regulador",
+      "publico": false,
+      "revisadoPor": "melany@ordenglobal.org",
+      "revisadoEn": "2026-08-16",
+      "palabras": ["licencia", "rfsa", "prospera", "regulador", "regulacion"],
+      "es": "Orden Global Corp no tiene NINGUNA licencia emitida; el paquete completo está en preparación ante la RFSA de Próspera. Primera ola, cuatro trámites: FinTech ATS Clase B para GoldeX Swap, Aviso de Oferta Exenta para ORIGEN, AUKA, AGKA y ONDK, Licencia de Compañía de Inversión con cien mil dólares de capital, y Prestamista No Bancario. Prerrequisito: formalizar la estructura accionaria ante Próspera, porque los expedientes exigen identificar beneficiarios finales. El modelo es operar desde Próspera hacia el mundo, sin licencia por país; la expansión por país es de otra sociedad y de otra etapa. Hasta que salgan, la operación está viva sobre base regulatoria incompleta: es el riesgo número uno del expediente.",
+      "en": "Orden Global Corp holds NO issued licence; the whole package is in preparation before Próspera's RFSA. First wave, four filings: FinTech ATS Class B for GoldeX Swap, Exempt Offering Notice for ORIGEN, AUKA, AGKA and ONDK, Investment Company Licence with one hundred thousand dollars of capital, and Non-Banking Lender. Prerequisite: formalise the share structure before Próspera, since the filings require identifying ultimate beneficiaries. The model is to operate from Próspera outward, with no per-country licence; per-country expansion belongs to another company and another stage. Until they are issued, a live operation rests on an incomplete regulatory base: risk number one in the file."
+    },
+    {
+      "id": "interno-sociedad",
+      "tema": "INTERNO · sociedad, jurisdicción y gobierno",
+      "publico": false,
+      "revisadoPor": "melany@ordenglobal.org",
+      "revisadoEn": "2026-08-16",
+      "palabras": ["sociedad", "junta", "prospera", "accionista", "gobernanza", "estatutos"],
+      "es": "Orden Global Corp, Próspera ZEDE en Roatán, permiso 88501978376475, primer registro 23/07/2026. De ella dependen la cadena, ORIGEN y todas las plataformas. Es el eje operativo del Pilar 2 del Sistema Financiero Social. Accionista único hoy: José Medardo Ordóñez Martínez; está decidido reestructurar en series de acciones, con acciones fundadoras de voto reforzado, y llevar el control a una tenedora en Emiratos. Junta de cinco: presidente José Medardo Ordóñez, vicepresidente Carlos Leonardo Paguada, secretaria Melany Johan Ordóñez, vocales Mayra Carolina Enamorado y Vanesa Carolina Pinto. Quórum de tres, reuniones trimestrales, mayoría simple. El CEO firma solo hasta cien mil dólares. La entidad canadiense Orden Global Blockchain Corp no tiene rol operativo. El acuerdo uno, que mantiene viva la cadena vieja, está dicho pero sin acta a la vista.",
+      "en": "Orden Global Corp, Próspera ZEDE in Roatán, permit 88501978376475, first registered 23/07/2026. The chain, ORIGEN and every platform hang from it. It is the operating axis of Pillar 2 of the Social Financial System. Sole registered shareholder today: José Medardo Ordóñez Martínez; a restructuring into share series is decided, with founder shares carrying enhanced voting, and control moving to a holding company in the Emirates. Board of five: chair José Medardo Ordóñez, vice-chair Carlos Leonardo Paguada, secretary Melany Johan Ordóñez, members Mayra Carolina Enamorado and Vanesa Carolina Pinto. Quorum of three, quarterly meetings, simple majority. The CEO signs alone up to one hundred thousand dollars. The Canadian entity Orden Global Blockchain Corp has no operating role. Agreement one, which keeps the old chain alive, is stated but has no minute on record."
+    },
+    {
+      "id": "interno-tesoro-cuatro",
+      "tema": "INTERNO · el tesoro son cuatro billeteras",
+      "publico": false,
+      "revisadoPor": "melany@ordenglobal.org",
+      "revisadoEn": "2026-08-16",
+      "palabras": ["tesoro", "tesoreria", "billeteras madre", "custodia", "llaves"],
+      "es": "Corrige lo que el cerebro tenía anotado. El tesoro no es una billetera única: son CUATRO billeteras madre con doscientos cincuenta mil millones de ORIGEN cada una, un billón en total, que es la emisión entera. De las madres se reparte a operativas según el tokenomics, y las operativas liberan según la referencia del oro. Mover fondos de una madre exige acta de la Junta Directiva. Las direcciones no se divulgan por decisión del Protocolo de Seguridad de Accesos y Credenciales, que gobierna también las llaves. Ni direcciones ni llaves se escriben aquí.",
+      "en": "This corrects what the brain had on file. The treasury is not one wallet: it is FOUR mother wallets holding two hundred and fifty billion ORIGEN each, one trillion in total, which is the entire issuance. Mother wallets feed operating wallets per the tokenomics, and operating wallets release against the gold reference. Moving funds out of a mother wallet requires a Board minute. Addresses are not disclosed by decision of the Access and Credentials Security Protocol, which also governs the keys. Neither addresses nor keys are written here."
+    },
+    {
+      "id": "interno-usuarios-sin-contrato",
+      "tema": "INTERNO · 435 usuarios sin términos ni contrato",
+      "publico": false,
+      "revisadoPor": "melany@ordenglobal.org",
+      "revisadoEn": "2026-08-16",
+      "palabras": ["terminos", "privacidad", "contrato", "usuarios", "aceptacion"],
+      "es": "No hay términos y condiciones publicados, ni política de privacidad, ni contrato de usuario. Los enlaces legales de la web vigente están vacíos, y no hubo punto de aceptación registrable cuando los cuatrocientos treinta y cinco usuarios abrieron cuenta. Veinticuatro tarjetas emitidas. No hay garantía ni recompra hacia el usuario común si el precio de ORIGEN cae, distinta de las ventanas esporádicas de ONDK. Ley aplicable y reclamaciones: Próspera y arbitraje se asumen, pero no se han definido. Riesgo número tres del expediente y Decisión 3 de la Junta.",
+      "en": "There are no published terms and conditions, no privacy policy and no user contract. The legal links on the live site are empty, and there was no recordable point of acceptance when the four hundred and thirty-five users opened accounts. Twenty-four cards issued. There is no guarantee or buy-back for the ordinary user if ORIGEN's price falls, distinct from ONDK's occasional windows. Governing law and claims: Próspera and arbitration are assumed but undefined. Risk number three in the file and Board Decision 3."
+    },
+    {
+      "id": "interno-propiedad-intelectual",
+      "tema": "INTERNO · las marcas y el software no son de la empresa",
+      "publico": false,
+      "revisadoPor": "melany@ordenglobal.org",
+      "revisadoEn": "2026-08-16",
+      "palabras": ["marca", "dominio", "software", "cesion", "propiedad intelectual"],
+      "es": "Ninguna marca del ecosistema está registrada: ni Orden Global, ni Veta Wallet, ni Genesis ID, ni MyTokenPay, ni Ordenscan, ni ORIGEN. Los dominios están a nombre personal de una socia, aunque dentro de cuentas de la sociedad. El software está alojado a nombre de la sociedad y bajo su control, pero no hay cesión de derechos firmada. La precisión jurídica que importa: controlar una cuenta no es ser titular. Sin cesión, la titularidad legal del software sigue en quien lo desarrolló, y los dominios son de la persona natural. Riesgo número dos del expediente y Decisión 2 de la Junta.",
+      "en": "No trademark of the ecosystem is registered: not Orden Global, not Veta Wallet, not Genesis ID, not MyTokenPay, not Ordenscan, not ORIGEN. Domains sit in a partner's personal name, though inside company accounts. The software is hosted under the company's name and control, but no assignment of rights has been signed. The legal point that matters: controlling an account is not holding title. Without an assignment, legal title to the software stays with whoever developed it, and the domains belong to the natural person. Risk number two in the file and Board Decision 2."
+    },
+    {
+      "id": "interno-cumplimiento",
+      "tema": "INTERNO · cumplimiento y datos personales",
+      "publico": false,
+      "revisadoPor": "melany@ordenglobal.org",
+      "revisadoEn": "2026-08-16",
+      "palabras": ["aml", "cumplimiento", "datos", "privacidad", "kyc", "oficial"],
+      "es": "Genesis ID hace KYC, KYB y AML, pero el marco alrededor está a medias: el manual AML y CFT está en proceso y sin aprobar, no hay oficial de cumplimiento nombrado, y el reporte de operaciones sospechosas ante la RFSA es futuro. Orden Global Corp es responsable del tratamiento; los datos viven en servidores de Amazon en Estados Unidos. No hay política de privacidad publicada y la transferencia internacional de datos no está abordada, con usuarios en más de diez países. Decisión 5 de la Junta.",
+      "en": "Genesis ID performs KYC, KYB and AML, but the framework around it is half-built: the AML and CFT manual is in progress and unapproved, no compliance officer is appointed, and suspicious-activity reporting to the RFSA is future work. Orden Global Corp is the data controller; the data lives on Amazon servers in the United States. No privacy policy is published and international data transfer is unaddressed, with users in more than ten countries. Board Decision 5."
+    },
+    {
+      "id": "interno-comision-dos-cobros",
+      "tema": "INTERNO · la comisión: dos cobros distintos",
+      "publico": false,
+      "revisadoPor": "jose@ordenglobal.org",
+      "revisadoEn": "2026-08-16",
+      "palabras": ["comision", "gas", "fee", "cobro", "fiscal"],
+      "es": "Comprobado el 16/08/2026, y concilia la contradicción que el expediente marcó. La comisión de la billetera, los 0,001 ORIGEN al tesoro, sigue APAGADA: lib/comision.js solo cobra si existe OG_COMISION_ORIGEN, y esa variable no está puesta en la aplicación vetawallet de Heroku. Lo que sí está activo es el suelo de gas de la cadena: eth_gasPrice devuelve noventa y tres gwei, que a veintiún mil de gas son 0,001953 ORIGEN por envío nativo. Mover ORIGEN ya cuesta algo más de una milésima, pero ese cobro es de la red y va al validador, no de la casa y no al tesoro. Se parecen en la cifra y se confunden con facilidad; tienen distinto cobrador y por tanto distinto tratamiento fiscal.",
+      "en": "Verified 16/08/2026, and this reconciles the contradiction the legal file flagged. The wallet commission, the 0.001 ORIGEN to the treasury, is still OFF: lib/comision.js only charges if OG_COMISION_ORIGEN exists, and that variable is not set on the vetawallet Heroku app. What is active is the chain's gas floor: eth_gasPrice returns ninety-three gwei, which at twenty-one thousand gas is 0.001953 ORIGEN per native send. Moving ORIGEN already costs a little over a thousandth, but that charge belongs to the network and goes to the validator, not to the house and not to the treasury. The figures look alike and are easy to confuse; they have different collectors and therefore different tax treatment."
+    },
+    {
+      "id": "interno-fiscalidad",
+      "tema": "INTERNO · fiscalidad",
+      "publico": false,
+      "revisadoPor": "melany@ordenglobal.org",
+      "revisadoEn": "2026-08-16",
+      "palabras": ["fiscal", "impuesto", "tributacion", "hacienda"],
+      "es": "Orden Global Corp tributa bajo el régimen de Próspera ZEDE y tiene sus obligaciones al día. No ha habido todavía actividad que genere hecho gravable. Sin analizar: el tratamiento fiscal de la emisión de tokens, el de la comisión por transacción, y las obligaciones de información sobre usuarios. Decisión 6 de la Junta. Se acumulan hechos sin encuadre fiscal mientras no se decida.",
+      "en": "Orden Global Corp is taxed under the Próspera ZEDE regime and is up to date on its obligations. No taxable event has arisen yet. Unanalysed: the tax treatment of token issuance, that of the per-transaction fee, and reporting obligations on users. Board Decision 6. Facts accumulate without a tax framing until it is decided."
+    },
+    {
+      "id": "interno-migracion-saldos",
+      "tema": "INTERNO · migrar la cadena mueve el registro de 435 personas",
+      "publico": false,
+      "revisadoPor": "melany@ordenglobal.org",
+      "revisadoEn": "2026-08-16",
+      "palabras": ["migracion", "5550", "8532", "saldos", "consentimiento"],
+      "es": "Arrancar la 5550 sustituye a la cadena anterior como registro de saldos de los usuarios. En términos legales eso es migrar el registro contable de cuatrocientas treinta y cinco personas reales, y está por determinar si exige aviso o consentimiento previo. Hay que resolverlo ANTES de ejecutarla, no después. Decisión 8 de la Junta. Enlaza con el acuerdo uno: la cadena vieja no se apaga ni se borra y queda como respaldo, aunque ese acuerdo todavía no consta en acta.",
+      "en": "Starting 5550 replaces the previous chain as the users' balance ledger. In legal terms that migrates the accounting record of four hundred and thirty-five real people, and whether it requires prior notice or consent is undetermined. It must be settled BEFORE execution, not after. Board Decision 8. It ties to agreement one: the old chain is neither shut down nor deleted and remains as backup, though that agreement is not yet minuted."
+    },
+    {
+      "id": "interno-ondk",
+      "tema": "INTERNO · ONDK, el único respaldado",
+      "publico": false,
+      "revisadoPor": "melany@ordenglobal.org",
+      "revisadoEn": "2026-08-16",
+      "palabras": ["ondk", "security", "valor negociable", "recompra"],
+      "es": "ONDK es un instrumento patrimonial digital: un título que representa valor económico del ecosistema. Toma su valor de la minería, la infraestructura tecnológica y la participación en las compañías del grupo. El titular gana por apreciación, y de forma secundaria por ventanas de recompra que Orden Global abre cada cierto tiempo, que no son un derecho permanente de rescate: eso evita crear una obligación de liquidez permanente. En Próspera se estructura como valor negociable y sí se declara RESPALDADO, que es la única excepción a la terminología del ecosistema. Su cobertura es la Licencia de Compañía de Inversión de la RFSA, y no puede mercadearse en Estados Unidos. No es una acción: da derechos económicos por contrato, sin voto ni condición de socio.",
+      "en": "ONDK is a digital equity instrument: a title representing the ecosystem's economic value. It draws value from the mining, the technical infrastructure and the stakes in the group's companies. Holders gain by appreciation, and secondarily through buy-back windows Orden Global opens periodically, which are not a permanent redemption right: that avoids creating a standing liquidity obligation. Under Próspera it is structured as a security and is declared BACKED, the sole exception to the ecosystem's wording. Its cover is the RFSA Investment Company Licence, and it cannot be marketed in the United States. It is not a share: it grants contractual economic rights, with no vote and no member status."
+    },
+    {
+      "id": "interno-mineria-desmentida",
+      "tema": "INTERNO · el documento minero se contradice con lo legal",
+      "publico": false,
+      "revisadoPor": "melany@ordenglobal.org",
+      "revisadoEn": "2026-08-16",
+      "palabras": ["oriegen", "portafolio", "gramin", "mineria", "contradiccion"],
+      "es": "El documento portafolio-minero.md, entregado por la compañía el 14/08, choca en tres puntos con el expediente legal del mismo día. Uno: escribe ORIEGEN, y la moneda es ORIGEN. Dos: dice tokens respaldados en metales preciosos y anclados a activos físicos reales, contra el referenciado no negociable. Tres, y es el que más daño hace citado suelto: dice que un gramín es un gramo de oro y un ORIEGEN un cincuentaicincoavo de gramín, cuando un ORIGEN es un gramin y un gramin es un cincuentaicincoavo de gramo. Quien cite esa frase estará diciendo que la unidad vale cincuenta y cinco veces lo que vale. El documento se conserva tal cual lo entregó la compañía; el cerebro no repite esas tres cosas.",
+      "en": "The document portafolio-minero.md, supplied by the company on 14/08, clashes on three points with the legal file of the same date. One: it writes ORIEGEN, and the coin is ORIGEN. Two: it says tokens backed by precious metals and anchored to real physical assets, against the non-negotiable referenced wording. Three, the most damaging when quoted alone: it says a gramin is a gram of gold and an ORIEGEN is one fifty-fifth of a gramin, when an ORIGEN is a gramin and a gramin is one fifty-fifth of a gram. Anyone quoting that sentence will be saying the unit is worth fifty-five times its real value. The document is kept exactly as the company delivered it; the brain does not repeat those three things."
     }
   ]
 }

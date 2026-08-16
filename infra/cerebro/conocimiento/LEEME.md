@@ -39,6 +39,22 @@ una ficha:
 comparta más con la pregunta, así que «la bóveda del oro» va a la bóveda y no a
 ORIGEN, aunque las dos hablen de oro.
 
+Junto a `saber.json` viven los documentos largos que la casa recibió. No los
+lee el publicador —de ahí no sale nada a AU-RA— y no se editan: se conservan
+tal como los entregó quien los firma.
+
+| Archivo | Qué es | De quién |
+|---|---|---|
+| `legal.json` | 12 bloques legales y las 8 decisiones para la Junta | Melany Ordóñez, Secretaria · 14/08/2026 |
+| `legal-detalle.md` | el respaldo largo de lo anterior | ídem |
+| `portafolio-minero.md` | el portafolio de inversiones mineras | la compañía · 14/08/2026 |
+| `mineria-pendiente-legal.md` | los papeles que faltan para dar por buena la minería | la casa |
+| `legal-contradicciones.md` | **dónde estos documentos chocan entre sí y con lo que publicamos** | la casa |
+
+Ese último manda sobre los otros. Un documento entregado no se corrige por
+dentro: se deja como está y el choque se anota aparte, con las dos versiones y
+la fecha en que se comprobó.
+
 ---
 
 ## Cómo sale

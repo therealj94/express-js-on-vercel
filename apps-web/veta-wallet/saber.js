@@ -7,7 +7,7 @@
  * Si hace falta que AU-RA sepa algo nuevo: se escribe la ficha allá, se corre
  * el publicador, y el cambio queda en un commit que alguien puede leer.
  *
- * 12 fichas públicas · 2 se quedaron en casa.
+ * 12 fichas públicas · 15 se quedaron en casa.
  */
 window.AURA_SABER = [
   {
