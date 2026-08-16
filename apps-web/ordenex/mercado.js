@@ -74,6 +74,14 @@ const VMERCADO = (() => {
      se retira sola (ver sinReferencia). */
   const CON_REFERENCIA = ['AUKA', 'AGKA', 'ORIGEN'];
 
+  /* Y los que llevan PRECIO DECLARADO por la Junta: la tercera fuente. Misma
+     forma de lista blanca y por el mismo motivo, pero la razón de fondo es
+     otra: AUKA, AGKA y ORIGEN siguen un metal y su precio se MIDE; ONDK no
+     cotiza en ningún lado y su precio se DECLARA, en un acta. Que la Junta
+     pudiera «declarar» el precio del oro sería absurdo, así que esta lista y
+     la de arriba no se solapan ni deben. */
+  const CON_DECLARADO = ['ONDK'];
+
   // Los helpers de la casa se piden a ONX EN EL MOMENTO de usarlos: este
   // archivo carga antes que app.js (el orden del HTML es el grafo de
   // dependencias) y una referencia top-level a ONX reventaría en la carga.
@@ -124,6 +132,16 @@ const VMERCADO = (() => {
       'refAUKA': 'Onza de oro en el mercado real, en dólares. No son tratos de Ordenex.',
       'refAGKA': 'Onza de plata en el mercado real, en dólares. No son tratos de Ordenex.',
       'refORIGEN': 'Gramo de oro entre 55, derivado del oro del mercado real, en dólares. No son tratos de Ordenex.',
+
+      /* El precio declarado. El rótulo dice DOS cosas y las dos hacen falta:
+         de dónde sale (una resolución de la Junta) y qué NO es (un precio de
+         mercado). Con solo la primera, alguien podría leerlo como cotización. */
+      'fDecl': 'Declarado · Junta',
+      'declBadge': 'PRECIO DECLARADO',
+      'declRot': 'Precio fijado por resolución de la Junta Directiva. ONDK no cotiza todavía: no hay libro ni contraparte, así que este número no es un precio de mercado. Cada escalón de la gráfica es un acta, y entre dos actas el precio no se mueve.',
+      'declNo': 'No pudimos traer el precio declarado. Se reintenta solo.',
+      'declVacio': 'La Junta todavía no ha declarado un precio para este instrumento.',
+      'declVig': 'vigente desde {fecha} · acta {acta}',
 
       // La nota de AUKA: es de producto, no una advertencia. Explica el activo.
       'aukaT': 'AUKA y ORIGEN son el mismo metal',
@@ -209,6 +227,13 @@ const VMERCADO = (() => {
       'refAUKA': 'One ounce of gold in the real market, in dollars. These are not Ordenex trades.',
       'refAGKA': 'One ounce of silver in the real market, in dollars. These are not Ordenex trades.',
       'refORIGEN': 'A gram of gold divided by 55, derived from real-market gold, in dollars. These are not Ordenex trades.',
+
+      'fDecl': 'Declared · Board',
+      'declBadge': 'DECLARED PRICE',
+      'declRot': 'Price set by resolution of the Board of Directors. ONDK does not trade yet: there is no book and no counterparty, so this number is not a market price. Every step in the chart is a minute, and between two minutes the price does not move.',
+      'declNo': 'We couldn’t fetch the declared price. It retries on its own.',
+      'declVacio': 'The Board has not declared a price for this instrument yet.',
+      'declVig': 'in force since {fecha} · minute {acta}',
 
       'aukaT': 'AUKA and ORIGEN are the same metal',
       'aukaP': 'AUKA is one ounce of gold and ORIGEN is a gram of gold divided by 55. Since both are gold, their ratio never moves: 1 AUKA = 1,710.69 ORIGEN, today and always. The price that does move is the price of gold, and it lives in the Reference tab, in dollars.',
@@ -315,6 +340,16 @@ const VMERCADO = (() => {
     return isNaN(d.getTime()) ? '—' : d.toTimeString().slice(0, 8);
   };
 
+  /* La fecha de un acta, con el año entero: una resolución de la Junta se cita
+     por su fecha completa, y «15/01» a secas no sirve para buscarla en un
+     libro que abarca años. El guion cuando no se puede leer, como siempre. */
+  const fechaLarga = en => {
+    const d = new Date(en);
+    if (isNaN(d.getTime())) return '—';
+    const dd = x => String(x).padStart(2, '0');
+    return `${dd(d.getDate())}/${dd(d.getMonth() + 1)}/${d.getFullYear()}`;
+  };
+
   // ── el estado de la sala ──────────────────────────────────────────────────
 
   let paradores = [];        // cada sondeo devuelve su parador; apagar() los corre todos
@@ -344,6 +379,7 @@ const VMERCADO = (() => {
   let libroCache = null;     // el último libro bueno DEL PAR ABIERTO; se tira al cambiar de par
   let velasCache = null;     // velas de TRATOS, en wei de ORIGEN
   let refCache = null;       // el paquete de REFERENCIA del API: { activo, rotulo, fuente, actualizadoEn, velas } en USD
+  let declCache = null;      // el paquete DECLARADO: { token, clase, moneda, vigente, serie } — actas, no velas
   let cuentas = null;        // los saldos del portafolio si hay sesión; null = no leídos (fail-closed)
   /* La llave de idempotencia de la orden EN CURSO. Se estrena al enviar, se
      conserva si el fallo fue de red (el reintento tiene que ser LA MISMA
@@ -365,9 +401,16 @@ const VMERCADO = (() => {
      ya en la pestaña correcta, no saltar a otra un segundo después. */
   let parPreparado = null;
   let referenciaNegada = false;
+  let declaradoNegado = false;
 
   const marcosDe = f => MARCOS[f === 'referencia' ? 'referencia' : 'tratos'];
   const marcoDe = () => marcos[fuenteActual];
+
+  /* ¿Este mercado lleva precio declarado por la Junta? Misma mecánica que
+     hayRef, mismo fail-closed: si el API dice NO_DECLARABLE, se retira la
+     pestaña por más que la lista de aquí diga que sí. */
+  const hayDecl = par => !declaradoNegado
+    && CON_DECLARADO.includes(String(par || '').split('-')[0]);
 
   /* ¿Este mercado tiene cartel del metal detrás? La lista blanca decide y el
      404 SIN_REFERENCIA del API la corrige: si él dice que no, no hay pestaña
@@ -387,6 +430,15 @@ const VMERCADO = (() => {
        en referencia y se deja la puerta abierta a que la primera respuesta
        buena lo corrija una única vez (cargarCab). */
   function fuenteInicial(par) {
+    /* ONDK primero: es el único con precio declarado, y mientras no cotice esa
+       es la única pestaña con algo dentro. En cuanto haya un solo trato manda
+       el trato — el precio del libro es el de verdad y el declarado pasa a ser
+       lo que siempre fue, la referencia de la Junta. */
+    if (hayDecl(par)) {
+      const m = (mercadosCache || []).find(x => x.mercado === par);
+      if (!m) return { fuente: 'declarado', firme: false };
+      return { fuente: m.ultimo == null ? 'declarado' : 'tratos', firme: true };
+    }
     if (!hayRef(par)) return { fuente: 'tratos', firme: true };
     const m = (mercadosCache || []).find(x => x.mercado === par);
     if (!m) return { fuente: 'referencia', firme: false };
@@ -400,6 +452,7 @@ const VMERCADO = (() => {
     if (par === parPreparado) return;
     parPreparado = par;
     referenciaNegada = false;
+    declaradoNegado = false;
     marcos = { tratos: MARCO_INICIAL.tratos, referencia: MARCO_INICIAL.referencia };
     /* Las velas del mercado anterior se tiran AQUÍ y no solo en alPintar,
        porque la vista se arma antes que él: sin esto, el primer pintado de
@@ -408,6 +461,7 @@ const VMERCADO = (() => {
        no dice. */
     velasCache = null;
     refCache = null;
+    declCache = null;
     const d = fuenteInicial(par);
     fuenteActual = d.fuente;
     fuenteFirme = d.firme;
@@ -463,7 +517,12 @@ const VMERCADO = (() => {
       width:max-content;background:rgba(2,22,23,.55)}
     .vm-fuentes button{padding:7px 16px;font-size:12px;font-weight:700;color:var(--humo);transition:.2s}
     .vm-fuentes button[aria-pressed=true]{background:rgba(116,230,200,.14);color:var(--acento)}
-    .vm-fuentes button[data-fuente=referencia][aria-pressed=true]{
+    /* Las dos pestañas que NO son tratos van en oro y no en jade: el jade es
+       el color de lo que pasó en esta casa. Un cartel de fuera y una
+       resolución de la Junta no son operaciones, y el color lo dice antes de
+       que nadie lea el rótulo. */
+    .vm-fuentes button[data-fuente=referencia][aria-pressed=true],
+    .vm-fuentes button[data-fuente=declarado][aria-pressed=true]{
       background:rgba(201,169,97,.18);color:var(--oroHi)}
 
     /* El rótulo de la referencia: vive DEBAJO de su gráfica y mientras esa
@@ -699,7 +758,7 @@ const VMERCADO = (() => {
             <!-- Los mandos del zoom. Se enseñan aunque la rueda ya funcione:
                  nadie adivina que una gráfica se puede acercar, y en una
                  pantalla táctil no hay rueda que descubrir. -->
-            <div class="vm-zoom" role="group" aria-label="${esc(tx('zoomGrupo'))}">
+            <div class="vm-zoom" id="vm-zoom" role="group" aria-label="${esc(tx('zoomGrupo'))}">
               <button type="button" onclick="VMERCADO.zoom('mas')" title="${esc(tx('zoomMas'))}" aria-label="${esc(tx('zoomMas'))}">+</button>
               <button type="button" onclick="VMERCADO.zoom('menos')" title="${esc(tx('zoomMenos'))}" aria-label="${esc(tx('zoomMenos'))}">−</button>
               <button type="button" onclick="VMERCADO.zoom('todo')" title="${esc(tx('zoomTodo'))}" aria-label="${esc(tx('zoomTodo'))}">⤢</button>
@@ -778,16 +837,22 @@ const VMERCADO = (() => {
      sector no se dibuja, y punto. Una pestaña que al pulsarla contesta «este
      activo no tiene referencia» es una promesa rota dibujada a propósito. */
   function selectorFuente(par) {
-    if (!hayRef(par)) return '';
+    if (!hayRef(par) && !hayDecl(par)) return '';
     const b = (f, k) => `<button data-fuente="${f}" aria-pressed="${String(f === fuenteActual)}"
       onclick="VMERCADO.fuente(${jsTxt(f)})">${esc(tx(k))}</button>`;
     return `<div class="vm-fuentes" role="group" aria-label="${esc(tx('fuente'))}">
-      ${b('tratos', 'fTratos')}${b('referencia', 'fRef')}</div>`;
+      ${b('tratos', 'fTratos')}${hayRef(par) ? b('referencia', 'fRef') : ''}${
+        hayDecl(par) ? b('declarado', 'fDecl') : ''}</div>`;
   }
 
-  // Los marcos son los de la fuente activa: al cambiar de fuente se cambia el
-  // juego entero, porque un '1m' de metal o un '4d' de tratos no existen.
+  /* Los marcos son los de la fuente activa: al cambiar de fuente se cambia el
+     juego entero, porque un '1m' de metal o un '4d' de tratos no existen.
+     Y en «declarado» no se dibuja ninguno: un precio declarado no tiene marco
+     de tiempo. La serie es la lista de actas y se enseña entera — ofrecer un
+     «1h» sobre cuatro resoluciones en dos años sería un mando que promete un
+     detalle que no existe. */
   function botonesMarco() {
+    if (fuenteActual === 'declarado') return '';
     const activo = marcoDe();
     return `<div class="vm-marcos" id="vm-marcos" role="group" aria-label="Marco">
       ${marcosDe(fuenteActual).map(m => `<button data-marco="${m}" aria-pressed="${String(m === activo)}"
@@ -804,6 +869,14 @@ const VMERCADO = (() => {
        precio. Esa línea se va sola en cuanto haya velas: entonces el precio ya
        nació y decir dónde nace sobra. */
   function bajoGrafica(par) {
+    if (fuenteActual === 'declarado') {
+      if (!declCache) return '';
+      const v = declCache.vigente;
+      const pie = v ? rell(tx('declVig'), { fecha: fechaLarga(v.fecha), acta: v.acta }) : '';
+      return `<div class="vm-rotulo">
+        <b>${esc(tx('declBadge'))}</b><span>${esc(tx('declRot'))}</span>
+        ${pie ? `<small>${esc(pie)}</small>` : ''}</div>`;
+    }
     if (fuenteActual === 'referencia') {
       if (!refCache) return '';
       const cuando = Number(refCache.actualizadoEn);
@@ -841,8 +914,9 @@ const VMERCADO = (() => {
   // ── los mandos ────────────────────────────────────────────────────────────
 
   function fuente(f) {
-    if (f !== 'tratos' && f !== 'referencia') return;
+    if (f !== 'tratos' && f !== 'referencia' && f !== 'declarado') return;
     if (f === 'referencia' && !hayRef(parActual)) return;
+    if (f === 'declarado' && !hayDecl(parActual)) return;
     fuenteFirme = true;         // decisión humana: ya nadie la corrige por detrás
     if (f === fuenteActual) return;
     fuenteActual = f;
@@ -869,7 +943,10 @@ const VMERCADO = (() => {
 
   // ── traer los datos ───────────────────────────────────────────────────────
 
-  const cargarGrafica = () => (fuenteActual === 'referencia' ? cargarReferencia() : cargarVelas());
+  const cargarGrafica = () => (
+    fuenteActual === 'declarado' ? cargarDeclarado()
+      : fuenteActual === 'referencia' ? cargarReferencia()
+        : cargarVelas());
 
   async function cargarVelas() {
     const par = parActual, marco = marcos.tratos;
@@ -896,6 +973,35 @@ const VMERCADO = (() => {
     if (par !== parActual || marco !== marcos.referencia) return;
     refCache = d && Array.isArray(d.velas) ? d : { velas: [] };
     if (fuenteActual === 'referencia') { pintarVelas(); pintarBajo(); }
+  }
+
+  /* El precio declarado no tiene marco ni paginación: se pide entero, porque
+     entero es corto —una fila por acta— y porque el sentido de la gráfica es
+     ver la secuencia completa de decisiones, no una ventana de ella. */
+  async function cargarDeclarado() {
+    const par = parActual;
+    const token = String(par || '').split('-')[0];
+    let d;
+    try { d = await DATOS.declarado(token); } catch (e) {
+      if (e?.codigo === 'NO_DECLARABLE') { sinDeclarado(par); return; }
+      if (!declCache) notaVelas(tx('declNo'));
+      return;
+    }
+    if (par !== parActual) return;
+    declCache = d && Array.isArray(d.serie) ? d : { serie: [], vigente: null };
+    if (fuenteActual === 'declarado') { pintarVelas(); pintarBajo(); }
+  }
+
+  /* Igual que sinReferencia y por el mismo motivo: manda el API. Si dice que
+     este instrumento no lleva precio declarado, la pestaña se retira sola. */
+  function sinDeclarado(par) {
+    if (par !== parActual) return;
+    declCache = null;
+    declaradoNegado = true;
+    if (fuenteActual === 'declarado') { fuenteActual = 'tratos'; fuenteFirme = true; }
+    notaVelas('');
+    pintarCabGrafica();
+    relojGrafica();
   }
 
   /* El API retiró la referencia de este activo —o nunca la tuvo y la lista
@@ -966,6 +1072,32 @@ const VMERCADO = (() => {
     if (!c) return;
     if (typeof VELAS === 'undefined') { notaVelas(tx('velasSin')); return; }
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    /* Los mandos del zoom se retiran en «declarado» por lo mismo que los
+       marcos: ahí no hay nada que acercar, y un botón que no hace nada miente.
+       Va aquí y no en pintarCabGrafica para que también valga en el primer
+       pintado, cuando la sala abre directamente en esa pestaña. */
+    const cajaZoom = $('vm-zoom');
+    if (cajaZoom) cajaZoom.hidden = fuenteActual === 'declarado';
+
+    /* El precio declarado se dibuja con OTRA función, no con `dibujar`. No es
+       una decisión de estilo: una vela tiene apertura, máximo, mínimo y cierre,
+       y una resolución de la Junta tiene un solo número. Pintarla de vela
+       sería inventarle tres precios que nunca existieron. */
+    if (fuenteActual === 'declarado') {
+      if (!declCache) return;             // aún sin respuesta: ni nota ni dibujo en falso
+      notaVelas('');
+      medirLienzo(c, dpr);
+      try {
+        VELAS.escalones(c, declCache.serie, {
+          par: String(parActual || '').split('-')[0],   // 'ONDK', no 'ONDK-ORIGEN'
+          moneda: declCache.moneda || 'USD',
+          dpr,
+          idioma: idi(),
+        });
+      } catch { notaVelas(tx('declNo')); }
+      return;
+    }
 
     if (fuenteActual === 'referencia') {
       if (!refCache) return;              // aún sin respuesta: ni nota ni dibujo en falso
@@ -1476,7 +1608,13 @@ const VMERCADO = (() => {
       try { pararGrafica(); } catch {}
       paradores = paradores.filter(p => p !== pararGrafica);
     }
-    pararGrafica = DATOS.sondeo(cargarGrafica, fuenteActual === 'referencia' ? 60000 : 30000);
+    /* Cada fuente, su ritmo. Los tratos cada 30 s porque el libro se mueve; el
+       metal cada 60 porque el proveedor se refresca cada 15 minutos; y el
+       precio declarado cada 5 porque cambia cuando hay una Junta —o sea, unas
+       cuantas veces al año—. Sondearlo como si fuera un mercado sería fingir
+       que puede cambiar mientras alguien lo mira. */
+    pararGrafica = DATOS.sondeo(cargarGrafica,
+      fuenteActual === 'declarado' ? 300000 : fuenteActual === 'referencia' ? 60000 : 30000);
     paradores.push(pararGrafica);
   }
 
@@ -1493,7 +1631,8 @@ const VMERCADO = (() => {
     if (parNuevo !== parActual) {
       // Otro par = otra sala: nada de lo cacheado del anterior sirve, y un
       // libro ajeno estimando costos sería un número inventado con esmero.
-      libroCache = null; tratosCache = null; velasCache = null; refCache = null; ordenesCache = null;
+      libroCache = null; tratosCache = null; velasCache = null; refCache = null;
+      declCache = null; ordenesCache = null;
     }
     parActual = parNuevo;
     ordenKeyViva = null;
@@ -1518,9 +1657,14 @@ const VMERCADO = (() => {
     const lienzo = document.getElementById('vm-velas');
     if (lienzo && VELAS.gestos) {
       gestosGrafica = VELAS.gestos(lienzo, {
-        total: () => (fuenteActual === 'referencia'
-          ? (refCache && refCache.velas ? refCache.velas.length : 0)
-          : (velasCache ? velasCache.length : 0)),
+        /* Cero en «declarado» y con eso los gestos quedan mudos solos: la
+           gráfica de escalones se enseña entera siempre —son cuatro actas en
+           dos años, no hay tramo que buscar— y una rueda que gira sin que
+           pase nada es un mando roto. Con total 0, gestos no arma ventana. */
+        total: () => (fuenteActual === 'declarado' ? 0
+          : fuenteActual === 'referencia'
+            ? (refCache && refCache.velas ? refCache.velas.length : 0)
+            : (velasCache ? velasCache.length : 0)),
         alCambiar: pintarVelas,
       });
     }
@@ -1567,7 +1711,7 @@ const VMERCADO = (() => {
       // Las decisiones de fuente son puras y se prueban sin navegador: qué
       // mercado tiene cartel del metal, con qué pestaña abre y qué marcos le
       // tocan a cada una.
-      MARCOS, CON_REFERENCIA, hayRef, marcosDe, decimalesUSD, refEnOrigen,
+      MARCOS, CON_REFERENCIA, CON_DECLARADO, hayRef, hayDecl, marcosDe, decimalesUSD, refEnOrigen,
       fuenteInicial: p => fuenteInicial(p),
       estado: () => ({ fuente: fuenteActual, firme: fuenteFirme, marcos: { ...marcos } }),
     },

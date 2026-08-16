@@ -149,6 +149,20 @@ const DATOS = (() => {
     return pedir(`/mercados/${par(p)}/referencia?${q}`, { conSesion: false });
   };
 
+  /* La TERCERA clase de precio, y su puerta también es propia — y a propósito
+     no cuelga de /mercados: lo que sirve no es un mercado.
+
+       { token, clase:'declarado', moneda:'USD', vigente, serie:[{fecha,precio,acta,firmante}…] }
+
+     Es lo que la Junta Directiva le fijó por resolución a un instrumento que
+     todavía no cotiza (hoy, solo ONDK). No tiene marco, no tiene volumen y no
+     tiene libro: tiene actas. Que llegue por su propio caño es lo que impide
+     que un día alguien lo pinte de vela y ONDK parezca que cotiza.
+
+     Para lo que no es declarable el API contesta 404 NO_DECLARABLE, y ese
+     error se propaga tal cual. */
+  const declarado = token => pedir(`/precio-declarado/${par(token)}`, { conSesion: false });
+
   // ── órdenes 🔒 ────────────────────────────────────────────────────────────
   // o = { mercado, lado, tipo, precio?, cantidad, ordenKey } — precio y
   // cantidad en strings de wei; la ordenKey la pone quien coloca, para que un
@@ -204,7 +218,7 @@ const DATOS = (() => {
 
   return {
     API, sondeo,
-    mercados, libro, velas, tratos, referencia,
+    mercados, libro, velas, tratos, referencia, declarado,
     colocar, cancelar, misOrdenes,
     portafolio, retirar, movimientos,
     agentes, solicitudes, crearSolicitud, accionSolicitud,

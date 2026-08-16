@@ -310,6 +310,16 @@ const VETA = (() => {
   const oro = n => nfOro.format(Number(n) || 0);
   const usd = n => '$' + nfUsd.format(Number(n) || 0);
   const cortaDir = d => !d ? '' : d.length > 16 ? `${d.slice(0, 8)}…${d.slice(-6)}` : d;
+  // Rellena {marcas} en un texto del diccionario.
+  const rell = (s, m) => String(s).replace(/\{(\w+)\}/g, (_, k) => m[k] ?? '');
+  /* La fecha de un acta con el año entero: una resolución de la Junta se cita
+     por su fecha completa, y sin año no se busca en un libro que abarca años. */
+  const fechaCorta = iso => {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    const dd = x => String(x).padStart(2, '0');
+    return `${dd(d.getDate())}/${dd(d.getMonth() + 1)}/${d.getFullYear()}`;
+  };
   const cuando = iso => {
     const t = new Date(iso);
     if (isNaN(t)) return '';
@@ -1018,7 +1028,12 @@ const VETA = (() => {
         ${disco(x)}
         <div class="m-txt">
           <b>${esc(x.n)}</b>
-          <small>${x.precio != null ? esc(usd(x.precio)) : '—'} ${chg}</small>
+          ${/* El rotulo va PEGADO al numero, no en otra linea ni en la ficha
+                de mas adentro: quien mira la lista ve el precio ahi y no entra
+                a ninguna parte. Un precio declarado sin la palabra al lado se
+                lee como cotizacion, y ONDK no cotiza. */''}
+          <small>${x.precio != null ? esc(usd(x.precio)) : '—'} ${
+            x.declarado ? `<span class="px-decl">${t('tok.decl')}</span>` : chg}</small>
         </div>
         <div class="m-val">
           <b>${tapa(valor)}</b>
@@ -1250,7 +1265,16 @@ const VETA = (() => {
           <b>${x.precio != null && x.cant != null ? tapa(usd(x.cant * x.precio)) : '—'}</b>
         </div>
       </div>
-      ${x.precio != null ? `
+      ${x.declarado ? `
+        <div class="ficha-precio">
+          <span>${t('tok.declT')} <b>${esc(usd(x.declarado.precio))}</b></span>
+          <span class="pastilla decl-p">${esc(rell(t('tok.declActa'), {
+            acta: x.declarado.acta, fecha: fechaCorta(x.declarado.fecha) }))}</span>
+        </div>
+        ${/* El porque, entero y sin manera de cerrarlo. No es letra chica: es
+              la mitad del dato. El numero solo no dice de donde sale. */''}
+        <p class="pie sin-precio">${t('tok.declPie')}</p>`
+      : x.precio != null ? `
         <div class="ficha-precio">
           <span>${t('tok.precio')} <b>${esc(usd(x.precio))}</b></span>
           ${x.chg != null ? `<span class="pastilla ${x.chg < 0 ? 'baja-p' : 'sube-p'}">${x.chg > 0 ? '+' : ''}${x.chg.toFixed(2)}% · ${t('tok.cambio24')}</span>` : ''}
@@ -4638,6 +4662,10 @@ const VETA = (() => {
       // decía. Cuando no llegaron, se dice que no llegaron.
       precio: 'El {sim} está a {precio}. Es el precio con el que se calcula todo lo que ves en tu billetera.',
       precioNo: 'Todavía no me llegó el precio de hoy. En cuanto lo tenga te lo digo — no te lo voy a inventar.',
+      /* Un precio declarado se contesta con otras palabras que uno de mercado.
+         Decir «el ONDK está a 2,05» sin más sería contestar como si cotizara,
+         y no cotiza: de dónde sale el número es parte de la respuesta. */
+      precioDecl: 'El {sim} está a {precio}, pero ese número no viene de un mercado: lo fijó la Junta Directiva en el acta {acta}, vigente desde el {fecha}. {sim} todavía no cotiza en ningún lado, así que no hay precio de mercado que darte — hay una resolución, y esa te la digo tal cual.',
       resumen: 'En los últimos siete días tuviste {n} movimientos: {entran} entradas por {sumaE} y {salen} salidas por {sumaS}. Te abro la actividad para que los veas uno a uno.',
       resumenNada: 'En los últimos siete días no se movió nada en tu billetera. Todo tranquilo.',
       resumenNoSe: 'Todavía no me llegó tu actividad, así que no te puedo hacer el resumen sin inventarlo. Probá en un momento.',
@@ -4749,6 +4777,7 @@ const VETA = (() => {
       nose: 'I do not know that yet — I am model 1 and still learning. Did you mean one of these?',
       precio: '{sim} is at {precio}. That is the price everything in your wallet is calculated with.',
       precioNo: "Today's price has not reached me yet. I will tell you the moment it does — I will not make one up.",
+      precioDecl: '{sim} is at {precio}, but that number does not come from a market: the Board of Directors set it in minute {acta}, in force since {fecha}. {sim} does not trade anywhere yet, so there is no market price to give you — there is a resolution, and I am telling it to you as it stands.',
       resumen: 'Over the last seven days you had {n} movements: {entran} in for {sumaE} and {salen} out for {sumaS}. Opening your activity so you can see them one by one.',
       resumenNada: 'Nothing moved in your wallet over the last seven days. All quiet.',
       resumenNoSe: 'Your activity has not reached me yet, so I cannot summarise it without inventing it. Try again in a moment.',
@@ -5156,6 +5185,12 @@ const VETA = (() => {
       const m = (cartera || []).find(x => new RegExp('\\b' + sinTildes(String(x.s).toLowerCase()) + '\\b').test(d))
         || (cartera || []).find(x => x.nativo) || (cartera || [])[0];
       if (!m || !(Number(m.precio) > 0)) return auraDecir(T.precioNo, { voz });
+      if (m.declarado) {
+        return auraDecir(rell(T.precioDecl, {
+          sim: m.s, precio: usd(m.declarado.precio),
+          acta: m.declarado.acta, fecha: fechaCorta(m.declarado.fecha),
+        }), { voz });
+      }
       return auraDecir(T.precio.replace('{sim}', m.s).replace('{precio}', usd(m.precio)), { voz });
     }
 

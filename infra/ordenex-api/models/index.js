@@ -186,6 +186,43 @@ const velaRefSchema = new Schema(
 // pisar a la anterior en vez de duplicarla.
 velaRefSchema.index({ activo: 1, marco: 1, t0: 1 }, { unique: true });
 
+// ── PrecioDeclarado ─────────────────────────────────────────────────────────
+// La TERCERA clase de precio, y la unica que no sale de un mercado: el valor
+// que la Junta Directiva le fija por resolucion a un instrumento que todavia
+// no cotiza. ONDK es el caso: es un valor negociable, su Licencia de Compañia
+// de Inversion no esta emitida y no hay libro donde se forme un precio solo.
+//
+// Cada fila ES un acta. Por eso `acta` y `firmante` son obligatorios y no
+// tienen valor por defecto: un precio sin acta no es un precio declarado, es
+// un numero que alguien escribio: exactamente lo que esta coleccion existe
+// para hacer imposible. Sin los cuatro campos la fila no entra, y sin fila la
+// pantalla enseña un guion.
+//
+// Es de SOLO AÑADIR. Un precio declarado no se corrige editandolo: la Junta
+// declara otro con fecha posterior y el historial guarda los dos, igual que
+// un libro de actas. Lo unico que se borra es una fila mal tecleada, por su
+// _id y desde el panel, antes de que nadie la haya leido.
+const precioDeclaradoSchema = new Schema(
+  {
+    token: { type: String, required: true, uppercase: true, trim: true },
+    // Vigente DESDE. Una resolucion puede firmarse hoy con efecto a fin de
+    // mes; lo que manda para el precio de hoy es esta fecha, no createdAt.
+    fecha: { type: Date, required: true },
+    // Number y no string de wei a proposito: esto no es un saldo que se opera,
+    // es una cifra publicada con dos decimales. No entra en el ledger jamas.
+    precio: { type: Number, required: true, min: 0 },
+    moneda: { type: String, enum: ['USD'], default: 'USD' },
+    acta: { type: String, required: true, trim: true },
+    firmante: { type: String, required: true, trim: true },
+    nota: { type: String, default: null },
+  },
+  { timestamps: true }
+);
+// Un solo precio por token y fecha: si la misma resolucion se carga dos veces
+// —dos clics, un reintento de red— la segunda choca contra el indice en vez de
+// dibujar un escalon fantasma en la grafica.
+precioDeclaradoSchema.index({ token: 1, fecha: 1 }, { unique: true });
+
 // ── Deposito ────────────────────────────────────────────────────────────────
 // Lo que el vigia vio caer en la direccion de deposito de un usuario y ya
 // acredito en el ledger. Es la memoria del vigia: el ultimo saldo visto se
@@ -300,6 +337,7 @@ module.exports = {
   Trato: mongoose.model('Trato', tratoSchema, 'tratos'),
   Vela: mongoose.model('Vela', velaSchema, 'velas'),
   VelaRef: mongoose.model('VelaRef', velaRefSchema, 'velasRef'),
+  PrecioDeclarado: mongoose.model('PrecioDeclarado', precioDeclaradoSchema, 'preciosDeclarados'),
   Deposito: mongoose.model('Deposito', depositoSchema, 'depositos'),
   Retiro: mongoose.model('Retiro', retiroSchema, 'retiros'),
   Agente: mongoose.model('Agente', agenteSchema, 'agentes'),

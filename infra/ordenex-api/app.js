@@ -114,6 +114,10 @@ app.get('/salud', async (req, res) => {
 // /movimientos) que son la misma cosa: lo mio.
 app.use('/auth', require('./routes/auth'));
 app.use('/mercados', require('./routes/mercados'));
+// Aparte de /mercados a proposito: lo que sirve no es un mercado. Un precio
+// declarado por la Junta no tiene libro, ni volumen, ni contraparte, y
+// colgarlo de /mercados/:par lo habria disfrazado de uno.
+app.use('/precio-declarado', require('./routes/precios'));
 app.use('/ordenes', require('./routes/ordenes'));
 app.use('/', require('./routes/portafolio'));
 app.use('/fiat', require('./routes/fiat'));

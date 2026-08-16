@@ -328,6 +328,14 @@ es: {
   'tok.copiado': 'Contrato copiado', 'tok.volver': 'Volver a la billetera',
   'tok.copiarC': 'Copiar el contrato',
   'tok.cambio24': 'Variación 24 h',
+  /* El precio declarado por la Junta. Tres textos y los tres hacen falta: el
+     rótulo corto que cabe en la fila de la moneda, el largo de la ficha, y la
+     explicación de por qué ese número no es una cotización. Enseñar el precio
+     sin la explicación es dejar que se lea como precio de mercado. */
+  'tok.decl': 'declarado',
+  'tok.declT': 'Precio declarado por la Junta',
+  'tok.declPie': 'ONDK no cotiza todavía: no hay mercado ni libro donde se forme un precio. Este es el valor que la Junta Directiva fijó por resolución, y se mantiene hasta que firme otra.',
+  'tok.declActa': 'Acta {acta} · vigente desde {fecha}',
   // tarjeta
   'tar.t': 'Tu tarjeta', 'tar.cargando': 'Consultando tu tarjeta…',
   'tar.sinT': 'Todavía no tenés tarjeta',
@@ -823,6 +831,10 @@ en: {
   'tok.copiado': 'Contract copied', 'tok.volver': 'Back to the wallet',
   'tok.copiarC': 'Copy the contract',
   'tok.cambio24': '24 h change',
+  'tok.decl': 'declared',
+  'tok.declT': 'Price declared by the Board',
+  'tok.declPie': 'ONDK does not trade yet: there is no market and no book where a price could form. This is the value the Board of Directors set by resolution, and it holds until they sign another one.',
+  'tok.declActa': 'Minute {acta} · in force since {fecha}',
   'tar.t': 'Your card', 'tar.cargando': 'Checking your card…',
   'tar.sinT': "You don't have a card yet",
   'tar.sinP': 'The Veta Wallet card spends straight from your ORIGEN balance. To issue it you need your Genesis ID verified.',

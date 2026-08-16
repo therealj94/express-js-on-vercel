@@ -5,7 +5,8 @@
 // ledger ni escribe un saldo a mano: el admin tiene mas botones, no otra
 // contabilidad.
 
-const { Usuario, Cuenta, Orden, Retiro, Agente, Solicitud } = require('../models');
+const { Usuario, Cuenta, Orden, Retiro, Agente, Solicitud, PrecioDeclarado } = require('../models');
+const { esDeclarable, DECLARABLES, publico, olvidar } = require('../lib/preciosDeclarados');
 const ledger = require('../lib/ledger');
 const cadena = require('../lib/cadena5550');
 const { PORSIMBOLO } = require('../lib/tokens');
@@ -311,4 +312,103 @@ async function estado(req, res) {
   return res.json({ ...conteos, caliente });
 }
 
-module.exports = { crearAgente, borrarAgente, resolverSolicitud, barrer, estado };
+// ── POST /admin/precio-declarado ────────────────────────────────────────────
+// { token, fecha, precio, acta, firmante, nota? }
+//
+// Carga una resolucion de la Junta. Los cuatro primeros campos son
+// obligatorios y no hay ninguno con valor por defecto: el dia que alguien
+// pueda cargar un precio sin decir de que acta sale, esta coleccion deja de
+// ser un libro de actas y pasa a ser una casilla donde se escribe el numero
+// que uno quiera. Esa es toda la diferencia entre esto y un precio inventado.
+//
+// Se anota con el precio como llego y sin redondeos de cortesia: si el acta
+// dice 2.05, la fila dice 2.05.
+async function declararPrecio(req, res) {
+  const { token, fecha, precio, acta, firmante, nota } = req.body || {};
+
+  const simbolo = String(token || '').toUpperCase();
+  if (!esDeclarable(simbolo)) {
+    return res.status(400).json({
+      error: 'Ese instrumento no lleva precio declarado.',
+      codigo: 'NO_DECLARABLE',
+      declarables: DECLARABLES,
+    });
+  }
+
+  // La fecha se exige explicita y en ISO. Si se dejara caer a "hoy" cuando
+  // falta, cargar tres actas viejas de golpe las pondria las tres hoy y la
+  // grafica contaria una historia que no paso.
+  const cuando = new Date(fecha);
+  if (!fecha || Number.isNaN(cuando.getTime())) {
+    return res.status(400).json({
+      error: 'Falta la fecha de vigencia (ISO: 2026-01-15 o 2026-01-15T00:00:00Z).',
+      codigo: 'FECHA_INVALIDA',
+    });
+  }
+
+  const cifra = Number(precio);
+  if (!Number.isFinite(cifra) || cifra <= 0) {
+    return res.status(400).json({ error: 'El precio tiene que ser un numero mayor que cero.', codigo: 'PRECIO_INVALIDO' });
+  }
+
+  if (typeof acta !== 'string' || !acta.trim()) {
+    return res.status(400).json({
+      error: 'Falta el acta. Un precio sin acta no es un precio declarado.',
+      codigo: 'ACTA_INVALIDA',
+    });
+  }
+  if (typeof firmante !== 'string' || !firmante.trim()) {
+    return res.status(400).json({ error: 'Falta quien firma la resolucion.', codigo: 'FIRMANTE_INVALIDO' });
+  }
+
+  try {
+    const fila = await PrecioDeclarado.create({
+      token: simbolo,
+      fecha: cuando,
+      precio: cifra,
+      moneda: 'USD',
+      acta: acta.trim(),
+      firmante: firmante.trim(),
+      nota: typeof nota === 'string' && nota.trim() ? nota.trim() : null,
+    });
+    olvidar(simbolo);
+    return res.status(201).json({ ok: true, precio: publico(fila) });
+  } catch (e) {
+    // 11000 es el indice unico (token, fecha): la misma resolucion cargada dos
+    // veces. Es un acierto del guardarrail, no un fallo — se contesta que ya
+    // estaba, no un 500 que invite a reintentar.
+    if (e && e.code === 11000) {
+      return res.status(409).json({
+        error: 'Ya hay un precio declarado para ese token con esa fecha.',
+        codigo: 'YA_DECLARADO',
+      });
+    }
+    console.error(`[admin] declararPrecio: ${e.message}`);
+    return res.status(503).json({ error: 'No se pudo guardar la resolucion.', codigo: 'NO_SE_PUDO_GUARDAR' });
+  }
+}
+
+// ── DELETE /admin/precio-declarado/:id ──────────────────────────────────────
+// El unico borrado que existe aqui, y es para el error de tecleo: un cero de
+// mas, un acta equivocada. NO es la forma de "bajar" un precio — para eso la
+// Junta declara otro con fecha posterior y quedan los dos, que es como se
+// lleva un libro de actas.
+async function borrarPrecioDeclarado(req, res) {
+  try {
+    const fila = await PrecioDeclarado.findByIdAndDelete(req.params.id);
+    if (!fila) {
+      return res.status(404).json({ error: 'No existe esa resolucion.', codigo: 'NO_EXISTE' });
+    }
+    olvidar(fila.token);
+    console.log(`[admin] borrada resolucion ${fila.token} ${fila.acta} (${fila.fecha.toISOString()})`);
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error(`[admin] borrarPrecioDeclarado: ${e.message}`);
+    return res.status(503).json({ error: 'No se pudo borrar.', codigo: 'NO_SE_PUDO_BORRAR' });
+  }
+}
+
+module.exports = {
+  crearAgente, borrarAgente, resolverSolicitud, barrer, estado,
+  declararPrecio, borrarPrecioDeclarado,
+};

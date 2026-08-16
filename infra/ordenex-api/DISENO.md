@@ -124,6 +124,35 @@ agregadas del flujo de tratos al confirmar cada calce. Solo tratos reales.
 Referencia informativa (aparte, rotulada): AUKA onza oro, AGKA onza plata,
 ORIGEN gramo/55 — del mismo feed que ya usa la wallet, y con guion si no llega.
 
+### Las tres clases de precio
+
+No se mezclan nunca, y cada una entra por su propia puerta para que no puedan:
+
+| clase | de dónde sale | unidad | ruta |
+|---|---|---|---|
+| **trato** | lo que se pagó en el libro de esta casa | ORIGEN | `/mercados/:par/velas` |
+| **referencia** | el metal real en otro mercado | USD, rotulada | `/mercados/:par/referencia` |
+| **declarado** | una resolución de la Junta Directiva | USD, rotulada | `/precio-declarado/:token` |
+
+El tercero es el más fácil de convertir en mentira y por eso es el más
+amarrado. Un precio declarado **no** es una opinión sobre cuánto vale ONDK: es
+el hecho comprobable de que la Junta, tal día, en tal acta, firmada por tal
+persona, resolvió publicar tal cifra. Sin `fecha`, `precio`, `acta` y
+`firmante` la fila no se guarda, y sin fila la pantalla enseña un guion.
+
+Consecuencia que hay que tener clara antes de tocar `lib/preciosDeclarados.js`:
+**un precio declarado no se mueve entre resoluciones.** Se queda plano en el
+último valor firmado hasta que la Junta firme otro. Si alguna vez se pide que
+«flote» o «se mueva un poquito» entre dos actas, la respuesta es no: eso ya no
+sería el precio declarado, sería un precio inventado con un rótulo de declarado
+encima — peor que no tener precio. Por lo mismo la gráfica es de **escalones**
+(`VELAS.escalones`) y no de velas: una vela tiene apertura, máximo, mínimo y
+cierre, y una resolución tiene un solo número.
+
+Hoy solo ONDK es declarable (lista blanca `DECLARABLES`). ORIGEN, AUKA y AGKA
+siguen un metal y su precio se **mide**; que la Junta pudiera «declarar» el
+precio del oro sería absurdo, y el API lo rechaza con `NO_DECLARABLE`.
+
 ## La cadena: depósitos y retiros
 
 - **Depósito**: dirección propia por usuario (ethers, llave AES-256 con
@@ -166,6 +195,8 @@ GET  /mercados                        → [{ mercado, ultimo, cambio24h, vol24h,
 GET  /mercados/:par/libro             → { compras: [[precio,cant]…20], ventas: […] }
 GET  /mercados/:par/velas?marco=1h&desde=&hasta= → [[t0,o,h,l,c,v]…]
 GET  /mercados/:par/tratos            → últimos 50 [{ precio, cantidad, lado, en }]
+GET  /mercados/:par/referencia?marco=30m → { activo, unidad:'USD', rotulo, fuente, actualizadoEn, velas }
+GET  /precio-declarado/:token         → { token, clase:'declarado', moneda, vigente, serie }
 
 POST /ordenes {mercado, lado, tipo, precio?, cantidad, ordenKey} 🔒
 GET  /ordenes?estado=abierta 🔒
@@ -183,6 +214,10 @@ POST /fiat/solicitudes/:id/disputar 🔒
 POST /admin/agentes 🔑  DELETE /admin/agentes/:id 🔑
 POST /admin/solicitudes/:id/resolver 🔑
 POST /admin/barrer {activo} 🔑        GET /admin/estado 🔑
+POST /admin/precio-declarado {token, fecha, precio, acta, firmante, nota?} 🔑
+DELETE /admin/precio-declarado/:id 🔑  (solo para el error de tecleo; no es la
+                                        forma de «bajar» un precio: para eso la
+                                        Junta declara otro y quedan los dos)
 GET  /salud                           → { ok, cadena, mongo, bloque }
 ```
 

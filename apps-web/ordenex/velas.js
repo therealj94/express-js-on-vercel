@@ -240,6 +240,15 @@ const VELAS = (() => {
       velas: 'velas',
       ultimo: 'último',
       aviso: 'precio de referencia del mercado del metal, no una operación de Ordenex',
+      // ── el precio declarado ──────────────────────────────────────────────
+      badgeDecl: 'DECLARADO',
+      avisoDecl: 'precio fijado por resolución de la Junta Directiva, no un precio de mercado',
+      sinActas: 'Sin resoluciones cargadas',
+      sinActasSub: 'aquí van los precios que la Junta declaró, con su acta',
+      acta: 'acta',
+      firma: 'firma',
+      desde: 'vigente desde',
+      resoluciones: 'resoluciones',
     },
     en: {
       sinTratos: 'No trades yet',
@@ -251,6 +260,14 @@ const VELAS = (() => {
       velas: 'candles',
       ultimo: 'last',
       aviso: 'reference price from the metal market, not an Ordenex trade',
+      badgeDecl: 'DECLARED',
+      avisoDecl: 'price set by resolution of the Board of Directors, not a market price',
+      sinActas: 'No resolutions loaded',
+      sinActasSub: 'the prices the Board declared go here, each with its minute',
+      acta: 'minute',
+      firma: 'signed',
+      desde: 'in force since',
+      resoluciones: 'resolutions',
     },
   };
 
@@ -914,6 +931,302 @@ const VELAS = (() => {
     };
   }
 
+  /* ── EL PRECIO DECLARADO ────────────────────────────────────────────────
+     Una gráfica distinta para una cosa distinta, y por eso es otra función y
+     no un modo de `dibujar`.
+
+     ONDK no cotiza: no hay libro, no hay contraparte, no hay apertura ni
+     máximo ni mínimo. Lo que hay es una lista de resoluciones de la Junta.
+     Dibujar eso con velas sería inventarle a cada tramo un cuerpo que nunca
+     existió — cuatro precios donde solo hubo uno. Se dibuja lo que de verdad
+     pasó: una línea que se queda QUIETA en el valor firmado y salta el día
+     que la Junta firma otro. Cada salto es un acta que alguien puede pedir.
+
+     Que la línea sea plana entre actas no es una limitación del dibujo: es el
+     dato. Un precio declarado que ondula es un precio inventado con rótulo de
+     declarado, que es peor que no tener precio.                              */
+  function escalones(canvas, serie, opciones = {}) {
+    const ctx = canvas && canvas.getContext && canvas.getContext('2d');
+    if (!ctx) return { vacio: 'ilegible', n: 0, indice: -1, leyenda: null };
+
+    const dprPedido = Number(opciones.dpr);
+    const dpr = Math.min(3, Math.max(1,
+      Number.isFinite(dprPedido) && dprPedido > 0 ? dprPedido : (window.devicePixelRatio || 1)));
+    const ancho = canvas.clientWidth || 640;
+    const alto = canvas.clientHeight || 320;
+    const W = Math.round(ancho * dpr), H = Math.round(alto * dpr);
+    if (canvas.width !== W) canvas.width = W;
+    if (canvas.height !== H) canvas.height = H;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, ancho, alto);
+    ctx.setLineDash([]);
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'round';
+
+    const idioma = opciones.idioma === 'en' ? 'en' : 'es';
+    const T = TXT[idioma];
+    const oro = color('--oro', '#C9A961');
+    const oroLt = color('--oroLt', '#EAD79C');
+    const crema = color('--crema', '#F3ECD9');
+    const bruma = color('--bruma', '#AEC7C3');
+    const humo = color('--humo', '#6E938F');
+    const linea = color('--linea', 'rgba(201,169,97,.34)');
+    const REJILLA = 'rgba(243,236,217,.07)';
+    const FICHA = '#052A2C';
+
+    const par = typeof opciones.par === 'string' ? opciones.par : '';
+    const moneda = typeof opciones.moneda === 'string' ? opciones.moneda : 'USD';
+    canvas.setAttribute('role', 'img');
+
+    /* Una resolución solo cuenta si trae las cuatro cosas que la hacen
+       comprobable: cuándo rige, cuánto, de qué acta y quién firmó. A la que le
+       falte una se cae aquí y no llega al lienzo — el mismo criterio que usa
+       el API al guardarla, repetido en el dibujo porque esta pieza también se
+       come lo que le den de un `fetch` que podría venir de cualquier lado. */
+    const filas = (Array.isArray(serie) ? serie : [])
+      .map(d => {
+        if (!d) return null;
+        const t = Date.parse(d.fecha);
+        const p = Number(d.precio);
+        if (!Number.isFinite(t) || !Number.isFinite(p) || p <= 0) return null;
+        if (!d.acta || !String(d.acta).trim()) return null;
+        return { t, p, acta: String(d.acta), firmante: String(d.firmante || ''), nota: d.nota || null };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.t - b.t);
+
+    const IZQ = 10, ARRIBA = 8, ALTO_T = 20, EJE_MIN = 56;
+    const der = ancho - EJE_MIN;
+    const pie = alto - ALTO_T;
+
+    const cabecera = [
+      par ? { t: par, tinta: crema, font: `600 11.5px ${SANS}` } : null,
+      par ? { t: '   ' + moneda, tinta: humo } : { t: moneda, tinta: humo },
+      { t: '   ' + T.badgeDecl, tinta: oro, font: MONO_B },
+    ].filter(Boolean);
+
+    // La rejilla y el marco se pintan igual haya actas o no: el vacío digno
+    // de `dibujar`, con el mismo encuadre.
+    function marco() {
+      ctx.strokeStyle = REJILLA;
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 5; i++) {
+        const y = Math.round(ARRIBA + (pie - ARRIBA) * i / 5) + 0.5;
+        ctx.beginPath(); ctx.moveTo(IZQ, y); ctx.lineTo(der, y); ctx.stroke();
+      }
+      for (let i = 1; i < 6; i++) {
+        const x = Math.round(IZQ + (der - IZQ) * i / 6) + 0.5;
+        ctx.beginPath(); ctx.moveTo(x, ARRIBA); ctx.lineTo(x, pie); ctx.stroke();
+      }
+      ctx.strokeStyle = linea;
+      ctx.beginPath();
+      ctx.moveTo(Math.round(der) + 0.5, ARRIBA);
+      ctx.lineTo(Math.round(der) + 0.5, Math.round(pie) + 0.5);
+      ctx.lineTo(IZQ, Math.round(pie) + 0.5);
+      ctx.stroke();
+    }
+
+    function cartel() {
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      const w = fila(ctx, 0, 0, cabecera, true);
+      ctx.fillStyle = 'rgba(2,27,28,.72)';
+      ctx.fillRect(IZQ + 2, ARRIBA + 2, w + 16, 20);
+      fila(ctx, IZQ + 10, ARRIBA + 12, cabecera, false);
+    }
+
+    if (filas.length === 0) {
+      canvas.setAttribute('aria-label', `${par ? par + ' · ' : ''}${T.sinActas} · ${T.avisoDecl}`);
+      marco();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `600 13px ${SANS}`;
+      ctx.fillStyle = bruma;
+      ctx.fillText(T.sinActas, (IZQ + der) / 2, (ARRIBA + pie) / 2 - 8);
+      ctx.font = `400 11px ${SANS}`;
+      ctx.fillStyle = humo;
+      ctx.fillText(T.sinActasSub, (IZQ + der) / 2, (ARRIBA + pie) / 2 + 10);
+      cartel();
+      return { vacio: 'sinActas', n: 0, indice: -1, moneda, declarado: true, leyenda: null };
+    }
+
+    /* El eje del tiempo llega hasta HOY, no hasta la última acta: el tramo
+       entre la última resolución y hoy es precisamente el que dice «esto es
+       lo que rige ahora mismo», y cortarlo en la última firma escondería
+       cuánto lleva sin revisarse. `ahora` entra por opciones para que la
+       prueba no dependa del reloj. */
+    const ahora = Number.isFinite(opciones.ahora) ? opciones.ahora : Date.now();
+    const t0 = filas[0].t;
+    const t1 = Math.max(ahora, filas[filas.length - 1].t);
+    const spanT = Math.max(1, t1 - t0);
+
+    let min = filas[0].p, max = filas[0].p;
+    for (const f of filas) { if (f.p < min) min = f.p; if (f.p > max) max = f.p; }
+    // Un respiro arriba y abajo, y un suelo en cero nunca: la escala arranca
+    // donde arrancan los datos. Con una sola resolución no hay rango, así que
+    // se abre un ±10% para que la línea no quede pegada a un borde.
+    const holgura = (max - min) || Math.max(max * 0.1, 0.01);
+    const yMin = min - holgura * 0.35;
+    const yMax = max + holgura * 0.35;
+    const spanY = Math.max(1e-9, yMax - yMin);
+
+    const X = t => IZQ + (der - IZQ) * (t - t0) / spanT;
+    const Y = p => pie - (pie - ARRIBA) * (p - yMin) / spanY;
+
+    marco();
+
+    /* ── el eje de precios ─────────────────────────────────────────────────
+       Paso propio y no `pasoLindo`: aquel trabaja en la coma fija de BigInt,
+       porque los tratos son dinero de esta casa y se cuentan en wei. Un precio
+       declarado es una cifra PUBLICADA en dólares con dos decimales, no un
+       saldo que se opera — nadie compra a este número —, así que aquí manda el
+       Number y mezclarlo con la coma fija habría sido forzar una conversión
+       que no significa nada. */
+    const bruto = (yMax - yMin) / 4;
+    const mag = Math.pow(10, Math.floor(Math.log10(bruto || 1)));
+    const paso = [1, 2, 5, 10].map(m => m * mag).find(m => m >= bruto) || mag * 10;
+    // Los decimales que el paso deja ocupados, con dos de suelo: en dólares
+    // un precio siempre se escribe con centavos.
+    const dec = Math.max(2, Math.min(6, Math.ceil(-Math.log10(paso)) + 1));
+    ctx.font = MONO;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    for (let p = Math.ceil(yMin / paso) * paso; p <= yMax; p += paso) {
+      const y = Y(p);
+      if (y < ARRIBA + 6 || y > pie - 2) continue;
+      ctx.strokeStyle = REJILLA;
+      ctx.beginPath();
+      ctx.moveTo(IZQ, Math.round(y) + 0.5); ctx.lineTo(der, Math.round(y) + 0.5); ctx.stroke();
+      ctx.fillStyle = humo;
+      ctx.fillText(p.toFixed(dec), der + 6, y);
+    }
+
+    // ── el eje del tiempo: la fecha de cada acta, y hoy ───────────────────
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = humo;
+    ctx.font = MONO;
+    let ultimoX = -1e9;
+    for (const f of filas) {
+      const x = X(f.t);
+      // Sin apretujar: si dos actas caen a menos de 46px, la segunda etiqueta
+      // se calla. La marca en la línea sigue estando.
+      if (x - ultimoX < 46) continue;
+      ultimoX = x;
+      ctx.fillText(mesAno(f.t), Math.min(der - 14, Math.max(IZQ + 14, x)), pie + 5);
+    }
+
+    /* ── la línea ──────────────────────────────────────────────────────────
+       Plana desde cada acta hasta la siguiente, y un salto vertical el día de
+       la firma. Sin curvas ni suavizado: interpolar entre dos resoluciones
+       dibujaría precios en fechas en las que la Junta no declaró nada. */
+    ctx.strokeStyle = oro;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    let yPrev = null;
+    filas.forEach((f, i) => {
+      const x = X(f.t), y = Y(f.p);
+      if (yPrev === null) ctx.moveTo(x, y);
+      else { ctx.lineTo(x, yPrev); ctx.lineTo(x, y); }   // el salto de la firma
+      ctx.lineTo(i + 1 < filas.length ? X(filas[i + 1].t) : X(t1), y);
+      yPrev = y;
+    });
+    ctx.stroke();
+
+    // El tramo vigente, remarcado: es el único precio que rige hoy.
+    const vig = filas[filas.length - 1];
+    ctx.strokeStyle = oroLt;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(X(vig.t), Y(vig.p));
+    ctx.lineTo(X(t1), Y(vig.p));
+    ctx.stroke();
+
+    // Una marca redonda en cada firma: cada punto es un acta.
+    for (const f of filas) {
+      ctx.beginPath();
+      ctx.arc(X(f.t), Y(f.p), 3.4, 0, Math.PI * 2);
+      ctx.fillStyle = FICHA; ctx.fill();
+      ctx.strokeStyle = oroLt; ctx.lineWidth = 1.6; ctx.stroke();
+    }
+
+    // ── la pastilla del precio vigente, en el eje ─────────────────────────
+    const txtVig = vig.p.toFixed(dec);
+    ctx.font = MONO_B;
+    const wVig = ctx.measureText(txtVig).width + 12;
+    pastilla(ctx, der + 2, Y(vig.p) - 9, Math.min(wVig, EJE_MIN - 4), 18, oro, oro, txtVig, '#04191A', MONO_B);
+
+    /* ── la cruz ───────────────────────────────────────────────────────────
+       Se posa en la resolución que REGÍA en esa fecha, no en la más cercana:
+       si el cursor está en abril y la última acta es de enero, lo que hay que
+       leer es la de enero, que es la que estaba vigente ese día. */
+    let indice = filas.length - 1;
+    const cur = opciones.cursor;
+    if (cur && Number.isFinite(cur.x)) {
+      const tCur = t0 + spanT * (Math.min(der, Math.max(IZQ, cur.x)) - IZQ) / (der - IZQ);
+      indice = 0;
+      for (let i = 0; i < filas.length; i++) if (filas[i].t <= tCur) indice = i;
+    }
+    const sel = filas[indice];
+
+    if (cur && Number.isFinite(cur.x)) {
+      ctx.save();
+      ctx.setLineDash([3, 4]);
+      ctx.strokeStyle = 'rgba(243,236,217,.28)';
+      ctx.lineWidth = 1;
+      const xs = Math.round(X(sel.t)) + 0.5;
+      ctx.beginPath(); ctx.moveTo(xs, ARRIBA); ctx.lineTo(xs, pie); ctx.stroke();
+      ctx.restore();
+    }
+
+    // ── la leyenda: qué acta, quién firmó, desde cuándo ───────────────────
+    const d = new Date(sel.t);
+    const fechaLarga = `${dosD(d.getDate())}/${dosD(d.getMonth() + 1)}/${d.getFullYear()}`;
+    const lineas = [
+      cabecera.concat([{ t: `   ${sel.p.toFixed(dec)}`, tinta: oroLt, font: MONO_B }]),
+      [
+        { t: `${T.acta} `, tinta: humo },
+        { t: sel.acta, tinta: crema, font: MONO_B },
+        { t: `   ${T.desde} `, tinta: humo },
+        { t: fechaLarga, tinta: bruma, font: MONO },
+      ],
+      sel.firmante ? [{ t: `${T.firma} `, tinta: humo }, { t: sel.firmante, tinta: bruma }] : null,
+      [{ t: T.avisoDecl, tinta: oro, font: `400 10px ${SANS}` }],
+    ].filter(Boolean);
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    let wL = 0;
+    for (const f of lineas) wL = Math.max(wL, fila(ctx, 0, 0, f, true));
+    const hL = 8 + lineas.length * 15;
+    ctx.fillStyle = 'rgba(2,27,28,.72)';
+    ctx.fillRect(IZQ + 2, ARRIBA + 2, wL + 20, hL);
+    lineas.forEach((f, j) => fila(ctx, IZQ + 10, ARRIBA + 13 + j * 15, f, false));
+
+    /* El rótulo accesible dice lo mismo, incluido el aviso: quien no ve la
+       gráfica tiene que enterarse igual de que esto no es precio de mercado. */
+    canvas.setAttribute('aria-label', [
+      par, `${filas.length} ${T.resoluciones}`,
+      `${vig.p.toFixed(dec)} ${moneda}`,
+      `${T.acta} ${vig.acta}`,
+      T.avisoDecl,
+    ].filter(Boolean).join(' · '));
+
+    return {
+      vacio: null,
+      n: filas.length,
+      indice,
+      moneda,
+      declarado: true,
+      leyenda: {
+        par, moneda,
+        precio: sel.p, acta: sel.acta, firmante: sel.firmante,
+        fecha: new Date(sel.t).toISOString(),
+        vigente: { precio: vig.p, acta: vig.acta, fecha: new Date(vig.t).toISOString() },
+      },
+    };
+  }
+
   /* prefers-reduced-motion: si no se puede preguntar, no se anima. Fail-closed
      también para el movimiento — molestar a quien pidió calma es peor que
      quedarse quieto de más. */
@@ -1198,6 +1511,7 @@ const VELAS = (() => {
   // real, no una copia que se quedó vieja.
   return {
     dibujar,
+    escalones,
     enganchar,
     gestos,
     _piezas: { normalizar, formatear, pasoLindo, decimalesDe, fraccion, calcularEma, deWei, deNumero },

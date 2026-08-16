@@ -3,8 +3,8 @@
 //
 // No usan la sesion de usuario sino X-Admin-Key contra ORDENEX_ADMIN_KEY.
 // El middleware vive aqui mismo y no en middleware/ a proposito: es de estas
-// cinco rutas y de nadie mas, y tenerlo pegado a ellas hace imposible que
-// alguien lo importe por comodidad en una ruta de usuario.
+// rutas y de nadie mas, y tenerlo pegado a ellas hace imposible que alguien lo
+// importe por comodidad en una ruta de usuario.
 
 const express = require('express');
 const crypto = require('crypto');
@@ -15,6 +15,8 @@ const {
   resolverSolicitud,
   barrer,
   estado,
+  declararPrecio,
+  borrarPrecioDeclarado,
 } = require('../controllers/adminController');
 
 function admin(req, res, next) {
@@ -41,5 +43,7 @@ router.delete('/agentes/:id', admin, borrarAgente);
 router.post('/solicitudes/:id/resolver', admin, resolverSolicitud);
 router.post('/barrer', admin, barrer);
 router.get('/estado', admin, estado);
+router.post('/precio-declarado', admin, declararPrecio);
+router.delete('/precio-declarado/:id', admin, borrarPrecioDeclarado);
 
 module.exports = router;

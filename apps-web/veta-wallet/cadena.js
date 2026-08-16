@@ -18,6 +18,15 @@ const CADENA = (() => {
   const COINGECKO = 'https://api.coingecko.com/api/v3';
   const OZ_GRAMOS = 31.1035;
 
+  /* El API de Ordenex, que es donde vive el libro de precios declarados por la
+     Junta. Se pide desde aqui y no por el backend de la wallet a proposito: el
+     dato tiene UNA sola fuente y las dos casas leen la misma, que es lo unico
+     que garantiza que la sala de Ordenex y la billetera digan el mismo numero
+     el mismo dia. Se puede pisar con window.ONX_API para pruebas. */
+  const ORDENEX_API = String(
+    (typeof window !== 'undefined' && window.ONX_API) || 'https://ordenex-api-ba4b27b8b51a.herokuapp.com'
+  ).replace(/\/+$/, '');
+
   // Los quince tokens reales de la red 5550. Los contratos estan confirmados
   // contra la cadena y todos usan 18 decimales: se fija el valor para no
   // gastar una llamada extra por token en cada carga.
@@ -227,6 +236,39 @@ const CADENA = (() => {
     return { p, chg };
   }
 
+  /* ── el precio declarado por la Junta ──────────────────────────────────────
+   * ONDK no cotiza: no tiene mercado, no tiene libro y no hay feed que lo
+   * mida. Lo unico que existe es lo que la Junta Directiva le fija por
+   * resolucion, y eso es un hecho comprobable —tal dia, tal acta, tal firma—
+   * siempre que llegue con esas cuatro cosas puestas.
+   *
+   * Por eso esto NO devuelve un numero suelto: devuelve el numero CON su acta.
+   * Un precio declarado sin su acta al lado es indistinguible de un precio
+   * inventado, y la pantalla necesita el acta para poder rotularlo. Si falta
+   * cualquiera de las piezas, null — y ONDK se queda con su guion, que es lo
+   * que ha estado enseñando hasta hoy y no le miente a nadie.
+   */
+  async function precioDeclarado(simbolo = 'ONDK') {
+    try {
+      const r = await fetch(`${ORDENEX_API}/precio-declarado/${encodeURIComponent(simbolo)}`);
+      if (!r.ok) return null;
+      const d = await r.json();
+      const v = d && d.vigente;
+      if (!v) return null;
+      const precio = Number(v.precio);
+      if (!(precio > 0)) return null;
+      if (!v.acta || !String(v.acta).trim()) return null;
+      if (!v.fecha || Number.isNaN(Date.parse(v.fecha))) return null;
+      return {
+        precio,
+        moneda: d.moneda || 'USD',
+        acta: String(v.acta),
+        fecha: v.fecha,
+        firmante: v.firmante || null,
+      };
+    } catch { return null; }
+  }
+
   // ── el portafolio entero ──────────────────────────────────────────────────
 
   /* Devuelve los quince tokens SIEMPRE, incluso los que estan en cero: una
@@ -234,11 +276,18 @@ const CADENA = (() => {
    * las que tiene, y la lista cambiaria de forma sola al recibir un pago.
    *
    * `precioOndk` viene del backend (endpoint del chain); si no llego, ONDK se
-   * queda sin precio y se pinta con un guion. */
+   * queda sin precio y se pinta con un guion.
+   *
+   * Y por encima de ese respaldo manda el PRECIO DECLARADO por la Junta: es el
+   * unico numero de ONDK del que se puede decir de donde sale. Llega con su
+   * acta y viaja pegado al token en `declarado`, para que la pantalla no pueda
+   * pintarlo sin rotularlo — un precio declarado sin decir que lo es se lee
+   * como cotizacion, y ONDK no cotiza. */
   async function portafolio(direccion, precioOndk) {
     if (!direccion) return [];
-    const [{ p, chg }, saldos] = await Promise.all([
+    const [{ p, chg }, declONDK, saldos] = await Promise.all([
       precios().catch(() => ({ p: {}, chg: {} })),
+      precioDeclarado('ONDK'),
       Promise.all(TOKENS.map(async t => {
         try {
           return t.nativo ? await saldoNativo(direccion) : await saldoToken(t.contrato, direccion);
@@ -248,6 +297,10 @@ const CADENA = (() => {
 
     return TOKENS.map((t, i) => {
       let precio = p[t.s];
+      // La resolucion de la Junta va PRIMERO que el respaldo del backend: de
+      // aquella se sabe el acta y la fecha; del otro, solo que llego.
+      const decl = t.s === 'ONDK' ? declONDK : null;
+      if (precio == null && decl) precio = decl.precio;
       if (precio == null && t.s === 'ONDK' && precioOndk > 0) precio = precioOndk;
       if (precio == null && FIJOS[t.s] != null) precio = FIJOS[t.s];
       const cant = Number.isFinite(saldos[i]) ? saldos[i] : 0;
@@ -258,12 +311,17 @@ const CADENA = (() => {
         nativo: !!t.nativo,
         cant,
         precio: precio != null && precio > 0 ? precio : null,
-        chg: FIJOS[t.s] != null ? null : (chg[t.s] ?? null),
+        /* El acta viaja con el precio, no aparte. La variacion se queda en
+           null a proposito: un precio declarado no tiene «24 h» —no se movio
+           en veinticuatro horas, se movio el dia que la Junta firmo— y pintar
+           un 0,00 % ahi seria decir que un mercado lo dejo quieto. */
+        declarado: decl,
+        chg: decl || FIJOS[t.s] != null ? null : (chg[t.s] ?? null),
       };
     });
   }
 
   const ficha = (sim, idioma) => (FICHAS[sim] || {})[idioma] || (FICHAS[sim] || {}).es || null;
 
-  return { TOKENS, META, FICHAS, ficha, portafolio, precios, rpc, RPC };
+  return { TOKENS, META, FICHAS, ficha, portafolio, precios, precioDeclarado, rpc, RPC };
 })();
