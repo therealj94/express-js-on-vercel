@@ -167,9 +167,13 @@ if im.exists():
 c.setFillColorRGB(*POZO); c.setFillAlpha(0.50); c.rect(0, 0, A, AL, fill=1, stroke=0)
 c.setFillAlpha(0.72); c.rect(0, 0, A, 120*mm, fill=1, stroke=0); c.setFillAlpha(1)
 
-logo = MARCAS / 'veta-mark.png'
+# El logo de la casa, no el de uno de sus productos. Va con su proporcion
+# real -es un lockup ancho, no un cuadrado- para que no salga aplastado.
+logo = MARCA_NX / 'orden-global.png'
 if logo.exists():
-    c.drawImage(ImageReader(str(logo)), 18*mm, AL - 40*mm, width=15*mm, height=15*mm, mask='auto')
+    r_l = ImageReader(str(logo)); lw, lh = r_l.getSize()
+    ancho_l = 30*mm
+    c.drawImage(r_l, 18*mm, AL - 40*mm, width=ancho_l, height=ancho_l * lh / lw, mask='auto')
 
 sello('Orden Global · la casa del oro digital', AL - 50*mm)
 hilo(AL - 54*mm, x1=118*mm)
@@ -199,8 +203,8 @@ c.drawString(18*mm, 47*mm, 'Dossier de producto y tecnología · ' + FECHA)
 # La firma de quien lo construyo, abajo a la derecha: no compite con el titular
 # y es lo ultimo que se mira antes de pasar la pagina.
 logo_nx('nexus-n.png', A - 39*mm, 43*mm, 13*mm, alpha=0.95)
-c.setFillColorRGB(*HUMO); c.setFont(SANS, 6.8)
-c.drawRightString(A - 18*mm, 37*mm, 'D I S E Ñ A D O   Y   C O N S T R U I D O   P O R')
+c.setFillColorRGB(*BRUMA); c.setFont(SANS, 6.8)
+c.drawRightString(A - 18*mm, 37*mm, 'D E S A R R O L L A D O   P A R A   O R D E N   G L O B A L   P O R')
 c.setFillColorRGB(0.36, 0.90, 0.94); c.setFont(SANS_B, 10)
 c.drawRightString(A - 18*mm, 29*mm, 'NEXUS CODER')
 c.setFillColorRGB(*HUMO); c.setFont(SANS, 7.2)
@@ -294,7 +298,7 @@ y = yc - 42
 hilo(y + 8)
 y = parrafo(
     'No es una promesa de arquitectura: está corriendo. Al ' + FECHA + ' la cadena iba por '
-    'el bloque 12.234, con cuatro validadores firmando en rotación, y cualquiera puede '
+    'el bloque 13.018, con cuatro validadores firmando en rotación, y cualquiera puede '
     'comprobarlo en ordenscan.com sin pedirnos nada.',
     y - 6, ancho=88, tam=9.6, inter=14)
 
@@ -481,30 +485,42 @@ for linea in ['Un activo referenciado al oro que solo se puede guardar es un aho
 hoja()
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 9 · AU-RA
+# 9 · AU-RA · LA INTELIGENCIA QUE HABLA
+#
+# Aqui y en la pagina siguiente se cuenta lo mismo desde los dos lados: Orden
+# Global tiene DOS inteligencias, y no son la misma cosa partida en dos. Genesis
+# Core gobierna y AU-RA habla. Contarlas asi es mas fuerte que contarlas como un
+# asistente y un panel, porque es lo que de verdad son.
 # ═══════════════════════════════════════════════════════════════════════════
 fondo()
-sello('La inteligencia', AL - 24*mm)
+sello('Las dos inteligencias · la que habla', AL - 24*mm)
 titulo('AU-RA', AL - 38*mm, 26)
-titulo('modelo 1 · beta', AL - 50*mm, 14, color=ORO, fuente=SANS_B)
+titulo('la inteligencia que atiende a cada persona.', AL - 51*mm, 15,
+       color=ORO, fuente=SANS_B)
 
-parrafo('Nuestra propia asistente, con voz grabada por la casa. Navega por la persona, '
-        'le explica el ecosistema, le dice el precio del día y le deja los pagos '
-        'preparados. Pero nunca firma: el dinero se mueve solo con la contraseña de su '
-        'dueño.',
-        AL - 62*mm, ancho=92, tam=9.8, inter=13.5)
+y = parrafo('Inteligencia propia de Orden Global, con voz de la casa. Conoce el '
+            'ecosistema entero y lo explica, lleva a la persona a donde quiere ir, le dice '
+            'el precio del día y le deja los pagos preparados. Es la cara con la que el '
+            'sistema habla: en español y en inglés, a cualquier hora, sin cola.',
+            AL - 64*mm, ancho=92, tam=9.8, inter=13.5)
 
-imagen('aura.png', 18*mm, 96*mm, A - 36*mm)
+# El ancho se calcula desde el hueco que queda entre el parrafo y el bloque de
+# abajo, no se elige a mano: asi el dia que el texto crezca una linea, la
+# captura se encoge sola en vez de comerselo.
+_hueco = (y - 6) - 96*mm
+_ancho = min(A - 36*mm, _hueco / 0.76)
+imagen('aura.png', (A - _ancho) / 2, 96*mm, _ancho)
 
 y = 84*mm
 hilo(y + 10)
 c.setFillColorRGB(*ORO); c.setFont(SANS_B, 9.6)
-c.drawString(18*mm, y, 'Las dos reglas que no rompe')
+c.drawString(18*mm, y, 'Lo que la hace de fiar')
 c.setFillColorRGB(*BRUMA); c.setFont(SANS, 9.4)
 y -= 14
-for linea in ['Jamás inventa un número. Si el precio o la actividad no llegaron, lo dice.',
-              'AU-RA prepara; la persona firma. Un destino o un monto no salen nunca de',
-              'su imaginación, solo de lo que la persona dictó o tiene en su agenda.']:
+for linea in ['Habla con datos, no con adjetivos: cada cifra que dice sale de la cadena o del',
+              'servicio en ese momento. Si no llegó, lo dice — nunca la inventa.',
+              'AU-RA prepara y la persona firma. El dinero se mueve con la contraseña de su',
+              'dueño, y ni un destino ni un monto salen de otro sitio que de quien manda.']:
     c.drawString(18*mm, y, linea); y -= 13
 hoja()
 
@@ -512,39 +528,49 @@ hoja()
 # 10 · GENESIS CORE — SIN IMAGEN, A PROPOSITO
 # ═══════════════════════════════════════════════════════════════════════════
 fondo()
-sello('La sala de máquinas', AL - 24*mm)
+sello('Las dos inteligencias · la que gobierna', AL - 24*mm)
 titulo('Genesis Core', AL - 38*mm, 26)
-titulo('el cerebro que no se enseña.', AL - 51*mm, 18, color=ORO, fuente=SANS_B)
+titulo('el cerebro de todo el ecosistema.', AL - 51*mm, 17, color=ORO, fuente=SANS_B)
 
 y = parrafo(
-    'Todo lo anterior tiene detrás un sistema interno que lo vigila: Genesis Core. Reúne '
-    'en un solo sitio el estado real de cada pieza del ecosistema —las cadenas, los '
-    'servicios, el explorador, la identidad, la tesorería— y da el parte del día.',
+    'La segunda inteligencia de Orden Global, y la que manda. Genesis Core lo sabe todo: '
+    'las cadenas, los servicios, el explorador, la identidad, la tesorería, las máquinas y '
+    'lo que cada una está haciendo en este momento. Nada del ecosistema le queda fuera.',
     AL - 68*mm, ancho=88, tam=10, inter=14.5, color=CREMA)
 
 y = parrafo(
-    'Es también donde se entrena a AU-RA. El conocimiento del ecosistema se escribe ahí, y '
-    'una persona marca a mano qué puede saber el público. Solo eso cruza: el resto no sale '
-    'del sistema interno, ni siquiera oculto en el código que llega al navegador.',
+    'Con eso hace tres cosas. Le da a la Junta Directiva el estado real de la casa, en un '
+    'solo sitio y en voz alta, para que las decisiones se tomen sobre lo que hay y no '
+    'sobre lo que se recuerda. Vigila el ecosistema entero y avisa antes de que algo se '
+    'rompa. Y es donde se entrena a AU-RA: el conocimiento de la casa se escribe ahí, y '
+    'desde ahí se decide qué puede salir al mundo.',
     y - 8, ancho=88, tam=10, inter=14.5)
 
 hilo(y - 8)
 y -= 26
 c.setFillColorRGB(*ORO); c.setFont(SANS_B, 9.6)
-c.drawString(18*mm, y, 'Por qué no hay una captura de Genesis Core en este documento')
-y -= 16
-y = parrafo(
-    'Porque enseña la infraestructura, el estado de cada sistema y lo que está pendiente de '
-    'arreglar. Un panel interno fotografiado en un PDF que va a circular es el mapa de la '
-    'casa regalado a quien lo reciba de tercera mano. Se cuenta que existe y qué hace; no '
-    'se enseña qué ve.',
-    y, ancho=88, tam=9.6, inter=14)
+c.drawString(18*mm, y, 'Lo que gobierna, a diario')
+y -= 17
+gobierna = [
+    ('El parte de la casa', 'El estado de cada sistema, leído para la Junta.'),
+    ('La vigilancia', 'Cadenas, servicios, costes y seguridad, sin dejar de mirar.'),
+    ('El conocimiento', 'Todo lo que la casa sabe, en un solo sitio y con dueño.'),
+    ('Lo que es público', 'Qué puede decir AU-RA, y qué no sale de aquí.'),
+]
+for nombre, que in gobierna:
+    c.setFillColorRGB(*ORO); c.setFillAlpha(0.5)
+    c.rect(18*mm, y - 1, 1.6*mm, 8, fill=1, stroke=0); c.setFillAlpha(1)
+    c.setFillColorRGB(*CREMA); c.setFont(SANS_B, 9)
+    c.drawString(22*mm, y, nombre)
+    c.setFillColorRGB(*HUMO); c.setFont(SANS, 8.6)
+    c.drawString(70*mm, y, que)
+    y -= 15
 
 y = parrafo(
-    'La misma disciplina gobierna el producto: lo interno se queda adentro por diseño, no '
-    'por costumbre. Es la clase de decisión que un inversionista debería querer ver tomada '
-    'antes de poner dinero, no después.',
-    y - 8, ancho=88, tam=9.6, inter=14, color=HUMO)
+    'Genesis Core es interno y se queda interno: quien manda sobre un sistema no se '
+    'enseña en un documento que circula. Lo que sí se puede enseñar es su mecanismo, y '
+    'es la pieza de la que más orgullosa está la casa.',
+    y - 12, ancho=88, tam=9.6, inter=14, color=HUMO)
 
 # ── el diagrama de la puerta ────────────────────────────────────────────────
 # La media pagina que quedaba vacia se llena con lo unico que aqui puede
@@ -572,8 +598,8 @@ def _caja(x, titulo_c, lineas, borde, alpha_relleno):
         c.drawString(x + 5*mm, yy, l); yy -= 8.6
 
 _caja(18*mm, 'GENESIS CORE',
-      ['Interno · con contraseña', '', 'Estado de cada sistema',
-       'Infraestructura y tesorería', 'Lo que falta por hacer',
+      ['Interno · con contraseña', '', 'El estado de cada sistema',
+       'Infraestructura y tesorería', 'El parte para la Junta',
        'Todo el conocimiento'], ORO, 0.55)
 _caja(A - 18*mm - ancho_caja, 'AU-RA',
       ['Público · en la billetera', '', 'Solo lo que una persona',
@@ -753,14 +779,14 @@ c.drawString(18*mm, AL - 53*mm, 'Fráncfort, Alemania.')
 
 y = parrafo(
     'Todo lo que se ha visto en estas páginas —la cadena, la billetera, la identidad, la '
-    'mensajería, el comercio y la inteligencia que lo explica— lo diseñó y lo construyó '
-    'Nexus Coder.',
+    'mensajería, el comercio y las dos inteligencias— lo desarrolló Nexus Coder para '
+    'Orden Global Corp.',
     AL - 71*mm, ancho=56, tam=10.5, inter=15, color=CREMA)
 
 y = parrafo(
-    'No integramos piezas de terceros y les ponemos una portada encima. La capa uno es '
-    'nuestra, el consenso es nuestro, el explorador es nuestro y el asistente es nuestro. '
-    'Por eso el ecosistema se puede enseñar corriendo en vez de en una maqueta.',
+    'No se integraron piezas de terceros con una portada encima. La capa uno se '
+    'construyó desde el génesis, el consenso, el explorador y las inteligencias '
+    'también. Por eso el ecosistema se puede enseñar corriendo en vez de en una maqueta.',
     y - 8, ancho=56, tam=9.6, inter=13.8, color=BRUMA)
 
 y = min(y, AL - 126*mm) - 6
@@ -821,7 +847,7 @@ hilo(y + 2)
 parrafo('Construimos sistemas financieros que aguantan que los abran y los miren por '
         'dentro. Es lo que hicimos aquí, y es lo que hacemos.',
         y - 13, ancho=96, tam=10, inter=14, color=CREMA, fuente=SANS_B)
-hoja('Nexus Coder · Fráncfort del Meno, Alemania')
+hoja('Nexus Coder · Fráncfort del Meno, Alemania · desarrollado para Orden Global Corp')
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 14 · CIERRE
@@ -863,7 +889,7 @@ c.drawString(18*mm, 49*mm, 'info@ordenglobal.org')
 # Las dos firmas, separadas: la casa a la izquierda, el estudio a la derecha.
 logo_nx('nexus-texto.png', A - 62*mm, 62*mm, 44*mm, alpha=0.95)
 c.setFillColorRGB(*HUMO); c.setFont(SANS, 7.2)
-c.drawRightString(A - 18*mm, 56*mm, 'Diseñado y construido por Nexus Coder')
+c.drawRightString(A - 18*mm, 56*mm, 'Desarrollado para Orden Global Corp por Nexus Coder')
 c.drawRightString(A - 18*mm, 49*mm, 'Fráncfort del Meno, Alemania')
 
 hilo(45*mm, alpha=0.18)
