@@ -29,6 +29,11 @@ const VETA = (() => {
      dominio propio). El POS viejo de mytokenpay-pos.com quedo con el backend
      caido: enlazarlo era mandar a la gente a un login que no puede funcionar. */
   const URL_MYTOKENPAY = window.OG_MYTOKENPAY || 'https://main.d2dr8sh34hni4c.amplifyapp.com';
+  /* La casa de cambio. Adonde vuelve el circuito de #sso-ordenex (ver
+     ordenexVolver) y adonde lleva su esfera del Nucleo. Se puede pisar desde
+     fuera —ONX_URL— igual que el API y la cadena, para ensayar el viaje de
+     ida y vuelta contra una Ordenex de pruebas sin tocar la de verdad. */
+  const URL_ORDENEX = window.ONX_URL || 'https://www.ordenexchange.link';
 
   const $ = s => document.querySelector(s);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
@@ -505,7 +510,16 @@ const VETA = (() => {
          login es un gesto del dedo, asi que el audio puede arrancar solo.
          La unica excepcion es la frase semilla recien acunada: doce palabras
          que anotar ganan a cualquier bienvenida. */
-      if (!semillaNueva) setTimeout(() => auraBienvenida(true), 300);
+      /* La intencion de Ordenexchange se retoma apenas hay sesion: esta
+         persona vino de paso, no a pasear — y la bienvenida de AU-RA se calla
+         en este viaje, que trece segundos de orbe delante de alguien que solo
+         cruza el pasillo son un peaje. La unica excepcion es la cuenta recien
+         creada: sin identidad verificada Genesis no va a dar el token, y sus
+         doce palabras de respaldo ganan a cualquier redireccion. */
+      const volviendoAOrdenex = ssoOrdenexPendiente && !semillaNueva;
+      ssoOrdenexPendiente = false;
+      if (volviendoAOrdenex) ordenexVolver();
+      if (!semillaNueva) { if (!volviendoAOrdenex) setTimeout(() => auraBienvenida(true), 300); }
       else setTimeout(auraOfrecerGid, 1200);
       // La frase se enseña ENCIMA de la billetera ya pintada, no antes de
       // entrar: quien la ve entiende que ya tiene cuenta y que esto es lo que
@@ -3025,7 +3039,14 @@ const VETA = (() => {
     { id: 'aubank', x: 50, y: 86, tam: 0.60, pronto: true,
       grad: ['#E8E0C8', '#A5936A', '#463B24'], halo: '#CBBB8C', lente: '#141007',
       ico: '<rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20M6 15h4"/>' },
-    { id: 'oxch', x: 86, y: 49, tam: 0.52, pronto: true,
+    /* Ordenexchange ya abre: la esfera deja el «pronto» y se vuelve una
+       puerta de verdad, con el mismo patron que ORDENSCAN — un destino de
+       fuera. Se abre la PORTADA y no un enlace con token: el SSO arranca del
+       lado de Ordenex (su boton de entrar manda a #sso-ordenex y este
+       arranque devuelve a la gente ya con su llave — ver ordenexVolver), y
+       acuñar un token de paso por cada mirada al mercado seria gastar llaves
+       que nadie pidio. */
+    { id: 'oxch', x: 86, y: 49, tam: 0.52, fuera: URL_ORDENEX,
       grad: ['#DCD4F2', '#8D7EC9', '#372B63'], halo: '#A99CDE', lente: '#0D0A1D',
       ico: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>' },
   ];
@@ -3364,6 +3385,40 @@ const VETA = (() => {
     caja.classList.add('cer-yendo');
     el.classList.add('nu-yendo');
     setTimeout(abrir, 240);
+  }
+
+  // ── ORDENEXCHANGE · la vuelta con la llave puesta ─────────────────────────
+
+  /* La casa de cambio no tiene contraseñas: se entra con ESTA cuenta. Su web
+     manda a la gente a /#sso-ordenex y esto es el viaje de vuelta: con la
+     sesion viva se le pide al backend un token de paso de Genesis
+     (POST /genesis/sso/token — la clave de API de Genesis no baja jamas al
+     navegador) y se devuelve a la persona a Ordenex con el token en el hash.
+     Ese token vale minutos y solo dice QUIEN SOS: la sesion de la wallet, el
+     Bearer y la contraseña se quedan aqui.
+
+     Sin sesion, la intencion queda anotada en esta bandera y la retoma
+     enviarAcceso en cuanto la persona entra — igual que un cobro (#pagar)
+     espera en la puerta a que haya con que atenderlo. */
+  let ssoOrdenexPendiente = false;
+
+  async function ordenexVolver() {
+    ssoOrdenexPendiente = false;
+    try {
+      const d = await pedir('/genesis/sso/token', { metodo: 'POST' });
+      if (!d?.token) throw new Error(t('err.sesion'));
+      /* En la MISMA pestaña: Ordenex mando a su gente de paso y la espera de
+         vuelta — abrir otra dejaria esta huerfana a media entrada. */
+      location.href = URL_ORDENEX + '/#sso=' + encodeURIComponent(d.token);
+    } catch (e) {
+      /* El 403 no es un tropiezo: es Genesis diciendo que sin identidad
+         verificada no hay token. Se dice con la frase de siempre y se abre la
+         verificacion, que es lo unico que desbloquea esta puerta. Cualquier
+         otro fallo se enseña tal cual llego — la red y el servidor ya vienen
+         traducidos por pedir(). */
+      if (e.estado === 403) { avisar(t('nu.cerrado')); vista('verificar'); }
+      else avisar(e.message);
+    }
   }
 
   // ── MYTOKENPAY · el comercio, adentro de la casa ──────────────────────────
@@ -4654,7 +4709,7 @@ const VETA = (() => {
         og: 'Orden Global es un ecosistema completo: tu dinero (Veta Wallet), tu gente (PULSE CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), todos conectados sobre nuestra propia cadena. Una cuenta, todas las puertas.',
         comision: 'La comisión de red se paga siempre en ORIGEN, también cuando enviás otro token, y es mínima: nuestra cadena es propia. El equivalente lo ves antes de confirmar cualquier envío.',
         remesas: 'Con remesas ves cuánto llega del otro lado después de la comisión y del cambio, en nueve países. Te abro el calculador.',
-        pronto: 'AUBANK y Ordenexchange ya laten en el Núcleo pero todavía no abren: son lo que viene. El ecosistema no es una lista cerrada — crece.',
+        pronto: 'Ordenexchange ya abrió: es la casa de cambio del ecosistema, y se entra con esta misma cuenta desde su esfera del Núcleo. AUBANK late pero todavía no abre. El ecosistema no es una lista cerrada — crece.',
       },
       teEscucho: 'Te escucho…',
       ayuda: 'Podés pedirme, con la voz o escribiendo:\n\n· «Llevame a cobrar» — te abro cualquier parte\n· «Envía 15 a María» — te dejo el envío listo (firmás vos)\n· «¿Cuánto tengo?» — tu saldo\n· «¿A cuánto está el ORIGEN?» — el precio de hoy\n· «Cobrame 25» — te dejo el cobro con su código\n· «Resumen de la semana» — qué se movió estos días\n· «¿Estoy verificado?» — cómo va tu Genesis ID\n· «¿Qué es ORIGEN?» — te explico el ecosistema\n· «Buscá cafeterías» — te encuentro negocios\n· «Hacé el recorrido» — te lo enseño todo\n\nY si no me entiende el micrófono, escribime: leo igual de bien.',
@@ -4665,7 +4720,7 @@ const VETA = (() => {
         { id: 'chat', k: 'TU GENTE', t: 'PULSE CHAT', p: 'Solo gente verificada, y el dinero viaja dentro de la conversación, con comprobante en la cadena.' },
         { id: 'pay', k: 'TU NEGOCIO', t: 'MyTokenPay', p: 'La caja registradora del ecosistema: cobrás con un código y tu negocio crece acá adentro.' },
         { id: 'gid', k: 'TU IDENTIDAD', t: 'Genesis ID', p: 'Te verificás una sola vez y todo Orden Global te reconoce. Es la llave que abre las demás esferas.' },
-        { id: 'aubank', k: 'Y ESTO CRECE', t: 'Lo que viene', p: 'AUBANK y Ordenexchange ya laten aunque no abren todavía. Y yo soy AU-RA: cada versión voy a saber hacer más. Este ecosistema crece con vos.' },
+        { id: 'aubank', k: 'Y ESTO CRECE', t: 'Lo que viene', p: 'Ordenexchange ya abrió — la casa de cambio, con tu misma cuenta. AUBANK late aunque no abre todavía. Y yo soy AU-RA: cada versión voy a saber hacer más. Este ecosistema crece con vos.' },
       ],
     },
     en: {
@@ -4759,7 +4814,7 @@ const VETA = (() => {
         og: 'Orden Global is a complete ecosystem: your money (Veta Wallet), your people (PULSE CHAT), your business (MyTokenPay) and your identity (Genesis ID), all wired over our own chain. One account, every door.',
         comision: 'The network fee is always paid in ORIGEN, even when you send another token, and it is minimal: the chain is ours. You see the equivalent before confirming any transfer.',
         remesas: 'Remittances shows how much arrives on the other side after fees and exchange, in nine countries. Opening the calculator.',
-        pronto: 'AUBANK and Ordenexchange already pulse in the Nucleus but are not open yet: they are what is coming. The ecosystem is not a closed list — it grows.',
+        pronto: 'Ordenexchange is open now: the ecosystem\u2019s exchange, and you get in with this same account from its sphere in the Nucleus. AUBANK pulses but is not open yet. The ecosystem is not a closed list — it grows.',
       },
       teEscucho: 'Listening…',
       ayuda: 'You can ask me, by voice or typing:\n\n· “Take me to charge” — I open any part\n· “Send 15 to Maria” — I leave the transfer ready (you sign)\n· “How much do I have?” — your balance\n· “What is ORIGEN at?” — the price today\n· “Charge 25” — I leave the charge ready with its code\n· “Summary of this week” — what moved these days\n· “Am I verified?” — how your Genesis ID is doing\n· “What is ORIGEN?” — I explain the ecosystem\n· “Find coffee shops” — I find businesses\n· “Take the tour” — I show you everything\n\nAnd if the microphone misses you, type: I read just as well.',
@@ -4770,7 +4825,7 @@ const VETA = (() => {
         { id: 'chat', k: 'YOUR PEOPLE', t: 'PULSE CHAT', p: 'Verified people only, and money travels inside the conversation, with a receipt on the chain.' },
         { id: 'pay', k: 'YOUR BUSINESS', t: 'MyTokenPay', p: 'The ecosystem’s cash register: you charge with a code and your business grows in here.' },
         { id: 'gid', k: 'YOUR IDENTITY', t: 'Genesis ID', p: 'Verify once and all of Orden Global recognises you. It is the key that opens the other spheres.' },
-        { id: 'aubank', k: 'AND THIS GROWS', t: 'What is coming', p: 'AUBANK and Ordenexchange already pulse even though they are not open yet. And I am AU-RA: every version I will know how to do more. This ecosystem grows with you.' },
+        { id: 'aubank', k: 'AND THIS GROWS', t: 'What is coming', p: 'Ordenexchange is open now — the exchange, with your same account. AUBANK pulses though it is not open yet. And I am AU-RA: every version I will know how to do more. This ecosystem grows with you.' },
       ],
     },
   };
@@ -6146,6 +6201,12 @@ const VETA = (() => {
     const invEntrante = location.hash.startsWith('#chat') ? leerInvitacion(location.hash) : null;
     if (invEntrante) { vistaActual = 'chat'; chatPendiente = invEntrante; }
 
+    /* #sso-ordenex es Ordenexchange pidiendo la llave (ver ordenexVolver):
+       una intencion que llega de fuera, no una ruta — se consume aqui y no
+       entra al historial. */
+    const pideSsoOrdenex = location.hash === '#sso-ordenex';
+    ssoOrdenexPendiente = pideSsoOrdenex;
+
     /* Y si la direccion no es una intencion sino una RUTA —alguien guardo
        #billetera en favoritos, o recarga estando en el chat— se entra por
        ahi. Es lo que convierte la barra de direcciones en parte del producto
@@ -6176,7 +6237,13 @@ const VETA = (() => {
 
          Sin gesto no hay permiso de audio: sale igual, con el orbe pidiendo
          un toque para hablar. Tocar el orbe ES el gesto. */
-      if (!yaSePresento()) {
+      /* Quien viene de paso hacia Ordenex no se queda: se le acuña la llave y
+         se lo devuelve. La app queda pintada detras por si el viaje fracasa —
+         mejor caer en el Nucleo que en una pantalla en blanco — y el ritual
+         de AU-RA no se estrena en un pasillo: queda para una visita de
+         verdad. */
+      if (pideSsoOrdenex) ordenexVolver();
+      if (!yaSePresento() && !pideSsoOrdenex) {
         marcarPresentada();
         setTimeout(() => auraBienvenida(false), 500);
       }
@@ -6186,7 +6253,7 @@ const VETA = (() => {
     }
     /* Sin sesion no hay identidad que verificar todavia: al que venia a eso se
        le abre el acceso, no la portada, para que no tenga que buscar la puerta. */
-    else ir(pideVerificar || cobroEntrante ? 'acceso' : 'bienvenida', 'entrar');
+    else ir(pideVerificar || cobroEntrante || pideSsoOrdenex ? 'acceso' : 'bienvenida', 'entrar');
   }
   document.addEventListener('DOMContentLoaded', arrancar);
 

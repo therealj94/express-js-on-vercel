@@ -1,9 +1,9 @@
 // Aplicaciones del ecosistema y sus claves de API.
 //
-// Veta Wallet, ordenscan y MyTokenPay hablan con Genesis ID a través de estas
-// claves. Cada una tiene sus propios alcances, así que una clave filtrada no da
-// acceso a todo: la de ordenscan puede consultar si un GID está verificado,
-// pero no puede crear identidades ni ver documentos.
+// Veta Wallet, ordenscan, MyTokenPay y Ordenex hablan con Genesis ID a través
+// de estas claves. Cada una tiene sus propios alcances, así que una clave
+// filtrada no da acceso a todo: la de ordenscan puede consultar si un GID está
+// verificado, pero no puede crear identidades ni ver documentos.
 //
 // De la clave solo se guarda el hash. Se muestra entera una única vez, al
 // crearla. Si se pierde, se revoca y se emite otra — no hay forma de
@@ -32,7 +32,7 @@ export const ALCANCES = {
 
 export type Alcance = keyof typeof ALCANCES
 
-/** Las tres aplicaciones del ecosistema y lo que necesita cada una. */
+/** Las aplicaciones del ecosistema y lo que necesita cada una. */
 export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance[] }[] = [
   {
     clave: 'veta-wallet',
@@ -61,6 +61,25 @@ export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance
     // Un explorador es público: solo necesita saber si una dirección tiene
     // identidad verificada detrás. Nada de datos personales.
     alcances: ['gid.verificar', 'tamiz.direccion', 'telemetria.enviar'],
+  },
+  {
+    clave: 'ordenex',
+    nombre: 'Ordenex',
+    // La casa de cambio. A Ordenex solo entra gente que YA hizo su KYC en la
+    // wallet, así que verifica los tokens del SSO con los que llegan
+    // (gid.verificar) y lee el perfil para saber si la identidad sigue
+    // verificada y cuál es su dirección custodiada en la wallet (gid.perfil);
+    // ata su cuenta local al GID (vinculo.crear); tamiza la dirección de cada
+    // retiro (tamiz.direccion) y reporta al monitoreo cada retiro y cada
+    // operación fiat (movimiento.enviar); telemetria.enviar para el panel.
+    // Y ni un alcance más, a propósito: nada de identidad.* porque Ordenex NO
+    // hace KYC — el trámite vive en la wallet, y repetirlo aquí sería guardar
+    // documentos de la gente en una base más — y sin directorio.enviar porque
+    // su padrón ES el de la wallet: no tiene usuarios propios que censar.
+    alcances: [
+      'gid.verificar', 'gid.perfil', 'vinculo.crear',
+      'movimiento.enviar', 'tamiz.direccion', 'telemetria.enviar',
+    ],
   },
 ]
 
@@ -107,7 +126,7 @@ export function crearAplicacion(clave: string, nombre: string, alcances: string[
   return { aplicacion, clave_secreta: secreta }
 }
 
-/** Da de alta las tres apps del ecosistema si aún no existen. */
+/** Da de alta las apps del ecosistema si aún no existen. */
 export function asegurarAplicaciones(): { clave: string; secreta: string }[] {
   const nuevas: { clave: string; secreta: string }[] = []
   for (const def of APPS_ECOSISTEMA) {
