@@ -194,6 +194,16 @@
     },
 
     {
+      "id": "interno-boveda-en-marcha",
+      "tema": "INTERNO · la bóveda se está montando en Próspera",
+      "publico": false,
+      "revisadoPor": "jose@ordenglobal.org",
+      "revisadoEn": "2026-08-16",
+      "palabras": ["boveda", "custodia", "prospera", "en marcha", "futuro"],
+      "es": "Dicho por la presidencia el 16/08/2026: la bóveda es un frente en marcha, se está trabajando en montarla en Próspera. Encaja con el expediente, que dice que el oro está en etapa de recurso y en proceso de formalización. Lo que NO se sabe todavía y hace falta antes de contarlo a nadie de fuera: qué sociedad o depositario custodia, en qué etapa está el trámite, si la bóveda es para ORIGEN o para AUKA, y con qué estándar de refinería se certificará —LBMA Good Delivery, no NI 43-101—. Hasta que eso exista, en público va el texto A: la figura de respaldo está en manos de la Junta y no está firmada. Una bóveda anunciada antes de existir es la misma clase de frase que acabamos de retirar de cuatro sitios, solo que en futuro.",
+      "en": "Stated by the president on 16/08/2026: the vault is work in progress, being set up in Próspera. It fits the legal file, which says the gold is at resource stage and being formalised. What is NOT known yet and is needed before telling anyone outside: which company or depositary holds custody, what stage the filing is at, whether the vault is for ORIGEN or for AUKA, and under which refinery standard it will be certified — LBMA Good Delivery, not NI 43-101. Until that exists, text A goes out in public: the backing figure sits with the Board and is not signed. A vault announced before it exists is the same class of sentence we just pulled from four sites, only in the future tense."
+    },
+    {
       "id": "interno-legal-figura",
       "tema": "INTERNO · qué es ORIGEN en derecho",
       "publico": false,

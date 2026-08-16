@@ -42,6 +42,17 @@ precio. Decir la primera cuando la realidad es la segunda, a 435 usuarios con
 saldo real, es exactamente la exposición que la Secretaría nombra en el bloque 1
 del expediente. Y el PDF para inversionistas ya la lleva impresa.
 
+**Lo que se está haciendo al respecto.** La presidencia confirma el 16/08/2026
+que **la bóveda es un frente en marcha: se está trabajando en montarla en
+Próspera**. Eso no cambia lo que se puede decir hoy —una bóveda en trámite no es
+una bóveda—, pero sí cambia el final de la historia: lo que se retiró de la web
+no era una mentira sostenida a propósito, era una promesa contada en presente
+antes de tiempo. Lo que falta para poder contarla, y en este orden: qué sociedad
+o depositario custodia, en qué etapa está el trámite en Próspera, si la bóveda
+respalda ORIGEN o AUKA, y bajo qué estándar de refinería se certifica —**LBMA
+Good Delivery**, que es el que corresponde a barras, no NI 43-101, que es de
+reporte de recursos mineros—.
+
 **Estado:** abierto. Es la **Decisión 4 de la Junta** en el propio expediente:
 *«fijar por escrito, con dictamen, la naturaleza referenciada de ORIGEN y
 corregir los textos de la web que aún hablan de respaldo y bóveda»*. No se
