@@ -579,7 +579,7 @@ footer{margin-top:18vh;border-top:1px solid var(--line);background:var(--void2);
     <div class="fx-sub" data-i="fx-sub">1⁄55 de gramo de oro certificado NI 43-101, guardado en bóveda.</div>
     <div class="fx-price">
       <span class="fx-lbl" data-i="fx-lbl">Referenciado al precio del oro</span>
-      <span class="fx-val" id="fx-val">$2.40</span>
+      <span class="fx-val" id="fx-val">—</span>
     </div>
     <div class="fx-grid">
       <div><h5 data-i="fx-1t">Sube con el oro</h5><p data-i="fx-1p">Cuando el oro sube, tu ORIGEN sube con él. Tu dinero deja de depender de una moneda que se devalúa.</p></div>
@@ -880,12 +880,33 @@ const EXPERIENCE=(()=>{
   let dv=100; function tickDevalue(){ const el=$('#devalue'); if(!el)return; dv+=(Math.random()<.5?-1:-0.6); if(dv<3)dv=100;
     el.firstChild.textContent=Math.max(3,dv).toFixed(0); }
   /* El precio de ORIGEN respira como el mercado del oro: sube Y baja. */
-  /* La cifra de la formula es una REFERENCIA al precio del oro, no una
-     cotizacion en vivo — y hasta ahora se movia sola con dos senos y ensenaba
-     un «+ $0.010» que no venia de ningun mercado. Un tablero de precios falso
-     al lado de la palabra «oro» es exactamente lo que esta casa no hace.
-     Se queda la referencia, quieta y con su etiqueta, y se va el teatro. */
+  /* La cifra de la formula sale del MISMO dato que usa la billetera: el precio
+     del oro, dividido por los gramos de una onza y por 55, que es lo que vale
+     un gramin. Antes era un 2,40 escrito a mano que se movia solo con dos
+     senos — un tablero de precios falso al lado de la palabra «oro», que es
+     exactamente lo que esta casa no hace.
+
+     Escrito a mano tampoco vale aunque no se mueva: el oro sube, y un numero
+     cocinado en el HTML envejece sin que nadie se entere. El dia que se
+     comprobo, la pagina decia 2,40 y el gramin valia 2,56.
+
+     Si el precio no llega, se queda el guion. Nunca un numero inventado. */
+  const OZ_GRAMOS = 31.1035;
+  function pedirPrecio(){
+    fetch('https://api.gold-api.com/price/XAU')
+      .then(r=>r.json())
+      .then(j=>{
+        const oro = Number(j && j.price);
+        if(!isFinite(oro) || oro <= 0) return;
+        const v = $('#fx-val');
+        if(v) v.textContent = '$' + (oro / OZ_GRAMOS / 55).toFixed(2);
+      })
+      .catch(()=>{ /* sin precio no se inventa: se queda el guion */ });
+  }
   function tickFormula(){}
+  pedirPrecio();
+  // el oro no se mueve por segundos: cada diez minutos sobra, y solo si se mira
+  setInterval(()=>{ if(!document.hidden) pedirPrecio(); }, 600000);
 
   /* ---- la cadena, de la cadena --------------------------------------------
      Esto era una mentira con animacion: la altura empezaba en 4 200 000 y
