@@ -31,7 +31,10 @@ la cadena confirma, y solo DESPUÉS el relevo deja el comprobante en el hilo.
 Corre detrás de Caddy en /mensajes/*. Estado en un JSON con candado; a
 este tamaño (mensajes de texto entre cientos de usuarios) sobra. Los
 adjuntos (imagen/video/archivo, ≤8MB) van como binarios en disco y se
-sirven por GET /archivo/<id>: el id aleatorio largo es el permiso.
+sirven por GET /archivo/<id>: el id aleatorio largo es el permiso. Ese GET
+entiende Range (206) —sin eso Safari no reproduce un video— y solo deja
+abrirse dentro del navegador a imágenes y videos: lo demás se descarga, para
+que nadie use nuestro dominio para servir su HTML.
 """
 import base64, json, os, re, secrets, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -57,6 +60,9 @@ TOPE_GRUPOS = 200          # ningún usuario en más de 200 grupos
 TOPE_MIEMBROS = 500
 ID_ARCHIVO = re.compile(r'[0-9a-f]{32}')
 ID_GRUPO = re.compile(r'g:[0-9a-f]{16}')
+# 'Range: bytes=inicio-fin', con cualquiera de los dos lados vacío. Es la
+# única forma que servimos: un solo trozo, en bytes.
+RANGO = re.compile(r'bytes=(\d*)-(\d*)')
 candado = threading.Lock()
 
 # Los navegadores no dejan a una página llamar a otro dominio si el dominio no
@@ -155,6 +161,70 @@ def foto_valida(d, x):
     return x if (ID_ARCHIVO.fullmatch(x) and x in d.get('archivos', {})) else ''
 
 
+def en_linea(mime):
+    """¿Este adjunto se PINTA dentro del hilo, o se baja como descarga?
+
+    Un adjunto lo sube cualquiera, y servido «inline» se abre DENTRO de
+    nuestro dominio: un .html o un .svg subidos como adjunto ejecutarían su
+    JavaScript en cerebro.ordenscan.com, con la confianza que la gente le
+    tiene a esa barra de direcciones. Eso es alojarle el phishing a quien lo
+    intente, gratis y con nuestro nombre.
+
+    Así que inline SOLO lo que el chat tiene que enseñar en la burbuja:
+    imágenes y videos. El SVG se queda fuera a propósito aunque su mime
+    empiece por image/ — no es un mapa de píxeles, es XML que puede traer
+    <script> dentro. Todo lo demás baja como archivo y no corre nada.
+    """
+    m = str(mime or '').split(';')[0].strip().lower()
+    if 'svg' in m:
+        return False
+    return m.startswith('image/') or m.startswith('video/')
+
+
+def trozo_pedido(cabecera, total):
+    """Traduce un `Range: bytes=i-f` al pedazo que hay que servir.
+
+    Safari (y iOS entero) NO reproduce un <video> al que el servidor le
+    contesta 200 con el archivo completo: pide un trozo y espera un 206. Sin
+    esto, un video mandado por el chat se veía en la app pero no en el
+    navegador — que es donde está la mitad de la gente.
+
+    Devuelve una tupla (qué, i, f):
+      · ('entero', 0, total-1) → servir todo con el 200 de siempre. Es lo que
+        toca sin cabecera Range Y TAMBIÉN con una cabecera que no entendemos
+        (varios rangos, otra unidad): la norma manda ignorar el Range
+        incomprensible, no fallar.
+      · ('trozo', i, f)        → 206 con esos bytes, ambos extremos incluidos.
+      · ('fuera', 0, 0)        → el rango tiene buena forma pero pide algo que
+        no existe (empieza pasado el final, o al revés): eso es un 416.
+    """
+    fin = total - 1
+    if not cabecera or len(cabecera) > 100:
+        return ('entero', 0, fin)
+    m = RANGO.fullmatch(cabecera.strip())
+    if not m:
+        return ('entero', 0, fin)
+    ini, ult = m.group(1), m.group(2)
+    if ini == '' and ult == '':
+        return ('entero', 0, fin)
+    # 20 dígitos ya son más bytes de los que cabrían jamás en un adjunto de
+    # 8MB: no vale la pena convertir a entero un número de mil cifras
+    if len(ini) > 20 or len(ult) > 20:
+        return ('fuera', 0, 0)
+    if ini == '':
+        # 'bytes=-N': los ÚLTIMOS N bytes. Pedir los últimos cero no es un
+        # trozo, es nada.
+        n = int(ult)
+        if n == 0 or total == 0:
+            return ('fuera', 0, 0)
+        return ('trozo', max(0, total - n), fin)
+    i = int(ini)
+    f = int(ult) if ult != '' else fin      # 'bytes=i-' = de ahí hasta el final
+    if total == 0 or i >= total or i > f:
+        return ('fuera', 0, 0)
+    return ('trozo', i, min(f, fin))
+
+
 def miembro(g, correo):
     return any(m['correo'] == correo for m in g.get('miembros', []))
 
@@ -183,24 +253,56 @@ def cuantos_grupos(d, correo):
 
 
 def sumar_miembros(d, g, correos, ahora):
-    """Mete en el grupo a los correos que se pueda y devuelve cuántos entraron.
+    """Mete en el grupo a los correos que se pueda y dice QUÉ pasó con cada uno.
 
     Solo gente ya dada de alta en el relevo: un correo sin ficha no podría
     leer nada y dejaría un miembro fantasma, sin nombre ni foto, en la ficha
-    del grupo. Los que ya están, los que no caben y los que llegaron a sus
-    200 grupos se saltan en silencio — invitar a diez y que entren siete no
-    es un error, por eso la respuesta cuenta los añadidos.
+    del grupo. Eso está bien; lo que estaba mal es que se saltaba en
+    SILENCIO. Quien escribía el correo de alguien que todavía no tiene la
+    app veía «Invitación enviada» y se quedaba esperando a una persona que
+    nunca fue invitada a nada — la mentira más cara de todas, porque no se
+    nota hasta días después.
+
+    Por eso ya no se devuelve un número pelado sino qué le tocó a cada
+    correo. Que la respuesta diga «este no existe» permite a la pantalla
+    decirlo con esas palabras en vez de fingir un éxito.
+
+    Devuelve un dict de listas: entraron, noExisten, yaEstaban, sinCupo; y
+    'invalidos' es un CONTEO, no una lista: lo que no tiene forma de correo
+    no se devuelve tal cual — no le devolvemos a nadie su propia cadena rara
+    para que otra pantalla la pinte.
     """
-    n = 0
-    for c in (correos if isinstance(correos, list) else [])[:TOPE_MIEMBROS]:
+    r = {'entraron': [], 'noExisten': [], 'yaEstaban': [], 'sinCupo': [],
+         'invalidos': 0}
+    lista = correos if isinstance(correos, list) else []
+    for c in lista[:TOPE_MIEMBROS]:
         c = str(c).lower()
-        if not correo_valido(c) or c not in d['fichas'] or miembro(g, c):
+        if not correo_valido(c):
+            r['invalidos'] += 1
+            continue
+        if c not in d['fichas']:
+            # sí, esto dice si un correo está dado de alta. El directorio
+            # (/buscar) ya lo dice desde siempre, y sin esto no hay forma
+            # honesta de avisar de que la invitación no llegó a nadie.
+            r['noExisten'].append(c)
+            continue
+        if miembro(g, c):
+            r['yaEstaban'].append(c)
             continue
         if len(g['miembros']) >= TOPE_MIEMBROS or cuantos_grupos(d, c) >= TOPE_GRUPOS:
+            r['sinCupo'].append(c)
             continue
         g['miembros'].append({'correo': c, 'desde': ahora})
-        n += 1
-    return n
+        r['entraron'].append(c)
+    # lo que ni se miró por venir detrás del tope tampoco entró: contarlo
+    # como añadido sería la misma mentira por otra puerta
+    for c in lista[TOPE_MIEMBROS:]:
+        c = str(c).lower()
+        if correo_valido(c):
+            r['sinCupo'].append(c)
+        else:
+            r['invalidos'] += 1
+    return r
 
 
 class Relevo(BaseHTTPRequestHandler):
@@ -262,19 +364,53 @@ class Relevo(BaseHTTPRequestHandler):
             meta = None
         if not meta:
             return self._json(404, {'error': 'no existe'})
-        self.send_response(200)
-        self.send_header('Content-Type', meta.get('mime') or 'application/octet-stream')
-        self.send_header('Content-Length', str(len(cuerpo)))
+        total = len(cuerpo)
+        mime = meta.get('mime') or 'application/octet-stream'
         # nombre saneado a ASCII simple: es solo cortesía para el "guardar
         # como" del navegador, no vale la pena la coreografía RFC 5987
         nombre = re.sub(r'[^A-Za-z0-9._ -]', '_', meta.get('nombre') or iid)[:80]
-        self.send_header('Content-Disposition', 'inline; filename="%s"' % nombre)
+
+        que, i, f = trozo_pedido(self.headers.get('Range'), total)
+        if que == 'fuera':
+            # 416 con el tamaño de verdad: el reproductor recalcula y vuelve
+            # a pedir bien, en vez de quedarse mirando un error sin datos
+            self.send_response(416)
+            self.send_header('Content-Range', 'bytes */%d' % total)
+            self.send_header('Accept-Ranges', 'bytes')
+            self.send_header('Content-Length', '0')
+            self._permiso()
+            self.end_headers()
+            return
+
+        self.send_response(206 if que == 'trozo' else 200)
+        self.send_header('Content-Type', mime)
+        # decirlo SIEMPRE, también en el 200: es así como el reproductor se
+        # entera de que puede pedir trozos y de que puede saltar en la barra
+        self.send_header('Accept-Ranges', 'bytes')
+        if que == 'trozo':
+            self.send_header('Content-Range', 'bytes %d-%d/%d' % (i, f, total))
+            self.send_header('Content-Length', str(f - i + 1))
+        else:
+            self.send_header('Content-Length', str(total))
+        # Un adjunto se guarda, no se ejecuta: inline solo lo que la burbuja
+        # tiene que enseñar (imagen y video, nunca SVG). Lo demás, descarga —
+        # ver en_linea(): es lo que impide que nos alojen el phishing.
+        self.send_header('Content-Disposition', '%s; filename="%s"'
+                         % ('inline' if en_linea(mime) else 'attachment', nombre))
+        # y que el navegador no adivine el tipo mirando los bytes: sin esto,
+        # un .html subido con mime de imagen se ejecutaría igual
+        self.send_header('X-Content-Type-Options', 'nosniff')
         # el binario de un id jamás cambia: que el teléfono lo cachee y no
         # vuelva a bajar la misma foto en cada scroll del hilo
         self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
         self._permiso()
+        if self.headers.get('Origin') in ORIGENES:
+            # sin esto el JavaScript de la web ve la respuesta pero no puede
+            # leer de dónde a dónde va el trozo que le mandaron
+            self.send_header('Access-Control-Expose-Headers',
+                             'Content-Range, Content-Length, Accept-Ranges')
         self.end_headers()
-        self.wfile.write(cuerpo)
+        self.wfile.write(cuerpo[i:f + 1] if que == 'trozo' else cuerpo)
 
     def do_POST(self):
         # la ruta se decide ANTES de leer el cuerpo: el tope grande es solo
@@ -687,9 +823,21 @@ class Relevo(BaseHTTPRequestHandler):
                 g = grupo_de(d, b.get('id'), correo)
                 if not g:
                     return self._json(403, {'error': 'no eres del grupo'})
-                n = sumar_miembros(d, g, b.get('correos'), int(time.time() * 1000))
+                r = sumar_miembros(d, g, b.get('correos'), int(time.time() * 1000))
                 guardar(d)
-                return self._json(200, {'ok': True, 'añadidos': n})
+                n = len(r['entraron'])
+                # 'añadidos' se queda con ese nombre pase lo que pase: la app
+                # del teléfono y la web ya lo leen y no se actualizan a la vez.
+                # 'agregados' es el mismo número sin la eñe, para quien tenga
+                # que leerlo desde un sitio donde una clave con tilde duele.
+                # Lo nuevo son las listas: sin ellas la pantalla no puede
+                # distinguir «entró» de «ese correo no existe» y acaba diciendo
+                # «invitación enviada» cuando no se invitó a nadie.
+                return self._json(200, {
+                    'ok': True, 'añadidos': n, 'agregados': n,
+                    'entraron': r['entraron'], 'noExisten': r['noExisten'],
+                    'yaEstaban': r['yaEstaban'], 'sinCupo': r['sinCupo'],
+                    'invalidos': r['invalidos']})
 
             if ruta == '/grupo/unirse':
                 # El token ES el permiso: quien lo tiene entra, venga de un
