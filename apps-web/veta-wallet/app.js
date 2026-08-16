@@ -336,15 +336,27 @@ const VETA = (() => {
     /* AU-RA acompaña toda la sesion; fuera de ella no existe. Las seis
        tarjetas de la bienvenida vieja ya no salen solas: quedaron en Ajustes
        para quien quiera leerlas — la puerta de entrada ahora es de AU-RA. */
-    if (destino === 'app') auraDespertar();
+    if (destino === 'app') { auraVisita = false; auraDespertar(); }
     else {
-      $('#aura-orbe').setAttribute('data-oculto', '');
+      /* AU-RA TAMBIÉN ATIENDE A QUIEN NO HA ENTRADO. Antes desaparecía fuera
+         de la sesión, y eso dejaba mudo justo el momento en que más se duda:
+         alguien que acaba de llegar y no sabe si esto es serio. En visita
+         contesta del ecosistema y de nada más — no hay cuenta de la que
+         hablar, así que no hay nada de nadie que pueda contar. */
+      const cerrandoSesion = !auraVisita;
+      auraVisita = true;
+      auraDespertar();
       auraAbierta = false;
       /* La conversacion con AU-RA se VA con la sesion. Sin esto, la siguiente
          cuenta que entrara en el mismo navegador abria el panel y encontraba
          el hilo de la anterior — con su nombre y con los saldos que AU-RA le
-         habia contestado. */
-      auraCharla = [];
+         habia contestado.
+
+         Pero SOLO al cerrar sesion. Entre la portada y el acceso no hay nada
+         privado que borrar, y borrar ahi tiraba la conversacion de la visita
+         justo cuando pulsaba «abrir mi cuenta»: llegaba al formulario y AU-RA
+         ya no se acordaba de lo que le acababa de preguntar. */
+      if (cerrandoSesion) auraCharla = [];
       pintarAura();
       tourApagar();
       AURA.pararVoz(); AURA.pararRed();
@@ -379,6 +391,15 @@ const VETA = (() => {
     // La bienvenida se pinta aparte del resto, asi que hay que repintarla a
     // mano o se queda a medio traducir encima de todo lo demas.
     if (!$('#bienve').classList.contains('oculto')) bienPintar();
+    /* El saludo de AU-RA se REESCRIBE al cambiar de idioma, pero solo si es
+       lo unico que hay en el hilo. Quien llega, abre el panel y despues pulsa
+       EN se quedaba con la bienvenida en español encima de una pagina ya
+       traducida: la primera frase que lee del asistente, en el idioma que
+       acaba de rechazar. Si ya hubo conversacion de verdad NO se toca —
+       reescribirle a alguien lo que ya leyo es peor que dejarlo mezclado. */
+    if (auraCharla.length === 1 && auraCharla[0].de === 'aura') {
+      auraCharla = [{ de: 'aura', txt: auraVisita ? aTxt().holaVisita : aTxt().hola }];
+    }
     // El panel de AU-RA tambien vive fuera de #lienzo: abierto, sus chips y
     // su placeholder se quedarian en el idioma viejo si no se repinta aqui.
     if (auraAbierta) pintarAura();
@@ -4533,6 +4554,13 @@ const VETA = (() => {
      completo —seso, voz y palabras— y se lee entero o no se entiende. */
   const AURA_TXT = {
     es: {
+      /* El saludo de visita. Ni una palabra de venta: quien acaba de llegar
+         quiere saber que hay alguien y que no le van a pedir nada todavia. */
+      holaVisita: 'Bienvenido a Orden Global. Soy AU-RA, la inteligencia de la casa. Preguntame lo que quieras del ecosistema —qué es ORIGEN, cómo funciona la cadena, qué hace falta para abrir una cuenta— y te contesto acá mismo, sin que tengas que registrarte ni darme nada.',
+      chipsVisita: ['¿Qué es Orden Global?', '¿Qué es ORIGEN?', '¿Es seguro?', 'Abrir mi cuenta'],
+      vAbrir: 'Abrir mi cuenta',
+      vSinCuenta: 'Eso ya es de tu cuenta, y todavía no tenés una — así que no hay saldo ni actividad de la que hablarte. En cuanto abrás la cuenta te lo contesto con tus números de verdad, nunca con un ejemplo.',
+      vNoSe: 'Eso todavía no lo sé contestar desde acá. Puedo hablarte de ORIGEN, de la cadena, de Genesis ID, de PULSE CHAT, de MyTokenPay o de todo el ecosistema junto. Y si preferís leerlo con calma, en ordenglobal.org está la casa entera contada.',
       hola: 'Hola. Soy AU-RA, la inteligencia del ecosistema — modelo 1, en beta. Puedo llevarte a cualquier parte, dejarte un envío preparado o explicarte cómo funciona todo. ¿Empezamos con un recorrido?',
       bienv1: 'Hola, {nombre}. Soy AU-RA, la inteligencia de Orden Global.',
       bienv1Voz: 'Hola. Soy AU-RA, la inteligencia de Orden Global.',
@@ -4641,6 +4669,11 @@ const VETA = (() => {
       ],
     },
     en: {
+      holaVisita: 'Welcome to Orden Global. I am AU-RA, the intelligence of the house. Ask me anything about the ecosystem — what ORIGEN is, how the chain works, what it takes to open an account — and I will answer right here, with no sign-up and nothing asked of you.',
+      chipsVisita: ['What is Orden Global?', 'What is ORIGEN?', 'Is it safe?', 'Open my account'],
+      vAbrir: 'Open my account',
+      vSinCuenta: 'That belongs to your account, and you do not have one yet — so there is no balance or activity for me to tell you about. The moment you open it I will answer with your real numbers, never with an example.',
+      vNoSe: 'I cannot answer that from here yet. I can tell you about ORIGEN, the chain, Genesis ID, PULSE CHAT, MyTokenPay, or the whole ecosystem together. And if you would rather read it at your own pace, ordenglobal.org has the whole house explained.',
       hola: 'Hi. I am AU-RA, the intelligence of the ecosystem — model 1, in beta. I can take you anywhere, leave a transfer ready for you, or explain how everything works. Shall we start with a tour?',
       bienv1: 'Hello, {nombre}. I am AU-RA, the intelligence of Orden Global.',
       bienv1Voz: 'Hello. I am AU-RA, the intelligence of Orden Global.',
@@ -4744,6 +4777,11 @@ const VETA = (() => {
   const aTxt = () => AURA_TXT[idiomaActivo() === 'en' ? 'en' : 'es'];
 
   let auraMontada = false, auraAbierta = false, auraCharla = [], auraOyendo = false;
+  /* Visita = todavía no entró. Manda sobre TODO lo que AU-RA hace: el saludo,
+     los chips y a dónde va cada pregunta. Se pone en `ir()`, que es el único
+     sitio donde se cambia de pantalla, así que no hay forma de que una vista
+     quede en visita por descuido. */
+  let auraVisita = true;
 
   /* El orbe aparece con la sesion y se monta UNA vez: es el mismo organismo
      toda la vida de la pagina, no un dibujo que se rehace por vista. */
@@ -4754,17 +4792,51 @@ const VETA = (() => {
       AURA.montarOrbe(orbe.querySelector('canvas'));
       auraMontada = true;
     }
+    if (auraVisita) vigilarInvitacion();
+  }
+
+  /* EL ORBE SE APARTA MIENTRAS LA INVITACIÓN ESTÁ A LA VISTA. En el teléfono
+     el orbe flota fijo abajo a la derecha y se plantaba justo encima de la
+     tarjeta «preguntale a AU-RA»: dos puertas a lo mismo, una tapando a la
+     otra. Con esto solo hay una a la vez — la tarjeta mientras se lee el
+     encabezado, el orbe en cuanto se pasa de largo. */
+  let ojoInvitacion = null;
+  const invitacionesVisibles = new Set();
+  function vigilarInvitacion() {
+    if (ojoInvitacion || !window.IntersectionObserver) return;
+    ojoInvitacion = new IntersectionObserver((entradas) => {
+      /* El callback trae SOLO las que cambiaron, no todas. Con un `some` sobre
+         el lote, dejar de ver la de la portada apagaba el escondite aunque la
+         del acceso siguiera en pantalla. Se lleva el conjunto a mano. */
+      for (const e of entradas) {
+        if (e.isIntersecting) invitacionesVisibles.add(e.target);
+        else invitacionesVisibles.delete(e.target);
+      }
+      ajustarOrbe();
+    }, { threshold: 0.35 });
+    document.querySelectorAll('.bv-aura').forEach(n => ojoInvitacion.observe(n));
+  }
+
+  function ajustarOrbe() {
+    $('#aura-orbe').classList.toggle('tapado',
+      auraVisita && invitacionesVisibles.size > 0 && !auraAbierta);
   }
 
   function auraToca() {
     auraAbierta = !auraAbierta;
+    ajustarOrbe();
     if (!auraAbierta) { AURA.pararVoz(); AURA.dejarDeEscuchar(); return pintarAura(); }
     if (!auraCharla.length) {
       // El primer saludo del panel se DICE: tocar el orbe es un gesto, asi
       // que el audio tiene permiso. Es tambien la prueba viva de que la voz
       // funciona antes de pedirle nada.
-      auraCharla.push({ de: 'aura', txt: aTxt().hola });
-      AURA.hablar(aTxt().hola, idiomaActivo());
+      /* El saludo NO lleva botón de abrir cuenta: el chip de abajo ya es esa
+         puerta y está siempre a la vista. Repetirla dentro del primer globo
+         convierte una bienvenida en un anuncio, que es justo lo contrario de
+         lo que hace falta con alguien que acaba de llegar y todavía duda. */
+      const saludo = auraVisita ? aTxt().holaVisita : aTxt().hola;
+      auraCharla.push({ de: 'aura', txt: saludo });
+      AURA.hablar(saludo, idiomaActivo());
     }
     pintarAura();
   }
@@ -4789,6 +4861,9 @@ const VETA = (() => {
      hace pensar que la app no sabe quién sos. */
   function auraSugerencias() {
     const T = aTxt();
+    // En visita no hay vista ni estado de cuenta: las cuatro son del ecosistema
+    // y la última es la puerta.
+    if (auraVisita) return T.chipsVisita;
     const propias = T.porVista?.[vistaActual] || [];
     const fondo = T.chips.filter(c => c !== T.chips[3] || !esVerificada());
     const vistas = new Set();
@@ -4886,7 +4961,67 @@ const VETA = (() => {
   // ── el seso ───────────────────────────────────────────────────────────────
   const sinTildes = x => x.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
+  /* Las respuestas de fábrica, buscadas por palabra. Vive fuera de `auraSeso`
+     porque la usan los dos cerebros —el de la sesión y el de visita— y una
+     tabla duplicada es una tabla que un día se corrige en un solo sitio. */
+  function auraFabrica(d) {
+    const T = aTxt();
+    const SABE = [
+      // «origin» sin la E es como lo teclea quien lee la palabra en inglés,
+      // y hasta ahora caía en «todavía no sé eso»: la pregunta más nuestra
+      // de todas quedaba sin respuesta en medio idioma.
+      [/origen|origin|oro|gold|gramin/, T.con.origen],
+      [/cadena|chain|5550|besu|qbft|shanghai|blockchain|layer/, T.con.cadena],
+      [/genesis/, T.con.gid],
+      [/pulse|chat/, T.con.chat],
+      [/mytokenpay|negocio|comercio/, T.con.pay],
+      [/au-?ra|quien sos|quien eres|who are you|vos que|tu que/, T.con.aura],
+      [/orden global|ecosistema|ecosystem/, T.con.og],
+      [/comision|fee|gas/, T.con.comision],
+      [/aubank|ordenexchange|pronto|coming/, T.con.pronto],
+    ];
+    for (const [re, r] of SABE) if (re.test(d)) return r;
+    return null;
+  }
+
+  /* EL CEREBRO DE VISITA. Separado del de la sesión a propósito, y no con un
+     `if` dentro del otro: ahí abajo hay envíos dictados, saldos, contactos y
+     navegación a vistas que no existen todavía. Un guardia en medio de todo
+     eso se olvida un día; una puerta distinta, no. Aquí solo entra lo que se
+     puede contar sin conocer a nadie. */
+  function auraSesoVisita(dicho) {
+    const T = aTxt();
+    const d = sinTildes(dicho);
+    const voz = true;
+    const abrir = [{ txt: T.vAbrir, di: T.vAbrir }];
+
+    if (/abrir (mi )?cuenta|crear cuenta|registrar|open (my )?account|create account|sign ?up/.test(d)) {
+      auraAbierta = false; pintarAura();
+      return ir('acceso', 'crear');
+    }
+    if (/ya tengo cuenta|entrar|iniciar sesion|log ?in|sign ?in/.test(d)) {
+      auraAbierta = false; pintarAura();
+      return ir('acceso', 'entrar');
+    }
+
+    // Lo que una persona marcó como público en Genesis Core manda; después,
+    // lo de fábrica. Es el mismo orden que dentro de la sesión.
+    const deGenesis = auraSaberDe(d);
+    if (deGenesis) return auraDecir(deGenesis, { voz, botones: abrir });
+    const deFabrica = auraFabrica(d);
+    if (deFabrica) return auraDecir(deFabrica, { voz, botones: abrir });
+
+    /* Todo lo que huele a cuenta se contesta con la verdad —no hay cuenta— y
+       con la puerta. Nunca se inventa un saldo ni se finge que hay alguien
+       detrás: es la misma regla de siempre, aplicada a que no hay nadie. */
+    if (/saldo|cuanto tengo|mi cuenta|mis |actividad|resumen|envia|enviar|mandar|cobrar|tarjeta|verificad|balance|my |send|charge|activity/.test(d))
+      return auraDecir(T.vSinCuenta, { voz, botones: abrir });
+
+    return auraDecir(T.vNoSe, { voz, botones: abrir });
+  }
+
   function auraSeso(dicho) {
+    if (auraVisita) return auraSesoVisita(dicho);
     const T = aTxt();
     const d = sinTildes(dicho);
     const voz = true;
@@ -5065,21 +5200,6 @@ const VETA = (() => {
       }
     }
 
-    // conocimiento
-    const SABE = [
-      // «origin» sin la E es como lo teclea quien lee la palabra en inglés,
-      // y hasta ahora caía en «todavía no sé eso»: la pregunta más nuestra
-      // de todas quedaba sin respuesta en medio idioma.
-      [/origen|origin|oro|gold|gramin/, T.con.origen],
-      [/cadena|chain|5550|besu|qbft|shanghai|blockchain|layer/, T.con.cadena],
-      [/genesis/, T.con.gid],
-      [/pulse|chat/, T.con.chat],
-      [/mytokenpay|negocio|comercio/, T.con.pay],
-      [/au-?ra|quien sos|quien eres|who are you|vos que|tu que/, T.con.aura],
-      [/orden global|ecosistema|ecosystem/, T.con.og],
-      [/comision|fee|gas/, T.con.comision],
-      [/aubank|ordenexchange|pronto|coming/, T.con.pronto],
-    ];
     /* EL SABER QUE VIENE DE GENESIS CORE MANDA. Las respuestas de aquí abajo son
        las que AU-RA trae puestas de fábrica; las de `saber.js` las escribió una
        persona en el cerebro y las marcó públicas a mano. Si una ficha habla del
@@ -5092,7 +5212,8 @@ const VETA = (() => {
     const deGenesis = auraSaberDe(d);
     if (deGenesis) return auraDecir(deGenesis, { voz });
 
-    for (const [re, r] of SABE) if (re.test(d)) return auraDecir(r, { voz });
+    const deFabrica = auraFabrica(d);
+    if (deFabrica) return auraDecir(deFabrica, { voz });
 
     /* CUANDO NO ENTIENDE. «Eso todavía no lo sé» y punto es una puerta
        cerrada: la persona no sabe si preguntó mal, si la app no sirve o si
