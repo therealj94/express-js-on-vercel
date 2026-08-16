@@ -59,7 +59,7 @@ const CADENA = (() => {
     POLITICAL: { n: 'Political', glifo: 'PO', grad: ['#E9E0D6', '#6B5236'], fg: '#241A0C' },
   };
 
-  /* La ficha de cada token: que es, con que esta respaldado y en que red vive.
+  /* La ficha de cada token: que es, a que esta referenciado y en que red vive.
    *
    * Vive aqui y no en i18n.js a proposito. Es lo unico que se escribe sobre un
    * activo que la gente compra, y tiene que moverse pegado a su contrato: si
@@ -69,23 +69,29 @@ const CADENA = (() => {
    * Las descripciones de los tokens de sector son deliberadamente escuetas. A
    * diferencia de AUKA y AGKA, no tienen un commodity detras que se pueda
    * verificar: decir mas seria prometer mas.
+   *
+   * Y el reparto de terminos, que aqui no se improvisa (expediente de la
+   * Secretaria de la Junta, 14/08/2026): ORIGEN, AUKA y AGKA son REFERENCIADOS
+   * -siguen un precio-; el unico RESPALDADO es ONDK, que es un valor negociable
+   * bajo Prospera. Escribir "respaldado" en cualquier otra ficha es la clase de
+   * palabra que se comprueba en cinco minutos y no aguanta.
    */
   const FICHAS = {
     ORIGEN: {
-      es: { d: 'Cripto nativa de la cadena de Orden Global, con la que se pagan y se liquidan las transferencias del ecosistema. Su valor se ancla a un gramin: 1/55 de un gramo de oro.', t: 'Cripto nativa · pagos', r: '1 gramin = 1/55 g de oro' },
-      en: { d: 'The native coin of the Orden Global chain, used to pay and settle transfers across the ecosystem. Its value is anchored to a gramin: 1/55 of a gram of gold.', t: 'Native coin · payments', r: '1 gramin = 1/55 g of gold' },
+      es: { d: 'Cripto nativa de la cadena de Orden Global, con la que se pagan y se liquidan las transferencias del ecosistema. Su valor está referenciado al oro: un gramin, 1/55 de un gramo, al precio del oro del día.', t: 'Cripto nativa · pagos', r: 'Referenciado · 1 gramin = 1/55 g de oro' },
+      en: { d: 'The native coin of the Orden Global chain, used to pay and settle transfers across the ecosystem. Its value is referenced to gold: one gramin, 1/55 of a gram, at the day’s gold price.', t: 'Native coin · payments', r: 'Referenced · 1 gramin = 1/55 g of gold' },
     },
     AUKA: {
-      es: { d: 'Token respaldado en oro: sigue el precio de una onza. Da exposición al oro sin tener que custodiarlo.', t: 'Token de commodity', r: 'Oro · 1 onza' },
-      en: { d: 'A gold-backed token: it tracks the price of one ounce. Exposure to gold without having to hold it.', t: 'Commodity token', r: 'Gold · 1 ounce' },
+      es: { d: 'Sigue el precio de una onza de oro: exposición al oro sin custodiarlo vos. La figura de respaldo del metal está en manos de la Junta y no está firmada.', t: 'Token de commodity', r: 'Oro · 1 onza (precio)' },
+      en: { d: 'Tracks the price of one ounce of gold: exposure to gold without holding it yourself. The legal figure of the metal’s backing sits with the Board and is not signed.', t: 'Commodity token', r: 'Gold · 1 ounce (price)' },
     },
     AGKA: {
-      es: { d: 'Token respaldado en plata: sigue el precio de una onza. Una forma descentralizada de entrar al mercado de la plata.', t: 'Token de commodity', r: 'Plata · 1 onza' },
-      en: { d: 'A silver-backed token: it tracks the price of one ounce. A decentralised way into the silver market.', t: 'Commodity token', r: 'Silver · 1 ounce' },
+      es: { d: 'Sigue el precio de una onza de plata: una forma de entrar al mercado de la plata desde la billetera. La figura de respaldo del metal no está cerrada.', t: 'Token de commodity', r: 'Plata · 1 onza (precio)' },
+      en: { d: 'Tracks the price of one ounce of silver: a way into the silver market from the wallet. The legal figure of the metal’s backing is not settled.', t: 'Commodity token', r: 'Silver · 1 ounce (price)' },
     },
     ONDK: {
-      es: { d: 'Orden Global representada en token. Activo de gobernanza y utilidad: refleja el valor y la participación dentro del ecosistema.', t: 'Token de Orden Global', r: 'Ecosistema · gobernanza y utilidad' },
-      en: { d: 'Orden Global represented as a token. A governance and utility asset: it reflects value and participation inside the ecosystem.', t: 'Orden Global token', r: 'Ecosystem · governance and utility' },
+      es: { d: 'Orden Global hecha token. Instrumento patrimonial digital —valor negociable bajo Próspera— respaldado por los activos del grupo: minería, infraestructura y participación en las compañías. Da derechos económicos por contrato; no es una acción y no da voto.', t: 'Security token de Orden Global', r: 'Ecosistema · valor negociable' },
+      en: { d: 'Orden Global turned into a token. A digital equity instrument — a security under Próspera — backed by the group’s assets: mining, infrastructure and stakes in the companies. It grants contractual economic rights; it is not a share and carries no vote.', t: 'Orden Global security token', r: 'Ecosystem · security' },
     },
     MNKA: {
       es: { d: 'Activo digital del ecosistema Orden Global, pensado para empujar el crecimiento y la innovación que salen de la comunidad.', t: 'Activo digital', r: 'Ecosistema · comunidad e innovación' },

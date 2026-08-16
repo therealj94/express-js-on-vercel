@@ -1175,7 +1175,7 @@ const VETA = (() => {
       <button class="volver" onclick="VETA.vista('billetera')">
         <svg viewBox="0 0 24 24">${ICO.atras}</svg>${t('tok.volver')}
       </button>`;
-    /* Lo que esta ficha cuenta — que es la moneda, con que esta respaldada, en
+    /* Lo que esta ficha cuenta — que es la moneda, a que esta referenciada, en
        que contrato vive — no depende de la red: ya se sabe. Solo el saldo y el
        precio hay que ir a buscarlos. Asi que la pagina se dibuja entera desde el
        primer momento y lo unico que llega despues son las dos cifras, en vez de
@@ -4617,7 +4617,7 @@ const VETA = (() => {
       ecoTitulo: 'EL ECOSISTEMA ORDEN GLOBAL',
       escribi: 'Preguntame o pedime…',
       con: {
-        origen: 'ORIGEN es oro real hecho dinero: cada uno es un gramin, una fracción exacta de un gramo de oro certificado y guardado en bóveda. No es una promesa de oro — es el oro, con otra forma de viajar. Se envía en segundos por nuestra propia cadena.',
+        origen: 'ORIGEN es la moneda de la cadena de Orden Global, y su valor está referenciado al oro: un ORIGEN es un gramin, la cincuentaicincoava parte de un gramo de oro, al precio del oro de hoy. La fórmula no la ponemos nosotros y no cambia, así que la podés rehacer con una calculadora. Se envía en segundos por nuestra propia cadena.',
         cadena: 'Orden Global corre sobre su propia Layer 1: la cadena 5550, con Hyperledger Besu, consenso QBFT y máquina Shanghai. Ya no vivimos prestados en la red de otro — más rápida, más nuestra, sin pedirle permiso a nadie. Todo se puede ver en ordenscan.com.',
         gid: 'Genesis ID es tu identidad para todo el ecosistema: te verificás UNA vez y quedás verificado en todas partes. Es lo que hace que del otro lado del chat o de un cobro siempre haya una persona real.',
         chat: 'PULSE CHAT es la mensajería del ecosistema: solo entra gente con Genesis ID aprobado, podés mandar dinero sin salir del hilo y cada pago deja su comprobante verificable en la cadena.',
@@ -4717,7 +4717,7 @@ const VETA = (() => {
       ecoTitulo: 'THE ORDEN GLOBAL ECOSYSTEM',
       escribi: 'Ask me or tell me…',
       con: {
-        origen: 'ORIGEN — spelled with an E, and said the Spanish way: oh-REE-hen — is real gold turned into money. Each one is a gramin, an exact fraction of a certified gram of gold held in a vault. Not a promise of gold: the gold itself, with a new way to travel. It moves in seconds over our own chain.',
+        origen: 'ORIGEN — spelled with an E, and said the Spanish way: oh-REE-hen — is the currency of the Orden Global chain, and its value is referenced to gold. One ORIGEN is one gramin, the fifty-fifth part of a gram of gold, at today’s gold price. We do not set the formula and it does not change, so you can redo it with a calculator. It moves in seconds over our own chain.',
         cadena: 'Orden Global runs on its own Layer 1: chain 5550, with Hyperledger Besu, QBFT consensus and the Shanghai machine. We no longer live borrowed on someone else’s network. Everything is public at ordenscan.com.',
         gid: 'Genesis ID is your identity for the whole ecosystem: verify ONCE and you are verified everywhere. It is what guarantees there is a real person on the other side of every chat and every charge.',
         chat: 'PULSE CHAT is the ecosystem’s messenger: only people with an approved Genesis ID get in, you can send money without leaving the thread, and every payment leaves a verifiable receipt on the chain.',
@@ -5108,8 +5108,8 @@ const VETA = (() => {
      correr en un teléfono barato sin pedirle nada a nadie. */
   /* Lo que Genesis Core dejó salir, buscado por las palabras con que se lo pide.
      Gana la ficha que comparta MÁS palabras con la frase: si alguien pregunta
-     por «la bóveda del oro», la ficha de la bóveda tiene que ganarle a la de
-     ORIGEN aunque las dos hablen de oro. */
+     por «la bóveda del oro», la ficha de la referencia tiene que ganarle a la
+     de ORIGEN aunque las dos hablen de oro — y contestarle que bóveda no hay. */
   function auraSaberDe(d) {
     const fichas = Array.isArray(window.AURA_SABER) ? window.AURA_SABER : [];
     if (!fichas.length) return null;

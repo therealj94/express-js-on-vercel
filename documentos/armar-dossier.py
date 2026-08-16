@@ -161,8 +161,8 @@ c.drawString(18*mm, AL - 92*mm, 'DE TENER RAZÓN.')
 
 y = parrafo(
     'Imperios enteros se apagaron y el oro siguió siendo dinero. Orden Global lo trae a '
-    'este siglo sin cambiarle la naturaleza: metal certificado, guardado en bóveda, vivo '
-    'en una cadena que es nuestra.',
+    'este siglo sin cambiarle la referencia: el precio del oro, vivo en una cadena que '
+    'es nuestra.',
     108*mm, ancho=68, tam=11.5, inter=16.5, color=CREMA)
 
 y = parrafo(
@@ -344,14 +344,14 @@ hoja()
 # ═══════════════════════════════════════════════════════════════════════════
 fondo()
 sello('El activo y el bolsillo', AL - 24*mm)
-titulo('ORIGEN: oro que se mueve', AL - 38*mm, 23)
-titulo('como un mensaje.', AL - 51*mm, 23, color=ORO)
+titulo('ORIGEN: el oro marca', AL - 38*mm, 23)
+titulo('el precio. La cadena lo mueve.', AL - 51*mm, 23, color=ORO)
 
 y = parrafo(
-    'Cada ORIGEN es un gramin: 1⁄55 de un gramo de oro certificado bajo el estándar '
-    'internacional NI 43-101, que firma un tercero y no nosotros. Por cada ORIGEN en '
-    'circulación hay un gramin guardado en bóveda. No es una promesa de oro: es el oro, '
-    'con otra forma de viajar.',
+    'Cada ORIGEN es un gramin: 1⁄55 de un gramo de oro, al precio del oro del día. Es '
+    'una referencia de precio, pública y verificable con una calculadora, no una promesa '
+    'de metal en bóveda. La emisión —un billón exacto— está escrita en el génesis de la '
+    'cadena y no se puede ampliar.',
     AL - 68*mm, ancho=52, tam=10, inter=14.5, color=CREMA)
 
 y = parrafo(
@@ -362,7 +362,7 @@ y = parrafo(
 
 hilo(y - 8, x1=100*mm)
 yc = y - 30
-cifra('1:1', 'Un gramin guardado por cada ORIGEN', 18*mm, yc, 26, anchoPie=18)
+cifra('÷55', 'Un gramin es 1/55 del gramo de oro', 18*mm, yc, 26, anchoPie=18)
 cifra('14', 'Activos del ecosistema, todos en cadena', 55*mm, yc, 26, anchoPie=18)
 
 imagen('billetera.png', 118*mm, 40*mm, 72*mm)
@@ -444,7 +444,7 @@ c.setFillColorRGB(*ORO); c.setFont(SANS_B, 9.6)
 c.drawString(18*mm, y, 'Por qué importa')
 c.setFillColorRGB(*BRUMA); c.setFont(SANS, 9.4)
 y -= 14
-for linea in ['Un activo respaldado en oro que solo se puede guardar es un ahorro.',
+for linea in ['Un activo referenciado al oro que solo se puede guardar es un ahorro.',
               'Uno que se puede gastar en la esquina es una moneda — y esa es la diferencia',
               'entre un producto financiero y una economía.']:
     c.drawString(18*mm, y, linea); y -= 13
@@ -600,8 +600,8 @@ y = parrafo(
 y -= 14
 frentes = [
     ('AUBANK',
-     'La capa bancaria sobre el mismo suelo: cuentas, rendimiento y crédito respaldado en '
-     'oro, para gente que ya tiene identidad verificada y saldo en la casa.'),
+     'La capa bancaria sobre el mismo suelo: cuentas, rendimiento y crédito con garantía '
+     'en el saldo, para gente que ya tiene identidad verificada en la casa.'),
     ('Ordenexchange',
      'El mercado propio: cambiar entre los activos del ecosistema y contra el mundo de '
      'fuera, sin salir de la cuenta.'),
@@ -649,7 +649,8 @@ c.setFillColorRGB(*ORO)
 c.drawString(18*mm, AL - 98*mm, 'Está corriendo.')
 
 y = parrafo(
-    'Una cadena propia con finalidad inmediata. Un activo respaldado en oro certificado. '
+    'Una cadena propia con finalidad inmediata. Un activo referenciado al oro, con la '
+    'fórmula a la vista. '
     'Identidad verificada, mensajería, comercio y una inteligencia que lo explica todo. '
     'Seis productos vivos sobre un solo suelo, y una sola cuenta para entrar.',
     AL - 118*mm, ancho=76, tam=11, inter=16, color=CREMA)

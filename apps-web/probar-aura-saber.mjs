@@ -141,19 +141,34 @@ comprobar(botones.length > 0, 'cuando no entiende no deja a nadie sin salida',
   const cargado = await p.evaluate(() => Array.isArray(window.AURA_SABER) ? window.AURA_SABER.length : 0);
   comprobar(cargado > 0, `el saber de Genesis llegó al navegador (${cargado} fichas)`);
 
+  // Preguntar por la bóveda tiene que llevar a la ficha que dice que NO la hay.
+  // El expediente de la Secretaría del 14/08 es explícito: la figura es
+  // referenciado, no hay oro custodiado, y la NI 43-101 reporta recursos
+  // mineros — no certifica barras. Esta comprobación existe para que nadie
+  // devuelva esas palabras a la boca de AU-RA sin darse cuenta.
   r = await preguntar('que es la boveda');
-  comprobar(/NI 43-101/.test(r),
-    'contesta con una ficha que NO está escrita en app.js', r.slice(0, 100));
+  comprobar(/no hay oro en bóveda/i.test(r) && !/43-101/.test(r),
+    'contesta con una ficha que NO está escrita en app.js, y dice que bóveda no hay', r.slice(0, 110));
 
   // la que gana es la que comparte más palabras, no la primera que roza el tema
   r = await preguntar('que es origen');
-  comprobar(/gramin/.test(r) && !/43-101/.test(r),
+  comprobar(/gramin/.test(r) && !/bóveda/i.test(r),
     'y con dos fichas que hablan de oro, gana la que se pidió', r.slice(0, 90));
 
-  // lo interno del cerebro no puede estar ni cargado en la página
+  /* Lo interno del cerebro no puede estar ni cargado en la página.
+     Esto NO se comprueba con una lista de palabras a mano: una palabra puede
+     volverse pública el día que alguien escriba una ficha nueva —pasó con
+     «infraestructura», que hoy está en la de ONDK— y entonces la prueba acusa
+     una fuga que no existe. Se comprueba contra las fichas internas que hay
+     ahora mismo en Genesis Core, que es lo que de verdad no puede viajar. */
   const rastro = await p.evaluate(() => JSON.stringify(window.AURA_SABER || []));
-  comprobar(!/validadores|Caddy|rotar las claves|infraestructura/i.test(rastro),
-    'y NADA interno viajó al navegador');
+  const { fichas } = JSON.parse(
+    await readFile(new URL('../infra/cerebro/conocimiento/saber.json', import.meta.url), 'utf8'));
+  const internas = fichas.filter((f) => f.publico !== true);
+  const coladas = internas.filter((f) => rastro.includes(f.id) || rastro.includes(f.es.slice(0, 60)));
+  comprobar(internas.length > 0 && coladas.length === 0,
+    `y NADA interno viajó al navegador (${internas.length} fichas internas comprobadas)`,
+    coladas.map((f) => f.id).join(', '));
 }
 
 // ── 5 · las sugerencias siguen a la persona ────────────────────────────────

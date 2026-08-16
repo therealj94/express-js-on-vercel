@@ -134,6 +134,13 @@ for (const app of APPS) {
   await pg.evaluate(app.sesion)
   await pg.goto(base, { waitUntil: 'domcontentloaded' })
   await pg.waitForTimeout(1500)
+  /* «enviar» y «cambiar» no dibujan nada hasta que hay activos: sin ellos
+     contestan «todavía no cargamos tus activos», que es lo correcto, pero
+     hacía que la prueba acusara de rota una pantalla sana. Se siembran. */
+  await pg.evaluate(([api]) => (0, eval)(api)._sembrar([
+    { s: 'ORIGEN', n: 'Origen', cant: 100, precio: 2.56, nativo: true },
+    { s: 'AUKA', n: 'Auka', cant: 1, precio: 4377.6 },
+  ]), [app.api]).catch(() => {})
   for (const v of app.vistas) {
     const r = await pg.evaluate(([api, vista]) => {
       // VETA y MTP se declaran con const: son globales lexicas y no cuelgan de

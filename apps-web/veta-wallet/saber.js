@@ -7,7 +7,7 @@
  * Si hace falta que AU-RA sepa algo nuevo: se escribe la ficha allá, se corre
  * el publicador, y el cambio queda en un commit que alguien puede leer.
  *
- * 12 fichas públicas · 15 se quedaron en casa.
+ * 15 fichas públicas · 15 se quedaron en casa.
  */
 window.AURA_SABER = [
   {
@@ -20,8 +20,8 @@ window.AURA_SABER = [
       "gold",
       "gramin"
     ],
-    "es": "ORIGEN es oro real hecho dinero: cada uno es un gramin, una fracción exacta de un gramo de oro certificado y guardado en bóveda. No es una promesa de oro — es el oro, con otra forma de viajar. Se envía en segundos por nuestra propia cadena.",
-    "en": "ORIGEN is real gold turned into money: each one is a gramin, an exact fraction of a certified gram of gold held in a vault. It is not a promise of gold — it is the gold, with another way to travel. It sends in seconds over our own chain."
+    "es": "ORIGEN es la moneda de la cadena de Orden Global, y su valor está referenciado al oro: un ORIGEN es un gramin, la cincuentaicincoava parte de un gramo de oro, al precio del oro de hoy. La fórmula no la ponemos nosotros y no cambia, así que el precio lo podés rehacer con una calculadora cuando quieras. Se envía en segundos por nuestra propia cadena.",
+    "en": "ORIGEN is the currency of the Orden Global chain, and its value is referenced to gold: one ORIGEN is one gramin, the fifty-fifth part of a gram of gold, at today's gold price. We do not set the formula and it does not change, so you can redo the price with a calculator whenever you like. It sends in seconds over our own chain."
   },
   {
     "id": "cadena",
@@ -136,8 +136,8 @@ window.AURA_SABER = [
     "en": "AUBANK and Ordenexchange already pulse in the Núcleo but are not open yet: they are what comes next. The ecosystem is not a closed list — it grows."
   },
   {
-    "id": "boveda",
-    "tema": "La bóveda y el respaldo",
+    "id": "referencia",
+    "tema": "De dónde sale el valor de ORIGEN",
     "palabras": [
       "boveda",
       "vault",
@@ -145,10 +145,47 @@ window.AURA_SABER = [
       "backing",
       "certificado",
       "43-101",
-      "auditoria"
+      "auditoria",
+      "referencia",
+      "formula",
+      "precio"
     ],
-    "es": "Por cada ORIGEN en circulación hay un gramin de oro guardado, y el metal está certificado bajo el estándar internacional NI 43-101, que firma un tercero y no nosotros. La emisión y cada movimiento quedan en la cadena, así que se puede comprobar en ordenscan.com sin pedirnos nada.",
-    "en": "For every ORIGEN in circulation there is a gramin of gold stored, and the metal is certified under the NI 43-101 international standard, signed by a third party and not by us. Issuance and every movement stay on the chain, so it can be checked at ordenscan.com without asking us for anything."
+    "es": "El precio de ORIGEN sale de una fórmula pública: el gramo de oro en dólares dividido entre cincuenta y cinco. No hay oro en bóveda detrás de ORIGEN — hay una referencia de precio, y te lo digo con esas palabras. Lo que sí se comprueba sin pedirnos nada es la cadena: la emisión total y cada movimiento están en ordenscan.com. Detrás del ecosistema hay activos en construcción —concesiones mineras en validación, terrenos, las plataformas y la propia cadena— y de esos hablamos por lo que son hoy, no por lo que serán.",
+    "en": "ORIGEN's price comes from a public formula: the gram of gold in dollars divided by fifty-five. There is no vaulted gold behind ORIGEN — there is a price reference, and I say it in those words. What can be checked without asking us is the chain: the total issuance and every movement are at ordenscan.com. Behind the ecosystem there are assets under construction — mining concessions under validation, land, the platforms and the chain itself — and we speak of those for what they are today, not for what they will be."
+  },
+  {
+    "id": "auka",
+    "tema": "AUKA",
+    "palabras": [
+      "auka",
+      "onza",
+      "ounce"
+    ],
+    "es": "AUKA sigue el precio de una onza de oro: es la forma de tener exposición al oro dentro del ecosistema sin custodiarlo vos. La figura de respaldo del metal —quién lo guarda, bajo qué contrato y con qué auditoría— está en manos de la Junta y no está firmada, así que hasta que lo esté te digo lo que sí es: sigue el precio, no te entrega el metal.",
+    "en": "AUKA tracks the price of one ounce of gold: it is how you get exposure to gold inside the ecosystem without holding it yourself. The legal figure of the metal's backing — who holds it, under what contract and with what audit — sits with the Board and is not signed, so until it is I will tell you what it does do: it tracks the price, it does not hand you the metal."
+  },
+  {
+    "id": "agka",
+    "tema": "AGKA",
+    "palabras": [
+      "agka",
+      "plata",
+      "silver"
+    ],
+    "es": "AGKA sigue el precio de una onza de plata: la puerta al mercado de la plata desde la misma billetera. Igual que con AUKA, la figura de respaldo del metal no está cerrada, y hasta que lo esté no te voy a decir que la plata está guardada.",
+    "en": "AGKA tracks the price of one ounce of silver: the way into the silver market from the same wallet. As with AUKA, the legal figure of the metal's backing is not settled, and until it is I am not going to tell you the silver is stored."
+  },
+  {
+    "id": "ondk",
+    "tema": "ONDK",
+    "palabras": [
+      "ondk",
+      "security",
+      "token de orden global",
+      "recompra"
+    ],
+    "es": "ONDK es Orden Global hecha token. Es un instrumento patrimonial digital, lo que en Próspera se llama un valor negociable —security token—, y es el único del ecosistema que sí está respaldado. Su valor viene de los activos del grupo: la minería, la infraestructura tecnológica y la participación en las compañías. Se gana por apreciación, y cada cierto tiempo Orden Global abre ventanas de recompra, que son una oportunidad puntual y no un derecho de rescate. No es una acción: no da voto ni te hace socio. No se mercadea en Estados Unidos.",
+    "en": "ONDK is Orden Global turned into a token. It is a digital equity instrument, what Próspera calls a security token, and the only one in the ecosystem that is genuinely backed. Its value comes from the group's assets: the mining, the technical infrastructure and the stakes in the companies. You gain by appreciation, and periodically Orden Global opens buy-back windows, which are an occasional opportunity and not a redemption right. It is not a share: no vote, no member status. It is not marketed in the United States."
   },
   {
     "id": "seguridad-llaves",
