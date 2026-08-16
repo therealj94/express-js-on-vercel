@@ -174,6 +174,15 @@ const ONX = (() => {
     document.querySelectorAll('.nav[data-vista]').forEach(b =>
       b.dataset.vista === encendida ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
     const l = $('#lienzo');
+    /* LA SALA DE MERCADO TIENE OTRAS LEYES. En las demás vistas el ancho de
+       lectura manda —980 px, que es lo que el ojo recorre sin cansarse— y la
+       fotografía de fondo es parte de la casa. Aquí no: una gráfica es un
+       instrumento, y un instrumento se mira ancho y contra un fondo quieto.
+       Con el cepo de lectura puesto, la gráfica ocupaba un tercio de un
+       monitor y el otro tercio era una foto de alguien con un teléfono
+       compitiendo con las velas. Esta clase suelta el ancho y apaga la foto,
+       y solo mientras se está en la sala. */
+    document.body.classList.toggle('en-mercado', cual === 'mercado');
     /* La dirección del viaje, como en la billetera: entrar a un mercado llega
        desde más lejos, volver a la lista se asienta. El reflow forzado
        reinicia la animación cuando se navega dos veces seguidas. */
@@ -201,7 +210,14 @@ const ONX = (() => {
     // El techo es de la portada; dentro, la marca vive en el riel.
     $('#techo').classList.toggle('oculto', destino === 'app');
     if (destino === 'app') { pararVivos(); vista(vistaActual); }
-    else { apagarVista(); arrancarVivos(); }
+    else {
+      apagarVista(); arrancarVivos();
+      /* La luz de la sala se apaga al salir de ella. Sin esto, volver a la
+         portada desde un mercado dejaba la fotografía apagada y el ancho
+         suelto en una pantalla que sí los quiere: la penumbra es del
+         instrumento, no de la casa. */
+      document.body.classList.remove('en-mercado');
+    }
     window.scrollTo(0, 0);
   }
 

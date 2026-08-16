@@ -275,6 +275,16 @@ a{color:inherit}
 .riel-pie .idiomas{margin-top:10px;width:max-content}
 
 .lienzo{margin-left:232px;padding:clamp(20px,3vw,38px) clamp(16px,3vw,38px) 60px;max-width:980px}
+/* ── la sala de mercado: ancha y a oscuras ─────────────────────────────────
+   Las demás vistas se leen; esta se opera. Se suelta el ancho de lectura
+   hasta 1720 px y se apaga la fotografía del fondo hasta dejarla en un
+   rumor: sobre una gráfica de velas, una foto a contraste pleno no es
+   ambiente, es ruido encima del dato. Es la misma decisión territorial que
+   `body.en-cerebro` en la billetera — cada sala con su luz. */
+body.en-mercado .lienzo{max-width:1720px}
+body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(2,20,21,.90),rgba(1,14,15,.955));
+  pointer-events:none}
 /* Cada vista entra en cascada: los bloques se levantan uno tras otro. Como el
    contenido se re-crea al navegar, la animación corre sola en cada cambio. */
 .lienzo>*{animation:bloqueSube .55s cubic-bezier(.2,.8,.3,1) both}

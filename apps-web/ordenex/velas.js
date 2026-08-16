@@ -5,33 +5,88 @@
  * tercero cambió una URL no es seria. Todo lo que esta gráfica sabe hacer
  * cabe aquí y se puede leer entero.
  *
- * Dos reglas que este archivo no negocia:
+ * ───────────────────────────────────────────────────────────────────────────
+ * LAS DOS CLASES DE VELA, QUE JAMÁS SE MEZCLAN
  *
- * 1. EL DINERO NO PASA POR UN FLOTANTE. Los precios y volúmenes llegan como
- *    strings de wei y se manejan con BigInt de punta a punta: mínimos,
- *    máximos, márgenes, pasos del eje y etiquetas. Lo único que se convierte
- *    a Number es una FRACCIÓN acotada (posición relativa 0..1) para
- *    proyectarla a píxeles — un píxel no es dinero, un precio sí.
+ * Este archivo pinta dos cosas que se parecen en la forma y no se parecen en
+ * nada en lo que significan:
  *
- * 2. SIN ESTADO GLOBAL. dibujar() es una función de sus parámetros: mismo
- *    canvas, mismas velas y mismas opciones pintan lo mismo. El único estado
- *    con dueño vive en el closure de enganchar(), que es quien instala los
- *    listeners y el temporizador — y devuelve la función que lo apaga todo,
- *    porque quien abre un sondeo es dueño de pararlo.
+ *   · Velas de TRATOS. Salen de operaciones reales de Ordenex y van en
+ *     ORIGEN, en wei, en BigInt. Son las únicas que pueden llamarse precio.
+ *   · Velas de REFERENCIA. Salen del mercado REAL del metal (oro y plata) y
+ *     van en DÓLARES. Son el cartel de «la onza va a tanto» colgado en la
+ *     pared: informan, no cotizan.
  *
- * API:
- *   dibujar(canvas, velas, opciones)
- *     velas     [[t0, o, h, l, c, v], …] como las sirve el API (o,h,l,c,v en
- *               strings de wei; t0 época en ms o s, se normaliza). También se
- *               aceptan objetos { t0, o, h, l, c, v } — es la forma en que
- *               viven en la colección, y aceptar ambas evita un adaptador.
- *     opciones  { referencia?: string de wei — línea punteada rotulada,
- *                 cursor?: { x, y } en px CSS relativos al canvas — la cruz,
- *                 idioma?: 'es'|'en' }
+ * Una vela de referencia pintada como si fuera un trato es exactamente la
+ * mentira que esta casa no comete, así que el rótulo no es decoración: es la
+ * promesa. `unidad:'USD'` implica referencia SIEMPRE — en esta casa no se
+ * opera en dólares, de modo que si la unidad es el dólar el dato no puede
+ * venir del libro. Ante la duda se rotula; nunca se calla.
+ *
+ * Y hay una tercera situación, la más fácil de deshonrar: el activo que no
+ * tiene ni tratos ni referencia (los tokens de sector). Su gráfica se dibuja
+ * ENTERA —rejilla, marco, ejes— y se queda vacía con el motivo escrito. Ni
+ * una línea plana, ni un precio de relleno: la casa prefiere un lienzo que
+ * dice «todavía no» a un lienzo que miente bonito.
+ *
+ * ───────────────────────────────────────────────────────────────────────────
+ * LA FRONTERA DE LOS TIPOS (la regla que sostiene todo lo demás)
+ *
+ *   ORIGEN → BigInt. Los montos llegan como string de wei y se manejan con
+ *   BigInt de punta a punta: mínimos, máximos, márgenes, pasos del eje, EMAs
+ *   y etiquetas. Un flotante jamás toca dinero de la casa.
+ *
+ *   USD → Number, y SOLO en el carril de referencia. Los dólares del feed ya
+ *   nacen flotantes en CoinGecko: fingir exactitud convirtiéndolos a wei «de
+ *   verdad» sería teatro. Entran por UNA sola puerta —`deNumero()`— que los
+ *   pasa a la misma coma fija de 18 decimales con doce decimales de mira, vía
+ *   texto (toFixed) y no multiplicando por 1e18, para no arrastrar la basura
+ *   binaria del flotante. A partir de esa puerta, adentro todo es BigInt otra
+ *   vez y el resto del motor no sabe —ni necesita saber— de dónde vino el
+ *   número.
+ *
+ *   La otra puerta, la de salida, es `fraccion()`: un BigInt se vuelve Number
+ *   únicamente como posición relativa 0..1 para proyectarla a píxeles. Un
+ *   píxel no es dinero; un precio sí.
+ *
+ * ───────────────────────────────────────────────────────────────────────────
+ * SIN ESTADO GLOBAL
+ *
+ * dibujar() es una función de sus parámetros: mismo canvas, mismas velas y
+ * mismas opciones pintan lo mismo. Devuelve un INFORME de lo que pintó —un
+ * espejo de lo dibujado, no un estado con dueño— para que quien la llama (y
+ * las pruebas) puedan comprobar la leyenda sin adivinar píxeles. El único
+ * estado con dueño vive en el closure de enganchar(), que instala listeners y
+ * temporizador y devuelve la función que lo apaga todo: quien abre un sondeo
+ * es dueño de pararlo.
+ *
+ * ───────────────────────────────────────────────────────────────────────────
+ * API
+ *
+ *   dibujar(canvas, velas, opciones) → informe
+ *     velas     [[t0, o, h, l, c, v], …] como las sirve el API, o los objetos
+ *               { t0, o, h, l, c, v } tal como viven en la colección — se
+ *               aceptan las dos formas y así no hace falta un adaptador.
+ *               Con unidad 'ORIGEN' los montos son strings de wei; con 'USD'
+ *               son Numbers de dólares (y entonces v suele no venir: el feed
+ *               OHLC del metal no trae volumen, y esa banda desaparece).
+ *     opciones  { unidad:'ORIGEN'|'USD'   qué son estos números (def. ORIGEN)
+ *                 par:'AUKA-ORIGEN'       para la leyenda y el rótulo accesible
+ *                 marco:'1m'|'15m'|'1h'|'1d'|…  manda en el formato del eje de tiempo
+ *                 emas:[9,21,55]          medias exponenciales; [] las apaga
+ *                 decimales:n             fuerza los decimales de las etiquetas
+ *                 referencia:true         TODA la gráfica es referencia (badge)
+ *                 referencia:'<wei>'|num  una LÍNEA de referencia sobre tratos
+ *                 rotulo:'referencia'     el texto de esa línea
+ *                 cursor:{x,y}            la cruz, en px CSS del canvas
+ *                 destello:0..1           el latido del último precio (enganchar)
+ *                 dpr:n                   sobreescribe el devicePixelRatio
+ *                 idioma:'es'|'en' }
+ *     informe   { vacio, n, indice, unidad, referencia, volumen, leyenda }
+ *
  *   enganchar(canvas, obtenerVelas, cadaMs = 30000)
  *     obtenerVelas() → velas | { velas, opciones } (o promesa de eso).
- *     Instala ratón + refresco solo-con-pestaña-visible y devuelve el
- *     apagador.
+ *     Instala cruz + refresco solo-con-pestaña-visible y devuelve el apagador.
  */
 
 const VELAS = (() => {
@@ -55,6 +110,35 @@ const VELAS = (() => {
     const cola = (n % U).toString().padStart(18, '0')
       .slice(0, Math.max(0, dec)).replace(/0+$/, '');
     return signo + entero + (cola ? '.' + cola : '');
+  }
+
+  /* ── LA FRONTERA ─────────────────────────────────────────────────────────
+     Dos puertas y ni una más. Las dos devuelven la misma coma fija de 18
+     decimales en BigInt, o null si el dato no es dato — fail-closed: un monto
+     ilegible no vale cero, no vale nada. */
+
+  // ORIGEN: string de wei (o BigInt). Estricta a propósito — un Number con
+  // parte decimal hace que BigInt() lance, y eso está BIEN: dinero de la casa
+  // que llegó como flotante es un error de quien lo mandó, no algo que esta
+  // gráfica deba disimular redondeando.
+  function deWei(x) {
+    if (x == null || x === '') return null;
+    try { return BigInt(x); } catch { return null; }
+  }
+
+  // USD: Number de dólares. Vía texto, no multiplicando por 1e18: 0.1*1e18 en
+  // coma flotante ya sale torcido, y toFixed(12) da doce decimales exactos de
+  // los que al dólar le sobran once. El techo es cordura, no capricho: un
+  // «precio» de mil billones de dólares es un dato roto, y se descarta.
+  const DEC_PUENTE = 12;
+  const TECHO_USD = 1e15;
+  function deNumero(x) {
+    const n = typeof x === 'number' ? x : Number(x);
+    if (!Number.isFinite(n) || Math.abs(n) >= TECHO_USD) return null;
+    const negativo = n < 0;
+    const [entero, decimal = ''] = Math.abs(n).toFixed(DEC_PUENTE).split('.');
+    const fijo = BigInt(entero) * U + BigInt(decimal.padEnd(18, '0').slice(0, 18));
+    return negativo ? -fijo : fijo;
   }
 
   /* El paso «lindo» del eje: 1, 2 ó 5 por la potencia de diez que toque, en
@@ -81,19 +165,50 @@ const VELAS = (() => {
      Fail-closed de pantalla: una vela con un monto ilegible no se pinta como
      cero, no se pinta y punto. La coherencia h ≥ l también se exige: una vela
      con la mecha al revés es un dato roto, no una vela rara. */
-  function normalizar(cruda) {
+  function normalizar(cruda, puerta = deWei) {
     const [t, o, h, l, c, v] = Array.isArray(cruda)
       ? cruda
       : [cruda?.t0, cruda?.o, cruda?.h, cruda?.l, cruda?.c, cruda?.v];
-    try {
-      const vela = { t: Number(t), o: BigInt(o), h: BigInt(h), l: BigInt(l), c: BigInt(c), v: BigInt(v ?? 0) };
-      if (!Number.isFinite(vela.t) || vela.t <= 0) return null;
-      // Las dos convenciones de época conviven en el mundo; hasta el año
-      // 33658 un valor en segundos queda por debajo de 1e12 y se distingue.
-      if (vela.t < 1e12) vela.t *= 1000;
-      if (vela.h < vela.l || vela.v < 0n) return null;
-      return vela;
-    } catch { return null; }
+    let tt = Number(t);
+    if (!Number.isFinite(tt) || tt <= 0) return null;
+    // Las dos convenciones de época conviven en el mundo; hasta el año 33658
+    // un valor en segundos queda por debajo de 1e12 y se distingue.
+    if (tt < 1e12) tt *= 1000;
+    const vo = puerta(o), vh = puerta(h), vl = puerta(l), vc = puerta(c);
+    if (vo == null || vh == null || vl == null || vc == null) return null;
+    // El volumen ausente es cero legítimo (el feed del metal no lo trae); el
+    // volumen ILEGIBLE, en cambio, invalida la vela — no es lo mismo «no hay»
+    // que «no se pudo leer».
+    const vv = v == null || v === '' ? 0n : puerta(v);
+    if (vv == null || vv < 0n || vh < vl) return null;
+    return { t: tt, o: vo, h: vh, l: vl, c: vc, v: vv };
+  }
+
+  /* ── LA MEDIA EXPONENCIAL, HONESTA ───────────────────────────────────────
+     EMA(n) con alfa = 2/(n+1), SEMBRADA con la media simple de los primeros n
+     cierres. Los primeros n-1 puntos quedan en null y NO se dibujan: una EMA
+     que arranca en el primer dato finge tener una memoria que no tiene, y en
+     una gráfica eso es una mentira gráfica — la línea se vería reaccionando a
+     un pasado que nunca ocurrió.
+
+     Todo en BigInt: la recurrencia es ema += (cierre - ema) · 2 / (n+1), con
+     la multiplicación ANTES de la división para que la división entera
+     trunque a nivel de wei y no de centavo. El sesgo que queda es sub-wei y
+     es determinista — el mismo dato pinta siempre la misma línea. */
+  function calcularEma(cierres, periodo) {
+    const n = cierres.length;
+    const salida = new Array(n).fill(null);
+    if (!Number.isInteger(periodo) || periodo < 1 || n < periodo) return salida;
+    let suma = 0n;
+    for (let i = 0; i < periodo; i++) suma += cierres[i];
+    let ema = suma / BigInt(periodo);
+    salida[periodo - 1] = ema;
+    const divisor = BigInt(periodo + 1);
+    for (let i = periodo; i < n; i++) {
+      ema += ((cierres[i] - ema) * 2n) / divisor;
+      salida[i] = ema;
+    }
+    return salida;
   }
 
   // Los colores salen del :root en el momento de pintar: el tema vive en el
@@ -108,39 +223,100 @@ const VELAS = (() => {
   }
 
   const MONO = "500 10.5px 'JetBrains Mono',ui-monospace,monospace";
+  const MONO_B = "700 10.5px 'JetBrains Mono',ui-monospace,monospace";
   const SANS = "'Archivo',system-ui,sans-serif";
 
   // es primero y como respaldo, igual que en toda la casa. Entra por
   // opciones.idioma y no leyendo i18n.js: esta pieza se carga antes que aquel
   // y, sobre todo, todo entra por parámetros.
   const TXT = {
-    es: { sinTratos: 'Sin tratos todavía', ilegible: 'No pudimos leer las velas', referencia: 'referencia', velas: 'velas', ultimo: 'último' },
-    en: { sinTratos: 'No trades yet', ilegible: 'We couldn’t read the candles', referencia: 'reference', velas: 'candles', ultimo: 'last' },
+    es: {
+      sinTratos: 'Sin tratos todavía',
+      sinTratosSub: 'esta gráfica se llena con operaciones reales',
+      ilegible: 'No pudimos leer las velas',
+      ilegibleSub: 'preferimos no dibujar nada antes que un número inventado',
+      referencia: 'referencia',
+      badge: 'REFERENCIA',
+      velas: 'velas',
+      ultimo: 'último',
+      aviso: 'precio de referencia del mercado del metal, no una operación de Ordenex',
+    },
+    en: {
+      sinTratos: 'No trades yet',
+      sinTratosSub: 'this chart fills up with real trades',
+      ilegible: 'We couldn’t read the candles',
+      ilegibleSub: 'we’d rather draw nothing than an invented number',
+      referencia: 'reference',
+      badge: 'REFERENCE',
+      velas: 'candles',
+      ultimo: 'last',
+      aviso: 'reference price from the metal market, not an Ordenex trade',
+    },
   };
 
   const dosD = x => String(x).padStart(2, '0');
   const hora = t => { const d = new Date(t); return `${dosD(d.getHours())}:${dosD(d.getMinutes())}`; };
   const fecha = t => { const d = new Date(t); return `${dosD(d.getDate())}/${dosD(d.getMonth() + 1)}`; };
+  const mesAno = t => { const d = new Date(t); return `${dosD(d.getMonth() + 1)}/${String(d.getFullYear()).slice(2)}`; };
 
-  // Un mensaje solo, centrado. Se usa para «sin tratos» y para «no pudimos
-  // leer» — que son cosas DISTINTAS y se dicen distinto, pero se pintan igual.
-  function mensaje(ctx, ancho, alto, texto, tinta) {
-    ctx.font = `600 13px ${SANS}`;
+  // Marcos cuyo cubo cabe dentro de un día: ahí la hora dice algo. En 1d la
+  // hora sería siempre la misma y solo estorbaría.
+  const MARCOS_INTRADIA = ['1m', '5m', '15m', '30m', '1h', '2h', '4h'];
+
+  // roundRect es de casa en los navegadores de hoy, pero un canvas prestado
+  // (una prueba vieja, un motor raro) no tiene por qué tenerlo — y una ficha
+  // sin esquinas se lee igual que una con esquinas.
+  function caja(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+    else ctx.rect(x, y, w, h);
+  }
+
+  /* Una fila de la leyenda: trozos con su tinta y su tipografía, escritos uno
+     tras otro. Con `medir` en true no pinta, solo suma anchos — así la caja
+     de fondo se dibuja del tamaño exacto ANTES que el texto. */
+  function fila(ctx, x, y, piezas, medir) {
+    let cx = x;
+    for (const p of piezas) {
+      if (!p || !p.t) continue;
+      ctx.font = p.font || MONO;
+      if (!medir) {
+        ctx.fillStyle = p.tinta;
+        ctx.fillText(p.t, cx, y);
+      }
+      cx += ctx.measureText(p.t).width;
+    }
+    return cx - x;
+  }
+
+  // Una pastilla de eje: fondo, borde y texto centrado. Es el vocabulario de
+  // toda plataforma de mercado — el número que importa va dentro de algo que
+  // se distingue del fondo aunque caiga encima de una vela.
+  function pastilla(ctx, x, y, w, h, fondo, borde, texto, tinta, fuente) {
+    caja(ctx, x, y, w, h, 4);
+    ctx.fillStyle = fondo;
+    ctx.fill();
+    if (borde) { ctx.strokeStyle = borde; ctx.lineWidth = 1; ctx.stroke(); }
+    ctx.font = fuente || MONO_B;
     ctx.fillStyle = tinta;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(texto, ancho / 2, alto / 2);
+    ctx.fillText(texto, x + w / 2, y + h / 2 + 0.5);
   }
 
   function dibujar(canvas, velas, opciones = {}) {
     const ctx = canvas && canvas.getContext && canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) return { vacio: 'ilegible', n: 0, indice: -1, leyenda: null };
 
     /* devicePixelRatio: el lienzo interno va en píxeles de dispositivo y el
        dibujo en píxeles CSS vía transform — así el texto sale nítido en una
        pantalla densa sin que ninguna cuenta de acá abajo sepa del ratio. El
-       tamaño se toca solo si cambió: reasignar width borra el canvas. */
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
+       tamaño se toca solo si cambió: reasignar width borra el canvas. El tope
+       de 3 es economía: por encima se gastan cuatro veces los píxeles y no se
+       gana un ojo de nitidez. */
+    const dprPedido = Number(opciones.dpr);
+    const dpr = Math.min(3, Math.max(1,
+      Number.isFinite(dprPedido) && dprPedido > 0 ? dprPedido : (window.devicePixelRatio || 1)));
     const ancho = canvas.clientWidth || 640;
     const alto = canvas.clientHeight || 320;
     const W = Math.round(ancho * dpr), H = Math.round(alto * dpr);
@@ -149,113 +325,312 @@ const VELAS = (() => {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, ancho, alto);
     ctx.setLineDash([]);
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'round';
 
     const idioma = opciones.idioma === 'en' ? 'en' : 'es';
     const T = TXT[idioma];
     const jade = color('--jade', '#3ED9A0');
     const coral = color('--coral', '#F0776B');
     const oro = color('--oro', '#C9A961');
+    const oroLt = color('--oroLt', '#EAD79C');
     const crema = color('--crema', '#F3ECD9');
     const bruma = color('--bruma', '#AEC7C3');
     const humo = color('--humo', '#6E938F');
+    const acento = color('--acento', '#74E6C8');
+    const pozo = color('--pozo', '#021B1C');
+    const linea = color('--linea', 'rgba(201,169,97,.34)');
+    const REJILLA = 'rgba(243,236,217,.07)';
+    const FICHA = '#052A2C';   // el fondo sólido de las pastillas de la cruz
 
-    // El canvas es una imagen para quien no la ve: el rótulo dice lo mismo
-    // que la gráfica — cuántas velas y el último cierre, o el vacío honesto.
+    // ── qué clase de vela es esta gráfica ─────────────────────────────────
+    const unidad = opciones.unidad === 'USD' ? 'USD' : 'ORIGEN';
+    const puerta = unidad === 'USD' ? deNumero : deWei;
+    // `referencia` sirve dos platos distintos y se distinguen por el tipo:
+    //   true / objeto → TODA la gráfica es referencia (lleva badge y aviso)
+    //   string/número → una LÍNEA de referencia sobre velas de tratos
+    // Y el dólar implica referencia por sí solo: aquí no se opera en dólares.
+    const refBandera = opciones.referencia === true
+      || (opciones.referencia != null && typeof opciones.referencia === 'object');
+    const esReferencia = unidad === 'USD' || refBandera;
+    const par = typeof opciones.par === 'string' ? opciones.par : '';
+    const marco = typeof opciones.marco === 'string' ? opciones.marco : '';
+
     canvas.setAttribute('role', 'img');
 
     const crudas = Array.isArray(velas) ? velas : [];
-    const lista = crudas.map(normalizar).filter(Boolean);
-
-    if (lista.length === 0) {
-      // Cero velas y velas ilegibles NO son lo mismo: «sin tratos» es un
-      // mercado recién nacido; «no pudimos leer» es un dato roto. Confundir
-      // los dos es la clase de mentira amable que la casa no dice.
-      const texto = crudas.length === 0 ? T.sinTratos : T.ilegible;
-      canvas.setAttribute('aria-label', texto);
-      mensaje(ctx, ancho, alto, texto, bruma);
-      return;
-    }
-
+    const lista = crudas.map(v => normalizar(v, puerta)).filter(Boolean);
     const n = lista.length;
-    canvas.setAttribute('aria-label',
-      `${n} ${T.velas} · ${T.ultimo} ${formatear(lista[n - 1].c, 4)}`);
 
-    // ── autoescala, en wei ────────────────────────────────────────────────
-    let referencia = null;
-    if (opciones.referencia != null && opciones.referencia !== '') {
-      try { referencia = BigInt(opciones.referencia); } catch { /* ilegible: sin línea */ }
+    // ── la geometría, que es la misma con datos y sin ellos ───────────────
+    // Que el encuadre no dependa de si hay velas es justamente lo que hace
+    // digno el vacío: la gráfica del token sin mercado tiene el mismo marco,
+    // la misma rejilla y los mismos ejes que la del mercado más líquido.
+    const IZQ = 10, ARRIBA = 8, ALTO_T = 20, EJE_MIN = 46;
+
+    const filaLeyenda1 = [
+      par ? { t: par, tinta: crema, font: `600 11.5px ${SANS}` } : null,
+      par && marco ? { t: '  ·  ', tinta: humo } : null,
+      marco ? { t: marco, tinta: bruma } : null,
+      (par || marco) ? { t: '   ' + unidad, tinta: humo } : { t: unidad, tinta: humo },
+      esReferencia ? { t: '   ' + T.badge, tinta: oro, font: MONO_B } : null,
+    ].filter(Boolean);
+
+    /* ── el vacío digno ────────────────────────────────────────────────────
+       Cero velas y velas ilegibles NO son lo mismo: «sin tratos» es un
+       mercado que todavía no ha nacido; «no pudimos leer» es un dato roto.
+       Confundir los dos es la clase de mentira amable que la casa no dice.
+       Se pinta el marco entero y en el centro el motivo — sin una sola
+       etiqueta de precio ni de hora, porque no hay ni precios ni horas que
+       rotular y un número de relleno en un eje es un número inventado. */
+    if (n === 0) {
+      const motivo = crudas.length === 0 ? 'sinTratos' : 'ilegible';
+      const texto = T[motivo];
+      const sub = T[motivo + 'Sub'];
+      canvas.setAttribute('aria-label',
+        `${par ? par + ' · ' : ''}${texto}${esReferencia ? ' · ' + T.aviso : ''}`);
+
+      const der = ancho - EJE_MIN;
+      const pie = alto - ALTO_T;
+      ctx.strokeStyle = REJILLA;
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 5; i++) {
+        const y = Math.round(ARRIBA + (pie - ARRIBA) * i / 5) + 0.5;
+        ctx.beginPath(); ctx.moveTo(IZQ, y); ctx.lineTo(der, y); ctx.stroke();
+      }
+      for (let i = 1; i < 6; i++) {
+        const x = Math.round(IZQ + (der - IZQ) * i / 6) + 0.5;
+        ctx.beginPath(); ctx.moveTo(x, ARRIBA); ctx.lineTo(x, pie); ctx.stroke();
+      }
+      ctx.strokeStyle = linea;
+      ctx.beginPath();
+      ctx.moveTo(Math.round(der) + 0.5, ARRIBA);
+      ctx.lineTo(Math.round(der) + 0.5, Math.round(pie) + 0.5);
+      ctx.lineTo(IZQ, Math.round(pie) + 0.5);
+      ctx.stroke();
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `600 13px ${SANS}`;
+      ctx.fillStyle = bruma;
+      ctx.fillText(texto, (IZQ + der) / 2, (ARRIBA + pie) / 2 - 8);
+      ctx.font = `400 11px ${SANS}`;
+      ctx.fillStyle = humo;
+      ctx.fillText(sub, (IZQ + der) / 2, (ARRIBA + pie) / 2 + 10);
+
+      if (filaLeyenda1.length) {
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        const w = fila(ctx, 0, 0, filaLeyenda1, true);
+        ctx.fillStyle = 'rgba(2,27,28,.72)';
+        ctx.fillRect(IZQ + 2, ARRIBA + 2, w + 16, 20);
+        fila(ctx, IZQ + 10, ARRIBA + 12, filaLeyenda1, false);
+      }
+      return { vacio: motivo, n: 0, indice: -1, unidad, referencia: esReferencia, volumen: false, leyenda: null };
     }
+
+    // ── autoescala, en la coma fija ───────────────────────────────────────
+    // La línea de referencia sobre tratos, si la hay. Entra en la escala: una
+    // línea rotulada fuera del encuadre es una línea que no existe, y se
+    // enseña justamente para poder compararla con los tratos.
+    let refLinea = null;
+    if (!refBandera && opciones.referencia != null && opciones.referencia !== '') {
+      refLinea = puerta(opciones.referencia);
+    }
+
     let min = lista[0].l, max = lista[0].h, maxV = 0n;
     for (const v of lista) {
       if (v.l < min) min = v.l;
       if (v.h > max) max = v.h;
       if (v.v > maxV) maxV = v.v;
     }
-    /* La referencia entra en la escala: una línea rotulada que quedó fuera
-       del encuadre es una línea que no existe, y la referencia se enseña
-       justamente para poder compararla con los tratos. */
-    if (referencia != null) {
-      if (referencia < min) min = referencia;
-      if (referencia > max) max = referencia;
+
+    // Las EMAs se calculan ANTES de cerrar la escala porque también tienen
+    // que caber: una media que se sale del encuadre por abajo sería una línea
+    // cortada, y una línea cortada se lee como un dato que no está.
+    const periodos = (Array.isArray(opciones.emas) ? opciones.emas : [9, 21, 55])
+      .map(Number)
+      .filter(p => Number.isInteger(p) && p >= 1 && p <= 400)
+      .filter((p, i, a) => a.indexOf(p) === i)
+      .sort((a, b) => a - b)
+      .slice(0, 4);
+    const TINTAS_EMA = [acento, oroLt, bruma, humo];
+    const cierres = lista.map(v => v.c);
+    const medias = periodos.map((p, i) => ({
+      periodo: p,
+      tinta: TINTAS_EMA[i % TINTAS_EMA.length],
+      alfa: [0.85, 0.72, 0.62, 0.52][i % 4],
+      valores: calcularEma(cierres, p),
+    }));
+    for (const m of medias) {
+      for (const v of m.valores) {
+        if (v == null) continue;
+        if (v < min) min = v;
+        if (v > max) max = v;
+      }
     }
+    if (refLinea != null) {
+      if (refLinea < min) min = refLinea;
+      if (refLinea > max) max = refLinea;
+    }
+
     if (max === min) max = min + (min / 100n + 1n);   // un solo precio: aire artificial
-    // El margen del 6% respira arriba y abajo; el suelo es cero porque un
-    // precio negativo no existe en esta casa.
+    /* El margen de respiro, y NO es simetrico a proposito. Abajo basta un 6%;
+       arriba hace falta mas porque ahi vive la leyenda, y con 6% las velas de
+       maximo se metian por detras de las filas O/H/L/C. La leyenda es
+       translucida, asi que no borraba el dato — pero leer un maximo a traves
+       de un panel es leerlo peor, y el maximo es justo el numero que alguien
+       mira en una grafica. Se le reserva el sitio en la ESCALA, que es donde
+       se arregla de verdad; taparlo con un recorte lo habria escondido. */
     const margen = (max - min) * 6n / 100n + 1n;
     min = min - margen < 0n ? 0n : min - margen;
-    max += margen;
+    max += margen * 3n;
     const rango = max - min;
 
     // ── los ticks del eje de precios, antes de la geometría: el ancho del
-    // eje depende de cuánto ocupa la etiqueta más gorda ─────────────────────
-    const paso = pasoLindo(rango / 4n);
-    const decEje = decimalesDe(paso);
+    // eje depende de cuánto ocupa la etiqueta más gorda ───────────────────
+    const paso = pasoLindo(rango / 5n);
+    const decPedidos = Number(opciones.decimales);
+    const decEje = Number.isInteger(decPedidos) && decPedidos >= 0 && decPedidos <= 18
+      ? decPedidos : decimalesDe(paso);
     const ticks = [];
     let tk = (min / paso) * paso;
     if (tk < min) tk += paso;
     for (; tk <= max && ticks.length < 12; tk += paso) ticks.push(tk);
 
+    /* Los decimales de LECTURA (leyenda y pastilla de la cruz) son más finos
+       que los del eje: el eje rotula escalones y la lectura rotula un precio
+       concreto, y en un precio concreto los últimos decimales son justo lo
+       que se fue a mirar. */
+    const decFicha = Number.isInteger(decPedidos) && decPedidos >= 0 && decPedidos <= 18
+      ? decPedidos : Math.max(unidad === 'USD' ? 2 : 4, decEje);
+
+    // El eje se mide contra la etiqueta MÁS GORDA que va a tener que
+    // sostener — las de los ticks y la de la cruz, que lleva más decimales.
+    // Medir solo los ticks deja la pastilla de la cruz cortada por el borde.
     ctx.font = MONO;
-    let anchoEje = 34;
-    for (const t of ticks) {
-      const m = ctx.measureText(formatear(t, decEje)).width;
-      if (m + 14 > anchoEje) anchoEje = m + 14;
+    let anchoEje = EJE_MIN;
+    for (const t of [...ticks, min, max]) {
+      const m = ctx.measureText(formatear(t, t === min || t === max ? decFicha : decEje)).width;
+      if (m + 16 > anchoEje) anchoEje = m + 16;
     }
 
-    // ── la geometría: precios arriba, volumen abajo en franja tenue, hora al
-    // pie, eje de precios a la derecha — donde lo esperan ojos de mercado ──
-    const izq = 8;
+    /* ── la geometría con datos: precio arriba, volumen abajo, tiempo al pie
+       y el eje de precios a la DERECHA, donde lo esperan ojos de mercado.
+       La banda de volumen solo existe si hay volumen: las velas de
+       referencia vienen del feed OHLC del metal, que no trae volumen, y una
+       banda vacía del 18% sería espacio robado al precio por nada. */
     const der = ancho - anchoEje;
-    const arriba = 8;
-    const altoUtil = alto - arriba - 18;
-    const altoVol = Math.max(24, Math.round(altoUtil * 0.16));
-    const altoPrecio = altoUtil - altoVol - 8;
-    const volTecho = arriba + altoPrecio + 8;
-    const yDe = p => arriba + altoPrecio * fraccion(max - p, rango);
+    const pie = alto - ALTO_T;
+    const altoUtil = pie - ARRIBA;
+    const hayVolumen = maxV > 0n;
+    const HUECO = 8;
+    const altoVol = hayVolumen ? Math.max(22, Math.round(altoUtil * 0.18)) : 0;
+    const altoPrecio = hayVolumen ? altoUtil - altoVol - HUECO : altoUtil;
+    const volTecho = ARRIBA + altoPrecio + HUECO;
+    const volPie = volTecho + altoVol;
+    const yDe = p => ARRIBA + altoPrecio * fraccion(max - p, rango);
+    // El camino de vuelta: de un píxel del eje a un precio. Solo para LEER —
+    // la pastilla de la cruz — nunca para operar. Por eso puede permitirse
+    // pasar por una fracción: nadie compra a este número.
+    const precioDe = y => max - (rango * BigInt(Math.round(
+      Math.min(1, Math.max(0, (y - ARRIBA) / (altoPrecio || 1))) * 1e6))) / MIRA;
 
     // ── rejilla y eje de precios ──────────────────────────────────────────
     ctx.textBaseline = 'middle';
     for (const t of ticks) {
       const y = Math.round(yDe(t)) + 0.5;
-      ctx.strokeStyle = 'rgba(243,236,217,.07)';
+      ctx.strokeStyle = REJILLA;
       ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(izq, y); ctx.lineTo(der, y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(IZQ, y); ctx.lineTo(der, y); ctx.stroke();
       ctx.fillStyle = humo;
       ctx.textAlign = 'left';
-      ctx.fillText(formatear(t, decEje), der + 7, y);
+      ctx.font = MONO;
+      ctx.fillText(formatear(t, decEje), der + 8, y);
     }
 
-    // ── la línea de referencia: punteada y ROTULADA, siempre — es un dato
-    // informativo del feed, jamás la última operación (regla n.º 2) ────────
-    if (referencia != null) {
-      const y = Math.round(yDe(referencia)) + 0.5;
+    // ── el eje del tiempo: pocas etiquetas, legibles, y la rejilla vertical
+    // colgando de ellas — que la rejilla caiga donde caen las etiquetas es
+    // lo que hace que se pueda leer «esta vela es de las 14:00» sin contar.
+    const pasoX = (der - IZQ) / n;
+    const abarca = lista[n - 1].t - lista[0].t;
+    const cuantas = Math.max(2, Math.floor((der - IZQ) / 110));
+    const cada = Math.max(1, Math.round(n / cuantas));
+
+    /* Qué escribir en el eje del tiempo lo decide el HUECO ENTRE ETIQUETAS,
+       no el tramo total: con etiquetas cada trece horas la hora distingue, y
+       con etiquetas cada cinco días no distingue nada. La regla:
+
+         hueco de un día o más  → la fecha (y el mes/año si el hueco es de
+                                  meses, que si no la fecha se repite al año)
+         hueco intradía         → la hora, y la FECHA en la primera etiqueta
+                                  de cada día nuevo
+
+       Ese último detalle es el que evita el eje que dice «14:00 · 14:00 ·
+       14:00» tres días seguidos. Un eje que se repite no es un eje. */
+    const hueco = n > 1 ? (abarca / (n - 1)) * cada : 0;
+    const porDia = marco
+      ? !MARCOS_INTRADIA.includes(marco) || hueco >= 20 * 3600e3
+      : hueco >= 20 * 3600e3;
+    const porMes = hueco >= 45 * 86400e3;
+    let diaPrevio = null;
+    const rotuloT = t => {
+      const d = new Date(t);
+      const dia = `${d.getFullYear()}/${d.getMonth()}/${d.getDate()}`;
+      const nuevo = dia !== diaPrevio;
+      diaPrevio = dia;
+      if (porMes) return mesAno(t);
+      return porDia || nuevo ? fecha(t) : hora(t);
+    };
+
+    ctx.textAlign = 'center';
+    ctx.font = MONO;
+    for (let i = 0; i < n; i += cada) {
+      const xC = IZQ + i * pasoX + pasoX / 2;
+      if (xC > der - 26) break;                       // no pisar el eje de precios
+      ctx.strokeStyle = REJILLA;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(Math.round(xC) + 0.5, ARRIBA);
+      ctx.lineTo(Math.round(xC) + 0.5, hayVolumen ? volPie : ARRIBA + altoPrecio);
+      ctx.stroke();
+      // La rejilla se queda donde cae la vela, pero la ETIQUETA se corre para
+      // no salirse por el borde: media fecha en el margen izquierdo es una
+      // fecha que no se puede leer.
+      const texto = rotuloT(lista[i].t);
+      const w = ctx.measureText(texto).width;
+      ctx.fillStyle = humo;
+      ctx.fillText(texto, Math.min(Math.max(xC, IZQ + w / 2), der - w / 2), pie + 12);
+    }
+
+    // El marco: la vertical del eje de precios y la línea del pie. Discreto
+    // pero presente — un panel sin borde flota, y esta gráfica no flota.
+    ctx.strokeStyle = linea;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(Math.round(der) + 0.5, ARRIBA);
+    ctx.lineTo(Math.round(der) + 0.5, Math.round(pie) + 0.5);
+    ctx.lineTo(IZQ, Math.round(pie) + 0.5);
+    ctx.stroke();
+
+    // ── panel de precio, recortado: nada de lo que se dibuje aquí adentro
+    // puede derramarse sobre el volumen, los ejes ni la leyenda ───────────
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(IZQ, ARRIBA, der - IZQ, altoPrecio);
+    ctx.clip();
+
+    // La línea de referencia sobre tratos: punteada y ROTULADA, siempre — es
+    // un dato informativo del feed, jamás la última operación (principio 2).
+    if (refLinea != null) {
+      const y = Math.round(yDe(refLinea)) + 0.5;
       ctx.strokeStyle = oro;
       ctx.globalAlpha = 0.9;
       ctx.setLineDash([2, 4]);
       ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(izq, y); ctx.lineTo(der, y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(IZQ, y); ctx.lineTo(der, y); ctx.stroke();
       ctx.setLineDash([]);
-      const rotulo = `${T.referencia} ${formatear(referencia, decEje)}`;
+      const rotulo = `${opciones.rotulo || T.referencia} ${formatear(refLinea, decEje)}`;
       ctx.font = `600 10px ${SANS}`;
       const wR = ctx.measureText(rotulo).width;
       // Un respaldo oscuro bajo el rótulo: la palabra tiene que leerse aunque
@@ -267,33 +642,26 @@ const VELAS = (() => {
       ctx.fillStyle = oro;
       ctx.textAlign = 'left';
       ctx.fillText(rotulo, der - wR - 8, y - 8);
-      ctx.font = MONO;
     }
 
-    // ── velas y volumen ───────────────────────────────────────────────────
-    const pasoX = (der - izq) / n;
+    // ── las velas ─────────────────────────────────────────────────────────
     const cuerpoW = Math.max(1, Math.min(pasoX * 0.62, 13));
+    const xDe = i => IZQ + i * pasoX + pasoX / 2;
+    // Las de referencia van un pelo más apagadas que las de tratos: no es
+    // decoración, es jerarquía — el trato real siempre pesa más que el cartel.
+    ctx.globalAlpha = esReferencia ? 0.9 : 1;
     for (let i = 0; i < n; i++) {
       const v = lista[i];
-      const sube = v.c >= v.o;                       // el doji cuenta como jade
-      const xC = izq + i * pasoX + pasoX / 2;
+      const sube = v.c >= v.o;                        // el doji cuenta como jade
+      const xC = xDe(i);
       const tinta = sube ? jade : coral;
-
-      // El volumen primero y tenue: contexto, no protagonista.
-      if (maxV > 0n && v.v > 0n) {
-        const hV = Math.max(1, altoVol * fraccion(v.v, maxV));
-        ctx.globalAlpha = 0.35;
-        ctx.fillStyle = tinta;
-        ctx.fillRect(xC - cuerpoW / 2, volTecho + altoVol - hV, cuerpoW, hV);
-        ctx.globalAlpha = 1;
-      }
 
       // La mecha: de la máxima a la mínima, fina.
       ctx.strokeStyle = tinta;
       ctx.lineWidth = Math.max(1, cuerpoW * 0.14);
       ctx.beginPath();
-      ctx.moveTo(xC, yDe(v.h));
-      ctx.lineTo(xC, yDe(v.l));
+      ctx.moveTo(Math.round(xC) + 0.5, yDe(v.h));
+      ctx.lineTo(Math.round(xC) + 0.5, yDe(v.l));
       ctx.stroke();
 
       // El cuerpo: de apertura a cierre. Un doji se pinta de 1px de alto para
@@ -302,88 +670,239 @@ const VELAS = (() => {
       ctx.fillStyle = tinta;
       ctx.fillRect(xC - cuerpoW / 2, Math.min(yO, yC), cuerpoW, Math.max(1, Math.abs(yO - yC)));
     }
+    ctx.globalAlpha = 1;
 
-    // ── el eje del tiempo: pocas etiquetas y legibles ─────────────────────
-    const cuantas = Math.max(2, Math.floor((der - izq) / 110));
-    const cada = Math.max(1, Math.round(n / cuantas));
-    const abarca = lista[n - 1].t - lista[0].t;
-    // Más de dos días a la vista: la hora ya no distingue nada, el día sí.
-    const rotuloT = t => (abarca > 48 * 3600 * 1000 ? fecha(t) : hora(t));
-    ctx.fillStyle = humo;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-    for (let i = 0; i < n; i += cada) {
-      const xC = izq + i * pasoX + pasoX / 2;
-      if (xC > der - 26) break;                      // no pisar el eje de precios
-      ctx.fillText(rotuloT(lista[i].t), xC, alto - 5);
-    }
-
-    // ── la cruz y su ficha: O H L C V y la hora, pegadas al dedo ──────────
-    const cursor = opciones.cursor;
-    if (!cursor || cursor.x < izq || cursor.x > der || cursor.y < arriba || cursor.y > volTecho + altoVol) return;
-
-    const i = Math.min(n - 1, Math.max(0, Math.floor((cursor.x - izq) / pasoX)));
-    const vela = lista[i];
-    const xC = izq + i * pasoX + pasoX / 2;
-
-    // La vertical se imanta al centro de la vela: la pregunta del ratón es
-    // «¿esta vela?», no «¿este píxel?». La horizontal sí sigue al dedo.
-    ctx.strokeStyle = 'rgba(243,236,217,.35)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath(); ctx.moveTo(xC, arriba); ctx.lineTo(xC, volTecho + altoVol); ctx.stroke();
-    if (cursor.y <= arriba + altoPrecio) {
-      ctx.beginPath(); ctx.moveTo(izq, cursor.y); ctx.lineTo(der, cursor.y); ctx.stroke();
-    }
-    ctx.setLineDash([]);
-
-    const decFicha = Math.max(4, decEje);
-    const fp = p => formatear(p, decFicha);
-    const filas = [
-      { k: '', v: `${fecha(vela.t)} ${hora(vela.t)}`, tinta: color('--oroLt', '#EAD79C') },
-      { k: 'O', v: fp(vela.o) },
-      { k: 'H', v: fp(vela.h) },
-      { k: 'L', v: fp(vela.l) },
-      { k: 'C', v: fp(vela.c), tinta: vela.c >= vela.o ? jade : coral },
-      { k: 'V', v: formatear(vela.v, 2) },
-    ];
-    ctx.font = MONO;
-    let wF = 96;
-    for (const f of filas) {
-      const m = ctx.measureText(`${f.k}  ${f.v}`).width;
-      if (m + 22 > wF) wF = m + 22;
-    }
-    const hF = filas.length * 15 + 12;
-    // La ficha huye del borde: a la derecha del dedo si cabe, a la izquierda
-    // si no — taparle la vela a quien la está mirando sería absurdo.
-    let xF = xC + 14;
-    if (xF + wF > der) xF = xC - 14 - wF;
-    let yF = Math.min(Math.max(cursor.y - hF / 2, arriba), volTecho + altoVol - hF);
-
-    // Fondo sólido a propósito: una ficha translúcida encima de velas es
-    // ilegible justo donde más se mira.
-    ctx.fillStyle = '#052A2C';
-    ctx.strokeStyle = color('--linea', 'rgba(201,169,97,.34)');
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect(xF, yF, wF, hF, 8);
-    ctx.fill(); ctx.stroke();
-
-    ctx.textBaseline = 'middle';
-    filas.forEach((f, j) => {
-      const y = yF + 13 + j * 15;
-      if (f.k) {
-        ctx.fillStyle = humo;
-        ctx.textAlign = 'left';
-        ctx.fillText(f.k, xF + 10, y);
+    // ── las EMAs, encima y sutiles ────────────────────────────────────────
+    // Sutiles a propósito: la vela es el dato y la media es la lectura. Una
+    // media que grita tapa el dato que pretende explicar.
+    ctx.lineWidth = 1.25;
+    ctx.lineCap = 'round';
+    for (const m of medias) {
+      ctx.strokeStyle = m.tinta;
+      ctx.globalAlpha = m.alfa;
+      ctx.beginPath();
+      let trazando = false;
+      for (let i = 0; i < n; i++) {
+        const v = m.valores[i];
+        if (v == null) continue;                      // los primeros n-1: no existen
+        const x = xDe(i), y = yDe(v);
+        if (trazando) ctx.lineTo(x, y);
+        else { ctx.moveTo(x, y); trazando = true; }
       }
-      ctx.fillStyle = f.tinta || crema;
-      ctx.textAlign = 'right';
-      ctx.fillText(f.v, xF + wF - 10, y);
-    });
+      if (trazando) ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.lineCap = 'butt';
+
+    // ── la línea del último precio ────────────────────────────────────────
+    const ultima = lista[n - 1];
+    const subeUlt = ultima.c >= ultima.o;
+    const tintaUlt = subeUlt ? jade : coral;
+    const yUlt = Math.round(yDe(ultima.c)) + 0.5;
+    ctx.strokeStyle = tintaUlt;
+    ctx.globalAlpha = 0.55;
+    ctx.setLineDash([3, 3]);
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(IZQ, yUlt); ctx.lineTo(der, yUlt); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+
+    ctx.restore();   // fin del recorte del panel de precio
+
+    // ── el histograma de volumen ──────────────────────────────────────────
+    // Con su PROPIA escala (el máximo de la ventana), teñido por la dirección
+    // de su vela y a media tinta: es contexto, no protagonista. Que tenga
+    // escala propia es lo correcto — el volumen y el precio no comparten
+    // unidades y superponerlos en un mismo eje sería una coincidencia
+    // dibujada como si fuera una relación.
+    if (hayVolumen) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(IZQ, volTecho, der - IZQ, altoVol);
+      ctx.clip();
+      ctx.strokeStyle = REJILLA;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(IZQ, Math.round(volPie) + 0.5);
+      ctx.lineTo(der, Math.round(volPie) + 0.5);
+      ctx.stroke();
+      for (let i = 0; i < n; i++) {
+        const v = lista[i];
+        if (v.v <= 0n) continue;
+        const hV = Math.max(1, altoVol * fraccion(v.v, maxV));
+        ctx.globalAlpha = 0.42;
+        ctx.fillStyle = v.c >= v.o ? jade : coral;
+        ctx.fillRect(xDe(i) - cuerpoW / 2, volPie - hV, cuerpoW, hV);
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+
+    // ── la cruz: imantada a la vela ───────────────────────────────────────
+    // La vertical se pega al centro de la vela porque la pregunta del ratón
+    // es «¿esta vela?», no «¿este píxel?». La horizontal sí sigue al dedo:
+    // ahí la pregunta es «¿a qué precio está esta altura?».
+    const cursor = opciones.cursor;
+    const dentro = cursor && cursor.x >= IZQ && cursor.x <= der
+      && cursor.y >= ARRIBA && cursor.y <= (hayVolumen ? volPie : ARRIBA + altoPrecio);
+    const indice = dentro
+      ? Math.min(n - 1, Math.max(0, Math.floor((cursor.x - IZQ) / pasoX)))
+      : n - 1;
+    const enPrecio = dentro && cursor.y <= ARRIBA + altoPrecio;
+
+    if (dentro) {
+      const xC = Math.round(xDe(indice)) + 0.5;
+      ctx.strokeStyle = 'rgba(243,236,217,.35)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(xC, ARRIBA);
+      ctx.lineTo(xC, hayVolumen ? volPie : ARRIBA + altoPrecio);
+      ctx.stroke();
+      if (enPrecio) {
+        const y = Math.round(cursor.y) + 0.5;
+        ctx.beginPath(); ctx.moveTo(IZQ, y); ctx.lineTo(der, y); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
+
+    // ── las pastillas de los ejes ─────────────────────────────────────────
+    const fp = p => formatear(p, decFicha);
+
+    // La del último precio, del color de la dirección. Se calla si la cruz
+    // está pisando su sitio: dos números encimados no son dos números.
+    const textoUlt = formatear(ultima.c, decEje);
+    ctx.font = MONO_B;
+    const wUlt = Math.min(ancho - der - 8,
+      Math.max(anchoEje - 10, ctx.measureText(textoUlt).width + 12));
+    const chocan = enPrecio && Math.abs(cursor.y - yUlt) < 13;
+    if (!chocan) {
+      // El destello: el latido del último precio cuando cambia. Lo enciende
+      // enganchar() y solo si el usuario no pidió menos movimiento.
+      const destello = Math.min(1, Math.max(0, Number(opciones.destello) || 0));
+      if (destello > 0) {
+        ctx.globalAlpha = 0.35 * destello;
+        ctx.fillStyle = tintaUlt;
+        caja(ctx, der + 2, yUlt - 12, wUlt + 6, 22, 6);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      pastilla(ctx, der + 5, yUlt - 9, wUlt, 17, tintaUlt, null, textoUlt, pozo, MONO_B);
+    }
+
+    if (dentro) {
+      if (enPrecio) {
+        const textoP = fp(precioDe(cursor.y));
+        ctx.font = MONO;
+        const wP = Math.min(ancho - der - 8,
+          Math.max(anchoEje - 10, ctx.measureText(textoP).width + 12));
+        pastilla(ctx, der + 5, Math.round(cursor.y) - 9, wP, 17, FICHA, linea, textoP, crema, MONO);
+      }
+      // La pastilla del tiempo lleva SIEMPRE fecha y hora completas, mande el
+      // marco lo que mande: el eje de abajo puede permitirse abreviar porque
+      // rotula muchos puntos, pero quien apunta a una vela concreta está
+      // preguntando exactamente cuál, y ahí no se abrevia.
+      const vC = lista[indice];
+      const textoT = `${fecha(vC.t)} ${hora(vC.t)}`;
+      ctx.font = MONO;
+      const wT = ctx.measureText(textoT).width + 14;
+      let xT = xDe(indice) - wT / 2;
+      xT = Math.min(Math.max(xT, IZQ), der - wT);
+      pastilla(ctx, xT, pie + 2, wT, 16, FICHA, linea, textoT, crema, MONO);
+    }
+
+    // ── la leyenda, arriba a la izquierda, estilo terminal ────────────────
+    // Sigue a la cruz; sin cruz enseña la última vela. Que sin ratón muestre
+    // la ÚLTIMA y no un guion es deliberado: quien llega a la gráfica quiere
+    // saber cómo cerró lo último, no que le pregunten dónde apunta.
+    const v = lista[indice];
+    const cambio = v.o === 0n ? null : Number((v.c - v.o) * 10000n / v.o) / 100;
+    const tintaCambio = cambio == null ? humo : (cambio >= 0 ? jade : coral);
+    const emasLeyenda = medias.map(m => ({
+      periodo: m.periodo,
+      tinta: m.tinta,
+      valor: m.valores[indice] == null ? null : fp(m.valores[indice]),
+      desde: m.valores.findIndex(x => x != null),
+    }));
+
+    const filas = [filaLeyenda1];
+    const f2 = [];
+    for (const [k, val] of [['O', v.o], ['H', v.h], ['L', v.l], ['C', v.c]]) {
+      f2.push({ t: k, tinta: humo });
+      f2.push({ t: ' ' + fp(val) + '   ', tinta: k === 'C' ? tintaCambio : crema });
+    }
+    if (cambio != null) {
+      f2.push({ t: (cambio >= 0 ? '+' : '') + cambio.toFixed(2) + '%', tinta: tintaCambio, font: MONO_B });
+    }
+    filas.push(f2);
+    if (emasLeyenda.length) {
+      const f3 = [];
+      for (const e of emasLeyenda) {
+        f3.push({ t: `EMA${e.periodo} `, tinta: e.tinta, font: MONO_B });
+        // Un guion cuando la media todavía no existe: en las primeras n-1
+        // velas no hay EMA(n), y decirlo es más honesto que enseñar el precio
+        // disfrazado de media.
+        f3.push({ t: (e.valor == null ? '—' : e.valor) + '   ', tinta: e.tinta });
+      }
+      filas.push(f3);
+    }
+    if (hayVolumen) {
+      filas.push([{ t: 'V ', tinta: humo }, { t: formatear(v.v, 2), tinta: bruma }]);
+    }
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    let wL = 0;
+    for (const f of filas) wL = Math.max(wL, fila(ctx, 0, 0, f, true));
+    const hL = filas.length * 15 + 8;
+    // Un fondo traslúcido, no sólido: la leyenda se posa sobre la gráfica sin
+    // borrar la vela que tiene debajo. La ficha de la cruz sí es sólida —
+    // aquella se lee de un vistazo y esta se lee con calma.
+    ctx.fillStyle = 'rgba(2,27,28,.72)';
+    ctx.fillRect(IZQ + 2, ARRIBA + 2, wL + 20, hL);
+    filas.forEach((f, j) => fila(ctx, IZQ + 10, ARRIBA + 13 + j * 15, f, false));
+
+    /* El rótulo accesible dice lo MISMO que la gráfica, ni más ni menos: qué
+       par, cuántas velas, el último cierre con su unidad y su cambio — y si
+       esto es referencia, lo dice con todas las letras. Un aria-label que
+       promete un precio de mercado sobre un cartel informativo es la misma
+       mentira, escrita para quien no puede verla. */
+    canvas.setAttribute('aria-label', [
+      par || (esReferencia ? T.badge : ''),
+      marco,
+      `${n} ${T.velas}`,
+      `${T.ultimo} ${formatear(ultima.c, decFicha)} ${unidad}`,
+      cambio == null ? '' : `${cambio >= 0 ? '+' : ''}${cambio.toFixed(2)}%`,
+      esReferencia ? T.aviso : '',
+    ].filter(Boolean).join(' · '));
+
+    return {
+      vacio: null,
+      n,
+      indice,
+      unidad,
+      referencia: esReferencia,
+      volumen: hayVolumen,
+      leyenda: {
+        par, marco, unidad,
+        o: fp(v.o), h: fp(v.h), l: fp(v.l), c: fp(v.c),
+        cambio: cambio == null ? null : Number(cambio.toFixed(2)),
+        emas: emasLeyenda.map(e => ({ periodo: e.periodo, valor: e.valor, desde: e.desde })),
+      },
+    };
   }
 
-  /* El enchufe con vida: ratón, refresco y redibujo viven en ESTE closure y
+  /* prefers-reduced-motion: si no se puede preguntar, no se anima. Fail-closed
+     también para el movimiento — molestar a quien pidió calma es peor que
+     quedarse quieto de más. */
+  function quieto() {
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch { return true; }
+  }
+
+  const DESTELLO_MS = 420;
+
+  /* El enchufe con vida: cruz, refresco y redibujo viven en ESTE closure y
      mueren juntos con el apagador que se devuelve. El refresco corre solo con
      la pestaña visible —una gráfica refrescándose detrás de veinte pestañas
      es tráfico que nadie mira— y al volver a la pestaña dispara al instante,
@@ -395,8 +914,39 @@ const VELAS = (() => {
     let opciones = {};
     let cursor = null;
     let parado = false;
+    let ultimoCierre = null;
+    let destello = 0;
+    let cuadro = 0, latido = 0;
 
-    const pintar = () => { if (!parado) dibujar(canvas, velas, { ...opciones, cursor }); };
+    const pintar = () => { if (!parado) dibujar(canvas, velas, { ...opciones, cursor, destello }); };
+
+    /* Un solo dibujo por cuadro de pantalla. Sin esto, un ratón moderno pide
+       ciento veinte redibujos por segundo para una pantalla que enseña
+       sesenta: la mitad del trabajo se tira a la basura antes de verse. */
+    const pedirPintar = () => {
+      if (parado || cuadro) return;
+      if (typeof requestAnimationFrame !== 'function') return pintar();
+      cuadro = requestAnimationFrame(() => { cuadro = 0; pintar(); });
+    };
+
+    // El latido del último precio: 420 ms de destello cuando el cierre
+    // CAMBIA. Es el único movimiento de esta pieza, y por eso es el único que
+    // hay que apagar cuando el sistema pide menos movimiento.
+    const encender = () => {
+      if (quieto() || typeof requestAnimationFrame !== 'function') { destello = 0; return; }
+      const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      if (latido) cancelAnimationFrame(latido);
+      const paso = () => {
+        if (parado) return;
+        const ahora = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        const k = (ahora - t0) / DESTELLO_MS;
+        destello = k >= 1 ? 0 : 1 - k;
+        pintar();
+        if (destello > 0) latido = requestAnimationFrame(paso);
+        else latido = 0;
+      };
+      latido = requestAnimationFrame(paso);
+    };
 
     async function refrescar() {
       if (parado || document.hidden) return;
@@ -405,21 +955,33 @@ const VELAS = (() => {
         if (parado || r == null) return;
         if (Array.isArray(r)) velas = r;
         else { velas = r.velas || []; opciones = r.opciones || {}; }
+        // El cierre se compara como TEXTO: no hace falta saber si son wei o
+        // dólares para saber si cambió, y así esta comparación no tiene que
+        // cruzar la frontera de tipos.
+        const u = velas.length ? velas[velas.length - 1] : null;
+        const cierre = u == null ? null : String(Array.isArray(u) ? u[4] : u?.c);
+        if (ultimoCierre != null && cierre !== ultimoCierre) encender();
+        ultimoCierre = cierre;
         pintar();
       } catch { /* fail-closed de pantalla: sin dato nuevo no se borra el viejo */ }
     }
 
     const alMover = e => {
-      const caja = canvas.getBoundingClientRect();
-      cursor = { x: e.clientX - caja.left, y: e.clientY - caja.top };
-      pintar();
+      const borde = canvas.getBoundingClientRect();
+      cursor = { x: e.clientX - borde.left, y: e.clientY - borde.top };
+      pedirPintar();
     };
-    const alSalir = () => { cursor = null; pintar(); };
+    const alSalir = () => { cursor = null; pedirPintar(); };
     const alVolver = () => { if (!document.hidden) refrescar(); };
-    const alMedir = () => pintar();   // la ventana cambió: misma verdad, otro encuadre
+    const alMedir = () => pedirPintar();   // la ventana cambió: misma verdad, otro encuadre
 
-    canvas.addEventListener('mousemove', alMover);
-    canvas.addEventListener('mouseleave', alSalir);
+    // Puntero y no ratón: el mismo trazo sirve para el dedo y para el lápiz,
+    // y quien no tenga PointerEvent se queda con el ratón de toda la vida.
+    const conPuntero = typeof window !== 'undefined' && 'PointerEvent' in window;
+    const mover = conPuntero ? 'pointermove' : 'mousemove';
+    const salir = conPuntero ? 'pointerleave' : 'mouseleave';
+    canvas.addEventListener(mover, alMover);
+    canvas.addEventListener(salir, alSalir);
     document.addEventListener('visibilitychange', alVolver);
     window.addEventListener('resize', alMedir);
     const reloj = setInterval(() => { if (!document.hidden) refrescar(); }, cadaMs);
@@ -428,8 +990,10 @@ const VELAS = (() => {
     return () => {
       parado = true;
       clearInterval(reloj);
-      canvas.removeEventListener('mousemove', alMover);
-      canvas.removeEventListener('mouseleave', alSalir);
+      if (cuadro) cancelAnimationFrame(cuadro);
+      if (latido) cancelAnimationFrame(latido);
+      canvas.removeEventListener(mover, alMover);
+      canvas.removeEventListener(salir, alSalir);
       document.removeEventListener('visibilitychange', alVolver);
       window.removeEventListener('resize', alMedir);
     };
@@ -437,7 +1001,11 @@ const VELAS = (() => {
 
   // _piezas se asoma para las pruebas, como en qr.js: se prueba el código
   // real, no una copia que se quedó vieja.
-  return { dibujar, enganchar, _piezas: { normalizar, formatear, pasoLindo, decimalesDe, fraccion } };
+  return {
+    dibujar,
+    enganchar,
+    _piezas: { normalizar, formatear, pasoLindo, decimalesDe, fraccion, calcularEma, deWei, deNumero },
+  };
 })();
 
 // Para las pruebas de referencia en node, como qr.js: en el navegador esto no

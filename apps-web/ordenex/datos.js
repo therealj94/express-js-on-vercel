@@ -130,6 +130,25 @@ const DATOS = (() => {
   };
   const tratos = p => pedir(`/mercados/${par(p)}/tratos`, { conSesion: false });
 
+  /* La OTRA clase de vela, por su propia puerta. `velas` trae TRATOS de esta
+     casa en wei de ORIGEN; esto trae REFERENCIA del mercado real del metal en
+     DÓLARES, y llega con su rótulo puesto:
+
+       { activo, unidad:'USD', rotulo, fuente, actualizadoEn, velas:[[t0,o,h,l,c,null]…] }
+
+     Dos funciones y no una con bandera, porque son dos cosas distintas: la
+     única manera de que un día alguien pinte el cartel del oro como si fuera
+     una operación de Ordenex es que las dos series lleguen por el mismo caño.
+     Los marcos son los que da el proveedor —30m, 4h, 4d— y no los de tratos.
+
+     Solo AUKA, AGKA y ORIGEN tienen referencia; para los demás el API contesta
+     404 con codigo SIN_REFERENCIA, y ese error se propaga tal cual: un activo
+     sin mercado real detrás no recibe una línea plana de consuelo. */
+  const referencia = (p, marco) => {
+    const q = new URLSearchParams({ marco: String(marco || '30m') });
+    return pedir(`/mercados/${par(p)}/referencia?${q}`, { conSesion: false });
+  };
+
   // ── órdenes 🔒 ────────────────────────────────────────────────────────────
   // o = { mercado, lado, tipo, precio?, cantidad, ordenKey } — precio y
   // cantidad en strings de wei; la ordenKey la pone quien coloca, para que un
@@ -185,7 +204,7 @@ const DATOS = (() => {
 
   return {
     API, sondeo,
-    mercados, libro, velas, tratos,
+    mercados, libro, velas, tratos, referencia,
     colocar, cancelar, misOrdenes,
     portafolio, retirar, movimientos,
     agentes, solicitudes, crearSolicitud, accionSolicitud,

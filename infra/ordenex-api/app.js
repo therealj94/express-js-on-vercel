@@ -155,13 +155,27 @@ app.listen(puerto, () => {
   // API muerto no se recupera solo. El costo de arrancar sin libros es que
   // las ordenes fallan hasta que cargarLibros() pase; ese es el lado correcto
   // en el que equivocarse.
+  //
+  // Las velas de referencia (el oro y la plata de CoinGecko) arrancan en este
+  // MISMO bloque porque son la misma clase de cosa: un fondo que sondea solo,
+  // que puede fallar entero sin que la casa pare, y cuyo fallo se cuenta por
+  // el log. Cada uno lleva ademas su propio .catch para el lado asincrono, asi
+  // que un tropiezo de uno no se traga el arranque del otro. Si CoinGecko no
+  // contesta hoy, GET /mercados/:par/referencia sirve lo ultimo bueno con su
+  // hora, o vacio y rotulado — jamas un precio inventado — y ni una operacion
+  // con dinero se entera de nada.
   try {
     const vigia = require('./lib/vigia');
     Promise.resolve(vigia.arrancar()).catch((e) =>
       console.error(`[vigia] no arranco: ${e.message}`)
     );
+
+    const referenciaVelas = require('./lib/referenciaVelas');
+    Promise.resolve(referenciaVelas.arrancar()).catch((e) =>
+      console.error(`[referenciaVelas] no arranco: ${e.message}`)
+    );
   } catch (e) {
-    console.error(`[vigia] no arranco: ${e.message}`);
+    console.error(`[fondos] no arrancaron: ${e.message}`);
   }
 
   try {

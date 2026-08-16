@@ -150,6 +150,42 @@ const velaSchema = new Schema(
 );
 velaSchema.index({ mercado: 1, marco: 1, t0: 1 }, { unique: true });
 
+// ── VelaRef ─────────────────────────────────────────────────────────────────
+// La OTRA clase de vela, y por eso vive en OTRA coleccion: la referencia del
+// metal de verdad (oro y plata) traida de CoinGecko por lib/referenciaVelas.js.
+// No se mezcla con `velas` ni por asomo — aquella son tratos reales de Ordenex
+// en ORIGEN, esta es el cartel de "la onza va a tanto" en dolares. Confundirlas
+// seria decirle al usuario que aqui se opero a un precio al que nadie opero.
+// Por eso: coleccion aparte, marcos propios ('30m'|'4h'|'4d', los que devuelve
+// el proveedor segun el rango) y ruta propia y rotulada.
+//
+// POR QUE AQUI SI VA Number Y EN EL LEDGER JAMAS. La regla 1 de arriba manda
+// sobre el DINERO: saldos, precios de ordenes, cantidades de tratos — todo lo
+// que alguien puede reclamar como suyo va en string de wei, porque un centavo
+// perdido al redondear es un centavo robado. Esto no es dinero de nadie: es un
+// precio informativo en dolares, con tres o cuatro cifras significativas, que
+// solo sirve para dibujar una linea en una pantalla. Nadie va a cobrar 4374,21
+// ni le van a deber 0,000001 de diferencia. Un cartel informativo no es un
+// saldo, y darle 18 decimales de precision fingida seria fingir tambien que es
+// exacto. Si algun dia un numero de esta coleccion tocara un camino de dinero,
+// el error no seria el tipo: seria haberlo metido ahi.
+const velaRefSchema = new Schema(
+  {
+    activo: { type: String, required: true },
+    marco: { type: String, enum: ['30m', '4h', '4d'], required: true },
+    t0: { type: Number, required: true },
+    o: { type: Number, required: true },
+    h: { type: Number, required: true },
+    l: { type: Number, required: true },
+    c: { type: Number, required: true },
+  },
+  { timestamps: true }
+);
+// Unico igual que en `velas`, y por el mismo motivo: cada refresco vuelve a
+// traer la vela en curso con su maximo y su cierre ya movidos, y tiene que
+// pisar a la anterior en vez de duplicarla.
+velaRefSchema.index({ activo: 1, marco: 1, t0: 1 }, { unique: true });
+
 // ── Deposito ────────────────────────────────────────────────────────────────
 // Lo que el vigia vio caer en la direccion de deposito de un usuario y ya
 // acredito en el ledger. Es la memoria del vigia: el ultimo saldo visto se
@@ -263,6 +299,7 @@ module.exports = {
   Orden: mongoose.model('Orden', ordenSchema, 'ordenes'),
   Trato: mongoose.model('Trato', tratoSchema, 'tratos'),
   Vela: mongoose.model('Vela', velaSchema, 'velas'),
+  VelaRef: mongoose.model('VelaRef', velaRefSchema, 'velasRef'),
   Deposito: mongoose.model('Deposito', depositoSchema, 'depositos'),
   Retiro: mongoose.model('Retiro', retiroSchema, 'retiros'),
   Agente: mongoose.model('Agente', agenteSchema, 'agentes'),

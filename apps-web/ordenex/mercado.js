@@ -7,6 +7,31 @@
  * double de 18 decimales pierde exactamente los dígitos que a alguien le
  * importan.
  *
+ * ───────────────────────────────────────────────────────────────────────────
+ * LAS DOS CLASES DE VELA, QUE JAMÁS SE MEZCLAN
+ *
+ * Esta sala pinta dos series que se parecen en la forma y no se parecen en
+ * nada en lo que significan. Por eso viven en dos pestañas distintas, con dos
+ * juegos de marcos distintos y dos unidades distintas:
+ *
+ *   · TRATOS · ORIGEN — operaciones reales de esta casa, en wei de ORIGEN,
+ *     marcos 1m/15m/1h/1d, por GET /mercados/:par/velas. Hoy no hay ninguna en
+ *     ningún mercado: el libro está recién abierto y todavía no se calzó nada.
+ *     Eso se DICE —lo escribe la propia gráfica en su lienzo vacío— y no se
+ *     disimula con una línea.
+ *   · REFERENCIA · USD — el mercado REAL del oro y de la plata, en dólares,
+ *     marcos 30m/4h/4d, por GET /mercados/:par/referencia. Va SIEMPRE con su
+ *     rótulo a la vista. Existe solo para AUKA, AGKA y ORIGEN; para el resto
+ *     el API contesta 404 SIN_REFERENCIA y aquí ni se dibuja el selector.
+ *
+ * Una vela de referencia pintada como si fuera un trato es exactamente la
+ * mentira que esta casa no comete. Y un activo que no tiene ni tratos ni
+ * referencia (los doce tokens de sector) recibe su gráfica ENTERA —rejilla,
+ * ejes, marco— pero vacía y con el motivo escrito, más una línea que dice
+ * dónde nace su precio: en el libro de abajo. Ni una raya plana, ni un número
+ * de relleno.
+ *
+ * ───────────────────────────────────────────────────────────────────────────
  * Tres reglas que esta sala no negocia, heredadas del contrato de la casa:
  *
  * 1. NI UN NÚMERO INVENTADO. Un dato que no llegó se pinta como guion o se
@@ -26,7 +51,28 @@ const VMERCADO = (() => {
   'use strict';
 
   const WEI = 10n ** 18n;
-  const MARCOS = ['1m', '15m', '1h', '1d'];
+
+  /* Un juego de marcos por fuente, y tampoco se mezclan ellos. Los de tratos
+     son los que agrega el motor de la casa (lib/velas.js). Los de referencia
+     son los que DEVUELVE el proveedor del metal: 1 día son 48 velas de 30 min,
+     30 días 180 de 4 h, 365 días 92 de 4 días. Esos marcos no se piden: se
+     sabe lo que contesta y se rotula en consecuencia. */
+  const MARCOS = {
+    tratos: ['1m', '15m', '1h', '1d'],
+    referencia: ['30m', '4h', '4d'],
+  };
+
+  // El marco con el que abre cada fuente: 1 h para los tratos (la jornada) y
+  // 4 h para la referencia (el mes de metal, que es como se mira una onza).
+  const MARCO_INICIAL = { tratos: '1h', referencia: '4h' };
+
+  /* Los TRES activos con mercado real detrás, espejo de la lista blanca
+     REFERENCIAS de infra/ordenex-api/lib/referenciaVelas.js. Lista blanca y no
+     lista negra a propósito: un token nuevo no hereda referencia por descuido,
+     hereda el silencio honesto. Esta copia solo decide si se dibuja el
+     selector; el que manda es el API, y si contesta SIN_REFERENCIA la pestaña
+     se retira sola (ver sinReferencia). */
+  const CON_REFERENCIA = ['AUKA', 'AGKA', 'ORIGEN'];
 
   // Los helpers de la casa se piden a ONX EN EL MOMENTO de usarlos: este
   // archivo carga antes que app.js (el orden del HTML es el grafo de
@@ -58,9 +104,28 @@ const VMERCADO = (() => {
 
       // La gráfica. «Sin velas» y «no llegaron» son cosas distintas y se
       // dicen distinto — la honestidad es de la casa.
-      'sinVelas': 'Todavía no hay velas en este marco: las velas solo pintan tratos reales.',
       'velasNo': 'No pudimos traer las velas. Se reintenta solo.',
       'velasSin': 'La gráfica no está instalada en esta versión. Los datos del mercado siguen abajo.',
+
+      /* El selector de fuente. Los dos rótulos llevan la unidad puesta porque
+         la unidad ES la diferencia: en ORIGEN se opera, en dólares se mira. */
+      'fuente': 'Fuente de la gráfica',
+      'fTratos': 'Tratos · ORIGEN',
+      'fRef': 'Referencia · USD',
+      'refBadge': 'REFERENCIA',
+      'refCuando': 'leído {hora}',
+      'refNo': 'No pudimos traer la referencia del metal. Se reintenta solo.',
+      'refVacia': 'La referencia del metal todavía no llegó. Se reintenta sola: preferimos un lienzo vacío a una línea inventada.',
+      'refAUKA': 'Onza de oro en el mercado real, en dólares. No son tratos de Ordenex.',
+      'refAGKA': 'Onza de plata en el mercado real, en dólares. No son tratos de Ordenex.',
+      'refORIGEN': 'Gramo de oro entre 55, derivado del oro del mercado real, en dólares. No son tratos de Ordenex.',
+
+      // La nota de AUKA: es de producto, no una advertencia. Explica el activo.
+      'aukaT': 'AUKA y ORIGEN son el mismo metal',
+      'aukaP': 'AUKA es una onza de oro y ORIGEN es el gramo de oro entre 55. Como los dos son oro, su relación no se mueve nunca: 1 AUKA = 1710,69 ORIGEN, hoy y siempre. El precio que sí se mueve es el del oro, y está en la pestaña Referencia, en dólares.',
+
+      // El token que todavía no tiene mercado: dónde nace su precio, sin rodeos.
+      'sectorP': 'Este par abre cuando alguien ponga la primera orden. El precio nace en el libro de aquí abajo, no en un feed.',
 
       // El libro y los tratos.
       'libro': 'Libro de órdenes',
@@ -121,9 +186,24 @@ const VMERCADO = (() => {
       'parRaro': 'That market does not exist in this house.',
       'parRaroP': 'The requested pair is not in the chain’s asset table. Go back to the list and pick one of the fourteen.',
 
-      'sinVelas': 'No candles in this timeframe yet: candles are drawn only from real trades.',
       'velasNo': 'We couldn’t fetch the candles. It retries on its own.',
       'velasSin': 'The chart is not installed in this build. The market data continues below.',
+
+      'fuente': 'Chart source',
+      'fTratos': 'Trades · ORIGEN',
+      'fRef': 'Reference · USD',
+      'refBadge': 'REFERENCE',
+      'refCuando': 'read at {hora}',
+      'refNo': 'We couldn’t fetch the metal reference. It retries on its own.',
+      'refVacia': 'The metal reference hasn’t arrived yet. It retries on its own: we’d rather show an empty canvas than an invented line.',
+      'refAUKA': 'One ounce of gold in the real market, in dollars. These are not Ordenex trades.',
+      'refAGKA': 'One ounce of silver in the real market, in dollars. These are not Ordenex trades.',
+      'refORIGEN': 'A gram of gold divided by 55, derived from real-market gold, in dollars. These are not Ordenex trades.',
+
+      'aukaT': 'AUKA and ORIGEN are the same metal',
+      'aukaP': 'AUKA is one ounce of gold and ORIGEN is a gram of gold divided by 55. Since both are gold, their ratio never moves: 1 AUKA = 1,710.69 ORIGEN, today and always. The price that does move is the price of gold, and it lives in the Reference tab, in dollars.',
+
+      'sectorP': 'This pair opens when someone places the first order. The price is born in the book below, not in a feed.',
 
       'libro': 'Order book',
       'precio': 'Price', 'cantidad': 'Amount', 'hora': 'Time',
@@ -228,14 +308,29 @@ const VMERCADO = (() => {
   // ── el estado de la sala ──────────────────────────────────────────────────
 
   let paradores = [];        // cada sondeo devuelve su parador; apagar() los corre todos
+  let pararGrafica = null;   // el reloj de la gráfica va aparte: cambia de ritmo con la fuente
   let alResize = null;
   let parActual = null;      // 'AUKA-ORIGEN'
-  let marcoActual = '1h';
   let ladoActual = 'compra';
   let tipoActual = 'limite';
+
+  /* La fuente de la gráfica y su marco. Un marco POR FUENTE y no uno solo:
+     '4h' no existe entre los tratos y '1m' no existe en el feed del metal, así
+     que un marco compartido obligaría a inventar una traducción entre dos
+     rejillas de tiempo que no se corresponden. Yendo y viniendo entre
+     pestañas, cada una recuerda dónde estaba. */
+  let fuenteActual = 'tratos';
+  let marcos = { tratos: MARCO_INICIAL.tratos, referencia: MARCO_INICIAL.referencia };
+  /* ¿La fuente se decidió ya con la lista de mercados en la mano (o con un
+     dedo humano)? Mientras sea false, la primera respuesta buena puede
+     corregirla UNA vez: abrir en la pestaña del metal un mercado que sí tiene
+     tratos sería esconder justo lo que esta casa hace. */
+  let fuenteFirme = false;
+
   let mercadosCache = null;  // la última lista buena — un dato viejo y honesto vale más que un parpadeo a vacío
   let libroCache = null;     // el último libro bueno DEL PAR ABIERTO; se tira al cambiar de par
-  let velasCache = null;
+  let velasCache = null;     // velas de TRATOS, en wei de ORIGEN
+  let refCache = null;       // el paquete de REFERENCIA del API: { activo, rotulo, fuente, actualizadoEn, velas } en USD
   let cuentas = null;        // los saldos del portafolio si hay sesión; null = no leídos (fail-closed)
   /* La llave de idempotencia de la orden EN CURSO. Se estrena al enviar, se
      conserva si el fallo fue de red (el reintento tiene que ser LA MISMA
@@ -247,6 +342,62 @@ const VMERCADO = (() => {
     const b = new Uint8Array(16);
     crypto.getRandomValues(b);
     return Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+  }
+
+  // ── qué fuente le toca a cada mercado ─────────────────────────────────────
+
+  /* El par cuya fuente ya se decidió, y el «no» que haya traído el API. La
+     vista se arma ANTES de que alPintar toque el estado, así que la decisión
+     se toma al armarla (prepararFuente): el selector tiene que salir pintado
+     ya en la pestaña correcta, no saltar a otra un segundo después. */
+  let parPreparado = null;
+  let referenciaNegada = false;
+
+  const marcosDe = f => MARCOS[f === 'referencia' ? 'referencia' : 'tratos'];
+  const marcoDe = () => marcos[fuenteActual];
+
+  /* ¿Este mercado tiene cartel del metal detrás? La lista blanca decide y el
+     404 SIN_REFERENCIA del API la corrige: si él dice que no, no hay pestaña
+     por más que la tabla de aquí diga que sí. La verdad de la referencia vive
+     en el servidor; esta copia solo evita pedir lo que se sabe que no está. */
+  const hayRef = par => !referenciaNegada
+    && CON_REFERENCIA.includes(String(par || '').split('-')[0]);
+
+  /* Con qué pestaña abre un mercado.
+     · Sin referencia no hay nada que elegir: tratos, y su lienzo dirá la
+       verdad — que todavía no hay ninguno.
+     · Con referencia manda lo que la persona vino a ver: si el par no tiene un
+       solo trato (`ultimo` en null; hoy, todos), la única gráfica con algo
+       dentro es la del metal y ahí se abre. Si ya hay tratos, mandan los
+       tratos: ese es el precio de esta casa y el otro es el cartel de la pared.
+     · Y si la lista de mercados aún no llegó no se adivina EN FIRME: se abre
+       en referencia y se deja la puerta abierta a que la primera respuesta
+       buena lo corrija una única vez (cargarCab). */
+  function fuenteInicial(par) {
+    if (!hayRef(par)) return { fuente: 'tratos', firme: true };
+    const m = (mercadosCache || []).find(x => x.mercado === par);
+    if (!m) return { fuente: 'referencia', firme: false };
+    return { fuente: m.ultimo == null ? 'referencia' : 'tratos', firme: true };
+  }
+
+  /* Idempotente por par: abrir OTRO mercado decide todo de nuevo; repintar el
+     MISMO —al cambiar de idioma, por ejemplo— respeta la pestaña y el marco
+     que la persona tenga elegidos. */
+  function prepararFuente(par) {
+    if (par === parPreparado) return;
+    parPreparado = par;
+    referenciaNegada = false;
+    marcos = { tratos: MARCO_INICIAL.tratos, referencia: MARCO_INICIAL.referencia };
+    /* Las velas del mercado anterior se tiran AQUÍ y no solo en alPintar,
+       porque la vista se arma antes que él: sin esto, el primer pintado de
+       AGKA llevaría un instante el rótulo del oro debajo. Un rótulo prestado
+       de otro activo es, por un segundo, exactamente la mentira que esta sala
+       no dice. */
+    velasCache = null;
+    refCache = null;
+    const d = fuenteInicial(par);
+    fuenteActual = d.fuente;
+    fuenteFirme = d.firme;
   }
 
   // ── la hoja de la sala. Viaja dentro de la vista porque el cascarón solo
@@ -280,13 +431,53 @@ const VMERCADO = (() => {
     .vm-rejilla{display:grid;grid-template-columns:minmax(0,1fr) 318px;gap:22px;align-items:start;margin-top:22px}
     @media (max-width:1100px){.vm-rejilla{grid-template-columns:1fr}}
 
+    /* La cabecera de la gráfica: la fuente manda y el marco la sigue, en esa
+       lectura y en ese orden — primero QUÉ se está viendo, después con qué
+       lupa. En pantalla angosta el marco baja de renglón; la fuente nunca. */
+    .vm-cabgraf{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
     .vm-marcos{display:flex;border:1px solid var(--linea2);border-radius:100px;overflow:hidden;
       width:max-content;background:rgba(2,22,23,.55)}
     .vm-marcos button{padding:7px 15px;font-size:12px;font-weight:700;font-family:var(--mono);
       color:var(--humo);transition:.2s}
     .vm-marcos button[aria-pressed=true]{background:rgba(201,169,97,.16);color:var(--oroHi)}
+
+    /* El selector de fuente. Cada pestaña lleva su unidad escrita porque la
+       unidad ES la diferencia: en ORIGEN se opera, en dólares se mira. Y la de
+       referencia se enciende en oro —el mismo oro del rótulo al pie y de la
+       línea punteada de la gráfica— para que el ojo aprenda de una vez que el
+       oro, en esta sala, significa «esto no es un trato». */
+    .vm-fuentes{display:flex;border:1px solid var(--linea2);border-radius:100px;overflow:hidden;
+      width:max-content;background:rgba(2,22,23,.55)}
+    .vm-fuentes button{padding:7px 16px;font-size:12px;font-weight:700;color:var(--humo);transition:.2s}
+    .vm-fuentes button[aria-pressed=true]{background:rgba(116,230,200,.14);color:var(--acento)}
+    .vm-fuentes button[data-fuente=referencia][aria-pressed=true]{
+      background:rgba(201,169,97,.18);color:var(--oroHi)}
+
+    /* El rótulo de la referencia: vive DEBAJO de su gráfica y mientras esa
+       gráfica se vea, sin manera de cerrarlo. No es letra chica metida con
+       calzador, es la mitad del dato — un precio del metal sin decir que es
+       del metal no es un dato, es una insinuación. */
+    .vm-rotulo{display:flex;flex-wrap:wrap;align-items:baseline;gap:7px 10px;margin-top:13px;
+      padding-top:11px;border-top:1px solid var(--linea2);
+      font-size:12.5px;line-height:1.6;color:var(--bruma)}
+    .vm-rotulo b{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.11em;
+      color:var(--oroHi);background:rgba(201,169,97,.13);border:1px solid var(--linea2);
+      border-radius:100px;padding:2.5px 9px}
+    .vm-rotulo small{color:var(--humo);font-size:11px;font-family:var(--mono)}
+
+    /* La nota de producto: explica el activo, no advierte de nada. Un filete
+       de oro a la izquierda y nada más — un recuadro ámbar con signo de
+       admiración diría «cuidado» justo donde hay que decir «así funciona». */
+    .vm-prod{margin-top:14px;padding:12px 15px;border-left:2px solid var(--oro);
+      border-radius:0 10px 10px 0;background:rgba(201,169,97,.06);
+      font-size:12.5px;line-height:1.65;color:var(--bruma)}
+    .vm-prod b{display:block;color:var(--crema);font-size:13px;margin-bottom:5px}
+
     .vm-lienzo{position:relative;margin-top:16px}
-    .vm-lienzo canvas{display:block;width:100%;height:340px;border-radius:12px}
+    .vm-lienzo canvas{display:block;width:100%;height:clamp(340px,52vh,620px);border-radius:12px}
+    /* En la sala ancha el libro se estira a la par de la gráfica: una columna
+       de 318 px contra un lienzo de 1.200 se veía como una nota al margen. */
+    body.en-mercado .vm-rejilla{grid-template-columns:minmax(0,1fr) 360px}
     .vm-nota{position:absolute;inset:0;display:grid;place-items:center;text-align:center;
       color:var(--humo);font-size:13px;line-height:1.6;padding:0 20px;pointer-events:none}
 
@@ -346,6 +537,48 @@ const VMERCADO = (() => {
     .vm-btn:hover{transform:translateY(-2px)}
   </style>`;
 
+  // ── la referencia puntual, traída a la unidad del eje ─────────────────────
+
+  /* GET /mercados manda la referencia como OBJETO y en dólares:
+     `{ usd, rotulo, origenUsd, fuente, en }` — dólares porque es donde el metal
+     se mueve de verdad. Pero la columna «Último» y el eje de la gráfica de
+     tratos están en ORIGEN, así que aquí se sitúa la referencia en ESA unidad:
+     cuántos ORIGEN vale la onza, o sea el precio de la onza entre el precio del
+     gramín. Para AUKA sale 1710,69 clavado y para siempre —las dos cosas son
+     oro—; para AGKA sale el ratio oro:plata, que sí se mueve.
+
+     `usd` solo viene para el oro y la plata: en los doce tokens de sector es
+     null y entonces no se enseña NADA. El `origenUsd` que viaja en el mismo
+     paquete es el precio de ORIGEN, y ponerlo en la fila de MNKA sería pintar
+     el precio de un activo en el renglón de otro.
+
+     La división se hace con Number porque los dos números NACIERON flotantes en
+     el feed y fingir exactitud sería teatro; el resultado se pasa a wei por
+     TEXTO (toFixed, no ×1e18) para no arrastrar la basura binaria del flotante,
+     y sale como STRING — jamás como el objeto crudo, que para VELAS significa
+     otra cosa muy distinta: que la gráfica ENTERA es referencia. Ante cualquier
+     rareza, null: sin línea es mejor que con línea inventada. */
+  function refEnOrigen(m) {
+    const r = m?.referencia;
+    const usd = Number(r?.usd), gramin = Number(r?.origenUsd);
+    if (!Number.isFinite(usd) || !Number.isFinite(gramin) || usd <= 0 || gramin <= 0) return null;
+    const [ent, dec = ''] = (usd / gramin).toFixed(12).split('.');
+    try { return (BigInt(ent) * WEI + BigInt(dec.padEnd(18, '0').slice(0, 18))).toString(); }
+    catch { return null; }
+  }
+
+  /* Y la misma referencia ESCRITA, en dólares y con su signo — igual que en la
+     tabla viva de la portada (app.js), que es la otra pantalla donde este dato
+     aparece: el metal se mueve contra el dólar y ahí se enseña en su unidad.
+     El eje de la gráfica es otra cosa y por eso tiene otra función: allí la
+     línea tiene que caer sobre precios en ORIGEN o no significa nada. */
+  function refUsd(m) {
+    const n = Number(m?.referencia?.usd);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    const [ent, dec] = n.toFixed(2).split('.');
+    return '$' + ent.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec;
+  }
+
   // ══ LA LISTA DE MERCADOS ══════════════════════════════════════════════════
 
   function vistaMercados() {
@@ -392,7 +625,7 @@ const VMERCADO = (() => {
       const sim = CADENA.baseDe(par);
       const m = porPar.get(par) || {};
       const ultimo = deWei(m.ultimo, 4);
-      const ref = deWei(m.referencia, 4);
+      const ref = refUsd(m);
       const vol = deWei(m.vol24h, 2);
       return `
       <tr class="ms-fila" onclick="ONX.vista('mercado', ${jsTxt(par)})">
@@ -417,6 +650,9 @@ const VMERCADO = (() => {
       <div class="cab"><div><h2>${esc(tx('t'))}</h2></div></div>
       <div class="vidrio bloque"><div class="vacio"><b>${esc(tx('parRaro'))}</b>${esc(tx('parRaroP'))}</div></div>`;
     }
+    // La pestaña con la que abre este mercado se decide aquí, antes de escribir
+    // una sola etiqueta: el selector sale pintado ya en su sitio.
+    prepararFuente(par);
     const ficha = CADENA.ficha(sim, idi());
     return `${ESTILO}
     <div class="cab">
@@ -434,14 +670,12 @@ const VMERCADO = (() => {
     <div class="vm-rejilla">
       <div>
         <div class="vidrio bloque">
-          <div class="vm-marcos" role="group" aria-label="Marco">
-            ${MARCOS.map(m => `<button data-marco="${m}" aria-pressed="${String(m === marcoActual)}"
-              onclick="VMERCADO.marco(${jsTxt(m)})">${m}</button>`).join('')}
-          </div>
+          <div class="vm-cabgraf" id="vm-cabgraf">${cabGrafica(par)}</div>
           <div class="vm-lienzo">
             <canvas id="vm-velas"></canvas>
             <div class="vm-nota" id="vm-velas-nota"></div>
           </div>
+          <div id="vm-bajo">${bajoGrafica(par)}</div>
         </div>
         <div class="vidrio bloque" id="vm-form-caja">${cajaOperar(sim)}</div>
       </div>
@@ -482,32 +716,120 @@ const VMERCADO = (() => {
     const u = deWei(m.ultimo, 4);
     ultimo.textContent = u == null ? '—' : u;
     if (cambio) cambio.innerHTML = pastillaCambio(m.cambio24h);
-    const r = deWei(m.referencia, 4);
-    // La referencia SIEMPRE con su rótulo: es un dato del feed, no un trato.
-    if (ref) ref.textContent = r == null ? '' : `${tx('refRot')}: ${r} ORIGEN`;
+    const r = refUsd(m);
+    /* La referencia SIEMPRE con su rótulo y con su unidad: es el cartel del
+       metal en dólares, no la última operación. Debajo va el precio de la casa
+       en ORIGEN; que cada número diga en qué está medido es lo que impide
+       leerlos como si fueran el mismo. */
+    if (ref) ref.textContent = r == null ? '' : `${tx('refRot')}: ${r}`;
     if (medio) medio.innerHTML = `${u == null ? '—' : esc(u)} <small>ORIGEN</small>`;
+
+    /* La corrección de una sola vez: si la pestaña se eligió a ciegas —sin la
+       lista leída— y resulta que este mercado SÍ tiene tratos, mandan los
+       tratos. Ocurre una vez o ninguna, y jamás contra un dedo humano: en
+       cuanto alguien toca el selector, fuenteFirme queda en true para siempre. */
+    if (!fuenteFirme) {
+      fuenteFirme = true;
+      if (m.ultimo != null && fuenteActual !== 'tratos') {
+        fuenteActual = 'tratos';
+        pintarCabGrafica();
+        relojGrafica();
+        return;
+      }
+    }
     pintarVelas(); // la línea de referencia de la gráfica sale de este dato
   }
 
-  // ── las velas ─────────────────────────────────────────────────────────────
+  // ══ LA GRÁFICA: DOS FUENTES QUE NO SE MEZCLAN ═════════════════════════════
 
-  function marco(m) {
-    if (!MARCOS.includes(m) || m === marcoActual) return;
-    marcoActual = m;
-    document.querySelectorAll('.vm-marcos button').forEach(b =>
-      b.setAttribute('aria-pressed', String(b.dataset.marco === m)));
-    velasCache = null;   // las velas de un marco no dibujan otro
-    cargarVelas();
+  // ── la cabecera: el selector de fuente y los marcos de la fuente activa ────
+
+  /* El selector solo existe donde hay algo que elegir: en los doce tokens de
+     sector no se dibuja, y punto. Una pestaña que al pulsarla contesta «este
+     activo no tiene referencia» es una promesa rota dibujada a propósito. */
+  function selectorFuente(par) {
+    if (!hayRef(par)) return '';
+    const b = (f, k) => `<button data-fuente="${f}" aria-pressed="${String(f === fuenteActual)}"
+      onclick="VMERCADO.fuente(${jsTxt(f)})">${esc(tx(k))}</button>`;
+    return `<div class="vm-fuentes" role="group" aria-label="${esc(tx('fuente'))}">
+      ${b('tratos', 'fTratos')}${b('referencia', 'fRef')}</div>`;
   }
 
-  async function cargarVelas() {
-    let v;
-    try { v = await DATOS.velas(parActual, marcoActual); } catch {
-      if (!velasCache) notaVelas(tx('velasNo'));
-      return;
+  // Los marcos son los de la fuente activa: al cambiar de fuente se cambia el
+  // juego entero, porque un '1m' de metal o un '4d' de tratos no existen.
+  function botonesMarco() {
+    const activo = marcoDe();
+    return `<div class="vm-marcos" id="vm-marcos" role="group" aria-label="Marco">
+      ${marcosDe(fuenteActual).map(m => `<button data-marco="${m}" aria-pressed="${String(m === activo)}"
+        onclick="VMERCADO.marco(${jsTxt(m)})">${m}</button>`).join('')}</div>`;
+  }
+
+  const cabGrafica = par => selectorFuente(par) + botonesMarco();
+
+  /* Lo que va DEBAJO de la gráfica, que cambia con la fuente:
+     · en referencia, el rótulo — la promesa del contrato escrita al pie, y
+       con la hora del dato: una referencia sin hora es media referencia;
+     · en los tratos de AUKA, la nota que explica por qué esa gráfica es plana;
+     · en los tratos de un token que aún no tiene mercado, dónde nace su
+       precio. Esa línea se va sola en cuanto haya velas: entonces el precio ya
+       nació y decir dónde nace sobra. */
+  function bajoGrafica(par) {
+    if (fuenteActual === 'referencia') {
+      if (!refCache) return '';
+      const cuando = Number(refCache.actualizadoEn);
+      const pie = [
+        refCache.fuente || '',
+        Number.isFinite(cuando) && cuando > 0 ? rell(tx('refCuando'), { hora: hora(cuando) }) : '',
+      ].filter(Boolean).join(' · ');
+      return `<div class="vm-rotulo">
+        <b>${esc(tx('refBadge'))}</b><span>${esc(rotuloRef())}</span>
+        ${pie ? `<small>${esc(pie)}</small>` : ''}</div>`;
     }
-    velasCache = Array.isArray(v) ? v : [];
+    if (CADENA.baseDe(par) === 'AUKA') {
+      return `<div class="vm-prod"><b>${esc(tx('aukaT'))}</b>${esc(tx('aukaP'))}</div>`;
+    }
+    if (!hayRef(par) && Array.isArray(velasCache) && velasCache.length === 0) {
+      return `<div class="vm-prod">${esc(tx('sectorP'))}</div>`;
+    }
+    return '';
+  }
+
+  function pintarBajo() {
+    const el = $('vm-bajo');
+    if (el) el.innerHTML = bajoGrafica(parActual);
+  }
+
+  // Repinta la cabecera entera y lo de abajo: es lo que hace un cambio de
+  // fuente, que se lleva por delante el juego de marcos y el rótulo.
+  function pintarCabGrafica() {
+    const caja = $('vm-cabgraf');
+    if (caja) caja.innerHTML = cabGrafica(parActual);
+    pintarBajo();
     pintarVelas();
+  }
+
+  // ── los mandos ────────────────────────────────────────────────────────────
+
+  function fuente(f) {
+    if (f !== 'tratos' && f !== 'referencia') return;
+    if (f === 'referencia' && !hayRef(parActual)) return;
+    fuenteFirme = true;         // decisión humana: ya nadie la corrige por detrás
+    if (f === fuenteActual) return;
+    fuenteActual = f;
+    notaVelas('');
+    pintarCabGrafica();
+    relojGrafica();             // otra fuente, otro ritmo — y un tirón inmediato
+  }
+
+  function marco(m) {
+    if (!marcosDe(fuenteActual).includes(m) || m === marcoDe()) return;
+    marcos[fuenteActual] = m;
+    document.querySelectorAll('#vm-marcos button').forEach(b =>
+      b.setAttribute('aria-pressed', String(b.dataset.marco === m)));
+    // Las velas de un marco no dibujan otro — cada fuente tira las suyas.
+    if (fuenteActual === 'referencia') refCache = null; else velasCache = null;
+    notaVelas('');
+    cargarGrafica();
   }
 
   function notaVelas(txt) {
@@ -515,28 +837,173 @@ const VMERCADO = (() => {
     if (n) n.textContent = txt || '';
   }
 
+  // ── traer los datos ───────────────────────────────────────────────────────
+
+  const cargarGrafica = () => (fuenteActual === 'referencia' ? cargarReferencia() : cargarVelas());
+
+  async function cargarVelas() {
+    const par = parActual, marco = marcos.tratos;
+    let v;
+    try { v = await DATOS.velas(par, marco); } catch {
+      if (!velasCache) notaVelas(tx('velasNo'));
+      return;
+    }
+    // Una respuesta que llega tarde es de OTRA pantalla: pintarla rotulada con
+    // el marco de ahora sería etiquetar unas velas con un marco que no es suyo.
+    if (par !== parActual || marco !== marcos.tratos) return;
+    velasCache = Array.isArray(v) ? v : [];
+    if (fuenteActual === 'tratos') { pintarVelas(); pintarBajo(); }
+  }
+
+  async function cargarReferencia() {
+    const par = parActual, marco = marcos.referencia;
+    let d;
+    try { d = await DATOS.referencia(par, marco); } catch (e) {
+      if (e?.codigo === 'SIN_REFERENCIA') { sinReferencia(par); return; }
+      if (!refCache) notaVelas(tx('refNo'));
+      return;
+    }
+    if (par !== parActual || marco !== marcos.referencia) return;
+    refCache = d && Array.isArray(d.velas) ? d : { velas: [] };
+    if (fuenteActual === 'referencia') { pintarVelas(); pintarBajo(); }
+  }
+
+  /* El API retiró la referencia de este activo —o nunca la tuvo y la lista
+     blanca de aquí se quedó vieja—: manda él. Se olvida la pestaña, la sala
+     vuelve a tratos y la gráfica de tratos sigue en pie, que es lo que este
+     mercado sí es. Fail-closed: ante la duda se enseña de menos, no de más. */
+  function sinReferencia(par) {
+    if (par !== parActual) return;
+    refCache = null;
+    referenciaNegada = true;
+    if (fuenteActual !== 'tratos') { fuenteActual = 'tratos'; fuenteFirme = true; }
+    notaVelas('');
+    pintarCabGrafica();
+    relojGrafica();
+  }
+
+  // ── pintarla ──────────────────────────────────────────────────────────────
+
   /* El canvas se dimensiona acá, a píxeles físicos, antes de cada dibujo: un
      canvas sin medidas dibuja borroso en pantallas densas, y VELAS recibe el
-     lienzo listo para no repetir esa cuenta en cada módulo que la use. */
+     lienzo listo para no repetir esa cuenta en cada módulo que la use.
+     Asignar width además BORRA el lienzo, que es justo lo que hace falta
+     cuando no hay nada honesto que pintar encima. */
+  function medirLienzo(c, dpr) {
+    const ancho = c.parentElement ? c.parentElement.clientWidth : 600;
+    c.width = Math.max(1, Math.round(ancho * dpr));
+    c.height = Math.round(340 * dpr);
+  }
+
+  /* Cuántos decimales pide un precio en dólares. Es una decisión de PANTALLA
+     sobre números que ya nacieron flotantes en el feed —el dólar del metal no
+     es dinero de esta casa y con él no se opera—, así que mirar su magnitud
+     con Number no rompe ninguna regla: nadie compra a este número. La onza de
+     oro ronda los cuatro mil y con dos decimales sobra; el gramín de ORIGEN
+     ronda los dos dólares, y con dos decimales se perdería justo el movimiento
+     que la persona vino a ver. */
+  function decimalesUSD(velas) {
+    const u = velas[velas.length - 1];
+    const cierre = Math.abs(Number(Array.isArray(u) ? u[4] : u?.c));
+    if (!isFinite(cierre) || cierre === 0) return 4;
+    return cierre >= 100 ? 2 : (cierre >= 1 ? 4 : 6);
+  }
+
+  /* De QUÉ activo es el cartel del metal: 'AUKA', no 'AUKA-ORIGEN'.
+     La distinción no es cosmética. 'AUKA-ORIGEN' es un PAR de esta casa y se
+     cotiza en ORIGEN —1710,69, hoy y siempre—; 'AUKA' es la onza y se cotiza
+     contra el dólar. La serie de referencia es lo segundo, así que se rotula
+     con lo segundo. Manda el `activo` que declara el API; la base del par es
+     el respaldo si no viniera. */
+  function activoRef() {
+    const a = refCache?.activo;
+    if (typeof a === 'string' && a) return a;
+    return String(parActual || '').split('-')[0];
+  }
+
+  // El rótulo de la referencia en el idioma de la sala. El del API (que viene
+  // en español) es el respaldo: un activo con referencia nueva no se queda
+  // mudo por no tener todavía su texto acá.
+  function rotuloRef() {
+    const a = refCache?.activo;
+    const k = a ? 'ref' + a : '';
+    if (k && TXT.es[k]) return tx(k);
+    return refCache?.rotulo || tx('refRot');
+  }
+
   function pintarVelas() {
     const c = $('vm-velas');
     if (!c) return;
     if (typeof VELAS === 'undefined') { notaVelas(tx('velasSin')); return; }
-    if (!velasCache) return;               // aún sin respuesta: ni nota ni dibujo en falso
-    if (!velasCache.length) { notaVelas(tx('sinVelas')); }
-    else notaVelas('');
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const ancho = c.parentElement ? c.parentElement.clientWidth : 600;
-    c.width = Math.max(1, Math.round(ancho * dpr));
-    c.height = Math.round(340 * dpr);
+
+    if (fuenteActual === 'referencia') {
+      if (!refCache) return;              // aún sin respuesta: ni nota ni dibujo en falso
+      const velas = Array.isArray(refCache.velas) ? refCache.velas : [];
+      if (!velas.length) {
+        /* Cero velas de referencia NO es «sin tratos»: es el cartel del metal
+           que todavía no llegó. La gráfica no sabe decir eso —su vacío habla
+           de tratos— así que aquí no se la llama, se limpia el lienzo y lo
+           dice esta sala con sus palabras. */
+        medirLienzo(c, dpr);
+        /* Y se le retira el rótulo accesible, que asignar `width` NO borra:
+           el lienzo queda en blanco pero el aria-label del dibujo anterior
+           seguiría prometiendo «180 velas · último 4.424 USD» a quien no
+           puede ver que ahí ya no hay nada. Un lienzo vacío que se anuncia
+           lleno es la misma mentira de siempre, escrita para quien no puede
+           verla — y esa es justo la que hay que perseguir más. */
+        c.setAttribute('aria-label', `${activoRef()} · ${tx('refVacia')}`);
+        notaVelas(tx('refVacia'));
+        return;
+      }
+      notaVelas('');
+      medirLienzo(c, dpr);
+      try {
+        VELAS.dibujar(c, velas, {
+          unidad: 'USD',                  // el dólar ya implica referencia; el badge va igual
+          decimales: decimalesUSD(velas),
+          /* El ACTIVO, no el par. Esta gráfica es la onza de oro en DÓLARES;
+             el par 'AUKA-ORIGEN' se cotiza en ORIGEN y vale 1710,69 clavado.
+             Rotular esta serie «AUKA-ORIGEN · 4.424 USD» diría dos cosas
+             falsas de un tirón: que ese par vale eso, y que vale en dólares.
+             El API ya manda el activo suelto justamente para esto. */
+          par: activoRef(),
+          marco: marcoDe(),
+          rotulo: rotuloRef(),
+          referencia: true,               // TODA la gráfica es referencia, no una línea suelta
+          emas: [9, 21, 55],
+          dpr,
+          idioma: idi(),
+        });
+      } catch { notaVelas(tx('refNo')); }
+      return;
+    }
+
+    if (!velasCache) return;
+    /* El lienzo vacío de tratos lo escribe la propia gráfica —«sin tratos
+       todavía», con su rejilla, sus ejes y su marco— y por eso aquí no se
+       repite: dos veces el mismo mensaje, uno encima del otro, no es el doble
+       de honesto. Esta nota queda para lo que la gráfica no puede saber: que
+       la respuesta no llegó. */
+    notaVelas('');
+    medirLienzo(c, dpr);
     const m = (mercadosCache || []).find(x => x.mercado === parActual);
     try {
       VELAS.dibujar(c, velasCache, {
-        marco: marcoActual,
+        unidad: 'ORIGEN',
+        decimales: 4,                     // los mismos 4 del libro, la tira y la cabecera
+        par: parActual,
+        marco: marcoDe(),
+        emas: [9, 21, 55],
+        /* Esto es una LÍNEA de referencia sobre los tratos, no la gráfica
+           entera: por eso va un valor —string de wei de ORIGEN— y no `true`.
+           Pasar aquí el objeto crudo del API haría que VELAS marcase de
+           REFERENCIA una gráfica de tratos reales: la misma mentira del
+           revés, y tan mentira como la otra. */
+        referencia: refEnOrigen(m),
+        rotulo: tx('refRot'),
         dpr,
         idioma: idi(),
-        referencia: m?.referencia ?? null,
-        rotulo: tx('refRot'),
       });
     } catch { notaVelas(tx('velasNo')); }
   }
@@ -965,6 +1432,22 @@ const VMERCADO = (() => {
 
   // ── el ciclo de vida: alPintar arranca los relojes, apagar los para ───────
 
+  /* El reloj de la gráfica, que se cambia entero cada vez que cambia la
+     fuente: 30 s para los tratos (el ritmo del contrato) y 60 s para la
+     referencia, porque el backend refresca el metal cada quince minutos y
+     pedirlo más seguido es tráfico que no trae dato nuevo. DATOS.sondeo
+     dispara al montarse, así que esto además es el tirón inmediato al cambiar
+     de pestaña. El parador viejo se para Y se saca de la lista: dejarlo ahí
+     haría que apagar() corriera paradores muertos por cada cambio de fuente. */
+  function relojGrafica() {
+    if (pararGrafica) {
+      try { pararGrafica(); } catch {}
+      paradores = paradores.filter(p => p !== pararGrafica);
+    }
+    pararGrafica = DATOS.sondeo(cargarGrafica, fuenteActual === 'referencia' ? 60000 : 30000);
+    paradores.push(pararGrafica);
+  }
+
   function alPintar(cual, par) {
     apagar(); // idempotencia barata: nunca dos juegos de relojes a la vez
 
@@ -978,19 +1461,24 @@ const VMERCADO = (() => {
     if (parNuevo !== parActual) {
       // Otro par = otra sala: nada de lo cacheado del anterior sirve, y un
       // libro ajeno estimando costos sería un número inventado con esmero.
-      libroCache = null; tratosCache = null; velasCache = null; ordenesCache = null;
+      libroCache = null; tratosCache = null; velasCache = null; refCache = null; ordenesCache = null;
     }
     parActual = parNuevo;
     ordenKeyViva = null;
     if (!CADENA.baseDe(parActual)) return; // la vista ya dijo que el par no existe
+    // Normalmente ya lo hizo vistaMercado; esto cubre el caso de pintar la sala
+    // sin pasar por ella (una prueba, un recorte de la vista) sin decidir dos
+    // veces: prepararFuente es idempotente por par.
+    prepararFuente(parActual);
 
-    // Los relojes del contrato: libro y tratos cada 5 s, velas cada 30 s, la
-    // cabecera con el reloj de mercados (10 s). Todos visible-only vía
-    // DATOS.sondeo, y todos disparan una primera vez al arrancar.
+    // Los relojes del contrato: libro y tratos cada 5 s, la cabecera con el
+    // reloj de mercados (10 s) y la gráfica con el suyo, que va aparte porque
+    // cambia de ritmo con la fuente. Todos visible-only vía DATOS.sondeo, y
+    // todos disparan una primera vez al arrancar.
     paradores.push(DATOS.sondeo(cargarLibro, 5000));
     paradores.push(DATOS.sondeo(cargarTratos, 5000));
-    paradores.push(DATOS.sondeo(cargarVelas, 30000));
     paradores.push(DATOS.sondeo(cargarCab, 10000));
+    relojGrafica();
 
     if (DATOS.haySesion()) {
       cuentas = null;          // fail-closed hasta que el portafolio conteste
@@ -1008,14 +1496,23 @@ const VMERCADO = (() => {
   function apagar() {
     paradores.forEach(p => { try { p(); } catch {} });
     paradores = [];
+    pararGrafica = null;
     if (alResize) { removeEventListener('resize', alResize); alResize = null; }
   }
 
   return {
     vistaMercados, vistaMercado, alPintar, apagar,
-    marco, lado, tipo, usarPrecio, recalcular, maximo, colocar, quitar,
+    marco, fuente, lado, tipo, usarPrecio, recalcular, maximo, colocar, quitar,
     // Para las pruebas, como _piezas en qr.js: los textos y las cuentas puras.
     _txt: () => TXT,
-    _puros: { texto, notionalDe, costoDeMercado: c => costoDeMercado(c), validar: () => validar() },
+    _puros: {
+      texto, notionalDe, costoDeMercado: c => costoDeMercado(c), validar: () => validar(),
+      // Las decisiones de fuente son puras y se prueban sin navegador: qué
+      // mercado tiene cartel del metal, con qué pestaña abre y qué marcos le
+      // tocan a cada una.
+      MARCOS, CON_REFERENCIA, hayRef, marcosDe, decimalesUSD, refEnOrigen,
+      fuenteInicial: p => fuenteInicial(p),
+      estado: () => ({ fuente: fuenteActual, firme: fuenteFirme, marcos: { ...marcos } }),
+    },
   };
 })();

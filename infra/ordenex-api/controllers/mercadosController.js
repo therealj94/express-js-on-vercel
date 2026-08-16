@@ -11,6 +11,15 @@ const { MERCADOS } = require('../lib/tokens');
 const motor = require('../lib/motor');
 const { MARCOS, resumen24h } = require('../lib/velas');
 const { referenciaDe } = require('../lib/referencia');
+// Las velas de referencia son otra cosa que el precio puntual de referencia.js:
+// aquel es el numero de ahora para la lista de mercados, estas son la serie
+// historica del metal para la grafica. Mismo feed, distinta forma.
+const {
+  MARCOS_REF,
+  REFERENCIAS,
+  activoDeReferencia,
+  leer: leerReferencia,
+} = require('../lib/referenciaVelas');
 const { Trato, Vela } = require('../models');
 
 // El libro enseña 20 niveles por lado: mas que eso no cabe en una pantalla y
@@ -194,4 +203,81 @@ async function tratos(req, res, next) {
   }
 }
 
-module.exports = { listar, libro, velas, tratos };
+// ── GET /mercados/:par/referencia ───────────────────────────────────────────
+//
+// La OTRA clase de vela, por su propia puerta y con su propio rotulo.
+//
+// /velas sirve TRATOS de esta casa, en ORIGEN. Esta ruta sirve REFERENCIA del
+// metal de verdad, en dolares. Son rutas distintas a proposito: mientras un
+// mercado no tenga tratos, /velas devuelve [] — vacio y honesto — y quien
+// quiera pintar el cartel del oro al lado tiene que venir aqui y llevarse el
+// `rotulo` puesto. Nada de fundir las dos series en un array y dejar que el
+// frontend adivine cual es cual.
+//
+// El volumen viaja SIEMPRE null, en la sexta posicion de cada vela, y eso
+// tambien es deliberado: del mercado del metal no tenemos volumen, y un cero
+// en esa casilla se leeria como "no se movio nada", que es una afirmacion que
+// no podemos hacer. La forma de seis campos se mantiene para que el mismo
+// dibujante de velas sirva para las dos series; null dice "no se sabe", cero
+// diria "no hubo". No es lo mismo.
+//
+// 404 SIN_REFERENCIA para todo lo que no sea AUKA, AGKA u ORIGEN: los tokens
+// de sector no tienen mercado real de donde sacar una linea, y la respuesta
+// correcta es decirlo. La grafica se dibuja igual —rejilla, ejes, marco— pero
+// vacia y con el motivo escrito; inventarle una linea plana seria exactamente
+// el numero inventado que prohibe el contrato.
+function referenciaVela(v) {
+  return [v.t0, v.o, v.h, v.l, v.c, null];
+}
+
+/** GET /mercados/:par/referencia?marco=30m|4h|4d */
+async function referencia(req, res, next) {
+  try {
+    const par = String(req.params.par);
+
+    // Se admite un mercado de la casa ('AUKA-ORIGEN') o el ORIGEN a secas: la
+    // pata comun de todos los mercados tambien tiene su cartel, y no existe un
+    // par 'ORIGEN-algo' donde colgarlo.
+    if (!MERCADOS.includes(par) && par !== 'ORIGEN') return mercadoInvalido(res);
+
+    const activo = activoDeReferencia(par);
+    if (!activo) {
+      return res.status(404).json({
+        error: 'Este activo no tiene mercado real de referencia: no hay oro ni plata detras que citar.',
+        codigo: 'SIN_REFERENCIA',
+      });
+    }
+
+    const marco = String(req.query.marco || MARCOS_REF[0]);
+    if (!MARCOS_REF.includes(marco)) {
+      return res.status(400).json({
+        error: `El marco de referencia tiene que ser uno de: ${MARCOS_REF.join(', ')}.`,
+        codigo: 'MARCO_INVALIDO',
+      });
+    }
+
+    const docs = await leerReferencia(activo, marco);
+
+    // `actualizadoEn` sale de lo GUARDADO, no de un reloj de este proceso: tras
+    // un reinicio el dato sigue siendo de cuando se leyo, y el rotulo tiene que
+    // poder decirlo. Sin velas va null — jamas `Date.now()` de consuelo, que
+    // haria pasar por fresco un cartel vacio.
+    const actualizadoEn = docs.length
+      ? Math.max(...docs.map((d) => new Date(d.updatedAt ?? 0).getTime()))
+      : null;
+
+    const { rotulo, fuente } = REFERENCIAS[activo];
+    res.json({
+      activo,
+      unidad: 'USD',
+      rotulo,
+      fuente,
+      actualizadoEn: Number.isFinite(actualizadoEn) && actualizadoEn > 0 ? actualizadoEn : null,
+      velas: docs.map(referenciaVela),
+    });
+  } catch (e) {
+    next(e);
+  }
+}
+
+module.exports = { listar, libro, velas, tratos, referencia };

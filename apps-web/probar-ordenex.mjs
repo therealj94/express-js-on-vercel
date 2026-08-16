@@ -108,15 +108,48 @@ const conSesion = q => (q.headers.authorization || '') === 'Bearer ' + JWT;
 /* El API contesta el contrato y NADA más: una ruta que no está en DISENO.md
    cae al servidor estático y de ahí al 404 — si la web pide algo fuera del
    contrato, esta prueba lo va a enseñar como un fallo, que es lo que es. */
+/* Velas de referencia: dólares (Number, no wei) y SIN volumen — es la forma
+   exacta que manda el API, y el null del volumen es lo que hace que la banda
+   no se dibuje. Arrancan en 4000 para que se reconozcan de un vistazo. */
+const VELAS_REF = Array.from({ length: 90 }, (_, i) => {
+  const base = 4000 + Math.round(Math.sin(i / 7) * 120) + i * 2;
+  return [1786000000000 + i * 14400000, base, base + 18, base - 15, base + 6, null];
+});
+
 async function api(q, r, ruta, busca) {
   const un = ruta.match(/^\/mercados\/([^/]+)\/(libro|velas|tratos)$/);
+
+  /* LA REFERENCIA DEL METAL. Faltaba en este fingido, y por ese hueco pasaron
+     dos mentiras que sobrevivieron a siete suites en verde: la pestaña entera
+     del cartel del oro no se ejecutaba nunca dentro de una prueba de la casa.
+     Un fingido que no sirve una ruta del contrato no es un fingido incompleto:
+     es un punto ciego, y los puntos ciegos se llenan de bugs. */
+  const ref = ruta.match(/^\/mercados\/([^/]+)\/referencia$/);
+  if (q.method === 'GET' && ref) {
+    llamadas.push({ ruta, metodo: 'GET' });
+    const base = ref[1].split('-')[0];
+    if (!['AUKA', 'AGKA', 'ORIGEN'].includes(base)) {
+      return json(r, 404, { error: 'Este activo no tiene referencia.', codigo: 'SIN_REFERENCIA' });
+    }
+    return json(r, 200, {
+      activo: base, unidad: 'USD',
+      rotulo: 'Onza de oro en el mercado real, en dólares. No son tratos de Ordenex.',
+      fuente: 'fingido · pax-gold', actualizadoEn: 1786900000000,
+      velas: VELAS_REF,
+    });
+  }
 
   if (q.method === 'GET' && ruta === '/mercados') return json(r, 200, MERCADOS);
   if (q.method === 'GET' && un) {
     llamadas.push({ ruta, metodo: 'GET' });
-    if (un[2] === 'libro') return json(r, 200, LIBRO);
-    if (un[2] === 'velas') return json(r, 200, VELAS_FINGE);
-    return json(r, 200, TRATOS);
+    /* Solo los mercados que la lista declara CON precio tienen velas y tratos.
+       Antes este fingido servía velas para cualquier par, IBS incluido — y un
+       fingido que le inventa historia a un token que nunca se operó no prueba
+       la regla, la tapa. La realidad es la que manda: sin tratos, [] . */
+    const vivo = MERCADOS.some(m => m.mercado === un[1] && m.ultimo != null);
+    if (un[2] === 'libro') return json(r, 200, vivo ? LIBRO : { compras: [], ventas: [] });
+    if (un[2] === 'velas') return json(r, 200, vivo ? VELAS_FINGE : []);
+    return json(r, 200, vivo ? TRATOS : []);
   }
 
   if (q.method === 'POST' && ruta === '/auth/sso') {
@@ -410,6 +443,102 @@ console.log('\n── el portafolio ──────────────�
 }
 
 // ── 7 · fiat: agentes a la vista, cuentas bancarias jamás ──────────────────
+// ── las dos clases de vela, que es la promesa que sostiene todo ────────────
+// Aquí murieron dos bugs que sobrevivieron a siete suites en verde. Cada
+// comprobación de este bloque es la lápida de uno.
+console.log('\n── la referencia del metal, y su frontera ─────────────────────');
+{
+  await p.evaluate(() => ONX.vista('mercado', 'AUKA-ORIGEN'));
+  await p.waitForTimeout(1500);
+
+  const pest = await p.evaluate(() =>
+    [...document.querySelectorAll('#lienzo button')].map(b => b.textContent.trim()));
+  decir(pest.some(t => /Referencia/i.test(t)), 'AUKA tiene pestaña de Referencia');
+
+  /* La nota del ratio vive junto a la gráfica de TRATOS —es donde tiene
+     sentido: explica por qué ESA gráfica es plana— así que se lee ahora,
+     antes de cambiar de pestaña. */
+  const enTratos = await p.evaluate(() => document.querySelector('#lienzo').innerText);
+  decir(/1[.,]?710/.test(enTratos.replace(/\s/g, '')),
+    'y junto a los tratos, la nota del ratio constante',
+    (enTratos.match(/.{0,50}710.{0,30}/) || [''])[0]);
+
+  // La tinta de una gráfica LLENA, para calibrar la del mercado vacío.
+  const tintaLlena = await p.evaluate(() => {
+    const c = document.querySelector('#lienzo canvas'); if (!c) return 0;
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i+3] > 20 && ((d[i+1] > 150 && d[i] < 110 && d[i+2] > 120) || (d[i] > 190 && d[i+1] < 140 && d[i+2] < 130))) n++;
+    }
+    return n;
+  });
+  globalThis.__tintaLlena = tintaLlena;
+
+  /* Este AUKA fingido SÍ tiene tratos, así que la sala abre —bien— en Tratos:
+     el cartel del metal es para cuando no hay nada propio que enseñar. Se
+     toca la pestaña, que es lo que haría una persona. */
+  await p.evaluate(() => [...document.querySelectorAll('#lienzo button')]
+    .find(b => /Referencia/i.test(b.textContent))?.click());
+  await p.waitForTimeout(1200);
+
+  const pidio = llamadas.some(l => /\/mercados\/AUKA-ORIGEN\/referencia/.test(l.ruta));
+  decir(pidio, 'y al tocarla, la sala la pide al API de verdad');
+
+  const txt = await p.evaluate(() => document.querySelector('#lienzo').textContent);
+  decir(/REFERENCIA/i.test(txt) && /d[óo]lares/i.test(txt),
+    'el rótulo está a la vista y dice dólares');
+  decir(/No son tratos de Ordenex/i.test(txt),
+    'y dice con todas las letras que no son tratos de la casa');
+
+  // La mentira A: el lienzo se anunciaba como el PAR (que vale 1710 ORIGEN)
+  // mientras enseñaba el oro (que vale 4000 USD).
+  const aria = await p.evaluate(() => document.querySelector('#lienzo canvas')?.getAttribute('aria-label') || '');
+  decir(!/AUKA-ORIGEN/.test(aria), 'el lienzo del metal NO se anuncia como el par de la casa', aria.slice(0, 90));
+  decir(/USD/.test(aria), 'sino en dólares, y lo dice para quien no puede verlo');
+
+}
+
+console.log('\n── un token de sector no inventa nada ────────────────────────');
+{
+  await p.evaluate(() => ONX.vista('mercado', 'IBS-ORIGEN'));
+  await p.waitForTimeout(1500);
+  /* innerText y NO textContent: el módulo inyecta su CSS en un <style> dentro
+     de la vista, y textContent se traga hasta los comentarios de esa hoja.
+     Buscar «referencia» ahí daba un falso positivo por un comentario del
+     código. Lo que importa es lo que la persona LEE. */
+  const t = await p.evaluate(() => document.querySelector('#lienzo').innerText);
+  decir(!/REFERENCIA/i.test(t), 'IBS no enseña ninguna pestaña ni rótulo de referencia');
+  decir(!/\$/.test(t), 'ni un solo signo de dólar en toda la pantalla');
+  // Ni un precio prestado de los que sí existen.
+  decir(!/4[.,]?3\d\d/.test(t) && !/1[.,]?710/.test(t) && !/2[.,]5\d/.test(t),
+    'ni un precio prestado del oro, del ratio o del gramin');
+  decir(/tratos todav[íi]a|primera orden|libro/i.test(t),
+    'y sí dice por qué está vacío y dónde nace su precio');
+
+  // El lienzo vacío tiene que estar VACÍO de velas, no solo parecerlo.
+  const pintado = await p.evaluate(() => {
+    const c = document.querySelector('#lienzo canvas'); if (!c) return null;
+    const g = c.getContext('2d');
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    let jade = 0, coral = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i+1] > 150 && d[i] < 110 && d[i+2] > 120) jade++;
+      if (d[i] > 190 && d[i+1] < 140 && d[i+2] < 130) coral++;
+    }
+    return { jade, coral };
+  });
+  /* Se calibra contra la gráfica LLENA de AUKA en vez de contra un número
+     mágico: el umbral se mueve solo si mañana cambian los colores o el
+     tamaño. Un residuo de antialias es tres órdenes de magnitud menor que
+     una sola vela; si aquí hubiera velas, la cuenta se dispararía. */
+  const tinta = (pintado?.jade || 0) + (pintado?.coral || 0);
+  const llena = globalThis.__tintaLlena || 1;
+  decir(tinta < llena / 100,
+    'y no hay ni una vela escondida en el lienzo',
+    `vacío ${tinta} px vs llena ${llena} px`);
+}
+
 console.log('\n── el circuito fiat ──────────────────────────────────────────');
 {
   await p.evaluate(() => ONX.vista('fiat'));
