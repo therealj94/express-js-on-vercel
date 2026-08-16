@@ -28,7 +28,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { C, G } from '../theme';
 import { useLang } from '../i18n';
 import { hap } from '../ui';
-import { traducir, EJEMPLOS } from '../intencion';
+import { traducir, EJEMPLOS, masParecido } from '../intencion';
 import { enExpoGo } from './entorno';
 import { aUri, MAPA, abrir } from './rutas';
 import { decir, callar } from '../voz';
@@ -483,7 +483,14 @@ export default function FlotanteOG({ nav }) {
     const r = traducir(f, libreta, nombre);
     // no entendido = fase NO ENTENDÍ, nunca «entendí» sobre lo contrario;
     // y la voz contesta en UNA frase corta — el detalle queda escrito
-    if (!r) { setOido({ frase: f, aviso: t.fuera }); setFase('noEntendi'); decir(t.fueraVoz, lang); return; }
+    // No entendido no puede ser una puerta cerrada: se dice que no se
+    // entendió Y se enseña lo más parecido que SÍ se entiende. La hoja ya
+    // sabe pintar ejemplos —los usa la ayuda—, así que aquí solo hay que
+    // dárselos.
+    if (!r) {
+      setOido({ frase: f, aviso: t.fuera, ejemplos: masParecido(f, lang) });
+      setFase('noEntendi'); decir(t.fueraVoz, lang); return;
+    }
     if (r.falla) {
       const msg = r.falla === 'sinContacto' ? t.sinContacto : t.sinMonto;
       const voz = r.falla === 'sinContacto' ? t.sinContactoVoz : t.sinMonto;

@@ -232,3 +232,26 @@ export const EJEMPLOS = {
        'i want chinese food', 'find me a pharmacy',
        'send Juan a message saying on my way'],
 };
+
+// ── LO MÁS PARECIDO ───────────────────────────────────────────────────────
+// «No te entendí» y punto es una puerta cerrada: la persona no sabe si
+// preguntó mal, si la app no sirve o si tiene que rendirse. Cuando el
+// traductor devuelve null, esto busca entre los ejemplos QUE SÍ entiende los
+// que más se parecen a lo que se dijo, y la hoja los enseña.
+//
+// Es tosco a propósito —palabras compartidas, sin diccionario ni modelo—
+// porque tiene que caber aquí y correr en un teléfono barato sin pedirle nada
+// a nadie. Si nada se parece lo bastante, devuelve los de siempre: nunca una
+// lista vacía, que sería la misma puerta cerrada con más pasos.
+export function masParecido(frase, lang, cuantos = 3) {
+  const todos = EJEMPLOS[lang] || EJEMPLOS.es;
+  const dichas = sinTildes(frase).split(/[^a-z0-9]+/).filter((x) => x.length > 2);
+  if (!dichas.length) return todos.slice(0, cuantos);
+  const puntos = (ej) => sinTildes(ej).split(/[^a-z0-9]+/).filter((x) => x.length > 2)
+    .reduce((s, p) => s + dichas.reduce((t2, x) =>
+      t2 + (p.startsWith(x) || x.startsWith(p) ? Math.min(p.length, x.length) : 0), 0), 0);
+  const marcados = todos.map((ej) => ({ ej, pts: puntos(ej) }))
+    .filter((o) => o.pts >= 3)
+    .sort((a, b) => b.pts - a.pts);
+  return (marcados.length ? marcados.map((o) => o.ej) : todos).slice(0, cuantos);
+}

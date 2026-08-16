@@ -10,8 +10,8 @@ const fs = require('fs');
 const path = require('path');
 
 const fuente = fs.readFileSync(path.join(__dirname, '..', 'src', 'intencion.js'), 'utf8');
-const fabrica = new Function(fuente.replace(/^export /gm, '') + '\nreturn { traducir, EJEMPLOS, sinTildes };');
-const { traducir, EJEMPLOS } = fabrica();
+const fabrica = new Function(fuente.replace(/^export /gm, '') + '\nreturn { traducir, EJEMPLOS, sinTildes, masParecido };');
+const { traducir, EJEMPLOS, masParecido } = fabrica();
 
 // La libreta de mentira: Ana DENTRO de Mariana a propósito — es el caso que
 // mandaba dinero a la persona equivocada cuando se buscaba por substring.
@@ -133,6 +133,34 @@ for (const lang of ['es', 'en']) {
   const r3 = traducir('envía 15 a Pedro', LIB);
   prueba('desconocido → sinContacto', r3 && r3.falla === 'sinContacto');
   prueba('sin sentido → null', traducir('el cielo es azul hoy', LIB) === null);
+}
+
+// ── 10. no entender no puede ser una puerta cerrada ──────────────────────
+// Cuando el traductor devuelve null, la hoja enseña lo mas parecido de lo
+// que SI entiende. Lo que se comprueba no es que acierte siempre —es tosco a
+// proposito— sino las dos cosas que no puede fallar: que nunca devuelva una
+// lista vacia, y que solo proponga frases que el traductor entiende de
+// verdad. Proponer algo que luego no funciona es peor que no proponer nada.
+{
+  for (const lang of ['es', 'en']) {
+    const casos = ['el cielo es azul hoy', 'quiero mandarle plata a alguien',
+                   'necesito ver mis movimientos', '', 'zzzz'];
+    let vacias = 0, rotas = [];
+    for (const c of casos) {
+      const s2 = masParecido(c, lang);
+      if (!s2 || !s2.length) vacias++;
+      for (const ej of s2) if (!EJEMPLOS[lang].includes(ej)) rotas.push(ej);
+    }
+    prueba(`[${lang}] nunca deja a nadie sin salida`, vacias === 0);
+    prueba(`[${lang}] solo propone frases que el traductor entiende`, rotas.length === 0);
+  }
+  // y cuando SI hay algo parecido, lo encuentra
+  const cerca = masParecido('quiero ver mi tarjeta ahora', 'es');
+  prueba('«quiero ver mi tarjeta ahora» propone la de la tarjeta',
+    cerca.some((x) => /tarjeta/.test(x)));
+  const cercaEn = masParecido('i need to charge someone', 'en');
+  prueba('«i need to charge someone» propone cobrar',
+    cercaEn.some((x) => /charge/.test(x)));
 }
 
 // ── el veredicto ─────────────────────────────────────────────────────────
