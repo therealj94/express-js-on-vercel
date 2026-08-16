@@ -101,6 +101,13 @@ es: {
   'act.t': 'Actividad', 'act.sub': 'Todo lo que entró y salió de tu billetera',
   'act.entra': 'Recibiste', 'act.sale': 'Enviaste',
   'id.t': 'Genesis ID', 'id.sub': 'Tu identidad digital en el ecosistema Orden Global',
+  // La credencial de quien ya pasó por todo. Sin fecha de emisión: el puente
+  // no la manda, y ponerle una fecha inventada a un documento de identidad es
+  // lo que convierte una credencial en un decorado.
+  'id.credencial': 'Identidad verificada', 'id.aNombre': 'A nombre de',
+  'id.numero': 'Número de identidad', 'id.copiarGid': 'Copiar el número',
+  'id.qrPie': 'Para comprobarla en el acto',
+  'id.selloPie': 'Emitida por Orden Global tras la revisión del equipo de cumplimiento. Vale en todo el ecosistema.',
   'id.unaT': 'Una verificación, todo el ecosistema',
   'id.unaP': 'Con una sola verificación de Genesis ID quedás verificado en Veta Wallet, en MyTokenPay y en el resto de los servicios de Orden Global. No hay que repetir el trámite en cada uno.',
   'id.r1': 'Enviar y recibir sin límites de cuenta no verificada',
@@ -601,6 +608,10 @@ en: {
   'act.t': 'Activity', 'act.sub': 'Everything that came in and out of your wallet',
   'act.entra': 'Received', 'act.sale': 'Sent',
   'id.t': 'Genesis ID', 'id.sub': 'Your digital identity across the Orden Global ecosystem',
+  'id.credencial': 'Verified identity', 'id.aNombre': 'Issued to',
+  'id.numero': 'Identity number', 'id.copiarGid': 'Copy the number',
+  'id.qrPie': 'To check it on the spot',
+  'id.selloPie': 'Issued by Orden Global after review by the compliance team. Valid across the whole ecosystem.',
   'id.unaT': 'One verification, the whole ecosystem',
   'id.unaP': 'With a single Genesis ID verification you are verified in Veta Wallet, MyTokenPay and the rest of the Orden Global services. No repeating the process in each one.',
   'id.r1': 'Send and receive without unverified-account limits',

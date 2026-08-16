@@ -849,6 +849,7 @@ const VETA = (() => {
     l.innerHTML = VISTAS[cual]();
     l.querySelectorAll('[data-al-cargar]').forEach(el => window[el.dataset.alCargar]?.(el));
     if (cual === 'recibir' || cual === 'deposito') pintarQr();
+    if (cual === 'identidad') pintarCredencial();
     if (cual === 'cobrar') pintarCobro();
     if (cual === 'enviar') $('#env-monto')?.focus();
     if (cual === 'cambiar') cambioMonto();
@@ -1521,9 +1522,75 @@ const VETA = (() => {
     <div class="bloque vidrio">${listaMovimientos()}</div>`;
   }
 
+  /* LA CREDENCIAL. Verificarse cuesta documentos, una foto de la cara y días
+     de espera; lo que se recibía a cambio era una etiqueta verde que decía
+     «Verificada» sobre una tarjeta gris. Quien pasó por eso merece algo que se
+     pueda ENSEÑAR: la foto, el nombre legal como está en el documento, el
+     número, y el código para que lo comprueben delante tuyo.
+
+     Tres cosas que NO lleva y no puede llevar:
+      · una fecha de emisión — el puente no la manda, y ponerle una fecha
+        inventada a un documento de identidad es exactamente la clase de cosa
+        que convierte una credencial en un decorado;
+      · una foto genérica si no hay foto — sin `fotoCredencial` va el monograma
+        del nombre, que es verdad;
+      · ni una palabra que insinúe que esto lo aprobó la app. Lo aprobó una
+        persona del equipo de cumplimiento, del otro lado del puente.
+
+     El código lleva el GID a secas: es lo que hay que teclear del otro lado
+     para comprobarlo, y un enlace largo en un QR de una credencial solo sirve
+     para que el que escanea no sepa qué está abriendo. */
+  function credencial() {
+    const gid = identidad?.gid;
+    if (!gid) return '';
+    const nombre = identidad?.nombreLegal || sesion?.nombre || '';
+    const foto = identidad?.fotoCredencial;
+    const inicial = (nombre.trim()[0] || '·').toUpperCase();
+    return `
+    <div class="pasaporte">
+      <div class="pas-cab">
+        <span class="pas-casa">ORDEN GLOBAL</span>
+        <span class="pas-tipo">${t('id.credencial')}</span>
+      </div>
+      <div class="pas-cuerpo">
+        <div class="pas-foto">${foto
+          ? `<img src="${esc(foto)}" alt="">`
+          : `<span class="pas-inicial">${esc(inicial)}</span>`}</div>
+        <div class="pas-datos">
+          <div class="pas-lbl">${t('id.aNombre')}</div>
+          <div class="pas-nombre">${esc(nombre || '—')}</div>
+          <div class="pas-lbl" style="margin-top:16px">${t('id.numero')}</div>
+          <div class="pas-gid mono">${esc(gid)}</div>
+          <button class="btn btn-linea btn-sm" style="margin-top:12px"
+                  onclick="VETA.copiar(${jsTxt(gid)})">${t('id.copiarGid')}</button>
+        </div>
+        <div class="pas-qr">
+          <div id="pas-codigo"></div>
+          <small>${t('id.qrPie')}</small>
+        </div>
+      </div>
+      <div class="pas-pie">
+        <svg viewBox="0 0 24 24">${ICO.id}</svg>
+        <span>${t('id.selloPie')}</span>
+      </div>
+    </div>`;
+  }
+
+  /* El código se pinta después, sobre el nodo ya puesto: armar un SVG de
+     ciento y pico módulos dentro de la plantilla de texto haría la vista más
+     lenta cada vez que se repinta, y esto se repinta con cada refresco de
+     identidad. */
+  function pintarCredencial() {
+    const c = $('#pas-codigo');
+    if (!c || !identidad?.gid) return;
+    try { c.innerHTML = QR.svg(identidad.gid, { claro: '#F3ECD9', oscuro: '#021B1C', margen: 2 }); }
+    catch { c.textContent = identidad.gid; }
+  }
+
   function vIdentidad() {
     return `
     <div class="cab"><div><h2>Genesis ID</h2><div class="sub">${t('id.sub')}</div></div></div>
+    ${esVerificada() ? credencial() : ''}
     ${tarjetaIdentidad()}
     <div class="bloque vidrio">
       <h3>${t('id.unaT')}</h3>
