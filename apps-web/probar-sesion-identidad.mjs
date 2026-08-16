@@ -52,6 +52,12 @@ const api = createServer((q, r) => {
     if (modo === 'genesisCaido') return responder(503, { error: 'Genesis ID no respondió' });
     return responder(200, VERIFICADA);
   }
+  if (modo === 'todoCaido') return responder(503, { error: 'no disponible' });
+  if (ruta === '/wallet/deposits') {
+    return responder(200, [{ id: 'd1', origenAmount: 12.5, at: '2026-08-14T10:00:00Z' }]);
+  }
+  if (ruta === '/cards/my-card') return responder(200, { last4: '4321', status: 'ACTIVE', balance: 40 });
+  if (ruta === '/cards/transactions') return responder(200, [{ merchant: 'Café', amount: 3.5, createdAt: '2026-08-14T11:00:00Z' }]);
   if (ruta === '/auth/refresh') return responder(200, { token: 'x.' + Buffer.from(JSON.stringify({
     address: '0xaaaa', exp: Math.floor(Date.now() / 1e3) + 9999 })).toString('base64') + '.y' });
   return responder(200, {});
@@ -124,6 +130,38 @@ comprobar(sigue !== false, 'un tropiezo al refrescar NO desverifica a nadie',
   sigue === false ? 'la persona pasó a contar como sin verificar' : '');
 comprobar(!/reintentar/i.test(vista),
   'y la tarjeta sigue sin ofrecer un botón que no arregla nada');
+
+// ── 2b · lo mismo con la actividad y con la tarjeta ─────────────────────────
+modo = 'bien';
+await p.evaluate(() => VETA.reintentar());
+await p.waitForTimeout(2500);
+await p.evaluate(() => VETA.vista('tarjeta'));
+await p.waitForTimeout(2500);
+const conDatos = await p.evaluate(() => ({
+  movs: VETA._movs().length,
+  tarjeta: VETA._laTarjeta()?.last4 || null,
+}));
+comprobar(conDatos.movs > 0 && conDatos.tarjeta === '4321',
+  'de partida hay actividad y tarjeta', JSON.stringify(conDatos));
+
+modo = 'todoCaido';
+await p.evaluate(() => VETA.reintentar());
+await p.waitForTimeout(3000);
+await p.evaluate(() => VETA.vista('tarjeta'));
+await p.waitForTimeout(2500);
+const trasCaida = await p.evaluate(() => ({
+  movs: VETA._movs().length,
+  tarjeta: VETA._laTarjeta()?.last4 || null,
+  actividad: (VETA.vista('actividad'), document.getElementById('lienzo').innerText),
+}));
+comprobar(trasCaida.movs > 0,
+  'un tropiezo NO borra el historial que ya se habia traido',
+  trasCaida.movs > 0 ? '' : 'la actividad se quedo en cero');
+comprobar(trasCaida.tarjeta === '4321',
+  'ni hace desaparecer la tarjeta que la persona tiene en la mano',
+  trasCaida.tarjeta === '4321' ? '' : 'la tarjeta paso a ' + trasCaida.tarjeta);
+comprobar(!/todavía no hay|no transactions yet/i.test(trasCaida.actividad),
+  'y nunca se dice «no hay movimientos» cuando lo que pasa es que no llegaron');
 await p.close();
 
 // ── 3 · la sesión muere de verdad: se pide la contraseña, no se disimula ────

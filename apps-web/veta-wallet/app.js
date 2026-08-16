@@ -63,6 +63,12 @@ const VETA = (() => {
   let errCartera = null;      // por que no se pudieron leer
   let identidad = null;       // estado de Genesis ID
   let movimientos = [];
+  /* Por que no se pudo traer la actividad. Hace falta distinguirlo de «no
+     hay nada»: una lista vacia por un fallo de red le dice a la persona
+     «todavia no tenes movimientos» sobre una cuenta con historial — la
+     misma clase de mentira tranquilizadora que ya nos costo cara en la
+     tarjeta de Genesis ID. */
+  let errMovs = null;
   let tarjeta = null;         // { estado, last4, saldo… } o { falta: true }
   let movsTarjeta = [];
   let volteada = false;         // la tarjeta, de frente o de espaldas
@@ -525,16 +531,28 @@ const VETA = (() => {
      la primera pintada de la billetera. Un 404 no es un fallo, es la respuesta
      correcta de "esta persona todavia no tiene tarjeta". */
   async function cargarTarjeta() {
+    // La tarjeta que ya se habia leido bien. Un tropiezo al refrescar no puede
+    // hacerla desaparecer: quien la tiene en la mano no entiende que la
+    // pantalla le diga que hubo un error donde antes estaba su plastico.
+    const antes = tarjeta && !tarjeta.error && !tarjeta.falta ? tarjeta : null;
     try {
       tarjeta = await pedir('/cards/my-card');
     } catch (e) {
-      tarjeta = e.estado === 404 ? { falta: true } : { error: e.message };
+      // Un 404 SI es una respuesta: el emisor dice que esta persona no tiene
+      // tarjeta, y eso manda sobre lo que hubiera guardado.
+      tarjeta = e.estado === 404 ? { falta: true } : (antes || { error: e.message });
+      // si se conservo la de antes, sus movimientos siguen siendo los suyos
+      if (antes && e.estado !== 404) return;
+      movsTarjeta = [];
       return;
     }
     try {
       const d = await pedir('/cards/transactions?limit=20');
       movsTarjeta = Array.isArray(d) ? d : (d?.items || d?.transactions || d?.data || []);
-    } catch { movsTarjeta = []; }
+    } catch {
+      // se conserva lo ultimo que llego: vaciarlo diria «no gastaste nada»
+      // sobre una tarjeta con movimientos, que es la mentira de siempre
+    }
   }
 
   /* Los saldos se leen de la cadena, token por token, igual que en el telefono.
@@ -657,7 +675,13 @@ const VETA = (() => {
     try {
       const d = await pedir('/wallet/deposits?limit=25');
       movimientos = Array.isArray(d) ? d : (d?.items || d?.deposits || d?.data || []);
-    } catch { movimientos = []; }
+      errMovs = null;
+    } catch (e) {
+      // Lo que ya se habia traido se queda: un tropiezo al refrescar no borra
+      // el historial de nadie. Y se guarda el porque, para no llamarle «vacio»
+      // a lo que en realidad no llego.
+      errMovs = e.message;
+    }
   }
 
   /* Lo que se enseña en Actividad es todo el movimiento de dinero: los
@@ -971,8 +995,15 @@ const VETA = (() => {
   function listaMovimientos(limite) {
     const todos = todoMovimiento();
     const l = todos.slice(0, limite || todos.length);
-    if (!l.length) return `
-      <div class="vacio">
+    if (!l.length) return errMovs
+      /* No llego, que no es lo mismo que no haber. Aqui el boton SI sirve:
+         vuelve a pedirlo. */
+      ? `<div class="vacio">
+        <b>${t('ini.noVinoT')}</b>
+        ${t('ini.noVinoP')}
+        <div style="margin-top:16px"><button class="btn btn-linea btn-sm" onclick="VETA.reintentar()">${t('saldo.re')}</button></div>
+      </div>`
+      : `<div class="vacio">
         <b>${t('ini.vacioT')}</b>
         ${t('ini.vacioP')}
       </div>`;
@@ -3539,8 +3570,14 @@ const VETA = (() => {
     chatDebounce = setTimeout(async () => {
       const q = chatSt.busca.trim();
       if (q.length < 2) { chatSt.gente = null; return pintarChat(); }
-      try { chatSt.gente = await CHAT.buscar(q); }
-      catch (e) { chatSt.gente = []; chatSt.error = chatMotivo(e); }
+      try { chatSt.gente = await CHAT.buscar(q); chatSt.buscaMal = false; }
+      catch (e) {
+        // «No encontramos a nadie» y «la búsqueda no salió» son cosas
+        // distintas: la primera manda a probar con el correo completo, la
+        // segunda a mirar la conexión. Decir la primera cuando pasa la segunda
+        // hace que alguien dé por hecho que su contacto no está en el chat.
+        chatSt.gente = []; chatSt.buscaMal = true;
+      }
       pintarChat();
     }, 320);
   }
@@ -3840,7 +3877,9 @@ const VETA = (() => {
           <span class="cha-txt"><b>${esc(x.nombre || x.correo)}</b>
             <small>${esc(x.gid || x.correo)}</small></span>
         </button>`).join('')
-        : `<div class="vacio"><b>${t('cha.nadie')}</b>${t('cha.nadieP')}</div>`);
+        : chatSt.buscaMal
+          ? `<div class="vacio"><b>${t('cha.buscaMalT')}</b>${t('cha.buscaMalP')}</div>`
+          : `<div class="vacio"><b>${t('cha.nadie')}</b>${t('cha.nadieP')}</div>`);
     }
 
     if (chatSt.convs === null) {
@@ -5330,6 +5369,10 @@ const VETA = (() => {
            // Solo para las pruebas: saber si la persona consta verificada sin
            // tener que deducirlo del texto de una tarjeta.
            _esVerificada: () => esVerificada(),
+           // Lo que las pruebas necesitan MIRAR para comprobar que un
+           // tropiezo no borro nada. Solo lectura.
+           _movs: () => todoMovimiento(),
+           _laTarjeta: () => tarjeta,
            _tarjeta: c => { tarjeta = c; },
            _sesion: x => { sesion = x; },
            _leerCobro: c => { const x = leerCobro(c); if (x) irACobro(x); return x; },
