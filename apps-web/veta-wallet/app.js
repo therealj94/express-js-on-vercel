@@ -5080,6 +5080,18 @@ const VETA = (() => {
       [/comision|fee|gas/, T.con.comision],
       [/aubank|ordenexchange|pronto|coming/, T.con.pronto],
     ];
+    /* EL SABER QUE VIENE DE GENESIS MANDA. Las respuestas de aquí abajo son
+       las que AU-RA trae puestas de fábrica; las de `saber.js` las escribió una
+       persona en el cerebro y las marcó públicas a mano. Si una ficha habla del
+       mismo tema, gana la de Genesis — es la que alguien revisó hoy, no la que
+       se quedó escrita en el código hace meses.
+
+       Y si `saber.js` no llegó —una versión vieja, un archivo que no cargó—
+       AU-RA sigue contestando con lo suyo. Quedarse muda porque no bajó un
+       archivo de texto sería cambiar una respuesta vieja por ninguna. */
+    const deGenesis = auraSaberDe(d);
+    if (deGenesis) return auraDecir(deGenesis, { voz });
+
     for (const [re, r] of SABE) if (re.test(d)) return auraDecir(r, { voz });
 
     /* CUANDO NO ENTIENDE. «Eso todavía no lo sé» y punto es una puerta
@@ -5094,6 +5106,26 @@ const VETA = (() => {
      lleva las palabras por las que se lo suele llamar, y gana el que comparta
      más letras con lo dicho. Es tosco a propósito — tiene que caber aquí y
      correr en un teléfono barato sin pedirle nada a nadie. */
+  /* Lo que Genesis dejó salir, buscado por las palabras con que se lo pide.
+     Gana la ficha que comparta MÁS palabras con la frase: si alguien pregunta
+     por «la bóveda del oro», la ficha de la bóveda tiene que ganarle a la de
+     ORIGEN aunque las dos hablen de oro. */
+  function auraSaberDe(d) {
+    const fichas = Array.isArray(window.AURA_SABER) ? window.AURA_SABER : [];
+    if (!fichas.length) return null;
+    const lang = idiomaActivo() === 'en' ? 'en' : 'es';
+    let mejor = null, mejorPts = 0;
+    for (const f of fichas) {
+      let pts = 0;
+      for (const p of f.palabras || []) {
+        // con bordes: «oro» no puede casar dentro de «ahorro»
+        if (new RegExp('(^|[^a-z0-9])' + sinTildes(p) + '($|[^a-z0-9])').test(d)) pts += p.length;
+      }
+      if (pts > mejorPts) { mejorPts = pts; mejor = f; }
+    }
+    return mejor ? (mejor[lang] || mejor.es) : null;
+  }
+
   function auraLoMasParecido(d) {
     const T = aTxt();
     const dichas = sinTildes(d).split(/[^a-z0-9]+/).filter(x => x.length > 2);

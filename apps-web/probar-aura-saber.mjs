@@ -134,6 +134,28 @@ const botones = await p.evaluate(() => {
 comprobar(botones.length > 0, 'cuando no entiende no deja a nadie sin salida',
   botones.length ? 'ofrece: ' + botones.join(' · ') : 'no ofreció nada');
 
+// ── 4b · el saber que Genesis dejó salir ───────────────────────────────────
+// AU-RA contesta con las fichas del cerebro, y una ficha nueva se nota sin
+// tocar app.js: eso es lo que hace que se pueda «ir entrenando».
+{
+  const cargado = await p.evaluate(() => Array.isArray(window.AURA_SABER) ? window.AURA_SABER.length : 0);
+  comprobar(cargado > 0, `el saber de Genesis llegó al navegador (${cargado} fichas)`);
+
+  r = await preguntar('que es la boveda');
+  comprobar(/NI 43-101/.test(r),
+    'contesta con una ficha que NO está escrita en app.js', r.slice(0, 100));
+
+  // la que gana es la que comparte más palabras, no la primera que roza el tema
+  r = await preguntar('que es origen');
+  comprobar(/gramin/.test(r) && !/43-101/.test(r),
+    'y con dos fichas que hablan de oro, gana la que se pidió', r.slice(0, 90));
+
+  // lo interno del cerebro no puede estar ni cargado en la página
+  const rastro = await p.evaluate(() => JSON.stringify(window.AURA_SABER || []));
+  comprobar(!/validadores|Caddy|rotar las claves|infraestructura/i.test(rastro),
+    'y NADA interno viajó al navegador');
+}
+
 // ── 5 · las sugerencias siguen a la persona ────────────────────────────────
 const chipsDe = async (v) => {
   await p.evaluate((x) => VETA.vista(x), v);
