@@ -2,7 +2,7 @@
  *
  *   node infra/cerebro/pruebas/probar-frontera.mjs
  *
- * Genesis sabe todo lo de la casa. AU-RA habla con cualquiera que abra la
+ * Genesis Core sabe todo lo de la casa. AU-RA habla con cualquiera que abra la
  * billetera. Entre las dos hay una puerta —publicar-saber.mjs— y esta prueba
  * existe para que esa puerta no dependa de que nadie se despiste.
  *
@@ -134,7 +134,7 @@ console.log('\n── el archivo que hay ahora en la billetera ─────�
   const publicado = readFileSync(join(RAIZ, 'apps-web', 'veta-wallet', 'saber.js'), 'utf8');
 
   comprobar(internas.length > 0,
-    `hay ${internas.length} ficha(s) interna(s) en Genesis — si no, esta prueba no prueba nada`);
+    `hay ${internas.length} ficha(s) interna(s) en Genesis Core — si no, esta prueba no prueba nada`);
 
   const coladas = internas.filter((f) => {
     const trozo = String(f.es).slice(0, 40);

@@ -1,4 +1,4 @@
-/* De lo que Genesis sabe, lo poco que AU-RA puede decir.
+/* De lo que Genesis Core sabe, lo poco que AU-RA puede decir.
  *
  *   node infra/cerebro/publicar-saber.mjs           publica
  *   node infra/cerebro/publicar-saber.mjs --probar  solo comprueba, no escribe
@@ -6,7 +6,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * POR QUE ESTE ARCHIVO ES EL SITIO DONDE VIVE LA FRONTERA
  *
- * Genesis —el cerebro interno— sabe TODO: la infraestructura, los pendientes,
+ * Genesis Core —el cerebro interno— sabe TODO: la infraestructura, los pendientes,
  * lo que se está arreglando. AU-RA habla con cualquiera que abra la billetera.
  * Entre las dos cosas tiene que haber una puerta, y una puerta solo sirve si
  * está en UN sitio y se cruza de UNA manera.
@@ -129,7 +129,7 @@ const internas = fichas.length - publicas.length;
 
 const salida = `/* EL SABER PÚBLICO DE AU-RA. NO SE EDITA A MANO.
  *
- * Lo genera infra/cerebro/publicar-saber.mjs desde el saber de Genesis
+ * Lo genera infra/cerebro/publicar-saber.mjs desde el saber de Genesis Core
  * (infra/cerebro/conocimiento/saber.json), que es el único sitio donde se
  * escribe. Aquí solo está lo que una persona marcó como público y firmó.
  *
@@ -159,5 +159,5 @@ if (soloProbar) {
 }
 
 writeFileSync(DESTINO, salida);
-console.log(`Publicado: ${publicas.length} fichas para AU-RA · ${internas} se quedaron en Genesis`);
+console.log(`Publicado: ${publicas.length} fichas para AU-RA · ${internas} se quedaron en Genesis Core`);
 console.log(`  ${DESTINO}`);

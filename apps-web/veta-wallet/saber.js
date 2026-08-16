@@ -1,6 +1,6 @@
 /* EL SABER PÚBLICO DE AU-RA. NO SE EDITA A MANO.
  *
- * Lo genera infra/cerebro/publicar-saber.mjs desde el saber de Genesis
+ * Lo genera infra/cerebro/publicar-saber.mjs desde el saber de Genesis Core
  * (infra/cerebro/conocimiento/saber.json), que es el único sitio donde se
  * escribe. Aquí solo está lo que una persona marcó como público y firmó.
  *

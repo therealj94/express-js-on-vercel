@@ -1,15 +1,15 @@
-# El saber de la casa · Genesis y AU-RA
+# El saber de la casa · Genesis Core y AU-RA
 
 Dos cerebros, y una puerta entre ellos.
 
-| | **Genesis** | **AU-RA** |
+| | **Genesis Core** | **AU-RA** |
 |---|---|---|
 | Dónde | `cerebro.ordenscan.com` · con contraseña | dentro de la billetera · público |
 | Con quién habla | con nosotros | con cualquiera |
-| Qué sabe | **todo** el ecosistema | solo lo que Genesis dejó salir |
+| Qué sabe | **todo** el ecosistema | solo lo que Genesis Core dejó salir |
 | Para qué | revisar, vigilar y entrenar | asistir a quien usa el producto |
 
-Genesis sabe la infraestructura, los pendientes, lo que se está arreglando y lo
+Genesis Core sabe la infraestructura, los pendientes, lo que se está arreglando y lo
 que se está probando. AU-RA le habla a un desconocido que acaba de abrir la
 aplicación. **Nada de lo primero puede llegar a lo segundo por accidente**, y
 por eso no se confía en que nadie se acuerde: se confía en una puerta con un
@@ -89,7 +89,7 @@ node infra/cerebro/pruebas/probar-frontera.mjs
 Comprueba lo que importa, que no es que el programa funcione sino que **se
 niegue**: que lo interno no cruce, que las cuatro formas de marcar mal no
 cuelen, que seis clases de secreto corten la publicación entera, y que las
-fichas internas que hay hoy en Genesis no estén en el `saber.js` que se está
+fichas internas que hay hoy en Genesis Core no estén en el `saber.js` que se está
 sirviendo ahora mismo.
 
 Un publicador que en la duda publica es peor que no tener ninguno, porque deja
@@ -99,8 +99,8 @@ la sensación de que hay una frontera.
 
 ## Lo que AU-RA sigue trayendo puesto
 
-En `app.js` quedan las respuestas de fábrica. Si una ficha de Genesis habla del
-mismo tema, **gana la de Genesis** — es la que alguien revisó hoy. Y si
+En `app.js` quedan las respuestas de fábrica. Si una ficha de Genesis Core habla del
+mismo tema, **gana la de Genesis Core** — es la que alguien revisó hoy. Y si
 `saber.js` no llegó, AU-RA contesta con las suyas: quedarse muda porque no bajó
 un archivo de texto sería cambiar una respuesta vieja por ninguna.
 
@@ -114,7 +114,7 @@ deliberado mientras sea un asistente encima de una billetera — un modelo que
 aprende solo de lo que le dicen los usuarios es un modelo al que se le puede
 enseñar a decir cualquier cosa.
 
-El siguiente paso natural, cuando se quiera: que Genesis recoja **qué se le
+El siguiente paso natural, cuando se quiera: que Genesis Core recoja **qué se le
 preguntó a AU-RA y no supo contestar**, y lo deje como fichas en blanco
 esperando a que alguien las escriba. Ahí el entrenamiento lo siguen guiando
 personas, pero el trabajo lo propone el uso real.
