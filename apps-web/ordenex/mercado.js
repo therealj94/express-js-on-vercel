@@ -116,6 +116,11 @@ const VMERCADO = (() => {
       'refCuando': 'leído {hora}',
       'refNo': 'No pudimos traer la referencia del metal. Se reintenta solo.',
       'refVacia': 'La referencia del metal todavía no llegó. Se reintenta sola: preferimos un lienzo vacío a una línea inventada.',
+      'zoomGrupo': 'Acercar la gráfica',
+      'zoomMas': 'Acercar (rueda, o la tecla +)',
+      'zoomMenos': 'Alejar (rueda, o la tecla −)',
+      'zoomTodo': 'Ver todo (doble clic, o Inicio)',
+      'zoomPista': 'Rueda para acercar · arrastrá para mover · doble clic vuelve a verlo todo',
       'refAUKA': 'Onza de oro en el mercado real, en dólares. No son tratos de Ordenex.',
       'refAGKA': 'Onza de plata en el mercado real, en dólares. No son tratos de Ordenex.',
       'refORIGEN': 'Gramo de oro entre 55, derivado del oro del mercado real, en dólares. No son tratos de Ordenex.',
@@ -196,6 +201,11 @@ const VMERCADO = (() => {
       'refCuando': 'read at {hora}',
       'refNo': 'We couldn’t fetch the metal reference. It retries on its own.',
       'refVacia': 'The metal reference hasn’t arrived yet. It retries on its own: we’d rather show an empty canvas than an invented line.',
+      'zoomGrupo': 'Zoom the chart',
+      'zoomMas': 'Zoom in (wheel, or the + key)',
+      'zoomMenos': 'Zoom out (wheel, or the − key)',
+      'zoomTodo': 'Fit all (double-click, or Home)',
+      'zoomPista': 'Wheel to zoom · drag to move · double-click fits it all back',
       'refAUKA': 'One ounce of gold in the real market, in dollars. These are not Ordenex trades.',
       'refAGKA': 'One ounce of silver in the real market, in dollars. These are not Ordenex trades.',
       'refORIGEN': 'A gram of gold divided by 55, derived from real-market gold, in dollars. These are not Ordenex trades.',
@@ -309,6 +319,9 @@ const VMERCADO = (() => {
 
   let paradores = [];        // cada sondeo devuelve su parador; apagar() los corre todos
   let pararGrafica = null;   // el reloj de la gráfica va aparte: cambia de ritmo con la fuente
+  /* Los gestos del lienzo: viven aparte del reloj porque sobreviven a los
+     repintados. Se rearman al montar la vista y se apagan con ella. */
+  let gestosGrafica = null;
   let alResize = null;
   let parActual = null;      // 'AUKA-ORIGEN'
   let ladoActual = 'compra';
@@ -474,6 +487,15 @@ const VMERCADO = (() => {
     .vm-prod b{display:block;color:var(--crema);font-size:13px;margin-bottom:5px}
 
     .vm-lienzo{position:relative;margin-top:16px}
+    /* Los mandos flotan sobre el lienzo, arriba a la derecha, discretos hasta
+       que la mano se acerca: son ayuda, no decoración. */
+    .vm-zoom{position:absolute;top:10px;right:12px;display:flex;gap:5px;
+      opacity:.30;transition:opacity .2s}
+    .vm-lienzo:hover .vm-zoom,.vm-zoom:focus-within{opacity:1}
+    .vm-zoom button{width:26px;height:26px;padding:0;cursor:pointer;
+      border:1px solid var(--linea2);border-radius:7px;background:rgba(2,27,28,.78);
+      color:var(--bruma);font:700 13px/1 var(--sans);backdrop-filter:blur(6px)}
+    .vm-zoom button:hover{color:var(--oroHi);border-color:var(--linea)}
     .vm-lienzo canvas{display:block;width:100%;height:clamp(340px,52vh,620px);border-radius:12px}
     /* En la sala ancha el libro se estira a la par de la gráfica: una columna
        de 318 px contra un lienzo de 1.200 se veía como una nota al margen. */
@@ -674,6 +696,14 @@ const VMERCADO = (() => {
           <div class="vm-lienzo">
             <canvas id="vm-velas"></canvas>
             <div class="vm-nota" id="vm-velas-nota"></div>
+            <!-- Los mandos del zoom. Se enseñan aunque la rueda ya funcione:
+                 nadie adivina que una gráfica se puede acercar, y en una
+                 pantalla táctil no hay rueda que descubrir. -->
+            <div class="vm-zoom" role="group" aria-label="${esc(tx('zoomGrupo'))}">
+              <button type="button" onclick="VMERCADO.zoom('mas')" title="${esc(tx('zoomMas'))}" aria-label="${esc(tx('zoomMas'))}">+</button>
+              <button type="button" onclick="VMERCADO.zoom('menos')" title="${esc(tx('zoomMenos'))}" aria-label="${esc(tx('zoomMenos'))}">−</button>
+              <button type="button" onclick="VMERCADO.zoom('todo')" title="${esc(tx('zoomTodo'))}" aria-label="${esc(tx('zoomTodo'))}">⤢</button>
+            </div>
           </div>
           <div id="vm-bajo">${bajoGrafica(par)}</div>
         </div>
@@ -972,6 +1002,7 @@ const VMERCADO = (() => {
           rotulo: rotuloRef(),
           referencia: true,               // TODA la gráfica es referencia, no una línea suelta
           emas: [9, 21, 55],
+          ventana: gestosGrafica && gestosGrafica.ventana(),
           dpr,
           idioma: idi(),
         });
@@ -995,6 +1026,7 @@ const VMERCADO = (() => {
         par: parActual,
         marco: marcoDe(),
         emas: [9, 21, 55],
+        ventana: gestosGrafica && gestosGrafica.ventana(),
         /* Esto es una LÍNEA de referencia sobre los tratos, no la gráfica
            entera: por eso va un valor —string de wei de ORIGEN— y no `true`.
            Pasar aquí el objeto crudo del API haría que VELAS marcase de
@@ -1478,6 +1510,20 @@ const VMERCADO = (() => {
     paradores.push(DATOS.sondeo(cargarLibro, 5000));
     paradores.push(DATOS.sondeo(cargarTratos, 5000));
     paradores.push(DATOS.sondeo(cargarCab, 10000));
+
+    /* Los gestos del lienzo: rueda, arrastre, doble clic y teclado. La
+       ventana la guarda VELAS.gestos y la leen las dos llamadas a dibujar —
+       así el zoom sobrevive a los repintados del reloj, que es justo lo que
+       falla en las gráficas que se «resetean solas» cada pocos segundos. */
+    const lienzo = document.getElementById('vm-velas');
+    if (lienzo && VELAS.gestos) {
+      gestosGrafica = VELAS.gestos(lienzo, {
+        total: () => (fuenteActual === 'referencia'
+          ? (refCache && refCache.velas ? refCache.velas.length : 0)
+          : (velasCache ? velasCache.length : 0)),
+        alCambiar: pintarVelas,
+      });
+    }
     relojGrafica();
 
     if (DATOS.haySesion()) {
@@ -1497,11 +1543,22 @@ const VMERCADO = (() => {
     paradores.forEach(p => { try { p(); } catch {} });
     paradores = [];
     pararGrafica = null;
+    if (gestosGrafica) { try { gestosGrafica.apagar(); } catch {} gestosGrafica = null; }
     if (alResize) { removeEventListener('resize', alResize); alResize = null; }
   }
 
+  /* Los botones del lienzo. Van por aquí y no directo a VELAS para que la
+     sala pueda repintar después: los gestos guardan la ventana, el dibujo la
+     lee. */
+  function zoom(que) {
+    if (!gestosGrafica) return;
+    if (que === 'mas') gestosGrafica.acercar();
+    else if (que === 'menos') gestosGrafica.alejar();
+    else gestosGrafica.verTodo();
+  }
+
   return {
-    vistaMercados, vistaMercado, alPintar, apagar,
+    vistaMercados, vistaMercado, alPintar, apagar, zoom,
     marco, fuente, lado, tipo, usarPrecio, recalcular, maximo, colocar, quitar,
     // Para las pruebas, como _piezas en qr.js: los textos y las cuentas puras.
     _txt: () => TXT,

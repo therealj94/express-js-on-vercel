@@ -359,7 +359,21 @@ const VELAS = (() => {
     canvas.setAttribute('role', 'img');
 
     const crudas = Array.isArray(velas) ? velas : [];
-    const lista = crudas.map(v => normalizar(v, puerta)).filter(Boolean);
+    const todas = crudas.map(v => normalizar(v, puerta)).filter(Boolean);
+
+    /* LA VENTANA DE LA VISTA. `opciones.ventana = {desde, hasta}` recorta lo
+       que se DIBUJA, nunca lo que se CALCULA: las medias se sacan de la serie
+       entera y despues se recortan igual que las velas. Si se calcularan
+       sobre el trozo visible, acercar la vista cambiaria el valor de la EMA
+       — la misma vela diria dos numeros distintos segun el zoom, que es una
+       mentira silenciosa y de las peores, porque parece un detalle. */
+    const vt = opciones.ventana;
+    let corte0 = 0, corte1 = todas.length;
+    if (vt && Number.isFinite(vt.desde) && Number.isFinite(vt.hasta)) {
+      corte0 = Math.max(0, Math.min(todas.length - 1, Math.floor(vt.desde)));
+      corte1 = Math.max(corte0 + 1, Math.min(todas.length, Math.ceil(vt.hasta)));
+    }
+    const lista = todas.slice(corte0, corte1);
     const n = lista.length;
 
     // ── la geometría, que es la misma con datos y sin ellos ───────────────
@@ -455,12 +469,14 @@ const VELAS = (() => {
       .sort((a, b) => a - b)
       .slice(0, 4);
     const TINTAS_EMA = [acento, oroLt, bruma, humo];
-    const cierres = lista.map(v => v.c);
+    // Sobre la serie ENTERA (`todas`), no sobre el trozo visible — ver la nota
+    // de la ventana. Luego se recorta al mismo tramo que las velas.
+    const cierres = todas.map(v => v.c);
     const medias = periodos.map((p, i) => ({
       periodo: p,
       tinta: TINTAS_EMA[i % TINTAS_EMA.length],
       alfa: [0.85, 0.72, 0.62, 0.52][i % 4],
-      valores: calcularEma(cierres, p),
+      valores: calcularEma(cierres, p).slice(corte0, corte1),
     }));
     for (const m of medias) {
       for (const v of m.valores) {
@@ -879,7 +895,13 @@ const VELAS = (() => {
     return {
       vacio: null,
       n,
-      indice,
+      // Cuantas hay en total y que tramo se esta viendo: `enganchar` lo
+      // necesita para saber si la ventana sigue pegada a la punta (y por
+      // tanto debe seguir a las velas nuevas) o si la persona se fue atras.
+      total: todas.length,
+      ventana: { desde: corte0, hasta: corte1 },
+      indice: indice < 0 ? indice : corte0 + indice,
+      indiceVisible: indice,
       unidad,
       referencia: esReferencia,
       volumen: hayVolumen,
@@ -909,6 +931,150 @@ const VELAS = (() => {
      para no enseñar un mercado congelado. Si obtenerVelas falla, se queda lo
      último pintado: un dato viejo y honesto vale más que un lienzo en blanco,
      y de avisar del tropiezo se encarga quien trae los datos. */
+  /* LOS GESTOS DE LA GRAFICA, sueltos de quien la dibuja.
+   *
+   * Existe aparte porque hay dos formas de usar esta libreria y las dos
+   * merecen zoom: `enganchar`, que trae las velas y pinta sola, y quien
+   * prefiere pintar el mismo, con su propio reloj y sus propios rotulos —que
+   * es como lo hace la sala de mercado—. Meter la rueda dentro de `enganchar`
+   * habria dejado sin zoom justo a la pantalla donde mas se necesita.
+   *
+   * Guarda la VENTANA (que tramo se mira) y avisa cuando cambia. No dibuja
+   * nada: quien la usa decide como.
+   *
+   *   const g = VELAS.gestos(canvas, { total: () => velas.length, alCambiar: pintar });
+   *   g.ventana()  ->  {desde,hasta} | null   ·   g.apagar()
+   */
+  function gestos(canvas, { total, alCambiar } = {}) {
+    const cuantas = () => {
+      const t = typeof total === 'function' ? Number(total()) : 0;
+      return Number.isFinite(t) && t > 0 ? t : 0;
+    };
+    const avisar = () => { try { alCambiar && alCambiar(ventana); } catch {} };
+
+    let ventana = null;      // null = todo, y pegado a la punta
+    let arrastre = null;
+    const MIN_VELAS = 12;    // por debajo de una docena ya no es una grafica
+
+    /* Acercar alrededor de la vela SEÑALADA, no del centro: si acercas
+       mirando el final, el final se queda quieto. Es la diferencia entre una
+       lupa y un salto. */
+    function acercar(factor, anclaX) {
+      const t = cuantas(); if (!t) return;
+      const v = ventana || { desde: 0, hasta: t };
+      const largo = v.hasta - v.desde;
+      const nuevo = Math.max(MIN_VELAS, Math.min(t, Math.round(largo * factor)));
+      if (nuevo === largo) return;
+      const ancho = canvas.clientWidth || 1;
+      const k = Math.max(0, Math.min(1, (anclaX == null ? ancho / 2 : anclaX) / ancho));
+      const foco = v.desde + largo * k;
+      let desde = Math.round(foco - nuevo * k);
+      desde = Math.max(0, Math.min(t - nuevo, desde));
+      ventana = nuevo >= t ? null : { desde, hasta: desde + nuevo };
+      avisar();
+    }
+
+    /* Correr la vista en VELAS, no en pixeles: «tres velas» significa lo
+       mismo con cualquier zoom, «treinta pixeles» no. */
+    function correr(delta) {
+      const t = cuantas(); if (!t || !delta) return;
+      const v = ventana || { desde: 0, hasta: t };
+      const largo = v.hasta - v.desde;
+      if (largo >= t) return;                 // viendolo todo no hay a donde correr
+      let desde = Math.max(0, Math.min(t - largo, Math.round(v.desde + delta)));
+      ventana = { desde, hasta: desde + largo };
+      avisar();
+    }
+
+    function verTodo() { ventana = null; avisar(); }
+
+    /* Si la ventana estaba PEGADA a la punta, sigue pegada cuando entra una
+       vela nueva. Si la persona se fue a mirar atras, no se la arrastra hacia
+       adelante: una grafica que te devuelve al presente cada treinta segundos
+       es una grafica con la que no se puede estudiar nada. */
+    function seguirPunta(totalViejo) {
+      if (!ventana) return;
+      const t = cuantas();
+      if (!t || ventana.hasta < totalViejo) return;
+      const largo = ventana.hasta - ventana.desde;
+      const desde = Math.max(0, t - largo);
+      ventana = { desde, hasta: t };
+    }
+
+    const alRodar = e => {
+      if (!cuantas()) return;
+      e.preventDefault();                     // la pagina no se mueve: la grafica se acerca
+      const b = canvas.getBoundingClientRect();
+      acercar(e.deltaY > 0 ? 1.18 : 1 / 1.18, e.clientX - b.left);
+    };
+    const alAgarrar = e => {
+      if (e.button != null && e.button !== 0) return;
+      const b = canvas.getBoundingClientRect();
+      arrastre = { x: e.clientX - b.left, movido: 0 };
+      canvas.style.cursor = 'grabbing';
+      if (canvas.setPointerCapture && e.pointerId != null) {
+        try { canvas.setPointerCapture(e.pointerId); } catch {}
+      }
+    };
+    const alArrastrar = e => {
+      if (!arrastre) return;
+      const b = canvas.getBoundingClientRect();
+      const x = e.clientX - b.left;
+      const ancho = canvas.clientWidth || 1;
+      const t = cuantas();
+      const largo = (ventana ? ventana.hasta - ventana.desde : t) || 1;
+      const delta = Math.round((arrastre.x - x) * (largo / ancho));
+      if (delta !== arrastre.movido) { correr(delta - arrastre.movido); arrastre.movido = delta; }
+    };
+    const alSoltar = () => { arrastre = null; canvas.style.cursor = 'crosshair'; };
+    const alDoble = () => verTodo();          // el gesto que todo el mundo prueba
+    /* El teclado no es un extra: quien no puede usar un raton tiene que poder
+       recorrer la grafica igual. */
+    const alTeclado = e => {
+      const t = cuantas();
+      const largo = (ventana ? ventana.hasta - ventana.desde : t) || 1;
+      const paso = Math.max(1, Math.round(largo / 12));
+      if (e.key === 'ArrowLeft') { correr(-paso); e.preventDefault(); }
+      else if (e.key === 'ArrowRight') { correr(paso); e.preventDefault(); }
+      else if (e.key === '+' || e.key === '=') { acercar(1 / 1.3, null); e.preventDefault(); }
+      else if (e.key === '-' || e.key === '_') { acercar(1.3, null); e.preventDefault(); }
+      else if (e.key === 'Home' || e.key === 'Escape') { verTodo(); e.preventDefault(); }
+    };
+
+    const conPuntero = typeof window !== 'undefined' && 'PointerEvent' in window;
+    const mover = conPuntero ? 'pointermove' : 'mousemove';
+    const agarrar = conPuntero ? 'pointerdown' : 'mousedown';
+    const soltar = conPuntero ? 'pointerup' : 'mouseup';
+    const salir = conPuntero ? 'pointerleave' : 'mouseleave';
+    canvas.addEventListener('wheel', alRodar, { passive: false });
+    canvas.addEventListener(agarrar, alAgarrar);
+    canvas.addEventListener(mover, alArrastrar);
+    canvas.addEventListener(soltar, alSoltar);
+    canvas.addEventListener(salir, alSoltar);
+    canvas.addEventListener('dblclick', alDoble);
+    canvas.addEventListener('keydown', alTeclado);
+    canvas.style.cursor = 'crosshair';
+    canvas.style.touchAction = 'pan-y';       // arriba y abajo es de la pagina; el lado, de la grafica
+    if (!canvas.hasAttribute('tabindex')) canvas.setAttribute('tabindex', '0');
+
+    return {
+      ventana: () => ventana,
+      acercar: () => acercar(1 / 1.3, null),
+      alejar: () => acercar(1.3, null),
+      verTodo,
+      seguirPunta,
+      apagar() {
+        canvas.removeEventListener('wheel', alRodar);
+        canvas.removeEventListener(agarrar, alAgarrar);
+        canvas.removeEventListener(mover, alArrastrar);
+        canvas.removeEventListener(soltar, alSoltar);
+        canvas.removeEventListener(salir, alSoltar);
+        canvas.removeEventListener('dblclick', alDoble);
+        canvas.removeEventListener('keydown', alTeclado);
+      },
+    };
+  }
+
   function enganchar(canvas, obtenerVelas, cadaMs = 30000) {
     let velas = [];
     let opciones = {};
@@ -918,7 +1084,19 @@ const VELAS = (() => {
     let destello = 0;
     let cuadro = 0, latido = 0;
 
-    const pintar = () => { if (!parado) dibujar(canvas, velas, { ...opciones, cursor, destello }); };
+    /* La ventana la lleva VELAS.gestos, que es la misma pieza que usa quien
+       pinta por su cuenta: aqui solo se le pregunta y se repinta. */
+    let total = 0;
+    let mandos = null;
+
+    const pintar = () => {
+      if (parado) return;
+      const inf = dibujar(canvas, velas, {
+        ...opciones, cursor, destello, ventana: mandos && mandos.ventana(),
+      });
+      if (inf && inf.total != null) total = inf.total;
+      return inf;
+    };
 
     /* Un solo dibujo por cuadro de pantalla. Sin esto, un ratón moderno pide
        ciento veinte redibujos por segundo para una pantalla que enseña
@@ -962,6 +1140,14 @@ const VELAS = (() => {
         const cierre = u == null ? null : String(Array.isArray(u) ? u[4] : u?.c);
         if (ultimoCierre != null && cierre !== ultimoCierre) encender();
         ultimoCierre = cierre;
+        /* Si la ventana estaba PEGADA a la punta, sigue pegada cuando entra
+           una vela nueva. Si la persona se fue a mirar atras, no se la
+           arrastra hacia adelante: leer el pasado es una intencion, y una
+           grafica que te devuelve al presente cada treinta segundos es una
+           grafica con la que no se puede estudiar nada. */
+        const antes = total;
+        total = velas.length;
+        if (mandos) mandos.seguirPunta(antes);
         pintar();
       } catch { /* fail-closed de pantalla: sin dato nuevo no se borra el viejo */ }
     }
@@ -972,6 +1158,7 @@ const VELAS = (() => {
       pedirPintar();
     };
     const alSalir = () => { cursor = null; pedirPintar(); };
+
     const alVolver = () => { if (!document.hidden) refrescar(); };
     const alMedir = () => pedirPintar();   // la ventana cambió: misma verdad, otro encuadre
 
@@ -982,21 +1169,29 @@ const VELAS = (() => {
     const salir = conPuntero ? 'pointerleave' : 'mouseleave';
     canvas.addEventListener(mover, alMover);
     canvas.addEventListener(salir, alSalir);
+    mandos = gestos(canvas, { total: () => total, alCambiar: pedirPintar });
     document.addEventListener('visibilitychange', alVolver);
     window.addEventListener('resize', alMedir);
     const reloj = setInterval(() => { if (!document.hidden) refrescar(); }, cadaMs);
     refrescar();
 
-    return () => {
+    /* El apagador lleva los mandos colgados: la sala puede poner botones de
+       acercar/alejar/todo sin duplicar ni un calculo de este archivo. */
+    const apagar = () => {
       parado = true;
       clearInterval(reloj);
       if (cuadro) cancelAnimationFrame(cuadro);
       if (latido) cancelAnimationFrame(latido);
       canvas.removeEventListener(mover, alMover);
       canvas.removeEventListener(salir, alSalir);
+      if (mandos) mandos.apagar();
       document.removeEventListener('visibilitychange', alVolver);
       window.removeEventListener('resize', alMedir);
     };
+    apagar.acercar = () => mandos && mandos.acercar();
+    apagar.alejar = () => mandos && mandos.alejar();
+    apagar.verTodo = () => mandos && mandos.verTodo();
+    return apagar;
   }
 
   // _piezas se asoma para las pruebas, como en qr.js: se prueba el código
@@ -1004,6 +1199,7 @@ const VELAS = (() => {
   return {
     dibujar,
     enganchar,
+    gestos,
     _piezas: { normalizar, formatear, pasoLindo, decimalesDe, fraccion, calcularEma, deWei, deNumero },
   };
 })();
