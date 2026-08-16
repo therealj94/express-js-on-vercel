@@ -95,6 +95,21 @@ appsRouter.post('/identidades/:id/documento', limite(30), exigeApp('identidad.do
 })
 
 /**
+ * Lo que se acepta por cara, medido sobre el texto base64 que llega.
+ *
+ * Estaba en 11 000 000 —unos 8 MB de foto— con un mensaje de error que hablaba
+ * de 8 MB: ni el número ni el mensaje decían la verdad, y sobre todo el número
+ * era una invitación a subir el álbum entero. Tres megas de base64 son unos
+ * 2,2 MB de imagen: el doble de lo que produce la compresión del navegador
+ * (~1,1 MB por cara) y de sobra para que un operador lea una cédula. Más que
+ * eso no mejora la lectura; solo engorda lo que hay que guardar de una persona.
+ *
+ * El mensaje de error sale de esta misma constante para que no puedan volver a
+ * separarse.
+ */
+const TOPE_POR_CARA = 3_000_000
+
+/**
  * El documento como DOS FOTOS, para quien se verifica desde un navegador.
  *
  * En el navegador no hay lector de la zona mecánica —eso es ML Kit, y es
@@ -106,23 +121,27 @@ appsRouter.post('/identidades/:id/documento', limite(30), exigeApp('identidad.do
  * porque nadie lo ha mirado todavía, y un cliente que lea solo ese campo
  * pensaría que el documento fue rechazado. Las dos se leen juntas o ninguna.
  */
-appsRouter.post('/identidades/:id/documento-fotos', limite(20), exigeApp('identidad.documento'), (req, res) => {
+appsRouter.post('/identidades/:id/documento-fotos', limite(20), exigeApp('identidad.documento'), async (req, res) => {
   const { anverso, reverso } = req.body ?? {}
   const esImagen = (x: unknown) =>
     typeof x === 'string' && /^data:image\/(jpeg|jpg|png|webp);base64,/.test(x) && x.length > 1000
   if (!esImagen(anverso) || !esImagen(reverso)) {
     return res.status(400).json({ error: 'Hacen falta las dos caras del documento, como imagen' })
   }
-  // Ocho megas por cara ya es una fotografía de teléfono sin recortar; más que
-  // eso no mejora la lectura y sí llena el expediente.
-  if (anverso.length > 11_000_000 || reverso.length > 11_000_000) {
-    return res.status(413).json({ error: 'Cada cara tiene que pesar menos de 8 MB' })
+  if (anverso.length > TOPE_POR_CARA || reverso.length > TOPE_POR_CARA) {
+    return res.status(413).json({
+      error: `Cada cara tiene que pesar menos de ${TOPE_POR_CARA / 1_000_000} MB. Reduzca la foto antes de enviarla.`,
+    })
   }
-  const identidad = ids.adjuntarDocumentoPorFotos(
+  const r = await ids.adjuntarDocumentoPorFotos(
     req.params.id, anverso, reverso, `app:${req.app_ecosistema!.clave}`)
-  if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
+  // Dos fallos distintos: la identidad no existe, o las fotos no se pudieron
+  // guardar. El segundo se puede reintentar y hay que decirlo así — el trámite
+  // no avanzó, no es que el documento no sirva.
+  if (!r.identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
+  if (!r.ok) return res.status(503).json({ error: r.motivo })
   res.json({
-    identidad: ids.estadoParaUsuario(identidad),
+    identidad: ids.estadoParaUsuario(r.identidad),
     documento: { via: 'fotos', aceptable: false, pendienteDeLectura: true, problemas: [] },
   })
 })

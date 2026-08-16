@@ -12,7 +12,7 @@
 
 import { test, describe, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync } from 'fs'
+import { mkdtempSync, rmSync, readFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import type { Server } from 'http'
@@ -390,6 +390,110 @@ describe('Inicio de sesión único', () => {
       method: 'POST', headers: conClave(), body: JSON.stringify({ token: token.cuerpo.token }),
     })
     assert.equal(r.estado, 403)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LAS FOTOS DEL DOCUMENTO, FUERA DEL DOCUMENTO DE ESTADO
+//
+// Se guardaban dentro del expediente, o sea dentro del ÚNICO documento de Mongo
+// donde vive todo el estado del motor. Dos caras de varios megabytes no caben
+// ahí: pasado el límite de 16 MB por documento, lo que falla no es la subida de
+// la foto sino el guardado de TODO —identidades, operadores, aprobaciones—
+// mientras el servicio sigue respondiendo bien, y el siguiente reinicio de
+// Render se lo lleva por delante.
+//
+// Estas pruebas son el cerrojo: que las fotos no vuelvan nunca al estado, que el
+// operador las siga viendo, y que se borren al decidir.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Las fotos del documento viven fuera del estado', () => {
+  const foto = 'data:image/jpeg;base64,' + 'R'.repeat(20000)
+  const aparte = () => JSON.parse(readFileSync(join(carpeta, 'documentosPendientes.json'), 'utf8'))
+  const estadoEnDisco = () => readFileSync(process.env.GENESIS_DATA_FILE!, 'utf8')
+  let conFotos = ''
+
+  test('subirlas no las mete en el documento de estado', async () => {
+    const alta = await pedir('/api/v1/identidades', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ email: 'fuera.del.estado@prueba.local' }),
+    })
+    conFotos = alta.cuerpo.identidad.id
+    const r = await pedir(`/api/v1/identidades/${conFotos}/documento-fotos`, {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ anverso: foto, reverso: foto }),
+    })
+    assert.equal(r.estado, 200)
+
+    const identidad = store.todo().identidades.find((i) => i.id === conFotos)!
+    assert.equal(identidad.documento?.via, 'fotos')
+    assert.equal(identidad.documento?.imagenes ?? null, null, 'el expediente no puede llevar las fotos')
+
+    // Y sobre todo: que no aparezcan en lo que se ESCRIBE, que es lo que
+    // reventaba el volcado.
+    await store.guardarYa()
+    assert.equal(estadoEnDisco().includes('R'.repeat(20000)), false, 'la foto acabó dentro del estado')
+    assert.equal(aparte()[conFotos].anverso, foto, 'tiene que estar guardada aparte')
+  })
+
+  test('el operador las sigue viendo en la ficha, y mirarlas no las devuelve al estado', async () => {
+    const r = await pedir(`/api/panel/identidades/${conFotos}`, { headers: conSesion() })
+    assert.equal(r.estado, 200)
+    assert.equal(r.cuerpo.identidad.documento.imagenes.anverso, foto)
+    assert.equal(r.cuerpo.identidad.documento.imagenes.reverso, foto)
+
+    const identidad = store.todo().identidades.find((i) => i.id === conFotos)!
+    assert.equal(identidad.documento?.imagenes ?? null, null)
+    await store.guardarYa()
+    assert.equal(estadoEnDisco().includes('R'.repeat(20000)), false)
+  })
+
+  test('al rechazar, las fotos desaparecen', async () => {
+    const r = await pedir(`/api/panel/identidades/${conFotos}/rechazar`, {
+      method: 'POST', headers: conSesion(),
+      body: JSON.stringify({ motivo: 'Documento ilegible en las dos caras' }),
+    })
+    assert.equal(r.estado, 200)
+    assert.equal(conFotos in aparte(), false, 'no se pueden acumular documentos ya decididos')
+
+    const ficha = await pedir(`/api/panel/identidades/${conFotos}`, { headers: conSesion() })
+    assert.equal(ficha.cuerpo.identidad.documento.imagenes, null)
+  })
+
+  test('una cara de más de 3 MB no entra, y el mensaje dice cuánto', async () => {
+    const enorme = 'data:image/jpeg;base64,' + 'A'.repeat(3_000_001)
+    const r = await pedir(`/api/v1/identidades/${conFotos}/documento-fotos`, {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ anverso: enorme, reverso: foto }),
+    })
+    assert.equal(r.estado, 413)
+    assert.match(r.cuerpo.error, /3 MB/)
+  })
+
+  test('las que ya estaban dentro del estado se mudan al arrancar', async () => {
+    // Datos viejos: se planta una foto dentro del expediente, tal como la
+    // guardaba la versión anterior, y se comprueba que la mudanza la saca.
+    const vieja = 'data:image/jpeg;base64,' + 'V'.repeat(20000)
+    const alta = await pedir('/api/v1/identidades', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ email: 'dato.viejo@prueba.local' }),
+    })
+    const identidad = store.todo().identidades.find((i) => i.id === alta.cuerpo.identidad.id)!
+    identidad.documento = {
+      aceptable: false, datos: null, hallazgos: [], edad: null,
+      anverso: { aportado: true, nombreConfirmado: null, fechaConfirmada: null },
+      via: 'fotos',
+      imagenes: { anverso: vieja, reverso: vieja },
+    }
+    await store.guardarYa()
+    assert.equal(estadoEnDisco().includes('V'.repeat(20000)), true, 'la prueba tiene que partir del estado sucio')
+
+    const { migrarFotosDelEstado } = await import('../kyc/fotosDocumento.js')
+    const r = await migrarFotosDelEstado()
+    assert.equal(r.movidas, 1)
+    assert.equal(identidad.documento?.imagenes ?? null, null)
+    assert.equal(estadoEnDisco().includes('V'.repeat(20000)), false, 'el estado sigue pesado')
+    assert.equal(aparte()[identidad.id].anverso, vieja)
   })
 })
 

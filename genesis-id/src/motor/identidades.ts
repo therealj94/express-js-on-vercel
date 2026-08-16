@@ -24,6 +24,7 @@ import { registrar } from '../audit/bitacora.js'
 import { revisarDocumento } from '../kyc/documento.js'
 import { parecidoNombres } from '../lib/texto.js'
 import { cotejar, sinProveedor, cotejoManual, biometriaConfigurada } from '../kyc/biometria.js'
+import { guardarFotos, borrarFotos } from '../kyc/fotosDocumento.js'
 import type { ResultadoVivacidad } from '../kyc/vivacidad.js'
 import { tamizarPersona } from '../aml/tamiz.js'
 import { evaluarRiesgo, UMBRAL_DILIGENCIA_USD } from '../aml/riesgo.js'
@@ -260,6 +261,13 @@ export function adjuntarDocumento(
   return identidad
 }
 
+export interface ResultadoFotos {
+  ok: boolean
+  /** Va también cuando falla, si la identidad existe: distingue el 404 del resto. */
+  identidad?: Identidad
+  motivo?: string
+}
+
 /**
  * El documento entrado como DOS FOTOS, para quien se verifica desde un
  * navegador.
@@ -288,12 +296,34 @@ export function adjuntarDocumento(
  * el único sitio donde se conservan, y es a la fuerza, porque un operador tiene
  * que verlas para decidir. Se borran solas en cuanto hay decisión —aprobada o
  * rechazada—, así que no se acumulan.
+ *
+ * NO van dentro del expediente, sino en su propio almacén (`kyc/fotosDocumento`).
+ * Guardarlas aquí metía megabytes de base64 en el documento de estado, que es
+ * uno solo para todo el motor y no puede pasar de 16 MB: unas pocas
+ * verificaciones pendientes a la vez bastaban para que fallara el guardado de
+ * TODO —identidades incluidas— hasta el siguiente reinicio, que se lo llevaba
+ * por delante. El expediente solo guarda que el documento entró por fotos.
+ *
+ * Se guardan ANTES de tocar el expediente y se espera a que estén: decirle a la
+ * persona que su documento quedó aportado cuando el operador no va a tener nada
+ * que mirar es dejar el trámite parado sin que nadie lo sepa.
  */
-export function adjuntarDocumentoPorFotos(
+export async function adjuntarDocumentoPorFotos(
   idn: string, anverso: string, reverso: string, origen: string,
-): Identidad | null {
+): Promise<ResultadoFotos> {
   const identidad = porId(idn)
-  if (!identidad) return null
+  if (!identidad) return { ok: false, motivo: 'Identidad no encontrada' }
+
+  try {
+    await guardarFotos(identidad.id, { anverso, reverso })
+  } catch (e: any) {
+    console.error('[identidades] no se pudieron guardar las fotos del documento:', e?.message)
+    return {
+      ok: false,
+      identidad,
+      motivo: 'No se pudieron guardar las fotos del documento. Inténtelo otra vez.',
+    }
+  }
 
   identidad.documento = {
     // `aceptable` en falso NO significa aquí «el documento no sirve»: significa
@@ -309,7 +339,8 @@ export function adjuntarDocumentoPorFotos(
     edad: null,
     anverso: { aportado: true, nombreConfirmado: null, fechaConfirmada: null },
     via: 'fotos',
-    imagenes: { anverso, reverso },
+    // Las imágenes ya están guardadas aparte; en el expediente no van nunca.
+    imagenes: null,
   }
 
   if (identidad.nombreDeclarado) {
@@ -330,19 +361,30 @@ export function adjuntarDocumentoPorFotos(
   registrar(origen, 'identidad.documentoPorFotos', identidad.id, {
     coincidenciasTamiz: identidad.tamiz?.coincidencias.length ?? 0,
   })
-  return identidad
+  return { ok: true, identidad }
 }
 
 /**
  * Suelta las fotos del documento en cuanto hay decisión.
  *
- * Se llama desde `aprobar` y desde `rechazar`: una vez que el operador
- * decidió, las imágenes ya no hacen falta y conservarlas solo sería acumular
- * documentos de identidad ajenos. Lo que queda en el expediente es que el
- * documento entró por fotos y quién decidió con ellas delante.
+ * Se llama desde `aprobar`, desde `rechazar` y desde `reiniciar`: una vez que
+ * el operador decidió —o mandó rehacer el trámite—, las imágenes ya no hacen
+ * falta y conservarlas solo sería acumular documentos de identidad ajenos. Lo
+ * que queda en el expediente es que el documento entró por fotos y quién
+ * decidió con ellas delante.
  */
-function soltarFotosDocumento(identidad: Identidad): void {
+function soltarFotosDocumento(identidad: Identidad): Promise<void> {
+  // El expediente ya no lleva las imágenes dentro; se limpia igual por si
+  // quedara algo guardado antes de que se mudaran a su propio almacén.
   if (identidad.documento?.imagenes) identidad.documento.imagenes = null
+
+  // Un borrado que falla NO puede tumbar la decisión: aprobar o rechazar es lo
+  // irreversible y lo que la persona está esperando, y unas fotos que se quedan
+  // se pueden barrer después. Queda dicho en el registro para poder hacerlo.
+  return borrarFotos(identidad.id).catch((e: any) => {
+    console.error(
+      `[identidades] quedaron sin borrar las fotos del documento de ${identidad.id}:`, e?.message)
+  })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -536,7 +578,7 @@ export async function aprobar(
 
   identidad.gid = identidad.gid ?? gidPersonal()
   identidad.verificadaEn = ahora()
-  soltarFotosDocumento(identidad)
+  await soltarFotosDocumento(identidad)
   anotar(identidad, 'verificada', operador.email,
     anulacion ? `${motivo} — ANULACION DE BLOQUEOS: ${anulacion}` : motivo)
 
@@ -559,7 +601,7 @@ export async function rechazar(idn: string, operador: Operador, motivo: string):
     return { ok: false, motivo: 'Hay que escribir el motivo del rechazo' }
   }
   anotar(identidad, 'rechazada', operador.email, motivo)
-  soltarFotosDocumento(identidad)
+  await soltarFotosDocumento(identidad)
   await store.guardarYa()
   registrar(operador.email, 'identidad.rechazada', identidad.id, { motivo })
   return { ok: true, identidad }
@@ -588,11 +630,16 @@ export async function suspender(idn: string, operador: Operador, motivo: string)
  * no entra por aquí: para eso hay que suspenderla primero, que es una decisión
  * distinta y más seria.
  */
-export function reiniciar(idn: string, operador: Operador, motivo: string): Identidad | null {
+export async function reiniciar(idn: string, operador: Operador, motivo: string): Promise<Identidad | null> {
   const identidad = porId(idn)
   if (!identidad) return null
   if (identidad.estado === 'verificada') return null
 
+  // Las fotos se sueltan aquí también: la persona va a subir otras, y antes se
+  // iban solas con el expediente porque vivían dentro. Ahora viven aparte, y sin
+  // este borrado se quedarían huérfanas para siempre — documentos de identidad
+  // acumulados de trámites que ya no existen.
+  await soltarFotosDocumento(identidad)
   identidad.documento = null
   identidad.biometria = null
   identidad.nombreLegal = null

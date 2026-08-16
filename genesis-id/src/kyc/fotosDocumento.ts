@@ -1,0 +1,168 @@
+// Las fotos del documento que están esperando que las mire un operador.
+//
+// POR QUE NO VIVEN DENTRO DEL EXPEDIENTE
+//
+// Todo el estado del motor —identidades, negocios, casos, bitácora— vive en UN
+// solo documento de MongoDB (`estado/genesis`), y eso funciona porque son miles
+// de registros pequeños. Dos fotografías de un documento de identidad no son un
+// registro pequeño: en base64 pesan megabytes.
+//
+// Guardadas ahí dentro, la cuenta sale mal enseguida. Un documento de MongoDB
+// no puede pasar de 16 MB, y ese límite es del documento ENTERO: no hace falta
+// un expediente monstruoso para reventarlo, basta con que se junten unas pocas
+// verificaciones pendientes a la vez. Y el día que se pasa, no falla la subida
+// de la foto — falla `volcar()`, o sea el guardado de TODO: identidades,
+// operadores y aprobaciones dejan de escribirse mientras el servicio sigue
+// respondiendo 200 con los datos vivos solo en memoria. El siguiente reinicio de
+// Render se lo lleva todo. Es la misma razón por la que las listas de sanciones
+// están en su propia colección, pero peor, porque aquí el que llena el
+// documento es cualquiera que suba una foto desde el navegador.
+//
+// Así que cada expediente pendiente es un documento aparte, con el id de la
+// identidad como `_id`: guardarlo o borrarlo no toca el estado, y su tamaño solo
+// tiene que caber en su propio documento, no en el de todo el sistema.
+//
+// SIN MONGO TAMPOCO VUELVEN AL ESTADO
+//
+// `coleccionAparte` devuelve `null` con el motor de archivo. En ese caso las
+// fotos van a un archivo hermano del de estado; lo que no se hace nunca, en
+// ningún motor, es devolverlas al documento de estado.
+
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
+import { dirname } from 'path'
+import { coleccionAparte, archivoAparte, store } from '../store.js'
+
+export interface FotosDocumento {
+  anverso: string
+  reverso: string
+}
+
+const NOMBRE = 'documentosPendientes'
+
+const coleccion = () => coleccionAparte(NOMBRE)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Motor de archivo: un JSON hermano del de estado, `{ idIdentidad: {…} }`
+// ─────────────────────────────────────────────────────────────────────────────
+
+type Mapa = Record<string, FotosDocumento>
+
+function leerMapa(): Mapa {
+  const ruta = archivoAparte(NOMBRE)
+  if (!existsSync(ruta)) return {}
+  try {
+    const leido = JSON.parse(readFileSync(ruta, 'utf8'))
+    return leido && typeof leido === 'object' ? leido as Mapa : {}
+  } catch {
+    // Un archivo de fotos ilegible no puede tumbar el arranque: son imágenes
+    // que se pueden volver a pedir, no el expediente.
+    return {}
+  }
+}
+
+function escribirMapa(m: Mapa): void {
+  const ruta = archivoAparte(NOMBRE)
+  mkdirSync(dirname(ruta), { recursive: true })
+  // Temporal y renombrado, igual que el archivo de estado: el renombrado es
+  // atómico y un corte a mitad no deja el archivo truncado.
+  const temporal = `${ruta}.tmp`
+  writeFileSync(temporal, JSON.stringify(m))
+  renameSync(temporal, ruta)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Guardar, leer, borrar
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Guarda las dos caras de una identidad. Reemplaza las que hubiera. */
+export async function guardarFotos(idn: string, fotos: FotosDocumento): Promise<void> {
+  const c = coleccion()
+  if (c) {
+    await c.replaceOne(
+      { _id: idn },
+      { _id: idn, anverso: fotos.anverso, reverso: fotos.reverso, guardadasEn: new Date() },
+      { upsert: true },
+    )
+    return
+  }
+  const m = leerMapa()
+  m[idn] = fotos
+  escribirMapa(m)
+}
+
+/** Las fotos de una identidad, o `null` si ya se decidió (o nunca las hubo). */
+export async function leerFotos(idn: string): Promise<FotosDocumento | null> {
+  const c = coleccion()
+  if (c) {
+    const d = await c.findOne({ _id: idn })
+    return d?.anverso && d?.reverso ? { anverso: d.anverso, reverso: d.reverso } : null
+  }
+  return leerMapa()[idn] ?? null
+}
+
+/** Borra las fotos de una identidad. No falla si no había ninguna. */
+export async function borrarFotos(idn: string): Promise<void> {
+  const c = coleccion()
+  if (c) {
+    await c.deleteOne({ _id: idn })
+    return
+  }
+  const m = leerMapa()
+  if (!(idn in m)) return
+  delete m[idn]
+  escribirMapa(m)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mudanza de lo que ya estaba guardado mal
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Saca del documento de estado las fotos que se guardaron ahí antes.
+ *
+ * Sin esto el arreglo no sirve de nada en el servidor que ya está corriendo:
+ * las imágenes viejas siguen dentro del estado, siguen reescribiéndose en cada
+ * guardado y el documento sigue creciendo hacia los 16 MB. Se ejecuta al
+ * arrancar, una vez, y no hace nada si no hay nada que mover.
+ *
+ * Primero se guardan en su sitio nuevo y solo DESPUES se quitan del estado: si
+ * el guardado falla, se quedan donde estaban —incómodas, pero no perdidas— y se
+ * vuelve a intentar en el siguiente arranque.
+ */
+export async function migrarFotosDelEstado(): Promise<{
+  movidas: number; sueltas: number; fallidas: number
+}> {
+  let movidas = 0, sueltas = 0, fallidas = 0
+
+  for (const identidad of store.todo().identidades) {
+    const imagenes = identidad.documento?.imagenes
+    if (!imagenes?.anverso || !imagenes?.reverso) continue
+
+    // De un expediente ya decidido las fotos no se mudan: se tiran. Tendrían que
+    // haberse soltado al aprobar o rechazar, y copiarlas a la colección nueva
+    // sería resucitar documentos de identidad ajenos que ya no hace falta que
+    // nadie vea.
+    const decidida = identidad.estado === 'verificada' || identidad.estado === 'rechazada' ||
+      identidad.estado === 'suspendida'
+    if (decidida) {
+      identidad.documento!.imagenes = null
+      sueltas++
+      continue
+    }
+
+    try {
+      await guardarFotos(identidad.id, imagenes)
+      identidad.documento!.imagenes = null
+      movidas++
+    } catch (e: any) {
+      fallidas++
+      console.error(
+        `[fotosDocumento] no se pudieron mudar las fotos de ${identidad.id}:`, e?.message)
+    }
+  }
+
+  // Un solo volcado al final, y esperado: hasta que el estado se escriba sin las
+  // imágenes, la mudanza no ha servido para nada.
+  if (movidas || sueltas) await store.guardarYa()
+  return { movidas, sueltas, fallidas }
+}

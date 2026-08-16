@@ -101,6 +101,22 @@ export function coleccionAparte(nombre: string): any | null {
   return baseMongo ? baseMongo.collection(nombre) : null
 }
 
+/**
+ * La ruta de un archivo hermano del de estado, para el motor de archivo.
+ *
+ * Es la otra mitad de `coleccionAparte`: lo que en Mongo va en su propia
+ * colección, aquí va en su propio archivo, al lado de `genesis.json`. Sirve
+ * para que quien tenga que sacar algo del documento de estado pueda hacerlo
+ * SIEMPRE, y no solo cuando hay Mongo — si el único camino fuera la colección,
+ * el motor de archivo acabaría metiéndolo otra vez donde no cabe.
+ *
+ * Se separa por archivos y no por claves dentro del mismo JSON a propósito: lo
+ * que se saca del estado se saca para no reescribirlo en cada guardado.
+ */
+export function archivoAparte(nombre: string): string {
+  return join(dirname(ARCHIVO), `${nombre}.json`)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Ciclo de vida
 // ─────────────────────────────────────────────────────────────────────────────

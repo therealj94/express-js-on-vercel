@@ -15,6 +15,7 @@ import { consultar, verificarCadena, anclaje, registrar } from '../audit/bitacor
 import { crearOperador, PERMISOS } from '../auth/operadores.js'
 import { crearAplicacion, revocar, rotar, ALCANCES } from '../auth/aplicaciones.js'
 import { biometriaConfigurada, proveedorBiometria } from '../kyc/biometria.js'
+import { leerFotos } from '../kyc/fotosDocumento.js'
 import { estadoGafi, aplicarGafi, guardarGafiEnMongo, fechaListasGafi, diasDesdeActualizacion } from '../aml/paises.js'
 import { DOCUMENTOS_EXIGIDOS, UMBRAL_UBO } from '../motor/negocios.js'
 import type { Rol } from '../types.js'
@@ -97,11 +98,23 @@ panelRouter.get('/identidades', exigePermiso('identidad.ver'), (req, res) => {
 })
 
 /** Ficha completa. Es la vista donde el operador decide, así que va todo. */
-panelRouter.get('/identidades/:id', exigePermiso('identidad.ver'), (req, res) => {
+panelRouter.get('/identidades/:id', exigePermiso('identidad.ver'), async (req, res) => {
   const i = ids.porId(req.params.id)
   if (!i) return res.status(404).json({ error: 'Identidad no encontrada' })
   ids.recalcularRiesgo(i)
-  res.json({ identidad: i })
+
+  // Las fotos del documento pendiente ya no viven dentro del expediente —son
+  // megabytes que reventaban el documento de estado— sino en su propio almacén.
+  // Aquí se vuelven a juntar, porque esta es justamente la pantalla donde un
+  // operador tiene que verlas para decidir.
+  //
+  // Se devuelve una COPIA: escribirlas de vuelta en el objeto de memoria las
+  // metería otra vez en el estado en el siguiente guardado, que es exactamente
+  // el fallo que se está arreglando.
+  const imagenes = await leerFotos(i.id).catch(() => null)
+  res.json({
+    identidad: i.documento ? { ...i, documento: { ...i.documento, imagenes } } : i,
+  })
 })
 
 panelRouter.post('/identidades/:id/aprobar', exigePermiso('identidad.aprobar'), async (req, res) => {
@@ -146,12 +159,12 @@ panelRouter.post('/identidades/:id/biometria', exigePermiso('identidad.revisar')
  * No borra el expediente —en cumplimiento no se borra— sino que limpia lo que
  * hay que volver a aportar. Exige el permiso de revisar y un motivo escrito.
  */
-panelRouter.post('/identidades/:id/reiniciar', exigePermiso('identidad.revisar'), (req, res) => {
+panelRouter.post('/identidades/:id/reiniciar', exigePermiso('identidad.revisar'), async (req, res) => {
   const motivo = String(req.body?.motivo || '').trim()
   if (motivo.length < 8) {
     return res.status(400).json({ error: 'Hace falta un motivo escrito para reiniciar una verificación' })
   }
-  const i = ids.reiniciar(req.params.id, req.operador!, motivo)
+  const i = await ids.reiniciar(req.params.id, req.operador!, motivo)
   if (!i) {
     return res.status(400).json({
       error: 'No se encontró la identidad, o ya está verificada (habría que suspenderla primero)',

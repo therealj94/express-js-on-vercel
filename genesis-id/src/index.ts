@@ -10,6 +10,7 @@ import { prepararTelemetria, hayMongo as telemetriaEnMongo } from './analitica/e
 import { estadoListas, hayListas, iniciarListas } from './aml/listas.js'
 import { cargarGafiDesdeMongo, estadoGafi, listasVencidas } from './aml/paises.js'
 import { biometriaConfigurada, proveedorBiometria } from './kyc/biometria.js'
+import { migrarFotosDelEstado } from './kyc/fotosDocumento.js'
 import { verificarCadena } from './audit/bitacora.js'
 import { sesionRouter } from './routes/sesion.js'
 import { appsRouter } from './routes/apps.js'
@@ -226,6 +227,21 @@ function exigirAlmacenPersistente(): void {
 export async function arrancar(): Promise<void> {
   exigirAlmacenPersistente()
   await iniciar()
+
+  // Lo PRIMERO después de abrir el almacén: sacar del documento de estado las
+  // fotos de documento que se guardaron dentro. Mientras sigan ahí, cada
+  // guardado reescribe esos megabytes y el documento avanza hacia los 16 MB que
+  // MongoDB no deja pasar — y el día que los pase, deja de guardarse TODO
+  // (identidades incluidas) sin que el servicio dé ninguna señal.
+  const mudanza = await migrarFotosDelEstado().catch((e) => {
+    console.error('[genesis-id] no se pudieron mudar las fotos del documento:', e?.message)
+    return null
+  })
+  if (mudanza && (mudanza.movidas || mudanza.sueltas || mudanza.fallidas)) {
+    console.log(
+      `[genesis-id] fotos de documento fuera del estado: ${mudanza.movidas} mudadas, ` +
+      `${mudanza.sueltas} sueltas por expediente ya decidido, ${mudanza.fallidas} sin mover`)
+  }
 
   // Las listas se cargan DESPUES de abrir el almacen: viven en Mongo, en su
   // propia coleccion, y antes de eso no hay de donde traerlas.

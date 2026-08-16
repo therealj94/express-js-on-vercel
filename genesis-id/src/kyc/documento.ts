@@ -42,7 +42,16 @@ export interface RevisionDocumento {
    * `aprobar()`.
    */
   via?: 'mrz' | 'fotos'
-  /** Las dos caras, solo en la vía `fotos`. Se borran al decidir. */
+
+  /**
+   * Las dos caras, solo en la vía `fotos` y solo DE PASO.
+   *
+   * No se guardan aquí: viven en su propio almacén (`kyc/fotosDocumento`) porque
+   * son megabytes de base64 y el estado del motor entero es un solo documento de
+   * MongoDB, que no puede pasar de 16 MB. Este campo se rellena únicamente al
+   * armar la ficha que ve el operador, y en el expediente guardado siempre va
+   * `null`. Volver a escribirlo antes de un guardado es rearmar la bomba.
+   */
   imagenes?: { anverso: string; reverso: string } | null
 }
 
