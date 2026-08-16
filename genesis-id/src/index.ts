@@ -139,6 +139,11 @@ app.get('/healthz', (_req, res) => {
       proveedorBiometria: proveedorBiometria(),
       ssoConfigurado: Boolean(process.env.GENESIS_SSO_SECRETO),
       bitacoraIntegra: cadena.integra,
+      // El hueco NO se esconde detrás de un sello: si la bitácora se cerró
+      // alguna vez por rotura, se dice aquí y se dice dónde. Un registro de
+      // cumplimiento que vuelve a verde sin dejar rastro no vale nada.
+      bitacoraSellos: cadena.sellos.length,
+      bitacoraRoturas: cadena.sellos.map((x) => x.rotaEn).filter((x) => x !== null),
       telemetriaPersistente: telemetriaEnMongo(),
     },
   })

@@ -589,6 +589,87 @@ describe('El retrato de la credencial vive fuera del estado', () => {
   })
 })
 
+// ─────────────────────────────────────────────────────────────────────────────
+// EL SELLO DE LA BITACORA
+//
+// Un eslabon roto no se arregla: recalcular los hashes dejaria la cadena en
+// verde destruyendo justo lo que aporta. Lo que se puede hacer es CERRAR el
+// tramo roto y abrir uno nuevo, dejando el hueco escrito dentro del propio
+// registro. Estas pruebas son el cerrojo de que el sello no se pueda usar para
+// tapar nada.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Sellar la bitacora cierra el tramo roto sin borrar el hueco', () => {
+  test('una cadena intacta NO se puede sellar', async () => {
+    const { verificarCadena, sellar } = await import('../audit/bitacora.js')
+    assert.equal(verificarCadena().integra, true, 'la prueba parte de una cadena sana')
+    const r = sellar('admin@prueba.local', 'sin motivo real')
+    assert.equal(r.ok, false)
+    assert.match(r.error!, /[ií]ntegra/i)
+  })
+
+  test('con la cadena rota, el sello la cierra y la deja verificable otra vez', async () => {
+    const { verificarCadena, sellar } = await import('../audit/bitacora.js')
+    const bitacora = store.todo().bitacora
+    const antes = bitacora.length
+    assert.ok(antes > 3, 'hacen falta entradas para romper una')
+
+    // Se rompe una entrada del medio, como haria la perdida de escrituras que
+    // provoco esto en produccion.
+    const roto = 2
+    bitacora[roto].detalle = { ...bitacora[roto].detalle, manipulado: true }
+    const rota = verificarCadena()
+    assert.equal(rota.integra, false)
+    assert.equal(rota.rotaEn, roto)
+
+    const r = sellar('admin@prueba.local', 'perdida de escrituras por el tope de 16 MB')
+    assert.equal(r.ok, true)
+    assert.equal(r.rotaEn, roto)
+
+    const despues = verificarCadena()
+    assert.equal(despues.integra, true, 'el tramo nuevo tiene que verificar')
+    assert.equal(despues.sellos.length, 1)
+    assert.equal(despues.sellos[0].rotaEn, roto, 'el sello guarda DONDE se rompio')
+    assert.equal(despues.sellos[0].entradasAntes, antes, 'y cuantas entradas habia')
+  })
+
+  test('la entrada rota sigue ahi: sellar no borra ni reescribe nada', () => {
+    const bitacora = store.todo().bitacora
+    assert.equal((bitacora[2].detalle as any).manipulado, true,
+      'la entrada manipulada tenia que quedarse tal cual')
+  })
+
+  test('lo que se escriba despues del sello vuelve a encadenar', async () => {
+    const { registrar, verificarCadena } = await import('../audit/bitacora.js')
+    registrar('admin@prueba.local', 'prueba.despues', 'x', {})
+    assert.equal(verificarCadena().integra, true)
+  })
+
+  test('romper algo DESPUES del sello se vuelve a notar', async () => {
+    const { verificarCadena } = await import('../audit/bitacora.js')
+    const bitacora = store.todo().bitacora
+    const ultima = bitacora.length - 1
+    const original = bitacora[ultima].detalle
+    bitacora[ultima].detalle = { ...original, colado: true }
+    assert.equal(verificarCadena().integra, false, 'el tramo nuevo tiene que seguir protegiendo')
+    bitacora[ultima].detalle = original
+    assert.equal(verificarCadena().integra, true)
+  })
+
+  test('un sello falsificado a mano no cuela', async () => {
+    const { verificarCadena } = await import('../audit/bitacora.js')
+    const bitacora = store.todo().bitacora
+    bitacora.push({
+      id: 'log_falso', fecha: new Date().toISOString(), actor: 'malo@ahi.fuera',
+      accion: 'bitacora.sello', objeto: 'bitacora', detalle: {},
+      hashAnterior: 'S'.repeat(64), hash: 'da igual lo que ponga aqui',
+    } as any)
+    assert.equal(verificarCadena().integra, false, 'un sello sin hash valido tiene que romper')
+    bitacora.pop()
+    assert.equal(verificarCadena().integra, true)
+  })
+})
+
 describe('Alcances de las aplicaciones', () => {
   test('ordenscan no puede crear identidades', async () => {
     const scan = store.todo().aplicaciones.find((a) => a.clave === 'ordenscan')!

@@ -11,7 +11,7 @@ import {
   cargarListas, estadoListas, buscar as buscarEnListas,
   importarDeOfac, importarTexto, cargarDesdeMongo,
 } from '../aml/listas.js'
-import { consultar, verificarCadena, anclaje, registrar } from '../audit/bitacora.js'
+import { consultar, verificarCadena, anclaje, registrar, sellar } from '../audit/bitacora.js'
 import { crearOperador, PERMISOS } from '../auth/operadores.js'
 import { crearAplicacion, revocar, rotar, ALCANCES } from '../auth/aplicaciones.js'
 import { biometriaConfigurada, proveedorBiometria } from '../kyc/biometria.js'
@@ -374,6 +374,29 @@ panelRouter.get('/bitacora', exigePermiso('bitacora.ver'), (req, res) => {
     cadena: verificarCadena(),
     anclaje: anclaje(),
   })
+})
+
+/**
+ * Cierra un tramo roto de la bitácora y abre uno nuevo.
+ *
+ * Solo admin, y solo si de verdad está rota. NO repara nada: las entradas
+ * anteriores se quedan exactamente como están. Lo único que hace es dejar
+ * escrito en la propia bitácora dónde se rompió y cuántas entradas había, para
+ * que a partir de ahí una manipulación nueva se vuelva a notar.
+ *
+ * La alternativa —recalcular los hashes— dejaría el registro en verde
+ * destruyendo justo la propiedad que lo hace valer algo ante un auditor. Por
+ * eso no existe esa ruta y no debe existir nunca.
+ */
+panelRouter.post('/bitacora/sellar', exigePermiso('*'), (req, res) => {
+  const motivo = String(req.body?.motivo || '').trim()
+  if (motivo.length < 10) {
+    return res.status(400).json({ error: 'Hace falta un motivo: queda escrito en la bitácora para siempre.' })
+  }
+  const r = sellar(req.operador!.email, motivo)
+  if (!r.ok) return res.status(409).json({ error: r.error })
+  registrar(req.operador!.email, 'bitacora.sellada', 'bitacora', { rotaEn: r.rotaEn, motivo })
+  res.json({ ok: true, rotaEn: r.rotaEn, cadena: verificarCadena() })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
