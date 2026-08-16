@@ -1,0 +1,71 @@
+/* Ninguna pantalla puede mostrar una clave cruda.
+ *
+ * `t('cha.cancelar')` con esa clave sin escribir no revienta: devuelve la clave
+ * y la persona lee «cha.cancelar» en un botón. Es el fallo más barato de
+ * cometer y el más caro de ver, porque solo aparece en la pantalla concreta y
+ * en el idioma concreto donde falta. Aquí se recorren todas las llamadas del
+ * código y se exige que cada una exista en ESPAÑOL y en INGLÉS.
+ *
+ * Dos cosas que este comprobador aprendió a la mala:
+ *  · el valor puede ir entre comillas dobles ("We're building this"), así que
+ *    la clave se reconoce por el nombre, no por cómo se escribió el valor;
+ *  · hay claves que se arman al vuelo —t('nu.' + m.id), t('bien.' + c.k + 'T')—
+ *    y esas se expanden con las listas reales del código en vez de darlas por
+ *    rotas.
+ */
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const R = join(dirname(fileURLToPath(import.meta.url)), '..');
+const leer = (f) => { try { return readFileSync(join(R, f), 'utf8'); } catch { return ''; } };
+const i18n = leer('i18n.js');
+
+const corte = (nom) => {
+  const i = i18n.indexOf('\n' + nom + ': {');
+  if (i < 0) throw new Error('no encuentro el bloque ' + nom);
+  const fin = i18n.indexOf('\n},', i);
+  return i18n.slice(i, fin < 0 ? i18n.indexOf('\n};', i) : fin);
+};
+// el nombre de la clave siempre va en comillas simples; el valor, como quiera
+const clavesDe = (txt) => new Set([...txt.matchAll(/'([\w.]+)':/g)].map((m) => m[1]));
+const ES = clavesDe(corte('es')), EN = clavesDe(corte('en'));
+
+const FUENTES = ['app.js', 'chat.js', 'aura.js', 'cadena.js', 'qr.js', 'datos.js',
+                 'telemetria.js', 'index.html'];
+const usadas = new Map();
+const apuntar = (k, f) => { if (!usadas.has(k)) usadas.set(k, f); };
+
+for (const f of FUENTES) {
+  const txt = leer(f);
+  for (const m of txt.matchAll(/\bt\(\s*'([\w.]+)'\s*\)/g)) apuntar(m[1], f);
+  for (const m of txt.matchAll(/data-i18n="([\w.]+)"/g)) apuntar(m[1], f);
+}
+
+/* Las que se arman al vuelo. Cada entrada dice de dónde salen las piezas. */
+const app = leer('app.js');
+const trozos = (re, txt = app) => [...txt.matchAll(re)].map((m) => m[1]);
+const dinamicas = [
+  // t('nu.' + m.id) — los módulos del Núcleo
+  ...trozos(/\{\s*id:\s*'(\w+)'/g).map((id) => ['nu.' + id, 'app.js · Núcleo']),
+  // t('bien.' + c.k + 'K'|'T'|'P') — los capítulos de la bienvenida
+  ...trozos(/\{\s*k:\s*'(\w+)'/g).flatMap((k) =>
+    ['K', 'T', 'P'].map((s) => ['bien.' + k + s, 'app.js · bienvenida'])),
+  // t('cha.e' + k + 'T'|'P') — los estados vacíos del chat
+  ...trozos(/chatVacio\(\s*'(\w+)'/g).flatMap((k) =>
+    ['T', 'P'].map((s) => ['cha.e' + k + s, 'app.js · chat vacío'])),
+];
+for (const [k, f] of dinamicas) if (ES.has(k) || EN.has(k)) apuntar(k, f);
+
+let mal = 0;
+const decir = (m) => { mal++; console.log('  ' + m); };
+for (const [k, f] of [...usadas].sort()) {
+  if (!ES.has(k)) decir(`FALTA en español   ${k}   (${f})`);
+  if (!EN.has(k)) decir(`FALTA en inglés    ${k}   (${f})`);
+}
+for (const k of [...ES].sort()) if (!EN.has(k)) decir(`DESPAREJA          ${k}   está en español y no en inglés`);
+for (const k of [...EN].sort()) if (!ES.has(k)) decir(`DESPAREJA          ${k}   está en inglés y no en español`);
+
+console.log(`${ES.size} claves en español · ${EN.size} en inglés · ${usadas.size} usadas en el código`);
+console.log(mal ? `\n${mal} problema(s)` : '\nTodo en verde');
+process.exit(mal ? 1 : 0);

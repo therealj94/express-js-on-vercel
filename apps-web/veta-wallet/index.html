@@ -176,9 +176,12 @@ body:has(#app:not(.oculto)) .veta-svg{display:none}
 /* La fila de hechos: alineada a la izquierda, separada por hilos, cada dato
    con su cifra en didona. Es la línea de "por qué creerle" y entra la última. */
 .hechos{margin-top:clamp(34px,6vh,58px);display:flex;gap:clamp(18px,3vw,38px);flex-wrap:wrap;
+  opacity:0;animation:aparece .9s 1.5s ease forwards}
+/* La tira de marcas del ecosistema. Vivio un tiempo ANIDADA dentro de .hechos
+   —un salto de linea partio la regla en dos— y se pintaba sin estilo: 16px de
+   crema chocando contra las cifras. */
 .bv-marcas{margin-top:22px;font-size:11px;font-weight:700;letter-spacing:.14em;
   color:var(--humo);text-transform:uppercase}
-  opacity:0;animation:aparece .9s 1.5s ease forwards}
 .hecho{padding-left:16px;border-left:1px solid var(--linea2)}
 .hecho b{display:block;font-family:var(--serif);font-weight:700;font-size:clamp(20px,2.6vw,27px);color:var(--oroLt)}
 .hecho small{display:block;margin-top:4px;font-size:11.5px;color:var(--humo);letter-spacing:.04em;max-width:17ch;line-height:1.5}
@@ -187,8 +190,7 @@ body:has(#app:not(.oculto)) .veta-svg{display:none}
    hacia la casa. Flota apenas, como colgada de la veta. */
 .lingote{justify-self:end;align-self:center;width:min(100%,320px);padding:26px;
   animation:flota 7s 2.4s ease-in-out infinite,aparece 1s 1.6s ease both}
-@keyframes flota{0%,100%{transform:translateY(0) rotate(-.4deg)}50%{transform:translateY(-
-12px) rotate(.4deg)}}
+@keyframes flota{0%,100%{transform:translateY(0) rotate(-.4deg)}50%{transform:translateY(-12px) rotate(.4deg)}}
 .lingote .l-lbl{font-size:10.5px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;color:var(--humo)}
 .lingote .l-uno{margin-top:10px;font-family:var(--serif);font-weight:700;font-size:44px;line-height:1;color:var(--oroHi)}
 .lingote .l-eq{margin-top:8px;font-size:13px;color:var(--bruma);line-height:1.6}
@@ -217,8 +219,7 @@ body:has(#app:not(.oculto)) .veta-svg{display:none}
 .btn-sm{padding:11px 20px;font-size:13.5px}
 
 .vidrio{background:var(--panel);border:1px solid var(--linea2);border-radius:var(--r2);
-  backdrop-filter:bl
-ur(18px);-webkit-backdrop-filter:blur(18px);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
   box-shadow:0 30px 80px -40px rgba(0,0,0,.9)}
 
 /* ── acceso: el formulario a un lado, la promesa al otro ─────────────────── */
@@ -234,8 +235,7 @@ ur(18px);-webkit-backdrop-filter:blur(18px);
   border:1px solid var(--linea2);border-radius:var(--r);background:rgba(2,22,23,.4)}
 .acc-lado .gid-mini svg{width:20px;height:20px;flex:0 0 auto;stroke:var(--oroLt);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .acc-lado .gid-mini small{font-size:12.5px;color:var(--humo);line-height:1.6}
-.acc{width:min(94vw,428px);padding:cl
-amp(26px,5vw,38px);justify-self:start;
+.acc{width:min(94vw,428px);padding:clamp(26px,5vw,38px);justify-self:start;
   animation:sube .7s cubic-bezier(.2,.8,.3,1) both}
 @keyframes sube{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
 .seg{display:flex;gap:4px;padding:4px;background:rgba(2,20,20,.6);border:1px solid var(--linea2);
@@ -314,8 +314,7 @@ amp(26px,5vw,38px);justify-self:start;
   text-shadow:0 2px 10px rgba(0,0,0,.45)}
 .saldo-cifra span{font-size:14px;font-weight:700;color:var(--oroDp);letter-spacing:.14em}
 .saldo-fiat{margin-top:10px;font-size:15px;color:var(--bruma)}
-.saldo-fiat .pastilla{display:inline-block;margin-left:8px;padding:3px 9px;border-radius:100
-px;
+.saldo-fiat .pastilla{display:inline-block;margin-left:8px;padding:3px 9px;border-radius:100px;
   font-size:12px;font-weight:700;font-family:var(--mono)}
 .sube-p{background:rgba(62,217,160,.14);color:var(--jade)}
 .baja-p{background:rgba(240,119,107,.14);color:var(--coral)}
@@ -537,16 +536,81 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 .nu-hilos{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .nu-hilos line{stroke:var(--linea2);stroke-width:.28;vector-effect:non-scaling-stroke}
 
+/* --z: 0 el mundo mas lejano, 1 el mas cercano. Lo calcula app.js del tamano
+   de cada uno. De aqui salen las cuatro senas de profundidad; ninguna es un
+   numero puesto a mano por esfera, todas se leen del mismo --z. */
 .nu-mundo{position:absolute;transform:translate(-50%,-50%);display:flex;
-  flex-direction:column;align-items:center;gap:8px;padding:0;cursor:pointer}
+  flex-direction:column;align-items:center;gap:8px;padding:0;cursor:pointer;
+  /* EL PARALAJE. --px/--py los pone app.js con el puntero (de -1 a 1). Lo
+     cercano se mueve mas que lo lejano: es la unica pista de profundidad que
+     el ojo no puede discutir, porque es la que usa de verdad. 22px en el
+     primer plano, 4px al fondo. */
+  translate:calc(var(--px,0) * (4px + var(--z) * 18px))
+            calc(var(--py,0) * (4px + var(--z) * 18px));
+  transition:translate .5s cubic-bezier(.2,.7,.3,1)}
 .nu-esfera{width:calc(var(--t) * clamp(74px,17vw,104px));aspect-ratio:1;border-radius:50%;
-  display:grid;place-items:center;
+  position:relative;display:grid;place-items:center;
   background:radial-gradient(circle at 32% 26%,var(--g1),var(--g2) 52%,var(--g3));
+  /* La luz de canto: un filo del color del halo por abajo, como si el suelo
+     dorado del Nucleo rebotara. Es lo que separa una bola de un circulo. */
   box-shadow:0 0 0 1px rgba(255,255,255,.12),0 0 40px -8px var(--halo),
-    inset 0 -10px 22px -12px rgba(0,0,0,.6);
-  animation:nuFlota 5s ease-in-out infinite;animation-delay:var(--d);transition:transform .2s}
+    inset 0 -10px 22px -12px rgba(0,0,0,.6),
+    inset 0 -7px 13px -9px var(--halo);
+  /* El desenfoque de distancia: 1,1px al fondo, nada en el primer plano. */
+  filter:blur(calc((1 - var(--z)) * 1.1px));
+  animation:nuFlota 5s ease-in-out infinite;animation-delay:var(--d);
+  transition:transform .2s,filter .25s}
+/* El brillo especular. Un ovalo pequeno, arriba a la izquierda, del lado por
+   el que ya entra la luz en el degradado: sin el, el degradado se lee como
+   pintura; con el, como una superficie. */
+.nu-esfera::before{content:"";position:absolute;left:19%;top:13%;width:31%;height:22%;
+  border-radius:50%;background:rgba(255,255,255,.5);filter:blur(5px);
+  pointer-events:none}
+/* La niebla. Lo lejano se lava contra el fondo en vez de brillar igual que lo
+   de delante — es lo que hace que el cuadro tenga aire y no capas pegadas. */
+.nu-esfera::after{content:"";position:absolute;inset:-1px;border-radius:50%;
+  background:var(--pozo);opacity:calc((1 - var(--z)) * .34);pointer-events:none;
+  transition:opacity .25s}
 .nu-mundo:hover .nu-esfera{transform:scale(1.06)}
+/* Al pasar por encima, lo que se toca se acerca: el desenfoque y la niebla se
+   van, y ese mundo pasa a estar delante de todo lo demas. */
+.nu-mundo:hover,.nu-mundo:focus-visible{z-index:20!important}
+.nu-mundo:hover .nu-esfera,.nu-mundo:focus-visible .nu-esfera{filter:none}
+.nu-mundo:hover .nu-esfera::after,.nu-mundo:focus-visible .nu-esfera::after{opacity:0}
+/* El destello de llegada del canvas: se enciende SIN perder el desenfoque de
+   distancia, que es lo que pasaba cuando esto se hacia con style.filter. */
+.nu-esfera.nu-destello{filter:blur(calc((1 - var(--z)) * 1.1px)) brightness(1.5)}
 @keyframes nuFlota{0%,100%{translate:0 0}50%{translate:0 -7px}}
+
+/* ENTRAR POR LA ESFERA. La que se toco crece y se abre; las demas se apartan
+   y se apagan. 240ms, que es lo que tarda app.js en pintar la app detras. */
+.cer-yendo .nu-mundo{transition:opacity .24s ease,scale .24s ease;opacity:.12;scale:.9}
+.cer-yendo .nu-mundo.nu-yendo{opacity:0;scale:2.6;z-index:30!important;
+  transition:opacity .24s ease-in,scale .24s cubic-bezier(.5,0,.85,.3)}
+.cer-yendo .nu-yendo .nu-esfera{animation:none;filter:none;
+  box-shadow:0 0 0 1px rgba(255,255,255,.2),0 0 120px 10px var(--halo)}
+.cer-yendo .nu-yendo .nu-esfera::after{opacity:0}
+.cer-yendo .nu-yendo .nu-nombre,.cer-yendo .nu-yendo .nu-chip,
+.cer-yendo .nu-yendo .nu-candado{opacity:0;transition:opacity .12s}
+.cer-yendo #red-nucleo,.cer-yendo .cerebro-cab,.cer-yendo .cerebro-pie{
+  opacity:0;transition:opacity .24s ease}
+
+/* LA DIRECCION DEL VIAJE. Hacia dentro se llega desde mas lejos; volviendo,
+   desde mas cerca. El mismo movimiento en los dos sentidos seria no decir
+   nada. */
+@keyframes lzDentro{from{opacity:0;transform:scale(.972) translateY(10px)}
+  to{opacity:1;transform:none}}
+@keyframes lzFuera{from{opacity:0;transform:scale(1.028) translateY(-6px)}
+  to{opacity:1;transform:none}}
+.lz-dentro{animation:lzDentro .26s cubic-bezier(.2,.7,.3,1) both}
+.lz-fuera{animation:lzFuera .26s cubic-bezier(.2,.7,.3,1) both}
+
+/* Quien pidio que las cosas no se muevan no pidio menos profundidad: se queda
+   la niebla, el desenfoque y la luz de canto, y se va lo que se mueve solo. */
+@media(prefers-reduced-motion:reduce){
+  .nu-esfera{animation:none}
+  .nu-mundo{translate:none;transition:none}
+  .lz-dentro,.lz-fuera{animation:none}}
 .nu-lente{width:52%;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;
   background:var(--lente);box-shadow:inset 0 2px 9px rgba(0,0,0,.7)}
 .nu-lente svg{width:56%;height:56%;fill:none;stroke:var(--halo);stroke-width:1.8;
@@ -878,7 +942,11 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
   border-top-color:currentColor;border-radius:50%;animation:gira .7s linear infinite}
 @keyframes gira{to{transform:rotate(360deg)}}
 .esqueleto{background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,.1),rgba(255,255,255,.05));
-  background-size:200% 100%;animation:brilloEsq 1.3s linear infinite;border-radius:8px;color:transparent}
+  background-size:200% 100%;animation:brilloEsq 1.3s linear infinite;border-radius:8px;
+  /* !important porque .cha-txt b y .m-txt b le ganaban por especificidad y
+     los esqueletos gritaban la palabra «Cargando» en negrita encima de las
+     barras — en el chat y en la billetera, en escritorio y en movil. */
+  color:transparent!important}
 @keyframes brilloEsq{to{background-position:-200% 0}}
 
 /* ══ EL RECORRIDO ═════════════════════════════════════════════════════════════
@@ -1028,7 +1096,12 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 .ojo-ic{width:19px;height:19px;fill:none;stroke:var(--bruma);stroke-width:1.6;
   stroke-linecap:round;stroke-linejoin:round;flex:none;transition:stroke .2s}
 .saldo-ojo:hover .ojo-ic{stroke:var(--oro)}
-.sube{color:var(--jade)} .baja{color:var(--coral)}
+/* El verde y el coral de una VARIACION DE PRECIO. Se llamaban .sube/.baja a
+   secas y chocaban con .baja de la portada —«el tramo que va debajo del
+   pliegue»—, asi que TODOS los titulares de la landing se pintaban en coral:
+   una casa que vende oro certificado con los titulos en rosa salmon. El
+   nombre dice ahora de que habla. */
+.px-sube{color:var(--jade)} .px-baja{color:var(--coral)}
 
 /* el disco de cada moneda */
 .disco{width:42px;height:42px;border-radius:50%;flex:none;display:flex;align-items:center;
@@ -1397,6 +1470,19 @@ a.btn{text-decoration:none}
   .pasos{gap:7px}
   .paso-p span{font-size:10.5px}
 }
+
+/* ── remates de la revision de producto ─────────────────────────────────── */
+/* El orbe de AU-RA flota sobre el contenido y en un telefono tapaba el ultimo
+   boton de cuatro pantallas de cinco (Ver actividad, la primera tarjeta de
+   comercio, el aviso de enviar, la fila de la bienvenida). Se le reserva su
+   sitio: un asistente no puede comerse un boton. */
+@media(max-width:900px){ .lienzo{ padding-bottom:176px } }
+
+/* Los nombres de los comercios se decapitaban a una linea —«Roatan Dive &…»—
+   incluso en escritorio: el directorio es la vitrina de MyTokenPay y parecia
+   que a los negocios se les cobra por letra. */
+.pay-cab b{ white-space:normal; display:-webkit-box; -webkit-line-clamp:2;
+  -webkit-box-orient:vertical; overflow:hidden }
 </style>
 
 <svg class="veta-svg" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
@@ -1433,7 +1519,10 @@ a.btn{text-decoration:none}
 <div id="portada">
 <section id="bienvenida">
   <div class="bv">
-    <div class="sello" data-t="bv.h3"></div>
+    <!-- El sello reusaba bv.h3 —el pie de la cifra «1»— y la misma frase
+         salia dos veces en la misma pantalla: arriba como promesa y 400px
+         mas abajo como caption. Ahora dice de que casa es esto. -->
+    <div class="sello" data-t="bv.sello"></div>
     <h1 id="bv-titulo" aria-live="polite"></h1>
     <p data-t="bv.p"></p>
     <div class="bv-btns">

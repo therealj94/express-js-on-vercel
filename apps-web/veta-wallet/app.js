@@ -62,7 +62,7 @@ const VETA = (() => {
   let cartera = null;         // los quince tokens, tal como los devuelve CADENA
   let errCartera = null;      // por que no se pudieron leer
   let identidad = null;       // estado de Genesis ID
-  let movimientos = [];
+  let movimientos = null;   // null = todavia no llego; [] = llego y no hay
   /* Por que no se pudo traer la actividad. Hace falta distinguirlo de «no
      hay nada»: una lista vacia por un fallo de red le dice a la persona
      «todavia no tenes movimientos» sobre una cuenta con historial — la
@@ -511,10 +511,24 @@ const VETA = (() => {
     tele('vaciar');
     tele('identificar', null);
     sesion = null; cartera = null; errCartera = null; identidad = null;
-    movimientos = []; transferencias = []; tarjeta = null; movsTarjeta = []; ocultos = false;
+    movimientos = null; transferencias = []; tarjeta = null; movsTarjeta = []; ocultos = false;
     // El expediente de verificación se va con la sesión: dentro hay un número de
     // documento y dos fotografías, y no tienen por qué sobrevivir a un «salir».
     sol = null;
+    /* Y el numero de tarjeta tampoco. Se limpiaba SOLO al cambiar de vista, asi
+       que una sesion que caduca con la tarjeta destapada dejaba el PAN y el CVV
+       en memoria — y como `vistaActual` tambien sobrevivia, la siguiente cuenta
+       que entrara en ese navegador caia en la tarjeta y los veia pintados. Son
+       dieciseis digitos que no son suyos. */
+    secretoTarjeta = null; volteada = false; tokenAbierto = null;
+    vistaActual = 'nucleo';
+    /* El chat se va entero con su dueño: la lista de conversaciones de alguien
+       no es lo primero que tiene que ver la persona siguiente. */
+    chatParar();
+    Object.assign(chatSt, { puerta: null, error: null, convs: null, con: null,
+      msgs: null, busca: '', gente: null, ficha: null, yo: null,
+      verCodigo: false, buscaMal: false });
+    avisarChat = null; chatPendiente = null;
     try { localStorage.removeItem(LLAVE); } catch {}
     ir('bienvenida');
   }
@@ -727,7 +741,7 @@ const VETA = (() => {
 
   function todoMovimiento() {
     const vistos = new Set();
-    return [...movimientos, ...transferencias]
+    return [...(movimientos || []), ...transferencias]
       .filter(m => {
         const llave = m.hash || m.txHash || `${m.from}-${m.to}-${movMonto(m)}-${movCuando(m)}`;
         if (vistos.has(llave)) return false;
@@ -761,6 +775,47 @@ const VETA = (() => {
     contactos: 'ajustes', sesiones: 'ajustes', seguridad: 'ajustes', perfil: 'ajustes',
   };
 
+  /* ═══ EL BOTON ATRAS DEL NAVEGADOR ═══════════════════════════════════════
+     Hasta ahora no existia una sola llamada a history en todo el proyecto:
+     entrabas al chat desde el Nucleo, tocabas atras, y te ibas de la web
+     entera. En un ecosistema que se vende como una sola casa, eso es una
+     puerta que da a la calle en cada habitacion.
+
+     Cada vista deja su marca en la direccion, y atras vuelve a la anterior.
+     Los hash de INTENCION (#pagar, #chat?con=, #verificar con parametros) NO
+     se pushean: son ordenes que llegan de fuera —un QR, un enlace— y las
+     consume el arranque; empujarlas al historial haria que atras volviera a
+     ejecutar el cobro. */
+  let porPop = false;
+
+  const rutaDe = (cual, dato) => {
+    if (cual === 'token' && (dato || tokenAbierto)) return '#token/' + (dato || tokenAbierto);
+    if (cual === 'payneg' && payNeg) return '#pay/n/' + payNeg;
+    if (cual === 'payex') return '#pay/ex';
+    return '#' + cual;
+  };
+
+  function leerRuta(h) {
+    const txt = String(h || '').replace(/^#/, '');
+    // una intencion no es una ruta: la trata el arranque, no el historial
+    if (/^(pagar|chat\?|verificar\?)/.test(txt)) return null;
+    const [a, b, c] = txt.split('/');
+    if (a === 'token' && b) return { v: 'token', d: b };
+    if (a === 'pay' && b === 'n' && c) return { v: 'payneg', neg: c };
+    if (a === 'pay' && b === 'ex') return { v: 'payex' };
+    return VISTAS[a] ? { v: a } : null;
+  }
+
+  addEventListener('popstate', (e) => {
+    if (!sesion || $('#app').classList.contains('oculto')) return;
+    const r = e.state?.v ? e.state : leerRuta(location.hash);
+    if (!r) return;
+    porPop = true;
+    if (r.neg) payNeg = r.neg;
+    vista(r.v, r.d);
+    porPop = false;
+  });
+
   function vista(cual, dato) {
     if (!VISTAS[cual]) cual = 'nucleo';
     // Salir de la tarjeta borra el numero y el CVV de la memoria y la deja de
@@ -770,12 +825,27 @@ const VETA = (() => {
     // El latido del chat solo late mientras el chat esta en pantalla: un
     // intervalo vivo en segundo plano es trafico que nadie mira.
     if (vistaActual === 'chat' && cual !== 'chat') chatParar();
+    // Salir de «enviar» cancela la intencion de publicar comprobante: la marca
+    // no puede quedar esperando dias a un envio que ya es otro.
+    if (vistaActual === 'enviar' && cual !== 'enviar') avisarChat = null;
     vistaActual = cual;
     if (cual === 'token' && dato) tokenAbierto = dato;
     const encendida = PESTANAS.includes(cual) ? cual : DENTRO_DE[cual];
     document.querySelectorAll('.nav[data-vista]').forEach(b =>
       b.dataset.vista === encendida ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
     const l = $('#lienzo');
+    /* LA DIRECCIÓN DEL VIAJE. Entrar a una app y volver al Núcleo son dos
+       gestos distintos y hasta ahora se veían igual. Yendo hacia dentro la
+       pantalla llega desde un poco más lejos y se acerca; volviendo, llega
+       desde un poco más cerca y se asienta. Es un detalle de 260ms que nadie
+       nombra y que todo el mundo nota: sabés si avanzaste o si retrocediste
+       sin leer una sola palabra.
+       La clase se quita y se vuelve a poner con un reflow forzado en medio —
+       si no, dos vistas seguidas no reinician la animación y la segunda entra
+       en seco. */
+    l.classList.remove('lz-dentro', 'lz-fuera');
+    void l.offsetWidth;
+    l.classList.add(cual === 'nucleo' ? 'lz-fuera' : 'lz-dentro');
     l.innerHTML = VISTAS[cual]();
     l.querySelectorAll('[data-al-cargar]').forEach(el => window[el.dataset.alCargar]?.(el));
     if (cual === 'recibir' || cual === 'deposito') pintarQr();
@@ -790,6 +860,13 @@ const VETA = (() => {
        detras de la pantalla de enviar seria gastar bateria en nada. El fondo
        negro va y viene con el: la orden fue que el resto de la billetera
        quede como esta. */
+    /* La direccion se actualiza DESPUES de pintar, y nunca cuando el cambio
+       viene del propio boton atras (`porPop`) — si no, volver empujaria una
+       entrada nueva y el historial no dejaria salir jamas. */
+    if (!porPop && sesion) {
+      const r = rutaDe(cual, dato);
+      if (location.hash !== r) history.pushState({ v: cual, d: dato, neg: payNeg }, '', r);
+    }
     document.body.classList.toggle('en-cerebro', cual === 'nucleo');
     /* Mientras la bienvenida esta encima, EL CEREBRO ES SUYO: hay una sola
        red y montarla de nuevo aqui la mataria. Pasaba de verdad — los datos
@@ -859,7 +936,7 @@ const VETA = (() => {
       </button>
       <div class="saldo-fiat">
         ${cargando ? `<span class="esqueleto">${t('ini.cargando')}</span>`
-          : dia ? `<span class="${sube ? 'sube' : 'baja'}">${sube ? '+' : '−'}${tapa(usd(Math.abs(dia.usd)))}</span>
+          : dia ? `<span class="${sube ? 'px-sube' : 'px-baja'}">${sube ? '+' : '−'}${tapa(usd(Math.abs(dia.usd)))}</span>
                    <span class="pastilla ${sube ? 'sube-p' : 'baja-p'}">${sube ? '+' : ''}${dia.pct.toFixed(2)}%</span>
                    <span style="color:var(--humo);margin-left:8px">${t('ini.hoy')}</span>`
             : `<span style="color:var(--humo)">${t('ini.envivo')}</span>`}
@@ -893,7 +970,7 @@ const VETA = (() => {
     return cartera.map(x => {
       const valor = x.precio != null ? usd(x.cant * x.precio) : '—';
       const chg = x.chg != null
-        ? `<span class="${x.chg < 0 ? 'baja' : 'sube'}">${x.chg > 0 ? '+' : ''}${x.chg.toFixed(2)}%</span>` : '';
+        ? `<span class="${x.chg < 0 ? 'px-baja' : 'px-sube'}">${x.chg > 0 ? '+' : ''}${x.chg.toFixed(2)}%</span>` : '';
       return `
       <button class="moneda" onclick="VETA.vista('token',${jsTxt(x.s)})"
               aria-label="${esc(x.n)}, ${esc(oro(x.cant))} ${x.s}">
@@ -934,6 +1011,23 @@ const VETA = (() => {
        escondido este fallo de integracion: la pantalla daba una respuesta
        tranquilizadora —y falsa— en lugar de un error que alguien habria
        mirado. */
+    /* MIENTRAS CARGA NO SE OPINA. Con `identidad` en null —los primeros
+       segundos de cada sesion— el mapa de estados caia al default «Sin
+       verificar» CON su boton de verificar: a alguien con su Genesis ID
+       aprobado hace meses se le ofrecia hacer el tramite otra vez. Es la
+       misma mentira tranquilizadora que este archivo jura no cometer. */
+    if (!identidad) return `
+    <div class="bloque vidrio">
+      <div class="gid">
+        <div class="gid-ic"><svg viewBox="0 0 24 24">${ICO.id}</svg></div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <h3>Genesis ID</h3><span class="estado esqueleto">·····</span>
+          </div>
+          <p class="pie esqueleto" style="margin-top:8px">·······················</p>
+        </div>
+      </div>
+    </div>`;
     const fallo = Boolean(identidad?.error);
     const [clase, titulo, texto] = fallo
       ? ['e-mal', t('gid.err'), t('gid.errP')]
@@ -995,6 +1089,12 @@ const VETA = (() => {
   function listaMovimientos(limite) {
     const todos = todoMovimiento();
     const l = todos.slice(0, limite || todos.length);
+    // Todavia sin respuesta: barras, no un veredicto.
+    if (movimientos === null && !errMovs && !transferencias.length) return [0, 1, 2].map(() => `
+      <div class="hilera">
+        <div class="ic esqueleto"></div>
+        <div class="txt"><b class="esqueleto">············</b><small class="esqueleto">·········</small></div>
+      </div>`).join('');
     if (!l.length) return errMovs
       /* No llego, que no es lo mismo que no haber. Aqui el boton SI sirve:
          vuelve a pedirlo. */
@@ -1323,7 +1423,8 @@ const VETA = (() => {
          No mueve dinero: deja la tarjeta con el hash para que cualquiera lo
          compruebe en el explorador. Si el relevo no está, el envío ya está
          hecho igual: esto no puede hacer fallar una transferencia. */
-      if (avisarChat && hash && CHAT.listo()) {
+      if (avisarChat && hash && CHAT.listo()
+          && avisarChat.dir === String(dir).toLowerCase()) {
         const destino = avisarChat;
         avisarChat = null;
         CHAT.pago({ para: destino.id, monto: String(monto), moneda: sim, hash })
@@ -2864,12 +2965,33 @@ const VETA = (() => {
        sola pieza y no dos capas que se ignoran. */
     const { enCaja, enAncho } = cajaNucleo();
 
+    /* LA PROFUNDIDAD. El tamaño de cada mundo ya decía quién está delante y
+       quién detrás; lo que faltaba era que el resto del dibujo lo creyera. De
+       `tam` sale `--z` —0 el más lejano, 1 el más cercano— y de ahí salen las
+       cuatro cosas que hacen que un plano se vea como un espacio: la niebla
+       (lo lejano se lava contra el fondo), el desenfoque de distancia, cuánto
+       se mueve cada capa cuando el puntero se mueve, y en qué orden se tapan
+       unas a otras. Se calcula del propio dato, no a mano: si mañana alguien
+       cambia un tamaño en MUNDOS, la profundidad lo sigue. */
+    const tams = MUNDOS.map((m) => m.tam);
+    const tMin = Math.min(...tams), tMax = Math.max(...tams);
+    const hondo = (m) => (tMax === tMin ? 1 : (m.tam - tMin) / (tMax - tMin));
+
     const esferas = MUNDOS.map((m, i) => {
       const cerrado = m.pideGid && !verificada;
+      const z = hondo(m);
       return `
       <button class="nu-mundo${m.pronto ? ' nu-pronto' : ''}${cerrado ? ' nu-cerrado' : ''}"
               data-mundo="${m.id}"
-              style="left:${enAncho(m.x)}%;top:${enCaja(m.y)}%;--t:${m.tam};--d:${i * 420}ms;
+              style="left:${enAncho(m.x)}%;top:${enCaja(m.y)}%;--t:${m.tam};
+                     --z:${z.toFixed(3)};z-index:${3 + Math.round(z * 8)};
+                     /* NEGATIVO a propósito. En positivo, la última esfera se
+                        quedaba quieta 2,9 segundos antes de empezar a flotar:
+                        se entraba al Núcleo y la constelación parecía una
+                        foto que despierta a trozos. En negativo cada una
+                        arranca ya metida en su vuelta, todas vivas desde el
+                        primer fotograma y ninguna en el mismo punto. */
+                     --d:-${i * 420}ms;
                      --g1:${m.grad[0]};--g2:${m.grad[1]};--g3:${m.grad[2]};
                      --halo:${m.halo};--lente:${m.lente}"
               onclick="VETA.nuAbrir(${jsTxt(m.id)})"
@@ -2942,6 +3064,13 @@ const VETA = (() => {
     relojCerebro = setTimeout(() => { if (vistaActual === 'nucleo') vista('nucleo'); }, 260);
   });
 
+  /* EL SUELO, MEDIDO. Cuánto sitio come la banda de abajo —el sello de la
+     cadena y los botones del recorrido— y cuánto sobresale una esfera por
+     debajo de su centro. Los pone medirCerebro() con la regla puesta sobre lo
+     que hay de verdad en pantalla. Hasta que eso ocurre valen los números a
+     ojo de aquí abajo, que son los que dibujan el primer fotograma. */
+  let sueloPie = null, altoCaja = null, vueloEsfera = 0;
+
   function cajaNucleo() {
     const alto = innerWidth < 901 ? innerHeight - 76 : innerHeight;
     const angosto = innerWidth < 700;
@@ -2951,7 +3080,18 @@ const VETA = (() => {
        mucho más que en una pantalla grande, así que la banda de abajo se
        reserva por ANCHO y no solo por alto: un 390x844 tiene sitio de sobra a
        lo alto y aun así la fila de abajo caía sobre el sello. */
-    const abajo = corta ? 60 : baja ? 69 : angosto ? 68 : 79;
+    const aOjo = corta ? 60 : baja ? 69 : angosto ? 68 : 79;
+    /* Y aun así el número a ojo se equivocaba, porque el sello NO mide siempre
+       lo mismo: crece con el idioma y con lo que tenga que decir ese día. Con
+       saldo en la cartera se estiraba lo justo para comerse el nombre de
+       AUBANK en un 360x740 —el centro del botón seguía libre, pero el nombre
+       quedaba debajo del sello y no se podía leer—. Ningún número escrito a
+       mano acierta con algo que cambia de tamaño solo; se mide y se reparte lo
+       que quede. Y nunca hacia abajo: la medida solo puede subir el suelo,
+       jamás bajarlo por debajo de lo que ya se había reservado. */
+    const abajo = sueloPie != null && altoCaja > 0
+      ? Math.min(aOjo, 100 * (1 - (sueloPie + vueloEsfera + 10) / altoCaja))
+      : aOjo;
     /* Y a lo ancho lo mismo: el nombre de una esfera pegada al borde
        —«Ordenexchange» es el más largo— se salía del cuadro en un teléfono
        angosto. Se mete la constelación hacia dentro en vez de recortar el
@@ -2988,6 +3128,31 @@ const VETA = (() => {
        pequeña que sigue viva ahí fuera. */
     const lienzo = $('#lienzo');
     if (lienzo) lienzo.style.paddingBottom = alto > cabe ? pestanas + 'px' : '';
+
+    /* Ya está el cuadro con su alto de verdad: ahora se mide lo que hay dentro
+       y, si el suelo estaba mal calculado, se vuelven a colocar las esferas.
+       No hay bucle posible: dónde cae el sello no depende de dónde estén las
+       esferas, así que la corrección se hace una vez y se queda quieta. */
+    const caja = el.getBoundingClientRect();
+    const pie = $('.cerebro-pie')?.getBoundingClientRect();
+    if (!pie || !caja.height) return;
+    const mundos = [...document.querySelectorAll('.nu-mundo[data-mundo]')];
+    const antes = cajaNucleo();
+    altoCaja = caja.height;
+    sueloPie = Math.max(0, caja.bottom - pie.top);
+    // lo que cuelga por debajo del centro de la esfera más grande: el nombre
+    // va ahí abajo y es lo que se quedaba tapado
+    vueloEsfera = mundos.reduce((m, x) => Math.max(m, x.getBoundingClientRect().height / 2), 0);
+    const ahora = cajaNucleo();
+    // se recolocan solo si la cuenta cambió de verdad; media décima de por
+    // ciento no vale un repintado
+    if (Math.abs(ahora.enCaja(100) - antes.enCaja(100)) < 0.5) return;
+    mundos.forEach((x) => {
+      const m = MUNDOS.find((y) => y.id === x.dataset.mundo);
+      if (!m) return;
+      x.style.top = ahora.enCaja(m.y) + '%';
+      x.style.left = ahora.enAncho(m.x) + '%';
+    });
   }
 
   function encenderCerebro(despertar) {
@@ -3011,12 +3176,56 @@ const VETA = (() => {
       // El destello de llegada enciende la esfera del DOM un instante: el
       // canvas y los botones se contestan, que es lo que vuelve VIVO el
       // conjunto en vez de dos capas que se ignoran.
+      /* Por clase y no por style.filter: el filtro en linea le pisaba a la
+         esfera el desenfoque de distancia, y durante los 320ms del destello
+         un mundo del fondo saltaba al primer plano y volvia. La clase compone
+         las dos cosas. */
       alDestellar: id => {
         const el = document.querySelector(`.nu-mundo[data-mundo="${id}"] .nu-esfera`);
         if (!el) return;
-        el.style.filter = 'brightness(1.5)';
-        setTimeout(() => { el.style.filter = ''; }, 320);
+        el.classList.add('nu-destello');
+        setTimeout(() => el.classList.remove('nu-destello'), 320);
       },
+    });
+    engancharParalaje(c.closest('.cerebro'));
+  }
+
+  /* EL PARALAJE. Lo que de verdad convence al ojo de que hay hondura no es la
+     niebla ni el desenfoque: es que al mover la cabeza lo cercano se desplace
+     mas que lo lejano. Aqui la cabeza es el puntero. Se escriben dos numeros
+     de -1 a 1 en el cuadro y el CSS reparte el movimiento por --z.
+
+     El oyente va en el propio cuadro, no en window: cuando vista() vuelve a
+     pintar #lienzo el nodo muere y se lleva el oyente puesto, sin nada que
+     desenganchar y sin dejar uno vivo por cada visita al Nucleo.
+
+     Solo con puntero fino. En un telefono no hay puntero que seguir, y el
+     giroscopio pide permiso en iOS: pedir un permiso por un adorno es
+     exactamente la clase de cosa que hace que alguien desconfie de la app que
+     le guarda el oro. Ahi la hondura la sostienen las otras tres senas. */
+  function engancharParalaje(caja) {
+    if (!caja || caja.dataset.paralaje) return;
+    if (!matchMedia('(hover:hover) and (pointer:fine)').matches) return;
+    if (matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+    caja.dataset.paralaje = '1';
+    let pedido = 0, px = 0, py = 0;
+    const pintar = () => {
+      pedido = 0;
+      caja.style.setProperty('--px', px.toFixed(3));
+      caja.style.setProperty('--py', py.toFixed(3));
+    };
+    caja.addEventListener('pointermove', (e) => {
+      const r = caja.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      px = ((e.clientX - r.left) / r.width - 0.5) * -2;
+      py = ((e.clientY - r.top) / r.height - 0.5) * -2;
+      if (!pedido) pedido = requestAnimationFrame(pintar);
+    });
+    // Al salir, la constelacion vuelve a su sitio en vez de quedarse torcida
+    // en el ultimo gesto.
+    caja.addEventListener('pointerleave', () => {
+      px = 0; py = 0;
+      if (!pedido) pedido = requestAnimationFrame(pintar);
     });
   }
 
@@ -3035,10 +3244,33 @@ const VETA = (() => {
     const m = MUNDOS.find(x => x.id === id);
     if (!m) return;
     if (m.pronto) return avisar(t('nu.prontoP'));
-    if (m.pideGid && !esVerificada()) { avisar(t('nu.cerrado')); return vista('verificar'); }
+    /* Con la identidad todavia en camino no se le cierra la puerta a nadie:
+       tocar la esfera del chat en los primeros segundos mandaba a alguien
+       verificado a rehacer su KYC. La propia pantalla vuelve a preguntar el
+       estado antes de decidir (chatEntrar), asi que se la deja decidir a ella. */
+    if (m.pideGid && identidad && !esVerificada()) { avisar(t('nu.cerrado')); return vista('verificar'); }
     const fuera = m.paraFuera === 'pay' ? URL_MYTOKENPAY : m.fuera;
     if (fuera) return window.open(fuera, '_blank', 'noopener');
-    vista(m.va);
+    entrarPorLaEsfera(id, () => vista(m.va));
+  }
+
+  /* ENTRAR POR LA ESFERA. Antes, tocar un mundo borraba el Nucleo y pintaba la
+     app en el mismo fotograma: funcionaba, pero no contaba nada. Ahora la
+     esfera que se tocó crece y se abre —y el resto de la constelación se
+     aparta y se apaga—, y la app entra por ese mismo punto. Se pasa de un
+     sitio a otro; no se cambia de lámina.
+
+     Son 240ms y ni uno más: la animación tiene que terminar antes de que a
+     nadie le dé tiempo a preguntarse por qué no ha pasado nada todavía. Y si
+     el navegador dice que no se mueva nada, no se mueve: se abre en seco, sin
+     esperar los 240ms que ya no adornan nada. */
+  function entrarPorLaEsfera(id, abrir) {
+    const el = document.querySelector(`.nu-mundo[data-mundo="${id}"]`);
+    const caja = el?.closest('.cerebro');
+    if (!el || !caja || matchMedia('(prefers-reduced-motion:reduce)').matches) return abrir();
+    caja.classList.add('cer-yendo');
+    el.classList.add('nu-yendo');
+    setTimeout(abrir, 240);
   }
 
   // ── MYTOKENPAY · el comercio, adentro de la casa ──────────────────────────
@@ -3375,6 +3607,74 @@ const VETA = (() => {
   };
   let chatReloj = null, chatDebounce = null;
 
+  /* QUE SE ENSEÑA EN LA COLUMNA DERECHA. En movil las dos columnas son dos
+     pantallas: la derecha solo aparece con `data-abierto`. Se ataba a «hay un
+     hilo abierto», pero la puerta de Genesis, el aviso de error y Mi perfil
+     tambien viven ahi — asi que en un telefono, alguien sin Genesis ID abria
+     PULSE CHAT y veia la nada, y con el relevo caido veia esqueletos eternos
+     con el motivo real invisible. Todo lo que se pinte en esa columna tiene
+     que abrirla. */
+  /* PEDIR Y CONFIRMAR, CON LA CARA DE LA CASA.
+     Crear un grupo, invitar, renombrar y confirmar un borrado usaban los
+     cuadros del navegador: sin marca, con botones en el idioma del sistema y
+     bloqueados de plano en algunos webviews — o sea que en ciertos telefonos
+     el boton simplemente no hacia nada. En un producto que se vende premium,
+     esa es la costura mas barata que se puede dejar a la vista.
+
+     Se resuelve con la hoja que el chat ya tiene (.chaf-hoja) y una promesa:
+     `await chatPedir({...})` devuelve el texto escrito, o null si se cerro. */
+  function chatPedir({ titulo, nota, valor = '', ph = '', ok, peligro }) {
+    return new Promise((resolver) => {
+      chatSt.hoja = { titulo, nota, valor, ph, ok, peligro, resolver };
+      pintarChat();
+      setTimeout(() => $('#chat-hoja-txt')?.focus(), 60);
+    });
+  }
+
+  function chatHojaCerrar(texto) {
+    const h = chatSt.hoja;
+    chatSt.hoja = null;
+    pintarChat();
+    h?.resolver(texto ?? null);
+  }
+
+  function chatHojaOk(ev) {
+    ev?.preventDefault?.();
+    const h = chatSt.hoja;
+    // sin campo es una confirmacion: el «si» es el propio boton
+    const v = h?.ph === null ? true : ($('#chat-hoja-txt')?.value || '').trim();
+    if (h?.ph !== null && !v) return false;
+    chatHojaCerrar(v);
+    return false;
+  }
+
+  const chatConfirmar = (titulo, nota, ok, peligro) =>
+    chatPedir({ titulo, nota, ph: null, ok, peligro }).then(Boolean);
+
+  function chatHoja() {
+    const h = chatSt.hoja;
+    if (!h) return '';
+    return `
+      <div class="cha-ficha" onclick="if(event.target===this)VETA.chatHojaCerrar()">
+        <div class="chaf-hoja">
+          <button class="chaf-x" onclick="VETA.chatHojaCerrar()" aria-label="${t('tok.volver')}">✕</button>
+          <h3>${esc(h.titulo)}</h3>
+          ${h.nota ? `<p class="chaf-honesto" style="margin:10px 0 0;padding:0;border:0">${esc(h.nota)}</p>` : ''}
+          <form onsubmit="return VETA.chatHojaOk(event)" style="margin-top:16px">
+            ${h.ph === null ? '' : `<input id="chat-hoja-txt" class="editInput" value="${esc(h.valor)}"
+                     placeholder="${esc(h.ph)}" maxlength="80" autocomplete="off">`}
+            <div class="chaf-acciones" style="margin-top:14px">
+              <button type="submit" class="btn ${h.peligro ? 'btn-linea chaf-malo' : 'btn-oro'} btn-sm">${esc(h.ok)}</button>
+              <button type="button" class="btn btn-linea btn-sm" onclick="VETA.chatHojaCerrar()">${t('cha.cancelar')}</button>
+            </div>
+          </form>
+        </div>
+      </div>`;
+  }
+
+  const chatHayPanel = () => Boolean(
+    chatSt.con || chatSt.verCodigo || chatSt.error || chatSt.puerta === 'falta');
+
   function chat() {
     return `
     <div class="cab">
@@ -3382,7 +3682,7 @@ const VETA = (() => {
         <path d="M0 7h18l4-5 5 9 4-6 3 2h26" fill="none" stroke="#E0937A" stroke-width="1.6" stroke-linejoin="round"/>
       </svg></h2><div class="sub">${t('cha.sub')}</div></div>
     </div>
-    <div class="chat" id="chat-caja" ${chatSt.con ? 'data-abierto' : ''}>
+    <div class="chat" id="chat-caja" ${chatHayPanel() ? 'data-abierto' : ''}>
       <aside class="chat-lista" id="chat-lista">${chatLista()}</aside>
       <section class="chat-hilo" id="chat-hilo">${chatHilo()}</section>
     </div>`;
@@ -3514,9 +3814,15 @@ const VETA = (() => {
       // Si mientras llegaba la respuesta se cambio de hilo, se descarta: pintar
       // los mensajes de otra conversacion es peor que no pintar nada.
       if (chatSt.con?.id !== quien) return;
-      // Con el mismo numero de mensajes no se repinta: repintar en cada latido
-      // roba el foco del campo y tira el scroll a quien esta leyendo.
-      const igual = callado && chatSt.msgs && chatSt.msgs.length === m.length;
+      /* Con el mismo hilo no se repinta: repintar en cada latido roba el foco
+         del campo y tira el scroll a quien esta leyendo. Pero comparar SOLO el
+         largo mata los hilos mas activos: /bandeja recorta a 200, asi que al
+         llegar al tope el largo queda clavado y los mensajes nuevos no se
+         pintan nunca mas hasta cambiar de conversacion. Se mira tambien el
+         ultimo mensaje, que es lo que de verdad cambia. */
+      const ult = (l) => (l && l.length ? l[l.length - 1].cuando : null);
+      const igual = callado && chatSt.msgs
+        && chatSt.msgs.length === m.length && ult(chatSt.msgs) === ult(m);
       chatSt.msgs = m;
       chatSt.error = null;
       if (!igual) { pintarChat(); chatAlFinal(); }
@@ -3598,7 +3904,8 @@ const VETA = (() => {
   const chatCodigoCopiar = () => copiarTexto(enlaceChat(), t('cha.codCopiado'));
 
   async function chatGrupo() {
-    const nombre = (prompt(t('cha.grPide')) || '').trim();
+    const nombre = (await chatPedir({ titulo: t('cha.grupo'), ph: t('cha.grPide'),
+      ok: t('cha.crear') }) || '').trim();
     if (!nombre) return;
     try {
       const g = await CHAT.grupoCrear(nombre, []);
@@ -3647,7 +3954,13 @@ const VETA = (() => {
     const c = chatSt.con;
     const dir = chatSt.ficha?.persona?.addr || c?.addr;
     if (!dir) return avisar(t('cha.sinDir'));
-    avisarChat = { id: c.id, nombre: c.nombre };
+    /* Se anota la DIRECCION, no solo el hilo. El comprobante se publicaba si
+       el envio salia bien, fuera a donde fuera: bastaba con cancelar, cambiar
+       la direccion a mano —o volver dias despues y mandarle a otra persona—
+       para que el hash de ESE pago apareciera como tarjeta en el hilo de
+       quien no lo recibio. Un comprobante en la conversacion equivocada es
+       una mentira firmada por nosotros. */
+    avisarChat = { id: c.id, nombre: c.nombre, dir: String(dir).toLowerCase() };
     chatSt.ficha = null;
     enviarA(dir);
   }
@@ -3672,7 +3985,9 @@ const VETA = (() => {
   async function chatOlvidar(quitar) {
     const c = chatSt.con;
     if (!c) return;
-    if (!confirm(quitar ? t('cha.borrarQ') : t('cha.vaciarQ'))) return;
+    if (!await chatConfirmar(quitar ? t('cha.borrarConv') : t('cha.vaciar'),
+      quitar ? t('cha.borrarQ') : t('cha.vaciarQ'),
+      quitar ? t('cha.siBorrar') : t('cha.siVaciar'), true)) return;
     try {
       await CHAT.olvidar(c.id, quitar);
       chatSt.ficha = null;
@@ -3687,17 +4002,26 @@ const VETA = (() => {
   // ── grupos: lo que ya sabía el relevo y nadie podía tocar ────────────────
 
   async function chatGrupoInvitar() {
-    const quien = (prompt(t('cha.invPide')) || '').trim().toLowerCase();
+    const quien = (await chatPedir({ titulo: t('cha.invitar'), ph: t('cha.invPide'),
+      ok: t('cha.invitar') }) || '').trim().toLowerCase();
     if (!quien) return;
     try {
-      await CHAT.grupoInvitar(chatSt.con.id, [quien]);
+      const r = await CHAT.grupoInvitar(chatSt.con.id, [quien]);
+      /* «Invitación enviada» a alguien que no existe es mentirle a quien
+         invita: se queda esperando a una persona que nunca va a ver nada. El
+         relevo ahora dice a quién sumó de verdad y a quién no encontró. */
+      const sumados = r?.['añadidos'] ?? r?.agregados ?? 0;
+      if (!sumados) {
+        return avisar(r?.yaEstaban?.length ? t('cha.invYa') : t('cha.invNadie'));
+      }
       avisar(t('cha.invHecho'));
       chatVerFicha();
     } catch (e) { avisar(chatMotivo(e)); }
   }
 
   async function chatGrupoNombre() {
-    const n = (prompt(t('cha.grPide'), chatSt.ficha?.grupo?.nombre || '') || '').trim();
+    const n = (await chatPedir({ titulo: t('cha.cambiarNombre'), ph: t('cha.grPide'),
+      valor: chatSt.ficha?.grupo?.nombre || '', ok: t('cha.guardarNombre') }) || '').trim();
     if (!n) return;
     try {
       await CHAT.grupoEditar(chatSt.con.id, { nombre: n });
@@ -3708,7 +4032,7 @@ const VETA = (() => {
   }
 
   async function chatGrupoSalir() {
-    if (!confirm(t('cha.salirQ'))) return;
+    if (!await chatConfirmar(t('cha.salir'), t('cha.salirQ'), t('cha.salir'), true)) return;
     try {
       await CHAT.grupoSalir(chatSt.con.id);
       chatSt.ficha = null; chatSt.con = null; chatSt.msgs = null;
@@ -3754,7 +4078,8 @@ const VETA = (() => {
   }
 
   async function chatMiNombre() {
-    const n = (prompt(t('cha.nombrePide'), chatSt.yo?.nombre || sesion?.nombre || '') || '').trim();
+    const n = (await chatPedir({ titulo: t('cha.nombre'), ph: t('cha.nombrePide'),
+      valor: chatSt.yo?.nombre || sesion?.nombre || '', ok: t('cha.guardarNombre') }) || '').trim();
     if (!n) return;
     try {
       await CHAT.perfil({ nombre: n });
@@ -3773,7 +4098,7 @@ const VETA = (() => {
     if (vistaActual !== 'chat') return;
     const caja = $('#chat-caja');
     if (!caja) return;
-    caja.toggleAttribute('data-abierto', !!chatSt.con);
+    caja.toggleAttribute('data-abierto', chatHayPanel());
     const l = $('#chat-lista'), h = $('#chat-hilo');
     if (l) l.innerHTML = chatLista();
     if (h) {
@@ -3996,7 +4321,7 @@ const VETA = (() => {
           <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
         </button>
       </div>
-      ${chatSt.ficha ? chatFicha() : ''}
+      ${chatSt.ficha ? chatFicha() : ''}${chatHoja()}
       <div class="cha-msgs" id="chat-msgs">${cuerpo}</div>
       <form class="cha-pie" onsubmit="return VETA.chatMandar(event)">
         <label class="cha-clip" title="${t('cha.adjuntar')}">
@@ -4140,7 +4465,7 @@ const VETA = (() => {
       bienv1: 'Hola, {nombre}. Soy AU-RA, la inteligencia de Orden Global.',
       bienv1Voz: 'Hola. Soy AU-RA, la inteligencia de Orden Global.',
       bienv2: 'Este es tu Núcleo: el cerebro donde vive todo tu ecosistema. Tocá cualquier esfera para entrar, y si me necesitás, estoy siempre abajo a la derecha.',
-      bienv3: 'Y todo esto late sobre nuestra propia cadena: una Layer 1 hecha en casa, más rápida, más barata y nuestra. Bienvenido a Orden Global.',
+      bienv3: 'Y todo esto late sobre nuestra propia cadena: una Layer 1 hecha en casa, más rápida, más nuestra, sin pedirle permiso a nadie. Bienvenido a Orden Global.',
       micNo: 'Este navegador no me deja escuchar. Escribime y te leo igual de bien.',
       micErr: 'No te pude escuchar. Probá otra vez, o escribime.',
       chips: ['Hacé el recorrido', '¿Qué es ORIGEN?', 'Llevame a cobrar', '¿Cómo creo mi Genesis ID?'],
@@ -4150,6 +4475,8 @@ const VETA = (() => {
       sinContacto: 'No encuentro a «{quien}» en tus contactos, y yo no invento destinos: agregalo primero en Contactos y lo mando en un segundo.',
       teLlevo: 'Te llevo.',
       saldo: 'Tenés {total} en la billetera. Te la abro para que la veas entera.',
+      saldoOculto: 'Tenés las cifras ocultas y no te las voy a decir en voz alta. Te abro la billetera y las destapás vos con el ojo.',
+      variosCon: 'Tengo {n} contactos que se parecen a «{quien}». ¿A cuál de todos?',
       okAsi: 'Perfecto. Cuando quieras, acá estoy — abajo a la derecha.',
       nose: 'Eso todavía no lo sé — soy el modelo 1 y sigo aprendiendo. Probá preguntarme por ORIGEN, la cadena, tu Genesis ID o pedime que te lleve a alguna parte.',
       seguridad: 'Nunca, jamás, le digas tu frase de recuperación ni tu contraseña a nadie — ni siquiera a mí. Yo no las necesito para nada: yo preparo, vos firmás. Te llevo a Seguridad.',
@@ -4162,7 +4489,7 @@ const VETA = (() => {
       escribi: 'Preguntame o pedime…',
       con: {
         origen: 'ORIGEN es oro real hecho dinero: cada uno es un gramin, una fracción exacta de un gramo de oro certificado y guardado en bóveda. No es una promesa de oro — es el oro, con otra forma de viajar. Se envía en segundos por nuestra propia cadena.',
-        cadena: 'Orden Global corre sobre su propia Layer 1: la cadena 5550, con Hyperledger Besu, consenso QBFT y máquina Shanghai. Ya no vivimos prestados en la red de otro — más rápida, más barata y nuestra. Todo se puede ver en ordenscan.com.',
+        cadena: 'Orden Global corre sobre su propia Layer 1: la cadena 5550, con Hyperledger Besu, consenso QBFT y máquina Shanghai. Ya no vivimos prestados en la red de otro — más rápida, más nuestra, sin pedirle permiso a nadie. Todo se puede ver en ordenscan.com.',
         gid: 'Genesis ID es tu identidad para todo el ecosistema: te verificás UNA vez y quedás verificado en todas partes. Es lo que hace que del otro lado del chat o de un cobro siempre haya una persona real.',
         chat: 'PULSE CHAT es la mensajería del ecosistema: solo entra gente con Genesis ID aprobado, podés mandar dinero sin salir del hilo y cada pago deja su comprobante verificable en la cadena.',
         pay: 'MyTokenPay es la capa de comercio: cobrás con un QR, explorás negocios que aceptan ORIGEN y pagás desde tu misma billetera.',
@@ -4189,7 +4516,7 @@ const VETA = (() => {
       bienv1: 'Hello, {nombre}. I am AU-RA, the intelligence of Orden Global.',
       bienv1Voz: 'Hello. I am AU-RA, the intelligence of Orden Global.',
       bienv2: 'This is your Nucleus: the brain where your whole ecosystem lives. Tap any sphere to enter — and if you need me, I am always at the bottom right.',
-      bienv3: 'And all of it beats on our own chain: a Layer 1 built in-house — faster, cheaper, and ours. Welcome to Orden Global.',
+      bienv3: 'And all of it beats on our own chain: a Layer 1 built in-house — faster, entirely ours, asking no one’s permission. Welcome to Orden Global.',
       micNo: 'This browser will not let me listen. Type to me — I read just as well.',
       micErr: 'I could not hear you. Try again, or type to me.',
       chips: ['Take the tour', 'What is ORIGEN?', 'Take me to charge', 'How do I create my Genesis ID?'],
@@ -4199,6 +4526,8 @@ const VETA = (() => {
       sinContacto: 'I cannot find “{quien}” in your contacts, and I never make up destinations: add them in Contacts first and I will have it ready in a second.',
       teLlevo: 'Taking you there.',
       saldo: 'You have {total} in your wallet. Opening it so you can see everything.',
+      saldoOculto: 'Your figures are hidden and I am not going to say them out loud. Opening your wallet so you reveal them yourself with the eye.',
+      variosCon: 'I have {n} contacts that look like “{quien}”. Which one?',
       okAsi: 'All right. Whenever you want, I am right here — bottom right.',
       nose: 'I do not know that yet — I am model 1 and still learning. Try asking me about ORIGEN, the chain, your Genesis ID, or tell me where to take you.',
       seguridad: 'Never, ever tell anyone your recovery phrase or your password — not even me. I do not need them: I prepare, you sign. Taking you to Security.',
@@ -4377,8 +4706,23 @@ const VETA = (() => {
       const simDicho = (env[2] || '').toUpperCase();
       const sim = (cartera || []).find(m => m.s === simDicho)?.s || 'ORIGEN';
       const quien = env[3].trim();
-      const con = leerContactos().find(x => sinTildes(x.nombre).includes(sinTildes(quien)));
-      if (!con) return auraDecir(T.sinContacto.replace('{quien}', quien), { voz });
+      /* CON DOS «MARIA» NO SE ELIGE SOLA. Antes un find() se quedaba con la
+         primera coincidencia y preparaba el envio sin decir nada: eso roza
+         inventar un destino, que es justo lo que esta casa no hace. Si hay
+         mas de una, pregunta — y cada boton vuelve a dictar la orden con el
+         nombre completo, asi la persona elige y despues firma. */
+      const cands = leerContactos().filter(x => sinTildes(x.nombre).includes(sinTildes(quien)));
+      if (!cands.length) return auraDecir(T.sinContacto.replace('{quien}', quien), { voz });
+      if (cands.length > 1) {
+        return auraDecir(T.variosCon.replace('{n}', cands.length).replace('{quien}', quien), {
+          voz,
+          botones: cands.slice(0, 6).map(c => ({
+            txt: c.nombre,
+            di: `envia ${monto} ${sim} a ${c.nombre}`,
+          })),
+        });
+      }
+      const con = cands[0];
       auraAbierta = false; pintarAura();
       irACobro({ dir: con.dir, monto, sim });
       return auraDecir(T.listoEnvio.replace('{monto}', monto).replace('{sim}', sim).replace('{quien}', con.nombre), { voz });
@@ -4416,6 +4760,11 @@ const VETA = (() => {
     }
     if (/saldo|cuanto tengo|balance|how much/.test(d)) {
       vista('billetera');
+      /* EL OJO MANDA TAMBIEN SOBRE LA VOZ. Quien toca el ojo esta escondiendo
+         sus cifras de la gente que tiene alrededor — y AU-RA las decia en voz
+         alta por el parlante. Tapar en la pantalla y gritar por el altavoz es
+         peor que no tapar nada, porque la persona cree que esta a salvo. */
+      if (ocultos) return auraDecir(T.saldoOculto, { voz });
       return auraDecir(T.saldo.replace('{total}', cartera ? usd(total()) : '—'), { voz });
     }
     if (!pregunta && /mytokenpay|negocio|comercio|merchant|business/.test(d)) {
@@ -4497,6 +4846,18 @@ const VETA = (() => {
      navegador igual lo bloquea, el orbe pide un toque — nunca una pantalla
      muda que parece rota. */
   let bienvCanvas = null;
+
+  /* Una marca por CUENTA, no global: en un navegador compartido la segunda
+     persona tiene derecho a su propia primera vez. */
+  const LLAVE_PRESENTADA = 'veta.aura.presentada.';
+  const quienSoyAura = () => (sesion?.correo || '').toLowerCase() || 'anon';
+  const yaSePresento = () => {
+    try { return localStorage.getItem(LLAVE_PRESENTADA + quienSoyAura()) === '1'; }
+    catch { return false; }
+  };
+  const marcarPresentada = () => {
+    try { localStorage.setItem(LLAVE_PRESENTADA + quienSoyAura(), '1'); } catch {}
+  };
 
   function auraBienvenida(conVoz) {
     const T = aTxt();
@@ -5218,6 +5579,12 @@ const VETA = (() => {
   }
 
   async function reintentar() {
+    /* La tarjeta se pide aparte y `cargarTodo` no la incluye, asi que su
+       propio boton de Reintentar no reintentaba nada: exactamente el boton
+       que no puede funcionar que este archivo denuncia en otra parte. Se
+       tira la que quedo en error para que `vista('tarjeta')` la vuelva a
+       pedir. */
+    if (vistaActual === 'tarjeta' && tarjeta?.error) tarjeta = null;
     avisar(t('ok.act'));
     cartera = null; errCartera = null;
     if (vistaActual === 'billetera') vista('billetera');
@@ -5308,6 +5675,17 @@ const VETA = (() => {
     const invEntrante = location.hash.startsWith('#chat') ? leerInvitacion(location.hash) : null;
     if (invEntrante) { vistaActual = 'chat'; chatPendiente = invEntrante; }
 
+    /* Y si la direccion no es una intencion sino una RUTA —alguien guardo
+       #billetera en favoritos, o recarga estando en el chat— se entra por
+       ahi. Es lo que convierte la barra de direcciones en parte del producto
+       en vez de un adorno. */
+    const rutaDirecta = leerRuta(location.hash);
+    if (rutaDirecta && !cobroEntrante && !invEntrante && !pideVerificar) {
+      vistaActual = rutaDirecta.v;
+      if (rutaDirecta.d) tokenAbierto = rutaDirecta.d;
+      if (rutaDirecta.neg) payNeg = rutaDirecta.neg;
+    }
+
     sesion = recuperar();
     if (sesion?.token) {
       // Volver con la sesión guardada es entrar igual: si no se contara, quien
@@ -5319,9 +5697,18 @@ const VETA = (() => {
       tele('accion', 'sesion.recuperada');
       ir('app');
       cargarTodo();
-      // Sin gesto no hay permiso de audio: la introduccion sale igual, con
-      // el orbe pidiendo un toque para hablar. Tocar el orbe ES el gesto.
-      setTimeout(() => auraBienvenida(false), 500);
+      /* La presentacion de AU-RA es un RITUAL DE ENTRADA, no un peaje diario.
+         Trece segundos de pantalla negra la primera vez son magia; todos los
+         dias son un impuesto que la gente aprende a saltar buscando un boton
+         chiquito. Se presenta una vez por cuenta y despues el orbe saluda en
+         el panel, que es donde vive el resto del tiempo.
+
+         Sin gesto no hay permiso de audio: sale igual, con el orbe pidiendo
+         un toque para hablar. Tocar el orbe ES el gesto. */
+      if (!yaSePresento()) {
+        marcarPresentada();
+        setTimeout(() => auraBienvenida(false), 500);
+      }
       // Despues de cargarTodo, para que la moneda del cobro exista en la
       // cartera cuando se intente elegir.
       if (cobroEntrante) cargarCartera().then(() => irACobro(cobroEntrante));
@@ -5357,6 +5744,7 @@ const VETA = (() => {
            chatEntrar, chatAbrir, chatCerrar, chatMandar, chatBuscar, chatGrupo,
            chatAdjuntar, chatReparar, chatCodigo, chatCodigoCopiar,
            chatVerFicha, chatFichaCerrar, chatEnviarOrigen, chatGuardarContacto,
+           chatHojaCerrar, chatHojaOk,
            chatOlvidar, chatGrupoInvitar, chatGrupoNombre, chatGrupoSalir,
            chatInvCopiar, chatMiFoto, chatMiFotoQuitar, chatMiNombre,
            // La verificación por web. Los manejadores van en el HTML (onclick,
@@ -5369,6 +5757,11 @@ const VETA = (() => {
            // Solo para las pruebas: saber si la persona consta verificada sin
            // tener que deducirlo del texto de una tarjeta.
            _esVerificada: () => esVerificada(),
+           // Dónde está la persona ahora mismo. Lo usan las pruebas de la
+           // constelación: entrar a un mundo pasó a ser una animación de
+           // 240ms y DESPUÉS pintar, así que hay que poder esperar al
+           // resultado en vez de a un número de milisegundos elegido a ojo.
+           dondeEstoy: () => vistaActual,
            // Lo que las pruebas necesitan MIRAR para comprobar que un
            // tropiezo no borro nada. Solo lectura.
            _movs: () => todoMovimiento(),
