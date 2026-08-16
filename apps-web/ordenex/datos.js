@@ -21,7 +21,7 @@ const DATOS = (() => {
   // El backend de la casa de cambio. Se puede apuntar a otro definiendo
   // ONX_API antes de este archivo —igual que OG_API en la billetera—: es lo
   // que deja probar contra un servidor de mentira sin tocar el de producción.
-  const API = String(window.ONX_API || 'https://ordenex-api.herokuapp.com').replace(/\/$/, '');
+  const API = String(window.ONX_API || 'https://ordenex-api-ba4b27b8b51a.herokuapp.com').replace(/\/$/, '');
   const LLAVE = 'ordenex.sesion';
 
   // { token, refreshToken, usuario } — la sesión PROPIA de Ordenex, emitida
