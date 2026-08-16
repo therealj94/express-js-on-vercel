@@ -5817,6 +5817,39 @@ const VETA = (() => {
      Se usa IntersectionObserver y no un manejador de scroll porque el navegador
      ya sabe que hay en pantalla: pedirselo cuesta cero, calcularlo en cada
      pixel de desplazamiento cuesta la fluidez de la pagina. */
+  /* Las cifras cuentan cuando llegan. Un número que sube de cero a 5550 hace
+     que se lea; el mismo número quieto es un dato más de la página. Se hace
+     una sola vez —`data-hasta` se borra al terminar—, y a quien pidió que las
+     cosas no se muevan se le pone el valor final y ya está: un contador es un
+     adorno, y un adorno nunca es motivo para marear a nadie.
+
+     El texto de partida en el HTML es YA el valor final, así que si esto no
+     llega a correr —sin JS, con un error antes— la página sigue diciendo la
+     verdad en vez de enseñar un cero. */
+  function contarHasta(caja) {
+    caja.querySelectorAll('.cuenta[data-hasta]').forEach((el) => {
+      const fin = Number(el.dataset.hasta);
+      if (!isFinite(fin)) return;
+      const suf = el.dataset.sufijo || '';
+      const dec = Number(el.dataset.fijo ?? 0);
+      delete el.dataset.hasta;
+      if (matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+      const DURA = 1100;
+      let t0 = null;
+      const paso = (t) => {
+        if (t0 === null) t0 = t;
+        const k = Math.min(1, (t - t0) / DURA);
+        // se frena al final en vez de pararse en seco: la cifra «aterriza»
+        const suave = 1 - Math.pow(1 - k, 3);
+        el.textContent = (fin * suave).toFixed(dec) + suf;
+        if (k < 1) requestAnimationFrame(paso);
+        else el.textContent = fin.toFixed(dec) + suf;
+      };
+      el.textContent = (0).toFixed(dec) + suf;
+      requestAnimationFrame(paso);
+    });
+  }
+
   function armarRevelado() {
     const piezas = document.querySelectorAll('.rev');
     if (!('IntersectionObserver' in window)) {
@@ -5830,6 +5863,7 @@ const VETA = (() => {
         // con bloques invisibles esperando una entrada que ya paso.
         if (!e.isIntersecting && e.boundingClientRect.top > 0) return;
         e.target.classList.add('ve');
+        contarHasta(e.target);
         ojo.unobserve(e.target);
       });
     }, { rootMargin: '0px 0px -12% 0px', threshold: 0.08 });
@@ -5852,6 +5886,7 @@ const VETA = (() => {
       document.querySelectorAll('.rev:not(.ve)').forEach(p => {
         if (p.getBoundingClientRect().top < innerHeight * 0.92) {
           p.classList.add('ve');
+          contarHasta(p);
           ojo.unobserve(p);
         }
       });

@@ -39,7 +39,12 @@ const apuntar = (k, f) => { if (!usadas.has(k)) usadas.set(k, f); };
 for (const f of FUENTES) {
   const txt = leer(f);
   for (const m of txt.matchAll(/\bt\(\s*'([\w.]+)'\s*\)/g)) apuntar(m[1], f);
-  for (const m of txt.matchAll(/data-i18n="([\w.]+)"/g)) apuntar(m[1], f);
+  /* En el HTML el texto se marca con data-t (y data-tp para el placeholder).
+     La primera versión de este comprobador solo miraba `data-i18n`, que no
+     existe en esta casa: decía «todo en verde» sin haber mirado una sola
+     línea de la portada. Un comprobador que no comprueba es peor que no
+     tenerlo, porque además tranquiliza. */
+  for (const m of txt.matchAll(/data-tp?="([\w.]+)"/g)) apuntar(m[1], f);
 }
 
 /* Las que se arman al vuelo. Cada entrada dice de dónde salen las piezas. */

@@ -275,6 +275,18 @@ es: {
   'b.g2p': 'El metal físico permanece guardado y asegurado. Emitir más ORIGEN exige meter más oro primero.',
   'b.g3t': 'Auditable 24/7',
   'b.g3p': 'La emisión y cada movimiento quedan en una cadena pública. Se revisa en ORDENSCAN sin pedirnos nada.',
+  /* ACTO IV · LA CADENA. La regla de esta sección: no se vende barato. Nadie
+     que tenga oro de verdad detrás alquila el suelo por el que lo mueve, y
+     ese es el argumento — no el ahorro. «Somos más baratos» es lo que dice
+     quien no tiene nada más que decir. */
+  'ch.sello': 'La cadena', 'ch.t1': 'El suelo también', 'ch.t2': 'es nuestro.',
+  'ch.p': 'Casi todo el oro digital del mundo vive alquilado: emitido sobre la red de otro, sujeto a sus reglas, a sus subidas de precio y a su permiso. Orden Global construyó la suya. La cadena 5550 es infraestructura propia, con nuestros validadores y nuestras reglas — y lo que se mueve encima responde solo ante la casa que guarda el metal.',
+  'ch.d1': 'Cadena 5550. Layer 1 propia, sobre Hyperledger Besu con máquina Shanghai.',
+  'ch.d2': 'Consenso QBFT: la finalidad es inmediata. Un bloque firmado no se revierte.',
+  'ch.d3': 'Cinco segundos por bloque. Un envío se termina antes de que la persona guarde el teléfono.',
+  'ch.d4': 'del registro es público. Cada emisión y cada movimiento, a la vista, sin pedirnos nada.',
+  'ch.pie': 'No es una promesa de arquitectura: está corriendo, y se puede mirar ahora mismo. Bloque a bloque, transacción a transacción, con nombre y apellido de contrato.',
+  'ch.ver': 'Ver la cadena en ORDENSCAN',
   'e.sello': 'El ecosistema', 'e.t1': 'Una cuenta.', 'e.t2': 'Todo Orden Global.',
   'e.p': 'Veta Wallet no viene sola. Tu identidad, los comercios donde gastás y el registro público de la cadena son piezas del mismo sistema.',
   'e.gid': 'Tu identidad digital. Verificate una sola vez y quedás verificado en todos los servicios del grupo.',
@@ -757,6 +769,14 @@ en: {
   'b.g2p': 'The physical metal stays stored and insured. Issuing more ORIGEN requires putting in more gold first.',
   'b.g3t': 'Auditable 24/7',
   'b.g3p': 'Issuance and every movement are recorded on a public chain. Check it on ORDENSCAN without asking us for anything.',
+  'ch.sello': 'The chain', 'ch.t1': 'The ground', 'ch.t2': 'is ours too.',
+  'ch.p': 'Almost all the digital gold in the world lives on rent: issued on somebody else’s network, subject to their rules, their price rises and their permission. Orden Global built its own. Chain 5550 is our infrastructure, with our validators and our rules — and what moves on top answers only to the house that holds the metal.',
+  'ch.d1': 'Chain 5550. Our own Layer 1, on Hyperledger Besu with the Shanghai machine.',
+  'ch.d2': 'QBFT consensus: finality is immediate. A signed block does not get reversed.',
+  'ch.d3': 'Five seconds per block. A transfer finishes before the person puts the phone away.',
+  'ch.d4': 'of the record is public. Every issuance and every movement, in the open, without asking us for anything.',
+  'ch.pie': 'This is not a promise of architecture: it is running, and it can be looked at right now. Block by block, transaction by transaction, with each contract named.',
+  'ch.ver': 'See the chain on ORDENSCAN',
   'e.sello': 'The ecosystem', 'e.t1': 'One account.', 'e.t2': 'All of Orden Global.',
   'e.p': 'Veta Wallet does not come alone. Your identity, the merchants where you spend and the public record of the chain are parts of the same system.',
   'e.gid': 'Your digital identity. Verify once and stay verified across every service of the group.',
@@ -1007,7 +1027,7 @@ function pintarIdioma() {
       ).join('') + '</span>';
     h.innerHTML = linea(t('bv.t1'), false, 0) + linea(t('bv.t2'), true, t('bv.t1').split(' ').length);
   }
-  [['q-titulo', 'q'], ['b-titulo', 'b'], ['e-titulo', 'e'], ['c-titulo', 'c']].forEach(([id, k]) => {
+  [['q-titulo', 'q'], ['b-titulo', 'b'], ['ch-titulo', 'ch'], ['e-titulo', 'e'], ['c-titulo', 'c']].forEach(([id, k]) => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = `${t(k + '.t1')}<br><i>${t(k + '.t2')}</i>`;
   });
