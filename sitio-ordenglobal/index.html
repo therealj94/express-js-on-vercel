@@ -476,16 +476,16 @@ footer{margin-top:18vh;border-top:1px solid var(--line);background:var(--void2);
       </div>
       <div class="beat" data-in=".33" data-out=".66">
         <div class="line" style="font-size:clamp(26px,4vw,54px)" data-i="c-2">No alquilamos la cadena de otro.<br><span class="cold" data-i="c-2b">Operamos la nuestra.</span></div>
-        <div class="say" data-i="c-2s">Una Layer 1 propia, con nuestros validadores, nuestro consenso y nuestras reglas. Casi 4,2 millones de bloques, sin interrupción, desde 2024.</div>
+        <div class="say" data-i="c-2s">Una Layer 1 propia, con nuestros validadores, nuestro consenso y nuestras reglas: Hyperledger Besu, consenso QBFT, finalidad inmediata. Lo que se mueve encima no le pide permiso a nadie.</div>
       </div>
       <div class="beat" data-in=".64" data-out="1">
         <div class="telem">
-          <div class="t"><div class="k" data-i="c-k1">Altura</div><div class="v"><span id="height">4 200 000</span></div></div>
-          <div class="t"><div class="k" data-i="c-k2">Bloque</div><div class="v">~15 s</div></div>
-          <div class="t"><div class="k" data-i="c-k3">Consenso</div><div class="v">PoS · BLS</div></div>
-          <div class="t"><div class="k" data-i="c-k4">Validadores</div><div class="v" id="vals">6</div></div>
+          <div class="t"><div class="k" data-i="c-k1">Altura</div><div class="v"><span id="height">—</span></div></div>
+          <div class="t"><div class="k" data-i="c-k2">Bloque</div><div class="v">10 s</div></div>
+          <div class="t"><div class="k" data-i="c-k3">Consenso</div><div class="v">QBFT</div></div>
+          <div class="t"><div class="k" data-i="c-k4">Validadores</div><div class="v" id="vals">4</div></div>
         </div>
-        <div class="hashrow" id="hashrow">0x00000000000000000000000000000000</div>
+        <div class="hashrow" id="hashrow">—</div>
       </div>
     </div></div>
   </div>
@@ -540,8 +540,20 @@ footer{margin-top:18vh;border-top:1px solid var(--line);background:var(--void2);
       <a class="node-card beat flow" href="https://orden-global-scan-c4abe71e8024.herokuapp.com" target="_blank" rel="noopener">
         <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></div>
         <div class="rl" data-i="e-c4r">El explorador</div><h3>ordenscan</h3>
-        <p data-i="e-c4p">Cada bloque y cada transacción de la cadena 8532, públicos y auditables.</p>
+        <p data-i="e-c4p">Cada bloque y cada transacción de la cadena 5550, públicos y auditables.</p>
         <span class="go" data-i="e-visit3">Visitar →</span>
+      </a>
+      <a class="node-card beat flow" href="#" onclick="return false">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M3.5 6.6h12.2v8.2H8.1L4.4 18v-3.2H3.5z"/><path d="M18.6 9.4h1.9v8.2h-.9V20l-3-2.4H12"/></svg></div>
+        <div class="rl" data-i="e-c6r">La mensajería</div><h3>PULSE CHAT</h3>
+        <p data-i="e-c6p">Solo entra gente con identidad verificada, y el dinero viaja dentro de la conversación con su comprobante en la cadena.</p>
+        <span class="go" data-i="e-vive">Ya funciona →</span>
+      </a>
+      <a class="node-card beat flow" href="#" onclick="return false">
+        <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="3.7" r="1.7"/><circle cx="20.3" cy="12" r="1.7"/><circle cx="12" cy="20.3" r="1.7"/><circle cx="3.7" cy="12" r="1.7"/></svg></div>
+        <div class="rl" data-i="e-c7r">La inteligencia</div><h3>AU-RA</h3>
+        <p data-i="e-c7p">Modelo 1, en beta, con voz propia. Te guía, te explica el ecosistema y te deja los pagos preparados. Firmar, siempre te toca a vos.</p>
+        <span class="go" data-i="e-vive">Ya funciona →</span>
       </a>
       <a class="node-card beat flow" href="#" onclick="return false">
         <div class="ico"><svg viewBox="0 0 24 24"><path d="M7 8l-4 4 4 4M17 8l4 4-4 4M14 4l-4 16"/></svg></div>
@@ -568,7 +580,6 @@ footer{margin-top:18vh;border-top:1px solid var(--line);background:var(--void2);
     <div class="fx-price">
       <span class="fx-lbl" data-i="fx-lbl">Referenciado al precio del oro</span>
       <span class="fx-val" id="fx-val">$2.40</span>
-      <span class="fx-chg" id="fx-chg">+ $0.010</span>
     </div>
     <div class="fx-grid">
       <div><h5 data-i="fx-1t">Sube con el oro</h5><p data-i="fx-1p">Cuando el oro sube, tu ORIGEN sube con él. Tu dinero deja de depender de una moneda que se devalúa.</p></div>
@@ -600,7 +611,7 @@ footer{margin-top:18vh;border-top:1px solid var(--line);background:var(--void2);
       <div class="foot-col"><h5 data-i="foot-co">Compañía</h5><a href="#prologue" onclick="EXPERIENCE.goto('prologue',event)" data-i="foot-story">La historia</a><a href="#cadena" onclick="EXPERIENCE.goto('cadena',event)" data-i="foot-tech">Tecnología</a><a href="#tierra" onclick="EXPERIENCE.goto('tierra',event)" data-i="foot-gold">El oro</a><a href="mailto:info@ordenglobal.org">info@ordenglobal.org</a></div>
       <div class="foot-col"><h5 data-i="foot-legal">Legal</h5><a href="#" data-i="foot-priv">Privacidad</a><a href="#" data-i="foot-terms">Términos</a></div>
     </div>
-    <div class="foot-legal"><span data-i="foot-c">© 2026 Orden Global Corp · Isla Roatán, Honduras</span><span>NI 43-101 · CHAIN 8532 · LIVE</span></div>
+    <div class="foot-legal"><span data-i="foot-c">© 2026 Orden Global Corp · Isla Roatán, Honduras</span><span>NI 43-101 · CHAIN 5550 · LIVE</span></div>
   </footer>
 </section>
 
@@ -631,7 +642,7 @@ const I18N={en:{
  "b-v1":"Gold-backed","b-v2":"Certified","b-v3":"Auditable",
  "c-mk":"Chapter III · The Chain","c-1":"And here gold<br>becomes <span class='cold'>living money.</span>",
  "c-2":"We don't rent someone else's chain.<br><span class='cold'>We run our own.</span>",
- "c-2s":"A sovereign Layer 1, with our own validators, our own consensus and our own rules. Nearly 4.2 million blocks, uninterrupted, since 2024.",
+ "c-2s":"A sovereign Layer 1, with our own validators, our own consensus and our own rules: Hyperledger Besu, QBFT consensus, immediate finality. What moves on top asks nobody for permission.",
  "c-k1":"Height","c-k2":"Block","c-k3":"Consensus","c-k4":"Validators",
  "o-mk":"Chapter IV · The Currency","o-h":"From Latin America,<br><em>to the world.</em>",
  "o-2":"Real gold, digitized. Store it, send it, pay and swap with it, with the metal's backing and the speed of a message. Anywhere in the world.",
@@ -641,7 +652,10 @@ const I18N={en:{
  "e-c1r":"The wallet","e-c1p":"Your gold in your pocket. Send, receive and pay with ORIGEN from your phone.",
  "e-c2r":"The ecosystem's engine","e-c2p":"One verified identity across every app. It protects you, gives you confidence and makes life easier: your key to the whole ecosystem.",
  "e-c3r":"Payments","e-c3p":"Merchant checkout. The restaurant charges in ORIGEN and settles to its bank.",
- "e-c4r":"The explorer","e-c4p":"Every block and transaction on chain 8532, public and auditable.",
+ "e-c4r":"The explorer","e-c4p":"Every block and transaction on chain 5550, public and auditable.",
+ "e-c6r":"The messaging","e-c6p":"Only people with a verified identity get in, and money travels inside the conversation with its receipt on the chain.",
+ "e-c7r":"The intelligence","e-c7p":"Model 1, in beta, with a voice of its own. It guides you, explains the ecosystem and leaves your payments ready. Signing is always yours.",
+ "e-vive":"Live now →",
  "e-c5r":"The exchange","e-c5p":"Swap ORIGEN for other ecosystem coins, direct and without middlemen.",
  "e-visit":"Visit →","e-visit2":"Visit →","e-visit3":"Visit →","e-soon":"Coming soon →","e-soon2":"Coming soon →",
  "f-mk":"Chapter VI · Sovereignty","f-1":"Value<br><em>comes home.</em>",
@@ -866,16 +880,50 @@ const EXPERIENCE=(()=>{
   let dv=100; function tickDevalue(){ const el=$('#devalue'); if(!el)return; dv+=(Math.random()<.5?-1:-0.6); if(dv<3)dv=100;
     el.firstChild.textContent=Math.max(3,dv).toFixed(0); }
   /* El precio de ORIGEN respira como el mercado del oro: sube Y baja. */
-  let fxT=0; function tickFormula(dt){ const v=$('#fx-val'); if(!v)return; fxT+=dt;
-    const wave=Math.sin(fxT*.00095)*.018+Math.sin(fxT*.00041)*.011;
-    v.textContent='$'+(2.40+wave).toFixed(2);
-    const c=$('#fx-chg'); if(c){ const up=wave>=0;
-      c.textContent=(up?'+ $':'− $')+Math.abs(wave).toFixed(3);
-      c.style.color=up?'var(--signal)':'#e08585'; } }
+  /* La cifra de la formula es una REFERENCIA al precio del oro, no una
+     cotizacion en vivo — y hasta ahora se movia sola con dos senos y ensenaba
+     un «+ $0.010» que no venia de ningun mercado. Un tablero de precios falso
+     al lado de la palabra «oro» es exactamente lo que esta casa no hace.
+     Se queda la referencia, quieta y con su etiqueta, y se va el teatro. */
+  function tickFormula(){}
 
-  let hgt=4200000; function tickChain(p){ if(p<=0||p>=1)return; const h=$('#height'); if(h){ hgt+=Math.random()<.06?1:0;
-    h.textContent=hgt.toLocaleString('es-ES').replace(/\./g,' '); }
-    const hr=$('#hashrow'); if(hr&&Math.random()<.15){ hr.textContent='0x'+Array.from({length:40},()=>'0123456789abcdef'[(Math.random()*16)|0]).join(''); } }
+  /* ---- la cadena, de la cadena --------------------------------------------
+     Esto era una mentira con animacion: la altura empezaba en 4 200 000 y
+     subia sola con Math.random(), y el hash de abajo eran cuarenta digitos al
+     azar refrescados quince veces por segundo. Un numero inventado que se
+     mueve es peor que no poner ninguno, porque parece comprobado.
+
+     Ahora se pregunta a la cadena. Si contesta, se pone lo que diga; si no
+     contesta, se queda el guion y nadie miente. La consulta va cada 20
+     segundos y solo mientras el capitulo se esta leyendo. */
+  const RPC='https://rpc.ordenglobal-rpc.com/';
+  let pidiendo=false;
+  function pedirCadena(){
+    if(pidiendo) return; pidiendo=true;
+    fetch(RPC,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_getBlockByNumber',params:['latest',false]})})
+      .then(r=>r.json())
+      .then(j=>{
+        const b=j&&j.result; if(!b) throw new Error('sin bloque');
+        const n=parseInt(b.number,16);
+        const h=$('#height');
+        if(h&&isFinite(n)) h.textContent=n.toLocaleString('es-ES').replace(/\./g,' ');
+        const hr=$('#hashrow');
+        if(hr&&b.hash) hr.textContent=b.hash;
+      })
+      .catch(()=>{ /* sin respuesta no se inventa: se deja lo que ya habia */ })
+      .finally(()=>{ pidiendo=false; });
+  }
+  /* La pregunta a la cadena NO cuelga del bucle de dibujo. Antes tickChain
+     solo corria si el canvas de la fragua se habia inicializado y si el
+     capitulo estaba a mitad de scroll: o sea que el unico dato real de la
+     pagina dependia de que un adorno arrancara bien. Ahora se pregunta al
+     cargar y cada 20 segundos, y se para cuando la pestana no se mira —
+     nadie necesita telemetria de una pagina que no tiene delante. */
+  function tickChain(){}
+  pedirCadena();
+  setInterval(()=>{ if(!document.hidden) pedirCadena(); }, 20000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) pedirCadena(); });
 
   /* ---- banda sonora por capas ----------------------------------------------
      La música no es una pista de fondo: son cinco capas del mismo compás y la
