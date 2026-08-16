@@ -868,6 +868,11 @@ const VETA = (() => {
       if (location.hash !== r) history.pushState({ v: cual, d: dato, neg: payNeg }, '', r);
     }
     document.body.classList.toggle('en-cerebro', cual === 'nucleo');
+    /* Las sugerencias de AU-RA son de la pantalla en la que estás, así que si
+       la pantalla cambia con el panel abierto hay que volver a pintarlas. Sin
+       esto quedaban las de la vista anterior: se entraba al chat y AU-RA
+       seguía ofreciendo «Cobrame 25». */
+    if (auraAbierta) pintarAura();
     /* Mientras la bienvenida esta encima, EL CEREBRO ES SUYO: hay una sola
        red y montarla de nuevo aqui la mataria. Pasaba de verdad — los datos
        terminaban de cargar, cargarTodo() repintaba la vista, y el cerebro de
@@ -4478,7 +4483,64 @@ const VETA = (() => {
       saldoOculto: 'Tenés las cifras ocultas y no te las voy a decir en voz alta. Te abro la billetera y las destapás vos con el ojo.',
       variosCon: 'Tengo {n} contactos que se parecen a «{quien}». ¿A cuál de todos?',
       okAsi: 'Perfecto. Cuando quieras, acá estoy — abajo a la derecha.',
-      nose: 'Eso todavía no lo sé — soy el modelo 1 y sigo aprendiendo. Probá preguntarme por ORIGEN, la cadena, tu Genesis ID o pedime que te lleve a alguna parte.',
+      nose: 'Eso todavía no lo sé — soy el modelo 1 y sigo aprendiendo. ¿Era alguna de estas?',
+      // El precio y la actividad: datos que AU-RA YA tiene y hasta ahora no
+      // decía. Cuando no llegaron, se dice que no llegaron.
+      precio: 'El {sim} está a {precio}. Es el precio con el que se calcula todo lo que ves en tu billetera.',
+      precioNo: 'Todavía no me llegó el precio de hoy. En cuanto lo tenga te lo digo — no te lo voy a inventar.',
+      resumen: 'En los últimos siete días tuviste {n} movimientos: {entran} entradas por {sumaE} y {salen} salidas por {sumaS}. Te abro la actividad para que los veas uno a uno.',
+      resumenNada: 'En los últimos siete días no se movió nada en tu billetera. Todo tranquilo.',
+      resumenNoSe: 'Todavía no me llegó tu actividad, así que no te puedo hacer el resumen sin inventarlo. Probá en un momento.',
+      resumenOculto: 'Tuviste {n} movimientos esta semana. Las cifras las tenés ocultas y no te las voy a cantar en voz alta: te abro la actividad y las destapás vos.',
+      cobroListo: 'Listo: te dejé el cobro de {monto} {sim} con su código. Enseñalo y que lo escaneen.',
+      // El estado de la identidad, dicho de una vez y con lo que toca hacer
+      verifSi: 'Sí: estás verificado con Genesis ID. Tu identidad es {gid} y vale en todo Orden Global — el chat, los comercios, todo.',
+      verifSin: 'Todavía no tenés tu Genesis ID. Tu billetera funciona igual —es tu dinero—, pero el chat y los comercios piden identidad verificada.',
+      verifEnRevision: 'Tu Genesis ID está en revisión. No tenés que hacer nada más: cuando haya respuesta te va a aparecer acá y te avisamos por correo.',
+      verifRechazada: 'Tu solicitud de Genesis ID no pasó. Se puede volver a intentar, y suele ser por una foto donde el documento no se lee entero. Te llevo y lo repasamos.',
+      verifSuspendida: 'Tu Genesis ID está suspendido. Eso no lo puedo levantar yo: hay que escribirle al equipo desde Ajustes.',
+      verifNoSe: 'Ahora mismo no puedo comprobar tu identidad — no me contesta el servicio. Volvé a preguntarme en un momento.',
+      verifIr: 'Ir a mi Genesis ID',
+      /* Lo que AU-RA sabe hacer, con las palabras por las que se lo suele
+         pedir. Sirve para dos cosas: proponer lo más parecido cuando no
+         entendió, y sugerir según la pantalla. `base` son las de siempre. */
+      parecidos: [
+        { pal: ['enviar', 'mandar', 'transferir', 'pagar'], txt: 'Enviar dinero', di: 'llevame a enviar', base: true },
+        { pal: ['cobrar', 'cobro', 'factura', 'qr'], txt: 'Cobrar', di: 'llevame a cobrar', base: true },
+        { pal: ['recibir', 'deposito', 'direccion'], txt: 'Recibir', di: 'llevame a recibir' },
+        { pal: ['saldo', 'billetera', 'cartera', 'tengo'], txt: '¿Cuánto tengo?', di: 'cuanto tengo' },
+        { pal: ['precio', 'cotizacion', 'vale', 'cuesta'], txt: '¿A cuánto está el ORIGEN?', di: 'precio del origen' },
+        { pal: ['actividad', 'movimientos', 'historial', 'resumen'], txt: 'Resumen de la semana', di: 'resumen de la semana' },
+        { pal: ['tarjeta', 'plastico'], txt: 'Mi tarjeta', di: 'llevame a la tarjeta' },
+        { pal: ['cambiar', 'convertir', 'swap'], txt: 'Cambiar', di: 'llevame a cambiar' },
+        { pal: ['chat', 'mensaje', 'escribir', 'pulse'], txt: 'PULSE CHAT', di: 'llevame al chat' },
+        { pal: ['negocio', 'comercio', 'tienda', 'mytokenpay'], txt: 'Buscar negocios', di: 'buscar negocios' },
+        { pal: ['remesa', 'enviar', 'pais', 'familia'], txt: 'Remesas', di: 'llevame a remesas' },
+        { pal: ['verificar', 'identidad', 'genesis', 'kyc'], txt: 'Mi Genesis ID', di: 'estoy verificado' },
+        { pal: ['contacto', 'agenda'], txt: 'Mis contactos', di: 'llevame a contactos' },
+        { pal: ['seguridad', 'frase', 'semilla', 'contrasena'], txt: 'Seguridad', di: 'seguridad' },
+        { pal: ['origen', 'oro', 'gramin'], txt: '¿Qué es ORIGEN?', di: 'que es origen', base: true },
+      ],
+      /* Lo que tiene sentido ofrecer en cada pantalla. Lo demás lo completan
+         las de siempre. */
+      porVista: {
+        nucleo: ['Hacé el recorrido', '¿Qué es ORIGEN?'],
+        billetera: ['¿A cuánto está el ORIGEN?', 'Resumen de la semana', 'Llevame a enviar'],
+        actividad: ['Resumen de la semana', '¿A cuánto está el ORIGEN?'],
+        enviar: ['¿Cuánto tengo?', '¿Cuánto es la comisión?'],
+        recibir: ['Llevame a cobrar', '¿Cuánto tengo?'],
+        cobrar: ['Cobrame 25', '¿Qué es MyTokenPay?'],
+        cambiar: ['¿A cuánto está el ORIGEN?', '¿Cuánto es la comisión?'],
+        tarjeta: ['¿Cuánto tengo?', 'Resumen de la semana'],
+        chat: ['¿Qué es PULSE CHAT?', '¿Estoy verificado?'],
+        pay: ['Buscá cafeterías', '¿Qué es MyTokenPay?'],
+        payex: ['Buscá cafeterías', 'Buscá hoteles'],
+        remesas: ['¿Cuánto es la comisión?', '¿Cuánto tengo?'],
+        identidad: ['¿Estoy verificado?', '¿Qué es Genesis ID?'],
+        verificar: ['¿Qué es Genesis ID?', '¿Estoy verificado?'],
+        seguridad: ['¿Qué es ORIGEN?', 'Hacé el recorrido'],
+        ajustes: ['¿Estoy verificado?', 'Hacé el recorrido'],
+      },
       seguridad: 'Nunca, jamás, le digas tu frase de recuperación ni tu contraseña a nadie — ni siquiera a mí. Yo no las necesito para nada: yo preparo, vos firmás. Te llevo a Seguridad.',
       tourFin: 'Ese es tu ecosistema. Yo me quedo acá abajo, a un toque, para lo que necesites.',
       tourFinGid: 'Ese es tu ecosistema. Solo te falta una llave: tu Genesis ID. ¿Lo creamos ahora?',
@@ -4500,7 +4562,7 @@ const VETA = (() => {
         pronto: 'AUBANK y Ordenexchange ya laten en el Núcleo pero todavía no abren: son lo que viene. El ecosistema no es una lista cerrada — crece.',
       },
       teEscucho: 'Te escucho…',
-      ayuda: 'Podés pedirme, con la voz o escribiendo:\n\n· «Llevame a cobrar» — te abro cualquier parte\n· «Envía 15 a María» — te dejo el envío listo (firmás vos)\n· «¿Cuánto tengo?» — tu saldo\n· «¿Qué es ORIGEN?» — te explico el ecosistema\n· «Buscá cafeterías» — te encuentro negocios\n· «Hacé el recorrido» — te lo enseño todo\n\nY si no me entiende el micrófono, escribime: leo igual de bien.',
+      ayuda: 'Podés pedirme, con la voz o escribiendo:\n\n· «Llevame a cobrar» — te abro cualquier parte\n· «Envía 15 a María» — te dejo el envío listo (firmás vos)\n· «¿Cuánto tengo?» — tu saldo\n· «¿A cuánto está el ORIGEN?» — el precio de hoy\n· «Cobrame 25» — te dejo el cobro con su código\n· «Resumen de la semana» — qué se movió estos días\n· «¿Estoy verificado?» — cómo va tu Genesis ID\n· «¿Qué es ORIGEN?» — te explico el ecosistema\n· «Buscá cafeterías» — te encuentro negocios\n· «Hacé el recorrido» — te lo enseño todo\n\nY si no me entiende el micrófono, escribime: leo igual de bien.',
       tour: [
         { id: null, k: 'TU NÚCLEO', t: 'El cerebro del ecosistema', p: 'Bienvenido a tu Núcleo. Cada esfera es un órgano vivo, y todas laten conectadas a una sola cuenta: la tuya.' },
         { id: 'wallet', k: 'TU DINERO', t: 'Veta Wallet', p: 'Oro real hecho dinero, sobre nuestra propia cadena. Enviás, recibís y cobrás en segundos.' },
@@ -4529,7 +4591,56 @@ const VETA = (() => {
       saldoOculto: 'Your figures are hidden and I am not going to say them out loud. Opening your wallet so you reveal them yourself with the eye.',
       variosCon: 'I have {n} contacts that look like “{quien}”. Which one?',
       okAsi: 'All right. Whenever you want, I am right here — bottom right.',
-      nose: 'I do not know that yet — I am model 1 and still learning. Try asking me about ORIGEN, the chain, your Genesis ID, or tell me where to take you.',
+      nose: 'I do not know that yet — I am model 1 and still learning. Did you mean one of these?',
+      precio: '{sim} is at {precio}. That is the price everything in your wallet is calculated with.',
+      precioNo: "Today's price has not reached me yet. I will tell you the moment it does — I will not make one up.",
+      resumen: 'Over the last seven days you had {n} movements: {entran} in for {sumaE} and {salen} out for {sumaS}. Opening your activity so you can see them one by one.',
+      resumenNada: 'Nothing moved in your wallet over the last seven days. All quiet.',
+      resumenNoSe: 'Your activity has not reached me yet, so I cannot summarise it without inventing it. Try again in a moment.',
+      resumenOculto: 'You had {n} movements this week. Your figures are hidden and I am not going to read them out loud: I will open your activity and you uncover them yourself.',
+      cobroListo: 'Done: your charge for {monto} {sim} is ready with its code. Show it and let them scan.',
+      verifSi: 'Yes: you are verified with Genesis ID. Your identity is {gid} and it holds across all of Orden Global — the chat, the merchants, everything.',
+      verifSin: 'You do not have your Genesis ID yet. Your wallet works all the same — it is your money — but the chat and the merchants ask for a verified identity.',
+      verifEnRevision: 'Your Genesis ID is under review. There is nothing else for you to do: when there is an answer it will show up here and we will email you.',
+      verifRechazada: 'Your Genesis ID application did not pass. It can be tried again, and it is usually a photo where the document cannot be read in full. Let me take you and we go over it.',
+      verifSuspendida: 'Your Genesis ID is suspended. That one I cannot lift: the team has to be contacted from Settings.',
+      verifNoSe: 'I cannot check your identity right now — the service is not answering. Ask me again in a moment.',
+      verifIr: 'Go to my Genesis ID',
+      parecidos: [
+        { pal: ['send', 'transfer', 'pay'], txt: 'Send money', di: 'take me to send', base: true },
+        { pal: ['charge', 'invoice', 'bill', 'qr'], txt: 'Charge', di: 'take me to charge', base: true },
+        { pal: ['receive', 'deposit', 'address'], txt: 'Receive', di: 'take me to receive' },
+        { pal: ['balance', 'wallet', 'have'], txt: 'How much do I have?', di: 'how much do i have' },
+        { pal: ['price', 'quote', 'worth', 'cost'], txt: 'What is ORIGEN at?', di: 'origen price' },
+        { pal: ['activity', 'movements', 'history', 'summary'], txt: "This week's summary", di: 'summary of this week' },
+        { pal: ['card', 'plastic'], txt: 'My card', di: 'take me to the card' },
+        { pal: ['change', 'convert', 'swap'], txt: 'Swap', di: 'take me to swap' },
+        { pal: ['chat', 'message', 'write', 'pulse'], txt: 'PULSE CHAT', di: 'take me to the chat' },
+        { pal: ['business', 'merchant', 'shop', 'mytokenpay'], txt: 'Find businesses', di: 'find businesses' },
+        { pal: ['remittance', 'country', 'family'], txt: 'Remittances', di: 'take me to remittances' },
+        { pal: ['verify', 'identity', 'genesis', 'kyc'], txt: 'My Genesis ID', di: 'am i verified' },
+        { pal: ['contact', 'address', 'book'], txt: 'My contacts', di: 'take me to contacts' },
+        { pal: ['security', 'phrase', 'seed', 'password'], txt: 'Security', di: 'security' },
+        { pal: ['origen', 'origin', 'gold', 'gramin'], txt: 'What is ORIGEN?', di: 'what is origen', base: true },
+      ],
+      porVista: {
+        nucleo: ['Take the tour', 'What is ORIGEN?'],
+        billetera: ['What is ORIGEN at?', "This week's summary", 'Take me to send'],
+        actividad: ["This week's summary", 'What is ORIGEN at?'],
+        enviar: ['How much do I have?', 'What is the fee?'],
+        recibir: ['Take me to charge', 'How much do I have?'],
+        cobrar: ['Charge 25', 'What is MyTokenPay?'],
+        cambiar: ['What is ORIGEN at?', 'What is the fee?'],
+        tarjeta: ['How much do I have?', "This week's summary"],
+        chat: ['What is PULSE CHAT?', 'Am I verified?'],
+        pay: ['Find coffee shops', 'What is MyTokenPay?'],
+        payex: ['Find coffee shops', 'Find hotels'],
+        remesas: ['What is the fee?', 'How much do I have?'],
+        identidad: ['Am I verified?', 'What is Genesis ID?'],
+        verificar: ['What is Genesis ID?', 'Am I verified?'],
+        seguridad: ['What is ORIGEN?', 'Take the tour'],
+        ajustes: ['Am I verified?', 'Take the tour'],
+      },
       seguridad: 'Never, ever tell anyone your recovery phrase or your password — not even me. I do not need them: I prepare, you sign. Taking you to Security.',
       tourFin: 'That is your ecosystem. I stay right down here, one tap away.',
       tourFinGid: 'That is your ecosystem. You are missing one key: your Genesis ID. Shall we create it now?',
@@ -4551,7 +4662,7 @@ const VETA = (() => {
         pronto: 'AUBANK and Ordenexchange already pulse in the Nucleus but are not open yet: they are what is coming. The ecosystem is not a closed list — it grows.',
       },
       teEscucho: 'Listening…',
-      ayuda: 'You can ask me, by voice or typing:\n\n· “Take me to charge” — I open any part\n· “Send 15 to Maria” — I leave the transfer ready (you sign)\n· “How much do I have?” — your balance\n· “What is ORIGEN?” — I explain the ecosystem\n· “Find coffee shops” — I find businesses\n· “Take the tour” — I show you everything\n\nAnd if the microphone misses you, type: I read just as well.',
+      ayuda: 'You can ask me, by voice or typing:\n\n· “Take me to charge” — I open any part\n· “Send 15 to Maria” — I leave the transfer ready (you sign)\n· “How much do I have?” — your balance\n· “What is ORIGEN at?” — the price today\n· “Charge 25” — I leave the charge ready with its code\n· “Summary of this week” — what moved these days\n· “Am I verified?” — how your Genesis ID is doing\n· “What is ORIGEN?” — I explain the ecosystem\n· “Find coffee shops” — I find businesses\n· “Take the tour” — I show you everything\n\nAnd if the microphone misses you, type: I read just as well.',
       tour: [
         { id: null, k: 'YOUR NUCLEUS', t: 'The brain of the ecosystem', p: 'Welcome to your Nucleus. Each sphere is a living organ, and they all pulse connected to a single account: yours.' },
         { id: 'wallet', k: 'YOUR MONEY', t: 'Veta Wallet', p: 'Real gold turned into money, on our own chain. Send, receive and charge in seconds.' },
@@ -4599,6 +4710,24 @@ const VETA = (() => {
     pintarAura();
   }
 
+  /* LAS SUGERENCIAS SIGUEN A LA PERSONA. Los cuatro chips eran siempre los
+     mismos cuatro: en la pantalla de cobrar te ofrecían llevarte a cobrar, y
+     en la de actividad te ofrecían el recorrido de la primera vez. Un menú
+     fijo delante de alguien que ya está haciendo algo es ruido.
+
+     Ahora AU-RA sugiere lo de la pantalla en la que estás, y deja detrás las
+     de siempre para que nunca haya menos de tres. Las de estado —crear el
+     Genesis ID— solo aparecen cuando de verdad hace falta: ofrecerle
+     verificarse a alguien que ya está verificado es la clase de detalle que
+     hace pensar que la app no sabe quién sos. */
+  function auraSugerencias() {
+    const T = aTxt();
+    const propias = T.porVista?.[vistaActual] || [];
+    const fondo = T.chips.filter(c => c !== T.chips[3] || !esVerificada());
+    const vistas = new Set();
+    return [...propias, ...fondo].filter(c => !vistas.has(c) && vistas.add(c)).slice(0, 4);
+  }
+
   function pintarAura() {
     const p = $('#aura-panel');
     const T = aTxt();
@@ -4616,7 +4745,7 @@ const VETA = (() => {
             m.botones.map(b => `<button class="btn btn-oro btn-sm" style="padding:8px 14px;font-size:12px"
               onclick="VETA.auraChip(${jsTxt(b.di)})">${esc(b.txt)}</button>`).join('')}</div>` : ''}</div>`).join('')}
       </div>
-      <div class="aura-chips">${T.chips.map(c =>
+      <div class="aura-chips">${auraSugerencias().map(c =>
         `<button class="aura-chip" onclick="VETA.auraChip(${jsTxt(c)})">${esc(c)}</button>`).join('')}</div>
       <form class="aura-pie" onsubmit="return VETA.auraManda(event)">
         ${AURA.puedeEscuchar() ? `
@@ -4758,6 +4887,71 @@ const VETA = (() => {
       vista('seguridad');
       return auraDecir(T.seguridad, { voz });
     }
+    /* EL PRECIO, HABLADO. «¿a cuánto está el ORIGEN?» es la pregunta que más
+       se hace en voz alta y hasta ahora caía en «todavía no lo sé». El dato ya
+       estaba en cartera: no hace falta backend nuevo, hace falta contestarlo.
+       Y si no llegó, se dice que no llegó — nunca un número inventado. */
+    if (/precio|cotiza|a cuanto|vale|price|worth|quote/.test(d)) {
+      /* La moneda se busca por los símbolos que la persona TIENE, no por una
+         lista de palabras: «precio del ondk» se llevaba el ORIGEN porque la
+         primera palabra de tres letras que encontraba era «precio». Contra la
+         cartera de verdad no hay confusión posible. */
+      const m = (cartera || []).find(x => new RegExp('\\b' + sinTildes(String(x.s).toLowerCase()) + '\\b').test(d))
+        || (cartera || []).find(x => x.nativo) || (cartera || [])[0];
+      if (!m || !(Number(m.precio) > 0)) return auraDecir(T.precioNo, { voz });
+      return auraDecir(T.precio.replace('{sim}', m.s).replace('{precio}', usd(m.precio)), { voz });
+    }
+
+    /* «¿Estoy verificado?» — la pregunta que hoy obliga a ir a mirar una
+       tarjeta. Se contesta con el estado real, y si falta algo se dice QUÉ
+       falta en vez de mandar a alguien a adivinar. */
+    if (/estoy verific|mi verificacion|am i verified|my verification|mi genesis|my genesis/.test(d)) {
+      if (esVerificada()) {
+        return auraDecir(T.verifSi.replace('{gid}', identidad?.gid || '—'), { voz });
+      }
+      if (!identidad || identidad.error) return auraDecir(T.verifNoSe, { voz });
+      const est = String(identidad.estado || '');
+      const txt = /revis|pendien|review/.test(est) ? T.verifEnRevision
+        : /rechaz|reject/.test(est) ? T.verifRechazada
+        : /suspend/.test(est) ? T.verifSuspendida
+        : T.verifSin;
+      return auraDecir(txt, { voz, botones: [{ txt: T.verifIr, di: T.chips[3] }] });
+    }
+
+    /* EL RESUMEN HABLADO. Lo que pasó estos días sin leer una lista: se cuenta
+       de lo que YA está cargado en movimientos. Si no llegó nada todavía, se
+       dice eso y no «no tuviste movimientos», que es mentira distinta. */
+    if (/resumen|que paso|esta semana|ultimos dias|summary|what happened|this week/.test(d)) {
+      if (errMovs || movimientos === null) return auraDecir(T.resumenNoSe, { voz });
+      const desde = Date.now() - 7 * 24 * 3600 * 1e3;
+      const sem = todoMovimiento().filter(m => movCuando(m) >= desde);
+      if (!sem.length) return auraDecir(T.resumenNada, { voz });
+      const entran = sem.filter(m => movEntra(m)), salen = sem.filter(m => !movEntra(m));
+      const suma = (l) => l.reduce((s, m) => s + Math.abs(Number(movMonto(m)) || 0), 0);
+      vista('actividad'); auraApartar();
+      // el ojo manda también aquí: si las cifras están tapadas, no se cantan
+      if (ocultos) return auraDecir(T.resumenOculto.replace('{n}', sem.length), { voz });
+      return auraDecir(T.resumen
+        .replace('{n}', sem.length)
+        .replace('{entran}', entran.length).replace('{sumaE}', suma(entran).toFixed(2))
+        .replace('{salen}', salen.length).replace('{sumaS}', suma(salen).toFixed(2)), { voz });
+    }
+
+    /* COBRAR CON EL MONTO DICTADO. «cobrame 25» deja el cobro hecho con la
+       cantidad puesta; el QR sale solo. El monto es de quien lo dice —es SU
+       cobro, no un destino ajeno—, así que aquí sí puede venir de la frase. */
+    const cob = d.match(/(?:cobra(?:me|r)?|charge|factura(?:me|r)?)\s+([\d.,]+)\s*([a-z]{2,10})?/);
+    if (cob) {
+      const monto = cob[1].replace(',', '.');
+      const simDicho = (cob[2] || '').toUpperCase();
+      const sim = (cartera || []).find(m => m.s === simDicho)?.s || 'ORIGEN';
+      vista('cobrar');
+      const campo = $('#cob-monto');
+      if (campo) { campo.value = monto; pintarCobro(); }
+      auraApartar();
+      return auraDecir(T.cobroListo.replace('{monto}', monto).replace('{sim}', sim), { voz });
+    }
+
     if (/saldo|cuanto tengo|balance|how much/.test(d)) {
       vista('billetera');
       /* EL OJO MANDA TAMBIEN SOBRE LA VOZ. Quien toca el ojo esta escondiendo
@@ -4821,7 +5015,29 @@ const VETA = (() => {
     ];
     for (const [re, r] of SABE) if (re.test(d)) return auraDecir(r, { voz });
 
-    auraDecir(T.nose, { voz });
+    /* CUANDO NO ENTIENDE. «Eso todavía no lo sé» y punto es una puerta
+       cerrada: la persona no sabe si preguntó mal, si la app no sirve o si
+       tiene que rendirse. Ahora se busca lo más parecido —palabra por palabra
+       contra lo que AU-RA sí sabe hacer— y se ofrece con botones. Si ni eso,
+       se ofrecen las tres de siempre. Nunca se queda nadie sin salida. */
+    auraDecir(T.nose, { voz, botones: auraLoMasParecido(d).slice(0, 3) });
+  }
+
+  /* Lo más parecido a lo que se dijo. Sin diccionario ni modelo: cada destino
+     lleva las palabras por las que se lo suele llamar, y gana el que comparta
+     más letras con lo dicho. Es tosco a propósito — tiene que caber aquí y
+     correr en un teléfono barato sin pedirle nada a nadie. */
+  function auraLoMasParecido(d) {
+    const T = aTxt();
+    const dichas = sinTildes(d).split(/[^a-z0-9]+/).filter(x => x.length > 2);
+    const puntos = (palabras) => palabras.reduce((s, p) => s + dichas.reduce((t, x) =>
+      t + (p.startsWith(x) || x.startsWith(p) ? Math.min(p.length, x.length) : 0), 0), 0);
+    const marcados = T.parecidos
+      .map(o => ({ ...o, pts: puntos(o.pal) }))
+      .filter(o => o.pts >= 3)
+      .sort((a, b) => b.pts - a.pts);
+    const salida = marcados.length ? marcados : T.parecidos.filter(o => o.base);
+    return salida.map(o => ({ txt: o.txt, di: o.di }));
   }
 
   // ── la invitacion del Genesis ID ─────────────────────────────────────────
@@ -5765,6 +5981,9 @@ const VETA = (() => {
            // Lo que las pruebas necesitan MIRAR para comprobar que un
            // tropiezo no borro nada. Solo lectura.
            _movs: () => todoMovimiento(),
+           // Para poder comprobar el resumen hablado y, sobre todo, que con
+           // el ojo cerrado NO se cantan las cifras por el altavoz.
+           _sembrarMovs: l => { movimientos = l; errMovs = null; },
            _laTarjeta: () => tarjeta,
            _tarjeta: c => { tarjeta = c; },
            _sesion: x => { sesion = x; },
