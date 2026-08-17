@@ -74,6 +74,9 @@ const VPORTA = (() => {
       falloSaldos: 'No pudimos leer tus saldos.', falloSaldosP: 'Sin saldos leídos no se arma un retiro: probá de nuevo en un momento.',
       traer: 'Traer desde mi Veta Wallet',
       depUno: 'Depositar',
+      panelT: 'Confirmá en tu Veta Wallet',
+      panelPie: 'Lo de arriba es tu Veta Wallet, en su propio dominio. Ordenex no puede leer lo que escribís ahí — ni tu contraseña.',
+      cerrar: 'Cerrar',
       depEsperando: 'Te abrimos tu Veta Wallet en una ventana. Confirmá el envío de {activo} allá — la clave se pone en la billetera, nunca acá.',
       depFirmado: 'Firmado: {monto} {activo} va en camino. El depósito se acredita cuando la cadena lo confirme; esta pantalla se actualiza sola.',
       depUnoT: 'Abre tu Veta Wallet con el activo, el monto y la dirección ya puestos. La clave se pone allá, nunca aquí.',
@@ -133,6 +136,9 @@ const VPORTA = (() => {
       falloSaldos: 'We couldn’t read your balances.', falloSaldosP: 'Without balances read, no withdrawal form gets built: try again in a moment.',
       traer: 'Bring it from my Veta Wallet',
       depUno: 'Deposit',
+      panelT: 'Confirm in your Veta Wallet',
+      panelPie: 'What you see above is your Veta Wallet, on its own domain. Ordenex cannot read anything you type there — not even your password.',
+      cerrar: 'Close',
       depEsperando: 'We opened your Veta Wallet in a window. Confirm the {activo} transfer there — the password is entered in the wallet, never here.',
       depFirmado: 'Signed: {monto} {activo} is on its way. The deposit lands once the chain confirms it; this screen updates itself.',
       depUnoT: 'Opens your Veta Wallet with the asset, the amount and the address already filled in. The password is entered there, never here.',
@@ -195,6 +201,32 @@ const VPORTA = (() => {
     .po-dep-txt{flex:1;min-width:230px}
     .po-dep-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
     .po-dep-uno{flex:none;margin-left:12px;white-space:nowrap}
+
+    /* El panel. Ancho de MetaMask en escritorio, pantalla entera en telefono. */
+    .po-capa{position:fixed;inset:0;z-index:200;display:grid;place-items:center;
+      background:rgba(4,7,11,.78);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+      padding:20px;animation:poEntra .18s ease}
+    @keyframes poEntra{from{opacity:0}to{opacity:1}}
+    .po-panel{width:min(100%,436px);max-height:min(92vh,860px);display:flex;flex-direction:column;
+      background:var(--pozo);border:1px solid var(--linea);border-radius:14px;overflow:hidden;
+      box-shadow:0 30px 80px -20px rgba(0,0,0,.7)}
+    .po-panel-cab{display:flex;align-items:center;gap:10px;padding:12px 14px;
+      border-bottom:1px solid var(--linea2);background:rgba(238,241,245,.03)}
+    .po-panel-tit{font-weight:700;font-size:14px;color:var(--crema)}
+    /* El dominio, a la vista. Es lo que separa un panel de la wallet de un
+       formulario que finge serlo: quien mira puede comprobarlo. */
+    .po-panel-dom{margin-left:auto;font-size:11px;color:var(--oroLt);
+      padding:3px 8px;border:1px solid var(--linea2);border-radius:100px}
+    .po-panel-x{color:var(--humo);font-size:15px;padding:2px 6px;line-height:1}
+    .po-panel-x:hover{color:var(--crema)}
+    .po-panel-marco{flex:1;width:100%;min-height:min(70vh,600px);border:0;display:block;background:#03282A}
+    .po-panel-pie{padding:10px 14px;border-top:1px solid var(--linea2);font-size:11.5px;
+      line-height:1.5;color:var(--humo)}
+    @media (max-width:560px){
+      .po-capa{padding:0}
+      .po-panel{width:100%;height:100%;max-height:none;border-radius:0;border:0}
+      .po-panel-marco{min-height:0}
+    }
     .po-dir{font-family:var(--mono);font-variant-ligatures:none;font-size:13.5px;word-break:break-all;
       background:var(--campo);border:1px solid var(--campoBr);border-radius:var(--r);padding:12px 14px;margin-bottom:12px}
     .po-aviso{border:1px solid var(--linea2);background:rgba(201,169,97,.08);border-radius:var(--r);
@@ -390,22 +422,64 @@ const VPORTA = (() => {
      Si el navegador bloquea la emergente —pasa, y no siempre avisa— se cae a
      abrir una pestaña. Un boton que no hace nada porque el bloqueador se lo
      comio es peor que uno que abre de mas. */
-  let ventanaWallet = null;
+  /* EL PANEL, DENTRO DE ORDENEX ─────────────────────────────────────────────
+     La wallet se dibuja aqui mismo, en un marco. Parece MetaMask y se comporta
+     como MetaMask, y la parte que importa es POR QUE se puede:
+
+     Lo de adentro sigue siendo el documento de la wallet, servido por SU
+     dominio. El navegador aisla los dos: Ordenex no puede leer ni un caracter
+     de lo que se teclea ahi dentro, ni el campo de la contraseña, ni la
+     sesion. Lo unico que cruza es un mensaje al terminar, y solo porque las
+     dos partes lo permiten explicitamente.
+
+     Es la diferencia entre esto y un formulario de Ordenex que pida la clave
+     de la billetera: aquel la leeria; este no puede aunque quiera. Y la wallet
+     solo se deja enmarcar por los origenes de esta casa —cabecera
+     frame-ancestors, puesta en su despliegue—, asi que este mismo panel no lo
+     puede armar una pagina cualquiera.
+
+     En un telefono el marco se lleva la pantalla entera, que es lo correcto:
+     un panel de 430 px en 390 px de ancho es un panel con scroll horizontal. */
+  let panelAbierto = false;
 
   function depositar(sim, monto) {
     if (!direccion) return;
     const url = `${WALLET}/#pagar${direccion}?s=${encodeURIComponent(sim)}`
       + `&m=${encodeURIComponent(monto)}&pop=1`;
-    const alto = Math.min(760, Math.max(560, Math.round(screen.height * 0.8)));
-    const izq = Math.max(0, Math.round((screen.width - 430) / 2));
-    const arr = Math.max(0, Math.round((screen.height - alto) / 2));
-    try {
-      ventanaWallet = window.open(url, 'veta-wallet-deposito',
-        `width=430,height=${alto},left=${izq},top=${arr},resizable=yes,scrollbars=yes`);
-    } catch { ventanaWallet = null; }
-    if (!ventanaWallet) { window.open(url, '_blank', 'noopener'); return; }
-    try { ventanaWallet.focus(); } catch {}
+    cerrarPanel();
+    const t = tx();
+    const capa = document.createElement('div');
+    capa.className = 'po-capa';
+    capa.id = 'po-capa';
+    capa.innerHTML = `
+      <div class="po-panel" role="dialog" aria-modal="true" aria-label="${esc(t.panelT)}">
+        <div class="po-panel-cab">
+          <span class="po-panel-tit">${esc(t.panelT)}</span>
+          <span class="po-panel-dom mono">app.vetawallet.com</span>
+          <button class="po-panel-x" onclick="VPORTA.cerrarPanel()" aria-label="${esc(t.cerrar)}">✕</button>
+        </div>
+        <iframe class="po-panel-marco" src="${esc(url)}" title="${esc(t.panelT)}"
+                allow="clipboard-write"></iframe>
+        <div class="po-panel-pie">${esc(t.panelPie)}</div>
+      </div>`;
+    // Tocar fuera cierra; tocar dentro no. Un panel que se cierra al rozarlo
+    // en medio de escribir una contraseña es una manera de perder el gesto.
+    capa.addEventListener('click', (e) => { if (e.target === capa) cerrarPanel(); });
+    document.body.appendChild(capa);
+    document.body.style.overflow = 'hidden';
+    panelAbierto = true;
+    addEventListener('keydown', alEscape);
     avisarEspera(sim);
+  }
+
+  function alEscape(e) { if (e.key === 'Escape') cerrarPanel(); }
+
+  function cerrarPanel() {
+    const c = document.getElementById('po-capa');
+    if (c) c.remove();
+    document.body.style.overflow = '';
+    removeEventListener('keydown', alEscape);
+    panelAbierto = false;
   }
 
   /* Mientras la ventana esta abierta, esta pantalla dice que espera. Y cuando
@@ -442,6 +516,9 @@ const VPORTA = (() => {
     const t = tx();
     const av = document.getElementById('po-esperando');
     if (av) av.textContent = rell(t.depFirmado, { activo: d.activo || '', monto: d.monto || '' });
+    // El panel ya cumplio: se cierra solo y la persona vuelve a ver su
+    // portafolio, que es donde va a aparecer el deposito.
+    setTimeout(cerrarPanel, 1200);
 
     /* Se sondea el portafolio hasta que el saldo cambie o pasen dos minutos.
        El vigia mira cada 30 s, asi que cada 8 son cuatro miradas por vuelta
@@ -902,6 +979,6 @@ const VPORTA = (() => {
   return {
     vista, vistaActividad, alPintar, apagar,
     eligeActivo, todo, continuar, volver, confirmarRetiro, otro, copiar,
-    recargar: cargar, recargarActividad: cargarActividad, recargarWallet, depositar,
+    recargar: cargar, recargarActividad: cargarActividad, recargarWallet, depositar, cerrarPanel,
   };
 })();

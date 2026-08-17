@@ -3486,10 +3486,17 @@ const VETA = (() => {
 
   let modoVentana = false;
   let quienAbrio = null;
+  let enMarcoAjeno = false;
 
   function mirarSiEsVentana() {
     try {
-      if (!window.opener || window.opener === window) return;
+      /* Dos formas de estar «dentro de otra casa», y las dos valen: una
+         ventana emergente (window.opener) y un MARCO dentro de Ordenex
+         (window.parent). El marco es el que se ve como MetaMask; la emergente
+         es el respaldo para iOS, que convierte toda emergente en pestaña.
+         El aviso de vuelta se le manda a quien corresponda. */
+      const enMarco = window.parent && window.parent !== window;
+      if (!enMarco && (!window.opener || window.opener === window)) return;
       const q = new URLSearchParams(location.hash.includes('?') ? location.hash.slice(location.hash.indexOf('?') + 1) : '');
       if (q.get('pop') !== '1') return;
       /* De donde viene se toma de `document.referrer` y se COMPRUEBA contra la
@@ -3500,6 +3507,7 @@ const VETA = (() => {
       const permitido = ORIGENES_QUE_PUEDEN_ABRIR.includes(ref)
         || (location.hostname === '127.0.0.1' || location.hostname === 'localhost');
       modoVentana = true;
+      enMarcoAjeno = enMarco;
       quienAbrio = permitido ? (ref || location.origin) : null;
       document.body.classList.add('en-ventana');
     } catch { /* si algo de esto falla, se sigue como pagina normal */ }
@@ -3516,8 +3524,13 @@ const VETA = (() => {
        fallo no puede depender de que el codigo de abajo este bien escrito. */
     try {
       if (!modoVentana || !quienAbrio) return;
-      window.opener.postMessage({ de: 'veta-wallet', ...datos }, quienAbrio);
-      setTimeout(() => { try { window.close(); } catch {} }, 1400);
+      // Al padre si es un marco; al que la abrio si es una emergente.
+      const destino = enMarcoAjeno ? window.parent : window.opener;
+      if (!destino) return;
+      destino.postMessage({ de: 'veta-wallet', ...datos }, quienAbrio);
+      // Un marco no se cierra a si mismo: lo cierra Ordenex al recibir el
+      // aviso. Cerrar solo tiene sentido en una ventana propia.
+      if (!enMarcoAjeno) setTimeout(() => { try { window.close(); } catch {} }, 1400);
     } catch (e) {
       console.error('[ventana] no se pudo avisar a quien abrio:', e.message);
     }

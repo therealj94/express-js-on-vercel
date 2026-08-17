@@ -20,6 +20,11 @@
 
      Si se agrega un servicio nuevo hay que agregarlo aquí o dejará de
      funcionar en silencio. -->
+<!-- frame-src deja enmarcar SOLO a la wallet: es el panel de depositar. Lo de
+     adentro sigue siendo el documento de la wallet, en su dominio, asi que la
+     contraseña se teclea alla y esta pagina no puede leerla.
+     Ojo al tocar esto: la CSP NO admite comentarios dentro del atributo — un
+     /* aqui dentro llega al navegador como una directiva invalida. -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   script-src 'self' 'unsafe-inline';
@@ -32,7 +37,7 @@
   object-src 'none';
   base-uri 'self';
   form-action 'self';
-  frame-src 'none';
+  frame-src https://app.vetawallet.com https://www.vetawallet.com;
 ">
 <!-- El icono es el de ORIGEN: la moneda de cotización de todos los mercados
      de la casa, y el único logo que ya viaja con estos assets. -->

@@ -719,8 +719,19 @@ console.log('\n── EL PUENTE CON LA WALLET ───────────�
   decir(/s=\$\{encodeURIComponent\(sim\)\}/.test(src) && /&m=\$\{encodeURIComponent\(monto\)\}/.test(src),
     'y el enlace lleva simbolo Y monto, ya puestos');
   decir(/pop=1/.test(src), 'se abre en ventana emergente, no mandando a otra pestaña');
-  decir(/window\.open\(url, '_blank'/.test(src),
-    'y si el bloqueador se come la emergente, se cae a una pestaña — un boton que no hace nada es peor');
+  decir(/class="po-panel-marco" src=/.test(src),
+    'la wallet se dibuja DENTRO, en un marco: el panel estilo MetaMask');
+  decir(/po-panel-dom/.test(src),
+    'y el dominio va a la vista, que es lo que separa un panel de la wallet de uno que finge serlo');
+
+  /* Que el marco este permitido no puede quedar en la intencion: si la CSP de
+     Ordenex no lo deja, el panel sale en blanco y nadie sabe por que. */
+  const htm = await readFile(new URL('./ordenex/index.html', import.meta.url), 'utf8');
+  decir(/frame-src https:\/\/app\.vetawallet\.com/.test(htm),
+    'la CSP de Ordenex permite enmarcar la wallet');
+  const csp = (htm.match(/http-equiv="Content-Security-Policy" content="([\s\S]*?)"/) || [])[1] || '';
+  decir(!/\/\*/.test(csp),
+    'y no hay comentarios dentro de la CSP — el navegador se los come como directivas rotas');
 
   /* La guarda del mensaje de vuelta. Sin comprobar el origen, cualquier pagina
      abierta podria decirle a esta que se firmo un deposito. */
