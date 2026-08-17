@@ -138,7 +138,7 @@ const VMERCADO = (() => {
          mercado). Con solo la primera, alguien podría leerlo como cotización. */
       'fDecl': 'Declarado · Junta',
       'declBadge': 'PRECIO DECLARADO',
-      'declRot': 'Precio fijado por resolución de la Junta Directiva. ONDK no cotiza todavía: no hay libro ni contraparte, así que este número no es un precio de mercado. Cada escalón de la gráfica es un acta, y entre dos actas el precio no se mueve.',
+      'declRot': 'Precio fijado por resolución de la Junta Directiva. ONDK no cotiza todavía: no hay libro ni contraparte, así que este número no es un precio de mercado. Cada vela de la gráfica es un acta: abre en el precio de la resolución anterior y cierra en el de esa, sin mecha, porque entre dos actas no hubo ni una operación.',
       'declNo': 'No pudimos traer el precio declarado. Se reintenta solo.',
       'declVacio': 'La Junta todavía no ha declarado un precio para este instrumento.',
       'declVig': 'vigente desde {fecha} · acta {acta}',
@@ -230,7 +230,7 @@ const VMERCADO = (() => {
 
       'fDecl': 'Declared · Board',
       'declBadge': 'DECLARED PRICE',
-      'declRot': 'Price set by resolution of the Board of Directors. ONDK does not trade yet: there is no book and no counterparty, so this number is not a market price. Every step in the chart is a minute, and between two minutes the price does not move.',
+      'declRot': 'Price set by resolution of the Board of Directors. ONDK does not trade yet: there is no book and no counterparty, so this number is not a market price. Every candle in the chart is one minute: it opens at the previous resolution’s price and closes at that one’s, with no wick, because between two minutes there was not a single trade.',
       'declNo': 'We couldn’t fetch the declared price. It retries on its own.',
       'declVacio': 'The Board has not declared a price for this instrument yet.',
       'declVig': 'in force since {fecha} · minute {acta}',

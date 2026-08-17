@@ -249,6 +249,10 @@ const VELAS = (() => {
       firma: 'firma',
       desde: 'vigente desde',
       resoluciones: 'resoluciones',
+      // Por qué estas velas no llevan mecha. Va en la leyenda y no en una nota
+      // al pie: quien lee velas busca la mecha, y su ausencia tiene que estar
+      // explicada donde se la echa de menos.
+      sinMecha: 'cada vela abre en el precio del acta anterior y cierra en el de esta; sin mecha, porque entre dos actas no hubo operaciones',
     },
     en: {
       sinTratos: 'No trades yet',
@@ -268,6 +272,7 @@ const VELAS = (() => {
       firma: 'signed',
       desde: 'in force since',
       resoluciones: 'resolutions',
+      sinMecha: 'each candle opens at the previous minute’s price and closes at this one’s; no wick, because between two minutes there were no trades',
     },
   };
 
@@ -965,6 +970,8 @@ const VELAS = (() => {
 
     const idioma = opciones.idioma === 'en' ? 'en' : 'es';
     const T = TXT[idioma];
+    const jade = color('--jade', '#3ED9A0');
+    const coral = color('--coral', '#F0776B');
     const oro = color('--oro', '#C9A961');
     const oroLt = color('--oroLt', '#EAD79C');
     const crema = color('--crema', '#F3ECD9');
@@ -994,6 +1001,11 @@ const VELAS = (() => {
       })
       .filter(Boolean)
       .sort((a, b) => a.t - b.t);
+
+    /* Velas japonesas por defecto, línea escalonada con `estilo:'linea'`. Las
+       dos dibujan EL MISMO dato y ninguna añade uno: la vela es el mismo salto
+       entre dos actas, contado con un cuerpo en vez de con un escalón. */
+    const velasJapo = opciones.estilo !== 'linea';
 
     const IZQ = 10, ARRIBA = 8, ALTO_T = 20, EJE_MIN = 56;
     const der = ancho - EJE_MIN;
@@ -1116,12 +1128,14 @@ const VELAS = (() => {
       ctx.fillText(mesAno(f.t), Math.min(der - 14, Math.max(IZQ + 14, x)), pie + 5);
     }
 
-    /* ── la línea ──────────────────────────────────────────────────────────
-       Plana desde cada acta hasta la siguiente, y un salto vertical el día de
+    /* ── el camino del precio, plano entre actas ───────────────────────────
+       Plano desde cada acta hasta la siguiente, y un salto vertical el día de
        la firma. Sin curvas ni suavizado: interpolar entre dos resoluciones
-       dibujaría precios en fechas en las que la Junta no declaró nada. */
-    ctx.strokeStyle = oro;
-    ctx.lineWidth = 2;
+       dibujaría precios en fechas en las que la Junta no declaró nada.
+       Con velas encima va tenue: ahí es la guía que enseña cuánto tiempo
+       estuvo quieto cada precio, que es lo que un cuerpo de vela no dice. */
+    ctx.strokeStyle = velasJapo ? 'rgba(201,169,97,.30)' : oro;
+    ctx.lineWidth = velasJapo ? 1 : 2;
     ctx.beginPath();
     let yPrev = null;
     filas.forEach((f, i) => {
@@ -1133,21 +1147,67 @@ const VELAS = (() => {
     });
     ctx.stroke();
 
-    // El tramo vigente, remarcado: es el único precio que rige hoy.
     const vig = filas[filas.length - 1];
-    ctx.strokeStyle = oroLt;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(X(vig.t), Y(vig.p));
-    ctx.lineTo(X(t1), Y(vig.p));
-    ctx.stroke();
 
-    // Una marca redonda en cada firma: cada punto es un acta.
-    for (const f of filas) {
+    /* ── LAS VELAS JAPONESAS ───────────────────────────────────────────────
+       Una vela por resolución. Y las cuatro cifras de cada una salen de
+       precios que la Junta firmó de verdad, ninguna de una invención:
+
+         apertura = el precio declarado ANTERIOR
+         cierre   = el precio declarado de ESTA acta
+         máximo   = el mayor de los dos
+         mínimo   = el menor de los dos
+
+       Por eso NO llevan mecha. Una mecha dice «entre medias el precio llegó
+       hasta aquí», y entre dos actas no hubo operaciones: no hay un máximo
+       intradía que contar. Dibujarle mechas a esto sería inventar justo la
+       parte que no existe — y quedaría más bonito, que es exactamente lo que
+       hace peligrosa esa tentación.
+
+       La primera es un doji: nace en su propio precio, porque antes de la
+       primera resolución no había ninguno. */
+    if (velasJapo) {
+      // Ancho por hueco disponible, con suelo y techo: con cinco actas en dos
+      // años el hueco es enorme y una vela de 200px de ancho no se lee.
+      const hueco = (der - IZQ) / Math.max(1, filas.length);
+      const anchoV = Math.max(7, Math.min(30, hueco * 0.42));
+
+      filas.forEach((f, i) => {
+        const apertura = i === 0 ? f.p : filas[i - 1].p;
+        const cierre = f.p;
+        const x = X(f.t);
+        const yA = Y(apertura), yC = Y(cierre);
+        const arriba = Math.min(yA, yC);
+        // Suelo de 2px: un cuerpo de cero píxeles (el doji, o dos actas al
+        // mismo precio) desaparecería del lienzo y esa vela existe igual.
+        const altoV = Math.max(2, Math.abs(yC - yA));
+        const tinta = cierre > apertura ? jade : cierre < apertura ? coral : oro;
+
+        ctx.fillStyle = tinta;
+        ctx.globalAlpha = 0.82;
+        ctx.fillRect(Math.round(x - anchoV / 2), Math.round(arriba), Math.round(anchoV), Math.round(altoV));
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = tinta;
+        ctx.lineWidth = 1.4;
+        ctx.strokeRect(Math.round(x - anchoV / 2) + 0.5, Math.round(arriba) + 0.5,
+          Math.round(anchoV) - 1, Math.round(altoV) - 1);
+      });
+    } else {
+      // El tramo vigente, remarcado: es el único precio que rige hoy.
+      ctx.strokeStyle = oroLt;
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.arc(X(f.t), Y(f.p), 3.4, 0, Math.PI * 2);
-      ctx.fillStyle = FICHA; ctx.fill();
-      ctx.strokeStyle = oroLt; ctx.lineWidth = 1.6; ctx.stroke();
+      ctx.moveTo(X(vig.t), Y(vig.p));
+      ctx.lineTo(X(t1), Y(vig.p));
+      ctx.stroke();
+
+      // Una marca redonda en cada firma: cada punto es un acta.
+      for (const f of filas) {
+        ctx.beginPath();
+        ctx.arc(X(f.t), Y(f.p), 3.4, 0, Math.PI * 2);
+        ctx.fillStyle = FICHA; ctx.fill();
+        ctx.strokeStyle = oroLt; ctx.lineWidth = 1.6; ctx.stroke();
+      }
     }
 
     // ── la pastilla del precio vigente, en el eje ─────────────────────────
@@ -1182,8 +1242,25 @@ const VELAS = (() => {
     // ── la leyenda: qué acta, quién firmó, desde cuándo ───────────────────
     const d = new Date(sel.t);
     const fechaLarga = `${dosD(d.getDate())}/${dosD(d.getMonth() + 1)}/${d.getFullYear()}`;
+
+    /* Las cifras de la vela seleccionada. Se enseñan las CUATRO, y la de
+       apertura dice de dónde sale: es el precio del acta anterior, no un dato
+       aparte. Quien lee una vela espera que apertura y cierre sean dos
+       momentos del mismo período; aquí son dos resoluciones, y decirlo es lo
+       que impide que esta gráfica se lea como una de mercado. */
+    const aper = indice === 0 ? sel.p : filas[indice - 1].p;
+    const sube = sel.p > aper, baja = sel.p < aper;
+    const tintaV = sube ? jade : baja ? coral : oro;
+    const filaOC = velasJapo ? [
+      { t: 'A ', tinta: humo }, { t: aper.toFixed(dec), tinta: bruma, font: MONO },
+      { t: '  C ', tinta: humo }, { t: sel.p.toFixed(dec), tinta: tintaV, font: MONO_B },
+      { t: '  M ', tinta: humo }, { t: Math.max(aper, sel.p).toFixed(dec), tinta: bruma, font: MONO },
+      { t: '  m ', tinta: humo }, { t: Math.min(aper, sel.p).toFixed(dec), tinta: bruma, font: MONO },
+    ] : null;
+
     const lineas = [
       cabecera.concat([{ t: `   ${sel.p.toFixed(dec)}`, tinta: oroLt, font: MONO_B }]),
+      filaOC,
       [
         { t: `${T.acta} `, tinta: humo },
         { t: sel.acta, tinta: crema, font: MONO_B },
@@ -1191,6 +1268,7 @@ const VELAS = (() => {
         { t: fechaLarga, tinta: bruma, font: MONO },
       ],
       sel.firmante ? [{ t: `${T.firma} `, tinta: humo }, { t: sel.firmante, tinta: bruma }] : null,
+      velasJapo ? [{ t: T.sinMecha, tinta: humo, font: `400 10px ${SANS}` }] : null,
       [{ t: T.avisoDecl, tinta: oro, font: `400 10px ${SANS}` }],
     ].filter(Boolean);
 
@@ -1209,6 +1287,9 @@ const VELAS = (() => {
       par, `${filas.length} ${T.resoluciones}`,
       `${vig.p.toFixed(dec)} ${moneda}`,
       `${T.acta} ${vig.acta}`,
+      // Lo de la mecha va también aquí: quien lee con lector de pantalla no
+      // puede notar por su cuenta que estas velas no la llevan.
+      velasJapo ? T.sinMecha : '',
       T.avisoDecl,
     ].filter(Boolean).join(' · '));
 
@@ -1218,10 +1299,14 @@ const VELAS = (() => {
       indice,
       moneda,
       declarado: true,
+      velas: velasJapo,
       leyenda: {
         par, moneda,
         precio: sel.p, acta: sel.acta, firmante: sel.firmante,
         fecha: new Date(sel.t).toISOString(),
+        // Las cuatro cifras de la vela, para que una prueba pueda comprobar
+        // que ninguna se inventó: la apertura ES el cierre de la anterior.
+        o: aper, c: sel.p, h: Math.max(aper, sel.p), l: Math.min(aper, sel.p),
         vigente: { precio: vig.p, acta: vig.acta, fecha: new Date(vig.t).toISOString() },
       },
     };

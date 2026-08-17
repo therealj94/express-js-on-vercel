@@ -153,6 +153,54 @@ console.log('\n── en inglés dice lo mismo ───────────
     'el rótulo en inglés también avisa', rot);
 }
 
+console.log('\n── LAS VELAS SALEN DE ACTAS, NO DE UNA INVENCIÓN ─────────────');
+{
+  /* Esta es la comprobación que sostiene toda la gráfica japonesa. Las cuatro
+     cifras de cada vela tienen que ser precios que la Junta firmó de verdad:
+       apertura = el cierre de la vela anterior (o sea, el acta anterior)
+       cierre   = el precio de esta acta
+       máximo/mínimo = el mayor y el menor de esos dos, y NADA más
+     El día que alguien le añada mechas «para que se vea mejor», esos máximos
+     y mínimos dejarán de coincidir con los precios de las actas y esto se cae. */
+  const ancho = await p.evaluate(() => document.getElementById('lienzoDecl').clientWidth);
+  const precios = await p.evaluate(() => window.__actas.map(a => a.precio));
+
+  const velas = [];
+  for (const x of [0.02, 0.45, 0.98]) {
+    const r = await pintar('__actas', { cursor: { x: Math.round(ancho * x), y: 100 } });
+    velas.push({ i: r.indice, ...r.leyenda });
+  }
+
+  decir(velas.every(v => v.h === Math.max(v.o, v.c) && v.l === Math.min(v.o, v.c)),
+    'ninguna vela tiene mecha: máximo y mínimo son los bordes del cuerpo',
+    velas.map(v => `o${v.o}/h${v.h}/l${v.l}/c${v.c}`).join('  '));
+
+  decir(velas.every(v => precios.includes(v.o) && precios.includes(v.c)),
+    'apertura y cierre son SIEMPRE precios de actas de verdad',
+    `actas: ${precios.join(', ')}`);
+
+  const conAnterior = velas.filter(v => v.i > 0);
+  decir(conAnterior.every(v => v.o === precios[v.i - 1]),
+    'y la apertura de cada vela ES el precio del acta anterior',
+    conAnterior.map(v => `vela ${v.i}: abre en ${v.o}, acta previa ${precios[v.i - 1]}`).join(' · '));
+
+  const primera = velas.find(v => v.i === 0);
+  if (primera) decir(primera.o === primera.c,
+    'la primera es un doji: antes de la primera resolución no había precio',
+    `o=${primera.o} c=${primera.c}`);
+
+  const rot = await p.evaluate(() => document.getElementById('lienzoDecl').getAttribute('aria-label'));
+  decir(/sin mecha/i.test(rot), 'y el rótulo accesible explica por qué no llevan mecha');
+}
+
+console.log('\n── la línea escalonada sigue disponible ──────────────────────');
+{
+  const r = await pintar('__actas', { estilo: 'linea' });
+  decir(r.velas === false && r.n === 3, 'con estilo:linea se dibuja el escalón de antes', `velas=${r.velas}`);
+  const rot = await p.evaluate(() => document.getElementById('lienzoDecl').getAttribute('aria-label'));
+  decir(!/sin mecha/i.test(rot), 'y entonces no se habla de mechas');
+}
+
 console.log('\n── una sola resolución tampoco rompe ─────────────────────────');
 {
   await p.evaluate(() => {
