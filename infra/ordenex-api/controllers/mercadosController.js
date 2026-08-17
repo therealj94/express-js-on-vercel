@@ -55,6 +55,11 @@ function armarLista() {
         ultimo: r.ultimo,
         cambio24h: r.cambio24h,
         vol24h: r.vol24h,
+        // El rango del dia. Van en null cuando no hubo tratos: un mercado sin
+        // operar no tiene maximo, y repetir el ultimo precio ahi seria dibujar
+        // un rango que nadie opero.
+        alto24h: r.alto24h,
+        bajo24h: r.bajo24h,
         referencia,
       };
     })

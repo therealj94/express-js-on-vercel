@@ -124,6 +124,8 @@ const VMERCADO = (() => {
       'refCuando': 'leído {hora}',
       'refNo': 'No pudimos traer la referencia del metal. Se reintenta solo.',
       'refVacia': 'La referencia del metal todavía no llegó. Se reintenta sola: preferimos un lienzo vacío a una línea inventada.',
+      'st.alto': 'Máx. 24 h', 'st.bajo': 'Mín. 24 h',
+      'st.vol': 'Vol. 24 h', 'st.par': 'Se paga en',
       'zoomGrupo': 'Acercar la gráfica',
       'zoomMas': 'Acercar (rueda, o la tecla +)',
       'zoomMenos': 'Alejar (rueda, o la tecla −)',
@@ -219,6 +221,8 @@ const VMERCADO = (() => {
       'refCuando': 'read at {hora}',
       'refNo': 'We couldn’t fetch the metal reference. It retries on its own.',
       'refVacia': 'The metal reference hasn’t arrived yet. It retries on its own: we’d rather show an empty canvas than an invented line.',
+      'st.alto': '24 h high', 'st.bajo': '24 h low',
+      'st.vol': '24 h volume', 'st.par': 'Paid in',
       'zoomGrupo': 'Zoom the chart',
       'zoomMas': 'Zoom in (wheel, or the + key)',
       'zoomMenos': 'Zoom out (wheel, or the − key)',
@@ -491,6 +495,21 @@ const VMERCADO = (() => {
     .vm-volver:hover{color:var(--oroLt)}
     .vm-tit{display:flex;align-items:center;gap:11px}
     .vm-tit small{color:var(--humo);font-size:13px;font-weight:600}
+    /* ═══ LA BARRA DE ESTADÍSTICAS ═══════════════════════════════════════
+       Lo que separa una ficha de producto de una mesa de operaciones. Último,
+       24 h, máximo, mínimo y volumen en una sola fila, en cifras tabulares
+       para que las columnas no bailen al refrescar. Cada dato con su etiqueta
+       chica encima: sin etiqueta, cinco números seguidos son un jeroglífico. */
+    .vm-stats{display:flex;flex-wrap:wrap;align-items:center;gap:0 26px;
+      padding:10px 0 0;margin-top:10px;border-top:1px solid var(--linea2)}
+    .vm-stat{display:flex;flex-direction:column;gap:2px;min-width:74px}
+    .vm-stat .et{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--humo);
+      font-family:var(--mono)}
+    .vm-stat .v{font-size:13px;font-family:var(--mono);font-variant-numeric:tabular-nums;
+      color:var(--crema)}
+    .vm-stat .v.alto{color:var(--jade)} .vm-stat .v.bajo{color:var(--coral)}
+    @media (max-width:640px){.vm-stats{gap:0 16px}.vm-stat{min-width:64px}}
+
     .vm-cifras{text-align:right}
     .vm-ultimo{font-size:clamp(20px,2.4vw,26px);font-weight:700;
       font-variant-numeric:lining-nums tabular-nums}
@@ -558,7 +577,7 @@ const VMERCADO = (() => {
     .vm-lienzo canvas{display:block;width:100%;height:clamp(340px,52vh,620px);border-radius:12px}
     /* En la sala ancha el libro se estira a la par de la gráfica: una columna
        de 318 px contra un lienzo de 1.200 se veía como una nota al margen. */
-    body.en-mercado .vm-rejilla{grid-template-columns:minmax(0,1fr) 360px}
+    body.en-mercado .vm-rejilla{grid-template-columns:minmax(0,1fr) 372px}
     .vm-nota{position:absolute;inset:0;display:grid;place-items:center;text-align:center;
       color:var(--humo);font-size:13px;line-height:1.6;padding:0 20px;pointer-events:none}
 
@@ -570,6 +589,9 @@ const VMERCADO = (() => {
       border-bottom:1px solid var(--linea2)}
     .vm-cab3 span:last-child{text-align:right}
     .vm-lado{display:flex;flex-direction:column}
+    /* Cifras tabulares en TODO el libro: sin ellas, cada refresco mueve las
+       columnas un pelo y el ojo tiene que volver a buscar la coma. */
+    .vm-lado,.vm-medio,#vm-tratos{font-variant-numeric:tabular-nums}
     .vm-fila{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:8px;
       padding:5.5px 8px;font-size:12.5px;text-align:left;border-radius:6px;overflow:hidden;
       font-variant-numeric:lining-nums tabular-nums;transition:background .12s}
@@ -748,6 +770,7 @@ const VMERCADO = (() => {
         <div class="vm-refchica" id="vm-ref"></div>
       </div>
     </div>
+    <div class="vm-stats" id="vm-stats"></div>
     <div class="vm-rejilla">
       <div>
         <div class="vidrio bloque">
@@ -812,6 +835,7 @@ const VMERCADO = (() => {
        leerlos como si fueran el mismo. */
     if (ref) ref.textContent = r == null ? '' : `${tx('refRot')}: ${r}`;
     if (medio) medio.innerHTML = `${u == null ? '—' : esc(u)} <small>ORIGEN</small>`;
+    pintarStats(m);
 
     /* La corrección de una sola vez: si la pestaña se eligió a ciegas —sin la
        lista leída— y resulta que este mercado SÍ tiene tratos, mandan los
@@ -827,6 +851,29 @@ const VMERCADO = (() => {
       }
     }
     pintarVelas(); // la línea de referencia de la gráfica sale de este dato
+  }
+
+  /* ── la barra de estadísticas ──────────────────────────────────────────────
+     Máximo, mínimo y volumen de las últimas 24 h, al lado del último precio.
+     Es lo que uno espera de una casa de cambio y lo que aquí faltaba.
+
+     Los tres van en GUION cuando el API los manda en null, y eso pasa cuando
+     no hubo ni un trato en el día. Es la tentación fácil de esta barra:
+     rellenar el máximo con el último precio para que no se vea vacía. Sería
+     dibujar un rango que nadie operó — el máximo de veinticuatro horas sin
+     operaciones no es el último precio, es que no hay. */
+  function pintarStats(m) {
+    const caja = $('vm-stats');
+    if (!caja) return;
+    const cel = (et, valor, clase = '') =>
+      `<div class="vm-stat"><span class="et">${esc(et)}</span>
+       <span class="v ${clase}">${esc(valor ?? '—')}</span></div>`;
+    caja.innerHTML = [
+      cel(tx('st.alto'), deWei(m?.alto24h, 4), 'alto'),
+      cel(tx('st.bajo'), deWei(m?.bajo24h, 4), 'bajo'),
+      cel(tx('st.vol'), deWei(m?.vol24h, 2)),
+      cel(tx('st.par'), 'ORIGEN'),
+    ].join('');
   }
 
   // ══ LA GRÁFICA: DOS FUENTES QUE NO SE MEZCLAN ═════════════════════════════

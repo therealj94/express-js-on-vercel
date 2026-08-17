@@ -120,7 +120,9 @@ function agregar(vela, trato, marco) {
  */
 function resumen24hPuro(velas, ahora) {
   const orden = [...velas].sort((a, b) => a.t0 - b.t0);
-  if (orden.length === 0) return { ultimo: null, cambio24h: null, vol24h: '0' };
+  if (orden.length === 0) {
+    return { ultimo: null, cambio24h: null, vol24h: '0', alto24h: null, bajo24h: null };
+  }
 
   const corte = ahora - DIA_MS;
   const ultimo = orden[orden.length - 1].c;
@@ -133,12 +135,26 @@ function resumen24hPuro(velas, ahora) {
     }
   }
 
+  /* El maximo y el minimo de las ultimas 24 h, que es lo que una casa de cambio
+     enseña al lado del ultimo precio. Se sacan de las MISMAS velas de la
+     ventana que el volumen — no de un rango de tiempo distinto — porque si no
+     un dia diriamos «maximo 24 h» de un tramo que no son 24 h.
+
+     Van en null cuando no hubo ni una vela dentro de la ventana: un mercado sin
+     tratos en el dia no tiene maximo, y repetir ahi el ultimo precio seria
+     inventar un rango que nadie opero. */
   let vol = 0n;
   let primeraDentro = null;
+  let alto = null;
+  let bajo = null;
   for (const v of orden) {
     if (v.t0 >= corte) {
       vol += BigInt(v.v);
       primeraDentro ??= v;
+      const h = BigInt(v.h);
+      const l = BigInt(v.l);
+      if (alto === null || h > alto) alto = h;
+      if (bajo === null || l < bajo) bajo = l;
     }
   }
   if (base === null) base = primeraDentro ? primeraDentro.o : ultimo;
@@ -150,7 +166,11 @@ function resumen24hPuro(velas, ahora) {
   const b = BigInt(base);
   const cambio24h = b > 0n ? Number(((u - b) * 10000n) / b) / 100 : null;
 
-  return { ultimo, cambio24h, vol24h: vol.toString() };
+  return {
+    ultimo, cambio24h, vol24h: vol.toString(),
+    alto24h: alto === null ? null : alto.toString(),
+    bajo24h: bajo === null ? null : bajo.toString(),
+  };
 }
 
 // ════════════════════════════════════════════════════════════════════════════
