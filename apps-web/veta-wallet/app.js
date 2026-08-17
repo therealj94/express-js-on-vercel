@@ -529,6 +529,13 @@ const VETA = (() => {
       const volviendoAOrdenex = ssoOrdenexPendiente && !semillaNueva;
       ssoOrdenexPendiente = false;
       if (volviendoAOrdenex) ordenexVolver();
+      // Y el cobro que esperaba en la puerta: DESPUES de la cartera, para que
+      // la moneda exista cuando se intente elegir.
+      if (cobroPendiente) {
+        const c = cobroPendiente;
+        cobroPendiente = null;
+        cargarCartera().then(() => irACobro(c));
+      }
       if (!semillaNueva) { if (!volviendoAOrdenex) setTimeout(() => auraBienvenida(true), 300); }
       else setTimeout(auraOfrecerGid, 1200);
       // La frase se enseña ENCIMA de la billetera ya pintada, no antes de
@@ -1504,6 +1511,8 @@ const VETA = (() => {
       envMonto();
       b.textContent = t('env.revisar');
       avisar(t('env.avHecho'));
+      // Si esto es una emergente de Ordenex, se le avisa y la ventana se va.
+      avisarAlQueAbrio({ ok: true, hash, monto: String(monto), activo: pendiente.sim || 'ORIGEN' });
       cargarCartera().then(() => {
         if (vistaActual !== 'enviar') return;
         const y = envActivo();
@@ -3425,6 +3434,61 @@ const VETA = (() => {
      enviarAcceso en cuanto la persona entra — igual que un cobro (#pagar)
      espera en la puerta a que haya con que atenderlo. */
   let ssoOrdenexPendiente = false;
+  /* El cobro entrante (#pagar…) sobrevive al login, igual que la intencion de
+     Ordenex. Sin esto se perdia: quien llegaba SIN sesion iba a la puerta, y
+     al entrar `arrancar` ya habia terminado — la direccion nunca se rellenaba
+     y la pantalla de enviar salia en blanco. Es el fallo que se veia al tocar
+     «Depositar» desde Ordenex sin la wallet abierta. */
+  let cobroPendiente = null;
+
+  /* ═══ MODO VENTANA ════════════════════════════════════════════════════════
+     La wallet abierta en una emergente por otra casa del ecosistema — hoy
+     Ordenex, con «Depositar». Es el patron de MetaMask, y NO es cosmetico:
+
+     La firma y la contraseña tienen que ocurrir EN EL ORIGEN DE LA WALLET.
+     Un panel de Ordenex pidiendo la clave de la billetera, por bonito que
+     quede, es enseñarle a la gente el gesto exacto con el que despues le
+     vacian la cuenta. Con una ventana propia se consigue lo mismo —no salir
+     de Ordenex— sin que la clave cruce de sitio: lo que se ve es esta pagina,
+     en su dominio, con su candado en la barra.
+
+     Al terminar, la ventana le avisa a quien la abrio con postMessage
+     APUNTADO a su origen exacto (nunca '*': un comodin ahi reparte el aviso a
+     cualquiera que haya conseguido meterse en medio) y se cierra sola. */
+  const ORIGENES_QUE_PUEDEN_ABRIR = [
+    'https://www.ordenexchange.link',
+    'https://ordenexchange.link',
+  ];
+
+  let modoVentana = false;
+  let quienAbrio = null;
+
+  function mirarSiEsVentana() {
+    try {
+      if (!window.opener || window.opener === window) return;
+      const q = new URLSearchParams(location.hash.includes('?') ? location.hash.slice(location.hash.indexOf('?') + 1) : '');
+      if (q.get('pop') !== '1') return;
+      /* De donde viene se toma de `document.referrer` y se COMPRUEBA contra la
+         lista: no se acepta un origen que llegue en la propia URL, porque eso
+         lo escribe quien arma el enlace. Si no esta en la lista, la ventana
+         funciona igual pero no le avisa a nadie. */
+      const ref = document.referrer ? new URL(document.referrer).origin : null;
+      const permitido = ORIGENES_QUE_PUEDEN_ABRIR.includes(ref)
+        || (location.hostname === '127.0.0.1' || location.hostname === 'localhost');
+      modoVentana = true;
+      quienAbrio = permitido ? (ref || location.origin) : null;
+      document.body.classList.add('en-ventana');
+    } catch { /* si algo de esto falla, se sigue como pagina normal */ }
+  }
+
+  /* El aviso de vuelta. Se manda una sola vez y despues se cierra: una ventana
+     que se queda abierta despues de firmar es una ventana que alguien vuelve a
+     tocar sin querer. */
+  function avisarAlQueAbrio(datos) {
+    if (!modoVentana || !quienAbrio) return;
+    try { window.opener.postMessage({ de: 'veta-wallet', ...datos }, quienAbrio); } catch {}
+    setTimeout(() => { try { window.close(); } catch {} }, 1400);
+  }
 
   async function ordenexVolver() {
     ssoOrdenexPendiente = false;
@@ -6222,6 +6286,7 @@ const VETA = (() => {
        aqui abajo y sesion recien creada en enviarAcceso— terminan en ir('app'),
        que pinta vistaActual. Si la vista todavia no existe, vista() cae sola en
        la billetera, asi que esto nunca deja una pantalla en blanco. */
+    mirarSiEsVentana();
     const pideVerificar = location.hash === '#verificar';
     if (pideVerificar) vistaActual = 'verificar';
 
@@ -6229,7 +6294,7 @@ const VETA = (() => {
        Se guarda para rellenar el envio en cuanto haya sesion; sin sesion, se
        manda a la puerta y el cobro espera ahi hasta que entre. */
     const cobroEntrante = location.hash.startsWith('#pagar') ? leerCobro(location.hash) : null;
-    if (cobroEntrante) vistaActual = 'enviar';
+    if (cobroEntrante) { vistaActual = 'enviar'; cobroPendiente = cobroEntrante; }
 
     /* Una invitacion de chat (#chat?con=…) apunta directo al hilo: quien la
        escaneo quiere hablar con ALGUIEN, no ver una lista. */
@@ -6284,7 +6349,7 @@ const VETA = (() => {
       }
       // Despues de cargarTodo, para que la moneda del cobro exista en la
       // cartera cuando se intente elegir.
-      if (cobroEntrante) cargarCartera().then(() => irACobro(cobroEntrante));
+      if (cobroEntrante) { cobroPendiente = null; cargarCartera().then(() => irACobro(cobroEntrante)); }
     }
     /* Sin sesion no hay identidad que verificar todavia: al que venia a eso se
        le abre el acceso, no la portada, para que no tenga que buscar la puerta. */

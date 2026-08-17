@@ -714,8 +714,26 @@ console.log('\n── EL PUENTE CON LA WALLET ───────────�
   decir(src.includes('#pagar${esc(direccion)}'),
     'traer fondos es UN enlace con la direccion puesta, no copiar y pegar');
   decir(/saldosEnWallet/.test(src), 'y los saldos de la wallet se leen de la cadena');
-  decir(/s=\$\{encodeURIComponent\(f\.s\)\}&m=/.test(src),
-    'cada activo lleva su propio deposito, con simbolo Y monto en el enlace');
+  decir(/VPORTA\.depositar\(/.test(src),
+    'cada activo lleva su propio boton de depositar');
+  decir(/s=\$\{encodeURIComponent\(sim\)\}/.test(src) && /&m=\$\{encodeURIComponent\(monto\)\}/.test(src),
+    'y el enlace lleva simbolo Y monto, ya puestos');
+  decir(/pop=1/.test(src), 'se abre en ventana emergente, no mandando a otra pestaña');
+  decir(/window\.open\(url, '_blank'/.test(src),
+    'y si el bloqueador se come la emergente, se cae a una pestaña — un boton que no hace nada es peor');
+
+  /* La guarda del mensaje de vuelta. Sin comprobar el origen, cualquier pagina
+     abierta podria decirle a esta que se firmo un deposito. */
+  decir(/if \(ev\.origin !== esperado\) return;/.test(src),
+    'el aviso de la wallet se ignora si no viene de su origen exacto');
+  const wal = await readFile(new URL('./veta-wallet/app.js', import.meta.url), 'utf8');
+  decir(/postMessage\(\{ de: 'veta-wallet', \.\.\.datos \}, quienAbrio\)/.test(wal),
+    'y la wallet lo manda APUNTADO a quien la abrio, nunca con comodin');
+  decir(!/postMessage\([^)]*, ?'\*'\)/.test(wal), 'no hay ni un postMessage con comodin en la wallet');
+  decir(/ORIGENES_QUE_PUEDEN_ABRIR/.test(wal),
+    'la wallet solo le contesta a los origenes de la lista');
+  decir(/let cobroPendiente = null;/.test(wal),
+    'el cobro sobrevive al login: era por esto que la direccion salia en blanco');
   decir(/nunca aqu[ií]|never here/.test(src),
     'y se dice que la clave se pone en la wallet, jamas en Ordenex');
 

@@ -52,6 +52,8 @@ const VPORTA = (() => {
     } catch { return null; }
   }
 
+  const rell = (txt, m) => String(txt).replace(/\{(\w+)\}/g, (_, k) => m[k] ?? '');
+
   const dinero = (s, dec = 6) => {
     const v = ONX.deWei(s, dec);
     return v == null ? '—' : v; // un monto ilegible es un guion, jamás un cero
@@ -72,6 +74,8 @@ const VPORTA = (() => {
       falloSaldos: 'No pudimos leer tus saldos.', falloSaldosP: 'Sin saldos leídos no se arma un retiro: probá de nuevo en un momento.',
       traer: 'Traer desde mi Veta Wallet',
       depUno: 'Depositar',
+      depEsperando: 'Te abrimos tu Veta Wallet en una ventana. Confirmá el envío de {activo} allá — la clave se pone en la billetera, nunca acá.',
+      depFirmado: 'Firmado: {monto} {activo} va en camino. El depósito se acredita cuando la cadena lo confirme; esta pantalla se actualiza sola.',
       depUnoT: 'Abre tu Veta Wallet con el activo, el monto y la dirección ya puestos. La clave se pone allá, nunca aquí.',
       walT: 'En tu Veta Wallet',
       walP: 'Esto es lo que tenés en tu billetera, leído de la cadena. No está en Ordenex: una casa de cambio solo guarda lo que le depositan.',
@@ -129,6 +133,8 @@ const VPORTA = (() => {
       falloSaldos: 'We couldn’t read your balances.', falloSaldosP: 'Without balances read, no withdrawal form gets built: try again in a moment.',
       traer: 'Bring it from my Veta Wallet',
       depUno: 'Deposit',
+      depEsperando: 'We opened your Veta Wallet in a window. Confirm the {activo} transfer there — the password is entered in the wallet, never here.',
+      depFirmado: 'Signed: {monto} {activo} is on its way. The deposit lands once the chain confirms it; this screen updates itself.',
       depUnoT: 'Opens your Veta Wallet with the asset, the amount and the address already filled in. The password is entered there, never here.',
       walT: 'In your Veta Wallet',
       walP: 'This is what you hold in your wallet, read from the chain. It is not in Ordenex: an exchange only holds what is deposited with it.',
@@ -365,14 +371,90 @@ const VPORTA = (() => {
           <span class="po-sub">${esc(t.walEn)}</span>
           ${ref ? `<span class="po-sub">${esc(ref)}</span>` : ''}
         </div>
-        ${(direccion && montoURL(f.wei)) ? `<a class="btn btn-linea btn-sm po-dep-uno"
-          href="${esc(WALLET)}/#pagar${esc(direccion)}?s=${encodeURIComponent(f.s)}&m=${encodeURIComponent(montoURL(f.wei))}"
-          target="_blank" rel="noopener"
-          title="${esc(t.depUnoT)}">${esc(t.depUno)}</a>` : ''}
+        ${(direccion && montoURL(f.wei)) ? `<button class="btn btn-linea btn-sm po-dep-uno"
+          onclick="VPORTA.depositar(${jsTxt(f.s)},${jsTxt(montoURL(f.wei))})"
+          title="${esc(t.depUnoT)}">${esc(t.depUno)}</button>` : ''}
       </div>`;
     }).join('') + `<p class="pie" style="margin-top:14px">${esc(t.walComo)}</p>
       ${direccion ? `<div class="po-dep-btns"><a class="btn btn-oro btn-sm"
         href="${esc(WALLET)}/#pagar${esc(direccion)}" target="_blank" rel="noopener">${esc(t.traer)}</a></div>` : ''}`;
+  }
+
+  /* ═══ DEPOSITAR EN UNA VENTANA ════════════════════════════════════════════
+     Se abre la wallet en una emergente de 420 px, como MetaMask, en vez de
+     mandar a la persona a otra pestaña. Y la clave se pone ALLA, en el dominio
+     de la wallet: un panel de Ordenex pidiendo la contraseña de la billetera,
+     por comodo que fuera, es enseñar el gesto exacto con el que despues le
+     vacian la cuenta a alguien.
+
+     Si el navegador bloquea la emergente —pasa, y no siempre avisa— se cae a
+     abrir una pestaña. Un boton que no hace nada porque el bloqueador se lo
+     comio es peor que uno que abre de mas. */
+  let ventanaWallet = null;
+
+  function depositar(sim, monto) {
+    if (!direccion) return;
+    const url = `${WALLET}/#pagar${direccion}?s=${encodeURIComponent(sim)}`
+      + `&m=${encodeURIComponent(monto)}&pop=1`;
+    const alto = Math.min(760, Math.max(560, Math.round(screen.height * 0.8)));
+    const izq = Math.max(0, Math.round((screen.width - 430) / 2));
+    const arr = Math.max(0, Math.round((screen.height - alto) / 2));
+    try {
+      ventanaWallet = window.open(url, 'veta-wallet-deposito',
+        `width=430,height=${alto},left=${izq},top=${arr},resizable=yes,scrollbars=yes`);
+    } catch { ventanaWallet = null; }
+    if (!ventanaWallet) { window.open(url, '_blank', 'noopener'); return; }
+    try { ventanaWallet.focus(); } catch {}
+    avisarEspera(sim);
+  }
+
+  /* Mientras la ventana esta abierta, esta pantalla dice que espera. Y cuando
+     la wallet avisa que firmo, se pasa a sondear el portafolio: el deposito no
+     esta hecho cuando se firma, esta hecho cuando el vigia lo acredita, y
+     decir «listo» un minuto antes es la clase de mentira comoda que hace que
+     alguien recargue diez veces. */
+  function avisarEspera(sim) {
+    const caja = document.getElementById('po-wallet-caja');
+    if (!caja) return;
+    const t = tx();
+    let av = document.getElementById('po-esperando');
+    if (!av) {
+      av = document.createElement('div');
+      av.id = 'po-esperando';
+      av.className = 'po-aviso';
+      av.style.marginTop = '12px';
+      caja.appendChild(av);
+    }
+    av.textContent = rell(t.depEsperando, { activo: sim });
+  }
+
+  let sondeoDeposito = null;
+
+  function alAvisarLaWallet(ev) {
+    // El origen se comprueba SIEMPRE: un mensaje de cualquier otra pagina no
+    // tiene por que mover nada de esta.
+    let esperado = '';
+    try { esperado = new URL(WALLET).origin; } catch { return; }
+    if (ev.origin !== esperado) return;
+    const d = ev.data;
+    if (!d || d.de !== 'veta-wallet' || !d.ok) return;
+
+    const t = tx();
+    const av = document.getElementById('po-esperando');
+    if (av) av.textContent = rell(t.depFirmado, { activo: d.activo || '', monto: d.monto || '' });
+
+    /* Se sondea el portafolio hasta que el saldo cambie o pasen dos minutos.
+       El vigia mira cada 30 s, asi que cada 8 son cuatro miradas por vuelta
+       suya: suficiente para que se note enseguida y no tanto como para
+       martillar el API. */
+    if (sondeoDeposito) clearInterval(sondeoDeposito);
+    let vueltas = 0;
+    sondeoDeposito = setInterval(() => {
+      vueltas += 1;
+      cargar();
+      cargarWallet();
+      if (vueltas >= 15) { clearInterval(sondeoDeposito); sondeoDeposito = null; }
+    }, 8000);
   }
 
   async function cargarWallet() {
@@ -790,9 +872,16 @@ const VPORTA = (() => {
   // ═══ el contrato con app.js ═══════════════════════════════════════════════
 
   function alPintar(cual) {
-    if (cual === 'portafolio') cargar();
+    if (cual === 'portafolio') {
+      cargar();
+      // El oido para la ventana de la wallet. Se pone UNA vez y se queda: el
+      // mensaje puede llegar despues de haber cambiado de pantalla, y perderlo
+      // dejaria el deposito sin sondear.
+      if (!oidoPuesto) { addEventListener('message', alAvisarLaWallet); oidoPuesto = true; }
+    }
     else if (cual === 'actividad') cargarActividad();
   }
+  let oidoPuesto = false;
 
   /* Idempotente, como exige el orquestador. No hay sondeos que parar en esta
      sala (saldos y movimientos se traen al pintar, no en bucle); lo que sí se
@@ -805,11 +894,14 @@ const VPORTA = (() => {
     enviando = false;
     resultado = null;
     borrador = null;
+    // El sondeo del deposito SI se apaga: es transitorio y no tiene por que
+    // sobrevivir a salir de la sala.
+    if (sondeoDeposito) { clearInterval(sondeoDeposito); sondeoDeposito = null; }
   }
 
   return {
     vista, vistaActividad, alPintar, apagar,
     eligeActivo, todo, continuar, volver, confirmarRetiro, otro, copiar,
-    recargar: cargar, recargarActividad: cargarActividad, recargarWallet,
+    recargar: cargar, recargarActividad: cargarActividad, recargarWallet, depositar,
   };
 })();

@@ -1590,6 +1590,30 @@ a.btn{text-decoration:none}
    que a los negocios se les cobra por letra. */
 .pay-cab b{ white-space:normal; display:-webkit-box; -webkit-line-clamp:2;
   -webkit-box-orient:vertical; overflow:hidden }
+
+/* ═══ MODO VENTANA ═══════════════════════════════════════════════════════════
+   La wallet abierta en una emergente de 420 px por otra casa del ecosistema.
+   Se le quita todo lo que es de navegar —riel, pestañas, orbe, el volver— y
+   queda solo el acto: enviar. Una emergente con menu es una emergente donde
+   alguien se pierde en vez de firmar. */
+body.en-ventana .riel,
+body.en-ventana .tabs,
+body.en-ventana .aura-orbe,
+body.en-ventana #techo,
+body.en-ventana .cab .volver{display:none!important}
+body.en-ventana #app,
+body.en-ventana .lienzo{margin:0!important;padding:14px 14px 20px!important;max-width:none!important}
+body.en-ventana .bloque{margin:0}
+body.en-ventana .cab h2{font-size:20px}
+body.en-ventana .cab{margin-bottom:12px}
+/* El sello de que esto es la wallet y no otra pagina: el candado de la barra
+   dice el dominio, pero un rotulo propio lo dice antes de que nadie mire. */
+body.en-ventana .lienzo::before{
+  content:'VETA WALLET · confirmá acá, nunca fuera';
+  display:block;margin:0 0 12px;padding:8px 10px;border-radius:8px;
+  background:rgba(201,169,97,.12);border:1px solid rgba(201,169,97,.30);
+  font:700 10.5px/1.4 var(--mono,monospace);letter-spacing:.08em;
+  text-transform:uppercase;color:var(--oroLt,#EAD79C);text-align:center}
 </style>
 
 <svg class="veta-svg" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
