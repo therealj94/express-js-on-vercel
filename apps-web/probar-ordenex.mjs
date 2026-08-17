@@ -714,6 +714,20 @@ console.log('\n── EL PUENTE CON LA WALLET ───────────�
   decir(src.includes('#pagar${esc(direccion)}'),
     'traer fondos es UN enlace con la direccion puesta, no copiar y pegar');
   decir(/saldosEnWallet/.test(src), 'y los saldos de la wallet se leen de la cadena');
+  decir(/s=\$\{encodeURIComponent\(f\.s\)\}&m=/.test(src),
+    'cada activo lleva su propio deposito, con simbolo Y monto en el enlace');
+  decir(/nunca aqu[ií]|never here/.test(src),
+    'y se dice que la clave se pone en la wallet, jamas en Ordenex');
+
+  /* montoURL es lo que viaja en el enlace y llega al campo de la wallet. Si
+     metiera comas de miles, «1,234» seria otro numero al otro lado; y si
+     pasara por Number, un saldo grande perderia enteros. Se prueba la funcion
+     de verdad, extraida del modulo. */
+  const fn = new Function('return (' + src.match(/function montoURL\(wei\)[\s\S]*?\n  \}/)[0].replace('function montoURL(wei)', 'function(wei)') + ')')();
+  decir(fn('1234000000000000000000') === '1234', 'montoURL: 1234 ORIGEN sin comas de miles', fn('1234000000000000000000'));
+  decir(fn('1500000000000000000') === '1.5', 'con decimales, punto y sin ceros de cola', fn('1500000000000000000'));
+  decir(fn('1') === '0.000000000000000001', 'y un wei suelto no se redondea a cero', fn('1'));
+  decir(fn('0') === null && fn('nada') === null, 'cero o basura no arma enlace');
 
   const cad = await readFile(new URL('./ordenex/cadena.js', import.meta.url), 'utf8');
   decir(/return filas\.filter\(f => f\.wei != null/.test(cad),

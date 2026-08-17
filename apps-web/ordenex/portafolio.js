@@ -37,6 +37,21 @@ const VPORTA = (() => {
   // Dentro de una función ya no: para cuando alguien pinta, ONX existe.
   const esc = (s) => ONX.esc(s);
   const jsTxt = (s) => ONX.jsTxt(s);
+  /* El mismo monto, pero para una URL: punto decimal, sin separadores de miles
+     y sin ceros de cola. `dinero` formatea para OJOS y mete comas — y una coma
+     que viaja en el enlace llega al campo de la wallet, donde «1,234» no es lo
+     mismo que 1234. Este se hace con texto sobre el wei, sin pasar por Number:
+     un saldo grande perderia enteros en el flotante. */
+  function montoURL(wei) {
+    try {
+      const w = BigInt(wei);
+      if (w <= 0n) return null;
+      const ent = (w / 10n ** 18n).toString();
+      const dec = (w % 10n ** 18n).toString().padStart(18, '0').replace(/0+$/, '');
+      return dec ? `${ent}.${dec}` : ent;
+    } catch { return null; }
+  }
+
   const dinero = (s, dec = 6) => {
     const v = ONX.deWei(s, dec);
     return v == null ? '—' : v; // un monto ilegible es un guion, jamás un cero
@@ -56,6 +71,8 @@ const VPORTA = (() => {
       cargando: 'Trayendo tus saldos…',
       falloSaldos: 'No pudimos leer tus saldos.', falloSaldosP: 'Sin saldos leídos no se arma un retiro: probá de nuevo en un momento.',
       traer: 'Traer desde mi Veta Wallet',
+      depUno: 'Depositar',
+      depUnoT: 'Abre tu Veta Wallet con el activo, el monto y la dirección ya puestos. La clave se pone allá, nunca aquí.',
       walT: 'En tu Veta Wallet',
       walP: 'Esto es lo que tenés en tu billetera, leído de la cadena. No está en Ordenex: una casa de cambio solo guarda lo que le depositan.',
       walEn: 'en tu wallet',
@@ -111,6 +128,8 @@ const VPORTA = (() => {
       cargando: 'Fetching your balances…',
       falloSaldos: 'We couldn’t read your balances.', falloSaldosP: 'Without balances read, no withdrawal form gets built: try again in a moment.',
       traer: 'Bring it from my Veta Wallet',
+      depUno: 'Deposit',
+      depUnoT: 'Opens your Veta Wallet with the asset, the amount and the address already filled in. The password is entered there, never here.',
       walT: 'In your Veta Wallet',
       walP: 'This is what you hold in your wallet, read from the chain. It is not in Ordenex: an exchange only holds what is deposited with it.',
       walEn: 'in your wallet',
@@ -169,6 +188,7 @@ const VPORTA = (() => {
     .po-qr{width:min(190px,58vw);flex:0 0 auto;background:#F3ECD9;padding:12px;border-radius:var(--r)}
     .po-dep-txt{flex:1;min-width:230px}
     .po-dep-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .po-dep-uno{flex:none;margin-left:12px;white-space:nowrap}
     .po-dir{font-family:var(--mono);font-variant-ligatures:none;font-size:13.5px;word-break:break-all;
       background:var(--campo);border:1px solid var(--campoBr);border-radius:var(--r);padding:12px 14px;margin-bottom:12px}
     .po-aviso{border:1px solid var(--linea2);background:rgba(201,169,97,.08);border-radius:var(--r);
@@ -345,6 +365,10 @@ const VPORTA = (() => {
           <span class="po-sub">${esc(t.walEn)}</span>
           ${ref ? `<span class="po-sub">${esc(ref)}</span>` : ''}
         </div>
+        ${(direccion && montoURL(f.wei)) ? `<a class="btn btn-linea btn-sm po-dep-uno"
+          href="${esc(WALLET)}/#pagar${esc(direccion)}?s=${encodeURIComponent(f.s)}&m=${encodeURIComponent(montoURL(f.wei))}"
+          target="_blank" rel="noopener"
+          title="${esc(t.depUnoT)}">${esc(t.depUno)}</a>` : ''}
       </div>`;
     }).join('') + `<p class="pie" style="margin-top:14px">${esc(t.walComo)}</p>
       ${direccion ? `<div class="po-dep-btns"><a class="btn btn-oro btn-sm"
