@@ -151,6 +151,12 @@ a{color:inherit}
 .cinta-it:hover{background:rgba(238,241,245,.05)}
 .cinta-it b{color:var(--crema);font-weight:700;font-family:var(--sans);font-size:12px;letter-spacing:.02em}
 .cinta-it .p{color:var(--crema)}
+/* El precio de referencia, en oro y con la marca: pintado igual que uno de
+   trato diria «esto se pago» donde solo hay «esto valdria». */
+.cinta-it .p.esRef{color:var(--oro)}
+.cinta-it .p.esRef::before{content:'ref ';font-size:9px;color:var(--humo)}
+#mercados-vivos .mv-num.esRef{color:var(--oro)}
+#mercados-vivos .mv-num.esRef::before{content:'ref ';font-size:10px;color:var(--humo);text-transform:uppercase}
 .cinta-it .c.sube{color:var(--jade)} .cinta-it .c.baja{color:var(--coral)}
 .cinta-it .c.nada{color:var(--humo)}
 @media (prefers-reduced-motion:reduce){

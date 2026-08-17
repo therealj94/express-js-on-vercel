@@ -153,10 +153,46 @@ async function referenciaDe(mercado) {
   } else if (base === 'AGKA' && m.plata != null) {
     usd = m.plata;
     rotulo = 'onza de plata';
+  } else if (base === 'ONDK') {
+    // ONDK no tiene feed: tiene ACTAS. El precio declarado por la Junta es un
+    // hecho comprobable, asi que sirve de referencia igual que el metal — con
+    // su rotulo propio, para que nadie lo confunda con una cotizacion.
+    const decl = await vigenteDeclarado('ONDK');
+    if (decl) { usd = decl.precio; rotulo = `precio declarado · acta ${decl.acta}`; }
   }
 
   if (usd == null && origenUsd == null) return null;
-  return { usd, rotulo, origenUsd, fuente: m.fuente, en: m.en };
+
+  /* ── EL PRECIO DE REFERENCIA DEL PAR, EN ORIGEN ───────────────────────────
+     Todos los mercados de esta casa se pagan en ORIGEN, y hasta hoy la lista
+     enseñaba la referencia solo en dolares: el numero estaba en otra unidad
+     que la columna de al lado, y quien miraba tenia que hacer la division de
+     cabeza.
+
+     `enOrigen` es esa division, y NO es un numero inventado: son dos precios
+     medidos (o uno medido y uno declarado) divididos el uno por el otro.
+
+       AUKA/ORIGEN  = onza de oro / gramin  = 31,1035 x 55 = 1710,69 SIEMPRE,
+                      con cualquier precio del oro, porque los dos son oro.
+       AGKA/ORIGEN  = onza de plata / gramin — este SI se mueve, con la razon
+                      oro:plata, que es un dato real del mercado.
+       ONDK/ORIGEN  = precio declarado / gramin.
+
+     Sigue siendo REFERENCIA y no `ultimo`: el ultimo es lo que se pago en el
+     libro de esta casa, y mientras no haya un trato eso es null y se enseña
+     un guion. Los dos numeros conviven en la lista, cada uno con su nombre. */
+  const enOrigen = (usd != null && origenUsd > 0) ? usd / origenUsd : null;
+
+  return { usd, rotulo, origenUsd, enOrigen, fuente: m.fuente, en: m.en };
+}
+
+/* El precio declarado vigente, pedido tarde para no atar este modulo —que es
+   de feeds— al de las actas al cargar. Si Mongo no contesta, null y guion. */
+async function vigenteDeclarado(token) {
+  try {
+    const { vigente } = require('./preciosDeclarados');
+    return await vigente(token);
+  } catch { return null; }
 }
 
 module.exports = { metales, referenciaDe };

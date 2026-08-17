@@ -93,7 +93,16 @@ async function portafolio(req, res) {
       }
     }
 
-    return res.json({ cuentas, direccionDeposito });
+    /* Y la direccion de la Veta Wallet de esta persona, que viene del SSO de
+       Genesis. NO es un saldo ni una cuenta de esta casa: es el dato que le
+       permite a la sala enseñar «esto lo tenes en tu wallet, no aqui».
+
+       Hace falta porque la confusion es garantizada y cara: alguien entra con
+       su cuenta, ve el portafolio vacio y concluye que Ordenex «no cargo» sus
+       activos. No los perdio — estan en su wallet, y una casa de cambio guarda
+       lo que le DEPOSITAN. Decirlo con la direccion delante es la diferencia
+       entre una pantalla que explica y una que parece rota. */
+    return res.json({ cuentas, direccionDeposito, direccionWallet: usuario.direccionWallet || null });
   } catch (e) {
     console.error(`[portafolio] ${e.message}`);
     return res.status(503).json({ error: 'No se pudo leer el portafolio.', codigo: 'NO_SE_PUDO_LEER' });

@@ -251,6 +251,21 @@ const ONX = (() => {
     if (pararMercadosVivos) { pararMercadosVivos(); pararMercadosVivos = null; }
   }
 
+  /* El mismo criterio que en la sala: sin trato, la REFERENCIA convertida a
+     ORIGEN, marcada como tal. Es la division de dos precios medidos, no un
+     numero inventado — y va con la palabra «ref» delante para que nunca se
+     lea como una operacion. */
+  function precioFila(m) {
+    const u = deWei(m?.ultimo);
+    if (u != null) return { txt: u, ref: false };
+    const usd = Number(m?.referencia?.usd), gramin = Number(m?.referencia?.origenUsd);
+    if (!Number.isFinite(usd) || !Number.isFinite(gramin) || usd <= 0 || gramin <= 0) {
+      return { txt: null, ref: false };
+    }
+    const v = usd / gramin;
+    return { txt: v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }), ref: true };
+  }
+
   async function pintarVivos() {
     const cuerpo = $('#mv-cuerpo'), nota = $('#mv-nota');
     if (!cuerpo) return;
@@ -266,7 +281,7 @@ const ONX = (() => {
     nota.textContent = '';
     cuerpo.innerHTML = (lista || []).map(m => {
       const base = CADENA.baseDe(m.mercado) || m.mercado;
-      const ultimo = deWei(m.ultimo);
+      const pf = precioFila(m);
       /* La referencia del API no es un wei: es un objeto { usd, rotulo, … }
          con el precio informativo en dolares. Pasarlo por deWei pintaba
          vacio — se enseña el usd rotulado, y si no vino, nada. */
@@ -278,7 +293,7 @@ const ONX = (() => {
       return `
         <tr onclick="ONX.abrirPar(${jsTxt(m.mercado)})">
           <td class="mv-par"><b>${esc(base)}</b><small>/ ORIGEN</small></td>
-          <td class="mono mv-num">${ultimo == null ? '—' : esc(ultimo)}
+          <td class="mono mv-num${pf.ref ? ' esRef' : ''}">${pf.txt == null ? '—' : esc(pf.txt)}
             ${ref == null ? '' : `<small class="mv-ref">${esc(t('pt.mvRef'))} ${esc(ref)}</small>`}</td>
           <td class="mv-chg">${pill}</td>
           <td class="mono mv-num soloAncho">${esc(deWei(m.alto24h) ?? '—')}</td>
@@ -303,12 +318,12 @@ const ONX = (() => {
     if (!pista || !Array.isArray(lista) || !lista.length) return;
     const items = lista.map((m) => {
       const base = CADENA.baseDe(m.mercado) || m.mercado;
-      const u = deWei(m.ultimo);
+      const pf = precioFila(m);
       const chg = m.cambio24h == null ? null : Number(m.cambio24h);
       const clase = chg == null ? 'nada' : chg < 0 ? 'baja' : 'sube';
       const txt = chg == null ? '—' : `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
       return `<button class="cinta-it" onclick="ONX.abrirPar(${jsTxt(m.mercado)})">
-        <b>${esc(base)}</b><span class="p">${u == null ? '—' : esc(u)}</span>
+        <b>${esc(base)}</b><span class="p${pf.ref ? ' esRef' : ''}">${pf.txt == null ? '—' : esc(pf.txt)}</span>
         <span class="c ${clase}">${esc(txt)}</span></button>`;
     }).join('');
     // Dos mitades iguales: la animacion desplaza exactamente una.

@@ -125,6 +125,7 @@ const VMERCADO = (() => {
       'refNo': 'No pudimos traer la referencia del metal. Se reintenta solo.',
       'refVacia': 'La referencia del metal todavía no llegó. Se reintenta sola: preferimos un lienzo vacío a una línea inventada.',
       'ls.buscar': 'Buscar mercado', 'ls.par': 'Par', 'ls.precio': 'Precio',
+      'ls.esRef': 'Precio de referencia, no una operación de esta casa: todavía no hay tratos en este mercado.',
       'ls.nada': 'Ningún mercado con ese nombre.',
       'ls.ponerFav': 'Marcar como favorito', 'ls.quitarFav': 'Quitar de favoritos',
       'ps.mias': 'Mis órdenes', 'ps.ninguna': 'No tenés órdenes abiertas en este mercado.',
@@ -228,6 +229,7 @@ const VMERCADO = (() => {
       'refNo': 'We couldn’t fetch the metal reference. It retries on its own.',
       'refVacia': 'The metal reference hasn’t arrived yet. It retries on its own: we’d rather show an empty canvas than an invented line.',
       'ls.buscar': 'Search market', 'ls.par': 'Pair', 'ls.precio': 'Price',
+      'ls.esRef': 'Reference price, not a trade of this house: there are no trades in this market yet.',
       'ls.nada': 'No market by that name.',
       'ls.ponerFav': 'Add to favourites', 'ls.quitarFav': 'Remove from favourites',
       'ps.mias': 'My orders', 'ps.ninguna': 'You have no open orders in this market.',
@@ -568,6 +570,14 @@ const VMERCADO = (() => {
     .vm-it .nom{display:flex;align-items:center;gap:6px;min-width:0;color:var(--crema);font-weight:600}
     .vm-it .nom small{color:var(--humo);font-weight:400}
     .vm-it .pr{font-family:var(--mono);color:var(--bruma)}
+    /* El precio de referencia va en oro y con la marca delante: pintado igual
+       que un precio de trato diria «esto se pago» donde solo hay «esto valdria». */
+    .vm-it .pr.esRef{color:var(--oro)}
+    .ms-esref{color:var(--oro)}
+    .ms-esref::before{content:'ref ';font-size:10px;letter-spacing:.06em;color:var(--humo);
+      text-transform:uppercase}
+    .vm-it .pr.esRef::before{content:'ref ';font-size:9.5px;letter-spacing:.06em;
+      color:var(--humo);text-transform:uppercase}
     .vm-it .ch{font-family:var(--mono);font-size:11.5px;min-width:56px;text-align:right}
     .vm-it .ch.sube{color:var(--jade)} .vm-it .ch.baja{color:var(--coral)} .vm-it .ch.nada{color:var(--humo)}
     .vm-fav{flex:none;width:14px;height:14px;padding:0;line-height:1;color:var(--humo);
@@ -767,6 +777,31 @@ const VMERCADO = (() => {
     return '$' + ent.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec;
   }
 
+  /* ── EL PRECIO QUE SE ENSEÑA EN UNA FILA ───────────────────────────────────
+     Hasta hoy la lista enseñaba un guion en los catorce mercados, porque
+     `ultimo` es lo que se pagó en el libro y todavía no se pagó nada. Es
+     honesto pero inútil: catorce guiones no dicen a cuánto está el oro.
+
+     Ahora, cuando no hay trato, se enseña la REFERENCIA convertida a ORIGEN —
+     que no es un número inventado, es la división de dos precios medidos:
+
+       AUKA/ORIGEN = onza de oro / gramin = 1710,69 SIEMPRE (los dos son oro)
+       AGKA/ORIGEN = onza de plata / gramin — este SÍ se mueve, con la razón
+                     oro:plata, que es un dato real del mercado
+       ONDK/ORIGEN = precio declarado por la Junta / gramin
+
+     Y va MARCADO como referencia: otro color y la palabra delante. Un precio
+     de referencia pintado igual que un precio de trato es exactamente la
+     mentira que esta casa no dice — la diferencia entre «esto valdría» y
+     «esto se pagó». */
+  function precioFila(m) {
+    const u = deWei(m?.ultimo, 4);
+    if (u != null) return { txt: u, ref: false };
+    const enOrigen = refEnOrigen(m);
+    const r = enOrigen == null ? null : deWei(enOrigen, 4);
+    return r == null ? { txt: null, ref: false } : { txt: r, ref: true };
+  }
+
   // ══ LA LISTA DE MERCADOS ══════════════════════════════════════════════════
 
   function vistaMercados() {
@@ -812,14 +847,15 @@ const VMERCADO = (() => {
     cuerpo.innerHTML = CADENA.PARES.map(par => {
       const sim = CADENA.baseDe(par);
       const m = porPar.get(par) || {};
-      const ultimo = deWei(m.ultimo, 4);
+      const pf = precioFila(m);
       const ref = refUsd(m);
       const vol = deWei(m.vol24h, 2);
       return `
       <tr class="ms-fila" onclick="ONX.vista('mercado', ${jsTxt(par)})">
         <td><span class="ms-par">${icono(sim)}<span><b>${esc(sim)}</b> <small>/ ORIGEN</small>
           <span class="ms-nom">${esc(CADENA.meta(sim).n || '')}</span></span></span></td>
-        <td class="mono">${ultimo == null ? '<span class="vm-sin">—</span>' : esc(ultimo)}
+        <td class="mono">${pf.txt == null ? '<span class="vm-sin">—</span>'
+          : `<span class="${pf.ref ? 'ms-esref' : ''}" title="${pf.ref ? esc(tx('ls.esRef')) : ''}">${esc(pf.txt)}</span>`}
           ${ref == null ? '' : `<small class="ms-ref">${esc(tx('ref'))} ${esc(ref)}</small>`}</td>
         <td>${pastillaCambio(m.cambio24h)}</td>
         <td class="mono">${vol == null ? '<span class="vm-sin">—</span>' : esc(vol) + ' ' + esc(sim)}</td>
@@ -1041,7 +1077,7 @@ const VMERCADO = (() => {
     caja.innerHTML = pares.map(p => {
       const m = porPar.get(p);
       const base = CADENA.baseDe(p) || p;
-      const u = deWei(m?.ultimo, 4);
+      const pf = precioFila(m);
       const chg = m?.cambio24h == null ? null : Number(m.cambio24h);
       const clase = chg == null ? 'nada' : chg < 0 ? 'baja' : 'sube';
       const txt = chg == null ? '—' : `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
@@ -1054,7 +1090,8 @@ const VMERCADO = (() => {
           <button style="padding:0;min-width:0;text-align:left;color:inherit;font:inherit"
                   onclick="ONX.vista('mercado',${jsTxt(p)})">${esc(base)}<small>/OG</small></button>
         </span>
-        <span class="pr">${u == null ? '—' : esc(u)}</span>
+        <span class="pr${pf.ref ? ' esRef' : ''}"
+              title="${pf.ref ? esc(tx('ls.esRef')) : ''}">${pf.txt == null ? '—' : esc(pf.txt)}</span>
         <span class="ch ${clase}">${esc(txt)}</span>
       </div>`;
     }).join('');

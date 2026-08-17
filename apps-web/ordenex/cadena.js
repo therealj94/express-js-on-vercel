@@ -145,5 +145,55 @@ const CADENA = (() => {
     return TOKENS.some(t => t.s === s && !t.nativo) ? s : null;
   };
 
-  return { TOKENS, PARES, META, FICHAS, meta, ficha, baseDe };
+  /* ── LO QUE LA PERSONA TIENE EN SU VETA WALLET ─────────────────────────────
+   * Se lee de la cadena por RPC, exactamente igual que en la billetera. Esto
+   * NO es un saldo de Ordenex y no se mezcla con el portafolio: la casa de
+   * cambio solo guarda lo que le depositan.
+   *
+   * Existe porque la confusion es garantizada y cara: alguien entra con su
+   * cuenta, ve el portafolio vacio y concluye que Ordenex «no cargo» sus
+   * activos. No los perdio — estan en su wallet, a un deposito de distancia.
+   *
+   * Falla en null y NUNCA en cero: un cero de consuelo es peor que un guion,
+   * porque parece un saldo leido y no un dato que no llego.
+   */
+  const RPC = String(
+    (typeof window !== 'undefined' && window.ONX_RPC) || 'https://rpc.ordenglobal-rpc.com/'
+  );
+
+  async function rpc(metodo, params) {
+    const r = await fetch(RPC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: metodo, params }),
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error.message || 'rpc');
+    return d.result;
+  }
+
+  // El hex de la cadena a wei en string. Los 18 decimales son fijos en los
+  // quince activos, comprobado contra la red.
+  const aWei = hex => {
+    try { return BigInt(hex || '0x0').toString(); } catch { return null; }
+  };
+
+  async function saldosEnWallet(direccion) {
+    if (!direccion) return null;
+    const dir = String(direccion).toLowerCase();
+    const relleno = dir.replace(/^0x/, '').padStart(64, '0');
+    const filas = await Promise.all(TOKENS.map(async (t) => {
+      try {
+        const hex = t.nativo
+          ? await rpc('eth_getBalance', [dir, 'latest'])
+          : await rpc('eth_call', [{ to: t.contrato, data: '0x70a08231' + relleno }, 'latest']);
+        return { s: t.s, wei: aWei(hex) };
+      } catch { return { s: t.s, wei: null }; }
+    }));
+    // Solo lo que tiene algo: quince filas en cero al lado del portafolio de
+    // la casa es ruido, y lo que se quiere contar es «esto lo tenes alla».
+    return filas.filter(f => f.wei != null && f.wei !== '0');
+  }
+
+  return { TOKENS, PARES, META, FICHAS, meta, ficha, baseDe, saldosEnWallet, RPC };
 })();

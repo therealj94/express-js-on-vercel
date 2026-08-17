@@ -55,6 +55,13 @@ const VPORTA = (() => {
       saldosT: 'Tus saldos', saldosP: 'Disponible es lo que podés gastar; reservado es lo que una orden abierta o una solicitud fiat tiene en garantía.',
       cargando: 'Trayendo tus saldos…',
       falloSaldos: 'No pudimos leer tus saldos.', falloSaldosP: 'Sin saldos leídos no se arma un retiro: probá de nuevo en un momento.',
+      walT: 'En tu Veta Wallet',
+      walP: 'Esto es lo que tenés en tu billetera, leído de la cadena. No está en Ordenex: una casa de cambio solo guarda lo que le depositan.',
+      walEn: 'en tu wallet',
+      walVacio: 'Tu wallet no tiene saldo en la cadena 5550.',
+      walSinDir: 'Tu cuenta todavía no trae la dirección de tu Veta Wallet. Volvé a entrar desde la billetera para que viaje con la sesión.',
+      walFallo: 'No pudimos leer tu wallet en la cadena. Preferimos decirlo antes que pintar un cero.',
+      walComo: 'Para operar con esto, mandalo a tu dirección de depósito de aquí abajo. En cuanto la cadena lo confirme, aparece arriba y se puede vender.',
       reintentar: 'Reintentar',
       reservado: 'reservado',
       refNota: 'El valor en dólares es una referencia informativa (oro y plata del mismo feed de la billetera), rotulada y jamás el precio de una operación. Los activos sin feed real no llevan valor: acá no se inventa un número.',
@@ -102,6 +109,13 @@ const VPORTA = (() => {
       saldosT: 'Your balances', saldosP: 'Available is what you can spend; reserved is what an open order or a fiat request holds as collateral.',
       cargando: 'Fetching your balances…',
       falloSaldos: 'We couldn’t read your balances.', falloSaldosP: 'Without balances read, no withdrawal form gets built: try again in a moment.',
+      walT: 'In your Veta Wallet',
+      walP: 'This is what you hold in your wallet, read from the chain. It is not in Ordenex: an exchange only holds what is deposited with it.',
+      walEn: 'in your wallet',
+      walVacio: 'Your wallet holds no balance on chain 5550.',
+      walSinDir: 'Your account does not carry your Veta Wallet address yet. Sign in again from the wallet so it travels with the session.',
+      walFallo: 'We could not read your wallet on chain. We would rather say so than paint a zero.',
+      walComo: 'To trade with this, send it to your deposit address below. As soon as the chain confirms it, it shows up above and can be sold.',
       reintentar: 'Retry',
       reservado: 'reserved',
       refNota: 'The dollar value is an informational reference (gold and silver, same feed as the wallet), labelled and never the price of any trade. Assets with no real feed carry no value: no numbers get invented here.',
@@ -175,6 +189,13 @@ const VPORTA = (() => {
   let cuentas = null;       // [{activo, disponible, reservado}] o null si no llegaron
   let falloSaldos = false;  // «no llegaron» ≠ «están en cero»
   let direccion = null;     // la dirección de depósito propia
+  /* La wallet de la persona, que NO es una cuenta de esta casa. `walletSaldos`
+     va en null mientras no llegó, 'fallo' si no se pudo leer, y un arreglo con
+     lo que tiene. Los tres estados son distintos y se pintan distinto: un
+     arreglo vacío dice «no tenés nada allá», y eso es otra cosa que «no pude
+     mirar». */
+  let direccionWallet = null;
+  let walletSaldos = null;
   let referencias = null;   // { origen, oro, plata } en USD — el cartel, o null
   let activoElegido = 'ORIGEN';
   let borrador = null;      // { cantidadTxt, direccion } — lo tecleado, para volver
@@ -240,6 +261,9 @@ const VPORTA = (() => {
         <div id="po-saldos">${saldosHTML()}</div>
         <p class="pie" style="margin-top:14px">${esc(t.refNota)}</p>
       </div>
+      <!-- «¿Y lo que tengo en mi wallet?» Se contesta ANTES de explicar como
+           depositar, porque es la pregunta que viene primero. -->
+      <div class="vidrio bloque" id="po-wallet-caja">${walletHTML()}</div>
       <div class="vidrio bloque">
         <h3>${esc(t.depT)}</h3>
         <p class="pie">${esc(t.depP)}</p>
@@ -273,6 +297,64 @@ const VPORTA = (() => {
         </div>
       </div>`;
     }).join('');
+  }
+
+  /* ── LO QUE HAY EN LA VETA WALLET ──────────────────────────────────────────
+     La casa de cambio guarda lo que le DEPOSITAN. Quien entra con su cuenta y
+     ve el portafolio vacío concluye —con toda razón— que Ordenex «no le cargó»
+     sus activos. No los perdió: están en su wallet, a un depósito de
+     distancia, y esta caja lo dice con la dirección y los saldos delante.
+
+     Va rotulada como de la wallet en todas partes y sin ningún botón de
+     operar: mezclarla con el saldo de la casa sería ofrecer para vender algo
+     que la casa no tiene en custodia. */
+  function walletHTML() {
+    const t = tx();
+    if (!direccionWallet) {
+      return `<h3>${esc(t.walT)}</h3><p class="pie">${esc(t.walSinDir)}</p>`;
+    }
+    const cab = `<h3>${esc(t.walT)}</h3>
+      <p class="pie">${esc(t.walP)}</p>
+      <div class="po-dir mono">${esc(direccionWallet)}</div>`;
+    if (walletSaldos === 'fallo') {
+      return `${cab}<div class="vacio">${esc(t.walFallo)}
+        <br><br><button class="btn btn-linea btn-sm" onclick="VPORTA.recargarWallet()">${esc(t.reintentar)}</button></div>`;
+    }
+    if (!walletSaldos) return `${cab}<div class="vacio">${esc(t.cargando)}</div>`;
+    if (!walletSaldos.length) return `${cab}<div class="vacio">${esc(t.walVacio)}</div>`;
+    return cab + walletSaldos.map((f) => {
+      const m = CADENA.meta(f.s);
+      let total = 0n;
+      try { total = BigInt(f.wei); } catch {}
+      const ref = valorReferencia(f.s, total);
+      return `<div class="hilera">
+        <div class="ic">${disco(f.s)}</div>
+        <div class="txt"><b>${esc(f.s)}</b><small>${esc(m.n || f.s)}</small></div>
+        <div class="val">${esc(dinero(f.wei))}
+          <span class="po-sub">${esc(t.walEn)}</span>
+          ${ref ? `<span class="po-sub">${esc(ref)}</span>` : ''}
+        </div>
+      </div>`;
+    }).join('') + `<p class="pie" style="margin-top:14px">${esc(t.walComo)}</p>`;
+  }
+
+  async function cargarWallet() {
+    if (!direccionWallet) return;
+    try {
+      walletSaldos = await CADENA.saldosEnWallet(direccionWallet);
+    } catch {
+      // Fail-closed de pantalla: se dice que no se pudo leer, no se pinta cero.
+      walletSaldos = 'fallo';
+    }
+    const caja = document.getElementById('po-wallet-caja');
+    if (caja) caja.innerHTML = walletHTML();
+  }
+
+  function recargarWallet() {
+    walletSaldos = null;
+    const caja = document.getElementById('po-wallet-caja');
+    if (caja) caja.innerHTML = walletHTML();
+    cargarWallet();
   }
 
   /* El valor de referencia, SOLO para los tres activos referenciados del
@@ -519,6 +601,7 @@ const VPORTA = (() => {
       if (mia !== carga) return;
       cuentas = Array.isArray(p?.cuentas) ? p.cuentas : [];
       direccion = p?.direccionDeposito || null;
+      direccionWallet = p?.direccionWallet || null;
       falloSaldos = false;
     } catch (e) {
       if (mia !== carga) return;
@@ -528,6 +611,10 @@ const VPORTA = (() => {
       if (!cuentas) falloSaldos = true;
     }
     pintarTodo();
+
+    // La wallet se lee por RPC y va aparte del portafolio: si la cadena tarda,
+    // los saldos de la casa ya están en pantalla.
+    cargarWallet();
 
     /* La referencia va aparte y DESPUÉS: es un cartel. Si el feed no llega,
        los saldos ya están pintados y el cartel simplemente no aparece —
@@ -677,6 +764,6 @@ const VPORTA = (() => {
   return {
     vista, vistaActividad, alPintar, apagar,
     eligeActivo, todo, continuar, volver, confirmarRetiro, otro, copiar,
-    recargar: cargar, recargarActividad: cargarActividad,
+    recargar: cargar, recargarActividad: cargarActividad, recargarWallet,
   };
 })();
