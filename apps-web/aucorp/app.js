@@ -19,7 +19,7 @@ const AUCORP = (() => {
       'nav.quienes': 'Quiénes somos', 'nav.eco': 'Ecosistema',
       'nav.serv': 'Servicios', 'nav.prog': 'Progreso',
       'nav.quienes2': 'Quiénes somos', 'nav.serv2': 'Servicios', 'nav.prog2': 'Progreso',
-      'cta.cuenta': 'Abrir cuenta', 'cta.cuenta2': 'Abrir cuenta', 'cta.cuenta3': 'Abrir cuenta',
+      'cta.cuenta': 'Entrar', 'cta.cuenta2': 'Abrir cuenta', 'cta.cuenta3': 'Abrir cuenta',
       'cta.eco': 'Ver el ecosistema', 'cta.hablar': 'Hablar con nosotros',
 
       'hero.et': 'Institución FinTech · Próspera ZEDE',
@@ -81,7 +81,7 @@ const AUCORP = (() => {
       'nav.quienes': 'About us', 'nav.eco': 'Ecosystem',
       'nav.serv': 'Services', 'nav.prog': 'Progress',
       'nav.quienes2': 'About us', 'nav.serv2': 'Services', 'nav.prog2': 'Progress',
-      'cta.cuenta': 'Open an account', 'cta.cuenta2': 'Open an account', 'cta.cuenta3': 'Open an account',
+      'cta.cuenta': 'Sign in', 'cta.cuenta2': 'Open an account', 'cta.cuenta3': 'Open an account',
       'cta.eco': 'See the ecosystem', 'cta.hablar': 'Talk to us',
 
       'hero.et': 'FinTech institution · Próspera ZEDE',

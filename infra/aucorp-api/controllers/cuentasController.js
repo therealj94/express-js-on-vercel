@@ -18,8 +18,11 @@
 // sus papeles.
 
 const { CuentaFiat, Usuario } = require('../models');
-const { MONEDAS, moneda, aTexto } = require('../lib/monedas');
+const { MONEDAS, moneda, aTexto, REFERENCIA } = require('../lib/monedas');
 const { saldosDe, saldoDe } = require('../lib/asientos');
+const { cotizar, convertir } = require('../lib/cambio');
+const { limites } = require('../lib/tarifas');
+const { movidoPor } = require('../lib/consumo');
 
 /** El nombre de la cuenta de un cliente en el libro. Uno solo, en un sitio. */
 const cuentaDe = (gid) => `cliente:${gid}`;
@@ -54,6 +57,21 @@ async function listar(req, res) {
     const abiertas = await CuentaFiat.find({ gid });
     const saldos = await saldosDe(cuentaDe(gid));
 
+    /* El total en dólares. Se calcula AQUÍ, con las tasas del servidor, y si
+       a alguna moneda le falta tasa devuelve null — la pantalla pinta un guion
+       en vez de un total a medias. Un total que se queda corto porque una tasa
+       no llegó es peor que no enseñar total: parece un número y no lo es. */
+    let total = 0n;
+    let sePudo = true;
+    for (const c of abiertas) {
+      const min = saldos[c.moneda] || '0';
+      if (min === '0') continue;
+      if (c.moneda === REFERENCIA) { total += BigInt(min); continue; }
+      const q = await cotizar(c.moneda, REFERENCIA);
+      if (!q) { sePudo = false; break; }
+      total += BigInt(convertir(min, c.moneda, REFERENCIA, q.media));
+    }
+
     return res.json({
       cuentas: abiertas.map((c) => ({
         moneda: c.moneda,
@@ -62,6 +80,9 @@ async function listar(req, res) {
         creada: c.creada,
         saldo: pintar(saldos[c.moneda] || '0', c.moneda),
       })),
+      // null significa «no se sabe», y se dice así en vez de mandar un cero.
+      totalUsd: sePudo ? aTexto(total.toString(), REFERENCIA) : null,
+      totalMoneda: REFERENCIA,
     });
   } catch (e) {
     console.error(`[cuentas] no se pudieron listar: ${e.message}`);
@@ -115,4 +136,38 @@ async function abrir(req, res) {
   }
 }
 
-module.exports = { monedas, listar, abrir, cuentaDe, pintar };
+// ── GET /limites ────────────────────────────────────────────────────────────
+// Cuánto puede mover esta persona y cuánto lleva movido. Son datos SUYOS, y
+// ocultárselos solo consigue que reintente sin entender por qué no pasa.
+async function misLimites(req, res) {
+  try {
+    const { gid } = req.usuario;
+    const usuario = await Usuario.findOne({ gid });
+    if (!usuario) return res.status(401).json({ error: 'La sesion no es valida.', codigo: 'SESION_INVALIDA' });
+
+    const nivel = usuario.nivel || 1;
+    const tope = limites()[String(nivel)] || limites()['1'];
+    const movido = await movidoPor(cuentaDe(gid));
+
+    return res.json({
+      nivel,
+      moneda: REFERENCIA,
+      // Si no se pudo medir se dice null, no cero: un cero aquí le haría creer
+      // a alguien que tiene todo el cupo libre justo cuando no se sabe.
+      diario: {
+        usado: movido ? aTexto(movido.diario, REFERENCIA) : null,
+        tope: aTexto(tope.diario, REFERENCIA),
+      },
+      mensual: {
+        usado: movido ? aTexto(movido.mensual, REFERENCIA) : null,
+        tope: aTexto(tope.mensual, REFERENCIA),
+      },
+      verificada: usuario.verificada === true,
+    });
+  } catch (e) {
+    console.error(`[cuentas] no se pudieron leer los límites: ${e.message}`);
+    return res.status(503).json({ error: 'No se pudo leer.', codigo: 'NO_SE_PUDO' });
+  }
+}
+
+module.exports = { monedas, listar, abrir, misLimites, cuentaDe, pintar };

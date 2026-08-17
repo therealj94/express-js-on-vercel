@@ -38,8 +38,11 @@ const VETA = (() => {
      una esfera dormida en el Nucleo; el nombre cambio con la empresa, y el
      viejo no sobrevive en ningun sitio porque dos nombres para una misma casa
      es como se pierde la gente. Mismo circuito que Ordenex: la web de AuCorp
-     manda a /#sso-aucorp y aucorpVolver devuelve a la persona con su llave. */
-  const URL_AUCORP = window.AUC_URL || 'https://www.aucorp.io';
+     manda a /#sso-aucorp y volverConLlave devuelve a la persona con su llave.
+     Apunta a /banca y no a la portada: quien llega desde el Nucleo va a SUS
+     cuentas, no a leer quienes somos. La portada sigue siendo la puerta de
+     quien llega de fuera. */
+  const URL_AUCORP = window.AUC_URL || 'https://www.aucorp.io/banca';
 
   const $ = s => document.querySelector(s);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>

@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AuCorp · Tus cuentas</title>
+<meta name="description" content="Cuentas en moneda local de AuCorp. Se entra con tu cuenta de Veta Wallet.">
+<meta name="theme-color" content="#F6F2E9">
+<!-- Una pantalla de dinero no se indexa ni se previsualiza: lo que hay detrás
+     es privado, y lo unico publico es la portada del sitio. -->
+<meta name="robots" content="noindex,nofollow">
+
+<!-- A donde puede hablar esta pagina. `connect-src` lleva el API y NADA mas:
+     si un dia alguien mete una libreria de analitica que manda datos a un
+     tercero, va a tener que tocar esta linea, que es exactamente cuando hay
+     que pensarlo dos veces. `form-action none` porque aqui no hay ningun
+     formulario que se envie a la vieja usanza — todo va por fetch. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self';
+  style-src 'self' 'unsafe-inline';
+  font-src 'self';
+  img-src 'self' data:;
+  connect-src 'self' https://aucorp-api-production.up.railway.app https://*.herokuapp.com;
+  form-action 'none';
+  base-uri 'self'">
+
+<link rel="preload" as="font" type="font/woff2" href="../assets/fonts/Fraunces-600.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="../assets/fonts/IBMPlexSans.woff2" crossorigin>
+
+<style>
+@font-face{font-family:'Fraunces';src:url('../assets/fonts/Fraunces-600.woff2') format('woff2');
+  font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:'Plex';src:url('../assets/fonts/IBMPlexSans.woff2') format('woff2');
+  font-weight:100 700;font-style:normal;font-display:swap}
+@font-face{font-family:'PlexMono';src:url('../assets/fonts/IBMPlexMono-400.woff2') format('woff2');
+  font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'PlexMono';src:url('../assets/fonts/IBMPlexMono-500.woff2') format('woff2');
+  font-weight:500;font-style:normal;font-display:swap}
+
+/* ═══ LA MISMA CASA, OTRO OFICIO ═════════════════════════════════════════════
+   Los colores son los del sitio de AuCorp —hueso, pozo, oro, acero— porque es
+   la misma empresa y cambiar de paleta al entrar haria dudar a cualquiera de
+   si sigue en el sitio correcto. Lo que cambia es la DENSIDAD: una portada se
+   lee de arriba abajo y esto se OPERA, asi que hay mas informacion por
+   centimetro, los numeros van en cifras tabulares y cada estado tiene forma
+   ademas de color.
+
+   El oro sigue siendo lo que tiene respaldo y el acero lo que viene de la
+   banca tradicional. Aqui casi todo es acero: son cuentas en moneda fiat. El
+   oro queda para el saldo total y para lo que hay que mirar. */
+:root{
+  --hueso:#F6F2E9; --papel:#FFFCF6; --lino:#EFE9DC;
+  --pozo:#0A0908; --pozo2:#141210;
+  --tinta:#14110C; --tinta2:#5A5145; --tinta3:#8A8073;
+  --oro:#A67C1A; --oroLt:#E3C069; --oroPl:#F1DFAE;
+  --acero:#5F6E7C; --aceroLt:#96A6B4; --aceroPl:#DCE4EA;
+  /* Los estados. Nunca van solos: siempre con una palabra al lado. */
+  --bien:#2F6B4F; --bienPl:#DDEFE4;
+  --espera:#8A6410; --esperaPl:#F6EBD2;
+  --mal:#8E3B2F; --malPl:#F6E0DB;
+  --linea:rgba(20,17,12,.13);
+  --lineaOro:rgba(166,124,26,.30);
+  --sombra:0 1px 2px rgba(20,17,12,.05),0 10px 28px -18px rgba(20,17,12,.22);
+  --r:12px; --r2:16px;
+  --riel:236px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-tema="claro"]){
+    --hueso:#0F0E0C; --papel:#171512; --lino:#1D1A16;
+    --tinta:#F2EDE3; --tinta2:#B4AB9C; --tinta3:#847C70;
+    --oro:#E3C069; --oroPl:#3A2E12;
+    --acero:#A9B8C6; --aceroPl:#1E262C;
+    --bien:#7FCBA2; --bienPl:#16281E;
+    --espera:#E0B860; --esperaPl:#2A2110;
+    --mal:#E39385; --malPl:#2C1815;
+    --linea:rgba(242,237,227,.14);
+    --lineaOro:rgba(227,192,105,.28);
+    --sombra:0 1px 2px rgba(0,0,0,.4),0 10px 28px -18px rgba(0,0,0,.8);
+  }
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--hueso);color:var(--tinta);
+  font:400 15.5px/1.55 'Plex',system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:'Fraunces',Georgia,serif;font-weight:600;
+  letter-spacing:-.012em;line-height:1.15;margin:0;text-wrap:balance}
+p{margin:0;text-wrap:pretty}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--oro);outline-offset:3px;border-radius:4px}
+/* Las cifras SIEMPRE tabulares: una columna de saldos donde los digitos bailan
+   es una columna que no se puede comparar de un vistazo. */
+.n{font-family:'PlexMono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+
+.et{font:500 11px/1 'PlexMono',ui-monospace,monospace;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--tinta3)}
+
+/* ── el armazon ───────────────────────────────────────────────────────────── */
+.marco{display:grid;grid-template-columns:var(--riel) minmax(0,1fr);min-height:100dvh}
+@media (max-width:860px){.marco{grid-template-columns:minmax(0,1fr)}}
+
+.riel{border-right:1px solid var(--linea);background:var(--papel);
+  padding:22px 16px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100dvh}
+@media (max-width:860px){.riel{display:none}}
+.marca{display:flex;align-items:center;gap:9px;margin-bottom:24px;padding:0 8px}
+.marca b{font-family:'Fraunces',Georgia,serif;font-size:19px;font-weight:600;letter-spacing:-.01em}
+.marca i{width:9px;height:9px;border-radius:2px;background:var(--oro);flex:none;transform:rotate(45deg)}
+
+.nav{appearance:none;border:0;background:none;color:var(--tinta2);text-align:left;
+  font:500 14.5px/1 'Plex',sans-serif;padding:10px 12px;border-radius:9px;cursor:pointer;
+  display:flex;align-items:center;gap:10px;width:100%}
+.nav:hover{background:var(--lino);color:var(--tinta)}
+.nav[aria-current="page"]{background:var(--pozo);color:var(--hueso)}
+.nav svg{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7}
+.nav.abajo{margin-top:auto}
+
+/* La barra de abajo del telefono. Cinco destinos: mas no caben sin que el dedo
+   acierte el de al lado. */
+.barra{display:none}
+@media (max-width:860px){
+  .barra{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;inset:auto 0 0 0;
+    background:var(--papel);border-top:1px solid var(--linea);z-index:30;
+    padding-bottom:env(safe-area-inset-bottom)}
+  .barra button{appearance:none;border:0;background:none;color:var(--tinta3);cursor:pointer;
+    padding:9px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;
+    font:500 10.5px/1 'Plex',sans-serif}
+  .barra button svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7}
+  .barra button[aria-current="page"]{color:var(--oro)}
+  .lienzo{padding-bottom:74px}
+}
+
+.lienzo{padding:26px clamp(16px,3.5vw,38px) 46px;max-width:1080px;width:100%}
+.cab{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+  flex-wrap:wrap;margin-bottom:22px}
+.cab h1{font-size:clamp(23px,3.4vw,31px)}
+
+/* ── piezas ───────────────────────────────────────────────────────────────── */
+.tarj{background:var(--papel);border:1px solid var(--linea);border-radius:var(--r2);
+  padding:20px;box-shadow:var(--sombra)}
+.rej{display:grid;gap:14px}
+.rej.c2{grid-template-columns:repeat(auto-fill,minmax(258px,1fr))}
+.rej.c3{grid-template-columns:repeat(auto-fill,minmax(206px,1fr))}
+
+.total{background:var(--pozo);color:var(--hueso);border-radius:var(--r2);padding:24px 24px 22px;
+  border:1px solid var(--pozo2);display:flex;flex-direction:column;gap:6px}
+.total .et{color:var(--oroLt)}
+.total .cifra{font:600 clamp(30px,5vw,42px)/1 'PlexMono',ui-monospace,monospace;
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.total small{color:var(--aceroLt);font-size:12.5px}
+
+.moneda{display:flex;flex-direction:column;gap:3px}
+.moneda .top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.moneda .cod{font:500 12px/1 'PlexMono',monospace;letter-spacing:.08em;color:var(--acero)}
+.moneda .saldo{font:500 25px/1.1 'PlexMono',monospace;font-variant-numeric:tabular-nums;
+  letter-spacing:-.015em}
+.moneda .pais{font-size:12.5px;color:var(--tinta3)}
+
+/* El sello de estado. Forma + palabra, nunca color solo: quien no distingue
+   verde de rojo tiene que poder leerlo igual. */
+.sello{display:inline-flex;align-items:center;gap:6px;border-radius:999px;
+  padding:3px 10px 3px 8px;font:500 12px/1.4 'Plex',sans-serif;white-space:nowrap}
+.sello::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.sello.ok{background:var(--bienPl);color:var(--bien)}
+.sello.esp{background:var(--esperaPl);color:var(--espera)}
+.sello.no{background:var(--malPl);color:var(--mal)}
+.sello.esp::before{border-radius:1px;transform:rotate(45deg)}
+.sello.no::before{border-radius:1px}
+
+.bot{appearance:none;border:1px solid var(--pozo);background:var(--pozo);color:var(--hueso);
+  font:500 14.5px/1 'Plex',sans-serif;padding:11px 17px;border-radius:9px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:8px}
+.bot:hover{opacity:.88}
+.bot[disabled]{opacity:.42;cursor:not-allowed}
+.bot.fino{background:none;color:var(--tinta);border-color:var(--linea)}
+.bot.fino:hover{background:var(--lino);opacity:1}
+.bot.chico{padding:8px 13px;font-size:13.5px}
+
+label{display:block;font:500 12.5px/1 'Plex',sans-serif;color:var(--tinta2);
+  margin-bottom:7px;letter-spacing:.01em}
+input,select,textarea{width:100%;background:var(--hueso);color:var(--tinta);
+  border:1px solid var(--linea);border-radius:9px;padding:11px 13px;
+  font:400 15.5px/1.4 'Plex',sans-serif}
+input.n{font-family:'PlexMono',monospace}
+.campo{margin-bottom:15px}
+.ayuda{font-size:12.5px;color:var(--tinta3);margin-top:6px}
+
+/* La tabla del extracto. En el telefono deja de ser tabla y cada movimiento se
+   vuelve una ficha: una tabla de cinco columnas en 360px no se lee, se sufre. */
+.tabla{width:100%;border-collapse:collapse;font-size:14.5px}
+.tabla th{text-align:left;font:500 11px/1 'PlexMono',monospace;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--tinta3);padding:0 12px 10px;border-bottom:1px solid var(--linea)}
+.tabla td{padding:13px 12px;border-bottom:1px solid var(--linea);vertical-align:top}
+.tabla .der{text-align:right}
+.tabla .mas{color:var(--bien)}
+.tabla .menos{color:var(--tinta)}
+.envuelve{overflow-x:auto}
+@media (max-width:700px){
+  .tabla,.tabla tbody,.tabla tr,.tabla td{display:block;width:100%}
+  .tabla thead{display:none}
+  .tabla tr{border:1px solid var(--linea);border-radius:var(--r);margin-bottom:10px;padding:4px 2px}
+  .tabla td{border:0;padding:6px 13px}
+  .tabla td.der{text-align:left;font-size:19px}
+}
+
+.vacio{text-align:center;padding:44px 20px;color:var(--tinta3)}
+.vacio b{display:block;font-family:'Fraunces',serif;font-size:19px;color:var(--tinta);margin-bottom:6px}
+
+/* El aviso. Es lo que dice la verdad incomoda, asi que no se disimula. */
+.aviso{border-left:3px solid var(--oro);background:var(--oroPl);color:var(--tinta);
+  padding:13px 15px;border-radius:0 var(--r) var(--r) 0;font-size:14px}
+.aviso.malo{border-color:var(--mal);background:var(--malPl)}
+
+.pila{display:flex;flex-direction:column;gap:14px}
+.fila{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.crece{flex:1;min-width:0}
+
+/* El pie legal. No es letra chica escondida: va en su sitio, legible, en todas
+   las pantallas de la app. */
+.pieL{margin-top:40px;padding-top:18px;border-top:1px solid var(--linea);
+  font-size:12.5px;color:var(--tinta3);max-width:62ch}
+
+/* La puerta */
+.puerta{min-height:100dvh;display:grid;place-items:center;padding:24px;background:var(--hueso)}
+.puerta .caja{width:min(100%,430px);text-align:center;display:flex;flex-direction:column;gap:18px}
+.puerta h1{font-size:31px}
+
+.cargando{display:inline-block;width:15px;height:15px;border:2px solid currentColor;
+  border-right-color:transparent;border-radius:50%;animation:gira .7s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.cargando{animation-duration:2.4s}}
+</style>
+</head>
+<body>
+<div id="raiz" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>

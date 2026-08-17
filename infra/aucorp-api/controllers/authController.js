@@ -140,6 +140,7 @@ async function sso(req, res) {
       nombre: usuario.nombre || '',
       verificada: usuario.verificada === true,
       direccionWallet: usuario.direccionWallet || null,
+      nivel: usuario.nivel || 1,
     },
   });
 }
