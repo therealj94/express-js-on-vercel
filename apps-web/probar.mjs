@@ -176,6 +176,30 @@ for (const app of APPS) {
   decir(desborde <= 1, 'en un teléfono no hay desplazamiento lateral', `sobra ${desborde} px`)
   await tel.close()
 
+  /* ── el precio en vivo ────────────────────────────────────────────────────
+     La billetera cargaba el precio del oro UNA vez, al abrir, y ahi se
+     quedaba: quien dejaba la pestaña abierta miraba el oro de hace horas — y
+     su patrimonio calculado con el. */
+  if (app.api === 'VETA') {
+    const vivo = await pg.evaluate(async () => {
+      const antes = (0, eval)('VETA')._precioDe('AUKA');
+      // Se finge un feed nuevo y se pide el refresco, sin esperar 40 s.
+      (0, eval)('CADENA').precios = async () => ({ p: { AUKA: 9999 }, chg: { AUKA: 1.23 } });
+      await (0, eval)('VETA')._refrescarPrecios();
+      return { antes, despues: (0, eval)('VETA')._precioDe('AUKA') };
+    }).catch(e => ({ mal: e.message }));
+    decir(vivo.despues === 9999, 'el precio se refresca solo, sin recargar la pagina',
+      `${vivo.antes} → ${vivo.despues}${vivo.mal ? ' · ' + vivo.mal : ''}`);
+
+    const src = await readFile(join(app.raiz, 'app.js'), 'utf8');
+    decir(/if \(document\.hidden\) return;/.test(src),
+      'y se calla con la pestaña de fondo: bateria y cuota no se gastan para nadie');
+    decir(/if \(m\.declarado\) continue;/.test(src),
+      'el precio declarado por la Junta no lo pisa el feed');
+    decir(/let vistaDato = null;/.test(src),
+      'y repintar no pierde el dato de la vista — la ficha de ONDK no vuelve a ORIGEN');
+  }
+
   decir(errores.length === 0, 'sin errores de consola', errores.slice(0, 3).join(' · '))
   await pg.close(); sv.close()
 }

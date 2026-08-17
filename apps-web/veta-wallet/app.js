@@ -589,6 +589,8 @@ const VETA = (() => {
 
   async function cargarTodo() {
     await Promise.allSettled([cargarCartera(), cargarIdentidad(), cargarMovimientos()]);
+    // El precio se pone en vivo en cuanto hay cartera que actualizar.
+    arrancarRelojPrecios();
     if (!$('#app').classList.contains('oculto')) vista(vistaActual);
   }
 
@@ -627,6 +629,59 @@ const VETA = (() => {
      servidor no mandaba ninguno. Ese respaldo entraba al patrimonio sin marca
      alguna, asi que alguien podia estar mirando un valor inventado creyendo que
      era el de mercado. Ya no existe: sin precio real se pinta un guion. */
+  /* ═══ EL PRECIO, EN VIVO ══════════════════════════════════════════════════
+     La billetera cargaba el precio del oro UNA vez, al abrir, y ahi se quedaba.
+     Quien dejaba la pestaña abierta veia el oro de hace horas — y el
+     patrimonio calculado con el.
+
+     Esto lo refresca solo, y refresca SOLO EL PRECIO: no vuelve a leer los
+     quince saldos de la cadena. Un saldo cambia cuando alguien mueve dinero
+     —y entonces ya se recarga por su cuenta—; el precio cambia siempre. Pedir
+     quince llamadas de RPC cada cuarenta segundos para enterarse de que el oro
+     subio un centavo seria pagar el precio equivocado.
+
+     Y se PARA con la pestaña escondida. Una billetera en una pestaña de fondo
+     que sigue llamando a CoinGecko cada cuarenta segundos gasta bateria y
+     cuota de rate limit para nadie. Al volver se refresca de inmediato, que es
+     justo cuando importa. */
+  const PRECIO_CADA_MS = 40_000;
+  let relojPrecios = null;
+
+  async function refrescarPrecios() {
+    if (!cartera || !cartera.length) return;
+    let p, chg;
+    try { ({ p, chg } = await CADENA.precios()); } catch { return; }
+    if (!p) return;
+    let cambio = false;
+    for (const m of cartera) {
+      // El precio declarado por la Junta NO se toca: no sale de un feed y
+      // pisarlo con un null del mercado seria borrar un dato bueno.
+      if (m.declarado) continue;
+      const nuevo = p[m.s];
+      if (nuevo != null && nuevo > 0 && nuevo !== m.precio) { m.precio = nuevo; cambio = true; }
+      const c = chg?.[m.s];
+      if (c != null && c !== m.chg) { m.chg = c; cambio = true; }
+    }
+    // Se repinta solo si algo se movio, y solo en las pantallas donde el
+    // precio se ve: repintar la de enviar en medio de una escritura no.
+    if (cambio && !$('#app').classList.contains('oculto')
+        && ['billetera', 'token', 'cambiar'].includes(vistaActual)) {
+      vista(vistaActual, vistaDato);
+    }
+  }
+
+  function arrancarRelojPrecios() {
+    if (relojPrecios) return;
+    relojPrecios = setInterval(() => {
+      if (document.hidden) return;      // en una pestaña de fondo, nada
+      refrescarPrecios();
+    }, PRECIO_CADA_MS);
+    // Al volver a la pestaña, de inmediato: es justo cuando importa.
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) refrescarPrecios();
+    });
+  }
+
   async function cargarCartera() {
     if (!sesion?.direccion) { errCartera = t('cta.sinDir'); return; }
 
@@ -868,8 +923,14 @@ const VETA = (() => {
     porPop = false;
   });
 
+  /* El dato con el que se pinto la vista actual —el simbolo en la ficha de un
+     token, por ejemplo—. Se guarda para poder REPINTAR sin perderlo: sin esto,
+     refrescar el precio en la ficha de ONDK la devolveria a la de ORIGEN. */
+  let vistaDato = null;
+
   function vista(cual, dato) {
     if (!VISTAS[cual]) cual = 'nucleo';
+    vistaDato = dato ?? null;
     // Salir de la tarjeta borra el numero y el CVV de la memoria y la deja de
     // frente otra vez. Nadie tiene por que volver y encontrarselos puestos.
     if (vistaActual === 'tarjeta' && cual !== 'tarjeta') { secretoTarjeta = null; volteada = false; }
@@ -6413,6 +6474,9 @@ const VETA = (() => {
            envElegir, envContacto, envMax, envMonto, envDirCambia,
            // Solo para las pruebas: entrar al cobro sin depender del arranque.
            _irACobro: irACobro,
+           // Para las pruebas: mirar y forzar el refresco de precios.
+           _precioDe: (sim) => (cartera || []).find(x => x.s === sim)?.precio ?? null,
+           _refrescarPrecios: refrescarPrecios,
            // Cobrar: el codigo que ya lleva la cantidad puesta.
            cobElegir, cobEscribir, cobCopiar, cobCompartir,
            // MyTokenPay adentro: directorio, ficha y cobro real.

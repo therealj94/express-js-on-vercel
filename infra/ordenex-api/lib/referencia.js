@@ -41,8 +41,19 @@ const GRAMOS_POR_ORIGEN = 55;
 // clientes y CoinGecko sin clave corta a ~30 llamadas/min — refrescar cada
 // vez seria regalarle el rate limit. Limite duro 10 minutos: de ahi en
 // adelante la lectura vieja deja de servirse (ver el ensayo de arriba).
-const FRESCO_MS = 3 * 60_000;
-const LIMITE_MS = 10 * 60_000;
+/* 30 segundos, no tres minutos. El oro se mueve y tres minutos de cache se
+   notaban: el precio de la sala iba visiblemente atrasado del mercado.
+
+   El miedo original era el rate limit de CoinGecko sin clave (~30 llamadas por
+   minuto y por IP, y aqui la IP es UNA, la del dyno, para todos los clientes).
+   Pero la cache no depende de cuantos miren: refrescar cada 30 s son DOS
+   llamadas por minuto, pasen diez personas o diez mil. Sobra margen.
+
+   El limite duro tambien baja: una lectura de mas de cinco minutos ya no se
+   sirve como «referencia», se contesta guion. Diez minutos era demasiado para
+   un numero que la gente mira para decidir. */
+const FRESCO_MS = 30_000;
+const LIMITE_MS = 5 * 60_000;
 const PLAZO_MS = 4_000;
 
 // La ultima lectura buena y el vuelo en curso. Un solo vuelo a la vez: si
