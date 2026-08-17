@@ -605,6 +605,81 @@ console.log('\n── DE QUIEN ES ESTA CASA ────────────
   await pg.close();
 }
 
+console.log('\n── LA SALA, COMO UNA MESA DE OPERACIONES ─────────────────────');
+{
+  /* Las cuatro piezas que separan una ficha de producto de una casa de cambio.
+     Ninguna es decorativa: cada una existe porque su ausencia costaba un gesto
+     repetido o un dato que habia que ir a buscar a otra pantalla. */
+  const pg = await nav.newPage({ viewport: { width: 1600, height: 1000 }, locale: 'es-HN' });
+  const errs = [];
+  pg.on('pageerror', (e) => errs.push(e.message));
+  // El API falso hay que apuntarlo en CADA pestaña: addInitScript es por
+  // pagina, no por navegador, y sin esto la sala abre contra el API de verdad.
+  await pg.addInitScript((origen) => { window.ONX_API = origen; window.ONX_WALLET = origen; }, ORIGEN_LOCAL);
+  await pg.goto(BASE + '#mercado/AUKA-ORIGEN', { waitUntil: 'domcontentloaded' });
+  await pg.waitForTimeout(2500);
+
+  // 1. La cinta de precios, arriba y en todas las pantallas.
+  /* Lo que importa no es CUANTOS mercados sirve el API falso, sino que la
+     pista vaya DUPLICADA: la animacion corre el 50%, y con una sola copia el
+     bucle salta a la vista cada vuelta. Se mide la relacion, no un numero
+     magico que se cae el dia que el API de mentira sirva otro tanto. */
+  const cinta = await pg.evaluate(() => ({
+    piezas: document.querySelectorAll('#cinta-pista .cinta-it').length,
+    mitades: document.querySelectorAll('#cinta-pista .cinta-mitad').length,
+  }));
+  decir(cinta.mitades === 2 && cinta.piezas > 0 && cinta.piezas % 2 === 0,
+    'la cinta va en dos mitades iguales, para que el bucle no tenga costura',
+    `${cinta.piezas} piezas en ${cinta.mitades} mitades`);
+
+  // 2. La lista de la sala: los quince, con buscador y favoritos.
+  const lista = await pg.evaluate(() => document.querySelectorAll('#vm-lista .vm-it').length);
+  decir(lista === 14, 'la lista de la sala trae los catorce mercados', `${lista}`);
+  await pg.fill('#vm-q', 'auk');
+  await pg.waitForTimeout(250);
+  const tras = await pg.evaluate(() => document.querySelectorAll('#vm-lista .vm-it').length);
+  decir(tras === 1, 'y el buscador filtra de verdad', `«auk» deja ${tras}`);
+  await pg.fill('#vm-q', '');
+  await pg.waitForTimeout(250);
+
+  // El favorito sube a la primera fila y sobrevive a una recarga: si no, no es
+  // un favorito, es un clic bonito.
+  await pg.evaluate(() => VMERCADO.favorito('SOL-ORIGEN'));
+  await pg.waitForTimeout(250);
+  const primero = await pg.evaluate(() => document.querySelector('#vm-lista .vm-it')?.innerText.trim());
+  decir(/SOL/.test(primero || ''), 'un favorito sube a la primera fila', primero);
+  await pg.reload({ waitUntil: 'domcontentloaded' });
+  await pg.waitForTimeout(2500);
+  const trasRecarga = await pg.evaluate(() => document.querySelector('#vm-lista .vm-it')?.innerText.trim());
+  decir(/SOL/.test(trasRecarga || ''), 'y sigue arriba despues de recargar', trasRecarga);
+  await pg.evaluate(() => VMERCADO.favorito('SOL-ORIGEN'));
+
+  // 3. La barra del dia, en UNA linea con el precio.
+  const barra = await pg.evaluate(() => (document.querySelector('.vm-stats')?.innerText || '').replace(/\n/g, ' '));
+  decir(/24 H/i.test(barra) && /M[ÁA]X/i.test(barra) && /VOL/i.test(barra),
+    'la barra del dia lleva ultimo, 24 h, maximo, minimo y volumen juntos', barra.slice(0, 90));
+
+  // 4. Las pestañas de abajo, sin cambiar de vista.
+  const pes = await pg.evaluate(() => [...document.querySelectorAll('.vm-peskab button')].map(b => b.innerText.trim()));
+  decir(pes.length === 2, 'hay dos pestañas debajo del libro', pes.join(' · '));
+  await pg.evaluate(() => VMERCADO.pestana('mias'));
+  await pg.waitForTimeout(250);
+  const mias = await pg.evaluate(() => ({
+    visible: !document.getElementById('vm-mias').classList.contains('oculto'),
+    txt: document.getElementById('vm-mias').innerText.trim(),
+  }));
+  decir(mias.visible, 'la de mis ordenes se abre sin salir de la sala');
+  decir(/entr[aá]/i.test(mias.txt), 'y sin sesion pide entrar en vez de mentir con una lista vacia', mias.txt);
+
+  // 5. Y la serif ya no manda en la superficie de operacion.
+  const fam = await pg.evaluate(() =>
+    getComputedStyle(document.querySelector('#pt-titulo') || document.body).fontFamily);
+  decir(!/Cinzel/.test(fam), 'el titular ya no va en la serif de casa de subastas', fam);
+
+  decir(errs.length === 0, 'sin errores de consola en la sala', errs.slice(0, 2).join(' · '));
+  await pg.close();
+}
+
 await nav.close(); sv.close();
 console.log(malas ? `\n${malas} comprobación(es) fallaron\n` : '\nTodo en verde\n');
 process.exit(malas ? 1 : 0);

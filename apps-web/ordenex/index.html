@@ -126,6 +126,42 @@ a{color:inherit}
 .oculto{display:none!important}
 .mono{font-family:var(--mono);font-variant-ligatures:none}
 
+/* ═══ LA CINTA DE PRECIOS ════════════════════════════════════════════════════
+   Fija arriba, siempre. Es lo primero que tiene cualquier casa de cambio y lo
+   que mas rapido dice «esto esta vivo»: los quince mercados pasando, con su
+   ultimo precio y su cambio del dia.
+
+   Los que no tienen precio pasan con GUION, no se esconden. Una cinta que solo
+   enseña los mercados que se movieron parece mas liquida de lo que es, y eso es
+   exactamente la mentira que esta casa no dice.
+
+   El desplazamiento es de CSS, duplicando la lista y corriendo el 50%: sin
+   temporizador, sin JS por cuadro, y se para al pasar el raton por encima para
+   poder leer uno. Con prefers-reduced-motion no se mueve. */
+.cinta{position:fixed;inset:0 0 auto;z-index:11;height:34px;overflow:hidden;
+  background:rgba(10,14,20,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(238,241,245,.07)}
+.cinta-pista{display:flex;width:max-content;animation:cintaCorre 70s linear infinite}
+.cinta:hover .cinta-pista,.cinta-pista:focus-within{animation-play-state:paused}
+@keyframes cintaCorre{to{transform:translateX(-50%)}}
+.cinta-mitad{display:flex;flex:none}
+.cinta-it{display:flex;align-items:center;gap:8px;padding:0 18px;height:34px;
+  font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums;
+  white-space:nowrap;color:var(--bruma);border:0;cursor:pointer}
+.cinta-it:hover{background:rgba(238,241,245,.05)}
+.cinta-it b{color:var(--crema);font-weight:700;font-family:var(--sans);font-size:12px;letter-spacing:.02em}
+.cinta-it .p{color:var(--crema)}
+.cinta-it .c.sube{color:var(--jade)} .cinta-it .c.baja{color:var(--coral)}
+.cinta-it .c.nada{color:var(--humo)}
+@media (prefers-reduced-motion:reduce){
+  .cinta-pista{animation:none}
+  .cinta{overflow-x:auto}
+}
+/* Todo lo de abajo baja 34 px para dejarle sitio. */
+.techo{top:34px!important}
+.riel{top:34px!important}
+body.en-app .lienzo{padding-top:calc(34px + 22px)}
+
 /* ── cabecera fina: solo de la portada ───────────────────────────────────── */
 .techo{position:fixed;inset:0 0 auto;z-index:10;display:flex;align-items:center;
   justify-content:space-between;padding:18px clamp(18px,4vw,42px)}
@@ -150,33 +186,56 @@ a{color:inherit}
 /* ── portada: editorial, cargada a la izquierda, como la casa. El texto vive
    en la mitad izquierda; la derecha es de la tabla de mercados viva — acá el
    argumento de venta son números de verdad, no una promesa. ───────────────── */
-#bienvenida{position:relative;z-index:2;min-height:min(100svh,860px);display:grid;align-items:center;
-  grid-template-columns:minmax(0,6fr) minmax(0,4fr);gap:clamp(20px,3.5vw,48px);
+/* La portada YA NO es un anuncio con una tabla de adorno al costado: es la
+   TABLA, con el titular reducido a una franja arriba. Ninguna casa de cambio
+   del mundo abre con un eslogan a pantalla completa — abren con precios,
+   porque es lo que la gente vino a ver y porque enseñar el mercado respirando
+   vende mas que cualquier adjetivo.
+
+   La proporcion se invierte: antes el texto llevaba 6 de 10 columnas y la
+   tabla 4; ahora el texto es una franja de arriba y la tabla se lleva el
+   ancho entero. */
+#bienvenida{position:relative;z-index:2;display:grid;align-items:start;
+  grid-template-columns:1fr;gap:clamp(18px,2.6vw,30px);
   max-width:1420px;margin:0 auto;
-  padding:clamp(86px,14vh,120px) clamp(20px,5vw,64px) clamp(40px,7vh,64px)}
-.bv{max-width:640px}
+  padding:calc(34px + clamp(48px,7vh,72px)) clamp(16px,4vw,48px) clamp(36px,6vh,56px)}
+.bv{max-width:none;display:grid;gap:14px;
+  grid-template-columns:minmax(0,1fr) auto;align-items:end}
+@media (max-width:900px){.bv{grid-template-columns:1fr}}
 .bv .renglon{display:block;overflow:hidden;padding-bottom:.06em}
 .bv .palabra{display:inline-block;transform:translateY(112%);animation:palabraSube .8s cubic-bezier(.2,.8,.2,1) forwards}
 @keyframes palabraSube{to{transform:none}}
 .sello{font-size:11px;font-weight:700;letter-spacing:.34em;color:var(--oroDp);text-transform:uppercase;
   display:flex;align-items:center;gap:14px}
 .sello::after{content:"";height:1px;width:74px;background:linear-gradient(90deg,var(--oroDp),transparent)}
-.bv h1{margin-top:22px;font-family:var(--serif);font-weight:700;letter-spacing:0;
-  font-size:clamp(40px,7vw,82px);line-height:1.04;color:var(--crema)}
+/* El titular de la portada YA NO va en serif. La Cinzel es una capital romana
+   —casa de subastas, no mesa de operaciones— y mientras estuviera aqui la
+   pagina se iba a seguir viendo «boutique» por muchas piezas que se le
+   agregaran. La serif queda para la MARCA y para nada mas.
+
+   Y baja de 82 px a 46: el titular de un exchange no compite con los numeros,
+   los presenta. */
+.bv h1{margin-top:18px;font-family:var(--sans);font-weight:700;letter-spacing:-.02em;
+  font-size:clamp(30px,4vw,46px);line-height:1.08;color:var(--crema)}
 .bv h1 i{font-style:normal;font-weight:700;color:var(--oroLt)}
-.bv p{margin-top:22px;color:var(--bruma);font-size:clamp(14.5px,1.6vw,16.5px);line-height:1.66;max-width:46ch;
-  opacity:0;animation:aparece .8s 1s ease forwards}
-.bv-btns{margin-top:32px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;
-  opacity:0;animation:aparece .8s 1.2s ease forwards}
+.bv p{margin-top:10px;color:var(--bruma);font-size:14.5px;line-height:1.6;max-width:72ch;
+  opacity:0;animation:aparece .6s .4s ease forwards}
+.bv-btns{margin-top:0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+  opacity:0;animation:aparece .6s .5s ease forwards}
 @keyframes aparece{to{opacity:1}}
 /* La nota del SSO va pegada al botón porque contesta la pregunta que el botón
    abre: «¿otra cuenta más?». No. */
-.bv-nota{margin-top:18px;font-size:12.5px;color:var(--humo);line-height:1.6;max-width:44ch;
-  opacity:0;animation:aparece .8s 1.35s ease forwards}
+.bv-nota{margin-top:8px;font-size:12px;color:var(--humo);line-height:1.55;max-width:52ch;
+  opacity:0;animation:aparece .6s .6s ease forwards}
 
 /* ── la tabla de mercados viva de la portada ─────────────────────────────── */
-.mv{width:min(94vw,430px);padding:clamp(22px,3.5vw,30px);justify-self:start;
-  opacity:0;animation:aparece .9s 1.5s ease forwards}
+.mv{width:100%;padding:0;justify-self:stretch;overflow:hidden;
+  opacity:0;animation:aparece .6s .3s ease forwards}
+.mv-lbl{padding:13px 16px 11px}
+#mercados-vivos{margin-top:0}
+#mercados-vivos th,#mercados-vivos td{padding-left:16px}
+#mercados-vivos th:last-child,#mercados-vivos td:last-child{padding-right:16px}
+.mv-nota{padding:0 16px 13px}
 .mv-lbl{font-size:11.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--oro);font-weight:600;opacity:.9;
   display:flex;align-items:center;gap:9px}
 /* El punto que respira: la señal de que la tabla está viva, no una captura. */
@@ -195,7 +254,13 @@ a{color:inherit}
 #mercados-vivos tbody tr:hover{background:rgba(116,230,200,.05)}
 .mv-par b{font-size:14px;font-weight:700;color:var(--crema)}
 .mv-par small{margin-left:4px;font-size:11px;color:var(--humo)}
-.mv-num{font-size:13.5px;font-variant-numeric:lining-nums tabular-nums}
+.mv-num{font-size:13px;font-variant-numeric:lining-nums tabular-nums}
+/* Las tres columnas de detalle se van en pantalla angosta: en un telefono, seis
+   columnas de numeros no se leen, se adivinan. */
+.soloAncho{display:none}
+@media (min-width:1000px){.soloAncho{display:table-cell}}
+#mercados-vivos tbody tr{border-left:2px solid transparent}
+#mercados-vivos tbody tr:hover{background:rgba(201,169,97,.06)}
 /* La referencia SIEMPRE rotulada y en letra chica: es un dato informativo del
    feed, jamás la última operación — la regla n.º 2 de la casa. */
 .mv-ref{display:block;font-size:10.5px;color:var(--humo);font-family:var(--sans)}
@@ -359,8 +424,8 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
 
 /* ── móvil ───────────────────────────────────────────────────────────────── */
 @media (max-width:900px){
-  #bienvenida{grid-template-columns:1fr;align-content:center;gap:34px;padding-top:96px}
-  .bv h1{font-size:clamp(38px,10.4vw,58px)}
+  #bienvenida{gap:20px;padding-top:calc(34px + 56px)}
+  .bv h1{font-size:clamp(26px,7vw,36px)}
   .mv{justify-self:stretch;width:100%}
   .riel{position:static;width:auto;height:auto;flex-direction:row;align-items:center;
     border-right:0;border-bottom:1px solid var(--linea2);padding:14px 16px;gap:12px;justify-content:space-between}
@@ -386,6 +451,12 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
 }
 </style>
 
+<!-- La cinta. La pista se pinta dos veces (app.js) y la animacion corre el
+     50%: asi el bucle no tiene costura visible. -->
+<div class="cinta" id="cinta" aria-label="Precios de los mercados">
+  <div class="cinta-pista" id="cinta-pista"></div>
+</div>
+
 <header class="techo" id="techo">
   <div class="marca"><img src="assets/ordenex.svg" alt="">ORDEN<em>EX</em></div>
   <div class="idiomas" role="group" aria-label="Idioma">
@@ -402,17 +473,21 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
 <div id="portada">
 <section id="bienvenida">
   <div class="bv">
-    <div class="sello" data-t="pt.sello"></div>
-    <h1 id="pt-titulo" aria-live="polite"></h1>
-    <p data-t="pt.p"></p>
-    <!-- Dos salidas y ni una más: entrar con la cuenta del ecosistema, o
-         pasar a mirar los mercados sin cuenta. No hay «crear cuenta» porque
-         Ordenex no crea cuentas: la cuenta ya existe en la wallet. -->
-    <div class="bv-btns">
-      <button class="btn btn-oro" data-t="pt.entrar" onclick="ONX.entrar()"></button>
-      <button class="btn btn-linea" data-t="pt.ver" onclick="ONX.ir('app')"></button>
+    <div>
+      <div class="sello" data-t="pt.sello"></div>
+      <h1 id="pt-titulo" aria-live="polite"></h1>
+      <p data-t="pt.p"></p>
     </div>
-    <p class="bv-nota" data-t="pt.nota"></p>
+    <div>
+      <!-- Dos salidas y ni una más: entrar con la cuenta del ecosistema, o
+           pasar a mirar los mercados sin cuenta. No hay «crear cuenta» porque
+           Ordenex no crea cuentas: la cuenta ya existe en la wallet. -->
+      <div class="bv-btns">
+        <button class="btn btn-oro" data-t="pt.entrar" onclick="ONX.entrar()"></button>
+        <button class="btn btn-linea" data-t="pt.ver" onclick="ONX.ir('app')"></button>
+      </div>
+      <p class="bv-nota" data-t="pt.nota"></p>
+    </div>
   </div>
   <aside class="mv vidrio">
     <div class="mv-lbl" data-t="pt.vivos"></div>
@@ -421,6 +496,9 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
         <th data-t="pt.mvPar"></th>
         <th data-t="pt.mvUltimo"></th>
         <th data-t="pt.mvCambio"></th>
+        <th class="soloAncho" data-t="pt.mvAlto"></th>
+        <th class="soloAncho" data-t="pt.mvBajo"></th>
+        <th class="soloAncho" data-t="pt.mvVol"></th>
       </tr></thead>
       <tbody id="mv-cuerpo"></tbody>
     </table>

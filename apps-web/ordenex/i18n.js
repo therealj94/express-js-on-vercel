@@ -24,6 +24,8 @@ es: {
   'pt.nota': 'Tu cuenta es la misma de todo el ecosistema: te mandamos a tu Veta Wallet, confirmás ahí, y volvés adentro. Ordenex no guarda contraseñas.',
   'pt.vivos': 'El mercado, ahora',
   'pt.mvPar': 'Mercado', 'pt.mvUltimo': 'Último', 'pt.mvCambio': '24 h',
+  'pt.mvAlto': 'Máx. 24 h', 'pt.mvBajo': 'Mín. 24 h', 'pt.mvVol': 'Vol. 24 h',
+  'pt.mvAlto': '24 h high', 'pt.mvBajo': '24 h low', 'pt.mvVol': '24 h vol.',
   'pt.mvRef': 'ref.',
   'pt.mvCargando': 'Trayendo los mercados…',
   // «Sin feed, guion»: un mercado que no se pudo traer no es un mercado en

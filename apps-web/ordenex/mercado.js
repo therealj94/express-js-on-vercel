@@ -124,6 +124,12 @@ const VMERCADO = (() => {
       'refCuando': 'leído {hora}',
       'refNo': 'No pudimos traer la referencia del metal. Se reintenta solo.',
       'refVacia': 'La referencia del metal todavía no llegó. Se reintenta sola: preferimos un lienzo vacío a una línea inventada.',
+      'ls.buscar': 'Buscar mercado', 'ls.par': 'Par', 'ls.precio': 'Precio',
+      'ls.nada': 'Ningún mercado con ese nombre.',
+      'ls.ponerFav': 'Marcar como favorito', 'ls.quitarFav': 'Quitar de favoritos',
+      'ps.mias': 'Mis órdenes', 'ps.ninguna': 'No tenés órdenes abiertas en este mercado.',
+      'ps.sinSesion': 'Entrá con tu cuenta para ver tus órdenes.',
+      'ps.cargando': 'Trayendo tus órdenes…',
       'st.alto': 'Máx. 24 h', 'st.bajo': 'Mín. 24 h',
       'st.vol': 'Vol. 24 h', 'st.par': 'Se paga en',
       'zoomGrupo': 'Acercar la gráfica',
@@ -221,6 +227,12 @@ const VMERCADO = (() => {
       'refCuando': 'read at {hora}',
       'refNo': 'We couldn’t fetch the metal reference. It retries on its own.',
       'refVacia': 'The metal reference hasn’t arrived yet. It retries on its own: we’d rather show an empty canvas than an invented line.',
+      'ls.buscar': 'Search market', 'ls.par': 'Pair', 'ls.precio': 'Price',
+      'ls.nada': 'No market by that name.',
+      'ls.ponerFav': 'Add to favourites', 'ls.quitarFav': 'Remove from favourites',
+      'ps.mias': 'My orders', 'ps.ninguna': 'You have no open orders in this market.',
+      'ps.sinSesion': 'Sign in to see your orders.',
+      'ps.cargando': 'Fetching your orders…',
       'st.alto': '24 h high', 'st.bajo': '24 h low',
       'st.vol': '24 h volume', 'st.par': 'Paid in',
       'zoomGrupo': 'Zoom the chart',
@@ -501,7 +513,16 @@ const VMERCADO = (() => {
        para que las columnas no bailen al refrescar. Cada dato con su etiqueta
        chica encima: sin etiqueta, cinco números seguidos son un jeroglífico. */
     .vm-stats{display:flex;flex-wrap:wrap;align-items:center;gap:0 26px;
-      padding:10px 0 0;margin-top:10px;border-top:1px solid var(--linea2)}
+      padding:12px 0 0;margin-top:12px;border-top:1px solid var(--linea2)}
+    /* El bloque de las cuatro cifras es una fila dentro de la fila: asi
+       pintarStats sigue escribiendo en UN solo nodo y no en cuatro sueltos.
+       (Y sin comillas invertidas en este comentario: la hoja entera vive
+       dentro de una plantilla de JS y una comilla invertida la parte.) */
+    #vm-stats{display:flex;flex-wrap:wrap;align-items:center;gap:0 26px}
+    .vm-stat-precio .vm-ultimo{font-size:19px;font-weight:700;color:var(--crema);
+      font-variant-numeric:tabular-nums}
+    .vm-stats .vm-refchica{margin-left:auto;font-size:11.5px;color:var(--humo);
+      font-family:var(--mono)}
     .vm-stat{display:flex;flex-direction:column;gap:2px;min-width:74px}
     .vm-stat .et{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--humo);
       font-family:var(--mono)}
@@ -514,8 +535,66 @@ const VMERCADO = (() => {
     .vm-ultimo{font-size:clamp(20px,2.4vw,26px);font-weight:700;
       font-variant-numeric:lining-nums tabular-nums}
 
-    .vm-rejilla{display:grid;grid-template-columns:minmax(0,1fr) 318px;gap:22px;align-items:start;margin-top:22px}
+    /* Tres columnas, como cualquier casa de cambio: la lista de mercados a la
+       izquierda, la gráfica y el formulario en el medio, el libro y los tratos
+       a la derecha. Antes eran dos y para cambiar de par había que salir de la
+       sala — el gesto más repetido de un operador era el más caro. */
+    .vm-rejilla{display:grid;grid-template-columns:236px minmax(0,1fr) 318px;gap:16px;
+      align-items:start;margin-top:16px}
+    @media (max-width:1380px){.vm-rejilla{grid-template-columns:minmax(0,1fr) 318px}
+      .vm-lista{display:none}}
     @media (max-width:1100px){.vm-rejilla{grid-template-columns:1fr}}
+
+    /* ═══ LA LISTA DE MERCADOS DE LA SALA ═══════════════════════════════════
+       Con buscador y favoritos. Los favoritos van arriba y viven en el
+       navegador de cada quien: es una preferencia de pantalla, no un dato de
+       la casa, y mandarla al servidor seria pedirle sesion a quien solo mira. */
+    .vm-lista{padding:0;overflow:hidden}
+    .vm-buscar{display:flex;align-items:center;gap:8px;padding:10px 12px;
+      border-bottom:1px solid var(--linea2)}
+    .vm-buscar svg{width:14px;height:14px;flex:none;stroke:var(--humo);fill:none;stroke-width:1.8}
+    .vm-buscar input{flex:1;min-width:0;background:none;border:0;outline:none;
+      font-size:12.5px;color:var(--crema)}
+    .vm-buscar input::placeholder{color:var(--humo)}
+    .vm-lista-cab{display:grid;grid-template-columns:1fr auto auto;gap:8px;
+      padding:7px 12px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+      text-transform:uppercase;color:var(--humo);border-bottom:1px solid var(--linea2)}
+    .vm-lista-cuerpo{max-height:min(62vh,560px);overflow-y:auto}
+    .vm-it{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;
+      width:100%;padding:7px 12px;text-align:left;font-size:12.5px;
+      font-variant-numeric:tabular-nums;border-left:2px solid transparent;transition:background .12s}
+    .vm-it:hover{background:rgba(238,241,245,.045)}
+    .vm-it[aria-current=true]{background:rgba(201,169,97,.10);border-left-color:var(--oro)}
+    .vm-it .nom{display:flex;align-items:center;gap:6px;min-width:0;color:var(--crema);font-weight:600}
+    .vm-it .nom small{color:var(--humo);font-weight:400}
+    .vm-it .pr{font-family:var(--mono);color:var(--bruma)}
+    .vm-it .ch{font-family:var(--mono);font-size:11.5px;min-width:56px;text-align:right}
+    .vm-it .ch.sube{color:var(--jade)} .vm-it .ch.baja{color:var(--coral)} .vm-it .ch.nada{color:var(--humo)}
+    .vm-fav{flex:none;width:14px;height:14px;padding:0;line-height:1;color:var(--humo);
+      font-size:12px;opacity:.55;transition:.15s}
+    .vm-fav:hover{opacity:1;color:var(--oroLt)}
+    .vm-fav[aria-pressed=true]{opacity:1;color:var(--oro)}
+    .vm-lista-vacio{padding:18px 12px;font-size:12.5px;color:var(--humo);text-align:center}
+
+    /* ═══ LAS PESTAÑAS DE ABAJO ═════════════════════════════════════════════
+       Mis ordenes abiertas y el historial, debajo del libro y sin cambiar de
+       vista. Un operador mira sus ordenes cada pocos segundos; mandarlo a otra
+       pantalla para eso es el error de diseño mas caro que tenia esta sala. */
+    .vm-peskab{display:flex;gap:2px;border-bottom:1px solid var(--linea2);margin-bottom:10px}
+    .vm-peskab button{padding:8px 14px;font-size:12.5px;font-weight:600;color:var(--humo);
+      border-bottom:2px solid transparent;transition:.15s}
+    .vm-peskab button:hover{color:var(--bruma)}
+    .vm-peskab button[aria-selected=true]{color:var(--crema);border-bottom-color:var(--oro)}
+    .vm-peskab .cuenta{margin-left:5px;font-family:var(--mono);font-size:10.5px;color:var(--oro)}
+    .vm-mia{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;
+      padding:7px 2px;border-bottom:1px solid rgba(238,241,245,.05);font-size:12.5px;
+      font-variant-numeric:tabular-nums}
+    .vm-mia:last-child{border-bottom:0}
+    .vm-mia .lado{font-weight:700;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+    .vm-mia .lado.compra{color:var(--jade)} .vm-mia .lado.venta{color:var(--coral)}
+    .vm-mia .pr{color:var(--crema)} .vm-mia .ct{color:var(--bruma);font-size:11.5px}
+    .vm-mia .x{color:var(--humo);font-size:12px;padding:2px 5px;line-height:1}
+    .vm-mia .x:hover{color:var(--coral)}
 
     /* La cabecera de la gráfica: la fuente manda y el marco la sigue, en esa
        lectura y en ese orden — primero QUÉ se está viendo, después con qué
@@ -577,7 +656,13 @@ const VMERCADO = (() => {
     .vm-lienzo canvas{display:block;width:100%;height:clamp(340px,52vh,620px);border-radius:12px}
     /* En la sala ancha el libro se estira a la par de la gráfica: una columna
        de 318 px contra un lienzo de 1.200 se veía como una nota al margen. */
-    body.en-mercado .vm-rejilla{grid-template-columns:minmax(0,1fr) 372px}
+    /* En la sala a pantalla ancha el libro gana ancho, PERO siguen siendo tres
+       columnas. Esta regla se quedo en dos cuando la rejilla paso a tres y
+       dejaba la lista ocupando el centro y el libro cayendo a otro renglon:
+       una regla vieja que pisa a la nueva y rompe la pantalla entera. */
+    body.en-mercado .vm-rejilla{grid-template-columns:248px minmax(0,1fr) 356px}
+    @media (max-width:1380px){body.en-mercado .vm-rejilla{grid-template-columns:minmax(0,1fr) 340px}}
+    @media (max-width:1100px){body.en-mercado .vm-rejilla{grid-template-columns:1fr}}
     .vm-nota{position:absolute;inset:0;display:grid;place-items:center;text-align:center;
       color:var(--humo);font-size:13px;line-height:1.6;padding:0 20px;pointer-events:none}
 
@@ -764,14 +849,33 @@ const VMERCADO = (() => {
         <h2 class="vm-tit">${icono(sim)} ${esc(sim)} <small>/ ORIGEN</small></h2>
         ${ficha ? `<div class="sub">${esc(ficha.t)} · ${esc(ficha.r)}</div>` : ''}
       </div>
-      <div class="vm-cifras">
-        <div class="vm-ultimo mono" id="vm-ultimo">—</div>
-        <div id="vm-cambio"></div>
-        <div class="vm-refchica" id="vm-ref"></div>
-      </div>
     </div>
-    <div class="vm-stats" id="vm-stats"></div>
+    <!-- La barra de la mesa: par, precio y las cinco cifras del dia en UNA
+         linea. Antes el precio vivia arriba a la derecha, a media pantalla de
+         distancia de su maximo y su minimo — dos datos de la misma cosa
+         separados por todo el ancho de la pagina. -->
+    <div class="vm-stats">
+      <div class="vm-stat vm-stat-precio">
+        <span class="et">${esc(tx('ultimo'))}</span>
+        <span class="vm-ultimo mono" id="vm-ultimo">—</span>
+      </div>
+      <div class="vm-stat"><span class="et">24 h</span><span id="vm-cambio">—</span></div>
+      <div id="vm-stats"></div>
+      <div class="vm-refchica" id="vm-ref"></div>
+    </div>
     <div class="vm-rejilla">
+      <aside class="vidrio bloque vm-lista">
+        <div class="vm-buscar">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M13.5 13.5 18 18"/></svg>
+          <input id="vm-q" type="search" autocomplete="off" spellcheck="false"
+                 placeholder="${esc(tx('ls.buscar'))}" aria-label="${esc(tx('ls.buscar'))}"
+                 oninput="VMERCADO.filtrar(this.value)">
+        </div>
+        <div class="vm-lista-cab">
+          <span>${esc(tx('ls.par'))}</span><span>${esc(tx('ls.precio'))}</span><span>24 h</span>
+        </div>
+        <div class="vm-lista-cuerpo" id="vm-lista"></div>
+      </aside>
       <div>
         <div class="vidrio bloque">
           <div class="vm-cabgraf" id="vm-cabgraf">${cabGrafica(par)}</div>
@@ -801,8 +905,14 @@ const VMERCADO = (() => {
           <div class="vm-vacio oculto" id="vm-libro-nota"></div>
         </div>
         <div class="vidrio bloque">
-          <h3>${esc(tx('tratos'))}</h3>
+          <div class="vm-peskab" role="tablist">
+            <button role="tab" aria-selected="true" data-pes="tratos"
+                    onclick="VMERCADO.pestana('tratos')">${esc(tx('tratos'))}</button>
+            <button role="tab" aria-selected="false" data-pes="mias"
+                    onclick="VMERCADO.pestana('mias')">${esc(tx('ps.mias'))}<span class="cuenta" id="vm-nmias"></span></button>
+          </div>
           <div id="vm-tratos"><div class="vm-vacio">—</div></div>
+          <div id="vm-mias" class="oculto"></div>
         </div>
       </div>
     </div>
@@ -836,6 +946,7 @@ const VMERCADO = (() => {
     if (ref) ref.textContent = r == null ? '' : `${tx('refRot')}: ${r}`;
     if (medio) medio.innerHTML = `${u == null ? '—' : esc(u)} <small>ORIGEN</small>`;
     pintarStats(m);
+    pintarLista();   // la lista de la izquierda vive del mismo dato
 
     /* La corrección de una sola vez: si la pestaña se eligió a ciegas —sin la
        lista leída— y resulta que este mercado SÍ tiene tratos, mandan los
@@ -874,6 +985,130 @@ const VMERCADO = (() => {
       cel(tx('st.vol'), deWei(m?.vol24h, 2)),
       cel(tx('st.par'), 'ORIGEN'),
     ].join('');
+  }
+
+  /* ═══ LA LISTA DE MERCADOS DE LA SALA ═══════════════════════════════════════
+     Con buscador y favoritos, para cambiar de par sin salir. Los favoritos
+     viven en el navegador de cada quien: es una preferencia de PANTALLA, no un
+     dato de la casa, y mandarla al servidor obligaría a pedir sesión a alguien
+     que solo vino a mirar precios.
+
+     Se itera CADENA.PARES y no la respuesta del API, igual que la tabla
+     grande: los quince mercados están SIEMPRE, en el orden de la cadena, con
+     guion donde el dato no llegó. Un mercado sin feed no es un mercado que
+     desaparece de la lista. */
+  const LLAVE_FAV = 'onx.favoritos';
+
+  function favoritos() {
+    try { return new Set(JSON.parse(localStorage.getItem(LLAVE_FAV) || '[]')); }
+    catch { return new Set(); }
+  }
+  function guardarFav(set) {
+    try { localStorage.setItem(LLAVE_FAV, JSON.stringify([...set])); } catch {}
+  }
+
+  let filtro = '';
+
+  function favorito(par) {
+    const f = favoritos();
+    if (f.has(par)) f.delete(par); else f.add(par);
+    guardarFav(f);
+    pintarLista();
+  }
+
+  function filtrar(q) {
+    filtro = String(q || '').trim().toUpperCase();
+    pintarLista();
+  }
+
+  function pintarLista() {
+    const caja = $('vm-lista');
+    if (!caja) return;
+    const fav = favoritos();
+    const porPar = new Map((mercadosCache || []).map(m => [m.mercado, m]));
+
+    const pares = CADENA.PARES
+      .filter(p => !filtro || String(CADENA.baseDe(p) || p).toUpperCase().includes(filtro))
+      // Favoritos arriba, y dentro de cada grupo el orden de la cadena. Un
+      // orden por precio o por cambio bailaría en cada refresco.
+      .sort((a, b) => (fav.has(b) ? 1 : 0) - (fav.has(a) ? 1 : 0));
+
+    if (!pares.length) {
+      caja.innerHTML = `<div class="vm-lista-vacio">${esc(tx('ls.nada'))}</div>`;
+      return;
+    }
+
+    caja.innerHTML = pares.map(p => {
+      const m = porPar.get(p);
+      const base = CADENA.baseDe(p) || p;
+      const u = deWei(m?.ultimo, 4);
+      const chg = m?.cambio24h == null ? null : Number(m.cambio24h);
+      const clase = chg == null ? 'nada' : chg < 0 ? 'baja' : 'sube';
+      const txt = chg == null ? '—' : `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
+      const es = fav.has(p);
+      return `<div class="vm-it" aria-current="${String(p === parActual)}">
+        <span class="nom">
+          <button class="vm-fav" aria-pressed="${String(es)}"
+                  aria-label="${esc(tx(es ? 'ls.quitarFav' : 'ls.ponerFav'))}"
+                  onclick="event.stopPropagation();VMERCADO.favorito(${jsTxt(p)})">${es ? '★' : '☆'}</button>
+          <button style="padding:0;min-width:0;text-align:left;color:inherit;font:inherit"
+                  onclick="ONX.vista('mercado',${jsTxt(p)})">${esc(base)}<small>/OG</small></button>
+        </span>
+        <span class="pr">${u == null ? '—' : esc(u)}</span>
+        <span class="ch ${clase}">${esc(txt)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── las pestañas de abajo ─────────────────────────────────────────────────
+     Los tratos de la casa y MIS órdenes abiertas, en el mismo sitio. Un
+     operador mira sus órdenes cada pocos segundos; mandarlo a otra vista para
+     eso era el error de diseño más caro que tenía esta sala. */
+  let pestanaAbierta = 'tratos';
+
+  function pestana(cual) {
+    if (cual !== 'tratos' && cual !== 'mias') return;
+    pestanaAbierta = cual;
+    document.querySelectorAll('.vm-peskab button').forEach(b =>
+      b.setAttribute('aria-selected', String(b.dataset.pes === cual)));
+    const t = $('vm-tratos'), m = $('vm-mias');
+    if (t) t.classList.toggle('oculto', cual !== 'tratos');
+    if (m) m.classList.toggle('oculto', cual !== 'mias');
+    if (cual === 'mias') pintarMias();
+  }
+
+  /* Mis órdenes, filtradas a ESTE mercado. Ver las de otro par mezcladas aquí
+     invita a cancelar la que no era: la pestaña vive dentro de una sala y
+     enseña lo de esa sala. */
+  function pintarMias() {
+    const caja = $('vm-mias');
+    if (!caja) return;
+    if (!DATOS.haySesion()) {
+      caja.innerHTML = `<div class="vm-vacio">${esc(tx('ps.sinSesion'))}</div>`;
+      return;
+    }
+    if (!ordenesCache) {
+      caja.innerHTML = `<div class="vm-vacio">${esc(tx('ps.cargando'))}</div>`;
+      return;
+    }
+    const mias = ordenesCache.filter(o => o.mercado === parActual);
+    const n = $('vm-nmias');
+    if (n) n.textContent = mias.length ? String(mias.length) : '';
+    if (!mias.length) {
+      caja.innerHTML = `<div class="vm-vacio">${esc(tx('ps.ninguna'))}</div>`;
+      return;
+    }
+    /* `resta / cantidad` y no solo la cantidad: lo que importa de una orden
+       abierta es cuánto le FALTA, no con cuánto nació. */
+    caja.innerHTML = mias.map(o => `
+      <div class="vm-mia">
+        <span class="lado ${o.lado === 'venta' ? 'venta' : 'compra'}">
+          ${esc(tx(o.lado === 'venta' ? 'vender' : 'comprar'))}</span>
+        <span class="mono pr">${o.precio == null ? esc(tx('mercado')) : esc(deWei(o.precio, 4) ?? '—')}</span>
+        <span class="mono ct">${esc(deWei(o.resta, 4) ?? '—')} / ${esc(deWei(o.cantidad, 4) ?? '—')}</span>
+        <button class="x" onclick="VMERCADO.quitar(${jsTxt(o.id)}, this)"
+                aria-label="${esc(tx('cancelar'))}">✕</button>
+      </div>`).join('');
   }
 
   // ══ LA GRÁFICA: DOS FUENTES QUE NO SE MEZCLAN ═════════════════════════════
@@ -1607,9 +1842,14 @@ const VMERCADO = (() => {
       if (!ordenesCache && nota) nota.textContent = tx('ordenesNo');
       return;
     }
+    // La pestaña de abajo vive del mismo dato: si está abierta, se refresca
+    // con este mismo tirón en vez de pedir las órdenes dos veces.
+    if (pestanaAbierta === 'mias') pintarMias();
     // Esta pantalla es UN mercado: se enseñan las órdenes de este par. Las
     // demás viven en la actividad del portafolio, cada una en su casa.
     const mias = (Array.isArray(ordenesCache) ? ordenesCache : []).filter(o => o.mercado === parActual);
+    const nMias = $('vm-nmias');
+    if (nMias) nMias.textContent = mias.length ? String(mias.length) : '';
     if (!mias.length) {
       cuerpo.innerHTML = '';
       if (nota) nota.textContent = tx('sinOrdenes');
@@ -1716,6 +1956,8 @@ const VMERCADO = (() => {
       });
     }
     relojGrafica();
+    pintarLista();
+    pestana('tratos');
 
     if (DATOS.haySesion()) {
       cuentas = null;          // fail-closed hasta que el portafolio conteste
@@ -1749,7 +1991,7 @@ const VMERCADO = (() => {
   }
 
   return {
-    vistaMercados, vistaMercado, alPintar, apagar, zoom,
+    vistaMercados, vistaMercado, alPintar, apagar, zoom, favorito, filtrar, pestana,
     marco, fuente, lado, tipo, usarPrecio, recalcular, maximo, colocar, quitar,
     // Para las pruebas, como _piezas en qr.js: los textos y las cuentas puras.
     _txt: () => TXT,

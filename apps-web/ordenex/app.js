@@ -209,9 +209,14 @@ const ONX = (() => {
     $('#app').classList.toggle('oculto', destino !== 'app');
     // El techo es de la portada; dentro, la marca vive en el riel.
     $('#techo').classList.toggle('oculto', destino === 'app');
-    if (destino === 'app') { pararVivos(); vista(vistaActual); }
+    /* El sondeo de mercados YA NO se para al entrar: alimenta la cinta de
+       precios, y la cinta esta arriba en todas las pantallas. Antes se apagaba
+       porque solo servia a la tabla de la portada; una cinta que se congela al
+       entrar a la casa es peor que no tenerla. */
+    document.body.classList.toggle('en-app', destino === 'app');
+    if (destino === 'app') { vista(vistaActual); }
     else {
-      apagarVista(); arrancarVivos();
+      apagarVista();
       /* La luz de la sala se apaga al salir de ella. Sin esto, volver a la
          portada desde un mercado dejaba la fotografía apagada y el ancho
          suelto en una pantalla que sí los quiere: la penumbra es del
@@ -276,9 +281,38 @@ const ONX = (() => {
           <td class="mono mv-num">${ultimo == null ? '—' : esc(ultimo)}
             ${ref == null ? '' : `<small class="mv-ref">${esc(t('pt.mvRef'))} ${esc(ref)}</small>`}</td>
           <td class="mv-chg">${pill}</td>
+          <td class="mono mv-num soloAncho">${esc(deWei(m.alto24h) ?? '—')}</td>
+          <td class="mono mv-num soloAncho">${esc(deWei(m.bajo24h) ?? '—')}</td>
+          <td class="mono mv-num soloAncho">${esc(deWei(m.vol24h) ?? '—')}</td>
         </tr>`;
     }).join('');
     vivosPintados = true;
+    pintarCinta(lista);
+  }
+
+  /* ── la cinta de precios ───────────────────────────────────────────────────
+     Los quince mercados pasando arriba del todo, siempre. La pista se pinta
+     DOS veces y la animacion corre el 50%: asi el bucle vuelve a empezar sin
+     costura, sin un temporizador y sin JS por cuadro.
+
+     Los mercados sin precio pasan con GUION y no se esconden. Una cinta que
+     solo enseña los que se movieron parece mas liquida de lo que es, y esa es
+     justo la mentira que esta casa no dice. */
+  function pintarCinta(lista) {
+    const pista = $('#cinta-pista');
+    if (!pista || !Array.isArray(lista) || !lista.length) return;
+    const items = lista.map((m) => {
+      const base = CADENA.baseDe(m.mercado) || m.mercado;
+      const u = deWei(m.ultimo);
+      const chg = m.cambio24h == null ? null : Number(m.cambio24h);
+      const clase = chg == null ? 'nada' : chg < 0 ? 'baja' : 'sube';
+      const txt = chg == null ? '—' : `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
+      return `<button class="cinta-it" onclick="ONX.abrirPar(${jsTxt(m.mercado)})">
+        <b>${esc(base)}</b><span class="p">${u == null ? '—' : esc(u)}</span>
+        <span class="c ${clase}">${esc(txt)}</span></button>`;
+    }).join('');
+    // Dos mitades iguales: la animacion desplaza exactamente una.
+    pista.innerHTML = `<div class="cinta-mitad">${items}</div><div class="cinta-mitad" aria-hidden="true">${items}</div>`;
   }
 
   // ── la sesión: SSO con la wallet, sin contraseñas propias ─────────────────
@@ -333,6 +367,10 @@ const ONX = (() => {
     /* ¿Viene un token de la wallet? El hash se limpia ANTES de canjearlo: un
        token de sesión no se queda en la barra, ni en el historial, ni en la
        captura de pantalla que alguien comparte. */
+    /* La cinta arranca ANTES de decidir a donde va la persona, y no se para
+       nunca: esta arriba en todas las pantallas. */
+    arrancarVivos();
+
     const hash = String(location.hash || '');
     if (hash.startsWith('#sso=')) {
       const token = decodeURIComponent(hash.slice(5));
