@@ -36,6 +36,11 @@ const usuarioSchema = new mongoose.Schema({
   // La dirección custodiada del mismo dueño en Veta Wallet. Es lo que ata la
   // billetera cripto con la cuenta fiat: mismo gid, los dos lados.
   direccionWallet: { type: String, default: null },
+  // Hasta dónde puede mover (ver lib/tarifas.js). Arranca en 1 —el más
+  // apretado— y se sube a mano cuando hay expediente. Un nivel que arranca
+  // alto es una cuenta nueva por la que puede pasar cualquier cosa el primer
+  // día, que es justo lo que la norma quiere evitar.
+  nivel: { type: Number, default: 1 },
   // El interruptor de revocación: subirlo mata todas las sesiones vivas.
   tokenVersion: { type: Number, default: 0 },
   creado: { type: Date, default: Date.now },
@@ -97,9 +102,78 @@ const saldoSchema = new mongoose.Schema({
 });
 saldoSchema.index({ cuenta: 1, moneda: 1 }, { unique: true });
 
+// ── corresponsales ──────────────────────────────────────────────────────────
+// A DÓNDE manda el dinero quien quiere depositar: la cuenta real de AuCorp en
+// cada plaza. Una por moneda.
+//
+// Estos datos NO viven en el código ni en el repositorio: los carga operaciones
+// contra la base. Un número de cuenta bancaria en un commit es un número de
+// cuenta bancaria publicado — y a diferencia de una clave, ese no se puede
+// rotar sin abrir otra cuenta en otro banco.
+const corresponsalSchema = new mongoose.Schema({
+  moneda: { type: String, required: true, unique: true },
+  banco: { type: String, required: true },
+  titular: { type: String, required: true },
+  numero: { type: String, required: true },
+  swift: { type: String, default: '' },
+  ruta: { type: String, default: '' },        // ABA / CLABE / IBAN, según plaza
+  instrucciones: { type: String, default: '' },
+  activa: { type: Boolean, default: true },
+  actualizada: { type: Date, default: Date.now },
+});
+
+// ── beneficiarios ───────────────────────────────────────────────────────────
+// A quién manda dinero un cliente, guardado para no volver a teclearlo. Es lo
+// que convierte una transferencia en algo de dos toques en vez de un formulario
+// donde un dígito mal escrito manda el dinero a otra persona.
+const beneficiarioSchema = new mongoose.Schema({
+  gid: { type: String, required: true, index: true },
+  alias: { type: String, required: true },
+  tipo: { type: String, required: true },     // 'interno' | 'bancario'
+  moneda: { type: String, required: true },
+  // interno
+  gidDestino: { type: String, default: '' },
+  // bancario
+  banco: { type: String, default: '' },
+  titular: { type: String, default: '' },
+  numero: { type: String, default: '' },
+  swift: { type: String, default: '' },
+  pais: { type: String, default: '' },
+  creado: { type: Date, default: Date.now },
+});
+beneficiarioSchema.index({ gid: 1, alias: 1 }, { unique: true });
+
+// ── solicitudes ─────────────────────────────────────────────────────────────
+// Un retiro no lo ejecuta el usuario: lo PIDE. Entre el pedido y la salida del
+// dinero hay una persona de operaciones que confirma contra el banco.
+//
+// Mientras tanto el dinero NO se queda en la cuenta del cliente disponible para
+// gastarlo otra vez: en cuanto se pide, un asiento lo mueve a `retiros.en.proceso`
+// —que sigue siendo un pasivo, la casa se lo sigue debiendo— y ahí espera. Si
+// se rechaza, otro asiento se lo devuelve. Sin ese paso, alguien podría pedir
+// tres retiros de todo su saldo y que los tres pasaran.
+const solicitudSchema = new mongoose.Schema({
+  gid: { type: String, required: true, index: true },
+  tipo: { type: String, required: true },     // 'retiro'
+  moneda: { type: String, required: true },
+  monto: { type: String, required: true },    // lo que se le descontó, con comisión dentro
+  neto: { type: String, required: true },     // lo que va a recibir de verdad
+  comision: { type: String, default: '0' },
+  beneficiario: { type: Object, default: null },   // copia CONGELADA, ver abajo
+  estado: { type: String, default: 'pendiente', index: true },
+  ref: { type: String, required: true, unique: true },
+  nota: { type: String, default: '' },        // lo que escribe operaciones al resolver
+  comprobante: { type: String, default: '' },
+  creada: { type: Date, default: Date.now },
+  resuelta: { type: Date, default: null },
+});
+
 const Usuario = mongoose.model('Usuario', usuarioSchema);
+const Corresponsal = mongoose.model('Corresponsal', corresponsalSchema);
+const Beneficiario = mongoose.model('Beneficiario', beneficiarioSchema);
+const Solicitud = mongoose.model('Solicitud', solicitudSchema);
 const CuentaFiat = mongoose.model('CuentaFiat', cuentaFiatSchema);
 const Asiento = mongoose.model('Asiento', asientoSchema);
 const Saldo = mongoose.model('Saldo', saldoSchema);
 
-module.exports = { Usuario, CuentaFiat, Asiento, Saldo };
+module.exports = { Usuario, CuentaFiat, Asiento, Saldo, Corresponsal, Beneficiario, Solicitud };

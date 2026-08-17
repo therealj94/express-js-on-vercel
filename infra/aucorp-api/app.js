@@ -55,6 +55,8 @@ app.use(express.json({ limit: '100kb' }));
 app.use('/auth', require('./routes/auth'));
 app.use('/', require('./routes/cuentas'));
 app.use('/', require('./routes/movimientos'));
+app.use('/', require('./routes/beneficiarios'));
+app.use('/', require('./routes/solicitudes'));
 app.use('/tesoreria', require('./routes/tesoreria'));
 
 // ── /salud ──────────────────────────────────────────────────────────────────

@@ -48,8 +48,15 @@ function delta(l) {
   return TIPOS[l.tipo] === 'debe' ? d : -d;
 }
 
-/** Las cuentas de clientes nunca quedan en rojo; las de la casa pueden. */
-const esDeCliente = (cuenta) => String(cuenta).startsWith('cliente:');
+/** Las cuentas que nunca quedan en rojo. Las de la casa sí pueden —una
+ *  posición de cambio corta es información, no un error—, pero el dinero de
+ *  una persona no.
+ *
+ *  `retiro:` es el dinero de un cliente ya pedido y todavía no pagado. Está
+ *  aquí porque si pudiera quedar en rojo, operaciones podría ejecutar dos
+ *  veces el mismo retiro y el segundo pago saldría de la nada. */
+const GUARDADAS = ['cliente:', 'retiro:'];
+const esDeCliente = (cuenta) => GUARDADAS.some((p) => String(cuenta).startsWith(p));
 
 /**
  * Aplica un movimiento a un saldo, con guarda. Devuelve el monto nuevo.

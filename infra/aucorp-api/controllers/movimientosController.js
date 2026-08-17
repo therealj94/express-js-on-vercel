@@ -12,9 +12,11 @@
 // generarla aquí serviría de nada, porque el reintento traería otra.
 
 const { Usuario, Asiento } = require('../models');
-const { moneda, aMinimas, aTexto } = require('../lib/monedas');
+const { moneda, aMinimas, aTexto, REFERENCIA } = require('../lib/monedas');
 const { asentar } = require('../lib/asientos');
 const { cotizar, convertir } = require('../lib/cambio');
+const { comision, cabeEnLimites } = require('../lib/tarifas');
+const { movidoPor } = require('../lib/consumo');
 const genesis = require('../lib/genesis');
 const { cuentaDe, pintar } = require('./cuentasController');
 
@@ -45,6 +47,52 @@ async function quienMueve(req, res) {
     return null;
   }
   return usuario;
+}
+
+/**
+ * ¿Cabe esta salida en los límites de esta persona? Devuelve true si sí, y si
+ * no, YA contestó al cliente.
+ *
+ * Se le dice al usuario cuánto lleva usado y cuál es su tope. Es un dato suyo
+ * y ocultárselo solo consigue que reintente sin entender por qué no pasa.
+ */
+async function pasaLimites(res, usuario, montoMin, cod) {
+  const movido = await movidoPor(cuentaDe(usuario.gid));
+  if (!movido) {
+    // No se pudo medir. Y no poder medir es un NO: dejar pasar porque el
+    // proveedor de tasas está caído es justo cuando conviene mover dinero que
+    // no debería moverse.
+    res.status(503).json({
+      error: 'Ahora mismo no se puede comprobar el límite. Probá en un momento.',
+      codigo: 'SIN_TASA',
+    });
+    return false;
+  }
+  const veredicto = await cabeEnLimites(usuario.nivel || 1, montoMin, cod, movido);
+  if (!veredicto.cabe) {
+    if (veredicto.motivo === 'SIN_TASA') {
+      res.status(503).json({
+        error: 'Ahora mismo no se puede comprobar el límite. Probá en un momento.',
+        codigo: 'SIN_TASA',
+      });
+      return false;
+    }
+    res.status(400).json({
+      error: veredicto.motivo === 'LIMITE_DIARIO'
+        ? 'Esta operación pasa tu límite de hoy.'
+        : 'Esta operación pasa tu límite de este mes.',
+      codigo: veredicto.motivo,
+      limite: {
+        usado: aTexto(veredicto.usado, REFERENCIA),
+        tope: aTexto(veredicto.tope, REFERENCIA),
+        estaOperacion: aTexto(veredicto.intento, REFERENCIA),
+        moneda: REFERENCIA,
+        nivel: usuario.nivel || 1,
+      },
+    });
+    return false;
+  }
+  return true;
 }
 
 /** Traduce el error del libro a HTTP sin filtrar detalles internos. */
@@ -94,12 +142,25 @@ async function transferir(req, res) {
       });
     }
 
+    if (!await pasaLimites(res, usuario, monto, cod)) return;
+
+    /* La comisión sale del que manda, no del que recibe: quien te manda 100
+       tiene que poder decirte «te mandé 100» y que te lleguen 100. Se le
+       descuenta a él, aparte, y va a la cuenta de ingresos con su nombre. */
+    const cargo = comision('transferencia', monto, cod);
+    const lineas = [
+      { cuenta: cuentaDe(usuario.gid), tipo: 'pasivo', moneda: cod, debe: monto },
+      { cuenta: cuentaDe(otro.gid), tipo: 'pasivo', moneda: cod, haber: monto },
+    ];
+    if (BigInt(cargo) > 0n) {
+      lineas.push({ cuenta: cuentaDe(usuario.gid), tipo: 'pasivo', moneda: cod, debe: cargo });
+      lineas.push({ cuenta: 'ingreso.comisiones', tipo: 'ingreso', moneda: cod, haber: cargo });
+    }
+
     const { asiento, repetido } = await asentar({
-      ref, glosa: `Transferencia de ${usuario.gid} a ${otro.gid}`,
-      lineas: [
-        { cuenta: cuentaDe(usuario.gid), tipo: 'pasivo', moneda: cod, debe: monto },
-        { cuenta: cuentaDe(otro.gid), tipo: 'pasivo', moneda: cod, haber: monto },
-      ],
+      ref, glosa: `Transferencia de ${usuario.gid} a ${otro.gid}`
+        + (BigInt(cargo) > 0n ? ` (comisión ${aTexto(cargo, cod)} ${cod})` : ''),
+      lineas,
     }, { clase: 'transferencia' });
 
     // El reporte al monitoreo va DESPUÉS y no puede tumbar la operación: el
@@ -109,7 +170,12 @@ async function transferir(req, res) {
       monto: aTexto(monto, cod), contraparte: otro.gid,
     });
 
-    return res.json({ ref: asiento.ref, repetido, moneda: cod, monto: pintar(monto, cod) });
+    return res.json({
+      ref: asiento.ref, repetido, moneda: cod,
+      monto: pintar(monto, cod),
+      comision: pintar(cargo, cod),
+      total: pintar((BigInt(monto) + BigInt(cargo)).toString(), cod),
+    });
   } catch (e) {
     return alFallar(res, e, 'transferencia');
   }
@@ -158,6 +224,8 @@ async function cambiar(req, res) {
   try {
     const usuario = await quienMueve(req, res);
     if (!usuario) return;
+
+    if (!await pasaLimites(res, usuario, monto, de)) return;
 
     // La tasa se pide AQUÍ y se guarda en la glosa del asiento. Un cambio con
     // una tasa que no quedó escrita es un cambio que nadie puede auditar.

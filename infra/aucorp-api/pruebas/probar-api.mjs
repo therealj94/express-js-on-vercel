@@ -180,10 +180,15 @@ decir('transferir a otro cliente');
   comprobar(deBeto.datos.cuentas.find((c) => c.moneda === 'USD')?.saldo?.texto === '250.50',
     'y a Beto le llegan 250.50 exactos');
 
+  /* Una cifra absurda choca primero con el LÍMITE, no con el saldo, porque el
+     límite se comprueba antes de tocar el libro. Es el orden correcto: lo
+     barato y lo que no deja rastro va delante. Que además no tenga el dinero
+     se comprueba abajo, con el nivel arriba, donde el límite ya no estorba. */
   const mucho = await pedir('/movimientos/transferir', { metodo: 'POST', token: ana, cuerpo: {
     ref: 'transferencia-ana-beto-0002', para: 'gid-beto', moneda: 'USD', monto: '999999' } });
-  comprobar(mucho.estado === 400 && mucho.datos.codigo === 'SALDO_INSUFICIENTE',
-    'y no puede mandar lo que no tiene', JSON.stringify(mucho.datos));
+  comprobar(mucho.estado === 400 && mucho.datos.codigo === 'LIMITE_DIARIO',
+    'una cifra absurda choca primero con el límite, que se mira antes que el libro',
+    JSON.stringify(mucho.datos.codigo));
 
   const aSiMismo = await pedir('/movimientos/transferir', { metodo: 'POST', token: ana, cuerpo: {
     ref: 'transferencia-ana-ana-0003', para: 'gid-ana', moneda: 'USD', monto: '1' } });
@@ -214,10 +219,165 @@ decir('cambiar de moneda, con la tasa REAL guardada en el asiento');
     JSON.stringify(chico.datos));
 }
 
+decir('la libreta de destinos');
+let benBanco;
+{
+  const interno = await pedir('/beneficiarios', { metodo: 'POST', token: ana, cuerpo: {
+    alias: 'Beto', tipo: 'interno', moneda: 'USD', gidDestino: 'gid-beto' } });
+  comprobar(interno.estado === 200, 'Ana guarda a Beto como destino interno', JSON.stringify(interno.datos));
+
+  const r = await pedir('/beneficiarios', { metodo: 'POST', token: ana, cuerpo: {
+    alias: 'Mi cuenta del banco', tipo: 'bancario', moneda: 'USD',
+    banco: 'Banco Atlántida', titular: 'Ana Pérez', numero: '01234567890123', pais: 'Honduras' } });
+  comprobar(r.estado === 200, 'y su propia cuenta bancaria');
+  benBanco = r.datos.beneficiario?.id;
+  comprobar(r.datos.beneficiario?.numero === '···0123',
+    'el número vuelve ENMASCARADO: alcanza para reconocerlo, no para copiarlo',
+    r.datos.beneficiario?.numero);
+
+  const sinKyc = await pedir('/beneficiarios', { metodo: 'POST', token: ana, cuerpo: {
+    alias: 'Alguien', tipo: 'interno', moneda: 'USD', gidDestino: 'sinkyc-carlos' } });
+  comprobar(sinKyc.estado === 400,
+    'guardar a alguien que NO puede recibir se rechaza AHORA, no cuando ya mandó el dinero');
+
+  const repe = await pedir('/beneficiarios', { metodo: 'POST', token: ana, cuerpo: {
+    alias: 'Beto', tipo: 'interno', moneda: 'USD', gidDestino: 'gid-beto' } });
+  comprobar(repe.estado === 400, 'y dos destinos con el mismo nombre, tampoco');
+}
+
+decir('a dónde deposita la gente: la cuenta REAL de la casa');
+{
+  const sinNada = await pedir('/deposito/instrucciones?moneda=USD', { token: ana });
+  comprobar(sinNada.estado === 404 && sinNada.datos.codigo === 'SIN_CORRESPONSAL',
+    'sin corresponsal cargado NO se inventa una cuenta ni se enseña la de otra moneda',
+    JSON.stringify(sinNada.datos));
+
+  const carga = await pedir('/tesoreria/corresponsal', { metodo: 'POST', admin: ADMIN, cuerpo: {
+    moneda: 'USD', banco: 'Banco de prueba', titular: 'AuCorp LLC',
+    numero: '9999-0000-1111', swift: 'TESTUS33',
+    instrucciones: 'Transferencia ACH o wire.' } });
+  comprobar(carga.estado === 200, 'operaciones carga la cuenta de la plaza');
+
+  const con = await pedir('/deposito/instrucciones?moneda=USD', { token: ana });
+  comprobar(con.estado === 200 && con.datos.instrucciones?.banco === 'Banco de prueba',
+    'y ahora sí se le dice a la gente a dónde mandar');
+  comprobar(con.datos.referencia === 'gid-ana' && /referencia/.test(con.datos.aviso || ''),
+    'con su Genesis ID como referencia — sin eso el depósito llega sin dueño');
+
+  const otra = await pedir('/deposito/instrucciones?moneda=PYG', { token: ana });
+  comprobar(otra.estado === 404,
+    'que el sistema sepa contar guaraníes no quiere decir que haya dónde recibirlos');
+}
+
+decir('UN RETIRO SE PIDE, NO SE EJECUTA');
+let solicitud;
+{
+  const antes = (await pedir('/cuentas', { token: ana })).datos.cuentas.find((c) => c.moneda === 'USD');
+
+  const r = await pedir('/solicitudes/retiro', { metodo: 'POST', token: ana, cuerpo: {
+    ref: 'retiro-ana-0001', moneda: 'USD', monto: '100.00', beneficiario: benBanco } });
+  comprobar(r.estado === 200 && r.datos.solicitud?.estado === 'pendiente',
+    'Ana pide retirar 100.00 y queda pendiente', JSON.stringify(r.datos.solicitud?.estado || r.datos));
+  solicitud = r.datos.solicitud?.id;
+
+  const despues = (await pedir('/cuentas', { token: ana })).datos.cuentas.find((c) => c.moneda === 'USD');
+  comprobar(Number(antes.saldo.texto) - Number(despues.saldo.texto) === 100,
+    'y el dinero SALE de su saldo al pedirlo, no cuando se pague',
+    `${antes.saldo.texto} → ${despues.saldo.texto}`);
+
+  const otroMas = await pedir('/solicitudes/retiro', { metodo: 'POST', token: ana, cuerpo: {
+    ref: 'retiro-ana-imposible', moneda: 'USD', monto: '99999', beneficiario: benBanco } });
+  comprobar(otroMas.datos.codigo === 'SALDO_INSUFICIENTE',
+    'no se puede pedir dos veces el mismo dinero: lo apartado ya no está disponible');
+
+  const otraMoneda = await pedir('/solicitudes/retiro', { metodo: 'POST', token: ana, cuerpo: {
+    ref: 'retiro-ana-hnl-0001', moneda: 'HNL', monto: '100', beneficiario: benBanco } });
+  comprobar(otraMoneda.datos.codigo === 'MONEDA_DEL_DESTINO',
+    'ni mandar lempiras a una cuenta de dólares');
+}
+
+decir('operaciones paga, y sin comprobante no paga');
+{
+  const cola = await pedir('/tesoreria/solicitudes?estado=pendiente', { admin: ADMIN });
+  comprobar(cola.datos.solicitudes?.length === 1, 'la cola tiene el retiro esperando',
+    String(cola.datos.solicitudes?.length));
+
+  const sinComp = await pedir(`/tesoreria/solicitudes/${solicitud}/ejecutar`, {
+    metodo: 'POST', admin: ADMIN, cuerpo: {} });
+  comprobar(sinComp.estado === 400, 'sin comprobante del pago no se cierra');
+
+  const paga = await pedir(`/tesoreria/solicitudes/${solicitud}/ejecutar`, {
+    metodo: 'POST', admin: ADMIN, cuerpo: { comprobante: 'Wire 2026-08-17 #8812' } });
+  comprobar(paga.datos.solicitud?.estado === 'ejecutada', 'con comprobante sí',
+    JSON.stringify(paga.datos.solicitud?.estado || paga.datos));
+
+  const otraVez = await pedir(`/tesoreria/solicitudes/${solicitud}/ejecutar`, {
+    metodo: 'POST', admin: ADMIN, cuerpo: { comprobante: 'el mismo' } });
+  comprobar(otraVez.estado === 409,
+    'y el mismo retiro no se paga dos veces aunque dos personas lo intenten');
+}
+
+decir('un retiro rechazado devuelve TODO y libera el límite');
+{
+  const antes = (await pedir('/cuentas', { token: ana })).datos.cuentas.find((c) => c.moneda === 'USD');
+  const r = await pedir('/solicitudes/retiro', { metodo: 'POST', token: ana, cuerpo: {
+    ref: 'retiro-ana-0002', moneda: 'USD', monto: '50.00', beneficiario: benBanco } });
+
+  const sinNota = await pedir(`/tesoreria/solicitudes/${r.datos.solicitud.id}/rechazar`, {
+    metodo: 'POST', admin: ADMIN, cuerpo: {} });
+  comprobar(sinNota.estado === 400,
+    'un rechazo sin motivo se rechaza: el cliente no podría corregir nada');
+
+  const no = await pedir(`/tesoreria/solicitudes/${r.datos.solicitud.id}/rechazar`, {
+    metodo: 'POST', admin: ADMIN, cuerpo: { nota: 'El titular de la cuenta no coincide.' } });
+  comprobar(no.datos.solicitud?.estado === 'rechazada', 'operaciones lo rechaza con motivo');
+
+  const despues = (await pedir('/cuentas', { token: ana })).datos.cuentas.find((c) => c.moneda === 'USD');
+  comprobar(antes.saldo.texto === despues.saldo.texto,
+    'y el dinero vuelve ENTERO — si no se pagó, no se cobra',
+    `${antes.saldo.texto} → ${despues.saldo.texto}`);
+
+  const mias = await pedir('/solicitudes', { token: ana });
+  comprobar(mias.datos.solicitudes?.length === 2, 'Ana ve las dos en su historial');
+  comprobar(mias.datos.solicitudes.every((s) => s.beneficiario?.numero === '···0123'),
+    'con el destino congelado tal como estaba al pedirlo');
+}
+
+decir('LOS LÍMITES: el nivel 1 no mueve lo que mueve el nivel 3');
+{
+  const r = await pedir('/movimientos/transferir', { metodo: 'POST', token: ana, cuerpo: {
+    ref: 'transferencia-pasada-de-limite', para: 'gid-beto', moneda: 'USD', monto: '900' } });
+  comprobar(r.estado === 400 && r.datos.codigo === 'LIMITE_DIARIO',
+    'una transferencia que pasa el tope diario se corta', JSON.stringify(r.datos.codigo));
+  comprobar(!!r.datos.limite?.usado && !!r.datos.limite?.tope,
+    'y se le dice cuánto lleva usado y cuál es su tope, que son datos suyos',
+    JSON.stringify(r.datos.limite));
+
+  const sube = await pedir('/tesoreria/nivel', { metodo: 'POST', admin: ADMIN, cuerpo: {
+    gid: 'gid-ana', nivel: 3, motivo: 'Expediente completo, prueba' } });
+  comprobar(sube.datos.nivel === 3, 'operaciones le sube el nivel con motivo');
+
+  const sinMotivo = await pedir('/tesoreria/nivel', { metodo: 'POST', admin: ADMIN, cuerpo: {
+    gid: 'gid-ana', nivel: 2 } });
+  comprobar(sinMotivo.estado === 400, 'y sin motivo no se cambia un límite');
+
+  const ahora = await pedir('/movimientos/transferir', { metodo: 'POST', token: ana, cuerpo: {
+    ref: 'transferencia-con-nivel-3', para: 'gid-beto', moneda: 'USD', monto: '400' } });
+  comprobar(ahora.estado === 200, 'y con el nivel arriba la misma cuenta ya puede mover más',
+    JSON.stringify(ahora.datos.codigo || 'ok'));
+
+  // Y ahora que el límite no estorba, la otra guarda: el saldo.
+  const sinPlata = await pedir('/movimientos/transferir', { metodo: 'POST', token: ana, cuerpo: {
+    ref: 'transferencia-sin-plata', para: 'gid-beto', moneda: 'USD', monto: '90000' } });
+  comprobar(sinPlata.datos.codigo === 'SALDO_INSUFICIENTE',
+    'subir el límite NO regala dinero: sigue sin poder mandar lo que no tiene',
+    JSON.stringify(sinPlata.datos.codigo));
+}
+
 decir('el extracto y el cuadre');
 {
   const ext = await pedir('/movimientos', { token: ana });
-  comprobar(ext.datos.movimientos?.length >= 3, 'Ana ve sus movimientos', String(ext.datos.movimientos?.length));
+  comprobar(ext.datos.movimientos?.length >= 6, 'Ana ve sus movimientos', String(ext.datos.movimientos?.length));
   comprobar(ext.datos.movimientos.every((m) => m.lineas.some((l) => l.cuenta === 'yo')),
     'y en cada uno se ve cuál es su lado');
 

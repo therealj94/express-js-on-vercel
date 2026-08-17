@@ -19,7 +19,7 @@
 // no hay conciliación automática todavía, y fingir que la hay sería peor que
 // no tenerla, porque nadie estaría revisando.
 
-const { Usuario } = require('../models');
+const { Usuario, Corresponsal } = require('../models');
 const { moneda, aMinimas, aTexto } = require('../lib/monedas');
 const { asentar, reconciliar } = require('../lib/asientos');
 const genesis = require('../lib/genesis');
@@ -136,4 +136,81 @@ async function revisar(req, res) {
   }
 }
 
-module.exports = { soloOperaciones, deposito, retiro, revisar, custodiaDe };
+// ── POST /tesoreria/corresponsal ────────────────────────────────────────────
+// { moneda, banco, titular, numero, swift, ruta, instrucciones, activa }
+//
+// La cuenta REAL de AuCorp en cada plaza. Se carga aquí y no en el código:
+// un número de cuenta bancaria en un commit es un número de cuenta publicado,
+// y a diferencia de una clave, ese no se rota — hay que abrir otra cuenta en
+// otro banco.
+async function corresponsalGuardar(req, res) {
+  const cod = String(req.body?.moneda || '').toUpperCase();
+  if (!moneda(cod)) return res.status(400).json({ error: 'Esa moneda no existe.', codigo: 'MONEDA_DESCONOCIDA' });
+
+  const t = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
+  const datos = {
+    banco: t(req.body?.banco, 120), titular: t(req.body?.titular, 120),
+    numero: t(req.body?.numero, 60), swift: t(req.body?.swift, 20),
+    ruta: t(req.body?.ruta, 60), instrucciones: t(req.body?.instrucciones, 500),
+    activa: req.body?.activa !== false, actualizada: new Date(),
+  };
+  if (!datos.banco || !datos.titular || !datos.numero) {
+    return res.status(400).json({
+      error: 'Faltan el banco, el titular o el número de cuenta.', codigo: 'DATOS_FALTAN',
+    });
+  }
+
+  try {
+    const c = await Corresponsal.findOneAndUpdate(
+      { moneda: cod }, { $set: { moneda: cod, ...datos } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    return res.json({ corresponsal: { moneda: c.moneda, banco: c.banco, activa: c.activa } });
+  } catch (e) {
+    console.error(`[tesoreria] no se pudo guardar el corresponsal de ${cod}: ${e.message}`);
+    return res.status(503).json({ error: 'No se pudo guardar.', codigo: 'NO_SE_PUDO' });
+  }
+}
+
+// ── GET /tesoreria/corresponsales ───────────────────────────────────────────
+async function corresponsalListar(req, res) {
+  try {
+    const docs = await Corresponsal.find({}).sort({ moneda: 1 });
+    return res.json({ corresponsales: docs });
+  } catch (e) {
+    console.error(`[tesoreria] no se pudieron listar los corresponsales: ${e.message}`);
+    return res.status(503).json({ error: 'No se pudo leer.', codigo: 'NO_SE_PUDO' });
+  }
+}
+
+// ── POST /tesoreria/nivel ───────────────────────────────────────────────────
+// { gid, nivel } — sube o baja los límites de una cuenta.
+//
+// Es un acto de cumplimiento, no un ajuste técnico: subirle el nivel a alguien
+// es decir que su expediente aguanta ese volumen. Por eso pide el motivo, que
+// queda en el log aunque la cuenta después baje otra vez.
+async function nivelPoner(req, res) {
+  const gid = String(req.body?.gid || '').trim();
+  const nivel = parseInt(req.body?.nivel, 10);
+  const motivo = String(req.body?.motivo || '').trim().slice(0, 300);
+  if (!gid) return res.status(400).json({ error: 'Falta el gid.', codigo: 'GID_FALTA' });
+  if (![1, 2, 3].includes(nivel)) {
+    return res.status(400).json({ error: 'El nivel va de 1 a 3.', codigo: 'NIVEL_INVALIDO' });
+  }
+  if (!motivo) return res.status(400).json({ error: 'Poné el motivo.', codigo: 'MOTIVO_FALTA' });
+
+  try {
+    const u = await Usuario.findOneAndUpdate({ gid }, { $set: { nivel } }, { new: true });
+    if (!u) return res.status(404).json({ error: 'No hay tal cuenta.', codigo: 'NO_EXISTE' });
+    console.log(`[tesoreria] nivel de ${gid} → ${nivel}: ${motivo}`);
+    return res.json({ gid: u.gid, nivel: u.nivel });
+  } catch (e) {
+    console.error(`[tesoreria] no se pudo cambiar el nivel de ${gid}: ${e.message}`);
+    return res.status(503).json({ error: 'No se pudo guardar.', codigo: 'NO_SE_PUDO' });
+  }
+}
+
+module.exports = {
+  soloOperaciones, deposito, retiro, revisar, custodiaDe,
+  corresponsalGuardar, corresponsalListar, nivelPoner,
+};
