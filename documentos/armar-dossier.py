@@ -655,9 +655,12 @@ y = parrafo(
 
 y -= 14
 frentes = [
-    ('AUBANK',
-     'La capa bancaria sobre el mismo suelo: cuentas, rendimiento y crédito con garantía '
-     'en el saldo, para gente que ya tiene identidad verificada en la casa.'),
+    ('AuCorp',
+     'La capa financiera sobre el mismo suelo, y ya abierta: cuentas en veintiuna monedas '
+     '—Latinoamérica, Canadá y el euro—, transferencias y cambio de divisa, para gente que '
+     'ya tiene identidad verificada en la casa. Se anunció como AUBANK; el nombre cambió '
+     'con la empresa. No es un banco con licencia: es una FinTech bajo Regulación A de '
+     'Próspera, sin seguro de depósitos.'),
     ('Ordenexchange',
      'El mercado propio: cambiar entre los activos del ecosistema y contra el mundo de '
      'fuera, sin salir de la cuenta.'),

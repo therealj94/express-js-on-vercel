@@ -59,7 +59,7 @@ try {
 
 // La versión va en la llave a propósito: si mañana cambian los mundos o el
 // formato, la colocación vieja se ignora sola en vez de colocar nodos donde
-// ya no hay nada. v2: entraron AUBANK, Ordenexchange y el nodo «+», y una
+// ya no hay nada. v2: entraron AuCorp (entonces AUBANK), Ordenexchange y el nodo «+», y una
 // colocación de la v1 podía dejar un mundo viejo encima de uno nuevo.
 const LLAVE_COLOCACION = 'og.nucleo.colocacion.v2';
 // El contador de usos por mundo. De aquí sale que EL MÁS USADO SE VEA MÁS
@@ -95,13 +95,13 @@ const TXT = {
     irReponer: 'Devolver los mundos a su posición original',
     chat: 'Chat', wallet: 'Veta Wallet', pay: 'MyTokenPay',
     gid: 'Genesis ID', ajustes: 'Ajustes',
-    aubank: 'AUBANK', oxch: 'Ordenexchange', mas: 'más apps',
+    aucorp: 'AuCorp', oxch: 'Ordenexchange', mas: 'más apps',
     irChat: 'Abrir el chat de Orden Global',
     irWallet: 'Abrir Veta Wallet, tu billetera',
     irPay: 'Abrir MyTokenPay, tu negocio',
     irGid: 'Abrir tu Genesis ID',
     irAjustes: 'Abrir los ajustes',
-    irAubank: 'AUBANK, disponible pronto',
+    irAucorp: 'AuCorp, disponible pronto en la app',
     irOxch: 'Ordenexchange, disponible pronto',
     irMas: 'Conocer las próximas apps del ecosistema',
     pronto: 'PRONTO',
@@ -136,13 +136,13 @@ const TXT = {
     irReponer: 'Return the worlds to their original places',
     chat: 'Chat', wallet: 'Veta Wallet', pay: 'MyTokenPay',
     gid: 'Genesis ID', ajustes: 'Settings',
-    aubank: 'AUBANK', oxch: 'Ordenexchange', mas: 'more apps',
+    aucorp: 'AuCorp', oxch: 'Ordenexchange', mas: 'more apps',
     irChat: 'Open the Orden Global chat',
     irWallet: 'Open Veta Wallet, your wallet',
     irPay: 'Open MyTokenPay, your business',
     irGid: 'Open your Genesis ID',
     irAjustes: 'Open settings',
-    irAubank: 'AUBANK, coming soon',
+    irAucorp: 'AuCorp, coming soon in the app',
     irOxch: 'Ordenexchange, coming soon',
     irMas: 'See the upcoming ecosystem apps',
     pronto: 'SOON',
@@ -169,7 +169,7 @@ const TXT = {
 
 // ── LOS MUNDOS ──────────────────────────────────────────────────────────
 // Cinco vivos (Chat, Veta Wallet, MyTokenPay, Genesis ID, Ajustes), dos
-// dormidos con letrero PRONTO (AUBANK, Ordenexchange) y el «+» que anuncia
+// dormidos con letrero PRONTO (AuCorp, Ordenexchange) y el «+» que anuncia
 // que vendrán más.
 // `x` e `y` son fracciones del tablero, no píxeles: la constelación se ve
 // igual en un teléfono estrecho y en una tableta. La billetera va en el
@@ -242,16 +242,25 @@ const MUNDOS = [
     ritmo: 3800, flota: 4.5, retraso: 2100,
   },
   // ── LOS QUE VIENEN ────────────────────────────────────────────────────
-  // AUBANK y Ordenexchange ya son parte de la red — se ven, laten, cuelgan
+  // AuCorp y Ordenexchange ya son parte de la red — se ven, laten, cuelgan
   // del núcleo — pero todavía no se entra: `pronto` hace tres cosas a la
   // vez: el chip PRONTO sobre la esfera, el latido más tenue (un mundo
   // dormido no puede brillar como uno despierto) y que el toque abra la
   // hoja de anuncio en vez de navegar. Que se VEAN antes de existir es el
   // mensaje: el ecosistema no es una lista cerrada, es algo que crece.
   {
-    // AUBANK late en un oro viejo, apagado: es banca, familia del oro de la
+    // AuCorp late en un oro viejo, apagado: es banca, familia del oro de la
     // billetera, pero sin competirle el brillo mientras duerme.
-    id: 'aubank', icono: 'card', x: 0.50, y: 0.12, tam: 0.60, pronto: true,
+    //
+    // Se llamaba AUBANK cuando esta esfera se dibujo. El nombre cambio con la
+    // empresa y aqui no queda ni rastro del viejo: dos nombres para una misma
+    // casa es como se pierde la gente.
+    //
+    // Sigue en `pronto` A PROPOSITO, aunque AuCorp ya abrio en la web: el
+    // puente de SSO de ESTA app todavia no esta cableado, y una esfera que
+    // navega a un sitio donde hay que volver a identificarse es peor que una
+    // que dice honestamente «todavia no».
+    id: 'aucorp', icono: 'card', x: 0.50, y: 0.12, tam: 0.60, pronto: true,
     grad: ['#E8E0C8', '#A5936A', '#463B24'], halo: '#CBBB8C', tinta: '#241D0E',
     lente: '#141007', zoom: 0,
     ritmo: 4300, flota: 3.5, retraso: 1200,
@@ -1464,9 +1473,9 @@ function HojaInfo({ hoja, t, onCerrar }) {
     ? [!hayVoz() && t.previaFalta.voz, !hayOcr() && t.previaFalta.ocr].filter(Boolean)
     : [];
   const nombre = esPrevia ? t.previaTit
-    : esMas ? t.masTitulo : (hoja === 'aubank' ? t.aubank : t.oxch);
+    : esMas ? t.masTitulo : (hoja === 'aucorp' ? t.aucorp : t.oxch);
   const cuerpo = esPrevia ? (faltan.length ? t.previaCuerpo : t.previaCuerpoOk)
-    : esMas ? t.masCuerpo : t.prontoCuerpo.replace('{app}', hoja === 'aubank' ? t.aubank : t.oxch);
+    : esMas ? t.masCuerpo : t.prontoCuerpo.replace('{app}', hoja === 'aucorp' ? t.aucorp : t.oxch);
   const subir = anim.interpolate({ inputRange: [0, 1], outputRange: [280, 0] });
 
   return (
@@ -1538,7 +1547,7 @@ export default function Nucleo({ nav }) {
   const [movidos, setMovidos] = useState(false);   // ¿hay algo fuera de su sitio?
   const [reponer, setReponer] = useState(0);       // contador de "vuelve a tu sitio"
   const [enMano, setEnMano] = useState(null);      // qué mundo lleva el dedo
-  const [hoja, setHoja] = useState(null);          // qué anuncio está abierto (aubank/oxch/mas)
+  const [hoja, setHoja] = useState(null);          // qué anuncio está abierto (aucorp/oxch/mas)
   const [usos, setUsos] = useState(null);          // contador de aperturas por mundo
   const [sinLeer, setSinLeer] = useState(0);       // chats sin leer, para el globo
 
@@ -1794,7 +1803,7 @@ export default function Nucleo({ nav }) {
 
   const ETIQ = {
     chat: t.chat, wallet: t.wallet, pay: t.pay, gid: t.gid, ajustes: t.ajustes,
-    aubank: t.aubank, oxch: t.oxch, mas: t.mas,
+    aucorp: t.aucorp, oxch: t.oxch, mas: t.mas,
   };
   // La etiqueta de accesibilidad LLEVA el dato vivo: quien navega con el
   // lector oye "abrir el chat, 3 sin leer" — el globo no es solo visual.
@@ -1804,7 +1813,7 @@ export default function Nucleo({ nav }) {
     wallet: t.irWallet, pay: t.irPay,
     gid: t.irGid + (kycPendiente ? `, ${t.kycPend}` : ''),
     ajustes: t.irAjustes,
-    aubank: t.irAubank, oxch: t.irOxch, mas: t.irMas,
+    aucorp: t.irAucorp, oxch: t.irOxch, mas: t.irMas,
   };
 
   // El diámetro sale del lado más corto del tablero: en un teléfono bajo las

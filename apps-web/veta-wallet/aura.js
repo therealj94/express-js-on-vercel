@@ -879,21 +879,21 @@ const AURA = (() => {
   }
 
   /* COMO SE PRONUNCIA LA CASA. Las marcas escritas no se leen solas:
-     «AU-RA» sale deletreado, «AUBANK» masticado y «Ordenexchange» de
+     «AU-RA» sale deletreado, «AuCorp» masticado y «Ordenexchange» de
      corrido. Este mapa es SOLO para la boca — el texto en pantalla y la
      clave del audio grabado siguen siendo los originales. El gemelo de este
      mapa vive en el guion de grabacion (sacar-frases-aura.mjs): si cambia
      uno, cambia el otro. */
   const DICCION = {
     es: [
-      [/AU-RA/g, 'Aura'], [/AUBANK/g, 'Au Banc'], [/Ordenexchange/g, 'Orden Exchéinch'],
+      [/AU-RA/g, 'Aura'], [/AuCorp/gi, 'Au Corp'], [/Ordenexchange/g, 'Orden Exchéinch'],
       [/PULSE CHAT/g, 'Puls Chat'], [/MyTokenPay/g, 'Mai Token Péi'],
       [/Veta Wallet/g, 'Veta Wálet'], [/ordenscan/g, 'orden scan'],
       [/Genesis ID/g, 'Génesis Aidí'], [/Layer 1/g, 'Léyer Uan'],
       [/Hyperledger Besu/g, 'Jaiper Ledyer Besu'], [/QBFT/g, 'Cu Be Efe Te'],
     ],
     en: [
-      [/AU-RA/g, 'Aura'], [/AUBANK/g, 'A U Bank'], [/Ordenexchange/g, 'Orden Exchange'],
+      [/AU-RA/g, 'Aura'], [/AuCorp/gi, 'Au Corp'], [/Ordenexchange/g, 'Orden Exchange'],
       /* ORIGEN es un nombre español y se dice en español, también cuando el
          resto de la frase va en inglés: «oh-REE-hen». «Oreehen» hacía que la
          voz inglesa arrancara con «or-», que es justo lo que no es. Se separa

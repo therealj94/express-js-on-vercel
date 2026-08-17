@@ -127,13 +127,14 @@ window.AURA_SABER = [
     "id": "pronto",
     "tema": "Lo que viene",
     "palabras": [
+      "aucorp",
       "aubank",
       "ordenexchange",
       "pronto",
       "coming"
     ],
-    "es": "AUBANK y Ordenexchange ya laten en el Núcleo pero todavía no abren: son lo que viene. El ecosistema no es una lista cerrada — crece.",
-    "en": "AUBANK and Ordenexchange already pulse in the Núcleo but are not open yet: they are what comes next. The ecosystem is not a closed list — it grows."
+    "es": "AuCorp y Ordenexchange ya abrieron los dos: las cuentas en moneda local y la casa de cambio, con esta misma cuenta. AuCorp es la que antes se llamaba AUBANK — cambió el nombre, no la casa. El ecosistema no es una lista cerrada — crece.",
+    "en": "AuCorp and Ordenexchange are both open now: local-currency accounts and the exchange, with this same account. AuCorp is what used to be called AUBANK — the name changed, not the house. The ecosystem is not a closed list — it grows."
   },
   {
     "id": "referencia",

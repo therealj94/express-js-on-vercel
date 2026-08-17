@@ -30,10 +30,16 @@ const VETA = (() => {
      caido: enlazarlo era mandar a la gente a un login que no puede funcionar. */
   const URL_MYTOKENPAY = window.OG_MYTOKENPAY || 'https://main.d2dr8sh34hni4c.amplifyapp.com';
   /* La casa de cambio. Adonde vuelve el circuito de #sso-ordenex (ver
-     ordenexVolver) y adonde lleva su esfera del Nucleo. Se puede pisar desde
+     volverConLlave) y adonde lleva su esfera del Nucleo. Se puede pisar desde
      fuera —ONX_URL— igual que el API y la cadena, para ensayar el viaje de
      ida y vuelta contra una Ordenex de pruebas sin tocar la de verdad. */
   const URL_ORDENEX = window.ONX_URL || 'https://www.ordenexchange.link';
+  /* AuCorp — el lado FIAT del ecosistema. Se llamaba AUBANK cuando era solo
+     una esfera dormida en el Nucleo; el nombre cambio con la empresa, y el
+     viejo no sobrevive en ningun sitio porque dos nombres para una misma casa
+     es como se pierde la gente. Mismo circuito que Ordenex: la web de AuCorp
+     manda a /#sso-aucorp y aucorpVolver devuelve a la persona con su llave. */
+  const URL_AUCORP = window.AUC_URL || 'https://www.aucorp.io';
 
   const $ = s => document.querySelector(s);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
@@ -520,15 +526,15 @@ const VETA = (() => {
          login es un gesto del dedo, asi que el audio puede arrancar solo.
          La unica excepcion es la frase semilla recien acunada: doce palabras
          que anotar ganan a cualquier bienvenida. */
-      /* La intencion de Ordenexchange se retoma apenas hay sesion: esta
+      /* La intencion de la casa que mando a esta persona se retoma apenas hay sesion: esta
          persona vino de paso, no a pasear — y la bienvenida de AU-RA se calla
          en este viaje, que trece segundos de orbe delante de alguien que solo
          cruza el pasillo son un peaje. La unica excepcion es la cuenta recien
          creada: sin identidad verificada Genesis no va a dar el token, y sus
          doce palabras de respaldo ganan a cualquier redireccion. */
-      const volviendoAOrdenex = ssoOrdenexPendiente && !semillaNueva;
-      ssoOrdenexPendiente = false;
-      if (volviendoAOrdenex) ordenexVolver();
+      const volviendoACasa = semillaNueva ? null : ssoDestino;
+      ssoDestino = null;
+      if (volviendoACasa) volverConLlave(volviendoACasa);
       // Y el cobro que esperaba en la puerta: DESPUES de la cartera, para que
       // la moneda exista cuando se intente elegir.
       if (cobroPendiente) {
@@ -3154,14 +3160,17 @@ const VETA = (() => {
     { id: 'scan', x: 50, y: 12, tam: 0.60, fuera: 'https://ordenscan.com',
       grad: ['#D6F3EC', '#74E6C8', '#1B5A50'], halo: '#74E6C8', lente: '#07211D',
       ico: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7 9h10M7 13h6M7 17h8"/>' },
-    { id: 'aubank', x: 50, y: 86, tam: 0.60, pronto: true,
+    /* AuCorp ya abre: la esfera deja el «pronto» igual que hizo Ordenex. Sigue
+       en oro viejo apagado —es la banca, familia del oro de la casa— pero
+       ahora es una puerta. */
+    { id: 'aucorp', x: 50, y: 86, tam: 0.60, fuera: URL_AUCORP,
       grad: ['#E8E0C8', '#A5936A', '#463B24'], halo: '#CBBB8C', lente: '#141007',
       ico: '<rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20M6 15h4"/>' },
     /* Ordenexchange ya abre: la esfera deja el «pronto» y se vuelve una
        puerta de verdad, con el mismo patron que ORDENSCAN — un destino de
        fuera. Se abre la PORTADA y no un enlace con token: el SSO arranca del
        lado de Ordenex (su boton de entrar manda a #sso-ordenex y este
-       arranque devuelve a la gente ya con su llave — ver ordenexVolver), y
+       arranque devuelve a la gente ya con su llave — ver volverConLlave), y
        acuñar un token de paso por cada mirada al mercado seria gastar llaves
        que nadie pidio. */
     { id: 'oxch', x: 86, y: 49, tam: 0.52, fuera: URL_ORDENEX,
@@ -3187,7 +3196,7 @@ const VETA = (() => {
     /* LA CAJA SEGURA. La constelación no ocupa el cuadro entero: arriba vive
        el saludo y abajo el sello de la cadena con los botones del recorrido.
        Sin este margen, las esferas de la fila de abajo —Genesis ID, Ajustes,
-       AUBANK— caían DEBAJO de esa banda y en un teléfono chico no se podían
+       AuCorp (entonces AUBANK)— caían DEBAJO de esa banda y en un teléfono chico no se podían
        ni tocar: medido con elementFromPoint en el centro de cada botón, a
        1280x860, 390x844, 360x740 y 320x568.
 
@@ -3316,7 +3325,7 @@ const VETA = (() => {
     /* Y aun así el número a ojo se equivocaba, porque el sello NO mide siempre
        lo mismo: crece con el idioma y con lo que tenga que decir ese día. Con
        saldo en la cartera se estiraba lo justo para comerse el nombre de
-       AUBANK en un 360x740 —el centro del botón seguía libre, pero el nombre
+       AuCorp (entonces AUBANK) en un 360x740 —el centro del botón seguía libre, pero el nombre
        quedaba debajo del sello y no se podía leer—. Ningún número escrito a
        mano acierta con algo que cambia de tamaño solo; se mide y se reparte lo
        que quede. Y nunca hacia abajo: la medida solo puede subir el suelo,
@@ -3505,22 +3514,26 @@ const VETA = (() => {
     setTimeout(abrir, 240);
   }
 
-  // ── ORDENEXCHANGE · la vuelta con la llave puesta ─────────────────────────
+  // ── LAS CASAS DEL ECOSISTEMA · la vuelta con la llave puesta ──────────────
 
-  /* La casa de cambio no tiene contraseñas: se entra con ESTA cuenta. Su web
-     manda a la gente a /#sso-ordenex y esto es el viaje de vuelta: con la
-     sesion viva se le pide al backend un token de paso de Genesis
-     (POST /genesis/sso/token — la clave de API de Genesis no baja jamas al
-     navegador) y se devuelve a la persona a Ordenex con el token en el hash.
-     Ese token vale minutos y solo dice QUIEN SOS: la sesion de la wallet, el
-     Bearer y la contraseña se quedan aqui.
+  /* Ni Ordenexchange ni AuCorp tienen contraseñas: se entra con ESTA cuenta.
+     Su web manda a la gente a /#sso-ordenex o /#sso-aucorp y esto es el viaje
+     de vuelta: con la sesion viva se le pide al backend un token de paso de
+     Genesis (POST /genesis/sso/token — la clave de API de Genesis no baja
+     jamas al navegador) y se devuelve a la persona a su casa con el token en
+     el hash. Ese token vale minutos y solo dice QUIEN SOS: la sesion de la
+     wallet, el Bearer y la contraseña se quedan aqui.
 
-     Sin sesion, la intencion queda anotada en esta bandera y la retoma
+     Sin sesion, el destino queda anotado aqui y lo retoma
      enviarAcceso en cuanto la persona entra — igual que un cobro (#pagar)
      espera en la puerta a que haya con que atenderlo. */
-  let ssoOrdenexPendiente = false;
-  /* El cobro entrante (#pagar…) sobrevive al login, igual que la intencion de
-     Ordenex. Sin esto se perdia: quien llegaba SIN sesion iba a la puerta, y
+  /* Antes esto era un booleano «viene de Ordenex». Con AuCorp abriendo por el
+     mismo circuito, un segundo booleano habria sido dos caminos paralelos que
+     se separan en cuanto alguien arregla uno solo. Asi que guarda el DESTINO:
+     una casa nueva del ecosistema solo agrega una linea a CASAS_SSO. */
+  let ssoDestino = null;
+  /* El cobro entrante (#pagar…) sobrevive al login, igual que el destino de
+     SSO. Sin esto se perdia: quien llegaba SIN sesion iba a la puerta, y
      al entrar `arrancar` ya habia terminado — la direccion nunca se rellenaba
      y la pantalla de enviar salia en blanco. Es el fallo que se veia al tocar
      «Depositar» desde Ordenex sin la wallet abierta. */
@@ -3597,14 +3610,22 @@ const VETA = (() => {
     }
   }
 
-  async function ordenexVolver() {
-    ssoOrdenexPendiente = false;
+  /* Las casas que entran con la llave de esta cuenta. El hash que mandan y
+     adonde vuelven. Una casa nueva es una linea aqui y nada mas. */
+  const CASAS_SSO = {
+    '#sso-ordenex': () => URL_ORDENEX,
+    '#sso-aucorp': () => URL_AUCORP,
+  };
+
+  async function volverConLlave(destino) {
+    ssoDestino = null;
+    if (!destino) return;
     try {
       const d = await pedir('/genesis/sso/token', { metodo: 'POST' });
       if (!d?.token) throw new Error(t('err.sesion'));
-      /* En la MISMA pestaña: Ordenex mando a su gente de paso y la espera de
+      /* En la MISMA pestaña: la casa mando a su gente de paso y la espera de
          vuelta — abrir otra dejaria esta huerfana a media entrada. */
-      location.href = URL_ORDENEX + '/#sso=' + encodeURIComponent(d.token);
+      location.href = destino + '/#sso=' + encodeURIComponent(d.token);
     } catch (e) {
       /* El 403 no es un tropiezo: es Genesis diciendo que sin identidad
          verificada no hay token. Se dice con la frase de siempre y se abre la
@@ -4910,7 +4931,7 @@ const VETA = (() => {
         og: 'Orden Global es un ecosistema completo: tu dinero (Veta Wallet), tu gente (PULSE CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), todos conectados sobre nuestra propia cadena. Una cuenta, todas las puertas.',
         comision: 'La comisión de red se paga siempre en ORIGEN, también cuando enviás otro token, y es mínima: nuestra cadena es propia. El equivalente lo ves antes de confirmar cualquier envío.',
         remesas: 'Con remesas ves cuánto llega del otro lado después de la comisión y del cambio, en nueve países. Te abro el calculador.',
-        pronto: 'Ordenexchange ya abrió: es la casa de cambio del ecosistema, y se entra con esta misma cuenta desde su esfera del Núcleo. AUBANK late pero todavía no abre. El ecosistema no es una lista cerrada — crece.',
+        pronto: 'Ordenexchange y AuCorp ya abrieron: la casa de cambio y las cuentas en moneda local, las dos con esta misma cuenta desde su esfera del Núcleo. AuCorp es la que antes se llamaba AUBANK — cambió el nombre, no la casa. El ecosistema no es una lista cerrada — crece.',
       },
       teEscucho: 'Te escucho…',
       ayuda: 'Podés pedirme, con la voz o escribiendo:\n\n· «Llevame a cobrar» — te abro cualquier parte\n· «Envía 15 a María» — te dejo el envío listo (firmás vos)\n· «¿Cuánto tengo?» — tu saldo\n· «¿A cuánto está el ORIGEN?» — el precio de hoy\n· «Cobrame 25» — te dejo el cobro con su código\n· «Resumen de la semana» — qué se movió estos días\n· «¿Estoy verificado?» — cómo va tu Genesis ID\n· «¿Qué es ORIGEN?» — te explico el ecosistema\n· «Buscá cafeterías» — te encuentro negocios\n· «Hacé el recorrido» — te lo enseño todo\n\nY si no me entiende el micrófono, escribime: leo igual de bien.',
@@ -4921,7 +4942,7 @@ const VETA = (() => {
         { id: 'chat', k: 'TU GENTE', t: 'PULSE CHAT', p: 'Solo gente verificada, y el dinero viaja dentro de la conversación, con comprobante en la cadena.' },
         { id: 'pay', k: 'TU NEGOCIO', t: 'MyTokenPay', p: 'La caja registradora del ecosistema: cobrás con un código y tu negocio crece acá adentro.' },
         { id: 'gid', k: 'TU IDENTIDAD', t: 'Genesis ID', p: 'Te verificás una sola vez y todo Orden Global te reconoce. Es la llave que abre las demás esferas.' },
-        { id: 'aubank', k: 'Y ESTO CRECE', t: 'Lo que viene', p: 'Ordenexchange ya abrió — la casa de cambio, con tu misma cuenta. AUBANK late aunque no abre todavía. Y yo soy AU-RA: cada versión voy a saber hacer más. Este ecosistema crece con vos.' },
+        { id: 'aucorp', k: 'Y ESTO CRECE', t: 'Ya abrieron las dos', p: 'Ordenexchange es la casa de cambio y AuCorp son tus cuentas en moneda local — dólares, lempiras, euros. Las dos con tu misma cuenta. AuCorp es la que antes se llamaba AUBANK: cambió el nombre, no la casa. Y yo soy AU-RA: cada versión voy a saber hacer más.' },
       ],
     },
     en: {
@@ -5016,7 +5037,7 @@ const VETA = (() => {
         og: 'Orden Global is a complete ecosystem: your money (Veta Wallet), your people (PULSE CHAT), your business (MyTokenPay) and your identity (Genesis ID), all wired over our own chain. One account, every door.',
         comision: 'The network fee is always paid in ORIGEN, even when you send another token, and it is minimal: the chain is ours. You see the equivalent before confirming any transfer.',
         remesas: 'Remittances shows how much arrives on the other side after fees and exchange, in nine countries. Opening the calculator.',
-        pronto: 'Ordenexchange is open now: the ecosystem\u2019s exchange, and you get in with this same account from its sphere in the Nucleus. AUBANK pulses but is not open yet. The ecosystem is not a closed list — it grows.',
+        pronto: 'Ordenexchange and AuCorp are both open now: the exchange and your local-currency accounts, both with this same account from their sphere in the Nucleus. AuCorp is what used to be called AUBANK — the name changed, not the house. The ecosystem is not a closed list — it grows.',
       },
       teEscucho: 'Listening…',
       ayuda: 'You can ask me, by voice or typing:\n\n· “Take me to charge” — I open any part\n· “Send 15 to Maria” — I leave the transfer ready (you sign)\n· “How much do I have?” — your balance\n· “What is ORIGEN at?” — the price today\n· “Charge 25” — I leave the charge ready with its code\n· “Summary of this week” — what moved these days\n· “Am I verified?” — how your Genesis ID is doing\n· “What is ORIGEN?” — I explain the ecosystem\n· “Find coffee shops” — I find businesses\n· “Take the tour” — I show you everything\n\nAnd if the microphone misses you, type: I read just as well.',
@@ -5027,7 +5048,7 @@ const VETA = (() => {
         { id: 'chat', k: 'YOUR PEOPLE', t: 'PULSE CHAT', p: 'Verified people only, and money travels inside the conversation, with a receipt on the chain.' },
         { id: 'pay', k: 'YOUR BUSINESS', t: 'MyTokenPay', p: 'The ecosystem’s cash register: you charge with a code and your business grows in here.' },
         { id: 'gid', k: 'YOUR IDENTITY', t: 'Genesis ID', p: 'Verify once and all of Orden Global recognises you. It is the key that opens the other spheres.' },
-        { id: 'aubank', k: 'AND THIS GROWS', t: 'What is coming', p: 'Ordenexchange is open now — the exchange, with your same account. AUBANK pulses though it is not open yet. And I am AU-RA: every version I will know how to do more. This ecosystem grows with you.' },
+        { id: 'aucorp', k: 'AND THIS GROWS', t: 'Both are open', p: 'Ordenexchange is the exchange and AuCorp holds your local-currency accounts — dollars, lempiras, euros. Both with your same account. AuCorp is what used to be called AUBANK: the name changed, not the house. And I am AU-RA: every version I will know how to do more.' },
       ],
     },
   };
@@ -5235,7 +5256,7 @@ const VETA = (() => {
       [/au-?ra|quien sos|quien eres|who are you|vos que|tu que/, T.con.aura],
       [/orden global|ecosistema|ecosystem/, T.con.og],
       [/comision|fee|gas/, T.con.comision],
-      [/aubank|ordenexchange|pronto|coming/, T.con.pronto],
+      [/aucorp|aubank|ordenexchange|pronto|coming/, T.con.pronto],
     ];
     for (const [re, r] of SABE) if (re.test(d)) return r;
     return null;
@@ -5659,8 +5680,8 @@ const VETA = (() => {
         velo = `radial-gradient(circle at ${enAncho(m.x)}% ${enCaja(m.y)}%, rgba(1,7,8,0) 90px, rgba(1,7,8,.82) 300px)`;
       }
       AURA.latirHacia(p.id, 6);
-      // AUBANK y Ordenexchange comparten parada: laten los dos
-      if (p.id === 'aubank') AURA.latirHacia('oxch', 4);
+      // AuCorp y Ordenexchange comparten parada: laten los dos
+      if (p.id === 'aucorp') AURA.latirHacia('oxch', 4);
     }
     el.innerHTML = `
       <div class="velo" style="background:${velo}"></div>
@@ -6410,11 +6431,11 @@ const VETA = (() => {
     const invEntrante = location.hash.startsWith('#chat') ? leerInvitacion(location.hash) : null;
     if (invEntrante) { vistaActual = 'chat'; chatPendiente = invEntrante; }
 
-    /* #sso-ordenex es Ordenexchange pidiendo la llave (ver ordenexVolver):
-       una intencion que llega de fuera, no una ruta — se consume aqui y no
-       entra al historial. */
-    const pideSsoOrdenex = location.hash === '#sso-ordenex';
-    ssoOrdenexPendiente = pideSsoOrdenex;
+    /* #sso-ordenex y #sso-aucorp son las casas del ecosistema pidiendo la
+       llave (ver volverConLlave): una intencion que llega de fuera, no una
+       ruta — se consume aqui y no entra al historial. */
+    const casaSso = CASAS_SSO[location.hash] ? CASAS_SSO[location.hash]() : null;
+    ssoDestino = casaSso;
 
     /* Y si la direccion no es una intencion sino una RUTA —alguien guardo
        #billetera en favoritos, o recarga estando en el chat— se entra por
@@ -6446,13 +6467,13 @@ const VETA = (() => {
 
          Sin gesto no hay permiso de audio: sale igual, con el orbe pidiendo
          un toque para hablar. Tocar el orbe ES el gesto. */
-      /* Quien viene de paso hacia Ordenex no se queda: se le acuña la llave y
+      /* Quien viene de paso hacia otra casa no se queda: se le acuña la llave y
          se lo devuelve. La app queda pintada detras por si el viaje fracasa —
          mejor caer en el Nucleo que en una pantalla en blanco — y el ritual
          de AU-RA no se estrena en un pasillo: queda para una visita de
          verdad. */
-      if (pideSsoOrdenex) ordenexVolver();
-      if (!yaSePresento() && !pideSsoOrdenex) {
+      if (casaSso) volverConLlave(casaSso);
+      if (!yaSePresento() && !casaSso) {
         marcarPresentada();
         setTimeout(() => auraBienvenida(false), 500);
       }
@@ -6462,7 +6483,7 @@ const VETA = (() => {
     }
     /* Sin sesion no hay identidad que verificar todavia: al que venia a eso se
        le abre el acceso, no la portada, para que no tenga que buscar la puerta. */
-    else ir(pideVerificar || cobroEntrante || pideSsoOrdenex ? 'acceso' : 'bienvenida', 'entrar');
+    else ir(pideVerificar || cobroEntrante || casaSso ? 'acceso' : 'bienvenida', 'entrar');
   }
   document.addEventListener('DOMContentLoaded', arrancar);
 

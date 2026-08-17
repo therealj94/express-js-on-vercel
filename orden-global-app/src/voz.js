@@ -18,7 +18,7 @@ try {
 let turno = 0; // habla nueva mata a la anterior, sin reportarlo como error
 
 /* CÓMO SE DICEN LOS NOMBRES DE LA CASA.
-   Una voz de sistema lee «AU-RA» deletreando, «AUBANK» como una palabra sola y
+   Una voz de sistema lee «AU-RA» deletreando, «AuCorp» como una palabra sola y
    «ORIGEN» en inglés arrancando con «or-», que es justo lo que no es: el nombre
    es español y se dice oh-REE-hen también en medio de una frase en inglés.
    Nuestros nombres son lo primero que oye alguien; decirlos mal es presentarse
@@ -30,14 +30,14 @@ let turno = 0; // habla nueva mata a la anterior, sin reportarlo como error
    llamará distinto según por dónde se entre. */
 const DICCION = {
   es: [
-    [/AU-RA/g, 'Aura'], [/AUBANK/g, 'Au Banc'], [/Ordenexchange/g, 'Orden Exchéinch'],
+    [/AU-RA/g, 'Aura'], [/AuCorp/gi, 'Au Corp'], [/Ordenexchange/g, 'Orden Exchéinch'],
     [/PULSE CHAT/g, 'Puls Chat'], [/MyTokenPay/g, 'Mai Token Péi'],
     [/Veta Wallet/g, 'Veta Wálet'], [/ORDENSCAN/g, 'orden scan'], [/ordenscan/g, 'orden scan'],
     [/Genesis ID/g, 'Génesis Aidí'], [/Layer 1/g, 'Léyer Uan'],
     [/Hyperledger Besu/g, 'Jaiper Ledyer Besu'], [/QBFT/g, 'Cu Be Efe Te'],
   ],
   en: [
-    [/AU-RA/g, 'Aura'], [/AUBANK/g, 'A U Bank'], [/Ordenexchange/g, 'Orden Exchange'],
+    [/AU-RA/g, 'Aura'], [/AuCorp/gi, 'Au Corp'], [/Ordenexchange/g, 'Orden Exchange'],
     [/ORIGEN/g, 'oh REE hen'],
     [/PULSE CHAT/g, 'Pulse Chat'], [/MyTokenPay/g, 'My Token Pay'],
     [/Genesis ID/g, 'Genesis I D'], [/Layer 1/g, 'Layer One'],
