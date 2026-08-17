@@ -584,7 +584,19 @@ const BANCA = (() => {
     }
   }
 
-  const ir = (v) => { vista = v; recado = null; datos.limite = null; sellos = {}; pintar(); cargar(); };
+  /* Cambiar de pantalla limpia el aviso viejo… salvo el que se trae puesto.
+     Antes no era así y el acuse de una transferencia se borraba en el mismo
+     gesto que lo mostraba: el dinero salía bien y la persona no veía ni una
+     palabra confirmándolo. El aviso pertenece a la pantalla a la que se LLEGA,
+     no a la que se deja. */
+  const ir = (v, mensaje = null, malo = false) => {
+    vista = v;
+    recado = mensaje ? { texto: mensaje, malo } : null;
+    datos.limite = null;
+    sellos = {};
+    pintar();
+    cargar();
+  };
 
   // ── los formularios ───────────────────────────────────────────────────────
   const valores = (form) => {
@@ -607,13 +619,11 @@ const BANCA = (() => {
     try {
       if (nombre === 'nueva') {
         await pedir('/cuentas', { metodo: 'POST', cuerpo: { moneda: v.moneda } });
-        avisar(`Tu cuenta en ${v.moneda} está abierta.`);
-        return ir('cuentas');
+        return ir('cuentas', `Tu cuenta en ${v.moneda} está abierta.`);
       }
       if (nombre === 'destino') {
         await pedir('/beneficiarios', { metodo: 'POST', cuerpo: v });
-        avisar('Destino guardado.');
-        return ir('destinos');
+        return ir('destinos', 'Destino guardado.');
       }
       if (nombre === 'transferir') {
         const b = (datos.beneficiarios || []).find((x) => x.id === v.beneficiario);
@@ -623,24 +633,22 @@ const BANCA = (() => {
         // El sello se quema DESPUÉS de que salió bien: si hubiera fallado, el
         // reintento tiene que traer el mismo.
         delete sellos.transferir;
-        avisar(`Enviaste ${r.monto.texto} ${r.moneda} a ${b.alias}.`);
-        return ir('cuentas');
+        return ir('cuentas', `Enviaste ${r.monto.texto} ${r.moneda} a ${b.alias}.`);
       }
       if (nombre === 'cambiar') {
         const r = await pedir('/movimientos/cambiar', { metodo: 'POST', cuerpo: {
           ref: selloDe('cambiar'), de: v.de, a: v.a, monto: v.monto } });
         delete sellos.cambiar;
-        avisar(`Cambiaste ${r.entrega.texto} ${r.entrega.moneda} por ${r.recibe.texto} ${r.recibe.moneda}.`);
-        return ir('cuentas');
+        return ir('cuentas',
+          `Cambiaste ${r.entrega.texto} ${r.entrega.moneda} por ${r.recibe.texto} ${r.recibe.moneda}.`);
       }
       if (nombre === 'retirar') {
         if (!v.beneficiario) throw new Error('Elegí a qué cuenta mandarlo.');
         const r = await pedir('/solicitudes/retiro', { metodo: 'POST', cuerpo: {
           ref: selloDe('retirar'), moneda: v.moneda, monto: v.monto, beneficiario: v.beneficiario } });
         delete sellos.retirar;
-        avisar(`Pediste retirar ${r.solicitud.neto.texto} ${r.solicitud.moneda}. `
+        return ir('mover', `Pediste retirar ${r.solicitud.neto.texto} ${r.solicitud.moneda}. `
           + 'El dinero quedó apartado hasta que se pague.');
-        return ir('mover');
       }
     } catch (e) {
       // El límite trae sus números: se los enseñamos, que son suyos.
@@ -695,7 +703,7 @@ const BANCA = (() => {
       // hecha. Se pregunta.
       if (!confirm('¿Quitar este destino?')) return;
       pedir('/beneficiarios/' + encodeURIComponent(t.dataset.borrar), { metodo: 'DELETE' })
-        .then(() => { avisar('Destino quitado.'); ir('destinos'); })
+        .then(() => ir('destinos', 'Destino quitado.'))
         .catch((e) => avisar(e.message, true));
     }
   });

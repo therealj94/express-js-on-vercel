@@ -41,8 +41,16 @@ const VETA = (() => {
      manda a /#sso-aucorp y volverConLlave devuelve a la persona con su llave.
      Apunta a /banca y no a la portada: quien llega desde el Nucleo va a SUS
      cuentas, no a leer quienes somos. La portada sigue siendo la puerta de
-     quien llega de fuera. */
-  const URL_AUCORP = window.AUC_URL || 'https://www.aucorp.io/banca';
+     quien llega de fuera.
+
+     Y apunta al dominio de AMPLIFY, no a www.aucorp.io, porque hoy ese
+     dominio todavia sirve el WordPress viejo — /banca alli redirige a una
+     pagina de servicios y la persona acabaria en cualquier sitio menos en sus
+     cuentas. Es la misma situacion que MyTokenPay y se resuelve igual: cuando
+     el dominio apunte a la app de Amplify, esta linea vuelve a
+     'https://www.aucorp.io/banca' y nada mas cambia. Mientras tanto, mandar a
+     la gente a una puerta que no existe seria peor que la URL fea. */
+  const URL_AUCORP = window.AUC_URL || 'https://main.d2e55u6ls6v9xt.amplifyapp.com/banca';
 
   const $ = s => document.querySelector(s);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
