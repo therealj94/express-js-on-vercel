@@ -1314,6 +1314,17 @@ const VETA = (() => {
   /* Qué moneda se está enviando. Vive fuera de la vista porque la pantalla se
      redibuja entera al elegir otra y hay que acordarse de cuál era. */
   let envSim = 'ORIGEN';
+  /* La direccion y la cantidad viven AQUI, no solo en el DOM.
+     El fallo que esto arregla: llegar desde Ordenex rellenaba los campos a
+     mano DESPUES de pintar, y cualquier repintado posterior —la cartera que
+     termina de cargar y refresca los saldos de las fichas— los dejaba en
+     blanco otra vez. Se veia como «me lleva a la wallet pero no sale la
+     direccion»: la moneda si quedaba elegida (eso es estado del modulo) y la
+     direccion no (eso era estado del DOM).
+     Ahora el valor se DIBUJA desde aqui, asi que repintar lo conserva — y de
+     paso tampoco se pierde lo que alguien estaba tecleando. */
+  let envDir = '';
+  let envCant = '';
   const envActivo = () => (cartera || []).find(x => x.s === envSim) || origen();
 
   /* Hasta hoy esta pantalla solo movía ORIGEN: quien tenía ONDK, AUKA o
@@ -1363,7 +1374,8 @@ const VETA = (() => {
       <form onsubmit="return VETA.mandar(event)">
         <div class="campo">
           <label for="env-dir">${t('env.dir')}</label>
-          <input id="env-dir" class="mono" placeholder="0x…" autocomplete="off" spellcheck="false" required>
+          <input id="env-dir" class="mono" placeholder="0x…" autocomplete="off" spellcheck="false" required
+                 value="${esc(envDir)}" oninput="VETA.envDirCambia(this.value)">
           ${contactos.length ? `<select class="env-contactos" onchange="VETA.envContacto(this.value); this.selectedIndex=0">
             <option value="">${t('env.contactos')}</option>
             ${contactos.map(c => `<option value="${esc(c.dir)}">${esc(c.nombre)}</option>`).join('')}
@@ -1373,6 +1385,7 @@ const VETA = (() => {
           <label for="env-monto">${t('env.cant')}</label>
           <div class="env-monto">
             <input id="env-monto" type="text" inputmode="decimal" placeholder="0,00"
+                   value="${esc(envCant)}"
                    oninput="VETA.envMonto()" required>
             <button type="button" class="env-max" onclick="VETA.envMax()">${t('env.max')}</button>
           </div>
@@ -1404,9 +1417,13 @@ const VETA = (() => {
 
   function envContacto(dir) {
     if (!dir) return;
+    envDir = dir;
     const c = $('#env-dir');
     if (c) { c.value = dir; $('#env-monto')?.focus(); }
   }
+
+  // El eco del teclado al estado. Sin esto, repintar borraria lo tecleado.
+  function envDirCambia(v) { envDir = String(v || ''); }
 
   // El maximo de un token es su saldo entero. En ORIGEN no: hay que dejar con
   // que pagar la comision, o el envio se cae despues de haberlo confirmado.
@@ -1414,13 +1431,15 @@ const VETA = (() => {
     const x = envActivo();
     if (!x || x.cant == null) return;
     const tope = x.nativo ? Math.max(0, x.cant - COMISION_RED) : x.cant;
+    envCant = String(Number(tope.toFixed(6)));
     const c = $('#env-monto');
-    if (c) { c.value = String(Number(tope.toFixed(6))); envMonto(); c.focus(); }
+    if (c) { c.value = envCant; envMonto(); c.focus(); }
   }
 
   // El equivalente en dolares, debajo del campo, mientras se escribe. Sin
   // precio no se inventa nada: se deja el hueco vacio.
   function envMonto() {
+    envCant = String($('#env-monto')?.value ?? envCant);
     const d = $('#env-usd');
     if (!d) return;
     const x = envActivo();
@@ -1507,6 +1526,7 @@ const VETA = (() => {
       }
       a.className = 'aviso aviso-ok';
       a.innerHTML = `${t('env.hecho')} ${oro(monto)} ${esc(sim)}.${hash ? ` <span class="mono">${esc(cortaDir(hash))}</span>` : ''}`;
+      envDir = ''; envCant = '';
       $('#env-dir').value = ''; $('#env-monto').value = ''; $('#env-clave').value = '';
       envMonto();
       b.textContent = t('env.revisar');
@@ -3726,10 +3746,12 @@ const VETA = (() => {
   function irACobro({ dir, monto, sim }) {
     if (sim && (cartera || []).some(m => m.s === sim)) envSim = sim;
     pendiente = null;
+    /* Al ESTADO, y despues pintar. Antes era al reves —pintar y poner los
+       valores a mano— y el primer repintado se los llevaba. */
+    envDir = String(dir || '');
+    if (monto) envCant = String(monto);
     vista('enviar');
-    const d = $('#env-dir');
-    if (d) d.value = dir;
-    if (monto && $('#env-monto')) { $('#env-monto').value = monto; envMonto(); }
+    envMonto();
     $('#env-clave')?.focus();
   }
 
@@ -6362,7 +6384,9 @@ const VETA = (() => {
            voltear, olvidar, remMonto, remPais, refrescarTasas, nuevoContacto, borrarContacto,
            enviarA, abrirCamara, cerrarCamara, pedirSecreto, copiarTexto, guardarNombre,
            // Enviar cualquier token, no solo ORIGEN.
-           envElegir, envContacto, envMax, envMonto,
+           envElegir, envContacto, envMax, envMonto, envDirCambia,
+           // Solo para las pruebas: entrar al cobro sin depender del arranque.
+           _irACobro: irACobro,
            // Cobrar: el codigo que ya lleva la cantidad puesta.
            cobElegir, cobEscribir, cobCopiar, cobCompartir,
            // MyTokenPay adentro: directorio, ficha y cobro real.
