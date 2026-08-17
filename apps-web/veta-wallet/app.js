@@ -1531,8 +1531,12 @@ const VETA = (() => {
       envMonto();
       b.textContent = t('env.revisar');
       avisar(t('env.avHecho'));
-      // Si esto es una emergente de Ordenex, se le avisa y la ventana se va.
-      avisarAlQueAbrio({ ok: true, hash, monto: String(monto), activo: pendiente.sim || 'ORIGEN' });
+      /* Si esto es una emergente de Ordenex, se le avisa y la ventana se va.
+         Con `sim`, que se guardo ANTES de vaciar `pendiente` — leerlo de
+         `pendiente` aqui reventaba con «null is not an object», y reventaba
+         DESPUES de que el dinero ya habia salido: el envio se hacia y la
+         pantalla decia error. La peor forma de fallar que hay. */
+      avisarAlQueAbrio({ ok: true, hash, monto: String(monto), activo: sim || 'ORIGEN' });
       cargarCartera().then(() => {
         if (vistaActual !== 'enviar') return;
         const y = envActivo();
@@ -3505,9 +3509,18 @@ const VETA = (() => {
      que se queda abierta despues de firmar es una ventana que alguien vuelve a
      tocar sin querer. */
   function avisarAlQueAbrio(datos) {
-    if (!modoVentana || !quienAbrio) return;
-    try { window.opener.postMessage({ de: 'veta-wallet', ...datos }, quienAbrio); } catch {}
-    setTimeout(() => { try { window.close(); } catch {} }, 1400);
+    /* TODO el cuerpo va en try. Esto corre DESPUES de que el dinero salio: si
+       algo aqui lanza, la pantalla enseña un error para una transferencia que
+       si se hizo, y la persona la manda otra vez. Ya paso una vez —un
+       `pendiente.sim` leido despues de vaciar `pendiente`— y esa clase de
+       fallo no puede depender de que el codigo de abajo este bien escrito. */
+    try {
+      if (!modoVentana || !quienAbrio) return;
+      window.opener.postMessage({ de: 'veta-wallet', ...datos }, quienAbrio);
+      setTimeout(() => { try { window.close(); } catch {} }, 1400);
+    } catch (e) {
+      console.error('[ventana] no se pudo avisar a quien abrio:', e.message);
+    }
   }
 
   async function ordenexVolver() {

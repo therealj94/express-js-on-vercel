@@ -109,6 +109,32 @@ console.log('\n── Y SIGUE PUESTO DESPUÉS DE UN REPINTADO ──────
     'y lo que alguien estaba tecleando tampoco se borra al repintar', v2 || '(SE BORRÓ)');
 }
 
+console.log('\n── DESPUES DE ENVIAR, NADA PUEDE LANZAR ──────────────────────');
+{
+  /* Esto corre cuando el dinero YA SALIO. Si algo aqui lanza, la pantalla
+     enseña un error para una transferencia que si se hizo — y la persona la
+     manda otra vez. Ya paso: un `pendiente.sim` leido despues de vaciar
+     `pendiente`. La guarda no puede ser «acordarse»: el cuerpo entero va en
+     try, y eso se comprueba. */
+  const src = await readFile(new URL('./veta-wallet/app.js', import.meta.url), 'utf8');
+  const cuerpo = src.match(/function avisarAlQueAbrio\(datos\)\s*\{[\s\S]*?\n  \}/)[0];
+  decir(/try \{[\s\S]*postMessage[\s\S]*\} catch/.test(cuerpo),
+    'el aviso a la ventana va entero dentro de un try');
+  /* La lectura `const sim = pendiente.sim` es LEGITIMA: es la copia que se
+     guarda antes de vaciar. Lo que no puede haber es una lectura DESPUES, y
+     eso se mide donde estaba el fallo: en la linea del aviso. */
+  const linea = src.split('\n').find((l) => l.includes('avisarAlQueAbrio({ ok: true')) || '';
+  decir(!/pendiente\./.test(linea),
+    'el aviso ya no lee `pendiente`, que a esa altura es null', linea.trim());
+
+  // La linea del aviso usa `sim`, que se guarda ANTES de vaciar pendiente.
+  const orden = src.indexOf('const sim = pendiente.sim;');
+  const vacia = src.indexOf('pendiente = null;', orden);
+  const usa = src.indexOf('avisarAlQueAbrio({ ok: true', vacia);
+  decir(orden > 0 && orden < vacia && vacia < usa,
+    'el simbolo se guarda antes de vaciar, y el aviso usa esa copia');
+}
+
 console.log('\n── el modo ventana ───────────────────────────────────────────');
 {
   const src = await readFile(new URL('./veta-wallet/app.js', import.meta.url), 'utf8');
