@@ -55,6 +55,7 @@ const VPORTA = (() => {
       saldosT: 'Tus saldos', saldosP: 'Disponible es lo que podés gastar; reservado es lo que una orden abierta o una solicitud fiat tiene en garantía.',
       cargando: 'Trayendo tus saldos…',
       falloSaldos: 'No pudimos leer tus saldos.', falloSaldosP: 'Sin saldos leídos no se arma un retiro: probá de nuevo en un momento.',
+      traer: 'Traer desde mi Veta Wallet',
       walT: 'En tu Veta Wallet',
       walP: 'Esto es lo que tenés en tu billetera, leído de la cadena. No está en Ordenex: una casa de cambio solo guarda lo que le depositan.',
       walEn: 'en tu wallet',
@@ -109,6 +110,7 @@ const VPORTA = (() => {
       saldosT: 'Your balances', saldosP: 'Available is what you can spend; reserved is what an open order or a fiat request holds as collateral.',
       cargando: 'Fetching your balances…',
       falloSaldos: 'We couldn’t read your balances.', falloSaldosP: 'Without balances read, no withdrawal form gets built: try again in a moment.',
+      traer: 'Bring it from my Veta Wallet',
       walT: 'In your Veta Wallet',
       walP: 'This is what you hold in your wallet, read from the chain. It is not in Ordenex: an exchange only holds what is deposited with it.',
       walEn: 'in your wallet',
@@ -166,6 +168,7 @@ const VPORTA = (() => {
     .po-dep{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start;margin-top:14px}
     .po-qr{width:min(190px,58vw);flex:0 0 auto;background:#F3ECD9;padding:12px;border-radius:var(--r)}
     .po-dep-txt{flex:1;min-width:230px}
+    .po-dep-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
     .po-dir{font-family:var(--mono);font-variant-ligatures:none;font-size:13.5px;word-break:break-all;
       background:var(--campo);border:1px solid var(--campoBr);border-radius:var(--r);padding:12px 14px;margin-bottom:12px}
     .po-aviso{border:1px solid var(--linea2);background:rgba(201,169,97,.08);border-radius:var(--r);
@@ -194,6 +197,14 @@ const VPORTA = (() => {
      lo que tiene. Los tres estados son distintos y se pintan distinto: un
      arreglo vacío dice «no tenés nada allá», y eso es otra cosa que «no pude
      mirar». */
+  /* La wallet, para el enlace de un gesto. Se define aqui y no se toma de
+     app.js porque cada modulo vive en su propio closure: leerla de alla
+     obligaria a exponerla en ONX solo para esto. Misma variable de entorno,
+     mismo valor por defecto. */
+  const WALLET = String(
+    (typeof window !== 'undefined' && window.ONX_WALLET) || 'https://app.vetawallet.com'
+  ).replace(/\/$/, '');
+
   let direccionWallet = null;
   let walletSaldos = null;
   let referencias = null;   // { origen, oro, plata } en USD — el cartel, o null
@@ -335,7 +346,9 @@ const VPORTA = (() => {
           ${ref ? `<span class="po-sub">${esc(ref)}</span>` : ''}
         </div>
       </div>`;
-    }).join('') + `<p class="pie" style="margin-top:14px">${esc(t.walComo)}</p>`;
+    }).join('') + `<p class="pie" style="margin-top:14px">${esc(t.walComo)}</p>
+      ${direccion ? `<div class="po-dep-btns"><a class="btn btn-oro btn-sm"
+        href="${esc(WALLET)}/#pagar${esc(direccion)}" target="_blank" rel="noopener">${esc(t.traer)}</a></div>` : ''}`;
   }
 
   async function cargarWallet() {
@@ -397,7 +410,16 @@ const VPORTA = (() => {
       ${qr ? `<div class="po-qr">${qr}</div>` : ''}
       <div class="po-dep-txt">
         <div class="po-dir">${esc(direccion)}</div>
-        <button class="btn btn-linea btn-sm" onclick="VPORTA.copiar(${jsTxt(direccion)})">${esc(t.copiar)}</button>
+        <div class="po-dep-btns">
+          <!-- El puente de un gesto. La billetera ya entiende
+               #pagar<direccion>: abre «enviar» con la direccion puesta y solo
+               pide la clave. Sin esto, traer fondos era copiar una direccion
+               de 42 caracteres, cambiar de pestaña y pegarla — tres pasos
+               donde uno se equivoca, y el error se paga en la cadena. -->
+          <a class="btn btn-oro btn-sm" href="${esc(WALLET)}/#pagar${esc(direccion)}"
+             target="_blank" rel="noopener">${esc(t.traer)}</a>
+          <button class="btn btn-linea btn-sm" onclick="VPORTA.copiar(${jsTxt(direccion)})">${esc(t.copiar)}</button>
+        </div>
         <div class="po-aviso">${esc(t.depAviso)}</div>
       </div>
     </div>`;

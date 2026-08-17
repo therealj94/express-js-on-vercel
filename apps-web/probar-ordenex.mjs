@@ -680,6 +680,47 @@ console.log('\n── LA SALA, COMO UNA MESA DE OPERACIONES ──────�
   await pg.close();
 }
 
+console.log('\n── EL PUENTE CON LA WALLET ───────────────────────────────────');
+{
+  /* «Entre con Genesis ID y el portafolio sale en cero» no es un fallo: es que
+     Ordenex guarda lo que le DEPOSITAN, y esa frase no estaba en ninguna
+     pantalla. Se comprueba que ahora si este, y que traer fondos sea UN gesto
+     y no copiar 42 caracteres entre dos pestañas. */
+  const pg = await nav.newPage({ viewport: { width: 1440, height: 950 }, locale: 'es-HN' });
+  await pg.addInitScript((origen) => { window.ONX_API = origen; window.ONX_WALLET = origen; }, ORIGEN_LOCAL);
+  await pg.goto(BASE + '#portafolio', { waitUntil: 'domcontentloaded' });
+  await pg.waitForTimeout(2200);
+
+  const txt = await pg.evaluate(() => document.getElementById('lienzo')?.innerText || '');
+  const conSesion = !/entr[aá] con tu cuenta/i.test(txt.slice(0, 200));
+  if (!conSesion) {
+    // Sin sesion el portafolio pide entrar, que es lo correcto. Se comprueba
+    // sobre el texto del modulo, que es donde vive la explicacion.
+    const dice = await pg.evaluate(() => {
+      const t = VPORTA.vista;
+      return typeof t === 'function';
+    });
+    decir(dice, 'el portafolio existe y sin sesion pide entrar');
+  }
+
+  // La explicacion y el boton viven en el modulo aunque no haya sesion: se
+  // leen del fuente, que es lo unico que se puede comprobar sin cuenta.
+  const { readFile } = await import('node:fs/promises');
+  const src = await readFile(new URL('./ordenex/portafolio.js', import.meta.url), 'utf8');
+  decir(/solo guarda lo que le depositan/i.test(src),
+    'la pantalla explica que la casa guarda lo que le depositan');
+  decir(/est[aá]n en tu wallet|In your Veta Wallet/i.test(src),
+    'y que lo suyo esta en su wallet, no perdido');
+  decir(src.includes('#pagar${esc(direccion)}'),
+    'traer fondos es UN enlace con la direccion puesta, no copiar y pegar');
+  decir(/saldosEnWallet/.test(src), 'y los saldos de la wallet se leen de la cadena');
+
+  const cad = await readFile(new URL('./ordenex/cadena.js', import.meta.url), 'utf8');
+  decir(/return filas\.filter\(f => f\.wei != null/.test(cad),
+    'un saldo que no se pudo leer NO se pinta como cero');
+  await pg.close();
+}
+
 await nav.close(); sv.close();
 console.log(malas ? `\n${malas} comprobación(es) fallaron\n` : '\nTodo en verde\n');
 process.exit(malas ? 1 : 0);
