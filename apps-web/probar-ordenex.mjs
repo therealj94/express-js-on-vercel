@@ -580,6 +580,31 @@ console.log('\n── cambiar a inglés ─────────────�
 
 decir(errores.length === 0, 'sin errores de consola en todo el recorrido', errores.join(' | '));
 
+console.log('\n── DE QUIEN ES ESTA CASA ─────────────────────────────────────');
+{
+  /* Ordenex es de AuCorp, aliada de Orden Global. La portada lo decia al
+     reves —«ORDEN GLOBAL · la casa de cambio del ecosistema»— y quien opera
+     aqui tiene derecho a saber con quien opera. */
+  const pg = await nav.newPage({ viewport: { width: 1440, height: 900 }, locale: 'es-HN' });
+  await pg.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await pg.waitForTimeout(1200);
+  const sello = await pg.evaluate(() => document.body.innerText);
+  decir(/AUCORP/i.test(sello), 'la portada nombra a AuCorp');
+  decir(/ORDEN GLOBAL/i.test(sello), 'y sigue nombrando al ecosistema Orden Global');
+
+  const tit = await pg.title();
+  decir(/AuCorp/i.test(tit), 'el titulo de la pestaña dice de quien es la casa', tit);
+
+  /* Y la piel: esta sala era del verde de Veta Wallet. Si vuelve, es que
+     alguien copio la paleta de al lado y Ordenex perdio cara propia. */
+  const fondo = await pg.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  decir(fondo === 'rgb(10, 14, 20)', 'el fondo es el grafito propio, no el pozo verde', fondo);
+  const css = await pg.evaluate(() => [...document.querySelectorAll('style')].map(s => s.textContent).join(''));
+  decir(!/#021B1C/i.test(css.replace(/\/\*[\s\S]*?\*\//g, '')),
+    'y el pozo verde no queda ni en una regla suelta');
+  await pg.close();
+}
+
 await nav.close(); sv.close();
 console.log(malas ? `\n${malas} comprobación(es) fallaron\n` : '\nTodo en verde\n');
 process.exit(malas ? 1 : 0);

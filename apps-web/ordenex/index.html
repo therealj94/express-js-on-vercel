@@ -1,8 +1,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ORDENEX · La casa de cambio de Orden Global</title>
-<meta name="description" content="ORDENEX: la casa de cambio del ecosistema Orden Global. Los quince activos de la cadena 5550 contra ORIGEN, con libro de órdenes real, velas de tratos reales y entrada y salida en lempiras o dólares con agentes verificados.">
-<meta name="theme-color" content="#021B1C">
+<title>ORDENEX · La casa de cambio de AuCorp</title>
+<meta name="description" content="ORDENEX: la casa de cambio de AuCorp, donde se cambian los activos del ecosistema Orden Global. Los quince activos de la cadena 5550 contra ORIGEN, con libro de órdenes real, velas de tratos reales y entrada y salida en lempiras o dólares con agentes verificados.">
+<meta name="theme-color" content="#0A0E14">
 
 <!-- A dónde puede hablar esta página, y desde dónde puede traer cosas.
 
@@ -39,7 +39,7 @@
 <link rel="icon" href="assets/tokens/origen.jpg">
 <link rel="apple-touch-icon" href="assets/tokens/origen.jpg">
 <meta property="og:title" content="ORDENEX">
-<meta property="og:description" content="La casa de cambio del ecosistema Orden Global.">
+<meta property="og:description" content="La casa de cambio de AuCorp. Los activos del ecosistema Orden Global, con libro de órdenes real.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
@@ -67,35 +67,57 @@
 /* La paleta de la casa, entera y sin tocar un valor: son los de
    orden-global-app/src/theme.js, uno a uno, como en la billetera. Lo único
    que se agrega es --acento, la marca propia de Ordenex. */
+/* ═══ LA PIEL DE ORDENEX ══════════════════════════════════════════════════════
+   Esta sala era verde: el mismo pozo #021B1C de Veta Wallet y ordenglobal.org.
+   Tiene sentido para la billetera —es la casa de Orden Global hablando— pero
+   NO para esta, que es de AuCorp y es otra cosa: una casa de cambio.
+
+   Así que Ordenex pasa al GRAFITO. Un negro con sesgo azul, que es el color de
+   una mesa de operaciones y no el de una marca; el oro del logo se queda, y
+   sigue siendo el metal de la casa. Los grises se enfrían para acompañarlo:
+   sobre grafito, un gris verdoso se ve sucio.
+
+   El jade y el coral NO se tocan. Sube y baja son verde y rojo en todos los
+   mercados del mundo, y hacerlos propios de la marca sería cambiar el
+   significado de un color que la gente ya lee sin pensar.
+
+   Y las esquinas se cierran de 18 a 10 px. Un radio grande es amable y suena a
+   aplicación de consumo; una mesa de operaciones se lee mejor con la esquina
+   corta. Es el cambio que más se nota sin que nadie sepa nombrarlo. */
 :root{
-  --pozo:#021B1C; --veta:#063430;
-  --panel:rgba(6,40,42,.82); --panel2:rgba(12,54,56,.86); --panel3:rgba(22,78,80,.74);
-  --linea:rgba(201,169,97,.34); --linea2:rgba(201,169,97,.26);
-  --campo:rgba(8,44,46,.88); --campoBr:#2E7477;
+  --pozo:#0A0E14; --veta:#131A24;
+  --panel:rgba(19,26,36,.86); --panel2:rgba(26,35,47,.88); --panel3:rgba(38,50,66,.76);
+  --linea:rgba(201,169,97,.32); --linea2:rgba(201,169,97,.22);
+  --campo:rgba(16,22,31,.90); --campoBr:#3A4C63;
   --oro:#C9A961; --oroLt:#EAD79C; --oroHi:#F8EFCF; --oroDp:#96793F;
-  --crema:#F3ECD9; --bruma:#AEC7C3; --humo:#6E938F;
+  --crema:#EEF1F5; --bruma:#A7B4C4; --humo:#6B7A8C;
   --jade:#3ED9A0; --coral:#F0776B; --tinta:#3A2C08;
-  --acento:#74E6C8;
+  --acento:#8FB9E0;
   --serif:'Cinzel','Bodoni Moda',Didot,'Times New Roman',serif;
   --sans:'Archivo',system-ui,sans-serif;
   --mono:'JetBrains Mono',ui-monospace,monospace;
-  --r:18px; --r2:26px;
+  --r:10px; --r2:14px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
 /* La app se dibuja sobre la fotografía de marca con un velo encima, y la
    legibilidad la resuelven las tarjetas de vidrio, no oscurecer la foto
    entera. El velo son los mismos tres pasos que usa la billetera. */
+/* El fondo ya NO es la fotografía de marca de Veta Wallet: era prestada, y una
+   casa de cambio que se viste con la foto de la billetera parece una pantalla
+   más de la billetera. En su lugar, una retícula de 44 px —el papel milimetrado
+   de una mesa de operaciones— y una lumbre de oro arriba, del lado del logo.
+   Pesa cero: son dos degradados, no una imagen de 400 kB. */
 body{
   background:var(--pozo); color:var(--crema); font-family:var(--sans); font-weight:400;
   min-height:100svh; overflow-x:hidden; -webkit-font-smoothing:antialiased;
   background-image:
-    linear-gradient(180deg, rgba(4,30,30,.26), rgba(2,20,21,.50) 46%, rgba(1,12,13,.66)),
-    url('assets/fondo.jpg');
-  background-size:cover, cover;
-  background-position:center, center;
-  background-repeat:no-repeat, no-repeat;
-  background-attachment:fixed, fixed;
+    radial-gradient(120% 70% at 50% -10%, rgba(201,169,97,.10), transparent 62%),
+    radial-gradient(90% 60% at 80% 100%, rgba(143,185,224,.05), transparent 66%),
+    linear-gradient(rgba(238,241,245,.030) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(238,241,245,.030) 1px, transparent 1px);
+  background-size:auto, auto, 44px 44px, 44px 44px;
+  background-attachment:fixed, fixed, fixed, fixed;
 }
 button,input,select,textarea{font:inherit;color:inherit}
 button{background:none;border:0;cursor:pointer}
@@ -109,9 +131,9 @@ a{color:inherit}
   justify-content:space-between;padding:18px clamp(18px,4vw,42px)}
 .techo .marca{font-size:clamp(19px,2.6vw,23px)}
 .idiomas{display:flex;border:1px solid var(--linea2);border-radius:100px;overflow:hidden;
-  background:rgba(2,22,23,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  background:rgba(19,26,36,.62);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .idiomas button{padding:7px 14px;font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--humo);transition:.2s}
-.idiomas button[aria-pressed=true]{background:rgba(201,169,97,.16);color:var(--oroHi)}
+.idiomas button[aria-pressed=true]{background:rgba(201,169,97,.18);color:var(--oroHi)}
 
 /* ── la marca. ORDEN es de la casa y va en crema; EX es el cambio y lleva el
    acento — la misma gramática que veta wallet, con el color propio. ──────── */
@@ -254,7 +276,7 @@ a{color:inherit}
 /* ── armazón de la aplicación ────────────────────────────────────────────── */
 #app{position:relative;z-index:2;min-height:100svh}
 .riel{position:fixed;left:0;top:0;bottom:0;width:232px;padding:26px 18px;z-index:5;
-  border-right:1px solid var(--linea2);background:rgba(2,22,23,.72);
+  border-right:1px solid var(--linea2);background:rgba(10,14,20,.74);
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   display:flex;flex-direction:column;gap:6px}
 .riel-marca{padding:6px 6px 22px;font-size:16.5px;letter-spacing:.04em;white-space:nowrap}
@@ -273,6 +295,12 @@ a{color:inherit}
 .riel-pie button{color:var(--bruma);font-size:11.5px;padding:0}
 .riel-pie button:hover{color:var(--oroLt)}
 .riel-pie .idiomas{margin-top:10px;width:max-content}
+/* La linea de propiedad. Lleva el oro del logo y una regla encima: es un dato
+   de la casa, no un enlace mas de la lista. */
+.riel-pie .duena{padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--linea2);
+  font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--humo)}
+.riel-pie .duena a{color:var(--oroLt);font-weight:700;letter-spacing:.04em}
+.riel-pie .duena a:hover{color:var(--oroHi)}
 
 .lienzo{margin-left:232px;padding:clamp(20px,3vw,38px) clamp(16px,3vw,38px) 60px;max-width:980px}
 /* ── la sala de mercado: ancha y a oscuras ─────────────────────────────────
@@ -283,7 +311,7 @@ a{color:inherit}
    `body.en-cerebro` en la billetera — cada sala con su luz. */
 body.en-mercado .lienzo{max-width:1720px}
 body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
-  background:linear-gradient(180deg,rgba(2,20,21,.90),rgba(1,14,15,.955));
+  background:linear-gradient(180deg,rgba(10,14,20,.92),rgba(8,11,16,.96));
   pointer-events:none}
 /* Cada vista entra en cascada: los bloques se levantan uno tras otro. Como el
    contenido se re-crea al navegar, la animación corre sola en cada cambio. */
@@ -410,6 +438,11 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
     <button class="nav" data-vista="actividad" onclick="ONX.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>
 
     <div class="riel-pie">
+      <!-- De quien es esta casa. Va en el riel y no escondido en un «acerca
+           de»: quien opera aqui tiene derecho a saber con quien opera, y
+           enterarse en la pantalla donde se opera, no dos clics mas alla. -->
+      <div class="duena"><span data-t="pie.duena"></span>
+        <a href="https://www.aucorp.io" target="_blank" rel="noopener">AuCorp</a></div>
       <a href="https://www.ordenglobal.org" target="_blank" rel="noopener" data-t="pie.og"></a> ·
       <button data-t="nav.salir" onclick="ONX.salir()"></button>
       <div class="idiomas" role="group" aria-label="Idioma">

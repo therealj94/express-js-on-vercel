@@ -11,7 +11,10 @@ const I18N = {
 es: {
   /* LA PORTADA. El sello dice de qué casa es esto; el titular es corto porque
      la tabla de al lado ya está contando la historia con números de verdad. */
-  'pt.sello': 'ORDEN GLOBAL · LA CASA DE CAMBIO DEL ECOSISTEMA',
+  /* El sello dice de QUIEN es la casa, no en que ecosistema opera. Son dos
+     cosas distintas y confundirlas es lo que hacia esta portada: Ordenex es de
+     AuCorp, y lo que se cambia aqui son los activos de Orden Global. */
+  'pt.sello': 'UNA CASA DE AUCORP · ECOSISTEMA ORDEN GLOBAL',
   'pt.t1': 'EL MERCADO', 'pt.t2': 'DE LA CASA.',
   'pt.p': 'Los quince activos de la cadena 5550, cada uno contra ORIGEN. Libro de órdenes de verdad, velas que solo pintan tratos reales, y entrada y salida en lempiras o dólares con agentes verificados.',
   'pt.entrar': 'Entrar con mi cuenta Veta Wallet',
@@ -30,6 +33,7 @@ es: {
   'nav.mercados': 'Mercados', 'nav.portafolio': 'Portafolio',
   'nav.fiat': 'Fiat', 'nav.actividad': 'Actividad',
   'nav.salir': 'Salir',
+  'pie.duena': 'Una casa de',
   'pie.og': 'Orden Global',
 
   // El acceso es un solo gesto (el canje del token SSO), pero tiene tres
@@ -49,7 +53,7 @@ es: {
   'stub.p': 'La pieza que la pinta todavía no está instalada en esta versión. El resto de la casa funciona.',
 },
 en: {
-  'pt.sello': 'ORDEN GLOBAL · THE ECOSYSTEM’S EXCHANGE HOUSE',
+  'pt.sello': 'A HOUSE OF AUCORP · ORDEN GLOBAL ECOSYSTEM',
   'pt.t1': 'THE HOUSE', 'pt.t2': 'MARKET.',
   'pt.p': 'The fifteen assets of chain 5550, each against ORIGEN. A real order book, candles drawn only from real trades, and cash in and out in lempiras or dollars through verified agents.',
   'pt.entrar': 'Sign in with my Veta Wallet account',
@@ -64,6 +68,7 @@ en: {
   'nav.mercados': 'Markets', 'nav.portafolio': 'Portfolio',
   'nav.fiat': 'Fiat', 'nav.actividad': 'Activity',
   'nav.salir': 'Sign out',
+  'pie.duena': 'A house of',
   'pie.og': 'Orden Global',
 
   'acc.entrando': 'Signing in with your account…',
