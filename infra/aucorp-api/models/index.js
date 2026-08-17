@@ -29,6 +29,13 @@ const usuarioSchema = new mongoose.Schema({
   correo: { type: String, default: '' },
   nombre: { type: String, default: '' },
   pais: { type: String, default: '' },
+  // Lo que Genesis afirma HOY. Entrar se puede sin estar verificado —para ver
+  // la casa y empezar el KYC—, pero mover dinero fiat no: eso lo pide la
+  // norma, y fingir que no cambiaría el problema de sitio, no lo quitaría.
+  verificada: { type: Boolean, default: false },
+  // La dirección custodiada del mismo dueño en Veta Wallet. Es lo que ata la
+  // billetera cripto con la cuenta fiat: mismo gid, los dos lados.
+  direccionWallet: { type: String, default: null },
   // El interruptor de revocación: subirlo mata todas las sesiones vivas.
   tokenVersion: { type: Number, default: 0 },
   creado: { type: Date, default: Date.now },

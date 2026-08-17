@@ -5,9 +5,12 @@
   "type": "commonjs",
   "scripts": {
     "start": "node app.js",
-    "probar": "node pruebas/probar-monedas.mjs && node pruebas/probar-libro.mjs && node pruebas/probar-asientos.mjs && node pruebas/probar-cambio.mjs"
+    "probar": "node pruebas/probar-monedas.mjs && node pruebas/probar-libro.mjs && node pruebas/probar-asientos.mjs && node pruebas/probar-cambio.mjs && node pruebas/probar-api.mjs"
   },
   "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.24.3"
   },
   "devDependencies": {
