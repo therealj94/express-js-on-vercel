@@ -34,6 +34,7 @@ import { GRUPOS, NODOS, ENLACES } from './cerebro-datos.js';
 import { crearCara } from './cara-3d.js';
 import { crearVoz } from './voz-core.js';
 import { TEMAS, PRESENTACION, REGIONES } from './guion-core.js';
+import { FICHAS, INTERNAS } from './fichas-core.js';
 
 const lienzo = document.getElementById('lienzo');
 const ctx = lienzo.getContext('2d', { alpha: false });
@@ -311,8 +312,47 @@ for (let i = 0; i < SENALES; i++) {
   senales.push({
     ax: axones[Math.floor(rnd() * axones.length)],
     t: rnd(),
-    v: 0.0018 + rnd() * 0.0042,
+    /* La mitad de rápidas que antes. Iban tan deprisa que el ojo veía una
+       nube de puntos temblando; a este paso se sigue UNA con la vista de una
+       pieza a la otra, que es lo que hay que ver: información pasando de una
+       cosa a otra. */
+    v: 0.0009 + rnd() * 0.0020,
   });
+}
+
+/* ══ LOS RAYOS ══════════════════════════════════════════════════════════════
+   Un puñado de paquetes gordos que van de pieza a pieza dejando ESTELA, y que
+   al llegar saltan a otro cable de la misma pieza — así que no se ve un punto
+   yendo y viniendo: se ve algo recorriendo el ecosistema, de la cadena a la
+   billetera, de la billetera a la identidad.
+
+   Van aparte de las señales normales y son pocos a propósito. Con muchos el
+   efecto se pierde: cien estelas a la vez son una maraña, ocho son ocho cosas
+   que uno puede seguir. */
+const RAYOS = quieto ? 0 : (ESTRECHO ? 5 : 9);
+const ESTELA = 14;                 // cuántas posiciones pasadas se recuerdan
+const rayos = [];
+for (let i = 0; i < RAYOS; i++) {
+  rayos.push({
+    ax: axones[Math.floor(rnd() * axones.length)],
+    haciaB: rnd() < 0.5,
+    t: rnd(),
+    v: 0.0026 + rnd() * 0.0022,
+    cola: [],
+  });
+}
+
+/** El siguiente cable que toma un rayo: uno que salga de la pieza donde acaba
+ *  de llegar. Si esa pieza no tiene más cables, se queda y vuelve por donde
+ *  vino — un rayo que desaparece en un callejón sin salida se lee como un
+ *  fallo de dibujo. */
+function siguienteCable(rayo, llegada) {
+  const salen = axones.filter((x) => (x.a === llegada || x.b === llegada) && x !== rayo.ax);
+  const elegido = salen.length ? salen[Math.floor(Math.random() * salen.length)] : rayo.ax;
+  rayo.ax = elegido;
+  rayo.haciaB = elegido.a === llegada;
+  rayo.t = 0;
+  rayo.cola.length = 0;
 }
 
 /* ══ LOS TRAZOS BLANCOS ═════════════════════════════════════════════════════
@@ -439,6 +479,9 @@ const separacion = () => {
 };
 
 lienzo.addEventListener('pointerdown', (e) => {
+  // Poner el dedo cancela el viaje de la búsqueda: quien agarra el cerebro
+  // manda sobre lo que estuviera haciendo la cámara.
+  girandoHacia = null;
   dedos.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (dedos.size === 2) pellizco = separacion();
   lienzo.setPointerCapture(e.pointerId);
@@ -570,9 +613,17 @@ function estampar(color, x, y, R, alfa) {
 // el «pump»: lo que hace que el conjunto se lea como un órgano y no como un
 // diagrama. Todo lo que la onda toca se enciende al pasar — las piezas y el
 // tejido, que es lo que hace que el cerebro entero parezca respirar.
-const PERIODO = 2400;
-const VEL_ONDA = 0.46;   // unidades de mundo por milisegundo
-const ANCHO_ONDA = 44;
+/* ══ EL LATIDO ══════════════════════════════════════════════════════════════
+   Cuatro segundos y medio por latido, no dos y medio, y una cresta el doble de
+   ancha. Iba al ritmo de un corazón asustado: la onda cruzaba el cerebro antes
+   de que a nadie le diera tiempo a seguirla con la vista, y en una proyección
+   eso se lee como parpadeo nervioso, no como algo que respira.
+
+   Más lento y más ancho, la onda se VE avanzar: sale del centro, cruza los
+   lóbulos, llega al borde. Eso es lo que hace que parezca un órgano. */
+const PERIODO = 4600;
+const VEL_ONDA = 0.30;   // unidades de mundo por milisegundo
+const ANCHO_ONDA = 78;
 
 function brilloLatido(dist, ahora) {
   const d = Math.abs(dist - (ahora % PERIODO) * VEL_ONDA);
@@ -589,6 +640,7 @@ const txtPulso = document.getElementById('txtPulso');
 let etiquetasVivas = [];
 let congelado = false;
 let resaltada = null;      // la pieza cuya ficha está abierta
+let girandoHacia = null;   // a dónde lleva la cámara la búsqueda, si a algún sitio
 
 /* El gesto que se anuncia es el que existe en este aparato. `pointer: coarse`
    es el dedo; ahí no hay rueda que girar y sí hay dos dedos que pellizcar. */
@@ -610,7 +662,21 @@ for (let i = 0; i < BANDAS; i++) banda.push([]);
 const encendidos = [];
 
 function cuadro(ahora) {
-  if (dedos.size === 0 && !quieto && !congelado) cam.giroY += VEL_GIRO;
+  /* El giro. Si la búsqueda pidió llevar una pieza al frente, la cámara va
+     hacia ahí y para; si no, sigue rodando sola. Se hace con una interpolación
+     y no de un salto: teletransportar el cerebro delante de una sala hace
+     perder de vista dónde estaba. */
+  if (girandoHacia !== null) {
+    let dif = girandoHacia - cam.giroY;
+    // Por el camino corto: sin esto la cámara puede dar la vuelta entera para
+    // llegar a un sitio que tenía al lado.
+    while (dif > Math.PI) dif -= Math.PI * 2;
+    while (dif < -Math.PI) dif += Math.PI * 2;
+    cam.giroY += dif * 0.07;
+    if (Math.abs(dif) < 0.01) girandoHacia = null;
+  } else if (dedos.size === 0 && !quieto && !congelado) {
+    cam.giroY += VEL_GIRO;
+  }
   cam.dist += (cam.objetivo - cam.dist) * 0.08;
 
   const cy = Math.cos(cam.giroY), sy = Math.sin(cam.giroY);
@@ -813,6 +879,49 @@ function cuadro(ahora) {
     ctx.strokeStyle = tinte(c, 0.9);
     ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.arc(resaltada._x, resaltada._y, R, 0, 7); ctx.stroke();
+  }
+
+  /* ── LOS RAYOS ──
+     Se dibujan ENTRE los cables y las señales: por encima del cableado, para
+     que se vean pasar por él, y por debajo de las piezas, para que una pieza
+     nunca quede tapada por un rayo. */
+  for (const r of rayos) {
+    r.t += r.v;
+    const de = r.haciaB ? r.ax.a : r.ax.b;
+    const a2 = r.haciaB ? r.ax.b : r.ax.a;
+    if (r.t >= 1) { siguienteCable(r, a2); continue; }
+
+    const p = proyectar({
+      x: de.x + (a2.x - de.x) * r.t,
+      y: de.y + (a2.y - de.y) * r.t,
+      z: de.z + (a2.z - de.z) * r.t,
+    }, cy, sy, cx, sx);
+    if (p.e < 0) continue;
+
+    // La estela se guarda en pantalla y no en el mundo: guardarla en el mundo
+    // obliga a proyectar catorce puntos por rayo y por cuadro, y se ve igual.
+    r.cola.push(p.x, p.y);
+    while (r.cola.length > ESTELA * 2) r.cola.splice(0, 2);
+
+    const col = de.color;
+    // La cola, de más apagada a más viva. En trozos, porque un degradado a lo
+    // largo de un trazo no existe en canvas sin inventarse uno por segmento.
+    ctx.lineCap = 'round';
+    for (let i = 2; i < r.cola.length; i += 2) {
+      const f = i / r.cola.length;
+      ctx.strokeStyle = tinte(col, 0.06 + f * f * 0.42);
+      ctx.lineWidth = 0.6 + f * 1.9;
+      ctx.beginPath();
+      ctx.moveTo(r.cola[i - 2], r.cola[i - 1]);
+      ctx.lineTo(r.cola[i], r.cola[i + 1]);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+
+    // la cabeza
+    estampar(col, p.x, p.y, 4 + 5.5 * p.e, 0.85);
+    ctx.fillStyle = 'rgba(238,252,255,.92)';
+    ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1.1, 1.5 * p.e), 0, 7); ctx.fill();
   }
 
   // ── señales viajando ──────────────────────────────────────────────────────
@@ -1147,6 +1256,7 @@ const elFicha = document.getElementById('ficha');
 const fReg = elFicha.querySelector('.reg');
 const fTit = elFicha.querySelector('h2');
 const fTxt = elFicha.querySelector('.txt');
+const fExp = elFicha.querySelector('.exp');
 const fPie = elFicha.querySelector('.pie');
 elFicha.querySelector('.x').addEventListener('click', () => cerrarFicha());
 
@@ -1156,21 +1266,150 @@ function cerrarFicha() {
   resaltada = null;
 }
 
+/** Crea un elemento con texto. Se usa `textContent` y nunca `innerHTML`: el
+ *  expediente lo escribe una persona, y una comilla o un signo de menor en un
+ *  párrafo legal no puede convertirse en etiqueta. */
+function el(tipo, clase, txt) {
+  const e = document.createElement(tipo);
+  if (clase) e.className = clase;
+  if (txt !== undefined) e.textContent = txt;
+  return e;
+}
+
 function abrirFicha(n) {
   const gr = GRUPOS[n.grupo] || {};
+  const c = COLOR[n.grupo] || '#6FE3F5';
   fReg.textContent = gr.nombre || n.grupo;
-  fReg.style.color = COLOR[n.grupo] || '#6FE3F5';
-  elFicha.style.borderColor = tinte(COLOR[n.grupo] || '#6FE3F5', 0.42);
+  fReg.style.color = c;
+  elFicha.style.borderColor = tinte(c, 0.42);
   fTit.textContent = n.nombre;
   fTxt.textContent = n.ficha || 'Esta pieza todavía no tiene descripción en el mapa.';
+
+  /* ── EL EXPEDIENTE ──
+     Lo que las fuentes de la casa dicen de esta pieza: los bloques que firmó
+     la Secretaría, el saber revisado, el portafolio minero. Sale de
+     `fichas-core.js`, que es GENERADO desde esas fuentes — ver la cabecera de
+     ese fichero y `infra/cerebro/armar-fichas-core.py`. */
+  fExp.replaceChildren();
+  for (const sec of FICHAS[n.id] || []) {
+    const h = el('h3', null, sec.titulo);
+    if (sec.estado) h.appendChild(el('span', `est ${sec.estado}`, sec.estado));
+    fExp.appendChild(h);
+    for (const p of sec.parrafos || []) fExp.appendChild(el('p', null, p));
+    if (sec.datos && sec.datos.length) {
+      const dl = el('dl');
+      for (const [k, v] of sec.datos) {
+        dl.appendChild(el('dt', null, k));
+        dl.appendChild(el('dd', null, v));
+      }
+      fExp.appendChild(dl);
+    }
+    if (sec.aviso) fExp.appendChild(el('p', 'aviso', sec.aviso));
+    fExp.appendChild(el('p', 'fte', sec.fuente));
+  }
+
   const vecinas = axones.filter((x) => x.a === n || x.b === n).length;
-  fPie.textContent = `${vecinas} ${vecinas === 1 ? 'conexión' : 'conexiones'} en el mapa`;
+  const trozos = [`${vecinas} ${vecinas === 1 ? 'conexión' : 'conexiones'} en el mapa`];
+  if (!(FICHAS[n.id] || []).length) trozos.push('sin expediente en las fuentes');
+  fPie.textContent = trozos.join(' · ');
+
   elFicha.hidden = false;
+  elFicha.scrollTop = 0;
+  fExp.scrollTop = 0;
   document.body.classList.add('ficha-abierta');
   resaltada = n;
   // Se lee en voz alta. Sin `audio`: las fichas del mapa no están grabadas.
   if (n.ficha) voz.recitar([{ texto: `${n.nombre}. ${n.ficha}` }]);
 }
+
+/* ══ BUSCAR ═════════════════════════════════════════════════════════════════
+   Ciento y pico piezas no se recorren girando el cerebro. Quien entra a buscar
+   «licencias» o «Pantaleona» escribe la palabra.
+
+   Se busca en el nombre, en la región, en la descripción del mapa Y en el
+   expediente entero — párrafos y datos. Buscar solo en el nombre dejaría fuera
+   justo lo que la Junta va a preguntar: «quórum» no es el nombre de ninguna
+   pieza, está dentro del bloque de gobernanza. */
+const elQ = document.getElementById('q');
+const elLista = document.getElementById('hallazgos');
+
+const sinTildes = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+// El texto en el que se busca, armado UNA vez: hacerlo en cada tecla son cien
+// normalizaciones de cadena por pulsación.
+const INDICE = neuronas.map((n) => {
+  const partes = [n.nombre, (GRUPOS[n.grupo] || {}).nombre || '', n.ficha];
+  for (const sec of FICHAS[n.id] || []) {
+    partes.push(sec.titulo, ...(sec.parrafos || []));
+    for (const [k, v] of sec.datos || []) partes.push(k, v);
+  }
+  return { n, texto: sinTildes(partes.join(' ')) };
+});
+
+let elegido = -1;
+
+function buscar() {
+  const q = sinTildes(elQ.value.trim());
+  elLista.replaceChildren();
+  elegido = -1;
+  if (q.length < 2) { elLista.hidden = true; return; }
+
+  const hallados = INDICE
+    .filter((x) => x.texto.includes(q))
+    // Primero las piezas cuyo NOMBRE contiene lo buscado: quien escribe
+    // «ONDK» quiere la pieza ONDK, no las nueve que lo mencionan de pasada.
+    .sort((a, b) => {
+      const an = sinTildes(a.n.nombre).includes(q) ? 0 : 1;
+      const bn = sinTildes(b.n.nombre).includes(q) ? 0 : 1;
+      return an - bn || a.n.nombre.localeCompare(b.n.nombre);
+    })
+    .slice(0, 14);
+
+  if (!hallados.length) {
+    elLista.appendChild(el('li', 'nada', 'Nada en el mapa con esa palabra.'));
+    elLista.hidden = false;
+    return;
+  }
+  for (const { n } of hallados) {
+    const li = el('li', null, n.nombre);
+    li.appendChild(el('span', null, (GRUPOS[n.grupo] || {}).nombre || n.grupo));
+    li.addEventListener('click', () => irA(n));
+    elLista.appendChild(li);
+  }
+  elLista.hidden = false;
+}
+
+/** Lleva la cámara a una pieza y abre su ficha. Girar hasta ponerla de frente
+ *  y no solo abrir la tarjeta: si la ficha se abre y la pieza está en la nuca,
+ *  el resaltado de sus cables no se ve y la búsqueda parece no haber hecho
+ *  nada. */
+function irA(n) {
+  elLista.hidden = true;
+  elQ.blur();
+  cam.giroObjetivoBusqueda = -Math.atan2(n.x, n.z);
+  girandoHacia = cam.giroObjetivoBusqueda;
+  abrirFicha(n);
+}
+
+elQ.addEventListener('input', buscar);
+elQ.addEventListener('keydown', (e) => {
+  const items = [...elLista.querySelectorAll('li:not(.nada)')];
+  if (e.key === 'Escape') { elQ.value = ''; elLista.hidden = true; elQ.blur(); return; }
+  if (!items.length) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    elegido = (elegido + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length;
+    items.forEach((x, i) => x.classList.toggle('sel', i === elegido));
+    items[elegido].scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    items[Math.max(0, elegido)].click();
+  }
+});
+// Tocar fuera cierra la lista, que si no se queda abierta tapando el cerebro.
+addEventListener('pointerdown', (e) => {
+  if (!document.getElementById('buscar').contains(e.target)) elLista.hidden = true;
+}, true);
 
 /** La pieza dibujada más cerca del dedo, si hay alguna a tiro. El radio crece
  *  con el tamaño de la pieza y tiene un suelo generoso: en un teléfono, acertar

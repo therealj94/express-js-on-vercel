@@ -127,6 +127,43 @@ canvas:active{cursor:grabbing}
 #ficha h2{margin:7px 0 8px;font-size:15px;font-weight:600;color:#EAF3FB;letter-spacing:.02em}
 #ficha .txt{font-size:12.5px;line-height:1.62;color:#B6CADA}
 #ficha .pie{margin-top:10px;font-size:10px;line-height:1.5;color:#4C6076;letter-spacing:.04em}
+/* El expediente puede ser largo —el bloque de gobernanza tiene once párrafos—
+   así que la ficha se desplaza por dentro en vez de crecer hasta salirse. */
+#ficha .exp{max-height:min(46vh,420px);overflow-y:auto;margin-top:2px;
+  scrollbar-width:thin;scrollbar-color:rgba(111,227,245,.3) transparent}
+#ficha .exp h3{margin:12px 0 5px;font-size:11px;letter-spacing:.13em;
+  text-transform:uppercase;color:#8FB6CC;font-weight:600}
+#ficha .exp .est{display:inline-block;margin-left:7px;padding:1px 6px;border-radius:999px;
+  font-size:8.5px;letter-spacing:.1em;vertical-align:middle;
+  border:1px solid currentColor;text-transform:uppercase}
+/* Confirmado y dicho no son lo mismo, y el expediente los distingue. Pintarlos
+   igual borraría justo el matiz por el que la Secretaría los separó. */
+#ficha .exp .est.confirmado{color:#5FD3A8}
+#ficha .exp .est.dicho{color:#E0B25E}
+#ficha .exp p{font-size:11.5px;line-height:1.6;color:#A9BFD0;margin:0 0 6px}
+#ficha .exp dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:7px 0 2px}
+#ficha .exp dt{font-size:10.5px;color:#65809A;letter-spacing:.03em}
+#ficha .exp dd{font-size:10.5px;color:#CFE0EC;margin:0}
+#ficha .exp .aviso{margin-top:8px;padding:7px 9px;border-radius:6px;
+  border:1px solid rgba(240,119,107,.4);background:rgba(240,119,107,.07);
+  font-size:10.5px;line-height:1.5;color:#EFA79E}
+#ficha .exp .fte{margin-top:6px;font-size:9.5px;color:#43596E;line-height:1.45}
+
+/* ══ BUSCAR ══════════════════════════════════════════════════════════════ */
+#buscar{position:fixed;right:26px;top:26px;z-index:13;width:250px}
+#q{width:100%;padding:8px 12px;border-radius:999px;
+  background:rgba(3,12,20,.86);border:1px solid rgba(111,227,245,.28);
+  color:#DCE7F5;font:400 12px ui-monospace,Menlo,monospace;outline:none}
+#q::placeholder{color:#4C6076}
+#q:focus{border-color:#6FE3F5}
+#hallazgos{list-style:none;margin:6px 0 0;padding:4px;max-height:52vh;overflow-y:auto;
+  background:rgba(3,12,20,.94);border:1px solid rgba(111,227,245,.24);border-radius:9px}
+#hallazgos[hidden]{display:none}
+#hallazgos li{padding:6px 9px;border-radius:6px;cursor:pointer;font-size:11.5px;color:#B6CADA}
+#hallazgos li:hover,#hallazgos li.sel{background:rgba(111,227,245,.13);color:#EAF3FB}
+#hallazgos li span{display:block;font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  color:#5B7085;margin-top:2px}
+#hallazgos .nada{color:#5B7085;cursor:default;font-size:11px}
 
 /* ══ LOS TEMAS ══════════════════════════════════════════════════════════════ */
 #temas{position:fixed;left:30px;bottom:74px;z-index:11;
@@ -183,6 +220,11 @@ canvas:active{cursor:grabbing}
   #ficha{left:12px;right:12px;width:auto;top:auto;
     bottom:calc(70px + env(safe-area-inset-bottom));padding:12px 13px 13px}
   #ficha h2{font-size:14px}
+  #ficha .exp{max-height:34vh}
+  /* El buscador ocupa el ancho, debajo del sello. A 250 px a la derecha se
+     comía la esquina donde vive la cara. */
+  #buscar{left:16px;right:16px;width:auto;top:calc(62px + env(safe-area-inset-top))}
+  #hallazgos{max-height:40vh}
   #ficha .txt{font-size:12px;line-height:1.55}
   /* Los temas se hacen una tira que se desliza: siete botones no caben en
      cuatrocientos píxeles, y apilarlos en tres filas se come la pantalla. */
@@ -221,8 +263,22 @@ canvas:active{cursor:grabbing}
   <div class="cab"><span class="reg"></span><button class="x" type="button" aria-label="Cerrar">✕</button></div>
   <h2></h2>
   <p class="txt"></p>
+  <!-- El expediente: lo que la Secretaría, el saber de la casa o el
+       portafolio minero dicen de esta pieza. Se rellena desde
+       `fichas-core.js`, que es generado. -->
+  <div class="exp"></div>
   <p class="pie"></p>
 </aside>
+
+<!-- ══ BUSCAR ══════════════════════════════════════════════════════════════
+     Ciento y pico piezas no se recorren girando el cerebro hasta dar con la
+     que uno quiere. Quien entra a buscar «licencias» o «Pantaleona» escribe
+     la palabra. -->
+<div id="buscar">
+  <input id="q" type="search" placeholder="Buscar en el ecosistema…"
+         autocomplete="off" spellcheck="false" aria-label="Buscar una pieza">
+  <ul id="hallazgos" hidden></ul>
+</div>
 
 <!-- ══ LOS TEMAS ═══════════════════════════════════════════════════════════
      Siete cosas de las que la voz puede hablar. Botones y no un desplegable:

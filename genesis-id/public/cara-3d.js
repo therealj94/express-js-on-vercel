@@ -178,7 +178,11 @@ function vertice(u, v, boca) {
    `v` no llega ni a 0 ni a 1: en los polos todos los meridianos caen en el
    mismo punto y sale una estrella de rayos en la coronilla y otra en la
    barbilla — dos artefactos que no son parte de ninguna cabeza. */
-const NU = 44, NV = 34;
+/* Malla más densa: 60×46 en vez de 44×34, o sea el doble de caras. En la
+   referencia la malla es densa y por eso se lee como una superficie tallada;
+   a 44×34 cada triángulo era tan grande que la cara parecía un balón de
+   fútbol. Son 2.760 vértices — nada para un lienzo de doscientos píxeles. */
+const NU = 60, NV = 46;
 /* `v` se corta antes del polo por los dos lados. En el polo, los cuarenta y
    cuatro meridianos caen en el mismo punto: arriba salía una estrella de
    rayos y abajo una aguja bajo el mentón. Cortando, arriba queda una coronilla
@@ -186,10 +190,42 @@ const NU = 44, NV = 34;
    justo donde empieza el cuello. */
 const V0 = 0.052, V1 = 0.925;
 
+/* La rejilla NO se reparte pareja. Se aprieta a la altura de los ojos, la
+   nariz y la boca, y se estira en la coronilla y en la nuca, donde no pasa
+   nada. Es lo que hace cualquier modelador: la densidad va donde está el
+   detalle. Repartida pareja, la mitad de los triángulos se gastan dibujando un
+   cráneo liso y a los rasgos les tocan cuatro.
+
+   Y se hace INTEGRANDO una densidad, no sumando tirones sobre `v`. El primer
+   intento sumaba tres senos y salía una función NO MONÓTONA: dos filas se
+   cruzaban, y en el cuadro aparecían dos costuras horizontales atravesando la
+   cara de oreja a oreja. Integrando, el reparto es monótono por construcción:
+   no puede cruzarse aunque se toquen los números. */
+function repartirV() {
+  const densidad = (t) => 1
+    + 1.7 * campana(t, 0.42, 0.14)     // cejas y ojos
+    + 1.5 * campana(t, 0.53, 0.10)     // nariz
+    + 1.6 * campana(t, 0.665, 0.12);   // boca y mentón
+
+  const N = 900, acum = new Float64Array(N + 1);
+  for (let i = 1; i <= N; i++) acum[i] = acum[i - 1] + densidad(i / N);
+  const total = acum[N];
+
+  const vs = [];
+  let i = 0;
+  for (let j = 0; j < NV; j++) {
+    const meta = (j / (NV - 1)) * total;
+    while (i < N && acum[i + 1] < meta) i++;
+    vs.push(V0 + (V1 - V0) * (i / N));
+  }
+  return vs;
+}
+
 function construirCara() {
   const puntos = [];
+  const filas = repartirV();
   for (let j = 0; j < NV; j++) {
-    const v = V0 + (V1 - V0) * (j / (NV - 1));
+    const v = filas[j];
     for (let i = 0; i < NU; i++) {
       puntos.push({ u: (i / NU) * Math.PI * 2 - Math.PI, v,
                     x: 0, y: 0, z: 0, _e: -1, _b: 0 });
@@ -217,6 +253,36 @@ function construirCara() {
   }
   return { puntos, aristas };
 }
+
+/* ══ EL CUELLO Y LOS HOMBROS ════════════════════════════════════════════════
+   La cabeza acaba en la mandíbula y hasta ahora flotaba. En la referencia hay
+   cuello y un arranque de hombros, y no es adorno: una cabeza cortada por la
+   barbilla se lee como una máscara: con cuello se lee como una persona.
+
+   Es una rejilla suelta —dos columnas de aros y unos puntos a los lados— y no
+   parte de la malla de la cara, porque no tiene que deformarse con la boca ni
+   con los rasgos. */
+const CUELLO = (() => {
+  const puntos = [], aristas = [];
+  const AROS = 5, POR_ARO = 18;
+  for (let j = 0; j < AROS; j++) {
+    const t = j / (AROS - 1);
+    const y = 0.90 + t * 0.52;                    // de la mandíbula hacia abajo
+    const r = 0.30 + t * t * 0.42;                // se ensancha hacia el hombro
+    for (let i = 0; i < POR_ARO; i++) {
+      const a = (i / POR_ARO) * Math.PI * 2;
+      puntos.push({ x: r * Math.sin(a), y, z: r * 0.82 * Math.cos(a), _e: -1, _b: 0 });
+    }
+  }
+  const ind = (i, j) => j * POR_ARO + i;
+  for (let j = 0; j < AROS; j++) {
+    for (let i = 0; i < POR_ARO; i++) {
+      aristas.push([ind(i, j), ind((i + 1) % POR_ARO, j)]);
+      if (j + 1 < AROS) aristas.push([ind(i, j), ind(i, j + 1)]);
+    }
+  }
+  return { puntos, aristas };
+})();
 
 // Los ojos no son parte de la rejilla: son dos discos con su pupila puestos en
 // el hueco de la cuenca. Sacarlos de la malla es lo que permite que parpadeen
@@ -384,6 +450,25 @@ export function crearCara(lienzo) {
     }
 
     ctx.globalCompositeOperation = 'lighter';
+
+    // El cuello, primero y tenue: está detrás de todo y no compite con la cara.
+    for (const p of CUELLO.puntos) proyectar(p);
+    ctx.strokeStyle = tinte(estado.color, 0.10);
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    for (const [i, j] of CUELLO.aristas) {
+      const a = CUELLO.puntos[i], b = CUELLO.puntos[j];
+      if (a._e < 0 || b._e < 0) continue;
+      ctx.moveTo(a._x, a._y); ctx.lineTo(b._x, b._y);
+    }
+    ctx.stroke();
+    ctx.fillStyle = tinte(estado.color, 0.30);
+    ctx.beginPath();
+    for (const p of CUELLO.puntos) {
+      if (p._e < 0 || p.z < -0.05) continue;
+      ctx.rect(p._x - 0.6, p._y - 0.6, 1.2, 1.2);
+    }
+    ctx.fill();
 
     /* Las aristas, repartidas en ocho franjas de brillo. Ocho y no dos: es lo
        que dibuja el relieve. Y son ocho trazos por cuadro, no dos mil. */
