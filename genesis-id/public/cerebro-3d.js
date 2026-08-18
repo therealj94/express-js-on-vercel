@@ -31,6 +31,9 @@
  * se ve.
  */
 import { GRUPOS, NODOS, ENLACES } from './cerebro-datos.js';
+import { crearCara } from './cara-3d.js';
+import { crearVoz } from './voz-core.js';
+import { PRESENTACION, REGIONES } from './guion-core.js';
 
 const lienzo = document.getElementById('lienzo');
 const ctx = lienzo.getContext('2d', { alpha: false });
@@ -568,6 +571,13 @@ function brilloLatido(dist, ahora) {
 // ── el dibujo ───────────────────────────────────────────────────────────────
 const txtPulso = document.getElementById('txtPulso');
 
+/* Las cajas de etiqueta del último cuadro, para el tacto; y si el giro
+   automático está congelado porque la cara está hablando. Declaradas aquí
+   —arriba del bucle que las usa— y no junto al bloque de la cara: `let` no se
+   iza, y el primer cuadro se dibuja antes de que ese bloque llegue a correr. */
+let etiquetasVivas = [];
+let congelado = false;
+
 /* El gesto que se anuncia es el que existe en este aparato. `pointer: coarse`
    es el dedo; ahí no hay rueda que girar y sí hay dos dedos que pellizcar. */
 {
@@ -588,7 +598,7 @@ for (let i = 0; i < BANDAS; i++) banda.push([]);
 const encendidos = [];
 
 function cuadro(ahora) {
-  if (dedos.size === 0 && !quieto) cam.giroY += VEL_GIRO;
+  if (dedos.size === 0 && !quieto && !congelado) cam.giroY += VEL_GIRO;
   cam.dist += (cam.objetivo - cam.dist) * 0.08;
 
   const cy = Math.cos(cam.giroY), sy = Math.sin(cam.giroY);
@@ -827,6 +837,7 @@ function cuadro(ahora) {
     if (p.e < 0) continue;
     cajas.push({
       x: p.x, y: p.y, z: p.z, e: p.e, color: reg.color, nombre: gr.nombre,
+      clave: reg.clave,
       // El recuento es de PIEZAS del mapa. La malla de esta región, que puede
       // tener doscientos puntos, no suma ni uno.
       cuantas: neuronas.filter((n) => n.grupo === reg.clave).length,
@@ -908,7 +919,9 @@ function cuadro(ahora) {
       if (ey + h > H - borde) ey = techo;
     }
     ex = Math.max(margen, Math.min(W - margen - w, ex));
-    puestas.push({ x: ex, y: ey, w, h });
+    // Se guarda también la región: estas cajas son lo que se puede TOCAR
+    // para que la cara la explique, así que hay que saber cuál es cuál.
+    puestas.push({ x: ex, y: ey, w, h, clave: c.clave });
 
     ctx.strokeStyle = tinte(c.color, 0.34 * op);
     ctx.lineWidth = 1;
@@ -922,6 +935,12 @@ function cuadro(ahora) {
     etiqueta(ex, ey + h / 2, c.nombre.toUpperCase(),
              `${c.cuantas} ${c.cuantas === 1 ? 'pieza' : 'piezas'}`, c.color, op, w);
   }
+
+  // Las cajas de este cuadro quedan a mano del tacto. Se guardan aquí y no en
+  // una variable del módulo con otro nombre porque lo que se puede tocar tiene
+  // que ser EXACTAMENTE lo que se acaba de dibujar: cualquier copia con un
+  // cuadro de retraso hace que tocar una etiqueta abra la de al lado.
+  etiquetasVivas = puestas;
 
   // El texto del pulso, con el recuento de verdad.
   if (!txtPulso.dataset.puesto) {
@@ -992,3 +1011,76 @@ function tinte(hex, a) {
 }
 
 requestAnimationFrame(cuadro);
+
+/* ══ LA CARA, LA VOZ Y EL TACTO ═════════════════════════════════════════════
+
+   La cara vive en su propio lienzo (`cara-3d.js`) y no dentro de éste. Son dos
+   cosas con ritmos distintos —el cerebro gira despacio, la boca se mueve a la
+   velocidad del habla— y meterlas en el mismo lienzo obliga a redibujar los
+   dos mil puntos del cerebro cada vez que la boca cambia de forma.
+
+   La voz sale del banco grabado de la casa. Ver `voz-core.js` y
+   `guion-core.js`: cada línea del guion trae su fichero comprobado, y si el
+   fichero no llega se dice la MISMA frase con la voz del aparato. */
+
+const cara = crearCara(document.getElementById('lienzoCara'));
+const elDice = document.getElementById('dice');
+const botón = document.getElementById('botonHablar');
+const rot = botón.querySelector('.rot');
+
+const voz = crearVoz({
+  alNivel: (x) => cara.nivel(x),
+  alTexto: (t) => {
+    elDice.textContent = t || '';
+    elDice.classList.toggle('viva', !!t);
+  },
+  alEstado: (hablando) => {
+    botón.classList.toggle('hablando', hablando);
+    rot.textContent = hablando ? 'Parar' : 'Presentar';
+    /* Mientras habla, el cerebro deja de girar solo. Girando, la etiqueta de
+       la región de la que está hablando se va del sitio a mitad de la frase, y
+       quien mira sigue la etiqueta en vez de escuchar. */
+    congelado = hablando;
+  },
+});
+
+botón.addEventListener('click', () => {
+  if (voz.hablando) voz.callar();
+  else voz.recitar(PRESENTACION);
+});
+
+/* ── TOCAR UNA REGIÓN ──
+   Se prueba contra las cajas TAL CUAL se dibujaron en el último cuadro. La
+   línea guía ya ata cada caja a su sitio del cerebro, así que tocar la caja es
+   tocar la región aunque la caja esté a media pantalla de distancia. */
+lienzo.addEventListener('click', (e) => {
+  // Un arrastre para girar termina en `click` y no debe disparar nada: si lo
+  // hiciera, girar el cerebro haría hablar a la cara en cada gesto.
+  if (arrastró) { arrastró = false; return; }
+  const x = e.clientX, y = e.clientY;
+  const caja = etiquetasVivas.find((q) =>
+    q.clave && x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
+  if (!caja) return;
+
+  const gr = GRUPOS[caja.clave];
+  const cuantas = neuronas.filter((n) => n.grupo === caja.clave).length;
+  /* El recuento se arma AQUÍ y no está escrito en el guion: así la frase dice
+     lo que hay en el mapa hoy, y no una cifra que envejece en cuanto alguien
+     añade una pieza. */
+  const texto = `${gr.nombre}: ${cuantas} ${cuantas === 1 ? 'pieza' : 'piezas'}. `
+              + (REGIONES[caja.clave] || '');
+  // Sin `audio`: estas frases no están en el banco. Ver `guion-core.js`.
+  voz.recitar([{ texto }]);
+});
+
+/* Un arrastre de más de unos píxeles no es un toque. Sin este umbral, en un
+   teléfono cualquier giro cuenta como toque: el dedo nunca sale del píxel
+   exacto donde entró, y el cerebro se pondría a hablar cada vez que alguien
+   lo gira. */
+let arrastró = false, tocóEn = null;
+lienzo.addEventListener('pointerdown', (e) => { tocóEn = [e.clientX, e.clientY]; arrastró = false; });
+lienzo.addEventListener('pointermove', (e) => {
+  if (!tocóEn) return;
+  if (Math.hypot(e.clientX - tocóEn[0], e.clientY - tocóEn[1]) > 6) arrastró = true;
+});
+addEventListener('pointerup', () => { tocóEn = null; });

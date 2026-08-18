@@ -102,10 +102,20 @@ app.get(['/genesis-core', '/cerebro-3d', '/core'], (_req, res) => {
   res.sendFile(join(__dirname, '..', 'public', 'cerebro-3d.html'))
 })
 
-app.get('/cerebro-3d.js', (_req, res) => {
-  res.type('application/javascript')
-  res.sendFile(join(__dirname, '..', 'public', 'cerebro-3d.js'))
-})
+/* Los módulos de Genesis Core, uno por ruta.
+ *
+ * Se enumeran en vez de servir `public/` entero con `express.static`, por la
+ * misma razón que ya llevaba `/cerebro-datos.js`: una carpeta servida reparte
+ * todo lo que alguien deje ahí dentro algún día. Aquí hacen falta estos
+ * cuatro y ninguno más — y si mañana se añade uno y falta la línea, el fallo
+ * es un 404 evidente en la consola, no un fichero interno publicado sin que
+ * nadie se entere. */
+for (const modulo of ['cerebro-3d.js', 'cara-3d.js', 'voz-core.js', 'guion-core.js']) {
+  app.get('/' + modulo, (_req, res) => {
+    res.type('application/javascript')
+    res.sendFile(join(__dirname, '..', 'public', modulo))
+  })
+}
 
 /**
  * El mapa del ecosistema, aparte de la página.

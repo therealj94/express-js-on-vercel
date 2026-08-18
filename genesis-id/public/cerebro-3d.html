@@ -18,9 +18,16 @@
   script-src 'self';
   style-src 'self' 'unsafe-inline';
   img-src 'self' data:;
-  connect-src 'self';
+  connect-src 'self' https://cerebro.ordenscan.com;
+  media-src 'self' https://cerebro.ordenscan.com;
   form-action 'none';
   base-uri 'self'">
+<!-- `media-src` y `connect-src` abren UN origen y solo uno: cerebro.ordenscan.com,
+     que es donde vive el banco de voz grabado de la casa. No se abre a `*`: la
+     gracia de esta cabecera es que si alguien colara una etiqueta en esta
+     página, no pudiera sacar nada hacia donde quisiera. El banco sirve con
+     `access-control-allow-origin: *`, así que además se puede ANALIZAR la
+     señal para mover la boca al ritmo del audio de verdad. -->
 
 <style>
 /* ═══ GENESIS CORE · LA VISTA DE PRESENTACIÓN ════════════════════════════════
@@ -107,6 +114,49 @@ canvas:active{cursor:grabbing}
   #ayuda .nota{max-width:100%}
 }
 @media (prefers-reduced-motion:reduce){#pulso i{animation:none}}
+
+/* ══ LA CARA Y LO QUE DICE ══════════════════════════════════════════════════ */
+#cara{position:fixed;right:26px;bottom:74px;z-index:11;
+  display:flex;flex-direction:column;align-items:center;gap:8px}
+#lienzoCara{width:210px;height:248px;display:block;pointer-events:none}
+#botonHablar{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 15px 7px 12px;border-radius:999px;cursor:pointer;
+  background:rgba(3,12,20,.82);border:1px solid rgba(111,227,245,.5);
+  color:#6FE3F5;font:600 11px/1 ui-monospace,Menlo,monospace;
+  letter-spacing:.16em;text-transform:uppercase}
+#botonHablar:hover{border-color:#6FE3F5;background:rgba(8,26,38,.9)}
+#botonHablar:focus-visible{outline:2px solid #6FE3F5;outline-offset:3px}
+/* El triángulo/cuadrado del botón se dibuja con bordes en vez de con un
+   carácter: «▶» y «■» salen de tamaños distintos en cada sistema y el botón
+   daba un salto al cambiar de estado. */
+#botonHablar .pico{width:0;height:0;border-left:8px solid currentColor;
+  border-top:5px solid transparent;border-bottom:5px solid transparent}
+#botonHablar.hablando .pico{width:9px;height:9px;border:0;background:currentColor}
+
+#dice{position:fixed;left:50%;transform:translateX(-50%);
+  bottom:74px;z-index:11;width:min(760px,calc(100vw - 300px));
+  text-align:center;font-size:14px;line-height:1.55;color:#CFE2F2;
+  text-shadow:0 2px 18px rgba(0,0,0,.95);pointer-events:none;
+  opacity:0;transition:opacity .25s}
+#dice.viva{opacity:1}
+
+@media (max-width:620px), (max-height:620px){
+  /* En el teléfono las tres cosas se APILAN, de abajo arriba: el pie, la cara
+     con su botón, y encima el subtítulo a todo el ancho.
+
+     En horizontal, como en el escritorio, no cabían: el subtítulo caía justo
+     encima de la cara y se leía el texto sobre la malla. Con cuatrocientos
+     píxeles de ancho no hay sitio para dos columnas — hay sitio para una. */
+  /* 86 y no 70: a 70 el botón quedaba justo encima del renglón del pulso y se
+     leía «13 regiones PARAR» de corrido. */
+  #cara{right:10px;bottom:calc(86px + env(safe-area-inset-bottom));gap:5px}
+  #lienzoCara{width:100px;height:118px}
+  #botonHablar{padding:5px 11px 5px 9px;font-size:9.5px;letter-spacing:.12em}
+  #dice{width:calc(100vw - 32px);left:16px;transform:none;
+    bottom:calc(238px + env(safe-area-inset-bottom));
+    font-size:12.5px;line-height:1.5;text-align:left}
+}
 </style>
 </head>
 <body>
@@ -117,6 +167,22 @@ canvas:active{cursor:grabbing}
   <div class="t">Genesis Core</div>
   <div class="s">El cerebro del ecosistema Orden Global</div>
 </div>
+
+<!-- ══ LA CARA ═════════════════════════════════════════════════════════════
+     Va debajo del cerebro y a un lado, no en el medio: en el medio tapa
+     justo la masa que hay que mirar mientras habla de ella. -->
+<div id="cara">
+  <canvas id="lienzoCara"></canvas>
+  <button id="botonHablar" type="button" aria-label="Que Genesis Core presente el ecosistema">
+    <span class="pico"></span><span class="rot">Presentar</span>
+  </button>
+</div>
+
+<!-- El subtítulo. Está siempre que se habla, y no como accesorio: en una sala
+     con ruido —o con alguien que no oye bien— el subtítulo ES la
+     presentación. Y es lo que permite comprobar de un vistazo que el audio
+     dice lo que pone. -->
+<div id="dice" aria-live="polite"></div>
 
 <div id="pie">
   <div id="pulso"><i></i><span id="txtPulso">—</span></div>
