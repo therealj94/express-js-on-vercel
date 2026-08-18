@@ -68,6 +68,8 @@ canvas:active{cursor:grabbing}
 #pulso i{width:8px;height:8px;border-radius:50%;background:#6FE3F5;
   box-shadow:0 0 14px #6FE3F5;animation:latir 2.4s ease-in-out infinite}
 @keyframes latir{0%,100%{transform:scale(.75);opacity:.55}12%{transform:scale(1.5);opacity:1}}
+#ayuda{display:flex;flex-direction:column;align-items:flex-end;gap:5px;text-align:right}
+#ayuda .nota{color:#3C4E60}
 @media (prefers-reduced-motion:reduce){#pulso i{animation:none}}
 </style>
 </head>
@@ -82,7 +84,13 @@ canvas:active{cursor:grabbing}
 
 <div id="pie">
   <div id="pulso"><i></i><span id="txtPulso">—</span></div>
-  <div>Arrastrá para girar · rueda para acercar</div>
+  <!-- Esta línea no es decoración. Si alguien en la sala pregunta «¿esos miles
+       de puntos son piezas?», la respuesta ya está en pantalla y no depende de
+       que quien proyecta se acuerde de aclararlo. -->
+  <div id="ayuda">
+    <span class="nota">El tejido es textura · lo contado son las piezas del mapa</span>
+    <span>Arrastrá para girar · rueda para acercar</span>
+  </div>
 </div>
 
 <script type="module" src="cerebro-3d.js"></script>

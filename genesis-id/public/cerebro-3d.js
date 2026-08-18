@@ -5,17 +5,23 @@
  * Esto podría ser Three.js en tres líneas. No lo es por dos razones concretas:
  * la CSP de esta casa no deja cargar de un CDN, y una pantalla que hay que
  * PROYECTAR en una reunión no puede depender de que un servidor ajeno conteste.
- * Son 74 piezas y unas cuantas miles de partículas — eso lo dibuja un canvas 2D
- * con la proyección hecha a mano, y el archivo entero pesa menos que el
- * favicon de una librería.
+ * Todo lo que hay aquí lo dibuja un canvas 2D con la proyección hecha a mano.
  *
  * ══ LOS NÚMEROS SON REALES ═════════════════════════════════════════════════
  *
- * Las neuronas y sus etiquetas salen de `cerebro-datos.js`, que es el mapa de
- * verdad del ecosistema. Las DENDRITAS que salen de cada neurona son textura:
- * no se cuentan, no se etiquetan y no representan nada. Inflar el recuento
- * para que el cerebro se viera más grande sería justo lo que esta casa no
- * hace — y además se cae solo en la primera pregunta.
+ * Hay DOS cosas dibujadas y no se confunden nunca:
+ *
+ *   1. LAS PIEZAS. Salen de `cerebro-datos.js`, que es el mapa de verdad del
+ *      ecosistema. Son las que llevan halo, las que se cuentan y las únicas
+ *      que aparecen en una etiqueta.
+ *
+ *   2. LA MALLA. Los miles de puntitos y los hilos que forman el tejido son
+ *      TEXTURA: le dan cuerpo y forma de cerebro al volumen. No se cuentan,
+ *      no se etiquetan y no representan nada.
+ *
+ * Inflar el recuento con la malla para que el cerebro se viera más grande
+ * sería justo lo que esta casa no hace — y además se cae solo en la primera
+ * pregunta que haga alguien. Por eso el pie de pantalla lo dice en voz alta.
  *
  * ══ POR QUÉ TODO ESTÁ SEMBRADO ═════════════════════════════════════════════
  *
@@ -41,88 +47,219 @@ function sembrar(s) {
 }
 const rnd = sembrar(20260818);
 
-// ══ LA FORMA DEL CEREBRO ════════════════════════════════════════════════════
-//
-// Los centros de cada región van puestos A MANO y no al azar. Un cerebro
-// generado sale como una pelota de puntos; uno compuesto tiene lóbulos, tiene
-// frente y tiene nuca — y es lo que hace que se lea como un cerebro y no como
-// una nube. Las coordenadas son (x izquierda-derecha, y arriba-abajo, z
-// frente-fondo) en un espacio de unos ±200.
+/* ══ EL VOLUMEN DEL CEREBRO ═════════════════════════════════════════════════
+
+   La primera versión repartía las regiones en el aire y salía una nube de
+   puntos bonita que no era un cerebro. La diferencia entre las dos cosas es
+   ésta función: un volumen con lóbulos, con frente, con nuca y con cerebelo,
+   dentro del cual TODO lo que se dibuja tiene que caer. Un contorno reconocible
+   es lo que hace que alguien que entra a la sala sepa qué está mirando antes de
+   que nadie se lo diga.
+
+   Ejes: x izquierda-derecha · y arriba(−)/abajo(+) · z frente(+)/nuca(−). */
+
+const CENTRO_Y = -6;      // el cuerpo del cerebro va un pelo por encima del eje
+
+function dentro(x, y, z) {
+  // ── los dos hemisferios ──
+  const t = z / 122;
+  if (t > -1 && t < 1) {
+    /* Se afina hacia el polo frontal y hacia el occipital. Sin este afinado el
+       cerebro es un huevo: son las puntas lo que le da la silueta. */
+    const afina = Math.sqrt(Math.max(0, 1 - t * t * 0.58));
+    const rx = 94 * afina;
+    // Aplanado por abajo: un cerebro apoya, no es simétrico de arriba a abajo.
+    const ry = (y < CENTRO_Y ? 78 : 54) * afina;
+    const yy = (y - CENTRO_Y) / ry;
+    if ((x / rx) ** 2 + yy * yy <= 1) {
+      // La fisura longitudinal: el canal que separa los dos hemisferios. Es
+      // el rasgo que más lo delata como cerebro y cuesta ocho caracteres.
+      if (Math.abs(x) < 6.5 && y < CENTRO_Y - 14 && z > -96) return false;
+      return true;
+    }
+  }
+  // ── el cerebelo: atrás y abajo ──
+  if ((x / 60) ** 2 + ((y - 50) / 30) ** 2 + ((z + 100) / 42) ** 2 <= 1) return true;
+  // ── el tronco: lo que baja ──
+  if ((x / 17) ** 2 + ((y - 74) / 48) ** 2 + ((z + 46) / 21) ** 2 <= 1) return true;
+  return false;
+}
+
+/** Empuja un punto hacia adentro del volumen, acercándolo al centro en pasos.
+ *  Sin esto, una región puesta un poco afuera dispara sus puntos al vacío y el
+ *  contorno del cerebro se deshilacha justo por donde más se nota. */
+function meter(x, y, z) {
+  for (let k = 0; k < 26; k++) {
+    if (dentro(x, y, z)) return [x, y, z];
+    x *= 0.94; y = CENTRO_Y + (y - CENTRO_Y) * 0.94; z *= 0.94;
+  }
+  return [0, CENTRO_Y, 0];
+}
+
+/** Un punto al azar REPARTIDO PAREJO por el volumen del cerebro, por rechazo.
+ *  Se insiste hasta que cae dentro y no se conforma con el último intento: un
+ *  intento fallido devuelto tal cual queda como una mancha suelta flotando
+ *  fuera del cerebro, que es exactamente lo que delata el truco. */
+function puntoDentro() {
+  for (let k = 0; k < 400; k++) {
+    const x = (rnd() * 2 - 1) * 96;
+    const y = CENTRO_Y + (rnd() * 2 - 1) * 88;
+    const z = (rnd() * 2 - 1) * 126;
+    if (dentro(x, y, z)) return [x, y, z];
+  }
+  return [0, CENTRO_Y, 0];
+}
+
+/** A qué región pertenece un punto cualquiera del volumen: la del centro más
+ *  cercano. Sirve para teñir el relleno que da cuerpo al cerebro. */
+function regionDe(x, y, z) {
+  let mejor = null, md = Infinity;
+  for (const k of Object.keys(CENTROS)) {
+    const c = CENTROS[k];
+    const d = (x - c[0]) ** 2 + (y - c[1]) ** 2 + (z - c[2]) ** 2;
+    if (d < md) { md = d; mejor = k; }
+  }
+  return mejor;
+}
+
+/* Los centros de cada región van puestos A MANO y en un lóbulo que tiene
+   sentido: identidad y decisión en la frente (lo que mira hacia adelante),
+   nodos e infraestructura en la nuca y el cerebelo (lo que sostiene), la cadena
+   en el centro de todo. No es anatomía de verdad y no pretende serlo — es una
+   composición para que el mapa se recuerde. */
 const CENTROS = {
-  identidad:  [   0,  -68,   58],   // la frente: quién es quién
-  cadena:     [   0,   14,  -18],   // el tronco, en el centro de todo
-  nodo:       [ -18,   64,  -78],   // la nuca: lo que sostiene
-  token:      [  74,   10,   16],   // lóbulo derecho
-  app:        [ -96,  -18,   22],   // lóbulo izquierdo, grande
-  backend:    [ -78,   40,  -30],
-  infra:      [  38,   62,  -62],
-  dominio:    [ 100,  -36,  -14],
-  seguridad:  [ -46,  -62,  -46],
-  agente:     [  30,  -74,  -66],   // arriba y atrás: el equipo que mira
-  repo:       [ -34,   78,   34],
-  abierto:    [  84,   56,   40],   // abajo a la derecha, separado a propósito
-  decision:   [  56,  -34,   82],   // adelante: lo que espera respuesta
+  identidad:  [ -36,  -30,   76],   // frente izquierda: quién es quién
+  decision:   [  40,  -26,   80],   // frente derecha: lo que espera respuesta
+  seguridad:  [ -50,  -54,   26],   // arriba y adelante
+  agente:     [  48,  -52,   22],   // arriba: el equipo que mira
+  cadena:     [   0,   -4,   -6],   // el centro exacto: todo pasa por acá
+  token:      [  62,    6,   20],   // lóbulo derecho
+  app:        [ -66,    4,   16],   // lóbulo izquierdo
+  dominio:    [  70,   30,  -18],   // temporal derecho, abajo
+  backend:    [ -70,   28,  -22],   // temporal izquierdo, abajo
+  repo:       [ -42,  -48,  -58],   // parietal izquierdo, atrás
+  abierto:    [  46,  -44,  -62],   // parietal derecho, atrás
+  infra:      [  34,   26,  -86],   // occipital derecho
+  nodo:       [ -30,   26,  -90],   // occipital izquierdo, hacia el cerebelo
 };
 
-const RADIO_REGION = 34;   // cuánto se dispersan las neuronas de una región
+/* ══ EL COLOR ═══════════════════════════════════════════════════════════════
+   Un proyector lava el color. Los trece tonos del mapa se distinguen perfecto
+   en un monitor y en una sala grande se vuelven trece grises parecidos. Se
+   sube el croma y se deja el TONO intacto: sigue siendo el color de la región,
+   solo que llega hasta el fondo de la sala. */
+function avivar(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const L = (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
+  const F = 1.5;
+  const ap = (c) => Math.round(Math.max(0, Math.min(255, L + (c - L) * F)));
+  r = ap(r); g = ap(g); b = ap(b);
+  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
+}
 
-// ── las neuronas ────────────────────────────────────────────────────────────
+const COLOR = {};
+for (const k of Object.keys(GRUPOS)) COLOR[k] = avivar(GRUPOS[k].color);
+
+// ══ LAS PIEZAS ══════════════════════════════════════════════════════════════
+// Éstas SÍ se cuentan: son las que están en el mapa.
 const porId = new Map();
 const neuronas = NODOS.map((n) => {
-  const c = CENTROS[n.g] || [0, 0, 0];
-  // Dentro de su región, en una esfera. El cubo de la raíz cúbica reparte
-  // parejo por VOLUMEN; sin eso se amontonan todas en el borde.
+  const c = CENTROS[n.g] || [0, CENTRO_Y, 0];
+  // Dentro de su región, en una esfera. La raíz cúbica reparte parejo por
+  // VOLUMEN; sin eso se amontonan todas contra el borde.
   const u = rnd(), v = rnd(), w = Math.cbrt(rnd());
   const th = u * Math.PI * 2, ph = Math.acos(2 * v - 1);
-  const r = RADIO_REGION * w;
+  const r = 26 * w;
+  const [x, y, z] = meter(
+    c[0] + r * Math.sin(ph) * Math.cos(th),
+    c[1] + r * Math.sin(ph) * Math.sin(th),
+    c[2] + r * Math.cos(ph));
   const nn = {
     id: n.id, nombre: n.n, grupo: n.g, peso: n.peso || 1,
-    x: c[0] + r * Math.sin(ph) * Math.cos(th),
-    y: c[1] + r * Math.sin(ph) * Math.sin(th),
-    z: c[2] + r * Math.cos(ph),
-    color: (GRUPOS[n.g] || {}).color || '#8FA0B8',
+    x, y, z,
+    color: COLOR[n.g] || '#9FB4CC',
     fase: rnd() * Math.PI * 2,          // para que no latan todas a la vez
-    dendritas: [],
   };
-  // Las dendritas: hilos cortos que salen de la neurona. Textura, no datos.
-  const cuantas = 3 + Math.floor(rnd() * 4);
-  for (let i = 0; i < cuantas; i++) {
-    const a = rnd() * Math.PI * 2, b = Math.acos(2 * rnd() - 1);
-    const L = 9 + rnd() * 16;
-    nn.dendritas.push([
-      L * Math.sin(b) * Math.cos(a),
-      L * Math.sin(b) * Math.sin(a),
-      L * Math.cos(b),
-    ]);
-  }
+  nn.d = Math.hypot(x, y - CENTRO_Y, z);
   porId.set(n.id, nn);
   return nn;
 });
 
-/* ══ CENTRAR Y ESCALAR ══════════════════════════════════════════════════════
-   Los centros de región se pusieron a mano mirando la forma, no la aritmética,
-   así que el conjunto quedaba corrido a la derecha. En vez de retocar trece
-   coordenadas a ojo —y volver a retocarlas cada vez que se agregue una
-   región— se calcula el centro de masa una vez y se corre todo para que caiga
-   en el origen. Así la cámara siempre apunta al medio del cerebro, tenga las
-   regiones que tenga. */
-(() => {
-  let mx = 0, my = 0, mz = 0;
-  for (const n of neuronas) { mx += n.x; my += n.y; mz += n.z; }
-  mx /= neuronas.length; my /= neuronas.length; mz /= neuronas.length;
-  // Y de paso se agranda: a escala 1 el cerebro ocupaba un pulgar de la
-  // pantalla, y esto es una vista para PROYECTAR.
-  const ESC = 1.55;
-  for (const n of neuronas) {
-    n.x = (n.x - mx) * ESC; n.y = (n.y - my) * ESC; n.z = (n.z - mz) * ESC;
-    for (const d of n.dendritas) { d[0] *= ESC; d[1] *= ESC; d[2] *= ESC; }
-  }
-  for (const k of Object.keys(CENTROS)) {
-    CENTROS[k] = [(CENTROS[k][0] - mx) * ESC, (CENTROS[k][1] - my) * ESC, (CENTROS[k][2] - mz) * ESC];
-  }
-})();
+// ══ LA MALLA ════════════════════════════════════════════════════════════════
+// TEXTURA. Ni una de éstas se cuenta ni se etiqueta — ver la cabecera.
+//
+// Es lo que convierte trece manchas sueltas en un tejido: cada región cría una
+// nube de puntos alrededor de sus piezas, dentro del volumen, y cada punto se
+// ata a sus tres vecinos más cercanos. Eso solo ya dibuja la red poligonal que
+// se ve en un cerebro de verdad, sin triangular nada ni cargar una librería.
+const VECINOS = 3;
+const regiones = [];
+const porRegion = {};
+for (const clave of Object.keys(CENTROS)) porRegion[clave] = [];
 
-// ── los axones ──────────────────────────────────────────────────────────────
+const nuevo = (clave, x, y, z) =>
+  porRegion[clave].push({ x, y, z, d: Math.hypot(x, y - CENTRO_Y, z), _e: -1 });
+
+/* Primero, el RELLENO: puntos repartidos parejo por todo el volumen y teñidos
+   por la región más cercana. Sin este paso el tejido solo existe alrededor de
+   las trece regiones y el cerebro sale con agujeros entre lóbulo y lóbulo —
+   es decir, sale una constelación otra vez y no una silueta. Este relleno es
+   lo único que hace que el CONTORNO se lea. */
+for (let i = 0; i < 1300; i++) {
+  const [x, y, z] = puntoDentro();
+  nuevo(regionDe(x, y, z), x, y, z);
+}
+
+/* Y después, el ESPESOR: puntos colgados de las piezas de verdad, para que el
+   tejido se densifique donde efectivamente hay algo. Es lo que hace que la
+   región de tokens (quince piezas) se vea más cargada que la de código (dos)
+   sin necesidad de escribirlo en ningún lado. */
+for (const clave of Object.keys(CENTROS)) {
+  const piezas = neuronas.filter((n) => n.grupo === clave);
+  for (let i = 0; i < piezas.length * 16; i++) {
+    const base = piezas[Math.floor(rnd() * piezas.length)];
+    const a = rnd() * Math.PI * 2, b = Math.acos(2 * rnd() - 1);
+    const R = 6 + Math.cbrt(rnd()) * 28;
+    const [x, y, z] = meter(
+      base.x + R * Math.sin(b) * Math.cos(a),
+      base.y + R * Math.sin(b) * Math.sin(a),
+      base.z + R * Math.cos(b));
+    nuevo(clave, x, y, z);
+  }
+}
+
+for (const clave of Object.keys(CENTROS)) {
+  const puntos = porRegion[clave];
+  if (!puntos.length) continue;
+
+  // Cada punto con sus tres vecinos. Cuadrático, pero son ~150 puntos por
+  // región y esto corre UNA vez al abrir, no en cada cuadro.
+  const vistas = new Set();
+  const aristas = [];
+  for (let i = 0; i < puntos.length; i++) {
+    const p = puntos[i];
+    const cerca = [];
+    for (let j = 0; j < puntos.length; j++) {
+      if (i === j) continue;
+      const q = puntos[j];
+      const dd = (p.x - q.x) ** 2 + (p.y - q.y) ** 2 + (p.z - q.z) ** 2;
+      cerca.push([dd, j]);
+    }
+    cerca.sort((a, b) => a[0] - b[0]);
+    for (let k = 0; k < VECINOS && k < cerca.length; k++) {
+      const j = cerca[k][1];
+      const llave = i < j ? `${i}:${j}` : `${j}:${i}`;
+      if (vistas.has(llave)) continue;
+      vistas.add(llave);
+      aristas.push([i, j]);
+    }
+  }
+
+  regiones.push({ clave, color: COLOR[clave] || '#9FB4CC', puntos, aristas });
+}
+
+// ── los axones: las conexiones REALES del mapa ──────────────────────────────
 const axones = [];
 for (const e of ENLACES) {
   const a = porId.get(e[0]), b = porId.get(e[1]);
@@ -135,7 +272,7 @@ for (const e of ENLACES) {
 // Esto es «las pulsaciones»: puntos que recorren un axón de una punta a la
 // otra. No representan tráfico medido — representan que la cosa está viva — y
 // por eso no llevan número al lado.
-const SENALES = quieto ? 0 : 150;
+const SENALES = quieto ? 0 : 140;
 const senales = [];
 for (let i = 0; i < SENALES; i++) {
   senales.push({
@@ -145,10 +282,52 @@ for (let i = 0; i < SENALES; i++) {
   });
 }
 
+/* ══ LOS TRAZOS BLANCOS ═════════════════════════════════════════════════════
+   Los filamentos largos que salen del cerebro y se van del cuadro. No son
+   datos: son lo que le da ESCALA a la pieza. Sin ellos el cerebro flota
+   encerrado en su propio contorno; con ellos se lee como algo que está
+   conectado a más cosas de las que caben en la pantalla — que es exactamente
+   lo que pasa.
+
+   Cada trazo lleva una curvatura fija propia. Sin curvarlos salen radios
+   rectos desde el centro y la cosa parece un sol, no un cerebro. */
+const trazos = [];
+for (let i = 0; i < 15; i++) {
+  const [x, y, z] = puntoDentro();
+  let dx = x, dy = y - CENTRO_Y, dz = z;
+  const L = Math.hypot(dx, dy, dz) || 1;
+  dx /= L; dy /= L; dz /= L;
+  const cur = [(rnd() - 0.5) * 0.085, (rnd() - 0.5) * 0.085, (rnd() - 0.5) * 0.085];
+
+  const pts = [];
+  let px = x, py = y, pz = z, paso = 10 + rnd() * 6;
+  for (let k = 0; k < 24; k++) {
+    pts.push({ x: px, y: py, z: pz, _e: -1 });
+    px += dx * paso; py += dy * paso; pz += dz * paso;
+    dx += cur[0]; dy += cur[1]; dz += cur[2];
+    const m = Math.hypot(dx, dy, dz) || 1;
+    dx /= m; dy /= m; dz /= m;
+    paso *= 1.025;
+  }
+  trazos.push({ pts, t: rnd(), v: 0.0011 + rnd() * 0.0022 });
+}
+
+// ── la bruma del volumen ────────────────────────────────────────────────────
+// Manchas suaves repartidas por dentro. Es lo que hace que el cerebro tenga
+// CUERPO: sin ellas se ve el tejido pero se ve a través, como una jaula.
+const bruma = [];
+for (let i = 0; i < 30; i++) {
+  const [x, y, z] = puntoDentro();
+  // Radios chicos y alfas bajas: con manchas grandes cada una se lee como un
+  // círculo suelto en vez de fundirse con las de al lado, y en vez de cuerpo
+  // se ven cuarenta globos.
+  bruma.push({ x, y, z, r: 26 + rnd() * 22, a: 0.020 + rnd() * 0.022 });
+}
+
 // ── las estrellas del fondo ─────────────────────────────────────────────────
 const estrellas = [];
-for (let i = 0; i < 420; i++) {
-  const a = rnd() * Math.PI * 2, b = Math.acos(2 * rnd() - 1), R = 520 + rnd() * 640;
+for (let i = 0; i < 460; i++) {
+  const a = rnd() * Math.PI * 2, b = Math.acos(2 * rnd() - 1), R = 560 + rnd() * 700;
   estrellas.push({
     x: R * Math.sin(b) * Math.cos(a),
     y: R * Math.sin(b) * Math.sin(a),
@@ -158,12 +337,12 @@ for (let i = 0; i < 420; i++) {
 }
 
 // ── cámara ──────────────────────────────────────────────────────────────────
-/* dist 520 y no 640: con 640 el cerebro entraba entero pero dejaba una franja
-   negra abajo y a la derecha, y en una sala grande eso se lee como que la cosa
-   es chica. A 520 llena el cuadro y las etiquetas de las regiones de los bordes
-   siguen cayendo dentro al girar. */
-const cam = { giroY: 0.4, giroX: -0.12, dist: 520, objetivo: 520 };
-let arrastrando = false, ultX = 0, ultY = 0, velY = 0.0022;
+/* dist 430: el cerebro mide unos ±130 y con la focal de abajo eso lo deja
+   llenando el cuadro sin que las etiquetas de las regiones del borde se salgan
+   al girar. */
+const cam = { giroY: 0.42, giroX: -0.14, dist: 430, objetivo: 430 };
+let arrastrando = false, ultX = 0, ultY = 0;
+const VEL_GIRO = 0.0020;
 
 lienzo.addEventListener('pointerdown', (e) => {
   arrastrando = true; ultX = e.clientX; ultY = e.clientY;
@@ -181,16 +360,23 @@ lienzo.addEventListener('pointermove', (e) => {
 addEventListener('pointerup', () => { arrastrando = false; });
 lienzo.addEventListener('wheel', (e) => {
   e.preventDefault();
-  cam.objetivo = Math.max(340, Math.min(1400, cam.objetivo + e.deltaY * 0.8));
+  cam.objetivo = Math.max(250, Math.min(1100, cam.objetivo + e.deltaY * 0.7));
 }, { passive: false });
 
 // ── tamaño ──────────────────────────────────────────────────────────────────
 let W = 0, H = 0, dpr = 1;
 function medir() {
-  // El dpr se topa en 2: a 3 el móvil dibuja nueve veces los píxeles y la
-  // animación se arrastra, y nadie nota la diferencia.
-  dpr = Math.min(devicePixelRatio || 1, 2);
   W = innerWidth; H = innerHeight;
+  /* El dpr se topa en 2 —a 3 el móvil dibuja nueve veces los píxeles y nadie
+     nota la diferencia— y baja a 1.5 en pantalla grande.
+
+     Ese segundo tope es justo para el caso que importa: un portátil
+     empujando un proyector. Ahí la ventana es enorme, el dibujo va casi todo
+     en modo aditivo (que se rasteriza caro) y a dpr 2 son cuatro veces los
+     píxeles de la pantalla lógica. La diferencia de nitidez a cuatro metros
+     no la ve nadie; la diferencia entre 60 y 25 cuadros por segundo la ve
+     toda la sala. */
+  dpr = Math.min(devicePixelRatio || 1, W > 1600 ? 1.5 : 2);
   lienzo.width = W * dpr; lienzo.height = H * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
@@ -198,6 +384,7 @@ addEventListener('resize', medir);
 medir();
 
 // ── proyección ──────────────────────────────────────────────────────────────
+const FOCAL = 1150;
 const proy = { x: 0, y: 0, e: 0, z: 0 };
 function proyectar(p, cy, sy, cx, sx) {
   // Girar en Y, después en X. En ese orden: al revés el cerebro cabecea en vez
@@ -208,40 +395,101 @@ function proyectar(p, cy, sy, cx, sx) {
   const z2 = p.y * sx + z1 * cx;
   const d = cam.dist + z2;
   if (d < 40) { proy.e = -1; return proy; }      // detrás de la cámara
-  /* 1150 y no 620: es la distancia focal. Con una lente corta el cerebro
-     salía del tamaño de un pulgar en una pantalla de proyección; con esta
-     llena el cuadro y además comprime menos la perspectiva, que es lo que hace
-     que se lea como un objeto y no como un abanico. */
-  const e = 1150 / d;
+  /* Focal larga y no corta: comprime menos la perspectiva, y eso es lo que
+     hace que el conjunto se lea como un OBJETO y no como un abanico de
+     puntos abriéndose hacia la cámara. */
+  const e = FOCAL / d;
   proy.x = W / 2 + x1 * e;
   proy.y = H / 2 + y2 * e;
   proy.e = e; proy.z = z2;
   return proy;
 }
 
+/** Proyecta y guarda el resultado encima del propio punto. La malla tiene
+ *  miles de puntos y cada uno se usa varias veces por cuadro (una vez como
+ *  punto y una por cada arista que lo toca): proyectarlo de nuevo cada vez
+ *  costaba más que todo el resto del dibujo junto. */
+function marcar(p, cy, sy, cx, sx) {
+  const r = proyectar(p, cy, sy, cx, sx);
+  p._x = r.x; p._y = r.y; p._e = r.e; p._z = r.z;
+}
+
+/* ══ LOS HALOS, DIBUJADOS UNA SOLA VEZ ══════════════════════════════════════
+   Cada halo era un `createRadialGradient` nuevo por partícula y por cuadro:
+   con las señales, las piezas, la bruma y las chispas eso son unos doscientos
+   sesenta degradados en CADA fotograma. Medido a 1920×1080 daba 23 cuadros por
+   segundo — proyectado en una sala eso se ve como un tirón constante.
+
+   Se dibuja un halo por color UNA vez en un lienzo aparte y después se estampa
+   escalado con drawImage, que es una operación que la máquina hace sola. Son
+   catorce lienzos de 64 píxeles en total. */
+const HALOS = new Map();
+const GRIS = '#96AFCD', BLANCO = '#F0FCFF';
+function halo(color) {
+  let c = HALOS.get(color);
+  if (c) return c;
+  const S = 64;
+  c = document.createElement('canvas');
+  c.width = c.height = S;
+  const g2 = c.getContext('2d');
+  const gr = g2.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  gr.addColorStop(0, tinte(color, 1));
+  gr.addColorStop(0.34, tinte(color, 0.38));
+  gr.addColorStop(1, tinte(color, 0));
+  g2.fillStyle = gr;
+  g2.fillRect(0, 0, S, S);
+  HALOS.set(color, c);
+  return c;
+}
+
+/** Estampa un halo centrado en (x,y) con radio R y una intensidad dada. */
+function estampar(color, x, y, R, alfa) {
+  if (R <= 0 || alfa <= 0.004) return;
+  ctx.globalAlpha = Math.min(1, alfa);
+  ctx.drawImage(halo(color), x - R, y - R, R * 2, R * 2);
+  ctx.globalAlpha = 1;
+}
+
 // ── el latido ───────────────────────────────────────────────────────────────
 // Una onda esférica que sale del centro cada PERIODO y recorre el cerebro. Es
 // el «pump»: lo que hace que el conjunto se lea como un órgano y no como un
-// diagrama. Las neuronas se encienden cuando la onda les pasa por encima.
+// diagrama. Todo lo que la onda toca se enciende al pasar — las piezas y el
+// tejido, que es lo que hace que el cerebro entero parezca respirar.
 const PERIODO = 2400;
-const VEL_ONDA = 0.42;   // unidades de mundo por milisegundo
+const VEL_ONDA = 0.46;   // unidades de mundo por milisegundo
+const ANCHO_ONDA = 44;
 
 function brilloLatido(dist, ahora) {
-  const fase = ahora % PERIODO;
-  const frente = fase * VEL_ONDA;
-  const d = Math.abs(dist - frente);
-  return d < 46 ? (1 - d / 46) ** 2 : 0;
+  const d = Math.abs(dist - (ahora % PERIODO) * VEL_ONDA);
+  return d < ANCHO_ONDA ? (1 - d / ANCHO_ONDA) ** 2 : 0;
 }
 
+// ── el dibujo ───────────────────────────────────────────────────────────────
 const txtPulso = document.getElementById('txtPulso');
-const listos = [];   // las neuronas, ordenadas por profundidad cada cuadro
+const listos = [];               // las piezas, ordenadas por profundidad
+const BANDAS = 4;                // franjas de profundidad para la malla
+/* Las cuatro franjas, de la más lejana a la más cercana. Los valores son
+   altos a propósito: el tejido ES la pieza. Con la malla tenue se veía un
+   enjambre de puntos flotando y la SILUETA del cerebro no se leía — que es
+   justo lo único que había que conseguir. */
+const ALFA_HILO = [0.10, 0.17, 0.27, 0.40];
+const ALFA_PUNTO = [0.26, 0.46, 0.70, 0.95];
+const banda = [];
+for (let i = 0; i < BANDAS; i++) banda.push([]);
+const encendidos = [];
 
 function cuadro(ahora) {
-  if (!arrastrando && !quieto) cam.giroY += velY;
+  if (!arrastrando && !quieto) cam.giroY += VEL_GIRO;
   cam.dist += (cam.objetivo - cam.dist) * 0.08;
 
   const cy = Math.cos(cam.giroY), sy = Math.sin(cam.giroY);
   const cx = Math.cos(cam.giroX), sx = Math.sin(cam.giroX);
+
+  // Los límites de `e` que hay ahora mismo, para repartir la malla en franjas
+  // de profundidad. Se recalculan cada cuadro porque el zoom los mueve.
+  const eMin = FOCAL / (cam.dist + 150);
+  const eMax = FOCAL / Math.max(70, cam.dist - 150);
+  const eRan = Math.max(0.0001, eMax - eMin);
 
   // El fondo: no un negro plano sino un pozo con luz al centro, para que el
   // cerebro parezca estar DENTRO de algo.
@@ -252,122 +500,232 @@ function cuadro(ahora) {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
 
-  // ── estrellas ─────────────────────────────────────────────────────────────
   ctx.globalCompositeOperation = 'lighter';
+
+  // ── estrellas ─────────────────────────────────────────────────────────────
+  ctx.fillStyle = 'rgba(150,190,230,.55)';
+  ctx.beginPath();
   for (const s of estrellas) {
     const p = proyectar(s, cy, sy, cx, sx);
     if (p.e < 0) continue;
-    ctx.fillStyle = `rgba(150,190,230,${s.br * Math.min(1, p.e * 1.4)})`;
-    ctx.fillRect(p.x, p.y, 1.3, 1.3);
+    ctx.rect(p.x, p.y, 1.3, 1.3);
+  }
+  ctx.fill();
+
+  // ── la bruma del volumen ──────────────────────────────────────────────────
+  for (const b of bruma) {
+    const p = proyectar(b, cy, sy, cx, sx);
+    if (p.e < 0) continue;
+    estampar(GRIS, p.x, p.y, b.r * p.e, b.a);
   }
 
-  // ── axones ────────────────────────────────────────────────────────────────
-  // Se dibujan ANTES que las neuronas para que los puntos queden encima de sus
-  // propios cables, que es como se ve un circuito de verdad.
-  for (const ax of axones) {
-    const pa = proyectar(ax.a, cy, sy, cx, sx);
-    if (pa.e < 0) continue;
-    const ax1 = pa.x, ay1 = pa.y, ae = pa.e;
-    const pb = proyectar(ax.b, cy, sy, cx, sx);
-    if (pb.e < 0) continue;
-    const prof = Math.min(ae, pb.e);
-    ctx.strokeStyle = `rgba(90,150,200,${0.05 + prof * 0.10})`;
-    ctx.lineWidth = 0.6;
-    ctx.beginPath(); ctx.moveTo(ax1, ay1); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+  // ── la malla ──────────────────────────────────────────────────────────────
+  // Se dibuja por región y por franja de profundidad: así son ~100 trazos por
+  // cuadro en vez de cuatro mil, y la profundidad se sigue leyendo.
+  encendidos.length = 0;
+  for (const reg of regiones) {
+    for (const p of reg.puntos) marcar(p, cy, sy, cx, sx);
+
+    // los hilos
+    for (const b of banda) b.length = 0;
+    for (const ar of reg.aristas) {
+      const a = reg.puntos[ar[0]], c = reg.puntos[ar[1]];
+      if (a._e < 0 || c._e < 0) continue;
+      const k = Math.max(0, Math.min(BANDAS - 1,
+        Math.floor(((a._e + c._e) / 2 - eMin) / eRan * BANDAS)));
+      banda[k].push(a, c);
+    }
+    ctx.lineWidth = 0.55;
+    for (let k = 0; k < BANDAS; k++) {
+      const b = banda[k];
+      if (!b.length) continue;
+      ctx.strokeStyle = tinte(reg.color, ALFA_HILO[k]);
+      ctx.beginPath();
+      for (let i = 0; i < b.length; i += 2) {
+        ctx.moveTo(b[i]._x, b[i]._y);
+        ctx.lineTo(b[i + 1]._x, b[i + 1]._y);
+      }
+      ctx.stroke();
+    }
+
+    // los puntos
+    for (const b of banda) b.length = 0;
+    for (const p of reg.puntos) {
+      if (p._e < 0) continue;
+      /* Lo que la CRESTA de la onda está tocando ahora mismo se aparta y se
+         pinta encendido. Es el «pump» barriendo el tejido.
+
+         El umbral es 0.62 y no 0.30 por una razón que se vio en pantalla: a
+         0.30 la onda encendía media región de golpe, y como lo encendido se
+         pinta claro, el cerebro entero se lavaba a blanco y los trece colores
+         desaparecían. A 0.62 es una cresta fina que RECORRE el tejido, que es
+         lo que se quiere: se ve el barrido y se siguen viendo las regiones. */
+      const late = quieto ? 0 : brilloLatido(p.d, ahora);
+      if (late > 0.62) { encendidos.push(p, late, reg.color); continue; }
+      const k = Math.max(0, Math.min(BANDAS - 1,
+        Math.floor((p._e - eMin) / eRan * BANDAS)));
+      banda[k].push(p);
+    }
+    for (let k = 0; k < BANDAS; k++) {
+      const b = banda[k];
+      if (!b.length) continue;
+      ctx.fillStyle = tinte(reg.color, ALFA_PUNTO[k]);
+      ctx.beginPath();
+      const s = 0.85 + k * 0.34;
+      for (const p of b) ctx.rect(p._x - s / 2, p._y - s / 2, s, s);
+      ctx.fill();
+    }
   }
+
+  /* Los puntos que la cresta está tocando, todos juntos y al final. Se
+     encienden en el COLOR DE SU REGIÓN y no en blanco: encendidos en blanco,
+     la onda borraba el color por donde pasaba y el barrido se leía como una
+     mancha viajando, no como el cerebro latiendo. */
+  for (let i = 0; i < encendidos.length; i += 3) {
+    const p = encendidos[i], late = encendidos[i + 1], color = encendidos[i + 2];
+    const r = (0.7 + (late - 0.62) * 3.4) * p._e * 0.55;
+    ctx.fillStyle = tinte(color, 0.55 + (late - 0.62) * 1.1);
+    ctx.beginPath(); ctx.arc(p._x, p._y, r, 0, 7); ctx.fill();
+  }
+
+  // ── los trazos blancos ────────────────────────────────────────────────────
+  // En tres tramos con alfa decreciente: el filamento se desvanece a medida
+  // que se aleja, y son tres trazos por hilo en vez de treinta y cuatro.
+  for (const tr of trazos) {
+    for (const p of tr.pts) marcar(p, cy, sy, cx, sx);
+    const n = tr.pts.length;
+    const tramos = [[0, 9, 0.24], [8, 16, 0.11], [15, n - 1, 0.045]];
+    for (const [a, b, al] of tramos) {
+      ctx.strokeStyle = `rgba(214,236,255,${al})`;
+      ctx.lineWidth = al > 0.2 ? 0.95 : 0.6;
+      ctx.beginPath();
+      let abierto = false;
+      for (let i = a; i <= b; i++) {
+        const p = tr.pts[i];
+        if (p._e < 0) { abierto = false; continue; }
+        if (!abierto) { ctx.moveTo(p._x, p._y); abierto = true; }
+        else ctx.lineTo(p._x, p._y);
+      }
+      ctx.stroke();
+    }
+    // la chispa que lo recorre
+    if (!quieto) {
+      tr.t += tr.v;
+      if (tr.t > 1) tr.t = 0;
+      const f = tr.t * (n - 1), i = Math.floor(f), m = f - i;
+      const a = tr.pts[i], b = tr.pts[Math.min(n - 1, i + 1)];
+      /* Chica y brillante, no grande y tenue. Con radio grande la chispa se
+         alejaba del cerebro —donde no hay nada más dibujado— y ahí un
+         degradado suave y ancho no se lee como una luz: se lee como un
+         manchón gris flotando en el vacío. Y se apaga a mitad de recorrido,
+         porque una luz que llega hasta el borde de la pantalla deja de
+         parecer que salió de algún lado. */
+      if (a._e > 0 && b._e > 0 && tr.t < 0.45) {
+        const x = a._x + (b._x - a._x) * m, y = a._y + (b._y - a._y) * m;
+        const vis = Math.min(1, (0.45 - tr.t) * 5);
+        estampar(BLANCO, x, y, 2.2 + 2.6 * a._e, 0.85 * vis);
+      }
+    }
+  }
+
+  // ── axones: las conexiones reales, por encima del tejido ──────────────────
+  for (const n of neuronas) marcar(n, cy, sy, cx, sx);
+  ctx.lineWidth = 0.7;
+  ctx.strokeStyle = 'rgba(140,200,245,.20)';
+  ctx.beginPath();
+  for (const ax of axones) {
+    if (ax.a._e < 0 || ax.b._e < 0) continue;
+    ctx.moveTo(ax.a._x, ax.a._y); ctx.lineTo(ax.b._x, ax.b._y);
+  }
+  ctx.stroke();
 
   // ── señales viajando ──────────────────────────────────────────────────────
   for (const s of senales) {
     s.t += s.v;
-    if (s.t > 1) { s.t = 0; s.ax = axones[Math.floor(Math.random() * axones.length)]; }
+    if (s.t > 1) { s.t = 0; s.ax = axones[Math.floor(rnd() * axones.length)]; }
     const a = s.ax.a, b = s.ax.b;
-    const pt = { x: a.x + (b.x - a.x) * s.t, y: a.y + (b.y - a.y) * s.t, z: a.z + (b.z - a.z) * s.t };
-    const p = proyectar(pt, cy, sy, cx, sx);
+    const p = proyectar({
+      x: a.x + (b.x - a.x) * s.t,
+      y: a.y + (b.y - a.y) * s.t,
+      z: a.z + (b.z - a.z) * s.t,
+    }, cy, sy, cx, sx);
     if (p.e < 0) continue;
-    const r = Math.max(0.8, 1.7 * p.e);
+    const r = Math.max(0.7, 1.05 * p.e);
 
     /* La señal se tiñe del color de la región DE DONDE SALE, y solo el núcleo
        queda blanco. En la primera versión todas eran blanco-cian y, con
        doscientas encima, el cerebro entero se lavaba: las regiones perdían su
        color y quedaba una mancha. Teñidas, se ve de dónde a dónde va cada
        cosa, que además es la información que la pieza quiere dar. */
-    const halo = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3.2);
-    halo.addColorStop(0, tinte(a.color, 0.40 * Math.min(1, p.e)));
-    halo.addColorStop(1, tinte(a.color, 0));
-    ctx.fillStyle = halo;
-    ctx.beginPath(); ctx.arc(p.x, p.y, r * 3.2, 0, 7); ctx.fill();
-    ctx.fillStyle = `rgba(240,252,255,${Math.min(0.95, p.e * 0.9)})`;
+    estampar(a.color, p.x, p.y, r * 3.2, 0.42 * Math.min(1, p.e * 0.5));
+    /* El núcleo blanco va a media fuerza. A tope, ciento cuarenta señales
+       encima del tejido se leían como ciento cuarenta piezas blancas: el ojo
+       no distinguía cuál era una pieza del mapa y cuál un punto de paso, que
+       es la única distinción que esta pantalla tiene que dejar clara. */
+    ctx.fillStyle = `rgba(236,250,255,${Math.min(0.5, p.e * 0.19)})`;
     ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.fill();
   }
 
-  // ── neuronas ──────────────────────────────────────────────────────────────
+  // ── las piezas ────────────────────────────────────────────────────────────
   listos.length = 0;
-  for (const n of neuronas) {
-    const p = proyectar(n, cy, sy, cx, sx);
-    if (p.e < 0) continue;
-    n._x = p.x; n._y = p.y; n._e = p.e; n._z = p.z;
-    n._d = Math.hypot(n.x, n.y, n.z);
-    listos.push(n);
-  }
+  for (const n of neuronas) if (n._e > 0) listos.push(n);
   // De atrás hacia adelante: sin esto las de atrás se dibujan encima de las de
   // adelante y se pierde toda la profundidad.
   listos.sort((a, b) => b._z - a._z);
 
+  /* Dos pases, y el orden importa.
+     Primero los HALOS, en modo aditivo: es lo que da el neón sin necesitar un
+     filtro caro. Después los NÚCLEOS en modo normal.
+
+     Estaban los dos en aditivo y el resultado era que casi todas las piezas
+     salían blancas: un color claro sumado encima de su propio halo satura y
+     pierde el tono, y en la zona de tokens —quince piezas juntas y doradas—
+     quedaba una mancha blanca sin forma. En modo normal el núcleo conserva el
+     color de su región por brillante que esté el halo debajo. */
   for (const n of listos) {
-    const late = quieto ? 0.35 : brilloLatido(n._d, ahora);
+    const late = quieto ? 0.35 : brilloLatido(n.d, ahora);
     const resp = quieto ? 0 : (Math.sin(ahora * 0.0016 + n.fase) * 0.5 + 0.5) * 0.35;
-    const vivo = 0.42 + resp * 0.5 + late * 0.9;
-    const r = (1.9 + n.peso * 0.95) * n._e * (1 + late * 0.7);
+    n._vivo = 0.45 + resp * 0.5 + late * 0.9;
+    n._late = late;
+    n._r = (1.5 + n.peso * 0.75) * n._e * 0.55 * (1 + late * 0.7);
 
-    // Las dendritas, primero y tenues.
-    ctx.strokeStyle = n.color + '18';
-    ctx.lineWidth = 0.55;
-    ctx.beginPath();
-    for (const d of n.dendritas) {
-      const pd = proyectar({ x: n.x + d[0], y: n.y + d[1], z: n.z + d[2] }, cy, sy, cx, sx);
-      if (pd.e < 0) continue;
-      ctx.moveTo(n._x, n._y); ctx.lineTo(pd.x, pd.y);
-    }
-    ctx.stroke();
+    // El halo llega a cuatro radios y no a siete: a siete, con setenta y cuatro
+    // piezas encima de un tejido ya luminoso, se solapaban hasta borrarse.
+    estampar(n.color, n._x, n._y, n._r * 3.6, 0.17 * n._vivo);
+  }
 
-    // El halo, que es lo que da el brillo de neón sin necesitar un filtro caro.
-    /* r*4 y no r*7, y con menos alfa: a siete radios los halos de setenta y
-       cuatro neuronas se solapaban hasta dejar una mancha blanca en el medio y
-       se perdían los colores de cada región, que es justo lo que hay que ver. */
-    const halo = ctx.createRadialGradient(n._x, n._y, 0, n._x, n._y, r * 4);
-    halo.addColorStop(0, tinte(n.color, 0.30 * vivo));
-    halo.addColorStop(1, tinte(n.color, 0));
-    ctx.fillStyle = halo;
-    ctx.beginPath(); ctx.arc(n._x, n._y, r * 4, 0, 7); ctx.fill();
-
-    // El núcleo.
-    ctx.fillStyle = tinte(n.color, Math.min(1, vivo));
-    ctx.beginPath(); ctx.arc(n._x, n._y, r, 0, 7); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+  for (const n of listos) {
+    ctx.fillStyle = tinte(n.color, Math.min(1, n._vivo));
+    ctx.beginPath(); ctx.arc(n._x, n._y, n._r, 0, 7); ctx.fill();
     /* El blanco queda SOLO para el instante en que la onda del latido pasa por
        encima. Antes se encendía casi siempre y el color de la región no se
-       llegaba a ver nunca — que es justo lo que hay que ver. */
-    if (late > 0.55) {
-      ctx.fillStyle = `rgba(255,255,255,${(late - 0.55) * 1.5})`;
-      ctx.beginPath(); ctx.arc(n._x, n._y, r * 0.5, 0, 7); ctx.fill();
+       llegaba a ver nunca. */
+    if (n._late > 0.55) {
+      ctx.fillStyle = `rgba(255,255,255,${(n._late - 0.55) * 1.5})`;
+      ctx.beginPath(); ctx.arc(n._x, n._y, n._r * 0.5, 0, 7); ctx.fill();
     }
   }
 
   // ── las etiquetas de región ───────────────────────────────────────────────
   ctx.globalCompositeOperation = 'source-over';
   const cajas = [];
-  for (const clave of Object.keys(CENTROS)) {
-    const gr = GRUPOS[clave];
+  for (const reg of regiones) {
+    const gr = GRUPOS[reg.clave];
     if (!gr) continue;
-    const cuantas = neuronas.filter((n) => n.grupo === clave).length;
-    if (!cuantas) continue;
-    const c = CENTROS[clave];
+    const c = CENTROS[reg.clave];
     const p = proyectar({ x: c[0], y: c[1], z: c[2] }, cy, sy, cx, sx);
     if (p.e < 0) continue;
-    cajas.push({ x: p.x, y: p.y, z: p.z, e: p.e, color: gr.color, nombre: gr.nombre, cuantas });
+    cajas.push({
+      x: p.x, y: p.y, z: p.z, e: p.e, color: reg.color, nombre: gr.nombre,
+      // El recuento es de PIEZAS del mapa. La malla de esta región, que puede
+      // tener doscientos puntos, no suma ni uno.
+      cuantas: neuronas.filter((n) => n.grupo === reg.clave).length,
+    });
   }
   // Las de adelante se pintan últimas y tapan a las de atrás, igual que las
-  // neuronas. Una etiqueta del fondo encima de una del frente delata que no
-  // hay profundidad de verdad.
+  // piezas. Una etiqueta del fondo encima de una del frente delata que no hay
+  // profundidad de verdad.
   cajas.sort((a, b) => b.z - a.z);
 
   /* ══ QUE LAS ETIQUETAS NO SE PISEN ═══════════════════════════════════════
@@ -379,12 +737,30 @@ function cuadro(ahora) {
      Y como la caja ya no está pegada a su región, se le dibuja una LÍNEA GUÍA
      hasta el punto de origen. Sin esa línea, mover la etiqueta para que se lea
      habría sido mentir sobre dónde está la región. */
+  /* Las cajas se sacan FUERA de la masa antes de resolver choques. En la
+     versión anterior se dibujaban pegadas a su región y, como las regiones
+     están dentro de un cuerpo compacto y luminoso, quedaban trece cajas
+     oscuras encima del cerebro: tapaban justo lo que hay que mirar y encima no
+     se leían. Ahora cada una sale despedida hacia afuera por el rayo que va
+     del centro de la pantalla a su región, hasta un anillo por fuera del
+     contorno, y la línea guía la sigue atando a su sitio de verdad. */
+  const RADIO_MUNDO = 132;
   const puestas = [];
   for (const c of cajas) {
-    const op = Math.max(0.25, Math.min(1, (c.e - 0.5) * 1.7));
+    const op = Math.max(0.3, Math.min(1, (c.e - eMin) / eRan * 0.8 + 0.4));
     const w = anchoEtiqueta(c.nombre.toUpperCase(), `${c.cuantas} piezas`);
     const h = 34, sep = 6;
-    let ex = c.x + 22, ey = c.y - h / 2;
+
+    let vx = c.x - W / 2, vy = c.y - H / 2;
+    const largo = Math.hypot(vx, vy) || 1;
+    vx /= largo; vy /= largo;
+    const anillo = Math.min(RADIO_MUNDO * c.e * 1.05 + 26, Math.min(W, H) * 0.46);
+    const ax = W / 2 + vx * anillo, ay = H / 2 + vy * anillo;
+
+    // Del lado izquierdo la caja se alinea a la derecha, para que crezca hacia
+    // afuera y no vuelva a meterse encima del cerebro.
+    const izq = vx < 0;
+    let ex = izq ? ax - w : ax, ey = ay - h / 2;
 
     for (let intento = 0; intento < 40; intento++) {
       const choca = puestas.find((q) =>
@@ -394,15 +770,15 @@ function cuadro(ahora) {
       ey = choca.y + choca.h + sep;
     }
     // Si el empujón la sacó de la pantalla, se sube en vez de perderla abajo.
-    if (ey + h > H - 60) ey = Math.max(70, c.y - h / 2 - (ey + h - (H - 60)));
+    if (ey + h > H - 76) ey = Math.max(96, ay - h / 2 - (ey + h - (H - 76)));
+    ex = Math.max(24, Math.min(W - 24 - w, ex));
     puestas.push({ x: ex, y: ey, w, h });
 
-    // La guía, del punto de la región a la caja.
-    ctx.strokeStyle = tinte(c.color, 0.30 * op);
+    ctx.strokeStyle = tinte(c.color, 0.34 * op);
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(c.x, c.y);
-    ctx.lineTo(ex - 6, ey + h / 2);
+    ctx.lineTo(izq ? ex + w + 6 : ex - 6, ey + h / 2);
     ctx.stroke();
     ctx.fillStyle = tinte(c.color, 0.9 * op);
     ctx.beginPath(); ctx.arc(c.x, c.y, 2.6, 0, 7); ctx.fill();
@@ -413,16 +789,14 @@ function cuadro(ahora) {
 
   // El texto del pulso, con el recuento de verdad.
   if (!txtPulso.dataset.puesto) {
-    txtPulso.textContent = `${neuronas.length} piezas · ${axones.length} conexiones · ${cajas.length || Object.keys(CENTROS).length} regiones`;
+    txtPulso.textContent =
+      `${neuronas.length} piezas · ${axones.length} conexiones · ${regiones.length} regiones`;
     txtPulso.dataset.puesto = '1';
   }
 
   requestAnimationFrame(cuadro);
 }
 
-/** Una etiqueta como las del cerebro de verdad: caja fina, borde del color de
- *  la región, y el recuento debajo. Se dibuja en canvas y no en HTML para que
- *  respete el orden de profundidad junto con todo lo demás. */
 /** El ancho que va a ocupar una etiqueta. Se calcula aparte porque hay que
  *  saberlo ANTES de dibujar, para poder resolver los choques. */
 function anchoEtiqueta(titulo, pie) {
@@ -432,13 +806,16 @@ function anchoEtiqueta(titulo, pie) {
   return Math.max(w1, ctx.measureText(pie).width) + 20;
 }
 
+/** Una etiqueta como las del cerebro de verdad: caja fina, borde del color de
+ *  la región, y el recuento debajo. Se dibuja en canvas y no en HTML para que
+ *  respete el orden de profundidad junto con todo lo demás. */
 function etiqueta(x, y, titulo, pie, color, op, w) {
   ctx.save();
   ctx.globalAlpha = op;
   const h = 34;
 
-  ctx.fillStyle = 'rgba(3,9,16,.74)';
-  ctx.strokeStyle = tinte(color, .75);
+  ctx.fillStyle = 'rgba(3,9,16,.78)';
+  ctx.strokeStyle = tinte(color, .8);
   ctx.lineWidth = 1;
   redondo(x, y - h / 2, w, h, 4);
   ctx.fill(); ctx.stroke();
@@ -448,7 +825,7 @@ function etiqueta(x, y, titulo, pie, color, op, w) {
   ctx.font = '600 11px ui-monospace,Menlo,monospace';
   ctx.fillText(titulo, x + 10, y - 1);
   ctx.shadowBlur = 0;
-  ctx.fillStyle = 'rgba(160,190,215,.75)';
+  ctx.fillStyle = 'rgba(170,198,222,.8)';
   ctx.font = '400 10px ui-monospace,Menlo,monospace';
   ctx.fillText(pie, x + 10, y + 12);
   ctx.restore();
