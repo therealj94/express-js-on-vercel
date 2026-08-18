@@ -12,8 +12,32 @@ haya prisa saldrá peor que la vez anterior.
 
 | Archivo | Tamaño | Para |
 |---|---|---|
-| `tarjeta.html` → `veta-tarjeta-1080x1920.png` | 1080×1920 | historia / reel |
-| `dolares-a-oro.html` → `og-dolares-a-oro-1080x1080.png` | 1080×1080 | feed |
+| `tarjeta.html` → `veta-tarjeta-1080x1350.png` | 1080×1350 | post de Instagram |
+| `dolares-a-oro.html` → `og-dolares-a-oro-1080x1350.png` | 1080×1350 | post de Instagram |
+
+**1080×1350 es 4:5**, la proporción que más pantalla ocupa en el feed. La
+cuadrada deja franjas a los lados y la vertical de historia se recorta al
+publicarla como post.
+
+## Un post no es una página web
+
+La primera versión de estas piezas tenía titular, bajada, tres viñetas y un
+botón: la estructura de una landing. En el feed eso se ve del tamaño de un
+pulgar — la letra chica no se lee, el botón no se pulsa y el texto se pasa de
+largo. Estas son carteles: un objeto grande, UNA frase, y la información en una
+tira de tres palabras.
+
+## La tarjeta es la de verdad
+
+Está calcada del CSS de la app (`apps-web/veta-wallet/index.html`, bloque
+`.tar-cara`): negra, con el circuito de oro grabado, el monograma OG en el
+centro, PREMIUM a la izquierda y VISA a la derecha, proporción 1.586. Las
+medidas van multiplicadas por el mismo factor que la caja, porque una tarjeta
+con el chip a escala de la app y el número a escala del cartel deja de parecer
+la misma tarjeta.
+
+Enseñar en un anuncio una tarjeta que no es la que le llega a la persona es
+prometer un producto distinto del que hay.
 
 ## Sobre parecerse a otras marcas
 

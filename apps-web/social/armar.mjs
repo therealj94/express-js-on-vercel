@@ -22,8 +22,11 @@ import { fileURLToPath } from 'node:url';
 const AQUI = dirname(fileURLToPath(import.meta.url));
 
 const PIEZAS = [
-  { archivo: 'tarjeta.html',        salida: 'veta-tarjeta-1080x1920.png', w: 1080, h: 1920 },
-  { archivo: 'dolares-a-oro.html',  salida: 'og-dolares-a-oro-1080x1080.png', w: 1080, h: 1080 },
+  // 1080×1350 es la proporción 4:5, que es la que más pantalla ocupa en el
+  // feed de Instagram. La cuadrada deja franjas y la vertical de historia se
+  // recorta al publicarla como post.
+  { archivo: 'tarjeta.html',       salida: 'veta-tarjeta-1080x1350.png',      w: 1080, h: 1350 },
+  { archivo: 'dolares-a-oro.html', salida: 'og-dolares-a-oro-1080x1350.png',  w: 1080, h: 1350 },
 ];
 
 const TIPOS = {
