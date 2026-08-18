@@ -47,6 +47,25 @@ function sembrar(s) {
 }
 const rnd = sembrar(20260818);
 
+/* ══ CUÁNTO SE DIBUJA ═══════════════════════════════════════════════════════
+   Se decide UNA vez, al abrir, porque de esto depende cuánta malla se
+   construye y la malla se arma antes del primer cuadro.
+
+   En un teléfono se dibuja menos, y no por prudencia: son los mismos píxeles
+   de tejido repartidos en una décima parte de la superficie. A densidad de
+   escritorio, en seis pulgadas la malla se ve como una mancha sólida —se
+   pierde el dibujo de la red, que es justo lo que hay que ver— y encima la
+   batería se va en rasterizar hilos que nadie distingue.
+
+   Y lo que decide si la pantalla es chica es el LADO CORTO, no el ancho. Un
+   teléfono acostado mide 844×390: por ancho pasaba por escritorio, y ahí le
+   caían las trece etiquetas de proyector encima de un cerebro de trescientos
+   noventa píxeles de alto. Lo que manda es siempre el lado que escasea. */
+const ESTRECHO = Math.min(innerWidth, innerHeight) < 620;
+const CUANTO = ESTRECHO
+  ? { relleno: 620, porPieza: 9, vecinos: 2, senales: 80, trazos: 10, bruma: 18, estrellas: 240 }
+  : { relleno: 1300, porPieza: 16, vecinos: 3, senales: 140, trazos: 15, bruma: 30, estrellas: 460 };
+
 /* ══ EL VOLUMEN DEL CEREBRO ═════════════════════════════════════════════════
 
    La primera versión repartía las regiones en el aire y salía una nube de
@@ -193,7 +212,7 @@ const neuronas = NODOS.map((n) => {
 // nube de puntos alrededor de sus piezas, dentro del volumen, y cada punto se
 // ata a sus tres vecinos más cercanos. Eso solo ya dibuja la red poligonal que
 // se ve en un cerebro de verdad, sin triangular nada ni cargar una librería.
-const VECINOS = 3;
+const VECINOS = CUANTO.vecinos;
 const regiones = [];
 const porRegion = {};
 for (const clave of Object.keys(CENTROS)) porRegion[clave] = [];
@@ -206,7 +225,7 @@ const nuevo = (clave, x, y, z) =>
    las trece regiones y el cerebro sale con agujeros entre lóbulo y lóbulo —
    es decir, sale una constelación otra vez y no una silueta. Este relleno es
    lo único que hace que el CONTORNO se lea. */
-for (let i = 0; i < 1300; i++) {
+for (let i = 0; i < CUANTO.relleno; i++) {
   const [x, y, z] = puntoDentro();
   nuevo(regionDe(x, y, z), x, y, z);
 }
@@ -217,7 +236,7 @@ for (let i = 0; i < 1300; i++) {
    sin necesidad de escribirlo en ningún lado. */
 for (const clave of Object.keys(CENTROS)) {
   const piezas = neuronas.filter((n) => n.grupo === clave);
-  for (let i = 0; i < piezas.length * 16; i++) {
+  for (let i = 0; i < piezas.length * CUANTO.porPieza; i++) {
     const base = piezas[Math.floor(rnd() * piezas.length)];
     const a = rnd() * Math.PI * 2, b = Math.acos(2 * rnd() - 1);
     const R = 6 + Math.cbrt(rnd()) * 28;
@@ -272,7 +291,7 @@ for (const e of ENLACES) {
 // Esto es «las pulsaciones»: puntos que recorren un axón de una punta a la
 // otra. No representan tráfico medido — representan que la cosa está viva — y
 // por eso no llevan número al lado.
-const SENALES = quieto ? 0 : 140;
+const SENALES = quieto ? 0 : CUANTO.senales;
 const senales = [];
 for (let i = 0; i < SENALES; i++) {
   senales.push({
@@ -292,7 +311,7 @@ for (let i = 0; i < SENALES; i++) {
    Cada trazo lleva una curvatura fija propia. Sin curvarlos salen radios
    rectos desde el centro y la cosa parece un sol, no un cerebro. */
 const trazos = [];
-for (let i = 0; i < 15; i++) {
+for (let i = 0; i < CUANTO.trazos; i++) {
   const [x, y, z] = puntoDentro();
   let dx = x, dy = y - CENTRO_Y, dz = z;
   const L = Math.hypot(dx, dy, dz) || 1;
@@ -316,7 +335,7 @@ for (let i = 0; i < 15; i++) {
 // Manchas suaves repartidas por dentro. Es lo que hace que el cerebro tenga
 // CUERPO: sin ellas se ve el tejido pero se ve a través, como una jaula.
 const bruma = [];
-for (let i = 0; i < 30; i++) {
+for (let i = 0; i < CUANTO.bruma; i++) {
   const [x, y, z] = puntoDentro();
   // Radios chicos y alfas bajas: con manchas grandes cada una se lee como un
   // círculo suelto en vez de fundirse con las de al lado, y en vez de cuerpo
@@ -326,7 +345,7 @@ for (let i = 0; i < 30; i++) {
 
 // ── las estrellas del fondo ─────────────────────────────────────────────────
 const estrellas = [];
-for (let i = 0; i < 460; i++) {
+for (let i = 0; i < CUANTO.estrellas; i++) {
   const a = rnd() * Math.PI * 2, b = Math.acos(2 * rnd() - 1), R = 560 + rnd() * 700;
   estrellas.push({
     x: R * Math.sin(b) * Math.cos(a),
@@ -337,36 +356,35 @@ for (let i = 0; i < 460; i++) {
 }
 
 // ── cámara ──────────────────────────────────────────────────────────────────
-/* dist 430: el cerebro mide unos ±130 y con la focal de abajo eso lo deja
-   llenando el cuadro sin que las etiquetas de las regiones del borde se salgan
-   al girar. */
 const cam = { giroY: 0.42, giroX: -0.14, dist: 430, objetivo: 430 };
-let arrastrando = false, ultX = 0, ultY = 0;
 const VEL_GIRO = 0.0020;
+let tope = [250, 1100];      // hasta dónde deja acercar y alejar el pellizco
 
-lienzo.addEventListener('pointerdown', (e) => {
-  arrastrando = true; ultX = e.clientX; ultY = e.clientY;
-  lienzo.setPointerCapture(e.pointerId);
-});
-lienzo.addEventListener('pointermove', (e) => {
-  if (!arrastrando) return;
-  cam.giroY += (e.clientX - ultX) * 0.005;
-  cam.giroX += (e.clientY - ultY) * 0.004;
-  // Se topa antes del polo: pasado el cenit la escena se da vuelta y quien la
-  // está proyectando no sabe cómo volver.
-  cam.giroX = Math.max(-1.2, Math.min(1.2, cam.giroX));
-  ultX = e.clientX; ultY = e.clientY;
-});
-addEventListener('pointerup', () => { arrastrando = false; });
-lienzo.addEventListener('wheel', (e) => {
-  e.preventDefault();
-  cam.objetivo = Math.max(250, Math.min(1100, cam.objetivo + e.deltaY * 0.7));
-}, { passive: false });
+/* ══ EL ENCUADRE SE CALCULA, NO SE ESCRIBE ══════════════════════════════════
+   La distancia de cámara estaba fija en 430, que era el número que quedaba
+   bien en una ventana ancha de escritorio. En un teléfono en vertical —donde
+   lo ancho es lo escaso y el cerebro es justamente más ancho que alto— eso
+   deja medio cerebro fuera del cuadro.
+
+   Así que se despeja: se sabe el radio del cerebro y la focal, y se pide que
+   quepa en el LADO CORTO de la pantalla, sea cual sea. Un número fijo servía
+   para una pantalla; esto sirve para todas, incluso si alguien gira el
+   teléfono a mitad de la reunión. */
+const RADIO_MUNDO = 132;
+function encuadrar() {
+  // 0.44 del lado corto deja el margen donde viven las etiquetas y el sello.
+  const cabe = Math.min(W, H) * (movil ? 0.46 : 0.44);
+  const d = FOCAL * RADIO_MUNDO / Math.max(1, cabe);
+  tope = [d * 0.55, d * 2.6];
+  return d;
+}
 
 // ── tamaño ──────────────────────────────────────────────────────────────────
-let W = 0, H = 0, dpr = 1;
+let W = 0, H = 0, dpr = 1, movil = false;
+let tocado = false, primerCuadro = true;
 function medir() {
   W = innerWidth; H = innerHeight;
+  movil = Math.min(W, H) < 620;
   /* El dpr se topa en 2 —a 3 el móvil dibuja nueve veces los píxeles y nadie
      nota la diferencia— y baja a 1.5 en pantalla grande.
 
@@ -379,12 +397,95 @@ function medir() {
   dpr = Math.min(devicePixelRatio || 1, W > 1600 ? 1.5 : 2);
   lienzo.width = W * dpr; lienzo.height = H * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  /* Al cambiar de tamaño se reencuadra, pero solo si nadie tocó el zoom:
+     rehacer el encuadre después de que alguien se acercó a mirar una región
+     le quita de las manos lo que acababa de hacer. En el móvil esto salta
+     también al girar el teléfono y al aparecer la barra del navegador. */
+  const d = encuadrar();
+  if (!tocado) { cam.objetivo = d; if (!primerCuadro) cam.dist = d; }
 }
 addEventListener('resize', medir);
-medir();
+addEventListener('orientationchange', () => setTimeout(medir, 120));
+
+/* ══ EL DEDO ════════════════════════════════════════════════════════════════
+   Un puntero arrastra y gira. Dos puntero
+s pellizcan para acercar, que en un
+   teléfono es la única forma de acercar que hay: no hay rueda de ratón.
+
+   Los punteros se guardan en un mapa en vez de mirar `e.touches` porque así
+   el mismo código sirve para el ratón del escritorio, el dedo del teléfono y
+   el lápiz de una tableta, sin tres caminos distintos que se desincronizan. */
+const dedos = new Map();
+let pellizco = 0;
+
+const separacion = () => {
+  const [a, b] = [...dedos.values()];
+  return Math.hypot(a.x - b.x, a.y - b.y);
+};
+
+lienzo.addEventListener('pointerdown', (e) => {
+  dedos.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (dedos.size === 2) pellizco = separacion();
+  lienzo.setPointerCapture(e.pointerId);
+});
+
+lienzo.addEventListener('pointermove', (e) => {
+  const previo = dedos.get(e.pointerId);
+  if (!previo) return;
+  const dx = e.clientX - previo.x, dy = e.clientY - previo.y;
+  previo.x = e.clientX; previo.y = e.clientY;
+
+  if (dedos.size >= 2) {
+    if (dedos.size === 2 && pellizco > 0) {
+      const ahora = separacion();
+      // Separar los dedos acerca: por eso la razón va invertida sobre la
+      // distancia de cámara.
+      cam.objetivo = Math.max(tope[0], Math.min(tope[1], cam.objetivo * (pellizco / ahora)));
+      pellizco = ahora;
+      tocado = true;
+    }
+    return;                                   // pellizcando no se gira
+  }
+
+  cam.giroY += dx * 0.005;
+  cam.giroX += dy * 0.004;
+  // Se topa antes del polo: pasado el cenit la escena se da vuelta y quien la
+  // está proyectando no sabe cómo volver.
+  cam.giroX = Math.max(-1.2, Math.min(1.2, cam.giroX));
+});
+
+const soltar = (e) => {
+  dedos.delete(e.pointerId);
+  if (dedos.size < 2) pellizco = 0;
+};
+lienzo.addEventListener('pointerup', soltar);
+lienzo.addEventListener('pointercancel', soltar);
+addEventListener('pointerup', soltar);
+
+lienzo.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  cam.objetivo = Math.max(tope[0], Math.min(tope[1], cam.objetivo + e.deltaY * 0.7));
+  tocado = true;
+}, { passive: false });
+
+// Doble toque: vuelve al encuadre de partida. En el móvil es fácil perderse
+// después de dos pellizcos, y sin esto la única salida es recargar.
+let ultimoToque = 0;
+lienzo.addEventListener('pointerdown', () => {
+  const t = performance.now();
+  if (t - ultimoToque < 300) { cam.objetivo = encuadrar(); tocado = false; }
+  ultimoToque = t;
+});
 
 // ── proyección ──────────────────────────────────────────────────────────────
 const FOCAL = 1150;
+
+// El primer encuadre va aquí y no arriba: `encuadrar()` necesita la focal, y
+// declararla antes solo para poder medir antes sería mover la definición de
+// sitio para engañar al orden de lectura.
+medir();
+primerCuadro = false;
 const proy = { x: 0, y: 0, e: 0, z: 0 };
 function proyectar(p, cy, sy, cx, sx) {
   // Girar en Y, después en X. En ese orden: al revés el cerebro cabecea en vez
@@ -466,6 +567,14 @@ function brilloLatido(dist, ahora) {
 
 // ── el dibujo ───────────────────────────────────────────────────────────────
 const txtPulso = document.getElementById('txtPulso');
+
+/* El gesto que se anuncia es el que existe en este aparato. `pointer: coarse`
+   es el dedo; ahí no hay rueda que girar y sí hay dos dedos que pellizcar. */
+{
+  const dedo = matchMedia('(pointer: coarse)').matches;
+  const g = document.getElementById('gesto');
+  if (g && dedo) g.textContent = 'Arrastrá · pellizcá · dos toques reencuadra';
+}
 const listos = [];               // las piezas, ordenadas por profundidad
 const BANDAS = 4;                // franjas de profundidad para la malla
 /* Las cuatro franjas, de la más lejana a la más cercana. Los valores son
@@ -479,7 +588,7 @@ for (let i = 0; i < BANDAS; i++) banda.push([]);
 const encendidos = [];
 
 function cuadro(ahora) {
-  if (!arrastrando && !quieto) cam.giroY += VEL_GIRO;
+  if (dedos.size === 0 && !quieto) cam.giroY += VEL_GIRO;
   cam.dist += (cam.objetivo - cam.dist) * 0.08;
 
   const cy = Math.cos(cam.giroY), sy = Math.sin(cam.giroY);
@@ -744,34 +853,61 @@ function cuadro(ahora) {
      se leían. Ahora cada una sale despedida hacia afuera por el rayo que va
      del centro de la pantalla a su región, hasta un anillo por fuera del
      contorno, y la línea guía la sigue atando a su sitio de verdad. */
-  const RADIO_MUNDO = 132;
+  /* ══ Y EN EL TELÉFONO, MENOS ═════════════════════════════════════════════
+     Trece cajas de escritorio en una pantalla de seis pulgadas no es una
+     versión pequeña de esto: es otra cosa, y peor. Ocupan más superficie que
+     el propio cerebro, se apilan en una columna que llega de arriba abajo, y
+     lo que quedaba por ver —que es el cerebro— desaparece detrás.
+
+     Así que en móvil se muestran las SEIS regiones que están de cara a la
+     cámara, y las demás esperan a que el cerebro gire. No se pierde nada:
+     gira solo, y en veinte segundos han pasado todas. El recuento total
+     sigue completo abajo, en el pulso, que es donde tiene que estar. */
+  const CUANTAS = movil ? 6 : cajas.length;
+  const visibles = movil
+    ? [...cajas].sort((a, b) => a.z - b.z).slice(0, CUANTAS).sort((a, b) => b.z - a.z)
+    : cajas;
+
+  const h = movil ? 26 : 34, sep = movil ? 9 : 8;
+  const margen = movil ? 10 : 24;
+  const borde = movil ? 62 : 76, techo = movil ? 74 : 96;
+
   const puestas = [];
-  for (const c of cajas) {
+  for (const c of visibles) {
     const op = Math.max(0.3, Math.min(1, (c.e - eMin) / eRan * 0.8 + 0.4));
     const w = anchoEtiqueta(c.nombre.toUpperCase(), `${c.cuantas} piezas`);
-    const h = 34, sep = 6;
 
     let vx = c.x - W / 2, vy = c.y - H / 2;
     const largo = Math.hypot(vx, vy) || 1;
     vx /= largo; vy /= largo;
-    const anillo = Math.min(RADIO_MUNDO * c.e * 1.05 + 26, Math.min(W, H) * 0.46);
+    const anillo = Math.min(RADIO_MUNDO * c.e * 1.05 + (movil ? 14 : 26),
+                            Math.min(W, H) * (movil ? 0.5 : 0.46));
     const ax = W / 2 + vx * anillo, ay = H / 2 + vy * anillo;
 
     // Del lado izquierdo la caja se alinea a la derecha, para que crezca hacia
     // afuera y no vuelva a meterse encima del cerebro.
     const izq = vx < 0;
-    let ex = izq ? ax - w : ax, ey = ay - h / 2;
+    let ex = izq ? ax - w : ax;
 
-    for (let intento = 0; intento < 40; intento++) {
+    /* El recorte al cuadro va ANTES de resolver los choques, no después.
+       Estaba después y deshacía el trabajo: la caja se empujaba hacia abajo
+       hasta un hueco libre, el recorte la subía de vuelta al último renglón
+       que cabe, y ahí volvía a caer encima de la que ya estaba puesta. Se
+       veía al acercar con dos dedos, que es cuando las regiones se separan y
+       las etiquetas se amontonan contra el borde. */
+    let ey = Math.max(techo, Math.min(H - borde - h, ay - h / 2));
+
+    for (let intento = 0; intento < 60; intento++) {
       const choca = puestas.find((q) =>
         ex < q.x + q.w + sep && ex + w + sep > q.x &&
         ey < q.y + q.h + sep && ey + h + sep > q.y);
       if (!choca) break;
       ey = choca.y + choca.h + sep;
+      // Al llegar abajo se vuelve a empezar por arriba, en vez de salirse del
+      // cuadro. Peor una etiqueta en otro renglón que una etiqueta cortada.
+      if (ey + h > H - borde) ey = techo;
     }
-    // Si el empujón la sacó de la pantalla, se sube en vez de perderla abajo.
-    if (ey + h > H - 76) ey = Math.max(96, ay - h / 2 - (ey + h - (H - 76)));
-    ex = Math.max(24, Math.min(W - 24 - w, ex));
+    ex = Math.max(margen, Math.min(W - margen - w, ex));
     puestas.push({ x: ex, y: ey, w, h });
 
     ctx.strokeStyle = tinte(c.color, 0.34 * op);
@@ -800,11 +936,15 @@ function cuadro(ahora) {
 /** El ancho que va a ocupar una etiqueta. Se calcula aparte porque hay que
  *  saberlo ANTES de dibujar, para poder resolver los choques. */
 function anchoEtiqueta(titulo, pie) {
-  ctx.font = '600 11px ui-monospace,Menlo,monospace';
+  ctx.font = TIPO();
   const w1 = ctx.measureText(titulo).width;
-  ctx.font = '400 10px ui-monospace,Menlo,monospace';
-  return Math.max(w1, ctx.measureText(pie).width) + 20;
+  ctx.font = TIPO_PIE();
+  return Math.max(w1, ctx.measureText(pie).width) + (movil ? 14 : 20);
 }
+const TIPO = () => movil ? '600 9.5px ui-monospace,Menlo,monospace'
+                         : '600 11px ui-monospace,Menlo,monospace';
+const TIPO_PIE = () => movil ? '400 8.5px ui-monospace,Menlo,monospace'
+                             : '400 10px ui-monospace,Menlo,monospace';
 
 /** Una etiqueta como las del cerebro de verdad: caja fina, borde del color de
  *  la región, y el recuento debajo. Se dibuja en canvas y no en HTML para que
@@ -812,7 +952,8 @@ function anchoEtiqueta(titulo, pie) {
 function etiqueta(x, y, titulo, pie, color, op, w) {
   ctx.save();
   ctx.globalAlpha = op;
-  const h = 34;
+  const h = movil ? 26 : 34;
+  const px = movil ? 7 : 10;
 
   ctx.fillStyle = 'rgba(3,9,16,.78)';
   ctx.strokeStyle = tinte(color, .8);
@@ -820,14 +961,16 @@ function etiqueta(x, y, titulo, pie, color, op, w) {
   redondo(x, y - h / 2, w, h, 4);
   ctx.fill(); ctx.stroke();
 
-  ctx.shadowColor = color; ctx.shadowBlur = 10;
+  // El resplandor del título se apaga en móvil: a 9.5 px el desenfoque se come
+  // la letra en vez de rodearla, y el nombre de la región deja de leerse.
+  if (!movil) { ctx.shadowColor = color; ctx.shadowBlur = 10; }
   ctx.fillStyle = color;
-  ctx.font = '600 11px ui-monospace,Menlo,monospace';
-  ctx.fillText(titulo, x + 10, y - 1);
+  ctx.font = TIPO();
+  ctx.fillText(titulo, x + px, y - (movil ? 2 : 1));
   ctx.shadowBlur = 0;
   ctx.fillStyle = 'rgba(170,198,222,.8)';
-  ctx.font = '400 10px ui-monospace,Menlo,monospace';
-  ctx.fillText(pie, x + 10, y + 12);
+  ctx.font = TIPO_PIE();
+  ctx.fillText(pie, x + px, y + (movil ? 9 : 12));
   ctx.restore();
 }
 

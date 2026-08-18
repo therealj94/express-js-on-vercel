@@ -82,6 +82,32 @@ app.get(['/cerebro', '/mapa'], (_req, res) => {
 })
 
 /**
+ * Genesis Core: el mismo ecosistema, pero para ENSEÑARLO.
+ *
+ * Es una página distinta de `/cerebro` a propósito, no una versión bonita de
+ * la misma. `/cerebro` es la herramienta de trabajo: panel de capas, ficha de
+ * cada pieza, datos en vivo, y hace falta la sesión del operador para verlo
+ * entero. Esto no tiene panel ni ficha y no se puede hurgar: enseña la
+ * ARQUITECTURA —cuántas piezas hay, cómo se agrupan, cómo se hablan— y no el
+ * contenido de ninguna.
+ *
+ * Esa separación es la que respeta la regla de la casa: lo que no se enseña
+ * es lo que el cerebro SABE. Que existe y cómo late no le sirve a nadie para
+ * atacarnos, y es justo lo que hay que poder proyectar en una reunión.
+ *
+ * Por eso tampoco pide sesión, y por eso la página lleva `noindex`: se abre
+ * desde un enlace que uno da, no desde una búsqueda.
+ */
+app.get(['/genesis-core', '/cerebro-3d', '/core'], (_req, res) => {
+  res.sendFile(join(__dirname, '..', 'public', 'cerebro-3d.html'))
+})
+
+app.get('/cerebro-3d.js', (_req, res) => {
+  res.type('application/javascript')
+  res.sendFile(join(__dirname, '..', 'public', 'cerebro-3d.js'))
+})
+
+/**
  * El mapa del ecosistema, aparte de la página.
  *
  * Es lo único del cerebro que se edita cuando el ecosistema cambia —una app

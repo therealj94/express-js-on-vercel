@@ -46,10 +46,18 @@
    se vea más grande sería exactamente lo que esta casa no hace. */
 
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden;background:#02060B}
+html,body{height:100%;overflow:hidden;background:#02060B;
+  /* Sin esto, en el móvil el arrastre para girar el cerebro también tira de la
+     página: el navegador la desplaza, la refresca al tirar hacia abajo, y el
+     gesto se pierde a la mitad. */
+  overscroll-behavior:none;touch-action:none}
 body{font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#DCE7F5;
-  -webkit-font-smoothing:antialiased}
-canvas{display:block;width:100%;height:100%;cursor:grab}
+  -webkit-font-smoothing:antialiased;
+  /* El texto no se selecciona: mantener el dedo apoyado sobre el lienzo
+     mientras se gira sacaba la lupa y el menú de copiar. */
+  -webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent}
+canvas{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
 canvas:active{cursor:grabbing}
 
 /* El sello: qué es esto, en una línea, arriba a la izquierda. En una
@@ -70,6 +78,34 @@ canvas:active{cursor:grabbing}
 @keyframes latir{0%,100%{transform:scale(.75);opacity:.55}12%{transform:scale(1.5);opacity:1}}
 #ayuda{display:flex;flex-direction:column;align-items:flex-end;gap:5px;text-align:right}
 #ayuda .nota{color:#3C4E60}
+
+/* ══ EL TELÉFONO ══════════════════════════════════════════════════════════
+   Misma pieza, no una versión recortada. Lo que cambia es lo que en una
+   pantalla de seis pulgadas estorba: los márgenes grandes, el texto de
+   proyector y la ayuda en dos líneas al lado del pulso.
+
+   Los márgenes salen de `env(safe-area-inset-*)` porque esto se abre DENTRO
+   de la app: sin eso el sello se mete debajo de la muesca y el pie debajo de
+   la barra de gestos. */
+/* La misma regla que el guion: manda el lado corto. Un teléfono acostado
+   entra por `max-height`. */
+@media (max-width:620px), (max-height:620px){
+  #sello{top:calc(14px + env(safe-area-inset-top));left:calc(16px + env(safe-area-inset-left))}
+  #sello .t{font-size:11px;letter-spacing:.26em}
+  #sello .s{margin-top:6px;font-size:10.5px}
+  #pie{
+    bottom:calc(12px + env(safe-area-inset-bottom));
+    left:calc(16px + env(safe-area-inset-left));
+    right:calc(16px + env(safe-area-inset-right));
+    /* En vertical las dos mitades no caben en una línea: el pulso arriba y la
+       ayuda debajo, ambos a la izquierda. Forzarlas en fila las parte a mitad
+       de palabra. */
+    flex-direction:column;align-items:flex-start;gap:5px;font-size:10px}
+  #ayuda{align-items:flex-start;text-align:left;gap:3px;line-height:1.45}
+  /* La nota de honestidad se queda; lo que se acorta es el margen alrededor,
+     no el texto. Que quepa en dos renglones es aceptable — quitarla no. */
+  #ayuda .nota{max-width:100%}
+}
 @media (prefers-reduced-motion:reduce){#pulso i{animation:none}}
 </style>
 </head>
@@ -89,7 +125,10 @@ canvas:active{cursor:grabbing}
        que quien proyecta se acuerde de aclararlo. -->
   <div id="ayuda">
     <span class="nota">El tejido es textura · lo contado son las piezas del mapa</span>
-    <span>Arrastrá para girar · rueda para acercar</span>
+    <!-- El texto del gesto lo pone el guion: en un teléfono no hay rueda de
+         ratón, y decirle a alguien que use una que no tiene es peor que no
+         decir nada. -->
+    <span id="gesto">Arrastrá para girar · rueda para acercar</span>
   </div>
 </div>
 

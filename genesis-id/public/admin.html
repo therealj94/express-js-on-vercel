@@ -299,11 +299,18 @@ const PESTANAS = [
   // La analítica vive en su propia página pero se entra desde aquí: tener dos
   // direcciones sueltas que nadie recuerda es la forma más segura de que un
   // panel no se use nunca.
-  { id: 'analitica', txt: 'Analítica ↗', permiso: 'analitica.ver', fuera: '/analitica' },
+  { id: 'analitica', txt: 'Analítica ↗', permiso: 'analitica.ver', fuera: '/analitica',
+    titulo: 'Métricas, errores y salud del ecosistema' },
   // El cerebro no pide permiso: lo que enseña de la cadena es público —
   // cualquiera puede leer la 8532— y del panel solo saca recuentos. Esconderlo
   // detrás de un permiso sería fingir que protege algo que no protege.
-  { id: 'cerebro', txt: 'El cerebro ↗', fuera: '/cerebro' },
+  { id: 'cerebro', txt: 'El cerebro ↗', fuera: '/cerebro',
+    titulo: 'El mapa de trabajo: capas, ficha de cada pieza y datos en vivo' },
+  // Genesis Core es la vista para ENSEÑAR, no para trabajar: sin panel y sin
+  // ficha, solo la arquitectura. Se entra desde aquí para que quien va a
+  // proyectarla no tenga que acordarse de una dirección suelta.
+  { id: 'core', txt: 'Genesis Core ↗', fuera: '/genesis-core',
+    titulo: 'La vista para proyectar: el ecosistema en 3D, sin panel ni fichas' },
 ]
 
 function arrancar() {
@@ -313,7 +320,10 @@ function arrancar() {
   $('#qRol').textContent = yo.rol
   $('#nav').innerHTML = PESTANAS.filter((p) => !p.permiso || puede(p.permiso))
     .map((p) => p.fuera
-      ? `<button data-p="${p.id}" onclick="location.href='${p.fuera}'" title="Métricas, errores y salud del ecosistema">${p.txt}</button>`
+      // El título sale de la propia pestaña. Estaba escrito a mano y era el de
+      // analítica para todas: el botón del cerebro prometía «métricas, errores
+      // y salud», que es otra pantalla.
+      ? `<button data-p="${p.id}" onclick="location.href='${p.fuera}'" title="${p.titulo || ''}">${p.txt}</button>`
       : `<button data-p="${p.id}" onclick="ir('${p.id}')">${p.txt}</button>`).join('')
   ir('resumen')
 }
