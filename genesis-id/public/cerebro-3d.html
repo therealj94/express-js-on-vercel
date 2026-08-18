@@ -115,55 +115,140 @@ canvas:active{cursor:grabbing}
 }
 @media (prefers-reduced-motion:reduce){#pulso i{animation:none}}
 
-/* ══ LA FICHA DE UNA PIEZA ══════════════════════════════════════════════════ */
-#ficha{position:fixed;left:30px;top:96px;z-index:12;width:min(340px,calc(100vw - 60px));
-  background:rgba(4,12,20,.93);border:1px solid rgba(111,227,245,.34);border-radius:10px;
-  padding:14px 16px 15px;backdrop-filter:blur(8px)}
-#ficha[hidden]{display:none}
-#ficha .cab{display:flex;align-items:center;justify-content:space-between;gap:10px}
-#ficha .reg{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:#6FE3F5}
-#ficha .x{background:none;border:0;color:#5B7085;font-size:14px;cursor:pointer;padding:2px 4px;line-height:1}
-#ficha .x:hover{color:#DCE7F5}
-#ficha h2{margin:7px 0 8px;font-size:15px;font-weight:600;color:#EAF3FB;letter-spacing:.02em}
-#ficha .txt{font-size:12.5px;line-height:1.62;color:#B6CADA}
-#ficha .pie{margin-top:10px;font-size:10px;line-height:1.5;color:#4C6076;letter-spacing:.04em}
-/* El expediente puede ser largo —el bloque de gobernanza tiene once párrafos—
-   así que la ficha se desplaza por dentro en vez de crecer hasta salirse. */
-#ficha .exp{max-height:min(46vh,420px);overflow-y:auto;margin-top:2px;
-  scrollbar-width:thin;scrollbar-color:rgba(111,227,245,.3) transparent}
-#ficha .exp h3{margin:12px 0 5px;font-size:11px;letter-spacing:.13em;
-  text-transform:uppercase;color:#8FB6CC;font-weight:600}
-#ficha .exp .est{display:inline-block;margin-left:7px;padding:1px 6px;border-radius:999px;
-  font-size:8.5px;letter-spacing:.1em;vertical-align:middle;
-  border:1px solid currentColor;text-transform:uppercase}
-/* Confirmado y dicho no son lo mismo, y el expediente los distingue. Pintarlos
-   igual borraría justo el matiz por el que la Secretaría los separó. */
-#ficha .exp .est.confirmado{color:#5FD3A8}
-#ficha .exp .est.dicho{color:#E0B25E}
-#ficha .exp p{font-size:11.5px;line-height:1.6;color:#A9BFD0;margin:0 0 6px}
-#ficha .exp dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:7px 0 2px}
-#ficha .exp dt{font-size:10.5px;color:#65809A;letter-spacing:.03em}
-#ficha .exp dd{font-size:10.5px;color:#CFE0EC;margin:0}
-#ficha .exp .aviso{margin-top:8px;padding:7px 9px;border-radius:6px;
-  border:1px solid rgba(240,119,107,.4);background:rgba(240,119,107,.07);
-  font-size:10.5px;line-height:1.5;color:#EFA79E}
-#ficha .exp .fte{margin-top:6px;font-size:9.5px;color:#43596E;line-height:1.45}
+/* ══ EL ÍNDICE ══════════════════════════════════════════════════════════════
+   Un cajón que entra desde la izquierda. Cajón y no una columna fija porque
+   esta pantalla se PROYECTA: mientras se enseña el cerebro no tiene que haber
+   una lista comiéndose un tercio del cuadro, y cuando alguien quiere buscar
+   algo, la abre. */
+#abreIndice{position:fixed;left:30px;top:26px;z-index:14;
+  display:flex;align-items:center;gap:9px;padding:8px 14px 8px 11px;
+  border-radius:999px;cursor:pointer;
+  background:rgba(3,12,20,.86);border:1px solid rgba(111,227,245,.3);
+  color:#6FE3F5;font:600 10.5px/1 ui-monospace,Menlo,monospace;
+  letter-spacing:.18em;text-transform:uppercase;
+  transition:border-color .2s,background .2s}
+#abreIndice:hover{border-color:#6FE3F5;background:rgba(8,26,38,.92)}
+#abreIndice:focus-visible{outline:2px solid #6FE3F5;outline-offset:3px}
+#abreIndice .rayas{display:flex;flex-direction:column;gap:3px;width:13px}
+#abreIndice .rayas i{height:1.4px;background:currentColor;border-radius:1px;
+  transition:transform .24s,opacity .2s}
+/* Las tres rayas se vuelven una equis al abrir: el mismo botón abre y cierra,
+   y el dibujo dice en cuál de los dos estados está. */
+body.indice-abierto #abreIndice .rayas i:nth-child(1){transform:translateY(4.4px) rotate(45deg)}
+body.indice-abierto #abreIndice .rayas i:nth-child(2){opacity:0}
+body.indice-abierto #abreIndice .rayas i:nth-child(3){transform:translateY(-4.4px) rotate(-45deg)}
 
-/* ══ BUSCAR ══════════════════════════════════════════════════════════════ */
-#buscar{position:fixed;right:26px;top:26px;z-index:13;width:250px}
-#q{width:100%;padding:8px 12px;border-radius:999px;
-  background:rgba(3,12,20,.86);border:1px solid rgba(111,227,245,.28);
+#indice{position:fixed;left:0;top:0;bottom:0;z-index:13;width:min(348px,86vw);
+  display:flex;flex-direction:column;
+  background:rgba(3,10,17,.96);border-right:1px solid rgba(111,227,245,.18);
+  backdrop-filter:blur(10px);
+  transform:translateX(-100%);transition:transform .34s cubic-bezier(.22,.7,.3,1);
+  padding-top:78px}
+body.indice-abierto #indice{transform:none}
+#indice .cab{padding:0 18px 12px;border-bottom:1px solid rgba(111,227,245,.12)}
+#q{width:100%;padding:9px 13px;border-radius:999px;
+  background:rgba(8,20,30,.9);border:1px solid rgba(111,227,245,.24);
   color:#DCE7F5;font:400 12px ui-monospace,Menlo,monospace;outline:none}
 #q::placeholder{color:#4C6076}
 #q:focus{border-color:#6FE3F5}
-#hallazgos{list-style:none;margin:6px 0 0;padding:4px;max-height:52vh;overflow-y:auto;
-  background:rgba(3,12,20,.94);border:1px solid rgba(111,227,245,.24);border-radius:9px}
-#hallazgos[hidden]{display:none}
-#hallazgos li{padding:6px 9px;border-radius:6px;cursor:pointer;font-size:11.5px;color:#B6CADA}
-#hallazgos li:hover,#hallazgos li.sel{background:rgba(111,227,245,.13);color:#EAF3FB}
-#hallazgos li span{display:block;font-size:9px;letter-spacing:.14em;text-transform:uppercase;
-  color:#5B7085;margin-top:2px}
-#hallazgos .nada{color:#5B7085;cursor:default;font-size:11px}
+#indice .cuenta{margin-top:9px;font-size:9.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:#4C6076}
+
+#arbol{flex:1;overflow-y:auto;padding:8px 10px 26px;
+  scrollbar-width:thin;scrollbar-color:rgba(111,227,245,.26) transparent}
+/* ── una región ── */
+#arbol .reg{margin-bottom:2px}
+#arbol .reg>button{width:100%;display:flex;align-items:center;gap:9px;
+  padding:8px 10px;border:0;border-radius:7px;background:none;cursor:pointer;
+  color:#B6CADA;font:600 11.5px/1.2 ui-monospace,Menlo,monospace;text-align:left;
+  transition:background .16s}
+#arbol .reg>button:hover{background:rgba(111,227,245,.08)}
+#arbol .reg .punto{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+#arbol .reg .n{flex:1}
+#arbol .reg .c{font-size:9.5px;color:#516A80;letter-spacing:.08em}
+#arbol .reg .fl{width:7px;height:7px;border-right:1.4px solid #516A80;
+  border-bottom:1.4px solid #516A80;transform:rotate(-45deg);
+  transition:transform .22s;margin-right:2px}
+#arbol .reg.abierta .fl{transform:rotate(45deg)}
+/* La lista de piezas se despliega con una transición de altura. `grid` con
+   `1fr`→`0fr` porque es lo único que anima una altura DESCONOCIDA sin tener
+   que medirla en JavaScript en cada apertura. */
+#arbol .piezas{display:grid;grid-template-rows:0fr;transition:grid-template-rows .26s ease}
+#arbol .reg.abierta .piezas{grid-template-rows:1fr}
+#arbol .piezas>div{overflow:hidden}
+#arbol .piezas button{width:100%;display:flex;align-items:baseline;gap:8px;
+  padding:6px 10px 6px 26px;border:0;border-radius:6px;background:none;cursor:pointer;
+  color:#8CA6BC;font:400 11.5px/1.35 ui-monospace,Menlo,monospace;text-align:left;
+  transition:background .16s,color .16s}
+#arbol .piezas button:hover,#arbol .piezas button.sel{background:rgba(111,227,245,.11);color:#EAF3FB}
+#arbol .piezas .doc{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:#4E7F92;flex:0 0 auto}
+#arbol .vacio{padding:16px 12px;font-size:11px;line-height:1.6;color:#516A80}
+
+/* ══ LA VENTANA ═════════════════════════════════════════════════════════════ */
+#ventana{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:24px}
+#ventana[hidden]{display:none}
+#ventana .fondo{position:absolute;inset:0;background:rgba(1,5,10,.72);
+  opacity:0;transition:opacity .26s}
+#ventana article{position:relative;width:min(620px,100%);max-height:min(84vh,760px);
+  display:flex;flex-direction:column;padding:26px 28px 24px;
+  background:rgba(5,14,23,.985);border:1px solid rgba(111,227,245,.3);border-radius:14px;
+  box-shadow:0 26px 80px rgba(0,0,0,.66);
+  opacity:0;transform:translateY(14px) scale(.985);
+  transition:opacity .26s,transform .26s cubic-bezier(.22,.7,.3,1)}
+/* La clase la pone el guion un cuadro después de quitar `hidden`: sin ese
+   respiro el navegador aplica el estado final de golpe y no hay transición. */
+body.ventana-viva #ventana .fondo{opacity:1}
+body.ventana-viva #ventana article{opacity:1;transform:none}
+#ventana .x{position:absolute;right:14px;top:13px;width:28px;height:28px;
+  border:0;border-radius:50%;background:none;color:#5B7085;cursor:pointer;
+  font-size:14px;line-height:1;transition:background .16s,color .16s}
+#ventana .x:hover{background:rgba(111,227,245,.12);color:#DCE7F5}
+
+/* La ruta: de dónde cuelga esta pieza. Es la respuesta a «dónde pertenece». */
+#ventana .miga{display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+  font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#4C6076;
+  margin-right:34px}
+#ventana .miga b{font-weight:600}
+#ventana .miga i{font-style:normal;opacity:.55}
+#ventana h2{margin:11px 0 0;font-size:21px;font-weight:600;color:#EFF6FC;
+  letter-spacing:.01em;line-height:1.22}
+
+/* Las etiquetas: qué es esto, de un vistazo y sin leer el párrafo. */
+#ventana .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+#ventana .tags span{padding:3px 9px;border-radius:999px;font-size:9px;
+  letter-spacing:.13em;text-transform:uppercase;border:1px solid currentColor}
+#ventana .tags .neutra{color:#5F7C93}
+#ventana .tags .confirmado{color:#5FD3A8}
+#ventana .tags .dicho{color:#E0B25E}
+#ventana .tags .alerta{color:#F0776B}
+
+#ventana .lede{margin-top:14px;font-size:13px;line-height:1.66;color:#C3D6E4}
+#ventana .cuerpo{margin-top:4px;overflow-y:auto;padding-right:4px;
+  scrollbar-width:thin;scrollbar-color:rgba(111,227,245,.28) transparent}
+#ventana .cuerpo h3{margin:18px 0 7px;font-size:10.5px;letter-spacing:.17em;
+  text-transform:uppercase;color:#7FA7BF;font-weight:600;
+  padding-bottom:6px;border-bottom:1px solid rgba(111,227,245,.13)}
+#ventana .cuerpo p{font-size:12.5px;line-height:1.68;color:#A9BFD0;margin:0 0 8px}
+#ventana .cuerpo dl{display:grid;grid-template-columns:auto 1fr;gap:5px 16px;margin:10px 0 4px}
+#ventana .cuerpo dt{font-size:11px;color:#65809A}
+#ventana .cuerpo dd{font-size:11px;color:#D3E3EE;margin:0}
+#ventana .cuerpo .aviso{margin-top:10px;padding:9px 11px;border-radius:7px;
+  border:1px solid rgba(240,119,107,.4);background:rgba(240,119,107,.07);
+  font-size:11px;line-height:1.55;color:#EFA79E}
+#ventana .cuerpo .fte{margin-top:8px;font-size:9.5px;color:#43596E;line-height:1.5}
+/* Las conexiones se pueden pulsar: de una pieza se salta a la de al lado y se
+   recorre el ecosistema por donde de verdad está unido. */
+#ventana .vecinas{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+#ventana .vecinas button{padding:5px 11px;border-radius:999px;cursor:pointer;
+  background:rgba(8,20,30,.8);border:1px solid rgba(111,227,245,.22);
+  color:#9FBACC;font:400 11px ui-monospace,Menlo,monospace;
+  transition:border-color .16s,color .16s}
+#ventana .vecinas button:hover{border-color:#6FE3F5;color:#EAF3FB}
+
+@media (prefers-reduced-motion:reduce){
+  #indice,#ventana .fondo,#ventana article,#arbol .piezas,#abreIndice .rayas i{transition:none}
+}
 
 /* ══ LOS TEMAS ══════════════════════════════════════════════════════════════ */
 #temas{position:fixed;left:30px;bottom:74px;z-index:11;
@@ -215,17 +300,17 @@ canvas:active{cursor:grabbing}
   #cara{right:10px;bottom:calc(86px + env(safe-area-inset-bottom));gap:5px}
   #lienzoCara{width:100px;height:118px}
   #botonHablar{padding:5px 11px 5px 9px;font-size:9.5px;letter-spacing:.12em}
-  /* La ficha ocupa el ancho y sale por abajo, encima de todo: en el teléfono
-     una tarjeta flotando a un lado deja cuatro palabras por renglón. */
-  #ficha{left:12px;right:12px;width:auto;top:auto;
-    bottom:calc(70px + env(safe-area-inset-bottom));padding:12px 13px 13px}
-  #ficha h2{font-size:14px}
-  #ficha .exp{max-height:34vh}
-  /* El buscador ocupa el ancho, debajo del sello. A 250 px a la derecha se
-     comía la esquina donde vive la cara. */
-  #buscar{left:16px;right:16px;width:auto;top:calc(62px + env(safe-area-inset-top))}
-  #hallazgos{max-height:40vh}
-  #ficha .txt{font-size:12px;line-height:1.55}
+  /* El cajón ocupa casi todo el ancho y el botón se encoge: en el teléfono un
+     índice de 348 px al lado del cerebro no deja ver ninguno de los dos. */
+  #abreIndice{left:16px;top:calc(14px + env(safe-area-inset-top));
+    padding:6px 11px 6px 9px;font-size:9px;letter-spacing:.13em}
+  #indice{width:min(320px,90vw);padding-top:66px}
+  #ventana{padding:14px}
+  #ventana article{padding:20px 18px 18px;max-height:88vh;border-radius:12px}
+  #ventana h2{font-size:18px}
+  #ventana .lede{font-size:12.5px}
+  /* El sello se aparta: el botón del índice le cae encima. */
+  #sello{top:calc(52px + env(safe-area-inset-top))}
   /* Los temas se hacen una tira que se desliza: siete botones no caben en
      cuatrocientos píxeles, y apilarlos en tres filas se come la pantalla. */
   #temas{left:0;right:0;max-width:none;padding:0 14px;
@@ -234,12 +319,10 @@ canvas:active{cursor:grabbing}
     scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x}
   #temas::-webkit-scrollbar{display:none}
   #temas button{flex:0 0 auto;font-size:9px;padding:5px 10px}
-  /* Con la ficha abierta, los temas se van. En cuatrocientos píxeles de ancho
-     no caben las dos cosas: la ficha les caía justo encima y el botón de abajo
-     dejaba de responder — el toque se lo comía la tarjeta. Y apilarlas obliga a
-     subir la ficha hasta la mitad de la pantalla, encima del cerebro.
-     Cerrar la ficha —tocando el fondo— devuelve los temas. */
-  body.ficha-abierta #temas{display:none}
+  /* Con el índice abierto, los temas y el subtítulo se van: el cajón ocupa el
+     ancho y todo lo demás quedaba debajo, respondiendo a toques que nadie
+     puede ver que está dando. */
+  body.indice-abierto #temas,body.indice-abierto #dice,body.indice-abierto #cara{display:none}
   #dice{width:calc(100vw - 32px);left:16px;transform:none;
     bottom:calc(238px + env(safe-area-inset-bottom));
     font-size:12.5px;line-height:1.5;text-align:left}
@@ -255,29 +338,38 @@ canvas:active{cursor:grabbing}
   <div class="s">El cerebro del ecosistema Orden Global</div>
 </div>
 
-<!-- ══ LA FICHA ════════════════════════════════════════════════════════════
-     Lo que se abre al tocar una pieza. Va a la izquierda, lejos de la cara, y
-     se cierra sola al tocar el fondo: en una proyección nadie quiere buscar
-     una equis. -->
-<aside id="ficha" hidden>
-  <div class="cab"><span class="reg"></span><button class="x" type="button" aria-label="Cerrar">✕</button></div>
-  <h2></h2>
-  <p class="txt"></p>
-  <!-- El expediente: lo que la Secretaría, el saber de la casa o el
-       portafolio minero dicen de esta pieza. Se rellena desde
-       `fichas-core.js`, que es generado. -->
-  <div class="exp"></div>
-  <p class="pie"></p>
+<!-- ══ EL ÍNDICE ═══════════════════════════════════════════════════════════
+     La respuesta a «no sé qué información hay». El cerebro enseña la FORMA del
+     ecosistema; el índice enseña su CONTENIDO, región por región, con lo que
+     hay dentro de cada una y cuánto expediente tiene. Sin él, la única manera
+     de saber qué hay es girar la bola hasta toparse con algo. -->
+<button id="abreIndice" type="button" aria-expanded="false" aria-controls="indice">
+  <span class="rayas"><i></i><i></i><i></i></span><span class="rot">Índice</span>
+</button>
+
+<aside id="indice" aria-label="Índice del ecosistema">
+  <div class="cab">
+    <input id="q" type="search" placeholder="Buscar en todo…" autocomplete="off"
+           spellcheck="false" aria-label="Buscar">
+    <p class="cuenta"></p>
+  </div>
+  <div id="arbol" role="tree"></div>
 </aside>
 
-<!-- ══ BUSCAR ══════════════════════════════════════════════════════════════
-     Ciento y pico piezas no se recorren girando el cerebro hasta dar con la
-     que uno quiere. Quien entra a buscar «licencias» o «Pantaleona» escribe
-     la palabra. -->
-<div id="buscar">
-  <input id="q" type="search" placeholder="Buscar en el ecosistema…"
-         autocomplete="off" spellcheck="false" aria-label="Buscar una pieza">
-  <ul id="hallazgos" hidden></ul>
+<!-- ══ LA VENTANA ═══════════════════════════════════════════════════════════
+     Una pieza se abre en su propia ventana, con la RUTA arriba —de dónde
+     cuelga— y sus etiquetas. Se cierra y se vuelve a donde se estaba: el
+     índice sigue abierto por debajo, en el mismo sitio. -->
+<div id="ventana" hidden>
+  <div class="fondo"></div>
+  <article role="dialog" aria-modal="true" aria-labelledby="vTit">
+    <button class="x" type="button" aria-label="Cerrar">✕</button>
+    <nav class="miga"></nav>
+    <h2 id="vTit"></h2>
+    <div class="tags"></div>
+    <p class="lede"></p>
+    <div class="cuerpo"></div>
+  </article>
 </div>
 
 <!-- ══ LOS TEMAS ═══════════════════════════════════════════════════════════

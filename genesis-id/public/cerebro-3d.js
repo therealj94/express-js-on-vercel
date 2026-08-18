@@ -1248,23 +1248,27 @@ for (const t of TEMAS) {
 }
 barra.firstChild.classList.add('viva');
 
-/* ══ LA FICHA DE UNA PIEZA ══════════════════════════════════════════════════
-   Cada pieza del mapa trae escrito qué es. Tocarla lo enseña — y de paso la
-   voz lo lee, para que en una proyección no haya que acercarse a la pantalla
-   a leer letra de doce puntos. */
-const elFicha = document.getElementById('ficha');
-const fReg = elFicha.querySelector('.reg');
-const fTit = elFicha.querySelector('h2');
-const fTxt = elFicha.querySelector('.txt');
-const fExp = elFicha.querySelector('.exp');
-const fPie = elFicha.querySelector('.pie');
-elFicha.querySelector('.x').addEventListener('click', () => cerrarFicha());
+/* ══ EL ÍNDICE Y LA VENTANA ═════════════════════════════════════════════════
 
-function cerrarFicha() {
-  elFicha.hidden = true;
-  document.body.classList.remove('ficha-abierta');
-  resaltada = null;
-}
+   El cerebro enseña la FORMA del ecosistema. El índice enseña su CONTENIDO:
+   las dieciséis regiones, lo que hay dentro de cada una, y cuáles traen
+   expediente. Sin él, la única manera de saber qué información hay es girar
+   la bola hasta toparse con algo — que es exactamente lo que no funcionaba.
+
+   Y una pieza se abre en su propia VENTANA, con la ruta de dónde cuelga
+   arriba y sus etiquetas debajo del nombre. Al cerrarla se vuelve a donde se
+   estaba: el índice sigue abierto y en el mismo sitio. */
+
+const elIndice = document.getElementById('indice');
+const elArbol = document.getElementById('arbol');
+const elCuenta = elIndice.querySelector('.cuenta');
+const btnIndice = document.getElementById('abreIndice');
+const elVent = document.getElementById('ventana');
+const vMiga = elVent.querySelector('.miga');
+const vTit = elVent.querySelector('h2');
+const vTags = elVent.querySelector('.tags');
+const vLede = elVent.querySelector('.lede');
+const vCuerpo = elVent.querySelector('.cuerpo');
 
 /** Crea un elemento con texto. Se usa `textContent` y nunca `innerHTML`: el
  *  expediente lo escribe una persona, y una comilla o un signo de menor en un
@@ -1276,154 +1280,223 @@ function el(tipo, clase, txt) {
   return e;
 }
 
-function abrirFicha(n) {
-  const gr = GRUPOS[n.grupo] || {};
-  const c = COLOR[n.grupo] || '#6FE3F5';
-  fReg.textContent = gr.nombre || n.grupo;
-  fReg.style.color = c;
-  elFicha.style.borderColor = tinte(c, 0.42);
-  fTit.textContent = n.nombre;
-  fTxt.textContent = n.ficha || 'Esta pieza todavía no tiene descripción en el mapa.';
+const conFicha = (n) => (FICHAS[n.id] || []).length > 0;
 
-  /* ── EL EXPEDIENTE ──
-     Lo que las fuentes de la casa dicen de esta pieza: los bloques que firmó
-     la Secretaría, el saber revisado, el portafolio minero. Sale de
-     `fichas-core.js`, que es GENERADO desde esas fuentes — ver la cabecera de
-     ese fichero y `infra/cerebro/armar-fichas-core.py`. */
-  fExp.replaceChildren();
-  for (const sec of FICHAS[n.id] || []) {
-    const h = el('h3', null, sec.titulo);
-    if (sec.estado) h.appendChild(el('span', `est ${sec.estado}`, sec.estado));
-    fExp.appendChild(h);
-    for (const p of sec.parrafos || []) fExp.appendChild(el('p', null, p));
-    if (sec.datos && sec.datos.length) {
-      const dl = el('dl');
-      for (const [k, v] of sec.datos) {
-        dl.appendChild(el('dt', null, k));
-        dl.appendChild(el('dd', null, v));
-      }
-      fExp.appendChild(dl);
+// ── el cajón ────────────────────────────────────────────────────────────────
+function abrirIndice(si) {
+  document.body.classList.toggle('indice-abierto', si);
+  btnIndice.setAttribute('aria-expanded', String(si));
+  if (si) setTimeout(() => elQ.focus({ preventScroll: true }), 340);
+}
+btnIndice.addEventListener('click', () =>
+  abrirIndice(!document.body.classList.contains('indice-abierto')));
+
+/* ── EL ÁRBOL ──
+   Una sección por región, en el mismo orden en que están puestas en el
+   cerebro, y dentro las piezas ordenadas por PESO: la cadena antes que el
+   RPC, INDEXSA antes que Travesía. Alfabético pondría lo accesorio arriba. */
+/* El orden en que se leen las regiones. No es el del mapa —que está puesto por
+   dónde cae cada lóbulo— ni alfabético, que dejaría «Apps y webs» encima de
+   «La cadena». Va de lo que la casa ES a lo que la casa TIENE PENDIENTE:
+
+     quiénes somos → qué corre → quién lo cuida → qué falta
+
+   Alguien que abre esto por primera vez lee de arriba abajo y entiende el
+   ecosistema en ese orden. Es la mitad de lo que hace que un índice sirva. */
+const ORDEN = [
+  'legal', 'mina',                                  // quiénes somos
+  'cadena', 'nodo', 'token', 'app', 'backend', 'infra', 'dominio',   // qué corre
+  'identidad', 'seguridad', 'agente', 'repo',       // quién lo cuida
+  'abierto', 'decision', 'junta',                   // qué falta
+];
+const porOrden = [...regiones].sort((a, b) => {
+  const ia = ORDEN.indexOf(a.clave), ib = ORDEN.indexOf(b.clave);
+  // Una región nueva que nadie puso en la lista va al final, no se pierde.
+  return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+});
+
+function pintarArbol(filtro) {
+  elArbol.replaceChildren();
+  const q = filtro ? sinTildes(filtro) : '';
+  let piezasVistas = 0, regionesVistas = 0;
+
+  for (const reg of porOrden) {
+    const gr = GRUPOS[reg.clave];
+    if (!gr) continue;
+    let piezas = neuronas.filter((n) => n.grupo === reg.clave);
+    if (q) piezas = piezas.filter((n) => (indicePorId.get(n.id) || '').includes(q));
+    if (!piezas.length) continue;
+    piezas.sort((a, b) => (b.peso - a.peso) || a.nombre.localeCompare(b.nombre));
+    piezasVistas += piezas.length;
+    regionesVistas++;
+
+    const caja = el('div', 'reg');
+    // Buscando, todo abierto: si no, hay que abrir cada región para ver dónde
+    // cayó lo que se buscaba, que es justo el trabajo que la búsqueda evita.
+    if (q) caja.classList.add('abierta');
+
+    const cab = el('button');
+    cab.type = 'button';
+    const punto = el('span', 'punto');
+    punto.style.background = COLOR[reg.clave] || '#6FE3F5';
+    cab.append(punto, el('span', 'n', gr.nombre),
+               el('span', 'c', `${piezas.length}`), el('span', 'fl'));
+    cab.addEventListener('click', () => caja.classList.toggle('abierta'));
+
+    const lista = el('div', 'piezas');
+    const dentro = el('div');
+    for (const n of piezas) {
+      const b = el('button');
+      b.type = 'button';
+      b.append(el('span', null, n.nombre));
+      if (conFicha(n)) b.append(el('span', 'doc', 'exp'));
+      b.addEventListener('click', () => irA(n));
+      dentro.appendChild(b);
     }
-    if (sec.aviso) fExp.appendChild(el('p', 'aviso', sec.aviso));
-    fExp.appendChild(el('p', 'fte', sec.fuente));
+    lista.appendChild(dentro);
+    caja.append(cab, lista);
+    elArbol.appendChild(caja);
   }
 
-  const vecinas = axones.filter((x) => x.a === n || x.b === n).length;
-  const trozos = [`${vecinas} ${vecinas === 1 ? 'conexión' : 'conexiones'} en el mapa`];
-  if (!(FICHAS[n.id] || []).length) trozos.push('sin expediente en las fuentes');
-  fPie.textContent = trozos.join(' · ');
+  if (!piezasVistas) {
+    elArbol.appendChild(el('div', 'vacio', 'Nada en el mapa con esa palabra. Se busca en el nombre, en la región, en la descripción y en el expediente entero.'));
+  }
+  elCuenta.textContent = q
+    ? `${piezasVistas} piezas en ${regionesVistas} regiones`
+    : `${neuronas.length} piezas · ${axones.length} conexiones · ${regiones.length} regiones · ${INTERNAS} fichas internas no publicadas`;
+}
 
-  elFicha.hidden = false;
-  elFicha.scrollTop = 0;
-  fExp.scrollTop = 0;
-  document.body.classList.add('ficha-abierta');
+// ── la ventana ──────────────────────────────────────────────────────────────
+let volverA = null;      // a qué pieza se vuelve con el botón de atrás del recorrido
+
+function cerrarVentana() {
+  document.body.classList.remove('ventana-viva');
+  // Se espera a que acabe la transición para esconderla: quitarla de golpe
+  // deja el cierre sin animación, que es la mitad de lo que se pidió.
+  setTimeout(() => { elVent.hidden = true; }, 260);
+  resaltada = null;
+}
+
+function abrirVentana(n) {
+  const gr = GRUPOS[n.grupo] || {};
+  const c = COLOR[n.grupo] || '#6FE3F5';
+  const secciones = FICHAS[n.id] || [];
+
+  // ── la ruta: dónde pertenece ──
+  vMiga.replaceChildren();
+  const reg = el('b', null, gr.nombre || n.grupo);
+  reg.style.color = c;
+  vMiga.append(el('span', null, 'Orden Global'), el('i', null, '›'), reg,
+               el('i', null, '›'), el('span', null, n.nombre));
+
+  vTit.textContent = n.nombre;
+  elVent.querySelector('article').style.borderColor = tinte(c, 0.42);
+
+  // ── las etiquetas ──
+  vTags.replaceChildren();
+  const tag = (txt, clase) => vTags.appendChild(el('span', clase || 'neutra', txt));
+  const t = el('span', 'neutra', gr.nombre || n.grupo);
+  t.style.color = c;
+  vTags.appendChild(t);
+  const vecinas = axones.filter((x) => x.a === n || x.b === n);
+  tag(`${vecinas.length} ${vecinas.length === 1 ? 'conexión' : 'conexiones'}`);
+  // El estado sale del expediente, no de aquí: `confirmado` y `dicho` los
+  // separó la Secretaría y pintarlos igual borraría justo ese matiz.
+  for (const sec of secciones) if (sec.estado) tag(sec.estado, sec.estado);
+  if (n.grupo === 'abierto' || n.grupo === 'decision') tag('sin resolver', 'alerta');
+  tag(secciones.length ? `${secciones.length} en expediente` : 'sin expediente');
+
+  vLede.textContent = n.ficha || 'Esta pieza todavía no tiene descripción en el mapa.';
+
+  // ── el cuerpo ──
+  vCuerpo.replaceChildren();
+  for (const sec of secciones) {
+    vCuerpo.appendChild(el('h3', null, sec.titulo));
+    for (const p of sec.parrafos || []) vCuerpo.appendChild(el('p', null, p));
+    if (sec.datos && sec.datos.length) {
+      const dl = el('dl');
+      for (const [k, v] of sec.datos) { dl.appendChild(el('dt', null, k)); dl.appendChild(el('dd', null, v)); }
+      vCuerpo.appendChild(dl);
+    }
+    if (sec.aviso) vCuerpo.appendChild(el('p', 'aviso', sec.aviso));
+    vCuerpo.appendChild(el('p', 'fte', sec.fuente));
+  }
+  if (vecinas.length) {
+    vCuerpo.appendChild(el('h3', null, 'Conecta con'));
+    const fila = el('div', 'vecinas');
+    for (const ax of vecinas) {
+      const otra = ax.a === n ? ax.b : ax.a;
+      const b = el('button', null, otra.nombre);
+      b.type = 'button';
+      b.addEventListener('click', () => irA(otra));
+      fila.appendChild(b);
+    }
+    vCuerpo.appendChild(fila);
+  }
+
+  elVent.hidden = false;
+  vCuerpo.scrollTop = 0;
+  // Un cuadro de respiro antes de encender la clase: sin él el navegador
+  // aplica el estado final de golpe y no hay transición ninguna.
+  requestAnimationFrame(() => requestAnimationFrame(() =>
+    document.body.classList.add('ventana-viva')));
   resaltada = n;
-  // Se lee en voz alta. Sin `audio`: las fichas del mapa no están grabadas.
   if (n.ficha) voz.recitar([{ texto: `${n.nombre}. ${n.ficha}` }]);
 }
 
+elVent.querySelector('.x').addEventListener('click', cerrarVentana);
+elVent.querySelector('.fondo').addEventListener('click', cerrarVentana);
+addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (!elVent.hidden) cerrarVentana();
+  else if (document.body.classList.contains('indice-abierto')) abrirIndice(false);
+});
+
 /* ══ BUSCAR ═════════════════════════════════════════════════════════════════
-   Ciento y pico piezas no se recorren girando el cerebro. Quien entra a buscar
-   «licencias» o «Pantaleona» escribe la palabra.
-
-   Se busca en el nombre, en la región, en la descripción del mapa Y en el
-   expediente entero — párrafos y datos. Buscar solo en el nombre dejaría fuera
-   justo lo que la Junta va a preguntar: «quórum» no es el nombre de ninguna
-   pieza, está dentro del bloque de gobernanza. */
+   Se busca en el nombre, la región, la descripción Y el expediente entero
+   —párrafos y datos—, porque lo que alguien va a preguntar no es el nombre de
+   una pieza: «quórum» no titula nada, está dentro del bloque de gobernanza.
+   El resultado no es una lista aparte: es el propio índice filtrado, así que
+   quien busca sigue viendo EN QUÉ REGIÓN cayó cada cosa. */
 const elQ = document.getElementById('q');
-const elLista = document.getElementById('hallazgos');
-
 const sinTildes = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 // El texto en el que se busca, armado UNA vez: hacerlo en cada tecla son cien
 // normalizaciones de cadena por pulsación.
-const INDICE = neuronas.map((n) => {
+const indicePorId = new Map();
+for (const n of neuronas) {
   const partes = [n.nombre, (GRUPOS[n.grupo] || {}).nombre || '', n.ficha];
   for (const sec of FICHAS[n.id] || []) {
     partes.push(sec.titulo, ...(sec.parrafos || []));
     for (const [k, v] of sec.datos || []) partes.push(k, v);
   }
-  return { n, texto: sinTildes(partes.join(' ')) };
+  indicePorId.set(n.id, sinTildes(partes.join(' ')));
+}
+
+let tecleo = 0;
+elQ.addEventListener('input', () => {
+  // Un respiro antes de repintar: con cien piezas y el árbol entero, repintar
+  // en cada tecla se nota al escribir deprisa.
+  clearTimeout(tecleo);
+  tecleo = setTimeout(() => pintarArbol(elQ.value.trim()), 90);
 });
-
-let elegido = -1;
-
-function buscar() {
-  const q = sinTildes(elQ.value.trim());
-  elLista.replaceChildren();
-  elegido = -1;
-  if (q.length < 2) { elLista.hidden = true; return; }
-
-  const hallados = INDICE
-    .filter((x) => x.texto.includes(q))
-    // Primero las piezas cuyo NOMBRE contiene lo buscado: quien escribe
-    // «ONDK» quiere la pieza ONDK, no las nueve que lo mencionan de pasada.
-    .sort((a, b) => {
-      const an = sinTildes(a.n.nombre).includes(q) ? 0 : 1;
-      const bn = sinTildes(b.n.nombre).includes(q) ? 0 : 1;
-      return an - bn || a.n.nombre.localeCompare(b.n.nombre);
-    })
-    .slice(0, 14);
-
-  if (!hallados.length) {
-    elLista.appendChild(el('li', 'nada', 'Nada en el mapa con esa palabra.'));
-    elLista.hidden = false;
-    return;
-  }
-  for (const { n } of hallados) {
-    const li = el('li', null, n.nombre);
-    li.appendChild(el('span', null, (GRUPOS[n.grupo] || {}).nombre || n.grupo));
-    li.addEventListener('click', () => irA(n));
-    elLista.appendChild(li);
-  }
-  elLista.hidden = false;
-}
-
-/** Lleva la cámara a una pieza y abre su ficha. Girar hasta ponerla de frente
- *  y no solo abrir la tarjeta: si la ficha se abre y la pieza está en la nuca,
- *  el resaltado de sus cables no se ve y la búsqueda parece no haber hecho
- *  nada. */
-function irA(n) {
-  elLista.hidden = true;
-  elQ.blur();
-  cam.giroObjetivoBusqueda = -Math.atan2(n.x, n.z);
-  girandoHacia = cam.giroObjetivoBusqueda;
-  abrirFicha(n);
-}
-
-elQ.addEventListener('input', buscar);
 elQ.addEventListener('keydown', (e) => {
-  const items = [...elLista.querySelectorAll('li:not(.nada)')];
-  if (e.key === 'Escape') { elQ.value = ''; elLista.hidden = true; elQ.blur(); return; }
-  if (!items.length) return;
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-    e.preventDefault();
-    elegido = (elegido + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length;
-    items.forEach((x, i) => x.classList.toggle('sel', i === elegido));
-    items[elegido].scrollIntoView({ block: 'nearest' });
-  } else if (e.key === 'Enter') {
-    e.preventDefault();
-    items[Math.max(0, elegido)].click();
+  if (e.key === 'Escape') { elQ.value = ''; pintarArbol(''); }
+  if (e.key === 'Enter') {
+    const primera = elArbol.querySelector('.piezas button');
+    if (primera) primera.click();
   }
 });
-// Tocar fuera cierra la lista, que si no se queda abierta tapando el cerebro.
-addEventListener('pointerdown', (e) => {
-  if (!document.getElementById('buscar').contains(e.target)) elLista.hidden = true;
-}, true);
 
-/** La pieza dibujada más cerca del dedo, si hay alguna a tiro. El radio crece
- *  con el tamaño de la pieza y tiene un suelo generoso: en un teléfono, acertar
- *  a un punto de tres píxeles con el dedo no lo hace nadie. */
-function piezaEn(x, y) {
-  let mejor = null, md = Infinity;
-  for (const n of neuronas) {
-    if (n._e < 0) continue;
-    const d = Math.hypot(n._x - x, n._y - y);
-    const alcance = Math.max(movil ? 26 : 16, (n._r || 3) * 3.2);
-    if (d < alcance && d < md) { md = d; mejor = n; }
-  }
-  return mejor;
+/** Abre una pieza: gira la cámara hasta ponerla de frente y abre su ventana.
+ *  Girar y no solo abrir la ventana: con la pieza en la nuca, sus cables
+ *  resaltados no se ven y el salto parece no haber hecho nada. */
+function irA(n) {
+  girandoHacia = -Math.atan2(n.x, n.z);
+  abrirVentana(n);
 }
+
+pintarArbol('');
 
 /* ── TOCAR UNA REGIÓN ──
    Se prueba contra las cajas TAL CUAL se dibujaron en el último cuadro. La
@@ -1438,13 +1511,15 @@ lienzo.addEventListener('click', (e) => {
      que quedara encima de una pieza se comería el toque, y la pieza es lo
      concreto: alguien que apunta a un punto quiere ese punto. */
   const pieza = piezaEn(x, y);
-  if (pieza) { abrirFicha(pieza); return; }
+  if (pieza) { abrirVentana(pieza); return; }
 
   const caja = etiquetasVivas.find((q) =>
     q.clave && x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
   // Tocar el vacío cierra la ficha: en una proyección nadie quiere buscar la
   // equis, y es el gesto que ya hace todo el mundo.
-  if (!caja) { cerrarFicha(); return; }
+  // Tocar el vacío apaga el resaltado. La ventana no se toca desde aquí: si
+  // está abierta, este toque no llega — se lo queda su propio fondo.
+  if (!caja) { resaltada = null; return; }
 
   const gr = GRUPOS[caja.clave];
   const cuantas = neuronas.filter((n) => n.grupo === caja.clave).length;
