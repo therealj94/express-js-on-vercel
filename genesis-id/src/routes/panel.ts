@@ -17,7 +17,7 @@ import { crearAplicacion, revocar, rotar, ALCANCES } from '../auth/aplicaciones.
 import { biometriaConfigurada, proveedorBiometria } from '../kyc/biometria.js'
 import { leerFotos } from '../kyc/fotosDocumento.js'
 import { leerFoto as leerRetrato } from '../kyc/fotoCredencial.js'
-import { estadoGafi, aplicarGafi, guardarGafiEnMongo, fechaListasGafi, diasDesdeActualizacion } from '../aml/paises.js'
+import { estadoGafi, aplicarGafi, guardarGafiEnMongo, fechaListasGafi, diasDesdeActualizacion, nombrePais } from '../aml/paises.js'
 import { DOCUMENTOS_EXIGIDOS, UMBRAL_UBO } from '../motor/negocios.js'
 import type { Rol } from '../types.js'
 
@@ -116,7 +116,22 @@ panelRouter.get('/identidades/:id', exigePermiso('identidad.ver'), async (req, r
   // El retrato de la credencial vive en OTRO almacen aparte, por la misma razon
   // y con el mismo cuidado: se adosa a la copia, nunca al objeto de memoria.
   const fotoCredencial = await leerRetrato(i.id).catch(() => null)
-  const copia = { ...i, fotoCredencial }
+  /* Los países viajan como ISO-3 y el panel los pintaba tal cual: «HN», «HND».
+     Un operador que revisa a mano no tiene por qué traducir códigos, y con
+     doscientos y pico países no hay quien se los sepa. El nombre se resuelve
+     AQUÍ, con la misma tabla que ya usa el tamizado del GAFI: una sola tabla en
+     la casa, y no una copia en el navegador que se quede vieja.
+
+     Se manda el nombre Y el código: el código es el dato del expediente y hay
+     que poder verlo, el nombre es para leerlo. */
+  const conPais = (c?: string | null) =>
+    c ? { codigo: String(c).toUpperCase(), nombre: nombrePais(String(c)) } : null
+  const copia = {
+    ...i,
+    fotoCredencial,
+    paisResidenciaNombre: conPais(i.paisResidencia),
+    nacionalidadNombre: conPais(i.nacionalidad),
+  }
   res.json({
     identidad: copia.documento ? { ...copia, documento: { ...copia.documento, imagenes } } : copia,
   })

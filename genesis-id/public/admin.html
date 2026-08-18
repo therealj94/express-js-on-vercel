@@ -113,6 +113,32 @@ pre{background:#061e20;border:1px solid var(--line2);border-radius:10px;padding:
 .aguja.ver{display:block}
 .aguja.mal{border-color:var(--bad);color:var(--bad)}
 @media(max-width:640px){main{padding:14px}.fichaCuerpo{padding:14px}}
+
+/* ══ LAS IMÁGENES DE LA REVISIÓN ══════════════════════════════════════════
+   La tira de fotos y la lupa. Van juntas y con sitio: el operador tiene que
+   PODER MIRAR una cara antes de firmar que coincide. */
+.fotos{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:12px;margin:10px 0 8px}
+.fotos figure{margin:0}
+.fotos img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;
+  border:1px solid var(--line);background:#0b0f14;cursor:zoom-in;display:block}
+.fotos img:hover{border-color:var(--ok)}
+.fotos .hueco{width:100%;aspect-ratio:4/3;border-radius:8px;
+  border:1px dashed var(--line);display:grid;place-items:center;
+  color:var(--faint);font-size:11.5px}
+.fotos figcaption{margin-top:6px;font-size:11.5px;color:var(--txt)}
+.fotos figcaption span{display:block;color:var(--faint);font-size:10.5px;margin-top:1px}
+.fotos .falta figcaption{color:var(--mut)}
+.nota-foto{font-size:11px;color:var(--faint);margin:2px 0 4px;line-height:1.5}
+
+.lupa{position:fixed;inset:0;z-index:900;background:rgba(2,6,10,.93);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;padding:22px;cursor:zoom-out}
+.lupa img{max-width:min(1100px,94vw);max-height:82vh;object-fit:contain;
+  border-radius:10px;border:1px solid var(--line);cursor:default;background:#0b0f14}
+.lupa .cab{display:flex;align-items:center;gap:14px;color:var(--txt);font-size:13px}
+.lupa .cab button{background:none;border:0;color:var(--mut);font-size:16px;cursor:pointer}
+.lupa .cab button:hover{color:var(--txt)}
 </style>
 </head>
 <body>
@@ -464,6 +490,49 @@ async function recargarIdentidades() {
     </tbody></table>` : '<div class="vacio">No hay identidades que cumplan el filtro</div>'
 }
 
+/** El `src` de una imagen guardada. Los almacenes traen base64 a secas o ya
+ *  con su prefijo `data:`, según por dónde entró la foto: se acepta cualquiera
+ *  de los dos en vez de exigir uno, porque una imagen que no se ve por un
+ *  prefijo es una revisión que no se puede hacer. */
+/** El país, en letra y con su código al lado. El servidor resuelve el nombre
+ *  con la misma tabla que usa el tamizado del GAFI; aquí solo se junta. Antes
+ *  se pintaba «HND» a secas, y quien revisa a mano no tiene por qué saberse
+ *  doscientos y pico códigos de memoria. */
+function pais(resuelto, crudo) {
+  if (resuelto && resuelto.nombre) {
+    // Texto plano, no HTML: `campo()` escapa lo que le llega —y hace bien— así
+    // que devolver etiquetas aquí las pintaría como texto literal. Y un dato de
+    // expediente no tiene por qué poder meter marcado en el panel.
+    return resuelto.nombre === resuelto.codigo
+      ? resuelto.codigo
+      : `${resuelto.nombre} · ${resuelto.codigo}`
+  }
+  return crudo || '—'
+}
+
+function imgSrc(dato) {
+  const d = String(dato || '')
+  return d.startsWith('data:') ? d : 'data:image/jpeg;base64,' + d
+}
+
+/** La imagen a tamaño completo. Hace falta de verdad: en la tira de la ficha
+ *  una credencial se ve del tamaño de un sello y ahí no se coteja una cara ni
+ *  se lee un número de documento. */
+function ampliar(src, titulo) {
+  const capa = document.createElement('div')
+  capa.className = 'lupa'
+  capa.innerHTML = `<div class="cab">${esc(titulo)}<button aria-label="Cerrar">✕</button></div>`
+  const im = new Image()
+  im.src = src
+  im.alt = titulo
+  capa.appendChild(im)
+  const cerrar = () => { capa.remove(); removeEventListener('keydown', porTecla) }
+  const porTecla = (e) => { if (e.key === 'Escape') cerrar() }
+  capa.addEventListener('click', (e) => { if (e.target !== im) cerrar() })
+  addEventListener('keydown', porTecla)
+  document.body.appendChild(capa)
+}
+
 async function verIdentidad(id) {
   abrirFicha('Cargando…', '<div class="vacio">…</div>')
   const { identidad: i } = await api('/panel/identidades/' + id)
@@ -471,7 +540,45 @@ async function verIdentidad(id) {
   const hallazgos = i.documento?.hallazgos || []
   const coincidencias = i.tamiz?.coincidencias || []
 
+  /* ══ LO QUE SE VE ANTES DE DECIDIR ═══════════════════════════════════════
+
+     El panel pedía «Rostro coincide» / «Rostro NO coincide» SIN ENSEÑAR NUNCA
+     una foto. Se le pedía a un operador que resolviera a mano un cotejo
+     biométrico dándole solo texto. Eso no es una revisión: es una firma a
+     ciegas, y encima queda escrita en la bitácora con su nombre.
+
+     Y las fotos estaban ahí todo el tiempo. `/panel/identidades/:id` ya
+     devuelve `documento.imagenes` (anverso y reverso) y `fotoCredencial`, que
+     el servidor va a buscar a sus dos almacenes aparte justamente para esta
+     pantalla. Llegaban al navegador y esta página las tiraba sin mirarlas. */
+  const img = i.documento?.imagenes || {}
+  const fotos = [
+    ['Rostro', i.fotoCredencial, 'el retrato de la credencial'],
+    ['Documento · anverso', img.anverso, 'la cara con la foto'],
+    ['Documento · reverso', img.reverso, 'la MRZ'],
+  ]
+  const hayFoto = fotos.some(([, d]) => d)
+
   abrirFicha(esc(i.nombreLegal || i.nombreDeclarado || i.email), `
+    <h3>Documento y rostro</h3>
+    ${hayFoto ? `<div class="fotos">
+      ${fotos.map(([rot, dato, pie]) => dato ? `
+        <figure>
+          <img src="${imgSrc(dato)}" alt="${esc(rot)}" loading="lazy"
+               onclick="ampliar(this.src, '${esc(rot)}')">
+          <figcaption>${esc(rot)}<span>${esc(pie)}</span></figcaption>
+        </figure>` : `
+        <figure class="falta">
+          <div class="hueco">no aportado</div>
+          <figcaption>${esc(rot)}<span>${esc(pie)}</span></figcaption>
+        </figure>`).join('')}
+    </div>
+    <p class="nota-foto">Tocá una imagen para verla a tamaño completo. Salen
+      comprimidas para que la ficha cargue; el original está guardado.</p>`
+      : `<div class="item grave">No hay ninguna imagen guardada de esta identidad.
+         Sin rostro ni documento no se puede resolver el cotejo a mano — pedí
+         que se repita la captura antes de decidir.</div>`}
+
     <div class="campos">
       ${campo('Estado', i.estado)}
       ${campo('GID', i.gid || 'todavía sin emitir')}
@@ -484,10 +591,10 @@ async function verIdentidad(id) {
           : 'aportado, sin nombre que cotejar')
         : 'no aportado — solo se cotejó la MRZ')}
       ${campo('Nacimiento', i.fechaNacimiento || i.fechaNacimientoDeclarada || '—')}
-      ${campo('Nacionalidad', i.nacionalidad || '—')}
+      ${campo('Nacionalidad', pais(i.nacionalidadNombre, i.nacionalidad))}
       ${campo('Documento', i.numeroDocumento ? `${i.numeroDocumento} (${i.tipoDocumento || ''})` : '—')}
       ${campo('Vence', i.vencimientoDocumento || '—')}
-      ${campo('País de residencia', i.paisResidencia || '—')}
+      ${campo('País de residencia', pais(i.paisResidenciaNombre, i.paisResidencia))}
       ${campo('Teléfono', i.telefono || '—')}
       ${campo('Dirección', i.direccion || '—')}
       ${campo('Ocupación', i.ocupacion || '—')}

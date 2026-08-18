@@ -1545,6 +1545,27 @@ addEventListener('keydown', (e) => {
   else if (document.body.classList.contains('indice-abierto')) abrirIndice(false);
 });
 
+/** La pieza dibujada más cerca del dedo, si hay alguna a tiro.
+ *
+ *  Esta función se perdió al reescribir el panel por la ventana, y el síntoma
+ *  fue que TOCAR EL CEREBRO NO ABRÍA NADA: el manejador la llamaba, no existía,
+ *  y el error se quedaba en la consola sin que nadie lo viera. No lo cazó
+ *  ninguna prueba porque todas pinchaban el índice y ninguna el lienzo — la
+ *  prueba de abajo ya pincha el lienzo, que es como se usa esto de verdad.
+ *
+ *  El radio de acierto crece con el tamaño de la pieza y tiene un suelo
+ *  generoso: con el dedo, nadie le da a un punto de tres píxeles. */
+function piezaEn(x, y) {
+  let mejor = null, md = Infinity;
+  for (const n of neuronas) {
+    if (n._e < 0) continue;
+    const d = Math.hypot(n._x - x, n._y - y);
+    const alcance = Math.max(movil ? 34 : 22, (n._r || 3) * 3.4);
+    if (d < alcance && d < md) { md = d; mejor = n; }
+  }
+  return mejor;
+}
+
 /* ══ BUSCAR ═════════════════════════════════════════════════════════════════
    Se busca en el nombre, la región, la descripción Y el expediente entero
    —párrafos y datos—, porque lo que alguien va a preguntar no es el nombre de
