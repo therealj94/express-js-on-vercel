@@ -56,9 +56,59 @@ function campana(x, c, a) {
   return d >= 1 ? 0 : Math.cos(d * Math.PI / 2) ** 2;
 }
 
+/* ══ EL CANON DE LA CABEZA ══════════════════════════════════════════════════
+
+   Esto es lo que estaba mal, y era una sola cosa mal en muchos sitios: TODOS
+   los rasgos estaban demasiado arriba.
+
+   En una cabeza humana, medida de la coronilla a la barbilla, la línea de los
+   OJOS cae EXACTAMENTE A LA MITAD. Es la regla más vieja del dibujo de
+   retrato y la que más se incumple, porque el ojo cree que los ojos están más
+   arriba de lo que están. Aquí estaban a 0,43 — y con ellos, la nariz a 0,53 y
+   la boca a 0,65.
+
+   El resultado se veía en cada captura: los rasgos apiñados en la mitad de
+   arriba y un desierto entre la boca y el mentón. Eso no es una cara mal
+   dibujada: es la cara de otra especie.
+
+   El canon, de coronilla (0) a barbilla (1):
+
+       0,25  nacimiento del pelo
+       0,44  cejas
+       0,50  OJOS ← la mitad exacta
+       0,58  orejas (van de las cejas a la base de la nariz)
+       0,72  base de la nariz
+       0,83  línea de los labios
+       1,00  barbilla
+
+   Todo lo de abajo sale de aquí. Cuando algo se mueva, se mueve respetando
+   estas alturas, no a ojo. */
+/* Y AQUÍ ESTABA LA TRAMPA, que costó una vuelta entera.
+
+   El canon son fracciones de la ALTURA de la cabeza. Pero `v` no es altura:
+   es el ángulo de una esfera, y la altura sale de su coseno. Poner la boca en
+   `v = 0,83` no la pone al 83 % de la cara — la pone al 92 %, pegada al
+   mentón, que es exactamente como salió en la primera prueba.
+
+   `altura(h)` hace la conversión al revés: se le da la fracción de altura que
+   manda el canon y devuelve el `v` que le corresponde. Con esto, cada rasgo
+   queda donde dice el canon y no donde lo deja la trigonometría.
+
+       altura(0,50) → 0,500   ojos
+       altura(0,72) → 0,645   base de la nariz
+       altura(0,83) → 0,735   labios */
+const altura = (h) => Math.acos(-(2 * h - 1)) / Math.PI;
+
+const CEJA_V   = altura(0.44);
+const OJO_V    = altura(0.50);
+const OREJA_V  = altura(0.58);
+const NARIZ_V  = altura(0.72);
+const BOCA_V   = altura(0.83);
+const MENTON_V = altura(0.955);
+
 // La boca vive entre estas dos alturas. La costura —donde la malla se abre—
 // va justo en medio, y de ahí sale también qué aristas hay que no dibujar.
-const BOCA_ARRIBA = 0.615, BOCA_ABAJO = 0.700;
+const BOCA_ARRIBA = 0.7048, BOCA_ABAJO = 0.7633;
 const BOCA_COSTURA = (BOCA_ARRIBA + BOCA_ABAJO) / 2;
 const BOCA_ANCHO = 0.62;                 // hasta dónde llega de lado, en `u`
 
@@ -82,13 +132,13 @@ function vertice(u, v, boca) {
      perfil se define primero —cuánto sale la cara a cada altura— y los rasgos
      se montan encima. */
   const perfil =
-      0.045 * campana(v, 0.30, 0.13)     // la frente, adelantada
-    - 0.030 * campana(v, 0.395, 0.055)   // el escalón del entrecejo
-    + 0.150 * campana(v, 0.505, 0.075)   // la nariz saliendo
-    - 0.055 * campana(v, 0.600, 0.045)   // el retroceso sobre el labio
-    + 0.040 * campana(v, 0.650, 0.040)   // los labios
-    - 0.050 * campana(v, 0.730, 0.045)   // el hueco bajo el labio
-    + 0.055 * campana(v, 0.800, 0.070);  // el mentón
+      0.045 * campana(v, 0.3690, 0.120)   // la frente, adelantada
+    - 0.030 * campana(v, 0.4713, 0.045)  // el escalón del entrecejo
+    + 0.150 * campana(v, 0.6070, 0.075)  // la nariz saliendo
+    - 0.060 * campana(v, 0.6854, 0.035)  // el retroceso sobre el labio
+    + 0.042 * campana(v, BOCA_V, 0.030)   // los labios
+    - 0.052 * campana(v, 0.7797, 0.032)  // el hueco bajo el labio
+    + 0.058 * campana(v, MENTON_V, 0.048);  // el mentón
 
   let rx = 0.70, ry = 1.0, rz = 0.80;
 
@@ -98,7 +148,7 @@ function vertice(u, v, boca) {
   /* La mandíbula: se estrecha hacia la barbilla. Es lo que más distingue una
      cabeza de una pelota. Al cuadrado, para que el estrechamiento empiece
      suave a la altura de la boca y apriete abajo. */
-  const bajo = suave((v - 0.54) / 0.46);
+  const bajo = suave((v - 0.5771) / 0.423);
   rx *= 1 - 0.52 * bajo * bajo;
   rz *= 1 - 0.26 * bajo * bajo;
   // La coronilla se redondea, que si no queda un pico.
@@ -106,7 +156,7 @@ function vertice(u, v, boca) {
   rz *= 1 - 0.10 * suave((0.16 - v) / 0.16);
   // Y las sienes se meten un poco: una cabeza no es igual de ancha a la altura
   // de los ojos que a la altura de las orejas.
-  rx *= 1 - 0.07 * campana(v, 0.36, 0.14);
+  rx *= 1 - 0.07 * campana(v, CEJA_V, 0.110);
 
   let x = rx * sp * su;
   let y = -ry * cp;
@@ -119,39 +169,39 @@ function vertice(u, v, boca) {
      ninguno: en una malla de alambre sin sombra, un rasgo sutil no existe. */
 
   // el ceño, encima de las cejas
-  z += 0.075 * delante * campana(v, 0.355, 0.085);
+  z += 0.075 * delante * campana(v, CEJA_V, 0.062);
 
   // las cuencas: dos hoyos a los lados del puente de la nariz
-  const cuenca = campana(Math.abs(u), 0.42, 0.30) * campana(v, 0.425, 0.062);
+  const cuenca = campana(Math.abs(u), 0.42, 0.30) * campana(v, OJO_V, 0.050);
   z -= 0.10 * cuenca;
 
   // la nariz: caballete, punta y aletas
-  const caballete = campana(u, 0, 0.26) * campana(v, 0.470, 0.075);
-  const punta = campana(u, 0, 0.19) * campana(v, 0.535, 0.042);
+  const caballete = campana(u, 0, 0.26) * campana(v, 0.5706, 0.085);
+  const punta = campana(u, 0, 0.19) * campana(v, NARIZ_V, 0.042);
   z += 0.13 * caballete + 0.20 * punta;
-  z += 0.075 * campana(Math.abs(u), 0.21, 0.13) * campana(v, 0.552, 0.030);
+  z += 0.075 * campana(Math.abs(u), 0.21, 0.13) * campana(v, 0.6557, 0.024);
   // y el surco entre la nariz y el labio
-  z -= 0.035 * campana(u, 0, 0.30) * campana(v, 0.585, 0.022);
+  z -= 0.035 * campana(u, 0, 0.30) * campana(v, 0.6854, 0.018);
 
   // los pómulos
-  const pomulo = campana(Math.abs(u), 0.66, 0.32) * campana(v, 0.495, 0.080);
+  const pomulo = campana(Math.abs(u), 0.66, 0.32) * campana(v, 0.5739, 0.065);
   x *= 1 + 0.075 * pomulo;
   z += 0.045 * pomulo;
 
   /* Las orejas. Van aquí y no como adorno: sin ellas la silueta es un huevo,
      por muy bien puestos que estén la nariz y el mentón. Son el rasgo que a
      dos metros dice «esto es una cabeza». */
-  const oreja = campana(Math.abs(u), Math.PI / 2, 0.30) * campana(v, 0.455, 0.085);
+  const oreja = campana(Math.abs(u), Math.PI / 2, 0.30) * campana(v, OREJA_V, 0.085);
   x *= 1 + 0.16 * oreja;
   z -= 0.05 * oreja;                     // van algo atrasadas, como las de verdad
 
   // los labios: dos rodetes, el de arriba y el de abajo
-  z += 0.075 * campana(u, 0, 0.44) * campana(v, 0.640, 0.030);
-  z += 0.065 * campana(u, 0, 0.40) * campana(v, 0.678, 0.032);
+  z += 0.075 * campana(u, 0, 0.44) * campana(v, 0.7194, 0.024);
+  z += 0.065 * campana(u, 0, 0.40) * campana(v, 0.7468, 0.026);
 
   // la barbilla y el hueco de debajo del labio
-  z -= 0.040 * delante * campana(v, 0.735, 0.030);
-  z += 0.090 * delante * campana(v, 0.812, 0.070);
+  z -= 0.040 * delante * campana(v, 0.7828, 0.026);
+  z += 0.090 * delante * campana(v, MENTON_V, 0.048);
 
   /* ── LA BOCA SE ABRE ──
      Tres cosas a la vez, y hacen falta las tres. El labio de arriba sube un
@@ -188,7 +238,7 @@ const NU = 60, NV = 46;
    rayos y abajo una aguja bajo el mentón. Cortando, arriba queda una coronilla
    plana pequeña —que es lo que hay— y abajo el borde de la mandíbula, que es
    justo donde empieza el cuello. */
-const V0 = 0.052, V1 = 0.925;
+const V0 = 0.045, V1 = 0.988;
 
 /* La rejilla NO se reparte pareja. Se aprieta a la altura de los ojos, la
    nariz y la boca, y se estira en la coronilla y en la nuca, donde no pasa
@@ -203,9 +253,9 @@ const V0 = 0.052, V1 = 0.925;
    no puede cruzarse aunque se toquen los números. */
 function repartirV() {
   const densidad = (t) => 1
-    + 1.7 * campana(t, 0.42, 0.14)     // cejas y ojos
-    + 1.5 * campana(t, 0.53, 0.10)     // nariz
-    + 1.6 * campana(t, 0.665, 0.12);   // boca y mentón
+    + 1.7 * campana(t, 0.4873, 0.12)    // cejas y ojos
+    + 1.5 * campana(t, 0.6310, 0.10)    // nariz
+    + 1.6 * campana(t, 0.7652, 0.11);   // boca y mentón
 
   const N = 900, acum = new Float64Array(N + 1);
   for (let i = 1; i <= N; i++) acum[i] = acum[i - 1] + densidad(i / N);
@@ -287,7 +337,7 @@ const CUELLO = (() => {
 // Los ojos no son parte de la rejilla: son dos discos con su pupila puestos en
 // el hueco de la cuenca. Sacarlos de la malla es lo que permite que parpadeen
 // sin deformar la cara alrededor.
-const OJOS = [-0.42, 0.42].map((u) => ({ u, v: 0.428 }));
+const OJOS = [-0.42, 0.42].map((u) => ({ u, v: OJO_V }));
 
 /* ══ LOS CONTORNOS ═════════════════════════════════════════════════════════
    Esto es lo que faltaba, y es la diferencia entre una malla con bultos y una
@@ -308,25 +358,24 @@ const OJOS = [-0.42, 0.42].map((u) => ({ u, v: 0.428 }));
    `vertice()` que la malla: van pegados a la superficie, se deforman con ella
    y se abren con la boca, sin ser un dibujo aparte encima. */
 const CONTORNOS = [
-  // el caballete de la nariz, desde el entrecejo hasta la punta
-  { p: [[0, 0.395], [0, 0.44], [0, 0.485], [0, 0.52], [0, 0.545]], g: 1.5 },
+  // el caballete de la nariz, del entrecejo a la punta
+  { p: [[0, 0.4841], [0, 0.5287], [0, 0.5739], [0, 0.6138], [0, NARIZ_V]], g: 1.5 },
   // las aletas: de la punta hacia fuera y abajo, una a cada lado
-  { p: [[0, 0.548], [-0.11, 0.556], [-0.19, 0.566], [-0.21, 0.578]], g: 1.2 },
-  { p: [[0, 0.548], [ 0.11, 0.556], [ 0.19, 0.566], [ 0.21, 0.578]], g: 1.2 },
+  { p: [[0, 0.6486], [-0.11, 0.6543], [-0.19, 0.6608], [-0.21, 0.6681]], g: 1.2 },
+  { p: [[0, 0.6486], [ 0.11, 0.6543], [ 0.19, 0.6608], [ 0.21, 0.6681]], g: 1.2 },
   // la línea de los labios, de comisura a comisura
-  { p: [[-0.44, 0.652], [-0.26, 0.641], [-0.10, 0.646], [0, 0.643],
-        [0.10, 0.646], [0.26, 0.641], [0.44, 0.652]], g: 1.6, boca: true },
+  { p: [[-0.44, 0.7363], [-0.26, 0.7269], [-0.10, 0.7311], [0, BOCA_V],
+        [0.10, 0.7311], [0.26, 0.7269], [0.44, 0.7363]], g: 1.6, boca: true },
   // el arco del labio de abajo
-  { p: [[-0.42, 0.655], [-0.22, 0.686], [0, 0.694], [0.22, 0.686], [0.42, 0.655]],
+  { p: [[-0.42, 0.7380], [-0.22, 0.7577], [0, 0.7633], [0.22, 0.7577], [0.42, 0.7380]],
     g: 1.2, bajo: true },
-  /* La mandíbula: del lóbulo de la oreja al mentón. Arrancaba en la sien y
-     salía una V enorme que cruzaba media cara — una mandíbula empieza DEBAJO
-     de la oreja, no encima. */
-  { p: [[-1.30, 0.620], [-1.05, 0.700], [-0.68, 0.788], [-0.28, 0.846], [0, 0.858],
-        [0.28, 0.846], [0.68, 0.788], [1.05, 0.700], [1.30, 0.620]], g: 1.1 },
+  /* La mandíbula: del lóbulo de la oreja al mentón. Arranca a la altura de la
+     oreja y no en la sien: una mandíbula empieza DEBAJO de la oreja. */
+  { p: [[-1.30, 0.5903], [-1.05, 0.6594], [-0.68, 0.7424], [-0.28, 0.8295], [0, 0.8639],
+        [0.28, 0.8295], [0.68, 0.7424], [1.05, 0.6594], [1.30, 0.5903]], g: 1.1 },
   // Los pómulos, tenues: a la misma luz que el resto salían como dos arañazos.
-  { p: [[-0.86, 0.492], [-0.70, 0.524], [-0.52, 0.546]], g: 0.8, tenue: true },
-  { p: [[ 0.86, 0.492], [ 0.70, 0.524], [ 0.52, 0.546]], g: 0.8, tenue: true },
+  { p: [[-0.86, 0.5544], [-0.70, 0.5739], [-0.52, 0.5903]], g: 0.8, tenue: true },
+  { p: [[ 0.86, 0.5544], [ 0.70, 0.5739], [ 0.52, 0.5903]], g: 0.8, tenue: true },
 ];
 
 /* El borde del párpado: una almendra alrededor de cada ojo. Va aparte de la
@@ -337,8 +386,8 @@ function almendra(centroU, v, abre) {
   const N = 16;
   for (let i = 0; i <= N; i++) {
     const a = (i / N) * Math.PI * 2;
-    p.push([centroU + Math.cos(a) * 0.155,
-            v + Math.sin(a) * 0.030 * Math.max(0.06, abre)]);
+    p.push([centroU + Math.cos(a) * 0.150,
+            v + Math.sin(a) * 0.027 * Math.max(0.06, abre)]);
   }
   return p;
 }
@@ -558,7 +607,7 @@ export function crearCara(lienzo) {
     /* Las cejas. Dos arcos y nada más, pero son lo que convierte dos ojos en
        una MIRADA: sin ellas la cara se queda con cara de nada. */
     for (const o of OJOS) {
-      const [x, y, z] = vertice(o.u, o.v - 0.045, 0);
+      const [x, y, z] = vertice(o.u, CEJA_V, 0);   // la ceja, sobre el ojo
       const p = { x, y, z: z + 0.02 };
       proyectar(p);
       if (p._e < 0 || p._b < 0.18) continue;

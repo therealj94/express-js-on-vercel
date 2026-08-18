@@ -70,7 +70,8 @@ canvas:active{cursor:grabbing}
 /* El sello: qué es esto, en una línea, arriba a la izquierda. En una
    proyección la gente entra a mitad de la explicación y hay que decirle qué
    está mirando sin que nadie tenga que decirlo en voz alta. */
-#sello{position:fixed;top:26px;left:30px;z-index:10;pointer-events:none}
+/* El sello baja: el botón del índice vive en la esquina y le caía encima. */
+#sello{position:fixed;top:76px;left:30px;z-index:10;pointer-events:none}
 #sello .t{font-size:13px;letter-spacing:.34em;text-transform:uppercase;
   color:#6FE3F5;text-shadow:0 0 18px rgba(111,227,245,.6)}
 #sello .s{margin-top:9px;font-size:12.5px;color:#5B7085;letter-spacing:.05em}
@@ -239,6 +240,11 @@ body.ventana-viva #ventana article{opacity:1;transform:none}
 #ventana .cuerpo .fte{margin-top:8px;font-size:9.5px;color:#43596E;line-height:1.5}
 /* Las conexiones se pueden pulsar: de una pieza se salta a la de al lado y se
    recorre el ecosistema por donde de verdad está unido. */
+#ventana .ira{display:inline-block;margin-top:2px;padding:8px 15px;border-radius:999px;
+  background:rgba(111,227,245,.12);border:1px solid rgba(111,227,245,.42);
+  color:#8FE6F7;font:500 11.5px ui-monospace,Menlo,monospace;text-decoration:none;
+  transition:background .16s,border-color .16s}
+#ventana .ira:hover{background:rgba(111,227,245,.2);border-color:#6FE3F5;color:#DAF6FD}
 #ventana .vecinas{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 #ventana .vecinas button{padding:5px 11px;border-radius:999px;cursor:pointer;
   background:rgba(8,20,30,.8);border:1px solid rgba(111,227,245,.22);
@@ -272,7 +278,24 @@ body.ventana-viva #ventana article{opacity:1;transform:none}
   background:rgba(3,12,20,.82);border:1px solid rgba(111,227,245,.5);
   color:#6FE3F5;font:600 11px/1 ui-monospace,Menlo,monospace;
   letter-spacing:.16em;text-transform:uppercase}
+#cara .mandos{display:flex;align-items:center;gap:7px}
 #botonHablar:hover{border-color:#6FE3F5;background:rgba(8,26,38,.9)}
+#botonSon{width:30px;height:30px;flex:0 0 auto;border-radius:50%;cursor:pointer;
+  display:grid;place-items:center;
+  background:rgba(3,12,20,.82);border:1px solid rgba(111,227,245,.34);
+  color:#4C6076;transition:color .2s,border-color .2s}
+#botonSon:hover{border-color:#6FE3F5;color:#9FD8E6}
+#botonSon[aria-pressed="true"]{color:#6FE3F5;border-color:#6FE3F5}
+#botonSon:focus-visible{outline:2px solid #6FE3F5;outline-offset:3px}
+/* Dos barras que crecen: apagadas quedan bajas y quietas; encendidas se mueven
+   con desfases distintos, que es lo que se lee como «está sonando». */
+#botonSon .on{display:flex;align-items:flex-end;gap:2.5px;height:11px}
+#botonSon .on::before,#botonSon .on::after{content:'';display:block;
+  width:2px;height:4px;background:currentColor;border-radius:1px}
+#botonSon[aria-pressed="true"] .on::before{animation:barra 1.1s ease-in-out infinite}
+#botonSon[aria-pressed="true"] .on::after{animation:barra 1.1s ease-in-out .55s infinite}
+@keyframes barra{0%,100%{height:3px}50%{height:11px}}
+@media (prefers-reduced-motion:reduce){#botonSon .on::before,#botonSon .on::after{animation:none}}
 #botonHablar:focus-visible{outline:2px solid #6FE3F5;outline-offset:3px}
 /* El triángulo/cuadrado del botón se dibuja con bordes en vez de con un
    carácter: «▶» y «■» salen de tamaños distintos en cada sistema y el botón
@@ -383,9 +406,16 @@ body.ventana-viva #ventana article{opacity:1;transform:none}
      justo la masa que hay que mirar mientras habla de ella. -->
 <div id="cara">
   <canvas id="lienzoCara"></canvas>
-  <button id="botonHablar" type="button" aria-label="Que Genesis Core presente el ecosistema">
-    <span class="pico"></span><span class="rot">Presentar</span>
-  </button>
+  <div class="mandos">
+    <button id="botonHablar" type="button" aria-label="Que Genesis Core presente el ecosistema">
+      <span class="pico"></span><span class="rot">Presentar</span>
+    </button>
+    <!-- El ambiente arranca apagado: ningún navegador deja sonar una página sin
+         que alguien la haya tocado, y abrir un enlace y que empiece a sonar
+         música es de mala educación. -->
+    <button id="botonSon" type="button" aria-pressed="false" aria-label="Sonido de ambiente"
+            title="Sonido de ambiente"><span class="on"></span></button>
+  </div>
 </div>
 
 <!-- El subtítulo. Está siempre que se habla, y no como accesorio: en una sala

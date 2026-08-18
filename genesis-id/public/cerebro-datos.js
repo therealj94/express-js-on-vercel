@@ -85,9 +85,9 @@ export const NODOS = [
   { id: 'POLITICAL', n: 'POLITICAL', g: 'token', d: 'Token de sector.' },
 
   // ── Apps ─────────────────────────────────────────────────────────────────
-  { id: 'vw-app', n: 'Veta Wallet · app', g: 'app', peso: 3,
+  { id: 'vw-app', n: 'Veta Wallet · app', g: 'app', peso: 3, w: 'https://app.vetawallet.com',
     d: 'La billetera en Android. 15 tokens, tarjeta con emisión y congelado, remesas (calculadora, no ejecuta), lector QR, y la verificación de identidad con cámara que lee sola.' },
-  { id: 'vw-web', n: 'Veta Wallet · web', g: 'app', peso: 2.4, vivo: 'dom-app',
+  { id: 'vw-web', n: 'Veta Wallet · web', g: 'app', peso: 2.4, vivo: 'dom-app', w: 'https://www.vetawallet.com',
     d: 'app.vetawallet.com — las mismas cinco pestañas que la app. HTML y JS a mano, sin framework, a propósito.' },
   { id: 'vw-back', n: 'Backend Veta Wallet', g: 'backend', peso: 2.6,
     d: 'Node sobre Heroku con MongoDB. Firma y emite las transacciones. Aquí viven la idempotencia de los envíos y el cifrado de las semillas.' },
@@ -97,20 +97,20 @@ export const NODOS = [
     d: 'Generada desde la app, no del sitio viejo. Hoy corre con datos de prueba porque su backend está caído.' },
   { id: 'mtp-back', n: 'Backend MyTokenPay', g: 'abierto', peso: 2,
     d: 'Caído — responde 503. Bloqueado para desplegar por un repositorio de GitLab de terceros.' },
-  { id: 'ordenscan', n: 'ordenscan', g: 'app', peso: 2,
+  { id: 'ordenscan', n: 'ordenscan', g: 'app', peso: 2, w: 'https://ordenscan.com',
     d: 'El explorador de la cadena. La ficha de cada persona trae su historial completo: cuentas, identidad y movimiento de los 15 tokens.' },
   { id: 'og-web', n: 'ordenglobal.org', g: 'app', peso: 1.6,
     d: 'El sitio corporativo. Sin conexión de datos con el resto: es la cara pública.' },
 
   // ── Identidad ────────────────────────────────────────────────────────────
-  { id: 'genesis', n: 'Genesis ID', g: 'identidad', peso: 3.4, vivo: 'genesis',
+  { id: 'genesis', n: 'Genesis ID', g: 'identidad', peso: 3.4, vivo: 'genesis', w: 'https://genesis-id.onrender.com',
     d: 'El motor de identidad: KYC de personas, KYB de empresas, tamizado contra listas de sanciones, monitoreo AML y sesión única entre las apps. Ninguna identidad se verifica sola — cada aprobación la firma un operador.' },
   { id: 'gid-app', n: 'Genesis ID · app', g: 'identidad', peso: 2,
     d: 'El panel de cumplimiento en Android. Cola de identidades, decisión con motivo firmado, casos AML y analítica con filtros.' },
-  { id: 'gid-panel', n: 'Panel web', g: 'identidad', peso: 2,
+  { id: 'gid-panel', n: 'Panel web', g: 'identidad', peso: 2, w: 'https://genesis-id.onrender.com',
     d: '/admin para cumplimiento, /analitica para métricas, /cerebro para esto que estás mirando.' },
   { id: 'gid-portal', n: 'genesisid.online', g: 'identidad',
-    d: 'El portal externo de identidad. El puente con él no funcionaba y se reconstruyó.' },
+    d: 'El portal externo de identidad. El puente con él no funcionaba y se reconstruyó. NO RESPONDE hoy: comprobado el 18/08/2026 y la conexión no llega. Por eso no lleva enlace — un botón que abre una página muerta delante de la Junta es peor que no tener botón.' },
   { id: 'telemetria', n: 'Telemetría', g: 'identidad', peso: 2, vivo: 'telemetria',
     d: 'Lo que cada app reporta: quién entró, qué movió, qué se rompió. Nunca guarda quién es nadie — solo una huella irreversible que el panel puede volver a cruzar con el padrón.' },
   { id: 'padron', n: 'Padrón', g: 'identidad', peso: 2, vivo: 'padron',
@@ -125,12 +125,12 @@ export const NODOS = [
   { id: 'eas', n: 'EAS · Expo', g: 'infra', d: 'Compila los APK y publica las actualizaciones por aire, sin reinstalar.' },
 
   // ── Dominios ─────────────────────────────────────────────────────────────
-  { id: 'd-app', n: 'app.vetawallet.com', g: 'dominio', vivo: 'dom-app', d: 'Amplify d264zjawew1yea · control total.' },
-  { id: 'd-legal', n: 'legal.vetawallet.com', g: 'dominio', vivo: 'dom-legal', d: 'Política de privacidad y términos, sin pedir sesión — lo exigen las tiendas.' },
-  { id: 'd-www', n: 'www.vetawallet.com', g: 'dominio', vivo: 'dom-www', d: 'CloudFront de otra cuenta, con origen propio. Control parcial.' },
+  { id: 'd-app', n: 'app.vetawallet.com', g: 'dominio', vivo: 'dom-app', w: 'https://app.vetawallet.com', d: 'Amplify d264zjawew1yea · control total.' },
+  { id: 'd-legal', n: 'legal.vetawallet.com', g: 'dominio', vivo: 'dom-legal', w: 'https://legal.vetawallet.com', d: 'Política de privacidad y términos, sin pedir sesión — lo exigen las tiendas.' },
+  { id: 'd-www', n: 'www.vetawallet.com', g: 'dominio', vivo: 'dom-www', w: 'https://www.vetawallet.com', d: 'CloudFront de otra cuenta, con origen propio. Control parcial.' },
   { id: 'd-rpc', n: 'rpc.ordenglobal-rpc.com', g: 'dominio', vivo: 'rpc', d: 'El RPC de la cadena.' },
-  { id: 'd-genesis', n: 'genesis-id.onrender.com', g: 'dominio', vivo: 'genesis-salud', d: 'Genesis ID.' },
-  { id: 'd-og', n: 'ordenglobal.org', g: 'dominio', d: 'DNS en NameSilo, servidor cPanel viejo con WordPress intacto debajo.' },
+  { id: 'd-genesis', n: 'genesis-id.onrender.com', g: 'dominio', vivo: 'genesis-salud', w: 'https://genesis-id.onrender.com', d: 'Genesis ID.' },
+  { id: 'd-og', n: 'ordenglobal.org', g: 'dominio', w: 'https://ordenglobal.org', d: 'DNS en NameSilo, servidor cPanel viejo con WordPress intacto debajo.' },
 
   // ── Seguridad cerrada ────────────────────────────────────────────────────
   { id: 's-passadm', n: 'PASS_ADM rotado', g: 'seguridad', peso: 1.8,
@@ -203,7 +203,7 @@ export const NODOS = [
   // ── La cadena nueva ───────────────────────────────────────────────────────
   { id: 'cadena5550', n: 'Cadena 5550', g: 'cadena', peso: 4,
     d: 'La cadena nueva, con su génesis construido y juzgado. Sustituye a la 8532, que queda congelada y cerrada.' },
-  { id: 'cadena5534', n: 'Cadena 5534', g: 'cadena', peso: 2,
+  { id: 'cadena5534', n: 'Cadena 5534', g: 'cadena', peso: 2, w: 'https://testnet.ordenscan.com',
     d: 'La red de pruebas. Sirve el RPC de pruebas desde tres máquinas pequeñas.' },
 
   // ── Productos que no estaban ──────────────────────────────────────────────

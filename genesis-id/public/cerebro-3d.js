@@ -35,6 +35,7 @@ import { crearCara } from './cara-3d.js';
 import { crearVoz } from './voz-core.js';
 import { TEMAS, PRESENTACION, REGIONES } from './guion-core.js';
 import { FICHAS, INTERNAS } from './fichas-core.js';
+import { crearAmbiente } from './ambiente.js';
 
 const lienzo = document.getElementById('lienzo');
 const ctx = lienzo.getContext('2d', { alpha: false });
@@ -211,6 +212,7 @@ const neuronas = NODOS.map((n) => {
     // que volver a buscar el nodo en NODOS en cada toque, y el mapa ya está
     // aquí.
     id: n.id, nombre: n.n, grupo: n.g, peso: n.peso || 1, ficha: n.d || '',
+    web: n.w || '',
     x, y, z,
     color: COLOR[n.g] || '#9FB4CC',
     fase: rnd() * Math.PI * 2,          // para que no latan todas a la vez
@@ -678,6 +680,7 @@ function cuadro(ahora) {
     cam.giroY += VEL_GIRO;
   }
   cam.dist += (cam.objetivo - cam.dist) * 0.08;
+  ambiente.latir(ahora);
 
   const cy = Math.cos(cam.giroY), sy = Math.sin(cam.giroY);
   const cx = Math.cos(cam.giroX), sx = Math.sin(cam.giroX);
@@ -992,6 +995,60 @@ function cuadro(ahora) {
     }
   }
 
+  /* ══ EL NOMBRE DE CADA PIEZA ══════════════════════════════════════════════
+     Hasta ahora los nombres solo estaban en el índice, y eso deja el cerebro
+     como una constelación bonita de puntos sin nombre: se ve que hay algo,
+     pero no QUÉ.
+
+     No se pintan los ciento uno: a la vista de conjunto no cabrían y sería
+     ilegible. Se pintan los que están DE CARA a la cámara y por delante, y
+     cuantos más cuanto más cerca esté el zoom — acercarse a mirar una zona es
+     justo el gesto de «¿qué hay aquí?», y ahí el cerebro contesta con nombres.
+
+     La pieza abierta y sus vecinas van SIEMPRE, aunque estén de espaldas:
+     cuando alguien está mirando una cosa, lo que la rodea es lo que quiere
+     leer. */
+  ctx.globalCompositeOperation = 'source-over';
+  const CUANTOS_NOMBRES = movil ? 8 : 22;
+  const puestos = [];
+  ctx.font = `500 ${movil ? 9 : 10.5}px ui-monospace,Menlo,monospace`;
+  ctx.textBaseline = 'middle';
+
+  const candidatas = [];
+  for (const n of neuronas) {
+    if (n._e < 0 || n._z < -20) continue;      // de espaldas, no
+    const vecina = resaltada && (resaltada === n ||
+      axones.some((x) => (x.a === resaltada && x.b === n) || (x.b === resaltada && x.a === n)));
+    // La prioridad mezcla profundidad y peso: entre dos igual de cerca gana la
+    // pieza gorda, que es la que da sentido al racimo que tiene alrededor.
+    candidatas.push({ n, vecina, p: (vecina ? 1e6 : 0) + n._z + n.peso * 26 });
+  }
+  candidatas.sort((a, b) => b.p - a.p);
+
+  for (const c of candidatas.slice(0, CUANTOS_NOMBRES + 12)) {
+    const n = c.n;
+    if (!c.vecina && puestos.length >= CUANTOS_NOMBRES) break;
+    const w = ctx.measureText(n.nombre).width;
+    const h = 13;
+    let x = n._x + (n._r || 3) + 7, y = n._y;
+    if (x + w > W - 16) x = n._x - (n._r || 3) - 7 - w;   // se cambia de lado
+    // Un nombre encima de otro no se lee ninguno de los dos.
+    const choca = puestos.some((q) =>
+      x < q.x + q.w + 5 && x + w + 5 > q.x && y < q.y + h && y + h > q.y);
+    if (choca) continue;
+    if (x < 8 || y < 60 || y > H - 60) continue;
+    puestos.push({ x, y: y - h / 2, w, h });
+
+    const col = COLOR[n.grupo] || '#9FB4CC';
+    const cerca = Math.max(0, Math.min(1, (n._z + 130) / 260));
+    // Un fondo mínimo detrás del texto: sobre el tejido, la letra sola se
+    // pierde en cuanto pasa por encima de una zona cargada.
+    ctx.fillStyle = `rgba(3,10,17,${0.42 + cerca * 0.3})`;
+    ctx.fillRect(x - 3, y - h / 2, w + 6, h);
+    ctx.fillStyle = tinte(col, c.vecina ? 0.95 : 0.42 + cerca * 0.48);
+    ctx.fillText(n.nombre, x, y + 0.5);
+  }
+
   // ── las etiquetas de región ───────────────────────────────────────────────
   ctx.globalCompositeOperation = 'source-over';
   const cajas = [];
@@ -1214,6 +1271,27 @@ const voz = crearVoz({
   },
 });
 
+/* ══ EL AMBIENTE ════════════════════════════════════════════════════════════
+   Sintetizado, no un fichero: ver `ambiente.js`. El golpe grave va atado al
+   mismo `PERIODO` que la onda que se ve, así que lo que se oye es exactamente
+   lo que se está viendo. */
+const ambiente = crearAmbiente({ periodo: PERIODO });
+const btnSon = document.getElementById('botonSon');
+btnSon.addEventListener('click', async () => {
+  btnSon.setAttribute('aria-pressed', String(await ambiente.alternar()));
+});
+/* Si la última vez quedó encendido, se enciende al primer toque en la página:
+   antes el navegador no deja, y preguntar otra vez sería preguntar de más. */
+if (ambiente.recordado) {
+  const alPrimerToque = async () => {
+    removeEventListener('pointerdown', alPrimerToque);
+    removeEventListener('keydown', alPrimerToque);
+    btnSon.setAttribute('aria-pressed', String(await ambiente.alternar(true)));
+  };
+  addEventListener('pointerdown', alPrimerToque);
+  addEventListener('keydown', alPrimerToque);
+}
+
 botón.addEventListener('click', () => {
   if (voz.hablando) voz.callar();
   else contar(temaActual);
@@ -1421,6 +1499,21 @@ function abrirVentana(n) {
     if (sec.aviso) vCuerpo.appendChild(el('p', 'aviso', sec.aviso));
     vCuerpo.appendChild(el('p', 'fte', sec.fuente));
   }
+  /* El enlace a la página de verdad, si esta pieza tiene una. Solo aparece
+     cuando el mapa trae dirección, y el mapa solo la trae para las que se
+     comprobaron una a una: un botón que abre una página muerta delante de la
+     Junta es peor que no tener botón. */
+  if (n.web) {
+    vCuerpo.appendChild(el('h3', null, 'La página'));
+    const a = document.createElement('a');
+    a.className = 'ira';
+    a.href = n.web;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';   // la pestaña nueva no puede tocar a ésta
+    a.textContent = n.web.replace(/^https?:\/\//, '') + '  ↗';
+    vCuerpo.appendChild(a);
+  }
+
   if (vecinas.length) {
     vCuerpo.appendChild(el('h3', null, 'Conecta con'));
     const fila = el('div', 'vecinas');
