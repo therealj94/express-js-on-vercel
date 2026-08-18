@@ -13,6 +13,7 @@ import { biometriaConfigurada, proveedorBiometria } from './kyc/biometria.js'
 import { migrarFotosDelEstado, prepararCaducidad, conservacionConfigurada } from './kyc/fotosDocumento.js'
 import { migrarFotosCredencialDelEstado } from './kyc/fotoCredencial.js'
 import { verificarCadena } from './audit/bitacora.js'
+import { cargaPesadas } from './middleware/proteger.js'
 import { sesionRouter } from './routes/sesion.js'
 import { appsRouter } from './routes/apps.js'
 import { panelRouter } from './routes/panel.js'
@@ -179,6 +180,13 @@ app.get('/healthz', (_req, res) => {
          documento y hay que verlo desde fuera, no descubrirlo el día de una
          auditoría. */
       conservacionDocumentos: conservacionConfigurada(),
+      /* Cuántas verificaciones pesadas hay dentro y cuántas esperando. Si la
+         cola sube y no baja, el servicio se está quedando corto de memoria o de
+         CPU y hay que subir el plan — y esto es lo que lo dice antes de que
+         empiecen los 503. */
+      verificacionesDentro: cargaPesadas().dentro,
+      verificacionesEnCola: cargaPesadas().enCola,
+      verificacionesALaVez: cargaPesadas().aLaVez,
       ssoConfigurado: Boolean(process.env.GENESIS_SSO_SECRETO),
       bitacoraIntegra: cadena.integra,
       /* DÓNDE se rompió, no solo QUE se rompió.

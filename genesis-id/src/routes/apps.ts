@@ -6,7 +6,7 @@
 // donde una app podía emitir un GID verificado por su cuenta.
 
 import { Router } from 'express'
-import { exigeApp, limite } from '../middleware/proteger.js'
+import { exigeApp, limite, pesada } from '../middleware/proteger.js'
 import * as ids from '../motor/identidades.js'
 import * as biz from '../motor/negocios.js'
 import { registrarMovimientos } from '../aml/casos.js'
@@ -65,7 +65,7 @@ appsRouter.post('/identidades/:id/datos', limite(60), exigeApp('identidad.crear'
  * hace en el teléfono: así la foto del documento no viaja ni se almacena aquí,
  * que es menos dato personal en riesgo por cada usuario.
  */
-appsRouter.post('/identidades/:id/documento', limite(30), exigeApp('identidad.documento'), async (req, res) => {
+appsRouter.post('/identidades/:id/documento', limite(30), pesada, exigeApp('identidad.documento'), async (req, res) => {
   const { mrz, textoAnverso } = req.body ?? {}
   if (!mrz || typeof mrz !== 'string') {
     return res.status(400).json({ error: 'Hace falta el texto de la MRZ del documento' })
@@ -121,7 +121,7 @@ const TOPE_POR_CARA = 3_000_000
  * porque nadie lo ha mirado todavía, y un cliente que lea solo ese campo
  * pensaría que el documento fue rechazado. Las dos se leen juntas o ninguna.
  */
-appsRouter.post('/identidades/:id/documento-fotos', limite(20), exigeApp('identidad.documento'), async (req, res) => {
+appsRouter.post('/identidades/:id/documento-fotos', limite(20), pesada, exigeApp('identidad.documento'), async (req, res) => {
   const { anverso, reverso } = req.body ?? {}
   const esImagen = (x: unknown) =>
     typeof x === 'string' && /^data:image\/(jpeg|jpg|png|webp);base64,/.test(x) && x.length > 1000
@@ -153,7 +153,7 @@ appsRouter.post('/identidades/:id/documento-fotos', limite(20), exigeApp('identi
  * que impide responder con un vídeo preparado de antemano. La app la muestra
  * gesto a gesto y graba un fotograma por cada uno.
  */
-appsRouter.post('/identidades/:id/vivacidad', limite(20), exigeApp('identidad.documento'), async (req, res) => {
+appsRouter.post('/identidades/:id/vivacidad', limite(20), pesada, exigeApp('identidad.documento'), async (req, res) => {
   const identidad = ids.porId(req.params.id)
   if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
   if (!biometriaConfigurada()) {
@@ -176,7 +176,7 @@ appsRouter.post('/identidades/:id/vivacidad', limite(20), exigeApp('identidad.do
  * La segunda se mantiene porque hay clientes publicados que la usan y cortarla
  * dejaría a esos usuarios sin poder avanzar; pero nunca aprueba sola.
  */
-appsRouter.post('/identidades/:id/biometria', limite(20), exigeApp('identidad.documento'), async (req, res) => {
+appsRouter.post('/identidades/:id/biometria', limite(20), pesada, exigeApp('identidad.documento'), async (req, res) => {
   const { selfie, fotoDocumento, reto, fotogramas } = req.body ?? {}
   const identidad = ids.porId(req.params.id)
   if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
@@ -225,7 +225,7 @@ appsRouter.post('/identidades/:id/biometria', limite(20), exigeApp('identidad.do
  * compara y se descarta, esta se conserva porque la credencial tiene que verse
  * completa en cualquier app del ecosistema, no solo en el teléfono que la subió.
  */
-appsRouter.post('/identidades/:id/foto', limite(20), exigeApp('identidad.documento'), async (req, res) => {
+appsRouter.post('/identidades/:id/foto', limite(20), pesada, exigeApp('identidad.documento'), async (req, res) => {
   const r = await ids.guardarFotoCredencial(
     req.params.id, String(req.body?.foto || ''), `app:${req.app_ecosistema!.clave}`)
   if (!r.ok) {

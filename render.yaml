@@ -5,7 +5,15 @@ services:
     name: genesis-id
     runtime: node
     rootDir: genesis-id
-    plan: free
+    # PLAN DE PAGO, y no es un lujo. En el plan gratis son 512 MB de RAM y 0,1
+    # de CPU, y el servicio SE APAGA a los 15 minutos sin tráfico, con arranque
+    # en frío de 30 a 60 segundos. Con una campaña en marcha eso significa que
+    # el primer usuario tras cada pausa espera casi un minuto en blanco y se va.
+    #
+    # Este valor tiene que coincidir con el que esté puesto en el panel de
+    # Render: si el panel dice `standard` y esto dice `free`, una
+    # resincronización del blueprint lo baja de vuelta sin avisar.
+    plan: starter
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /healthz
@@ -37,6 +45,20 @@ services:
       # sync:false = Render la pide en el panel y NO queda escrita en el repo.
       - key: GENESIS_ARCHIVO_CLAVE
         sync: false
+
+      # ─── Cuántas verificaciones pesadas caben a la vez ─────────────────────
+      # Las rutas que reciben imágenes admiten cuerpos de 25 MB —no se pueden
+      # bajar sin dejar sin verificarse a quien tenga la app vieja—, y una
+      # petición así ocupa bastante más de 25 MB ya parseada. Esto limita
+      # cuántas entran A LA VEZ, que es lo que de verdad consume memoria.
+      #
+      # 3 es prudente para 512 MB. Al subir de plan, subir también este número:
+      # con 2 GB, entre 8 y 12 va bien. `/healthz` publica cuántas hay dentro y
+      # cuántas en cola, así que se ajusta mirando, no adivinando.
+      - key: GENESIS_PESADAS_A_LA_VEZ
+        value: "3"
+      - key: GENESIS_PESADAS_EN_COLA
+        value: "12"
 
       # ─── Primer administrador ──────────────────────────────────────────────
       # Si no se define la contraseña, el motor genera una al azar y la imprime
