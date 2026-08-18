@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Nexus Coder · Construimos la infraestructura, no la demo</title>
+<meta name="description" content="Estudio de ingeniería en Fráncfort. Cadenas propias, identidad verificada, billeteras, casas de cambio y sistemas de dinero. Todo lo que ves está corriendo en producción.">
+<meta name="theme-color" content="#05060A">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2305060A'/%3E%3Cpath d='M9 24V8l14 16V8' stroke='%2322D3EE' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='9' cy='8' r='2.2' fill='%2322D3EE'/%3E%3Ccircle cx='23' cy='24' r='2.2' fill='%23A855F7'/%3E%3C/svg%3E">
+
+<!-- Un sitio de presentación no habla con nadie: connect-src en 'self' y punto.
+     El día que alguien meta un formulario que mande datos a un tercero tendrá
+     que tocar esta línea, que es exactamente cuando hay que pensarlo. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self';
+  style-src 'self' 'unsafe-inline';
+  font-src 'self';
+  img-src 'self' data:;
+  connect-src 'self';
+  form-action 'none';
+  base-uri 'self'">
+
+<link rel="preload" as="font" type="font/woff2" href="assets/fonts/IBMPlexMono-500.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="assets/fonts/IBMPlexSans.woff2" crossorigin>
+
+<style>
+/* ═══ LAS FUENTES, EN CASA ═══════════════════════════════════════════════════
+   Nada de CDN: la CSP lo bloquea y, sobre todo, una fuente que no carga
+   convierte un titular cuidado en Times New Roman sin avisarle a nadie. */
+@font-face{font-family:'Mono';src:url('assets/fonts/IBMPlexMono-500.woff2') format('woff2');
+  font-weight:500;font-display:swap}
+@font-face{font-family:'Mono';src:url('assets/fonts/IBMPlexMono-400.woff2') format('woff2');
+  font-weight:400;font-display:swap}
+@font-face{font-family:'Sans';src:url('assets/fonts/IBMPlexSans.woff2') format('woff2');
+  font-weight:100 700;font-display:swap}
+
+/* ═══ EL NEÓN ES DEL LOGO, NO DE LA MODA ═════════════════════════════════════
+   El cian y el violeta salen de la marca que ya existe: la N de circuito con
+   sus dos mitades. No se eligieron porque «lo oscuro con un acento neón se ve
+   moderno» — se eligieron porque son los colores del logotipo, y una web que
+   no se parece a su propio logotipo es una web que alguien va a tener que
+   rehacer.
+
+   El titular va en MONOESPACIADA a propósito. Un estudio de ingeniería que se
+   presenta con la misma tipografía de agencia que todos los demás está
+   diciendo, sin querer, que es una agencia más. */
+:root{
+  --pozo:#05060A;        /* el negro del logo */
+  --pozo2:#0A0D14;
+  --panel:#0E121B;
+  --cian:#22D3EE;
+  --cianLt:#7DE9F7;
+  --violeta:#A855F7;
+  --violetaLt:#C89BFB;
+  --hueso:#E8EDF5;
+  --niebla:#9AA9BF;
+  --humo:#61708A;
+  --linea:rgba(154,169,191,.16);
+  --lineaN:rgba(34,211,238,.30);
+  --ancho:1160px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--pozo);color:var(--hueso);
+  font:400 17px/1.62 'Sans',system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%;height:auto;display:block}
+a{color:inherit;text-decoration:none}
+::selection{background:rgba(34,211,238,.28);color:var(--hueso)}
+:focus-visible{outline:2px solid var(--cian);outline-offset:3px;border-radius:3px}
+
+h1,h2,h3{margin:0;font-family:'Mono',ui-monospace,monospace;font-weight:500;
+  letter-spacing:-.02em;line-height:1.06;text-wrap:balance}
+p{margin:0;text-wrap:pretty}
+
+.env{width:min(100% - 40px,var(--ancho));margin-inline:auto}
+@media (min-width:900px){.env{width:min(100% - 96px,var(--ancho))}}
+
+/* La etiqueta de sección: el prompt de una consola. Es la voz de la casa. */
+.et{display:flex;align-items:center;gap:12px;
+  font:500 12.5px/1 'Mono',monospace;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--cian)}
+.et::before{content:'>';color:var(--violeta);font-weight:500}
+.et.v{color:var(--violetaLt)}.et.v::before{content:'>';color:var(--cian)}
+
+/* ═══ EL RIEL ════════════════════════════════════════════════════════════════
+   Una traza de circuito que baja por el borde izquierdo con un nodo en cada
+   sección. Sale de la misma N del logotipo y es lo que ata la página a su
+   marca en vez de decorarla: cada sección se engancha a la traza, y el ojo
+   sabe por dónde va sin que haya que numerarle nada. */
+.riel{position:fixed;left:34px;top:0;bottom:0;width:2px;z-index:5;
+  background:linear-gradient(to bottom,transparent,var(--lineaN) 8%,var(--lineaN) 92%,transparent);
+  pointer-events:none}
+.riel::after{content:'';position:absolute;left:-3px;width:8px;height:34vh;
+  background:linear-gradient(to bottom,transparent,var(--cian),transparent);
+  filter:blur(3px);animation:baja 9s linear infinite;opacity:.55}
+@keyframes baja{0%{top:-34vh}100%{top:100%}}
+@media (prefers-reduced-motion:reduce){.riel::after{animation:none;opacity:.2;top:33%}}
+@media (max-width:1100px){.riel{display:none}}
+
+section{position:relative;padding:110px 0}
+section::before{content:'';position:fixed;display:none}
+/* El nodo de cada sección, enganchado al riel. */
+.nodo{position:absolute;left:-62px;top:118px;width:14px;height:14px;border-radius:50%;
+  background:var(--pozo);border:2px solid var(--cian);
+  box-shadow:0 0 0 5px rgba(34,211,238,.10),0 0 22px rgba(34,211,238,.7)}
+.nodo.v{border-color:var(--violeta);box-shadow:0 0 0 5px rgba(168,85,247,.10),0 0 22px rgba(168,85,247,.7)}
+@media (max-width:1100px){.nodo{display:none}}
+
+/* ═══ CABECERA ═══════════════════════════════════════════════════════════════ */
+header{position:sticky;top:0;z-index:20;backdrop-filter:blur(14px);
+  background:rgba(5,6,10,.72);border-bottom:1px solid var(--linea)}
+.barra{display:flex;align-items:center;justify-content:space-between;gap:20px;
+  padding:16px 0}
+.marca{display:flex;align-items:center;gap:12px}
+.marca img{height:38px;width:auto}
+.marca b{font:500 18px/1 'Mono',monospace;letter-spacing:-.01em}
+.marca b i{font-style:normal;color:var(--violetaLt)}
+nav{display:flex;align-items:center;gap:28px;font:400 14.5px/1 'Sans',sans-serif;color:var(--niebla)}
+nav a:hover{color:var(--cianLt)}
+@media (max-width:860px){nav a{display:none}}
+.idioma{display:flex;border:1px solid var(--linea);border-radius:999px;overflow:hidden}
+.idioma button{appearance:none;border:0;background:none;color:var(--humo);cursor:pointer;
+  font:500 12px/1 'Mono',monospace;letter-spacing:.1em;padding:8px 12px}
+.idioma button[aria-pressed="true"]{background:rgba(34,211,238,.14);color:var(--cianLt)}
+
+/* ═══ HÉROE ══════════════════════════════════════════════════════════════════ */
+.heroe{padding:96px 0 84px;position:relative;overflow:hidden}
+.heroe .glow{position:absolute;top:-24%;right:-8%;width:820px;height:820px;
+  background:radial-gradient(circle,rgba(168,85,247,.20),rgba(34,211,238,.10) 40%,transparent 66%);
+  filter:blur(20px);pointer-events:none}
+.heroe .rej{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:56px;align-items:center;
+  position:relative}
+@media (max-width:920px){.heroe .rej{grid-template-columns:minmax(0,1fr)}
+  .heroe .n{order:-1;max-width:190px}}
+h1{font-size:clamp(38px,6.4vw,74px)}
+h1 .c{color:var(--cianLt)}
+h1 .v{color:var(--violetaLt)}
+.bajada{margin-top:26px;font-size:20px;line-height:1.6;color:var(--niebla);max-width:56ch}
+.acciones{margin-top:38px;display:flex;flex-wrap:wrap;gap:14px}
+.btn{display:inline-flex;align-items:center;gap:10px;height:54px;padding:0 26px;border-radius:10px;
+  font:500 15px/1 'Mono',monospace;letter-spacing:.01em;cursor:pointer;border:1px solid transparent}
+.btn-n{background:linear-gradient(100deg,var(--cian),var(--violeta));color:#04070C;font-weight:500;
+  box-shadow:0 14px 40px -16px rgba(34,211,238,.8)}
+.btn-n:hover{filter:brightness(1.08)}
+.btn-f{border-color:var(--linea);color:var(--hueso)}
+.btn-f:hover{border-color:var(--lineaN);background:rgba(34,211,238,.06)}
+.heroe .n img{filter:drop-shadow(0 0 38px rgba(34,211,238,.35))}
+
+/* ═══ PRUEBA · lo que está corriendo ═════════════════════════════════════════ */
+.rejP{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));margin-top:46px}
+.ficha{background:var(--panel);border:1px solid var(--linea);border-radius:14px;padding:24px;
+  display:flex;flex-direction:column;gap:10px;transition:border-color .18s,transform .18s}
+.ficha:hover{border-color:var(--lineaN);transform:translateY(-2px)}
+.ficha .k{font:500 11.5px/1 'Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--violetaLt)}
+.ficha h3{font-size:21px}
+.ficha p{font-size:15px;color:var(--niebla);line-height:1.5}
+.ficha .url{margin-top:auto;padding-top:12px;font:400 13px/1 'Mono',monospace;color:var(--cian)}
+.ficha .url::after{content:' ↗';opacity:.7}
+.ficha.viva .k::before{content:'●';color:var(--cian);margin-right:7px;font-size:9px;vertical-align:2px}
+
+/* ═══ CAPACIDADES ════════════════════════════════════════════════════════════ */
+.rejC{display:grid;gap:0;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));margin-top:44px;
+  border-top:1px solid var(--linea)}
+.cap{padding:28px 26px 30px;border-bottom:1px solid var(--linea);border-right:1px solid var(--linea)}
+.cap:nth-child(3n){border-right:0}
+@media (max-width:1000px){.cap{border-right:0}}
+.cap h3{font-size:19px;margin-bottom:10px}
+.cap p{font-size:15px;color:var(--niebla);line-height:1.55}
+.cap .n{font:500 12px/1 'Mono',monospace;color:var(--violeta);letter-spacing:.14em;display:block;margin-bottom:14px}
+
+/* ═══ EL MANIFIESTO ══════════════════════════════════════════════════════════ */
+.manif{background:
+  radial-gradient(90% 60% at 10% 0%,rgba(168,85,247,.10),transparent 62%),
+  linear-gradient(180deg,var(--pozo2),var(--pozo));
+  border-block:1px solid var(--linea)}
+.regla{display:grid;grid-template-columns:64px minmax(0,1fr);gap:26px;padding:30px 0;
+  border-bottom:1px solid var(--linea)}
+.regla:last-child{border-bottom:0}
+/* `.idx` y no `.num`: `.num` es la tarjeta de estadística de más abajo, con su
+   borde y su fondo, y al compartir nombre los números de las reglas salían
+   metidos en una caja vacía. Dos cosas distintas, dos nombres distintos. */
+.regla .idx{font:500 15px/1 'Mono',monospace;color:var(--cian);padding-top:6px}
+.regla h3{font-size:23px;margin-bottom:10px}
+.regla p{font-size:16.5px;color:var(--niebla);line-height:1.62;max-width:64ch}
+.regla code{font:400 15px/1 'Mono',monospace;color:var(--cianLt);
+  background:rgba(34,211,238,.09);padding:2px 7px;border-radius:5px}
+
+/* ═══ NÚMEROS ════════════════════════════════════════════════════════════════ */
+.rejN{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));margin-top:44px}
+.num{border:1px solid var(--linea);border-radius:14px;padding:26px 24px;background:var(--panel)}
+.num b{display:block;font:500 46px/1 'Mono',monospace;letter-spacing:-.03em;
+  background:linear-gradient(100deg,var(--cianLt),var(--violetaLt));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.num span{display:block;margin-top:12px;font-size:14px;color:var(--niebla);line-height:1.45}
+
+/* ═══ CONTACTO ═══════════════════════════════════════════════════════════════ */
+.cierre{text-align:center;padding:120px 0}
+.cierre h2{font-size:clamp(30px,4.6vw,50px)}
+.cierre p{margin:22px auto 0;max-width:52ch;color:var(--niebla);font-size:18px}
+.correo{display:inline-flex;align-items:center;gap:12px;margin-top:36px;
+  font:500 clamp(18px,3vw,26px)/1 'Mono',monospace;color:var(--cianLt);
+  border-bottom:1px solid var(--lineaN);padding-bottom:8px}
+
+footer{border-top:1px solid var(--linea);padding:34px 0 44px}
+.pieR{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:18px;
+  font:400 13.5px/1.6 'Mono',monospace;color:var(--humo)}
+.pieR a:hover{color:var(--cian)}
+
+/* Lo que falta por completar se marca a la vista, no se inventa. */
+.hueco{color:var(--violetaLt);border-bottom:1px dashed rgba(200,155,251,.5)}
+</style>
+</head>
+<body>
+
+<div class="riel" aria-hidden="true"></div>
+
+<header>
+  <div class="env barra">
+    <a class="marca" href="#">
+      <img src="assets/nexus-n.png" alt="">
+      <b>NEXUS<i>_</i>CODER</b>
+    </a>
+    <nav>
+      <a href="#prueba" data-t="nav.prueba">Lo que corre</a>
+      <a href="#hacemos" data-t="nav.hacemos">Qué hacemos</a>
+      <a href="#codigo" data-t="nav.codigo">Cómo escribimos</a>
+      <a href="#contacto" data-t="nav.contacto">Contacto</a>
+    </nav>
+    <div class="idioma">
+      <button id="b-es" aria-pressed="true" onclick="NX.idioma('es')">ES</button>
+      <button id="b-en" aria-pressed="false" onclick="NX.idioma('en')">EN</button>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ HÉROE ═══════════════════════════════════════════════════════════════ -->
+<section class="heroe">
+  <div class="glow"></div>
+  <div class="env rej">
+    <div>
+      <div class="et" data-t="hero.et">Estudio de ingeniería · Fráncfort del Meno</div>
+      <h1 style="margin-top:22px">
+        <span data-t="hero.t1">No hacemos la demo.</span><br>
+        <span class="c" data-t="hero.t2">Hacemos la</span>
+        <span class="v" data-t="hero.t3">infraestructura.</span>
+      </h1>
+      <p class="bajada" data-t="hero.baj">Una cadena propia, una identidad verificada, una billetera,
+        una casa de cambio y un sistema de cuentas en veintiuna monedas. Todo lo de abajo está
+        corriendo en producción ahora mismo — podés abrirlo y comprobarlo.</p>
+      <div class="acciones">
+        <a class="btn btn-n" href="#prueba" data-t="hero.cta1">Ver lo que corre</a>
+        <a class="btn btn-f" href="#codigo" data-t="hero.cta2">Cómo escribimos el código</a>
+      </div>
+    </div>
+    <div class="n"><img src="assets/nexus-n.png" alt="Nexus Coder"></div>
+  </div>
+</section>
+
+<!-- ═══ PRUEBA ══════════════════════════════════════════════════════════════ -->
+<section id="prueba">
+  <span class="nodo"></span>
+  <div class="env">
+    <div class="et" data-t="pr.et">La prueba</div>
+    <h2 style="margin-top:20px;font-size:clamp(28px,4.4vw,44px)" data-t="pr.t">
+      Un portafolio no se enseña. Se abre.</h2>
+    <p class="bajada" data-t="pr.baj">Cualquiera puede poner capturas de pantalla. Estas son
+      direcciones: entrá y usalas.</p>
+
+    <div class="rejP">
+      <a class="ficha viva" href="https://app.vetawallet.com" target="_blank" rel="noopener">
+        <span class="k" data-t="pr.k1">En producción</span>
+        <h3>Veta Wallet</h3>
+        <p data-t="pr.p1">Billetera de custodia propia para oro tokenizado. Web y móvil, con tarjeta,
+          pagos entre personas y cobro por QR.</p>
+        <span class="url">app.vetawallet.com</span>
+      </a>
+      <a class="ficha viva" href="https://ordenscan.com" target="_blank" rel="noopener">
+        <span class="k" data-t="pr.k2">En producción</span>
+        <h3><span data-t="pr.n2">Cadena 8532</span> · Ordenscan</h3>
+        <p data-t="pr.p2">Una Layer 1 propia con sus validadores, su suelo de gas y su explorador
+          de bloques. No un contrato alquilado en la red de otro.</p>
+        <span class="url">ordenscan.com</span>
+      </a>
+      <a class="ficha viva" href="https://www.ordenexchange.link" target="_blank" rel="noopener">
+        <span class="k" data-t="pr.k3">En producción</span>
+        <h3>Ordenex</h3>
+        <p data-t="pr.p3">Casa de cambio con motor de emparejamiento, libro de órdenes, velas
+          japonesas y liquidación contra la cadena.</p>
+        <span class="url">ordenexchange.link</span>
+      </a>
+      <div class="ficha">
+        <span class="k" data-t="pr.k4">Plataforma</span>
+        <h3>Genesis ID</h3>
+        <p data-t="pr.p4">Identidad verificada del ecosistema: KYC, KYB, tamiz de sanciones,
+          reporte de movimientos y entrada única para todas las apps.</p>
+        <span class="url" style="color:var(--humo)">genesis-id</span>
+      </div>
+      <div class="ficha">
+        <span class="k" data-t="pr.k5">Plataforma</span>
+        <h3>AuCorp</h3>
+        <p data-t="pr.p5">Cuentas en moneda local en veintiuna monedas, con libro de partida
+          doble, guarda contra el doble gasto y reconciliación.</p>
+        <span class="url" style="color:var(--humo)">aucorp</span>
+      </div>
+      <div class="ficha">
+        <span class="k" data-t="pr.k6">Comercio</span>
+        <h3>MyTokenPay</h3>
+        <p data-t="pr.p6">Cobro para comercios: directorio, punto de venta y liquidación en la
+          misma cuenta del ecosistema.</p>
+        <span class="url" style="color:var(--humo)">mytokenpay</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ QUÉ HACEMOS ═════════════════════════════════════════════════════════ -->
+<section id="hacemos">
+  <span class="nodo v"></span>
+  <div class="env">
+    <div class="et v" data-t="ha.et">Qué hacemos</div>
+    <h2 style="margin-top:20px;font-size:clamp(28px,4.4vw,44px)" data-t="ha.t">
+      Lo difícil, que es lo que casi nadie quiere tomar.</h2>
+
+    <div class="rejC">
+      <div class="cap"><span class="n">01</span><h3 data-t="ha.h1">Cadenas propias</h3>
+        <p data-t="ha.c1">Redes permisionadas de punta a punta: génesis, validadores, política de gas,
+          explorador y el plan de migración cuando hay que mover una cadena viva sin perder un bloque.</p></div>
+      <div class="cap"><span class="n">02</span><h3 data-t="ha.h2">Sistemas de dinero</h3>
+        <p data-t="ha.c2">Libros de partida doble, motores de emparejamiento, guardas contra el doble
+          gasto y reconciliación. El dinero en enteros y con BigInt, nunca en coma flotante.</p></div>
+      <div class="cap"><span class="n">03</span><h3 data-t="ha.h3">Identidad y cumplimiento</h3>
+        <p data-t="ha.c3">KYC, KYB, tamiz de sanciones, reporte de movimientos y entrada única.
+          Todo fail-closed: lo que no se pudo comprobar, no pasa.</p></div>
+      <div class="cap"><span class="n">04</span><h3 data-t="ha.h4">Billeteras y móvil</h3>
+        <p data-t="ha.c4">Custodia propia y custodiada, frase de respaldo, firma en el dispositivo,
+          y las tiendas: privacidad, permisos y todo lo que piden para dejarte publicar.</p></div>
+      <div class="cap"><span class="n">05</span><h3 data-t="ha.h5">Infraestructura</h3>
+        <p data-t="ha.c5">AWS y Heroku, despliegue reproducible, vigías que avisan antes de que
+          reclame un cliente, y auditoría de lo que corre contra lo que dice el repositorio.</p></div>
+      <div class="cap"><span class="n">06</span><h3 data-t="ha.h6">Auditoría y rescate</h3>
+        <p data-t="ha.c6">Entramos a sistemas que ya están en producción y que nadie entiende del todo.
+          Encontramos el doble pago, el secreto de siete caracteres y la ruta que nunca funcionó.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ EL MANIFIESTO ═══════════════════════════════════════════════════════ -->
+<section id="codigo" class="manif">
+  <span class="nodo"></span>
+  <div class="env">
+    <div class="et" data-t="co.et">Cómo escribimos el código</div>
+    <h2 style="margin-top:20px;font-size:clamp(28px,4.4vw,44px)" data-t="co.t">
+      Cinco reglas. Las cinco costaron caro.</h2>
+    <p class="bajada" data-t="co.baj">No son un ideario de web. Son las conclusiones de incidentes
+      concretos, y están escritas dentro del código que entregamos.</p>
+
+    <div style="margin-top:44px">
+      <div class="regla"><span class="idx">01</span><div>
+        <h3 data-t="co.h1">Ni un dato inventado.</h3>
+        <p data-t="co.p1">Cuando un precio no se puede medir, la pantalla enseña un guion. Nunca un
+          cero, nunca el último valor sin decir de cuándo es. Un cero se lee como un dato, y un dato
+          falso en una pantalla de dinero es peor que una pantalla vacía.</p></div></div>
+
+      <div class="regla"><span class="idx">02</span><div>
+        <h3 data-t="co.h2">El dinero es un entero.</h3>
+        <p data-t="co.p2">Centavos, wei, gramins: siempre unidades mínimas enteras en un string,
+          operadas con <code>BigInt</code>. <code>0.1 + 0.2</code> no da <code>0.3</code>, y en un
+          libro mayor cada redondeo deja una viruta que al cierre del mes nadie sabe explicar.</p></div></div>
+
+      <div class="regla"><span class="idx">03</span><div>
+        <h3 data-t="co.h3">Si no se pudo comprobar, no pasa.</h3>
+        <p data-t="co.p3">Fail-closed en todas las fronteras. Cuando el verificador de identidad no
+          contesta, no se adivina un sí: se rechaza. Dejar pasar porque el proveedor está caído es
+          justo el momento en que conviene mover dinero que no debería moverse.</p></div></div>
+
+      <div class="regla"><span class="idx">04</span><div>
+        <h3 data-t="co.h4">El comentario dice POR QUÉ, no qué.</h3>
+        <p data-t="co.p4">Un comentario que repite lo que ya dice la línea de abajo no sirve. Los
+          nuestros cuentan qué se probó antes, qué se rompió y por qué la solución es esa. Dentro de
+          tres meses eso no se reconstruye leyendo el código.</p></div></div>
+
+      <div class="regla"><span class="idx">05</span><div>
+        <h3 data-t="co.h5">Se despliega empujando, nunca un paquete.</h3>
+        <p data-t="co.p5">Esta la aprendimos el 12 de agosto: un clon desfasado subido como paquete
+          borró funciones que estaban en producción. Desde entonces el despliegue sale del repositorio
+          y de ningún otro sitio.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ NÚMEROS ═════════════════════════════════════════════════════════════ -->
+<section>
+  <span class="nodo v"></span>
+  <div class="env">
+    <div class="et v" data-t="nu.et">Comprobable</div>
+    <h2 style="margin-top:20px;font-size:clamp(28px,4.4vw,44px)" data-t="nu.t">
+      Números que se pueden verificar sin pedirnos permiso.</h2>
+
+    <div class="rejN">
+      <div class="num"><b>8532</b><span data-t="nu.n1">La cadena que construimos y operamos</span></div>
+      <div class="num"><b>21</b><span data-t="nu.n2">Monedas en el sistema de cuentas, con sus decimales reales</span></div>
+      <div class="num"><b>6</b><span data-t="nu.n3">Productos del ecosistema, del explorador a la casa de cambio</span></div>
+      <div class="num"><b>3</b><span data-t="nu.n4">Plataformas: web, iOS y Android</span></div>
+    </div>
+    <p style="margin-top:26px;font-size:15px;color:var(--humo)" data-t="nu.pie">
+      La cadena y el explorador son públicos. Lo demás se enseña en una llamada, con el código
+      delante.</p>
+  </div>
+</section>
+
+<!-- ═══ CONTACTO ════════════════════════════════════════════════════════════ -->
+<section id="contacto" class="cierre">
+  <span class="nodo"></span>
+  <div class="env">
+    <div class="et" style="justify-content:center" data-t="ct.et">Trabajemos</div>
+    <h2 style="margin-top:22px" data-t="ct.t">¿Tenés algo difícil?</h2>
+    <p data-t="ct.p">Contanos qué hay que construir, o qué está roto y nadie sabe por qué. Las dos
+      conversaciones nos interesan igual.</p>
+    <a class="correo" href="#"><span class="hueco">[COMPLETAR: correo de contacto]</span></a>
+  </div>
+</section>
+
+<footer>
+  <div class="env pieR">
+    <span>Nexus Coder · <span data-t="pie.ciudad">Fráncfort del Meno, Alemania</span></span>
+    <span><span class="hueco">[COMPLETAR: razón social · registro]</span></span>
+    <span data-t="pie.hecho">Esta página no lleva rastreadores ni analítica de terceros.</span>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
