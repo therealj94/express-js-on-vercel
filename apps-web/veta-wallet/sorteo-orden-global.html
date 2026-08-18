@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sorteo Orden Global &middot; 1 AUKA</title>
+<meta name="description" content="Orden Global sortea 1 AUKA, que sigue el precio de la onza de oro. Verificate con Genesis ID y participás. Mayores de 18 años.">
+<meta property="og:title" content="Sorteo Orden Global — 1 AUKA">
+<meta property="og:description" content="1 AUKA sigue el precio de la onza de oro. Verificate con Genesis ID y participás.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23070605'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23D4AF37' stroke-width='2.4'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+
+<style>
+/* ═══ La paleta del flyer, no la de la billetera ══════════════════════════════
+   Veta Wallet es verde pozo con oro. Esta página es NEGRO con oro, porque es
+   la que se hizo para la campaña y lo que la gente va a ver primero es el
+   flyer. Que la página se parezca al anuncio del que viene es la mitad de que
+   confíen en que llegaron al sitio correcto. */
+:root{
+  --negro:#060505; --carbon:#0D0B09; --carbon2:#141110;
+  --oro:#D4AF37; --oroAlto:#F7E9BE; --oroBajo:#8B6914;
+  --crema:#F5EFE0; --bruma:#B9AE97; --humo:#7C7365;
+  --linea:rgba(212,175,55,.22); --linea2:rgba(245,239,224,.09);
+  --ancho:1080px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{
+  background:var(--negro); color:var(--crema);
+  font:400 17px/1.62 Archivo,system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+.env{max-width:var(--ancho);margin:0 auto;padding:0 22px}
+h1,h2,h3{font-family:Cinzel,Georgia,serif;line-height:1.06;text-wrap:balance;font-weight:600}
+p{color:var(--bruma);max-width:62ch}
+strong{color:var(--crema);font-weight:600}
+a{color:var(--oro)}
+:focus-visible{outline:2px solid var(--oro);outline-offset:3px;border-radius:4px}
+
+.rotulo{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11.5px;
+  letter-spacing:.26em;text-transform:uppercase;color:var(--oro);font-weight:500}
+
+/* ── El héroe ─────────────────────────────────────────────────────────────── */
+.heroe{position:relative;text-align:center;padding:64px 0 78px;overflow:hidden}
+/* Las chispas del flyer. Canvas y no cien divs: son partículas, y con divs el
+   teléfono de gama baja se arrastra. */
+#chispas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.heroe>.env{position:relative;z-index:1}
+
+.filete{display:flex;align-items:center;justify-content:center;gap:16px;margin:22px 0 30px}
+.filete span{height:1px;width:78px;background:linear-gradient(90deg,transparent,var(--oro))}
+.filete span:last-child{background:linear-gradient(90deg,var(--oro),transparent)}
+.filete i{color:var(--oro);font-style:normal;font-size:13px}
+
+h1{font-size:clamp(2.3rem,7.6vw,4.4rem);letter-spacing:.005em}
+h1 em{font-style:normal;
+  background:linear-gradient(180deg,#FDF6DC 0%,#E7C86A 42%,#C9A03A 72%,#8B6914 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.subheroe{font-size:clamp(1.05rem,2.9vw,1.35rem);color:var(--bruma);margin-top:20px}
+
+/* La moneda. Dibujada, no una imagen: se ve entera en cualquier pantalla y no
+   pesa nada en una conexión mala, que es donde se abre esto. */
+.moneda{position:relative;width:min(300px,68vw);aspect-ratio:1;margin:44px auto 0}
+.moneda .aureola{position:absolute;inset:-46%;border-radius:50%;
+  background:radial-gradient(circle,rgba(212,175,55,.30) 0%,rgba(212,175,55,.09) 40%,transparent 68%)}
+.moneda .disco{position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 33% 27%,#FDF6DC 0%,#EBD489 18%,#D4AF37 44%,#A07D24 72%,#6B5010 100%);
+  box-shadow:0 0 0 3px rgba(247,233,190,.30), 0 26px 62px -18px rgba(0,0,0,.9),
+             inset 0 -14px 30px rgba(80,58,10,.45);
+  display:flex;flex-direction:column;align-items:center;justify-content:center}
+.moneda .canto{position:absolute;inset:7.5%;border-radius:50%;
+  border:2px solid rgba(107,80,16,.42)}
+.moneda .canto2{position:absolute;inset:11%;border-radius:50%;
+  border:1px dashed rgba(107,80,16,.30)}
+.moneda b{font-family:Cinzel,serif;font-size:clamp(30px,8.6vw,52px);color:#3A2B06;
+  letter-spacing:.04em;line-height:1;position:relative;z-index:2;font-weight:700}
+.moneda i{font-family:'JetBrains Mono',monospace;font-style:normal;
+  font-size:clamp(11px,2.7vw,15px);color:#5A4410;letter-spacing:.3em;margin-top:9px;
+  position:relative;z-index:2}
+/* Los arcos orbitales del flyer. */
+.moneda .orbe{position:absolute;inset:-19%;border-radius:50%;
+  border:1px solid rgba(212,175,55,.24);border-left-color:transparent;
+  border-bottom-color:transparent;transform:rotate(-28deg)}
+.moneda .orbe.dos{inset:-31%;transform:rotate(142deg);border-color:rgba(212,175,55,.15);
+  border-left-color:transparent;border-bottom-color:transparent}
+
+.precio{margin-top:48px}
+.precio .n{font-family:'JetBrains Mono',monospace;font-weight:700;
+  font-size:clamp(2.6rem,10vw,4.6rem);line-height:1;letter-spacing:-.02em;
+  background:linear-gradient(180deg,#FDF6DC,#E7C86A 55%,#B08D2C);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  font-variant-numeric:tabular-nums}
+.precio .pie{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--humo);margin-top:16px}
+
+.botones{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:44px}
+.bt{display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  padding:19px 38px;border-radius:12px;font-weight:700;font-size:17px;
+  text-decoration:none;border:1px solid transparent;transition:transform .16s ease,box-shadow .16s ease}
+.bt.oro{background:linear-gradient(180deg,#F7E9BE,#D4AF37 52%,#A98523);color:#241A05;
+  box-shadow:0 12px 34px -14px rgba(212,175,55,.7)}
+.bt.hueco{border-color:var(--linea);color:var(--crema);background:rgba(245,239,224,.04)}
+.bt:hover{transform:translateY(-2px)}
+@media (prefers-reduced-motion:reduce){.bt:hover{transform:none}}
+.trasbotones{font-size:15px;color:var(--humo);margin:20px auto 0}
+
+/* ── Secciones ────────────────────────────────────────────────────────────── */
+section{padding:66px 0;border-top:1px solid var(--linea2)}
+h2{font-size:clamp(1.6rem,4.2vw,2.3rem);margin-bottom:18px}
+section p{margin-bottom:1em}
+
+.rejilla{display:grid;gap:16px;margin-top:26px}
+@media(min-width:800px){.rejilla.tres{grid-template-columns:repeat(3,1fr)}
+  .rejilla.dos{grid-template-columns:1fr 1fr}}
+.tarjeta{background:var(--carbon);border:1px solid var(--linea2);border-radius:12px;padding:26px 24px}
+.tarjeta h3{font-size:1.12rem;margin-bottom:10px;color:var(--crema)}
+.tarjeta p{font-size:15.4px;margin-bottom:0}
+.tarjeta .num{font-family:'JetBrains Mono',monospace;color:var(--oro);font-size:13px;
+  font-weight:700;letter-spacing:.1em;display:block;margin-bottom:12px}
+
+.destaca{background:linear-gradient(180deg,rgba(212,175,55,.10),rgba(212,175,55,.03));
+  border:1px solid var(--linea);border-radius:14px;padding:30px 28px;margin-top:28px}
+.destaca p:last-child{margin-bottom:0}
+
+.aviso{border-left:2px solid var(--oroBajo);padding-left:18px;margin-top:22px}
+.aviso p{color:var(--humo);font-size:15px;margin-bottom:0}
+
+/* Bases: es lo que hace que el sorteo sea creíble, así que se lee, no se
+   esconde en un enlace gris de ocho píxeles. */
+.bases dl{display:grid;gap:0;margin-top:22px;border:1px solid var(--linea2);border-radius:12px;
+  overflow:hidden}
+.bases .fila{display:grid;grid-template-columns:1fr;gap:4px;padding:18px 22px;
+  border-top:1px solid var(--linea2);background:var(--carbon)}
+.bases .fila:first-child{border-top:0}
+@media(min-width:720px){.bases .fila{grid-template-columns:230px 1fr;gap:24px;align-items:baseline}}
+.bases dt{font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--oro);font-weight:500}
+.bases dd{color:var(--bruma);font-size:15.5px}
+
+footer{border-top:1px solid var(--linea2);padding:40px 0 64px;background:var(--carbon)}
+footer p{font-size:13.5px;color:var(--humo);max-width:none;margin-bottom:.8em}
+footer nav{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;font-size:14px}
+</style>
+</head>
+<body>
+
+<header class="heroe">
+  <canvas id="chispas" aria-hidden="true"></canvas>
+  <div class="env">
+    <div class="rotulo">Sorteo Orden Global</div>
+    <div class="filete"><span></span><i>&#10022;</i><span></span></div>
+
+    <h1>Podrías ganar<br><em>1 AUKA</em></h1>
+    <p class="subheroe" style="margin-inline:auto">Sigue el precio de la onza de oro</p>
+
+    <div class="moneda">
+      <div class="aureola"></div>
+      <div class="orbe"></div>
+      <div class="orbe dos"></div>
+      <div class="disco">
+        <div class="canto"></div>
+        <div class="canto2"></div>
+        <b>AUKA</b>
+        <i>ORO</i>
+      </div>
+    </div>
+
+    <div class="precio">
+      <div class="n">USD 4.352,89</div>
+      <div class="pie">Referencia de la onza &middot; 18 de agosto de 2026</div>
+    </div>
+
+    <div class="botones">
+      <a class="bt oro" href="https://app.vetawallet.com">Crear mi cuenta y participar</a>
+      <a class="bt hueco" href="https://app.vetawallet.com">Ya tengo cuenta</a>
+    </div>
+    <p class="trasbotones">Te verificás con Genesis ID y ya estás participando. No hay que comprar nada.</p>
+  </div>
+</header>
+
+<main>
+
+<section>
+  <div class="env">
+    <h2>Y lo podés gastar en cualquier parte del mundo</h2>
+    <p>Lo que ganás no se queda quieto en una pantalla. Dentro de Veta Wallet lo canjeás
+      a ORIGEN y lo cargás en tu <strong>tarjeta Visa virtual de Orden Global</strong>.</p>
+    <p>Con esa tarjeta comprás en <strong>cualquier comercio del mundo que acepte Visa</strong>:
+      tiendas en línea, servicios, suscripciones, pasajes. Sin cuenta bancaria, sin
+      trámite en una sucursal, desde el teléfono.</p>
+
+    <div class="aviso">
+      <p><strong>Con todas las letras:</strong> la tarjeta es virtual, para compras en
+        línea. Todavía no se puede agregar a Google&nbsp;Pay ni a Apple&nbsp;Pay para
+        pagar acercando el teléfono en una tienda física — estamos en eso, y cuando esté,
+        se avisa. Preferimos decírtelo ahora a que lo descubras después.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="env">
+    <h2>Qué es AUKA, sin vueltas</h2>
+    <p>AUKA es un token que <strong>sigue el precio de una onza de oro</strong>. Sube el
+      oro, sube AUKA. Baja el oro, baja AUKA. Es la forma de tener exposición al oro desde
+      el teléfono, sin comprar una onza entera y sin tener que guardarla vos.</p>
+    <p><strong>No te entrega el metal.</strong> No te llega una barrita por correo: sigue
+      el precio. Te lo decimos nosotros antes de que lo preguntes, porque un sorteo que
+      empieza aclarando lo que no es se puede creer en todo lo demás.</p>
+  </div>
+</section>
+
+<section>
+  <div class="env">
+    <h2>Cómo participar</h2>
+    <div class="rejilla tres">
+      <div class="tarjeta">
+        <span class="num">01</span>
+        <h3>Abrí tu cuenta</h3>
+        <p>En Veta Wallet, gratis, desde el teléfono o el navegador.</p>
+      </div>
+      <div class="tarjeta">
+        <span class="num">02</span>
+        <h3>Verificate con Genesis ID</h3>
+        <p>Tu documento y una selfie. Toma unos cinco minutos.</p>
+      </div>
+      <div class="tarjeta">
+        <span class="num">03</span>
+        <h3>Ya estás adentro</h3>
+        <p>Te aparece en pantalla que estás participando. Invitá a alguien y sumás otra participación.</p>
+      </div>
+    </div>
+
+    <div class="destaca">
+      <p><strong>Por qué pedimos verificación.</strong> Porque el premio es real y tiene
+        que llegarle a una persona real. Sin identidad verificada, un sorteo lo gana quien
+        más cuentas falsas abra — y eso no es un sorteo.</p>
+    </div>
+  </div>
+</section>
+
+<section class="bases" id="bases">
+  <div class="env">
+    <h2>Las bases</h2>
+    <p>Cortas y completas, para que no haya que buscarlas.</p>
+    <dl>
+      <div class="fila"><dt>Organiza</dt>
+        <dd>Orden Global Corp, sociedad constituida en Próspera, Roatán, Honduras.</dd></div>
+      <div class="fila"><dt>Premio</dt>
+        <dd>1 AUKA, acreditado en la billetera Veta Wallet del ganador. AUKA sigue el
+          precio de una onza de oro; no entrega metal físico. Al 18 de agosto de 2026 su
+          referencia es de USD 4.352,89, y varía con el precio del oro.</dd></div>
+      <div class="fila"><dt>Quién puede participar</dt>
+        <dd>Personas mayores de 18 años con identidad verificada en Genesis ID.</dd></div>
+      <div class="fila"><dt>Dónde NO es válido</dt>
+        <dd>No participan residentes en Estados Unidos, ni en países sujetos a sanciones
+          internacionales, ni donde la promoción esté restringida por su legislación
+          local.</dd></div>
+      <div class="fila"><dt>Cómo se participa</dt>
+        <dd>Completando la verificación de identidad en Genesis ID durante el periodo de
+          la promoción. Una participación por persona. Cada invitado que complete su
+          propia verificación suma una participación adicional a quien lo invitó.</dd></div>
+      <div class="fila"><dt>Sin compra</dt>
+        <dd>No hace falta comprar, depositar ni pagar nada para participar.</dd></div>
+      <div class="fila"><dt>Cuándo</dt>
+        <dd>La promoción cierra en la fecha anunciada en los canales oficiales de Orden
+          Global. El sorteo se realiza y se publica dentro de los siete días siguientes al
+          cierre.</dd></div>
+      <div class="fila"><dt>Cómo se elige</dt>
+        <dd>Al azar entre las participaciones válidas, en transmisión pública. La
+          acreditación del premio queda registrada en la cadena y es verificable por
+          cualquiera en ordenscan.com.</dd></div>
+      <div class="fila"><dt>Antes de entregar</dt>
+        <dd>El ganador debe tener su identidad verificada y superar el tamizado contra
+          listas de sanciones. Si no lo supera, se elige otro ganador.</dd></div>
+      <div class="fila"><dt>Impuestos</dt>
+        <dd>Los tributos que correspondan al premio según la residencia del ganador son
+          por su cuenta.</dd></div>
+      <div class="fila"><dt>Datos personales</dt>
+        <dd>Se tratan conforme a la <a href="/privacidad">política de privacidad</a>.
+          Participar supone aceptar estas bases.</dd></div>
+      <div class="fila"><dt>Sin relación con las plataformas</dt>
+        <dd>Esta promoción no está patrocinada, avalada ni administrada por TikTok,
+          Meta, Instagram, Facebook ni WhatsApp.</dd></div>
+    </dl>
+
+    <div class="aviso">
+      <p>Estas bases son la versión operativa de la promoción. Orden Global Corp puede
+        corregirlas antes del cierre si una autoridad lo requiere, publicando la
+        corrección en esta misma página.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="env" style="text-align:center">
+    <h2>Cinco minutos y estás adentro</h2>
+    <p style="margin-inline:auto">No hay que comprar nada. No hay que depositar nada.</p>
+    <div class="botones">
+      <a class="bt oro" href="https://app.vetawallet.com">Crear mi cuenta y participar</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="env">
+    <nav>
+      <a href="/">Veta Wallet</a>
+      <a href="/privacidad">Privacidad</a>
+      <a href="/terminos">Términos</a>
+      <a href="#bases">Bases del sorteo</a>
+    </nav>
+    <p>Orden Global Corp &middot; Próspera, Roatán, Honduras. Mayores de 18 años.
+      Promoción sin obligación de compra.</p>
+    <p>AUKA sigue el precio de una onza de oro y no entrega metal físico. El valor de
+      referencia mostrado corresponde al 18 de agosto de 2026 y varía con el precio del
+      oro. La tarjeta Visa es virtual y sirve para compras en línea en comercios que
+      acepten Visa.</p>
+  </div>
+</footer>
+
+<script>
+/* Las chispas del fondo.
+ *
+ * Es lo único animado de la página y existe por una razón concreta: el anuncio
+ * del que viene la gente tiene ese brillo, y si la página cae plana el salto se
+ * nota. Se dibuja en canvas y no con elementos porque son partículas, y con
+ * cien divs animados un teléfono de gama baja —que es desde donde se va a abrir
+ * esto— se arrastra.
+ *
+ * Con `prefers-reduced-motion` no se anima: se pintan quietas una vez. Y si el
+ * canvas no existe o el navegador no lo soporta, la página se ve igual de bien;
+ * esto no dibuja ni una letra. */
+(function () {
+  var lienzo = document.getElementById('chispas');
+  if (!lienzo || !lienzo.getContext) return;
+  var ctx = lienzo.getContext('2d');
+  var quieto = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var chispas = [];
+  var raf = null;
+
+  function medir() {
+    var r = lienzo.parentElement.getBoundingClientRect();
+    var d = Math.min(window.devicePixelRatio || 1, 2);
+    lienzo.width = Math.max(1, r.width * d);
+    lienzo.height = Math.max(1, r.height * d);
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    sembrar(r.width, r.height);
+  }
+
+  function sembrar(an, al) {
+    // Menos partículas en pantalla chica: ahí no se lucen y sí se notan.
+    var cuantas = an < 620 ? 34 : 72;
+    chispas = [];
+    for (var i = 0; i < cuantas; i++) {
+      chispas.push({
+        x: Math.random() * an, y: Math.random() * al,
+        r: Math.random() * 1.7 + 0.4,
+        o: Math.random() * 0.5 + 0.12,
+        v: Math.random() * 0.16 + 0.03,
+        f: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  function pintar(t) {
+    var an = lienzo.width / (Math.min(window.devicePixelRatio || 1, 2));
+    var al = lienzo.height / (Math.min(window.devicePixelRatio || 1, 2));
+    ctx.clearRect(0, 0, an, al);
+    for (var i = 0; i < chispas.length; i++) {
+      var c = chispas[i];
+      var brillo = quieto ? c.o : c.o * (0.55 + 0.45 * Math.sin(t / 900 + c.f));
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(212,175,55,' + brillo.toFixed(3) + ')';
+      ctx.fill();
+      if (!quieto) {
+        c.y -= c.v;
+        if (c.y < -4) { c.y = al + 4; c.x = Math.random() * an; }
+      }
+    }
+    if (!quieto) raf = requestAnimationFrame(pintar);
+  }
+
+  medir();
+  pintar(0);
+  var reloj;
+  window.addEventListener('resize', function () {
+    clearTimeout(reloj);
+    reloj = setTimeout(function () {
+      if (raf) cancelAnimationFrame(raf);
+      medir();
+      pintar(0);
+    }, 180);
+  });
+})();
+</script>
+</body>
+</html>
