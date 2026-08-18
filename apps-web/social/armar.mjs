@@ -21,13 +21,34 @@ import { fileURLToPath } from 'node:url';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 
-const PIEZAS = [
-  // 1080×1350 es la proporción 4:5, que es la que más pantalla ocupa en el
-  // feed de Instagram. La cuadrada deja franjas y la vertical de historia se
-  // recorta al publicarla como post.
-  { archivo: 'tarjeta.html',       salida: 'veta-tarjeta-1080x1350.png',      w: 1080, h: 1350 },
-  { archivo: 'dolares-a-oro.html', salida: 'og-dolares-a-oro-1080x1350.png',  w: 1080, h: 1350 },
+// 1080×1350 es la proporción 4:5, la que más pantalla ocupa en el feed de
+// Instagram. La cuadrada deja franjas y la vertical de historia se recorta al
+// publicarla como post.
+const W = 1080, H = 1350;
+
+// Las dos piezas con maqueta propia. Son objetos dibujados a medida y no
+// entran en la plantilla: forzarlas ahí habría dejado la plantilla llena de
+// casos especiales para dos usos.
+const A_MEDIDA = [
+  { archivo: 'tarjeta.html',       salida: '01-veta-tarjeta.png' },
+  { archivo: 'dolares-a-oro.html', salida: '02-og-dolares-a-oro.png' },
 ];
+
+/* El catálogo de piezas se le pregunta AL NAVEGADOR, abriendo la plantilla una
+   vez y leyendo su `window.PIEZAS`.
+   
+   Se podría haber importado piezas.js aquí, pero ese archivo es un script
+   clásico —el navegador lo carga con <script src>— y este repositorio es ESM,
+   así que un `import` lo lee sin exportaciones y devuelve nada. La alternativa
+   era duplicar la lista de ids en este archivo, que es exactamente el tipo de
+   copia que se desincroniza el día que alguien agrega una pieza y se olvida. */
+async function catalogo(nav, base) {
+  const pg = await nav.newPage();
+  await pg.goto(`${base}/plantilla.html`, { waitUntil: 'networkidle' });
+  const ids = await pg.evaluate(() => window.PIEZAS.map((p) => p.id));
+  await pg.close();
+  return ids;
+}
 
 const TIPOS = {
   '.html': 'text/html; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg',
@@ -45,6 +66,15 @@ await new Promise((ok) => sv.listen(0, ok));
 const base = `http://127.0.0.1:${sv.address().port}`;
 
 const nav = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--no-sandbox'] });
+
+const PIEZAS = [
+  ...A_MEDIDA.map((p) => ({ ...p, w: W, h: H })),
+  ...(await catalogo(nav, base)).map((id, i) => ({
+    archivo: `plantilla.html?p=${id}`,
+    salida: `${String(i + 3).padStart(2, '0')}-${id}.png`,
+    w: W, h: H,
+  })),
+];
 
 for (const p of PIEZAS) {
   const pg = await nav.newPage({

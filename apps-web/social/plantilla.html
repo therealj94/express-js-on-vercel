@@ -1,0 +1,184 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Orden Global · plantilla de pieza</title>
+<!--
+  LA PLANTILLA · 1080×1350 · se abre con ?p=<id de piezas.js>
+
+  Cuatro maquetas y un solo sitio donde vive el estilo. Doce archivos a mano se
+  habrían separado en cuanto alguien tocara el oro de la marca en uno; aquí se
+  cambia una variable y salen las doce iguales.
+
+  La paleta es la EXACTA de la billetera (apps-web/veta-wallet/index.html,
+  :root). No una parecida: la misma, para que quien vea el post y abra la app
+  vea la misma casa.
+-->
+<style>
+@font-face{font-family:'Cinzel';src:url('piezas/Cinzel-Bold.ttf') format('truetype');font-weight:700}
+@font-face{font-family:'Plex';src:url('piezas/IBMPlexSans.woff2') format('woff2');font-weight:100 700}
+@font-face{font-family:'PlexMono';src:url('piezas/IBMPlexMono-500.woff2') format('woff2');font-weight:500}
+
+:root{
+  --linea:rgba(201,169,97,.34);
+  --oro:#C9A961; --oroLt:#EAD79C; --oroHi:#F8EFCF; --oroDp:#96793F;
+  --crema:#F3ECD9; --bruma:#AEC7C3; --humo:#6E938F;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1080px;height:1350px;overflow:hidden;background:#050505;
+  font-family:'Plex',system-ui,sans-serif;color:var(--crema);position:relative}
+
+/* La bóveda: una sola luz de oro, entrando por arriba a la derecha. Dos luces
+   habrían dejado la escena plana. */
+.fondo{position:absolute;inset:0;
+  background:
+    radial-gradient(58% 44% at 76% 14%, rgba(234,215,156,.24), transparent 64%),
+    radial-gradient(72% 50% at 20% 96%, rgba(6,52,48,.52), transparent 70%),
+    linear-gradient(168deg,#0A1615 0%,#050B0C 46%,#020404 100%)}
+.polvo{position:absolute;inset:0;opacity:.5;
+  background-image:radial-gradient(rgba(234,215,156,.09) 1px,transparent 1px);
+  background-size:5px 5px}
+
+.lienzo{position:relative;height:100%;padding:78px 82px 74px;
+  display:flex;flex-direction:column}
+
+/* ── el rótulo ───────────────────────────────────────────────────────────── */
+.rotulo{display:flex;align-items:center;gap:18px;
+  font:500 21px/1 'PlexMono',monospace;letter-spacing:.30em;color:var(--oro);
+  text-transform:uppercase;flex:none}
+.rotulo::after{content:'';flex:1;height:1px;
+  background:linear-gradient(90deg,rgba(201,169,97,.55),transparent)}
+
+.centro{flex:1;display:flex;flex-direction:column;justify-content:center}
+
+/* ── el titular ──────────────────────────────────────────────────────────── */
+h1{font-family:'Cinzel',Georgia,serif;font-weight:700;line-height:1.03}
+h1 span{display:block}
+h1 .a{color:var(--oroHi)}
+h1 .b{color:var(--oro)}
+.apoyo{margin-top:34px;font-size:33px;line-height:1.45;color:var(--bruma);max-width:24ch}
+.apoyo b{color:var(--oroLt);font-weight:600}
+
+/* ── maqueta CARTEL · una frase y nada más ───────────────────────────────── */
+.m-cartel h1{font-size:96px}
+
+/* ── maqueta DATO · la cifra manda ───────────────────────────────────────── */
+.m-dato .cifra{font-family:'Cinzel',Georgia,serif;font-weight:700;
+  font-size:290px;line-height:.86;color:var(--oroHi);letter-spacing:-.02em;
+  text-shadow:0 0 90px rgba(234,215,156,.35)}
+.m-dato .unidad{margin-top:16px;font:500 32px/1 'PlexMono',monospace;
+  letter-spacing:.26em;color:var(--oro)}
+.m-dato .apoyo{margin-top:44px;max-width:26ch}
+/* Cuando la cifra es larga (8532) baja de tamaño sola: una cifra que se sale
+   del margen es peor que una cifra más chica. */
+.m-dato .cifra.larga{font-size:210px}
+
+/* ── maqueta PASOS · tres, numerados ─────────────────────────────────────── */
+.m-pasos h1{font-size:82px}
+.m-pasos .lista{margin-top:52px;display:flex;flex-direction:column;gap:38px}
+.m-pasos .paso{display:flex;gap:28px;align-items:flex-start}
+.m-pasos .n{flex:none;width:74px;height:74px;border-radius:50%;
+  border:2px solid var(--oro);display:grid;place-items:center;
+  font-family:'Cinzel',serif;font-size:36px;color:var(--oroHi);
+  box-shadow:0 0 34px -12px rgba(234,215,156,.7)}
+.m-pasos .txt b{display:block;font-size:38px;color:var(--oroHi);font-weight:600;
+  font-family:'Cinzel',Georgia,serif;letter-spacing:.01em}
+.m-pasos .txt span{display:block;margin-top:8px;font-size:29px;line-height:1.38;
+  color:var(--bruma);max-width:22ch}
+
+/* ── maqueta OBJETO · algo dibujado, y una línea ─────────────────────────── */
+.m-objeto h1{font-size:88px}
+.m-objeto .escena{height:420px;display:grid;place-items:center;margin-bottom:46px}
+
+/* el lingote, troquelado con el monograma de la casa */
+.lingote{position:relative;width:470px;height:284px;transform:rotate(-6deg);
+  border-radius:24px/30px;
+  background:linear-gradient(158deg,#FCF3D2 0%,#EAD79C 24%,#C9A961 56%,#8A6C2F 100%);
+  box-shadow:0 52px 104px -30px rgba(234,215,156,.55),
+             0 0 0 1px rgba(255,255,255,.42) inset;
+  display:grid;place-items:center;overflow:hidden}
+.lingote::before{content:'';position:absolute;left:0;right:0;top:0;height:30%;
+  background:linear-gradient(180deg,rgba(255,255,255,.62),transparent)}
+.lingote::after{content:'';position:absolute;left:0;right:0;bottom:0;height:22%;
+  background:linear-gradient(0deg,rgba(90,68,16,.30),transparent)}
+.lingote img{position:relative;width:52%;opacity:.40;transform:translateY(-14px);
+  filter:brightness(.35) sepia(1) saturate(2.2) hue-rotate(-12deg)}
+.lingote small{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);
+  font:500 22px/1 'PlexMono',monospace;letter-spacing:.3em;color:rgba(90,68,16,.72)}
+
+/* el escudo: la transparencia dibujada, no fotografiada */
+.escudo{position:relative;width:330px;height:390px}
+.escudo svg{width:100%;height:100%}
+
+/* ── el pie ──────────────────────────────────────────────────────────────── */
+.pie{flex:none;display:flex;align-items:center;gap:24px}
+.pie img{height:70px;width:auto}
+.pie .barra{width:1px;height:46px;background:rgba(201,169,97,.45)}
+.pie span{font:500 22px/1 'PlexMono',monospace;letter-spacing:.24em;
+  color:var(--humo);text-transform:uppercase}
+</style>
+
+<div class="fondo"></div><div class="polvo"></div>
+<div class="lienzo" id="lienzo"></div>
+
+<script src="piezas.js"></script>
+<script>
+/* Se pinta con innerHTML desde datos que escribimos NOSOTROS —piezas.js está en
+   el repositorio, no llega de fuera— así que aquí no hay superficie de
+   inyección: no entra nada de la URL más que el id, y ese solo se usa para
+   buscar en la lista. */
+const id = new URLSearchParams(location.search).get('p');
+const p = PIEZAS.find(x => x.id === id) || PIEZAS[0];
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+  ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+const titulo = t => (t || []).map((l, i) =>
+  `<span class="${i === 0 ? 'a' : 'b'}">${esc(l)}</span>`).join('');
+
+const ESCUDO = `
+  <svg viewBox="0 0 120 140" fill="none" stroke="#EAD79C" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round">
+    <path d="M60 6 108 24v44c0 34-20 58-48 66C32 126 12 102 12 68V24z"
+          stroke="#C9A961" stroke-width="2.4"/>
+    <path d="M60 18 96 31v37c0 27-15 46-36 53-21-7-36-26-36-53V31z"
+          stroke="rgba(201,169,97,.35)"/>
+    <path d="M40 70l14 14 28-30" stroke="#F8EFCF" stroke-width="4"/>
+  </svg>`;
+
+const CUERPOS = {
+  cartel: () => `
+    <h1>${titulo(p.titulo)}</h1>
+    ${p.apoyo ? `<p class="apoyo">${esc(p.apoyo)}</p>` : ''}`,
+
+  dato: () => `
+    <div class="cifra ${String(p.cifra).length > 3 ? 'larga' : ''}">${esc(p.cifra)}</div>
+    <div class="unidad">${esc(p.unidad)}</div>
+    ${p.apoyo ? `<p class="apoyo">${esc(p.apoyo)}</p>` : ''}`,
+
+  pasos: () => `
+    <h1>${titulo(p.titulo)}</h1>
+    <div class="lista">${(p.pasos || []).map(([b, s], i) => `
+      <div class="paso">
+        <span class="n">${i + 1}</span>
+        <span class="txt"><b>${esc(b)}</b><span>${esc(s)}</span></span>
+      </div>`).join('')}</div>`,
+
+  objeto: () => `
+    <div class="escena">${
+      p.objeto === 'lingote'
+        ? `<div class="lingote"><img src="piezas/og-mono.png" alt=""><small>999.9</small></div>`
+        : `<div class="escudo">${ESCUDO}</div>`
+    }</div>
+    <h1>${titulo(p.titulo)}</h1>
+    ${p.apoyo ? `<p class="apoyo">${esc(p.apoyo)}</p>` : ''}`,
+};
+
+document.getElementById('lienzo').className = 'lienzo m-' + p.maqueta;
+document.getElementById('lienzo').innerHTML = `
+  <div class="rotulo">${esc(p.rotulo)}</div>
+  <div class="centro">${CUERPOS[p.maqueta]()}</div>
+  <div class="pie">
+    <img src="piezas/veta-mark.png" alt="">
+    <span class="barra"></span>
+    <span>${esc(p.pie)}</span>
+  </div>`;
+</script>
