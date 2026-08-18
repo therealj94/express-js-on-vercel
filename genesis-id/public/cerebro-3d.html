@@ -115,6 +115,31 @@ canvas:active{cursor:grabbing}
 }
 @media (prefers-reduced-motion:reduce){#pulso i{animation:none}}
 
+/* ══ LA FICHA DE UNA PIEZA ══════════════════════════════════════════════════ */
+#ficha{position:fixed;left:30px;top:96px;z-index:12;width:min(340px,calc(100vw - 60px));
+  background:rgba(4,12,20,.93);border:1px solid rgba(111,227,245,.34);border-radius:10px;
+  padding:14px 16px 15px;backdrop-filter:blur(8px)}
+#ficha[hidden]{display:none}
+#ficha .cab{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#ficha .reg{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:#6FE3F5}
+#ficha .x{background:none;border:0;color:#5B7085;font-size:14px;cursor:pointer;padding:2px 4px;line-height:1}
+#ficha .x:hover{color:#DCE7F5}
+#ficha h2{margin:7px 0 8px;font-size:15px;font-weight:600;color:#EAF3FB;letter-spacing:.02em}
+#ficha .txt{font-size:12.5px;line-height:1.62;color:#B6CADA}
+#ficha .pie{margin-top:10px;font-size:10px;line-height:1.5;color:#4C6076;letter-spacing:.04em}
+
+/* ══ LOS TEMAS ══════════════════════════════════════════════════════════════ */
+#temas{position:fixed;left:30px;bottom:74px;z-index:11;
+  display:flex;flex-wrap:wrap;gap:6px;max-width:min(430px,calc(100vw - 320px))}
+#temas button{
+  padding:6px 12px;border-radius:999px;cursor:pointer;
+  background:rgba(3,12,20,.78);border:1px solid rgba(111,227,245,.24);
+  color:#7E9AB0;font:600 10px/1 ui-monospace,Menlo,monospace;
+  letter-spacing:.13em;text-transform:uppercase}
+#temas button:hover{border-color:rgba(111,227,245,.6);color:#BFDCEA}
+#temas button.viva{border-color:#6FE3F5;color:#6FE3F5;background:rgba(8,30,44,.9)}
+#temas button:focus-visible{outline:2px solid #6FE3F5;outline-offset:2px}
+
 /* ══ LA CARA Y LO QUE DICE ══════════════════════════════════════════════════ */
 #cara{position:fixed;right:26px;bottom:74px;z-index:11;
   display:flex;flex-direction:column;align-items:center;gap:8px}
@@ -153,6 +178,26 @@ canvas:active{cursor:grabbing}
   #cara{right:10px;bottom:calc(86px + env(safe-area-inset-bottom));gap:5px}
   #lienzoCara{width:100px;height:118px}
   #botonHablar{padding:5px 11px 5px 9px;font-size:9.5px;letter-spacing:.12em}
+  /* La ficha ocupa el ancho y sale por abajo, encima de todo: en el teléfono
+     una tarjeta flotando a un lado deja cuatro palabras por renglón. */
+  #ficha{left:12px;right:12px;width:auto;top:auto;
+    bottom:calc(70px + env(safe-area-inset-bottom));padding:12px 13px 13px}
+  #ficha h2{font-size:14px}
+  #ficha .txt{font-size:12px;line-height:1.55}
+  /* Los temas se hacen una tira que se desliza: siete botones no caben en
+     cuatrocientos píxeles, y apilarlos en tres filas se come la pantalla. */
+  #temas{left:0;right:0;max-width:none;padding:0 14px;
+    bottom:calc(196px + env(safe-area-inset-bottom));
+    flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
+    scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x}
+  #temas::-webkit-scrollbar{display:none}
+  #temas button{flex:0 0 auto;font-size:9px;padding:5px 10px}
+  /* Con la ficha abierta, los temas se van. En cuatrocientos píxeles de ancho
+     no caben las dos cosas: la ficha les caía justo encima y el botón de abajo
+     dejaba de responder — el toque se lo comía la tarjeta. Y apilarlas obliga a
+     subir la ficha hasta la mitad de la pantalla, encima del cerebro.
+     Cerrar la ficha —tocando el fondo— devuelve los temas. */
+  body.ficha-abierta #temas{display:none}
   #dice{width:calc(100vw - 32px);left:16px;transform:none;
     bottom:calc(238px + env(safe-area-inset-bottom));
     font-size:12.5px;line-height:1.5;text-align:left}
@@ -167,6 +212,23 @@ canvas:active{cursor:grabbing}
   <div class="t">Genesis Core</div>
   <div class="s">El cerebro del ecosistema Orden Global</div>
 </div>
+
+<!-- ══ LA FICHA ════════════════════════════════════════════════════════════
+     Lo que se abre al tocar una pieza. Va a la izquierda, lejos de la cara, y
+     se cierra sola al tocar el fondo: en una proyección nadie quiere buscar
+     una equis. -->
+<aside id="ficha" hidden>
+  <div class="cab"><span class="reg"></span><button class="x" type="button" aria-label="Cerrar">✕</button></div>
+  <h2></h2>
+  <p class="txt"></p>
+  <p class="pie"></p>
+</aside>
+
+<!-- ══ LOS TEMAS ═══════════════════════════════════════════════════════════
+     Siete cosas de las que la voz puede hablar. Botones y no un desplegable:
+     en una reunión hay que poder saltar a «lo legal» de un toque, sin abrir
+     un menú delante de todos. -->
+<nav id="temas" aria-label="De qué puede hablar"></nav>
 
 <!-- ══ LA CARA ═════════════════════════════════════════════════════════════
      Va debajo del cerebro y a un lado, no en el medio: en el medio tapa

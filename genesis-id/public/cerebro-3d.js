@@ -33,7 +33,7 @@
 import { GRUPOS, NODOS, ENLACES } from './cerebro-datos.js';
 import { crearCara } from './cara-3d.js';
 import { crearVoz } from './voz-core.js';
-import { PRESENTACION, REGIONES } from './guion-core.js';
+import { TEMAS, PRESENTACION, REGIONES } from './guion-core.js';
 
 const lienzo = document.getElementById('lienzo');
 const ctx = lienzo.getContext('2d', { alpha: false });
@@ -163,6 +163,14 @@ const CENTROS = {
   abierto:    [  46,  -44,  -62],   // parietal derecho, atrás
   infra:      [  34,   26,  -86],   // occipital derecho
   nodo:       [ -30,   26,  -90],   // occipital izquierdo, hacia el cerebelo
+  /* Las tres nuevas, y dónde van no es indiferente. Lo LEGAL ocupa el lóbulo
+     temporal izquierdo alto —al lado de identidad, que es su pariente más
+     cercano—; la MINERÍA va abajo y atrás, porque es el cimiento; y la JUNTA
+     va arriba del todo, encima de todo lo demás, que es exactamente su sitio
+     en la casa. */
+  legal:      [ -60,  -20,  -46],
+  mina:       [  10,   58,   34],
+  junta:      [   0,  -66,   -6],
 };
 
 /* ══ EL COLOR ═══════════════════════════════════════════════════════════════
@@ -198,7 +206,10 @@ const neuronas = NODOS.map((n) => {
     c[1] + r * Math.sin(ph) * Math.sin(th),
     c[2] + r * Math.cos(ph));
   const nn = {
-    id: n.id, nombre: n.n, grupo: n.g, peso: n.peso || 1,
+    // `d` viaja con la pieza: es lo que se enseña al tocarla. Sin esto habría
+    // que volver a buscar el nodo en NODOS en cada toque, y el mapa ya está
+    // aquí.
+    id: n.id, nombre: n.n, grupo: n.g, peso: n.peso || 1, ficha: n.d || '',
     x, y, z,
     color: COLOR[n.g] || '#9FB4CC',
     fase: rnd() * Math.PI * 2,          // para que no latan todas a la vez
@@ -577,6 +588,7 @@ const txtPulso = document.getElementById('txtPulso');
    iza, y el primer cuadro se dibuja antes de que ese bloque llegue a correr. */
 let etiquetasVivas = [];
 let congelado = false;
+let resaltada = null;      // la pieza cuya ficha está abierta
 
 /* El gesto que se anuncia es el que existe en este aparato. `pointer: coarse`
    es el dedo; ahí no hay rueda que girar y sí hay dos dedos que pellizcar. */
@@ -747,16 +759,61 @@ function cuadro(ahora) {
     }
   }
 
-  // ── axones: las conexiones reales, por encima del tejido ──────────────────
+  /* ── AXONES: LAS CONEXIONES REALES ────────────────────────────────────────
+     Éstas sí son datos: cada una es un enlace escrito en el mapa. Van por
+     encima del tejido y con el LATIDO encima: el trozo de cable que la onda
+     está tocando se enciende, así que el pulso se ve VIAJAR de pieza a pieza
+     en vez de aparecer y desaparecer en cada punto. Es lo que hace que el
+     cerebro se lea como una cosa conectada y no como puntos que parpadean
+     cada uno por su cuenta. */
   for (const n of neuronas) marcar(n, cy, sy, cx, sx);
+
+  const enLatido = [];
   ctx.lineWidth = 0.7;
-  ctx.strokeStyle = 'rgba(140,200,245,.20)';
+  ctx.strokeStyle = 'rgba(140,200,245,.22)';
   ctx.beginPath();
   for (const ax of axones) {
     if (ax.a._e < 0 || ax.b._e < 0) continue;
+    // Los del resaltado se apartan: se pintan después, con su color y arriba.
+    if (resaltada && (ax.a === resaltada || ax.b === resaltada)) continue;
+    const late = quieto ? 0 : Math.max(brilloLatido(ax.a.d, ahora), brilloLatido(ax.b.d, ahora));
+    if (late > 0.25) { enLatido.push(ax, late); continue; }
     ctx.moveTo(ax.a._x, ax.a._y); ctx.lineTo(ax.b._x, ax.b._y);
   }
   ctx.stroke();
+
+  // los cables que el latido está cruzando ahora mismo
+  ctx.lineWidth = 1.1;
+  for (let i = 0; i < enLatido.length; i += 2) {
+    const ax = enLatido[i], late = enLatido[i + 1];
+    ctx.strokeStyle = tinte(ax.a.color, 0.20 + late * 0.55);
+    ctx.beginPath();
+    ctx.moveTo(ax.a._x, ax.a._y); ctx.lineTo(ax.b._x, ax.b._y);
+    ctx.stroke();
+  }
+
+  /* ── LO QUE ESTÁ TOCADO ──
+     Al abrir la ficha de una pieza se encienden SUS cables y solo esos. Es la
+     respuesta visual a «¿con qué habla esto?», que es la pregunta que hace
+     todo el mundo delante de un mapa así, y que hasta ahora había que
+     contestar señalando con el dedo en la pantalla. */
+  if (resaltada && resaltada._e > 0) {
+    const c = COLOR[resaltada.grupo] || '#6FE3F5';
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = tinte(c, 0.75);
+    ctx.beginPath();
+    for (const ax of axones) {
+      if (ax.a !== resaltada && ax.b !== resaltada) continue;
+      if (ax.a._e < 0 || ax.b._e < 0) continue;
+      ctx.moveTo(ax.a._x, ax.a._y); ctx.lineTo(ax.b._x, ax.b._y);
+    }
+    ctx.stroke();
+    // Un anillo alrededor de la pieza tocada, para no perderla de vista.
+    const R = 9 + Math.sin(ahora * 0.004) * 2.2;
+    ctx.strokeStyle = tinte(c, 0.9);
+    ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(resaltada._x, resaltada._y, R, 0, 7); ctx.stroke();
+  }
 
   // ── señales viajando ──────────────────────────────────────────────────────
   for (const s of senales) {
@@ -881,7 +938,11 @@ function cuadro(ahora) {
 
   const h = movil ? 26 : 34, sep = movil ? 9 : 8;
   const margen = movil ? 10 : 24;
-  const borde = movil ? 62 : 76, techo = movil ? 74 : 96;
+  /* El borde de abajo reserva la franja donde viven el subtítulo, la barra de
+     temas y la cara. No es margen de cortesía: sin él, la etiqueta de una
+     región caía justo encima de lo que la voz está diciendo, y se leían las
+     dos cosas superpuestas. */
+  const borde = movil ? 62 : 152, techo = movil ? 74 : 96;
 
   const puestas = [];
   for (const c of visibles) {
@@ -1046,8 +1107,84 @@ const voz = crearVoz({
 
 botón.addEventListener('click', () => {
   if (voz.hablando) voz.callar();
-  else voz.recitar(PRESENTACION);
+  else contar(temaActual);
 });
+
+/* ══ LOS TEMAS ══════════════════════════════════════════════════════════════
+   Siete botones, uno por cosa de las que la voz sabe hablar. Se pintan del
+   guion y no se escriben aquí: añadir un tema es añadirlo en `guion-core.js`
+   y ya aparece, sin tocar ni una línea de esta pantalla. */
+const barra = document.getElementById('temas');
+let temaActual = TEMAS[0];
+
+function contar(tema) {
+  temaActual = tema;
+  for (const b of barra.children) b.classList.toggle('viva', b.dataset.id === tema.id);
+  voz.recitar(tema.lineas);
+}
+
+for (const t of TEMAS) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.dataset.id = t.id;
+  b.textContent = t.rot;
+  b.title = t.sub;
+  b.addEventListener('click', () => {
+    // Tocar el tema que ya está sonando lo para: es lo que espera cualquiera
+    // que le da otra vez al mismo botón.
+    if (voz.hablando && temaActual.id === t.id) voz.callar();
+    else contar(t);
+  });
+  barra.appendChild(b);
+}
+barra.firstChild.classList.add('viva');
+
+/* ══ LA FICHA DE UNA PIEZA ══════════════════════════════════════════════════
+   Cada pieza del mapa trae escrito qué es. Tocarla lo enseña — y de paso la
+   voz lo lee, para que en una proyección no haya que acercarse a la pantalla
+   a leer letra de doce puntos. */
+const elFicha = document.getElementById('ficha');
+const fReg = elFicha.querySelector('.reg');
+const fTit = elFicha.querySelector('h2');
+const fTxt = elFicha.querySelector('.txt');
+const fPie = elFicha.querySelector('.pie');
+elFicha.querySelector('.x').addEventListener('click', () => cerrarFicha());
+
+function cerrarFicha() {
+  elFicha.hidden = true;
+  document.body.classList.remove('ficha-abierta');
+  resaltada = null;
+}
+
+function abrirFicha(n) {
+  const gr = GRUPOS[n.grupo] || {};
+  fReg.textContent = gr.nombre || n.grupo;
+  fReg.style.color = COLOR[n.grupo] || '#6FE3F5';
+  elFicha.style.borderColor = tinte(COLOR[n.grupo] || '#6FE3F5', 0.42);
+  fTit.textContent = n.nombre;
+  fTxt.textContent = n.ficha || 'Esta pieza todavía no tiene descripción en el mapa.';
+  const vecinas = axones.filter((x) => x.a === n || x.b === n).length;
+  fPie.textContent = `${vecinas} ${vecinas === 1 ? 'conexión' : 'conexiones'} en el mapa`;
+  elFicha.hidden = false;
+  document.body.classList.add('ficha-abierta');
+  resaltada = n;
+  // Se lee en voz alta. Sin `audio`: las fichas del mapa no están grabadas.
+  if (n.ficha) voz.recitar([{ texto: `${n.nombre}. ${n.ficha}` }]);
+}
+
+/** La pieza dibujada más cerca del dedo, si hay alguna a tiro. El radio crece
+ *  con el tamaño de la pieza y tiene un suelo generoso: en un teléfono, acertar
+ *  a un punto de tres píxeles con el dedo no lo hace nadie. */
+function piezaEn(x, y) {
+  let mejor = null, md = Infinity;
+  for (const n of neuronas) {
+    if (n._e < 0) continue;
+    const d = Math.hypot(n._x - x, n._y - y);
+    const alcance = Math.max(movil ? 26 : 16, (n._r || 3) * 3.2);
+    if (d < alcance && d < md) { md = d; mejor = n; }
+  }
+  return mejor;
+}
 
 /* ── TOCAR UNA REGIÓN ──
    Se prueba contra las cajas TAL CUAL se dibujaron en el último cuadro. La
@@ -1058,9 +1195,17 @@ lienzo.addEventListener('click', (e) => {
   // hiciera, girar el cerebro haría hablar a la cara en cada gesto.
   if (arrastró) { arrastró = false; return; }
   const x = e.clientX, y = e.clientY;
+  /* Se prueba primero la PIEZA y después la etiqueta. Al revés, una etiqueta
+     que quedara encima de una pieza se comería el toque, y la pieza es lo
+     concreto: alguien que apunta a un punto quiere ese punto. */
+  const pieza = piezaEn(x, y);
+  if (pieza) { abrirFicha(pieza); return; }
+
   const caja = etiquetasVivas.find((q) =>
     q.clave && x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
-  if (!caja) return;
+  // Tocar el vacío cierra la ficha: en una proyección nadie quiere buscar la
+  // equis, y es el gesto que ya hace todo el mundo.
+  if (!caja) { cerrarFicha(); return; }
 
   const gr = GRUPOS[caja.clave];
   const cuantas = neuronas.filter((n) => n.grupo === caja.clave).length;

@@ -68,6 +68,28 @@ function vertice(u, v, boca) {
   const ph = v * Math.PI;
   const sp = Math.sin(ph), cp = Math.cos(ph);
 
+  /* ══ EL PERFIL ══════════════════════════════════════════════════════════
+     Ésta es la corrección que faltaba, y no es un rasgo más: es LA forma.
+
+     Una cabeza vista de lado no es un óvalo. Tiene una frente casi vertical,
+     un escalón donde empieza la nariz, la nariz saliendo, un retroceso en el
+     labio y otro bajo el mentón. Ese contorno es lo que el ojo reconoce como
+     cara antes que ninguna otra cosa.
+
+     Las versiones anteriores ponían nariz, ceño y labios como BULTOS sobre
+     una elipsoide, y el resultado seguía siendo una elipsoide con bultos: de
+     frente no se veían, y de lado el contorno seguía siendo un huevo. Aquí el
+     perfil se define primero —cuánto sale la cara a cada altura— y los rasgos
+     se montan encima. */
+  const perfil =
+      0.045 * campana(v, 0.30, 0.13)     // la frente, adelantada
+    - 0.030 * campana(v, 0.395, 0.055)   // el escalón del entrecejo
+    + 0.150 * campana(v, 0.505, 0.075)   // la nariz saliendo
+    - 0.055 * campana(v, 0.600, 0.045)   // el retroceso sobre el labio
+    + 0.040 * campana(v, 0.650, 0.040)   // los labios
+    - 0.050 * campana(v, 0.730, 0.045)   // el hueco bajo el labio
+    + 0.055 * campana(v, 0.800, 0.070);  // el mentón
+
   let rx = 0.70, ry = 1.0, rz = 0.80;
 
   // El cráneo abulta por detrás; sin esto la cabeza es un huevo simétrico.
@@ -88,7 +110,8 @@ function vertice(u, v, boca) {
 
   let x = rx * sp * su;
   let y = -ry * cp;
-  let z = rz * sp * cu;
+  // El perfil solo cuenta por delante: por detrás la cabeza es un cráneo liso.
+  let z = rz * sp * cu + perfil * delante * delante;
 
   /* ── LOS RASGOS ──
      Las amplitudes son grandes a propósito. En la primera versión eran tres
@@ -199,6 +222,60 @@ function construirCara() {
 // el hueco de la cuenca. Sacarlos de la malla es lo que permite que parpadeen
 // sin deformar la cara alrededor.
 const OJOS = [-0.42, 0.42].map((u) => ({ u, v: 0.428 }));
+
+/* ══ LOS CONTORNOS ═════════════════════════════════════════════════════════
+   Esto es lo que faltaba, y es la diferencia entre una malla con bultos y una
+   CARA.
+
+   Tres intentos se fueron en modelar los rasgos empujando vértices —nariz,
+   ceño, labios, mandíbula, perfil— y el resultado seguía siendo un huevo con
+   ojos. La razón es sencilla cuando se ve: en una malla de alambre, una
+   superficie que se curva no dibuja ninguna línea. El ojo humano reconoce una
+   cara por sus CONTORNOS —el borde del párpado, el caballete de la nariz, la
+   línea de los labios, el ángulo de la mandíbula— y esos contornos hay que
+   trazarlos, no insinuarlos.
+
+   Así se hace en el vídeo de referencia, y por eso allí se lee la cara al
+   instante aunque la malla de fondo sea igual de regular que la nuestra.
+
+   Cada contorno es una lista de puntos en (u,v) que pasan por la misma
+   `vertice()` que la malla: van pegados a la superficie, se deforman con ella
+   y se abren con la boca, sin ser un dibujo aparte encima. */
+const CONTORNOS = [
+  // el caballete de la nariz, desde el entrecejo hasta la punta
+  { p: [[0, 0.395], [0, 0.44], [0, 0.485], [0, 0.52], [0, 0.545]], g: 1.5 },
+  // las aletas: de la punta hacia fuera y abajo, una a cada lado
+  { p: [[0, 0.548], [-0.11, 0.556], [-0.19, 0.566], [-0.21, 0.578]], g: 1.2 },
+  { p: [[0, 0.548], [ 0.11, 0.556], [ 0.19, 0.566], [ 0.21, 0.578]], g: 1.2 },
+  // la línea de los labios, de comisura a comisura
+  { p: [[-0.44, 0.652], [-0.26, 0.641], [-0.10, 0.646], [0, 0.643],
+        [0.10, 0.646], [0.26, 0.641], [0.44, 0.652]], g: 1.6, boca: true },
+  // el arco del labio de abajo
+  { p: [[-0.42, 0.655], [-0.22, 0.686], [0, 0.694], [0.22, 0.686], [0.42, 0.655]],
+    g: 1.2, bajo: true },
+  /* La mandíbula: del lóbulo de la oreja al mentón. Arrancaba en la sien y
+     salía una V enorme que cruzaba media cara — una mandíbula empieza DEBAJO
+     de la oreja, no encima. */
+  { p: [[-1.30, 0.620], [-1.05, 0.700], [-0.68, 0.788], [-0.28, 0.846], [0, 0.858],
+        [0.28, 0.846], [0.68, 0.788], [1.05, 0.700], [1.30, 0.620]], g: 1.1 },
+  // Los pómulos, tenues: a la misma luz que el resto salían como dos arañazos.
+  { p: [[-0.86, 0.492], [-0.70, 0.524], [-0.52, 0.546]], g: 0.8, tenue: true },
+  { p: [[ 0.86, 0.492], [ 0.70, 0.524], [ 0.52, 0.546]], g: 0.8, tenue: true },
+];
+
+/* El borde del párpado: una almendra alrededor de cada ojo. Va aparte de la
+   lista de arriba porque se cierra sobre sí misma y porque su altura la manda
+   el parpadeo. */
+function almendra(centroU, v, abre) {
+  const p = [];
+  const N = 16;
+  for (let i = 0; i <= N; i++) {
+    const a = (i / N) * Math.PI * 2;
+    p.push([centroU + Math.cos(a) * 0.155,
+            v + Math.sin(a) * 0.030 * Math.max(0.06, abre)]);
+  }
+  return p;
+}
 
 /** Crea la cara sobre un lienzo propio. Devuelve el mando: `nivel(x)` mueve la
  *  boca y `mirar(x)` la gira un poco hacia donde se le diga. */
@@ -364,6 +441,34 @@ export function crearCara(lienzo) {
       ctx.ellipse(p._x, p._y, R * 1.8, R * 1.05, 0, Math.PI * 1.06, Math.PI * 1.94);
       ctx.stroke();
     }
+
+    /* ── LOS CONTORNOS ──
+       Se dibujan DESPUÉS de la malla y ANTES de los ojos, y brillantes: son la
+       línea que el ojo sigue para reconocer la cara. Cada punto pasa por la
+       misma `vertice()` que la malla, así que van pegados a la superficie y se
+       mueven con ella — el contorno de los labios se abre cuando se abre la
+       boca, sin código aparte. */
+    const traza = (pts, grosor, alfa) => {
+      ctx.strokeStyle = tinte(estado.color, alfa);
+      ctx.lineWidth = grosor;
+      ctx.beginPath();
+      let abierto = false;
+      for (const [u, v] of pts) {
+        const [x, y, z] = vertice(u, v, estado.boca);
+        const q = { x, y, z: z + 0.012 };    // un pelo por delante, para que no
+        proyectar(q);                        // se lo coma la propia malla
+        // Lo que ha girado hacia la nuca no se dibuja: un contorno de la cara
+        // asomando por detrás de la cabeza es lo que delata que esto es una
+        // superficie hueca y no una cabeza.
+        if (q._e < 0 || q._z < -0.15) { abierto = false; continue; }
+        if (!abierto) { ctx.moveTo(q._x, q._y); abierto = true; }
+        else ctx.lineTo(q._x, q._y);
+      }
+      ctx.stroke();
+    };
+
+    for (const c of CONTORNOS) traza(c.p, c.g, c.tenue ? 0.26 : 0.62);
+    for (const o of OJOS) traza(almendra(o.u, o.v, estado.parpadeo), 1.25, 0.70);
 
     /* Las cejas. Dos arcos y nada más, pero son lo que convierte dos ojos en
        una MIRADA: sin ellas la cara se queda con cara de nada. */

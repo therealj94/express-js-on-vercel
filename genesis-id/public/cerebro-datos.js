@@ -31,6 +31,13 @@ export const GRUPOS = {
   decision:   { nombre: 'Tu decisión',      color: '#F5B62E' },
   agente:     { nombre: 'Equipo IA',        color: '#D88FD0' },
   repo:       { nombre: 'Código',           color: '#8FA0B8' },
+  /* Tres regiones que faltaban, y no por olvido: el mapa nació describiendo lo
+     que CORRE —máquinas, apps, cadenas— y el ecosistema es más que eso. Lo
+     legal, lo minero y lo que espera firma de la Junta pesan tanto como un
+     servidor, y hasta ahora no estaban en ninguna parte del cerebro. */
+  legal:      { nombre: 'Legal',            color: '#E8A0C0' },
+  mina:       { nombre: 'Minería',          color: '#D4A574' },
+  junta:      { nombre: 'Junta Directiva',  color: '#F2D06B' },
 };
 
 /**
@@ -175,6 +182,87 @@ export const NODOS = [
     d: 'El repositorio donde vive todo: Genesis ID, las apps, las webs y los módulos de infraestructura listos para pegar en los backends.' },
   { id: 'infra-mod', n: 'Módulos infra/', g: 'repo',
     d: 'Piezas probadas para pegar en los backends: el puente a Genesis ID, la idempotencia, la migración de claves y la telemetría.' },
+
+  /* ══════════════════════════════════════════════════════════════════════════
+     LO QUE FALTABA DEL ECOSISTEMA
+
+     Todo lo de aquí abajo sale de fuentes que ya existían en la casa y que el
+     mapa no miraba:
+
+       · `infra/cerebro/conocimiento/saber.json`    — 31 fichas revisadas
+       · `infra/cerebro/conocimiento/legal.json`    — 11 bloques + 10 puntos
+         para la Junta · Melany Ordóñez, Secretaria · 14/08/2026
+       · `infra/cerebro/conocimiento/portafolio-minero.md` — 14/08/2026
+
+     Ni una cifra de aquí está escrita de memoria. Y donde la fuente pone un
+     aviso —«no constituye reserva certificada»— el aviso viaja con el número,
+     que es la mitad del dato. Un potencial minero sin esa coletilla es otra
+     cosa distinta de lo que dice el documento.
+     ══════════════════════════════════════════════════════════════════════════ */
+
+  // ── La cadena nueva ───────────────────────────────────────────────────────
+  { id: 'cadena5550', n: 'Cadena 5550', g: 'cadena', peso: 4,
+    d: 'La cadena nueva, con su génesis construido y juzgado. Sustituye a la 8532, que queda congelada y cerrada.' },
+  { id: 'cadena5534', n: 'Cadena 5534', g: 'cadena', peso: 2,
+    d: 'La red de pruebas. Sirve el RPC de pruebas desde tres máquinas pequeñas.' },
+
+  // ── Productos que no estaban ──────────────────────────────────────────────
+  { id: 'pulsechat', n: 'PULSE CHAT', g: 'app', peso: 3,
+    d: 'El chat del ecosistema dentro de la billetera: hablar y pagar en el mismo sitio, sin salir de la conversación.' },
+  { id: 'aura', n: 'AU-RA', g: 'agente', peso: 3,
+    d: 'La asistente que vive dentro de la billetera y habla con cualquiera. Solo sabe lo que Genesis Core dejó salir: el saber público, nunca lo interno.' },
+  { id: 'ordenex', n: 'Ordenex', g: 'app', peso: 3,
+    d: 'La casa de cambio del ecosistema: el mercado donde ORIGEN y los tokens se compran y se venden.' },
+  { id: 'aucorp', n: 'AuCorp', g: 'app', peso: 3,
+    d: 'La plataforma de banca fiat: cuentas en dólares y monedas de Latinoamérica, Canadá y euro, conectada a Genesis ID.' },
+  { id: 'tarjeta', n: 'Tarjeta Visa', g: 'app', peso: 2,
+    d: 'La tarjeta virtual, por donde entra dinero de fuera al ecosistema. 24 emitidas.' },
+
+  // ── Legal · fuente: legal.json, Secretaría de la Junta, 14/08/2026 ────────
+  { id: 'l-sociedad', n: 'Orden Global Corp', g: 'legal', peso: 4,
+    d: 'La sociedad responsable de todo el ecosistema. Próspera ZEDE, Roatán, Honduras. Permiso 88501978376475, registrada el 23/07/2026.' },
+  { id: 'l-licencias', n: 'Licencias', g: 'legal', peso: 3,
+    d: 'Hoy no hay ninguna licencia emitida: las cuatro están en preparación ante la RFSA de Próspera. La operación ya está viva.' },
+  { id: 'l-tokens', n: 'Figura de los tokens', g: 'legal', peso: 3,
+    d: 'ORIGEN es REFERENCIADO al oro, nunca respaldado. ONDK es el único respaldado, y es un valor negociable bajo Próspera.' },
+  { id: 'l-tesoreria', n: 'Tesorería', g: 'legal', peso: 3,
+    d: 'La emisión total vive en cuatro billeteras madre de 250 mil millones de ORIGEN cada una. Moverlas exige acta de Junta.' },
+  { id: 'l-cumplimiento', n: 'Cumplimiento', g: 'legal', peso: 2,
+    d: 'Genesis ID hace KYC, KYB y AML. El manual de prevención de blanqueo está en proceso y no hay oficial de cumplimiento nombrado.' },
+  { id: 'l-contratos', n: 'Contratos de usuario', g: 'legal', peso: 2,
+    d: 'No hay términos, ni política de privacidad, ni contrato de usuario. 435 personas usan el producto sin ninguno de los tres.' },
+  { id: 'l-pi', n: 'Propiedad intelectual', g: 'legal', peso: 2,
+    d: 'Ninguna marca registrada. Los dominios están a nombre personal de una socia y no hay cesión de derechos del software.' },
+  { id: 'l-gobernanza', n: 'Gobernanza', g: 'legal', peso: 2,
+    d: 'Junta de cinco miembros, quórum de tres, reuniones trimestrales. El CEO puede firmar solo hasta 100.000 dólares.' },
+  { id: 'l-fiscal', n: 'Fiscalidad', g: 'legal', peso: 1,
+    d: 'Régimen de Próspera, obligaciones al día y sin hecho gravable a la fecha. El tratamiento fiscal de la emisión está sin analizar.' },
+
+  // ── Minería · fuente: portafolio-minero.md, 14/08/2026 ────────────────────
+  { id: 'm-indexsa', n: 'INDEXSA', g: 'mina', peso: 4,
+    d: 'Minera junior hondureña de la que Orden Global tiene el 60%. Lo valioso no es una mina: es una base de datos geológica regional de la que salen prospectos nuevos.' },
+  { id: 'm-pantaleona', n: 'Pantaleona', g: 'mina', peso: 3,
+    d: 'San Marcos de Colón, Choluteca. Exploración avanzada camino a listado en la TSX-V. Potencial estimado ~655.000 oz de oro — estimación geológica, NO reserva certificada.' },
+  { id: 'm-monarka', n: 'Buena Vista · Monarka', g: 'mina', peso: 3,
+    d: 'Danlí, El Paraíso. 436.960 oz cuantificadas entre Indicado e Inferido, con potencial adicional hasta ~1.500.000 oz. Recursos, NO reservas certificadas.' },
+  { id: 'm-travesia', n: 'Travesía', g: 'mina', peso: 1,
+    d: 'Exploración temprana. ~400.000 oz es un dato preliminar aportado por la compañía y SIN informe técnico en el expediente. Falta el reporte geológico.' },
+  { id: 'm-zonasur', n: 'Zona sur · 138 vetas', g: 'mina', peso: 2,
+    d: '138 vetas medidas por INDEXSA en cuatro proyectos, con potencial preliminar agregado de 34,6 millones de oz. Estimación de campo, requiere exploración formal.' },
+
+  // ── Lo que espera a la Junta · fuente: legal.json → paraLaJunta ───────────
+  { id: 'j-licencias', n: 'Plan de licencias', g: 'junta', peso: 3,
+    d: 'Decidir el plan y los tiempos de las licencias. Es la primera y la más urgente: hay usuarios reales y ninguna licencia emitida.' },
+  { id: 'j-pi', n: 'Formalizar la marca', g: 'junta', peso: 2,
+    d: 'Registrar marcas, pasar los dominios a la sociedad y firmar la cesión de derechos del software.' },
+  { id: 'j-contratos', n: 'Contratos de usuario', g: 'junta', peso: 2,
+    d: 'Crear y publicar términos, política de privacidad y contrato de usuario, con un punto de aceptación que quede registrado.' },
+  { id: 'j-figura', n: 'Dictamen sobre ORIGEN', g: 'junta', peso: 2,
+    d: 'Definir por escrito, con dictamen, qué es ORIGEN en derecho.' },
+  { id: 'j-aml', n: 'Manual AML', g: 'junta', peso: 2,
+    d: 'Aprobar el manual de prevención de blanqueo y nombrar al oficial de cumplimiento.' },
+  { id: 'j-acuerdo1', n: 'Acuerdo uno a acta', g: 'junta', peso: 1,
+    d: 'Llevar a acta el llamado acuerdo uno, que mantiene la cadena vieja como respaldo. Hoy está dicho y sin acta a la vista.' },
 ];
 
 /** `[origen, destino, etiqueta, fuerte?]`. La etiqueta dice QUÉ pasa entre los dos. */
@@ -264,4 +352,56 @@ export const ENLACES = [
   ['infra-mod', 'vw-back', 'listo para pegar en'],
   ['repo', 'eas', 'compila con'],
   ['repo', 'amplify', 'despliega en'],
+
+  /* ── Lo nuevo, cosido al resto ──────────────────────────────────────────
+     Un mapa donde las piezas nuevas flotan sueltas no es un mapa: es una
+     lista con colores. Lo que hace que el cerebro se lea como UN ecosistema
+     es que cada pieza esté atada a lo que la sostiene y a lo que la usa. */
+
+  // la cadena nueva y la de pruebas
+  ['cadena5550', 'cadena', 'sustituye a'],
+  ['cadena5550', 'ORIGEN', 'lleva'],
+  ['cadena5534', 'cadena5550', 'ensaya para'],
+
+  // los productos entre ellos
+  ['pulsechat', 'vw-app', 'vive dentro de'],
+  ['aura', 'vw-app', 'vive dentro de'],
+  ['aura', 'genesis', 'solo dice lo que el saber deja salir'],
+  ['ordenex', 'ORIGEN', 'da mercado a'],
+  ['ordenex', 'ONDK', 'da mercado a'],
+  ['ordenex', 'genesis', 'verifica con'],
+  ['aucorp', 'genesis', 'verifica con'],
+  ['aucorp', 'vw-back', 'se apoya en'],
+  ['tarjeta', 'vw-app', 'se recarga desde'],
+  ['tarjeta', 'aucorp', 'entra dinero de fuera por'],
+
+  // legal: todo cuelga de la sociedad
+  ['l-licencias', 'l-sociedad', 'las pide'],
+  ['l-tokens', 'l-sociedad', 'los emite'],
+  ['l-tesoreria', 'l-sociedad', 'la custodia'],
+  ['l-cumplimiento', 'l-sociedad', 'responde'],
+  ['l-contratos', 'l-sociedad', 'los firma'],
+  ['l-pi', 'l-sociedad', 'deberían ser de'],
+  ['l-gobernanza', 'l-sociedad', 'la gobierna'],
+  ['l-fiscal', 'l-sociedad', 'tributa'],
+  ['l-tokens', 'ORIGEN', 'define qué es'],
+  ['l-tokens', 'ONDK', 'define qué es'],
+  ['l-cumplimiento', 'genesis', 'se hace con'],
+  ['l-tesoreria', 'ORIGEN', 'guarda la emisión de'],
+
+  // minería: el respaldo en construcción
+  ['m-indexsa', 'l-sociedad', '60% de'],
+  ['m-pantaleona', 'm-indexsa', 'sale de'],
+  ['m-monarka', 'm-indexsa', 'sale de'],
+  ['m-travesia', 'm-indexsa', 'sale de'],
+  ['m-zonasur', 'm-indexsa', 'sale de la base geológica de'],
+  ['m-indexsa', 'ORIGEN', 'construye el respaldo de'],
+
+  // lo que espera firma
+  ['j-licencias', 'l-licencias', 'resuelve', true],
+  ['j-pi', 'l-pi', 'resuelve', true],
+  ['j-contratos', 'l-contratos', 'resuelve', true],
+  ['j-figura', 'l-tokens', 'resuelve', true],
+  ['j-aml', 'l-cumplimiento', 'resuelve', true],
+  ['j-acuerdo1', 'l-gobernanza', 'resuelve', true],
 ];
