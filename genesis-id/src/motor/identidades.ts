@@ -24,7 +24,7 @@ import { registrar } from '../audit/bitacora.js'
 import { revisarDocumento } from '../kyc/documento.js'
 import { parecidoNombres } from '../lib/texto.js'
 import { cotejar, sinProveedor, cotejoManual, biometriaConfigurada } from '../kyc/biometria.js'
-import { guardarFotos, borrarFotos } from '../kyc/fotosDocumento.js'
+import { guardarFotos, archivarFotos } from '../kyc/fotosDocumento.js'
 import { guardarFoto, leerFoto, borrarFoto } from '../kyc/fotoCredencial.js'
 
 /* Una credencial necesita un cuadrado de 320 px. Aceptar más sería convertir el
@@ -383,25 +383,34 @@ export async function adjuntarDocumentoPorFotos(
 }
 
 /**
- * Suelta las fotos del documento en cuanto hay decisión.
+ * Archiva las fotos del documento en cuanto hay decisión.
  *
- * Se llama desde `aprobar`, desde `rechazar` y desde `reiniciar`: una vez que
- * el operador decidió —o mandó rehacer el trámite—, las imágenes ya no hacen
- * falta y conservarlas solo sería acumular documentos de identidad ajenos. Lo
- * que queda en el expediente es que el documento entró por fotos y quién
- * decidió con ellas delante.
+ * Se llama desde `aprobar`, desde `rechazar` y desde `reiniciar`.
+ *
+ * ANTES LAS BORRABA, Y ESO CONTRADECÍA LO QUE HABÍAMOS PROMETIDO
+ *
+ * El razonamiento del borrado era bueno —no acumular documentos de identidad
+ * ajenos— pero la política de privacidad publicada dice, por escrito y a cada
+ * usuario, que los datos de verificación de identidad se conservan cinco años
+ * por obligación legal. Las dos cosas no podían ser verdad a la vez, y de las
+ * dos la que manda es la que ya está firmada frente a quien confió.
+ *
+ * Así que ahora se archivan: cifradas, con cada lectura registrada y con fecha
+ * de caducidad puesta, que MongoDB hace cumplir sin que nadie tenga que
+ * acordarse. Si no hay llave de cifrado, `archivarFotos` las borra —eso no
+ * cambió— porque un depósito de cédulas en claro es peor que no tener archivo.
  */
-function soltarFotosDocumento(identidad: Identidad): Promise<void> {
+function archivarFotosDocumento(identidad: Identidad): Promise<void> {
   // El expediente ya no lleva las imágenes dentro; se limpia igual por si
   // quedara algo guardado antes de que se mudaran a su propio almacén.
   if (identidad.documento?.imagenes) identidad.documento.imagenes = null
 
-  // Un borrado que falla NO puede tumbar la decisión: aprobar o rechazar es lo
-  // irreversible y lo que la persona está esperando, y unas fotos que se quedan
-  // se pueden barrer después. Queda dicho en el registro para poder hacerlo.
-  return borrarFotos(identidad.id).catch((e: any) => {
+  // Un fallo aquí NO puede tumbar la decisión: aprobar o rechazar es lo
+  // irreversible y lo que la persona está esperando. Queda dicho en el registro
+  // para poder repasarlo.
+  return archivarFotos(identidad.id).then(() => undefined).catch((e: any) => {
     console.error(
-      `[identidades] quedaron sin borrar las fotos del documento de ${identidad.id}:`, e?.message)
+      `[identidades] no se pudieron archivar las fotos del documento de ${identidad.id}:`, e?.message)
   })
 }
 
@@ -596,7 +605,7 @@ export async function aprobar(
 
   identidad.gid = identidad.gid ?? gidPersonal()
   identidad.verificadaEn = ahora()
-  await soltarFotosDocumento(identidad)
+  await archivarFotosDocumento(identidad)
   anotar(identidad, 'verificada', operador.email,
     anulacion ? `${motivo} — ANULACION DE BLOQUEOS: ${anulacion}` : motivo)
 
@@ -619,7 +628,7 @@ export async function rechazar(idn: string, operador: Operador, motivo: string):
     return { ok: false, motivo: 'Hay que escribir el motivo del rechazo' }
   }
   anotar(identidad, 'rechazada', operador.email, motivo)
-  await soltarFotosDocumento(identidad)
+  await archivarFotosDocumento(identidad)
   await store.guardarYa()
   registrar(operador.email, 'identidad.rechazada', identidad.id, { motivo })
   return { ok: true, identidad }
@@ -657,7 +666,7 @@ export async function reiniciar(idn: string, operador: Operador, motivo: string)
   // iban solas con el expediente porque vivían dentro. Ahora viven aparte, y sin
   // este borrado se quedarían huérfanas para siempre — documentos de identidad
   // acumulados de trámites que ya no existen.
-  await soltarFotosDocumento(identidad)
+  await archivarFotosDocumento(identidad)
   identidad.documento = null
   identidad.biometria = null
   identidad.nombreLegal = null

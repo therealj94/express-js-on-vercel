@@ -10,7 +10,7 @@ import { prepararTelemetria, hayMongo as telemetriaEnMongo } from './analitica/e
 import { estadoListas, hayListas, iniciarListas } from './aml/listas.js'
 import { cargarGafiDesdeMongo, estadoGafi, listasVencidas } from './aml/paises.js'
 import { biometriaConfigurada, proveedorBiometria } from './kyc/biometria.js'
-import { migrarFotosDelEstado } from './kyc/fotosDocumento.js'
+import { migrarFotosDelEstado, prepararCaducidad, conservacionConfigurada } from './kyc/fotosDocumento.js'
 import { migrarFotosCredencialDelEstado } from './kyc/fotoCredencial.js'
 import { verificarCadena } from './audit/bitacora.js'
 import { sesionRouter } from './routes/sesion.js'
@@ -173,8 +173,24 @@ app.get('/healthz', (_req, res) => {
       listasVencidas: listas.vencidas,
       biometria: biometriaConfigurada(),
       proveedorBiometria: proveedorBiometria(),
+      /* La política publicada promete conservar los datos de verificación cinco
+         años. Sin llave de cifrado NO se conserva nada —se borra al decidir, como
+         antes—, así que si esto sale en false la casa está incumpliendo su propio
+         documento y hay que verlo desde fuera, no descubrirlo el día de una
+         auditoría. */
+      conservacionDocumentos: conservacionConfigurada(),
       ssoConfigurado: Boolean(process.env.GENESIS_SSO_SECRETO),
       bitacoraIntegra: cadena.integra,
+      /* DÓNDE se rompió, no solo QUE se rompió.
+         Publicaba `integra: false` y ninguna pista más, y así estuvo:
+         quien lo leía sabía que había un problema y no podía hacer nada
+         con esa información. Es el mismo fallo que el de la revisión
+         previa de la app —«hay 1 problema» y la lista vacía—: una alarma
+         que no dice qué pasa bloquea y no deja avanzar a quien la lee.
+         Va el ÍNDICE de la entrada, nunca su contenido: /healthz es
+         público y en la bitácora hay nombres de personas. */
+      bitacoraRotaEn: cadena.rotaEn,
+      bitacoraEntradas: cadena.total,
       // El hueco NO se esconde detrás de un sello: si la bitácora se cerró
       // alguna vez por rotura, se dice aquí y se dice dónde. Un registro de
       // cumplimiento que vuelve a verde sin dejar rastro no vale nada.
@@ -275,6 +291,20 @@ export async function arrancar(): Promise<void> {
   // guardado reescribe esos megabytes y el documento avanza hacia los 16 MB que
   // MongoDB no deja pasar — y el día que los pase, deja de guardarse TODO
   // (identidades incluidas) sin que el servicio dé ninguna señal.
+  /* El índice que caduca el archivo de documentos. Se pone en cada arranque
+     —crear uno que ya existe no hace nada— para que el día que se cambie de
+     base el archivo no se quede sin caducidad y nadie lo note. Sin él, «se
+     conserva cinco años» sería «se conserva para siempre». */
+  if (conservacionConfigurada()) {
+    const listo = await prepararCaducidad()
+    console.log(listo
+      ? '[genesis-id] archivo de documentos: cifrado y con caducidad a 5 años'
+      : '[genesis-id] AVISO: archivo cifrado pero SIN índice de caducidad; no se borrarán solos')
+  } else {
+    console.log('[genesis-id] AVISO: sin GENESIS_ARCHIVO_CLAVE no se conservan las imágenes ' +
+      'del documento — se borran al decidir, y eso contradice la política publicada')
+  }
+
   const mudanza = await migrarFotosDelEstado().catch((e) => {
     console.error('[genesis-id] no se pudieron mudar las fotos del documento:', e?.message)
     return null

@@ -31,6 +31,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
 import { dirname } from 'path'
 import { coleccionAparte, archivoAparte, store } from '../store.js'
+import { cifrar, descifrar, archivoConfigurado } from '../lib/cripto.js'
 
 export interface FotosDocumento {
   anverso: string
@@ -40,6 +41,40 @@ export interface FotosDocumento {
 const NOMBRE = 'documentosPendientes'
 
 const coleccion = () => coleccionAparte(NOMBRE)
+
+/* ══ CONSERVACIÓN ══════════════════════════════════════════════════════════
+ *
+ * Hasta hoy estas fotos se BORRABAN en cuanto había decisión. La intención era
+ * buena —no acumular documentos de identidad ajenos— pero contradecía la
+ * política de privacidad publicada, que promete a cada usuario, por escrito:
+ *
+ *     «Datos de verificación de identidad — 5 años desde el cierre,
+ *      por obligación legal»
+ *
+ * Las dos cosas no podían ser verdad. Se resolvió por el lado de conservar,
+ * que es lo que exige la normativa de prevención de blanqueo y lo que la casa
+ * ya había prometido.
+ *
+ * Conservar NO es dejarlas donde estaban. Se guardan cifradas, cada lectura
+ * queda registrada con el nombre de quien la hizo, y se borran solas al
+ * cumplirse el plazo. Ese «solas» es literal: lo hace MongoDB con un índice
+ * TTL, no una tarea nuestra. Un borrado que depende de que alguien se acuerde
+ * de correr algo no es un borrado, es una intención.
+ *
+ * Y si no hay llave de cifrado, NO se conserva: se borra como antes. Antes que
+ * un depósito de cédulas en claro, ninguno. `/healthz` lo dice para que la
+ * ausencia de llave se vea desde fuera y no pase por «ya está guardado». */
+
+/** Cinco años, que es lo que promete la política publicada. */
+const ANOS_CONSERVACION = 5
+
+export const conservacionConfigurada = archivoConfigurado
+
+function vencimiento(desde = new Date()): Date {
+  const d = new Date(desde)
+  d.setFullYear(d.getFullYear() + ANOS_CONSERVACION)
+  return d
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Motor de archivo: un JSON hermano del de estado, `{ idIdentidad: {…} }`
@@ -74,30 +109,94 @@ function escribirMapa(m: Mapa): void {
 // Guardar, leer, borrar
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Guarda las dos caras de una identidad. Reemplaza las que hubiera. */
+/** Guarda las dos caras de una identidad. Reemplaza las que hubiera.
+ *
+ *  Se cifran si hay llave. Mientras el expediente está pendiente NO llevan
+ *  vencimiento: el plazo de cinco años se cuenta desde la decisión, no desde
+ *  que se subió la foto, y ponerlo antes borraría el documento de alguien que
+ *  todavía está esperando respuesta. */
 export async function guardarFotos(idn: string, fotos: FotosDocumento): Promise<void> {
+  const guardable = {
+    anverso: cifrar(fotos.anverso) ?? fotos.anverso,
+    reverso: cifrar(fotos.reverso) ?? fotos.reverso,
+  }
   const c = coleccion()
   if (c) {
     await c.replaceOne(
       { _id: idn },
-      { _id: idn, anverso: fotos.anverso, reverso: fotos.reverso, guardadasEn: new Date() },
+      { _id: idn, ...guardable, guardadasEn: new Date(), cifradas: archivoConfigurado() },
       { upsert: true },
     )
     return
   }
   const m = leerMapa()
-  m[idn] = fotos
+  m[idn] = guardable
   escribirMapa(m)
 }
 
-/** Las fotos de una identidad, o `null` si ya se decidió (o nunca las hubo). */
+/** Las fotos de una identidad, o `null` si nunca las hubo o ya vencieron. */
 export async function leerFotos(idn: string): Promise<FotosDocumento | null> {
   const c = coleccion()
-  if (c) {
-    const d = await c.findOne({ _id: idn })
-    return d?.anverso && d?.reverso ? { anverso: d.anverso, reverso: d.reverso } : null
+  const crudas = c
+    ? await c.findOne({ _id: idn }).then((d: any) => (d?.anverso && d?.reverso
+        ? { anverso: d.anverso as string, reverso: d.reverso as string } : null))
+    : leerMapa()[idn] ?? null
+  if (!crudas) return null
+
+  /* Si están cifradas y falta la llave, `descifrar` devuelve null y aquí se
+     devuelve null: mejor que el operador vea «no aportado» —y pregunte— a que
+     la pantalla le pinte un texto cifrado como si fuera una imagen rota. */
+  const anverso = descifrar(crudas.anverso)
+  const reverso = descifrar(crudas.reverso)
+  return anverso && reverso ? { anverso, reverso } : null
+}
+
+/**
+ * Pasa las fotos al archivo de conservación: les pone fecha de vencimiento.
+ *
+ * Se llama al decidir —aprobar, rechazar o mandar rehacer— en lugar del borrado
+ * de antes. A partir de aquí MongoDB las borra solo cuando llegue la fecha.
+ *
+ * Sin llave de cifrado NO se archiva: se borra, como se venía haciendo. Guardar
+ * cédulas en claro durante cinco años sería peor que no guardarlas.
+ *
+ * Con el motor de archivo tampoco se archiva. Ese motor es para desarrollo y no
+ * tiene forma de caducar nada solo; conservar ahí sería acumular sin plazo, que
+ * es justo lo que no se quiere.
+ */
+export async function archivarFotos(idn: string): Promise<'archivadas' | 'borradas'> {
+  const c = coleccion()
+  if (!c || !archivoConfigurado()) {
+    await borrarFotos(idn)
+    return 'borradas'
   }
-  return leerMapa()[idn] ?? null
+  const r = await c.updateOne({ _id: idn }, { $set: { venceEn: vencimiento(), archivadasEn: new Date() } })
+  // Si no había fotos que archivar no pasa nada: no todas las identidades
+  // entran por foto de documento.
+  return r.matchedCount ? 'archivadas' : 'borradas'
+}
+
+/**
+ * Deja puesto el índice que caduca el archivo.
+ *
+ * `expireAfterSeconds: 0` le dice a MongoDB que borre el documento cuando el
+ * reloj pase de la fecha que hay en `venceEn`. Los documentos sin ese campo
+ * —los expedientes todavía pendientes— no los toca.
+ *
+ * Se llama al arrancar. Crear un índice que ya existe no hace nada, así que
+ * repetirlo en cada arranque es gratis y evita que el día que se cambie de base
+ * el archivo se quede sin caducidad y nadie lo note.
+ */
+export async function prepararCaducidad(): Promise<boolean> {
+  const c = coleccion()
+  if (!c) return false
+  try {
+    await c.createIndex({ venceEn: 1 }, { expireAfterSeconds: 0, name: 'caducidadArchivo' })
+    return true
+  } catch (e: any) {
+    console.error('[fotosDocumento] no se pudo crear el índice de caducidad:', e?.message)
+    return false
+  }
 }
 
 /** Borra las fotos de una identidad. No falla si no había ninguna. */

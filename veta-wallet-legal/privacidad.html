@@ -40,7 +40,7 @@ footer{border-top:1px solid var(--linea);padding:24px 0 40px;color:#6C918E;font-
 <h1>Política de Privacidad de Veta Wallet</h1>
 <p><strong>Responsable del tratamiento:</strong> Orden Global Corp</p>
 <p><strong>Aplicación:</strong> Veta Wallet (Android / iOS)</p>
-<p><strong>Última actualización:</strong> 31 de julio de 2026</p>
+<p><strong>Última actualización:</strong> 18 de agosto de 2026</p>
 <p><strong>Contacto:</strong> privacidad@vetawallet.com</p>
 <hr>
 <h2>1. Quiénes somos</h2>
@@ -113,7 +113,8 @@ footer{border-top:1px solid var(--linea);padding:24px 0 40px;color:#6C918E;font-
 <p>| Proveedor | Qué recibe | Por qué |</p>
 <p>|---|---|---|</p>
 <p>| <strong>CryptoMate</strong> | Nombre, documento, domicilio, fecha de nacimiento | Es el emisor de la tarjeta Visa. Sin estos datos no puede emitirla |</p>
-<p>| <strong>Veriff</strong> | Documento de identidad y selfie | Verifica que sos quien decís ser |</p>
+<p>| <strong>Amazon Web Services (Rekognition)</strong> | La foto del documento y el selfie, en el momento del cotejo | Comprueba que la cara del selfie es la del documento. Ni el selfie ni la foto se guardan ahí: se cotejan y se descartan |</p>
+<p>| <strong>Render</strong> | Los datos de verificación de identidad | Es donde corre Genesis ID, la plataforma que hace la verificación |</p>
 <p>| <strong>MongoDB Atlas</strong> | Todos los datos de la cuenta | Es donde vive nuestra base de datos |</p>
 <p>| <strong>Heroku (Salesforce)</strong> | Tráfico de la app | Es donde corre nuestro servidor |</p>
 <p>| <strong>Expo</strong> | Identificador anónimo del dispositivo | Entregar actualizaciones y notificaciones |</p>
@@ -125,12 +126,14 @@ footer{border-top:1px solid var(--linea);padding:24px 0 40px;color:#6C918E;font-
 <p>funciona la tecnología. Tu nombre no está en la cadena, pero tu dirección sí.</p>
 <hr>
 <h2>5. Dónde y cuánto tiempo</h2>
-<p>Los datos se almacenan en servidores dentro de la Unión Europea y Estados</p>
-<p>Unidos.</p>
+<p>Los datos se almacenan en servidores situados en Estados Unidos. El cotejo de
+rostro se resuelve en la región us-east-1 de Amazon Web Services.</p>
 <p>| Dato | Cuánto lo guardamos |</p>
 <p>|---|---|</p>
 <p>| Cuenta activa | Mientras la cuenta exista |</p>
 <p>| Datos de verificación de identidad | 5 años desde el cierre, por obligación legal |</p>
+<p>| Imágenes de tu documento (anverso y reverso) | 5 años, cifradas y con cada acceso registrado. Se borran solas al cumplirse el plazo |</p>
+<p>| Tu selfie de verificación | <strong>No se guarda.</strong> Se coteja con la foto del documento en el momento y se descarta |</p>
 <p>| Registros de transacciones | 5 años, por obligación legal |</p>
 <p>| Registros técnicos | 90 días |</p>
 <p>| Cuenta eliminada | Solo el material cifrado y lo que exija la ley |</p>

@@ -63,7 +63,7 @@ export const FICHAS = {
         ["Fórmula de precio", "gramo de oro USD ÷ 55"],
         ["Figura jurídica", "referenciado"],
       ],
-      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-14",
+      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-18",
     },
     {
       titulo: "ORIGEN",
@@ -103,7 +103,7 @@ export const FICHAS = {
         ["Riesgo urgente 2", "Propiedad intelectual — marcas, dominios y software sin titularidad formal de la sociedad"],
         ["Riesgo urgente 3", "Contratos de usuario — 435 usuarios sin términos ni aceptación registrable"],
       ],
-      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-14",
+      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-18",
     },
   ],
   "aura": [
@@ -158,7 +158,7 @@ export const FICHAS = {
         "Sugerencia general para la Junta: que cada sociedad del sistema ordene también internamente sus aspectos corporativos. Esto incluye decidir si emite acciones y cuáles, si ajusta su estructura o su tipo de empresa, y cómo formaliza su gobierno. Ordenar esto da base firme a todo lo demás.",
         "Contradicción a resolver: el cerebro tenía registrado que la comisión por transacción estaba inactiva y cobraba cero. La información jurídica confirma que la comisión ya está activa en la cadena nueva. Las dos versiones deben conciliarse.",
       ],
-      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-14",
+      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-18",
     },
     {
       titulo: "Lo que viene",
@@ -173,7 +173,8 @@ export const FICHAS = {
       titulo: "Contratos con los usuarios",
       estado: "dicho",
       parrafos: [
-        "Hoy Orden Global no tiene términos y condiciones ni política de privacidad publicados para los usuarios.",
+        "Los términos y condiciones y la política de privacidad sí están publicados, en legal punto vetawallet punto com y en la propia billetera. Se comprobó que las cuatro páginas responden el dieciocho de agosto de dos mil veintiséis.",
+        "Lo que sigue faltando no es el documento sino la prueba: no hay registro de que cada usuario aceptara, así que no se puede demostrar quién aceptó qué ni cuándo.",
         "Tampoco hay un contrato de usuario formal que regule la relación con quienes usan Veta Wallet.",
         "Los usuarios activos hoy son cuatrocientos treinta y cinco, con veinticuatro tarjetas emitidas.",
         "No hubo un punto de aceptación registrable cuando los usuarios abrieron su cuenta.",
@@ -181,8 +182,8 @@ export const FICHAS = {
         "La ley aplicable y el mecanismo de reclamaciones serían, en principio, los de Próspera y su arbitraje, pero esto todavía no se ha discutido ni definido.",
       ],
       datos: [
-        ["Términos y condiciones", "no publicados"],
-        ["Política de privacidad", "no publicada"],
+        ["Términos y condiciones", "publicados — legal.vetawallet.com/terminos"],
+        ["Política de privacidad", "publicada — legal.vetawallet.com/privacidad"],
         ["Contrato de usuario", "inexistente"],
         ["Usuarios activos", "435"],
         ["Tarjetas emitidas", "24"],
@@ -190,7 +191,7 @@ export const FICHAS = {
         ["Garantía o recompra al usuario común", "ninguna"],
         ["Ley y reclamaciones", "por definir — Próspera/arbitraje asumido"],
       ],
-      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-14",
+      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-18",
     },
   ],
   "l-cumplimiento": [
@@ -204,8 +205,12 @@ export const FICHAS = {
         "Todavía no hay un oficial de cumplimiento nombrado; su designación está en proceso.",
         "Cuando la operación lo requiera, el reporte de operaciones sospechosas se hará ante la RFSA o la autoridad pertinente.",
         "Orden Global Corp es la responsable del tratamiento de los datos de los usuarios.",
-        "Los datos de los usuarios se alojan en servidores de Amazon en Estados Unidos.",
-        "Todavía no hay una política de privacidad publicada.",
+        "Los datos se alojan en servidores situados en Estados Unidos: Genesis ID corre en Render, la base de datos en MongoDB Atlas y el servidor de la billetera en Heroku.",
+        "El cotejo de rostro lo resuelve Amazon Rekognition en la región us-east-1. Comprobado el dieciocho de agosto de dos mil veintiséis en el diagnóstico del propio servicio.",
+        "Durante un tiempo la política de privacidad publicada nombraba a Veriff como quien recibía el documento y el selfie. Veriff nunca llegó a conectarse; se corrigió el dieciocho de agosto de dos mil veintiséis.",
+        "La política de privacidad sí está publicada, en legal punto vetawallet punto com y en la propia billetera. Su última actualización es del dieciocho de agosto de dos mil veintiséis.",
+        "Las imágenes del documento se conservan cinco años, cifradas y con cada acceso registrado, y se borran solas al cumplirse el plazo.",
+        "El selfie de verificación no se guarda en ningún momento: se coteja con la foto del documento y se descarta.",
         "La cobertura de la transferencia internacional de datos es un frente aún no abordado.",
       ],
       datos: [
@@ -214,11 +219,14 @@ export const FICHAS = {
         ["Oficial de cumplimiento", "en proceso, sin nombrar"],
         ["Reporte de operaciones sospechosas", "futuro — ante RFSA o autoridad pertinente"],
         ["Responsable del tratamiento", "Orden Global Corp"],
-        ["Alojamiento de datos", "Amazon, Estados Unidos"],
-        ["Política de privacidad", "no publicada"],
+        ["Alojamiento de datos", "Estados Unidos — Render, MongoDB Atlas, Heroku"],
+        ["Proveedor de biometría", "Amazon Rekognition (us-east-1) — comprobado 18/08/2026"],
+        ["Política de privacidad", "publicada — legal.vetawallet.com/privacidad, act. 18/08/2026"],
+        ["Conservación de imágenes del documento", "5 años, cifradas, acceso registrado, borrado automático"],
+        ["Conservación del selfie", "no se guarda"],
         ["Transferencia internacional de datos", "no abordada"],
       ],
-      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-14",
+      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-18",
     },
   ],
   "l-fiscal": [
@@ -242,7 +250,7 @@ export const FICHAS = {
         ["Tratamiento fiscal de la comisión", "por determinar"],
         ["Obligaciones de información sobre usuarios", "por determinar"],
       ],
-      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-14",
+      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-18",
     },
   ],
   "l-gobernanza": [
@@ -275,7 +283,7 @@ export const FICHAS = {
         ["Libro de actas", "existe"],
         ["Acuerdo uno — cadena vieja como respaldo", "dicho, sin acta a la vista"],
       ],
-      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-14",
+      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-18",
     },
   ],
   "l-licencias": [
@@ -304,7 +312,7 @@ export const FICHAS = {
         ["Trámite 4", "Non-Banking Lender — fee anual USD 200"],
         ["Plazos ATS", "15 días hábiles evaluación + 20 días hábiles inscripción"],
       ],
-      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-14",
+      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-18",
     },
   ],
   "l-pi": [
@@ -323,7 +331,7 @@ export const FICHAS = {
         ["Software — control", "de la sociedad, alojado a su nombre"],
         ["Software — cesión de derechos", "inexistente"],
       ],
-      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-14",
+      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-18",
     },
   ],
   "l-sociedad": [
@@ -352,7 +360,7 @@ export const FICHAS = {
         ["Entidad Canadá", "Orden Global Blockchain Corp, sin rol activo"],
         ["Rol en el SFS", "Eje del Pilar 2, Orden Global"],
       ],
-      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-14",
+      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-18",
     },
     {
       titulo: "Orden Global",
@@ -385,7 +393,7 @@ export const FICHAS = {
         ["Custodia de llaves", "Protocolo de Seguridad de Accesos y Credenciales"],
         ["Regla de movimiento — madres", "acta de Junta Directiva"],
       ],
-      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-14",
+      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-18",
     },
   ],
   "l-tokens": [
@@ -422,7 +430,7 @@ export const FICHAS = {
         ["ONDK — restricción", "no mercadeable en EE. UU."],
         ["Terminología", "referenciado, no respaldado; adquirente, no inversionista"],
       ],
-      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-14",
+      fuente: "Expediente legal · Melany Ordóñez — Secretaria de la Junta, Orden Global Corp · 2026-08-18",
     },
   ],
   "m-monarka": [

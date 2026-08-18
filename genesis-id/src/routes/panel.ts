@@ -113,6 +113,16 @@ panelRouter.get('/identidades/:id', exigePermiso('identidad.ver'), async (req, r
   // metería otra vez en el estado en el siguiente guardado, que es exactamente
   // el fallo que se está arreglando.
   const imagenes = await leerFotos(i.id).catch(() => null)
+  /* CADA VEZ QUE ALGUIEN MIRA UN DOCUMENTO, QUEDA ESCRITO QUIÉN FUE.
+     Conservar las imágenes cinco años solo se sostiene si se puede decir quién
+     las abrió y cuándo; un archivo de cédulas al que se entra sin dejar rastro
+     no es un archivo de cumplimiento, es un problema esperando. Se registra la
+     lectura, nunca la imagen: la bitácora se exporta a auditores. */
+  if (imagenes) {
+    registrar(req.operador!.email, 'identidad.documentoVisto', i.id, {
+      estado: i.estado, caras: ['anverso', 'reverso'],
+    })
+  }
   // El retrato de la credencial vive en OTRO almacen aparte, por la misma razon
   // y con el mismo cuidado: se adosa a la copia, nunca al objeto de memoria.
   const fotoCredencial = await leerRetrato(i.id).catch(() => null)

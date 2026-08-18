@@ -38,6 +38,23 @@ const PROHIBIDOS = /contrasena|password|token|secreto|apikey|clave|selfie|foto/i
 function limpiar(detalle: Record<string, unknown>): Record<string, unknown> {
   const salida: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(detalle || {})) {
+    /* UNA CLAVE CON `undefined` SE TIRA, NO SE GUARDA.
+     *
+     * Esto arregla una rotura real de la cadena, no es un detalle de estilo.
+     * El hash se calcula con `JSON.stringify`, que BORRA las claves cuyo valor
+     * es `undefined`; el driver de MongoDB, en cambio, las guarda como `null`.
+     * Así que el hash se calculaba sobre `{}` al escribir y sobre
+     * `{"riesgo":null}` al releer después de un reinicio: distinto contenido,
+     * distinto hash, cadena rota — y sin que nadie tocara nada.
+     *
+     * Costó un `bitacoraIntegra: false` en producción, y el peor síntoma
+     * posible: aparecía SOLO tras reiniciar, porque en memoria todo cuadraba.
+     *
+     * Quien lo metía sin querer era el `?.` de sitios como
+     * `riesgo: identidad.riesgo?.nivel`. Se corta aquí, en el único sitio por
+     * el que pasan todas las entradas, y no en cada llamada: en cincuenta y
+     * seis sitios se olvida uno. */
+    if (v === undefined) continue
     if (PROHIBIDOS.test(k)) {
       salida[k] = '[omitido]'
     } else if (v && typeof v === 'object' && !Array.isArray(v)) {

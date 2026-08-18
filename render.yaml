@@ -23,6 +23,21 @@ services:
       - key: GENESIS_MONGO_DB
         value: genesisid
 
+      # ─── Archivo de documentos de identidad ────────────────────────────────
+      # Llave con la que se cifran las imágenes del documento que se conservan
+      # cinco años, como promete la política de privacidad publicada.
+      #
+      # SIN ESTA LLAVE NO SE CONSERVA NADA: las imágenes se borran al decidir el
+      # expediente, y entonces el servicio está incumpliendo su propio documento.
+      # `/healthz` publica `conservacionDocumentos` para que se vea desde fuera.
+      #
+      # Genere una larga al azar y póngala en el panel de Render. Guárdela
+      # también fuera: si se pierde, el archivo entero queda ilegible — que es
+      # justo lo que la protege de quien consiga una copia de la base.
+      # sync:false = Render la pide en el panel y NO queda escrita en el repo.
+      - key: GENESIS_ARCHIVO_CLAVE
+        sync: false
+
       # ─── Primer administrador ──────────────────────────────────────────────
       # Si no se define la contraseña, el motor genera una al azar y la imprime
       # UNA sola vez en el registro de arranque.
