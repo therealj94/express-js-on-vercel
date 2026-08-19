@@ -9,6 +9,7 @@ import { asegurarAplicaciones, alinearAlcances } from './auth/aplicaciones.js'
 import { prepararTelemetria, hayMongo as telemetriaEnMongo } from './analitica/eventos.js'
 import { estadoListas, hayListas, iniciarListas } from './aml/listas.js'
 import { cargarGafiDesdeMongo, estadoGafi, listasVencidas } from './aml/paises.js'
+import { correoEncendido } from './correo/enviar.js'
 import { biometriaConfigurada, proveedorBiometria } from './kyc/biometria.js'
 import { migrarFotosDelEstado, prepararCaducidad, conservacionConfigurada } from './kyc/fotosDocumento.js'
 import { migrarFotosCredencialDelEstado } from './kyc/fotoCredencial.js'
@@ -188,6 +189,16 @@ app.get('/healthz', (_req, res) => {
       verificacionesEnCola: cargaPesadas().enCola,
       verificacionesALaVez: cargaPesadas().aLaVez,
       ssoConfigurado: Boolean(process.env.GENESIS_SSO_SECRETO),
+      /* SI EL CORREO ESTA ENCENDIDO, Y CON QUE REMITENTE.
+         Va aquí porque no había forma de saberlo sin entrar al panel: quien
+         pega las credenciales en Render no puede comprobar que quedaron
+         bien, y un correo que no sale no se nota hasta que alguien reclama
+         que nunca le avisaron de su verificación.
+         Se publica el REMITENTE, que va impreso en cada correo que mandamos
+         y por tanto no es secreto; la llave y el secreto no se publican ni
+         en parte — /healthz es público. */
+      correoEncendido: correoEncendido(),
+      correoDe: correoEncendido() ? (process.env.GENESIS_SES_DE || null) : null,
       bitacoraIntegra: cadena.integra,
       /* DÓNDE se rompió, no solo QUE se rompió.
          Publicaba `integra: false` y ninguna pista más, y así estuvo:
