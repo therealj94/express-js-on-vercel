@@ -37,12 +37,18 @@
 import { firmarPost } from './firma.js'
 
 const REGION = process.env.GENESIS_SES_REGION || 'us-east-1'
-const DE = process.env.GENESIS_SES_DE || ''
+/* El remitente trae valor por defecto porque NO es un secreto: va impreso en
+   cada correo que mandamos. Exigirlo como variable convertía el encendido en
+   tres pasos manuales en vez de dos, y bastaba olvidar este —el que no
+   parece importante— para que el correo quedara apagado con las credenciales
+   bien puestas y sin ninguna pista de por qué. Se cambia solo si algún día
+   cambia la dirección. */
+const DE = process.env.GENESIS_SES_DE || 'Orden Global <info@ordenglobal.org>'
 const LLAVE = process.env.GENESIS_SES_LLAVE || ''
 const SECRETO = process.env.GENESIS_SES_SECRETO || ''
 
-/** Sin credenciales o sin remitente, no se envía nada y no se rompe nada. */
-export const correoEncendido = (): boolean => Boolean(DE && LLAVE && SECRETO)
+/** Sin credenciales no se envía nada y no se rompe nada. */
+export const correoEncendido = (): boolean => Boolean(LLAVE && SECRETO)
 
 export interface Carta {
   para: string

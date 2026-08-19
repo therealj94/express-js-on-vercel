@@ -49,11 +49,14 @@
 import crypto from "crypto";
 
 const REGION = process.env.SES_REGION || "us-east-1";
-const DE = process.env.SES_DE || "";
+/* El remitente trae valor por defecto porque NO es un secreto: va impreso en
+   cada correo. Exigirlo como variable hacía que olvidarlo dejara el correo
+   apagado con las credenciales bien puestas, y sin ninguna pista de por qué. */
+const DE = process.env.SES_DE || "Veta Wallet <info@ordenglobal.org>";
 const LLAVE = process.env.SES_LLAVE || "";
 const SECRETO = process.env.SES_SECRETO || "";
 
-export const correoEncendido = () => Boolean(DE && LLAVE && SECRETO);
+export const correoEncendido = () => Boolean(LLAVE && SECRETO);
 
 const sha256 = (d) => crypto.createHash("sha256").update(d).digest("hex");
 const hmac = (k, d) => crypto.createHmac("sha256", k).update(d).digest();
