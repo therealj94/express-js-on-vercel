@@ -37,6 +37,25 @@ punto único de falla. Los RPC entran igual —que es el 90% del valor: quien
 encuentre la cadena ya puede conectarse—. Pasar a activa es cambiar una línea el
 día que los otros validadores estén arriba.
 
+## El CI REAL del repositorio, corrido acá
+
+No las reglas de memoria: se clonó `ethereum-lists/chains`, se puso este archivo
+en `_data/chains/` y se corrió su procesador de Kotlin.
+
+```
+BUILD SUCCESSFUL     salida 0
+```
+
+Y para que ese «pasó» signifique algo, se comprobó que el CI SÍ falla cuando
+debe: con el símbolo puesto en `tORIGEN` —el error exacto del 13-ago— devuelve
+
+```
+NativeCurrencySymbolMustHaveLessThan7Chars
+BUILD FAILED         salida 1
+```
+
+Un CI que aprueba cualquier cosa no prueba nada. Este distingue.
+
 ## Comprobado antes de abrir, no después
 
 Esto existe por lo del 13-ago: el símbolo `tORIGEN` tenía siete caracteres y el
@@ -81,3 +100,36 @@ en `_data/icons/ordenglobal.json`, y en la cadena se añade `"icon": "ordengloba
 
 **El ícono es opcional**: el registro actual pasó el CI sin él. Por eso no
 bloquea este PR — va en uno posterior, o en este mismo si el CID llega antes.
+
+Y no hay atajo: se leyó el validador (`processor/.../Main.kt:172`) y exige
+`ipfs://` explícitamente, además de descargar los bytes para comprobar las
+dimensiones. Un PNG servido desde nuestro propio dominio no le vale.
+
+## Cómo abrirlo sin herramientas
+
+GitHub deja editar un archivo de otro repositorio desde el navegador y hace el
+fork solo. Son cinco pasos:
+
+1. Abrir
+   `https://github.com/ethereum-lists/chains/edit/master/_data/chains/eip155-5550.json`
+2. GitHub avisa que va a crear un fork — aceptar
+3. Borrar todo el contenido y pegar el de `eip155-5550.json` de esta carpeta
+4. Abajo, en «Commit changes», poner de título:
+   `Add RPC endpoints and explorer to Orden Global (eip155-5550)`
+5. Elegir «Create a new branch and start a pull request» → **Propose changes**
+
+Como cuerpo del PR:
+
+```
+The chain ID 5550 was reserved in #8594 with an empty `rpc` array.
+This PR fills it in now that the network is live.
+
+- Two HTTPS RPC endpoints. Both answer `eth_chainId` with `0x15ae` (5550)
+  and `net_version` with `5550`.
+- Block explorer at ordenscan.com, EIP-3091 compliant: `/block/<n>`,
+  `/tx/<hash>` and `/address/<0x...>` all return 200.
+- `status` intentionally stays `incubating` until additional validators
+  are online.
+
+Verified locally against the repository's own processor: BUILD SUCCESSFUL.
+```
