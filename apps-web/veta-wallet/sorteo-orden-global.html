@@ -171,8 +171,15 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;font-size:14p
     </div>
 
     <div class="precio">
-      <div class="n">USD 4.352,89</div>
-      <div class="pie">Referencia de la onza &middot; 18 de agosto de 2026</div>
+      <div class="n">USD 4.340,50</div>
+      <div class="pie">Referencia de la onza &middot; 19 de agosto de 2026</div>
+    </div>
+
+    <!-- La cuenta atrás. La fecha vive también en app.js (SORTEO_FIN) y en la
+         fila «Cuándo» de las bases: tres sitios, una sola fecha. -->
+    <div style="margin-top:34px">
+      <div class="rotulo" style="font-size:12px">Termina en</div>
+      <div id="cuenta" style="font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:clamp(1.5rem,5vw,2.3rem);color:var(--oroAlto);margin-top:10px" aria-live="off"></div>
     </div>
 
     <div class="botones">
@@ -253,8 +260,8 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;font-size:14p
         <dd>Orden Global Corp, sociedad constituida en Próspera, Roatán, Honduras.</dd></div>
       <div class="fila"><dt>Premio</dt>
         <dd>1 AUKA, acreditado en la billetera Veta Wallet del ganador. AUKA sigue el
-          precio de una onza de oro; no entrega metal físico. Al 18 de agosto de 2026 su
-          referencia es de USD 4.352,89, y varía con el precio del oro.</dd></div>
+          precio de una onza de oro; no entrega metal físico. Al 19 de agosto de 2026 su
+          referencia es de USD 4.340,50, y varía con el precio del oro.</dd></div>
       <div class="fila"><dt>Quién puede participar</dt>
         <dd>Personas mayores de 18 años con identidad verificada en Genesis ID.</dd></div>
       <div class="fila"><dt>Dónde NO es válido</dt>
@@ -268,9 +275,9 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;font-size:14p
       <div class="fila"><dt>Sin compra</dt>
         <dd>No hace falta comprar, depositar ni pagar nada para participar.</dd></div>
       <div class="fila"><dt>Cuándo</dt>
-        <dd>La promoción cierra en la fecha anunciada en los canales oficiales de Orden
-          Global. El sorteo se realiza y se publica dentro de los siete días siguientes al
-          cierre.</dd></div>
+        <dd>La promoción cierra el <strong>9 de septiembre de 2026 a las 23:59, hora de
+          Honduras (UTC−6)</strong>. El sorteo se realiza y se publica dentro de los siete
+          días siguientes al cierre.</dd></div>
       <div class="fila"><dt>Cómo se elige</dt>
         <dd>Al azar entre las participaciones válidas, en transmisión pública. La
           acreditación del premio queda registrada en la cadena y es verificable por
@@ -320,7 +327,7 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;font-size:14p
     <p>Orden Global Corp &middot; Próspera, Roatán, Honduras. Mayores de 18 años.
       Promoción sin obligación de compra.</p>
     <p>AUKA sigue el precio de una onza de oro y no entrega metal físico. El valor de
-      referencia mostrado corresponde al 18 de agosto de 2026 y varía con el precio del
+      referencia mostrado corresponde al 19 de agosto de 2026 y varía con el precio del
       oro. La tarjeta Visa es virtual y sirve para compras en línea en comercios que
       acepten Visa.</p>
   </div>
@@ -400,6 +407,26 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;font-size:14p
       pintar(0);
     }, 180);
   });
+})();
+</script>
+<script>
+/* La cuenta atrás: mismo instante que SORTEO_FIN en la app (9-sep-2026,
+   23:59:59 de Honduras, UTC−6). Al llegar a cero no desaparece: dice que
+   cerró, porque una página que se queda muda parece rota. */
+(function () {
+  var el = document.getElementById('cuenta');
+  if (!el) return;
+  var FIN = Date.UTC(2026, 8, 10, 5, 59, 59);
+  function dos(n) { return String(n).padStart(2, '0'); }
+  function tic() {
+    var r = FIN - Date.now();
+    if (r <= 0) { el.textContent = 'Sorteo cerrado — el ganador se anuncia en los canales oficiales'; return; }
+    var d = Math.floor(r / 864e5), h = Math.floor(r % 864e5 / 36e5),
+        m = Math.floor(r % 36e5 / 6e4), sg = Math.floor(r % 6e4 / 1e3);
+    el.textContent = d + 'd ' + dos(h) + 'h ' + dos(m) + 'm ' + dos(sg) + 's';
+    setTimeout(tic, 1000);
+  }
+  tic();
 })();
 </script>
 </body>

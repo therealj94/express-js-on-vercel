@@ -553,7 +553,11 @@ const VETA = (() => {
         cobroPendiente = null;
         cargarCartera().then(() => irACobro(c));
       }
-      if (!semillaNueva) { if (!volviendoAOrdenex) setTimeout(() => auraBienvenida(true), 300); }
+      /* `volviendoACasa`, no `volviendoAOrdenex`: ese nombre no existió nunca
+         y en modo estricto reventaba AQUI, el catch de abajo se tragaba el
+         ReferenceError y lo pintaba como error de credenciales — el saludo de
+         AU-RA no corrió ni una vez para quien entraba sin semilla. */
+      if (!semillaNueva) { if (!volviendoACasa) setTimeout(() => auraBienvenida(true), 300); }
       else setTimeout(auraOfrecerGid, 1200);
       // La frase se enseña ENCIMA de la billetera ya pintada, no antes de
       // entrar: quien la ve entiende que ya tiene cuenta y que esto es lo que
@@ -945,6 +949,77 @@ const VETA = (() => {
      refrescar el precio en la ficha de ONDK la devolveria a la de ORIGEN. */
   let vistaDato = null;
 
+  // ── el sorteo de 1 AUKA ───────────────────────────────────────────────────
+  /* Tres semanas: del 19 de agosto al 9 de septiembre de 2026 a las 23:59 de
+     Honduras (UTC−6). La fecha vive ACA y en las bases publicadas en
+     /sorteo-orden-global — si un dia se mueve, se mueve en los dos sitios, o
+     el banner promete algo que las bases niegan.
+
+     El premio se dice como es: 1 AUKA SIGUE el precio de la onza de oro. La
+     figura del metal no esta firmada y esta casa no escribe «respaldado»
+     (Decision 4 de la Junta, expediente del 14/08). Y el precio que se enseña
+     es el vivo de CADENA.precios(); si no llega, no se enseña numero — regla
+     de la casa: ni un dato inventado. */
+  const SORTEO_FIN = Date.UTC(2026, 8, 10, 5, 59, 59);   // 9-sep-2026 · 23:59:59 UTC−6
+  const SORTEO_EN = ['billetera', 'actividad', 'cambiar', 'tarjeta'];
+  let sorteoOro = null;          // la onza en USD, viva; null = no llego
+
+  const sorteoRestante = () => SORTEO_FIN - Date.now();
+
+  /* Pinta TODAS las cuentas atras y precios que haya en pantalla. Es una sola
+     pasada barata que corre cada segundo y tras cada repintado de vista: los
+     elementos se destruyen con cada innerHTML y la cuenta tiene que volver a
+     aparecer sin esperar al siguiente tic. */
+  function sorteoPinta() {
+    const r = sorteoRestante();
+    document.querySelectorAll('[data-sorteo-cuenta]').forEach(el => {
+      if (r <= 0) { el.textContent = t('sor.cerro'); el.classList.add('sorteo-cerrado'); return; }
+      const d = Math.floor(r / 864e5), h = Math.floor(r % 864e5 / 36e5),
+            m = Math.floor(r % 36e5 / 6e4), s = Math.floor(r % 6e4 / 1e3);
+      const dos = n => String(n).padStart(2, '0');
+      el.innerHTML = `<b>${d}</b><i>d</i><b>${dos(h)}</b><i>h</i><b>${dos(m)}</b><i>m</i><b>${dos(s)}</b><i>s</i>`;
+    });
+    if (sorteoOro) {
+      const loc = idiomaActivo() === 'en' ? 'en-US' : 'es-AR';
+      const cifra = `USD ${Math.round(sorteoOro).toLocaleString(loc)}`;
+      document.querySelectorAll('[data-sorteo-oro]').forEach(el => {
+        el.textContent = `${t('sor.precio')} ${cifra}`;
+      });
+    }
+  }
+
+  function arrancarSorteo() {
+    sorteoPinta();
+    setInterval(sorteoPinta, 1000);
+    CADENA.precios().then(({ p }) => {
+      if (p && p.AUKA > 0) { sorteoOro = p.AUKA; sorteoPinta(); }
+    }).catch(() => {});
+  }
+
+  /* El banner de adentro. Con el tramite sin empezar invita; con el expediente
+     entregado o aprobado lo dice y ya — un boton de «participar» encima de
+     alguien que ya participa es la clase de mentira amable que este archivo
+     jura no cometer. Y con `identidad` en null NO se opina: null es
+     «cargando», no «sin verificar». */
+  function bannerSorteo() {
+    if (sorteoRestante() <= 0) return '';
+    if (!identidad || identidad.error) return '';
+    const e = (identidad.estado || '').toLowerCase();
+    const dentro = esVerificada() || e === 'en-revision' || e === 'biometria';
+    if (dentro) return `
+    <div class="sorteo-banner sb-dentro" role="note">
+      <span class="sb-punto" aria-hidden="true"></span>
+      <div class="sb-txt"><b>${t('sor.bannerOk')}</b>${identidad.gid ? ` <span class="mono sb-gid">${esc(identidad.gid)}</span>` : ''}</div>
+      <span class="sb-cuenta mono" data-sorteo-cuenta></span>
+    </div>`;
+    return `
+    <div class="sorteo-banner" role="note">
+      <div class="sb-txt"><b>${t('sor.banner')}</b><small>${t('sor.p')}</small></div>
+      <span class="sb-cuenta mono" data-sorteo-cuenta></span>
+      <button class="btn btn-oro btn-sm" onclick="VETA.vista('verificar')">${t('sor.btn')}</button>
+    </div>`;
+  }
+
   function vista(cual, dato) {
     if (!VISTAS[cual]) cual = 'nucleo';
     vistaDato = dato ?? null;
@@ -977,6 +1052,12 @@ const VETA = (() => {
     void l.offsetWidth;
     l.classList.add(cual === 'nucleo' ? 'lz-fuera' : 'lz-dentro');
     l.innerHTML = VISTAS[cual]();
+    /* El sorteo va encima de las vistas de dinero, no del Nucleo: el cerebro
+       es la pantalla del asombro y un banner encima seria un cartel pegado en
+       un cuadro. Y la cuenta atras se repinta ya mismo — el tic de un segundo
+       llegaria tarde y el hueco parpadea. */
+    if (SORTEO_EN.includes(cual)) l.insertAdjacentHTML('afterbegin', bannerSorteo());
+    sorteoPinta();
     l.querySelectorAll('[data-al-cargar]').forEach(el => window[el.dataset.alCargar]?.(el));
     if (cual === 'recibir' || cual === 'deposito') pintarQr();
     if (cual === 'identidad') pintarCredencial();
@@ -1189,6 +1270,7 @@ const VETA = (() => {
           </div>
           <p class="pie" style="margin-top:8px">${texto}</p>
           ${identidad?.gid ? `<p class="pie mono" style="margin-top:8px;color:var(--oroLt)">${esc(identidad.gid)}</p>` : ''}
+          ${listo && sorteoRestante() > 0 ? `<p class="pie" style="margin-top:6px;color:var(--jade)">${t('sor.gidOk')}</p>` : ''}
           ${listo || compacta ? '' : fallo
             ? `<div style="margin-top:16px"><button class="btn btn-linea btn-sm" onclick="VETA.reintentar()">${t('saldo.re')}</button></div>`
             : botonGid(e)}
@@ -2652,6 +2734,13 @@ const VETA = (() => {
       <div class="bloque vidrio">
         <h3>${t('ver.listoT')}</h3>
         <p class="pie" style="margin-top:8px">${t('ver.listoP')}</p>
+      </div>` : ''}
+
+    ${!problemas.length && !rostroMal && sorteoRestante() > 0 ? `
+      <div class="bloque vidrio sorteo-boleto">
+        <h3>${t('sor.boletoT')}</h3>
+        <p class="pie" style="margin-top:8px">${t('sor.boletoP')}</p>
+        <div class="sb-cuenta mono" data-sorteo-cuenta style="margin-top:14px"></div>
       </div>` : ''}
 
     <div class="bloque-cab" style="margin:26px 0 0"><h3 class="cab-mini">${t('ver.listoEst')}</h3></div>
@@ -4853,6 +4942,8 @@ const VETA = (() => {
       micNo: 'Este navegador no me deja escuchar. Escribime y te leo igual de bien.',
       micErr: 'No te pude escuchar. Probá otra vez, o escribime.',
       chips: ['Hacé el recorrido', '¿Qué es ORIGEN?', 'Llevame a cobrar', '¿Cómo creo mi Genesis ID?'],
+      /* La del sorteo no se habla (sin mp3 grabado): solo se lee. */
+      sorteo: 'Ahora mismo hay un motivo más para hacerlo: al verificarte participás en el sorteo de 1 AUKA, que sigue el precio de la onza de oro. Cierra el 9 de septiembre y las bases están en vetawallet.com/sorteo-orden-global.',
       sinGid: 'Veo que todavía no tenés tu Genesis ID. Tu billetera funciona igual — es tu dinero —, pero el chat, los comercios y el resto del ecosistema piden identidad verificada. ¿Querés que te lleve a crearlo? Toma unos minutos y vale para todo Orden Global.',
       sinGidSi: 'Crear mi Genesis ID', sinGidNo: 'Ahora no',
       listoEnvio: 'Listo: te dejé preparado el envío de {monto} {sim} a {quien}. Revisá todo y confirmalo vos con tu contraseña — firmar siempre te toca a vos.',
@@ -4953,6 +5044,9 @@ const VETA = (() => {
         { id: 'chat', k: 'TU GENTE', t: 'PULSE CHAT', p: 'Solo gente verificada, y el dinero viaja dentro de la conversación, con comprobante en la cadena.' },
         { id: 'pay', k: 'TU NEGOCIO', t: 'MyTokenPay', p: 'La caja registradora del ecosistema: cobrás con un código y tu negocio crece acá adentro.' },
         { id: 'gid', k: 'TU IDENTIDAD', t: 'Genesis ID', p: 'Te verificás una sola vez y todo Orden Global te reconoce. Es la llave que abre las demás esferas.' },
+        /* Parada nueva, sin mp3 grabado: sale con la voz del navegador. Al
+           cerrar el sorteo se quita esta linea y la gemela en ingles. */
+        { id: 'gid', k: 'EL SORTEO', t: '1 AUKA en juego', p: 'Y hacerlo ahora tiene premio: al verificarte participás en el sorteo de 1 AUKA, que sigue el precio de la onza de oro. Cierra el nueve de septiembre.' },
         { id: 'aucorp', k: 'Y ESTO CRECE', t: 'Ya abrieron las dos', p: 'Ordenexchange es la casa de cambio y AuCorp son tus cuentas en moneda local — dólares, lempiras, euros. Las dos con tu misma cuenta. AuCorp es la que antes se llamaba AUBANK: cambió el nombre, no la casa. Y yo soy AU-RA: cada versión voy a saber hacer más.' },
       ],
     },
@@ -4970,6 +5064,7 @@ const VETA = (() => {
       micNo: 'This browser will not let me listen. Type to me — I read just as well.',
       micErr: 'I could not hear you. Try again, or type to me.',
       chips: ['Take the tour', 'What is ORIGEN?', 'Take me to charge', 'How do I create my Genesis ID?'],
+      sorteo: 'Right now there is one more reason to do it: by verifying you enter the raffle for 1 AUKA, which tracks the price of one ounce of gold. It closes September 9 and the rules live at vetawallet.com/sorteo-orden-global.',
       sinGid: 'I see you do not have your Genesis ID yet. Your wallet works anyway — it is your money — but the chat, the merchants and the rest of the ecosystem need a verified identity. Want me to take you there? It takes minutes and works across all of Orden Global.',
       sinGidSi: 'Create my Genesis ID', sinGidNo: 'Not now',
       listoEnvio: 'Done: I prepared the transfer of {monto} {sim} to {quien}. Review it and confirm with your password — signing is always yours.',
@@ -5059,6 +5154,9 @@ const VETA = (() => {
         { id: 'chat', k: 'YOUR PEOPLE', t: 'PULSE CHAT', p: 'Verified people only, and money travels inside the conversation, with a receipt on the chain.' },
         { id: 'pay', k: 'YOUR BUSINESS', t: 'MyTokenPay', p: 'The ecosystem’s cash register: you charge with a code and your business grows in here.' },
         { id: 'gid', k: 'YOUR IDENTITY', t: 'Genesis ID', p: 'Verify once and all of Orden Global recognises you. It is the key that opens the other spheres.' },
+        /* New stop, no recorded mp3: falls back to the browser voice. When the
+           raffle closes, remove this line and its Spanish twin. */
+        { id: 'gid', k: 'THE RAFFLE', t: '1 AUKA at stake', p: 'And doing it now has a prize: by verifying you enter the raffle for 1 AUKA, which tracks the price of one ounce of gold. It closes on September the ninth.' },
         { id: 'aucorp', k: 'AND THIS GROWS', t: 'Both are open', p: 'Ordenexchange is the exchange and AuCorp holds your local-currency accounts — dollars, lempiras, euros. Both with your same account. AuCorp is what used to be called AUBANK: the name changed, not the house. And I am AU-RA: every version I will know how to do more.' },
       ],
     },
@@ -5564,6 +5662,11 @@ const VETA = (() => {
     try { sessionStorage.setItem('aura.gidOfrecido', '1'); } catch {}
     const T = aTxt();
     auraAbierta = true;
+    /* El sorteo va en su propia burbuja, ANTES de la pregunta: primero el
+       motivo, despues la oferta con sus botones. Sin voz — esta charla nunca
+       la tuvo, y una frase nueva hablada saldria con la voz del navegador al
+       lado de las grabadas: se notaria el parche. */
+    if (sorteoRestante() > 0) auraCharla.push({ de: 'aura', txt: T.sorteo });
     auraCharla.push({ de: 'aura', txt: T.sinGid, botones: [
       { txt: T.sinGidSi, di: T.chips[3] },
       { txt: T.sinGidNo, di: T.sinGidNo },
@@ -6416,6 +6519,9 @@ const VETA = (() => {
        arranque también se vea. Sin clave puesta esto no hace absolutamente
        nada — ni cola, ni peticiones. */
     tele('iniciar', {});
+    /* La cuenta atras del sorteo corre desde el primer pintado y para todos:
+       la portada la enseña antes de cualquier sesion. */
+    arrancarSorteo();
     pintarQrPortada();
     armarRevelado();
     $('#form-acceso').addEventListener('submit', enviarAcceso);

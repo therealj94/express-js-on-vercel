@@ -538,6 +538,26 @@ es: {
   'perf.nombreP': 'Es el nombre que ves en la aplicación y el que va en la tarjeta. Se guarda en este navegador.',
   'perf.guardar': 'Guardar', 'perf.guardado': 'Nombre actualizado',
   'perf.eNombre': 'Escribí un nombre.',
+
+  /* ── el sorteo de 1 AUKA ──────────────────────────────────────────────────
+     Tres semanas: cierra el 9 de septiembre de 2026, 23:59 de Honduras. La
+     regla de cobre del copy: AUKA SIGUE el precio de la onza — jamás «es una
+     onza» ni «respaldado», que el expediente legal lo desmiente (Decisión 4).
+     La fecha del cierre vive en app.js (SORTEO_FIN) y en las bases. */
+  'sor.k': 'Sorteo · Orden Global',
+  'sor.t': 'Podrías ganar 1 AUKA',
+  'sor.p': 'Sigue el precio de la onza de oro. Te verificás con Genesis ID y ya estás participando.',
+  'sor.termina': 'Termina en',
+  'sor.cerro': 'Sorteo cerrado — el ganador se anuncia en los canales oficiales',
+  'sor.bases': 'Bases del sorteo',
+  'sor.btn': 'Quiero participar',
+  'sor.precio': 'La onza hoy:',
+  'sor.banner': 'Verificate y participás por 1 AUKA',
+  'sor.bannerOk': 'Estás participando por 1 AUKA',
+  'sor.boletoT': 'Estás participando por 1 AUKA',
+  'sor.boletoP': 'Tu expediente quedó en manos del equipo, y con eso ya tenés tu lugar en el sorteo. Cuando lo aprueben, tu GID es tu boleto.',
+  'sor.gidOk': 'Estás participando en el sorteo de 1 AUKA — tu GID es tu boleto.',
+  'sor.acc': 'Y hay sorteo: al verificarte con Genesis ID participás por 1 AUKA, que sigue el precio de la onza de oro.',
 },
 en: {
   'bv.sello': 'WELCOME TO THE ORDEN GLOBAL ECOSYSTEM',
@@ -1021,6 +1041,22 @@ en: {
   'perf.nombreP': 'It is the name you see in the app and the one on the card. It is saved in this browser.',
   'perf.guardar': 'Save', 'perf.guardado': 'Name updated',
   'perf.eNombre': 'Type a name.',
+
+  /* twin of the Spanish sorteo block — keep both in step */
+  'sor.k': 'Raffle · Orden Global',
+  'sor.t': 'You could win 1 AUKA',
+  'sor.p': 'It tracks the price of one ounce of gold. Verify with Genesis ID and you are in.',
+  'sor.termina': 'Ends in',
+  'sor.cerro': 'Raffle closed — the winner is announced on the official channels',
+  'sor.bases': 'Raffle rules',
+  'sor.btn': 'I want in',
+  'sor.precio': 'The ounce today:',
+  'sor.banner': 'Verify and enter the raffle for 1 AUKA',
+  'sor.bannerOk': 'You are in the raffle for 1 AUKA',
+  'sor.boletoT': 'You are in the raffle for 1 AUKA',
+  'sor.boletoP': 'Your file is with the team, and that already gives you your place in the raffle. Once approved, your GID is your ticket.',
+  'sor.gidOk': 'You are in the raffle for 1 AUKA — your GID is your ticket.',
+  'sor.acc': 'And there is a raffle: by verifying with Genesis ID you enter for 1 AUKA, which tracks the price of one ounce of gold.',
 },
 };
 

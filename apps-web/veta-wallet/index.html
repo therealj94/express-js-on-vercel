@@ -1614,6 +1614,62 @@ body.en-ventana .lienzo::before{
   background:rgba(201,169,97,.12);border:1px solid rgba(201,169,97,.30);
   font:700 10.5px/1.4 var(--mono,monospace);letter-spacing:.08em;
   text-transform:uppercase;color:var(--oroLt,#EAD79C);text-align:center}
+
+/* ══ EL SORTEO DE 1 AUKA ══════════════════════════════════════════════════════
+   La pieza dorada de la campaña. Una sola idea en tres tamaños: la tarjeta de
+   la portada, la cinta dentro de la app y el boleto del final del trámite.
+   Todo con los tonos de la casa — el brillo lo pone el borde, no un color
+   nuevo. La cuenta atrás va en mono con números tabulares: una cifra que
+   cambia cada segundo no puede bailar de ancho. */
+.sorteo-cinta{margin:26px 0 4px;padding:18px 20px;border:1px solid var(--linea);
+  background:linear-gradient(135deg,rgba(201,169,97,.16),rgba(6,40,42,.55) 55%);
+  border-radius:var(--r);position:relative;overflow:hidden}
+.sorteo-cinta::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(115deg,transparent 30%,rgba(248,239,207,.09) 46%,transparent 60%);
+  transform:translateX(-70%);animation:sorteo-brillo 5.5s ease-in-out infinite}
+@keyframes sorteo-brillo{0%,55%{transform:translateX(-70%)}85%,100%{transform:translateX(75%)}}
+@media (prefers-reduced-motion:reduce){.sorteo-cinta::before{animation:none}}
+.sc-corona{font-family:var(--mono);font-size:10.5px;letter-spacing:.24em;
+  text-transform:uppercase;color:var(--oroLt);margin-bottom:12px}
+.sc-fila{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.sc-moneda{flex:0 0 auto;width:74px;height:74px;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 32% 28%,#F8EFCF 0%,#EAD79C 22%,#C9A961 52%,#96793F 82%);
+  box-shadow:0 0 0 2px rgba(248,239,207,.35),0 10px 26px -10px rgba(0,0,0,.7)}
+.sc-moneda b{font-family:var(--serif);font-size:15px;color:var(--tinta);letter-spacing:.03em}
+.sc-moneda i{font-family:var(--mono);font-style:normal;font-size:8px;
+  letter-spacing:.3em;color:#5A4410;margin-top:2px}
+.sc-txt{flex:1;min-width:200px}
+.sc-txt h3{font-family:var(--serif);font-size:21px;color:var(--oroHi);margin:0 0 6px}
+.sc-txt p{font-size:13.5px;color:var(--bruma);margin:0;max-width:44ch}
+.sc-oro{margin-top:8px;font-size:13px;color:var(--oroLt);min-height:18px}
+.sc-cuenta{flex:0 0 auto;text-align:right}
+.sc-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--humo);margin-bottom:6px}
+.sc-bases{display:inline-block;margin-top:10px;font-size:12.5px;color:var(--oro)}
+.sb-cuenta{display:inline-flex;gap:6px;align-items:baseline;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.sb-cuenta b{font-size:19px;font-weight:700;color:var(--oroHi)}
+.sb-cuenta i{font-style:normal;font-size:11px;color:var(--humo)}
+.sb-cuenta.sorteo-cerrado{white-space:normal;font-size:12.5px;color:var(--bruma)}
+.sorteo-banner{display:flex;gap:14px;align-items:center;flex-wrap:wrap;
+  margin:0 0 18px;padding:13px 16px;border:1px solid var(--linea2);
+  border-radius:14px;background:linear-gradient(120deg,rgba(201,169,97,.13),rgba(6,40,42,.5))}
+.sorteo-banner .sb-txt{flex:1;min-width:170px}
+.sorteo-banner .sb-txt b{display:block;font-size:13.5px;color:var(--crema)}
+.sorteo-banner .sb-txt small{font-size:12px;color:var(--humo)}
+.sorteo-banner .sb-gid{color:var(--oroLt);font-size:12px}
+.sb-punto{flex:0 0 auto;width:9px;height:9px;border-radius:50%;background:var(--jade);
+  box-shadow:0 0 10px rgba(62,217,160,.8)}
+.sorteo-boleto{border-color:var(--linea);position:relative;overflow:hidden;
+  background:radial-gradient(120% 160% at 0% 0%,rgba(201,169,97,.2),rgba(6,40,42,.6) 60%)}
+.acc-sorteo{margin-top:18px;padding:12px 14px;border-left:2px solid var(--oro);
+  font-size:13px;line-height:1.6;color:var(--bruma);
+  background:rgba(201,169,97,.08);border-radius:0 10px 10px 0}
+@media (max-width:900px){
+  .sc-cuenta{text-align:left}
+  .acc-sorteo{display:none}
+}
 </style>
 
 <svg class="veta-svg" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
@@ -1666,6 +1722,26 @@ body.en-ventana .lienzo::before{
         <span data-t="bv.og"></span>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
       </a>
+    </div>
+    <!-- ══ EL SORTEO ══ Tres semanas, y la portada lo dice con la cuenta
+         corriendo: una promesa con reloj se cree más que una promesa sola.
+         El precio de la onza lo pinta app.js con el dato vivo de CADENA;
+         si no llega, el hueco queda vacío — nunca un número inventado. -->
+    <div class="sorteo-cinta" role="note">
+      <div class="sc-corona" data-t="sor.k"></div>
+      <div class="sc-fila">
+        <div class="sc-moneda" aria-hidden="true"><b>AUKA</b><i>ORO</i></div>
+        <div class="sc-txt">
+          <h3 data-t="sor.t"></h3>
+          <p data-t="sor.p"></p>
+          <div class="sc-oro mono" data-sorteo-oro></div>
+        </div>
+        <div class="sc-cuenta">
+          <div class="sc-lbl" data-t="sor.termina"></div>
+          <div class="sb-cuenta mono" data-sorteo-cuenta></div>
+          <br><a class="sc-bases" href="/sorteo-orden-global" data-t="sor.bases"></a>
+        </div>
+      </div>
     </div>
     <!-- AU-RA, antes de la cuenta. Es la pieza que más rápido convence y
          estaba encerrada dentro de la sesión: quien todavía no confía no
@@ -1817,6 +1893,7 @@ body.en-ventana .lienzo::before{
       <svg viewBox="0 0 24 24"><path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>
       <small data-t="acc.gid"></small>
     </div>
+    <p class="acc-sorteo" data-t="sor.acc"></p>
     <!-- La duda que hace abandonar un formulario llega AQUÍ, con el correo ya
          escrito y el dedo sobre la contraseña. Que haya alguien a quien
          preguntarle en ese punto vale más que otra frase de venta arriba. -->
