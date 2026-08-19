@@ -199,6 +199,13 @@ app.get('/healthz', (_req, res) => {
          en parte — /healthz es público. */
       correoEncendido: correoEncendido(),
       correoDe: correoEncendido() ? (process.env.GENESIS_SES_DE || null) : null,
+      /* CUAL de las dos falta, no solo que algo falta. Con un booleano suelto
+         hay que adivinar entre un nombre mal escrito, una variable pegada en
+         el servicio equivocado y ninguna de las dos puestas. Van los NOMBRES
+         de las variables, que no son secretos —están en este repositorio— y
+         nunca su contenido ni su longitud. */
+      correoFaltan: ['GENESIS_SES_LLAVE', 'GENESIS_SES_SECRETO']
+        .filter((v) => !process.env[v]),
       bitacoraIntegra: cadena.integra,
       /* DÓNDE se rompió, no solo QUE se rompió.
          Publicaba `integra: false` y ninguna pista más, y así estuvo:
