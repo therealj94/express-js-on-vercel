@@ -2,7 +2,7 @@ import axios from "axios";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
-import nodemailer from "nodemailer";
+import { enviarCorreo } from "../lib/correo";
 import Users from "../models/Users";
 import Card from "../models/Card";
 import CardEvent from "../models/CardEvent";
@@ -123,19 +123,30 @@ export const requestCard = async (req, res) => {
       console.warn("[requestCard] OTP phone update failed:", phoneErr?.response?.data || phoneErr.message);
     }
 
-    // Email de confirmación al usuario
+    // Email de confirmación al usuario. Sale de info@ordenglobal.org por SES:
+    // un correo sobre la tarjeta de alguien no puede llegar desde un buzón de
+    // Outlook, ni remitir a uno para pedir ayuda.
     try {
-      const transporter = nodemailer.createTransport({
-        service: "Outlook",
-        auth: {
-          user: process.env.OUTLOOK_USER,
-          pass: process.env.OUTLOOK_PASS,
-        },
-      });
-      await transporter.sendMail({
-        from: process.env.OUTLOOK_USER,
-        to: user.email,
-        subject: "¡Tu tarjeta Visa VetaWallet está lista! 🎉",
+      await enviarCorreo({
+        para: user.email,
+        asunto: "Tu tarjeta Visa de Veta Wallet está lista",
+        texto: `Bienvenido, ${cardData.card_holder_name}.
+
+Tu tarjeta Visa virtual quedó emitida.
+
+  Tarjeta:         Visa terminada en ${cardData.last4}
+  Titular:         ${cardData.card_holder_name}
+  Límite diario:   ${cardData.daily_limit} ORIGEN
+  Límite mensual:  ${cardData.monthly_limit} ORIGEN
+
+Próximo paso: fondeá tu tarjeta con ORIGEN desde la app para empezar a usarla
+en los comercios en línea que aceptan Visa.
+
+Si no solicitaste esta tarjeta, escribinos a info@ordenglobal.org.
+
+--
+Orden Global Corp
+Nunca te vamos a pedir por correo tu contraseña ni tu frase de respaldo.`,
         html: `
           <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1a1a2e">
             <h1 style="color:#4c7db3">¡Bienvenido, ${cardData.card_holder_name}!</h1>
@@ -147,8 +158,8 @@ export const requestCard = async (req, res) => {
               <tr style="background:#f5f5f5"><td style="padding:8px;color:#666">Límite mensual</td><td style="padding:8px">${cardData.monthly_limit} ORIGEN</td></tr>
             </table>
             <p><b>Próximo paso:</b> Fondea tu tarjeta con ORIGEN desde la app para comenzar a usarla en millones de comercios Visa worldwide.</p>
-            <p style="color:#999;font-size:12px">Si no solicitaste esta tarjeta, contáctanos inmediatamente a Ordenkapital@outlook.com</p>
-            <p style="color:#999;font-size:12px">— Equipo VetaWallet</p>
+            <p style="color:#999;font-size:12px">Si no solicitaste esta tarjeta, escribinos a info@ordenglobal.org</p>
+            <p style="color:#999;font-size:12px">— Orden Global Corp</p>
           </div>
         `,
       });
@@ -677,21 +688,26 @@ export const disputeTransaction = async (req, res) => {
       return res.status(400).json({ message: "transaction_id and reason are required" });
     }
 
-    // Enviar email de disputa al equipo de soporte
-    const transporter = nodemailer.createTransport({
-      service: "Outlook",
-      auth: {
-        user: process.env.OUTLOOK_USER,
-        pass: process.env.OUTLOOK_PASS,
-      },
-    });
-
     const ticketId = `DISP-${Date.now()}`;
 
-    await transporter.sendMail({
-      from: process.env.OUTLOOK_USER,
-      to: process.env.OUTLOOK_USER,
-      subject: `[VetaWallet] Disputa de transacción ${ticketId}`,
+    /* El aviso interno va al buzón de soporte del dominio, no a una cuenta de
+       Outlook: una disputa lleva el nombre, el correo y los últimos cuatro
+       dígitos de la tarjeta de una persona, y eso no se deposita en un buzón
+       personal de nadie. */
+    const SOPORTE = process.env.CORREO_SOPORTE || "info@ordenglobal.org";
+    await enviarCorreo({
+      para: SOPORTE,
+      asunto: `[Veta Wallet] Disputa de transacción ${ticketId}`,
+      texto: `Nueva disputa de transacción.
+
+  Ticket:          ${ticketId}
+  Usuario:         ${user.name} (${user.email})
+  Tarjeta:         terminada en ${card.last4}
+  ID transacción:  ${transaction_id}
+  Comercio:        ${merchant || "—"}
+  Monto:           ${amount || "—"} USD
+  Fecha:           ${date || "—"}
+  Motivo:          ${reason}`,
       html: `
         <h2>Nueva disputa de transacción</h2>
         <table border="1" cellpadding="8" style="border-collapse:collapse">
@@ -708,16 +724,27 @@ export const disputeTransaction = async (req, res) => {
     });
 
     // Confirmación al usuario
-    await transporter.sendMail({
-      from: process.env.OUTLOOK_USER,
-      to: user.email,
-      subject: `Tu disputa fue recibida — ${ticketId}`,
+    await enviarCorreo({
+      para: user.email,
+      asunto: `Recibimos tu disputa — ${ticketId}`,
+      texto: `Hola ${user.name}.
+
+Recibimos tu disputa por la transacción en ${merchant || "comercio desconocido"} por ${amount} USD.
+
+Tu número de ticket es: ${ticketId}
+
+El equipo la revisa en un plazo de cinco a siete días hábiles y te escribimos
+con la resolución.
+
+--
+Orden Global Corp
+Nunca te vamos a pedir por correo tu contraseña ni tu frase de respaldo.`,
       html: `
         <p>Hola ${user.name},</p>
         <p>Recibimos tu disputa para la transacción en <b>${merchant || "comercio desconocido"}</b> por <b>$${amount} USD</b>.</p>
         <p>Tu número de ticket es: <b>${ticketId}</b></p>
-        <p>Nuestro equipo la revisará en un plazo de 5-7 días hábiles.</p>
-        <p>— Equipo VetaWallet</p>
+        <p>El equipo la revisa en un plazo de 5 a 7 días hábiles.</p>
+        <p>— Orden Global Corp</p>
       `,
     });
 

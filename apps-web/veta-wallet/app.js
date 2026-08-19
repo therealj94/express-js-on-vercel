@@ -360,7 +360,7 @@ const VETA = (() => {
 
   function ir(destino, cual) {
     tele('pantalla', destino === 'app' ? 'app.' + (vistaActual || 'inicio') : destino);
-    for (const id of ['portada', 'acceso', 'app']) $('#' + id).classList.toggle('oculto', id !== (destino === 'bienvenida' ? 'portada' : destino));
+    for (const id of ['portada', 'acceso', 'app', 'reclave']) $('#' + id).classList.toggle('oculto', id !== (destino === 'bienvenida' ? 'portada' : destino));
     $('#techo').classList.toggle('oculto', destino === 'app');
     if (destino === 'acceso') { pestana(cual || 'entrar'); setTimeout(() => $('#i-correo').focus(), 60); }
     if (destino === 'app') vista(vistaActual);
@@ -406,6 +406,8 @@ const VETA = (() => {
     $('#acc-legal').classList.toggle('oculto', cual !== 'crear');
     $('#btn-acceso').textContent = cual === 'crear' ? t('acc.btnCrear') : t('acc.btnEntrar');
     $('#i-clave').setAttribute('autocomplete', cual === 'crear' ? 'new-password' : 'current-password');
+    // En «crear» no hay contraseña que olvidar: el enlace ahí sería ruido.
+    $('#acc-olvide').classList.toggle('oculto', cual !== 'entrar');
     $('#acc-aviso').classList.add('oculto');
   }
 
@@ -486,11 +488,169 @@ const VETA = (() => {
     $('#fuerza-lbl').style.color = f.color;
   }
 
+  /* La misma medida de fuerza que al crear la cuenta. Quien está poniendo una
+     contraseña nueva merece el mismo aviso que quien la puso la primera vez. */
+  function pintarFuerzaReclave() {
+    const f = fuerza($('#rc-clave').value);
+    $('#rc-fuerza-caja').classList.toggle('oculto', !$('#rc-clave').value);
+    $('#rc-fuerza-barra').style.width = (f.n / 4 * 100) + '%';
+    $('#rc-fuerza-barra').style.background = f.color;
+    $('#rc-fuerza-lbl').textContent = f.txt;
+    $('#rc-fuerza-lbl').style.color = f.color;
+  }
+
   function avisoAcceso(texto, bien) {
     const a = $('#acc-aviso');
     a.textContent = texto;
     a.className = 'aviso ' + (bien ? 'aviso-ok' : 'aviso-mal');
     a.classList.toggle('oculto', !texto);
+  }
+
+  /* ── RECUPERAR LA CONTRASEÑA ──────────────────────────────────────────────
+     Esto faltaba entero del lado del navegador. El backend ya tenía las dos
+     rutas bien hechas —token con hash, quince minutos de vigencia, un solo
+     uso, y la misma respuesta exista o no la cuenta para que nadie averigüe
+     quién está registrado—, pero el correo llevaba a `/changePassword?token=…`
+     y esta app no atendía esa dirección: la persona caía en la portada, sin
+     ningún sitio donde escribir la clave nueva, y el token se le vencía
+     mientras buscaba. El trámite estaba roto de punta a punta.
+
+     Son tres momentos y solo se enseña uno cada vez: pedirlo, escribirla,
+     listo. */
+  let reclaveToken = null;
+
+  function reclavePaso(cual) {
+    for (const p of ['pedir', 'nueva', 'listo']) {
+      $('#rc-' + p).classList.toggle('oculto', p !== cual);
+    }
+    $('#rc-aviso1').classList.add('oculto');
+    $('#rc-aviso2').classList.add('oculto');
+  }
+
+  const avisoRc = (caja, txt) => {
+    const el = $(caja);
+    el.textContent = txt || '';
+    el.classList.toggle('oculto', !txt);
+  };
+
+  /** Desde el formulario de entrar, con el correo ya escrito si lo hay. */
+  function reclavePedir() {
+    reclaveToken = null;
+    reclavePaso('pedir');
+    ir('reclave');
+    // El correo que ya venía escrito se arrastra: volver a teclearlo es un
+    // peaje sin motivo justo cuando la persona ya está molesta.
+    const yaEscrito = $('#i-correo').value.trim();
+    if (yaEscrito) $('#rc-correo').value = yaEscrito;
+    setTimeout(() => $('#rc-correo').focus(), 60);
+  }
+
+  /** Vuelve al acceso y limpia la dirección: el token no se queda en la barra. */
+  function reclaveSalir() {
+    reclaveToken = null;
+    $('#rc-clave').value = '';
+    $('#rc-clave2').value = '';
+    limpiarDireccion();
+    ir('acceso', 'entrar');
+  }
+
+  /* El token viaja en la dirección. Se borra de la barra en cuanto se lee: un
+     enlace de recuperación en el historial del navegador —o en una captura de
+     pantalla— es una cuenta ajena esperando a que alguien lo abra. */
+  function limpiarDireccion() {
+    try {
+      if (location.search || /changePassword/i.test(location.pathname)) {
+        history.replaceState(null, '', '/');
+      }
+    } catch {}
+  }
+
+  async function reclaveEnviarPeticion(ev) {
+    ev.preventDefault();
+    const b = $('#btn-rc-pedir');
+    const correo = $('#rc-correo').value.trim();
+    if (!correo) return avisoRc('#rc-aviso1', t('err.completa'));
+    avisoRc('#rc-aviso1', '');
+    b.disabled = true;
+    const antes = b.textContent;
+    b.innerHTML = '<span class="girando"></span> ' + t('rc.enviando');
+    try {
+      await pedir('/auth/recuperarPassword', {
+        metodo: 'POST', cuerpo: { email: correo }, conSesion: false,
+      });
+    } catch {
+      /* A propósito NO se distingue el fallo. El servidor contesta lo mismo
+         exista o no la cuenta —para que nadie pueda averiguar quién está
+         registrado—, y enseñar aquí un error de red rompería justo esa
+         propiedad. Si de verdad no salió, la persona lo pide otra vez. */
+    }
+    b.disabled = false;
+    b.textContent = antes;
+    reclavePaso('listo');
+    $('#rc-listo').querySelector('h2').textContent = t('rc.enviadoT');
+    $('#rc-listo').querySelector('.pie').textContent = t('rc.enviadoP');
+  }
+
+  async function reclaveGuardar(ev) {
+    ev.preventDefault();
+    const b = $('#btn-rc-nueva');
+    const clave = $('#rc-clave').value;
+    const otra = $('#rc-clave2').value;
+    if (clave.length < 8) return avisoRc('#rc-aviso2', t('err.corta'));
+    if (clave !== otra) return avisoRc('#rc-aviso2', t('rc.noCoinciden'));
+    if (!reclaveToken) return avisoRc('#rc-aviso2', t('rc.sinToken'));
+
+    avisoRc('#rc-aviso2', '');
+    b.disabled = true;
+    const antes = b.textContent;
+    b.innerHTML = '<span class="girando"></span> ' + t('rc.guardando');
+    try {
+      await pedir('/auth/resetPassword', {
+        metodo: 'POST', cuerpo: { token: reclaveToken, newPassword: clave },
+        conSesion: false, sinReintento: true,
+      });
+      reclaveToken = null;
+      $('#rc-clave').value = ''; $('#rc-clave2').value = '';
+      limpiarDireccion();
+      reclavePaso('listo');
+      $('#rc-listo').querySelector('h2').textContent = t('rc.listoT');
+      $('#rc-listo').querySelector('.pie').textContent = t('rc.listoP');
+    } catch (e) {
+      /* El caso frecuente no es un error de red: es un enlace vencido. Quince
+         minutos pasan rápido, y decir «token inválido» deja a la persona sin
+         saber qué hacer. Se le dice qué pasó y se le ofrece pedir otro. */
+      const vencido = /invalid|expired|token/i.test(e?.message || '');
+      avisoRc('#rc-aviso2', vencido ? t('rc.vencido') : t('rc.falloGuardar'));
+      b.disabled = false;
+      b.textContent = antes;
+    }
+  }
+
+  function ojoReclave() {
+    const i = $('#rc-clave');
+    i.type = i.type === 'password' ? 'text' : 'password';
+  }
+
+  /* Se llama al arrancar. Devuelve true si la dirección traía un token, para
+     que el arranque sepa que esta pantalla manda sobre cualquier otra. */
+  function reclaveDesdeLaDireccion() {
+    let tk = null;
+    try {
+      const q = new URLSearchParams(location.search || '');
+      tk = q.get('token');
+      // El correo viejo apuntaba a /changePassword; el nuevo puede usar el
+      // hash. Se atienden las dos formas: hay enlaces ya enviados por ahí.
+      if (!tk && location.hash.includes('token=')) {
+        tk = new URLSearchParams(location.hash.slice(location.hash.indexOf('?') + 1)).get('token');
+      }
+    } catch {}
+    if (!tk) return false;
+    reclaveToken = tk;
+    limpiarDireccion();
+    reclavePaso('nueva');
+    ir('reclave');
+    setTimeout(() => $('#rc-clave').focus(), 60);
+    return true;
   }
 
   async function enviarAcceso(ev) {
@@ -6596,6 +6756,15 @@ const VETA = (() => {
     armarRevelado();
     $('#form-acceso').addEventListener('submit', enviarAcceso);
     $('#i-clave').addEventListener('input', pintarFuerza);
+    $('#form-rc-pedir').addEventListener('submit', reclaveEnviarPeticion);
+    $('#form-rc-nueva').addEventListener('submit', reclaveGuardar);
+    $('#rc-clave').addEventListener('input', pintarFuerzaReclave);
+
+    /* UN ENLACE DE RECUPERACION MANDA SOBRE TODO LO DEMAS, incluida una sesion
+       guardada: quien llega con ese token viene justamente porque no puede
+       entrar, y mandarlo a la billetera de la sesion anterior seria dejarlo
+       encerrado otra vez. Se atiende antes que cualquier otra ruta. */
+    if (reclaveDesdeLaDireccion()) return;
 
     /* Quien llega con /#verificar viene de la pagina publica de Genesis ID y
        viene a verificarse, no a mirar el saldo. Basta con dejar marcada la
@@ -6675,6 +6844,7 @@ const VETA = (() => {
   document.addEventListener('DOMContentLoaded', arrancar);
 
   return { ir, pestana, ojo, vista, mandar, copiar, compartir, salir, reintentar, avisar, idioma,
+           reclavePedir, reclaveSalir, ojoReclave,
            tapar, copiarContrato, congelar, revelar, pedirTarjeta, cambioMonto, elegirDestino,
            voltear, olvidar, remMonto, remPais, refrescarTasas, nuevoContacto, borrarContacto,
            enviarA, abrirCamara, cerrarCamara, pedirSecreto, copiarTexto, guardarNombre,

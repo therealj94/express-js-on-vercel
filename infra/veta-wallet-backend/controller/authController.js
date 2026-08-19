@@ -6,7 +6,7 @@ import CryptoJS from "crypto-js";
 import { cifrar } from "../lib/cripto";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import nodemailer from "nodemailer";
+import { enviarCorreo, marco, botonCorreo } from "../lib/correo";
 import { v4 as uuidv4 } from "uuid";
 require("dotenv").config();
 
@@ -42,38 +42,39 @@ export const registerUserWallet = async (req, res) => {
     // contra ese nombre y ademas nunca se metia en el correo, asi que nadie
     // podia confirmar su cuenta y el padron entero quedaba sin verificar.
     const verificationLink = `${URL_BACKEND}/auth/verifyMail?token=${token}`;
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
 
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_PASS,
-      },
-    });
+    /* Sale de info@ordenglobal.org por SES, no de una cuenta de Gmail. Además
+       del remitente —que antes era un buzón personal en el correo que da de
+       alta una billetera—, Gmail corta alrededor de los quinientos envíos
+       diarios: con el padrón creciendo, el alta se quedaba sin confirmar y
+       nadie se enteraba hasta la queja.
 
-    const mailOptions = {
-      from: process.env.GMAIL_USER,
-      to: email,
-      subject: "Confirma tu cuenta de Veta Wallet",
-      text: `Bienvenido a Veta Wallet.
+       Y NO se corta el alta si el correo falla. Antes un fallo devolvía un 500
+       y la persona se quedaba sin cuenta por un problema del servidor de
+       correo; peor todavía, el `return` estaba dentro de la callback y no
+       detenía nada, así que la cuenta se creaba igual y encima con un error en
+       la pantalla. Ahora se registra y se sigue: la cuenta se crea, y quien no
+       reciba el correo lo puede volver a pedir. */
+    const rAlta = await enviarCorreo({
+      para: email,
+      asunto: "Confirmá tu cuenta de Veta Wallet",
+      texto: `Bienvenido a Veta Wallet.
 
-Para confirmar tu cuenta, entra en este enlace:
+Para confirmar tu cuenta, entrá en este enlace:
 ${verificationLink}
 
 Si no creaste esta cuenta, no hagas nada: sin confirmar, el enlace caduca solo.
 
 --
-Orden Global`,
-    };
-
-    transporter.sendMail(mailOptions, async (error, info) => {
-      if (error) {
-        console.log(error);
-        return res.status(500).json({
-          message: "Failed to send verification email",
-        });
-      }
+Orden Global Corp
+Nunca te vamos a pedir por correo tu contraseña ni tu frase de respaldo.`,
+      html: marco("Confirmá tu cuenta", `
+        <h1 style="margin:0 0 6px;font:700 24px/1.2 Georgia,serif;color:#F3ECD9;">Bienvenido a Veta Wallet</h1>
+        <p style="margin:14px 0 0;">Falta un paso: confirmá que este correo es tuyo.</p>
+        ${botonCorreo("Confirmar mi cuenta", verificationLink)}
+        <p style="margin:12px 0 0;font-size:13px;">Si no creaste esta cuenta, no hace falta que hagas nada: sin confirmar, el enlace caduca solo.</p>`),
     });
+    if (!rAlta.ok) console.error("[registro] el correo de confirmación no salió:", rAlta.motivo);
     const mnemonic = bip39.generateMnemonic();
     const seed = await bip39.mnemonicToSeed(mnemonic);
     const wallet = Wallet.fromPrivateKey(seed.slice(0, 32));
@@ -319,31 +320,52 @@ export const recuperarPassword = async (req, res) => {
 
     const resetToken = uuidv4();
 
-    const verificationLink = `https://www.vetawallet.com/changePassword?token=${resetToken}`;
+    /* EL ENLACE APUNTABA A UNA PANTALLA QUE NO EXISTIA. Iba a
+       www.vetawallet.com/changePassword, y esa dirección la atiende la app
+       —que no tenía ninguna ruta para `changePassword` ni leía el token—: la
+       persona caía en la portada, sin sitio donde escribir la clave nueva, y
+       los quince minutos se le vencían buscando. El trámite estaba roto de
+       punta a punta y nadie podía recuperar su contraseña.
+       Ahora va al dominio que sirve la app de verdad. */
+    const URL_APP = (process.env.APP_URL || 'https://app.vetawallet.com').replace(/\/$/, '');
+    const verificationLink = `${URL_APP}/?token=${resetToken}`;
     // Se guarda el hash, nunca el token en claro, y con vencimiento.
     user.verificationTokenPassword = hashToken(resetToken);
     user.verificationTokenPasswordExp = new Date(Date.now() + VIGENCIA_RESET_MS);
 
     await user.save();
 
-    const transporter = nodemailer.createTransport({
-      service: "Outlook",
-      auth: {
-        user: process.env.OUTLOOK_USER,
-        pass: process.env.OUTLOOK_PASS, // poner tu pass , es para que desde ahi se envien los mail de confirmacion.
-      },
+    /* Sale de info@ordenglobal.org por SES, no de un buzón de Outlook. El
+       correo que te devuelve el acceso a tu dinero tiene que venir del dominio
+       de la empresa: cualquier otra cosa le enseña a la gente a confiar en
+       remitentes que no son nuestros. */
+    const r = await enviarCorreo({
+      para: user.email,
+      asunto: "Restablecer tu contraseña de Veta Wallet",
+      texto: `Pediste restablecer la contraseña de tu Veta Wallet.
+
+Entrá en este enlace y poné una contraseña nueva:
+${verificationLink}
+
+El enlace vale quince minutos y se usa una sola vez.
+
+Si no fuiste vos, no hagas nada: sin abrir el enlace, tu contraseña sigue
+siendo la de siempre.
+
+--
+Orden Global Corp
+Nunca te vamos a pedir por correo tu contraseña ni tu frase de respaldo.`,
+      html: marco("Restablecer tu contraseña", `
+        <h1 style="margin:0 0 6px;font:700 24px/1.2 Georgia,serif;color:#F3ECD9;">Restablecer tu contraseña</h1>
+        <p style="margin:14px 0 0;">Pediste poner una contraseña nueva en tu Veta Wallet.</p>
+        ${botonCorreo("Poner mi contraseña nueva", verificationLink)}
+        <p style="margin:12px 0 0;font-size:13px;">El enlace vale <strong style="color:#F3ECD9;">quince minutos</strong> y se usa una sola vez.</p>
+        <p style="margin:12px 0 0;font-size:13px;">Si no fuiste vos, no hace falta que hagas nada: sin abrir el enlace, tu contraseña sigue siendo la de siempre.</p>`),
     });
-
-    // Crear el cuerpo del correo electrónico
-    const mailOptions = {
-      from: process.env.OUTLOOK_USER,
-      to: user.email,
-      subject: "Restablecimiento de contraseña",
-      text: `Para restablecer tu contraseña, haz clic en el siguiente enlace: ${verificationLink}`,
-    };
-
-    // Enviar el correo electrónico
-    await transporter.sendMail(mailOptions);
+    // El fallo se registra pero NO cambia la respuesta: decir «no se pudo
+    // enviar» confirmaría que la cuenta existe, que es justo lo que la
+    // respuesta genérica evita.
+    if (!r.ok) console.error("[recuperarPassword] el correo no salió:", r.motivo);
 
     respuestaGenerica();
   } catch (error) {

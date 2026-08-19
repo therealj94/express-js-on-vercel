@@ -544,6 +544,32 @@ es: {
      regla de cobre del copy: AUKA SIGUE el precio de la onza — jamás «es una
      onza» ni «respaldado», que el expediente legal lo desmiente (Decisión 4).
      La fecha del cierre vive en app.js (SORTEO_FIN) y en las bases. */
+  // ── Recuperar la contraseña ──────────────────────────────────────────────
+  // Ninguna frase de acá confirma si un correo está registrado: el servidor
+  // contesta lo mismo en los dos casos para que nadie pueda averiguar quién
+  // tiene cuenta, y estos textos tienen que sostener esa misma propiedad.
+  'rc.olvide': '¿Olvidaste tu contraseña?',
+  'rc.pedirT': 'Recuperar tu contraseña',
+  'rc.pedirP': 'Escribí tu correo y te mandamos un enlace para poner una contraseña nueva. El enlace vale quince minutos.',
+  'rc.pedirBtn': 'Enviarme el enlace',
+  'rc.enviando': 'Enviando…',
+  'rc.enviadoT': 'Revisá tu correo',
+  'rc.enviadoP': 'Si ese correo corresponde a una cuenta, ya salió el enlace para poner una contraseña nueva. Mirá también la carpeta de correo no deseado.',
+  'rc.nuevaT': 'Poné tu contraseña nueva',
+  'rc.nuevaP': 'Que tenga al menos ocho caracteres. Nadie del equipo te la va a pedir nunca.',
+  'rc.claveNueva': 'Contraseña nueva',
+  'rc.claveOtra': 'Repetila',
+  'rc.verClave': 'Mostrar contraseña',
+  'rc.nuevaBtn': 'Guardar y entrar',
+  'rc.guardando': 'Guardando…',
+  'rc.noCoinciden': 'Las dos contraseñas no son iguales.',
+  'rc.sinToken': 'Este enlace no trae el código. Pedí uno nuevo desde «¿Olvidaste tu contraseña?».',
+  'rc.vencido': 'El enlace ya venció o se usó. Pedí uno nuevo y usalo dentro de los quince minutos.',
+  'rc.falloGuardar': 'No se pudo guardar. Probá otra vez en un momento.',
+  'rc.listoT': 'Contraseña cambiada',
+  'rc.listoP': 'Ya podés entrar con tu contraseña nueva.',
+  'rc.listoBtn': 'Entrar',
+
   'sor.k': 'Sorteo · Orden Global',
   'sor.t': 'Podrías ganar 1 AUKA',
   'sor.p': 'Sigue el precio de la onza de oro. Te verificás con Genesis ID y ya estás participando.',
@@ -1049,6 +1075,32 @@ en: {
   'perf.eNombre': 'Type a name.',
 
   /* twin of the Spanish sorteo block — keep both in step */
+  // ── Password recovery ────────────────────────────────────────────────────
+  // None of these strings confirms whether an email is registered: the server
+  // answers the same either way so nobody can enumerate accounts, and this
+  // copy has to hold that same property.
+  'rc.olvide': 'Forgot your password?',
+  'rc.pedirT': 'Recover your password',
+  'rc.pedirP': 'Enter your email and we will send you a link to set a new password. The link is valid for fifteen minutes.',
+  'rc.pedirBtn': 'Send me the link',
+  'rc.enviando': 'Sending…',
+  'rc.enviadoT': 'Check your email',
+  'rc.enviadoP': 'If that email belongs to an account, the link to set a new password is on its way. Check your spam folder too.',
+  'rc.nuevaT': 'Set your new password',
+  'rc.nuevaP': 'At least eight characters. Nobody on the team will ever ask you for it.',
+  'rc.claveNueva': 'New password',
+  'rc.claveOtra': 'Repeat it',
+  'rc.verClave': 'Show password',
+  'rc.nuevaBtn': 'Save and sign in',
+  'rc.guardando': 'Saving…',
+  'rc.noCoinciden': 'The two passwords do not match.',
+  'rc.sinToken': 'This link has no code in it. Request a new one from «Forgot your password?».',
+  'rc.vencido': 'The link has expired or was already used. Request a new one and use it within fifteen minutes.',
+  'rc.falloGuardar': 'Could not save. Try again in a moment.',
+  'rc.listoT': 'Password changed',
+  'rc.listoP': 'You can sign in with your new password now.',
+  'rc.listoBtn': 'Sign in',
+
   'sor.k': 'Raffle · Orden Global',
   'sor.t': 'You could win 1 AUKA',
   'sor.p': 'It tracks the price of one ounce of gold. Verify with Genesis ID and you are in.',

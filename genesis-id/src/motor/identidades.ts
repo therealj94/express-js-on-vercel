@@ -21,6 +21,8 @@
 import { store } from '../store.js'
 import { gidPersonal, id } from '../lib/uid.js'
 import { registrar } from '../audit/bitacora.js'
+import { enviarSinEsperar } from '../correo/enviar.js'
+import { identidadAprobada, identidadRechazada } from '../correo/plantillas.js'
 import { revisarDocumento } from '../kyc/documento.js'
 import { parecidoNombres } from '../lib/texto.js'
 import { cotejar, sinProveedor, cotejoManual, biometriaConfigurada } from '../kyc/biometria.js'
@@ -618,6 +620,19 @@ export async function aprobar(
     anulacion: anulacion ?? null,
     bloqueosAnulados: anulacion ? bloqueos : [],
   })
+  /* El aviso sale DESPUES de guardar y sin esperarlo. La pantalla decía «suele
+     tardar menos de 24 horas» y después no avisaba nadie: la persona tenía que
+     adivinar cuándo volver a mirar. Va sin `await` a propósito — un SES lento
+     o caído no puede dejar colgado al operador ni, mucho menos, impedir una
+     aprobación que ya está escrita en el expediente. */
+  enviarSinEsperar(
+    identidadAprobada({
+      email: identidad.email,
+      nombreLegal: identidad.nombreLegal,
+      gid: identidad.gid,
+    }),
+    `aprobación de ${identidad.id}`,
+  )
   return { ok: true, identidad }
 }
 
@@ -631,6 +646,17 @@ export async function rechazar(idn: string, operador: Operador, motivo: string):
   await archivarFotosDocumento(identidad)
   await store.guardarYa()
   registrar(operador.email, 'identidad.rechazada', identidad.id, { motivo })
+  /* El rechazo se avisa con el motivo COMPLETO. Sin este correo la persona
+     queda esperando indefinidamente un trámite que ya se cerró, y la pantalla
+     solo se lo dice si vuelve a entrar por su cuenta. */
+  enviarSinEsperar(
+    identidadRechazada({
+      email: identidad.email,
+      nombreLegal: identidad.nombreLegal,
+      motivo,
+    }),
+    `rechazo de ${identidad.id}`,
+  )
   return { ok: true, identidad }
 }
 

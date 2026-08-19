@@ -1671,6 +1671,19 @@ body.en-ventana .lienzo::before{
 .sb-bases:hover{color:var(--oroLt)}
 .sorteo-boleto{border-color:var(--linea);position:relative;overflow:hidden;
   background:radial-gradient(120% 160% at 0% 0%,rgba(201,169,97,.2),rgba(6,40,42,.6) 60%)}
+/* «Olvidé mi contraseña»: discreto, pero un objetivo táctil de verdad — quien
+   lo busca ya está frustrado y no hay que hacerle apuntar a un pelo. */
+.acc-olvide{display:block;width:100%;margin-top:14px;padding:8px;background:none;
+  border:0;color:var(--bruma);font:inherit;font-size:13.5px;text-decoration:underline;
+  text-underline-offset:3px;cursor:pointer}
+.acc-olvide:hover{color:var(--oroLt)}
+/* La pantalla de recuperación va sola y centrada: no tiene columna de venta
+   al lado, porque quien llega acá ya decidió. */
+#reclave{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px 16px}
+.acc-sola{width:100%;max-width:430px}
+.acc-sola h2{font-size:1.35rem;margin-bottom:8px}
+.acc-sola .sello{margin-bottom:18px}
+.acc-sola .pie{margin-bottom:20px}
 .acc-sorteo{margin-top:18px;padding:12px 14px;border-left:2px solid var(--oro);
   font-size:13px;line-height:1.6;color:var(--bruma);
   background:rgba(201,169,97,.08);border-radius:0 10px 10px 0}
@@ -1942,9 +1955,79 @@ body.en-ventana .lienzo::before{
       </div>
       <div id="acc-aviso" class="aviso oculto" role="alert"></div>
       <button class="btn btn-oro btn-full" id="btn-acceso" type="submit"></button>
+      <!-- El olvido de contraseña vive donde ocurre: debajo del campo, en el
+           momento exacto en que alguien se da cuenta de que no la recuerda.
+           Solo se enseña en «entrar»: en «crear» no hay nada que recuperar. -->
+      <button type="button" class="acc-olvide" id="acc-olvide" data-t="rc.olvide"
+              onclick="VETA.reclavePedir()"></button>
       <p class="acc-legal" id="acc-legal"></p>
     </form>
     <button class="acc-volver" data-t="acc.volver" onclick="VETA.ir('bienvenida')"></button>
+  </div>
+</section>
+
+<!-- ══════════════════════ RECUPERAR LA CONTRASEÑA ═════════════════════════
+     Existe porque el correo de recuperación llevaba a una dirección que esta
+     app no atendía: quien pulsaba el enlace caía en la portada, sin pantalla
+     donde poner la clave nueva, y el token se le vencía en quince minutos.
+     Son tres momentos y se enseña uno solo cada vez. -->
+<section id="reclave" class="oculto">
+  <div class="acc vidrio acc-sola">
+    <div class="sello">Orden Global</div>
+
+    <!-- 1 · pedirlo -->
+    <div id="rc-pedir">
+      <h2 data-t="rc.pedirT"></h2>
+      <p class="pie" data-t="rc.pedirP"></p>
+      <form id="form-rc-pedir" autocomplete="on">
+        <div class="campo">
+          <label for="rc-correo" data-t="acc.correo"></label>
+          <input id="rc-correo" name="email" type="email" autocomplete="email"
+                 inputmode="email" placeholder="tu@correo.com" required>
+        </div>
+        <div id="rc-aviso1" class="aviso oculto" role="alert"></div>
+        <button class="btn btn-oro btn-full" id="btn-rc-pedir" type="submit" data-t="rc.pedirBtn"></button>
+      </form>
+    </div>
+
+    <!-- 2 · la clave nueva, con el token del correo -->
+    <div id="rc-nueva" class="oculto">
+      <h2 data-t="rc.nuevaT"></h2>
+      <p class="pie" data-t="rc.nuevaP"></p>
+      <form id="form-rc-nueva" autocomplete="on">
+        <div class="campo">
+          <label for="rc-clave" data-t="rc.claveNueva"></label>
+          <div class="campo-pw">
+            <input id="rc-clave" name="new-password" type="password"
+                   autocomplete="new-password" placeholder="••••••••" required minlength="8">
+            <button type="button" class="ojo" id="btn-ojo-rc" aria-label="Mostrar contraseña"
+                    onclick="VETA.ojoReclave()">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div id="rc-fuerza-caja" class="oculto">
+            <div class="fuerza"><i id="rc-fuerza-barra"></i></div>
+            <div class="fuerza-lbl" id="rc-fuerza-lbl"></div>
+          </div>
+        </div>
+        <div class="campo">
+          <label for="rc-clave2" data-t="rc.claveOtra"></label>
+          <input id="rc-clave2" name="new-password-confirm" type="password"
+                 autocomplete="new-password" placeholder="••••••••" required minlength="8">
+        </div>
+        <div id="rc-aviso2" class="aviso oculto" role="alert"></div>
+        <button class="btn btn-oro btn-full" id="btn-rc-nueva" type="submit" data-t="rc.nuevaBtn"></button>
+      </form>
+    </div>
+
+    <!-- 3 · listo -->
+    <div id="rc-listo" class="oculto">
+      <h2 data-t="rc.listoT"></h2>
+      <p class="pie" data-t="rc.listoP"></p>
+      <button class="btn btn-oro btn-full" data-t="rc.listoBtn" onclick="VETA.reclaveSalir()"></button>
+    </div>
+
+    <button class="acc-volver" data-t="acc.volver" onclick="VETA.reclaveSalir()"></button>
   </div>
 </section>
 
