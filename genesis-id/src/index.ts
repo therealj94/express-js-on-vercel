@@ -9,7 +9,7 @@ import { asegurarAplicaciones, alinearAlcances } from './auth/aplicaciones.js'
 import { prepararTelemetria, hayMongo as telemetriaEnMongo } from './analitica/eventos.js'
 import { estadoListas, hayListas, iniciarListas } from './aml/listas.js'
 import { cargarGafiDesdeMongo, estadoGafi, listasVencidas } from './aml/paises.js'
-import { correoEncendido } from './correo/enviar.js'
+import { correoEncendido, correoRemitente } from './correo/enviar.js'
 import { biometriaConfigurada, proveedorBiometria } from './kyc/biometria.js'
 import { migrarFotosDelEstado, prepararCaducidad, conservacionConfigurada } from './kyc/fotosDocumento.js'
 import { migrarFotosCredencialDelEstado } from './kyc/fotoCredencial.js'
@@ -198,7 +198,7 @@ app.get('/healthz', (_req, res) => {
          y por tanto no es secreto; la llave y el secreto no se publican ni
          en parte — /healthz es público. */
       correoEncendido: correoEncendido(),
-      correoDe: correoEncendido() ? (process.env.GENESIS_SES_DE || null) : null,
+      correoDe: correoEncendido() ? correoRemitente() : null,
       /* CUAL de las dos falta, no solo que algo falta. Con un booleano suelto
          hay que adivinar entre un nombre mal escrito, una variable pegada en
          el servicio equivocado y ninguna de las dos puestas. Van los NOMBRES

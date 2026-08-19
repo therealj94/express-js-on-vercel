@@ -50,6 +50,11 @@ const SECRETO = process.env.GENESIS_SES_SECRETO || ''
 /** Sin credenciales no se envía nada y no se rompe nada. */
 export const correoEncendido = (): boolean => Boolean(LLAVE && SECRETO)
 
+/** El remitente que se va a usar de verdad, con el valor por defecto ya
+ *  aplicado. Lo usa /healthz: leer la variable de entorno a secas decía
+ *  «no hay remitente» cuando sí lo hay, que es peor que no decir nada. */
+export const correoRemitente = (): string => DE
+
 export interface Carta {
   para: string
   asunto: string
