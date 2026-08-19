@@ -1,7 +1,12 @@
 # Encender el correo del sistema — lo que falta y quién lo hace
 
 > Estado al 19 de agosto de 2026. Lo marcado ✅ ya está hecho; lo marcado ⏳
-> necesita a una persona con acceso a cPanel o a la consola de AWS.
+> necesita a una persona con acceso a la consola de AWS.
+>
+> **Los cuatro registros de cPanel quedaron aplicados el 19-ago** (serial de la
+> zona 2026081001 → 2026081900). Los tres CNAME ya resuelven en DNS público; el
+> SPF nuevo está en el autoritativo y termina de propagar en cuatro horas por
+> el TTL. Hay respaldo de la zona anterior fuera del repositorio.
 
 Hasta hoy el sistema mandaba correo desde **dos buzones de consumidor**: una
 cuenta de Gmail para la confirmación de cuenta y una de Outlook para el
@@ -33,7 +38,7 @@ siendo lo correcto y funciona bien.
 
 ---
 
-## Paso 1 ⏳ — cuatro registros en cPanel
+## Paso 1 ✅ HECHO — cuatro registros en cPanel
 
 En **cPanel → Editor de zona DNS** del dominio `ordenglobal.org`.
 
