@@ -454,6 +454,32 @@ export async function adjuntarBiometria(
       })
     : sinProveedor()
 
+  /* EL ROSTRO SE QUEDA, AUNQUE NADIE LLAME A `/foto`.
+     El retrato de la credencial se guardaba SOLO por su ruta aparte, y resulta
+     que no la llama nadie: ni la billetera web ni la app la usan, así que
+     ninguna identidad tenía rostro archivado. El operador abría el expediente
+     para decidir y encontraba «no aportado» donde va la cara — o sea que se le
+     pedía aprobar a alguien sin haberle visto nunca la cara, con su nombre
+     quedando escrito en la bitácora.
+
+     El selfie del cotejo estaba ahí todo el tiempo: llega en esta misma
+     petición, se compara contra el documento y se tiraba. Ahora, si no hay
+     retrato, se conserva ESE. No pisa nunca uno que ya exista: una app que
+     suba un retrato propio y mejor sigue mandando sobre este.
+
+     Va sin `await` bloqueante y con su propio catch: el cotejo biométrico ya
+     está hecho y guardado a esta altura, y un tropiezo del almacén de fotos no
+     puede tumbar una verificación. Peor un rostro que falta que un trámite que
+     se cae. */
+  if (entrada.selfie) {
+    leerFoto(identidad.id)
+      .then((ya) => (ya ? null : guardarFotoCredencial(identidad.id, entrada.selfie, origen)))
+      .then((r) => {
+        if (r && !r.ok) console.error('[identidades] no se conservó el rostro del cotejo:', r.error)
+      })
+      .catch((e) => console.error('[identidades] no se conservó el rostro del cotejo:', e?.message))
+  }
+
   if (identidad.estado === 'documento') identidad.estado = 'biometria'
   recalcularRiesgo(identidad)
   identidad.actualizadaEn = ahora()

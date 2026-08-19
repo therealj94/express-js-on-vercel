@@ -1058,6 +1058,37 @@ VISTAS.bitacora = async function () {
            <span class="num">${esc(d.anclaje.hash.slice(0, 32))}…</span>`
         : `La cadena se rompe en la entrada ${d.cadena.rotaEn}. Alguien modificó o borró el registro.`}</div>
     </div>
+    ${!d.cadena.integra ? `
+    <div class="tarjeta" style="border-left:3px solid var(--warn,#C9A961);margin-top:14px">
+      <h3 style="margin:0 0 8px">Declarar la rotura</h3>
+      <p style="margin:0 0 6px;font-size:13px;color:var(--mut)">
+        Sellar <b>no arregla ni borra nada</b>: deja las entradas rotas exactamente como
+        están. Lo único que hace es añadir al final una entrada que dice dónde estaba la
+        rotura, cuántas entradas había y quién lo declara — y desde ahí la cadena vuelve a
+        ser verificable.
+      </p>
+      <p style="margin:0 0 12px;font-size:13px;color:var(--mut)">
+        Mientras no se selle, cada entrada nueva se suma a un tramo que ya está roto.
+        El motivo queda escrito para siempre y se exporta a los auditores.
+      </p>
+      <div class="campo">
+        <label for="sello-motivo">Motivo (mínimo 10 caracteres)</label>
+        <input id="sello-motivo" maxlength="300"
+               placeholder="Rotura heredada en la entrada ${d.cadena.rotaEn}; origen no determinado">
+      </div>
+      <div id="sello-aviso" class="aviso oculto" style="margin:10px 0"></div>
+      <button class="btn" id="sello-btn" onclick="sellarBitacora()">Sellar y abrir tramo nuevo</button>
+    </div>` : ''}
+    ${d.cadena.sellos && d.cadena.sellos.length ? `
+    <div class="tarjeta">
+      <h3 style="margin:0 0 8px">Roturas ya declaradas</h3>
+      <table><thead><tr><th>Fecha</th><th>Rotura en</th><th>Entradas hasta entonces</th></tr></thead><tbody>
+      ${d.cadena.sellos.map((s) => `<tr>
+        <td style="font-size:11.5px">${fecha(s.fecha)}</td>
+        <td class="num">${s.rotaEn ?? '—'}</td>
+        <td class="num">${s.entradasAntes}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>` : ''}
     <div class="tarjeta scroll">
       <table><thead><tr><th>Fecha</th><th>Actor</th><th>Acción</th><th>Objeto</th><th>Detalle</th></tr></thead><tbody>
       ${d.entradas.map((e, n) => `<tr onclick="verEntrada(${n})">
@@ -1070,6 +1101,41 @@ VISTAS.bitacora = async function () {
       </tr>`).join('')}</tbody></table>
     </div>`
   window._bitacora = d.entradas
+}
+
+/* Sellar la bitácora.
+ *
+ * La ruta existía desde hace tiempo y no había forma de llamarla: sin botón,
+ * declarar una rotura exigía armar una petición a mano con la sesión de un
+ * operador. Por eso la cadena llevaba mil entradas rota y cero sellos.
+ *
+ * Se pide confirmación explícita porque el sello queda en el registro para
+ * siempre y lleva el nombre de quien lo firma. */
+async function sellarBitacora() {
+  const inp = $('#sello-motivo'), btn = $('#sello-btn'), av = $('#sello-aviso')
+  const motivo = (inp.value || '').trim()
+  const decir = (txt, clase) => {
+    av.textContent = txt
+    av.className = 'aviso ' + (clase || 'grave')
+    av.classList.toggle('oculto', !txt)
+  }
+  if (motivo.length < 10) return decir('Escribí el motivo: queda en el registro y lo van a leer los auditores.')
+  if (!confirm('Se va a añadir un sello a la bitácora con tu nombre y este motivo.\n\n' +
+               'No borra ni arregla las entradas rotas: las declara.\n\n¿Seguir?')) return
+
+  decir('')
+  btn.disabled = true
+  const antes = btn.textContent
+  btn.textContent = 'Sellando…'
+  try {
+    const r = await api('/panel/bitacora/sellar', { method: 'POST', body: JSON.stringify({ motivo }) })
+    decir(`Sellado. La rotura de la entrada ${r.rotaEn ?? '—'} quedó declarada y la cadena vuelve a encadenar desde acá.`, 'bien')
+    setTimeout(() => VISTAS.bitacora(), 1400)
+  } catch (e) {
+    decir(e.message || 'No se pudo sellar.')
+    btn.disabled = false
+    btn.textContent = antes
+  }
 }
 
 function verEntrada(n) {
