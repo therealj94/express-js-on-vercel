@@ -62,12 +62,25 @@ Es exactamente el mismo tipo de error que el `tORIGEN` de agosto: una regla que
 nadie mira hasta que el CI la señala, semanas después de hacer la cola. La
 diferencia es que esta vez se descubrió en horas y no en semanas.
 
-**Antes de tocar este archivo otra vez, se corren LAS DOS:**
+**Y tampoco son dos: son CUATRO.** Leídas de los flujos de `.github/workflows/`,
+no de memoria. Antes de tocar este archivo otra vez se corren las cuatro:
 
 ```sh
-npx prettier --check '_data/*/*.json'   # formato
-gradle run                              # contenido
+npx prettier --check '_data/*/*.json'                          # prettier_check.yml
+gradle run                                                     # build.yml (completo)
+gradle run --args="verbose singleChainCheck _data/chains/eip155-5550.json"   # build.yml (por archivo)
+cd tools && npm install && node schemaCheck.js                 # validate_json.yml
 ```
+
+Estado con el archivo que está hoy en la rama `patch-1` — descargado del fork,
+no el de acá:
+
+| Comprobación | Resultado |
+| --- | --- |
+| prettier | `All matched files use Prettier code style!` — salida 0 |
+| build completo | `BUILD SUCCESSFUL` — salida 0 |
+| singleChainCheck | `BUILD SUCCESSFUL` — salida 0 |
+| schemaCheck | `Schema check completed successfully` — salida 0 |
 
 ## El CI REAL del repositorio, corrido acá
 
