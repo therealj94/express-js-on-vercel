@@ -93,7 +93,7 @@ En la consola de SES, la identidad `ordenglobal.org` pasa de **Pending** a
 
 ---
 
-## Paso 2 ⏳ — la llave de envío
+## Paso 2 ✅ HECHO — la llave de envío
 
 **El secreto no pasa por el chat ni por el repositorio.** Se crea y se pega
 directo en los paneles:
@@ -120,16 +120,23 @@ normal hasta que la Junta apruebe el gasto.
 
 ---
 
-## Paso 3 ⏳ — desplegar el backend de la billetera
+## Paso 3 ✅ HECHO — desplegar el backend de la billetera
 
-Los cambios del backend (`infra/veta-wallet-backend/`) están escritos y
-commiteados, **pero no desplegados**. Ese despliegue va por `git push heroku` y
-tiene un antecedente: el 12 de agosto un clon desfasado borró funciones de
-producción. Antes de empujar hay que confirmar que este código está al día
-contra lo que corre — para eso existe el agente `cirujano-despliegue`.
+Desplegado el 19-ago como **v86**, siguiendo la regla 2 del LEEME del backend:
+antes de empujar se clonó el remoto de Heroku ENTERO y se comparó contra la
+copia del repositorio. El diff dio exactamente los dos controladores tocados y
+el módulo `lib/correo.js` nuevo, y —lo que importa— **nada existía en Heroku
+que faltara en el repositorio**, así que el despliegue no se llevó nada por
+delante. Es la comprobación que faltó el 12 de agosto.
 
-No corre prisa: sin las llaves del paso 2 el código nuevo no manda nada de
-todas formas, así que el orden correcto es cPanel → llaves → despliegue.
+Se desplegó con `git push heroku` sobre la rama `main`, nunca con un paquete,
+para que el repositorio de Heroku y el código real no se separen.
+
+**Queda una limpieza pendiente:** las variables `GMAIL_USER`, `GMAIL_PASS`,
+`OUTLOOK_USER` y `OUTLOOK_PASS` siguen en la configuración de Heroku y ya no
+las usa nadie. Son credenciales, y el propio código anotaba que estuvieron
+escritas en el repositorio y por tanto siguen expuestas en el historial de git.
+Conviene borrarlas de Heroku y revocarlas en Google y Microsoft.
 
 ---
 
