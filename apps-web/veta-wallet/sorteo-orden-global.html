@@ -8,6 +8,12 @@
 <meta property="og:title" content="Sorteo Orden Global — 1 AUKA">
 <meta property="og:description" content="1 AUKA sigue el precio de la onza de oro. Verificate con Genesis ID y participás.">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://vetawallet.com/sorteo-orden-global">
+<meta property="og:image" content="https://vetawallet.com/sorteo-og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://vetawallet.com/sorteo-og.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23070605'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23D4AF37' stroke-width='2.4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,9 +26,11 @@
    flyer. Que la página se parezca al anuncio del que viene es la mitad de que
    confíen en que llegaron al sitio correcto. */
 :root{
-  --negro:#060505; --carbon:#0D0B09; --carbon2:#141110;
+  --negro:#060505; --carbon:#0D0B09;
   --oro:#D4AF37; --oroAlto:#F7E9BE; --oroBajo:#8B6914;
-  --crema:#F5EFE0; --bruma:#B9AE97; --humo:#7C7365;
+  /* --humo subió de #7C7365: sobre este negro daba 4.2:1 y fallaba AA — y es
+     justo el color del texto legal, lo que más obligación tiene de leerse. */
+  --crema:#F5EFE0; --bruma:#B9AE97; --humo:#958B7C;
   --linea:rgba(212,175,55,.22); --linea2:rgba(245,239,224,.09);
   --ancho:1080px;
 }
@@ -41,8 +49,11 @@ strong{color:var(--crema);font-weight:600}
 a{color:var(--oro)}
 :focus-visible{outline:2px solid var(--oro);outline-offset:3px;border-radius:4px}
 
-.rotulo{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11.5px;
-  letter-spacing:.26em;text-transform:uppercase;color:var(--oro);font-weight:500}
+/* El rótulo del flyer es SERIF espaciada, no mono. La mono es la voz técnica
+   de la billetera; esta página habla con la voz del anuncio. */
+.rotulo{font-family:Cinzel,Georgia,serif;font-size:clamp(12px,2.6vw,15px);
+  letter-spacing:.34em;text-transform:uppercase;color:var(--oro);font-weight:600;
+  text-indent:.34em}
 
 /* ── El héroe ─────────────────────────────────────────────────────────────── */
 .heroe{position:relative;text-align:center;padding:64px 0 78px;overflow:hidden}
@@ -56,54 +67,141 @@ a{color:var(--oro)}
 .filete span:last-child{background:linear-gradient(90deg,var(--oro),transparent)}
 .filete i{color:var(--oro);font-style:normal;font-size:13px}
 
-h1{font-size:clamp(2.3rem,7.6vw,4.4rem);letter-spacing:.005em}
-h1 em{font-style:normal;
-  background:linear-gradient(180deg,#FDF6DC 0%,#E7C86A 42%,#C9A03A 72%,#8B6914 100%);
-  -webkit-background-clip:text;background-clip:text;color:transparent;
+/* El titular del flyer: UNA declaración en romanas, con el «1» fuera de
+   escala. «SORTEAMOS» va en marfil con un baño de luz; el «1» y «AUKA» en el
+   oro degradado. Nada de dos renglones tibios: la frase es el cartel. */
+h1{font-size:clamp(2.2rem,8.4vw,4.9rem);letter-spacing:.02em;font-weight:700;
+  display:flex;align-items:baseline;justify-content:center;gap:.22em;flex-wrap:wrap}
+/* En pantalla angosta el titular quiebra, pero «1 AUKA» quiebra JUNTO:
+   partir el número de su palabra deshace el cartel. */
+h1 .junto{display:inline-flex;align-items:baseline;gap:.18em;white-space:nowrap}
+/* El degradado sobre las letras SOLO donde el motor sabe recortarlo. En un
+   navegador viejo que aplica color:transparent sin recortar el fondo, el
+   titular desaparecía entero — en los teléfonos más pobres, que es justo
+   nuestro público. Base: color sólido; el lujo, dentro del @supports. */
+h1 .palabra{color:#F5EFE0}
+h1 .uno{font-size:1.42em;line-height:.9;color:#E7C86A;
+  filter:drop-shadow(0 4px 18px rgba(212,175,55,.35))}
+h1 .oro{color:#E7C86A}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  h1 .palabra{
+    background:linear-gradient(180deg,#FFFDF4 0%,#F5EFE0 46%,#C9BC9B 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  h1 .uno{
+    background:linear-gradient(180deg,#FDF6DC 0%,#E7C86A 40%,#C9A03A 70%,#8B6914 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  h1 .oro{
+    background:linear-gradient(180deg,#FDF6DC 0%,#E7C86A 42%,#C9A03A 72%,#8B6914 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
 }
-.subheroe{font-size:clamp(1.05rem,2.9vw,1.35rem);color:var(--bruma);margin-top:20px}
+/* La línea de abajo lleva sus filetes a los lados, como en el anuncio.
+   margin-inline auto porque hereda el max-width de p{} y sin él la caja
+   quedaba pegada a la izquierda bajo un titular centrado. */
+.subheroe{display:flex;align-items:center;justify-content:center;gap:18px;
+  font-size:clamp(1rem,2.9vw,1.3rem);color:var(--bruma);margin-top:22px;
+  max-width:none;margin-inline:auto}
+.subheroe span{height:1px;width:clamp(26px,7vw,72px);flex:0 0 auto;
+  background:linear-gradient(90deg,transparent,rgba(212,175,55,.55))}
+.subheroe span:last-child{background:linear-gradient(90deg,rgba(212,175,55,.55),transparent)}
 
 /* La moneda. Dibujada, no una imagen: se ve entera en cualquier pantalla y no
-   pesa nada en una conexión mala, que es donde se abre esto. */
-.moneda{position:relative;width:min(300px,68vw);aspect-ratio:1;margin:44px auto 0}
+   pesa nada en una conexión mala, que es donde se abre esto. El height
+   declarado es la red para los WebView sin aspect-ratio (~2021): donde el
+   ratio existe gana con el width; donde no, el alto la sostiene. */
+.moneda{position:relative;width:min(300px,68vw);height:min(300px,68vw);
+  aspect-ratio:1;margin:44px auto 0}
 .moneda .aureola{position:absolute;inset:-46%;border-radius:50%;
   background:radial-gradient(circle,rgba(212,175,55,.30) 0%,rgba(212,175,55,.09) 40%,transparent 68%)}
-.moneda .disco{position:absolute;inset:0;border-radius:50%;
-  background:radial-gradient(circle at 33% 27%,#FDF6DC 0%,#EBD489 18%,#D4AF37 44%,#A07D24 72%,#6B5010 100%);
-  box-shadow:0 0 0 3px rgba(247,233,190,.30), 0 26px 62px -18px rgba(0,0,0,.9),
-             inset 0 -14px 30px rgba(80,58,10,.45);
+/* La moneda del flyer no es un limón plano: es metal con luz arriba a la
+   izquierda, la panza en ámbar y el borde hundido en sombra. Y lleva su
+   grabado — el aro de trazos finos entre los dos cantos, como el circuito
+   acuñado del anuncio. */
+.moneda .disco{position:absolute;top:0;left:0;width:100%;height:100%;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 32% 25%,#FDF6DC 0%,#F0D98E 14%,#D9B44A 36%,#BC922E 58%,#8F6C1B 80%,#4E390B 100%);
+  box-shadow:0 0 0 3px rgba(247,233,190,.28), 0 30px 70px -18px rgba(0,0,0,.95),
+             inset 0 -18px 38px rgba(60,42,6,.55), inset 0 10px 22px rgba(255,250,230,.35);
   display:flex;flex-direction:column;align-items:center;justify-content:center}
-.moneda .canto{position:absolute;inset:7.5%;border-radius:50%;
-  border:2px solid rgba(107,80,16,.42)}
-.moneda .canto2{position:absolute;inset:11%;border-radius:50%;
-  border:1px dashed rgba(107,80,16,.30)}
-.moneda b{font-family:Cinzel,serif;font-size:clamp(30px,8.6vw,52px);color:#3A2B06;
-  letter-spacing:.04em;line-height:1;position:relative;z-index:2;font-weight:700}
-.moneda i{font-family:'JetBrains Mono',monospace;font-style:normal;
-  font-size:clamp(11px,2.7vw,15px);color:#5A4410;letter-spacing:.3em;margin-top:9px;
-  position:relative;z-index:2}
-/* Los arcos orbitales del flyer. */
-.moneda .orbe{position:absolute;inset:-19%;border-radius:50%;
-  border:1px solid rgba(212,175,55,.24);border-left-color:transparent;
-  border-bottom-color:transparent;transform:rotate(-28deg)}
-.moneda .orbe.dos{inset:-31%;transform:rotate(142deg);border-color:rgba(212,175,55,.15);
-  border-left-color:transparent;border-bottom-color:transparent}
-
-.precio{margin-top:48px}
-.precio .n{font-family:'JetBrains Mono',monospace;font-weight:700;
-  font-size:clamp(2.6rem,10vw,4.6rem);line-height:1;letter-spacing:-.02em;
-  background:linear-gradient(180deg,#FDF6DC,#E7C86A 55%,#B08D2C);
-  -webkit-background-clip:text;background-clip:text;color:transparent;
-  font-variant-numeric:tabular-nums}
-.precio .pie{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--humo);margin-top:16px}
+.moneda .canto{position:absolute;inset:6.5%;border-radius:50%;
+  border:2px solid rgba(90,64,12,.5);
+  box-shadow:inset 0 1px 1px rgba(255,246,214,.4)}
+.moneda .canto2{position:absolute;inset:15%;border-radius:50%;
+  border:1px solid rgba(90,64,12,.34)}
+/* El grabado: trazos radiales cortos en el aro entre los dos cantos, hechos
+   con un conic repetido y una máscara anular. El fondo vive DENTRO del
+   @supports de la máscara: sin ella los trazos cubrían la cara entera de la
+   moneda — sucia, no lisa. Y closest-side, porque la radial por defecto mide
+   a la esquina y el aro salía a mitad de camino. */
+.moneda .grabado{position:absolute;top:7.5%;left:7.5%;width:85%;height:85%;
+  inset:7.5%;border-radius:50%}
+@supports ((mask:linear-gradient(#000 0 0)) or (-webkit-mask:linear-gradient(#000 0 0))){
+  .moneda .grabado{
+    background:repeating-conic-gradient(rgba(74,54,8,.4) 0deg .8deg,transparent .8deg 4.6deg);
+    -webkit-mask:radial-gradient(circle closest-side,transparent 62%,#000 63%,#000 88%,transparent 89%);
+    mask:radial-gradient(circle closest-side,transparent 62%,#000 63%,#000 88%,transparent 89%)}
+}
+.moneda b{font-family:Cinzel,Georgia,serif;font-size:clamp(30px,8.6vw,52px);color:#43310A;
+  letter-spacing:.04em;line-height:1;position:relative;z-index:2;font-weight:700;
+  text-shadow:0 1px 0 rgba(255,244,206,.45), 0 -1px 1px rgba(46,32,4,.5)}
+.moneda i{font-family:Cinzel,Georgia,serif;font-style:normal;font-weight:600;
+  font-size:clamp(12px,2.9vw,17px);color:#5A4410;letter-spacing:.34em;margin-top:9px;
+  text-indent:.34em;position:relative;z-index:2;
+  text-shadow:0 1px 0 rgba(255,244,206,.4)}
+/* Las órbitas del flyer: ELIPSES en perspectiva, no círculos planos. El truco
+   del delante/detrás es dibujar la elipse entera detrás de la moneda y encima
+   una copia recortada a su mitad baja: el anillo entra por atrás y sale por
+   delante, como en el anuncio. Las partículas van clavadas a mano sobre la
+   órbita — son seis puntos, no hace falta más. */
+/* Base SEGURA del anillo: borde dorado simple, sin fondo. El truco fino del
+   degradado-en-el-borde va dentro del @supports — sin él, en un WebView sin
+   máscaras, el fondo rellenaba la elipse ENTERA y plantaba un óvalo macizo
+   encima de la moneda. Lo mismo con la copia de adelante: su z-index alto
+   solo existe donde existe el clip-path que la recorta. */
+.moneda .anillo{position:absolute;left:50%;top:50%;width:172%;height:58%;
+  transform:translate(-50%,-50%) rotate(-14deg);border-radius:50%;
+  border:1.5px solid rgba(231,200,106,.45);
+  filter:drop-shadow(0 0 6px rgba(231,200,106,.5));z-index:0}
+@supports ((-webkit-mask-composite:xor) or (mask-composite:exclude)){
+  .moneda .anillo{border-color:transparent;
+    background:linear-gradient(100deg,rgba(212,175,55,0) 8%,rgba(231,200,106,.75) 30%,rgba(253,246,220,.95) 50%,rgba(231,200,106,.75) 70%,rgba(212,175,55,0) 92%) border-box;
+    -webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);
+    mask-composite:exclude}
+}
+@supports (clip-path:inset(0)){
+  .moneda .anillo.frente{z-index:3;clip-path:inset(52% 0 0 0)}
+}
+.moneda .anillo.lejos{width:196%;height:70%;transform:translate(-50%,-50%) rotate(-14deg);
+  opacity:.4;filter:none}
+.moneda .mota{position:absolute;width:5px;height:5px;border-radius:50%;
+  background:#FDF6DC;box-shadow:0 0 8px 2px rgba(231,200,106,.85);z-index:3}
+.moneda .mota.m2{width:3px;height:3px;opacity:.85}
+.moneda .mota.m3{width:4px;height:4px;opacity:.7}
+/* El precio del flyer va en la MISMA romana del titular, con el «USD» chico a
+   su lado — no en mono. La cifra es parte del cartel, no una lectura técnica. */
+.precio{margin-top:46px}
+.precio .n{font-family:Cinzel,Georgia,serif;font-weight:700;line-height:1;
+  font-size:clamp(2.7rem,10.5vw,4.8rem);letter-spacing:.01em;color:#E7C86A;
+  filter:drop-shadow(0 6px 24px rgba(212,175,55,.28))}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  .precio .n{
+    background:linear-gradient(180deg,#FDF6DC 0%,#E7C86A 48%,#C9A03A 76%,#8B6914 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+}
+.precio .n small{font-size:.44em;font-weight:600;letter-spacing:.06em;margin-right:.18em}
+.precio .pie{font-size:12.5px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--bruma);margin-top:18px;font-weight:500}
 
 .botones{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:44px}
+/* El botón del flyer: una PÍLDORA de oro macizo con el filo de luz arriba y la
+   sombra del metal abajo, dentro de un aro fino. Nada de esquinas de 12px. */
 .bt{display:inline-flex;align-items:center;justify-content:center;gap:10px;
-  padding:19px 38px;border-radius:12px;font-weight:700;font-size:17px;
+  padding:20px 44px;border-radius:999px;font-weight:700;font-size:17.5px;
   text-decoration:none;border:1px solid transparent;transition:transform .16s ease,box-shadow .16s ease}
-.bt.oro{background:linear-gradient(180deg,#F7E9BE,#D4AF37 52%,#A98523);color:#241A05;
-  box-shadow:0 12px 34px -14px rgba(212,175,55,.7)}
+.bt.oro{color:#241A05;
+  background:linear-gradient(180deg,#FBF0CD 0%,#EDD387 26%,#D4AF37 58%,#A98523 88%,#8B6914 100%);
+  border-color:rgba(253,246,220,.55);
+  box-shadow:0 0 0 4px rgba(212,175,55,.14), 0 16px 40px -14px rgba(212,175,55,.75),
+             inset 0 2px 3px rgba(255,252,238,.85), inset 0 -3px 6px rgba(90,64,10,.5)}
 .bt.hueco{border-color:var(--linea);color:var(--crema);background:rgba(245,239,224,.04)}
 .bt:hover{transform:translateY(-2px)}
 @media (prefers-reduced-motion:reduce){.bt:hover{transform:none}}
@@ -115,8 +213,7 @@ h2{font-size:clamp(1.6rem,4.2vw,2.3rem);margin-bottom:18px}
 section p{margin-bottom:1em}
 
 .rejilla{display:grid;gap:16px;margin-top:26px}
-@media(min-width:800px){.rejilla.tres{grid-template-columns:repeat(3,1fr)}
-  .rejilla.dos{grid-template-columns:1fr 1fr}}
+@media(min-width:800px){.rejilla.tres{grid-template-columns:repeat(3,1fr)}}
 .tarjeta{background:var(--carbon);border:1px solid var(--linea2);border-radius:12px;padding:26px 24px}
 .tarjeta h3{font-size:1.12rem;margin-bottom:10px;color:var(--crema)}
 .tarjeta p{font-size:15.4px;margin-bottom:0}
@@ -153,40 +250,62 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;font-size:14p
   <canvas id="chispas" aria-hidden="true"></canvas>
   <div class="env">
     <div class="rotulo">Sorteo Orden Global</div>
-    <div class="filete"><span></span><i>&#10022;</i><span></span></div>
+    <div class="filete" aria-hidden="true"><span></span><i>&#10022;</i><span></span></div>
 
-    <h1>Podrías ganar<br><em>1 AUKA</em></h1>
-    <p class="subheroe" style="margin-inline:auto">Sigue el precio de la onza de oro</p>
+    <h1><span class="palabra">SORTEAMOS</span><span class="junto"><span class="uno">1</span><span class="oro">AUKA</span></span></h1>
+    <p class="subheroe"><span></span>Sigue el precio de la onza de oro<span></span></p>
 
-    <div class="moneda">
+    <!-- Decorativa entera: el lector de pantalla no tiene por qué anunciar
+         «AUKA ORO» suelto entre el subtítulo y el precio. -->
+    <div class="moneda" aria-hidden="true">
       <div class="aureola"></div>
-      <div class="orbe"></div>
-      <div class="orbe dos"></div>
+      <div class="anillo lejos"></div>
+      <div class="anillo"></div>
       <div class="disco">
         <div class="canto"></div>
+        <div class="grabado"></div>
         <div class="canto2"></div>
         <b>AUKA</b>
         <i>ORO</i>
       </div>
+      <div class="anillo frente"></div>
+      <!-- Las partículas sobre la órbita, clavadas a mano como en el anuncio. -->
+      <div class="mota" style="left:-6%;top:34%"></div>
+      <div class="mota m2" style="left:12%;top:78%"></div>
+      <div class="mota m3" style="left:88%;top:84%"></div>
+      <div class="mota m2" style="left:104%;top:42%"></div>
+      <div class="mota m3" style="left:70%;top:-4%"></div>
+      <div class="mota m2" style="left:24%;top:2%"></div>
     </div>
 
+    <!-- El precio arranca con la última referencia MEDIDA y su fecha; si el
+         feed contesta, el script de abajo lo pone al día y la etiqueta pasa a
+         decir «hoy». Nunca un número inventado: o es de hoy, o lleva su fecha. -->
     <div class="precio">
-      <div class="n">USD 4.340,50</div>
-      <div class="pie">Referencia de la onza &middot; 19 de agosto de 2026</div>
+      <div class="n"><small>USD</small><span id="onza">4.340,50</span></div>
+      <div class="pie" id="onza-pie">Referencia de la onza &middot; 19 de agosto de 2026</div>
     </div>
+
+    <div class="filete" style="margin:38px 0 0" aria-hidden="true"><span></span><i>&#10022;</i><span></span></div>
 
     <!-- La cuenta atrás. La fecha vive también en app.js (SORTEO_FIN) y en la
-         fila «Cuándo» de las bases: tres sitios, una sola fecha. -->
-    <div style="margin-top:34px">
+         fila «Cuándo» de las bases: tres sitios, una sola fecha. El div trae
+         la fecha ESCRITA de fábrica: sin JS la página informa igual, no
+         parece rota con un rótulo colgando sobre un hueco. -->
+    <div style="margin-top:26px">
       <div class="rotulo" style="font-size:12px">Termina en</div>
-      <div id="cuenta" style="font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:clamp(1.5rem,5vw,2.3rem);color:var(--oroAlto);margin-top:10px" aria-live="off"></div>
+      <div id="cuenta" style="font-family:'JetBrains Mono',monospace;font-weight:500;font-variant-numeric:tabular-nums;font-size:clamp(1.5rem,5vw,2.3rem);color:var(--oroAlto);margin-top:10px" aria-live="off">9 de septiembre de 2026 · 23:59:59 (UTC−6)</div>
     </div>
 
+    <!-- El verbo de los botones es VERIFICATE, no «registrate»: las bases dan
+         la participación por la verificación completada, y el botón es lo que
+         la gente lee y lo que un abogado cita. -->
     <div class="botones">
-      <a class="bt oro" href="https://app.vetawallet.com">Crear mi cuenta y participar</a>
+      <a class="bt oro" href="https://app.vetawallet.com">Verificate con Genesis ID</a>
       <a class="bt hueco" href="https://app.vetawallet.com">Ya tengo cuenta</a>
     </div>
-    <p class="trasbotones">Te verificás con Genesis ID y ya estás participando. No hay que comprar nada.</p>
+    <p class="trasbotones">Te verificás con Genesis ID y ya estás participando. No hay que comprar nada.<br>
+      Solo mayores de 18 años · aplican las <a href="#bases">bases del sorteo</a></p>
   </div>
 </header>
 
@@ -194,11 +313,14 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;font-size:14p
 
 <section>
   <div class="env">
-    <h2>Y lo podés gastar en cualquier parte del mundo</h2>
+    <!-- «en línea» va en el TITULAR, no solo en el aviso: el que escanea lee
+         los h2, y un titular que promete tienda física sobre una tarjeta
+         virtual es la sobrepromesa que el aviso de abajo no alcanza a borrar. -->
+    <h2>Y lo podés gastar en línea, en todo el mundo</h2>
     <p>Lo que ganás no se queda quieto en una pantalla. Dentro de Veta Wallet lo canjeás
       a ORIGEN y lo cargás en tu <strong>tarjeta Visa virtual de Orden Global</strong>.</p>
-    <p>Con esa tarjeta comprás en <strong>cualquier comercio del mundo que acepte Visa</strong>:
-      tiendas en línea, servicios, suscripciones, pasajes. Sin cuenta bancaria, sin
+    <p>Con esa tarjeta comprás en <strong>cualquier comercio en línea del mundo que acepte
+      Visa</strong>: tiendas, servicios, suscripciones, pasajes. Sin cuenta bancaria, sin
       trámite en una sucursal, desde el teléfono.</p>
 
     <div class="aviso">
@@ -214,8 +336,8 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;font-size:14p
   <div class="env">
     <h2>Qué es AUKA, sin vueltas</h2>
     <p>AUKA es un token que <strong>sigue el precio de una onza de oro</strong>. Sube el
-      oro, sube AUKA. Baja el oro, baja AUKA. Es la forma de tener exposición al oro desde
-      el teléfono, sin comprar una onza entera y sin tener que guardarla vos.</p>
+      oro, sube AUKA. Baja el oro, baja AUKA. Es la forma de seguir el precio del oro
+      desde el teléfono, sin comprar ni guardar metal físico.</p>
     <p><strong>No te entrega el metal.</strong> No te llega una barrita por correo: sigue
       el precio. Te lo decimos nosotros antes de que lo preguntes, porque un sorteo que
       empieza aclarando lo que no es se puede creer en todo lo demás.</p>
@@ -239,7 +361,8 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;font-size:14p
       <div class="tarjeta">
         <span class="num">03</span>
         <h3>Ya estás adentro</h3>
-        <p>Te aparece en pantalla que estás participando. Invitá a alguien y sumás otra participación.</p>
+        <p>Te aparece en pantalla que estás participando. Invitá a alguien: cuando
+          complete su verificación, sumás otra participación.</p>
       </div>
     </div>
 
@@ -309,8 +432,9 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;font-size:14p
     <h2>Cinco minutos y estás adentro</h2>
     <p style="margin-inline:auto">No hay que comprar nada. No hay que depositar nada.</p>
     <div class="botones">
-      <a class="bt oro" href="https://app.vetawallet.com">Crear mi cuenta y participar</a>
+      <a class="bt oro" href="https://app.vetawallet.com">Verificate con Genesis ID y participá</a>
     </div>
+    <p class="trasbotones">Solo mayores de 18 años · aplican las <a href="#bases">bases del sorteo</a></p>
   </div>
 </section>
 
@@ -398,10 +522,27 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;font-size:14p
 
   medir();
   pintar(0);
-  var reloj;
+
+  /* Con el héroe fuera de pantalla la animación DESCANSA: quien está leyendo
+     las bases no tiene por qué pagar CPU y batería por unas chispas que no
+     ve. Al volver, arranca de nuevo. */
+  if ('IntersectionObserver' in window && !quieto) {
+    new IntersectionObserver(function (entradas) {
+      var seVe = entradas[0].isIntersecting;
+      if (!seVe && raf) { cancelAnimationFrame(raf); raf = null; }
+      else if (seVe && !raf) raf = requestAnimationFrame(pintar);
+    }).observe(lienzo.parentElement);
+  }
+
+  /* Solo el ANCHO re-siembra: en el teléfono la barra del navegador dispara
+     resize de alto con cada scroll, y re-sembrar ahí hace saltar las chispas
+     de lugar mientras uno lee. */
+  var reloj, anchoAntes = window.innerWidth;
   window.addEventListener('resize', function () {
     clearTimeout(reloj);
     reloj = setTimeout(function () {
+      if (window.innerWidth === anchoAntes) return;
+      anchoAntes = window.innerWidth;
       if (raf) cancelAnimationFrame(raf);
       medir();
       pintar(0);
@@ -420,13 +561,52 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;font-size:14p
   function dos(n) { return String(n).padStart(2, '0'); }
   function tic() {
     var r = FIN - Date.now();
-    if (r <= 0) { el.textContent = 'Sorteo cerrado — el ganador se anuncia en los canales oficiales'; return; }
+    if (r <= 0) {
+      // Lo que cierra el 9 es la PROMOCIÓN; el sorteo se hace dentro de los
+      // 7 días (bases). Y en letra de texto, no de reloj gigante.
+      el.style.fontSize = '1rem';
+      el.style.fontFamily = 'inherit';
+      el.textContent = 'Promoción cerrada — el sorteo se transmite en público dentro de los 7 días. Anuncio en los canales oficiales.';
+      return;
+    }
     var d = Math.floor(r / 864e5), h = Math.floor(r % 864e5 / 36e5),
         m = Math.floor(r % 36e5 / 6e4), sg = Math.floor(r % 6e4 / 1e3);
     el.textContent = d + 'd ' + dos(h) + 'h ' + dos(m) + 'm ' + dos(sg) + 's';
-    setTimeout(tic, 1000);
+    // Anclado al segundo de reloj: un setTimeout de 1000 a secas acumula
+    // deriva y saltea segundos a la vista.
+    setTimeout(tic, 1000 - (Date.now() % 1000));
   }
   tic();
+})();
+</script>
+<script>
+/* El precio vivo de la onza, del MISMO proveedor que usa la billetera de
+   respaldo (gold-api.com, sin llave y con CORS abierto). Si contesta, la cifra
+   se pone al día y la etiqueta pasa a decir «hoy»; si no contesta, se queda la
+   última referencia medida CON su fecha. Ese es el trato de la casa: ni un
+   número inventado — o es de hoy, o dice de cuándo es. */
+(function () {
+  var n = document.getElementById('onza');
+  var pie = document.getElementById('onza-pie');
+  if (!n || !pie || !window.fetch) return;
+  function pedir() {
+    fetch('https://api.gold-api.com/price/XAU')
+      .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+      .then(function (d) {
+        var p = d && Number(d.price);
+        /* Control de cordura: si la API cambia de esquema o devuelve el
+           precio del gramo, NO se publica como «hoy». Fuera de rango, se
+           queda la referencia con su fecha — que es el trato de la casa. */
+        if (!p || p < 1000 || p > 30000) return;
+        n.textContent = p.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        pie.textContent = 'Referencia de la onza · hoy';
+      })
+      .catch(function () {});
+  }
+  pedir();
+  // Cada 10 minutos, para que una pestaña abierta horas no jure «hoy» sobre
+  // una cifra congelada. Con la pestaña escondida no se pide.
+  setInterval(function () { if (!document.hidden) pedir(); }, 600000);
 })();
 </script>
 </body>

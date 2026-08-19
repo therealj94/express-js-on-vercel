@@ -548,7 +548,9 @@ es: {
   'sor.t': 'Podrías ganar 1 AUKA',
   'sor.p': 'Sigue el precio de la onza de oro. Te verificás con Genesis ID y ya estás participando.',
   'sor.termina': 'Termina en',
-  'sor.cerro': 'Sorteo cerrado — el ganador se anuncia en los canales oficiales',
+  // «Promoción cerrada», no «sorteo cerrado»: lo que cierra el 9 es la
+  // promoción; el sorteo se hace dentro de los 7 días siguientes (bases).
+  'sor.cerro': 'Promoción cerrada — el ganador se anuncia en los canales oficiales',
   'sor.bases': '+18 · Bases del sorteo',
   'sor.btn': 'Quiero participar',
   'sor.precio': 'La onza hoy:',
@@ -1051,7 +1053,9 @@ en: {
   'sor.t': 'You could win 1 AUKA',
   'sor.p': 'It tracks the price of one ounce of gold. Verify with Genesis ID and you are in.',
   'sor.termina': 'Ends in',
-  'sor.cerro': 'Raffle closed — the winner is announced on the official channels',
+  // "Promotion closed", not "raffle closed": the draw happens within the
+  // 7 days after closing (per the rules).
+  'sor.cerro': 'Promotion closed — the winner is announced on the official channels',
   'sor.bases': '18+ · Raffle rules',
   'sor.btn': 'I want in',
   'sor.precio': 'The ounce today:',
