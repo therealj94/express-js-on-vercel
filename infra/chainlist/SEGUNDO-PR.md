@@ -37,6 +37,38 @@ punto único de falla. Los RPC entran igual —que es el 90% del valor: quien
 encuentre la cadena ya puede conectarse—. Pasar a activa es cambiar una línea el
 día que los otros validadores estén arriba.
 
+## SON DOS COMPROBACIONES, NO UNA
+
+Se corrió el procesador de Kotlin y se dio por bueno. **El PR #8612 salió en
+rojo igual**: el repositorio tiene además un `prettier_check` que valida el
+FORMATO del JSON, y ese no se había mirado.
+
+```
+npx prettier --check '_data/*/*.json'
+```
+
+Lo único que objetaba: el array `rpc` escrito en varias líneas. Prettier lo
+quiere en una sola porque cabe dentro del ancho.
+
+```
+-  "rpc": [
+-    "https://ordenglobal-rpc.com",
+-    "https://rpc.ordenglobal-rpc.com"
+-  ],
++  "rpc": ["https://ordenglobal-rpc.com", "https://rpc.ordenglobal-rpc.com"],
+```
+
+Es exactamente el mismo tipo de error que el `tORIGEN` de agosto: una regla que
+nadie mira hasta que el CI la señala, semanas después de hacer la cola. La
+diferencia es que esta vez se descubrió en horas y no en semanas.
+
+**Antes de tocar este archivo otra vez, se corren LAS DOS:**
+
+```sh
+npx prettier --check '_data/*/*.json'   # formato
+gradle run                              # contenido
+```
+
 ## El CI REAL del repositorio, corrido acá
 
 No las reglas de memoria: se clonó `ethereum-lists/chains`, se puso este archivo
