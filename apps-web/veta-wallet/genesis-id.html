@@ -155,8 +155,10 @@ footer{border-top:1px solid var(--linea);padding:24px 0 40px;color:#6C918E;font-
 <hr>
 
 <!-- El sorteo, dicho con la regla de cobre: AUKA SIGUE el precio de la onza,
-     nunca «es una onza». Al cerrar el sorteo se quita este bloque. -->
-<p style="padding:14px 16px;border-left:2px solid #C9A961;background:rgba(201,169,97,.08);border-radius:0 10px 10px 0"
+     nunca «es una onza». El script del pie lo retira solo despues del 9-sep
+     (misma fecha que app.js y las bases); quitarlo a mano sigue siendo lo
+     aseado. -->
+<p id="promo-sorteo" style="padding:14px 16px;border-left:2px solid #C9A961;background:rgba(201,169,97,.08);border-radius:0 10px 10px 0"
    data-en="Right now verifying has a prize: you enter the raffle for 1 AUKA, which tracks the price of one ounce of gold. It closes September 9, 2026 — rules at vetawallet.com/sorteo-orden-global.">Ahora mismo verificarte tiene premio: participás en el sorteo de 1 AUKA, que sigue el precio de la onza de oro. Cierra el 9 de septiembre de 2026 — bases en vetawallet.com/sorteo-orden-global.</p>
 
 <h2 data-en="Two ways to do it">Dos formas de hacerlo</h2>
@@ -214,6 +216,15 @@ function idioma(cual) {
   try { guardado = localStorage.getItem('veta.idioma'); } catch (e) {}
   var cual = guardado || ((navigator.language || 'es').slice(0, 2) === 'en' ? 'en' : 'es');
   if (cual === 'en') idioma('en');
+
+  // El sorteo se apaga solo: despues del 9-sep-2026 23:59:59 (Honduras,
+  // UTC−6 — la MISMA marca que app.js y las bases) la promo se retira, para
+  // que esta pagina no siga invitando a un sorteo que las bases dan por
+  // cerrado si nadie la limpia a tiempo.
+  if (Date.now() > Date.UTC(2026, 8, 10, 5, 59, 59)) {
+    var promo = document.getElementById('promo-sorteo');
+    if (promo && promo.parentNode) promo.parentNode.removeChild(promo);
+  }
 })();
 </script>
 </body>

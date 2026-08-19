@@ -327,6 +327,9 @@ body:has(#app:not(.oculto)) .veta-svg{display:none}
 .lienzo>*:nth-child(3){animation-delay:.14s}
 .lienzo>*:nth-child(4){animation-delay:.21s}
 .lienzo>*:nth-child(5){animation-delay:.28s}
+/* El banner del sorteo entra de primero y corre a los demás un lugar: sin
+   este escalón, el sexto bloque perdía su retraso y entraba en seco. */
+.lienzo>*:nth-child(6){animation-delay:.35s}
 @keyframes bloqueSube{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 .cab{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px}
 /* Header de orden-global-app/src/ui.js: hTitle 19/800, hSub 11.5. En una
@@ -1661,6 +1664,11 @@ body.en-ventana .lienzo::before{
 .sorteo-banner .sb-gid{color:var(--oroLt);font-size:12px}
 .sb-punto{flex:0 0 auto;width:9px;height:9px;border-radius:50%;background:var(--jade);
   box-shadow:0 0 10px rgba(62,217,160,.8)}
+/* La coletilla legal del sorteo: chiquita pero visible, y siempre un enlace —
+   un «+18» que no lleva a las bases es un cartel sin letra chica. */
+.sb-bases{font-size:11px;color:var(--humo);text-decoration:underline;
+  text-underline-offset:2px;white-space:nowrap}
+.sb-bases:hover{color:var(--oroLt)}
 .sorteo-boleto{border-color:var(--linea);position:relative;overflow:hidden;
   background:radial-gradient(120% 160% at 0% 0%,rgba(201,169,97,.2),rgba(6,40,42,.6) 60%)}
 .acc-sorteo{margin-top:18px;padding:12px 14px;border-left:2px solid var(--oro);

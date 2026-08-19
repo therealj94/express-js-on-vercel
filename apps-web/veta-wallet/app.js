@@ -423,14 +423,28 @@ const VETA = (() => {
     // La bienvenida se pinta aparte del resto, asi que hay que repintarla a
     // mano o se queda a medio traducir encima de todo lo demas.
     if (!$('#bienve').classList.contains('oculto')) bienPintar();
-    /* El saludo de AU-RA se REESCRIBE al cambiar de idioma, pero solo si es
-       lo unico que hay en el hilo. Quien llega, abre el panel y despues pulsa
-       EN se quedaba con la bienvenida en español encima de una pagina ya
-       traducida: la primera frase que lee del asistente, en el idioma que
+    /* El hilo de AU-RA se REESCRIBE al cambiar de idioma, pero solo si la
+       persona todavia no escribio nada. Quien llega, abre el panel y despues
+       pulsa EN se quedaba con la bienvenida en español encima de una pagina
+       ya traducida: la primera frase que lee del asistente, en el idioma que
        acaba de rechazar. Si ya hubo conversacion de verdad NO se toca —
-       reescribirle a alguien lo que ya leyo es peor que dejarlo mezclado. */
-    if (auraCharla.length === 1 && auraCharla[0].de === 'aura') {
-      auraCharla = [{ de: 'aura', txt: auraVisita ? aTxt().holaVisita : aTxt().hola }];
+       reescribirle a alguien lo que ya leyo es peor que dejarlo mezclado.
+
+       La marca de «no escribio» es que no haya burbujas de `yo`, no que haya
+       una sola burbuja: la oferta del Genesis ID empuja DOS (sorteo +
+       pregunta) y compararlo con uno dejaba justo esa oferta —botones
+       incluidos— en el idioma viejo, la misma regresion que este comentario
+       jura haber corregido. */
+    if (auraCharla.length && !auraCharla.some(b => b.de === 'yo')) {
+      const T = aTxt();
+      const oferta = auraCharla.some(b => Array.isArray(b.botones));
+      auraCharla = oferta
+        ? [...(sorteoRestante() > 0 ? [{ de: 'aura', txt: T.sorteo }] : []),
+           { de: 'aura', txt: T.sinGid, botones: [
+             { txt: T.sinGidSi, di: T.chips[3] },
+             { txt: T.sinGidNo, di: T.sinGidNo },
+           ] }]
+        : [{ de: 'aura', txt: auraVisita ? T.holaVisita : T.hola }];
     }
     // El panel de AU-RA tambien vive fuera de #lienzo: abierto, sus chips y
     // su placeholder se quedarian en el idioma viejo si no se repinta aqui.
@@ -673,6 +687,9 @@ const VETA = (() => {
     let p, chg;
     try { ({ p, chg } = await CADENA.precios()); } catch { return; }
     if (!p) return;
+    // La onza del sorteo viaja gratis en este mismo ciclo: si el reloj de
+    // precios ya la trajo, no hay que esperar al refresco lento del sorteo.
+    if (p.AUKA > 0) sorteoOro = p.AUKA;
     let cambio = false;
     for (const m of cartera) {
       // El precio declarado por la Junta NO se toca: no sale de un feed y
@@ -988,33 +1005,76 @@ const VETA = (() => {
     }
   }
 
+  /* Al cerrar el sorteo, las piezas fijas del HTML —la cinta de portada y la
+     nota del formulario— se retiran solas. Los pedazos que pinta JS ya se
+     guardan con sorteoRestante(); estos dos son los unicos que vivirian para
+     siempre si nadie despliega el 10 de septiembre, con la portada
+     prometiendo un sorteo que las bases dicen cerrado. */
+  function sorteoCerrarPromos() {
+    document.querySelectorAll('.sorteo-cinta, .acc-sorteo').forEach(el => el.remove());
+  }
+
   function arrancarSorteo() {
-    sorteoPinta();
-    setInterval(sorteoPinta, 1000);
-    CADENA.precios().then(({ p }) => {
+    const oro = () => CADENA.precios().then(({ p }) => {
       if (p && p.AUKA > 0) { sorteoOro = p.AUKA; sorteoPinta(); }
     }).catch(() => {});
+    if (sorteoRestante() <= 0) { sorteoCerrarPromos(); return; }
+    sorteoPinta();
+    oro();
+    /* El tic respeta las reglas de la casa: con la pestaña escondida no corre
+       —misma razon que relojPrecios: gasta bateria para nadie— y tras el
+       cierre se para solo, retirando las promos si el cierre pillo la pestaña
+       abierta. La onza se repide cada cinco minutos: una portada abierta dias
+       con un precio congelado presentado como «hoy» seria un dato inventado
+       por antiguedad. */
+    let tics = 0;
+    const reloj = setInterval(() => {
+      if (document.hidden) return;
+      sorteoPinta();
+      if (sorteoRestante() <= 0) { sorteoCerrarPromos(); clearInterval(reloj); return; }
+      if (++tics % 300 === 0) oro();
+    }, 1000);
+    // Al volver a la pestaña, la cuenta al dia de inmediato: es justo el
+    // momento en que alguien la esta mirando.
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) sorteoPinta();
+    });
   }
 
   /* El banner de adentro. Con el tramite sin empezar invita; con el expediente
      entregado o aprobado lo dice y ya — un boton de «participar» encima de
      alguien que ya participa es la clase de mentira amable que este archivo
      jura no cometer. Y con `identidad` en null NO se opina: null es
-     «cargando», no «sin verificar». */
+     «cargando», no «sin verificar».
+
+     Las bases piden identidad VERIFICADA, asi que aqui se habla en tres tonos
+     y no en dos: aprobado es «estas participando»; en revision es «al
+     aprobarse, tu GID es tu boleto» — prometer participacion sobre un
+     expediente que un operador todavia puede rechazar es prometer lo que las
+     bases niegan. Y «en revision» hereda las DOS excepciones de botonGid: con
+     el rostro sin cotejar o el documento marcado invalido el expediente va
+     derecho al rechazo, y el punto verde seria la mentira amable de siempre —
+     a esa persona se le invita a terminar, no se le felicita. */
   function bannerSorteo() {
     if (sorteoRestante() <= 0) return '';
     if (!identidad || identidad.error) return '';
     const e = (identidad.estado || '').toLowerCase();
-    const dentro = esVerificada() || e === 'en-revision' || e === 'biometria';
-    if (dentro) return `
+    // Una identidad suspendida no se arregla desde aca: la levanta un
+    // operador. Invitarla a «verificarse» seria un boton a ninguna parte.
+    if (e === 'suspendida') return '';
+    const bases = `<a class="sb-bases" href="/sorteo-orden-global">${t('sor.mas18')}</a>`;
+    const atorado = identidad.rostroPendiente ||
+      (identidad.documentoAceptable === false && !identidad.documentoPorFotos);
+    const enEspera = (e === 'en-revision' || e === 'biometria') && !atorado;
+    if (esVerificada() || enEspera) return `
     <div class="sorteo-banner sb-dentro" role="note">
       <span class="sb-punto" aria-hidden="true"></span>
-      <div class="sb-txt"><b>${t('sor.bannerOk')}</b>${identidad.gid ? ` <span class="mono sb-gid">${esc(identidad.gid)}</span>` : ''}</div>
+      <div class="sb-txt"><b>${t(esVerificada() ? 'sor.bannerOk' : 'sor.bannerRev')}</b>${identidad.gid ? ` <span class="mono sb-gid">${esc(identidad.gid)}</span>` : ''} ${bases}</div>
       <span class="sb-cuenta mono" data-sorteo-cuenta></span>
     </div>`;
     return `
     <div class="sorteo-banner" role="note">
-      <div class="sb-txt"><b>${t('sor.banner')}</b><small>${t('sor.p')}</small></div>
+      <div class="sb-txt"><b>${t('sor.banner')}</b><small>${t('sor.p')} ${bases}</small></div>
       <span class="sb-cuenta mono" data-sorteo-cuenta></span>
       <button class="btn btn-oro btn-sm" onclick="VETA.vista('verificar')">${t('sor.btn')}</button>
     </div>`;
@@ -2694,6 +2754,11 @@ const VETA = (() => {
      esta pantalla no aprueba. */
   function verFinal() {
     const problemas = sol.resultado?.problemas || [];
+    /* `aceptable: false` puede llegar con la lista de problemas VACIA — el
+       servidor rechaza sin detallar—. Mirar solo la lista pintaba el bloque
+       de exito (y ahora ademas el boleto del sorteo) sobre un documento
+       rechazado. El rechazo manda aunque venga mudo. */
+    const rechazado = sol.resultado?.aceptable === false;
     const rostroMal = Boolean(identidad?.rostroPendiente);
     // Lo que dijo el cotejo del rostro, con sus palabras. Un «repetir la foto»
     // a secas deja a la persona mandando la misma otra vez.
@@ -2702,7 +2767,7 @@ const VETA = (() => {
     return `
     <div class="cab"><div><h2>${t('ver.t')}</h2><div class="sub">${t('ver.sub')}</div></div></div>
 
-    ${problemas.length ? `
+    ${problemas.length || rechazado ? `
       <div class="bloque vidrio">
         <h3>${t('ver.docProb')}</h3>
         <p class="pie" style="margin-top:8px">${t('ver.docProbP')}</p>
@@ -2730,16 +2795,16 @@ const VETA = (() => {
         </div>
       </div>` : ''}
 
-    ${!problemas.length && !rostroMal && !porFotos ? `
+    ${!problemas.length && !rechazado && !rostroMal && !porFotos ? `
       <div class="bloque vidrio">
         <h3>${t('ver.listoT')}</h3>
         <p class="pie" style="margin-top:8px">${t('ver.listoP')}</p>
       </div>` : ''}
 
-    ${!problemas.length && !rostroMal && sorteoRestante() > 0 ? `
+    ${!problemas.length && !rechazado && !rostroMal && sorteoRestante() > 0 ? `
       <div class="bloque vidrio sorteo-boleto">
         <h3>${t('sor.boletoT')}</h3>
-        <p class="pie" style="margin-top:8px">${t('sor.boletoP')}</p>
+        <p class="pie" style="margin-top:8px">${t('sor.boletoP')} <a class="sb-bases" href="/sorteo-orden-global">${t('sor.mas18')}</a></p>
         <div class="sb-cuenta mono" data-sorteo-cuenta style="margin-top:14px"></div>
       </div>` : ''}
 
@@ -5044,9 +5109,11 @@ const VETA = (() => {
         { id: 'chat', k: 'TU GENTE', t: 'PULSE CHAT', p: 'Solo gente verificada, y el dinero viaja dentro de la conversación, con comprobante en la cadena.' },
         { id: 'pay', k: 'TU NEGOCIO', t: 'MyTokenPay', p: 'La caja registradora del ecosistema: cobrás con un código y tu negocio crece acá adentro.' },
         { id: 'gid', k: 'TU IDENTIDAD', t: 'Genesis ID', p: 'Te verificás una sola vez y todo Orden Global te reconoce. Es la llave que abre las demás esferas.' },
-        /* Parada nueva, sin mp3 grabado: sale con la voz del navegador. Al
-           cerrar el sorteo se quita esta linea y la gemela en ingles. */
-        { id: 'gid', k: 'EL SORTEO', t: '1 AUKA en juego', p: 'Y hacerlo ahora tiene premio: al verificarte participás en el sorteo de 1 AUKA, que sigue el precio de la onza de oro. Cierra el nueve de septiembre.' },
+        /* Parada nueva, sin mp3 grabado: sale con la voz del navegador. La
+           marca `sorteo` hace que pintarTour la salte sola despues del 9 de
+           septiembre — un tour invitando a un sorteo cerrado seria peor que
+           no tenerla—; quitarla a mano despues sigue siendo lo aseado. */
+        { sorteo: true, id: 'gid', k: 'EL SORTEO', t: '1 AUKA en juego', p: 'Y hacerlo ahora tiene premio: al verificarte participás en el sorteo de 1 AUKA, que sigue el precio de la onza de oro. Cierra el nueve de septiembre.' },
         { id: 'aucorp', k: 'Y ESTO CRECE', t: 'Ya abrieron las dos', p: 'Ordenexchange es la casa de cambio y AuCorp son tus cuentas en moneda local — dólares, lempiras, euros. Las dos con tu misma cuenta. AuCorp es la que antes se llamaba AUBANK: cambió el nombre, no la casa. Y yo soy AU-RA: cada versión voy a saber hacer más.' },
       ],
     },
@@ -5156,7 +5223,7 @@ const VETA = (() => {
         { id: 'gid', k: 'YOUR IDENTITY', t: 'Genesis ID', p: 'Verify once and all of Orden Global recognises you. It is the key that opens the other spheres.' },
         /* New stop, no recorded mp3: falls back to the browser voice. When the
            raffle closes, remove this line and its Spanish twin. */
-        { id: 'gid', k: 'THE RAFFLE', t: '1 AUKA at stake', p: 'And doing it now has a prize: by verifying you enter the raffle for 1 AUKA, which tracks the price of one ounce of gold. It closes on September the ninth.' },
+        { sorteo: true, id: 'gid', k: 'THE RAFFLE', t: '1 AUKA at stake', p: 'And doing it now has a prize: by verifying you enter the raffle for 1 AUKA, which tracks the price of one ounce of gold. It closes on September the ninth.' },
         { id: 'aucorp', k: 'AND THIS GROWS', t: 'Both are open', p: 'Ordenexchange is the exchange and AuCorp holds your local-currency accounts — dollars, lempiras, euros. Both with your same account. AuCorp is what used to be called AUBANK: the name changed, not the house. And I am AU-RA: every version I will know how to do more.' },
       ],
     },
@@ -5776,7 +5843,10 @@ const VETA = (() => {
 
   function pintarTour() {
     const T = aTxt();
-    const paradas = T.tour;
+    // La parada del sorteo se salta sola despues del cierre: el guion se
+    // filtra en cada pintada, asi los indices de atras/adelante siguen
+    // cuadrando sin trucos.
+    const paradas = T.tour.filter(x => !x.sorteo || sorteoRestante() > 0);
     const el = $('#aura-tour');
     if (tourPaso < 0 || tourPaso >= paradas.length) return auraTourFin();
     const p = paradas[tourPaso];

@@ -549,15 +549,19 @@ es: {
   'sor.p': 'Sigue el precio de la onza de oro. Te verificás con Genesis ID y ya estás participando.',
   'sor.termina': 'Termina en',
   'sor.cerro': 'Sorteo cerrado — el ganador se anuncia en los canales oficiales',
-  'sor.bases': 'Bases del sorteo',
+  'sor.bases': '+18 · Bases del sorteo',
   'sor.btn': 'Quiero participar',
   'sor.precio': 'La onza hoy:',
   'sor.banner': 'Verificate y participás por 1 AUKA',
   'sor.bannerOk': 'Estás participando por 1 AUKA',
-  'sor.boletoT': 'Estás participando por 1 AUKA',
-  'sor.boletoP': 'Tu expediente quedó en manos del equipo, y con eso ya tenés tu lugar en el sorteo. Cuando lo aprueben, tu GID es tu boleto.',
+  // Las bases piden identidad VERIFICADA: mientras el expediente está en
+  // revisión no se dice «participás» — se dice lo que es.
+  'sor.bannerRev': 'Expediente en revisión — al aprobarse, tu GID es tu boleto por 1 AUKA',
+  'sor.boletoT': 'Tu boleto del sorteo está en camino',
+  'sor.boletoP': 'Tu expediente quedó en manos del equipo. Al aprobarse, tu GID es tu boleto para el sorteo de 1 AUKA.',
   'sor.gidOk': 'Estás participando en el sorteo de 1 AUKA — tu GID es tu boleto.',
-  'sor.acc': 'Y hay sorteo: al verificarte con Genesis ID participás por 1 AUKA, que sigue el precio de la onza de oro.',
+  'sor.mas18': '+18 · Aplican las bases',
+  'sor.acc': 'Y hay sorteo: al verificarte con Genesis ID participás por 1 AUKA, que sigue el precio de la onza de oro. +18 — las bases están en vetawallet.com/sorteo-orden-global.',
 },
 en: {
   'bv.sello': 'WELCOME TO THE ORDEN GLOBAL ECOSYSTEM',
@@ -1048,15 +1052,19 @@ en: {
   'sor.p': 'It tracks the price of one ounce of gold. Verify with Genesis ID and you are in.',
   'sor.termina': 'Ends in',
   'sor.cerro': 'Raffle closed — the winner is announced on the official channels',
-  'sor.bases': 'Raffle rules',
+  'sor.bases': '18+ · Raffle rules',
   'sor.btn': 'I want in',
   'sor.precio': 'The ounce today:',
   'sor.banner': 'Verify and enter the raffle for 1 AUKA',
   'sor.bannerOk': 'You are in the raffle for 1 AUKA',
-  'sor.boletoT': 'You are in the raffle for 1 AUKA',
-  'sor.boletoP': 'Your file is with the team, and that already gives you your place in the raffle. Once approved, your GID is your ticket.',
+  // The rules require a VERIFIED identity: while the file is under review we
+  // do not say "you are in" — we say what it is.
+  'sor.bannerRev': 'File under review — once approved, your GID is your ticket for 1 AUKA',
+  'sor.boletoT': 'Your raffle ticket is on its way',
+  'sor.boletoP': 'Your file is with the team. Once approved, your GID is your ticket for the 1 AUKA raffle.',
   'sor.gidOk': 'You are in the raffle for 1 AUKA — your GID is your ticket.',
-  'sor.acc': 'And there is a raffle: by verifying with Genesis ID you enter for 1 AUKA, which tracks the price of one ounce of gold.',
+  'sor.mas18': '18+ · Official rules apply',
+  'sor.acc': 'And there is a raffle: by verifying with Genesis ID you enter for 1 AUKA, which tracks the price of one ounce of gold. 18+ — the rules live at vetawallet.com/sorteo-orden-global.',
 },
 };
 
