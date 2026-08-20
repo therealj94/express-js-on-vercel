@@ -125,17 +125,52 @@ es mejor uso, pero no ahorra. Cómputo: de 482,38 a **467,20 USD/mes**.
 El objetivo de esta jornada no era ahorrar: era pasar de aguantar una caída a
 aguantar dos.
 
-## 7 · Lo que queda, y por qué no lo decido yo
+## 7 · La 8532, apagada · autorizado por José el 20-ago
 
-### a) La 8532 sigue corriendo en las seis t2.large
-Ya no la usa nadie: cero transacciones, y desde hoy tampoco le llega tráfico
-por el balanceador. Pararla **no ahorra un peso** —las máquinas se quedan,
-ahora sirven la 5550— pero sí quita un riesgo real: **seis de los siete
-validadores comparten máquina con ella**. Si polygon-edge se desmadrara, se
-llevaría por delante un validador.
+`polygon-edge` y su watchdog quedaron **parados y deshabilitados en las seis
+máquinas**. El watchdog se apagó primero: si no, reanima el servicio a los tres
+minutos y el apagado no dura.
 
-Es la decisión que el documento del 15-ago ya dejaba en manos de José, y sigue
-ahí. La cadena queda apagada pero restaurable: los datos no se borran.
+| | node1 | node2 | node3 | node4 | node5 | node6 |
+|---|---|---|---|---|---|---|
+| polygon-edge | inactivo | inactivo | inactivo | inactivo | inactivo | inactivo |
+| watchdog | inactivo | inactivo | inactivo | inactivo | inactivo | inactivo |
+| procesos vivos | 0 | 0 | 0 | 0 | 0 | 0 |
+
+**Los datos no se borraron**: `/home/ec2-user/node-x` y sus hermanos siguen en
+disco —2,6 GB en node1—. Volver es `systemctl start polygon-edge`.
+
+Comprobado después, en tres nodos distintos: la 5550 con **siete validadores**,
+**siete proponentes distintos** en 70 bloques, seis pares cada uno y la altura
+subiendo (41.404 → 41.417). El apagado no la rozó.
+
+Queda un cabo cosmético: el grupo `ordenKapital` del balanceador apunta a
+node1:80, que ya no responde. Ninguna regla lo usa desde que se movió la acción
+por defecto, así que no sirve tráfico — solo se verá en rojo en la consola.
+
+## 8 · Lo que queda, y por qué no lo decido yo
+
+### a) Las seis t2.large están enormes para lo que hacen · 224 USD/mes
+Medido con la 8532 ya apagada:
+
+| | node3 | node5 | node7 (t3.medium) |
+|---|---|---|---|
+| Besu en memoria | 482 MB | 538 MB | 604 MB |
+| Memoria de la máquina | 7.930 MB | 7.930 MB | 3.839 MB |
+| Carga media | 0,09 | 0,03 | 0,17 |
+| Disco de la 5550 | 94 MB | 93 MB | 176 MB |
+
+Un validador de la 5550 gasta **medio giga y nada de CPU**. Las t2.large tienen
+8 GB porque las heredamos de la cadena vieja, que sí los usaba.
+
+Bajarlas a t3.medium —el tamaño que **ya usa node7, que valida sin despeinarse**—
+lleva cada una de 67,74 a 30,40 USD/mes: **224 USD/mes entre las seis**, más que
+todo lo demás junto.
+
+El cambio pide apagar y encender cada instancia (unos dos minutos). Con siete
+validadores se aguantan dos caídas, así que hacerlo **de una en una** es seguro,
+y las IP elásticas sobreviven al reinicio. **No lo hago sin permiso**: es tocar
+seis máquinas de producción, y un arranque que no vuelve es un validador menos.
 
 ### b) node7 no tiene IP fija
 Se intentó asociarle una IP elástica y AWS respondió que el usuario `jose`
@@ -158,3 +193,21 @@ y node6. Sin resolver desde el 15-ago.
 15-ago. El explorador y el backend de prueba arrancan, pero detrás no hay
 bloques nuevos. Si el ensayo va a servir para algo, hay que apuntarlo a la 5550
 o levantar una cadena de pruebas de verdad.
+
+## 9 · Chainlist · publicado
+
+El PR #8612 se **mergeó** el 19-ago. Comprobado en las tres fuentes que
+importan, no en la página del PR:
+
+- `_data/icons/ordenglobal.json` está en `master` con el CID
+  `bafkreicn6kctjauo7yoam3daqzs3vybogw6nkwuhtls7isnhubti74qqvi`
+- `_data/chains/eip155-5550.json` en `master`, con `"icon": "ordenglobal"`
+- **`chainid.network/chains.json`** —el archivo que consume Chainlist— ya sirve
+  la Orden Global con sus dos RPC y el ícono
+
+El CID se verificó sin fiarse de Pinata: es el sha256 del propio archivo, y
+calculado sobre nuestro PNG local da exactamente ese. Además se bajó del
+gateway y volvió con los mismos 186.157 bytes y el mismo hash.
+
+Queda `"status": "incubating"`. Se cambia a `active` cuando toque; ahora ya hay
+siete validadores, así que el motivo original de esa marca desapareció.
