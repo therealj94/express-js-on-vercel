@@ -55,6 +55,18 @@ require("./db");
         "terminado. Borrarla cuando no quede ningun registro cifrado con ella."
     );
   }
+  // Igual que con la clave de cifrado, PASS_TOKEN se rota en tres etapas
+  // (ver lib/sesion.js). Mientras PASS_TOKEN_VIEJO siga puesta, las sesiones
+  // firmadas con el secreto corto todavia valen: la rotacion no ha terminado.
+  // El token de refresco dura 30 dias, asi que ese es el plazo minimo de
+  // espera antes de borrarla.
+  if (process.env.PASS_TOKEN_VIEJO) {
+    console.warn(
+      "[secretos] PASS_TOKEN_VIEJO sigue configurada: aun se aceptan sesiones " +
+        "firmadas con el secreto anterior. Borrarla 30 dias despues de poner " +
+        "el nuevo, que es lo que dura el token de refresco."
+    );
+  }
 })();
 
 var app = express();

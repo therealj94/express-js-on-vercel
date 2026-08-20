@@ -8,7 +8,10 @@ import CryptoJS from "crypto-js";
 import { descifrarLlavePrivada } from "../lib/cripto";
 import { parseEther } from "ethers/utils";
 import Tx from "../models/Tx";
-import jwt from "jsonwebtoken";
+// Las sesiones se firman y se verifican a traves de lib/sesion.js, que
+// entiende el secreto nuevo y el anterior mientras dura la rotacion de
+// PASS_TOKEN. Las llamadas jwt.verify(...) y jwt.sign(...) no cambian.
+import jwt from "../lib/sesion";
 import abi from "../ABI/abi.json";
 import { precioDeGas, limiteDeGas, LIMITE_POR_OMISION_TOKEN } from "../lib/gas";
 import { cobrarComision, comisionEnOrigen } from "../lib/comision";

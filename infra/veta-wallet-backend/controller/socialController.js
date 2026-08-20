@@ -30,7 +30,10 @@
 import User from "../models/Users";
 import Wallet from "ethereumjs-wallet";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+// Las sesiones se firman y se verifican a traves de lib/sesion.js, que
+// entiende el secreto nuevo y el anterior mientras dura la rotacion de
+// PASS_TOKEN. Las llamadas jwt.verify(...) y jwt.sign(...) no cambian.
+import jwt from "../lib/sesion";
 import crypto from "crypto";
 import { cifrar } from "../lib/cripto";
 import { verificarTokenSocial } from "../lib/socialAuth";

@@ -1,6 +1,10 @@
-import jwt from "jsonwebtoken"
+// Las sesiones se firman y se verifican a traves de lib/sesion.js, que
+// entiende el secreto nuevo y el anterior mientras dura la rotacion de
+// PASS_TOKEN. Las llamadas jwt.verify(...) y jwt.sign(...) no cambian.
+import jwt from "../lib/sesion";
 import Users from "../models/Users";
 import CryptoJS from 'crypto-js';
+import { descifrarConToken } from "../lib/sesion";
 require('dotenv').config();
 
 
@@ -14,8 +18,12 @@ const isAdmin = async (req, res, next) => {
     const decodedToken = jwt.verify(token.split(' ')[1], process.env.PASS_TOKEN, { algorithm: 'HS256' });
     const idUser = decodedToken.userId;
     const user = await Users.findOne({_id: idUser});
+    // `user.token` esta cifrado con PASS_TOKEN, asi que se descifra probando el
+    // secreto nuevo y el anterior mientras dure la rotacion. Sin esto, cambiar
+    // PASS_TOKEN dejaria este campo ilegible y ningun administrador podria
+    // volver a entrar por estas rutas.
     const tokenFromRequest = token.split(' ')[1];
-    const decryptedToken = CryptoJS.AES.decrypt(user.token, process.env.PASS_TOKEN).toString(CryptoJS.enc.Utf8);
+    const decryptedToken = descifrarConToken(user.token);
 
     if (tokenFromRequest !== decryptedToken) {
       return res.status(401).json({ message: "invalid token db" });
