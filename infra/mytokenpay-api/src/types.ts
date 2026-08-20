@@ -1,4 +1,4 @@
-export type UserRole = 'user' | 'business'
+export type UserRole = 'user' | 'business' | 'admin'
 
 export interface User {
   id: string
@@ -7,11 +7,22 @@ export interface User {
   fullName: string
   role: UserRole
   createdAt: string
+  /** GID de Genesis ID atado a esta cuenta, si el usuario entró con su identidad. */
+  gid?: string | null
 }
 
 export type PublicUser = Omit<User, 'passwordHash'>
 
 export type KycStatus = 'unsubmitted' | 'pending' | 'verified' | 'rejected'
+
+/** Un plato o producto del menú del negocio. El precio vive en su moneda. */
+export interface PlatoMenu {
+  id: string
+  nombre: string
+  descripcion: string
+  precio: number
+  moneda: 'HNL' | 'USD'
+}
 
 export interface KycDocument {
   id: string
@@ -68,6 +79,10 @@ export interface Company {
   }
   verified: boolean
   acceptsOrigen: boolean
+  /** Menú del negocio: lo que se puede ordenar desde MyTokenPay. */
+  menu?: PlatoMenu[]
+  /** Dirección en la cadena 8532 donde el comercio recibe los pagos. */
+  walletAddress: string | null
   createdAt: string
   updatedAt: string
 }
