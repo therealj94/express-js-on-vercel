@@ -878,7 +878,7 @@ function vistaDirectorio(d) {
         ${dirActivos() ? `${dirActivos()} filtro(s) puesto(s)` : 'sin filtros'}</span>
       ${dirActivos() ? `<button class="g mini" onclick="limpiarFiltros()">Limpiar todo</button>` : ''}
       <button class="g mini" onclick="exportarCsv()" title="Descarga lo que estás viendo, con los filtros puestos">Exportar CSV</button>
-      <button class="g mini" onclick="refrescarSaldos(this)" title="Le pregunta a la cadena 8532 el saldo real de cada billetera">Actualizar saldos</button>
+      <button class="g mini" onclick="refrescarSaldos(this)" title="Le pregunta a la cadena el saldo real de cada billetera. Si el nodo contesta otra cadena, NO se guarda nada.">Actualizar saldos</button>
     </div>
   </div>
 
@@ -995,6 +995,15 @@ async function refrescarSaldos(boton) {
   try {
     const r = await api('/panel/directorio/saldos', { method: 'POST' });
     boton.textContent = r.mensaje;
+    /* Si el nodo contestó otra cadena no se tocó ni un saldo, y los números de
+       la pantalla son los de antes. Sin este aviso, quien aprieta el botón ve
+       los mismos números y concluye que la cadena está así — que es como el
+       panel llegó a enseñar saldos de la cadena vieja durante días. */
+    if (r.cadenaEquivocada) {
+      alert('NO se actualizó ningún saldo: el nodo respondió una cadena distinta '
+        + 'de la esperada. Lo que ves en pantalla es la lectura anterior.\n\n'
+        + 'Revisá GENESIS_RPC_URL y cadenaCoincide en /healthz.');
+    }
   } catch (e) { boton.textContent = e.message; }
   setTimeout(() => { boton.disabled = false; boton.textContent = 'Actualizar saldos'; }, 8000);
 }

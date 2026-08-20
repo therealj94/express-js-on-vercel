@@ -8,6 +8,7 @@
 import { Router } from 'express'
 import { exigeApp, exigeOperador, exigePermiso, limite } from '../middleware/proteger.js'
 import { sincronizar, consultar, resumenDirectorio, fichaPorEmail, refrescarSaldos } from '../directorio/padron.js'
+import { estadoCadena } from '../directorio/monedas.js'
 import { registrar } from '../audit/bitacora.js'
 import { historialDe, resumirMovimientos } from '../directorio/movimientos.js'
 import { confirmarPersona, sePuedeConfirmar } from '../directorio/confirmacion.js'
@@ -117,12 +118,37 @@ directorioPanelRouter.get('/persona/:email', async (req, res) => {
  * tiene sentido hacerlas en cada carga de la pantalla. Corre en segundo plano:
  * la respuesta vuelve enseguida y el trabajo sigue.
  */
-directorioPanelRouter.post('/saldos', exigePermiso('usuarios.ver'), (req, res) => {
-  registrar(req.operador!.email, 'directorio.saldos', 'cadena-8532', {})
+directorioPanelRouter.post('/saldos', exigePermiso('usuarios.ver'), async (req, res) => {
+  /* Se le pregunta a la cadena QUIEN ES antes de contestarle al operador.
+     Es una sola llamada y tarda poco, y es lo único que se puede decir de
+     inmediato: la lectura de los saldos va por detrás y termina mucho después
+     de que esta respuesta haya vuelto.
+     Sin esto, quien aprieta el botón ve «consultando la cadena», vuelve al
+     minuto, encuentra los mismos números y concluye que la cadena está así. */
+  const estado = await estadoCadena().catch(() => null)
+  const cadenaEquivocada = !estado || !estado.coincide
+
+  // La bitácora decía «cadena-8532» aunque hace meses que se lee otra. Ahora
+  // anota la que de verdad contestó, que es lo que hará falta si algún día hay
+  // que explicar de dónde salió un número.
+  registrar(req.operador!.email, 'directorio.saldos',
+    `cadena-${estado?.cadenaQueContesta ?? 'sin-respuesta'}`, {})
+
+  if (cadenaEquivocada) {
+    console.error(`[directorio] refresco rechazado: ${estado?.rpc} contesta ` +
+      `${estado?.cadenaQueContesta ?? 'nada'} y se esperaba ${estado?.cadenaEsperada}`)
+    return res.json({
+      ok: false,
+      cadenaEquivocada: true,
+      cadenaQueContesta: estado?.cadenaQueContesta ?? null,
+      mensaje: 'No se actualizó: el nodo respondió otra cadena.',
+    })
+  }
+
   refrescarSaldos().then((r) =>
     console.log(`[directorio] saldos: ${r.consultadas} direcciones · ${r.conSaldo} con algo · ` +
       `${r.monedas} monedas · ${r.perdidas} lecturas perdidas`))
-  res.json({ ok: true, mensaje: 'Consultando la cadena. Refrescá en un minuto.' })
+  res.json({ ok: true, cadenaEquivocada: false, mensaje: 'Consultando la cadena. Refrescá en un minuto.' })
 })
 
 /**

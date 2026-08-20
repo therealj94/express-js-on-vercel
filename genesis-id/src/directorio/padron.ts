@@ -514,6 +514,8 @@ export async function fichaPorEmail(email: string) {
  */
 export async function refrescarSaldos(maximo = 800): Promise<{
   consultadas: number; conSaldo: number; monedas: number; perdidas: number
+  /** `true` = no se tocó ni un saldo porque el nodo contestó otra cadena. */
+  cadenaEquivocada: boolean
 }> {
   let perdidas = 0
   const c = col()
@@ -521,20 +523,52 @@ export async function refrescarSaldos(maximo = 800): Promise<{
   const conDireccion = todas.filter((e) => e.direccionWallet).slice(0, maximo)
 
   let conSaldo = 0
+  let cadenaMal = false
   // De cuarenta direcciones a la vez: cada una son quince llamadas, así que un
   // grupo es unas seiscientas y el nodo las aguanta sin despeinarse.
   for (let i = 0; i < conDireccion.length; i += 25) {
     const grupo = conDireccion.slice(i, i + 25)
-    const { saldos, fallidas } = await saldosDe(grupo.map((e) => e.direccionWallet!))
+    const lectura = await saldosDe(grupo.map((e) => e.direccionWallet!))
+    const { saldos, fallidas, completas, leidoEn, cadenaCorrecta } = lectura
     perdidas += fallidas
+    if (!cadenaCorrecta) {
+      // El nodo contestó otra cadena. No se escribe nada: lo que hay guardado
+      // será viejo, pero al menos es de la cadena correcta.
+      cadenaMal = true
+      continue
+    }
     for (const e of grupo) {
-      const nuevos = saldos.get(e.direccionWallet!)
-      if (nuevos === undefined) continue      // sin respuesta: se deja lo previo
+      const dir = e.direccionWallet!
+      /* SOLO SE GUARDA LO QUE SE LEYO ENTERO.
+         Antes bastaba con que el mapa trajera algo, y el mapa traía `{}` tanto
+         para «esta persona no tiene nada» como para «el nodo no me contestó».
+         Escribir ese `{}` encima BORRABA saldos buenos cada vez que el nodo
+         tosía, y el panel lo enseñaba como si esa persona estuviera a cero. */
+      if (!completas.has(dir)) continue
+      const nuevos = saldos.get(dir)
+      if (nuevos === undefined) continue
       if (Object.keys(nuevos).length) conSaldo++
-      if (c) await c.updateOne({ _id: e._id }, { $set: { saldos: nuevos } })
-      else memoria.get(e._id)!.saldos = nuevos
+      // La fecha va PEGADA al saldo. Sin ella, un número de agosto y uno de
+      // hace un minuto se ven exactamente igual en la pantalla, que es justo
+      // como el panel llegó a enseñar saldos de la cadena vieja.
+      if (c) await c.updateOne({ _id: e._id }, { $set: { saldos: nuevos, saldosLeidosEn: leidoEn } })
+      else {
+        memoria.get(e._id)!.saldos = nuevos
+        ;(memoria.get(e._id)! as any).saldosLeidosEn = leidoEn
+      }
     }
   }
   if (perdidas) console.warn(`[directorio] ${perdidas} lecturas sin respuesta del nodo`)
-  return { consultadas: conDireccion.length, conSaldo, monedas: monedas().length, perdidas }
+  if (cadenaMal) {
+    console.error('[directorio] NO se actualizó ningún saldo: el nodo contestó otra cadena')
+  }
+  return {
+    consultadas: conDireccion.length,
+    conSaldo,
+    monedas: monedas().length,
+    perdidas,
+    /* Que quien aprieta el botón vea POR QUE no cambió nada, en vez de mirar
+       los mismos números y pensar que la cadena está así. */
+    cadenaEquivocada: cadenaMal,
+  }
 }

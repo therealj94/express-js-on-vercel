@@ -21,6 +21,7 @@ import { panelRouter } from './routes/panel.js'
 import { telemetriaRouter } from './routes/telemetria.js'
 import { analiticaRouter } from './routes/analitica.js'
 import { directorioAppsRouter, directorioPanelRouter } from './routes/directorio.js'
+import { estadoCadenaRapido } from './directorio/monedas.js'
 import { prepararDirectorio } from './directorio/padron.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -197,6 +198,15 @@ app.get('/healthz', (_req, res) => {
          Se publica el REMITENTE, que va impreso en cada correo que mandamos
          y por tanto no es secreto; la llave y el secreto no se publican ni
          en parte — /healthz es público. */
+      /* CONTRA QUE CADENA LEE EL PANEL.
+         Se publica porque el 20-ago el panel enseñó saldos de la cadena vieja
+         y NO HABIA FORMA DE VERLO desde fuera: los números eran plausibles y
+         estaban bien formados, solo eran de otro sitio. Con `cadenaCoincide`
+         en false, cualquiera lo detecta sin entrar al panel. */
+      rpcDelDirectorio: estadoCadenaRapido().rpc,
+      cadenaEsperada: estadoCadenaRapido().cadenaEsperada,
+      cadenaQueContesta: estadoCadenaRapido().cadenaQueContesta,
+      cadenaCoincide: estadoCadenaRapido().coincide,
       correoEncendido: correoEncendido(),
       correoDe: correoEncendido() ? correoRemitente() : null,
       /* CUAL de las dos falta, no solo que algo falta. Con un booleano suelto
