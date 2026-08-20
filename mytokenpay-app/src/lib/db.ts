@@ -80,7 +80,8 @@ export function toPublicUser(user: User): PublicUser {
 // ── El almacén ───────────────────────────────────────────────────────────────
 
 export const db = {
-  async createUser(input: { email: string; passwordHash: string; fullName: string }): Promise<User> {
+  /** null si ese correo ya está tomado — no es un error, es la respuesta. */
+  async createUser(input: { email: string; passwordHash: string; fullName: string }): Promise<User | null> {
     const user: User = {
       id: randomUUID(),
       email: input.email.toLowerCase().trim(),
@@ -99,7 +100,14 @@ export const db = {
       try {
         await c.insertOne({ ...user })
       } catch (e: any) {
-        if (e?.code === 11000) throw Object.assign(new Error('correo ya registrado'), { duplicado: true })
+        /* UN CORREO REPETIDO NO ES UNA EXCEPCION: ES UNA RESPUESTA.
+           Lanzar aquí tumbó el servicio entero en producción. En Express 4 una
+           promesa rechazada dentro de un handler `async` no llega al manejador
+           de errores —queda como `unhandledRejection`, y Node mata el proceso—,
+           así que el registro repetido de UNA persona dejaba a TODAS sin app.
+           Se devuelve null y quien llama contesta 409, que es lo que siempre
+           debió pasar. */
+        if (e?.code === 11000) return null
         throw e
       }
     } else {

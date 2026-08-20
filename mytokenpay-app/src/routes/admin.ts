@@ -22,6 +22,7 @@
 // reduce a leer el estado que diga Genesis.
 
 import { Router } from 'express'
+import { envolver } from '../lib/asincrono.js'
 import { db } from '../lib/db.js'
 import { registrarNegocio, contar } from '../lib/genesis.js'
 import type { KycStatus } from '../types.js'
@@ -64,7 +65,7 @@ adminRouter.use((req, res, next) => {
 })
 
 /** Los comercios que esperan revisión. */
-adminRouter.get('/comercios', async (req, res) => {
+adminRouter.get('/comercios', envolver(async (req, res) => {
   const estado = String(req.query.estado || 'pending') as KycStatus
   const todos = await db.listCompanies({})
   const lista = todos
@@ -83,10 +84,10 @@ adminRouter.get('/comercios', async (req, res) => {
       createdAt: c.createdAt,
     }))
   res.json({ comercios: lista, total: lista.length })
-})
+}))
 
 /** Un comercio entero, con sus documentos, para poder mirarlos y decidir. */
-adminRouter.get('/comercios/:id', async (req, res) => {
+adminRouter.get('/comercios/:id', envolver(async (req, res) => {
   const c = await db.findCompanyById(req.params.id)
   if (!c) return res.status(404).json({ error: 'Comercio no encontrado' })
   const dueno = await db.findUserById(c.ownerId)
@@ -94,7 +95,7 @@ adminRouter.get('/comercios/:id', async (req, res) => {
     comercio: c,
     dueno: dueno ? { id: dueno.id, email: dueno.email, fullName: dueno.fullName, gid: dueno.gid ?? null } : null,
   })
-})
+}))
 
 /**
  * Aprueba o rechaza.
@@ -103,7 +104,7 @@ adminRouter.get('/comercios/:id', async (req, res) => {
  * meses, «por qué se aprobó a este» es una pregunta tan legítima como «por qué
  * se rechazó a aquel», y la respuesta tiene que estar escrita.
  */
-adminRouter.post('/comercios/:id/decidir', async (req, res) => {
+adminRouter.post('/comercios/:id/decidir', envolver(async (req, res) => {
   const { decision, motivo } = req.body ?? {}
   if (decision !== 'aprobar' && decision !== 'rechazar') {
     return res.status(400).json({ error: 'La decisión tiene que ser «aprobar» o «rechazar»' })
@@ -131,7 +132,7 @@ adminRouter.post('/comercios/:id/decidir', async (req, res) => {
   })
   contar('accion', `comercio.${decision}`)
   res.json({ comercio: actualizado })
-})
+}))
 
 /**
  * Manda el comercio a Genesis ID para que lo revise un operador de verdad.

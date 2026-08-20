@@ -21,6 +21,7 @@
 // a la vez leen las dos «pendiente» y las dos cobran.
 
 import { Router } from 'express'
+import { envolver } from '../lib/asincrono.js'
 import { randomUUID } from 'crypto'
 import { db } from '../lib/db.js'
 import { requireAuth } from '../middleware/auth.js'
@@ -72,7 +73,7 @@ async function aPublico(c: Cobro): Promise<CobroPublico> {
 
 // ── Crear un cobro ───────────────────────────────────────────────────────────
 
-cobrosRouter.post('/', requireAuth, async (req, res) => {
+cobrosRouter.post('/', requireAuth, envolver(async (req, res) => {
   const { montoOrigen, concepto } = req.body ?? {}
 
   const comercio = await db.findCompanyByOwner(req.userId!)
@@ -134,7 +135,7 @@ cobrosRouter.post('/', requireAuth, async (req, res) => {
     qr: `mtp:cobro?c=${cobro.companyId}&inv=${cobro.referencia}&a=${cobro.montoOrigen}`,
     caducaEn: cobro.caducaEn.toISOString(),
   })
-})
+}))
 
 // ── Leerlo, para pagarlo ─────────────────────────────────────────────────────
 
@@ -144,15 +145,15 @@ cobrosRouter.post('/', requireAuth, async (req, res) => {
  * PUBLICA — sin el emisor, sin quién pagó — porque un QR pegado en un mostrador
  * lo escanea cualquiera que pase.
  */
-cobrosRouter.get('/:id', async (req, res) => {
+cobrosRouter.get('/:id', envolver(async (req, res) => {
   const c = await db.cobroPorId(req.params.id)
   if (!c) return res.status(404).json({ error: 'Ese cobro no existe o ya caducó' })
   res.json({ cobro: await aPublico(c) })
-})
+}))
 
 // ── Pagarlo ──────────────────────────────────────────────────────────────────
 
-cobrosRouter.post('/:id/pagar', requireAuth, async (req, res) => {
+cobrosRouter.post('/:id/pagar', requireAuth, envolver(async (req, res) => {
   const { medio, hash } = req.body ?? {}
   const cobro = await db.cobroPorId(req.params.id)
   if (!cobro) return res.status(404).json({ error: 'Ese cobro no existe o ya caducó' })
@@ -229,21 +230,21 @@ cobrosRouter.post('/:id/pagar', requireAuth, async (req, res) => {
   contar('transaccion', `pago.${elMedio}`, { valor: pagado.montoUsd, moneda: 'USD' })
 
   res.json({ cobro: await aPublico(pagado) })
-})
+}))
 
 // ── Cancelarlo ───────────────────────────────────────────────────────────────
 
-cobrosRouter.post('/:id/cancelar', requireAuth, async (req, res) => {
+cobrosRouter.post('/:id/cancelar', requireAuth, envolver(async (req, res) => {
   const c = await db.cancelarCobro(req.params.id, req.userId!)
   if (!c) {
     return res.status(409).json({ error: 'No se pudo cancelar: o no es tuyo, o ya fue pagado' })
   }
   res.json({ cobro: await aPublico(c) })
-})
+}))
 
 // ── Lo que lleva cobrado el comercio ─────────────────────────────────────────
 
-cobrosRouter.get('/', requireAuth, async (req, res) => {
+cobrosRouter.get('/', requireAuth, envolver(async (req, res) => {
   const comercio = await db.findCompanyByOwner(req.userId!)
   if (!comercio) return res.json({ cobros: [], resumen: null })
   const estado = ['pendiente', 'pagado', 'cancelado'].includes(String(req.query.estado))
@@ -256,15 +257,15 @@ cobrosRouter.get('/', requireAuth, async (req, res) => {
     cobros: await Promise.all(cobros.map(aPublico)),
     resumen: { ...resumen, precioOrigenUsd: precioOrigenUsd() },
   })
-})
+}))
 
 export const pagosRouter = Router()
 
 /** Lo que pagó la persona de la sesión. */
-pagosRouter.get('/', requireAuth, async (req, res) => {
+pagosRouter.get('/', requireAuth, envolver(async (req, res) => {
   const lista = await db.pagosDe(req.userId!, Math.min(200, Number(req.query.limite) || 50))
   res.json({ pagos: await Promise.all(lista.map(aPublico)) })
-})
+}))
 
 // ── El vínculo con Genesis ID ────────────────────────────────────────────────
 
@@ -277,7 +278,7 @@ export const identidadRouter = Router()
  * cliente, cualquiera podría atar su cuenta de MyTokenPay a la identidad de
  * otro y sus pagos quedarían registrados a nombre ajeno.
  */
-identidadRouter.post('/vincular', requireAuth, async (req, res) => {
+identidadRouter.post('/vincular', requireAuth, envolver(async (req, res) => {
   const usuario = await db.findUserById(req.userId!)
   if (!usuario) return res.status(404).json({ error: 'Cuenta no encontrada' })
 
@@ -307,10 +308,10 @@ identidadRouter.post('/vincular', requireAuth, async (req, res) => {
     estado: identidad.estado,
     direccionWallet: direccion,
   })
-})
+}))
 
 /** En qué anda la identidad de quien pregunta. */
-identidadRouter.get('/', requireAuth, async (req, res) => {
+identidadRouter.get('/', requireAuth, envolver(async (req, res) => {
   const usuario = await db.findUserById(req.userId!)
   if (!usuario) return res.status(404).json({ error: 'Cuenta no encontrada' })
   if (usuario.gid) {
@@ -324,4 +325,4 @@ identidadRouter.get('/', requireAuth, async (req, res) => {
     // verificarse o solo a atar la cuenta.
     identidad: identidad ? { estado: identidad.estado, tieneGid: Boolean(identidad.gid) } : null,
   })
-})
+}))

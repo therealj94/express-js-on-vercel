@@ -293,6 +293,32 @@ await prueba('un cobro que no existe da 404, no 500', async () => {
   assert.equal(r.estado, 404)
 })
 
+/* ══ EL FALLO QUE TUMBO PRODUCCION ═════════════════════════════════════════
+   Dos registros del mismo correo a la vez. El `if` que comprueba antes pierde
+   la carrera; el indice unico de la base la gana y lanza. Y una excepcion
+   dentro de un handler `async` de Express 4 NO llega al manejador de errores:
+   queda como `unhandledRejection` y Node MATA EL PROCESO. O sea que el
+   registro repetido de UNA persona dejaba a TODAS sin servicio.
+
+   Aqui se comprueba lo que tiene que pasar: uno entra, el otro recibe 409, y
+   el servidor sigue en pie contestando. */
+await prueba('dos registros del mismo correo a la vez: 409, y el servidor NO se cae', async () => {
+  const correo = `carrera-${Date.now()}@prueba.local`
+  const cuerpo = { email: correo, password: 'Contrasena2026!', fullName: 'Carrera De Registro' }
+  const [a, b] = await Promise.all([
+    pedir('/auth/signup', { metodo: 'POST', cuerpo }),
+    pedir('/auth/signup', { metodo: 'POST', cuerpo }),
+  ])
+  const creados = [a, b].filter((r) => r.estado === 200 || r.estado === 201)
+  const choques = [a, b].filter((r) => r.estado === 409)
+  assert.equal(creados.length, 1, 'exactamente UNA cuenta')
+  assert.equal(choques.length, 1, 'y la otra recibe un 409, no una caida')
+
+  // Lo que de verdad se prueba: el servidor sigue vivo despues.
+  const despues = await pedir('/cobros/lo-que-sea')
+  assert.equal(despues.estado, 404, 'el servidor tiene que seguir contestando')
+})
+
 server.close()
 console.log(fallos ? `\n${fallos} fallo(s)\n` : '\nTodo en orden\n')
 process.exit(fallos ? 1 : 0)

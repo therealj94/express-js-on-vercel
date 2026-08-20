@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { envolver } from '../lib/asincrono.js'
 import { randomUUID } from 'crypto'
 import { db } from '../lib/db.js'
 import { requireAuth } from '../middleware/auth.js'
@@ -10,7 +11,7 @@ import type { Company, CompanySocials, KycDocument, WeekHours } from '../types.j
 
 export const companiesRouter = Router()
 
-companiesRouter.get('/', async (req, res) => {
+companiesRouter.get('/', envolver(async (req, res) => {
   const { country, city, category, q, verified } = req.query as Record<string, string | undefined>
   const list = await db.listCompanies({
     country,
@@ -20,21 +21,21 @@ companiesRouter.get('/', async (req, res) => {
     verifiedOnly: verified === 'true',
   })
   res.json({ companies: list })
-})
+}))
 
-companiesRouter.get('/mine', requireAuth, async (req, res) => {
+companiesRouter.get('/mine', requireAuth, envolver(async (req, res) => {
   const company = await db.findCompanyByOwner(req.userId!)
   res.json({ company: company ?? null })
-})
+}))
 
-companiesRouter.get('/:id', async (req, res) => {
+companiesRouter.get('/:id', envolver(async (req, res) => {
   const company = await db.findCompanyById(req.params.id)
   if (!company) {
     res.status(404).json({ error: 'Empresa no encontrada' })
     return
   }
   res.json({ company })
-})
+}))
 
 function validateCompanyPayload(body: Record<string, unknown>): string | null {
   const required = ['legalName', 'tradeName', 'taxId', 'categorySlug', 'countrySlug', 'citySlug', 'address']
@@ -51,7 +52,7 @@ function validateCompanyPayload(body: Record<string, unknown>): string | null {
   return null
 }
 
-companiesRouter.post('/', requireAuth, async (req, res) => {
+companiesRouter.post('/', requireAuth, envolver(async (req, res) => {
   if (await db.findCompanyByOwner(req.userId!)) {
     res.status(409).json({ error: 'Ya tienes una empresa registrada' })
     return
@@ -87,9 +88,9 @@ companiesRouter.post('/', requireAuth, async (req, res) => {
 
   await db.setUserRole(req.userId!, 'business')
   res.status(201).json({ company })
-})
+}))
 
-companiesRouter.put('/:id', requireAuth, async (req, res) => {
+companiesRouter.put('/:id', requireAuth, envolver(async (req, res) => {
   const existing = await db.findCompanyById(req.params.id)
   if (!existing) {
     res.status(404).json({ error: 'Empresa no encontrada' })
@@ -129,9 +130,9 @@ companiesRouter.put('/:id', requireAuth, async (req, res) => {
 
   const updated = await db.updateCompany(existing.id, patch)
   res.json({ company: updated })
-})
+}))
 
-companiesRouter.post('/:id/kyc', requireAuth, async (req, res) => {
+companiesRouter.post('/:id/kyc', requireAuth, envolver(async (req, res) => {
   const existing = await db.findCompanyById(req.params.id)
   if (!existing) {
     res.status(404).json({ error: 'Empresa no encontrada' })
@@ -173,4 +174,4 @@ companiesRouter.post('/:id/kyc', requireAuth, async (req, res) => {
   anunciarEnGenesis(existing.id).catch(() => {})
 
   res.json({ company: updated })
-})
+}))

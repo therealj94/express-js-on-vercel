@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { envolver } from '../lib/asincrono.js'
 import { db, toPublicUser } from '../lib/db.js'
 import {
   hashPassword,
@@ -12,7 +13,7 @@ import { requireAuth } from '../middleware/auth.js'
 
 export const authRouter = Router()
 
-authRouter.post('/signup', async (req, res) => {
+authRouter.post('/signup', envolver(async (req, res) => {
   const { email, password, fullName } = req.body as {
     email?: string
     password?: string
@@ -33,11 +34,17 @@ authRouter.post('/signup', async (req, res) => {
   }
 
   const user = await db.createUser({ email, fullName, passwordHash: hashPassword(password) })
+  /* El `if` de arriba pierde la carrera cuando dos registros del mismo correo
+     llegan a la vez; el índice único de la base no. Aquí se recoge ese caso. */
+  if (!user) {
+    res.status(409).json({ error: 'Ya existe una cuenta con este correo' })
+    return
+  }
   const token = signToken(user.id)
   res.status(201).json({ token, user: toPublicUser(user) })
-})
+}))
 
-authRouter.post('/login', async (req, res) => {
+authRouter.post('/login', envolver(async (req, res) => {
   const { email, password } = req.body as { email?: string; password?: string }
   if (!email || !password) {
     res.status(400).json({ error: 'Correo y contraseña son requeridos' })
@@ -52,18 +59,18 @@ authRouter.post('/login', async (req, res) => {
 
   const token = signToken(user.id)
   res.json({ token, user: toPublicUser(user) })
-})
+}))
 
-authRouter.get('/me', requireAuth, async (req, res) => {
+authRouter.get('/me', requireAuth, envolver(async (req, res) => {
   const user = await db.findUserById(req.userId!)
   if (!user) {
     res.status(404).json({ error: 'Usuario no encontrado' })
     return
   }
   res.json({ user: toPublicUser(user) })
-})
+}))
 
-authRouter.delete('/me', requireAuth, async (req, res) => {
+authRouter.delete('/me', requireAuth, envolver(async (req, res) => {
   const user = await db.findUserById(req.userId!)
   if (!user) {
     res.status(404).json({ error: 'Usuario no encontrado' })
@@ -71,7 +78,7 @@ authRouter.delete('/me', requireAuth, async (req, res) => {
   }
   await db.deleteUser(user.id)
   res.status(204).end()
-})
+}))
 
 // Returning the reset token in the response hands any account to whoever knows
 // the email address: ask for the reset, read the token off the reply, spend it.
@@ -88,7 +95,7 @@ const EXPOSE_RESET_TOKEN =
   process.env.NODE_ENV !== 'production' &&
   !process.env.VERCEL
 
-authRouter.post('/forgot-password', async (req, res) => {
+authRouter.post('/forgot-password', envolver(async (req, res) => {
   const { email } = req.body as { email?: string }
   if (!email) {
     res.status(400).json({ error: 'El correo es requerido' })
@@ -108,9 +115,9 @@ authRouter.post('/forgot-password', async (req, res) => {
 
   const resetToken = signResetToken(user.id, user.passwordHash)
   res.json(EXPOSE_RESET_TOKEN ? { ...genericResponse, demoResetToken: resetToken } : genericResponse)
-})
+}))
 
-authRouter.post('/reset-password', async (req, res) => {
+authRouter.post('/reset-password', envolver(async (req, res) => {
   const { token, newPassword } = req.body as { token?: string; newPassword?: string }
   if (!token || !newPassword) {
     res.status(400).json({ error: 'Token y nueva contraseña son requeridos' })
@@ -132,4 +139,4 @@ authRouter.post('/reset-password', async (req, res) => {
 
   await db.updateUserPassword(user.id, hashPassword(newPassword))
   res.json({ message: 'Contraseña actualizada correctamente' })
-})
+}))

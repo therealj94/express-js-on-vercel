@@ -17,6 +17,26 @@ import { sembrarSiHaceFalta } from './lib/db.js'
    fallo silencioso es el peor de todos, asi que ahora se grita al arrancar. */
 exigirPersistencia()
 
+/* LA RED, PARA QUE UN FALLO NUNCA VUELVA A TUMBAR EL SERVICIO ENTERO.
+
+   Desde Node 15 una promesa rechazada que nadie atrapa TERMINA EL PROCESO. En
+   Express 4 los handlers `async` rechazan sin pasar por el manejador de
+   errores, así que un fallo en la petición de UNA persona deja a TODAS sin
+   servicio. Pasó de verdad: un registro con un correo repetido tiró el dyno.
+
+   Esto NO es la solución —la solución es que cada handler atrape lo suyo, y
+   por eso existe `lib/asincrono.ts`— es la red por si algo se escapa. Se
+   registra con todo el detalle para que el fallo se arregle, pero el servicio
+   sigue en pie mientras tanto. */
+process.on('unhandledRejection', (motivo: any) => {
+  console.error('[fatal-evitado] promesa rechazada sin atrapar:', motivo?.message || motivo)
+  if (motivo?.stack) console.error(motivo.stack)
+})
+process.on('uncaughtException', (e: any) => {
+  console.error('[fatal-evitado] excepción sin atrapar:', e?.message)
+  console.error(e?.stack)
+})
+
 const __filename = fileURLToPath(import.meta.url)
 
 const app = express()
