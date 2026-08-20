@@ -1,0 +1,25 @@
+# Cuentas de prueba a vaciar · lista aprobada por José el 20-ago-2026
+#
+# Destino: 0x746268404cc9ca2ef0ac344f02b236db232c3ad8
+#
+# ESTA LISTA ES EL CRITERIO. El guion no decide qué es una cuenta de prueba:
+# obedece esto y nada más. El tope de 200.000 por moneda es solo un freno por
+# si alguien escribe mal una dirección — no es lo que decide.
+#
+# Ninguna de estas cuatro se acerca al freno. La mayor tenencia es 99.996,90
+# ONDK, y las billeteras de emisión empiezan en 9.539.990.
+#
+# Comprobado en la cadena 5550 el 20-ago:
+#
+#   0xf34ddc23…   sin tokens · 0,0056 ORIGEN · 1 envío · no está en el génesis
+#   0x6d1ab033…   ONDK 3,20 · AUKA 0,10                · 116 envíos
+#   0xb71de5d4…   ONDK 4,10 · AGKA 2,00 · AUKA 0,0004  · 25 envíos
+#   0x3ef161e1…   ONDK 99.996,90 · AUKA 89.998,00      · ddhan500@gmail.com
+#
+# El ORIGEN se queda en cada cuenta: es la gasolina, y barrerlo dejaría la
+# billetera inservible para siempre.
+
+0xf34ddc235697724af2afb70e96f2809b2df234a7
+0x6d1ab033733e5618b247f9d3174a63c9d5eca978
+0xb71de5d4cce44d86e2fb9df6c49bbc970be4d1f8
+0x3ef161e1112126c39c841b46cd81c6bce42156d6
