@@ -105,8 +105,8 @@ nuevo se reintenta con el viejo.
 node pruebas/probar-rotacion-token.mjs
 ```
 
-Diez comprobaciones, todas en verde. Las tres que de verdad importan son las que
-prueban lo que **no** debe pasar: que un token de un tercero no cuele por el
+Trece comprobaciones, todas en verde. Las tres que de verdad importan son las
+que prueban lo que **no** debe pasar: que un token de un tercero no cuele por el
 reintento, que uno vencido no reviva, y que verificar con una clave ajena no
 dispare la caída al secreto viejo.
 
