@@ -53,6 +53,9 @@ const VETA = (() => {
   const URL_AUCORP = window.AUC_URL || 'https://main.d2e55u6ls6v9xt.amplifyapp.com/banca';
 
   const $ = s => document.querySelector(s);
+  // Todos los que coincidan, ya como lista de verdad y no como NodeList: en la
+  // rejilla de la frase hay que recorrerlos y filtrarlos.
+  const $$ = s => [...document.querySelectorAll(s)];
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -545,6 +548,156 @@ const VETA = (() => {
    * reto que el servidor acaba de emitir. Toda la derivación vive en
    * llaves.js, con el porqué de cada paso.
    */
+
+  /* ── LA REJILLA DE PALABRAS ──────────────────────────────────────────────
+   *
+   * Un recuadro por palabra, numerado. Lo que aporta sobre un campo corrido:
+   * se ve cuantas van sin contarlas, y la palabra que no existe en el
+   * diccionario de BIP-39 se marca EN SU SITIO mientras se escribe — en vez
+   * de que el servidor conteste «no hay cuenta» sin decir cual de las doce
+   * esta mal, que es lo mismo que no decir nada.
+   */
+  let llvCuantas = 12;
+  let llvTapada = true;
+  let llvModo = 'frase';
+
+  const llvPalabras = () => globalThis.LLAVECRIPTO?.palabras || null;
+
+  function llaveRejilla() {
+    const caja = $('#llv-rejilla');
+    if (!caja) return;
+    const antes = llaveLeerPalabras();
+    caja.innerHTML = Array.from({ length: llvCuantas }, (_, i) => `
+      <label class="llv-slot">
+        <i>${i + 1}</i>
+        <input type="text" inputmode="text" spellcheck="false" autocapitalize="off"
+               autocorrect="off" autocomplete="off" data-i="${i}"
+               aria-label="Palabra ${i + 1}">
+      </label>`).join('');
+    caja.classList.toggle('tapada', llvTapada);
+    // Se conserva lo que ya se habia escrito al cambiar de cuenta: nadie
+    // deberia perder ocho palabras por pulsar «15» para mirar.
+    const campos = [...caja.querySelectorAll('input')];
+    antes.slice(0, llvCuantas).forEach((w, i) => { if (campos[i]) campos[i].value = w; });
+    campos.forEach((c) => {
+      c.addEventListener('input', () => { llaveMarcar(c); llaveMarcador(); });
+      c.addEventListener('paste', llavePegar);
+      c.addEventListener('keydown', llaveTecla);
+      c.addEventListener('blur', () => llaveMarcar(c));
+      llaveMarcar(c);
+    });
+    llaveMarcador();
+  }
+
+  const llaveLeerPalabras = () =>
+    [...($('#llv-rejilla')?.querySelectorAll('input') || [])]
+      .map((c) => c.value.trim().toLowerCase());
+
+  /** El borde habla: oro si la palabra existe, coral si no, neutro si está vacía. */
+  function llaveMarcar(campo) {
+    const w = campo.value.trim().toLowerCase();
+    if (w !== campo.value) campo.value = w;
+    const slot = campo.closest('.llv-slot');
+    const dicc = llvPalabras();
+    slot.classList.remove('bien', 'mal');
+    if (!w) return;
+    /* Sin diccionario cargado no se marca NADA. Pintar todo de rojo porque el
+       paquete todavía no llegó sería mentir sobre lo que la persona escribió. */
+    if (!dicc) return;
+    slot.classList.add(dicc.includes(w) ? 'bien' : 'mal');
+  }
+
+  function llaveMarcador() {
+    const m = $('#llv-marcador');
+    if (!m) return;
+    const llenas = llaveLeerPalabras().filter(Boolean).length;
+    m.textContent = `${llenas} / ${llvCuantas}`;
+    m.classList.toggle('completa', llenas === llvCuantas);
+  }
+
+  /* Pegar la frase entera en cualquier recuadro la reparte por todos, y ajusta
+     la cuenta sola. Es como llega de verdad: de un gestor de contraseñas o de
+     una nota, no palabra por palabra. */
+  function llavePegar(ev) {
+    const texto = (ev.clipboardData || window.clipboardData)?.getData('text') || '';
+    const palabras = texto.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (palabras.length < 2) return; // una sola palabra: que la pegue y ya
+    ev.preventDefault();
+    if ([12, 15, 18, 21, 24].includes(palabras.length)) llvCuantas = palabras.length;
+    llaveRejilla();
+    llaveBotonesCuenta();
+    const campos = [...$('#llv-rejilla').querySelectorAll('input')];
+    campos.forEach((c, i) => { c.value = palabras[i] || ''; llaveMarcar(c); });
+    llaveMarcador();
+    campos[Math.min(palabras.length, llvCuantas) - 1]?.focus();
+  }
+
+  /* Espacio o Enter pasan al siguiente; borrar en un recuadro vacío vuelve al
+     anterior. Es como se teclea una lista, y sin esto habría que ir con el
+     dedo recuadro por recuadro. */
+  function llaveTecla(ev) {
+    const campos = [...$('#llv-rejilla').querySelectorAll('input')];
+    const i = campos.indexOf(ev.target);
+    if (ev.key === ' ' || ev.key === 'Enter') {
+      ev.preventDefault();
+      if (ev.key === 'Enter' && i === campos.length - 1) return llaveEntrar();
+      campos[i + 1]?.focus();
+    } else if (ev.key === 'Backspace' && !ev.target.value && i > 0) {
+      ev.preventDefault(); campos[i - 1]?.focus();
+    } else if (ev.key === 'ArrowRight' && ev.target.selectionStart === ev.target.value.length) {
+      campos[i + 1]?.focus();
+    } else if (ev.key === 'ArrowLeft' && ev.target.selectionStart === 0) {
+      campos[i - 1]?.focus();
+    }
+  }
+
+  function llaveCuantas(n) {
+    llvCuantas = n;
+    llaveRejilla();
+    llaveBotonesCuenta();
+    $('#llv-rejilla')?.querySelector('input')?.focus();
+  }
+
+  function llaveBotonesCuenta() {
+    for (const b of $$('.llv-cuenta button')) {
+      b.classList.toggle('activo', Number(b.dataset.n) === llvCuantas);
+    }
+  }
+
+  function llaveOjo() {
+    llvTapada = !llvTapada;
+    $('#llv-rejilla')?.classList.toggle('tapada', llvTapada);
+    const e = $('#llv-ojo span');
+    if (e) e.textContent = t(llvTapada ? 'llv.ver' : 'llv.tapar');
+  }
+
+  /* Frase o llave privada. Son dos cosas distintas y no se mezclan en el mismo
+     campo: quien tiene la llave privada sabe lo que es, y a quien tiene la
+     frase enseñarle un campo de sesenta y cuatro caracteres solo lo asusta. */
+  function llaveModo() {
+    llvModo = llvModo === 'frase' ? 'privada' : 'frase';
+    $('#llv-frase')?.classList.toggle('oculto', llvModo !== 'frase');
+    $('#llv-privada')?.classList.toggle('oculto', llvModo !== 'privada');
+    const b = $('#llv-cambiar');
+    if (b) b.textContent = t(llvModo === 'frase' ? 'llv.aPrivada' : 'llv.aFrase');
+    $('#llv-aviso')?.classList.add('oculto');
+    (llvModo === 'frase' ? $('#llv-rejilla input') : $('#i-llave'))?.focus();
+  }
+
+  /** Lo que se va a usar para entrar, venga de la rejilla o del campo. */
+  function llaveSecreto() {
+    if (llvModo === 'privada') return ($('#i-llave')?.value || '').trim();
+    const w = llaveLeerPalabras();
+    return w.every(Boolean) ? w.join(' ') : '';
+  }
+
+  /** Se borra TODO al salir: ni la rejilla ni el campo guardan nada. */
+  function llaveBorrar() {
+    for (const c of $$('#llv-rejilla input')) { c.value = ''; llaveMarcar(c); }
+    const p = $('#i-llave'); if (p) p.value = '';
+    llaveMarcador();
+  }
+
   function llaveAbrir() {
     $('#form-acceso')?.classList.add('oculto');
     $('.seg')?.classList.add('oculto');
@@ -553,14 +706,19 @@ const VETA = (() => {
     $('#acceso > .acc > .acc-volver')?.classList.add('oculto');
     $('#llv')?.classList.remove('oculto');
     $('#llv-aviso')?.classList.add('oculto');
-    $('#i-llave').value = '';
-    $('#i-llave')?.focus();
+    llvModo = 'frase';
+    $('#llv-frase')?.classList.remove('oculto');
+    $('#llv-privada')?.classList.add('oculto');
+    llaveRejilla();
+    llaveBotonesCuenta();
+    llaveBorrar();
+    $('#llv-rejilla input')?.focus();
   }
 
   function llaveCerrar() {
     // Se borra al salir. Una frase semilla no se queda en un campo por si
     // acaso: el siguiente que abra el teléfono la encontraría escrita.
-    const c = $('#i-llave'); if (c) c.value = '';
+    llaveBorrar();
     $('#llv')?.classList.add('oculto');
     $('.seg')?.classList.remove('oculto');
     $('#acceso > .acc > .acc-volver')?.classList.remove('oculto');
@@ -577,11 +735,20 @@ const VETA = (() => {
   let llaveOcupado = false;
   async function llaveEntrar() {
     if (llaveOcupado) return;
-    const campo = $('#i-llave');
-    const secreto = (campo?.value || '').trim();
+    const secreto = llaveSecreto();
     $('#llv-aviso')?.classList.add('oculto');
 
     if (!window.LLAVES || !window.LLAVECRIPTO) return llvAviso('llv.sinCripto');
+
+    /* Se dice QUE falta, no «formato inválido». En la rejilla se puede saber:
+       o quedan recuadros vacíos, o hay una palabra que no está en el
+       diccionario —y esa ya está marcada en rojo en su sitio. */
+    if (llvModo === 'frase') {
+      const w = llaveLeerPalabras();
+      const dicc = llvPalabras();
+      if (w.some((x) => !x)) return llvAviso('llv.faltan');
+      if (dicc && w.some((x) => !dicc.includes(x))) return llvAviso('llv.malPalabra');
+    }
     if (!secreto) return llvAviso('llv.malFormato');
 
     const btn = $('#btn-llave');
@@ -611,7 +778,7 @@ const VETA = (() => {
       if (!d?.token) return llvAviso('llv.err');
 
       // Se borra ANTES de entrar: si algo falla después, la frase ya no está.
-      if (campo) campo.value = '';
+      llaveBorrar();
 
       /* La sesión se arma igual que en el login de contraseña —mismos campos,
          mismo `refresco`, misma dirección sacada del token—. Si esto se
@@ -7927,6 +8094,7 @@ const VETA = (() => {
   return { ir, pestana, ojo, vista, mandar, copiar, compartir, salir, reintentar, avisar, idioma,
            reclavePedir, reclaveSalir, ojoReclave,
            llaveAbrir, llaveCerrar, llaveEntrar,
+           llaveCuantas, llaveOjo, llaveModo,
            tapar, copiarContrato, congelar, revelar, pedirTarjeta, cambioMonto, elegirDestino,
            voltear, olvidar, remMonto, remPais, refrescarTasas, nuevoContacto, borrarContacto,
            enviarA, abrirCamara, cerrarCamara, pedirSecreto, copiarTexto, guardarNombre,

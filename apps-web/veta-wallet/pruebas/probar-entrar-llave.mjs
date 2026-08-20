@@ -76,22 +76,31 @@ ok('el aviso de que la frase no se pide está a la vista',
 await pag.screenshot({ path:'llv-panel.png' })
 
 console.log('\nUna entrada mal escrita ni sale del navegador\n')
-await pag.fill('#i-llave', 'hola que tal como estas')
+await pag.fill('#llv-rejilla input[data-i="0"]', 'zzzzzz')
 await pag.click('#btn-llave'); await pag.waitForTimeout(700)
-ok('avisa del formato', /no parece una frase semilla/i.test(await pag.textContent('#llv-aviso')))
+ok('avisa de que faltan palabras', /faltan palabras/i.test(await pag.textContent('#llv-aviso')))
 ok('no mandó nada al servidor', salieron.length === 0)
 
 console.log('\nUna llave que no tiene cuenta\n')
+await pag.click('#llv-cambiar'); await pag.waitForTimeout(300)
 await pag.fill('#i-llave', '0x878386efb78845b3355bd15ea4d39ef97d179cb712b77d5c12b6be415fffeffe')
 await pag.click('#btn-llave'); await pag.waitForTimeout(2500)
 ok('avisa de que esa llave no tiene cuenta', /no corresponde a ninguna cuenta/i.test(await pag.textContent('#llv-aviso')))
 ok('no entró', !(await pag.evaluate(() => !document.getElementById('app')?.classList.contains('oculto'))))
 
 console.log('\nLa frase buena\n')
-await pag.fill('#i-llave', FRASE)
+await pag.click('#llv-cambiar'); await pag.waitForTimeout(300)   // de vuelta a la frase
+await pag.evaluate((fr) => {
+  const c = document.querySelector('#llv-rejilla input[data-i="0"]'); c.focus()
+  const dt = new DataTransfer(); dt.setData('text/plain', fr)
+  c.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
+}, FRASE)
+await pag.waitForTimeout(400)
+ok('las doce palabras quedaron puestas', (await pag.$$('.llv-slot.bien')).length === 12)
 await pag.click('#btn-llave'); await pag.waitForTimeout(3500)
 ok('entró a la billetera', await pag.evaluate(() => !document.getElementById('app')?.classList.contains('oculto')))
-ok('el campo quedó vacío', (await pag.inputValue('#i-llave')) === '')
+ok('la rejilla quedó vacía', (await pag.evaluate(() =>
+  [...document.querySelectorAll('#llv-rejilla input')].every(c => !c.value))))
 ok('la sesión tiene la dirección de la cuenta',
    (await pag.evaluate(() => VETA.dondeEstoy && document.body.innerText)).length > 0)
 
