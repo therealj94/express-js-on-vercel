@@ -15,6 +15,7 @@ import jwt from "../lib/sesion";
 import abi from "../ABI/abi.json";
 import { precioDeGas, limiteDeGas, LIMITE_POR_OMISION_TOKEN } from "../lib/gas";
 import { cobrarComision, comisionEnOrigen } from "../lib/comision";
+import { reportarEnvio } from "../lib/reporteAml";
 import {
   reservar,
   completar,
@@ -172,6 +173,20 @@ export const send = async (req, res) => {
 
     await Promise.all([user.save(), newTransaction.save()]);
 
+    /* AL MONITOREO, DESPUES DE QUE YA SALIO.
+       El motor antilavado de Genesis ID llevaba meses evaluando una lista
+       vacía porque nadie le mandaba nada: la ruta del puente existía y no la
+       llamaba ni un solo controlador. Va sin `await` y sin poder lanzar: un
+       reporte no puede retrasar ni tumbar un envío que ya se emitió. */
+    reportarEnvio({
+      email: user.email,
+      hash: transaction.hash,
+      destino: recipientAddress,
+      monto: amount,
+      activo: chain.name,
+      esOrigen: true,
+    });
+
     const salida = {
       hash: transaction.hash,
       from: wallet.address,
@@ -304,6 +319,18 @@ export const sendToken = async (req, res) => {
     });
     user.transaction.push(newTransaction);
     await Promise.all([user.save(), newTransaction.save()]);
+
+    // Mismo reporte que en send(). El token no se valora en dólares —no hay
+    // precio de mercado para cada uno— así que llega con montoUsd 0: el
+    // movimiento queda registrado y visible, pero no mueve los umbrales.
+    reportarEnvio({
+      email: user.email,
+      hash: transferTx.hash,
+      destino: recipientAddress,
+      monto: amount,
+      activo: tokenContractAddress,
+      esOrigen: false,
+    });
 
     const salida = {
       hash: transferTx.hash,

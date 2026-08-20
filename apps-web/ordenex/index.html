@@ -560,6 +560,11 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
      después, i18n penúltimo y app.js SIEMPRE último — es el orquestador que
      consume a todos y engancha DOMContentLoaded. Sin bundler, sin CDN de JS:
      el orden del HTML es el único sistema de módulos de la casa. -->
+<!-- El reportero va PRIMERO y sin depender de nadie: los módulos de abajo lo
+     buscan en window cuando les toca, y si no estuviera seguirían funcionando
+     igual. Cargarlo el último dejaría sin contar justamente los fallos de
+     carga, que son los que dejan la pantalla en blanco. -->
+<script src="telemetria.js"></script>
 <script src="qr.js"></script>
 <script src="cadena.js"></script>
 <script src="datos.js"></script>

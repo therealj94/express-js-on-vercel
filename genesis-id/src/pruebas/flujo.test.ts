@@ -350,9 +350,14 @@ describe('Inicio de sesión único', () => {
   test('con la cuenta atada sí se emite, y otra app lo valida', async () => {
     const identidad = store.todo().identidades.find((i) => i.email === 'persona@prueba.local')!
 
+    // El correo es obligatorio: es la prueba de que la app autenticó a la
+    // dueña de esa identidad. Ver la prueba de abajo para por qué.
     const vinculo = await pedir('/api/v1/vinculos', {
       method: 'POST', headers: conClave(),
-      body: JSON.stringify({ identidadId: identidad.id, cuenta: 'usuario-1', direccion: '0xabc' }),
+      body: JSON.stringify({
+        identidadId: identidad.id, cuenta: 'usuario-1', direccion: '0xabc',
+        email: 'persona@prueba.local',
+      }),
     })
     assert.equal(vinculo.estado, 200)
 
@@ -368,6 +373,32 @@ describe('Inicio de sesión único', () => {
     assert.equal(validado.estado, 200)
     assert.equal(validado.cuerpo.valido, true)
     assert.equal(validado.cuerpo.gid, identidad.gid)
+  })
+
+  /* EL VINCULO ES LA LLAVE DEL SSO, ASI QUE HAY QUE GANARSELO.
+     La cadena era: cualquier app con `vinculo.crear` ataba SU cuenta a
+     CUALQUIER identidad sin probar nada, y con la cuenta atada `/sso/token` le
+     emitía un token de esa persona. Una clave de API filtrada alcanzaba para
+     suplantar a cualquier verificado del ecosistema. Estas dos pruebas son el
+     candado: sin correo no hay vínculo, y con el correo de otro tampoco. */
+  test('no se ata una cuenta sin el correo de la persona', async () => {
+    const identidad = store.todo().identidades.find((i) => i.email === 'persona@prueba.local')!
+    const r = await pedir('/api/v1/vinculos', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ identidadId: identidad.id, cuenta: 'colada-sin-correo' }),
+    })
+    assert.equal(r.estado, 400)
+  })
+
+  test('no se ata una cuenta con el correo de otra persona', async () => {
+    const identidad = store.todo().identidades.find((i) => i.email === 'persona@prueba.local')!
+    const r = await pedir('/api/v1/vinculos', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({
+        identidadId: identidad.id, cuenta: 'suplantador', email: 'otro@prueba.local',
+      }),
+    })
+    assert.equal(r.estado, 403)
   })
 
   test('un token manipulado no se valida', async () => {

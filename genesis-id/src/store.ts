@@ -239,6 +239,22 @@ export async function iniciar(): Promise<void> {
       // Un volcado inmediato deja el documento de estado ya sin ella.
       await store.guardarYa()
     }
+
+    /* Los MOVIMIENTOS, por la misma razón y con el mismo cuidado.
+       Son el tercero en salir del documento de estado —después de las fotos y
+       la bitácora— y el que peor crecía: no crece con cuánta gente hay sino con
+       cuánto opera, así que no tiene techo. Se importa a su colección con el
+       módulo que ya sabe deduplicar por id, y solo cuando eso salió bien se
+       vacía el estado: un corte a mitad deja duplicados —que el índice único
+       descarta— y nunca un movimiento perdido. */
+    const movsEnEstado = Array.isArray((datos as any).movimientos) ? (datos as any).movimientos : []
+    if (movsEnEstado.length) {
+      const { migrarMovimientosDelEstado } = await import('./aml/almacenMovimientos.js')
+      const n = await migrarMovimientosDelEstado(movsEnEstado)
+      ;(datos as any).movimientos = []
+      console.log(`[store] movimientos movidos fuera del estado: ${n} de ${movsEnEstado.length}`)
+      await store.guardarYa()
+    }
   } else {
     datos = leerArchivo() ?? vacio()
     // Con el motor de archivo la bitácora se queda dentro del JSON: no hay
@@ -273,9 +289,9 @@ async function volcar(): Promise<void> {
          el rastro de una decisión que sí ocurrió. */
       await volcarBitacora()
 
-      // El documento de estado va SIN bitácora. Es todo el punto del cambio:
-      // lo que no está aquí no cuenta para los 16 MB.
-      const { bitacora: _fuera, ...estado } = datos
+      // El documento de estado va SIN bitácora NI movimientos. Es todo el punto
+      // del cambio: lo que no está aquí no cuenta para los 16 MB.
+      const { bitacora: _fuera, movimientos: _tampoco, ...estado } = datos
       await coleccion.updateOne(
         { _id: 'genesis' },
         { $set: { datos: estado, actualizado: new Date() } },

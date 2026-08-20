@@ -63,6 +63,15 @@ const ONX = (() => {
   const jsTxt = s => esc(JSON.stringify(String(s == null ? '' : s))
     .replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029'));
 
+  /* El puente con la telemetría, igual que en la billetera. Va envuelto porque
+     el reportero es OPCIONAL: si telemetria.js no se cargó, o su clave pública
+     sigue en el marcador PENDIENTE, aquí no se nota nada. Una casa de cambio no
+     puede romperse por culpa de su propia instrumentación, y menos en el gesto
+     de colocar una orden. */
+  const tele = (que, ...args) => {
+    try { window.TELEMETRIA?.[que]?.(...args); } catch {}
+  };
+
   // ── el dinero: strings de wei, BigInt, y ni un double en el camino ────────
 
   /* De wei a texto. Se CORTA, no se redondea: redondear hacia arriba enseña
@@ -169,6 +178,17 @@ const ONX = (() => {
     apagarVista();
     vistaActual = cual;
     if (cual === 'mercado' && dato) parAbierto = dato;
+    /* La navegación se cuenta AQUI y no en cada módulo: este es el único sitio
+       por el que pasan todas las vistas, así que instrumentar aquí garantiza
+       que ninguna sala quede sin contar cuando alguien añada la siguiente.
+
+       El par va DENTRO del nombre —«mercado.AUKA-ORIGEN»— y no en meta, porque
+       el explorador de analítica busca por texto en `nombre`, `mensaje` y
+       `ruta`, y no mira meta: metido en meta, «qué mercados se miran» sería una
+       pregunta que los datos tienen pero el panel no puede hacer. */
+    tele('pantalla',
+      cual === 'mercado' ? 'mercado.' + String(parAbierto || '?') : cual,
+      rutaDe(cual, dato));
     // La pestaña encendida: mirar UN mercado sigue siendo estar en Mercados.
     const encendida = cual === 'mercado' ? 'mercados' : cual;
     document.querySelectorAll('.nav[data-vista]').forEach(b =>
@@ -216,6 +236,9 @@ const ONX = (() => {
     document.body.classList.toggle('en-app', destino === 'app');
     if (destino === 'app') { vista(vistaActual); }
     else {
+      // La portada se cuenta desde aquí porque no pasa por vista(): sin esto,
+      // la pantalla que más gente ve —la puerta— sería la única invisible.
+      tele('pantalla', 'portada', '#');
       apagarVista();
       /* La luz de la sala se apaga al salir de ella. Sin esto, volver a la
          portada desde un mercado dejaba la fotografía apagada y el ancho
@@ -242,6 +265,8 @@ const ONX = (() => {
      tráfico doble para pintar lo mismo. */
   let pararMercadosVivos = null;
   let vivosPintados = false;
+  // El cerrojo del aviso de feed caído: ver pintarVivos().
+  let feedCaido = false;
 
   function arrancarVivos() {
     if (pararMercadosVivos) return;
@@ -270,7 +295,17 @@ const ONX = (() => {
     const cuerpo = $('#mv-cuerpo'), nota = $('#mv-nota');
     if (!cuerpo) return;
     let lista;
-    try { lista = await DATOS.mercados(); } catch {
+    try { lista = await DATOS.mercados(); } catch (e) {
+      /* La portada sin precios es la peor cara que puede poner esta casa, y es
+         invisible desde el servidor cuando el que falla es el servidor. Va como
+         «aviso» y no como «error» porque no rompe nada —la tabla vieja se queda.
+
+         Se cuenta UNA vez por caída, no una por sondeo: este reloj tira cada
+         diez segundos y la telemetría manda los errores sin esperar al lote, así
+         que sin el cerrojo una caída de una hora serían trescientas sesenta
+         peticiones por pestaña abierta — la app tumbando al servidor que ya
+         estaba caído. El cerrojo se abre solo cuando el feed vuelve. */
+      if (!feedCaido) { feedCaido = true; tele('fallo', 'mercados.feed', e, { gravedad: 'aviso', ruta: '#' }); }
       /* Sin feed, guion — y la verdad en la nota. Si ya había precios
          pintados se dejan quietos: un dato viejo y honesto vale más que una
          tabla parpadeando a vacío por un tropiezo de red. */
@@ -278,6 +313,7 @@ const ONX = (() => {
       nota.textContent = t('pt.mvSinFeed');
       return;
     }
+    feedCaido = false;
     nota.textContent = '';
     cuerpo.innerHTML = (lista || []).map(m => {
       const base = CADENA.baseDe(m.mercado) || m.mercado;
@@ -336,6 +372,14 @@ const ONX = (() => {
   // a Genesis; sin sesión, primero login) y vuelve a esta página con
   // #sso=<token>. La vuelta la recoge arrancar().
   function entrar() {
+    /* La IDA se cuenta aparte de la vuelta a propósito. Son dos eventos y no
+       uno porque entre los dos hay una app distinta —la billetera— y todo lo
+       que se pierda ahí solo se ve restando: cuántos pidieron la llave menos
+       cuántos volvieron con ella. Con un solo evento al final, un SSO roto se
+       lee como «nadie quiso entrar». Se vacía la cola antes de saltar: esta
+       página se va a descargar en la línea siguiente. */
+    tele('accion', 'sso.pedido');
+    tele('vaciar');
     location.href = WALLET + '/#sso-ordenex';
   }
 
@@ -343,15 +387,27 @@ const ONX = (() => {
     avisar(t('acc.entrando'));
     try {
       await DATOS.sso(token);
+      // El único modo de entrar que tiene Ordenex: no hay contraseñas propias,
+      // así que «sesión» aquí es siempre esto.
+      tele('sesion', 'sso.entrada');
       ir('app');
       avisar(t('acc.hola'));
     } catch (e) {
+      /* Un canje fallido es la puerta cerrada en la cara con la llave en la
+         mano, y es invisible desde el backend de Ordenex cuando el fallo fue de
+         red. Se cuenta como error y con su código, que es lo que distingue «el
+         token venció» de «el servidor no contesta». */
+      tele('fallo', 'sso.canje', e, { meta: { codigo: e?.codigo || 'DESCONOCIDO' } });
       // Fail-closed: sin canje no hay sesión a medias — DATOS no guardó nada.
       avisar(e?.codigo === 'SESION_VENCIDA' ? t('acc.vencida') : t('acc.mal'));
     }
   }
 
   function salir() {
+    // Se anota y se manda en el acto: quien cierra sesión suele cerrar también
+    // la pestaña, y el lote de dentro de diez segundos no llegaría a salir.
+    tele('accion', 'sesion.salir');
+    tele('vaciar');
     DATOS.salir();
     vistaActual = 'mercados';
     parAbierto = null;
@@ -377,6 +433,16 @@ const ONX = (() => {
   // ── el arranque ───────────────────────────────────────────────────────────
 
   function arrancar() {
+    /* Se enciende la telemetría ANTES que nada, para que un fallo del propio
+       arranque también se vea: es justo el que deja la pantalla en blanco y el
+       que nadie reporta. Sin clave puesta esto no hace absolutamente nada — ni
+       cola, ni peticiones. */
+    tele('iniciar', {});
+    /* La apertura se cuenta aquí y no en el primer ir(): es la única señal que
+       no depende de a dónde vaya después la persona —portada, ruta directa o
+       vuelta del SSO—, y sin ella «cuánta gente abrió Ordenex hoy» habría que
+       deducirlo sumando pantallas, que cuenta de más. */
+    tele('sesion', 'app.abierta');
     pintarIdioma();
 
     /* ¿Viene un token de la wallet? El hash se limpia ANTES de canjearlo: un

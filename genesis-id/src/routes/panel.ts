@@ -12,6 +12,7 @@ import {
   importarDeOfac, importarTexto, cargarDesdeMongo,
 } from '../aml/listas.js'
 import { consultar, verificarCadena, anclaje, registrar, sellar } from '../audit/bitacora.js'
+import { resumenMovimientos, buscarMovimientos } from '../aml/almacenMovimientos.js'
 import { crearOperador, PERMISOS } from '../auth/operadores.js'
 import { crearAplicacion, revocar, rotar, ALCANCES } from '../auth/aplicaciones.js'
 import { biometriaConfigurada, proveedorBiometria } from '../kyc/biometria.js'
@@ -29,8 +30,11 @@ panelRouter.use(exigeOperador)
 // Resumen
 // ─────────────────────────────────────────────────────────────────────────────
 
-panelRouter.get('/resumen', (_req, res) => {
+panelRouter.get('/resumen', async (_req, res) => {
   const d = store.todo()
+  // Los movimientos salieron del documento de estado: el recuento y el volumen
+  // los cuenta la base, no un `reduce` sobre un array que ya no está.
+  const mov = await resumenMovimientos()
   const porEstado = (estado: string) => d.identidades.filter((i) => i.estado === estado).length
 
   res.json({
@@ -51,10 +55,7 @@ panelRouter.get('/resumen', (_req, res) => {
       rechazados: d.negocios.filter((n) => n.estado === 'rechazado').length,
     },
     casos: casos.resumenCasos(),
-    movimientos: {
-      total: d.movimientos.length,
-      volumenUsd: d.movimientos.reduce((s, m) => s + m.montoUsd, 0),
-    },
+    movimientos: mov,
     // Este bloque es el que dice si el sistema está en condiciones de operar.
     salud: {
       almacen: store.estado(),
@@ -300,6 +301,68 @@ panelRouter.post('/negocios/:id/rechazar', exigePermiso('negocio.rechazar'), asy
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Movimientos
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Todo lo que se ha movido en el ecosistema, y de quién.
+ *
+ * POR QUE ESTA AQUI Y NO EN ANALITICA
+ *
+ * La analítica no identifica a nadie a propósito: cuenta por huella anónima
+ * porque la abre mucha más gente que este panel y no tiene por qué ver a nadie
+ * en particular. Esta pantalla es lo contrario — responde «quién movió qué» con
+ * nombre y GID delante—, así que vive del lado de cumplimiento, exige permiso
+ * de casos y cada consulta queda escrita en la bitácora. Mezclarlas habría
+ * convertido el tablero de métricas en un listado de operaciones con nombre.
+ *
+ * El nombre de la persona se resuelve AQUI, cruzando el GID con el padrón: en
+ * la colección de movimientos no se guarda ni un dato personal, solo el GID.
+ * Así el histórico de operaciones no envejece cuando alguien cambia de nombre,
+ * y borrar una identidad no deja huérfano el rastro contable.
+ */
+panelRouter.get('/movimientos', exigePermiso('caso.ver'), async (req, res) => {
+  const q = req.query as Record<string, string>
+  const txt = (v: unknown, max = 80) => {
+    const s = String(v ?? '').trim()
+    return s ? s.slice(0, max) : undefined
+  }
+  const pagina = await buscarMovimientos({
+    gid: txt(q.gid, 32),
+    app: txt(q.app, 40),
+    direccion: q.direccion === 'entrada' || q.direccion === 'salida' ? q.direccion : undefined,
+    activo: txt(q.activo, 16),
+    desde: txt(q.desde, 10),
+    hasta: txt(q.hasta, 10),
+    montoMin: q.montoMin ? Number(q.montoMin) : undefined,
+    texto: txt(q.texto),
+    limite: Number(q.limite) || 100,
+    saltar: Number(q.saltar) || 0,
+  })
+
+  // El GID se cruza con el padrón una sola vez por persona, no una por
+  // movimiento: una página de 100 operaciones suele ser de dos o tres personas.
+  const dueños = new Map<string, { nombre: string | null; email: string; id: string; estado: string }>()
+  for (const m of pagina.movimientos) {
+    if (!m.gid || dueños.has(m.gid)) continue
+    const i = store.todo().identidades.find((x) => x.gid === m.gid)
+    if (i) dueños.set(m.gid, {
+      id: i.id, email: i.email, estado: i.estado,
+      nombre: i.nombreLegal ?? i.nombreDeclarado ?? null,
+    })
+  }
+
+  registrar(req.operador!.email, 'movimientos.consultados', q.gid || 'todos', {
+    total: pagina.total, filtros: Object.keys(q).filter((k) => q[k]).join(','),
+  })
+
+  res.json({
+    ...pagina,
+    movimientos: pagina.movimientos.map((m) => ({ ...m, persona: dueños.get(m.gid) ?? null })),
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Casos
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -333,8 +396,8 @@ panelRouter.post('/casos/:id/cerrar', exigePermiso('caso.reportar'), async (req,
   res.json({ ok: true, caso: r.caso })
 })
 
-panelRouter.get('/casos/:id/reporte', exigePermiso('caso.reportar'), (req, res) => {
-  const borrador = casos.borradorReporte(req.params.id)
+panelRouter.get('/casos/:id/reporte', exigePermiso('caso.reportar'), async (req, res) => {
+  const borrador = await casos.borradorReporte(req.params.id)
   if (!borrador) return res.status(404).json({ error: 'Caso no encontrado' })
   registrar(req.operador!.email, 'caso.reporteGenerado', req.params.id, {})
   res.json(borrador)

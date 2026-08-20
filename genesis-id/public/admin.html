@@ -84,7 +84,10 @@ header{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:
 .marca{display:flex;align-items:center;gap:11px}
 .sello{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);display:grid;place-items:center;
  background:linear-gradient(135deg,rgba(201,169,97,.2),transparent)}
-.sello svg{width:21px;height:21px;stroke:var(--gold);fill:none;stroke-width:1.7}
+.sello svg{width:24px;height:24px;color:var(--gold)}
+/* La marca trae sus propios rellenos y grosores de trazo. La regla anterior
+   —heredada del escudo de dos líneas que había antes— le imponía fill:none y
+   stroke-width:1.7, y eso la convertía en un garabato ilegible. */
 .marca b{font-size:16px;display:block}
 .marca span{font-size:10px;color:var(--faint);letter-spacing:.16em;text-transform:uppercase}
 .quien{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:12.5px}
@@ -271,6 +274,11 @@ pre{background:#0F1927;border:1px solid var(--line2);border-radius:10px;padding:
    Cian y no ámbar: en este sistema el ámbar es duda y el rojo es rechazo; que
    algo esté en cola no es ninguna de las dos cosas, es información. */
 .qi-filtros input,.qi-filtros select{border-radius:4px;background:#0F1927}
+/* Seis filtros no caben con el ancho automático de los tres de identidades: el
+   de texto manda y el resto se acomoda. */
+.mv-filtros{align-items:center}
+.mv-filtros #mvTexto{flex:1 1 260px;min-width:200px}
+.mv-filtros select,.mv-filtros input[type=date]{flex:0 0 auto}
 .qi-marco{background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden}
 .qi-cinta{display:flex;align-items:center;gap:10px;padding:9px 13px;
   background:#0F1927;border-bottom:1px solid var(--line)}
@@ -526,6 +534,7 @@ const PESTANAS = [
   { id: 'identidades', txt: 'Identidades', permiso: 'identidad.ver' },
   { id: 'negocios', txt: 'Negocios', permiso: 'negocio.ver' },
   { id: 'casos', txt: 'Casos', permiso: 'caso.ver' },
+  { id: 'movimientos', txt: 'Movimientos', permiso: 'caso.ver' },
   { id: 'listas', txt: 'Listas', permiso: 'listas.ver' },
   { id: 'bitacora', txt: 'Bitácora', permiso: 'bitacora.ver' },
   { id: 'ajustes', txt: 'Operadores y apps', permiso: '*' },
@@ -1139,6 +1148,125 @@ async function aprobarNegocio(id, bloqueos) {
 }
 
 // ── Casos ───────────────────────────────────────────────────────────────────
+/* ══ MOVIMIENTOS ═══════════════════════════════════════════════════════════
+   Qué se movió en el ecosistema y de quién. Va en el panel de cumplimiento y
+   NO en analítica porque aquí cada renglón lleva nombre y GID; la analítica
+   cuenta por huella anónima a propósito y mezclarlas la habría convertido en
+   un listado de operaciones con nombre. */
+let mvPagina = 0
+
+VISTAS.movimientos = async function () {
+  const q = new URLSearchParams()
+  for (const [k, sel] of [['texto', '#mvTexto'], ['app', '#mvApp'], ['direccion', '#mvDir'],
+                          ['desde', '#mvDesde'], ['hasta', '#mvHasta'], ['montoMin', '#mvMonto']]) {
+    const v = $(sel)?.value?.trim()
+    if (v) q.set(k, v)
+  }
+  q.set('saltar', String(mvPagina * 100))
+  const d = await api('/panel/movimientos?' + q)
+
+  const flecha = (m) => m.direccion === 'entrada'
+    ? '<span style="color:var(--ok)">↓ entra</span>'
+    : '<span style="color:var(--warn)">↑ sale</span>'
+
+  $('#vista').innerHTML = `
+    <h2 class="rz-titulo">Movimientos</h2>
+    <p class="pie" style="color:var(--faint);font-size:12.5px;margin:-6px 0 14px;max-width:70ch">
+      Lo que las apps del ecosistema reportan al monitoreo. Cada consulta queda
+      escrita en la bitácora con su nombre: esto es un registro de operaciones
+      con persona identificada, no un tablero de métricas.
+    </p>
+
+    <div class="filtros qi-filtros mv-filtros">
+      <input id="mvTexto" placeholder="Contraparte, hash, activo o GID" value="${esc(mvFiltro.texto)}"
+             oninput="mvBuscar()">
+      <select id="mvApp" onchange="mvBuscar()">
+        <option value="">Todas las apps</option>
+        ${d.porApp.map((a) => `<option value="${esc(a.app)}" ${mvFiltro.app === a.app ? 'selected' : ''}>${esc(a.app)}</option>`).join('')}
+      </select>
+      <select id="mvDir" onchange="mvBuscar()">
+        <option value="">Entradas y salidas</option>
+        <option value="entrada" ${mvFiltro.direccion === 'entrada' ? 'selected' : ''}>Solo entradas</option>
+        <option value="salida" ${mvFiltro.direccion === 'salida' ? 'selected' : ''}>Solo salidas</option>
+      </select>
+      <input id="mvDesde" type="date" value="${esc(mvFiltro.desde)}" onchange="mvBuscar()" title="Desde">
+      <input id="mvHasta" type="date" value="${esc(mvFiltro.hasta)}" onchange="mvBuscar()" title="Hasta">
+      <input id="mvMonto" type="number" placeholder="USD mín." value="${esc(mvFiltro.montoMin)}"
+             oninput="mvBuscar()" style="width:110px">
+    </div>
+
+    ${d.porApp.length ? `<div class="rz-cola" style="margin-bottom:16px">
+      ${d.porApp.map((a) => `
+        <div class="rz-ficha" style="cursor:default">
+          <span class="rz-cinta"><span class="rz-ojillo">${esc(a.app)}</span></span>
+          <span class="rz-cuerpo">
+            <span class="rz-cifra num">${a.n.toLocaleString('es')}</span>
+            <span class="rz-pie">${dinero(a.volumenUsd)} movidos</span>
+          </span>
+        </div>`).join('')}
+    </div>` : ''}
+
+    <div class="qi-marco">
+      <div class="qi-cinta">
+        <span class="qi-ojillo">Operaciones</span>
+        <span class="qi-cuenta num">${d.total.toLocaleString('es')} · ${dinero(d.volumenUsd)}</span>
+      </div>
+      ${d.movimientos.length ? `<div class="qi-cola">
+        ${d.movimientos.map((m) => `
+          <div class="qi-fila" ${m.persona ? `onclick="verIdentidad('${m.persona.id}')"` : 'style="cursor:default"'}>
+            <div class="qi-quien">
+              <div class="qi-nombre">${esc(m.persona?.nombre || m.persona?.email || m.gid || 'sin identificar')}</div>
+              <div class="qi-datos">${esc(m.gid || '—')}${m.persona ? ' · ' + esc(m.persona.email) : ''}</div>
+            </div>
+            <div class="qi-sellos">
+              ${flecha(m)}
+              <b class="num">${dinero(m.montoUsd)}</b>
+              <span class="num" style="color:var(--mut)">${esc(String(m.monto))} ${esc(m.activo || '')}</span>
+              ${m.app ? pill(m.app, 'info') : ''}
+            </div>
+            <div class="qi-meta">
+              <div class="qi-apps num" title="${esc(m.contraparte || '')}">${esc((m.contraparte || '—').slice(0, 22))}</div>
+              <div class="qi-fecha num">${fecha(m.fecha)}</div>
+            </div>
+          </div>`).join('')}
+      </div>` : `<div class="vacio">
+        ${d.total === 0 && !q.toString().replace(/saltar=\d+/, '').replace(/&/g, '')
+          ? 'Todavía no hay ningún movimiento reportado. Las apps los mandan a /api/v1/movimientos; si una app opera y no aparece acá, es que no está reportando.'
+          : 'Ningún movimiento con esos filtros.'}
+      </div>`}
+    </div>
+
+    ${d.total > 100 ? `<div style="display:flex;gap:8px;justify-content:center;margin-top:14px">
+      <button class="g" onclick="mvIr(-1)" ${mvPagina === 0 ? 'disabled' : ''}>← Anteriores</button>
+      <span style="align-self:center;color:var(--faint);font-size:12px">
+        ${(mvPagina * 100 + 1).toLocaleString('es')}–${Math.min((mvPagina + 1) * 100, d.total).toLocaleString('es')} de ${d.total.toLocaleString('es')}</span>
+      <button class="g" onclick="mvIr(1)" ${(mvPagina + 1) * 100 >= d.total ? 'disabled' : ''}>Siguientes →</button>
+    </div>` : ''}`
+}
+
+/* Los filtros viven fuera de la vista porque repintarla los borraría: el
+   operador escribe en la caja de texto y cada letra vuelve a pintar la lista. */
+let mvFiltro = { texto: '', app: '', direccion: '', desde: '', hasta: '', montoMin: '' }
+let mvReloj = null
+
+function mvBuscar() {
+  mvFiltro = {
+    texto: $('#mvTexto')?.value || '', app: $('#mvApp')?.value || '',
+    direccion: $('#mvDir')?.value || '', desde: $('#mvDesde')?.value || '',
+    hasta: $('#mvHasta')?.value || '', montoMin: $('#mvMonto')?.value || '',
+  }
+  mvPagina = 0
+  // Se espera a que pare de escribir: una consulta por tecla castiga a la base
+  // justo en la pantalla que más filas mueve.
+  clearTimeout(mvReloj)
+  mvReloj = setTimeout(() => VISTAS.movimientos(), 280)
+}
+
+function mvIr(d) {
+  mvPagina = Math.max(0, mvPagina + d)
+  VISTAS.movimientos()
+}
+
 VISTAS.casos = async function () {
   const { casos: lista } = await api('/panel/casos')
   $('#vista').innerHTML = `

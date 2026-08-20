@@ -508,6 +508,6 @@ appsRouter.post('/movimientos', limite(120), exigeApp('movimiento.enviar'), asyn
       hash: m.hash ?? null,
     }))
 
-  registrarMovimientos(g, limpios, `app:${req.app_ecosistema!.clave}`)
+  await registrarMovimientos(g, limpios, `app:${req.app_ecosistema!.clave}`)
   res.json({ ok: true, recibidos: limpios.length })
 })

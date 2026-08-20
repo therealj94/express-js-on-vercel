@@ -90,6 +90,15 @@ const VMERCADO = (() => {
   const deWei = (s, d) => ONX.deWei(s, d);
   const $ = id => document.getElementById(id);
 
+  /* El puente con la telemetría, con su propio envoltorio en vez de pedírselo
+     a ONX: el reportero es opcional y este módulo se carga ANTES que app.js, así
+     que depender de ONX para instrumentar ataría el reloj de las métricas al
+     orden del HTML. Si telemetria.js no está, o su clave sigue en PENDIENTE,
+     aquí no pasa nada. */
+  const tele = (que, ...args) => {
+    try { window.TELEMETRIA?.[que]?.(...args); } catch {}
+  };
+
   // ── los textos, es/en uno junto al otro ───────────────────────────────────
 
   const TXT = {
@@ -1826,8 +1835,52 @@ const VMERCADO = (() => {
     recalcular();
   }
 
+  /* Cuánto mueve una orden, en ORIGEN y en unidades humanas, para la
+     telemetría. Es la misma cuenta que enseña recalcular(), y a propósito no se
+     recalcula distinto: si el panel dijera un notional y la pantalla otro, el
+     que se equivocó sería siempre el que nadie está mirando.
+
+     Para límite es exacto; para mercado es la caminata del libro leído, o sea
+     una ESTIMACION — por eso el evento de mercado lleva su marca en meta. Sin
+     libro devuelve null y el evento sale sin monto: un cero de consuelo en una
+     suma de volumen es peor que un hueco. */
+  function notionalDeOrden(orden) {
+    const cant = entero(orden.cantidad);
+    if (cant == null || cant <= 0n) return null;
+    let wei = null;
+    if (orden.tipo === 'limite') {
+      const p = entero(orden.precio);
+      if (p == null || p <= 0n) return null;
+      wei = notionalDe(cant, p);
+    } else {
+      const est = orden.lado === 'compra' ? costoDeMercado(cant) : ingresoDeMercado(cant);
+      if (!est) return null;
+      wei = orden.lado === 'compra' ? est.costo : est.ingreso;
+    }
+    // texto() da decimal plano sin separadores; Number sobre eso es seguro.
+    // El wei NO se manda: 1e18 en un panel que suma volumen no dice nada.
+    const n = Number(texto(wei, 6));
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /* El nombre del evento de una orden lleva el lado y el mercado DENTRO:
+     «orden.compra.AUKA-ORIGEN». El explorador de analítica busca texto en
+     `nombre`, `mensaje` y `ruta`, y no mira `meta`; si el par viviera solo en
+     meta, «qué se opera en Ordenex» sería una pregunta imposible de hacer desde
+     el panel aunque el dato estuviera guardado. */
+  const nombreOrden = (orden, sufijo) =>
+    'orden.' + orden.lado + '.' + orden.mercado + (sufijo || '');
+
   async function colocar() {
-    if (!DATOS.haySesion()) { ONX.entrar(); return; }
+    if (!DATOS.haySesion()) {
+      /* Intentar operar sin sesión es el momento exacto en que Ordenex manda a
+         alguien a la billetera, y es la mitad de arriba del embudo del SSO: sin
+         esto, los que se pierden en el camino no se distinguen de los que nunca
+         quisieron entrar. */
+      tele('accion', 'orden.sinSesion', { ruta: '#mercado/' + String(parActual || '') });
+      ONX.entrar();
+      return;
+    }
     const aviso = $('vm-aviso'), btn = $('vm-enviar');
     const v = validar();
     if (!v.ok) {
@@ -1839,8 +1892,20 @@ const VMERCADO = (() => {
     if (!ordenKeyViva) ordenKeyViva = llaveNueva();
     v.orden.ordenKey = ordenKeyViva;
     if (btn) btn.disabled = true;
+    /* El notional se calcula ANTES de mandar la orden: al volver, el formulario
+       ya está limpio y el libro puede haberse movido, así que después del await
+       la cuenta daría otro número o ninguno. */
+    const monto = notionalDeOrden(v.orden);
+    const ruta = '#mercado/' + String(v.orden.mercado);
+    const marcas = { tipo: v.orden.tipo, estimado: v.orden.tipo === 'mercado' };
     try {
       await DATOS.colocar(v.orden);
+      /* La orden aceptada es EL gesto de esta casa: el que hay que poder contar
+         por mercado, por lado y por volumen. Va como `transaccion` —no como
+         `accion`— porque es el único tipo que el servidor suma en el volumen
+         diario; con `accion` el evento se guardaría igual y no entraría en
+         ninguna cuenta de dinero. */
+      tele('transaccion', nombreOrden(v.orden), monto, 'ORIGEN', { ruta: ruta, meta: marcas });
       ordenKeyViva = null;
       const c = $('vm-cant');
       if (c) c.value = '';
@@ -1854,6 +1919,18 @@ const VMERCADO = (() => {
          no. Un tropiezo de red o un 5xx puede haber dejado la orden a medio
          llegar: la llave SE QUEDA para que el reintento sea idempotente. */
       if (e?.http && e.http < 500) ordenKeyViva = null;
+      /* Una orden que no entra es lo más caro que puede pasar aquí, y desde el
+         backend no se ve: el rechazo por saldo se ve, pero el timeout de red no
+         llega a existir. Se manda con el código y el HTTP para poder separar
+         «el motor dijo que no» de «no llegamos al motor», que se arreglan en
+         sitios distintos. La sesión vencida va como aviso y no como error: es
+         el funcionamiento normal de un token de quince minutos, y contarla como
+         fallo enseñaría a ignorar la lista de errores. */
+      tele('fallo', nombreOrden(v.orden, '.rechazada'), e, {
+        gravedad: e?.codigo === 'SESION_VENCIDA' ? 'aviso' : 'error',
+        ruta: ruta,
+        meta: { tipo: v.orden.tipo, codigo: e?.codigo || 'DESCONOCIDO', http: e?.http || 0 },
+      });
       if (e?.codigo === 'SESION_VENCIDA') {
         const caja = $('vm-form-caja');
         if (caja) caja.innerHTML = cajaOperar(CADENA.baseDe(parActual) || '');
@@ -1907,12 +1984,25 @@ const VMERCADO = (() => {
 
   async function quitar(id, btn) {
     if (btn) btn.disabled = true;
+    const ruta = '#mercado/' + String(parActual || '');
     try {
       await DATOS.cancelar(id);
+      /* Cancelar va sin monto y sin id: el monto ya se contó al colocar y
+         sumarlo otra vez inflaría el volumen del día con dinero que no se
+         movió, y el id de una orden apunta a una persona concreta. Lo que
+         importa contar es cuántas se retiran y de qué mercado. */
+      tele('accion', 'orden.cancelada.' + String(parActual || ''), { ruta: ruta });
       ONX.avisar(tx('cancelada'));
       // Cancelar libera la reserva: saldo, libro y lista cambian juntos.
       cargarCartera(); cargarLibro(); cargarOrdenes();
     } catch (e) {
+      // Una cancelación que falla deja dinero reservado contra la voluntad de
+      // su dueño. Merece verse aunque la pantalla ya lo esté diciendo.
+      tele('fallo', 'orden.cancelada.fallo', e, {
+        gravedad: e?.codigo === 'SESION_VENCIDA' ? 'aviso' : 'error',
+        ruta: ruta,
+        meta: { codigo: e?.codigo || 'DESCONOCIDO', http: e?.http || 0 },
+      });
       ONX.avisar(e?.codigo === 'SESION_VENCIDA' ? tx('eSesion') : (e?.message || tx('eCancelar')));
       if (btn) btn.disabled = false;
     }
