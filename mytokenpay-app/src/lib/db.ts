@@ -149,6 +149,13 @@ export const db = {
     return [...usuariosMem.values()].find((u) => u.email === correo)
   },
 
+  /** Por su identidad del ecosistema. Es como entra quien llega por SSO. */
+  async findUserByGid(gid: string): Promise<User | undefined> {
+    const c = await col('usuarios')
+    if (c) return sinMongoId<User>(await c.findOne({ gid }))
+    return [...usuariosMem.values()].find((u) => u.gid === gid)
+  },
+
   async findUserById(id: string): Promise<User | undefined> {
     const c = await col('usuarios')
     if (c) return sinMongoId<User>(await c.findOne({ id }))

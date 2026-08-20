@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import { envolver } from '../lib/asincrono.js'
 import { db, toPublicUser } from '../lib/db.js'
+import { verificarSso, identidadPorGid } from '../lib/genesis.js'
+import { randomBytes } from 'crypto'
 import {
   hashPassword,
   passwordFingerprint,
@@ -139,4 +141,80 @@ authRouter.post('/reset-password', envolver(async (req, res) => {
 
   await db.updateUserPassword(user.id, hashPassword(newPassword))
   res.json({ message: 'Contraseña actualizada correctamente' })
+}))
+
+/**
+ * Entrar desde el ecosistema, sin volver a escribir contraseña.
+ *
+ * COMO FUNCIONA, Y POR QUE ASI
+ *
+ * Quien ya inició sesión en Veta Wallet pide allí un token de sesión única, lo
+ * trae aquí, y a cambio recibe una sesión de MyTokenPay. El token lo emite y lo
+ * verifica Genesis ID: MyTokenPay no se cree nada por su cuenta, y el navegador
+ * nunca ve una clave — el token es la credencial, dura minutos y no sirve para
+ * ninguna otra cosa. Es exactamente el mismo camino que ya usa Ordenex.
+ *
+ * SE ENLAZA POR CORREO, NO POR GID A SECAS
+ *
+ * Primero se busca por GID, que es lo barato. Si no hay nadie, se pregunta a
+ * Genesis por el correo de esa identidad y se busca por correo: así, quien se
+ * registró aquí con contraseña y luego entra desde la billetera cae en SU
+ * cuenta —con sus cobros y su comercio— en vez de estrenar una segunda que no
+ * se habla con la primera. Y solo si tampoco hay eso, se crea una cuenta nueva.
+ *
+ * La contraseña de una cuenta nacida por SSO es aleatoria y nadie la conoce: el
+ * campo es obligatorio y dejarlo previsible sería abrir la puerta de al lado.
+ * Quien quiera una la pide por «olvidé mi contraseña», que va a su correo.
+ */
+authRouter.post('/sso', envolver(async (req, res) => {
+  const { token } = req.body as { token?: string }
+  if (!token) {
+    res.status(400).json({ error: 'Hace falta el token de sesión del ecosistema' })
+    return
+  }
+
+  const sesion = await verificarSso(String(token))
+  if (!sesion) {
+    // No se detalla por qué falló: quien prueba tokens no necesita saber si erró
+    // la firma, el vencimiento o la identidad.
+    res.status(401).json({ error: 'No se pudo verificar tu sesión del ecosistema' })
+    return
+  }
+
+  let user = await db.findUserByGid(sesion.gid)
+
+  if (!user) {
+    const identidad = await identidadPorGid(sesion.gid)
+    if (!identidad?.email) {
+      res.status(503).json({ error: 'No se pudo leer tu identidad del ecosistema. Probá otra vez en un momento.' })
+      return
+    }
+    user = await db.findUserByEmail(identidad.email)
+    if (user) {
+      // Ya tenía cuenta aquí con contraseña: se le ata el GID y entra a la suya.
+      await db.vincularGid(user.id, sesion.gid, user.direccionWallet ?? null)
+      user = { ...user, gid: sesion.gid }
+    } else {
+      const creado = await db.createUser({
+        email: identidad.email,
+        fullName: identidad.nombreLegal || identidad.email.split('@')[0],
+        passwordHash: hashPassword(randomBytes(32).toString('base64')),
+      })
+      if (!creado) {
+        // Otro registro con el mismo correo ganó la carrera entre la búsqueda y
+        // la escritura. Se recoge el que quedó en vez de fallar.
+        user = await db.findUserByEmail(identidad.email)
+        if (!user) {
+          res.status(409).json({ error: 'No se pudo crear tu cuenta. Probá otra vez.' })
+          return
+        }
+      } else {
+        user = creado
+      }
+      await db.vincularGid(user.id, sesion.gid, null)
+      user = { ...user, gid: sesion.gid }
+    }
+  }
+
+  res.json({ token: signToken(user.id), user: toPublicUser(user), gid: sesion.gid })
 }))

@@ -269,6 +269,33 @@ appsRouter.get('/identidades/por-email/:email', limite(120), exigeApp('identidad
   res.json({ identidad: await ids.estadoParaUsuarioConFoto(identidad) })
 })
 
+/**
+ * La identidad detrás de un GID, con su correo.
+ *
+ * POR QUE HACE FALTA, Y POR QUE EL CORREO
+ *
+ * Una app que recibe a alguien por inicio de sesión único solo conoce su GID:
+ * el perfil del SSO no lleva correo a propósito. Pero la regla de la casa es
+ * que las cuentas del ecosistema se enlazan POR CORREO YA VERIFICADO — es lo
+ * que hace que quien se registró con contraseña y después entra por SSO caiga
+ * en su misma cuenta, con su mismo historial, en vez de estrenar una segunda.
+ * Sin esta ruta, cada app tendría que inventarse una identidad paralela por
+ * GID, y una persona acabaría con dos cuentas que no se hablan.
+ *
+ * Pide `gid.perfil`, el mismo alcance que ya entrega el nombre legal y la
+ * nacionalidad de esa persona: el correo no revela nada que ese alcance no
+ * revelara ya. Con solo `gid.verificar` no se llega aquí.
+ */
+appsRouter.get('/identidades/por-gid/:gid', limite(120), exigeApp('gid.perfil'), async (req, res) => {
+  const gid = normalizarGid(req.params.gid)
+  if (!gidValido(gid)) {
+    return res.status(400).json({ error: 'GID mal formado (falla el dígito verificador)' })
+  }
+  const identidad = ids.porGid(gid)
+  if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
+  res.json({ identidad: await ids.estadoParaUsuarioConFoto(identidad) })
+})
+
 /** Ata una cuenta de la app al GID. Es la base del inicio de sesión único. */
 /* EL VÍNCULO ES LA LLAVE DEL SSO, ASÍ QUE HAY QUE GANÁRSELO.
 

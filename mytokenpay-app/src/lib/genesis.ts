@@ -182,3 +182,40 @@ export async function registrarNegocio(n: {
   }
   return r.cuerpo?.id ?? null
 }
+
+/**
+ * Comprueba un token de sesión única del ecosistema y devuelve a quién es.
+ *
+ * Es la puerta por la que entra quien ya inició sesión en Veta Wallet: el token
+ * lo emite Genesis ID, lo verifica Genesis ID, y aquí solo se cree lo que
+ * Genesis conteste. El navegador nunca ve una clave de MyTokenPay — el token es
+ * la credencial, dura minutos y no sirve para nada más.
+ */
+export async function verificarSso(token: string): Promise<{
+  gid: string; emitidoPor: string
+} | null> {
+  const r = await pedir('/api/v1/sso/verificar', { method: 'POST', body: JSON.stringify({ token }) })
+  if (!r?.ok || !r.cuerpo?.valido) return null
+  return { gid: r.cuerpo.gid, emitidoPor: r.cuerpo.emitidoPor }
+}
+
+/**
+ * La identidad detrás de un GID, con su correo.
+ *
+ * El perfil del SSO no lleva correo a propósito, pero la regla de la casa es
+ * enlazar las cuentas POR CORREO YA VERIFICADO: es lo que hace que quien se
+ * registró aquí con contraseña y luego entra desde la billetera caiga en SU
+ * cuenta, con sus cobros, en vez de estrenar una segunda que no se habla con la
+ * primera.
+ */
+export async function identidadPorGid(gid: string): Promise<{
+  id: string; email: string; gid: string | null; estado: string; nombreLegal: string | null
+} | null> {
+  const r = await pedir(`/api/v1/identidades/por-gid/${encodeURIComponent(gid)}`)
+  if (!r?.ok) return null
+  const i = r.cuerpo?.identidad
+  return i ? {
+    id: i.id, email: i.email, gid: i.gid ?? null,
+    estado: i.estado, nombreLegal: i.nombreLegal ?? null,
+  } : null
+}

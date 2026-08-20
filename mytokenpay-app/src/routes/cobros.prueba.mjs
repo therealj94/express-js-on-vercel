@@ -340,6 +340,21 @@ await prueba('el documento guardado no lleva gid mientras no haya GID', async ()
   assert.equal(conGid.gid, 'GID-HN-000001')
 })
 
+/* ══ LA PUERTA DEL ECOSISTEMA ══════════════════════════════════════════════
+   Sin clave de Genesis configurada (que es como corre esta prueba) el SSO no
+   puede verificar nada, y lo que tiene que pasar es que RECHACE — nunca que
+   deje entrar por no poder comprobar. Un «no pude verificarlo, pasá» es
+   exactamente como se cuela quien no debería. */
+await prueba('sin poder verificar el token, el SSO NO deja entrar', async () => {
+  const r = await pedir('/auth/sso', { metodo: 'POST', cuerpo: { token: 'lo-que-sea' } })
+  assert.equal(r.estado, 401)
+})
+
+await prueba('el SSO sin token pide el token', async () => {
+  const r = await pedir('/auth/sso', { metodo: 'POST', cuerpo: {} })
+  assert.equal(r.estado, 400)
+})
+
 server.close()
 console.log(fallos ? `\n${fallos} fallo(s)\n` : '\nTodo en orden\n')
 process.exit(fallos ? 1 : 0)
