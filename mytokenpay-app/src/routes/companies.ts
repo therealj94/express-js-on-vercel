@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { randomUUID } from 'crypto'
 import { db } from '../lib/db.js'
 import { requireAuth } from '../middleware/auth.js'
+import { anunciarEnGenesis } from './admin.js'
 import { categoryBySlug } from '../data/categories.js'
 import { countryBySlug } from '../data/locations.js'
 import { defaultHours } from '../data/seed.js'
@@ -9,9 +10,9 @@ import type { Company, CompanySocials, KycDocument, WeekHours } from '../types.j
 
 export const companiesRouter = Router()
 
-companiesRouter.get('/', (req, res) => {
+companiesRouter.get('/', async (req, res) => {
   const { country, city, category, q, verified } = req.query as Record<string, string | undefined>
-  const list = db.listCompanies({
+  const list = await db.listCompanies({
     country,
     city,
     category,
@@ -21,13 +22,13 @@ companiesRouter.get('/', (req, res) => {
   res.json({ companies: list })
 })
 
-companiesRouter.get('/mine', requireAuth, (req, res) => {
-  const company = db.findCompanyByOwner(req.userId!)
+companiesRouter.get('/mine', requireAuth, async (req, res) => {
+  const company = await db.findCompanyByOwner(req.userId!)
   res.json({ company: company ?? null })
 })
 
-companiesRouter.get('/:id', (req, res) => {
-  const company = db.findCompanyById(req.params.id)
+companiesRouter.get('/:id', async (req, res) => {
+  const company = await db.findCompanyById(req.params.id)
   if (!company) {
     res.status(404).json({ error: 'Empresa no encontrada' })
     return
@@ -50,8 +51,8 @@ function validateCompanyPayload(body: Record<string, unknown>): string | null {
   return null
 }
 
-companiesRouter.post('/', requireAuth, (req, res) => {
-  if (db.findCompanyByOwner(req.userId!)) {
+companiesRouter.post('/', requireAuth, async (req, res) => {
+  if (await db.findCompanyByOwner(req.userId!)) {
     res.status(409).json({ error: 'Ya tienes una empresa registrada' })
     return
   }
@@ -63,7 +64,7 @@ companiesRouter.post('/', requireAuth, (req, res) => {
     return
   }
 
-  const company = db.createCompany({
+  const company = await db.createCompany({
     ownerId: req.userId!,
     legalName: (body.legalName as string).trim(),
     tradeName: (body.tradeName as string).trim(),
@@ -84,12 +85,12 @@ companiesRouter.post('/', requireAuth, (req, res) => {
     acceptsOrigen: true,
   })
 
-  db.setUserRole(req.userId!, 'business')
+  await db.setUserRole(req.userId!, 'business')
   res.status(201).json({ company })
 })
 
-companiesRouter.put('/:id', requireAuth, (req, res) => {
-  const existing = db.findCompanyById(req.params.id)
+companiesRouter.put('/:id', requireAuth, async (req, res) => {
+  const existing = await db.findCompanyById(req.params.id)
   if (!existing) {
     res.status(404).json({ error: 'Empresa no encontrada' })
     return
@@ -126,12 +127,12 @@ companiesRouter.put('/:id', requireAuth, (req, res) => {
     }
   }
 
-  const updated = db.updateCompany(existing.id, patch)
+  const updated = await db.updateCompany(existing.id, patch)
   res.json({ company: updated })
 })
 
-companiesRouter.post('/:id/kyc', requireAuth, (req, res) => {
-  const existing = db.findCompanyById(req.params.id)
+companiesRouter.post('/:id/kyc', requireAuth, async (req, res) => {
+  const existing = await db.findCompanyById(req.params.id)
   if (!existing) {
     res.status(404).json({ error: 'Empresa no encontrada' })
     return
@@ -155,7 +156,7 @@ companiesRouter.post('/:id/kyc', requireAuth, (req, res) => {
     uploadedAt: now,
   }))
 
-  const updated = db.updateCompany(existing.id, {
+  const updated = await db.updateCompany(existing.id, {
     kyc: {
       status: 'pending',
       documents: kycDocuments,
@@ -164,5 +165,12 @@ companiesRouter.post('/:id/kyc', requireAuth, (req, res) => {
       note: null,
     },
   })
+
+  /* Y que Genesis ID se entere: ahi vive el KYB de verdad del ecosistema, con
+     sus documentos exigidos, sus beneficiarios finales y la decision firmada
+     por un operador. Va en segundo plano —el tramite no se cae porque el
+     sistema de cumplimiento este ocupado— y sin poder lanzar. */
+  anunciarEnGenesis(existing.id).catch(() => {})
+
   res.json({ company: updated })
 })

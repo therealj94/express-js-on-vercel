@@ -7,6 +7,17 @@ export interface User {
   fullName: string
   role: UserRole
   createdAt: string
+  /**
+   * El GID de Genesis ID, cuando la persona ató su cuenta.
+   *
+   * Sin esto un pago no se puede atribuir a nadie: el monitoreo antilavado del
+   * ecosistema es POR IDENTIDAD, no por correo. Antes la app guardaba un
+   * `genesisUid` inventado con Math.random() en el teléfono que no salía de ahí
+   * y no correspondía a ninguna identidad real.
+   */
+  gid?: string | null
+  /** La dirección de la billetera, para poder cobrarle o pagarle en cadena. */
+  direccionWallet?: string | null
 }
 
 export type PublicUser = Omit<User, 'passwordHash'>
@@ -93,4 +104,71 @@ export interface Country {
   lng: number
   zoom: number
   cities: City[]
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dinero
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * POR QUE MYTOKENPAY NO GUARDA SALDOS
+ *
+ * La app móvil llevaba un `origenBalance` en el teléfono y `pay()` le restaba:
+ * un saldo que solo existía en ese aparato, que se recuperaba borrando la app y
+ * que no correspondía a ningún fondo real. Eso no es un error de programación,
+ * es un modelo equivocado.
+ *
+ * MyTokenPay NO custodia fondos: los custodia la billetera, y el ORIGEN se
+ * mueve en la cadena. Lo que MyTokenPay es de verdad es el LIBRO DE COBROS del
+ * comercio — quién cobró, a quién, cuánto, y con qué transacción de la cadena
+ * quedó pagado. Un saldo aquí sería una segunda contabilidad que puede
+ * contradecir a la cadena, y cuando dos libros no cuadran gana el que tiene los
+ * fondos: la cadena.
+ */
+
+export type EstadoCobro = 'pendiente' | 'pagado' | 'cancelado' | 'caducado'
+
+/** Cómo se dice que se pagó. `cadena` es el único que trae prueba. */
+export type MedioPago = 'cadena' | 'wallet' | 'efectivo' | 'otro'
+
+export interface Cobro {
+  id: string
+  companyId: string
+  /** Quién lo emitió: el dueño del comercio. */
+  emisorId: string
+  /** Importe en ORIGEN, en unidades humanas. */
+  montoOrigen: number
+  /** Equivalente en dólares al momento de emitirlo. Se congela: el precio se mueve. */
+  montoUsd: number
+  /** Y en lempiras, que es lo que entiende quien cobra en el mostrador. */
+  montoHnl: number
+  concepto: string
+  estado: EstadoCobro
+  /** Lo que va dentro del QR. */
+  referencia: string
+  creadoEn: string
+  caducaEn: Date
+  pago: {
+    pagadorId: string | null
+    pagadorGid: string | null
+    medio: MedioPago
+    /** El hash de la transacción en la cadena, cuando lo hay. Es la prueba. */
+    hash: string | null
+    pagadoEn: string
+  } | null
+}
+
+/** Lo que se le enseña a quien va a pagar: sin datos internos del comercio. */
+export interface CobroPublico {
+  id: string
+  referencia: string
+  estado: EstadoCobro
+  montoOrigen: number
+  montoUsd: number
+  montoHnl: number
+  concepto: string
+  comercio: { id: string; nombre: string; logoDataUrl: string | null } | null
+  creadoEn: string
+  pagadoEn: string | null
 }

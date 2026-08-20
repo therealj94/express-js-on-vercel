@@ -12,7 +12,7 @@ import { requireAuth } from '../middleware/auth.js'
 
 export const authRouter = Router()
 
-authRouter.post('/signup', (req, res) => {
+authRouter.post('/signup', async (req, res) => {
   const { email, password, fullName } = req.body as {
     email?: string
     password?: string
@@ -27,24 +27,24 @@ authRouter.post('/signup', (req, res) => {
     res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' })
     return
   }
-  if (db.findUserByEmail(email)) {
+  if (await db.findUserByEmail(email)) {
     res.status(409).json({ error: 'Ya existe una cuenta con este correo' })
     return
   }
 
-  const user = db.createUser({ email, fullName, passwordHash: hashPassword(password) })
+  const user = await db.createUser({ email, fullName, passwordHash: hashPassword(password) })
   const token = signToken(user.id)
   res.status(201).json({ token, user: toPublicUser(user) })
 })
 
-authRouter.post('/login', (req, res) => {
+authRouter.post('/login', async (req, res) => {
   const { email, password } = req.body as { email?: string; password?: string }
   if (!email || !password) {
     res.status(400).json({ error: 'Correo y contraseña son requeridos' })
     return
   }
 
-  const user = db.findUserByEmail(email)
+  const user = await db.findUserByEmail(email)
   if (!user || !verifyPassword(password, user.passwordHash)) {
     res.status(401).json({ error: 'Credenciales inválidas' })
     return
@@ -54,8 +54,8 @@ authRouter.post('/login', (req, res) => {
   res.json({ token, user: toPublicUser(user) })
 })
 
-authRouter.get('/me', requireAuth, (req, res) => {
-  const user = db.findUserById(req.userId!)
+authRouter.get('/me', requireAuth, async (req, res) => {
+  const user = await db.findUserById(req.userId!)
   if (!user) {
     res.status(404).json({ error: 'Usuario no encontrado' })
     return
@@ -63,13 +63,13 @@ authRouter.get('/me', requireAuth, (req, res) => {
   res.json({ user: toPublicUser(user) })
 })
 
-authRouter.delete('/me', requireAuth, (req, res) => {
-  const user = db.findUserById(req.userId!)
+authRouter.delete('/me', requireAuth, async (req, res) => {
+  const user = await db.findUserById(req.userId!)
   if (!user) {
     res.status(404).json({ error: 'Usuario no encontrado' })
     return
   }
-  db.deleteUser(user.id)
+  await db.deleteUser(user.id)
   res.status(204).end()
 })
 
@@ -88,14 +88,14 @@ const EXPOSE_RESET_TOKEN =
   process.env.NODE_ENV !== 'production' &&
   !process.env.VERCEL
 
-authRouter.post('/forgot-password', (req, res) => {
+authRouter.post('/forgot-password', async (req, res) => {
   const { email } = req.body as { email?: string }
   if (!email) {
     res.status(400).json({ error: 'El correo es requerido' })
     return
   }
 
-  const user = db.findUserByEmail(email)
+  const user = await db.findUserByEmail(email)
   // The same body either way: a different shape for a registered address would
   // turn this endpoint into a way to check who has an account.
   const genericResponse = {
@@ -110,7 +110,7 @@ authRouter.post('/forgot-password', (req, res) => {
   res.json(EXPOSE_RESET_TOKEN ? { ...genericResponse, demoResetToken: resetToken } : genericResponse)
 })
 
-authRouter.post('/reset-password', (req, res) => {
+authRouter.post('/reset-password', async (req, res) => {
   const { token, newPassword } = req.body as { token?: string; newPassword?: string }
   if (!token || !newPassword) {
     res.status(400).json({ error: 'Token y nueva contraseña son requeridos' })
@@ -122,7 +122,7 @@ authRouter.post('/reset-password', (req, res) => {
   }
 
   const claim = readResetToken(token)
-  const user = claim ? db.findUserById(claim.userId) : null
+  const user = claim ? await db.findUserById(claim.userId) : null
   // The fingerprint stops a token from being spent twice: the first reset
   // changes the hash, so every link issued before it stops matching.
   if (!claim || !user || claim.passwordFingerprint !== passwordFingerprint(user.passwordHash)) {
@@ -130,6 +130,6 @@ authRouter.post('/reset-password', (req, res) => {
     return
   }
 
-  db.updateUserPassword(user.id, hashPassword(newPassword))
+  await db.updateUserPassword(user.id, hashPassword(newPassword))
   res.json({ message: 'Contraseña actualizada correctamente' })
 })

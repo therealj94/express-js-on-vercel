@@ -11,11 +11,16 @@ declare global {
   }
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
+// Los dos son ASINCRONOS desde que el almacen es una base de datos: comprobar
+// que el usuario del token siga existiendo es una consulta, no una lectura de
+// un Map. Sin el `await` la comprobacion devolvia una promesa —siempre
+// verdadera— y CUALQUIER token bien firmado pasaba, incluso el de una cuenta ya
+// borrada.
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization
   const token = header?.startsWith('Bearer ') ? header.slice(7) : undefined
   const userId = token ? verifyToken(token) : null
-  if (!userId || !db.findUserById(userId)) {
+  if (!userId || !(await db.findUserById(userId))) {
     res.status(401).json({ error: 'No autorizado' })
     return
   }
@@ -23,11 +28,11 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   next()
 }
 
-export function attachUser(req: Request, _res: Response, next: NextFunction) {
+export async function attachUser(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization
   const token = header?.startsWith('Bearer ') ? header.slice(7) : undefined
   const userId = token ? verifyToken(token) : null
-  if (userId && db.findUserById(userId)) {
+  if (userId && (await db.findUserById(userId))) {
     req.userId = userId
   }
   next()
