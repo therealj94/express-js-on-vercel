@@ -2246,6 +2246,54 @@ const VETA = (() => {
   // puente y de los 5 MB por imagen de Genesis, y sube en un tiempo razonable.
   const VER_TOPE = 1100000;
 
+  /* Cuanto vale una foto ANTES de mandarla. La borrosa y la oscura son las dos
+     causas de rechazo que mas se repiten, y las dos se ven en el momento con
+     veinte lineas de aritmetica: el brillo es el promedio del gris, y el
+     desenfoque se estima con la varianza del laplaciano —una foto nitida tiene
+     bordes, y los bordes hacen saltar al laplaciano; una movida no los tiene.
+     Se mide sobre una copia de 320 px porque a ese tamano el calculo es
+     instantaneo y el veredicto es el mismo.
+
+     NUNCA bloquea: es un consejo bajo la miniatura, no un portero. Una foto
+     rara que pase igual la resuelve una persona, como siempre. */
+  function medirCalidad(dataUrl) {
+    return new Promise((listo) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const k = Math.min(1, 320 / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+          const l = document.createElement('canvas');
+          l.width = Math.max(8, Math.round((img.naturalWidth || 1) * k));
+          l.height = Math.max(8, Math.round((img.naturalHeight || 1) * k));
+          const cx = l.getContext('2d');
+          cx.drawImage(img, 0, 0, l.width, l.height);
+          const px = cx.getImageData(0, 0, l.width, l.height).data;
+          const w = l.width, h = l.height;
+          const g = new Float32Array(w * h);
+          let suma = 0;
+          for (let i = 0; i < w * h; i++) {
+            const v = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+            g[i] = v; suma += v;
+          }
+          const brillo = suma / (w * h);
+          let s1 = 0, s2 = 0, n = 0;
+          for (let y = 1; y < h - 1; y++) {
+            for (let x = 1; x < w - 1; x++) {
+              const i = y * w + x;
+              const lap = g[i - 1] + g[i + 1] + g[i - w] + g[i + w] - 4 * g[i];
+              s1 += lap; s2 += lap * lap; n++;
+            }
+          }
+          const varianza = n ? (s2 / n) - (s1 / n) * (s1 / n) : 0;
+          // Umbrales holgados a proposito: solo avisa lo claramente malo.
+          listo({ borrosa: varianza < 60, oscura: brillo < 50, quemada: brillo > 228 });
+        } catch { listo(null); }
+      };
+      img.onerror = () => listo(null);
+      img.src = dataUrl;
+    });
+  }
+
   function achicar(archivo) {
     return new Promise((salir_, fallar) => {
       if (!archivo) return fallar(new Error(t('ver.eNoImg')));
@@ -2304,6 +2352,10 @@ const VETA = (() => {
       opc: false, ocupacion: '', fondos: '', proposito: '', tel: '', domicilio: '',
       frente: null, reverso: null, mrz: '', selfie: null,
       error: '', enviando: false, etapa: '', hecho: 0, resultado: null,
+      // El consejo de calidad de cada foto, y lo que el servidor leyo en el
+      // frente. `lecturaAsumida` evita el bucle: se avisa UNA vez; si la
+      // persona decide mandar igual, va, y lo mira el equipo.
+      calidad: {}, lectura: null, lecturaAsumida: false,
       // Si el punto de partida ya se fijó con el estado del servidor en la mano.
       colocado: false,
     };
@@ -2618,6 +2670,13 @@ const VETA = (() => {
     <h3>${t('ver.docT')}</h3>
     <p class="pie" style="margin-top:8px">${t('ver.docP')}</p>
 
+    ${sol.lectura ? `<div class="aviso aviso-mal" style="margin-top:12px">
+      <b>${t('ver.lecT')}</b><br>
+      ${sol.lectura.rostroEnFrente === false ? t('ver.lecRostro') + '<br>' : ''}
+      ${sol.lectura.nombreConfirmado === false ? t('ver.lecNombre') + '<br>' : ''}
+      ${t('ver.lecQue')}
+    </div>` : ''}
+
     <div class="capt" id="capt-frente">${capturaHtml('frente')}</div>
     ${pideReverso() ? `<div class="capt" id="capt-reverso">${capturaHtml('reverso')}</div>` : ''}
 
@@ -2719,6 +2778,7 @@ const VETA = (() => {
     ${c.titulo ? `<div class="capt-h"><b>${t(c.titulo)}</b></div>` : ''}
     ${foto ? `
       <img class="capt-previa" src="${esc(foto)}" alt="">
+      ${consejoCalidad(cual)}
       <div class="capt-pie">
         <button class="btn btn-linea btn-sm" onclick="VETA.verQuitar(${jsTxt(cual)})">${t('ver.repetir')}</button>
       </div>`
@@ -2735,6 +2795,13 @@ const VETA = (() => {
         </span>
       </label>`}
     ${c.nota ? `<p class="pie" style="margin-top:9px">${t(c.nota)}</p>` : ''}`;
+  }
+
+  function consejoCalidad(cual) {
+    const c = sol.calidad && sol.calidad[cual];
+    if (!c) return '';
+    const que = c.borrosa ? t('ver.qBorrosa') : c.oscura ? t('ver.qOscura') : c.quemada ? t('ver.qQuemada') : '';
+    return que ? `<div class="aviso aviso-mal" style="margin-top:9px">${que}</div>` : '';
   }
 
   /* Al recibir la foto se repinta SOLO su recuadro. Repintar la vista entera
@@ -2757,6 +2824,15 @@ const VETA = (() => {
     } catch (e) {
       sol[cual] = null;
       sol.error = e.message;
+    }
+    sol.calidad[cual] = null;
+    if (cual === 'frente') { sol.lectura = null; sol.lecturaAsumida = false; }
+    if (sol[cual]) {
+      const esta = sol[cual];
+      medirCalidad(esta).then((c) => {
+        // Si mientras se media ya cambiaron la foto, el consejo es de otra.
+        if (sol && sol[cual] === esta) { sol.calidad[cual] = c; repintarCaptura(cual); }
+      });
     }
     const a = $('#ver-aviso');
     if (a) {
@@ -2873,6 +2949,22 @@ const VETA = (() => {
         sol.paso = 4;
         return;
       }
+
+      /* EL SERVIDOR AHORA LEE EL FRENTE EN EL MOMENTO: busca la foto del
+         titular y el nombre declarado impreso. Si algo no cuadra, se vuelve al
+         paso del documento CON LA CAMARA TODAVIA EN LA MANO y se dice que —un
+         rechazo del equipo tres dias despues no le sirve a nadie. Se avisa UNA
+         sola vez: si la persona repite el envio sin cambiar la foto, va igual
+         y lo resuelve el equipo. Nada se rechaza solo. */
+      const lec = doc?.documento?.lectura || null;
+      if (porFotos && lec && !sol.lecturaAsumida &&
+          (lec.rostroEnFrente === false || lec.nombreConfirmado === false)) {
+        sol.lectura = lec;
+        sol.lecturaAsumida = true;
+        sol.paso = 2;
+        return;
+      }
+      sol.lectura = null;
 
       // 3. Las fotos de la cara. Sin reto de vivacidad —eso son cuatro gestos
       //    grabados y vive en la app—, asi que esto NUNCA aprueba sola: el

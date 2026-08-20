@@ -168,6 +168,104 @@ pre{background:#0F1927;border:1px solid var(--line2);border-radius:10px;padding:
 .lupa .cab{display:flex;align-items:center;gap:14px;color:var(--txt);font-size:13px}
 .lupa .cab button{background:none;border:0;color:var(--mut);font-size:16px;cursor:pointer}
 .lupa .cab button:hover{color:var(--txt)}
+
+/* ══ EL TABLERO (resumen) ═════════════════════════════════════════════════
+   Antes el resumen era una parrilla de dieciocho números del mismo tamaño y el
+   mismo peso: el total histórico de identidades pesaba lo mismo que los casos
+   abiertos hoy. Un operador no entra a contemplar el censo, entra a saber QUÉ
+   LE ESPERA. Por eso el orden nuevo: primero lo que espera decisión, en fichas
+   grandes que llevan a su pestaña; después el censo y el estado del sistema,
+   en celdas calladas.
+
+   El silencio es el estado bueno. Una ficha sin nada que atender no lleva
+   verde ni palomita: lleva nada. El color aparece solo cuando hay que mirar
+   —naranja si conviene, rojo si urge— y así un vistazo al tablero distingue
+   un día tranquilo de uno que no lo es sin leer un solo número. El acento va
+   como sombra interior y no como border-left para no comerse el filete del
+   borde propio de la ficha. */
+.rz-titulo{font-size:12px;font-weight:600;line-height:1;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--faint);margin:24px 0 10px}
+.rz-ojillo{font-size:10px;font-weight:600;line-height:1;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--faint)}
+
+/* Avisos: dejan de ser globos de color de fondo y pasan al lenguaje de la mesa
+   de cotejo — lista con juntura de 1px y borde izquierdo según gravedad. */
+.rz-avisos{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);
+  border-radius:4px;overflow:hidden;margin-bottom:4px}
+.rz-aviso{background:var(--panel);padding:10px 13px;font-size:12.5px;line-height:1.5;
+  border-left:2px solid var(--warn)}
+.rz-aviso.grave{border-left-color:var(--bad)}
+.rz-aviso b{display:block;margin-bottom:2px}
+.rz-aviso span{color:var(--mut)}
+.rz-quieto{font-size:12.5px;color:var(--faint)}
+
+/* La ficha grande clicable. Es un <button> para que el teclado también llegue,
+   así que hay que desmontar el estilo global de botón (radio 9px, relleno,
+   brillo al pasar): esto es un instrumento, no un botón de acción. */
+.rz-cola{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.rz-ficha{display:flex;flex-direction:column;align-items:stretch;width:100%;padding:0;
+  text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:4px;
+  overflow:hidden;color:var(--txt);cursor:pointer}
+.rz-ficha:hover{filter:none;border-color:#35506f;background:#16253C}
+.rz-ficha:hover .rz-ir{color:var(--txt)}
+.rz-ficha .rz-cinta{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:8px 12px;background:#0F1927;border-bottom:1px solid var(--line)}
+.rz-ir{font-size:10.5px;color:var(--faint);white-space:nowrap}
+.rz-ficha .rz-cuerpo{display:block;padding:12px 12px 13px}
+.rz-cifra{display:block;font-size:32px;font-weight:300;line-height:1;letter-spacing:-.02em}
+.rz-pie{display:block;margin-top:7px;font-size:11.5px;color:var(--mut);line-height:1.45}
+.rz-ficha.rz-ojo{box-shadow:inset 2px 0 0 var(--warn)}
+.rz-ficha.rz-mal{box-shadow:inset 2px 0 0 var(--bad)}
+
+/* Bloque de celdas: la rejilla con juntura de 1px de revision.html. Rótulo
+   arriba, dato abajo en monoespaciada — un dato de tablero es un dato. */
+.rz-bloque{background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.rz-campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--line)}
+.rz-celda{background:var(--panel);padding:9px 13px}
+.rz-celda .rz-ojillo{display:block;margin-bottom:4px}
+.rz-dato{font-size:12.5px;line-height:1.4;word-break:break-word}
+.rz-dato.rz-cuenta{font-size:20px;font-weight:300;line-height:1.15;letter-spacing:-.02em}
+.rz-celda.rz-ojo{box-shadow:inset 2px 0 0 var(--warn)}
+.rz-celda.rz-mal{box-shadow:inset 2px 0 0 var(--bad)}
+
+/* ══ LA COLA DE IDENTIDADES ═══════════════════════════════════════════════
+   Antes era una tabla de ocho columnas: para saber si había algo que revisar
+   había que leerla entera, y en el móvil había que arrastrarla de lado. Una
+   cola de trabajo se hojea en vertical: cada identidad es una fila-ficha con
+   lo que hace falta para decidir si se abre — quién es, en qué estado está,
+   qué riesgo carga y cuándo se movió por última vez.
+
+   Las que esperan revisión van primero y llevan el borde cian de «pendiente».
+   Cian y no ámbar: en este sistema el ámbar es duda y el rojo es rechazo; que
+   algo esté en cola no es ninguna de las dos cosas, es información. */
+.qi-filtros input,.qi-filtros select{border-radius:4px;background:#0F1927}
+.qi-marco{background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.qi-cinta{display:flex;align-items:center;gap:10px;padding:9px 13px;
+  background:#0F1927;border-bottom:1px solid var(--line)}
+.qi-ojillo{flex:1;font-size:10px;font-weight:600;line-height:1;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--faint)}
+.qi-cuenta{font-size:11px;color:var(--faint);white-space:nowrap}
+.qi-cola{display:grid;gap:1px;background:var(--line)}
+.qi-fila{display:grid;grid-template-columns:minmax(0,1.25fr) auto minmax(0,.85fr);
+  gap:4px 16px;align-items:center;background:var(--panel);padding:10px 13px;
+  border-left:2px solid transparent;cursor:pointer}
+.qi-fila:hover{background:#182740}
+.qi-fila.qi-prio{border-left-color:var(--cyan)}
+.qi-quien{min-width:0}
+.qi-nombre{font-size:14px;font-weight:600;letter-spacing:-.01em;line-height:1.3;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qi-datos{margin-top:2px;font-size:11.5px;color:var(--faint);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qi-sellos{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.qi-meta{text-align:right;min-width:0}
+.qi-apps{font-size:11.5px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qi-fecha{margin-top:2px;font-size:11px;color:var(--faint)}
+/* En estrecho la fila se apila pero NO pierde nada: los sellos y la fecha son
+   justamente lo que decide si se abre el expediente. */
+@media(max-width:860px){
+  .qi-fila{grid-template-columns:minmax(0,1fr)}
+  .qi-meta{text-align:left}
+}
 </style>
 </head>
 <body>
@@ -424,63 +522,89 @@ VISTAS.resumen = async function () {
     `Las vigentes son de la plenaria del ${s.listasGafi.fecha}, hace ${s.listasGafi.dias} días. `
     + 'El GAFI se reúne unas tres veces al año: Listas → Actualizar listas del GAFI.'])
 
+  /* La ficha grande: una cifra que espera decisión y el camino a su pestaña.
+     El pie lleva los números hermanos —los que antes eran KPIs sueltos— para
+     que el censo no desaparezca, solo deje de gritar. El tono (naranja/rojo)
+     lo decide el número, no el rótulo: cero pendientes no lleva adorno,
+     porque en este tablero el silencio es el estado bueno. */
+  const ficha = (destino, rotulo, cifra, pie, tono) => `
+    <button class="rz-ficha ${tono || ''}" onclick="ir('${destino}')">
+      <span class="rz-cinta"><span class="rz-ojillo">${rotulo}</span><span class="rz-ir">abrir ›</span></span>
+      <span class="rz-cuerpo">
+        <span class="rz-cifra num">${cifra}</span>
+        <span class="rz-pie">${pie}</span>
+      </span>
+    </button>`
+
+  const celda = (rotulo, valor, tono, grande) => `
+    <div class="rz-celda ${tono || ''}">
+      <span class="rz-ojillo">${rotulo}</span>
+      <div class="rz-dato num ${grande ? 'rz-cuenta' : ''}">${valor}</div>
+    </div>`
+
+  const idn = d.identidades, ng = d.negocios, cs = d.casos
+
   $('#vista').innerHTML = `
-    ${avisos.length ? `<div class="avisos">${avisos.map(([g, t, x]) =>
-      `<div class="aviso ${g}"><div><b>${t}</b>${esc(x)}</div></div>`).join('')}</div>`
-      : '<div class="aviso bien"><div><b>Todo en orden</b>El motor está en condiciones de operar.</div></div>'}
+    ${avisos.length ? `<div class="rz-avisos">${avisos.map(([g, t, x]) =>
+      `<div class="rz-aviso ${g}"><b>${t}</b><span>${esc(x)}</span></div>`).join('')}</div>`
+      : '<div class="rz-quieto">Sin avisos. El motor está en condiciones de operar.</div>'}
 
-    <h2>Identidades</h2>
-    <div class="kpis">
-      ${kpi('Total', d.identidades.total)}
-      ${kpi('Verificadas', d.identidades.verificadas, 'o')}
-      ${kpi('En revisión', d.identidades.enRevision, 'w')}
-      ${kpi('Sin terminar', d.identidades.sinTerminar)}
-      ${kpi('Riesgo alto', d.identidades.riesgoAlto, 'b')}
-      ${kpi('PEP', d.identidades.pep, 'g')}
-      ${kpi('Rechazadas', d.identidades.rechazadas)}
-      ${kpi('Suspendidas', d.identidades.suspendidas)}
+    <div class="rz-titulo">Espera decisión</div>
+    <div class="rz-cola">
+      ${ficha('identidades', 'Identidades en revisión', idn.enRevision,
+        `${idn.sinTerminar} sin terminar · ${idn.riesgoAlto} de riesgo alto`,
+        idn.enRevision > 0 ? 'rz-ojo' : '')}
+      ${ficha('casos', 'Casos abiertos', cs.abiertos,
+        `${cs.criticos} críticos · ${cs.enAnalisis} en análisis`,
+        cs.criticos > 0 ? 'rz-mal' : cs.abiertos > 0 ? 'rz-ojo' : '')}
+      ${ficha('negocios', 'Negocios en revisión', ng.enRevision,
+        `${ng.total} registrados · ${ng.verificados} verificados`,
+        ng.enRevision > 0 ? 'rz-ojo' : '')}
     </div>
 
-    <h2>Negocios</h2>
-    <div class="kpis">
-      ${kpi('Total', d.negocios.total)}
-      ${kpi('Verificados', d.negocios.verificados, 'o')}
-      ${kpi('En revisión', d.negocios.enRevision, 'w')}
-      ${kpi('Rechazados', d.negocios.rechazados)}
-    </div>
+    <div class="rz-titulo">El registro</div>
+    <div class="rz-bloque"><div class="rz-campos">
+      ${celda('Identidades', idn.total, '', true)}
+      ${celda('Verificadas', idn.verificadas, '', true)}
+      ${celda('Rechazadas', idn.rechazadas, '', true)}
+      ${celda('Suspendidas', idn.suspendidas, '', true)}
+      ${celda('Marcadas PEP', idn.pep, '', true)}
+      ${celda('Negocios rechazados', ng.rechazados, '', true)}
+      ${celda('Casos reportados', cs.reportados, '', true)}
+      ${celda('Casos cerrados', cs.cerrados, '', true)}
+      ${celda('Movimientos', d.movimientos.total, '', true)}
+      ${celda('Volumen monitoreado', dinero(d.movimientos.volumenUsd), '', true)}
+    </div></div>
 
-    <h2>Casos de cumplimiento</h2>
-    <div class="kpis">
-      ${kpi('Abiertos', d.casos.abiertos, 'w')}
-      ${kpi('En análisis', d.casos.enAnalisis, 'c')}
-      ${kpi('Críticos', d.casos.criticos, 'b')}
-      ${kpi('Reportados', d.casos.reportados, 'g')}
-      ${kpi('Cerrados', d.casos.cerrados)}
-    </div>
-
-    <h2>Monitoreo</h2>
-    <div class="kpis">
-      ${kpi('Movimientos', d.movimientos.total)}
-      ${kpi('Volumen', dinero(d.movimientos.volumenUsd), 'c')}
-    </div>
-
-    <h2>Estado del sistema</h2>
-    <div class="tarjeta p"><div class="campos">
-      ${campo('Almacén', s.almacen.motor + (s.almacen.efimero ? ' (efímero)' : ''))}
-      ${campo('Listas de sanciones', s.listas.cargadas ? `${s.listas.registros.toLocaleString('es')} registros` : 'ninguna')}
-      ${campo('Fuentes', (s.listas.fuentes || []).join(', ') || '—')}
-      ${campo('Biometría', s.biometria)}
-      ${campo('Listas GAFI', `${s.listasGafi.fecha} (${s.listasGafi.dias} días)`)}
-      ${campo('Bitácora', s.bitacora.integra ? `íntegra · ${s.bitacora.total} entradas` : 'ALTERADA')}
-      ${campo('Apps activas', s.apps)}
-      ${campo('Sesión única', s.sso ? 'configurada' : 'desactivada')}
+    ${/* El estado del sistema repite en celda lo que los avisos dicen en
+          prosa: el aviso explica qué hacer, la celda marca DÓNDE está el
+          hueco cuando se vuelve a mirar el tablero al cabo de una hora. */''}
+    <div class="rz-titulo">Estado del sistema</div>
+    <div class="rz-bloque"><div class="rz-campos">
+      ${celda('Almacén', esc(s.almacen.motor) + (s.almacen.efimero ? ' · efímero' : ''),
+        s.almacen.efimero ? 'rz-mal' : '')}
+      ${celda('Listas de sanciones', s.listas.cargadas
+        ? `${s.listas.registros.toLocaleString('es')} registros${s.listas.diasDesdeDescarga != null
+            ? ` · hace ${s.listas.diasDesdeDescarga} días` : ''}`
+        : 'ninguna cargada',
+        !s.listas.cargadas ? 'rz-mal' : s.listas.vencidas ? 'rz-ojo' : '')}
+      ${celda('Fuentes', esc((s.listas.fuentes || []).join(', ')) || '—')}
+      ${celda('Biometría', esc(s.biometria), s.biometria === 'sin proveedor' ? 'rz-ojo' : '')}
+      ${celda('Listas GAFI', `${esc(s.listasGafi.fecha)} · hace ${s.listasGafi.dias} días`,
+        s.listasGafi.vencidas ? 'rz-ojo' : '')}
+      ${celda('Bitácora', s.bitacora.integra ? `íntegra · ${s.bitacora.total} entradas` : 'ALTERADA',
+        s.bitacora.integra ? '' : 'rz-mal')}
+      ${celda('Apps activas', s.apps)}
+      ${celda('Sesión única', s.sso ? 'configurada' : 'desactivada', s.sso ? '' : 'rz-ojo')}
     </div></div>`
 }
 
 // ── Identidades ─────────────────────────────────────────────────────────────
+// Los tres filtros se conservan tal cual —mismos ids, mismos manejadores—
+// porque recargarIdentidades() los lee por id. Solo cambia el traje.
 VISTAS.identidades = async function () {
   $('#vista').innerHTML = `
-    <div class="filtros">
+    <div class="filtros qi-filtros">
       <input id="fTexto" placeholder="Buscar por nombre, correo o GID" oninput="recargarIdentidades()">
       <select id="fEstado" onchange="recargarIdentidades()">
         <option value="">Todos los estados</option>
@@ -492,7 +616,7 @@ VISTAS.identidades = async function () {
         ${['bajo','medio','alto','inaceptable'].map((e) => `<option>${e}</option>`).join('')}
       </select>
     </div>
-    <div class="tarjeta scroll" id="tablaIdentidades"><div class="vacio">Cargando…</div></div>`
+    <div id="tablaIdentidades"><div class="vacio">Cargando…</div></div>`
   await recargarIdentidades()
 }
 
@@ -501,22 +625,55 @@ async function recargarIdentidades() {
     texto: $('#fTexto')?.value || '', estado: $('#fEstado')?.value || '', riesgo: $('#fRiesgo')?.value || '',
   })
   const { identidades: lista } = await api('/panel/identidades?' + q)
-  $('#tablaIdentidades').innerHTML = lista.length ? `
-    <table><thead><tr>
-      <th>Persona</th><th>GID</th><th>Estado</th><th>Riesgo</th>
-      <th>Bloqueos</th><th>Listas</th><th>Apps</th><th>Actualizada</th>
-    </tr></thead><tbody>
-    ${lista.map((i) => `<tr onclick="verIdentidad('${i.id}')">
-      <td><div>${esc(i.nombre || '—')}</div><div style="color:var(--faint);font-size:11.5px">${esc(i.email)}</div></td>
-      <td class="uid num">${esc(i.gid || '—')}</td>
-      <td>${pill(i.estado, PILL_ESTADO[i.estado])}${i.pep ? ' ' + pill('PEP', 'warn') : ''}</td>
-      <td>${i.riesgo ? pill(`${i.riesgo} · ${i.puntuacion}`, PILL_RIESGO[i.riesgo]) : '—'}</td>
-      <td>${i.bloqueos ? pill(i.bloqueos, 'bad') : pill('0', 'ok')}</td>
-      <td>${i.coincidencias ? pill(i.coincidencias, 'crit') : '—'}</td>
-      <td style="font-size:11.5px;color:var(--mut)">${esc(i.apps.join(', ') || '—')}</td>
-      <td style="font-size:11.5px;color:var(--faint)">${fecha(i.actualizadaEn)}</td>
-    </tr>`).join('')}
-    </tbody></table>` : '<div class="vacio">No hay identidades que cumplan el filtro</div>'
+
+  /* Colores de estado PROPIOS de la cola en lugar del mapa global: el mapa
+     global pinta «en-revision» en ámbar, y en este sistema el ámbar es duda.
+     Estar en cola no es una duda, es información: va en cian. El mapa global
+     no se toca porque las demás vistas lo comparten. */
+  const QI_ESTADO = {
+    verificada: 'ok', rechazada: 'bad', suspendida: 'crit',
+    'en-revision': 'info', pendiente: 'info', biometria: 'info',
+    documento: 'mut', datos: 'mut', iniciada: 'mut',
+  }
+
+  /* Lo que espera revisión va primero. Se ordena AQUÍ y no en la API porque
+     es una decisión de presentación —qué merece el primer golpe de vista—,
+     no de datos; dentro de cada grupo se respeta el orden que trajo el
+     servidor (sort es estable y el comparador devuelve 0 entre iguales). */
+  const espera = (i) => i.estado === 'en-revision' || i.estado === 'pendiente'
+  const orden = lista.slice().sort((a, b) => Number(espera(b)) - Number(espera(a)))
+  const pendientes = orden.filter(espera).length
+
+  $('#tablaIdentidades').innerHTML = `
+    <div class="qi-marco">
+      <div class="qi-cinta">
+        <span class="qi-ojillo">Cola de trabajo</span>
+        <span class="qi-cuenta num">${lista.length} identidad${lista.length === 1 ? '' : 'es'}${
+          pendientes ? ` · ${pendientes} espera${pendientes === 1 ? '' : 'n'} revisión` : ''}</span>
+      </div>
+      ${orden.length ? `<div class="qi-cola">
+        ${orden.map((i) => `<div class="qi-fila ${espera(i) ? 'qi-prio' : ''}" onclick="verIdentidad('${i.id}')">
+          <div class="qi-quien">
+            <div class="qi-nombre">${esc(i.nombre || i.email || '—')}</div>
+            <div class="qi-datos num">${esc(i.email)}${i.gid ? ' · ' + esc(i.gid) : ''}</div>
+          </div>
+          <div class="qi-sellos">
+            ${pill(i.estado, QI_ESTADO[i.estado])}
+            ${i.pep ? pill('PEP', 'warn') : ''}
+            ${i.riesgo ? pill(i.puntuacion == null ? i.riesgo : `${i.riesgo} · ${i.puntuacion}`, PILL_RIESGO[i.riesgo]) : ''}
+            ${/* Cero bloqueos y cero coincidencias no se anuncian: en una cola
+                  el silencio es el estado bueno, y una pastilla verde por fila
+                  entierra a las dos que sí traen algo. */''}
+            ${i.bloqueos ? pill(`${i.bloqueos} bloqueo${i.bloqueos === 1 ? '' : 's'}`, 'bad') : ''}
+            ${i.coincidencias ? pill(`${i.coincidencias} en listas`, 'crit') : ''}
+          </div>
+          <div class="qi-meta">
+            <div class="qi-apps">${esc(i.apps.join(', ') || 'sin apps vinculadas')}</div>
+            <div class="qi-fecha num">${fecha(i.actualizadaEn)}</div>
+          </div>
+        </div>`).join('')}
+      </div>` : '<div class="vacio">No hay identidades que cumplan el filtro</div>'}
+    </div>`
 }
 
 /** El `src` de una imagen guardada. Los almacenes traen base64 a secas o ya
