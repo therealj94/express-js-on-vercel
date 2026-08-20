@@ -72,6 +72,29 @@ const sinMongoId = <T>(d: any): T | undefined => {
   return resto as T
 }
 
+/**
+ * El documento tal como se GUARDA, que no es igual al objeto en memoria.
+ *
+ * Quita `gid` y `direccionWallet` cuando están vacíos, y esa diferencia no es
+ * cosmética: sobre `gid` hay un índice ÚNICO y DISPERSO, y «disperso» excluye a
+ * los documentos donde el campo NO EXISTE — no a los que lo tienen en `null`.
+ * Para Mongo `null` es un valor como cualquier otro, así que guardando
+ * `gid: null` la primera cuenta entraba y TODAS las siguientes chocaban con un
+ * duplicado, dijeran lo que dijeran su correo.
+ *
+ * Costó una caída de producción encontrarlo: el síntoma —«ya existe una cuenta
+ * con este correo» sobre un correo nuevo— apunta al sitio equivocado.
+ *
+ * Está fuera del almacén y exportada para poder probarla sin base de datos: es
+ * una función pura, y la invariante que sostiene el índice se comprueba aquí.
+ */
+export function documentoDeUsuario(user: User): Record<string, unknown> {
+  const d: Record<string, unknown> = { ...user }
+  if (d.gid === null || d.gid === undefined) delete d.gid
+  if (d.direccionWallet === null || d.direccionWallet === undefined) delete d.direccionWallet
+  return d
+}
+
 export function toPublicUser(user: User): PublicUser {
   const { passwordHash, ...rest } = user
   return rest
@@ -94,11 +117,14 @@ export const db = {
     }
     const c = await col('usuarios')
     if (c) {
+      // Ver `documentoDeUsuario`: el documento guardado NO lleva `gid` mientras
+      // no haya GID, porque el índice único y disperso cuenta a `null` como un
+      // valor y haría chocar a la segunda cuenta de la historia.
       // El índice único por email es lo que de verdad impide dos cuentas con el
       // mismo correo: la comprobación previa de la ruta pierde la carrera si
       // dos registros llegan a la vez, la base no.
       try {
-        await c.insertOne({ ...user })
+        await c.insertOne(documentoDeUsuario(user))
       } catch (e: any) {
         /* UN CORREO REPETIDO NO ES UNA EXCEPCION: ES UNA RESPUESTA.
            Lanzar aquí tumbó el servicio entero en producción. En Express 4 una

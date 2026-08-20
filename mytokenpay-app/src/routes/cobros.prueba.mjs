@@ -35,7 +35,7 @@ const { authRouter } = await import('./auth.js')
 const { companiesRouter } = await import('./companies.js')
 const { cobrosRouter, pagosRouter } = await import('./cobros.js')
 const { adminRouter } = await import('./admin.js')
-const { db } = await import('../lib/db.js')
+const { db, documentoDeUsuario } = await import('../lib/db.js')
 
 const app = express()
 app.use(express.json({ limit: '4mb' }))
@@ -317,6 +317,27 @@ await prueba('dos registros del mismo correo a la vez: 409, y el servidor NO se 
   // Lo que de verdad se prueba: el servidor sigue vivo despues.
   const despues = await pedir('/cobros/lo-que-sea')
   assert.equal(despues.estado, 404, 'el servidor tiene que seguir contestando')
+})
+
+/* El documento que se GUARDA no puede llevar `gid` mientras no haya GID.
+   Sobre ese campo hay un indice unico y disperso, y «disperso» excluye a los
+   documentos donde el campo no existe — no a los que lo tienen en `null`. Con
+   `gid: null` escrito, la segunda cuenta de la historia chocaba con un
+   duplicado y el error decia «ya existe una cuenta con este correo» sobre un
+   correo nuevo. El motor de memoria no tiene indices, asi que esta prueba
+   comprueba la INVARIANTE que los hace funcionar, no el indice. */
+await prueba('el documento guardado no lleva gid mientras no haya GID', async () => {
+  const base = {
+    id: 'x', email: 'a@b.c', passwordHash: 'h', fullName: 'N',
+    role: 'user', createdAt: new Date().toISOString(),
+    gid: null, direccionWallet: null,
+  }
+  const guardado = documentoDeUsuario(base)
+  assert.equal('gid' in guardado, false, 'con gid en null, la clave NO puede existir')
+  assert.equal('direccionWallet' in guardado, false)
+  // Y cuando SI hay identidad, el campo va — es lo que hace unico al indice.
+  const conGid = documentoDeUsuario({ ...base, gid: 'GID-HN-000001' })
+  assert.equal(conGid.gid, 'GID-HN-000001')
 })
 
 server.close()

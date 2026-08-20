@@ -76,7 +76,11 @@ async function crearIndices(db: Db): Promise<void> {
     await Promise.all([
       db.collection('usuarios').createIndex({ email: 1 }, { unique: true }),
       db.collection('usuarios').createIndex({ id: 1 }, { unique: true }),
-      db.collection('usuarios').createIndex({ gid: 1 }, { sparse: true }),
+      /* UNICO y disperso: dos cuentas no pueden reclamar la misma identidad, y
+         las que todavía no tienen GID quedan fuera del índice — siempre que el
+         campo NO EXISTA. Ver la nota en `createUser`: escribirlo como `null`
+         mete a todas en el índice y la segunda cuenta ya choca. */
+      db.collection('usuarios').createIndex({ gid: 1 }, { unique: true, sparse: true }),
       db.collection('comercios').createIndex({ id: 1 }, { unique: true }),
       db.collection('comercios').createIndex({ ownerId: 1 }),
       db.collection('comercios').createIndex({ countrySlug: 1, citySlug: 1, categorySlug: 1 }),
