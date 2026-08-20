@@ -63,7 +63,7 @@ test('la cadena correcta sí se lee', async () => {
     const r = await saldosDe([UNA])
     assert.equal(r.cadena, 5550)
     assert.equal(r.cadenaCorrecta, true)
-    assert.ok(r.completas.has(UNA), 'la dirección se leyó entera')
+    assert.ok((r.leidas.get(UNA)?.size ?? 0) > 0, 'se leyeron monedas de esa dirección')
     assert.ok(Object.keys(r.saldos.get(UNA)!).length > 0, 'trae saldos')
     assert.ok(r.leidoEn, 'trae la fecha de lectura')
   } finally { soltar() }
@@ -76,7 +76,7 @@ test('otra cadena NO se lee: ni un saldo, y se avisa', async () => {
     const r = await saldosDe([UNA])
     assert.equal(r.cadena, 8532)
     assert.equal(r.cadenaCorrecta, false, 'tiene que quedar marcada como equivocada')
-    assert.equal(r.completas.size, 0, 'NINGUNA dirección se puede guardar')
+    assert.equal(r.leidas.size, 0, 'NINGUNA moneda se puede guardar')
     assert.deepEqual(r.saldos.get(UNA), {}, 'no se trae ni un número de la otra cadena')
   } finally { soltar() }
 })
@@ -88,7 +88,7 @@ test('un nodo que no contesta tampoco deja guardar nada', async () => {
     const r = await saldosDe([UNA])
     assert.equal(r.cadena, null)
     assert.equal(r.cadenaCorrecta, false)
-    assert.equal(r.completas.size, 0)
+    assert.equal(r.leidas.size, 0)
   } finally { soltar() }
 })
 
@@ -102,7 +102,7 @@ test('una lectura a medias no se puede guardar encima de una buena', async () =>
     const r = await saldosDe([UNA])
     assert.equal(r.cadenaCorrecta, true, 'la cadena sí era la buena')
     assert.ok(r.fallidas > 0, 'se contaron las llamadas perdidas')
-    assert.equal(r.completas.size, 0, 'pero nada se puede guardar')
+    assert.equal(r.leidas.get(UNA)?.size ?? 0, 0, 'ninguna moneda contestó, así que ninguna se guarda')
   } finally { soltar() }
 })
 
@@ -116,4 +116,32 @@ test('la emisión de otra cadena queda en «no lo sé», no en cero', async () =
     assert.ok(valores.every((v) => v === null),
       'todas en null: un cero se leería como «nadie tiene» y sería falso')
   } finally { soltar() }
+})
+
+test('si UNA moneda falla, las demás sí se actualizan', async () => {
+  /* El fallo que se coló hoy: la primera versión saltaba la dirección ENTERA
+     si una sola de las quince llamadas se perdía. Con quince monedas por
+     persona eso es una ficha congelada muy a menudo — se notó cuando una
+     cuenta recién vaciada siguió mostrando sus tokens. */
+  const original = globalThis.fetch
+  globalThis.fetch = (async (_u: any, init: any) => {
+    const c = JSON.parse(String(init?.body ?? '{}'))
+    if (!Array.isArray(c) && c.method === 'eth_chainId') {
+      return { json: async () => ({ result: '0x15ae' }) } as any
+    }
+    return {
+      json: async () => c.map((x: any, i: number) => (
+        // la segunda llamada del lote se pierde; el resto contesta
+        i === 1 ? { id: x.id } : { id: x.id, result: '0x' + (10n ** 18n).toString(16) }
+      )),
+    } as any
+  }) as any
+  try {
+    const { saldosDe } = await cargar()
+    const r = await saldosDe([UNA])
+    const leidas = r.leidas.get(UNA)!
+    assert.ok(r.fallidas > 0, 'la moneda perdida se contó como fallo')
+    assert.ok(leidas.size > 0, 'las demás monedas SI se pueden guardar')
+    assert.ok(leidas.size < 15, 'y la perdida no está entre ellas')
+  } finally { globalThis.fetch = original }
 })

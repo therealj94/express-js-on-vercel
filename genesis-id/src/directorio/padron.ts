@@ -529,7 +529,7 @@ export async function refrescarSaldos(maximo = 800): Promise<{
   for (let i = 0; i < conDireccion.length; i += 25) {
     const grupo = conDireccion.slice(i, i + 25)
     const lectura = await saldosDe(grupo.map((e) => e.direccionWallet!))
-    const { saldos, fallidas, completas, leidoEn, cadenaCorrecta } = lectura
+    const { saldos, fallidas, leidas, leidoEn, cadenaCorrecta } = lectura
     perdidas += fallidas
     if (!cadenaCorrecta) {
       // El nodo contestó otra cadena. No se escribe nada: lo que hay guardado
@@ -539,22 +539,39 @@ export async function refrescarSaldos(maximo = 800): Promise<{
     }
     for (const e of grupo) {
       const dir = e.direccionWallet!
-      /* SOLO SE GUARDA LO QUE SE LEYO ENTERO.
-         Antes bastaba con que el mapa trajera algo, y el mapa traía `{}` tanto
-         para «esta persona no tiene nada» como para «el nodo no me contestó».
-         Escribir ese `{}` encima BORRABA saldos buenos cada vez que el nodo
-         tosía, y el panel lo enseñaba como si esa persona estuviera a cero. */
-      if (!completas.has(dir)) continue
+      const contestaron = leidas.get(dir)
       const nuevos = saldos.get(dir)
-      if (nuevos === undefined) continue
+      if (!contestaron?.size || nuevos === undefined) continue   // no contestó nada: se deja lo que hubiera
+
+      /* SE ESCRIBE MONEDA POR MONEDA, y solo las que contestaron.
+         Dos formas de equivocarse aquí, y las dos ya ocurrieron:
+           - escribir el mapa entero metía un CERO INVENTADO en las monedas que
+             el nodo no contestó;
+           - saltarse la dirección si fallaba UNA sola de las quince dejaba la
+             ficha congelada -- una cuenta recién vaciada siguió mostrando sus
+             tokens.
+         Lo que contestó con saldo se pone; lo que contestó con cero se quita;
+         lo que no contestó ni se toca. */
+      const poner: Record<string, unknown> = { saldosLeidosEn: leidoEn }
+      const quitar: Record<string, ''> = {}
+      for (const sim of contestaron) {
+        const v = nuevos[sim]
+        if (v !== undefined) poner[`saldos.${sim}`] = v
+        else quitar[`saldos.${sim}`] = ''
+      }
       if (Object.keys(nuevos).length) conSaldo++
-      // La fecha va PEGADA al saldo. Sin ella, un número de agosto y uno de
-      // hace un minuto se ven exactamente igual en la pantalla, que es justo
-      // como el panel llegó a enseñar saldos de la cadena vieja.
-      if (c) await c.updateOne({ _id: e._id }, { $set: { saldos: nuevos, saldosLeidosEn: leidoEn } })
-      else {
-        memoria.get(e._id)!.saldos = nuevos
-        ;(memoria.get(e._id)! as any).saldosLeidosEn = leidoEn
+      if (c) {
+        const cambio: any = { $set: poner }
+        if (Object.keys(quitar).length) cambio.$unset = quitar
+        await c.updateOne({ _id: e._id }, cambio)
+      } else {
+        const m = memoria.get(e._id)! as any
+        m.saldos = m.saldos || {}
+        for (const sim of contestaron) {
+          if (nuevos[sim] !== undefined) m.saldos[sim] = nuevos[sim]
+          else delete m.saldos[sim]
+        }
+        m.saldosLeidosEn = leidoEn
       }
     }
   }

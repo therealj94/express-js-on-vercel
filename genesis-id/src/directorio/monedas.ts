@@ -217,14 +217,22 @@ export interface LecturaSaldos {
   /** `false` cuando el nodo contestó otra cadena y NO se leyó ningún saldo. */
   cadenaCorrecta: boolean
   /**
-   * Las direcciones cuyas llamadas contestaron TODAS.
+   * Por cada dirección, QUE MONEDAS se leyeron de verdad — con saldo o sin él.
    *
    * Existe porque «no tiene nada» y «no me contestaron» salían iguales: el mapa
    * traía `{}` en los dos casos y quien llamaba lo escribía encima, borrando
-   * saldos buenos cada vez que el nodo tosía. Solo lo que está aquí se puede
-   * guardar; del resto hay que conservar lo que hubiera.
+   * saldos buenos cada vez que el nodo tosía.
+   *
+   * El primer intento de arreglarlo fue todo-o-nada por dirección, y era PEOR:
+   * con quince monedas por persona, una sola llamada perdida dejaba esa ficha
+   * sin actualizar entera. Se notó enseguida — una cuenta que acababa de
+   * vaciarse siguió mostrando sus tokens.
+   *
+   * La cuenta correcta es POR MONEDA: se actualiza lo que contestó y se deja
+   * intacto lo que no. Ni se inventa un cero ni se bloquea la ficha por una
+   * moneda floja.
    */
-  completas: Set<string>
+  leidas: Map<string, Set<string>>
 }
 
 /**
@@ -239,7 +247,7 @@ export async function saldosDe(direcciones: string[]): Promise<LecturaSaldos> {
   const leidoEn = new Date().toISOString()
   let fallidas = 0
   if (!direcciones.length) {
-    return { saldos, fallidas, leidoEn, cadena: null, cadenaCorrecta: true, completas: new Set() }
+    return { saldos, fallidas, leidoEn, cadena: null, cadenaCorrecta: true, leidas: new Map() }
   }
 
   /* LA PUERTA. Antes de creerle un solo número al nodo, se le pregunta qué
@@ -260,7 +268,7 @@ export async function saldosDe(direcciones: string[]): Promise<LecturaSaldos> {
       leidoEn,
       cadena,
       cadenaCorrecta: false,
-      completas: new Set(),   // ninguna: no se guarda nada de otra cadena
+      leidas: new Map(),   // nada: no se guarda ni una moneda de otra cadena
     }
   }
 
@@ -279,42 +287,36 @@ export async function saldosDe(direcciones: string[]): Promise<LecturaSaldos> {
     saldos.set(d, {})
   }
 
-  /* Cuántas llamadas falló cada dirección. Al final, solo las que no fallaron
-     ninguna se pueden guardar: una lectura a medias escrita encima de una buena
-     no es un dato incompleto, es un dato falso. */
-  const falloDe = new Map<string, number>(direcciones.map((d) => [d, 0]))
-  const anotarFallo = (id: any) => {
+  /* Qué monedas contestó cada dirección. Lo que no esté aquí no se toca al
+     guardar: se conserva lo que hubiera, que es viejo pero cierto. */
+  const leidas = new Map<string, Set<string>>(direcciones.map((d) => [d, new Set<string>()]))
+  const anotarLeida = (id: any) => {
     const m = llamadas[id]
-    if (m) falloDe.set(m.direccion, (falloDe.get(m.direccion) || 0) + 1)
+    if (m) leidas.get(m.direccion)?.add(m.moneda.simbolo)
   }
 
   for (let i = 0; i < cuerpo.length; i += MAX_LOTE_RPC) {
     const trozo = cuerpo.slice(i, i + MAX_LOTE_RPC)
     const res = await lote(trozo)
-    if (!res) {
-      fallidas += trozo.length
-      for (const c of trozo) anotarFallo(c.id)
-      continue
-    }
+    if (!res) { fallidas += trozo.length; continue }
 
     for (const x of res) {
       const meta = llamadas[x?.id]
       if (!meta) { fallidas++; continue }
-      if (!x?.result || x.result === '0x') { fallidas++; anotarFallo(x?.id); continue }
+      if (!x?.result || x.result === '0x') { fallidas++; continue }
       let valor: number
       try {
         valor = Number(BigInt(x.result)) / Math.pow(10, meta.moneda.decimales)
-      } catch { fallidas++; anotarFallo(x?.id); continue }
-      if (!Number.isFinite(valor)) { fallidas++; anotarFallo(x?.id); continue }
+      } catch { fallidas++; continue }
+      if (!Number.isFinite(valor)) { fallidas++; continue }
+      // Contestó: esta moneda se puede escribir, valga cero o valga mucho.
+      anotarLeida(x.id)
       // Solo se anotan los saldos que existen: quince ceros por persona harían
       // la tabla ilegible y el documento tres veces más grande.
       if (valor > 0) saldos.get(meta.direccion)![meta.moneda.simbolo] = Math.round(valor * 1e6) / 1e6
     }
   }
-  const completas = new Set<string>(
-    direcciones.filter((d) => (falloDe.get(d) || 0) === 0)
-  )
-  return { saldos, fallidas, leidoEn, cadena, cadenaCorrecta: true, completas }
+  return { saldos, fallidas, leidoEn, cadena, cadenaCorrecta: true, leidas }
 }
 
 /**
