@@ -7,6 +7,14 @@
 // para todo el mundo, y un panel que enseña ceros se ve igual de bien que uno
 // correcto.
 //
+// AQUI ESTAN LAS QUINCE, AUNQUE LA BILLETERA PUBLIQUE SEIS.
+//
+// Desde el 20/08/2026 Veta Wallet y Ordenex solo publican ORIGEN, AUKA, AGKA,
+// ONDK, HARV e IBS. Esto es un directorio de VIGILANCIA, no un escaparate:
+// dejar de mirar un token porque dejo de venderse es exactamente al reves de
+// como funciona el cumplimiento. Un activo que ya no se publica se sigue
+// moviendo, y esos movimientos son los que hay que poder ver.
+//
 // Se puede cambiar sin tocar código con GENESIS_MONEDAS:
 //   "SIMBOLO|nombre|0xcontrato|decimales,SIMBOLO|nombre||18"
 // (contrato vacío = moneda nativa de la cadena).

@@ -209,7 +209,12 @@ export default function Home({ nav }) {
               style={styles.token}>
               <TokenIcon t={t} />
               <View style={{ flex: 1, marginLeft: 13 }}>
-                <Text style={styles.tName}>{t.n}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                  <Text style={styles.tName}>{t.n}</Text>
+                  {/* Si aparece es porque hay saldo: el activo ya no se publica
+                      pero el dinero sigue siendo suyo y se puede enviar. */}
+                  {t.publico === false && <Text style={styles.noListado}>{tr('home.noListado')}</Text>}
+                </View>
                 <Text style={styles.tPrice}>
                   {t.hasPrice ? money(t.price) : '—'}
                   {t.hasPrice && t.chg != null && (
@@ -250,6 +255,11 @@ const styles = StyleSheet.create({
   promoP: { fontSize: 12, color: C.txt2, marginTop: 2 },
   token: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, borderRadius: 18, padding: 13, marginBottom: 10 },
   tName: { fontSize: 14.5, fontWeight: '600', color: C.txt },
+  /* Un activo que ya no se publica pero que la persona tiene. Tono apagado y
+     no rojo: no es un error ni una alerta, es un estado. */
+  noListado: { fontSize: 9, fontWeight: '700', letterSpacing: 0.6, color: C.txt3,
+    textTransform: 'uppercase', borderWidth: 1, borderColor: C.line,
+    borderRadius: 100, paddingHorizontal: 6, paddingVertical: 1.5, overflow: 'hidden' },
   tPrice: { fontSize: 12, color: C.txt3, marginTop: 2 },
   tQty: { fontSize: 12, color: C.txt3, marginTop: 2 },
   tVal: { fontSize: 14.5, fontWeight: '600', color: C.txt },

@@ -18,7 +18,10 @@ import { nombreBiometria } from '../PedirClave';
 
 function useTokens() {
   const { account } = useAccount();
-  return tokensFromBalances(account?.balances || []);
+  /* Cambiar solo ofrece lo publicado. Aqui no vale el «tengo saldo, dejame
+     verlo» de la lista de inicio: una cosa es no esconderle a alguien lo que
+     tiene, y otra ofrecerle cambiar por algo que se dejo de publicar. */
+  return tokensFromBalances(account?.balances || []).filter((t) => t.publico !== false);
 }
 
 // -------- selector de activo --------

@@ -30,22 +30,37 @@ const CADENA = (() => {
   // Los quince tokens reales de la red 5550. Los contratos estan confirmados
   // contra la cadena y todos usan 18 decimales: se fija el valor para no
   // gastar una llamada extra por token en cada carga.
+  /* QUE SE PUBLICA, Y QUE NO
+   *
+   * La tabla sigue teniendo los quince activos de la red 5550 y eso es a
+   * proposito: quitarlos de aqui dejaria de leer sus saldos, y a quien tuviera
+   * MNKA en la billetera le desapareceria su dinero de la pantalla. Un activo
+   * que no se publica no es un activo que no existe.
+   *
+   * `publico: false` significa: no se lista en el catalogo, no se ofrece para
+   * comprar ni para cambiar, y Ordenex no le abre mercado. Si alguien tiene
+   * saldo, lo sigue viendo —marcado «no listado»— y lo puede mover.
+   *
+   * Publicados hoy, por decision de la Junta: ORIGEN, AUKA, AGKA, ONDK, HARV
+   * (Harvi) e IBS (IBS Energy). Republicar uno es cambiar `false` por `true`
+   * en las TRES copias de esta tabla, no en una.
+   */
   const TOKENS = [
-    { s: 'ORIGEN', nativo: true },
-    { s: 'AUKA', contrato: '0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B' },
-    { s: 'AGKA', contrato: '0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B' },
-    { s: 'ONDK', contrato: '0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1' },
-    { s: 'MNKA', contrato: '0x18b6680CFF71c11067bec312Fc48786bE2e54Ead' },
-    { s: 'IBS', contrato: '0x7AF11D3E94A174f6fc290A5B7791A6DEE2718E62' },
-    { s: 'HARV', contrato: '0x0fa04D11F28B28cbC9b98dd016F02023AdDb1923' },
-    { s: 'AUBEX', contrato: '0xF1498640B27A66C0DC505093D70911C060e04fb0' },
-    { s: 'ASL', contrato: '0x69846aC960D45F9946C613DFCe1b761D37Faf098' },
-    { s: 'LOVE', contrato: '0x638F2ba0e3E1083D1ba570b449BD266F3860D164' },
-    { s: 'REST', contrato: '0x1aC12Ebd7739003059d1E9EA2a4863C92D1505DD' },
-    { s: 'SOL', contrato: '0xAAc6aE2E2037fC2e94d0b060792E7eB4E5fBfa66' },
-    { s: 'AIT', contrato: '0xAE14Db486872AC07d74Ad69cC09590239b21BA2e' },
-    { s: 'AGRO', contrato: '0x2A31ba919A5339fCB0F8aEeFfCE2c807B16007fe' },
-    { s: 'POLITICAL', contrato: '0x92496E1848e001428A3495409a9A9f616bB6dD3B' },
+    { s: 'ORIGEN', nativo: true, publico: true },
+    { s: 'AUKA', contrato: '0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B', publico: true },
+    { s: 'AGKA', contrato: '0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B', publico: true },
+    { s: 'ONDK', contrato: '0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1', publico: true },
+    { s: 'MNKA', contrato: '0x18b6680CFF71c11067bec312Fc48786bE2e54Ead', publico: false },
+    { s: 'IBS', contrato: '0x7AF11D3E94A174f6fc290A5B7791A6DEE2718E62', publico: true },
+    { s: 'HARV', contrato: '0x0fa04D11F28B28cbC9b98dd016F02023AdDb1923', publico: true },
+    { s: 'AUBEX', contrato: '0xF1498640B27A66C0DC505093D70911C060e04fb0', publico: false },
+    { s: 'ASL', contrato: '0x69846aC960D45F9946C613DFCe1b761D37Faf098', publico: false },
+    { s: 'LOVE', contrato: '0x638F2ba0e3E1083D1ba570b449BD266F3860D164', publico: false },
+    { s: 'REST', contrato: '0x1aC12Ebd7739003059d1E9EA2a4863C92D1505DD', publico: false },
+    { s: 'SOL', contrato: '0xAAc6aE2E2037fC2e94d0b060792E7eB4E5fBfa66', publico: false },
+    { s: 'AIT', contrato: '0xAE14Db486872AC07d74Ad69cC09590239b21BA2e', publico: false },
+    { s: 'AGRO', contrato: '0x2A31ba919A5339fCB0F8aEeFfCE2c807B16007fe', publico: false },
+    { s: 'POLITICAL', contrato: '0x92496E1848e001428A3495409a9A9f616bB6dD3B', publico: false },
   ];
 
   // Los cuatro principales traen logo propio; el resto se pinta con su glifo
@@ -309,6 +324,10 @@ const CADENA = (() => {
         ...META[t.s],
         contrato: t.contrato || null,
         nativo: !!t.nativo,
+        /* Viaja con la fila y no se consulta aparte: quien pinta la lista tiene
+           que poder decidir en el sitio si esto se enseña, sin volver a buscar
+           el token en otra tabla. */
+        publico: t.publico !== false,
         cant,
         precio: precio != null && precio > 0 ? precio : null,
         /* El acta viaja con el precio, no aparte. La variacion se queda en
@@ -323,5 +342,10 @@ const CADENA = (() => {
 
   const ficha = (sim, idioma) => (FICHAS[sim] || {})[idioma] || (FICHAS[sim] || {}).es || null;
 
-  return { TOKENS, META, FICHAS, ficha, portafolio, precios, precioDeclarado, rpc, RPC };
+  /* Los que hoy se publican. Es lo que tienen que ofrecer las pantallas de
+     comprar y de cambiar: ahi no cabe el «tengo saldo, dejame verlo». */
+  const PUBLICOS = TOKENS.filter(t => t.publico !== false).map(t => t.s);
+  const esPublico = (sim) => PUBLICOS.includes(sim);
+
+  return { TOKENS, PUBLICOS, esPublico, META, FICHAS, ficha, portafolio, precios, precioDeclarado, rpc, RPC };
 })();

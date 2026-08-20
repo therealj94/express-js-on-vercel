@@ -84,6 +84,7 @@ const VPORTA = (() => {
       walP: 'Esto es lo que tenés en tu billetera, leído de la cadena. No está en Ordenex: una casa de cambio solo guarda lo que le depositan.',
       walEn: 'en tu wallet',
       walVacio: 'Tu wallet no tiene saldo en la cadena 5550.',
+      noListado: 'no listado',
       walSinDir: 'Tu cuenta todavía no trae la dirección de tu Veta Wallet. Volvé a entrar desde la billetera para que viaje con la sesión.',
       walFallo: 'No pudimos leer tu wallet en la cadena. Preferimos decirlo antes que pintar un cero.',
       walComo: 'Para operar con esto, mandalo a tu dirección de depósito de aquí abajo. En cuanto la cadena lo confirme, aparece arriba y se puede vender.',
@@ -146,6 +147,7 @@ const VPORTA = (() => {
       walP: 'This is what you hold in your wallet, read from the chain. It is not in Ordenex: an exchange only holds what is deposited with it.',
       walEn: 'in your wallet',
       walVacio: 'Your wallet holds no balance on chain 5550.',
+      noListado: 'unlisted',
       walSinDir: 'Your account does not carry your Veta Wallet address yet. Sign in again from the wallet so it travels with the session.',
       walFallo: 'We could not read your wallet on chain. We would rather say so than paint a zero.',
       walComo: 'To trade with this, send it to your deposit address below. As soon as the chain confirms it, it shows up above and can be sold.',
@@ -393,17 +395,22 @@ const VPORTA = (() => {
     if (!walletSaldos.length) return `${cab}<div class="vacio">${esc(t.walVacio)}</div>`;
     return cab + walletSaldos.map((f) => {
       const m = CADENA.meta(f.s);
+      /* Un activo que ya no se publica se sigue ENSENANDO —es dinero que la
+         persona tiene y esconderlo seria mentir— pero no se le ofrece traerlo
+         a la casa: aca no hay mercado donde cambiarlo, y depositarlo seria
+         meterlo en un sitio del que no puede salir. */
+      const fuera = !CADENA.esPublico(f.s);
       let total = 0n;
       try { total = BigInt(f.wei); } catch {}
       const ref = valorReferencia(f.s, total);
       return `<div class="hilera">
         <div class="ic">${disco(f.s)}</div>
-        <div class="txt"><b>${esc(f.s)}</b><small>${esc(m.n || f.s)}</small></div>
+        <div class="txt"><b>${esc(f.s)}${fuera ? `<span class="no-listado">${esc(t.noListado)}</span>` : ''}</b><small>${esc(m.n || f.s)}</small></div>
         <div class="val">${esc(dinero(f.wei))}
           <span class="po-sub">${esc(t.walEn)}</span>
           ${ref ? `<span class="po-sub">${esc(ref)}</span>` : ''}
         </div>
-        ${(direccion && montoURL(f.wei)) ? `<button class="btn btn-linea btn-sm po-dep-uno"
+        ${(direccion && !fuera && montoURL(f.wei)) ? `<button class="btn btn-linea btn-sm po-dep-uno"
           onclick="VPORTA.depositar(${jsTxt(f.s)},${jsTxt(montoURL(f.wei))})"
           title="${esc(t.depUnoT)}">${esc(t.depUno)}</button>` : ''}
       </div>`;

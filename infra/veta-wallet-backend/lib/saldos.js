@@ -32,6 +32,16 @@ const ERC20_ABI = [
 // Los tokens del ecosistema sobre la 5550. Es la MISMA tabla que enseña la
 // billetera en apps-web/veta-wallet/cadena.js: si se añade uno allí y no aquí,
 // una cuenta con ese token pasaría por vacía.
+/* LOS QUINCE, SIEMPRE, AUNQUE NO TODOS SE PUBLIQUEN.
+ *
+ * Desde el 20/08/2026 la billetera y Ordenex publican solo seis —ORIGEN, AUKA,
+ * AGKA, ONDK, HARV e IBS— y los otros nueve llevan `publico: false` en
+ * `apps-web/*\/cadena.js`. Esa decision es de VITRINA, no de lectura: aqui hay
+ * que seguir leyendo los quince, porque quien tiene saldo de un despublicado
+ * lo sigue viendo en su billetera y ese saldo sale de esta consulta.
+ *
+ * Borrar uno de esta lista le apaga el saldo a alguien. No es lo mismo que
+ * dejar de publicarlo. */
 export const TOKENS_5550 = [
   { simbolo: "AUKA", contrato: "0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B" },
   { simbolo: "AGKA", contrato: "0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B" },

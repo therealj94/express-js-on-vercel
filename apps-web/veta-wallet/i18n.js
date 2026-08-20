@@ -489,6 +489,8 @@ es: {
   'pay.cobraP': 'Tu código de cobro con la cantidad puesta funciona hoy mismo: quien lo escanea te paga desde su billetera. Sin papeles, sin esperar.',
   'pay.pagarT': 'Pagar a este negocio',
     'pay.escanear': 'Escanear su código',
+  'tok.noListado': 'no listado',
+  'tok.noListadoP': 'Este activo ya no se publica en la billetera ni en Ordenex. Lo ves porque tenés saldo: podés enviarlo cuando quieras, pero no se puede comprar ni cambiar más por ahora.',
   // MyTokenPay · el cobro de verdad
   'mtp.enLinea': 'Cobra en línea',
   'mtp.paises': 'países',
@@ -1101,6 +1103,8 @@ en: {
   'pay.cobraP': 'Your charge code with the amount already in it works right now: whoever scans it pays you from their wallet. No paperwork, no waiting.',
   'pay.pagarT': 'Pay this business',
     'pay.escanear': 'Scan their code',
+  'tok.noListado': 'unlisted',
+  'tok.noListadoP': 'This asset is no longer published in the wallet or on Ordenex. You can see it because you hold a balance: you can send it whenever you want, but it cannot be bought or swapped for now.',
   // MyTokenPay · the real charge
   'mtp.enLinea': 'Takes online payment',
   'mtp.paises': 'countries',

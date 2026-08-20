@@ -1409,8 +1409,18 @@ const VETA = (() => {
         <div class="m-val"><b class="esqueleto">$0.00</b><small class="esqueleto">0</small></div>
       </div>`).join('');
 
-    return cartera.map(x => {
+    /* SE LISTA LO PUBLICADO, Y ADEMAS LO QUE UNO TENGA.
+     *
+     * Nueve activos dejaron de publicarse. Quitarlos de la lista a secas le
+     * borraria de la pantalla su dinero a quien tuviera saldo, y un saldo que
+     * desaparece de la billetera es la clase de cosa que no se explica
+     * despues. Asi que un despublicado con saldo se sigue viendo, marcado; uno
+     * con saldo cero se va, porque ahi no hay nada que esconder. */
+    const aLaVista = cartera.filter(x => x.publico !== false || (x.cant ?? 0) > 0);
+
+    return aLaVista.map(x => {
       const valor = x.precio != null ? usd(x.cant * x.precio) : '—';
+      const fuera = x.publico === false;
       const chg = x.chg != null
         ? `<span class="${x.chg < 0 ? 'px-baja' : 'px-sube'}">${x.chg > 0 ? '+' : ''}${x.chg.toFixed(2)}%</span>` : '';
       return `
@@ -1418,7 +1428,7 @@ const VETA = (() => {
               aria-label="${esc(x.n)}, ${esc(oro(x.cant))} ${x.s}">
         ${disco(x)}
         <div class="m-txt">
-          <b>${esc(x.n)}</b>
+          <b>${esc(x.n)}${fuera ? `<span class="no-listado">${t('tok.noListado')}</span>` : ''}</b>
           ${/* El rotulo va PEGADO al numero, no en otra linea ni en la ficha
                 de mas adentro: quien mira la lista ve el precio ahi y no entra
                 a ninguna parte. Un precio declarado sin la palabra al lado se
@@ -1632,6 +1642,7 @@ const VETA = (() => {
     const x = vivo || { s: sim, ...CADENA.META[sim], contrato: reg.contrato || null,
                         nativo: !!reg.nativo, cant: null, precio: null, chg: null };
     const f = CADENA.ficha(x.s, idiomaActivo()) || { d: '', t: '', r: '' };
+    const fueraDeLista = reg.publico === false;
     const filas = [
       [t('tok.tipo'), f.t],
       [t('tok.resp'), f.r],
@@ -1643,10 +1654,14 @@ const VETA = (() => {
       <div class="ficha-cab">
         ${disco(x, true)}
         <div>
-          <h2>${esc(x.n)}</h2>
+          <h2>${esc(x.n)}${fueraDeLista ? `<span class="no-listado">${t('tok.noListado')}</span>` : ''}</h2>
           ${x.n === x.s ? '' : `<div class="sub mono">${x.s}</div>`}
         </div>
       </div>
+      ${/* Si se llega aca es porque hay saldo. Se explica en la propia ficha
+           que puede moverlo y que no puede comprar mas, para que nadie tenga
+           que deducirlo de un boton que no aparece. */''}
+      ${fueraDeLista ? `<div class="nota" style="margin-top:14px">${t('tok.noListadoP')}</div>` : ''}
       <div class="ficha-cifra">
         <div>
           <span class="et">${t('tok.tuSaldo')}</span>
@@ -3333,9 +3348,13 @@ const VETA = (() => {
      que no tener la pantalla. */
   function cambiar() {
     const de = origen();
-    const destino = (cartera || []).find(x => x.s === (destinoCambio || 'AUKA')) || null;
+    const destino = (cartera || []).find(x => x.s === (destinoCambio || 'AUKA') && x.publico !== false)
+      || (cartera || []).find(x => x.s === 'AUKA') || null;
     const tasa = de?.precio && destino?.precio ? de.precio / destino.precio : null;
-    const otros = (cartera || []).filter(x => x.s !== 'ORIGEN');
+    /* Cambiar solo ofrece lo publicado. Aqui no vale el «tengo saldo, dejame
+       verlo» de la lista: una cosa es no esconderle a alguien lo que tiene, y
+       otra ofrecerle comprar mas de algo que se dejo de publicar. */
+    const otros = (cartera || []).filter(x => x.s !== 'ORIGEN' && x.publico !== false);
     return `
     <div class="cab"><div><h2>${t('sw.t')}</h2>${de && destino ? `<div class="sub mono">ORIGEN → ${destino.s}</div>` : ''}</div></div>
     <div class="bloque vidrio">
@@ -7853,6 +7872,11 @@ const VETA = (() => {
            _laTarjeta: () => tarjeta,
            _tarjeta: c => { tarjeta = c; },
            _sesion: x => { sesion = x; },
+           // Sembrar la cartera sin cadena: es la unica forma de comprobar que
+           // un activo despublicado CON saldo se sigue viendo y uno en cero se
+           // va. Contra la red de verdad habria que tener saldo de un
+           // despublicado, que es justo lo que no se puede fabricar.
+           _cartera: l => { cartera = l; errCartera = null; },
            _leerCobro: c => { const x = leerCobro(c); if (x) irACobro(x); return x; },
            _sol: x => { sol = { ...(sol || {}), ...x }; },
            _semilla: f => { semillaNueva = f; mostrarSemilla(f); },

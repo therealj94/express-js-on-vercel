@@ -7,22 +7,31 @@ export const ORIGEN_PRICE = 2.35; // respaldo si el feed de precios no responde
 // Cada token que tiene logo propio lo trae en `image`; TokenIcon renderiza
 // esa imagen sobre un disco oscuro. Los que no lo tienen (MNKA) siguen con
 // el glifo antiguo sobre un degradado. Así se mezclan sin sorpresas.
+// QUE SE PUBLICA, Y QUE NO
+//
+// Desde el 20/08/2026 solo se publican seis: ORIGEN, AUKA, AGKA, ONDK, HARV
+// (Harvi) e IBS (IBS Energy). Los otros nueve llevan `publico: false`.
+//
+// NO se borran de esta tabla, y eso es a proposito: quien tenga saldo de uno
+// de ellos lo sigue viendo en su billetera, marcado «no listado», y lo puede
+// enviar. Borrarlo de aqui le apagaria su dinero de la pantalla. La misma
+// regla, y la misma tabla, que en apps-web/veta-wallet/cadena.js.
 export const TOKEN_META = {
-  ORIGEN: { s: 'ORIGEN', n: 'ORIGEN', image: require('../assets/tokens/origen.jpg') },
-  AUKA:   { s: 'AUKA',   n: 'AUKA',   image: require('../assets/tokens/auka.jpg') },
-  AGKA:   { s: 'AGKA',   n: 'AGKA',   image: require('../assets/tokens/agka.jpg') },
-  ONDK:   { s: 'ONDK',   n: 'ONDK',   image: require('../assets/tokens/ondk.jpg') },
-  MNKA:   { s: 'MNKA',   n: 'MNKA',   glyph: '♛', grad: ['#F8EFCF', '#C9A961', '#96793F'], fg: '#3A2C08' },
-  IBS:      { s: 'IBS',      n: 'IBS Energy',glyph: '⚡',  grad: ['#FFE9B0', '#E0A426', '#8A5E0E'], fg: '#3A2400' },
-  HARV:     { s: 'HARV',     n: 'Harvi',     glyph: '🌾',  grad: ['#E9F2C8', '#9CBF5E', '#5A7A2C'], fg: '#1D2A0C' },
-  AUBEX:    { s: 'AUBEX',    n: 'AUBEX',     glyph: 'AB',  grad: ['#E4D9F7', '#8E6FC9', '#4B3684'], fg: '#1C1030' },
-  ASL:      { s: 'ASL',      n: 'Athletic',  glyph: '🏃',  grad: ['#D9F0E6', '#4FB98B', '#227455'], fg: '#062A1D' },
-  LOVE:     { s: 'LOVE',     n: 'Amor Global',glyph: '♥',  grad: ['#FBD8E3', '#E0648B', '#93254F'], fg: '#390318' },
-  REST:     { s: 'REST',     n: 'Real State',glyph: '🏠',  grad: ['#DCE6F5', '#6E8FC2', '#354E76'], fg: '#0E1A2C' },
-  SOL:      { s: 'SOL',      n: 'Solar',     glyph: '☀',  grad: ['#FFEBB0', '#F0A93A', '#A5610E'], fg: '#3A1E00' },
-  AIT:      { s: 'AIT',      n: 'AI',        glyph: 'AI',  grad: ['#D3E8FB', '#4E8FD6', '#274F82'], fg: '#0A2038' },
-  AGRO:     { s: 'AGRO',     n: 'Agrotech',  glyph: '🌱',  grad: ['#E2F1D6', '#7FB25A', '#43682D'], fg: '#152508' },
-  POLITICAL:{ s: 'POLITICAL',n: 'Political', glyph: 'PO',  grad: ['#E9E0D6', '#A98E6E', '#6B5236'], fg: '#241A0C' },
+  ORIGEN: { s: 'ORIGEN', n: 'ORIGEN', image: require('../assets/tokens/origen.jpg'), publico: true },
+  AUKA:   { s: 'AUKA',   n: 'AUKA',   image: require('../assets/tokens/auka.jpg'), publico: true },
+  AGKA:   { s: 'AGKA',   n: 'AGKA',   image: require('../assets/tokens/agka.jpg'), publico: true },
+  ONDK:   { s: 'ONDK',   n: 'ONDK',   image: require('../assets/tokens/ondk.jpg'), publico: true },
+  MNKA:   { s: 'MNKA',   n: 'MNKA',   glyph: '♛', grad: ['#F8EFCF', '#C9A961', '#96793F'], fg: '#3A2C08', publico: false },
+  IBS:      { s: 'IBS',      n: 'IBS Energy',glyph: '⚡',  grad: ['#FFE9B0', '#E0A426', '#8A5E0E'], fg: '#3A2400', publico: true },
+  HARV:     { s: 'HARV',     n: 'Harvi',     glyph: '🌾',  grad: ['#E9F2C8', '#9CBF5E', '#5A7A2C'], fg: '#1D2A0C', publico: true },
+  AUBEX:    { s: 'AUBEX',    n: 'AUBEX',     glyph: 'AB',  grad: ['#E4D9F7', '#8E6FC9', '#4B3684'], fg: '#1C1030', publico: false },
+  ASL:      { s: 'ASL',      n: 'Athletic',  glyph: '🏃',  grad: ['#D9F0E6', '#4FB98B', '#227455'], fg: '#062A1D', publico: false },
+  LOVE:     { s: 'LOVE',     n: 'Amor Global',glyph: '♥',  grad: ['#FBD8E3', '#E0648B', '#93254F'], fg: '#390318', publico: false },
+  REST:     { s: 'REST',     n: 'Real State',glyph: '🏠',  grad: ['#DCE6F5', '#6E8FC2', '#354E76'], fg: '#0E1A2C', publico: false },
+  SOL:      { s: 'SOL',      n: 'Solar',     glyph: '☀',  grad: ['#FFEBB0', '#F0A93A', '#A5610E'], fg: '#3A1E00', publico: false },
+  AIT:      { s: 'AIT',      n: 'AI',        glyph: 'AI',  grad: ['#D3E8FB', '#4E8FD6', '#274F82'], fg: '#0A2038', publico: false },
+  AGRO:     { s: 'AGRO',     n: 'Agrotech',  glyph: '🌱',  grad: ['#E2F1D6', '#7FB25A', '#43682D'], fg: '#152508', publico: false },
+  POLITICAL:{ s: 'POLITICAL',n: 'Political', glyph: 'PO',  grad: ['#E9E0D6', '#A98E6E', '#6B5236'], fg: '#241A0C', publico: false },
 };
 
 // Las mismas 3 filas para las 5 monedas (Tipo · Respaldo · Red) para que
@@ -136,7 +145,16 @@ export const COIN_INFO = {
 // Un precio ausente (feed caído) llega como null y la UI lo pinta como "—";
 // nunca se sustituye por un valor congelado.
 export function tokensFromBalances(balances) {
-  return (balances || []).map((b) => {
+  /* SE LISTA LO PUBLICADO, Y ADEMAS LO QUE UNO TENGA.
+   *
+   * Un despublicado con saldo se sigue viendo —es dinero de la persona— y un
+   * despublicado en cero se va, porque ahi no hay nada que esconder. Va aqui,
+   * en el unico sitio por el que pasan todos los saldos antes de pintarse, y
+   * no en cada pantalla: en tres sitios se olvida uno. */
+  return (balances || []).filter((b) => {
+    const m = TOKEN_META[(b.symbol || '').toUpperCase()];
+    return !m || m.publico !== false || Number(b.qty) > 0;
+  }).map((b) => {
     const sym = (b.symbol || '').toUpperCase();
     const meta = TOKEN_META[sym] || { s: sym, n: sym, glyph: sym.slice(0, 3), grad: ['#1E8C74', '#0A463F'], fg: '#EAD79C' };
     const price = b.priceUsd != null && Number(b.priceUsd) > 0 ? Number(b.priceUsd) : null;
@@ -148,6 +166,9 @@ export function tokensFromBalances(balances) {
       hasPrice: price != null,
       chg: b.changePct != null ? Number(b.changePct) : null,
       contract: b.contract || null,
+      // Viaja con la fila para que la pantalla pueda ponerle el sello sin
+      // volver a buscar el token en otra tabla.
+      publico: meta.publico !== false,
     };
   });
 }
