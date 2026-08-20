@@ -85,6 +85,10 @@ async function crearIndices(db: Db): Promise<void> {
       db.collection('comercios').createIndex({ ownerId: 1 }),
       db.collection('comercios').createIndex({ countrySlug: 1, citySlug: 1, categorySlug: 1 }),
       db.collection('cobros').createIndex({ id: 1 }, { unique: true }),
+      /* La REFERENCIA también es única y buscable: es lo que va dentro del QR y
+         lo que un cajero dicta por teléfono cuando el lector no funciona. Sin
+         índice, resolverla obligaría a recorrer la colección en cada pago. */
+      db.collection('cobros').createIndex({ referencia: 1 }, { unique: true }),
       db.collection('cobros').createIndex({ companyId: 1, creadoEn: -1 }),
       db.collection('cobros').createIndex({ 'pago.pagadorId': 1, creadoEn: -1 }),
       // Un cobro sin pagar no vive para siempre: caduca solo. Sin esto la

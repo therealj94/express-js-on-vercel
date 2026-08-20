@@ -340,6 +340,38 @@ await prueba('el documento guardado no lleva gid mientras no haya GID', async ()
   assert.equal(conGid.gid, 'GID-HN-000001')
 })
 
+/* LA REFERENCIA DEL QR TIENE QUE SERVIR PARA PAGAR.
+   El codigo que se escanea lleva la REFERENCIA, no el id interno. Si solo se
+   pudiera por id, quien escanea tendria en la mano un dato con el que no puede
+   hacer nada — y el cajero que la dicta por telefono, tampoco. */
+await prueba('un cobro se lee y se paga por su referencia, no solo por su id', async () => {
+  const c = await pedir('/cobros', { metodo: 'POST', token: tokenComercio, cuerpo: { montoOrigen: 6 } })
+  const ref = c.cuerpo.cobro.referencia
+  assert.ok(ref && ref.length === 8, 'la referencia tiene que venir en la respuesta')
+
+  // Leerlo por referencia, sin sesion, como quien escanea el codigo.
+  const leido = await pedir('/cobros/' + ref)
+  assert.equal(leido.estado, 200)
+  assert.equal(leido.cuerpo.cobro.montoOrigen, 6)
+
+  // En minusculas tambien: quien la teclea no se acuerda de como estaba escrita.
+  const enMinusculas = await pedir('/cobros/' + ref.toLowerCase())
+  assert.equal(enMinusculas.estado, 200)
+
+  // Y pagarlo por referencia.
+  const pago = await pedir(`/cobros/${ref}/pagar`, {
+    metodo: 'POST', token: tokenCliente, cuerpo: { medio: 'wallet' },
+  })
+  assert.equal(pago.estado, 200)
+  assert.equal(pago.cuerpo.cobro.estado, 'pagado')
+
+  // Y no se paga dos veces, ni mezclando referencia con id.
+  const otraVez = await pedir(`/cobros/${c.cuerpo.cobro.id}/pagar`, {
+    metodo: 'POST', token: tokenCliente, cuerpo: { medio: 'wallet' },
+  })
+  assert.equal(otraVez.estado, 409)
+})
+
 /* ══ LA PUERTA DEL ECOSISTEMA ══════════════════════════════════════════════
    Sin clave de Genesis configurada (que es como corre esta prueba) el SSO no
    puede verificar nada, y lo que tiene que pasar es que RECHACE — nunca que

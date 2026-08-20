@@ -300,10 +300,28 @@ export const db = {
     return cobro
   },
 
+  /**
+   * Un cobro por su identificador O por su referencia.
+   *
+   * Los dos, y no solo el id, porque son dos cosas distintas de cara afuera:
+   * el `id` es lo que maneja el programa, y la REFERENCIA es lo que va dentro
+   * del QR y lo que un cajero dicta por teléfono cuando el lector no lee. Si
+   * solo se pudiera por id, quien escanea el código tendría en la mano un dato
+   * con el que no puede hacer nada.
+   *
+   * La referencia se compara en mayúsculas: quien la teclea a mano no tiene por
+   * qué acordarse de cómo estaba escrita.
+   */
   async cobroPorId(id: string): Promise<Cobro | undefined> {
+    const clave = String(id || '').trim()
+    if (!clave) return undefined
     const c = await col('cobros')
-    if (c) return sinMongoId<Cobro>(await c.findOne({ id }))
-    return cobrosMem.get(id)
+    if (c) {
+      const d = await c.findOne({ $or: [{ id: clave }, { referencia: clave.toUpperCase() }] })
+      return sinMongoId<Cobro>(d)
+    }
+    return cobrosMem.get(clave) ??
+      [...cobrosMem.values()].find((x) => x.referencia === clave.toUpperCase())
   },
 
   /**
@@ -324,7 +342,7 @@ export const db = {
     const c = await col('cobros')
     if (c) {
       const r = await c.findOneAndUpdate(
-        { id, estado: 'pendiente' },
+        { $or: [{ id }, { referencia: String(id).toUpperCase() }], estado: 'pendiente' },
         {
           $set: { estado: 'pagado' as EstadoCobro, pago },
           // Un cobro pagado deja de caducar: es un asiento contable, no un QR.
@@ -335,7 +353,8 @@ export const db = {
       const d = r?.value ?? r
       return d ? (sinMongoId<Cobro>(d) as Cobro) : null
     }
-    const existente = cobrosMem.get(id)
+    const existente = cobrosMem.get(id) ??
+      [...cobrosMem.values()].find((x) => x.referencia === String(id).toUpperCase())
     if (!existente || existente.estado !== 'pendiente') return null
     existente.estado = 'pagado'
     existente.pago = pago
@@ -346,14 +365,15 @@ export const db = {
     const c = await col('cobros')
     if (c) {
       const r = await c.findOneAndUpdate(
-        { id, emisorId, estado: 'pendiente' },
+        { $or: [{ id }, { referencia: String(id).toUpperCase() }], emisorId, estado: 'pendiente' },
         { $set: { estado: 'cancelado' as EstadoCobro } },
         { returnDocument: 'after' },
       )
       const d = r?.value ?? r
       return d ? (sinMongoId<Cobro>(d) as Cobro) : null
     }
-    const e = cobrosMem.get(id)
+    const e = cobrosMem.get(id) ??
+      [...cobrosMem.values()].find((x) => x.referencia === String(id).toUpperCase())
     if (!e || e.emisorId !== emisorId || e.estado !== 'pendiente') return null
     e.estado = 'cancelado'
     return e
