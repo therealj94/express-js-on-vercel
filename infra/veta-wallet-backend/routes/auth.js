@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 var {login, registerUserWallet, updateUserAdmin, updateAdminUser, verifyMail, recuperarPassword,resetPassword, refresh} = require("../controller/authController")
 var {socialLogin} = require("../controller/socialController")
+var {retoLlave, entrarConLlave} = require("../controller/llaveController")
 var isAdmin = require("../middleware/isAdmin")
 var validateForms = require("../middleware/validateForms")
 
@@ -22,6 +23,12 @@ router.post('/register',validateForms,registerUserWallet);
 // Entrar con Google o con Apple. Una sola ruta hace entrar y registrarse,
 // porque desde el lado de la persona son el mismo gesto.
 router.post('/social', socialLogin);
+
+/* Entrar con la frase semilla o la llave privada. Son dos pasos y el secreto
+   no viaja en ninguno: se pide un reto, se firma en el navegador, y aquí solo
+   llega la firma. Ver controller/llaveController.js. */
+router.post('/reto-llave', retoLlave);
+router.post('/entrar-con-llave', entrarConLlave);
 router.post('/updateAdmin',isAdmin,updateUserAdmin);
 router.post('/updateUser',isAdmin,updateAdminUser);
 

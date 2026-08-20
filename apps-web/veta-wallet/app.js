@@ -534,6 +534,119 @@ const VETA = (() => {
   };
 
   /** Desde el formulario de entrar, con el correo ya escrito si lo hay. */
+
+  /* ── ENTRAR CON LA FRASE SEMILLA O LA LLAVE PRIVADA ──────────────────────
+   *
+   * Existe para el caso que hoy no tiene salida: alguien que no se acuerda de
+   * la contraseña Y tampoco puede llegar a su correo. Sin esto, esa persona
+   * pierde su dinero teniendo la frase en la mano.
+   *
+   * LA FRASE NO SALE DE ESTE NAVEGADOR. De aquí solo viaja una firma sobre un
+   * reto que el servidor acaba de emitir. Toda la derivación vive en
+   * llaves.js, con el porqué de cada paso.
+   */
+  function llaveAbrir() {
+    $('#form-acceso')?.classList.add('oculto');
+    $('.seg')?.classList.add('oculto');
+    /* Y el «volver» de la pantalla de acceso: el panel trae el suyo, y dos
+       botones de volver seguidos no dicen a dónde va cada uno. */
+    $('#acceso > .acc > .acc-volver')?.classList.add('oculto');
+    $('#llv')?.classList.remove('oculto');
+    $('#llv-aviso')?.classList.add('oculto');
+    $('#i-llave').value = '';
+    $('#i-llave')?.focus();
+  }
+
+  function llaveCerrar() {
+    // Se borra al salir. Una frase semilla no se queda en un campo por si
+    // acaso: el siguiente que abra el teléfono la encontraría escrita.
+    const c = $('#i-llave'); if (c) c.value = '';
+    $('#llv')?.classList.add('oculto');
+    $('.seg')?.classList.remove('oculto');
+    $('#acceso > .acc > .acc-volver')?.classList.remove('oculto');
+    $('#form-acceso')?.classList.remove('oculto');
+  }
+
+  const llvAviso = (clave) => {
+    const a = $('#llv-aviso');
+    if (!a) return;
+    a.textContent = t(clave);
+    a.classList.remove('oculto');
+  };
+
+  let llaveOcupado = false;
+  async function llaveEntrar() {
+    if (llaveOcupado) return;
+    const campo = $('#i-llave');
+    const secreto = (campo?.value || '').trim();
+    $('#llv-aviso')?.classList.add('oculto');
+
+    if (!window.LLAVES || !window.LLAVECRIPTO) return llvAviso('llv.sinCripto');
+    if (!secreto) return llvAviso('llv.malFormato');
+
+    const btn = $('#btn-llave');
+    const textoBtn = btn ? btn.textContent : '';
+    llaveOcupado = true;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="girando"></span> ' + t('llv.entrando'); }
+
+    try {
+      /* Primero la dirección, en local, para poder pedir el reto. Se deriva
+         dos veces —una aquí y otra al firmar— y es a propósito: así la llave
+         no queda viva en una variable mientras se espera a la red. */
+      const previa = await LLAVES.credencial(secreto, 'previo');
+      if (previa.error === 'formato') return llvAviso('llv.malFormato');
+
+      const r = await pedir('/auth/reto-llave', {
+        metodo: 'POST', cuerpo: { direccion: previa.direccion }, conSesion: false,
+      });
+      if (!r?.reto) return llvAviso('llv.err');
+
+      const c = await LLAVES.credencial(secreto, r.reto);
+      if (c.error) return llvAviso('llv.malFormato');
+
+      const d = await pedir('/auth/entrar-con-llave', {
+        metodo: 'POST', cuerpo: { nonce: r.nonce, firma: c.firma, recupera: c.recupera },
+        conSesion: false,
+      });
+      if (!d?.token) return llvAviso('llv.err');
+
+      // Se borra ANTES de entrar: si algo falla después, la frase ya no está.
+      if (campo) campo.value = '';
+
+      /* La sesión se arma igual que en el login de contraseña —mismos campos,
+         mismo `refresco`, misma dirección sacada del token—. Si esto se
+         desviara, la renovación dejaría de funcionar y todo empezaría a
+         contestar «invalid token» al vencer los cuarenta minutos. */
+      const c2 = abrirToken(d.token);
+      sesion = {
+        token: d.token,
+        refresco: d?.refreshToken || d?.refresh_token || null,
+        correo: d?.user?.email || null,
+        nombre: d?.user?.name || (d?.user?.email || '').split('@')[0],
+        direccion: c2.address || d?.user?.address || previa.direccion,
+      };
+      guardar();
+      tele('identificar', { ...c2, email: sesion.correo });
+      tele('confirmar', d.token, {
+        email: sesion.correo, nombre: sesion.nombre, direccionWallet: sesion.direccion,
+      });
+      tele('accion', 'sesion.entrar.llave');
+      anotarSesion();
+      llaveCerrar();
+      ir('app');
+      cargarTodo();
+    } catch (e) {
+      const m = String(e?.mensaje || e?.message || '');
+      if (/no corresponde a ninguna cuenta/i.test(m)) llvAviso('llv.sinCuenta');
+      else if (/caduc/i.test(m)) llvAviso('llv.caduco');
+      else if (m) { const a = $('#llv-aviso'); if (a) { a.textContent = m; a.classList.remove('oculto'); } }
+      else llvAviso('llv.err');
+    } finally {
+      llaveOcupado = false;
+      if (btn) { btn.disabled = false; btn.textContent = textoBtn || t('llv.btn'); }
+    }
+  }
+
   function reclavePedir() {
     reclaveToken = null;
     reclavePaso('pedir');
@@ -7813,6 +7926,7 @@ const VETA = (() => {
 
   return { ir, pestana, ojo, vista, mandar, copiar, compartir, salir, reintentar, avisar, idioma,
            reclavePedir, reclaveSalir, ojoReclave,
+           llaveAbrir, llaveCerrar, llaveEntrar,
            tapar, copiarContrato, congelar, revelar, pedirTarjeta, cambioMonto, elegirDestino,
            voltear, olvidar, remMonto, remPais, refrescarTasas, nuevoContacto, borrarContacto,
            enviarA, abrirCamara, cerrarCamara, pedirSecreto, copiarTexto, guardarNombre,
