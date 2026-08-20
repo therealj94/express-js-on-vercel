@@ -166,7 +166,15 @@ const esc = (s) => String(s == null ? "" : s)
   .replace(/&/g, "&amp;").replace(/</g, "&lt;")
   .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-export function marco(titulo, dentro) {
+/**
+ * @param {string} titulo
+ * @param {string} dentro
+ * @param {string} [pie] Añadido al pie, DESPUÉS del aviso de suplantación.
+ *   Existe para el enlace de baja de los correos de aviso: la baja tiene que
+ *   ir en el pie de la propia carta, no en una página aparte que haya que
+ *   buscar, y el pie lo arma este marco y no cada plantilla.
+ */
+export function marco(titulo, dentro, pie = "") {
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -183,7 +191,7 @@ ${dentro}
   <div style="margin-top:30px;padding-top:18px;border-top:1px solid rgba(243,236,217,.10);font-size:12px;line-height:1.6;color:#7E938D;">
     Orden Global Corp · Próspera, Roatán, Honduras<br>
     <strong style="color:#B4C6C0;">Nunca te vamos a pedir por correo tu contraseña ni tu frase de respaldo.</strong>
-    Si un mensaje a nombre nuestro te las pide, no es nuestro.
+    Si un mensaje a nombre nuestro te las pide, no es nuestro.${pie ? `<br><br>${pie}` : ""}
   </div>
 </td></tr>
 </table>

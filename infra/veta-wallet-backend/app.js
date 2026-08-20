@@ -18,6 +18,9 @@ var transactionRouter = require("./routes/transaction");
 var kycRouter = require("./routes/kyc");
 var cardsRouter = require("./routes/cards");
 var walletRouter = require("./routes/wallet");
+// La baja de los correos de aviso. Se abre desde el cliente de correo:
+// contesta HTML y no pide sesion — quien la abre viene de su bandeja.
+var avisosRouter = require("./routes/avisos");
 const { routerGenesis, parserRostro } = require("./lib/genesisPuente");
 const sesionGenesis = require("./middleware/sesionGenesis");
 
@@ -208,6 +211,7 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use("/", avisosRouter.router || avisosRouter.default || avisosRouter);
 app.use("/", indexRouter);
 app.use("/users", usersRouter);
 app.use("/auth", authRouter);

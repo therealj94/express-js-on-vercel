@@ -97,6 +97,33 @@ const Users = new Schema(
         verificationTokenPasswordExp:{
             type: Date,
         },
+        /* Quien pidio no recibir mas correos de aviso.
+         *
+         * NO apaga el correo transaccional —confirmar la cuenta, recuperar la
+         * contrasena, avisar de un movimiento—: eso no es publicidad y quien
+         * se da de baja de los avisos no esta renunciando a poder entrar a su
+         * cuenta. Apaga UNICAMENTE las cartas que mandamos nosotros por
+         * iniciativa propia.
+         *
+         * Se guarda la fecha y no un booleano por una razon practica: cuando
+         * alguien reclama «me siguen llegando», lo primero que hace falta
+         * saber es CUANDO se dio de baja, no solo que lo hizo. */
+        sinAvisos: {
+            type: Date,
+        },
+
+        /* Cuando se le mando la carta de novedades.
+         *
+         * Es lo que hace que el envio se pueda repetir sin repetirle a nadie:
+         * el guion se salta a quien ya la tiene. Si el proceso se cae en la
+         * persona 200, volver a correrlo sigue en la 201 en vez de escribirle
+         * dos veces a las 199 primeras — y un correo repetido es la forma mas
+         * rapida de que alguien lo marque como basura, con lo que se quema el
+         * dominio para TODO, incluido el de recuperar la contrasena. */
+        novedadesEnviadaEn: {
+            type: Date,
+        },
+
         // KYC - Veriff
         kycStatus: {
             type: String,
