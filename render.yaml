@@ -91,6 +91,12 @@ services:
         sync: false
       - key: GENESIS_SES_SECRETO
         sync: false
+      # Conjunto de configuración de SES. Recoge los rebotes y las quejas y los
+      # publica donde una persona los vea. Sin esto se suprime la dirección en
+      # silencio y nadie se entera de que un correo no llegó — que fue justo el
+      # motivo por el que AWS denegó la salida del cajón de arena en agosto.
+      - key: GENESIS_SES_CONJUNTO
+        value: ordenglobal-transaccional
 
       # ─── Listas de sanciones ───────────────────────────────────────────────
       # Carpeta con SDN.CSV y ALT.CSV de la OFAC, o listas propias en JSON.

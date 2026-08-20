@@ -55,6 +55,11 @@ const REGION = process.env.SES_REGION || "us-east-1";
 const DE = process.env.SES_DE || "Veta Wallet <info@ordenglobal.org>";
 const LLAVE = process.env.SES_LLAVE || "";
 const SECRETO = process.env.SES_SECRETO || "";
+// Conjunto de configuracion de SES. Recoge rebotes, quejas, rechazos y
+// retrasos, y los publica donde alguien los vea. Sin esto no hay forma de
+// saber que un correo no llego, y AWS lo mira antes de sacar la cuenta del
+// cajon de arena.
+const CONJUNTO = process.env.SES_CONJUNTO || "ordenglobal-transaccional";
 
 export const correoEncendido = () => Boolean(LLAVE && SECRETO);
 
@@ -117,6 +122,7 @@ export async function enviarCorreo(carta) {
   const cuerpoTexto = { Data: carta.texto, Charset: "UTF-8" };
   const cuerpo = JSON.stringify({
     FromEmailAddress: DE,
+    ConfigurationSetName: CONJUNTO,
     Destination: { ToAddresses: [carta.para] },
     Content: {
       Simple: {

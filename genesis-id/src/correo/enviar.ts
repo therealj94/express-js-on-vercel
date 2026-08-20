@@ -46,6 +46,10 @@ const REGION = process.env.GENESIS_SES_REGION || 'us-east-1'
 const DE = process.env.GENESIS_SES_DE || 'Orden Global <info@ordenglobal.org>'
 const LLAVE = process.env.GENESIS_SES_LLAVE || ''
 const SECRETO = process.env.GENESIS_SES_SECRETO || ''
+// Conjunto de configuración de SES. Recoge rebotes, quejas, rechazos y
+// retrasos, y los publica donde alguien los vea. Se deja como variable para
+// poder cambiarlo sin desplegar.
+const CONJUNTO = process.env.GENESIS_SES_CONJUNTO || 'ordenglobal-transaccional'
 
 /** Sin credenciales no se envía nada y no se rompe nada. */
 export const correoEncendido = (): boolean => Boolean(LLAVE && SECRETO)
@@ -83,6 +87,12 @@ export async function enviar(carta: Carta): Promise<Resultado> {
 
   const cuerpo = JSON.stringify({
     FromEmailAddress: DE,
+    // Sin esto, los rebotes y las quejas se pierden: nadie se entera de que un
+    // correo no llegó, y AWS —que lo comprueba antes de sacar la cuenta del
+    // cajón de arena— ve un remitente que no vigila lo que manda. El conjunto
+    // publica cada rebote y cada queja en un tema SNS que avisa por correo, y
+    // apunta las métricas en CloudWatch.
+    ConfigurationSetName: CONJUNTO,
     Destination: { ToAddresses: [carta.para] },
     Content: {
       Simple: {
