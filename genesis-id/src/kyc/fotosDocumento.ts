@@ -36,6 +36,27 @@ import { cifrar, descifrar, archivoConfigurado } from '../lib/cripto.js'
 export interface FotosDocumento {
   anverso: string
   reverso: string
+  /**
+   * EL FOTOGRAMA QUE SE COMPARÓ. La evidencia del cotejo, no el retrato.
+   *
+   * Hasta el 20-ago el selfie se mandaba al proveedor, se obtenía un número de
+   * parecido, y se tiraba —el comentario de la ruta lo decía sin rodeos: «se
+   * compara y se descarta»—. El resultado era que el panel enseñaba un hueco
+   * donde debía ir la cara, y nadie podía revisar un cotejo a mano ni
+   * reconstruir después por qué se aprobó a alguien. Quedaba un número.
+   *
+   * Un panel donde una persona decide sobre otra no puede funcionar así, y una
+   * casa que promete conservar la evidencia de sus verificaciones tampoco.
+   *
+   * NO se confunde con `fotoCredencial`. Aquella es el retrato público: viaja
+   * a las apps del ecosistema y se ve en la credencial. Ésta es prueba: vive
+   * cifrada aquí, con el mismo plazo de cinco años que el documento, y solo la
+   * ve un operador con permiso, dejando rastro en la bitácora.
+   *
+   * Opcional a propósito: los expedientes anteriores a esta fecha no la tienen
+   * y no se puede inventar.
+   */
+  rostro?: string
 }
 
 const NOMBRE = 'documentosPendientes'
@@ -116,21 +137,29 @@ function escribirMapa(m: Mapa): void {
  *  que se subió la foto, y ponerlo antes borraría el documento de alguien que
  *  todavía está esperando respuesta. */
 export async function guardarFotos(idn: string, fotos: FotosDocumento): Promise<void> {
-  const guardable = {
+  const guardable: Record<string, unknown> = {
     anverso: cifrar(fotos.anverso) ?? fotos.anverso,
     reverso: cifrar(fotos.reverso) ?? fotos.reverso,
   }
+  // Solo se escribe si viene. Guardar una cadena vacía dejaría un hueco que
+  // parece un rostro perdido cuando en realidad nunca lo hubo.
+  if (fotos.rostro) guardable.rostro = cifrar(fotos.rostro) ?? fotos.rostro
   const c = coleccion()
   if (c) {
-    await c.replaceOne(
+    /* `$set`, no `replaceOne`. Con replaceOne el documento BORRABA el rostro
+       que ya estuviera guardado, y desde el teléfono el rostro llega antes: la
+       cara desaparecía justo en los expedientes que sí la tenían. Lo cazó la
+       prueba «el documento no pisa un rostro ya guardado». Aquí solo se
+       escriben las claves que trae esta llamada. */
+    await c.updateOne(
       { _id: idn },
-      { _id: idn, ...guardable, guardadasEn: new Date(), cifradas: archivoConfigurado() },
+      { $set: { ...guardable, guardadasEn: new Date(), cifradas: archivoConfigurado() } },
       { upsert: true },
     )
     return
   }
   const m = leerMapa()
-  m[idn] = guardable
+  m[idn] = { ...(m[idn] || {}), ...guardable } as unknown as FotosDocumento
   escribirMapa(m)
 }
 
@@ -139,7 +168,8 @@ export async function leerFotos(idn: string): Promise<FotosDocumento | null> {
   const c = coleccion()
   const crudas = c
     ? await c.findOne({ _id: idn }).then((d: any) => (d?.anverso && d?.reverso
-        ? { anverso: d.anverso as string, reverso: d.reverso as string } : null))
+        ? { anverso: d.anverso as string, reverso: d.reverso as string,
+            rostro: (d.rostro as string) || undefined } : null))
     : leerMapa()[idn] ?? null
   if (!crudas) return null
 
@@ -148,7 +178,36 @@ export async function leerFotos(idn: string): Promise<FotosDocumento | null> {
      la pantalla le pinte un texto cifrado como si fuera una imagen rota. */
   const anverso = descifrar(crudas.anverso)
   const reverso = descifrar(crudas.reverso)
-  return anverso && reverso ? { anverso, reverso } : null
+  // El rostro NO condiciona el resultado: los expedientes de antes del 20-ago
+  // no lo tienen, y devolver null por eso escondería también el documento.
+  const rostro = crudas.rostro ? descifrar(crudas.rostro) ?? undefined : undefined
+  return anverso && reverso ? { anverso, reverso, rostro } : null
+}
+
+/**
+ * Guarda SOLO el fotograma del cotejo, sin tocar el documento.
+ *
+ * Existe porque el rostro y el documento llegan en peticiones distintas y en
+ * cualquier orden: quien se verifica desde el navegador manda primero las dos
+ * caras y luego el rostro, y desde el teléfono puede ser al revés. Reescribir
+ * el registro entero desde cualquiera de las dos borraría lo que trajo la otra.
+ */
+export async function guardarRostroCotejo(idn: string, rostro: string): Promise<void> {
+  if (!rostro) return
+  const guardable = cifrar(rostro) ?? rostro
+  const c = coleccion()
+  if (c) {
+    await c.updateOne(
+      { _id: idn },
+      { $set: { rostro: guardable, cifradas: archivoConfigurado() },
+        $setOnInsert: { guardadasEn: new Date() } },
+      { upsert: true },
+    )
+    return
+  }
+  const m = leerMapa()
+  m[idn] = { ...(m[idn] || { anverso: '', reverso: '' }), rostro: guardable }
+  escribirMapa(m)
 }
 
 /**

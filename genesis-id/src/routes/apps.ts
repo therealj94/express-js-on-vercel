@@ -15,6 +15,7 @@ import { firmarToken, verificarToken } from '../lib/cripto.js'
 import { gidValido, normalizarGid } from '../lib/uid.js'
 import { registrar } from '../audit/bitacora.js'
 import { emitirReto, comprobarReto } from '../kyc/vivacidad.js'
+import { guardarRostroCotejo } from '../kyc/fotosDocumento.js'
 import { biometriaConfigurada } from '../kyc/biometria.js'
 import type { Movimiento } from '../types.js'
 
@@ -197,6 +198,17 @@ appsRouter.post('/identidades/:id/biometria', limite(20), pesada, exigeApp('iden
   }
 
   if (!cara) return res.status(400).json({ error: 'Hace falta el selfie' })
+
+  /* SE CONSERVA LA CARA QUE SE COMPARÓ.
+     Hasta hoy este fotograma se mandaba al proveedor, volvía un número de
+     parecido, y se tiraba. El panel enseñaba un hueco donde tenía que estar el
+     rostro, así que nadie podía revisar un cotejo dudoso a mano ni reconstruir
+     después qué se miró para aprobar a alguien: quedaba una cifra y nada más.
+     Va al mismo almacén cifrado que el documento, con el mismo plazo, y no
+     bloquea nada si falla — una verificación no se cae porque no se pudo
+     archivar una imagen. */
+  guardarRostroCotejo(identidad.id, cara).catch((e) =>
+    console.error('[biometria] no se conservó el rostro del cotejo:', e?.message))
 
   const actualizada = await ids.adjuntarBiometria(
     identidad.id,

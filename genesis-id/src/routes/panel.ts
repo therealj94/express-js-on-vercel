@@ -119,8 +119,12 @@ panelRouter.get('/identidades/:id', exigePermiso('identidad.ver'), async (req, r
      no es un archivo de cumplimiento, es un problema esperando. Se registra la
      lectura, nunca la imagen: la bitácora se exporta a auditores. */
   if (imagenes) {
+    // Se anota QUÉ se abrió, no solo que se abrió. Si un día hay que explicar
+    // una aprobación, importa si el operador tenía el rostro delante o no.
     registrar(req.operador!.email, 'identidad.documentoVisto', i.id, {
-      estado: i.estado, caras: ['anverso', 'reverso'],
+      estado: i.estado,
+      caras: ['anverso', 'reverso', ...(imagenes.rostro ? ['rostro'] : [])],
+      conRostro: Boolean(imagenes.rostro),
     })
   }
   // El retrato de la credencial vive en OTRO almacen aparte, por la misma razon
@@ -142,15 +146,52 @@ panelRouter.get('/identidades/:id', exigePermiso('identidad.ver'), async (req, r
     paisResidenciaNombre: conPais(i.paisResidencia),
     nacionalidadNombre: conPais(i.nacionalidad),
   }
-  res.json({
-    identidad: copia.documento ? { ...copia, documento: { ...copia.documento, imagenes } } : copia,
-  })
+  /* Las imágenes viajan SIEMPRE que existan, haya documento o no.
+     Antes se colgaban de `documento`, así que un expediente al que todavía no
+     se le había adjuntado el documento llegaba al panel sin ninguna imagen —
+     incluido el rostro, que sí existía. El operador veía «no hay ninguna imagen
+     guardada» sobre un expediente que sí tenía cara. */
+  const salida: any = { ...copia }
+  if (imagenes) {
+    if (salida.documento) salida.documento = { ...salida.documento, imagenes }
+    salida.rostroCotejo = imagenes.rostro ?? null
+  }
+  res.json({ identidad: salida })
 })
 
+/* Los cotejos que el operador declara haber hecho, tal como los pide la mesa
+   de cotejo. La lista vive aquí y no en el navegador para que la bitácora no
+   dependa de lo que una página quiera mandar: lo que llegue fuera de estas
+   claves se descarta.
+
+   `sin-imagen` es lo que se firma cuando el expediente no tiene NINGUNA imagen:
+   ahí no se puede declarar haber comparado un rostro, y lo honesto —y lo que
+   hay que poder leer después en la bitácora— es que se aprobó sin haberlo
+   visto. */
+const COTEJOS_DECLARABLES = new Set(['caras', 'datos', 'riesgo', 'sin-imagen'])
+
 panelRouter.post('/identidades/:id/aprobar', exigePermiso('identidad.aprobar'), async (req, res) => {
-  const { motivo, anulacion } = req.body ?? {}
+  const { motivo, anulacion, revisado } = req.body ?? {}
   const r = await ids.aprobar(req.params.id, req.operador!, String(motivo || ''), anulacion ? String(anulacion) : undefined)
   if (!r.ok) return res.status(400).json({ error: r.motivo, bloqueos: r.bloqueos })
+  /* QUÉ MIRÓ ANTES DE FIRMAR.
+     La pantalla de revisión no habilita «Aprobar» hasta que el operador marca
+     que comparó las caras, cotejó los datos contra la imagen y leyó los
+     hallazgos. Esa declaración solo vale si queda escrita: si no, la casilla es
+     un trámite que nadie puede auditar después. Se anota aparte de la
+     aprobación —no dentro— para que el expediente diga «aprobó» y la bitácora
+     diga además «y esto dijo haber mirado».
+     Que llegue vacío es normal y no bloquea nada: por la API se aprueba sin
+     pasar por esa pantalla. */
+  const declarados = Array.isArray(revisado)
+    ? revisado.map(String).filter((c) => COTEJOS_DECLARABLES.has(c))
+    : []
+  if (declarados.length) {
+    registrar(req.operador!.email, 'identidad.cotejosDeclarados', req.params.id, {
+      cotejos: declarados,
+      completo: declarados.length === COTEJOS_DECLARABLES.size,
+    })
+  }
   res.json({ ok: true, gid: r.identidad!.gid, identidad: r.identidad })
 })
 

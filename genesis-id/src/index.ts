@@ -65,6 +65,22 @@ app.get(['/', '/admin'], (_req, res) => {
   res.sendFile(join(__dirname, '..', 'public', 'admin.html'))
 })
 
+/**
+ * La mesa de cotejo: la pantalla donde se resuelve UNA identidad.
+ *
+ * Se sirve aparte de `/admin` y no como una ficha lateral dentro del panel
+ * porque necesita la ventana entera. Ahí se comparan dos rostros, y una
+ * credencial dentro de un cajón de 400 px se ve del tamaño de un sello: no hay
+ * forma de cotejar una cara así. Es la misma sesión y la misma API —no es un
+ * panel aparte—, solo que con sitio para mirar.
+ *
+ * Acepta la identidad por ruta (`/revision/<id>`) y por parámetro
+ * (`/revision?id=<id>`); la página entiende las dos.
+ */
+app.get(['/revision', '/revision/:id', '/cotejo', '/cotejo/:id'], (_req, res) => {
+  res.sendFile(join(__dirname, '..', 'public', 'revision.html'))
+})
+
 // El panel de analítica se sirve aparte del de cumplimiento. Son dos oficios
 // distintos —quien mira métricas no está aprobando identidades— y separarlos
 // deja abrir uno sin cargar el otro.

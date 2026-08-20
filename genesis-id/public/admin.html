@@ -5,23 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Genesis ID · Panel de cumplimiento</title>
 <style>
+/* La paleta sale del logotipo de Genesis ID: azul tinta y oro. Antes era verde
+   azulado, que no venía de ninguna parte.
+
+   Dos reglas que sostienen el resto:
+
+   - El ORO es la marca y la acción principal. NUNCA un estado. Por eso el aviso
+     (`--warn`) se corrió a naranja y ya no es el mismo amarillo del oro: cuando
+     los dos colores coinciden, el ojo deja de distinguir «esto es de la casa»
+     de «esto está mal», y este panel es el peor sitio del ecosistema para esa
+     confusión.
+
+   - `--lecho` es gris NEUTRO puro, y es lo único que va debajo de una imagen de
+     una persona. Un fondo con tinte desplaza el tono de piel percibido: sobre
+     azul una cara se ve más rojiza, sobre cálido más pálida. Los mismos valores
+     están en revision.html, que es donde se coteja de verdad. */
 :root{
-  --bg:#021012; --panel:#0A3436; --panel2:#0d2b2d; --line:#1C5E61; --line2:#164a4d;
-  --gold:#C9A961; --cyan:#4FD8E0; --txt:#F1EAD6; --mut:#9BB6B2; --faint:#66857f;
-  --ok:#3ED9A0; --warn:#F5B62E; --bad:#F0776B; --crit:#ff5a7a;
+  --bg:#0B111C; --panel:#142033; --panel2:#101A29; --line:#24374F; --line2:#1B2A41;
+  --gold:#F5B32B; --cyan:#7FB2E8; --txt:#E9EEF6; --mut:#9DB0C8; --faint:#64798F;
+  --ok:#35B77D; --warn:#E2893C; --bad:#E0685D; --crit:#FF5A7A;
+  --lecho:#0A0A0B;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:radial-gradient(1100px 640px at 50% -12%,#0a2f31,#021012);color:var(--txt);
+body{background:radial-gradient(1100px 640px at 50% -12%,#16233A,#0B111C);color:var(--txt);
  font:14px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
 .num{font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,Consolas,monospace}
 button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:8px 14px;background:var(--line);color:var(--txt)}
 button:hover{filter:brightness(1.18)}
 button:disabled{opacity:.45;cursor:not-allowed}
-button.p{background:var(--gold);color:#1a1200;font-weight:700}
-button.ok{background:var(--ok);color:#022;font-weight:700}
-button.bad{background:var(--bad);color:#2a0a06;font-weight:700}
+button.p{background:var(--gold);color:#10161F;font-weight:700}
+button.ok{background:var(--ok);color:#04140D;font-weight:700}
+button.bad{background:var(--bad);color:#230704;font-weight:700}
 button.g{background:transparent;border:1px solid var(--line)}
-input,select,textarea{font:inherit;background:#061e20;color:var(--txt);border:1px solid var(--line);
+input,select,textarea{font:inherit;background:#0F1927;color:var(--txt);border:1px solid var(--line);
  border-radius:9px;padding:9px 11px;width:100%}
 a{color:var(--cyan)}
 .oculto{display:none!important}
@@ -105,9 +121,9 @@ tbody tr:hover{background:rgba(255,255,255,.035)}
 .item .t{font-weight:650;margin-bottom:2px}
 .item .d{color:var(--mut)}
 .acciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--line2)}
-.barra{height:7px;background:#06282a;border-radius:99px;overflow:hidden;margin-top:6px}
+.barra{height:7px;background:#1B2A41;border-radius:99px;overflow:hidden;margin-top:6px}
 .barra i{display:block;height:100%;border-radius:99px}
-pre{background:#061e20;border:1px solid var(--line2);border-radius:10px;padding:12px;overflow-x:auto;font-size:11.5px;white-space:pre-wrap;word-break:break-word}
+pre{background:#0F1927;border:1px solid var(--line2);border-radius:10px;padding:12px;overflow-x:auto;font-size:11.5px;white-space:pre-wrap;word-break:break-word}
 .aguja{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--panel);
  border:1px solid var(--line);border-radius:11px;padding:11px 18px;z-index:99;font-size:13px;display:none}
 .aguja.ver{display:block}
@@ -120,9 +136,22 @@ pre{background:#061e20;border:1px solid var(--line2);border-radius:10px;padding:
 .fotos{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
   gap:12px;margin:10px 0 8px}
 .fotos figure{margin:0}
-.fotos img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;
-  border:1px solid var(--line);background:#0b0f14;cursor:zoom-in;display:block}
-.fotos img:hover{border-color:var(--ok)}
+/* `contain` y no `cover`: recortar una credencial para que cuadre en un 4:3 se
+   come el borde donde está la fecha de vencimiento, y recortar un retrato se
+   come la barbilla. En una tira de revisión hay que ver la imagen ENTERA
+   aunque sobre lecho a los lados. */
+.fotos img{width:100%;aspect-ratio:4/3;object-fit:contain;border-radius:8px;
+  border:1px solid var(--line);background:var(--lecho);cursor:zoom-in;display:block}
+.fotos img:hover{border-color:var(--gold)}
+
+/* El paso de hojear a resolver. Va arriba de la ficha, antes que las fotos:
+   quien abre un expediente para decidirlo tiene que encontrarlo sin buscar. */
+.mesaCotejo{display:block;margin:0 0 14px;padding:11px 14px;border-radius:10px;
+  background:linear-gradient(180deg,#1D2C43,#16233A);border:1px solid var(--line);
+  color:var(--txt);text-decoration:none;font-weight:600;font-size:13.5px;
+  border-left:3px solid var(--gold)}
+.mesaCotejo:hover{border-color:var(--gold);background:#22344F}
+.mesaCotejo span{display:block;margin-top:2px;font-weight:400;font-size:11.5px;color:var(--mut)}
 .fotos .hueco{width:100%;aspect-ratio:4/3;border-radius:8px;
   border:1px dashed var(--line);display:grid;place-items:center;
   color:var(--faint);font-size:11.5px}
@@ -135,7 +164,7 @@ pre{background:#061e20;border:1px solid var(--line2);border-radius:10px;padding:
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:14px;padding:22px;cursor:zoom-out}
 .lupa img{max-width:min(1100px,94vw);max-height:82vh;object-fit:contain;
-  border-radius:10px;border:1px solid var(--line);cursor:default;background:#0b0f14}
+  border-radius:10px;border:1px solid var(--line);cursor:default;background:var(--lecho)}
 .lupa .cab{display:flex;align-items:center;gap:14px;color:var(--txt);font-size:13px}
 .lupa .cab button{background:none;border:0;color:var(--mut);font-size:16px;cursor:pointer}
 .lupa .cab button:hover{color:var(--txt)}
@@ -560,6 +589,14 @@ async function verIdentidad(id) {
   const hayFoto = fotos.some(([, d]) => d)
 
   abrirFicha(esc(i.nombreLegal || i.nombreDeclarado || i.email), `
+    ${/* La ficha lateral sirve para hojear; para RESOLVER hace falta la ventana
+          entera. En este cajón una credencial se ve del tamaño de un sello y
+          dos rostros no se comparan uno encima del otro. */''}
+    <a class="mesaCotejo" href="/revision/${encodeURIComponent(i.id)}">
+      Abrir en la mesa de cotejo
+      <span>comparar el rostro y el documento a pantalla completa, con lupa</span>
+    </a>
+
     <h3>Documento y rostro</h3>
     ${hayFoto ? `<div class="fotos">
       ${fotos.map(([rot, dato, pie]) => dato ? `
