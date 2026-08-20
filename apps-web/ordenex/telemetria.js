@@ -50,17 +50,25 @@ var TELEMETRIA = (function () {
   'use strict';
 
   /* ── Ajustes ──────────────────────────────────────────────────────────────
-     LA CLAVE PUBLICA DE ORDENEX TODAVIA NO SE EMITIO.
+     LA CLAVE PUBLICA DE INGESTA DE ORDENEX.
 
-     Se saca del panel de Genesis ID: Operadores y apps → ordenex → rotar clave
-     pública, y el valor que salga (`gidp_ordenex_…`) se pega aquí, en esta
-     línea y en ninguna otra.
+     Solo sirve para escribir eventos, y solo en esta ruta: no lee nada y no da
+     acceso a ninguna otra parte de Genesis ID. Es el mismo trato que el DSN de
+     Sentry o la clave de proyecto de PostHog. Lo peor que puede hacer quien la
+     saque de aquí es mandar métricas falsas; para eso está el límite de
+     peticiones, y si alguien abusa se rota desde el panel y esta versión
+     desplegada deja de reportar.
 
-     Mientras siga el marcador, el módulo queda DORMIDO: ni cola, ni peticiones,
-     ni errores en la consola. Es deliberado — con una clave inventada cada lote
-     se iría contra un 401 y el navegador de la gente estaría reintentando cada
-     diez segundos para no conseguir nada. Mejor callado que 401 en bucle. */
-  var CLAVE = 'gidp_ordenex_PENDIENTE';
+     Se obtuvo pidiéndosela al propio servidor con la clave SECRETA de ordenex
+     (`GET /api/v1/telemetria/clave`). Para rotarla: panel → Operadores y apps →
+     ordenex → rotar clave pública, y el valor nuevo se pega aquí, en esta línea
+     y en ninguna otra.
+
+     Si alguna vez vuelve a quedar con el sufijo `_PENDIENTE`, el módulo queda
+     DORMIDO: ni cola, ni peticiones, ni errores. Es deliberado — con una clave
+     inventada cada lote se iría contra un 401 y el navegador de la gente
+     reintentaría cada diez segundos para no conseguir nada. */
+  var CLAVE = 'gidp_ordenex_E3FYNtHP6zHw0sDc';
 
   /* El marcador que mantiene el módulo dormido. Se compara por el sufijo y no
      por la cadena entera para que la comprobación siga sirviendo si alguien
