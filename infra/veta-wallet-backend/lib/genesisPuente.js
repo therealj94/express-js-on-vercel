@@ -229,6 +229,11 @@ export function routerGenesis({ exigirSesion } = {}) {
         // de la petición: si viniera del cliente, alguien podría atar su GID a
         // la cuenta de otro.
         cuenta: req.usuario.id || req.usuario.email,
+        // El correo prueba ante Genesis ID que esta app autenticó a la persona
+        // dueña de esa identidad: sin él, cualquier clave de API podía atar su
+        // cuenta al expediente de cualquiera y pedir tokens de SSO a su nombre.
+        // Genesis lo exige cuando GENESIS_VINCULO_EXIGE_EMAIL está puesta.
+        email: req.usuario.email,
         direccion: req.usuario.address || req.body?.direccion || null,
       }),
     }))

@@ -143,7 +143,13 @@ appsRouter.post('/identidades/:id/documento-fotos', limite(20), pesada, exigeApp
   if (!r.ok) return res.status(503).json({ error: r.motivo })
   res.json({
     identidad: await ids.estadoParaUsuarioConFoto(r.identidad),
-    documento: { via: 'fotos', aceptable: false, pendienteDeLectura: true, problemas: [] },
+    /* `lectura` es lo que la máquina alcanzó a ver en el frente, para que la
+       app se lo diga a la persona con la cámara todavía en la mano:
+       «no se distingue la foto del titular — tomá el frente de nuevo» en el
+       momento vale oro; un rechazo del operador tres días después no le sirve
+       a nadie. null = no hay lector configurado, no se afirma nada. NUNCA
+       bloquea: la persona puede mandar igual y lo resuelve un operador. */
+    documento: { via: 'fotos', aceptable: false, pendienteDeLectura: true, problemas: [], lectura: r.lectura ?? null },
   })
 })
 
@@ -264,11 +270,46 @@ appsRouter.get('/identidades/por-email/:email', limite(120), exigeApp('identidad
 })
 
 /** Ata una cuenta de la app al GID. Es la base del inicio de sesión único. */
+/* EL VÍNCULO ES LA LLAVE DEL SSO, ASÍ QUE HAY QUE GANÁRSELO.
+
+   La cadena era: cualquier app con `vinculo.crear` ataba SU cuenta a CUALQUIER
+   identidad —sin probar nada—, y con la cuenta atada, `/sso/token` le emitía
+   un token de esa persona. O sea que una clave de API comprometida alcanzaba
+   para suplantar a cualquier verificado del ecosistema.
+
+   El candado: la app tiene que mandar el CORREO de la persona y tiene que ser
+   el de la identidad. Es la misma vara que el login social de la wallet —se
+   enlaza por correo que la app ya autenticó—, y es exactamente lo que la
+   wallet ya sabe (resuelve la identidad por el correo de su propia sesión).
+
+   Se aprieta en dos etapas, como la rotación de PASS_TOKEN, porque este
+   servidor y la wallet no se despliegan en el mismo segundo:
+     1. (ahora)  si viene `email`, se exige que coincida; si no viene, se deja
+                 pasar y queda anotado en la bitácora quién vino sin él.
+     2. (cuando la wallet ya mande el correo) GENESIS_VINCULO_EXIGE_EMAIL=true
+                 y sin correo no hay vínculo. */
 appsRouter.post('/vinculos', limite(60), exigeApp('vinculo.crear'), async (req, res) => {
-  const { identidadId, cuenta, direccion } = req.body ?? {}
+  const { identidadId, cuenta, direccion, email } = req.body ?? {}
   if (!identidadId || !cuenta) {
     return res.status(400).json({ error: 'Hacen falta identidadId y cuenta' })
   }
+  const objetivo = ids.porId(String(identidadId))
+  if (!objetivo) return res.status(404).json({ error: 'Identidad no encontrada' })
+
+  if (email) {
+    if (String(email).trim().toLowerCase() !== String(objetivo.email || '').trim().toLowerCase()) {
+      registrar(`app:${req.app_ecosistema!.clave}`, 'vinculo.correoAjeno', objetivo.id, { cuenta: String(cuenta) })
+      return res.status(403).json({ error: 'El correo no corresponde a esa identidad' })
+    }
+  } else if (process.env.GENESIS_VINCULO_EXIGE_EMAIL === 'true') {
+    return res.status(400).json({ error: 'Hace falta el correo de la persona para atar la cuenta' })
+  } else {
+    // Etapa 1: se deja pasar, pero queda constancia de qué app vincula sin
+    // probar el correo — es la lista de lo que falta actualizar antes de
+    // apretar la etapa 2.
+    registrar(`app:${req.app_ecosistema!.clave}`, 'vinculo.sinCorreo', objetivo.id, { cuenta: String(cuenta) })
+  }
+
   const identidad = ids.vincular(
     String(identidadId), req.app_ecosistema!.clave, String(cuenta),
     direccion ? String(direccion) : null, `app:${req.app_ecosistema!.clave}`)

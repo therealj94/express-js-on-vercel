@@ -8,13 +8,17 @@
 // quien dice ser tiene que poder leerse. La firma SigV4 son sesenta líneas de
 // `node:crypto` y están abajo, enteras.
 //
-// Se hablan dos operaciones del servicio:
+// Se hablan tres operaciones del servicio:
 //
 //   CompareFaces  — cuánto se parece el rostro del selfie al de la foto del
 //                   documento. Devuelve una similitud de 0 a 100.
 //   DetectFaces   — atributos del rostro de un fotograma: ojos abiertos, boca
 //                   abierta, sonrisa, orientación de la cabeza y calidad. Es lo
 //                   que permite comprobar que la persona hizo lo que se le pidió.
+//   DetectText    — el texto impreso en una imagen. Es lo que permite LEER el
+//                   frente del documento en el servidor cuando entra como
+//                   fotografía, en vez de fiarse del texto que reconozca (o
+//                   diga haber reconocido) el aparato de quien se verifica.
 //
 // AWS cobra por imagen analizada (del orden de 0,001 USD), así que una
 // verificación completa —selfie + documento + cuatro fotogramas de vivacidad—
@@ -253,4 +257,28 @@ export async function contarRostros(imagen: string, etiqueta = 'la imagen'): Pro
     Attributes: ['DEFAULT'],
   })
   return Array.isArray(r?.FaceDetails) ? r.FaceDetails.length : 0
+}
+
+/**
+ * Las líneas de texto impresas en una imagen, en el orden en que aparecen.
+ *
+ * Se devuelven las LÍNEAS y no las palabras: la palabra ya viene dentro de su
+ * línea, y quien coteja un nombre necesita el contexto («NOMBRES / JOSE
+ * MANUEL»), no un saco de fichas sueltas.
+ *
+ * El umbral de confianza es bajo (55) a propósito: una cédula tiene filigrana,
+ * reflejos y tipografías raras, y el cotejo de nombres de `documento.ts` ya
+ * tolera letras comidas y cifras por letras. Filtrar fuerte aquí solo
+ * conseguiría perder la línea del nombre justo en las fotos difíciles, que son
+ * las que más necesitan la lectura.
+ */
+export async function detectarTexto(imagen: string, etiqueta = 'la imagen'): Promise<string[]> {
+  const r = await llamar('DetectText', {
+    Image: { Bytes: normalizarImagen(imagen, etiqueta) },
+  })
+  const detecciones: any[] = Array.isArray(r?.TextDetections) ? r.TextDetections : []
+  return detecciones
+    .filter((d) => d?.Type === 'LINE' && (Number(d?.Confidence) || 0) >= 55)
+    .map((d) => String(d?.DetectedText || '').trim())
+    .filter(Boolean)
 }

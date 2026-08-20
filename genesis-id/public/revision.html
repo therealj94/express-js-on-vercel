@@ -428,6 +428,22 @@ section h2 {
 
 .vacio { padding: 13px; color: var(--tenue); font-size: 12.5px; }
 
+/* El texto crudo que leyó la máquina en el frente: plegado por defecto porque
+   es materia prima, no conclusión. En monoespaciada porque es evidencia. */
+.leido { border-top: 1px solid var(--linea); }
+.leido summary {
+  padding: 9px 13px; cursor: pointer;
+  font: 600 10px/1 var(--ui); letter-spacing: .13em; text-transform: uppercase;
+  color: var(--tenue); list-style: none;
+}
+.leido summary::before { content: '▸ '; }
+.leido[open] summary::before { content: '▾ '; }
+.leido pre {
+  margin: 0; padding: 4px 13px 12px;
+  font: 400 11.5px/1.6 var(--dato);
+  color: var(--medio); white-space: pre-wrap; word-break: break-word;
+}
+
 /* ── La firma ─────────────────────────────────────────────────────────────── */
 
 .firma {
@@ -970,14 +986,24 @@ function pintarProcedencia(i) {
     return
   }
   if (via === 'fotos') {
-    el.className = 'procedencia humana'
+    // Desde que el servidor lee el frente con Rekognition, esta cinta tiene
+    // que distinguir tres casos: la máquina encontró el nombre impreso, lo
+    // buscó y no lo encontró, o ni siquiera pudo leer. Decir «sin comprobación
+    // automática» cuando la máquina sí leyó sería mentirle al operador en la
+    // dirección contraria a la de antes.
+    const nombreLeido = i.documento?.anverso?.nombreConfirmado
+    const leida = nombreLeido === true
+      ? 'La máquina leyó el impreso del frente y <b>encontró el nombre declarado</b>. '
+      : nombreLeido === false
+        ? 'La máquina leyó el impreso del frente y <b>NO encontró el nombre declarado completo</b> — mírelo letra por letra. '
+        : 'La máquina no pudo leer el impreso del frente. '
     el.innerHTML = `<span class="icono">◈</span><div>
-      <b>Documento leído a mano — sin comprobación automática.</b>
-      Entró por el navegador: no hay lector de MRZ, así que ningún dígito de control
-      respalda estos campos. <b>Todo lo que aparece como nombre, número o nacionalidad
-      en este expediente lo escribió la persona sobre sí misma</b>; lo único
-      independiente son las dos fotos que están arriba. Cotéjelas campo por campo
-      antes de aprobar.</div>`
+      <b>Documento entrado por fotos — sin dígitos de control.</b>
+      Entró por el navegador: no hay lector de MRZ, así que ninguna aritmética
+      respalda estos campos. ${leida}Aun así, <b>lo que aparece como nombre, número o
+      nacionalidad lo escribió la persona sobre sí misma</b>: el cotejo que vale es el
+      suyo, contra las dos fotos de arriba, campo por campo.</div>`
+    el.className = 'procedencia humana'
     return
   }
   el.className = 'procedencia maquina'
@@ -1125,6 +1151,14 @@ function pintarExpediente(i) {
         `<div class="item ${h.gravedad === 'grave' ? 'grave' : h.gravedad === 'aviso' ? 'aviso' : 'bien'}">
           <div class="t">${esc(h.detalle)}</div><div class="d">${esc(h.clave)}</div></div>`).join('')}</div>`
         : '<div class="vacio">Todavía no se ha revisado ningún documento.</div>'}
+      ${i.documento?.textoAnverso ? `
+      ${/* Sin esto, un «no se encontró el nombre» es inapelable; con el texto
+            delante, el operador distingue una foto ilegible de una discrepancia
+            real, que es la diferencia entre repetir la captura y abrir un caso. */''}
+      <details class="leido">
+        <summary>Lo que la máquina leyó impreso en el frente</summary>
+        <pre>${esc(i.documento.textoAnverso)}</pre>
+      </details>` : ''}
     </div>
 
     <div class="bloque">

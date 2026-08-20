@@ -26,7 +26,8 @@ import { identidadAprobada, identidadRechazada } from '../correo/plantillas.js'
 import { revisarDocumento } from '../kyc/documento.js'
 import { parecidoNombres } from '../lib/texto.js'
 import { cotejar, sinProveedor, cotejoManual, biometriaConfigurada } from '../kyc/biometria.js'
-import { guardarFotos, archivarFotos } from '../kyc/fotosDocumento.js'
+import { guardarFotos, archivarFotos, leerFotos } from '../kyc/fotosDocumento.js'
+import { leerAnverso } from '../kyc/textoDocumento.js'
 import { guardarFoto, leerFoto, borrarFoto } from '../kyc/fotoCredencial.js'
 
 /* Una credencial necesita un cuadrado de 320 px. Aceptar más sería convertir el
@@ -286,6 +287,17 @@ export interface ResultadoFotos {
   /** Va también cuando falla, si la identidad existe: distingue el 404 del resto. */
   identidad?: Identidad
   motivo?: string
+  /**
+   * Lo que la máquina alcanzó a leer del frente, para que la app se lo diga a
+   * la persona EN EL MOMENTO — «no se distingue la foto del titular, tomála de
+   * nuevo» vale oro con la cámara todavía en la mano y nada tres días después.
+   * null cuando no hay lector configurado: entonces no se afirma nada.
+   */
+  lectura?: {
+    rostroEnFrente: boolean | null
+    nombreConfirmado: boolean | null
+    fechaConfirmada: boolean | null
+  } | null
 }
 
 /**
@@ -345,22 +357,60 @@ export async function adjuntarDocumentoPorFotos(
     }
   }
 
+  /* LA MÁQUINA LEE EL FRENTE, TAMBIÉN POR ESTA VÍA.
+     La regla de la casa es que el nombre se coteja SIEMPRE contra el frente
+     del documento —la zona mecánica corta los nombres largos—, y esta vía la
+     tenía rota: dos fotos entraban y nadie leía nada hasta que un operador
+     abría el expediente. Ahora el servidor lee el impreso con Rekognition y
+     coteja nombre y fecha con la misma tolerancia a OCR que la vía del
+     teléfono. La vía sigue siendo `fotos` y la decisión sigue siendo humana:
+     una lectura del impreso no equivale a los dígitos de control de la MRZ. */
+  const lectura = await leerAnverso(anverso, {
+    nombreCompleto: identidad.nombreDeclarado,
+    fechaNacimiento: identidad.fechaNacimientoDeclarada,
+  })
+
+  const hallazgos: NonNullable<Identidad['documento']>['hallazgos'] = [{
+    clave: 'documento.porFotos',
+    gravedad: 'aviso',
+    detalle: 'Documento aportado como fotografías: hace falta que un operador lo lea y lo coteje.',
+  }]
+  if (lectura) {
+    if (lectura.rostros !== null) {
+      hallazgos.push(lectura.rostros >= 1
+        ? { clave: 'anverso.rostro', gravedad: 'ok', detalle: 'La foto del titular se distingue en el frente' }
+        : {
+            clave: 'anverso.rostro', gravedad: 'aviso',
+            detalle: 'En el frente no se distingue la foto del titular: la imagen puede estar ' +
+              'borrosa, recortada, o ser la cara equivocada del documento.',
+          })
+    }
+    hallazgos.push(!lectura.texto
+      ? { clave: 'anverso.texto', gravedad: 'aviso', detalle: 'La máquina no pudo leer texto en el frente: ' + lectura.detalle }
+      : lectura.nombre === true
+        ? { clave: 'anverso.nombre', gravedad: 'ok', detalle: 'La máquina leyó el frente: ' + lectura.detalle }
+        : lectura.nombre === false
+          ? { clave: 'anverso.nombre', gravedad: 'aviso', detalle: 'La máquina leyó el frente y ' + lectura.detalle }
+          : { clave: 'anverso.texto', gravedad: 'aviso', detalle: 'La máquina leyó el frente pero ' + lectura.detalle })
+  }
+
   identidad.documento = {
     // `aceptable` en falso NO significa aquí «el documento no sirve»: significa
     // «todavía no lo ha mirado nadie». La diferencia la marca `via`, y el
     // cliente tiene que leer las dos.
     aceptable: false,
     datos: null,
-    hallazgos: [{
-      clave: 'documento.porFotos',
-      gravedad: 'aviso',
-      detalle: 'Documento aportado como fotografías: hace falta que un operador lo lea y lo coteje.',
-    }],
+    hallazgos,
     edad: null,
-    anverso: { aportado: true, nombreConfirmado: null, fechaConfirmada: null },
+    anverso: {
+      aportado: true,
+      nombreConfirmado: lectura ? lectura.nombre : null,
+      fechaConfirmada: lectura ? lectura.fecha : null,
+    },
     via: 'fotos',
     // Las imágenes ya están guardadas aparte; en el expediente no van nunca.
     imagenes: null,
+    textoAnverso: lectura?.texto || null,
   }
 
   if (identidad.nombreDeclarado) {
@@ -380,8 +430,23 @@ export async function adjuntarDocumentoPorFotos(
 
   registrar(origen, 'identidad.documentoPorFotos', identidad.id, {
     coincidenciasTamiz: identidad.tamiz?.coincidencias.length ?? 0,
+    // Qué alcanzó a leer la máquina, para poder auditar después si el aviso
+    // inmediato a la persona funcionó o estorbó.
+    lectura: lectura
+      ? { rostros: lectura.rostros, nombre: lectura.nombre, fecha: lectura.fecha }
+      : null,
   })
-  return { ok: true, identidad }
+  return {
+    ok: true,
+    identidad,
+    lectura: lectura
+      ? {
+          rostroEnFrente: lectura.rostros === null ? null : lectura.rostros >= 1,
+          nombreConfirmado: lectura.nombre,
+          fechaConfirmada: lectura.fecha,
+        }
+      : null,
+  }
 }
 
 /**
@@ -442,11 +507,25 @@ export async function adjuntarBiometria(
   const identidad = porId(idn)
   if (!identidad) return null
 
+  /* EL DOCUMENTO DEL COTEJO ES EL ARCHIVADO, NO EL QUE MANDE EL CLIENTE.
+     Hasta hoy CompareFaces comparaba el selfie contra la `fotoDocumento` que
+     venía EN LA MISMA PETICIÓN. Para un cliente honesto es la misma imagen que
+     ya subió; para uno malicioso era el agujero entero: mandar su propia cara
+     como «documento» y cobrar un parecido del 99 % sobre el expediente de otra
+     persona. Si el frente está archivado —que es siempre en la vía del
+     navegador—, se compara contra ESE; lo que diga el cuerpo de la petición no
+     pinta nada. La vía del teléfono no archiva imágenes, así que ahí se sigue
+     usando la del cliente: es la app de la casa, firmada, y no hay otra. */
+  const archivadas = biometriaConfigurada()
+    ? await leerFotos(identidad.id).catch(() => null)
+    : null
+  const documentoDelCotejo = archivadas?.anverso || entrada.fotoDocumento
+
   const v = entrada.vivacidad
   identidad.biometria = biometriaConfigurada()
     ? await cotejar({
         selfie: entrada.selfie,
-        fotoDocumento: entrada.fotoDocumento,
+        fotoDocumento: documentoDelCotejo,
         vivacidad: v ? v.puntuacion : null,
         pasosVivacidad: v?.pasos,
         avisosVivacidad: v?.avisos,
@@ -489,6 +568,9 @@ export async function adjuntarBiometria(
     proveedor: identidad.biometria.proveedor,
     parecido: identidad.biometria.parecido,
     vivacidad: identidad.biometria.vivacidad,
+    // Contra qué documento se comparó: el del archivo (la vía del navegador)
+    // o el que mandó el cliente (la vía del teléfono, que no archiva).
+    documentoDeArchivo: Boolean(archivadas?.anverso),
   })
   return identidad
 }

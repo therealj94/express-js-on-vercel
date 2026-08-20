@@ -53,6 +53,16 @@ export interface RevisionDocumento {
    * `null`. Volver a escribirlo antes de un guardado es rearmar la bomba.
    */
   imagenes?: { anverso: string; reverso: string } | null
+
+  /**
+   * Lo que la MÁQUINA leyó impreso en el frente, solo en la vía `fotos`.
+   *
+   * Es la materia prima del cotejo automático de nombre y fecha, y se guarda
+   * (recortada) para que el operador pueda ver QUÉ leyó la máquina cuando el
+   * cotejo diga que algo no aparece: sin esto, un «no se encontró el nombre»
+   * no se puede distinguir de una foto ilegible.
+   */
+  textoAnverso?: string | null
 }
 
 /**
@@ -74,7 +84,7 @@ export interface RevisionDocumento {
  * Se compara sobre el TEXTO reconocido, no sobre una foto: la imagen se
  * procesa en el teléfono y aquí solo llegan las palabras.
  */
-function cotejarAnverso(
+export function cotejarAnverso(
   texto: string,
   declarado: { nombreCompleto?: string | null; fechaNacimiento?: string | null },
 ): { nombre: boolean | null; fecha: boolean | null; detalle: string } {
