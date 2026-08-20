@@ -2061,7 +2061,7 @@ const VETA = (() => {
 
   function vIdentidad() {
     return `
-    <div class="cab"><div><h2>Genesis ID</h2><div class="sub">${t('id.sub')}</div></div></div>
+    <div class="cab gid-cab">${selloGenesis(40)}<div><h2>Genesis ID</h2><div class="sub">${t('id.sub')}</div></div></div>
     ${esVerificada() ? credencial() : ''}
     ${tarjetaIdentidad()}
     <div class="bloque vidrio">
@@ -2426,7 +2426,7 @@ const VETA = (() => {
     <button class="volver" onclick="VETA.verSalir()">
       <svg viewBox="0 0 24 24">${ICO.atras}</svg>${t('ver.salir')}
     </button>
-    <div class="cab"><div><h2>${t('ver.t')}</h2><div class="sub">${t('ver.sub')}</div></div></div>
+    <div class="cab gid-cab">${selloGenesis(40)}<div><h2>${t('ver.t')}</h2><div class="sub">${t('ver.sub')}</div></div></div>
     ${rielPasos()}
     <div class="bloque vidrio">${cuerpo}</div>
     <p class="pie" style="margin-top:16px">${t('ver.nunca')}</p>`;
@@ -2849,10 +2849,35 @@ const VETA = (() => {
 
   // ── el envío ──────────────────────────────────────────────────────────────
 
+  /* El sello de Genesis ID — recreacion vectorial del logotipo oficial: el
+     marco hexagonal en G, la i de identidad y la huella que se vuelve mano.
+     Vive como funcion y no como archivo porque estas pantallas se arman con
+     plantillas: asi el sello se pinta del tamano y color que pida cada sitio,
+     y late (clase gid-late) donde hay que esperar. */
+  function selloGenesis(px, extra) {
+    return `<svg class="gid-sello ${extra || ''}" style="width:${px}px" viewBox="0 0 512 512" fill="none" aria-hidden="true">
+      <path d="M 251.3 75.2 L 261.4 81 Q 232 64 202.6 81 L 100.4 140 Q 70.9 157 70.9 191 L 70.9 309 Q 70.9 343 100.4 360 L 202.6 419 Q 232 436 261.4 419 L 238.4 432.3" stroke="currentColor" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M 354 124 Q 416 150 424 216 L 424 240" stroke="currentColor" stroke-width="54" stroke-linecap="round"/>
+      <circle cx="272" cy="158" r="40" fill="currentColor"/>
+      <rect x="236" y="212" width="70" height="122" rx="32" fill="currentColor"/>
+      <circle cx="374" cy="302" r="15" fill="currentColor"/>
+      <g stroke="currentColor" stroke-width="15" stroke-linecap="round" fill="none">
+        <path d="M 342.8 284.0 A 36 36 0 1 1 338.8 309.5"/>
+        <path d="M 333.0 261.0 A 58 58 0 1 1 316.6 310.1"/>
+        <path d="M 331.6 234.2 A 80 80 0 1 1 294.2 307.6"/>
+        <path d="M 377.9 413.9 A 112 112 0 0 1 272.5 349.3"/>
+        <path d="M 369.3 437.9 A 136 136 0 0 1 251.8 361.6"/>
+        <path d="M 360.1 461.4 A 160 160 0 0 1 232.7 377.1"/>
+        <path d="M 348.4 484.2 A 184 184 0 0 1 214.7 394.0"/>
+      </g>
+    </svg>`;
+  }
+
   function verEnviando() {
     return `
-    <div class="cab"><div><h2>${t('ver.t')}</h2><div class="sub">${t('ver.sub')}</div></div></div>
+    <div class="cab gid-cab">${selloGenesis(40)}<div><h2>${t('ver.t')}</h2><div class="sub">${t('ver.sub')}</div></div></div>
     <div class="bloque vidrio">
+      <div style="display:flex;justify-content:center;margin-bottom:16px">${selloGenesis(72, 'gid-late')}</div>
       <div class="ver-barra"><i id="ver-hecho" style="width:${sol.hecho}%"></i></div>
       <div class="ver-etapa"><span class="girando"></span><span id="ver-etapa">${esc(sol.etapa)}</span></div>
       <p class="pie" style="margin-top:16px">${t('ver.tarda')}</p>
@@ -3017,7 +3042,7 @@ const VETA = (() => {
     const motivo = sol.resultado?.rostro || '';
     const porFotos = Boolean(sol.resultado?.porFotos);
     return `
-    <div class="cab"><div><h2>${t('ver.t')}</h2><div class="sub">${t('ver.sub')}</div></div></div>
+    <div class="cab gid-cab">${selloGenesis(40)}<div><h2>${t('ver.t')}</h2><div class="sub">${t('ver.sub')}</div></div></div>
 
     ${problemas.length || rechazado ? `
       <div class="bloque vidrio">

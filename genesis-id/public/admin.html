@@ -43,6 +43,38 @@ a{color:var(--cyan)}
 .oculto{display:none!important}
 
 #entrada{display:grid;place-items:center;min-height:100vh;padding:20px}
+
+/* ══ LA MARCA ══════════════════════════════════════════════════════════════
+   En la entrada se DIBUJA: primero el trazo del marco, despues la cinta y la
+   huella, y al final aparecen la i y el nucleo. No es adorno gratuito: es el
+   gesto de la casa —una identidad que se construye trazo a trazo— y dura
+   menos de dos segundos. Con reduccion de movimiento activada, sale entera. */
+.gidDibujo{width:118px;margin:2px auto 12px;display:block;color:var(--gold)}
+.gidDibujo .gm-anillo{stroke-dasharray:1400;stroke-dashoffset:1400;animation:gmTrazo 1s ease-out forwards}
+.gidDibujo .gm-cinta{stroke-dasharray:300;stroke-dashoffset:300;animation:gmTrazo .6s ease-out .55s forwards}
+.gidDibujo .gm-huella path{stroke-dasharray:700;stroke-dashoffset:700;animation:gmTrazo .8s ease-out forwards}
+.gidDibujo .gm-huella path:nth-child(1){animation-delay:.65s}
+.gidDibujo .gm-huella path:nth-child(2){animation-delay:.73s}
+.gidDibujo .gm-huella path:nth-child(3){animation-delay:.81s}
+.gidDibujo .gm-huella path:nth-child(4){animation-delay:.89s}
+.gidDibujo .gm-huella path:nth-child(5){animation-delay:.97s}
+.gidDibujo .gm-huella path:nth-child(6){animation-delay:1.05s}
+.gidDibujo .gm-huella path:nth-child(7){animation-delay:1.13s}
+.gidDibujo .gm-dot,.gidDibujo .gm-tallo,.gidDibujo .gm-nucleo{opacity:0;animation:gmAparece .45s ease-out .5s forwards}
+.gidDibujo .gm-nucleo{animation-delay:.9s}
+@keyframes gmTrazo{to{stroke-dashoffset:0}}
+@keyframes gmAparece{to{opacity:1}}
+.gidPalabra{text-align:center;font-size:23px;letter-spacing:.04em;margin-bottom:2px}
+.gidPalabra span{color:var(--gold);font-weight:600}
+
+#velo{position:fixed;inset:0;z-index:950;display:grid;place-items:center;align-content:center;gap:14px;background:var(--bg)}
+.veloMarca{width:104px;color:var(--gold);animation:gmLate 1.5s ease-in-out infinite}
+.veloTxt{font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.veloTxt b{color:var(--gold)}
+@keyframes gmLate{50%{transform:scale(.94);opacity:.7}}
+@media (prefers-reduced-motion:reduce){
+  .gidDibujo *,.veloMarca{animation:none !important;stroke-dashoffset:0 !important;opacity:1 !important}
+}
 .caja{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:30px;width:100%;max-width:400px}
 .caja h1{font-size:20px;margin-bottom:4px}
 .caja p.sub{color:var(--faint);font-size:12px;margin-bottom:22px}
@@ -270,10 +302,58 @@ pre{background:#0F1927;border:1px solid var(--line2);border-radius:10px;padding:
 </head>
 <body>
 
+<!-- La marca de Genesis ID, dibujada a mano en vectores a partir del
+     logotipo oficial: el marco hexagonal en G, la i de identidad y la huella
+     que se vuelve mano. Definida UNA vez; el resto de la pagina la referencia
+     con <use>. En currentColor para poder pintarla del oro o del azul segun
+     donde caiga. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <g id="gidMarca">
+    <path class="gm-anillo" d="M 251.3 75.2 L 261.4 81 Q 232 64 202.6 81 L 100.4 140 Q 70.9 157 70.9 191 L 70.9 309 Q 70.9 343 100.4 360 L 202.6 419 Q 232 436 261.4 419 L 238.4 432.3" stroke="currentColor" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+    <path class="gm-cinta" d="M 354 124 Q 416 150 424 216 L 424 240" stroke="currentColor" stroke-width="54" stroke-linecap="round"/>
+    <circle class="gm-dot" cx="272" cy="158" r="40" fill="currentColor"/>
+    <rect class="gm-tallo" x="236" y="212" width="70" height="122" rx="32" fill="currentColor"/>
+    <circle class="gm-nucleo" cx="374" cy="302" r="15" fill="currentColor"/>
+    <g class="gm-huella" stroke="currentColor" stroke-width="15" stroke-linecap="round" fill="none">
+      <path d="M 342.8 284.0 A 36 36 0 1 1 338.8 309.5"/>
+      <path d="M 333.0 261.0 A 58 58 0 1 1 316.6 310.1"/>
+      <path d="M 331.6 234.2 A 80 80 0 1 1 294.2 307.6"/>
+      <path d="M 377.9 413.9 A 112 112 0 0 1 272.5 349.3"/>
+      <path d="M 369.3 437.9 A 136 136 0 0 1 251.8 361.6"/>
+      <path d="M 360.1 461.4 A 160 160 0 0 1 232.7 377.1"/>
+      <path d="M 348.4 484.2 A 184 184 0 0 1 214.7 394.0"/>
+    </g>
+  </g>
+</defs></svg>
+
+<!-- El velo de carga: la marca latiendo mientras el panel trae su primera
+     vista. Existe porque entre «Entrar» y ver el tablero hay dos viajes al
+     servidor, y una pantalla congelada sin explicacion parece un fallo. -->
+<div id="velo" class="oculto" role="status" aria-label="Cargando el panel">
+  <svg class="veloMarca" viewBox="0 0 512 512" fill="none"><use href="#gidMarca"/></svg>
+  <div class="veloTxt">Genesis <b>ID</b></div>
+</div>
+
 <div id="entrada">
   <form class="caja" onsubmit="entrar(event)">
-    <h1>Genesis ID</h1>
-    <p class="sub">Panel de cumplimiento · Orden Global</p>
+    <svg class="gidDibujo" viewBox="0 0 512 512" fill="none" aria-hidden="true">
+    <path class="gm-anillo" d="M 251.3 75.2 L 261.4 81 Q 232 64 202.6 81 L 100.4 140 Q 70.9 157 70.9 191 L 70.9 309 Q 70.9 343 100.4 360 L 202.6 419 Q 232 436 261.4 419 L 238.4 432.3" stroke="currentColor" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+    <path class="gm-cinta" d="M 354 124 Q 416 150 424 216 L 424 240" stroke="currentColor" stroke-width="54" stroke-linecap="round"/>
+    <circle class="gm-dot" cx="272" cy="158" r="40" fill="currentColor"/>
+    <rect class="gm-tallo" x="236" y="212" width="70" height="122" rx="32" fill="currentColor"/>
+    <circle class="gm-nucleo" cx="374" cy="302" r="15" fill="currentColor"/>
+    <g class="gm-huella" stroke="currentColor" stroke-width="15" stroke-linecap="round" fill="none">
+      <path d="M 342.8 284.0 A 36 36 0 1 1 338.8 309.5"/>
+      <path d="M 333.0 261.0 A 58 58 0 1 1 316.6 310.1"/>
+      <path d="M 331.6 234.2 A 80 80 0 1 1 294.2 307.6"/>
+      <path d="M 377.9 413.9 A 112 112 0 0 1 272.5 349.3"/>
+      <path d="M 369.3 437.9 A 136 136 0 0 1 251.8 361.6"/>
+      <path d="M 360.1 461.4 A 160 160 0 0 1 232.7 377.1"/>
+      <path d="M 348.4 484.2 A 184 184 0 0 1 214.7 394.0"/>
+    </g>
+    </svg>
+    <h1 class="gidPalabra">Genesis <span>ID</span></h1>
+    <p class="sub" style="text-align:center">Panel de cumplimiento · Orden Global</p>
     <label>Correo</label>
     <input id="eMail" type="email" autocomplete="username" required>
     <label>Contraseña</label>
@@ -299,7 +379,7 @@ pre{background:#0F1927;border:1px solid var(--line2);border-radius:10px;padding:
 <div id="app" class="oculto">
   <header>
     <div class="marca">
-      <div class="sello"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6l8-4z"/><path d="M8.5 12l2.5 2.5L15.5 9.5"/></svg></div>
+      <div class="sello"><svg viewBox="0 0 512 512" fill="none"><use href="#gidMarca"/></svg></div>
       <div><b>Genesis ID</b><span>Cumplimiento</span></div>
     </div>
     <div class="quien">
@@ -468,6 +548,7 @@ const PESTANAS = [
 
 function arrancar() {
   $('#entrada').classList.add('oculto')
+  $('#velo').classList.remove('oculto')
   $('#app').classList.remove('oculto')
   $('#qNombre').textContent = yo.nombre || yo.email
   $('#qRol').textContent = yo.rol
@@ -482,11 +563,24 @@ function arrancar() {
 }
 
 const VISTAS = {}
+let veloApagado = false
+function apagarVelo() {
+  if (veloApagado) return
+  veloApagado = true
+  const v = $('#velo')
+  v.style.transition = 'opacity .28s ease'
+  v.style.opacity = '0'
+  setTimeout(() => v.classList.add('oculto'), 300)
+}
 function ir(id) {
   pestana = id
   document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('sel', b.dataset.p === id))
   $('#vista').innerHTML = '<div class="vacio">Cargando…</div>'
-  VISTAS[id]().catch((e) => { $('#vista').innerHTML = `<div class="aviso grave"><div>${esc(e.message)}</div></div>` })
+  VISTAS[id]()
+    .catch((e) => { $('#vista').innerHTML = `<div class="aviso grave"><div>${esc(e.message)}</div></div>` })
+    // El velo cae cuando la PRIMERA vista ya está pintada — también si falló,
+    // porque un error que no se ve es peor que un error.
+    .finally(apagarVelo)
 }
 
 const kpi = (l, v, c = '') => `<div class="kpi ${c}"><div class="l">${l}</div><div class="v num">${v}</div></div>`
@@ -1421,7 +1515,8 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarFich
 
 // Sesión guardada: se comprueba que siga viva antes de mostrar el panel.
 if (sesion) {
-  api('/sesion/yo').then((r) => { yo = r.operador; arrancar() }).catch(() => mostrarEntrada())
+  $('#velo').classList.remove('oculto')
+  api('/sesion/yo').then((r) => { yo = r.operador; arrancar() }).catch(() => { $('#velo').classList.add('oculto'); mostrarEntrada() })
 } else {
   mostrarEntrada()
 }

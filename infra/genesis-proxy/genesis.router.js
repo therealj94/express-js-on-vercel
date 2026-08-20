@@ -199,6 +199,10 @@ export function routerGenesis({ exigirSesion } = {}) {
         // de la petición: si viniera del cliente, alguien podría atar su GID a
         // la cuenta de otro.
         cuenta: req.usuario.id || req.usuario.email,
+        // Genesis exige el correo de la persona para atar la cuenta: es la
+        // prueba de que esta app autenticó a la dueña de esa identidad. Sin
+        // él, el vínculo se rechaza (salvo válvula de emergencia en Genesis).
+        email: req.usuario.email,
         direccion: req.usuario.address || req.body?.direccion || null,
       }),
     }))

@@ -153,6 +153,21 @@ app.get('/cerebro-datos.js', (_req, res) => {
 })
 
 /**
+ * La marca de Genesis ID, en vectores.
+ *
+ * Se sirve suelta para que cualquier pieza del ecosistema —un correo, la web
+ * de la wallet, una página que enseñe el sello— pueda pintarla sin copiarse
+ * los trazos. Es una RECREACIÓN vectorial del logotipo oficial (el original
+ * llegó como imagen); si aparece el archivo fuente, se sustituye aquí y todo
+ * el ecosistema lo hereda.
+ */
+app.get('/marca.svg', (_req, res) => {
+  res.type('image/svg+xml')
+  res.setHeader('Cache-Control', 'public, max-age=86400')
+  res.sendFile(join(__dirname, '..', 'public', 'marca.svg'))
+})
+
+/**
  * Estado del servicio.
  *
  * Se publica sin autenticar porque es lo que consultan los sistemas de

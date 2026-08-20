@@ -282,12 +282,13 @@ appsRouter.get('/identidades/por-email/:email', limite(120), exigeApp('identidad
    enlaza por correo que la app ya autenticó—, y es exactamente lo que la
    wallet ya sabe (resuelve la identidad por el correo de su propia sesión).
 
-   Se aprieta en dos etapas, como la rotación de PASS_TOKEN, porque este
-   servidor y la wallet no se despliegan en el mismo segundo:
-     1. (ahora)  si viene `email`, se exige que coincida; si no viene, se deja
-                 pasar y queda anotado en la bitácora quién vino sin él.
-     2. (cuando la wallet ya mande el correo) GENESIS_VINCULO_EXIGE_EMAIL=true
-                 y sin correo no hay vínculo. */
+   Se apretó en dos etapas, como la rotación de PASS_TOKEN, porque este
+   servidor y la wallet no se despliegan en el mismo segundo. La etapa 2 ya es
+   EL ESTADO POR DEFECTO: la wallet desplegada manda el correo, y se comprobó
+   —bajando el slug vivo de cada app de Heroku— que ninguna otra app del
+   ecosistema llama a /vinculos. GENESIS_VINCULO_EXIGE_EMAIL=false queda como
+   válvula de emergencia por si un integrador viejo aparece; abrirla vuelve a
+   la etapa 1 (pasa, pero queda anotado en la bitácora). */
 appsRouter.post('/vinculos', limite(60), exigeApp('vinculo.crear'), async (req, res) => {
   const { identidadId, cuenta, direccion, email } = req.body ?? {}
   if (!identidadId || !cuenta) {
@@ -301,12 +302,12 @@ appsRouter.post('/vinculos', limite(60), exigeApp('vinculo.crear'), async (req, 
       registrar(`app:${req.app_ecosistema!.clave}`, 'vinculo.correoAjeno', objetivo.id, { cuenta: String(cuenta) })
       return res.status(403).json({ error: 'El correo no corresponde a esa identidad' })
     }
-  } else if (process.env.GENESIS_VINCULO_EXIGE_EMAIL === 'true') {
+  } else if (process.env.GENESIS_VINCULO_EXIGE_EMAIL !== 'false') {
     return res.status(400).json({ error: 'Hace falta el correo de la persona para atar la cuenta' })
   } else {
-    // Etapa 1: se deja pasar, pero queda constancia de qué app vincula sin
-    // probar el correo — es la lista de lo que falta actualizar antes de
-    // apretar la etapa 2.
+    // La válvula está abierta: se deja pasar, pero queda constancia de qué app
+    // vincula sin probar el correo — la lista de lo que hay que actualizar
+    // antes de volver a cerrarla.
     registrar(`app:${req.app_ecosistema!.clave}`, 'vinculo.sinCorreo', objetivo.id, { cuenta: String(cuenta) })
   }
 

@@ -1691,6 +1691,13 @@ body.en-ventana .lienzo::before{
   .sc-cuenta{text-align:left}
   .acc-sorteo{display:none}
 }
+
+/* El sello de Genesis ID en la web: dorado, y late donde hay que esperar. */
+.gid-sello{color:#F5B32B;flex:none;display:block}
+.gid-cab{display:flex;align-items:center;gap:14px}
+.gid-late{animation:gidLate 1.5s ease-in-out infinite}
+@keyframes gidLate{50%{transform:scale(.94);opacity:.7}}
+@media (prefers-reduced-motion:reduce){.gid-late{animation:none}}
 </style>
 
 <svg class="veta-svg" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
