@@ -211,3 +211,90 @@ gateway y volvió con los mismos 186.157 bytes y el mismo hash.
 
 Queda `"status": "incubating"`. Se cambia a `active` cuando toque; ahora ya hay
 siete validadores, así que el motivo original de esa marca desapareció.
+
+---
+
+# Segunda jornada · 20-ago · nodos terminados
+
+## 10 · El misterio de node3, resuelto
+
+Llevaba en `unhealthy` desde el 15-ago sin explicación. La causa: **`firewalld`
+corría solo en node3**, y su zona `public` permitía nada más `ssh`, `mdns` y
+`dhcpv6-client` — **ningún puerto**.
+
+Encajaba con todos los síntomas:
+
+- respondía 200 en `127.0.0.1` (el bucle local no pasa por el cortafuegos);
+- el balanceador no lo alcanzaba en 8545, y ahí fallaba;
+- y sin embargo **validaba y tenía pares**, porque node3 *inicia* las
+  conexiones de red y firewalld solo filtra lo que entra.
+
+Se abrieron 8545/tcp y 30303 tcp+udp de forma permanente. Quedó **sano en los
+dos grupos**, y el arreglo sobrevivió al reinicio posterior. El RPC público
+sirve ahora desde tres nodos en vez de dos.
+
+Los otros seis no llevan firewalld. La protección la da el grupo de seguridad,
+que en node3 ya restringía 8545 a los balanceadores y 30303 a las seis IP
+conocidas.
+
+## 11 · El redimensionamiento, y el susto
+
+**Salió mal en el primer intento y hay que dejarlo escrito.**
+
+node1 se apagó para pasarlo a `t3.medium` y AWS respondió *«The requested
+configuration is currently not supported»*. Al devolverlo a `t2.large`,
+respondió **`InsufficientInstanceCapacity`**. Durante unos minutos node1 estuvo
+apagado y sin poder arrancar.
+
+La causa, averiguada después: **`us-east-1e` es una zona vieja.** De los 58
+tipos que ofrece, ninguno es t3 ni m5 — solo familias antiguas (t2, m3, m4, c3,
+c4, r3, r4, i2, i3, d2, x1). Y encima andaba sin capacidad de `t2.large`.
+
+**La comprobación que faltó**: mirar `describe_instance_type_offerings` de la
+zona **antes** de apagar la máquina, no después. Queda escrito para la próxima.
+
+La salida resultó mejor que el plan: node1 arrancó como **`t2.medium`** —4 GB,
+los mismos que node7— a 33,87 USD/mes en vez de 67,74. La IP elástica sobrevivió.
+
+Desde ahí, cada nodo se hizo con una lista de tipos candidatos y vuelta al
+original si ninguno entra, respaldo del disco antes de tocar, y verificación de
+que la cadena sigue en siete validadores antes y después.
+
+| Nodo | Zona | Antes | Ahora | USD/mes |
+|---|---|---|---|---|
+| node1 | us-east-1e | t2.large | **t2.medium** | 67,74 → 33,87 |
+| node3 | us-east-1e | t2.large | **t2.medium** | 67,74 → 33,87 |
+| node5 | us-east-1d | t2.large | **t3.medium** | 67,74 → 30,40 |
+| node6 | us-east-1d | t2.large | **t3.medium** | 67,74 → 30,40 |
+| node2 | us-east-2b | t2.large | **t3.medium** | 67,74 → 30,40 |
+| node4 | us-east-2b | t2.large | **t3.medium** | 67,74 → 30,40 |
+
+Los cuatro pasos a t3 son un salto a Nitro; antes de cada uno se regeneró el
+initramfs con `dracut --add-drivers "nvme nvme_core ena"`. El `fstab` ya usaba
+UUID, que es lo que de verdad decide si arranca. Los cuatro entraron limpios.
+
+**Comprobación final**: bloque 41.637 → 41.643 en 60 segundos, y **los siete
+validadores proponen** — 9, 9, 10, 10, 10, 11 y 11 bloques de 70. Reparto parejo.
+
+## 12 · La cuenta
+
+| | USD/mes |
+|---|---|
+| Cómputo antes de empezar | 482,38 |
+| **Cómputo ahora** | **250,10** |
+| **Ahorro** | **232,28** |
+
+Y con más red que antes: siete validadores en vez de cuatro, tres nodos
+sirviendo el RPC público en vez de dos.
+
+## 13 · Limpieza
+
+Se dieron de baja los destinos huérfanos del balanceador: `ordenKapital` y
+`ordenssl` apuntaban a node1 en los puertos 80 y 443, donde ya no hay nada desde
+que se apagó la 8532; `ogb-testnet-nodos` apuntaba a las dos máquinas de la
+testnet. Ninguna regla los usaba. Las reglas que quedan son tres, y las tres
+llevan a la 5550.
+
+Quedan **seis respaldos de disco** (`snap-…`), uno por nodo, de antes de tocar
+cada máquina. Cuestan unos 3 USD/mes entre todos. Conviene conservarlos unos
+días y borrarlos después.
