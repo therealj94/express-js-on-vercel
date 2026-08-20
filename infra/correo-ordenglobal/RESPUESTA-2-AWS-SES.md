@@ -1,4 +1,35 @@
-# SES denegó la salida del cajón de arena · qué pasó y cómo se responde
+# SES · el estado real, con dos noticias distintas
+
+Conviene no mezclarlas, porque son dos cosas separadas y solo una es buena.
+
+## Noticia 1 · el DKIM quedó verificado ✅
+
+Es el aviso que llegó a `info@ordenglobal.org`. Comprobado contra la API y
+contra el DNS público:
+
+```
+verificada para enviar: True
+DKIM: SUCCESS · firmando: True · RSA 2048 bits
+los tres CNAME ..._domainkey.ordenglobal.org resuelven
+```
+
+Y probado con un envío real —no con la configuración, con un correo— a
+`info@ordenglobal.org`, que salió con `MessageId`
+`010001a01cf3ad1f-...`. Funcionan a la vez las credenciales, la firma del
+dominio, el conjunto de configuración y la entrega.
+
+**Lo que el DKIM SÍ resuelve:** que el correo salga firmado por
+`ordenglobal.org` y no acabe en la carpeta de no deseados por falta de firma.
+Es el requisito de entrega, y estaba pendiente desde el principio.
+
+**Lo que el DKIM NO resuelve:** la cuenta sigue en el cajón de arena. Son dos
+puertas distintas y solo se abrió una.
+
+## Noticia 2 · la salida del cajón de arena fue DENEGADA ❌
+
+Esto no venía en ese aviso; salió al consultar la API.
+
+
 
 ## Lo que dice AWS, sacado de la API
 
