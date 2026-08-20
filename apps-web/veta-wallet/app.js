@@ -1066,7 +1066,7 @@ const VETA = (() => {
      vuelve, igual que alla. */
   const VISTAS = {
     nucleo, billetera, tarjeta: vTarjeta, cambiar, actividad, chat, ajustes,
-    pay, payex, payneg,
+    pay, payex, payneg, paycobro, paymio,
     enviar, recibir, comprar, deposito, token: vToken, identidad: vIdentidad,
     remesas, contactos, sesiones, lector, seguridad, perfil, verificar, cobrar,
   };
@@ -1076,7 +1076,7 @@ const VETA = (() => {
     enviar: 'billetera', recibir: 'billetera', comprar: 'billetera',
     deposito: 'billetera', token: 'billetera', identidad: 'ajustes',
     remesas: 'billetera', lector: 'billetera', verificar: 'ajustes', cobrar: 'billetera',
-    pay: 'nucleo', payex: 'nucleo', payneg: 'nucleo',
+    pay: 'nucleo', payex: 'nucleo', payneg: 'nucleo', paycobro: 'nucleo', paymio: 'nucleo',
     contactos: 'ajustes', sesiones: 'ajustes', seguridad: 'ajustes', perfil: 'ajustes',
   };
 
@@ -1287,6 +1287,11 @@ const VETA = (() => {
     if (cual === 'tarjeta' && !tarjeta) cargarTarjeta().then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
     if (cual === 'remesas' && !tasas) cargarTasas().then(() => { if (vistaActual === 'remesas') vista('remesas'); });
     if (cual === 'chat') chatEntrar();
+    /* El directorio de MyTokenPay se pide al ENTRAR, no al arrancar la web:
+       ciento veintisiete comercios con su logo no tienen por que viajar por la
+       red de alguien que solo venia a mirar su saldo. */
+    if (cual === 'pay' || cual === 'payex' || cual === 'payneg') cargarComercios();
+    if (cual === 'paycobro') $('#mtp-cod')?.focus();
     /* El cerebro solo respira cuando se lo mira: al entrar al Nucleo se monta
        sobre su canvas recien pintado, y al salir se para — un cerebro animando
        detras de la pantalla de enviar seria gastar bateria en nada. El fondo
@@ -4081,16 +4086,134 @@ const VETA = (() => {
 
   // ── MYTOKENPAY · el comercio, adentro de la casa ──────────────────────────
 
-  /* MyTokenPay deja de ser un enlace que te saca de la web: vive ADENTRO,
-     como el chat. El directorio es el mismo catalogo de la app —los mismos
-     comercios, categorias y ciudades— y el cobro es el REAL de la wallet: el
-     codigo que ya lleva la cantidad puesta.
+  /* MyTokenPay deja de ser un enlace que te saca de la web: vive ADENTRO, y no
+     por comodidad. Su propio documento de diseño lo dice —«MyTokenPay nunca
+     toca una llave privada; cuando hay que mover ORIGEN manda al usuario a Veta
+     Wallet y espera a que vuelva con el comprobante»—. Ese viaje de ida y
+     vuelta entre dos webs es justo el trozo donde la gente se cae. Aqui no hay
+     viaje: la firma ya ocurre en esta pagina, en este dominio, con este candado.
 
-     Lo que todavia no se finge: pagarle EN LINEA a un comercio del directorio
-     exige que ese comercio haya registrado su direccion de cobro, y eso
-     todavia no existe en el catalogo. A esos se les enseñan sus datos y sus
-     redes — el puente honesto mientras el registro de comercios llega. */
+     EL DIRECTORIO ES EL DE VERDAD. Hasta ahora esta pantalla listaba
+     `PAY_COMERCIOS`, un puñado de negocios escritos a mano en `datos.js`. La
+     API tiene ciento veintisiete, en diecinueve paises, con su estado de
+     verificacion real. El catalogo local se queda solo como red de emergencia
+     —si la API no contesta se enseña, marcado como tal— porque una vitrina en
+     blanco cuando se cae un servidor es peor que una vitrina vieja.
+
+     EL COBRO ES EL DE VERDAD. Se lee el codigo del QR o se teclea, se piden las
+     porciones, se manda el ORIGEN por la cadena 8532 a la direccion del
+     comercio, y se confirma con el hash. Cuatro reglas del backend gobiernan
+     esto y ninguna es decorativa:
+
+       · La tasa se congela al crear el cobro. Si el oro se mueve mientras la
+         persona saca el telefono, el numero acordado sigue siendo el acordado.
+       · Una porcion reservada se bloquea ocho minutos. Dos amigos tocando
+         «pagar» a la vez no pagan la misma porcion.
+       · El pago lleva un sello que viaja igual en el reintento. Una red que se
+         corta a mitad no cobra dos veces.
+       · Sin comprobante de la cadena no hay pago. Nada de «marcar como pagado». */
+
+  const MTP = String(window.OG_MTP || 'https://mytokenpay-api-5ab43b64205a.herokuapp.com')
+    .replace(/\/+$/, '');
+
+  /* La sesion de MyTokenPay vive en MEMORIA y nada mas. No va a localStorage a
+     proposito: es un token de otra casa que esta pagina consigue sola en un
+     segundo, y guardarlo solo sirve para que siga existiendo cuando ya nadie lo
+     necesita. Al recargar se vuelve a pedir y no se nota. */
+  let mtpSesion = null;
+  let mtpEntrando = null;
+
+  /* Una peticion a MyTokenPay. Es `crudo()` apuntando a otro servidor: el
+     Bearer es el suyo, nunca el de la wallet — mandarle a otra casa el token
+     que abre el dinero de esta seria regalarle la llave por comodidad. */
+  async function mtpCrudo(ruta, { metodo = 'GET', cuerpo, espera = 25000, token } = {}) {
+    const ctl = new AbortController();
+    const reloj = setTimeout(() => ctl.abort(), espera);
+    try {
+      const r = await fetch(MTP + ruta, {
+        method: metodo,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: 'Bearer ' + token } : {}),
+        },
+        body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+        signal: ctl.signal,
+      });
+      const texto = await r.text();
+      let d = null;
+      try { d = texto ? JSON.parse(texto) : null; } catch { d = { error: texto }; }
+      if (!r.ok) {
+        const e = new Error(d?.error || d?.message || `El servidor respondió ${r.status}`);
+        e.estado = r.status;
+        if (d?.detalle) e.detalle = d.detalle;
+        throw e;
+      }
+      return d;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error(t('err.tarda'));
+      if (e instanceof TypeError) throw new Error(t('err.red'));
+      throw e;
+    } finally { clearTimeout(reloj); }
+  }
+
+  /* Entrar a MyTokenPay con ESTA cuenta, sin escribir nada.
+     Es el mismo circuito que ya usan Ordenex y AuCorp: el backend de la wallet
+     pide un pase a Genesis ID (la clave de API de Genesis no baja jamas al
+     navegador), y MyTokenPay lo verifica CONTRA Genesis antes de creerselo.
+
+     Va tambien el correo, y no es un dato de mas: MyTokenPay comprueba que ese
+     correo sea el de esa identidad segun Genesis. Es lo que impide que un pase
+     valido de una persona abra la cuenta de otra.
+
+     La promesa se comparte: si tres pantallas piden a la vez, se entra una sola
+     vez. Sin esto se crean tres sesiones y las dos primeras quedan sueltas. */
+  async function mtpEntrar() {
+    if (mtpSesion) return mtpSesion;
+    if (mtpEntrando) return mtpEntrando;
+    mtpEntrando = (async () => {
+      const d = await pedir('/genesis/sso/token', { metodo: 'POST' });
+      if (!d?.token) throw new Error(t('err.sesion'));
+      const r = await mtpCrudo('/api/auth/sso', {
+        metodo: 'POST',
+        cuerpo: { token: d.token, email: sesion?.correo },
+      });
+      if (!r?.token) throw new Error(t('mtp.eEntrar'));
+      mtpSesion = r;
+      return r;
+    })();
+    try { return await mtpEntrando; } finally { mtpEntrando = null; }
+  }
+
+  /* Con sesion. Si el token de MyTokenPay vencio, se entra otra vez y se
+     repite UNA sola vez: reintentar en bucle contra un servidor que dice que no
+     es como golpear la puerta mas fuerte. */
+  async function pedirMtp(ruta, opciones = {}) {
+    const s = await mtpEntrar();
+    try {
+      return await mtpCrudo(ruta, { ...opciones, token: s.token });
+    } catch (e) {
+      if (e.estado !== 401) throw e;
+      mtpSesion = null;
+      const s2 = await mtpEntrar();
+      return await mtpCrudo(ruta, { ...opciones, token: s2.token });
+    }
+  }
+
+  /* El 403 de Genesis no es un tropiezo de red: es «sin identidad verificada no
+     hay pase». Se dice con la frase de siempre y se abre la verificacion, que
+     es lo unico que abre esta puerta. Devuelve true si ya se ocupo del error. */
+  function mtpSinIdentidad(e) {
+    if (e?.estado !== 403) return false;
+    avisar(t('nu.cerrado'));
+    vista('verificar');
+    return true;
+  }
+
+  // ── el directorio ─────────────────────────────────────────────────────────
+
   let payQ = '', payPais = '', payCat = '', payNeg = null;
+  let mtpNegocios = null, mtpCats = null, mtpPaisesApi = null;
+  let mtpCargando = false, mtpFalloDirectorio = null;
 
   const PAY_EMOJI = {
     restaurantes: '🍽', cafeterias: '☕', hoteles: '🏨', gimnasios: '🏋',
@@ -4098,13 +4221,73 @@ const VETA = (() => {
     moda: '👗', tecnologia: '📱', salud: '🩺', educacion: '🎓',
     automotriz: '🚗', turismo: '🌴', servicios: '💼',
   };
+
+  /* Un negocio de la API traido a la forma que ya usaban estas pantallas.
+     `direccionCobro` es la unica pieza nueva y es la que decide si a este
+     comercio se le puede pagar en linea o solo visitar. */
+  const mtpNegocio = c => ({
+    id: c.id,
+    nombre: c.tradeName || c.legalName || '',
+    razon: c.legalName || '',
+    desc: c.description || '',
+    cat: c.categorySlug || 'servicios',
+    pais: c.countrySlug || '',
+    ciudad: c.citySlug || '',
+    dir: c.address || '',
+    ofrece: Array.isArray(c.productsServices) ? c.productsServices : [],
+    redes: c.socials || {},
+    logo: c.logoDataUrl || null,
+    estado: c.kyc?.status === 'verified' || c.verified ? 'verified' : (c.kyc?.status || 'unsubmitted'),
+    direccionCobro: c.walletAddress || null,
+    real: true,
+  });
+
+  const payTodos = () => mtpNegocios || (PAY_COMERCIOS || []).map(c => ({ ...c, real: false }));
+  const payCatsL = () => mtpCats || PAY_CATEGORIAS;
+  const payPaisesL = () => mtpPaisesApi || PAY_PAISES;
+  const payCiudadesDe = pais =>
+    (mtpPaisesApi ? (mtpPaisesApi.find(p => p.slug === pais)?.cities || []) : (PAY_CIUDADES[pais] || []));
   const payCiudad = (pais, ciudad) =>
-    (PAY_CIUDADES[pais] || []).find(c => c.slug === ciudad)?.label || ciudad;
-  const payCatNom = slug => PAY_CATEGORIAS.find(c => c.slug === slug)?.label || slug;
+    payCiudadesDe(pais).find(c => c.slug === ciudad)?.label || ciudad;
+  const payCatNom = slug => payCatsL().find(c => c.slug === slug)?.label || slug;
+  const payPaisNom = slug => payPaisesL().find(p => p.slug === slug)?.label || slug;
+  /* A quien se le puede pagar en linea: verificado Y con direccion de cobro
+     puesta. El backend rechaza crear un cobro sin direccion, asi que enseñar el
+     boton sin ella seria prometer algo que se cae al tocarlo. */
+  const payCobrable = c => c.estado === 'verified' && !!c.direccionCobro;
+
+  /* El directorio, una vez por sesion de pagina. Las tres listas van juntas
+     porque sin categorias ni paises los filtros se quedarian en los seis de
+     `datos.js` mientras la API sirve diecinueve. Estas tres rutas son publicas:
+     mirar la vitrina no exige identificarse. */
+  async function cargarComercios(forzar) {
+    if (mtpCargando || (mtpNegocios && !forzar)) return;
+    mtpCargando = true; mtpFalloDirectorio = null;
+    try {
+      const [neg, cats, paises] = await Promise.all([
+        mtpCrudo('/api/companies'),
+        mtpCrudo('/api/categories').catch(() => null),
+        mtpCrudo('/api/countries').catch(() => null),
+      ]);
+      const lista = Array.isArray(neg) ? neg : (neg?.companies || neg?.comercios || []);
+      mtpNegocios = lista.map(mtpNegocio);
+      const lc = Array.isArray(cats) ? cats : (cats?.categories || null);
+      if (lc?.length) mtpCats = lc;
+      const lp = Array.isArray(paises) ? paises : (paises?.countries || null);
+      if (lp?.length) mtpPaisesApi = lp;
+    } catch (e) {
+      /* Se guarda el fallo y se sigue con el catalogo local. Una vitrina vieja
+         y avisada sirve; una vitrina en blanco no. */
+      mtpFalloDirectorio = e.message;
+    } finally {
+      mtpCargando = false;
+      if (vistaActual === 'pay' || vistaActual === 'payex') vista(vistaActual);
+    }
+  }
 
   function payFiltrados() {
     const q = sinTildes(payQ.trim());
-    return PAY_COMERCIOS.filter(c => {
+    return payTodos().filter(c => {
       if (payPais && c.pais !== payPais) return false;
       if (payCat && c.cat !== payCat) return false;
       if (!q) return true;
@@ -4112,25 +4295,40 @@ const VETA = (() => {
     });
   }
 
+  const payDisco = c => c.logo
+    ? `<span class="pay-emo pay-emo-img"><img src="${esc(c.logo)}" alt=""></span>`
+    : `<span class="pay-emo">${PAY_EMOJI[c.cat] || '🏪'}</span>`;
+
   function payTarjeta(c) {
-    const verificado = c.estado === 'verified';
     return `
     <button class="pay-caja" onclick="VETA.payAbrir(${jsTxt(c.id)})">
       <div class="pay-cab">
-        <span class="pay-emo">${PAY_EMOJI[c.cat] || '🏪'}</span>
+        ${payDisco(c)}
         <div style="flex:1;min-width:0">
           <b>${esc(c.nombre)}</b>
           <small>${esc(payCatNom(c.cat))} · ${esc(payCiudad(c.pais, c.ciudad))}</small>
         </div>
-        ${verificado ? `<span class="pay-ver" title="${t('pay.verif')}">
+        ${c.estado === 'verified' ? `<span class="pay-ver" title="${t('pay.verif')}">
           <svg viewBox="0 0 24 24"><path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/></svg></span>` : ''}
       </div>
       <p>${esc(c.desc.slice(0, 92))}${c.desc.length > 92 ? '…' : ''}</p>
+      ${payCobrable(c) ? `<span class="pay-enlinea">${t('mtp.enLinea')}</span>` : ''}
     </button>`;
   }
 
+  /* El pie del directorio dice de donde salieron los numeros. Sin esto, «6
+     comercios» y «127 comercios» se ven igual de ciertos, y uno de los dos es
+     una lista escrita a mano hace meses. */
+  function payPie() {
+    if (mtpCargando && !mtpNegocios) return `<p class="pie mtp-pie">${t('mtp.cargando')}</p>`;
+    if (mtpFalloDirectorio) return `<p class="pie mtp-pie mtp-pie-mal">${t('mtp.dirViejo')}</p>`;
+    return '';
+  }
+
   function pay() {
-    const destacados = PAY_COMERCIOS.filter(c => c.estado === 'verified').slice(0, 4);
+    const todos = payTodos();
+    const destacados = todos.filter(payCobrable).concat(todos.filter(c => c.estado === 'verified' && !payCobrable(c)))
+      .slice(0, 4);
     return `
     <button class="volver" onclick="VETA.vista('nucleo')">
       <svg viewBox="0 0 24 24">${ICO.atras}</svg>${t('pay.alNucleo')}
@@ -4140,11 +4338,23 @@ const VETA = (() => {
       <div class="sub">${t('pay.sub')}</div>
     </div></div>
 
+    ${/* Pagar es lo primero porque es lo que se hace de pie, en el mostrador,
+         con la fila detras. Buscar un negocio se hace sentado en casa. */''}
+    <div class="bloque vidrio mtp-pagar-ya">
+      <div>
+        <h3>${t('mtp.pagarYaT')}</h3>
+        <p class="pie" style="margin-top:6px">${t('mtp.pagarYaP')}</p>
+      </div>
+      <button class="btn btn-oro" onclick="VETA.vista('paycobro')">
+        <svg viewBox="0 0 24 24" class="btn-ic">${ICO.camara}</svg>${t('mtp.pagarYaB')}
+      </button>
+    </div>
+
     <div class="bloque vidrio">
       <input class="pay-busca" placeholder="${t('pay.buscar')}" value="${esc(payQ)}"
              autocomplete="off" oninput="VETA.payBuscar(this.value)">
       <div class="pay-chips">
-        ${PAY_CATEGORIAS.slice(0, 8).map(c => `
+        ${payCatsL().slice(0, 8).map(c => `
           <button class="pay-chip${payCat === c.slug ? ' va' : ''}"
                   onclick="VETA.payCategoria(${jsTxt(c.slug)})">${PAY_EMOJI[c.slug] || ''} ${esc(c.label)}</button>`).join('')}
       </div>
@@ -4152,30 +4362,30 @@ const VETA = (() => {
 
     <div class="bloque vidrio">
       <div class="bloque-cab"><h3>${t('pay.destacados')}</h3>
-        <button class="btn btn-linea btn-sm" onclick="VETA.payVerTodos()">${t('pay.todos')} (${PAY_COMERCIOS.length})</button>
+        <button class="btn btn-linea btn-sm" onclick="VETA.payVerTodos()">${t('pay.todos')} (${todos.length})</button>
       </div>
       <div class="pay-rejilla">${destacados.map(payTarjeta).join('')}</div>
+      ${payPie()}
     </div>
 
-    ${/* El COBRO del comerciante es el real de la wallet, no una maqueta:
-         el mismo codigo con la cantidad puesta que ya mueve dinero. */''}
     <div class="bloque vidrio pay-cobra">
       <div>
-        <h3>${t('pay.cobraT')}</h3>
-        <p class="pie" style="margin-top:6px">${t('pay.cobraP')}</p>
+        <h3>${t('mtp.miComercioT')}</h3>
+        <p class="pie" style="margin-top:6px">${t('mtp.miComercioP')}</p>
       </div>
-      <button class="btn btn-oro" onclick="VETA.vista('cobrar')">${t('cob.t')}</button>
+      <button class="btn btn-linea" onclick="VETA.paymio()">${t('mtp.miComercioB')}</button>
     </div>`;
   }
 
   function payex() {
     const lista = payFiltrados();
+    const total = payTodos().length;
     return `
     <button class="volver" onclick="VETA.vista('pay')">
       <svg viewBox="0 0 24 24">${ICO.atras}</svg>MyTokenPay
     </button>
     <div class="cab"><div><h2>${t('pay.dirT')}</h2>
-      <div class="sub">${lista.length} ${t('pay.de')} ${PAY_COMERCIOS.length} · ${t('pay.dirSub')}</div>
+      <div class="sub">${lista.length} ${t('pay.de')} ${total} · ${payPaisesL().length} ${t('mtp.paises')}</div>
     </div></div>
     <div class="bloque vidrio">
       <input class="pay-busca" placeholder="${t('pay.buscar')}" value="${esc(payQ)}"
@@ -4183,20 +4393,21 @@ const VETA = (() => {
       <div class="pay-filtros">
         <select onchange="VETA.payDePais(this.value)">
           <option value="">${t('pay.todosPais')}</option>
-          ${PAY_PAISES.map(x => `<option value="${x.slug}" ${payPais === x.slug ? 'selected' : ''}>${x.flag} ${esc(x.label)}</option>`).join('')}
+          ${payPaisesL().map(x => `<option value="${esc(x.slug)}" ${payPais === x.slug ? 'selected' : ''}>${x.flag || ''} ${esc(x.label)}</option>`).join('')}
         </select>
         <select onchange="VETA.payCategoria(this.value)">
           <option value="">${t('pay.todasCat')}</option>
-          ${PAY_CATEGORIAS.map(x => `<option value="${x.slug}" ${payCat === x.slug ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}
+          ${payCatsL().map(x => `<option value="${esc(x.slug)}" ${payCat === x.slug ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}
         </select>
       </div>
+      ${payPie()}
     </div>
     ${lista.length ? `<div class="pay-rejilla">${lista.map(payTarjeta).join('')}</div>`
       : `<div class="bloque vidrio"><div class="vacio"><b>${t('pay.nadaT')}</b>${t('pay.nadaP')}</div></div>`}`;
   }
 
   function payneg() {
-    const c = PAY_COMERCIOS.find(x => x.id === payNeg);
+    const c = payTodos().find(x => x.id === payNeg);
     if (!c) return payex();
     const redes = Object.entries(c.redes || {}).filter(([, u]) => u && !/example\.com/.test(u));
     const ROTULO = { instagram: 'Instagram', facebook: 'Facebook', whatsapp: 'WhatsApp', website: t('pay.web'), tiktok: 'TikTok' };
@@ -4209,18 +4420,18 @@ const VETA = (() => {
     </button>
     <div class="bloque vidrio">
       <div class="pay-cab" style="margin-bottom:14px">
-        <span class="pay-emo pay-emo-g">${PAY_EMOJI[c.cat] || '🏪'}</span>
+        <span class="pay-emo pay-emo-g${c.logo ? ' pay-emo-img' : ''}">${c.logo ? `<img src="${esc(c.logo)}" alt="">` : (PAY_EMOJI[c.cat] || '🏪')}</span>
         <div style="flex:1;min-width:0">
           <h2 style="font-size:20px;font-weight:800">${esc(c.nombre)}</h2>
-          <small style="color:var(--humo)">${esc(payCatNom(c.cat))} · ${esc(payCiudad(c.pais, c.ciudad))}</small>
+          <small style="color:var(--humo)">${esc(payCatNom(c.cat))} · ${esc(payCiudad(c.pais, c.ciudad))}${c.pais ? ' · ' + esc(payPaisNom(c.pais)) : ''}</small>
         </div>
         ${c.estado === 'verified' ? `<span class="pay-ver"><svg viewBox="0 0 24 24"><path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/></svg></span>` : ''}
       </div>
-      <p class="ficha-desc" style="margin-top:0">${esc(c.desc)}</p>
+      ${c.desc ? `<p class="ficha-desc" style="margin-top:0">${esc(c.desc)}</p>` : ''}
       <div class="pay-ofrece">${(c.ofrece || []).map(o => `<span>${esc(o)}</span>`).join('')}</div>
       <dl class="datos" style="margin-top:16px">
-        <div><dt>${t('pay.dire')}</dt><dd>${esc(c.dir)}</dd></div>
-        <div><dt>${t('pay.razon')}</dt><dd>${esc(c.razon)}</dd></div>
+        ${c.dir ? `<div><dt>${t('pay.dire')}</dt><dd>${esc(c.dir)}</dd></div>` : ''}
+        ${c.razon ? `<div><dt>${t('pay.razon')}</dt><dd>${esc(c.razon)}</dd></div>` : ''}
       </dl>
       ${redes.length ? `<div class="ficha-btns">${redes.map(r => {
         const [u, nom] = enlace(r);
@@ -4229,9 +4440,12 @@ const VETA = (() => {
     </div>
     <div class="bloque vidrio">
       <h3>${t('pay.pagarT')}</h3>
-      <p class="pie" style="margin-top:8px">${t('pay.pagarP')}</p>
+      ${/* Se dice la verdad de este comercio en concreto, no una frase general:
+           un negocio con direccion de cobro puesta acepta pago en linea hoy, y
+           uno sin ella no lo va a aceptar por mucho que se toque el boton. */''}
+      <p class="pie" style="margin-top:8px">${payCobrable(c) ? t('mtp.pagarNegSi') : (c.estado === 'verified' ? t('mtp.pagarNegSinDir') : t('mtp.pagarNegSinVerif'))}</p>
       <div class="ficha-btns">
-        <button class="btn btn-oro btn-sm" onclick="VETA.vista('lector')">
+        <button class="btn btn-oro btn-sm" onclick="VETA.vista('paycobro')">
           <svg viewBox="0 0 24 24" class="btn-ic">${ICO.camara}</svg>${t('pay.escanear')}</button>
       </div>
     </div>`;
@@ -4239,16 +4453,14 @@ const VETA = (() => {
 
   const payBuscar = v => {
     payQ = v;
-    // se repinta solo la rejilla para no matar el foco de la caja
     const cual = vistaActual === 'pay' ? 'pay' : 'payex';
     if (cual === 'payex') {
       const l = payFiltrados();
       const caja = document.querySelector('.pay-rejilla');
       if (caja) caja.innerHTML = l.map(payTarjeta).join('');
       const sub = document.querySelector('.cab .sub');
-      if (sub) sub.textContent = `${l.length} ${t('pay.de')} ${PAY_COMERCIOS.length} · ${t('pay.dirSub')}`;
+      if (sub) sub.textContent = `${l.length} ${t('pay.de')} ${payTodos().length} · ${payPaisesL().length} ${t('mtp.paises')}`;
     } else if (payQ.trim().length > 1) {
-      // escribir en la portada ya es buscar: se pasa al directorio
       vista('payex');
       $('.pay-busca')?.focus();
     }
@@ -4257,6 +4469,610 @@ const VETA = (() => {
   const payDePais = v => { payPais = v; vista('payex'); };
   const payVerTodos = () => { payQ = ''; payCat = ''; payPais = ''; vista('payex'); };
   const payAbrir = id => { payNeg = id; vista('payneg'); };
+
+  // ── pagar un cobro ────────────────────────────────────────────────────────
+
+  /* El codigo de cobro tiene forma: seis caracteres de un alfabeto sin I, O,
+     cero ni uno, partidos por un guion. Esa eleccion del backend no es un
+     capricho: en la pantalla de un telefono con grasa de pollo frito, un cero y
+     una O son la misma cosa, y quien dicta el codigo por encima del ruido de un
+     comedor no tiene por que deletrear. Aqui se acepta escrito de cualquier
+     forma —con guion o sin el, en minusculas— y se normaliza. */
+  const MTP_ALFA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+  function leerCodigoCobro(crudo) {
+    const txt = String(crudo || '').trim();
+    // Del QR llega `mtp:cobro?c=…` o una URL; el codigo es lo que importa.
+    const enQr = txt.match(/(?:codigo|cod|c)=([A-Za-z0-9-]{6,8})/);
+    const suelto = (enQr ? enQr[1] : txt).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (suelto.length !== 6) return null;
+    if ([...suelto].some(ch => !MTP_ALFA.includes(ch))) return null;
+    return `${suelto.slice(0, 3)}-${suelto.slice(3)}`;
+  }
+
+  let mtpCobro = null;        // el cobro que se esta mirando
+  let mtpMias = [];           // las porciones que YO tengo reservadas
+  let mtpPagando = false;
+  let mtpFallo = null;
+  /* El sello por codigo de cobro, fuera del cobro. Vivia dentro y se perdia en
+     cuanto el servidor devolvia el cobro actualizado — es decir, justo en el
+     reintento, que es la unica vez que el sello sirve para algo. */
+  const mtpSellos = Object.create(null);
+
+  const mtpHnl = n => 'L ' + (Number(n) || 0).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  async function mtpTraerCobro(codigo) {
+    const d = await pedirMtp('/api/cobros/codigo/' + encodeURIComponent(codigo));
+    mtpCobro = d?.cobro || null;
+    /* Las porciones que este navegador reservo se recuerdan aqui, no se
+       deducen: la respuesta no dice quien reservo cada una, solo su estado y el
+       nombre. Deducirlo por el nombre haria que dos «Jose» en la misma mesa se
+       pisaran la reserva. */
+    mtpMias = mtpMias.filter(id => mtpCobro?.partes?.some(p => p.id === id && p.estado === 'reservada'));
+    return mtpCobro;
+  }
+
+  async function payLeerCodigo(ev) {
+    ev?.preventDefault();
+    const caja = $('#mtp-cod');
+    const codigo = leerCodigoCobro(caja?.value);
+    if (!codigo) { mtpFallo = t('mtp.eCodigo'); return vista('paycobro'); }
+    mtpFallo = null;
+    try {
+      await mtpTraerCobro(codigo);
+      vista('paycobro');
+    } catch (e) {
+      if (mtpSinIdentidad(e)) return;
+      mtpFallo = e.message;
+      vista('paycobro');
+    }
+  }
+
+  /* Tomar o soltar una porcion. Se habla con el servidor en cada toque en vez
+     de acumular la eleccion y mandarla al final: si alguien mas ya tomo esa
+     porcion, es mejor enterarse ahora —con el 409 en la mano— que despues de
+     haber mandado el ORIGEN. */
+  async function payTomar(parteId) {
+    if (!mtpCobro || mtpPagando) return;
+    const mia = mtpMias.includes(parteId);
+    try {
+      const ruta = `/api/cobros/codigo/${encodeURIComponent(mtpCobro.codigo)}/${mia ? 'liberar' : 'reservar'}`;
+      const d = await pedirMtp(ruta, { metodo: 'POST', cuerpo: { parteIds: [parteId] } });
+      mtpCobro = d?.cobro || mtpCobro;
+      mtpMias = mia ? mtpMias.filter(x => x !== parteId) : mtpMias.concat(parteId);
+      mtpFallo = null;
+    } catch (e) {
+      mtpFallo = e.message;
+    }
+    vista('paycobro');
+  }
+
+  /* PAGAR. El unico sitio de MyTokenPay donde se mueve dinero, y va en este
+     orden por un motivo:
+
+       1. reservar (ya hecho al elegir)
+       2. mandar el ORIGEN por la cadena, desde ESTA billetera
+       3. confirmar con el hash
+
+     Si el paso 2 falla, se SUELTAN las porciones: dejarlas tomadas bloquea
+     ocho minutos una cuenta que nadie va a pagar, con el comercio mirando la
+     pantalla. Si falla el paso 3, NO se sueltan y no se reintenta solo: el
+     dinero ya salio, y lo que hace falta es que una persona vea el hash. */
+  async function payPagar(ev) {
+    ev?.preventDefault();
+    if (mtpPagando || !mtpCobro) return;
+    const clave = $('#mtp-clave')?.value || '';
+    const btn = $('#mtp-pagar-btn');
+    const decir = txt => { mtpFallo = txt; vista('paycobro'); };
+
+    if (!mtpMias.length) return decir(t('mtp.eSinPartes'));
+    if (!clave) return decir(t('env.eClave'));
+
+    const destino = mtpCobro.negocio?.direccion;
+    if (!destino || !/^0x[a-fA-F0-9]{40}$/.test(destino)) return decir(t('mtp.eSinDireccion'));
+
+    const partes = mtpCobro.partes.filter(p => mtpMias.includes(p.id));
+    const monto = partes.reduce((s, p) => s + Number(p.montoOrigen || 0), 0);
+    if (!(monto > 0)) return decir(t('mtp.eSinPartes'));
+
+    const tengo = origen()?.cant;
+    if (tengo != null && monto > tengo) return decir(`${t('env.eAlcanza')} ${oro(tengo)} ORIGEN.`);
+
+    /* El sello se acuña ANTES de firmar y se guarda: si la red se corta entre
+       la cadena y la confirmacion, el reintento lleva el mismo sello y el
+       servidor devuelve el mismo resultado en vez de cobrar otra vez. */
+    const sello = mtpSellos[mtpCobro.codigo]
+      || (mtpSellos[mtpCobro.codigo] = 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8));
+
+    mtpPagando = true; mtpFallo = null;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="girando"></span> ' + t('mtp.pagando'); }
+
+    let hash = null;
+    try {
+      const r = await pedir('/transaction/send', {
+        metodo: 'POST', espera: 90000, sinReintento: true,
+        cuerpo: {
+          chain_id: CHAIN, recipientAddress: destino, amount: String(monto),
+          password: clave, idempotencyKey: sello,
+        },
+      });
+      hash = r?.hash || r?.transactionHash || r?.txId || null;
+      if (!hash) throw new Error(t('mtp.eSinHash'));
+    } catch (e) {
+      mtpPagando = false;
+      /* La transferencia no salio (o no se sabe). Se sueltan las porciones para
+         no dejar la cuenta del comercio bloqueada, pero solo si el error fue
+         ANTES de la cadena: una clave mal escrita es seguro que no movio nada. */
+      const claveMala = /contrase|password|credential/i.test(e.message);
+      if (claveMala) {
+        /* Una clave mal escrita no movio nada: se sueltan las porciones de una
+           sola vez para no dejar la cuenta bloqueada ocho minutos con el
+           comercio mirando la pantalla. Si esto falla no importa: la reserva
+           caduca sola. */
+        try {
+          await pedirMtp(`/api/cobros/codigo/${encodeURIComponent(mtpCobro.codigo)}/liberar`,
+            { metodo: 'POST', cuerpo: { parteIds: mtpMias.slice() } });
+          mtpMias = [];
+        } catch {}
+      }
+      return decir(claveMala ? t('env.eMalClave') : `${e.message} ${t('env.eDuda')}`);
+    }
+
+    try {
+      const d = await pedirMtp(`/api/cobros/codigo/${encodeURIComponent(mtpCobro.codigo)}/pagar`, {
+        metodo: 'POST', espera: 60000,
+        cuerpo: { parteIds: mtpMias.slice(), txHash: hash, sello },
+      });
+      mtpCobro = d?.cobro || mtpCobro;
+      mtpMias = [];
+      mtpPagando = false;
+      avisar(t('mtp.avPagado'));
+      cargarCartera(); cargarMovimientos();
+      vista('paycobro');
+    } catch (e) {
+      /* Lo peor que puede pasar y hay que decirlo entero: el ORIGEN SALIO y el
+         comercio no lo tiene apuntado. Se enseña el hash, grande y copiable,
+         porque es lo unico que arregla esto. */
+      mtpPagando = false;
+      mtpFallo = null;
+      mtpCobro = { ...mtpCobro, _colgado: { hash, monto } };
+      vista('paycobro');
+    }
+  }
+
+  function paycobro() {
+    const c = mtpCobro;
+    const cab = `
+    <button class="volver" onclick="VETA.vista('pay')">
+      <svg viewBox="0 0 24 24">${ICO.atras}</svg>MyTokenPay
+    </button>
+    <div class="cab"><div><h2>${t('mtp.cobroT')}</h2>
+      <div class="sub">${t('mtp.cobroSub')}</div>
+    </div></div>`;
+
+    // Un pago que salio de la cadena y el comercio no apunto. Manda sobre todo.
+    if (c?._colgado) return `${cab}
+    <div class="bloque vidrio">
+      <div class="nota nota-cuidado">${t('mtp.colgadoT')}</div>
+      <p class="pie" style="margin-top:12px">${t('mtp.colgadoP')}</p>
+      <dl class="datos" style="margin-top:16px">
+        <div><dt>${t('mtp.enviaste')}</dt><dd class="mono">${oro(c._colgado.monto)} ORIGEN</dd></div>
+        <div><dt>${t('mtp.comprobante')}</dt><dd class="mono mtp-hash">${esc(c._colgado.hash)}</dd></div>
+        <div><dt>${t('mtp.codigo')}</dt><dd class="mono">${esc(c.codigo)}</dd></div>
+      </dl>
+      <div class="ficha-btns">
+        <button class="btn btn-oro btn-sm" onclick="VETA.copiarTexto(${jsTxt(c._colgado.hash)})">${t('mtp.copiarHash')}</button>
+        <button class="btn btn-linea btn-sm" onclick="VETA.payOtroCobro()">${t('mtp.otroCobro')}</button>
+      </div>
+    </div>`;
+
+    if (!c) return `${cab}
+    <div class="bloque vidrio">
+      <h3>${t('mtp.leerT')}</h3>
+      <p class="pie" style="margin-top:8px">${t('mtp.leerP')}</p>
+      ${mtpFallo ? `<div class="aviso aviso-mal" style="margin-top:14px">${esc(mtpFallo)}</div>` : ''}
+      <form onsubmit="VETA.payLeerCodigo(event)" style="margin-top:14px">
+        <label class="campo">
+          <span>${t('mtp.codigo')}</span>
+          <input id="mtp-cod" class="mono mtp-cod" placeholder="ABC-D23" autocomplete="off"
+                 autocapitalize="characters" spellcheck="false" maxlength="8">
+        </label>
+        <div class="dir-btns" style="margin-top:14px">
+          <button class="btn btn-oro" type="submit">${t('mtp.verCuenta')}</button>
+          <button class="btn btn-linea" type="button" onclick="VETA.vista('lector')">
+            <svg viewBox="0 0 24 24" class="btn-ic">${ICO.camara}</svg>${t('mtp.escanearlo')}</button>
+        </div>
+      </form>
+    </div>`;
+
+    const mias = c.partes.filter(p => mtpMias.includes(p.id));
+    const totalOr = mias.reduce((s, p) => s + Number(p.montoOrigen || 0), 0);
+    const totalHnl = mias.reduce((s, p) => s + Number(p.montoHnl || 0), 0);
+    const dividida = c.partes.length > 1;
+    const cerrado = c.estado !== 'abierto';
+    const tengo = origen()?.cant;
+
+    const parte = p => {
+      const mia = mtpMias.includes(p.id);
+      const libre = p.estado === 'libre';
+      const puedo = libre || mia;
+      return `
+      <button class="mtp-parte${mia ? ' mia' : ''}${p.estado === 'pagada' ? ' pagada' : ''}"
+              ${puedo && !cerrado ? `onclick="VETA.payTomar(${jsTxt(p.id)})"` : 'disabled'}>
+        <span class="mtp-parte-n">${p.indice + 1}</span>
+        <span class="mtp-parte-m">
+          <b class="mono">${oro(p.montoOrigen)} ORIGEN</b>
+          <small>${esc(mtpHnl(p.montoHnl))}</small>
+        </span>
+        <span class="mtp-parte-e">${p.estado === 'pagada' ? t('mtp.pPagada')
+          : mia ? t('mtp.pTuya')
+          : p.estado === 'reservada' ? `${t('mtp.pTomada')}${p.pagadorNombre ? ' · ' + esc(p.pagadorNombre) : ''}`
+          : t('mtp.pLibre')}</span>
+      </button>`;
+    };
+
+    return `${cab}
+    <div class="bloque vidrio">
+      <div class="pay-cab" style="margin-bottom:14px">
+        ${c.negocio?.logo ? `<span class="pay-emo pay-emo-g pay-emo-img"><img src="${esc(c.negocio.logo)}" alt=""></span>`
+          : `<span class="pay-emo pay-emo-g">🏪</span>`}
+        <div style="flex:1;min-width:0">
+          <h2 style="font-size:20px;font-weight:800">${esc(c.negocio?.nombre || t('mtp.negocio'))}</h2>
+          <small style="color:var(--humo)">${esc(c.concepto || '')}</small>
+        </div>
+        ${c.negocio?.verificado ? `<span class="pay-ver"><svg viewBox="0 0 24 24"><path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/></svg></span>` : ''}
+      </div>
+
+      <div class="mtp-total">
+        <div><span>${t('mtp.laCuenta')}</span><b class="mono">${esc(mtpHnl(c.montoHnl))}</b></div>
+        <div><span>${t('mtp.enOrigen')}</span><b class="mono">${oro(c.montoOrigen)} ORIGEN</b></div>
+      </div>
+      ${/* La tasa congelada se enseña siempre. Es la promesa que sostiene el
+           cobro: si el oro se mueve mientras la persona decide, este numero no.
+           Un cobro que no dice a que tasa se hizo es un cobro que hay que
+           creerse de palabra. */''}
+      <p class="pie mtp-tasa">${t('mtp.tasaFija')} <span class="mono">${esc(mtpHnl(c.tasaHnlPorOrigen))} / ORIGEN</span> · ${t('mtp.codigo')} <span class="mono">${esc(c.codigo)}</span></p>
+    </div>
+
+    ${cerrado ? `
+    <div class="bloque vidrio">
+      <div class="vacio"><b>${c.estado === 'pagado' ? t('mtp.yaPagado') : c.estado === 'anulado' ? t('mtp.anulado') : t('mtp.vencido')}</b>
+        ${c.estado === 'pagado' ? t('mtp.yaPagadoP') : t('mtp.cerradoP')}</div>
+      <div class="ficha-btns"><button class="btn btn-linea btn-sm" onclick="VETA.payOtroCobro()">${t('mtp.otroCobro')}</button></div>
+    </div>` : `
+
+    <div class="bloque vidrio">
+      <h3>${dividida ? t('mtp.tuParteT') : t('mtp.confirmarT')}</h3>
+      <p class="pie" style="margin-top:8px">${dividida ? t('mtp.tuParteP') : t('mtp.confirmarP')}</p>
+      <div class="mtp-partes${dividida ? '' : ' una'}">${c.partes.map(parte).join('')}</div>
+    </div>
+
+    ${mias.length ? `
+    <div class="bloque vidrio">
+      <div class="mtp-resumen">
+        <span>${t('mtp.vasAPagar')}</span>
+        <b class="mono">${oro(totalOr)} ORIGEN</b>
+        <small>${esc(mtpHnl(totalHnl))}${tengo != null ? ` · ${t('mtp.tenes')} ${tapa(oro(tengo))}` : ''}</small>
+      </div>
+      ${mtpFallo ? `<div class="aviso aviso-mal" style="margin-top:14px">${esc(mtpFallo)}</div>` : ''}
+      <form onsubmit="VETA.payPagar(event)" style="margin-top:14px">
+        <label class="campo">
+          <span>${t('env.clave')}</span>
+          <input id="mtp-clave" type="password" autocomplete="current-password">
+        </label>
+        <p class="pie" style="margin-top:10px">${t('mtp.firmaAqui')}</p>
+        <button id="mtp-pagar-btn" class="btn btn-oro btn-full" type="submit" style="margin-top:14px" ${mtpPagando ? 'disabled' : ''}>${t('mtp.pagarB')} ${oro(totalOr)} ORIGEN</button>
+      </form>
+    </div>` : `
+    <div class="bloque vidrio">
+      <p class="pie">${t('mtp.elegiPrimero')}</p>
+      ${mtpFallo ? `<div class="aviso aviso-mal" style="margin-top:14px">${esc(mtpFallo)}</div>` : ''}
+    </div>`}`}`;
+  }
+
+  const payOtroCobro = () => { mtpCobro = null; mtpMias = []; mtpFallo = null; vista('paycobro'); };
+
+  // ── mi comercio ───────────────────────────────────────────────────────────
+
+  /* El otro lado del mostrador: dar de alta el negocio, mandar los papeles y
+     emitir cobros. Vive aqui y no en una app aparte porque el dueño de la
+     pupuseria es la misma persona que paga con la billetera el domingo, y
+     obligarle a dos cuentas en dos webs para las dos mitades de su vida es
+     inventarle un problema. */
+  let mtpMio = null;         // el comercio propio, o null si no tiene
+  let mtpMioCargado = false;
+  let mtpLibro = null;
+  let mtpAlta = { legalName: '', tradeName: '', taxId: '', categorySlug: '', countrySlug: '', citySlug: '', address: '', description: '', walletAddress: '' };
+
+  async function negCargar(forzar) {
+    if (mtpMioCargado && !forzar) return;
+    try {
+      const d = await pedirMtp('/api/companies/mine');
+      mtpMio = d?.company || d?.companies?.[0] || (d?.id ? d : null);
+      mtpMioCargado = true;
+    } catch (e) {
+      if (e.estado === 404) { mtpMio = null; mtpMioCargado = true; }
+      else if (!mtpSinIdentidad(e)) mtpFallo = e.message;
+    }
+    if (vistaActual === 'paymio') vista('paymio');
+  }
+
+  const MTP_KYB = {
+    verified: ['si', 'mtp.kOk'], pending: ['ojo', 'mtp.kRev'],
+    rejected: ['no', 'mtp.kNo'], unsubmitted: ['', 'mtp.kSin'],
+  };
+
+  function paymio() {
+    if (!mtpMioCargado) { negCargar(); return `
+      <button class="volver" onclick="VETA.vista('pay')"><svg viewBox="0 0 24 24">${ICO.atras}</svg>MyTokenPay</button>
+      <div class="bloque vidrio centrado"><span class="girando"></span>
+        <p class="pie" style="margin-top:12px">${t('mtp.cargando')}</p></div>`; }
+
+    const cab = `
+    <button class="volver" onclick="VETA.vista('pay')">
+      <svg viewBox="0 0 24 24">${ICO.atras}</svg>MyTokenPay
+    </button>
+    <div class="cab"><div><h2>${t('mtp.miComercioT')}</h2>
+      <div class="sub">${mtpMio ? esc(mtpMio.tradeName || mtpMio.legalName) : t('mtp.altaSub')}</div>
+    </div></div>`;
+
+    if (!mtpMio) return `${cab}${negAlta()}`;
+
+    const est = mtpMio.kyc?.status || 'unsubmitted';
+    const [tono, clave] = MTP_KYB[est] || MTP_KYB.unsubmitted;
+    const listo = est === 'verified' && !!mtpMio.walletAddress;
+
+    return `${cab}
+    <div class="bloque vidrio">
+      <div class="mtp-estado mtp-estado-${tono || 'gris'}">
+        <b>${t(clave)}</b>
+        <span>${t(clave + 'P')}</span>
+      </div>
+      <dl class="datos" style="margin-top:16px">
+        <div><dt>${t('pay.razon')}</dt><dd>${esc(mtpMio.legalName || '')}</dd></div>
+        <div><dt>${t('mtp.rtn')}</dt><dd class="mono">${esc(mtpMio.taxId || '')}</dd></div>
+        <div><dt>${t('pay.dire')}</dt><dd>${esc(mtpMio.address || '')}</dd></div>
+        <div><dt>${t('mtp.dirCobro')}</dt><dd class="mono">${mtpMio.walletAddress ? esc(cortaDir(mtpMio.walletAddress)) : '—'}</dd></div>
+      </dl>
+      ${!mtpMio.walletAddress ? `
+      <div class="nota nota-cuidado" style="margin-top:14px">${t('mtp.faltaDir')}</div>
+      <div class="ficha-btns">
+        <button class="btn btn-oro btn-sm" onclick="VETA.negUsarMiDireccion()">${t('mtp.usarMiDir')}</button>
+      </div>` : ''}
+    </div>
+
+    ${listo ? `
+    <div class="bloque vidrio">
+      <h3>${t('mtp.emitirT')}</h3>
+      <p class="pie" style="margin-top:8px">${t('mtp.emitirP')}</p>
+      ${mtpFallo ? `<div class="aviso aviso-mal" style="margin-top:14px">${esc(mtpFallo)}</div>` : ''}
+      <form onsubmit="VETA.negEmitir(event)" style="margin-top:14px">
+        <div class="campo">
+          <label for="neg-monto">${t('mtp.cuanto')}</label>
+          <input id="neg-monto" inputmode="decimal" placeholder="0.00" autocomplete="off">
+        </div>
+        <div class="campo">
+          <label for="neg-concepto">${t('mtp.concepto')}</label>
+          <input id="neg-concepto" placeholder="${t('mtp.conceptoEj')}" maxlength="80" autocomplete="off">
+        </div>
+        <div class="campo">
+          <label for="neg-partes">${t('mtp.entreCuantos')}</label>
+          <input id="neg-partes" type="number" min="1" max="20" value="1">
+        </div>
+        <button class="btn btn-oro btn-full" type="submit" style="margin-top:14px">${t('mtp.emitirB')}</button>
+      </form>
+    </div>` : ''}
+
+    <div class="bloque vidrio">
+      <div class="bloque-cab"><h3>${t('mtp.libroT')}</h3>
+        <button class="btn btn-linea btn-sm" onclick="VETA.negLibro(true)">${t('mtp.actualizar')}</button>
+      </div>
+      ${negLibroHtml()}
+    </div>`;
+  }
+
+  function negLibroHtml() {
+    if (mtpLibro === null) { negLibro(); return `<p class="pie">${t('mtp.cargando')}</p>`; }
+    if (!mtpLibro.length) return `<div class="vacio"><b>${t('mtp.libroVacioT')}</b>${t('mtp.libroVacioP')}</div>`;
+    const ESTADO = { abierto: 'mtp.cAbierto', pagado: 'mtp.cPagado', anulado: 'mtp.cAnulado', vencido: 'mtp.cVencido' };
+    return `<div class="mtp-libro">${mtpLibro.map(c => `
+      <div class="mtp-fila mtp-fila-${esc(c.estado)}">
+        <div class="mtp-fila-a">
+          <b class="mono">${esc(c.codigo)}</b>
+          <small>${esc(c.concepto || '')}</small>
+        </div>
+        <div class="mtp-fila-b">
+          <b class="mono">${esc(mtpHnl(c.montoHnl))}</b>
+          <small>${oro(c.montoOrigen)} ORIGEN</small>
+        </div>
+        <div class="mtp-fila-c">
+          <span class="mtp-pill mtp-pill-${esc(c.estado)}">${t(ESTADO[c.estado] || 'mtp.cAbierto')}</span>
+          ${c.estado === 'abierto' ? `<button class="btn btn-linea btn-sm" onclick="VETA.negAnular(${jsTxt(c.id)})">${t('mtp.anular')}</button>` : ''}
+        </div>
+      </div>`).join('')}</div>`;
+  }
+
+  async function negLibro(forzar) {
+    if (mtpLibro && !forzar) return;
+    try {
+      const d = await pedirMtp('/api/cobros/mios');
+      const l = Array.isArray(d) ? d : (d?.cobros || []);
+      mtpLibro = l;
+    } catch (e) {
+      if (!mtpSinIdentidad(e)) mtpLibro = [];
+    }
+    if (vistaActual === 'paymio') vista('paymio');
+  }
+
+  function negAlta() {
+    const paises = payPaisesL();
+    const ciudades = payCiudadesDe(mtpAlta.countrySlug);
+    return `
+    <div class="bloque vidrio">
+      <h3>${t('mtp.altaT')}</h3>
+      <p class="pie" style="margin-top:8px">${t('mtp.altaP')}</p>
+      ${mtpFallo ? `<div class="aviso aviso-mal" style="margin-top:14px">${esc(mtpFallo)}</div>` : ''}
+      <form onsubmit="VETA.negCrear(event)" style="margin-top:16px">
+        <div class="campo">
+          <label for="neg-trade">${t('mtp.nombreCom')}</label>
+          <input id="neg-trade" value="${esc(mtpAlta.tradeName)}" maxlength="80" autocomplete="organization">
+        </div>
+        <div class="campo">
+          <label for="neg-legal">${t('pay.razon')}</label>
+          <input id="neg-legal" value="${esc(mtpAlta.legalName)}" maxlength="120">
+        </div>
+        <div class="campo">
+          <label for="neg-rtn">${t('mtp.rtn')}</label>
+          <input id="neg-rtn" value="${esc(mtpAlta.taxId)}" class="mono" maxlength="20" autocomplete="off">
+        </div>
+        <div class="campo">
+          <label for="neg-cat">${t('mtp.rubro')}</label>
+          <select id="neg-cat">
+            <option value="">${t('mtp.elegi')}</option>
+            ${payCatsL().map(c => `<option value="${esc(c.slug)}" ${mtpAlta.categorySlug === c.slug ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="campo">
+          <label for="neg-pais">${t('mtp.pais')}</label>
+          <select id="neg-pais" onchange="VETA.negPais(this.value)">
+            <option value="">${t('mtp.elegi')}</option>
+            ${paises.map(p => `<option value="${esc(p.slug)}" ${mtpAlta.countrySlug === p.slug ? 'selected' : ''}>${p.flag || ''} ${esc(p.label)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="campo">
+          <label for="neg-ciudad">${t('mtp.ciudad')}</label>
+          <select id="neg-ciudad" ${ciudades.length ? '' : 'disabled'}>
+            <option value="">${ciudades.length ? t('mtp.elegi') : t('mtp.primeroPais')}</option>
+            ${ciudades.map(c => `<option value="${esc(c.slug)}" ${mtpAlta.citySlug === c.slug ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="campo">
+          <label for="neg-dir">${t('pay.dire')}</label>
+          <input id="neg-dir" value="${esc(mtpAlta.address)}" maxlength="160">
+        </div>
+        <div class="campo">
+          <label for="neg-desc">${t('mtp.queHacen')}</label>
+          <textarea id="neg-desc" rows="3" maxlength="400">${esc(mtpAlta.description)}</textarea>
+        </div>
+        ${/* La direccion de cobro se ofrece rellenada con la de esta billetera,
+             que es la respuesta correcta el noventa y nueve por ciento de las
+             veces. Se deja editable porque un negocio puede querer cobrar en
+             otra —la de la sociedad, no la del dueño— y forzarle la propia
+             seria decidir por el donde va su dinero. */''}
+        <div class="campo">
+          <label for="neg-wallet">${t('mtp.dirCobro')}</label>
+          <input id="neg-wallet" class="mono" value="${esc(mtpAlta.walletAddress || sesion?.direccion || '')}"
+                 placeholder="0x…" autocomplete="off" spellcheck="false">
+        </div>
+        <p class="pie">${t('mtp.dirCobroP')}</p>
+        <button class="btn btn-oro btn-full" type="submit" style="margin-top:16px">${t('mtp.altaB')}</button>
+      </form>
+    </div>`;
+  }
+
+  const negPais = v => {
+    mtpAlta = { ...negLeerAlta(), countrySlug: v, citySlug: '' };
+    vista('paymio');
+  };
+
+  function negLeerAlta() {
+    return {
+      tradeName: $('#neg-trade')?.value?.trim() || '',
+      legalName: $('#neg-legal')?.value?.trim() || '',
+      taxId: $('#neg-rtn')?.value?.trim() || '',
+      categorySlug: $('#neg-cat')?.value || '',
+      countrySlug: $('#neg-pais')?.value || '',
+      citySlug: $('#neg-ciudad')?.value || '',
+      address: $('#neg-dir')?.value?.trim() || '',
+      description: $('#neg-desc')?.value?.trim() || '',
+      walletAddress: $('#neg-wallet')?.value?.trim() || '',
+    };
+  }
+
+  async function negCrear(ev) {
+    ev?.preventDefault();
+    const d = negLeerAlta();
+    mtpAlta = d;
+    const falta = k => { mtpFallo = t('mtp.eFalta') + ' ' + t(k); vista('paymio'); };
+    if (!d.tradeName) return falta('mtp.nombreCom');
+    if (!d.legalName) return falta('pay.razon');
+    if (!d.taxId) return falta('mtp.rtn');
+    if (!d.categorySlug) return falta('mtp.rubro');
+    if (!d.countrySlug) return falta('mtp.pais');
+    if (!d.citySlug) return falta('mtp.ciudad');
+    if (!d.address) return falta('pay.dire');
+    if (d.walletAddress && !/^0x[a-fA-F0-9]{40}$/.test(d.walletAddress)) {
+      mtpFallo = t('env.eDir'); return vista('paymio');
+    }
+    /* El backend pide lat/lng. La ciudad elegida trae las suyas y con eso basta
+       para ponerlo en el mapa: pedirle a alguien que teclee sus coordenadas
+       para darse de alta es perder al noventa por ciento en ese campo. */
+    const ciu = payCiudadesDe(d.countrySlug).find(c => c.slug === d.citySlug);
+    const pai = payPaisesL().find(p => p.slug === d.countrySlug);
+    try {
+      mtpFallo = null;
+      const r = await pedirMtp('/api/companies', {
+        metodo: 'POST',
+        cuerpo: {
+          ...d,
+          productsServices: [],
+          lat: ciu?.lat ?? pai?.lat ?? 0,
+          lng: ciu?.lng ?? pai?.lng ?? 0,
+        },
+      });
+      mtpMio = r?.company || r;
+      mtpLibro = null;
+      avisar(t('mtp.avAlta'));
+      cargarComercios(true);
+      vista('paymio');
+    } catch (e) {
+      if (mtpSinIdentidad(e)) return;
+      mtpFallo = e.detalle ? `${e.message} ${e.detalle}` : e.message;
+      vista('paymio');
+    }
+  }
+
+  async function negUsarMiDireccion() {
+    if (!mtpMio || !sesion?.direccion) return;
+    try {
+      const r = await pedirMtp('/api/companies/' + encodeURIComponent(mtpMio.id), {
+        metodo: 'PUT', cuerpo: { ...mtpMio, walletAddress: sesion.direccion },
+      });
+      mtpMio = r?.company || { ...mtpMio, walletAddress: sesion.direccion };
+      avisar(t('mtp.avDir'));
+      cargarComercios(true);
+    } catch (e) { mtpFallo = e.message; }
+    vista('paymio');
+  }
+
+  async function negEmitir(ev) {
+    ev?.preventDefault();
+    const monto = Number(String($('#neg-monto')?.value || '').replace(',', '.'));
+    const concepto = $('#neg-concepto')?.value?.trim() || '';
+    const partes = Math.max(1, Math.min(20, Math.trunc(Number($('#neg-partes')?.value) || 1)));
+    if (!(monto > 0)) { mtpFallo = t('mtp.eMonto'); return vista('paymio'); }
+    if (!concepto) { mtpFallo = t('mtp.eConcepto'); return vista('paymio'); }
+    try {
+      mtpFallo = null;
+      await pedirMtp('/api/cobros', { metodo: 'POST', cuerpo: { montoHnl: monto, concepto, partes } });
+      mtpLibro = null;
+      avisar(t('mtp.avEmitido'));
+      vista('paymio');
+    } catch (e) {
+      if (mtpSinIdentidad(e)) return;
+      mtpFallo = e.detalle ? `${e.message} ${e.detalle}` : e.message;
+      vista('paymio');
+    }
+  }
+
+  async function negAnular(id) {
+    try {
+      await pedirMtp('/api/cobros/mios/' + encodeURIComponent(id) + '/anular', { metodo: 'POST' });
+      mtpLibro = null;
+      avisar(t('mtp.avAnulado'));
+    } catch (e) { mtpFallo = e.message; }
+    vista('paymio');
+  }
 
   // ── cobrar ────────────────────────────────────────────────────────────────
 
@@ -6493,6 +7309,22 @@ const VETA = (() => {
           irACobro(cobro);
           return;
         }
+        /* Un codigo de cobro de MyTokenPay. Va DESPUES de los otros dos porque
+           es el mas permisivo —seis caracteres de un alfabeto corto— y puesto
+           antes se tragaria lecturas que en realidad eran otra cosa. */
+        const cod = leerCodigoCobro(crudo);
+        if (cod) {
+          cerrarCamara();
+          avisar(t('qr.leido'));
+          mtpMias = []; mtpFallo = null;
+          mtpTraerCobro(cod)
+            .then(() => vista('paycobro'))
+            .catch(e => {
+              if (mtpSinIdentidad(e)) return;
+              mtpCobro = null; mtpFallo = e.message; vista('paycobro');
+            });
+          return;
+        }
       } catch {}
       requestAnimationFrame(mirar);
     };
@@ -6976,6 +7808,9 @@ const VETA = (() => {
            cobElegir, cobEscribir, cobCopiar, cobCompartir,
            // MyTokenPay adentro: directorio, ficha y cobro real.
            payBuscar, payCategoria, payDePais, payVerTodos, payAbrir,
+           payLeerCodigo, payTomar, payPagar, payOtroCobro,
+           paymio: () => vista('paymio'), negCrear, negPais, negEmitir, negAnular,
+           negUsarMiDireccion, negLibro,
            // El Nucleo: la portada del ecosistema.
            nuAbrir,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.

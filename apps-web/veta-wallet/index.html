@@ -27,6 +27,7 @@
   connect-src 'self'
     https://vetawallet-1a2e38ac52b1.herokuapp.com
     https://ordenex-api-ba4b27b8b51a.herokuapp.com
+    https://mytokenpay-api-5ab43b64205a.herokuapp.com
     https://cerebro.ordenscan.com
     https://genesis-id.onrender.com
     https://rpc.ordenglobal-rpc.com
@@ -725,6 +726,109 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 .pay-ofrece span{padding:6px 11px;border-radius:100px;font-size:11.5px;font-weight:600;
   color:#D8F7FF;background:rgba(95,198,234,.1);border:1px solid rgba(95,198,234,.25)}
 .pay-cobra{display:flex;align-items:center;gap:16px;justify-content:space-between;flex-wrap:wrap}
+.pay-cobra .btn,.mtp-pagar-ya .btn{flex:none}
+.pay-emo-img{background:rgba(255,255,255,.04);padding:0;overflow:hidden}
+.pay-emo-img img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+/* Quien cobra en linea se dice en la propia ficha: es la diferencia entre
+   «podes ir» y «podes pagarle desde aca», y son dos cosas distintas. */
+.pay-enlinea{display:inline-block;margin-top:11px;padding:5px 10px;border-radius:100px;
+  font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  color:#B6F2DC;background:rgba(62,217,160,.12);border:1px solid rgba(62,217,160,.3)}
+.mtp-pie{margin-top:12px;font-size:11.5px}
+.mtp-pie-mal{color:#FFC3BC}
+.mtp-pagar-ya{display:flex;align-items:center;gap:16px;justify-content:space-between;flex-wrap:wrap}
+
+/* ── EL CODIGO ─────────────────────────────────────────────────────────────
+   Grande, monoespaciado y espaciado: se teclea de pie, mirando un papel o
+   escuchando a alguien dictarlo por encima del ruido de un comedor. */
+.mtp-cod{text-align:center;font-size:26px !important;letter-spacing:.22em;
+  text-transform:uppercase;padding:16px 15px !important}
+
+/* ── LA CUENTA ─────────────────────────────────────────────────────────────
+   Lempiras arriba, ORIGEN abajo: el comercio piensa en lempiras y quien paga
+   tambien, pero lo que se mueve es ORIGEN y ocultarlo seria mentir a medias. */
+.mtp-total{display:grid;gap:2px;padding:16px 18px;border-radius:16px;margin-top:4px;
+  background:rgba(201,169,97,.07);border:1px solid var(--linea2)}
+.mtp-total div{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.mtp-total span{font-size:12.5px;color:var(--bruma)}
+.mtp-total div:first-child b{font-size:27px;font-weight:800;color:var(--oroHi)}
+.mtp-total div:last-child b{font-size:14px;font-weight:700;color:var(--bruma)}
+.mtp-tasa{margin-top:11px;font-size:11.5px;line-height:1.7}
+
+/* ── LAS PORCIONES ─────────────────────────────────────────────────────────
+   Cada porcion es un boton con su estado escrito, no un color y ya: quien no
+   distingue el verde del gris tiene que poder repartir la cuenta igual. */
+.mtp-partes{display:grid;gap:9px;margin-top:14px;grid-template-columns:repeat(auto-fill,minmax(215px,1fr))}
+.mtp-partes.una{grid-template-columns:1fr}
+.mtp-parte{display:flex;align-items:center;gap:12px;text-align:left;padding:13px 15px;
+  border-radius:15px;cursor:pointer;border:1px solid var(--linea2);background:var(--panel2);
+  transition:border-color .18s,background .18s,transform .18s}
+.mtp-parte:hover:not(:disabled){border-color:var(--oro);transform:translateY(-1px)}
+.mtp-parte:disabled{cursor:default;opacity:.5}
+.mtp-parte-n{flex:none;width:26px;height:26px;border-radius:9px;display:grid;place-items:center;
+  font-size:11.5px;font-weight:700;color:var(--humo);background:rgba(255,255,255,.05)}
+.mtp-parte-m{flex:1;min-width:0}
+.mtp-parte-m b{display:block;font-size:14px;font-weight:700;color:var(--crema)}
+.mtp-parte-m small{display:block;font-size:11.5px;color:var(--humo);margin-top:2px}
+.mtp-parte-e{flex:none;font-size:10.5px;font-weight:700;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--humo);text-align:right;max-width:38%}
+.mtp-parte.mia{border-color:var(--oro);background:rgba(201,169,97,.1)}
+.mtp-parte.mia .mtp-parte-n{color:var(--tinta);background:var(--oroLt)}
+.mtp-parte.mia .mtp-parte-e{color:var(--oroLt)}
+.mtp-parte.pagada{background:rgba(62,217,160,.07);border-color:rgba(62,217,160,.28)}
+.mtp-parte.pagada .mtp-parte-e{color:var(--jade)}
+.mtp-parte.pagada .mtp-parte-m b{text-decoration:line-through;color:var(--humo)}
+
+.mtp-resumen{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px}
+.mtp-resumen span{flex:1 0 100%;font-size:12.5px;color:var(--bruma)}
+.mtp-resumen b{font-size:24px;font-weight:800;color:var(--oroHi)}
+.mtp-resumen small{font-size:12px;color:var(--humo)}
+/* El hash se parte donde quepa: es lo unico que arregla un pago colgado, y un
+   comprobante recortado con puntos suspensivos no le sirve a nadie. */
+.mtp-hash{word-break:break-all;font-size:12px;line-height:1.7;color:var(--oroLt)}
+
+/* ── MI COMERCIO ───────────────────────────────────────────────────────────*/
+.mtp-estado{display:grid;gap:5px;padding:14px 16px;border-radius:15px;
+  border:1px solid var(--linea2);background:rgba(255,255,255,.03)}
+.mtp-estado b{font-size:14.5px;font-weight:700;color:var(--crema)}
+.mtp-estado span{font-size:12.5px;line-height:1.6;color:var(--bruma)}
+.mtp-estado-si{background:rgba(62,217,160,.08);border-color:rgba(62,217,160,.3)}
+.mtp-estado-si b{color:#B6F2DC}
+.mtp-estado-ojo{background:rgba(226,137,60,.08);border-color:rgba(226,137,60,.3)}
+.mtp-estado-ojo b{color:#F2C89A}
+.mtp-estado-no{background:rgba(240,119,107,.08);border-color:rgba(240,119,107,.3)}
+.mtp-estado-no b{color:#FFC3BC}
+.campo select,.campo textarea{width:100%;padding:14px 15px;background:var(--campo);
+  border:1px solid var(--campoBr);border-radius:var(--r);font-size:15.5px;color:var(--crema);
+  font-family:inherit;transition:border-color .2s,box-shadow .2s}
+.campo select:focus,.campo textarea:focus{outline:none;border-color:var(--oro);
+  box-shadow:0 0 0 3px rgba(201,169,97,.14)}
+.campo select:disabled{opacity:.5}
+.campo textarea{resize:vertical;line-height:1.6}
+
+.mtp-libro{display:grid;gap:9px;margin-top:4px}
+.mtp-fila{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:13px 15px;
+  border-radius:15px;border:1px solid var(--linea2);background:var(--panel2)}
+.mtp-fila-a{flex:1 1 140px;min-width:0}
+.mtp-fila-a b{display:block;font-size:14px;font-weight:700;color:var(--oroLt);letter-spacing:.08em}
+.mtp-fila-a small{display:block;font-size:11.5px;color:var(--humo);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mtp-fila-b{flex:none;text-align:right}
+.mtp-fila-b b{display:block;font-size:14px;font-weight:700;color:var(--crema)}
+.mtp-fila-b small{display:block;font-size:11.5px;color:var(--humo);margin-top:2px}
+.mtp-fila-c{flex:none;display:flex;align-items:center;gap:9px}
+.mtp-pill{padding:5px 10px;border-radius:100px;font-size:10.5px;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--humo);background:rgba(255,255,255,.05)}
+.mtp-pill-abierto{color:var(--oroLt);background:rgba(201,169,97,.14)}
+.mtp-pill-pagado{color:#B6F2DC;background:rgba(62,217,160,.12)}
+.mtp-pill-anulado,.mtp-pill-vencido{color:#FFC3BC;background:rgba(240,119,107,.1)}
+
+@media(max-width:520px){
+  .mtp-cod{font-size:21px !important;letter-spacing:.16em}
+  .mtp-total div:first-child b{font-size:23px}
+  .mtp-fila-b{text-align:left}
+  .mtp-fila-c{flex:1 1 100%;justify-content:space-between}
+}
 
 /* ── PULSE CHAT ────────────────────────────────────────────────────────────
    Dos columnas cuando la pantalla da para las dos: la lista a la izquierda y
