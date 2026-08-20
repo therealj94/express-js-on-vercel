@@ -3,7 +3,7 @@ import cors from 'cors'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 
-import { store, iniciar, motor, saludAlmacen } from './store.js'
+import { store, iniciar, motor, saludAlmacen, saludBitacora } from './store.js'
 import { asegurarAdministrador, limpiarSesiones } from './auth/operadores.js'
 import { asegurarAplicaciones, alinearAlcances } from './auth/aplicaciones.js'
 import { prepararTelemetria, hayMongo as telemetriaEnMongo } from './analitica/eventos.js'
@@ -262,6 +262,12 @@ app.get('/healthz', (_req, res) => {
       // alguna vez por rotura, se dice aquí y se dice dónde. Un registro de
       // cumplimiento que vuelve a verde sin dejar rastro no vale nada.
       bitacoraSellos: cadena.sellos.length,
+      /* Copias exactas que el almacen escribio de mas y se apartaron al
+         cargar, y sitios donde dos entradas DISTINTAS comparten el mismo
+         numero de orden. Lo primero es el fallo del 20-ago, ya arreglado y
+         aqui solo para verlo si vuelve; lo segundo no se toca nunca solo. */
+      bitacoraCopiasApartadas: saludBitacora().copiasApartadas,
+      bitacoraSitiosEnChoque: saludBitacora().sitiosEnChoque,
       bitacoraRoturas: cadena.sellos.map((x) => x.rotaEn).filter((x) => x !== null),
       telemetriaPersistente: telemetriaEnMongo(),
     },

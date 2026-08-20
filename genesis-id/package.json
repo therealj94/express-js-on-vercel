@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
-    "prueba": "node --import tsx --test --test-force-exit src/pruebas/*.test.ts",
+    "prueba": "node --import tsx --test --test-force-exit src/pruebas/*.test.ts src/pruebas/*.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

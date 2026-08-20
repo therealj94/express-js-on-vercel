@@ -30,6 +30,13 @@
 body{background:radial-gradient(1100px 640px at 50% -12%,#16233A,#0B111C);color:var(--txt);
  font:14px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
 .num{font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,Consolas,monospace}
+/* El activo, como sello y no como texto gris pegado a la cifra: ONDK, ORIGEN
+   y AUKA tienen que distinguirse de un vistazo, que es cuando se miran. */
+.activo{display:inline-block;margin-left:7px;padding:1px 6px;border-radius:5px;
+  font-family:system-ui,sans-serif;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+  color:var(--cyan);background:rgba(127,178,232,.13);border:1px solid rgba(127,178,232,.28);
+  vertical-align:1px}
+.qi-cripto{color:var(--mut);white-space:nowrap}
 button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:8px 14px;background:var(--line);color:var(--txt)}
 button:hover{filter:brightness(1.18)}
 button:disabled{opacity:.45;cursor:not-allowed}
@@ -419,7 +426,60 @@ const $ = (s) => document.querySelector(s)
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 const fecha = (f) => f ? new Date(f).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' }) : '—'
-const dinero = (n) => 'USD ' + Number(n || 0).toLocaleString('es', { maximumFractionDigits: 0 })
+
+/* ── LAS CIFRAS, SIN ADIVINAR ────────────────────────────────────────────────
+ *
+ * «20.000» y «20,000» son la misma cifra escrita de dos maneras y significan
+ * cosas distintas según quién lo lea: veinte mil, o veinte con tres decimales.
+ * En un panel de cumplimiento, donde se mira un monto para decidir si se abre
+ * un caso, esa duda no es un detalle de estilo.
+ *
+ * Así que aquí el punto y la coma no compiten: los MILES se separan con un
+ * espacio fino y el DECIMAL es siempre la coma.
+ *
+ *     20 000        veinte mil, sin decimales
+ *     20 000,50     veinte mil con cincuenta centavos
+ *     0,50          cincuenta centavos
+ *     1,532505      un ORIGEN y pico
+ *
+ * El espacio es el separador de miles de la norma ISO 31-0 justamente por esto:
+ * no se puede confundir con un decimal en ningún idioma. Va como espacio fino
+ * indivisible (U+202F) para que la cifra no se parta al final de un renglón.
+ */
+const MILES = ' '
+
+function cifra(n, minDec = 0, maxDec = 6) {
+  /* SIN DATO NO SE ESCRIBE UN CERO. `Number(null)` es 0, y pintar «0» donde no
+     hay monto dice que la operación fue de cero: es un dato inventado, y de los
+     que se creen. Un hueco se enseña como hueco. El cero de verdad sí se pinta. */
+  if (n === null || n === undefined || n === '') return '—'
+  const x = Number(n)
+  if (!Number.isFinite(x)) return '—'
+  const partido = Math.abs(x).toFixed(Math.max(minDec, Math.min(maxDec, decimalesDe(x, minDec, maxDec))))
+  const [enteros, decimales] = partido.split('.')
+  const conMiles = enteros.replace(/\B(?=(\d{3})+(?!\d))/g, MILES)
+  return (x < 0 ? '−' : '') + conMiles + (decimales ? ',' + decimales : '')
+}
+
+/* Cuántos decimales enseñar: los que la cifra tenga de verdad, dentro del
+   máximo. Un monto redondo no se ensucia con ceros y uno de 1,532505 no se
+   recorta a 1,53 — recortar en un panel de cumplimiento es esconder dinero. */
+function decimalesDe(x, minDec, maxDec) {
+  const texto = Math.abs(x).toFixed(maxDec).replace(/0+$/, '')
+  const punto = texto.indexOf('.')
+  const tiene = punto < 0 ? 0 : texto.length - punto - 1
+  return Math.max(minDec, tiene)
+}
+
+/* Dólares: siempre con sus dos decimales y con la moneda por delante.
+   El formato anterior tiraba los decimales (`maximumFractionDigits: 0`), así
+   que un movimiento de 0,50 USD se leía «USD 0» — un movimiento de cero. */
+const dinero = (n) => 'USD' + MILES + cifra(n, 2, 2)
+
+/* El activo, como sello aparte y no como texto gris al lado del número.
+   Un ONDK y un ORIGEN no se distinguen de un vistazo cuando los dos van en el
+   mismo tono apagado pegados a la cifra. */
+const sello = (a) => a ? `<span class="activo">${esc(a)}</span>` : ''
 
 function avisar(texto, mal) {
   const a = $('#aguja')
@@ -687,7 +747,7 @@ VISTAS.resumen = async function () {
       ${celda('Almacén', esc(s.almacen.motor) + (s.almacen.efimero ? ' · efímero' : ''),
         s.almacen.efimero ? 'rz-mal' : '')}
       ${celda('Listas de sanciones', s.listas.cargadas
-        ? `${s.listas.registros.toLocaleString('es')} registros${s.listas.diasDesdeDescarga != null
+        ? `${cifra(s.listas.registros)} registros${s.listas.diasDesdeDescarga != null
             ? ` · hace ${s.listas.diasDesdeDescarga} días` : ''}`
         : 'ninguna cargada',
         !s.listas.cargadas ? 'rz-mal' : s.listas.vencidas ? 'rz-ojo' : '')}
@@ -897,7 +957,7 @@ async function verIdentidad(id) {
       ${campo('Ocupación', i.ocupacion || '—')}
       ${campo('Origen de fondos', i.origenFondos || '—')}
       ${campo('Propósito de la cuenta', i.propositoCuenta || '—')}
-      ${campo('Volumen esperado', i.volumenEsperadoUsd != null ? `${i.volumenEsperadoUsd.toLocaleString('es')} USD/año` : 'sin declarar')}
+      ${campo('Volumen esperado', i.volumenEsperadoUsd != null ? `${dinero(i.volumenEsperadoUsd)} al año` : 'sin declarar')}
       ${campo('Diligencia', i.volumenEsperadoUsd != null && i.volumenEsperadoUsd < 10000
         ? 'simplificada — declara menos de 10 000 USD/año; el perfil completo se exige si sus movimientos cruzan el umbral'
         : 'completa — sobre el umbral de reporte, u omitió declarar volumen')}
@@ -937,7 +997,7 @@ async function verIdentidad(id) {
           <div class="d">${esc(c.razones.join('. '))}</div>
           <div class="d">Lista ${esc(c.registro.lista)} · programa ${esc(c.registro.programa || '—')}</div>
         </div>`).join('')}</div>`
-      : `<div class="item bien">Sin coincidencias · ${i.tamiz.estadoListas.registros.toLocaleString('es')} registros consultados</div>`}
+      : `<div class="item bien">Sin coincidencias · ${cifra(i.tamiz.estadoListas.registros)} registros consultados</div>`}
 
     <h3>Biometría</h3>
     ${i.biometria ? `<div class="item ${i.biometria.estado === 'ok' ? 'bien'
@@ -1200,7 +1260,7 @@ VISTAS.movimientos = async function () {
         <div class="rz-ficha" style="cursor:default">
           <span class="rz-cinta"><span class="rz-ojillo">${esc(a.app)}</span></span>
           <span class="rz-cuerpo">
-            <span class="rz-cifra num">${a.n.toLocaleString('es')}</span>
+            <span class="rz-cifra num">${cifra(a.n)}</span>
             <span class="rz-pie">${dinero(a.volumenUsd)} movidos</span>
           </span>
         </div>`).join('')}
@@ -1209,7 +1269,7 @@ VISTAS.movimientos = async function () {
     <div class="qi-marco">
       <div class="qi-cinta">
         <span class="qi-ojillo">Operaciones</span>
-        <span class="qi-cuenta num">${d.total.toLocaleString('es')} · ${dinero(d.volumenUsd)}</span>
+        <span class="qi-cuenta num">${cifra(d.total)} · ${dinero(d.volumenUsd)}</span>
       </div>
       ${d.movimientos.length ? `<div class="qi-cola">
         ${d.movimientos.map((m) => `
@@ -1221,7 +1281,7 @@ VISTAS.movimientos = async function () {
             <div class="qi-sellos">
               ${flecha(m)}
               <b class="num">${dinero(m.montoUsd)}</b>
-              <span class="num" style="color:var(--mut)">${esc(String(m.monto))} ${esc(m.activo || '')}</span>
+              <span class="qi-cripto num">${cifra(m.monto)}${sello(m.activo)}</span>
               ${m.app ? pill(m.app, 'info') : ''}
             </div>
             <div class="qi-meta">
@@ -1239,7 +1299,7 @@ VISTAS.movimientos = async function () {
     ${d.total > 100 ? `<div style="display:flex;gap:8px;justify-content:center;margin-top:14px">
       <button class="g" onclick="mvIr(-1)" ${mvPagina === 0 ? 'disabled' : ''}>← Anteriores</button>
       <span style="align-self:center;color:var(--faint);font-size:12px">
-        ${(mvPagina * 100 + 1).toLocaleString('es')}–${Math.min((mvPagina + 1) * 100, d.total).toLocaleString('es')} de ${d.total.toLocaleString('es')}</span>
+        ${cifra(mvPagina * 100 + 1)}–${cifra(Math.min((mvPagina + 1) * 100, d.total))} de ${cifra(d.total)}</span>
       <button class="g" onclick="mvIr(1)" ${(mvPagina + 1) * 100 >= d.total ? 'disabled' : ''}>Siguientes →</button>
     </div>` : ''}`
 }
@@ -1351,7 +1411,7 @@ VISTAS.listas = async function () {
       en la carpeta que indique GENESIS_LISTAS_DIR y pulse recargar.</div></div>` : ''}
     <div class="tarjeta p">
       <div class="campos">
-        ${campo('Registros', e.registros.toLocaleString('es'))}
+        ${campo('Registros', cifra(e.registros))}
         ${campo('Fuentes', (e.fuentes || []).join(', ') || '—')}
         ${campo('Descargadas', e.fechaDescarga || 'desconocido')}
         ${campo('Antigüedad', e.diasDesdeDescarga != null ? `${e.diasDesdeDescarga} días` : '—')}
@@ -1385,7 +1445,7 @@ VISTAS.listas = async function () {
 async function recargarListas() {
   avisar('Recargando…')
   const r = await api('/panel/listas/recargar', { method: 'POST' })
-  avisar(`${r.registros.toLocaleString('es')} registros · ${r.revisadas} identidades retamizadas · ${r.conCoincidencias} con coincidencias`)
+  avisar(`${cifra(r.registros)} registros · ${r.revisadas} identidades retamizadas · ${r.conCoincidencias} con coincidencias`)
   ir('listas')
 }
 
@@ -1396,7 +1456,7 @@ async function descargarOfac() {
   avisar('Descargando de la OFAC… puede tardar un par de minutos')
   try {
     const r = await api('/panel/listas/ofac', { method: 'POST' })
-    avisar(`${r.registros.toLocaleString('es')} fichas (${r.conAlias.toLocaleString('es')} con alias) · `
+    avisar(`${cifra(r.registros)} fichas (${cifra(r.conAlias)} con alias) · `
       + `${r.revisadas} identidades retamizadas · ${r.conCoincidencias} con coincidencias`)
     ir('listas')
   } catch (e) { alert(e.message) }
@@ -1410,7 +1470,7 @@ async function importarPropia() {
   avisar('Importando…')
   try {
     const r = await api('/panel/listas/importar', { method: 'POST', body: JSON.stringify({ texto, fuente }) })
-    avisar(`${r.registros.toLocaleString('es')} fichas importadas · ${r.revisadas} identidades retamizadas`)
+    avisar(`${cifra(r.registros)} fichas importadas · ${r.revisadas} identidades retamizadas`)
     ir('listas')
   } catch (e) { alert(e.message) }
 }

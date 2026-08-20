@@ -693,6 +693,26 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
 const fecha = (f) => f ? new Date(f).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' }) : '—'
 const pct = (n, d = 1) => (n * 100).toFixed(d) + '%'
 
+/* Las cifras, con el mismo criterio que el panel: los miles con espacio fino
+   indivisible y el decimal con coma. «20.000» y «20,000» significan cosas
+   distintas según quién las lea, y la mesa de cotejo es justo donde no se
+   puede adivinar. Sin dato se enseña un hueco, nunca un cero. */
+const MILES = '\u202f'
+const cifra = (n) => {
+  if (n === null || n === undefined || n === '') return '—'
+  const x = Number(n)
+  if (!Number.isFinite(x)) return '—'
+  const [ent, dec] = Math.abs(x).toFixed(6).replace(/0+$/, '').replace(/\.$/, '').split('.')
+  return (x < 0 ? '−' : '') + ent.replace(/\B(?=(\d{3})+(?!\d))/g, MILES) + (dec ? ',' + dec : '')
+}
+const dinero = (n) => {
+  if (n === null || n === undefined || !Number.isFinite(Number(n))) return '—'
+  const [ent, dec] = Math.abs(Number(n)).toFixed(2).split('.')
+  // El signo va con la cifra, no delante de la moneda: «USD −20 000,50».
+  return 'USD' + MILES + (Number(n) < 0 ? '−' : '') +
+    ent.replace(/\B(?=(\d{3})+(?!\d))/g, MILES) + ',' + dec
+}
+
 let sesion = localStorage.getItem('gid.sesion') || ''
 let yo = null
 let ident = null
@@ -1159,7 +1179,7 @@ function pintarExpediente(i) {
         ${campo('Ocupación', i.ocupacion)}
         ${campo('PEP declarado', i.pepDeclarado == null ? '' : (i.pepDeclarado ? 'SÍ' : 'no'))}
         ${campo('Origen de fondos', i.origenFondos, false, true)}
-        ${campo('Volumen esperado', i.volumenEsperadoUsd != null ? i.volumenEsperadoUsd.toLocaleString('es') + ' USD/año' : '', false, true)}
+        ${campo('Volumen esperado', i.volumenEsperadoUsd != null ? dinero(i.volumenEsperadoUsd) + ' al año' : '', false, true)}
       </div>
       ${discrepa ? `<div class="deslinde"><b>El nombre declarado y el del documento no son el mismo.</b>
         Compruébelo letra por letra en el anverso antes de decidir: la MRZ corta los nombres largos.</div>` : ''}
@@ -1192,7 +1212,7 @@ function pintarExpediente(i) {
             <div class="d">${esc(c.registro.lista)} · ${esc(c.registro.programa || '—')}</div>
           </div>`).join('')}</div>`
         : `<div class="lista"><div class="item bien"><div class="t">Sin coincidencias</div>
-           <div class="d">${i.tamiz.estadoListas.registros.toLocaleString('es')} registros consultados</div></div></div>`}
+           <div class="d">${cifra(i.tamiz.estadoListas.registros)} registros consultados</div></div></div>`}
     </div>
 
     ${(i.decisiones || []).length ? `<div class="bloque">

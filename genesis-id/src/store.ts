@@ -168,6 +168,39 @@ const COL_BITACORA = 'bitacora'
 /** Cuántas entradas de `datos.bitacora` están ya escritas en su colección. */
 let bitacoraGuardadas = 0
 
+/**
+ * Copias exactas descartadas al cargar, y filas con el mismo sitio pero
+ * contenido distinto. Se publica en `/healthz`: un descarte silencioso en el
+ * almacén de auditoría es justo lo que no puede pasar.
+ */
+let bitacoraCopias = 0
+let bitacoraChoques: number[] = []
+
+/**
+ * Índice ÚNICO sobre `i`.
+ *
+ * `i` es el sitio de la entrada en la cadena, y dos entradas no pueden ocupar
+ * el mismo sitio. Sin este índice, un volcado repetido escribe la misma entrada
+ * dos veces, la colección deja de ser una lista y la cadena se rompe al
+ * siguiente reinicio. Eso pasó de verdad el 20 de agosto.
+ *
+ * El índice es la red de abajo. La de arriba —que los volcados no se pisen— es
+ * `volcando`, más abajo. Van las dos: la primera evita el fallo, la segunda lo
+ * convierte en un error ruidoso en vez de un dato corrupto.
+ */
+async function indiceBitacora(): Promise<void> {
+  const c = coleccionAparte(COL_BITACORA)
+  if (!c) return
+  try {
+    await c.createIndex({ i: 1 }, { unique: true, name: 'i_unico' })
+  } catch (e: any) {
+    /* Si ya hay duplicados, el índice no se puede crear. No se aborta el
+       arranque por eso: `cargarBitacora` los aparta, y el siguiente arranque
+       —ya sin ellos— sí lo crea. Pero queda dicho en el registro. */
+    console.error('[store] no se pudo crear el índice único de la bitácora:', e?.message)
+  }
+}
+
 async function cargarBitacora(): Promise<void> {
   const c = coleccionAparte(COL_BITACORA)
   if (!c) return
@@ -175,8 +208,66 @@ async function cargarBitacora(): Promise<void> {
   // confiar en que coincidan con el orden real, y en una cadena de hashes un
   // orden distinto es una cadena rota.
   const filas = await c.find({}).sort({ i: 1 }).toArray()
-  datos.bitacora = filas.map((f: any) => f.entrada)
+
+  /* SE APARTAN LAS COPIAS EXACTAS, Y NADA MÁS.
+   *
+   * Un volcado que corrió dos veces dejó la MISMA entrada escrita dos veces:
+   * mismo `i`, mismo `id`, mismo hash. Cargar las dos mete un eslabón repetido
+   * en medio de la cadena y la rompe ahí, aunque ninguna entrada se haya
+   * tocado. Apartar la copia no es reparar la cadena ni recalcular nada: es
+   * corregir una fila que el almacén escribió de más.
+   *
+   * Si dos filas comparten `i` pero NO son la misma entrada, eso ya no es una
+   * copia: es una anomalía de verdad. Ahí no se elige ninguna —elegir sería
+   * decidir qué versión de la historia vale— se guardan las dos, la cadena
+   * saldrá rota como debe, y el sitio queda anotado en `bitacoraChoques`. */
+  const porSitio = new Map<number, any>()
+  const orden: any[] = []
+  bitacoraCopias = 0
+  bitacoraChoques = []
+  for (const f of filas as any[]) {
+    const sitio = typeof f.i === 'number' ? f.i : orden.length
+    const ya = porSitio.get(sitio)
+    if (!ya) {
+      porSitio.set(sitio, f.entrada)
+      orden.push(f.entrada)
+      continue
+    }
+    if (ya.id === f.entrada?.id && ya.hash === f.entrada?.hash) {
+      bitacoraCopias += 1
+      continue
+    }
+    bitacoraChoques.push(sitio)
+    orden.push(f.entrada)
+  }
+  if (bitacoraCopias) {
+    console.error(`[store] bitácora: ${bitacoraCopias} copias exactas apartadas al cargar ` +
+      '(un volcado corrió dos veces; ver el índice único de `i`)')
+  }
+  if (bitacoraChoques.length) {
+    console.error(`[store] bitácora: ${bitacoraChoques.length} sitios con entradas DISTINTAS ` +
+      `compartiendo el mismo \`i\`: ${bitacoraChoques.slice(0, 10).join(', ')}`)
+  }
+
+  datos.bitacora = orden
   bitacoraGuardadas = datos.bitacora.length
+
+  /* Se limpian también en el almacén: si se quedan, el índice único no se puede
+     crear nunca y la próxima carga vuelve a tener que apartarlas. Solo las
+     copias exactas, y solo cuando no hay choques que decidir. */
+  if (bitacoraCopias && !bitacoraChoques.length) {
+    try {
+      await c.deleteMany({})
+      await c.insertMany(orden.map((entrada, i) => ({ i, entrada })), { ordered: true })
+      console.log(`[store] bitácora reescrita sin copias: ${orden.length} entradas`)
+    } catch (e: any) {
+      console.error('[store] no se pudieron quitar las copias del almacén:', e?.message)
+    }
+  }
+}
+
+export function saludBitacora(): { copiasApartadas: number; sitiosEnChoque: number[] } {
+  return { copiasApartadas: bitacoraCopias, sitiosEnChoque: bitacoraChoques }
 }
 
 /** Mueve al su colección la bitácora que quedara dentro del estado. */
@@ -233,6 +324,7 @@ export async function iniciar(): Promise<void> {
     datos.bitacora = []
     bitacoraGuardadas = 0
     await cargarBitacora()
+    await indiceBitacora()
     if (enElEstado.length) {
       const movidas = await migrarBitacoraDelEstado(enElEstado)
       console.log(`[store] bitácora movida fuera del estado: ${movidas} entradas`)
@@ -279,6 +371,32 @@ export function saludAlmacen(): { motor: string; ultimoVolcado: typeof ultimoVol
   return { motor, ultimoVolcado }
 }
 
+/**
+ * EL CANDADO. Los volcados van en fila de a uno, nunca a la vez.
+ *
+ * `volcarBitacora()` lee cuántas entradas lleva guardadas, se va a esperar al
+ * `insertMany`, y solo al volver adelanta el contador. Entre esas dos cosas hay
+ * un `await`, y ahí cabía otro volcado entero: leía el mismo contador, veía las
+ * mismas entradas pendientes y las volvía a escribir con el MISMO `i`.
+ *
+ * En memoria no se notaba nada. Se notaba al reiniciar, cuando la entrada
+ * duplicada volvía dos veces y el eslabón repetido no encadenaba con el que
+ * ahora tenía delante. Así se rompió la bitácora de producción el 20 de agosto.
+ *
+ * `volcando` existía desde siempre —se le asignaba la promesa del último
+ * volcado— pero nadie la esperaba nunca. Era una variable muerta. Aquí pasa a
+ * ser la fila: cada volcado espera al anterior antes de empezar.
+ *
+ * Se engancha con `.catch()` y no con `await` a secas para que un volcado que
+ * falla no deje la fila atascada para siempre: el siguiente arranca igual y
+ * reintenta lo que quedó pendiente, que es justo lo que hay que hacer.
+ */
+function enFila(): Promise<void> {
+  const mio = volcando.catch(() => {}).then(volcar)
+  volcando = mio.catch(() => {})
+  return mio
+}
+
 async function volcar(): Promise<void> {
   try {
     if (motor === 'mongodb' && coleccion) {
@@ -315,7 +433,7 @@ export const store = {
     if (pendiente) return
     pendiente = setTimeout(() => {
       pendiente = null
-      volcando = volcar().catch((e) => console.error('[store] no se pudo guardar:', e?.message))
+      volcando = enFila().catch((e) => console.error('[store] no se pudo guardar:', e?.message))
     }, 100)
   },
 
@@ -325,7 +443,7 @@ export const store = {
       clearTimeout(pendiente)
       pendiente = null
     }
-    volcando = volcar()
+    volcando = enFila()
     await volcando
   },
 
