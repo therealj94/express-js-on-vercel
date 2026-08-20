@@ -112,33 +112,46 @@ dispare la caída al secreto viejo.
 
 ---
 
-## Un hallazgo aparte, que conviene decidir
+## El hallazgo de `user.token`, resuelto
 
-Al abrir esto apareció otra cosa. `middleware/isAdmin.js` compara el token que
+Al abrir esto apareció otra cosa. `middleware/isAdmin.js` comparaba el token que
 llega con un valor guardado en la base (`user.token`, cifrado con `PASS_TOKEN`):
 
 ```js
 if (tokenFromRequest !== decryptedToken) return res.status(401)...
 ```
 
-**Pero nada en el código escribe nunca `user.token`.** Se buscó en todo el
-backend: solo aparece leyéndose aquí, y puesto a `undefined` en dos sitios para
-que no viaje en las respuestas. El inicio de sesión firma un token nuevo cada vez
-—que vence a los 40 minutos— y no guarda nada.
+**Pero nada en el backend escribía nunca ese campo.** Se buscó entero: solo
+aparecía leyéndose ahí, y puesto a `undefined` en el borrado de cuentas. El
+inicio de sesión firmaba un token nuevo cada vez —vence a los 40 minutos— y no
+guardaba nada. Esa comparación no podía cuadrar, así que las cuatro rutas que la
+usan (`/admin/saldo`, `/admin/cuenta`, `/updateAdmin`, `/updateUser`) estaban
+cerradas en la práctica.
 
-O sea que esa comparación no puede cuadrar salvo por casualidad, y las cuatro
-rutas que la usan (`/admin/saldo`, `/admin/cuenta`, `/updateAdmin`,
-`/updateUser`) están, en la práctica, cerradas.
+**Decidido: se escribe.** Ahora la sesión en curso queda guardada, cifrada, en
+los tres sitios que emiten una:
 
-La rotación ya no lo empeora —`descifrarConToken` prueba los dos secretos— pero
-el fondo sigue ahí. Hay dos salidas y **la decisión no es mía**:
+| Dónde | Por qué hace falta |
+|---|---|
+| `authController` · inicio de sesión | es el caso normal |
+| `authController` · renovación | el token de acceso vence a los 40 min y se emite otro; sin esto un administrador perdería las rutas de administración cuarenta minutos después de entrar |
+| `socialController` · Google y Apple | si no, entrar con Google dejaría fuera de administración y entrar con contraseña no — una diferencia invisible y muy difícil de diagnosticar |
 
-1. **Escribir `user.token` al iniciar sesión.** La comprobación pasa a tener
-   sentido y además impone **una sola sesión por administrador**: entrar desde
-   otro dispositivo cierra el anterior. Para una cuenta de administrador eso
-   suele ser lo que se quiere. Son unas cinco líneas.
-2. **Quitar la comparación.** La firma del token ya autentica; esa línea solo
-   añade la restricción de sesión única. Es más simple pero se pierde esa
-   propiedad.
+Y va **cifrado, no en claro**: un volcado de la base no debe entregar sesiones
+vivas. Cifrado, para aprovecharlo hay que tener además el secreto — y quien
+tenga el secreto ya puede fabricar los tokens que quiera.
 
-Recomiendo la **1**. Decime y la hago.
+### Lo que esto cambia en el día a día
+
+**Un administrador puede tener una sola sesión a la vez.** Si entra desde otro
+teléfono o desde el navegador, la sesión anterior deja de valer **para las rutas
+de administración**. Para el resto de la aplicación no cambia nada: los usuarios
+normales pasan por `verifyToken` y `sesionGenesis`, que no miran este campo.
+
+Para una cuenta que puede ver saldos ajenos y borrar cuentas, eso es lo
+deseable.
+
+### Si algún administrador queda fuera
+
+Que vuelva a iniciar sesión. Con eso el campo se reescribe y la ruta vuelve a
+funcionar. No hay que tocar la base.

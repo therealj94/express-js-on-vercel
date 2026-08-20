@@ -109,5 +109,36 @@ prueba("estadoRotacion dice la verdad", () => {
   assert.equal(e.quedaElViejo, true);
 });
 
+// ── Sesion unica por administrador ──────────────────────────────────────────
+// `middleware/isAdmin.js` compara el token que llega con el que hay guardado
+// en `user.token`. Lo que se prueba aqui es el mecanismo que lo sostiene: que
+// guardar y leer sea reversible, y que un token distinto NO cuadre.
+
+prueba("lo que se guarda cifrado se recupera igual", () => {
+  const t = jwtReal.sign({ userId: "admin" }, NUEVO);
+  const guardado = sesion.cifrarConToken(t);
+  assert.notEqual(guardado, t, "no debe guardarse en claro");
+  assert.equal(sesion.descifrarConToken(guardado), t);
+});
+
+prueba("otra sesion del mismo usuario NO cuadra con la guardada", () => {
+  // Es exactamente lo que pasa cuando el administrador entra desde un segundo
+  // dispositivo: el token guardado pasa a ser el nuevo y el anterior deja de
+  // servir para las rutas de administracion.
+  const primera = jwtReal.sign({ userId: "admin", n: 1 }, NUEVO);
+  const segunda = jwtReal.sign({ userId: "admin", n: 2 }, NUEVO);
+  const guardado = sesion.cifrarConToken(segunda);
+  assert.notEqual(sesion.descifrarConToken(guardado), primera);
+  assert.equal(sesion.descifrarConToken(guardado), segunda);
+});
+
+prueba("una sesion guardada ANTES de rotar se sigue leyendo", () => {
+  // El caso que habria dejado a los administradores fuera para siempre: el
+  // campo se cifro con el secreto viejo y hay que poder leerlo igual.
+  const t = jwtReal.sign({ userId: "admin" }, VIEJO);
+  const guardado = CryptoJS.AES.encrypt(t, VIEJO).toString();
+  assert.equal(sesion.descifrarConToken(guardado), t);
+});
+
 fs.unlinkSync(tmp);
-console.log(`\n${pasadas} de 10 pruebas pasadas\n`);
+console.log(`\n${pasadas} de 13 pruebas pasadas\n`);

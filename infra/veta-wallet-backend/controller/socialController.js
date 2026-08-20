@@ -33,14 +33,22 @@ import bcrypt from "bcrypt";
 // Las sesiones se firman y se verifican a traves de lib/sesion.js, que
 // entiende el secreto nuevo y el anterior mientras dura la rotacion de
 // PASS_TOKEN. Las llamadas jwt.verify(...) y jwt.sign(...) no cambian.
-import jwt from "../lib/sesion";
+import jwt, { cifrarConToken } from "../lib/sesion";
 import crypto from "crypto";
 import { cifrar } from "../lib/cripto";
 import { verificarTokenSocial } from "../lib/socialAuth";
 const bip39 = require("bip39");
 require("dotenv").config();
 
-function emitirSesion(user) {
+// Emite la sesion y la deja guardada, cifrada, en `user.token`.
+//
+// Es `async` y guarda porque `middleware/isAdmin.js` compara ese campo con el
+// token que llega: es lo que impone UNA SOLA SESION por administrador. Si el
+// inicio de sesion social no lo escribiera, un administrador que entrara con
+// Google o Apple quedaria fuera de las rutas de administracion, mientras que
+// entrando con contrasena si pasaria — una diferencia invisible y muy dificil
+// de diagnosticar despues.
+async function emitirSesion(user) {
   const token = jwt.sign(
     {
       userId: user._id,
@@ -56,6 +64,8 @@ function emitirSesion(user) {
     process.env.PASS_TOKEN,
     { expiresIn: "30d", algorithm: "HS256" }
   );
+  user.token = cifrarConToken(token);
+  await user.save();
   return { token, refreshToken };
 }
 
@@ -129,7 +139,7 @@ export const socialLogin = async (req, res) => {
       creada = true;
     }
 
-    const sesion = emitirSesion(user);
+    const sesion = await emitirSesion(user);
 
     // La frase semilla solo viaja al crear la cuenta, en un token de 5 minutos,
     // igual que en el registro normal: es la unica oportunidad de que su dueno

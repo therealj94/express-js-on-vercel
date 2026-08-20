@@ -63,6 +63,25 @@ export function verify(token, secreto, opciones) {
 }
 
 /**
+ * Cifra con el secreto NUEVO lo que se vaya a guardar en la base.
+ *
+ * Se usa para `user.token`, el token de la sesion en curso que
+ * `middleware/isAdmin.js` compara con el que llega en la peticion. Guardarlo
+ * es lo que impone UNA SOLA SESION por administrador: cuando el mismo usuario
+ * entra desde otro dispositivo, este campo pasa a valer el token nuevo y el
+ * anterior deja de servir para las rutas de administracion.
+ *
+ * Va cifrado y no en claro por una razon concreta: un volcado de la base no
+ * debe entregar sesiones vivas. Cifrado, para aprovecharlo hay que tener
+ * ademas el secreto — y quien tenga el secreto ya puede fabricar los tokens
+ * que quiera, asi que no se pierde nada por ese lado.
+ */
+export function cifrarConToken(texto) {
+  if (!NUEVO) throw new Error("PASS_TOKEN no esta configurado");
+  return CryptoJS.AES.encrypt(String(texto), NUEVO).toString();
+}
+
+/**
  * Descifra un dato guardado en la base que se cifro con `PASS_TOKEN`,
  * probando el secreto nuevo y despues el viejo.
  *

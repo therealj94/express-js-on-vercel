@@ -7,7 +7,7 @@ import { cifrar } from "../lib/cripto";
 // Las sesiones se firman y se verifican a traves de lib/sesion.js, que
 // entiende el secreto nuevo y el anterior mientras dura la rotacion de
 // PASS_TOKEN. Las llamadas jwt.verify(...) y jwt.sign(...) no cambian.
-import jwt from "../lib/sesion";
+import jwt, { cifrarConToken } from "../lib/sesion";
 import crypto from "crypto";
 import { enviarCorreo, marco, botonCorreo } from "../lib/correo";
 import { v4 as uuidv4 } from "uuid";
@@ -214,6 +214,12 @@ export const login = async (req, res) => {
       { expiresIn: "30d" }
     );
 
+    // La sesion en curso queda guardada, cifrada. `middleware/isAdmin.js` la
+    // compara con la que llega, y eso es lo que impone UNA SOLA SESION por
+    // administrador. Antes nadie escribia este campo, asi que la comparacion
+    // no podia cuadrar y las rutas de administracion estaban cerradas.
+    user.token = cifrarConToken(token);
+
     await user.save();
 
     // El nombre y la direccion viajan con la sesion: sin esto, quien entra
@@ -288,6 +294,13 @@ export const refresh = async (req, res) => {
       process.env.PASS_TOKEN,
       { expiresIn: "30d" }
     );
+
+    // El token de acceso vence a los 40 minutos y aqui se emite uno nuevo, asi
+    // que la sesion guardada tiene que seguirle el paso. Sin esta linea, un
+    // administrador perderia las rutas de administracion en la primera
+    // renovacion, cuarenta minutos despues de entrar.
+    user.token = cifrarConToken(token);
+    await user.save();
 
     res.json({ token, refreshToken: newRefreshToken });
   } catch (error) {
