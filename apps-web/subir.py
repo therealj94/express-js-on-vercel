@@ -14,12 +14,38 @@ RAIZ, APP = sys.argv[1], sys.argv[2]
 RAMA = sys.argv[3] if len(sys.argv) > 3 else 'main'
 cl = boto3.client('amplify', region_name='us-east-1')
 
+# LO QUE NO ES EL SITIO, NO SE SUBE.
+#
+# `pruebas/` son los guiones que abren navegadores contra la app: no los carga
+# nadie desde la web y no pintan nada. Se estaban publicando en
+# app.vetawallet.com igual que el resto, y ademas volvian como HTML con estado
+# 200 —la regla comodin de Amplify no reconoce `.mjs`—, que es el sintoma
+# clasico de un archivo que no deberia estar ahi.
+#
+# No son un secreto, pero cuentan por dentro como funciona el chat, donde estan
+# las rutas y que se comprueba de cada una. Eso es un mapa gratis para quien
+# quiera buscarle las vueltas, y no tiene ni una razon a favor de estar
+# publicado.
+FUERA = ('pruebas',)
+
+
+def se_sube(rel):
+    return not any(p in FUERA for p in rel.split(os.sep))
+
+
 archivos = {}
+saltados = 0
 for base, _, nombres in os.walk(RAIZ):
     for n in nombres:
         r = os.path.join(base, n)
+        rel = os.path.relpath(r, RAIZ)
+        if not se_sube(rel):
+            saltados += 1
+            continue
         with open(r, 'rb') as f:
-            archivos['/' + os.path.relpath(r, RAIZ)] = (r, hashlib.md5(f.read()).hexdigest())
+            archivos['/' + rel] = (r, hashlib.md5(f.read()).hexdigest())
+if saltados:
+    print(f"  {saltados} archivos que no son del sitio se quedan fuera ({', '.join(FUERA)})")
 print(f"  {len(archivos)} archivos · {sum(os.path.getsize(a) for a, _ in archivos.values())/1e6:.1f} MB")
 
 

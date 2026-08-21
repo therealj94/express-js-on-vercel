@@ -10,23 +10,42 @@ poniendo la carpeta detras de cualquier servidor estatico.
 | | dominio | app de Amplify | ensayo |
 |---|---|---|---|
 | Veta Wallet | `app.vetawallet.com` y `legal.vetawallet.com` | `d264zjawew1yea` | `main.d289v5ffkexk23.amplifyapp.com` |
-| Veta Wallet · un solo archivo | `www.vetawallet.com` y el apex | `d7ofsbyqsj3d9` | — |
+| Veta Wallet · un solo archivo | **ya no sirve ningun dominio** | `d7ofsbyqsj3d9` | — |
 | MyTokenPay | sin desplegar | `dd486t2t5w516` | `main.d2dr8sh34hni4c.amplifyapp.com` |
 
 Las de ensayo no tienen dominio propio y sirven para mirar los cambios antes de
 tocar los reales. **Se despliega ahi primero, siempre.**
 
-`www` va por un CDN ajeno que solo sabe entregar un documento, asi que se sirve
-una version distinta — el mismo sitio, generado de las mismas fuentes, metido en
-un solo archivo. Se explica abajo. **Un cambio en Veta Wallet son dos
-despliegues**:
+**Un cambio en Veta Wallet es UN despliegue:**
 
 ```sh
-python3 subir.py veta-wallet d264zjawew1yea            # app. y legal.
-python3 unificar.py veta-wallet /tmp/veta-uno          # y para www:
-node probar-uno.mjs /tmp/veta-uno
-python3 subir.py /tmp/veta-uno d7ofsbyqsj3d9
+python3 subir.py veta-wallet d289v5ffkexk23    # el ensayo, primero
+python3 subir.py veta-wallet d264zjawew1yea    # app. y legal.
 ```
+
+`subir.py` deja fuera `pruebas/`: son los guiones que abren navegadores contra
+la app, no los carga nadie desde la web, y estuvieron publicados en
+`app.vetawallet.com` hasta el 21-ago. No son un secreto, pero cuentan por dentro
+donde estan las rutas y que se comprueba de cada una.
+
+### `www` ya no lleva una version aparte (21-ago)
+
+Decia aqui que un cambio eran DOS despliegues, porque `www.vetawallet.com` y el
+apex servian una version del sitio metida en un solo archivo (`unificar.py`).
+**Eso ya no es asi**: `www` y el apex devuelven un 301 desde un balanceador de
+AWS hacia `app.vetawallet.com`, y la app `d7ofsbyqsj3d9` no tiene ningun dominio
+asociado. Desplegar ahi no llega a nadie.
+
+`unificar.py` y `probar-uno.mjs` se dejan porque funcionan y porque el dia que
+haga falta volver a servir un solo archivo estan listos —los dos se arreglaron
+el 21-ago, ver abajo—. Pero **no hacen falta para publicar un cambio**.
+
+Y una leccion que costo encontrarla: `unificar.py` llevaba la lista de scripts
+escrita a mano. Cuando el 16-ago se metieron los modulos de llamadas en
+`index.html`, la lista dejo de casar, el paso fallaba, y como era un paso
+APARTE del despliegue bueno, nadie lo noto durante cinco dias. Ahora la lista
+sale de la propia pagina. Si algun dia se vuelve a partir el sitio en dos
+salidas, que sea con una sola fuente de verdad.
 
 ### La regla comodin de Amplify se come lo que no reconoce
 

@@ -81,12 +81,39 @@ def main():
     cmds = [
         'set -e',
         'mkdir -p /srv/mensajes',
-        "curl -fsS '%s' -o /srv/mensajes/servidor.py" % url,
+        # ── LA RED DEBAJO DEL TRAPECIO ───────────────────────────────────────
+        #
+        # El 12 de agosto un despliegue dejo el chat en 503 y hubo que volver
+        # atras a mano. La leccion no fue «revisar mejor»: fue que un
+        # despliegue tiene que comprobar por si mismo que lo que dejo puesto
+        # ARRANCA, y deshacerlo solo si no.
+        #
+        # Aqui son tres pasos: se guarda lo que habia, se comprueba que lo
+        # nuevo al menos compila ANTES de parar nada, y si el servicio no
+        # levanta se restaura la copia y se dice con todas las letras.
+        'cp -f /srv/mensajes/servidor.py /srv/mensajes/servidor.py.previo 2>/dev/null || true',
+        "curl -fsS '%s' -o /srv/mensajes/servidor.nuevo.py" % url,
+        # Compilar no prueba que funcione, pero un fallo de sintaxis es el
+        # unico que garantiza que NO va a arrancar, y se ve sin tocar nada.
+        'python3 -m py_compile /srv/mensajes/servidor.nuevo.py || { echo NO_COMPILA; exit 1; }',
+        'mv /srv/mensajes/servidor.nuevo.py /srv/mensajes/servidor.py',
         "curl -fsS '%s' -o /etc/systemd/system/mensajes.service" % url2,
         # restart, no enable --now: con el servicio ya activo, enable --now es
         # un no-op y el proceso VIEJO sigue sirviendo el codigo viejo.
         'systemctl daemon-reload && systemctl enable mensajes && systemctl restart mensajes',
-        'sleep 1 && systemctl is-active mensajes',
+        # Se le dan tres segundos y se pregunta al propio relevo, no a systemd:
+        # «activo» solo dice que el proceso vive, no que conteste.
+        'sleep 3',
+        'if [ "$(curl -s -o /dev/null -w %{http_code} http://127.0.0.1:8390/salud)" != "200" ]; then '
+        '  echo "EL RELEVO NUEVO NO CONTESTA — volviendo al anterior"; '
+        '  journalctl -u mensajes -n 15 --no-pager || true; '
+        '  cp -f /srv/mensajes/servidor.py.previo /srv/mensajes/servidor.py && systemctl restart mensajes; '
+        '  sleep 2; echo -n "tras volver atras: "; '
+        '  curl -s -o /dev/null -w "%{http_code}\\n" http://127.0.0.1:8390/salud; '
+        '  echo VUELTO_ATRAS; exit 1; '
+        'fi',
+        'echo RELEVO_NUEVO_OK',
+        'systemctl is-active mensajes',
         # ── Caddy: /mensajes/* publico y proxy al puerto local
         'cp -n /etc/caddy/Caddyfile /etc/caddy/Caddyfile.antes-de-mensajes || true',
         'cp /etc/caddy/Caddyfile /tmp/Caddyfile.previo',
@@ -114,9 +141,13 @@ def main():
     if o['StandardErrorContent']:
         print('errores:', o['StandardErrorContent'][:800])
     sal = o['StandardOutputContent']
+    if 'VUELTO_ATRAS' in sal or 'NO_COMPILA' in sal:
+        print('\nEL DESPLIEGUE SE DESHIZO SOLO. En la máquina sigue el relevo anterior.')
+        return 1
+    print('el relevo nuevo arrancó:', 'sí' if 'RELEVO_NUEVO_OK' in sal else 'NO — revisar')
     print('relevo público:', 'sí' if 'salud sin clave: 200' in sal else 'NO — revisar')
     print('lo interno sigue cerrado:', 'sí' if 'lo interno sigue cerrado: 401' in sal else 'NO — PARA Y REVISA')
-    return 0
+    return 0 if ('RELEVO_NUEVO_OK' in sal and 'salud sin clave: 200' in sal) else 1
 
 
 if __name__ == '__main__':

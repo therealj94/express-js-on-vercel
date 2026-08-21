@@ -46,7 +46,13 @@ async function abrir(ruta) {
   pag.on('console', m => m.type() === 'error' && errores.push(m.text()));
   pag.on('pageerror', e => errores.push(e.message));
   pag.on('requestfailed', p => externo(p.url()) || errores.push(`fallo ${p.url()}`));
-  await pag.goto(RAIZ + ruta, { waitUntil: 'networkidle' });
+  /* `networkidle` ya no llega nunca: el chat abre una espera larga para las
+     llamadas —una peticion que se queda colgada veinticinco segundos a
+     proposito— y con ella la red no se queda quieta jamas. Se espera a que el
+     documento este montado y se le da un margen a los scripts, que es lo que
+     esta prueba necesita de verdad. */
+  await pag.goto(RAIZ + ruta, { waitUntil: 'domcontentloaded' });
+  await pag.waitForTimeout(2500);
   return { pag, errores };
 }
 
