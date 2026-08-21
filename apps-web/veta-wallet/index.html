@@ -1133,6 +1133,34 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 .lla-g{width:54px;height:54px;background:rgba(255,255,255,.13);color:var(--crema)}
 .lla-g.apagado{background:var(--crema);color:#04231A}
 
+/* ── LA LLAMADA DE GRUPO ──────────────────────────────────────────────────
+   La rejilla se acomoda sola segun cuanta gente haya: con dos, dos filas;
+   con tres o mas, dos columnas. Nadie tiene que elegir un diseño. */
+#gru{position:fixed;inset:0;z-index:9000;background:#04100F;display:flex;flex-direction:column}
+.gru-cab{flex:none;padding:18px 16px 10px;text-align:center;
+  font:600 13.5px/1.3 var(--sans);color:var(--bruma)}
+.gru-rejilla{flex:1;display:grid;gap:6px;padding:0 6px;min-height:0;
+  grid-template-columns:1fr;grid-auto-rows:1fr}
+.gru-rejilla[data-cuantos="2"]{grid-template-rows:1fr 1fr}
+.gru-rejilla[data-cuantos="3"],.gru-rejilla[data-cuantos="4"]{grid-template-columns:1fr 1fr}
+.gru-rejilla[data-cuantos="5"]{grid-template-columns:1fr 1fr}
+.gru-cuadro{position:relative;background:#062A2A;border-radius:14px;overflow:hidden;min-height:0}
+.gru-cuadro video{width:100%;height:100%;object-fit:cover;display:block}
+/* El propio va espejado: uno se ve como en un espejo, no como lo ven los otros. */
+.gru-cuadro[data-quien="yo"] video{transform:scaleX(-1)}
+.gru-nombre{position:absolute;left:8px;bottom:7px;padding:3px 8px;border-radius:100px;
+  font:600 11px/1.3 var(--sans);color:var(--crema);background:rgba(4,16,15,.6)}
+/* Quien todavia no conecta se ve apagado, no en negro: en negro parece que se
+   fue, y esta llegando. */
+.gru-cuadro.esperando{opacity:.45}
+.gru-cuadro.esperando::after{content:'';position:absolute;left:50%;top:50%;width:22px;height:22px;
+  margin:-11px 0 0 -11px;border-radius:50%;border:2px solid rgba(243,236,217,.25);
+  border-top-color:var(--oro);animation:llaGira .9s linear infinite}
+@keyframes llaGira{to{transform:rotate(360deg)}}
+
+.gru-entra,.gru-mandos{flex:none;display:flex;justify-content:center;gap:16px;padding:20px 16px 34px}
+@media (prefers-reduced-motion: reduce){.gru-cuadro.esperando::after{animation:none}}
+
 /* ── LA LLAMADA CHIQUITA ──────────────────────────────────────────────────
  *
  * Sigue siendo EL MISMO elemento y LA MISMA conexion: solo cambia de tamaño y
@@ -1235,6 +1263,14 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 .cha-clip:hover svg{stroke:var(--oroLt)}
 .cha-manda{background:linear-gradient(140deg,var(--oroLt),var(--oro));}
 .cha-manda svg{stroke:#1B1403}
+/* El sello de cifrado. Verde jade y no oro: el oro es la marca y una accion,
+   y esto es un hecho comprobable sobre la llamada. */
+.cha-sello{display:flex;align-items:flex-start;gap:10px;margin:0 14px 8px;padding:10px 12px;
+  border-radius:12px;background:rgba(62,217,160,.08);border:1px solid rgba(62,217,160,.24)}
+.cha-sello svg{flex:none;width:16px;height:16px;margin-top:1px;fill:none;stroke:var(--jade);
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.cha-sello b{display:block;font:600 12.5px/1.45 var(--sans);color:var(--crema)}
+.cha-sello span{display:block;margin-top:3px;font-size:11.5px;line-height:1.5;color:var(--bruma)}
 .cha-aviso{padding:0 14px 12px;font-size:11.5px;line-height:1.55;color:var(--humo)}
 
 .cha-puerta{margin:auto;padding:30px 24px;text-align:center;max-width:420px;
@@ -2650,9 +2686,43 @@ body.en-ventana .lienzo::before{
   </div>
 </div>
 
+<!-- ══════════════════ LA LLAMADA DE GRUPO ═════════════════════════════════
+     Rejilla de cuadros. Los <video> se crean UNA vez y se reutilizan: volver
+     a dibujar el HTML en cada cambio los remontaria y cortaria el flujo de
+     TODOS cada vez que alguien entra o sale. -->
+<div id="gru" class="oculto" role="dialog" aria-modal="true">
+  <div class="gru-cab"><span id="gru-cuantos"></span></div>
+  <div class="gru-rejilla" id="gru-rejilla"></div>
+
+  <div class="gru-entra oculto" id="gru-entra">
+    <button class="lla-b lla-no" id="gru-rechazar" onclick="VETA.grupoRechazar()" aria-label="Rechazar">
+      <svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+    </button>
+    <button class="lla-b lla-si" id="gru-contestar" onclick="VETA.grupoContestar(true)" aria-label="Entrar">
+      <svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+    </button>
+  </div>
+
+  <div class="gru-mandos oculto" id="gru-mandos">
+    <button class="lla-b lla-g" id="gru-mic" onclick="VETA.grupoMic()" aria-label="Micrófono">
+      <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+    </button>
+    <button class="lla-b lla-g" id="gru-cam" onclick="VETA.grupoCam()" aria-label="Cámara">
+      <svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+    </button>
+    <button class="lla-b lla-g" id="gru-pant" onclick="VETA.grupoPantalla()" aria-label="Compartir pantalla">
+      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    </button>
+    <button class="lla-b lla-no" id="gru-colgar" onclick="VETA.grupoColgar()" aria-label="Salir">
+      <svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+    </button>
+  </div>
+</div>
+
 <script src="vendor/cripto-llaves.js"></script>
 <script src="llaves.js"></script>
 <script src="llamada.js"></script>
+<script src="llamadaGrupo.js"></script>
 <script src="cadena.js"></script>
 <script src="datos.js"></script>
 <script src="aura.js"></script>

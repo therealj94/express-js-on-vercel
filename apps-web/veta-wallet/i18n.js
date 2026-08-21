@@ -423,6 +423,12 @@ es: {
   'lla.llamando': 'Llamando…',
   'lla.entraVoz': 'Te está llamando',
   'lla.entraVideo': 'Videollamada entrante',
+  'gru.llamando': 'Llamando al grupo…',
+  'gru.enLlamada': 'en la llamada',
+  'gru.vos': 'Vos',
+  'gru.solo': 'En este grupo no hay nadie más todavía.',
+  'gru.muchos': 'Las llamadas de grupo son de hasta {n} personas. Con más, el video de todos se cae — preferimos decirlo antes.',
+  'gru.sinNadie': 'Se fueron todos de la llamada.',
   'lla.minimizar': 'Achicar la llamada',
   'lla.agrandar': 'Volver a la llamada',
   'lla.conectando': 'Conectando…',
@@ -459,7 +465,23 @@ es: {
   'cha.hiloT': 'Acá no hay nada todavía', 'cha.hiloP': 'Escribí lo primero.',
   'cha.gateT': 'El chat es de gente verificada',
   'cha.gateP': 'Para chatear necesitás tu Genesis ID aprobado. Así todos saben que del otro lado hay una persona real.',
-  'cha.sinE2E': 'Los mensajes viajan cifrados hasta nuestro servidor, pero no de punta a punta: no mandes por acá tu frase de recuperación ni tu contraseña.',
+  /* Lo que se dice del cifrado, y por que se dice ASI.
+   *
+   * Las LLAMADAS si son de punta a punta y eso no es marketing: WebRTC cifra
+   * obligatoriamente con DTLS-SRTP y las llaves se negocian entre los dos
+   * telefonos. Nosotros no las tenemos. Aunque quisieramos, no podemos oir
+   * una llamada. Ni el relevo TURN puede: reenvia paquetes cerrados sin
+   * abrirlos.
+   *
+   * Los MENSAJES no. Viajan cifrados hasta nuestro servidor y ahi quedan
+   * legibles para nosotros. Decir lo contrario haria que alguien mandara por
+   * el chat lo que no debia, y esa es la peor mentira posible porque la
+   * persona actua sobre ella.
+   *
+   * Asi que se dicen las dos cosas, separadas, y la limitacion primero. */
+  'cha.e2eLlamadas': 'Las llamadas van cifradas de punta a punta: ni nosotros podemos escucharlas.',
+  'cha.e2eIdentidad': 'Y del otro lado siempre hay una persona real, verificada con Genesis ID en nuestra cadena.',
+  'cha.sinE2E': 'Los mensajes escritos no: viajan cifrados hasta nuestro servidor, pero ahí los podemos leer. No mandes por acá tu frase de recuperación ni tu contraseña.',
   'cha.desbloquear': 'Desbloquear el chat', 'cha.repOk': 'Chat desbloqueado',
   'cha.ellaveT': 'El chat se trabó',
   'cha.ellaveP': 'La llave que guarda este navegador ya no la reconoce el servidor. Se arregla sola: tocá desbloquear.',
@@ -1115,6 +1137,12 @@ en: {
   'lla.llamando': 'Calling…',
   'lla.entraVoz': 'is calling you',
   'lla.entraVideo': 'Incoming video call',
+  'gru.llamando': 'Calling the group…',
+  'gru.enLlamada': 'on the call',
+  'gru.vos': 'You',
+  'gru.solo': 'There is nobody else in this group yet.',
+  'gru.muchos': 'Group calls hold up to {n} people. Beyond that everyone\u2019s video breaks down — we would rather say so upfront.',
+  'gru.sinNadie': 'Everyone left the call.',
   'lla.minimizar': 'Shrink the call',
   'lla.agrandar': 'Back to the call',
   'lla.conectando': 'Connecting…',
@@ -1151,7 +1179,9 @@ en: {
   'cha.hiloT': 'Nothing here yet', 'cha.hiloP': 'Write the first thing.',
   'cha.gateT': 'The chat is for verified people',
   'cha.gateP': 'To chat you need your Genesis ID approved. That way everyone knows there is a real person on the other side.',
-  'cha.sinE2E': 'Messages travel encrypted to our server, but not end to end: never send your recovery phrase or your password here.',
+  'cha.e2eLlamadas': 'Calls are end-to-end encrypted: not even we can listen to them.',
+  'cha.e2eIdentidad': 'And on the other side there is always a real person, verified with Genesis ID on our own chain.',
+  'cha.sinE2E': 'Written messages are not: they travel encrypted to our server, but we can read them there. Never send your recovery phrase or your password here.',
   'cha.desbloquear': 'Unlock the chat', 'cha.repOk': 'Chat unlocked',
   'cha.ellaveT': 'The chat got stuck',
   'cha.ellaveP': 'The key stored in this browser is no longer recognised by the server. It fixes itself: tap unlock.',

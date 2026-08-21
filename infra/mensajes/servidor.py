@@ -658,7 +658,13 @@ class Relevo(BaseHTTPRequestHandler):
                 para = str(b.get('para', '')).lower()
                 tipo = str(b.get('tipo', ''))[:24]
                 datos = b.get('datos')
-                if tipo not in ('oferta', 'respuesta', 'ice', 'llamo', 'cuelgo', 'ocupado', 'rechazo'):
+                # Los que empiezan por `g` son de las llamadas de grupo: la
+                # malla habla de todos con todos, asi que hacen falta tipos
+                # propios para no confundirlos con los del cara a cara.
+                if tipo not in ('oferta', 'respuesta', 'ice', 'llamo', 'cuelgo',
+                                'ocupado', 'rechazo',
+                                'gllamo', 'gentro', 'goferta', 'grespuesta',
+                                'gice', 'gsalgo', 'grechazo'):
                     return self._json(400, {'error': 'tipo inválido'})
                 if not correo_valido(para):
                     return self._json(400, {'error': 'faltan datos'})

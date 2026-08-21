@@ -6033,6 +6033,99 @@ const VETA = (() => {
 
 
 
+
+  /* ── LA LLAMADA DE GRUPO ─────────────────────────────────────────────────
+   *
+   * En malla: cada uno con cada uno, y el video va directo entre las
+   * personas. Sigue siendo cifrado de punta a punta, que es lo que el sello
+   * del chat promete — un SFU lo repartiria mejor pero tendria que
+   * descifrarlo, y entonces esa promesa dejaria de ser cierta.
+   *
+   * El tope son cinco, y esta medido: a 360p la sexta persona empuja la
+   * subida de TODOS por encima de lo que un movil sostiene.
+   */
+  async function grupoLlamar(conVideo) {
+    const c = chatSt.con;
+    if (!c?.esGrupo || !window.GRUPO?.puede()) return;
+    try {
+      const info = await CHAT.grupoInfo(c.id);
+      const otros = (info.miembros || [])
+        .map((m) => String(m.correo || '').toLowerCase())
+        .filter((m) => m && m !== String(sesion?.correo || '').toLowerCase());
+      if (!otros.length) return avisar(t('gru.solo'));
+      if (otros.length + 1 > GRUPO.TOPE) {
+        return avisar(t('gru.muchos').replace('{n}', String(GRUPO.TOPE)));
+      }
+      await GRUPO.llamar(c.id, otros, !!conVideo);
+    } catch (e) {
+      if (e?.code === 'lleno') return avisar(t('gru.muchos').replace('{n}', String(GRUPO.TOPE)));
+      const negado = /NotAllowed|Permission/i.test(String(e?.name || e?.message || ''));
+      avisar(negado ? t('lla.negado') : t('lla.noSePudo'));
+    }
+  }
+
+  const grupoContestar = (v) => GRUPO.contestar(!!v).catch(() => avisar(t('lla.noSePudo')));
+  const grupoRechazar = () => GRUPO.rechazar();
+  const grupoColgar = () => GRUPO.colgar('yo');
+  const grupoMic = () => GRUPO.micro();
+  const grupoCam = () => GRUPO.camara();
+  const grupoPantalla = () => GRUPO.pantalla().catch(() => avisar(t('lla.pantallaNo')));
+
+  /* La pantalla. Los cuadros se crean UNA vez y se reutilizan: volver a
+     dibujar el HTML en cada cambio remontaria los <video> y cortaria el flujo
+     de todos en cada persona que entra o sale. */
+  function pintarGrupo(c) {
+    const capa = $('#gru');
+    if (!capa) return;
+    const activa = c.estado !== 'libre';
+    capa.classList.toggle('oculto', !activa);
+    if (!activa) {
+      $('#gru-rejilla').innerHTML = '';
+      if (c.motivo === 'solo') avisar(t('gru.sinNadie'));
+      return;
+    }
+    $('#gru-entra').classList.toggle('oculto', c.estado !== 'entrando');
+    $('#gru-mandos').classList.toggle('oculto', c.estado === 'entrando');
+    $('#gru-cuantos').textContent = c.estado === 'llamando'
+      ? t('gru.llamando') : `${c.cuantos} ${t('gru.enLlamada')}`;
+    $('#gru-mic').classList.toggle('apagado', !c.micAbierto);
+    $('#gru-cam').classList.toggle('apagado', !c.camAbierta);
+
+    const rej = $('#gru-rejilla');
+    const vivos = new Set(['yo', ...c.gente.map((g) => g.correo)]);
+    // Se quitan los cuadros de quien ya no esta.
+    for (const n of [...rej.children]) if (!vivos.has(n.dataset.quien)) n.remove();
+
+    const cuadro = (quien, etiqueta) => {
+      let n = rej.querySelector(`[data-quien="${CSS.escape(quien)}"]`);
+      if (!n) {
+        n = document.createElement('div');
+        n.className = 'gru-cuadro';
+        n.dataset.quien = quien;
+        n.innerHTML = `<video autoplay playsinline${quien === 'yo' ? ' muted' : ''}></video>
+                       <span class="gru-nombre"></span>`;
+        rej.appendChild(n);
+      }
+      n.querySelector('.gru-nombre').textContent = etiqueta;
+      return n.querySelector('video');
+    };
+
+    const mio = cuadro('yo', t('gru.vos'));
+    const miFlujo = GRUPO.miPista();
+    if (miFlujo && mio.srcObject !== miFlujo) mio.srcObject = miFlujo;
+
+    for (const g of c.gente) {
+      const v = cuadro(g.correo, g.correo.split('@')[0]);
+      // El flujo vive en el modulo y se pide por correo: un MediaStream no se
+      // puede copiar, y meterlo en el objeto de estado obligaria a compararlo
+      // por identidad en cada repintado.
+      const flujo = GRUPO.flujoDe(g.correo);
+      if (flujo && v.srcObject !== flujo) v.srcObject = flujo;
+      v.closest('.gru-cuadro').classList.toggle('esperando', !g.conectado);
+    }
+    rej.dataset.cuantos = String(rej.children.length);
+  }
+
   /* ── LA LLAMADA CHIQUITA ─────────────────────────────────────────────────
    *
    * Seguir hablando mientras se usa el resto del ecosistema. Lo importante de
@@ -6143,7 +6236,22 @@ const VETA = (() => {
     // El buzón se escucha mientras haya sesión de chat: si solo se escuchara
     // dentro de la vista del chat, una llamada entrante no llegaría nunca a
     // quien está mirando su billetera, que es donde está casi siempre.
-    CHAT.escuchar((s) => LLAMADA.recibir(s));
+    if (window.GRUPO?.puede()) {
+      GRUPO.arrancar({
+        correo: sesion?.correo,
+        mandar: (para, tipo, datos) => CHAT.senalar(para, tipo, datos),
+        alCambiar: (c) => pintarGrupo(c),
+        turno: () => CHAT.turno(),
+      });
+    }
+    /* Las señales de grupo empiezan por `g` y las atiende el otro modulo. Se
+       reparten aqui, en un solo sitio, en vez de que los dos escuchen: dos
+       bucles de espera larga serian el doble de peticiones abiertas por
+       telefono, y en un movil eso es bateria. */
+    CHAT.escuchar((s) => {
+      if (String(s.tipo || '').startsWith('g') && window.GRUPO) return GRUPO.recibir(s);
+      return LLAMADA.recibir(s);
+    });
   }
 
   function llamadaParar() {
@@ -6810,6 +6918,13 @@ const VETA = (() => {
         </button>
         ${/* Llamar solo cara a cara: en grupo haria falta un SFU, que es
               infraestructura de verdad. Y solo donde el navegador puede. */''}
+        ${(c.esGrupo && window.GRUPO?.puede()) ? `
+        <button class="cha-mas cha-hmas" id="cha-gllamar-voz" onclick="VETA.grupoLlamar(false)" aria-label="${t('lla.voz')}">
+          <svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+        </button>
+        <button class="cha-mas cha-hmas" id="cha-gllamar-video" onclick="VETA.grupoLlamar(true)" aria-label="${t('lla.video')}">
+          <svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        </button>` : ''}
         ${(!c.esGrupo && window.LLAMADA?.puede()) ? `
         <button class="cha-mas cha-hmas" id="cha-llamar-voz" onclick="VETA.llamadaLlamar(false)" aria-label="${t('lla.voz')}">
           <svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
@@ -6851,6 +6966,16 @@ const VETA = (() => {
             : `<svg viewBox="0 0 24 24"><path d="M22 3 11 14M22 3l-7 19-4-8-8-4z"/></svg>`}
         </button>
       </form>
+      ${/* Lo bueno arriba y en tono normal; la limitacion debajo y en gris.
+            Al reves —la advertencia primero— la gente deja de leerla a los
+            tres dias, y entonces no protege a nadie. */''}
+      <div class="cha-sello">
+        <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <div>
+          <b>${t('cha.e2eLlamadas')}</b>
+          <span>${t('cha.e2eIdentidad')}</span>
+        </div>
+      </div>
       <p class="cha-aviso">${t('cha.sinE2E')}</p>`;
   }
 
@@ -8734,7 +8859,9 @@ const VETA = (() => {
            chatAdjuntar, chatVoz, chatVozCancelar,
            llamadaLlamar, llamadaContestar, llamadaRechazar, llamadaColgar,
            llamadaMic, llamadaCam, llamadaPantalla,
-           llamadaMini, llamadaGrande, chatReparar, chatCodigo, chatCodigoCopiar,
+           llamadaMini, llamadaGrande,
+           grupoLlamar, grupoContestar, grupoRechazar, grupoColgar,
+           grupoMic, grupoCam, grupoPantalla, chatReparar, chatCodigo, chatCodigoCopiar,
            chatVerFicha, chatFichaCerrar, chatEnviarOrigen, chatGuardarContacto,
            chatHojaCerrar, chatHojaOk,
            chatOlvidar, chatGrupoInvitar, chatGrupoNombre, chatGrupoSalir,
