@@ -244,3 +244,116 @@ que hacer.
 
 El envío pide además la contraseña (`transactionController.js:106`). El hallazgo
 real es otro y es más fino: la desproporción del límite de intentos.
+
+---
+
+## Tercera tanda · PULSE2CHAT y Ordenex
+
+### PULSE2CHAT · el bulto no dice quién lo escribió
+
+`apps-web/veta-wallet/candado.js:286`
+
+```js
+const k = await secretoCon(bulto.de);
+```
+
+`abrir()` deriva el secreto con la llave pública que viene **dentro del propio
+bulto**. Ese campo lo guarda y lo devuelve el servidor tal cual. Busqué si algo
+compara `bulto.de` contra las llaves publicadas del remitente que el servidor
+declara: **no existe esa comprobación en ninguna parte**.
+
+AES-GCM garantiza que «quien conocía este secreto fabricó este bulto». Si el
+secreto se deriva de una llave que elige quien fabrica el bulto, la garantía se
+queda en el aire. Quien pueda escribir en el relevo puede poner palabras en boca
+de un contacto, y en la pantalla de la víctima es indistinguible de un mensaje
+auténtico. Sobre una billetera, eso es dinero.
+
+### PULSE2CHAT · el código de seguridad no coincide, y lo probé ejecutándolo
+
+`apps-web/veta-wallet/chat.js:576`
+
+```js
+return CANDADO.codigoDeSeguridad([mia.pub], suyas);
+```
+
+Mi lado: **un** aparato (`miLlave()` es el actual). Su lado: **todos** los suyos.
+No lo deduje, lo corrí con la función real:
+
+| Caso | Coincide |
+|---|---|
+| Los dos con un solo aparato | **sí** |
+| Los dos con teléfono y computadora | **NO** |
+| Pasando todos los aparatos de ambos lados | sí |
+
+El servidor admite cinco aparatos (`servidor.py:368`). Teléfono más computadora
+es el caso normal, no el raro.
+
+**Los dos hallazgos se multiplican entre sí.** El primero hace posible
+suplantar a un contacto. El segundo rompe justo la pantalla que serviría para
+detectarlo: la app dice que una discrepancia «puede ser un ataque», el usuario
+la ve discrepar siempre, y en dos días deja de mirarla.
+
+### PULSE2CHAT · el mensaje puede caer a texto plano sin que nadie lo vea
+
+`chat.js:194` devuelve `{ok:true, e2e:false}` cuando no pudo cifrar, con el
+comentario de que es «para que la app lo enseñe en ese mensaje». Pero
+`app.js:6208` es `await CHAT.enviar(...)`: **el valor de retorno se descarta**.
+No hay ningún indicador en la burbuja.
+
+Mientras tanto el sello del compositor se pinta siempre: «ni nosotros podemos
+leerlos».
+
+---
+
+### Ordenex · un trato mueve las dos patas en escrituras separadas
+
+`infra/ordenex-api/lib/motor.js:223-234`. Leído: **cuatro llamadas sueltas** a
+`ejecutarReserva`, sin `try` que las abrace y sin compensación. La primera saca
+el activo del vendedor. La tercera saca el ORIGEN del comprador. Si la primera
+pasa y la tercera no, no hay quien deshaga la que ya se movió.
+
+El agente lo midió con un arnés propio y un fallo inyectado, y el resultado es
+el que se teme: el vendedor entrega el activo y cobra cero.
+
+### Ordenex · los depósitos se acreditan con CERO confirmaciones
+
+`infra/ordenex-api/lib/cadena5550.js:91,95`
+
+```js
+const wei = await conPlazo(p.getBalance(direccion), 12000, 'ORIGEN nativo');
+```
+
+Sin etiqueta de bloque, ethers usa `latest`, o sea la punta. No hay profundidad
+de confirmación en ningún punto del circuito de depósito.
+
+**La asimetría es la prueba de que es un olvido y no una decisión.** En el mismo
+repositorio, `lib/vigiaCompras.js:54-64` espera 60 bloques en Polygon —con el
+comentario «Polygon reorganiza poco pero lo hace»— y 30 en BSC. La casa sabe lo
+que es una reorganización; simplemente no lo aplicó a su propia cadena.
+
+### Ordenex · el vigía de compras no se arranca desde ningún lado
+
+Busqué `vigiaCompras` y `arrancarCompras` en `app.js`, en el `Procfile` y en
+`bin/`: **cero resultados**. `app.js:173-178` arranca solo `vigia` y
+`referenciaVelas`.
+
+Si los contratos de venta en Polygon y BSC están vivos, alguien paga USDT y
+nadie le manda el ORIGEN. **No pude comprobar si `VENTA_POLYGON` y `VENTA_BSC`
+están puestas en producción** — hay que confirmarlo antes de asustarse o de
+descartarlo.
+
+---
+
+## Ninguna ruta de producción se desvía del repositorio
+
+Es la buena noticia de la tanda, y contrapesa el incidente del 12 de agosto: se
+compararon las rutas declaradas en el código contra lo que responde producción
+en los tres servicios, y **no apareció ni una discrepancia real**. Las que
+parecían serlo se descartaron una por una antes de reportarlas (rutas que solo
+aceptan POST, un mercado inventado, un prefijo en plural que en el código es
+singular).
+
+Lo que sí falta en los tres: **ninguno publica qué versión corre**. No hay ruta
+de versión, no hay commit en ninguna cabecera, y los `package.json` dicen
+`0.0.0` y `0.0.1`. Eso es exactamente lo que hizo lento de diagnosticar el
+incidente del 12 de agosto.
