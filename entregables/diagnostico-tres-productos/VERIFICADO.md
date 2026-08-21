@@ -555,3 +555,74 @@ ejecutándolo:
 - **`null` no se confunde nunca con cero**: un saldo que no se pudo leer impide
   colocar la orden, en vez de tratarse como saldo cero.
 - **BigInt de punta a punta** en el camino del dinero.
+
+---
+
+## Sexta tanda · Veta Wallet, producto
+
+### Un nodo caído se enseña como saldo cero
+
+`apps-web/veta-wallet/cadena.js:306-310`
+
+```js
+try {
+  return t.nativo ? await saldoNativo(direccion) : await saldoToken(t.contrato, direccion);
+} catch { return 0; }
+```
+
+Cada saldo se lee con un `catch` que devuelve cero. Un nodo caído es
+indistinguible de «no tiene nada». Medido con el RPC cortado: la billetera
+enseña **`TU PATRIMONIO $0.00`** y **«Tenés 0.00 ORIGEN disponibles»**, sin un
+solo aviso.
+
+Y el bloque que existe para decirlo (`app.js:1896`, con su «—» y su «No pudimos
+leer tus saldos») **es inalcanzable**, porque `portafolio()` nunca lanza.
+
+**Lo que lo convierte en el hallazgo más afilado de toda la auditoría es el
+contraste**, y no es una discusión de escuela: la misma casa escribió la
+doctrina correcta y la rompió en la puerta de al lado.
+
+| Dónde | Qué hace ante un saldo ilegible |
+|---|---|
+| `infra/veta-wallet-backend/lib/saldos.js:116` | «**Ni un cero de consuelo: se dice que no se pudo mirar**» → devuelve `vacia: null`, nunca `true` |
+| `apps-web/ordenex/mercado.js:410` | `null = no leídos (fail-closed)` → no deja colocar la orden |
+| **`apps-web/veta-wallet/cadena.js:308`** | **devuelve `0`** |
+
+El backend de esa misma billetera se niega a tratar un fallo de red como cuenta
+vacía. El cliente web lo hace, en el número más importante de la aplicación.
+
+### La bienvenida de AURA puede no cerrarse nunca
+
+`app.js:10014` llama a `auraBienvenida(false)` al arrancar con sesión guardada, y
+la rama sin voz **no arma temporizador de cierre**. Medido: la capa de 740 px
+seguía tapando la app a los 35 segundos. Como el login no marca la bienvenida
+como vista, casi todo el mundo cae ahí en su segunda carga. La única salida es un
+botón de 71 × 29 píxeles con letra de 11.
+
+### AURA, con precisión
+
+`aura.js` es presentación: lienzo, orbe y voz grabada. La inteligencia son unas
+29 ramas de expresiones regulares más 15 fichas, y el propio comentario lo dice
+(«sin diccionario ni modelo»). Dentro de su guion está muy bien: se niega a
+inventar destinos y protege la frase semilla. Fuera del guion, «perdí mi
+teléfono» cae en «todavía no lo sé».
+
+**Y una que es de cumplimiento, no de producto:** a «¿me conviene comprar ONDK
+ahora?» contesta con el argumentario de venta de un valor negociable, **sin
+decir que no puede dar consejo de inversión**.
+
+### Otros, reproducidos
+
+- La frase semilla se entrega **sin paso de verificación**: nadie comprueba que
+  el usuario la haya apuntado.
+- Errores crudos del servidor mostrados al usuario, **incluida la página de
+  error de nginx entera como texto** en la pantalla de envío.
+- «Mi comercio» en bucle de unas 18 peticiones por segundo con girador eterno.
+- «ORIGEN» cortado a «ORI…» a 360 px.
+
+### Lo que está bien en las 24 vistas
+
+Cero errores de JavaScript, cero claves de traducción crudas, cero
+desplazamiento horizontal, sesión caducada bien manejada, envío con doble
+confirmación y sin reintento automático, y esqueletos de carga en vez de
+giradores.
