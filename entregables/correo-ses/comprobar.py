@@ -241,23 +241,49 @@ def main():
     web = det.get('WebsiteURL', '')
     # El revisor comprueba que la web tenga que ver con el dominio que firma.
     # Poner una y firmar con otra es de los motivos de rechazo mas comunes.
-    ok('la web declarada es del mismo dominio que firma', DOMINIO in web,
-       f"declarada: {web or '(ninguna)'} · el correo sale de @{DOMINIO}")
+    if DOMINIO in web:
+        print(f'  ok    la web declarada es del mismo dominio que firma\n          {web}')
+    else:
+        aviso('AL LLENAR EL FORMULARIO: poné https://www.ordenglobal.org en «Website URL»',
+              f"la vez pasada decía {web or '(nada)'}, y el correo sale de @{DOMINIO}. "
+              f"Es el campo que más pesa en un rechazo.")
     ok('el uso declarado es transaccional', det.get('MailType') == 'TRANSACTIONAL',
        f"declarado: {det.get('MailType')}")
 
-    print()
-    if fallos:
-        print(f'{len(fallos)} cosas por resolver antes de volver a pedir:')
-        for f in fallos:
-            print(f'  · {f}')
+    # ── EL VEREDICTO ──────────────────────────────────────────────────────
+    #
+    # Una lista de cosas no es una respuesta. La única decisión que hay que
+    # tomar es «¿pido ya o espero?», y eso es lo que tiene que contestar esto.
+    # Un comprobador que enumera y no concluye deja el trabajo a medias.
+    print('\n' + '─' * 62)
+    if prod:
+        print('\n  YA ESTA. La cuenta manda correo a cualquiera.\n')
+        return 0
+
+    # Lo que de verdad impide pedir, separado de lo que solo suma.
+    bloquea = [f for f in fallos if 'verificado por AWS' not in f]
+    espera = [f for f in fallos if 'verificado por AWS' in f]
+
+    if bloquea:
+        print('\n  TODAVIA NO PIDAS. Falta esto:\n')
+        for f in bloquea:
+            print(f'    · {f}')
+    elif espera:
+        print('\n  CASI. El DNS está puesto y AWS todavía no lo revisó.')
+        print('  Su revisión es automática y puede tardar horas.')
+        print('\n  Se puede pedir igual, pero conviene esperar a que el remitente')
+        print('  propio diga SUCCESS: con eso la solicitud llega más fuerte, y un')
+        print('  segundo rechazo cuesta más que esperar una tarde.')
     else:
-        print('Todo lo que se puede comprobar desde acá está en su sitio.')
+        print('\n  LISTO PARA PEDIR. Todo lo comprobable está en su sitio.')
+        print('  Seguí los pasos de solicitud-produccion.md.')
+
     if avisos:
-        print(f'\n{len(avisos)} avisos que no bloquean:')
+        print('\n  Avisos que no bloquean:')
         for a in avisos:
-            print(f'  · {a}')
-    return 1 if fallos else 0
+            print(f'    · {a}')
+    print()
+    return 1 if bloquea else 0
 
 
 if __name__ == '__main__':

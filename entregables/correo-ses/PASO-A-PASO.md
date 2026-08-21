@@ -5,16 +5,14 @@ registros puestos. Te quedan dos cosas: tocar un enlace y llenar un formulario.
 
 ---
 
-## PASO 0 · Ahora mismo, sin salir del correo
+## PASO 0 · Verificar tu correo ✅ HECHO
 
-Tenés un correo de AWS en tu bandeja con el asunto
-**«Amazon Web Services – Email Address Verification Request»**.
+Tu Gmail quedó verificado en SES. Ya te mandé un correo de prueba por el mismo
+camino exacto que usa la billetera, y para comprobar que llegó bien:
 
-Abrilo y tocá el enlace. Vence en 24 horas.
-
-**Para qué sirve:** con eso tu Gmail queda verificado y vas a poder probar el
-alta de cuenta y la recuperación de contraseña en tu propio correo, aunque la
-cuenta siga limitada. Hoy no podés probar nada de eso.
+> En Gmail, abrí los tres puntitos arriba a la derecha del correo y tocá
+> **«Mostrar original»**. Buscá tres líneas: **SPF: PASS**, **DKIM: PASS** y
+> **DMARC: PASS**. Si las tres dicen PASS, el correo está firmado como debe.
 
 ---
 
@@ -88,9 +86,22 @@ python3 comprobar.py
 
 ---
 
-## PASO 2 · Pedir el paso a producción
+## PASO 2 · Pedir el paso a producción ← acá estás
 
-Solo cuando `comprobar.py` salga limpio.
+Corré `comprobar.py` y mirá el veredicto del final. Te va a decir una de tres
+cosas, sin que tengas que interpretar la lista:
+
+| Dice | Qué hacer |
+|---|---|
+| **TODAVIA NO PIDAS** | falta algo de verdad, está listado |
+| **CASI** | el DNS está puesto y AWS no lo revisó todavía. Conviene esperar |
+| **LISTO PARA PEDIR** | adelante |
+
+Hoy dice **CASI**: los registros ya están, falta que AWS los revise por su
+cuenta. Su revisión es automática y suele tardar minutos, aunque puede llegar a
+horas. Se puede pedir igual, pero **conviene esperar**: con el remitente propio
+en SUCCESS la solicitud llega más fuerte, y un segundo rechazo cuesta más que
+esperar una tarde.
 
 1. Entrá a la consola de AWS con la cuenta de Orden Global.
 2. Arriba a la derecha, elegí la región **Este de EE. UU. (Norte de Virginia)
