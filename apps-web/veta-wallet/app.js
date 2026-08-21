@@ -3801,7 +3801,7 @@ const VETA = (() => {
           </span>
           <span class="tar-reverso-pie">
             <span>${t('tar.atrasNota')}</span>
-            <span class="tar-visa" style="font-size:17px">VISA</span>
+            <span class="tar-visa">VISA</span>
           </span>
         </button>
       </div>

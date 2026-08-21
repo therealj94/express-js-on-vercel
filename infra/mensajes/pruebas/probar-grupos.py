@@ -84,6 +84,15 @@ def main():
             firmas[correo] = {'correo': correo, 'llave': r['llave']}
         ana, beto = firmas['ana@og.hn'], firmas['beto@og.hn']
         carla, dora = firmas['carla@og.hn'], firmas['dora@og.hn']
+        # Desde que existe el circulo hay que aceptarse para poder
+        # escribirse. No es ruido de la prueba: es el mismo paso que
+        # da una persona en la app antes de su primer mensaje.
+        for uno in firmas:
+            for otro in firmas:
+                if uno < otro:
+                    post(base, '/amistad/pedir', dict(firmas[uno], para=otro))
+                    post(base, '/amistad/responder',
+                         dict(firmas[otro], de=uno, aceptar=True))
 
         # 1) perfil: nombre y foto (la foto es el id de un adjunto ya subido)
         st, r = post(base, '/subir', dict(ana, nombre='cara.png', tipo='imagen',

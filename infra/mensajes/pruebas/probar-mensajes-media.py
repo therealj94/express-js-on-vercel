@@ -81,6 +81,11 @@ def main():
         assert st == 200 and beto.get('llave'), 'alta de beto: %s %s' % (st, beto)
         f_ana = {'correo': 'ana@og.hn', 'llave': ana['llave']}
         f_beto = {'correo': 'beto@og.hn', 'llave': beto['llave']}
+        # Desde que existe el circulo hay que aceptarse para poder
+        # escribirse. No es ruido de la prueba: es el mismo paso que
+        # da una persona en la app antes de su primer mensaje.
+        post(base, '/amistad/pedir', dict(f_ana, para='beto@og.hn'))
+        post(base, '/amistad/responder', dict(f_beto, de='ana@og.hn', aceptar=True))
 
         # 1) subir una imagen real
         png = png_de_prueba()

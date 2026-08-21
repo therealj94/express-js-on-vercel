@@ -44,6 +44,12 @@ try:
     A = {'correo': 'ana@ordenglobal.link', 'llave': ana}
     B = {'correo': 'beto@ordenglobal.link', 'llave': beto}
 
+    # Una llamada hace SONAR un teléfono, así que desde que existe el círculo
+    # hace falta que el otro te haya aceptado. Es el mismo paso que da una
+    # persona en la app antes de poder llamar a nadie.
+    pedir('/amistad/pedir', dict(A, para='beto@ordenglobal.link'))
+    pedir('/amistad/responder', dict(B, de='ana@ordenglobal.link', aceptar=True))
+
     print('\nUna señal llega, y llega rápido\n')
     recibido = {}
     def escucha():

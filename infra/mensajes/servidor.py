@@ -58,6 +58,9 @@ TOPE_GRUPOS = 200          # ningún usuario en más de 200 grupos
 # El JSON entero se reescribe en cada mensaje: un grupo de miles de miembros
 # haría lento cada guardado de todo el relevo. 500 sobra para lo que esto es.
 TOPE_MIEMBROS = 500
+# Las rutas de dos niveles (/grupo/crear, /amistad/pedir, …). Todo lo que no
+# esté aquí se lee solo por su último tramo.
+FAMILIAS = ('grupo', 'llaves', 'amistad', 'estado')
 ID_ARCHIVO = re.compile(r'[0-9a-f]{32}')
 ID_GRUPO = re.compile(r'g:[0-9a-f]{16}')
 # 'Range: bytes=inicio-fin', con cualquiera de los dos lados vacío. Es la
@@ -254,6 +257,148 @@ def grupo_de(d, gid, correo):
 
 def cuantos_grupos(d, correo):
     return sum(1 for g in d.get('grupos', {}).values() if miembro(g, correo))
+
+
+# ── el circulo: quien puede escribirle a quien ────────────────────────────────
+#
+# Antes cualquiera con el correo de otro podia escribirle. Eso esta bien para
+# un buzon de soporte y esta mal para una app de mensajes: significa que a
+# cualquiera se le puede llenar el chat de desconocidos, y que basta con
+# adivinar un correo para meterse en la vida de alguien.
+#
+# Ahora hay que PEDIR y que el otro ACEPTE. Es una sola regla y protege dos
+# cosas a la vez: quien no acepto no recibe, y quien no fue aceptado no puede
+# ver ni un estado.
+#
+# La clave es el par ordenado alfabeticamente, no «a→b»: la amistad es una
+# sola cosa entre dos, no dos cosas espejadas que se pueden desincronizar.
+TOPE_PEDIDOS = 200          # pedidos pendientes por cuenta, en cualquier sentido
+
+
+def par(a, b):
+    return '|'.join(sorted([str(a).lower(), str(b).lower()]))
+
+
+def lazo(d, a, b):
+    return d.get('circulo', {}).get(par(a, b))
+
+
+def son_amigos(d, a, b):
+    l = lazo(d, a, b)
+    return bool(l and l.get('estado') == 'ok')
+
+
+def con_quien_hablo(d, correo):
+    """Con quién tiene historial esta cuenta, en UNA sola pasada.
+
+    `ya_hablaron` recorre los mensajes cada vez que se la llama. Para una
+    comprobación suelta da igual; para una lista de cien correos serían cien
+    pasadas por veinte mil mensajes. Donde hay lista, se usa esto.
+    """
+    otros = set()
+    for m in d.get('mensajes', []):
+        if m.get('de') == correo:
+            otros.add(m.get('para'))
+        elif m.get('para') == correo:
+            otros.add(m.get('de'))
+    return otros
+
+
+def ya_hablaron(d, a, b):
+    """¿Hay historial entre estos dos?
+
+    Existe por una razon concreta: el dia que esto se despliega hay cientos de
+    conversaciones abiertas. Exigir de golpe una solicitud aceptada las
+    cortaria todas a la vez, y la gente pensaria que el chat se rompio. Quien
+    ya se escribia se queda como estaba; la regla nueva rige de aqui en
+    adelante. Es una puerta que se cierra sin dejar a nadie fuera de su casa.
+    """
+    for m in d.get('mensajes', []):
+        if (m.get('de') == a and m.get('para') == b) or (m.get('de') == b and m.get('para') == a):
+            return True
+    return False
+
+
+def puede_escribir(d, quien, a_quien):
+    return (quien == a_quien or son_amigos(d, quien, a_quien)
+            or ya_hablaron(d, quien, a_quien))
+
+
+def cuantos_pedidos(d, correo):
+    c = str(correo).lower()
+    return sum(1 for k, v in d.get('circulo', {}).items()
+               if v.get('estado') == 'pedido' and c in k.split('|'))
+
+
+def resumen_ficha(correo, f):
+    return {'correo': correo, 'nombre': f.get('nombre', ''), 'addr': f.get('addr', ''),
+            'gid': f.get('gid', ''), 'foto': f.get('foto', '')}
+
+
+# ── las llaves publicas de cada aparato ───────────────────────────────────────
+#
+# Una cuenta tiene varios aparatos —telefono, computadora— y cada uno se
+# fabrica su propio par de llaves. Aqui solo viven las PUBLICAS: son como un
+# numero de telefono, no sirven para abrir nada. Las privadas nunca salieron
+# del navegador y no hay ninguna ruta por la que pudieran llegar.
+TOPE_APARATOS = 5           # mas que eso son casi siempre navegaciones privadas
+VIDA_APARATO = 180 * 86400  # un aparato que no aparece en medio año se cae solo
+
+
+def apuntar_aparato(f, ident, pub, ahora):
+    aps = [a for a in f.get('aparatos', []) if a.get('id') != ident]
+    aps.append({'id': ident, 'pub': pub, 'visto': ahora})
+    # se cae el mas viejo por ULTIMA VEZ VISTO, no por antiguedad de alta: el
+    # telefono de todos los dias no se puede caer por haberse dado de alta
+    # antes que una computadora que se usa una vez al mes
+    aps.sort(key=lambda a: a.get('visto', 0), reverse=True)
+    f['aparatos'] = aps[:TOPE_APARATOS]
+
+
+def aparatos_de(f, ahora):
+    return [{'id': a['id'], 'pub': a['pub']} for a in f.get('aparatos', [])
+            if a.get('pub') and ahora - a.get('visto', 0) < VIDA_APARATO * 1000]
+
+
+# ── los estados de 24 horas ───────────────────────────────────────────────────
+#
+# Un estado es lo contrario de un mensaje: no va dirigido a nadie y se borra
+# solo. Por eso NO se guarda en 'mensajes' ni se cifra de punta a punta — lo
+# ve todo el circulo, que puede ser mucha gente y cambiar mientras el estado
+# esta vivo, y cifrarlo para cada aparato de cada amigo significaria rehacerlo
+# cada vez que alguien acepta una solicitud.
+#
+# Eso quiere decir que un estado SI lo puede ver el servidor, y la app lo dice
+# con esas palabras en la pantalla de subirlo. No se esconde: se avisa donde
+# la persona esta decidiendo.
+VIDA_ESTADO = 24 * 3600 * 1000
+TOPE_ESTADOS = 20           # por cuenta y a la vez
+
+
+def purgar_estados(d, ahora):
+    """Los vencidos se van de verdad: se borra la fila y su archivo.
+
+    Un estado que «se ve borrado» pero sigue en el disco no es un estado de 24
+    horas, es un archivo con una etiqueta. Si se promete que desaparece, tiene
+    que desaparecer.
+    """
+    vivos, muertos = [], []
+    for e in d.get('estados', []):
+        (vivos if e.get('vence', 0) > ahora else muertos).append(e)
+    if not muertos:
+        return
+    d['estados'] = vivos
+    en_uso = {e.get('archivo') for e in vivos if e.get('archivo')}
+    en_uso |= {f.get('foto') for f in d.get('fichas', {}).values() if f.get('foto')}
+    en_uso |= {m.get('archivo') for m in d.get('mensajes', []) if m.get('archivo')}
+    for e in muertos:
+        a = e.get('archivo')
+        if a and a not in en_uso:
+            d.get('archivos', {}).pop(a, None)
+            try:
+                os.remove(os.path.join(CARPETA_ARCHIVOS, a))
+            except OSError:
+                pass
 
 
 def sumar_miembros(d, g, correos, ahora):
@@ -578,11 +723,14 @@ class Relevo(BaseHTTPRequestHandler):
         # la ruta se decide ANTES de leer el cuerpo: el tope grande es solo
         # para /subir y el resto de rutas conserva su límite de siempre.
         # Se lee por el final porque delante puede venir el prefijo de Caddy
-        # (/mensajes/...); 'grupo' es la única familia de dos niveles.
+        # (/mensajes/...). Las familias de dos niveles van en una lista y no
+        # sueltas en un `if`: cada vez que se añadía una hacía falta acordarse
+        # de tocar esta línea, y olvidarlo deja la ruta nueva contestando 404
+        # sin que nada lo diga.
         partes = [p for p in self.path.split('?')[0].split('/') if p]
         ruta = '/' + (partes[-1] if partes else '')
-        if len(partes) >= 2 and partes[-2] == 'grupo':
-            ruta = '/grupo/' + partes[-1]
+        if len(partes) >= 2 and partes[-2] in FAMILIAS:
+            ruta = '/' + partes[-2] + '/' + partes[-1]
         try:
             n = int(self.headers.get('Content-Length', 0))
             if n > (TOPE_POST_SUBIR if ruta == '/subir' else TOPE_POST):
@@ -669,6 +817,14 @@ class Relevo(BaseHTTPRequestHandler):
                     return self._json(400, {'error': 'tipo inválido'})
                 if not correo_valido(para):
                     return self._json(400, {'error': 'faltan datos'})
+                # Una llamada hace SONAR el telefono de alguien. Si escribirle
+                # exige que te haya aceptado, hacerle sonar el telefono con
+                # mas razon: es la forma mas ruidosa de molestar que tiene la
+                # app. Las señales de una llamada ya en curso pasan por aqui
+                # tambien, y no es problema: si la llamada empezo es que el
+                # lazo existe.
+                if not puede_escribir(d, correo, para):
+                    return self._json(403, {'error': 'hace falta que te acepte'})
                 if len(json.dumps(datos or {})) > TOPE_SENAL_DATOS:
                     return self._json(413, {'error': 'señal muy grande'})
                 if not dejar_senal(para, correo, tipo, datos):
@@ -741,6 +897,17 @@ class Relevo(BaseHTTPRequestHandler):
             if ruta == '/enviar':
                 para = str(b.get('para', '')).lower()
                 texto = str(b.get('texto', ''))[:TOPE_TEXTO].strip()
+                # EL BULTO CERRADO. Cuando viene, el relevo no sabe ni puede
+                # saber que dice: es un objeto opaco que se guarda tal cual y
+                # se devuelve tal cual. Ni siquiera se mira por dentro — solo
+                # se comprueba que tenga la forma de un bulto y que no sea
+                # enorme, que es lo unico que le toca al que solo transporta.
+                cif = b.get('cif')
+                if cif is not None:
+                    if (not isinstance(cif, dict) or not cif.get('ct')
+                            or not isinstance(cif.get('s'), list)
+                            or len(json.dumps(cif)) > 60_000):
+                        return self._json(400, {'error': 'bulto inválido'})
                 # adjunto opcional: solo cuenta si el id existe de verdad en el
                 # índice — un id inventado daría burbujas rotas en la app
                 tipo = str(b.get('tipo', ''))
@@ -755,8 +922,13 @@ class Relevo(BaseHTTPRequestHandler):
                         return self._json(403, {'error': 'no eres del grupo'})
                 elif not correo_valido(para):
                     return self._json(400, {'error': 'faltan datos'})
+                elif not puede_escribir(d, correo, para):
+                    # La privacidad no se hace solo escondiendo el boton en la
+                    # app: si la regla no esta AQUI, cualquiera que sepa hablar
+                    # con el relevo se la salta.
+                    return self._json(403, {'error': 'hace falta que te acepte'})
                 # un mensaje puede ser solo texto, solo adjunto, o ambos
-                if not texto and not adj:
+                if not texto and not cif and not adj:
                     return self._json(400, {'error': 'faltan datos'})
                 m = {'de': correo, 'para': para, 'texto': texto,
                      'cuando': int(time.time() * 1000),
@@ -770,6 +942,11 @@ class Relevo(BaseHTTPRequestHandler):
                 cita = str(b.get('cita', ''))[:16]
                 if cita:
                     m['cita'] = cita
+                if cif is not None:
+                    m['cif'] = cif
+                    # El texto en claro NO se guarda al lado del cerrado. Seria
+                    # el error mas tonto posible: cifrar y dejar la copia.
+                    m['texto'] = ''
                 if adj:
                     m['tipo'] = tipo
                     m['archivo'] = archivo
@@ -954,7 +1131,222 @@ class Relevo(BaseHTTPRequestHandler):
                          if q in c or q in g['nombre'].lower()
                          or g.get('gid', '').lower().startswith(q)]
                 gente = [x for x in gente if x['correo'] != correo][:10]
+                # Cada resultado dice en que punto esta la relacion, para que
+                # el boton diga la verdad: «Agregar», «Pendiente», «Responder»
+                # o «Escribir». Sin esto la app manda solicitudes repetidas a
+                # gente que ya la mando, que es como se llena un buzon de
+                # ruido.
+                viejos = con_quien_hablo(d, correo)
+                for x in gente:
+                    l = lazo(d, correo, x['correo'])
+                    if (l and l['estado'] == 'ok') or x['correo'] in viejos:
+                        x['lazo'] = 'amigos'
+                    elif l and l['estado'] == 'pedido':
+                        x['lazo'] = 'enviada' if l.get('de') == correo else 'recibida'
+                    else:
+                        x['lazo'] = 'no'
                 return self._json(200, {'gente': gente})
+
+            # ── las llaves de los aparatos ────────────────────────────────
+            #
+            # Publicar la propia y pedir las de aquellos a quienes se puede
+            # escribir. Nada mas. Aqui NO hay ninguna llave privada: si la
+            # hubiera, el cifrado de punta a punta seria un adorno.
+            if ruta == '/llaves/publicar':
+                ident = str(b.get('id', ''))[:40]
+                pub = str(b.get('pub', ''))[:200]
+                if not ident or not pub:
+                    return self._json(400, {'error': 'faltan datos'})
+                apuntar_aparato(f, ident, pub, int(time.time() * 1000))
+                guardar(d)
+                return self._json(200, {'ok': True})
+
+            if ruta == '/llaves/de':
+                ahora = int(time.time() * 1000)
+                pedidos = [str(x).lower() for x in (b.get('correos') or [])][:120]
+                viejos = con_quien_hablo(d, correo)
+                salida, faltan = {}, []
+                for c in pedidos:
+                    otra = fichas.get(c)
+                    # Se entregan las llaves de quien me puede leer: yo mismo,
+                    # mi circulo, y los companeros de un grupo del que soy.
+                    permitido = (c == correo or son_amigos(d, correo, c)
+                                 or c in viejos)
+                    if not permitido or not otra:
+                        continue
+                    aps = aparatos_de(otra, ahora)
+                    if aps:
+                        salida[c] = aps
+                    else:
+                        # No es un error: es alguien que todavia no ha abierto
+                        # la version nueva. La app tiene que poder decirlo con
+                        # esas palabras en vez de fallar en silencio.
+                        faltan.append(c)
+                return self._json(200, {'llaves': salida, 'sinLlave': faltan})
+
+            # ── el circulo ────────────────────────────────────────────────
+            if ruta == '/amistad/pedir':
+                otro = str(b.get('para', '')).lower()
+                if not correo_valido(otro) or otro == correo:
+                    return self._json(400, {'error': 'faltan datos'})
+                if otro not in fichas:
+                    return self._json(404, {'error': 'esa persona no está en el chat'})
+                circulo = d.setdefault('circulo', {})
+                k = par(correo, otro)
+                l = circulo.get(k)
+                if l and l['estado'] == 'ok':
+                    return self._json(200, {'estado': 'amigos'})
+                if l and l['estado'] == 'pedido':
+                    if l.get('de') == correo:
+                        return self._json(200, {'estado': 'enviada'})
+                    # Los dos se pidieron a la vez: eso ya es un si de ambos
+                    # lados, y hacerles pulsar «aceptar» seria pedantería.
+                    l['estado'] = 'ok'
+                    l['en'] = int(time.time() * 1000)
+                    guardar(d)
+                    return self._json(200, {'estado': 'amigos'})
+                if cuantos_pedidos(d, correo) >= TOPE_PEDIDOS:
+                    return self._json(429, {'error': 'demasiadas solicitudes abiertas'})
+                circulo[k] = {'estado': 'pedido', 'de': correo,
+                              'en': int(time.time() * 1000),
+                              'nota': str(b.get('nota', ''))[:140]}
+                guardar(d)
+                return self._json(200, {'estado': 'enviada'})
+
+            if ruta == '/amistad/responder':
+                otro = str(b.get('de', '')).lower()
+                circulo = d.setdefault('circulo', {})
+                l = circulo.get(par(correo, otro))
+                # Solo responde quien RECIBIO. Sin esta comprobacion, quien
+                # pide podria aceptarse a si mismo y la solicitud no serviria
+                # para nada.
+                if not l or l['estado'] != 'pedido' or l.get('de') == correo:
+                    return self._json(404, {'error': 'no hay solicitud'})
+                if b.get('aceptar'):
+                    l['estado'] = 'ok'
+                    l['en'] = int(time.time() * 1000)
+                    guardar(d)
+                    return self._json(200, {'estado': 'amigos'})
+                # Rechazar BORRA la fila. Guardar un «rechazado» permitiria
+                # preguntar «me rechazo?», y eso no le hace bien a nadie: para
+                # quien pidio queda como si no hubiera contestado todavia.
+                circulo.pop(par(correo, otro), None)
+                guardar(d)
+                return self._json(200, {'estado': 'no'})
+
+            if ruta == '/amistad/quitar':
+                otro = str(b.get('con', '')).lower()
+                d.setdefault('circulo', {}).pop(par(correo, otro), None)
+                guardar(d)
+                return self._json(200, {'ok': True})
+
+            if ruta == '/amistad/lista':
+                circulo = d.get('circulo', {})
+                amigos, recibidas, enviadas = [], [], []
+                for k, l in circulo.items():
+                    lados = k.split('|')
+                    if correo not in lados:
+                        continue
+                    otro = lados[0] if lados[1] == correo else lados[1]
+                    ficha_otro = fichas.get(otro)
+                    if not ficha_otro:
+                        continue
+                    x = resumen_ficha(otro, ficha_otro)
+                    if l['estado'] == 'ok':
+                        amigos.append(x)
+                    elif l.get('de') == correo:
+                        enviadas.append(x)
+                    else:
+                        x['nota'] = l.get('nota', '')
+                        x['en'] = l.get('en', 0)
+                        recibidas.append(x)
+                amigos.sort(key=lambda x: x['nombre'].lower())
+                recibidas.sort(key=lambda x: -x.get('en', 0))
+                return self._json(200, {'amigos': amigos, 'recibidas': recibidas,
+                                        'enviadas': enviadas})
+
+            # ── los estados de 24 horas ───────────────────────────────────
+            if ruta == '/estado/subir':
+                ahora = int(time.time() * 1000)
+                purgar_estados(d, ahora)
+                texto = str(b.get('texto', ''))[:300].strip()
+                archivo = str(b.get('archivo', ''))
+                tiene = archivo in d.get('archivos', {})
+                if not texto and not tiene:
+                    return self._json(400, {'error': 'faltan datos'})
+                mios = [e for e in d.get('estados', []) if e['de'] == correo]
+                if len(mios) >= TOPE_ESTADOS:
+                    return self._json(429, {'error': 'demasiados estados'})
+                e = {'id': secrets.token_hex(8), 'de': correo, 'texto': texto,
+                     'cuando': ahora, 'vence': ahora + VIDA_ESTADO, 'vistas': []}
+                if tiene:
+                    e['archivo'] = archivo
+                    e['tipo'] = 'video' if str(
+                        d['archivos'][archivo].get('tipo', '')).startswith('video') else 'imagen'
+                # El color de fondo de un estado de solo texto. Lo elige la app
+                # y se guarda como un indice, no como un color: asi el dia que
+                # cambie la paleta de la marca cambian todos a la vez.
+                fondo = b.get('fondo')
+                if isinstance(fondo, int) and 0 <= fondo < 8:
+                    e['fondo'] = fondo
+                d.setdefault('estados', []).append(e)
+                guardar(d)
+                return self._json(200, {'id': e['id']})
+
+            if ruta == '/estado/borrar':
+                ahora = int(time.time() * 1000)
+                eid = str(b.get('id', ''))
+                antes = len(d.get('estados', []))
+                d['estados'] = [e for e in d.get('estados', [])
+                                if not (e['id'] == eid and e['de'] == correo)]
+                purgar_estados(d, ahora)
+                if len(d['estados']) != antes:
+                    guardar(d)
+                return self._json(200, {'ok': True})
+
+            if ruta == '/estados':
+                ahora = int(time.time() * 1000)
+                purgar_estados(d, ahora)
+                # Los mios y los de mi circulo, agrupados por persona, como se
+                # miran: una fila por persona, no un revoltijo por fecha.
+                por_quien = {}
+                for e in d.get('estados', []):
+                    if e['de'] != correo and not son_amigos(d, correo, e['de']):
+                        continue
+                    ficha_suya = fichas.get(e['de'])
+                    if not ficha_suya:
+                        continue
+                    g = por_quien.setdefault(e['de'], {
+                        **resumen_ficha(e['de'], ficha_suya), 'estados': []})
+                    g['estados'].append({
+                        'id': e['id'], 'texto': e.get('texto', ''),
+                        'archivo': e.get('archivo', ''), 'tipo': e.get('tipo', ''),
+                        'fondo': e.get('fondo'), 'cuando': e['cuando'],
+                        'vence': e['vence'],
+                        'visto': correo in e.get('vistas', []),
+                        # Quien lo subio ve CUANTOS lo vieron. Quien lo mira,
+                        # no: la lista de quien vio que es de su dueño.
+                        'vistas': len(e.get('vistas', [])) if e['de'] == correo else None,
+                    })
+                salida = list(por_quien.values())
+                for g in salida:
+                    g['estados'].sort(key=lambda x: x['cuando'])
+                    g['sinVer'] = sum(1 for x in g['estados'] if not x['visto'])
+                # Primero quien tiene algo sin ver, y dentro de eso lo mas
+                # reciente: es el orden en el que se miran de verdad.
+                salida.sort(key=lambda g: (-g['sinVer'], -g['estados'][-1]['cuando']))
+                guardar(d)
+                return self._json(200, {'gente': salida})
+
+            if ruta == '/estado/visto':
+                eid = str(b.get('id', ''))
+                for e in d.get('estados', []):
+                    if e['id'] == eid and (e['de'] == correo or son_amigos(d, correo, e['de'])):
+                        if correo not in e.setdefault('vistas', []):
+                            e['vistas'].append(correo)
+                            guardar(d)
+                        break
+                return self._json(200, {'ok': True})
 
             if ruta == '/conversaciones':
                 # Todas mis charlas —personas y grupos en la misma lista, que

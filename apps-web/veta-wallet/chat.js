@@ -92,10 +92,121 @@ const CHAT = (() => {
 
   // ── lo que se usa a diario ──────────────────────────────────────────────
   const conversaciones = () => pedir('/conversaciones', firmado({})).then(d => d.conversaciones || []);
-  const bandeja = desde => pedir('/bandeja', firmado({ desde })).then(d => d.mensajes || []);
-  /** Mandar. `cita` es el id del mensaje al que se responde, si se responde. */
-  const enviar = (para, texto, cita) =>
-    pedir('/enviar', firmado({ para, texto, ...(cita ? { cita } : {}) }));
+
+  /* ── EL CANDADO ────────────────────────────────────────────────────────
+   *
+   * Todo lo de aquí abajo existe para una sola cosa: que el relevo no pueda
+   * leer lo que la gente escribe. La app dice «ni nosotros podemos leerlos»,
+   * y esa frase solo se puede decir si es esto lo que pasa de verdad.
+   *
+   * El reparto de trabajo es: `candado.js` sabe de criptografía y no sabe de
+   * red; este archivo sabe de red y no sabe de criptografía. Aquí solo se
+   * pide la llave pública del otro, se manda el bulto a cerrar, y se entrega.
+   */
+
+  /* Las llaves públicas ajenas se piden una vez y se guardan un rato. Pedirlas
+     en cada mensaje sería una vuelta al servidor por tecla enviada; no
+     guardarlas nunca haría el chat lento en el móvil. Cinco minutos es corto
+     para que un aparato nuevo del otro lado empiece a recibir enseguida, y
+     largo para que una conversación normal no vuelva a preguntar. */
+  const VIDA_LLAVES = 5 * 60 * 1000;
+  const llavero = new Map();   // correo -> { aparatos, en }
+  let publicada = false;
+
+  async function publicarMiLlave() {
+    if (publicada || !CANDADO?.hay()) return;
+    const mia = await CANDADO.miLlave();
+    if (!mia) return;
+    try {
+      await pedir('/llaves/publicar', firmado({ id: mia.id, pub: mia.pub }));
+      publicada = true;
+    } catch { /* se reintenta en el siguiente envío */ }
+  }
+
+  async function llavesDe(correos) {
+    const ahora = Date.now();
+    const faltan = correos.filter(c => {
+      const g = llavero.get(c);
+      return !g || ahora - g.en > VIDA_LLAVES;
+    });
+    if (faltan.length) {
+      const r = await pedir('/llaves/de', firmado({ correos: faltan }));
+      for (const c of faltan) llavero.set(c, { aparatos: r.llaves?.[c] || [], en: ahora });
+    }
+    return correos.flatMap(c => llavero.get(c)?.aparatos || []);
+  }
+
+  /** ¿A quién hay que cerrarle el sobre? En un grupo, a todos sus miembros. */
+  async function destinatarios(para) {
+    if (!esGrupo(para)) return [para];
+    const info = await grupoInfo(para);
+    return (info?.miembros || []).map(m => m.correo).filter(Boolean);
+  }
+
+  const bandeja = desde => pedir('/bandeja', firmado({ desde }))
+    .then(d => abrirTodos(d.mensajes || []));
+
+  /**
+   * Abre lo que venga cerrado y deja lo demás como está.
+   *
+   * Un mensaje que este aparato no puede abrir NO se esconde ni se convierte
+   * en un renglón vacío: se marca con `cerrado:true` y la app lo dice —«esto
+   * llegó cifrado para otro de tus aparatos»—. Un hueco mudo haría pensar que
+   * el chat perdió mensajes, que es lo contrario de lo que pasa.
+   */
+  async function abrirTodos(msgs) {
+    if (!CANDADO?.hay()) return msgs;
+    return Promise.all(msgs.map(async m => {
+      if (!m.cif) return m;
+      const claro = await CANDADO.abrir(m.cif);
+      if (claro == null) return { ...m, texto: '', cerrado: true, e2e: true };
+      /* El texto puede traer pegada la llave de un adjunto: viaja DENTRO del
+         cifrado, nunca al lado, que es lo que hace que el relevo guarde un
+         archivo que no puede abrir. */
+      let texto = claro, extra = null;
+      if (claro.startsWith('{')) {
+        try {
+          const j = JSON.parse(claro.slice(1));
+          texto = j.t || '';
+          extra = { llaveArchivo: j.k, ivArchivo: j.iv };
+        } catch { /* si no parsea es texto normal que empieza raro */ }
+      }
+      return { ...m, texto, e2e: true, ...(extra || {}) };
+    }));
+  }
+
+  /**
+   * Mandar. `cita` es el id del mensaje al que se responde, si se responde.
+   *
+   * Se intenta cerrar SIEMPRE. Si no se puede —porque quien recibe todavía no
+   * ha abierto la versión nueva y no tiene ninguna llave publicada— se manda
+   * en claro y se DEVUELVE `e2e:false`, para que la app lo enseñe en ese
+   * mensaje. Mandarlo en claro sin decirlo sería exactamente la mentira que
+   * este trabajo vino a quitar.
+   */
+  async function enviar(para, texto, cita) {
+    const base = { para, ...(cita ? { cita } : {}) };
+    const cerrado = await cerrarPara(para, texto);
+    if (cerrado) {
+      await pedir('/enviar', firmado({ ...base, cif: cerrado }));
+      return { ok: true, e2e: true };
+    }
+    await pedir('/enviar', firmado({ ...base, texto }));
+    return { ok: true, e2e: false };
+  }
+
+  /** Devuelve el bulto cerrado, o null si no hay a quién cerrárselo. */
+  async function cerrarPara(para, texto) {
+    if (!CANDADO?.hay()) return null;
+    try {
+      await publicarMiLlave();
+      const aparatos = await llavesDe(await destinatarios(para));
+      if (!aparatos.length) return null;
+      return await CANDADO.cerrar(texto, aparatos);
+    } catch {
+      return null;
+    }
+  }
 
   /** Reaccionar. Tocar la misma reacción otra vez la quita. */
   const reaccionar = (id, emoji) => pedir('/reaccion', firmado({ id, emoji }));

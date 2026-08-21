@@ -488,9 +488,17 @@ es: {
    * persona actua sobre ella.
    *
    * Asi que se dicen las dos cosas, separadas, y la limitacion primero. */
-  'cha.e2eLlamadas': 'Las llamadas van cifradas de punta a punta: ni nosotros podemos escucharlas.',
+  'cha.e2eLlamadas': 'Lo que escribís y las llamadas van cifrados de punta a punta: ni nosotros podemos leerlos ni escucharlas.',
   'cha.e2eIdentidad': 'Y del otro lado siempre hay una persona real, verificada con Genesis ID en nuestra cadena.',
-  'cha.sinE2E': 'Los mensajes escritos no: viajan cifrados hasta nuestro servidor, pero ahí los podemos leer. No mandes por acá tu frase de recuperación ni tu contraseña.',
+  /* Lo que TODAVIA no esta cifrado se sigue diciendo, en el mismo sitio y con
+     el mismo tono. El dia que se cifre tambien, esta linea se borra — no
+     antes. */
+  'cha.sinE2E': 'Las fotos, los videos, los archivos y las notas de voz todavía no: viajan cifrados hasta nuestro servidor y ahí se guardan como están. Ni por acá ni por ningún lado mandes tu frase de recuperación o tu contraseña.',
+  'cha.e2eSinLlave': 'Sin cifrar: esta persona todavía no ha abierto la versión nueva.',
+  'cha.e2eCerrado': 'Llegó cifrado para otro de tus aparatos. Abrilo desde el que lo recibió.',
+  'cha.codigoTit': 'Código de seguridad',
+  'cha.codigoQue': 'Comparalo con la otra persona en voz alta o en persona. Si los dos números coinciden, nadie se metió en medio de esta conversación.',
+  'cha.codigoNo': 'Todavía no hay código: falta que alguno de los dos abra el chat en esta versión.',
   'cha.desbloquear': 'Desbloquear el chat', 'cha.repOk': 'Chat desbloqueado',
   'cha.ellaveT': 'El chat se trabó',
   'cha.ellaveP': 'La llave que guarda este navegador ya no la reconoce el servidor. Se arregla sola: tocá desbloquear.',
@@ -1197,9 +1205,14 @@ en: {
   'cha.hiloT': 'Nothing here yet', 'cha.hiloP': 'Write the first thing.',
   'cha.gateT': 'The chat is for verified people',
   'cha.gateP': 'To chat you need your Genesis ID approved. That way everyone knows there is a real person on the other side.',
-  'cha.e2eLlamadas': 'Calls are end-to-end encrypted: not even we can listen to them.',
+  'cha.e2eLlamadas': 'What you write and your calls are end-to-end encrypted: not even we can read or hear them.',
   'cha.e2eIdentidad': 'And on the other side there is always a real person, verified with Genesis ID on our own chain.',
-  'cha.sinE2E': 'Written messages are not: they travel encrypted to our server, but we can read them there. Never send your recovery phrase or your password here.',
+  'cha.sinE2E': 'Photos, videos, files and voice notes are not yet: they travel encrypted to our server and are stored there as they are. Never send your recovery phrase or your password — here or anywhere.',
+  'cha.e2eSinLlave': 'Not encrypted: this person has not opened the new version yet.',
+  'cha.e2eCerrado': 'This arrived encrypted for another of your devices. Open it there.',
+  'cha.codigoTit': 'Safety code',
+  'cha.codigoQue': 'Compare it with the other person out loud or in person. If both numbers match, nobody got in the middle of this conversation.',
+  'cha.codigoNo': 'No code yet: one of you still has to open the chat on this version.',
   'cha.desbloquear': 'Unlock the chat', 'cha.repOk': 'Chat unlocked',
   'cha.ellaveT': 'The chat got stuck',
   'cha.ellaveP': 'The key stored in this browser is no longer recognised by the server. It fixes itself: tap unlock.',

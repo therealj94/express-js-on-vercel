@@ -66,6 +66,12 @@ def main():
         _, bo = pedir(base, '/alta', {'correo': 'beto@prueba.local', 'nombre': 'Beto'})
         ana = {'correo': 'ana@prueba.local', 'llave': a['llave']}
         beto = {'correo': 'beto@prueba.local', 'llave': bo['llave']}
+        # Desde que existe el circulo hay que aceptarse para poder
+        # escribirse. No es ruido de la prueba: es el mismo paso que
+        # da una persona en la app antes de su primer mensaje.
+        pedir(base, '/amistad/pedir', {**ana, 'para': 'beto@prueba.local'})
+        pedir(base, '/amistad/responder', {**beto, 'de': 'ana@prueba.local',
+                                          'aceptar': True})
 
         # una foto de verdad: se sube y se pone en el perfil de Beto
         png = ('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8'

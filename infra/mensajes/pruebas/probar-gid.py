@@ -75,6 +75,11 @@ def main():
         st, r = post(base, '/alta', {'correo': 'beto@og.hn', 'nombre': 'Beto'})
         assert st == 200 and r.get('llave'), '/alta sin gid: %s %s' % (st, r)
         beto = {'correo': 'beto@og.hn', 'llave': r['llave']}
+        # Desde que existe el circulo hay que aceptarse para poder
+        # escribirse. No es ruido de la prueba: es el mismo paso que
+        # da una persona en la app antes de su primer mensaje.
+        post(base, '/amistad/pedir', dict(ana, para='beto@og.hn'))
+        post(base, '/amistad/responder', dict(beto, de='ana@og.hn', aceptar=True))
 
         # 2) buscar por el PRINCIPIO del gid en minúsculas lo encuentra
         st, r = post(base, '/buscar', dict(beto, q='gid-7qk4'))
