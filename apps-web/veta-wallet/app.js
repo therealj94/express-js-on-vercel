@@ -6181,7 +6181,9 @@ const VETA = (() => {
   const grupoColgar = () => GRUPO.colgar('yo');
   const grupoMic = () => GRUPO.micro();
   const grupoCam = () => GRUPO.camara();
-  const grupoPantalla = () => GRUPO.pantalla().catch(() => avisar(t('lla.pantallaNo')));
+  const grupoPantalla = () => puedeCompartir()
+    ? GRUPO.pantalla().catch(() => avisar(t('lla.pantallaNo')))
+    : avisarSinPantalla();
 
   /* La pantalla. Los cuadros se crean UNA vez y se reutilizan: volver a
      dibujar el HTML en cada cambio remontaria los <video> y cortaria el flujo
@@ -6196,18 +6198,19 @@ const VETA = (() => {
     capa.dataset.cuantos = String(c.cuantos || 0);
     if (!activa) {
       capa.classList.remove('mini'); gruMini = false;
+      TONO.parar();
       $('#gru-rejilla').innerHTML = '';
       if (c.motivo === 'solo') avisar(t('gru.sinNadie'));
       return;
     }
+    if (c.estado === 'llamando') TONO.sonar('llamando');
+    else if (c.estado === 'entrando') TONO.sonar('entrando');
+    else TONO.parar();
     $('#gru-entra').classList.toggle('oculto', c.estado !== 'entrando');
     $('#gru-mandos').classList.toggle('oculto', c.estado === 'entrando');
     $('#gru-cuantos').textContent = c.estado === 'llamando'
       ? t('gru.llamando') : `${c.cuantos} ${t('gru.enLlamada')}`;
-    /* Compartir pantalla solo donde existe. En iPhone no hay getDisplayMedia
-       desde una web y no lo arregla nadie: el boton no aparece ahi en vez de
-       aparecer y no hacer nada. Misma regla que en la llamada de dos. */
-    $('#gru-pant').classList.toggle('oculto', !navigator.mediaDevices?.getDisplayMedia);
+    pintarBotonPantalla('#gru-pant');
     $('#gru-mic').classList.toggle('apagado', !c.micAbierto);
     $('#gru-cam').classList.toggle('apagado', !c.camAbierta);
 
@@ -6244,6 +6247,37 @@ const VETA = (() => {
       v.closest('.gru-cuadro').classList.toggle('esperando', !g.conectado);
     }
     rej.dataset.cuantos = String(rej.children.length);
+  }
+
+
+  /* ¿Este aparato puede compartir pantalla, y si no, por qué?
+   *
+   * En iPhone y iPad, Safari NO expone `getDisplayMedia`: compartir pantalla
+   * desde una web no existe ahí y no lo arregla ningún código. Antes el botón
+   * simplemente no aparecía, y el resultado fue el esperable — alguien lo
+   * buscó, no lo encontró, y dio por hecho que estaba roto.
+   *
+   * Ahora se ve, apagado, y al tocarlo dice por qué. Una limitación explicada
+   * molesta menos que una ausencia inexplicable, y sobre todo no manda a
+   * nadie a buscar un fallo que no existe.
+   */
+  const esApple = () => /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const puedeCompartir = () => !!navigator.mediaDevices?.getDisplayMedia;
+
+  function pintarBotonPantalla(id) {
+    const b = $(id);
+    if (!b) return;
+    const puede = puedeCompartir();
+    // Se esconde solo donde NO se puede y NO es un aparato de Apple: ahí es un
+    // navegador viejo cualquiera y no hay nada que explicar.
+    b.classList.toggle('oculto', !puede && !esApple());
+    b.classList.toggle('apagado-siempre', !puede);
+    b.disabled = false;   // tiene que poder tocarse para poder explicarse
+  }
+
+  function avisarSinPantalla() {
+    avisar(esApple() ? t('lla.pantallaApple') : t('lla.pantallaNo'));
   }
 
   /* ── LA LLAMADA CHIQUITA ─────────────────────────────────────────────────
@@ -6345,6 +6379,7 @@ const VETA = (() => {
    */
   let llaReloj = null;
   let llaDesde = 0;
+  let llaSono = false;      // ya se dio el golpe de «conectado»
 
   function llamadaArrancar() {
     if (!window.LLAMADA || !LLAMADA.puede()) return;
@@ -6407,7 +6442,9 @@ const VETA = (() => {
   const llamadaColgar = () => LLAMADA.colgar('yo');
   const llamadaMic = () => LLAMADA.micro();
   const llamadaCam = () => LLAMADA.camara();
-  const llamadaPantalla = () => LLAMADA.pantalla().catch(() => avisar(t('lla.pantallaNo')));
+  const llamadaPantalla = () => puedeCompartir()
+    ? LLAMADA.pantalla().catch(() => avisar(t('lla.pantallaNo')))
+    : avisarSinPantalla();
 
   /* La pantalla. Se pinta a mano y no con `vista()` porque una llamada no es
      una vista: pasa POR ENCIMA de la que sea, y navegar no debe cortarla. */
@@ -6422,16 +6459,29 @@ const VETA = (() => {
     capa.classList.toggle('con-video', !!c.hayVideo);
     clearInterval(llaReloj); llaReloj = null;
 
+    /* EL TIMBRE.
+     *
+     * Se maneja aqui, donde se sabe el estado de verdad, y no dentro de
+     * llamada.js: el modulo de WebRTC no deberia saber que existe un altavoz.
+     * `sonar()` no hace nada si ya esta sonando ese mismo tono, asi que
+     * llamarlo en cada repintado es gratis. */
+    if (activa && c.estado === 'llamando') TONO.sonar('llamando');
+    else if (activa && c.estado === 'entrando') TONO.sonar('entrando');
+    else TONO.parar();
+
     if (!activa) {
       // Al colgar, la ventana vuelve a su sitio: la proxima llamada no debe
       // aparecer chiquita en una esquina porque la anterior quedo asi.
       capa.classList.remove('mini');
       capa.style.inset = '';
-      llaMini = false; llaPos = null;
+      llaMini = false; llaPos = null; llaSono = false;
       /* El motivo de la caída se dice UNA vez y con nombre propio. «Sin
          camino» es el caso del TURN que no tenemos, y confundirlo con
          «colgaste» deja a la gente probando diez veces creyendo que es su
          internet. */
+      // Un golpe corto al terminar: distinto si salio bien que si no. Es la
+      // diferencia entre «se colgo» y «algo fallo» sin leer nada.
+      TONO.golpe(c.motivo === 'yo' || c.motivo === 'el-otro');
       const dicho = { 'sin-camino': 'lla.sinCamino', 'corte': 'lla.corte',
                       'rechazada': 'lla.rechazada', 'ocupado': 'lla.ocupado',
                       'sin-respuesta': 'lla.sinRespuesta',
@@ -6456,9 +6506,7 @@ const VETA = (() => {
     if (llaMini && llaPos) capa.style.inset = `${llaPos.arr}px auto auto ${llaPos.izq}px`;
     $('#lla-entra').classList.toggle('oculto', c.estado !== 'entrando');
     $('#lla-mandos').classList.toggle('oculto', c.estado === 'entrando');
-    // Compartir pantalla solo donde existe: en iPhone no hay, y un botón que
-    // al tocarlo no hace nada es peor que no ponerlo.
-    $('#lla-pant').classList.toggle('oculto', !LLAMADA.puedePantalla());
+    pintarBotonPantalla('#lla-pant');
     /* Los videos se re-enganchan cada vez que se pinta. Asignar `srcObject` a
        un elemento que todavía estaba dentro de un contenedor oculto no siempre
        arranca la reproducción, y el resultado es el recuadro propio en negro
@@ -6493,6 +6541,9 @@ const VETA = (() => {
       }, 500);
       est.textContent = t('lla.conectando');
     } else {
+      // Al pasar a hablando por primera vez: un golpe corto. Sin el, la
+      // persona sigue mirando la pantalla sin saber si ya se la oye.
+      if (!llaSono) { llaSono = true; TONO.golpe(true); }
       est.textContent = c.compartiendo ? t('lla.compartiendo') : t('lla.hablando');
     }
   }
@@ -6904,9 +6955,16 @@ const VETA = (() => {
       <div class="cha-cab">
         <input id="chat-busca" placeholder="${t('cha.buscar')}" value="${esc(chatSt.busca)}"
                autocomplete="off" oninput="VETA.chatBuscar(this.value)">
-        <button class="cha-mas" onclick="VETA.chatCodigo()" title="${t('cha.miCod')}"
-                aria-label="${t('cha.miCod')}">
-          <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h3v3h-3zM20 14v2M17 20h3M14 19v1"/></svg>
+        ${/* MI PERFIL, DETRAS DE MI PROPIA CARA.
+              Antes esto era un icono de codigo QR. El nombre y la foto de uno
+              estaban ahi dentro, y nadie los encontro nunca — un QR no dice
+              «tu perfil» a nadie. Un avatar propio si: es el gesto que todo
+              el mundo ya conoce de cualquier otra app. */''}
+        <button class="cha-mas cha-yo-btn" onclick="VETA.chatCodigo()"
+                title="${t('cha.miPerfil')}" aria-label="${t('cha.miPerfil')}">
+          ${chatSt.yo?.foto
+            ? `<img src="${esc(CHAT.urlArchivo(chatSt.yo.foto))}" alt="">`
+            : `<span>${esc(chatIni(chatSt.yo?.nombre || sesion?.nombre || sesion?.correo))}</span>`}
         </button>
         <button class="cha-mas" onclick="VETA.chatGrupo()" title="${t('cha.grupo')}"
                 aria-label="${t('cha.grupo')}">

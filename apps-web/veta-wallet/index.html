@@ -1132,6 +1132,9 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 .lla-no svg{transform:rotate(134deg)}
 .lla-g{width:54px;height:54px;background:rgba(255,255,255,.13);color:var(--crema)}
 .lla-g.apagado{background:var(--crema);color:#04231A}
+/* Un mando que este aparato no puede usar: se ve, apagado, y al tocarlo
+   explica. Ausente sin explicacion manda a buscar un fallo que no existe. */
+.lla-b.apagado-siempre{opacity:.42}
 
 /* ── LA LLAMADA DE GRUPO ──────────────────────────────────────────────────
    La rejilla se acomoda sola segun cuanta gente haya: con dos, dos filas;
@@ -1300,6 +1303,14 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 .cha-quien b{color:#EAF4FF}
 .cha-quien small{color:var(--p2c-humo)}
 .cha-mas{color:var(--p2c-bruma)}
+/* Mi cara, como boton. Es lo que en cualquier app significa «vos»: sin
+   avatar, las iniciales; con foto, la foto. */
+.cha-yo-btn{width:34px;height:34px;border-radius:50%;overflow:hidden;padding:0;
+  border:1.5px solid var(--p2c-cyan);background:var(--p2c-grad);flex:none;
+  display:grid;place-items:center}
+.cha-yo-btn img{width:100%;height:100%;object-fit:cover;display:block}
+.cha-yo-btn span{font:700 12.5px/1 var(--sans);color:#03122E}
+.cha-yo-btn:hover{box-shadow:0 0 0 3px rgba(0,217,232,.22)}
 .cha-mas:hover{color:var(--p2c-cyan)}
 .cha-voz-t{color:var(--p2c-humo)}
 .cha-sello{background:rgba(0,217,232,.09);border-color:var(--p2c-linea)}
@@ -2891,6 +2902,7 @@ body.en-ventana .lienzo::before{
 
 <script src="vendor/cripto-llaves.js"></script>
 <script src="llaves.js"></script>
+<script src="tono.js"></script>
 <script src="llamada.js"></script>
 <script src="llamadaGrupo.js"></script>
 <script src="cadena.js"></script>

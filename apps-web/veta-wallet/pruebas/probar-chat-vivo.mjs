@@ -117,6 +117,26 @@ ok('Beto ve que Ana escribe', await B.pag.isVisible('#cha-escribe'),
 await B.pag.waitForTimeout(4500)
 ok('y se apaga solo cuando Ana para', !(await B.pag.isVisible('#cha-escribe')))
 
+console.log('\nMi perfil y el timbre\n')
+// El boton vive en la LISTA: con un hilo abierto, en pantalla angosta la
+// lista se esconde. Se vuelve atras primero, que es lo que hace la persona.
+await A.pag.evaluate(()=>{ VETA._chatCon(null); VETA.vista('chat') })
+await A.pag.waitForTimeout(700)
+ok('mi cara es el boton de perfil', await A.pag.isVisible('.cha-yo-btn'))
+await A.pag.click('.cha-yo-btn'); await A.pag.waitForTimeout(900)
+const perfil = await A.pag.evaluate(()=>document.getElementById('lienzo')?.innerText||'')
+ok('se abre «Mi perfil»', /Mi perfil/i.test(perfil))
+ok('se puede poner nombre', /Nombre/i.test(perfil))
+ok('y foto', /foto/i.test(perfil), perfil.slice(0,80).replace(/\n+/g,' | '))
+await A.pag.screenshot({path:'/tmp/p2c-perfil.png'})
+
+ok('el modulo de timbre existe', await A.pag.evaluate(()=>typeof TONO?.sonar === 'function'))
+const t1 = await A.pag.evaluate(async () => {
+  TONO.sonar('entrando'); const a = TONO.sonando()
+  TONO.parar(); return { sono: a, tras: TONO.sonando() }
+})
+ok('suena y se calla', t1.sono === 'entrando' && t1.tras === null, JSON.stringify(t1))
+
 await A.pag.screenshot({path:'/tmp/p2c.png'})
 for (const p of [A,B]) ok(`sin errores de javascript (${p.correo.split('@')[0]})`, p.err.length===0)
 if (A.err.length) console.log(A.err.slice(0,2))
