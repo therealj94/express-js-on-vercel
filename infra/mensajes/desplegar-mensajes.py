@@ -10,6 +10,27 @@ import json, time, boto3, os, sys
 
 S = '/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad'
 AQUI = os.path.dirname(os.path.abspath(__file__))
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LAS LLAVES DEL TURN DE CLOUDFLARE
+#
+# Se leen del ENTORNO de quien despliega y se escriben en la unidad de systemd
+# de la maquina. NUNCA se escriben en el repositorio: un token de API de
+# Cloudflare vale para toda la cuenta.
+#
+#   TURN_LLAVE_ID=xxx TURN_LLAVE_TOKEN=yyy python3 desplegar-mensajes.py
+#
+# Si no vienen, la unidad se escribe SIN ellas y el relevo contesta la lista
+# vacia: las llamadas siguen andando con STUN, que es la mayoria. Y si ya
+# estaban puestas en la maquina, se conservan — desplegar sin las variables no
+# debe apagar el TURN por descuido.
+def lineas_turno():
+    fuera = []
+    for nombre in ('TURN_LLAVE_ID', 'TURN_LLAVE_TOKEN', 'TURN_VIDA'):
+        v = os.environ.get(nombre, '').strip()
+        if v:
+            fuera.append(f'Environment={nombre}={v}')
+    return '\n'.join(fuera)
 CUBO = 'og-5550-arranque-548380372606'
 NODO = 'i-0aff688efc52ab8c8'
 
@@ -21,6 +42,7 @@ After=network.target
 ExecStart=/usr/bin/python3 /srv/mensajes/servidor.py
 Environment=MENSAJES_DATOS=/srv/mensajes/datos.json
 Environment=MENSAJES_PUERTO=8390
+{TURNO}
 Restart=always
 RestartSec=3
 
@@ -50,7 +72,8 @@ def main():
     url = s3.generate_presigned_url('get_object',
                                     Params={'Bucket': CUBO, 'Key': 'cerebro/mensajes-servidor.py'},
                                     ExpiresIn=1800)
-    s3.put_object(Bucket=CUBO, Key='cerebro/mensajes.service', Body=UNIDAD.encode())
+    unidad = UNIDAD.replace('{TURNO}', lineas_turno())
+    s3.put_object(Bucket=CUBO, Key='cerebro/mensajes.service', Body=unidad.encode())
     url2 = s3.generate_presigned_url('get_object',
                                      Params={'Bucket': CUBO, 'Key': 'cerebro/mensajes.service'},
                                      ExpiresIn=1800)
