@@ -160,6 +160,11 @@ app.use("/auth/login", authLimiter);
 // una wallet y manda un correo, o sea que era un buen sitio para abusar.
 app.use("/auth/registryWallet", authLimiter);
 app.use("/auth/register", authLimiter);
+// Traer una billetera es un alta: mismo freno que las demas. Sin esto se
+// podrian probar llaves en tanda contra la comprobacion de «ya tiene cuenta».
+app.use("/auth/importar", authLimiter);
+app.use("/auth/entrar-con-llave", authLimiter);
+app.use("/auth/reto-llave", authLimiter);
 app.use("/auth/recuperarPassword", authLimiter);
 app.use("/auth/resetPassword", authLimiter);
 app.use("/auth/refresh", authLimiter);

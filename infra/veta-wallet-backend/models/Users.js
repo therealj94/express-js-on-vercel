@@ -24,11 +24,31 @@ const Users = new Schema(
             unique: true,
             trim: true
         },
+        /* La frase semilla, SOLO de las cuentas que nacieron aqui.
+         *
+         * Una billetera traida de afuera no tiene frase guardada a proposito:
+         * la frase de su dueño manda sobre TODAS las cuentas de esa frase, no
+         * solo sobre la que trajo, y guardarla nos daria mando sobre
+         * billeteras que nadie nos entrego. Con la llave privada de la cuenta
+         * importada alcanza para todo lo que este servicio hace.
+         *
+         * Por eso `required` es false y el indice es DISPERSO. Y por eso el
+         * alta importada OMITE el campo en vez de escribirlo como null: un
+         * indice disperso deja fuera lo que NO EXISTE, no lo que vale null —
+         * escribir null mete a todas en el indice y la segunda importacion
+         * choca con la primera. */
         seed:{
             type: String,
-            required:true,
+            required:false,
             unique: true,
+            sparse: true,
+        },
 
+        /* Nacio afuera. Cambia lo que se le puede ofrecer: no tiene frase que
+         * enseñar en «respaldo», y su llave existe tambien en otra billetera. */
+        importada:{
+            type: Boolean,
+            default: false,
         },
         username:{
             type: String,

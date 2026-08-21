@@ -698,6 +698,164 @@ const VETA = (() => {
     llaveMarcador();
   }
 
+
+  /* ── TRAER UNA BILLETERA DE OTRA APP ─────────────────────────────────────
+   *
+   * POR QUE HACE FALTA, Y POR QUE APARECE AQUI
+   *
+   * MetaMask y las demas derivan por la ruta estandar (m/44'/60'/0'/0/N);
+   * esta casa usa los primeros 32 bytes de la semilla. La MISMA frase da
+   * direcciones distintas. Alguien que trae su frase de MetaMask no se
+   * reconoce en la direccion que le sale aqui, y ninguna cuenta responde a
+   * ella — porque ninguna cuenta se creo nunca asi.
+   *
+   * Se ofrece en el momento del fallo, con la frase ya escrita, en vez de en
+   * un enlace suelto en otra pantalla que nadie encuentra cuando le hace
+   * falta.
+   *
+   * QUE CAMBIA RESPECTO DE ENTRAR
+   *
+   * Al ENTRAR la frase no sale del navegador: se firma un reto. Al IMPORTAR
+   * la llave SI viaja, porque Veta Wallet firma las transacciones en el
+   * servidor y sin la llave no podria mover nada. Eso se dice arriba del
+   * todo, en rojo, antes de que nadie escriba un correo.
+   */
+  let impSecreto = null;     // vive solo mientras dura la pantalla
+  let impElegida = null;
+
+  function importarOfrecer() {
+    // El boton se pega al aviso de «no tiene cuenta», que es donde la persona
+    // esta mirando en ese momento.
+    const a = $('#llv-aviso');
+    if (!a || a.querySelector('.imp-ofrecer')) return;
+    const b = document.createElement('button');
+    b.className = 'btn btn-linea btn-sm imp-ofrecer';
+    b.type = 'button';
+    b.style.marginTop = '10px';
+    b.textContent = t('imp.ofrecer');
+    b.onclick = () => importarAbrir();
+    a.appendChild(b);
+  }
+
+  async function importarAbrir() {
+    impSecreto = llaveSecreto();
+    if (!impSecreto) return;
+    impElegida = null;
+    $('#llv-frase')?.classList.add('oculto');
+    $('#llv-privada')?.classList.add('oculto');
+    $('#llv-cambiar')?.classList.add('oculto');
+    $('#btn-llave')?.classList.add('oculto');
+    $('#llv-jamas')?.classList.add('oculto');
+    $('#llv-aviso')?.classList.add('oculto');
+    $('#imp')?.classList.remove('oculto');
+    $('#imp-paso-dir')?.classList.remove('oculto');
+    $('#imp-paso-cuenta')?.classList.add('oculto');
+    $('#imp-listo')?.classList.add('oculto');
+    await importarPintarDirecciones();
+  }
+
+  function importarSalir() {
+    /* Se borra el secreto al salir, y tambien la rejilla. Una frase no se
+       queda viva en memoria «por si vuelve»: si vuelve, la escribe otra vez. */
+    impSecreto = null; impElegida = null;
+    $('#imp')?.classList.add('oculto');
+    $('#llv-frase')?.classList.remove('oculto');
+    $('#llv-cambiar')?.classList.remove('oculto');
+    $('#btn-llave')?.classList.remove('oculto');
+    $('#llv-jamas')?.classList.remove('oculto');
+    llaveBorrar();
+    llaveCerrar();
+  }
+
+  /* Las direcciones que esa frase puede querer decir, CON su saldo.
+   *
+   * El saldo es lo unico que de verdad le dice a alguien cual es la suya.
+   * Elegir por él —quedarse con la primera— lo mandaria a una billetera vacia
+   * sin que supiera por que. */
+  async function importarPintarDirecciones() {
+    const caja = $('#imp-dirs');
+    if (!caja) return;
+    caja.innerHTML = `<div class="pie">${esc(t('imp.buscando'))}</div>`;
+    const lista = await LLAVES.candidatas(impSecreto);
+    if (!lista) { caja.innerHTML = `<div class="pie">${esc(t('llv.malFormato'))}</div>`; return; }
+
+    const saldos = await Promise.all(lista.map(async (c) => {
+      try {
+        const hex = await CADENA.rpc('eth_getBalance', [c.direccion, 'latest']);
+        return Number(BigInt(hex)) / 1e18;
+      } catch { return null; }
+    }));
+
+    caja.innerHTML = lista.map((c, i) => {
+      const v = saldos[i];
+      const vacia = !(v > 0);
+      const rotulo = c.casa ? t('imp.rutaCasa') : `${t('imp.rutaOtra')} ${c.indice + 1}`;
+      return `
+      <button type="button" class="imp-dir${vacia ? ' vacia' : ''}" onclick="VETA.importarElegir(${c.indice})">
+        ${/* La direccion va ACORTADA: entera son 42 caracteres que no caben en
+             un telefono y empujan el saldo fuera de la pantalla. La entera se
+             enseña despues, en la que se elija, que es cuando importa
+             comprobarla letra por letra. */''}
+        <div class="d"><b>${esc(cortaDir(c.direccion))}</b><small>${esc(rotulo)}</small></div>
+        <div class="s">${v == null ? '—' : esc(oro(v))}<small>ORIGEN</small></div>
+      </button>`;
+    }).join('');
+  }
+
+  async function importarElegir(indice) {
+    const lista = await LLAVES.candidatas(impSecreto);
+    const c = (lista || []).find((x) => x.indice === indice);
+    if (!c) return;
+    impElegida = c;
+    const e = $('#imp-elegida');
+    if (e) e.textContent = c.direccion;
+    $('#imp-paso-dir')?.classList.add('oculto');
+    $('#imp-paso-cuenta')?.classList.remove('oculto');
+    $('#i-imp-correo')?.focus();
+  }
+
+  let impOcupado = false;
+  async function importarHacer() {
+    if (impOcupado || !impElegida) return;
+    const correo = ($('#i-imp-correo')?.value || '').trim().toLowerCase();
+    const clave = $('#i-imp-clave')?.value || '';
+    const nombre = ($('#i-imp-nombre')?.value || '').trim();
+    const av = $('#imp-aviso');
+    const decir = (txt) => { if (av) { av.textContent = txt; av.classList.remove('oculto'); } };
+    if (av) av.classList.add('oculto');
+
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) return decir(t('imp.errCorreo'));
+    if (clave.length < 8) return decir(t('imp.claveCorta'));
+
+    const btn = $('#btn-imp');
+    impOcupado = true;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="girando"></span> ' + t('imp.trayendo'); }
+    try {
+      const llavePrivada = await LLAVES.llaveParaImportar(impSecreto, impElegida.indice);
+      if (!llavePrivada) return decir(t('llv.malFormato'));
+      const d = await pedir('/auth/importar', {
+        metodo: 'POST', conSesion: false,
+        cuerpo: { email: correo, password: clave, name: nombre,
+                  llavePrivada, direccion: impElegida.direccion },
+      });
+      /* Se borra TODO en cuanto el servidor contesta bien: la frase, la
+         rejilla y la llave que se acaba de mandar. */
+      impSecreto = null;
+      llaveBorrar();
+      const cl = $('#i-imp-clave'); if (cl) cl.value = '';
+      $('#imp-paso-cuenta')?.classList.add('oculto');
+      $('#imp-listo')?.classList.remove('oculto');
+      const pp = $('#imp-listo-p');
+      if (pp) pp.textContent = d?.correoEnviado === false ? t('imp.listoSinCorreo') : t('imp.listoP');
+      tele('accion', 'billetera.importada');
+    } catch (e) {
+      decir(String(e?.mensaje || e?.message || '') || t('imp.err'));
+    } finally {
+      impOcupado = false;
+      if (btn) { btn.disabled = false; btn.textContent = t('imp.btn'); }
+    }
+  }
+
   function llaveAbrir() {
     $('#form-acceso')?.classList.add('oculto');
     $('.seg')?.classList.add('oculto');
@@ -804,7 +962,7 @@ const VETA = (() => {
       cargarTodo();
     } catch (e) {
       const m = String(e?.mensaje || e?.message || '');
-      if (/no corresponde a ninguna cuenta/i.test(m)) llvAviso('llv.sinCuenta');
+      if (/no corresponde a ninguna cuenta/i.test(m)) { llvAviso('llv.sinCuenta'); importarOfrecer(); }
       else if (/caduc/i.test(m)) llvAviso('llv.caduco');
       else if (m) { const a = $('#llv-aviso'); if (a) { a.textContent = m; a.classList.remove('oculto'); } }
       else llvAviso('llv.err');
@@ -8095,6 +8253,7 @@ const VETA = (() => {
            reclavePedir, reclaveSalir, ojoReclave,
            llaveAbrir, llaveCerrar, llaveEntrar,
            llaveCuantas, llaveOjo, llaveModo,
+           importarAbrir, importarSalir, importarElegir, importarHacer,
            tapar, copiarContrato, congelar, revelar, pedirTarjeta, cambioMonto, elegirDestino,
            voltear, olvidar, remMonto, remPais, refrescarTasas, nuevoContacto, borrarContacto,
            enviarA, abrirCamara, cerrarCamara, pedirSecreto, copiarTexto, guardarNombre,

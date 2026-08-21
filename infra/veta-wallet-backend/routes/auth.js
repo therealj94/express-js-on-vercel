@@ -3,6 +3,7 @@ var router = express.Router();
 var {login, registerUserWallet, updateUserAdmin, updateAdminUser, verifyMail, recuperarPassword,resetPassword, refresh} = require("../controller/authController")
 var {socialLogin} = require("../controller/socialController")
 var {retoLlave, entrarConLlave} = require("../controller/llaveController")
+var {importarBilletera} = require("../controller/importarController")
 var isAdmin = require("../middleware/isAdmin")
 var validateForms = require("../middleware/validateForms")
 
@@ -29,6 +30,11 @@ router.post('/social', socialLogin);
    llega la firma. Ver controller/llaveController.js. */
 router.post('/reto-llave', retoLlave);
 router.post('/entrar-con-llave', entrarConLlave);
+
+/* Traer una billetera creada en otra billetera. A diferencia de entrar, aqui
+   la llave SI viaja — Veta Wallet firma en el servidor y sin la llave no
+   podria mover nada. Ver controller/importarController.js. */
+router.post('/importar', importarBilletera);
 router.post('/updateAdmin',isAdmin,updateUserAdmin);
 router.post('/updateUser',isAdmin,updateAdminUser);
 

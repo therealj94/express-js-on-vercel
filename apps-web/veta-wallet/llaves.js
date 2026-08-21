@@ -114,6 +114,91 @@ const LLAVES = (() => {
     return { firma: '0x' + hex(f.toBytes('compact')), recupera: f.recovery };
   }
 
+
+  /* ── LA DERIVACION ESTANDAR, PARA TRAER UNA BILLETERA DE AFUERA ──────────
+   *
+   * MetaMask, Trust y las demas usan BIP-44: m/44'/60'/0'/0/N. Esta casa usa
+   * los primeros 32 bytes de la semilla. La MISMA frase da direcciones
+   * distintas en cada sitio, y por eso alguien que trae su frase de MetaMask
+   * no se reconoce en la direccion que le sale aqui.
+   *
+   * Para ENTRAR se usa la de la casa —es la unica con la que se crearon las
+   * cuentas—. Para TRAER una billetera de afuera se usa la estandar, que es
+   * la que da la direccion que su dueño ya conoce y donde estan sus fondos.
+   */
+
+  /** La semilla BIP-39 entera (64 bytes), que es lo que pide BIP-32. */
+  async function semillaDeFrase(frase) {
+    const cod = new TextEncoder();
+    const base = await crypto.subtle.importKey(
+      'raw', cod.encode(normalizar(frase)), { name: 'PBKDF2' }, false, ['deriveBits'],
+    );
+    const bits = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt: cod.encode('mnemonic'), iterations: 2048, hash: 'SHA-512' },
+      base, 512,
+    );
+    return new Uint8Array(bits);
+  }
+
+  /** La llave de la cuenta N por la ruta estándar. */
+  async function llaveEstandar(frase, indice = 0) {
+    const { HDKey } = globalThis.LLAVECRIPTO;
+    const raiz = HDKey.fromMasterSeed(await semillaDeFrase(frase));
+    const hijo = raiz.derive(`m/44'/60'/0'/0/${indice}`);
+    if (!hijo.privateKey) throw new Error('no se pudo derivar');
+    return new Uint8Array(hijo.privateKey);
+  }
+
+  /**
+   * Todas las direcciones que esa frase puede querer decir.
+   *
+   * Se devuelven las cuatro primeras de la ruta estándar —que es lo que
+   * enseña MetaMask cuando alguien tiene varias cuentas en la misma frase— y
+   * ademas la de la casa. Quien importa elige mirando el saldo, que es lo
+   * unico que de verdad le dice cual es la suya; adivinar por él sería
+   * mandarlo a una billetera vacía sin que sepa por qué.
+   */
+  async function candidatas(secreto) {
+    const t = String(secreto || '').trim();
+    const fuera = [];
+
+    if (esLlavePrivada(t)) {
+      const llave = deHex(t);
+      try { fuera.push({ ruta: 'llave privada', indice: 0, direccion: direccionDe(llave) }); }
+      finally { llave.fill(0); }
+      return fuera;
+    }
+    if (!esFraseSemilla(t)) return null;
+
+    for (let i = 0; i < 4; i++) {
+      const llave = await llaveEstandar(t, i);
+      try { fuera.push({ ruta: `m/44'/60'/0'/0/${i}`, indice: i, direccion: direccionDe(llave), estandar: true }); }
+      finally { llave.fill(0); }
+    }
+    const propia = await llaveDesdeFrase(t);
+    try { fuera.push({ ruta: 'Veta Wallet', indice: -1, direccion: direccionDe(propia), casa: true }); }
+    finally { propia.fill(0); }
+    return fuera;
+  }
+
+  /**
+   * La llave privada elegida, en hexadecimal, para mandarla al servidor.
+   *
+   * ESTO SI SALE DEL NAVEGADOR, y es la unica funcion de este archivo de la
+   * que eso es cierto. No es un descuido: Veta Wallet firma las transacciones
+   * en el servidor —descifra la llave para enviar— asi que una billetera
+   * traida de afuera solo se puede usar de verdad si el servidor la tiene. Se
+   * dice en la pantalla con estas mismas palabras, para que nadie lo importe
+   * creyendo otra cosa.
+   */
+  async function llaveParaImportar(secreto, indice) {
+    const t = String(secreto || '').trim();
+    if (esLlavePrivada(t)) return t.startsWith('0x') ? t : '0x' + t;
+    if (!esFraseSemilla(t)) return null;
+    const llave = indice === -1 ? await llaveDesdeFrase(t) : await llaveEstandar(t, indice);
+    try { return '0x' + hex(llave); } finally { llave.fill(0); }
+  }
+
   /**
    * Lo único que se llama desde fuera.
    *
@@ -139,7 +224,7 @@ const LLAVES = (() => {
     }
   }
 
-  return { credencial, esLlavePrivada, esFraseSemilla, _llaveDesdeFrase: llaveDesdeFrase,
+  return { credencial, candidatas, llaveParaImportar, esLlavePrivada, esFraseSemilla, _llaveDesdeFrase: llaveDesdeFrase,
            _direccionDe: direccionDe, _hex: hex };
 })();
 
