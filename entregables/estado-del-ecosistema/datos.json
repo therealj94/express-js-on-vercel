@@ -79,5 +79,46 @@
   "gidIntegra": true,
   "gidBiometria": "aws-rekognition:us-east-1",
   "gidCadena": 5550,
-  "fuenteGid": "genesis-id.onrender.com/healthz"
+  "fuenteGid": "genesis-id.onrender.com/healthz",
+  "ondk": {
+    "precio": 2.15,
+    "moneda": "USD",
+    "desde": "2026-08-16",
+    "acta": "JD-2026-08-16",
+    "firmante": "Secretario de la Junta",
+    "serie": [
+      {
+        "fecha": "2024-07-01",
+        "precio": 1,
+        "acta": "JD-2024-11"
+      },
+      {
+        "fecha": "2024-12-01",
+        "precio": 1.5,
+        "acta": "JD-2024-12-01"
+      },
+      {
+        "fecha": "2025-07-01",
+        "precio": 1.7,
+        "acta": "JD-2025-07-01"
+      },
+      {
+        "fecha": "2026-01-01",
+        "precio": 2.1,
+        "acta": "JD-2026-01-01"
+      },
+      {
+        "fecha": "2026-08-16",
+        "precio": 2.15,
+        "acta": "JD-2026-08-16"
+      }
+    ],
+    "fuente": "ordenex-api /precio-declarado/ONDK"
+  },
+  "cliente": "besu/v26.7.1/linux-x86_64/corretto-java-25",
+  "validadoresConsenso": 7,
+  "aguanta": 2,
+  "shanghai": true,
+  "gasLimit": 10000000,
+  "fuenteMotor": "web3_clientVersion · qbft_getValidatorsByBlockNumber · cabecera del bloque"
 }

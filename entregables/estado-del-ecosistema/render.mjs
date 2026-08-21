@@ -40,6 +40,39 @@ const gordas = await pag.evaluate(() => {
 })
 if (gordas.length) { console.log('  SE DESBORDA:\n    ' + gordas.join('\n    ')); process.exitCode = 1 }
 else console.log('  todas las hojas caben')
+
+/* ¿HAY TEXTO RECORTADO DENTRO DE ALGUNA CAJA?
+ *
+ * La comprobación de arriba mide si el contenido se pasa del final de la hoja.
+ * No ve lo otro: una caja con `overflow:hidden` que se come su propio texto.
+ * Pasó DOS VECES por lo mismo, meter una frase larga en el componente que es
+ * para cifras, y las dos veces desapareció un bloque entero del PDF sin que
+ * nada lo dijera. Se mide lo que cada caja necesita contra lo que le cabe. */
+const cortadas = await pag.evaluate(() => {
+  const malas = []
+  document.querySelectorAll('.hoja *').forEach((e) => {
+    const st = getComputedStyle(e)
+    if (st.overflow === 'visible' && st.overflowY === 'visible') {
+      // el padre puede estar recortando aunque este no lo haga
+      const rec = e.closest('[style*="overflow"], .rejilla, .hoja, .captura, .p2cplaca')
+      if (!rec || rec === e) return
+    }
+    const sobraAlto = e.scrollHeight - e.clientHeight
+    const sobraAncho = e.scrollWidth - e.clientWidth
+    if (sobraAlto > 2 || sobraAncho > 2) {
+      const st2 = getComputedStyle(e)
+      if (st2.overflow === 'hidden' || st2.overflowY === 'hidden' || st2.overflowX === 'hidden') {
+        malas.push(`${e.className || e.tagName} recorta ${sobraAlto}px de alto, ` +
+                   `${sobraAncho}px de ancho: «${(e.textContent || '').trim().slice(0, 46)}»`)
+      }
+    }
+  })
+  return [...new Set(malas)]
+})
+if (cortadas.length) {
+  console.log('  TEXTO RECORTADO DENTRO DE UNA CAJA:\n    ' + cortadas.join('\n    '))
+  process.exitCode = 1
+} else console.log('  ninguna caja se come su texto')
 await pag.pdf({ path:'Orden-Global-Donde-estamos.pdf', format:'A4', printBackground:true,
   margin:{top:0,right:0,bottom:0,left:0}, preferCSSPageSize:true })
 console.log(err.length ? '  errores: ' + err.join(' | ') : '  sin errores')

@@ -43,6 +43,15 @@ python3 -m http.server 8791 --directory ../..   # la app, desde la raíz del rep
 node fotos.mjs
 ```
 
+## La voz
+
+Sin raya larga (`—`) en ninguna parte, sin la construcción «no es X, es Y», y
+con los dos puntos dramáticos reducidos a la mitad. Son las marcas que hacen
+que un texto suene escrito por una máquina, y José las detectó de una lectura.
+Frases cortas. El PDF terminado tiene **cero rayas largas**, y eso se comprueba
+sobre el PDF y no sobre el HTML (donde las rayas son marcadores de dato sin
+llenar).
+
 ## Lo que este documento NO dice, a propósito
 
 - **Nada en futuro.** Ni metas, ni fechas, ni hoja de ruta. Solo lo que existe.
@@ -51,10 +60,22 @@ node fotos.mjs
 - **AU-RA se presenta como modelo 1 en beta**, y se dice que se equivoca.
 - **Los archivos del chat todavía no van cifrados de punta a punta**, y está
   escrito en la misma página que presume del cifrado.
-- **AuCorp va marcado «todavía no disponible»**, con borde rayado en vez de
-  relleno, para que no se pueda confundir con lo que sí funciona ni leyendo por
-  encima. Es lo único del documento que no se puede comprobar, y el documento
-  lo dice.
+- **AuCorp no se llama «banco»** en ninguna frase afirmativa. Es una empresa
+  constituida, con dos sedes y plataformas construidas, con las licencias en
+  trámite. La página lo dice con esas palabras y cierra con un aviso propio:
+  «no presta servicios bancarios todavía y no los va a prestar hasta tener la
+  licencia que corresponde». En esto la precisión no es un detalle legal.
+- **ONDK lleva su precio con el acta que lo firma**, y dice dos veces que un
+  precio declarado no es una cotización de mercado. La página cierra avisando
+  que al abrir el mercado el precio puede quedar por debajo del declarado.
+
+## Lo que sí se verificó contra la red
+
+El motor de la cadena no se escribió de memoria. `web3_clientVersion` contesta
+`besu/v26.7.1`, `qbft_getValidatorsByBlockNumber` devuelve los siete
+validadores del conjunto, y la cabecera del bloque trae `withdrawalsRoot` sin
+`blobGasUsed`, que es exactamente la firma de **Shanghai** y no de Cancun. El
+precio de ONDK y su serie de cinco actas salen de la API de Ordenex.
 
 ## Lo único que no pude verificar
 
