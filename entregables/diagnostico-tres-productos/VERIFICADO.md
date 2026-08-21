@@ -357,3 +357,201 @@ Lo que sí falta en los tres: **ninguno publica qué versión corre**. No hay ru
 de versión, no hay commit en ninguna cabecera, y los `package.json` dicen
 `0.0.0` y `0.0.1`. Eso es exactamente lo que hizo lento de diagnosticar el
 incidente del 12 de agosto.
+
+---
+
+## Cuarta tanda · PULSE2CHAT, producto
+
+Este agente **levantó la app de verdad** —servidor de mensajes en Python más
+Chromium— y la manejó con dos y tres navegadores a la vez. Lo que sigue lo
+verifiqué yo además en el código.
+
+### Los grupos están construidos enteros y son inalcanzables
+
+`chatHoja()` se pinta en **un solo sitio de todo el archivo**: `app.js:7943`. Y
+ese sitio está dentro de la rama de «hay un hilo abierto». `chatHilo()` sale por
+`return` cuatro veces antes de llegar ahí: puerta de Genesis, error de red, Mi
+perfil, y **sin hilo abierto**.
+
+Consecuencia: estando en la lista, que es donde está el botón, tocar «Nuevo
+grupo» **no hace nada**. Ni error, ni aviso, ni nada en la consola.
+
+Y peor para quien acaba de entrar: el botón se concatena con `+ nuevo` en
+`app.js:7526`, que es la rama de cuando ya hay conversaciones. La rama de lista
+vacía (`7492-7496`) **no lo incluye**. Un usuario nuevo no tiene ninguna puerta
+a los grupos.
+
+Mientras tanto el servidor los tiene completos: crear, invitar, administrador
+con herencia por antigüedad, y llamada en malla de cinco personas probada y en
+verde.
+
+**Es el peor tipo de fallo que existe: no falta la función, falta poder llegar a
+ella.** Y arreglarlo es mover una interpolación de sitio.
+
+La misma causa mata otros tres botones, todos comprobados con clic real:
+
+| Botón | Dónde | Consecuencia |
+|---|---|---|
+| Cambiar mi nombre | `app.js:7861` | Es su única entrada. **El nombre del chat no se puede cambiar nunca.** |
+| Borrar mi propio estado | `app.js:6871` | El estado se queda en el relevo |
+| Quitar a alguien del círculo | `app.js:6819` | No se puede desde la pestaña Gente |
+
+Ninguna de las 16 pruebas del repositorio lo detecta, y por un motivo que vale
+la pena decir: `probar-p2c-completo.mjs` prueba esos botones **con un hilo
+abierto**, que es justo el único estado en el que funcionan.
+
+### Un parpadeo de red se traga el mensaje
+
+Tres cosas encadenadas, medidas con la red cortada a mano:
+
+1. `app.js:6215` devuelve el texto al campo. Pero `6217` llama a `pintarChat()`,
+   que sale por el `return` del panel de error: **el campo deja de existir y el
+   texto se va con él.** El comentario de arriba describe algo que no ocurre.
+2. El panel de error **reemplaza el hilo entero** en vez de avisar encima.
+3. No vuelve solo: se limpia `chatSt.error` pero solo se repinta si llegó algo
+   nuevo. Sin mensajes nuevos, la pantalla se queda en «Sin conexión» con el
+   error ya resuelto. Medido: 16 segundos y tres latidos después, seguía ahí.
+
+### Y el relevo no deduplica
+
+`servidor.py:921-985`: el identificador lo acuña el servidor, no viaja ninguna
+clave de idempotencia del cliente. Medido: dos peticiones idénticas a `/enviar`
+producen **dos mensajes**.
+
+Junto con lo anterior, es el camino directo al mensaje duplicado: el usuario ve
+un error de red aunque el relevo ya lo haya guardado, y reescribe.
+
+### El envío push no está a medias: está en cero de punta a punta
+
+- **Cliente:** las tres funciones existen en `chat.js:438-489` y **nadie las
+  llama**. Medido en el navegador: cero service workers registrados. La interfaz
+  no menciona los avisos en ningún texto.
+- **Llave VAPID:** no existe en el repositorio. La única aparición de la palabra
+  es un comentario.
+- **Servidor:** `/suscribir` guarda la suscripción y ahí muere. `servidor.py` no
+  importa nada de criptografía para esto, y sus dos únicas salidas HTTP van al
+  login de la wallet y a Cloudflare. **No hay una sola línea que mande un push.**
+
+Hoy, con la pestaña cerrada, un mensaje y una llamada no llegan a ninguna parte.
+
+### Un segundo aparato es una pared de candados
+
+Medido con el mismo usuario en dos navegadores: el aparato nuevo ve **todo el
+historial** como «Llegó cifrado para otro de tus aparatos», y también los
+mensajes nuevos hasta que caduca el llavero de quien escribe (5 minutos). Tres
+de tres mensajes ilegibles en el segundo aparato.
+
+---
+
+## Quinta tanda · Ordenex, producto
+
+Recorrido con navegador de verdad a 1280 px y 360 px, en español y en inglés,
+con sesión y sin ella, con el backend vivo y caído. Verifiqué lo siguiente por
+mi cuenta.
+
+### ONDK: el documento y la app se contradicen, y una de las dos manda dinero a una cadena muerta
+
+Es el hallazgo que puede terminar en un abogado, por dos motivos distintos.
+
+**Qué es ONDK, según cada sitio:**
+
+| Fuente | Dice |
+|---|---|
+| `ONDK-PREVENTA.md:9` | «representa **participación en la empresa**» |
+| `apps-web/ordenex/cadena.js:111` | «**no es una acción** y no da voto» |
+
+Hay que elegir una. Son cosas jurídicamente distintas y las dos están escritas.
+
+**En qué cadena vive:**
+
+| Fuente | Dice |
+|---|---|
+| `ONDK-PREVENTA.md:13` | «la cadena propia de Orden Global (**chain 8532**)» |
+| `apps-web/ordenex/cadena.js:40` | el mismo contrato, listado como token de la **5550** |
+| `apps-web/ordenex/portafolio.js:97` | «mandá acá únicamente activos de la cadena **5550**» |
+
+**Y la 8532 es la cadena que yo mismo medí esta misma tarde**: un validador,
+cero pares, bloques vacíos, estado congelado desde el 15 de agosto. Quien lea el
+documento de preventa y mande ONDK a una dirección de la 8532 lo está mandando a
+una cadena que nadie mira.
+
+**Además, la sala se contradice consigo misma a cuatrocientos píxeles de
+distancia.** Bajo el gráfico: «ONDK no cotiza todavía: no hay libro ni
+contraparte». Y ahí mismo: libro de órdenes sondeado cada cinco segundos,
+pestaña de tratos, y botón **Comprar ONDK**.
+
+Sin ninguna puerta de idoneidad: cualquiera con sesión puede poner una orden
+sobre el security token. El circuito de efectivo sí exige identidad verificada;
+el de ONDK no exige nada.
+
+### La comisión se cobra y no se enseña en ninguna pantalla
+
+`lib/motor.js:218-234` parte cada ejecución y manda la parte por millón a la
+cuenta `casa`. La web pinta `Total = cantidad × precio` y punto: busqué
+«comisión», «fee» y «tarifa» en todo `apps-web/ordenex/` y hay **cero
+ocurrencias**.
+
+Es el único fallo de la lista donde la casa cobra algo que el usuario no vio.
+Hoy depende de si la variable está encendida en producción —no se pudo
+comprobar— pero encenderla no requiere tocar una línea de la web, y la web
+quedaría mintiendo sola.
+
+### Toda la telemetría de Ordenex la corta el propio navegador
+
+Verificado por mí. La CSP de `index.html:34-36` permite:
+
+```
+connect-src 'self'
+  https://ordenex-api-ba4b27b8b51a.herokuapp.com
+  https://rpc.ordenglobal-rpc.com;
+```
+
+Y `telemetria.js:82` manda a `https://genesis-id.onrender.com`, que **no está en
+la lista**. El navegador bloquea el cien por cien de los eventos.
+
+Peor: el fetch bloqueado cae en el `catch` y el lote **no se descarta**, así que
+la cola crece hasta el tope y reintenta cada diez segundos para siempre.
+
+El comentario de `index.html:21` avisa de esto con estas palabras: «si se agrega
+un servicio nuevo hay que agregarlo aquí o dejará de funcionar en silencio». El
+fallo estaba trece líneas más abajo.
+
+Esta es la razón por la que nadie se enteró de los demás fallos.
+
+### Tres cifras de mercados y ninguna coincide
+
+| Fuente | Dice |
+|---|---|
+| `cadena.js`, medido | **5 pares** públicos (más ORIGEN, que es la moneda de cotización) |
+| La API en producción, medido | **14 mercados** |
+| `i18n.js:19`, `index.html:4` y `mercado.js:109` | «los **quince** activos» / «los **catorce**» |
+
+Es la primera frase de la portada.
+
+### En el teléfono no se puede cancelar una orden
+
+Medido a 360 px con dos órdenes abiertas: el botón «Cancelar» queda en la
+posición 443 de un ancho de 360, y `body{overflow-x:hidden}` **recorta en vez de
+dejar desplazar**. No se alcanza con ningún gesto.
+
+Una orden que no se puede cancelar desde el teléfono es dinero atrapado.
+
+Y en el mismo ancho no hay forma de cerrar sesión ni de cambiar de idioma: el
+pie del riel, que contiene los dos, se oculta por debajo de 900 px.
+
+### Lo que está muy bien, y hay que decirlo
+
+El gráfico de velas es la mejor parte de la aplicación, y se comprobó
+ejecutándolo:
+
+- **Los datos son reales.** Cero series de ejemplo en 1.608 líneas y cero en el
+  backend. No fabrica velas de relleno ni arrastra el cierre anterior.
+- **Tres clases de precio que no se mezclan**: tratos, referencia del metal, y
+  precio declarado por la Junta. El declarado se dibuja con escalones y no con
+  velas, precisamente para no inventarle apertura y máximo a un número solo.
+- **Sin volumen, la banda de volumen no se dibuja** en vez de quedar vacía, y el
+  máximo y el mínimo de 24 h salen en guion en vez de rellenarse con el último
+  precio.
+- **`null` no se confunde nunca con cero**: un saldo que no se pudo leer impide
+  colocar la orden, en vez de tratarse como saldo cero.
+- **BigInt de punta a punta** en el camino del dinero.
