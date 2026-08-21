@@ -969,8 +969,27 @@ export const cardWebhook = async (req, res) => {
 // Hace match por meta.email → usuario en MongoDB.
 // Solo crea registros nuevos (no sobreescribe los existentes).
 // Requiere header x-admin-key = ADMIN_SECRET del .env
+//
+// Compará en tiempo constante, con el mismo criterio que soloAdmin() en
+// routes/chains.js. El `!==` de antes cortaba en el primer byte distinto, y esa
+// diferencia de tiempo se mide desde afuera: con suficientes intentos te sacan
+// el secreto byte a byte sin haber acertado nunca uno entero.
+//
+// Dos detalles que hay que respetar si algún día tocás esto:
+//  - timingSafeEqual LANZA si los búferes miden distinto, así que la longitud
+//    se mira antes y esa comparación se queda corta a propósito.
+//  - sin ADMIN_SECRET en el entorno, `esperada` queda vacía y un header
+//    ausente mediría lo mismo que ella: la ruta quedaría abierta para
+//    cualquiera. Por eso un secreto vacío niega el paso en vez de concederlo.
+function esAdmin(req) {
+  const enviada = String(req.headers["x-admin-key"] || "");
+  const esperada = String(process.env.ADMIN_SECRET || "");
+  const a = Buffer.from(enviada), b = Buffer.from(esperada);
+  return Boolean(esperada) && a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 export const syncCards = async (req, res) => {
-  if (req.headers["x-admin-key"] !== process.env.ADMIN_SECRET) {
+  if (!esAdmin(req)) {
     return res.status(403).json({ message: "Forbidden" });
   }
 

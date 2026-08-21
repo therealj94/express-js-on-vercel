@@ -172,6 +172,66 @@ export function eslabon(anterior: string, contenido: unknown): string {
 
 export const sha256 = (s: string): string => createHash('sha256').update(s).digest('hex')
 
+// ─────────────────────────────────────────────────────────────────────────────
+// La firma de la bitácora
+// ─────────────────────────────────────────────────────────────────────────────
+
+/*
+ * POR QUE HACE FALTA UNA FIRMA SI LA BITACORA YA ESTA ENCADENADA
+ *
+ * El encadenado detecta a un extraño. No detecta a un administrador. Quien
+ * tenga permiso de escritura sobre la base puede borrar entradas, reescribir
+ * las siguientes y recalcular todos los hashes: la cadena verifica ENTERA y
+ * limpia, y no queda rastro. Y el de dentro es exactamente el riesgo que un
+ * regulador quiere ver cubierto en un registro de auditoria.
+ *
+ * Con HMAC deja de poder hacerlo, porque la llave NO vive en la base. Sin ella
+ * no se puede rehacer ni un solo eslabon.
+ *
+ * La llave va en `GENESIS_BITACORA_CLAVE`, y conviene decir en voz alta lo que
+ * eso significa: quien tenga la variable de entorno del servicio puede firmar.
+ * Esto sube el liston de «cualquiera con la cadena de conexion de Mongo» a
+ * «alguien con acceso al panel de despliegue», que no es perfecto pero es otra
+ * liga. El paso siguiente es un KMS, y esta escrito en el diagnostico.
+ */
+
+let claveBitacora: Buffer | null | undefined
+
+function llaveBitacora(): Buffer | null {
+  if (claveBitacora !== undefined) return claveBitacora
+  const secreto = process.env.GENESIS_BITACORA_CLAVE?.trim()
+  // Una llave corta no es una llave: da la sensacion de firmar sin firmar.
+  claveBitacora = secreto && secreto.length >= 32
+    ? scryptSync(secreto.normalize('NFKC'), 'genesis-bitacora-v1', 32,
+        { N: SCRYPT_N, r: SCRYPT_r, p: SCRYPT_p })
+    : null
+  return claveBitacora
+}
+
+/** ¿Hay llave para firmar la bitácora? */
+export const bitacoraFirmable = (): boolean => llaveBitacora() !== null
+
+/** Solo para las pruebas: olvida la llave derivada para poder cambiarla. */
+export function olvidarClaveBitacora(): void { claveBitacora = undefined }
+
+/** La firma de un eslabón, o `null` si no hay llave configurada. */
+export function firmarEslabon(hash: string): string | null {
+  const k = llaveBitacora()
+  return k ? createHmac('sha256', k).update(hash).digest('hex') : null
+}
+
+/**
+ * ¿Cuadra esta firma con este eslabón?
+ *
+ * En tiempo constante, aunque acá el atacante no puede pedir comparaciones a
+ * voluntad: cuesta una linea y no hay motivo para dejar el hueco abierto.
+ */
+export function firmaCuadra(hash: string, firma: string): boolean {
+  const esperada = firmarEslabon(hash)
+  if (!esperada || !firma || esperada.length !== firma.length) return false
+  return timingSafeEqual(Buffer.from(esperada), Buffer.from(firma))
+}
+
 export const azar = (bytes = 16): string => randomBytes(bytes).toString('base64url')
 
 // ─────────────────────────────────────────────────────────────────────────────

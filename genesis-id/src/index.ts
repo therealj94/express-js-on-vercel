@@ -9,6 +9,8 @@ import { asegurarAplicaciones, alinearAlcances } from './auth/aplicaciones.js'
 import { prepararTelemetria, hayMongo as telemetriaEnMongo } from './analitica/eventos.js'
 import { estadoListas, hayListas, iniciarListas } from './aml/listas.js'
 import { estadoTemporizador, iniciarTemporizadorListas } from './aml/temporizador.js'
+import { estadoAncla, iniciarAncla } from './audit/ancla.js'
+import { saludSegundoFactor } from './auth/operadores.js'
 import { cargarGafiDesdeMongo, estadoGafi, listasVencidas } from './aml/paises.js'
 import { correoEncendido, correoRemitente } from './correo/enviar.js'
 import { biometriaConfigurada, proveedorBiometria } from './kyc/biometria.js'
@@ -252,6 +254,8 @@ app.get('/healthz', (_req, res) => {
   // reinicio. Por eso cuenta para el estado: es la avería que se paga tarde.
   const guardaBien = almacen.ultimoVolcado?.ok !== false
   const tempo = estadoTemporizador()
+  const ancla = estadoAncla()
+  const dosFactores = saludSegundoFactor()
   const listo = hayListas() && cadena.integra && motor === 'mongodb' && guardaBien
   res.json({
     estado: listo ? 'ok' : 'degradado',
@@ -348,6 +352,34 @@ app.get('/healthz', (_req, res) => {
          numero de orden. Lo primero es el fallo del 20-ago, ya arreglado y
          aqui solo para verlo si vuelve; lo segundo no se toca nunca solo. */
       bitacoraCopiasApartadas: saludBitacora().copiasApartadas,
+      /* LA FIRMA, QUE ES LO QUE VALE CONTRA ALGUIEN DE DENTRO.
+         El encadenado solo detecta a un extranio: quien tenga escritura sobre
+         Mongo puede reescribir la cadena entera y que verifique limpia. El HMAC
+         se hace con una llave que no vive en la base, asi que sin ella no se
+         puede rehacer ni un eslabon.
+         `bitacoraDegradadaEn` es el numero que mas importa: una entrada SIN
+         firmar detras de una firmada no tiene explicacion inocente, es alguien
+         quitando firmas para poder reescribir. */
+      bitacoraFirmada: cadena.firmas.hayLlave,
+      bitacoraEntradasFirmadas: cadena.firmas.firmadas,
+      bitacoraEntradasSinFirmar: cadena.firmas.sinFirmar,
+      bitacoraFirmaRotaEn: cadena.firmas.firmaRotaEn,
+      bitacoraDegradadaEn: cadena.firmas.degradadaEn,
+      /* Y el ancla: un hash al dia fuera de la base. La firma impide inventar
+         entradas, pero no impide BORRAR las ultimas. El ancla acota cualquier
+         borrado a las ultimas 24 horas. */
+      bitacoraAncla: ancla.ultima
+        ? { fecha: ancla.ultima.fecha, entradas: ancla.ultima.entradas, publicada: ancla.ultima.publicada }
+        : null,
+      bitacoraAnclaAtrasada: ancla.atrasada,
+      /* SEGUNDO FACTOR DE LOS OPERADORES.
+         El numero que importa no es cuantos lo tienen, sino cuantos DEBERIAN
+         tenerlo y no lo tienen: si «tenemos segundo factor» acaba significando
+         «lo activo una persona», eso hay que verlo desde fuera y no
+         descubrirlo el dia de una auditoria. */
+      segundoFactorExigidoEn: dosFactores.exigidoEnRoles,
+      segundoFactorActivos: dosFactores.activos,
+      operadoresSinSegundoFactor: dosFactores.obligadosSinPonerlo,
       bitacoraSitiosEnChoque: saludBitacora().sitiosEnChoque,
       bitacoraRoturas: cadena.sellos.map((x) => x.rotaEn).filter((x) => x !== null),
       telemetriaPersistente: telemetriaEnMongo(),
@@ -518,6 +550,10 @@ export async function arrancar(): Promise<void> {
      haya, y si arrancara antes de que el almacén tenga lo suyo, un fallo de
      descarga dejaría el servicio sin listas en vez de con las de ayer. */
   iniciarTemporizadorListas()
+
+  /* Y el ancla de la bitacora, que es la otra mitad de la firma: la firma
+     impide inventar entradas, el ancla impide borrarlas sin que se note. */
+  iniciarAncla()
 
   const admin = asegurarAdministrador()
   const appsNuevas = asegurarAplicaciones()

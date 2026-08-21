@@ -195,6 +195,27 @@ export interface Operador {
   ultimoAcceso: string | null
   /** Para forzar el cambio de la contraseña inicial. */
   debeCambiarContrasena: boolean
+  /** Segundo factor, si el operador lo tiene puesto. */
+  segundoFactor?: SegundoFactor
+}
+
+export interface SegundoFactor {
+  /** El secreto en base32, cifrado si hay llave de archivo configurada. */
+  secreto: string
+  /** Nulo mientras el operador no haya demostrado que escaneó el código. */
+  activadoEn: string | null
+  /**
+   * El ultimo paso de treinta segundos que se acepto.
+   *
+   * Es lo que impide que el MISMO codigo sirva dos veces. Quien lo lee por
+   * encima del hombro tiene medio minuto para reutilizarlo, y sin esto lo
+   * aprovecha: guardar el paso convierte cada codigo en de un solo uso.
+   */
+  ultimoPaso?: number
+  /** Códigos de recuperación de un solo uso, hasheados como una contraseña. */
+  respaldos: string[]
+  /** Cuántos quedan sin usar. Se publica; los códigos no. */
+  respaldosUsados: number
 }
 
 export interface Sesion {
@@ -270,6 +291,15 @@ export interface EntradaBitacora {
   /** Hash encadenado con la entrada anterior. */
   hash: string
   hashAnterior: string
+  /**
+   * HMAC del hash con una llave que NO vive en la base.
+   *
+   * Opcional a proposito: las entradas escritas antes de que existiera la
+   * llave no la llevan, y negarse a leerlas seria borrar el pasado. Lo que si
+   * es delito es una firma que no cuadra, o una entrada sin firma DESPUES de
+   * otra firmada: eso ultimo seria alguien quitandolas para poder reescribir.
+   */
+  firma?: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

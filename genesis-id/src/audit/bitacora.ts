@@ -11,14 +11,29 @@
 // borra o modifica una entrada vieja, todos los hashes posteriores dejan de
 // cuadrar y `verificarCadena()` señala exactamente dónde se rompió.
 //
-// No impide la manipulación —quien controle la base puede recalcular la cadena
-// entera— pero sí la hace evidente salvo que se rehaga todo con cuidado. Para
-// que sea irreversible de verdad haría falta anclar el último hash fuera del
-// sistema; como el ecosistema tiene su propia cadena de bloques, `anclaje()`
-// devuelve el hash listo para publicarlo ahí.
+// Y ADEMAS CADA ENTRADA VA FIRMADA
+//
+// El encadenado solo detecta a un extraño. Contra quien tenga permiso de
+// escritura sobre la base no probaba nada: podia borrar entradas, reescribir
+// las siguientes y recalcular todos los hashes, y la cadena verificaba entera
+// y limpia. El de dentro es justo el riesgo que un regulador quiere ver
+// cubierto en un registro de auditoria.
+//
+// Por eso cada entrada lleva ademas un HMAC-SHA256 de su hash con una llave que
+// NO vive en la base (`GENESIS_BITACORA_CLAVE`). Sin esa llave no se puede
+// rehacer ni un solo eslabon.
+//
+// LO QUE ESTO NO RESUELVE, Y CONVIENE DECIRLO
+//
+// Quien tenga la llave puede firmar. O sea que el liston sube de «cualquiera
+// con la cadena de conexion de Mongo» a «alguien con acceso a las variables del
+// servicio»: no es perfecto, es otra liga. Y quien pueda escribir en la base
+// todavia puede BORRAR entradas del final, aunque no inventarlas. Contra eso
+// hace falta anclar el ultimo hash fuera del sistema, que es lo que hace
+// `anclaje()` y lo que publica el ancla diaria.
 
 import { store } from '../store.js'
-import { eslabon } from '../lib/cripto.js'
+import { eslabon, firmarEslabon, firmaCuadra, bitacoraFirmable } from '../lib/cripto.js'
 import { id } from '../lib/uid.js'
 import type { EntradaBitacora } from '../types.js'
 
@@ -86,11 +101,17 @@ export function registrar(
     detalle: limpiar(detalle),
   }
 
+  const hash = eslabon(hashAnterior, contenido)
+  const firma = firmarEslabon(hash)
+
   const entrada: EntradaBitacora = {
     id: id('log'),
     ...contenido,
     hashAnterior,
-    hash: eslabon(hashAnterior, contenido),
+    hash,
+    // Sin llave no se pone la clave: `undefined` desaparece al serializar, y
+    // una `firma: null` guardada seria indistinguible de una borrada.
+    ...(firma ? { firma } : {}),
   }
 
   bitacora.push(entrada)
@@ -130,6 +151,23 @@ export function verificarCadena(): {
   rotaEn: number | null
   total: number
   sellos: { indice: number; fecha: string; rotaEn: number | null; entradasAntes: number }[]
+  firmas: {
+    hayLlave: boolean
+    firmadas: number
+    sinFirmar: number
+    /** Primera entrada con una firma que no cuadra. Es manipulacion, no herencia. */
+    firmaRotaEn: number | null
+    /**
+     * Primera entrada SIN firma que viene despues de una firmada.
+     *
+     * Este es el numero que importa mas. Quien reescribe la base no puede
+     * falsificar una firma, pero si puede QUITARLA de todas las entradas para
+     * que parezcan viejas y poder recalcular la cadena a gusto. Una entrada sin
+     * firmar detras de una firmada no tiene explicacion inocente: cuando la
+     * llave esta puesta, se firma siempre.
+     */
+    degradadaEn: number | null
+  }
 } {
   const bitacora = store.todo().bitacora
   const contenidoDe = (e: EntradaBitacora) => ({
@@ -154,6 +192,33 @@ export function verificarCadena(): {
     })
   })
 
+  /* LAS FIRMAS SE COMPRUEBAN SOBRE LA BITACORA ENTERA, no solo sobre el tramo
+     vigente. Un sello declara que la CADENA se rompio; no dice nada de si las
+     entradas anteriores eran autenticas, y esa es justo la pregunta que la
+     firma responde. */
+  const hayLlave = bitacoraFirmable()
+  let firmadas = 0, sinFirmar = 0
+  let firmaRotaEn: number | null = null
+  let degradadaEn: number | null = null
+  let vistaAlgunaFirmada = false
+
+  bitacora.forEach((e, i) => {
+    if (e.firma) {
+      firmadas++
+      vistaAlgunaFirmada = true
+      // Sin llave no se puede juzgar una firma. Contarla como rota seria mentir:
+      // lo que pasa es que este proceso no puede comprobarla.
+      if (hayLlave && firmaRotaEn === null && !firmaCuadra(e.hash, e.firma)) firmaRotaEn = i
+    } else {
+      sinFirmar++
+      /* Sin firma y despues de una firmada. Las entradas de antes de que
+         existiera la llave son legitimas; una posterior no lo es. */
+      if (vistaAlgunaFirmada && degradadaEn === null) degradadaEn = i
+    }
+  })
+
+  const firmas = { hayLlave, firmadas, sinFirmar, firmaRotaEn, degradadaEn }
+
   /* Se verifica EL TRAMO VIGENTE: desde el último sello hasta el final. Lo
      anterior a ese sello ya está declarado roto —con su índice escrito dentro
      de la propia entrada de sello— y volver a recorrerlo solo serviría para
@@ -165,11 +230,21 @@ export function verificarCadena(): {
   for (let i = ultimo + 1; i < bitacora.length; i++) {
     const e = bitacora[i]
     if (e.hashAnterior !== anterior || e.hash !== eslabon(anterior, contenidoDe(e))) {
-      return { integra: false, rotaEn: i, total: bitacora.length, sellos }
+      return { integra: false, rotaEn: i, total: bitacora.length, sellos, firmas }
     }
     anterior = e.hash
   }
-  return { integra: true, rotaEn: null, total: bitacora.length, sellos }
+  /* Una firma rota o una degradacion pesan igual que un eslabon roto: la cadena
+     puede cuadrar perfectamente y aun asi haber sido reescrita entera por quien
+     tenia la base. Devolver `integra: true` en ese caso seria dar por buena
+     justo la manipulacion que la firma existe para atrapar. */
+  if (firmaRotaEn !== null) {
+    return { integra: false, rotaEn: firmaRotaEn, total: bitacora.length, sellos, firmas }
+  }
+  if (degradadaEn !== null) {
+    return { integra: false, rotaEn: degradadaEn, total: bitacora.length, sellos, firmas }
+  }
+  return { integra: true, rotaEn: null, total: bitacora.length, sellos, firmas }
 }
 
 /**
@@ -204,11 +279,14 @@ export function sellar(actor: string, motivo: string):
       selloPrevio: estado.sellos.length,
     }),
   }
+  const hashSello = eslabon(SELLO, contenido)
+  const firmaSello = firmarEslabon(hashSello)
   const entrada: EntradaBitacora = {
     id: id('log'),
     ...contenido,
     hashAnterior: SELLO,
-    hash: eslabon(SELLO, contenido),
+    hash: hashSello,
+    ...(firmaSello ? { firma: firmaSello } : {}),
   }
   bitacora.push(entrada)
   store.guardar()

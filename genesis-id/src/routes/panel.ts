@@ -14,7 +14,7 @@ import {
 import { estadoTemporizador, unaVuelta } from '../aml/temporizador.js'
 import { consultar, verificarCadena, anclaje, registrar, sellar } from '../audit/bitacora.js'
 import { resumenMovimientos, buscarMovimientos } from '../aml/almacenMovimientos.js'
-import { crearOperador, PERMISOS } from '../auth/operadores.js'
+import { crearOperador, PERMISOS, quitarSegundoFactor, saludSegundoFactor } from '../auth/operadores.js'
 import { crearAplicacion, revocar, rotar, ALCANCES } from '../auth/aplicaciones.js'
 import { biometriaConfigurada, proveedorBiometria } from '../kyc/biometria.js'
 import { leerFotos } from '../kyc/fotosDocumento.js'
@@ -408,6 +408,21 @@ panelRouter.get('/casos/:id/reporte', exigePermiso('caso.reportar'), async (req,
 // Listas
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Le quita el segundo factor a un operador. Solo un administrador.
+ *
+ * Es la salida para quien perdio el telefono y gasto sus codigos de
+ * recuperacion. Tambien es, por definicion, la manera de saltarse el segundo
+ * factor: por eso queda escrito en la bitacora con los dos nombres, el de quien
+ * lo quita y el de a quien.
+ */
+panelRouter.delete('/operadores/:id/segundo-factor', exigePermiso('*'), async (req, res) => {
+  const r = quitarSegundoFactor(req.params.id, req.operador!.email)
+  if (!r.ok) return res.status(400).json({ error: r.error })
+  await store.guardarYa()
+  res.json({ ok: true })
+})
+
 panelRouter.get('/listas', exigePermiso('listas.ver'), (_req, res) => {
   // El estado del temporizador va acá y no solo en `/healthz` porque quien
   // tiene que darse cuenta de que el tamizado continuo se paró es el operador
@@ -553,6 +568,7 @@ panelRouter.get('/operadores', exigePermiso('*'), (_req, res) => {
     operadores: store.todo().operadores.map((o) => ({
       id: o.id, email: o.email, nombre: o.nombre, rol: o.rol, activo: o.activo,
       ultimoAcceso: o.ultimoAcceso, debeCambiarContrasena: o.debeCambiarContrasena,
+      segundoFactorActivo: Boolean(o.segundoFactor?.activadoEn),
     })),
     roles: Object.keys(PERMISOS),
     permisos: PERMISOS,

@@ -84,9 +84,18 @@ eliminar-cuenta, prueba-de-control, copia-fría.
 
 | Credencial | Estado |
 |---|---|
-| AWS `AKIAX7LQENZ7IOUOCIH5` | permanente · **borrar en IAM y emitir otra** |
+| AWS `AKIA…(ver IAM)` | permanente · **borrar en IAM y emitir otra** |
 | Token de Heroku | rotar |
 | Secreto del cliente web de Google | rotar |
+
+> El identificador de la llave salió de acá a propósito: es lo único que
+> había, la clave secreta que lo acompaña nunca estuvo escrita en este
+> documento. Buscá el valor completo en IAM, que es donde vive.
+>
+> Ojo con lo que este borrado NO hace: el documento está versionado, así que
+> el identificador sigue entero en el historial de git y ahí se lee con un
+> `git log -p`. Quitarlo del archivo de hoy no lo saca de ahí. Lo que de
+> verdad lo deja sin valor es borrar la llave en IAM y emitir otra.
 
 ⏳ **`PASS_TOKEN` de 7 caracteres firma todas las sesiones de la wallet.**
 Sigue abierto y es del mismo tipo que el `PASS_ADM` que ya arreglamos.
