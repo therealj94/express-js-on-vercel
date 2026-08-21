@@ -12,4 +12,15 @@ apps-web/veta-wallet/rej-*.png
 llv-*.png
 
 # El PDF se genera; lo que se versiona es lo que lo genera.
+#
+# Se ignoran dos sitios y no todos: `entregables/`, donde vive el generado, y
+# la RAIZ, que es donde cae si alguien corre el render desde donde no toca —
+# paso, y lo que quedo tirado ahi fue una copia VIEJA y rota de un documento
+# que se le manda a la gente. Una version vieja al lado de la buena es
+# exactamente como se acaba repartiendo la equivocada.
+#
+# Lo que NO se ignora: `documentos-junta/` y `documentos/`, donde los PDF si se
+# versionan a proposito. Una regla `*.pdf` a secas los habria dejado fuera del
+# repositorio el dia que se agregue uno nuevo, sin que nadie se entere.
 entregables/**/*.pdf
+/*.pdf
