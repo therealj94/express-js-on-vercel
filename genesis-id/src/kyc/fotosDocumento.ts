@@ -89,11 +89,32 @@ const coleccion = () => coleccionAparte(NOMBRE)
 /** Cinco años, que es lo que promete la política publicada. */
 const ANOS_CONSERVACION = 5
 
+/*
+ * EL PLAZO DE RESERVA, PARA EL EXPEDIENTE QUE NADIE DECIDE NUNCA
+ *
+ * Los cinco años se cuentan desde la DECISION, y eso esta bien: es lo que dice
+ * la politica y es el plazo que un supervisor espera. Pero dejaba un agujero
+ * que no se veia: el `venceEn` solo se escribia al decidir, asi que un
+ * expediente que nadie decide JAMAS —alguien sube su cedula, se arrepiente y no
+ * vuelve— guardaba su anverso, su reverso y su cara PARA SIEMPRE.
+ *
+ * Y es el peor caso posible: son personas con las que no hay ninguna relacion,
+ * o sea aquellas para las que menos se puede justificar conservar un documento
+ * de identidad. La obligacion de conservar cinco anios nace de una relacion que
+ * ahi nunca existio.
+ *
+ * Asi que desde que se sube, la foto ya lleva plazo. Un anio es mucho mas de lo
+ * que tarda cualquier revision real —se miden en dias— y sigue siendo un plazo,
+ * que es lo que faltaba. Cuando se decide, se vuelve a sellar con los cinco
+ * anios desde la decision y este plazo de reserva deja de contar.
+ */
+const ANOS_PENDIENTE = Number(process.env.GENESIS_ANOS_PENDIENTE || 1)
+
 export const conservacionConfigurada = archivoConfigurado
 
-function vencimiento(desde = new Date()): Date {
+function vencimiento(desde = new Date(), anos = ANOS_CONSERVACION): Date {
   const d = new Date(desde)
-  d.setFullYear(d.getFullYear() + ANOS_CONSERVACION)
+  d.setFullYear(d.getFullYear() + anos)
   return d
 }
 
@@ -132,10 +153,11 @@ function escribirMapa(m: Mapa): void {
 
 /** Guarda las dos caras de una identidad. Reemplaza las que hubiera.
  *
- *  Se cifran si hay llave. Mientras el expediente está pendiente NO llevan
- *  vencimiento: el plazo de cinco años se cuenta desde la decisión, no desde
- *  que se subió la foto, y ponerlo antes borraría el documento de alguien que
- *  todavía está esperando respuesta. */
+ *  Se cifran si hay llave, y llevan plazo desde el primer momento: el de
+ *  reserva mientras el expediente esté pendiente, y el de cinco años desde la
+ *  decisión en cuanto se decida. Ver el comentario de `ANOS_PENDIENTE` arriba:
+ *  sin el de reserva, un expediente que nadie decide nunca guardaba la cédula
+ *  para siempre. */
 export async function guardarFotos(idn: string, fotos: FotosDocumento): Promise<void> {
   const guardable: Record<string, unknown> = {
     anverso: cifrar(fotos.anverso) ?? fotos.anverso,
@@ -153,7 +175,13 @@ export async function guardarFotos(idn: string, fotos: FotosDocumento): Promise<
        escriben las claves que trae esta llamada. */
     await c.updateOne(
       { _id: idn },
-      { $set: { ...guardable, guardadasEn: new Date(), cifradas: archivoConfigurado() } },
+      {
+        $set: { ...guardable, guardadasEn: new Date(), cifradas: archivoConfigurado() },
+        /* `$setOnInsert` y no `$set`: si el expediente YA se decidió y llegan
+           fotos nuevas, el plazo bueno es el de la decisión y no se puede pisar
+           con el de reserva, que es más corto. Solo se pone la primera vez. */
+        $setOnInsert: { venceEn: vencimiento(new Date(), ANOS_PENDIENTE) },
+      },
       { upsert: true },
     )
     return
@@ -239,8 +267,11 @@ export async function archivarFotos(idn: string): Promise<'archivadas' | 'borrad
  * Deja puesto el índice que caduca el archivo.
  *
  * `expireAfterSeconds: 0` le dice a MongoDB que borre el documento cuando el
- * reloj pase de la fecha que hay en `venceEn`. Los documentos sin ese campo
- * —los expedientes todavía pendientes— no los toca.
+ * reloj pase de la fecha que hay en `venceEn`. Un documento SIN ese campo no lo
+ * toca nunca, y ahí estaba el agujero: los expedientes pendientes no lo
+ * llevaban, así que uno que nadie decidiera jamás guardaba la cédula para
+ * siempre. Desde ahora las fotos nacen con plazo de reserva, y acá se les pone
+ * a las que ya estaban guardadas sin él.
  *
  * Se llama al arrancar. Crear un índice que ya existe no hace nada, así que
  * repetirlo en cada arranque es gratis y evita que el día que se cambie de base
@@ -251,6 +282,22 @@ export async function prepararCaducidad(): Promise<boolean> {
   if (!c) return false
   try {
     await c.createIndex({ venceEn: 1 }, { expireAfterSeconds: 0, name: 'caducidadArchivo' })
+
+    /* A los que ya estaban sin plazo se les pone el de reserva contado desde
+       AHORA, no desde que se subieron. Contarlo desde la subida borraria de
+       golpe, en el primer arranque, expedientes que llevan mas de un anio
+       esperando: puede que esten pendientes por un fallo nuestro, y la
+       respuesta a eso no es destruirlos sin avisar. Contado desde ahora, hay un
+       anio entero para revisarlos o decidirlos. */
+    const r = await c.updateMany(
+      { venceEn: { $exists: false } },
+      { $set: { venceEn: vencimiento(new Date(), ANOS_PENDIENTE), plazoDeReserva: true } },
+    )
+    if (r?.modifiedCount) {
+      console.log(
+        `[fotosDocumento] ${r.modifiedCount} expediente(s) pendiente(s) estaban guardados ` +
+        `sin plazo; se les puso el de reserva de ${ANOS_PENDIENTE} anio(s)`)
+    }
     return true
   } catch (e: any) {
     console.error('[fotosDocumento] no se pudo crear el índice de caducidad:', e?.message)

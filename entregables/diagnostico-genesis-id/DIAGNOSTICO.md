@@ -26,6 +26,36 @@ segunda vez ya nadie lo lee.
 
 ---
 
+## CORRECCION IMPORTANTE · 21 de agosto, misma tarde
+
+**Este diagnóstico afirmaba que «el selfie no se guarda» y lo ponía como el
+punto fuerte de privacidad del sistema. Es falso, y conviene decirlo con las
+mismas letras con que se dijo lo otro.**
+
+El fotograma del cotejo **sí se conserva**, cifrado y con el mismo plazo de
+cinco años que el documento. Y si la identidad no tiene retrato, ese mismo
+fotograma pasa además a ser la foto de la credencial.
+
+De dónde salió el error, porque importa más que el error: dos comentarios del
+propio código decían que el selfie «se cotea y se descarta». Era verdad cuando
+se escribieron y dejó de serlo cuando se cambió el comportamiento, y nadie movió
+los comentarios. Yo los leí y los di por buenos sin comprobarlos contra el
+código, en el mismo documento donde escribí que cada hallazgo se había medido
+contra el servicio vivo.
+
+La lección no es «revisar los comentarios». Es que un comentario **no es una
+fuente**: la fuente es el código y su comportamiento. Los dos comentarios ya
+están corregidos.
+
+Lo que sí es cierto, y sigue siendo bueno: los fotogramas de la **prueba de
+vida** no se guardan en ninguna parte. De todo el material biométrico es el que
+más revela y el que menos falta hace conservar.
+
+Este error destapó además un hallazgo nuevo y más grave que varios de los que
+había en la lista. Está abajo como **G-8**.
+
+---
+
 ## Veredicto en una línea
 
 **Genesis ID está mejor construido que la mayoría de lo que se vende como KYC
@@ -47,9 +77,12 @@ demasiadas alarmas pueden apagarse sin que nadie lo note.
 
 ## Lo que está bien, y hay que decirlo
 
-**El selfie no se guarda.** Se coteja contra la foto del documento con AWS
-Rekognition y se descarta. Queda el veredicto, no la cara. Muy pocos lo hacen,
-y es la decisión que más reduce el daño de una filtración.
+**Los fotogramas de la prueba de vida no se guardan.** Van a Rekognition,
+vuelve un veredicto, y no tocan disco. De todo el material biométrico es el que
+más revela sobre una persona y el que menos falta hace conservar.
+
+*(Acá decía además que el selfie no se guardaba. Era falso: ver la corrección
+al principio de este documento.)*
 
 **Las listas fallan cerrado.** Sin listas cargadas, el motor no dice «sin
 coincidencias» (que es indistinguible de haber tamizado bien). Dice **«sin
@@ -226,18 +259,65 @@ donde de verdad lo necesitan las apps.
 
 ---
 
+### G-8 · GRAVE · El retrato de la credencial estaba guardado en claro · ARREGLADO
+
+**Salió de la corrección de arriba**, y es más grave que varios de los que había
+en esta lista. Al comprobar qué imágenes se guardaban de verdad apareció esto:
+
+La **misma cara** se guardaba de dos formas distintas. El fotograma del cotejo
+iba cifrado con AES-256-GCM a la colección de documentos. El retrato de la
+credencial iba **en claro**, sin cifrar, a otra colección.
+
+Y el peor de los dos tratos era el que se quedaba para siempre: las fotos del
+documento caducan a los cinco años, el retrato no caduca nunca porque **es** la
+credencial. O sea que la copia sin proteger era además la permanente.
+
+Quien se llevara una copia de la base tenía las caras de todo el padrón en
+claro, listas para usar.
+
+**Arreglado.** Se cifra con la misma llave y el mismo algoritmo que el resto del
+archivo, y al arrancar se cierran los que ya estaban guardados en claro. Los
+viejos se siguen leyendo mientras tanto, así que nadie se queda sin cara durante
+la migración. Siete pruebas.
+
+---
+
+### G-9 · ALTO · Un expediente que nadie decide guardaba la cédula para siempre · ARREGLADO
+
+**También apareció al revisar la conservación de verdad, no estaba en la lista.**
+
+Los cinco años se cuentan desde la decisión, y el vencimiento se escribía solo
+al decidir. Consecuencia: alguien que subiera su cédula y no volviera nunca
+—se arrepintió, se le cayó la aplicación, cambió de idea— dejaba su anverso, su
+reverso y su cara guardados **sin ningún plazo**.
+
+Es el peor caso posible: son justamente las personas con las que no llegó a
+existir ninguna relación, o sea aquellas para las que menos se puede justificar
+conservar un documento de identidad. La obligación de conservar cinco años nace
+de una relación que ahí nunca existió.
+
+**Arreglado.** Las fotos nacen con un plazo de reserva de un año, que se
+reemplaza por los cinco años desde la decisión en cuanto se decide. Una revisión
+real se mide en días, así que un año es holgado de sobra. A las que ya estaban
+guardadas sin plazo se les pone al arrancar, contado desde ese momento y no
+desde la subida: contarlo desde la subida habría borrado de golpe, en el primer
+arranque, expedientes que llevan más de un año esperando, y puede que estén
+pendientes por un fallo nuestro.
+
+---
+
 ## Contra qué se compara
 
 | | Genesis ID | Lo que hace un Sumsub o un Onfido |
 |---|---|---|
 | Documento + rostro con vivacidad | sí | sí |
-| No guardar el selfie | **sí** | casi ninguno |
+| No guardar los fotogramas de vivacidad | **sí** | casi ninguno |
 | Tamizado de sanciones | sí, falla cerrado | sí |
-| Retamizado continuo | existe, **pero manual** | automático |
+| Retamizado continuo | **automático, cada 24 h** | automático |
 | Monitoreo de transacciones | 8 reglas | sí, más maduro |
 | KYB con beneficiarios finales | sí | sí |
-| Registro de auditoría | encadenado, **sin firmar** | firmado y externalizado |
-| Segundo factor para operadores | **no** | sí |
+| Registro de auditoría | **encadenado, firmado y anclado a diario** | firmado y externalizado |
+| Segundo factor para operadores | **sí, TOTP** | sí |
 | Certificación (SOC 2, ISO 27001) | **ninguna** | sí |
 
 La columna que más pesa comercialmente no es ninguna de las técnicas: es la
@@ -270,17 +350,52 @@ están hechos**, en el mismo commit que este documento:
 ahora dice la verdad sobre las listas, pero las listas se siguen bajando a mano.
 Eso es el punto 5, y es el que de verdad cierra G-1.
 
-**Este mes**, porque cambian la postura de cumplimiento:
+**Este mes**, porque cambian la postura de cumplimiento. **También están
+hechos, los cinco.**
 
-5. Temporizador diario que baje la OFAC y retamice. **(G-1)**
-6. HMAC sobre la bitácora, con la clave fuera de la base. **(G-2)**
-7. TOTP obligatorio para operadores que aprueban o leen documentos. **(G-4)**
-8. El documento de conservación y supresión. **(G-6)**
+5. ~~Temporizador diario que baje la OFAC y retamice~~ **(G-1)** ✅ Corre cada
+   24 h, firma en la bitácora como `sistema:temporizador`, y publica en
+   `/healthz` si se paró y si viene fallando. Una descarga fallida no borra las
+   listas que ya están: sin listas el motor bloquea a todo el padrón, así que
+   quedarse sin ellas es peor que tenerlas de ayer. Siete pruebas.
+6. ~~HMAC sobre la bitácora, con la clave fuera de la base~~ **(G-2)** ✅ Y con
+   la defensa contra el truco obvio: si no se pueden falsificar firmas, se
+   quitan todas para que las entradas parezcan viejas. Una entrada sin firmar
+   detrás de una firmada se trata como manipulación. Siete pruebas, y cada una
+   monta el ataque en vez de describirlo.
+7. ~~TOTP obligatorio para operadores~~ **(G-4)** ✅ Escrito a mano con
+   `node:crypto` y comprobado contra los seis vectores de prueba del RFC 6238.
+   Un código no sirve dos veces. Los intentos con código malo cuentan para el
+   bloqueo, que es lo que lo hace barrera y no molestia. Diez códigos de
+   recuperación. Se pone sin dejar fuera al equipo: quien tiene rol obligado y
+   no lo activó entra, pero el panel lo lleva a activarlo, y `/healthz` publica
+   cuántos faltan. Treinta y seis pruebas.
+8. ~~El documento de conservación y supresión~~ **(G-6)** ✅ Está en
+   `CONSERVACION-Y-SUPRESION.md`, al lado de este. Cada línea sale de leer el
+   código, con la tabla de dónde comprobar cada afirmación, y con una sección
+   entera de lo que todavía no se puede prometer.
+9. ~~Un ancla diaria del hash de la bitácora fuera de la base~~ **(G-2)** ✅ La
+   firma impide inventar entradas; no impide borrar las últimas y dejar la
+   cadena terminando antes de tiempo, perfectamente firmada. Un hash al día
+   fuera acota cualquier borrado a 24 horas. Seis pruebas, incluida la que
+   demuestra la propiedad.
 
-**Cuando haya con qué**, porque es dinero y tiempo, no código:
+**Lo que queda, y no se arregla programando:**
 
-9. Un ancla diaria del hash de la bitácora fuera de la base. **(G-2)**
-10. SOC 2 Tipo I como primer paso hacia integrarse con un banco.
+10. SOC 2 Tipo I. Es la columna que más pesa comercialmente y la única de la
+    tabla de comparación que sigue vacía: sin certificación independiente, todo
+    lo de arriba es lo que decimos de nosotros mismos. Un banco serio pide más
+    que eso, y tiene razón.
+
+**Y tres cosas de código que quedan apuntadas, ninguna urgente:**
+
+11. Una ruta que le entregue a la persona su propio expediente. Hoy el derecho
+    de acceso se atiende a mano.
+12. Plazo de conservación para los movimientos vigilados, el padrón y los casos.
+    No es que se haya decidido no ponérselo: es que no se decidió.
+13. Cifrar el documento de estado. Las imágenes ya lo están, y son el dato más
+    sensible, pero el nombre y el número de documento están en claro dentro de
+    la base.
 
 ---
 
