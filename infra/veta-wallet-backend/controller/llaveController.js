@@ -157,11 +157,25 @@ export async function entrarConLlave(req, res) {
     if (user.deletedAt) {
       return res.status(401).json({ error: "Esta cuenta fue eliminada." });
     }
-    if (user.isVerified === false) {
-      return res.status(403).json({
-        error: "Todavía no confirmaste tu correo. Buscá el enlace que te mandamos.",
-      });
-    }
+    /* EL CORREO SIN CONFIRMAR NO CIERRA ESTA PUERTA.
+     *
+     * Aquí se llegó firmando un reto con la llave privada de esa dirección.
+     * Eso demuestra la propiedad de la billetera mejor que ninguna otra cosa
+     * —mejor que una contraseña, que se puede adivinar o robar—. Exigir
+     * además un clic en un correo es pedir una prueba más débil encima de la
+     * más fuerte que existe.
+     *
+     * Y era incoherente: el ingreso por contraseña NUNCA lo exigió. Alguien
+     * con la contraseña entraba sin confirmar el correo, y quien traía su
+     * llave se quedaba fuera. Lo puse yo aquí de más el 21-ago, y dejó
+     * encerrada a la primera persona que trajo su billetera: se le creó la
+     * cuenta, el correo no salió —SES en el cajón de pruebas— y no había
+     * ninguna forma de entrar.
+     *
+     * El correo sin confirmar SÍ importa para otra cosa: es el único camino
+     * de vuelta si se pierde la frase. Por eso la sesión lleva `verify` y la
+     * app lo recuerda; pero recordar no es cerrar la puerta.
+     */
 
     /* La MISMA sesión que la de contraseña: mismos campos, mismo vencimiento,
        mismo refresco. Tener la llave demuestra quién sos; no te da una sesión
@@ -183,6 +197,8 @@ export async function entrarConLlave(req, res) {
       token,
       refreshToken,
       user: { id: user._id, email: user.email, name: user.name, address: user.address },
+      // Para que la app pueda recordarle que confirme, sin impedirle entrar.
+      correoConfirmado: user.isVerified !== false,
     });
   } catch (e) {
     console.error("[llave] entrar:", e?.message);

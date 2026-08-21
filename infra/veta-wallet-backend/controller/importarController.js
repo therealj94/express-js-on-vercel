@@ -146,7 +146,10 @@ export async function importarBilletera(req, res) {
     if (!r?.ok) console.error("[importar] el correo de confirmación no salió:", r?.motivo);
 
     return res.status(201).json({
-      message: "Billetera traída. Confirmá tu correo para entrar.",
+      /* Ya NO dice «confirmá tu correo para entrar»: no hace falta para
+         entrar, y decirlo dejaba a la gente esperando un correo que —con SES
+         en el cajón de pruebas— muchas veces no llega. */
+      message: "Billetera traída. Ya podés entrar con tu frase.",
       address: salida,
       correoEnviado: Boolean(r?.ok),
     });
