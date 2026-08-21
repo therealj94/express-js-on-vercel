@@ -238,6 +238,54 @@ const CHAT = (() => {
     return m ? Number(m[1]) : null;
   };
 
+
+  /* ── EL BUZON DE SEÑALES DE LAS LLAMADAS ─────────────────────────────────
+   *
+   * Aparte del sondeo de mensajes, que va cada cinco segundos. Una llamada no
+   * puede esperar cinco segundos por cada paso del apretón de manos: serían
+   * quince o veinte segundos hasta oír a alguien.
+   *
+   * `escuchar()` deja una petición abierta hasta veinticinco segundos y el
+   * relevo contesta EN CUANTO hay algo. Se vuelve a llamar sola, así que es
+   * un bucle que gasta una petición cada veinticinco segundos en vez de una
+   * cada segundo.
+   *
+   * Se enciende solo cuando hace falta —hay una llamada, o se está en el
+   * chat— porque en un móvil un bucle abierto es batería.
+   */
+  let escuchando = false;
+  let cortar = null;
+
+  async function escuchar(alLlegar) {
+    if (escuchando) return;
+    escuchando = true;
+    while (escuchando) {
+      try {
+        const d = await pedir('/senales', firmado({}), 40000);
+        for (const s of (d.senales || [])) {
+          try { alLlegar(s); } catch {}
+        }
+      } catch (e) {
+        /* Un fallo de red no puede convertir esto en un bucle que machaca al
+           relevo: se espera dos segundos antes de volver a abrir. Sin esto,
+           el relevo caído significaría miles de peticiones por minuto desde
+           cada teléfono. */
+        if (!escuchando) break;
+        await new Promise(r => { cortar = setTimeout(r, 2000); });
+      }
+    }
+  }
+
+  function dejarDeEscuchar() {
+    escuchando = false;
+    if (cortar) { clearTimeout(cortar); cortar = null; }
+  }
+
+  /** Deja una señal para el otro lado. Nunca lanza: una llamada no se cae
+      porque un candidato ICE de veinte no llegara. */
+  const senalar = (para, tipo, datos) =>
+    pedir('/senal', firmado({ para, tipo, datos: datos || {} })).catch(() => null);
+
   const enviarAdjunto = (para, adj, texto) =>
     pedir('/enviar', firmado({ para, texto: texto || '', tipo: adj.tipo,
                                archivo: adj.id, nombre: adj.nombre }));
@@ -288,5 +336,6 @@ const CHAT = (() => {
            buscar, ficha, perfil, pago,
            grupoCrear, grupoInfo, grupoEditar, grupoInvitar, grupoSalir, grupoUnirse,
            esGrupo, urlArchivo,
-           puedeGrabar, grabarInicio, grabarFin, subirVoz, segundosDeVoz };
+           puedeGrabar, grabarInicio, grabarFin, subirVoz, segundosDeVoz,
+           escuchar, dejarDeEscuchar, senalar };
 })();

@@ -1281,6 +1281,9 @@ const VETA = (() => {
     tele('accion', 'sesion.salir');
     tele('vaciar');
     tele('identificar', null);
+    // Se corta la escucha y cualquier llamada viva: una llamada que sobrevive
+    // al cierre de sesión seguiría con el micrófono abierto.
+    try { llamadaParar(); } catch {}
     sesion = null; cartera = null; errCartera = null; identidad = null;
     movimientos = null; transferencias = []; tarjeta = null; movsTarjeta = []; ocultos = false;
     // El expediente de verificación se va con la sesión: dentro hay un número de
@@ -5878,6 +5881,10 @@ const VETA = (() => {
                           sesion: sesion?.token });
       }
       chatSt.error = null;
+      /* El buzón de señales se enciende con el chat, no con la vista: una
+         llamada entrante tiene que llegar aunque la persona esté mirando su
+         billetera, que es donde está casi siempre. */
+      llamadaArrancar();
       await chatCargarConvs();
     } catch (e) {
       chatSt.error = chatMotivo(e);
@@ -6023,6 +6030,121 @@ const VETA = (() => {
     } finally { chatSt.mandando = false; $('#chat-txt')?.focus(); }
   }
 
+
+
+  /* ── LA LLAMADA ──────────────────────────────────────────────────────────
+   *
+   * Ata tres cosas: el buzón de señales del relevo (chat.js), el WebRTC
+   * (llamada.js) y esta pantalla.
+   *
+   * LO QUE HAY QUE TENER PRESENTE
+   *
+   * Esta es una página web sin push: NO SUENA con la app cerrada. Una llamada
+   * solo entra si la otra persona tiene PULSE CHAT abierto. Por eso el aviso
+   * de «llamando…» dice cuánto lleva sonando y se rinde solo: dejar el tono
+   * eternamente le hace creer a alguien que del otro lado hay un teléfono
+   * sonando, y no lo hay.
+   */
+  let llaReloj = null;
+  let llaDesde = 0;
+
+  function llamadaArrancar() {
+    if (!window.LLAMADA || !LLAMADA.puede()) return;
+    LLAMADA.arrancar({
+      mandar: (para, tipo, datos) => CHAT.senalar(para, tipo, datos),
+      alCambiar: (c) => pintarLlamada(c),
+    });
+    // El buzón se escucha mientras haya sesión de chat: si solo se escuchara
+    // dentro de la vista del chat, una llamada entrante no llegaría nunca a
+    // quien está mirando su billetera, que es donde está casi siempre.
+    CHAT.escuchar((s) => LLAMADA.recibir(s));
+  }
+
+  function llamadaParar() {
+    CHAT.dejarDeEscuchar();
+    try { LLAMADA.colgar('yo'); } catch {}
+  }
+
+  /** Llamar a la persona del hilo abierto. */
+  async function llamadaLlamar(conVideo) {
+    const con = chatSt.con;
+    if (!con || con.esGrupo) return;   // los grupos aún no; ver el commit
+    if (!LLAMADA.puede()) return avisar(t('lla.sinSoporte'));
+    try {
+      llaDesde = Date.now();
+      await LLAMADA.llamar(con.id, !!conVideo);
+    } catch (e) {
+      const negado = /NotAllowed|Permission/i.test(String(e?.name || e?.message || ''));
+      avisar(negado ? t('lla.negado') : t('lla.noSePudo'));
+    }
+  }
+
+  async function llamadaContestar(conVideo) {
+    try { await LLAMADA.contestar(!!conVideo); }
+    catch (e) {
+      const negado = /NotAllowed|Permission/i.test(String(e?.name || e?.message || ''));
+      avisar(negado ? t('lla.negado') : t('lla.noSePudo'));
+    }
+  }
+
+  const llamadaRechazar = () => LLAMADA.rechazar();
+  const llamadaColgar = () => LLAMADA.colgar('yo');
+  const llamadaMic = () => LLAMADA.micro();
+  const llamadaCam = () => LLAMADA.camara();
+  const llamadaPantalla = () => LLAMADA.pantalla().catch(() => avisar(t('lla.pantallaNo')));
+
+  /* La pantalla. Se pinta a mano y no con `vista()` porque una llamada no es
+     una vista: pasa POR ENCIMA de la que sea, y navegar no debe cortarla. */
+  function pintarLlamada(c) {
+    const capa = $('#lla');
+    if (!capa) return;
+    const activa = c.estado !== 'libre';
+    capa.classList.toggle('oculto', !activa);
+    clearInterval(llaReloj); llaReloj = null;
+
+    if (!activa) {
+      /* El motivo de la caída se dice UNA vez y con nombre propio. «Sin
+         camino» es el caso del TURN que no tenemos, y confundirlo con
+         «colgaste» deja a la gente probando diez veces creyendo que es su
+         internet. */
+      const dicho = { 'sin-camino': 'lla.sinCamino', 'corte': 'lla.corte',
+                      'rechazada': 'lla.rechazada', 'ocupado': 'lla.ocupado',
+                      'no-se-pudo': 'lla.noSePudo' }[c.motivo];
+      if (dicho) avisar(t(dicho));
+      return;
+    }
+
+    const nombre = chatSt.con?.id === c.conQuien
+      ? (chatSt.con.nombre || c.conQuien) : (c.conQuien || '');
+    $('#lla-quien').textContent = nombre;
+    $('#lla-entra').classList.toggle('oculto', c.estado !== 'entrando');
+    $('#lla-mandos').classList.toggle('oculto', c.estado === 'entrando');
+    // Compartir pantalla solo donde existe: en iPhone no hay, y un botón que
+    // al tocarlo no hace nada es peor que no ponerlo.
+    $('#lla-pant').classList.toggle('oculto', !LLAMADA.puedePantalla());
+    $('#lla-mic').classList.toggle('apagado', !c.micAbierto);
+    $('#lla-cam').classList.toggle('apagado', !c.camAbierta);
+    $('#lla-si-video').classList.toggle('oculto', !LLAMADA.entrante()?.video);
+
+    const est = $('#lla-estado');
+    if (c.estado === 'entrando') {
+      est.textContent = t(LLAMADA.entrante()?.video ? 'lla.entraVideo' : 'lla.entraVoz');
+    } else if (c.estado === 'llamando') {
+      /* El contador de «llamando…» no es adorno: sin push del otro lado
+         puede que no haya nadie escuchando, y ver los segundos correr es lo
+         que hace que alguien cuelgue en vez de esperar para siempre. */
+      llaReloj = setInterval(() => {
+        const seg = Math.floor((Date.now() - llaDesde) / 1000);
+        if (est) est.textContent = `${t('lla.llamando')} ${seg}s`;
+        // Cuarenta y cinco segundos y se rinde sola: es lo que tarda alguien
+        // en darse cuenta de que del otro lado no hay nadie.
+        if (seg >= 45) LLAMADA.colgar('sin-respuesta');
+      }, 500);
+      est.textContent = t('lla.llamando');
+    } else {
+      est.textContent = c.compartiendo ? t('lla.compartiendo') : t('lla.hablando');
+    }
+  }
 
   /* ── GRABAR Y MANDAR UNA NOTA DE VOZ ─────────────────────────────────────
    *
@@ -6564,6 +6686,15 @@ const VETA = (() => {
             <small>${esc(c.esGrupo ? t('cha.esGrupo') : (c.gid || c.id))}</small>
           </span>
         </button>
+        ${/* Llamar solo cara a cara: en grupo haria falta un SFU, que es
+              infraestructura de verdad. Y solo donde el navegador puede. */''}
+        ${(!c.esGrupo && window.LLAMADA?.puede()) ? `
+        <button class="cha-mas cha-hmas" id="cha-llamar-voz" onclick="VETA.llamadaLlamar(false)" aria-label="${t('lla.voz')}">
+          <svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+        </button>
+        <button class="cha-mas cha-hmas" id="cha-llamar-video" onclick="VETA.llamadaLlamar(true)" aria-label="${t('lla.video')}">
+          <svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        </button>` : ''}
         <button class="cha-mas cha-hmas" onclick="VETA.chatVerFicha()" aria-label="${t('cha.verFicha')}">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
         </button>
@@ -8478,7 +8609,9 @@ const VETA = (() => {
            // PULSE CHAT. Los manejadores van en el HTML que genera la vista, asi
            // que sin figurar aca los botones del chat no hacen nada.
            chatEntrar, chatAbrir, chatCerrar, chatMandar, chatBuscar, chatGrupo,
-           chatAdjuntar, chatVoz, chatVozCancelar, chatReparar, chatCodigo, chatCodigoCopiar,
+           chatAdjuntar, chatVoz, chatVozCancelar,
+           llamadaLlamar, llamadaContestar, llamadaRechazar, llamadaColgar,
+           llamadaMic, llamadaCam, llamadaPantalla, chatReparar, chatCodigo, chatCodigoCopiar,
            chatVerFicha, chatFichaCerrar, chatEnviarOrigen, chatGuardarContacto,
            chatHojaCerrar, chatHojaOk,
            chatOlvidar, chatGrupoInvitar, chatGrupoNombre, chatGrupoSalir,

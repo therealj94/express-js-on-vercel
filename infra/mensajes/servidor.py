@@ -309,6 +309,86 @@ def sumar_miembros(d, g, correos, ahora):
     return r
 
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EL BUZÓN DE SEÑALES DE LAS LLAMADAS
+#
+# Para montar una llamada, dos navegadores tienen que intercambiar tres cosas
+# —la oferta, la respuesta y los caminos de red (ICE)— y tienen que hacerlo en
+# SEGUNDOS. El chat sondea cada cinco, así que por ahí una llamada tardaría
+# entre quince y veinticinco segundos en conectar: inusable.
+#
+# Esto es un buzón aparte con espera larga: quien escucha deja la petición
+# abierta hasta veinticinco segundos, y en cuanto llega algo para él se le
+# contesta al instante. Es casi un WebSocket, sin serlo, y sin tocar nada de
+# lo que ya funciona.
+#
+# TRES DECISIONES QUE IMPORTAN
+#
+# 1. VIVE EN MEMORIA, NO EN EL ARCHIVO. Una señal dura segundos y no le
+#    interesa a nadie después. Guardarlas en datos.json sería una escritura
+#    del archivo entero por cada candidato ICE —decenas por llamada— y eso sí
+#    tumbaría el relevo.
+#
+# 2. NO USA EL CANDADO GLOBAL. Ese candado es de TODO el relevo: esperar
+#    veinticinco segundos con él en la mano dejaría el chat congelado para
+#    todo el mundo mientras alguien llama. Tiene su propio candado, y solo
+#    protege este buzón.
+#
+# 3. SE VACÍA SOLO. Lo que nadie recogió en un minuto se tira: una señal vieja
+#    no sirve —la llamada ya se cayó— y sin esto el buzón crecería para
+#    siempre con las llamadas que nadie contestó.
+
+ESPERA_SENAL = 25          # lo que aguanta una petición abierta, en segundos
+VIDA_SENAL = 60            # lo que vive una señal sin que nadie la recoja
+TOPE_SENALES = 60          # por buzón: una llamada normal usa unas veinte
+TOPE_SENAL_DATOS = 12_000  # una oferta SDP ronda los 4KB; ICE, unos cientos
+
+senales = {}                          # correo -> [ {de, tipo, datos, en} ]
+aviso_senal = threading.Condition()   # su propio candado, NO el global
+
+
+def _purgar_senales(ahora):
+    """Tira lo que nadie recogió. Se llama con `aviso_senal` en la mano."""
+    for quien in list(senales):
+        senales[quien] = [x for x in senales[quien] if ahora - x['en'] < VIDA_SENAL]
+        if not senales[quien]:
+            del senales[quien]
+
+
+def dejar_senal(para, de, tipo, datos):
+    """Deja una señal para alguien y despierta a quien esté esperando."""
+    ahora = time.time()
+    with aviso_senal:
+        _purgar_senales(ahora)
+        buzon = senales.setdefault(para, [])
+        if len(buzon) >= TOPE_SENALES:
+            return False
+        buzon.append({'de': de, 'tipo': tipo, 'datos': datos, 'en': ahora})
+        aviso_senal.notify_all()
+    return True
+
+
+def recoger_senales(quien, espera=ESPERA_SENAL):
+    """Lo que haya para mí, esperando hasta `espera` segundos si no hay nada.
+
+    Devolver la lista VACÍA tras la espera no es un fallo: es la forma de que
+    el navegador vuelva a preguntar sin que la petición se quede colgada para
+    siempre ni el móvil gaste batería sondeando cada segundo.
+    """
+    hasta = time.time() + espera
+    with aviso_senal:
+        while True:
+            _purgar_senales(time.time())
+            mias = senales.pop(quien, [])
+            if mias:
+                return [{'de': x['de'], 'tipo': x['tipo'], 'datos': x['datos']} for x in mias]
+            queda = hasta - time.time()
+            if queda <= 0:
+                return []
+            aviso_senal.wait(timeout=queda)
+
+
 class Relevo(BaseHTTPRequestHandler):
     server_version = 'relevo/1'
 
@@ -441,6 +521,9 @@ class Relevo(BaseHTTPRequestHandler):
         if ruta == '/alta' and b.get('sesion'):
             correo_probado = correo_de_sesion(b.get('sesion'))
 
+        # Se rellena dentro del candado y se usa FUERA: ver la nota en /senales.
+        esperar_para = None
+
         with candado:
             d = cargar()
             fichas = d['fichas']
@@ -484,6 +567,36 @@ class Relevo(BaseHTTPRequestHandler):
             f = fichas.get(correo)
             if not f or b.get('llave') != f['llave']:
                 return self._json(401, {'error': 'llave incorrecta'})
+
+            if ruta == '/senal':
+                # Dejar una señal para el otro lado de la llamada. El permiso
+                # es el mismo que el de escribirle: si es un grupo hay que ser
+                # miembro, y si es una persona tiene que ser un correo válido.
+                para = str(b.get('para', '')).lower()
+                tipo = str(b.get('tipo', ''))[:24]
+                datos = b.get('datos')
+                if tipo not in ('oferta', 'respuesta', 'ice', 'llamo', 'cuelgo', 'ocupado', 'rechazo'):
+                    return self._json(400, {'error': 'tipo inválido'})
+                if not correo_valido(para):
+                    return self._json(400, {'error': 'faltan datos'})
+                if len(json.dumps(datos or {})) > TOPE_SENAL_DATOS:
+                    return self._json(413, {'error': 'señal muy grande'})
+                if not dejar_senal(para, correo, tipo, datos):
+                    # El buzón lleno casi siempre es alguien reintentando en
+                    # bucle, no tráfico legítimo. Se dice y no se acumula.
+                    return self._json(429, {'error': 'demasiadas señales'})
+                return self._json(200, {'ok': True})
+
+            if ruta == '/senales':
+                # LA ESPERA VA FUERA DEL CANDADO. Es lo único importante de
+                # esta ruta: `with candado` es de TODO el relevo, y esperar
+                # veinticinco segundos con él en la mano dejaría el chat
+                # congelado para todo el mundo mientras alguien llama.
+                # Se sale del bloque con un salto y la espera ocurre abajo.
+                esperar_para = correo
+
+            if False:  # el hueco que deja el salto de /senales
+                pass
 
             if ruta == '/perfil':
                 # Mi nombre y mi foto, lo único mío que ve el resto. Se mira
@@ -886,6 +999,15 @@ class Relevo(BaseHTTPRequestHandler):
                     g['admin'] = min(g['miembros'], key=lambda m: m['desde'])['correo']
                 guardar(d)
                 return self._json(200, {'ok': True})
+
+        # ── AQUI, YA FUERA DEL CANDADO, ES DONDE SE ESPERA ──────────────────
+        #
+        # /senales sale del bloque de arriba SIN contestar, dejando su correo
+        # en `esperar_para`. La espera larga tiene que ocurrir con el candado
+        # global ya soltado: dentro, veinticinco segundos de espera serian
+        # veinticinco segundos de chat congelado para todos los demas.
+        if esperar_para:
+            return self._json(200, {'senales': recoger_senales(esperar_para)})
 
         return self._json(404, {'error': 'no existe'})
 
