@@ -1043,7 +1043,13 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 .chaf-qr svg{width:100%;height:auto;display:block;border-radius:8px}
 .chaf-nota{font-size:11.5px;color:var(--humo);margin:0 0 10px;line-height:1.5}
 .chaf-acciones{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
-.chaf-acciones .btn{flex:1 1 46%;min-width:130px}
+/* `min-width:130px` obligaba al botón a ser al menos así de ancho, pero no
+   evitaba que el TEXTO fuera más largo: «Borrar la conversación» se salía por
+   los dos lados de su propio botón. Con seis acciones en la ficha ya no cabe
+   todo en dos columnas holgadas, así que el texto se ajusta al botón en vez de
+   desbordarlo. */
+.chaf-acciones .btn{flex:1 1 46%;min-width:120px;padding-left:10px;padding-right:10px;
+  white-space:normal;line-height:1.3;text-align:center}
 .chaf-malo{border-color:rgba(220,120,110,.4)!important;color:#E5A79E!important}
 .chaf-malo:hover{background:rgba(220,120,110,.12)!important}
 /* La letra chica que no es letra chica: dice exactamente qué pasa al borrar. */
@@ -1410,6 +1416,7 @@ body.en-p2c .nav[aria-current=page]::before{background:var(--p2c-grad)}
 .p2c-tocable{flex:1;min-width:0;display:flex;align-items:center;gap:11px;
   border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}
 .p2c-dos{display:flex;gap:6px;flex:none}
+.p2c-pide .cha-txt small,.cha-fila.p2c-quieto .cha-txt small{white-space:normal}
 .p2c-quieta{flex:none;font:700 11.5px/1 var(--sans);color:var(--p2c-humo);
   padding:7px 10px;border:1px solid var(--p2c-linea2);border-radius:9px}
 .p2c-quitar{flex:none;width:32px;height:32px;display:grid;place-items:center;border-radius:9px;
@@ -1578,6 +1585,11 @@ body.en-p2c .chat-hilo .vacio b{color:#EAF4FF}
    cuelgan del body, fuera de la casa, y con el degradado verde de la billetera
    quedaban con la cara de la otra marca. */
 body.en-p2c .cha-av,.cha-hcab .cha-av{background:var(--p2c-grad);color:#03122E}
+/* La cara grande de «Mi perfil» seguia en el dorado de la billetera: es lo
+   primero que se mira de esa pantalla, y era la ultima mancha de la otra marca
+   dentro de la casa. */
+body.en-p2c .chay-cara{background:var(--p2c-grad);color:#03122E;
+  box-shadow:0 0 0 3px rgba(0,217,232,.25),0 10px 30px -12px rgba(0,140,255,.6)}
 .cha-mic{background:var(--p2c-campo);border-color:var(--p2c-linea2);color:var(--p2c-bruma)}
 .cha-mic:hover{color:#fff;border-color:var(--p2c-cyan)}
 /* Mi burbuja en el gradiente; la del otro en navy. Asi se distinguen de un
@@ -1626,7 +1638,6 @@ body.en-p2c .cha-hcab{background:rgba(6,26,79,.5)}
 /* La cara de un contacto en la libreta de la billetera. */
 .con-cara{width:100%;height:100%;object-fit:cover;border-radius:50%}
 .con-fuente{font-style:normal;font-weight:400;font-size:11px;color:var(--humo)}
-.con-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 
 /* Un boton de icono en una fila de gente: mandar, ver la ficha. */
 .p2c-icono{flex:none;width:32px;height:32px;display:grid;place-items:center;border-radius:9px;
@@ -2462,6 +2473,16 @@ body.en-p2c .cha-puerta p{color:var(--p2c-bruma)}
   stroke-linecap:round;stroke-linejoin:round}
 
 .con-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+/* EN UN TELEFONO, LOS BOTONES BAJAN.
+   Con dos acciones —«Escribir» y «Enviar»— al lado del nombre no queda ancho
+   para el nombre: «Ana Fajardo» se partia en dos renglones y la etiqueta de
+   donde sale el contacto se metia en medio. Abajo caben los tres enteros. */
+@media(max-width:560px){
+  .hilera{flex-wrap:wrap}
+  .hilera .txt{flex:1 1 auto}
+  .con-btns{width:100%;justify-content:flex-start;padding-left:52px}
+  .con-btns .btn{flex:0 0 auto}
+}
 
 /* el visor de la camara */
 .visor{position:relative;max-width:340px;margin:0 auto;aspect-ratio:1;border-radius:20px;
