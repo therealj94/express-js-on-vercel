@@ -1,0 +1,133 @@
+# Lo que tenés que hacer vos, en orden
+
+Son tres cosas. La primera lleva diez minutos, la segunda cinco, y la tercera
+es esperar.
+
+---
+
+## PASO 0 · Ahora mismo, sin salir del correo
+
+Tenés un correo de AWS en tu bandeja con el asunto
+**«Amazon Web Services – Email Address Verification Request»**.
+
+Abrilo y tocá el enlace. Vence en 24 horas.
+
+**Para qué sirve:** con eso tu Gmail queda verificado y vas a poder probar el
+alta de cuenta y la recuperación de contraseña en tu propio correo, aunque la
+cuenta siga limitada. Hoy no podés probar nada de eso.
+
+---
+
+## PASO 1 · Los tres registros en el panel de nivapixel
+
+El DNS de `ordenglobal.org` lo sirven `ns1.nivapixel.com` y `ns2.nivapixel.com`,
+que no es una cuenta nuestra de AWS. Entrá al panel donde administrás ese
+dominio y buscá la zona de DNS.
+
+### 1.a · Agregar el MX
+
+| | |
+|---|---|
+| Tipo | **MX** |
+| Nombre | `correo` (algunos paneles piden el nombre completo: `correo.ordenglobal.org`) |
+| Prioridad | `10` |
+| Valor | `feedback-smtp.us-east-1.amazonses.com` |
+
+### 1.b · Agregar el TXT del remitente
+
+| | |
+|---|---|
+| Tipo | **TXT** |
+| Nombre | `correo` (o `correo.ordenglobal.org`) |
+| Valor | `v=spf1 include:amazonses.com ~all` |
+
+### 1.c · EDITAR el SPF que ya existe
+
+**Este es el que tiene trampa. No crees uno nuevo.**
+
+Buscá el registro TXT del dominio raíz que hoy dice:
+
+```
+v=spf1 +a +mx +ip4:50.31.177.34 include:spf.jetsmtp.net ~all
+```
+
+Editalo y dejalo así, con `include:amazonses.com` metido antes del `~all`:
+
+```
+v=spf1 +a +mx +ip4:50.31.177.34 include:spf.jetsmtp.net include:amazonses.com ~all
+```
+
+> **Por qué importa tanto.** Un dominio con **dos** registros SPF falla en los
+> dos. No da error, no avisa nadie: el correo simplemente empieza a caer en la
+> carpeta de spam de todo el mundo. Si el panel no te deja editar y solo te deja
+> agregar, borrá el viejo primero y creá uno solo con el texto de arriba.
+
+### 1.d · Comprobar
+
+El DNS tarda entre unos minutos y unas horas en propagarse. Cuando creas que
+está, corré esto y tiene que salir todo en verde:
+
+```sh
+cd entregables/correo-ses
+python3 comprobar.py
+```
+
+Si algo sigue en rojo, **no sigas al paso 2**. Volvé al panel.
+
+---
+
+## PASO 2 · Pedir el paso a producción
+
+Solo cuando `comprobar.py` salga limpio.
+
+1. Entrá a la consola de AWS con la cuenta de Orden Global.
+2. Arriba a la derecha, elegí la región **Este de EE. UU. (Norte de Virginia)
+   · us-east-1**. Si estás en otra región no vas a ver la cuenta correcta.
+3. Buscá **Amazon SES** y entrá.
+4. En el menú de la izquierda: **Account dashboard**.
+5. Vas a ver un cartel amarillo que dice que la cuenta está en el sandbox. A la
+   derecha hay un botón **Request production access**. Tocalo.
+6. Llená el formulario con lo que está en `solicitud-produccion.md`. El texto
+   largo ya está escrito, es copiar y pegar.
+
+**El campo que estaba mal la vez pasada es «Website URL».** Poné
+`https://www.ordenglobal.org`, no la de la billetera. El revisor entra a esa
+web y busca la relación con el dominio que firma el correo; cuando no cuadran,
+la solicitud se cae.
+
+---
+
+## PASO 3 · Esperar, y comprobar cuando contesten
+
+AWS suele contestar en un día hábil.
+
+**Si aprueban:**
+
+```sh
+python3 comprobar.py
+```
+
+Tiene que decir **«LA CUENTA YA ESTA EN PRODUCCION»**. Ahí el correo empieza a
+salirle a los usuarios sin tocar una línea de código: el backend ya está
+conectado y probado.
+
+Después, mandate un correo de prueba a un Gmail y a un Outlook y abrí **«mostrar
+original»** en cada uno. Buscá tres palabras: `spf=pass`, `dkim=pass`,
+`dmarc=pass`. Las tres tienen que estar.
+
+**Si vuelven a decir que no:** no reenvíes lo mismo. En la respuesta del caso
+está la pregunta exacta que hay que hacerles, al final de
+`solicitud-produccion.md`. Obliga a que te digan qué falta en concreto en vez
+de repetir el rechazo.
+
+---
+
+## Si te urge mandar correo antes de que AWS conteste
+
+La única salida real es un proveedor distinto, porque **el límite es de la
+cuenta de AWS entera** y no se puede esquivar cambiando de dominio. Eso lo
+comprobé mandando un correo de verdad.
+
+El dominio ya tiene otro proveedor en su SPF (`spf.jetsmtp.net`). Antes de
+montar nada nuevo, averiguá si esa cuenta sigue viva y con cupo: puede que la
+puerta ya esté abierta y no haga falta nada más.
