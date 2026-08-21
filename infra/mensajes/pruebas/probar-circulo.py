@@ -185,6 +185,80 @@ try:
     _, r = pedir('/amistad/pedir', {**ana, 'para': caro['correo']})
     ok('si los dos se piden a la vez, quedan amigos sin más pasos',
        r.get('estado') == 'amigos', json.dumps(r))
+
+    # ── bloquear ─────────────────────────────────────────────────────────
+    #
+    # La solicitud protege de quien todavía no entró; el bloqueo, de quien ya
+    # está dentro. Sin la segunda mitad, aceptar a alguien es una puerta que no
+    # se puede volver a cerrar.
+    print()
+    _, _ = pedir('/estado/subir', {**ana, 'texto': 'estado de Ana', 'fondo': 1})
+    _, r = pedir('/bloquear', {**ana, 'a': caro['correo'], 'bloquear': True})
+    ok('Ana bloquea a Caro', r.get('bloqueado') is True, json.dumps(r))
+
+    est, _ = pedir('/enviar', {**caro, 'para': ana['correo'], 'texto': 'hola?'})
+    ok('el bloqueado NO puede escribir', est == 403, str(est))
+    est, _ = pedir('/enviar', {**ana, 'para': caro['correo'], 'texto': 'nada'})
+    ok('y quien bloqueó tampoco le escribe a él', est == 403, str(est))
+    est, _ = pedir('/senal', {**caro, 'para': ana['correo'], 'tipo': 'llamo', 'datos': {}})
+    ok('ni puede hacerle sonar el teléfono', est == 403, str(est))
+
+    _, r = pedir('/estados', {**caro})
+    ok('el bloqueado ya no ve sus estados',
+       not [g for g in r['gente'] if g['correo'] == ana['correo']], json.dumps(r['gente']))
+
+    _, r = pedir('/llaves/de', {**caro, 'correos': [ana['correo']]})
+    ok('ni consigue sus llaves públicas', not r['llaves'], json.dumps(r))
+
+    _, r = pedir('/amistad/lista', {**ana})
+    ok('a Ana le aparece en su lista de bloqueados',
+       [x for x in r.get('bloqueados', []) if x['correo'] == caro['correo']],
+       json.dumps(r.get('bloqueados')))
+    ok('y el lazo se rompió, no quedó dormido',
+       not [x for x in r['amigos'] if x['correo'] == caro['correo']], json.dumps(r['amigos']))
+
+    _, r = pedir('/buscar', {**caro, 'q': 'ana'})
+    suyo = [x for x in r['gente'] if x['correo'] == ana['correo']]
+    ok('a quien fue bloqueado NO se le dice que lo bloquearon',
+       suyo and suyo[0]['lazo'] == 'no', json.dumps(suyo))
+    est, _ = pedir('/amistad/pedir', {**caro, 'para': ana['correo']})
+    ok('y su solicitud no llega', est == 403, str(est))
+
+    _, r = pedir('/bloquear', {**ana, 'a': caro['correo'], 'bloquear': False})
+    ok('desbloquear devuelve el paso', r.get('bloqueado') is False, json.dumps(r))
+    _, r = pedir('/amistad/pedir', {**caro, 'para': ana['correo']})
+    ok('pero NO devuelve la amistad: hay que volver a pedirla',
+       r.get('estado') == 'enviada', json.dumps(r))
+
+    # ── borrar un mensaje ────────────────────────────────────────────────
+    print()
+    _, _ = pedir('/enviar', {**ana, 'para': beto['correo'], 'texto': 'esto lo voy a borrar'})
+    _, r = pedir('/bandeja', {**ana, 'desde': beto['correo']})
+    mid = r['mensajes'][-1]['id']
+
+    est, r = pedir('/borrar', {**beto, 'id': mid, 'paraTodos': True})
+    ok('quien NO lo escribió no puede borrarlo para todos', est == 403, json.dumps(r))
+
+    _, _ = pedir('/borrar', {**beto, 'id': mid})
+    _, r = pedir('/bandeja', {**beto, 'desde': ana['correo']})
+    ok('borrarlo para mí lo saca de MI bandeja',
+       not [m for m in r['mensajes'] if m['id'] == mid], str(len(r['mensajes'])))
+    _, r = pedir('/bandeja', {**ana, 'desde': beto['correo']})
+    ok('y la otra persona lo conserva',
+       [m for m in r['mensajes'] if m['id'] == mid], str(len(r['mensajes'])))
+
+    _, _ = pedir('/enviar', {**ana, 'para': beto['correo'], 'texto': 'este se va para todos'})
+    _, r = pedir('/bandeja', {**ana, 'desde': beto['correo']})
+    mid2 = r['mensajes'][-1]['id']
+    est, r = pedir('/borrar', {**ana, 'id': mid2, 'paraTodos': True})
+    ok('quien lo escribió sí puede borrarlo para todos', est == 200, json.dumps(r))
+    _, r = pedir('/bandeja', {**beto, 'desde': ana['correo']})
+    fila = [m for m in r['mensajes'] if m['id'] == mid2]
+    ok('a la otra persona le queda la marca, no un hueco mudo',
+       fila and fila[0].get('borrado') is True, json.dumps(fila))
+    ok('y el texto se fue de verdad', fila and not fila[0].get('texto'), json.dumps(fila))
+    crudo = open(os.path.join(tmp, 'd.json'), encoding='utf-8').read()
+    ok('tampoco quedó en el disco', 'este se va para todos' not in crudo)
 finally:
     proc.terminate()
     try:

@@ -71,6 +71,28 @@ for (const [k, f] of [...usadas].sort()) {
 for (const k of [...ES].sort()) if (!EN.has(k)) decir(`DESPAREJA          ${k}   está en español y no en inglés`);
 for (const k of [...EN].sort()) if (!ES.has(k)) decir(`DESPAREJA          ${k}   está en inglés y no en español`);
 
+/* CLAVES REPETIDAS.
+ *
+ * En un objeto de JavaScript, escribir la misma clave dos veces no da ningún
+ * error: la segunda pisa a la primera, en silencio. Pasó de verdad —
+ * `cha.desbloquear` se usaba para desatascar el chat y se volvió a escribir
+ * para desbloquear a una persona— y el resultado fue un botón que decía
+ * «Desbloquear el chat» debajo del nombre de alguien.
+ *
+ * Los conteos de arriba no lo pueden ver: un Set cuenta una sola vez lo que
+ * está dos. Hay que contar las LÍNEAS del archivo.
+ */
+// Se reusa `corte()`, que ya sabe dónde empieza y acaba cada bloque: partir el
+// archivo a ojo por una frase suelta es como se cuentan 351 repetidas que no
+// existen.
+for (const [idioma, trozo] of [['español', corte('es')], ['inglés', corte('en')]]) {
+  const cuenta = new Map();
+  for (const m of trozo.matchAll(/^\s*'([\w.]+)':/gm)) cuenta.set(m[1], (cuenta.get(m[1]) || 0) + 1);
+  for (const [k, n] of cuenta) {
+    if (n > 1) decir(`REPETIDA en ${idioma}   ${k}   ×${n} — la segunda pisa a la primera sin avisar`);
+  }
+}
+
 console.log(`${ES.size} claves en español · ${EN.size} en inglés · ${usadas.size} usadas en el código`);
 console.log(mal ? `\n${mal} problema(s)` : '\nTodo en verde');
 process.exit(mal ? 1 : 0);

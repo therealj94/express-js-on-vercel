@@ -5911,7 +5911,7 @@ const VETA = (() => {
                 teléfono, entrar a una app sin una salida a la vista es la
                 forma más rápida de que alguien cierre la pestaña entera. */''}
           <button class="p2c-atras" onclick="VETA.vista('nucleo')"
-                  aria-label="${t('cha.salir')}">
+                  aria-label="${t('cha.salirCasa')}">
             <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
           </button>
           ${/* El simbolo va como imagen porque el manual pide que se use tal
@@ -6094,25 +6094,29 @@ const VETA = (() => {
       // Si mientras llegaba la respuesta se cambio de hilo, se descarta: pintar
       // los mensajes de otra conversacion es peor que no pintar nada.
       if (chatSt.con?.id !== quien) return;
-      /* Con el mismo hilo no se repinta: repintar en cada latido roba el foco
-         del campo y tira el scroll a quien esta leyendo. Pero comparar SOLO el
-         largo mata los hilos mas activos: /bandeja recorta a 200, asi que al
-         llegar al tope el largo queda clavado y los mensajes nuevos no se
-         pintan nunca mas hasta cambiar de conversacion. Se mira tambien el
-         ultimo mensaje, que es lo que de verdad cambia. */
-      const ult = (l) => (l && l.length ? l[l.length - 1].cuando : null);
-      /* Y las REACCIONES, que no mueven ni el largo ni la fecha del ultimo.
-         Sin esto, quien reaccionaba veia su reaccion al instante y la otra
-         persona no la veia NUNCA —hasta cambiar de conversacion y volver—,
-         porque el hilo se consideraba «igual» y no se repintaba. Se resume
-         en una cadena corta en vez de comparar objeto por objeto: es lo mismo
-         y no cuesta nada. */
-      const huellaReacs = (l) => (l || [])
-        .map((x) => (x.reacciones ? x.id + ':' + Object.values(x.reacciones).join('') : ''))
-        .filter(Boolean).join('|');
-      const igual = callado && chatSt.msgs
-        && chatSt.msgs.length === m.length && ult(chatSt.msgs) === ult(m)
-        && huellaReacs(chatSt.msgs) === huellaReacs(m);
+      /* CUANDO REPINTAR, Y POR QUE ESTO SE ROMPIO DOS VECES.
+       *
+       * No se repinta si nada cambió: repintar en cada latido roba el foco del
+       * campo y tira el scroll de quien está leyendo. La pregunta es cómo se
+       * sabe que «nada cambió», y ahí hubo dos fallos seguidos:
+       *
+       *   1. Comparar solo el LARGO. Muere en los hilos activos: /bandeja
+       *      recorta a 200, así que al llegar al tope el largo queda clavado y
+       *      los mensajes nuevos no se pintan nunca más.
+       *   2. Agregar la fecha del último y las reacciones. Tapó esos dos casos
+       *      y dejó el siguiente: un mensaje BORRADO para todos no mueve ni el
+       *      largo, ni la fecha, ni las reacciones — así que a la otra persona
+       *      no le desaparecía nunca.
+       *
+       * El patrón era el error: ir agregando el campo que se rompió esta vez.
+       * Se compara UNA huella de todo lo que la burbuja dibuja, así que un
+       * campo nuevo entra solo y no puede volver a pasar.
+       */
+      const huella = (l) => (l || []).map((x) => [
+        x.id, x.cuando, x.texto, x.borrado ? 1 : 0, x.tipo, x.archivo, x.cita,
+        x.reacciones ? Object.entries(x.reacciones).sort().join(',') : '',
+      ].join('~')).join('|');
+      const igual = callado && chatSt.msgs && huella(chatSt.msgs) === huella(m);
       chatSt.msgs = m;
       chatSt.error = null;
       if (!igual) { pintarChat(); chatAlFinal(); }
@@ -6559,8 +6563,14 @@ const VETA = (() => {
      * llamada.js: el modulo de WebRTC no deberia saber que existe un altavoz.
      * `sonar()` no hace nada si ya esta sonando ese mismo tono, asi que
      * llamarlo en cada repintado es gratis. */
+    /* Y si esa conversación está silenciada, el teléfono NO suena. Es lo que
+       la gente quiere decir con «silenciar a alguien»: no que la app deje de
+       enseñar sus mensajes, sino que deje de hacer ruido por él. La pantalla
+       de llamada entrante SIGUE apareciendo — silenciar no es bloquear, y
+       esconder una llamada entera sería otra cosa que nadie pidió. */
+    const mudo = estaMudo(c.conQuien);
     if (activa && c.estado === 'llamando') TONO.sonar('llamando');
-    else if (activa && c.estado === 'entrando') TONO.sonar('entrando');
+    else if (activa && c.estado === 'entrando' && !mudo) TONO.sonar('entrando');
     else TONO.parar();
 
     if (!activa) {
@@ -6787,7 +6797,17 @@ const VETA = (() => {
       const x = (chatSt.gente || []).find(g => g.correo === correo);
       if (x) x.lazo = aceptar ? 'amigos' : 'no';
       await chatCargarCirculo();
-      if (aceptar) { chatCargarConvs(); TONO?.golpe(true); }
+      if (aceptar) {
+        /* ACEPTAR A ALGUIEN LO DEJA YA EN LA LIBRETA, sin tocar «guardar».
+           Es lo que hace que las dos mitades se sientan una sola: quien te
+           acepta aparece en Contactos con su dirección puesta, y mandarle
+           ORIGEN es tocar un botón en vez de copiar una dirección a mano. */
+        const nuevo = (chatSt.circulo?.amigos || []).find(a => a.correo === correo);
+        if (nuevo) apuntarContacto({ nombre: nuevo.nombre, dir: nuevo.addr,
+                                     correo: nuevo.correo, gid: nuevo.gid, foto: nuevo.foto });
+        chatCargarConvs();
+        TONO?.golpe(true);
+      }
     } catch (e) { avisar(chatMotivo(e)); }
   }
 
@@ -6906,6 +6926,189 @@ const VETA = (() => {
     }
   }
 
+  /* ── BLOQUEAR ─────────────────────────────────────────────────────────── */
+
+  async function p2cBloquear(correo, si = true) {
+    const quien = correo.split('@')[0];
+    if (si && !await chatConfirmar(t('cha.bloquear'),
+      t('cha.bloquearNota').replace('{n}', quien), t('cha.bloquear'), true)) return;
+    try {
+      await CHAT.bloquear(correo, si);
+      if (si && chatSt.con?.id === correo) { chatSt.con = null; chatSt.ficha = null; }
+      await chatCargarCirculo();
+      chatCargarConvs();
+      chatCargarEstados();
+      avisar(t(si ? 'cha.bloqueadoOk' : 'cha.desbloqueadoOk'));
+    } catch (e) { avisar(chatMotivo(e)); }
+  }
+
+  /** La ficha de alguien del círculo, desde la lista de gente. */
+  function p2cFichaRapida(correo) {
+    const a = (chatSt.circulo?.amigos || []).find(x => x.correo === correo);
+    chatSt.con = { id: correo, nombre: a?.nombre || correo, esGrupo: false,
+                   gid: a?.gid || '', addr: a?.addr || '' };
+    chatSt.msgs = null;
+    pintarChat();
+    chatVerFicha();
+  }
+
+  function borrarContactoAqui(id) {
+    guardarContactos(leerContactos().filter(c => c.id !== id));
+    avisar(t('con.borrado'));
+    pintarChat();
+  }
+
+  /* ── BORRAR UN MENSAJE ─────────────────────────────────────────────────
+   *
+   * Se PREGUNTA cuál de las dos cosas, porque son cosas distintas y la gente
+   * las confunde: esconderlo de mi pantalla no se lo quita a la otra persona.
+   * Un solo botón que hiciera una de las dos en silencio dejaría a alguien
+   * creyendo que borró algo que sigue estando.
+   */
+  async function chatBorrarMsg(id) {
+    const m = (chatSt.msgs || []).find(x => x.id === id);
+    if (!m) return;
+    const mio = m.de === (sesion?.correo || '').toLowerCase();
+    const que = await chatElegir({
+      titulo: t('cha.borrarMsg'),
+      nota: mio ? t('cha.borrarMsgP') : t('cha.borrarMsgSoloMio'),
+      opciones: [
+        ...(mio ? [{ clave: 'todos', texto: t('cha.borrarTodos'), peligro: true }] : []),
+        { clave: 'mi', texto: t('cha.borrarMio') },
+      ],
+    });
+    if (!que) return;
+    try {
+      await CHAT.borrarMsg(id, que === 'todos');
+      chatSt.reaccionando = null;
+      await chatCargarMsgs();
+      chatCargarConvs();
+    } catch (e) { avisar(chatMotivo(e)); }
+  }
+
+  /* Una hoja con varias salidas, no solo sí/no. `chatConfirmar` solo sabe de
+     dos, y forzar tres decisiones en dos botones es como nacen los menús que
+     nadie entiende. */
+  function chatElegir({ titulo, nota, opciones }) {
+    return new Promise(resolver => {
+      chatSt.elegir = { titulo, nota, opciones, resolver };
+      pintarChat();
+    });
+  }
+  function chatElegido(clave) {
+    const e = chatSt.elegir;
+    chatSt.elegir = null;
+    pintarChat();
+    e?.resolver(clave || null);
+  }
+  function chatHojaElegir() {
+    const e = chatSt.elegir;
+    if (!e) return '';
+    return `
+      <div class="cha-ficha" onclick="if(event.target===this)VETA.chatElegido()">
+        <div class="chaf-hoja">
+          <button class="chaf-x" onclick="VETA.chatElegido()" aria-label="${t('tok.volver')}">✕</button>
+          <h3>${esc(e.titulo)}</h3>
+          ${e.nota ? `<p class="chaf-honesto" style="margin:10px 0 0;padding:0;border:0">${esc(e.nota)}</p>` : ''}
+          <div class="chaf-acciones" style="margin-top:16px;flex-direction:column">
+            ${e.opciones.map(o => `
+              <button class="btn ${o.peligro ? 'btn-linea chaf-malo' : 'btn-p2c'} btn-sm"
+                      onclick="VETA.chatElegido(${jsTxt(o.clave)})" style="width:100%">${esc(o.texto)}</button>`).join('')}
+            <button class="btn btn-linea btn-sm" onclick="VETA.chatElegido()" style="width:100%">${t('cha.cancelar')}</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  /* ── REENVIAR ──────────────────────────────────────────────────────────
+   *
+   * Se manda un mensaje NUEVO con el mismo texto, no se «mueve» el original:
+   * el original es de la conversación donde está y de las dos personas que la
+   * tienen. Y va SIN decir de quién venía, a propósito — reenviar algo con el
+   * nombre de quien lo escribió es publicar a una persona en una conversación
+   * en la que no entró.
+   */
+  async function chatReenviar(id) {
+    const m = (chatSt.msgs || []).find(x => x.id === id);
+    if (!m?.texto) return avisar(t('cha.nadaQueReenviar'));
+    const gente = contactosUnidos().filter(x => x.correo);
+    const grupos = (chatSt.convs || []).filter(c => c.esGrupo);
+    if (!gente.length && !grupos.length) return avisar(t('cha.aQuienReenviar'));
+    const a = await chatElegir({
+      titulo: t('cha.reenviar'),
+      nota: t('cha.reenviarNota'),
+      opciones: [
+        ...gente.slice(0, 12).map(x => ({ clave: x.correo, texto: x.nombre })),
+        ...grupos.slice(0, 8).map(g => ({ clave: g.id, texto: g.nombre })),
+      ].filter(o => o.clave !== chatSt.con?.id),
+    });
+    if (!a) return;
+    try {
+      await CHAT.enviar(a, m.texto);
+      chatSt.reaccionando = null;
+      avisar(t('cha.reenviado'));
+      chatCargarConvs();
+      pintarChat();
+    } catch (e) { avisar(chatMotivo(e)); }
+  }
+
+  /** Copiar lo que dice un mensaje. Lo más pedido y lo más barato de todo. */
+  function chatCopiarMsg(id) {
+    const m = (chatSt.msgs || []).find(x => x.id === id);
+    if (!m?.texto) return avisar(t('cha.nadaQueCopiar'));
+    copiarTexto(m.texto, t('cha.copiado'));
+    chatSt.reaccionando = null;
+    pintarChat();
+  }
+
+  /* ── BUSCAR DENTRO DE LA CONVERSACION ──────────────────────────────────
+   *
+   * En la memoria y no en el relevo, y por una razón que no es la velocidad:
+   * los mensajes van cifrados, así que el servidor NO PUEDE buscarlos aunque
+   * quisiera. Buscar solo puede pasar aquí, donde están abiertos. Es el precio
+   * del candado, y es un precio que vale la pena.
+   */
+  function chatBuscarHilo(v) {
+    chatSt.buscaHilo = v;
+    pintarChat();
+  }
+  function chatBuscarHiloAbrir() {
+    chatSt.buscaHilo = chatSt.buscaHilo == null ? '' : null;
+    pintarChat();
+    if (chatSt.buscaHilo === '') setTimeout(() => $('#cha-busca-hilo')?.focus(), 60);
+  }
+
+  /* ── SILENCIAR ─────────────────────────────────────────────────────────
+     Vive en este navegador: silenciar es una decisión sobre MI teléfono, no
+     sobre la conversación, y mandarla al servidor la aplicaría también en la
+     computadora del trabajo, que no es lo que nadie pide. */
+  const LLAVE_MUDOS = 'veta.chat.mudos';
+  const leerMudos = () => {
+    try { return JSON.parse(localStorage.getItem(LLAVE_MUDOS) || '[]'); } catch { return []; }
+  };
+  const estaMudo = id => leerMudos().includes(String(id));
+  function chatSilenciar(id) {
+    const l = leerMudos();
+    const nueva = l.includes(id) ? l.filter(x => x !== id) : [...l, id];
+    try { localStorage.setItem(LLAVE_MUDOS, JSON.stringify(nueva)); } catch {}
+    avisar(t(nueva.includes(id) ? 'cha.silenciado' : 'cha.conSonido'));
+    pintarChat();
+  }
+
+  /* ── EL CODIGO DE SEGURIDAD ────────────────────────────────────────────
+     Estaba construido y no se enseñaba en ninguna pantalla, o sea que no
+     existía: un código que nadie puede comparar no protege de nada. */
+  async function chatVerCodigo() {
+    const c = chatSt.con;
+    if (!c || c.esGrupo) return;
+    chatSt.codigo = { cargando: true };
+    pintarChat();
+    try { chatSt.codigo = { texto: await CHAT.codigoCon(c.id) }; }
+    catch { chatSt.codigo = { texto: null }; }
+    pintarChat();
+  }
+  function chatCerrarCodigo() { chatSt.codigo = null; pintarChat(); }
+
   function chatBuscar(valor) {
     chatSt.busca = valor;
     clearTimeout(chatDebounce);
@@ -6978,7 +7181,7 @@ const VETA = (() => {
     pintarChat();
   }
 
-  function chatFichaCerrar() { chatSt.ficha = null; pintarChat(); }
+  function chatFichaCerrar() { chatSt.ficha = null; chatSt.codigo = null; pintarChat(); }
 
   /* Mandarle ORIGEN a alguien SIN copiar una dirección a mano — que es donde
      la gente se equivoca y pierde el dinero. La dirección sale de su ficha,
@@ -7003,18 +7206,32 @@ const VETA = (() => {
     enviarA(dir);
   }
 
-  function chatGuardarContacto() {
+  /* GUARDAR UN CONTACTO DESDE EL CHAT.
+   *
+   * Antes guardaba solo el nombre y la direccion, se quedaba callado con un
+   * aviso que se iba a los tres segundos, y no habia forma de ir a ver la
+   * libreta: la sensacion era que no se habia guardado nada. Tres cosas
+   * cambian:
+   *
+   *   · se guarda TAMBIEN el correo y el Genesis ID, para que la misma ficha
+   *     sirva para escribirle y para mandarle;
+   *   · el aviso dice donde quedo — «en tus contactos», no «guardado»;
+   *   · y se ofrece IR a verlo, que es lo unico que de verdad convence.
+   */
+  async function chatGuardarContacto() {
     const c = chatSt.con;
     const f = chatSt.ficha?.persona || {};
-    const dir = f.addr || c?.addr;
-    if (!dir) return avisar(t('cha.sinDir'));
-    const l = leerContactos();
-    // la misma dirección no se guarda dos veces: la libreta es para encontrar
-    // gente, no para coleccionar la misma fila
-    if (l.some(x => x.dir.toLowerCase() === dir.toLowerCase())) return avisar(t('cha.contactoYa'));
-    l.unshift({ id: String(Date.now()), nombre: c.nombre || f.correo || c.id, dir });
-    guardarContactos(l);
-    avisar(t('cha.contactoOk'));
+    const correo = f.correo || (c && !c.esGrupo ? c.id : '');
+    const dir = f.addr || c?.addr || '';
+    if (!correo && !dir) return avisar(t('cha.sinDir'));
+    const que = apuntarContacto({ nombre: c?.nombre || f.nombre || correo,
+                                  dir, correo, gid: f.gid, foto: f.foto });
+    if (await chatConfirmar(
+          t(que === 'igual' ? 'cha.contactoYa' : 'cha.contactoOk'),
+          t('cha.contactoDonde'), t('cha.verContactos'))) {
+      chatSt.ficha = null;
+      vista('contactos');
+    }
   }
 
   /* Vaciar y borrar. La pantalla lo dice sin adornos: el hilo es de dos y
@@ -7302,7 +7519,9 @@ const VETA = (() => {
           <b>${esc(c.nombre || c.correo)}${c.esGrupo ? ` <em>· ${c.miembros}</em>` : ''}</b>
           <small>${esc(chatResumen(c.ultimo))}</small>
         </span>
-        ${c.sinLeer ? `<span class="cha-bola">${c.sinLeer}</span>` : ''}
+        ${estaMudo(id) ? `<svg class="cha-mudo" viewBox="0 0 24 24" aria-label="${t('cha.silenciarBtn')}">
+          <path d="M11 5 6 9H3v6h3l5 4z"/><path d="M17 9l4 6M21 9l-4 6"/></svg>`
+          : (c.sinLeer ? `<span class="cha-bola">${c.sinLeer}</span>` : '')}
       </button>`;
     }).join('') + nuevo;
   }
@@ -7372,25 +7591,64 @@ const VETA = (() => {
             <small>${t('cha.sinResponder')}</small></span>
         </div>`).join('')}` : '';
 
-    const mios = (c.amigos || []).length ? `
-      <h3 class="p2c-titulillo">${t('cha.tuCirculo')} · ${c.amigos.length}</h3>
-      ${c.amigos.map(x => `
+    /* TUS CONTACTOS: la libreta y el círculo en una sola lista.
+       Antes aquí solo salía el círculo del chat, y la libreta de la billetera
+       —donde de verdad se guardan— no aparecía por ningún lado: se tocaba
+       «guardar contacto» y no había forma de ir a verlo. Ahora es la misma
+       gente vista desde el mismo sitio, y cada fila dice qué se puede hacer:
+       escribirle, mandarle, o las dos. */
+    const gente = contactosUnidos();
+    const mios = gente.length ? `
+      <h3 class="p2c-titulillo">${t('cha.tusContactos')} · ${gente.length}</h3>
+      ${gente.map(x => `
         <div class="cha-fila p2c-quieto">
-          <button class="p2c-tocable" onclick="VETA.chatAbrir(${jsTxt(x.correo)})">
+          ${x.correo ? `<button class="p2c-tocable" onclick="VETA.chatAbrir(${jsTxt(x.correo)})">
             ${chatAvatar(x)}
-            <span class="cha-txt"><b>${esc(x.nombre || x.correo)}</b>
+            <span class="cha-txt"><b>${esc(x.nombre)}</b>
               <small>${esc(x.gid || x.correo)}</small></span>
-          </button>
-          <button class="p2c-quitar" onclick="VETA.p2cQuitar(${jsTxt(x.correo)})"
-                  title="${t('cha.quitar')}" aria-label="${t('cha.quitar')}">
+          </button>` : `
+          <span class="p2c-tocable">
+            ${chatAvatar(x)}
+            <span class="cha-txt"><b>${esc(x.nombre)}</b>
+              <small class="mono">${esc(cortaDir(x.dir))}</small></span>
+          </span>`}
+          ${x.dir ? `<button class="p2c-icono" onclick="VETA.enviarA(${jsTxt(x.dir)})"
+                  title="${t('con.usar')}" aria-label="${t('con.usar')}">
+            <svg viewBox="0 0 24 24"><path d="M22 3 11 14M22 3l-7 19-4-8-8-4z"/></svg>
+          </button>` : ''}
+          ${x.enCirculo ? `<button class="p2c-icono" onclick="VETA.p2cFichaRapida(${jsTxt(x.correo)})"
+                  title="${t('cha.verFicha')}" aria-label="${t('cha.verFicha')}">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+          </button>` : `<button class="p2c-quitar" onclick="VETA.borrarContactoAqui(${jsTxt(x.id)})"
+                  title="${t('con.borrar')}" aria-label="${t('con.borrar')}">
             <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
-          </button>
+          </button>`}
         </div>`).join('')}` : '';
 
-    const nada = !pide && !mandadas && !mios
+    const fuera = (c.bloqueados || []).length ? `
+      <h3 class="p2c-titulillo">${t('cha.bloqueados')} · ${c.bloqueados.length}</h3>
+      ${c.bloqueados.map(x => `
+        <div class="cha-fila p2c-quieto">
+          ${chatAvatar(x)}
+          <span class="cha-txt"><b>${esc(x.nombre || x.correo)}</b>
+            <small>${t('cha.noTeEscribe')}</small></span>
+          <button class="btn btn-linea btn-sm"
+                  onclick="VETA.p2cBloquear(${jsTxt(x.correo)},false)">${t('cha.desbloquearCon')}</button>
+        </div>`).join('')}` : '';
+
+    const nada = !pide && !mandadas && !mios && !fuera
       ? `<div class="vacio"><b>${t('cha.circuloVacioT')}</b>${t('cha.circuloVacioP')}</div>` : '';
 
-    return pide + busca + mios + mandadas + nada;
+    /* La puerta a la libreta entera, para apuntar una direccion a mano —alguien
+       que no esta en el chat—. Se dice donde estan guardados, con esas
+       palabras: es la pregunta que hizo falta contestar. */
+    const libreta = `
+      <button class="p2c-nuevo" onclick="VETA.vista('contactos')">
+        <svg viewBox="0 0 24 24"><path d="M4 4h13a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3z"/><path d="M4 8h3M4 12h3M4 16h3"/></svg>
+        <span>${t('cha.abrirLibreta')}</span>
+      </button>`;
+
+    return pide + busca + mios + mandadas + fuera + nada + libreta;
   }
 
   /* ── LOS ESTADOS ──────────────────────────────────────────────────────────
@@ -7531,8 +7789,29 @@ const VETA = (() => {
       <button class="btn btn-p2c btn-sm" onclick="VETA.p2cAgregar(${jsTxt(x.correo)})">${t('cha.agregar')}</button>`;
   }
 
+  /* UNA SALIDA EN TODA PANTALLA QUE OCUPE LA COLUMNA DEL HILO.
+   *
+   * «Mi perfil» no tenia boton de atras. En una pantalla grande da igual —la
+   * lista sigue al lado— pero en un telefono la casa se esconde entera, y
+   * entrar al perfil era entrar en un cuarto sin puerta: la unica salida eran
+   * las pestañas de la billetera, o sea salirse de PULSE2CHAT.
+   *
+   * Va aqui y no copiada en cada pantalla porque el fallo fue justo ese: la
+   * salida estaba en el hilo normal y no en las demas. Con una sola cabecera,
+   * una pantalla nueva no puede nacer sin ella.
+   */
+  const chatCabPanel = (titulo, volver = 'VETA.chatCerrar()') => `
+      <div class="cha-hcab cha-hcab-solo">
+        <button class="cha-volver cha-volver-fijo" onclick="${volver}"
+                aria-label="${t('cha.volverCasa')}">
+          <svg viewBox="0 0 24 24">${ICO.atras}</svg>
+        </button>
+        <span class="cha-quien"><b>${esc(titulo)}</b></span>
+      </div>`;
+
   function chatHilo() {
     if (chatSt.puerta === 'falta') return `
+      ${chatCabPanel(t('cha.gateT'), "VETA.vista('nucleo')")}
       <div class="cha-puerta">
         <div class="cha-escudo"><svg viewBox="0 0 24 24">${ICO.escudo}</svg></div>
         <h3>${t('cha.gateT')}</h3>
@@ -7543,6 +7822,7 @@ const VETA = (() => {
     if (chatSt.error) {
       const k = chatSt.error;
       return `
+      ${chatCabPanel(t('cha.e' + k + 'T'), "VETA.vista('nucleo')")}
       <div class="cha-puerta">
         <h3>${t('cha.e' + k + 'T')}</h3>
         <p>${t('cha.e' + k + 'P')}</p>
@@ -7560,8 +7840,8 @@ const VETA = (() => {
     if (chatSt.verCodigo) {
       const yo = chatSt.yo || {};
       return `
+      ${chatCabPanel(t('cha.miPerfil'), 'VETA.chatCodigo()')}
       <div class="cha-puerta cha-yo">
-        <h3>${t('cha.miPerfil')}</h3>
         <div class="chay-cara">
           ${yo.foto
             ? `<img src="${esc(CHAT.urlArchivo(yo.foto))}" alt="">`
@@ -7599,11 +7879,22 @@ const VETA = (() => {
       </div>`;
 
     const c = chatSt.con;
+    /* Con el buscador abierto, el hilo enseña solo lo que casa. No se resalta
+       la palabra dentro de la burbuja a propósito: pintar dentro del texto
+       obliga a meter HTML en algo que viene de otra persona, y ese es el
+       camino más corto a que un mensaje se salga de su burbuja. */
+    const aguja = (chatSt.buscaHilo || '').trim().toLowerCase();
+    const lista = aguja
+      ? (chatSt.msgs || []).filter(m => (m.texto || '').toLowerCase().includes(aguja))
+      : chatSt.msgs;
     const cuerpo = chatSt.msgs === null
       ? `<div class="cha-cargando"><span class="girando"></span></div>`
-      : (chatSt.msgs.length
-          ? chatSt.msgs.map(chatBurbuja).join('')
-          : `<div class="vacio"><b>${t('cha.hiloT')}</b>${t('cha.hiloP')}</div>`);
+      : (lista.length
+          ? (aguja ? `<div class="cha-cuantos">${t('cha.cuantosCasan')
+              .replace('{n}', lista.length)}</div>` : '') + lista.map(chatBurbuja).join('')
+          : aguja
+            ? `<div class="vacio"><b>${t('cha.nadaEnHilo')}</b>${t('cha.nadaEnHiloP')}</div>`
+            : `<div class="vacio"><b>${t('cha.hiloT')}</b>${t('cha.hiloP')}</div>`);
 
     return `
       <div class="cha-hcab">
@@ -7633,11 +7924,23 @@ const VETA = (() => {
         <button class="cha-mas cha-hmas" id="cha-llamar-video" onclick="VETA.llamadaLlamar(true)" aria-label="${t('lla.video')}">
           <svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
         </button>` : ''}
+        <button class="cha-mas cha-hmas${chatSt.buscaHilo != null ? ' cha-hmas-on' : ''}"
+                onclick="VETA.chatBuscarHiloAbrir()" aria-label="${t('cha.buscarHilo')}">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+        </button>
         <button class="cha-mas cha-hmas" onclick="VETA.chatVerFicha()" aria-label="${t('cha.verFicha')}">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
         </button>
       </div>
-      ${chatSt.ficha ? chatFicha() : ''}${chatHoja()}
+      ${chatSt.buscaHilo != null ? `
+      <div class="p2c-filtro cha-busca-hilo">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+        <input id="cha-busca-hilo" placeholder="${t('cha.buscarHiloPh')}"
+               value="${esc(chatSt.buscaHilo)}" autocomplete="off"
+               oninput="VETA.chatBuscarHilo(this.value)">
+        <button onclick="VETA.chatBuscarHiloAbrir()" aria-label="${t('cha.cancelar')}">✕</button>
+      </div>` : ''}
+      ${chatSt.ficha ? chatFicha() : ''}${chatHoja()}${chatHojaElegir()}
       <div class="cha-msgs" id="chat-msgs">${cuerpo}</div>
       ${chatSt.grabando ? `
       <div class="cha-grab">
@@ -7741,11 +8044,33 @@ const VETA = (() => {
         <dt>${t('cha.enCadena')}</dt>
         <dd class="mono">${dir ? esc(cortaDir(dir)) : `<span class="chaf-nada">${t('cha.sinDirC')}</span>`}</dd>
       </dl>
+      ${/* EL CODIGO DE SEGURIDAD, POR FIN A LA VISTA.
+            Estaba construido desde el primer día y no se enseñaba en ninguna
+            pantalla, o sea que no existía: un código que nadie puede comparar
+            no protege de nada. Es lo único que impide que el servidor cambie
+            una llave por la suya y se meta en medio. */''}
+      <div class="chaf-codigo">
+        ${chatSt.codigo?.cargando
+          ? `<span class="girando"></span>`
+          : chatSt.codigo
+            ? (chatSt.codigo.texto
+              ? `<b>${t('cha.codigoTit')}</b>
+                 <code class="chaf-numeros">${esc(chatSt.codigo.texto)}</code>
+                 <p class="chaf-nota">${t('cha.codigoQue')}</p>`
+              : `<p class="chaf-nota">${t('cha.codigoNo')}</p>`)
+            : `<button class="btn btn-linea btn-sm" onclick="VETA.chatVerCodigo()">
+                 <svg class="btn-ic" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                 ${t('cha.verCodigo')}</button>`}
+      </div>
       <div class="chaf-acciones">
         ${dir ? `<button class="btn btn-oro btn-sm" onclick="VETA.chatEnviarOrigen()">${t('cha.mandarOrigen')}</button>` : ''}
-        ${dir ? `<button class="btn btn-linea btn-sm" onclick="VETA.chatGuardarContacto()">${t('cha.guardarCon')}</button>` : ''}
+        <button class="btn btn-linea btn-sm" onclick="VETA.chatGuardarContacto()">${t('cha.guardarCon')}</button>
+        <button class="btn btn-linea btn-sm" onclick="VETA.chatSilenciar(${jsTxt(c?.id || '')})">${
+          t(estaMudo(c?.id) ? 'cha.conSonidoBtn' : 'cha.silenciarBtn')}</button>
         <button class="btn btn-linea btn-sm" onclick="VETA.chatOlvidar(false)">${t('cha.vaciar')}</button>
         <button class="btn btn-linea btn-sm chaf-malo" onclick="VETA.chatOlvidar(true)">${t('cha.borrarConv')}</button>
+        ${c?.id && !c.esGrupo ? `<button class="btn btn-linea btn-sm chaf-malo"
+          onclick="VETA.p2cBloquear(${jsTxt(c.id)},true)">${t('cha.bloquear')}</button>` : ''}
       </div>
       <p class="chaf-honesto">${t('cha.olvidarNota')}</p>`);
   }
@@ -7829,6 +8154,15 @@ const VETA = (() => {
           <button title="${t('cha.reaccionar')}" onclick="VETA.chatAbrirReaccion(${jsTxt(m.id)})">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01"/></svg>
           </button>
+          ${m.texto && !m.borrado ? `<button title="${t('cha.reenviar')}" onclick="VETA.chatReenviar(${jsTxt(m.id)})">
+            <svg viewBox="0 0 24 24"><path d="M15 10l5-5-5-5"/><path d="M20 5H9a5 5 0 0 0-5 5v9"/></svg>
+          </button>` : ''}
+          ${m.texto && !m.borrado ? `<button title="${t('cha.copiar')}" onclick="VETA.chatCopiarMsg(${jsTxt(m.id)})">
+            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+          </button>` : ''}
+          ${m.borrado ? '' : `<button title="${t('cha.borrar')}" onclick="VETA.chatBorrarMsg(${jsTxt(m.id)})">
+            <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
+          </button>`}
         </div>` : ''}
         ${menu}
         <div class="cha-globo">${cita}${firma}${adj}${
@@ -7836,7 +8170,11 @@ const VETA = (() => {
              Pasa de verdad: un teléfono nuevo no tiene la llave con la que se
              cerró lo de la semana pasada. Un renglón en blanco haría pensar
              que el chat perdió mensajes; esto explica qué pasó y qué hacer. */
-          m.cerrado
+          m.borrado
+            ? `<p class="cha-cerrado">
+                 <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
+                 ${t(mio ? 'cha.borrasteEsto' : 'cha.borraronEsto')}</p>`
+            : m.cerrado
             ? `<p class="cha-cerrado">
                  <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
                  ${t('cha.e2eCerrado')}</p>`
@@ -8894,18 +9232,108 @@ const VETA = (() => {
 
   // ── contactos ─────────────────────────────────────────────────────────────
 
-  /* Viven en este navegador, igual que en el telefono viven en el telefono. No
-     se mandan al servidor: es una libreta de direcciones, no una cuenta. */
+  /* UNA SOLA LIBRETA PARA LAS DOS COSAS.
+   *
+   * Habia dos listas de gente que no se hablaban entre si: la libreta de la
+   * billetera —nombre y direccion, para mandar dinero— y el circulo de
+   * PULSE2CHAT —correo y Genesis ID, para escribir—. Guardar a alguien desde el
+   * chat lo metia en la primera SIN su correo, asi que despues no se le podia
+   * escribir desde ahi; y aceptar a alguien en el chat no lo metia en la
+   * segunda, asi que para mandarle ORIGEN habia que copiar la direccion a mano.
+   *
+   * Son la misma persona. Ahora es una lista sola:
+   *
+   *   nombre   como lo llamo yo
+   *   dir      su direccion en la cadena  → se le puede ENVIAR
+   *   correo   su cuenta en el chat       → se le puede ESCRIBIR
+   *   gid      su Genesis ID, si lo tiene
+   *
+   * Los dos ultimos campos pueden faltar, y esta bien que falten: una direccion
+   * apuntada a mano no tiene correo, y alguien del chat puede no tener todavia
+   * su direccion a la vista. Cada fila enseña lo que SI se puede hacer con ella
+   * en vez de un boton que no lleva a ningun lado.
+   *
+   * Sigue viviendo en este navegador y no en el servidor: es una libreta de
+   * direcciones, no una cuenta.
+   */
   const LLAVE_CON = 'veta.contactos';
   const leerContactos = () => {
-    try { return JSON.parse(localStorage.getItem(LLAVE_CON) || '[]'); } catch { return []; }
+    try {
+      const l = JSON.parse(localStorage.getItem(LLAVE_CON) || '[]');
+      /* Las fichas de antes solo tienen nombre y direccion. No se migran a
+         disco: se completan al leerlas, y se guardan completas la proxima vez
+         que se toque la lista. Reescribir la libreta de todo el mundo al abrir
+         la app seria arriesgar los datos de alguien por un campo vacio. */
+      return l.map(c => ({ correo: '', gid: '', foto: '', dir: '', ...c }));
+    } catch { return []; }
   };
   const guardarContactos = l => {
     try { localStorage.setItem(LLAVE_CON, JSON.stringify(l)); } catch {}
   };
 
-  function contactos() {
+  /** ¿Ya está esta persona en la libreta? Por correo si lo hay; si no, por
+      dirección. Un correo identifica a una persona; una dirección, a una
+      cuenta — y la misma persona puede cambiar de cuenta. */
+  const buscaContacto = (l, { correo, dir }) => l.find(c =>
+    (correo && c.correo && c.correo.toLowerCase() === String(correo).toLowerCase()) ||
+    (dir && c.dir && c.dir.toLowerCase() === String(dir).toLowerCase()));
+
+  /**
+   * Guarda o COMPLETA a alguien en la libreta.
+   *
+   * Completar importa tanto como guardar: quien ya estaba apuntado con su
+   * direccion y despues aparece en el chat tiene que quedarse con las dos
+   * cosas, no duplicarse en dos filas que son la misma persona.
+   *
+   * @returns {'nuevo'|'completado'|'igual'}
+   */
+  function apuntarContacto({ nombre, dir, correo, gid, foto }) {
     const l = leerContactos();
+    const ya = buscaContacto(l, { correo, dir });
+    if (!ya) {
+      l.unshift({ id: String(Date.now()) + Math.random().toString(36).slice(2, 6),
+                  nombre: nombre || correo || cortaDir(dir || ''),
+                  dir: dir || '', correo: (correo || '').toLowerCase(),
+                  gid: gid || '', foto: foto || '' });
+      guardarContactos(l);
+      return 'nuevo';
+    }
+    let cambio = false;
+    for (const [k, v] of Object.entries({ dir, correo: (correo || '').toLowerCase(), gid, foto })) {
+      if (v && !ya[k]) { ya[k] = v; cambio = true; }
+    }
+    if (nombre && !ya.nombre) { ya.nombre = nombre; cambio = true; }
+    if (cambio) guardarContactos(l);
+    return cambio ? 'completado' : 'igual';
+  }
+
+  /* La lista que se enseña: la libreta MAS el círculo del chat, sin repetir.
+     Quien te aceptó es un contacto tuyo aunque nunca hayas tocado «guardar» —
+     tener que apuntarlo otra vez a mano es pedirle a la gente que haga el
+     trabajo que la app puede hacer sola. Los del círculo van marcados para
+     poder decir de dónde salen. */
+  function contactosUnidos() {
+    const l = leerContactos();
+    const fuera = l.map(c => ({ ...c, deLibreta: true }));
+    for (const a of (chatSt.circulo?.amigos || [])) {
+      const ya = buscaContacto(fuera, { correo: a.correo, dir: a.addr });
+      if (ya) {
+        if (!ya.correo) ya.correo = a.correo;
+        if (!ya.dir && a.addr) ya.dir = a.addr;
+        if (!ya.foto && a.foto) ya.foto = a.foto;
+        if (!ya.gid && a.gid) ya.gid = a.gid;
+        ya.enCirculo = true;
+      } else {
+        fuera.push({ id: 'c:' + a.correo, nombre: a.nombre || a.correo, dir: a.addr || '',
+                     correo: a.correo, gid: a.gid || '', foto: a.foto || '',
+                     enCirculo: true, deLibreta: false });
+      }
+    }
+    return fuera.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es'));
+  }
+
+  function contactos() {
+    const l = contactosUnidos();
     return `
     <div class="cab"><div><h2>${t('con.t')}</h2><div class="sub">${t('con.sub')}</div></div></div>
     <div class="bloque vidrio">
@@ -8924,22 +9352,48 @@ const VETA = (() => {
       </form>
     </div>
     <div class="bloque vidrio">
-      <h3>${t('con.guardados')}</h3>
-      ${l.length ? l.map(c => `
-        <div class="hilera">
-          <div class="ic"><svg viewBox="0 0 24 24">${ICO.gente}</svg></div>
-          <div class="txt">
-            <b>${esc(c.nombre)}</b>
-            <small class="mono">${esc(cortaDir(c.dir))}</small>
-          </div>
-          <div class="con-btns">
-            <button class="btn btn-linea btn-sm" onclick="VETA.enviarA(${jsTxt(c.dir)})">${t('con.usar')}</button>
-            <button class="btn btn-linea btn-sm" onclick="VETA.borrarContacto(${jsTxt(c.id)})" aria-label="${t('con.borrar')}">✕</button>
-          </div>
-        </div>`).join('')
+      <h3>${t('con.guardados')}${l.length ? ` · ${l.length}` : ''}</h3>
+      ${l.length ? l.map(filaContacto).join('')
       : `<div class="vacio"><b>${t('con.vacioT')}</b>${t('con.vacioP')}</div>`}
       <p class="pie" style="margin-top:12px">${t('con.local')}</p>
     </div>`;
+  }
+
+  /* Una fila de contacto, con los botones que de verdad se pueden usar.
+     Enseñar «Enviar» a alguien de quien no sabemos la dirección, o «Escribir»
+     a una dirección apuntada a mano, es prometer algo que al tocarlo no pasa —
+     y eso enseña a la gente a no fiarse de los botones. */
+  function filaContacto(c) {
+    return `
+      <div class="hilera">
+        <div class="ic">${c.foto
+          ? `<img src="${esc(CHAT.urlArchivo(c.foto))}" alt="" class="con-cara">`
+          : `<svg viewBox="0 0 24 24">${ICO.gente}</svg>`}</div>
+        <div class="txt">
+          <b>${esc(c.nombre)}${c.enCirculo && !c.deLibreta
+            ? ` <em class="con-fuente">${t('con.delChat')}</em>` : ''}</b>
+          <small class="mono">${esc(c.dir ? cortaDir(c.dir) : (c.gid || c.correo || ''))}</small>
+        </div>
+        <div class="con-btns">
+          ${c.correo ? `<button class="btn btn-linea btn-sm"
+            onclick="VETA.contactoEscribir(${jsTxt(c.correo)})">${t('con.escribir')}</button>` : ''}
+          ${c.dir ? `<button class="btn btn-linea btn-sm"
+            onclick="VETA.enviarA(${jsTxt(c.dir)})">${t('con.usar')}</button>` : ''}
+          ${c.deLibreta ? `<button class="btn btn-linea btn-sm"
+            onclick="VETA.borrarContacto(${jsTxt(c.id)})" aria-label="${t('con.borrar')}">✕</button>` : ''}
+        </div>
+      </div>`;
+  }
+
+  /** Desde la libreta al hilo. Es el puente que faltaba entre las dos mitades:
+      hasta ahora, un contacto de la billetera no llevaba a ninguna parte del
+      chat aunque fuera la misma persona. */
+  function contactoEscribir(correo) {
+    vista('chat');
+    // Se espera a que el chat se dé de alta: abrir el hilo antes de eso lo
+    // deja pidiendo mensajes con una llave que todavía no existe.
+    const abrir = () => CHAT.listo() ? chatAbrir(correo) : setTimeout(abrir, 200);
+    setTimeout(abrir, 120);
   }
 
   function nuevoContacto(ev) {
@@ -8950,10 +9404,11 @@ const VETA = (() => {
     const decir = m => { av.textContent = m; av.className = 'aviso aviso-mal'; av.classList.remove('oculto'); };
     if (!nombre) return decir(t('con.eNombre')), false;
     if (!/^0x[a-fA-F0-9]{40}$/.test(dir)) return decir(t('con.eDir')), false;
-    const l = leerContactos();
-    l.unshift({ id: String(Date.now()), nombre, dir });
-    guardarContactos(l);
-    avisar(t('con.guardado'));
+    /* Si esa direccion ya estaba apuntada, se dice y no se crea una segunda
+       fila: dos veces la misma persona en la libreta es como se pierde la
+       confianza en una libreta. */
+    const que = apuntarContacto({ nombre, dir });
+    avisar(t(que === 'nuevo' ? 'con.guardado' : 'con.yaEstaba'));
     vista('contactos');
     return false;
   }
@@ -9618,6 +10073,12 @@ const VETA = (() => {
            grupoLlamar, grupoContestar, grupoRechazar, grupoColgar,
            grupoMic, grupoCam, grupoPantalla, grupoMini, grupoGrande, chatReparar, chatCodigo, chatCodigoCopiar,
            chatVerFicha, chatFichaCerrar, chatEnviarOrigen, chatGuardarContacto,
+           // Lo que le faltaba a una app de mensajeria: bloquear, borrar un
+           // mensaje, buscar dentro del hilo, silenciar y comparar el codigo.
+           p2cBloquear, p2cFichaRapida, borrarContactoAqui, contactoEscribir,
+           chatBorrarMsg, chatCopiarMsg, chatReenviar, chatElegido,
+           chatBuscarHilo, chatBuscarHiloAbrir, chatSilenciar,
+           chatVerCodigo, chatCerrarCodigo,
            chatHojaCerrar, chatHojaOk,
            chatOlvidar, chatGrupoInvitar, chatGrupoNombre, chatGrupoSalir,
            chatInvCopiar, chatMiFoto, chatMiFotoQuitar, chatMiNombre,

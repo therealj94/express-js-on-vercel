@@ -540,6 +540,14 @@ const CHAT = (() => {
      esto es solo la puerta bonita. Si alguien se saltara la app y hablara
      directo con el servidor, seguiria recibiendo un 403. */
   const circulo = () => pedir('/amistad/lista', firmado({}));
+  /* Bloquear. La solicitud protege de quien todavia no entro; esto, de quien ya
+     esta dentro. Sin la segunda mitad, aceptar a alguien seria una puerta que
+     no se puede volver a cerrar — y eso hace que la gente no acepte a nadie. */
+  const bloquear = (a, si = true) => pedir('/bloquear', firmado({ a, bloquear: !!si }));
+  const bloqueados = () => pedir('/bloqueados', firmado({})).then(d => d.gente || []);
+  /* Borrar un mensaje. `paraTodos` solo lo puede hacer quien lo escribio, y el
+     relevo lo comprueba: aqui no se decide nada, solo se pide. */
+  const borrarMsg = (id, paraTodos = false) => pedir('/borrar', firmado({ id, paraTodos }));
   const pedirAmistad = (para, nota) => pedir('/amistad/pedir', firmado({ para, nota: nota || '' }));
   const responderAmistad = (de, aceptar) =>
     pedir('/amistad/responder', firmado({ de, aceptar: !!aceptar }));
@@ -575,6 +583,7 @@ const CHAT = (() => {
            conversaciones, bandeja, enviar, subir, enviarAdjunto, leido, olvidar,
            buscar, ficha, perfil, pago,
            circulo, pedirAmistad, responderAmistad, quitarAmigo,
+           bloquear, bloqueados, borrarMsg,
            estados, subirEstado, borrarEstado, estadoVisto,
            publicarMiLlave, codigoCon,
            grupoCrear, grupoInfo, grupoEditar, grupoInvitar, grupoSalir, grupoUnirse,

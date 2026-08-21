@@ -319,9 +319,33 @@ def ya_hablaron(d, a, b):
     return False
 
 
+# ── bloquear ──────────────────────────────────────────────────────────────────
+#
+# La solicitud protege de quien todavía no entró. El bloqueo protege de quien YA
+# está dentro, y es la mitad que faltaba: sin él, aceptar a alguien es una
+# puerta que no se puede volver a cerrar, y eso hace que la gente no acepte a
+# nadie.
+#
+# Corta en los dos sentidos a propósito. Si bloqueo a alguien, tampoco quiero
+# escribirle yo: un bloqueo que solo va en una dirección deja abierta la
+# conversación que uno quería terminar.
+TOPE_BLOQUEOS = 500
+
+
+def bloqueados_de(d, correo):
+    return set(d.get('bloqueos', {}).get(str(correo).lower(), []))
+
+
+def hay_bloqueo(d, a, b):
+    return b in bloqueados_de(d, a) or a in bloqueados_de(d, b)
+
+
 def puede_escribir(d, quien, a_quien):
-    return (quien == a_quien or son_amigos(d, quien, a_quien)
-            or ya_hablaron(d, quien, a_quien))
+    if quien == a_quien:
+        return True
+    if hay_bloqueo(d, quien, a_quien):
+        return False
+    return son_amigos(d, quien, a_quien) or ya_hablaron(d, quien, a_quien)
 
 
 def cuantos_pedidos(d, correo):
@@ -1086,6 +1110,12 @@ class Relevo(BaseHTTPRequestHandler):
                             if (m['de'] == correo and m['para'] == desde)
                             or (m['de'] == desde and m['para'] == correo)]
                 hilo = [m for m in hilo if m['cuando'] > corte_de(d, correo, desde)]
+                # Lo que ESTA cuenta escondió no viaja. Se filtra aquí y no en
+                # la app: un mensaje que llega al navegador y se esconde al
+                # pintarlo sigue estando en el navegador.
+                ocultos = set(d.get('ocultos', {}).get(correo, []))
+                if ocultos:
+                    hilo = [m for m in hilo if m.get('id') not in ocultos]
                 return self._json(200, {'mensajes': hilo[-TOPE_BANDEJA:]})
 
             if ruta == '/olvidar':
@@ -1137,9 +1167,19 @@ class Relevo(BaseHTTPRequestHandler):
                 # gente que ya la mando, que es como se llena un buzon de
                 # ruido.
                 viejos = con_quien_hablo(d, correo)
+                mios = bloqueados_de(d, correo)
                 for x in gente:
                     l = lazo(d, correo, x['correo'])
-                    if (l and l['estado'] == 'ok') or x['correo'] in viejos:
+                    if x['correo'] in mios:
+                        x['lazo'] = 'bloqueado'
+                    elif hay_bloqueo(d, correo, x['correo']):
+                        # A quien me bloqueó a MI no se le dice que lo hizo: se
+                        # ve como cualquiera a quien todavia no agregaste, y la
+                        # solicitud simplemente no llega. Decirselo convierte
+                        # el bloqueo en un mensaje, y un bloqueo no es un
+                        # mensaje.
+                        x['lazo'] = 'no'
+                    elif (l and l['estado'] == 'ok') or x['correo'] in viejos:
                         x['lazo'] = 'amigos'
                     elif l and l['estado'] == 'pedido':
                         x['lazo'] = 'enviada' if l.get('de') == correo else 'recibida'
@@ -1171,7 +1211,7 @@ class Relevo(BaseHTTPRequestHandler):
                     # Se entregan las llaves de quien me puede leer: yo mismo,
                     # mi circulo, y los companeros de un grupo del que soy.
                     permitido = (c == correo or son_amigos(d, correo, c)
-                                 or c in viejos)
+                                 or c in viejos) and not hay_bloqueo(d, correo, c)
                     if not permitido or not otra:
                         continue
                     aps = aparatos_de(otra, ahora)
@@ -1191,6 +1231,11 @@ class Relevo(BaseHTTPRequestHandler):
                     return self._json(400, {'error': 'faltan datos'})
                 if otro not in fichas:
                     return self._json(404, {'error': 'esa persona no está en el chat'})
+                if hay_bloqueo(d, correo, otro):
+                    # Mismo texto para los dos casos —yo lo bloqueé, o él a mí—
+                    # a proposito: la respuesta no puede servir para averiguar
+                    # si alguien te bloqueó.
+                    return self._json(403, {'error': 'no se puede'})
                 circulo = d.setdefault('circulo', {})
                 k = par(correo, otro)
                 l = circulo.get(k)
@@ -1240,6 +1285,91 @@ class Relevo(BaseHTTPRequestHandler):
                 guardar(d)
                 return self._json(200, {'ok': True})
 
+            if ruta == '/bloquear':
+                otro = str(b.get('a', '')).lower()
+                if not correo_valido(otro) or otro == correo:
+                    return self._json(400, {'error': 'faltan datos'})
+                lista = d.setdefault('bloqueos', {}).setdefault(correo, [])
+                if b.get('bloquear'):
+                    if otro not in lista:
+                        if len(lista) >= TOPE_BLOQUEOS:
+                            return self._json(429, {'error': 'demasiados bloqueados'})
+                        lista.append(otro)
+                    # Bloquear ROMPE el lazo. Dejarlo puesto significaria que al
+                    # desbloquear se vuelve a ser amigo sin que nadie lo haya
+                    # decidido otra vez, y eso no es lo que espera quien bloquea.
+                    d.setdefault('circulo', {}).pop(par(correo, otro), None)
+                else:
+                    d['bloqueos'][correo] = [x for x in lista if x != otro]
+                guardar(d)
+                return self._json(200, {'bloqueado': bool(b.get('bloquear'))})
+
+            if ruta == '/bloqueados':
+                fuera = []
+                for c in d.get('bloqueos', {}).get(correo, []):
+                    otra = fichas.get(c)
+                    fuera.append(resumen_ficha(c, otra) if otra
+                                 else {'correo': c, 'nombre': c, 'addr': '', 'gid': '', 'foto': ''})
+                return self._json(200, {'gente': fuera})
+
+            # ── borrar un mensaje ─────────────────────────────────────────
+            #
+            # Dos cosas distintas que la gente confunde, y por eso la app
+            # pregunta cual de las dos:
+            #
+            #   PARA MI      esconde la fila en mi pantalla. La otra persona
+            #                sigue teniendo su copia, porque el mensaje tambien
+            #                es suyo.
+            #   PARA TODOS   solo el que lo escribio. Se borra el contenido de
+            #                verdad —texto, bulto cifrado y archivo— y queda la
+            #                marca de que ahi hubo algo.
+            #
+            # La marca NO es un descuido: un mensaje que desaparece sin dejar
+            # rastro deja a la otra persona pensando que se le rompio el chat.
+            # Se dice que se borro, y quien lo borro.
+            if ruta == '/borrar':
+                mid = str(b.get('id', ''))[:16]
+                if not mid:
+                    return self._json(400, {'error': 'falta id'})
+                if not b.get('paraTodos'):
+                    ocultos = d.setdefault('ocultos', {}).setdefault(correo, [])
+                    if mid not in ocultos:
+                        ocultos.append(mid)
+                        # No crece sin fin: es una lista de lo escondido, no un
+                        # historial.
+                        d['ocultos'][correo] = ocultos[-5000:]
+                        guardar(d)
+                    return self._json(200, {'ok': True, 'para': 'mi'})
+                for m in d['mensajes']:
+                    if m.get('id') != mid:
+                        continue
+                    if m.get('de') != correo:
+                        return self._json(403, {'error': 'solo lo puede borrar quien lo escribió'})
+                    a = m.get('archivo')
+                    # `de`, `para` y `cuando` se CONSERVAN: son lo que decide en
+                    # que hilo va la fila y en que sitio. Vaciarlos sacaria el
+                    # hueco de la conversacion y con el la explicacion de que
+                    # ahi hubo algo. Se va el contenido, no el sitio.
+                    quedan = {k: m[k] for k in ('id', 'de', 'para', 'cuando') if k in m}
+                    m.clear()
+                    m.update(quedan)
+                    m['borrado'] = True
+                    guardar(d)
+                    # El archivo se va del disco tambien: dejarlo seria borrar
+                    # la burbuja y no la foto, que es lo que la gente cree que
+                    # esta borrando.
+                    if a and not any(x.get('archivo') == a for x in d['mensajes']) \
+                            and not any(f.get('foto') == a for f in fichas.values()) \
+                            and not any(e.get('archivo') == a for e in d.get('estados', [])):
+                        d.get('archivos', {}).pop(a, None)
+                        try:
+                            os.remove(os.path.join(CARPETA_ARCHIVOS, a))
+                        except OSError:
+                            pass
+                        guardar(d)
+                    return self._json(200, {'ok': True, 'para': 'todos'})
+                return self._json(404, {'error': 'no existe ese mensaje'})
+
             if ruta == '/amistad/lista':
                 circulo = d.get('circulo', {})
                 amigos, recibidas, enviadas = [], [], []
@@ -1262,8 +1392,10 @@ class Relevo(BaseHTTPRequestHandler):
                         recibidas.append(x)
                 amigos.sort(key=lambda x: x['nombre'].lower())
                 recibidas.sort(key=lambda x: -x.get('en', 0))
+                bloqueados = [resumen_ficha(c, fichas[c]) for c in d.get('bloqueos', {}).get(correo, [])
+                              if c in fichas]
                 return self._json(200, {'amigos': amigos, 'recibidas': recibidas,
-                                        'enviadas': enviadas})
+                                        'enviadas': enviadas, 'bloqueados': bloqueados})
 
             # ── los estados de 24 horas ───────────────────────────────────
             if ruta == '/estado/subir':
@@ -1313,6 +1445,11 @@ class Relevo(BaseHTTPRequestHandler):
                 for e in d.get('estados', []):
                     if e['de'] != correo and not son_amigos(d, correo, e['de']):
                         continue
+                    # Bloquear tiene que cortar TODO, no solo los mensajes: un
+                    # estado que sigue viendose es la misma persona en la misma
+                    # pantalla, que es justo lo que se quiso cortar.
+                    if hay_bloqueo(d, correo, e['de']):
+                        continue
                     ficha_suya = fichas.get(e['de'])
                     if not ficha_suya:
                         continue
@@ -1341,7 +1478,8 @@ class Relevo(BaseHTTPRequestHandler):
             if ruta == '/estado/visto':
                 eid = str(b.get('id', ''))
                 for e in d.get('estados', []):
-                    if e['id'] == eid and (e['de'] == correo or son_amigos(d, correo, e['de'])):
+                    if e['id'] == eid and (e['de'] == correo or son_amigos(d, correo, e['de'])) \
+                            and not hay_bloqueo(d, correo, e['de']):
                         if correo not in e.setdefault('vistas', []):
                             e['vistas'].append(correo)
                             guardar(d)

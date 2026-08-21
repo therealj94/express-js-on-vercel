@@ -1597,6 +1597,50 @@ body.en-p2c .cha-hcab{background:rgba(6,26,79,.5)}
 /* El electro que cruza la cabecera es el latido de la marca —el «pulse» del
    nombre—, así que dentro de la casa late en cian y no en el salmón de la
    billetera. Es el mismo dibujo, repintado. */
+/* ── LA CABECERA DE LAS PANTALLAS SIN HILO ────────────────────────────────
+   «Mi perfil», la puerta de Genesis y el aviso de error ocupan la columna del
+   hilo pero no son un hilo: llevan la misma barra, con su flecha de volver y
+   nada mas. Sin ella, en un telefono se entraba a un cuarto sin puerta. */
+.cha-hcab-solo{flex:none}
+.cha-volver-fijo{display:grid !important;place-items:center}
+
+/* Buscar dentro de la conversacion. Se despliega bajo la cabecera y no en un
+   cuadro aparte: lo que se busca esta ahi debajo. */
+.cha-busca-hilo{flex:none;margin:8px 12px}
+.cha-busca-hilo button{border:0;background:transparent;color:var(--p2c-humo);
+  cursor:pointer;font-size:15px;padding:0 2px;line-height:1}
+.cha-busca-hilo button:hover{color:#fff}
+.cha-hmas-on{border-color:var(--p2c-cyan);color:var(--p2c-cyan)}
+.cha-cuantos{text-align:center;font:600 11.5px/1 var(--sans);color:var(--p2c-humo);
+  padding:8px 0 4px}
+
+/* El codigo de seguridad. Los numeros grandes y en monoespaciada porque estan
+   para LEERLOS EN VOZ ALTA con otra persona, que es lo unico que hacen. */
+.chaf-codigo{margin-top:16px;padding:14px;border-radius:14px;
+  border:1px solid var(--p2c-linea2);background:rgba(0,217,232,.05)}
+.chaf-codigo b{display:block;font:800 10.5px/1 var(--sans);letter-spacing:.14em;
+  text-transform:uppercase;color:var(--p2c-cyan);margin-bottom:9px}
+.chaf-numeros{display:block;font-family:var(--mono);font-size:clamp(12px,3.4vw,15px);
+  line-height:1.8;letter-spacing:.06em;color:#EAF4FF;word-spacing:.35em}
+
+/* La cara de un contacto en la libreta de la billetera. */
+.con-cara{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.con-fuente{font-style:normal;font-weight:400;font-size:11px;color:var(--humo)}
+.con-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+
+/* Un boton de icono en una fila de gente: mandar, ver la ficha. */
+.p2c-icono{flex:none;width:32px;height:32px;display:grid;place-items:center;border-radius:9px;
+  border:1px solid var(--p2c-linea2);background:transparent;color:var(--p2c-bruma);cursor:pointer}
+.p2c-icono svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round}
+.p2c-icono:hover{color:#fff;border-color:var(--p2c-cyan)}
+
+/* La campana tachada de una conversacion silenciada. Ocupa el sitio del
+   contador a proposito: silenciar es decir «no me cuentes», y dejar el numero
+   ahi al lado seria seguir contando. */
+.cha-mudo{flex:none;width:16px;height:16px;fill:none;stroke:var(--p2c-humo);
+  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
 /* El mensaje que este aparato no puede abrir. En cursiva y con el candado:
    se lee como una nota del sistema y no como algo que escribió una persona. */
 .cha-cerrado{display:flex;align-items:center;gap:7px;font-style:italic;opacity:.78}
