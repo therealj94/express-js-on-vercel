@@ -441,7 +441,14 @@ def servidores_turno():
             TURN_URL.format(TURN_ID), method='POST',
             data=json.dumps({'ttl': TURN_VIDA}).encode(),
             headers={'Authorization': 'Bearer ' + TURN_TOKEN,
-                     'Content-Type': 'application/json'})
+                     'Content-Type': 'application/json',
+                     # El escudo antibots de Cloudflare rechaza con «error code
+                     # 1010» a quien llega con el User-Agent de python-urllib,
+                     # ANTES de mirar el token. Sale un 403 que parece de
+                     # credenciales y no lo es: cuesta media hora de buscar en
+                     # el sitio equivocado. Con una identificación normal pasa.
+                     'User-Agent': 'veta-wallet-relevo/1.0',
+                     'Accept': '*/*'})
         with urllib.request.urlopen(req, timeout=8) as r:
             d = json.loads(r.read())
         srv = d.get('iceServers') or []
