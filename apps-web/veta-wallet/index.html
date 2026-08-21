@@ -938,10 +938,10 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
    La altura se calcula, no se deja crecer: un hilo que empuja el pie de la
    pagina obliga a bajar con la rueda para escribir, que es lo contrario de un
    chat. */
-.chat{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);
-  gap:14px;height:calc(100svh - 190px);min-height:420px}
-.chat-lista{display:flex;flex-direction:column;overflow-y:auto;
-  border:1px solid rgba(224,147,122,.22);border-radius:var(--r2);background:#041D1F;padding:10px}
+/* La rejilla de dos columnas vive ahora en `.p2c` (ver «LA CASA DE
+   PULSE2CHAT» mas abajo): el chat dejo de ser una vista dentro del marco de
+   la billetera y paso a ser su propia casa a pantalla completa. Aqui solo
+   queda el hilo, que es la pieza que las dos comparten. */
 .chat-hilo{display:flex;flex-direction:column;min-width:0;position:relative;
   border:1px solid rgba(224,147,122,.22);border-radius:var(--r2);overflow:hidden;
   background:
@@ -1268,6 +1268,281 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
   --p2c-campo:rgba(6,26,79,.55); --p2c-humo:#7C93B8; --p2c-bruma:#B6CEE6;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   LA CASA DE PULSE2CHAT
+
+   Entrar aquí no es abrir otra pantalla de la billetera: es entrar en otra
+   marca. El oro de Veta Wallet se aparta del todo y manda el azul.
+
+   La regla de reparto que ordena todo lo de abajo: la BILLETERA es dorada y
+   sobria; PULSE2CHAT es azul y con energía. Mezclarlas dejaría a las dos sin
+   identidad, así que dentro de `body.en-p2c` no queda un solo dorado.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* El fondo. Un navy plano se ve barato en una pantalla grande; dos luces muy
+   suaves arriba —la royal y la cyan del gradiente oficial— le dan profundidad
+   sin llegar a ser un degradado que compita con el contenido. */
+body.en-p2c{
+  background:
+    radial-gradient(120% 70% at 12% -8%, rgba(7,86,217,.30), transparent 62%),
+    radial-gradient(90% 55% at 92% -4%, rgba(0,217,232,.16), transparent 60%),
+    var(--p2c-fondo);
+}
+body.en-p2c .lienzo{max-width:none;padding:0}
+/* La cascada de bloques que anima las vistas de la billetera aquí sobra: la
+   casa es UNA pieza, y verla llegar en escalones la hace parecer tres. */
+body.en-p2c .lienzo>*{animation:none}
+/* El riel y las pestañas de la billetera se tiñen de la marca mientras se
+   está dentro. Siguen ahí —salir tiene que ser un gesto, no una búsqueda—
+   pero dejan de gritar en dorado sobre azul. */
+body.en-p2c .riel{background:rgba(4,14,38,.78);border-right-color:var(--p2c-linea2)}
+body.en-p2c .tabs{background:rgba(4,14,38,.92);border-top-color:var(--p2c-linea2)}
+body.en-p2c .nav[aria-current=page]{background:rgba(0,217,232,.13);color:#DFF6FF}
+body.en-p2c .nav[aria-current=page] svg{color:var(--p2c-cyan)}
+body.en-p2c .nav[aria-current=page]::before{background:var(--p2c-grad)}
+
+.p2c{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);
+  gap:0;height:100svh}
+/* `min-width:0` no es adorno: sin él, una fila con dos botones dentro obliga a
+   la columna a ser tan ancha como su contenido, la rejilla se pasa del ancho
+   de la pantalla, y el teléfono entero se desplaza de lado. Es el fallo de
+   maquetación más común que hay y el más difícil de ver leyendo el código. */
+.p2c-casa{display:flex;flex-direction:column;min-height:0;min-width:0;
+  border-right:1px solid var(--p2c-linea2)}
+.p2c-arriba{flex:none;min-width:0}
+
+/* La barra de arriba. Se queda pegada: en una lista larga, perder el nombre de
+   la app y la salida al hacer scroll desorienta en un teléfono. */
+.p2c-barra{display:flex;align-items:center;gap:11px;flex:none;
+  padding:calc(12px + env(safe-area-inset-top)) 14px 12px;
+  border-bottom:1px solid var(--p2c-linea2);
+  background:rgba(6,26,79,.55);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.p2c-atras{width:34px;height:34px;flex:none;display:grid;place-items:center;
+  border:0;background:transparent;color:var(--p2c-bruma);cursor:pointer;border-radius:11px}
+.p2c-atras svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round}
+.p2c-atras:hover{background:rgba(0,217,232,.12);color:#fff}
+.p2c-barra .p2c-marca{width:30px}
+.p2c-barra .p2c-nombre{font-size:17px;flex:1;min-width:0}
+.p2c-yo{width:36px;height:36px;flex:none;border-radius:50%;overflow:hidden;cursor:pointer;
+  border:1.5px solid var(--p2c-cyan);background:var(--p2c-grad);color:#03122E;
+  display:grid;place-items:center;font:800 14px/1 var(--sans);padding:0}
+.p2c-yo img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* ── LOS ESTADOS, EN FILA ─────────────────────────────────────────────────
+   Se desplaza en horizontal y se engancha en cada círculo (`scroll-snap`):
+   sin eso, un arrastre en un teléfono deja siempre una cara cortada por la
+   mitad, que es la señal más barata de que algo está mal terminado. */
+.p2c-estados{flex:none;display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x proximity;
+  padding:14px 14px 12px;border-bottom:1px solid var(--p2c-linea2);
+  scrollbar-width:none}
+.p2c-estados::-webkit-scrollbar{display:none}
+.p2c-est{scroll-snap-align:start;flex:none;width:66px;border:0;background:transparent;
+  cursor:pointer;padding:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+.p2c-est small{font:600 10.5px/1.25 var(--sans);color:var(--p2c-bruma);
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* EL ARO ES LA INFORMACION. Un aro con el gradiente vivo dice «hay algo sin
+   ver»; uno apagado dice «ya lo viste». Es lo mismo que hace el color en una
+   notificación, pero sin un número que contar. El aro se pinta en el borde
+   con `background` + `padding`, no con un `border` de gradiente, porque los
+   bordes no aceptan degradados. */
+.p2c-est-aro{width:58px;height:58px;border-radius:50%;padding:2.5px;display:grid;
+  place-items:center;background:rgba(124,147,184,.32)}
+.p2c-est.sinver .p2c-est-aro{background:var(--p2c-grad)}
+.p2c-est-aro>*{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;
+  object-fit:cover;background:#0A1B3D;color:#DFF6FF;font:800 19px/1 var(--sans);font-style:normal;
+  box-shadow:inset 0 0 0 2.5px var(--p2c-fondo)}
+.p2c-est.visto .p2c-est-aro{opacity:.72}
+.p2c-est-yo .p2c-est-aro{background:rgba(0,217,232,.28)}
+.p2c-est-yo svg{width:22px;height:22px;fill:none;stroke:var(--p2c-cyan);stroke-width:2.2;
+  stroke-linecap:round;background:#0A1B3D}
+.p2c-est-nada{align-self:center;font:400 12px/1.5 var(--sans);color:var(--p2c-humo);
+  padding:0 4px}
+
+/* ── LAS DOS PESTAÑAS ─────────────────────────────────────────────────────
+   Un control segmentado y no dos enlaces: hay exactamente dos sitios donde
+   estar, y un segmentado enseña los dos a la vez con el actual encendido.
+   Con enlaces habría que leer cuál está subrayado. */
+.p2c-tabs{flex:none;display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:12px 14px 4px;
+  padding:4px;border-radius:13px;background:rgba(6,26,79,.5);border:1px solid var(--p2c-linea2)}
+.p2c-tabs button{position:relative;border:0;background:transparent;cursor:pointer;
+  padding:9px 6px;border-radius:10px;color:var(--p2c-bruma);
+  font:700 13px/1 var(--sans);transition:background .18s,color .18s}
+.p2c-tabs button[aria-selected=true]{background:var(--p2c-grad);color:#03122E}
+.p2c-globo{position:absolute;top:2px;right:8px;min-width:17px;height:17px;padding:0 4px;
+  border-radius:9px;display:grid;place-items:center;font:800 10px/1 var(--sans);font-style:normal;
+  background:var(--p2c-cyan);color:#03122E;box-shadow:0 0 0 2px rgba(6,26,79,.9)}
+.p2c-tabs button[aria-selected=true] .p2c-globo{background:#03122E;color:var(--p2c-cyan)}
+
+.p2c-cuerpo{flex:1;min-height:0;overflow-y:auto;padding:8px 10px 18px;
+  display:flex;flex-direction:column}
+.p2c-titulillo{margin:14px 6px 6px;font:800 10.5px/1 var(--sans);letter-spacing:.14em;
+  text-transform:uppercase;color:var(--p2c-cyan)}
+.p2c-titulillo:first-child{margin-top:4px}
+
+/* El buscador y el filtro comparten forma: una caja con la lupa dentro. Son
+   dos gestos distintos —filtrar lo tuyo, buscar a alguien nuevo— pero la
+   forma de escribir en ellos es la misma, y cambiársela no ayudaría a nadie. */
+.p2c-filtro{display:flex;align-items:center;gap:9px;margin:4px 6px 8px;padding:0 12px;
+  border-radius:12px;background:var(--p2c-campo);border:1px solid var(--p2c-linea2)}
+.p2c-filtro:focus-within{border-color:var(--p2c-cyan)}
+.p2c-filtro svg{width:16px;height:16px;flex:none;fill:none;stroke:var(--p2c-humo);
+  stroke-width:2;stroke-linecap:round}
+.p2c-filtro input{flex:1;min-width:0;border:0;background:transparent;color:#EAF4FF;
+  font:400 14px/1 var(--sans);padding:11px 0;outline:none}
+.p2c-filtro input::placeholder{color:var(--p2c-humo)}
+.p2c-buscar{margin-top:10px}
+
+/* Una fila que NO es un botón entero: lleva sus propios botones dentro, así
+   que el contenedor no puede robarles el toque. */
+.p2c-quieto{cursor:default;display:flex;align-items:center;gap:11px;width:100%;min-width:0}
+.p2c-quieto:hover{background:transparent}
+/* Una solicitud lleva cara, nombre, la nota que escribió y DOS botones. En
+   390 px eso no cabe en una línea sin recortar el nombre a tres letras, así
+   que los botones bajan a su propio renglón. Es más alto y se lee entero, que
+   es lo que hace falta para decidir si se acepta a alguien. */
+.p2c-pide{background:rgba(0,217,232,.07);border-radius:14px;flex-wrap:wrap}
+.p2c-pide .p2c-dos{width:100%;justify-content:flex-end}
+@media(min-width:520px){
+  .p2c-pide{flex-wrap:nowrap}
+  .p2c-pide .p2c-dos{width:auto}
+}
+.p2c-tocable{flex:1;min-width:0;display:flex;align-items:center;gap:11px;
+  border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}
+.p2c-dos{display:flex;gap:6px;flex:none}
+.p2c-quieta{flex:none;font:700 11.5px/1 var(--sans);color:var(--p2c-humo);
+  padding:7px 10px;border:1px solid var(--p2c-linea2);border-radius:9px}
+.p2c-quitar{flex:none;width:32px;height:32px;display:grid;place-items:center;border-radius:9px;
+  border:1px solid var(--p2c-linea2);background:transparent;color:var(--p2c-humo);cursor:pointer}
+.p2c-quitar svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.p2c-quitar:hover{color:#FFB4B4;border-color:rgba(255,120,120,.4)}
+
+/* El botón de la marca. El gradiente oficial va en lo que empuja a hacer algo
+   —aceptar, agregar, publicar— y en nada más: si lo llevara todo, dejaría de
+   señalar. */
+.btn-p2c{background:var(--p2c-grad);color:#03122E;border:0;font-weight:800}
+.btn-p2c:hover{filter:brightness(1.08)}
+body.en-p2c .btn-linea{border-color:var(--p2c-linea);color:var(--p2c-bruma)}
+body.en-p2c .btn-linea:hover{border-color:var(--p2c-cyan);color:#fff}
+body.en-p2c .vacio b{color:#EAF4FF}
+body.en-p2c .vacio{color:var(--p2c-humo)}
+/* El contador de sin leer era dorado: la única mancha de la billetera que
+   quedaba dentro de la casa, y justo en lo que más se mira de la lista. */
+body.en-p2c .cha-bola{background:var(--p2c-cyan);color:#03122E}
+/* AU-RA es la voz de la billetera, no de PULSE2CHAT. Su orbe flotando sobre
+   las conversaciones es una marca ajena pisando a esta, y encima tapa la
+   última fila de la lista con el pulgar justo encima. Fuera mientras se esté
+   dentro. */
+body.en-p2c #aura-orbe{display:none}
+.p2c-empuja{display:flex;justify-content:center;padding:4px 0 10px}
+
+/* Crear un grupo va ABAJO de la lista, no arriba: arriba compite con la
+   conversación que uno viene a abrir, que es lo que se hace el 99 % de las
+   veces. Abajo está cuando se busca, y no estorba cuando no. */
+.p2c-nuevo{margin:12px 6px 4px;display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:12px;border-radius:13px;cursor:pointer;
+  border:1px dashed var(--p2c-linea);background:transparent;color:var(--p2c-bruma);
+  font:700 13px/1 var(--sans)}
+.p2c-nuevo:hover{border-style:solid;border-color:var(--p2c-cyan);color:#fff}
+.p2c-nuevo svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+
+/* ── EL VISOR DE ESTADOS ──────────────────────────────────────────────────
+   A pantalla completa y negro: un estado es una foto o una frase, y cualquier
+   marco alrededor le quita el sitio. Las tiras de arriba son la única
+   navegación, y dicen dos cosas de un vistazo: cuántos hay y en cuál vas. */
+.p2c-visor{position:fixed;inset:0;z-index:70;background:#02060F;
+  display:flex;flex-direction:column;cursor:pointer;
+  animation:p2cSube .22s cubic-bezier(.2,.8,.3,1) both}
+@keyframes p2cSube{from{opacity:0;transform:scale(.985)}to{opacity:1;transform:none}}
+.p2c-visor-tiras{display:flex;gap:4px;padding:calc(10px + env(safe-area-inset-top)) 12px 0}
+.p2c-visor-tiras i{flex:1;height:2.5px;border-radius:2px;background:rgba(255,255,255,.22)}
+.p2c-visor-tiras i.ya{background:rgba(255,255,255,.62)}
+.p2c-visor-tiras i.aqui{background:var(--p2c-cyan)}
+.p2c-visor-cab{display:flex;align-items:center;gap:10px;padding:12px}
+/* Con su clase y no `span` a secas: el avatar TAMBIEN es un span, y un
+   `flex:1` genérico lo estiraba hasta convertirlo en una elipse. */
+.p2c-visor-quien{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.p2c-visor-cab b{font:700 14px/1.2 var(--sans);color:#EAF4FF;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p2c-visor-cab small{font:400 11.5px/1 var(--sans);color:var(--p2c-humo)}
+.p2c-visor-x{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:10px;
+  border:0;background:rgba(255,255,255,.08);color:#EAF4FF;cursor:pointer}
+.p2c-visor-x svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round}
+.p2c-visor-cara{flex:1;min-height:0;margin:0 12px calc(16px + env(safe-area-inset-bottom));
+  border-radius:20px;overflow:hidden;position:relative;display:grid;place-items:center;padding:26px}
+.p2c-visor-cara img,.p2c-visor-cara video{position:absolute;inset:0;width:100%;height:100%;
+  object-fit:contain;background:#000}
+/* Sobre una foto, el texto necesita su propia sombra: una frase clara sobre un
+   cielo claro no se lee, y no se puede saber de antemano qué foto sube nadie. */
+.p2c-visor-pie{position:absolute;left:0;right:0;bottom:0;margin:0;padding:44px 20px 20px;
+  font:600 15px/1.5 var(--sans);color:#fff;text-align:center;
+  background:linear-gradient(transparent,rgba(0,0,0,.72))}
+.p2c-visor-texto{margin:0;position:relative;font:800 clamp(19px,5.4vw,30px)/1.35 var(--sans);
+  color:#fff;text-align:center;text-shadow:0 2px 14px rgba(0,0,0,.32);max-width:16ch}
+
+/* ── EL COMPOSITOR ─────────────────────────────────────────────────────────
+   La hoja del chat se reutiliza tal cual —misma animación, mismo gesto de
+   subir desde abajo— pero con la piel de la marca: en verde botella parecía
+   prestada de la billetera. */
+#p2c-capas .cha-ficha{position:fixed;z-index:66}
+body.en-p2c .chaf-hoja{
+  background:linear-gradient(180deg,rgba(9,32,84,.98),rgba(4,12,32,.99));
+  border-color:var(--p2c-linea)}
+body.en-p2c .chaf-hoja h3{color:#EAF4FF}
+body.en-p2c .chaf-x{color:var(--p2c-bruma);border-color:var(--p2c-linea2)}
+body.en-p2c .chaf-x:hover{color:#fff;border-color:var(--p2c-cyan)}
+body.en-p2c .chaf-honesto{color:var(--p2c-humo)}
+body.en-p2c .editInput{background:var(--p2c-campo);border-color:var(--p2c-linea2);color:#EAF4FF}
+body.en-p2c .editInput:focus{border-color:var(--p2c-cyan)}
+.p2c-hoja{max-width:420px}
+/* El lienzo tiene la forma de un estado —más alto que ancho— pero con techo:
+   sin el `max-height`, en un teléfono se comía la pantalla entera y dejaba
+   fuera los fondos, la nota y el botón de publicar. */
+.p2c-lienzo{margin:14px auto 0;aspect-ratio:.72;max-height:42svh;border-radius:18px;
+  overflow:hidden;position:relative;display:grid;place-items:center;padding:20px}
+.p2c-lienzo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.p2c-lienzo textarea{position:relative;width:100%;border:0;background:transparent;resize:none;
+  color:#fff;text-align:center;font:800 clamp(17px,4.6vw,24px)/1.35 var(--sans);
+  outline:none;text-shadow:0 2px 12px rgba(0,0,0,.4);max-height:100%}
+.p2c-lienzo textarea::placeholder{color:rgba(255,255,255,.6);font-weight:600}
+.p2c-fondos{display:flex;gap:8px;margin-top:12px;overflow-x:auto;padding-bottom:2px;
+  scrollbar-width:none}
+.p2c-fondos::-webkit-scrollbar{display:none}
+.p2c-fondos button{width:30px;height:30px;flex:none;border-radius:50%;cursor:pointer;
+  border:2px solid transparent;padding:0}
+.p2c-fondos button[aria-pressed=true]{border-color:#fff;box-shadow:0 0 0 2px var(--p2c-cyan)}
+.p2c-foto{width:30px;height:30px;flex:none;border-radius:50%;display:grid;place-items:center;
+  cursor:pointer;border:1px solid var(--p2c-linea);background:var(--p2c-campo);
+  color:var(--p2c-bruma);margin-left:auto}
+.p2c-foto svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round}
+
+/* ── EN UN TELEFONO ──────────────────────────────────────────────────────
+   Una columna, y el hilo tapa la casa entera al abrirlo. Es el mismo gesto
+   que ya hacía el chat, pero ahora la casa también ocupa la pantalla completa
+   en vez de vivir dentro del marco de la billetera. */
+@media(max-width:900px){
+  /* En un teléfono el riel se convierte en una banda dorada de «ORDEN GLOBAL»
+     arriba del todo. Dentro de PULSE2CHAT se va: son ciento diez píxeles de
+     otra marca robándole el sitio a los estados, y en una pantalla de 844 px
+     eso es un octavo de la app. La salida no se pierde —la flecha de la barra
+     azul vuelve al Núcleo, y las pestañas de abajo siguen puestas—. */
+  body.en-p2c .riel{display:none}
+  body.en-p2c .lienzo{padding:0}
+  .p2c{grid-template-columns:1fr;height:calc(100svh - 76px)}
+  .p2c-casa{border-right:0}
+  .p2c[data-abierto] .p2c-casa{display:none}
+  .p2c:not([data-abierto]) .chat-hilo{display:none}
+  .p2c .chat-hilo{border-radius:0;border:0}
+  .p2c-visor-cara{border-radius:0;margin:0}
+}
+/* En pantalla grande el hilo respira dentro de un marco redondeado; pegado a
+   los bordes se vería como una web de 2009. */
+@media(min-width:901px){
+  .p2c .chat-hilo{margin:14px;border-radius:var(--r2);border:1px solid var(--p2c-linea2)}
+}
+
 /* La cabecera con el logo. */
 .p2c-cab{display:flex;align-items:center;gap:13px}
 .p2c-marca{width:44px;height:auto;flex:none;filter:drop-shadow(0 0 12px rgba(0,217,232,.45))}
@@ -1280,8 +1555,17 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
    Se reescriben las piezas del chat sobre la paleta de la marca. Van con la
    especificidad justa para ganarle a las reglas verdes de mas arriba sin
    usar !important, que dejaria el chat imposible de ajustar despues. */
-#lienzo .chat, .chat-lista, .chat-hilo{--linea:var(--p2c-linea);--linea2:var(--p2c-linea2)}
-.chat-lista{background:rgba(6,26,79,.34);border-color:var(--p2c-linea2)}
+#lienzo .p2c, .p2c-casa, .chat-hilo{--linea:var(--p2c-linea);--linea2:var(--p2c-linea2)}
+.p2c-casa{background:rgba(6,26,79,.34)}
+/* El fondo del hilo llevaba el circuito verde de la billetera: dentro de la
+   casa, el mismo dibujo pero en cian sobre navy. Es el circuito de Orden
+   Global —la idea de la red— pintado con los colores de esta marca, que es lo
+   que pide el manual: mismo lenguaje, distinta paleta. */
+body.en-p2c .chat-hilo{
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cg fill='none' stroke='%2300D9E8' stroke-width='1' opacity='.06'%3E%3Cpath d='M20 0v54h60v40M20 220v-70h44M140 220v-44h60M220 60h-52V20M110 0v30M180 0v60h40'/%3E%3C/g%3E%3Cg fill='%2300D9E8' opacity='.10'%3E%3Ccircle cx='80' cy='94' r='2'/%3E%3Ccircle cx='64' cy='150' r='2'/%3E%3Ccircle cx='168' cy='60' r='2'/%3E%3Ccircle cx='200' cy='176' r='2'/%3E%3Ccircle cx='110' cy='30' r='2'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(165deg,#0A1F4C 0%,#061A3A 58%,#040B1C 100%)}
+body.en-p2c .chat-hilo .vacio b{color:#EAF4FF}
 .cha-pie{border-top-color:var(--p2c-linea2);background:rgba(6,26,79,.28)}
 .cha-pie input{background:var(--p2c-campo);border-color:var(--p2c-linea2);color:#EAF4FF}
 .cha-pie input:focus{border-color:var(--p2c-cyan)}
@@ -1290,7 +1574,10 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 /* El boton de mandar lleva el gradiente oficial: es el CTA del chat. */
 .cha-pie .cha-manda{background:var(--p2c-grad);color:#03122E}
 /* El avatar del hilo tambien es de la marca: en verde parecia de la billetera. */
-.chat .cha-av,.cha-hilo-cab .cha-av{background:var(--p2c-grad);color:#03122E}
+/* Se tiñe por `body.en-p2c` y no por `.p2c`: el visor de estados y las hojas
+   cuelgan del body, fuera de la casa, y con el degradado verde de la billetera
+   quedaban con la cara de la otra marca. */
+body.en-p2c .cha-av,.cha-hcab .cha-av{background:var(--p2c-grad);color:#03122E}
 .cha-mic{background:var(--p2c-campo);border-color:var(--p2c-linea2);color:var(--p2c-bruma)}
 .cha-mic:hover{color:#fff;border-color:var(--p2c-cyan)}
 /* Mi burbuja en el gradiente; la del otro en navy. Asi se distinguen de un
@@ -1299,10 +1586,37 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 .cha-b.cha-mio .cha-globo p{color:#03122E}
 .cha-b:not(.cha-mio) .cha-globo{background:rgba(6,26,79,.72);border:1px solid var(--p2c-linea2);color:#EAF4FF}
 .cha-de{color:var(--p2c-cyan)}
-.cha-hilo-cab,.cha-cab{border-bottom-color:var(--p2c-linea2)}
+.cha-hcab,.cha-cab{border-bottom-color:var(--p2c-linea2)}
 .cha-quien b{color:#EAF4FF}
 .cha-quien small{color:var(--p2c-humo)}
 .cha-mas{color:var(--p2c-bruma)}
+/* La cabecera del hilo: volver, llamar, videollamar y el menú. Eran los
+   últimos botones dorados que quedaban dentro de la casa, y están justo donde
+   más se mira — arriba, sobre la cara de la persona. */
+body.en-p2c .cha-hcab{background:rgba(6,26,79,.5)}
+/* El electro que cruza la cabecera es el latido de la marca —el «pulse» del
+   nombre—, así que dentro de la casa late en cian y no en el salmón de la
+   billetera. Es el mismo dibujo, repintado. */
+/* El mensaje que este aparato no puede abrir. En cursiva y con el candado:
+   se lee como una nota del sistema y no como algo que escribió una persona. */
+.cha-cerrado{display:flex;align-items:center;gap:7px;font-style:italic;opacity:.78}
+.cha-cerrado svg{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;
+  stroke-width:1.7;stroke-linecap:round}
+body.en-p2c .cha-hcab::after{
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='14'%3E%3Cpath d='M0 7h44l6-5 7 10 6-8 4 3h93' fill='none' stroke='%2300D9E8' stroke-width='1.4' stroke-linejoin='round' opacity='.55'/%3E%3C/svg%3E") repeat-x 0 0;
+  background-size:160px 14px}
+body.en-p2c .cha-hmas,body.en-p2c .cha-volver{
+  border-color:var(--p2c-linea2);color:var(--p2c-bruma)}
+body.en-p2c .cha-hmas:hover,body.en-p2c .cha-volver:hover{
+  border-color:var(--p2c-cyan);color:#fff;background:rgba(0,217,232,.1)}
+body.en-p2c .cha-quien-btn:hover{background:rgba(0,217,232,.09)}
+/* Y los botones de la billetera que asoman dentro del chat —la puerta de
+   Genesis, «desbloquear»— dejan el oro por el gradiente de la marca. */
+body.en-p2c .btn-oro{background:var(--p2c-grad);color:#03122E;border-color:transparent}
+body.en-p2c .cha-escudo{background:rgba(0,217,232,.12);border-color:var(--p2c-linea)}
+body.en-p2c .cha-escudo svg{stroke:var(--p2c-cyan)}
+body.en-p2c .cha-puerta h3{color:#EAF4FF}
+body.en-p2c .cha-puerta p{color:var(--p2c-bruma)}
 /* Mi cara, como boton. Es lo que en cualquier app significa «vos»: sin
    avatar, las iniciales; con foto, la foto. */
 .cha-yo-btn{width:34px;height:34px;border-radius:50%;overflow:hidden;padding:0;
@@ -1456,9 +1770,7 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
   stroke-linecap:round;stroke-linejoin:round}
 
 @media(max-width:900px){
-  .chat{grid-template-columns:1fr;height:calc(100svh - 232px)}
-  .chat[data-abierto] .chat-lista{display:none}
-  .chat:not([data-abierto]) .chat-hilo{display:none}
+  /* Las dos columnas en una: lo lleva `.p2c` en su propio bloque. */
   .cha-volver{display:grid;place-items:center}
 }
 
@@ -2836,6 +3148,15 @@ body.en-ventana .lienzo::before{
      Vive fuera de las vistas y por encima de todo: una llamada no es una
      pantalla más del chat, es algo que pasa MIENTRAS pasa cualquier otra cosa
      y que no se puede perder de vista por navegar. -->
+<!-- Las capas de PULSE2CHAT que van ENCIMA de todo: el visor de estados y el
+     compositor. Viven aquí, colgadas del body, y no dentro de la vista, por
+     una razón concreta: la vista se anima con un `transform` al entrar, y un
+     elemento con transform se convierte en el marco de referencia de todo lo
+     que lleve `position:fixed` dentro. El visor «a pantalla completa» acababa
+     encajado en el hueco del lienzo, con las pestañas de la billetera por
+     encima. Fuera de ahí, ocupa la pantalla de verdad. -->
+<div id="p2c-capas"></div>
+
 <div id="lla" class="oculto" role="dialog" aria-modal="true">
   <video id="lla-remoto" autoplay playsinline></video>
   <video id="lla-local" autoplay playsinline muted></video>

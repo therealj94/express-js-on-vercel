@@ -2,7 +2,7 @@
    tiene que poder entrar con su frase. Es justo lo que estaba roto. */
 import { HDNodeWallet, Mnemonic, Wallet } from 'ethers'
 import { readFileSync } from 'fs'
-const W = new URL('..', import.meta.url).pathname.replace(//$/, '')
+const W = new URL('..', import.meta.url).pathname.replace(/\/$/, '')
 eval(readFileSync(W+'/vendor/cripto-llaves.js','utf8'))
 const L = eval(readFileSync(W+'/llaves.js','utf8').replace(/if \(typeof window[\s\S]*$/,'')+'; LLAVES')
 const API='https://vetawallet-1a2e38ac52b1.herokuapp.com'

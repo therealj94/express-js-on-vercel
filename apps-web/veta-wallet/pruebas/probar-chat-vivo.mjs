@@ -6,7 +6,7 @@
  */
 import { chromium } from 'playwright'
 import { spawn } from 'child_process'
-import { mkdtempSync, rmSync } from 'fs'
+import { mkdtempSync, rmSync, readFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { createServer } from 'net'
@@ -61,12 +61,29 @@ async function abrir(correo, nombre) {
     VETA.vista('chat')
   }, [correo, nombre])
   await pag.waitForTimeout(2600)
-  return { pag, err, correo }
+  return { pag, err, correo, llave }
+}
+
+/* Aceptarse. Desde que existe el círculo, dos desconocidos no pueden
+   escribirse: el relevo contesta 403 y ese es el punto de la función. Se hace
+   contra el relevo directamente porque lo que esta prueba mide es el chat en
+   vivo, no la pantalla de solicitudes —esa la mide probar-circulo.py—. */
+async function aceptarse(a, b) {
+  /* Las llaves se reciben de `abrir`, NO se vuelven a pedir: un segundo /alta
+     del mismo correo sin llave devuelve 409 y `.llave` sale undefined, con lo
+     que la solicitud se manda sin firmar y el relevo contesta 401. */
+  const post = (ruta, cuerpo) => fetch(REL + ruta, { method:'POST',
+    headers:{'content-type':'application/json'}, body: JSON.stringify(cuerpo) })
+  const r1 = await post('/amistad/pedir', { correo:a.correo, llave:a.llave, para:b.correo })
+  const r2 = await post('/amistad/responder', { correo:b.correo, llave:b.llave, de:a.correo, aceptar:true })
+  const est = (await r2.json())?.estado
+  if (est !== 'amigos') throw new Error('no se pudieron aceptar: ' + r1.status + '/' + r2.status + ' ' + est)
 }
 
 console.log('\nLa marca\n')
 const A = await abrir('ana@ordenglobal.link','Ana')
 const B = await abrir('beto@ordenglobal.link','Beto')
+await aceptarse(A, B)
 ok('dice PULSE2CHAT', /PULSE.?2.?CHAT/i.test(await A.pag.evaluate(()=>document.getElementById('lienzo')?.innerText||'')))
 ok('el logo de la marca esta puesto', await A.pag.isVisible('.p2c-marca'))
 ok('y no queda ningun «PULSE CHAT» viejo',
@@ -82,6 +99,13 @@ await A.pag.press('#chat-txt','Enter')
 await A.pag.waitForTimeout(2500)
 await B.pag.evaluate(()=>VETA.vista('chat'))
 await B.pag.waitForTimeout(6500)
+/* Si no llega, se dice QUE se vio en cada lado: «no llega» a secas obliga a
+   repetir la corrida a mano para averiguar de que lado se rompio. */
+if (!/hola beto/.test(await B.pag.evaluate(()=>document.getElementById('chat-msgs')?.innerText||'')))
+  console.log('  DIAGNOSTICO · errores de Ana:', JSON.stringify(A.err),
+              '\n  errores de Beto:', JSON.stringify(B.err),
+              '\n  hilo de Beto:', JSON.stringify((await B.pag.evaluate(()=>document.getElementById('chat-msgs')?.innerText||'')).slice(0,160)),
+              '\n  hilo de Ana:', JSON.stringify((await A.pag.evaluate(()=>document.getElementById('chat-msgs')?.innerText||'')).slice(0,160)))
 ok('a Beto le llega', /hola beto/.test(await B.pag.evaluate(()=>document.getElementById('chat-msgs')?.innerText||'')))
 ok('el mensaje tiene id', await B.pag.evaluate(()=>!!document.querySelector('.cha-b[data-id]')?.dataset.id))
 
@@ -117,13 +141,26 @@ ok('Beto ve que Ana escribe', await B.pag.isVisible('#cha-escribe'),
 await B.pag.waitForTimeout(4500)
 ok('y se apaga solo cuando Ana para', !(await B.pag.isVisible('#cha-escribe')))
 
+/* LA PRUEBA DEL CANDADO, MIRADA DESDE EL DISCO.
+   Las dos pantallas dicen «hola beto», y aun asi hay que abrir el archivo del
+   relevo y comprobar que ahi NO esta. Es la unica forma de saber que el
+   cifrado esta puesto de verdad y no solo que el chat funciona: si un dia
+   alguien rompiera el candado sin querer, todo lo de arriba seguiria en
+   verde. */
+console.log('\nEl candado, visto desde el servidor\n')
+const enDisco = readFileSync(join(CARPETA,'d.json'),'utf8')
+ok('el relevo NO guarda el texto del mensaje', !enDisco.includes('hola beto'))
+ok('ni el de la respuesta', !enDisco.includes('te respondo a eso'))
+ok('lo que guarda es un bulto cerrado', /"cif":\s*\{/.test(enDisco))
+
 console.log('\nMi perfil y el timbre\n')
-// El boton vive en la LISTA: con un hilo abierto, en pantalla angosta la
-// lista se esconde. Se vuelve atras primero, que es lo que hace la persona.
+// El boton vive en la BARRA de la casa: con un hilo abierto, en pantalla
+// angosta la casa se esconde. Se vuelve atras primero, que es lo que hace la
+// persona.
 await A.pag.evaluate(()=>{ VETA._chatCon(null); VETA.vista('chat') })
 await A.pag.waitForTimeout(700)
-ok('mi cara es el boton de perfil', await A.pag.isVisible('.cha-yo-btn'))
-await A.pag.click('.cha-yo-btn'); await A.pag.waitForTimeout(900)
+ok('mi cara es el boton de perfil', await A.pag.isVisible('.p2c-yo'))
+await A.pag.click('.p2c-yo'); await A.pag.waitForTimeout(900)
 const perfil = await A.pag.evaluate(()=>document.getElementById('lienzo')?.innerText||'')
 ok('se abre «Mi perfil»', /Mi perfil/i.test(perfil))
 ok('se puede poner nombre', /Nombre/i.test(perfil))

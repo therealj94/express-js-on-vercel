@@ -9,7 +9,17 @@ import { spawn } from 'child_process'
 import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-const REL = 'http://127.0.0.1:8395'          // el relevo de verdad, local
+import { createServer } from 'net'
+/* UN PUERTO LIBRE, NO UNO FIJO.
+   Con el 8395 a pelo, un relevo que quedara vivo de una corrida anterior se
+   queda con el puerto: el `spawn` nuevo muere sin decir nada, la prueba habla
+   con el relevo VIEJO —cuentas viejas, llaves viejas— y falla con «el chat se
+   trabó» sin que nada apunte a la causa. Se pide un puerto libre al sistema,
+   como ya hacía probar-chat-vivo. */
+const PUERTO = await new Promise((r) => {
+  const s = createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => r(p)) })
+})
+const REL = `http://127.0.0.1:${PUERTO}`     // el relevo de verdad, local
 const ORIGEN = 'https://cerebro.ordenscan.com'  // lo unico que la CSP permite
 const SITIO = 'http://127.0.0.1:8791/apps-web/veta-wallet/index.html'
 const ARGS = ['--no-sandbox','--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream',
@@ -24,7 +34,7 @@ const SERVIDOR = process.env.SERVIDOR_MENSAJES ||
   new URL('../../../infra/mensajes/servidor.py', import.meta.url).pathname
 const RELEVO = spawn('python3', [SERVIDOR],
   { env: { ...process.env, MENSAJES_DATOS: join(CARPETA, 'd.json'),
-           MENSAJES_PUERTO: '8395', MENSAJES_ARCHIVOS: join(CARPETA, 'arch') },
+           MENSAJES_PUERTO: String(PUERTO), MENSAJES_ARCHIVOS: join(CARPETA, 'arch') },
     stdio: 'ignore', detached: false })
 await new Promise(r => setTimeout(r, 2500))
 
@@ -83,18 +93,44 @@ async function abrir(correo, nombre) {
     VETA.vista('chat')
   }, [correo, nombre])
   await pag.waitForTimeout(3000)   // alta contra el relevo + arranque del buzon
-  return { pag, err }
+  return { pag, err, correo, llave }
+}
+
+
+/* Aceptarse. El círculo es la regla nueva: dos desconocidos no pueden
+   escribirse NI hacerse sonar el teléfono, y el relevo lo hace cumplir con un
+   403. Aquí se da ese paso contra el relevo —las llaves vienen de `abrir`,
+   porque un segundo /alta sin llave devuelve 409 y dejaría la firma vacía—.
+   La pantalla de solicitudes se prueba aparte, en probar-circulo.py. */
+async function aceptarse(...gente) {
+  const post = (ruta, cuerpo) => fetch(REL + ruta, { method:'POST',
+    headers:{'content-type':'application/json'}, body: JSON.stringify(cuerpo) })
+  for (const a of gente) for (const b of gente) {
+    if (a.correo >= b.correo) continue
+    await post('/amistad/pedir', { correo:a.correo, llave:a.llave, para:b.correo })
+    const r = await post('/amistad/responder',
+      { correo:b.correo, llave:b.llave, de:a.correo, aceptar:true })
+    const est = (await r.json())?.estado
+    if (est !== 'amigos') throw new Error(`no se aceptaron ${a.correo}/${b.correo}: HTTP ${r.status} ${JSON.stringify(est)}`)
+  }
 }
 
 console.log('\nDos personas, cada una con su navegador\n')
 const ana = await abrir('ana@ordenglobal.link', 'Ana')
 const beto = await abrir('beto@ordenglobal.link', 'Beto')
+await aceptarse(ana, beto)
 ok('las dos entraron al chat', true)
 ok('el navegador puede llamar', await ana.pag.evaluate(()=>LLAMADA.puede()))
 
 // Ana abre el hilo con Beto y llama.
 await ana.pag.evaluate(()=>VETA._chatCon({ id:'beto@ordenglobal.link', nombre:'Beto', esGrupo:false }))
 await ana.pag.waitForTimeout(400)
+/* Si el botón no está, se dice POR QUE: sin esto la prueba solo puede
+   informar del síntoma, y el síntoma nunca es la causa. */
+if (!await ana.pag.isVisible('#cha-llamar-voz'))
+  console.log('  DIAGNOSTICO:', JSON.stringify(await ana.pag.evaluate(()=>({
+    estado: VETA._chatEstado?.(),
+    hilo: (document.getElementById('chat-hilo')?.textContent||'').slice(0,140) }))))
 ok('aparece el boton de llamar', await ana.pag.isVisible('#cha-llamar-voz'))
 ok('y el de videollamada', await ana.pag.isVisible('#cha-llamar-video'))
 

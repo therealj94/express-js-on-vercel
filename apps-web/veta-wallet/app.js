@@ -1776,7 +1776,15 @@ const VETA = (() => {
     if (vistaActual === 'lector' && cual !== 'lector') cerrarCamara();
     // El latido del chat solo late mientras el chat esta en pantalla: un
     // intervalo vivo en segundo plano es trafico que nadie mira.
-    if (vistaActual === 'chat' && cual !== 'chat') chatParar();
+    if (vistaActual === 'chat' && cual !== 'chat') {
+      chatParar();
+      /* Las capas de PULSE2CHAT cuelgan del body, así que no se van solas al
+         repintar el lienzo: un visor de estados abierto seguiría tapando la
+         billetera entera. */
+      chatSt.viendo = null; chatSt.subeEstado = null;
+      const capas = $('#p2c-capas');
+      if (capas) capas.innerHTML = '';
+    }
     // Salir de «enviar» cancela la intencion de publicar comprobante: la marca
     // no puede quedar esperando dias a un envio que ya es otro.
     if (vistaActual === 'enviar' && cual !== 'enviar') avisarChat = null;
@@ -1832,6 +1840,10 @@ const VETA = (() => {
       if (location.hash !== r) history.pushState({ v: cual, d: dato, neg: payNeg }, '', r);
     }
     document.body.classList.toggle('en-cerebro', cual === 'nucleo');
+    /* PULSE2CHAT se queda con la pantalla entera. La billetera no desaparece
+       —el riel y las pestañas siguen ahí— pero el fondo, el ancho y el relleno
+       pasan a ser los suyos: dentro de su casa manda su marca. */
+    document.body.classList.toggle('en-p2c', cual === 'chat');
     /* Las sugerencias de AU-RA son de la pantalla en la que estás, así que si
        la pantalla cambia con el panel abierto hay que volver a pintarlas. Sin
        esto quedaban las de la vista anterior: se entraba al chat y AU-RA
@@ -5778,6 +5790,17 @@ const VETA = (() => {
     gente: null,
     mandando: false,
     subiendo: false,
+    /* La casa de PULSE2CHAT. `tab` es en qué parte de su casa está uno; el
+       resto es lo que se ha traído del relevo, y `null` significa «todavía no
+       se ha pedido» —distinto de `[]`, que significa «no hay nada»—. Esa
+       diferencia es la que decide entre enseñar esqueletos y enseñar el cartel
+       de vacío, y confundirlas hace que la app parezca rota los dos segundos
+       que tarda la red. */
+    tab: 'chats',
+    circulo: null,       // {amigos, recibidas, enviadas}
+    estados: null,       // [{correo, nombre, foto, estados:[…], sinVer}]
+    viendo: null,        // {quien, i} — el visor de estados a pantalla completa
+    subeEstado: null,    // {texto, fondo, adj} — el compositor
   };
   let chatReloj = null, chatDebounce = null;
 
@@ -5849,26 +5872,87 @@ const VETA = (() => {
   const chatHayPanel = () => Boolean(
     chatSt.con || chatSt.verCodigo || chatSt.error || chatSt.puerta === 'falta');
 
+  /* ── LA CASA DE PULSE2CHAT ────────────────────────────────────────────────
+   *
+   * Antes esto era una pantalla más de la billetera: la cabecera dorada de
+   * Veta Wallet arriba y, debajo, dos columnas de chat. Funcionaba, pero no
+   * era PULSE2CHAT: era el chat DE la billetera. Y en un teléfono se notaba
+   * el doble, porque la mitad de la altura útil se iba en el marco de otra
+   * cosa.
+   *
+   * Ahora tocar PULSE2CHAT entra en su casa. La billetera se aparta —fondo,
+   * cabecera y todo— y la marca se queda con la pantalla entera: sus estados
+   * arriba, sus conversaciones, su gente. Se sale con la flecha, que devuelve
+   * al Núcleo.
+   *
+   * QUE HAY DENTRO Y POR QUE ESO
+   *
+   *   · Los ESTADOS arriba del todo, en fila. Es lo que caduca: si estuviera
+   *     abajo nadie lo vería a tiempo, y un estado que se ve tarde es un
+   *     estado que no existió.
+   *   · Dos pestañas y no cinco: CHATS y GENTE. Una app de mensajes tiene dos
+   *     verbos —hablar con quien ya conocés, y encontrar a quien no—. Todo lo
+   *     demás cabe dentro de uno de los dos.
+   *   · Las solicitudes viven en GENTE con su número encima, no en una
+   *     pantalla propia: una solicitud pendiente es gente esperando, y ahí es
+   *     donde se la busca.
+   *   · No hay pestaña de LLAMADAS. Haría falta un historial de llamadas y el
+   *     relevo no lo guarda; una pestaña que enseñara una lista vacía para
+   *     siempre sería peor que no tenerla. Se llama desde el hilo, que es
+   *     desde donde se llama de verdad.
+   */
   function chat() {
+    const pendientes = chatSt.circulo?.recibidas?.length || 0;
     return `
-    <div class="cab">
-      ${/* El logo de la marca, no un garabato: el manual pide que el simbolo
-            se use tal cual y con su gradiente oficial. Va como imagen porque
-            redibujarlo a mano seria «cambiar los colores del gradiente», que
-            es justo lo que el manual prohibe. */''}
-      <div class="p2c-cab">
-        <img src="assets/p2c-simbolo.png" alt="" class="p2c-marca">
-        <div>
+    <div class="p2c" id="p2c" ${chatHayPanel() ? 'data-abierto' : ''}>
+      <aside class="p2c-casa">
+        <header class="p2c-barra">
+          ${/* La flecha de volver es lo primero, y es de verdad: en un
+                teléfono, entrar a una app sin una salida a la vista es la
+                forma más rápida de que alguien cierre la pestaña entera. */''}
+          <button class="p2c-atras" onclick="VETA.vista('nucleo')"
+                  aria-label="${t('cha.salir')}">
+            <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+          </button>
+          ${/* El simbolo va como imagen porque el manual pide que se use tal
+                cual y con su gradiente oficial: redibujarlo a mano seria
+                cambiarle los colores, que es justo lo que prohibe. */''}
+          <img src="assets/p2c-simbolo.png" alt="" class="p2c-marca">
           <h2 class="p2c-nombre">PULSE<b>2</b>CHAT</h2>
-          <div class="sub">${t('cha.sub')}</div>
-        </div>
-      </div>
-    </div>
-    <div class="chat" id="chat-caja" ${chatHayPanel() ? 'data-abierto' : ''}>
-      <aside class="chat-lista" id="chat-lista">${chatLista()}</aside>
+          <button class="p2c-yo" onclick="VETA.chatCodigo()"
+                  title="${t('cha.miPerfil')}" aria-label="${t('cha.miPerfil')}">
+            ${chatSt.yo?.foto
+              ? `<img src="${esc(CHAT.urlArchivo(chatSt.yo.foto))}" alt="">`
+              : `<span>${esc(chatIni(chatSt.yo?.nombre || sesion?.nombre || sesion?.correo))}</span>`}
+          </button>
+        </header>
+        <div id="p2c-arriba" class="p2c-arriba">${p2cArriba()}</div>
+        <div class="p2c-cuerpo" id="p2c-cuerpo">${p2cCuerpo()}</div>
+      </aside>
       <section class="chat-hilo" id="chat-hilo">${chatHilo()}</section>
     </div>`;
   }
+
+  /* Los estados y las pestañas se pintan aparte del cuerpo porque cambian por
+     motivos distintos: el cuerpo se repinta con cada latido del chat, y estos
+     dos solo cuando llega algo nuevo. Meterlos en el mismo repintado haría
+     saltar la fila de estados cada cinco segundos. */
+  function p2cArriba() {
+    if (chatSt.puerta === 'falta') return '';
+    const pendientes = chatSt.circulo?.recibidas?.length || 0;
+    return `
+      ${p2cEstados()}
+      <nav class="p2c-tabs" role="tablist">
+        <button role="tab" ${chatSt.tab === 'chats' ? 'aria-selected="true"' : ''}
+                onclick="VETA.p2cTab('chats')">${t('cha.tabChats')}</button>
+        <button role="tab" ${chatSt.tab === 'gente' ? 'aria-selected="true"' : ''}
+                onclick="VETA.p2cTab('gente')">${t('cha.tabGente')}${
+          pendientes ? `<i class="p2c-globo">${pendientes}</i>` : ''}</button>
+      </nav>`;
+  }
+
+  const p2cCuerpo = () => chatSt.puerta === 'falta' ? ''
+    : (chatSt.tab === 'gente' ? p2cGente() : chatLista());
 
   /* Arrancar el chat es darse de alta en el relevo y pedir las charlas. El
      alta se espera SIEMPRE y se lee lo que devuelve: cuando el correo es
@@ -5893,7 +5977,17 @@ const VETA = (() => {
          llamada entrante tiene que llegar aunque la persona esté mirando su
          billetera, que es donde está casi siempre. */
       llamadaArrancar();
+      /* La llave pública de este aparato se publica al ENTRAR, no al mandar el
+         primer mensaje. Si esperara al primer mensaje, quien acaba de instalar
+         no podría RECIBIR nada cifrado hasta escribir él, y su primera
+         conversación entera llegaría en claro. */
+      CHAT.publicarMiLlave?.().catch(() => null);
       await chatCargarConvs();
+      /* Los estados se piden ya: son la primera fila de la pantalla, y una
+         fila que aparece dos segundos tarde empuja todo lo de abajo justo
+         cuando alguien iba a tocarlo. El círculo espera a su pestaña. */
+      chatCargarEstados();
+      chatCargarCirculo();
     } catch (e) {
       chatSt.error = chatMotivo(e);
       pintarChat();
@@ -6638,6 +6732,180 @@ const VETA = (() => {
     } finally { chatSt.subiendo = false; pintarChat(); }
   }
 
+  /* ── LOS MANDOS DE LA CASA ────────────────────────────────────────────── */
+
+  /** «Hace 3 h». Un estado vive 24 horas, así que la unidad más grande que
+      hace falta es la hora: poner días sería preparar un caso que no existe. */
+  function hace(cuando) {
+    const min = Math.max(0, Math.round((Date.now() - cuando) / 60000));
+    if (min < 1) return t('cha.reciEn');
+    if (min < 60) return t('cha.haceMin').replace('{n}', min);
+    return t('cha.haceH').replace('{n}', Math.floor(min / 60));
+  }
+
+  function p2cTab(cual) {
+    chatSt.tab = cual;
+    /* Salir de «gente» limpia la búsqueda: volver a la pestaña y encontrarse
+       los resultados de hace media hora hace pensar que la app se quedó
+       colgada. */
+    if (cual !== 'gente') { chatSt.gente = null; chatSt.busca = ''; }
+    pintarChat();
+    if (cual === 'gente' && chatSt.circulo === null) chatCargarCirculo();
+  }
+
+  function p2cFiltrar(v) { chatSt.filtra = v; pintarChat(); }
+
+  async function chatCargarCirculo() {
+    try { chatSt.circulo = await CHAT.circulo(); }
+    catch { chatSt.circulo = { amigos: [], recibidas: [], enviadas: [] }; }
+    pintarChat();
+  }
+
+  async function chatCargarEstados() {
+    try { chatSt.estados = await CHAT.estados(); }
+    catch { chatSt.estados = []; }
+    pintarChat();
+  }
+
+  async function p2cAgregar(correo) {
+    try {
+      await CHAT.pedirAmistad(correo);
+      /* Se retoca el resultado que ya está en pantalla en vez de volver a
+         buscar: la búsqueda tarda, y el botón tiene que responder al dedo en
+         el acto o parece que no se pulsó. */
+      const x = (chatSt.gente || []).find(g => g.correo === correo);
+      if (x) x.lazo = 'enviada';
+      chatSt.circulo = null;
+      pintarChat();
+      TONO?.golpe(true);
+    } catch (e) { avisar(chatMotivo(e)); }
+  }
+
+  async function p2cResponder(correo, aceptar) {
+    try {
+      await CHAT.responderAmistad(correo, aceptar);
+      const x = (chatSt.gente || []).find(g => g.correo === correo);
+      if (x) x.lazo = aceptar ? 'amigos' : 'no';
+      await chatCargarCirculo();
+      if (aceptar) { chatCargarConvs(); TONO?.golpe(true); }
+    } catch (e) { avisar(chatMotivo(e)); }
+  }
+
+  async function p2cQuitar(correo) {
+    const quien = (chatSt.circulo?.amigos || []).find(x => x.correo === correo);
+    /* Se dice lo que pasa Y lo que NO pasa. Quitar a alguien del círculo no
+       borra la conversación, y quien crea que sí se llevaría una sorpresa
+       fea. */
+    if (!await chatConfirmar(t('cha.quitar'),
+      t('cha.quitarNota').replace('{n}', quien?.nombre || correo),
+      t('cha.quitar'), true)) return;
+    try {
+      await CHAT.quitarAmigo(correo);
+      await chatCargarCirculo();
+    } catch (e) { avisar(chatMotivo(e)); }
+  }
+
+  /* ── los estados ──────────────────────────────────────────────────────── */
+
+  function p2cVerEstado(correo) {
+    const g = (chatSt.estados || []).find(x => x.correo === correo);
+    if (!g?.estados?.length) return;
+    /* Se abre en el primero SIN VER, no en el primero de todos: quien ya vio
+       tres de cinco quiere el cuarto, no volver a empezar. */
+    const i = Math.max(0, g.estados.findIndex(e => !e.visto));
+    chatSt.viendo = { quien: correo, i: g.estados[i] ? i : 0 };
+    pintarChat();
+    p2cMarcarVisto();
+  }
+
+  function p2cMarcarVisto() {
+    const v = chatSt.viendo;
+    const g = (chatSt.estados || []).find(x => x.correo === v?.quien);
+    const e = g?.estados?.[v?.i];
+    if (!e || e.visto) return;
+    e.visto = true;
+    g.sinVer = g.estados.filter(x => !x.visto).length;
+    CHAT.estadoVisto(e.id);
+  }
+
+  /** Tocar pasa al siguiente. En la mitad izquierda, al anterior — el gesto
+      que ya tiene aprendido cualquiera que haya visto un estado en su vida. */
+  function p2cEstadoSig(ev) {
+    const v = chatSt.viendo;
+    if (!v) return;
+    const g = (chatSt.estados || []).find(x => x.correo === v.quien);
+    if (!g) return p2cEstadoCerrar();
+    const caja = ev?.currentTarget?.getBoundingClientRect?.();
+    const atras = caja && ev.clientX != null && (ev.clientX - caja.left) < caja.width * 0.32;
+    const sig = v.i + (atras ? -1 : 1);
+    if (sig < 0) return;
+    if (sig >= g.estados.length) return p2cEstadoCerrar();
+    chatSt.viendo = { quien: v.quien, i: sig };
+    pintarChat();
+    p2cMarcarVisto();
+  }
+
+  function p2cEstadoCerrar() { chatSt.viendo = null; pintarChat(); }
+
+  async function p2cBorrarEstado(id) {
+    if (!await chatConfirmar(t('cha.borrar'), t('cha.borrarEstadoP'), t('cha.borrar'), true)) return;
+    try { await CHAT.borrarEstado(id); } catch {}
+    chatSt.viendo = null;
+    await chatCargarEstados();
+  }
+
+  function p2cSubirAbrir() {
+    chatSt.subeEstado = { texto: '', fondo: 0, adj: null, previa: '' };
+    pintarChat();
+    setTimeout(() => $('#p2c-est-txt')?.focus(), 60);
+  }
+  function p2cSubirCerrar() {
+    // La previa es un blob del navegador: si no se suelta, se queda ocupando
+    // memoria hasta que se recargue la pagina.
+    if (chatSt.subeEstado?.previa) URL.revokeObjectURL(chatSt.subeEstado.previa);
+    chatSt.subeEstado = null;
+    pintarChat();
+  }
+  /* El texto NO repinta: repintar en cada tecla le quitaría el foco al área y
+     la persona escribiría una letra por toque. Se guarda y punto. */
+  function p2cSubirTexto(v) { if (chatSt.subeEstado) chatSt.subeEstado.texto = v; }
+  function p2cSubirFondo(i) {
+    if (!chatSt.subeEstado) return;
+    chatSt.subeEstado.texto = $('#p2c-est-txt')?.value ?? chatSt.subeEstado.texto;
+    chatSt.subeEstado.fondo = i;
+    pintarChat();
+  }
+  function p2cSubirFoto(input) {
+    const f = input?.files?.[0];
+    if (!f || !chatSt.subeEstado) return;
+    chatSt.subeEstado.texto = $('#p2c-est-txt')?.value ?? chatSt.subeEstado.texto;
+    if (chatSt.subeEstado.previa) URL.revokeObjectURL(chatSt.subeEstado.previa);
+    chatSt.subeEstado.adj = f;
+    chatSt.subeEstado.previa = URL.createObjectURL(f);
+    pintarChat();
+  }
+
+  async function p2cSubirHacer(btn) {
+    const s = chatSt.subeEstado;
+    if (!s) return;
+    const texto = ($('#p2c-est-txt')?.value ?? s.texto).trim();
+    if (!texto && !s.adj) return avisar(t('cha.estadoVacio'));
+    bcPreparar(btn); bcTrabajando(btn);
+    try {
+      let archivo = '';
+      if (s.adj) archivo = (await CHAT.subir(s.adj)).id;
+      await CHAT.subirEstado({ texto, archivo, fondo: s.fondo });
+      bcHecho(btn);
+      setTimeout(async () => {
+        p2cSubirCerrar();
+        await chatCargarEstados();
+      }, 620);
+    } catch (e) {
+      bcSoltar(btn);
+      avisar(chatMotivo(e));
+    }
+  }
+
   function chatBuscar(valor) {
     chatSt.busca = valor;
     clearTimeout(chatDebounce);
@@ -6866,16 +7134,50 @@ const VETA = (() => {
      del todo cada cinco segundos. */
   function pintarChat() {
     if (vistaActual !== 'chat') return;
-    const caja = $('#chat-caja');
+    const caja = $('#p2c');
     if (!caja) return;
     caja.toggleAttribute('data-abierto', chatHayPanel());
-    const l = $('#chat-lista'), h = $('#chat-hilo');
-    if (l) l.innerHTML = chatLista();
+    const a = $('#p2c-arriba'), l = $('#p2c-cuerpo'), h = $('#chat-hilo');
+    if (a) a.innerHTML = p2cArriba();
+    if (l) {
+      /* Se guarda dónde estaba el scroll y dónde el cursor. Sin esto, el
+         latido de cada cinco segundos devolvería la lista arriba del todo y
+         echaría a quien está escribiendo en el buscador — que es como se
+         siente una app «que se mueve sola». */
+      const alto = l.scrollTop;
+      const foco = document.activeElement;
+      const era = foco?.closest?.('#p2c-cuerpo') ? foco.id : null;
+      const donde = era ? foco.selectionStart : null;
+      l.innerHTML = p2cCuerpo();
+      l.scrollTop = alto;
+      if (era) {
+        const otra = $('#' + era);
+        if (otra) { otra.focus(); try { otra.setSelectionRange(donde, donde); } catch {} }
+      }
+    }
     if (h) {
       const txt = $('#chat-txt')?.value;
       h.innerHTML = chatHilo();
       const c = $('#chat-txt');
       if (c && txt) c.value = txt;
+    }
+    /* Las capas de encima —el visor de estados y el compositor— también se
+       repintan, y al compositor hay que devolverle lo escrito y el cursor por
+       la misma razón que a la lista. */
+    const capas = $('#p2c-capas');
+    if (capas) {
+      const cajaTxt = $('#p2c-est-txt');
+      const guardado = cajaTxt ? { v: cajaTxt.value, i: cajaTxt.selectionStart,
+                                   tenia: document.activeElement === cajaTxt } : null;
+      capas.innerHTML = p2cVisor() + p2cCompositor();
+      const nueva = $('#p2c-est-txt');
+      if (nueva && guardado) {
+        nueva.value = guardado.v;
+        if (guardado.tenia) {
+          nueva.focus();
+          try { nueva.setSelectionRange(guardado.i, guardado.i); } catch {}
+        }
+      }
     }
     /* Los códigos se dibujan DESPUÉS de pintar, y aquí y no en quien los pide:
        cualquier repintado —el latido cada cinco segundos, sin ir más lejos—
@@ -6949,52 +7251,48 @@ const VETA = (() => {
     return m.texto || '';
   }
 
+  /* LA PESTAÑA DE CHATS. Solo las conversaciones que ya existen, con un filtro
+     que trabaja EN LA MEMORIA y no pregunta al relevo: filtrar entre veinte
+     charlas propias es cosa del teléfono, y hacerlo por red haría parpadear la
+     lista con cada tecla. Buscar gente nueva es lo otro, y vive en su pestaña.
+
+     El filtro solo aparece cuando hay bastantes charlas: una caja de búsqueda
+     encima de tres filas es un mueble que estorba. */
   function chatLista() {
     if (chatSt.puerta === 'falta') return '';
-    const cab = `
-      <div class="cha-cab">
-        <input id="chat-busca" placeholder="${t('cha.buscar')}" value="${esc(chatSt.busca)}"
-               autocomplete="off" oninput="VETA.chatBuscar(this.value)">
-        ${/* MI PERFIL, DETRAS DE MI PROPIA CARA.
-              Antes esto era un icono de codigo QR. El nombre y la foto de uno
-              estaban ahi dentro, y nadie los encontro nunca — un QR no dice
-              «tu perfil» a nadie. Un avatar propio si: es el gesto que todo
-              el mundo ya conoce de cualquier otra app. */''}
-        <button class="cha-mas cha-yo-btn" onclick="VETA.chatCodigo()"
-                title="${t('cha.miPerfil')}" aria-label="${t('cha.miPerfil')}">
-          ${chatSt.yo?.foto
-            ? `<img src="${esc(CHAT.urlArchivo(chatSt.yo.foto))}" alt="">`
-            : `<span>${esc(chatIni(chatSt.yo?.nombre || sesion?.nombre || sesion?.correo))}</span>`}
-        </button>
-        <button class="cha-mas" onclick="VETA.chatGrupo()" title="${t('cha.grupo')}"
-                aria-label="${t('cha.grupo')}">
-          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-        </button>
-      </div>`;
-
-    if (chatSt.gente) {
-      const g = chatSt.gente;
-      return cab + (g.length ? g.map(x => `
-        <button class="cha-fila" onclick="VETA.chatAbrir(${jsTxt(x.correo)})">
-          ${chatAvatar(x)}
-          <span class="cha-txt"><b>${esc(x.nombre || x.correo)}</b>
-            <small>${esc(x.gid || x.correo)}</small></span>
-        </button>`).join('')
-        : chatSt.buscaMal
-          ? `<div class="vacio"><b>${t('cha.buscaMalT')}</b>${t('cha.buscaMalP')}</div>`
-          : `<div class="vacio"><b>${t('cha.nadie')}</b>${t('cha.nadieP')}</div>`);
-    }
+    const nuevo = `
+      <button class="p2c-nuevo" onclick="VETA.chatGrupo()">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        <span>${t('cha.grupo')}</span>
+      </button>`;
 
     if (chatSt.convs === null) {
-      return cab + [0, 1, 2].map(() => `
+      return [0, 1, 2].map(() => `
         <div class="cha-fila"><span class="cha-av esqueleto"></span>
           <span class="cha-txt"><b class="esqueleto">Cargando</b><small class="esqueleto">…</small></span>
         </div>`).join('');
     }
     if (!chatSt.convs.length) {
-      return cab + `<div class="vacio"><b>${t('cha.vacioT')}</b>${t('cha.vacioP')}</div>`;
+      return `<div class="vacio"><b>${t('cha.vacioT')}</b>${t('cha.vacioP')}</div>
+        <div class="p2c-empuja">
+          <button class="btn btn-p2c btn-sm" onclick="VETA.p2cTab('gente')">${t('cha.irGente')}</button>
+        </div>`;
     }
-    return cab + chatSt.convs.map(c => {
+    const filtro = (chatSt.filtra || '').trim().toLowerCase();
+    const lista = filtro
+      ? chatSt.convs.filter(c => `${c.nombre || ''} ${c.correo || ''}`.toLowerCase().includes(filtro))
+      : chatSt.convs;
+    const caja = chatSt.convs.length >= 6 ? `
+      <div class="p2c-filtro">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+        <input placeholder="${t('cha.filtrar')}" value="${esc(chatSt.filtra || '')}"
+               autocomplete="off" oninput="VETA.p2cFiltrar(this.value)">
+      </div>` : '';
+
+    if (!lista.length) {
+      return caja + `<div class="vacio"><b>${t('cha.nadaFiltro')}</b>${t('cha.nadaFiltroP')}</div>`;
+    }
+    return caja + lista.map(c => {
       const id = c.id || c.correo;
       return `
       <button class="cha-fila" ${chatSt.con?.id === id ? 'data-aqui' : ''}
@@ -7006,7 +7304,231 @@ const VETA = (() => {
         </span>
         ${c.sinLeer ? `<span class="cha-bola">${c.sinLeer}</span>` : ''}
       </button>`;
-    }).join('');
+    }).join('') + nuevo;
+  }
+
+  /* LA PESTAÑA DE GENTE.
+   *
+   * Tres cosas en un orden que no es casual:
+   *   1. QUIEN TE ESTA ESPERANDO. Una solicitud sin contestar es una persona
+   *      parada en la puerta; va primero o no va.
+   *   2. BUSCAR. El buscador está en medio y no arriba del todo justo por lo
+   *      anterior: si tapara las solicitudes, se contestarían tarde.
+   *   3. TU CIRCULO, con la salida de quitar a alguien a la vista. Poder
+   *      deshacer donde se hizo es la mitad de que la gente se atreva a
+   *      aceptar.
+   */
+  function p2cGente() {
+    const c = chatSt.circulo;
+    const busca = `
+      <div class="p2c-filtro p2c-buscar">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+        <input id="chat-busca" placeholder="${t('cha.buscar')}" value="${esc(chatSt.busca)}"
+               autocomplete="off" oninput="VETA.chatBuscar(this.value)">
+      </div>`;
+
+    /* Los resultados de una búsqueda tapan el resto: quien está buscando
+       quiere ver lo que buscó, no su lista de siempre debajo. */
+    if (chatSt.gente) {
+      const g = chatSt.gente;
+      return busca + (g.length ? g.map(x => `
+        <div class="cha-fila p2c-quieto">
+          ${chatAvatar(x)}
+          <span class="cha-txt"><b>${esc(x.nombre || x.correo)}</b>
+            <small>${esc(x.gid || x.correo)}</small></span>
+          ${p2cBotonLazo(x)}
+        </div>`).join('')
+        : chatSt.buscaMal
+          ? `<div class="vacio"><b>${t('cha.buscaMalT')}</b>${t('cha.buscaMalP')}</div>`
+          : `<div class="vacio"><b>${t('cha.nadie')}</b>${t('cha.nadieP')}</div>`);
+    }
+
+    if (c === null) {
+      return busca + [0, 1].map(() => `
+        <div class="cha-fila"><span class="cha-av esqueleto"></span>
+          <span class="cha-txt"><b class="esqueleto">Cargando</b><small class="esqueleto">…</small></span>
+        </div>`).join('');
+    }
+
+    const pide = (c.recibidas || []).length ? `
+      <h3 class="p2c-titulillo">${t('cha.teEsperan')}</h3>
+      ${c.recibidas.map(x => `
+        <div class="cha-fila p2c-quieto p2c-pide">
+          ${chatAvatar(x)}
+          <span class="cha-txt"><b>${esc(x.nombre || x.correo)}</b>
+            <small>${esc(x.nota || x.gid || x.correo)}</small></span>
+          <span class="p2c-dos">
+            <button class="btn btn-p2c btn-sm" onclick="VETA.p2cResponder(${jsTxt(x.correo)},true)">${t('cha.aceptar')}</button>
+            <button class="btn btn-linea btn-sm" onclick="VETA.p2cResponder(${jsTxt(x.correo)},false)">${t('cha.rechazar')}</button>
+          </span>
+        </div>`).join('')}` : '';
+
+    const mandadas = (c.enviadas || []).length ? `
+      <h3 class="p2c-titulillo">${t('cha.esperando')}</h3>
+      ${c.enviadas.map(x => `
+        <div class="cha-fila p2c-quieto">
+          ${chatAvatar(x)}
+          <span class="cha-txt"><b>${esc(x.nombre || x.correo)}</b>
+            <small>${t('cha.sinResponder')}</small></span>
+        </div>`).join('')}` : '';
+
+    const mios = (c.amigos || []).length ? `
+      <h3 class="p2c-titulillo">${t('cha.tuCirculo')} · ${c.amigos.length}</h3>
+      ${c.amigos.map(x => `
+        <div class="cha-fila p2c-quieto">
+          <button class="p2c-tocable" onclick="VETA.chatAbrir(${jsTxt(x.correo)})">
+            ${chatAvatar(x)}
+            <span class="cha-txt"><b>${esc(x.nombre || x.correo)}</b>
+              <small>${esc(x.gid || x.correo)}</small></span>
+          </button>
+          <button class="p2c-quitar" onclick="VETA.p2cQuitar(${jsTxt(x.correo)})"
+                  title="${t('cha.quitar')}" aria-label="${t('cha.quitar')}">
+            <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>`).join('')}` : '';
+
+    const nada = !pide && !mandadas && !mios
+      ? `<div class="vacio"><b>${t('cha.circuloVacioT')}</b>${t('cha.circuloVacioP')}</div>` : '';
+
+    return pide + busca + mios + mandadas + nada;
+  }
+
+  /* ── LOS ESTADOS ──────────────────────────────────────────────────────────
+   *
+   * Ocho fondos, no una paleta libre. Un selector de color en un compositor de
+   * estados da mil resultados y novecientos son feos; ocho fondos sacados del
+   * gradiente de la marca dan mil estados que se ven como PULSE2CHAT. La
+   * restricción es la que hace la marca.
+   *
+   * Se guarda el ÍNDICE, no el color: el día que la paleta cambie, cambian
+   * todos los estados vivos a la vez sin tocar un solo dato.
+   */
+  const P2C_FONDOS = [
+    'linear-gradient(140deg,#0756D9,#00D9E8)',
+    'linear-gradient(140deg,#061A4F,#0756D9)',
+    'linear-gradient(140deg,#008CFF,#12E6D5)',
+    'linear-gradient(140deg,#12E6D5,#0756D9)',
+    'linear-gradient(140deg,#050B1A,#0756D9)',
+    'linear-gradient(140deg,#00D9E8,#008CFF)',
+    'linear-gradient(140deg,#0B2E6F,#00D9E8)',
+    'linear-gradient(140deg,#008CFF,#061A4F)',
+  ];
+  const p2cFondo = i => P2C_FONDOS[(i | 0) % P2C_FONDOS.length];
+
+  /* La fila de arriba. El primer círculo es siempre el propio: en todas las
+     apps que ya usa la gente, «subir el mío» está en ese sitio exacto, y
+     mover ese gesto no lo mejora, solo lo esconde. */
+  function p2cEstados() {
+    const g = chatSt.estados;
+    const yo = (sesion?.correo || '').toLowerCase();
+    const mios = g?.find(x => x.correo === yo);
+    const otros = (g || []).filter(x => x.correo !== yo);
+
+    const circulo = (x, propio) => `
+      <button class="p2c-est ${x.sinVer ? 'sinver' : 'visto'}"
+              onclick="VETA.p2cVerEstado(${jsTxt(x.correo)})">
+        <span class="p2c-est-aro">${
+          x.foto ? `<img src="${esc(CHAT.urlArchivo(x.foto))}" alt="">`
+                 : `<i>${esc(chatIni(x.nombre || x.correo))}</i>`}</span>
+        <small>${esc(propio ? t('cha.miEstado') : (x.nombre || x.correo).split(' ')[0])}</small>
+      </button>`;
+
+    return `
+    <div class="p2c-estados">
+      ${mios ? circulo(mios, true) : ''}
+      <button class="p2c-est p2c-est-yo" onclick="VETA.p2cSubirAbrir()">
+        <span class="p2c-est-aro">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        </span>
+        <small>${t(mios ? 'cha.masEstado' : 'cha.miEstado')}</small>
+      </button>
+      ${otros.map(x => circulo(x, false)).join('')}
+      ${g && !g.length ? `<span class="p2c-est-nada">${t('cha.sinEstados')}</span>` : ''}
+    </div>`;
+  }
+
+  /* El visor a pantalla completa. Sin autoavance por temporizador: en una
+     pantalla táctil, un estado que salta solo mientras se está leyendo es la
+     queja número uno de todas las apps que lo hacen. Se pasa tocando. */
+  function p2cVisor() {
+    const v = chatSt.viendo;
+    if (!v) return '';
+    const g = (chatSt.estados || []).find(x => x.correo === v.quien);
+    const e = g?.estados?.[v.i];
+    if (!e) return '';
+    const mio = v.quien === (sesion?.correo || '').toLowerCase();
+    return `
+    <div class="p2c-visor" onclick="VETA.p2cEstadoSig(event)">
+      <div class="p2c-visor-tiras">
+        ${g.estados.map((_, i) => `<i class="${i < v.i ? 'ya' : i === v.i ? 'aqui' : ''}"></i>`).join('')}
+      </div>
+      <header class="p2c-visor-cab">
+        ${chatAvatar(g)}
+        <span class="p2c-visor-quien"><b>${esc(mio ? t('cha.miEstado') : (g.nombre || g.correo))}</b>
+          <small>${hace(e.cuando)}${e.vistas != null ? ` · ${e.vistas} ${t('cha.vieron')}` : ''}</small></span>
+        ${mio ? `<button class="p2c-visor-x" onclick="event.stopPropagation();VETA.p2cBorrarEstado(${jsTxt(e.id)})"
+                  aria-label="${t('cha.borrar')}">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg></button>` : ''}
+        <button class="p2c-visor-x" onclick="event.stopPropagation();VETA.p2cEstadoCerrar()"
+                aria-label="${t('tok.volver')}">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </header>
+      <div class="p2c-visor-cara" style="background:${e.archivo ? '#000' : p2cFondo(e.fondo)}">
+        ${e.archivo
+          ? (e.tipo === 'video'
+            ? `<video src="${esc(CHAT.urlArchivo(e.archivo))}" controls autoplay playsinline></video>`
+            : `<img src="${esc(CHAT.urlArchivo(e.archivo))}" alt="">`)
+          : ''}
+        ${e.texto ? `<p class="${e.archivo ? 'p2c-visor-pie' : 'p2c-visor-texto'}">${esc(e.texto)}</p>` : ''}
+      </div>
+    </div>`;
+  }
+
+  /* El compositor. La línea sobre el cifrado NO es letra pequeña de pie de
+     página: va donde la persona está decidiendo qué sube, porque es ahí y solo
+     ahí donde sirve de algo. */
+  function p2cCompositor() {
+    const s = chatSt.subeEstado;
+    if (!s) return '';
+    return `
+    <div class="cha-ficha" onclick="if(event.target===this)VETA.p2cSubirCerrar()">
+      <div class="chaf-hoja p2c-hoja">
+        <button class="chaf-x" onclick="VETA.p2cSubirCerrar()" aria-label="${t('tok.volver')}">✕</button>
+        <h3>${t('cha.subirEstado')}</h3>
+        <div class="p2c-lienzo" style="background:${s.adj ? '#000' : p2cFondo(s.fondo)}">
+          ${s.adj ? `<img src="${esc(s.previa)}" alt="">` : ''}
+          <textarea id="p2c-est-txt" maxlength="300" placeholder="${t('cha.estadoPh')}"
+                    oninput="VETA.p2cSubirTexto(this.value)">${esc(s.texto)}</textarea>
+        </div>
+        <div class="p2c-fondos" role="group" aria-label="${t('cha.fondo')}">
+          ${P2C_FONDOS.map((f, i) => `
+            <button style="background:${f}" ${s.fondo === i ? 'aria-pressed="true"' : ''}
+                    onclick="VETA.p2cSubirFondo(${i})" aria-label="${t('cha.fondo')} ${i + 1}"></button>`).join('')}
+          <label class="p2c-foto" title="${t('cha.adjuntar')}">
+            <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="M4 17l5-5 4 4 3-2 4 4"/></svg>
+            <input type="file" accept="image/*" hidden onchange="VETA.p2cSubirFoto(this)">
+          </label>
+        </div>
+        <p class="chaf-honesto">${t('cha.estadoHonesto')}</p>
+        <div class="chaf-acciones">
+          <button class="btn btn-p2c btn-sm" onclick="VETA.p2cSubirHacer(this)">${t('cha.publicar')}</button>
+          <button class="btn btn-linea btn-sm" onclick="VETA.p2cSubirCerrar()">${t('cha.cancelar')}</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /** El botón de un resultado de búsqueda dice en qué punto está la relación.
+      Uno que siempre dijera «Agregar» mandaría solicitudes repetidas a quien
+      ya las recibió, que es como se llena de ruido un buzón. */
+  function p2cBotonLazo(x) {
+    if (x.lazo === 'amigos') return `
+      <button class="btn btn-p2c btn-sm" onclick="VETA.chatAbrir(${jsTxt(x.correo)})">${t('cha.escribir')}</button>`;
+    if (x.lazo === 'enviada') return `<span class="p2c-quieta">${t('cha.enviada')}</span>`;
+    if (x.lazo === 'recibida') return `
+      <button class="btn btn-p2c btn-sm" onclick="VETA.p2cResponder(${jsTxt(x.correo)},true)">${t('cha.aceptar')}</button>`;
+    return `
+      <button class="btn btn-p2c btn-sm" onclick="VETA.p2cAgregar(${jsTxt(x.correo)})">${t('cha.agregar')}</button>`;
   }
 
   function chatHilo() {
@@ -7309,7 +7831,16 @@ const VETA = (() => {
           </button>
         </div>` : ''}
         ${menu}
-        <div class="cha-globo">${cita}${firma}${adj}${m.texto ? `<p>${esc(m.texto)}</p>` : ''}</div>
+        <div class="cha-globo">${cita}${firma}${adj}${
+          /* UN MENSAJE QUE ESTE APARATO NO PUEDE ABRIR SE DICE, NO SE ESCONDE.
+             Pasa de verdad: un teléfono nuevo no tiene la llave con la que se
+             cerró lo de la semana pasada. Un renglón en blanco haría pensar
+             que el chat perdió mensajes; esto explica qué pasó y qué hacer. */
+          m.cerrado
+            ? `<p class="cha-cerrado">
+                 <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                 ${t('cha.e2eCerrado')}</p>`
+            : (m.texto ? `<p>${esc(m.texto)}</p>` : '')}</div>
         ${tira}
         <time>${hora}</time>
       </div>`;
@@ -9074,6 +9605,11 @@ const VETA = (() => {
            // PULSE2CHAT. Los manejadores van en el HTML que genera la vista, asi
            // que sin figurar aca los botones del chat no hacen nada.
            chatEntrar, chatAbrir, chatCerrar, chatMandar, chatBuscar, chatGrupo,
+           // La casa de PULSE2CHAT: pestañas, círculo y estados.
+           p2cTab, p2cFiltrar, p2cAgregar, p2cResponder, p2cQuitar,
+           p2cVerEstado, p2cEstadoSig, p2cEstadoCerrar, p2cBorrarEstado,
+           p2cSubirAbrir, p2cSubirCerrar, p2cSubirTexto, p2cSubirFondo,
+           p2cSubirFoto, p2cSubirHacer,
            chatAdjuntar, chatVoz, chatVozCancelar,
            chatCitar, chatDejarCita, chatReaccion, chatAbrirReaccion, chatTecleando,
            llamadaLlamar, llamadaContestar, llamadaRechazar, llamadaColgar,
@@ -9127,5 +9663,10 @@ const VETA = (() => {
               abierta, y montarla de verdad exigiría dos cuentas dadas de alta
               contra el servidor de mensajes. */
            _chatCon: c => { chatSt.con = c; chatSt.msgs = []; pintarChat(); },
+           /* Solo para las pruebas: por qué el chat está como está. Sin esto,
+              una prueba que falla solo puede decir «el botón no aparece», que
+              es el síntoma y nunca la causa. */
+           _chatEstado: () => ({ puerta: chatSt.puerta, error: chatSt.error,
+                                 tab: chatSt.tab, hayCon: !!chatSt.con }),
            _estado: () => ({ sesion, cartera, identidad, movimientos, tarjeta, vistaActual, modo, ocultos }) };
 })();

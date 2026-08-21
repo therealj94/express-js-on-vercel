@@ -2,7 +2,7 @@
    direccion que ethers (y por tanto que MetaMask) para la ruta m/44'/60'/0'/0/N. */
 import { HDNodeWallet, Mnemonic } from 'ethers'
 import { readFileSync } from 'fs'
-const W = new URL('..', import.meta.url).pathname.replace(//$/, '')
+const W = new URL('..', import.meta.url).pathname.replace(/\/$/, '')
 eval(readFileSync(W+'/vendor/cripto-llaves.js','utf8'))
 const L = eval(readFileSync(W+'/llaves.js','utf8').replace(/if \(typeof window[\s\S]*$/,'')+'; LLAVES')
 

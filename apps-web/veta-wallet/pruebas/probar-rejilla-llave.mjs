@@ -15,7 +15,7 @@ let f=0; const ok=(q,c)=>{console.log(`${c?'  ok  ':' FALLA'}  ${q}`); if(!c)f++
 ok('dibuja 12 recuadros', (await pag.$$('#llv-rejilla input')).length === 12)
 ok('el marcador arranca en 0 / 12', (await pag.textContent('#llv-marcador')) === '0 / 12')
 ok('arrancan tapadas', await pag.evaluate(()=>document.getElementById('llv-rejilla').classList.contains('tapada')))
-await pag.screenshot({path:new URL('..', import.meta.url).pathname.replace(//$/,'')+'/rej-1.png'})
+await pag.screenshot({path:new URL('..', import.meta.url).pathname.replace(/\/$/,'')+'/rej-1.png'})
 
 // cambiar la cuenta
 await pag.click('.llv-cuenta button[data-n="24"]'); await pag.waitForTimeout(250)
@@ -48,13 +48,13 @@ ok('las doce quedan en oro',
 // mostrar
 await pag.click('#llv-ojo'); await pag.waitForTimeout(250)
 ok('el ojo destapa', !(await pag.evaluate(()=>document.getElementById('llv-rejilla').classList.contains('tapada'))))
-await pag.screenshot({path:new URL('..', import.meta.url).pathname.replace(//$/,'')+'/rej-2.png'})
+await pag.screenshot({path:new URL('..', import.meta.url).pathname.replace(/\/$/,'')+'/rej-2.png'})
 
 // llave privada
 await pag.click('#llv-cambiar'); await pag.waitForTimeout(300)
 ok('cambia a llave privada', await pag.isVisible('#llv-privada'))
 ok('esconde la rejilla', !(await pag.isVisible('#llv-frase')))
-await pag.screenshot({path:new URL('..', import.meta.url).pathname.replace(//$/,'')+'/rej-3.png'})
+await pag.screenshot({path:new URL('..', import.meta.url).pathname.replace(/\/$/,'')+'/rej-3.png'})
 await pag.click('#llv-cambiar'); await pag.waitForTimeout(300)
 ok('vuelve a la frase', await pag.isVisible('#llv-frase'))
 

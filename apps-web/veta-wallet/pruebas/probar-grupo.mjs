@@ -72,13 +72,33 @@ async function abrir(correo, nombre) {
     VETA.vista('chat')
   }, [correo, nombre])
   await pag.waitForTimeout(2800)
-  return { pag, err, correo }
+  return { pag, err, correo, llave }
 }
 
 console.log('\nTres personas en el mismo grupo\n')
+
+/* Aceptarse. El círculo es la regla nueva: dos desconocidos no pueden
+   escribirse NI hacerse sonar el teléfono, y el relevo lo hace cumplir con un
+   403. Aquí se da ese paso contra el relevo —las llaves vienen de `abrir`,
+   porque un segundo /alta sin llave devuelve 409 y dejaría la firma vacía—.
+   La pantalla de solicitudes se prueba aparte, en probar-circulo.py. */
+async function aceptarse(...gente) {
+  const post = (ruta, cuerpo) => fetch(REL + ruta, { method:'POST',
+    headers:{'content-type':'application/json'}, body: JSON.stringify(cuerpo) })
+  for (const a of gente) for (const b of gente) {
+    if (a.correo >= b.correo) continue
+    await post('/amistad/pedir', { correo:a.correo, llave:a.llave, para:b.correo })
+    const r = await post('/amistad/responder',
+      { correo:b.correo, llave:b.llave, de:a.correo, aceptar:true })
+    const est = (await r.json())?.estado
+    if (est !== 'amigos') throw new Error(`no se aceptaron ${a.correo}/${b.correo}: HTTP ${r.status} ${JSON.stringify(est)}`)
+  }
+}
+
 const A = await abrir('ana@ordenglobal.link', 'Ana')
 const B = await abrir('beto@ordenglobal.link', 'Beto')
 const C = await abrir('caro@ordenglobal.link', 'Caro')
+await aceptarse(A, B, C)
 ok('el navegador puede hacer llamadas de grupo', await A.pag.evaluate(()=>GRUPO.puede()))
 
 // Ana crea el grupo con los tres.

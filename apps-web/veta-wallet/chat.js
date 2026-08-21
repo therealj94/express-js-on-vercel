@@ -535,12 +535,48 @@ const CHAT = (() => {
   // regenerarlo desde la ficha cierra la puerta al instante.
   const grupoUnirse = invitacion => pedir('/grupo/unirse', firmado({ invitacion }));
 
+  /* ── el circulo ────────────────────────────────────────────────────────
+     Pedir, aceptar, rechazar y quitar. La regla de verdad esta en el relevo:
+     esto es solo la puerta bonita. Si alguien se saltara la app y hablara
+     directo con el servidor, seguiria recibiendo un 403. */
+  const circulo = () => pedir('/amistad/lista', firmado({}));
+  const pedirAmistad = (para, nota) => pedir('/amistad/pedir', firmado({ para, nota: nota || '' }));
+  const responderAmistad = (de, aceptar) =>
+    pedir('/amistad/responder', firmado({ de, aceptar: !!aceptar }));
+  const quitarAmigo = con => pedir('/amistad/quitar', firmado({ con }));
+
+  /* ── los estados ───────────────────────────────────────────────────────
+     Se piden agrupados por persona, que es como se miran. Al pedirlos, el
+     llavero se vacia de esa persona: alguien a quien se acaba de aceptar
+     tiene que poder recibir cifrado sin esperar cinco minutos. */
+  const estados = () => pedir('/estados', firmado({})).then(d => {
+    for (const g of d.gente || []) llavero.delete(g.correo);
+    return d.gente || [];
+  });
+  const subirEstado = ({ texto, archivo, fondo }) =>
+    pedir('/estado/subir', firmado({ texto: texto || '', archivo: archivo || '', fondo }));
+  const borrarEstado = id => pedir('/estado/borrar', firmado({ id }));
+  const estadoVisto = id => pedir('/estado/visto', firmado({ id })).catch(() => null);
+
+  /** El codigo de seguridad de una conversacion, para comparar en voz alta. */
+  async function codigoCon(correo) {
+    if (!CANDADO?.hay()) return null;
+    const mia = await CANDADO.miLlave();
+    const r = await pedir('/llaves/de', firmado({ correos: [correo] }));
+    const suyas = (r.llaves?.[correo] || []).map(a => a.pub);
+    if (!mia || !suyas.length) return null;
+    return CANDADO.codigoDeSeguridad([mia.pub], suyas);
+  }
+
   const esGrupo = id => /^g:[0-9a-f]{16}$/.test(String(id || ''));
   const urlArchivo = id => BASE + '/archivo/' + id;
 
   return { alta, rehacerAlta, listo, quienSoy, olvidarLlave,
            conversaciones, bandeja, enviar, subir, enviarAdjunto, leido, olvidar,
            buscar, ficha, perfil, pago,
+           circulo, pedirAmistad, responderAmistad, quitarAmigo,
+           estados, subirEstado, borrarEstado, estadoVisto,
+           publicarMiLlave, codigoCon,
            grupoCrear, grupoInfo, grupoEditar, grupoInvitar, grupoSalir, grupoUnirse,
            esGrupo, urlArchivo,
            puedeGrabar, grabarInicio, grabarFin, subirVoz, segundosDeVoz,

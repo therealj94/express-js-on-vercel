@@ -4,3 +4,9 @@ node_modules
 dist
 *.zip
 __pycache__/
+
+# Capturas que dejan las pruebas del navegador al correr. Son de un momento
+# concreto y no describen el codigo: en el repositorio solo son ruido en cada
+# diff.
+apps-web/veta-wallet/rej-*.png
+llv-*.png
