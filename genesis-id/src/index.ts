@@ -25,6 +25,13 @@ import { estadoCadenaRapido } from './directorio/monedas.js'
 import { prepararDirectorio } from './directorio/padron.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+/* ¿Quedó puesto el índice que caduca los documentos a los cinco años?
+   Vive acá arriba, y no dentro del arranque, porque `/healthz` tiene que poder
+   leerlo: era un aviso por consola y una cédula guardada sin plazo no daba
+   ninguna señal. Arranca en `false` y solo pasa a `true` si el índice se creó
+   de verdad. */
+let caducidadPuesta = false
+
 const app = express()
 
 // Render pone un balanceador delante. Sin declararlo, `req.ip` es SIEMPRE la
@@ -53,11 +60,23 @@ app.use(express.json({ limit: '25mb' }))
 // Cabeceras de seguridad. Son pocas líneas y evitan las formas más comunes de
 // abuso de un panel: incrustarlo en un iframe ajeno para engañar al operador, y
 // que el navegador adivine tipos de contenido.
+/* Express anuncia `X-Powered-By: Express` en cada respuesta. Le regala a
+   cualquiera la pila que corre debajo, que es el primer dato que busca quien
+   va a probar exploits conocidos. No cuesta nada quitarlo. */
+app.disable('x-powered-by')
+
 app.use((_req, res, siguiente) => {
   res.setHeader('X-Content-Type-Options', 'nosniff')
   res.setHeader('X-Frame-Options', 'DENY')
   res.setHeader('Referrer-Policy', 'no-referrer')
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
+  /* HSTS: el navegador recuerda que este sitio es solo por HTTPS y no vuelve a
+     intentar el primer salto en claro. Sin esto, la primera visita de alguien
+     a `http://` se puede interceptar antes de que llegue a TLS, y por ahí pasa
+     la sesión de un operador que puede leer cédulas.
+     Dos años y con los subdominios, que es lo que pide la lista de precarga. */
+  res.setHeader('Strict-Transport-Security',
+    'max-age=63072000; includeSubDomains; preload')
   siguiente()
 })
 
@@ -205,6 +224,13 @@ app.get('/healthz', (_req, res) => {
       ultimoGuardado: almacen.ultimoVolcado?.en ?? null,
       listasCargadas: listas.cargadas,
       listasVencidas: listas.vencidas,
+      /* CUANTOS REGISTROS Y DE CUANDO.
+         Sin estos dos, desde fuera no se distingue una lista de cincuenta mil
+         registros bajada ayer de una de tres cargada hace un anio: las dos
+         salen `cargadas: true, vencidas: false`. El numero que decide si el
+         tamizado sirve de algo tiene que verse sin entrar al panel. */
+      listasRegistros: listas.registros,
+      listasDiasDesdeDescarga: listas.diasDesdeDescarga,
       biometria: biometriaConfigurada(),
       proveedorBiometria: proveedorBiometria(),
       /* La política publicada promete conservar los datos de verificación cinco
@@ -213,6 +239,12 @@ app.get('/healthz', (_req, res) => {
          documento y hay que verlo desde fuera, no descubrirlo el día de una
          auditoría. */
       conservacionDocumentos: conservacionConfigurada(),
+      /* SI ESTO ES FALSE, «SE CONSERVA CINCO ANIOS» ES «PARA SIEMPRE».
+         El indice que caduca los documentos se crea al arrancar. Si falla, la
+         funcion lo devolvia en un aviso por consola que nadie lee, y unas
+         cedulas guardadas sin plazo no daban ninguna senial. Ahora se ve desde
+         fuera, que es donde se mira cuando algo va mal. */
+      caducidadActiva: caducidadPuesta,
       /* Cuántas verificaciones pesadas hay dentro y cuántas esperando. Si la
          cola sube y no baja, el servicio se está quedando corto de memoria o de
          CPU y hay que subir el plan — y esto es lo que lo dice antes de que
@@ -369,8 +401,8 @@ export async function arrancar(): Promise<void> {
      base el archivo no se quede sin caducidad y nadie lo note. Sin él, «se
      conserva cinco años» sería «se conserva para siempre». */
   if (conservacionConfigurada()) {
-    const listo = await prepararCaducidad()
-    console.log(listo
+    caducidadPuesta = await prepararCaducidad()
+    console.log(caducidadPuesta
       ? '[genesis-id] archivo de documentos: cifrado y con caducidad a 5 años'
       : '[genesis-id] AVISO: archivo cifrado pero SIN índice de caducidad; no se borrarán solos')
   } else {

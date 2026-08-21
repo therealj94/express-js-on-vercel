@@ -252,6 +252,27 @@ describe('Tamizado de sanciones', () => {
     assert.equal(estadoListas().cargadas, true)
     assert.equal(estadoListas().registros, 2)
   })
+
+  test('recien descargadas no estan vencidas', () => {
+    cargarEnMemoria(LISTA, 'prueba')
+    assert.equal(estadoListas().vencidas, false)
+  })
+
+  test('pasado el mes se cuentan como vencidas', () => {
+    const hace40 = new Date(Date.now() - 40 * 86400000).toISOString().slice(0, 10)
+    cargarEnMemoria(LISTA, 'prueba', hace40)
+    assert.equal(estadoListas().diasDesdeDescarga, 40)
+    assert.equal(estadoListas().vencidas, true)
+  })
+
+  // Este es el que importa: sin fecha de descarga no se puede afirmar que las
+  // listas esten frescas, y una comprobacion de frescura que se calla cuando no
+  // sabe es peor que no tenerla. Se cuentan como vencidas.
+  test('sin fecha de descarga se cuentan como vencidas, no como frescas', () => {
+    cargarEnMemoria(LISTA, 'prueba', null)
+    assert.equal(estadoListas().diasDesdeDescarga, null)
+    assert.equal(estadoListas().vencidas, true)
+  })
 })
 
 describe('Riesgo', () => {
