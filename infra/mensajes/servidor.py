@@ -369,9 +369,19 @@ TOPE_APARATOS = 5           # mas que eso son casi siempre navegaciones privadas
 VIDA_APARATO = 180 * 86400  # un aparato que no aparece en medio año se cae solo
 
 
-def apuntar_aparato(f, ident, pub, ahora):
+def apuntar_aparato(f, ident, pub, ahora, fir=''):
+    """Apunta un aparato con su llave de acuerdo y su llave de FIRMA.
+
+    La de firma llego despues, asi que hay aparatos guardados sin ella. No se
+    los tira: se les deja el hueco y se llena en cuanto ese aparato vuelva a
+    publicar. Tirarlos habria dejado sin poder leer a gente que no hizo nada
+    mal.
+    """
     aps = [a for a in f.get('aparatos', []) if a.get('id') != ident]
-    aps.append({'id': ident, 'pub': pub, 'visto': ahora})
+    nuevo = {'id': ident, 'pub': pub, 'visto': ahora}
+    if fir:
+        nuevo['fir'] = fir
+    aps.append(nuevo)
     # se cae el mas viejo por ULTIMA VEZ VISTO, no por antiguedad de alta: el
     # telefono de todos los dias no se puede caer por haberse dado de alta
     # antes que una computadora que se usa una vez al mes
@@ -380,8 +390,20 @@ def apuntar_aparato(f, ident, pub, ahora):
 
 
 def aparatos_de(f, ahora):
-    return [{'id': a['id'], 'pub': a['pub']} for a in f.get('aparatos', [])
-            if a.get('pub') and ahora - a.get('visto', 0) < VIDA_APARATO * 1000]
+    # La llave de firma va SIEMPRE que exista: es contra esta lista, y no
+    # contra lo que venga dentro del mensaje, que el cliente comprueba quien
+    # escribio de verdad.
+    salida = []
+    for a in f.get('aparatos', []):
+        if not a.get('pub'):
+            continue
+        if ahora - a.get('visto', 0) >= VIDA_APARATO * 1000:
+            continue
+        ap = {'id': a['id'], 'pub': a['pub']}
+        if a.get('fir'):
+            ap['fir'] = a['fir']
+        salida.append(ap)
+    return salida
 
 
 # ── los estados de 24 horas ───────────────────────────────────────────────────
@@ -1195,9 +1217,10 @@ class Relevo(BaseHTTPRequestHandler):
             if ruta == '/llaves/publicar':
                 ident = str(b.get('id', ''))[:40]
                 pub = str(b.get('pub', ''))[:200]
+                fir = str(b.get('fir', ''))[:200]
                 if not ident or not pub:
                     return self._json(400, {'error': 'faltan datos'})
-                apuntar_aparato(f, ident, pub, int(time.time() * 1000))
+                apuntar_aparato(f, ident, pub, int(time.time() * 1000), fir)
                 guardar(d)
                 return self._json(200, {'ok': True})
 

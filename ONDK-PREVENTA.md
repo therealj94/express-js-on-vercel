@@ -6,12 +6,33 @@
 
 ## Qué es ONDK
 
-ONDK es el **security token de Orden Global**: representa participación en la
-empresa, no es una moneda ni un token de uso. Comprar ONDK es tomar una posición
-en un negocio, con todo lo que eso significa — puede subir y puede bajar.
+ONDK es el **security token de Orden Global**: un valor negociable bajo Próspera,
+respaldado por los activos del grupo. **Da derechos económicos por contrato; no
+es una acción y no da voto.** No es una moneda ni un token de uso.
 
-Vive en la cadena propia de Orden Global (chain 8532), en el contrato
+Comprar ONDK es tomar una posición en un negocio, con todo lo que eso significa:
+puede subir y puede bajar.
+
+Vive en la **cadena 5550 de Orden Global**, en el contrato
 `0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1`, y se guarda en tu **Veta Wallet**.
+
+> **Corrección del 21 de agosto de 2026.** Una versión anterior de este documento
+> decía dos cosas distintas de las de arriba, y las dos se corrigieron:
+>
+> **La cadena.** Decía «chain 8532». La 8532 es la cadena anterior, y su estado
+> quedó **congelado el 15 de agosto**: sigue produciendo bloques vacíos, con un
+> solo validador y sin ningún par conectado. El contrato de ONDK existe en las
+> dos con la misma emisión, porque la 5550 nació copiando el estado de la 8532 —
+> pero **la que está viva es la 5550**, y es la única que Ordenex y Veta Wallet
+> leen. Quien mande ONDK a una dirección de la 8532 lo estaría dejando en una
+> cadena que nadie mira. Si ya configuraste una billetera con la 8532 por leer la
+> versión vieja, escribinos antes de mover nada.
+>
+> **Qué representa.** Decía «representa participación en la empresa». Esa frase
+> se lee como propiedad de una parte de la sociedad, y no es lo que ONDK otorga:
+> son derechos económicos por contrato, sin acción y sin voto. La redacción de
+> arriba es la que figura en la ficha del token dentro de Ordenex y de Veta
+> Wallet, y ahora las tres dicen lo mismo.
 
 ---
 
@@ -145,7 +166,7 @@ normal en un libro nuevo, y significa que **vender rápido puede costar caro**.
 
 ### Esto es una inversión, no un ahorro
 
-ONDK es un security token: participación en una empresa real, con un negocio
+ONDK es un security token: derechos económicos sobre un negocio real
 minero real detrás, y con los riesgos de cualquier empresa. **Podés perder parte
 o todo tu dinero.** No hay seguro de depósitos, no hay rendimiento garantizado,
 y nadie te va a devolver lo que pusiste si el negocio no sale como se espera.

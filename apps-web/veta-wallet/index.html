@@ -1654,6 +1654,14 @@ body.en-p2c .cha-hcab{background:rgba(6,26,79,.5)}
 
 /* El mensaje que este aparato no puede abrir. En cursiva y con el candado:
    se lee como una nota del sistema y no como algo que escribió una persona. */
+/* La marca de «no se pudo verificar». Discreta a proposito: va debajo del
+   texto y no lo reemplaza, porque el mensaje se sigue leyendo. La version
+   `cha-alerta` es para cuando algo NO cuadra, que es distinto de no saber. */
+.cha-sinfirma{display:flex;align-items:center;gap:6px;margin:6px 0 0;font-size:11.5px;
+ line-height:1.35;color:var(--mut);opacity:.9}
+.cha-sinfirma svg{width:13px;height:13px;flex:none;fill:none;stroke:currentColor;
+ stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cha-sinfirma.cha-alerta{color:var(--coral);opacity:1;font-weight:600}
 .cha-cerrado{display:flex;align-items:center;gap:7px;font-style:italic;opacity:.78}
 .cha-cerrado svg{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;
   stroke-width:1.7;stroke-linecap:round}

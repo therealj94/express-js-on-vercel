@@ -174,6 +174,22 @@ const CADENA = (() => {
 
   // ── RPC ───────────────────────────────────────────────────────────────────
 
+  /* NO SE DEVUELVE null CUANDO ALGO SALE MAL: SE LANZA.
+   *
+   * Antes esta funcion se tragaba tres fallos distintos y los tres salian por
+   * el mismo agujero. Un 502 del nodo con una pagina de HTML adentro moria en
+   * el `.catch(() => ({}))` del json; un `{"error":{...}}` del propio RPC no se
+   * miraba nunca; y `r.ok` no se comprobaba. En los tres casos la respuesta era
+   * `null`, `deUnidades(null)` lo convertia en 0, y la billetera enseñaba un
+   * cero que nadie habia leido de la cadena.
+   *
+   * Un cero es una afirmacion sobre el dinero de alguien: dice «no tenes
+   * nada». Solo se puede decir cuando el nodo lo dijo. Si no contesto, o
+   * contesto cualquier otra cosa, esto lanza y quien llama decide como se
+   * rotula el hueco. Ver `portafolio()` aca abajo.
+   *
+   * El unico `result` que vale como cero es el que llega: un `0x0` es un cero
+   * leido, y ese si se enseña. */
   async function rpc(metodo, params, ms = 12000) {
     const ctrl = new AbortController();
     const id = setTimeout(() => ctrl.abort(), ms);
@@ -183,20 +199,33 @@ const CADENA = (() => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: metodo, params }),
       });
-      const d = await r.json().catch(() => ({}));
-      return d?.result ?? null;
+      if (!r.ok) throw new Error(`el nodo contesto ${r.status}`);
+      let d;
+      try { d = await r.json(); }
+      catch { throw new Error('el nodo no contesto JSON'); }
+      if (d && d.error) throw new Error(String(d.error.message || 'el nodo devolvio un error'));
+      if (!d || d.result === undefined || d.result === null) {
+        throw new Error(`el nodo no devolvio resultado para ${metodo}`);
+      }
+      return d.result;
     } finally { clearTimeout(id); }
   }
 
   // Un saldo de 18 decimales no cabe en un double sin perder los ultimos
   // digitos, asi que se parte en entero y resto antes de convertir.
+  //
+  /* Y por el mismo motivo que `rpc()`, un hexadecimal que no se entiende ya no
+     vale 0: lanza. Un `catch { return 0 }` aca abajo deshace todo el cuidado
+     de arriba — daria igual lo escrupuloso que sea el RPC si la conversion
+     sigue teniendo su cero de consuelo guardado.
+     `0x` a secas SI es cero: es lo que contesta la cadena para una cuenta que
+     nunca recibio nada. */
   function deUnidades(hex, dec = 18) {
-    try {
-      if (!hex || hex === '0x') return 0;
-      const crudo = BigInt(hex);
-      const div = BigInt(10) ** BigInt(dec);
-      return Number(crudo / div) + Number(crudo % div) / Number(div);
-    } catch { return 0; }
+    if (hex === '0x') return 0;
+    if (typeof hex !== 'string' || !hex) throw new Error('el nodo devolvio un saldo ilegible');
+    const crudo = BigInt(hex); // lanza si no es un hexadecimal, y eso es lo que se quiere
+    const div = BigInt(10) ** BigInt(dec);
+    return Number(crudo / div) + Number(crudo % div) / Number(div);
   }
 
   const saldoNativo = async dir =>
@@ -298,6 +327,40 @@ const CADENA = (() => {
    * acta y viaja pegado al token en `declarado`, para que la pantalla no pueda
    * pintarlo sin rotularlo — un precio declarado sin decir que lo es se lee
    * como cotizacion, y ONDK no cotiza. */
+  /* UN SALDO QUE NO SE PUDO LEER VALE null, NUNCA 0.
+   *
+   * Aca vivia el peor cero de la casa: `catch { return 0 }`. Con el nodo caido
+   * los quince saldos salian en cero, se sumaban en cero, y la pantalla decia
+   * TU PATRIMONIO $0.00 sin un solo aviso. Un nodo caido y una billetera vacia
+   * daban la misma imagen, y lo unico que las separa es el dinero de alguien.
+   *
+   * La doctrina ya estaba escrita en esta casa y es la que se aplica aca:
+   * `infra/veta-wallet-backend/lib/saldos.js` («ni un cero de consuelo: se dice
+   * que no se pudo mirar», con `vacia: null` y jamas `true`) y
+   * `apps-web/ordenex/mercado.js` («null = no leidos (fail-closed)»).
+   *
+   * LA FORMA QUE SALE DE AQUI
+   *
+   * Sigue siendo un array de filas —una por token, los quince siempre— y cada
+   * fila trae ahora tres campos que se leen juntos:
+   *
+   *   cant   number | null   el saldo, o null si NO se pudo leer
+   *   leido  boolean         true solo si el nodo contesto ese saldo
+   *   error  string | null   por que no se pudo, cuando `leido` es false
+   *
+   * De ahi se deduce todo sin preguntar en ningun otro sitio: si la lectura
+   * fue entera (todas con `leido`), parcial (algunas) o si no hubo lectura
+   * ninguna (ninguna con `leido`, que es el nodo caido: el caso que pide el
+   * «—» y el «no pudimos leer tus saldos» en vez de un total).
+   *
+   * Va fila por fila y no como un veredicto unico del conjunto a proposito:
+   * los quince saldos se piden en paralelo y pueden fallar tres. Un veredicto
+   * global obligaria a elegir entre tirar doce saldos buenos o dar por buenos
+   * tres huecos, y las dos cosas mienten un poco.
+   *
+   * Y NO se lanza: lanzar tira tambien las filas que si se leyeron, y con ellas
+   * la unica informacion que distingue «se cayo el nodo» de «fallo un token».
+   * Quien pinta decide, con las filas delante. */
   async function portafolio(direccion, precioOndk) {
     if (!direccion) return [];
     const [{ p, chg }, declONDK, saldos] = await Promise.all([
@@ -305,8 +368,17 @@ const CADENA = (() => {
       precioDeclarado('ONDK'),
       Promise.all(TOKENS.map(async t => {
         try {
-          return t.nativo ? await saldoNativo(direccion) : await saldoToken(t.contrato, direccion);
-        } catch { return 0; }
+          const cant = t.nativo
+            ? await saldoNativo(direccion)
+            : await saldoToken(t.contrato, direccion);
+          /* Un numero que no es numero (NaN, infinito) tampoco es un saldo:
+             se trata como lo que es, un fallo de lectura, en vez de dejarlo
+             entrar como cifra y que aparezca sumado en el patrimonio. */
+          if (!Number.isFinite(cant)) return { cant: null, leido: false, error: 'saldo ilegible' };
+          return { cant, leido: true, error: null };
+        } catch (e) {
+          return { cant: null, leido: false, error: (e && e.message) || 'no se pudo leer' };
+        }
       })),
     ]);
 
@@ -318,7 +390,10 @@ const CADENA = (() => {
       if (precio == null && decl) precio = decl.precio;
       if (precio == null && t.s === 'ONDK' && precioOndk > 0) precio = precioOndk;
       if (precio == null && FIJOS[t.s] != null) precio = FIJOS[t.s];
-      const cant = Number.isFinite(saldos[i]) ? saldos[i] : 0;
+      /* El `Number.isFinite(...) ? ... : 0` que habia aca era el segundo cero
+         de consuelo, y tapaba al primero: aunque la lectura hubiera fallado,
+         la fila salia con un 0 bien formado. Ahora la lectura viaja entera. */
+      const lectura = saldos[i];
       return {
         s: t.s,
         ...META[t.s],
@@ -328,7 +403,12 @@ const CADENA = (() => {
            que poder decidir en el sitio si esto se enseña, sin volver a buscar
            el token en otra tabla. */
         publico: t.publico !== false,
-        cant,
+        /* null = no se pudo leer. NO es cero. Quien pinte esta fila tiene que
+           mirar `leido` antes de escribir una cifra, y quien sume el
+           patrimonio tiene que negarse a dar un total si falta alguna. */
+        cant: lectura.cant,
+        leido: lectura.leido,
+        error: lectura.error,
         precio: precio != null && precio > 0 ? precio : null,
         /* El acta viaja con el precio, no aparte. La variacion se queda en
            null a proposito: un precio declarado no tiene «24 h» —no se movio

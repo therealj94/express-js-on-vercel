@@ -7386,7 +7386,20 @@ const VETA = (() => {
       const cajaTxt = $('#p2c-est-txt');
       const guardado = cajaTxt ? { v: cajaTxt.value, i: cajaTxt.selectionStart,
                                    tenia: document.activeElement === cajaTxt } : null;
-      capas.innerHTML = p2cVisor() + p2cCompositor();
+      /* LA HOJA VA ACA, y no dentro del hilo, y esto arregla un fallo que
+         dejaba cuatro botones muertos.
+         Estaba interpolada en `chatHilo()`, que sale por `return` antes de
+         llegar en cuatro casos: puerta de Genesis, error de red, Mi perfil, y
+         —el que importaba— cuando no hay ningun hilo abierto. O sea que estando
+         en la LISTA, que es justo donde esta el boton, tocar «Nuevo grupo» no
+         hacia nada: ni error, ni aviso, ni nada en la consola. Y con el la
+         promesa de `chatGrupo()` quedaba colgada para siempre.
+         Se llevaba por delante tambien el lapiz de cambiar el propio nombre
+         —su unica entrada, asi que el nombre no se podia cambiar nunca—, el
+         borrar un estado propio y el quitar a alguien del circulo.
+         `#p2c-capas` se repinta pase lo que pase, que es lo que una hoja
+         modal necesita. */
+      capas.innerHTML = p2cVisor() + p2cCompositor() + chatHoja() + chatHojaElegir();
       const nueva = $('#p2c-est-txt');
       if (nueva && guardado) {
         nueva.value = guardado.v;
@@ -7490,10 +7503,14 @@ const VETA = (() => {
         </div>`).join('');
     }
     if (!chatSt.convs.length) {
+      /* El boton de grupo va TAMBIEN aca, y no es un detalle: se concatenaba
+         solo al final de la lista de conversaciones, asi que quien acababa de
+         entrar —el que mas lo necesita— no tenia ninguna puerta a los grupos.
+         Ni la veia. */
       return `<div class="vacio"><b>${t('cha.vacioT')}</b>${t('cha.vacioP')}</div>
         <div class="p2c-empuja">
           <button class="btn btn-p2c btn-sm" onclick="VETA.p2cTab('gente')">${t('cha.irGente')}</button>
-        </div>`;
+        </div>` + nuevo;
     }
     const filtro = (chatSt.filtra || '').trim().toLowerCase();
     const lista = filtro
@@ -7940,7 +7957,7 @@ const VETA = (() => {
                oninput="VETA.chatBuscarHilo(this.value)">
         <button onclick="VETA.chatBuscarHiloAbrir()" aria-label="${t('cha.cancelar')}">✕</button>
       </div>` : ''}
-      ${chatSt.ficha ? chatFicha() : ''}${chatHoja()}${chatHojaElegir()}
+      ${chatSt.ficha ? chatFicha() : ''}
       <div class="cha-msgs" id="chat-msgs">${cuerpo}</div>
       ${chatSt.grabando ? `
       <div class="cha-grab">
@@ -8075,6 +8092,45 @@ const VETA = (() => {
       <p class="chaf-honesto">${t('cha.olvidarNota')}</p>`);
   }
 
+  /**
+   * La marca de «esto no se pudo verificar», debajo del texto.
+   *
+   * POR QUE HACE FALTA
+   *
+   * Dos cosas se decidian bien y no llegaban a la pantalla:
+   *
+   * 1. `CHAT.enviar()` devuelve `e2e:false` cuando NO pudo cifrar y mando en
+   *    claro —pasa si el otro todavia no publico llaves, si no hay IndexedDB,
+   *    o si se cayo la peticion de llaves—. El comentario de `chat.js` decia
+   *    que era «para que la app lo enseñe en ese mensaje», y `app.js` tiraba
+   *    el valor de retorno. Mientras tanto el sello del compositor prometia
+   *    «ni nosotros podemos leerlos».
+   * 2. `CANDADO.abrir()` ahora dice si la firma del remitente cuadra. Un
+   *    mensaje que no se pudo verificar NO se esconde —eso seria perder
+   *    informacion— pero tampoco se enseña callado, que seria mentir.
+   *
+   * Los motivos se distinguen a proposito: `sin-firma` es un mensaje viejo, de
+   * antes de que se firmara, y no acusa a nadie. Lo demas si.
+   */
+  function chatMarcaFirma(m, mio) {
+    if (m.borrado || m.cerrado) return '';
+    if (m.e2e === false) {
+      return `<p class="cha-sinfirma cha-alerta">
+        <svg viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        ${t('cha.fueEnClaro')}</p>`;
+    }
+    // De lo propio no se dice nada: uno sabe que lo escribio uno.
+    if (mio || m.verificado !== false) return '';
+    if (m.motivoFirma === 'sin-firma' || m.motivoFirma === 'sin-llaves-del-remitente') {
+      return `<p class="cha-sinfirma">
+        <svg viewBox="0 0 24 24"><path d="M12 8v5m0 3h.01"/><circle cx="12" cy="12" r="9"/></svg>
+        ${t('cha.sinVerificar')}</p>`;
+    }
+    return `<p class="cha-sinfirma cha-alerta">
+      <svg viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+      ${t('cha.firmaNoCuadra')}</p>`;
+  }
+
   function chatBurbuja(m) {
     const mio = m.de === (sesion?.correo || '').toLowerCase();
     const hora = new Date(m.cuando).toLocaleTimeString(idiomaActivo() === 'en' ? 'en-US' : 'es-HN',
@@ -8178,7 +8234,7 @@ const VETA = (() => {
             ? `<p class="cha-cerrado">
                  <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
                  ${t('cha.e2eCerrado')}</p>`
-            : (m.texto ? `<p>${esc(m.texto)}</p>` : '')}</div>
+            : (m.texto ? `<p>${esc(m.texto)}</p>` : '')}${chatMarcaFirma(m, mio)}</div>
         ${tira}
         <time>${hora}</time>
       </div>`;

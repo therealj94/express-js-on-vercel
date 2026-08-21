@@ -118,7 +118,7 @@ const CHAT = (() => {
     const mia = await CANDADO.miLlave();
     if (!mia) return;
     try {
-      await pedir('/llaves/publicar', firmado({ id: mia.id, pub: mia.pub }));
+      await pedir('/llaves/publicar', firmado({ id: mia.id, pub: mia.pub, fir: mia.fir || '' }));
       publicada = true;
     } catch { /* se reintenta en el siguiente envío */ }
   }
@@ -156,10 +156,24 @@ const CHAT = (() => {
    */
   async function abrirTodos(msgs) {
     if (!CANDADO?.hay()) return msgs;
+
+    /* SE PIDEN LAS LLAVES DE TODOS LOS REMITENTES ANTES DE ABRIR NADA.
+       No es una optimización: es lo que hace posible verificar la firma. Sin
+       las llaves PUBLICADAS de quien escribió, lo único que se puede hacer es
+       creerle al bulto, que es exactamente el agujero que la firma cierra.
+       Va en una sola petición para todos, con la caché de cinco minutos que ya
+       existía. */
+    const deQuienes = [...new Set(msgs.filter(m => m.cif && m.de).map(m => m.de))];
+    let llaves = {};
+    if (deQuienes.length) {
+      try { llaves = (await llavesDe(deQuienes)) || {}; } catch { llaves = {}; }
+    }
+
     return Promise.all(msgs.map(async m => {
       if (!m.cif) return m;
-      const claro = await CANDADO.abrir(m.cif);
-      if (claro == null) return { ...m, texto: '', cerrado: true, e2e: true };
+      const r = await CANDADO.abrir(m.cif, llaves[m.de] || []);
+      if (r == null) return { ...m, texto: '', cerrado: true, e2e: true };
+      const claro = r.texto;
       /* El texto puede traer pegada la llave de un adjunto: viaja DENTRO del
          cifrado, nunca al lado, que es lo que hace que el relevo guarde un
          archivo que no puede abrir. */
@@ -171,7 +185,14 @@ const CHAT = (() => {
           extra = { llaveArchivo: j.k, ivArchivo: j.iv };
         } catch { /* si no parsea es texto normal que empieza raro */ }
       }
-      return { ...m, texto, e2e: true, ...(extra || {}) };
+      /* `verificado` viaja hasta la burbuja. Un mensaje que no se pudo
+         verificar NO se esconde: se enseña con su marca, porque esconderlo
+         sería perder información y enseñarlo callado sería mentir. */
+      return {
+        ...m, texto, e2e: true,
+        verificado: r.verificado, motivoFirma: r.motivo,
+        ...(extra || {}),
+      };
     }));
   }
 
@@ -569,11 +590,27 @@ const CHAT = (() => {
   /** El codigo de seguridad de una conversacion, para comparar en voz alta. */
   async function codigoCon(correo) {
     if (!CANDADO?.hay()) return null;
-    const mia = await CANDADO.miLlave();
-    const r = await pedir('/llaves/de', firmado({ correos: [correo] }));
+    const mio = yo?.correo;
+    if (!mio) return null;
+
+    /* SE PIDEN LOS APARATOS DE LOS DOS LADOS, y ahí estaba el fallo.
+       Antes se pasaba UN aparato propio —el actual— contra TODOS los del otro.
+       Los dos lados calculaban sobre conjuntos distintos, así que el número no
+       coincidía salvo que ambos tuvieran exactamente un aparato. Con teléfono y
+       computadora, que es lo normal, discrepaba siempre.
+
+       Y eso no era un detalle cosmético: esta pantalla existe justamente para
+       detectar que alguien se metió en medio. Si le enseña discrepancia a gente
+       honesta todos los días, la gente deja de mirarla, y con ella se cae la
+       única defensa que teníamos. Un aviso que siempre suena no es un aviso.
+
+       El servidor ya permitía pedir las llaves propias, así que no hizo falta
+       tocarlo. */
+    const r = await pedir('/llaves/de', firmado({ correos: [mio, correo] }));
+    const mias = (r.llaves?.[mio] || []).map(a => a.pub);
     const suyas = (r.llaves?.[correo] || []).map(a => a.pub);
-    if (!mia || !suyas.length) return null;
-    return CANDADO.codigoDeSeguridad([mia.pub], suyas);
+    if (!mias.length || !suyas.length) return null;
+    return CANDADO.codigoDeSeguridad(mias, suyas);
   }
 
   const esGrupo = id => /^g:[0-9a-f]{16}$/.test(String(id || ''));

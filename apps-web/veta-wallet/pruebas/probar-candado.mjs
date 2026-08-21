@@ -4,6 +4,11 @@
  * lo que se está comprobando es justo lo que no se puede comprobar en uno
  * solo: que el aparato A no pueda abrir lo que iba para el aparato B.
  *
+ * `abrir()` devuelve ahora `{ texto, verificado, motivo }` y no una cadena:
+ * además de abrir, dice si la firma del remitente cuadra. Lo que prueba esa
+ * parte es `probar-firma-bulto.mjs`, que monta la suplantación entera. Acá se
+ * lee `.texto` y punto.
+ *
  * Y comprueba lo que un despiste haría fácil romper:
  *   · que el bulto no lleve el texto en claro por dentro;
  *   · que uno pueda releer lo que él mismo escribió;
@@ -79,18 +84,18 @@ try {
   ok('el bulto trae dos sobres: el de Beto y el de Ana', bulto.s.length === 2,
     bulto.s.map(x => x.a).join(', '));
 
-  ok('Beto lo abre', await beto.evaluate(b => CANDADO.abrir(b), bulto) === SECRETO);
+  ok('Beto lo abre', (await beto.evaluate(b => CANDADO.abrir(b), bulto))?.texto === SECRETO);
   ok('Ana puede releer lo que ella misma escribió',
-    await ana.evaluate(b => CANDADO.abrir(b), bulto) === SECRETO);
+    (await ana.evaluate(b => CANDADO.abrir(b), bulto))?.texto === SECRETO);
 
   /* EL PUNTO DE TODO ESTO. */
   ok('CARO, QUE NO ERA EL DESTINO, NO PUEDE ABRIRLO',
-    await caro.evaluate(b => CANDADO.abrir(b), bulto) === null);
+    (await caro.evaluate(b => CANDADO.abrir(b), bulto)) === null);
 
   /* Un bulto tocado tiene que FALLAR, no dar otra cosa. */
   const tocado = JSON.parse(JSON.stringify(bulto));
   tocado.ct = tocado.ct.slice(0, -4) + (tocado.ct.slice(-4) === 'AAAA' ? 'BBBB' : 'AAAA');
-  ok('un bulto tocado no se abre', await beto.evaluate(b => CANDADO.abrir(b), tocado) === null);
+  ok('un bulto tocado no se abre', (await beto.evaluate(b => CANDADO.abrir(b), tocado)) === null);
 
   /* Y un sobre robado de otro tampoco sirve: Caro no puede ponerse el de Beto,
      porque el sobre está cerrado con un secreto que solo existe entre la llave
@@ -99,7 +104,7 @@ try {
   const sobreDeBeto = suplantado.s.find(x => x.a === lBeto.id);
   suplantado.s = [{ ...sobreDeBeto, a: lCaro.id }];
   ok('Caro no puede abrirlo poniéndole su nombre al sobre de Beto',
-    await caro.evaluate(b => CANDADO.abrir(b), suplantado) === null);
+    (await caro.evaluate(b => CANDADO.abrir(b), suplantado)) === null);
 
   /* Los archivos: la llave viaja aparte, y sin ella los bytes no son nada. */
   const arch = await ana.evaluate(async () => {
@@ -136,7 +141,7 @@ try {
   const lBeto2 = await llaveDe(beto);
   ok('la llave sobrevive a recargar', lBeto2.id === lBeto.id, `${lBeto.id} → ${lBeto2.id}`);
   ok('y sigue abriendo lo de antes',
-    await beto.evaluate(b => CANDADO.abrir(b), bulto) === SECRETO);
+    (await beto.evaluate(b => CANDADO.abrir(b), bulto))?.texto === SECRETO);
 } finally {
   await nav.close();
 }

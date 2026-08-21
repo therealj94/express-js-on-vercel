@@ -82,7 +82,27 @@ const CANDADO = (() => {
   const hay = () => !!sc && typeof indexedDB !== 'undefined';
 
   const CURVA = { name: 'ECDH', namedCurve: 'P-256' };
-  const VERSION = 1;
+
+  /* LA CURVA DE FIRMA VA APARTE, y no es por gusto: WebCrypto no deja que una
+     misma llave sirva para acordar un secreto (ECDH) y para firmar (ECDSA).
+     Son dos pares distintos en el mismo aparato. */
+  const CURVA_FIRMA = { name: 'ECDSA', namedCurve: 'P-256' };
+  const FIRMA_HASH = { name: 'ECDSA', hash: 'SHA-256' };
+
+  /* Version 1: el bulto NO decia quien lo escribio. `abrir()` derivaba el
+     secreto con la llave publica que venia DENTRO del propio bulto, o sea con
+     una llave que elegia quien lo fabricaba. AES-GCM garantiza que «quien
+     conocia este secreto fabrico esto», y si el secreto sale de una llave
+     elegida por el atacante, la garantia se queda en el aire: quien pudiera
+     escribir en el relevo podia poner palabras en boca de un contacto.
+
+     Version 2: el bulto va firmado con ECDSA, y `abrir()` exige que la firma
+     cuadre contra las llaves PUBLICADAS del remitente que el servidor declara,
+     no contra las que vienen dentro. Se siguen abriendo los bultos de version
+     1 —son los que ya estan guardados y no se pueden refirmar— pero se
+     devuelven marcados como no verificados, para que la app lo diga. */
+  const VERSION = 2;
+  const VERSION_SIN_FIRMA = 1;
 
   /* ── el cajon donde vive la llave privada ──────────────────────────────
      IndexedDB y no localStorage porque localStorage solo guarda TEXTO: para
@@ -139,12 +159,23 @@ const CANDADO = (() => {
   async function crear() {
     const par = await sc.generateKey(CURVA, /* extractable */ false, ['deriveBits']);
     const pub = new Uint8Array(await sc.exportKey('raw', par.publicKey));
+    /* El par de FIRMA. Es otro par, en otra curva, guardado al lado: WebCrypto
+       no deja que una llave de acuerdo sirva tambien para firmar. Tambien sale
+       inextraible, asi que una inyeccion en la pagina no se la lleva. */
+    const parF = await sc.generateKey(CURVA_FIRMA, /* extractable */ false, ['sign', 'verify']);
+    const pubF = new Uint8Array(await sc.exportKey('raw', parF.publicKey));
     /* El id del aparato es el resumen de su propia llave publica. No es un
        numero al azar: asi dos aparatos no pueden chocar nunca, y el id se
        puede volver a calcular a partir de la llave si hiciera falta. */
     const id = aB64(await sc.digest('SHA-256', pub)).slice(0, 22);
-    const guardado = { id, priv: par.privateKey, pub: par.publicKey, pubB64: aB64(pub) };
-    await enCajon('readwrite', a => a.put({ id, priv: par.privateKey, pub: par.publicKey }, 'aparato'));
+    const guardado = {
+      id, priv: par.privateKey, pub: par.publicKey, pubB64: aB64(pub),
+      privF: parF.privateKey, pubF: parF.publicKey, pubFB64: aB64(pubF),
+    };
+    await enCajon('readwrite', a => a.put({
+      id, priv: par.privateKey, pub: par.publicKey,
+      privF: parF.privateKey, pubF: parF.publicKey,
+    }, 'aparato'));
     return guardado;
   }
 
@@ -158,6 +189,25 @@ const CANDADO = (() => {
         if (g?.priv && g?.pub) {
           const pub = new Uint8Array(await sc.exportKey('raw', g.pub));
           mio = { id: g.id, priv: g.priv, pub: g.pub, pubB64: aB64(pub) };
+
+          /* APARATOS DE ANTES DE LA FIRMA.
+             Los que ya existian no tienen par de firma. NO se les cambia el
+             par de acuerdo —eso los dejaria sin poder abrir todo lo que ya
+             recibieron— sino que se les agrega el de firma al lado, se guarda,
+             y a partir de ahi firman como los nuevos. Es la unica forma de que
+             el arreglo alcance a quien ya venia usando el chat. */
+          if (g.privF && g.pubF) {
+            const pubF = new Uint8Array(await sc.exportKey('raw', g.pubF));
+            mio.privF = g.privF; mio.pubF = g.pubF; mio.pubFB64 = aB64(pubF);
+          } else {
+            const parF = await sc.generateKey(CURVA_FIRMA, false, ['sign', 'verify']);
+            const pubF = new Uint8Array(await sc.exportKey('raw', parF.publicKey));
+            mio.privF = parF.privateKey; mio.pubF = parF.publicKey; mio.pubFB64 = aB64(pubF);
+            await enCajon('readwrite', a => a.put({
+              id: g.id, priv: g.priv, pub: g.pub,
+              privF: parF.privateKey, pubF: parF.publicKey,
+            }, 'aparato')).catch(() => {});
+          }
         } else {
           mio = await crear();
         }
@@ -177,14 +227,20 @@ const CANDADO = (() => {
   async function crearEnMemoria() {
     const par = await sc.generateKey(CURVA, false, ['deriveBits']);
     const pub = new Uint8Array(await sc.exportKey('raw', par.publicKey));
+    const parF = await sc.generateKey(CURVA_FIRMA, false, ['sign', 'verify']);
+    const pubF = new Uint8Array(await sc.exportKey('raw', parF.publicKey));
     const id = aB64(await sc.digest('SHA-256', pub)).slice(0, 22);
-    return { id, priv: par.privateKey, pub: par.publicKey, pubB64: aB64(pub), volatil: true };
+    return {
+      id, priv: par.privateKey, pub: par.publicKey, pubB64: aB64(pub),
+      privF: parF.privateKey, pubF: parF.publicKey, pubFB64: aB64(pubF),
+      volatil: true,
+    };
   }
 
   /** La llave publica de este aparato, lista para publicar. */
   async function miLlave() {
     const m = await mias();
-    return m ? { id: m.id, pub: m.pubB64, volatil: !!m.volatil } : null;
+    return m ? { id: m.id, pub: m.pubB64, fir: m.pubFB64 || null, volatil: !!m.volatil } : null;
   }
 
   /* ── el secreto compartido entre dos aparatos ─────────────────────────
@@ -248,7 +304,33 @@ const CANDADO = (() => {
     }
     if (!sobres.length) throw new Error('sin-destino');
 
-    return { v: VERSION, de: m.pubB64, iv: aB64(iv), ct: aB64(cerrado), s: sobres };
+    /* LO QUE SE FIRMA, y por que eso y no otra cosa.
+       Se firma el resumen de todo lo que identifica a este bulto: la version,
+       la llave de acuerdo de quien escribe, el texto cifrado, su vector, y la
+       lista entera de sobres. Con eso, cambiar un solo byte de cualquiera de
+       las partes —o mover un sobre de un bulto a otro— rompe la firma.
+       La firma NO tapa los metadatos: quien habla con quien y cuando lo sigue
+       viendo el servidor, y eso esta escrito arriba en los limites del diseño. */
+    const cuerpo = { v: VERSION, de: m.pubB64, iv: aB64(iv), ct: aB64(cerrado), s: sobres };
+    const firma = m.privF
+      ? aB64(await sc.sign(FIRMA_HASH, m.privF, textoABytes(paraFirmar(cuerpo))))
+      : null;
+
+    /* `fir` es la llave publica de firma de ESTE aparato, y va dentro para que
+       quien abre sepa cual de los aparatos del remitente firmo. No sirve como
+       prueba por si sola: `abrir()` exige que esa llave este entre las que el
+       remitente tiene PUBLICADAS, y eso se comprueba contra el servidor, no
+       contra el bulto. */
+    return firma ? { ...cuerpo, fir: m.pubFB64, f: firma } : cuerpo;
+  }
+
+  /** El texto exacto que se firma. Mismo orden siempre, o la firma no cuadra. */
+  function paraFirmar(c) {
+    return [
+      'pulse2chat/bulto/v2',
+      c.v, c.de, c.iv, c.ct,
+      (c.s || []).map(x => `${x.a}.${x.iv}.${x.k}`).join('|'),
+    ].join('\n');
   }
 
   /** Cierra bytes (una foto, una nota de voz) con una llave suelta. */
@@ -277,21 +359,82 @@ const CANDADO = (() => {
    * existia no se puede abrir aqui, y la app lo dice con esas palabras en vez
    * de mostrar un renglon vacio.
    */
-  async function abrir(bulto) {
+  /**
+   * Abre un bulto y dice si de verdad lo escribio quien dice.
+   *
+   * EL SEGUNDO ARGUMENTO NO ES OPCIONAL DE VERDAD, aunque el codigo lo tolere.
+   * `aparatosDelRemitente` son los aparatos PUBLICADOS de quien el servidor
+   * dice que escribio. Sin esa lista no hay con que comparar la firma, y lo
+   * unico que se puede hacer es abrir el bulto y decir que no se pudo
+   * verificar. Quien llame sin ella se queda sin la mitad util de esta
+   * funcion.
+   *
+   * @param {object} bulto
+   * @param {Array<{id:string,pub:string,fir?:string}>} aparatosDelRemitente
+   * @returns {Promise<{texto:string, verificado:boolean, motivo:string}|null>}
+   */
+  async function abrir(bulto, aparatosDelRemitente) {
     const m = await mias();
-    if (!m || !bulto || bulto.v !== VERSION) return null;
+    if (!m || !bulto) return null;
+    if (bulto.v !== VERSION && bulto.v !== VERSION_SIN_FIRMA) return null;
     const sobre = (bulto.s || []).find(x => x.a === m.id);
     if (!sobre) return null;
+
+    let texto;
     try {
       const k = await secretoCon(bulto.de);
       const cruda = await sc.decrypt({ name: 'AES-GCM', iv: deB64(sobre.iv) }, k, deB64(sobre.k));
       const llaveMsg = await sc.importKey('raw', cruda, { name: 'AES-GCM' }, false, ['decrypt']);
       const claro = await sc.decrypt({ name: 'AES-GCM', iv: deB64(bulto.iv) }, llaveMsg, deB64(bulto.ct));
-      return bytesATexto(claro);
+      texto = bytesATexto(claro);
     } catch {
       /* GCM falla si el bulto fue tocado. Que falle es la señal de que algo
          no cuadra, no un detalle a esconder. */
       return null;
+    }
+
+    return { texto, ...(await juzgarFirma(bulto, aparatosDelRemitente)) };
+  }
+
+  /**
+   * Decide si la firma de un bulto prueba quien lo escribio.
+   *
+   * Tres respuestas, y las tres importan por separado:
+   *   verificado:true                 la firma cuadra con un aparato publicado
+   *   verificado:false + 'sin-firma'  bulto viejo, de antes de que se firmara
+   *   verificado:false + lo demas     ALGO NO CUADRA. La app tiene que decirlo.
+   */
+  async function juzgarFirma(bulto, aparatos) {
+    if (!bulto.f || !bulto.fir) return { verificado: false, motivo: 'sin-firma' };
+    if (!Array.isArray(aparatos) || !aparatos.length) {
+      return { verificado: false, motivo: 'sin-llaves-del-remitente' };
+    }
+
+    /* LA COMPROBACION QUE CIERRA EL AGUJERO.
+       La llave que viene en el bulto no vale por si sola: tiene que estar entre
+       las que el remitente PUBLICO. Sin este renglon, quien pudiera escribir en
+       el relevo firmaria con una llave suya y todo cuadraria. */
+    const publicadas = aparatos.map(a => a && a.fir).filter(Boolean);
+    if (!publicadas.includes(bulto.fir)) {
+      return { verificado: false, motivo: 'llave-no-publicada' };
+    }
+
+    /* Y ademas: la llave de acuerdo que dice el bulto tiene que ser la del
+       MISMO aparato que firmo. Si no, alguien podria firmar con su llave un
+       bulto cerrado con la de otro. */
+    const suyo = aparatos.find(a => a && a.fir === bulto.fir);
+    if (!suyo || suyo.pub !== bulto.de) {
+      return { verificado: false, motivo: 'aparato-no-cuadra' };
+    }
+
+    try {
+      const llave = await sc.importKey('raw', deB64(bulto.fir), CURVA_FIRMA, false, ['verify']);
+      const ok = await sc.verify(
+        FIRMA_HASH, llave, deB64(bulto.f),
+        textoABytes(paraFirmar({ v: bulto.v, de: bulto.de, iv: bulto.iv, ct: bulto.ct, s: bulto.s })));
+      return ok ? { verificado: true, motivo: '' } : { verificado: false, motivo: 'firma-rota' };
+    } catch {
+      return { verificado: false, motivo: 'firma-ilegible' };
     }
   }
 
@@ -332,7 +475,7 @@ const CANDADO = (() => {
   }
 
   return {
-    hay, miLlave, mias, cerrar, abrir, cerrarBytes, abrirBytes,
+    hay, miLlave, mias, cerrar, abrir, juzgarFirma, cerrarBytes, abrirBytes,
     codigoDeSeguridad, aB64, deB64,
   };
 })();
