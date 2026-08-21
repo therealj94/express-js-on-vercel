@@ -52,10 +52,28 @@ const LLAMADA = (() => {
     { urls: 'stun:stun.cloudflare.com:3478' },
   ];
 
-  /** Se rellena con la configuración del TURN el día que exista. */
-  let turno = null;
-  const ponerTurno = (cfg) => { turno = cfg || null; };
-  const servidores = () => (turno ? [...HIELO, turno] : HIELO);
+  /* Los servidores de relevo (TURN), pedidos al nuestro justo antes de
+     llamar. Se guardan un rato porque las credenciales duran una hora: pedir
+     unas nuevas en cada llamada sería una ida y vuelta de red en el momento
+     en que más importa la prisa. */
+  let turno = [];
+  let turnoHasta = 0;
+  let pedirTurno = null;              // lo pone `arrancar()`
+
+  const ponerTurno = (cfg) => { turno = cfg ? (Array.isArray(cfg) ? cfg : [cfg]) : []; };
+
+  async function refrescarTurno() {
+    if (!pedirTurno || Date.now() < turnoHasta) return;
+    try {
+      const s = await pedirTurno();
+      if (Array.isArray(s) && s.length) {
+        turno = s;
+        turnoHasta = Date.now() + 45 * 60 * 1000;   // menos que la hora que duran
+      }
+    } catch { /* sin relevo se sigue igual: la mayoría conecta sin él */ }
+  }
+
+  const servidores = () => (turno.length ? [...HIELO, ...turno] : HIELO);
 
   const puede = () =>
     typeof RTCPeerConnection !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
@@ -195,6 +213,9 @@ const LLAMADA = (() => {
     iceEnCola = [];
     anunciar();
     try {
+      // El relevo se pide ANTES de crear la conexión: `iceServers` no se puede
+      // cambiar después, y añadirlo tarde no sirve de nada.
+      await refrescarTurno();
       miPista = await abrirMedios(conVideo);
       pintarLocal();
       pc = nuevaConexion();
@@ -225,6 +246,7 @@ const LLAMADA = (() => {
     // CONECTANDO, no «hablando»: todavía no hay ni un pixel del otro lado.
     estado = 'conectando';
     try {
+      await refrescarTurno();
       miPista = await abrirMedios(conVideo);
       pintarLocal();
       pc = nuevaConexion();
@@ -396,13 +418,20 @@ const LLAMADA = (() => {
   }
 
   /** Lo enchufa la app: le pasa cómo mandar señales y a quién avisar. */
-  function arrancar({ mandar, alCambiar }) {
+  function arrancar({ mandar, alCambiar, traerTurno }) {
     mandarSenal = mandar;
     avisar = alCambiar || (() => {});
+    pedirTurno = traerTurno || null;
+    // Se piden ya, sin esperar a la primera llamada: cuando alguien toque
+    // «llamar» las credenciales ya van a estar puestas.
+    refrescarTurno();
   }
 
+  /** Para saber si el relevo está enchufado. Lo usa el diagnóstico. */
+  const hayTurno = () => turno.length > 0;
+
   return { puede, puedePantalla, arrancar, recibir, llamar, contestar, rechazar,
-           reengancharVideo,
+           reengancharVideo, hayTurno,
            colgar, micro, camara, pantalla, dejarPantalla, ponerTurno,
            estado: () => estado, cuento, entrante: () => entrante };
 })();

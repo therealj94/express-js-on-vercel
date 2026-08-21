@@ -6053,6 +6053,7 @@ const VETA = (() => {
     LLAMADA.arrancar({
       mandar: (para, tipo, datos) => CHAT.senalar(para, tipo, datos),
       alCambiar: (c) => pintarLlamada(c),
+      traerTurno: () => CHAT.turno(),
     });
     // El buzón se escucha mientras haya sesión de chat: si solo se escuchara
     // dentro de la vista del chat, una llamada entrante no llegaría nunca a

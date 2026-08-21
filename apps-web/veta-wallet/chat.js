@@ -281,6 +281,15 @@ const CHAT = (() => {
     if (cortar) { clearTimeout(cortar); cortar = null; }
   }
 
+  /* Las credenciales del relevo de video (TURN).
+   *
+   * Las pide el SERVIDOR a Cloudflare y las devuelve ya cortas: el token de
+   * API que vale para toda la cuenta no baja nunca al navegador. Si no está
+   * configurado, esto devuelve una lista vacía y las llamadas siguen andando
+   * con STUN a secas — que es la mayoría. */
+  const turno = () =>
+    pedir('/turno', firmado({})).then(d => d.iceServers || []).catch(() => []);
+
   /** Deja una señal para el otro lado. Nunca lanza: una llamada no se cae
       porque un candidato ICE de veinte no llegara. */
   const senalar = (para, tipo, datos) =>
@@ -337,5 +346,5 @@ const CHAT = (() => {
            grupoCrear, grupoInfo, grupoEditar, grupoInvitar, grupoSalir, grupoUnirse,
            esGrupo, urlArchivo,
            puedeGrabar, grabarInicio, grabarFin, subirVoz, segundosDeVoz,
-           escuchar, dejarDeEscuchar, senalar };
+           escuchar, dejarDeEscuchar, senalar, turno };
 })();

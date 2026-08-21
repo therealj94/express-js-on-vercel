@@ -389,6 +389,77 @@ def recoger_senales(quien, espera=ESPERA_SENAL):
             aviso_senal.wait(timeout=queda)
 
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LAS CREDENCIALES DEL TURN DE CLOUDFLARE
+#
+# POR QUE ESTO VIVE EN EL SERVIDOR Y NO EN EL NAVEGADOR
+#
+# Porque para pedirle credenciales a Cloudflare hace falta un token de API que
+# vale para TODA la cuenta. Ese token en el navegador lo puede leer cualquiera
+# abriendo las herramientas de desarrollo, y con él se puede consumir el
+# terabyte gratis del mes en una tarde — o gastar dinero de verdad después.
+#
+# Así que el token se queda aquí, y el navegador pide credenciales CORTAS: se
+# generan al vuelo, duran una hora, y solo sirven para relevar audio y video.
+#
+# QUE PASA SI NO ESTA CONFIGURADO
+#
+# Se contesta 200 con la lista vacía, no un error. Sin TURN las llamadas
+# siguen funcionando —la mayoría conecta con STUN a secas— y un 500 aquí haría
+# que la app tratara como rota una situación que es solo «todavía no lo
+# pagamos». La app mira si vino algo y sigue igual.
+#
+# CONFIGURACION (variables de entorno, ninguna escrita aquí)
+#   TURN_LLAVE_ID    el «TURN Key ID» que da el panel de Cloudflare
+#   TURN_LLAVE_TOKEN el token de API de esa llave
+#   TURN_VIDA        segundos que dura la credencial; por defecto 3600
+
+TURN_ID = os.environ.get('TURN_LLAVE_ID', '').strip()
+TURN_TOKEN = os.environ.get('TURN_LLAVE_TOKEN', '').strip()
+TURN_VIDA = int(os.environ.get('TURN_VIDA', '3600'))
+TURN_URL = 'https://rtc.live.cloudflare.com/v1/turn/keys/{}/credentials/generate-ice-servers'
+
+# Las credenciales se cachean casi toda su vida: son iguales para todo el
+# mundo durante ese rato, y pedir una por llamada sería una llamada de red
+# extra en el momento en que más importa la prisa.
+_turno_cache = {'hasta': 0, 'servidores': []}
+_turno_candado = threading.Lock()
+
+
+def servidores_turno():
+    """Los iceServers de Cloudflare, o [] si no está configurado."""
+    if not TURN_ID or not TURN_TOKEN:
+        return []
+    ahora = time.time()
+    with _turno_candado:
+        if _turno_cache['hasta'] > ahora:
+            return _turno_cache['servidores']
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            TURN_URL.format(TURN_ID), method='POST',
+            data=json.dumps({'ttl': TURN_VIDA}).encode(),
+            headers={'Authorization': 'Bearer ' + TURN_TOKEN,
+                     'Content-Type': 'application/json'})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            d = json.loads(r.read())
+        srv = d.get('iceServers') or []
+        # Cloudflare devuelve un objeto o una lista segun el caso; se normaliza
+        # a lista para que la app no tenga que saberlo.
+        if isinstance(srv, dict):
+            srv = [srv]
+        with _turno_candado:
+            # Se renueva antes de que venza, no justo al vencer: una credencial
+            # que caduca a mitad de una llamada la corta.
+            _turno_cache['hasta'] = ahora + max(60, TURN_VIDA * 0.8)
+            _turno_cache['servidores'] = srv
+        return srv
+    except Exception as e:
+        print('[turno] no se pudieron pedir credenciales:', e)
+        return []
+
+
 class Relevo(BaseHTTPRequestHandler):
     server_version = 'relevo/1'
 
@@ -567,6 +638,11 @@ class Relevo(BaseHTTPRequestHandler):
             f = fichas.get(correo)
             if not f or b.get('llave') != f['llave']:
                 return self._json(401, {'error': 'llave incorrecta'})
+
+            if ruta == '/turno':
+                # Las credenciales del relevo de video. Exige llave: si no,
+                # cualquiera podría gastarse nuestro terabyte del mes.
+                return self._json(200, {'iceServers': servidores_turno()})
 
             if ruta == '/senal':
                 # Dejar una señal para el otro lado de la llamada. El permiso
