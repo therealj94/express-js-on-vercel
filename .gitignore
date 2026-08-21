@@ -10,3 +10,6 @@ __pycache__/
 # diff.
 apps-web/veta-wallet/rej-*.png
 llv-*.png
+
+# El PDF se genera; lo que se versiona es lo que lo genera.
+entregables/**/*.pdf
