@@ -8,11 +8,12 @@ import { asegurarAdministrador, limpiarSesiones } from './auth/operadores.js'
 import { asegurarAplicaciones, alinearAlcances } from './auth/aplicaciones.js'
 import { prepararTelemetria, hayMongo as telemetriaEnMongo } from './analitica/eventos.js'
 import { estadoListas, hayListas, iniciarListas } from './aml/listas.js'
+import { estadoTemporizador, iniciarTemporizadorListas } from './aml/temporizador.js'
 import { cargarGafiDesdeMongo, estadoGafi, listasVencidas } from './aml/paises.js'
 import { correoEncendido, correoRemitente } from './correo/enviar.js'
 import { biometriaConfigurada, proveedorBiometria } from './kyc/biometria.js'
 import { migrarFotosDelEstado, prepararCaducidad, conservacionConfigurada } from './kyc/fotosDocumento.js'
-import { migrarFotosCredencialDelEstado } from './kyc/fotoCredencial.js'
+import { migrarFotosCredencialDelEstado, cifrarRetratosEnClaro } from './kyc/fotoCredencial.js'
 import { verificarCadena } from './audit/bitacora.js'
 import { cargaPesadas } from './middleware/proteger.js'
 import { sesionRouter } from './routes/sesion.js'
@@ -44,9 +45,46 @@ const app = express()
 // Render añade a la derecha, no la que pueda inventarse el cliente.
 app.set('trust proxy', 1)
 
-// CORS abierto solo tiene sentido para las apps del ecosistema, que se
-// identifican con clave de API; el panel se sirve desde el mismo origen.
-app.use(cors())
+/*
+ * CORS: abierto para las apps, cerrado para el panel.
+ *
+ * Antes era `app.use(cors())` a secas, o sea `Access-Control-Allow-Origin: *`
+ * en todas las rutas, incluidas las del panel de cumplimiento.
+ *
+ * Conviene decir con precisión por qué eso NO era una puerta abierta, para no
+ * inflar el arreglo: sin cookies de sesión, una página ajena no puede robar el
+ * token del operador, porque el navegador no se lo adjunta solo. Y las rutas de
+ * aplicación piden clave de API, que un navegador ajeno tampoco tiene.
+ *
+ * Pero `*` sobre `/api/panel` no aportaba absolutamente nada —el panel se sirve
+ * desde este mismo servicio, así que es del mismo origen y no necesita CORS
+ * para nada— y ampliaba la superficie sin motivo. Lo que no aporta y suma
+ * riesgo, se quita.
+ *
+ * Si algún día el panel se sirve desde otro dominio, se enumeran sus orígenes
+ * en `GENESIS_ORIGENES_PANEL`, separados por comas. Lista cerrada, nunca `*`.
+ */
+const origenesPanel = String(process.env.GENESIS_ORIGENES_PANEL || '')
+  .split(',').map((s) => s.trim()).filter(Boolean)
+
+const corsPanel = cors({
+  origin(origen, responder) {
+    // Sin cabecera `Origin` no hay nada cruzado: es la propia página del panel,
+    // o `curl`, o una sonda. Negarlo rompería el panel sin proteger nada.
+    if (!origen) return responder(null, true)
+    // `false` no es un error: son cabeceras que no se ponen, y el navegador
+    // corta solo. Lanzar aquí devolvería un 500 y ensuciaría los registros con
+    // algo que no es una avería.
+    return responder(null, origenesPanel.includes(origen))
+  },
+  credentials: true,
+})
+
+const corsApps = cors()
+
+app.use('/api/panel', corsPanel)
+app.use((req, res, siguiente) =>
+  req.path.startsWith('/api/panel') ? siguiente() : corsApps(req, res, siguiente))
 // 25 MB porque la prueba de vida manda hasta ocho fotogramas en base64 en una
 // sola petición. La app los reduce a 720 px —unos 40 kB cada uno— pero las
 // versiones ya publicadas mandan la foto entera, de dos megas larga, y esas
@@ -213,6 +251,7 @@ app.get('/healthz', (_req, res) => {
   // respondiendo, con los datos vivos solo en memoria hasta el próximo
   // reinicio. Por eso cuenta para el estado: es la avería que se paga tarde.
   const guardaBien = almacen.ultimoVolcado?.ok !== false
+  const tempo = estadoTemporizador()
   const listo = hayListas() && cadena.integra && motor === 'mongodb' && guardaBien
   res.json({
     estado: listo ? 'ok' : 'degradado',
@@ -231,6 +270,16 @@ app.get('/healthz', (_req, res) => {
          tamizado sirve de algo tiene que verse sin entrar al panel. */
       listasRegistros: listas.registros,
       listasDiasDesdeDescarga: listas.diasDesdeDescarga,
+      /* EL TAMIZADO CONTINUO, ¿ESTA CORRIENDO?
+         Las listas se actualizan solas cada 24 h. Lo que hay que poder ver
+         desde fuera no es que el temporizador exista, sino que siguio
+         corriendo: `atrasado` se pone en true si se paso vuelta y media sin
+         completar una, y `fallosSeguidos` distingue una caida puntual de la
+         OFAC de una averia de verdad. */
+      listasAlDiaSolas: tempo.encendido,
+      listasUltimaCorrida: tempo.ultimaCorrida,
+      listasTemporizadorAtrasado: tempo.atrasado,
+      listasFallosSeguidos: tempo.fallosSeguidos,
       biometria: biometriaConfigurada(),
       proveedorBiometria: proveedorBiometria(),
       /* La política publicada promete conservar los datos de verificación cinco
@@ -435,6 +484,19 @@ export async function arrancar(): Promise<void> {
       `${retratos.fallidas} sin mover`)
   }
 
+  /* Y una vez fuera del estado, cifrados. Va DESPUES de la mudanza a proposito:
+     lo que acaba de mudarse ya sale cifrado de `guardarFoto`, y lo que queda por
+     cifrar es solo lo que estaba guardado en claro de antes. */
+  const cerrados = await cifrarRetratosEnClaro().catch((e) => {
+    console.error('[genesis-id] no se pudieron cifrar los retratos:', e?.message)
+    return null
+  })
+  if (cerrados && (cerrados.cifrados || cerrados.fallidos)) {
+    console.log(
+      `[genesis-id] retratos de credencial cifrados: ${cerrados.cifrados}, ` +
+      `${cerrados.fallidos} sin cifrar`)
+  }
+
   // Las listas se cargan DESPUES de abrir el almacen: viven en Mongo, en su
   // propia coleccion, y antes de eso no hay de donde traerlas.
   const fichas = await iniciarListas().catch((e) => {
@@ -450,6 +512,12 @@ export async function arrancar(): Promise<void> {
   console.log(
     `[genesis-id] listas del GAFI: plenaria del ${gafi.fecha} (${gafi.origen}) · ` +
     `${gafi.altoRiesgo.length} en llamamiento, ${gafi.vigilancia.length} bajo vigilancia`)
+
+  /* Y a partir de acá se mantienen solas. Va después de cargar las listas por
+     una razón concreta: la primera vuelta del temporizador REEMPLAZA lo que
+     haya, y si arrancara antes de que el almacén tenga lo suyo, un fallo de
+     descarga dejaría el servicio sin listas en vez de con las de ayer. */
+  iniciarTemporizadorListas()
 
   const admin = asegurarAdministrador()
   const appsNuevas = asegurarAplicaciones()

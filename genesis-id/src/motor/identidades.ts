@@ -495,11 +495,26 @@ export interface EntradaRostro {
 /**
  * Cotejo del rostro.
  *
- * Ni el selfie ni la foto del documento se guardan: se cotejan y se descartan.
- * Lo que queda en el expediente es el veredicto, la puntuación y —si hubo
- * reto— qué gesto se pidió y si se cumplió. Con eso un operador puede revisar
- * la decisión sin que Genesis ID se convierta en un depósito de fotos de
- * documentos, que es el peor dato que se puede acumular.
+ * QUE SE GUARDA DE VERDAD, QUE ESTE COMENTARIO DECIA MAL.
+ *
+ * Este texto afirmaba que «ni el selfie ni la foto del documento se guardan».
+ * Era cierto cuando se escribio y dejo de serlo, y el comentario no se movio.
+ * Peor: se cito como si fuera la conducta del sistema en un diagnostico que
+ * salio de casa, o sea que un comentario viejo acabo siendo una afirmacion
+ * falsa sobre privacidad delante de terceros.
+ *
+ * Lo que pasa hoy, leido del codigo:
+ *   - El fotograma del cotejo SI se guarda, cifrado con AES-256-GCM, en la
+ *     coleccion de documentos y con el mismo plazo de cinco anios. Se hizo a
+ *     proposito para poder revisar a mano un cotejo dudoso.
+ *   - Si la identidad no tiene retrato, ese mismo fotograma se copia ademas
+ *     como foto de credencial (mas abajo en esta funcion).
+ *   - Las fotos del documento tambien se guardan cifradas.
+ *   - Los fotogramas de la prueba de vida NO se guardan: van al proveedor y
+ *     no vuelven a tocar disco.
+ *
+ * En el expediente en claro queda solo el veredicto, la puntuacion y que gesto
+ * se pidio. Las imagenes viven aparte y cifradas.
  */
 export async function adjuntarBiometria(
   idn: string, entrada: EntradaRostro, origen: string,

@@ -26,6 +26,20 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
 import { dirname } from 'path'
 import { coleccionAparte, archivoAparte, store } from '../store.js'
+import { cifrar, descifrar, archivoConfigurado } from '../lib/cripto.js'
+
+// POR QUE SE CIFRA, Y POR QUE NO CADUCA
+//
+// Es la cara de una persona. Estaba guardada en claro, mientras que ESA MISMA
+// CARA —el fotograma del cotejo biometrico— si se cifraba en la coleccion de
+// documentos. La misma imagen, dos tratos distintos, y el peor de los dos era
+// el que se quedaba para siempre. Se cifra con la misma llave y el mismo
+// AES-256-GCM que el resto del archivo.
+//
+// Lo que NO cambia es el plazo: el retrato no caduca, a proposito. Las fotos
+// del documento se sueltan a los cinco anios de la decision porque son prueba
+// del tramite; el retrato ES la credencial, y una credencial que se borra sola
+// deja de ser una credencial. Son cosas distintas aunque se parezcan.
 
 const NOMBRE = 'fotosCredencial'
 
@@ -64,28 +78,38 @@ function escribirMapa(m: Mapa): void {
 
 /** Guarda el retrato de una identidad. Reemplaza el que hubiera. */
 export async function guardarFoto(idn: string, base64: string): Promise<void> {
+  /* `?? base64` y no un `return` seco: sin llave configurada se guarda en claro,
+     que es exactamente lo que pasaba antes de este cambio. Negarse a guardar
+     dejaria a la persona sin credencial, y una credencial que falta es un fallo
+     visible que rompe el producto; una guardada en claro es el estado anterior,
+     que ya se publica en `/healthz` como `conservacionDocumentos: false`. */
+  const guardable = cifrar(base64) ?? base64
   const c = coleccion()
   if (c) {
     await c.replaceOne(
       { _id: idn },
-      { _id: idn, foto: base64, guardadaEn: new Date() },
+      { _id: idn, foto: guardable, cifrada: guardable !== base64, guardadaEn: new Date() },
       { upsert: true },
     )
     return
   }
   const m = leerMapa()
-  m[idn] = base64
+  m[idn] = guardable
   escribirMapa(m)
 }
 
 /** El retrato de una identidad, o `null` si no tiene. */
 export async function leerFoto(idn: string): Promise<string | null> {
   const c = coleccion()
-  if (c) {
-    const d = await c.findOne({ _id: idn })
-    return typeof d?.foto === 'string' && d.foto ? d.foto : null
-  }
-  return leerMapa()[idn] ?? null
+  const guardada = c
+    ? (await c.findOne({ _id: idn }))?.foto
+    : leerMapa()[idn]
+  if (typeof guardada !== 'string' || !guardada) return null
+  /* `descifrar` devuelve tal cual lo que nunca se cifro, asi que los retratos
+     viejos se siguen viendo sin tener que migrar nada primero. Si devuelve null
+     es que hay llave equivocada o el dato esta manipulado: en ese caso vale mas
+     un hueco que una imagen de otra persona. */
+  return descifrar(guardada)
 }
 
 /** Borra el retrato. No falla si no había ninguno. */
@@ -144,4 +168,58 @@ export async function migrarFotosCredencialDelEstado(): Promise<{
   // retratos, la mudanza no ha servido para nada.
   if (movidas) await store.guardarYa()
   return { movidas, fallidas }
+}
+
+/**
+ * Cifra los retratos que quedaron guardados en claro antes de este cambio.
+ *
+ * Sin esto el arreglo solo protege a quien se verifique de hoy en adelante, y
+ * las caras que ya estan guardadas —que son justo las que llevan mas tiempo
+ * expuestas— se quedarian en claro para siempre. Corre al arrancar, una vez, y
+ * no hace nada si no hay nada que cifrar.
+ *
+ * Se cifra y se vuelve a escribir de una pieza con `replaceOne`, asi que un
+ * corte a mitad deja el retrato entero: o el viejo o el nuevo, nunca a medias.
+ */
+export async function cifrarRetratosEnClaro(): Promise<{ cifrados: number; fallidos: number }> {
+  // Sin llave no hay nada que hacer, y decir que se cifro algo seria mentira.
+  if (!archivoConfigurado()) return { cifrados: 0, fallidos: 0 }
+
+  let cifrados = 0, fallidos = 0
+  const enClaro = (v: unknown): v is string =>
+    typeof v === 'string' && v.length > 0 && !v.startsWith('v1.')
+
+  const c = coleccion()
+  if (c) {
+    const pendientes = await c.find({ foto: { $not: /^v1\./ } }).toArray()
+    for (const d of pendientes) {
+      if (!enClaro(d?.foto)) continue
+      try {
+        const cerrada = cifrar(d.foto)
+        if (!cerrada) { fallidos++; continue }
+        await c.replaceOne(
+          { _id: d._id },
+          { _id: d._id, foto: cerrada, cifrada: true, guardadaEn: d.guardadaEn ?? new Date() },
+        )
+        cifrados++
+      } catch (e: any) {
+        fallidos++
+        console.error(`[fotoCredencial] no se pudo cifrar el retrato de ${d?._id}:`, e?.message)
+      }
+    }
+    return { cifrados, fallidos }
+  }
+
+  const m = leerMapa()
+  let cambio = false
+  for (const [idn, foto] of Object.entries(m)) {
+    if (!enClaro(foto)) continue
+    const cerrada = cifrar(foto)
+    if (!cerrada) { fallidos++; continue }
+    m[idn] = cerrada
+    cifrados++
+    cambio = true
+  }
+  if (cambio) escribirMapa(m)
+  return { cifrados, fallidos }
 }

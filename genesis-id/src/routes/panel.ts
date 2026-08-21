@@ -11,6 +11,7 @@ import {
   cargarListas, estadoListas, buscar as buscarEnListas,
   importarDeOfac, importarTexto, cargarDesdeMongo,
 } from '../aml/listas.js'
+import { estadoTemporizador, unaVuelta } from '../aml/temporizador.js'
 import { consultar, verificarCadena, anclaje, registrar, sellar } from '../audit/bitacora.js'
 import { resumenMovimientos, buscarMovimientos } from '../aml/almacenMovimientos.js'
 import { crearOperador, PERMISOS } from '../auth/operadores.js'
@@ -408,7 +409,22 @@ panelRouter.get('/casos/:id/reporte', exigePermiso('caso.reportar'), async (req,
 // ─────────────────────────────────────────────────────────────────────────────
 
 panelRouter.get('/listas', exigePermiso('listas.ver'), (_req, res) => {
-  res.json({ estado: estadoListas(), gafi: estadoGafi() })
+  // El estado del temporizador va acá y no solo en `/healthz` porque quien
+  // tiene que darse cuenta de que el tamizado continuo se paró es el operador
+  // de cumplimiento, y ese mira el panel, no la sonda de salud.
+  res.json({ estado: estadoListas(), gafi: estadoGafi(), automatico: estadoTemporizador() })
+})
+
+/**
+ * Dispara a mano la vuelta que normalmente corre sola.
+ *
+ * No sustituye al botón de la OFAC de más abajo: sirve para comprobar que el
+ * camino automático funciona, con el mismo turno y el mismo registro, sin
+ * esperar veinticuatro horas a saberlo.
+ */
+panelRouter.post('/listas/ahora', exigePermiso('listas.recargar'), async (req, res) => {
+  const r = await unaVuelta(`panel:${req.operador!.email}`)
+  res.status(r.ok ? 200 : 502).json({ ...r, estado: estadoListas(), automatico: estadoTemporizador() })
 })
 
 /**

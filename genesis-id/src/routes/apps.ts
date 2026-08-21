@@ -239,8 +239,13 @@ appsRouter.post('/identidades/:id/biometria', limite(20), pesada, exigeApp('iden
 /**
  * Foto de la credencial.
  *
- * Es la única imagen que Genesis ID guarda, y va aparte del cotejo: aquella se
- * compara y se descarta, esta se conserva porque la credencial tiene que verse
+ * NO es la única imagen que se guarda, aunque este comentario lo dijera: el
+ * fotograma del cotejo y las fotos del documento también se conservan, cifradas
+ * y con plazo de cinco años. Lo que distingue al retrato es el plazo: los otros
+ * caducan a los cinco años de la decisión, este NO caduca, porque es la
+ * credencial y una credencial que se borra sola deja de serlo.
+ *
+ * Se conserva aparte del expediente porque la credencial tiene que verse
  * completa en cualquier app del ecosistema, no solo en el teléfono que la subió.
  */
 appsRouter.post('/identidades/:id/foto', limite(20), pesada, exigeApp('identidad.documento'), async (req, res) => {
