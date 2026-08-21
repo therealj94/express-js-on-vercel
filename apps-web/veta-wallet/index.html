@@ -1099,6 +1099,43 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 .cha-pago a{display:inline-block;margin-top:9px;font-size:12.5px;color:var(--oroLt)}
 
 .cha-pie{display:flex;align-items:center;gap:9px;padding:11px 12px;border-top:1px solid var(--linea2)}
+
+/* ── NOTAS DE VOZ ─────────────────────────────────────────────────────────
+   El micrófono vive al lado del clip y del avión, con el mismo disco de 42px:
+   es un hermano suyo, no un botón nuevo que haya que aprender. */
+.cha-mic{flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;
+  cursor:pointer;border:1px solid var(--linea2);background:var(--campo);color:var(--bruma);
+  transition:color .18s,border-color .18s,background .18s}
+.cha-mic svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round}
+.cha-mic:hover{color:var(--crema);border-color:var(--linea)}
+/* Grabando: coral, no oro. El oro de esta casa es la marca y una accion
+   buena; esto es un estado que hay que cortar, y se distingue de un vistazo
+   del boton de mandar que tiene justo al lado. */
+.cha-mic.grabando{background:rgba(240,119,107,.16);border-color:var(--coral);color:var(--coral)}
+.cha-mic-pt{width:13px;height:13px;border-radius:3px;background:var(--coral)}
+
+/* La barra de grabacion, encima del campo. Ocupa su sitio en vez de flotar:
+   flotando taparia el ultimo mensaje, que es justo lo que se esta
+   contestando. */
+.cha-grab{display:flex;align-items:center;gap:10px;padding:10px 14px;
+  border-top:1px solid rgba(240,119,107,.28);background:rgba(240,119,107,.07)}
+.cha-grab-pt{flex:none;width:9px;height:9px;border-radius:50%;background:var(--coral);
+  animation:chaLate 1.1s ease-in-out infinite}
+@keyframes chaLate{0%,100%{opacity:1}50%{opacity:.25}}
+.cha-grab-t{font:600 14px/1 var(--mono);color:var(--coral);font-variant-numeric:tabular-nums}
+.cha-grab-p{flex:1;font-size:12.5px;color:var(--humo);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cha-grab-x{flex:none;border:0;background:transparent;color:var(--bruma);
+  font:500 12.5px/1 var(--sans);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.cha-grab-x:hover{color:var(--crema)}
+
+/* La nota dentro de la burbuja. El reproductor es el del navegador —sabe de
+   teclado, de lectores de pantalla y del boton de pausa del auricular— y lo
+   unico que se le pone encima es el ancho y los segundos. */
+.cha-voz{display:flex;align-items:center;gap:8px}
+.cha-voz audio{width:100%;max-width:230px;height:36px}
+.cha-voz-t{flex:none;font:600 11.5px/1 var(--mono);color:var(--humo);font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion: reduce){.cha-grab-pt{animation:none}}
 .cha-pie input{flex:1;min-width:0;padding:12px 14px;border-radius:100px;
   border:1px solid var(--linea2);background:var(--campo);font-size:14px;color:var(--crema)}
 .cha-pie input:focus{outline:none;border-color:var(--campoBr)}

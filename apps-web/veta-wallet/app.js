@@ -6023,6 +6023,81 @@ const VETA = (() => {
     } finally { chatSt.mandando = false; $('#chat-txt')?.focus(); }
   }
 
+
+  /* ── GRABAR Y MANDAR UNA NOTA DE VOZ ─────────────────────────────────────
+   *
+   * Se toca para empezar y se toca para mandar. NO se mantiene apretado: en
+   * una web el «mantener pulsado» se corta solo cuando el dedo se desliza sin
+   * querer o cuando el navegador decide que fue un gesto de scroll, y la nota
+   * se pierde a media frase. Dos toques es aburrido y no falla.
+   *
+   * El contador se actualiza solo, sin repintar el chat entero: repintar cada
+   * segundo tira el foco del campo de texto y hace parpadear las imágenes ya
+   * cargadas.
+   */
+  let vozDesde = 0;
+  let vozReloj = null;
+
+  function vozContar() {
+    clearInterval(vozReloj);
+    vozReloj = setInterval(() => {
+      const e = $('#cha-grab-t');
+      if (!e) return;
+      const seg = Math.floor((Date.now() - vozDesde) / 1000);
+      e.textContent = `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, '0')}`;
+      // Tope de tres minutos: una nota más larga que eso no cabe en 8MB y
+      // fallaría al subir, después de que alguien la grabara entera.
+      if (seg >= 180) chatVoz();
+    }, 250);
+  }
+
+  async function chatVoz() {
+    if (!chatSt.con || chatSt.subiendo) return;
+
+    // ── segundo toque: cerrar y mandar ──
+    if (chatSt.grabando) {
+      clearInterval(vozReloj);
+      const segundos = (Date.now() - vozDesde) / 1000;
+      chatSt.grabando = false;
+      const trozo = await CHAT.grabarFin(false);
+      if (!trozo) { pintarChat(); return avisar(t('cha.vozCorta')); }
+      chatSt.subiendo = true;
+      pintarChat();
+      try {
+        const adj = await CHAT.subirVoz(trozo, segundos);
+        await CHAT.enviarAdjunto(chatSt.con.id, adj, '');
+        await chatCargarMsgs();
+        chatCargarConvs();
+      } catch (e) {
+        avisar(e?.code === 413 ? t('cha.pesa') : t('cha.errVoz'));
+      } finally { chatSt.subiendo = false; pintarChat(); }
+      return;
+    }
+
+    // ── primer toque: pedir el micrófono y arrancar ──
+    try {
+      vozDesde = await CHAT.grabarInicio();
+      chatSt.grabando = true;
+      pintarChat();
+      vozContar();
+    } catch (e) {
+      /* Que el micrófono esté negado y que no haya micrófono son cosas
+         distintas, y la salida también: una se arregla en los permisos del
+         navegador y la otra no se arregla. */
+      const negado = /NotAllowed|Permission/i.test(String(e?.name || e?.message || ''));
+      avisar(negado ? t('cha.vozNegado') : t('cha.vozSinMic'));
+    }
+  }
+
+  /** Arrepentirse. Lo grabado se tira y no se sube nada. */
+  async function chatVozCancelar() {
+    if (!chatSt.grabando) return;
+    clearInterval(vozReloj);
+    chatSt.grabando = false;
+    await CHAT.grabarFin(true);
+    pintarChat();
+  }
+
   async function chatAdjuntar(input) {
     const f = input?.files?.[0];
     input.value = '';
@@ -6346,6 +6421,7 @@ const VETA = (() => {
     if (m.tipo === 'imagen') return t('cha.unaFoto');
     if (m.tipo === 'video') return t('cha.unVideo');
     if (m.tipo === 'archivo') return t('cha.unArchivo');
+    if (m.tipo === 'voz') return t('cha.unaVoz');
     return m.texto || '';
   }
 
@@ -6494,12 +6570,29 @@ const VETA = (() => {
       </div>
       ${chatSt.ficha ? chatFicha() : ''}${chatHoja()}
       <div class="cha-msgs" id="chat-msgs">${cuerpo}</div>
+      ${chatSt.grabando ? `
+      <div class="cha-grab">
+        <span class="cha-grab-pt"></span>
+        <span class="cha-grab-t" id="cha-grab-t">0:00</span>
+        <span class="cha-grab-p">${t('cha.vozGrabando')}</span>
+        <button type="button" class="cha-grab-x" onclick="VETA.chatVozCancelar()">${t('cha.vozCancelar')}</button>
+      </div>` : ''}
       <form class="cha-pie" onsubmit="return VETA.chatMandar(event)">
         <label class="cha-clip" title="${t('cha.adjuntar')}">
           <svg viewBox="0 0 24 24"><path d="M21 11.5 12.5 20a5 5 0 0 1-7-7l8.5-8.5a3.4 3.4 0 0 1 4.8 4.8L10.3 17.8a1.8 1.8 0 0 1-2.5-2.5l7.8-7.8"/></svg>
           <input type="file" onchange="VETA.chatAdjuntar(this)" hidden>
         </label>
         <input id="chat-txt" placeholder="${t('cha.escribi')}" autocomplete="off" maxlength="2000">
+        ${/* El micrófono solo aparece si el navegador sabe grabar. Un botón que
+              al tocarlo dice «tu navegador no puede» es peor que no ponerlo. */''}
+        ${CHAT.puedeGrabar() ? `
+        <button type="button" class="cha-mic${chatSt.grabando ? ' grabando' : ''}"
+                aria-label="${t(chatSt.grabando ? 'cha.vozParar' : 'cha.vozGrabar')}"
+                onclick="VETA.chatVoz()">
+          ${chatSt.grabando
+            ? `<span class="cha-mic-pt"></span>`
+            : `<svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></svg>`}
+        </button>` : ''}
         <button class="cha-manda" type="submit" aria-label="${t('cha.mandar')}">
           ${chatSt.subiendo ? '<span class="girando"></span>'
             : `<svg viewBox="0 0 24 24"><path d="M22 3 11 14M22 3l-7 19-4-8-8-4z"/></svg>`}
@@ -6602,6 +6695,17 @@ const VETA = (() => {
     } else if (m.tipo === 'archivo') {
       adj = `<a class="cha-arch" href="${esc(CHAT.urlArchivo(m.archivo))}" target="_blank" rel="noopener">
                <svg viewBox="0 0 24 24">${ICO.doc}</svg>${esc(m.nombre || t('cha.unArchivo'))}</a>`;
+    } else if (m.tipo === 'voz') {
+      /* Una nota de voz se OYE en la burbuja: no es una tarjeta que se baja.
+         Se usa el reproductor del navegador —`controls`— en vez de dibujar uno
+         propio: el del sistema ya sabe de teclado, de lectores de pantalla y
+         del botón de pausa del auricular, y ninguna de esas tres cosas se
+         consigue gratis pintando barritas. */
+      const segs = CHAT.segundosDeVoz(m.nombre);
+      adj = `<div class="cha-voz">
+               <audio src="${esc(CHAT.urlArchivo(m.archivo))}" controls preload="metadata"></audio>
+               ${segs ? `<span class="cha-voz-t">${segs}s</span>` : ''}
+             </div>`;
     }
 
     // En un grupo hace falta saber quien habla; en un cara a cara sobra.
@@ -8374,7 +8478,7 @@ const VETA = (() => {
            // PULSE CHAT. Los manejadores van en el HTML que genera la vista, asi
            // que sin figurar aca los botones del chat no hacen nada.
            chatEntrar, chatAbrir, chatCerrar, chatMandar, chatBuscar, chatGrupo,
-           chatAdjuntar, chatReparar, chatCodigo, chatCodigoCopiar,
+           chatAdjuntar, chatVoz, chatVozCancelar, chatReparar, chatCodigo, chatCodigoCopiar,
            chatVerFicha, chatFichaCerrar, chatEnviarOrigen, chatGuardarContacto,
            chatHojaCerrar, chatHojaOk,
            chatOlvidar, chatGrupoInvitar, chatGrupoNombre, chatGrupoSalir,
@@ -8416,5 +8520,10 @@ const VETA = (() => {
            _bienvenidaAura: () => auraBienvenida(true),
            _auraTxt: () => AURA_TXT,
            _identidad: x => { identidad = x; },
+           /* Abrir un hilo sin relevo detrás. Es la única forma de probar las
+              notas de voz de punta a punta: hace falta una conversación
+              abierta, y montarla de verdad exigiría dos cuentas dadas de alta
+              contra el servidor de mensajes. */
+           _chatCon: c => { chatSt.con = c; chatSt.msgs = []; pintarChat(); },
            _estado: () => ({ sesion, cartera, identidad, movimientos, tarjeta, vistaActual, modo, ocultos }) };
 })();

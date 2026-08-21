@@ -123,6 +123,121 @@ const CHAT = (() => {
     return { id: d.id, tipo, nombre: fichero.name || '' };
   }
 
+
+  /* ── NOTAS DE VOZ ─────────────────────────────────────────────────────────
+   *
+   * Se graba con MediaRecorder, que trae el navegador, y se sube por el mismo
+   * `/subir` que ya usan las fotos. No hace falta nada nuevo del otro lado
+   * salvo que el relevo acepte el tipo `voz`.
+   *
+   * POR QUE `voz` Y NO `archivo`
+   *
+   * Porque se pintan distinto: una nota de voz se oye en la burbuja, con su
+   * duración a la vista; un mp3 adjuntado es una tarjeta que se baja. Meterlas
+   * en el mismo saco obligaría a adivinar por el mime cuál es cuál, y un audio
+   * que alguien adjunta a propósito acabaría pareciendo una nota suya.
+   *
+   * EL FORMATO LO ELIGE EL NAVEGADOR
+   *
+   * Safari graba en mp4/aac y Chrome en webm/opus. No se fuerza ninguno: se
+   * pregunta cuál soporta y se usa ese. Forzar webm deja a los iPhone sin
+   * poder grabar, que es la mitad de la gente.
+   */
+  const FORMATOS = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/ogg;codecs=opus',
+  ];
+
+  const puedeGrabar = () =>
+    typeof MediaRecorder !== 'undefined' &&
+    !!navigator.mediaDevices?.getUserMedia &&
+    FORMATOS.some(f => { try { return MediaRecorder.isTypeSupported(f); } catch { return false; } });
+
+  let grabadora = null;
+  let pista = null;
+
+  /**
+   * Empieza a grabar. Devuelve el instante de arranque para poder contar los
+   * segundos en pantalla; quien llama decide cómo los enseña.
+   */
+  async function grabarInicio() {
+    if (grabadora) throw new Error('ya se está grabando');
+    /* `echoCancellation` y `noiseSuppression` los hace el propio navegador y
+       la diferencia se oye: sin ellos una nota grabada en la calle llega
+       inservible. */
+    pista = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+    const mime = FORMATOS.find(f => { try { return MediaRecorder.isTypeSupported(f); } catch { return false; } });
+    grabadora = new MediaRecorder(pista, mime ? { mimeType: mime } : undefined);
+    /* Los trozos viven en una variable capturada por el manejador, NO colgados
+       de `grabadora`. `ondataavailable` llega DESPUES de `stop()`, y para
+       entonces `grabarFin` ya puso `grabadora` en null: leerlo desde ahi tira
+       «Cannot read properties of null» y la nota se pierde entera justo al
+       mandarla. Costo la primera prueba de punta a punta. */
+    const trozos = [];
+    grabadora._trozos = trozos;
+    grabadora.ondataavailable = e => { if (e.data?.size) trozos.push(e.data); };
+    grabadora.start();
+    return Date.now();
+  }
+
+  /** Corta el micrófono. Se llama SIEMPRE, salga bien o mal la grabación. */
+  function soltarMicrofono() {
+    try { pista?.getTracks().forEach(t => t.stop()); } catch {}
+    pista = null;
+  }
+
+  /**
+   * Termina y devuelve la nota lista para subir, o null si no se grabó nada.
+   * `cancelar` tira lo grabado: es lo que hace el gesto de deslizar para
+   * arrepentirse, y no debe dejar rastro.
+   */
+  function grabarFin(cancelar = false) {
+    return new Promise((ok) => {
+      if (!grabadora) { soltarMicrofono(); return ok(null); }
+      const g = grabadora;
+      grabadora = null;
+      g.onstop = () => {
+        soltarMicrofono();
+        if (cancelar || !g._trozos.length) return ok(null);
+        const tipo = g.mimeType || 'audio/webm';
+        const trozo = new Blob(g._trozos, { type: tipo });
+        // Menos de medio segundo es un toque sin querer, no una nota.
+        if (trozo.size < 1200) return ok(null);
+        ok(trozo);
+      };
+      try { g.stop(); } catch { soltarMicrofono(); ok(null); }
+    });
+  }
+
+  /** Sube la nota y devuelve su adjunto, con la duración en segundos. */
+  async function subirVoz(trozo, segundos) {
+    if (trozo.size > TOPE) { const e = new Error('más de 8MB'); e.code = 413; throw e; }
+    const datos = await new Promise((ok, mal) => {
+      const l = new FileReader();
+      l.onload = () => ok(String(l.result).split(',')[1] || '');
+      l.onerror = () => mal(new Error('no se pudo leer la nota'));
+      l.readAsDataURL(trozo);
+    });
+    /* La duración viaja en el NOMBRE porque el relevo no tiene un campo para
+       ella y añadirle uno obligaría a desplegar los dos lados a la vez. Es
+       fea pero es honesta: se lee al pintar y si falta, se enseña sin ella. */
+    const d = await pedir('/subir', firmado({
+      tipo: 'voz', datos, mime: trozo.type || 'audio/webm',
+      nombre: `voz-${Math.max(1, Math.round(segundos))}s`,
+    }), 120000);
+    return { id: d.id, tipo: 'voz', nombre: `voz-${Math.max(1, Math.round(segundos))}s` };
+  }
+
+  /** Los segundos que dice el nombre de la nota, o null si no se sabe. */
+  const segundosDeVoz = (nombre) => {
+    const m = /^voz-(\d+)s$/.exec(String(nombre || ''));
+    return m ? Number(m[1]) : null;
+  };
+
   const enviarAdjunto = (para, adj, texto) =>
     pedir('/enviar', firmado({ para, texto: texto || '', tipo: adj.tipo,
                                archivo: adj.id, nombre: adj.nombre }));
@@ -172,5 +287,6 @@ const CHAT = (() => {
            conversaciones, bandeja, enviar, subir, enviarAdjunto, leido, olvidar,
            buscar, ficha, perfil, pago,
            grupoCrear, grupoInfo, grupoEditar, grupoInvitar, grupoSalir, grupoUnirse,
-           esGrupo, urlArchivo };
+           esGrupo, urlArchivo,
+           puedeGrabar, grabarInicio, grabarFin, subirVoz, segundosDeVoz };
 })();

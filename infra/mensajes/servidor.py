@@ -171,14 +171,18 @@ def en_linea(mime):
     intente, gratis y con nuestro nombre.
 
     Así que inline SOLO lo que el chat tiene que enseñar en la burbuja:
-    imágenes y videos. El SVG se queda fuera a propósito aunque su mime
-    empiece por image/ — no es un mapa de píxeles, es XML que puede traer
-    <script> dentro. Todo lo demás baja como archivo y no corre nada.
+    imágenes, videos y notas de voz. El SVG se queda fuera a propósito aunque
+    su mime empiece por image/ — no es un mapa de píxeles, es XML que puede
+    traer <script> dentro. Todo lo demás baja como archivo y no corre nada.
+
+    Y el audio: una nota de voz hay que poder oírla en la burbuja, y un
+    audio no ejecuta nada — no hay «audio/html». Se deja pasar por eso, no
+    por comodidad.
     """
     m = str(mime or '').split(';')[0].strip().lower()
     if 'svg' in m:
         return False
-    return m.startswith('image/') or m.startswith('video/')
+    return m.startswith('image/') or m.startswith('video/') or m.startswith('audio/')
 
 
 def trozo_pedido(cabecera, total):
@@ -502,7 +506,10 @@ class Relevo(BaseHTTPRequestHandler):
                 # mensaje: primero se sube aquí, después /enviar referencia el
                 # id. Así un adjunto reintentado no duplica megas en el hilo.
                 tipo = str(b.get('tipo', ''))
-                if tipo not in ('imagen', 'video', 'archivo'):
+                # `voz` es una nota grabada en la app, no un archivo de audio
+                # adjuntado: se pinta como nota con su duración, no como una
+                # tarjeta de descarga. Por eso es un tipo aparte de `archivo`.
+                if tipo not in ('imagen', 'video', 'archivo', 'voz'):
                     return self._json(400, {'error': 'tipo inválido'})
                 try:
                     datos = base64.b64decode(str(b.get('datos', '')), validate=True)
@@ -535,7 +542,7 @@ class Relevo(BaseHTTPRequestHandler):
                 # índice — un id inventado daría burbujas rotas en la app
                 tipo = str(b.get('tipo', ''))
                 archivo = str(b.get('archivo', ''))
-                adj = (tipo in ('imagen', 'video', 'archivo')
+                adj = (tipo in ('imagen', 'video', 'archivo', 'voz')
                        and archivo in d.get('archivos', {}))
                 if ID_GRUPO.fullmatch(para):
                     # el permiso de escribir en un grupo es ser miembro AHORA:
