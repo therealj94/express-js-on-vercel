@@ -18,7 +18,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 const carpeta = mkdtempSync(join(tmpdir(), 'bitacora-'))
-process.env.GENESIS_DATOS = join(carpeta, 'genesis.json')
+process.env.GENESIS_DATA_FILE = join(carpeta, 'genesis.json')
 process.env.GENESIS_BITACORA_CLAVE = 'una llave de bitacora larga de sobra para scrypt'
 
 const { registrar, verificarCadena } = await import('../audit/bitacora.js')

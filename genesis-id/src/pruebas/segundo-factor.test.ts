@@ -19,7 +19,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 const carpeta = mkdtempSync(join(tmpdir(), 'segundofactor-'))
-process.env.GENESIS_DATOS = join(carpeta, 'genesis.json')
+process.env.GENESIS_DATA_FILE = join(carpeta, 'genesis.json')
 process.env.GENESIS_2FA_ROLES = 'admin,cumplimiento'
 
 const ops = await import('../auth/operadores.js')

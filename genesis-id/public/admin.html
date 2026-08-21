@@ -202,6 +202,13 @@ pre{background:#0F1927;border:1px solid var(--line2);border-radius:10px;padding:
 .fotos .falta figcaption{color:var(--mut)}
 .nota-foto{font-size:11px;color:var(--faint);margin:2px 0 4px;line-height:1.5}
 
+/* La ventana del segundo factor. Clase propia y no `#velo`, que ya es la
+   pantalla de carga, ni `.lupa`, que es el visor de documentos: reutilizar
+   cualquiera de las dos habria roto una de ellas sin que se notara hasta que
+   alguien abriera las dos a la vez. */
+.sfCapa{position:fixed;inset:0;z-index:960;display:grid;place-items:center;padding:20px;
+ background:rgba(2,6,10,.86);backdrop-filter:blur(3px);overflow:auto}
+.sfCapa .caja{width:100%}
 .lupa{position:fixed;inset:0;z-index:900;background:rgba(2,6,10,.93);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:14px;padding:22px;cursor:zoom-out}
@@ -373,6 +380,21 @@ pre{background:#0F1927;border:1px solid var(--line2);border-radius:10px;padding:
     <input id="eMail" type="email" autocomplete="username" required>
     <label>Contraseña</label>
     <input id="eClave" type="password" autocomplete="current-password" required>
+    <!--
+      El código no se pide de entrada: solo aparece cuando el servidor contesta
+      que hace falta. Enseñarlo siempre haría que quien todavía no lo tiene
+      puesto se quedara mirando un campo que no puede rellenar.
+      `inputmode=numeric` saca el teclado de números en el móvil, y
+      `autocomplete=one-time-code` deja que el teléfono lo ofrezca solo.
+    -->
+    <div id="eDosFactoresCaja" style="display:none;margin-top:14px">
+      <label>Código de su aplicación de autenticación</label>
+      <input id="eCodigo" inputmode="numeric" autocomplete="one-time-code"
+             maxlength="14" placeholder="000000">
+      <p class="sub" style="margin:6px 0 0">
+        Si perdió el teléfono, escriba aquí uno de sus códigos de recuperación.
+      </p>
+    </div>
     <button class="p" style="width:100%;margin-top:18px" type="submit">Entrar</button>
     <p id="eError" class="sub" style="color:var(--bad);margin-top:12px;display:none"></p>
     <!--
@@ -399,6 +421,12 @@ pre{background:#0F1927;border:1px solid var(--line2);border-radius:10px;padding:
     </div>
     <div class="quien">
       <span id="qNombre"></span><span class="rol" id="qRol"></span>
+      <!--
+        El botón dice en qué estado está, no solo qué hace. «Segundo factor» a
+        secas no le diría a nadie si lo tiene puesto, y esa es justo la pregunta.
+      -->
+      <button class="g" id="qSegundoFactor" onclick="activarSegundoFactor()"
+              style="display:none"></button>
       <button class="g" onclick="salir()">Salir</button>
     </div>
   </header>
@@ -417,6 +445,7 @@ pre{background:#0F1927;border:1px solid var(--line2);border-radius:10px;padding:
 
 <div class="aguja" id="aguja"></div>
 
+<script src="/qr-core.js"></script>
 <script>
 let sesion = localStorage.getItem('gid.sesion') || ''
 let yo = null
@@ -556,14 +585,31 @@ async function entrar(ev) {
   try {
     const r = await api(RUTA_ENTRAR, {
       method: 'POST',
-      body: JSON.stringify({ email: $('#eMail').value, contrasena: $('#eClave').value }),
+      body: JSON.stringify({
+        email: $('#eMail').value,
+        contrasena: $('#eClave').value,
+        codigo: $('#eCodigo').value,
+      }),
     })
     sesion = r.token
     localStorage.setItem('gid.sesion', sesion)
     yo = r.operador
+    $('#eCodigo').value = ''
     arrancar()
     if (yo.debeCambiarContrasena) avisar('Debe cambiar la contraseña inicial', true)
+    // El empujón al segundo factor va DESPUÉS de dejarlo entrar, no en vez de
+    // hacerlo: cerrarle la puerta a quien todavía no lo activó dejaría fuera al
+    // equipo entero el día que esto se despliega.
+    else if (yo.debeActivarSegundoFactor) avisarSegundoFactor()
   } catch (e) {
+    /* El servidor distingue «falta el código» de «datos incorrectos», y eso no
+       filtra nada: para llegar a ese error ya hay que traer la contraseña
+       buena. Sin distinguirlo esta pantalla no sabría si pedir el código o
+       decir que el correo no existe. */
+    if (e && e.datos && e.datos.segundoFactor) {
+      $('#eDosFactoresCaja').style.display = 'block'
+      $('#eCodigo').focus()
+    }
     // Se enseña lo que dice el servidor, sin adornarlo: «Correo o contraseña
     // incorrectos» (que a propósito no distingue cuál de los dos falla, para
     // no revelar qué correos son de operadores), «Demasiados intentos…» o el
@@ -574,6 +620,155 @@ async function entrar(ev) {
     error.style.display = 'block'
   } finally {
     if (boton) { boton.disabled = false; boton.textContent = 'Entrar' }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Segundo factor
+// ─────────────────────────────────────────────────────────────────────────────
+
+/*
+ * Tres pantallas encadenadas, y el orden importa:
+ *
+ *   1. Se pide el secreto y se enseña el QR. Hasta acá NO queda activo nada.
+ *   2. El operador escribe un código, lo que demuestra que su teléfono ya lo
+ *      tiene. Recién ahí se activa. Darlo por activo sin comprobarlo es la
+ *      forma más fácil de dejar a alguien fuera de su propia cuenta.
+ *   3. Salen los códigos de recuperación, una sola vez. Esta pantalla no se
+ *      cierra sola: hay que confirmar que se apuntaron, porque quien la cierre
+ *      sin leerla y pierda el teléfono va a necesitar que un administrador le
+ *      quite el segundo factor a mano.
+ */
+
+/* Quien ya lo tiene puesto no necesita ningún botón: el suyo no se puede
+   volver a preparar, y ofrecérselo solo lleva a un error. Se le dice que está
+   activo y se acabó. */
+function pintarSegundoFactor() {
+  const b = $('#qSegundoFactor')
+  if (!b || !yo) return
+  if (yo.segundoFactorActivo) {
+    b.textContent = '2FA activo'
+    b.style.display = ''
+    b.disabled = true
+    b.title = 'Su segundo factor está activo. Para quitarlo hace falta un administrador.'
+    return
+  }
+  b.textContent = yo.debeActivarSegundoFactor ? 'Activar 2FA · pendiente' : 'Activar 2FA'
+  b.style.display = ''
+  b.disabled = false
+  b.title = yo.debeActivarSegundoFactor
+    ? 'Su rol lo exige y todavía no lo tiene puesto'
+    : 'Recomendado para cualquier cuenta que pueda ver documentos'
+}
+
+function avisarSegundoFactor() {
+  avisar('Su rol exige segundo factor. Actívelo desde su nombre, arriba a la derecha.', true)
+}
+
+async function activarSegundoFactor() {
+  let preparado
+  try {
+    preparado = await api('/sesion/segundo-factor/preparar', { method: 'POST' })
+  } catch (e) { return avisar(e.message, true) }
+
+  const legible = preparado.secreto.replace(/(.{4})/g, '$1 ').trim()
+  const dibujo = (typeof QR !== 'undefined' && QR.svg)
+    ? QR.svg(preparado.uri, 200)
+    : ''
+
+  const caja = document.createElement('div')
+  caja.className = 'sfCapa'
+  caja.innerHTML = `
+    <div class="caja" style="max-width:460px">
+      <h2 style="margin-top:0">Segundo factor</h2>
+      <p class="sub">
+        Escanee este código con Google Authenticator, Authy, 1Password o
+        cualquier aplicación de autenticación.
+      </p>
+      ${dibujo ? `<div style="text-align:center;margin:16px 0">${dibujo}</div>` : ''}
+      <p class="sub" style="margin-bottom:4px">
+        Si no puede escanear, escriba esta clave a mano en la aplicación:
+      </p>
+      <code style="display:block;padding:10px;border-radius:8px;background:rgba(127,127,127,.14);
+                   word-break:break-all;letter-spacing:.5px;font-size:14px">${legible}</code>
+      <label style="margin-top:18px">Escriba el código que le sale ahora</label>
+      <input id="sfCodigo" inputmode="numeric" autocomplete="one-time-code"
+             maxlength="6" placeholder="000000">
+      <p id="sfError" class="sub" style="color:var(--bad);display:none;margin-top:10px"></p>
+      <div style="display:flex;gap:10px;margin-top:18px">
+        <button class="p" id="sfOk" style="flex:1">Activar</button>
+        <button id="sfNo" style="flex:1">Ahora no</button>
+      </div>
+    </div>`
+  document.body.appendChild(caja)
+  const cerrar = () => caja.remove()
+  caja.querySelector('#sfNo').onclick = cerrar
+  caja.querySelector('#sfCodigo').focus()
+
+  const intentar = async () => {
+    const boton = caja.querySelector('#sfOk')
+    const error = caja.querySelector('#sfError')
+    error.style.display = 'none'
+    boton.disabled = true; boton.textContent = 'Comprobando…'
+    try {
+      const r = await api('/sesion/segundo-factor/activar', {
+        method: 'POST',
+        body: JSON.stringify({ codigo: caja.querySelector('#sfCodigo').value }),
+      })
+      cerrar()
+      yo.segundoFactorActivo = true
+      yo.debeActivarSegundoFactor = false
+      pintarSegundoFactor()
+      mostrarRespaldos(r.respaldos)
+    } catch (e) {
+      error.textContent = e.message
+      error.style.display = 'block'
+      boton.disabled = false; boton.textContent = 'Activar'
+    }
+  }
+  caja.querySelector('#sfOk').onclick = intentar
+  caja.querySelector('#sfCodigo').onkeydown = (ev) => { if (ev.key === 'Enter') intentar() }
+}
+
+/* Los códigos de recuperación salen UNA vez. Esta pantalla no se cierra sola ni
+   se cierra tocando fuera: hay que marcar la casilla. Quien la cierre sin leer y
+   pierda el teléfono necesita que un administrador le quite el segundo factor a
+   mano, y eso es justo lo que hay que evitar. */
+function mostrarRespaldos(codigos) {
+  const caja = document.createElement('div')
+  caja.className = 'sfCapa'
+  caja.innerHTML = `
+    <div class="caja" style="max-width:460px">
+      <h2 style="margin-top:0">Guarde estos códigos ahora</h2>
+      <p class="sub">
+        Son de un solo uso y no se van a volver a mostrar. Son la única forma de
+        entrar si pierde el teléfono. Guárdelos fuera del teléfono.
+      </p>
+      <div id="rLista" style="padding:14px;border-radius:8px;background:rgba(127,127,127,.14);
+                  line-height:2;letter-spacing:1px;font-size:15px;text-align:center">
+        ${codigos.map((c) => `<code class="rCodigo" style="display:block">${c}</code>`).join('')}
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button id="rCopiar" style="flex:1">Copiar</button>
+      </div>
+      <label style="display:flex;gap:10px;align-items:flex-start;margin-top:18px;cursor:pointer">
+        <input type="checkbox" id="rLeido" style="width:auto;margin-top:3px">
+        <span class="sub" style="margin:0">Los apunté y los guardé en un sitio seguro</span>
+      </label>
+      <button class="p" id="rOk" style="width:100%;margin-top:14px" disabled>Listo</button>
+    </div>`
+  document.body.appendChild(caja)
+  caja.querySelector('#rCopiar').onclick = () => {
+    navigator.clipboard.writeText(codigos.join('\n'))
+      .then(() => avisar('Códigos copiados'))
+      .catch(() => avisar('No se pudieron copiar. Apúntelos a mano.', true))
+  }
+  caja.querySelector('#rLeido').onchange = (ev) => {
+    caja.querySelector('#rOk').disabled = !ev.target.checked
+  }
+  caja.querySelector('#rOk').onclick = () => {
+    caja.remove()
+    avisar('Segundo factor activado')
   }
 }
 
@@ -617,10 +812,23 @@ const PESTANAS = [
 
 function arrancar() {
   $('#entrada').classList.add('oculto')
-  $('#velo').classList.remove('oculto')
+  /* EL VELO SE REARMA, y no es cosmético: `veloApagado` se ponía en true la
+     primera vez y no volvía atrás nunca. Al salir y volver a entrar sin
+     recargar la página, `arrancar()` mostraba el velo otra vez y `apagarVelo()`
+     se salía por el `if` de la primera línea, así que ya no lo quitaba nadie.
+     Y como el velo conservaba su `opacity: 0` del desvanecido anterior, quedaba
+     INVISIBLE pero tapando la página entera: el panel se veía perfecto y no
+     respondía a un solo clic. Lo encontró la prueba del segundo factor al
+     entrar dos veces seguidas. */
+  veloApagado = false
+  const velo = $('#velo')
+  velo.style.transition = ''
+  velo.style.opacity = ''
+  velo.classList.remove('oculto')
   $('#app').classList.remove('oculto')
   $('#qNombre').textContent = yo.nombre || yo.email
   $('#qRol').textContent = yo.rol
+  pintarSegundoFactor()
   $('#nav').innerHTML = PESTANAS.filter((p) => !p.permiso || puede(p.permiso))
     .map((p) => p.fuera
       // El título sale de la propia pestaña. Estaba escrito a mano y era el de

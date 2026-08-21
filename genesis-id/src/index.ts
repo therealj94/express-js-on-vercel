@@ -188,7 +188,7 @@ app.get(['/genesis-core', '/cerebro-3d', '/core'], (_req, res) => {
  * cuatro y ninguno más — y si mañana se añade uno y falta la línea, el fallo
  * es un 404 evidente en la consola, no un fichero interno publicado sin que
  * nadie se entere. */
-for (const modulo of ['cerebro-3d.js', 'cara-3d.js', 'voz-core.js', 'guion-core.js', 'fichas-core.js', 'ambiente.js']) {
+for (const modulo of ['cerebro-3d.js', 'cara-3d.js', 'voz-core.js', 'guion-core.js', 'fichas-core.js', 'ambiente.js', 'qr-core.js']) {
   app.get('/' + modulo, (_req, res) => {
     res.type('application/javascript')
     res.sendFile(join(__dirname, '..', 'public', modulo))

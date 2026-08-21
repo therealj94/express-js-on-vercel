@@ -23,7 +23,7 @@ import { tmpdir } from 'os'
 import { join, dirname } from 'path'
 
 const carpeta = mkdtempSync(join(tmpdir(), 'retrato-'))
-process.env.GENESIS_DATOS = join(carpeta, 'genesis.json')
+process.env.GENESIS_DATA_FILE = join(carpeta, 'genesis.json')
 process.env.GENESIS_ARCHIVO_CLAVE = 'una llave de prueba bien larga para scrypt'
 
 const { guardarFoto, leerFoto, borrarFoto, cifrarRetratosEnClaro } =

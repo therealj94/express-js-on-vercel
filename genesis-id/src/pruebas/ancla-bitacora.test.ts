@@ -19,7 +19,7 @@ import { join } from 'path'
 import { createServer, type Server } from 'http'
 
 const carpeta = mkdtempSync(join(tmpdir(), 'ancla-'))
-process.env.GENESIS_DATOS = join(carpeta, 'genesis.json')
+process.env.GENESIS_DATA_FILE = join(carpeta, 'genesis.json')
 process.env.GENESIS_BITACORA_CLAVE = 'una llave de bitacora larga de sobra para probar'
 
 const { registrar } = await import('../audit/bitacora.js')
