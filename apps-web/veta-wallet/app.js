@@ -6032,6 +6032,91 @@ const VETA = (() => {
 
 
 
+
+  /* ── LA LLAMADA CHIQUITA ─────────────────────────────────────────────────
+   *
+   * Seguir hablando mientras se usa el resto del ecosistema. Lo importante de
+   * como esta hecho: NO se desmonta nada. Es el mismo elemento, la misma
+   * conexion y el mismo <video>; solo cambia una clase y el navegador anima
+   * el tamaño. Volver a montar un <video> con WebRTC corta el flujo un
+   * instante —y a veces no vuelve— y el punto entero de esto es que la
+   * llamada NO se corte.
+   */
+  let llaMini = false;
+
+  function llamadaMini() {
+    llaMini = true;
+    $('#lla')?.classList.add('mini');
+    // Se quita el rol de dialogo: minimizada ya no atrapa el foco ni el
+    // lector de pantalla, porque la persona esta usando la app de atras.
+    $('#lla')?.removeAttribute('aria-modal');
+    pintarLlamada(LLAMADA.cuento());
+  }
+
+  function llamadaGrande() {
+    llaMini = false;
+    $('#lla')?.classList.remove('mini');
+    $('#lla')?.setAttribute('aria-modal', 'true');
+    pintarLlamada(LLAMADA.cuento());
+  }
+
+  /* Tocar la burbuja la agranda — pero no si se toco el boton de colgar, ni
+     si lo que hubo fue un arrastre. Sin esa segunda condicion, mover la
+     burbuja de sitio la abriria a pantalla completa al soltarla. */
+  function llamadaTocarMini(ev) {
+    if (!llaMini) return;
+    if (ev.target.closest('.lla-mini-x')) return;
+    /* Y tampoco el propio boton de achicar: su clic SUBE hasta aqui —el
+       manejador vive en la capa entera— y como para entonces la llamada ya
+       esta chiquita, la volvia a agrandar en el mismo gesto. Achicar no
+       hacia nada y parecia que el boton estaba roto. */
+    if (ev.target.closest('#lla-min')) return;
+    if (llaArrastro) { llaArrastro = false; return; }
+    llamadaGrande();
+  }
+
+  /* Arrastrar la burbuja. Se guarda donde la dejo la persona: si vuelve al
+     centro cada vez que se repinta, tapa justo lo que estaba mirando. */
+  let llaArrastro = false;
+  let llaPos = null;
+
+  function llamadaArrastrar(capa) {
+    if (capa._arrastrable) return;
+    capa._arrastrable = true;
+    let x0 = 0, y0 = 0, movido = 0;
+
+    const mover = (e) => {
+      const p = e.touches ? e.touches[0] : e;
+      const dx = p.clientX - x0, dy = p.clientY - y0;
+      movido = Math.max(movido, Math.abs(dx) + Math.abs(dy));
+      if (movido < 6) return;          // un toque tiembla; eso no es arrastrar
+      llaArrastro = true;
+      const c = capa.getBoundingClientRect();
+      // Se queda DENTRO de la pantalla: una burbuja arrastrada fuera del
+      // borde no se puede recuperar sin colgar.
+      const izq = Math.min(Math.max(0, c.left + dx), innerWidth - c.width);
+      const arr = Math.min(Math.max(0, c.top + dy), innerHeight - c.height);
+      llaPos = { izq, arr };
+      capa.style.inset = `${arr}px auto auto ${izq}px`;
+      x0 = p.clientX; y0 = p.clientY;
+      e.preventDefault();
+    };
+    const soltar = () => {
+      document.removeEventListener('pointermove', mover);
+      document.removeEventListener('pointerup', soltar);
+      // El «fue arrastre» se olvida en el siguiente tic, DESPUES del click.
+      setTimeout(() => { llaArrastro = false; }, 0);
+    };
+    capa.addEventListener('pointerdown', (e) => {
+      if (!llaMini || e.target.closest('.lla-mini-x')) return;
+      const p = e.touches ? e.touches[0] : e;
+      x0 = p.clientX; y0 = p.clientY; movido = 0;
+      document.addEventListener('pointermove', mover);
+      document.addEventListener('pointerup', soltar);
+    });
+    capa.addEventListener('click', llamadaTocarMini);
+  }
+
   /* ── LA LLAMADA ──────────────────────────────────────────────────────────
    *
    * Ata tres cosas: el buzón de señales del relevo (chat.js), el WebRTC
@@ -6102,9 +6187,18 @@ const VETA = (() => {
     if (!capa) return;
     const activa = c.estado !== 'libre';
     capa.classList.toggle('oculto', !activa);
+    llamadaArrastrar(capa);
+    // Con video la burbuja lo enseña; sin video enseña el nombre y un pulso,
+    // que en una llamada de voz es lo unico que hay para mirar.
+    capa.classList.toggle('con-video', !!c.hayVideo);
     clearInterval(llaReloj); llaReloj = null;
 
     if (!activa) {
+      // Al colgar, la ventana vuelve a su sitio: la proxima llamada no debe
+      // aparecer chiquita en una esquina porque la anterior quedo asi.
+      capa.classList.remove('mini');
+      capa.style.inset = '';
+      llaMini = false; llaPos = null;
       /* El motivo de la caída se dice UNA vez y con nombre propio. «Sin
          camino» es el caso del TURN que no tenemos, y confundirlo con
          «colgaste» deja a la gente probando diez veces creyendo que es su
@@ -6128,6 +6222,9 @@ const VETA = (() => {
     const nombre = chatSt.con?.id === c.conQuien
       ? (chatSt.con.nombre || c.conQuien) : (c.conQuien || '');
     $('#lla-quien').textContent = nombre;
+    const mq = $('#lla-mini-quien'); if (mq) mq.textContent = nombre;
+    // Si la persona la movio de sitio, ahi se queda.
+    if (llaMini && llaPos) capa.style.inset = `${llaPos.arr}px auto auto ${llaPos.izq}px`;
     $('#lla-entra').classList.toggle('oculto', c.estado !== 'entrando');
     $('#lla-mandos').classList.toggle('oculto', c.estado === 'entrando');
     // Compartir pantalla solo donde existe: en iPhone no hay, y un botón que
@@ -8636,7 +8733,8 @@ const VETA = (() => {
            chatEntrar, chatAbrir, chatCerrar, chatMandar, chatBuscar, chatGrupo,
            chatAdjuntar, chatVoz, chatVozCancelar,
            llamadaLlamar, llamadaContestar, llamadaRechazar, llamadaColgar,
-           llamadaMic, llamadaCam, llamadaPantalla, chatReparar, chatCodigo, chatCodigoCopiar,
+           llamadaMic, llamadaCam, llamadaPantalla,
+           llamadaMini, llamadaGrande, chatReparar, chatCodigo, chatCodigoCopiar,
            chatVerFicha, chatFichaCerrar, chatEnviarOrigen, chatGuardarContacto,
            chatHojaCerrar, chatHojaOk,
            chatOlvidar, chatGrupoInvitar, chatGrupoNombre, chatGrupoSalir,

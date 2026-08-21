@@ -135,6 +135,33 @@ ok('a Beto le llega el de Ana', vb.hayFlujo && vb.pistas.includes('video'), JSON
 ok('y el video tiene pixeles de verdad', va.ancho > 0, `${va.ancho}px de ancho`)
 await ana.pag.screenshot({path:'/tmp/lla-hablando.png'})
 
+console.log('\nACHICAR LA LLAMADA Y SEGUIR USANDO LA APP\n')
+{
+  const flujoAntes = await ana.pag.evaluate(()=>document.getElementById('lla-remoto')?.srcObject?.id || null)
+  await ana.pag.click('#lla-min'); await ana.pag.waitForTimeout(600)
+  ok('queda chiquita', await ana.pag.evaluate(()=>document.getElementById('lla').classList.contains('mini')))
+  ok('la llamada SIGUE en pie', (await ana.pag.evaluate(()=>LLAMADA.cuento().estado)) === 'hablando')
+  ok('es EL MISMO flujo, no se remonto nada',
+     (await ana.pag.evaluate(()=>document.getElementById('lla-remoto')?.srcObject?.id || null)) === flujoAntes)
+  ok('el video sigue corriendo', await ana.pag.evaluate(()=>{
+     const v=document.getElementById('lla-remoto'); return !v.paused && v.videoWidth>0 }))
+
+  // Se navega a otra parte del ecosistema con la llamada viva.
+  await ana.pag.evaluate(()=>VETA.vista('billetera')); await ana.pag.waitForTimeout(800)
+  ok('se puede navegar a la billetera', (await ana.pag.evaluate(()=>VETA.dondeEstoy())) === 'billetera')
+  ok('y la llamada NO se corto', (await ana.pag.evaluate(()=>LLAMADA.cuento().estado)) === 'hablando')
+  ok('a Beto tampoco se le corto', (await beto.pag.evaluate(()=>LLAMADA.cuento().estado)) === 'hablando')
+  ok('la burbuja sigue a la vista', await ana.pag.isVisible('#lla'))
+  await ana.pag.screenshot({path:'/tmp/lla-mini.png'})
+
+  // Y se vuelve a agrandar tocandola.
+  await ana.pag.click('#lla-remoto'); await ana.pag.waitForTimeout(600)
+  ok('tocarla la agranda', !(await ana.pag.evaluate(()=>document.getElementById('lla').classList.contains('mini'))))
+  ok('y el video sigue vivo', await ana.pag.evaluate(()=>{
+     const v=document.getElementById('lla-remoto'); return !v.paused && v.videoWidth>0 }))
+  await ana.pag.evaluate(()=>VETA.vista('chat')); await ana.pag.waitForTimeout(400)
+}
+
 console.log('\nLos mandos\n')
 await ana.pag.click('#lla-mic'); await ana.pag.waitForTimeout(400)
 ok('silenciar apaga el microfono', !(await ana.pag.evaluate(()=>LLAMADA.cuento().micAbierto)))
