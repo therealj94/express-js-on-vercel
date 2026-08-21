@@ -54,15 +54,15 @@ window.AURA_SABER = [
   },
   {
     "id": "chat",
-    "tema": "PULSE CHAT",
+    "tema": "PULSE2CHAT",
     "palabras": [
       "pulse",
       "chat",
       "mensaje",
       "message"
     ],
-    "es": "PULSE CHAT es la mensajería del ecosistema: solo entra gente con Genesis ID aprobado, podés mandar dinero sin salir del hilo y cada pago deja su comprobante verificable en la cadena.",
-    "en": "PULSE CHAT is the ecosystem's messaging: only people with an approved Genesis ID get in, you can send money without leaving the thread, and every payment leaves its receipt verifiable on the chain."
+    "es": "PULSE2CHAT es la mensajería del ecosistema: solo entra gente con Genesis ID aprobado, podés mandar dinero sin salir del hilo y cada pago deja su comprobante verificable en la cadena.",
+    "en": "PULSE2CHAT is the ecosystem's messaging: only people with an approved Genesis ID get in, you can send money without leaving the thread, and every payment leaves its receipt verifiable on the chain."
   },
   {
     "id": "pay",
@@ -98,8 +98,8 @@ window.AURA_SABER = [
       "ecosistema",
       "ecosystem"
     ],
-    "es": "Orden Global es un ecosistema completo: tu dinero (Veta Wallet), tu gente (PULSE CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), todos conectados sobre nuestra propia cadena. Una cuenta, todas las puertas.",
-    "en": "Orden Global is a complete ecosystem: your money (Veta Wallet), your people (PULSE CHAT), your business (MyTokenPay) and your identity (Genesis ID), all connected over our own chain. One account, every door."
+    "es": "Orden Global es un ecosistema completo: tu dinero (Veta Wallet), tu gente (PULSE2CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), todos conectados sobre nuestra propia cadena. Una cuenta, todas las puertas.",
+    "en": "Orden Global is a complete ecosystem: your money (Veta Wallet), your people (PULSE2CHAT), your business (MyTokenPay) and your identity (Genesis ID), all connected over our own chain. One account, every door."
   },
   {
     "id": "comision",

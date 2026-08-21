@@ -119,6 +119,7 @@ ok('BETO recibe el video de CARO, sin haberse llamado', !!betoOyeCaro?.f, JSON.s
 ok('y CARO el de BETO', !!caroOyeBeto?.f, JSON.stringify(caroOyeBeto))
 ok('los tres cuadros estan en la rejilla de Ana',
    (await A.pag.$$('#gru-rejilla .gru-cuadro')).length === 3)
+ok('el boton de compartir pantalla se ve en el grupo', await A.pag.isVisible('#gru-pant'))
 await A.pag.screenshot({path:'/tmp/gru.png'})
 
 console.log('\nUno se va y los otros siguen\n')

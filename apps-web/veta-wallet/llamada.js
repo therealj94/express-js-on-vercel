@@ -1,11 +1,11 @@
-/* Llamadas de voz, video y pantalla dentro de PULSE CHAT.
+/* Llamadas de voz, video y pantalla dentro de PULSE2CHAT.
  *
  * ══════════════════════════════════════════════════════════════════════════
  * LO PRIMERO, PORQUE CAMBIA LO QUE SE PUEDE PROMETER
  *
  * Esto es una página web sin service worker ni notificaciones push. NO PUEDE
  * SONAR con la app cerrada. Una llamada solo entra si la otra persona tiene
- * PULSE CHAT abierto en ese momento. Quien llame a alguien que cerró la
+ * PULSE2CHAT abierto en ese momento. Quien llame a alguien que cerró la
  * pestaña no va a conseguir nada, y la pantalla se lo dice en vez de dejarlo
  * escuchando un tono que no suena en ningún sitio.
  *

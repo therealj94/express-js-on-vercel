@@ -1,4 +1,4 @@
-/* El cliente del relevo de mensajes — PULSE CHAT en el navegador.
+/* El cliente del relevo de mensajes — PULSE2CHAT en el navegador.
  *
  * El mismo servidor que usa el telefono (infra/mensajes, en el nodo del
  * cerebro): identidad = el correo de la cuenta de la wallet, y una llave que
@@ -93,7 +93,24 @@ const CHAT = (() => {
   // ── lo que se usa a diario ──────────────────────────────────────────────
   const conversaciones = () => pedir('/conversaciones', firmado({})).then(d => d.conversaciones || []);
   const bandeja = desde => pedir('/bandeja', firmado({ desde })).then(d => d.mensajes || []);
-  const enviar = (para, texto) => pedir('/enviar', firmado({ para, texto }));
+  /** Mandar. `cita` es el id del mensaje al que se responde, si se responde. */
+  const enviar = (para, texto, cita) =>
+    pedir('/enviar', firmado({ para, texto, ...(cita ? { cita } : {}) }));
+
+  /** Reaccionar. Tocar la misma reacción otra vez la quita. */
+  const reaccionar = (id, emoji) => pedir('/reaccion', firmado({ id, emoji }));
+
+  /* «Está escribiendo…». No se guarda en ningún sitio: viaja por el buzón de
+     señales, que vive en memoria y se vacía solo. Se avisa como mucho una vez
+     cada dos segundos — una petición por tecla sería ruido para el relevo y
+     no cambiaría nada en pantalla. */
+  let ultimoAviso = 0;
+  function escribiendo(para) {
+    const ahora = Date.now();
+    if (ahora - ultimoAviso < 2000) return;
+    ultimoAviso = ahora;
+    pedir('/escribiendo', firmado({ para })).catch(() => null);
+  }
 
   /* Un adjunto va en dos tiempos: primero el binario sube y devuelve su id, y
      despues el mensaje referencia ese id. Asi un adjunto reintentado no
@@ -290,6 +307,76 @@ const CHAT = (() => {
   const turno = () =>
     pedir('/turno', firmado({})).then(d => d.iceServers || []).catch(() => []);
 
+  /* ── QUE SUENE CON LA APP CERRADA ────────────────────────────────────────
+   *
+   * Un service worker vive fuera de la pagina: el navegador lo despierta
+   * cuando llega un aviso, aunque PULSE2CHAT este cerrado y el telefono
+   * bloqueado. Es lo unico que hace que una llamada sirva de verdad.
+   *
+   * CUANDO SE PIDE EL PERMISO, Y POR QUE NO ANTES
+   *
+   * NO al abrir la app. Un navegador que pide permiso de avisos apenas entras
+   * recibe un «no» casi siempre, y ese no es para siempre: no se puede volver
+   * a preguntar. Se pide cuando la persona ya hizo algo que lo justifica
+   * —mandar su primer mensaje— y ahi el permiso tiene sentido y se da.
+   *
+   * En iPhone solo funciona si la app se agrego a la pantalla de inicio. No
+   * es una limitacion nuestra y no se puede rodear; la app lo dice en vez de
+   * pedir un permiso que ese navegador no va a conceder.
+   */
+  const puedeAvisar = () =>
+    'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+
+  /** ¿Es un iPhone sin instalar? Ahí los avisos no existen. */
+  const iphoneSinInstalar = () =>
+    /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+    !window.matchMedia('(display-mode: standalone)').matches &&
+    !window.navigator.standalone;
+
+  let obrero = null;
+
+  async function registrarObrero() {
+    if (!puedeAvisar()) return null;
+    try {
+      obrero = await navigator.serviceWorker.register('sw.js');
+      return obrero;
+    } catch { return null; }
+  }
+
+  /**
+   * Pide el permiso y suscribe. Devuelve por qué no se pudo, si no se pudo,
+   * para que la pantalla lo diga con nombre propio.
+   */
+  async function pedirAvisos(llavePublica) {
+    if (!puedeAvisar()) return { ok: false, motivo: 'sin-soporte' };
+    if (iphoneSinInstalar()) return { ok: false, motivo: 'iphone-sin-instalar' };
+    if (Notification.permission === 'denied') return { ok: false, motivo: 'negado' };
+    if (!llavePublica) return { ok: false, motivo: 'sin-llave' };
+
+    const p = Notification.permission === 'granted'
+      ? 'granted' : await Notification.requestPermission();
+    if (p !== 'granted') return { ok: false, motivo: 'negado' };
+
+    const reg = obrero || await registrarObrero();
+    if (!reg) return { ok: false, motivo: 'sin-obrero' };
+    try {
+      const sus = await reg.pushManager.getSubscription()
+        || await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: base64aBytes(llavePublica),
+        });
+      await pedir('/suscribir', firmado({ suscripcion: sus.toJSON() }));
+      return { ok: true };
+    } catch { return { ok: false, motivo: 'fallo' }; }
+  }
+
+  /** La llave pública de VAPID viene en base64url y el navegador la quiere en bytes. */
+  function base64aBytes(s) {
+    const pad = '='.repeat((4 - (s.length % 4)) % 4);
+    const b = atob((s + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from([...b].map((c) => c.charCodeAt(0)));
+  }
+
   /** Deja una señal para el otro lado. Nunca lanza: una llamada no se cae
       porque un candidato ICE de veinte no llegara. */
   const senalar = (para, tipo, datos) =>
@@ -346,5 +433,7 @@ const CHAT = (() => {
            grupoCrear, grupoInfo, grupoEditar, grupoInvitar, grupoSalir, grupoUnirse,
            esGrupo, urlArchivo,
            puedeGrabar, grabarInicio, grabarFin, subirVoz, segundosDeVoz,
-           escuchar, dejarDeEscuchar, senalar, turno };
+           escuchar, dejarDeEscuchar, senalar, turno,
+           reaccionar, escribiendo,
+           puedeAvisar, iphoneSinInstalar, registrarObrero, pedirAvisos };
 })();

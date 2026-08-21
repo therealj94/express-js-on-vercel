@@ -4253,7 +4253,7 @@ const VETA = (() => {
       ${esferas}
       <div class="cerebro-pie">
         <!-- El sello de la cadena vive ABAJO, y no en la cabecera flotante:
-             ahí arriba caía justo encima de la esfera de PULSE CHAT y se comía
+             ahí arriba caía justo encima de la esfera de PULSE2CHAT y se comía
              el toque —medido con elementFromPoint en el centro exacto del
              botón, en tres tamaños de teléfono—. Un adorno que impide entrar a
              una app no es un adorno, es una avería. Aquí abajo tiene su propia
@@ -5753,7 +5753,7 @@ const VETA = (() => {
     else cobCopiar();
   }
 
-  // ── PULSE CHAT ─────────────────────────────────────────────────────────────
+  // ── PULSE2CHAT ─────────────────────────────────────────────────────────────
 
   /* La mensajeria del ecosistema, la misma que el telefono y contra el mismo
      relevo. Dos reglas heredadas de alla y que aqui no se relajan:
@@ -5785,7 +5785,7 @@ const VETA = (() => {
      pantallas: la derecha solo aparece con `data-abierto`. Se ataba a «hay un
      hilo abierto», pero la puerta de Genesis, el aviso de error y Mi perfil
      tambien viven ahi — asi que en un telefono, alguien sin Genesis ID abria
-     PULSE CHAT y veia la nada, y con el relevo caido veia esqueletos eternos
+     PULSE2CHAT y veia la nada, y con el relevo caido veia esqueletos eternos
      con el motivo real invisible. Todo lo que se pinte en esa columna tiene
      que abrirla. */
   /* PEDIR Y CONFIRMAR, CON LA CARA DE LA CASA.
@@ -5852,9 +5852,17 @@ const VETA = (() => {
   function chat() {
     return `
     <div class="cab">
-      <div><h2>PULSE CHAT <svg viewBox="0 0 60 14" style="width:52px;height:14px;vertical-align:-1px">
-        <path d="M0 7h18l4-5 5 9 4-6 3 2h26" fill="none" stroke="#E0937A" stroke-width="1.6" stroke-linejoin="round"/>
-      </svg></h2><div class="sub">${t('cha.sub')}</div></div>
+      ${/* El logo de la marca, no un garabato: el manual pide que el simbolo
+            se use tal cual y con su gradiente oficial. Va como imagen porque
+            redibujarlo a mano seria «cambiar los colores del gradiente», que
+            es justo lo que el manual prohibe. */''}
+      <div class="p2c-cab">
+        <img src="assets/p2c-simbolo.png" alt="" class="p2c-marca">
+        <div>
+          <h2 class="p2c-nombre">PULSE<b>2</b>CHAT</h2>
+          <div class="sub">${t('cha.sub')}</div>
+        </div>
+      </div>
     </div>
     <div class="chat" id="chat-caja" ${chatHayPanel() ? 'data-abierto' : ''}>
       <aside class="chat-lista" id="chat-lista">${chatLista()}</aside>
@@ -5999,8 +6007,18 @@ const VETA = (() => {
          pintan nunca mas hasta cambiar de conversacion. Se mira tambien el
          ultimo mensaje, que es lo que de verdad cambia. */
       const ult = (l) => (l && l.length ? l[l.length - 1].cuando : null);
+      /* Y las REACCIONES, que no mueven ni el largo ni la fecha del ultimo.
+         Sin esto, quien reaccionaba veia su reaccion al instante y la otra
+         persona no la veia NUNCA —hasta cambiar de conversacion y volver—,
+         porque el hilo se consideraba «igual» y no se repintaba. Se resume
+         en una cadena corta en vez de comparar objeto por objeto: es lo mismo
+         y no cuesta nada. */
+      const huellaReacs = (l) => (l || [])
+        .map((x) => (x.reacciones ? x.id + ':' + Object.values(x.reacciones).join('') : ''))
+        .filter(Boolean).join('|');
       const igual = callado && chatSt.msgs
-        && chatSt.msgs.length === m.length && ult(chatSt.msgs) === ult(m);
+        && chatSt.msgs.length === m.length && ult(chatSt.msgs) === ult(m)
+        && huellaReacs(chatSt.msgs) === huellaReacs(m);
       chatSt.msgs = m;
       chatSt.error = null;
       if (!igual) { pintarChat(); chatAlFinal(); }
@@ -6008,6 +6026,77 @@ const VETA = (() => {
       chatSt.error = chatMotivo(e);
       if (!callado) pintarChat();
     }
+  }
+
+
+  /* ── RESPONDER CITANDO, REACCIONES Y «ESTA ESCRIBIENDO» ──────────────────
+   *
+   * Tres cosas chicas que hacen que un chat se sienta vivo. Ninguna necesita
+   * infraestructura nueva: la cita y las reacciones viajan con el mensaje, y
+   * el aviso de que alguien teclea va por el buzon de señales que ya existe
+   * para las llamadas.
+   */
+
+  /** Empezar a responder a un mensaje. */
+  function chatCitar(id) {
+    const m = (chatSt.msgs || []).find((x) => x.id === id);
+    if (!m) return;
+    chatSt.citando = { id, de: m.de, texto: m.texto || chatResumen(m) };
+    pintarChat();
+    $('#chat-txt')?.focus();
+  }
+  function chatDejarCita() { chatSt.citando = null; pintarChat(); }
+
+  /** Reaccionar. Tocar la misma otra vez la quita — eso lo decide el relevo. */
+  async function chatReaccion(id, emoji) {
+    try {
+      await CHAT.reaccionar(id, emoji);
+      await chatCargarMsgs(true);
+    } catch { avisar(t('cha.errReaccion')); }
+    chatSt.reaccionando = null;
+    pintarChat();
+  }
+  function chatAbrirReaccion(id) {
+    chatSt.reaccionando = chatSt.reaccionando === id ? null : id;
+    pintarChat();
+  }
+
+  /* Quien esta escribiendo, y desde cuando. Se olvida solo a los tres
+     segundos: si la persona dejo de teclear, nadie manda un «ya pare» — se
+     asume por silencio, que es como funciona en todas partes. */
+  const escribiendo = new Map();     // correo -> cuando llego el ultimo aviso
+  let relojEscribe = null;
+
+  function chatAlguienEscribe(de, donde) {
+    if (chatSt.con?.id !== donde && chatSt.con?.id !== de) return;
+    escribiendo.set(de, Date.now());
+    pintarEscribiendo();
+    clearInterval(relojEscribe);
+    relojEscribe = setInterval(() => {
+      const antes = escribiendo.size;
+      for (const [k, v] of escribiendo) if (Date.now() - v > 3000) escribiendo.delete(k);
+      if (escribiendo.size !== antes) pintarEscribiendo();
+      if (!escribiendo.size) { clearInterval(relojEscribe); relojEscribe = null; }
+    }, 700);
+  }
+
+  /* Se pinta SOLO ese trozo y no el chat entero: repintar todo por cada tecla
+     ajena tira el foco del campo y hace parpadear las imagenes ya cargadas. */
+  function pintarEscribiendo() {
+    const caja = $('#cha-escribe');
+    if (!caja) return;
+    const quienes = [...escribiendo.keys()];
+    if (!quienes.length) { caja.classList.add('oculto'); caja.textContent = ''; return; }
+    const nombres = quienes.map((q) => q.split('@')[0]).join(', ');
+    caja.textContent = quienes.length === 1
+      ? `${nombres} ${t('cha.escribiendo')}`
+      : `${nombres} ${t('cha.escribiendoVarios')}`;
+    caja.classList.remove('oculto');
+  }
+
+  /** Se llama al teclear. El propio modulo se encarga de no inundar el relevo. */
+  function chatTecleando() {
+    if (chatSt.con) CHAT.escribiendo(chatSt.con.id);
   }
 
   async function chatMandar(ev) {
@@ -6018,7 +6107,8 @@ const VETA = (() => {
     chatSt.mandando = true;
     c.value = '';
     try {
-      await CHAT.enviar(chatSt.con.id, texto);
+      await CHAT.enviar(chatSt.con.id, texto, chatSt.citando?.id);
+      chatSt.citando = null;
       await chatCargarMsgs();
       chatCargarConvs();
     } catch (e) {
@@ -6064,6 +6154,28 @@ const VETA = (() => {
     }
   }
 
+  /* Achicar la de grupo. Mismo mecanismo que la de dos y por el mismo motivo:
+     solo cambia una clase, no se desmonta ni un <video>. Con varias personas
+     eso importa mas todavia — remontar cortaria el flujo de TODAS. */
+  let gruMini = false;
+  function grupoMini() {
+    gruMini = true;
+    $('#gru')?.classList.add('mini');
+    $('#gru')?.removeAttribute('aria-modal');
+    pintarGrupo(GRUPO.cuento());
+  }
+  function grupoGrande() {
+    gruMini = false;
+    $('#gru')?.classList.remove('mini');
+    $('#gru')?.setAttribute('aria-modal', 'true');
+    pintarGrupo(GRUPO.cuento());
+  }
+  function grupoTocarMini(ev) {
+    if (!gruMini) return;
+    if (ev.target.closest('.lla-mini-x') || ev.target.closest('#gru-min')) return;
+    grupoGrande();
+  }
+
   const grupoContestar = (v) => GRUPO.contestar(!!v).catch(() => avisar(t('lla.noSePudo')));
   const grupoRechazar = () => GRUPO.rechazar();
   const grupoColgar = () => GRUPO.colgar('yo');
@@ -6079,7 +6191,11 @@ const VETA = (() => {
     if (!capa) return;
     const activa = c.estado !== 'libre';
     capa.classList.toggle('oculto', !activa);
+    if (!capa._tocable) { capa._tocable = true; capa.addEventListener('click', grupoTocarMini); }
+    // Cuanta gente hay, para el sello de la burbuja achicada.
+    capa.dataset.cuantos = String(c.cuantos || 0);
     if (!activa) {
+      capa.classList.remove('mini'); gruMini = false;
       $('#gru-rejilla').innerHTML = '';
       if (c.motivo === 'solo') avisar(t('gru.sinNadie'));
       return;
@@ -6088,6 +6204,10 @@ const VETA = (() => {
     $('#gru-mandos').classList.toggle('oculto', c.estado === 'entrando');
     $('#gru-cuantos').textContent = c.estado === 'llamando'
       ? t('gru.llamando') : `${c.cuantos} ${t('gru.enLlamada')}`;
+    /* Compartir pantalla solo donde existe. En iPhone no hay getDisplayMedia
+       desde una web y no lo arregla nadie: el boton no aparece ahi en vez de
+       aparecer y no hacer nada. Misma regla que en la llamada de dos. */
+    $('#gru-pant').classList.toggle('oculto', !navigator.mediaDevices?.getDisplayMedia);
     $('#gru-mic').classList.toggle('apagado', !c.micAbierto);
     $('#gru-cam').classList.toggle('apagado', !c.camAbierta);
 
@@ -6218,7 +6338,7 @@ const VETA = (() => {
    * LO QUE HAY QUE TENER PRESENTE
    *
    * Esta es una página web sin push: NO SUENA con la app cerrada. Una llamada
-   * solo entra si la otra persona tiene PULSE CHAT abierto. Por eso el aviso
+   * solo entra si la otra persona tiene PULSE2CHAT abierto. Por eso el aviso
    * de «llamando…» dice cuánto lleva sonando y se rinde solo: dejar el tono
    * eternamente le hace creer a alguien que del otro lado hay un teléfono
    * sonando, y no lo hay.
@@ -6249,6 +6369,7 @@ const VETA = (() => {
        bucles de espera larga serian el doble de peticiones abiertas por
        telefono, y en un movil eso es bateria. */
     CHAT.escuchar((s) => {
+      if (s.tipo === 'escribe') return chatAlguienEscribe(s.de, s.datos?.donde);
       if (String(s.tipo || '').startsWith('g') && window.GRUPO) return GRUPO.recibir(s);
       return LLAMADA.recibir(s);
     });
@@ -6945,12 +7066,19 @@ const VETA = (() => {
         <span class="cha-grab-p">${t('cha.vozGrabando')}</span>
         <button type="button" class="cha-grab-x" onclick="VETA.chatVozCancelar()">${t('cha.vozCancelar')}</button>
       </div>` : ''}
+      <div class="cha-escribe oculto" id="cha-escribe"></div>
+      ${chatSt.citando ? `
+      <div class="cha-citando">
+        <div><b>${esc(chatSt.citando.de.split('@')[0])}</b><span>${esc(chatSt.citando.texto || '')}</span></div>
+        <button onclick="VETA.chatDejarCita()" aria-label="${t('cha.quitarCita')}">×</button>
+      </div>` : ''}
       <form class="cha-pie" onsubmit="return VETA.chatMandar(event)">
         <label class="cha-clip" title="${t('cha.adjuntar')}">
           <svg viewBox="0 0 24 24"><path d="M21 11.5 12.5 20a5 5 0 0 1-7-7l8.5-8.5a3.4 3.4 0 0 1 4.8 4.8L10.3 17.8a1.8 1.8 0 0 1-2.5-2.5l7.8-7.8"/></svg>
           <input type="file" onchange="VETA.chatAdjuntar(this)" hidden>
         </label>
-        <input id="chat-txt" placeholder="${t('cha.escribi')}" autocomplete="off" maxlength="2000">
+        <input id="chat-txt" placeholder="${t('cha.escribi')}" autocomplete="off" maxlength="2000"
+               oninput="VETA.chatTecleando()">
         ${/* El micrófono solo aparece si el navegador sabe grabar. Un botón que
               al tocarlo dice «tu navegador no puede» es peor que no ponerlo. */''}
         ${CHAT.puedeGrabar() ? `
@@ -7090,9 +7218,41 @@ const VETA = (() => {
     const firma = (!mio && chatSt.con?.esGrupo)
       ? `<span class="cha-de">${esc(m.de.split('@')[0])}</span>` : '';
 
+    // La cita: se lee del hilo por id, no se guarda copiada. Asi, si el
+    // original cambia o se va, la cita no queda contando algo viejo.
+    const citado = m.cita ? (chatSt.msgs || []).find((x) => x.id === m.cita) : null;
+    const cita = m.cita ? `
+      <div class="cha-cita">
+        <b>${esc(citado ? citado.de.split('@')[0] : t('cha.citaIda'))}</b>
+        <span>${esc(citado ? (citado.texto || chatResumen(citado)) : t('cha.citaIdaP'))}</span>
+      </div>` : '';
+
+    const reacs = m.reacciones || {};
+    const cuenta = {};
+    for (const e of Object.values(reacs)) cuenta[e] = (cuenta[e] || 0) + 1;
+    const mias = reacs[sesion?.correo?.toLowerCase()] || null;
+    const tira = Object.keys(cuenta).length ? `
+      <div class="cha-reacs">${Object.entries(cuenta).map(([e, n]) => `
+        <button class="cha-reac${e === mias ? ' mia' : ''}"
+                onclick="VETA.chatReaccion(${jsTxt(m.id)},${jsTxt(e)})">${esc(e)}${n > 1 ? ` ${n}` : ''}</button>`).join('')}</div>` : '';
+
+    const menu = chatSt.reaccionando === m.id ? `
+      <div class="cha-emojis">${['👍','❤️','😂','😮','🙏','🔥'].map((e) => `
+        <button onclick="VETA.chatReaccion(${jsTxt(m.id)},${jsTxt(e)})">${e}</button>`).join('')}</div>` : '';
+
     return `
-      <div class="cha-b ${mio ? 'cha-mio' : ''}">
-        <div class="cha-globo">${firma}${adj}${m.texto ? `<p>${esc(m.texto)}</p>` : ''}</div>
+      <div class="cha-b ${mio ? 'cha-mio' : ''}" data-id="${esc(m.id || '')}">
+        ${m.id ? `<div class="cha-gestos">
+          <button title="${t('cha.responder')}" onclick="VETA.chatCitar(${jsTxt(m.id)})">
+            <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v5"/></svg>
+          </button>
+          <button title="${t('cha.reaccionar')}" onclick="VETA.chatAbrirReaccion(${jsTxt(m.id)})">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01"/></svg>
+          </button>
+        </div>` : ''}
+        ${menu}
+        <div class="cha-globo">${cita}${firma}${adj}${m.texto ? `<p>${esc(m.texto)}</p>` : ''}</div>
+        ${tira}
         <time>${hora}</time>
       </div>`;
   }
@@ -7120,7 +7280,7 @@ const VETA = (() => {
       chipsVisita: ['¿Qué es Orden Global?', '¿Qué es ORIGEN?', '¿Es seguro?', 'Abrir mi cuenta'],
       vAbrir: 'Abrir mi cuenta',
       vSinCuenta: 'Eso ya es de tu cuenta, y todavía no tenés una — así que no hay saldo ni actividad de la que hablarte. En cuanto abrás la cuenta te lo contesto con tus números de verdad, nunca con un ejemplo.',
-      vNoSe: 'Eso todavía no lo sé contestar desde acá. Puedo hablarte de ORIGEN, de la cadena, de Genesis ID, de PULSE CHAT, de MyTokenPay o de todo el ecosistema junto. Y si preferís leerlo con calma, en ordenglobal.org está la casa entera contada.',
+      vNoSe: 'Eso todavía no lo sé contestar desde acá. Puedo hablarte de ORIGEN, de la cadena, de Genesis ID, de PULSE2CHAT, de MyTokenPay o de todo el ecosistema junto. Y si preferís leerlo con calma, en ordenglobal.org está la casa entera contada.',
       hola: 'Hola. Soy AU-RA, la inteligencia del ecosistema — modelo 1, en beta. Puedo llevarte a cualquier parte, dejarte un envío preparado o explicarte cómo funciona todo. ¿Empezamos con un recorrido?',
       bienv1: 'Hola, {nombre}. Soy AU-RA, la inteligencia de Orden Global.',
       bienv1Voz: 'Hola. Soy AU-RA, la inteligencia de Orden Global.',
@@ -7174,7 +7334,7 @@ const VETA = (() => {
         { pal: ['actividad', 'movimientos', 'historial', 'resumen'], txt: 'Resumen de la semana', di: 'resumen de la semana' },
         { pal: ['tarjeta', 'plastico'], txt: 'Mi tarjeta', di: 'llevame a la tarjeta' },
         { pal: ['cambiar', 'convertir', 'swap'], txt: 'Cambiar', di: 'llevame a cambiar' },
-        { pal: ['chat', 'mensaje', 'escribir', 'pulse'], txt: 'PULSE CHAT', di: 'llevame al chat' },
+        { pal: ['chat', 'mensaje', 'escribir', 'pulse'], txt: 'PULSE2CHAT', di: 'llevame al chat' },
         { pal: ['negocio', 'comercio', 'tienda', 'mytokenpay'], txt: 'Buscar negocios', di: 'buscar negocios' },
         { pal: ['remesa', 'enviar', 'pais', 'familia'], txt: 'Remesas', di: 'llevame a remesas' },
         { pal: ['verificar', 'identidad', 'genesis', 'kyc'], txt: 'Mi Genesis ID', di: 'estoy verificado' },
@@ -7193,7 +7353,7 @@ const VETA = (() => {
         cobrar: ['Cobrame 25', '¿Qué es MyTokenPay?'],
         cambiar: ['¿A cuánto está el ORIGEN?', '¿Cuánto es la comisión?'],
         tarjeta: ['¿Cuánto tengo?', 'Resumen de la semana'],
-        chat: ['¿Qué es PULSE CHAT?', '¿Estoy verificado?'],
+        chat: ['¿Qué es PULSE2CHAT?', '¿Estoy verificado?'],
         pay: ['Buscá cafeterías', '¿Qué es MyTokenPay?'],
         payex: ['Buscá cafeterías', 'Buscá hoteles'],
         remesas: ['¿Cuánto es la comisión?', '¿Cuánto tengo?'],
@@ -7214,10 +7374,10 @@ const VETA = (() => {
         origen: 'ORIGEN es la moneda de la cadena de Orden Global, y su valor está referenciado al oro: un ORIGEN es un gramin, la cincuentaicincoava parte de un gramo de oro, al precio del oro de hoy. La fórmula no la ponemos nosotros y no cambia, así que la podés rehacer con una calculadora. Se envía en segundos por nuestra propia cadena.',
         cadena: 'Orden Global corre sobre su propia Layer 1: la cadena 5550, con Hyperledger Besu, consenso QBFT y máquina Shanghai. Ya no vivimos prestados en la red de otro — más rápida, más nuestra, sin pedirle permiso a nadie. Todo se puede ver en ordenscan.com.',
         gid: 'Genesis ID es tu identidad para todo el ecosistema: te verificás UNA vez y quedás verificado en todas partes. Es lo que hace que del otro lado del chat o de un cobro siempre haya una persona real.',
-        chat: 'PULSE CHAT es la mensajería del ecosistema: solo entra gente con Genesis ID aprobado, podés mandar dinero sin salir del hilo y cada pago deja su comprobante verificable en la cadena.',
+        chat: 'PULSE2CHAT es la mensajería del ecosistema: solo entra gente con Genesis ID aprobado, podés mandar dinero sin salir del hilo y cada pago deja su comprobante verificable en la cadena.',
         pay: 'MyTokenPay es la capa de comercio: cobrás con un QR, explorás negocios que aceptan ORIGEN y pagás desde tu misma billetera.',
         aura: 'Soy AU-RA: la inteligencia de Orden Global, modelo 1, en beta. Navego por vos, te explico el ecosistema y te dejo pagos preparados — pero nunca firmo: tu dinero se mueve solo con tu contraseña. Y sigo creciendo: cada versión voy a saber hacer más.',
-        og: 'Orden Global es un ecosistema completo: tu dinero (Veta Wallet), tu gente (PULSE CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), todos conectados sobre nuestra propia cadena. Una cuenta, todas las puertas.',
+        og: 'Orden Global es un ecosistema completo: tu dinero (Veta Wallet), tu gente (PULSE2CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), todos conectados sobre nuestra propia cadena. Una cuenta, todas las puertas.',
         comision: 'La comisión de red se paga siempre en ORIGEN, también cuando enviás otro token, y es mínima: nuestra cadena es propia. El equivalente lo ves antes de confirmar cualquier envío.',
         remesas: 'Con remesas ves cuánto llega del otro lado después de la comisión y del cambio, en nueve países. Te abro el calculador.',
         pronto: 'Ordenexchange y AuCorp ya abrieron: la casa de cambio y las cuentas en moneda local, las dos con esta misma cuenta desde su esfera del Núcleo. AuCorp es la que antes se llamaba AUBANK — cambió el nombre, no la casa. El ecosistema no es una lista cerrada — crece.',
@@ -7228,7 +7388,7 @@ const VETA = (() => {
         { id: null, k: 'TU NÚCLEO', t: 'El cerebro del ecosistema', p: 'Bienvenido a tu Núcleo. Cada esfera es un órgano vivo, y todas laten conectadas a una sola cuenta: la tuya.' },
         { id: 'wallet', k: 'TU DINERO', t: 'Veta Wallet', p: 'Oro real hecho dinero, sobre nuestra propia cadena. Enviás, recibís y cobrás en segundos.' },
         { id: 'scan', k: 'NUESTRA CADENA', t: 'Layer 1 · 5550', p: 'Ya no vivimos prestados en la red de otro: una Layer 1 hecha en casa. Y cada movimiento se comprueba en ORDENSCAN, a cualquier hora.' },
-        { id: 'chat', k: 'TU GENTE', t: 'PULSE CHAT', p: 'Solo gente verificada, y el dinero viaja dentro de la conversación, con comprobante en la cadena.' },
+        { id: 'chat', k: 'TU GENTE', t: 'PULSE2CHAT', p: 'Solo gente verificada, y el dinero viaja dentro de la conversación, con comprobante en la cadena.' },
         { id: 'pay', k: 'TU NEGOCIO', t: 'MyTokenPay', p: 'La caja registradora del ecosistema: cobrás con un código y tu negocio crece acá adentro.' },
         { id: 'gid', k: 'TU IDENTIDAD', t: 'Genesis ID', p: 'Te verificás una sola vez y todo Orden Global te reconoce. Es la llave que abre las demás esferas.' },
         /* Parada nueva, sin mp3 grabado: sale con la voz del navegador. La
@@ -7244,7 +7404,7 @@ const VETA = (() => {
       chipsVisita: ['What is Orden Global?', 'What is ORIGEN?', 'Is it safe?', 'Open my account'],
       vAbrir: 'Open my account',
       vSinCuenta: 'That belongs to your account, and you do not have one yet — so there is no balance or activity for me to tell you about. The moment you open it I will answer with your real numbers, never with an example.',
-      vNoSe: 'I cannot answer that from here yet. I can tell you about ORIGEN, the chain, Genesis ID, PULSE CHAT, MyTokenPay, or the whole ecosystem together. And if you would rather read it at your own pace, ordenglobal.org has the whole house explained.',
+      vNoSe: 'I cannot answer that from here yet. I can tell you about ORIGEN, the chain, Genesis ID, PULSE2CHAT, MyTokenPay, or the whole ecosystem together. And if you would rather read it at your own pace, ordenglobal.org has the whole house explained.',
       hola: 'Hi. I am AU-RA, the intelligence of the ecosystem — model 1, in beta. I can take you anywhere, leave a transfer ready for you, or explain how everything works. Shall we start with a tour?',
       bienv1: 'Hello, {nombre}. I am AU-RA, the intelligence of Orden Global.',
       bienv1Voz: 'Hello. I am AU-RA, the intelligence of Orden Global.',
@@ -7288,7 +7448,7 @@ const VETA = (() => {
         { pal: ['activity', 'movements', 'history', 'summary'], txt: "This week's summary", di: 'summary of this week' },
         { pal: ['card', 'plastic'], txt: 'My card', di: 'take me to the card' },
         { pal: ['change', 'convert', 'swap'], txt: 'Swap', di: 'take me to swap' },
-        { pal: ['chat', 'message', 'write', 'pulse'], txt: 'PULSE CHAT', di: 'take me to the chat' },
+        { pal: ['chat', 'message', 'write', 'pulse'], txt: 'PULSE2CHAT', di: 'take me to the chat' },
         { pal: ['business', 'merchant', 'shop', 'mytokenpay'], txt: 'Find businesses', di: 'find businesses' },
         { pal: ['remittance', 'country', 'family'], txt: 'Remittances', di: 'take me to remittances' },
         { pal: ['verify', 'identity', 'genesis', 'kyc'], txt: 'My Genesis ID', di: 'am i verified' },
@@ -7305,7 +7465,7 @@ const VETA = (() => {
         cobrar: ['Charge 25', 'What is MyTokenPay?'],
         cambiar: ['What is ORIGEN at?', 'What is the fee?'],
         tarjeta: ['How much do I have?', "This week's summary"],
-        chat: ['What is PULSE CHAT?', 'Am I verified?'],
+        chat: ['What is PULSE2CHAT?', 'Am I verified?'],
         pay: ['Find coffee shops', 'What is MyTokenPay?'],
         payex: ['Find coffee shops', 'Find hotels'],
         remesas: ['What is the fee?', 'How much do I have?'],
@@ -7326,10 +7486,10 @@ const VETA = (() => {
         origen: 'ORIGEN — spelled with an E, and said the Spanish way: oh-REE-hen — is the currency of the Orden Global chain, and its value is referenced to gold. One ORIGEN is one gramin, the fifty-fifth part of a gram of gold, at today’s gold price. We do not set the formula and it does not change, so you can redo it with a calculator. It moves in seconds over our own chain.',
         cadena: 'Orden Global runs on its own Layer 1: chain 5550, with Hyperledger Besu, QBFT consensus and the Shanghai machine. We no longer live borrowed on someone else’s network. Everything is public at ordenscan.com.',
         gid: 'Genesis ID is your identity for the whole ecosystem: verify ONCE and you are verified everywhere. It is what guarantees there is a real person on the other side of every chat and every charge.',
-        chat: 'PULSE CHAT is the ecosystem’s messenger: only people with an approved Genesis ID get in, you can send money without leaving the thread, and every payment leaves a verifiable receipt on the chain.',
+        chat: 'PULSE2CHAT is the ecosystem’s messenger: only people with an approved Genesis ID get in, you can send money without leaving the thread, and every payment leaves a verifiable receipt on the chain.',
         pay: 'MyTokenPay is the commerce layer: charge with a QR, explore businesses that accept ORIGEN and pay from this same wallet.',
         aura: 'I am AU-RA: the intelligence of Orden Global, model 1, in beta. I navigate for you, explain the ecosystem and leave payments ready — but I never sign: your money moves only with your password. And I keep growing.',
-        og: 'Orden Global is a complete ecosystem: your money (Veta Wallet), your people (PULSE CHAT), your business (MyTokenPay) and your identity (Genesis ID), all wired over our own chain. One account, every door.',
+        og: 'Orden Global is a complete ecosystem: your money (Veta Wallet), your people (PULSE2CHAT), your business (MyTokenPay) and your identity (Genesis ID), all wired over our own chain. One account, every door.',
         comision: 'The network fee is always paid in ORIGEN, even when you send another token, and it is minimal: the chain is ours. You see the equivalent before confirming any transfer.',
         remesas: 'Remittances shows how much arrives on the other side after fees and exchange, in nine countries. Opening the calculator.',
         pronto: 'Ordenexchange and AuCorp are both open now: the exchange and your local-currency accounts, both with this same account from their sphere in the Nucleus. AuCorp is what used to be called AUBANK — the name changed, not the house. The ecosystem is not a closed list — it grows.',
@@ -7340,7 +7500,7 @@ const VETA = (() => {
         { id: null, k: 'YOUR NUCLEUS', t: 'The brain of the ecosystem', p: 'Welcome to your Nucleus. Each sphere is a living organ, and they all pulse connected to a single account: yours.' },
         { id: 'wallet', k: 'YOUR MONEY', t: 'Veta Wallet', p: 'Real gold turned into money, on our own chain. Send, receive and charge in seconds.' },
         { id: 'scan', k: 'OUR CHAIN', t: 'Layer 1 · 5550', p: 'We no longer live borrowed on someone else’s network: a Layer 1 built in-house. And every movement can be checked on ORDENSCAN, at any hour.' },
-        { id: 'chat', k: 'YOUR PEOPLE', t: 'PULSE CHAT', p: 'Verified people only, and money travels inside the conversation, with a receipt on the chain.' },
+        { id: 'chat', k: 'YOUR PEOPLE', t: 'PULSE2CHAT', p: 'Verified people only, and money travels inside the conversation, with a receipt on the chain.' },
         { id: 'pay', k: 'YOUR BUSINESS', t: 'MyTokenPay', p: 'The ecosystem’s cash register: you charge with a code and your business grows in here.' },
         { id: 'gid', k: 'YOUR IDENTITY', t: 'Genesis ID', p: 'Verify once and all of Orden Global recognises you. It is the key that opens the other spheres.' },
         /* New stop, no recorded mp3: falls back to the browser voice. When the
@@ -8853,15 +9013,16 @@ const VETA = (() => {
            bienvenida, bienSig, bienCerrar,
            // La frase de recuperacion, al crear la cuenta.
            semCopiar, semListo,
-           // PULSE CHAT. Los manejadores van en el HTML que genera la vista, asi
+           // PULSE2CHAT. Los manejadores van en el HTML que genera la vista, asi
            // que sin figurar aca los botones del chat no hacen nada.
            chatEntrar, chatAbrir, chatCerrar, chatMandar, chatBuscar, chatGrupo,
            chatAdjuntar, chatVoz, chatVozCancelar,
+           chatCitar, chatDejarCita, chatReaccion, chatAbrirReaccion, chatTecleando,
            llamadaLlamar, llamadaContestar, llamadaRechazar, llamadaColgar,
            llamadaMic, llamadaCam, llamadaPantalla,
            llamadaMini, llamadaGrande,
            grupoLlamar, grupoContestar, grupoRechazar, grupoColgar,
-           grupoMic, grupoCam, grupoPantalla, chatReparar, chatCodigo, chatCodigoCopiar,
+           grupoMic, grupoCam, grupoPantalla, grupoMini, grupoGrande, chatReparar, chatCodigo, chatCodigoCopiar,
            chatVerFicha, chatFichaCerrar, chatEnviarOrigen, chatGuardarContacto,
            chatHojaCerrar, chatHojaOk,
            chatOlvidar, chatGrupoInvitar, chatGrupoNombre, chatGrupoSalir,

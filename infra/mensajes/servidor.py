@@ -664,7 +664,8 @@ class Relevo(BaseHTTPRequestHandler):
                 if tipo not in ('oferta', 'respuesta', 'ice', 'llamo', 'cuelgo',
                                 'ocupado', 'rechazo',
                                 'gllamo', 'gentro', 'goferta', 'grespuesta',
-                                'gice', 'gsalgo', 'grechazo'):
+                                'gice', 'gsalgo', 'grechazo',
+                                'escribe'):
                     return self._json(400, {'error': 'tipo inválido'})
                 if not correo_valido(para):
                     return self._json(400, {'error': 'faltan datos'})
@@ -758,7 +759,17 @@ class Relevo(BaseHTTPRequestHandler):
                 if not texto and not adj:
                     return self._json(400, {'error': 'faltan datos'})
                 m = {'de': correo, 'para': para, 'texto': texto,
-                     'cuando': int(time.time() * 1000)}
+                     'cuando': int(time.time() * 1000),
+                     # Un id propio. Sin el no se puede reaccionar a un mensaje
+                     # ni citarlo: «el tercero de arriba» no es una referencia
+                     # que sobreviva a que lleguen mas mensajes.
+                     'id': secrets.token_hex(8)}
+                # Responder citando: se guarda a QUE mensaje responde. Solo el
+                # id; el texto citado lo pinta la app leyendo el hilo, para que
+                # editar o borrar el original no deje copias viejas por ahi.
+                cita = str(b.get('cita', ''))[:16]
+                if cita:
+                    m['cita'] = cita
                 if adj:
                     m['tipo'] = tipo
                     m['archivo'] = archivo
@@ -768,6 +779,76 @@ class Relevo(BaseHTTPRequestHandler):
                 if len(d['mensajes']) > 20_000:
                     d['mensajes'] = d['mensajes'][-20_000:]
                 guardar(d)
+                return self._json(200, {'ok': True})
+
+            if ruta == '/suscribir':
+                # La suscripcion push de ESTE navegador. Se guarda por
+                # dispositivo —una persona tiene telefono y computadora— y se
+                # reemplaza la que tuviera el mismo `endpoint`: el navegador
+                # renueva esa direccion cada tanto y guardar las dos mandaria
+                # el aviso dos veces.
+                sus = b.get('suscripcion')
+                if not isinstance(sus, dict) or not sus.get('endpoint'):
+                    return self._json(400, {'error': 'faltan datos'})
+                if len(json.dumps(sus)) > 2000:
+                    return self._json(413, {'error': 'suscripcion muy grande'})
+                lista = f.setdefault('push', [])
+                lista = [x for x in lista if x.get('endpoint') != sus['endpoint']]
+                lista.append({'endpoint': sus['endpoint'],
+                              'keys': sus.get('keys', {}),
+                              'desde': int(time.time() * 1000)})
+                # Tres dispositivos por cuenta: mas que eso casi siempre son
+                # suscripciones muertas que nadie limpio.
+                f['push'] = lista[-3:]
+                guardar(d)
+                return self._json(200, {'ok': True, 'dispositivos': len(f['push'])})
+
+            if ruta == '/desuscribir':
+                sus = (b.get('suscripcion') or {}).get('endpoint')
+                f['push'] = [x for x in f.get('push', []) if x.get('endpoint') != sus]
+                guardar(d)
+                return self._json(200, {'ok': True})
+
+            if ruta == '/reaccion':
+                # Una reaccion a un mensaje. Se guarda POR PERSONA y no como
+                # un contador: sin saber quien puso que, no se puede quitar la
+                # propia ni impedir que alguien sume diez veces la misma.
+                mid = str(b.get('id', ''))[:16]
+                emo = str(b.get('emoji', ''))[:8]
+                msg = next((x for x in d['mensajes'] if x.get('id') == mid), None)
+                if not msg:
+                    return self._json(404, {'error': 'ese mensaje no existe'})
+                # Solo se reacciona en un hilo del que uno es parte.
+                suyo = msg['de'] == correo or msg['para'] == correo
+                if not suyo and not (ID_GRUPO.fullmatch(msg['para']) and grupo_de(d, msg['para'], correo)):
+                    return self._json(403, {'error': 'ese hilo no es tuyo'})
+                r = msg.setdefault('reacciones', {})
+                if not emo or r.get(correo) == emo:
+                    r.pop(correo, None)      # tocar la misma la quita
+                else:
+                    r[correo] = emo
+                if not r:
+                    msg.pop('reacciones', None)
+                guardar(d)
+                return self._json(200, {'ok': True, 'reacciones': msg.get('reacciones', {})})
+
+            if ruta == '/escribiendo':
+                # «Esta escribiendo…». NO se guarda en el archivo: dura tres
+                # segundos y escribirlo en disco por cada tecla seria una
+                # escritura del archivo entero cada vez que alguien teclea.
+                # Va por el buzon de señales, que ya vive en memoria.
+                para = str(b.get('para', '')).lower()
+                if ID_GRUPO.fullmatch(para):
+                    g = grupo_de(d, para, correo)
+                    if not g:
+                        return self._json(403, {'error': 'no eres del grupo'})
+                    for x in g['miembros']:
+                        if x['correo'] != correo:
+                            dejar_senal(x['correo'], correo, 'escribe', {'donde': para})
+                elif correo_valido(para):
+                    dejar_senal(para, correo, 'escribe', {'donde': correo})
+                else:
+                    return self._json(400, {'error': 'faltan datos'})
                 return self._json(200, {'ok': True})
 
             if ruta == '/pago':

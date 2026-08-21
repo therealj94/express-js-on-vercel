@@ -162,6 +162,10 @@ console.log('\nACHICAR LA LLAMADA Y SEGUIR USANDO LA APP\n')
   await ana.pag.evaluate(()=>VETA.vista('chat')); await ana.pag.waitForTimeout(400)
 }
 
+console.log('\nCompartir pantalla se VE\n')
+ok('el boton de compartir esta a la vista', await ana.pag.isVisible('#lla-pant'))
+ok('y el navegador puede compartir', await ana.pag.evaluate(()=>LLAMADA.puedePantalla()))
+
 console.log('\nLos mandos\n')
 await ana.pag.click('#lla-mic'); await ana.pag.waitForTimeout(400)
 ok('silenciar apaga el microfono', !(await ana.pag.evaluate(()=>LLAMADA.cuento().micAbierto)))

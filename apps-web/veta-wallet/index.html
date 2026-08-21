@@ -1,7 +1,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Orden Global · Un ecosistema entero, en una sola cuenta</title>
-<meta name="description" content="Orden Global: tu dinero referenciado al oro (Veta Wallet), tu gente (PULSE CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), sobre nuestra propia cadena y con AU-RA, la inteligencia del ecosistema.">
+<meta name="description" content="Orden Global: tu dinero referenciado al oro (Veta Wallet), tu gente (PULSE2CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), sobre nuestra propia cadena y con AU-RA, la inteligencia del ecosistema.">
 <meta name="theme-color" content="#021B1C">
 
 <!-- A dónde puede hablar esta página, y desde dónde puede traer cosas.
@@ -435,7 +435,7 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 .cerebro-cab h2{font-family:var(--sans);font-weight:800;font-size:clamp(19px,2.2vw,24px);color:var(--crema)}
 .cerebro-cab .sub{font-size:12px;color:var(--bruma);margin-top:5px}
 /* El sello de la cadena. Vive en la banda de abajo (.cerebro-pie), no en la
-   cabecera flotante: allí arriba se posaba encima de la esfera de PULSE CHAT
+   cabecera flotante: allí arriba se posaba encima de la esfera de PULSE2CHAT
    y se comía el toque del botón. Aquí abajo tiene sitio propio y se lee
    entero — que es lo que se le pide a un sello: decir sobre qué está hecho
    todo lo de arriba. */
@@ -929,7 +929,7 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
   .mtp-fila-c{flex:1 1 100%;justify-content:space-between}
 }
 
-/* ── PULSE CHAT ────────────────────────────────────────────────────────────
+/* ── PULSE2CHAT ────────────────────────────────────────────────────────────
    Dos columnas cuando la pantalla da para las dos: la lista a la izquierda y
    el hilo a la derecha, como cualquier mensajeria de escritorio. En el movil
    son dos pantallas —la caja lleva data-abierto y la lista se aparta—, porque
@@ -1136,8 +1136,29 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 /* ── LA LLAMADA DE GRUPO ──────────────────────────────────────────────────
    La rejilla se acomoda sola segun cuanta gente haya: con dos, dos filas;
    con tres o mas, dos columnas. Nadie tiene que elegir un diseño. */
-#gru{position:fixed;inset:0;z-index:9000;background:#04100F;display:flex;flex-direction:column}
-.gru-cab{flex:none;padding:18px 16px 10px;text-align:center;
+#gru{position:fixed;inset:0;z-index:9000;background:#04100F;display:flex;flex-direction:column;
+  transition:width .26s cubic-bezier(.4,0,.2,1),height .26s cubic-bezier(.4,0,.2,1),
+  border-radius .26s,inset .26s cubic-bezier(.4,0,.2,1)}
+/* Achicada: la misma burbuja que la llamada de dos, con la rejilla adentro.
+   Con tres o cuatro cuadros en 132px no se distingue una cara de otra, asi
+   que en chiquito se enseña SOLO al primero y el resto se resume en el
+   contador de arriba. */
+#gru.mini{inset:auto 14px 90px auto;width:132px;height:186px;border-radius:18px;
+  overflow:hidden;box-shadow:0 14px 40px rgba(0,0,0,.55);border:1px solid var(--p2c-linea2);
+  cursor:pointer}
+@media (min-width:620px){#gru.mini{width:176px;height:248px;bottom:26px}}
+#gru.mini .gru-cab,#gru.mini .gru-mandos,#gru.mini .gru-entra{display:none}
+#gru.mini .gru-rejilla{padding:0;gap:0;grid-template-columns:1fr!important;grid-template-rows:1fr!important}
+#gru.mini .gru-cuadro:not(:first-child){display:none}
+#gru.mini .gru-cuadro{border-radius:18px}
+#gru.mini .gru-mini-mandos{display:block;position:absolute;right:7px;top:7px;z-index:4}
+.gru-mini-mandos{display:none}
+/* Cuantos hay, sobre la burbuja: sin esto parece una llamada de dos. */
+#gru.mini::after{content:attr(data-cuantos);position:absolute;left:7px;top:7px;z-index:4;
+  padding:3px 8px;border-radius:100px;background:rgba(5,11,26,.75);
+  font:700 10.5px/1.3 var(--sans);color:var(--p2c-cyan)}
+@media (prefers-reduced-motion: reduce){#gru{transition:none}}
+.gru-cab{position:relative;flex:none;padding:18px 16px 10px;text-align:center;
   font:600 13.5px/1.3 var(--sans);color:var(--bruma)}
 .gru-rejilla{flex:1;display:grid;gap:6px;padding:0 6px;min-height:0;
   grid-template-columns:1fr;grid-auto-rows:1fr}
@@ -1215,6 +1236,147 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 }
 
 @media (prefers-reduced-motion: reduce){.lla-b{transition:none}}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PULSE2CHAT · LA MARCA
+   ══════════════════════════════════════════════════════════════════════════
+
+   Paleta oficial del manual, tal cual:
+
+     Deep Navy      #061A4F   fondos y textos principales
+     Royal Blue     #0756D9   identidad
+     Electric Blue  #008CFF   tecnologia y energia
+     Cyan           #00D9E8   conexion, chat, acentos
+     Aqua           #12E6D5   detalles
+     Fondo oscuro   #050B1A   el que pide el manual para splash y social
+
+   Vive SOLO dentro del chat y de las llamadas. El resto de la billetera
+   sigue siendo verde y oro: son dos marcas distintas conviviendo en la misma
+   casa, y mezclarlas dejaria a las dos sin identidad. La regla es simple —
+   donde dice PULSE2CHAT, manda el azul.
+
+   El gradiente oficial (#0756D9 → #008CFF → #00D9E8) se usa donde el manual
+   lo pide: el simbolo, los botones de accion y lo que lleva energia. */
+:root{
+  --p2c-navy:#061A4F; --p2c-royal:#0756D9; --p2c-electric:#008CFF;
+  --p2c-cyan:#00D9E8;  --p2c-aqua:#12E6D5; --p2c-fondo:#050B1A;
+  --p2c-grad:linear-gradient(135deg,#0756D9,#008CFF 55%,#00D9E8);
+  --p2c-linea:rgba(0,217,232,.24); --p2c-linea2:rgba(0,217,232,.16);
+  --p2c-campo:rgba(6,26,79,.55); --p2c-humo:#7C93B8; --p2c-bruma:#B6CEE6;
+}
+
+/* La cabecera con el logo. */
+.p2c-cab{display:flex;align-items:center;gap:13px}
+.p2c-marca{width:44px;height:auto;flex:none;filter:drop-shadow(0 0 12px rgba(0,217,232,.45))}
+.p2c-nombre{margin:0;font:800 21px/1.1 var(--sans);letter-spacing:.01em;
+  background:var(--p2c-grad);-webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent}
+.p2c-nombre b{font-weight:800;-webkit-text-fill-color:var(--p2c-cyan);color:var(--p2c-cyan)}
+
+/* ── EL CHAT, EN AZUL ─────────────────────────────────────────────────────
+   Se reescriben las piezas del chat sobre la paleta de la marca. Van con la
+   especificidad justa para ganarle a las reglas verdes de mas arriba sin
+   usar !important, que dejaria el chat imposible de ajustar despues. */
+#lienzo .chat, .chat-lista, .chat-hilo{--linea:var(--p2c-linea);--linea2:var(--p2c-linea2)}
+.chat-lista{background:rgba(6,26,79,.34);border-color:var(--p2c-linea2)}
+.cha-pie{border-top-color:var(--p2c-linea2);background:rgba(6,26,79,.28)}
+.cha-pie input{background:var(--p2c-campo);border-color:var(--p2c-linea2);color:#EAF4FF}
+.cha-pie input:focus{border-color:var(--p2c-cyan)}
+.cha-clip{border:1px solid var(--p2c-linea2);background:var(--p2c-campo);color:var(--p2c-bruma)}
+.cha-clip:hover{color:#fff;border-color:var(--p2c-cyan)}
+/* El boton de mandar lleva el gradiente oficial: es el CTA del chat. */
+.cha-pie .cha-manda{background:var(--p2c-grad);color:#03122E}
+/* El avatar del hilo tambien es de la marca: en verde parecia de la billetera. */
+.chat .cha-av,.cha-hilo-cab .cha-av{background:var(--p2c-grad);color:#03122E}
+.cha-mic{background:var(--p2c-campo);border-color:var(--p2c-linea2);color:var(--p2c-bruma)}
+.cha-mic:hover{color:#fff;border-color:var(--p2c-cyan)}
+/* Mi burbuja en el gradiente; la del otro en navy. Asi se distinguen de un
+   vistazo sin leer, que es como se lee un chat. */
+.cha-b.cha-mio .cha-globo{background:var(--p2c-grad);color:#03122E}
+.cha-b.cha-mio .cha-globo p{color:#03122E}
+.cha-b:not(.cha-mio) .cha-globo{background:rgba(6,26,79,.72);border:1px solid var(--p2c-linea2);color:#EAF4FF}
+.cha-de{color:var(--p2c-cyan)}
+.cha-hilo-cab,.cha-cab{border-bottom-color:var(--p2c-linea2)}
+.cha-quien b{color:#EAF4FF}
+.cha-quien small{color:var(--p2c-humo)}
+.cha-mas{color:var(--p2c-bruma)}
+.cha-mas:hover{color:var(--p2c-cyan)}
+.cha-voz-t{color:var(--p2c-humo)}
+.cha-sello{background:rgba(0,217,232,.09);border-color:var(--p2c-linea)}
+.cha-sello svg{stroke:var(--p2c-cyan)}
+.cha-sello span{color:var(--p2c-bruma)}
+.cha-aviso{color:var(--p2c-humo)}
+
+/* Las llamadas tambien son PULSE2CHAT. */
+#lla,#gru,#lla-remoto,.gru-cuadro{background:var(--p2c-fondo)}
+.gru-cuadro{background:rgba(6,26,79,.7)}
+.lla-si{background:var(--p2c-grad);color:#03122E}
+.lla-g{background:rgba(0,217,232,.14);color:#EAF4FF}
+.lla-g.apagado{background:var(--p2c-cyan);color:#03122E}
+.lla-cab,.gru-cab{color:var(--p2c-bruma)}
+.lla-quien{color:#EAF4FF}
+.lla-estado{color:var(--p2c-humo)}
+.gru-nombre{background:rgba(5,11,26,.72);color:#EAF4FF}
+.gru-cuadro.esperando::after{border-top-color:var(--p2c-cyan)}
+.lla-cab{background:linear-gradient(180deg,rgba(5,11,26,.88),transparent)}
+.lla-entra,.lla-mandos{background:linear-gradient(0deg,rgba(5,11,26,.88),transparent)}
+
+/* ── RESPONDER, REACCIONAR Y «ESTA ESCRIBIENDO» ───────────────────────────
+   Los gestos aparecen al pasar por encima de la burbuja y no siempre: en un
+   hilo largo, dos botones por mensaje son cien botones en pantalla. */
+.cha-b{position:relative}
+.cha-gestos{position:absolute;top:-9px;z-index:3;display:flex;gap:4px;opacity:0;
+  transition:opacity .15s;pointer-events:none}
+.cha-b:not(.cha-mio) .cha-gestos{right:-4px}
+.cha-b.cha-mio .cha-gestos{left:-4px}
+.cha-b:hover .cha-gestos,.cha-b:focus-within .cha-gestos{opacity:1;pointer-events:auto}
+/* En pantalla tactil no hay «pasar por encima»: se ven siempre, atenuados. */
+@media (hover:none){.cha-gestos{opacity:.5;pointer-events:auto}}
+.cha-gestos button{width:26px;height:26px;border-radius:50%;border:1px solid var(--p2c-linea2);
+  background:rgba(5,11,26,.9);color:var(--p2c-bruma);display:grid;place-items:center;cursor:pointer}
+.cha-gestos button:hover{color:var(--p2c-cyan);border-color:var(--p2c-cyan)}
+.cha-gestos svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round}
+
+.cha-emojis{position:absolute;top:-42px;z-index:4;display:flex;gap:2px;padding:5px 7px;
+  border-radius:100px;background:rgba(5,11,26,.96);border:1px solid var(--p2c-linea);
+  box-shadow:0 8px 26px rgba(0,0,0,.5)}
+.cha-b:not(.cha-mio) .cha-emojis{right:0}
+.cha-b.cha-mio .cha-emojis{left:0}
+.cha-emojis button{border:0;background:transparent;font-size:19px;line-height:1;
+  padding:3px 4px;cursor:pointer;border-radius:8px}
+.cha-emojis button:hover{background:rgba(0,217,232,.16)}
+
+/* La cita dentro de la burbuja: una barrita al lado, como una nota al margen. */
+.cha-cita{margin:0 0 6px;padding:5px 9px;border-left:2.5px solid var(--p2c-cyan);
+  border-radius:0 8px 8px 0;background:rgba(5,11,26,.3)}
+.cha-b.cha-mio .cha-cita{background:rgba(3,18,46,.22);border-left-color:rgba(3,18,46,.55)}
+.cha-cita b{display:block;font:700 11px/1.3 var(--sans)}
+.cha-cita span{display:block;font-size:11.5px;line-height:1.4;opacity:.82;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:230px}
+
+/* Las reacciones, colgando de la burbuja. */
+.cha-reacs{display:flex;gap:4px;margin-top:-5px;flex-wrap:wrap}
+.cha-b.cha-mio .cha-reacs{justify-content:flex-end}
+.cha-reac{padding:2px 7px;border-radius:100px;border:1px solid var(--p2c-linea2);
+  background:rgba(5,11,26,.85);font:600 11.5px/1.5 var(--sans);color:var(--p2c-bruma);cursor:pointer}
+.cha-reac.mia{border-color:var(--p2c-cyan);background:rgba(0,217,232,.16);color:#EAF4FF}
+
+/* La cita que se esta escribiendo, sobre el campo. */
+.cha-citando{display:flex;align-items:center;gap:10px;margin:0 12px 8px;padding:8px 11px;
+  border-radius:12px;background:rgba(0,217,232,.08);border-left:3px solid var(--p2c-cyan)}
+.cha-citando div{flex:1;min-width:0}
+.cha-citando b{display:block;font:700 11.5px/1.3 var(--sans);color:var(--p2c-cyan)}
+.cha-citando span{display:block;font-size:12px;color:var(--p2c-bruma);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cha-citando button{flex:none;width:26px;height:26px;border-radius:50%;border:0;
+  background:transparent;color:var(--p2c-humo);font-size:19px;line-height:1;cursor:pointer}
+.cha-citando button:hover{color:#fff}
+
+/* «Esta escribiendo…». Ocupa su sitio en vez de flotar: flotando taparia el
+   ultimo mensaje, que es justo el que se esta contestando. */
+.cha-escribe{padding:0 16px 6px;font:500 12px/1.5 var(--sans);color:var(--p2c-cyan);
+  min-height:18px}
 
 /* ── NOTAS DE VOZ ─────────────────────────────────────────────────────────
    El micrófono vive al lado del clip y del avión, con el mismo disco de 42px:
@@ -2311,7 +2473,7 @@ body.en-ventana .lienzo::before{
       <h3>ordenscan</h3><p data-t="e.scan"></p>
       <a href="https://ordenscan.com" target="_blank" rel="noopener" data-t="e.ver"></a></article>
     <article class="eco-f rev izq" style="--acento:#E0937A">
-      <h3>PULSE CHAT</h3><p data-t="e.chat"></p></article>
+      <h3>PULSE2CHAT</h3><p data-t="e.chat"></p></article>
     <article class="eco-f rev der" style="--acento:#9E86F0">
       <h3>AU-RA</h3><p data-t="e.aura"></p></article>
   </div>
@@ -2691,7 +2853,15 @@ body.en-ventana .lienzo::before{
      a dibujar el HTML en cada cambio los remontaria y cortaria el flujo de
      TODOS cada vez que alguien entra o sale. -->
 <div id="gru" class="oculto" role="dialog" aria-modal="true">
-  <div class="gru-cab"><span id="gru-cuantos"></span></div>
+  <div class="gru-cab">
+    <button class="lla-min" id="gru-min" onclick="VETA.grupoMini()" aria-label="Achicar"><svg viewBox="0 0 24 24"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg></button>
+    <span id="gru-cuantos"></span>
+  </div>
+  <div class="gru-mini-mandos">
+    <button class="lla-mini-x" onclick="VETA.grupoColgar()" aria-label="Salir">
+      <svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+    </button>
+  </div>
   <div class="gru-rejilla" id="gru-rejilla"></div>
 
   <div class="gru-entra oculto" id="gru-entra">
@@ -2710,7 +2880,7 @@ body.en-ventana .lienzo::before{
     <button class="lla-b lla-g" id="gru-cam" onclick="VETA.grupoCam()" aria-label="Cámara">
       <svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
     </button>
-    <button class="lla-b lla-g" id="gru-pant" onclick="VETA.grupoPantalla()" aria-label="Compartir pantalla">
+    <button class="lla-b lla-g oculto" id="gru-pant" onclick="VETA.grupoPantalla()" aria-label="Compartir pantalla">
       <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
     </button>
     <button class="lla-b lla-no" id="gru-colgar" onclick="VETA.grupoColgar()" aria-label="Salir">

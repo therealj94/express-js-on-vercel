@@ -887,7 +887,7 @@ const AURA = (() => {
   const DICCION = {
     es: [
       [/AU-RA/g, 'Aura'], [/AuCorp/gi, 'Au Corp'], [/Ordenexchange/g, 'Orden Exchéinch'],
-      [/PULSE CHAT/g, 'Puls Chat'], [/MyTokenPay/g, 'Mai Token Péi'],
+      [/PULSE2CHAT/g, 'Puls Chat'], [/MyTokenPay/g, 'Mai Token Péi'],
       [/Veta Wallet/g, 'Veta Wálet'], [/ordenscan/g, 'orden scan'],
       [/Genesis ID/g, 'Génesis Aidí'], [/Layer 1/g, 'Léyer Uan'],
       [/Hyperledger Besu/g, 'Jaiper Ledyer Besu'], [/QBFT/g, 'Cu Be Efe Te'],
@@ -899,7 +899,7 @@ const AURA = (() => {
          voz inglesa arrancara con «or-», que es justo lo que no es. Se separa
          en sílabas para que el acento caiga donde tiene que caer. */
       [/ORIGEN/g, 'oh REE hen'],
-      [/PULSE CHAT/g, 'Pulse Chat'], [/MyTokenPay/g, 'My Token Pay'],
+      [/PULSE2CHAT/g, 'Pulse2Chat'], [/MyTokenPay/g, 'My Token Pay'],
       [/Genesis ID/g, 'Genesis I D'], [/Layer 1/g, 'Layer One'],
       [/Hyperledger Besu/g, 'Hyperledger Bessoo'], [/QBFT/g, 'Q B F T'],
       [/ORDENSCAN/g, 'Orden Scan'], [/ordenscan/g, 'Orden Scan'],
