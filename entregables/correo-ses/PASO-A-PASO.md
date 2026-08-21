@@ -1,7 +1,7 @@
 # Lo que tenés que hacer vos, en orden
 
-Son tres cosas. La primera lleva diez minutos, la segunda cinco, y la tercera
-es esperar.
+**El paso 1 ya está hecho.** Con la clave de cPanel entré y dejé los tres
+registros puestos. Te quedan dos cosas: tocar un enlace y llenar un formulario.
 
 ---
 
@@ -18,11 +18,26 @@ cuenta siga limitada. Hoy no podés probar nada de eso.
 
 ---
 
-## PASO 1 · Los tres registros en el panel de nivapixel
+## PASO 1 · Los tres registros ✅ HECHO
 
-El DNS de `ordenglobal.org` lo sirven `ns1.nivapixel.com` y `ns2.nivapixel.com`,
-que no es una cuenta nuestra de AWS. Entrá al panel donde administrás ese
-dominio y buscá la zona de DNS.
+Con la clave que me pasaste entré a cPanel y los dejé puestos. Antes de tocar
+nada guardé una copia de la zona entera, por si algo hubiera salido mal.
+
+Los dos servidores que mandan en la zona ya sirven lo nuevo, comprobado
+preguntándoles directo:
+
+| | |
+|---|---|
+| SPF de la raíz | `v=spf1 +a +mx +ip4:50.31.177.34 include:spf.jetsmtp.net include:amazonses.com ~all` |
+| MX de `correo` | `10 feedback-smtp.us-east-1.amazonses.com` |
+| TXT de `correo` | `v=spf1 include:amazonses.com ~all` |
+
+Un detalle que puede confundir: si consultás el SPF desde afuera puede que
+todavía te salga el viejo. Los resolutores guardan la copia anterior hasta
+cuatro horas. No está mal, está en caché.
+
+<details>
+<summary>Los valores, por si algún día hay que rehacerlo a mano</summary>
 
 ### 1.a · Agregar el MX
 
@@ -62,17 +77,14 @@ v=spf1 +a +mx +ip4:50.31.177.34 include:spf.jetsmtp.net include:amazonses.com ~a
 > carpeta de spam de todo el mundo. Si el panel no te deja editar y solo te deja
 > agregar, borrá el viejo primero y creá uno solo con el texto de arriba.
 
-### 1.d · Comprobar
+</details>
 
-El DNS tarda entre unos minutos y unas horas en propagarse. Cuando creas que
-está, corré esto y tiene que salir todo en verde:
+### Comprobar cuando quieras
 
 ```sh
 cd entregables/correo-ses
 python3 comprobar.py
 ```
-
-Si algo sigue en rojo, **no sigas al paso 2**. Volvé al panel.
 
 ---
 

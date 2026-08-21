@@ -13,6 +13,8 @@ o, si hay llaves guardadas en el scratchpad, sin variables.
 """
 import json
 import os
+import socket
+import struct
 import sys
 import urllib.request
 
@@ -55,15 +57,103 @@ def sesion():
         return boto3.Session(region_name=REGION)
 
 
-def dns(nombre, tipo):
-    """Se pregunta al DNS PUBLICO, no al panel del proveedor. Lo que importa es
-    lo que ve el resto del mundo, que es lo que a veces no coincide."""
+def _preguntar(ip, nombre, tipo):
+    """Una consulta DNS a mano contra un servidor concreto.
+
+    Se arma el paquete a pelo porque en este contenedor no hay `dig` ni
+    `nslookup`, y meter una dependencia para tres campos de una cabecera sería
+    peor. Solo entiende TXT, MX y CNAME, que es lo que hace falta.
+    """
+    cab = struct.pack('>HHHHHH', 0x1234, 0x0100, 1, 0, 0, 0)
+    q = b''.join(bytes([len(p)]) + p.encode() for p in nombre.split('.')) + b'\x00'
+    tipos = {'TXT': 16, 'MX': 15, 'CNAME': 5}
+    m = cab + q + struct.pack('>HH', tipos[tipo], 1)
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.settimeout(8)
     try:
-        url = f'https://dns.google/resolve?name={nombre}&type={tipo}'
-        with urllib.request.urlopen(url, timeout=15) as x:
-            return [a['data'] for a in json.load(x).get('Answer', [])]
+        s.sendto(m, (ip, 53))
+        d, _ = s.recvfrom(4096)
+    finally:
+        s.close()
+    n = struct.unpack('>H', d[6:8])[0]
+    i, fuera = len(m), []
+    for _ in range(n):
+        while d[i] != 0:
+            if d[i] & 0xC0:
+                i += 2
+                break
+            i += 1 + d[i]
+        else:
+            i += 1
+        t, _c, _ttl, dl = struct.unpack('>HHIH', d[i:i + 10])
+        i += 10
+        if t == 16:                       # TXT
+            j, txt = i, b''
+            while j < i + dl:
+                lon = d[j]
+                txt += d[j + 1:j + 1 + lon]
+                j += 1 + lon
+            fuera.append(txt.decode('utf8', 'replace'))
+        elif t == 15:                     # MX
+            pref = struct.unpack('>H', d[i:i + 2])[0]
+            fuera.append(f'{pref} (respuesta del servidor autoritativo)')
+        elif t == 5:                      # CNAME
+            fuera.append('(cname presente)')
+        i += dl
+    return fuera
+
+
+def autoritativo(nombre, tipo):
+    """Le pregunta a los servidores que MANDAN en la zona, no a un caché.
+
+    Un resolutor público guarda la copia vieja hasta que vence su TTL, que acá
+    son cuatro horas. Sin esto, un registro recién puesto aparece como si
+    faltara y se pierde media tarde buscando un problema que no existe.
+    """
+    raiz = '.'.join(nombre.split('.')[-2:])
+    ns = []
+    try:
+        u = f'https://dns.google/resolve?name={raiz}&type=NS'
+        with urllib.request.urlopen(u, timeout=15) as x:
+            ns = [a['data'].rstrip('.') for a in json.load(x).get('Answer', [])]
     except Exception:
         return []
+    for n in ns:
+        try:
+            u = f'https://dns.google/resolve?name={n}&type=A'
+            with urllib.request.urlopen(u, timeout=15) as x:
+                a = json.load(x).get('Answer', [])
+            if not a:
+                continue
+            r = _preguntar(a[0]['data'], nombre, tipo)
+            if r:
+                return r
+        except Exception:
+            continue
+    return []
+
+
+def dns(nombre, tipo):
+    """Se pregunta al DNS PUBLICO, no al panel del proveedor. Lo que importa es
+    lo que ve el resto del mundo, que es lo que a veces no coincide.
+
+    Con `cd=1` y sin caché: un resolutor público puede tener guardada la copia
+    vieja hasta que venza su TTL, y entonces un registro recién puesto aparece
+    como si faltara. Eso hace perder media hora buscando un problema que no
+    existe, así que se pregunta con el indicador de no-caché y, si hay dudas,
+    se repite una vez.
+    """
+    for intento in (0, 1):
+        try:
+            url = (f'https://dns.google/resolve?name={nombre}&type={tipo}'
+                   f'&cd=1&do=0&_={intento}')
+            with urllib.request.urlopen(url, timeout=15) as x:
+                r = [a['data'] for a in json.load(x).get('Answer', [])]
+            if r:
+                return r
+        except Exception:
+            pass
+    return []
 
 
 def main():
@@ -112,6 +202,15 @@ def main():
 
     print('\n── SPF, DMARC Y LO QUE VE EL MUNDO\n')
     spf = [t.strip('"') for t in dns(DOMINIO, 'TXT') if 'v=spf1' in t]
+    # Si el caché público todavía sirve la copia vieja, se le pregunta a quien
+    # manda en la zona antes de decir que falta algo.
+    if not any('amazonses.com' in s for s in spf):
+        aut = [t for t in autoritativo(DOMINIO, 'TXT') if 'v=spf1' in t]
+        if aut:
+            if any('amazonses.com' in a for a in aut):
+                print('  ojo   el resolutor público todavía tiene la copia vieja en caché;')
+                print('        el servidor autoritativo ya sirve la nueva. Se toma esa.')
+            spf = aut
     ok('hay UN solo registro SPF', len(spf) == 1,
        f'hay {len(spf)}. Con dos, SPF falla en todos' if len(spf) != 1 else spf[0][:90])
     ok('el SPF incluye a Amazon SES', any('amazonses.com' in s for s in spf),
