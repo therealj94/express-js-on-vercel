@@ -181,7 +181,11 @@ export async function entrarConLlave(req, res) {
        mismo refresco. Tener la llave demuestra quién sos; no te da una sesión
        distinta ni más larga. */
     const token = jwt.sign(
-      { userId: user._id, address: user.address, role: user.role, verify: user.isVerified },
+      // `tv` es la version de sesion, igual que en el refresco de aca abajo y
+      // que en las otras dos puertas de entrada (contraseña y social). Si
+      // faltara en UNA sola, esa puerta emitiria sesiones que la revocacion no
+      // puede matar, y no habria forma de notarlo mirando el codigo de al lado.
+      { userId: user._id, address: user.address, role: user.role, verify: user.isVerified, tv: user.tokenVersion || 0 },
       process.env.PASS_TOKEN,
       { expiresIn: "40m" },
     );

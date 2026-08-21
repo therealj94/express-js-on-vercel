@@ -84,6 +84,84 @@ export function normalizarSello(valor) {
   return s ? s.slice(0, 200) : null;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// EL SELLO CUANDO EL CLIENTE NO MANDA NINGUNO
+//
+// Todo el mecanismo de arriba vivia detras de un `if (sello)` en el
+// controlador: si el cuerpo no traia `idempotencyKey`, el envio se firmaba y se
+// emitia sin ningun control de duplicado. La proteccion la elegia quien tenia
+// que estar protegido, y encima cada version vieja de la aplicacion que sigue
+// instalada en un telefono la elige que no.
+//
+// Rechazar de golpe a esos clientes tampoco sirve: le romperia el envio a gente
+// que no hizo nada mal y que no puede actualizar hoy. Asi que cuando no viene
+// sello se DERIVA uno del contenido: misma cuenta, misma cadena, mismo destino,
+// mismo monto, dentro de la misma ventana de tiempo.
+//
+// POR QUE TRES MINUTOS Y NO OTRA COSA
+//
+// La ventana tiene que ser mas larga que el rato en el que un envio se repite
+// SOLO, y mas corta que el rato en el que alguien repite un envio A PROPOSITO.
+//
+//   - El limite de abajo lo pone el cliente: la aplicacion espera hasta 90 s
+//     antes de darse por vencida (ver el comentario de `send`, sobre la H12 de
+//     Heroku a los 30 s). El caso tipico es justamente ese: se corta la
+//     respuesta, la persona cree que no salio y vuelve a darle. Con una ventana
+//     de 60 s ese reintento cae fuera y se manda dos veces, que es el fallo que
+//     esto existe para impedir. 90 s mas margen para volver a escribir la
+//     contraseña: tres minutos.
+//   - El limite de arriba lo pone la vida real: repetir a proposito el mismo
+//     monto EXACTO, al mismo destino, en la misma cadena, antes de tres
+//     minutos. Pasa —pagar dos cuotas iguales seguidas— pero es raro, y cuando
+//     pasa esto no pierde el dinero ni miente: devuelve el hash del primer
+//     envio con `repetido: true`, y la aplicacion puede decir «esto ya lo
+//     mandaste, ¿seguro?». Equivocarse hacia este lado cuesta una pregunta;
+//     equivocarse hacia el otro cuesta el dinero de alguien.
+//
+// Veinticuatro horas —lo que dura el sello— habria sido lo comodo de escribir y
+// habria bloqueado durante todo un dia el segundo pago legitimo del mismo
+// importe. Por eso la ventana es propia y no la del documento.
+//
+// LA COSTURA ENTRE VENTANAS
+//
+// Partir el tiempo en tramos deja una costura: dos toques separados por un
+// segundo, uno a cada lado del corte, darian sellos distintos y pasarian los
+// dos. Por eso se devuelven DOS sellos, el de la ventana en curso y el de la
+// anterior, y quien reserva mira primero si el anterior ya existe. Asi la
+// costura deja de existir para el caso que importa.
+//
+// El sello derivado lleva el prefijo `auto:` para que se distinga a simple
+// vista, en la base y en cualquier registro, de uno que mando el cliente.
+// ─────────────────────────────────────────────────────────────────────────────
+export const VENTANA_DERIVADA_MS = 3 * 60 * 1000;
+
+/** [sello de la ventana en curso, sello de la anterior]. */
+export function sellosDerivados(usuario, datosDelEnvio, ahora = Date.now()) {
+  const base = huellaDe({ usuario, ...datosDelEnvio });
+  const ventana = Math.floor(ahora / VENTANA_DERIVADA_MS);
+  return [`auto:${base}:${ventana}`, `auto:${base}:${ventana - 1}`];
+}
+
+/**
+ * El sello que le toca a este envio.
+ *
+ * Si el cliente mando uno, ese manda: es el unico que sabe si dos peticiones
+ * suyas son el mismo envio o dos distintos.
+ *
+ * Si no mando ninguno, se deriva. Y se prefiere el de la ventana ANTERIOR
+ * cuando ya existe en la base, porque entonces el intento de ahora es la
+ * continuacion de aquel y tiene que encontrarselo, no estrenar uno nuevo al
+ * otro lado de la costura.
+ */
+export async function selloDelEnvio(selloDelCliente, usuario, datosDelEnvio) {
+  const limpio = normalizarSello(selloDelCliente);
+  if (limpio) return { clave: limpio, derivado: false };
+
+  const [actual, anterior] = sellosDerivados(usuario, datosDelEnvio);
+  const previo = await Idempotencia.findOne({ clave: anterior, usuario });
+  return { clave: previo ? anterior : actual, derivado: true };
+}
+
 export async function reservar(clave, usuario, datosDelEnvio) {
   const huella = huellaDe(datosDelEnvio);
 

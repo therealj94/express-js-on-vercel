@@ -20,7 +20,7 @@ import {
   reservar,
   completar,
   marcarFallo,
-  normalizarSello,
+  selloDelEnvio,
   seSabeQueNoSalio,
   responderSiCorresponde,
 } from "../lib/idempotencia";
@@ -80,7 +80,6 @@ export const send = async (req, res) => {
   let quien = null;
   try {
     const { chain_id, recipientAddress, password, amount, idempotencyKey } = req.body;
-    sello = normalizarSello(idempotencyKey);
 
     const token = req.headers.authorization;
     const decodedToken = jwt.verify(
@@ -96,8 +95,14 @@ export const send = async (req, res) => {
       return res.status(404).json({ message: "Chain not found" });
     }
 
+    /* Aca habia un `console.log(provider)` en cada envio. `chain.provider` es
+       la URL del RPC y este repositorio ya documenta en routes/chains.js que
+       ese campo ha llevado la clave dentro y que por ahi se fue una: cada
+       transferencia dejaba las credenciales del nodo escritas en los registros,
+       que se leen desde el panel de la plataforma y se van a cualquier
+       agregador de logs. Si algun dia hace falta saber contra que cadena se
+       firmo, se registra `chain_id` o `chain.name`, que no son secretos. */
     const provider = new JsonRpcProvider(chain.provider);
-    console.log(provider);
     const user = await Users.findOne({ address: address });
 
     if (!user) {
@@ -114,12 +119,18 @@ export const send = async (req, res) => {
     // sello del usuario. Y antes de firmar, porque si se reservara despues,
     // dos peticiones simultaneas pasarian las dos y las dos transferirian —
     // que es justo lo que hay que impedir.
+    //
+    // YA NO HAY `if (sello)`. Ese `if` dejaba la proteccion contra el pago
+    // duplicado en manos del cliente: sin `idempotencyKey` en el cuerpo, esto
+    // firmaba y emitia sin ningun control. Ahora siempre hay sello: el que
+    // mando el cliente, o uno derivado del propio envio. Ver `selloDelEnvio`
+    // en lib/idempotencia.js, que explica la ventana de tres minutos.
     quien = address;
-    if (sello) {
-      const reserva = await reservar(sello, quien, { chain_id, recipientAddress, amount });
-      const respuesta = responderSiCorresponde(res, reserva);
-      if (respuesta) return respuesta;
-    }
+    const datos = { chain_id, recipientAddress, amount };
+    ({ clave: sello } = await selloDelEnvio(idempotencyKey, quien, datos));
+    const reserva = await reservar(sello, quien, datos);
+    const respuesta = responderSiCorresponde(res, reserva);
+    if (respuesta) return respuesta;
 
     const decryptedPrivateKey = descifrarLlavePrivada(user.privateKey);
 
@@ -230,7 +241,6 @@ export const sendToken = async (req, res) => {
       tokenContractAddress,
       idempotencyKey,
     } = req.body;
-    sello = normalizarSello(idempotencyKey);
 
     const token = req.headers.authorization;
     const decodedToken = jwt.verify(
@@ -257,18 +267,18 @@ export const sendToken = async (req, res) => {
       return res.status(401).json({ message: "Incorrect password" });
     }
 
-    // Mismo criterio que en send(): reservar despues de validar y antes de
-    // firmar. La huella incluye el contrato, asi que el mismo sello usado para
-    // otro token se detecta como conflicto en vez de devolver el hash de un
-    // envio distinto.
+    // Mismo criterio que en send(): sello SIEMPRE —del cliente o derivado—, y
+    // se reserva despues de validar y antes de firmar. La huella incluye el
+    // contrato, asi que el mismo sello usado para otro token se detecta como
+    // conflicto en vez de devolver el hash de un envio distinto; y por lo
+    // mismo, el sello derivado de mandar 10 AUKA no choca con el de mandar
+    // 10 AGKA al mismo destino en el mismo minuto.
     quien = address;
-    if (sello) {
-      const reserva = await reservar(sello, quien, {
-        chain_id, recipientAddress, amount, tokenContractAddress,
-      });
-      const respuesta = responderSiCorresponde(res, reserva);
-      if (respuesta) return respuesta;
-    }
+    const datos = { chain_id, recipientAddress, amount, tokenContractAddress };
+    ({ clave: sello } = await selloDelEnvio(idempotencyKey, quien, datos));
+    const reserva = await reservar(sello, quien, datos);
+    const respuesta = responderSiCorresponde(res, reserva);
+    if (respuesta) return respuesta;
 
     const decryptedPrivateKey = descifrarLlavePrivada(user.privateKey);
     const wallet = new Wallet(decryptedPrivateKey, provider);

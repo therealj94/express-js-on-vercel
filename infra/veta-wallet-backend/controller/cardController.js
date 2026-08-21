@@ -9,6 +9,10 @@ import { enviarCorreo } from "../lib/correo";
 import Users from "../models/Users";
 import Card from "../models/Card";
 import CardEvent from "../models/CardEvent";
+// La coleccion de sellos de los envios. Aca se usa, en un espacio de nombres
+// propio, para no aplicar dos veces el mismo evento de webhook: ver
+// `eventoYaAplicado` mas abajo.
+import Idempotencia from "../models/Idempotencia";
 import { getOrigenPriceUsd } from "../lib/origenPrice";
 
 const CRYPTOMATE_BASE_URL = "https://api.cryptomate.me";
@@ -886,17 +890,146 @@ export const markNotificationsRead = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LA PUERTA DEL WEBHOOK DE TARJETA
+//
+// Esto es una ruta sin sesion que cambia el estado de las tarjetas de la gente
+// —bloquear, descongelar, anotar declinaciones— y hasta hoy la unica prueba que
+// pedia era un secreto compartido comparado con `!==`. Dos problemas:
+//
+//   1. El `!==` corta en el primer byte distinto. Esa diferencia de tiempo se
+//      mide desde afuera y regala el secreto byte a byte. La casa ya lo arreglo
+//      dos veces por esto mismo (routes/chains.js y `esAdmin` aca arriba); esta
+//      puerta se habia quedado atras.
+//   2. Un secreto en una cabecera no dice nada sobre el CUERPO. Quien lo tenga
+//      —o quien lo vea en un registro, en un proxy, en una captura— puede
+//      mandar el evento que quiera. El patron correcto ya estaba escrito en
+//      controller/kycController.js: HMAC-SHA256 sobre el cuerpo crudo,
+//      comparado con `timingSafeEqual`.
+//
+// QUE FIRMA MANDA CRYPTOMATE DE VERDAD: NO SE SABE.
+//
+// Se busco en todo el repositorio —documentacion, ejemplos, el script
+// test-cryptomate.js, los modelos, el swap— y no hay una sola linea sobre como
+// firma CryptoMate sus webhooks. Inventar un esquema y darlo por bueno seria
+// peor que lo que habia: quedaria una comprobacion que parece firma y no lo es.
+//
+// Asi que esto se hace en dos capas, y la segunda se enciende sola el dia que
+// se confirme con el proveedor:
+//
+//   CAPA 1, siempre: el secreto compartido, pero comparado en tiempo constante
+//   y negando el paso si la variable de entorno no esta puesta. Un despliegue
+//   al que se le olvido la variable no puede quedar con el webhook abierto.
+//
+//   CAPA 2, si `CRYPTOMATE_WEBHOOK_SECRET` esta configurada: HMAC-SHA256 sobre
+//   el cuerpo CRUDO, hexadecimal, comparado con `timingSafeEqual`. Mientras esa
+//   variable no exista, esta capa no corre —no se puede exigir una firma que
+//   todavia no sabemos si llega— pero el codigo ya esta y no hay que escribirlo
+//   con prisa el dia que haga falta.
+//
+// El nombre de la cabecera se puede fijar con `CRYPTOMATE_WEBHOOK_SIGNATURE_HEADER`
+// justo porque no lo sabemos: cuando el proveedor lo diga, se pone en el
+// entorno y no hay que tocar codigo ni desplegar.
+//
+// LO QUE HAY QUE CONFIRMAR CON CRYPTOMATE, en este orden:
+//   a) si firma los webhooks, y con que algoritmo;
+//   b) el nombre exacto de la cabecera y si el valor va en hex o en base64;
+//   c) sobre QUE se calcula: el cuerpo crudo solo, o el cuerpo con una marca de
+//      tiempo por delante (que es lo que usan Stripe y compañia);
+//   d) si manda marca de tiempo, con que nombre.
+// Hasta tener (a) y (b) la capa 2 se queda apagada.
+// ─────────────────────────────────────────────────────────────────────────────
+function claveDeWebhookValida(req) {
+  const enviada = Buffer.from(String(req.headers["x-webhook-key"] || ""));
+  const esperada = Buffer.from(String(process.env.CRYPTOMATE_WEBHOOK_KEY || ""));
+  // Sin secreto configurado se NIEGA. Si se dejara pasar, el despliegue que
+  // olvide la variable publica esta ruta al mundo y nadie se entera.
+  if (!esperada.length) return false;
+  // timingSafeEqual LANZA si los buferes miden distinto: la longitud se mira
+  // antes, y esa comparacion se queda corta a proposito.
+  return enviada.length === esperada.length && crypto.timingSafeEqual(enviada, esperada);
+}
+
+function firmaDeWebhookValida(req) {
+  const secreto = process.env.CRYPTOMATE_WEBHOOK_SECRET;
+  // Capa apagada mientras no se confirme con el proveedor. Ver arriba.
+  if (!secreto) return true;
+
+  const cabecera = process.env.CRYPTOMATE_WEBHOOK_SIGNATURE_HEADER || "x-webhook-signature";
+  const firma = String(req.headers[cabecera.toLowerCase()] || "").trim();
+  if (!firma) return false;
+
+  // El cuerpo CRUDO, byte a byte. Volver a serializar el objeto ya parseado no
+  // sirve: `JSON.stringify` reordena espacios y escapes y el HMAC saldria
+  // distinto del que calculo quien firmo. Los bytes se guardan en el parser de
+  // app.js (opcion `verify`), que es el unico sitio donde todavia existen.
+  const crudo = req.rawBody;
+  if (!Buffer.isBuffer(crudo)) return false;
+
+  const esperada = crypto.createHmac("sha256", secreto).update(crudo).digest("hex");
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(esperada, "hex"),
+      Buffer.from(firma.replace(/^sha256=/i, ""), "hex")
+    );
+  } catch {
+    return false;
+  }
+}
+
+/* NO REPETIR UN EVENTO YA APLICADO.
+ *
+ * Un webhook se reintenta: el proveedor no recibe el 200 y vuelve a mandar el
+ * mismo evento. Y quien tenga una copia de una peticion valida la puede
+ * reenviar cuantas veces quiera. Aplicar dos veces un `card_blocked_by_velocity`
+ * es inofensivo, pero un `authorization` declinado repetido llena de avisos
+ * falsos la pantalla de alguien, y eso se lee como «me estan usando la
+ * tarjeta».
+ *
+ * Se usa la coleccion de sellos que ya existe para los envios, con su indice
+ * unico y su caducidad a las 24 h, en un espacio de nombres propio. Es el mismo
+ * mecanismo probado y no hay una tabla nueva que mantener: quien llegue segundo
+ * choca contra el indice, no contra una comprobacion que se puede colar entre
+ * dos peticiones simultaneas.
+ *
+ * Sin `operation_id` no se puede distinguir un reintento de un evento nuevo, y
+ * en ese caso se deja pasar: perder un evento de verdad es peor que aplicar dos
+ * veces uno que no trae identificador.
+ */
+async function eventoYaAplicado(operationId) {
+  if (!operationId) return false;
+  try {
+    await Idempotencia.create({
+      clave: `cryptomate:${String(operationId).slice(0, 200)}`,
+      usuario: "webhook-cryptomate",
+      huella: "webhook",
+      estado: "listo",
+    });
+    return false;
+  } catch (error) {
+    if (error?.code === 11000) return true; // ya estaba: es un reintento
+    // Si la base falla por cualquier otra cosa, se atiende el evento igual.
+    console.error("[card webhook] no se pudo anotar el evento:", error?.message);
+    return false;
+  }
+}
+
 // POST /cards/webhook  — SIN autenticación JWT
 // CryptoMate envía eventos de tarjeta (autorización, depósito, etc.)
 // Configurar esta URL en el Portal de CryptoMate
 export const cardWebhook = async (req, res) => {
   try {
-    const webhookKey = req.headers["x-webhook-key"];
-    if (!webhookKey || webhookKey !== process.env.CRYPTOMATE_WEBHOOK_KEY) {
+    if (!claveDeWebhookValida(req) || !firmaDeWebhookValida(req)) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     const { product, event_type, operation_id, status, data } = req.body;
+
+    if (await eventoYaAplicado(operation_id)) {
+      // 200 a proposito: para el proveedor esto ya se atendio, que es la
+      // verdad. Un error le haria reintentarlo otra vez.
+      return res.status(200).json({ response_code: "OK", repetido: true });
+    }
 
     console.log(`CryptoMate webhook: product=${product} event=${event_type} op=${operation_id} status=${status}`);
 

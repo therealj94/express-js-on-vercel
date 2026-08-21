@@ -44,6 +44,8 @@
 //   liberar-entra   +m  (disponible)  ┘   suman cero
 //   ejecutar-sale   -m  (reservado del que pago)    ┐
 //   ejecutar-entra  +m  (disponible del que cobro)  ┘  suman cero
+//   revertir-sale   -m  (disponible del que cobro)  ┐
+//   revertir-entra  +m  (reservado del que pago)    ┘  suman cero
 //
 // El asiento se escribe DESPUES de mover el saldo, no antes: si fallara al
 // reves quedaria historia de un dinero que nunca se movio, que es fabricar
@@ -212,4 +214,53 @@ async function ejecutarReserva(userId, activo, monto, aQuien, ref) {
   return { pagador: cPagador, cobrador: cCobrador };
 }
 
-module.exports = { acreditar, debitar, reservar, liberar, ejecutarReserva };
+/**
+ * El reverso EXACTO de `ejecutarReserva`: lo que salio de la reserva de
+ * `userId` y entro al disponible de `aQuien` vuelve por donde vino.
+ *
+ * Existe porque un trato mueve DOS patas (el activo del vendedor y el ORIGEN
+ * del comprador) y sin replica set no hay transaccion que las abrace: cuando
+ * la segunda falla, la primera ya se movio y alguien tiene que deshacerla.
+ * `liberar` no sirve para eso, porque el dinero ya no esta en la reserva de
+ * quien pago sino en el disponible de quien cobro; y `debitar` mentiria, que
+ * es una operacion de frontera y aqui no sale nada de la casa.
+ *
+ * EL ORDEN ES EL MISMO ARGUMENTO QUE EN `ejecutarReserva`, al reves: primero
+ * SALE del disponible del que cobro, que es la unica pata que puede fallar (si
+ * ya lo gasto, no esta), y solo despues ENTRA a la reserva del que pago. Asi
+ * lo peor que puede pasar es que el reverso no se complete, jamas que el
+ * reverso fabrique dinero que nadie devolvio.
+ *
+ * Si el cobrador ya gasto lo que le llego, esto falla con SALDO_INSUFICIENTE y
+ * quien llama tiene un incidente para un humano, no un saldo torcido en
+ * silencio. Es el precio de no tener transacciones, y se paga cantandolo.
+ */
+async function revertirEjecucion(userId, activo, monto, aQuien, ref) {
+  const m = aWei(monto);
+  if (!aQuien || aQuien === userId) {
+    throw fallo('CONTRAPARTE_INVALIDA', 400, 'La contraparte no puede ser uno mismo.');
+  }
+
+  const cCobrador = await mutarCuenta(aQuien, activo, -m, 0n);
+  let cPagador;
+  try {
+    cPagador = await mutarCuenta(userId, activo, 0n, m);
+  } catch (e) {
+    try {
+      await mutarCuenta(aQuien, activo, m, 0n);
+    } catch (e2) {
+      console.error(
+        `[ledger] CRITICO: ${m} ${activo} salieron del disponible de ${aQuien} y no volvieron a la reserva de ${userId} ni a su sitio (ref ${ref}): ${e2.message}`
+      );
+    }
+    throw e;
+  }
+
+  await anotar([
+    { ref, tipo: 'revertir-sale', userId: aQuien, activo, monto: (-m).toString(), contraparte: userId, saldoDespues: cCobrador.disponible },
+    { ref, tipo: 'revertir-entra', userId, activo, monto: m.toString(), contraparte: aQuien, saldoDespues: cPagador.reservado },
+  ]);
+  return { pagador: cPagador, cobrador: cCobrador };
+}
+
+module.exports = { acreditar, debitar, reservar, liberar, ejecutarReserva, revertirEjecucion };

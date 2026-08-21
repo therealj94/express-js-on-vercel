@@ -203,11 +203,40 @@ async function retirar(req, res) {
   }
 
   // 6. Firmar desde la caliente (nonce serializado en lib/cadena5550.js).
+  //
+  // AQUI VIVE LA REGLA MAS CARA DE LA CASA: un tiempo agotado NO es un fallo,
+  // es una DUDA. El plazo de lib/cadena5550.js corta la espera, no la
+  // transaccion: si el nodo acepto el envio y tardo mas en contestar, la
+  // transaccion esta en el mempool y se va a minar. Reacreditar ahi es
+  // devolverle al usuario un dinero que ya salio de la caliente, y encima
+  // decirle "tu saldo no se movio" cuando se movio dos veces.
+  //
+  // Por eso solo se reacredita cuando el modulo de la cadena AFIRMA que no
+  // salio nada (`nuncaSalio`): todo lo anterior a la firma y el rechazo
+  // explicito del nodo. Sin esa afirmacion, el retiro queda en `revision` con
+  // el debito en pie, sin reacreditar y sin AML, esperando a que un humano
+  // mire la cadena y decida. Es la unica postura que no puede regalar dinero:
+  // si la transaccion salio, el debito es correcto; y si no salio, el usuario
+  // recupera su saldo tras la revision, tarde pero entero.
   let envio;
   try {
     envio = await cadena.enviarDesdeCaliente({ a: direccion, activo, cantidadWei: cantidad });
   } catch (e) {
-    // La firma no salio: se le devuelve su dinero al ledger y se anota el
+    const detalle = `${e.codigo || e.code || ''} ${e.message}`.trim();
+
+    if (e.nuncaSalio !== true) {
+      await marcarRevision(retiro, `duda: ${detalle}`);
+      console.error(
+        `[retiros] EN DUDA: el retiro ${retiro._id} debito ${cantidad} wei de ${activo} a ${userId} y no se pudo confirmar si la transaccion salio (${detalle}). NO se reacredita: revisar la cadena desde ${cadena.direccionCaliente()} antes de tocar el saldo.`
+      );
+      return res.status(503).json({
+        error: 'No pudimos confirmar si el retiro salio. Tu saldo sigue debitado mientras se revisa; no lo intentes de nuevo.',
+        codigo: 'RETIRO_EN_REVISION',
+        id: String(retiro._id),
+      });
+    }
+
+    // Se SABE que no salio: se le devuelve su dinero al ledger y se anota el
     // porque. Si hasta el reverso falla, eso es un incidente y se canta con
     // todo: el usuario tiene un debito sin retiro y lo arregla un humano.
     try {
@@ -217,8 +246,8 @@ async function retirar(req, res) {
         `[retiros] INCIDENTE: el retiro ${retiro._id} debito ${cantidad} wei de ${activo} a ${userId}, la firma fallo (${e.message}) y el reverso TAMBIEN fallo: ${e2.message}`
       );
     }
-    await marcarFallo(retiro, `firma: ${e.code || ''} ${e.message}`.trim());
-    console.error(`[retiros] firma fallida ${retiro._id}: ${e.code || ''} ${e.message}`);
+    await marcarFallo(retiro, `firma: ${detalle}`);
+    console.error(`[retiros] firma fallida ${retiro._id}: ${detalle}`);
     // El detalle crudo de ethers no viaja al cliente: puede llevar dentro el
     // saldo de la caliente o la URL del nodo.
     return res.status(503).json({ error: 'No se pudo emitir el retiro. Tu saldo no se movio.', codigo: 'FIRMA_FALLO' });
@@ -277,6 +306,29 @@ async function marcarFallo(retiro, porQue) {
 }
 
 /**
+ * Deja el retiro en `revision`: ni salio ni fallo, no se sabe. Es un estado
+ * distinto de `fallido` a proposito, y la diferencia es de dinero, no de
+ * matiz: `fallido` dice "el saldo se devolvio" y `revision` dice "el saldo
+ * sigue debitado y nadie lo va a tocar hasta que un humano mire la cadena".
+ * Confundirlos es lo que hacia que un plazo agotado pagara dos veces.
+ *
+ * Si ni siquiera esto se puede anotar, se canta lo mas fuerte que se puede:
+ * un retiro que quedo `pendiente` con el saldo debitado es exactamente el
+ * mismo incidente, solo que sin etiqueta que lo encuentre.
+ */
+async function marcarRevision(retiro, porQue) {
+  try {
+    retiro.estado = 'revision';
+    retiro.fallo = porQue;
+    await retiro.save();
+  } catch (e) {
+    console.error(
+      `[retiros] INCIDENTE: el retiro ${retiro._id} quedo en duda (${porQue}) y NO se pudo marcar para revision: ${e.message}`
+    );
+  }
+}
+
+/**
  * La respuesta a una retiroKey ya vista. La clave es del usuario que la uso:
  * si otro manda la misma, es un choque (o un ataque) y se dice sin detalle.
  */
@@ -293,6 +345,17 @@ function responderRepetido(res, visto, userId) {
     return res.status(409).json({
       error: 'Ese retiro fallo y el saldo se devolvio. Para intentarlo de nuevo usa una retiroKey nueva.',
       codigo: 'RETIRO_FALLO',
+      id: String(visto._id),
+    });
+  }
+  if (visto.estado === 'revision') {
+    // Ni un hash que enseñar ni un saldo que prometer: se dice la verdad, que
+    // es que no se sabe. Y sobre todo NO se invita a reintentar con otra
+    // clave: si la transaccion dudosa se mina, el reintento seria el segundo
+    // pago del mismo retiro.
+    return res.status(409).json({
+      error: 'Ese retiro esta en revision: no pudimos confirmar si salio. No lo intentes de nuevo hasta que se resuelva.',
+      codigo: 'RETIRO_EN_REVISION',
       id: String(visto._id),
     });
   }

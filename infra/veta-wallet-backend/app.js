@@ -120,6 +120,47 @@ const financialLimiter = rateLimit({
 });
 app.use("/cards/fund", financialLimiter);
 
+// ── Enviar dinero ────────────────────────────────────────────────────────────
+//
+// EL FRENO DURO ESTABA DONDE EL PREMIO ERA CHICO.
+//
+// Asi estaban los topes hasta hoy:
+//
+//   /users/decriptSeed   enseña la frase semilla       5 cada 15 min
+//   /cards/fund          mueve hasta 5.000 USD        10 cada 15 min
+//   /transaction/send    mueve TODO el saldo         100 por minuto
+//
+// O sea que la ruta que puede vaciar una cuenta entera era trescientas veces
+// mas permisiva que la que enseña la semilla, y no tenia freno propio: caia
+// solo en el limite global de 100/min que existe para que nadie tumbe el
+// servidor, no para proteger el dinero de nadie.
+//
+// Y las tres piden la contraseña, asi que las tres son un oraculo para
+// adivinarla: se prueba una, el servidor contesta si acerto, se prueba otra.
+// Con 100 por minuto se prueban 144.000 contraseñas al dia por esa puerta.
+//
+// Se iguala al freno mas duro que hay en la casa, el de la semilla, y no al de
+// /cards/fund, porque el premio de esta puerta es el de la semilla y no el de
+// la tarjeta: quien la fuerce se lleva el saldo entero, no cinco mil dolares.
+//
+// VA SOBRE /transaction Y NO SOBRE CADA RUTA. Con un limitador por ruta se
+// tendria cinco en /send MAS cinco en /sendToken alternando entre las dos, que
+// es el doble del tope escrito. El presupuesto es uno y se comparte.
+//
+// Si algun dia cinco resulta corto para alguien que usa esto de verdad, se
+// sube ESTE numero y se dice por que. Lo que no se puede es dejarlo sin freno.
+const envioLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: "Demasiados envíos seguidos. Esperá 15 minutos.",
+    codigo: "demasiados-envios",
+  },
+});
+app.use("/transaction", envioLimiter);
+
 // La revision de deposito lee el saldo USDT en Polygon en cada llamada. La
 // pantalla la sondea cada pocos segundos, asi que el limite es alto, pero
 // existe: sin el, un cliente en bucle agota la cuota del RPC para todos.
@@ -177,12 +218,36 @@ app.use("/genesis/foto", parserRostro);
 // dos fotografias de telefono y tampoco caben en el limite general.
 app.use("/genesis/documento-fotos", parserRostro);
 
-app.use(bodyParser.json({ limit: "100kb" })); // reducido de 5mb — no hay razón para aceptar más
-// view engine setup
-app.set("views", path.join(__dirname, "views"));
-app.set("view engine", "jade");
+/* Reducido de 5mb — no hay razón para aceptar más.
+ *
+ * Y se guardan los BYTES tal como llegaron. Una firma HMAC se calcula sobre el
+ * cuerpo crudo, y una vez parseado ese cuerpo ya no existe: volver a
+ * serializarlo con JSON.stringify da otros bytes —otro orden, otros espacios,
+ * otros escapes— y por tanto otra firma, así que la comprobación fallaría
+ * siempre aunque el remitente hubiera firmado bien. Los usa el webhook de
+ * tarjeta (controller/cardController.js) y le sirve igual al de Veriff.
+ *
+ * El coste es tener el buffer en memoria mientras dure la petición, y está
+ * acotado por el mismo límite de 100 kb de aquí al lado. */
+app.use(bodyParser.json({
+  limit: "100kb",
+  verify: (req, res, buf) => { req.rawBody = buf; },
+}));
+/* Aquí había un motor de plantillas (jade) y lo usaba UNA sola cosa: el
+ * manejador de errores del final, para pintar una página de error a un cliente
+ * que es una aplicación móvil y una web que hablan JSON. Nadie veía esa página.
+ *
+ * Jade está abandonado desde 2016 y arrastraba tres de las cuatro
+ * vulnerabilidades críticas del proyecto (constantinople, uglify-js y el propio
+ * jade, vía transformers). Devolver JSON —que es lo que el cliente entiende—
+ * las quita de raíz, sin parche que mantener y con una dependencia menos.
+ *
+ * Si algún día hace falta servir HTML desde aquí, se elige un motor mantenido y
+ * se vuelve a poner. Lo que no hay que hacer es conservar uno abandonado por
+ * una página que nadie mira. */
 
 app.use(logger("dev"));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
@@ -242,15 +307,18 @@ app.use(function (req, res, next) {
   next(createError(404));
 });
 
-// error handler
+/* Manejador de errores. Contesta JSON, que es lo que hablan todos los clientes
+ * de este servidor.
+ *
+ * La pila de la excepción SOLO en desarrollo, igual que antes: en producción una
+ * pila dice rutas del disco, nombres de fichero y versiones de biblioteca, que
+ * es material de reconocimiento para quien esté probando la puerta. */
 app.use(function (err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get("env") === "development" ? err : {};
-
-  // render the error page
-  res.status(err.status || 500);
-  res.render("error");
+  const estado = err.status || 500;
+  res.status(estado).json({
+    message: err.message || "Server error",
+    ...(req.app.get("env") === "development" ? { stack: err.stack } : {}),
+  });
 });
 // Padrón para el panel de analítica de Genesis ID.
 import { arrancarCenso } from "./lib/censoGenesis";

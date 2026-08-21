@@ -44,10 +44,75 @@ function proveedor() {
 function conPlazo(promesa, ms, que) {
   return Promise.race([
     promesa,
-    new Promise((_, rechaza) =>
-      setTimeout(() => rechaza(new Error(`${que}: sin respuesta en ${ms}ms`)), ms)
-    ),
+    new Promise((_, rechaza) => {
+      setTimeout(() => {
+        const e = new Error(`${que}: sin respuesta en ${ms}ms`);
+        e.codigo = 'SIN_RESPUESTA';
+        rechaza(e);
+      }, ms);
+    }),
   ]);
+}
+
+// ── UN PLAZO AGOTADO NO ES UN FALLO: ES UNA DUDA ────────────────────────────
+//
+// El plazo corta la ESPERA, no la transaccion. Si el nodo acepto el envio y
+// tardo veintiun segundos en contestar, la transaccion esta en el mempool y se
+// va a minar igual, pero aqui ya rebotamos un error. Quien llame a esto (el
+// retiro) lo tratara como "no salio", le devolvera el saldo al usuario y le
+// dira que no se movio. Se movio, y el dinero salio dos veces.
+//
+// Por eso todo error que sale de este modulo lleva `nuncaSalio`, y solo va en
+// true cuando se SABE que no hay transaccion firmada dando vueltas:
+//
+//   - todo lo anterior a la firma (activo desconocido, direccion invalida,
+//     llave que no es llave, gas que no se pudo leer, nonce que no se pudo
+//     pedir): no hubo que aceptar, no hay nada en vuelo;
+//   - y el rechazo EXPLICITO del nodo, que es el nodo diciendo "esta no la
+//     tomo": saldo que no da para el gas, nonce ya usado, firma o argumento
+//     invalidos, revert al estimar.
+//
+// Todo lo demas, empezando por el plazo agotado, sale SIN la marca. La regla
+// para quien lea esto es la unica que no cuesta dinero equivocarse: sin
+// `nuncaSalio === true`, hay duda, y ante la duda no se reacredita.
+//
+// La marca es afirmativa y no al reves (`enDuda`) a proposito: si mañana
+// alguien añade un camino de error nuevo y se olvida de marcarlo, cae del lado
+// de la duda, que es el lado caro pero seguro. Un default que se olvida tiene
+// que ser el prudente.
+const RECHAZOS = [
+  'INSUFFICIENT_FUNDS',
+  'NONCE_EXPIRED',
+  'REPLACEMENT_UNDERPRICED',
+  'INVALID_ARGUMENT',
+  'UNSUPPORTED_OPERATION',
+  'CALL_EXCEPTION',
+  'ACTION_REJECTED',
+];
+
+/** Marca un error como "esto no llego a salir". Devuelve el mismo error. */
+function nuncaSalio(e) {
+  if (e && typeof e === 'object') e.nuncaSalio = true;
+  return e;
+}
+
+/**
+ * Marca el error de un envio ya firmado: solo se da por no salido cuando el
+ * nodo lo rechazo con nombre y apellido. Un plazo agotado, un socket cortado o
+ * un 502 del RPC dejan la duda intacta.
+ */
+function segunElNodo(e) {
+  if (e && typeof e === 'object' && RECHAZOS.includes(e.code)) e.nuncaSalio = true;
+  return e;
+}
+
+/** Corre lo que pasa ANTES de firmar: si truena, no hay nada en vuelo. */
+async function antesDeFirmar(fn) {
+  try {
+    return await fn();
+  } catch (e) {
+    throw nuncaSalio(e);
+  }
 }
 
 // El precio del gas sale de la cadena, nunca de una constante (la leccion de
@@ -135,36 +200,50 @@ function direccionCaliente() {
 }
 
 // El envio de verdad, desde cualquier llave. No espera el minado: el hash es
-// la prueba de emision y el estado final lo dira la cadena — esperar bloqueaba
+// la prueba de emision y el estado final lo dira la cadena. Esperar bloqueaba
 // mas de los 30s del router de Heroku (la leccion H12 de la wallet).
+//
+// La frontera de la duda esta dentro de esta funcion, y es exacta: todo lo que
+// pasa antes de la linea marcada no puede haber emitido nada (va envuelto en
+// `antesDeFirmar`); el envio de despues si, y solo el nodo puede decir que no.
 async function emitir(llave, { a, activo, cantidadWei, nonce }) {
   const t = PORSIMBOLO[activo];
   if (!t) {
     const e = new Error(`activo desconocido: ${activo}`);
     e.codigo = 'ACTIVO_INVALIDO';
-    throw e;
+    throw nuncaSalio(e);
   }
   const p = proveedor();
-  const billetera = new Wallet(llave, p);
-  const destino = getAddress(a); // normaliza y valida; lanza si no es direccion
-  const gasPrice = await precioDeGas(p);
-  const n = nonce != null
-    ? nonce
-    : await conPlazo(p.getTransactionCount(billetera.address, 'latest'), 12000, 'nonce');
+  const preparado = await antesDeFirmar(async () => {
+    const billetera = new Wallet(llave, p);
+    const destino = getAddress(a); // normaliza y valida; lanza si no es direccion
+    const gasPrice = await precioDeGas(p);
+    const n = nonce != null
+      ? nonce
+      : await conPlazo(p.getTransactionCount(billetera.address, 'latest'), 12000, 'nonce');
+    return { billetera, destino, gasPrice, n };
+  });
+  const { billetera, destino, gasPrice, n } = preparado;
 
   if (t.nativo) {
-    const tx = await conPlazo(
-      billetera.sendTransaction({
-        to: destino,
-        value: BigInt(cantidadWei),
-        gasLimit: LIMITE_NATIVO,
-        gasPrice,
-        nonce: n,
-      }),
-      20000,
-      'envio nativo'
-    );
-    return { hash: tx.hash, de: billetera.address, nonce: n };
+    // ─── de aqui en adelante puede haber transaccion en vuelo ───
+    try {
+      const tx = await conPlazo(
+        billetera.sendTransaction({
+          to: destino,
+          value: BigInt(cantidadWei),
+          gasLimit: LIMITE_NATIVO,
+          gasPrice,
+          nonce: n,
+        }),
+        20000,
+        'envio nativo'
+      );
+      return { hash: tx.hash, de: billetera.address, nonce: n };
+    } catch (e) {
+      e.nonce = n;
+      throw segunElNodo(e);
+    }
   }
 
   const contrato = new Contract(t.contrato, ERC20_ABI, billetera);
@@ -178,14 +257,21 @@ async function emitir(llave, { a, activo, cantidadWei, nonce }) {
     gasLimit = (estimado * 120n) / 100n;
   } catch (e) {
     // El nodo no quiso estimar: se va con el techo por omision. Si de verdad
-    // no alcanza, la propia emision lo dira.
+    // no alcanza, la propia emision lo dira. Estimar no firma nada, asi que
+    // este catch no cambia la duda de sitio.
   }
-  const tx = await conPlazo(
-    contrato.transfer(destino, BigInt(cantidadWei), { gasLimit, gasPrice, nonce: n }),
-    20000,
-    `envio ${t.s}`
-  );
-  return { hash: tx.hash, de: billetera.address, nonce: n };
+  // ─── de aqui en adelante puede haber transaccion en vuelo ───
+  try {
+    const tx = await conPlazo(
+      contrato.transfer(destino, BigInt(cantidadWei), { gasLimit, gasPrice, nonce: n }),
+      20000,
+      `envio ${t.s}`
+    );
+    return { hash: tx.hash, de: billetera.address, nonce: n };
+  } catch (e) {
+    e.nonce = n;
+    throw segunElNodo(e);
+  }
 }
 
 // ── La caliente: nonce serializado ──────────────────────────────────────────
@@ -197,31 +283,75 @@ async function emitir(llave, { a, activo, cantidadWei, nonce }) {
 // viejo, porque no esperamos el minado.
 let colaCaliente = Promise.resolve();
 let nonceCaliente = null;
+// El nonce del ultimo envio que quedo EN DUDA (plazo agotado, RPC mudo). No
+// se sabe si esa transaccion esta en el mempool, asi que el proximo envio no
+// puede reusar ese numero a ciegas: ver `nonceFresco`.
+let nonceEnDuda = null;
+
+/**
+ * De donde sale el nonce cuando el contador local se tiro: de 'pending', NO de
+ * 'latest'.
+ *
+ * Este era el agravante del retiro dudoso. Tras un fallo se ponia el contador
+ * en null y el siguiente envio pedia `getTransactionCount(..., 'latest')`, que
+ * cuenta SOLO lo minado y no ve el mempool. Si la transaccion dudosa estaba
+ * ahi esperando, el siguiente retiro salia con SU MISMO nonce y una de las dos
+ * reemplazaba a la otra: un retiro pagado dos veces o uno que nunca llega,
+ * segun cual ganara.
+ *
+ * 'pending' si cuenta lo que espera en el mempool, asi que en un nodo sano
+ * resuelve los dos casos solo: si la dudosa entro, devuelve el siguiente; si
+ * no entro, devuelve el mismo y se reusa bien.
+ *
+ * Y si el nodo no sabe contestar 'pending', se cae a 'latest' con una guarda:
+ * nunca por debajo de `nonceEnDuda + 1`. Eso puede dejar un hueco (una
+ * transaccion que espera a otra que jamas existio) y frena la cola hasta que
+ * un humano mire, pero el otro lado del error es reemplazar en silencio un
+ * retiro que ya salio. Se elige el fallo que se ve.
+ */
+async function nonceFresco(p, direccion) {
+  let n;
+  try {
+    n = await conPlazo(p.getTransactionCount(direccion, 'pending'), 12000, 'nonce caliente');
+  } catch (e) {
+    if (e.codigo === 'SIN_RESPUESTA') throw e; // el nodo no contesta: no se inventa
+    n = await conPlazo(p.getTransactionCount(direccion, 'latest'), 12000, 'nonce caliente');
+    if (nonceEnDuda != null && n <= nonceEnDuda) {
+      console.error(
+        `[cadena] el nodo no cuenta pendientes y dice nonce ${n}, pero el envio ${nonceEnDuda} quedo en duda: se salta a ${nonceEnDuda + 1}`
+      );
+      n = nonceEnDuda + 1;
+    }
+  }
+  return n;
+}
 
 async function envioCaliente({ a, activo, cantidadWei }) {
   const llave = process.env.ORDENEX_HOT_KEY;
   if (!esLlavePrivada(llave)) {
     const e = new Error('ORDENEX_HOT_KEY no esta puesta o no tiene forma de llave.');
     e.codigo = 'SIN_CONFIGURAR';
-    throw e;
+    throw nuncaSalio(e);
   }
   const p = proveedor();
   const direccion = new Wallet(llave).address;
+  if (nonceCaliente == null) {
+    // Pedir el nonce es anterior a la firma: si no se puede, no salio nada.
+    nonceCaliente = await antesDeFirmar(() => nonceFresco(p, direccion));
+  }
+  const usado = nonceCaliente;
   try {
-    if (nonceCaliente == null) {
-      nonceCaliente = await conPlazo(
-        p.getTransactionCount(direccion, 'latest'),
-        12000,
-        'nonce caliente'
-      );
-    }
-    const salida = await emitir(llave, { a, activo, cantidadWei, nonce: nonceCaliente });
+    const salida = await emitir(llave, { a, activo, cantidadWei, nonce: usado });
     nonceCaliente += 1;
+    nonceEnDuda = null; // salio uno bueno: la duda vieja ya no manda nada
     return salida;
   } catch (e) {
-    // Tras un fallo el contador local ya no es de fiar (¿se emitio o no?):
-    // se tira y el proximo envio vuelve a preguntarle a la cadena.
+    // El contador local ya no es de fiar y se tira. Lo que cambia segun el
+    // fallo es lo que se recuerda: si el nodo lo rechazo con nombre, ese nonce
+    // sigue libre y no hay duda que arrastrar; si no, se apunta para que
+    // `nonceFresco` no lo reuse a ciegas.
     nonceCaliente = null;
+    if (!e.nuncaSalio) nonceEnDuda = usado;
     throw e;
   }
 }
@@ -250,21 +380,26 @@ async function enviarDesde(llave, { a, activo, cantidadWei, todo = false }) {
   if (!esLlavePrivada(llave)) {
     const e = new Error('La llave no tiene forma de llave privada.');
     e.codigo = 'LLAVE_INVALIDA';
-    throw e;
+    throw nuncaSalio(e);
   }
   const t = PORSIMBOLO[activo];
   if (t && t.nativo && todo) {
     const p = proveedor();
-    const quien = new Wallet(llave).address;
-    const saldo = await conPlazo(p.getBalance(quien), 12000, 'saldo a barrer');
-    const gasPrice = await precioDeGas(p);
-    const costo = LIMITE_NATIVO * gasPrice;
-    const monto = saldo - costo;
-    if (monto <= 0n) {
-      const e = new Error('El saldo no alcanza ni para el gas del barrido.');
-      e.codigo = 'NO_ALCANZA_GAS';
-      throw e;
-    }
+    // Mirar el saldo y el gas es anterior a la firma: si truena, no hay nada
+    // en vuelo y el barrido puede reintentarse sin miedo.
+    const monto = await antesDeFirmar(async () => {
+      const quien = new Wallet(llave).address;
+      const saldo = await conPlazo(p.getBalance(quien), 12000, 'saldo a barrer');
+      const gasPrice = await precioDeGas(p);
+      const costo = LIMITE_NATIVO * gasPrice;
+      const queda = saldo - costo;
+      if (queda <= 0n) {
+        const e = new Error('El saldo no alcanza ni para el gas del barrido.');
+        e.codigo = 'NO_ALCANZA_GAS';
+        throw e;
+      }
+      return queda;
+    });
     const salida = await emitir(llave, { a, activo, cantidadWei: monto.toString() });
     return { ...salida, cantidad: monto.toString() };
   }

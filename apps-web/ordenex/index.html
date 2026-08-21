@@ -15,11 +15,21 @@
        ordenex-api-ba4b27b8b51a.herokuapp.com   el API de la casa de cambio (datos.js)
        rpc.ordenglobal-rpc.com     la cadena 5550, para lo que se comprueba
                                    directo contra ella (depósitos, saldos)
+       genesis-id.onrender.com     la ingesta de telemetría (telemetria.js)
        fonts.googleapis/gstatic    Archivo y JetBrains Mono; la Cinzel viaja
                                    dentro de la página y no está aquí a propósito
 
-     Si se agrega un servicio nuevo hay que agregarlo aquí o dejará de
-     funcionar en silencio. -->
+     SI SE AGREGA UN SERVICIO NUEVO HAY QUE AGREGARLO AQUÍ. Y esto no es un
+     consejo: es lo que ya pasó. genesis-id.onrender.com faltaba en esta lista,
+     así que el navegador cortaba el CIEN POR CIENTO de los eventos de
+     telemetria.js, en silencio y sin que nadie lo notara desde fuera — el
+     panel de Genesis enseñaba un ecosistema sin Ordenex mientras la casa
+     operaba. Un connect-src incompleto no rompe la pantalla: apaga una pieza
+     y la deja pareciendo viva.
+
+     La forma de comprobarlo es la consola del navegador («Refused to
+     connect…»), y por eso apps-web/probar-ordenex.mjs falla la prueba entera
+     si aparece una sola violación de CSP en todo el recorrido. -->
 <!-- frame-src deja enmarcar SOLO a la wallet: es el panel de depositar. Lo de
      adentro sigue siendo el documento de la wallet, en su dominio, asi que la
      contraseña se teclea alla y esta pagina no puede leerla.
@@ -33,7 +43,8 @@
   img-src 'self' data: blob:;
   connect-src 'self'
     https://ordenex-api-ba4b27b8b51a.herokuapp.com
-    https://rpc.ordenglobal-rpc.com;
+    https://rpc.ordenglobal-rpc.com
+    https://genesis-id.onrender.com;
   object-src 'none';
   base-uri 'self';
   form-action 'self';
@@ -357,6 +368,25 @@ body.en-app .lienzo{padding-top:calc(34px + 22px)}
 .tabla td:first-child{text-align:left;padding-left:0}
 .tabla tr:last-child td{border-bottom:0}
 
+/* ── el riel de cada tabla ────────────────────────────────────────────────
+   Toda tabla de la casa va DENTRO de uno de estos. No es adorno: en un
+   teléfono de 360 px la tabla de «mis órdenes abiertas» mide 443, y como el
+   body lleva `overflow-x:hidden` lo que sobra no se desplaza — se RECORTA.
+   Lo que quedaba fuera del borde era la columna del botón «Cancelar», así que
+   una orden colocada desde el teléfono no se podía cancelar desde el teléfono
+   con ningún gesto. Eso no es un fallo de maquetación: es dinero atrapado.
+
+   El arreglo es que desborde la tabla y no la página. Cada tabla lleva su
+   propio desplazamiento horizontal, el `body` conserva su guarda (quitarla
+   deja que CUALQUIER cosa ancha empuje la página entera, que es el problema
+   que esa línea vino a resolver), y `min-width:max-content` es lo que impide
+   que las celdas se estrujen hasta ser ilegibles en vez de deslizarse.
+
+   `overscroll-behavior-x:contain` evita que llegar al final del riel se lleve
+   por delante el gesto de «atrás» del navegador. */
+.desliza{overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.desliza>table{min-width:max-content}
+
 /* ── armazón de la aplicación ────────────────────────────────────────────── */
 #app{position:relative;z-index:2;min-height:100svh}
 .riel{position:fixed;left:0;top:0;bottom:0;width:232px;padding:26px 18px;z-index:5;
@@ -445,8 +475,27 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
   .bv h1{font-size:clamp(26px,7vw,36px)}
   .mv{justify-self:stretch;width:100%}
   .riel{position:static;width:auto;height:auto;flex-direction:row;align-items:center;
-    border-right:0;border-bottom:1px solid var(--linea2);padding:14px 16px;gap:12px;justify-content:space-between}
-  .riel .nav,.riel-pie{display:none}
+    border-right:0;border-bottom:1px solid var(--linea2);padding:14px 16px;gap:12px 14px;
+    justify-content:space-between;flex-wrap:wrap}
+  /* Las secciones sí se van: abajo están las pestañas, que hacen lo mismo con
+     el pulgar más cerca. El PIE no: ahí viven salir y el cambio de idioma, y
+     hasta hoy los dos desaparecían por debajo de 900 px — o sea que en un
+     teléfono no había manera de cerrar sesión ni de cambiar de idioma en toda
+     la aplicación. Un botón que solo existe en el escritorio no existe.
+
+     Así que en angosto el pie deja de ser una columna al fondo del riel y se
+     vuelve una hilera en la barra de arriba: se pierde el `margin-top:auto`,
+     la regla y el sangrado, y si no cabe cae a un segundo renglón, que es
+     para lo que el riel lleva `flex-wrap` acá arriba. */
+  .riel .nav{display:none}
+  .riel-pie{margin:0;padding:0;border-top:0;line-height:1.4;
+    display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+  .riel-pie .idiomas{margin-top:0}
+  /* La línea de propiedad se queda —en el teléfono también se tiene derecho a
+     saber con quién se opera— pero sin la regla ni el aire de la versión
+     vertical, que ahí separaban dos bloques y acá partirían una hilera. */
+  .riel-pie .duena{padding-bottom:0;margin-bottom:0;border-bottom:0;
+    display:inline-flex;align-items:center;gap:6px}
   .riel-marca{padding:0;font-size:19px}
   .lienzo{margin-left:0;padding:20px 16px 104px}
   .tabs{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;
@@ -508,17 +557,21 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
   </div>
   <aside class="mv vidrio">
     <div class="mv-lbl" data-t="pt.vivos"></div>
-    <table id="mercados-vivos">
-      <thead><tr>
-        <th data-t="pt.mvPar"></th>
-        <th data-t="pt.mvUltimo"></th>
-        <th data-t="pt.mvCambio"></th>
-        <th class="soloAncho" data-t="pt.mvAlto"></th>
-        <th class="soloAncho" data-t="pt.mvBajo"></th>
-        <th class="soloAncho" data-t="pt.mvVol"></th>
-      </tr></thead>
-      <tbody id="mv-cuerpo"></tbody>
-    </table>
+    <!-- Con su riel, como toda tabla de la casa: acá son tres columnas en el
+         teléfono y entran, pero la regla es de la casa y no del caso. -->
+    <div class="desliza">
+      <table id="mercados-vivos">
+        <thead><tr>
+          <th data-t="pt.mvPar"></th>
+          <th data-t="pt.mvUltimo"></th>
+          <th data-t="pt.mvCambio"></th>
+          <th class="soloAncho" data-t="pt.mvAlto"></th>
+          <th class="soloAncho" data-t="pt.mvBajo"></th>
+          <th class="soloAncho" data-t="pt.mvVol"></th>
+        </tr></thead>
+        <tbody id="mv-cuerpo"></tbody>
+      </table>
+    </div>
     <p class="mv-nota" id="mv-nota" data-t="pt.mvCargando"></p>
   </aside>
 </section>

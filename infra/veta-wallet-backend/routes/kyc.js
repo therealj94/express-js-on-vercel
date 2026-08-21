@@ -17,8 +17,13 @@ router.post(
       } catch {
         return res.status(400).json({ message: "Invalid JSON" });
       }
-    } else {
-      // Ya está parseado — guardamos string para firma si hace falta
+    } else if (!Buffer.isBuffer(req.rawBody)) {
+      /* Ya está parseado y no hay bytes guardados. Se rehace el texto para no
+         quedarse sin nada, pero conviene saber que ESTA FIRMA NO VA A CUADRAR:
+         JSON.stringify no devuelve los mismos bytes que llegaron —otro orden,
+         otros espacios, otros escapes— y el HMAC se calcula sobre los bytes.
+         Por eso se prefiere `req.rawBody`, que ahora guarda el parser de
+         app.js con la opción `verify` y sí son los bytes de verdad. */
       req.rawBody = Buffer.from(JSON.stringify(req.body));
     }
     next();

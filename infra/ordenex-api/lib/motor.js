@@ -20,6 +20,15 @@
 // Esto resuelve el unico caso incomodo, la compra a mercado, que no tiene
 // precio con el que calcular un notional a ciegas.
 //
+// UN TRATO ES TODO O NADA. Mueve dos patas de dinero en sentidos opuestos y
+// baja dos restas, y sin conjunto de replicas no hay transaccion que las
+// abrace, asi que `aplicarTrato` lleva la cuenta de lo que ya movio y lo
+// deshace en orden inverso si algo se cae. El argumento completo, y por que
+// compensacion y no sesion de Mongo, esta arriba de esa funcion. El corolario
+// vive en `cargarLibros`: al recargar no se le cree a la `resta` guardada, se
+// deriva de los tratos, que son el unico papel que no existe hasta que el
+// dinero ya se movio.
+//
 // EL REDONDEO, dicho una vez y para siempre: todo cociente va con floor, y el
 // floor siempre pierde en contra de quien cobra, jamas crea wei. El pago de
 // un trato es floor(cantidad × precio / 1e18); la fraccion de wei que ese
@@ -199,18 +208,124 @@ function plano(doc) {
 }
 
 /**
+ * Baja la `resta` de una orden en `cantidad` y la guarda, apuntando en
+ * `papeles` como estaba para poder devolverla si el trato se cae despues.
+ *
+ * Si el save truena, el documento en memoria se devuelve a lo que decia ANTES
+ * de rebotar el error: un doc de Mongoose mutado y no guardado es una mentira
+ * que el siguiente trato del mismo bucle escribiria como verdad.
+ */
+async function bajarResta(orden, cantidad, papeles) {
+  const resta = orden.resta;
+  const estado = orden.estado;
+  orden.resta = (BigInt(resta) - cantidad).toString();
+  if (BigInt(orden.resta) === 0n) orden.estado = 'ejecutada';
+  try {
+    await orden.save();
+  } catch (e) {
+    orden.resta = resta;
+    orden.estado = estado;
+    throw e;
+  }
+  papeles.push({ orden, resta, estado });
+}
+
+/**
+ * Deshace, EN ORDEN INVERSO, lo que un trato alcanzo a mover antes de caerse.
+ * Primero los papeles (las restas vuelven a su sitio) y despues el dinero: si
+ * algo se quedara a medias, se prefiere una resta que sobra a un saldo que
+ * falta, porque la resta la reconstruye `cargarLibros` de los tratos y el
+ * saldo no lo reconstruye nadie.
+ *
+ * NINGUN fallo del reverso corta el reverso: cada pata deshecha es una menos
+ * que arreglar a mano, y las que no se pudieron se cantan con la ref para que
+ * un humano las encuentre. La ref es la MISMA del trato a proposito: asi las
+ * patas del reverso caen en el mismo grupo que las de ida y ese grupo vuelve a
+ * sumar cero, que es como se lee en los asientos que este trato no paso.
+ */
+async function deshacerTrato(movidas, papeles, ref) {
+  const led = elLedger();
+  let entero = true;
+
+  for (let i = papeles.length - 1; i >= 0; i--) {
+    const p = papeles[i];
+    p.orden.resta = p.resta;
+    p.orden.estado = p.estado;
+    try {
+      await p.orden.save();
+    } catch (e) {
+      entero = false;
+      console.error(
+        `[motor] CRITICO: el trato ${ref} se deshizo pero la orden ${p.orden._id} quedo con la resta bajada: ${e.message}`
+      );
+    }
+  }
+
+  for (let i = movidas.length - 1; i >= 0; i--) {
+    const m = movidas[i];
+    try {
+      await led.revertirEjecucion(m.de, m.activo, m.monto, m.a, ref);
+    } catch (e) {
+      entero = false;
+      console.error(
+        `[motor] CRITICO: el trato ${ref} se deshizo pero ${m.monto} ${m.activo} siguen en ${m.a} en vez de la reserva de ${m.de}: ${e.codigo || ''} ${e.message}`
+      );
+    }
+  }
+
+  return entero;
+}
+
+/**
  * Aplica UN trato ya decidido por el calce puro: las patas del ledger, la
- * comision, el documento Trato, la orden pasiva y el aviso a las velas.
+ * comision, las restas de las dos ordenes, el documento Trato y el aviso a las
+ * velas.
  *
  * La comision (ppm sobre lo recibido) se cobra partiendo la ejecucion de la
- * reserva en dos patas — la grande al que cobra, la chica a la cuenta 'casa'
- * — en vez de acreditar entero y debitar despues: asi la reserva del pagador
- * se consume exacta y la casa jamas cobra de un dinero que no se movio.
+ * reserva en dos patas, la grande al que cobra y la chica a la cuenta 'casa',
+ * en vez de acreditar entero y debitar despues: asi la reserva del pagador se
+ * consume exacta y la casa jamas cobra de un dinero que no se movio.
+ *
+ * ═══ TODO O NADA, CON COMPENSACION EXPLICITA ═══
+ *
+ * Un trato mueve DOS patas de dinero en sentidos opuestos (el activo sale de
+ * la reserva del vendedor, el ORIGEN sale de la del comprador) y hasta hoy
+ * eran cuatro llamadas sueltas sin nada que las abrazara. Si la del activo
+ * pasaba y la del pago fallaba, nadie deshacia la que ya se habia movido: el
+ * vendedor entregaba y cobraba cero. Y los disparadores no son hipoteticos,
+ * estan escritos en ledger.js: el asiento puede fallar DESPUES de mover el
+ * saldo (ASIENTO_PERDIDO), la guarda puede rendirse por congestion
+ * (LEDGER_CONGESTIONADO), y el proceso puede morirse entre dos await.
+ *
+ * Se elige COMPENSACION y no transaccion de Mongo, por tres razones:
+ *
+ *  1. No consta que el despliegue sea un conjunto de replicas. Ordenex se
+ *     conecta con su propia MONGODB_URI y el ensayo de ledger.js dice
+ *     literalmente lo contrario ("Mongo (sin replica set) no da transaccion
+ *     entre ambos"). Un arreglo que solo funciona en la mitad de los
+ *     despliegues posibles no es un arreglo del camino del dinero.
+ *  2. La guarda del ledger es lee-compara-escribe EN MEMORIA con reintentos.
+ *     Dentro de una sesion, las lecturas van contra una foto fija: el bucle
+ *     releeria ocho veces la misma foto y se rendiria siempre. Meter el ledger
+ *     en una transaccion obliga a reescribir su guarda, que es la pieza mejor
+ *     razonada de la casa, y a cambiarla justo cuando se toca el dinero.
+ *  3. La compensacion ya es el idioma de esta casa: `ejecutarReserva` se
+ *     compensa a si misma por dentro, y `colocar` libera la reserva cuando el
+ *     save de la orden truena. Esto no inventa un mecanismo, extiende el que
+ *     hay.
+ *
+ * Lo que la compensacion NO puede prometer es lo que ninguna transaccion
+ * promete tampoco sin dos fases: si el proceso muere DENTRO del reverso, o si
+ * el cobrador ya gasto lo que le llego, queda un incidente. Por eso el reverso
+ * canta CRITICO con la ref, `colocar` marca el motor frio, y `cargarLibros`
+ * reconstruye restas y reservas de los tratos, que es el unico papel que aqui
+ * no se escribe hasta que todo lo demas salio bien.
  */
-async function aplicarTrato(t, base, entranteId) {
+async function aplicarTrato(t, base, entrante) {
   const led = elLedger();
   const { Trato, Orden } = losModelos();
 
+  const entranteId = String(entrante._id);
   const doc = new Trato({ ...t, en: new Date() });
   const ref = `trato:${String(doc._id)}`;
   const cantidad = BigInt(t.cantidad);
@@ -219,46 +334,89 @@ async function aplicarTrato(t, base, entranteId) {
   const comisionBase = (cantidad * ppm) / 1000000n;
   const comisionPago = (pago * ppm) / 1000000n;
 
-  // La pata del activo: de la reserva del vendedor al comprador.
-  await led.ejecutarReserva(t.vendedorId, base, (cantidad - comisionBase).toString(), t.compradorId, ref);
-  if (comisionBase > 0n) {
-    await led.ejecutarReserva(t.vendedorId, base, comisionBase.toString(), 'casa', ref);
-  }
-  // La pata del ORIGEN: de la reserva del comprador al vendedor. Un pago de
-  // cero wei (un trato de polvo) no lleva pata: el ledger no mueve nadas.
-  if (pago - comisionPago > 0n) {
-    await led.ejecutarReserva(t.compradorId, 'ORIGEN', (pago - comisionPago).toString(), t.vendedorId, ref);
-  }
-  if (comisionPago > 0n) {
-    await led.ejecutarReserva(t.compradorId, 'ORIGEN', comisionPago.toString(), 'casa', ref);
-  }
-
-  await doc.save();
-
-  // La pasiva en la base: su resta baja lo calzado; si llego a cero, quedo
-  // ejecutada y, si era compra, se le devuelve el polvo de reserva que el
-  // floor dejo sin gastar.
+  // La pasiva se lee ANTES de mover un wei. Antes esto se cantaba y se seguia
+  // igual, y seguir era lo peor de las dos: liquidar contra una orden que no
+  // esta en la base deja un trato imposible de reconstruir y una reserva que
+  // ya no tiene dueño. Si no esta, el trato no se aplica y el motor se para.
   const pasivaId = t.ordenCompra === entranteId ? t.ordenVenta : t.ordenCompra;
   const pasiva = await Orden.findById(pasivaId);
   if (!pasiva) {
     console.error(`[motor] CRITICO: el trato ${ref} calzo contra una orden que no esta en la base (${pasivaId})`);
-  } else {
-    pasiva.resta = (BigInt(pasiva.resta) - cantidad).toString();
-    if (BigInt(pasiva.resta) === 0n) pasiva.estado = 'ejecutada';
-    await pasiva.save();
+    throw fallo('PASIVA_AUSENTE', 503, 'El calce apunto a una orden que no esta en la base.');
+  }
 
-    if (pasiva.lado === 'compra') {
-      let viva = BigInt(RESERVAS.get(pasivaId) ?? '0') - pago;
-      if (viva < 0n) {
-        console.error(`[motor] CRITICO: la reserva viva de ${pasivaId} quedo negativa; se ajusta a cero`);
-        viva = 0n;
+  // La unidad: `movidas` lleva la cuenta del dinero ya ejecutado y `papeles`
+  // la de las restas ya bajadas. Todo lo que entre aqui sale o se deshace.
+  const movidas = [];
+  const papeles = [];
+  const mover = async (de, activo, monto, a) => {
+    await led.ejecutarReserva(de, activo, monto, a, ref);
+    movidas.push({ de, activo, monto, a });
+  };
+
+  try {
+    // 1. La pata del activo: de la reserva del vendedor al comprador.
+    await mover(t.vendedorId, base, (cantidad - comisionBase).toString(), t.compradorId);
+    if (comisionBase > 0n) {
+      await mover(t.vendedorId, base, comisionBase.toString(), 'casa');
+    }
+    // 2. La pata del ORIGEN: de la reserva del comprador al vendedor. Un pago
+    //    de cero wei (un trato de polvo) no lleva pata: el ledger no mueve nadas.
+    if (pago - comisionPago > 0n) {
+      await mover(t.compradorId, 'ORIGEN', (pago - comisionPago).toString(), t.vendedorId);
+    }
+    if (comisionPago > 0n) {
+      await mover(t.compradorId, 'ORIGEN', comisionPago.toString(), 'casa');
+    }
+
+    // 3. Las DOS restas, dentro de la misma unidad. La de la entrante tambien,
+    //    y ese es el arreglo del libro recargado: hasta hoy la entrante bajaba
+    //    su resta DESPUES del bucle, asi que un bucle roto en el trato 3 de 3
+    //    devolvia al libro una orden diciendo "me quedan 15" con garantia para
+    //    5. Bajandola trato a trato, la base nunca dice mas de lo que la
+    //    reserva aguanta, pase lo que pase a mitad de camino.
+    await bajarResta(pasiva, cantidad, papeles);
+    await bajarResta(entrante, cantidad, papeles);
+
+    // 4. El trato, el ULTIMO papel. Es el que `cargarLibros` usa para
+    //    reconstruir restas y reservas, asi que no puede existir un Trato de
+    //    un dinero que se deshizo: se escribe solo cuando ya no queda nada
+    //    que pueda fallar dentro de la unidad.
+    await doc.save();
+  } catch (e) {
+    const entero = await deshacerTrato(movidas, papeles, ref);
+    console.error(
+      `[motor] el trato ${ref} se cayo (${e.codigo || ''} ${e.message}) y se deshizo ${entero ? 'entero' : 'A MEDIAS'}`
+    );
+    throw e;
+  }
+
+  // ── Fuera de la unidad: lo que no puede deshacer un trato consumado ──
+
+  // Si la pasiva era compra y quedo ejecutada, se le devuelve el polvo de
+  // reserva que el floor dejo sin gastar. Va aqui y no dentro de la unidad a
+  // proposito: deshacer un trato REAL por unos wei de polvo seria cambiar un
+  // problema chico por uno grande, y esa reserva la recalcula `cargarLibros`
+  // exacta desde los tratos.
+  if (pasiva.lado === 'compra') {
+    let viva = BigInt(RESERVAS.get(pasivaId) ?? '0') - pago;
+    if (viva < 0n) {
+      console.error(`[motor] CRITICO: la reserva viva de ${pasivaId} quedo negativa; se ajusta a cero`);
+      viva = 0n;
+    }
+    if (pasiva.estado === 'ejecutada') {
+      RESERVAS.delete(pasivaId);
+      if (viva > 0n) {
+        try {
+          await led.liberar(pasiva.userId, 'ORIGEN', viva.toString(), `orden:${pasivaId}`);
+        } catch (e) {
+          console.error(
+            `[motor] CRITICO: el polvo de reserva de ${pasivaId} (${viva} wei de ORIGEN) no se pudo liberar: ${e.message}`
+          );
+        }
       }
-      if (pasiva.estado === 'ejecutada') {
-        RESERVAS.delete(pasivaId);
-        if (viva > 0n) await led.liberar(pasiva.userId, 'ORIGEN', viva.toString(), `orden:${pasivaId}`);
-      } else {
-        RESERVAS.set(pasivaId, viva.toString());
-      }
+    } else {
+      RESERVAS.set(pasivaId, viva.toString());
     }
   }
 
@@ -284,11 +442,14 @@ async function aplicarTrato(t, base, entranteId) {
  *
  * El orden esta elegido para que cada fallo deje lo MENOS posible: si la
  * reserva falla no se persistio nada; si persistir falla se libera la
- * reserva; y si aplicar falla a mitad, la base y la memoria ya no cuadran —
- * entonces el motor se declara frio (`listos = false`) y el mercado queda
- * parado hasta recargar los libros contra la base. Parar es el lado correcto
- * en el que equivocarse: un motor que sigue calzando sobre un libro que no
- * cuadra reparte dinero mal.
+ * reserva; y si un trato del bucle se cae, ese trato se deshace entero solo
+ * (ver `aplicarTrato`), pero los anteriores del mismo bucle YA estan hechos y
+ * la memoria del libro todavia no se movio. Entonces el motor se declara frio
+ * (`listos = false`) y el mercado queda parado hasta recargar los libros
+ * contra la base. Parar es el lado correcto en el que equivocarse: un motor
+ * que sigue calzando sobre un libro que no cuadra reparte dinero mal. Y
+ * recargar ahora si devuelve la orden con la resta que su reserva aguanta,
+ * porque cada trato del bucle ya la fue bajando.
  */
 async function colocar({ userId, mercado, lado, tipo, precio, cantidad, ordenKey }) {
   return encolar(mercado, async () => {
@@ -365,11 +526,18 @@ async function colocar({ userId, mercado, lado, tipo, precio, cantidad, ordenKey
       const hechos = [];
       let gastado = 0n;
       for (const t of r.tratos) {
-        hechos.push(await aplicarTrato(t, base, id));
+        hechos.push(await aplicarTrato(t, base, doc));
         gastado += lado === 'compra' ? pagoDe(t.cantidad, t.precio) : BigInt(t.cantidad);
       }
 
-      doc.resta = r.resta;
+      // La resta ya la bajo `aplicarTrato` trato a trato, dentro de la misma
+      // unidad que el dinero: aqui solo tiene que CUADRAR con lo que dijo la
+      // simulacion. Si no cuadrara, la base y el calce estarian contando
+      // historias distintas y seguir seria repartir dinero a ciegas.
+      if (doc.resta !== r.resta) {
+        console.error(`[motor] CRITICO: la orden ${id} quedo con resta ${doc.resta} y el calce dijo ${r.resta}`);
+        throw fallo('RESTA_NO_CUADRA', 503, 'La resta de la orden no cuadra con el calce.');
+      }
       doc.estado = r.resto
         ? 'abierta'
         : r.resta === '0'
@@ -462,12 +630,48 @@ async function cancelar(id, userId) {
 }
 
 /**
+ * Le devuelve a una COMPRA que quedo ejecutada el ORIGEN que reservo y no
+ * llego a gastar. Solo se usa al recargar, para las que se encontraron
+ * abiertas con la resta ya en cero: quien las cerro no llego a soltar su
+ * garantia y dejarla congelada seria dinero secuestrado por una averia.
+ *
+ * Va envuelto porque recargar es un camino de recuperacion, y un camino de
+ * recuperacion que se cae a la mitad deja las cosas peor que antes: si la
+ * devolucion no sale, se canta con la ref y el libro se carga igual.
+ */
+async function devolverSobra(orden, pagado) {
+  const sobra = pagoDe(orden.cantidad, orden.precio) - pagado;
+  if (sobra <= 0n) return;
+  try {
+    await elLedger().liberar(orden.userId, 'ORIGEN', sobra.toString(), `orden:${orden._id}`);
+  } catch (e) {
+    console.error(
+      `[motor] CRITICO: la orden ${orden._id} quedo ejecutada y sus ${sobra} wei de ORIGEN no se pudieron liberar: ${e.message}`
+    );
+  }
+}
+
+/**
  * Reconstruye los libros (y las reservas vivas) desde la base: las ordenes
  * abiertas, ordenadas precio-tiempo. Se llama al arrancar y despues de un
  * MOTOR_ROTO. La reserva viva de cada compra no se estima: se recalcula
- * exacta como notional reservado menos la suma de los pagos de sus tratos —
- * estimarla desde `resta` acumularia el polvo del floor y un dia liberaria
- * de mas, robandole garantia a otra orden del mismo usuario.
+ * exacta como notional reservado menos la suma de los pagos de sus tratos,
+ * porque estimarla desde `resta` acumularia el polvo del floor y un dia
+ * liberaria de mas, robandole garantia a otra orden del mismo usuario.
+ *
+ * Y LA `resta` TAMPOCO SE CREE. Se deriva igual que la reserva, de los tratos:
+ * `cantidad` menos lo que esta orden calzo de verdad. Esto es media parte del
+ * arreglo del libro recargado (la otra media esta en `aplicarTrato`, que la
+ * baja dentro de la unidad atomica del trato): recargar es justamente el
+ * camino por el que se vuelve DESPUES de que algo se cayo a mitad, y creerle
+ * al campo `resta` de una orden que quedo a medias es como se rearma la bomba,
+ * porque devuelve al libro una orden que promete mas de lo que su reserva
+ * puede sostener. Los tratos son el unico papel que no se escribe hasta que el
+ * dinero ya se movio, asi que son el unico que puede mandar aqui.
+ *
+ * Cuando lo derivado y lo guardado no coinciden, manda lo derivado y se
+ * CORRIGE la base: si no, el libro en memoria y la base contarian dos
+ * historias, y el proximo `aplicarTrato` bajaria la resta desde la mala.
  */
 async function cargarLibros() {
   const { Orden, Trato } = losModelos();
@@ -477,24 +681,76 @@ async function cargarLibros() {
   LIBROS.clear();
   RESERVAS.clear();
 
+  // Los tratos de TODAS las abiertas de una vez: una consulta en vez de dos
+  // por orden, y la misma tabla sirve para derivar la resta y la reserva.
+  const ids = abiertas.map((o) => String(o._id));
+  const calzado = new Map(); // id de orden -> wei del activo ya calzados
+  const pagado = new Map(); // id de COMPRA -> wei de ORIGEN ya gastados
+  if (ids.length) {
+    const tratos = await Trato.find({
+      $or: [{ ordenCompra: { $in: ids } }, { ordenVenta: { $in: ids } }],
+    }).lean();
+    const sumar = (m, k, v) => { if (k) m.set(k, (m.get(k) ?? 0n) + v); };
+    for (const t of tratos) {
+      sumar(calzado, t.ordenCompra, BigInt(t.cantidad));
+      sumar(calzado, t.ordenVenta, BigInt(t.cantidad));
+      sumar(pagado, t.ordenCompra, pagoDe(t.cantidad, t.precio));
+    }
+  }
+
   const porMercado = new Map();
   for (const o of abiertas) {
+    const id = String(o._id);
     if (o.tipo !== 'limite') {
       // Una orden de mercado jamas descansa; si una aparece abierta es un
       // dato roto y se canta, pero no se le da lugar en el libro.
       console.error(`[motor] la orden ${o._id} es de mercado y esta 'abierta': se ignora en el libro`);
       continue;
     }
+
+    // La resta de verdad. Nunca negativa: si los tratos suman mas que la
+    // cantidad hay un dato roto, y se canta, pero al libro no entra deuda.
+    let resta = BigInt(o.cantidad) - (calzado.get(id) ?? 0n);
+    if (resta < 0n) {
+      console.error(`[motor] CRITICO: la orden ${id} calzo ${calzado.get(id)} con cantidad ${o.cantidad}; se cierra en cero`);
+      resta = 0n;
+    }
+
+    // Una orden abierta con resta cero esta ejecutada y alguien no llego a
+    // anotarlo. Se anota ahora y se deja fuera del libro: dentro seria una
+    // pasiva que produce tratos de cero wei en cada calce.
+    if (resta === 0n) {
+      console.error(`[motor] la orden ${id} estaba 'abierta' con resta cero; se cierra como ejecutada`);
+      try {
+        await Orden.updateOne({ _id: o._id }, { $set: { resta: '0', estado: 'ejecutada' } });
+      } catch (e) {
+        console.error(`[motor] CRITICO: no se pudo cerrar la orden ${id}: ${e.message}`);
+      }
+      if (o.lado === 'compra') await devolverSobra(o, pagado.get(id) ?? 0n);
+      continue;
+    }
+
+    if (resta.toString() !== o.resta) {
+      console.error(
+        `[motor] la orden ${id} decia resta ${o.resta} y sus tratos dicen ${resta}; manda la de los tratos`
+      );
+      try {
+        await Orden.updateOne({ _id: o._id }, { $set: { resta: resta.toString() } });
+      } catch (e) {
+        console.error(`[motor] CRITICO: no se pudo corregir la resta de ${id}: ${e.message}`);
+      }
+    }
+
     if (!porMercado.has(o.mercado)) porMercado.set(o.mercado, []);
     porMercado.get(o.mercado).push({
-      id: String(o._id),
+      id,
       userId: o.userId,
       mercado: o.mercado,
       lado: o.lado,
       tipo: o.tipo,
       precio: o.precio,
       cantidad: o.cantidad,
-      resta: o.resta,
+      resta: resta.toString(),
       en: new Date(o.en).getTime(),
       seq: 0, // se asigna abajo, ya ordenadas
     });
@@ -516,9 +772,7 @@ async function cargarLibros() {
     LIBROS.set(mercado, { compras, ventas });
 
     for (const o of compras) {
-      const tratos = await Trato.find({ ordenCompra: o.id }).lean();
-      const gastado = tratos.reduce((s, t) => s + pagoDe(t.cantidad, t.precio), 0n);
-      const viva = pagoDe(o.cantidad, o.precio) - gastado;
+      const viva = pagoDe(o.cantidad, o.precio) - (pagado.get(o.id) ?? 0n);
       RESERVAS.set(o.id, (viva > 0n ? viva : 0n).toString());
     }
   }

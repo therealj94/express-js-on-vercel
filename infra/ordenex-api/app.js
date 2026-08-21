@@ -11,6 +11,8 @@
 
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const mongoose = require('mongoose');
 const { JsonRpcProvider } = require('ethers');
 
@@ -39,8 +41,105 @@ app.use(
 );
 
 // Heroku pone la IP real en X-Forwarded-For; sin esto, todo el mundo parece
-// venir del router del dyno.
+// venir del router del dyno — y un limite por IP que ve una sola IP no es un
+// limite, es un interruptor general. Va ANTES de los limitadores a proposito.
 app.set('trust proxy', 1);
+
+// ── Cabeceras seguras (despues de CORS, como en la billetera) ───────────────
+// Esta casa no devolvia UNA sola cabecera de seguridad y anunciaba su Express
+// por X-Powered-By. helmet apaga eso y pone el resto (nosniff, frameguard,
+// HSTS, referrer). `crossOriginResourcePolicy: false` es el mismo ajuste que
+// infra/veta-wallet-backend: la web vive en otro dominio y el CORP por
+// defecto (`same-origin`) le rebotaria las respuestas.
+app.use(helmet({ crossOriginResourcePolicy: false }));
+
+// ── El freno ────────────────────────────────────────────────────────────────
+// El patron es el de infra/veta-wallet-backend/app.js y NO otro: un techo
+// general para todo el mundo y limitadores con nombre para las puertas que
+// cuestan dinero o abren sesion. Dos maneras de frenar en el mismo ecosistema
+// se contradicen el dia que hay que subir un numero.
+//
+// Que ninguna de estas rutas tuviera freno era el fallo mas caro de la casa:
+// la clave de /admin se compara en tiempo constante —bien pensado— y eso no
+// sirve de nada si se puede probar una clave por milisegundo hasta acertar.
+
+// El techo de todos: 100 por minuto y por IP. Nadie que use la web lo roza;
+// un bucle lo toca a los tres segundos.
+app.use(rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas peticiones. Probá en un minuto.', codigo: 'DEMASIADAS' },
+}));
+
+// El mas duro de la casa, y va donde esta la llave maestra. Con /admin se
+// crean agentes, se resuelven solicitudes de dinero y se declara el precio de
+// un instrumento: quien acierte la clave no se lleva una sesion, se lleva la
+// casa. Cinco intentos cada cuarto de hora es lo que convierte la comparacion
+// en tiempo constante en una defensa de verdad.
+const limiteAdmin = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos. Esperá 15 minutos.', codigo: 'DEMASIADAS' },
+});
+app.use('/admin', limiteAdmin);
+
+// La autenticacion, igual de dura que en la billetera. /auth/sso canjea un
+// token de Genesis y /auth/refresh rota el par: los dos entregan una sesion a
+// quien traiga la cadena correcta, asi que los dos se prueban a ciegas.
+const limiteAuth = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos de entrada. Esperá 15 minutos.', codigo: 'DEMASIADAS' },
+});
+app.use('/auth/sso', limiteAuth);
+app.use('/auth/refresh', limiteAuth);
+
+/* Las puertas que mueven dinero.
+ *
+ * Aqui el limite NO se monta sobre la ruta entera sino sobre los metodos que
+ * escriben, y es a proposito: la pantalla SONDEA `GET /ordenes` y
+ * `GET /fiat/solicitudes` cada pocos segundos. Un limitador que contara esos
+ * sondeos le cerraria la puerta al cliente honesto antes que al abusador, que
+ * es justo al reves de para lo que existe.
+ *
+ * El numero es mas alto que el de la billetera porque esto es una mesa de
+ * operaciones: colocar y cancelar treinta veces en un cuarto de hora es un
+ * martes cualquiera de alguien que opera, no un ataque. Lo que corta es el
+ * bucle: colocar ordenes en tanda reserva saldo en cada una, y una reserva es
+ * dinero quieto que no es de la casa.
+ */
+const soloEscritura = (limitador) => (req, res, next) =>
+  req.method === 'GET' || req.method === 'OPTIONS' ? next() : limitador(req, res, next);
+
+const limiteDinero = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas operaciones seguidas. Esperá unos minutos.', codigo: 'DEMASIADAS' },
+});
+app.use('/ordenes', soloEscritura(limiteDinero));
+app.use('/fiat', soloEscritura(limiteDinero));
+
+// El retiro firma una transaccion en la cadena y saca el dinero de la casa:
+// es la operacion mas cara que existe aqui y no se hace sesenta veces por
+// hora. Va con su propio limite, y no en la lista de arriba, por la misma
+// leccion que la billetera dejo escrita — la puerta que se olvida es la que
+// se usa. GET /retiros no existe, pero el filtro se mantiene por si nace.
+const limiteRetiro = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados retiros seguidos. Esperá 15 minutos.', codigo: 'DEMASIADAS' },
+});
+app.use('/retiros', soloEscritura(limiteRetiro));
 
 // 100kb alcanzan de sobra: la peticion mas gorda de esta casa es una orden con
 // cinco campos. Un cuerpo mayor no es un cliente nuestro.
@@ -106,6 +205,40 @@ app.get('/salud', async (req, res) => {
 
   const ok = mongoOk && cadenaOk;
   res.status(ok ? 200 : 503).json({ ok, cadena: cadenaOk, mongo: mongoOk, bloque });
+});
+
+// ── Tarifas ─────────────────────────────────────────────────────────────────
+// GET /tarifas → { comisionPpm, sobre }. Publica y sin sesion, como /salud:
+// lo que cobra la casa es de quien va a pagarlo, y pedirle cuenta para
+// enterarse seria cobrarselo antes de decirselo.
+//
+// POR QUE EXISTE ESTA RUTA: la comision se cobra de verdad —lib/motor.js la
+// parte en dos patas del ledger en cada trato— y hasta hoy no salia por
+// ninguna puerta. La web no podia enseñarla porque no tenia de donde leerla, y
+// una tarifa que solo vive en una variable de entorno del motor es una tarifa
+// que el cliente descubre en el saldo.
+//
+// OJO, Y ESTO HAY QUE CERRARLO: la cuenta de abajo es una SEGUNDA copia de
+// lib/motor.js:comisionPpm(). No se importa de alli porque ese modulo no la
+// exporta, y lib/ no se toca en este cambio. Lo correcto es que motor exporte
+// comisionPpm y que esto lo llame: mientras haya dos copias, subir el tope de
+// cordura en una y no en la otra hace que la casa cobre una cifra y anuncie
+// otra — que es exactamente el fallo que esta ruta viene a cerrar.
+function comisionPpm() {
+  const v = (process.env.ORDENEX_COMISION_PPM || '').trim();
+  if (!v) return 0;
+  const n = Number(v);
+  if (!Number.isInteger(n) || n <= 0) return 0;
+  if (n > 50000) return 0; // el mismo tope de cordura del motor: 5% por lado ya es un dedazo
+  return n;
+}
+
+app.get('/tarifas', (req, res) => {
+  const ppm = comisionPpm();
+  // `sobre: 'recibido'` no es adorno: la comision se descuenta de lo que cada
+  // parte RECIBE (el activo el comprador, el ORIGEN el vendedor), no de lo que
+  // paga. Sin ese dato, la web no sabria de que lado restarla.
+  res.json({ comisionPpm: ppm, sobre: 'recibido' });
 });
 
 // ── Rutas ───────────────────────────────────────────────────────────────────

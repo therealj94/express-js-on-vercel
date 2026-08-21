@@ -55,6 +55,9 @@ async function emitirSesion(user) {
       address: user.address,
       role: user.role,
       verify: user.isVerified,
+      // Misma version de sesion que el refresco: entrar con Google o con Apple
+      // no puede dar una sesion que la revocacion no alcance.
+      tv: user.tokenVersion || 0,
     },
     process.env.PASS_TOKEN,
     { expiresIn: "40m", algorithm: "HS256" }

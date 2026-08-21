@@ -203,6 +203,12 @@ export const login = async (req, res) => {
         address: user.address,
         role: user.role,
         verify: user.isVerified,
+        // La version de sesion tambien en el token de ACCESO, no solo en el de
+        // refresco. Sin ella, `middleware/verifyToken.js` no tiene con que
+        // comparar y la revocacion solo alcanza a la renovacion: cambiar la
+        // contraseña cerraba la puerta de renovar y dejaba la de usar abierta
+        // los 40 minutos que le quedaran al token en curso.
+        tv: user.tokenVersion || 0,
       },
       process.env.PASS_TOKEN,
       { expiresIn: "40m" },
@@ -284,6 +290,10 @@ export const refresh = async (req, res) => {
         address: user.address,
         role: user.role,
         verify: user.isVerified,
+        // La version que se acaba de comprobar unas lineas mas arriba viaja
+        // tambien en el token de acceso, para que la guardia de cada peticion
+        // pueda comprobarla sin volver a preguntar por que se emitio.
+        tv: user.tokenVersion || 0,
       },
       process.env.PASS_TOKEN,
       { expiresIn: "40m" },
@@ -422,6 +432,14 @@ export const resetPassword = async (req, res) => {
     // Consumo unico: el token no sirve dos veces.
     user.verificationTokenPassword = null;
     user.verificationTokenPasswordExp = null;
+    /* Y se corta lo que hubiera abierto. El cambio de contraseña desde ajustes
+       ya subia la version (userController.changePassword); esta puerta —la de
+       «olvide mi contraseña»— no lo hacia, y es la que usa justamente quien ya
+       NO puede entrar. Recuperar la cuenta sin echar al que este dentro es
+       devolverle la llave a alguien cuya casa sigue ocupada. */
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    // La sesion guardada de administracion tampoco sobrevive a esto.
+    user.token = undefined;
 
     await user.save();
 
@@ -432,5 +450,60 @@ export const resetPassword = async (req, res) => {
     res
       .status(500)
       .json({ message: "An error occurred while processing the request." });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CERRAR SESION
+//
+// No existia. En todo el backend no habia ninguna ruta de logout, salir ni
+// signout: la aplicacion «cerraba sesion» borrando el token de su propio
+// llavero y el servidor no se enteraba de nada. El token seguia siendo valido
+// hasta que venciera, y el de refresco treinta dias. Un telefono prestado, uno
+// perdido o un navegador ajeno se quedaban con la sesion adentro.
+//
+// CIERRA EN TODOS LOS DISPOSITIVOS, A PROPOSITO
+//
+// Subir `tokenVersion` mata todas las sesiones de esa cuenta, no solo la que
+// llamo. Se eligio asi porque es lo que la persona quiere cuando de verdad
+// necesita esta ruta: perdi el telefono, lo preste, me parece que alguien
+// entro. Cerrar solo la sesion que ya tenes en la mano es el caso que no
+// importa, y hacerlo bien —una lista de sesiones vivas, con su identificador
+// cada una— es otra funcionalidad, con su tabla y su pantalla, no algo que se
+// cuele dentro de este arreglo.
+//
+// Se cobra la misma moneda que la revocacion de la contraseña: un contador. Sin
+// lista negra de tokens, sin nada que limpiar despues y sin poder olvidarse de
+// borrar una fila.
+//
+// Va detras de `verifyTokenUser`, o sea que solo puede cerrar su sesion quien
+// ya tiene una. No pide contraseña: obligar a escribirla para poder salir es
+// una barrera justo en el momento en que alguien tiene prisa por salir.
+// ─────────────────────────────────────────────────────────────────────────────
+export const cerrarSesion = async (req, res) => {
+  try {
+    const token = req.headers.authorization;
+    const decoded = jwt.verify(token.split(" ")[1], process.env.PASS_TOKEN, {
+      algorithm: "HS256",
+    });
+
+    const user = await User.findById(decoded.userId);
+    // Sin cuenta no hay nada que cerrar, y decirlo con un 200 es la respuesta
+    // honesta: el que llamo queria quedarse sin sesion y sin sesion se queda.
+    if (!user) {
+      return res.status(200).json({ message: "Sesión cerrada." });
+    }
+
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    // La sesion guardada que compara `middleware/isAdmin.js` tambien se va: si
+    // quedara, un administrador que cierra sesion seguiria teniendo su token
+    // escrito en la base, que es exactamente lo que no quiso dejar.
+    user.token = undefined;
+    await user.save();
+
+    return res.status(200).json({ message: "Sesión cerrada." });
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({ message: "invalid token" });
   }
 };

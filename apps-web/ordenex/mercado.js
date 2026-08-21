@@ -820,15 +820,20 @@ const VMERCADO = (() => {
       <div class="sub">${esc(tx('sub'))}</div>
     </div></div>
     <div class="vidrio bloque">
-      <table class="tabla">
-        <thead><tr>
-          <th>${esc(tx('cMercado'))}</th>
-          <th>${esc(tx('cUltimo'))}</th>
-          <th>${esc(tx('cCambio'))}</th>
-          <th>${esc(tx('cVol'))}</th>
-        </tr></thead>
-        <tbody id="ms-cuerpo"></tbody>
-      </table>
+      <!-- Dentro de su riel (.desliza, en index.html): cuatro columnas con
+           «Volumen 24 h» no entran en 360 px, y sin el riel la última se
+           recortaba contra el borde en vez de poder deslizarse. -->
+      <div class="desliza">
+        <table class="tabla">
+          <thead><tr>
+            <th>${esc(tx('cMercado'))}</th>
+            <th>${esc(tx('cUltimo'))}</th>
+            <th>${esc(tx('cCambio'))}</th>
+            <th>${esc(tx('cVol'))}</th>
+          </tr></thead>
+          <tbody id="ms-cuerpo"></tbody>
+        </table>
+      </div>
       <p class="pie" id="ms-nota">${esc(tx('cargando'))}</p>
     </div>`;
   }
@@ -964,11 +969,19 @@ const VMERCADO = (() => {
     ${DATOS.haySesion() ? `
     <div class="vidrio bloque">
       <h3>${esc(tx('misOrdenes'))}</h3>
-      <table class="tabla">
-        <thead><tr><th>${esc(tx('lado'))}</th><th>${esc(tx('tipo'))}</th><th>${esc(tx('precio'))}</th>
-          <th>${esc(tx('resta'))}</th><th></th></tr></thead>
-        <tbody id="vm-ordenes"></tbody>
-      </table>
+      <!-- LA TABLA QUE MÁS IMPORTA QUE DESLICE. Son cinco columnas y la
+           quinta lleva el botón de cancelar: medida en un teléfono de 360 px,
+           ese botón caía en la posición 443 y el recorte del body se lo
+           comía. Cancelar es la única salida de una orden que ya reservó
+           saldo, así que la columna que no se alcanzaba era justo la que
+           libera el dinero. -->
+      <div class="desliza">
+        <table class="tabla">
+          <thead><tr><th>${esc(tx('lado'))}</th><th>${esc(tx('tipo'))}</th><th>${esc(tx('precio'))}</th>
+            <th>${esc(tx('resta'))}</th><th></th></tr></thead>
+          <tbody id="vm-ordenes"></tbody>
+        </table>
+      </div>
       <p class="pie" id="vm-ordenes-nota"></p>
     </div>` : ''}`;
   }
