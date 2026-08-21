@@ -1186,6 +1186,66 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 }
 @media(prefers-reduced-motion:reduce){.bien-esfera{animation:none}}
 
+/* ── EL BOTON QUE CONFIRMA ────────────────────────────────────────────────
+ *
+ * Tres estados: reposo, trabajando y hecho. Se usa donde algo puede tardar y
+ * puede fallar: entrar, traer una billetera, enviar dinero.
+ *
+ * LA BARRA NO MIENTE
+ *
+ * Recorre el boton en bucle mientras se espera —dice «estoy en eso», que es
+ * lo unico que se sabe de verdad— y solo se completa cuando el servidor ya
+ * contesto que si. Una barra que avanza por reloj hasta el 100 % le dice a la
+ * persona que su envio salio antes de que nadie lo haya confirmado, y en una
+ * app de dinero eso no es un detalle de animacion: es una mentira.
+ *
+ * El palomeo se dibuja DESPUES, y solo si salio bien. Si falla, el boton
+ * vuelve a reposo y el error aparece donde aparecen los errores.
+ */
+.btn.bc{position:relative;overflow:hidden;isolation:isolate}
+.btn.bc .bc-txt{position:relative;z-index:2;display:inline-block;
+  transition:opacity .18s ease, transform .18s ease}
+
+/* La barra. En reposo no existe; al trabajar recorre; al terminar se llena. */
+.btn.bc .bc-barra{position:absolute;inset:0;z-index:1;pointer-events:none;
+  transform:translateX(-100%);opacity:0}
+.btn.bc.bc-trabaja .bc-barra{opacity:1;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.34),transparent);
+  animation:bcRecorre 1.15s ease-in-out infinite}
+.btn.bc.bc-hecho .bc-barra{opacity:1;transform:translateX(0);animation:none;
+  /* Un velo oscuro y no blanco: el blanco sobre el oro lo deslava y el boton
+     deja de parecer el mismo justo en el momento en que la persona lo mira
+     mas. Asi se asienta el color y el palomeo resalta encima. */
+  background:rgba(0,0,0,.10);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+@keyframes bcRecorre{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+
+/* El palomeo. Se dibuja solo: el trazo empieza escondido y se descubre. */
+.btn.bc .bc-check{position:absolute;top:50%;left:50%;z-index:3;
+  width:19px;height:23px;margin:-11px 0 0 -9px;opacity:0;pointer-events:none}
+.btn.bc .bc-check path{fill:none;stroke:currentColor;stroke-width:3.4;
+  stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:42;stroke-dashoffset:42}
+.btn.bc.bc-hecho .bc-check{opacity:1}
+.btn.bc.bc-hecho .bc-check path{animation:bcTrazo .42s .16s cubic-bezier(.65,0,.45,1) forwards}
+@keyframes bcTrazo{to{stroke-dashoffset:0}}
+
+/* Trabajando y hecho apagan el boton para que no se pulse dos veces, pero NO
+   se ven como un boton muerto: el estilo de `disabled` lo deslava entero y
+   aqui el boton esta vivo, contando lo que pasa. */
+.btn.bc.bc-trabaja:disabled,.btn.bc.bc-hecho:disabled{opacity:1;filter:none}
+.btn.bc.bc-trabaja{cursor:progress}
+.btn.bc.bc-hecho{cursor:default}
+.btn.bc.bc-hecho .bc-txt,.btn.bc.bc-trabaja .bc-txt{opacity:.55}
+.btn.bc.bc-hecho .bc-txt{opacity:0;transform:scale(.94)}
+
+/* Sin animacion para quien la pidio apagada: el estado se sigue viendo —el
+   boton se apaga, el palomeo aparece— pero nada se mueve. */
+@media (prefers-reduced-motion: reduce){
+  .btn.bc .bc-barra{animation:none!important;transition:none!important}
+  .btn.bc.bc-trabaja .bc-barra{transform:translateX(0);background:rgba(255,255,255,.16)}
+  .btn.bc.bc-hecho .bc-check path{animation:none!important;stroke-dashoffset:0}
+}
+
 .girando{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.25);
   border-top-color:currentColor;border-radius:50%;animation:gira .7s linear infinite}
 @keyframes gira{to{transform:rotate(360deg)}}
@@ -1947,8 +2007,8 @@ body.en-ventana .lienzo::before{
          casa. Quien llega aquí por primera vez está decidiendo una de esas
          tres cosas; cualquier cuarto botón es ruido encima de la decisión. -->
     <div class="bv-btns">
-      <button class="btn btn-oro" data-t="bv.crear" onclick="VETA.ir('acceso','crear')"></button>
-      <button class="btn btn-linea" data-t="bv.entrar" onclick="VETA.ir('acceso','entrar')"></button>
+      <button class="btn btn-oro" data-t="bv.entrar" onclick="VETA.ir('acceso','entrar')"></button>
+      <button class="btn btn-linea" data-t="bv.crear" onclick="VETA.ir('acceso','crear')"></button>
       <a class="bv-og" href="https://www.ordenglobal.org" target="_blank" rel="noopener">
         <span data-t="bv.og"></span>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
@@ -2099,8 +2159,8 @@ body.en-ventana .lienzo::before{
 <section class="cierre baja" id="empezar">
   <h2 class="rev izq" id="c-titulo"></h2>
   <div class="btns rev izq">
-    <button class="btn btn-oro" data-t="bv.crear" onclick="VETA.ir('acceso','crear')"></button>
-    <button class="btn btn-linea" data-t="bv.entrar" onclick="VETA.ir('acceso','entrar')"></button>
+    <button class="btn btn-oro" data-t="bv.entrar" onclick="VETA.ir('acceso','entrar')"></button>
+    <button class="btn btn-linea" data-t="bv.crear" onclick="VETA.ir('acceso','crear')"></button>
   </div>
 </section>
 

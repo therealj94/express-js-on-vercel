@@ -407,7 +407,10 @@ const VETA = (() => {
     $('#campo-nombre').classList.toggle('oculto', cual !== 'crear');
     $('#fuerza-caja').classList.toggle('oculto', cual !== 'crear');
     $('#acc-legal').classList.toggle('oculto', cual !== 'crear');
-    $('#btn-acceso').textContent = cual === 'crear' ? t('acc.btnCrear') : t('acc.btnEntrar');
+    /* Por `bcTexto` y no por `textContent`: escribir el texto directo le
+       borraría al botón la barra y el palomeo que lleva dentro. */
+    bcTexto($('#btn-acceso'), cual === 'crear' ? t('acc.btnCrear') : t('acc.btnEntrar'));
+    bcSoltar($('#btn-acceso'));
     $('#i-clave').setAttribute('autocomplete', cual === 'crear' ? 'new-password' : 'current-password');
     // En «crear» no hay contraseña que olvidar: el enlace ahí sería ruido.
     $('#acc-olvide').classList.toggle('oculto', cual !== 'entrar');
@@ -699,6 +702,81 @@ const VETA = (() => {
   }
 
 
+
+  /* ── EL BOTON QUE CONFIRMA ───────────────────────────────────────────────
+   *
+   * Se le pone a un boton que ya existe, sin tocar su marcado: la funcion le
+   * envuelve el texto y le mete la barra y el palomeo la primera vez que se
+   * usa. Asi vale para el de entrar, el de traer una billetera y el de
+   * enviar, sin repetir el mismo HTML tres veces.
+   *
+   * LA REGLA QUE MANDA: NO SE CANTA VICTORIA ANTES DE TIEMPO
+   *
+   * `trabajando()` pone la barra a recorrer en bucle —dice «estoy en eso»,
+   * que es lo unico que se sabe— y `hecho()` la completa y dibuja el palomeo.
+   * `hecho()` SOLO se llama cuando el servidor ya contesto que si. Una barra
+   * que llega al final por reloj le dice a alguien que su dinero salio antes
+   * de que nadie lo haya confirmado, y eso no es una animacion: es una
+   * mentira que la persona va a creer.
+   *
+   * Si falla, `soltar()` devuelve el boton a reposo y el error aparece donde
+   * aparecen los errores. El boton no se queda contando una historia.
+   */
+  const BC_CHECK = '<svg class="bc-check" viewBox="0 0 25 30" aria-hidden="true">' +
+    '<path d="M2,19.2C5.9,23.6,9.4,28,9.4,28L23,2"/></svg>';
+
+  function bcPreparar(btn) {
+    if (!btn || btn.classList.contains('bc')) return btn;
+    // El texto que ya tenia se envuelve para poder atenuarlo sin perderlo.
+    const txt = btn.textContent.trim();
+    btn.innerHTML = `<span class="bc-txt"></span><i class="bc-barra"></i>${BC_CHECK}`;
+    btn.querySelector('.bc-txt').textContent = txt;
+    btn.classList.add('bc');
+    return btn;
+  }
+
+  /** El texto del botón, sin romper la barra ni el palomeo. */
+  function bcTexto(btn, texto) {
+    if (!btn) return;
+    bcPreparar(btn);
+    const t = btn.querySelector('.bc-txt');
+    if (t) t.textContent = texto;
+  }
+
+  function bcTrabajando(btn) {
+    if (!btn) return;
+    bcPreparar(btn);
+    btn.classList.remove('bc-hecho');
+    btn.classList.add('bc-trabaja');
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+  }
+
+  /**
+   * Salió bien. Devuelve una promesa que se resuelve cuando termina el
+   * palomeo, para que quien llama pueda esperar a que se vea antes de cambiar
+   * de pantalla — si no, el palomeo se dibuja sobre una pantalla que ya no
+   * está y no lo ve nadie.
+   */
+  function bcHecho(btn, ms = 620) {
+    if (!btn) return Promise.resolve();
+    bcPreparar(btn);
+    btn.classList.remove('bc-trabaja');
+    btn.classList.add('bc-hecho');
+    btn.setAttribute('aria-busy', 'false');
+    const quieto = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    return new Promise((r) => setTimeout(r, quieto ? 220 : ms));
+  }
+
+  /** Vuelve a reposo. Se llama al fallar, y también al salir de la pantalla. */
+  function bcSoltar(btn, texto) {
+    if (!btn) return;
+    btn.classList.remove('bc-trabaja', 'bc-hecho');
+    btn.disabled = false;
+    btn.setAttribute('aria-busy', 'false');
+    if (texto != null) bcTexto(btn, texto);
+  }
+
   /* ── TRAER UNA BILLETERA DE OTRA APP ─────────────────────────────────────
    *
    * POR QUE HACE FALTA, Y POR QUE APARECE AQUI
@@ -829,7 +907,7 @@ const VETA = (() => {
 
     const btn = $('#btn-imp');
     impOcupado = true;
-    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="girando"></span> ' + t('imp.trayendo'); }
+    bcTrabajando(btn);
     try {
       const llavePrivada = await LLAVES.llaveParaImportar(impSecreto, impElegida.indice);
       if (!llavePrivada) return decir(t('llv.malFormato'));
@@ -843,6 +921,7 @@ const VETA = (() => {
       impSecreto = null;
       llaveBorrar();
       const cl = $('#i-imp-clave'); if (cl) cl.value = '';
+      await bcHecho(btn);
       $('#imp-paso-cuenta')?.classList.add('oculto');
       $('#imp-listo')?.classList.remove('oculto');
       const pp = $('#imp-listo-p');
@@ -852,7 +931,7 @@ const VETA = (() => {
       decir(String(e?.mensaje || e?.message || '') || t('imp.err'));
     } finally {
       impOcupado = false;
-      if (btn) { btn.disabled = false; btn.textContent = t('imp.btn'); }
+      if (!btn?.classList.contains('bc-hecho')) bcSoltar(btn, t('imp.btn'));
     }
   }
 
@@ -910,9 +989,8 @@ const VETA = (() => {
     if (!secreto) return llvAviso('llv.malFormato');
 
     const btn = $('#btn-llave');
-    const textoBtn = btn ? btn.textContent : '';
     llaveOcupado = true;
-    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="girando"></span> ' + t('llv.entrando'); }
+    bcTrabajando(btn);
 
     try {
       /* Primero la dirección, en local, para poder pedir el reto. Se deriva
@@ -957,6 +1035,10 @@ const VETA = (() => {
       });
       tele('accion', 'sesion.entrar.llave');
       anotarSesion();
+      /* El palomeo se dibuja AHORA, con la sesión ya en la mano, y se espera a
+         que se vea antes de cambiar de pantalla: si no, se dibujaría sobre una
+         pantalla que ya no está y no lo vería nadie. */
+      await bcHecho(btn);
       llaveCerrar();
       ir('app');
       cargarTodo();
@@ -968,7 +1050,9 @@ const VETA = (() => {
       else llvAviso('llv.err');
     } finally {
       llaveOcupado = false;
-      if (btn) { btn.disabled = false; btn.textContent = textoBtn || t('llv.btn'); }
+      // Si salió bien ya se cambió de pantalla; si falló, el botón vuelve a
+      // reposo para poder intentarlo otra vez.
+      if (!btn?.classList.contains('bc-hecho')) bcSoltar(btn, t('llv.btn'));
     }
   }
 
@@ -1102,9 +1186,9 @@ const VETA = (() => {
     if (modo === 'crear' && !nombre) return avisoAcceso(t('err.nombre'));
 
     avisoAcceso('');
-    b.disabled = true;
-    const antes = b.textContent;
-    b.innerHTML = '<span class="girando"></span> ' + (modo === 'crear' ? t('acc.creando') : t('acc.entrando'));
+    const antes = b.querySelector('.bc-txt')?.textContent || b.textContent;
+    bcTrabajando(b);
+    bcTexto(b, modo === 'crear' ? t('acc.creando') : t('acc.entrando'));
     try {
       if (modo === 'crear') {
         /* La respuesta del alta trae la frase de recuperacion dentro de un
@@ -1142,6 +1226,8 @@ const VETA = (() => {
       });
       tele('accion', modo === 'crear' ? 'cuenta.creada' : 'sesion.entrar');
       anotarSesion();
+      // Se espera a que el palomeo se vea antes de irse de la pantalla.
+      await bcHecho(b);
       ir('app');
       cargarTodo();
       /* La introduccion de AU-RA abre CADA entrada — es la puerta del
@@ -2318,14 +2404,14 @@ const VETA = (() => {
       const enUsd = pu != null ? ` (${esc(usd(monto * pu))})` : '';
       a.innerHTML = `${t('env.vas')} <b>${oro(monto)} ${esc(x.s)}</b>${enUsd} ${t('env.a')} <span class="mono">${esc(cortaDir(dir))}</span>. ${t('env.toca')}`;
       a.classList.remove('oculto');
-      b.textContent = t('env.confirmar');
+      bcTexto(b, t('env.confirmar'));
       return;
     }
 
     if (enviando) return;      // el candado: un doble toque no manda dos veces
     enviando = true;
-    b.disabled = true;
-    b.innerHTML = '<span class="girando"></span> ' + t('env.enviando');
+    bcTrabajando(b);
+    bcTexto(b, t('env.enviando'));
     try {
       /* La moneda de la casa va por una ruta y los tokens por otra: la nativa
          se transfiere sola, un ERC-20 necesita saber en que contrato vive. */
@@ -2363,11 +2449,15 @@ const VETA = (() => {
         avisarChat = null;
       }
       a.className = 'aviso aviso-ok';
+      /* El palomeo se dibuja AQUI y en ningun sitio antes: la cadena ya
+         confirmo y el hash esta en la mano. Un palomeo un segundo antes le
+         diria a alguien que su dinero salio cuando todavia no se sabe. */
+      await bcHecho(b);
       a.innerHTML = `${t('env.hecho')} ${oro(monto)} ${esc(sim)}.${hash ? ` <span class="mono">${esc(cortaDir(hash))}</span>` : ''}`;
       envDir = ''; envCant = '';
       $('#env-dir').value = ''; $('#env-monto').value = ''; $('#env-clave').value = '';
       envMonto();
-      b.textContent = t('env.revisar');
+      bcTexto(b, t('env.revisar'));
       avisar(t('env.avHecho'));
       /* Si esto es una emergente de Ordenex, se le avisa y la ventana se va.
          Con `sim`, que se guardo ANTES de vaciar `pendiente` — leerlo de
@@ -2387,7 +2477,7 @@ const VETA = (() => {
       decir(/contrase|password|credential/i.test(e.message)
         ? t('env.eMalClave')
         : `${e.message} ${t('env.eDuda')}`);
-      b.textContent = t('env.revisar');
+      bcTexto(b, t('env.revisar'));
       pendiente = null;
     } finally { enviando = false; b.disabled = false; }
   }
