@@ -389,8 +389,14 @@ hechos, los cinco.**
 
 **Y tres cosas de código que quedan apuntadas, ninguna urgente:**
 
-11. Una ruta que le entregue a la persona su propio expediente. Hoy el derecho
-    de acceso se atiende a mano.
+11. ~~Una ruta que entregue el expediente completo~~ ✅ **Hecha.** Un operador
+    lo saca de una vez —expediente, negocios, casos, movimientos, cuentas en
+    cada aplicación y bitácora— con el motivo obligatorio, y queda escrito en la
+    bitácora quién lo sacó y de quién. Antes había que reunirlo a mano entrando
+    a cinco pantallas, y a mano se olvida algo. Ocho pruebas, y dos de ellas
+    miran en la otra dirección: que no se lleve nada de otra persona, y que un
+    homónimo no se cuele. Lo que sigue faltando es que la propia persona se lo
+    descargue con su sesión, sin pasar por un operador.
 12. Plazo de conservación para los movimientos vigilados, el padrón y los casos.
     No es que se haya decidido no ponérselo: es que no se decidió.
 13. Cifrar el documento de estado. Las imágenes ya lo están, y son el dato más

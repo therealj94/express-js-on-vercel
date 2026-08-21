@@ -177,12 +177,23 @@ parecido y unos atributos, y es lo único que se conserva.
 
 ### Que le digan qué se tiene sobre ella
 
-**Se atiende a mano.** No hay hoy una ruta que le entregue a la persona su propio
-expediente completo; el panel sí permite a un operador reunirlo. Se pide por
-correo y se responde dentro de un mes.
+**Se atiende, y desde ahora la entrega se arma sola.** Se pide por correo a la
+dirección de más abajo y se responde dentro de un mes.
 
-Está apuntado como lo siguiente que hay que construir. Mientras no exista, decir
-que «se atiende» y no que «está resuelto» es lo honesto.
+Un operador saca el expediente entero de una sola vez: los datos declarados y
+los leídos del documento, las decisiones, los negocios donde figura como dueña o
+como beneficiaria final, los casos de cumplimiento, los movimientos vigilados,
+sus cuentas en cada aplicación del ecosistema y sus entradas de la bitácora.
+
+Antes había que reunirlo entrando a cinco pantallas, y eso tiene dos problemas
+que no son la comodidad: a mano se olvida algo, y una entrega incompleta ante un
+regulador es peor que no haberla hecho; y sacar el expediente completo de una
+persona **es un acto que hay que poder auditar**, y hecho a mano no quedaba
+registrado en ninguna parte. Ahora hace falta escribir el motivo, y queda en la
+bitácora quién lo sacó, de quién y por qué.
+
+Las imágenes no van dentro del archivo, por su tamaño: se indica cuáles existen
+y se entregan aparte.
 
 ### Que se corrija algo que está mal
 
@@ -231,8 +242,10 @@ Plazo de respuesta: un mes.
 Escrito aparte y a propósito, porque un documento de cumplimiento que solo
 enumera lo resuelto es exactamente el que se cae en la primera pregunta seria.
 
-1. **No hay entrega automática del propio expediente.** El derecho de acceso se
-   atiende a mano. Debería ser una ruta.
+1. **La entrega la pide un operador, no la persona directamente.** El expediente
+   se arma solo, pero hace falta escribir a la dirección de privacidad y que
+   alguien lo saque. Una pantalla donde la propia persona se lo descargue con su
+   sesión sería mejor, y no está.
 2. **Los movimientos, el padrón y los casos no tienen plazo de conservación.**
    Hay que decidir cuál es y ponérselo.
 3. **El plazo se cuenta desde la decisión, no desde que termina la relación.**

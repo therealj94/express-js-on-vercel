@@ -15,6 +15,7 @@ import { estadoTemporizador, unaVuelta } from '../aml/temporizador.js'
 import { consultar, verificarCadena, anclaje, registrar, sellar } from '../audit/bitacora.js'
 import { resumenMovimientos, buscarMovimientos } from '../aml/almacenMovimientos.js'
 import { crearOperador, PERMISOS, quitarSegundoFactor, saludSegundoFactor } from '../auth/operadores.js'
+import { entregarExpediente } from '../motor/expediente.js'
 import { crearAplicacion, revocar, rotar, ALCANCES } from '../auth/aplicaciones.js'
 import { biometriaConfigurada, proveedorBiometria } from '../kyc/biometria.js'
 import { leerFotos } from '../kyc/fotosDocumento.js'
@@ -407,6 +408,30 @@ panelRouter.get('/casos/:id/reporte', exigePermiso('caso.reportar'), async (req,
 // ─────────────────────────────────────────────────────────────────────────────
 // Listas
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * El expediente completo de una persona, para el derecho de acceso.
+ *
+ * Pide `identidad.ver` porque es exactamente eso: ver. Lo que la distingue de
+ * abrir la ficha en el panel es que reune TODO —expediente, negocios, casos,
+ * movimientos, cuentas en cada aplicacion y bitacora— en una sola entrega, y
+ * que deja escrito en la bitacora quien la saco, de quien y por que.
+ *
+ * El motivo es obligatorio. Sacar el expediente entero de una persona sin decir
+ * para que es justo lo que un inspector va a preguntar.
+ */
+panelRouter.get('/identidades/:id/expediente', exigePermiso('identidad.ver'), async (req, res) => {
+  const motivo = String(req.query.motivo || '').trim()
+  if (motivo.length < 5) {
+    return res.status(400).json({
+      error: 'Hace falta el motivo de la entrega (por ejemplo: «solicitud de acceso de la persona, 21/08/2026»)',
+    })
+  }
+  const r = await entregarExpediente(req.params.id, req.operador!.email, motivo)
+  if (!r.ok) return res.status(404).json({ error: r.error })
+  await store.guardarYa()
+  res.json(r.expediente)
+})
 
 /**
  * Le quita el segundo factor a un operador. Solo un administrador.
