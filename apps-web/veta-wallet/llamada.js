@@ -48,6 +48,8 @@ const LLAMADA = (() => {
   const HIELO = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
   ];
 
   /** Se rellena con la configuración del TURN el día que exista. */
@@ -70,6 +72,22 @@ const LLAMADA = (() => {
   let avisar = () => {};      // quien pinta la pantalla se suscribe aquí
   let mandarSenal = null;     // lo pone `arrancar()`; habla con el relevo
   let iceEnCola = [];         // los caminos que llegan antes de la descripción
+  let relojConexion = null;   // el plazo para que la conexión se levante
+  let tiposVistos = new Set();// qué clase de caminos encontró cada lado
+
+  /* VEINTE SEGUNDOS Y SE RINDE.
+   *
+   * `failed` de ICE no siempre llega: hay redes donde la negociación se queda
+   * en `checking` sin decidirse nunca, y ahí la pantalla se quedaba negra sin
+   * final. Un plazo convierte «no pasa nada» en «no se pudo, y por esto». */
+  const PLAZO_CONEXION = 20000;
+
+  function armarPlazo() {
+    clearTimeout(relojConexion);
+    relojConexion = setTimeout(() => {
+      if (estado !== 'hablando') colgar('sin-camino');
+    }, PLAZO_CONEXION);
+  }
 
   const cuento = () => ({
     estado, conQuien, soyQuienLlama,
@@ -84,10 +102,20 @@ const LLAMADA = (() => {
   /* ── LA CONEXIÓN ───────────────────────────────────────────────────────── */
 
   function nuevaConexion() {
-    const c = new RTCPeerConnection({ iceServers: servidores() });
+    /* `iceCandidatePoolSize` hace que el navegador empiece a buscar caminos
+       ANTES de que haya una oferta. Sin esto, la búsqueda arranca recién al
+       crear la oferta y se pierden uno o dos segundos justo cuando la persona
+       está mirando la pantalla esperando. */
+    const c = new RTCPeerConnection({ iceServers: servidores(), iceCandidatePoolSize: 4 });
 
     c.onicecandidate = (e) => {
       if (e.candidate && conQuien) {
+        /* Se apunta QUE CLASE de camino es. Es lo que después permite decir
+           «hace falta un relevo» con pruebas en vez de con una corazonada:
+           `host` es la red local, `srflx` es la dirección pública que dio el
+           STUN, y `relay` solo aparece si hay un TURN. Sin ningún `relay` y
+           sin conexión, el diagnóstico es exacto. */
+        try { tiposVistos.add(e.candidate.type || '?'); } catch {}
         mandarSenal(conQuien, 'ice', { candidato: e.candidate.toJSON() });
       }
     };
@@ -115,10 +143,18 @@ const LLAMADA = (() => {
     };
 
     c.onconnectionstatechange = () => {
-      if (c.connectionState === 'connected' && estado !== 'hablando') {
-        estado = 'hablando';
-        anunciar();
+      /* «Hablando» SOLO cuando la conexión está de verdad en pie.
+       *
+       * Antes se ponía en cuanto alguien contestaba, y eso producía justo lo
+       * que se vio en producción: la pantalla decía «En llamada» sobre un
+       * negro que no llegaba nunca. Decirle a alguien que está hablando
+       * cuando no llega ni un pixel es la peor forma de fallar, porque no
+       * tiene nada que hacer con esa información. */
+      if (c.connectionState === 'connected') {
+        clearTimeout(relojConexion); relojConexion = null;
+        if (estado !== 'hablando') { estado = 'hablando'; anunciar(); }
       }
+      if (c.connectionState === 'failed') colgar('sin-camino');
     };
     return c;
   }
@@ -129,6 +165,19 @@ const LLAMADA = (() => {
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       video: conVideo ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } : false,
     });
+  }
+
+  /* Vuelve a colgar los flujos de sus elementos y los manda reproducir.
+     Se llama cada vez que se pinta la pantalla: si el `srcObject` se asignó
+     mientras la capa estaba oculta, algunos navegadores no arrancan solos y
+     el recuadro se queda negro con la cámara encendida. */
+  function reengancharVideo() {
+    for (const [id, flujo] of [['lla-local', pistaPantalla || miPista], ['lla-remoto', null]]) {
+      const v = document.getElementById(id);
+      if (!v) continue;
+      if (flujo && v.srcObject !== flujo) v.srcObject = flujo;
+      if (v.srcObject && v.paused) { try { v.play()?.catch(() => {}); } catch {} }
+    }
   }
 
   function pintarLocal() {
@@ -150,6 +199,7 @@ const LLAMADA = (() => {
       pintarLocal();
       pc = nuevaConexion();
       miPista.getTracks().forEach((t) => pc.addTrack(t, miPista));
+      armarPlazo();
       const oferta = await pc.createOffer();
       await pc.setLocalDescription(oferta);
       // `llamo` va con la oferta dentro: una señal menos de ida y vuelta, y
@@ -172,12 +222,14 @@ const LLAMADA = (() => {
     const { de, sdp } = entrante;
     conQuien = de;
     soyQuienLlama = false;
-    estado = 'hablando';
+    // CONECTANDO, no «hablando»: todavía no hay ni un pixel del otro lado.
+    estado = 'conectando';
     try {
       miPista = await abrirMedios(conVideo);
       pintarLocal();
       pc = nuevaConexion();
       miPista.getTracks().forEach((t) => pc.addTrack(t, miPista));
+      armarPlazo();
       await pc.setRemoteDescription(new RTCSessionDescription(sdp));
       await vaciarCola();
       const resp = await pc.createAnswer();
@@ -232,13 +284,20 @@ const LLAMADA = (() => {
   function colgar(motivo = 'yo') {
     const otro = conQuien;
     const avisarAlOtro = otro && ['yo', 'corte'].includes(motivo) && estado !== 'libre';
+    /* El diagnóstico se arma ANTES de soltar todo, que es cuando todavía se
+       puede mirar. Sirve para decirle a la persona por qué no conectó, y a
+       nosotros para saber si hace falta pagar el TURN o si es otra cosa. */
+    const caminos = [...tiposVistos].join(',') || 'ninguno';
+    const hizoFaltaRelevo = motivo === 'sin-camino' && !tiposVistos.has('relay');
+    clearTimeout(relojConexion); relojConexion = null;
+    tiposVistos = new Set();
     soltarTodo();
     estado = 'libre';
     conQuien = null;
     soyQuienLlama = false;
     entrante = null;
     if (avisarAlOtro) { try { mandarSenal(otro, 'cuelgo', {}); } catch {} }
-    try { avisar({ ...cuento(), motivo }); } catch {}
+    try { avisar({ ...cuento(), motivo, caminos, hizoFaltaRelevo }); } catch {}
   }
 
   /* ── MICRÓFONO, CÁMARA Y PANTALLA ─────────────────────────────────────── */
@@ -343,6 +402,7 @@ const LLAMADA = (() => {
   }
 
   return { puede, puedePantalla, arrancar, recibir, llamar, contestar, rechazar,
+           reengancharVideo,
            colgar, micro, camara, pantalla, dejarPantalla, ponerTurno,
            estado: () => estado, cuento, entrante: () => entrante };
 })();

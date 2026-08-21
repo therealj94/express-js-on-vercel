@@ -6080,6 +6080,7 @@ const VETA = (() => {
   }
 
   async function llamadaContestar(conVideo) {
+    llaDesde = Date.now();
     try { await LLAMADA.contestar(!!conVideo); }
     catch (e) {
       const negado = /NotAllowed|Permission/i.test(String(e?.name || e?.message || ''));
@@ -6109,8 +6110,17 @@ const VETA = (() => {
          internet. */
       const dicho = { 'sin-camino': 'lla.sinCamino', 'corte': 'lla.corte',
                       'rechazada': 'lla.rechazada', 'ocupado': 'lla.ocupado',
+                      'sin-respuesta': 'lla.sinRespuesta',
                       'no-se-pudo': 'lla.noSePudo' }[c.motivo];
       if (dicho) avisar(t(dicho));
+      /* El diagnóstico va al registro, no a la cara de nadie: a quien llama no
+         le sirve saber qué es un candidato `srflx`. A nosotros sí, para saber
+         si hace falta pagar el relevo o si el problema es otro. */
+      if (c.motivo === 'sin-camino') {
+        console.warn('[llamada] no conectó · caminos encontrados:', c.caminos,
+                     '· haría falta un relevo TURN:', c.hizoFaltaRelevo);
+        tele('accion', 'llamada.sin-camino');
+      }
       return;
     }
 
@@ -6122,6 +6132,11 @@ const VETA = (() => {
     // Compartir pantalla solo donde existe: en iPhone no hay, y un botón que
     // al tocarlo no hace nada es peor que no ponerlo.
     $('#lla-pant').classList.toggle('oculto', !LLAMADA.puedePantalla());
+    /* Los videos se re-enganchan cada vez que se pinta. Asignar `srcObject` a
+       un elemento que todavía estaba dentro de un contenedor oculto no siempre
+       arranca la reproducción, y el resultado es el recuadro propio en negro
+       aunque la cámara esté encendida. */
+    LLAMADA.reengancharVideo();
     $('#lla-mic').classList.toggle('apagado', !c.micAbierto);
     $('#lla-cam').classList.toggle('apagado', !c.camAbierta);
     $('#lla-si-video').classList.toggle('oculto', !LLAMADA.entrante()?.video);
@@ -6141,6 +6156,15 @@ const VETA = (() => {
         if (seg >= 45) LLAMADA.colgar('sin-respuesta');
       }, 500);
       est.textContent = t('lla.llamando');
+    } else if (c.estado === 'conectando') {
+      /* Los segundos también aquí. «Conectando…» quieto es indistinguible de
+         una app colgada, y con el contador la persona ve que algo pasa y sabe
+         cuánto lleva esperando. */
+      llaReloj = setInterval(() => {
+        const seg = Math.floor((Date.now() - llaDesde) / 1000);
+        if (est) est.textContent = `${t('lla.conectando')} ${seg}s`;
+      }, 500);
+      est.textContent = t('lla.conectando');
     } else {
       est.textContent = c.compartiendo ? t('lla.compartiendo') : t('lla.hablando');
     }

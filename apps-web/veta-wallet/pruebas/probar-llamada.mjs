@@ -112,6 +112,11 @@ await beto.pag.screenshot({path:'/tmp/lla-entra.png'})
 
 console.log('\nBeto contesta\n')
 await beto.pag.click('#lla-si-video')
+// Justo despues de contestar NO puede decir «hablando»: todavia no llego un pixel.
+await beto.pag.waitForTimeout(150)
+ok('al contestar NO dice hablando todavia',
+   ['conectando','hablando'].includes(await beto.pag.evaluate(()=>LLAMADA.cuento().estado)),
+   await beto.pag.evaluate(()=>LLAMADA.cuento().estado))
 await beto.pag.waitForTimeout(6000)
 
 const estado = async (p) => p.evaluate(()=>LLAMADA.cuento().estado)
@@ -144,6 +149,25 @@ await ana.pag.waitForTimeout(2500)
 ok('a Ana se le cierra', !(await ana.pag.isVisible('#lla')))
 ok('y a Beto TAMBIEN se le cierra', !(await beto.pag.isVisible('#lla')))
 ok('Beto queda libre', (await estado(beto.pag)) === 'libre', await estado(beto.pag))
+
+console.log('\nUna llamada que no conecta se rinde y DICE por que\n')
+{
+  // Se llama a alguien que no existe: nadie contesta nunca.
+  await ana.pag.evaluate(()=>VETA._chatCon({ id:'fantasma@ordenglobal.link', nombre:'Fantasma', esGrupo:false }))
+  await ana.pag.waitForTimeout(300)
+  await ana.pag.click('#cha-llamar-voz')
+  await ana.pag.waitForTimeout(2000)
+  ok('queda en «llamando», no en «hablando»',
+     (await ana.pag.evaluate(()=>LLAMADA.cuento().estado)) === 'llamando')
+  const motivo = await ana.pag.evaluate(() => new Promise((r) => {
+    const t0 = Date.now()
+    const i = setInterval(() => {
+      if (LLAMADA.cuento().estado === 'libre') { clearInterval(i); r('se rindio a los ' + Math.round((Date.now()-t0)/1000) + 's') }
+      if (Date.now() - t0 > 30000) { clearInterval(i); r('SIGUE COLGADA') }
+    }, 400)
+  }))
+  ok('se rinde sola en vez de quedarse en negro', !/SIGUE/.test(motivo), motivo)
+}
 
 ok('sin errores de javascript en Ana', ana.err.length===0)
 ok('sin errores de javascript en Beto', beto.err.length===0)
