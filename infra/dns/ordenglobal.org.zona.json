@@ -1,0 +1,286 @@
+{
+  "_leeme": "Transcripcion literal del Editor de Zonas de cPanel (nivapixel), 22-ago-2026, cPanel 134.0.51. Se copia TAL CUAL para poder migrar sin cambiar nada: los cambios de politica van DESPUES de que la migracion este comprobada. Los dos DKIM largos se tomaron del DNS en vivo, no de la captura: el base64 venia partido en varias lineas y unirlo a ojo da error.",
+  "registros": [
+    {
+      "n": "ordenglobal.org.",
+      "ttl": 14400,
+      "t": "A",
+      "v": [
+        "50.31.177.40"
+      ]
+    },
+    {
+      "n": "ordenglobal.org.",
+      "ttl": 14400,
+      "t": "MX",
+      "v": [
+        "0 ordenglobal.org."
+      ]
+    },
+    {
+      "n": "ordenglobal.org.",
+      "ttl": 14400,
+      "t": "TXT",
+      "v": [
+        "v=spf1 +a +mx +ip4:50.31.177.34 include:spf.jetsmtp.net include:amazonses.com ~all",
+        "GOOGLE-SITE-VERIFICATION=IOJL57T6QIYWYXT7DP6UKI-0BBNLKFN4BOYCEIZ"
+      ]
+    },
+    {
+      "n": "www.ordenglobal.org.",
+      "ttl": 300,
+      "t": "CNAME",
+      "v": [
+        "d10i3mbvr3opn0.cloudfront.net"
+      ]
+    },
+    {
+      "n": "mail.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "CNAME",
+      "v": [
+        "ordenglobal.org."
+      ]
+    },
+    {
+      "n": "ftp.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "A",
+      "v": [
+        "50.31.177.40"
+      ]
+    },
+    {
+      "n": "cpanel.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "A",
+      "v": [
+        "50.31.177.40"
+      ]
+    },
+    {
+      "n": "webmail.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "A",
+      "v": [
+        "50.31.177.40"
+      ]
+    },
+    {
+      "n": "whm.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "A",
+      "v": [
+        "50.31.177.40"
+      ]
+    },
+    {
+      "n": "webdisk.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "A",
+      "v": [
+        "50.31.177.40"
+      ]
+    },
+    {
+      "n": "cpcalendars.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "A",
+      "v": [
+        "50.31.177.40"
+      ]
+    },
+    {
+      "n": "cpcontacts.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "A",
+      "v": [
+        "50.31.177.40"
+      ]
+    },
+    {
+      "n": "preventa.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "A",
+      "v": [
+        "50.31.177.40"
+      ]
+    },
+    {
+      "n": "preventa.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "TXT",
+      "v": [
+        "v=spf1 +mx +a +ip4:50.31.177.40 ~all"
+      ]
+    },
+    {
+      "n": "www.preventa.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "A",
+      "v": [
+        "50.31.177.40"
+      ]
+    },
+    {
+      "n": "cpanel.preventa.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "A",
+      "v": [
+        "50.31.177.40"
+      ]
+    },
+    {
+      "n": "webmail.preventa.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "A",
+      "v": [
+        "50.31.177.40"
+      ]
+    },
+    {
+      "n": "whm.preventa.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "A",
+      "v": [
+        "50.31.177.40"
+      ]
+    },
+    {
+      "n": "webdisk.preventa.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "A",
+      "v": [
+        "50.31.177.40"
+      ]
+    },
+    {
+      "n": "cpcalendars.preventa.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "A",
+      "v": [
+        "50.31.177.40"
+      ]
+    },
+    {
+      "n": "cpcontacts.preventa.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "A",
+      "v": [
+        "50.31.177.40"
+      ]
+    },
+    {
+      "n": "_dmarc.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "TXT",
+      "v": [
+        "v=DMARC1; p=none; rua=mailto:admin@ordenglobal.org; fo=1"
+      ]
+    },
+    {
+      "n": "correo.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "MX",
+      "v": [
+        "10 feedback-smtp.us-east-1.amazonses.com."
+      ]
+    },
+    {
+      "n": "correo.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "TXT",
+      "v": [
+        "v=spf1 include:amazonses.com ~all"
+      ]
+    },
+    {
+      "n": "vaddbn6iwla7zqgsfxlnyo3ebsqfowy6._domainkey.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "CNAME",
+      "v": [
+        "vaddbn6iwla7zqgsfxlnyo3ebsqfowy6.dkim.amazonses.com"
+      ]
+    },
+    {
+      "n": "3g4ktjb67q5wr2ft5kzjdz2unygvixtg._domainkey.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "CNAME",
+      "v": [
+        "3g4ktjb67q5wr2ft5kzjdz2unygvixtg.dkim.amazonses.com"
+      ]
+    },
+    {
+      "n": "44fz7qhl7v45lgboepf64bf5d3jkipd4._domainkey.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "CNAME",
+      "v": [
+        "44fz7qhl7v45lgboepf64bf5d3jkipd4.dkim.amazonses.com"
+      ]
+    },
+    {
+      "n": "_cef5be556a3962138c5fdde1cbb41b5f.ordenglobal.org.",
+      "ttl": 300,
+      "t": "CNAME",
+      "v": [
+        "_f802a6537f804a35513fa9f88132e7aa.sxgfwvgjsz.acm-validations.aws"
+      ]
+    },
+    {
+      "n": "_d588242d2b8b48020421ffaf76cbcaa7.mail.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "CNAME",
+      "v": [
+        "4a125553ef15627d9202276bc07d3321.93acb5bacab0896ead10a36c0a968839.comodoca.com"
+      ]
+    },
+    {
+      "n": "_1092ab8baca1808a0e5239dbcfa27e2d.mail.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "CNAME",
+      "v": [
+        "a1ac8a0ebccc99d2a62de35b48c64be3.d3fc1e537553dc2912df2b5beca35d0d.comodoca.com"
+      ]
+    },
+    {
+      "n": "_bfcbfd374fa0a8dc8f25d2d2465eb123.mail.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "CNAME",
+      "v": [
+        "a0bde6749d0b035b755adfc71a124c71.bbc1c7934bb173d44d37df351e505359.comodoca.com"
+      ]
+    },
+    {
+      "n": "_acme-challenge.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "TXT",
+      "v": [
+        "OQoFE8GnsH-esKNvvybwXh-1bp4AqQvgrtGgCPwQB1U"
+      ]
+    },
+    {
+      "n": "_cpanel-dcv-test-record.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "TXT",
+      "v": [
+        "_cpanel-dcv-test-record=GdDRiw1940uyIBf5YjJgO98GJSuCtGSlslhor3HoDxshMpTRV45xIMG1_CFzTjso"
+      ]
+    },
+    {
+      "n": "default._domainkey.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "TXT",
+      "v": [
+        "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtnyd27KJ0MGqMLZ/eio6wfxG4UtIfU4v4gidkBAUrNjF21eIMrotb1c8k9E5yqpnXBfoEau4d7Thx57/jaReCj4LUfogS+CHxNArDzdoiJ0k9rxc15GU+XmPurFRy7MHLNt+F8YQ/ur/OQc6U0g+B0cUAJhU9/ho/xG4Gj4Cb6MJeqQguKhJdzawJG1rL6lRyMHRqA7k6Cg1DnhWKrYZMddRBp8isDiWmYBSbmoZORkK5jWN3+lwMp3njjdTBbmQl5mOcZxKH+oCFosvTZ/Ju8QJwQcKFG5Rcd906PXHaBbweAx62i83jOZ00XjiRnVkLlrue1KS5JqV+W1UsX2fWwIDAQAB;"
+      ]
+    },
+    {
+      "n": "default._domainkey.preventa.ordenglobal.org.",
+      "ttl": 14400,
+      "t": "TXT",
+      "v": [
+        "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1DSxDXNO1nPbHnM7wtzXSXdqS6YY1u5rhtC9YpDQI62GiGSTOHl5bdC4srPAQ4HImevJrgwJGAtoQ0PsnAL34tsttYgkpxE9lQE2iLMYfw9RWMT+GWvUOAD9YVGhTa3WJnUqRV8f7nJXoILL22kVox0YQHObvI37Rscmy3OHXOd3fUqB5DGnaE+qRCTcKioL8bA53WnpHNFLjiAqxoRwjylxIQ7w01gWku43YoJ55uarDv6tqVgep3tR4nBpfvyhyMBDW4t7rnoNehcE0Gz5eTsNfyebnclk5pVmCfcTG/vT6HzxGOeHJhGYkOLpqeUqyskYlggE+GqtEsJtChAFQQIDAQAB;"
+      ]
+    }
+  ]
+}
