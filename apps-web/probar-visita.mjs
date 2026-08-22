@@ -7,7 +7,7 @@
  * que delante de alguien sin cuenta improvisa un saldo de ejemplo es peor que
  * no tener asistente, porque el ejemplo se recuerda como si fuera un dato.
  */
-import { chromium } from 'playwright';
+import { abrirNavegador } from './navegador.mjs';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join, extname, dirname } from 'node:path';
@@ -36,8 +36,11 @@ const decir = (ok, que, extra = '') => {
   if (extra) console.log(`           ${String(extra).replace(/\s+/g, ' ').slice(0, 120)}`);
 };
 
-const nav = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox'] });
+/* La ruta del navegador iba escrita a mano —`chromium-1194`— y eso ata la
+   prueba a esta máquina y a esta versión: en cuanto Playwright actualiza, el
+   número cambia y la prueba se cae pidiendo que se baje otro navegador. Ya
+   pasó una vez. `navegador.mjs` lo busca donde de verdad esté. */
+const nav = await abrirNavegador({ args: ['--no-sandbox'] });
 const p = await nav.newPage({ viewport: { width: 1280, height: 900 } });
 const errores = [];
 p.on('pageerror', (e) => errores.push(e.message));
@@ -51,8 +54,28 @@ console.log('\n── la primera pantalla ────────────�
 {
   const t = await p.evaluate(() => document.querySelector('#bienvenida').textContent);
   decir(/BIENVENIDO AL ECOSISTEMA/i.test(t), 'da la bienvenida al ecosistema');
-  decir(/Abrir mi cuenta/.test(t), 'ofrece abrir cuenta');
-  decir(/Ya tengo cuenta/.test(t), 'y entrar a quien ya la tiene');
+  /* LAS DOS PUERTAS, NO SUS LETREROS.
+     Antes esto pedía el texto exacto («Abrir mi cuenta») y por eso llevaba
+     tiempo en rojo sin que nada estuviera roto: ese botón ya cambió de nombre
+     cuatro veces —«Crear mi cuenta», «Quiero oro a mi nombre», «Abrir mi
+     cuenta», «Registrarme»— y cada mejora de la copia rompía la prueba. Una
+     prueba que se pone roja cuando todo está bien enseña a no mirarla.
+     Se comprueba lo que sí tiene que ser cierto siempre: que las dos puertas
+     estén, que lleven texto, y que cada una abra la suya. Eso último no lo
+     comprobaba la versión vieja: los dos botones podían llevar al mismo sitio
+     y la prueba pasaba igual. */
+  const puertas = await p.evaluate(() => {
+    const s = document.querySelector('#bienvenida');
+    const leer = (k) => {
+      const n = s.querySelector(`[data-t="${k}"]`);
+      return n && { txt: n.textContent.trim(), al: n.getAttribute('onclick') || '' };
+    };
+    return { crear: leer('bv.crear'), entrar: leer('bv.entrar') };
+  });
+  decir(!!puertas.crear?.txt && /'crear'/.test(puertas.crear.al),
+    'ofrece abrir cuenta, y ese botón abre el registro', puertas.crear?.txt);
+  decir(!!puertas.entrar?.txt && /'entrar'/.test(puertas.entrar.al),
+    'y entrar a quien ya la tiene', puertas.entrar?.txt);
 
   const og = await p.evaluate(() => {
     const a = document.querySelector('#bienvenida .bv-og');
@@ -160,11 +183,29 @@ console.log('\n── quien llega de cero, en inglés ────────�
 {
   await p.goto(BASE);
   await p.waitForTimeout(1400);
+
+  /* Las tres salidas de la portada: registrarse, entrar y conocer Orden
+     Global. Lo que importa no es qué frase dicen en inglés sino que estén
+     traducidas — el fallo de verdad es una clave que falta, que deja el
+     letrero en español o directamente en blanco. Así que se leen las tres en
+     los dos idiomas y se comparan: si alguna vuelve igual, es que no se
+     tradujo. Pedirle la frase exacta era pedirle a la prueba que adivinara la
+     copia de marketing de cada semana. */
+  const TRES = ['bv.crear', 'bv.entrar', 'bv.og'];
+  const leerTres = () => p.evaluate((ks) => ks.map((k) =>
+    document.querySelector(`#bienvenida [data-t="${k}"]`)?.textContent.trim() || ''), TRES);
+  await p.evaluate(() => VETA.idioma('es'));
+  await p.waitForTimeout(400);
+  const enEspaniol = await leerTres();
+
   await p.evaluate(() => VETA.idioma('en'));
   await p.waitForTimeout(500);
   const t = await p.evaluate(() => document.querySelector('#bienvenida').textContent);
   decir(/WELCOME TO THE ORDEN GLOBAL/i.test(t), 'la bienvenida está traducida');
-  decir(/Open my account/.test(t) && /Discover Orden Global/.test(t), 'y las tres salidas también');
+  const enIngles = await leerTres();
+  const sinTraducir = TRES.filter((k, i) => !enIngles[i] || enIngles[i] === enEspaniol[i]);
+  decir(sinTraducir.length === 0, 'y las tres salidas también',
+    sinTraducir.length ? `se quedaron sin traducir: ${sinTraducir.join(', ')}` : enIngles.join(' · '));
   await p.evaluate(() => VETA.auraToca());
   await p.waitForTimeout(400);
   const hilo = await p.evaluate(() => document.querySelector('#aura-hilo')?.textContent || '');
