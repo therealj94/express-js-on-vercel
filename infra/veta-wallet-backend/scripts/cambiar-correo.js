@@ -75,7 +75,27 @@ async function main() {
   // que es un desastre silencioso y dificil de deshacer.
   const ocupada = await Users.findOne({ email: A, _id: { $ne: u._id } }).lean();
   if (ocupada) {
-    console.error(`\n  ${A} ya es de otra cuenta. No se toca nada.\n`);
+    /* Decir solo «esta ocupada» deja al siguiente sin saber que hacer. Lo que
+       hace falta para decidir es si esa cuenta esta VIVA: si tiene dinero, si
+       se verifico, si alguien entro alguna vez. Una cuenta vacia que se creo
+       para probar se puede liberar; una con fondos hay que mudarla, no
+       pisarla. */
+    console.error(`\n  ${A} YA ES DE OTRA CUENTA. No se toca nada.\n`);
+    console.error(`  La que ocupa la direccion:`);
+    console.error(`    id           : ${ocupada._id}`);
+    console.error(`    nombre       : ${ocupada.name || "(sin nombre)"}`);
+    console.error(`    creada       : ${ocupada.createdAt || "(sin fecha)"}`);
+    console.error(`    verificada   : ${ocupada.isVerified ? "si" : "no"}   KYC: ${ocupada.kycStatus || "none"}`);
+    console.error(`    en la cadena : ${ocupada.address}`);
+    console.error(`    eliminada    : ${ocupada.deletedAt ? `si, el ${ocupada.deletedAt}` : "no"}`);
+    console.error(`    recibio la bienvenida: ${ocupada.bienvenidaEn ? "si" : "no"}`);
+    console.error(`\n  Y la que se queria mudar:`);
+    console.error(`    id           : ${u._id}`);
+    console.error(`    nombre       : ${u.name || "(sin nombre)"}`);
+    console.error(`    creada       : ${u.createdAt || "(sin fecha)"}`);
+    console.error(`    verificada   : ${u.isVerified ? "si" : "no"}   KYC: ${u.kycStatus || "none"}`);
+    console.error(`    en la cadena : ${u.address}`);
+    console.error(`\n  Mirar el saldo de las DOS direcciones antes de decidir nada.\n`);
     await mongoose.disconnect();
     process.exit(1);
   }
