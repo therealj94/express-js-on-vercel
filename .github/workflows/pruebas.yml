@@ -1,0 +1,155 @@
+# Las pruebas, en cada cambio.
+#
+# POR QUE ESTE ARCHIVO
+#
+# El ecosistema tiene cientos de pruebas y hasta hoy NO LAS CORRIA NADA. Los
+# otros cuatro flujos de este directorio compilan y publican apps de telefono;
+# ninguno toca el codigo de los servidores ni el de las webs.
+#
+# Eso es la mitad del patron que salio del diagnostico: el conocimiento existe
+# en la casa y no viaja de un rincon al otro. Una prueba que nadie corre es un
+# comentario que envejece.
+#
+# QUE HACE Y QUE NO
+#
+# Corre lo que ya existe, sin inventar nada: las de Genesis ID, las de la casa
+# de cambio, los scripts sueltos del backend de la billetera, y las del
+# navegador. No despliega, no toca produccion, no necesita ni un secreto.
+
+name: pruebas
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  # Para poder dispararlo a mano desde la pestaña Actions sin empujar nada.
+  workflow_dispatch:
+
+# Un cambio nuevo cancela la corrida anterior de la misma rama: lo que importa
+# es el ultimo estado, no la cola.
+concurrency:
+  group: pruebas-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  # ── Lo rapido: nada de navegador, falla en dos minutos si algo se rompio ──
+  servidores:
+    name: Servidores
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Genesis ID
+        working-directory: genesis-id
+        run: |
+          npm ci --no-audit --no-fund
+          npm run typecheck
+          npm run prueba
+
+      - name: Ordenex
+        working-directory: infra/ordenex-api
+        run: |
+          npm ci --no-audit --no-fund
+          npm run probar
+
+      # El backend de la billetera no tiene script de pruebas: son scripts
+      # sueltos en `pruebas/`. Se corren todos y cualquiera que falle tumba el
+      # trabajo, que es lo que hace falta.
+      - name: Billetera
+        working-directory: infra/veta-wallet-backend
+        run: |
+          npm ci --no-audit --no-fund
+          for f in pruebas/*.mjs; do
+            echo "── $f"
+            node "$f"
+          done
+
+  # ── Lo lento: navegador de verdad, en los anchos de verdad ───────────────
+  navegador:
+    name: Navegador
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar Playwright
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      # ── EL PUENTE, y conviene decir que es un puente ──────────────────────
+      #
+      # Treinta y siete de las pruebas del navegador llevan la ruta del
+      # Chromium ESCRITA A MANO, apuntando a `/opt/pw-browsers/...`. Solo
+      # cuatro aceptan una variable de entorno.
+      #
+      # Migrar las treinta y siete a un ayudante compartido es lo correcto y es
+      # lo que hay que hacer, pero es un cambio mecanico grande y no se hace el
+      # mismo dia que se enciende el CI: si algo saliera mal no se sabria si fue
+      # la migracion o el flujo nuevo.
+      #
+      # Asi que por ahora se le pone el navegador donde lo buscan. Es un enlace,
+      # tres lineas, y deja el CI corriendo hoy. `apps-web/navegador.mjs` es
+      # adonde tienen que migrar, y las pruebas nuevas ya lo usan.
+      - name: Poner el navegador donde las pruebas lo buscan
+        run: |
+          real=$(node -e "console.log(require('playwright').chromium.executablePath())")
+          echo "Chromium de verdad: $real"
+          sudo mkdir -p /opt/pw-browsers/chromium-1194/chrome-linux
+          sudo ln -sf "$real" /opt/pw-browsers/chromium-1194/chrome-linux/chrome
+          sudo ln -sf "$real" /opt/pw-browsers/chromium
+          ls -l /opt/pw-browsers/chromium-1194/chrome-linux/chrome
+
+      # Las pruebas piden las paginas a un servidor estatico en 8791. Se levanta
+      # desde la raiz del repositorio, que es como estan escritas las rutas.
+      - name: Levantar el servidor estatico
+        run: |
+          python3 -m http.server 8791 --bind 127.0.0.1 &
+          for i in $(seq 1 30); do
+            curl -sf -o /dev/null http://127.0.0.1:8791/ && break
+            sleep 1
+          done
+          curl -sf -o /dev/null http://127.0.0.1:8791/ || { echo "no levanto"; exit 1; }
+
+      - name: PULSE2CHAT y la billetera
+        working-directory: apps-web/veta-wallet/pruebas
+        run: |
+          for f in probar-candado.mjs probar-firma-bulto.mjs probar-chat-vivo.mjs \
+                   probar-grupo.mjs probar-p2c-completo.mjs probar-voz.mjs \
+                   probar-textos.mjs probar-movil-cabecera.mjs; do
+            [ -f "$f" ] || continue
+            echo "── $f"
+            node "$f"
+          done
+
+      - name: Ordenex
+        run: |
+          cd apps-web && node probar-ordenex.mjs
+          cd ordenex/pruebas
+          for f in *.mjs; do echo "── $f"; node "$f"; done
+
+      - name: El barrido de movil del ecosistema
+        working-directory: apps-web
+        run: node probar-movil-todo.mjs
+
+      # Si algo falla, las capturas del momento valen mas que el registro.
+      - name: Guardar las capturas si algo se rompio
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas
+          path: |
+            apps-web/**/*.png
+            /tmp/*.png
+          if-no-files-found: ignore
+          retention-days: 7

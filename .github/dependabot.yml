@@ -1,0 +1,116 @@
+# Quien vigila las dependencias.
+#
+# POR QUE
+#
+# Hasta hoy no habia nada. El backend de la billetera tiene 21 avisos, uno
+# critico; Ordenex y Genesis ID tienen cero. La diferencia no es suerte: es que
+# nadie mira, y sin alguien que mire eso empeora solo.
+#
+# El aviso que llego por correo sobre `svgo` en la cuenta vieja de GitHub es
+# exactamente esto funcionando... en los repositorios que ya no se usan, y no en
+# el que si.
+#
+# COMO LEER LAS PROPUESTAS QUE VA A ABRIR
+#
+# No todas hay que aceptarlas, y menos a ciegas. Dos reglas que ya costaron
+# caro en este repositorio:
+#
+#   Las de `elliptic`, `hdkey` y `ethereumjs-wallet` tocan la generacion de las
+#   llaves privadas de los usuarios. Esas NO se aceptan con un clic: se leen, se
+#   prueba que las llaves derivadas siguen siendo las mismas, y recien ahi.
+#
+#   Las de herramientas de compilacion casi nunca son explotables de verdad —
+#   `jade`, `tar`, `uglify` y compania — pero llenan la lista y enseñan a
+#   ignorarla. Aceptarlas rapido es lo que deja ver las que importan.
+
+version: 2
+
+updates:
+
+  # ── Los servidores, que son donde vive el dinero ────────────────────────
+  - package-ecosystem: npm
+    directory: /infra/veta-wallet-backend
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    labels: [dependencias, billetera]
+    commit-message: { prefix: "deps(billetera)" }
+    groups:
+      # Las de seguridad van solas y juntas: son las que hay que mirar primero.
+      seguridad:
+        applies-to: security-updates
+        patterns: ['*']
+      # Las de rutina se juntan en una sola propuesta para no llenar la lista.
+      rutina:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /infra/ordenex-api
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    labels: [dependencias, ordenex]
+    commit-message: { prefix: "deps(ordenex)" }
+    groups:
+      seguridad:
+        applies-to: security-updates
+        patterns: ['*']
+      rutina:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /genesis-id
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    labels: [dependencias, genesis-id]
+    commit-message: { prefix: "deps(genesis-id)" }
+    groups:
+      seguridad:
+        applies-to: security-updates
+        patterns: ['*']
+      rutina:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  # ── Las apps de telefono ────────────────────────────────────────────────
+  #
+  # Ojo con estas: tocar el `package.json` de `genesis-id-app` CAMBIA LA HUELLA
+  # de Expo y rompe las actualizaciones por aire. Una propuesta de aqui no se
+  # acepta sin recompilar y publicar. Por eso van mensuales y de a una: para que
+  # no se acepten en piloto automatico junto con las demas.
+  - package-ecosystem: npm
+    directory: /genesis-id-app
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 2
+    labels: [dependencias, app-telefono, ojo-huella-expo]
+    commit-message: { prefix: "deps(genesis-id-app)" }
+
+  - package-ecosystem: npm
+    directory: /orden-global-app
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 2
+    labels: [dependencias, app-telefono]
+    commit-message: { prefix: "deps(orden-global-app)" }
+
+  - package-ecosystem: npm
+    directory: /mytokenpay-app/mobile
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 2
+    labels: [dependencias, app-telefono]
+    commit-message: { prefix: "deps(mytokenpay)" }
+
+  # ── La raiz, que es de donde salen las pruebas del navegador ────────────
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 3
+    labels: [dependencias, pruebas]
+    commit-message: { prefix: "deps(raiz)" }
+
+  # ── Y los propios flujos de trabajo, que tambien envejecen ─────────────
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 3
+    labels: [dependencias, ci]
+    commit-message: { prefix: "deps(ci)" }
