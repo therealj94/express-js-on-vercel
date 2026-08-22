@@ -170,11 +170,68 @@ remite de `ordenglobal.org` y el correo entra igual. Para un dominio que manda
 recuperaciones de contraseña de una billetera, eso es justo lo que hay que
 cerrar.
 
-El registro propuesto, en `_dmarc.ordenglobal.org` (TXT):
+### Ya está puesto, en una zona delegada — falta enchufarla
+
+En vez de pedir el TXT una vez y volver a pedirlo en cada escalón de la rampa,
+se creó una **zona delegada** en Route53 para `_dmarc.ordenglobal.org`
+(`Z0057746HZGTMWH2BUA0`), con la política ya dentro y sirviendo:
 
 ```
 v=DMARC1; p=quarantine; pct=25; rua=mailto:admin@ordenglobal.org; ruf=mailto:admin@ordenglobal.org; fo=1
 ```
+
+Comprobado con `test_dns_answer`: Route53 ya la contesta.
+
+**Falta un único registro NS en nivapixel**, y con eso la rampa entera
+—`pct` 25 → 50 → 100, y luego `p=reject`— se hace desde aquí sin volver a
+pedir nada:
+
+```
+Nombre:  _dmarc
+Tipo:    NS
+Valor:   ns-381.awsdns-47.com
+         ns-810.awsdns-37.net
+         ns-1099.awsdns-09.org
+         ns-1735.awsdns-24.co.uk
+```
+
+**Por qué NS y no el TXT directamente.** Es el mismo esfuerzo una vez, pero el
+TXT hay que volver a pedirlo en cada escalón —y una rampa que depende de pedir
+un favor cuatro veces no se termina nunca—. Delegando la rama, el control de
+esa política queda de este lado para siempre.
+
+**Riesgo: ninguno para lo demás.** Se delega una hoja que solo contiene el
+DMARC. La web, el correo y los DKIM de `ordenglobal.org` siguen exactamente
+donde están, servidos por nivapixel.
+
+Mientras no se ponga ese NS, lo que ve internet sigue siendo el `p=none` de
+antes, así que no hay estado intermedio raro: o lo viejo, o lo nuevo.
+
+### Si algún día se quiere mover TODO el DNS de ordenglobal.org
+
+Se puede, y entonces el dominio entero se administra desde aquí. Pero **no se
+hace a ciegas**: desde esta sesión no hay forma de listar todos los registros
+—no se puede pedir una transferencia de zona, el cPanel está bloqueado y
+crt.sh responde 502—, y migrar con una lista incompleta es exactamente como se
+cae una web.
+
+Lo que se pudo enumerar hoy, para que conste:
+
+| Nombre | Tipo | Valor |
+| --- | --- | --- |
+| `ordenglobal.org` | A | `50.31.177.40` |
+| `ordenglobal.org` | MX | `0 ordenglobal.org.` |
+| `ordenglobal.org` | TXT | SPF + verificación de Google |
+| `www` | CNAME | `d10i3mbvr3opn0.cloudfront.net` |
+| `webmail`, `cpanel`, `whm`, `ftp` | A | `50.31.177.40` |
+| 3 × `…._domainkey` | CNAME | DKIM de SES |
+| `correo` | MX + TXT | dominio de remite de SES |
+| `_dmarc` | TXT | la política |
+
+Para hacerlo bien hace falta **el archivo de zona exportado desde cPanel**
+(Editor de Zonas → Exportar, o WHM). Con eso se replica registro por registro,
+se comprueba uno a uno contra el original, y solo entonces se cambian los
+servidores de nombres en el registrador.
 
 **`pct=25` a propósito, y no se salta.** Con `p=quarantine` al 100% de golpe,
 cualquier correo legítimo que no alinee se va a la carpeta de no deseado sin
