@@ -187,3 +187,95 @@ la contraseña sin biometría. Y esa contraseña es la que autoriza enviar fondo
 revelar la semilla y ver el PIN de la tarjeta.
 
 Es el mismo patrón que ya salió tres veces esta sesión.
+
+---
+
+## CORRECCIÓN · lo que yo venía diciendo mal
+
+Estuve toda la sesión listando `PASS_TOKEN` como crítico abierto. **Lo medí hoy
+contra la API de Heroku y tiene 64 caracteres, no 7.**
+
+| | |
+|---|---|
+| `PASS_TOKEN` | **64 caracteres** |
+| `PASS_TOKEN_VIEJO` | **no existe** → la rotación se completó entera |
+| `PASS_ADM` | **no existe** → esa también |
+| `PASS_ADM_NUEVA` | 64 caracteres |
+| `ADMIN_SECRET` | **20 caracteres** ← esta es la que quedó corta |
+
+Que `PASS_TOKEN_VIEJO` no esté es el dato que lo cierra: significa que se llegó a
+la tercera etapa, la de borrar la llave anterior.
+
+Lo arrastré de una nota de sesiones anteriores y no lo volví a medir. Es el mismo
+error contra el que vengo avisando todo el día: **un documento no es una fuente.**
+
+---
+
+## Infraestructura · verificado en vivo contra AWS y Heroku
+
+### Una rotación empezada y nunca terminada
+
+El documento del 12 de agosto decía que había que borrar una llave de AWS y
+rotar el token de Heroku. Comprobado contra la API real, no contra el documento:
+la llave **sigue activa**, sin usarse desde entonces, y el mismo usuario tiene
+otra que sí se usa a diario. Se creó la reemplazo y no se borró la vieja. Ese
+usuario tiene permisos de administrador.
+
+### Seis de los siete discos de validador, sin cifrar
+
+Y sus copias también. El runbook del propio equipo dice que la llave de firma
+vive en claro dentro de cada nodo, así que quien acceda a una copia la lee sin
+pasar por ningún control de sesión. La copia fría que sí existe se hizo el 11 de
+agosto y **no cubre a dos de los siete**, que se sumaron el 20.
+
+### Puertos abiertos al mundo para servicios apagados
+
+Dos puertos de la cadena vieja siguen abiertos en los siete nodos, y los de la
+red de pruebas también. No hay nada escuchando — pero **GuardDuty registra
+sondeos, y el más reciente es de hoy**.
+
+### Un administrador dormido dos años, sin segundo factor
+
+Permisos de administrador, acceso por consola, cero dispositivos de segundo
+factor, contraseña usada por última vez en **agosto de 2024**.
+
+### 453 llamadas con credenciales de root
+
+Entre el 9 y el 19 de agosto, desde una dirección residencial de Honduras. La
+cuenta root tiene segundo factor y no tiene llaves permanentes, así que no hay
+indicio de que la sesión se abriera sin él. Pero el patrón es inusual y **alguien
+tiene que confirmar que fue propio**.
+
+### Seis dominios apuntando a algo que ya no existe
+
+Y no es un proyecto abandonado: el backend de uno de ellos se actualizó el 20 de
+agosto. El frontend quedó roto en silencio.
+
+---
+
+## Lo bueno, verificado en vivo
+
+Registro de auditoría de AWS activo, multirregional y entregando ahora mismo. El
+bucket de llaves de validador cifrado, versionado y sin acceso público, con
+rotación automática de su llave. La RPC de producción cerrada al balanceador y
+no al mundo. El usuario que manda correo con dos permisos y condicionados al
+remitente. La cuenta de Heroku con un solo dueño y segundo factor.
+
+---
+
+## Lo que NO se pudo medir, y por qué
+
+- **Render**, por falta de credenciales: no se pudo comprobar la edad ni el
+  estado real de sus variables.
+- **MongoDB Atlas**: sin credenciales, no se revisaron IPs permitidas ni
+  rotaciones.
+- **Si el repositorio es público o privado.** Cambia mucho la gravedad de la
+  llave que quedó en el historial de git.
+- **Si lo que corre hoy en los teléfonos es este código.** Las apps se
+  actualizan por aire.
+- **Si algo responde de verdad en los puertos abiertos.** Se usó la
+  configuración real de red, que es mejor fuente que un comentario, pero no es
+  lo mismo que probarlo desde fuera.
+
+**No se tocó nada.** No se rotó ninguna credencial, no se cerró ningún puerto y
+no se desplegó nada.
