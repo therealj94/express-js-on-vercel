@@ -280,6 +280,49 @@ const CADENA = (() => {
     return { p, chg };
   }
 
+  /* ── la historia de los precios ────────────────────────────────────────────
+   * La misma referencia que el precio vivo, extendida en el tiempo. AUKA sigue
+   * la onza de oro y ORIGEN es 1/55 de un gramo de ese mismo oro; AGKA, la
+   * onza de plata. La serie sale del MISMO mercado del que sale el precio de
+   * arriba (PAXG / kinesis-silver en CoinGecko), pasada por la MISMA formula.
+   * No es «el precio al que se opero aqui» —eso no existe todavia— y por eso
+   * la pantalla lo rotula como referencia, no como cotizacion propia.
+   *
+   * ONDK y los demas declarados NO tienen historia: su precio es un acta de la
+   * Junta, y dibujarles una curva seria inventarla. Devuelven null y la ficha
+   * no enseña grafica.
+   *
+   * La cache va en sessionStorage diez minutos: CoinGecko corta a quien
+   * pregunta en bucle, y la curva de 90 dias no cambia en diez minutos.
+   */
+  const HISTORIABLES = { ORIGEN: 'pax-gold', AUKA: 'pax-gold', AGKA: 'kinesis-silver' };
+
+  async function historia(sim, dias) {
+    const id = HISTORIABLES[sim];
+    if (!id) return null;
+    const clave = `veta.hist.${id}.${dias}`;
+    const formula = sim === 'ORIGEN' ? (p => p / OZ_GRAMOS / 55) : (p => p);
+    try {
+      const c = JSON.parse(sessionStorage.getItem(clave) || 'null');
+      if (c && Date.now() - c.en < 10 * 60e3 && Array.isArray(c.d)) {
+        return c.d.map(([t, p]) => [t, formula(p)]);
+      }
+    } catch {}
+    try {
+      const r = await fetch(`${COINGECKO}/coins/${id}/market_chart?vs_currency=usd&days=${dias}`);
+      if (!r.ok) return null;
+      const d = (await r.json())?.prices;
+      if (!Array.isArray(d) || d.length < 2) return null;
+      const limpia = d.filter(f => Array.isArray(f) && Number(f[1]) > 0)
+        .map(([t, p]) => [Number(t), Number(p)]);
+      if (limpia.length < 2) return null;
+      try { sessionStorage.setItem(clave, JSON.stringify({ en: Date.now(), d: limpia })); } catch {}
+      return limpia.map(([t, p]) => [t, formula(p)]);
+    } catch { return null; }
+  }
+
+  const historiable = (sim) => Boolean(HISTORIABLES[sim]);
+
   /* ── el precio declarado por la Junta ──────────────────────────────────────
    * ONDK no cotiza: no tiene mercado, no tiene libro y no hay feed que lo
    * mida. Lo unico que existe es lo que la Junta Directiva le fija por
@@ -427,5 +470,5 @@ const CADENA = (() => {
   const PUBLICOS = TOKENS.filter(t => t.publico !== false).map(t => t.s);
   const esPublico = (sim) => PUBLICOS.includes(sim);
 
-  return { TOKENS, PUBLICOS, esPublico, META, FICHAS, ficha, portafolio, precios, precioDeclarado, rpc, RPC };
+  return { TOKENS, PUBLICOS, esPublico, META, FICHAS, ficha, portafolio, precios, precioDeclarado, historia, historiable, rpc, RPC };
 })();

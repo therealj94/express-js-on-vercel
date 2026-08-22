@@ -1859,6 +1859,7 @@ const VETA = (() => {
     if (cual === 'tarjeta' && !tarjeta) cargarTarjeta().then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
     if (cual === 'remesas' && !tasas) cargarTasas().then(() => { if (vistaActual === 'remesas') vista('remesas'); });
     if (cual === 'chat') chatEntrar();
+    if (cual === 'token') montarGraficaToken();
     /* El directorio de MyTokenPay se pide al ENTRAR, no al arrancar la web:
        ciento veintisiete comercios con su logo no tienen por que viajar por la
        red de alguien que solo venia a mirar su saldo. */
@@ -2278,6 +2279,24 @@ const VETA = (() => {
         <button class="btn btn-linea btn-sm" onclick="VETA.vista('recibir')">
           <svg viewBox="0 0 24 24" class="btn-ic">${ICO.recibir}</svg>${t('a.recibir')}</button>
       </div>
+      ${CADENA.historiable(x.s) ? `
+      ${/* LA GRAFICA. Solo para las monedas con referencia de mercado: a las
+            declaradas por acta dibujarles una curva seria inventarla. La serie
+            sale de la MISMA fuente y la MISMA formula que el precio de arriba,
+            y el pie lo dice para que nadie la lea como cotizacion propia. */''}
+      <div class="grf-marco">
+        <div class="grf-cab">
+          <span class="et">${t('grf.t')}</span>
+          <span id="grf-var" class="pastilla oculto"></span>
+          <div class="grf-rangos" role="tablist" aria-label="${t('grf.t')}">
+            ${[[7,'7D'],[30,'1M'],[90,'3M'],[365,'1A']].map(([d,r]) =>
+              `<button role="tab" data-d="${d}" aria-selected="${d === grafDias}"
+                 onclick="VETA.grafRango(${d})">${r}</button>`).join('')}
+          </div>
+        </div>
+        <div id="grf-lienzo"><div class="grf-espera">${t('grf.carg')}</div></div>
+        <p class="pie grf-fuente">${t(x.s === 'AGKA' ? 'grf.fuentePlata' : 'grf.fuenteOro')}</p>
+      </div>` : ''}
       <p class="ficha-desc">${esc(f.d)}</p>
       <dl class="datos">
         ${filas.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd class="${k === t('tok.contrato') && !x.nativo ? 'mono' : ''}">${esc(v || '—')}</dd></div>`).join('')}
@@ -2285,6 +2304,81 @@ const VETA = (() => {
       ${x.nativo ? '' : `<button class="btn btn-linea btn-sm" onclick="VETA.copiarContrato(${jsTxt(x.contrato)})">
         <svg viewBox="0 0 24 24" class="btn-ic">${ICO.copiar}</svg>${t('tok.copiarC')}</button>`}
     </div>`;
+  }
+
+  /* ── la grafica de la ficha ───────────────────────────────────────────────
+     El rango elegido sobrevive a cambiar de moneda a proposito: quien compara
+     ORIGEN con AUKA quiere compararlos EN EL MISMO rango, no volver a elegirlo.
+     `graf` es la instancia viva; se destruye antes de montar otra porque el
+     lienzo viejo se fue con el innerHTML y dejaria un ResizeObserver colgado. */
+  let grafDias = 30;
+  let graf = null;
+
+  function grafRango(dias) {
+    grafDias = dias;
+    montarGraficaToken();
+  }
+
+  async function montarGraficaToken() {
+    const cont = $('#grf-lienzo');
+    if (!cont) return;
+    const sim = tokenAbierto || 'ORIGEN';
+    document.querySelectorAll('.grf-rangos [data-d]').forEach(b =>
+      b.setAttribute('aria-selected', String(Number(b.dataset.d) === grafDias)));
+    graf?.destruir(); graf = null;
+    $('#grf-var')?.classList.add('oculto');
+    cont.innerHTML = `<div class="grf-espera">${t('grf.carg')}</div>`;
+
+    const dias = grafDias;
+    const serie = await CADENA.historia(sim, dias);
+    /* La red tarda y la persona no espera: si mientras llegaba la serie se fue
+       a otra moneda, a otro rango o a otra pantalla, esta respuesta ya no es
+       de nadie y pintarla seria poner la curva de una moneda bajo el nombre de
+       otra. */
+    if (vistaActual !== 'token' || (tokenAbierto || 'ORIGEN') !== sim || grafDias !== dias) return;
+    const vivo = $('#grf-lienzo');
+    if (!vivo) return;
+
+    if (!serie) {
+      /* Sin datos no hay curva, hay un aviso. La regla de la casa: antes un
+         hueco honesto que una grafica de ejemplo. */
+      vivo.innerHTML = `<div class="grf-espera">${t('grf.err')}
+        <button class="btn btn-linea btn-sm" onclick="VETA.grafRango(${dias})">${t('grf.reint')}</button></div>`;
+      return;
+    }
+
+    const loc = idiomaActivo() === 'en' ? 'en-US' : 'es-HN';
+    const fFecha = (ms, corta) => {
+      const d = new Date(ms);
+      if (corta) return d.toLocaleDateString(loc, { day: 'numeric', month: 'short' });
+      return dias >= 365
+        ? d.toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' })
+        : d.toLocaleDateString(loc, { day: 'numeric', month: 'short' }) + ' · ' +
+          d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
+    };
+    vivo.innerHTML = '';
+    graf = GRAFICA.montar(vivo, {
+      fmt: v => usd(v),
+      /* En la escala, los miles sin centavos: «$4,400.00» cuatro veces en una
+         columna es ruido; el centavo vive en el tooltip, que es donde se lee
+         un punto concreto. Las monedas de centavos si los conservan. */
+      fmtEje: v => v >= 100
+        ? new Intl.NumberFormat(loc, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v)
+        : usd(v),
+      fecha: fFecha,
+      txt: { mas: t('grf.mas'), menos: t('grf.menos'), todo: t('grf.todo') },
+    });
+    graf.poner(serie);
+
+    /* La variacion del rango, del primer punto real al ultimo. Con los mismos
+       colores que ya usa la casa para subir y bajar. */
+    const pv = $('#grf-var');
+    if (pv) {
+      const cambio = (serie[serie.length - 1][1] - serie[0][1]) / serie[0][1] * 100;
+      pv.textContent = `${cambio > 0 ? '+' : ''}${cambio.toFixed(2)}%`;
+      pv.classList.remove('oculto', 'baja-p', 'sube-p');
+      pv.classList.add(cambio < 0 ? 'baja-p' : 'sube-p');
+    }
   }
 
   const origen = () => (cartera || []).find(x => x.s === 'ORIGEN') || null;
@@ -10145,6 +10239,7 @@ const VETA = (() => {
   document.addEventListener('DOMContentLoaded', arrancar);
 
   return { ir, pestana, ojo, vista, mandar, copiar, compartir, salir, reintentar, avisar, idioma,
+           grafRango,
            reclavePedir, reclaveSalir, ojoReclave,
            llaveAbrir, llaveCerrar, llaveEntrar,
            llaveCuantas, llaveOjo, llaveModo,

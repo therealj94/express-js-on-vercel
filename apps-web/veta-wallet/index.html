@@ -2111,6 +2111,37 @@ body.en-p2c .cha-puerta p{color:var(--p2c-bruma)}
 @media(prefers-reduced-motion:reduce){
   .constancia,.constancia:hover{transition:none;transform:none}}
 
+/* LA GRAFICA DE LA FICHA. El marco es de la casa: fondo del panel, filo de
+   linea2, y el lienzo pinta con el oro. Los controles flotan chicos en la
+   esquina para no comerse la curva; los rangos son pestañas de verdad. */
+.grf-marco{margin-top:18px;padding:14px 14px 8px;border:1px solid var(--linea2);
+  border-radius:var(--r);background:rgba(4,26,27,.45)}
+.grf-cab{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.grf-cab .et{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--humo)}
+.grf-rangos{margin-left:auto;display:flex;gap:4px}
+.grf-rangos button{padding:5px 10px;border-radius:8px;font-size:12px;font-weight:700;
+  color:var(--bruma);background:transparent;border:1px solid transparent;cursor:pointer}
+.grf-rangos button[aria-selected="true"]{color:var(--oroLt);border-color:var(--linea2);
+  background:rgba(201,169,97,.08)}
+.grf-rangos button:focus-visible{outline:2px solid var(--oro);outline-offset:2px}
+#grf-lienzo{height:232px}
+@media(max-width:560px){#grf-lienzo{height:196px}}
+.grf{position:relative;height:100%;}
+.grf canvas{display:block;cursor:crosshair;border-radius:8px}
+.grf-ctl{position:absolute;right:6px;top:6px;display:flex;gap:4px}
+.grf-ctl button{width:28px;height:28px;border-radius:8px;border:1px solid var(--linea2);
+  background:rgba(4,26,27,.72);color:var(--crema);font-size:15px;line-height:1;cursor:pointer}
+.grf-ctl button:hover{border-color:var(--oro)}
+.grf-ctl button:focus-visible{outline:2px solid var(--oro);outline-offset:2px}
+.grf-tip{position:absolute;pointer-events:none;padding:7px 10px;border-radius:9px;
+  background:rgba(4,26,27,.94);border:1px solid var(--linea2);
+  font-variant-numeric:tabular-nums;white-space:nowrap;z-index:3}
+.grf-tip b{display:block;font-size:13.5px;color:var(--oroLt)}
+.grf-tip span{font-size:11px;color:var(--humo)}
+.grf-espera{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;color:var(--humo);font-size:13.5px;text-align:center;padding:0 14px}
+.grf-fuente{margin-top:8px;font-size:11.5px}
+
 /* LA CREDENCIAL. Un documento, no una tarjeta de estado: filo de oro, la foto
    con su marco, el nombre en la serif de la casa y el numero en monoespaciada
    —que es como se leen los numeros que hay que teclear del otro lado—. */
@@ -3432,6 +3463,7 @@ body.en-ventana .lienzo::before{
 <script src="tono.js"></script>
 <script src="llamada.js"></script>
 <script src="llamadaGrupo.js"></script>
+<script src="grafica.js"></script>
 <script src="cadena.js"></script>
 <script src="datos.js"></script>
 <script src="aura.js"></script>
