@@ -616,6 +616,36 @@ console.log('\n── la gráfica de velas, a 360 px ─────────
     decir(tira.der <= ANCHO + 1, 'y sin salirse del ancho', String(tira.der));
   }
 
+  /* Y las dos direcciones del encogido, medidas sobre lienzos de mentira para
+     no tocar el de la sala: en un lienzo de teléfono la leyenda TIENE que
+     encogerse, y en uno de escritorio NO. La segunda mitad no es un adorno —
+     sin ella, «encoger siempre» pasaría esta prueba, y encoger siempre le
+     arranca la leyenda entera a la gráfica ancha, que es donde sí cabe y donde
+     se opera de verdad. */
+  const dosLienzos = await p.evaluate(async () => {
+    if (typeof VELAS === 'undefined') return null;
+    const velas = await fetch(window.ONX_API + '/mercados/AGKA-ORIGEN/velas?marco=1h').then(r => r.json());
+    const probar = (w, h) => {
+      const c = document.createElement('canvas');
+      c.style.width = w + 'px'; c.style.height = h + 'px';
+      document.body.appendChild(c);
+      // `dpr:1` para que el resultado no dependa de la pantalla de quien corre
+      // la prueba: acá se mide el reparto de la leyenda, no la densidad.
+      const inf = VELAS.dibujar(c, velas, { par: 'AGKA-ORIGEN', marco: '1h', unidad: 'ORIGEN',
+        decimales: 4, emas: [9, 21, 55], dpr: 1 });
+      c.remove();
+      return inf && inf.leyenda ? inf.leyenda.recortada : null;
+    };
+    return { telefono: probar(287, 240), escritorio: probar(900, 420) };
+  }).catch(() => null);
+
+  decir(dosLienzos && dosLienzos.telefono === true,
+    'en un lienzo de teléfono la leyenda se encoge en vez de pintarse fuera',
+    JSON.stringify(dosLienzos));
+  decir(dosLienzos && dosLienzos.escritorio === false,
+    'y en uno de escritorio se queda entera: el encogido no se contagia',
+    JSON.stringify(dosLienzos));
+
   /* La barra de estadísticas de arriba. En un escritorio entra en una fila y
      su hueco entre renglones no se usa nunca; en un teléfono se parte en tres,
      y con `gap:0` la etiqueta de un renglón nacía pegada a los números del de
@@ -652,6 +682,66 @@ console.log('\n── la gráfica de velas, a 360 px ─────────
       'y entre renglón y renglón queda aire: la etiqueta no cuelga del número de arriba',
       `${st.minHueco}px de hueco · ${st.par}`);
   }
+}
+
+// ── 9 · EL TECLADO NO TAPA EL CAMPO ───────────────────────────────────────
+/* El teclado de un teléfono no empuja la página: le RECORTA la ventana por
+   abajo. De 740 px se pasa a unos 380, y las pestañas de navegación, que van
+   `position:fixed` pegadas al borde de esa ventana, suben con él y se plantan
+   encima de lo que se está escribiendo.
+
+   Se simula encogiendo la ventana con el campo enfocado y pidiendo que se
+   traiga a la vista, que es exactamente lo que hace el navegador de verdad.
+   Antes del arreglo, a 360×380 el campo de precio quedaba en 346–394 con la
+   barra empezando en 309: se tecleaba un precio sin verlo. En una casa de
+   cambio, escribir un número a ciegas es donde se pierde un cero. */
+console.log('\n── con el teclado abierto ────────────────────────────────────');
+{
+  await p.evaluate(() => ONX.vista('mercado', 'AGKA-ORIGEN'));
+  await p.waitForTimeout(1800);
+
+  const campo = p.locator('#vm-precio');
+  await campo.scrollIntoViewIfNeeded().catch(() => {});
+  await campo.focus().catch(() => {});
+  // El alto de una pantalla de teléfono con el teclado abierto.
+  await p.setViewportSize({ width: ANCHO, height: 380 });
+  await p.waitForTimeout(400);
+  /* `nearest` y no `center`: así es como el navegador trae a la vista el campo
+     que acaba de recibir el foco — con el desplazamiento MÍNIMO, o sea dejando
+     el campo pegado al filo de abajo, que es justo donde el teclado y la barra
+     lo esperan. Centrarlo sería regalarle a la prueba el aire que el fallo se
+     comía, y entonces pasaría con el fallo puesto. */
+  await p.evaluate(() => document.getElementById('vm-precio')?.scrollIntoView({ block: 'nearest' }));
+  await p.waitForTimeout(500);
+
+  const m = await p.evaluate(() => {
+    const i = document.getElementById('vm-precio');
+    const t = document.querySelector('.tabs');
+    if (!i) return null;
+    const ri = i.getBoundingClientRect();
+    const rt = t ? t.getBoundingClientRect() : null;
+    const barraVisible = !!rt && rt.width > 0 && rt.height > 0;
+    return {
+      enfocado: document.activeElement === i,
+      campo: { arriba: Math.round(ri.top), abajo: Math.round(ri.bottom) },
+      barra: barraVisible ? Math.round(rt.top) : null,
+      tapado: barraVisible && ri.bottom > rt.top && ri.top < rt.bottom,
+      aLaVista: ri.top >= 0 && ri.bottom <= window.innerHeight,
+      ventana: window.innerHeight,
+    };
+  });
+
+  decir(!!m && m.enfocado, 'el campo de precio tiene el foco', JSON.stringify(m));
+  decir(!!m && m.barra === null,
+    'mientras se teclea, la barra de pestañas se retira: no navega quien escribe',
+    JSON.stringify(m));
+  decir(!!m && !m.tapado, 'y no se planta encima del campo que se teclea',
+    JSON.stringify(m));
+  decir(!!m && m.aLaVista, 'y el campo entra entero en la ventana que deja el teclado',
+    JSON.stringify(m));
+
+  await p.setViewportSize({ width: ANCHO, height: 740 });
+  await p.waitForTimeout(300);
 }
 
 console.log(`\n${malas === 0 ? 'todo en pie.' : malas + ' comprobación(es) fallaron'}\n`);

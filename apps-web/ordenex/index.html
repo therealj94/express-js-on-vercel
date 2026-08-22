@@ -518,6 +518,26 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
   .tabs .nav svg{width:21px;height:21px}
   .tabs .nav[aria-current=page]::before{display:none}
 
+  /* ── mientras se teclea, las pestañas se van ──────────────────────────────
+     El teclado del teléfono no empuja la página: le RECORTA la ventana por
+     abajo, de 740 px a unos 380. Y las pestañas van `position:fixed` pegadas
+     al borde de esa ventana nueva, así que suben con el teclado y se plantan
+     encima de lo que se está escribiendo. Medido a 360 px con el campo de
+     precio de la sala: el campo quedaba en 346–394 y la barra empezaba en 309.
+     O sea que se teclea un precio sin ver el precio que se teclea, y en una
+     casa de cambio eso es donde se pierde un cero.
+
+     Quien está tecleando no está navegando: mientras un campo tiene el foco,
+     esos 60 px de barra no sirven para nada y sí tapan. Se van, y vuelven al
+     soltar el campo. Como la barra es fija, esconderla no mueve ni un píxel
+     del contenido — no hay salto.
+
+     Y `scroll-margin-bottom` es el cinturón: cuando el navegador (o la casa)
+     lleva el campo a la vista, lo deja con aire por debajo en vez de pegado al
+     filo, que es donde el teclado vuelve a comérselo. */
+  body:has(#app input:focus, #app select:focus, #app textarea:focus) .tabs{display:none}
+  #app input,#app select,#app textarea{scroll-margin-bottom:96px}
+
   /* ── las dos salidas de la portada, apiladas y con el rótulo envolviendo ──
      Esto no es gusto: es lo que hacía que la portada entera se desplazara a lo
      ancho en 320 y 360 px. `.btn` lleva `white-space:nowrap` —una pastilla
