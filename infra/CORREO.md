@@ -68,12 +68,94 @@ el ecosistema y ya estaba publicada en el pie. Inventar
 `soporte@ordenglobal.org` habría cambiado una dirección muerta por otra, con
 el agravante de parecer arreglada.
 
-### Si algún día se quieren buzones propios de vetawallet.com
+### Y ahora vetawallet.com sí recibe (montado el 22-ago)
 
-Se puede, y lo podemos hacer nosotros: **`vetawallet.com` sí está en nuestro
-Route53** (13 registros). Haría falta decidir dónde viven los buzones —el
-hosting compartido que ya sirve `ordenglobal.org`, Google Workspace, o SES
-entrante— y añadir el MX.
+Los buzones existen, en AWS, sin hosting de por medio:
+
+```
+alguien escribe a soporte@vetawallet.com
+        │
+        ▼
+  MX → inbound-smtp.us-east-1.amazonaws.com      (SES recibe)
+        │
+        ├─► S3  vetawallet-correo-entrante/entrante/<id>   (se guarda primero)
+        │       cifrado AES256 · sin acceso público · caduca a los 90 días
+        │
+        └─► Lambda  veta-correo-entrante                   (reenvía)
+                    │
+                    ▼
+              info@ordenglobal.org
+```
+
+**Se guarda ANTES de reenviar, a propósito.** Si la Lambda falla, el mensaje ya
+está a salvo en S3 y se puede recuperar a mano. Al revés se perdería.
+
+| Pieza | Nombre |
+| --- | --- |
+| Destinatarios atendidos | `soporte@` y `privacidad@vetawallet.com` |
+| Conjunto de reglas SES | `veta-entrante` (activo) |
+| Bucket | `vetawallet-correo-entrante` |
+| Función | `veta-correo-entrante` (Python 3.12) |
+| Rol | `veta-correo-entrante-reenvio` |
+| Código | `infra/correo-entrante/reenviar.py` |
+
+El rol lleva lo justo: leer **solo** ese bucket, y `ses:SendRawEmail`
+**condicionado** a que el remitente sea `info@ordenglobal.org`. Aunque alguien
+se hiciera con él, no puede mandar correo desde ninguna otra dirección.
+
+#### El remitente no se conserva, y no es un descuido
+
+SES solo deja mandar desde un dominio verificado nuestro. Y aunque dejara, un
+correo que dice venir de `@gmail.com` pero sale de nuestros servidores falla el
+DKIM y el DMARC de quien lo reciba, y acaba en no deseado.
+
+Así que el reenvío sale como nuestro y **el remitente original va en
+`Reply-To`**: al pulsar «responder», la respuesta llega a la persona. Va además
+en el asunto —`[soporte@vetawallet.com] …`— y en las cabeceras
+`X-Original-From` y `X-Original-To`.
+
+#### Lo que suspende el filtro no se reenvía
+
+SES pasa antivirus y antispam antes de llamar a la función. Si el veredicto es
+`FAIL`, no se reenvía: meterle a alguien en el buzón justo lo que el filtro
+acababa de parar no tiene defensa. El original **sí** queda en S3, por si fue
+un falso positivo, y el motivo queda escrito en el registro.
+
+#### Comprobado de punta a punta, con correos de verdad
+
+| Prueba | Resultado |
+| --- | --- |
+| `soporte@` recibe | llegó a S3 en ~6 s |
+| `privacidad@` recibe | llegó y se reenvió |
+| Se reenvía a `info@ordenglobal.org` | las dos veces |
+| El `Reply-To` apunta al remitente **externo** | sí — se mandó desde otra dirección distinta a propósito, porque probarlo desde la misma no habría demostrado nada |
+
+Los mensajes de prueba se borraron del bucket después.
+
+#### El dominio queda cerrado a cal y canto
+
+**Nada manda desde `@vetawallet.com`** —se comprobó: todo el ecosistema sale de
+`info@ordenglobal.org`—, así que se puede publicar la política más dura sin
+riesgo de tirar correo bueno, porque no hay correo bueno que tirar:
+
+```
+vetawallet.com          TXT   v=spf1 -all
+_dmarc.vetawallet.com   TXT   v=DMARC1; p=reject; sp=reject; rua=mailto:admin@ordenglobal.org; fo=1
+```
+
+Aquí sí se va directo a `p=reject` sin la rampa que sí hace falta en
+`ordenglobal.org`: la rampa existe para no tirar correo legítimo por accidente,
+y en este dominio cualquiera que diga venir de `@vetawallet.com` está mintiendo.
+
+**Si algún día se quiere mandar desde vetawallet.com, hay que cambiar el SPF
+ANTES.** Con `-all` puesto, el primer envío se rechaza entero.
+
+#### Lo que no se pudo hacer desde aquí
+
+El cPanel (`ordenglobal.org/cpanel`) **está bloqueado por la política de egreso
+de la sesión**: el puerto 2083 corta la conexión y el 443 devuelve 403 del
+proxy. Por eso los buzones se montaron en AWS y no en el hosting compartido —
+que además tiene la ventaja de no jugarse la reputación de esa IP.
 
 ## Pendiente: subir el DMARC
 
