@@ -979,3 +979,81 @@ export async function estadoParaUsuarioConFoto(identidad: Identidad) {
   }
   return base
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mudar una identidad a otro correo
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Cambia el correo con el que se encuentra una identidad.
+ *
+ * POR QUE HACE FALTA, Y POR QUE NO ESTABA
+ *
+ * Las identidades se buscan POR CORREO (`porEmail`), y el correo de una persona
+ * cambia: se muda de trabajo, deja de usar una cuenta, o simplemente quiere
+ * otra. Cuando eso pasa en la billetera y aqui no, el puente pregunta por el
+ * correo nuevo, no encuentra nada, y CREA UNA IDENTIDAD VACIA. La persona abre
+ * su aplicacion y ve que su verificacion desaparecio.
+ *
+ * Paso de verdad el 22-ago-2026, y no era un caso raro: es lo que ocurre
+ * siempre que alguien cambia su correo de acceso. Faltaba la pieza.
+ *
+ * LAS GUARDIAS, QUE SON LO QUE HACE QUE ESTO NO SEA UNA PUERTA TRASERA
+ *
+ * Mover una identidad verificada a otro correo es, mirado de reojo, «coger la
+ * verificacion de alguien y pegarla en la direccion que yo diga». Por eso:
+ *
+ *   1. El destino no puede tener una identidad CON VALOR. Si ya hay una
+ *      verificada, o con GID, o con documento, se rechaza. Nunca se pisa nada.
+ *   2. Lo unico que se admite en el destino es la cascara vacia que crea el
+ *      propio puente al no encontrar nada: estado `iniciada`, sin GID y sin
+ *      documento. Esa se descarta, porque es basura que generamos nosotros.
+ *   3. Queda en la bitacora, con los dos correos y quien lo pidio. Un cambio de
+ *      correo es lo primero que hace quien se apodera de una cuenta; sin rastro
+ *      no hay forma de distinguirlo de una mudanza legitima.
+ */
+export function moverEmail(
+  de: string,
+  a: string,
+  origen: string,
+): { ok: true; identidad: Identidad; descartada: string | null } | { ok: false; motivo: string } {
+  const viejo = String(de || '').toLowerCase().trim()
+  const nuevo = String(a || '').toLowerCase().trim()
+
+  if (!viejo || !nuevo) return { ok: false, motivo: 'Faltan los dos correos' }
+  if (viejo === nuevo) return { ok: false, motivo: 'Son el mismo correo' }
+  if (!/^[^\s@]+@[^\s@.]+\.[^\s@]{2,}$/.test(nuevo)) {
+    return { ok: false, motivo: 'El correo de destino no tiene forma de correo' }
+  }
+
+  const identidad = porEmail(viejo)
+  if (!identidad) return { ok: false, motivo: `No hay identidad con ${viejo}` }
+
+  let descartada: string | null = null
+  const enDestino = porEmail(nuevo)
+  if (enDestino) {
+    const tieneValor =
+      enDestino.estado !== 'iniciada' ||
+      enDestino.gid !== null ||
+      enDestino.documento !== null ||
+      enDestino.nombreLegal !== null
+    if (tieneValor) {
+      return {
+        ok: false,
+        motivo: `${nuevo} ya tiene una identidad con datos (${enDestino.id}, ${enDestino.estado}). No se pisa.`,
+      }
+    }
+    // La cascara vacia que creo el puente al no encontrar el correo nuevo.
+    const lista = store.todo().identidades
+    lista.splice(lista.indexOf(enDestino), 1)
+    descartada = enDestino.id
+    registrar(origen, 'identidad.descartadaVacia', enDestino.id, { email: nuevo })
+  }
+
+  identidad.email = nuevo
+  identidad.actualizadaEn = ahora()
+  store.guardar()
+  registrar(origen, 'identidad.emailMovido', identidad.id, { de: viejo, a: nuevo, descartada })
+
+  return { ok: true, identidad, descartada }
+}

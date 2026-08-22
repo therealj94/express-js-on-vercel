@@ -291,6 +291,42 @@ appsRouter.get('/identidades/por-email/:email', limite(120), exigeApp('identidad
  * nacionalidad de esa persona: el correo no revela nada que ese alcance no
  * revelara ya. Con solo `gid.verificar` no se llega aquí.
  */
+/**
+ * Mudar una identidad al correo nuevo de esa persona.
+ *
+ * POR QUE EXISTE
+ *
+ * Las identidades se encuentran POR CORREO, y el correo de la gente cambia. Si
+ * cambia en la app de origen y aqui no, el puente pregunta por el correo nuevo,
+ * no halla nada, y crea una identidad VACIA: la persona abre su aplicacion y ve
+ * que su verificacion desaparecio. Paso el 22-ago-2026 y no es un caso raro, es
+ * lo que ocurre siempre que alguien cambia su correo de acceso.
+ *
+ * PIDE `identidad.crear`, Y ESA ELECCION TIENE MOTIVO
+ *
+ * Quien puede crear identidades para los correos que autentica ya decide, de
+ * hecho, que identidad le corresponde a cada persona suya. Mover una de las
+ * suyas a otro correo esta dentro de ese mismo poder, no por encima.
+ *
+ * Lo que NO puede hacer, y lo impide el motor: pisar una identidad que ya tenga
+ * valor en el destino. Si alli hay una verificada, o con GID, o con documento,
+ * se rechaza. Lo unico que se descarta es la cascara vacia que crea este mismo
+ * puente al no encontrar el correo nuevo.
+ *
+ * Todo queda en la bitacora con los dos correos: un cambio de correo es lo
+ * primero que hace quien se apodera de una cuenta, y sin rastro no hay forma de
+ * distinguirlo de una mudanza legitima.
+ */
+appsRouter.post('/identidades/mover-email', limite(20), exigeApp('identidad.crear'), async (req, res) => {
+  const { de, a } = req.body || {}
+  const r = ids.moverEmail(String(de || ''), String(a || ''), `app:${(req as any).app_?.id || 'desconocida'}`)
+  if (!r.ok) return res.status(409).json({ error: r.motivo })
+  res.json({
+    identidad: await ids.estadoParaUsuarioConFoto(r.identidad),
+    descartada: r.descartada,
+  })
+})
+
 appsRouter.get('/identidades/por-gid/:gid', limite(120), exigeApp('gid.perfil'), async (req, res) => {
   const gid = normalizarGid(req.params.gid)
   if (!gidValido(gid)) {
