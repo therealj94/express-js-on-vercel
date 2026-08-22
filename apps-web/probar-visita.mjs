@@ -155,8 +155,17 @@ console.log('\n── de AU-RA al formulario ───────────�
   decir(crear === 'true', 'y llega con la pestaña de crear ya elegida');
 
   decir(await orbeVisible(), 'AU-RA sigue ahí, en la pantalla de acceso');
-  const lado = await p.evaluate(() => document.querySelector('#acceso .acc-lado').textContent);
-  decir(/AU-RA te contesta/.test(lado), 'y está invitada donde se duda: junto al formulario');
+  /* El mecanismo, no el letrero: la frase de AU-RA en el acceso ya cambió una
+     vez («te contesta acá» → «Bienvenidos a Orden Global») y clavar el texto
+     vuelve a romper la prueba con cada mejora de copia. Lo que tiene que ser
+     cierto siempre: que AU-RA esté presentada junto al formulario y que el
+     botón de hablarle funcione. */
+  const aura = await p.evaluate(() => {
+    const lado = document.querySelector('#acceso .acc-lado');
+    return { nombra: /AU-RA/.test(lado.textContent),
+             boton: !!lado.querySelector('.bv-aura-btn') };
+  });
+  decir(aura.nombra && aura.boton, 'y está invitada donde se duda: junto al formulario');
 
   await p.evaluate(() => VETA.auraToca());
   await p.waitForTimeout(300);

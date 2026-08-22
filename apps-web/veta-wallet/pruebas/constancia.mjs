@@ -50,6 +50,10 @@ for (const idioma of ['es', 'en']) {
   await pag.evaluate(i => { try { localStorage.setItem('veta.idioma', i); } catch {} }, idioma);
   await pag.reload();
   await pag.locator('.constancia h3').waitFor({ state: 'attached' });
+  /* La entrada ahora es el login; la constancia vive en la portada de venta,
+     que se abre con el boton «Conocer Orden Global». Aqui se va directo. */
+  await pag.evaluate(() => VETA.ir('bienvenida'));
+  await pag.waitForTimeout(250);
 
   const c = pag.locator('.constancia');
   revisar(await c.count() === 1, `[${idioma}] deberia haber UNA constancia, hay ${await c.count()}`);
@@ -101,6 +105,8 @@ const movil = await nav.newContext({ viewport: { width: 360, height: 780 }, isMo
 const pm = await movil.newPage();
 await pm.goto(`${BASE}/`);
 await pm.locator('.constancia h3').waitFor({ state: 'attached' });
+await pm.evaluate(() => VETA.ir('bienvenida'));
+await pm.waitForTimeout(250);
 const cm = pm.locator('.constancia');
 const caja = await cm.boundingBox();
 revisar(caja.x >= 0 && caja.x + caja.width <= 360 + 1,

@@ -1325,7 +1325,10 @@ const VETA = (() => {
       verCodigo: false, buscaMal: false });
     avisarChat = null; chatPendiente = null;
     try { localStorage.removeItem(LLAVE); } catch {}
-    ir('bienvenida');
+    /* Al salir se vuelve AL LOGIN, no a la portada: quien cierra sesion casi
+       siempre es para entrar con otra cuenta o para dejar el telefono limpio,
+       y en los dos casos la pantalla util es la puerta, no el folleto. */
+    ir('acceso', 'entrar');
   }
 
   // ── traer los datos ───────────────────────────────────────────────────────
@@ -8395,6 +8398,7 @@ const VETA = (() => {
       tourFinGid: 'Ese es tu ecosistema. Solo te falta una llave: tu Genesis ID. ¿Lo creamos ahora?',
       sig: 'Siguiente', atras: 'Atrás', salir: 'Salir del recorrido', fin: 'Entrar a mi Núcleo',
       toca: 'Tocá el orbe para escucharla',
+      hola: 'Te damos la bienvenida, ',
       saltar: 'SALTAR',
       ecoTitulo: 'EL ECOSISTEMA ORDEN GLOBAL',
       escribi: 'Preguntame o pedime…',
@@ -8507,6 +8511,7 @@ const VETA = (() => {
       tourFinGid: 'That is your ecosystem. You are missing one key: your Genesis ID. Shall we create it now?',
       sig: 'Next', atras: 'Back', salir: 'Exit tour', fin: 'Enter my Nucleus',
       toca: 'Tap the orb to hear her',
+      hola: 'Welcome, ',
       saltar: 'SKIP',
       ecoTitulo: 'THE ORDEN GLOBAL ECOSYSTEM',
       escribi: 'Ask me or tell me…',
@@ -9074,11 +9079,21 @@ const VETA = (() => {
     const T = aTxt();
     const el = $('#aura-bienvenida');
     el.classList.remove('oculto', 'irse');
+    /* EL NOMBRE DE LA PERSONA, EN LA BIENVENIDA. El ritual saludaba igual a
+       todo el mundo; ahora la primera linea es para quien acaba de entrar.
+       «Te damos la bienvenida» y no «bienvenido/bienvenida»: el registro no
+       sabe el genero de nadie y adivinarlo por el nombre es la forma segura
+       de equivocarse con alguien. La forma neutra es ademas la mas solemne.
+       `esc()` porque el nombre lo escribio la persona al registrarse: es dato
+       ajeno, y sin escapar seria HTML de quien quiera ponerse <img onerror>
+       de nombre. */
+    const quien = (sesion?.nombre || '').trim().split(/\s+/)[0];
     el.innerHTML = `
       <canvas class="red"></canvas>
       <button class="aurab-saltar" onclick="VETA.auraBienFin()">${T.saltar}</button>
       <div class="aurab-caja">
         <div class="orbe-grande" onclick="VETA.auraBienToca()"><canvas></canvas></div>
+        ${quien ? `<p class="aurab-hola">${T.hola}<b>${esc(quien)}</b></p>` : ''}
         <div class="aurab-nombre">AU-RA</div>
         <div class="aurab-linaje">${T.ecoTitulo} · <b>MODELO 1 · BETA</b></div>
         <p class="aurab-sub" id="aurab-sub"></p>
@@ -10120,9 +10135,12 @@ const VETA = (() => {
       // cartera cuando se intente elegir.
       if (cobroEntrante) { cobroPendiente = null; cargarCartera().then(() => irACobro(cobroEntrante)); }
     }
-    /* Sin sesion no hay identidad que verificar todavia: al que venia a eso se
-       le abre el acceso, no la portada, para que no tenga que buscar la puerta. */
-    else ir(pideVerificar || cobroEntrante || casaSso ? 'acceso' : 'bienvenida', 'entrar');
+    /* Sin sesion, LA PUERTA ES EL LOGIN, no la portada. La portada de venta
+       sigue existiendo —el boton «Conocer Orden Global» del acceso lleva a
+       ella— pero ya no es lo primero: quien escribe app.vetawallet.com viene
+       a entrar o a abrir cuenta, y hacerle atravesar seis tramos de venta
+       para encontrar la puerta era tratarlo de visita en su propia casa. */
+    else ir('acceso', 'entrar');
   }
   document.addEventListener('DOMContentLoaded', arrancar);
 
