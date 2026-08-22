@@ -223,7 +223,15 @@ app.get('/salud', async (req, res) => {
 // casa cobrando una cifra y anunciando otra en cuanto alguien toque una sola.
 
 app.get('/tarifas', (req, res) => {
-  const ppm = require('./lib/motor').comisionPpm();
+  /* `Number(...)` y no el BigInt tal cual: `res.json()` NO SABE serializar un
+     BigInt y contesta 500. Se me escapo al hacer que esta ruta usara la funcion
+     del motor en vez de su propia copia — el motor devuelve BigInt porque es lo
+     que le sirve para su aritmetica, y aqui hace falta un numero.
+     La conversion es exacta y no una comodidad: la parte por millon tiene tope
+     de 50.000 en el propio motor, muy por debajo de donde un numero de JS
+     empieza a perder precision. Y es lo que espera la web, que comprueba
+     `Number.isInteger` y hace ella misma el paso a BigInt. */
+  const ppm = Number(require('./lib/motor').comisionPpm());
   // `sobre: 'recibido'` no es adorno: la comision se descuenta de lo que cada
   // parte RECIBE (el activo el comprador, el ORIGEN el vendedor), no de lo que
   // paga. Sin ese dato, la web no sabria de que lado restarla.

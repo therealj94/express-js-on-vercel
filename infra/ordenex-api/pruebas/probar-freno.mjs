@@ -56,15 +56,24 @@ async function levantar(extra = {}) {
   const url = `http://127.0.0.1:${puerto}`;
   // Se sondea /tarifas y no /salud: /salud sale a la cadena y a Mongo, y este
   // arranque no tiene ninguna de las dos.
+  /* Se distingue «no contesta nadie» de «contesta y da error», porque son dos
+     averias distintas y el mensaje decidia mal. Paso de verdad: `/tarifas`
+     devolvia 500 por un BigInt sin serializar, y esta funcion lo reportaba como
+     «el API no levanto» — mandando a buscar el fallo al arranque cuando estaba
+     en la ruta. */
+  let ultimo = null;
   for (let i = 0; i < 100; i++) {
     try {
       const r = await fetch(url + '/tarifas');
       if (r.ok) return { url, matar: () => hijo.kill('SIGKILL') };
-    } catch {}
+      ultimo = `${r.status} ${await r.text().catch(() => '')}`.slice(0, 120);
+    } catch (e) { ultimo = null; }
     await new Promise(res => setTimeout(res, 150));
   }
   hijo.kill('SIGKILL');
-  throw new Error('el API no levantó');
+  throw new Error(ultimo
+    ? `el API levantó pero /tarifas contesta mal: ${ultimo}`
+    : 'el API no levantó: nadie contesta en el puerto');
 }
 
 console.log('\n════ EL FRENO Y LAS CABECERAS ══════════════════════════════');
