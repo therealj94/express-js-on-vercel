@@ -107,3 +107,83 @@ cero, la revocación de sesión, la idempotencia obligatoria, el freno del enví
 la firma del webhook y el registro que imprimía credenciales.
 
 **Todo eso está en la rama. Casi nada está corriendo.**
+
+---
+
+## Las apps de teléfono · verificado por mí
+
+### MyTokenPay corre entera contra un servidor de mentira
+
+`mytokenpay-app/mobile/src/lib/api.ts:13` → `USE_MOCK_API = true`, y la línea 139
+desvía **toda** la app al simulador. La ficha de sesión es la cadena
+`mock.<id-de-usuario>`, o sea falsificable a mano sin servidor. El paquete lleva
+además cuentas de demostración con sus contraseñas en claro.
+
+### Y se declara «identidad verificada» en el propio teléfono
+
+`store/genesis.ts:35` genera el identificador con **`Math.random()`**:
+
+```js
+function makeUid(): string {
+  const n = () => Math.floor(1000 + Math.random() * 9000)
+  return `GEN-${n()}-${n()}`
+}
+```
+
+Y `verificar-identidad.tsx:170` es esto entero:
+
+```js
+function handleCapture() {
+  if (step === 'doc-front') genesis.advance('doc-back')
+  else if (step === 'doc-back') genesis.advance('face')
+  else if (step === 'face') genesis.advance('processing')
+}
+```
+
+**No abre la cámara, no captura nada, no manda nada.** Solo avanza el paso. Al
+terminar, la pantalla le dice al usuario que su Genesis ID quedó verificada y
+que sirve «en Veta Wallet, MyTokenPay y todo el ecosistema».
+
+### ¿Está publicada? No hay evidencia de que sí, y sí de que no
+
+- La web de MyTokenPay figura como **sin desplegar** en `apps-web/README.md:14`.
+- **Ningún flujo de trabajo la compila**: los cuatro de `.github/workflows` son
+  de Genesis ID y de Veta Wallet.
+- Pero **el perfil `production` existe** y produce un paquete de tienda.
+
+Así que hoy esto es deuda de desarrollo, no un incidente. Lo que no se puede
+decir es que sea inofensivo: **está a un comando de publicarse tal cual**.
+
+### El hallazgo más fino de todo el informe
+
+La pantalla de verificación llama a dos funciones que **no existen**
+(`genesisClient.process` y `.start`), fuera de cualquier `try`, así que lanza y
+la pantalla se queda en «Procesando» para siempre.
+
+Eso significa que **ese fallo es hoy lo único que impide que la verificación
+falsa se complete**. Arreglar el fallo sin arreglar lo de arriba **activaría** la
+verificación de mentira. Hay que hacer las dos cosas, y en ese orden.
+
+### Lo que está bien, y es mucho
+
+- **La semilla y la llave privada no se guardan nunca.** Se piden al servidor
+  con la contraseña en el momento, viven en memoria y se borran solas a los 45
+  segundos.
+- **El desbloqueo biométrico está bien hecho**: exige autenticación y no sale
+  del aparato.
+- **Ningún secreto real horneado** en ninguna de las cuatro apps, y ninguna
+  desactiva la comprobación de certificados.
+- **La clave `gidp_` no es una filtración**, y no se dio por buena leyendo el
+  comentario: se comprobó contra el servidor. Solo abre dos rutas de escritura;
+  toda lectura del directorio exige operador.
+- **Los permisos son proporcionados.** La app de Genesis ID bloquea
+  explícitamente cámara, micrófono y almacenamiento que no usa.
+
+### Y una que se repite: un comentario que dejó de ser cierto
+
+`orden-global-app/src/unlock.js:17` dice que el viejo «Recordarme» *«se reemplaza
+por uno que el sistema protege»*. Es falso: `screens/Auth.js:156` sigue guardando
+la contraseña sin biometría. Y esa contraseña es la que autoriza enviar fondos,
+revelar la semilla y ver el PIN de la tarjeta.
+
+Es el mismo patrón que ya salió tres veces esta sesión.
