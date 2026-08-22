@@ -2055,6 +2055,54 @@ body.en-p2c .cha-puerta p{color:var(--p2c-bruma)}
   .rc-dato{border-left:0;border-top:1px solid var(--linea2)}
   .rc-dato:first-child{border-top:0}}
 
+/* LA CONSTANCIA DEL REGISTRO.
+   Chainlist no certifica nada y no extiende ningun diploma: es un REGISTRO
+   publico, y la cadena 5550 tiene una fila dentro. Por eso esto no se dibuja
+   como una medalla con su palomita —que seria decir algo que no es— sino como
+   lo que de verdad hay: una fila de registro, con los mismos tres campos que
+   lleva el archivo publicado, y un enlace para ir a comprobarla.
+   La tarjeta ENTERA es el enlace: el boton de la derecha es la senal visual,
+   pero se puede tocar en cualquier parte, que en el telefono es la diferencia
+   entre acertar y no. Por eso el boton es un `span` y no otro `<a>`: un enlace
+   dentro de otro enlace no es HTML valido. */
+/* Sin esto se subraya TODO —titulo, parrafo y los tres campos— porque la
+   tarjeta entera es un <a> y el subrayado cae por herencia sobre cada linea. */
+.constancia{text-decoration:none;margin-top:clamp(26px,4vh,44px);display:grid;
+  grid-template-columns:auto 1fr auto;align-items:center;gap:clamp(18px,3vw,34px);
+  padding:clamp(20px,3vh,30px) clamp(20px,3vw,34px);
+  border:1px solid var(--linea);border-radius:var(--r2);
+  background:linear-gradient(135deg,rgba(201,169,97,.07),transparent 46%),var(--panel);
+  transition:border-color .22s,transform .22s cubic-bezier(.2,.8,.3,1),box-shadow .22s}
+.constancia:hover{border-color:var(--oro);transform:translateY(-2px);
+  box-shadow:0 24px 60px -34px rgba(201,169,97,.7)}
+.constancia:hover .cst-btn{border-color:var(--oro);background:rgba(201,169,97,.09)}
+.cst-glifo{width:46px;height:46px;flex:none;fill:none;stroke:var(--oro);
+  stroke-width:1.5;stroke-linejoin:round}
+.cst-cuerpo{min-width:0}
+.cst-cuerpo .sello{margin-bottom:11px}
+.cst-cuerpo h3{font-family:var(--serif);font-weight:700;letter-spacing:-.01em;
+  font-size:clamp(19px,2.2vw,26px);line-height:1.22;color:var(--crema)}
+.cst-cuerpo p{margin-top:10px;color:var(--bruma);font-size:14px;line-height:1.62;max-width:58ch}
+/* Los campos van en monoespaciada y con el nombre que tienen DENTRO del
+   archivo, no con un titulo bonito: es una fila de registro citada, no un
+   resumen de marketing. */
+.cst-fila{margin-top:16px;padding-top:13px;border-top:1px solid var(--linea2);
+  display:flex;flex-wrap:wrap;gap:12px 28px}
+.cst-campo{display:flex;flex-direction:column;gap:4px}
+.cst-campo span{font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--humo)}
+.cst-campo b{font-family:var(--mono);font-size:14.5px;font-weight:700;color:var(--oroLt);
+  font-variant-numeric:tabular-nums}
+.cst-btn{flex:none}
+@media(max-width:900px){
+  .constancia{grid-template-columns:auto 1fr}
+  .cst-btn{grid-column:1/-1;width:100%}}
+@media(max-width:460px){
+  .constancia{grid-template-columns:1fr}
+  .cst-glifo{width:38px;height:38px}}
+@media(prefers-reduced-motion:reduce){
+  .constancia,.constancia:hover{transition:none;transform:none}}
+
 /* LA CREDENCIAL. Un documento, no una tarjeta de estado: filo de oro, la foto
    con su marco, el nombre en la serif de la casa y el numero en monoespaciada
    —que es como se leen los numeros que hay que teclear del otro lado—. */
@@ -2890,6 +2938,34 @@ body.en-ventana .lienzo::before{
     <p data-t="ch.pie"></p>
     <a class="btn btn-linea" href="https://ordenscan.com" target="_blank" rel="noopener" data-t="ch.ver"></a>
   </div>
+
+  <!-- LA FILA DEL REGISTRO PUBLICO.
+       Los tres valores no estan escritos a mano para que queden bien: son los
+       que tiene HOY el archivo `_data/chains/eip155-5550.json` de
+       `ethereum-lists/chains`, que es de donde Chainlist y las billeteras leen.
+       Si algun dia cambian alli, hay que cambiarlos aqui: por eso van con el
+       nombre del campo al lado, para que se note al comparar. -->
+  <a class="constancia rev izq" href="https://chainlist.org/chain/5550"
+     target="_blank" rel="noopener">
+    <svg class="cst-glifo" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+      <path d="M16 3l11.3 6.5v13L16 29 4.7 22.5v-13z"/>
+      <path d="M16 12l-4.6 7.4h9.2z" stroke-width="1.2" opacity=".8"/>
+      <circle cx="16" cy="12" r="1.7" fill="var(--oro)" stroke="none"/>
+      <circle cx="11.4" cy="19.4" r="1.7" fill="var(--oro)" stroke="none"/>
+      <circle cx="20.6" cy="19.4" r="1.7" fill="var(--oro)" stroke="none"/>
+    </svg>
+    <div class="cst-cuerpo">
+      <div class="sello" data-t="ch.reg.sello"></div>
+      <h3 data-t="ch.reg.t"></h3>
+      <p data-t="ch.reg.p"></p>
+      <div class="cst-fila">
+        <div class="cst-campo"><span>chainId</span><b>5550</b></div>
+        <div class="cst-campo"><span data-t="ch.reg.k2"></span><b>ogb</b></div>
+        <div class="cst-campo"><span data-t="ch.reg.k3"></span><b>ORIGEN</b></div>
+      </div>
+    </div>
+    <span class="btn btn-linea cst-btn" data-t="ch.reg.ver"></span>
+  </a>
 </section>
 
 <section class="tramo baja" id="ecosistema">
@@ -2932,6 +3008,11 @@ body.en-ventana .lienzo::before{
   <nav>
     <a href="/terminos" data-t="pie.term"></a>
     <a href="/privacidad" data-t="pie.priv"></a>
+    <!-- Las tiendas exigen que el borrado de cuenta se explique en una pagina
+         alcanzable desde la web, no solo dentro de la aplicacion. La regla de
+         reescritura de /eliminar-cuenta existia desde hace tiempo, pero el
+         archivo nunca se subio: la ruta caia al index y quedaba la nada. -->
+    <a href="/eliminar-cuenta" data-t="pie.borrar"></a>
     <a href="mailto:info@ordenglobal.org">info@ordenglobal.org</a>
   </nav>
 </footer>

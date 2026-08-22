@@ -52,7 +52,7 @@ es: {
   'acc.volver': 'Volver',
   'nav.inicio': 'Inicio', 'nav.enviar': 'Enviar', 'nav.recibir': 'Recibir',
   'nav.actividad': 'Actividad', 'nav.cuenta': 'Mi cuenta', 'nav.id': 'Identidad',
-  'pie.term': 'Términos', 'pie.priv': 'Privacidad',
+  'pie.term': 'Términos', 'pie.priv': 'Privacidad', 'pie.borrar': 'Eliminar cuenta',
   'saldo.lbl': 'Tu saldo', 'saldo.err': 'No pudimos leer tu saldo.', 'saldo.re': 'Reintentar',
   'a.enviar': 'Enviar', 'a.recibir': 'Recibir', 'a.comprar': 'Comprar', 'a.cambiar': 'Cambiar',
   'a.compraPronto': 'La compra con tarjeta llega en la próxima versión.',
@@ -307,6 +307,17 @@ es: {
   'ch.d4': 'del registro es público. Cada emisión y cada movimiento, a la vista, sin pedirnos nada.',
   'ch.pie': 'No es una promesa de arquitectura: está corriendo, y se puede mirar ahora mismo. Bloque a bloque, transacción a transacción, con nombre y apellido de contrato.',
   'ch.ver': 'Ver la cadena en ORDENSCAN',
+  /* LA CONSTANCIA. Se dice «inscrita en el registro», nunca «certificada»:
+     Chainlist no certifica ni audita nada, es un directorio publico y quien
+     revisa el ingreso es un mantenedor voluntario. Decir «certificados» seria
+     prometer un sello que nadie extendio. Lo que si es cierto —y es lo que
+     vale para quien lee— es que cualquiera nos encuentra y se conecta solo. */
+  'ch.reg.sello': 'Registro público',
+  'ch.reg.t': 'La cadena 5550 está inscrita en Chainlist.',
+  'ch.reg.p': 'Chainlist es el directorio público de redes que consultan las billeteras y las herramientas de todo el mundo. Estar inscritos quiere decir que cualquiera encuentra la nuestra por su cuenta y la añade en un clic, sin que le pasemos nada por debajo.',
+  'ch.reg.k2': 'Nombre corto',
+  'ch.reg.k3': 'Moneda',
+  'ch.reg.ver': 'Ver en Chainlist',
   'e.sello': 'El ecosistema', 'e.t1': 'Una cuenta.', 'e.t2': 'Todo Orden Global.',
   'e.p': 'Veta Wallet no viene sola. Tu identidad, los comercios donde gastás y el registro público de la cadena son piezas del mismo sistema.',
   'e.gid': 'Tu identidad digital. Verificate una sola vez y quedás verificado en todos los servicios del grupo.',
@@ -915,7 +926,7 @@ en: {
   'acc.volver': 'Back',
   'nav.inicio': 'Home', 'nav.enviar': 'Send', 'nav.recibir': 'Receive',
   'nav.actividad': 'Activity', 'nav.cuenta': 'My account', 'nav.id': 'Identity',
-  'pie.term': 'Terms', 'pie.priv': 'Privacy',
+  'pie.term': 'Terms', 'pie.priv': 'Privacy', 'pie.borrar': 'Delete account',
   'saldo.lbl': 'Your balance', 'saldo.err': 'We could not read your balance.', 'saldo.re': 'Retry',
   'a.enviar': 'Send', 'a.recibir': 'Receive', 'a.comprar': 'Buy', 'a.cambiar': 'Swap',
   'a.compraPronto': 'Card purchases arrive in the next release.',
@@ -1149,6 +1160,12 @@ en: {
   'ch.d4': 'of the record is public. Every issuance and every movement, in the open, without asking us for anything.',
   'ch.pie': 'This is not a promise of architecture: it is running, and it can be looked at right now. Block by block, transaction by transaction, with each contract named.',
   'ch.ver': 'See the chain on ORDENSCAN',
+  'ch.reg.sello': 'Public registry',
+  'ch.reg.t': 'Chain 5550 is listed on Chainlist.',
+  'ch.reg.p': 'Chainlist is the public directory of networks that wallets and tools around the world read. Being listed means anyone finds ours on their own and adds it in one click, without us having to hand them anything.',
+  'ch.reg.k2': 'Short name',
+  'ch.reg.k3': 'Currency',
+  'ch.reg.ver': 'View on Chainlist',
   'e.sello': 'The ecosystem', 'e.t1': 'One account.', 'e.t2': 'All of Orden Global.',
   'e.p': 'Veta Wallet does not come alone. Your identity, the merchants where you spend and the public record of the chain are parts of the same system.',
   'e.gid': 'Your digital identity. Verify once and stay verified across every service of the group.',
