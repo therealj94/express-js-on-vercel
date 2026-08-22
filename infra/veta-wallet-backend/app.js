@@ -103,6 +103,85 @@ app.set("trust proxy", 1);
 // ── Seguridad: headers HTTP seguros (después de CORS) ────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: false }));
 
+// ── GET /salud ───────────────────────────────────────────────────────────────
+//
+// POR QUE HACIA FALTA
+//
+// Era el unico de los cuatro servicios del ecosistema sin ruta de salud, y es
+// el que mueve dinero. Hoy, si Mongo se cae, el primer aviso es un usuario
+// quejandose.
+//
+// Y habia algo peor que no tenerla: la raiz `/` contesta `{ok:true}` SIEMPRE,
+// sin comprobar nada. Cualquiera que la pusiera en un monitor —y el propio
+// guion de despliegue la vigila— veria verde con la base de datos muerta. Un
+// chequeo que no puede fallar no es un chequeo; es un adorno que da confianza
+// falsa. La raiz se deja como esta, porque para lo que sirve —saber si el dyno
+// arranco— esta bien, pero ahora dice donde esta la de verdad.
+//
+// SE MONTA ANTES DEL LIMITADOR GLOBAL, Y NO ES UN DESCUIDO
+//
+// El limitador general corta a 100 peticiones por minuto y por IP. Un monitor
+// que consulta cada minuto gasta una, pero si alguna vez comparte salida con
+// trafico de usuarios, el corte le llegaria a el tambien — y avisaria de una
+// caida que no existe. Una alarma que se dispara sola deja de mirarse.
+//
+// Aun asi lleva su propio limite, mas ancho: la ruta toca Mongo y el RPC, y sin
+// ningun freno cualquiera la usaria para hacerles ruido.
+const mongoose = require("mongoose");
+const { JsonRpcProvider } = require("ethers");
+
+// Sin plazo, un Mongo que no responde —que es distinto de uno que rechaza— deja
+// la peticion colgada, y el monitor marca "tiempo agotado" sin decir de que.
+function conPlazo(promesa, ms, que) {
+  return Promise.race([
+    promesa,
+    new Promise((_, rechaza) =>
+      setTimeout(() => rechaza(new Error(`${que}: sin respuesta en ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
+const OG_RPC = process.env.OG_CHAIN_PROVIDER || "https://rpc.ordenglobal-rpc.com";
+
+app.get(
+  "/salud",
+  rateLimit({ windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false }),
+  async (req, res) => {
+    let mongo = false;
+    try {
+      // `readyState === 1` dice que el driver CREE estar conectado. El ping es
+      // el que lo comprueba de verdad: se puede estar conectado a un servidor
+      // que dejo de contestar.
+      if (mongoose.connection.readyState === 1) {
+        await conPlazo(mongoose.connection.db.admin().command({ ping: 1 }), 4000, "mongo");
+        mongo = true;
+      }
+    } catch (e) {
+      console.error(`[salud] mongo: ${e.message}`);
+    }
+
+    let cadena = false;
+    let bloque = null;
+    let proveedor = null;
+    try {
+      proveedor = new JsonRpcProvider(OG_RPC, undefined, { staticNetwork: true });
+      bloque = Number(await conPlazo(proveedor.getBlockNumber(), 5000, "eth_blockNumber"));
+      cadena = true;
+    } catch (e) {
+      console.error(`[salud] cadena: ${e.message}`);
+    } finally {
+      try { proveedor?.destroy(); } catch {}
+    }
+
+    // El HTTP tambien lo canta, no solo el JSON: asi un monitor sirve sin
+    // saber leer el cuerpo. `bloque` va en null cuando no se pudo leer la
+    // cadena — nunca un cero de consuelo, que se confunde con una cadena
+    // parada en el bloque cero.
+    const ok = mongo && cadena;
+    res.status(ok ? 200 : 503).json({ ok, mongo, cadena, bloque });
+  }
+);
+
 // ── Rate limiting global: 100 req/min por IP ──────────────────────────────────
 app.use(rateLimit({
   windowMs: 60 * 1000,
