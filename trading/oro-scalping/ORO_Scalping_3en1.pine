@@ -1,0 +1,176 @@
+//@version=5
+// ═══════════════════════════════════════════════════════════════════════════
+//  ORO SCALPING 3-EN-1 · XAUUSD
+//  Triple confluencia: Tendencia (EMAs) + Momentum (VWAP/RSI) + Ruptura (ORB)
+//  Señales LONG/SHORT solo en killzones de Londres y Nueva York,
+//  con SL por estructura + ATR y TP por ratio riesgo/beneficio.
+//  Temporalidad recomendada: 5 minutos (también funciona en 1m y 15m).
+// ═══════════════════════════════════════════════════════════════════════════
+indicator("ORO Scalping 3-en-1 · XAUUSD", shorttitle="ORO 3en1", overlay=true, max_labels_count=500, max_lines_count=500)
+
+// ───────────────────────────── INPUTS ─────────────────────────────
+grpG = "⚙️ General"
+tz        = input.string("America/New_York", "Zona horaria de sesiones", options=["America/New_York", "UTC", "Europe/London"], group=grpG)
+minScore  = input.int(3, "Confluencias mínimas (3 = conservador, 2 = agresivo)", minval=2, maxval=3, group=grpG)
+cooldown  = input.int(12, "Velas mínimas entre señales", minval=0, group=grpG)
+showDash  = input.bool(true, "Mostrar panel de decisión en vivo", group=grpG)
+
+grpS = "🕐 Sesiones (killzones de apertura)"
+useLdn  = input.bool(true, "Operar apertura de Londres", group=grpS)
+ldnKZ   = input.session("0300-0600", "Killzone Londres (hora NY)", group=grpS)
+ldnORB  = input.session("0300-0315", "Rango de apertura Londres", group=grpS)
+useNY   = input.bool(true, "Operar apertura de Nueva York", group=grpS)
+nyKZ    = input.session("0830-1130", "Killzone Nueva York (hora NY)", group=grpS)
+nyORB   = input.session("0830-0845", "Rango de apertura NY", group=grpS)
+
+grp1 = "1️⃣ Estrategia A · Tendencia (EMAs)"
+emaFastLen = input.int(9,   "EMA rápida", minval=2, group=grp1)
+emaSlowLen = input.int(21,  "EMA lenta", minval=5, group=grp1)
+emaBiasLen = input.int(200, "EMA de sesgo (dirección maestra)", minval=50, group=grp1)
+
+grp2 = "2️⃣ Estrategia B · Momentum (VWAP + RSI)"
+rsiLen = input.int(14, "Longitud RSI", minval=2, group=grp2)
+
+grp3 = "3️⃣ Estrategia C · Ruptura de apertura + fuerza"
+adxLen = input.int(14, "Longitud ADX/DMI", minval=2, group=grp3)
+adxMin = input.float(18, "ADX mínimo (filtro de mercado plano)", minval=5, step=1, group=grp3)
+
+grpR = "🎯 Riesgo · Stop Loss y Take Profit"
+atrLen   = input.int(14,    "Longitud ATR", minval=2, group=grpR)
+swingLen = input.int(6,     "Velas para swing (estructura del SL)", minval=2, group=grpR)
+slBuf    = input.float(0.5, "Colchón del SL (× ATR)", minval=0.0, step=0.1, group=grpR)
+maxSlAtr = input.float(1.5, "Distancia máxima del SL (× ATR)", minval=0.5, step=0.1, group=grpR)
+rr1      = input.float(1.0, "TP1 (× riesgo) — cerrar 50% y mover SL a entrada", minval=0.5, step=0.25, group=grpR)
+rr2      = input.float(2.0, "TP2 (× riesgo) — cierre total", minval=1.0, step=0.25, group=grpR)
+
+// ───────────────────────────── CÁLCULOS BASE ─────────────────────────────
+emaF = ta.ema(close, emaFastLen)
+emaS = ta.ema(close, emaSlowLen)
+emaB = ta.ema(close, emaBiasLen)
+vwap = ta.vwap(hlc3)
+rsi  = ta.rsi(close, rsiLen)
+atr  = ta.atr(atrLen)
+[diP, diM, adx] = ta.dmi(adxLen, adxLen)
+
+inSess(s) => not na(time(timeframe.period, s, tz))
+
+// Rango de apertura (ORB): alto/bajo de los primeros minutos de la sesión
+f_orb(sessRange) =>
+    inR = inSess(sessRange)
+    var float hi = na
+    var float lo = na
+    if inR and not inR[1]
+        hi := high
+        lo := low
+    else if inR
+        hi := math.max(hi, high)
+        lo := math.min(lo, low)
+    [hi, lo, inR]
+
+[ldnHi, ldnLo, inLdnORB] = f_orb(ldnORB)
+[nyHi,  nyLo,  inNyORB]  = f_orb(nyORB)
+
+kzLdn = useLdn and inSess(ldnKZ)
+kzNY  = useNY  and inSess(nyKZ)
+kzActive = kzLdn or kzNY
+
+// ORB activo según la sesión en curso (NY tiene prioridad si se solapan)
+orbHi     = kzNY ? nyHi : kzLdn ? ldnHi : na
+orbLo     = kzNY ? nyLo : kzLdn ? ldnLo : na
+orbForming = kzNY ? inNyORB : kzLdn ? inLdnORB : false
+orbReady  = kzActive and not orbForming and not na(orbHi)
+
+// ───────────────────────────── LAS 3 ESTRATEGIAS ─────────────────────────────
+// A · Tendencia: EMAs alineadas y precio del lado correcto de la EMA de sesgo
+trendLong  = emaF > emaS and close > emaB
+trendShort = emaF < emaS and close < emaB
+
+// B · Momentum: precio vs VWAP institucional + RSI a favor
+momLong  = close > vwap and rsi > 50
+momShort = close < vwap and rsi < 50
+
+// C · Ruptura: cierre fuera del rango de apertura de la sesión
+brkLong  = orbReady and close > orbHi
+brkShort = orbReady and close < orbLo
+
+scoreL = (trendLong ? 1 : 0) + (momLong ? 1 : 0) + (brkLong ? 1 : 0)
+scoreS = (trendShort ? 1 : 0) + (momShort ? 1 : 0) + (brkShort ? 1 : 0)
+
+// ───────────────────────────── SEÑALES ─────────────────────────────
+adxOK = adx >= adxMin
+var int lastSig = na
+canSignal = na(lastSig) or (bar_index - lastSig) > cooldown
+
+rawLong  = kzActive and adxOK and scoreL >= minScore and scoreS < minScore and scoreL[1] < minScore
+rawShort = kzActive and adxOK and scoreS >= minScore and scoreL < minScore and scoreS[1] < minScore
+
+longSignal  = rawLong  and canSignal and barstate.isconfirmed
+shortSignal = rawShort and canSignal and barstate.isconfirmed
+
+// ───────────────────────────── SL / TP ─────────────────────────────
+// SL = swing de estructura ± colchón ATR, nunca más lejos de maxSlAtr × ATR
+swingLo = ta.lowest(low, swingLen)
+swingHi = ta.highest(high, swingLen)
+
+slLong  = math.max(swingLo - slBuf * atr, close - maxSlAtr * atr)
+slShort = math.min(swingHi + slBuf * atr, close + maxSlAtr * atr)
+
+riskL = close - slLong
+riskS = slShort - close
+
+tp1Long  = close + rr1 * riskL
+tp2Long  = close + rr2 * riskL
+tp1Short = close - rr1 * riskS
+tp2Short = close - rr2 * riskS
+
+f_lvl(y, col, txt) =>
+    line.new(bar_index, y, bar_index + 20, y, color=col, width=1, style=line.style_dashed)
+    label.new(bar_index + 20, y, txt + " " + str.tostring(y, format.mintick), style=label.style_label_left, color=color.new(col, 80), textcolor=col, size=size.small)
+
+if longSignal
+    lastSig := bar_index
+    label.new(bar_index, low, "LONG 🟢\nEntrada " + str.tostring(close, format.mintick), style=label.style_label_up, color=color.new(color.green, 10), textcolor=color.white, size=size.normal)
+    f_lvl(slLong,  color.red,   "SL")
+    f_lvl(tp1Long, color.teal,  "TP1")
+    f_lvl(tp2Long, color.green, "TP2")
+    alert("🟢 ORO LONG | Entrada: " + str.tostring(close, format.mintick) + " | SL: " + str.tostring(slLong, format.mintick) + " | TP1: " + str.tostring(tp1Long, format.mintick) + " | TP2: " + str.tostring(tp2Long, format.mintick), alert.freq_once_per_bar_close)
+
+if shortSignal
+    lastSig := bar_index
+    label.new(bar_index, high, "SHORT 🔴\nEntrada " + str.tostring(close, format.mintick), style=label.style_label_down, color=color.new(color.red, 10), textcolor=color.white, size=size.normal)
+    f_lvl(slShort,  color.red,   "SL")
+    f_lvl(tp1Short, color.teal,  "TP1")
+    f_lvl(tp2Short, color.green, "TP2")
+    alert("🔴 ORO SHORT | Entrada: " + str.tostring(close, format.mintick) + " | SL: " + str.tostring(slShort, format.mintick) + " | TP1: " + str.tostring(tp1Short, format.mintick) + " | TP2: " + str.tostring(tp2Short, format.mintick), alert.freq_once_per_bar_close)
+
+alertcondition(longSignal,  "ORO · Señal LONG",  "Señal LONG en XAUUSD (3-en-1)")
+alertcondition(shortSignal, "ORO · Señal SHORT", "Señal SHORT en XAUUSD (3-en-1)")
+
+// ───────────────────────────── VISUALES ─────────────────────────────
+plot(emaF, "EMA rápida", color=color.new(color.aqua, 0), linewidth=1)
+plot(emaS, "EMA lenta", color=color.new(color.orange, 0), linewidth=1)
+plot(emaB, "EMA sesgo", color=color.new(color.gray, 30), linewidth=2)
+plot(vwap, "VWAP", color=color.new(color.purple, 0), linewidth=2)
+
+plot(kzActive ? orbHi : na, "ORB alto", color=color.new(color.yellow, 20), style=plot.style_linebr, linewidth=2)
+plot(kzActive ? orbLo : na, "ORB bajo", color=color.new(color.yellow, 20), style=plot.style_linebr, linewidth=2)
+
+bgcolor(kzLdn ? color.new(color.blue, 94) : kzNY ? color.new(color.orange, 94) : na, title="Killzones")
+
+// ───────────────────────────── PANEL EN VIVO ─────────────────────────────
+var table dash = table.new(position.top_right, 2, 8, bgcolor=color.new(color.black, 15), border_width=1, border_color=color.new(color.gray, 60))
+
+f_row(r, k, v, col) =>
+    table.cell(dash, 0, r, k, text_color=color.silver, text_halign=text.align_left, text_size=size.small)
+    table.cell(dash, 1, r, v, text_color=col, text_halign=text.align_right, text_size=size.small)
+
+if showDash and barstate.islast
+    table.cell(dash, 0, 0, "🥇 ORO 3-EN-1", text_color=color.yellow, text_size=size.small)
+    table.cell(dash, 1, 0, kzLdn ? "LONDRES" : kzNY ? "NUEVA YORK" : "FUERA DE HORARIO", text_color=kzActive ? color.lime : color.gray, text_size=size.small)
+    f_row(1, "A · Tendencia",  trendLong ? "ALCISTA" : trendShort ? "BAJISTA" : "MIXTA", trendLong ? color.lime : trendShort ? color.red : color.gray)
+    f_row(2, "B · Momentum",   momLong ? "COMPRADOR" : momShort ? "VENDEDOR" : "NEUTRO", momLong ? color.lime : momShort ? color.red : color.gray)
+    f_row(3, "C · Ruptura",    orbForming ? "RANGO EN FORMACIÓN" : brkLong ? "RUPTURA ↑" : brkShort ? "RUPTURA ↓" : orbReady ? "DENTRO DEL RANGO" : "—", brkLong ? color.lime : brkShort ? color.red : color.gray)
+    f_row(4, "Fuerza (ADX)",   str.tostring(adx, "#.#") + (adxOK ? " ✔" : " ✖ plano"), adxOK ? color.lime : color.red)
+    f_row(5, "Confluencias",   str.tostring(math.max(scoreL, scoreS)) + " / 3 (mín. " + str.tostring(minScore) + ")", math.max(scoreL, scoreS) >= minScore ? color.lime : color.gray)
+    f_row(6, "ATR (volatilidad)", str.tostring(atr, format.mintick), color.white)
+    f_row(7, "Decisión", scoreL >= minScore and kzActive and adxOK ? "BUSCAR LONG 🟢" : scoreS >= minScore and kzActive and adxOK ? "BUSCAR SHORT 🔴" : "ESPERAR ⏸", scoreL >= minScore and kzActive and adxOK ? color.lime : scoreS >= minScore and kzActive and adxOK ? color.red : color.orange)
