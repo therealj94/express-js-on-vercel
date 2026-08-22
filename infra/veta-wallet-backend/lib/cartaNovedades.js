@@ -104,7 +104,7 @@ export function cartaNovedades({ nombre, correo }) {
     <strong style="color:#F3ECD9;">9 de septiembre</strong>. Si invitás a alguien y completa su
     verificación, sumás otra participación.
   </p>
-  <p style="margin:0;font-size:13px;color:#7E938D;">
+  <p style="margin:0;font-size:13px;color:#9A8C76;">
     Solo mayores de 18 años · <a href="${BASES}" style="color:#C9A961;">bases del sorteo</a>
   </p>`;
 
@@ -153,14 +153,14 @@ Solo mayores de 18 años. Bases: ${BASES}
 
   ${sorteoHtml}
 
-  <p style="margin:26px 0 0;padding-top:16px;border-top:1px solid rgba(243,236,217,.10);font-size:13px;color:#7E938D;">
+  <p style="margin:26px 0 0;padding-top:16px;border-top:1px solid rgba(243,236,217,.10);font-size:13px;color:#9A8C76;">
     Con todas las letras: comprar y cambiar activos dentro de la billetera
     todavía no están abiertos, y la tarjeta es virtual —para compras en línea—,
     así que todavía no se agrega a Google Pay ni a Apple Pay. Estamos en eso.
     Preferimos decírtelo ahora a que lo descubras después.
   </p>`,
   `Te escribimos porque abriste una cuenta en Veta Wallet.
-   <a href="${baja}" style="color:#7E938D;">Si no querés recibir más correos como este, dale de baja acá</a>.`);
+   <a href="${baja}" style="color:#9A8C76;">Si no querés recibir más correos como este, dale de baja acá</a>.`);
 
   const texto = `${saludo(nombre)}
 

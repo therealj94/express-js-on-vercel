@@ -144,6 +144,22 @@ const Users = new Schema(
             type: Date,
         },
 
+        /* Cuando se le mando la carta de bienvenida al ecosistema.
+         *
+         * Es un campo APARTE de `novedadesEnviadaEn` a proposito. Reusar aquel
+         * habria dejado fuera a las 441 personas que ya recibieron la carta de
+         * reactivacion, que son justo a las que hay que escribirles: todo el
+         * que tiene cuenta, sin excepciones. Dos cartas distintas necesitan dos
+         * marcas distintas, o la segunda hereda a quien la primera ya toco.
+         *
+         * A quien abre cuenta de hoy en adelante se le pone al CONFIRMAR el
+         * correo, no al registrarse: una direccion sin confirmar puede ser una
+         * errata, y cada errata es un rebote que acerca la cuenta al limite
+         * donde Amazon la suspende. */
+        bienvenidaEn: {
+            type: Date,
+        },
+
         // KYC - Veriff
         kycStatus: {
             type: String,

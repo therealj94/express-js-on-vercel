@@ -41,10 +41,10 @@ const pagina = (titulo, cuerpo) => `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${titulo}</title></head>
-<body style="margin:0;background:#04191A;font:400 16px/1.6 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#B4C6C0;">
+<body style="margin:0;background:#14100C;font:400 16px/1.6 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#D8CFBE;">
 <div style="max-width:520px;margin:0 auto;padding:56px 22px;">
   <div style="font:600 12px/1 Georgia,serif;letter-spacing:.26em;text-transform:uppercase;color:#C9A961;margin-bottom:26px;">Veta Wallet · Orden Global</div>
-  <div style="background:#062A2A;border:1px solid rgba(201,169,97,.25);border-radius:14px;padding:30px;">
+  <div style="background:#1E1811;border:1px solid rgba(201,169,97,.25);border-radius:14px;padding:30px;">
     ${cuerpo}
   </div>
 </div>
@@ -90,7 +90,7 @@ router.get("/baja", async (req, res) => {
     `<p style="margin:0 0 12px;color:#F3ECD9;font-weight:700;">Listo. No te mandamos más correos de aviso.</p>
      <p style="margin:0 0 12px;">Seguís recibiendo lo imprescindible de tu cuenta —confirmar el correo o
      recuperar la contraseña—, porque sin eso no podrías entrar.</p>
-     <p style="margin:0;font-size:14px;color:#7E938D;">¿Fue sin querer? Escribinos a
+     <p style="margin:0;font-size:14px;color:#9A8C76;">¿Fue sin querer? Escribinos a
      <a href="mailto:info@ordenglobal.org" style="color:#C9A961;">info@ordenglobal.org</a>.</p>`));
 });
 

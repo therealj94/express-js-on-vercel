@@ -179,18 +179,18 @@ export function marco(titulo, dentro, pie = "") {
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(titulo)}</title></head>
-<body style="margin:0;padding:0;background:#04191A;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#04191A;padding:28px 12px;">
+<body style="margin:0;padding:0;background:#14100C;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#14100C;padding:28px 12px;">
 <tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#062A2A;border:1px solid rgba(201,169,97,.25);border-radius:14px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#1E1811;border:1px solid rgba(201,169,97,.25);border-radius:14px;">
 <tr><td style="padding:30px 30px 8px;">
   <div style="font:600 12px/1 Georgia,serif;letter-spacing:.26em;text-transform:uppercase;color:#C9A961;">Veta Wallet · Orden Global</div>
 </td></tr>
-<tr><td style="padding:0 30px 30px;font:400 15px/1.62 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#B4C6C0;">
+<tr><td style="padding:0 30px 30px;font:400 15px/1.62 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#D8CFBE;">
 ${dentro}
-  <div style="margin-top:30px;padding-top:18px;border-top:1px solid rgba(243,236,217,.10);font-size:12px;line-height:1.6;color:#7E938D;">
+  <div style="margin-top:30px;padding-top:18px;border-top:1px solid rgba(243,236,217,.10);font-size:12px;line-height:1.6;color:#9A8C76;">
     Orden Global Corp · Próspera, Roatán, Honduras<br>
-    <strong style="color:#B4C6C0;">Nunca te vamos a pedir por correo tu contraseña ni tu frase de respaldo.</strong>
+    <strong style="color:#D8CFBE;">Nunca te vamos a pedir por correo tu contraseña ni tu frase de respaldo.</strong>
     Si un mensaje a nombre nuestro te las pide, no es nuestro.${pie ? `<br><br>${pie}` : ""}
   </div>
 </td></tr>
@@ -200,7 +200,7 @@ ${dentro}
 }
 
 export function botonCorreo(texto, url) {
-  return `<div style="margin:24px 0;"><a href="${url}" style="display:inline-block;padding:14px 28px;border-radius:999px;background:#C9A961;color:#0A1F1E;font-weight:700;font-size:15px;text-decoration:none;">${esc(texto)}</a></div>`;
+  return `<div style="margin:24px 0;"><a href="${url}" style="display:inline-block;padding:14px 28px;border-radius:999px;background:#C9A961;color:#1A1206;font-weight:700;font-size:15px;text-decoration:none;">${esc(texto)}</a></div>`;
 }
 
 export { esc as escaparCorreo };

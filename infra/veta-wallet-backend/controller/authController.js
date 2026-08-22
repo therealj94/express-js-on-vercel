@@ -10,6 +10,7 @@ import { cifrar } from "../lib/cripto";
 import jwt, { cifrarConToken } from "../lib/sesion";
 import crypto from "crypto";
 import { enviarCorreo, marco, botonCorreo } from "../lib/correo";
+import { cartaBienvenida } from "../lib/cartaBienvenida.js";
 import { v4 as uuidv4 } from "uuid";
 require("dotenv").config();
 
@@ -133,9 +134,43 @@ export const verifyMail = async (req, res) => {
       return res.status(400).json({ message: "invalid verification token" });
     }
 
+    const eraNuevo = !user.bienvenidaEn;
     user.isVerified = true;
     user.verificationToken = "*";
+    if (eraNuevo) user.bienvenidaEn = new Date();
     await user.save();
+
+    /* La bienvenida al ecosistema sale AQUI, al confirmar, y no en el alta.
+     *
+     * En el alta la direccion todavia no se sabe si existe: puede ser una
+     * errata. Cada errata es un rebote, y Amazon suspende la cuenta por encima
+     * del diez por ciento de rebotes. Lo que se cae con la cuenta no es esta
+     * carta, es el correo de recuperar la contrasena. Esperar a la
+     * confirmacion cuesta un rato y quita ese riesgo entero.
+     *
+     * Va DESPUES del save y sin await bloqueante sobre la respuesta: la
+     * confirmacion de la cuenta no puede depender de que el servidor de correo
+     * conteste. Si falla se anota y ya esta; la persona tiene su cuenta
+     * confirmada igual, que es lo que vino a hacer.
+     *
+     * `eraNuevo` evita que quien abra el enlace dos veces reciba dos cartas. */
+    if (eraNuevo && user.email) {
+      const carta = cartaBienvenida({
+        nombre: user.name || user.username,
+        correo: user.email,
+        nuevo: true,
+      });
+      enviarCorreo({
+        para: user.email,
+        asunto: carta.asunto,
+        html: carta.html,
+        texto: carta.texto,
+      })
+        .then((r) => {
+          if (!r?.ok) console.error(`[bienvenida] no salio para ${user.email}: ${r?.motivo}`);
+        })
+        .catch((e) => console.error(`[bienvenida] ${user.email}: ${e?.message}`));
+    }
 
     return res.send("Email verified successfully");
   } catch (error) {
