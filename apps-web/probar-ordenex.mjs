@@ -140,6 +140,15 @@ async function api(q, r, ruta, busca) {
   }
 
   if (q.method === 'GET' && ruta === '/mercados') return json(r, 200, MERCADOS);
+
+  /* LA TARIFA DE LA CASA. Es publica y sin sesion, como /salud. 2500 ppm =
+     0,25%, el mismo valor que trae el ejemplo del motor, y con la moneda de
+     referencia dicha: se cobra sobre lo RECIBIDO, que es lo que decide de que
+     lado del formulario se resta. */
+  if (q.method === 'GET' && ruta === '/tarifas') {
+    llamadas.push({ ruta, metodo: 'GET' });
+    return json(r, 200, { comisionPpm: 2500, sobre: 'recibido' });
+  }
   if (q.method === 'GET' && un) {
     llamadas.push({ ruta, metodo: 'GET' });
     /* Solo los mercados que la lista declara CON precio tienen velas y tratos.
@@ -156,7 +165,13 @@ async function api(q, r, ruta, busca) {
     const { token } = await cuerpoDe(q);
     llamadas.push({ ruta, metodo: 'POST', token });
     if (token !== TOKEN_SSO) return json(r, 401, { error: 'El token SSO no vale.', codigo: 'SSO_INVALIDO' });
-    return json(r, 200, { token: JWT, refreshToken: REFRESH, usuario: { userId: 'usuario-111', gid: 'GID-FINGIDO-111' } });
+    /* `verificada` es lo que mira la puerta de idoneidad de ONDK, y el API de
+       verdad lo manda en el canje: este fingido lo mandaba sin el, asi que la
+       puerta no se podia probar. Se manda true porque el recorrido normal es
+       el de alguien verificado; el caso contrario se prueba aparte, tocandolo
+       en la sesion guardada. */
+    return json(r, 200, { token: JWT, refreshToken: REFRESH,
+      usuario: { userId: 'usuario-111', gid: 'GID-FINGIDO-111', verificada: true } });
   }
   if (q.method === 'POST' && ruta === '/auth/refresh') {
     const { refreshToken } = await cuerpoDe(q);
@@ -310,8 +325,15 @@ console.log('\n── mercados, sin sesión ────────────
   }));
   decir(dentro.app && dentro.portada, '«ver los mercados» entra sin pedir cuenta');
 
+  /* Contra CADENA.PARES y no contra un numero escrito aqui: esta prueba
+     esperaba catorce, la tabla pinta cinco, y el numero a mano llevaba tanto
+     tiempo mal que ya no delataba nada. La lista es el contrato; la prueba
+     comprueba que la pantalla lo cumple, no que coincida con un recuerdo. */
   const filas = await p.evaluate(() => document.querySelectorAll('#ms-cuerpo tr').length);
-  decir(filas === 14, 'los catorce mercados están SIEMPRE en pantalla, con guion donde no hay dato', `filas: ${filas}`);
+  const pares = await p.evaluate(() => CADENA.PARES.length);
+  decir(filas === pares && filas > 0,
+    'todos los mercados publicados están SIEMPRE en pantalla, con guion donde no hay dato',
+    `filas: ${filas} de ${pares} pares`);
   const auka = await p.evaluate(() => document.querySelector('#ms-cuerpo tr')?.textContent || '');
   decir(/AUKA/.test(auka) && /\b111\b/.test(auka) && /222 AUKA/.test(auka), 'la fila de AUKA trae último 111 y volumen 222', auka);
 }
@@ -632,9 +654,11 @@ console.log('\n── LA SALA, COMO UNA MESA DE OPERACIONES ──────�
     'la cinta va en dos mitades iguales, para que el bucle no tenga costura',
     `${cinta.piezas} piezas en ${cinta.mitades} mitades`);
 
-  // 2. La lista de la sala: los quince, con buscador y favoritos.
+  // 2. La lista de la sala: todos los publicados, con buscador y favoritos.
   const lista = await pg.evaluate(() => document.querySelectorAll('#vm-lista .vm-it').length);
-  decir(lista === 14, 'la lista de la sala trae los catorce mercados', `${lista}`);
+  const paresSala = await pg.evaluate(() => CADENA.PARES.length);
+  decir(lista === paresSala && lista > 0, 'la lista de la sala trae todos los mercados publicados',
+    `${lista} de ${paresSala}`);
   await pg.fill('#vm-q', 'auk');
   await pg.waitForTimeout(250);
   const tras = await pg.evaluate(() => document.querySelectorAll('#vm-lista .vm-it').length);
@@ -644,15 +668,22 @@ console.log('\n── LA SALA, COMO UNA MESA DE OPERACIONES ──────�
 
   // El favorito sube a la primera fila y sobrevive a una recarga: si no, no es
   // un favorito, es un clic bonito.
-  await pg.evaluate(() => VMERCADO.favorito('SOL-ORIGEN'));
+  /* El par del favorito se toma del ULTIMO de CADENA.PARES: asi se marca uno
+     que de verdad esta en la lista y que no es el primero ya. Estaba escrito
+     'SOL-ORIGEN', que no se publica —no tiene mercado— y por eso el favorito
+     no podia subir a ningun lado: la prueba fallaba por pedirle a la pantalla
+     que enseñara un par que la casa no abre. */
+  const favPar = await pg.evaluate(() => CADENA.PARES[CADENA.PARES.length - 1]);
+  const favSim = favPar.split('-')[0];
+  await pg.evaluate(par => VMERCADO.favorito(par), favPar);
   await pg.waitForTimeout(250);
   const primero = await pg.evaluate(() => document.querySelector('#vm-lista .vm-it')?.innerText.trim());
-  decir(/SOL/.test(primero || ''), 'un favorito sube a la primera fila', primero);
+  decir(primero?.includes(favSim), 'un favorito sube a la primera fila', `${favSim} · ${primero}`);
   await pg.reload({ waitUntil: 'domcontentloaded' });
   await pg.waitForTimeout(2500);
   const trasRecarga = await pg.evaluate(() => document.querySelector('#vm-lista .vm-it')?.innerText.trim());
-  decir(/SOL/.test(trasRecarga || ''), 'y sigue arriba despues de recargar', trasRecarga);
-  await pg.evaluate(() => VMERCADO.favorito('SOL-ORIGEN'));
+  decir(trasRecarga?.includes(favSim), 'y sigue arriba despues de recargar', trasRecarga);
+  await pg.evaluate(par => VMERCADO.favorito(par), favPar);
 
   // 3. La barra del dia, en UNA linea con el precio.
   const barra = await pg.evaluate(() => (document.querySelector('.vm-stats')?.innerText || '').replace(/\n/g, ' '));
@@ -761,6 +792,184 @@ console.log('\n── EL PUENTE CON LA WALLET ───────────�
   const cad = await readFile(new URL('./ordenex/cadena.js', import.meta.url), 'utf8');
   decir(/return filas\.filter\(f => f\.wei != null/.test(cad),
     'un saldo que no se pudo leer NO se pinta como cero');
+  await pg.close();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// LO QUE COBRA LA CASA
+// ══════════════════════════════════════════════════════════════════════════
+console.log('\n── LA COMISION, DICHA ANTES DE COBRARLA ──────────────────────');
+{
+  /* El motor cobra partes por millon sobre lo RECIBIDO —lib/motor.js parte
+     cada trato en dos patas del ledger— y esa cifra no salia por ninguna
+     puerta del API ni aparecia en ninguna pantalla: se descubria en el saldo.
+     Era el unico sitio de toda la casa donde se cobraba algo que el cliente no
+     habia visto. Ahora la sirve GET /tarifas y el formulario la desglosa. */
+  const pg = await nav.newPage({ viewport: { width: 1440, height: 1000 }, locale: 'es-HN' });
+  await pg.addInitScript((origen) => { window.ONX_API = origen; window.ONX_WALLET = origen; }, ORIGEN_LOCAL);
+  await pg.goto(BASE + '#sso=' + TOKEN_SSO, { waitUntil: 'domcontentloaded' });
+  await pg.waitForTimeout(1600);
+  await pg.evaluate(() => ONX.vista('mercado', 'AUKA-ORIGEN'));
+  await pg.waitForTimeout(1600);
+
+  decir(llamadas.some(l => l.ruta === '/tarifas'), 'la web le pregunta al API cuanto cobra la casa');
+
+  const leer = () => pg.evaluate(() => ({
+    lbl: document.querySelector('#vm-comision-lbl')?.textContent || '',
+    com: document.querySelector('#vm-comision')?.textContent || '',
+    rec: document.querySelector('#vm-recibis')?.textContent || '',
+    total: document.querySelector('#vm-total')?.textContent || '',
+  }));
+
+  decir(/0\.25\s*%|0,25\s*%/.test((await leer()).lbl),
+    'el porcentaje se ve aunque no se haya escrito una cantidad', (await leer()).lbl);
+
+  // COMPRA de 1 AUKA a 110: se recibe el ACTIVO, asi que la comision se resta
+  // en AUKA y no en ORIGEN. 2500 ppm de 1 = 0,0025.
+  await pg.fill('#vm-precio', '110');
+  await pg.fill('#vm-cant', '1');
+  await pg.waitForTimeout(350);
+  const compra = await leer();
+  decir(/110/.test(compra.total), 'el total sigue siendo lo que se paga: 110 ORIGEN', compra.total);
+  decir(/0\.0025/.test(compra.com) && /AUKA/.test(compra.com),
+    'la comision de una COMPRA se cobra sobre el activo recibido', compra.com);
+  decir(/0\.9975/.test(compra.rec) && /AUKA/.test(compra.rec),
+    'y «Recibis» dice lo que de verdad queda: 0,9975 AUKA', compra.rec);
+
+  // VENTA de 1 AUKA a 110: se recibe ORIGEN, asi que la comision cambia de
+  // moneda sola. 2500 ppm de 110 = 0,275.
+  await pg.evaluate(() => VMERCADO.lado('venta'));
+  await pg.waitForTimeout(200);
+  await pg.fill('#vm-precio', '110');
+  await pg.fill('#vm-cant', '1');
+  await pg.waitForTimeout(350);
+  const venta = await leer();
+  decir(/0\.275/.test(venta.com) && /ORIGEN/.test(venta.com),
+    'la de una VENTA se cobra sobre el ORIGEN recibido', venta.com);
+  decir(/109\.725/.test(venta.rec) && /ORIGEN/.test(venta.rec),
+    'y lo que queda es 109,725 ORIGEN', venta.rec);
+  await pg.close();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// EL INSTRUMENTO DECLARADO: ONDK
+// ══════════════════════════════════════════════════════════════════════════
+console.log('\n── ONDK: LA SALA DEJA DE CONTRADECIRSE ───────────────────────');
+{
+  /* La sala decia «ONDK no cotiza todavia: no hay libro ni contraparte» y a
+     cuatrocientos pixeles ofrecia un boton «Comprar ONDK». El libro de ONDK
+     esta vacio por los dos lados —este fingido lo sirve vacio, igual que
+     produccion—, asi que la que decia la verdad era la advertencia. */
+  const pg = await nav.newPage({ viewport: { width: 1440, height: 1000 }, locale: 'es-HN' });
+  await pg.addInitScript((origen) => { window.ONX_API = origen; window.ONX_WALLET = origen; }, ORIGEN_LOCAL);
+  await pg.goto(BASE + '#sso=' + TOKEN_SSO, { waitUntil: 'domcontentloaded' });
+  await pg.waitForTimeout(1600);
+  await pg.evaluate(() => ONX.vista('mercado', 'ONDK-ORIGEN'));
+  await pg.waitForTimeout(2000);
+
+  const caja = await pg.evaluate(() => document.querySelector('#vm-form-caja')?.innerText || '');
+  decir(!(await pg.evaluate(() => !!document.querySelector('#vm-enviar'))),
+    'sin contraparte NO se ofrece comprar: no hay boton de operar');
+  decir(/no tiene mercado/i.test(caja) && /no hay con qui[eé]n operar/i.test(caja),
+    'y se dice por que, en el sitio donde estaba el boton', caja.slice(0, 130));
+
+  // El libro sigue a la vista: un libro vacio CONFIRMA el descargo.
+  decir(await pg.evaluate(() => !!document.querySelector('#vm-libro-nota')),
+    'el libro se queda a la vista: vacio, confirma lo que dice el descargo');
+
+  /* EL DESCARGO SOBREVIVE AL FALLO DEL FETCH. Este fingido no sirve
+     /precio-declarado, o sea que declCache se queda en null — que es
+     exactamente el caso que dejaba la pantalla sin advertencia y con el
+     formulario puesto. */
+  const bajo = await pg.evaluate(() => document.querySelector('#vm-bajo')?.innerText || '');
+  decir(/PRECIO DECLARADO/i.test(bajo) && /no es un precio de mercado/i.test(bajo),
+    'el descargo se pinta aunque /precio-declarado no conteste', bajo.slice(0, 110));
+
+  // Y la ficha del valor negociable, en ingles, sin el «minuto» de reloj.
+  await pg.evaluate(() => ONX.idioma('en'));
+  await pg.waitForTimeout(700);
+  const eng = await pg.evaluate(() => document.querySelector('#vm-bajo')?.innerText || '');
+  decir(/board resolution/i.test(eng), 'en ingles «acta» es una resolucion de Junta, no un minuto', eng.slice(0, 110));
+  decir(!/candle in the chart is one minute/i.test(eng), 'y ya no dice que cada vela dura un minuto');
+  await pg.evaluate(() => ONX.idioma('es'));
+  await pg.close();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CON EL BACKEND CAIDO
+// ══════════════════════════════════════════════════════════════════════════
+console.log('\n── EL BACKEND CAIDO: LOS MERCADOS SIGUEN EN PANTALLA ─────────');
+{
+  /* La lista se itera desde CADENA.PARES justamente para no depender del API,
+     y el comentario del modulo lo promete con todas las letras: «SIEMPRE en
+     pantalla, con guiones donde el dato no llego». El codigo retornaba antes
+     de pintar cuando no habia cache, asi que un primer sondeo fallido dejaba
+     la tabla vacia: una casa de cambio sin mercados parece cerrada. */
+  const pg = await nav.newPage({ viewport: { width: 1280, height: 900 }, locale: 'es-HN' });
+  // Un API que no existe: el puerto 1 no escucha en ninguna maquina.
+  await pg.addInitScript((origen) => {
+    window.ONX_API = 'http://127.0.0.1:1';
+    window.ONX_WALLET = origen;
+  }, ORIGEN_LOCAL);
+  await pg.goto(BASE + '#mercados', { waitUntil: 'domcontentloaded' });
+  await pg.waitForTimeout(3000);
+
+  const est = await pg.evaluate(() => ({
+    filas: document.querySelectorAll('#ms-cuerpo tr').length,
+    pares: CADENA.PARES.length,
+    guiones: (document.querySelector('#ms-cuerpo')?.innerText.match(/—/g) || []).length,
+    nota: document.querySelector('#ms-nota')?.textContent || '',
+  }));
+  decir(est.filas === est.pares && est.filas > 0,
+    'sin backend, la tabla sigue trayendo todos los mercados', `${est.filas} de ${est.pares}`);
+  decir(est.guiones >= est.pares, 'con guiones donde el dato no llego', `${est.guiones} guiones`);
+  decir(/conexi[oó]n|no pudimos/i.test(est.nota),
+    'y se dice que los precios no llegaron, en vez de fingir que no hay mercados', est.nota.slice(0, 80));
+  await pg.close();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// LA TELEMETRIA
+// ══════════════════════════════════════════════════════════════════════════
+console.log('\n── LA TELEMETRIA: PERMITIDA, Y SIN BUCLE ─────────────────────');
+{
+  /* Dos fallos que se sostenian el uno al otro: el origen de Genesis no estaba
+     en el connect-src, asi que el navegador cortaba el CIEN POR CIENTO de los
+     eventos; y el rebote entraba por el catch sin descartar el lote, con lo
+     cual la cola crecia hasta el tope y se reintentaba cada diez segundos para
+     siempre. El primero se arregla en la CSP —lo vigila la comprobacion de
+     errores de consola de mas arriba— y el segundo, aqui. */
+  const idx = await readFile(new URL('./ordenex/index.html', import.meta.url), 'utf8');
+  const csp = (idx.match(/Content-Security-Policy" content="([\s\S]*?)"/) || [])[1] || '';
+  const connect = (csp.match(/connect-src([\s\S]*?);/) || [])[1] || '';
+  const tel = await readFile(new URL('./ordenex/telemetria.js', import.meta.url), 'utf8');
+  const destino = (tel.match(/'(https:\/\/[^']*genesis[^']*)'/) || [])[1] || '';
+  decir(!!destino && connect.includes(destino.replace(/\/$/, '')),
+    'el destino de la telemetria esta permitido por la CSP de la pagina',
+    `${destino} en connect-src`);
+
+  const pg = await nav.newPage({ viewport: { width: 1280, height: 900 }, locale: 'es-HN' });
+  await pg.addInitScript((origen) => {
+    window.ONX_API = origen; window.ONX_WALLET = origen;
+    // Un destino que la CSP NO permite: es la manera de reproducir el rebote
+    // en una prueba sin apagar la red ni tocar produccion.
+    window.ONX_GENESIS = 'https://un-destino-que-no-esta-en-la-csp.invalid';
+  }, ORIGEN_LOCAL);
+  await pg.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await pg.waitForTimeout(1200);
+
+  const cola = await pg.evaluate(async () => {
+    TELEMETRIA.iniciar({ url: 'https://un-destino-que-no-esta-en-la-csp.invalid' });
+    for (let i = 0; i < 5; i++) TELEMETRIA.anotar({ tipo: 'accion', nombre: 'prueba.' + i });
+    const alPrincipio = TELEMETRIA._cola().length;
+    const esperar = ms => new Promise(r => setTimeout(r, ms));
+    // Tres intentos: es el tope a partir del cual el lote se suelta.
+    for (let i = 0; i < 4; i++) { TELEMETRIA.vaciar(); await esperar(300); }
+    return { alPrincipio, alFinal: TELEMETRIA._cola().length };
+  });
+  decir(cola.alPrincipio > 0 && cola.alFinal === 0,
+    'un destino que rebota no deja la cola creciendo: al tercer intento el lote se descarta',
+    `${cola.alPrincipio} → ${cola.alFinal}`);
   await pg.close();
 }
 
