@@ -1,5 +1,5 @@
 {
-  "_leeme": "Transcripcion literal del Editor de Zonas de cPanel (nivapixel), 22-ago-2026, cPanel 134.0.51. Se copia TAL CUAL para poder migrar sin cambiar nada: los cambios de politica van DESPUES de que la migracion este comprobada. Los dos DKIM largos se tomaron del DNS en vivo, no de la captura: el base64 venia partido en varias lineas y unirlo a ojo da error.",
+  "_leeme": "Transcripcion literal del Editor de Zonas de cPanel (nivapixel), 22-ago-2026, cPanel 134.0.51. Se copia TAL CUAL para poder migrar sin cambiar nada: los cambios de politica van DESPUES de que la migracion este comprobada. Los dos DKIM largos se tomaron del DNS en vivo, no de la captura: el base64 venia partido en varias lineas y unirlo a ojo da error. El _dmarc se actualizo el 22-ago tras subirlo a cuarentena al 25% en nivapixel: la copia tiene que seguir a la fuente, o al mudar el DNS revertiria la politica sin que nadie lo note.",
   "registros": [
     {
       "n": "ordenglobal.org.",
@@ -175,7 +175,7 @@
       "ttl": 14400,
       "t": "TXT",
       "v": [
-        "v=DMARC1; p=none; rua=mailto:admin@ordenglobal.org; fo=1"
+        "v=DMARC1;p=quarantine;sp=none;adkim=r;aspf=r;pct=25;fo=1;rf=afrf;ri=86400;rua=mailto:admin@ordenglobal.org"
       ]
     },
     {
