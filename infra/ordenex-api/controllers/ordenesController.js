@@ -10,7 +10,8 @@
 
 const { MERCADOS } = require('../lib/tokens');
 const motor = require('../lib/motor');
-const { Orden } = require('../models');
+const { Orden, Usuario } = require('../models');
+const { esDeclarable } = require('../lib/preciosDeclarados');
 
 // Los minimos. Una orden de polvo no le sirve a nadie y si estorba: llena el
 // libro de escalones que no mueven un wei, pinta velas de mentira jugando con
@@ -73,6 +74,31 @@ async function colocar(req, res, next) {
     // idempotencia esta invitando a duplicarlas.
     if (typeof ordenKey !== 'string' || !/^[A-Za-z0-9._:-]{8,100}$/.test(ordenKey)) {
       return malo(res, 'ORDENKEY_INVALIDA', 'Falta la ordenKey (8 a 100 caracteres: letras, numeros, . _ : -).');
+    }
+
+    /* LA PUERTA DE IDONEIDAD, Y POR QUE TIENE QUE ESTAR ACA.
+     *
+     * La pantalla ya pide identidad verificada y descargo aceptado antes de
+     * dejar operar sobre un valor negociable. Eso esta bien y no basta: una
+     * puerta que solo vive en el navegador es un cartel, porque `POST /ordenes`
+     * se puede llamar sin pasar por la pantalla. La que cuenta es esta.
+     *
+     * Solo aplica a los mercados de un token con precio declarado por la Junta
+     * —hoy ONDK— porque es lo que hace del par un valor negociable y no un
+     * activo de uso. El circuito de efectivo ya exigia lo mismo
+     * (`fiatController.js`, `NO_VERIFICADA`); esta es la misma regla en el
+     * camino que faltaba, con el mismo codigo para que el cliente ya sepa
+     * tratarla.
+     */
+    const base = String(mercado).split('-')[0];
+    if (esDeclarable(base)) {
+      const yo = await Usuario.findById(req.usuario.id).lean();
+      if (!yo || yo.verificada !== true) {
+        return res.status(403).json({
+          error: `Operar ${base} exige la identidad verificada en Genesis: es un valor negociable, no un activo de uso.`,
+          codigo: 'NO_VERIFICADA',
+        });
+      }
     }
     if (!esWei(cantidad)) {
       return malo(res, 'CANTIDAD_INVALIDA', 'La cantidad tiene que ser un string de wei.');

@@ -1,6 +1,6 @@
 /* Ordenex · la sala de trading — VMERCADO.
  *
- * Las dos vistas del mercado: la lista de los catorce pares y la pantalla de
+ * Las dos vistas del mercado: la lista de los pares publicados y la pantalla de
  * un mercado abierto (velas, libro, tratos, formulario y mis órdenes). Este
  * módulo pinta y sondea; el dinero le llega y le sale como STRING DE WEI y
  * las cuentas se hacen con BigInt — ni un Number toca un monto, porque un
@@ -106,7 +106,11 @@ const VMERCADO = (() => {
       /* La lista. El subtítulo dice la regla de la casa en una línea: acá
          todo se cotiza en ORIGEN, y decirlo evita la pregunta. */
       't': 'Mercados',
-      'sub': 'Los catorce activos de la cadena, cada uno contra ORIGEN.',
+      /* {n} lo pone la propia lista al pintarse: son los pares de
+         CADENA.PARES, que es la misma tabla que llena las filas de abajo. Acá
+         decía «los catorce» y se pintaban cinco — un subtítulo que se puede
+         desmentir contando lo que tiene debajo. */
+      'sub': 'Los {mercados} mercados de la cadena, cada uno contra ORIGEN.',
       'cMercado': 'Mercado', 'cUltimo': 'Último (ORIGEN)', 'cCambio': '24 h', 'cVol': 'Volumen 24 h',
       'ref': 'ref.',
       'cargando': 'Trayendo los mercados…',
@@ -117,7 +121,7 @@ const VMERCADO = (() => {
       'ultimo': 'Último',
       'refRot': 'Referencia',
       'parRaro': 'Ese mercado no existe en esta casa.',
-      'parRaroP': 'El par pedido no está en la tabla de activos de la cadena. Volvé a la lista y elegí uno de los catorce.',
+      'parRaroP': 'El par pedido no está en la tabla de activos de la cadena. Volvé a la lista y elegí uno de los {mercados}.',
 
       // La gráfica. «Sin velas» y «no llegaron» son cosas distintas y se
       // dicen distinto — la honestidad es de la casa.
@@ -202,10 +206,57 @@ const VMERCADO = (() => {
       'eCancelar': 'No se pudo cancelar la orden.',
       'eSesion': 'Tu sesión venció. Entrá de nuevo con tu cuenta Veta Wallet.',
 
+      /* ═══ LA PUERTA DEL INSTRUMENTO DECLARADO (hoy, ONDK) ══════════════
+         Esta sala decía una cosa y hacía la contraria: debajo de la gráfica,
+         «ONDK no cotiza todavía: no hay libro ni contraparte»; cuatrocientos
+         píxeles más allá, un botón «Comprar ONDK». Las dos no pueden ser
+         verdad, y la que se podía comprobar contra producción era la primera
+         — el libro está vacío por los dos lados y no hay un solo trato.
+
+         De las dos salidas honestas se toma la primera: mientras no haya
+         contraparte, NO SE OFRECE COMPRAR. Reescribir el descargo para que el
+         botón tuviera razón habría sido cambiar la verdad para que encaje con
+         la interfaz, y acá se hace al revés.
+
+         El libro sigue a la vista, y eso no es una contradicción: enseñar un
+         libro vacío CONFIRMA el descargo. Lo que se retira es el formulario.
+
+         Y sí, esto deja a ONDK sin manera de recibir su primera orden desde
+         esta pantalla. Es deliberado: la primera orden de un valor negociable
+         no la pone alguien que pasaba por la sala — la abre la casa cuando la
+         Junta lo decida. */
+      'onT': 'ONDK todavía no tiene mercado',
+      'onSinLibro': 'No hay ni una orden descansando en este libro, de ningún lado, así que no hay con quién operar. Ordenex no ofrece comprar ni vender ONDK mientras no haya mercado: el precio que ves arriba lo fijó la Junta por resolución, no una operación entre dos personas.',
+      // La puerta de idoneidad, igual que la del circuito fiat: identidad
+      // verificada en Genesis. Un valor negociable no se le vende a un
+      // desconocido, y hasta hoy acá no se pedía absolutamente nada.
+      'onVerifT': 'Para operar ONDK hace falta identidad verificada',
+      'onVerifP': 'ONDK es un valor negociable bajo Próspera, no una cripto más de la lista. Igual que el circuito de efectivo, operarlo exige la identidad verificada en Genesis ID. Verificate desde tu Veta Wallet y volvé.',
+      // El descargo que hay que aceptar A PROPÓSITO. Dice lo mismo que la
+      // ficha del activo, que es la fuente; si un día cambia allá, cambia acá.
+      'onDescT': 'Antes de operar ONDK',
+      'onDescP': 'ONDK es el security token de Orden Global: un valor negociable bajo Próspera, respaldado por los activos del grupo. Da derechos económicos por contrato; no es una acción y no da voto. Su precio lo declara la Junta Directiva por resolución y puede no haber nadie del otro lado cuando quieras salir: un instrumento sin libro no se vende cuando uno quiere, sino cuando aparece quien compre.',
+      'onDescCheck': 'Leí lo de arriba, entiendo que ONDK es un valor negociable y que puedo no poder venderlo cuando quiera.',
+      'onDescBtn': 'Entiendo y quiero operar ONDK',
+
       // Sin sesión el formulario invita, no esconde: todo lo público se ve.
       'invitarT': 'Para operar, entrá con tu cuenta',
       'invitarP': 'Todo lo que estás viendo es público — el libro, las velas, los tratos. Para colocar una orden entrá con tu cuenta Veta Wallet: Ordenex no guarda contraseñas.',
       'invitarBtn': 'Entrar con mi cuenta Veta Wallet',
+
+      /* LA COMISIÓN, DICHA ANTES DE COBRARLA.
+         El motor cobra partes por millón sobre lo que cada parte recibe, y
+         hasta hoy esa cifra no aparecía en NINGUNA pantalla de la casa: se
+         descubría en el saldo. Es la única línea de toda la web donde la casa
+         cobraba algo que el cliente no había visto, y por eso va acá arriba
+         del botón y no en un «acerca de».
+         «Recibís» es el número que de verdad importa: el total es lo que se
+         mueve y esto es lo que queda. */
+      'comision': 'Comisión',
+      'recibis': 'Recibís',
+      // Sin tarifa no se inventa un cero: un cero de consuelo diría «no te
+      // cobran» justo donde sí cobran.
+      'comisionNo': 'No pudimos traer la comisión de la casa. El total de arriba no la incluye.',
 
       // Mis órdenes.
       'misOrdenes': 'Mis órdenes abiertas',
@@ -215,7 +266,7 @@ const VMERCADO = (() => {
     },
     en: {
       't': 'Markets',
-      'sub': 'The fourteen assets of the chain, each against ORIGEN.',
+      'sub': 'The {mercados} markets of the chain, each against ORIGEN.',
       'cMercado': 'Market', 'cUltimo': 'Last (ORIGEN)', 'cCambio': '24 h', 'cVol': '24 h volume',
       'ref': 'ref.',
       'cargando': 'Fetching the markets…',
@@ -225,7 +276,7 @@ const VMERCADO = (() => {
       'ultimo': 'Last',
       'refRot': 'Reference',
       'parRaro': 'That market does not exist in this house.',
-      'parRaroP': 'The requested pair is not in the chain’s asset table. Go back to the list and pick one of the fourteen.',
+      'parRaroP': 'The requested pair is not in the chain’s asset table. Go back to the list and pick one of the {mercados}.',
 
       'velasNo': 'We couldn’t fetch the candles. It retries on its own.',
       'velasSin': 'The chart is not installed in this build. The market data continues below.',
@@ -257,10 +308,15 @@ const VMERCADO = (() => {
 
       'fDecl': 'Declared · Board',
       'declBadge': 'DECLARED PRICE',
-      'declRot': 'Price set by resolution of the Board of Directors. ONDK does not trade yet: there is no book and no counterparty, so this number is not a market price. Every candle in the chart is one minute: it opens at the previous resolution’s price and closes at that one’s, with no wick, because between two minutes there was not a single trade.',
+      /* «Acta» es la resolución escrita de una Junta Directiva, no un minuto
+         de reloj: `minute` deja la ficha de un valor negociable diciendo que
+         cada vela dura sesenta segundos y que «entre dos minutos no hubo
+         operaciones». Lo que lee un inversor de habla inglesa tiene que decir
+         lo mismo que lee uno de habla hispana. */
+      'declRot': 'Price set by resolution of the Board of Directors. ONDK does not trade yet: there is no book and no counterparty, so this number is not a market price. Every candle in the chart is one board resolution: it opens at the previous resolution’s price and closes at that one’s, with no wick, because between two resolutions there was not a single trade.',
       'declNo': 'We couldn’t fetch the declared price. It retries on its own.',
       'declVacio': 'The Board has not declared a price for this instrument yet.',
-      'declVig': 'in force since {fecha} · minute {acta}',
+      'declVig': 'in force since {fecha} · board resolution {acta}',
 
       'aukaT': 'AUKA and ORIGEN are the same metal',
       'aukaP': 'AUKA is one ounce of gold and ORIGEN is a gram of gold divided by 55. Since both are gold, their ratio never moves: 1 AUKA = 1,710.69 ORIGEN, today and always. The price that does move is the price of gold, and it lives in the Reference tab, in dollars.',
@@ -297,9 +353,22 @@ const VMERCADO = (() => {
       'eCancelar': 'The order could not be cancelled.',
       'eSesion': 'Your session expired. Sign in again with your Veta Wallet account.',
 
+      'onT': 'ONDK has no market yet',
+      'onSinLibro': 'There is not a single order resting in this book, on either side, so there is no one to trade with. Ordenex does not offer to buy or sell ONDK while there is no market: the price above was set by the Board by resolution, not by a trade between two people.',
+      'onVerifT': 'Trading ONDK requires a verified identity',
+      'onVerifP': 'ONDK is a security under Próspera, not one more coin on the list. Like the cash circuit, trading it requires a verified identity in Genesis ID. Get verified from your Veta Wallet and come back.',
+      'onDescT': 'Before you trade ONDK',
+      'onDescP': 'ONDK is the Orden Global security token: a security under Próspera, backed by the group’s assets. It grants contractual economic rights; it is not a share and carries no vote. Its price is declared by the Board of Directors by resolution, and there may be no one on the other side when you want out: an instrument with no book is not sold when you want, but when a buyer shows up.',
+      'onDescCheck': 'I have read the above and understand that ONDK is a security and that I may not be able to sell it when I want to.',
+      'onDescBtn': 'I understand and want to trade ONDK',
+
       'invitarT': 'To trade, sign in with your account',
       'invitarP': 'Everything you are looking at is public — the book, the candles, the trades. To place an order sign in with your Veta Wallet account: Ordenex stores no passwords.',
       'invitarBtn': 'Sign in with my Veta Wallet account',
+
+      'comision': 'Fee',
+      'recibis': 'You receive',
+      'comisionNo': 'We couldn’t fetch the house fee. The total above does not include it.',
 
       'misOrdenes': 'My open orders',
       'sinOrdenes': 'You have no open orders in this market.',
@@ -317,7 +386,14 @@ const VMERCADO = (() => {
     try { const g = localStorage.getItem('ordenex.idioma'); if (g === 'es' || g === 'en') return g; } catch {}
     return (navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en';
   }
-  const tx = k => (TXT[idi()] || TXT.es)[k] ?? TXT.es[k] ?? k;
+  /* Igual que el t() del cascarón, y con el mismo relleno de {mercados}: la
+     cifra de cuántos mercados abre la casa se dice en UN solo sitio (i18n.js,
+     contando CADENA.PARES) y ningún módulo la escribe a mano. Si i18n.js no
+     estuviera, el texto sale con el hueco puesto en vez de romperse. */
+  const tx = k => {
+    const s = (TXT[idi()] || TXT.es)[k] ?? TXT.es[k] ?? k;
+    try { return typeof conMercados === 'function' ? conMercados(s) : s; } catch { return s; }
+  };
   const rell = (s, m) => s.replace(/\{(\w+)\}/g, (_, k) => m[k] ?? '');
 
   // ── el dinero, a mano y con BigInt ────────────────────────────────────────
@@ -407,6 +483,14 @@ const VMERCADO = (() => {
   let velasCache = null;     // velas de TRATOS, en wei de ORIGEN
   let refCache = null;       // el paquete de REFERENCIA del API: { activo, rotulo, fuente, actualizadoEn, velas } en USD
   let declCache = null;      // el paquete DECLARADO: { token, clase, moneda, vigente, serie } — actas, no velas
+  /* La tarifa de la casa, { comisionPpm, sobre }. null = todavía no se leyó, y
+     mientras sea null el formulario dice «—» y no un cero: fail-closed también
+     para lo que se cobra. Es de la CASA, no del par, así que sobrevive a
+     cambiar de mercado — se pide una vez por sesión de pantalla. */
+  let tarifaCache = null;
+  /* Los pares cuyo descargo se aceptó EN ESTA CARGA de la página. En memoria y
+     no en localStorage: ver puertaDeclarado(). */
+  const idoneidadAceptada = new Set();
   let cuentas = null;        // los saldos del portafolio si hay sesión; null = no leídos (fail-closed)
   /* La llave de idempotencia de la orden EN CURSO. Se estrena al enviar, se
      conserva si el fallo fue de red (el reintento tiene que ser LA MISMA
@@ -731,6 +815,27 @@ const VMERCADO = (() => {
     .vm-linea-total{display:flex;justify-content:space-between;align-items:baseline;
       padding:12px 2px 2px;font-size:13px;color:var(--bruma)}
     .vm-linea-total b{font-size:15px;color:var(--crema);font-variant-numeric:lining-nums tabular-nums}
+    /* La comisión y lo que queda. En letra más chica que el total porque son
+       su desglose, y «Recibís» en crema porque es el número con el que la
+       persona se va: el total es lo que se mueve, esto es lo que le queda. */
+    .vm-linea-fee{display:flex;justify-content:space-between;align-items:baseline;
+      padding:5px 2px 0;font-size:12px;color:var(--humo)}
+    .vm-linea-fee .mono{font-variant-numeric:lining-nums tabular-nums}
+    .vm-recibis{color:var(--bruma);padding-top:3px}
+    .vm-recibis b{font-size:13.5px;color:var(--crema)}
+
+    /* El descargo del instrumento declarado. Con la barra de oro al costado
+       —la misma de .vm-prod— porque es una nota de la casa, no una alarma:
+       lo que dice es lo que ONDK ES, y decirlo en rojo lo convertiría en un
+       error de la pantalla en vez de en una característica del activo. */
+    .vm-descargo{margin-top:12px;padding:14px 16px;border-left:2px solid var(--oro);
+      background:rgba(201,169,97,.06);border-radius:0 var(--r) var(--r) 0;
+      font-size:12.5px;color:var(--bruma);line-height:1.6}
+    .vm-descargo b{display:block;color:var(--crema);font-size:13.5px;margin-bottom:6px}
+    .vm-descargo p{margin-bottom:12px}
+    .vm-descargo-check{display:flex;gap:9px;align-items:flex-start;margin-bottom:12px;
+      cursor:pointer;color:var(--crema);font-size:12.5px;line-height:1.5}
+    .vm-descargo-check input{flex:none;width:17px;height:17px;margin-top:1px;accent-color:var(--oro)}
     .vm-aviso{min-height:18px;margin:8px 2px 10px;font-size:12.5px;line-height:1.55;color:var(--coral)}
     .vm-aviso.suave{color:var(--humo)}
     .vm-max{font-weight:700;color:var(--oroLt);padding:0;font-size:11.5px}
@@ -787,9 +892,9 @@ const VMERCADO = (() => {
   }
 
   /* ── EL PRECIO QUE SE ENSEÑA EN UNA FILA ───────────────────────────────────
-     Hasta hoy la lista enseñaba un guion en los catorce mercados, porque
+     Hasta hoy la lista enseñaba un guion en todos los mercados, porque
      `ultimo` es lo que se pagó en el libro y todavía no se pagó nada. Es
-     honesto pero inútil: catorce guiones no dicen a cuánto está el oro.
+     honesto pero inútil: una columna de guiones no dice a cuánto está el oro.
 
      Ahora, cuando no hay trato, se enseña la REFERENCIA convertida a ORIGEN —
      que no es un número inventado, es la división de dos precios medidos:
@@ -839,7 +944,8 @@ const VMERCADO = (() => {
   }
 
   /* Se itera CADENA.PARES y no la respuesta del API: la tabla de activos es
-     el contrato, y así los catorce mercados están SIEMPRE en pantalla, en el
+     el contrato, y así los mercados están SIEMPRE en pantalla —los que haya,
+     que hoy son cinco y mañana los que publique la Junta—, en el
      orden de la cadena, con guiones donde el dato no llegó — un mercado sin
      feed no es un mercado que desaparece. */
   async function pintarMercados() {
@@ -848,15 +954,25 @@ const VMERCADO = (() => {
     try {
       mercadosCache = await DATOS.mercados();
     } catch {
-      // Si ya había datos pintados se dejan quietos: viejos y honestos.
-      if (nota && !mercadosCache) nota.textContent = tx('sinFeed');
-      if (mercadosCache) pintarFilasMercados(cuerpo, nota);
+      /* CON EL BACKEND CAÍDO, LOS MERCADOS SIGUEN EN PANTALLA.
+         Esto retornaba antes de pintar cuando no había caché, así que un
+         primer sondeo fallido dejaba la tabla VACÍA y el comentario de arriba
+         —«SIEMPRE en pantalla, con guiones donde el dato no llegó»— prometía
+         algo que el código no hacía. Y la promesa no era un adorno: la lista
+         se itera desde CADENA.PARES justamente para no depender del API, o
+         sea que las filas se pueden pintar sin una sola respuesta.
+         Una casa de cambio que se queda sin mercados cuando su backend
+         tropieza parece cerrada; con guiones, parece lo que es: viva y sin
+         precio. Si ya había datos, se dejan quietos: viejos y honestos. */
+      pintarFilasMercados(cuerpo, nota, !mercadosCache);
       return;
     }
     pintarFilasMercados(cuerpo, nota);
   }
 
-  function pintarFilasMercados(cuerpo, nota) {
+  // `sinFeed` distingue los dos vacíos: sin precios porque no llegaron (se
+  // dice) y sin precios porque no hay tratos (el guion habla solo).
+  function pintarFilasMercados(cuerpo, nota, sinFeed) {
     const porPar = new Map((mercadosCache || []).map(m => [m.mercado, m]));
     cuerpo.innerHTML = CADENA.PARES.map(par => {
       const sim = CADENA.baseDe(par);
@@ -875,7 +991,7 @@ const VMERCADO = (() => {
         <td class="mono">${vol == null ? '<span class="vm-sin">—</span>' : esc(vol) + ' ' + esc(sim)}</td>
       </tr>`;
     }).join('');
-    if (nota) nota.textContent = '';
+    if (nota) nota.textContent = sinFeed ? tx('sinFeed') : '';
   }
 
   // ══ UN MERCADO ABIERTO ════════════════════════════════════════════════════
@@ -943,7 +1059,7 @@ const VMERCADO = (() => {
           </div>
           <div id="vm-bajo">${bajoGrafica(par)}</div>
         </div>
-        <div class="vidrio bloque" id="vm-form-caja">${cajaOperar(sim)}</div>
+        <div class="vidrio bloque" id="vm-form-caja">${cajaOperar(sim, par)}</div>
       </div>
       <div>
         <div class="vidrio bloque">
@@ -1052,7 +1168,7 @@ const VMERCADO = (() => {
      que solo vino a mirar precios.
 
      Se itera CADENA.PARES y no la respuesta del API, igual que la tabla
-     grande: los quince mercados están SIEMPRE, en el orden de la cadena, con
+     grande: los mercados publicados están SIEMPRE, en el orden de la cadena, con
      guion donde el dato no llegó. Un mercado sin feed no es un mercado que
      desaparece de la lista. */
   const LLAVE_FAV = 'onx.favoritos';
@@ -1211,8 +1327,18 @@ const VMERCADO = (() => {
        nació y decir dónde nace sobra. */
   function bajoGrafica(par) {
     if (fuenteActual === 'declarado') {
-      if (!declCache) return '';
-      const v = declCache.vigente;
+      /* EL DESCARGO NO DEPENDE DE QUE EL FETCH SALGA BIEN.
+         Esto era `if (!declCache) return ''`, y ahí estaba el agujero: si
+         /precio-declarado/ONDK tropezaba —red, 500, plazo vencido— se caía el
+         bloque entero, y con él la frase «no hay libro ni contraparte, así que
+         este número no es un precio de mercado». Lo que NO se caía era el
+         resto de la pantalla: el libro, la pestaña de tratos y el formulario
+         seguían ahí, ofreciendo operar un security token sin una sola
+         advertencia a la vista.
+         Lo que puede faltar es el NÚMERO; la advertencia, jamás. Así que el
+         rótulo se pinta siempre y lo único que desaparece cuando no hay dato
+         es el pie con la fecha y el acta. */
+      const v = declCache && declCache.vigente;
       const pie = v ? rell(tx('declVig'), { fecha: fechaLarga(v.fecha), acta: v.acta }) : '';
       return `<div class="vm-rotulo">
         <b>${esc(tx('declBadge'))}</b><span>${esc(tx('declRot'))}</span>
@@ -1566,6 +1692,24 @@ const VMERCADO = (() => {
       n.textContent = vacio ? tx('sinLibro') : '';
       n.classList.toggle('oculto', !vacio);
     }
+    // El libro es lo que decide si un instrumento declarado se puede operar:
+    // cuando llega, la puerta puede haber cambiado de estado.
+    sincronizarPuerta();
+  }
+
+  /* Repinta el formulario SOLO si la puerta cambió de estado. La comparación
+     no es cosmética: el libro se sondea cada cinco segundos y repintar la caja
+     en cada tirón le borraría a la persona el precio y la cantidad que está
+     tecleando, que es peor que el fallo que se está arreglando. */
+  let puertaPintada = null;
+  function sincronizarPuerta() {
+    const ahora = clavePuerta(parActual);
+    if (ahora === puertaPintada) return;
+    puertaPintada = ahora;
+    const caja = $('vm-form-caja');
+    if (!caja) return;
+    caja.innerHTML = cajaOperar(CADENA.baseDe(parActual) || '', parActual);
+    aplicarLadoTipo();
   }
 
   // Tocar un precio del libro lo lleva al formulario. Poner un precio ES
@@ -1602,7 +1746,72 @@ const VMERCADO = (() => {
 
   // ── el formulario ─────────────────────────────────────────────────────────
 
-  function cajaOperar(sim) {
+  /* ── la puerta del instrumento declarado ──────────────────────────────────
+     Devuelve el HTML que va EN LUGAR del formulario, o null si no hay nada
+     que interponer. Se pregunta antes que ninguna otra cosa: quien no pasa
+     por acá no ve un campo de precio.
+
+     El orden de las condiciones es el orden del riesgo: primero si hay
+     mercado (sin contraparte no se ofrece nada, ni con sesión ni sin ella),
+     después quién sos, y al final si leíste lo que estás por comprar. */
+  function clavePuerta(par) {
+    if (!hayDecl(par)) return 'libre';
+
+    /* ¿Hay libro? `libroCache` en null es «todavía no se leyó», y acá eso
+       cuenta como NO: fail-closed. Enseñar el formulario mientras se averigua
+       si hay contraparte es ofrecer primero y comprobar después. */
+    const compras = Array.isArray(libroCache?.compras) ? libroCache.compras : [];
+    const ventas = Array.isArray(libroCache?.ventas) ? libroCache.ventas : [];
+    if (!compras.length && !ventas.length) return 'sinLibro';
+
+    // Con mercado abierto, la sesión se pide como en cualquier otro par.
+    if (!DATOS.haySesion()) return 'libre';
+
+    /* La idoneidad. `verificada` viene del propio API en el canje SSO, así
+       que es el dato de Genesis y no una opinión del navegador. Fail-closed:
+       lo que no dice `true` no pasa. */
+    const yo = DATOS.usuario();
+    if (!yo || yo.verificada !== true) return 'sinVerificar';
+
+    /* Y el descargo, aceptado a mano. Vive en memoria y NO en el navegador a
+       propósito: recargar la página vuelve a pedirlo. Un consentimiento
+       guardado se convierte en una casilla que alguien marcó una vez hace
+       meses, y esto no es una preferencia de pantalla — es lo que separa
+       «compré sin saber» de «compré sabiendo». */
+    return idoneidadAceptada.has(par) ? 'libre' : 'descargo';
+  }
+
+  function puertaDeclarado(par) {
+    switch (clavePuerta(par)) {
+      case 'sinLibro':
+        return `<div class="vacio"><b>${esc(tx('onT'))}</b>${esc(tx('onSinLibro'))}</div>`;
+      case 'sinVerificar':
+        return `<div class="vacio"><b>${esc(tx('onVerifT'))}</b>${esc(tx('onVerifP'))}</div>`;
+      case 'descargo':
+        return `<div class="vm-descargo">
+          <b>${esc(tx('onDescT'))}</b>
+          <p>${esc(tx('onDescP'))}</p>
+          <label class="vm-descargo-check">
+            <input type="checkbox" id="vm-desc-check" onchange="VMERCADO.marcarDescargo()">
+            <span>${esc(tx('onDescCheck'))}</span></label>
+          <button class="btn btn-linea btn-full btn-sm" id="vm-desc-btn" disabled
+            onclick="VMERCADO.aceptarDescargo()">${esc(tx('onDescBtn'))}</button>
+        </div>`;
+      default:
+        return null;
+    }
+  }
+
+  /* `par` explícito y no `parActual`: la vista se ARMA antes de que alPintar
+     fije el par, así que en el primer pintado de un mercado nuevo `parActual`
+     todavía es el anterior. Con el par de fuera, la puerta de ONDK no se
+     decide nunca con los datos del mercado que se acaba de dejar. */
+  function cajaOperar(sim, par) {
+    const elPar = par || parActual;
+    // La puerta del instrumento declarado manda por encima de todo lo demás.
+    const puerta = puertaDeclarado(elPar);
+    if (puerta != null) return `<h3>${esc(tx('operar'))}</h3>${puerta}`;
+
     if (!DATOS.haySesion()) {
       // Sin sesión no se esconde el formulario: se explica y se invita. El
       // viaje del SSO lo maneja ONX.entrar(), el mismo botón de la portada.
@@ -1637,6 +1846,13 @@ const VMERCADO = (() => {
     </div>
     <div class="vm-linea-total"><span id="vm-total-lbl">${esc(tx('total'))}</span>
       <b class="mono" id="vm-total">—</b></div>
+    <!-- Lo que cobra la casa y lo que queda, ANTES del botón. El orden de
+         lectura es el de la cuenta: total, menos comisión, recibís. -->
+    <div class="vm-linea-fee"><span id="vm-comision-lbl">${esc(tx('comision'))}</span>
+      <span class="mono" id="vm-comision">—</span></div>
+    <div class="vm-linea-fee vm-recibis"><span>${esc(tx('recibis'))}</span>
+      <b class="mono" id="vm-recibis">—</b></div>
+    <p class="ayuda" id="vm-comision-nota"></p>
     <p class="vm-aviso" id="vm-aviso" aria-live="polite"></p>
     <button class="btn btn-full vm-btn ${ladoActual}" id="vm-enviar"
       onclick="VMERCADO.colocar()">${esc(tx(ladoActual === 'compra' ? 'comprar' : 'vender'))} ${esc(sim)}</button>`;
@@ -1823,7 +2039,98 @@ const VMERCADO = (() => {
 
     if (lblEl) lblEl.textContent = tx(aprox ? 'totalAprox' : 'total');
     totalEl.textContent = total == null ? '—' : `${aprox ? '≈ ' : ''}${deWei(total.toString(), 6)} ORIGEN`;
+    pintarComision(cant, total, aprox);
     if (notaSuave && aviso) { aviso.textContent = notaSuave; aviso.classList.add('suave'); }
+  }
+
+  /* LA COMISIÓN Y LO QUE QUEDA.
+   *
+   * La casa cobra partes por millón SOBRE LO RECIBIDO, y cada lado recibe una
+   * cosa distinta: quien compra recibe el activo, quien vende recibe ORIGEN.
+   * Por eso la comisión se resta de monedas distintas según el lado, y no del
+   * total en los dos casos — restarla siempre del ORIGEN habría enseñado un
+   * número que el motor no cobra.
+   *
+   * La cuenta es la MISMA que hace lib/motor.js (floor, en BigInt, sobre wei):
+   * nada de porcentajes en punto flotante para enseñar un número que después
+   * se cobra con enteros. Lo único que es Number acá es el rótulo del
+   * porcentaje, que es texto y no dinero.
+   *
+   * En órdenes de mercado es una estimación, como el total: lleva el mismo ≈.
+   */
+  function pintarComision(cant, total, aprox) {
+    const elCom = $('vm-comision'), elRec = $('vm-recibis'),
+          lbl = $('vm-comision-lbl'), nota = $('vm-comision-nota');
+    if (!elCom || !elRec) return;
+
+    const sim = CADENA.baseDe(parActual) || '';
+    const compra = ladoActual === 'compra';
+    // Lo que se recibe y en qué moneda: el activo si se compra, el ORIGEN del
+    // total si se vende.
+    const recibido = compra ? cant : total;
+    const moneda = compra ? sim : 'ORIGEN';
+
+    if (lbl) lbl.textContent = tx('comision');
+    if (nota) nota.textContent = '';
+
+    // Sin tarifa leída no se inventa nada: guiones y el porqué escrito.
+    const ppm = tarifaCache && Number.isInteger(tarifaCache.comisionPpm) && tarifaCache.comisionPpm >= 0
+      ? BigInt(tarifaCache.comisionPpm) : null;
+    if (ppm == null) {
+      elCom.textContent = '—';
+      elRec.textContent = '—';
+      if (nota) nota.textContent = tx('comisionNo');
+      return;
+    }
+
+    // El rótulo lleva el porcentaje SIEMPRE, aunque no haya cantidad escrita:
+    // es lo que contesta «¿cuánto cobran acá?» antes de teclear nada.
+    const pct = Number(ppm) / 10000;   // ppm → por ciento
+    if (lbl) lbl.textContent = `${tx('comision')} (${pct.toFixed(2).replace(/\.?0+$/, '') || '0'}%)`;
+
+    if (recibido == null || recibido <= 0n) {
+      elCom.textContent = '—';
+      elRec.textContent = '—';
+      return;
+    }
+    const comision = (recibido * ppm) / 1000000n;   // floor, igual que el motor
+    const queda = recibido - comision;
+    const marca = aprox ? '≈ ' : '';
+    elCom.textContent = `${marca}${deWei(comision.toString(), 6)} ${moneda}`;
+    elRec.textContent = `${marca}${deWei(queda.toString(), 6)} ${moneda}`;
+  }
+
+  /* La tarifa se pide UNA vez y se guarda: es de la casa, no del par, y no
+     cambia mientras la pantalla está abierta. Si el API no contesta, se queda
+     en null y el formulario dice que no la pudo traer — nunca un cero. */
+  /* La casilla y el botón del descargo. Van juntos a propósito: la casilla
+     sola es fácil de marcar sin leer, y el botón deshabilitado hasta marcarla
+     obliga a dos gestos distintos para lo mismo. */
+  function marcarDescargo() {
+    const c = $('vm-desc-check'), b = $('vm-desc-btn');
+    if (b) b.disabled = !(c && c.checked);
+  }
+
+  function aceptarDescargo() {
+    const c = $('vm-desc-check');
+    if (!c || !c.checked) return;   // la puerta no se abre desde la consola
+    idoneidadAceptada.add(parActual);
+    /* Se cuenta, y sin nada que identifique a nadie: cuánta gente llega al
+       descargo y cuánta lo acepta es lo único que dice si esta puerta protege
+       o solo estorba. */
+    tele('accion', 'declarado.descargo.aceptado', { ruta: '#mercado/' + String(parActual || '') });
+    sincronizarPuerta();
+  }
+
+  async function cargarTarifas() {
+    if (tarifaCache) return;
+    try {
+      tarifaCache = await DATOS.tarifas();
+    } catch {
+      tarifaCache = null;
+    }
+    // Puede llegar con el formulario ya pintado: se repinta la cuenta.
+    if ($('vm-comision')) recalcular();
   }
 
   // «Usar todo»: vendiendo es el disponible del activo; comprando a límite,
@@ -1892,6 +2199,17 @@ const VMERCADO = (() => {
          quisieron entrar. */
       tele('accion', 'orden.sinSesion', { ruta: '#mercado/' + String(parActual || '') });
       ONX.entrar();
+      return;
+    }
+    /* La puerta del instrumento declarado, otra vez y acá abajo. El
+       formulario ya no se pinta cuando está cerrada, pero VMERCADO.colocar()
+       se puede llamar desde la consola: una puerta que solo existe en el HTML
+       no es una puerta, es un cartel.
+       Ojo: esto sigue siendo el NAVEGADOR. La comprobación que de verdad
+       protege va en el backend, en POST /ordenes, y hoy no está — queda
+       anotada para quien tiene controllers/ en las manos. */
+    if (clavePuerta(parActual) !== 'libre') {
+      sincronizarPuerta();
       return;
     }
     const aviso = $('vm-aviso'), btn = $('vm-enviar');
@@ -2063,6 +2381,9 @@ const VMERCADO = (() => {
     }
     parActual = parNuevo;
     ordenKeyViva = null;
+    // La vista ya se armó con este estado de puerta; se anota para que
+    // sincronizarPuerta() solo repinte cuando de verdad cambie.
+    puertaPintada = clavePuerta(parActual);
     if (!CADENA.baseDe(parActual)) return; // la vista ya dijo que el par no existe
     // Normalmente ya lo hizo vistaMercado; esto cubre el caso de pintar la sala
     // sin pasar por ella (una prueba, un recorte de la vista) sin decidir dos
@@ -2099,6 +2420,10 @@ const VMERCADO = (() => {
     pintarLista();
     pestana('tratos');
 
+    // La tarifa de la casa, para el desglose del formulario. Se pide sin
+    // sesión —es pública— y sin reloj: no cambia mientras se mira la pantalla.
+    cargarTarifas();
+
     if (DATOS.haySesion()) {
       cuentas = null;          // fail-closed hasta que el portafolio conteste
       cargarCartera();
@@ -2133,6 +2458,7 @@ const VMERCADO = (() => {
   return {
     vistaMercados, vistaMercado, alPintar, apagar, zoom, favorito, filtrar, pestana,
     marco, fuente, lado, tipo, usarPrecio, recalcular, maximo, colocar, quitar,
+    marcarDescargo, aceptarDescargo,
     // Para las pruebas, como _piezas en qr.js: los textos y las cuentas puras.
     _txt: () => TXT,
     _puros: {

@@ -1,7 +1,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>ORDENEX · La casa de cambio de AuCorp</title>
-<meta name="description" content="ORDENEX: la casa de cambio de AuCorp, donde se cambian los activos del ecosistema Orden Global. Los quince activos de la cadena 5550 contra ORIGEN, con libro de órdenes real, velas de tratos reales y entrada y salida en lempiras o dólares con agentes verificados.">
+<!-- Sin cifra a propósito. Decía «los quince activos» y los mercados abiertos
+     son cinco: es el mismo número escrito a mano que ya se despegó tres veces
+     en esta página. En el cuerpo la cuenta la pone t() desde CADENA.PARES,
+     pero acá no llega —esto lo lee un buscador antes de que corra un guion—,
+     así que lo honesto es no prometer un número que nadie va a mantener. -->
+<meta name="description" content="ORDENEX: la casa de cambio de AuCorp, donde se cambian los activos publicados de la cadena 5550 contra ORIGEN, con libro de órdenes real, velas de tratos reales y entrada y salida en lempiras o dólares con agentes verificados.">
 <meta name="theme-color" content="#0A0E14">
 
 <!-- A dónde puede hablar esta página, y desde dónde puede traer cosas.
@@ -144,7 +149,7 @@ a{color:inherit}
 
 /* ═══ LA CINTA DE PRECIOS ════════════════════════════════════════════════════
    Fija arriba, siempre. Es lo primero que tiene cualquier casa de cambio y lo
-   que mas rapido dice «esto esta vivo»: los quince mercados pasando, con su
+   que mas rapido dice «esto esta vivo»: los mercados publicados pasando, con su
    ultimo precio y su cambio del dia.
 
    Los que no tienen precio pasan con GUION, no se esconden. Una cinta que solo
@@ -474,8 +479,14 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
   #bienvenida{gap:20px;padding-top:calc(34px + 56px)}
   .bv h1{font-size:clamp(26px,7vw,36px)}
   .mv{justify-self:stretch;width:100%}
+  /* El padding de arriba lleva los 34 px de la cinta sumados: la cinta va
+     `position:fixed` y el riel, acá, `static` — así que sin esa cuenta la
+     primera hilera del riel nace DEBAJO de la cinta y la marca ORDENEX queda
+     tapada por los precios que pasan. Se veía en cualquier captura de 360 px:
+     una barra en blanco donde tenía que estar el nombre de la casa. */
   .riel{position:static;width:auto;height:auto;flex-direction:row;align-items:center;
-    border-right:0;border-bottom:1px solid var(--linea2);padding:14px 16px;gap:12px 14px;
+    border-right:0;border-bottom:1px solid var(--linea2);
+    padding:calc(14px + 34px) 16px 14px;gap:12px 14px;
     justify-content:space-between;flex-wrap:wrap}
   /* Las secciones sí se van: abajo están las pestañas, que hacen lo mismo con
      el pulgar más cerca. El PIE no: ahí viven salir y el cambio de idioma, y

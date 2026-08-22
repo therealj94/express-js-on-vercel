@@ -16,7 +16,12 @@ es: {
      AuCorp, y lo que se cambia aqui son los activos de Orden Global. */
   'pt.sello': 'UNA CASA DE AUCORP · ECOSISTEMA ORDEN GLOBAL',
   'pt.t1': 'EL MERCADO', 'pt.t2': 'DE LA CASA.',
-  'pt.p': 'Los quince activos de la cadena 5550, cada uno contra ORIGEN. Libro de órdenes de verdad, velas que solo pintan tratos reales, y entrada y salida en lempiras o dólares con agentes verificados.',
+  /* {mercados} lo pone t(), contando CADENA.PARES. Decía «los quince» a mano y
+     eran cinco: la cadena tiene quince activos, seis están publicados y la
+     casa abre mercado a cinco. Tres cifras para lo mismo, ninguna coincidía, y
+     la que veía el cliente era la única que no se podía comprobar mirando la
+     pantalla — abajo se contaban las filas y no daban quince. */
+  'pt.p': 'Los {mercados} mercados de la cadena 5550, cada uno contra ORIGEN. Libro de órdenes de verdad, velas que solo pintan tratos reales, y entrada y salida en lempiras o dólares con agentes verificados.',
   'pt.entrar': 'Entrar con mi cuenta Veta Wallet',
   'pt.ver': 'Ver los mercados',
   // La nota del botón: acá no se inventa una contraseña nueva. La cuenta es
@@ -24,8 +29,15 @@ es: {
   'pt.nota': 'Tu cuenta es la misma de todo el ecosistema: te mandamos a tu Veta Wallet, confirmás ahí, y volvés adentro. Ordenex no guarda contraseñas.',
   'pt.vivos': 'El mercado, ahora',
   'pt.mvPar': 'Mercado', 'pt.mvUltimo': 'Último', 'pt.mvCambio': '24 h',
+  /* Estas tres estaban DOS VECES en este mismo diccionario, y la segunda vez
+     con el texto en inglés. En un objeto literal la última gana, así que la
+     portada en español encabezaba sus columnas «24 h high / 24 h low / 24 h
+     vol.» — y encima el diccionario inglés no las tenía, con lo cual caía por
+     el respaldo a estas mismas y el inglés salía bien por casualidad.
+     Un duplicado en un diccionario no rompe nada: cambia el idioma en
+     silencio. Por eso ahora hay una prueba que los busca:
+     apps-web/ordenex/pruebas/probar-diccionarios.mjs */
   'pt.mvAlto': 'Máx. 24 h', 'pt.mvBajo': 'Mín. 24 h', 'pt.mvVol': 'Vol. 24 h',
-  'pt.mvAlto': '24 h high', 'pt.mvBajo': '24 h low', 'pt.mvVol': '24 h vol.',
   'pt.mvRef': 'ref.',
   'pt.mvCargando': 'Trayendo los mercados…',
   // «Sin feed, guion»: un mercado que no se pudo traer no es un mercado en
@@ -57,12 +69,15 @@ es: {
 en: {
   'pt.sello': 'A HOUSE OF AUCORP · ORDEN GLOBAL ECOSYSTEM',
   'pt.t1': 'THE HOUSE', 'pt.t2': 'MARKET.',
-  'pt.p': 'The fifteen assets of chain 5550, each against ORIGEN. A real order book, candles drawn only from real trades, and cash in and out in lempiras or dollars through verified agents.',
+  'pt.p': 'The {mercados} markets of chain 5550, each against ORIGEN. A real order book, candles drawn only from real trades, and cash in and out in lempiras or dollars through verified agents.',
   'pt.entrar': 'Sign in with my Veta Wallet account',
   'pt.ver': 'See the markets',
   'pt.nota': 'Your account is the same one across the ecosystem: we send you to your Veta Wallet, you confirm there, and you come back inside. Ordenex stores no passwords.',
   'pt.vivos': 'The market, right now',
   'pt.mvPar': 'Market', 'pt.mvUltimo': 'Last', 'pt.mvCambio': '24 h',
+  // Las tres que faltaban de este lado. Que el respaldo al español las tapara
+  // es lo que dejó vivir tanto tiempo al duplicado de arriba.
+  'pt.mvAlto': '24 h high', 'pt.mvBajo': '24 h low', 'pt.mvVol': '24 h vol.',
   'pt.mvRef': 'ref.',
   'pt.mvCargando': 'Fetching the markets…',
   'pt.mvSinFeed': 'We couldn’t fetch the markets. Prices will appear as soon as the connection is back.',
@@ -95,8 +110,65 @@ let idiomaActual = (() => {
   return (navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en';
 })();
 
+/* ── LOS NÚMEROS QUE NO SE ESCRIBEN A MANO ───────────────────────────────────
+   Cuántos mercados abre la casa lo sabe UNA sola pieza: la tabla de activos de
+   cadena.js, que es la que también pinta las filas. Cualquier texto que diga
+   una cifra la saca de ahí y de ningún otro lado.
+
+   El motivo es que ya pasó al revés: la portada decía «los quince», la sala
+   decía «los catorce» y la tabla pintaba cinco. Ninguna de las tres mentía a
+   propósito — se escribieron en momentos distintos y la lista siguió su
+   camino. Un número escrito a mano es una copia, y toda copia se despega.
+
+   Va en letras y no en cifra porque es prosa: «los cinco mercados» se lee y
+   «los 5 mercados» se tropieza. Hasta veinte alcanza de sobra —la cadena tiene
+   quince activos— y de ahí para arriba cae a la cifra sola, que es feo pero
+   nunca falso. */
+/* Global a propósito y con nombre largo: este archivo es un guion clásico, sin
+   módulos, así que todo lo de aquí vive en window. `NUMEROS_EN_LETRAS` no
+   choca con nada de la casa; un `NUMEROS` a secas se lo lleva por delante el
+   primero que declare otro. */
+const NUMEROS_EN_LETRAS = {
+  es: ['cero', 'un', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez',
+       'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho',
+       'diecinueve', 'veinte'],
+  en: ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+       'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen',
+       'nineteen', 'twenty'],
+};
+
+function enLetras(n, idi) {
+  const tabla = NUMEROS_EN_LETRAS[idi] || NUMEROS_EN_LETRAS.es;
+  return Number.isInteger(n) && n >= 0 && n < tabla.length ? tabla[n] : String(n);
+}
+
+/* Cuántos mercados abre la casa, contados donde se pintan. Si cadena.js no
+   cargó todavía, se devuelve null y el texto sale SIN cifra en vez de con un
+   cero: «los cero mercados de la cadena» sería peor que no decir cuántos. */
+function cuantosMercados() {
+  try {
+    return Array.isArray(CADENA?.PARES) ? CADENA.PARES.length : null;
+  } catch { return null; }
+}
+
+/* Rellena {mercados} en cualquier texto, venga del diccionario de acá o del
+   TXT de un módulo: es UNA sola manera de decir la cifra en toda la casa. Si
+   la cuenta no está, se quita el hueco y la frase se cierra sola («Los
+   mercados de la cadena 5550…») — más pobre y sigue siendo verdad. */
+function conMercados(texto) {
+  if (typeof texto !== 'string' || !texto.includes('{mercados}')) return texto;
+  const n = cuantosMercados();
+  /* El uno se va por el mismo camino que el «no sé»: las frases que llevan
+     este hueco siguen con el sustantivo en plural («los {mercados} mercados»),
+     así que con n = 1 saldría «los un mercados». Antes que una cifra exacta
+     mal escrita, la frase sin cifra. */
+  return n == null || n === 1
+    ? texto.replace('{mercados} ', '').replace('{mercados}', '')
+    : texto.replace('{mercados}', enLetras(n, idiomaActual));
+}
+
 function t(clave) {
-  return I18N[idiomaActual][clave] ?? I18N.es[clave] ?? clave;
+  return conMercados(I18N[idiomaActual][clave] ?? I18N.es[clave] ?? clave);
 }
 
 // Las fichas de los tokens viven en cadena.js y los textos de las vistas en

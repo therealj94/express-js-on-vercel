@@ -218,23 +218,12 @@ app.get('/salud', async (req, res) => {
 // una tarifa que solo vive en una variable de entorno del motor es una tarifa
 // que el cliente descubre en el saldo.
 //
-// OJO, Y ESTO HAY QUE CERRARLO: la cuenta de abajo es una SEGUNDA copia de
-// lib/motor.js:comisionPpm(). No se importa de alli porque ese modulo no la
-// exporta, y lib/ no se toca en este cambio. Lo correcto es que motor exporte
-// comisionPpm y que esto lo llame: mientras haya dos copias, subir el tope de
-// cordura en una y no en la otra hace que la casa cobre una cifra y anuncie
-// otra — que es exactamente el fallo que esta ruta viene a cerrar.
-function comisionPpm() {
-  const v = (process.env.ORDENEX_COMISION_PPM || '').trim();
-  if (!v) return 0;
-  const n = Number(v);
-  if (!Number.isInteger(n) || n <= 0) return 0;
-  if (n > 50000) return 0; // el mismo tope de cordura del motor: 5% por lado ya es un dedazo
-  return n;
-}
+// Y sale de `lib/motor.js`, del MISMO sitio que la cobra. Habia dos copias de
+// la cuenta, una aqui y otra alla, y dos copias de una regla de dinero es la
+// casa cobrando una cifra y anunciando otra en cuanto alguien toque una sola.
 
 app.get('/tarifas', (req, res) => {
-  const ppm = comisionPpm();
+  const ppm = require('./lib/motor').comisionPpm();
   // `sobre: 'recibido'` no es adorno: la comision se descuenta de lo que cada
   // parte RECIBE (el activo el comprador, el ORIGEN el vendedor), no de lo que
   // paga. Sin ese dato, la web no sabria de que lado restarla.

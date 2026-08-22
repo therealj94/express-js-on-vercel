@@ -788,4 +788,11 @@ function librosEnMemoria() {
   return listos ? LIBROS : null;
 }
 
-module.exports = { calzar, colocar, cancelar, cargarLibros, librosEnMemoria };
+module.exports = {
+  calzar, colocar, cancelar, cargarLibros, librosEnMemoria,
+  /* `comisionPpm` se exporta para que la ruta que la ANUNCIA use exactamente la
+     misma que la que la COBRA. Habia dos copias, y dos copias de una regla de
+     dinero es la casa cobrando una cifra y publicando otra en cuanto alguien
+     toque una sola de las dos. */
+  comisionPpm,
+};

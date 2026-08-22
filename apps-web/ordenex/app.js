@@ -342,7 +342,7 @@ const ONX = (() => {
   }
 
   /* ── la cinta de precios ───────────────────────────────────────────────────
-     Los quince mercados pasando arriba del todo, siempre. La pista se pinta
+     Los mercados publicados pasando arriba del todo, siempre. La pista se pinta
      DOS veces y la animacion corre el 50%: asi el bucle vuelve a empezar sin
      costura, sin un temporizador y sin JS por cuadro.
 

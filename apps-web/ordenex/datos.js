@@ -163,6 +163,22 @@ const DATOS = (() => {
      error se propaga tal cual. */
   const declarado = token => pedir(`/precio-declarado/${par(token)}`, { conSesion: false });
 
+  /* LO QUE COBRA LA CASA.
+   *
+   *   { comisionPpm, sobre: 'recibido' }
+   *
+   * Partes por millón sobre lo que cada parte RECIBE —el activo el comprador,
+   * el ORIGEN el vendedor—, que es como la cobra el motor. Público y sin
+   * sesión, como /salud: la tarifa es de quien va a pagarla y pedirle cuenta
+   * para enterarse sería cobrársela antes de decírsela.
+   *
+   * Se pide al servidor y NO se escribe aquí porque la cifra vive en una
+   * variable de entorno del motor: una copia en el navegador sería una tarifa
+   * anunciada que no es la que se cobra, y ese es el peor de los dos errores
+   * posibles. Si esto falla, quien pinta NO inventa un cero — dice que no
+   * pudo traerla. */
+  const tarifas = () => pedir('/tarifas', { conSesion: false });
+
   // ── órdenes 🔒 ────────────────────────────────────────────────────────────
   // o = { mercado, lado, tipo, precio?, cantidad, ordenKey } — precio y
   // cantidad en strings de wei; la ordenKey la pone quien coloca, para que un
@@ -218,7 +234,7 @@ const DATOS = (() => {
 
   return {
     API, sondeo,
-    mercados, libro, velas, tratos, referencia, declarado,
+    mercados, libro, velas, tratos, referencia, declarado, tarifas,
     colocar, cancelar, misOrdenes,
     portafolio, retirar, movimientos,
     agentes, solicitudes, crearSolicitud, accionSolicitud,

@@ -91,10 +91,25 @@ var TELEMETRIA = (function () {
   var TOPE_COLA = 300;   // al pasarse se tiran los más viejos
   var TIEMPO_MS = 8000;
 
+  /* CUÁNTOS TROPIEZOS SEGUIDOS AGUANTA UN LOTE ANTES DE IRSE A LA BASURA.
+     Tres, y hay una historia detrás: el origen de Genesis no estaba en el
+     connect-src de index.html, así que el navegador rebotaba TODOS los envíos.
+     Un rebote de CSP entra por el `catch` igual que un corte de red, el lote
+     no se descartaba nunca, y la cola crecía hasta el tope y se reintentaba
+     cada diez segundos para siempre — en la máquina de cada persona que
+     tuviera la pestaña abierta, sin que ni un solo evento llegara jamás.
+
+     El arreglo de fondo fue poner el origen en la CSP. Este contador es lo
+     que hace que la próxima vez que algo así pase, el reportero se rinda con
+     ese lote en vez de convertirse en un bucle. Tres intentos son medio
+     minuto: sobra para un bache de red y no alcanza para una pared. */
+  var TOPE_FALLOS = 3;
+
   var cola = [];
   var reloj = null;
   var enVuelo = false;
   var marca = null;
+  var fallosSeguidos = 0;
 
   /** Si esto da false, ninguna función de aquí toca la red. */
   function activa() { return Boolean(CLAVE) && !PENDIENTE.test(CLAVE); }
@@ -253,12 +268,38 @@ var TELEMETRIA = (function () {
       // 4xx es culpa nuestra —clave mal, revocada, formato— y reintentar no lo
       // arregla: solo deja la cola creciendo. Se tira el lote igual que si
       // hubiera ido bien. Con 5xx o red caída se deja y se prueba luego.
-      if (r.ok || (r.status >= 400 && r.status < 500)) cola = cola.slice(lote.length);
+      if (r.ok || (r.status >= 400 && r.status < 500)) {
+        cola = cola.slice(lote.length);
+        fallosSeguidos = 0;
+      } else {
+        tropiezo(lote);
+      }
     }).catch(function () {
       if (rej) clearTimeout(rej);
+      /* Aquí caen las dos cosas que no se distinguen desde adentro: la red
+         que no está y la CSP que rebotó el envío antes de salir. La primera
+         se arregla sola esperando; la segunda no se arregla nunca. Como no
+         hay manera de saber cuál es, se tratan igual: se reintenta unas
+         pocas veces y después se suelta el lote. */
+      tropiezo(lote);
     }).then(function () {
       enVuelo = false;
     });
+  }
+
+  /* Un envío que no llegó. Se cuenta, y al tercero seguido el lote se
+     DESCARTA: perder unos eventos es barato, y dejar la cola llena
+     reintentando contra una pared es lo que convierte un reportero en un
+     bucle que gasta batería y no reporta nada. */
+  function tropiezo(lote) {
+    fallosSeguidos++;
+    if (fallosSeguidos < TOPE_FALLOS) return;
+    fallosSeguidos = 0;
+    cola = cola.slice(lote.length);
+    // Una sola línea y por consola: quien esté mirando la pestaña merece
+    // saber que se están tirando eventos, y no hay a quién más contárselo
+    // —el sitio al que se le contaría es justo el que no contesta—.
+    try { console.warn('[telemetria] ' + lote.length + ' evento(s) descartados: el destino no contesta'); } catch (x) {}
   }
 
   return {

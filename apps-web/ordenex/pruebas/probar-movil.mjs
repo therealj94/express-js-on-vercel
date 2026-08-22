@@ -146,12 +146,13 @@ const nav = await chromium.launch({
   executablePath: process.env.ONX_CHROMIUM || '/opt/pw-browsers/chromium',
   args: ['--no-sandbox'],
 });
-/* Un telefono de verdad y no una ventana angosta: con `hasTouch` el navegador
-   aplica las reglas de puntero grueso, que es donde vive la mitad de esta
-   clase de fallos. */
+/* Con `hasTouch` el navegador aplica las reglas de puntero grueso, que es
+   donde vive la mitad de esta clase de fallos. Sin `isMobile` a proposito:
+   ese modo mete la ventana virtual de Chrome por medio y `innerWidth` deja de
+   ser los 360 px que se estan midiendo — y una prueba que mide otra cosa que
+   la que dice medir no sirve de vara. */
 const p = await nav.newPage({
-  viewport: { width: ANCHO, height: 740 }, deviceScaleFactor: 3,
-  isMobile: true, hasTouch: true,
+  viewport: { width: ANCHO, height: 740 }, deviceScaleFactor: 3, hasTouch: true,
 });
 await p.addInitScript(o => { window.ONX_API = o; window.ONX_WALLET = o; }, ORIGEN);
 
@@ -293,12 +294,29 @@ console.log('\n── cancelar una orden, con el dedo ────────�
     });
     decir(alcanzable.ok, 'se puede LLEGAR al botón «Cancelar» con el dedo', alcanzable.por);
 
-    // Y que llegar sirva: se toca y la orden se va de verdad.
-    await p.locator('#vm-ordenes button').first().scrollIntoViewIfNeeded();
-    await p.locator('#vm-ordenes button').first().click();
+    /* Y que llegar sirva: se TOCA de verdad, con el dedo y sin trampas.
+       Nada de `dispatchEvent`: el clic sintético atraviesa cualquier cosa que
+       esté encima, y «hay algo encima del botón» es exactamente uno de los
+       fallos que esta prueba busca. Si el toque no llega, Playwright espera
+       hasta el plazo y eso ES el resultado — se anota y se sigue. */
+    let toco = true, porQue = '';
+    try {
+      await p.locator('#vm-ordenes button').first().scrollIntoViewIfNeeded({ timeout: 5000 });
+      await p.locator('#vm-ordenes button').first().click({ timeout: 8000 });
+    } catch (e) {
+      toco = false;
+      porQue = /intercepts pointer events/.test(String(e?.message || ''))
+        ? 'algo se pone encima del botón y se come el toque'
+        : 'el toque no llegó al botón';
+    }
     await p.waitForTimeout(1200);
     const quedan = await p.evaluate(() => document.querySelectorAll('#vm-ordenes button').length);
-    decir(quedan === 0, 'y tocarlo cancela la orden: el saldo reservado vuelve', `quedan ${quedan}`);
+    /* Se exige TAMBIEN que fuera alcanzable: `scrollIntoViewIfNeeded` mueve la
+       página aunque el CSS no deje desplazarla —es una orden del guion, no un
+       dedo— así que sin esta condición un botón irrecortablemente fuera de
+       pantalla se cancelaría igual y la prueba diría que todo bien. */
+    decir(toco && quedan === 0 && alcanzable.ok, 'y tocarlo cancela la orden: el saldo reservado vuelve',
+      porQue || (alcanzable.ok ? `quedan ${quedan}` : 'la cancelación funciona, pero al botón no se llega con el dedo'));
   }
 
   const d = await desbordes();

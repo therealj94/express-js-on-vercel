@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node app.js",
-    "probar": "node pruebas/probar-motor.mjs && node pruebas/probar-motor-tratos.mjs && node pruebas/probar-ledger.mjs && node pruebas/probar-velas.mjs && node pruebas/probar-referencia.mjs && node pruebas/probar-precio-declarado.mjs && node pruebas/probar-vigia-compras.mjs && node pruebas/probar-fiat.mjs && node pruebas/probar-retiros.mjs"
+    "probar": "node pruebas/probar-motor.mjs && node pruebas/probar-motor-tratos.mjs && node pruebas/probar-ledger.mjs && node pruebas/probar-velas.mjs && node pruebas/probar-referencia.mjs && node pruebas/probar-precio-declarado.mjs && node pruebas/probar-vigia-compras.mjs && node pruebas/probar-fiat.mjs && node pruebas/probar-retiros.mjs && node pruebas/probar-freno.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",
