@@ -144,10 +144,28 @@ tbody tr:hover{background:rgba(255,255,255,.035)}
 
 #capa{position:fixed;inset:0;background:rgba(0,8,9,.72);backdrop-filter:blur(3px);z-index:50;display:none}
 #capa.abierta{display:block}
+/* EL CAJON CERRADO TENIA QUE DEJAR DE EXISTIR, NO SOLO DE VERSE.
+   Aparcado con `translateX(100%)` el cajon esta fuera del cristal, pero para el
+   navegador sigue estando: se comprobo que el boton «Cerrar» de un cajon
+   CERRADO recibe el foco del teclado, asi que tabulando desde la cabecera te
+   metias en una ficha que no se ve, y un lector de pantalla la lee entera.
+   `visibility:hidden` lo saca de las dos cosas a la vez, del orden de
+   tabulacion y del arbol de accesibilidad, sin tocar la animacion.
+
+   El retardo de la transicion es la pieza fina: al CERRAR, `visibility` espera
+   los .22s que dura el deslizamiento (`0s linear .22s`) para que el cajon se
+   vea salir en vez de desaparecer de golpe; al ABRIR salta en el acto (`0s`),
+   porque un cajon que aparece a medio camino se ve roto.
+
+   De paso deja de contaminar la medida: el barrido de moviles daba cuatro
+   elementos «fuera del ancho» en TODAS las pantallas del panel, y los cuatro
+   eran este cajon aparcado. Cuatro fallos fijos que hay que aprender a ignorar
+   son la forma mas rapida de que se deje de leer el informe entero. */
 #ficha{position:fixed;top:0;right:0;bottom:0;width:min(760px,100%);background:var(--bg);
- border-left:1px solid var(--line);z-index:51;transform:translateX(100%);transition:transform .22s;
+ border-left:1px solid var(--line);z-index:51;transform:translateX(100%);
+ visibility:hidden;transition:transform .22s,visibility 0s linear .22s;
  display:flex;flex-direction:column}
-#ficha.abierta{transform:none}
+#ficha.abierta{transform:none;visibility:visible;transition:transform .22s,visibility 0s}
 .fichaCab{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line2)}
 .fichaCab h2{margin:0;flex:1;font-size:16px}
 .fichaCuerpo{padding:20px;overflow-y:auto;flex:1}
@@ -170,7 +188,31 @@ pre{background:#0F1927;border:1px solid var(--line2);border-radius:10px;padding:
  border:1px solid var(--line);border-radius:11px;padding:11px 18px;z-index:99;font-size:13px;display:none}
 .aguja.ver{display:block}
 .aguja.mal{border-color:var(--bad);color:var(--bad)}
-@media(max-width:640px){main{padding:14px}.fichaCuerpo{padding:14px}}
+@media(max-width:640px){main{padding:14px}.fichaCuerpo{padding:14px}
+
+  /* EL NOMBRE DE LA OPERADORA, EN SU PROPIO RENGLON.
+     `.quien` es una fila de cuatro piezas: el nombre, el sello del rol, el
+     boton del segundo factor y SALIR. Los tres ultimos no encogen, asi que al
+     nombre le quedaba una columna de una palabra de ancho y
+     «Mayra Carolina Enamorado Alvarez» caia en CUATRO renglones, uno por
+     palabra, en una tira vertical pegada al borde izquierdo. Medido a 360 px:
+     cuatro renglones antes, uno despues, y la cabecera de 167 a 154 px.
+
+     El alto importa poco; lo que estaba mal era la FORMA. Un nombre repartido
+     en cuatro renglones de una palabra no se lee como un nombre, se lee como
+     una pagina rota, y es lo primero que ve quien entra a decidir sobre la
+     identidad de otro.
+
+     No lo cazaba ninguna medida automatica y por eso conviene dejarlo escrito:
+     nada se salia del ancho. El fallo no era desbordar, era APLASTARSE, y eso
+     solo se ve mirando.
+
+     El nombre pasa a ocupar la fila entera y los mandos bajan a la siguiente.
+     `anywhere` es para el caso feo de verdad: cuando no hay nombre, ahi va el
+     correo, y un correo largo es una sola palabra sin donde partirse. */
+  .quien{flex-wrap:wrap;width:100%;margin-left:0;row-gap:8px}
+  #qNombre{flex:1 1 100%;min-width:0;overflow-wrap:anywhere}
+}
 
 /* ══ LAS IMÁGENES DE LA REVISIÓN ══════════════════════════════════════════
    La tira de fotos y la lupa. Van juntas y con sitio: el operador tiene que
@@ -1763,8 +1805,17 @@ VISTAS.bitacora = async function () {
       <div id="sello-aviso" class="aviso oculto" style="margin:10px 0"></div>
       <button class="btn" id="sello-btn" onclick="sellarBitacora()">Sellar y abrir tramo nuevo</button>
     </div>` : ''}
+    ${/* `scroll` NO es decoracion: era la unica tabla del panel sin riel. Todas
+          las demas van en `tarjeta scroll`; a esta se le quedo la palabra, y
+          como `.tarjeta` lleva `overflow:hidden` y `table` un `min-width` de
+          720 px, en un telefono de 360 no se desplazaba: se RECORTABA. Lo que
+          quedaba fuera del borde era la tercera columna, «Entradas hasta
+          entonces», que es la que dice cuanto registro habia antes de la
+          rotura. Un operador que abriera esto desde el telefono leia que la
+          bitacora se rompio y no podia leer el alcance, sin ninguna señal de
+          que le faltaba una columna. */''}
     ${d.cadena.sellos && d.cadena.sellos.length ? `
-    <div class="tarjeta">
+    <div class="tarjeta scroll">
       <h3 style="margin:0 0 8px">Roturas ya declaradas</h3>
       <table><thead><tr><th>Fecha</th><th>Rotura en</th><th>Entradas hasta entonces</th></tr></thead><tbody>
       ${d.cadena.sellos.map((s) => `<tr>

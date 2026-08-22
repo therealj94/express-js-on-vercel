@@ -208,9 +208,33 @@ h1,h2,h3,.disp{font-family:var(--disp);font-weight:600;letter-spacing:-.02em}
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .techo .tm{display:flex;align-items:center;gap:10px;font-family:var(--disp);font-weight:800;font-size:17px;letter-spacing:-.02em}
 .techo .tm img{width:28px;height:28px;border-radius:8px}
-.idiomas{display:flex;border:1px solid var(--borde);border-radius:100px;overflow:hidden;background:rgba(23,18,36,.7)}
+.idiomas{display:flex;flex:none;border:1px solid var(--borde);border-radius:100px;overflow:hidden;background:rgba(23,18,36,.7)}
 .idiomas button{padding:7px 14px;font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--niebla2);transition:.2s}
 .idiomas button[aria-pressed=true]{background:linear-gradient(100deg,var(--violeta),var(--azul));color:#fff}
+
+/* EL TECHO EN UN TELEFONO.
+   Las tres piezas del techo miden juntas unos 370 px y a 360 px solo quedaban
+   324 libres: el que se salia era el grupo ES/EN, o sea el ultimo de la fila.
+   Medido antes: el boton EN terminaba en 401 px de una pantalla de 360, y a
+   320 px se salian los dos. Como el techo es `position:fixed`, la pagina no
+   crecia ni aparecia barra de desplazamiento: el boton simplemente quedaba
+   fuera del cristal, sin gesto que lo trajera. Quien abriera la pagina en
+   ingles no tenia como volver al español.
+
+   El reparto sigue el mismo criterio que AuCorp, que ya lo tenia resuelto: el
+   idioma NUNCA cede ancho (`flex:none`, arriba) porque es un mando y a medio
+   mando no se llega; la marca encoge de tamaño; y lo unico que se estruja de
+   verdad es el enlace al ecosistema, que es secundario. Se estruja, no se
+   esconde: sigue siendo la unica salida hacia el resto de la casa. */
+@media (max-width:520px){
+  .techo{padding-left:14px;padding-right:14px;gap:10px}
+  .techo .tm{font-size:15px;flex:none;min-width:0}
+  .techo .tm img{width:24px;height:24px}
+  /* `min-width:0` ademas del recorte: sin el, un hijo de flex se niega a bajar
+     de su contenido minimo y el ellipsis no llega a activarse nunca. */
+  .techo>a.btn{flex:0 1 auto;min-width:0;padding-left:12px;padding-right:12px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;line-height:1.5}
+}
 
 #bienvenida{position:relative;min-height:min(100svh,880px);display:grid;align-items:center;
   grid-template-columns:minmax(0,6fr) minmax(0,5fr);gap:clamp(20px,3.5vw,54px);

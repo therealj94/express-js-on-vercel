@@ -93,13 +93,29 @@ function medir(ancho) {
     /* Se salta lo que es a propósito ancho y vive dentro de su propio riel de
        desplazamiento: una tabla dentro de un contenedor con `overflow-x:auto`
        está BIEN, y contarla sería enseñar a ignorar el informe. */
-    let dentroDeRiel = false;
+    let dentroDeRiel = false, recortadoPor = null;
     for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
       const ov = getComputedStyle(p).overflowX;
       if (ov === 'auto' || ov === 'scroll') { dentroDeRiel = true; break; }
+      if (!recortadoPor && (ov === 'hidden' || ov === 'clip')) recortadoPor = p;
     }
 
-    if (!dentroDeRiel && (r.right > ancho + 1 || r.left < -1)) {
+    /* EL ADORNO QUE SANGRA A PROPOSITO.
+       Recortar suele ser lo peor que puede pasar (de eso avisa el encabezado:
+       lo que sobra se pierde y no hay gesto que lo traiga), pero eso vale
+       cuando lo que sobra ES ALGO. Un halo de color, una veladura, un degradado
+       de fondo: sin texto, sin hijos, sin toque, y con su padre recortandolo
+       adrede porque sangrar por el borde es justamente el efecto. Ahi no hay
+       nada que alcanzar, y perder un trozo no cuesta nada.
+       Las tres condiciones van JUNTAS y son estrechas a proposito. En cuanto un
+       elemento lleve una letra, un hijo o un toque, vuelve a contar: la tabla
+       recortada de Ordenex escondia el boton «Cancelar», y ese fallo tiene que
+       seguir saliendo en rojo. */
+    const adorno = recortadoPor && !dentroDeRiel
+      && !(el.textContent || '').trim() && el.children.length === 0
+      && getComputedStyle(el).pointerEvents === 'none';
+
+    if (!dentroDeRiel && !adorno && (r.right > ancho + 1 || r.left < -1)) {
       const tag = el.tagName.toLowerCase();
       const cls = (el.className && typeof el.className === 'string')
         ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '';

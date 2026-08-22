@@ -135,7 +135,22 @@ nav a:hover{color:var(--cianLt)}
   position:relative}
 @media (max-width:920px){.heroe .rej{grid-template-columns:minmax(0,1fr)}
   .heroe .n{order:-1;max-width:190px}}
-h1{font-size:clamp(38px,6.4vw,74px)}
+/* El minimo del clamp era 38px fijo, y una palabra sola de la casa
+   («infraestructura.», «infrastructure.») mide a ese cuerpo unos 331 px de
+   monoespaciada. La caja util de la pagina son 40 px menos que la pantalla, asi
+   que la palabra deja de caber por debajo de unos 371 px de ancho: en un
+   telefono de 320 se salia 71 px por la derecha y arrastraba la pagina con
+   ella.
+
+   `anywhere` va de red, no de arreglo: si alguna traduccion trae una palabra
+   todavia mas larga, preferimos partirla a perder el final del titular. */
+h1{font-size:clamp(38px,6.4vw,74px);overflow-wrap:anywhere}
+/* El cuerpo baja SOLO donde la palabra no cabe. Se penso en abrir el minimo del
+   `clamp` con vw, pero eso encogia el titular tambien a 390 y a 412 px, donde
+   nunca hubo problema, y a 594 lo agrandaba: se habria cambiado el diseño en
+   media escalera de anchos para arreglar dos. Este corte deja intacto todo lo
+   que ya funcionaba y toca unicamente el tramo roto. */
+@media (max-width:380px){ .heroe h1{font-size:30px} }
 h1 .c{color:var(--cianLt)}
 h1 .v{color:var(--violetaLt)}
 .bajada{margin-top:26px;font-size:20px;line-height:1.6;color:var(--niebla);max-width:56ch}
@@ -162,7 +177,13 @@ h1 .v{color:var(--violetaLt)}
 .ficha.viva .k::before{content:'●';color:var(--cian);margin-right:7px;font-size:9px;vertical-align:2px}
 
 /* ═══ CAPACIDADES ════════════════════════════════════════════════════════════ */
-.rejC{display:grid;gap:0;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));margin-top:44px;
+/* `minmax(320px,1fr)` NO encoge por debajo de esos 320 px: es un minimo duro,
+   no una preferencia. En un telefono de 320 px la caja util son 280, asi que
+   cada capacidad se plantaba en 320 y empujaba el documento a 340: la pagina
+   entera se desplazaba de lado y el borde derecho de las seis tarjetas
+   quedaba cortado. El `min(320px,100%)` deja el mismo reparto en pantallas
+   anchas y solo cede cuando no queda mas remedio, que es justo el trato. */
+.rejC{display:grid;gap:0;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));margin-top:44px;
   border-top:1px solid var(--linea)}
 .cap{padding:28px 26px 30px;border-bottom:1px solid var(--linea);border-right:1px solid var(--linea)}
 .cap:nth-child(3n){border-right:0}
