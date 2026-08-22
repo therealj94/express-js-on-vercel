@@ -645,7 +645,15 @@ const VMERCADO = (() => {
       align-items:start;margin-top:16px}
     @media (max-width:1380px){.vm-rejilla{grid-template-columns:minmax(0,1fr) 318px}
       .vm-lista{display:none}}
-    @media (max-width:1100px){.vm-rejilla{grid-template-columns:1fr}}
+    /* minmax(0,1fr) y no 1fr, que es lo mismo que ya usan las dos reglas de
+       arriba. Un 1fr a secas significa minmax(auto,1fr), y ese auto es el
+       MÍNIMO DEL CONTENIDO: cualquier cosa ancha de dentro empuja la columna y
+       con ella la sala entera. Es exactamente lo que pasaba a 320 px — la tira
+       de «Tratos · ORIGEN / Referencia · USD» mide 287, no encoge porque es una
+       pastilla, y arrastraba el panel a 329 dentro de una pantalla de 320. Con
+       el mínimo en cero la columna manda sobre su contenido y lo ancho se
+       arregla dentro, en su propio riel. */
+    @media (max-width:1100px){.vm-rejilla{grid-template-columns:minmax(0,1fr)}}
 
     /* ═══ LA LISTA DE MERCADOS DE LA SALA ═══════════════════════════════════
        Con buscador y favoritos. Los favoritos van arriba y viven en el
@@ -784,7 +792,17 @@ const VMERCADO = (() => {
        una regla vieja que pisa a la nueva y rompe la pantalla entera. */
     body.en-mercado .vm-rejilla{grid-template-columns:248px minmax(0,1fr) 356px}
     @media (max-width:1380px){body.en-mercado .vm-rejilla{grid-template-columns:minmax(0,1fr) 340px}}
-    @media (max-width:1100px){body.en-mercado .vm-rejilla{grid-template-columns:1fr}}
+    /* Ésta es la regla que de verdad manda en la sala: lleva body.en-mercado
+       delante, y una media query no suma especificidad — así que gana sobre la
+       de .vm-rejilla a secas por mucho que aquélla esté más abajo. Ojo con eso
+       al tocar cualquiera de las dos.
+       Y va en minmax(0,1fr) como sus dos hermanas de arriba, y no en 1fr. Un
+       1fr a secas es minmax(auto,1fr), y ese auto es el mínimo del
+       contenido: la tira de «Tratos · ORIGEN / Referencia · USD» mide 287 px,
+       no encoge porque es una pastilla, y empujaba la columna a 329 dentro de
+       una pantalla de 320 — la sala entera se salía por 25 px. En 360 entraba
+       por poco: por eso nadie lo vio. */
+    @media (max-width:1100px){body.en-mercado .vm-rejilla{grid-template-columns:minmax(0,1fr)}}
     .vm-nota{position:absolute;inset:0;display:grid;place-items:center;text-align:center;
       color:var(--humo);font-size:13px;line-height:1.6;padding:0 20px;pointer-events:none}
 
@@ -921,6 +939,7 @@ const VMERCADO = (() => {
       .vm-max{min-height:40px;padding:0 8px}
       /* Y la equis que cancela una orden abierta: 12 px de aspa. */
       .vm-mia .x{min-width:40px;min-height:40px;font-size:15px}
+
 
       /* Las filas del libro. Una fila del libro es un botón —se toca para que
          su precio caiga en el formulario— y medía 26 px de alto. Se sube a 40

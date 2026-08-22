@@ -115,13 +115,36 @@ function medir(ancho) {
       && !(el.textContent || '').trim() && el.children.length === 0
       && getComputedStyle(el).pointerEvents === 'none';
 
-    if (!dentroDeRiel && !adorno && (r.right > ancho + 1 || r.left < -1)) {
+    /* LA TINTA, NO LA CAJA.
+       Preguntarle el rectangulo a un elemento dice donde esta su CAJA, y una
+       caja puede quedar perfectamente dentro de su fila mientras las LETRAS se
+       dibujan fuera. Paso de verdad en la lista de agentes de Ordenex: la caja
+       del nombre medía 33 px, comodamente dentro, y el texto llegaba a 239 con
+       el boton empezando en 136 — las letras se pintaban debajo del boton, y la
+       medicion decia que todo iba bien.
+       Un `Range` sobre el nodo de texto devuelve donde esta la tinta de verdad.
+       Se toma el borde mas lejano de los dos. */
+    let derTinta = r.right, izqTinta = r.left;
+    if (el.children.length === 0 && el.firstChild && el.firstChild.nodeType === 3) {
+      const g = document.createRange();
+      g.selectNodeContents(el.firstChild);
+      for (const t of g.getClientRects()) {
+        if (t.width <= 0 || t.height <= 0) continue;
+        if (t.right > derTinta) derTinta = t.right;
+        if (t.left < izqTinta) izqTinta = t.left;
+      }
+    }
+
+    if (!dentroDeRiel && !adorno && (derTinta > ancho + 1 || izqTinta < -1)) {
       const tag = el.tagName.toLowerCase();
       const cls = (el.className && typeof el.className === 'string')
         ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '';
       desbordes.push({
         que: tag + cls,
-        izq: Math.round(r.left), der: Math.round(r.right),
+        izq: Math.round(izqTinta), der: Math.round(derTinta),
+        // Se dice si lo que sobra es la caja o solo la tinta: son dos arreglos
+        // distintos y confundirlos hace perder el rato.
+        soloTinta: Math.round(derTinta) > Math.round(r.right) || Math.round(izqTinta) < Math.round(r.left),
         texto: (el.textContent || '').trim().slice(0, 40),
       });
     }
@@ -201,7 +224,7 @@ try {
       if (m.cuantosDesbordes) {
         malo(`${m.cuantosDesbordes} elemento(s) fuera del ancho`);
         for (const d of m.desbordes) {
-          console.log(`          ${d.que}  [${d.izq} → ${d.der}]  «${d.texto}»`);
+          console.log(`          ${d.que}  [${d.izq} → ${d.der}]${d.soloTinta ? '  (se sale la TINTA, no la caja)' : ''}  «${d.texto}»`);
         }
       } else {
         console.log('  ok    nada se sale del ancho');

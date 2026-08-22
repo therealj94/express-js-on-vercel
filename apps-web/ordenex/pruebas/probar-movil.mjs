@@ -21,8 +21,34 @@
  * y mide los numeros para que la proxima regresion se lea como un numero y no
  * como una impresion.
  *
+ * LO QUE SE LE FUE SUMANDO, Y QUE ENSEÑA CADA COSA
+ *
+ *   5. La portada EN INGLES. El boton de entrar no envuelve y en ingles dice
+ *      «Sign in with my Veta Wallet account»: sus 371 px eran el ancho minimo
+ *      de la columna, y la portada entera se desplazaba a lo ancho en 320 y en
+ *      360. Un fallo que vive solo en el segundo idioma es la regla, no la
+ *      excepcion — nadie prueba la pagina en el idioma que no habla.
+ *   6. El blanco de toque de los MANDOS. 40 px, y solo a lo que elige, envia,
+ *      cancela o cierra sesion. Un enlace de texto dentro de una frase no
+ *      entra en la lista: engordarlo partiria la frase.
+ *   7. Un nombre largo al lado de un boton. El fallo de Jose, reproducido acá:
+ *      la caja del nombre se queda en 33 px, perfectamente dentro de la fila,
+ *      y las LETRAS se dibujan encima del boton. Por eso se mide la tinta y no
+ *      la caja — preguntarle su rectangulo al elemento diria que todo va bien.
+ *   8. La grafica a 360 y a 320. El lienzo salia mas alto que ancho, y la
+ *      leyenda con precios de nueve cifras se pintaba fuera del canvas: la
+ *      mitad de los datos estaba dibujada donde no hay pantalla.
+ *   9. El teclado. No empuja la pagina: le recorta la ventana, y las pestañas
+ *      fijas suben con el y se plantan encima del campo que se teclea.
+ *
+ * Y una regla que se paga cara: cada comprobacion de aca se verifico POR
+ * MUTACION — quitando el arreglo y viendo el rojo. Una prueba que no se ha
+ * visto fallar no es una prueba, es una frase de buenos deseos.
+ *
  * ONX_RAIZ apunta a otra copia de la web (por ejemplo una sacada de git) para
- * poder medir el antes y el despues con la MISMA vara.
+ * poder medir el antes y el despues con la MISMA vara. Es tambien lo que hace
+ * barata la mutacion: se copia la web, se le quita un arreglo y se corre esto
+ * contra la copia, sin tocar la de verdad.
  */
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
@@ -682,6 +708,61 @@ console.log('\n── la gráfica de velas, a 360 px ─────────
       'y entre renglón y renglón queda aire: la etiqueta no cuelga del número de arriba',
       `${st.minHueco}px de hueco · ${st.par}`);
   }
+}
+
+// ── 8b · Y LA MISMA SALA EN 320 px ────────────────────────────────────────
+/* 360 es el ancho de la prueba porque es el más común, pero el iPhone SE y los
+   Android baratos que se siguen vendiendo acá miden 320. Y la sala de mercado
+   se salía por 25 px justo ahí, en 320 y no en 360: la tira de fuentes
+   —«Tratos · ORIGEN» y «Referencia · USD»— mide 287 px y no encoge, porque es
+   una pastilla; la columna de la rejilla era `1fr`, o sea `minmax(auto,1fr)`,
+   y ese `auto` es el mínimo del contenido, así que la tira empujaba la columna
+   a 329 y con ella la gráfica, el formulario y el libro.
+
+   En 360 entraba por poco y por eso no se veía. 40 px de diferencia entre «se
+   ve bien» y «la sala entera se sale de la pantalla» es exactamente el motivo
+   de medir en más de un ancho. */
+console.log('\n── la misma sala, en 320 px ──────────────────────────────────');
+{
+  const ANGOSTO = 320;
+  await p.setViewportSize({ width: ANGOSTO, height: 740 });
+  await p.evaluate(() => ONX.vista('mercado', 'AGKA-ORIGEN'));
+  await p.waitForTimeout(2000);
+
+  const d = await p.evaluate((ancho) => {
+    const fuera = [];
+    document.querySelectorAll('#lienzo *').forEach(el => {
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height || r.right <= ancho + 1) return;
+      let padre = el.parentElement, veredicto = 'suelto';
+      while (padre && padre !== document.body) {
+        const s = getComputedStyle(padre);
+        if (/auto|scroll/.test(s.overflowX)) { veredicto = 'riel'; break; }
+        if (/hidden|clip/.test(s.overflowX)) { veredicto = 'recortado'; break; }
+        padre = padre.parentElement;
+      }
+      if (veredicto === 'riel') return;
+      fuera.push({ que: el.tagName.toLowerCase() + (el.className && typeof el.className === 'string'
+        ? '.' + el.className.trim().split(/\s+/)[0] : ''), der: Math.round(r.right), como: veredicto });
+    });
+    const c = document.getElementById('vm-velas');
+    const rc = c ? c.getBoundingClientRect() : null;
+    return {
+      documento: document.documentElement.scrollWidth,
+      fuera: fuera.slice(0, 6),
+      lienzo: rc ? { w: Math.round(rc.width), h: Math.round(rc.height) } : null,
+    };
+  }, ANGOSTO);
+
+  decir(d.documento <= ANGOSTO, 'a 320 px la página tampoco se desplaza a lo ancho',
+    `documento ${d.documento}px`);
+  decir(d.fuera.length === 0, 'y en la sala de mercado no se sale nada',
+    d.fuera.length ? JSON.stringify(d.fuera) : 'nada fuera');
+  decir(!!d.lienzo && d.lienzo.w > d.lienzo.h, 'la gráfica sigue siendo apaisada a 320 px',
+    d.lienzo ? `${d.lienzo.w}×${d.lienzo.h}` : 'no hay lienzo');
+
+  await p.setViewportSize({ width: ANCHO, height: 740 });
+  await p.waitForTimeout(400);
 }
 
 // ── 9 · EL TECLADO NO TAPA EL CAMPO ───────────────────────────────────────
