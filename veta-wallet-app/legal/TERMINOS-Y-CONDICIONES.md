@@ -2,7 +2,7 @@
 
 **Operador:** Orden Global Corp
 **Última actualización:** 31 de julio de 2026
-**Contacto:** info@ordenglobal.org
+**Contacto:** soporte@vetawallet.com
 
 Al crear una cuenta aceptás estos términos. Si no estás de acuerdo con alguno,
 no uses la aplicación.
@@ -172,5 +172,5 @@ Orden Global Corp. Cualquier disputa se somete a sus tribunales competentes.
 ## 14. Contacto
 
 **Orden Global Corp**
-info@ordenglobal.org
+soporte@vetawallet.com
 https://vetawallet.com

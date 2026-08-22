@@ -3,7 +3,7 @@
 **Responsable del tratamiento:** Orden Global Corp
 **Aplicación:** Veta Wallet (Android / iOS)
 **Última actualización:** 31 de julio de 2026
-**Contacto:** info@ordenglobal.org
+**Contacto:** privacidad@vetawallet.com
 
 ---
 
@@ -134,7 +134,7 @@ plazo, aunque la persona cierre la cuenta.
 
 ## 7. Tus derechos
 
-Podés ejercerlos escribiendo a **info@ordenglobal.org**. Respondemos
+Podés ejercerlos escribiendo a **privacidad@vetawallet.com**. Respondemos
 dentro de los 30 días.
 
 | Derecho | Qué podés hacer |
@@ -198,6 +198,6 @@ que entre en vigor. La fecha de arriba siempre indica la última versión.
 ## 11. Contacto
 
 **Orden Global Corp**
-Correo de privacidad: info@ordenglobal.org
-Soporte: info@ordenglobal.org
+Correo de privacidad: privacidad@vetawallet.com
+Soporte: soporte@vetawallet.com
 Sitio: https://vetawallet.com
