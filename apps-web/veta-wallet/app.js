@@ -7864,7 +7864,7 @@ const VETA = (() => {
                 aria-label="${t('cha.volverCasa')}">
           <svg viewBox="0 0 24 24">${ICO.atras}</svg>
         </button>
-        <span class="cha-quien"><b>${esc(titulo)}</b></span>
+        <span class="cha-quien"><b title="${esc(titulo)}">${esc(titulo)}</b></span>
       </div>`;
 
   function chatHilo() {
@@ -7962,7 +7962,11 @@ const VETA = (() => {
         <button class="cha-quien-btn" onclick="VETA.chatVerFicha()" title="${t('cha.verFicha')}">
           ${chatAvatar(c)}
           <span class="cha-quien">
-            <b>${esc(c.nombre)}</b>
+            ${/* El nombre entero va en el atributo: se acorta en pantalla para
+                 que no se meta debajo de los botones, y asi sigue estando
+                 disponible al mantener el dedo encima y para un lector de
+                 pantalla. Acortar no puede significar perder el dato. */''}
+            <b title="${esc(c.nombre)}">${esc(c.nombre)}</b>
             <small>${esc(c.esGrupo ? t('cha.esGrupo') : (c.gid || c.id))}</small>
           </span>
         </button>
