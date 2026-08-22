@@ -219,12 +219,27 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email: email });
+    /* EL MISMO MENSAJE, LETRA POR LETRA, EN LOS TRES CASOS.
+     *
+     * Antes decia "wrong email or password" cuando el correo no existia y
+     * "Wrong email or password" -con W mayuscula- cuando existia pero fallaba
+     * la contrasenia. Una mayuscula de diferencia, y con eso cualquiera podia
+     * preguntarle al servidor si una direccion tiene cuenta aqui: se prueba
+     * una lista de correos y se separan por la letra inicial de la respuesta.
+     *
+     * Eso es justo lo que el codigo ya evitaba unas lineas mas abajo con las
+     * cuentas eliminadas, y por el mismo motivo: quien tenga cuenta en una
+     * billetera no tiene por que ser publico. Se descubrio al comprobar un
+     * cambio de correo, porque la diferencia servia para saber cual de los dos
+     * encontraba el servidor.
+     *
+     * Se deja el de minuscula, que es el que ya devolvia el caso mas comun. */
     if (!user) {
       return res.status(401).json({ message: "wrong email or password" });
     }
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: "Wrong email or password" });
+      return res.status(401).json({ message: "wrong email or password" });
     }
     // Cuenta eliminada. El mismo mensaje generico que un password malo: decir
     // "esta cuenta fue eliminada" le confirma a un tercero que ese correo
