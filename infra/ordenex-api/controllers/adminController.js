@@ -283,16 +283,22 @@ async function barrer(req, res) {
 async function estado(req, res) {
   let conteos;
   try {
-    const [usuarios, agentes, ordenesAbiertas, retirosPendientes, porEstado] = await Promise.all([
+    const [usuarios, agentes, ordenesAbiertas, retirosPendientes, retirosEnRevision, porEstado] = await Promise.all([
       Usuario.countDocuments({}),
       Agente.countDocuments({ activo: true }),
       Orden.countDocuments({ estado: 'abierta' }),
       Retiro.countDocuments({ estado: 'pendiente' }),
+      // Los retiros EN DUDA, que son otra cosa que los pendientes y por eso
+      // se cuentan aparte: un `revision` es un debito en pie cuya transaccion
+      // nadie sabe si salio, y hasta que un humano mire la cadena ese saldo no
+      // se toca. Si no aparece en el panel, no lo mira nadie: un estado que
+      // pide revision y no se ve es un estado que se queda ahi para siempre.
+      Retiro.countDocuments({ estado: 'revision' }),
       Solicitud.aggregate([{ $group: { _id: '$estado', n: { $sum: 1 } } }]),
     ]);
     const solicitudes = {};
     for (const s of porEstado) solicitudes[s._id] = s.n;
-    conteos = { usuarios, agentes, ordenesAbiertas, retirosPendientes, solicitudes };
+    conteos = { usuarios, agentes, ordenesAbiertas, retirosPendientes, retirosEnRevision, solicitudes };
   } catch (e) {
     console.error(`[admin] estado: mongo no contesto: ${e.message}`);
     return res.status(503).json({ error: 'No se pudo leer el estado.', codigo: 'NO_SE_PUDO_LEER' });
