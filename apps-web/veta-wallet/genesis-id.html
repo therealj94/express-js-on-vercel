@@ -90,6 +90,15 @@ footer{border-top:1px solid var(--linea);padding:24px 0 40px;color:#6C918E;font-
 
 <p class="entradilla" data-en="It is the group's identity record. You verify it once and it works in Veta Wallet, in MyTokenPay and across the rest of the Orden Global services, without repeating the process in each one.">Es el registro de identidad del grupo. Lo verificás una vez y vale en Veta Wallet, en MyTokenPay y en el resto de los servicios de Orden Global, sin repetir el trámite en cada uno.</p>
 
+<!-- EL BOTON, ANTES DE LA EXPLICACION.
+     Estaba al final, despues de dos pantallas de texto y de una seccion
+     titulada «Que NO hace». Quien llegaba con ganas se las gastaba leyendo.
+     Se lee para decidirse, no para encontrar por donde se empieza. -->
+<p style="margin:26px 0 4px">
+  <a class="btn btn-oro" href="/#verificar" data-en="Verify me">Verificarme</a>
+</p>
+<p style="margin:0;font-size:14px;color:var(--mut)" data-en="Three steps, from this browser. Nothing to install.">Tres pasos, desde este mismo navegador. Nada que instalar.</p>
+
 <hr>
 
 <h2 data-en="What it is for">Para qué sirve</h2>
@@ -104,8 +113,6 @@ footer{border-top:1px solid var(--linea);padding:24px 0 40px;color:#6C918E;font-
 <hr>
 
 <h2 data-en="What data it asks for">Qué datos te pide</h2>
-<p data-en="Three steps. You can do them from the browser, without installing anything.">Tres pasos. Podés hacerlos desde el navegador, sin instalar nada.</p>
-
 <ol class="pasos">
   <li><span>
     <b data-en="Your details">Tus datos</b>
@@ -125,13 +132,15 @@ footer{border-top:1px solid var(--linea);padding:24px 0 40px;color:#6C918E;font-
 
 <hr>
 
-<h2 data-en="What it does NOT do">Qué NO hace</h2>
-
-<div class="caja no">
-  <h3 data-en="This website does not approve identities">Esta web no aprueba identidades</h3>
-  <p data-en="Here you complete the request and we send it. Who reviews it and who decides is Genesis, with a person from the compliance team looking at your data. Neither this page, nor the app, nor anyone at Veta Wallet can grant you the &ldquo;verified&rdquo; status.">Acá completás la solicitud y la enviamos. Quien la revisa y quien decide es Genesis, con una persona del equipo de cumplimiento mirando tus datos. Ni esta página, ni la app, ni nadie de Veta Wallet puede darte el &laquo;verificada&raquo;.</p>
-  <p data-en="For the same reason, it is neither instant nor automatic. It can take a while.">Por lo mismo, no es instantánea ni automática. Puede tardar.</p>
-</div>
+<!-- ESTA SECCION SE LLAMABA «QUE NO HACE» Y ABRIA CON UNA CAJA QUE DECIA
+     «esta web no aprueba identidades», «no es instantanea ni automatica, puede
+     tardar». Todo cierto, y todo puesto justo donde le quitaba las ganas a
+     quien venia a completarlo.
+     Lo que queda es lo mismo pero por el otro lado: no son limitaciones, son
+     promesas. Y la primera NO SE TOCA por mucho que se quiera acortar: es la
+     que impide que alguien caiga en una pagina que imite a esta y le pida la
+     frase de respaldo. Quitarla haria dano de verdad. -->
+<h2 data-en="What you can take for granted">Lo que podés dar por seguro</h2>
 
 <ul>
   <li data-en="<strong>It does not ask for your recovery phrase or your private key.</strong> Ever. If someone asks for them in the name of Veta Wallet or Genesis ID, it is a fraud."><strong>No te pide tu frase de respaldo ni tu clave privada.</strong> Nunca. Si alguien te las pide en nombre de Veta Wallet o de Genesis ID, es un fraude.</li>
@@ -146,9 +155,9 @@ footer{border-top:1px solid var(--linea);padding:24px 0 40px;color:#6C918E;font-
 <h2 data-en="What happens after you send it">Qué pasa después de enviarla</h2>
 <p data-en="You will see one of these states in your account, and it will tell the truth even when the truth is &ldquo;nothing yet&rdquo;:">Vas a ver uno de estos estados en tu cuenta, y va a decir la verdad aunque la verdad sea &laquo;todavía nada&raquo;:</p>
 <ul class="estados">
-  <li><span class="pip rev"></span><span><strong data-en="Under review">En revisión</strong> &mdash; <span data-en="your request reached Genesis and a person is looking at it. We will let you know as soon as there is an answer.">tu solicitud llegó a Genesis y una persona la está mirando. Te avisamos apenas haya respuesta.</span></span></li>
+  <li><span class="pip rev"></span><span><strong data-en="Under review">En revisión</strong> &mdash; <span data-en="it arrived and we are reviewing it. We will let you know as soon as it is ready.">ya llegó y la estamos revisando. Te avisamos apenas esté.</span></span></li>
   <li><span class="pip ok"></span><span><strong data-en="Verified">Verificada</strong> &mdash; <span data-en="you are verified across the whole ecosystem. Nothing has to be repeated.">quedás verificado en todo el ecosistema. No hay que repetir nada.</span></span></li>
-  <li><span class="pip mal"></span><span><strong data-en="Rejected">Rechazada</strong> &mdash; <span data-en="it did not pass. Write to soporte@vetawallet.com and we will review it with you.">no pasó. Escribinos a soporte@vetawallet.com y lo revisamos con vos.</span></span></li>
+  <li><span class="pip mal"></span><span><strong data-en="Rejected">Rechazada</strong> &mdash; <span data-en="something did not add up. Write to soporte@vetawallet.com and we will look at it with you.">algo no cuadró. Escribinos a soporte@vetawallet.com y lo vemos juntos.</span></span></li>
 </ul>
 <p data-en="If something is missing or a photo cannot be read, we tell you and you can repeat that step.">Si falta algo o la foto no se lee bien, te lo decimos y podés repetir ese paso.</p>
 
@@ -161,22 +170,15 @@ footer{border-top:1px solid var(--linea);padding:24px 0 40px;color:#6C918E;font-
 <p id="promo-sorteo" style="padding:14px 16px;border-left:2px solid #C9A961;background:rgba(201,169,97,.08);border-radius:0 10px 10px 0"
    data-en="Right now verifying has a prize: you enter the raffle for 1 AUKA, which tracks the price of one ounce of gold. It closes September 9, 2026 — rules at vetawallet.com/sorteo-orden-global.">Ahora mismo verificarte tiene premio: participás en el sorteo de 1 AUKA, que sigue el precio de la onza de oro. Cierra el 9 de septiembre de 2026 — bases en vetawallet.com/sorteo-orden-global.</p>
 
-<h2 data-en="Two ways to do it">Dos formas de hacerlo</h2>
-
-<div class="salidas">
-  <div class="salida">
-    <h3 data-en="Here, in the browser">Acá, en el navegador</h3>
-    <p data-en="You complete the three steps from this same site and the request travels to Genesis. You need your Veta Wallet account open; if you do not have one yet, it takes a minute to create.">Completás los tres pasos desde esta misma web y la solicitud viaja a Genesis. Necesitás tu cuenta de Veta Wallet abierta; si todavía no tenés, se crea en un minuto.</p>
-    <a class="btn btn-oro" href="/#verificar" data-en="Verify me here">Verificarme acá</a>
-  </div>
-  <div class="salida">
-    <h3 data-en="From the phone app">Desde la app del teléfono</h3>
-    <p data-en="It is the same account and the same request. Open Veta Wallet on your phone, sign in with your email and go to Settings &rarr; Genesis ID. The phone camera usually reads the document better.">Es la misma cuenta y la misma solicitud. Abrí Veta Wallet en tu teléfono, entrá con tu correo y andá a Ajustes &rarr; Genesis ID. La cámara del teléfono suele leer mejor el documento.</p>
-    <a class="btn btn-linea" href="/" data-en="Go to Veta Wallet">Ir a Veta Wallet</a>
-  </div>
-</div>
-
-<p style="margin-top:22px" data-en="Start wherever you like: what you complete on one side shows up on the other.">Empezá por donde quieras: lo que dejes hecho en un lado aparece en el otro.</p>
+<!-- AQUI HABIA «DOS FORMAS DE HACERLO», Y LA SEGUNDA ERA LA APP DEL
+     TELEFONO. La app todavia no esta publicada en ninguna tienda, asi que esa
+     mitad mandaba a la gente a buscar algo que no existe, y de paso sembraba
+     la duda de si convenia esperar a que saliera. Una sola puerta, y abierta. -->
+<h2 data-en="Ready?">¿Empezamos?</h2>
+<p data-en="Your Veta Wallet account is all you need. If you do not have one yet, it takes a minute.">Con tu cuenta de Veta Wallet alcanza. Si todavía no tenés, se crea en un minuto.</p>
+<p style="margin:18px 0 0">
+  <a class="btn btn-oro" href="/#verificar" data-en="Verify me">Verificarme</a>
+</p>
 
 <hr>
 
