@@ -18,6 +18,23 @@ const isAdmin = async (req, res, next) => {
     const decodedToken = jwt.verify(token.split(' ')[1], process.env.PASS_TOKEN, { algorithm: 'HS256' });
     const idUser = decodedToken.userId;
     const user = await Users.findOne({_id: idUser});
+
+    /* Las mismas dos comprobaciones que `middleware/verifyToken.js`, y por el
+       mismo motivo: la firma valida no es lo mismo que la sesion viva.
+       Comparar contra `user.token` impone UNA sesion a la vez, que no es lo
+       mismo que revocar — si el ladron fue el ultimo en entrar, el token
+       guardado es el SUYO y la comparacion le da la razon. Sin estas dos
+       lineas, las rutas de administracion serian el unico sitio del backend
+       donde cambiar la contraseña no echa a nadie. */
+    if (!user) {
+      return res.status(401).json({ message: "invalid user" });
+    }
+    if (user.deletedAt) {
+      return res.status(401).json({ message: "account deleted" });
+    }
+    if ((decodedToken.tv || 0) !== (user.tokenVersion || 0)) {
+      return res.status(401).json({ message: "session revoked" });
+    }
     // `user.token` esta cifrado con PASS_TOKEN, asi que se descifra probando el
     // secreto nuevo y el anterior mientras dure la rotacion. Sin esto, cambiar
     // PASS_TOKEN dejaria este campo ilegible y ningun administrador podria

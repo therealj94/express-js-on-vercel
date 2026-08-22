@@ -169,6 +169,24 @@ console.log("\n── la guardia de cada petición ─────────�
   comprobar(r.paso === false, "una dirección que no es la de la cuenta sigue sin entrar");
 }
 
+console.log("\n── y la guardia de administración, que tenía el mismo hueco ────");
+{
+  /* `isAdmin.js` compara el token que llega con el que hay guardado en
+     `user.token`, y eso impone UNA sesión a la vez — que no es lo mismo que
+     revocar. Si el ladrón fue el último en entrar, el token guardado es el SUYO
+     y la comparación le da la razón. Sin las mismas dos comprobaciones que la
+     otra guardia, las rutas de administración serían el único sitio del backend
+     donde cambiar la contraseña no echa a nadie. */
+  const ADMIN = leer("middleware", "isAdmin.js");
+  const limpio = sinComentarios(ADMIN);
+  comprobar(/decodedToken\.tv\s*\|\|\s*0\)\s*!==\s*\(user\.tokenVersion/.test(limpio),
+    "isAdmin.js también compara la versión de sesión");
+  comprobar(/if\s*\(user\.deletedAt\)/.test(limpio),
+    "y también mira si la cuenta está eliminada");
+  comprobar(/if\s*\(!user\)/.test(limpio),
+    "y que la cuenta exista, antes de tocarle ningún campo");
+}
+
 // ── 2. las cuatro puertas de entrada ─────────────────────────────────────────
 
 console.log("\n── el `tv` viaja en TODAS las sesiones que se emiten ────────────");

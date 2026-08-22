@@ -114,14 +114,35 @@ const VETA = (() => {
      puede aparecer como si el activo valiera cero: eso convierte una falla de
      lectura en una perdida aparente, y es la peor lectura posible en algo que
      guarda dinero. Lo que no tiene precio se cuenta aparte y se avisa. */
-  const conPrecio = () => (cartera || []).filter(x => x.precio != null);
-  const total = () => conPrecio().reduce((s, x) => s + x.cant * x.precio, 0);
-  const haySinPrecio = () => (cartera || []).some(x => x.cant > 0 && x.precio == null);
+  /* Y LO MISMO VALE PARA EL SALDO, que es la otra mitad y faltaba.
+     El comentario de arriba tenia razon y se aplicaba solo a los precios: un
+     saldo que NO SE PUDO LEER tampoco puede sumar como cero. `cadena.js`
+     ahora devuelve `cant: null` con `leido: false` cuando el nodo no contesto,
+     y hace falta filtrarlo A MANO porque en JavaScript `null * precio` da 0
+     —no NaN— asi que un total que no filtre sigue diciendo cero con toda
+     tranquilidad. Ese es exactamente el fallo que se esta cerrando. */
+  const leido = x => x.leido !== false && x.cant != null;
+  const conPrecio = () => (cartera || []).filter(x => x.precio != null && leido(x));
+
+  /** El patrimonio, o `null` si no se pudo leer NADA. Nunca cero de consuelo. */
+  const total = () => {
+    if (!hayAlgunSaldo()) return null;
+    return conPrecio().reduce((s, x) => s + x.cant * x.precio, 0);
+  };
+
+  /** ¿Contesto el nodo al menos un saldo? Si no, no hay nada que sumar. */
+  const hayAlgunSaldo = () => (cartera || []).some(leido);
+
+  /** ¿Quedo algun saldo sin leer? Distinto de que valga cero. */
+  const haySinLeer = () => (cartera || []).some(x => !leido(x));
+
+  const haySinPrecio = () => (cartera || []).some(x => leido(x) && x.cant > 0 && x.precio == null);
 
   /* Variacion del dia, ponderada por cuanto pesa cada activo en la cartera:
      un 5 % en algo donde tenes diez dolares no mueve el patrimonio igual que
      un 5 % donde tenes mil. */
   function delDia() {
+    if (!hayAlgunSaldo()) return null;
     const l = conPrecio().filter(x => x.chg != null && x.cant * x.precio > 0);
     const base = l.reduce((s, x) => s + x.cant * x.precio, 0);
     if (!base) return null;
@@ -1428,6 +1449,19 @@ const VETA = (() => {
 
     try {
       cartera = await CADENA.portafolio(sesion.direccion, null);
+      /* `portafolio()` NO lanza cuando falla un saldo suelto, a proposito: si
+         lanzara, tres tokens caidos se llevarian por delante las doce lecturas
+         buenas. Devuelve cada fila con `leido`, y es aca donde se decide si eso
+         cuenta como una carga fallida: si no se pudo leer NI UNA, no hay
+         cartera que enseñar y se dice, que es lo que hace alcanzable el bloque
+         de «No pudimos leer tus saldos» que llevaba tiempo escrito sin que
+         nadie pudiera llegar a el. */
+      const ninguno = cartera.length && cartera.every(x => x.leido === false);
+      if (ninguno) {
+        errCartera = cartera.find(x => x.error)?.error || t('cta.sinSaldos');
+        cartera = null;
+        return;
+      }
       errCartera = null;
     } catch (e) {
       errCartera = e.message;
@@ -1911,11 +1945,18 @@ const VETA = (() => {
       <button class="saldo-ojo" onclick="VETA.tapar()"
               aria-label="${ocultos ? t('ini.mostrar') : t('ini.ocultar')}">
         <div class="saldo-cifra">
-          <b class="${cargando ? 'esqueleto' : ''}">${cargando ? '$0.00' : tapa(usd(total()))}</b>
+          <b class="${cargando ? 'esqueleto' : ''}">${
+            cargando ? '$0.00'
+            /* `total()` devuelve null cuando no se leyo NI UN saldo. Un guion
+               dice «no lo se»; un $0.00 diria «no tenes nada», que es la
+               mentira mas cara que puede contar una billetera. */
+            : total() == null ? '—'
+            : tapa(usd(total()))}</b>
         </div>
         <svg viewBox="0 0 24 24" class="ojo-ic">${ocultos ? ICO.ojoNo : ICO.ojo}</svg>
       </button>
       <div class="saldo-fiat">
+        ${!cargando && haySinLeer() ? `<span style="color:var(--coral)">${t('ini.saldosParciales')}</span>` : ''}
         ${cargando ? `<span class="esqueleto">${t('ini.cargando')}</span>`
           : dia ? `<span class="${sube ? 'px-sube' : 'px-baja'}">${sube ? '+' : '−'}${tapa(usd(Math.abs(dia.usd)))}</span>
                    <span class="pastilla ${sube ? 'sube-p' : 'baja-p'}">${sube ? '+' : ''}${dia.pct.toFixed(2)}%</span>

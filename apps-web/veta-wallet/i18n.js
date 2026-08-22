@@ -262,6 +262,8 @@ es: {
 
   'cta.t': 'Mi cuenta', 'cta.nombre': 'Nombre', 'cta.correo': 'Correo', 'cta.dir': 'Dirección de la billetera',
   'cta.sinDir': 'todavía sin asignar',
+  'cta.sinSaldos': 'el nodo de la cadena no contestó',
+  'ini.saldosParciales': 'Faltan saldos por leer: este total está incompleto.',
   'cta.appT': 'La aplicación del teléfono',
   'cta.appP': 'La misma cuenta funciona en Android y iPhone, y ahí además tenés la tarjeta, los contactos y el lector de códigos.',
   'cta.salirT': 'Cerrar sesión', 'cta.salirP': 'Se borra la sesión de este navegador. Tu dinero y tu cuenta no se tocan.',
@@ -1106,6 +1108,8 @@ en: {
 
   'cta.t': 'My account', 'cta.nombre': 'Name', 'cta.correo': 'Email', 'cta.dir': 'Wallet address',
   'cta.sinDir': 'not assigned yet',
+  'cta.sinSaldos': 'the chain node did not answer',
+  'ini.saldosParciales': 'Some balances could not be read: this total is incomplete.',
   'cta.appT': 'The phone app',
   'cta.appP': 'The same account works on Android and iPhone, where you also get the card, contacts and the code scanner.',
   'cta.salirT': 'Sign out', 'cta.salirP': 'Clears the session from this browser. Your money and your account are untouched.',
