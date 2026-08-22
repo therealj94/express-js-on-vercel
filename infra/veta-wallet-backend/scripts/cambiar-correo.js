@@ -7,15 +7,18 @@
  *
  * QUE SE TOCA, Y QUE NO SE TOCA NUNCA
  *
- * El correo vive en TRES campos del registro, porque el alta los pone los tres
- * con el mismo valor:
+ * El correo vive en DOS campos del registro:
  *
  *   email     lo unico que mira el login. Es el que de verdad cambia el acceso.
- *   user      copia muerta. Se escribe al registrarse y no lo lee nadie, pero
- *             dejarlo con el valor viejo es sembrar una confusion para dentro
- *             de un anio.
  *   username  el que se ENSEÑA: en el perfil, en el padron y en el saludo de
  *             las cartas cuando no hay nombre.
+ *
+ * Hay un tercero, `user`, que el alta escribe (`user: email`, en
+ * authController) pero que NO EXISTE EN EL ESQUEMA. Mongoose es estricto por
+ * defecto, asi que lo descarta en silencio: no se ha guardado nunca, en ninguna
+ * cuenta, desde que el proyecto existe. Se descubrio justo aqui, porque este
+ * guion intentaba escribirlo y despues comprobaba releyendo si habia quedado.
+ * Escribirlo no rompe nada, pero tampoco hace nada, asi que no se toca.
  *
  * Y lo que NO se toca, que es lo que importa de verdad:
  *
@@ -114,7 +117,6 @@ async function main() {
   console.log(`  Llave y semilla   : ${tapar(u.privateKey)} / ${tapar(u.seed)}  (NO se tocan)`);
   console.log(`\n  CAMBIA:`);
   console.log(`    email    ${u.email}  ->  ${A}`);
-  console.log(`    user     ${u.user || "(vacio)"}  ->  ${A}`);
   console.log(`    username ${u.username || "(vacio)"}  ->  ${A}`);
   console.log(`\n  NO CAMBIA: contrasenia, direccion, llave privada, semilla,`);
   console.log(`             verificacion, KYC, tarjetas, ni las marcas de correo.`);
@@ -132,7 +134,7 @@ async function main() {
 
   const r = await Users.updateOne(
     { _id: u._id },
-    { $set: { email: A, user: A, username: A, correoCambiadoEn: new Date() } }
+    { $set: { email: A, username: A, correoCambiadoEn: new Date() } }
   );
   console.log(`\n  Hecho. Documentos modificados: ${r.modifiedCount}`);
 
@@ -140,12 +142,12 @@ async function main() {
   // quedo. Y se comprueba que el dinero sigue exactamente donde estaba.
   const v = await Users.findOne({ _id: u._id }).lean();
   const bien =
-    v.email === A && v.user === A && v.username === A &&
+    v.email === A && v.username === A &&
     v.address === u.address && v.privateKey === u.privateKey &&
     v.seed === u.seed && v.password === u.password;
   console.log(`  Comprobado releyendo: ${bien ? "el acceso cambio y el resto esta intacto" : "ALGO NO CUADRA"}`);
   if (!bien) {
-    console.log(`     email=${v.email} address ${v.address === u.address ? "igual" : "DISTINTA"} ` +
+    console.log(`     email=${v.email} username=${v.username} address ${v.address === u.address ? "igual" : "DISTINTA"} ` +
       `llave ${v.privateKey === u.privateKey ? "igual" : "DISTINTA"} ` +
       `semilla ${v.seed === u.seed ? "igual" : "DISTINTA"} ` +
       `contrasenia ${v.password === u.password ? "igual" : "DISTINTA"}`);
