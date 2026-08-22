@@ -319,7 +319,7 @@ appsRouter.get('/identidades/por-email/:email', limite(120), exigeApp('identidad
  */
 appsRouter.post('/identidades/mover-email', limite(20), exigeApp('identidad.crear'), async (req, res) => {
   const { de, a } = req.body || {}
-  const r = ids.moverEmail(String(de || ''), String(a || ''), `app:${(req as any).app_?.id || 'desconocida'}`)
+  const r = ids.moverEmail(String(de || ''), String(a || ''), `app:${req.app_ecosistema!.clave}`)
   if (!r.ok) return res.status(409).json({ error: r.motivo })
   res.json({
     identidad: await ids.estadoParaUsuarioConFoto(r.identidad),
