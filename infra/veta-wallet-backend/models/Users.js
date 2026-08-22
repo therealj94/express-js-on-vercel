@@ -160,6 +160,17 @@ const Users = new Schema(
             type: Date,
         },
 
+        /* Cuando se le cambio el correo con el que entra.
+         *
+         * Queda anotado porque un cambio de correo de acceso es lo primero que
+         * hace quien se apodera de una cuenta, y sin fecha no hay forma de
+         * distinguir «me lo cambie yo en agosto» de «alguien me lo cambio
+         * anoche». No estorba a nadie y el dia que haga falta es la unica pista
+         * que va a haber. */
+        correoCambiadoEn: {
+            type: Date,
+        },
+
         // KYC - Veriff
         kycStatus: {
             type: String,
