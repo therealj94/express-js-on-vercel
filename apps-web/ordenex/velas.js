@@ -404,13 +404,44 @@ const VELAS = (() => {
     // la misma rejilla y los mismos ejes que la del mercado más líquido.
     const IZQ = 10, ARRIBA = 8, ALTO_T = 20, EJE_MIN = 46;
 
-    const filaLeyenda1 = [
-      par ? { t: par, tinta: crema, font: `600 11.5px ${SANS}` } : null,
-      par && marco ? { t: '  ·  ', tinta: humo } : null,
-      marco ? { t: marco, tinta: bruma } : null,
-      (par || marco) ? { t: '   ' + unidad, tinta: humo } : { t: unidad, tinta: humo },
-      esReferencia ? { t: '   ' + T.badge, tinta: oro, font: MONO_B } : null,
-    ].filter(Boolean);
+    /* El primer renglón de la leyenda, por GRUPOS. Un grupo es lo que no se
+       separa nunca —una etiqueta con su número, un par con su marco— y es la
+       unidad con la que `reflujo` decide dónde cortar cuando el renglón entero
+       no cabe. En un lienzo ancho hay un solo renglón y esto no cambia nada;
+       en uno de teléfono es lo que evita que la mitad se dibuje fuera. */
+    const gruposLeyenda1 = [
+      [
+        par ? { t: par, tinta: crema, font: `600 11.5px ${SANS}` } : null,
+        par && marco ? { t: '  ·  ', tinta: humo } : null,
+        marco ? { t: marco, tinta: bruma } : null,
+      ].filter(Boolean),
+      [(par || marco) ? { t: '   ' + unidad, tinta: humo } : { t: unidad, tinta: humo }],
+      esReferencia ? [{ t: '   ' + T.badge, tinta: oro, font: MONO_B }] : null,
+    ].filter(g => g && g.length);
+    const filaLeyenda1 = gruposLeyenda1.flat();
+
+    /* Reparte grupos en renglones que quepan en `tope` píxeles. Devuelve
+       renglones ya planos, listos para `fila`.
+
+       POR QUE existe: a 360 px el lienzo de la sala mide 287, y el renglón
+       «O … H … L … C … +0.07%» con precios de nueve cifras mide más de 500.
+       Lo que sobraba no envolvía —un canvas no envuelve— : se pintaba fuera de
+       la imagen y se perdía. La mitad de la leyenda, L y C y el cambio del
+       día, estaba dibujada donde no hay pantalla, o sea que no estaba. Un
+       grupo que ni él solo cabe se deja igual en su renglón: cortar «123,45»
+       por la mitad sería peor que dejarlo asomar. */
+    function reflujo(grupos, tope) {
+      const salida = [];
+      let renglon = [], usado = 0;
+      for (const g of grupos) {
+        const w = fila(ctx, 0, 0, g, true);
+        if (renglon.length && usado + w > tope) { salida.push(renglon); renglon = []; usado = 0; }
+        renglon.push(...g);
+        usado += w;
+      }
+      if (renglon.length) salida.push(renglon);
+      return salida;
+    }
 
     /* ── el vacío digno ────────────────────────────────────────────────────
        Cero velas y velas ilegibles NO son lo mismo: «sin tratos» es un
@@ -457,10 +488,15 @@ const VELAS = (() => {
       if (filaLeyenda1.length) {
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        const w = fila(ctx, 0, 0, filaLeyenda1, true);
+        // Con el mismo reparto que la leyenda con datos: el vacío digno tiene
+        // el mismo marco y los mismos ejes, y también el mismo rótulo — que en
+        // un teléfono angosto tampoco puede salirse por el borde.
+        const rr = reflujo(gruposLeyenda1, Math.max(60, der - IZQ - 24));
+        let w = 0;
+        for (const f of rr) w = Math.max(w, fila(ctx, 0, 0, f, true));
         ctx.fillStyle = 'rgba(2,27,28,.72)';
-        ctx.fillRect(IZQ + 2, ARRIBA + 2, w + 16, 20);
-        fila(ctx, IZQ + 10, ARRIBA + 12, filaLeyenda1, false);
+        ctx.fillRect(IZQ + 2, ARRIBA + 2, Math.min(w + 16, der - IZQ - 2), rr.length * 15 + 5);
+        rr.forEach((f, j) => fila(ctx, IZQ + 10, ARRIBA + 12 + j * 15, f, false));
       }
       return { vacio: motivo, n: 0, indice: -1, unidad, referencia: esReferencia, volumen: false, leyenda: null };
     }
@@ -863,33 +899,56 @@ const VELAS = (() => {
       desde: m.valores.findIndex(x => x != null),
     }));
 
-    const filas = [filaLeyenda1];
-    const f2 = [];
+    const gOhlc = [];
     for (const [k, val] of [['O', v.o], ['H', v.h], ['L', v.l], ['C', v.c]]) {
-      f2.push({ t: k, tinta: humo });
-      f2.push({ t: ' ' + fp(val) + '   ', tinta: k === 'C' ? tintaCambio : crema });
+      gOhlc.push([
+        { t: k, tinta: humo },
+        { t: ' ' + fp(val) + '   ', tinta: k === 'C' ? tintaCambio : crema },
+      ]);
     }
     if (cambio != null) {
-      f2.push({ t: (cambio >= 0 ? '+' : '') + cambio.toFixed(2) + '%', tinta: tintaCambio, font: MONO_B });
+      gOhlc.push([{ t: (cambio >= 0 ? '+' : '') + cambio.toFixed(2) + '%', tinta: tintaCambio, font: MONO_B }]);
     }
-    filas.push(f2);
-    if (emasLeyenda.length) {
-      const f3 = [];
-      for (const e of emasLeyenda) {
-        f3.push({ t: `EMA${e.periodo} `, tinta: e.tinta, font: MONO_B });
-        // Un guion cuando la media todavía no existe: en las primeras n-1
-        // velas no hay EMA(n), y decirlo es más honesto que enseñar el precio
-        // disfrazado de media.
-        f3.push({ t: (e.valor == null ? '—' : e.valor) + '   ', tinta: e.tinta });
-      }
-      filas.push(f3);
-    }
-    if (hayVolumen) {
-      filas.push([{ t: 'V ', tinta: humo }, { t: formatear(v.v, 2), tinta: bruma }]);
-    }
+    const gEmas = emasLeyenda.map(e => ([
+      { t: `EMA${e.periodo} `, tinta: e.tinta, font: MONO_B },
+      // Un guion cuando la media todavía no existe: en las primeras n-1
+      // velas no hay EMA(n), y decirlo es más honesto que enseñar el precio
+      // disfrazado de media.
+      { t: (e.valor == null ? '—' : e.valor) + '   ', tinta: e.tinta },
+    ]));
+    const gVol = hayVolumen ? [[{ t: 'V ', tinta: humo }, { t: formatear(v.v, 2), tinta: bruma }]] : [];
 
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
+    // Hasta dónde puede llegar un renglón: el borde del panel de precio, no el
+    // del lienzo. Pasado `der` empiezan las etiquetas del eje, y una leyenda
+    // encima de un precio del eje deja dos números pisados y ninguno legible.
+    const topeL = Math.max(60, der - IZQ - 24);
+    const armar = (gs) => [...reflujo(gruposLeyenda1, topeL), ...reflujo(gs, topeL)];
+
+    let filas = armar([...gOhlc, ...gEmas, ...gVol]);
+
+    /* ── cuándo la leyenda se encoge ────────────────────────────────────────
+       Repartida en renglones ya no se sale, pero en un teléfono se sale por el
+       otro lado: con precios de nueve cifras cada grupo se lleva un renglón
+       entero y la leyenda pasa de tres a nueve, o sea de un rótulo en la
+       esquina a una cortina sobre las velas. Y una gráfica tapada por su
+       propia leyenda no es una gráfica.
+
+       Así que cuando no cabe en poco más de un tercio del panel de precio, la
+       leyenda se queda con lo que se mira de un vistazo —qué par, con qué
+       lupa, a cuánto cerró y cuánto se movió— y suelta el resto. El resto NO
+       se pierde: sale en el informe marcado con `recortada`, y quien dibuja
+       (mercado.js) lo pinta debajo del lienzo, donde hay renglones de sobra y
+       la letra se lee al tamaño del cuerpo de la página en vez de a 10,5 px
+       sobre una vela. Esconder un dato sería mentir; MUDARLO es maquetar. */
+    const cabe = (fs) => fs.length * 15 + 8 <= altoPrecio * 0.38;
+    const recortada = !cabe(filas);
+    if (recortada) {
+      const cierre = gOhlc.filter((_, i) => i >= 3);   // C y el cambio del día
+      filas = armar(cierre);
+    }
+
     let wL = 0;
     for (const f of filas) wL = Math.max(wL, fila(ctx, 0, 0, f, true));
     const hL = filas.length * 15 + 8;
@@ -897,7 +956,7 @@ const VELAS = (() => {
     // borrar la vela que tiene debajo. La ficha de la cruz sí es sólida —
     // aquella se lee de un vistazo y esta se lee con calma.
     ctx.fillStyle = 'rgba(2,27,28,.72)';
-    ctx.fillRect(IZQ + 2, ARRIBA + 2, wL + 20, hL);
+    ctx.fillRect(IZQ + 2, ARRIBA + 2, Math.min(wL + 20, der - IZQ - 2), hL);
     filas.forEach((f, j) => fila(ctx, IZQ + 10, ARRIBA + 13 + j * 15, f, false));
 
     /* El rótulo accesible dice lo MISMO que la gráfica, ni más ni menos: qué
@@ -932,6 +991,12 @@ const VELAS = (() => {
         o: fp(v.o), h: fp(v.h), l: fp(v.l), c: fp(v.c),
         cambio: cambio == null ? null : Number(cambio.toFixed(2)),
         emas: emasLeyenda.map(e => ({ periodo: e.periodo, valor: e.valor, desde: e.desde })),
+        volumen: hayVolumen ? formatear(v.v, 2) : null,
+        /* `true` cuando el lienzo era demasiado angosto para sostener la
+           leyenda entera y en el dibujo solo quedaron el par y el cierre. Es
+           un aviso a quien dibuja, no un dato del mercado: significa «esto de
+           acá lo tenés que pintar vos debajo, o la persona no lo ve». */
+        recortada,
       },
     };
   }

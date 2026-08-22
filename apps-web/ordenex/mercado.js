@@ -607,13 +607,20 @@ const VMERCADO = (() => {
        24 h, máximo, mínimo y volumen en una sola fila, en cifras tabulares
        para que las columnas no bailen al refrescar. Cada dato con su etiqueta
        chica encima: sin etiqueta, cinco números seguidos son un jeroglífico. */
-    .vm-stats{display:flex;flex-wrap:wrap;align-items:center;gap:0 26px;
+    /* El hueco entre renglones NO es cero, y no es cosmética: en un escritorio
+       la barra entra en una sola fila y el hueco vertical no se usa nunca, pero
+       en un teléfono se parte en tres. Con un hueco de cero, la etiqueta
+       de un renglón nacía pegada a los números del de arriba: «SE PAGA EN»
+       salía colgando de «987,654,321.5» como si fuera su decimal. Con cifras
+       cortas casi no se veía; con un volumen de nueve dígitos los tres
+       renglones se leen como un solo bloque de números. */
+    .vm-stats{display:flex;flex-wrap:wrap;align-items:center;gap:12px 26px;
       padding:12px 0 0;margin-top:12px;border-top:1px solid var(--linea2)}
     /* El bloque de las cuatro cifras es una fila dentro de la fila: asi
        pintarStats sigue escribiendo en UN solo nodo y no en cuatro sueltos.
        (Y sin comillas invertidas en este comentario: la hoja entera vive
        dentro de una plantilla de JS y una comilla invertida la parte.) */
-    #vm-stats{display:flex;flex-wrap:wrap;align-items:center;gap:0 26px}
+    #vm-stats{display:flex;flex-wrap:wrap;align-items:center;gap:12px 26px}
     .vm-stat-precio .vm-ultimo{font-size:19px;font-weight:700;color:var(--crema);
       font-variant-numeric:tabular-nums}
     .vm-stats .vm-refchica{margin-left:auto;font-size:11.5px;color:var(--humo);
@@ -624,7 +631,7 @@ const VMERCADO = (() => {
     .vm-stat .v{font-size:13px;font-family:var(--mono);font-variant-numeric:tabular-nums;
       color:var(--crema)}
     .vm-stat .v.alto{color:var(--jade)} .vm-stat .v.bajo{color:var(--coral)}
-    @media (max-width:640px){.vm-stats{gap:0 16px}.vm-stat{min-width:64px}}
+    @media (max-width:640px){.vm-stats,#vm-stats{gap:10px 16px}.vm-stat{min-width:64px}}
 
     .vm-cifras{text-align:right}
     .vm-ultimo{font-size:clamp(20px,2.4vw,26px);font-weight:700;
@@ -757,6 +764,18 @@ const VMERCADO = (() => {
       color:var(--bruma);font:700 13px/1 var(--sans);backdrop-filter:blur(6px)}
     .vm-zoom button:hover{color:var(--oroHi);border-color:var(--linea)}
     .vm-lienzo canvas{display:block;width:100%;height:clamp(340px,52vh,620px);border-radius:12px}
+    /* La tira de apertura/máximo/mínimo/medias que baja del lienzo cuando la
+       leyenda de dentro no cabía — la pinta tiraLeyenda(). Envuelve, va en
+       cifras tabulares y con la etiqueta chica delante de cada número: son los
+       mismos trozos de la leyenda, escritos donde se leen.
+       (Sin comillas invertidas acá: esta hoja vive dentro de una plantilla de
+       JS y una comilla invertida la parte en dos.) */
+    .vm-ohlc{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:10px;
+      font-family:var(--mono);font-size:12.5px;font-variant-numeric:lining-nums tabular-nums}
+    .vm-ohlc-d{display:inline-flex;align-items:baseline;gap:5px}
+    .vm-ohlc-d i{font-style:normal;font-size:10.5px;color:var(--humo)}
+    .vm-ohlc-d b{font-weight:500;color:var(--crema)}
+
     /* En la sala ancha el libro se estira a la par de la gráfica: una columna
        de 318 px contra un lienzo de 1.200 se veía como una nota al margen. */
     /* En la sala a pantalla ancha el libro gana ancho, PERO siguen siendo tres
@@ -847,6 +866,70 @@ const VMERCADO = (() => {
     .vm-btn.venta{background:linear-gradient(120deg,#F59A90,var(--coral) 60%,#F59A90);color:#3A0F0A;
       box-shadow:0 14px 40px -16px rgba(240,119,107,.55)}
     .vm-btn:hover{transform:translateY(-2px)}
+
+    /* ═══ LA SALA EN UN TELÉFONO ═══════════════════════════════════════════
+       Todo lo de aquí abajo es la misma sala medida con un dedo en vez de con
+       un ratón. Va en un solo bloque y al final para que se lea de un tirón
+       qué cambia en angosto, en vez de repartir excepciones por todo el
+       archivo. El corte son los mismos 900 px que usa el cascarón. */
+    @media (max-width:900px){
+      /* ── los mandos del zoom, fuera del lienzo ────────────────────────────
+         Dos cosas les pasaban a la vez en un teléfono.
+
+         Una: se quedaban al 30 % de opacidad para siempre. Su regla de
+         encenderse es el hover, y en una pantalla táctil no hay hover que
+         valga — el zoom estaba ahí, funcionando, invisible.
+
+         Dos: flotaban arriba a la derecha del lienzo, y ahí es donde vive la
+         leyenda. En 287 px de ancho eso no es un roce: la palabra ORIGEN
+         quedaba debajo de un botón. Y subirlos a 40 px de blanco de toque, que
+         es lo que hace falta para el dedo, empeoraba el choque en vez de
+         arreglarlo.
+
+         Así que en angosto dejan de flotar. El lienzo pasa a columna y los tres
+         botones caen debajo, alineados a la derecha, como la barra de
+         herramientas que siempre fueron. No tapan ninguna vela, no pisan la
+         leyenda y se ven. Costo: 48 px de alto de página, que es exactamente lo
+         que vale un mando que se pueda usar. */
+      .vm-lienzo{display:flex;flex-direction:column}
+      .vm-zoom{position:static;opacity:1;align-self:flex-end;margin-top:8px;gap:8px}
+      .vm-zoom button{width:40px;height:40px;font-size:16px}
+      /* La nota de «no llegaron las velas» se centra sobre el LIENZO, que es
+         de lo que habla, y no sobre el lienzo más la barra de botones. */
+      .vm-nota{bottom:48px}
+
+      /* La gráfica deja de ser un retrato. Un alto de clamp(340px,52vh,620px)
+         contra 287 px de ancho daba un lienzo MÁS ALTO QUE ANCHO (287×385, o
+         sea 0,75), y una vela es una figura ancha: en vertical se estiran los
+         cuerpos, se aplasta el eje de tiempo y caben menos velas de las que
+         entrarían. Con la proporción fija el lienzo sigue al ancho de la
+         pantalla y siempre sale apaisado. El alto mínimo es para que en un
+         teléfono muy angosto no se aplaste por debajo de lo legible. */
+      .vm-lienzo canvas{height:auto;aspect-ratio:4/3;min-height:240px}
+
+      /* ── el blanco de toque, control por control ──────────────────────────
+         Todos estos son mandos de verdad: eligen qué se mira, con qué lupa, de
+         qué lado se opera y con cuánto. 40 px de alto es la recomendación y es
+         la yema del dedo. Lo que crece es el blanco, no la letra. */
+      .vm-volver{min-height:40px;padding:0 0 10px}
+      .vm-fuentes button,.vm-marcos button{min-height:40px}
+      .vm-seg button{min-height:44px}
+      .vm-peskab button{min-height:40px}
+      /* «Usar todo» medía 72×14. Es el atajo que pone el saldo entero en la
+         orden: fallarlo teclea una cantidad a mano, y las cantidades tecleadas
+         a mano en un teléfono es donde se pierde un cero. */
+      .vm-max{min-height:40px;padding:0 8px}
+      /* Y la equis que cancela una orden abierta: 12 px de aspa. */
+      .vm-mia .x{min-width:40px;min-height:40px;font-size:15px}
+
+      /* Las filas del libro. Una fila del libro es un botón —se toca para que
+         su precio caiga en el formulario— y medía 26 px de alto. Se sube a 40
+         aunque cueste densidad: el libro vive dentro de un panel que se
+         desplaza, así que lo que se pierde son niveles a la vista, no niveles;
+         y un toque errado en un libro de órdenes no falla, ACIERTA en el
+         precio de al lado, que es peor que no hacer nada. */
+      .vm-fila{min-height:40px;align-items:center}
+    }
   </style>`;
 
   // ── la referencia puntual, traída a la unidad del eje ─────────────────────
@@ -1057,6 +1140,12 @@ const VMERCADO = (() => {
               <button type="button" onclick="VMERCADO.zoom('todo')" title="${esc(tx('zoomTodo'))}" aria-label="${esc(tx('zoomTodo'))}">⤢</button>
             </div>
           </div>
+          <!-- Lo que la leyenda del lienzo no pudo sostener. En pantalla ancha
+               queda vacío y no ocupa nada; en un teléfono es donde aterrizan
+               apertura, máximo, mínimo, las medias y el volumen cuando la
+               leyenda de dentro se encogió para no taparle la gráfica a nadie.
+               Ver «recortada» en velas.js. -->
+          <div class="vm-ohlc" id="vm-ohlc" hidden></div>
           <div id="vm-bajo">${bajoGrafica(par)}</div>
         </div>
         <div class="vidrio bloque" id="vm-form-caja">${cajaOperar(sim, par)}</div>
@@ -1534,6 +1623,35 @@ const VMERCADO = (() => {
     return refCache?.rotulo || tx('refRot');
   }
 
+  /* La tira de debajo del lienzo: apertura, máximo, mínimo, medias y volumen
+     de la vela que la leyenda de dentro está enseñando.
+
+     POR QUE existe. En un teléfono el lienzo mide 287 px de ancho, y con
+     precios de nueve cifras cada renglón de la leyenda se lleva uno entero:
+     la leyenda pasaba de tres renglones a nueve y se volvía una cortina sobre
+     las velas. VELAS lo detecta y se queda con lo esencial —qué par, qué
+     marco, a cuánto cerró—, marca el informe con `recortada` y devuelve lo
+     demás para que caiga acá abajo. Es una mudanza, no un recorte: los mismos
+     números, en un renglón que envuelve y a 12,5 px en vez de a 10,5 sobre una
+     vela verde. Con la gráfica ancha esto no se enciende nunca.
+
+     `null` la apaga: se llama así al empezar cada pintado. */
+  function tiraLeyenda(inf) {
+    const t = $('vm-ohlc');
+    if (!t) return;
+    const l = inf && inf.leyenda;
+    if (!l || !l.recortada) { t.hidden = true; t.innerHTML = ''; return; }
+    const dato = (et, val, clase) =>
+      `<span class="vm-ohlc-d"><i>${esc(et)}</i><b class="${clase || ''}">${esc(String(val))}</b></span>`;
+    const emas = (l.emas || []).map(e => dato('EMA' + e.periodo, e.valor == null ? '—' : e.valor));
+    t.innerHTML = [
+      dato('O', l.o), dato('H', l.h), dato('L', l.l),
+      ...emas,
+      l.volumen == null ? '' : dato('V', l.volumen),
+    ].filter(Boolean).join('');
+    t.hidden = false;
+  }
+
   function pintarVelas() {
     const c = $('vm-velas');
     if (!c) return;
@@ -1546,6 +1664,9 @@ const VMERCADO = (() => {
        pintado, cuando la sala abre directamente en esa pestaña. */
     const cajaZoom = $('vm-zoom');
     if (cajaZoom) cajaZoom.hidden = fuenteActual === 'declarado';
+    // Cada pintado empieza sin tira: si el dibujo nuevo no recorta la leyenda,
+    // la del dibujo anterior no se puede quedar contando otra vela.
+    tiraLeyenda(null);
 
     /* El precio declarado se dibuja con OTRA función, no con `dibujar`. No es
        una decisión de estilo: una vela tiene apertura, máximo, mínimo y cierre,
@@ -1588,7 +1709,7 @@ const VMERCADO = (() => {
       notaVelas('');
       medirLienzo(c, dpr);
       try {
-        VELAS.dibujar(c, velas, {
+        tiraLeyenda(VELAS.dibujar(c, velas, {
           unidad: 'USD',                  // el dólar ya implica referencia; el badge va igual
           decimales: decimalesUSD(velas),
           /* El ACTIVO, no el par. Esta gráfica es la onza de oro en DÓLARES;
@@ -1604,7 +1725,7 @@ const VMERCADO = (() => {
           ventana: gestosGrafica && gestosGrafica.ventana(),
           dpr,
           idioma: idi(),
-        });
+        }));
       } catch { notaVelas(tx('refNo')); }
       return;
     }
@@ -1619,7 +1740,7 @@ const VMERCADO = (() => {
     medirLienzo(c, dpr);
     const m = (mercadosCache || []).find(x => x.mercado === parActual);
     try {
-      VELAS.dibujar(c, velasCache, {
+      tiraLeyenda(VELAS.dibujar(c, velasCache, {
         unidad: 'ORIGEN',
         decimales: 4,                     // los mismos 4 del libro, la tira y la cabecera
         par: parActual,
@@ -1635,7 +1756,7 @@ const VMERCADO = (() => {
         rotulo: tx('refRot'),
         dpr,
         idioma: idi(),
-      });
+      }));
     } catch { notaVelas(tx('velasNo')); }
   }
 

@@ -224,6 +224,11 @@ const VFIAT = (() => {
       background:rgba(2,22,23,.55);width:max-content;max-width:100%;overflow-x:auto;margin-bottom:22px}
     .ft-tabs button{padding:9px 18px;border-radius:100px;font-size:13.5px;font-weight:700;
       color:var(--bruma);transition:.18s;white-space:nowrap}
+    /* Las tres pestañas de fiat medían 34 px de alto en el teléfono. Son las
+       que eligen si se compra, se vende o se miran las solicitudes abiertas —
+       o sea, todo lo que se puede hacer en esta pantalla— y por debajo de 40 px
+       un dedo falla una de cada cinco veces. Crece el blanco, no la letra. */
+    @media (max-width:900px){.ft-tabs button{min-height:40px}}
     .ft-tabs button[aria-selected=true]{background:rgba(116,230,200,.14);color:var(--acento)}
     .ft-bancos{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
     .ft-banco{display:inline-flex;align-items:center;background:#F3ECD9;border-radius:8px;padding:4px 9px}

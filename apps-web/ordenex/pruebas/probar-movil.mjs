@@ -42,17 +42,54 @@ const ANCHO = 360;
 
 const U = 10n ** 18n;
 const wei = n => (BigInt(n) * U).toString();
+// La misma cuenta pero admitiendo decimales, por texto y no multiplicando por
+// 1e18: un flotante por 1e18 sale torcido y acá se están fabricando precios.
+const weiF = n => {
+  const [ent, dec = ''] = Number(n).toFixed(6).split('.');
+  return (BigInt(ent) * U + BigInt(dec.padEnd(18, '0').slice(0, 18))).toString();
+};
 const TOKEN_SSO = 'token-sso-fingido-111';
 const JWT = 'jwt-fingido-111';
 
+/* AUKA se queda con las cifras chicas de siempre —es el par donde se coloca y
+   se cancela la orden, y ahí lo que se mide es llegar con el dedo, no leer un
+   número—. AGKA pasa a cifras de nueve dígitos A PROPÓSITO: es el par con el
+   que se prueba la gráfica y la barra de estadísticas, y todo lo que se rompe
+   por ancho se rompe con números largos, no con «111». Un saldo de nueve
+   dígitos no es un caso raro: ORIGEN es el gramo de oro y la gente tiene
+   millones de graminos. */
+const GRANDE = 123456789.12;
 const MERCADOS = [
   { mercado: 'AUKA-ORIGEN', ultimo: wei(111), cambio24h: 1.11, vol24h: wei(222) },
-  { mercado: 'AGKA-ORIGEN', ultimo: wei(222), cambio24h: -2.22, vol24h: wei(111) },
+  { mercado: 'AGKA-ORIGEN', ultimo: weiF(GRANDE), cambio24h: -12.34, vol24h: weiF(987654321.5),
+    alto24h: weiF(123456999), bajo24h: weiF(111111111) },
 ];
 const LIBRO = {
   compras: [[wei(110), wei(222)], [wei(109), wei(111)]],
   ventas: [[wei(112), wei(111)], [wei(113), wei(222)]],
 };
+
+/* 120 velas de nueve dígitos para AGKA. Son las que hacen ancha la leyenda: el
+   renglón «O … H … L … C … %» con precios así mide más de 500 px, y el lienzo
+   de un teléfono mide 287. */
+const AHORA = Date.now();
+const VELAS_AGKA = Array.from({ length: 120 }, (_, i) => {
+  const base = GRANDE + Math.sin(i / 7) * 900;
+  return { t0: AHORA - (120 - i) * 3600e3, o: weiF(base), h: weiF(base + 260),
+           l: weiF(base - 260), c: weiF(base + 90), v: weiF(1234567 + i) };
+});
+
+/* El agente con el nombre largo. Es el caso de José, con nombre y apellidos
+   de verdad: cuatro palabras y pico al lado de un botón que no envuelve. El
+   segundo es el otro filo del mismo cuchillo — una razón social sin un solo
+   espacio, que no tiene por dónde partirse. */
+const NOMBRE_LARGO = 'Mayra Carolina Enamorado Alvarez de la Cruz Motagua';
+const AGENTES = [
+  { id: 'ag-1', nombre: NOMBRE_LARGO, monedas: ['HNL', 'USD'],
+    bancos: ['BAC', 'Ficohsa', 'Atlántida', 'Banpaís'] },
+  { id: 'ag-2', nombre: 'Superintendencia-de-Intermediacion-Cambiaria-Centroamericana',
+    monedas: ['HNL'], bancos: ['BAC'] },
+];
 
 // ── el servidor: la web y un API fingido en el MISMO origen ────────────────
 const json = (r, codigo, obj) => {
@@ -74,8 +111,13 @@ async function api(q, r, ruta) {
   if (q.method === 'GET' && un) {
     const vivo = MERCADOS.some(m => m.mercado === un[1] && m.ultimo != null);
     if (un[2] === 'libro') return json(r, 200, vivo ? LIBRO : { compras: [], ventas: [] });
+    // Solo AGKA trae velas: es el par con el que se mide la gráfica. AUKA
+    // sigue sin ninguna, que es como estaba y como lo esperan los pasos de
+    // colocar y cancelar.
+    if (un[2] === 'velas' && un[1] === 'AGKA-ORIGEN') return json(r, 200, VELAS_AGKA);
     return json(r, 200, []);
   }
+  if (q.method === 'GET' && /^\/fiat\/agentes/.test(ruta)) return json(r, 200, AGENTES);
   if (q.method === 'GET' && /^\/mercados\/[^/]+\/referencia$/.test(ruta)) {
     return json(r, 404, { error: 'Este activo no tiene referencia.', codigo: 'SIN_REFERENCIA' });
   }
@@ -322,6 +364,294 @@ console.log('\n── cancelar una orden, con el dedo ────────�
   const d = await desbordes();
   decir(d.fuera.length === 0, 'y en la sala tampoco se sale nada del ancho',
     d.fuera.length ? JSON.stringify(d.fuera) : `documento: ${d.documento}px`);
+}
+
+// ── 5 · LA PORTADA EN INGLÉS ──────────────────────────────────────────────
+/* Todo lo de arriba se medía en español, que es el idioma en el que se
+   escribió la página y en el que la mira quien la hizo. Y en inglés la portada
+   se desplazaba a lo ancho en 320 y en 360 px, desde siempre.
+
+   El culpable: `.btn` lleva `white-space:nowrap`, y en inglés el rótulo de
+   entrar es «Sign in with my Veta Wallet account». Un botón que no envuelve
+   tiene el ancho de su rótulo entero como ancho MÍNIMO, y la columna de la
+   portada es `1fr` — o sea `minmax(auto,1fr)`, donde ese `auto` es el mínimo
+   del contenido. Los 371 px del botón se comían la rejilla completa y el
+   sello, el titular y el párrafo se iban con ella.
+
+   Que un fallo viva solo en el segundo idioma es la regla y no la excepción:
+   nadie prueba la página en el idioma que no habla. Por eso esto se mide. */
+console.log('\n── la portada, en inglés ─────────────────────────────────────');
+{
+  /* Se tira la sesión ANTES de recargar. DATOS la guarda en el navegador, así
+     que sin esto la página vuelve a abrir directamente en la aplicación y la
+     portada —que es lo que se va a medir acá— no se llega a pintar nunca. Una
+     prueba que mide otra pantalla que la que dice medir es peor que no
+     tenerla: pasa siempre, y en verde. */
+  await p.evaluate(() => { try { localStorage.clear(); } catch {} });
+  await p.goto('about:blank');
+  await p.goto(`${ORIGEN}/index.html`, { waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(1200);
+  const enPortada = await p.evaluate(() =>
+    !!document.querySelector('#portada') && !document.body.classList.contains('en-app'));
+  decir(enPortada, 'la portada se abre sin sesión, que es donde se mide esto');
+  await p.evaluate(() => ONX.idioma('en'));
+  await p.waitForTimeout(500);
+
+  const d = await desbordes();
+  decir(d.fuera.length === 0, 'en inglés tampoco se sale nada del ancho del teléfono',
+    d.fuera.length ? JSON.stringify(d.fuera) : `documento: ${d.documento}px`);
+  decir(d.documento <= ANCHO, 'y la página no se desplaza a lo ancho',
+    `documento ${d.documento}px vs pantalla ${ANCHO}px`);
+
+  /* La medida de la causa, no del síntoma: el botón de entrar tiene que caber
+     en la pantalla. Si vuelve a no envolver, esto se rompe antes que nada. */
+  const b = await p.evaluate(() => {
+    const el = [...document.querySelectorAll('.bv-btns .btn')]
+      .find(x => x.getBoundingClientRect().width > 0);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { texto: el.textContent.trim(), ancho: Math.round(r.width), der: Math.round(r.right) };
+  });
+  decir(b && b.der <= ANCHO + 1, 'el botón de entrar cabe en el ancho del teléfono',
+    JSON.stringify(b));
+
+  await p.evaluate(() => ONX.idioma('es'));
+  await p.waitForTimeout(400);
+}
+
+// ── 6 · LOS BLANCOS DE TOQUE DE LOS MANDOS ────────────────────────────────
+/* 40 px es la recomendación de accesibilidad y es el ancho real de la yema de
+   un dedo. No se le exige a cualquier cosa que se pueda pulsar: un enlace de
+   texto dentro de una frase no tiene por qué ser un botón, y engordarlo
+   partiría la frase. Se le exige a los MANDOS — lo que elige, envía, cancela o
+   cierra sesión. Esta lista es esa distinción, escrita.
+
+   Lo que había: SALIR medía 25×16 y las pastillas de idioma de la aplicación
+   18×16, porque `.riel-pie button{padding:0}` les comía el relleno; los marcos
+   de la gráfica y el selector de fuente, 28 de alto; los lados comprar/vender,
+   35; «Usar todo», 14; los mandos del zoom, 26×26; las filas del libro, 26. */
+console.log('\n── el blanco de toque de los mandos ──────────────────────────');
+{
+  const MINIMO = 40;
+  const mide = (sel) => p.evaluate((s) => {
+    const el = [...document.querySelectorAll(s)]
+      .find(x => { const r = x.getBoundingClientRect(); return r.width > 0 && r.height > 0; });
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { w: Math.round(r.width), h: Math.round(r.height) };
+  }, sel);
+
+  const exigir = async (nombre, sel) => {
+    const m = await mide(sel);
+    decir(!!m && m.w >= MINIMO && m.h >= MINIMO, `${nombre} llega a 40 px de blanco`,
+      m ? `${m.w}×${m.h}` : `no se encontró: ${sel}`);
+  };
+
+  // En la portada
+  await exigir('el cambio de idioma de la portada', '#techo .idiomas button');
+
+  /* Y de vuelta con sesión: los mandos que mueven dinero —comprar, vender,
+     «usar todo»— sencillamente NO EXISTEN sin ella, y medir su tamaño sin
+     entrar da «no se encontró», que en una prueba de geometría se lee como un
+     fallo cuando es un descuido del guion. */
+  await p.goto('about:blank');
+  await p.goto(`${ORIGEN}/index.html#sso=${TOKEN_SSO}`, { waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(1600);
+  await p.evaluate(() => ONX.idioma('es'));
+  await p.waitForTimeout(400);
+  await exigir('SALIR', '#app .riel-pie button[data-t="nav.salir"]');
+  await exigir('el cambio de idioma de la aplicación', '#app .riel-pie .idiomas button');
+
+  // En la sala de mercado, que es donde viven los mandos que mueven dinero
+  await p.evaluate(() => ONX.vista('mercado', 'AGKA-ORIGEN'));
+  await p.waitForTimeout(1800);
+  await exigir('volver a los mercados', '.vm-volver');
+  await exigir('el selector de fuente', '.vm-fuentes button');
+  await exigir('el marco de la gráfica', '.vm-marcos button');
+  await exigir('los mandos del zoom', '#vm-zoom button');
+  await exigir('comprar/vender', '.vm-seg.lados button');
+  await exigir('«usar todo»', '.vm-max');
+  await exigir('una fila del libro', '.vm-fila');
+  await exigir('las pestañas de órdenes', '.vm-peskab button');
+
+  // Y en fiat
+  await p.evaluate(() => ONX.vista('fiat'));
+  await p.waitForTimeout(1400);
+  await exigir('las pestañas de fiat', '.ft-tabs button');
+}
+
+// ── 7 · EL NOMBRE LARGO NO SE METE POR DEBAJO DEL BOTÓN ───────────────────
+/* Éste es el fallo de José, reproducido en Ordenex con un nombre de verdad.
+
+   La hilera de la casa es [icono][texto que encoge][acción]. La acción es un
+   `.btn` y un `.btn` no envuelve: su ancho mínimo es el rótulo entero. En una
+   fila de 328 px con «Comprarle ORIGEN» al lado, al texto le quedaban 30 px —
+   el nombre bajaba a una palabra por renglón y, si el nombre venía en una sola
+   palabra larga, se metía POR DEBAJO del botón.
+
+   Y esto no lo atrapa medir desbordes: nada se sale del ancho de la pantalla.
+   Se PISAN dentro de ella. Por eso la comprobación es de solape y de reparto,
+   no de borde — que es exactamente la lección de la captura de José. */
+console.log('\n── un nombre largo, al lado de un botón ──────────────────────');
+{
+  await p.evaluate(() => VFIAT.pestana('comprar'));
+  await p.waitForTimeout(1200);
+
+  const m = await p.evaluate(() => {
+    const hs = [...document.querySelectorAll('#lienzo .hilera')]
+      .filter(h => h.querySelector('.btn'));
+    if (!hs.length) return null;
+    return hs.map(h => {
+      const nom = h.querySelector('.txt b');
+      const btn = h.querySelector('.btn');
+      const rn = nom.getBoundingClientRect(), rb = btn.getBoundingClientRect();
+      const rh = h.getBoundingClientRect();
+
+      /* Se mide la TINTA, no la caja. Y esa distinción es el fallo entero:
+         cuando el botón le come el sitio, la caja del nombre se queda en 33 px
+         —chiquita y perfectamente dentro de la fila— pero las LETRAS se
+         desbordan de ella y se dibujan encima del botón. Preguntarle su
+         `getBoundingClientRect` al elemento diría que todo está en orden
+         mientras la pantalla enseña el nombre metido por debajo de un botón.
+         Los rectángulos de un Range sobre el nodo de texto sí dan dónde caen
+         las letras de verdad. */
+      const ra = document.createRange();
+      ra.selectNodeContents(nom);
+      const tinta = [...ra.getClientRects()].filter(x => x.width > 0 && x.height > 0);
+      const derTinta = tinta.length ? Math.max(...tinta.map(x => x.right)) : rn.right;
+      const abajoTinta = tinta.length ? Math.max(...tinta.map(x => x.bottom)) : rn.bottom;
+      const arribaTinta = tinta.length ? Math.min(...tinta.map(x => x.top)) : rn.top;
+
+      const pisa = derTinta > rb.left + 1 && rb.right > rn.left + 1
+                && abajoTinta > rb.top + 1 && rb.bottom > arribaTinta + 1;
+
+      return {
+        nombre: nom.textContent.trim().slice(0, 24),
+        pisa,
+        // Y el otro filo: que la tinta se salga de su propia caja ya es el
+        // síntoma, tenga o no un botón justo ahí donde caer.
+        seSaleDeSuCaja: nom.scrollWidth > nom.clientWidth + 1,
+        anchoNombre: Math.round(rn.width),
+        anchoHilera: Math.round(rh.width),
+        derNombre: Math.round(derTinta),
+      };
+    });
+  });
+
+  decir(!!m && m.length >= 2, 'la lista de agentes trae los dos nombres largos',
+    m ? m.map(x => x.nombre).join(' | ') : 'no hay hileras con botón');
+
+  if (m) {
+    decir(m.every(x => !x.pisa), 'ningún nombre se mete por debajo de su botón',
+      JSON.stringify(m.map(x => ({ n: x.nombre, pisa: x.pisa }))));
+    decir(m.every(x => !x.seSaleDeSuCaja), 'ni se sale de su propia caja',
+      JSON.stringify(m.map(x => ({ n: x.nombre, sale: x.seSaleDeSuCaja }))));
+    /* Y que no se pisen no basta: el nombre tiene que tener sitio para
+       LEERSE. Con 30 px de ancho no se pisaba nada y aun así el nombre salía
+       en columna, una palabra por renglón. Se pide la mitad de la fila, que es
+       poco y ya descarta el estrujado. */
+    decir(m.every(x => x.anchoNombre >= x.anchoHilera * 0.5),
+      'y cada nombre se lleva al menos media fila para leerse',
+      JSON.stringify(m.map(x => `${x.anchoNombre}/${x.anchoHilera}`)));
+    decir(m.every(x => x.derNombre <= ANCHO + 1),
+      'ni se sale del ancho del teléfono',
+      JSON.stringify(m.map(x => x.derNombre)));
+  }
+}
+
+// ── 8 · LA GRÁFICA DE VELAS A 360 px ──────────────────────────────────────
+/* Dos cosas estaban documentadas y las dos eran ciertas.
+   Una: el lienzo salía MÁS ALTO QUE ANCHO — 287×385, o sea 0,75 — porque el
+   alto era `clamp(340px,52vh,620px)` y el ancho lo daba la pantalla. Una vela
+   es una figura ancha: en vertical se estiran los cuerpos y caben menos velas
+   de las que entrarían.
+   Dos: la leyenda se cortaba. Con precios de nueve cifras el renglón
+   «O … H … L … C … %» mide más de 500 px, y un canvas no envuelve: lo que
+   sobraba se pintaba fuera de la imagen. L, C y el cambio del día estaban
+   dibujados donde no hay pantalla, o sea que no estaban.
+
+   Ahora la leyenda se reparte en renglones que caben, y cuando ni así entra
+   sin taparle la gráfica a nadie, se queda con el par y el cierre y MUDA el
+   resto a la tira de debajo del lienzo. Mudar no es esconder: la prueba exige
+   que los mismos números estén, y que se pueda leer dónde. */
+console.log('\n── la gráfica de velas, a 360 px ─────────────────────────────');
+{
+  await p.evaluate(() => ONX.vista('mercado', 'AGKA-ORIGEN'));
+  await p.waitForTimeout(2200);
+
+  const g = await p.evaluate(() => {
+    const c = document.getElementById('vm-velas');
+    if (!c) return null;
+    const r = c.getBoundingClientRect();
+    return { w: Math.round(r.width), h: Math.round(r.height),
+             prop: +(r.width / r.height).toFixed(2), der: Math.round(r.right) };
+  });
+  decir(!!g && g.w > g.h, 'el lienzo es apaisado: más ancho que alto',
+    g ? `${g.w}×${g.h} (proporción ${g.prop})` : 'no hay lienzo');
+  decir(!!g && g.der <= ANCHO + 1, 'y cabe en el ancho del teléfono', JSON.stringify(g));
+
+  const tira = await p.evaluate(() => {
+    const t = document.getElementById('vm-ohlc');
+    if (!t) return null;
+    const r = t.getBoundingClientRect();
+    return {
+      visible: !t.hidden && r.width > 0 && r.height > 0,
+      der: Math.round(r.right),
+      etiquetas: [...t.querySelectorAll('.vm-ohlc-d i')].map(x => x.textContent),
+      valores: [...t.querySelectorAll('.vm-ohlc-d b')].map(x => x.textContent),
+    };
+  });
+
+  decir(!!tira && tira.visible,
+    'lo que no cabía en la leyenda aterriza debajo del lienzo, a la vista',
+    tira ? JSON.stringify(tira.etiquetas) : 'no existe la tira');
+  if (tira && tira.visible) {
+    const tieneOHL = ['O', 'H', 'L'].every(k => tira.etiquetas.includes(k));
+    decir(tieneOHL, 'con apertura, máximo y mínimo — los tres, no un resumen',
+      tira.etiquetas.join(' '));
+    decir(tira.etiquetas.some(k => /^EMA/.test(k)), 'y las medias móviles',
+      tira.etiquetas.filter(k => /^EMA/.test(k)).join(' '));
+    decir(tira.valores.every(v => v && v !== '—' && v.length > 3),
+      'con números de verdad, no guiones de relleno', tira.valores.join(' | '));
+    decir(tira.der <= ANCHO + 1, 'y sin salirse del ancho', String(tira.der));
+  }
+
+  /* La barra de estadísticas de arriba. En un escritorio entra en una fila y
+     su hueco entre renglones no se usa nunca; en un teléfono se parte en tres,
+     y con `gap:0` la etiqueta de un renglón nacía pegada a los números del de
+     arriba — «SE PAGA EN» salía colgando de «987,654,321.5» como si fuera su
+     decimal. Solo se ve con cifras largas, que es por lo que este par las
+     tiene. */
+  const st = await p.evaluate(() => {
+    const s = document.querySelector('.vm-stats');
+    if (!s) return null;
+    const cajas = [...s.querySelectorAll('.vm-stat')].map(e => {
+      const r = e.getBoundingClientRect();
+      return { izq: r.left, der: r.right, arriba: r.top, abajo: r.bottom,
+               t: e.textContent.trim().replace(/\s+/g, ' ').slice(0, 22) };
+    });
+    /* El hueco no se busca por «renglones»: dos cajas del mismo renglón no
+       empiezan exactamente en el mismo píxel y agruparlas por su `top` inventa
+       renglones que no existen. Se buscan PARES: una caja que está debajo de
+       otra y comparte columna con ella. Ese par es justo el que se ve mal —
+       una etiqueta colgando del número de arriba— y su distancia es el dato. */
+    let minHueco = Infinity, par = null;
+    for (const a of cajas) for (const b of cajas) {
+      if (a === b) continue;
+      if (!(a.izq < b.der - 1 && b.izq < a.der - 1)) continue;   // no comparten columna
+      if (b.arriba < a.abajo - 1) continue;                      // no está debajo
+      const h = b.arriba - a.abajo;
+      if (h < minHueco) { minHueco = h; par = `«${a.t}» → «${b.t}»`; }
+    }
+    return { cuantas: cajas.length, minHueco: Number.isFinite(minHueco) ? Math.round(minHueco) : null, par };
+  });
+  decir(!!st && st.minHueco != null,
+    'la barra de estadísticas se parte en varios renglones acá', JSON.stringify(st));
+  if (st && st.minHueco != null) {
+    decir(st.minHueco >= 6,
+      'y entre renglón y renglón queda aire: la etiqueta no cuelga del número de arriba',
+      `${st.minHueco}px de hueco · ${st.par}`);
+  }
 }
 
 console.log(`\n${malas === 0 ? 'todo en pie.' : malas + ' comprobación(es) fallaron'}\n`);

@@ -517,6 +517,74 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
     justify-content:center;text-align:center;border-radius:12px}
   .tabs .nav svg{width:21px;height:21px}
   .tabs .nav[aria-current=page]::before{display:none}
+
+  /* ── las dos salidas de la portada, apiladas y con el rótulo envolviendo ──
+     Esto no es gusto: es lo que hacía que la portada entera se desplazara a lo
+     ancho en 320 y 360 px. `.btn` lleva `white-space:nowrap` —una pastilla
+     partida en dos renglones se ve rota— y en inglés el rótulo de entrar es
+     «Sign in with my Veta Wallet account». Un botón que no envuelve tiene el
+     ancho de su rótulo entero como ancho MÍNIMO, y como la columna de `.bv` es
+     `1fr` —o sea `minmax(auto,1fr)`, y ese `auto` es el mínimo de su
+     contenido— esos 371 px se los comía la rejilla completa: el sello, el
+     titular y el párrafo se iban con ella dentro de una pantalla de 320.
+
+     Se veía SOLO en inglés, que es exactamente por lo que llevaba ahí sin que
+     nadie lo notara: se prueba en el idioma de uno. Lo que arregla el
+     desbordamiento es `white-space:normal` —le baja el mínimo a la palabra más
+     larga—; el apilado es la consecuencia honesta: en un teléfono dos
+     llamadas a la acción van una encima de otra y del ancho de la pantalla, no
+     peleándose media fila cada una. */
+  .bv-btns{flex-direction:column;align-items:stretch}
+  .bv-btns .btn{width:100%;white-space:normal}
+
+  /* ── el dedo no es un puntero ────────────────────────────────────────────
+     40 px de alto en todo lo que se toca. No se cambia ni la tipografía ni el
+     relleno lateral: se pone un alto mínimo y se centra, así el rótulo queda
+     donde estaba y lo que crece es el blanco donde se acierta. */
+  .idiomas button{min-height:40px;display:inline-flex;align-items:center;justify-content:center}
+  /* El botón chico se queda chico de letra —es una acción secundaria y tiene
+     que seguir pareciéndolo— pero no de blanco: 38 px es un fallo de dos de
+     cada diez toques, y algunos de estos traen dinero desde la billetera. */
+  .btn-sm{min-height:40px}
+
+  /* El pie del riel es, en el teléfono, el único sitio de TODA la aplicación
+     donde se cierra sesión y se cambia de idioma. Y `.riel-pie button{padding:0}`
+     —escrito para que los enlaces del pie vertical no abrieran huecos— le
+     estaba comiendo el relleno a las pastillas de idioma: quedaban de 18×16 px,
+     el tamaño de las dos letras y nada más. SALIR medía 25×16, que es el
+     tamaño de la PALABRA, no el de un botón; acá se le da borde y blanco
+     propios, porque una hilera de texto no se toca, se lee. */
+  .riel-pie .idiomas button{padding:0 16px}
+  .riel-pie button[data-t="nav.salir"]{min-height:40px;padding:0 14px;
+    border:1px solid var(--linea2);border-radius:100px;color:var(--crema);font-weight:700}
+
+  /* ── la hilera, apilada cuando lleva un botón ────────────────────────────
+     La hilera es [icono][texto que encoge][acción]. La acción es un `.btn`, y
+     un `.btn` no envuelve: su ancho mínimo es el rótulo entero. En una fila de
+     328 px con «Comprarle ORIGEN» al lado, al texto le quedaban 30 px — el
+     nombre del agente bajaba a UNA PALABRA POR RENGLÓN y, si el nombre venía
+     en una sola palabra larga, se metía por debajo del botón.
+
+     Es el mismo fallo que reportó José con «Mayra Carolina Enamorado Alvarez»,
+     y es de los que no atrapa medir desbordes: nada se sale del ancho de la
+     pantalla, se PISAN dentro de ella. Por eso hay que mirar además de medir.
+
+     Solo se apila la hilera que termina en botón. La del portafolio termina en
+     una cifra (`.val`), que es corta, va sin envolver y tiene que quedarse en
+     el renglón del activo: apilarla partiría en dos lo que se lee de un
+     vistazo.
+
+     El sangrado de 52 px es el icono (38) más el hueco (14), para que la
+     acción nazca en la misma columna que el nombre. Va de relleno y no de
+     margen a propósito: la base es el 100 % del renglón, y un margen se SUMA a
+     esa base — 100 % + 52 px es más ancho que el renglón, y la fila entera se
+     salía de la pantalla por esos mismos 52 px. El relleno cae dentro, porque
+     todo en esta hoja es `border-box`. */
+  .hilera:has(.btn){flex-wrap:wrap}
+  .hilera:has(.btn)>*:last-child{flex:1 0 100%;padding-left:52px}
+  /* Y un nombre sin espacios —un identificador, una razón social con guiones—
+     se parte donde toque antes que salirse de su caja. */
+  .hilera .txt b{overflow-wrap:anywhere}
 }
 /* Quien pidió que las cosas no se muevan no pidió menos información: se queda
    todo visible y se va lo que se mueve solo. */
