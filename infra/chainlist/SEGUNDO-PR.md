@@ -1,6 +1,20 @@
 # El segundo PR a Chainlist — de reserva a registro funcional
 
-## Dónde estamos (verificado el 19-ago-2026)
+> **CERRADO. Este documento es historia, no trabajo pendiente.**
+>
+> El PR que describe es el **#8612**, y **se fusionó el 19-ago-2026** con todo lo
+> que planeaba: los dos RPC, el explorador y —además— el ícono en IPFS. Después
+> el **#8613** pasó el `status` a `active` el 20-ago.
+>
+> Lo de abajo se escribió **antes** de enviarlo, así que hay dos cosas que ya no
+> son ciertas: donde dice que el `status` se queda en `incubating` (se cambió, y
+> con razón: hoy hay siete validadores firmando, no uno), y las instrucciones de
+> «cómo abrirlo sin herramientas», que ya no hay que seguir.
+>
+> **El estado real y medido está en `README.md`.** Se conserva este archivo por
+> las cuatro comprobaciones del CI, que sí siguen valiendo la próxima vez.
+
+## Dónde estábamos (verificado el 19-ago-2026, antes de enviar)
 
 El PR **#8594 está fusionado**: la cadena 5550 «Orden Global» figura en la lista
 oficial, entre 2.714 cadenas. Se comprueba en tres sitios, sin depender de leer
