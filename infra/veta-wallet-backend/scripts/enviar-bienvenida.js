@@ -76,7 +76,18 @@ async function main() {
         bienvenidaEn: { $exists: false },
       };
 
-  const todos = await Users.find(filtro).select("email name username").lean();
+  let todos = await Users.find(filtro).select("email name username").lean();
+
+  /* `--a=` tiene que funcionar aunque esa direccion NO sea un usuario.
+     Es una vista previa: se manda a un buzon nuestro para verla con los ojos
+     en un cliente de correo de verdad, y esos buzones no tienen cuenta en la
+     billetera. Filtrando por usuario, la previa fallaba en silencio -«no hay a
+     quien escribirle»- justo para la unica direccion a la que uno quiere
+     mandarsela. Paso al primer intento, con info@ordenglobal.org. */
+  if (UNA && !todos.length) {
+    todos = [{ email: UNA, name: "", username: UNA }];
+    console.log(`  (${UNA} no tiene cuenta; se manda igual, es una vista previa)`);
+  }
   const saltados = UNA || INTERNOS ? [] : todos.filter((u) => esDeLaCasa(u.email));
   const gente = UNA || INTERNOS ? todos : todos.filter((u) => !esDeLaCasa(u.email));
   const tanda = gente.slice(0, TOPE);
