@@ -1,6 +1,34 @@
-# 🥇 ORO Scalping 3-en-1 — Estrategia Final (XAUUSD)
+# 🥇 ORO Scalping 3-en-1 — Estrategia Final v2 con Score de Probabilidad (XAUUSD)
 
-Sistema de scalping para oro que combina **3 estrategias de alta probabilidad en un solo indicador de TradingView**. Solo da señal cuando las tres (o dos, en modo agresivo) coinciden en la misma dirección, dentro de los horarios de mayor volumen del oro.
+Sistema de scalping para oro que combina **3 estrategias en un solo indicador de TradingView** y convierte la confluencia en un **score de 0 a 100 por dirección**. Puede operarse en cualquier horario (el score penaliza solo los horarios malos) y el panel en vivo muestra el desglose completo de puntos para tomar la decisión.
+
+## ⭐ v2 — Tabla de probabilidad 1–100
+
+Cada vela, el indicador puntúa LONG y SHORT por separado:
+
+| # | Factor | Condición LONG (SHORT = inverso) | Puntos máx. |
+|---|--------|----------------------------------|-------------|
+| 1 | Tendencia M5 (EMAs) | EMA 9 > EMA 21 **y** precio > EMA 200 (solo EMAs alineadas = 10) | **20** |
+| 2 | Tendencia superior (15 m) | EMA 21 > EMA 50 en la temporalidad superior | **15** |
+| 3 | Momentum institucional | Precio > VWAP (8 pts) + RSI > 50 (7 pts) | **15** |
+| 4 | Ruptura | Cierre fuera del rango de apertura (en killzone) o del rango de la última hora (fuera de killzone) | **15** |
+| 5 | Fuerza ADX | Escalado: ADX 40+ = 10 pts, ADX 20 = 5 pts | **10** |
+| 6 | Calidad de horario | Killzone = 15 · Londres/NY normal = 8 · Asia = 3 | **15** |
+| 7 | Vela de confirmación | Cuerpo ≥ 50% del rango a favor de la dirección | **10** |
+|   | **TOTAL** | | **100** |
+
+**Lectura del score:**
+
+| Score | Interpretación | Acción |
+|-------|---------------|--------|
+| 80–100 | Confluencia casi perfecta | Entrada con confianza, riesgo 1% |
+| 70–79 | Alta probabilidad (umbral por defecto) | Entrada normal, riesgo 0.5–1% |
+| 60–69 | Aceptable solo en killzone | Solo si tienes experiencia, riesgo 0.5% |
+| < 60 | Ruido | **No operar** |
+
+⚠️ **Honestidad primero:** el score mide *calidad de confluencia*, no es un porcentaje de acierto garantizado. Un 85/100 no significa 85% de ganar; significa que casi todos los factores están alineados. Históricamente, más confluencia = mayor % de acierto, y el backtest te dice el número real de TU broker.
+
+**Horarios flexibles (nuevo):** input "Horarios de operación" con 3 modos — *Solo killzones* (recomendado), *Londres + NY completo* (02:00–17:00 NY) y *24 horas*. En modo 24h el factor horario baja solo (Asia vale 3 pts de 15), así que una señal nocturna necesita confluencia casi perfecta en todo lo demás para superar el umbral: puedes hacer scalping a cualquier hora sin que el sistema pierda su filtro de calidad.
 
 **Archivos:**
 - `ORO_Scalping_3en1.pine` → indicador con señales, panel en vivo, SL/TP y alertas.
@@ -90,7 +118,15 @@ Con esta gestión, con solo acertar **4 de cada 10 operaciones ya eres rentable*
 5. Para backtest: repite el proceso con `ORO_Scalping_3en1_Backtest.pine` y abre la pestaña **Probador de estrategias**.
 
 ### Panel en vivo (toma de decisión)
-El panel muestra en tiempo real: sesión activa, estado de cada una de las 3 estrategias, ADX, confluencias actuales (X/3), ATR y la **decisión final**: `BUSCAR LONG 🟢`, `BUSCAR SHORT 🔴` o `ESPERAR ⏸`.
+El panel muestra en tiempo real, columna LONG y columna SHORT:
+- Los **7 factores con sus puntos en vivo** (ej. "Tendencia M5: 20/20 · 0/20")
+- **Score total X/100** de cada dirección, resaltado cuando supera el umbral
+- Sesión activa (Killzone Londres / Killzone NY / Londres-NY normal / Asia), RSI, ADX, ATR, distancia al VWAP
+- **SL y TP1/TP2 sugeridos en vivo** (calculados aunque aún no haya señal)
+- **DECISIÓN**: `BUSCAR LONG 🟢`, `BUSCAR SHORT 🔴` o `ESPERAR ⏸`
+- Si la ventana horaria elegida permite operar ahora mismo
+
+Las etiquetas de señal en el gráfico incluyen el score (ej. "LONG 🟢 78/100") y las alertas al celular también lo llevan junto con entrada, SL, TP1 y TP2.
 
 ---
 

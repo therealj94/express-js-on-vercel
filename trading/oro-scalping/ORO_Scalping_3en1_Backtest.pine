@@ -1,29 +1,30 @@
 //@version=5
 // ═══════════════════════════════════════════════════════════════════════════
-//  ORO SCALPING 3-EN-1 · VERSIÓN BACKTEST (strategy)
-//  Misma lógica que el indicador, pero ejecuta operaciones simuladas para
-//  medir la probabilidad real en el Probador de Estrategias de TradingView.
-//  Gestión: 50% en TP1 (1R) con SL a punto de entrada, 50% en TP2 (2R).
+//  ORO SCALPING 3-EN-1 · v2 SCORE · VERSIÓN BACKTEST (strategy)
+//  Misma lógica de score 0-100 que el indicador, para medir la probabilidad
+//  real por umbral y por horario en el Probador de Estrategias.
+//  Gestión: 50% en TP1 (1R) con SL a entrada, 50% en TP2 (2R).
 // ═══════════════════════════════════════════════════════════════════════════
-strategy("ORO Scalping 3-en-1 · Backtest", shorttitle="ORO 3en1 BT", overlay=true, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, commission_type=strategy.commission.cash_per_order, commission_value=0.5, calc_on_every_tick=false, process_orders_on_close=true)
+strategy("ORO Scalping 3-en-1 · Backtest v2", shorttitle="ORO 3en1 BT2", overlay=true, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, commission_type=strategy.commission.cash_per_order, commission_value=0.5, calc_on_every_tick=false, process_orders_on_close=true)
 
-tz        = input.string("America/New_York", "Zona horaria", options=["America/New_York", "UTC", "Europe/London"])
-minScore  = input.int(3, "Confluencias mínimas", minval=2, maxval=3)
-cooldown  = input.int(12, "Velas mínimas entre señales", minval=0)
+tz       = input.string("America/New_York", "Zona horaria", options=["America/New_York", "UTC", "Europe/London"])
+mode     = input.string("Solo killzones (recomendado)", "Horarios de operación", options=["Solo killzones (recomendado)", "Londres + NY completo", "24 horas"])
+thr      = input.int(70, "Score mínimo para señal (1-100)", minval=40, maxval=95)
+cooldown = input.int(12, "Velas mínimas entre señales", minval=0)
 
-useLdn  = input.bool(true, "Operar Londres")
-ldnKZ   = input.session("0300-0600", "Killzone Londres")
-ldnORB  = input.session("0300-0315", "Rango apertura Londres")
-useNY   = input.bool(true, "Operar Nueva York")
-nyKZ    = input.session("0830-1130", "Killzone NY")
-nyORB   = input.session("0830-0845", "Rango apertura NY")
+ldnKZ  = input.session("0300-0600", "Killzone Londres")
+ldnORB = input.session("0300-0315", "Rango apertura Londres")
+nyKZ   = input.session("0830-1130", "Killzone NY")
+nyORB  = input.session("0830-0845", "Rango apertura NY")
+lnSess = input.session("0200-1700", "Horario Londres+NY completo")
 
 emaFastLen = input.int(9, "EMA rápida")
 emaSlowLen = input.int(21, "EMA lenta")
 emaBiasLen = input.int(200, "EMA sesgo")
+htfTf      = input.timeframe("15", "TF superior")
 rsiLen     = input.int(14, "RSI")
+brkLen     = input.int(12, "Velas rango local")
 adxLen     = input.int(14, "ADX")
-adxMin     = input.float(18, "ADX mínimo")
 
 atrLen   = input.int(14, "ATR")
 swingLen = input.int(6, "Velas swing SL")
@@ -31,7 +32,7 @@ slBuf    = input.float(0.5, "Colchón SL (× ATR)")
 maxSlAtr = input.float(1.5, "SL máximo (× ATR)")
 rr1      = input.float(1.0, "TP1 (× riesgo)")
 rr2      = input.float(2.0, "TP2 (× riesgo)")
-closeEOD = input.bool(true, "Cerrar todo al terminar la killzone (sin overnight)")
+closeEOD = input.bool(true, "Cerrar todo fuera de la ventana operable")
 
 emaF = ta.ema(close, emaFastLen)
 emaS = ta.ema(close, emaSlowLen)
@@ -40,6 +41,8 @@ vwap = ta.vwap(hlc3)
 rsi  = ta.rsi(close, rsiLen)
 atr  = ta.atr(atrLen)
 [diP, diM, adx] = ta.dmi(adxLen, adxLen)
+htfF = request.security(syminfo.tickerid, htfTf, ta.ema(close, 21)[1], lookahead=barmerge.lookahead_off)
+htfS = request.security(syminfo.tickerid, htfTf, ta.ema(close, 50)[1], lookahead=barmerge.lookahead_off)
 
 inSess(s) => not na(time(timeframe.period, s, tz))
 
@@ -58,31 +61,40 @@ f_orb(sessRange) =>
 [ldnHi, ldnLo, inLdnORB] = f_orb(ldnORB)
 [nyHi,  nyLo,  inNyORB]  = f_orb(nyORB)
 
-kzLdn = useLdn and inSess(ldnKZ)
-kzNY  = useNY  and inSess(nyKZ)
+kzLdn = inSess(ldnKZ)
+kzNY  = inSess(nyKZ)
 kzActive = kzLdn or kzNY
+inLdnNy  = inSess(lnSess)
 
 orbHi      = kzNY ? nyHi : kzLdn ? ldnHi : na
 orbLo      = kzNY ? nyLo : kzLdn ? ldnLo : na
 orbForming = kzNY ? inNyORB : kzLdn ? inLdnORB : false
 orbReady   = kzActive and not orbForming and not na(orbHi)
 
-trendLong  = emaF > emaS and close > emaB
-trendShort = emaF < emaS and close < emaB
-momLong    = close > vwap and rsi > 50
-momShort   = close < vwap and rsi < 50
-brkLong    = orbReady and close > orbHi
-brkShort   = orbReady and close < orbLo
+hhLocal = ta.highest(high, brkLen)[1]
+llLocal = ta.lowest(low, brkLen)[1]
 
-scoreL = (trendLong ? 1 : 0) + (momLong ? 1 : 0) + (brkLong ? 1 : 0)
-scoreS = (trendShort ? 1 : 0) + (momShort ? 1 : 0) + (brkShort ? 1 : 0)
+trendLongFull  = emaF > emaS and close > emaB
+trendShortFull = emaF < emaS and close < emaB
+brkLong  = kzActive ? (orbReady and close > orbHi) : close > hhLocal
+brkShort = kzActive ? (orbReady and close < orbLo) : close < llLocal
+candRange = math.max(high - low, syminfo.mintick)
+candBull  = close > open and (close - open) / candRange >= 0.5
+candBear  = close < open and (open - close) / candRange >= 0.5
 
-adxOK = adx >= adxMin
+ptsAdx  = math.min(adx, 40) / 40 * 10
+ptsSess = kzActive ? 15.0 : inLdnNy ? 8.0 : 3.0
+
+scLong  = (trendLongFull ? 20.0 : emaF > emaS ? 10.0 : 0.0) + (htfF > htfS ? 15.0 : 0.0) + (close > vwap ? 8.0 : 0.0) + (rsi > 50 ? 7.0 : 0.0) + (brkLong ? 15.0 : 0.0) + ptsAdx + ptsSess + (candBull ? 10.0 : 0.0)
+scShort = (trendShortFull ? 20.0 : emaF < emaS ? 10.0 : 0.0) + (htfF < htfS ? 15.0 : 0.0) + (close < vwap ? 8.0 : 0.0) + (rsi < 50 ? 7.0 : 0.0) + (brkShort ? 15.0 : 0.0) + ptsAdx + ptsSess + (candBear ? 10.0 : 0.0)
+
+tradeWindow = mode == "24 horas" ? true : mode == "Londres + NY completo" ? inLdnNy : kzActive
+
 var int lastSig = na
 canSignal = na(lastSig) or (bar_index - lastSig) > cooldown
 
-longSignal  = kzActive and adxOK and scoreL >= minScore and scoreS < minScore and scoreL[1] < minScore and canSignal
-shortSignal = kzActive and adxOK and scoreS >= minScore and scoreL < minScore and scoreS[1] < minScore and canSignal
+longSignal  = tradeWindow and scLong  >= thr and scLong  > scShort and scLong[1]  < thr and canSignal
+shortSignal = tradeWindow and scShort >= thr and scShort > scLong  and scShort[1] < thr and canSignal
 
 swingLo = ta.lowest(low, swingLen)
 swingHi = ta.highest(high, swingLen)
@@ -113,7 +125,7 @@ if shortSignal and strategy.position_size == 0
     tp1Hit  := false
     strategy.entry("Short", strategy.short)
 
-// Al tocar TP1: SL del resto se mueve al punto de entrada (break-even)
+// Al tocar TP1: SL del resto a punto de entrada (break-even)
 if strategy.position_size > 0 and not tp1Hit and high >= tp1Px
     tp1Hit := true
     slPx := entryPx
@@ -128,9 +140,8 @@ if strategy.position_size < 0
     strategy.exit("S-TP1", "Short", qty_percent=50, limit=tp1Px, stop=slPx)
     strategy.exit("S-TP2", "Short", limit=tp2Px, stop=slPx)
 
-// Sin posiciones fuera de horario: cierre forzoso al acabar la killzone
-if closeEOD and not kzActive and strategy.position_size != 0
-    strategy.close_all(comment="Fin de sesión")
+if closeEOD and not tradeWindow and strategy.position_size != 0
+    strategy.close_all(comment="Fin de ventana")
 
 plot(emaF, "EMA rápida", color=color.aqua)
 plot(emaS, "EMA lenta", color=color.orange)
