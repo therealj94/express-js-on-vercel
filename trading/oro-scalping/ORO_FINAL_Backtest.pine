@@ -1,0 +1,238 @@
+//@version=5
+// ═══════════════════════════════════════════════════════════════════════════════
+//  🥇 ORO FINAL · VERSIÓN BACKTEST (strategy)
+//  Misma lógica que el indicador ORO FINAL, incluida la SALIDA INTELIGENTE,
+//  para medir el % de acierto real en el Probador de Estrategias.
+//  Gestión: 50% en TP1 (stop a entrada) · 50% en TP2 con trailing por ATR ·
+//  cierre anticipado cuando la salud de la operación cae de la zona roja.
+// ═══════════════════════════════════════════════════════════════════════════════
+strategy("ORO FINAL · Backtest", shorttitle="ORO FINAL BT", overlay=true, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, commission_type=strategy.commission.cash_per_order, commission_value=0.5, slippage=2, calc_on_every_tick=false, process_orders_on_close=true)
+
+perfil = input.string("🟡 Equilibrado (recomendado)", "Perfil de trading", options=["🟢 Principiante — solo lo mejor", "🟡 Equilibrado (recomendado)", "🔴 Experimentado — más señales", "⚙️ Personalizado"])
+mode   = input.string("Solo killzones (recomendado)", "Ventana de operación", options=["Solo killzones (recomendado)", "Londres + NY completo", "24 horas"])
+thrIn  = input.int(70, "Umbral manual (perfil Personalizado)", minval=40, maxval=95)
+tz     = input.string("America/New_York", "Zona horaria", options=["America/New_York", "UTC", "Europe/London"])
+
+useSmart    = input.bool(true, "Salida inteligente (cierra si la salud cae)")
+saludExit   = input.int(40, "Salud mínima antes de cerrar", minval=10, maxval=60)
+useTimeStop = input.bool(true, "Contar estancamiento (~2 h sin TP1)")
+
+ldnKZ  = input.session("0300-0600", "Killzone Londres")
+nyKZ   = input.session("0830-1130", "Killzone Nueva York")
+lnSess = input.session("0200-1700", "Londres + NY completo")
+orbMin = input.int(15, "Duración del rango de apertura (min)", minval=1)
+
+emaFastLen = input.int(9, "EMA rápida")
+emaSlowLen = input.int(21, "EMA lenta")
+emaBiasLen = input.int(200, "EMA sesgo")
+tf1 = input.timeframe("15", "Temporalidad superior 1")
+tf2 = input.timeframe("60", "Temporalidad superior 2")
+
+rsiLen  = input.int(14, "RSI")
+adxLen  = input.int(14, "ADX")
+rsiExt  = input.int(76, "RSI extremo")
+vwapExt = input.float(2.0, "Extensión máx. del VWAP (× ATR)")
+useVol  = input.bool(true, "Filtro de volumen")
+volMin  = input.float(1.3, "Volumen fuerte (× media)")
+useDxy  = input.bool(true, "Correlación con el dólar")
+dxySym  = input.symbol("TVC:DXY", "Índice dólar")
+atrRkLo = input.int(25, "Percentil ATR mínimo")
+atrRkHi = input.int(92, "Percentil ATR máximo")
+
+atrLen    = input.int(14, "ATR")
+swingIn   = input.int(0, "Velas swing SL (0 = auto)")
+slBuf     = input.float(0.5, "Colchón SL (× ATR)")
+maxSlAtr  = input.float(1.5, "SL máximo (× ATR)")
+rr1       = input.float(1.0, "TP1 (× riesgo)")
+rr2       = input.float(2.0, "TP2 (× riesgo)")
+useTrail  = input.bool(true, "Trailing tras TP1")
+trailMult = input.float(1.5, "Trailing (× ATR)")
+maxTrades = input.int(4, "Máx. operaciones por día")
+maxLosses = input.int(2, "Máx. pérdidas por día")
+cooldown  = input.int(0, "Velas entre señales (0 = auto)")
+
+esPrin = str.startswith(perfil, "🟢")
+esExp  = str.startswith(perfil, "🔴")
+esPers = str.startswith(perfil, "⚙️")
+thr      = esPrin ? 78 : esExp ? 62 : esPers ? thrIn : 70
+maxTrEff = esPrin ? math.min(maxTrades, 2) : maxTrades
+
+tfSec    = timeframe.in_seconds()
+brkLen   = int(math.max(5, math.round(3600.0 / tfSec)))
+swingLen = swingIn > 0 ? swingIn : int(math.max(3, math.round(1800.0 / tfSec)))
+trailLen = int(math.max(3, math.round(1800.0 / tfSec)))
+coolBars = cooldown > 0 ? cooldown : int(math.max(3, math.round(3600.0 / tfSec)))
+stallBars = int(math.max(6, math.round(7200.0 / tfSec)))
+
+emaF = ta.ema(close, emaFastLen)
+emaS = ta.ema(close, emaSlowLen)
+emaB = ta.ema(close, emaBiasLen)
+vwap = ta.vwap(hlc3)
+rsi  = ta.rsi(close, rsiLen)
+atr  = ta.atr(atrLen)
+[diP, diM, adx] = ta.dmi(adxLen, adxLen)
+vol     = nz(volume)
+volAvg  = ta.sma(vol, 20)
+relVol  = volAvg > 0 ? vol / volAvg : 1.0
+atrRank = nz(ta.percentrank(atr, 200), 50)
+
+[a1, b1] = request.security(syminfo.tickerid, tf1, [ta.ema(close, 21)[1], ta.ema(close, 50)[1]], lookahead=barmerge.lookahead_off)
+[a2, b2] = request.security(syminfo.tickerid, tf2, [ta.ema(close, 21)[1], ta.ema(close, 50)[1]], lookahead=barmerge.lookahead_off)
+[dxyC, dxyE] = request.security(dxySym, timeframe.period, [close, ta.ema(close, 21)], lookahead=barmerge.lookahead_off)
+dxyDown = useDxy and not na(dxyC) and dxyC < dxyE
+dxyUp   = useDxy and not na(dxyC) and dxyC > dxyE
+
+inSess(s) => not na(time(timeframe.period, s, tz))
+kzLdn = inSess(ldnKZ)
+kzNY  = inSess(nyKZ)
+kzActive = kzLdn or kzNY
+inLdnNy  = inSess(lnSess)
+
+orbWindow = orbMin * 60000
+var int   kzStartT = na
+var float orbH = na
+var float orbL = na
+if kzActive and not kzActive[1]
+    kzStartT := time
+    orbH := high
+    orbL := low
+else if kzActive and not na(kzStartT) and (time - kzStartT) < orbWindow
+    orbH := math.max(orbH, high)
+    orbL := math.min(orbL, low)
+inORB    = kzActive and not na(kzStartT) and (time - kzStartT) < orbWindow
+orbReady = kzActive and not inORB and not na(orbH)
+hhLocal  = ta.highest(high, brkLen)[1]
+llLocal  = ta.lowest(low, brkLen)[1]
+
+W_T  = 15.0
+W_H1 = 8.0
+W_H2 = 7.0
+W_M  = 13.0
+W_B  = 12.0
+W_A  = 10.0
+W_S  = 12.0
+W_C  = 8.0
+W_V  = 7.0
+W_R  = 4.0
+W_D  = 4.0
+
+trendFullL = emaF > emaS and close > emaB
+trendFullS = emaF < emaS and close < emaB
+brkL = kzActive ? (orbReady and close > orbH) : close > hhLocal
+brkS = kzActive ? (orbReady and close < orbL) : close < llLocal
+cRange = math.max(high - low, syminfo.mintick)
+candBull = close > open and (close - open) / cRange >= 0.5
+candBear = close < open and (open - close) / cRange >= 0.5
+
+pA  = math.min(adx, 40) / 40 * W_A
+pSs = kzActive ? W_S : inLdnNy ? W_S * 0.55 : W_S * 0.2
+pV  = not useVol ? 0.0 : relVol >= volMin ? W_V : relVol >= 1.0 ? W_V * 0.5 : 0.0
+pR  = atrRank >= atrRkLo and atrRank <= atrRkHi ? W_R : W_R * 0.25
+maxPts = W_T + W_H1 + W_H2 + W_M + W_B + W_A + W_S + W_C + W_R + (useVol ? W_V : 0.0) + (useDxy ? W_D : 0.0)
+
+extended = math.abs(close - vwap) > vwapExt * atr
+penL = (rsi > rsiExt ? 12.0 : 0.0) + (extended and close > vwap ? 8.0 : 0.0)
+penS = (rsi < 100 - rsiExt ? 12.0 : 0.0) + (extended and close < vwap ? 8.0 : 0.0)
+
+rawL = (trendFullL ? W_T : emaF > emaS ? W_T * 0.5 : 0.0) + (a1 > b1 ? W_H1 : 0.0) + (a2 > b2 ? W_H2 : 0.0) + (close > vwap ? 7.0 : 0.0) + (rsi > 50 ? 6.0 : 0.0) + (brkL ? W_B : 0.0) + pA + pSs + (candBull ? W_C : 0.0) + pV + pR + (dxyDown ? W_D : 0.0)
+rawS = (trendFullS ? W_T : emaF < emaS ? W_T * 0.5 : 0.0) + (a1 < b1 ? W_H1 : 0.0) + (a2 < b2 ? W_H2 : 0.0) + (close < vwap ? 7.0 : 0.0) + (rsi < 50 ? 6.0 : 0.0) + (brkS ? W_B : 0.0) + pA + pSs + (candBear ? W_C : 0.0) + pV + pR + (dxyUp ? W_D : 0.0)
+scL = math.max(0.0, math.min(100.0, rawL / maxPts * 100.0 - penL))
+scS = math.max(0.0, math.min(100.0, rawS / maxPts * 100.0 - penS))
+
+newDay = ta.change(time("D")) != 0
+var int tradesDay = 0
+var int lossDay = 0
+if newDay
+    tradesDay := 0
+    lossDay := 0
+
+tradeWindow = mode == "24 horas" ? true : mode == "Londres + NY completo" ? inLdnNy : kzActive
+limitOK = tradesDay < maxTrEff and lossDay < maxLosses
+
+swingLo = ta.lowest(low, swingLen)
+swingHi = ta.highest(high, swingLen)
+hhTrail = ta.highest(high, trailLen)
+llTrail = ta.lowest(low, trailLen)
+slLcalc = math.max(swingLo - slBuf * atr, close - maxSlAtr * atr)
+slScalc = math.min(swingHi + slBuf * atr, close + maxSlAtr * atr)
+
+var int lastSig = na
+canSignal = na(lastSig) or (bar_index - lastSig) > coolBars
+longSignal  = tradeWindow and limitOK and scL >= thr and scL > scS and scL[1] < thr and canSignal
+shortSignal = tradeWindow and limitOK and scS >= thr and scS > scL and scS[1] < thr and canSignal
+
+var float ePx  = na
+var float sPx  = na
+var float t1Px = na
+var float t2Px = na
+var bool  t1Done = false
+var int   entryBar = na
+
+if longSignal and strategy.position_size == 0
+    lastSig := bar_index
+    ePx := close
+    sPx := slLcalc
+    t1Px := close + rr1 * (close - slLcalc)
+    t2Px := close + rr2 * (close - slLcalc)
+    t1Done := false
+    entryBar := bar_index
+    tradesDay := tradesDay + 1
+    strategy.entry("Long", strategy.long)
+
+if shortSignal and strategy.position_size == 0
+    lastSig := bar_index
+    ePx := close
+    sPx := slScalc
+    t1Px := close - rr1 * (slScalc - close)
+    t2Px := close - rr2 * (slScalc - close)
+    t1Done := false
+    entryBar := bar_index
+    tradesDay := tradesDay + 1
+    strategy.entry("Short", strategy.short)
+
+if strategy.position_size > 0 and not t1Done and high >= t1Px
+    t1Done := true
+    sPx := ePx
+if strategy.position_size < 0 and not t1Done and low <= t1Px
+    t1Done := true
+    sPx := ePx
+if useTrail and t1Done and strategy.position_size > 0
+    sPx := math.max(sPx, hhTrail - trailMult * atr)
+if useTrail and t1Done and strategy.position_size < 0
+    sPx := math.min(sPx, llTrail + trailMult * atr)
+
+// Salud de la operación (misma fórmula que el indicador)
+barsIn  = strategy.position_size != 0 and not na(entryBar) ? bar_index - entryBar : 0
+stalled = useTimeStop and strategy.position_size != 0 and not t1Done and barsIn > stallBars
+saludL = 100.0 - (close < vwap ? 25.0 : 0.0) - (emaF < emaS ? 30.0 : 0.0) - (rsi < 45 ? 15.0 : 0.0) - (candBear ? 10.0 : 0.0) - (adx < 15 ? 10.0 : 0.0) - (stalled ? 20.0 : 0.0)
+saludS = 100.0 - (close > vwap ? 25.0 : 0.0) - (emaF > emaS ? 30.0 : 0.0) - (rsi > 55 ? 15.0 : 0.0) - (candBull ? 10.0 : 0.0) - (adx < 15 ? 10.0 : 0.0) - (stalled ? 20.0 : 0.0)
+salud  = strategy.position_size > 0 ? math.max(0.0, saludL) : strategy.position_size < 0 ? math.max(0.0, saludS) : 100.0
+
+if useSmart and strategy.position_size != 0 and salud < saludExit
+    strategy.close_all(comment="Salida inteligente")
+    entryBar := na
+
+if strategy.position_size > 0
+    strategy.exit("L-TP1", "Long", qty_percent=50, limit=t1Px, stop=sPx)
+    strategy.exit("L-TP2", "Long", limit=t2Px, stop=sPx)
+if strategy.position_size < 0
+    strategy.exit("S-TP1", "Short", qty_percent=50, limit=t1Px, stop=sPx)
+    strategy.exit("S-TP2", "Short", limit=t2Px, stop=sPx)
+
+if not tradeWindow and mode != "24 horas" and strategy.position_size != 0
+    strategy.close_all(comment="Fin de ventana")
+    entryBar := na
+
+var int closedTrades = 0
+if strategy.closedtrades > closedTrades
+    if strategy.closedtrades.profit(strategy.closedtrades - 1) < 0
+        lossDay := lossDay + 1
+    closedTrades := strategy.closedtrades
+
+plot(emaF, "EMA rápida", color=color.aqua)
+plot(emaS, "EMA lenta", color=color.orange)
+plot(emaB, "EMA sesgo", color=color.gray, linewidth=2)
+plot(vwap, "VWAP", color=color.purple, linewidth=2)
+plot(kzActive ? orbH : na, "Rango apertura alto", color=color.yellow, style=plot.style_linebr)
+plot(kzActive ? orbL : na, "Rango apertura bajo", color=color.yellow, style=plot.style_linebr)
+bgcolor(kzLdn ? color.new(color.blue, 94) : kzNY ? color.new(color.orange, 94) : na)

@@ -1,0 +1,553 @@
+//@version=5
+// ═══════════════════════════════════════════════════════════════════════════════
+//  🥇 ORO FINAL · SISTEMA COMPLETO DE SCALPING XAUUSD
+//  ─────────────────────────────────────────────────────────────────────────────
+//  Lo que hace por ti:
+//   1. ENTRADA    → score de probabilidad 0-100 con 11 factores; señal al cruzar
+//                   el umbral, con estrellas de calidad (★ 70+ · ★★ 80+ · ★★★ 90+)
+//   2. SL y TP    → stop por estructura + ATR, TP1 (cierra 50%, stop a entrada),
+//                   TP2 con trailing. Lote exacto calculado según tu capital.
+//   3. SALUD      → mientras estás dentro, vigila la operación con un medidor
+//                   0-100: si el mercado se gira, te dice "🚪 MEJOR SALIR" con
+//                   el motivo exacto, antes de que te llegue al stop.
+//   4. ALARMAS    → 9 eventos independientes para sonidos distintos
+//                   (entrada L/S, TP1, TP2, SL, aviso previo, salida anticipada)
+//   5. PERFIL     → elige Principiante / Equilibrado / Experimentado y el
+//                   sistema ajusta el filtro solo. Cualquiera puede usarlo.
+//  Funciona en cualquier temporalidad (se auto-adapta) y en cualquier horario
+//  (el score penaliza solo las horas malas). Recomendado: XAUUSD en 5 minutos.
+// ═══════════════════════════════════════════════════════════════════════════════
+indicator("ORO FINAL · Sistema completo XAUUSD", shorttitle="ORO FINAL", overlay=true, max_labels_count=500, max_lines_count=500)
+
+// ─────────────────────────────── 1. INPUTS ───────────────────────────────
+gG = "⚙️ Empieza aquí"
+perfil = input.string("🟡 Equilibrado (recomendado)", "Perfil de trading", options=["🟢 Principiante — solo lo mejor", "🟡 Equilibrado (recomendado)", "🔴 Experimentado — más señales", "⚙️ Personalizado"], group=gG, tooltip="Principiante: umbral 78, máx. 2 operaciones/día. Equilibrado: umbral 70. Experimentado: umbral 62. Personalizado: usa el umbral manual de abajo.")
+mode   = input.string("Solo killzones (recomendado)", "Ventana de operación", options=["Solo killzones (recomendado)", "Londres + NY completo", "24 horas"], group=gG)
+thrIn  = input.int(70, "Umbral manual (solo con perfil Personalizado)", minval=40, maxval=95, group=gG)
+tz     = input.string("America/New_York", "Zona horaria de sesiones", options=["America/New_York", "UTC", "Europe/London"], group=gG)
+
+gM = "💰 Tu cuenta (para el cálculo del lote)"
+capital = input.float(10000, "Capital ($)", minval=1, group=gM)
+riskPct = input.float(1.0, "Riesgo por operación (%)", minval=0.1, maxval=5, step=0.1, group=gM)
+ozLote  = input.float(100, "Onzas por lote (XAUUSD estándar = 100)", minval=1, group=gM)
+
+gX = "🚪 Salida inteligente"
+useSmart  = input.bool(true, "Vigilar la salud de la operación", group=gX)
+saludWarn = input.int(65, "Salud en amarillo: VIGILAR", minval=30, maxval=90, group=gX)
+saludExit = input.int(40, "Salud en rojo: MEJOR SALIR", minval=10, maxval=60, group=gX)
+useTimeStop = input.bool(true, "Avisar si la operación se estanca (~2 h sin TP1)", group=gX)
+
+gS = "🕐 Sesiones (hora de Nueva York)"
+ldnKZ  = input.session("0300-0600", "Killzone Londres", group=gS)
+nyKZ   = input.session("0830-1130", "Killzone Nueva York", group=gS)
+lnSess = input.session("0200-1700", "Horario Londres + NY completo", group=gS)
+orbMin = input.int(15, "Duración del rango de apertura (minutos)", minval=1, group=gS)
+
+g1 = "📈 Tendencia"
+emaFastLen = input.int(9,   "EMA rápida", minval=2, group=g1)
+emaSlowLen = input.int(21,  "EMA lenta", minval=3, group=g1)
+emaBiasLen = input.int(200, "EMA de sesgo", minval=20, group=g1)
+tf1 = input.timeframe("15", "Temporalidad superior 1", group=g1)
+tf2 = input.timeframe("60", "Temporalidad superior 2", group=g1)
+htfLive = input.bool(false, "TF superior en vivo (más rápida, puede repintar)", group=g1)
+
+g2 = "⚡ Momentum y filtros"
+rsiLen  = input.int(14, "Longitud RSI", minval=2, group=g2)
+adxLen  = input.int(14, "Longitud ADX", minval=2, group=g2)
+rsiExt  = input.int(76, "RSI extremo (penaliza entrar tarde)", minval=60, maxval=90, group=g2)
+vwapExt = input.float(2.0, "Extensión máxima del VWAP (× ATR)", minval=0.5, step=0.1, group=g2)
+useVol  = input.bool(true, "Filtro de volumen relativo", group=g2)
+volMin  = input.float(1.3, "Volumen fuerte (× media)", minval=1.0, step=0.1, group=g2)
+useDxy  = input.bool(true, "Correlación inversa con el dólar (DXY)", group=g2)
+dxySym  = input.symbol("TVC:DXY", "Símbolo del índice dólar", group=g2)
+atrRkLo = input.int(25, "Percentil ATR mínimo", minval=0, maxval=90, group=g2)
+atrRkHi = input.int(92, "Percentil ATR máximo", minval=10, maxval=100, group=g2)
+
+gR = "🎯 Riesgo · SL / TP"
+atrLen    = input.int(14, "Longitud ATR", minval=2, group=gR)
+swingIn   = input.int(0, "Velas para el swing del SL (0 = automático)", minval=0, group=gR)
+slBuf     = input.float(0.5, "Colchón del SL (× ATR)", minval=0.0, step=0.1, group=gR)
+maxSlAtr  = input.float(1.5, "Distancia máxima del SL (× ATR)", minval=0.5, step=0.1, group=gR)
+rr1       = input.float(1.0, "TP1 (× riesgo) — cierra 50% y stop a entrada", minval=0.5, step=0.25, group=gR)
+rr2       = input.float(2.0, "TP2 (× riesgo) — cierre total", minval=1.0, step=0.25, group=gR)
+useTrail  = input.bool(true, "Trailing por ATR después del TP1", group=gR)
+trailMult = input.float(1.5, "Trailing (× ATR)", minval=0.5, step=0.1, group=gR)
+maxTrades = input.int(4, "Máximo de operaciones por día", minval=1, group=gR)
+maxLosses = input.int(2, "Máximo de pérdidas por día", minval=1, group=gR)
+cooldown  = input.int(0, "Velas entre señales (0 = automático)", minval=0, group=gR)
+preThr    = input.int(10, "Aviso previo: puntos antes del umbral", minval=0, maxval=25, group=gR)
+
+gP = "📊 Panel"
+showDash  = input.bool(true, "Mostrar panel", group=gP)
+panelFull = input.bool(true, "Panel completo con los 11 factores", group=gP)
+panelPos  = input.string("Arriba derecha", "Posición del panel", options=["Arriba derecha", "Arriba izquierda", "Abajo derecha", "Abajo izquierda", "Centro derecha"], group=gP)
+showLines = input.bool(true, "Dibujar SL / TP en el gráfico", group=gP)
+
+// Perfil → umbral y límites efectivos
+esPrin = str.startswith(perfil, "🟢")
+esExp  = str.startswith(perfil, "🔴")
+esPers = str.startswith(perfil, "⚙️")
+thr       = esPrin ? 78 : esExp ? 62 : esPers ? thrIn : 70
+maxTrEff  = esPrin ? math.min(maxTrades, 2) : maxTrades
+
+// ────────────────── 2. AUTO-ADAPTACIÓN A LA TEMPORALIDAD ──────────────────
+tfSec    = timeframe.in_seconds()
+brkLen   = int(math.max(5, math.round(3600.0 / tfSec)))
+swingLen = swingIn > 0 ? swingIn : int(math.max(3, math.round(1800.0 / tfSec)))
+trailLen = int(math.max(3, math.round(1800.0 / tfSec)))
+coolBars = cooldown > 0 ? cooldown : int(math.max(3, math.round(3600.0 / tfSec)))
+stallBars = int(math.max(6, math.round(7200.0 / tfSec)))   // ~2 horas
+
+// ─────────────────────────── 3. CÁLCULOS BASE ───────────────────────────
+emaF = ta.ema(close, emaFastLen)
+emaS = ta.ema(close, emaSlowLen)
+emaB = ta.ema(close, emaBiasLen)
+vwap = ta.vwap(hlc3)
+rsi  = ta.rsi(close, rsiLen)
+atr  = ta.atr(atrLen)
+[diP, diM, adx] = ta.dmi(adxLen, adxLen)
+
+vol     = nz(volume)
+volAvg  = ta.sma(vol, 20)
+relVol  = volAvg > 0 ? vol / volAvg : 1.0
+atrRank = nz(ta.percentrank(atr, 200), 50)
+atrPct  = close > 0 ? atr / close * 100 : 0.0
+
+[a1c, b1c, a1l, b1l] = request.security(syminfo.tickerid, tf1, [ta.ema(close, 21)[1], ta.ema(close, 50)[1], ta.ema(close, 21), ta.ema(close, 50)], lookahead=barmerge.lookahead_off)
+[a2c, b2c, a2l, b2l] = request.security(syminfo.tickerid, tf2, [ta.ema(close, 21)[1], ta.ema(close, 50)[1], ta.ema(close, 21), ta.ema(close, 50)], lookahead=barmerge.lookahead_off)
+h1F = htfLive ? a1l : a1c
+h1S = htfLive ? b1l : b1c
+h2F = htfLive ? a2l : a2c
+h2S = htfLive ? b2l : b2c
+
+[dxyC, dxyE] = request.security(dxySym, timeframe.period, [close, ta.ema(close, 21)], lookahead=barmerge.lookahead_off)
+dxyDown = useDxy and not na(dxyC) and dxyC < dxyE
+dxyUp   = useDxy and not na(dxyC) and dxyC > dxyE
+
+// ────────────── 4. SESIONES Y RANGO DE APERTURA ──────────────
+inSess(s) => not na(time(timeframe.period, s, tz))
+kzLdn    = inSess(ldnKZ)
+kzNY     = inSess(nyKZ)
+kzActive = kzLdn or kzNY
+inLdnNy  = inSess(lnSess)
+
+orbWindow = orbMin * 60000
+var int   kzStartT = na
+var float orbH = na
+var float orbL = na
+if kzActive and not kzActive[1]
+    kzStartT := time
+    orbH := high
+    orbL := low
+else if kzActive and not na(kzStartT) and (time - kzStartT) < orbWindow
+    orbH := math.max(orbH, high)
+    orbL := math.min(orbL, low)
+inORB    = kzActive and not na(kzStartT) and (time - kzStartT) < orbWindow
+orbReady = kzActive and not inORB and not na(orbH)
+
+hhLocal = ta.highest(high, brkLen)[1]
+llLocal = ta.lowest(low, brkLen)[1]
+
+// ══════════════ 5. SCORE DE ENTRADA 0-100 (11 factores) ══════════════
+W_T  = 15.0
+W_H1 = 8.0
+W_H2 = 7.0
+W_M  = 13.0
+W_B  = 12.0
+W_A  = 10.0
+W_S  = 12.0
+W_C  = 8.0
+W_V  = 7.0
+W_R  = 4.0
+W_D  = 4.0
+
+trendFullL = emaF > emaS and close > emaB
+trendFullS = emaF < emaS and close < emaB
+brkL   = kzActive ? (orbReady and close > orbH) : close > hhLocal
+brkS   = kzActive ? (orbReady and close < orbL) : close < llLocal
+cRange = math.max(high - low, syminfo.mintick)
+candBull = close > open and (close - open) / cRange >= 0.5
+candBear = close < open and (open - close) / cRange >= 0.5
+
+pT_L  = trendFullL ? W_T : emaF > emaS ? W_T * 0.5 : 0.0
+pT_S  = trendFullS ? W_T : emaF < emaS ? W_T * 0.5 : 0.0
+pH1_L = h1F > h1S ? W_H1 : 0.0
+pH1_S = h1F < h1S ? W_H1 : 0.0
+pH2_L = h2F > h2S ? W_H2 : 0.0
+pH2_S = h2F < h2S ? W_H2 : 0.0
+pM_L  = (close > vwap ? 7.0 : 0.0) + (rsi > 50 ? 6.0 : 0.0)
+pM_S  = (close < vwap ? 7.0 : 0.0) + (rsi < 50 ? 6.0 : 0.0)
+pB_L  = brkL ? W_B : 0.0
+pB_S  = brkS ? W_B : 0.0
+pA    = math.min(adx, 40) / 40 * W_A
+pSs   = kzActive ? W_S : inLdnNy ? W_S * 0.55 : W_S * 0.2
+pC_L  = candBull ? W_C : 0.0
+pC_S  = candBear ? W_C : 0.0
+pV    = not useVol ? 0.0 : relVol >= volMin ? W_V : relVol >= 1.0 ? W_V * 0.5 : 0.0
+pR    = atrRank >= atrRkLo and atrRank <= atrRkHi ? W_R : W_R * 0.25
+pD_L  = dxyDown ? W_D : 0.0
+pD_S  = dxyUp ? W_D : 0.0
+
+maxPts = W_T + W_H1 + W_H2 + W_M + W_B + W_A + W_S + W_C + W_R + (useVol ? W_V : 0.0) + (useDxy ? W_D : 0.0)
+
+extended = math.abs(close - vwap) > vwapExt * atr
+penL = (rsi > rsiExt ? 12.0 : 0.0) + (extended and close > vwap ? 8.0 : 0.0)
+penS = (rsi < 100 - rsiExt ? 12.0 : 0.0) + (extended and close < vwap ? 8.0 : 0.0)
+
+rawL = pT_L + pH1_L + pH2_L + pM_L + pB_L + pA + pSs + pC_L + pV + pR + pD_L
+rawS = pT_S + pH1_S + pH2_S + pM_S + pB_S + pA + pSs + pC_S + pV + pR + pD_S
+scL  = math.max(0.0, math.min(100.0, rawL / maxPts * 100.0 - penL))
+scS  = math.max(0.0, math.min(100.0, rawS / maxPts * 100.0 - penS))
+
+// ─────────────────── 6. NIVELES SL / TP ───────────────────
+swingLo = ta.lowest(low, swingLen)
+swingHi = ta.highest(high, swingLen)
+hhTrail = ta.highest(high, trailLen)
+llTrail = ta.lowest(low, trailLen)
+slLcalc = math.max(swingLo - slBuf * atr, close - maxSlAtr * atr)
+slScalc = math.min(swingHi + slBuf * atr, close + maxSlAtr * atr)
+riskLc  = math.max(close - slLcalc, syminfo.mintick)
+riskSc  = math.max(slScalc - close, syminfo.mintick)
+
+// ─────────────────── 7. ESTADÍSTICAS DEL DÍA ───────────────────
+newDay = ta.change(time("D")) != 0
+var int   tradesDay = 0
+var int   winsDay   = 0
+var int   lossDay   = 0
+var float rDay      = 0.0
+if newDay
+    tradesDay := 0
+    winsDay   := 0
+    lossDay   := 0
+    rDay      := 0.0
+
+// ─────────────────── 8. MOTOR DE OPERACIÓN EN VIVO ───────────────────
+tradeWindow = mode == "24 horas" ? true : mode == "Londres + NY completo" ? inLdnNy : kzActive
+limitOK     = tradesDay < maxTrEff and lossDay < maxLosses
+
+var int   pos      = 0
+var float ePx      = na
+var float sPx      = na
+var float t1Px     = na
+var float t2Px     = na
+var float risk0    = na
+var bool  t1Done   = false
+var bool  beDone   = false
+var int   lastSig  = na
+var int   entryBar = na
+
+canSignal = na(lastSig) or (bar_index - lastSig) > coolBars
+setupL = tradeWindow and limitOK and scL >= thr and scL > scS
+setupS = tradeWindow and limitOK and scS >= thr and scS > scL
+
+newLong  = pos == 0 and setupL and scL[1] < thr and canSignal and barstate.isconfirmed
+newShort = pos == 0 and setupS and scS[1] < thr and canSignal and barstate.isconfirmed
+preL = pos == 0 and tradeWindow and limitOK and scL >= thr - preThr and scL < thr and scL[1] < thr - preThr
+preS = pos == 0 and tradeWindow and limitOK and scS >= thr - preThr and scS < thr and scS[1] < thr - preThr
+
+if newLong
+    pos := 1
+    ePx := close
+    sPx := slLcalc
+    risk0 := riskLc
+    t1Px := close + rr1 * riskLc
+    t2Px := close + rr2 * riskLc
+    t1Done := false
+    beDone := false
+    lastSig := bar_index
+    entryBar := bar_index
+    tradesDay := tradesDay + 1
+
+if newShort
+    pos := -1
+    ePx := close
+    sPx := slScalc
+    risk0 := riskSc
+    t1Px := close - rr1 * riskSc
+    t2Px := close - rr2 * riskSc
+    t1Done := false
+    beDone := false
+    lastSig := bar_index
+    entryBar := bar_index
+    tradesDay := tradesDay + 1
+
+hitT1 = (pos == 1 and not t1Done and high >= t1Px) or (pos == -1 and not t1Done and low <= t1Px)
+hitT2 = (pos == 1 and t1Done and high >= t2Px) or (pos == -1 and t1Done and low <= t2Px)
+hitSL = (pos == 1 and low <= sPx) or (pos == -1 and high >= sPx)
+
+if pos != 0 and hitSL
+    if beDone
+        winsDay := winsDay + 1
+    else
+        lossDay := lossDay + 1
+        rDay := rDay - 1.0
+    pos := 0
+    ePx := na
+    sPx := na
+    t1Px := na
+    t2Px := na
+    t1Done := false
+    beDone := false
+    entryBar := na
+else if pos != 0 and hitT2
+    rDay := rDay + rr2 * 0.5
+    winsDay := winsDay + 1
+    pos := 0
+    ePx := na
+    sPx := na
+    t1Px := na
+    t2Px := na
+    t1Done := false
+    beDone := false
+    entryBar := na
+else if pos != 0 and hitT1
+    t1Done := true
+    beDone := true
+    sPx := ePx
+    rDay := rDay + rr1 * 0.5
+else if pos != 0 and t1Done and useTrail
+    sPx := pos == 1 ? math.max(sPx, hhTrail - trailMult * atr) : math.min(sPx, llTrail + trailMult * atr)
+
+if pos != 0 and not tradeWindow and mode != "24 horas"
+    pos := 0
+    ePx := na
+    sPx := na
+    t1Px := na
+    t2Px := na
+    t1Done := false
+    beDone := false
+    entryBar := na
+
+// ═══════════ 9. SALUD DE LA OPERACIÓN (salida inteligente) ═══════════
+//  100 = todo a favor. Cada condición en contra resta puntos:
+//   VWAP en contra −25 · EMAs cruzadas en contra −30 · RSI en contra −15
+//   Vela fuerte en contra −10 · ADX muerto −10 · Estancada ~2h sin TP1 −20
+barsIn = pos != 0 and not na(entryBar) ? bar_index - entryBar : 0
+stalled = useTimeStop and pos != 0 and not t1Done and barsIn > stallBars
+
+saludL = 100.0 - (close < vwap ? 25.0 : 0.0) - (emaF < emaS ? 30.0 : 0.0) - (rsi < 45 ? 15.0 : 0.0) - (candBear ? 10.0 : 0.0) - (adx < 15 ? 10.0 : 0.0) - (stalled ? 20.0 : 0.0)
+saludS = 100.0 - (close > vwap ? 25.0 : 0.0) - (emaF > emaS ? 30.0 : 0.0) - (rsi > 55 ? 15.0 : 0.0) - (candBull ? 10.0 : 0.0) - (adx < 15 ? 10.0 : 0.0) - (stalled ? 20.0 : 0.0)
+salud  = pos == 1 ? math.max(0.0, saludL) : pos == -1 ? math.max(0.0, saludS) : 100.0
+
+// Motivo exacto (texto para el panel y la alerta)
+mVWAP  = pos == 1 and close < vwap or pos == -1 and close > vwap
+mEMA   = pos == 1 and emaF < emaS or pos == -1 and emaF > emaS
+mRSI   = pos == 1 and rsi < 45 or pos == -1 and rsi > 55
+mVela  = pos == 1 and candBear or pos == -1 and candBull
+mADX   = pos != 0 and adx < 15
+motivo = (mEMA ? "EMAs cruzadas en contra · " : "") + (mVWAP ? "VWAP en contra · " : "") + (mRSI ? "RSI en contra · " : "") + (mVela ? "vela fuerte en contra · " : "") + (mADX ? "sin fuerza (ADX) · " : "") + (stalled ? "estancada sin TP1 · " : "")
+
+exitWarn = useSmart and pos != 0 and salud < saludExit and salud[1] >= saludExit and barstate.isconfirmed
+
+// ─────────────── 10. VALORES EN VIVO ───────────────
+dirBias  = scL >= scS
+liveSL   = pos != 0 ? sPx : dirBias ? slLcalc : slScalc
+liveTP1  = pos != 0 ? t1Px : dirBias ? close + rr1 * riskLc : close - rr1 * riskSc
+liveTP2  = pos != 0 ? t2Px : dirBias ? close + rr2 * riskLc : close - rr2 * riskSc
+liveEnt  = pos != 0 ? ePx : close
+liveRisk = pos != 0 ? risk0 : dirBias ? riskLc : riskSc
+riskUSD  = capital * riskPct / 100.0
+lotSug   = liveRisk > 0 ? riskUSD / (liveRisk * ozLote) : 0.0
+pnlR     = pos == 1 and risk0 > 0 ? (close - ePx) / risk0 : pos == -1 and risk0 > 0 ? (ePx - close) / risk0 : 0.0
+pnlUSD   = pos != 0 ? pnlR * riskUSD : 0.0
+estrella(v) => v >= 90 ? "★★★" : v >= 80 ? "★★" : "★"
+
+// ─────── 11. SERIES OCULTAS PARA {{plot("...")}} EN LAS ALERTAS ───────
+plot(scL,     "Score LONG",  display=display.data_window)
+plot(scS,     "Score SHORT", display=display.data_window)
+plot(liveSL,  "SL",          display=display.data_window)
+plot(liveTP1, "TP1",         display=display.data_window)
+plot(liveTP2, "TP2",         display=display.data_window)
+plot(lotSug,  "Lote",        display=display.data_window)
+plot(salud,   "Salud",       display=display.data_window)
+
+// ────── 12. ALERTAS · 9 EVENTOS = 9 SONIDOS POSIBLES ──────
+alertcondition(newLong,             '① Entrada LONG',            '🟢 ORO LONG {{ticker}} {{interval}} | Score {{plot("Score LONG")}} | Entrada {{close}} | SL {{plot("SL")}} | TP1 {{plot("TP1")}} | TP2 {{plot("TP2")}} | Lote {{plot("Lote")}}')
+alertcondition(newShort,            '② Entrada SHORT',           '🔴 ORO SHORT {{ticker}} {{interval}} | Score {{plot("Score SHORT")}} | Entrada {{close}} | SL {{plot("SL")}} | TP1 {{plot("TP1")}} | TP2 {{plot("TP2")}} | Lote {{plot("Lote")}}')
+alertcondition(newLong or newShort, '③ Cualquier entrada nueva', '⚡ ORO nueva entrada {{ticker}} {{interval}} | Entrada {{close}} | SL {{plot("SL")}} | TP1 {{plot("TP1")}} | TP2 {{plot("TP2")}}')
+alertcondition(hitT1,               '④ TP1 alcanzado',           '🎯 ORO TP1 {{ticker}} {{interval}} en {{close}} — cierra 50% y mueve el stop a la entrada')
+alertcondition(hitT2,               '⑤ TP2 alcanzado',           '🏆 ORO TP2 {{ticker}} {{interval}} en {{close}} — operación cerrada en ganancia')
+alertcondition(hitSL,               '⑥ Stop Loss alcanzado',     '🛑 ORO Stop Loss {{ticker}} {{interval}} en {{close}} — operación cerrada')
+alertcondition(hitT1 or hitT2,      '⑦ Cualquier TP alcanzado',  '🎯 ORO objetivo alcanzado {{ticker}} {{interval}} en {{close}}')
+alertcondition(preL or preS,        '⑧ Aviso: setup formándose', '👀 ORO setup formándose {{ticker}} {{interval}} | LONG {{plot("Score LONG")}} · SHORT {{plot("Score SHORT")}} — prepárate')
+alertcondition(exitWarn,            '⑨ MEJOR SALIR (salud baja)', '🚪 ORO salida anticipada {{ticker}} {{interval}} | Salud {{plot("Salud")}}/100 en {{close}} — el mercado se giró, valora cerrar manualmente')
+
+if newLong
+    alert("🟢 ORO LONG " + estrella(scL) + " | " + syminfo.ticker + " " + timeframe.period + " | Score " + str.tostring(scL, "#") + "/100 | Entrada " + str.tostring(ePx, format.mintick) + " | SL " + str.tostring(sPx, format.mintick) + " | TP1 " + str.tostring(t1Px, format.mintick) + " | TP2 " + str.tostring(t2Px, format.mintick) + " | Lote " + str.tostring(lotSug, "#.##"), alert.freq_once_per_bar_close)
+if newShort
+    alert("🔴 ORO SHORT " + estrella(scS) + " | " + syminfo.ticker + " " + timeframe.period + " | Score " + str.tostring(scS, "#") + "/100 | Entrada " + str.tostring(ePx, format.mintick) + " | SL " + str.tostring(sPx, format.mintick) + " | TP1 " + str.tostring(t1Px, format.mintick) + " | TP2 " + str.tostring(t2Px, format.mintick) + " | Lote " + str.tostring(lotSug, "#.##"), alert.freq_once_per_bar_close)
+if hitT1
+    alert("🎯 ORO TP1 alcanzado en " + str.tostring(close, format.mintick) + " — cierra 50% y sube el stop a la entrada", alert.freq_once_per_bar)
+if hitT2
+    alert("🏆 ORO TP2 alcanzado en " + str.tostring(close, format.mintick) + " — operación cerrada", alert.freq_once_per_bar)
+if hitSL
+    alert("🛑 ORO Stop Loss en " + str.tostring(close, format.mintick) + " — operación cerrada", alert.freq_once_per_bar)
+if exitWarn
+    alert("🚪 ORO MEJOR SALIR | Salud " + str.tostring(salud, "#") + "/100 | " + motivo + "precio " + str.tostring(close, format.mintick), alert.freq_once_per_bar)
+
+// ─────────────────── 13. DIBUJO EN EL GRÁFICO ───────────────────
+if newLong and showLines
+    label.new(bar_index, low, "LONG 🟢 " + estrella(scL) + " " + str.tostring(scL, "#") + "/100\n" + str.tostring(ePx, format.mintick), style=label.style_label_up, color=color.new(color.green, 10), textcolor=color.white, size=size.normal)
+if newShort and showLines
+    label.new(bar_index, high, "SHORT 🔴 " + estrella(scS) + " " + str.tostring(scS, "#") + "/100\n" + str.tostring(ePx, format.mintick), style=label.style_label_down, color=color.new(color.red, 10), textcolor=color.white, size=size.normal)
+if hitT1 and showLines
+    label.new(bar_index, close, "TP1 🎯", style=label.style_label_left, color=color.new(color.teal, 20), textcolor=color.white, size=size.small)
+if hitT2 and showLines
+    label.new(bar_index, close, "TP2 🏆", style=label.style_label_left, color=color.new(color.green, 20), textcolor=color.white, size=size.small)
+if hitSL and showLines
+    label.new(bar_index, close, "SL 🛑", style=label.style_label_left, color=color.new(color.red, 20), textcolor=color.white, size=size.small)
+if exitWarn and showLines
+    label.new(bar_index, high, "🚪 MEJOR SALIR\nSalud " + str.tostring(salud, "#") + "/100", style=label.style_label_down, color=color.new(color.orange, 5), textcolor=color.black, size=size.normal)
+
+inTrade = pos != 0
+plot(showLines and inTrade ? sPx  : na, "Stop activo", color=color.new(color.red, 0), style=plot.style_linebr, linewidth=2)
+plot(showLines and inTrade ? t1Px : na, "TP1 activo",  color=color.new(color.teal, 0), style=plot.style_linebr, linewidth=1)
+plot(showLines and inTrade ? t2Px : na, "TP2 activo",  color=color.new(color.green, 0), style=plot.style_linebr, linewidth=2)
+plot(showLines and inTrade ? ePx  : na, "Precio de entrada", color=color.new(color.white, 30), style=plot.style_linebr, linewidth=1)
+
+plot(emaF, "EMA rápida", color=color.new(color.aqua, 0))
+plot(emaS, "EMA lenta", color=color.new(color.orange, 0))
+plot(emaB, "EMA sesgo", color=color.new(color.gray, 30), linewidth=2)
+plot(vwap, "VWAP", color=color.new(color.purple, 0), linewidth=2)
+plot(kzActive ? orbH : na, "Rango apertura alto", color=color.new(color.yellow, 20), style=plot.style_linebr, linewidth=2)
+plot(kzActive ? orbL : na, "Rango apertura bajo", color=color.new(color.yellow, 20), style=plot.style_linebr, linewidth=2)
+bgcolor(kzLdn ? color.new(color.blue, 94) : kzNY ? color.new(color.orange, 94) : na, title="Killzones")
+barcolor(inTrade ? (pos == 1 ? color.new(color.lime, 55) : color.new(color.red, 55)) : na, title="Vela en operación")
+
+// ─────────────────── 14. PANEL DE DECISIÓN (diseño final) ───────────────────
+tPos = panelPos == "Arriba izquierda" ? position.top_left : panelPos == "Abajo derecha" ? position.bottom_right : panelPos == "Abajo izquierda" ? position.bottom_left : panelPos == "Centro derecha" ? position.middle_right : position.top_right
+var table dash = table.new(tPos, 3, 40, bgcolor=color.new(#0d1117, 5), border_width=1, border_color=color.new(color.gray, 70))
+
+DORADO = #f0c440
+fBarra(v) =>
+    n = int(math.round(math.max(0, math.min(100, v)) / 10))
+    string out = ""
+    for i = 1 to 10
+        out := out + (i <= n ? "█" : "░")
+    out
+
+cScore(p, mx) => p >= mx * 0.99 ? color.lime : p > 0 ? color.yellow : color.new(color.gray, 40)
+
+fFac(r, nom, pL2, pS2, mx) =>
+    table.cell(dash, 0, r, nom, text_color=color.silver, text_halign=text.align_left, text_size=size.tiny)
+    table.cell(dash, 1, r, str.tostring(pL2, "#.#"), text_color=cScore(pL2, mx), text_halign=text.align_right, text_size=size.tiny)
+    table.cell(dash, 2, r, str.tostring(pS2, "#.#"), text_color=cScore(pS2, mx), text_halign=text.align_right, text_size=size.tiny)
+
+fInfo(r, k, v, col) =>
+    table.cell(dash, 0, r, k, text_color=color.silver, text_halign=text.align_left, text_size=size.tiny)
+    table.cell(dash, 1, r, v, text_color=col, text_halign=text.align_right, text_size=size.tiny)
+    table.cell(dash, 2, r, "", text_size=size.tiny)
+
+fWide(r, txt, col, bg) =>
+    table.cell(dash, 0, r, txt, text_color=col, bgcolor=bg, text_halign=text.align_center, text_size=size.small)
+    table.cell(dash, 1, r, "", bgcolor=bg, text_size=size.tiny)
+    table.cell(dash, 2, r, "", bgcolor=bg, text_size=size.tiny)
+
+fSep(r, txt) =>
+    table.cell(dash, 0, r, txt, text_color=color.new(DORADO, 30), text_halign=text.align_left, text_size=size.tiny)
+    table.cell(dash, 1, r, "", text_size=size.tiny)
+    table.cell(dash, 2, r, "", text_size=size.tiny)
+
+if showDash and barstate.islast
+    secsLeft = math.max(0, int((time_close - timenow) / 1000))
+    cuenta   = str.tostring(math.floor(secsLeft / 60)) + ":" + (secsLeft % 60 < 10 ? "0" : "") + str.tostring(secsLeft % 60)
+    sesTxt   = kzLdn ? "KILLZONE LONDRES 🔥" : kzNY ? "KILLZONE NY 🔥" : inLdnNy ? "Londres/NY" : "Asia · baja liquidez"
+    decL = setupL and pos == 0
+    decS = setupS and pos == 0
+    r = 0
+
+    // ── Cabecera
+    table.cell(dash, 0, r, "🥇 ORO FINAL · " + timeframe.period + " · " + sesTxt, text_color=DORADO, text_halign=text.align_left, text_size=size.small)
+    table.cell(dash, 1, r, "LONG",  text_color=color.lime, text_halign=text.align_right, text_size=size.tiny)
+    table.cell(dash, 2, r, "SHORT", text_color=color.red,  text_halign=text.align_right, text_size=size.tiny)
+    r += 1
+
+    // ── Score con barra visual
+    table.cell(dash, 0, r, "Score de entrada (mín. " + str.tostring(thr) + ")", text_color=color.white, text_halign=text.align_left, text_size=size.tiny)
+    table.cell(dash, 1, r, fBarra(scL) + " " + str.tostring(scL, "#"), text_color=scL >= thr ? color.lime : scL >= thr - preThr ? color.yellow : color.new(color.gray, 25), text_halign=text.align_right, text_size=size.tiny)
+    table.cell(dash, 2, r, fBarra(scS) + " " + str.tostring(scS, "#"), text_color=scS >= thr ? color.red : scS >= thr - preThr ? color.yellow : color.new(color.gray, 25), text_halign=text.align_right, text_size=size.tiny)
+    r += 1
+
+    // ── Semáforo de decisión (fila ancha, imposible de no ver)
+    decTxt = pos != 0 ? (pos == 1 ? "EN OPERACIÓN LONG 🟢" : "EN OPERACIÓN SHORT 🔴") : decL ? "🟢 ENTRAR LONG " + estrella(scL) : decS ? "🔴 ENTRAR SHORT " + estrella(scS) : not tradeWindow ? "⏸ FUERA DE HORARIO" : not limitOK ? "🛑 LÍMITE DIARIO — DESCANSA" : preL or scL >= thr - preThr ? "🟡 LONG FORMÁNDOSE… ESPERA CONFIRMACIÓN" : preS or scS >= thr - preThr ? "🟡 SHORT FORMÁNDOSE… ESPERA CONFIRMACIÓN" : "⚪ ESPERAR — SIN CONFLUENCIA"
+    decBg  = pos != 0 ? color.new(color.aqua, 80) : decL ? color.new(color.green, 65) : decS ? color.new(color.red, 65) : (preL or preS or scL >= thr - preThr or scS >= thr - preThr) and tradeWindow and limitOK ? color.new(color.yellow, 80) : color.new(color.gray, 85)
+    decCol = pos != 0 ? color.aqua : decL ? color.lime : decS ? color.white : color.silver
+    fWide(r, decTxt, decCol, decBg)
+    r += 1
+
+    // ── Salud de la operación (solo en operación)
+    if pos != 0 and useSmart
+        salCol = salud >= saludWarn ? color.lime : salud >= saludExit ? color.orange : color.red
+        table.cell(dash, 0, r, "Salud de la operación", text_color=color.white, text_halign=text.align_left, text_size=size.tiny)
+        table.cell(dash, 1, r, fBarra(salud) + " " + str.tostring(salud, "#"), text_color=salCol, text_halign=text.align_right, text_size=size.tiny)
+        table.cell(dash, 2, r, salud >= saludWarn ? "MANTENER ✅" : salud >= saludExit ? "VIGILAR ⚠️" : "MEJOR SALIR 🚪", text_color=salCol, text_halign=text.align_right, text_size=size.tiny)
+        r += 1
+        if motivo != ""
+            fInfo(r, "Motivo", motivo, salud >= saludWarn ? color.silver : color.orange)
+            r += 1
+
+    // ── Factores
+    if panelFull
+        fSep(r, "─── FACTORES (pts LONG · SHORT) ───")
+        r += 1
+        fFac(r, "Tendencia " + timeframe.period + " (EMAs)", pT_L, pT_S, W_T)
+        r += 1
+        fFac(r, "Tendencia " + tf1 + "m", pH1_L, pH1_S, W_H1)
+        r += 1
+        fFac(r, "Tendencia " + tf2 + "m", pH2_L, pH2_S, W_H2)
+        r += 1
+        fFac(r, "VWAP + RSI", pM_L, pM_S, W_M)
+        r += 1
+        fFac(r, "Ruptura de rango", pB_L, pB_S, W_B)
+        r += 1
+        fFac(r, "Fuerza ADX " + str.tostring(adx, "#"), pA, pA, W_A)
+        r += 1
+        fFac(r, "Horario", pSs, pSs, W_S)
+        r += 1
+        fFac(r, "Vela de confirmación", pC_L, pC_S, W_C)
+        r += 1
+        fFac(r, "Volumen " + str.tostring(relVol, "#.#") + "×", pV, pV, W_V)
+        r += 1
+        fFac(r, "Volatilidad pct " + str.tostring(atrRank, "#"), pR, pR, W_R)
+        r += 1
+        fFac(r, "Dólar DXY " + (dxyDown ? "↓ debil" : dxyUp ? "↑ fuerte" : "—"), pD_L, pD_S, W_D)
+        r += 1
+        if penL > 0 or penS > 0
+            table.cell(dash, 0, r, "⚠ Penalización (tarde/extendido)", text_color=color.orange, text_halign=text.align_left, text_size=size.tiny)
+            table.cell(dash, 1, r, penL > 0 ? "−" + str.tostring(penL, "#") : "", text_color=color.red, text_halign=text.align_right, text_size=size.tiny)
+            table.cell(dash, 2, r, penS > 0 ? "−" + str.tostring(penS, "#") : "", text_color=color.red, text_halign=text.align_right, text_size=size.tiny)
+            r += 1
+
+    // ── Mercado
+    fSep(r, "─── MERCADO EN VIVO ───")
+    r += 1
+    fInfo(r, "Precio · vela cierra en", str.tostring(close, format.mintick) + "  ·  " + cuenta, secsLeft < 30 ? color.orange : color.white)
+    r += 1
+    fInfo(r, "RSI · ADX", str.tostring(rsi, "#.#") + " · " + str.tostring(adx, "#.#"), rsi > rsiExt or rsi < 100 - rsiExt ? color.orange : color.white)
+    r += 1
+    fInfo(r, "ATR " + str.tostring(atrPct, "#.##") + "%", "$" + str.tostring(atr, format.mintick), color.white)
+    r += 1
+    fInfo(r, "Distancia al VWAP", str.tostring(close - vwap, format.mintick) + (extended ? " ⚠ extendido" : ""), close > vwap ? color.lime : color.red)
+    r += 1
+
+    // ── Plan de la operación
+    fSep(r, pos != 0 ? "─── TU OPERACIÓN ───" : "─── PLAN SI ENTRAS AHORA ───")
+    r += 1
+    fInfo(r, "Entrada", str.tostring(liveEnt, format.mintick), color.white)
+    r += 1
+    fInfo(r, pos != 0 ? "Stop actual" + (beDone ? " · SIN RIESGO ✅" : "") : "Stop Loss", str.tostring(liveSL, format.mintick), beDone ? color.lime : color.red)
+    r += 1
+    fInfo(r, "TP1 → 50% · TP2 → resto", str.tostring(liveTP1, format.mintick) + " / " + str.tostring(liveTP2, format.mintick), color.teal)
+    r += 1
+    fInfo(r, "Lote (" + str.tostring(riskPct, "#.#") + "% = $" + str.tostring(riskUSD, "#") + ")", str.tostring(lotSug, "#.##") + " lotes", DORADO)
+    r += 1
+    if pos != 0
+        fInfo(r, "Resultado flotante", str.tostring(pnlR, "#.##") + "R · $" + str.tostring(pnlUSD, "#.#"), pnlR >= 0 ? color.lime : color.red)
+        r += 1
+
+    // ── Día
+    fSep(r, "─── HOY ───")
+    r += 1
+    fInfo(r, "Operaciones " + str.tostring(tradesDay) + "/" + str.tostring(maxTrEff), str.tostring(winsDay) + " ganadas · " + str.tostring(lossDay) + " perdidas", limitOK ? color.white : color.red)
+    r += 1
+    fInfo(r, "Resultado del día", str.tostring(rDay, "#.##") + "R · $" + str.tostring(rDay * riskUSD, "#.#"), rDay >= 0 ? color.lime : color.red)

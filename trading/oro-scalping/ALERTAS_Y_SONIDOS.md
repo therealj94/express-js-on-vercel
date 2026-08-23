@@ -19,12 +19,12 @@ Además, el sonido de la web **solo suena con la pestaña abierta**. Si cierras 
 
 ## Ruta A — Web y escritorio (gratis, 5 minutos)
 
-El indicador expone **8 condiciones de alerta independientes**. Creas una alerta por cada una y le asignas su propio sonido.
+El indicador expone **9 condiciones de alerta independientes**. Creas una alerta por cada una y le asignas su propio sonido.
 
 1. Abre el gráfico de XAUUSD **en la temporalidad que vas a operar** (la alerta hereda esa temporalidad automáticamente).
-2. Añade el indicador `ORO Scalping PRO v3`.
+2. Añade el indicador `ORO FINAL`.
 3. Clic derecho en el gráfico → **Añadir alerta** (o el icono del reloj ⏰).
-4. En **Condición**, elige `ORO PRO v3` y luego la condición de la lista.
+4. En **Condición**, elige `ORO FINAL` y luego la condición de la lista.
 5. En **Opciones de disparo**, usa la frecuencia de la tabla.
 6. En la pestaña **Notificaciones**, marca **Reproducir sonido** y elige el tono y la duración.
 7. Repite para cada evento.
@@ -39,10 +39,11 @@ El indicador expone **8 condiciones de alerta independientes**. Creas una alerta
 | ⑥ | Stop Loss alcanzado | **Una vez por barra** | *Buzzer / Squeeze* | Tiene que doler al oído |
 | ⑦ | Cualquier TP alcanzado | Una vez por barra | — | Alternativa a ④+⑤ |
 | ⑧ | Aviso: setup formándose | Una vez por cierre de barra | *Wood / Tick suave* | Te da tiempo de sentarte |
+| ⑨ | MEJOR SALIR (salud baja) | **Una vez por barra** | *Siren / Alarm clock* | El mercado se giró: valora cerrar ya |
 
-**Set mínimo si tu plan limita las alertas:** ③ (entradas) + ⑦ (objetivos) + ⑥ (stop). Tres alertas, tres sonidos.
+**Set mínimo si tu plan limita las alertas:** ③ (entradas) + ⑦ (objetivos) + ⑥ (stop) + ⑨ (mejor salir). Cuatro alertas, cuatro sonidos.
 
-⚠️ Los eventos de TP y SL usan **"Una vez por barra"** a propósito: el indicador los detecta *dentro* de la vela, en tiempo real, no al cierre. Si eliges "por cierre de barra" el aviso te llega tarde.
+⚠️ Los eventos de TP, SL y MEJOR SALIR usan **"Una vez por barra"** a propósito: el indicador los detecta *dentro* de la vela, en tiempo real, no al cierre. Si eliges "por cierre de barra" el aviso te llega tarde.
 
 ### Mensaje con los precios dentro
 En el campo **Mensaje** de cada alerta ya viene el texto rellenado con los datos en vivo. Se ve así al llegar:
