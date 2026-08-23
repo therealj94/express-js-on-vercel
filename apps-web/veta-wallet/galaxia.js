@@ -88,6 +88,46 @@ const GALAXIA = (() => {
     }
   }
 
+  /* EL SOL ESPIRAL. El corazón de la galaxia del Inicio: dos brazos de
+     polvo de estrellas enroscados que giran despacio alrededor del centro,
+     pintados UNA vez en su propio lienzo y estampados girados cada cuadro —
+     la misma receta de la nebulosa, por el mismo costo. Solo vive en el modo
+     interior: en la puerta el protagonista es AU-RA. */
+  let sol = null;
+  let giroSol = 0;
+
+  function pintarSol() {
+    const l = 520;
+    sol = document.createElement('canvas');
+    sol.width = sol.height = l;
+    const c = sol.getContext('2d');
+    const az = alAzar(4747);
+    const cx = l / 2, cy = l / 2;
+    // el resplandor del núcleo
+    const g = c.createRadialGradient(cx, cy, 0, cx, cy, l * 0.16);
+    g.addColorStop(0, 'rgba(248,239,207,0.85)');
+    g.addColorStop(0.35, 'rgba(232,200,122,0.32)');
+    g.addColorStop(1, 'rgba(232,200,122,0)');
+    c.fillStyle = g;
+    c.fillRect(0, 0, l, l);
+    // dos brazos logarítmicos de polvo
+    for (let brazo = 0; brazo < 2; brazo++) {
+      for (let i = 0; i < 900; i++) {
+        const t = i / 900;
+        const ang = brazo * Math.PI + t * 4.6 + (az() - 0.5) * 0.5;
+        const r = 12 + t * (l * 0.46);
+        const x = cx + Math.cos(ang) * r;
+        const y = cy + Math.sin(ang) * r * 0.62;    // achatada: se ve de tres cuartos
+        const brillo = (1 - t) * 0.5 + az() * 0.25;
+        c.fillStyle = az() < 0.12
+          ? `rgba(248,239,207,${(brillo * 0.9).toFixed(2)})`
+          : `rgba(${az() < 0.5 ? '182,196,255' : '232,200,122'},${(brillo * 0.4).toFixed(2)})`;
+        const p = 0.6 + az() * 1.5;
+        c.fillRect(x, y, p, p);
+      }
+    }
+  }
+
   /* La nebulosa: tres velos de color sobre negro azulado, pintados una vez.
      El lienzo es MÁS GRANDE que la pantalla para poder girarlo sin que se
      vean las esquinas. Nada de verde: azul profundo, oro y un resto púrpura. */
@@ -194,6 +234,18 @@ const GALAXIA = (() => {
                   nebulosa.logico, nebulosa.logico);
     ctx.globalAlpha = 1;
     ctx.restore();
+
+    if (interior && sol) {
+      giroSol += 0.0009 * dt;
+      ctx.save();
+      ctx.translate(ancho * 0.5, alto * 0.44);
+      ctx.rotate(giroSol);
+      ctx.globalAlpha = 0.5;
+      const ls = Math.min(ancho, alto) * 0.66;
+      ctx.drawImage(sol, -ls / 2, -ls / 2, ls, ls);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
 
     const enSalto = salto ? Math.min(1, (ahora - salto.desde) / salto.dura) : 0;
     // aceleración del viaje: arranca suave y termina lanzado
@@ -331,6 +383,7 @@ const GALAXIA = (() => {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     sembrar();
     pintarNebulosa();
+    if (interior && !sol) pintarSol();
     if (QUIETO.matches) cuadro(performance.now());   // un cielo quieto, entero
   }
 
