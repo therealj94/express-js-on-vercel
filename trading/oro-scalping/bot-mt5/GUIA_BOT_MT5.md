@@ -1,4 +1,6 @@
-# 🤖 ORO FINAL EA — Bot automático para MetaTrader 5 (Exness)
+# 🤖 ORO FINAL EA v2.00 ULTIMATE — Bot automático para MetaTrader 5 (Exness)
+
+> **v2.00 — auditoría completa:** rango de apertura calculado por velas (sobrevive a reinicios del VPS), selección de posición por magic (puedes operar a mano en la misma cuenta sin chocar con el bot), freno diario persistente (un reinicio ya no lo resetea), respeto del stops-level del broker, velas de gracia antes de la salida inteligente, ventanas de noticias bloqueables, objetivo diario opcional, cierre automático de viernes y log de errores de cada orden.
 
 El bot ejecuta solo la estrategia ORO FINAL: analiza, entra, pone SL y TP, cierra el 50% en TP1, mueve el stop a la entrada, hace trailing, y cierra anticipado si la salud de la operación cae. Tú solo lo enciendes.
 
@@ -57,7 +59,10 @@ El bot usa la **hora del SERVIDOR de Exness**, no la tuya. Los valores por defec
 | Riesgo por operación | **0.5%** | Hasta que el bot demuestre números en TU cuenta |
 | Score mínimo | **70** | Equilibrado. 78 si quieres máxima selectividad |
 | Ventana | **0 (solo killzones)** | Las horas estadísticamente mejores del oro |
-| Freno diario | **3%** | Un día malo no puede hacer daño real |
+| Freno diario | **3%** | Un día malo no puede hacer daño real (persiste aunque el VPS se reinicie) |
+| Objetivo diario | **0 (apagado)** | Si pones 4, al ganar +4% el bot descansa hasta mañana — protege las ganancias |
+| Ventanas de noticias | vacío | Opcional: "13:25-13:40" (hora servidor) bloquea entradas alrededor de un dato. Nota: el rango de apertura de 15 min ya evita entrar en el minuto exacto del dato de las 8:30 NY |
+| Cierre de viernes | **activado, 20:00** | Nunca duerme posiciones el fin de semana (solo relevante en modo 24h) |
 | Spread máximo | **0.35** | En Standard sube a 0.40; en Raw baja a 0.25 |
 
 **No toques** (ya están optimizados para XAUUSD): ATR, EMAs, RSI, ADX, colchones del SL, RR1/RR2, trailing.

@@ -1,75 +1,85 @@
 //+------------------------------------------------------------------+
 //|                                                 ORO_FINAL_EA.mq5 |
-//|        🥇 ORO FINAL · Bot automático de scalping XAUUSD          |
+//|     🥇 ORO FINAL ULTIMATE · Bot automático de scalping XAUUSD    |
+//|                          versión 2.00                            |
 //|                                                                  |
-//|  Misma lógica que el indicador ORO FINAL de TradingView:         |
-//|   · Score de entrada 0-100 con 10 factores + penalizaciones     |
-//|   · Solo opera en killzones (configurable a 24h)                 |
-//|   · SL por estructura + ATR · TP1 cierra 50% y stop a entrada    |
-//|   · TP2 con trailing por ATR · Salida inteligente por salud      |
-//|   · Lote calculado por % de riesgo · Límites diarios             |
+//|  Estrategia: score de confluencia 0-100 (10 factores + castigos) |
+//|  · Entra solo en killzones (configurable) · SL estructura + ATR  |
+//|  · TP1 cierra 50% y stop a entrada · TP2 con trailing por ATR    |
+//|  · Salida inteligente por salud de la operación                  |
 //|                                                                  |
-//|  Protecciones de cuenta (pensadas para brokers como Exness):     |
-//|   · Máx. 4 operaciones/día, sin martingala, sin grid             |
-//|   · Siempre con Stop Loss · Filtro de spread máximo              |
-//|   · Freno de emergencia por pérdida diaria (% de equity)         |
-//|   · Una sola posición a la vez · Magic number propio             |
+//|  Protecciones: una posición · siempre con SL · filtro de spread  |
+//|  · freno diario por pérdida % (sobrevive a reinicios) · objetivo |
+//|  diario opcional · bloqueo de ventanas de noticias · cierre de   |
+//|  viernes · límites de operaciones y pérdidas por día             |
+//|                                                                  |
+//|  v2.00 (auditoría): rango de apertura por VELAS (sobrevive a     |
+//|  reinicios del VPS) · selección de posición por magic (compatible|
+//|  con trading manual en paralelo) · score una vez por vela con    |
+//|  flanco consistente · VWAP cacheado · baseline diario persistente|
+//|  · respeto del stops-level del broker · gracia antes de la salida|
+//|  inteligente · limpieza de variables globales · log de errores   |
 //+------------------------------------------------------------------+
 #property copyright   "ORO FINAL"
-#property version     "1.00"
-#property description "Bot de scalping XAUUSD con score de confluencia, gestión 50/50 y salida inteligente"
+#property version     "2.00"
+#property description "Bot de scalping XAUUSD: confluencia 0-100, gestión 50/50, salida inteligente y protecciones de cuenta"
 
 #include <Trade/Trade.mqh>
 
 //──────────────────────────── INPUTS ────────────────────────────
 input group "⚙️ General"
-input long     InpMagic          = 20250823;             // Magic number (identifica las órdenes del bot)
-input int      InpThreshold      = 70;                   // Score mínimo para entrar (62 agresivo · 70 normal · 78 conservador)
-input int      InpMode           = 0;                    // Ventana: 0=Solo killzones · 1=Londres+NY · 2=24 horas
-input int      InpCooldownMin    = 60;                   // Minutos mínimos entre entradas
+input long     InpMagic          = 20250823;   // Magic number del bot
+input int      InpThreshold      = 70;         // Score mínimo (62 agresivo · 70 normal · 78 conservador)
+input int      InpMode           = 0;          // Ventana: 0=Solo killzones · 1=Londres+NY · 2=24 horas
+input int      InpCooldownMin    = 60;         // Minutos mínimos entre entradas
 
-input group "🕐 Sesiones (HORA DEL SERVIDOR del broker — verifica la tuya)"
-input string   InpLdnStart       = "08:00";              // Killzone Londres: inicio
-input string   InpLdnEnd         = "11:00";              // Killzone Londres: fin
-input string   InpNyStart        = "13:30";              // Killzone Nueva York: inicio
-input string   InpNyEnd          = "16:30";              // Killzone Nueva York: fin
-input string   InpFullStart      = "07:00";              // Londres+NY completo: inicio
-input string   InpFullEnd        = "22:00";              // Londres+NY completo: fin
-input int      InpOrbMinutes     = 15;                   // Duración del rango de apertura (min)
+input group "🕐 Sesiones (HORA DEL SERVIDOR del broker)"
+input string   InpLdnStart       = "08:00";    // Killzone Londres: inicio
+input string   InpLdnEnd         = "11:00";    // Killzone Londres: fin
+input string   InpNyStart        = "13:30";    // Killzone Nueva York: inicio
+input string   InpNyEnd          = "16:30";    // Killzone Nueva York: fin
+input string   InpFullStart      = "07:00";    // Londres+NY completo: inicio
+input string   InpFullEnd        = "22:00";    // Londres+NY completo: fin
+input int      InpOrbMinutes     = 15;         // Duración del rango de apertura (min)
+input string   InpNewsBlock      = "";         // Ventanas bloqueadas "HH:MM-HH:MM" separadas por comas (opcional)
+input bool     InpCloseFriday    = true;       // Cerrar todo el viernes a la hora indicada
+input string   InpFridayTime     = "20:00";    // Hora de cierre del viernes (servidor)
 
 input group "💰 Riesgo y protección de la cuenta"
-input double   InpRiskPct        = 0.5;                  // Riesgo por operación (% del equity)
-input int      InpMaxTradesDay   = 4;                    // Máximo de operaciones por día
-input int      InpMaxLossesDay   = 2;                    // Máximo de pérdidas por día
-input double   InpMaxDailyDD     = 3.0;                  // Freno de emergencia: pérdida diaria máx. (% del balance)
-input double   InpMaxSpreadUSD   = 0.35;                 // Spread máximo aceptado ($ por onza)
-input int      InpSlippagePts    = 30;                   // Desviación máxima permitida (puntos)
+input double   InpRiskPct        = 0.5;        // Riesgo por operación (% del equity)
+input int      InpMaxTradesDay   = 4;          // Máximo de operaciones por día
+input int      InpMaxLossesDay   = 2;          // Máximo de pérdidas por día
+input double   InpMaxDailyDD     = 3.0;        // Freno de emergencia: pérdida diaria máx. (% del balance)
+input double   InpDailyTarget    = 0.0;        // Objetivo diario % (al lograrlo deja de operar; 0 = sin objetivo)
+input double   InpMaxSpreadUSD   = 0.35;       // Spread máximo aceptado ($ por onza)
+input int      InpSlippagePts    = 30;         // Desviación máxima (puntos)
 
 input group "🎯 SL / TP"
-input int      InpAtrPeriod      = 14;                   // Periodo ATR
-input double   InpSlBufAtr       = 0.5;                  // Colchón del SL (× ATR)
-input double   InpMaxSlAtr       = 1.5;                  // Distancia máxima del SL (× ATR)
-input int      InpSwingBars      = 6;                    // Velas para el swing del SL
-input double   InpRR1            = 1.0;                  // TP1 (× riesgo) — cierra 50% y stop a entrada
-input double   InpRR2            = 2.0;                  // TP2 (× riesgo) — cierre total
-input bool     InpUseTrail       = true;                 // Trailing por ATR después del TP1
-input double   InpTrailAtr       = 1.5;                  // Trailing (× ATR)
+input int      InpAtrPeriod      = 14;         // Periodo ATR
+input double   InpSlBufAtr       = 0.5;        // Colchón del SL (× ATR)
+input double   InpMaxSlAtr       = 1.5;        // Distancia máxima del SL (× ATR)
+input int      InpSwingBars      = 6;          // Velas para el swing del SL
+input double   InpRR1            = 1.0;        // TP1 (× riesgo) — cierra 50% y stop a entrada
+input double   InpRR2            = 2.0;        // TP2 (× riesgo) — cierre total
+input bool     InpUseTrail       = true;       // Trailing por ATR después del TP1
+input double   InpTrailAtr       = 1.5;        // Trailing (× ATR)
 
 input group "🚪 Salida inteligente"
-input bool     InpUseSmart       = true;                 // Vigilar salud y cerrar si el mercado se gira
-input int      InpHealthExit     = 40;                   // Salud mínima antes de cerrar (0-100)
-input bool     InpUseTimeStop    = true;                 // Contar estancamiento (~2 h sin TP1)
-input int      InpStallMinutes   = 120;                  // Minutos de estancamiento
+input bool     InpUseSmart       = true;       // Vigilar salud y cerrar si el mercado se gira
+input int      InpHealthExit     = 40;         // Salud mínima antes de cerrar (0-100)
+input int      InpGraceBars      = 2;          // Velas de gracia antes de poder salir por salud
+input bool     InpUseTimeStop    = true;       // Contar estancamiento (~2 h sin TP1)
+input int      InpStallMinutes   = 120;        // Minutos de estancamiento
 
 input group "📈 Indicadores"
-input int      InpEmaFast        = 9;                    // EMA rápida
-input int      InpEmaSlow        = 21;                   // EMA lenta
-input int      InpEmaBias        = 200;                  // EMA de sesgo
-input int      InpRsiPeriod      = 14;                   // RSI
-input int      InpAdxPeriod      = 14;                   // ADX
-input int      InpRsiExtreme     = 76;                   // RSI extremo (penaliza entrar tarde)
-input double   InpVwapExtAtr     = 2.0;                  // Extensión máxima del VWAP (× ATR)
-input double   InpVolStrong      = 1.3;                  // Volumen fuerte (× media de 20)
+input int      InpEmaFast        = 9;          // EMA rápida
+input int      InpEmaSlow        = 21;         // EMA lenta
+input int      InpEmaBias        = 200;        // EMA de sesgo
+input int      InpRsiPeriod      = 14;         // RSI
+input int      InpAdxPeriod      = 14;         // ADX
+input int      InpRsiExtreme     = 76;         // RSI extremo (penaliza entrar tarde)
+input double   InpVwapExtAtr     = 2.0;        // Extensión máxima del VWAP (× ATR)
+input double   InpVolStrong      = 1.3;        // Volumen fuerte (× media de 20)
 
 //──────────────────────────── ESTADO ────────────────────────────
 CTrade    trade;
@@ -79,11 +89,14 @@ datetime  lastBarTime   = 0;
 datetime  lastEntryTime = 0;
 datetime  dayStart      = 0;
 double    dayStartBalance = 0;
-int       tradesToday   = 0;
-// Rango de apertura
-datetime  kzOpenTime    = 0;
-double    orbHigh = 0, orbLow = 0;
-bool      wasInKz       = false;
+// Score con flanco consistente (una sola evaluación por vela)
+double    prevScL = -1, prevScS = -1;
+bool      scoreWarm = false;
+// Cache de VWAP y volumen relativo (una vez por vela)
+datetime  cacheBar = 0;
+double    cVwap = 0, cRelVol = 1.0;
+// Última posición gestionada (para limpieza y resumen al cierre)
+long      lastPid = 0;
 
 //──────────────────────────── UTILIDADES ────────────────────────────
 double Buf(int handle, int shift)
@@ -104,6 +117,7 @@ bool InRange(string s, string e)
 bool KzLondon()  { return InRange(InpLdnStart, InpLdnEnd); }
 bool KzNewYork() { return InRange(InpNyStart,  InpNyEnd);  }
 bool KzActive()  { return KzLondon() || KzNewYork(); }
+
 bool TradeWindow()
 {
    if(InpMode == 2) return true;
@@ -111,63 +125,135 @@ bool TradeWindow()
    return KzActive();
 }
 
-// VWAP de la sesión diaria calculado a mano (MT5 no lo trae nativo)
-double SessionVWAP()
+// Ventanas de noticias bloqueadas: "13:25-13:40,19:55-20:10"
+bool NewsBlocked()
 {
+   if(InpNewsBlock == "") return false;
+   string parts[];
+   int n = StringSplit(InpNewsBlock, ',', parts);
+   for(int i = 0; i < n; i++)
+   {
+      string se[];
+      if(StringSplit(parts[i], '-', se) == 2)
+         if(InRange(se[0], se[1])) return true;
+   }
+   return false;
+}
+
+bool IsFridayStop()
+{
+   if(!InpCloseFriday) return false;
+   MqlDateTime dt;
+   TimeToStruct(TimeCurrent(), dt);
+   return dt.day_of_week == 5 && TimeCurrent() >= StringToTime(InpFridayTime);
+}
+
+// Selecciona SOLO la posición de este bot (por símbolo + magic).
+// Compatible con trading manual u otros EAs en la misma cuenta.
+bool SelectOwnPosition()
+{
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong tk = PositionGetTicket(i);
+      if(tk == 0) continue;
+      if(PositionGetString(POSITION_SYMBOL) == _Symbol &&
+         PositionGetInteger(POSITION_MAGIC) == InpMagic)
+         return true;   // queda seleccionada
+   }
+   return false;
+}
+
+// VWAP de la sesión diaria y volumen relativo, cacheados una vez por vela
+void RefreshCache()
+{
+   datetime bt = iTime(_Symbol, PERIOD_CURRENT, 0);
+   if(bt == cacheBar) return;
+   cacheBar = bt;
+
    datetime d0 = StringToTime("00:00");
    MqlRates r[];
    int n = CopyRates(_Symbol, PERIOD_CURRENT, d0, TimeCurrent(), r);
-   if(n <= 0) return SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   double pv = 0, vv = 0;
-   for(int i = 0; i < n; i++)
+   if(n > 0)
    {
-      double tp  = (r[i].high + r[i].low + r[i].close) / 3.0;
-      double vol = (double)r[i].tick_volume;
-      pv += tp * vol;
-      vv += vol;
+      double pv = 0, vv = 0;
+      for(int i = 0; i < n; i++)
+      {
+         double tp  = (r[i].high + r[i].low + r[i].close) / 3.0;
+         double vol = (double)r[i].tick_volume;
+         pv += tp * vol;
+         vv += vol;
+      }
+      cVwap = vv > 0 ? pv / vv : SymbolInfoDouble(_Symbol, SYMBOL_BID);
    }
-   return vv > 0 ? pv / vv : SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   else cVwap = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+
+   long v[];
+   int m = CopyTickVolume(_Symbol, PERIOD_CURRENT, 1, 21, v);
+   if(m == 21)
+   {
+      double avg = 0;
+      for(int i = 0; i < 20; i++) avg += (double)v[i];   // velas 21..2
+      avg /= 20.0;
+      cRelVol = avg > 0 ? (double)v[20] / avg : 1.0;     // vela cerrada más reciente
+   }
+   else cRelVol = 1.0;
 }
 
-double RelVolume()
+// Rango de apertura calculado desde las VELAS de la killzone activa.
+// Determinista: da lo mismo si el EA se reinició a mitad de sesión.
+bool GetORB(double &hi, double &lo)
 {
-   long v[];
-   int n = CopyTickVolume(_Symbol, PERIOD_CURRENT, 1, 21, v);
-   if(n < 21) return 1.0;
-   double avg = 0;
-   for(int i = 0; i < 20; i++) avg += (double)v[i];
-   avg /= 20.0;
-   return avg > 0 ? (double)v[20] / avg : 1.0;   // v[20] = vela cerrada más reciente
+   hi = 0; lo = 0;
+   string s = KzLondon() ? InpLdnStart : (KzNewYork() ? InpNyStart : "");
+   if(s == "") return false;
+   datetime t0   = StringToTime(s);
+   datetime tEnd = t0 + InpOrbMinutes * 60;
+   if(TimeCurrent() < tEnd) return false;          // rango aún en formación
+   for(int sh = 0; sh < 1000; sh++)
+   {
+      datetime bt = iTime(_Symbol, PERIOD_CURRENT, sh);
+      if(bt == 0 || bt < t0) break;
+      if(bt < tEnd)
+      {
+         double h = iHigh(_Symbol, PERIOD_CURRENT, sh);
+         double l = iLow(_Symbol, PERIOD_CURRENT, sh);
+         if(hi == 0 || h > hi) hi = h;
+         if(lo == 0 || l < lo) lo = l;
+      }
+   }
+   return hi > 0;
 }
 
 //──────────────────────────── SCORE 0-100 ────────────────────────────
-// 10 factores (sin DXY, que no está en MT5 de forma fiable) + penalizaciones
-void GetScores(double &scL, double &scS, int shift)
+void GetScores(double &scL, double &scS)
 {
+   int shift = 1;   // siempre sobre la vela cerrada
    double emaF = Buf(hEmaF, shift), emaS = Buf(hEmaS, shift), emaB = Buf(hEmaB, shift);
    double rsi  = Buf(hRsi,  shift), atr  = Buf(hAtr,  shift), adx  = Buf(hAdx, shift);
    double m15F = Buf(hM15F, 1),     m15S = Buf(hM15S, 1);
    double h1F  = Buf(hH1F,  1),     h1S  = Buf(hH1S,  1);
-   double vwap = SessionVWAP();
-   double relV = RelVolume();
+   double vwap = cVwap;
+   double relV = cRelVol;
 
    double c = iClose(_Symbol, PERIOD_CURRENT, shift);
    double o = iOpen(_Symbol, PERIOD_CURRENT, shift);
    double h = iHigh(_Symbol, PERIOD_CURRENT, shift);
    double l = iLow(_Symbol, PERIOD_CURRENT, shift);
 
-   // Pesos (reescalados sin el factor DXY)
    double W_T = 15, W_H1 = 8, W_H2 = 7, W_M = 13, W_B = 12, W_A = 10, W_S = 12, W_C = 8, W_V = 7, W_R = 4;
    double maxPts = W_T + W_H1 + W_H2 + W_M + W_B + W_A + W_S + W_C + W_V + W_R;
 
    bool trendFullL = emaF > emaS && c > emaB;
    bool trendFullS = emaF < emaS && c < emaB;
 
-   // Ruptura: rango de apertura en killzone, máximo/mínimo de la última hora fuera
+   // Ruptura: rango de apertura en killzone; máximo/mínimo de la última hora fuera
    bool brkL = false, brkS = false;
-   bool orbReady = KzActive() && kzOpenTime > 0 && (TimeCurrent() - kzOpenTime) >= InpOrbMinutes * 60 && orbHigh > 0;
-   if(orbReady) { brkL = c > orbHigh; brkS = c < orbLow; }
-   else if(!KzActive())
+   double oHi, oLo;
+   if(KzActive())
+   {
+      if(GetORB(oHi, oLo)) { brkL = c > oHi; brkS = c < oLo; }
+   }
+   else
    {
       int barsHour = (int)MathMax(5, 3600 / PeriodSeconds(PERIOD_CURRENT));
       int iH = iHighest(_Symbol, PERIOD_CURRENT, MODE_HIGH, barsHour, shift + 1);
@@ -186,9 +272,17 @@ void GetScores(double &scL, double &scS, int shift)
    double pA = MathMin(adx, 40.0) / 40.0 * W_A;
    double pS = KzActive() ? W_S : (InRange(InpFullStart, InpFullEnd) ? W_S * 0.55 : W_S * 0.2);
    double pV = relV >= InpVolStrong ? W_V : (relV >= 1.0 ? W_V * 0.5 : 0.0);
-   double pR = W_R;   // percentil de ATR simplificado: activo si el ATR no es extremo
-   double atrNow = atr, atrRef = Buf(hAtr, shift + 50);
-   if(atrRef > 0 && (atrNow < atrRef * 0.4 || atrNow > atrRef * 3.0)) pR = W_R * 0.25;
+
+   // Régimen de volatilidad: ATR actual vs su media de 100 velas
+   double pR = W_R;
+   double atrArr[];
+   if(CopyBuffer(hAtr, 0, 1, 100, atrArr) == 100)
+   {
+      double atrAvg = 0;
+      for(int i = 0; i < 100; i++) atrAvg += atrArr[i];
+      atrAvg /= 100.0;
+      if(atrAvg > 0 && (atr < atrAvg * 0.5 || atr > atrAvg * 2.5)) pR = W_R * 0.25;
+   }
 
    bool extended = MathAbs(c - vwap) > InpVwapExtAtr * atr;
    double penL = (rsi > InpRsiExtreme ? 12.0 : 0.0) + (extended && c > vwap ? 8.0 : 0.0);
@@ -208,11 +302,11 @@ void GetScores(double &scL, double &scS, int shift)
 }
 
 //──────────────────────── SALUD DE LA OPERACIÓN ────────────────────────
-double TradeHealth(bool isLong, bool t1Done, datetime openTime)
+double TradeHealth(bool isLong, bool t1Done, datetime openTime, string &motivo)
 {
    double emaF = Buf(hEmaF, 1), emaS = Buf(hEmaS, 1);
    double rsi  = Buf(hRsi, 1),  adx  = Buf(hAdx, 1);
-   double vwap = SessionVWAP();
+   double vwap = cVwap;
    double c = iClose(_Symbol, PERIOD_CURRENT, 1);
    double o = iOpen(_Symbol, PERIOD_CURRENT, 1);
    double h = iHigh(_Symbol, PERIOD_CURRENT, 1);
@@ -223,22 +317,17 @@ double TradeHealth(bool isLong, bool t1Done, datetime openTime)
    bool stalled  = InpUseTimeStop && !t1Done && (TimeCurrent() - openTime) > InpStallMinutes * 60;
 
    double s = 100.0;
-   if(isLong)
-   {
-      if(c < vwap)     s -= 25;
-      if(emaF < emaS)  s -= 30;
-      if(rsi < 45)     s -= 15;
-      if(candBear)     s -= 10;
-   }
-   else
-   {
-      if(c > vwap)     s -= 25;
-      if(emaF > emaS)  s -= 30;
-      if(rsi > 55)     s -= 15;
-      if(candBull)     s -= 10;
-   }
-   if(adx < 15) s -= 10;
-   if(stalled)  s -= 20;
+   motivo = "";
+   bool vwapAgainst = isLong ? c < vwap : c > vwap;
+   bool emaAgainst  = isLong ? emaF < emaS : emaF > emaS;
+   bool rsiAgainst  = isLong ? rsi < 45 : rsi > 55;
+   bool candAgainst = isLong ? candBear : candBull;
+   if(emaAgainst)  { s -= 30; motivo += "EMAs en contra · "; }
+   if(vwapAgainst) { s -= 25; motivo += "VWAP en contra · "; }
+   if(rsiAgainst)  { s -= 15; motivo += "RSI en contra · "; }
+   if(candAgainst) { s -= 10; motivo += "vela en contra · "; }
+   if(adx < 15)    { s -= 10; motivo += "sin fuerza (ADX) · "; }
+   if(stalled)     { s -= 20; motivo += "estancada sin TP1 · "; }
    return MathMax(0.0, s);
 }
 
@@ -255,7 +344,7 @@ double RiskLot(double slDistance)
    double vmin = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
    double vmax = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
    lot = MathFloor(lot / step) * step;
-   if(lot < vmin) return 0.0;    // riesgo demasiado pequeño para el lote mínimo: no forzar
+   if(lot < vmin) return 0.0;   // el riesgo pedido no alcanza ni el lote mínimo: no forzar
    return MathMin(lot, vmax);
 }
 
@@ -266,7 +355,8 @@ void CountToday(int &nTrades, int &nLosses)
    datetime d0 = StringToTime("00:00");
    if(!HistorySelect(d0, TimeCurrent())) return;
    int total = HistoryDealsTotal();
-   double posProfit[]; long posIds[];
+   double posProfit[];
+   long   posIds[];
    for(int i = 0; i < total; i++)
    {
       ulong dTicket = HistoryDealGetTicket(i);
@@ -284,19 +374,49 @@ void CountToday(int &nTrades, int &nLosses)
          if(idx < 0)
          {
             int sz = ArraySize(posIds);
-            ArrayResize(posIds, sz + 1); ArrayResize(posProfit, sz + 1);
+            ArrayResize(posIds, sz + 1);
+            ArrayResize(posProfit, sz + 1);
             posIds[sz] = pid; posProfit[sz] = 0; idx = sz;
          }
          posProfit[idx] += pf;
       }
    }
-   // Una posición cuenta como pérdida solo si su resultado neto total fue negativo
-   // (y solo si ya está cerrada: sin posición abierta con ese id)
+   // Pérdida = posición CERRADA con resultado neto negativo
    for(int k = 0; k < ArraySize(posIds); k++)
-      if(posProfit[k] < 0 && !PositionSelectByTicket(posIds[k])) nLosses++;
+   {
+      if(posProfit[k] >= 0) continue;
+      bool stillOpen = false;
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         ulong tk = PositionGetTicket(i);
+         if(tk != 0 && PositionGetInteger(POSITION_IDENTIFIER) == posIds[k]) { stillOpen = true; break; }
+      }
+      if(!stillOpen) nLosses++;
+   }
 }
 
-//──────────────────────────── INIT / DEINIT ────────────────────────────
+//──────────────────── BASELINE DIARIO PERSISTENTE ────────────────────
+// Sobrevive a reinicios del VPS: el freno del día no se resetea al recargar el EA
+string DayKey()
+{
+   MqlDateTime dt;
+   TimeToStruct(TimeCurrent(), dt);
+   return StringFormat("ORO_BAL_%s_%04d%02d%02d", _Symbol, dt.year, dt.mon, dt.day);
+}
+
+void LoadDayBaseline()
+{
+   string k = DayKey();
+   if(GlobalVariableCheck(k))
+      dayStartBalance = GlobalVariableGet(k);
+   else
+   {
+      dayStartBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+      GlobalVariableSet(k, dayStartBalance);
+   }
+}
+
+//──────────────────────────── INIT ────────────────────────────
 int OnInit()
 {
    trade.SetExpertMagicNumber(InpMagic);
@@ -321,88 +441,97 @@ int OnInit()
       return INIT_FAILED;
    }
    dayStart = StringToTime("00:00");
-   dayStartBalance = AccountInfoDouble(ACCOUNT_BALANCE);
-   Print("🥇 ORO FINAL EA iniciado en ", _Symbol, " ", EnumToString(_Period),
-         " | Umbral ", InpThreshold, " | Riesgo ", DoubleToString(InpRiskPct, 2), "%");
+   LoadDayBaseline();
+   Print("🥇 ORO FINAL ULTIMATE v2.00 iniciado | ", _Symbol, " ", EnumToString(_Period),
+         " | Umbral ", InpThreshold, " | Riesgo ", DoubleToString(InpRiskPct, 2),
+         "% | Baseline del día $", DoubleToString(dayStartBalance, 2));
    return INIT_SUCCEEDED;
 }
 
-void OnDeinit(const int reason) {}
+void OnDeinit(const int reason) { Comment(""); }
 
 //──────────────────────────── LÓGICA PRINCIPAL ────────────────────────────
 void OnTick()
 {
-   //── Nuevo día: resetear referencia del freno de emergencia
+   //── Nuevo día
    datetime d0 = StringToTime("00:00");
    if(d0 != dayStart)
    {
       dayStart = d0;
-      dayStartBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+      LoadDayBaseline();
    }
 
-   //── Rango de apertura de la killzone
-   bool inKz = KzActive();
-   if(inKz && !wasInKz)
-   {
-      kzOpenTime = TimeCurrent();
-      orbHigh = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-      orbLow  = orbHigh;
-   }
-   if(inKz && kzOpenTime > 0 && (TimeCurrent() - kzOpenTime) < InpOrbMinutes * 60)
-   {
-      double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-      if(bid > orbHigh) orbHigh = bid;
-      if(bid < orbLow)  orbLow  = bid;
-   }
-   wasInKz = inKz;
+   RefreshCache();
 
    //── Gestión de la posición abierta (cada tick)
-   ManagePosition();
+   bool havePos = SelectOwnPosition();
+   if(havePos)
+      ManagePosition();
+   else if(lastPid != 0)
+   {
+      // La posición se cerró (TP2/SL del servidor o cierre nuestro): resumen y limpieza
+      Print("🥇 ORO FINAL: posición ", lastPid, " cerrada. Revisa el historial para el resultado.");
+      GlobalVariableDel("ORO_TP1_" + (string)lastPid);
+      GlobalVariableDel("ORO_T1D_" + (string)lastPid);
+      GlobalVariableDel("ORO_OPN_" + (string)lastPid);
+      lastPid = 0;
+   }
 
-   //── Entradas: solo al abrir una vela nueva (señal de vela cerrada, sin repintado)
+   //── Entradas: solo al abrir vela nueva (señal de vela cerrada, sin repintado)
    datetime bt = iTime(_Symbol, PERIOD_CURRENT, 0);
    if(bt == lastBarTime) return;
    lastBarTime = bt;
 
-   if(PositionSelect(_Symbol) && PositionGetInteger(POSITION_MAGIC) == InpMagic) return; // una posición a la vez
-   if(!TradeWindow()) return;
+   //── Score una vez por vela, con flanco consistente
+   double scL, scS;
+   GetScores(scL, scS);
+   double pL = prevScL, pS_ = prevScS;
+   prevScL = scL; prevScS = scS;
+   if(!scoreWarm) { scoreWarm = true; return; }   // primera vela tras el arranque: solo calibrar
+
+   if(havePos) return;                             // una posición a la vez
+   if(!TradeWindow() || IsFridayStop() || NewsBlocked()) return;
    if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED) || !MQLInfoInteger(MQL_TRADE_ALLOWED)) return;
 
    //── Protecciones
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   if(ask - bid > InpMaxSpreadUSD) return;                       // spread demasiado alto (noticia/madrugada)
-   double eq = AccountInfoDouble(ACCOUNT_EQUITY);
-   if(eq < dayStartBalance * (1.0 - InpMaxDailyDD / 100.0))      // freno de emergencia diario
+   if(ask - bid > InpMaxSpreadUSD)
    {
-      Comment("🛑 ORO FINAL: freno diario activado (pérdida > ", DoubleToString(InpMaxDailyDD, 1), "%). Sin nuevas entradas hoy.");
+      Comment("🥇 ORO FINAL | ⏸ Spread alto: $", DoubleToString(ask - bid, 2), " (máx. ", DoubleToString(InpMaxSpreadUSD, 2), ")");
+      return;
+   }
+   double eq = AccountInfoDouble(ACCOUNT_EQUITY);
+   if(eq < dayStartBalance * (1.0 - InpMaxDailyDD / 100.0))
+   {
+      Comment("🛑 ORO FINAL | Freno diario: pérdida > ", DoubleToString(InpMaxDailyDD, 1), "%. Sin entradas hasta mañana.");
+      return;
+   }
+   if(InpDailyTarget > 0 && eq >= dayStartBalance * (1.0 + InpDailyTarget / 100.0))
+   {
+      Comment("🏆 ORO FINAL | Objetivo diario +", DoubleToString(InpDailyTarget, 1), "% logrado. El bot descansa hasta mañana.");
       return;
    }
    int nT, nL;
    CountToday(nT, nL);
    if(nT >= InpMaxTradesDay || nL >= InpMaxLossesDay)
    {
-      Comment("🛑 ORO FINAL: límite diario alcanzado (", nT, " operaciones, ", nL, " pérdidas).");
+      Comment("🛑 ORO FINAL | Límite diario: ", nT, " operaciones, ", nL, " pérdidas.");
       return;
    }
    if(lastEntryTime > 0 && (TimeCurrent() - lastEntryTime) < InpCooldownMin * 60) return;
 
-   //── Score sobre la vela cerrada, con disparo por flanco
-   double scL, scS, scLprev, scSprev;
-   GetScores(scL, scS, 1);
-   GetScores(scLprev, scSprev, 2);
-
-   bool goLong  = scL >= InpThreshold && scL > scS && scLprev < InpThreshold;
-   bool goShort = scS >= InpThreshold && scS > scL && scSprev < InpThreshold;
+   bool goLong  = scL >= InpThreshold && scL > scS && pL < InpThreshold;
+   bool goShort = scS >= InpThreshold && scS > scL && pS_ < InpThreshold;
    if(!goLong && !goShort)
    {
-      Comment("🥇 ORO FINAL | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
-              " (mín. ", InpThreshold, ") | Hoy: ", nT, " ops, ", nL, " pérdidas | ",
-              inKz ? "KILLZONE 🔥" : "fuera de killzone");
+      Comment("🥇 ORO FINAL v2 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
+              " (mín. ", InpThreshold, ")\nHoy: ", nT, "/", InpMaxTradesDay, " ops · ", nL, "/", InpMaxLossesDay,
+              " pérdidas | ", KzActive() ? "KILLZONE 🔥" : (TradeWindow() ? "ventana normal" : "fuera de horario"));
       return;
    }
 
-   //── SL por estructura + ATR
+   //── SL por estructura + ATR, respetando el stops-level del broker
    double atr = Buf(hAtr, 1);
    if(atr <= 0) return;
    int iLo = iLowest(_Symbol, PERIOD_CURRENT, MODE_LOW,  InpSwingBars, 1);
@@ -410,65 +539,63 @@ void OnTick()
    if(iLo < 0 || iHi < 0) return;
    double swingLo = iLow(_Symbol, PERIOD_CURRENT, iLo);
    double swingHi = iHigh(_Symbol, PERIOD_CURRENT, iHi);
+   double minStop = (double)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL) * _Point;
 
    if(goLong)
-   {
-      double sl = MathMax(swingLo - InpSlBufAtr * atr, ask - InpMaxSlAtr * atr);
-      double risk = ask - sl;
-      if(risk <= 0) return;
-      double tp1 = ask + InpRR1 * risk;
-      double tp2 = ask + InpRR2 * risk;
-      double lot = RiskLot(risk);
-      if(lot <= 0) { Print("ORO FINAL: lote de riesgo menor que el mínimo — entrada omitida"); return; }
-      if(trade.Buy(lot, _Symbol, 0, NormalizeDouble(sl, _Digits), NormalizeDouble(tp2, _Digits),
-                   "ORO L " + DoubleToString(scL, 0) + "/100"))
-      {
-         lastEntryTime = TimeCurrent();
-         if(PositionSelect(_Symbol))
-         {
-            long pid = PositionGetInteger(POSITION_IDENTIFIER);
-            GlobalVariableSet("ORO_TP1_" + (string)pid, tp1);
-            GlobalVariableSet("ORO_T1D_" + (string)pid, 0);
-            GlobalVariableSet("ORO_OPN_" + (string)pid, (double)(long)TimeCurrent());
-         }
-         Print("🟢 ORO LONG | score ", DoubleToString(scL, 0), " | lote ", DoubleToString(lot, 2),
-               " | SL ", DoubleToString(sl, _Digits), " | TP1 ", DoubleToString(tp1, _Digits),
-               " | TP2 ", DoubleToString(tp2, _Digits));
-      }
-   }
-   else if(goShort)
-   {
-      double sl = MathMin(swingHi + InpSlBufAtr * atr, bid + InpMaxSlAtr * atr);
-      double risk = sl - bid;
-      if(risk <= 0) return;
-      double tp1 = bid - InpRR1 * risk;
-      double tp2 = bid - InpRR2 * risk;
-      double lot = RiskLot(risk);
-      if(lot <= 0) { Print("ORO FINAL: lote de riesgo menor que el mínimo — entrada omitida"); return; }
-      if(trade.Sell(lot, _Symbol, 0, NormalizeDouble(sl, _Digits), NormalizeDouble(tp2, _Digits),
-                    "ORO S " + DoubleToString(scS, 0) + "/100"))
-      {
-         lastEntryTime = TimeCurrent();
-         if(PositionSelect(_Symbol))
-         {
-            long pid = PositionGetInteger(POSITION_IDENTIFIER);
-            GlobalVariableSet("ORO_TP1_" + (string)pid, tp1);
-            GlobalVariableSet("ORO_T1D_" + (string)pid, 0);
-            GlobalVariableSet("ORO_OPN_" + (string)pid, (double)(long)TimeCurrent());
-         }
-         Print("🔴 ORO SHORT | score ", DoubleToString(scS, 0), " | lote ", DoubleToString(lot, 2),
-               " | SL ", DoubleToString(sl, _Digits), " | TP1 ", DoubleToString(tp1, _Digits),
-               " | TP2 ", DoubleToString(tp2, _Digits));
-      }
-   }
+      OpenTrade(true, ask, MathMax(swingLo - InpSlBufAtr * atr, ask - InpMaxSlAtr * atr), minStop, scL);
+   else
+      OpenTrade(false, bid, MathMin(swingHi + InpSlBufAtr * atr, bid + InpMaxSlAtr * atr), minStop, scS);
 }
 
-//──────────────────────────── GESTIÓN DE LA POSICIÓN ────────────────────────────
+//──────────────────────────── APERTURA ────────────────────────────
+void OpenTrade(bool isLong, double px, double sl, double minStop, double score)
+{
+   // Respetar la distancia mínima de stops del broker
+   if(minStop > 0)
+   {
+      if(isLong  && px - sl < minStop) sl = px - minStop;
+      if(!isLong && sl - px < minStop) sl = px + minStop;
+   }
+   double risk = isLong ? px - sl : sl - px;
+   if(risk <= 0) return;
+   double tp1 = isLong ? px + InpRR1 * risk : px - InpRR1 * risk;
+   double tp2 = isLong ? px + InpRR2 * risk : px - InpRR2 * risk;
+   if(minStop > 0 && MathAbs(tp2 - px) < minStop) return;   // TP2 demasiado cerca: entrada inválida
+
+   double lot = RiskLot(risk);
+   if(lot <= 0)
+   {
+      Print("ORO FINAL: el riesgo configurado no alcanza el lote mínimo — entrada omitida");
+      return;
+   }
+
+   string cmt = (isLong ? "ORO L " : "ORO S ") + DoubleToString(score, 0) + "/100";
+   bool ok = isLong
+      ? trade.Buy(lot, _Symbol, 0, NormalizeDouble(sl, _Digits), NormalizeDouble(tp2, _Digits), cmt)
+      : trade.Sell(lot, _Symbol, 0, NormalizeDouble(sl, _Digits), NormalizeDouble(tp2, _Digits), cmt);
+   if(!ok)
+   {
+      Print("ORO FINAL: fallo al abrir (", trade.ResultRetcode(), " ", trade.ResultRetcodeDescription(), ")");
+      return;
+   }
+   lastEntryTime = TimeCurrent();
+   if(SelectOwnPosition())
+   {
+      long pid = PositionGetInteger(POSITION_IDENTIFIER);
+      lastPid = pid;
+      GlobalVariableSet("ORO_TP1_" + (string)pid, tp1);
+      GlobalVariableSet("ORO_T1D_" + (string)pid, 0);
+      GlobalVariableSet("ORO_OPN_" + (string)pid, (double)(long)TimeCurrent());
+   }
+   Print(isLong ? "🟢 ORO LONG" : "🔴 ORO SHORT", " | score ", DoubleToString(score, 0),
+         " | lote ", DoubleToString(lot, 2), " | SL ", DoubleToString(sl, _Digits),
+         " | TP1 ", DoubleToString(tp1, _Digits), " | TP2 ", DoubleToString(tp2, _Digits));
+}
+
+//──────────────────────────── GESTIÓN ────────────────────────────
 void ManagePosition()
 {
-   if(!PositionSelect(_Symbol)) return;
-   if(PositionGetInteger(POSITION_MAGIC) != InpMagic) return;
-
+   // La posición propia ya está seleccionada por SelectOwnPosition()
    long   pid    = PositionGetInteger(POSITION_IDENTIFIER);
    bool   isLong = PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY;
    double entry  = PositionGetDouble(POSITION_PRICE_OPEN);
@@ -477,6 +604,7 @@ void ManagePosition()
    double vol    = PositionGetDouble(POSITION_VOLUME);
    double bid    = SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double ask    = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   lastPid = pid;
 
    string kTP1 = "ORO_TP1_" + (string)pid;
    string kT1D = "ORO_T1D_" + (string)pid;
@@ -485,15 +613,15 @@ void ManagePosition()
    bool   t1Done  = GlobalVariableCheck(kT1D) && GlobalVariableGet(kT1D) > 0.5;
    datetime opnT  = GlobalVariableCheck(kOPN) ? (datetime)(long)GlobalVariableGet(kOPN) : (datetime)PositionGetInteger(POSITION_TIME);
 
-   //── Cierre por fin de ventana operable (sin posiciones nocturnas)
-   if(InpMode != 2 && !TradeWindow())
+   //── Cierre por fin de ventana o cierre de viernes
+   if((InpMode != 2 && !TradeWindow()) || IsFridayStop())
    {
-      trade.PositionClose(_Symbol);
-      Print("ORO FINAL: cierre por fin de ventana operable");
+      if(trade.PositionClose(_Symbol))
+         Print("ORO FINAL: cierre por fin de ventana operable / viernes");
       return;
    }
 
-   //── TP1: cerrar 50% y mover el stop al punto de entrada
+   //── TP1: cerrar 50% y stop al punto de entrada
    if(!t1Done && tp1 > 0)
    {
       bool hit = isLong ? (bid >= tp1) : (ask <= tp1);
@@ -503,10 +631,15 @@ void ManagePosition()
          double vmin = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
          double half = MathFloor(vol / 2.0 / step) * step;
          if(half >= vmin && vol - half >= vmin)
-            trade.PositionClosePartial(_Symbol, half);
-         trade.PositionModify(_Symbol, NormalizeDouble(entry, _Digits), curTP);
+         {
+            if(!trade.PositionClosePartial(_Symbol, half))
+               Print("ORO FINAL: fallo en cierre parcial (", trade.ResultRetcode(), ")");
+         }
+         // Con lote mínimo no hay parcial: igual se protege con stop a entrada
+         if(!trade.PositionModify(_Symbol, NormalizeDouble(entry, _Digits), curTP))
+            Print("ORO FINAL: fallo moviendo stop a entrada (", trade.ResultRetcode(), ")");
          GlobalVariableSet(kT1D, 1);
-         Print("🎯 ORO FINAL: TP1 alcanzado — 50% cerrado, stop en la entrada (sin riesgo)");
+         Print("🎯 ORO FINAL: TP1 — 50% cerrado, stop en la entrada (sin riesgo)");
          return;
       }
    }
@@ -532,23 +665,28 @@ void ManagePosition()
       }
    }
 
-   //── Salida inteligente: solo se evalúa una vez por vela
+   //── Salida inteligente: una evaluación por vela, con velas de gracia
    static datetime lastHealthBar = 0;
    datetime bt = iTime(_Symbol, PERIOD_CURRENT, 0);
    if(InpUseSmart && bt != lastHealthBar)
    {
       lastHealthBar = bt;
-      double salud = TradeHealth(isLong, t1Done, opnT);
-      if(salud < InpHealthExit)
+      int barsSinceOpen = (int)((TimeCurrent() - opnT) / PeriodSeconds(PERIOD_CURRENT));
+      if(barsSinceOpen >= InpGraceBars)
       {
-         trade.PositionClose(_Symbol);
-         Print("🚪 ORO FINAL: salida inteligente — salud ", DoubleToString(salud, 0),
-               "/100, el mercado se giró antes del stop");
-      }
-      else
-         Comment("🥇 ORO FINAL | EN OPERACIÓN ", isLong ? "LONG 🟢" : "SHORT 🔴",
+         string motivo;
+         double salud = TradeHealth(isLong, t1Done, opnT, motivo);
+         if(salud < InpHealthExit)
+         {
+            if(trade.PositionClose(_Symbol))
+               Print("🚪 ORO FINAL: salida inteligente — salud ", DoubleToString(salud, 0), "/100 (", motivo, ")");
+            return;
+         }
+         Comment("🥇 ORO FINAL v2 | EN OPERACIÓN ", isLong ? "LONG 🟢" : "SHORT 🔴",
                  " | Salud ", DoubleToString(salud, 0), "/100 ",
                  salud >= 65 ? "✅ MANTENER" : "⚠️ VIGILAR",
-                 t1Done ? " | TP1 hecho — SIN RIESGO" : "");
+                 motivo != "" ? "\nMotivo: " + motivo : "",
+                 t1Done ? "\n🎯 TP1 hecho — SIN RIESGO, trailing activo" : "");
+      }
    }
 }
