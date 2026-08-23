@@ -4427,6 +4427,7 @@ const VETA = (() => {
        ahora es una puerta. */
     { id: 'aucorp', x: 50, y: 86, tam: 0.60, fuera: URL_AUCORP,
       grad: ['#E8E0C8', '#A5936A', '#463B24'], halo: '#CBBB8C', lente: '#141007',
+      logo: 'assets/apps/aucorp.png', zoom: 1.5,
       ico: '<rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20M6 15h4"/>' },
     /* Ordenexchange ya abre: la esfera deja el «pronto» y se vuelve una
        puerta de verdad, con el mismo patron que ORDENSCAN — un destino de

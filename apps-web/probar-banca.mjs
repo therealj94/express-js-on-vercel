@@ -179,7 +179,7 @@ decir('guardar un destino y transferir');
   await fetch(API + '/auth/sso', { method: 'POST',
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: 'gid-beto' }) });
 
-  await p.click('[data-ir="destinos"]');
+  await p.click('[data-ir="bancos"]');
   await p.waitForTimeout(800);
   await p.fill('#d-alias', 'Beto');
   await p.selectOption('#d-tipo', 'interno');
@@ -219,7 +219,7 @@ decir('la cotización se ve ANTES de cambiar');
 
 decir('un retiro se PIDE, y se ve esperando');
 {
-  await p.click('[data-ir="destinos"]');
+  await p.click('[data-ir="bancos"]');
   await p.waitForTimeout(800);
   await p.fill('#d-alias', 'Mi banco');
   await p.selectOption('#d-tipo', 'bancario');
@@ -261,6 +261,43 @@ decir('los límites se ven, y el extracto también');
     'el extracto trae cada movimiento con su explicación');
   comprobar(/\+ 1500\.00 USD/.test(ext) && /− 250\.50 USD/.test(ext),
     'con el signo de cada uno, no solo el color');
+}
+
+decir('la portada de carga: marca primero, plataforma después');
+{
+  // SIN movimiento reducido: la portada tiene que aparecer y luego irse sola.
+  const s = await b.newPage({ viewport: { width: 1280, height: 900 } });
+  await s.addInitScript((api) => { window.AUCORP_API = api; }, API);
+  await s.goto(`${WEB}/banca/`);
+  await s.waitForTimeout(250);
+  comprobar(await s.locator('.abriendo').isVisible(), 'al abrir aparece el sello de AuCorp cargando');
+  await s.waitForTimeout(1700);
+  comprobar(!(await s.locator('.abriendo').isVisible()), 'y se va sola en un momento');
+  comprobar(/Entrar con Veta Wallet/.test(await leer(s)), 'dejando la puerta a la vista');
+  await s.close();
+}
+
+decir('la tarjeta y los bancos se enseñan sin fingir');
+{
+  await p.click('[data-ir="tarjeta"]');
+  await p.waitForTimeout(700);
+  const t = await leer(p);
+  comprobar(/En camino/.test(t), 'la tarjeta dice EN CAMINO, no una promesa disfrazada');
+  comprobar(/···· ···· ···· ····/.test(t), 'y el plástico lleva puntos, no un número fingido');
+  comprobar(/no está emitida/.test(t), 'con la aclaración en letras');
+
+  await p.click('[data-ir="bancos"]');
+  await p.waitForTimeout(700);
+  const bt = await leer(p);
+  comprobar(/Funciona/.test(bt) && /En camino/.test(bt),
+    'bancos separa lo que funciona hoy de la conexión directa que viene');
+
+  await p.click('[data-ir="inicio"]');
+  await p.waitForTimeout(800);
+  const it = await leer(p);
+  comprobar(/Hola, Ana/.test(it), 'Inicio saluda con el nombre', it.slice(0, 80));
+  comprobar(/Veta Wallet/.test(it) && /Ordenex/.test(it), 'y enseña el ecosistema entero');
+  comprobar(/Lo último/.test(it), 'con los últimos movimientos a la vista');
 }
 
 decir('el teléfono');

@@ -53,7 +53,7 @@ const BANCA = (() => {
 
   // ── el estado ─────────────────────────────────────────────────────────────
   let sesion = null;      // { token, refreshToken, usuario }
-  let vista = 'cuentas';
+  let vista = 'inicio';
   let datos = {};         // lo que la vista actual cargó
   let cargando = false;
   let recado = null;      // { texto, malo }
@@ -127,34 +127,43 @@ const BANCA = (() => {
 
   // ── las vistas ────────────────────────────────────────────────────────────
   const ICONOS = {
-    cuentas: '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6 15h4"/>',
+    inicio: '<path d="M3 11l9-7 9 7"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/>',
+    cuentas: '<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5z"/><path d="M15.5 12h3"/>',
     mover: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
     extracto: '<rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 8h8M8 12h8M8 16h5"/>',
-    destinos: '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0M17 11h4M19 9v4"/>',
+    bancos: '<path d="M3 9.5 12 4l9 5.5"/><path d="M5 10v7M9.5 10v7M14.5 10v7M19 10v7M3 20h18"/>',
+    tarjeta: '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6 15h4"/>',
     limites: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/>',
     salir: '<path d="M15 4h3.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H15M10 16l-4-4 4-4M6 12h10"/>',
   };
   const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">${ICONOS[k]}</svg>`;
 
   const DESTINOS = [
+    ['inicio', 'Inicio', 'inicio'],
     ['cuentas', 'Cuentas', 'cuentas'],
     ['mover', 'Mover', 'mover'],
     ['extracto', 'Movimientos', 'extracto'],
-    ['destinos', 'Destinos', 'destinos'],
+    ['bancos', 'Bancos', 'bancos'],
+    ['tarjeta', 'Tarjeta', 'tarjeta'],
     ['limites', 'Límites', 'limites'],
   ];
+  /* En el teléfono caben cinco destinos y ni uno más. Tarjeta y Límites se
+     alcanzan desde Inicio, que para eso es la portada de la casa. */
+  const EN_BARRA = DESTINOS.slice(0, 5);
 
   function armazon(dentro) {
     const nav = DESTINOS.map(([id, nombre, ico]) =>
       `<button class="nav" data-ir="${id}" ${vista === id ? 'aria-current="page"' : ''}>${svg(ico)}${esc(nombre)}</button>`
     ).join('');
-    const barra = DESTINOS.map(([id, nombre, ico]) =>
+    const barra = EN_BARRA.map(([id, nombre, ico]) =>
       `<button data-ir="${id}" ${vista === id ? 'aria-current="page"' : ''}>${svg(ico)}<span>${esc(nombre)}</span></button>`
     ).join('');
 
     return `<div class="marco">
       <nav class="riel" aria-label="Secciones">
-        <div class="marca"><i></i><b>AuCorp</b></div>
+        ${/* El sello completo y no el emblema chico: el circuito a 26 píxeles
+              se vuelve una mancha, y una marca que no se lee no es marca. */''}
+        <div class="marca"><img class="lockup" src="../assets/aucorp-marca.png" alt="AuCorp"></div>
         ${nav}
         <button class="nav abajo" data-salir>${svg('salir')}Salir</button>
       </nav>
@@ -176,6 +185,135 @@ const BANCA = (() => {
     const h = `<div class="aviso ${recado.malo ? 'malo' : ''}" role="status">${esc(recado.texto)}</div>`;
     return `<div style="margin-bottom:18px">${h}</div>`;
   };
+
+  // ── inicio ────────────────────────────────────────────────────────────────
+  /* La portada de la casa. Todo lo que se puede hacer, a un toque; lo que ya
+     pasó, a la vista; y lo que viene, dicho con nombre y sin fecha inventada.
+     Es la pantalla que vende la plataforma — y por eso mismo es donde más
+     importa no adornar: cada número sale del libro o no sale. */
+  function vistaInicio() {
+    const u = sesion?.usuario || {};
+    const cuentas = datos.cuentas || [];
+    const movs = (datos.movimientos || []).slice(0, 5);
+    const nombre = String(u.nombre || '').split(' ')[0];
+
+    const chips = cuentas.map((c) => `
+      <button class="tarj moneda" data-abrir-mover="${esc(c.moneda)}" style="text-align:left;cursor:pointer;font:inherit;color:inherit">
+        <div class="top"><span class="cod">${esc(c.moneda)}</span>
+          <span class="et">${esc(c.simbolo || '')}</span></div>
+        <div class="saldo n">${esc(c.saldo.texto)}</div>
+        <div class="pais">${esc(c.nombre || '')}</div>
+      </button>`).join('');
+
+    const filasMov = movs.map((m) => {
+      const mia = (m.lineas || []).filter((l) => l.cuenta === 'yo');
+      return mia.map((l) => {
+        const entra = l.haber && l.haber !== '0.00' && l.haber !== '0';
+        const cifra = entra ? l.haber : l.debe;
+        if (!cifra || cifra === '0.00' || cifra === '0') return '';
+        return `<tr><td>${esc(new Date(m.fecha).toLocaleDateString())}</td>
+          <td>${esc(m.glosa)}</td>
+          <td class="der n ${entra ? 'mas' : 'menos'}">${entra ? '+' : '−'} ${esc(cifra)} ${esc(l.moneda)}</td></tr>`;
+      }).join('');
+    }).join('');
+
+    return `${recadoHTML()}
+      <div class="cab"><h1>${nombre ? `Hola, ${esc(nombre)}` : 'Tu banca'}</h1>
+        <span class="sello ${u.verificada ? 'ok' : 'esp'}">${u.verificada ? 'Identidad verificada' : 'Sin verificar'}</span></div>
+
+      <div class="pila">
+        <div class="total">
+          <span class="et">Saldo disponible</span>
+          <span class="cifra">${cuentas.length ? sumaVisible() : '—'}</span>
+          <small>${!cuentas.length
+            ? 'Todavía no abriste ninguna cuenta.'
+            : datos.totalUsd
+              ? 'Suma de tus cuentas convertida a dólares con la tasa de referencia de hoy.'
+              : 'No se pudo convertir a dólares ahora mismo. Tus saldos por moneda son exactos.'}</small>
+        </div>
+
+        <div class="acciones">
+          <button class="accion" data-abrir="depositar">${svg('bancos')}<span>Depositar</span></button>
+          <button class="accion" data-ir="mover">${svg('mover')}<span>Transferir</span></button>
+          <button class="accion" data-ir="mover">${svg('limites')}<span>Cambiar</span></button>
+          <button class="accion" data-abrir="nueva">${svg('cuentas')}<span>Abrir moneda</span></button>
+        </div>
+
+        ${cuentas.length
+          ? `<div class="rej c3">${chips}</div>`
+          : `<div class="tarj vacio"><b>Ninguna cuenta abierta</b>
+              Abrí la primera en la moneda que uses todos los días.
+              <div style="margin-top:16px"><button class="bot" data-abrir="nueva">Abrir una cuenta</button></div></div>`}
+
+        ${filasMov ? `
+        <div class="tarj">
+          <div class="fila" style="margin-bottom:8px"><span class="et crece">Lo último</span>
+            <button class="bot fino chico" data-ir="extracto">Ver todo</button></div>
+          <div class="envuelve"><table class="tabla"><tbody>${filasMov}</tbody></table></div>
+        </div>` : ''}
+
+        <div>
+          <h2 style="font-size:19px;margin:10px 0 12px">Una sola cuenta, todo el ecosistema</h2>
+          <div class="rej c3">
+            <a class="tarj casa" href="https://app.vetawallet.com" rel="noopener">
+              <span class="et">Cripto</span><strong>Veta Wallet</strong>
+              <p>Tus activos en la cadena de Orden Global.</p></a>
+            <a class="tarj casa" href="https://www.ordenexchange.com" rel="noopener">
+              <span class="et">Cambio</span><strong>Ordenex</strong>
+              <p>La casa de cambio. AuCorp es su dueña.</p></a>
+            <button class="tarj casa" data-ir="tarjeta">
+              <span class="et">Pago</span><strong>Tarjeta AuCorp</strong>
+              <p>En camino. Mirá cómo va a ser.</p></button>
+          </div>
+        </div>
+
+        <div class="tarj">
+          <div class="fila" style="margin-bottom:6px"><span class="et crece">Lo que viene</span>
+            <span class="sello esp">En camino</span></div>
+          <p style="font-size:14px;color:var(--tinta2)">La tarjeta AuCorp, la conexión directa con tu banco
+            para ver tu saldo sin salir de aquí, y los pagos entre casas del ecosistema. Sin fechas
+            inventadas: cuando cada pieza abra, va a aparecer en esta misma pantalla.</p>
+        </div>
+      </div>${PIE}`;
+  }
+
+  // ── tarjeta ───────────────────────────────────────────────────────────────
+  /* La tarjeta todavía no existe y la pantalla NO finge lo contrario: enseña
+     el diseño, dice qué va a poder hacer, y el botón dice «en camino» en vez
+     de recoger ilusiones en una lista. Cuando abra, este es su lugar. */
+  function vistaTarjeta() {
+    const u = sesion?.usuario || {};
+    return `${recadoHTML()}
+      <div class="cab"><h1>Tarjeta AuCorp</h1><span class="sello esp">En camino</span></div>
+      <div class="rej c2">
+        <div>
+          <div class="credito" aria-label="Así va a ser la tarjeta AuCorp">
+            <img class="marca-agua" src="../assets/aucorp.png" alt="">
+            <div class="fila" style="justify-content:space-between">
+              <span style="font-family:'Fraunces',serif;font-size:19px;letter-spacing:.02em">AUCORP<span style="color:var(--oroLt)">.</span></span>
+              <span class="chip"></span>
+            </div>
+            <div>
+              <div class="num">···· ···· ···· ····</div>
+              <div class="fila" style="justify-content:space-between;margin-top:12px">
+                <span style="font:500 12.5px/1 'PlexMono',monospace;letter-spacing:.1em;text-transform:uppercase">${esc(u.nombre || 'Tu nombre')}</span>
+                <span class="et" style="color:var(--oroPl)">moneda local</span>
+              </div>
+            </div>
+          </div>
+          <p class="ayuda" style="margin-top:10px">Es el diseño, no un número: la tarjeta no está emitida.</p>
+        </div>
+        <div class="tarj pila">
+          <span class="et">Qué va a poder hacer</span>
+          <p style="font-size:14.5px;color:var(--tinta2)">Gastar directo de tus saldos en moneda local —
+            la misma cuenta con la que ya depositás, cambiás y retirás—. Se va a pedir desde aquí,
+            con tu identidad de Genesis ID ya verificada, sin otro trámite.</p>
+          <p style="font-size:14.5px;color:var(--tinta2)">No hay lista de espera ni fecha prometida:
+            cuando abra, este botón va a ser el de pedirla.</p>
+          <button class="bot" disabled>Pedirla — en camino</button>
+        </div>
+      </div>${PIE}`;
+  }
 
   // ── cuentas ───────────────────────────────────────────────────────────────
   function vistaCuentas() {
@@ -256,7 +394,7 @@ const BANCA = (() => {
           <div class="campo"><label for="t-ben">A quién</label>
             <select id="t-ben" name="beneficiario">
               <option value="">— elegí un destino guardado —</option>${opcBen('interno')}</select>
-            <p class="ayuda">Los destinos se guardan en «Destinos». Se comprueban al guardarlos, no al mandar el dinero.</p></div>
+            <p class="ayuda">Los destinos se guardan en «Bancos». Se comprueban al guardarlos, no al mandar el dinero.</p></div>
           <div class="fila">
             <div class="campo crece"><label for="t-mon">Moneda</label>
               <select id="t-mon" name="moneda">${opciones}</select></div>
@@ -357,14 +495,40 @@ const BANCA = (() => {
       </tbody></table></div>${PIE}`;
   }
 
-  // ── destinos ──────────────────────────────────────────────────────────────
-  function vistaDestinos() {
+  // ── bancos ────────────────────────────────────────────────────────────────
+  /* La conexión con los bancos, dicha entera: lo que FUNCIONA hoy (depositar
+     con referencia, retirar a tus cuentas guardadas) con su sello verde, y la
+     conexión directa —leer tu saldo del banco sin salir de aquí— con el sello
+     de «en camino». Mezclar las dos sin sello sería vender lo que no hay. */
+  function vistaBancos() {
     const bs = datos.beneficiarios || [];
     const monedas = (datos.monedas || []).map((m) =>
       `<option value="${esc(m.codigo)}">${esc(m.codigo)} · ${esc(m.nombre)}</option>`).join('');
 
     return `${recadoHTML()}
-      <div class="cab"><h1>Destinos</h1></div>
+      <div class="cab"><h1>Bancos</h1></div>
+
+      <div class="rej c2" style="margin-bottom:20px">
+        <div class="tarj pila">
+          <div class="fila"><span class="et crece">El puente con tu banco, hoy</span>
+            <span class="sello ok">Funciona</span></div>
+          <p style="font-size:14.5px;color:var(--tinta2)">El dinero entra por transferencia con tu
+            referencia y sale a las cuentas que guardaste abajo. Operaciones lo acredita contra el
+            extracto del banco.</p>
+          <div class="fila">
+            <button class="bot chico" data-abrir="depositar">Depositar</button>
+            <button class="bot fino chico" data-ir="mover">Retirar</button>
+          </div>
+        </div>
+        <div class="tarj pila">
+          <div class="fila"><span class="et crece">Conexión directa</span>
+            <span class="sello esp">En camino</span></div>
+          <p style="font-size:14.5px;color:var(--tinta2)">Ver el saldo y los movimientos de tu banco sin
+            salir de aquí, y fondear tu cuenta en un toque. Se va a conectar desde esta misma pantalla;
+            sin fecha inventada.</p>
+        </div>
+      </div>
+
       <div class="aviso" style="margin-bottom:20px">Guardar un destino una vez y elegirlo después evita el
         error que más caro sale: un dígito cambiado en el número de cuenta. Una transferencia emitida no se
         deshace pidiéndolo.</div>
@@ -504,10 +668,15 @@ const BANCA = (() => {
   // ── la puerta ─────────────────────────────────────────────────────────────
   function vistaPuerta() {
     return `<div class="puerta"><div class="caja">
-      <div class="marca" style="justify-content:center"><i></i><b>AuCorp</b></div>
+      <img class="puerta-marca" src="../assets/aucorp-marca.png" alt="AuCorp">
       <h1>Tus cuentas en moneda local</h1>
       <p style="color:var(--tinta2)">Se entra con tu cuenta de Veta Wallet. Aquí no hay otra
-        contraseña que recordar — ni que perder.</p>
+        contraseña que recordar — ni que perder. Es la banca fiat del ecosistema Orden Global.</p>
+      <ul class="puerta-lista">
+        <li>Cuentas en 21 monedas del continente, con tu misma identidad.</li>
+        <li>Cambio entre monedas con la tasa real, dicha con su fecha y su margen.</li>
+        <li>Depositás con referencia y retirás a tu banco. Sin letra escondida.</li>
+      </ul>
       ${recado ? `<div class="aviso ${recado.malo ? 'malo' : ''}">${esc(recado.texto)}</div>` : ''}
       <button class="bot" data-entrar style="justify-content:center">
         ${cargando ? '<span class="cargando"></span> Entrando…' : 'Entrar con Veta Wallet'}</button>
@@ -521,10 +690,10 @@ const BANCA = (() => {
   function pintar() {
     if (!sesion) { raiz().innerHTML = vistaPuerta(); return; }
     const cuerpo = {
-      cuentas: vistaCuentas, mover: vistaMover, extracto: vistaExtracto,
-      destinos: vistaDestinos, limites: vistaLimites,
-      depositar: vistaDepositar, nueva: vistaNueva,
-    }[vista] || vistaCuentas;
+      inicio: vistaInicio, cuentas: vistaCuentas, mover: vistaMover,
+      extracto: vistaExtracto, bancos: vistaBancos, tarjeta: vistaTarjeta,
+      limites: vistaLimites, depositar: vistaDepositar, nueva: vistaNueva,
+    }[vista] || vistaInicio;
     raiz().innerHTML = armazon(cuerpo());
     // El tipo de destino decide qué campos se ven. Se hace después de pintar
     // porque el formulario acaba de nacer.
@@ -539,7 +708,7 @@ const BANCA = (() => {
   // ── cargar lo que cada vista necesita ─────────────────────────────────────
   async function cargar() {
     try {
-      if (vista === 'cuentas' || vista === 'mover' || vista === 'nueva' || vista === 'depositar') {
+      if (vista === 'inicio' || vista === 'cuentas' || vista === 'mover' || vista === 'nueva' || vista === 'depositar') {
         const [c, m] = await Promise.all([pedir('/cuentas'), pedir('/monedas')]);
         // El nombre y el símbolo de cada moneda viven en /monedas; se juntan
         // aquí para que la tarjeta de saldo diga «Lempira» y no solo «HNL».
@@ -556,9 +725,10 @@ const BANCA = (() => {
         datos.beneficiarios = b.beneficiarios;
         datos.solicitudes = s.solicitudes;
       }
-      if (vista === 'extracto') datos.movimientos = (await pedir('/movimientos')).movimientos;
+      if (vista === 'extracto' || vista === 'inicio')
+        datos.movimientos = (await pedir('/movimientos')).movimientos;
       if (vista === 'limites') datos.limite = await pedir('/limites');
-      if (vista === 'destinos') {
+      if (vista === 'bancos') {
         const [b, m] = await Promise.all([pedir('/beneficiarios'), pedir('/monedas')]);
         datos.beneficiarios = b.beneficiarios; datos.monedas = m.monedas;
       }
@@ -623,7 +793,7 @@ const BANCA = (() => {
       }
       if (nombre === 'destino') {
         await pedir('/beneficiarios', { metodo: 'POST', cuerpo: v });
-        return ir('destinos', 'Destino guardado.');
+        return ir('bancos', 'Destino guardado.');
       }
       if (nombre === 'transferir') {
         const b = (datos.beneficiarios || []).find((x) => x.id === v.beneficiario);
@@ -703,7 +873,7 @@ const BANCA = (() => {
       // hecha. Se pregunta.
       if (!confirm('¿Quitar este destino?')) return;
       pedir('/beneficiarios/' + encodeURIComponent(t.dataset.borrar), { metodo: 'DELETE' })
-        .then(() => ir('destinos', 'Destino quitado.'))
+        .then(() => ir('bancos', 'Destino quitado.'))
         .catch((e) => avisar(e.message, true));
     }
   });
@@ -728,7 +898,28 @@ const BANCA = (() => {
   });
 
   // ── arrancar ──────────────────────────────────────────────────────────────
+  /* LA PORTADA DE CARGA. Un instante de marca —el sello latiendo sobre el
+     pozo— mientras se resuelve la sesión, y la plataforma entra ya armada.
+     Dura lo que tarde lo de verdad, con un mínimo para que no parpadee; con
+     movimiento reducido no aparece y todo entra en seco, que es lo pedido. */
+  const REDUCIDO = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function portada() {
+    raiz().innerHTML = `<div class="abriendo" role="status" aria-label="Abriendo AuCorp">
+      <img src="../assets/aucorp-marca-oscura.png" alt="AuCorp">
+      <div class="ab-linea" aria-hidden="true"></div>
+      <p>La banca del ecosistema Orden Global</p>
+    </div>`;
+  }
+
   async function arrancar() {
+    const desde = Date.now();
+    const conCalma = (fn) => {
+      const falta = REDUCIDO ? 0 : Math.max(0, 1100 - (Date.now() - desde));
+      setTimeout(fn, falta);
+    };
+    if (!REDUCIDO) portada();
+
     /* La llave que trae la wallet. Se consume del hash INMEDIATAMENTE: un
        token de paso en la barra de direcciones es un token de paso que se
        copia, se pega en un chat y se queda en el historial del navegador. */
@@ -736,22 +927,22 @@ const BANCA = (() => {
     if (m) {
       const token = decodeURIComponent(m[1]);
       history.replaceState(null, '', location.pathname);
-      cargando = true; pintar();
+      if (REDUCIDO) { cargando = true; pintar(); }
       try {
         const d = await pedir('/auth/sso', { metodo: 'POST', cuerpo: { token } });
         sesion = { token: d.token, refreshToken: d.refreshToken, usuario: d.usuario };
         guardar();
         cargando = false;
-        return ir('cuentas');
+        return conCalma(() => ir('inicio'));
       } catch (e) {
         cargando = false;
-        return avisar(e.message, true);
+        return conCalma(() => avisar(e.message, true));
       }
     }
 
     sesion = recuperar();
-    if (sesion?.token) return ir('cuentas');
-    pintar();
+    if (sesion?.token) return conCalma(() => ir('inicio'));
+    conCalma(pintar);
   }
 
   arrancar();
