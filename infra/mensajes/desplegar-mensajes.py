@@ -42,6 +42,7 @@ After=network.target
 ExecStart=/usr/bin/python3 /srv/mensajes/servidor.py
 Environment=MENSAJES_DATOS=/srv/mensajes/datos.json
 Environment=MENSAJES_PUERTO=8390
+Environment=MENSAJES_VAPID_PEM=/srv/mensajes/vapid.pem
 {TURNO}
 Restart=always
 RestartSec=3
@@ -81,6 +82,15 @@ def main():
     cmds = [
         'set -e',
         'mkdir -p /srv/mensajes',
+        # ── LA LLAVE DE LOS AVISOS PUSH ─────────────────────────────────────
+        # Se genera EN el nodo, una vez, y no sale de ahi: ni al repositorio,
+        # ni a esta maquina, ni al S3. Perderla solo obliga a que los
+        # navegadores se resuscriban; filtrarla dejaria a cualquiera mandar
+        # avisos en nuestro nombre.
+        'if [ ! -f /srv/mensajes/vapid.pem ]; then '
+        '  openssl ecparam -name prime256v1 -genkey -noout -out /srv/mensajes/vapid.pem && '
+        '  chmod 600 /srv/mensajes/vapid.pem && echo LLAVE_AVISOS_NUEVA; '
+        'else echo LLAVE_AVISOS_YA_ESTABA; fi',
         # ── LA RED DEBAJO DEL TRAPECIO ───────────────────────────────────────
         #
         # El 12 de agosto un despliegue dejo el chat en 503 y hubo que volver

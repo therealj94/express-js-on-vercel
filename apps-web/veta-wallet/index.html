@@ -1352,6 +1352,11 @@ body.en-p2c .nav[aria-current=page]::before{background:var(--p2c-grad)}
   border:1.5px solid var(--p2c-cyan);background:var(--p2c-grad);color:#03122E;
   display:grid;place-items:center;font:800 14px/1 var(--sans);padding:0}
 .p2c-yo img{width:100%;height:100%;object-fit:cover;display:block}
+/* La campana de avisos: mismo circulo que el perfil pero hueco, para que el
+   perfil siga siendo el que manda en la esquina. */
+.p2c-campana{background:transparent;color:var(--p2c-cyan);border-color:var(--p2c-linea)}
+.p2c-campana svg{width:18px;height:18px}
+.p2c-campana:hover{border-color:var(--p2c-cyan)}
 
 /* ── LOS ESTADOS, EN FILA ─────────────────────────────────────────────────
    Se desplaza en horizontal y se engancha en cada círculo (`scroll-snap`):

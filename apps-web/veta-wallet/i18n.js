@@ -431,6 +431,11 @@ es: {
   'cha.sub': 'La gente del ecosistema, verificada.',
   /* La casa de PULSE2CHAT. Los verbos son los que la gente diria en voz alta:
      «agregar», «aceptar», «publicar». Nada de «enviar solicitud de conexion». */
+  'cha.avisos': 'Activar avisos', 'cha.avisosOk': 'Avisos activados: te enterás aunque la app esté cerrada',
+  'cha.avisosNo': 'No se pudieron activar los avisos en este navegador',
+  'cha.avisosNegado': 'Este navegador tiene los avisos bloqueados para el sitio. Se activan en el candado de la barra de dirección.',
+  'cha.avisosIphone': 'En iPhone primero agregá la app a tu pantalla de inicio (Compartir → Agregar a inicio) y activá los avisos desde ahí.',
+  'cha.avisosSinLlave': 'Los avisos todavía no están disponibles',
   'cha.salirCasa': 'Volver al Núcleo',
   'cha.tabChats': 'Chats',
   'cha.tabGente': 'Gente',
@@ -1268,6 +1273,11 @@ en: {
   'nu.powerT': 'Powered by our own Layer 1',
   'nu.powerP': 'Chain 5550 · Hyperledger Besu · QBFT consensus · check it on ORDENSCAN',
   'cha.sub': 'The people of the ecosystem, verified.',
+  'cha.avisos': 'Turn on notifications', 'cha.avisosOk': 'Notifications on: you will know even with the app closed',
+  'cha.avisosNo': 'Notifications could not be turned on in this browser',
+  'cha.avisosNegado': 'This browser has notifications blocked for the site. Turn them on from the padlock in the address bar.',
+  'cha.avisosIphone': 'On iPhone, first add the app to your home screen (Share → Add to Home Screen) and turn notifications on from there.',
+  'cha.avisosSinLlave': 'Notifications are not available yet',
   'cha.salirCasa': 'Back to the Core',
   'cha.tabChats': 'Chats',
   'cha.tabGente': 'People',

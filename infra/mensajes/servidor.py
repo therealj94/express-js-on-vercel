@@ -36,7 +36,7 @@ entiende Range (206) —sin eso Safari no reproduce un video— y solo deja
 abrirse dentro del navegador a imágenes y videos: lo demás se descarga, para
 que nadie use nuestro dominio para servir su HTML.
 """
-import base64, json, os, re, secrets, threading, time
+import base64, json, os, re, secrets, subprocess, threading, time, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 RUTA = os.environ.get('MENSAJES_DATOS', '/srv/mensajes/datos.json')
@@ -78,6 +78,170 @@ candado = threading.Lock()
 # desde el entorno, que es como lo prueban las pruebas sin tocar produccion.
 WALLET_URL = os.environ.get(
     'MENSAJES_WALLET_URL', 'https://vetawallet-1a2e38ac52b1.herokuapp.com').rstrip('/')
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LOS AVISOS PUSH: la mitad que faltaba.
+#
+# El relevo llevaba tiempo GUARDANDO suscripciones (/suscribir) sin que nadie
+# las usara: el obrero de la web sabe pintar el aviso desde el primer dia, pero
+# ningun aviso salia. Esta es la pieza que empuja.
+#
+# COMO SE FIRMA SIN CRIPTOGRAFIA EN PYTHON
+#
+# Los servicios de push (Google, Mozilla, Apple) exigen VAPID: un JWT firmado
+# con ES256. La biblioteca estandar no trae curvas elipticas y en este nodo no
+# se instalan dependencias — pero openssl SI esta, en cualquier Linux. La firma
+# se hace por subprocess con la llave de /srv/mensajes/vapid.pem, que se genera
+# EN el nodo al desplegar y no pasa por el repositorio jamas.
+#
+# POR QUE EL AVISO VIAJA SIN CUERPO
+#
+# Un push CON cuerpo obliga a cifrarlo (RFC 8291: ECDH + HKDF + AES-GCM), y eso
+# si que no se puede hacer con openssl de linea de comandos. Un push VACIO es
+# legal (RFC 8030), no exige cifrado, y el obrero ya lo entiende: despierta y
+# pinta «PULSE2CHAT — Te escribio». El nombre del remitente y el texto NO
+# viajan, y eso aqui es una virtud: por la red de Google no pasa ni un dato del
+# mensaje, solo el hecho de que hay algo nuevo.
+#
+# CUANDO NO SE EMPUJA
+#
+# Si esa cuenta consulto su bandeja hace menos de 45 segundos, esta con el chat
+# delante y el aviso solo duplicaria lo que ya esta viendo. El pulso vive en
+# memoria (no en el JSON): es un dato de presencia, no de estado.
+VAPID_PEM = os.environ.get('MENSAJES_VAPID_PEM', '/srv/mensajes/vapid.pem')
+VAPID_CONTACTO = 'mailto:info@ordenglobal.org'
+PULSO = {}                       # correo -> ultima consulta de bandeja (epoch)
+PULSO_FRESCO = 45
+_vapid_pub = None
+_jwt_cache = {}                  # audiencia -> (vence, token)
+
+
+def _b64u(b):
+    return base64.urlsafe_b64encode(b).rstrip(b'=').decode()
+
+
+def llave_publica_avisos():
+    """El punto publico de la llave VAPID, como lo quiere pushManager.subscribe.
+
+    En el DER de una llave publica P-256 el punto sin comprimir son SIEMPRE los
+    ultimos 65 bytes (0x04 + X + Y): no hace falta un parser de ASN.1 para
+    recortarlo. Si no hay llave, cadena vacia — y la app dira que los avisos no
+    estan disponibles, que es la verdad.
+    """
+    global _vapid_pub
+    if _vapid_pub is not None:
+        return _vapid_pub
+    try:
+        r = subprocess.run(['openssl', 'ec', '-in', VAPID_PEM, '-pubout', '-outform', 'DER'],
+                           capture_output=True, timeout=10)
+        punto = r.stdout[-65:]
+        _vapid_pub = _b64u(punto) if r.returncode == 0 and len(punto) == 65 and punto[0] == 4 else ''
+    except Exception:
+        _vapid_pub = ''
+    return _vapid_pub
+
+
+def _der_a_cruda(der):
+    """La firma DER de openssl (SEQUENCE de dos INTEGER) al r||s de 64 bytes
+    que exige JWS. Los enteros DER llevan un 0x00 delante cuando el byte alto
+    esta encendido; se quita, y se rellena a 32 por la izquierda."""
+    def entero(b, i):
+        n = b[i + 1]
+        return b[i + 2:i + 2 + n].lstrip(b'\x00'), i + 2 + n
+    i = 2 + (der[1] & 0x7f if der[1] & 0x80 else 0)
+    r, i = entero(der, i)
+    t, _ = entero(der, i)
+    return r.rjust(32, b'\x00') + t.rjust(32, b'\x00')
+
+
+def _jwt_para(audiencia):
+    ahora = int(time.time())
+    c = _jwt_cache.get(audiencia)
+    if c and c[0] - 600 > ahora:
+        return c[1]
+    cab = _b64u(json.dumps({'typ': 'JWT', 'alg': 'ES256'}).encode())
+    cue = _b64u(json.dumps({'aud': audiencia, 'exp': ahora + 12 * 3600,
+                            'sub': VAPID_CONTACTO}).encode())
+    base = f'{cab}.{cue}'
+    try:
+        r = subprocess.run(['openssl', 'dgst', '-sha256', '-sign', VAPID_PEM],
+                           input=base.encode(), capture_output=True, timeout=10)
+        if r.returncode != 0 or not r.stdout:
+            return None
+        token = f'{base}.{_b64u(_der_a_cruda(r.stdout))}'
+    except Exception:
+        return None
+    _jwt_cache[audiencia] = (ahora + 12 * 3600, token)
+    return token
+
+
+def _empujar_uno(sus, urgencia):
+    """Un POST vacio al servicio de push de este navegador. Devuelve False si
+    la suscripcion ya no existe (404/410) para que se pode."""
+    from urllib.parse import urlsplit
+    punto = sus.get('endpoint') or ''
+    u = urlsplit(punto)
+    # Solo https, salvo el bucle local: los servicios de push reales son todos
+    # https, y las pruebas levantan uno falso en 127.0.0.1.
+    local = (u.hostname or '') in ('127.0.0.1', 'localhost')
+    if (u.scheme != 'https' and not local) or not u.netloc:
+        return False                         # una suscripcion rota se poda
+    jwt = _jwt_para(f'{u.scheme}://{u.netloc}')
+    if not jwt:
+        return True                          # sin llave no se poda a nadie
+    pet = urllib.request.Request(punto, data=b'', method='POST', headers={
+        'TTL': '86400',
+        'Urgency': urgencia,
+        'Content-Length': '0',
+        'Authorization': f'vapid t={jwt}, k={llave_publica_avisos()}',
+    })
+    try:
+        with urllib.request.urlopen(pet, timeout=10):
+            return True
+    except urllib.error.HTTPError as e:
+        return e.code not in (404, 410)
+    except Exception:
+        return True                          # un fallo de red no es una baja
+
+
+def empujar(d, correos, urgencia='normal'):
+    """Avisa a esas cuentas, en un hilo aparte: el POST que origino el aviso no
+    espera a la red de Google.
+
+    SE LLAMA CON EL CANDADO YA TOMADO —todas las rutas POST viven dentro de
+    `with candado:`— y por eso NO lo toma: threading.Lock no es reentrante y
+    tomarlo aqui seria un interbloqueo del relevo entero, que fue exactamente
+    el primer borrador de esta funcion. Lee del `d` en memoria lo minimo, y el
+    hilo trabaja sobre su copia; solo la poda de suscripciones muertas vuelve a
+    tomar el candado, y para entonces esta en otro hilo."""
+    if not llave_publica_avisos():
+        return
+    ahora = time.time()
+    tandas = []
+    for c in correos:
+        if ahora - PULSO.get(c, 0) < PULSO_FRESCO:
+            continue                         # esta mirando el chat ahora mismo
+        f = (d.get('fichas') or {}).get(c) or {}
+        for sus in f.get('push', []):
+            tandas.append((c, dict(sus)))
+    if not tandas:
+        return
+
+    def tarea():
+        muertos = []
+        for c, sus in tandas:
+            if not _empujar_uno(sus, urgencia):
+                muertos.append((c, sus.get('endpoint')))
+        if muertos:
+            with candado:
+                d2 = cargar()
+                fichas2 = d2.get('fichas') or {}
+                for c, punto in muertos:
+                    f2 = fichas2.get(c)
+                    if f2:
+                        f2['push'] = [x for x in f2.get('push', []) if x.get('endpoint') != punto]
+                guardar(d2)
+    threading.Thread(target=tarea, daemon=True).start()
 
 
 def correo_de_sesion(token):
@@ -660,6 +824,14 @@ def servidores_turno():
 
 class Relevo(BaseHTTPRequestHandler):
     server_version = 'relevo/1'
+    # HTTP/1.1 con conexiones que se quedan abiertas. Sin esto el servidor
+    # habla HTTP/1.0 y cierra tras cada respuesta; Chromium reutiliza la
+    # conexion igual y ve ERR_CONNECTION_RESET a rachas — en produccion lo
+    # tapaba Caddy, pero el navegador contra el relevo a pelo (las pruebas, o
+    # cualquier despliegue sin proxy) perdia peticiones. Se puede porque TODAS
+    # las respuestas llevan Content-Length: con 1.1, una sola sin el colgaria
+    # al cliente esperando un final que no llega.
+    protocol_version = 'HTTP/1.1'
 
     def _permiso(self):
         """Autoriza al navegador, si quien pregunta es una de nuestras webs."""
@@ -697,6 +869,10 @@ class Relevo(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.rstrip('/').endswith('/salud'):
             return self._json(200, {'vivo': True, 'cuando': int(time.time())})
+        # La llave publica de los avisos. Publica de verdad: es la mitad que el
+        # navegador necesita para suscribirse, y sin la privada no firma nada.
+        if self.path.rstrip('/').endswith('/llave-avisos'):
+            return self._json(200, {'llave': llave_publica_avisos()})
         # GET /archivo/<id> — SIN llave a propósito: el id son 32 hex al azar
         # (128 bits) y ES el permiso (capability URL). Así el visor de la app,
         # el navegador o un reproductor externo lo abren sin sesión, igual que
@@ -877,6 +1053,11 @@ class Relevo(BaseHTTPRequestHandler):
                     # El buzón lleno casi siempre es alguien reintentando en
                     # bucle, no tráfico legítimo. Se dice y no se acumula.
                     return self._json(429, {'error': 'demasiadas señales'})
+                # El timbre. Solo el «llamo» inicial empuja —las demas señales
+                # son una llamada YA en curso, con las dos pantallas abiertas—
+                # y va con urgencia alta: un mensaje espera, una llamada no.
+                if tipo in ('llamo', 'gllamo'):
+                    empujar(d, [para], urgencia='high')
                 return self._json(200, {'ok': True})
 
             if ruta == '/senales':
@@ -1002,6 +1183,17 @@ class Relevo(BaseHTTPRequestHandler):
                 if len(d['mensajes']) > 20_000:
                     d['mensajes'] = d['mensajes'][-20_000:]
                 guardar(d)
+                # El aviso push al otro lado. En un grupo, a cada miembro menos
+                # quien escribe, con tope: un grupo de quinientos no puede
+                # convertir cada mensaje en quinientos POST a Google.
+                if ID_GRUPO.fullmatch(para):
+                    # cada miembro es {correo, desde}: se avisa por su correo
+                    miembros = [x.get('correo') for x in
+                                (d.get('grupos', {}).get(para, {}).get('miembros') or [])
+                                if x.get('correo') and x.get('correo') != correo][:25]
+                    empujar(d, miembros)
+                else:
+                    empujar(d, [para])
                 return self._json(200, {'ok': True})
 
             if ruta == '/suscribir':
@@ -1120,6 +1312,10 @@ class Relevo(BaseHTTPRequestHandler):
                 return self._json(200, {'ok': True, 'mensaje': m})
 
             if ruta == '/bandeja':
+                # El pulso de presencia: quien consulta su bandeja esta mirando
+                # el chat, y avisarle por push seria duplicar lo que ya ve. En
+                # memoria a proposito — es presencia, no estado.
+                PULSO[correo] = time.time()
                 desde = str(b.get('desde', '')).lower()
                 if ID_GRUPO.fullmatch(desde):
                     if not grupo_de(d, desde, correo):
@@ -1279,6 +1475,10 @@ class Relevo(BaseHTTPRequestHandler):
                               'en': int(time.time() * 1000),
                               'nota': str(b.get('nota', ''))[:140]}
                 guardar(d)
+                # Una solicitud es una persona esperando: se avisa. Solo aqui,
+                # en el alta de verdad — no en los reintentos ni en el si
+                # mutuo, que ya son otra conversacion.
+                empujar(d, [otro])
                 return self._json(200, {'estado': 'enviada'})
 
             if ruta == '/amistad/responder':
@@ -1510,6 +1710,7 @@ class Relevo(BaseHTTPRequestHandler):
                 return self._json(200, {'ok': True})
 
             if ruta == '/conversaciones':
+                PULSO[correo] = time.time()
                 # Todas mis charlas —personas y grupos en la misma lista, que
                 # es como se usan—: con quien, lo ultimo dicho y cuantos sin
                 # leer. Es lo que pinta la lista principal del chat.

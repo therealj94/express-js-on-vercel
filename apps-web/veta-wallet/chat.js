@@ -616,6 +616,13 @@ const CHAT = (() => {
   const esGrupo = id => /^g:[0-9a-f]{16}$/.test(String(id || ''));
   const urlArchivo = id => BASE + '/archivo/' + id;
 
+  /* La llave publica de los avisos, del propio relevo. Sin llave (el servidor
+     aun no la tiene) devuelve null y la app ofrece los avisos como «no
+     disponibles» en vez de fallar al suscribir. */
+  const llaveAvisos = () =>
+    fetch(BASE + '/llave-avisos').then(r => r.json())
+      .then(d => d?.llave || null).catch(() => null);
+
   return { alta, rehacerAlta, listo, quienSoy, olvidarLlave,
            conversaciones, bandeja, enviar, subir, enviarAdjunto, leido, olvidar,
            buscar, ficha, perfil, pago,
@@ -628,5 +635,5 @@ const CHAT = (() => {
            puedeGrabar, grabarInicio, grabarFin, subirVoz, segundosDeVoz,
            escuchar, dejarDeEscuchar, senalar, turno,
            reaccionar, escribiendo,
-           puedeAvisar, iphoneSinInstalar, registrarObrero, pedirAvisos };
+           puedeAvisar, iphoneSinInstalar, registrarObrero, pedirAvisos, llaveAvisos };
 })();

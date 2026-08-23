@@ -2381,6 +2381,22 @@ const VETA = (() => {
     }
   }
 
+  /* Activar los avisos del chat. La llave viene del relevo; los motivos de
+     fallo se dicen con nombre propio, porque «no se pudo» no le sirve a nadie
+     para arreglarlo. */
+  async function chatAvisos() {
+    const llave = await CHAT.llaveAvisos();
+    if (!llave) return avisar(t('cha.avisosSinLlave'));
+    const r = await CHAT.pedirAvisos(llave);
+    if (r.ok) {
+      $('#cha-avisos')?.classList.add('oculto');
+      return avisar(t('cha.avisosOk'));
+    }
+    avisar(r.motivo === 'negado' ? t('cha.avisosNegado')
+      : r.motivo === 'iphone-sin-instalar' ? t('cha.avisosIphone')
+      : t('cha.avisosNo'));
+  }
+
   const origen = () => (cartera || []).find(x => x.s === 'ORIGEN') || null;
 
   /* Lo que cuesta una transferencia nativa a 400 gwei por 21000 de gas. Es el
@@ -6057,6 +6073,19 @@ const VETA = (() => {
                 cambiarle los colores, que es justo lo que prohibe. */''}
           <img src="assets/p2c-simbolo.png" alt="" class="p2c-marca">
           <h2 class="p2c-nombre">PULSE<b>2</b>CHAT</h2>
+          ${/* La campana: activar los avisos aunque la app este cerrada. Solo
+                se ofrece donde puede cumplirse —hay soporte y el permiso no
+                esta ni dado ni negado— porque un boton que no puede hacer
+                nada enseña a no tocar botones. */''}
+          ${(CHAT.puedeAvisar() && typeof Notification !== 'undefined' && Notification.permission === 'default')
+            ? `<button class="p2c-yo p2c-campana" id="cha-avisos" onclick="VETA.chatAvisos()"
+                       title="${t('cha.avisos')}" aria-label="${t('cha.avisos')}">
+                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                      stroke-linecap="round" stroke-linejoin="round">
+                   <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
+                   <path d="M13.7 21a2 2 0 0 1-3.4 0"/>
+                 </svg>
+               </button>` : ''}
           <button class="p2c-yo" onclick="VETA.chatCodigo()"
                   title="${t('cha.miPerfil')}" aria-label="${t('cha.miPerfil')}">
             ${chatSt.yo?.foto
@@ -10239,7 +10268,7 @@ const VETA = (() => {
   document.addEventListener('DOMContentLoaded', arrancar);
 
   return { ir, pestana, ojo, vista, mandar, copiar, compartir, salir, reintentar, avisar, idioma,
-           grafRango,
+           grafRango, chatAvisos,
            reclavePedir, reclaveSalir, ojoReclave,
            llaveAbrir, llaveCerrar, llaveEntrar,
            llaveCuantas, llaveOjo, llaveModo,
