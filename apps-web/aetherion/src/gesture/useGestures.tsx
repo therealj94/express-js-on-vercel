@@ -4,7 +4,7 @@ import { useThree } from '@react-three/fiber'
 import { sim } from '../kernel/sim'
 import { rig } from '../kernel/rig'
 import { transit } from '../transit/transit'
-import { wellRegistry } from '../sky/Wells'
+import { wellRegistry, WELL_DEFS } from '../sky/Wells'
 import { useUiStore } from '../state/uiStore'
 import { audio, haptic } from '../audio/engine'
 
@@ -73,7 +73,11 @@ export function GestureLayer() {
     const onDown = (e: PointerEvent) => {
       audio.ensure()
       audio.startAmbient()
-      el.setPointerCapture?.(e.pointerId)
+      /* La captura falla —y REVIENTA— con un puntero sintético: AIR TOUCH
+         manda eventos con un id que el navegador no conoce, y esa excepción
+         se llevaba por delante el resto del gesto. Por eso pellizcar y
+         arrastrar no giraba nada. */
+      try { el.setPointerCapture?.(e.pointerId) } catch { /* puntero de aire */ }
       ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() })
       edgeIntent = e.clientX > rect().right - rect().width * 0.14
       sim.pointer.copy(toNdc(e.clientX, e.clientY))
@@ -241,6 +245,34 @@ export function GestureLayer() {
       if (e.key === 'ArrowDown') rig.orbit(0, paso)
     }
 
+    /* ── EL PUENTE CON AIR TOUCH ──────────────────────────────────────────
+       La mano en el aire no puede «pasar por encima» de un planeta como un
+       ratón: aquí se le da a la casa una forma de PREGUNTAR qué hay bajo un
+       punto de la pantalla, resaltarlo y abrirlo. Con eso, la mirada y el
+       doble pellizco funcionan sobre la galaxia igual que sobre un botón. */
+    const w = window as any
+    w.__AE_MIRAR = (x: number, y: number) => {
+      if (useUiStore.getState().activeId || transit.active) return null
+      const id = pickWell(x, y)
+      if (!id) return null
+      const def = WELL_DEFS.find((d) => d.key === id)
+      return { key: id, nombre: def?.name || id }
+    }
+    w.__AE_RESALTAR = (id: string | null) => {
+      const st2 = useUiStore.getState()
+      if (st2.activeId || transit.active) return
+      if (st2.selectedId !== id) st2.select(id)
+    }
+    w.__AE_TOCAR = (id: string) => {
+      const st2 = useUiStore.getState()
+      if (st2.activeId || transit.active) return
+      if (!wellRegistry.has(id)) return
+      st2.select(id)
+      transit.beginEnter(id, camera as THREE.PerspectiveCamera)
+      audio.commit()
+      haptic.commit()
+    }
+
     el.addEventListener('pointerdown', onDown)
     el.addEventListener('pointermove', onMove)
     el.addEventListener('pointerup', onUp)
@@ -251,6 +283,9 @@ export function GestureLayer() {
     window.addEventListener('keydown', onKey)
 
     return () => {
+      delete w.__AE_MIRAR
+      delete w.__AE_RESALTAR
+      delete w.__AE_TOCAR
       el.removeEventListener('pointerdown', onDown)
       el.removeEventListener('pointermove', onMove)
       el.removeEventListener('pointerup', onUp)

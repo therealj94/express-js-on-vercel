@@ -5055,7 +5055,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = 'a69e72bbdb';
+  const AET_V = '8c60b71e91';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -7339,6 +7339,53 @@ const VETA = (() => {
     $('#at-nombre')?.classList.add('oculto');
   }
 
+  /* ── LA MIRADA SOBRE LA GALAXIA ────────────────────────────────────────
+     Los planetas del Inicio no son botones del DOM: viven en el cielo 3D. La
+     mirada les pregunta al motor quién está bajo el punto (__AE_MIRAR), lo
+     resalta mientras se sostiene y lo abre al completarse — el mismo aro de
+     progreso y la misma pastilla de nombre que sobre un botón. Sin esto, la
+     mirada no encontraba NADA que mirar en el Inicio. */
+  let atMiraCielo = null;
+
+  function atMirarCieloLimpiar() {
+    if (!atMiraCielo) return;
+    try { window.__AE_RESALTAR?.(null); } catch { /* nada */ }
+    atMiraCielo = null;
+    $('#at-nombre')?.classList.add('oculto');
+    const aro = $('#at-cursor i');
+    if (aro) aro.style.background = '';
+  }
+
+  function atMirarCielo(p) {
+    const casa = window.__AE_MIRAR?.(p.x, p.y) || null;
+    if (!casa) { atMirarCieloLimpiar(); return false; }
+    if (atMiraCielo?.key !== casa.key) {
+      atMirarCieloLimpiar();
+      atGestoVivo('g5');
+      atMiraCielo = { key: casa.key, desde: performance.now(), hecho: false };
+      try { window.__AE_RESALTAR(casa.key); } catch { /* nada */ }
+      const past = $('#at-nombre');
+      if (past) {
+        past.innerHTML = `<b>${esc(casa.nombre)}</b><small>${t('at.manten')}</small>`;
+        past.classList.remove('oculto');
+      }
+      return true;
+    }
+    if (atMiraCielo.hecho) return true;
+    const pr = (performance.now() - atMiraCielo.desde) / AT_MIRA_MS;
+    const aro = $('#at-cursor i');
+    if (aro) aro.style.background =
+      `conic-gradient(rgba(234,215,156,.95) ${Math.min(360, pr * 360)}deg, rgba(201,169,97,.14) 0deg)`;
+    if (pr >= 1) {
+      atMiraCielo.hecho = true;
+      $('#at-cursor')?.classList.add('toco');
+      setTimeout(() => $('#at-cursor')?.classList.remove('toco'), 320);
+      try { window.__AE_TOCAR(atMiraCielo.key); } catch { /* nada */ }
+      atMirarCieloLimpiar();
+    }
+    return true;
+  }
+
   function atMirar(objetivo, p) {
     if (objetivo !== atMira?.el) {
       atMirarLimpiar();
@@ -7382,6 +7429,7 @@ const VETA = (() => {
       $('#at-cinta')?.classList.add('oculto');
       atTablero(false);
       atMirarLimpiar();
+      atMirarCieloLimpiar();
       atAgarre = null;
       return avisar(t('at.apagado'));
     }
@@ -7454,6 +7502,7 @@ const VETA = (() => {
     { k: 'g3', ico: '<path d="M4 12a8 8 0 0 1 13.7-5.6M20 12a8 8 0 0 1-13.7 5.6"/><path d="M17.7 3v3.6h-3.6M6.3 21v-3.6h3.6"/>' },
     { k: 'g4', ico: '<circle cx="12" cy="12" r="3.2"/><path d="M12 3.6v2.6M12 17.8v2.6M3.6 12h2.6M17.8 12h2.6"/>' },
     { k: 'g5', ico: '<path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/>' },
+    { k: 'g6', ico: '<circle cx="7" cy="9" r="2.2"/><circle cx="15" cy="9" r="2.2"/><path d="M9.2 9h3.6"/><circle cx="7" cy="16" r="2.2"/><circle cx="15" cy="16" r="2.2"/><path d="M9.2 16h3.6"/>' },
   ];
 
   function atTablero(encendido) {
@@ -7506,6 +7555,7 @@ const VETA = (() => {
     if (!p.presente) {
       cur.classList.add('oculto');
       atMirarLimpiar();
+      atMirarCieloLimpiar();
       if (atAgarre) atSoltar(p);
       return;
     }
@@ -7513,15 +7563,23 @@ const VETA = (() => {
     cur.classList.remove('oculto');
     cur.style.transform = `translate(${p.x}px, ${p.y}px)`;
     cur.classList.toggle('pellizco', !!p.pellizco);
-    if (!p.pellizco && !atAgarre) atMirar(atBajo(p.x, p.y)?.closest(AT_MIRABLES) || null, p);
-    else atMirarLimpiar();
+    if (!p.pellizco && !atAgarre) {
+      const boton = atBajo(p.x, p.y)?.closest(AT_MIRABLES) || null;
+      if (boton) { atMirarCieloLimpiar(); atMirar(boton, p); }
+      else { atMirarLimpiar(); atMirarCielo(p); }
+    } else { atMirarLimpiar(); atMirarCieloLimpiar(); }
     if (!p.pellizco) atZoomMano(p);
     if (p.pellizco && !atAgarre) {
       atGestoVivo('g2');
       const el = atBajo(p.x, p.y);
+      /* Qué planeta había DEBAJO al cerrar la mano. Se guarda ahora y no al
+         soltar: para cuando se suelta, el motor puede estar ya en pleno
+         tránsito y no contesta quién hay bajo el punto — y el doble pellizco
+         se quedaba sin destino. */
+      const casaBajo = (() => { try { return window.__AE_MIRAR?.(p.x, p.y) || null; } catch { return null; } })();
       atAgarre = { el, sx: atRodante(el), x0: p.x, y0: p.y, xa: p.x, ya: p.y,
                    movio: false, desde: performance.now(),
-                   enCielo: !!el?.closest('.ae-casa') };
+                   enCielo: !!el?.closest('.ae-casa'), casa: casaBajo };
       atEvento('pointerdown', p.x, p.y, el);
     } else if (p.pellizco && atAgarre) {
       const dx = p.x - atAgarre.xa, dy = p.y - atAgarre.ya;
@@ -7562,12 +7620,36 @@ const VETA = (() => {
     }
   }
 
+  /* DOBLE PELLIZCO: dos pellizcos cortos seguidos abren lo que esté debajo.
+     Es la salida rápida para quien no quiere esperar a la mirada — el mismo
+     gesto que un doble toque, hecho en el aire. */
+  let atUltimoPellizco = 0;
+
   function atSoltar(p) {
     const a = atAgarre;
     atAgarre = null;
     if (!a) return;
     const x = p?.x ?? a.xa, y = p?.y ?? a.ya;
     atEvento('pointerup', x, y, a.el);
+    /* Las ventanas son generosas a propósito: en un teléfono ocupado —o con
+       el cielo 3D dibujando— un pellizco «corto» de verdad puede tardar medio
+       segundo largo en llegar hasta aquí. Apretar la ventana no hace el gesto
+       más preciso: hace que no funcione en el aparato de nadie. */
+    if (!a.movio && performance.now() - a.desde < 700) {
+      const ahora = performance.now();
+      if (ahora - atUltimoPellizco < 1100) {
+        atUltimoPellizco = 0;
+        const casa = a.casa || (() => { try { return window.__AE_MIRAR?.(x, y); } catch { return null; } })();
+        if (casa) {
+          atGestoVivo('g6');
+          $('#at-cursor')?.classList.add('toco');
+          setTimeout(() => $('#at-cursor')?.classList.remove('toco'), 320);
+          try { window.__AE_TOCAR(casa.key); } catch { /* nada */ }
+          return;
+        }
+      }
+      atUltimoPellizco = ahora;
+    }
     /* El toque: pellizco corto y quieto. El click va al elemento que está
        bajo el cursor AL SOLTAR — como un dedo de verdad. */
     if (!a.movio && performance.now() - a.desde < 700) {
@@ -11426,7 +11508,7 @@ const VETA = (() => {
            _semilla: f => { semillaNueva = f; mostrarSemilla(f); },
            _ofrecerGid: () => auraOfrecerGid(),
            _mtp: () => URL_MYTOKENPAY,
-           _atPunto: (p) => atPunto(p),
+           _atPunto: (p) => atPunto(p), _atTablero: (v) => atTablero(v),
            _bienvenidaAura: () => auraBienvenida(true),
            _auraTxt: () => AURA_TXT,
            _identidad: x => { identidad = x; },

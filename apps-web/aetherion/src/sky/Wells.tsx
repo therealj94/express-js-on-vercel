@@ -307,7 +307,12 @@ function WellView({ def }: { def: WellDef }) {
       const s = R * 1.42 * (selected ? 1.08 : 1)
       emblema.current.scale.setScalar(s)
       emblema.current.position.set(0, 0, 0)
-      ;(emblema.current.material as THREE.SpriteMaterial).opacity = THREE.MathUtils.clamp(3.4 - d / 16, 0.6, 1)
+      /* Al alejarse, la MARCA se apaga con el planeta: en el panorama de la
+         galaxia lo que se mira son mundos y soles, no nueve insignias
+         flotando del mismo tamaño. De cerca la marca manda; de lejos, el
+         cielo. */
+      ;(emblema.current.material as THREE.SpriteMaterial).opacity =
+        THREE.MathUtils.clamp(3.1 - d / 17, 0, 1)
     }
     if (letrero.current) {
       /* EL LETRERO NO CRECE CON EL PLANETA. Su tamaño en PANTALLA es el mismo
