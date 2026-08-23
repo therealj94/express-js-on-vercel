@@ -2,7 +2,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Orden Global · Un ecosistema entero, en una sola cuenta</title>
 <meta name="description" content="Orden Global: tu dinero referenciado al oro (Veta Wallet), tu gente (PULSE2CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), sobre nuestra propia cadena y con AU-RA, la inteligencia del ecosistema.">
-<meta name="theme-color" content="#021B1C">
+<meta name="theme-color" content="#050510">
 
 <!-- A dónde puede hablar esta página, y desde dónde puede traer cosas.
 
@@ -123,8 +123,50 @@ a{color:inherit}
 #app:not(.oculto) ~ .veta-svg,
 body:has(#app:not(.oculto)) .veta-svg{display:none}
 
+/* ── la galaxia ──────────────────────────────────────────────────────────────
+   El cielo de la ENTRADA: un canvas opaco (galaxia.js) que tapa la fotografía
+   del body mientras se está en la puerta. Dentro de la app se apaga con la
+   misma pareja de reglas que la veta, y la fotografía de siempre vuelve sola:
+   el interior del ecosistema no se toca. La veta dorada pasa a z:1 para
+   cruzar POR ENCIMA del espacio — el hilo de oro de la casa, cosiendo la
+   galaxia. */
+#galaxia{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+#app:not(.oculto) ~ #galaxia,
+body:has(#app:not(.oculto)) #galaxia{display:none}
+
+/* ── el velo de apertura ─────────────────────────────────────────────────────
+   El logo de Orden Global y una sola frase, sobre el mismo negro del espacio.
+   app.js lo quita con su tiempo; si el arranque muriera, la animación de
+   respaldo lo desvanece sola a los cinco segundos — un velo que no se va es
+   una app secuestrada. Con movimiento reducido ni aparece. */
+#velo-og{position:fixed;inset:0;z-index:130;background:#050510;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;gap:30px;
+  animation:veloAuto .6s ease 5s forwards}
+#velo-og img{width:min(150px,34vw);animation:veloLate 2.2s ease-in-out infinite}
+#velo-og .velo-frase{font-family:var(--serif);font-weight:700;text-align:center;
+  font-size:clamp(27px,4.6vw,46px);line-height:1.2;color:var(--crema);
+  letter-spacing:.02em;padding:0 22px;text-wrap:balance}
+#velo-og .velo-frase span{display:inline-block;opacity:0;filter:blur(9px);
+  animation:veloPalabra .75s ease forwards}
+#velo-og .velo-frase span.oro{color:var(--oroLt)}
+#velo-og.yendo{animation:veloVase .62s ease forwards}
+@keyframes veloPalabra{to{opacity:1;filter:blur(0)}}
+@keyframes veloLate{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes veloVase{to{opacity:0;visibility:hidden}}
+@keyframes veloAuto{to{opacity:0;visibility:hidden}}
+@media (prefers-reduced-motion:reduce){#velo-og{display:none}}
+
+/* En la entrada, el vidrio deja el verde del pozo y toma el azul del espacio.
+   Son retoques CON DIRECCIÓN (#acceso/#reclave): las variables globales no se
+   tocan porque visten el interior de la casa. */
+#acceso .vidrio,#reclave .vidrio{background:rgba(7,10,28,.74)}
+#acceso .campo input,#reclave .campo input{background:rgba(9,12,32,.85);border-color:#2C3560}
+#acceso .seg{background:rgba(5,8,24,.6)}
+#acceso .ag-chips button{background:rgba(7,10,28,.55)}
+.techo .idiomas{background:rgba(5,8,24,.55)}
+
 /* ── la veta ─────────────────────────────────────────────────────────────── */
-.veta-svg{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.veta-svg{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
 .veta-svg path{fill:none;stroke:url(#vetaGrad);stroke-width:1.7;stroke-linecap:round;
   stroke-dasharray:var(--largo);stroke-dashoffset:var(--largo);
   animation:vetaCrece 2.6s cubic-bezier(.32,.9,.35,1) forwards}
@@ -306,6 +348,9 @@ body:has(#app:not(.oculto)) .veta-svg{display:none}
 .ag-chips button:hover{border-color:var(--oro);color:var(--crema)}
 .ag-chips button:active{transform:scale(.96)}
 .acc-escena .acc-sorteo{margin-top:22px}
+/* El patrón canónico de texto solo-para-lectores, CON white-space:nowrap:
+   sin él hay lectores que anuncian las palabras pegadas. El barrido de móvil
+   exceptúa este patrón por su clip-path. */
 .lector-solo{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 @media (prefers-reduced-motion: reduce){
   .ag-nucleo,.ag-halo{animation:none}
@@ -2871,6 +2916,8 @@ body.en-ventana .riel,
 body.en-ventana .tabs,
 body.en-ventana .aura-orbe,
 body.en-ventana #techo,
+body.en-ventana #velo-og,
+body.en-ventana #galaxia,
 body.en-ventana .cab .volver{display:none!important}
 body.en-ventana #app,
 body.en-ventana .lienzo{margin:0!important;padding:14px 14px 20px!important;max-width:none!important}
@@ -2947,7 +2994,7 @@ body.en-ventana .lienzo::before{
 .acc-olvide:hover{color:var(--oroLt)}
 /* La pantalla de recuperación va sola y centrada: no tiene columna de venta
    al lado, porque quien llega acá ya decidió. */
-#reclave{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px 16px}
+#reclave{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px 16px}
 .acc-sola{width:100%;max-width:430px}
 .acc-sola h2{font-size:1.35rem;margin-bottom:8px}
 .acc-sola .sello{margin-bottom:18px}
@@ -2967,6 +3014,16 @@ body.en-ventana .lienzo::before{
 @keyframes gidLate{50%{transform:scale(.94);opacity:.7}}
 @media (prefers-reduced-motion:reduce){.gid-late{animation:none}}
 </style>
+
+<!-- El velo de apertura. El texto de respaldo es el español plano: si el
+     JS muriera, la frase se lee igual y el velo se desvanece solo (CSS). -->
+<div id="velo-og" aria-hidden="true">
+  <img src="assets/apps/og.png" alt="">
+  <div class="velo-frase">El futuro es orden.</div>
+</div>
+
+<!-- El cielo de la entrada. Lo monta y lo apaga app.js con galaxia.js. -->
+<canvas id="galaxia" aria-hidden="true"></canvas>
 
 <svg class="veta-svg" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
   <defs>
@@ -3659,4 +3716,5 @@ body.en-ventana .lienzo::before{
 <script src="candado.js"></script>
 <script src="chat.js"></script>
 <script src="i18n.js"></script>
+<script src="galaxia.js"></script>
 <script src="app.js"></script>

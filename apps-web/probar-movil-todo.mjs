@@ -73,6 +73,10 @@ function medir(ancho) {
   const visible = (el) => {
     const cs = getComputedStyle(el);
     if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') return false;
+    /* El patrón de texto solo-para-lectores (caja de un píxel recortada con
+       clip-path y white-space:nowrap) no pinta ni un punto en pantalla: su
+       tinta «desbordada» es invisible por definición y no cuenta. */
+    if (cs.clipPath === 'inset(50%)') return false;
     const r = el.getBoundingClientRect();
     return r.width > 0 && r.height > 0;
   };

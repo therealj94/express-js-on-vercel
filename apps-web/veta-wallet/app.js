@@ -386,9 +386,21 @@ const VETA = (() => {
     tele('pantalla', destino === 'app' ? 'app.' + (vistaActual || 'inicio') : destino);
     for (const id of ['portada', 'acceso', 'app', 'reclave']) $('#' + id).classList.toggle('oculto', id !== (destino === 'bienvenida' ? 'portada' : destino));
     $('#techo').classList.toggle('oculto', destino === 'app');
+    /* El marco del navegador (la barra del teléfono) acompaña: azul espacio
+       en la entrada, el verde del pozo adentro — un solo meta estático
+       vestiría el interior con un color que no es suyo. */
+    const marco = document.querySelector('meta[name=theme-color]');
+    if (marco) marco.content = destino === 'app' ? '#021B1C' : '#050510';
     if (destino === 'acceso') { pestana(cual || 'entrar'); setTimeout(() => $('#i-correo').focus(), 60); }
     // AU-RA recibe en la puerta; en cualquier otra pantalla su saludo se apaga.
     if (destino === 'acceso') accesoEscena(); else accesoEscenaParar();
+    /* La galaxia es el cielo de la ENTRADA. Adentro de la casa se apaga del
+       todo —no se esconde con el bucle andando— y al salir se vuelve a
+       montar: el interior del ecosistema conserva su fondo de siempre. */
+    if (window.GALAXIA) {
+      if (destino === 'app') GALAXIA.apagar();
+      else if (!GALAXIA.viva()) GALAXIA.montar($('#galaxia'));
+    }
     if (destino === 'app') vista(vistaActual);
     window.scrollTo(0, 0);
     /* AU-RA acompaña toda la sesion; fuera de ella no existe. Las seis
@@ -424,6 +436,7 @@ const VETA = (() => {
   }
 
   function pestana(cual) {
+    if (viajando) return;
     modo = cual;
     $('#tab-entrar').setAttribute('aria-selected', String(cual === 'entrar'));
     $('#tab-crear').setAttribute('aria-selected', String(cual === 'crear'));
@@ -1118,8 +1131,16 @@ const VETA = (() => {
          pantalla que ya no está y no lo vería nadie. */
       await bcHecho(btn);
       llaveCerrar();
-      ir('app');
+      /* Entrar con la frase también es entrar: el mismo hipersalto que el
+         login de correo, con la carga corriendo durante el vuelo. */
       cargarTodo();
+      viajando = true;
+      const aterrizarLlave = () => {
+        viajando = false;
+        if (!sesion) return;
+        ir('app');
+      };
+      if (window.GALAXIA) GALAXIA.saltar(aterrizarLlave); else aterrizarLlave();
     } catch (e) {
       const m = String(e?.mensaje || e?.message || '');
       if (/no corresponde a ninguna cuenta/i.test(m)) { llvAviso('llv.sinCuenta'); importarOfrecer(); }
@@ -1135,6 +1156,7 @@ const VETA = (() => {
   }
 
   function reclavePedir() {
+    if (viajando) return;
     reclaveToken = null;
     reclavePaso('pedir');
     ir('reclave');
@@ -1253,7 +1275,14 @@ const VETA = (() => {
     return true;
   }
 
+  /* Mientras el hipersalto vuela, la puerta queda congelada: sin esto, un
+     clic en la otra pestaña re-armaba el botón (bcSoltar) y un segundo login
+     salía en pleno vuelo — o el enlace de recuperación arrancaba a la persona
+     del viaje a mitad de camino. */
+  let viajando = false;
+
   async function enviarAcceso(ev) {
+    if (viajando) return ev?.preventDefault?.();
     ev.preventDefault();
     const b = $('#btn-acceso');
     const correo = $('#i-correo').value.trim();
@@ -1306,40 +1335,60 @@ const VETA = (() => {
       anotarSesion();
       // Se espera a que el palomeo se vea antes de irse de la pantalla.
       await bcHecho(b);
-      ir('app');
+      /* EL VIAJE. Entrar no es un corte de pantalla: es cruzar la galaxia.
+         El fondo estira sus estrellas, hay un destello de oro, y del otro
+         lado ya está la casa. La carga de la cartera arranca ANTES del salto
+         a propósito: el segundo y medio del viaje es exactamente el tiempo
+         que la red necesita, así que nadie espera dos veces. Todo lo que
+         pasa al llegar —la bienvenida de AU-RA, la semilla recién acuñada,
+         el cobro que esperaba— vive dentro de `aterrizar`: si corriera
+         antes, la bienvenida se pintaría encima del viaje a medio volar.
+         Con movimiento reducido no hay viaje: GALAXIA.saltar aterriza en
+         seco, que es lo que esa preferencia pide. */
       cargarTodo();
-      /* La introduccion de AU-RA abre CADA entrada — es la puerta del
-         ecosistema, y Jose la quiso siempre, con su SALTAR a la vista. El
-         login es un gesto del dedo, asi que el audio puede arrancar solo.
-         La unica excepcion es la frase semilla recien acunada: doce palabras
-         que anotar ganan a cualquier bienvenida. */
-      /* La intencion de la casa que mando a esta persona se retoma apenas hay sesion: esta
-         persona vino de paso, no a pasear — y la bienvenida de AU-RA se calla
-         en este viaje, que trece segundos de orbe delante de alguien que solo
-         cruza el pasillo son un peaje. La unica excepcion es la cuenta recien
-         creada: sin identidad verificada Genesis no va a dar el token, y sus
-         doce palabras de respaldo ganan a cualquier redireccion. */
-      const volviendoACasa = semillaNueva ? null : ssoDestino;
-      ssoDestino = null;
-      if (volviendoACasa) volverConLlave(volviendoACasa);
-      // Y el cobro que esperaba en la puerta: DESPUES de la cartera, para que
-      // la moneda exista cuando se intente elegir.
-      if (cobroPendiente) {
-        const c = cobroPendiente;
-        cobroPendiente = null;
-        cargarCartera().then(() => irACobro(c));
-      }
-      /* `volviendoACasa`, no `volviendoAOrdenex`: ese nombre no existió nunca
-         y en modo estricto reventaba AQUI, el catch de abajo se tragaba el
-         ReferenceError y lo pintaba como error de credenciales — el saludo de
-         AU-RA no corrió ni una vez para quien entraba sin semilla. */
-      if (!semillaNueva) { if (!volviendoACasa) setTimeout(() => auraBienvenida(true), 300); }
-      else setTimeout(auraOfrecerGid, 1200);
-      // La frase se enseña ENCIMA de la billetera ya pintada, no antes de
-      // entrar: quien la ve entiende que ya tiene cuenta y que esto es lo que
-      // hay que guardar, no un tramite mas de la puerta.
-      if (semillaNueva) setTimeout(() => mostrarSemilla(semillaNueva), 600);
-      avisar(modo === 'crear' ? `${t('ok.creada')}, ${sesion.nombre.split(' ')[0]}` : `${t('ok.hola')}, ${sesion.nombre.split(' ')[0]}`);
+      const aterrizar = () => {
+        viajando = false;
+        /* Si la sesión murió DURANTE el vuelo (un 401 en plena carga cierra
+           la sesión y devuelve a la puerta), aterrizar en la app sería meter
+           a la persona a un cascarón vacío: el aviso de «volvé a entrar» ya
+           quedó puesto y ahí se termina el viaje. */
+        if (!sesion) return;
+        ir('app');
+        /* La introduccion de AU-RA abre CADA entrada — es la puerta del
+           ecosistema, y Jose la quiso siempre, con su SALTAR a la vista. El
+           login es un gesto del dedo, asi que el audio puede arrancar solo.
+           La unica excepcion es la frase semilla recien acunada: doce palabras
+           que anotar ganan a cualquier bienvenida. */
+        /* La intencion de la casa que mando a esta persona se retoma apenas hay sesion: esta
+           persona vino de paso, no a pasear — y la bienvenida de AU-RA se calla
+           en este viaje, que trece segundos de orbe delante de alguien que solo
+           cruza el pasillo son un peaje. La unica excepcion es la cuenta recien
+           creada: sin identidad verificada Genesis no va a dar el token, y sus
+           doce palabras de respaldo ganan a cualquier redireccion. */
+        const volviendoACasa = semillaNueva ? null : ssoDestino;
+        ssoDestino = null;
+        if (volviendoACasa) volverConLlave(volviendoACasa);
+        // Y el cobro que esperaba en la puerta: DESPUES de la cartera, para que
+        // la moneda exista cuando se intente elegir.
+        if (cobroPendiente) {
+          const c = cobroPendiente;
+          cobroPendiente = null;
+          cargarCartera().then(() => irACobro(c));
+        }
+        /* `volviendoACasa`, no `volviendoAOrdenex`: ese nombre no existió nunca
+           y en modo estricto reventaba AQUI, el catch de abajo se tragaba el
+           ReferenceError y lo pintaba como error de credenciales — el saludo de
+           AU-RA no corrió ni una vez para quien entraba sin semilla. */
+        if (!semillaNueva) { if (!volviendoACasa) setTimeout(() => auraBienvenida(true), 300); }
+        else setTimeout(auraOfrecerGid, 1200);
+        // La frase se enseña ENCIMA de la billetera ya pintada, no antes de
+        // entrar: quien la ve entiende que ya tiene cuenta y que esto es lo que
+        // hay que guardar, no un tramite mas de la puerta.
+        if (semillaNueva) setTimeout(() => mostrarSemilla(semillaNueva), 600);
+        avisar(modo === 'crear' ? `${t('ok.creada')}, ${sesion.nombre.split(' ')[0]}` : `${t('ok.hola')}, ${sesion.nombre.split(' ')[0]}`);
+      };
+      viajando = true;
+      if (window.GALAXIA) GALAXIA.saltar(aterrizar); else aterrizar();
     } catch (e) {
       // El servidor devuelve "credenciales inválidas" para un correo que no
       // existe y para una contraseña equivocada. Decirlo tal cual deja a la
@@ -10479,7 +10528,40 @@ const VETA = (() => {
     barrer();
   }
 
+  /* El velo de apertura: el logo de Orden Global y una sola frase. A quien
+     llega a la puerta se le da el momento entero; a quien ya tiene sesión,
+     un respiro corto — verlo entero en cada recarga sería un peaje diario.
+     Con movimiento reducido el CSS ya lo tiene apagado y aquí solo se quita. */
+  /* La frase del velo, palabra por palabra y con la última en oro. Se arma
+     aquí y no en el HTML para hablar el idioma de la persona; el HTML trae
+     el español plano de respaldo por si este código no llega a correr. */
+  function veloFrase() {
+    const f = $('#velo-og .velo-frase');
+    if (!f) return;
+    const palabras = t('velo.frase').split(' ');
+    f.innerHTML = palabras.map((p, i) =>
+      `<span class="${i === palabras.length - 1 ? 'oro' : ''}"
+             style="animation-delay:${(0.45 + i * 0.3).toFixed(2)}s">${esc(p)}</span>`).join(' ');
+  }
+
+  function veloFuera(conSesion) {
+    const velo = $('#velo-og');
+    if (!velo) return;
+    const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const espera = quieto ? 0 : (conSesion ? 700 : 2450);
+    setTimeout(() => {
+      velo.classList.add('yendo');
+      setTimeout(() => velo.remove(), 640);
+    }, espera);
+  }
+
   function arrancar() {
+    veloFrase();
+    /* La red de seguridad del velo: algunos caminos de este arranque retornan
+       antes de mirar la sesión (recuperación de clave, SSO), y un velo que no
+       se va es una app secuestrada por su propia apertura. Si el camino feliz
+       ya lo quitó, esto no encuentra nada y no hace nada. */
+    setTimeout(() => veloFuera(true), 4200);
     pintarIdioma();
     /* Se enciende la telemetría antes que nada, para que un fallo del propio
        arranque también se vea. Sin clave puesta esto no hace absolutamente
@@ -10500,7 +10582,7 @@ const VETA = (() => {
        guardada: quien llega con ese token viene justamente porque no puede
        entrar, y mandarlo a la billetera de la sesion anterior seria dejarlo
        encerrado otra vez. Se atiende antes que cualquier otra ruta. */
-    if (reclaveDesdeLaDireccion()) return;
+    if (reclaveDesdeLaDireccion()) { veloFuera(true); return; }
 
     /* Quien llega con /#verificar viene de la pagina publica de Genesis ID y
        viene a verificarse, no a mirar el saldo. Basta con dejar marcada la
@@ -10541,6 +10623,7 @@ const VETA = (() => {
     }
 
     sesion = recuperar();
+    veloFuera(!!sesion?.token);
     if (sesion?.token) {
       // Volver con la sesión guardada es entrar igual: si no se contara, quien
       // no cierra sesión nunca aparecería como que usa la app.

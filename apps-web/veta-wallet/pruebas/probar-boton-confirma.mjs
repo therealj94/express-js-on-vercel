@@ -70,7 +70,9 @@ ok('el trazo lleva la animacion enganchada', dib.anim === 'bcTrazo', dib.anim)
 ok('la mascara cubre el largo del trazo', dib.dash === '42px', dib.dash)
 ok('el palomeo esta a la vista', dib.visible === '1', `opacidad ${dib.visible}`)
 
-await pag.waitForTimeout(900)
+/* Entrar ya no es un corte: tras el palomeo viene el hipersalto por la
+   galaxia (~1.4s). La espera cubre el viaje entero. */
+await pag.waitForTimeout(2600)
 ok('despues entra a la app', await pag.evaluate(()=>!document.getElementById('app')?.classList.contains('oculto')))
 ok('sin errores de javascript', err.length===0)
 if(err.length) console.log(err.slice(0,2))
