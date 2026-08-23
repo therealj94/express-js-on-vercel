@@ -269,6 +269,57 @@ body:has(#app:not(.oculto)) .veta-svg{display:none}
   border:1px solid var(--linea2);border-radius:var(--r);background:rgba(2,22,23,.4)}
 .acc-lado .gid-mini svg{width:20px;height:20px;flex:0 0 auto;stroke:var(--oroLt);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .acc-lado .gid-mini small{font-size:12.5px;color:var(--humo);line-height:1.6}
+/* ── LA RECEPCIÓN: AU-RA en persona ────────────────────────────────────────
+   El orbe respira siempre; los aros solo laten con .hablando, que app.js pone
+   mientras el texto se escribe. La «voz» es el titular: serif grande que se
+   teclea sola, con su cursor de oro. */
+.acc-escena{display:flex;flex-direction:column;align-items:flex-start}
+.ag-orbe{position:relative;width:186px;height:186px;margin:22px 0 4px -12px;border:0;
+  background:none;cursor:pointer;display:grid;place-items:center}
+.ag-orbe>i{grid-area:1/1;display:block}
+.ag-nucleo{width:124px;height:124px;border-radius:50%;
+  background:radial-gradient(circle at 34% 30%, #FFF3D2 0%, #E8C87A 26%, #8C6B25 60%, #241C06 100%);
+  box-shadow:0 0 46px rgba(201,169,97,.5), inset 0 0 26px rgba(0,0,0,.45);
+  animation:agRespira 4.2s ease-in-out infinite}
+.ag-halo{width:100%;height:100%;border-radius:50%;filter:blur(1px);
+  background:conic-gradient(from 0deg, transparent, rgba(232,200,122,.42), transparent 33%);
+  animation:agGira 7s linear infinite}
+.ag-aro{width:100%;height:100%;border-radius:50%;border:1.5px solid rgba(232,200,122,.36);opacity:0}
+.ag-orbe.hablando .ag-aro{animation:agOnda 1.9s ease-out infinite}
+.ag-orbe.hablando .ag-aro2{animation-delay:.95s}
+.ag-orbe:hover .ag-nucleo{box-shadow:0 0 58px rgba(201,169,97,.65), inset 0 0 26px rgba(0,0,0,.45)}
+@keyframes agOnda{0%{transform:scale(.7);opacity:.85}100%{transform:scale(1.14);opacity:0}}
+@keyframes agGira{to{transform:rotate(360deg)}}
+@keyframes agRespira{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+.ag-firma{font:600 11.5px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;
+  color:var(--oroLt);margin:2px 0 14px}
+.ag-voz{min-height:128px;font-family:var(--serif);font-weight:700;
+  font-size:clamp(24px,3vw,33px);line-height:1.28;color:var(--crema);max-width:21ch;
+  text-wrap:balance}
+.ag-cursor{display:inline-block;width:.5ch;height:.95em;background:var(--oroLt);
+  vertical-align:-.12em;margin-left:5px;animation:agParpa 1s steps(1) infinite}
+@keyframes agParpa{50%{opacity:0}}
+.ag-chips{display:flex;flex-wrap:wrap;gap:9px;margin-top:20px}
+.ag-chips button{padding:9px 15px;border-radius:100px;border:1px solid var(--linea2);
+  background:rgba(2,22,23,.5);color:var(--bruma);font-size:13.5px;cursor:pointer;
+  transition:border-color .18s,color .18s,transform .12s}
+.ag-chips button:hover{border-color:var(--oro);color:var(--crema)}
+.ag-chips button:active{transform:scale(.96)}
+.acc-escena .acc-sorteo{margin-top:22px}
+.lector-solo{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+@media (prefers-reduced-motion: reduce){
+  .ag-nucleo,.ag-halo{animation:none}
+  .ag-orbe.hablando .ag-aro{animation:none}
+  .ag-cursor{animation:none}
+  .ag-chips button:active{transform:none}
+}
+@media (max-width:900px){
+  .acc-escena{align-items:center;text-align:center}
+  .ag-orbe{width:142px;height:142px;margin:10px 0 2px}
+  .ag-nucleo{width:98px;height:98px}
+  .ag-voz{min-height:96px;font-size:24px;max-width:24ch}
+}
+
 .acc{width:min(94vw,428px);padding:clamp(26px,5vw,38px);justify-self:start;
   animation:sube .7s cubic-bezier(.2,.8,.3,1) both}
 @keyframes sube{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
@@ -3163,25 +3214,31 @@ body.en-ventana .lienzo::before{
 
 <!-- ══════════════════════════ ACCESO ══════════════════════════════════════ -->
 <section id="acceso" class="oculto">
-  <div class="acc-lado">
+  <!-- ══ LA RECEPCIÓN ══════════════════════════════════════════════════════
+       Lo primero que ve una persona no es un formulario: es AU-RA. Su orbe
+       late, y lo que dice se ESCRIBE letra a letra, como una voz que se ve.
+       No es adorno: el orbe se toca y AU-RA contesta de verdad, con voz, con
+       el cerebro de visita que no pide cuenta ni datos. El saludo hablado no
+       puede arrancar solo (los navegadores bloquean el audio sin un gesto),
+       así que la voz visible empieza sola y la audible llega al primer toque
+       — y eso el texto lo dice, para que nadie crea que está muda. -->
+  <div class="acc-lado acc-escena">
     <div class="sello">Orden Global</div>
-    <h2 id="acc-promesa"></h2>
-    <p data-t="acc.p"></p>
-    <div class="gid-mini">
-      <svg viewBox="0 0 24 24"><path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/></svg>
-      <small data-t="acc.gid"></small>
+    <button class="ag-orbe" id="ag-orbe" onclick="VETA.auraToca()" aria-label="Hablar con AU-RA">
+      <i class="ag-halo" aria-hidden="true"></i>
+      <i class="ag-aro" aria-hidden="true"></i>
+      <i class="ag-aro ag-aro2" aria-hidden="true"></i>
+      <i class="ag-nucleo" aria-hidden="true"></i>
+    </button>
+    <div class="ag-firma">AU-RA · <span data-t="acc.agRol"></span></div>
+    <div class="ag-voz" aria-hidden="true"><span id="ag-dice"></span><i class="ag-cursor"></i></div>
+    <p class="lector-solo" data-t="acc.voz2"></p>
+    <div class="ag-chips">
+      <button onclick="VETA.accesoPregunta(1)" data-t="acc.chip1"></button>
+      <button onclick="VETA.accesoPregunta(2)" data-t="acc.chip2"></button>
+      <button onclick="VETA.accesoPregunta(3)" data-t="acc.chip3"></button>
     </div>
     <p class="acc-sorteo" data-t="sor.acc"></p>
-    <!-- La duda que hace abandonar un formulario llega AQUÍ, con el correo ya
-         escrito y el dedo sobre la contraseña. Que haya alguien a quien
-         preguntarle en ese punto vale más que otra frase de venta arriba. -->
-    <div class="bv-aura acc-aura">
-      <button class="bv-aura-orbe" onclick="VETA.auraToca()" aria-label="AU-RA"><i></i></button>
-      <div>
-        <p data-t="acc.aura"></p>
-        <button class="bv-aura-btn" data-t="bv.auraBtn" onclick="VETA.auraToca()"></button>
-      </div>
-    </div>
   </div>
   <div class="acc vidrio">
     <div class="seg" role="tablist">

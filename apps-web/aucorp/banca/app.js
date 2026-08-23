@@ -263,16 +263,19 @@ const BANCA = (() => {
               <p>La casa de cambio. AuCorp es su dueña.</p></a>
             <button class="tarj casa" data-ir="tarjeta">
               <span class="et">Pago</span><strong>Tarjeta AuCorp</strong>
-              <p>En camino. Mirá cómo va a ser.</p></button>
+              <p>Ya se está armando. Entrá y mirala.</p></button>
           </div>
         </div>
 
         <div class="tarj">
-          <div class="fila" style="margin-bottom:6px"><span class="et crece">Lo que viene</span>
-            <span class="sello esp">En camino</span></div>
-          <p style="font-size:14px;color:var(--tinta2)">La tarjeta AuCorp, la conexión directa con tu banco
-            para ver tu saldo sin salir de aquí, y los pagos entre casas del ecosistema. Sin fechas
-            inventadas: cuando cada pieza abra, va a aparecer en esta misma pantalla.</p>
+          <span class="et">En el taller</span>
+          <ul class="puerta-lista" style="margin-top:12px">
+            <li><strong>Tarjeta AuCorp.</strong> Para gastar tus saldos directo, donde sea.</li>
+            <li><strong>Tu banco, conectado.</strong> Su saldo y sus movimientos, desde esta pantalla.</li>
+            <li><strong>Pagos entre casas.</strong> De la wallet a tu cuenta y de vuelta, en un toque.</li>
+          </ul>
+          <p style="font-size:13.5px;color:var(--tinta3);margin-top:12px">Sin fechas prometidas:
+            cada pieza aparece aquí el día que abre de verdad.</p>
         </div>
       </div>${PIE}`;
   }
@@ -284,7 +287,7 @@ const BANCA = (() => {
   function vistaTarjeta() {
     const u = sesion?.usuario || {};
     return `${recadoHTML()}
-      <div class="cab"><h1>Tarjeta AuCorp</h1><span class="sello esp">En camino</span></div>
+      <div class="cab"><h1>Tarjeta AuCorp</h1></div>
       <div class="rej c2">
         <div>
           <div class="credito" aria-label="Así va a ser la tarjeta AuCorp">
@@ -301,16 +304,16 @@ const BANCA = (() => {
               </div>
             </div>
           </div>
-          <p class="ayuda" style="margin-top:10px">Es el diseño, no un número: la tarjeta no está emitida.</p>
+          <p class="ayuda" style="margin-top:10px">Es el diseño. La tarjeta aún no se emite,
+            y por eso lleva puntos y no un número.</p>
         </div>
         <div class="tarj pila">
-          <span class="et">Qué va a poder hacer</span>
-          <p style="font-size:14.5px;color:var(--tinta2)">Gastar directo de tus saldos en moneda local —
-            la misma cuenta con la que ya depositás, cambiás y retirás—. Se va a pedir desde aquí,
-            con tu identidad de Genesis ID ya verificada, sin otro trámite.</p>
-          <p style="font-size:14.5px;color:var(--tinta2)">No hay lista de espera ni fecha prometida:
-            cuando abra, este botón va a ser el de pedirla.</p>
-          <button class="bot" disabled>Pedirla — en camino</button>
+          <span class="et">Qué va a hacer</span>
+          <p style="font-size:14.5px;color:var(--tinta2)">Gastar directo de tus saldos en moneda local,
+            con la misma cuenta con la que ya depositás, cambiás y retirás.</p>
+          <p style="font-size:14.5px;color:var(--tinta2)">El día que abra se pide desde esta misma
+            pantalla, con tu identidad de Genesis ID ya verificada. Sin lista de espera y sin
+            trámite nuevo.</p>
         </div>
       </div>${PIE}`;
   }
@@ -393,7 +396,7 @@ const BANCA = (() => {
             <h3 style="font-size:19px;margin:7px 0 0">Transferir</h3></div>
           <div class="campo"><label for="t-ben">A quién</label>
             <select id="t-ben" name="beneficiario">
-              <option value="">— elegí un destino guardado —</option>${opcBen('interno')}</select>
+              <option value="">Elegí un destino guardado</option>${opcBen('interno')}</select>
             <p class="ayuda">Los destinos se guardan en «Bancos». Se comprueban al guardarlos, no al mandar el dinero.</p></div>
           <div class="fila">
             <div class="campo crece"><label for="t-mon">Moneda</label>
@@ -425,7 +428,7 @@ const BANCA = (() => {
             <h3 style="font-size:19px;margin:7px 0 0">Retirar a un banco</h3></div>
           <div class="campo"><label for="r-ben">A qué cuenta</label>
             <select id="r-ben" name="beneficiario">
-              <option value="">— elegí una cuenta guardada —</option>${opcBen('bancario')}</select></div>
+              <option value="">Elegí una cuenta guardada</option>${opcBen('bancario')}</select></div>
           <div class="fila">
             <div class="campo crece"><label for="r-mon">Moneda</label>
               <select id="r-mon" name="moneda">${opciones}</select></div>
@@ -508,24 +511,25 @@ const BANCA = (() => {
     return `${recadoHTML()}
       <div class="cab"><h1>Bancos</h1></div>
 
-      <div class="rej c2" style="margin-bottom:20px">
-        <div class="tarj pila">
-          <div class="fila"><span class="et crece">El puente con tu banco, hoy</span>
-            <span class="sello ok">Funciona</span></div>
-          <p style="font-size:14.5px;color:var(--tinta2)">El dinero entra por transferencia con tu
-            referencia y sale a las cuentas que guardaste abajo. Operaciones lo acredita contra el
-            extracto del banco.</p>
-          <div class="fila">
-            <button class="bot chico" data-abrir="depositar">Depositar</button>
-            <button class="bot fino chico" data-ir="mover">Retirar</button>
+      <div class="tarj" style="margin-bottom:20px">
+        <span class="et">El puente con tu banco</span>
+        <div class="rej c2" style="margin-top:14px">
+          <div class="pila">
+            <h3 style="font-size:18px">Hoy</h3>
+            <p style="font-size:14.5px;color:var(--tinta2)">El dinero entra por transferencia con tu
+              referencia y sale a las cuentas que guardás abajo. Operaciones acredita cada entrada
+              contra el extracto del banco.</p>
+            <div class="fila">
+              <button class="bot chico" data-abrir="depositar">Depositar</button>
+              <button class="bot fino chico" data-ir="mover">Retirar</button>
+            </div>
           </div>
-        </div>
-        <div class="tarj pila">
-          <div class="fila"><span class="et crece">Conexión directa</span>
-            <span class="sello esp">En camino</span></div>
-          <p style="font-size:14.5px;color:var(--tinta2)">Ver el saldo y los movimientos de tu banco sin
-            salir de aquí, y fondear tu cuenta en un toque. Se va a conectar desde esta misma pantalla;
-            sin fecha inventada.</p>
+          <div class="pila">
+            <h3 style="font-size:18px">Lo que sigue</h3>
+            <p style="font-size:14.5px;color:var(--tinta2)">La conexión directa: el saldo y los
+              movimientos de tu banco desde esta pantalla, y fondear tu cuenta en un toque.
+              Se abre aquí mismo el día que esté lista.</p>
+          </div>
         </div>
       </div>
 
@@ -671,7 +675,7 @@ const BANCA = (() => {
       <img class="puerta-marca" src="../assets/aucorp-marca.png" alt="AuCorp">
       <h1>Tus cuentas en moneda local</h1>
       <p style="color:var(--tinta2)">Se entra con tu cuenta de Veta Wallet. Aquí no hay otra
-        contraseña que recordar — ni que perder. Es la banca fiat del ecosistema Orden Global.</p>
+        contraseña que recordar, ni que perder. Es la banca fiat del ecosistema Orden Global.</p>
       <ul class="puerta-lista">
         <li>Cuentas en 21 monedas del continente, con tu misma identidad.</li>
         <li>Cambio entre monedas con la tasa real, dicha con su fecha y su margen.</li>

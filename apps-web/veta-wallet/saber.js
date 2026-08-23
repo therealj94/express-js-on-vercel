@@ -7,7 +7,7 @@
  * Si hace falta que AU-RA sepa algo nuevo: se escribe la ficha allá, se corre
  * el publicador, y el cambio queda en un commit que alguien puede leer.
  *
- * 15 fichas públicas · 16 se quedaron en casa.
+ * 16 fichas públicas · 16 se quedaron en casa.
  */
 window.AURA_SABER = [
   {
@@ -54,15 +54,15 @@ window.AURA_SABER = [
   },
   {
     "id": "chat",
-    "tema": "PULSE2CHAT",
+    "tema": "PULSE CHAT",
     "palabras": [
       "pulse",
       "chat",
       "mensaje",
       "message"
     ],
-    "es": "PULSE2CHAT es la mensajería del ecosistema: solo entra gente con Genesis ID aprobado, podés mandar dinero sin salir del hilo y cada pago deja su comprobante verificable en la cadena.",
-    "en": "PULSE2CHAT is the ecosystem's messaging: only people with an approved Genesis ID get in, you can send money without leaving the thread, and every payment leaves its receipt verifiable on the chain."
+    "es": "PULSE CHAT es la mensajería del ecosistema: solo entra gente con Genesis ID aprobado, podés mandar dinero sin salir del hilo y cada pago deja su comprobante verificable en la cadena.",
+    "en": "PULSE CHAT is the ecosystem's messaging: only people with an approved Genesis ID get in, you can send money without leaving the thread, and every payment leaves its receipt verifiable on the chain."
   },
   {
     "id": "pay",
@@ -98,8 +98,8 @@ window.AURA_SABER = [
       "ecosistema",
       "ecosystem"
     ],
-    "es": "Orden Global es un ecosistema completo: tu dinero (Veta Wallet), tu gente (PULSE2CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), todos conectados sobre nuestra propia cadena. Una cuenta, todas las puertas.",
-    "en": "Orden Global is a complete ecosystem: your money (Veta Wallet), your people (PULSE2CHAT), your business (MyTokenPay) and your identity (Genesis ID), all connected over our own chain. One account, every door."
+    "es": "Orden Global es un ecosistema completo: tu dinero (Veta Wallet), tu gente (PULSE CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), todos conectados sobre nuestra propia cadena. Una cuenta, todas las puertas.",
+    "en": "Orden Global is a complete ecosystem: your money (Veta Wallet), your people (PULSE CHAT), your business (MyTokenPay) and your identity (Genesis ID), all connected over our own chain. One account, every door."
   },
   {
     "id": "comision",
@@ -124,17 +124,30 @@ window.AURA_SABER = [
     "en": "With remittances you see how much arrives on the other side after the fee and the exchange, across nine countries. Let me open the calculator."
   },
   {
-    "id": "pronto",
-    "tema": "Lo que viene",
+    "id": "aucorp",
+    "tema": "AuCorp, la banca fiat",
     "palabras": [
       "aucorp",
       "aubank",
+      "banca",
+      "fiat",
+      "moneda local",
+      "local currency",
+      "tarjeta"
+    ],
+    "es": "AuCorp es la banca fiat del ecosistema: cuentas en moneda local, en 21 monedas del continente, con esta misma cuenta y sin otra contraseña. Se entra por su esfera aquí en el Núcleo. Hoy podés abrir cuentas, depositar con tu referencia, cambiar entre monedas con la tasa real dicha con su fecha y su margen, transferir y retirar a tu banco. La tarjeta AuCorp ya se está armando y se va a pedir desde esa misma plataforma. AuCorp es dueña de Ordenex y aliada de Orden Global. Es una institución FinTech de Próspera bajo la Regulación A, no un banco con licencia bancaria, y eso te lo dice en su propia pantalla.",
+    "en": "AuCorp is the fiat side of the ecosystem: local-currency accounts, in 21 currencies of the continent, with this same account and no extra password. You enter through its sphere here in the Nucleus. Today you can open accounts, deposit with your reference, exchange between currencies at the real rate stated with its date and margin, transfer, and withdraw to your bank. The AuCorp card is being built and will be requested from that same platform. AuCorp owns Ordenex and is an ally of Orden Global. It is a Próspera FinTech institution under Regulation A, not a licensed bank, and it tells you so on its own screen."
+  },
+  {
+    "id": "pronto",
+    "tema": "Lo que viene",
+    "palabras": [
       "ordenexchange",
       "pronto",
       "coming"
     ],
-    "es": "AuCorp y Ordenexchange ya abrieron los dos: las cuentas en moneda local y la casa de cambio, con esta misma cuenta. AuCorp es la que antes se llamaba AUBANK — cambió el nombre, no la casa. El ecosistema no es una lista cerrada — crece.",
-    "en": "AuCorp and Ordenexchange are both open now: local-currency accounts and the exchange, with this same account. AuCorp is what used to be called AUBANK — the name changed, not the house. The ecosystem is not a closed list — it grows."
+    "es": "AuCorp y Ordenexchange ya abrieron los dos: las cuentas en moneda local y la casa de cambio, con esta misma cuenta. AuCorp es la que antes se llamaba AUBANK: cambió el nombre, no la casa. El ecosistema no es una lista cerrada. Crece.",
+    "en": "AuCorp and Ordenexchange are both open now: local-currency accounts and the exchange, with this same account. AuCorp is what used to be called AUBANK: the name changed, not the house. The ecosystem is not a closed list. It grows."
   },
   {
     "id": "referencia",

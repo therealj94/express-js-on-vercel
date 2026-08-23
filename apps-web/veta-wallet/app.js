@@ -387,6 +387,8 @@ const VETA = (() => {
     for (const id of ['portada', 'acceso', 'app', 'reclave']) $('#' + id).classList.toggle('oculto', id !== (destino === 'bienvenida' ? 'portada' : destino));
     $('#techo').classList.toggle('oculto', destino === 'app');
     if (destino === 'acceso') { pestana(cual || 'entrar'); setTimeout(() => $('#i-correo').focus(), 60); }
+    // AU-RA recibe en la puerta; en cualquier otra pantalla su saludo se apaga.
+    if (destino === 'acceso') accesoEscena(); else accesoEscenaParar();
     if (destino === 'app') vista(vistaActual);
     window.scrollTo(0, 0);
     /* AU-RA acompaña toda la sesion; fuera de ella no existe. Las seis
@@ -437,6 +439,61 @@ const VETA = (() => {
     $('#acc-olvide').classList.toggle('oculto', cual !== 'entrar');
     $('#acc-aviso').classList.add('oculto');
   }
+
+  /* ── LA RECEPCIÓN: AU-RA escribe su saludo ────────────────────────────────
+   *
+   * Los navegadores no dejan que un audio arranque solo, así que la primera
+   * voz de AU-RA es esta: su saludo tecleándose letra a letra, con el orbe
+   * latiendo mientras «habla». La voz audible llega con el primer gesto:
+   * tocar el orbe abre el panel de verdad y ahí sí se la oye. El bucle solo
+   * vive mientras el acceso está en pantalla; salir lo apaga. */
+  let agReloj = null;
+
+  function accesoEscenaParar() {
+    clearTimeout(agReloj); agReloj = null;
+    $('#ag-orbe')?.classList.remove('hablando');
+  }
+
+  function accesoEscena() {
+    accesoEscenaParar();
+    const donde = $('#ag-dice');
+    if (!donde) return;
+    // Se leen en cada vuelta y no una vez: cambiar de idioma en la puerta
+    // tiene que cambiar también lo que AU-RA está diciendo.
+    const frases = () => [t('acc.voz1'), t('acc.voz2'), t('acc.voz3')];
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      donde.textContent = frases()[1];
+      return;
+    }
+    const orbe = $('#ag-orbe');
+    let f = 0, i = 0, borrando = false;
+    const tic = () => {
+      const lista = frases();
+      const txt = lista[f % lista.length];
+      if (!borrando) {
+        i++;
+        donde.textContent = txt.slice(0, i);
+        orbe?.classList.add('hablando');
+        if (i >= txt.length) {
+          orbe?.classList.remove('hablando');
+          borrando = true;
+          agReloj = setTimeout(tic, 2600);   // que se alcance a leer entera
+          return;
+        }
+        agReloj = setTimeout(tic, 34 + Math.random() * 26);
+        return;
+      }
+      i -= 3;                                // borrar rápido: no es lectura
+      donde.textContent = txt.slice(0, Math.max(0, i));
+      if (i <= 0) { i = 0; borrando = false; f++; agReloj = setTimeout(tic, 420); }
+      else agReloj = setTimeout(tic, 14);
+    };
+    tic();
+  }
+
+  /* Los chips de la puerta le preguntan a AU-RA de verdad: abren su panel y
+     el cerebro de visita contesta, sin cuenta y sin pedir nada. */
+  const accesoPregunta = (n) => auraChip(t('acc.chip' + n));
 
 
   /* Cambiar de idioma en caliente. Las vistas se generan enteras cada vez que
@@ -8788,7 +8845,8 @@ const VETA = (() => {
         og: 'Orden Global es un ecosistema completo: tu dinero (Veta Wallet), tu gente (PULSE2CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), todos conectados sobre nuestra propia cadena. Una cuenta, todas las puertas.',
         comision: 'La comisión de red se paga siempre en ORIGEN, también cuando enviás otro token, y es mínima: nuestra cadena es propia. El equivalente lo ves antes de confirmar cualquier envío.',
         remesas: 'Con remesas ves cuánto llega del otro lado después de la comisión y del cambio, en nueve países. Te abro el calculador.',
-        pronto: 'Ordenexchange y AuCorp ya abrieron: la casa de cambio y las cuentas en moneda local, las dos con esta misma cuenta desde su esfera del Núcleo. AuCorp es la que antes se llamaba AUBANK — cambió el nombre, no la casa. El ecosistema no es una lista cerrada — crece.',
+        aucorp: 'AuCorp es la banca fiat del ecosistema: tus cuentas en moneda local, en 21 monedas del continente, con esta misma cuenta y sin otra contraseña. Entrás por su esfera del Núcleo: abrís cuentas, depositás con tu referencia, cambiás con la tasa real dicha con su fecha y su margen, y retirás a tu banco. La tarjeta AuCorp ya se está armando y se va a pedir desde esa misma plataforma. AuCorp es dueña de Ordenex y aliada de Orden Global.',
+        pronto: 'Ordenexchange y AuCorp ya abrieron: la casa de cambio y las cuentas en moneda local, las dos con esta misma cuenta desde su esfera del Núcleo. AuCorp es la que antes se llamaba AUBANK: cambió el nombre, no la casa. El ecosistema no es una lista cerrada. Crece.',
       },
       teEscucho: 'Te escucho…',
       ayuda: 'Podés pedirme, con la voz o escribiendo:\n\n· «Llevame a cobrar» — te abro cualquier parte\n· «Envía 15 a María» — te dejo el envío listo (firmás vos)\n· «¿Cuánto tengo?» — tu saldo\n· «¿A cuánto está el ORIGEN?» — el precio de hoy\n· «Cobrame 25» — te dejo el cobro con su código\n· «Resumen de la semana» — qué se movió estos días\n· «¿Estoy verificado?» — cómo va tu Genesis ID\n· «¿Qué es ORIGEN?» — te explico el ecosistema\n· «Buscá cafeterías» — te encuentro negocios\n· «Hacé el recorrido» — te lo enseño todo\n\nY si no me entiende el micrófono, escribime: leo igual de bien.',
@@ -8804,7 +8862,7 @@ const VETA = (() => {
            septiembre — un tour invitando a un sorteo cerrado seria peor que
            no tenerla—; quitarla a mano despues sigue siendo lo aseado. */
         { sorteo: true, id: 'gid', k: 'EL SORTEO', t: '1 AUKA en juego', p: 'Y hacerlo ahora tiene premio: al verificarte participás en el sorteo de 1 AUKA, que sigue el precio de la onza de oro. Cierra el nueve de septiembre.' },
-        { id: 'aucorp', k: 'Y ESTO CRECE', t: 'Ya abrieron las dos', p: 'Ordenexchange es la casa de cambio y AuCorp son tus cuentas en moneda local — dólares, lempiras, euros. Las dos con tu misma cuenta. AuCorp es la que antes se llamaba AUBANK: cambió el nombre, no la casa. Y yo soy AU-RA: cada versión voy a saber hacer más.' },
+        { id: 'aucorp', k: 'Y ESTO CRECE', t: 'Ya abrieron las dos', p: 'Ordenexchange es la casa de cambio y AuCorp son tus cuentas en moneda local: dólares, lempiras, euros. Las dos con tu misma cuenta. AuCorp es la que antes se llamaba AUBANK: cambió el nombre, no la casa. Y yo soy AU-RA: cada versión voy a saber hacer más.' },
       ],
     },
     en: {
@@ -8901,7 +8959,8 @@ const VETA = (() => {
         og: 'Orden Global is a complete ecosystem: your money (Veta Wallet), your people (PULSE2CHAT), your business (MyTokenPay) and your identity (Genesis ID), all wired over our own chain. One account, every door.',
         comision: 'The network fee is always paid in ORIGEN, even when you send another token, and it is minimal: the chain is ours. You see the equivalent before confirming any transfer.',
         remesas: 'Remittances shows how much arrives on the other side after fees and exchange, in nine countries. Opening the calculator.',
-        pronto: 'Ordenexchange and AuCorp are both open now: the exchange and your local-currency accounts, both with this same account from their sphere in the Nucleus. AuCorp is what used to be called AUBANK — the name changed, not the house. The ecosystem is not a closed list — it grows.',
+        aucorp: 'AuCorp is the fiat side of the ecosystem: your local-currency accounts, in 21 currencies of the continent, with this same account and no extra password. You enter through its sphere in the Nucleus: open accounts, deposit with your reference, exchange at the real rate stated with its date and margin, and withdraw to your bank. The AuCorp card is being built and will be requested from that same platform. AuCorp owns Ordenex and is an ally of Orden Global.',
+        pronto: 'Ordenexchange and AuCorp are both open now: the exchange and your local-currency accounts, both with this same account from their sphere in the Nucleus. AuCorp is what used to be called AUBANK: the name changed, not the house. The ecosystem is not a closed list. It grows.',
       },
       teEscucho: 'Listening…',
       ayuda: 'You can ask me, by voice or typing:\n\n· “Take me to charge” — I open any part\n· “Send 15 to Maria” — I leave the transfer ready (you sign)\n· “How much do I have?” — your balance\n· “What is ORIGEN at?” — the price today\n· “Charge 25” — I leave the charge ready with its code\n· “Summary of this week” — what moved these days\n· “Am I verified?” — how your Genesis ID is doing\n· “What is ORIGEN?” — I explain the ecosystem\n· “Find coffee shops” — I find businesses\n· “Take the tour” — I show you everything\n\nAnd if the microphone misses you, type: I read just as well.',
@@ -8915,7 +8974,7 @@ const VETA = (() => {
         /* New stop, no recorded mp3: falls back to the browser voice. When the
            raffle closes, remove this line and its Spanish twin. */
         { sorteo: true, id: 'gid', k: 'THE RAFFLE', t: '1 AUKA at stake', p: 'And doing it now has a prize: by verifying you enter the raffle for 1 AUKA, which tracks the price of one ounce of gold. It closes on September the ninth.' },
-        { id: 'aucorp', k: 'AND THIS GROWS', t: 'Both are open', p: 'Ordenexchange is the exchange and AuCorp holds your local-currency accounts — dollars, lempiras, euros. Both with your same account. AuCorp is what used to be called AUBANK: the name changed, not the house. And I am AU-RA: every version I will know how to do more.' },
+        { id: 'aucorp', k: 'AND THIS GROWS', t: 'Both are open', p: 'Ordenexchange is the exchange and AuCorp holds your local-currency accounts: dollars, lempiras, euros. Both with your same account. AuCorp is what used to be called AUBANK: the name changed, not the house. And I am AU-RA: every version I will know how to do more.' },
       ],
     },
   };
@@ -9123,7 +9182,10 @@ const VETA = (() => {
       [/au-?ra|quien sos|quien eres|who are you|vos que|tu que/, T.con.aura],
       [/orden global|ecosistema|ecosystem/, T.con.og],
       [/comision|fee|gas/, T.con.comision],
-      [/aucorp|aubank|ordenexchange|pronto|coming/, T.con.pronto],
+      // AuCorp tiene respuesta propia: mandarla al cajón de «lo que viene»
+      // era tratar una casa abierta como una promesa.
+      [/aucorp|aubank|banca|fiat|moneda local|local currency/, T.con.aucorp],
+      [/ordenexchange|pronto|coming/, T.con.pronto],
     ];
     for (const [re, r] of SABE) if (re.test(d)) return r;
     return null;
@@ -10546,7 +10608,7 @@ const VETA = (() => {
            // El Nucleo: la portada del ecosistema.
            nuAbrir,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
-           auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
+           auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin, accesoPregunta,
            auraBienFin, auraBienToca, auraAyuda,
            // La bienvenida del ecosistema: sale sola la primera vez y se puede
            // volver a abrir desde Ajustes.

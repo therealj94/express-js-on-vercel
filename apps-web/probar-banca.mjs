@@ -282,15 +282,16 @@ decir('la tarjeta y los bancos se enseñan sin fingir');
   await p.click('[data-ir="tarjeta"]');
   await p.waitForTimeout(700);
   const t = await leer(p);
-  comprobar(/En camino/.test(t), 'la tarjeta dice EN CAMINO, no una promesa disfrazada');
+  comprobar(/aún no se emite/.test(t), 'la tarjeta dice con letras que aún no se emite');
   comprobar(/···· ···· ···· ····/.test(t), 'y el plástico lleva puntos, no un número fingido');
-  comprobar(/no está emitida/.test(t), 'con la aclaración en letras');
+  comprobar(!/En camino|Próximamente|Coming soon/i.test(t),
+    'sin pastillas de «en camino»: la honestidad va en prosa, no en etiqueta');
 
   await p.click('[data-ir="bancos"]');
   await p.waitForTimeout(700);
   const bt = await leer(p);
-  comprobar(/Funciona/.test(bt) && /En camino/.test(bt),
-    'bancos separa lo que funciona hoy de la conexión directa que viene');
+  comprobar(/Hoy/.test(bt) && /Lo que sigue/.test(bt),
+    'bancos separa el puente de hoy de lo que sigue, sin pastillas');
 
   await p.click('[data-ir="inicio"]');
   await p.waitForTimeout(800);

@@ -163,7 +163,8 @@ console.log('\n── de AU-RA al formulario ───────────�
   const aura = await p.evaluate(() => {
     const lado = document.querySelector('#acceso .acc-lado');
     return { nombra: /AU-RA/.test(lado.textContent),
-             boton: !!lado.querySelector('.bv-aura-btn') };
+             // El botón de hablarle es ahora el propio orbe de la recepción.
+             boton: !!lado.querySelector('.ag-orbe, .bv-aura-btn') };
   });
   decir(aura.nombra && aura.boton, 'y está invitada donde se duda: junto al formulario');
 

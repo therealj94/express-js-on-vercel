@@ -39,16 +39,19 @@ es: {
   'bien.genP': 'Conversá con los tuyos y mandá dinero sin salir del hilo. Tu gente del ecosistema, a un toque.',
   'bien.nexK': 'TU ASISTENTE', 'bien.nexT': 'AU-RA',
   'bien.nexP': 'Pedíselo con la voz: «enviá 15 a Juan», «abrí mi tarjeta». AU-RA prepara; firmar, siempre te toca a vos.',
-  'acc.pt1': 'El oro entra', 'acc.pt2': 'a tu nombre.',
-  'acc.p': 'Una cuenta, tu billetera en la cadena de Orden Global y tu identidad Genesis ID. Todo empieza aquí.',
-  'acc.gid': 'Con Genesis ID te verificás una sola vez y quedás verificado en todo el ecosistema.',
+  'acc.agRol': 'La inteligencia de la casa',
+  'acc.voz1': 'Bienvenidos a Orden Global.',
+  'acc.voz2': 'Soy AU-RA. Todo el ecosistema entra por esta puerta: tu oro, tu gente, tu identidad.',
+  'acc.voz3': 'Entrá con tu cuenta, o tocame y hablamos.',
+  'acc.chip1': '¿Qué es Orden Global?',
+  'acc.chip2': '¿Qué es ORIGEN?',
+  'acc.chip3': '¿Es seguro?',
   'acc.tEntrar': 'Entrar', 'acc.tCrear': 'Crear cuenta',
   'acc.nombre': 'Nombre completo', 'acc.nombrePh': 'Como aparece en tu documento',
   'acc.correo': 'Correo', 'acc.clave': 'Contraseña',
   'acc.btnEntrar': 'Entrar', 'acc.btnCrear': 'Crear mi cuenta',
   'acc.entrando': 'Entrando…', 'acc.creando': 'Creando tu cuenta…',
   'acc.legal': 'Al crear tu cuenta aceptás los <a href="/terminos">términos</a> y la <a href="/privacidad">política de privacidad</a>.',
-  'acc.aura': 'Bienvenidos a Orden Global. Soy AU-RA, la inteligencia de la casa: cualquier duda antes de entrar, preguntame acá mismo.',
   'acc.volver': 'Conocer Orden Global',
   'nav.inicio': 'Inicio', 'nav.enviar': 'Enviar', 'nav.recibir': 'Recibir',
   'nav.actividad': 'Actividad', 'nav.cuenta': 'Mi cuenta', 'nav.id': 'Identidad',
@@ -904,7 +907,7 @@ es: {
   'sor.boletoP': 'Tu expediente quedó en manos del equipo. Al aprobarse, tu GID es tu boleto para el sorteo de 1 AUKA.',
   'sor.gidOk': 'Estás participando en el sorteo de 1 AUKA — tu GID es tu boleto.',
   'sor.mas18': '+18 · Aplican las bases',
-  'sor.acc': 'Y hay sorteo: al verificarte con Genesis ID participás por 1 AUKA, que sigue el precio de la onza de oro. +18 — las bases están en vetawallet.com/sorteo-orden-global.',
+  'sor.acc': 'Y hay sorteo: al verificarte con Genesis ID participás por 1 AUKA, que sigue el precio de la onza de oro. Para mayores de 18; las bases están en vetawallet.com/sorteo-orden-global.',
 },
 en: {
   'bv.sello': 'WELCOME TO THE ORDEN GLOBAL ECOSYSTEM',
@@ -933,16 +936,19 @@ en: {
   'bien.genP': 'Talk with your people and send money without leaving the thread. Your ecosystem contacts, one tap away.',
   'bien.nexK': 'YOUR ASSISTANT', 'bien.nexT': 'AU-RA',
   'bien.nexP': 'Just say it: “send 15 to Juan”, “open my card”. AU-RA prepares; signing is always yours.',
-  'acc.pt1': 'The gold arrives', 'acc.pt2': 'in your name.',
-  'acc.p': 'One account, your wallet on the Orden Global chain, and your Genesis ID. Everything starts here.',
-  'acc.gid': 'With Genesis ID you verify once and stay verified across the whole ecosystem.',
+  'acc.agRol': 'The intelligence of the house',
+  'acc.voz1': 'Welcome to Orden Global.',
+  'acc.voz2': 'I am AU-RA. The whole ecosystem enters through this door: your gold, your people, your identity.',
+  'acc.voz3': 'Sign in with your account, or tap me and we talk.',
+  'acc.chip1': 'What is Orden Global?',
+  'acc.chip2': 'What is ORIGEN?',
+  'acc.chip3': 'Is it safe?',
   'acc.tEntrar': 'Sign in', 'acc.tCrear': 'Create account',
   'acc.nombre': 'Full name', 'acc.nombrePh': 'As it appears on your ID',
   'acc.correo': 'Email', 'acc.clave': 'Password',
   'acc.btnEntrar': 'Sign in', 'acc.btnCrear': 'Create my account',
   'acc.entrando': 'Signing in…', 'acc.creando': 'Creating your account…',
   'acc.legal': 'By creating your account you accept the <a href="/terminos">terms</a> and the <a href="/privacidad">privacy policy</a>.',
-  'acc.aura': 'Welcome to Orden Global. I am AU-RA, the intelligence of the house: any doubt before you come in, ask me right here.',
   'acc.volver': 'Discover Orden Global',
   'nav.inicio': 'Home', 'nav.enviar': 'Send', 'nav.recibir': 'Receive',
   'nav.actividad': 'Activity', 'nav.cuenta': 'My account', 'nav.id': 'Identity',
@@ -1711,7 +1717,7 @@ en: {
   'sor.boletoP': 'Your file is with the team. Once approved, your GID is your ticket for the 1 AUKA raffle.',
   'sor.gidOk': 'You are in the raffle for 1 AUKA — your GID is your ticket.',
   'sor.mas18': '18+ · Official rules apply',
-  'sor.acc': 'And there is a raffle: by verifying with Genesis ID you enter for 1 AUKA, which tracks the price of one ounce of gold. 18+ — the rules live at vetawallet.com/sorteo-orden-global.',
+  'sor.acc': 'And there is a raffle: by verifying with Genesis ID you enter for 1 AUKA, which tracks the price of one ounce of gold. For ages 18 and up; the rules live at vetawallet.com/sorteo-orden-global.',
 },
 };
 
@@ -1753,8 +1759,6 @@ function pintarIdioma() {
     const el = document.getElementById(id);
     if (el) el.innerHTML = `${t(k + '.t1')}<br><i>${t(k + '.t2')}</i>`;
   });
-  const pr = document.getElementById('acc-promesa');
-  if (pr) pr.innerHTML = `${t('acc.pt1')}<br><i>${t('acc.pt2')}</i>`;
   const lg = document.getElementById('acc-legal');
   if (lg) lg.innerHTML = t('acc.legal');
 }
