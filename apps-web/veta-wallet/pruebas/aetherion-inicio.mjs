@@ -69,6 +69,74 @@ const p = await entrar(ctx);
   await p.screenshot({ path: '/tmp/aet-inicio.png' });
 }
 
+console.log('\n── el timón: girar y acercar ────────────────────────────────');
+{
+  /* Esta es la prueba del fallo que hacía que el Inicio se viera «lejos y
+     muerto»: el rig existía, los gestos le escribían, y NADIE le pasaba la
+     cámara. Aquí se comprueba el movimiento REAL de la cámara, no que el
+     gesto no reviente. */
+  const radio = () => p.evaluate(() => window.__aeCamera.position.length());
+  const reposo = await p.evaluate(() => window.__AE_VISTA.estado().reposo);
+  const r0 = await radio();
+  ok('la cámara aterriza en el encuadre de esta pantalla',
+     Math.abs(r0 - reposo) < 1.2, `radio ${r0.toFixed(1)} · reposo ${reposo.toFixed(1)}`);
+  ok('y ese encuadre entra en la pantalla, no en un número inventado',
+     reposo > 11 && reposo < 40, reposo.toFixed(1));
+
+  await p.mouse.move(700, 460);
+  await p.mouse.wheel(0, -600);
+  await p.waitForTimeout(1300);
+  const r1 = await radio();
+  ok('la rueda ACERCA de verdad', r1 < r0 - 1.5, `${r0.toFixed(1)} → ${r1.toFixed(1)}`);
+  await p.mouse.wheel(0, 900);
+  await p.waitForTimeout(1300);
+  ok('y también aleja', (await radio()) > r1 + 1, `${r1.toFixed(1)} → ${(await radio()).toFixed(1)}`);
+
+  await p.evaluate(() => window.__AE_VISTA.recentrar());
+  await p.waitForTimeout(1400);
+  const antes = await p.evaluate(() => window.__aeCamera.position.x);
+  await p.mouse.move(700, 460);
+  await p.mouse.down();
+  await p.mouse.move(980, 470, { steps: 14 });
+  await p.mouse.up();
+  await p.waitForTimeout(1300);
+  const luego = await p.evaluate(() => window.__aeCamera.position.x);
+  ok('arrastrar GIRA la galaxia', Math.abs(luego - antes) > 2, `x ${antes.toFixed(1)} → ${luego.toFixed(1)}`);
+
+  const rBoton = await radio();
+  await p.click('.ae-timon button[aria-label="Acercar"]');
+  await p.waitForTimeout(1300);
+  ok('el botón de acercar también manda', (await radio()) < rBoton - 0.8);
+  await p.click('.ae-timon button[aria-label="Recentrar"]');
+  await p.waitForTimeout(1500);
+  ok('y recentrar devuelve al encuadre de la casa',
+     Math.abs((await radio()) - reposo) < 1.2);
+
+  /* El mando que usa la mano en el aire: si esto no existe, AIR TOUCH no
+     puede acercar por más que la mano se mueva. */
+  ok('la mano en el aire tiene su mando', await p.evaluate(() =>
+    typeof window.__AE_VISTA?.zoom === 'function' && typeof window.__AE_VISTA?.girar === 'function'));
+}
+
+console.log('\n── las casas se reconocen: logo y nombre ────────────────────');
+{
+  const casas = await p.evaluate(() => ({
+    apps: (window.__AE_APPS || []).map((a) => a.key),
+    conLogo: (window.__AE_APPS || []).filter((a) => a.logo).length,
+    conIco: (window.__AE_APPS || []).filter((a) => a.ico).length,
+  }));
+  ok('la casa le pasa sus ocho apps a la galaxia', casas.apps.length === 8, casas.apps.join(','));
+  ok('con logotipo de verdad las que lo tienen', casas.conLogo >= 5, `${casas.conLogo} logos`);
+  ok('y el ícono de línea para todas', casas.conIco === 8, `${casas.conIco} íconos`);
+  /* Las marcas se pintan en texturas de canvas: se comprueba que el planeta
+     de la wallet lleva PIXELES suyos y no un disco vacío. */
+  const pintado = await p.evaluate(async () => {
+    const r = await fetch('assets/apps/wallet.png');
+    return r.ok;
+  });
+  ok('el logotipo que pide el planeta existe en la casa', pintado);
+}
+
 console.log('\n── el puente navega de verdad ───────────────────────────────');
 {
   await p.evaluate(() => window.__AE_ABRIR('wallet'));

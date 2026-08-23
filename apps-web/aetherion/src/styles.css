@@ -404,3 +404,54 @@ canvas {
   letter-spacing: 0.14em;
   color: var(--ae-dim);
 }
+
+/* EL TIMÓN: acercar, alejar y volver al centro. Vive abajo a la izquierda, del
+   lado contrario a los botones de la casa (AU-RA y AIR TOUCH viven a la
+   derecha), y se toca con el pulgar sin estirar la mano. */
+.ae-timon {
+  position: absolute;
+  left: clamp(14px, 2.4vw, 26px);
+  bottom: clamp(96px, 13vh, 132px);
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.ae-timon button {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  border: 1px solid var(--ae-line);
+  background: rgba(6, 10, 22, 0.62);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: var(--ae-text);
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.ae-timon button:hover {
+  border-color: rgba(255, 217, 138, 0.55);
+  background: rgba(12, 18, 34, 0.78);
+}
+
+.ae-timon button:active { transform: scale(0.93); }
+.ae-timon button:focus-visible { outline: 2px solid var(--ae-gold); outline-offset: 3px; }
+
+@media (max-width: 900px) {
+  .ae-timon {
+    left: 12px;
+    /* por encima del saludo de la casa, que vive en esa misma esquina */
+    bottom: calc(196px + env(safe-area-inset-bottom));
+    gap: 7px;
+  }
+  .ae-timon button { width: 40px; height: 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ae-timon button { transition: none; }
+}

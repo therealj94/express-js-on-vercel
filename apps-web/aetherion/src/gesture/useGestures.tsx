@@ -173,8 +173,20 @@ export function GestureLayer() {
     }
 
     const onWheel = (e: WheelEvent) => {
+      if (useUiStore.getState().activeId || transit.active) return
       e.preventDefault()
-      rig.zoomBy(Math.exp(e.deltaY * 0.0011))
+      /* El trackpad manda pasos chicos y el ratón manda saltos: el mismo gesto
+         tiene que acercar lo mismo en los dos, así que el salto se limita. */
+      const d = Math.max(-120, Math.min(120, e.deltaY))
+      rig.zoomBy(Math.exp(d * 0.0022))
+    }
+
+    /* Doble clic en el vacío: volver al encuadre de la casa. Es la salida de
+       emergencia de quien se perdió girando. */
+    const onDoble = (e: MouseEvent) => {
+      const st2 = useUiStore.getState()
+      if (st2.activeId || transit.active) return
+      if (!pickWell(e.clientX, e.clientY)) rig.recentrar()
     }
 
     const onTouchMove = (e: TouchEvent) => {
@@ -190,6 +202,17 @@ export function GestureLayer() {
         else st.select(null)
       }
       if (e.key === 'e' || e.key === 'E') st.setEclipse(!st.eclipse)
+      /* El teclado también manda: no todo el mundo usa rueda ni pellizco, y
+         con el foco puesto en el cielo estas teclas son el timón. */
+      if (st.activeId || transit.active) return
+      if (e.key === '+' || e.key === '=') rig.zoomPaso(1)
+      if (e.key === '-' || e.key === '_') rig.zoomPaso(-1)
+      if (e.key === '0') rig.recentrar()
+      const paso = 26
+      if (e.key === 'ArrowLeft') rig.orbit(-paso, 0)
+      if (e.key === 'ArrowRight') rig.orbit(paso, 0)
+      if (e.key === 'ArrowUp') rig.orbit(0, -paso)
+      if (e.key === 'ArrowDown') rig.orbit(0, paso)
     }
 
     el.addEventListener('pointerdown', onDown)
@@ -197,6 +220,7 @@ export function GestureLayer() {
     el.addEventListener('pointerup', onUp)
     el.addEventListener('pointercancel', onUp)
     el.addEventListener('wheel', onWheel, { passive: false })
+    el.addEventListener('dblclick', onDoble)
     el.addEventListener('touchmove', onTouchMove, { passive: false })
     window.addEventListener('keydown', onKey)
 
@@ -206,6 +230,7 @@ export function GestureLayer() {
       el.removeEventListener('pointerup', onUp)
       el.removeEventListener('pointercancel', onUp)
       el.removeEventListener('wheel', onWheel)
+      el.removeEventListener('dblclick', onDoble)
       el.removeEventListener('touchmove', onTouchMove)
       window.removeEventListener('keydown', onKey)
       clearLong()

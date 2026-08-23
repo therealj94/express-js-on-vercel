@@ -3,6 +3,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import App from './App'
 import './styles.css'
 import { transit } from './transit/transit'
+import { refrescarCasas } from './sky/Wells'
 import { useUiStore } from './state/uiStore'
 
 /* LA FUSIÓN CON LA WALLET. Aetherion no se monta solo: expone montar y
@@ -12,6 +13,9 @@ let raiz: Root | null = null
 
 function montar(el: HTMLElement) {
   if (raiz) desmontar()
+  /* La casa ya dejó puestos el idioma y las marcas: se rearman los planetas
+     con eso ANTES de dibujar nada. */
+  refrescarCasas()
   raiz = createRoot(el)
   // sin StrictMode dentro de la wallet: el doble-montaje de desarrollo
   // duplica los efectos del canvas y ahí no ayuda a nadie
@@ -32,6 +36,7 @@ function exhalar() {
 
 ;(window as any).AETHERION = { montar, desmontar, exhalar }
 
+refrescarCasas()
 const solo = document.getElementById('root')
 if (solo) {
   document.documentElement.classList.add('ae-solo')

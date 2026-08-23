@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber'
 import { AgXToneMapping } from 'three'
 import { Kernel, QualityWatcher } from './kernel/Kernel'
+import { Encuadre } from './kernel/Encuadre'
 import { Sky } from './sky/Sky'
 import { Pulses } from './pulses/Pulses'
 import { TransitRunner } from './transit/TransitRunner'
@@ -30,7 +31,7 @@ export default function App() {
           stencil: false,
         }}
         dpr={[1, 2]}
-        camera={{ fov: 62, near: 0.1, far: 400, position: [0, 24, 56] }}
+        camera={{ fov: 62, near: 0.1, far: 400, position: [0, 26, 40] }}
         onCreated={({ gl, camera }) => {
           gl.toneMapping = AgXToneMapping
           gl.toneMappingExposure = 1.05
@@ -39,6 +40,10 @@ export default function App() {
       >
         <Kernel />
         <QualityWatcher />
+        <Encuadre />
+        {/* el relleno de la cara de noche: sin esto la mitad oscura de cada
+            planeta es un agujero negro y la marca se pierde */}
+        <ambientLight intensity={0.55} color="#6d7fae" />
         <color attach="background" args={['#030308']} />
         <fogExp2 attach="fog" args={['#05060d', 0.0075]} />
         <Sky />

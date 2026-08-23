@@ -144,10 +144,13 @@ body:has(#app:not(.oculto)) .veta-svg{display:none}
    tiene nada. */
 .ae-casa{position:absolute;inset:0;overflow:hidden}
 .ae-casa .ae-root{position:absolute;inset:0}
-.ae-saludo{position:fixed;left:clamp(16px,3vw,34px);bottom:clamp(70px,10vh,90px);
+.ae-saludo{position:fixed;left:clamp(16px,3vw,34px);bottom:clamp(24px,4vh,40px);
   z-index:5;pointer-events:none;display:flex;flex-direction:column;gap:3px}
 .ae-saludo b{font:700 clamp(19px,2.4vw,26px)/1.2 var(--serif);color:var(--crema)}
 .ae-saludo small{font:400 12.5px/1.4 var(--sans);color:var(--bruma)}
+/* En pantalla ancha el saludo se corre a la derecha del riel: ahí no pisa el
+   pie de la casa (los enlaces de términos y privacidad viven en esa esquina). */
+@media (min-width:901px){.ae-saludo{left:calc(var(--riel, 232px) + 26px)}}
 @media (max-width:900px){.ae-saludo{left:16px;bottom:calc(84px + env(safe-area-inset-bottom))}}
 /* El lienzo del Inicio necesita ALTURA PROPIA: su único hijo (la galaxia)
    es absoluto y no mide nada — sin esto, R3F ve un contenedor de 0×0 y el
@@ -3646,6 +3649,10 @@ body.en-ventana .lienzo::before{
     <div class="at-paso">
       <svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="2.4"/><path d="M10 10l7 7M17 17v-4M17 17h-4"/></svg>
       <p data-t="at.paso3"></p>
+    </div>
+    <div class="at-paso">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 4.2v2.4M12 17.4v2.4M4.2 12h2.4M17.4 12h2.4"/><path d="M6.6 6.6l1.7 1.7M15.7 15.7l1.7 1.7M17.4 6.6l-1.7 1.7M8.3 15.7l-1.7 1.7"/></svg>
+      <p data-t="at.paso4"></p>
     </div>
     <p class="at-privado" data-t="at.privado"></p>
     <div class="at-botones">

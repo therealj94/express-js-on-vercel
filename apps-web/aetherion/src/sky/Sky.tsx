@@ -200,8 +200,11 @@ function TideAndIntro() {
   useFrame(() => {
     if (!started.current) {
       started.current = true
-      rig.radius = 64
-      rig.tRadius = 26
+      /* LA LLEGADA. El cielo ya no clava la cámara en un número fijo: pide la
+         entrada y el timón la trae desde lejos hasta el encuadre que le queda
+         bien a ESTA pantalla. Dos dueños de la cámara era exactamente por qué
+         no se podía ni girar ni acercar. */
+      rig.entrada()
     }
     const marea = useUiStore.getState().marea
     const pal = PALETTES[marea]

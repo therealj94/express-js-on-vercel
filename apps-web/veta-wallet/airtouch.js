@@ -84,7 +84,9 @@ const AIRTOUCH = (() => {
     if (!pellizcado && m.pinza < CIERRA) pellizcado = true;
     else if (pellizcado && m.pinza > ABRE) pellizcado = false;
     const { x, y } = suavizar(aPantalla(m).x, aPantalla(m).y, dtMs);
-    alPunto({ presente: true, x, y, pellizco: pellizcado });
+    /* la escala (el ancho de la palma) sale afuera: con ella la casa sabe si la
+       mano se acerca o se aleja, que es como se acerca y se aleja la galaxia */
+    alPunto({ presente: true, x, y, pellizco: pellizcado, escala: m.escala });
   }
 
   // ── el motor de verdad: cámara + modelo ───────────────────────────────────

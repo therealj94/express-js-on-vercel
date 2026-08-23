@@ -4922,12 +4922,24 @@ const VETA = (() => {
   /* El Inicio decide su cuerpo: Aetherion si puede, el cerebro si no. */
   function encenderInicio() {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return encenderCerebro(false);
+    /* LA IDENTIDAD VA PRIMERO. El motor arma el mapa de casas al EVALUARSE, no
+       al montarse: si el idioma y las marcas llegan después, los planetas
+       nacen mudos y en español aunque la persona esté en inglés. */
+    window.__AE_LANG = idiomaActivo();
+    window.__AE_APPS = MUNDOS.map((m) => ({
+      id: m.id, key: m.id, ico: m.ico || null,
+      /* PULSE2CHAT tiene su símbolo aparte del resto de logotipos: en el Núcleo
+         clásico la esfera va con el ícono de línea, pero un planeta con espacio
+         se merece la marca entera. */
+      logo: m.logo || (m.id === 'chat' ? 'assets/p2c-simbolo.png' : null),
+      zoom: m.zoom || (m.id === 'chat' ? 1.05 : 1),
+      grad: m.grad, halo: m.halo, lente: m.lente,
+    }));
     aetCargar().then(() => {
       const lienzo = $('#lienzo');
       if (vistaActual !== 'nucleo' || !lienzo) return;
       try {
         const nombre = (sesion?.nombre || '').split(' ')[0];
-        window.__AE_LANG = idiomaActivo();
         window.__AE_ABRIR = (k) => {
           const m = MUNDOS.find((x) => x.id === k);
           if (m && (m.fuera || m.paraFuera)) {
@@ -7186,23 +7198,48 @@ const VETA = (() => {
     cur.classList.toggle('pellizco', !!p.pellizco);
     if (!p.pellizco && !atAgarre) atMirar(atBajo(p.x, p.y)?.closest(AT_MIRABLES) || null, p);
     else atMirarLimpiar();
+    if (!p.pellizco) atZoomMano(p);
     if (p.pellizco && !atAgarre) {
       const el = atBajo(p.x, p.y);
       atAgarre = { el, sx: atRodante(el), x0: p.x, y0: p.y, xa: p.x, ya: p.y,
-                   movio: false, desde: performance.now() };
+                   movio: false, desde: performance.now(),
+                   enCielo: !!el?.closest('.ae-casa') };
       atEvento('pointerdown', p.x, p.y, el);
     } else if (p.pellizco && atAgarre) {
       const dx = p.x - atAgarre.xa, dy = p.y - atAgarre.ya;
       atAgarre.xa = p.x; atAgarre.ya = p.y;
       if (Math.hypot(p.x - atAgarre.x0, p.y - atAgarre.y0) > 12) atAgarre.movio = true;
       if (atAgarre.movio) {
-        // agarrar es LLEVARSE la vista: el contenido sigue a la mano
-        if (atAgarre.sx) { atAgarre.sx.scrollTop -= dy; atAgarre.sx.scrollLeft -= dx; }
-        else window.scrollBy(-dx, -dy);
-        atEvento('pointermove', p.x, p.y, atAgarre.el);
+        /* Sobre la galaxia, agarrar es GIRAR EL CIELO: el pellizco arrastrado
+           es el mismo timón que el dedo en la pantalla, y la página no se
+           mueve ni un pixel debajo. En el resto de la casa, agarrar sigue
+           siendo llevarse la vista. */
+        if (atAgarre.enCielo) atEvento('pointermove', p.x, p.y, atAgarre.el);
+        else if (atAgarre.sx) { atAgarre.sx.scrollTop -= dy; atAgarre.sx.scrollLeft -= dx; }
+        else { window.scrollBy(-dx, -dy); atEvento('pointermove', p.x, p.y, atAgarre.el); }
       }
     } else if (!p.pellizco && atAgarre) {
       atSoltar(p);
+    }
+  }
+
+  /* ACERCAR CON LA MANO. Sobre la galaxia, la mano ABIERTA que se acerca a la
+     cámara acerca el cielo, y la que se aleja lo aleja: es el gesto que
+     cualquiera hace sin que se lo expliquen. Se mide el ancho de la palma —el
+     mismo número que usa el motor para no depender de la distancia— y solo
+     cuenta si el cambio es DELIBERADO: una zona muerta del 6% deja pasar el
+     temblor de la mano quieta sin mover nada. */
+  let atPalma = null;
+  function atZoomMano(p) {
+    const mando = window.__AE_VISTA;
+    if (!mando || !p.presente || !p.escala || !document.getElementById('ae-casa')) { atPalma = null; return; }
+    if (!atBajo(p.x, p.y)?.closest('.ae-casa')) { atPalma = null; return; }
+    if (atPalma === null) { atPalma = p.escala; return; }
+    const razon = p.escala / atPalma;
+    if (razon > 1.06 || razon < 1 / 1.06) {
+      // palma más grande = mano más cerca = cielo más cerca
+      mando.zoom(Math.min(1.12, Math.max(0.89, 1 / razon)));
+      atPalma = p.escala;
     }
   }
 
