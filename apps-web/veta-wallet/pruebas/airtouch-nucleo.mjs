@@ -122,6 +122,26 @@ console.log('\n── el cursor, el toque y el agarre ────────�
   });
   ok('el agarre desplaza el contenido con la mano', scroll > 40, `${scroll}px`);
   ok('y un agarre con movimiento NO dispara un toque', await pag.evaluate(() => window._toques) === 1);
+
+  /* La mirada NO aplica a botones comunes: mirar fijo un botón de dinero no
+     puede apretarlo. Se apunta un botón cualquiera un buen rato y el contador
+     no se mueve. */
+  const miradaComun = await pag.evaluate(async () => {
+    const btn = document.createElement('button');
+    btn.id = 'at-comun';
+    btn.style.cssText = 'position:fixed;left:500px;top:500px;width:90px;height:40px;z-index:5';
+    btn.onclick = () => { window._toques++; };
+    document.body.appendChild(btn);
+    for (let i = 0; i < 12; i++) {
+      VETA._atPunto({ presente: true, x: 540 + (i % 2), y: 518, pellizco: false });
+      await new Promise(r => setTimeout(r, 110));
+    }
+    const t = window._toques;
+    btn.remove();
+    VETA._atPunto({ presente: false });
+    return t;
+  });
+  ok('mirar fijo un botón común NO lo aprieta', miradaComun === 1, `toques ${miradaComun}`);
 }
 
 console.log('\n── el Núcleo es galaxia ─────────────────────────────────────');
@@ -145,13 +165,34 @@ console.log('\n── el Núcleo es galaxia ────────────
      estrellas.max < 250 && estrellas.fuertes > 40 && estrellas.fuertes < estrellas.total * 0.02,
      `${estrellas.fuertes} px de estrella · alfa máx ${estrellas.max}`);
 
-  // el viaje al planeta: hay un tramo visible antes de aterrizar. Directo y
-  // no con page.click: las esferas FLOTAN siempre y para Playwright un botón
-  // que respira nunca es «estable».
-  await pag.evaluate(() => VETA.nuAbrir('wallet'));
-  await pag.waitForTimeout(140);
-  ok('al elegir un planeta, el viaje se ve (no es un corte)', await pag.evaluate(() =>
-    !!document.querySelector('.cerebro.cer-yendo .nu-mundo.nu-yendo')));
+  /* El viaje al planeta se dispara CON LA MIRADA de AIR TOUCH: apuntar la
+     esfera un rato la abre — con su pastilla de nombre y su anillo. Es la
+     prueba del dwell entero, de la mano al aterrizaje. */
+  const mirada = await pag.evaluate(async () => {
+    const el = document.querySelector('.nu-mundo[data-mundo="wallet"]');
+    const b = el.getBoundingClientRect();
+    const x = b.left + b.width / 2, y = b.top + b.height / 2;
+    VETA._atPunto({ presente: true, x, y, pellizco: false });
+    await new Promise(r => setTimeout(r, 250));
+    const res = {
+      crece: el.classList.contains('at-mira'),
+      pastilla: !document.getElementById('at-nombre').classList.contains('oculto'),
+      nombre: document.getElementById('at-nombre').textContent,
+    };
+    // el tramo del viaje se caza DESDE el bucle: cuando la mirada dispara,
+    // .cer-yendo vive 420ms y esperar afuera llega tarde
+    res.viajeVisto = false;
+    for (let i = 0; i < 14; i++) {
+      VETA._atPunto({ presente: true, x: x + (i % 2), y, pellizco: false });
+      await new Promise(r => setTimeout(r, 110));
+      if (document.querySelector('.cerebro.cer-yendo .nu-mundo.nu-yendo')) res.viajeVisto = true;
+    }
+    return res;
+  });
+  ok('apuntar un planeta lo agranda', mirada.crece);
+  ok('y la pastilla dice a dónde se va', mirada.pastilla && /Veta Wallet/i.test(mirada.nombre),
+     mirada.nombre.trim());
+  ok('al elegir un planeta, el viaje se ve (no es un corte)', mirada.viajeVisto);
   await pag.waitForTimeout(700);
   ok('y se aterriza en su app', await pag.evaluate(() => VETA.dondeEstoy() === 'billetera'));
   ok('al salir del Núcleo el cielo se apaga', await pag.evaluate(() => !GALAXIA.viva()));

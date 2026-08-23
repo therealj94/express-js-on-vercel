@@ -126,6 +126,37 @@ const TONO = (() => {
     else { pitido(400, 0.13, t, 0.14); pitido(300, 0.18, t + 0.14, 0.14); }
   }
 
+  /**
+   * El zarpe: un barrido de aire, cortito y grave, para los viajes de la
+   * galaxia — abrir un planeta (sube) y volver a Inicio (baja). Es ruido
+   * blanco pasado por un filtro que barre la frecuencia, la receta clásica
+   * del «whoosh», a un volumen que acompaña sin protagonizar. Siempre corre
+   * detrás de un gesto, así que el navegador lo deja sonar.
+   */
+  function zarpe(subiendo = true) {
+    const c = contexto();
+    if (!c) return;
+    const t = c.currentTime;
+    const dura = 0.55;
+    const n = Math.floor(c.sampleRate * dura);
+    const buf = c.createBuffer(1, n, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    const filtro = c.createBiquadFilter();
+    filtro.type = 'bandpass';
+    filtro.Q.value = 1.1;
+    filtro.frequency.setValueAtTime(subiendo ? 220 : 1400, t);
+    filtro.frequency.exponentialRampToValueAtTime(subiendo ? 1400 : 200, t + dura * 0.85);
+    const vol = c.createGain();
+    vol.gain.setValueAtTime(0.0001, t);
+    vol.gain.exponentialRampToValueAtTime(0.09, t + 0.06);
+    vol.gain.exponentialRampToValueAtTime(0.0001, t + dura);
+    src.connect(filtro).connect(vol).connect(c.destination);
+    src.start(t);
+  }
+
   /* Se despierta el audio con el primer toque de la persona en la página.
      Sin esto, el navegador bloquea el primer timbre y quien recibe una
      llamada no oye nada — el caso que mas importa. */
@@ -140,7 +171,7 @@ const TONO = (() => {
     }
   }
 
-  return { sonar, parar, golpe, despertar, sonando: () => sonando };
+  return { sonar, parar, golpe, zarpe, despertar, sonando: () => sonando };
 })();
 
 if (typeof window !== 'undefined') window.TONO = TONO;

@@ -26,6 +26,11 @@ const GALAXIA = (() => {
   'use strict';
 
   const QUIETO = matchMedia('(prefers-reduced-motion: reduce)');
+  /* El teléfono se trata distinto A PROPÓSITO: menos píxeles (dpr 1.25),
+     menos estrellas y 30 cuadros por segundo. En una GPU de bolsillo el cielo
+     a 60fps con blur encima es exactamente el «se traba» del login; a 30fps
+     un cielo que deriva despacio se ve igual y cuesta la mitad. */
+  const BOLSILLO = matchMedia('(pointer: coarse)').matches;
 
   let lienzo = null, ctx = null;
   let ancho = 0, alto = 0, dpr = 1;
@@ -66,7 +71,7 @@ const GALAXIA = (() => {
 
   function sembrar() {
     const az = alAzar(5550);   // la cadena de la casa, de semilla
-    const cuantas = Math.min(420, Math.round((ancho * alto) / 6200));
+    const cuantas = Math.min(420, Math.round((ancho * alto) / (BOLSILLO ? 11000 : 6200)));
     estrellas = [];
     for (let i = 0; i < cuantas; i++) {
       const capa = i % 3;                       // 0 lejos · 1 media · 2 cerca
@@ -246,13 +251,28 @@ const GALAXIA = (() => {
        instante — el cielo entero dice «vamos hacia allá» sin mover la
        constelación, que es del DOM y tiene su propio gesto. */
     if (empujon) {
-      const p = Math.min(1, (ahora - empujon.desde) / empujon.dura);
+      /* Doble clampa: el reloj del RAF marca el INICIO del cuadro y puede
+         venir por detrás del performance.now() que fechó el empujón — un p
+         negativo pintaba un color con alfa «-9» y tumbaba el canvas. */
+      const p = Math.min(1, Math.max(0, (ahora - empujon.desde) / empujon.dura));
       const fuerza = Math.sin(p * Math.PI) * 3.2;
       for (const e of estrellas) {
         const dx = e.x - empujon.x, dy = e.y - empujon.y;
         const d = Math.hypot(dx, dy) || 1;
         e.x += (dx / d) * fuerza * dt;
         e.y += (dy / d) * fuerza * dt;
+      }
+      /* Y el destello del planeta elegido: un aliento de SU color que crece
+         y se apaga con el viaje — la apertura tiene firma, no es un fundido
+         genérico. */
+      if (empujon.tinte) {
+        const alfa = Math.sin(p * Math.PI) * 0.34;
+        const radio = 90 + p * Math.max(ancho, alto) * 0.5;
+        const g3 = ctx.createRadialGradient(empujon.x, empujon.y, 0, empujon.x, empujon.y, radio);
+        g3.addColorStop(0, empujon.tinte + Math.round(alfa * 255).toString(16).padStart(2, '0'));
+        g3.addColorStop(1, empujon.tinte + '00');
+        ctx.fillStyle = g3;
+        ctx.fillRect(0, 0, ancho, alto);
       }
       if (p >= 1) empujon = null;
     }
@@ -286,6 +306,11 @@ const GALAXIA = (() => {
       rafId = requestAnimationFrame(bucle);
       return;
     }
+    // en el teléfono, un cuadro sí y uno no; el salto corre entero siempre
+    if (BOLSILLO && !salto && ahora - previo < 30) {
+      rafId = requestAnimationFrame(bucle);
+      return;
+    }
     cuadro(ahora);
     rafId = requestAnimationFrame(bucle);
   }
@@ -298,7 +323,7 @@ const GALAXIA = (() => {
        quieto a mitad del túnel lo colapsa a la vista. El resize queda
        anotado y se atiende al aterrizar. */
     if (salto) { medirLuego = true; return; }
-    dpr = Math.min(2, window.devicePixelRatio || 1);
+    dpr = Math.min(BOLSILLO ? 1.25 : 2, window.devicePixelRatio || 1);
     ancho = lienzo.clientWidth;
     alto = lienzo.clientHeight;
     lienzo.width = Math.round(ancho * dpr);
@@ -385,9 +410,11 @@ const GALAXIA = (() => {
 
   /** El cielo acompaña el viaje hacia un planeta: las estrellas se apartan
       del punto (px,py en píxeles de pantalla) durante `dura` ms. */
-  function empujarHacia(px, py, dura = 520) {
+  function empujarHacia(px, py, dura = 520, tinte = null) {
     if (!ctx || QUIETO.matches) return;
-    empujon = { x: px, y: py, desde: performance.now(), dura };
+    // el tinte llega como #rrggbb; cualquier otra forma se ignora sin drama
+    if (tinte && !/^#[0-9a-fA-F]{6}$/.test(tinte)) tinte = null;
+    empujon = { x: px, y: py, desde: performance.now(), dura, tinte };
   }
 
   return { montar, apagar, saltar, viva, empujarHacia };

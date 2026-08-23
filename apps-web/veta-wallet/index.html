@@ -168,7 +168,31 @@ body:has(#app:not(.oculto)) .veta-svg{display:none}
 .at-paso p{font-size:14px;color:var(--crema);line-height:1.5}
 .at-privado{margin-top:16px;font-size:12.5px;color:var(--humo);line-height:1.55}
 .at-botones{display:flex;gap:10px;margin-top:18px}
-@media (prefers-reduced-motion:reduce){#at-cursor.toco i{animation:none}}
+/* la mirada: el planeta apuntado crece, la pastilla dice a dónde se va */
+.nu-mundo.at-mira{scale:1.1;transition:scale .28s ease}
+.nav.at-mira{outline:2px solid rgba(234,215,156,.6);outline-offset:2px}
+#at-nombre{position:fixed;bottom:104px;left:50%;transform:translateX(-50%);z-index:205;
+  display:flex;align-items:baseline;gap:10px;padding:10px 22px;border-radius:100px;
+  background:rgba(4,10,26,.78);backdrop-filter:blur(10px);border:1px solid var(--linea2);
+  pointer-events:none;animation:fadeArriba .25s ease}
+#at-nombre b{font:700 15px/1 var(--serif);color:var(--crema);letter-spacing:.05em}
+#at-nombre small{font:500 11px/1 var(--mono);color:var(--humo);letter-spacing:.1em;text-transform:uppercase}
+#at-cinta{position:fixed;bottom:64px;left:50%;transform:translateX(-50%);z-index:205;
+  padding:9px 18px;border-radius:100px;background:rgba(4,10,26,.66);backdrop-filter:blur(8px);
+  border:1px solid var(--linea2);font:500 11.5px/1.4 var(--mono);color:var(--bruma);
+  letter-spacing:.04em;pointer-events:none;white-space:nowrap;max-width:94vw;overflow:hidden;
+  text-overflow:ellipsis;animation:fadeArriba .3s ease}
+@keyframes fadeArriba{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+/* el vidrio del login pesa menos en el teléfono: el desenfoque grande era
+   parte del «se traba» */
+@media (max-width:900px){
+  #acceso .vidrio,#reclave .vidrio{backdrop-filter:blur(8px)}
+}
+@media (prefers-reduced-motion:reduce){
+  #at-cursor.toco i{animation:none}
+  #at-nombre,#at-cinta{animation:none}
+  .nu-mundo.at-mira{transition:none}
+}
 #app:not(.oculto) ~ #galaxia,
 body:has(#app:not(.oculto)) #galaxia{display:none}
 
@@ -3595,6 +3619,8 @@ body.en-ventana .lienzo::before{
   </svg>
 </button>
 <div id="at-cursor" class="oculto" aria-hidden="true"><i></i></div>
+<div id="at-nombre" class="oculto" aria-hidden="true"></div>
+<div id="at-cinta" class="oculto" aria-hidden="true"></div>
 <div id="at-tuto" class="oculto" role="dialog" aria-modal="true" aria-label="AIR TOUCH">
   <div class="at-hoja vidrio">
     <h3>AIR TOUCH</h3>

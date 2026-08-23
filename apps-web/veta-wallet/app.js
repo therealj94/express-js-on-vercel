@@ -1931,6 +1931,7 @@ const VETA = (() => {
     // Salir de «enviar» cancela la intencion de publicar comprobante: la marca
     // no puede quedar esperando dias a un envio que ya es otro.
     if (vistaActual === 'enviar' && cual !== 'enviar') avisarChat = null;
+    const veniaDe = vistaActual;
     vistaActual = cual;
     if (cual === 'token' && dato) tokenAbierto = dato;
     const encendida = PESTANAS.includes(cual) ? cual : DENTRO_DE[cual];
@@ -2005,7 +2006,11 @@ const VETA = (() => {
        la bienvenida se quedaba congelado a media frase. Cuando la bienvenida
        se va, ella misma enciende el del Nucleo. */
     if (!$('#aura-bienvenida').classList.contains('oculto')) return;
-    if (cual === 'nucleo') encenderCerebro(false);
+    if (cual === 'nucleo') {
+      // volver a Inicio baja el tono: el mismo aire del viaje, de regreso
+      if (veniaDe && veniaDe !== 'nucleo') { try { TONO.zarpe(false); } catch { /* nada */ } }
+      encenderCerebro(false);
+    }
     else { AURA.pararRed(); tourApagar(); }
     window.scrollTo(0, 0);
   }
@@ -4888,10 +4893,13 @@ const VETA = (() => {
     const el = document.querySelector(`.nu-mundo[data-mundo="${id}"]`);
     const caja = el?.closest('.cerebro');
     if (!el || !caja || matchMedia('(prefers-reduced-motion:reduce)').matches) return abrir();
-    /* El cielo acompaña: las estrellas se apartan del planeta elegido — el
-       ojo lee «viajamos hacia allá» aunque la constelación no se mueva. */
+    /* El cielo acompaña: las estrellas se apartan del planeta elegido, el
+       destello lleva SU color y el aire hace el zarpe — la apertura tiene
+       firma propia, no es un fundido genérico. */
     const r = el.getBoundingClientRect();
-    window.GALAXIA?.empujarHacia(r.left + r.width / 2, r.top + r.height / 2, 460);
+    const tinte = MUNDOS.find(x => x.id === id)?.halo || null;
+    window.GALAXIA?.empujarHacia(r.left + r.width / 2, r.top + r.height / 2, 460, tinte);
+    try { TONO.zarpe(true); } catch { /* sin audio se viaja igual */ }
     caja.classList.add('cer-yendo');
     el.classList.add('nu-yendo');
     setTimeout(abrir, 420);
@@ -6962,12 +6970,63 @@ const VETA = (() => {
    * puede cumplirse (hay cámara y WebAssembly): un botón que no puede hacer
    * nada enseña a no tocar botones. */
   let atAgarre = null;    // { el, sx, x0, y0, movio, desde }
+  /* La MIRADA: apuntar un rato abre, con un anillo que se va llenando. SOLO
+     sobre los planetas del Inicio y las pestañas de navegación — nunca sobre
+     un botón de dinero: mirar fijo «Enviar» no puede mover un centavo. El
+     pellizco sigue siendo el toque universal. */
+  const AT_MIRA_MS = 900;
+  const AT_MIRABLES = '.nu-mundo, .nav';
+  let atMira = null;      // { el, desde, hecho }
+
+  function atMirarLimpiar() {
+    atMira?.el?.classList.remove('at-mira');
+    atMira = null;
+    const aro = $('#at-cursor i');
+    if (aro) aro.style.background = '';
+    $('#at-nombre')?.classList.add('oculto');
+  }
+
+  function atMirar(objetivo, p) {
+    if (objetivo !== atMira?.el) {
+      atMirarLimpiar();
+      if (!objetivo) return;
+      objetivo.classList.add('at-mira');
+      atMira = { el: objetivo, desde: performance.now(), hecho: false };
+      const rotulo = objetivo.querySelector('.nu-nombre')?.textContent
+        || objetivo.getAttribute('aria-label') || objetivo.textContent.trim();
+      const past = $('#at-nombre');
+      if (past && rotulo) {
+        past.innerHTML = `<b>${esc(rotulo)}</b><small>${t('at.manten')}</small>`;
+        past.classList.remove('oculto');
+      }
+      return;
+    }
+    if (!atMira || atMira.hecho) return;
+    const pr = (performance.now() - atMira.desde) / AT_MIRA_MS;
+    const aro = $('#at-cursor i');
+    if (aro) aro.style.background =
+      `conic-gradient(rgba(234,215,156,.95) ${Math.min(360, pr * 360)}deg, rgba(201,169,97,.14) 0deg)`;
+    if (pr >= 1) {
+      atMira.hecho = true;
+      const el = atMira.el;
+      $('#at-cursor')?.classList.add('toco');
+      setTimeout(() => $('#at-cursor')?.classList.remove('toco'), 320);
+      try {
+        el.dispatchEvent(new MouseEvent('click', {
+          bubbles: true, cancelable: true, composed: true, clientX: p.x, clientY: p.y,
+        }));
+      } catch { /* nada */ }
+      atMirarLimpiar();
+    }
+  }
 
   function airToca() {
     if (window.AIRTOUCH?.activo()) {
       AIRTOUCH.apagar();
       $('#at-boton')?.classList.remove('encendido');
       $('#at-cursor')?.classList.add('oculto');
+      $('#at-cinta')?.classList.add('oculto');
+      atMirarLimpiar();
       atAgarre = null;
       return avisar(t('at.apagado'));
     }
@@ -6982,6 +7041,12 @@ const VETA = (() => {
     try {
       await AIRTOUCH.encender({ alCambiar: atPunto });
       $('#at-boton')?.classList.add('encendido');
+      const cinta = $('#at-cinta');
+      if (cinta) {
+        cinta.textContent = t('at.cinta');
+        cinta.classList.remove('oculto');
+        setTimeout(() => cinta.classList.add('oculto'), 6000);
+      }
       avisar(t('at.listo'));
       tele('accion', 'airtouch.encendido');
     } catch (e) {
@@ -7027,12 +7092,15 @@ const VETA = (() => {
     if (!cur) return;
     if (!p.presente) {
       cur.classList.add('oculto');
+      atMirarLimpiar();
       if (atAgarre) atSoltar(p);
       return;
     }
     cur.classList.remove('oculto');
     cur.style.transform = `translate(${p.x}px, ${p.y}px)`;
     cur.classList.toggle('pellizco', !!p.pellizco);
+    if (!p.pellizco && !atAgarre) atMirar(atBajo(p.x, p.y)?.closest(AT_MIRABLES) || null, p);
+    else atMirarLimpiar();
     if (p.pellizco && !atAgarre) {
       const el = atBajo(p.x, p.y);
       atAgarre = { el, sx: atRodante(el), x0: p.x, y0: p.y, xa: p.x, ya: p.y,
