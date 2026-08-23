@@ -35,6 +35,11 @@ function reiniciar() {
 function montar(el: HTMLElement) {
   if (raiz) desmontar()
   reiniciar()
+  /* Nace como corresponda: suelto en el umbral, en formación dentro de la
+     casa. Sin esto, entrar directo al Inicio (una recarga con sesión) mostraba
+     el sistema desparramado sin motivo. */
+  cancelAnimationFrame(acomodoRaf)
+  sim.acomodo = (window as any).__AE_PUERTA ? 1 : 0
   /* La casa ya dejó puestos el idioma y las marcas: se rearman los planetas
      con eso ANTES de dibujar nada. */
   refrescarCasas()
@@ -74,13 +79,38 @@ function entrar(tipo: 'descubrir' | 'directo', alListo?: () => void) {
   delete (window as any).__AE_PUERTA
   sim.auraBrillo = tipo === 'descubrir' ? 1 : 0.6
   rig.volar(dura)
+  /* EL ACOMODO DEL SISTEMA. Mientras la cámara vuela, los mundos viajan desde
+     su sitio disperso hasta su órbita: se ACOMODAN. Tarda un pelo más que el
+     vuelo a propósito —la cámara llega y las casas terminan de asentarse
+     delante— y con easing suave para que se lea como algo que se ordena, no
+     como algo que salta. */
+  acomodar(0, dura * 1.25)
   if (alListo) window.setTimeout(alListo, Math.round(dura * 0.8))
+}
+
+/* Lleva sim.acomodo hasta un destino en el tiempo pedido. Reloj de pared: en
+   un teléfono lento el acomodo tiene que durar lo que dice, no el doble. */
+let acomodoRaf = 0
+function acomodar(hasta: number, dura: number) {
+  cancelAnimationFrame(acomodoRaf)
+  const desde = sim.acomodo
+  const t0 = performance.now()
+  const paso = () => {
+    const p = Math.min(1, (performance.now() - t0) / dura)
+    const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2
+    sim.acomodo = desde + (hasta - desde) * e
+    if (p < 1) acomodoRaf = requestAnimationFrame(paso)
+  }
+  if (dura <= 0) { sim.acomodo = hasta; return }
+  acomodoRaf = requestAnimationFrame(paso)
 }
 
 /* De vuelta al umbral: salir de la sesión no corta la escena, la aleja. */
 function puerta() {
   ;(window as any).__AE_PUERTA = true
   rig.puerta()
+  // el sistema vuelve a soltarse, más despacio de lo que se acomodó
+  acomodar(1, 1600)
 }
 
 ;(window as any).AETHERION = { montar, desmontar, exhalar, entrar, puerta }

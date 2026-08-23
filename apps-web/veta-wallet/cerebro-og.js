@@ -167,6 +167,13 @@ const CEREBRO_OG = (() => {
                      v: 0.0016 + rnd() * 0.0032 });
     }
 
+    /* LA REGIÓN ELEGIDA. Tocar un tema no solo abre su hoja: ENCIENDE su
+       parte del cerebro y apaga el resto. Es la respuesta a «¿de dónde sale
+       esto?» sin una palabra: se ve exactamente qué trozo del ecosistema está
+       hablando. */
+    let elegido = null;
+    let luz = 0;               // cuánto se nota la diferencia, amortiguado
+
     // ── la cámara de mano ──────────────────────────────────────────────────
     /* zoom es el que se ve; gZoom es a donde va. Separados para que acercar
        sea un MOVIMIENTO y no un salto: es la diferencia entre un cerebro que
@@ -226,6 +233,12 @@ const CEREBRO_OG = (() => {
 
       for (let i = 0; i < puntos.length; i++) proy[i] = proyectar(puntos[i]);
 
+      luz += ((elegido ? 1 : 0) - luz) * 0.1;
+
+      /* Cuánto brilla un punto según a quién pertenece: lo elegido sube, lo
+         demás se retira. Sin nadie elegido, todos por igual. */
+      const peso = (t) => (luz < 0.02 ? 1 : t === elegido ? 1 + luz * 0.9 : 1 - luz * 0.72);
+
       // los hilos primero: son el tejido, van detrás de todo
       g.lineWidth = 0.7;
       for (const [i, j] of hilos) {
@@ -234,14 +247,14 @@ const CEREBRO_OG = (() => {
         /* El tejido tiene que LEERSE: es la forma del cerebro, no un fondo.
            Lo de adelante casi opaco, lo de atrás apenas insinuado — esa
            diferencia es toda la hondura. */
-        const alfa = 0.16 + 0.34 * (1 - Math.min(1, (prof + 130) / 260));
+        const alfa = (0.16 + 0.34 * (1 - Math.min(1, (prof + 130) / 260))) * peso(puntos[i].t);
         g.strokeStyle = puntos[i].t.tinte + Math.round(alfa * 255).toString(16).padStart(2, '0');
         g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
       }
       // los puntos del tejido
       for (let i = 0; i < puntos.length; i++) {
         const p = proy[i];
-        const alfa = 0.3 + 0.7 * (1 - Math.min(1, (p.z + 130) / 260));
+        const alfa = (0.3 + 0.7 * (1 - Math.min(1, (p.z + 130) / 260))) * peso(puntos[i].t);
         g.fillStyle = puntos[i].t.tinte + Math.round(alfa * 255).toString(16).padStart(2, '0');
         // el tejido responde al zoom: de cerca los puntos crecen y los hilos
         // se leen mejor, que es lo que hace que acercarse SIRVA para algo
@@ -271,9 +284,10 @@ const CEREBRO_OG = (() => {
          se toca no se separan nunca. */
       for (const t of temas) {
         const p = proyectar({ x: t.centro[0], y: t.centro[1], z: t.centro[2] });
-        const r = 26 * p.k * cam.zoom;
+        const late = t === elegido ? 1 + Math.sin(performance.now() / 420) * 0.09 : 1;
+        const r = 26 * p.k * cam.zoom * (t === elegido ? 1.5 * late : 1);
         const halo = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-        halo.addColorStop(0, t.tinte + '55');
+        halo.addColorStop(0, t.tinte + (t === elegido ? '99' : '55'));
         halo.addColorStop(1, t.tinte + '00');
         g.fillStyle = halo;
         g.beginPath(); g.arc(p.x, p.y, r, 0, Math.PI * 2); g.fill();
@@ -285,6 +299,7 @@ const CEREBRO_OG = (() => {
           const cerca = Math.min(1, Math.max(0, (p.z + 130) / 260));
           t.el.style.setProperty('--k', (0.72 + 0.42 * (1 - cerca)).toFixed(3));
           t.el.style.setProperty('--z', (1 - cerca).toFixed(3));
+          t.el.classList.toggle('gc-elegido', t === elegido);
           t.el.style.zIndex = String(4 + Math.round((1 - cerca) * 8));
         }
       }
@@ -377,6 +392,9 @@ const CEREBRO_OG = (() => {
       alejar() { motor.zoom(1 / 0.82); },
       centrar() { cam.gGiro = 0.5; cam.gAlto = -0.16; cam.gZoom = 1; },
       recentrar() { motor.centrar(); },
+      /* Encender una región (o apagar todas con null). */
+      elegir(id) { elegido = temas.find((t) => t.id === id) || null; },
+      elegida: () => elegido?.id || null,
       estado: () => ({ zoom: cam.gZoom }),
     };
     if (opciones.alMontar) opciones.alMontar(motor);

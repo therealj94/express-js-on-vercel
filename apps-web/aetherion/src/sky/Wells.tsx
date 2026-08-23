@@ -216,6 +216,7 @@ export const wellRegistry = new Map<string, WellHandle>()
 
 const tmpV = new THREE.Vector3()
 const tmpP = new THREE.Vector3()
+const tmpA = new THREE.Vector3()
 
 function makeAtmoMaterial(color: string, density: number) {
   return new THREE.ShaderMaterial({
@@ -266,6 +267,19 @@ function WellView({ def }: { def: WellDef }) {
   const hitGeo = useMemo(() => new THREE.SphereGeometry(R * 1.5, 12, 12), [R])
   const seed = useMemo(() => (def.key.charCodeAt(0) % 10) + def.key.length * 0.7, [def.key])
 
+  /* DÓNDE ESTÁ ESTA CASA CUANDO EL SISTEMA ESTÁ SUELTO. Un sitio propio, muy
+     por fuera del anillo y con su altura: desde el umbral se ve un puñado de
+     mundos a la deriva, no una formación. La posición es fija por casa (sale
+     de su nombre), así que la galaxia del login es siempre la misma. */
+  const disperso = useMemo(() => {
+    let s = 0
+    for (const ch of def.key) s = (s * 31 + ch.charCodeAt(0)) >>> 0
+    const az = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296 }
+    const a = az() * Math.PI * 2
+    const r = RADIO_ANILLO * (1.9 + az() * 1.4)
+    return new THREE.Vector3(Math.cos(a) * r, (az() - 0.5) * RADIO_ANILLO * 1.9, Math.sin(a) * r)
+  }, [def.key])
+
   useEffect(() => {
     wellRegistry.set(def.key, {
       def,
@@ -287,11 +301,21 @@ function WellView({ def }: { def: WellDef }) {
     const dist = tmpV.length()
     const falloff = Math.max(0, 1 - dist / 14)
     tmpV.normalize().multiplyScalar(0.3 * falloff)
+    /* EL ACOMODO. Con el sistema suelto (acomodo = 1) la casa está en su sitio
+       disperso; al entrar, el número baja a cero y cada mundo VIAJA hasta su
+       órbita. No es una animación aparte: es la misma posición de siempre,
+       mezclada. Por eso se acomodan mientras la cámara se acerca, en un solo
+       movimiento. */
+    const q = sim.acomodo
+    const base = q > 0.001 ? tmpA.copy(def.anchor).lerp(disperso, q) : def.anchor
     g.position.set(
-      def.anchor.x + tmpV.x,
-      def.anchor.y + bob + tmpV.y * 0.5,
-      def.anchor.z + tmpV.z
+      base.x + tmpV.x,
+      base.y + bob + tmpV.y * 0.5,
+      base.z + tmpV.z
     )
+    /* Y giran sobre sí mismos mientras se acomodan: un mundo que llega a su
+       sitio dando vueltas se lee como algo que ATERRIZA, no que se teletransporta. */
+    if (spin.current && q > 0.001) spin.current.rotation.y += dt * q * 1.6
 
     if (spin.current) spin.current.rotation.y += dt * rasgos.giro
     /* Las nubes van más rápido que el suelo: esa diferencia es lo que el ojo

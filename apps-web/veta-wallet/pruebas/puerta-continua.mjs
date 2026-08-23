@@ -145,13 +145,13 @@ console.log('\n── GENESIS CORE: la memoria viva ─────────�
     };
   });
   ok('el planeta GENESIS CORE lleva a su vista', est.vista === 'genesis');
-  ok('con sus ocho ganglios de saber', est.temas === 8, `${est.temas}`);
+  ok('con sus catorce ganglios de saber', est.temas === 14, `${est.temas}`);
   /* EL CEREBRO DE VERDAD: el volumen con lóbulos, fisura y cerebelo que se
      proyecta en la sala de Genesis ID. Los ganglios NO llevan posición en el
      HTML: se la pone el motor sobre su punto del volumen, en cada cuadro. Si
      esto falla, lo que hay es una constelación otra vez, no un cerebro. */
-  ok('el cerebro está vivo y coloca sus ganglios', est.vivo && est.colocados === 8,
-     `${est.colocados}/8 colocados`);
+  ok('el cerebro está vivo y coloca sus ganglios', est.vivo && est.colocados === 14,
+     `${est.colocados}/14 colocados`);
   ok('con el cielo interior detrás', est.cielo);
   ok('y el 3D se apagó del todo: una escena a la vez', est.aeMuerto);
 
@@ -206,12 +206,17 @@ console.log('\n── GENESIS CORE: la memoria viva ─────────�
   const hoja = await p.evaluate(() => ({
     abierta: !!document.getElementById('gc-hoja'),
     txt: document.querySelector('.gc-carta p')?.textContent || '',
+    region: window.CEREBRO_OG?.mando()?.elegida(),
   }));
   ok('tocar un tema abre su hoja', hoja.abierta);
+  /* Y ENCIENDE SU REGIÓN: es la respuesta visual a «¿de dónde sale esto?».
+     El resto del tejido se retira mientras ese trozo habla. */
+  ok('y enciende su región del cerebro', hoja.region === 'origen', String(hoja.region));
   ok('con la palabra exacta de la casa: «sigue el precio», jamás «respaldado»',
      /sigue el precio/.test(hoja.txt) && !/respaldad/i.test(hoja.txt), hoja.txt.slice(0, 44));
   await p.evaluate(() => VETA.gcCerrar());
-  ok('y se cierra limpia', await p.evaluate(() => !document.getElementById('gc-hoja')));
+  ok('y se cierra limpia', await p.evaluate(() =>
+    !document.getElementById('gc-hoja') && !window.CEREBRO_OG?.mando()?.elegida()));
 }
 
 console.log('\n── salir aleja, no corta ────────────────────────────────────');

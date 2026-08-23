@@ -70,7 +70,10 @@ class Rig {
   puerta() {
     this.vuelo = null
     this.deriva = true
-    const lejos = clamp(this.panorama * 1.85, 30, 88)
+    /* El umbral tiene que quedar POR FUERA de la nube dispersa: con el sistema
+       suelto, los mundos ocupan mucho más que el anillo y algunos caían encima
+       de la cámara, gigantes y cortados por el borde. */
+    const lejos = clamp(Math.max(this.panorama * 2.4, RADIO_ANILLO * 5.4), 44, 96)
     this.radius = this.tRadius = lejos
     this.tPhi = this.phi = Math.min(1.2, this.reposoPhi + 0.16)
     this.lejos = Math.max(this.lejos, lejos)

@@ -4866,6 +4866,15 @@ const VETA = (() => {
     { id: 'gid',    centro: [0, -30, -92],  tinte: '#7FD8C4' },
     { id: 'p2c',    centro: [-56, 26, -46], tinte: '#E0937A' },
     { id: 'aura',   centro: [0, 62, -40],   tinte: '#8FE6CE' },
+    /* Las casas que faltaban y lo que la gente pregunta de verdad: dónde se
+       mira la cadena, dónde se cobra, dónde se cambia, la banca, la tarjeta y
+       —lo más importante de todo— de quién es la llave. */
+    { id: 'scan',   centro: [-26, -60, 72],  tinte: '#74E6C8' },
+    { id: 'pay',    centro: [40, -52, 52],   tinte: '#5FC6EA' },
+    { id: 'oxch',   centro: [72, 6, -22],    tinte: '#A99CDE' },
+    { id: 'aucorp', centro: [-72, 6, -22],   tinte: '#CBBB8C' },
+    { id: 'tarjeta',centro: [30, 40, 4],     tinte: '#EAD79C' },
+    { id: 'llave',  centro: [-30, 40, 4],    tinte: '#E8C56A' },
   ];
 
   const GC_ICO = {
@@ -4877,6 +4886,12 @@ const VETA = (() => {
     gid: '<path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/>',
     p2c: '<path d="M3.5 6.6h12.2v8.2H8.1L4.4 18v-3.2H3.5z"/><path d="M18.6 9.4h1.9v8.2h-.9V20l-3-2.4H12"/>',
     aura: '<circle cx="12" cy="12" r="3.4"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/>',
+    scan: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7 9h10M7 13h6M7 17h8"/>',
+    pay: '<path d="M4 9h16l-1.2 11.2H5.2z"/><path d="M8.4 9V6.6a3.6 3.6 0 0 1 7.2 0V9"/>',
+    oxch: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
+    aucorp: '<rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20M6 15h4"/>',
+    tarjeta: '<rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20M6 15h5"/><circle cx="17" cy="15" r="1.6"/>',
+    llave: '<circle cx="8" cy="12" r="3.4"/><path d="M11.4 12H21M18 12v3.4M15 12v2.4"/>',
   };
 
   const GC_COLOR = {
@@ -4888,6 +4903,12 @@ const VETA = (() => {
     gid:    { grad: ['#D6EBE2', '#63A493', '#123B39'], lente: '#062123' },
     p2c:    { grad: ['#FBE0D4', '#E0937A', '#8A4A38'], lente: '#20100A' },
     aura:   { grad: ['#E6F2EE', '#7ED8C4', '#123B39'], lente: '#04211C' },
+    scan:   { grad: ['#D6F3EC', '#74E6C8', '#1B5A50'], lente: '#07211D' },
+    pay:    { grad: ['#D8F7FF', '#5FC6EA', '#453398'], lente: '#0A0812' },
+    oxch:   { grad: ['#DCD4F2', '#8D7EC9', '#372B63'], lente: '#0D0A1D' },
+    aucorp: { grad: ['#E8E0C8', '#A5936A', '#463B24'], lente: '#141007' },
+    tarjeta:{ grad: ['#F8EFCF', '#DFC078', '#96793F'], lente: '#05201B' },
+    llave:  { grad: ['#F6E7B8', '#C9A961', '#5B4A22'], lente: '#120E05' },
   };
 
   function genesis() {
@@ -4970,6 +4991,10 @@ const VETA = (() => {
   function gcAbrir(id) {
     if (AURA.jalando()) return;
     if (!GC_TEMAS.some(m => m.id === id)) return;
+    /* El cerebro enciende la región de este tema mientras se lee: se ve de
+       dónde sale lo que se está contando. */
+    try { window.CEREBRO_OG?.mando()?.elegir(id); } catch { /* nada */ }
+    try { TONO.clic(); } catch { /* nada */ }
     $('#gc-hoja')?.remove();
     const caja = document.createElement('div');
     caja.className = 'gc-hoja'; caja.id = 'gc-hoja';
@@ -4983,7 +5008,10 @@ const VETA = (() => {
     caja.addEventListener('click', (e) => { if (e.target === caja) gcCerrar(); });
     document.body.appendChild(caja);
   }
-  function gcCerrar() { $('#gc-hoja')?.remove(); }
+  function gcCerrar() {
+    $('#gc-hoja')?.remove();
+    try { window.CEREBRO_OG?.mando()?.elegir(null); } catch { /* nada */ }
+  }
 
   function encenderCerebro(despertar) {
     const c = $('#red-nucleo');
@@ -5101,7 +5129,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = '63ec2230dd';
+  const AET_V = '1694a14b87';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;

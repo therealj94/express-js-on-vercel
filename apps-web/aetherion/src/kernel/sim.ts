@@ -12,6 +12,11 @@ export const sim = {
   intro: 0,
   /* la bienvenida de AURA: sube a 1 al entrar alguien y decae sola */
   auraBrillo: 0,
+  /* EL ACOMODO. 1 = el sistema disperso, como se ve desde el umbral: los
+     mundos sueltos, lejos, cada uno por su lado. 0 = cada casa en su órbita.
+     Entrar es exactamente el viaje de 1 a 0, y por eso los planetas se
+     ACOMODAN mientras la cámara se acerca. */
+  acomodo: 1,
   timeScale: 1,
   timeScaleT: 1,
   desat: 0,
