@@ -2131,18 +2131,32 @@ body.en-p2c .cha-puerta p{color:var(--p2c-bruma)}
 .grf-rangos button:focus-visible{outline:2px solid var(--oro);outline-offset:2px}
 #grf-lienzo{height:232px}
 @media(max-width:560px){#grf-lienzo{height:196px}}
-.grf{position:relative;height:100%;}
-.grf canvas{display:block;cursor:crosshair;border-radius:8px}
+#grf-lienzo{position:relative}
+.vls-lienzo{display:block;width:100%;height:100%;border-radius:8px;outline:none}
+.vls-lienzo:focus-visible{outline:2px solid var(--oro);outline-offset:2px}
+.grf-amp{margin-left:2px;width:28px;height:28px;border-radius:8px;border:1px solid var(--linea2);
+  background:transparent;color:var(--bruma);cursor:pointer;display:grid;place-items:center}
+.grf-amp svg{width:15px;height:15px}
+.grf-amp:hover{border-color:var(--oro);color:var(--oroLt)}
+/* LA VISTA AMPLIADA: la grafica a pantalla (casi) completa, encima de todo.
+   Fondo que oscurece, tarjeta de la casa, y el lienzo ocupando lo que haya. */
+.vls-capa{position:fixed;inset:0;z-index:90;background:rgba(2,15,16,.82);
+  display:flex;align-items:center;justify-content:center;padding:clamp(8px,2vw,28px);
+  animation:vlsEntra .18s ease-out}
+@keyframes vlsEntra{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.vls-capa{animation:none}}
+.vls-grande{width:min(1180px,100%);height:min(760px,100%);display:flex;flex-direction:column;
+  gap:10px;padding:16px clamp(12px,2vw,22px);border:1px solid var(--linea);
+  border-radius:var(--r2);background:var(--pozo)}
+.vls-grande .vls-titulo{font-family:var(--serif);font-size:20px;color:var(--oroLt)}
+.vls-cuerpo{position:relative;flex:1;min-height:0}
+.vls-cerrar{margin-left:auto;font-size:14px}
+.sin-scroll{overflow:hidden}
 .grf-ctl{position:absolute;right:6px;top:6px;display:flex;gap:4px}
 .grf-ctl button{width:28px;height:28px;border-radius:8px;border:1px solid var(--linea2);
   background:rgba(4,26,27,.72);color:var(--crema);font-size:15px;line-height:1;cursor:pointer}
 .grf-ctl button:hover{border-color:var(--oro)}
 .grf-ctl button:focus-visible{outline:2px solid var(--oro);outline-offset:2px}
-.grf-tip{position:absolute;pointer-events:none;padding:7px 10px;border-radius:9px;
-  background:rgba(4,26,27,.94);border:1px solid var(--linea2);
-  font-variant-numeric:tabular-nums;white-space:nowrap;z-index:3}
-.grf-tip b{display:block;font-size:13.5px;color:var(--oroLt)}
-.grf-tip span{font-size:11px;color:var(--humo)}
 .grf-espera{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:10px;color:var(--humo);font-size:13.5px;text-align:center;padding:0 14px}
 .grf-fuente{margin-top:8px;font-size:11.5px}
@@ -3468,7 +3482,7 @@ body.en-ventana .lienzo::before{
 <script src="tono.js"></script>
 <script src="llamada.js"></script>
 <script src="llamadaGrupo.js"></script>
-<script src="grafica.js"></script>
+<script src="velas.js"></script>
 <script src="cadena.js"></script>
 <script src="datos.js"></script>
 <script src="aura.js"></script>

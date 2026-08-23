@@ -1859,7 +1859,8 @@ const VETA = (() => {
     if (cual === 'tarjeta' && !tarjeta) cargarTarjeta().then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
     if (cual === 'remesas' && !tasas) cargarTasas().then(() => { if (vistaActual === 'remesas') vista('remesas'); });
     if (cual === 'chat') chatEntrar();
-    if (cual === 'token') montarGraficaToken();
+    if (cual === 'token') montarVelasToken();
+    else { velasApagar(); velasAmpliarCerrar(); }
     /* El directorio de MyTokenPay se pide al ENTRAR, no al arrancar la web:
        ciento veintisiete comercios con su logo no tienen por que viajar por la
        red de alguien que solo venia a mirar su saldo. */
@@ -2280,22 +2281,28 @@ const VETA = (() => {
           <svg viewBox="0 0 24 24" class="btn-ic">${ICO.recibir}</svg>${t('a.recibir')}</button>
       </div>
       ${CADENA.historiable(x.s) ? `
-      ${/* LA GRAFICA. Solo para las monedas con referencia de mercado: a las
-            declaradas por acta dibujarles una curva seria inventarla. La serie
-            sale de la MISMA fuente y la MISMA formula que el precio de arriba,
-            y el pie lo dice para que nadie la lea como cotizacion propia. */''}
+      ${/* LAS VELAS. El mismo motor que Ordenex (velas.js, copiado de alla) y
+            la misma fuente: la ruta /referencia del API de la casa de cambio,
+            que ya sirve la serie OHLC del metal con su rotulo de honestidad.
+            A las monedas declaradas por acta no se les dibuja curva. */''}
       <div class="grf-marco">
         <div class="grf-cab">
           <span class="et">${t('grf.t')}</span>
           <span id="grf-var" class="pastilla oculto"></span>
           <div class="grf-rangos" role="tablist" aria-label="${t('grf.t')}">
-            ${[[7,'7D'],[30,'1M'],[90,'3M'],[365,'1A']].map(([d,r]) =>
-              `<button role="tab" data-d="${d}" aria-selected="${d === grafDias}"
-                 onclick="VETA.grafRango(${d})">${r}</button>`).join('')}
+            ${[['30m','1D'],['4h','1M'],['4d','1A']].map(([m, r]) =>
+              `<button role="tab" data-m="${m}" aria-selected="${m === velasMarco}"
+                 onclick="VETA.velasCambiar(${jsTxt(m)})">${r}</button>`).join('')}
           </div>
+          <button class="grf-amp" onclick="VETA.velasAmpliar()" aria-label="${t('vls.ampliar')}"
+                  title="${t('vls.ampliar')}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+          </button>
         </div>
         <div id="grf-lienzo"><div class="grf-espera">${t('grf.carg')}</div></div>
-        <p class="pie grf-fuente">${t(x.s === 'AGKA' ? 'grf.fuentePlata' : 'grf.fuenteOro')}</p>
+        <p class="pie grf-fuente" id="grf-rotulo"></p>
       </div>` : ''}
       <p class="ficha-desc">${esc(f.d)}</p>
       <dl class="datos">
@@ -2306,79 +2313,171 @@ const VETA = (() => {
     </div>`;
   }
 
-  /* ── la grafica de la ficha ───────────────────────────────────────────────
-     El rango elegido sobrevive a cambiar de moneda a proposito: quien compara
-     ORIGEN con AUKA quiere compararlos EN EL MISMO rango, no volver a elegirlo.
-     `graf` es la instancia viva; se destruye antes de montar otra porque el
-     lienzo viejo se fue con el innerHTML y dejaria un ResizeObserver colgado. */
-  let grafDias = 30;
-  let graf = null;
+  /* ── las velas de la ficha ────────────────────────────────────────────────
+     El marco elegido sobrevive a cambiar de moneda, para poder compararlas en
+     el mismo encuadre. `velasVivas` es el apagador que devuelve enganchar():
+     hay que llamarlo al irse, o quedan sondeo y listeners colgados de un
+     canvas que ya no existe. `velasSerial` invalida las respuestas tardias:
+     la curva de una moneda no puede aparecer bajo el nombre de otra. */
+  let velasMarco = '4h';
+  let velasVivas = null;      // apagador de la ficha
+  let velasAmpliadas = null;  // apagador de la vista ampliada
+  let velasSerial = 0;
 
-  function grafRango(dias) {
-    grafDias = dias;
-    montarGraficaToken();
+  function velasApagar() {
+    try { velasVivas?.(); } catch {}
+    velasVivas = null;
   }
 
-  async function montarGraficaToken() {
-    const cont = $('#grf-lienzo');
-    if (!cont) return;
-    const sim = tokenAbierto || 'ORIGEN';
-    document.querySelectorAll('.grf-rangos [data-d]').forEach(b =>
-      b.setAttribute('aria-selected', String(Number(b.dataset.d) === grafDias)));
-    graf?.destruir(); graf = null;
-    $('#grf-var')?.classList.add('oculto');
-    cont.innerHTML = `<div class="grf-espera">${t('grf.carg')}</div>`;
+  function velasCambiar(marco) {
+    velasMarco = marco;
+    montarVelasToken();
+    // La ampliada, si esta abierta, cambia de marco junto con la chica:
+    // dos encuadres distintos de la misma moneda en pantalla seria un enredo.
+    if (velasAmpliadas) { velasAmpliarCerrar(); velasAmpliar(); }
+  }
 
-    const dias = grafDias;
-    const serie = await CADENA.historia(sim, dias);
-    /* La red tarda y la persona no espera: si mientras llegaba la serie se fue
-       a otra moneda, a otro rango o a otra pantalla, esta respuesta ya no es
-       de nadie y pintarla seria poner la curva de una moneda bajo el nombre de
-       otra. */
-    if (vistaActual !== 'token' || (tokenAbierto || 'ORIGEN') !== sim || grafDias !== dias) return;
+  /* Enganchar un lienzo de velas a una moneda. Devuelve el apagador. */
+  function velasEnganchar(canvas, sim, marco, alRotulo) {
+    const serial = ++velasSerial;
+    const apagar = VELAS.enganchar(canvas, async () => {
+      const r = await CADENA.velasDe(sim, marco);
+      if (serial !== velasSerial) return null;      // llego tarde: se descarta
+      if (!r) throw new Error('sin velas');
+      alRotulo?.(r);
+      return {
+        velas: r.velas,
+        opciones: {
+          unidad: 'USD',
+          referencia: true,
+          /* El ACTIVO, no un par: esta serie es el metal en dolares (o el
+             ORIGEN derivado), no una cotizacion de la billetera. */
+          par: sim,
+          marco,
+          rotulo: r.rotulo,
+          decimales: sim === 'ORIGEN' ? 4 : 2,
+          emas: [9, 21],
+          idioma: idiomaActivo(),
+        },
+      };
+    }, 30000);
+    return apagar;
+  }
+
+  async function montarVelasToken() {
+    const cont = $('#grf-lienzo');
+    if (!cont) { velasApagar(); return; }
+    const sim = tokenAbierto || 'ORIGEN';
+    document.querySelectorAll('.grf-rangos [data-m]').forEach(b =>
+      b.setAttribute('aria-selected', String(b.dataset.m === velasMarco)));
+    velasApagar();
+    $('#grf-var')?.classList.add('oculto');
+
+    /* El primer viaje se hace ANTES de montar el lienzo, porque enganchar()
+       se traga los errores a proposito (un refresco fallido no borra la
+       grafica que ya se ve) — pero en la PRIMERA carga eso dejaria un lienzo
+       negro mudo. Si no hay datos, aviso y reintentar; si los hay, quedan en
+       cache y el enganche arranca en caliente. */
+    cont.innerHTML = `<div class="grf-espera">${t('grf.carg')}</div>`;
+    const marco = velasMarco;
+    const primero = await CADENA.velasDe(sim, marco);
+    if (vistaActual !== 'token' || (tokenAbierto || 'ORIGEN') !== sim || velasMarco !== marco) return;
     const vivo = $('#grf-lienzo');
     if (!vivo) return;
-
-    if (!serie) {
-      /* Sin datos no hay curva, hay un aviso. La regla de la casa: antes un
-         hueco honesto que una grafica de ejemplo. */
+    if (!primero) {
       vivo.innerHTML = `<div class="grf-espera">${t('grf.err')}
-        <button class="btn btn-linea btn-sm" onclick="VETA.grafRango(${dias})">${t('grf.reint')}</button></div>`;
+        <button class="btn btn-linea btn-sm" onclick="VETA.velasCambiar(${jsTxt(marco)})">${t('grf.reint')}</button></div>`;
       return;
     }
+    const cont2 = vivo;
 
-    const loc = idiomaActivo() === 'en' ? 'en-US' : 'es-HN';
-    const fFecha = (ms, corta) => {
-      const d = new Date(ms);
-      if (corta) return d.toLocaleDateString(loc, { day: 'numeric', month: 'short' });
-      return dias >= 365
-        ? d.toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' })
-        : d.toLocaleDateString(loc, { day: 'numeric', month: 'short' }) + ' · ' +
-          d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
-    };
-    vivo.innerHTML = '';
-    graf = GRAFICA.montar(vivo, {
-      fmt: v => usd(v),
-      /* En la escala, los miles sin centavos: «$4,400.00» cuatro veces en una
-         columna es ruido; el centavo vive en el tooltip, que es donde se lee
-         un punto concreto. Las monedas de centavos si los conservan. */
-      fmtEje: v => v >= 100
-        ? new Intl.NumberFormat(loc, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v)
-        : usd(v),
-      fecha: fFecha,
-      txt: { mas: t('grf.mas'), menos: t('grf.menos'), todo: t('grf.todo') },
+    cont2.innerHTML = `<canvas class="vls-lienzo" aria-label="${t('grf.t')} ${esc(sim)}"></canvas>
+      <div class="grf-ctl">
+        <button type="button" data-g="menos" aria-label="${t('grf.menos')}">−</button>
+        <button type="button" data-g="mas" aria-label="${t('grf.mas')}">+</button>
+        <button type="button" data-g="todo" aria-label="${t('grf.todo')}">⟲</button>
+      </div>`;
+    const canvas = cont2.querySelector('canvas');
+
+    const apagar = velasEnganchar(canvas, sim, velasMarco, (r) => {
+      const rot = $('#grf-rotulo');
+      if (rot) rot.textContent = `${r.rotulo} ${t('vls.gestos')}`;
+      /* La variacion del rango visible: primer abre vs ultimo cierre de la
+         serie REAL. Con los colores de la casa. */
+      const pv = $('#grf-var');
+      if (pv && r.velas.length > 1) {
+        const abre = r.velas[0][1], cierra = r.velas[r.velas.length - 1][4];
+        if (abre > 0) {
+          const cambio = (cierra - abre) / abre * 100;
+          pv.textContent = `${cambio > 0 ? '+' : ''}${cambio.toFixed(2)}%`;
+          pv.classList.remove('oculto', 'baja-p', 'sube-p');
+          pv.classList.add(cambio < 0 ? 'baja-p' : 'sube-p');
+        }
+      }
     });
-    graf.poner(serie);
+    cont2.querySelector('[data-g="mas"]').addEventListener('click', () => apagar.acercar());
+    cont2.querySelector('[data-g="menos"]').addEventListener('click', () => apagar.alejar());
+    cont2.querySelector('[data-g="todo"]').addEventListener('click', () => apagar.verTodo());
+    velasVivas = apagar;
+  }
 
-    /* La variacion del rango, del primer punto real al ultimo. Con los mismos
-       colores que ya usa la casa para subir y bajar. */
-    const pv = $('#grf-var');
-    if (pv) {
-      const cambio = (serie[serie.length - 1][1] - serie[0][1]) / serie[0][1] * 100;
-      pv.textContent = `${cambio > 0 ? '+' : ''}${cambio.toFixed(2)}%`;
-      pv.classList.remove('oculto', 'baja-p', 'sube-p');
-      pv.classList.add(cambio < 0 ? 'baja-p' : 'sube-p');
-    }
+  /* ── la vista ampliada ────────────────────────────────────────────────────
+     Lo que pidio Jose: poder ver la grafica GRANDE. Es una capa a pantalla
+     completa con su propio lienzo y su propio enganche — no se mueve el
+     canvas chico, que al volver seguiria donde estaba. Se cierra con la X,
+     con Escape o tocando el fondo. */
+  function velasAmpliar() {
+    if (velasAmpliadas) return;
+    const sim = tokenAbierto || 'ORIGEN';
+    const capa = document.createElement('div');
+    capa.className = 'vls-capa';
+    capa.innerHTML = `
+      <div class="vls-grande" role="dialog" aria-label="${t('grf.t')} ${esc(sim)}">
+        <div class="grf-cab">
+          <b class="vls-titulo">${esc(sim)}</b>
+          <span class="et">${t('grf.t')}</span>
+          <div class="grf-rangos" role="tablist">
+            ${[['30m','1D'],['4h','1M'],['4d','1A']].map(([m, r]) =>
+              `<button role="tab" data-m="${m}" aria-selected="${m === velasMarco}">${r}</button>`).join('')}
+          </div>
+          <button class="grf-amp vls-cerrar" aria-label="${t('tok.volver')}">✕</button>
+        </div>
+        <div class="vls-cuerpo"><canvas class="vls-lienzo"></canvas>
+          <div class="grf-ctl">
+            <button type="button" data-g="menos" aria-label="${t('grf.menos')}">−</button>
+            <button type="button" data-g="mas" aria-label="${t('grf.mas')}">+</button>
+            <button type="button" data-g="todo" aria-label="${t('grf.todo')}">⟲</button>
+          </div>
+        </div>
+        <p class="pie grf-fuente vls-rotulo"></p>
+      </div>`;
+    document.body.appendChild(capa);
+    document.body.classList.add('sin-scroll');
+    const canvas = capa.querySelector('canvas');
+    const apagar = velasEnganchar(canvas, sim, velasMarco, (r) => {
+      capa.querySelector('.vls-rotulo').textContent = `${r.rotulo} ${t('vls.gestos')}`;
+    });
+    capa.querySelectorAll('.grf-rangos [data-m]').forEach(b =>
+      b.addEventListener('click', () => velasCambiar(b.dataset.m)));
+    capa.querySelector('[data-g="mas"]').addEventListener('click', () => apagar.acercar());
+    capa.querySelector('[data-g="menos"]').addEventListener('click', () => apagar.alejar());
+    capa.querySelector('[data-g="todo"]').addEventListener('click', () => apagar.verTodo());
+    const alEscape = e => { if (e.key === 'Escape') velasAmpliarCerrar(); };
+    capa.addEventListener('click', e => {
+      if (e.target === capa || e.target.closest('.vls-cerrar')) velasAmpliarCerrar();
+    });
+    document.addEventListener('keydown', alEscape);
+    velasAmpliadas = () => {
+      try { apagar(); } catch {}
+      document.removeEventListener('keydown', alEscape);
+      document.body.classList.remove('sin-scroll');
+      capa.remove();
+    };
+  }
+
+  function velasAmpliarCerrar() {
+    velasAmpliadas?.();
+    velasAmpliadas = null;
   }
 
   /* Activar los avisos del chat. La llave viene del relevo; los motivos de
@@ -10268,7 +10367,7 @@ const VETA = (() => {
   document.addEventListener('DOMContentLoaded', arrancar);
 
   return { ir, pestana, ojo, vista, mandar, copiar, compartir, salir, reintentar, avisar, idioma,
-           grafRango, chatAvisos,
+           velasCambiar, velasAmpliar, chatAvisos,
            reclavePedir, reclaveSalir, ojoReclave,
            llaveAbrir, llaveCerrar, llaveEntrar,
            llaveCuantas, llaveOjo, llaveModo,

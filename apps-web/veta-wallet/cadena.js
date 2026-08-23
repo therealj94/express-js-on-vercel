@@ -297,6 +297,49 @@ const CADENA = (() => {
    */
   const HISTORIABLES = { ORIGEN: 'pax-gold', AUKA: 'pax-gold', AGKA: 'kinesis-silver' };
 
+  /* ── las velas de referencia, de la misma casa ────────────────────────────
+   * Salen del API de Ordenex (GET /mercados/<par>/referencia), que ya guarda
+   * la serie OHLC del metal con su rotulo de honestidad puesto: «Referencia:
+   * onza de oro en el mercado real. No son tratos.» La billetera pinta LO
+   * MISMO que la casa de cambio, del mismo caño.
+   *
+   * ORIGEN no tiene entrada propia alla —es un derivado del oro— asi que aqui
+   * se piden las velas del oro y se pasa CADA valor (o, h, l, c) por la misma
+   * formula del precio vivo: onza / 31,1035 / 55. Ni un numero se inventa: es
+   * la misma serie con la unidad cambiada, y el rotulo lo dice.
+   *
+   * Marcos: 30m (un dia), 4h (un mes), 4d (un año) — los que sirve el API.
+   */
+  const VELAS_PAR = { AUKA: 'AUKA-ORIGEN', ORIGEN: 'AUKA-ORIGEN', AGKA: 'AGKA-ORIGEN' };
+  const VELAS_MARCOS = ['30m', '4h', '4d'];
+
+  async function velasDe(sim, marco) {
+    const par = VELAS_PAR[sim];
+    if (!par || !VELAS_MARCOS.includes(marco)) return null;
+    const clave = `veta.velas.${par}.${marco}`;
+    let d = null;
+    try {
+      const c = JSON.parse(sessionStorage.getItem(clave) || 'null');
+      if (c && Date.now() - c.en < 5 * 60e3) d = c.d;
+    } catch {}
+    if (!d) {
+      try {
+        const r = await fetch(`${ORDENEX_API}/mercados/${par}/referencia?marco=${marco}`);
+        if (!r.ok) return null;
+        d = await r.json();
+        if (!Array.isArray(d?.velas) || d.velas.length < 2) return null;
+        try { sessionStorage.setItem(clave, JSON.stringify({ en: Date.now(), d })); } catch {}
+      } catch { return null; }
+    }
+    if (sim !== 'ORIGEN') return { velas: d.velas, rotulo: d.rotulo || '', fuente: d.fuente || '' };
+    const f = v => (typeof v === 'number' ? v / OZ_GRAMOS / 55 : v);
+    return {
+      velas: d.velas.map(([t, o, h, l, c, vol]) => [t, f(o), f(h), f(l), f(c), vol ?? null]),
+      rotulo: 'Referencia: la misma onza de oro, pasada por la fórmula del ORIGEN (÷31,1035 ÷55). No son tratos.',
+      fuente: d.fuente || '',
+    };
+  }
+
   async function historia(sim, dias) {
     const id = HISTORIABLES[sim];
     if (!id) return null;
@@ -470,5 +513,5 @@ const CADENA = (() => {
   const PUBLICOS = TOKENS.filter(t => t.publico !== false).map(t => t.s);
   const esPublico = (sim) => PUBLICOS.includes(sim);
 
-  return { TOKENS, PUBLICOS, esPublico, META, FICHAS, ficha, portafolio, precios, precioDeclarado, historia, historiable, rpc, RPC };
+  return { TOKENS, PUBLICOS, esPublico, META, FICHAS, ficha, portafolio, precios, precioDeclarado, historia, historiable, velasDe, VELAS_MARCOS, rpc, RPC };
 })();
