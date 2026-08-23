@@ -17,10 +17,13 @@
 
      Cada dominio de la lista está porque algo concreto lo necesita; si se
      agrega un servicio nuevo hay que agregarlo aquí o dejará de funcionar en
-     silencio. -->
+     silencio.
+     'wasm-unsafe-eval' es SOLO para compilar WebAssembly (el motor de AIR
+     TOUCH, vendoreado en esta misma casa): no habilita eval() de JavaScript,
+     y sin él el navegador rechaza el .wasm con la consola en rojo. -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
-  script-src 'self' 'unsafe-inline';
+  script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval';
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   font-src 'self' data: https://fonts.gstatic.com;
   img-src 'self' data: blob: https://cerebro.ordenscan.com;

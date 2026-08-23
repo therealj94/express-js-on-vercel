@@ -475,9 +475,20 @@ const AURA = (() => {
       // guardado en el ganglio para poder quitarlo en pararRed(): sin eso,
       // volver al Núcleo sumaba un oyente más sobre el mismo botón
       g.soltarOyente = ev => {
+        /* LA ESFERA ES DE UN SOLO DEDO. Sin el filtro de pointerId, el pulgar
+           que scrollea (o la palma que roza el borde) entraba a la MISMA
+           pelea: dos manos tirando de una esfera la hacian saltar veinte
+           pixeles por cuadro — el «se sacuden como locos» que se vio en
+           produccion en Android. Se guarda el dedo del agarre y todo evento
+           de otro dedo se ignora; un segundo down sobre la esfera agarrada
+           tampoco arma otro par de oyentes. */
+        if (g.dedo !== undefined) return;
+        const dedo = ev.pointerId;
+        g.dedo = dedo;
         const x0 = ev.clientX, y0 = ev.clientY, off0x = g.offX || 0, off0y = g.offY || 0;
         let jalo = false;
         const mover = e2 => {
+          if (e2.pointerId !== dedo) return;
           const dx = e2.clientX - x0, dy = e2.clientY - y0;
           if (!jalo && dx * dx + dy * dy < 36) return;    // aun puede ser un clic
           jalo = true;
@@ -486,7 +497,9 @@ const AURA = (() => {
           g.manoX = Math.max(-90, Math.min(90, off0x + dx));
           g.manoY = Math.max(-90, Math.min(90, off0y + dy));
         };
-        const soltar = () => {
+        const soltar = e3 => {
+          if (e3 && e3.pointerId !== dedo) return;
+          g.dedo = undefined;
           removeEventListener('pointermove', mover);
           removeEventListener('pointerup', soltar);
           removeEventListener('pointercancel', soltar);
