@@ -194,6 +194,8 @@ if longSignal and strategy.position_size == 0
     entryBar := bar_index
     tradesDay := tradesDay + 1
     strategy.entry("Long", strategy.long)
+    strategy.exit("L-TP1", "Long", qty_percent=50, limit=t1Px, stop=sPx)
+    strategy.exit("L-TP2", "Long", limit=t2Px, stop=sPx)
 
 if shortSignal and strategy.position_size == 0
     lastSig := bar_index
@@ -205,6 +207,8 @@ if shortSignal and strategy.position_size == 0
     entryBar := bar_index
     tradesDay := tradesDay + 1
     strategy.entry("Short", strategy.short)
+    strategy.exit("S-TP1", "Short", qty_percent=50, limit=t1Px, stop=sPx)
+    strategy.exit("S-TP2", "Short", limit=t2Px, stop=sPx)
 
 if strategy.position_size > 0 and not t1Done and high >= t1Px
     t1Done := true
@@ -239,9 +243,22 @@ if not tradeWindow and mode != "24 horas" and strategy.position_size != 0
     strategy.close_all(comment="Fin de ventana")
     entryBar := na
 
+// Pérdida = operación COMPLETA (todas sus porciones TP1/TP2/SL) con neto negativo
 var int closedTrades = 0
-if strategy.closedtrades > closedTrades
-    if strategy.closedtrades.profit(strategy.closedtrades - 1) < 0
+if strategy.closedtrades > closedTrades and strategy.position_size == 0
+    float grpPnl = 0.0
+    int   grpBar = -1
+    for i = closedTrades to strategy.closedtrades - 1
+        int eb = strategy.closedtrades.entry_bar_index(i)
+        if grpBar == -1 or eb == grpBar
+            grpBar := eb
+            grpPnl += strategy.closedtrades.profit(i)
+        else
+            if grpPnl < 0
+                lossDay := lossDay + 1
+            grpPnl := strategy.closedtrades.profit(i)
+            grpBar := eb
+    if grpBar != -1 and grpPnl < 0
         lossDay := lossDay + 1
     closedTrades := strategy.closedtrades
 

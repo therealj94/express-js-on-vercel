@@ -135,6 +135,15 @@ dxyUp   = useDxy and not na(dxyC) and dxyC > dxyE
 
 // ────────────── 4. SESIONES Y RANGO DE APERTURA ──────────────
 inSess(s) => not na(time(timeframe.period, s, tz))
+
+// Próximo inicio de una sesión (para la cuenta regresiva fuera de horario)
+f_nextStart(sess) =>
+    hhmm = array.get(str.split(array.get(str.split(sess, ":"), 0), "-"), 0)
+    v  = int(str.tonumber(hhmm))
+    hh = int(v / 100)
+    mm = v % 100
+    ts = timestamp(tz, year(timenow, tz), month(timenow, tz), dayofmonth(timenow, tz), hh, mm)
+    ts <= timenow ? ts + 86400000 : ts
 kzLdn    = inSess(ldnKZ)
 kzNY     = inSess(nyKZ)
 kzActive = kzLdn or kzNY
@@ -238,6 +247,7 @@ var int   tradesDay = 0
 var int   winsDay   = 0
 var int   lossDay   = 0
 var float rDay      = 0.0
+var int   streak    = 0
 if newDay
     tradesDay := 0
     winsDay   := 0
@@ -294,17 +304,23 @@ if newShort
     entryBar := bar_index
     tradesDay := tradesDay + 1
 
-hitT1 = (pos == 1 and not t1Done and high >= t1Px) or (pos == -1 and not t1Done and low <= t1Px)
-hitT2 = (pos == 1 and t1Done and high >= t2Px) or (pos == -1 and t1Done and low <= t2Px)
-hitSL = (pos == 1 and low <= sPx) or (pos == -1 and high >= sPx)
+// Las salidas solo se evalúan DESPUÉS de la vela de entrada (el high/low de la vela
+// de la señal ocurrió antes del fill y no puede ejecutar nuestros niveles)
+postEntry = pos != 0 and not na(entryBar) and bar_index > entryBar
+hitT1 = postEntry and ((pos == 1 and not t1Done and high >= t1Px) or (pos == -1 and not t1Done and low <= t1Px))
+// TP2 no exige t1Done: si la vela cruza TP2 también cruzó TP1 (cascada en la misma vela)
+hitT2 = postEntry and ((pos == 1 and high >= t2Px) or (pos == -1 and low <= t2Px))
+hitSL = postEntry and ((pos == 1 and low <= sPx) or (pos == -1 and high >= sPx))
 
 if pos != 0 and hitSL
     if beDone
         winsDay := winsDay + 1
         rDay := rDay + math.max(0.0, (pos == 1 ? sPx - ePx : ePx - sPx) / risk0) * 0.5
+        streak := streak >= 0 ? streak + 1 : 1
     else
         lossDay := lossDay + 1
         rDay := rDay - 1.0
+        streak := streak <= 0 ? streak - 1 : -1
     pos := 0
     ePx := na
     sPx := na
@@ -314,8 +330,11 @@ if pos != 0 and hitSL
     beDone := false
     entryBar := na
 else if pos != 0 and hitT2
-    rDay := rDay + rr2 * 0.5
+    if not t1Done
+        rDay := rDay + rr1 * 0.5
+    rDay := rDay + ((pos == 1 ? t2Px - ePx : ePx - t2Px) / risk0) * 0.5
     winsDay := winsDay + 1
+    streak := streak >= 0 ? streak + 1 : 1
     pos := 0
     ePx := na
     sPx := na
@@ -337,8 +356,10 @@ if pos != 0 and not tradeWindow and mode != "24 horas"
     rDay := rDay + (t1Done ? exitR2 * 0.5 : exitR2)
     if (t1Done ? rr1 * 0.5 + exitR2 * 0.5 : exitR2) >= 0
         winsDay := winsDay + 1
+        streak := streak >= 0 ? streak + 1 : 1
     else
         lossDay := lossDay + 1
+        streak := streak <= 0 ? streak - 1 : -1
     pos := 0
     ePx := na
     sPx := na
@@ -375,8 +396,10 @@ if exitWarn and smartCloseSim
     rDay := rDay + (t1Done ? exitR3 * 0.5 : exitR3)
     if (t1Done ? rr1 * 0.5 + exitR3 * 0.5 : exitR3) >= 0
         winsDay := winsDay + 1
+        streak := streak >= 0 ? streak + 1 : 1
     else
         lossDay := lossDay + 1
+        streak := streak <= 0 ? streak - 1 : -1
     pos := 0
     ePx := na
     sPx := na
@@ -578,6 +601,11 @@ if showDash and barstate.islast
     r += 1
     fInfo(r, "Distancia al VWAP", str.tostring(close - vwap, format.mintick) + (extended ? " ⚠ extendido" : ""), close > vwap ? color.lime : color.red)
     r += 1
+    if not kzActive
+        nextKz = math.min(f_nextStart(ldnKZ), f_nextStart(nyKZ))
+        minsTo = math.max(0, int((nextKz - timenow) / 60000))
+        fInfo(r, "Próxima killzone en", str.tostring(math.floor(minsTo / 60)) + "h " + str.tostring(minsTo % 60) + "m", color.aqua)
+        r += 1
 
     // ── Plan de la operación
     fSep(r, pos != 0 ? "─── TU OPERACIÓN ───" : "─── PLAN SI ENTRAS AHORA ───")
@@ -587,6 +615,9 @@ if showDash and barstate.islast
     fInfo(r, pos != 0 ? "Stop actual" + (beDone ? " · SIN RIESGO ✅" : "") : "Stop Loss", str.tostring(liveSL, format.mintick), beDone ? color.lime : color.red)
     r += 1
     fInfo(r, "TP1 → 50% · TP2 → resto", str.tostring(liveTP1, format.mintick) + " / " + str.tostring(liveTP2, format.mintick), color.teal)
+    r += 1
+    rrSig = liveRisk > 0 ? math.abs(liveTP2 - liveEnt) / liveRisk : 0.0
+    fInfo(r, "R:R real al TP2", "1 : " + str.tostring(rrSig, "#.##"), rrSig >= 1.5 ? color.lime : color.orange)
     r += 1
     fInfo(r, useFixedLot ? "Lote FIJO · riesgo real $" + str.tostring(riskReal, "#") + " (" + str.tostring(capital > 0 ? riskReal / capital * 100 : 0, "#.#") + "%)" : "Lote (" + str.tostring(riskPct, "#.#") + "% = $" + str.tostring(riskUSD, "#") + ")", str.tostring(lotSug, "#.##") + " lotes", riskReal > capital * 0.03 ? color.red : DORADO)
     r += 1
@@ -598,5 +629,7 @@ if showDash and barstate.islast
     fSep(r, "─── HOY ───")
     r += 1
     fInfo(r, "Operaciones " + str.tostring(tradesDay) + "/" + str.tostring(maxTrEff), str.tostring(winsDay) + " ganadas · " + str.tostring(lossDay) + " perdidas", limitOK ? color.white : color.red)
+    r += 1
+    fInfo(r, "Racha", streak > 0 ? str.tostring(streak) + " ✅ seguidas" : streak < 0 ? str.tostring(-streak) + " ❌ seguidas" : "—", streak > 0 ? color.lime : streak < 0 ? color.red : color.gray)
     r += 1
     fInfo(r, "Resultado del día", str.tostring(rDay, "#.##") + "R · $" + str.tostring(rDay * riskUSD, "#.#"), rDay >= 0 ? color.lime : color.red)

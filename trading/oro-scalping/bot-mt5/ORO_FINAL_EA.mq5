@@ -25,7 +25,7 @@
 //|  inteligente · limpieza de variables globales · log de errores   |
 //+------------------------------------------------------------------+
 #property copyright   "ORO FINAL"
-#property version     "2.30"
+#property version     "2.40"
 #property description "Bot de scalping XAUUSD: confluencia 0-100, gestión 50/50, salida inteligente y protecciones de cuenta"
 
 #include <Trade/Trade.mqh>
@@ -98,6 +98,10 @@ input int      InpRsiExtreme     = 76;         // RSI extremo (penaliza entrar t
 input double   InpVwapExtAtr     = 2.0;        // Extensión máxima del VWAP (× ATR)
 input double   InpVolStrong      = 1.3;        // Volumen fuerte (× media de 20)
 
+input group "🔔 Notificaciones"
+input bool     InpPushNotify     = false;      // Push al móvil (app MetaTrader; configura tu MetaQuotes ID en Herramientas→Opciones→Notificaciones)
+input bool     InpPopupAlert     = false;      // Ventana de alerta sonora en el terminal
+
 //──────────────────────────── ESTADO ────────────────────────────
 CTrade    trade;
 int       hEmaF, hEmaS, hEmaB, hRsi, hAtr, hAdx;
@@ -124,6 +128,12 @@ double Buf(int handle, int shift)
    double b[1];
    if(CopyBuffer(handle, 0, shift, 1, b) != 1) return 0.0;
    return b[0];
+}
+
+void Notify(string msg)
+{
+   if(InpPushNotify) SendNotification(msg);
+   if(InpPopupAlert) Alert(msg);
 }
 
 bool InRange(string s, string e)
@@ -404,13 +414,26 @@ void CountToday(int &nTrades, int &nLosses)
    int total = HistoryDealsTotal();
    double posProfit[];
    long   posIds[];
+   long   inIds[];
    for(int i = 0; i < total; i++)
    {
       ulong dTicket = HistoryDealGetTicket(i);
       if(HistoryDealGetInteger(dTicket, DEAL_MAGIC) != InpMagic) continue;
       long entry = HistoryDealGetInteger(dTicket, DEAL_ENTRY);
       long pid   = HistoryDealGetInteger(dTicket, DEAL_POSITION_ID);
-      if(entry == DEAL_ENTRY_IN) nTrades++;
+      if(entry == DEAL_ENTRY_IN)
+      {
+         // Una posición = una operación, aunque el broker la llene en varios fills
+         bool seen = false;
+         for(int k2 = 0; k2 < ArraySize(inIds); k2++) if(inIds[k2] == pid) { seen = true; break; }
+         if(!seen)
+         {
+            int sz2 = ArraySize(inIds);
+            ArrayResize(inIds, sz2 + 1);
+            inIds[sz2] = pid;
+            nTrades++;
+         }
+      }
       if(entry == DEAL_ENTRY_OUT)
       {
          double pf = HistoryDealGetDouble(dTicket, DEAL_PROFIT)
@@ -492,6 +515,7 @@ bool DayStopped(string &why)
       GlobalVariableSet(k, 1);
       why = "objetivo";
       Print("🏆 ORO FINAL: OBJETIVO DEL DÍA logrado (+$", DoubleToString(pnl, 2), ") — el bot descansa hasta mañana");
+      Notify("🏆 ORO: objetivo del día logrado (+$" + DoubleToString(pnl, 2) + ") — el bot descansa hasta mañana");
       return true;
    }
    if(lossHit)
@@ -499,6 +523,7 @@ bool DayStopped(string &why)
       GlobalVariableSet(k, 2);
       why = "limite";
       Print("🛑 ORO FINAL: límite de pérdida del día ($", DoubleToString(pnl, 2), ") — el bot descansa hasta mañana");
+      Notify("🛑 ORO: límite de pérdida del día ($" + DoubleToString(pnl, 2) + ") — el bot descansa hasta mañana");
       return true;
    }
    return false;
@@ -580,6 +605,7 @@ void OnTick()
    {
       // La posición se cerró (TP2/SL del servidor o cierre nuestro): resumen y limpieza
       Print("🥇 ORO FINAL: posición ", lastPid, " cerrada. Revisa el historial para el resultado.");
+      Notify("🥇 ORO: posición cerrada — revisa el resultado en el historial");
       GlobalVariableDel("ORO_TP1_" + (string)lastPid);
       GlobalVariableDel("ORO_T1D_" + (string)lastPid);
       GlobalVariableDel("ORO_OPN_" + (string)lastPid);
@@ -636,7 +662,8 @@ void OnTick()
               " (mín. ", g_thr, ")\nHoy: ", nT, "/", g_maxTrades, " ops · ", nL, "/", InpMaxLossesDay,
               " pérdidas | ", KzActive() ? "KILLZONE 🔥" : (TradeWindow() ? "ventana normal" : "fuera de horario"),
               "\nLote: ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
-              InpAggro == 1 ? " · MODO AGRESIVO" : InpAggro == 2 ? " · MODO TURBO" : "");
+              InpAggro == 1 ? " · MODO AGRESIVO" : InpAggro == 2 ? " · MODO TURBO" : "",
+              "\n📅 Día: $", DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY) - dayStartBalance, 2));
       return;
    }
 
@@ -727,6 +754,7 @@ void OpenTrade(bool isLong, double px, double sl, double minStop, double atr, do
    Print(isLong ? "🟢 ORO LONG" : "🔴 ORO SHORT", " | score ", DoubleToString(score, 0),
          " | lote ", DoubleToString(lot, 2), " | SL ", DoubleToString(sl, _Digits),
          " | TP1 ", DoubleToString(tp1, _Digits), " | TP2 ", DoubleToString(tp2, _Digits));
+   Notify((isLong ? "🟢 ORO LONG " : "🔴 ORO SHORT ") + DoubleToString(score, 0) + "/100 | Entrada " + DoubleToString(px, _Digits) + " | SL " + DoubleToString(sl, _Digits) + " | TP1 " + DoubleToString(tp1, _Digits) + " | TP2 " + DoubleToString(tp2, _Digits) + " | Lote " + DoubleToString(lot, 2));
 }
 
 //──────────────────────────── GESTIÓN ────────────────────────────
@@ -747,8 +775,27 @@ void ManagePosition()
    string kTP1 = "ORO_TP1_" + (string)pid;
    string kT1D = "ORO_T1D_" + (string)pid;
    string kOPN = "ORO_OPN_" + (string)pid;
-   double tp1     = GlobalVariableCheck(kTP1) ? GlobalVariableGet(kTP1) : 0;
-   bool   t1Done  = GlobalVariableCheck(kT1D) && GlobalVariableGet(kT1D) > 0.5;
+   double tp1    = GlobalVariableCheck(kTP1) ? GlobalVariableGet(kTP1) : 0;
+   bool   t1Done = GlobalVariableCheck(kT1D) && GlobalVariableGet(kT1D) > 0.5;
+   if(tp1 <= 0)
+   {
+      // Reconstrucción tras un reinicio que borró las variables globales:
+      // derivar TP1 del SL original de la propia posición
+      if(isLong ? (curSL > 0 && curSL < entry) : (curSL > entry))
+      {
+         double r0 = MathAbs(entry - curSL);
+         tp1 = isLong ? entry + InpRR1 * r0 : entry - InpRR1 * r0;
+         GlobalVariableSet(kTP1, tp1);
+         GlobalVariableSet(kOPN, (double)(long)PositionGetInteger(POSITION_TIME));
+         Print("ORO FINAL: TP1 reconstruido tras reinicio → ", DoubleToString(tp1, _Digits));
+      }
+      else if(!t1Done)
+      {
+         // El stop ya está en la entrada o mejor: tratar el TP1 como hecho
+         GlobalVariableSet(kT1D, 1);
+         t1Done = true;
+      }
+   }
    datetime opnT  = GlobalVariableCheck(kOPN) ? (datetime)(long)GlobalVariableGet(kOPN) : (datetime)PositionGetInteger(POSITION_TIME);
 
    //── Cierre por fin de ventana o cierre de viernes
@@ -771,16 +818,35 @@ void ManagePosition()
          if(half >= vmin && vol - half >= vmin)
          {
             if(!trade.PositionClosePartial(ticket, half))
-               Print("ORO FINAL: fallo en cierre parcial (", trade.ResultRetcode(), ")");
+            {
+               // Fallo transitorio (requote/off-quotes): NO marcar la bandera,
+               // se reintenta completo en el siguiente tick
+               Print("ORO FINAL: fallo en cierre parcial (", trade.ResultRetcode(), ") — reintento en el próximo tick");
+               return;
+            }
          }
          // Con lote mínimo no hay parcial: igual se protege con stop a entrada
          double atrBe = Buf(hAtr, 1);
          double bePx  = isLong ? entry + InpBeBufAtr * atrBe : entry - InpBeBufAtr * atrBe;
          if(!trade.PositionModify(ticket, NormalizeDouble(bePx, _Digits), curTP))
-            Print("ORO FINAL: fallo moviendo stop a break-even (", trade.ResultRetcode(), ")");
+            Print("ORO FINAL: fallo moviendo stop a break-even (", trade.ResultRetcode(), ") — se reasegura en la gestión");
          GlobalVariableSet(kT1D, 1);
          Print("🎯 ORO FINAL: TP1 — 50% cerrado, stop en la entrada (sin riesgo)");
+         Notify("🎯 ORO TP1 alcanzado — 50% cobrado, stop asegurado en la entrada");
          return;
+      }
+   }
+
+   //── Asegurar el break-even si el modify falló en su momento
+   if(t1Done)
+   {
+      bool needBe = isLong ? (curSL < entry) : (curSL == 0 || curSL > entry);
+      if(needBe)
+      {
+         double atrBe2 = Buf(hAtr, 1);
+         double beLvl  = isLong ? entry + InpBeBufAtr * atrBe2 : entry - InpBeBufAtr * atrBe2;
+         if(trade.PositionModify(ticket, NormalizeDouble(beLvl, _Digits), curTP))
+            curSL = beLvl;
       }
    }
 
@@ -819,7 +885,10 @@ void ManagePosition()
          if(salud < InpHealthExit)
          {
             if(trade.PositionClose(ticket))
+            {
                Print("🚪 ORO FINAL: salida inteligente — salud ", DoubleToString(salud, 0), "/100 (", motivo, ")");
+               Notify("🚪 ORO MEJOR SALIR ejecutado — salud " + DoubleToString(salud, 0) + "/100: " + motivo);
+            }
             return;
          }
          Comment("🥇 ORO FINAL v2 | EN OPERACIÓN ", isLong ? "LONG 🟢" : "SHORT 🔴",
