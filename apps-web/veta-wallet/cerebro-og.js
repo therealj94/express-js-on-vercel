@@ -290,7 +290,10 @@ const CEREBRO_OG = (() => {
       if (dedo !== undefined) return;      // un solo dedo manda: dos pelean
       dedo = e.pointerId;
       arrastrando = true; px = e.clientX; py = e.clientY;
-      canvas.setPointerCapture?.(e.pointerId);
+      /* La captura REVIENTA con un puntero sintético: AIR TOUCH manda un id
+         que el navegador no conoce. Aquí no rompía el giro —el estado ya
+         estaba puesto— pero dejaba una excepción suelta en cada pellizco. */
+      try { canvas.setPointerCapture?.(e.pointerId); } catch { /* puntero de aire */ }
     };
     const mueve = (e) => {
       if (!arrastrando || e.pointerId !== dedo) return;

@@ -7592,9 +7592,14 @@ const VETA = (() => {
          tránsito y no contesta quién hay bajo el punto — y el doble pellizco
          se quedaba sin destino. */
       const casaBajo = (() => { try { return window.__AE_MIRAR?.(p.x, p.y) || null; } catch { return null; } })();
+      /* ¿El agarre cae sobre un lienzo que MANEJA SUS PROPIOS GESTOS? La
+         galaxia y el cerebro de GENESIS CORE giran solos con los eventos de
+         puntero; si además se arrastrara la página, el pellizco haría dos
+         cosas a la vez y ninguna bien. */
+      const propio = !!el?.closest('.ae-casa, #gc-caja');
       atAgarre = { el, sx: atRodante(el), x0: p.x, y0: p.y, xa: p.x, ya: p.y,
                    movio: false, desde: performance.now(),
-                   enCielo: !!el?.closest('.ae-casa'), casa: casaBajo };
+                   enCielo: propio, casa: casaBajo };
       atEvento('pointerdown', p.x, p.y, el);
     } else if (p.pellizco && atAgarre) {
       const dx = p.x - atAgarre.xa, dy = p.y - atAgarre.ya;
@@ -7652,7 +7657,11 @@ const VETA = (() => {
        más preciso: hace que no funcione en el aparato de nadie. */
     if (!a.movio && performance.now() - a.desde < 700) {
       const ahora = performance.now();
-      if (ahora - atUltimoPellizco < 1100) {
+      /* Hasta segundo y medio entre los dos: una persona los hace en medio
+         segundo, pero en un teléfono ocupado el segundo pellizco puede llegar
+         tarde al hilo — y que el gesto no responda es peor que aceptarlo un
+         poco más lento. */
+      if (ahora - atUltimoPellizco < 1500) {
         atUltimoPellizco = 0;
         const casa = a.casa || (() => { try { return window.__AE_MIRAR?.(x, y); } catch { return null; } })();
         if (casa) {

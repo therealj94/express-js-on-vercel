@@ -150,9 +150,11 @@ console.log('\n── doble pellizco: abrir ya ───────────
       punto(false);
     }, donde);
     await p.waitForTimeout(2200);
-    ok('dos pellizcos cortos abren el planeta', await p.evaluate(() =>
-      VETA.dondeEstoy() !== 'nucleo' || !!document.querySelector('.ae-dim')),
-       await p.evaluate(() => VETA.dondeEstoy()));
+    const abrio = await p.evaluate(() =>
+      VETA.dondeEstoy() !== 'nucleo' || !!document.querySelector('.ae-dim'));
+    ok('dos pellizcos cortos abren el planeta', abrio,
+       abrio ? await p.evaluate(() => VETA.dondeEstoy())
+             : `quedó en ${await p.evaluate(() => VETA.dondeEstoy())} · planeta ${donde.key}`);
   } else ok('dos pellizcos cortos abren el planeta', false, 'no encontré planeta');
   await sinMano();
 }
