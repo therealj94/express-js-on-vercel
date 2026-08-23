@@ -38,6 +38,10 @@ const GALAXIA = (() => {
   let relojResize = null;
   let previo = 0;               // el cuadro anterior, para pasos por tiempo real
   let medirLuego = false;       // un resize llegó en pleno salto: se difiere
+  let interior = false;         // el cielo del Núcleo: transparente y sereno
+  let fugaces = [];             // las estrellas fugaces en vuelo
+  let proximaFugaz = 0;         // cuándo nace la próxima
+  let empujon = null;           // { x, y, desde, dura } — el viaje hacia un planeta
 
   // ── el reparto del cielo ──────────────────────────────────────────────────
 
@@ -116,12 +120,54 @@ const GALAXIA = (() => {
   // ── pintar ────────────────────────────────────────────────────────────────
 
   function fondo() {
+    /* En el interior el cielo es un velo sobre el negro del Núcleo, no una
+       pintura opaca: la constelación de esferas ES el protagonista y esto es
+       su firmamento. En la entrada, el espacio se pinta entero. */
+    if (interior) { ctx.clearRect(0, 0, ancho, alto); return; }
     const g = ctx.createLinearGradient(0, 0, 0, alto);
     g.addColorStop(0, '#050510');
     g.addColorStop(0.55, '#080B1E');
     g.addColorStop(1, '#0A0E24');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, ancho, alto);
+  }
+
+  /* ── las estrellas fugaces ──────────────────────────────────────────────────
+     Cada tantos segundos una cruza un tramo del cielo y se apaga. No llevan
+     semilla: son el azar del cielo, y ninguna prueba depende de ellas. */
+  function nacerFugaz(ahora) {
+    const desdeArriba = Math.random() < 0.7;
+    const x = Math.random() * ancho;
+    const y = desdeArriba ? Math.random() * alto * 0.4 : Math.random() * alto;
+    const ang = (35 + Math.random() * 30) * (Math.PI / 180) * (Math.random() < 0.5 ? 1 : -1);
+    fugaces.push({
+      x, y, vx: Math.cos(ang) * (9 + Math.random() * 7), vy: Math.abs(Math.sin(ang)) * (5 + Math.random() * 4),
+      nacio: ahora, vida: 600 + Math.random() * 350,
+    });
+    proximaFugaz = ahora + 5200 + Math.random() * 8000;
+  }
+
+  function pintarFugaces(ahora, dt) {
+    if (!proximaFugaz) proximaFugaz = ahora + 2200 + Math.random() * 4000;
+    if (ahora >= proximaFugaz && fugaces.length < 2 && !salto) nacerFugaz(ahora);
+    for (const f of fugaces) {
+      const edad = (ahora - f.nacio) / f.vida;
+      if (edad >= 1) continue;
+      f.x += f.vx * dt; f.y += f.vy * dt;
+      // brilla al nacer, se apaga al morir; la cola apunta hacia atrás
+      const a = edad < 0.25 ? edad / 0.25 : 1 - (edad - 0.25) / 0.75;
+      const cola = 16 + 46 * Math.min(1, edad * 2);
+      const g = ctx.createLinearGradient(f.x, f.y, f.x - f.vx * cola / 9, f.y - f.vy * cola / 9);
+      g.addColorStop(0, `rgba(248,239,207,${0.9 * a})`);
+      g.addColorStop(1, 'rgba(248,239,207,0)');
+      ctx.strokeStyle = g;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(f.x, f.y);
+      ctx.lineTo(f.x - f.vx * cola / 9, f.y - f.vy * cola / 9);
+      ctx.stroke();
+    }
+    fugaces = fugaces.filter(f => (ahora - f.nacio) / f.vida < 1);
   }
 
   function cuadro(ahora) {
@@ -138,9 +184,10 @@ const GALAXIA = (() => {
     ctx.save();
     ctx.translate(ancho * 0.5, alto * 0.5);
     ctx.rotate(giro);
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = interior ? 0.45 : 1;
     ctx.drawImage(nebulosa, -nebulosa.logico / 2, -nebulosa.logico / 2,
                   nebulosa.logico, nebulosa.logico);
+    ctx.globalAlpha = 1;
     ctx.restore();
 
     const enSalto = salto ? Math.min(1, (ahora - salto.desde) / salto.dura) : 0;
@@ -175,7 +222,7 @@ const GALAXIA = (() => {
         e.x += (dx / d) * empuje * 30 * dt;
         e.y += (dy / d) * empuje * 30 * dt;
       } else {
-        ctx.fillStyle = `rgba(${r},${g},${b},${late})`;
+        ctx.fillStyle = `rgba(${r},${g},${b},${interior ? late * 0.7 : late})`;
         ctx.beginPath();
         ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
         ctx.fill();
@@ -194,6 +241,23 @@ const GALAXIA = (() => {
       }
       if (enSalto >= 1) terminarSalto();
     }
+
+    /* EL EMPUJÓN: al elegir un planeta, las estrellas se apartan de él un
+       instante — el cielo entero dice «vamos hacia allá» sin mover la
+       constelación, que es del DOM y tiene su propio gesto. */
+    if (empujon) {
+      const p = Math.min(1, (ahora - empujon.desde) / empujon.dura);
+      const fuerza = Math.sin(p * Math.PI) * 3.2;
+      for (const e of estrellas) {
+        const dx = e.x - empujon.x, dy = e.y - empujon.y;
+        const d = Math.hypot(dx, dy) || 1;
+        e.x += (dx / d) * fuerza * dt;
+        e.y += (dy / d) * fuerza * dt;
+      }
+      if (p >= 1) empujon = null;
+    }
+
+    pintarFugaces(ahora, dt);
     if (!salto && medirLuego) { medirLuego = false; medir(); }
   }
 
@@ -247,9 +311,10 @@ const GALAXIA = (() => {
 
   // ── lo público ────────────────────────────────────────────────────────────
 
-  function montar(el) {
+  function montar(el, opciones = {}) {
     if (!el || lienzo === el) return;
     apagar();
+    interior = !!opciones.interior;
     lienzo = el;
     // apagar() lo dejó escondido; se enseña ANTES de medir, que si no el
     // lienzo mide cero y el cielo nace vacío.
@@ -318,7 +383,14 @@ const GALAXIA = (() => {
 
   const viva = () => !!ctx;
 
-  return { montar, apagar, saltar, viva };
+  /** El cielo acompaña el viaje hacia un planeta: las estrellas se apartan
+      del punto (px,py en píxeles de pantalla) durante `dura` ms. */
+  function empujarHacia(px, py, dura = 520) {
+    if (!ctx || QUIETO.matches) return;
+    empujon = { x: px, y: py, desde: performance.now(), dura };
+  }
+
+  return { montar, apagar, saltar, viva, empujarHacia };
 })();
 
 if (typeof window !== 'undefined') window.GALAXIA = GALAXIA;

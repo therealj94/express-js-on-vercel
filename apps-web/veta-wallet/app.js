@@ -399,7 +399,7 @@ const VETA = (() => {
        montar: el interior del ecosistema conserva su fondo de siempre. */
     if (window.GALAXIA) {
       if (destino === 'app') GALAXIA.apagar();
-      else if (!GALAXIA.viva()) GALAXIA.montar($('#galaxia'));
+      else GALAXIA.montar($('#galaxia'));   // idempotente si ya está ahí
     }
     if (destino === 'app') vista(vistaActual);
     window.scrollTo(0, 0);
@@ -1967,6 +1967,11 @@ const VETA = (() => {
     if (cual === 'chat') { p2cPortada(); chatEntrar(); }
     if (cual === 'token') montarVelasToken();
     else { velasApagar(); velasAmpliarCerrar(); }
+    /* El cielo del Núcleo muere con su vista: si el canvas ya no está y la
+       galaxia sigue enganchada a él, se apaga — el resto del interior tiene
+       su fondo de siempre. */
+    if (cual !== 'nucleo' && window.GALAXIA && GALAXIA.viva()
+        && !document.getElementById('cielo-nucleo')) GALAXIA.apagar();
     /* El directorio de MyTokenPay se pide al ENTRAR, no al arrancar la web:
        ciento veintisiete comercios con su logo no tienen por que viajar por la
        red de alguien que solo venia a mirar su saldo. */
@@ -4617,6 +4622,10 @@ const VETA = (() => {
 
     return `
     <div class="cerebro" id="cerebro">
+      ${/* El firmamento del Núcleo: el MISMO motor de la entrada, en modo
+            interior (transparente, estrellas serenas, fugaces). Es lo que
+            hace que el login y la casa sean UNA sola galaxia. */''}
+      <canvas id="cielo-nucleo" aria-hidden="true"></canvas>
       <canvas id="red-nucleo"></canvas>
       <div class="cerebro-cab">
         <h2>${nombre ? `${t('nu.hola')}, ${esc(nombre)}` : t('nu.t')}</h2>
@@ -4768,6 +4777,7 @@ const VETA = (() => {
   function encenderCerebro(despertar) {
     const c = $('#red-nucleo');
     if (!c) return;
+    if (window.GALAXIA) GALAXIA.montar($('#cielo-nucleo'), { interior: true });
     medirCerebro();
     /* Cada esfera del DOM se entrega al canvas: la orbita del ganglio y el
        boton que se toca se mueven con LA MISMA formula, en el mismo cuadro. */
@@ -4878,9 +4888,13 @@ const VETA = (() => {
     const el = document.querySelector(`.nu-mundo[data-mundo="${id}"]`);
     const caja = el?.closest('.cerebro');
     if (!el || !caja || matchMedia('(prefers-reduced-motion:reduce)').matches) return abrir();
+    /* El cielo acompaña: las estrellas se apartan del planeta elegido — el
+       ojo lee «viajamos hacia allá» aunque la constelación no se mueva. */
+    const r = el.getBoundingClientRect();
+    window.GALAXIA?.empujarHacia(r.left + r.width / 2, r.top + r.height / 2, 460);
     caja.classList.add('cer-yendo');
     el.classList.add('nu-yendo');
-    setTimeout(abrir, 240);
+    setTimeout(abrir, 420);
   }
 
   // ── LAS CASAS DEL ECOSISTEMA · la vuelta con la llave puesta ──────────────
@@ -6938,6 +6952,127 @@ const VETA = (() => {
    * peaje. Cuelga del body para que el primer repintado del chat no la corte
    * a media animación, y con movimiento reducido no aparece.
    */
+  /* ── AIR TOUCH: la mano como puntero ──────────────────────────────────────
+   *
+   * airtouch.js entrega {presente,x,y,pellizco} por cuadro; aquí eso se
+   * vuelve UI: el cursor dorado, el toque (pellizco corto y quieto) y el
+   * agarre (pellizco sostenido que arrastra lo desplazable). Los eventos se
+   * emiten SINTÉTICOS sobre lo que haya bajo el cursor, así toda la casa
+   * responde sin saber que existe una cámara. El botón solo aparece donde
+   * puede cumplirse (hay cámara y WebAssembly): un botón que no puede hacer
+   * nada enseña a no tocar botones. */
+  let atAgarre = null;    // { el, sx, x0, y0, movio, desde }
+
+  function airToca() {
+    if (window.AIRTOUCH?.activo()) {
+      AIRTOUCH.apagar();
+      $('#at-boton')?.classList.remove('encendido');
+      $('#at-cursor')?.classList.add('oculto');
+      atAgarre = null;
+      return avisar(t('at.apagado'));
+    }
+    if (!window.AIRTOUCH?.puede()) return avisar(t('at.sinSoporte'));
+    // La primera vez se enseña qué se puede hacer; después, directo.
+    if (!localStorage.getItem('veta.airtouch.tuto')) return airTutoAbrir();
+    airEncender();
+  }
+
+  async function airEncender() {
+    avisar(t('at.cargando'));
+    try {
+      await AIRTOUCH.encender({ alCambiar: atPunto });
+      $('#at-boton')?.classList.add('encendido');
+      avisar(t('at.listo'));
+      tele('accion', 'airtouch.encendido');
+    } catch (e) {
+      avisar(t(e.motivo === 'negado' ? 'at.negado'
+        : e.motivo === 'sin-modelo' ? 'at.sinModelo' : 'at.sinCamara'));
+    }
+  }
+
+  function airTutoAbrir() { $('#at-tuto')?.classList.remove('oculto'); }
+  function airTutoCerrar() { $('#at-tuto')?.classList.add('oculto'); }
+  function airTutoActivar() {
+    try { localStorage.setItem('veta.airtouch.tuto', '1'); } catch { /* nada */ }
+    airTutoCerrar();
+    airEncender();
+  }
+
+  /* Debajo del cursor, ignorando al propio cursor (pointer-events:none ya lo
+     saca del camino). */
+  const atBajo = (x, y) => document.elementFromPoint(x, y);
+
+  /* El desplazable más cercano: el agarre arrastra ESO. Sin ninguno, la
+     página entera. */
+  function atRodante(el) {
+    for (let n = el; n && n !== document.body; n = n.parentElement) {
+      const cs = getComputedStyle(n);
+      if (/(auto|scroll)/.test(cs.overflowY + cs.overflowX)
+          && (n.scrollHeight > n.clientHeight + 4 || n.scrollWidth > n.clientWidth + 4)) return n;
+    }
+    return null;
+  }
+
+  const atEvento = (tipo, x, y, el) => {
+    try {
+      el?.dispatchEvent(new PointerEvent(tipo, {
+        bubbles: true, cancelable: true, composed: true,
+        clientX: x, clientY: y, pointerId: 7, pointerType: 'touch', isPrimary: true,
+      }));
+    } catch { /* un navegador sin PointerEvent no llega hasta aquí */ }
+  };
+
+  function atPunto(p) {
+    const cur = $('#at-cursor');
+    if (!cur) return;
+    if (!p.presente) {
+      cur.classList.add('oculto');
+      if (atAgarre) atSoltar(p);
+      return;
+    }
+    cur.classList.remove('oculto');
+    cur.style.transform = `translate(${p.x}px, ${p.y}px)`;
+    cur.classList.toggle('pellizco', !!p.pellizco);
+    if (p.pellizco && !atAgarre) {
+      const el = atBajo(p.x, p.y);
+      atAgarre = { el, sx: atRodante(el), x0: p.x, y0: p.y, xa: p.x, ya: p.y,
+                   movio: false, desde: performance.now() };
+      atEvento('pointerdown', p.x, p.y, el);
+    } else if (p.pellizco && atAgarre) {
+      const dx = p.x - atAgarre.xa, dy = p.y - atAgarre.ya;
+      atAgarre.xa = p.x; atAgarre.ya = p.y;
+      if (Math.hypot(p.x - atAgarre.x0, p.y - atAgarre.y0) > 12) atAgarre.movio = true;
+      if (atAgarre.movio) {
+        // agarrar es LLEVARSE la vista: el contenido sigue a la mano
+        if (atAgarre.sx) { atAgarre.sx.scrollTop -= dy; atAgarre.sx.scrollLeft -= dx; }
+        else window.scrollBy(-dx, -dy);
+        atEvento('pointermove', p.x, p.y, atAgarre.el);
+      }
+    } else if (!p.pellizco && atAgarre) {
+      atSoltar(p);
+    }
+  }
+
+  function atSoltar(p) {
+    const a = atAgarre;
+    atAgarre = null;
+    if (!a) return;
+    const x = p?.x ?? a.xa, y = p?.y ?? a.ya;
+    atEvento('pointerup', x, y, a.el);
+    /* El toque: pellizco corto y quieto. El click va al elemento que está
+       bajo el cursor AL SOLTAR — como un dedo de verdad. */
+    if (!a.movio && performance.now() - a.desde < 700) {
+      const el = atBajo(x, y);
+      $('#at-cursor')?.classList.add('toco');
+      setTimeout(() => $('#at-cursor')?.classList.remove('toco'), 320);
+      try {
+        el?.dispatchEvent(new MouseEvent('click', {
+          bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y,
+        }));
+      } catch { /* nada */ }
+    }
+  }
+
   let p2cPortadaVista = false;
 
   function p2cPortada() {
@@ -10557,6 +10692,7 @@ const VETA = (() => {
 
   function arrancar() {
     veloFrase();
+    if (window.AIRTOUCH?.puede()) $('#at-boton')?.classList.remove('oculto');
     /* La red de seguridad del velo: algunos caminos de este arranque retornan
        antes de mirar la sesión (recuperación de clave, SSO), y un velo que no
        se va es una app secuestrada por su propia apertura. Si el camino feliz
@@ -10708,6 +10844,7 @@ const VETA = (() => {
            p2cSubirFoto, p2cSubirHacer,
            chatAdjuntar, chatVoz, chatVozCancelar,
            chatCitar, chatDejarCita, chatReaccion, chatAbrirReaccion, chatTecleando,
+           airToca, airTutoActivar, airTutoCerrar,
            llamadaLlamar, llamadaContestar, llamadaRechazar, llamadaColgar,
            llamadaMic, llamadaCam, llamadaPantalla, llamadaAjustes, llamadaAparato,
            llamadaMini, llamadaGrande,
@@ -10757,6 +10894,7 @@ const VETA = (() => {
            _semilla: f => { semillaNueva = f; mostrarSemilla(f); },
            _ofrecerGid: () => auraOfrecerGid(),
            _mtp: () => URL_MYTOKENPAY,
+           _atPunto: (p) => atPunto(p),
            _bienvenidaAura: () => auraBienvenida(true),
            _auraTxt: () => AURA_TXT,
            _identidad: x => { identidad = x; },
