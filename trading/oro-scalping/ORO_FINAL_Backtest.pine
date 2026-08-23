@@ -47,6 +47,10 @@ rr1       = input.float(1.0, "TP1 (× riesgo)")
 rr2       = input.float(2.0, "TP2 (× riesgo)")
 useTrail  = input.bool(true, "Trailing tras TP1")
 trailMult = input.float(1.5, "Trailing (× ATR)")
+minSlAtr  = input.float(0.6, "Distancia mínima del SL (× ATR)")
+beBufAtr  = input.float(0.1, "Colchón del break-even (× ATR)")
+useStructTP = input.bool(true, "TP2 limitado por estructura (swing 4h)")
+structBuf = input.float(0.2, "Colchón del TP estructural (× ATR)")
 maxTrades = input.int(4, "Máx. operaciones por día")
 maxLosses = input.int(2, "Máx. pérdidas por día")
 cooldown  = input.int(0, "Velas entre señales (0 = auto)")
@@ -153,8 +157,20 @@ swingLo = ta.lowest(low, swingLen)
 swingHi = ta.highest(high, swingLen)
 hhTrail = ta.highest(high, trailLen)
 llTrail = ta.lowest(low, trailLen)
-slLcalc = math.max(swingLo - slBuf * atr, close - maxSlAtr * atr)
-slScalc = math.min(swingHi + slBuf * atr, close + maxSlAtr * atr)
+slLcalc = math.min(math.max(swingLo - slBuf * atr, close - maxSlAtr * atr), close - minSlAtr * atr)
+slScalc = math.max(math.min(swingHi + slBuf * atr, close + maxSlAtr * atr), close + minSlAtr * atr)
+
+structLen = int(math.max(10, math.round(14400.0 / tfSec)))
+structHi  = ta.highest(high, structLen)[1]
+structLo  = ta.lowest(low, structLen)[1]
+f_tp2L(entryP, riskP) =>
+    base = entryP + rr2 * riskP
+    tgt  = structHi - structBuf * atr
+    useStructTP and tgt - entryP >= 1.3 * riskP ? math.min(base, tgt) : base
+f_tp2S(entryP, riskP) =>
+    base = entryP - rr2 * riskP
+    tgt  = structLo + structBuf * atr
+    useStructTP and entryP - tgt >= 1.3 * riskP ? math.max(base, tgt) : base
 
 var int lastSig = na
 canSignal = na(lastSig) or (bar_index - lastSig) > coolBars
@@ -173,7 +189,7 @@ if longSignal and strategy.position_size == 0
     ePx := close
     sPx := slLcalc
     t1Px := close + rr1 * (close - slLcalc)
-    t2Px := close + rr2 * (close - slLcalc)
+    t2Px := f_tp2L(close, close - slLcalc)
     t1Done := false
     entryBar := bar_index
     tradesDay := tradesDay + 1
@@ -184,7 +200,7 @@ if shortSignal and strategy.position_size == 0
     ePx := close
     sPx := slScalc
     t1Px := close - rr1 * (slScalc - close)
-    t2Px := close - rr2 * (slScalc - close)
+    t2Px := f_tp2S(close, slScalc - close)
     t1Done := false
     entryBar := bar_index
     tradesDay := tradesDay + 1
@@ -192,10 +208,10 @@ if shortSignal and strategy.position_size == 0
 
 if strategy.position_size > 0 and not t1Done and high >= t1Px
     t1Done := true
-    sPx := ePx
+    sPx := ePx + beBufAtr * atr
 if strategy.position_size < 0 and not t1Done and low <= t1Px
     t1Done := true
-    sPx := ePx
+    sPx := ePx - beBufAtr * atr
 if useTrail and t1Done and strategy.position_size > 0
     sPx := math.max(sPx, hhTrail - trailMult * atr)
 if useTrail and t1Done and strategy.position_size < 0

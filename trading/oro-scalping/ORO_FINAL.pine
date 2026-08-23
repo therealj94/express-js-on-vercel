@@ -36,6 +36,7 @@ useSmart  = input.bool(true, "Vigilar la salud de la operación", group=gX)
 saludWarn = input.int(65, "Salud en amarillo: VIGILAR", minval=30, maxval=90, group=gX)
 saludExit = input.int(40, "Salud en rojo: MEJOR SALIR", minval=10, maxval=60, group=gX)
 useTimeStop = input.bool(true, "Avisar si la operación se estanca (~2 h sin TP1)", group=gX)
+smartCloseSim = input.bool(true, "Cerrar el seguimiento simulado al avisar MEJOR SALIR", group=gX)
 
 gS = "🕐 Sesiones (hora de Nueva York)"
 ldnKZ  = input.session("0300-0600", "Killzone Londres", group=gS)
@@ -72,6 +73,10 @@ rr1       = input.float(1.0, "TP1 (× riesgo) — cierra 50% y stop a entrada", 
 rr2       = input.float(2.0, "TP2 (× riesgo) — cierre total", minval=1.0, step=0.25, group=gR)
 useTrail  = input.bool(true, "Trailing por ATR después del TP1", group=gR)
 trailMult = input.float(1.5, "Trailing (× ATR)", minval=0.5, step=0.1, group=gR)
+minSlAtr  = input.float(0.6, "Distancia mínima del SL (× ATR)", minval=0.1, step=0.1, group=gR, tooltip="Un stop más ceñido que esto muere con el ruido del spread del oro, aunque la estructura lo permita.")
+beBufAtr  = input.float(0.1, "Colchón del break-even (× ATR)", minval=0.0, step=0.05, group=gR, tooltip="Al tocar TP1 el stop no va a la entrada exacta sino entrada + este colchón: cubre spread y comisión. El clásico error de dejar el BE exacto hace que el retesteo te saque por centavos.")
+useStructTP = input.bool(true, "TP2 limitado por estructura (swing de 4 h)", group=gR, tooltip="Si el objetivo de 2R queda más allá del último máximo/mínimo relevante, el precio suele frenarse ahí: el TP2 se adelanta a ese nivel (siempre que deje al menos 1.3R).")
+structBuf = input.float(0.2, "Colchón del TP estructural (× ATR)", minval=0.0, step=0.05, group=gR)
 maxTrades = input.int(4, "Máximo de operaciones por día", minval=1, group=gR)
 maxLosses = input.int(2, "Máximo de pérdidas por día", minval=1, group=gR)
 cooldown  = input.int(0, "Velas entre señales (0 = automático)", minval=0, group=gR)
@@ -204,10 +209,24 @@ swingLo = ta.lowest(low, swingLen)
 swingHi = ta.highest(high, swingLen)
 hhTrail = ta.highest(high, trailLen)
 llTrail = ta.lowest(low, trailLen)
-slLcalc = math.max(swingLo - slBuf * atr, close - maxSlAtr * atr)
-slScalc = math.min(swingHi + slBuf * atr, close + maxSlAtr * atr)
+slLcalc = math.min(math.max(swingLo - slBuf * atr, close - maxSlAtr * atr), close - minSlAtr * atr)
+slScalc = math.max(math.min(swingHi + slBuf * atr, close + maxSlAtr * atr), close + minSlAtr * atr)
 riskLc  = math.max(close - slLcalc, syminfo.mintick)
 riskSc  = math.max(slScalc - close, syminfo.mintick)
+
+// TP2 profesional: si el 2R queda detrás del último swing de ~4 h, el objetivo
+// se adelanta a ese nivel (menos un colchón), siempre que deje al menos 1.3R
+structLen = int(math.max(10, math.round(14400.0 / tfSec)))
+structHi  = ta.highest(high, structLen)[1]
+structLo  = ta.lowest(low, structLen)[1]
+f_tp2L(entryP, riskP) =>
+    base = entryP + rr2 * riskP
+    tgt  = structHi - structBuf * atr
+    useStructTP and tgt - entryP >= 1.3 * riskP ? math.min(base, tgt) : base
+f_tp2S(entryP, riskP) =>
+    base = entryP - rr2 * riskP
+    tgt  = structLo + structBuf * atr
+    useStructTP and entryP - tgt >= 1.3 * riskP ? math.max(base, tgt) : base
 
 // ─────────────────── 7. ESTADÍSTICAS DEL DÍA ───────────────────
 newDay = ta.change(time("D")) != 0
@@ -251,7 +270,7 @@ if newLong
     sPx := slLcalc
     risk0 := riskLc
     t1Px := close + rr1 * riskLc
-    t2Px := close + rr2 * riskLc
+    t2Px := f_tp2L(close, riskLc)
     t1Done := false
     beDone := false
     lastSig := bar_index
@@ -264,7 +283,7 @@ if newShort
     sPx := slScalc
     risk0 := riskSc
     t1Px := close - rr1 * riskSc
-    t2Px := close - rr2 * riskSc
+    t2Px := f_tp2S(close, riskSc)
     t1Done := false
     beDone := false
     lastSig := bar_index
@@ -278,6 +297,7 @@ hitSL = (pos == 1 and low <= sPx) or (pos == -1 and high >= sPx)
 if pos != 0 and hitSL
     if beDone
         winsDay := winsDay + 1
+        rDay := rDay + math.max(0.0, (pos == 1 ? sPx - ePx : ePx - sPx) / risk0) * 0.5
     else
         lossDay := lossDay + 1
         rDay := rDay - 1.0
@@ -303,12 +323,18 @@ else if pos != 0 and hitT2
 else if pos != 0 and hitT1
     t1Done := true
     beDone := true
-    sPx := ePx
+    sPx := pos == 1 ? ePx + beBufAtr * atr : ePx - beBufAtr * atr
     rDay := rDay + rr1 * 0.5
 else if pos != 0 and t1Done and useTrail
     sPx := pos == 1 ? math.max(sPx, hhTrail - trailMult * atr) : math.min(sPx, llTrail + trailMult * atr)
 
 if pos != 0 and not tradeWindow and mode != "24 horas"
+    exitR2 = (pos == 1 ? close - ePx : ePx - close) / risk0
+    rDay := rDay + (t1Done ? exitR2 * 0.5 : exitR2)
+    if (t1Done ? rr1 * 0.5 + exitR2 * 0.5 : exitR2) >= 0
+        winsDay := winsDay + 1
+    else
+        lossDay := lossDay + 1
     pos := 0
     ePx := na
     sPx := na
@@ -339,11 +365,28 @@ motivo = (mEMA ? "EMAs cruzadas en contra · " : "") + (mVWAP ? "VWAP en contra 
 
 exitWarn = useSmart and pos != 0 and salud < saludExit and salud[1] >= saludExit and barstate.isconfirmed
 
+// Al saltar MEJOR SALIR, el seguimiento simulado cierra al precio actual (igual que el bot)
+if exitWarn and smartCloseSim
+    exitR3 = (pos == 1 ? close - ePx : ePx - close) / risk0
+    rDay := rDay + (t1Done ? exitR3 * 0.5 : exitR3)
+    if (t1Done ? rr1 * 0.5 + exitR3 * 0.5 : exitR3) >= 0
+        winsDay := winsDay + 1
+    else
+        lossDay := lossDay + 1
+    pos := 0
+    ePx := na
+    sPx := na
+    t1Px := na
+    t2Px := na
+    t1Done := false
+    beDone := false
+    entryBar := na
+
 // ─────────────── 10. VALORES EN VIVO ───────────────
 dirBias  = scL >= scS
 liveSL   = pos != 0 ? sPx : dirBias ? slLcalc : slScalc
 liveTP1  = pos != 0 ? t1Px : dirBias ? close + rr1 * riskLc : close - rr1 * riskSc
-liveTP2  = pos != 0 ? t2Px : dirBias ? close + rr2 * riskLc : close - rr2 * riskSc
+liveTP2  = pos != 0 ? t2Px : dirBias ? f_tp2L(close, riskLc) : f_tp2S(close, riskSc)
 liveEnt  = pos != 0 ? ePx : close
 liveRisk = pos != 0 ? risk0 : dirBias ? riskLc : riskSc
 riskUSD  = capital * riskPct / 100.0

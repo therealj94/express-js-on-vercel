@@ -13,6 +13,10 @@
 //|  diario opcional · bloqueo de ventanas de noticias · cierre de   |
 //|  viernes · límites de operaciones y pérdidas por día             |
 //|                                                                  |
+//|  v2.10 (revisión de trader pro): órdenes por TICKET (sin choque  |
+//|  con trading manual) · break-even con colchón (cubre spread)     |
+//|  · distancia mínima del SL (0.6×ATR) · TP2 limitado por la       |
+//|  estructura de 4 h · chequeo de margen antes de abrir            |
 //|  v2.00 (auditoría): rango de apertura por VELAS (sobrevive a     |
 //|  reinicios del VPS) · selección de posición por magic (compatible|
 //|  con trading manual en paralelo) · score una vez por vela con    |
@@ -21,7 +25,7 @@
 //|  inteligente · limpieza de variables globales · log de errores   |
 //+------------------------------------------------------------------+
 #property copyright   "ORO FINAL"
-#property version     "2.00"
+#property version     "2.10"
 #property description "Bot de scalping XAUUSD: confluencia 0-100, gestión 50/50, salida inteligente y protecciones de cuenta"
 
 #include <Trade/Trade.mqh>
@@ -63,6 +67,10 @@ input double   InpRR1            = 1.0;        // TP1 (× riesgo) — cierra 50%
 input double   InpRR2            = 2.0;        // TP2 (× riesgo) — cierre total
 input bool     InpUseTrail       = true;       // Trailing por ATR después del TP1
 input double   InpTrailAtr       = 1.5;        // Trailing (× ATR)
+input double   InpMinSlAtr       = 0.6;        // Distancia mínima del SL (× ATR)
+input double   InpBeBufAtr       = 0.1;        // Colchón del break-even (× ATR, cubre spread/comisión)
+input bool     InpUseStructTP    = true;       // TP2 limitado por la estructura (swing de 4 h)
+input double   InpStructBufAtr   = 0.2;        // Colchón del TP estructural (× ATR)
 
 input group "🚪 Salida inteligente"
 input bool     InpUseSmart       = true;       // Vigilar salud y cerrar si el mercado se gira
@@ -332,7 +340,7 @@ double TradeHealth(bool isLong, bool t1Done, datetime openTime, string &motivo)
 }
 
 //──────────────────────────── LOTE POR RIESGO ────────────────────────────
-double RiskLot(double slDistance)
+double RiskLot(double slDistance, bool isLong, double px)
 {
    double riskUSD  = AccountInfoDouble(ACCOUNT_EQUITY) * InpRiskPct / 100.0;
    double tickVal  = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
@@ -344,8 +352,18 @@ double RiskLot(double slDistance)
    double vmin = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
    double vmax = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
    lot = MathFloor(lot / step) * step;
-   if(lot < vmin) return 0.0;   // el riesgo pedido no alcanza ni el lote mínimo: no forzar
-   return MathMin(lot, vmax);
+   lot = MathMin(lot, vmax);
+   // Sanidad de margen: si el margen libre no alcanza, reducir el lote
+   ENUM_ORDER_TYPE ot = isLong ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+   double freeM = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
+   double need  = 0;
+   while(lot >= vmin)
+   {
+      if(OrderCalcMargin(ot, _Symbol, lot, px, need) && need <= freeM * 0.8) break;
+      lot -= step;
+   }
+   if(lot < vmin) return 0.0;   // ni el lote mínimo es viable con este riesgo/margen: no forzar
+   return lot;
 }
 
 //──────────────────────────── CONTADORES DEL DÍA ────────────────────────────
@@ -542,14 +560,17 @@ void OnTick()
    double minStop = (double)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL) * _Point;
 
    if(goLong)
-      OpenTrade(true, ask, MathMax(swingLo - InpSlBufAtr * atr, ask - InpMaxSlAtr * atr), minStop, scL);
+      OpenTrade(true, ask, MathMax(swingLo - InpSlBufAtr * atr, ask - InpMaxSlAtr * atr), minStop, atr, scL);
    else
-      OpenTrade(false, bid, MathMin(swingHi + InpSlBufAtr * atr, bid + InpMaxSlAtr * atr), minStop, scS);
+      OpenTrade(false, bid, MathMin(swingHi + InpSlBufAtr * atr, bid + InpMaxSlAtr * atr), minStop, atr, scS);
 }
 
 //──────────────────────────── APERTURA ────────────────────────────
-void OpenTrade(bool isLong, double px, double sl, double minStop, double score)
+void OpenTrade(bool isLong, double px, double sl, double minStop, double atr, double score)
 {
+   // Distancia mínima propia del SL: un stop demasiado ceñido muere con el ruido del spread
+   if(isLong)  sl = MathMin(sl, px - InpMinSlAtr * atr);
+   else        sl = MathMax(sl, px + InpMinSlAtr * atr);
    // Respetar la distancia mínima de stops del broker
    if(minStop > 0)
    {
@@ -560,9 +581,34 @@ void OpenTrade(bool isLong, double px, double sl, double minStop, double score)
    if(risk <= 0) return;
    double tp1 = isLong ? px + InpRR1 * risk : px - InpRR1 * risk;
    double tp2 = isLong ? px + InpRR2 * risk : px - InpRR2 * risk;
+
+   // TP2 profesional: si el 2R queda detrás del swing de ~4 h, el objetivo se adelanta
+   // a ese nivel (menos un colchón), siempre que deje al menos 1.3R
+   if(InpUseStructTP)
+   {
+      int lookback = (int)MathMax(10, 14400 / PeriodSeconds(PERIOD_CURRENT));
+      if(isLong)
+      {
+         int iH = iHighest(_Symbol, PERIOD_CURRENT, MODE_HIGH, lookback, 1);
+         if(iH >= 0)
+         {
+            double tgt = iHigh(_Symbol, PERIOD_CURRENT, iH) - InpStructBufAtr * atr;
+            if(tgt - px >= 1.3 * risk) tp2 = MathMin(tp2, tgt);
+         }
+      }
+      else
+      {
+         int iL = iLowest(_Symbol, PERIOD_CURRENT, MODE_LOW, lookback, 1);
+         if(iL >= 0)
+         {
+            double tgt = iLow(_Symbol, PERIOD_CURRENT, iL) + InpStructBufAtr * atr;
+            if(px - tgt >= 1.3 * risk) tp2 = MathMax(tp2, tgt);
+         }
+      }
+   }
    if(minStop > 0 && MathAbs(tp2 - px) < minStop) return;   // TP2 demasiado cerca: entrada inválida
 
-   double lot = RiskLot(risk);
+   double lot = RiskLot(risk, isLong, px);
    if(lot <= 0)
    {
       Print("ORO FINAL: el riesgo configurado no alcanza el lote mínimo — entrada omitida");
@@ -604,6 +650,7 @@ void ManagePosition()
    double vol    = PositionGetDouble(POSITION_VOLUME);
    double bid    = SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double ask    = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   ulong  ticket = (ulong)PositionGetInteger(POSITION_TICKET);
    lastPid = pid;
 
    string kTP1 = "ORO_TP1_" + (string)pid;
@@ -616,7 +663,7 @@ void ManagePosition()
    //── Cierre por fin de ventana o cierre de viernes
    if((InpMode != 2 && !TradeWindow()) || IsFridayStop())
    {
-      if(trade.PositionClose(_Symbol))
+      if(trade.PositionClose(ticket))
          Print("ORO FINAL: cierre por fin de ventana operable / viernes");
       return;
    }
@@ -632,12 +679,14 @@ void ManagePosition()
          double half = MathFloor(vol / 2.0 / step) * step;
          if(half >= vmin && vol - half >= vmin)
          {
-            if(!trade.PositionClosePartial(_Symbol, half))
+            if(!trade.PositionClosePartial(ticket, half))
                Print("ORO FINAL: fallo en cierre parcial (", trade.ResultRetcode(), ")");
          }
          // Con lote mínimo no hay parcial: igual se protege con stop a entrada
-         if(!trade.PositionModify(_Symbol, NormalizeDouble(entry, _Digits), curTP))
-            Print("ORO FINAL: fallo moviendo stop a entrada (", trade.ResultRetcode(), ")");
+         double atrBe = Buf(hAtr, 1);
+         double bePx  = isLong ? entry + InpBeBufAtr * atrBe : entry - InpBeBufAtr * atrBe;
+         if(!trade.PositionModify(ticket, NormalizeDouble(bePx, _Digits), curTP))
+            Print("ORO FINAL: fallo moviendo stop a break-even (", trade.ResultRetcode(), ")");
          GlobalVariableSet(kT1D, 1);
          Print("🎯 ORO FINAL: TP1 — 50% cerrado, stop en la entrada (sin riesgo)");
          return;
@@ -654,13 +703,13 @@ void ManagePosition()
          {
             double newSL = bid - InpTrailAtr * atr;
             if(newSL > curSL + _Point * 5)
-               trade.PositionModify(_Symbol, NormalizeDouble(newSL, _Digits), curTP);
+               trade.PositionModify(ticket, NormalizeDouble(newSL, _Digits), curTP);
          }
          else
          {
             double newSL = ask + InpTrailAtr * atr;
             if(curSL == 0 || newSL < curSL - _Point * 5)
-               trade.PositionModify(_Symbol, NormalizeDouble(newSL, _Digits), curTP);
+               trade.PositionModify(ticket, NormalizeDouble(newSL, _Digits), curTP);
          }
       }
    }
@@ -678,7 +727,7 @@ void ManagePosition()
          double salud = TradeHealth(isLong, t1Done, opnT, motivo);
          if(salud < InpHealthExit)
          {
-            if(trade.PositionClose(_Symbol))
+            if(trade.PositionClose(ticket))
                Print("🚪 ORO FINAL: salida inteligente — salud ", DoubleToString(salud, 0), "/100 (", motivo, ")");
             return;
          }

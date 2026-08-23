@@ -1,5 +1,7 @@
 # 🤖 ORO FINAL EA v2.00 ULTIMATE — Bot automático para MetaTrader 5 (Exness)
 
+> **v2.10 — revisión de trader pro:** todas las órdenes van por **ticket** (cero ambigüedad aunque operes a mano en el mismo símbolo), break-even con colchón de 0.1×ATR (cubre spread y comisión), distancia mínima del SL de 0.6×ATR, **TP2 limitado por la estructura de 4 h** (cobra donde el precio suele frenar) y chequeo de margen antes de cada apertura (reduce el lote si no alcanza, jamás rechaza la orden a ciegas).
+>
 > **v2.00 — auditoría completa:** rango de apertura calculado por velas (sobrevive a reinicios del VPS), selección de posición por magic (puedes operar a mano en la misma cuenta sin chocar con el bot), freno diario persistente (un reinicio ya no lo resetea), respeto del stops-level del broker, velas de gracia antes de la salida inteligente, ventanas de noticias bloqueables, objetivo diario opcional, cierre automático de viernes y log de errores de cada orden.
 
 El bot ejecuta solo la estrategia ORO FINAL: analiza, entra, pone SL y TP, cierra el 50% en TP1, mueve el stop a la entrada, hace trailing, y cierra anticipado si la salud de la operación cae. Tú solo lo enciendes.

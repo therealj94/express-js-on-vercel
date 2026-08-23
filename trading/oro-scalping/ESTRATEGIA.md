@@ -71,6 +71,13 @@ Cada vela se puntúan LONG y SHORT por separado:
 
 Con esta gestión, acertando 4 de cada 10 ya eres rentable.
 
+**Afinado de trader profesional (última revisión):**
+- **Distancia mínima del SL (0.6×ATR):** aunque el swing esté pegado al precio, el stop nunca queda tan ceñido que el ruido del spread lo reviente.
+- **Break-even con colchón (+0.1×ATR):** al tocar TP1 el stop no va a la entrada exacta sino un poco por encima — el error clásico del BE exacto es que el retesteo te saca por centavos y luego el precio se va sin ti.
+- **TP2 limitado por estructura:** si el objetivo de 2R queda más allá del último máximo/mínimo de 4 horas (donde está la liquidez y el precio suele frenar), el TP2 se adelanta a ese nivel — cobras donde el mercado gira, no donde la matemática soñó. Solo se aplica si deja al menos 1.3R.
+- **Contabilidad exacta del panel:** el trailing ganado, los cierres por fin de sesión y las salidas inteligentes suman su R real al resultado del día.
+- **El seguimiento simulado cierra al saltar MEJOR SALIR** (igual que el bot), así el panel del día refleja lo que harías de verdad.
+
 ---
 
 ## 4. LA SALIDA INTELIGENTE — lo que casi ningún indicador tiene
