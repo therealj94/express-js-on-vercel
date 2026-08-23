@@ -57,6 +57,11 @@ porque el navegador no avisa: simplemente descarta el archivo y sigue.
 Paso el 15-ago con `.woff2` (la tipografia de la marca) y con `/genesis-id`.
 Las dos cosas estan arregladas en las reglas de la app.
 
+Paso OTRA vez el 23-ago con `.mjs`, `.wasm` y `.task` (el motor de AIR
+TOUCH): ya estan en la lista. Y un dato que costo siete minutos de espera:
+`update_app` con las reglas nuevas NO aplica en caliente sobre un deploy
+manual — hay que volver a desplegar para que las hornee.
+
 Y dos avisos mas, del mismo susto:
 
 - CloudFront guarda la respuesta **un año** (`s-maxage=31536000`) y **no
