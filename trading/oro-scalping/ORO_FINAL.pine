@@ -81,6 +81,8 @@ useStructTP = input.bool(true, "TP2 limitado por estructura (swing de 4 h)", gro
 structBuf = input.float(0.2, "Colchón del TP estructural (× ATR)", minval=0.0, step=0.05, group=gR)
 maxTrades = input.int(4, "Máximo de operaciones por día", minval=1, group=gR)
 maxLosses = input.int(2, "Máximo de pérdidas por día", minval=1, group=gR)
+dayTargetR = input.float(0.0, "Objetivo del día en R (0 = sin objetivo)", minval=0, step=0.5, group=gR, tooltip="Ejemplo: 3 = al acumular +3R en el día, el sistema deja de dar señales y protege el resultado.")
+dayLossR   = input.float(0.0, "Límite de pérdida del día en R (0 = solo máx. pérdidas)", minval=0, step=0.5, group=gR)
 cooldown  = input.int(0, "Velas entre señales (0 = automático)", minval=0, group=gR)
 preThr    = input.int(10, "Aviso previo: puntos antes del umbral", minval=0, maxval=25, group=gR)
 
@@ -244,7 +246,7 @@ if newDay
 
 // ─────────────────── 8. MOTOR DE OPERACIÓN EN VIVO ───────────────────
 tradeWindow = mode == "24 horas" ? true : mode == "Londres + NY completo" ? inLdnNy : kzActive
-limitOK     = tradesDay < maxTrEff and lossDay < maxLosses
+limitOK     = tradesDay < maxTrEff and lossDay < maxLosses and (dayTargetR == 0 or rDay < dayTargetR) and (dayLossR == 0 or rDay > -dayLossR)
 
 var int   pos      = 0
 var float ePx      = na
@@ -516,7 +518,7 @@ if showDash and barstate.islast
     r += 1
 
     // ── Semáforo de decisión (fila ancha, imposible de no ver)
-    decTxt = pos != 0 ? (pos == 1 ? "EN OPERACIÓN LONG 🟢" : "EN OPERACIÓN SHORT 🔴") : decL ? "🟢 ENTRAR LONG " + estrella(scL) : decS ? "🔴 ENTRAR SHORT " + estrella(scS) : not tradeWindow ? "⏸ FUERA DE HORARIO" : not limitOK ? "🛑 LÍMITE DIARIO — DESCANSA" : preL or scL >= thr - preThr ? "🟡 LONG FORMÁNDOSE… ESPERA CONFIRMACIÓN" : preS or scS >= thr - preThr ? "🟡 SHORT FORMÁNDOSE… ESPERA CONFIRMACIÓN" : "⚪ ESPERAR — SIN CONFLUENCIA"
+    decTxt = pos != 0 ? (pos == 1 ? "EN OPERACIÓN LONG 🟢" : "EN OPERACIÓN SHORT 🔴") : decL ? "🟢 ENTRAR LONG " + estrella(scL) : decS ? "🔴 ENTRAR SHORT " + estrella(scS) : not tradeWindow ? "⏸ FUERA DE HORARIO" : dayTargetR > 0 and rDay >= dayTargetR ? "🏆 OBJETIVO DEL DÍA — DESCANSA" : not limitOK ? "🛑 LÍMITE DIARIO — DESCANSA" : preL or scL >= thr - preThr ? "🟡 LONG FORMÁNDOSE… ESPERA CONFIRMACIÓN" : preS or scS >= thr - preThr ? "🟡 SHORT FORMÁNDOSE… ESPERA CONFIRMACIÓN" : "⚪ ESPERAR — SIN CONFLUENCIA"
     decBg  = pos != 0 ? color.new(color.aqua, 80) : decL ? color.new(color.green, 65) : decS ? color.new(color.red, 65) : (preL or preS or scL >= thr - preThr or scS >= thr - preThr) and tradeWindow and limitOK ? color.new(color.yellow, 80) : color.new(color.gray, 85)
     decCol = pos != 0 ? color.aqua : decL ? color.lime : decS ? color.white : color.silver
     fWide(r, decTxt, decCol, decBg)

@@ -25,7 +25,7 @@
 //|  inteligente · limpieza de variables globales · log de errores   |
 //+------------------------------------------------------------------+
 #property copyright   "ORO FINAL"
-#property version     "2.20"
+#property version     "2.30"
 #property description "Bot de scalping XAUUSD: confluencia 0-100, gestión 50/50, salida inteligente y protecciones de cuenta"
 
 #include <Trade/Trade.mqh>
@@ -60,7 +60,10 @@ input double   InpRiskPct        = 0.5;        // Riesgo por operación (% del e
 input int      InpMaxTradesDay   = 4;          // Máximo de operaciones por día
 input int      InpMaxLossesDay   = 2;          // Máximo de pérdidas por día
 input double   InpMaxDailyDD     = 3.0;        // Freno de emergencia: pérdida diaria máx. (% del balance)
-input double   InpDailyTarget    = 0.0;        // Objetivo diario % (al lograrlo deja de operar; 0 = sin objetivo)
+input double   InpDailyTarget    = 0.0;        // Objetivo diario en % (al lograrlo se detiene; 0 = apagado)
+input double   InpDailyTargetUSD = 0.0;        // Objetivo diario en $ (0 = apagado). Se detiene con el primero que se cumpla
+input double   InpDailyLossUSD   = 0.0;        // Límite de pérdida diaria en $ (0 = usar solo el % del freno)
+input bool     InpCloseOnTarget  = true;       // Al llegar a objetivo o límite: cerrar también la posición abierta
 input double   InpMaxSpreadUSD   = 0.35;       // Spread máximo aceptado ($ por onza)
 input int      InpSlippagePts    = 30;         // Desviación máxima (puntos)
 
@@ -460,6 +463,47 @@ void LoadDayBaseline()
    }
 }
 
+//──────────────────── PARADA DEL DÍA POR OBJETIVO / PÉRDIDA ────────────────────
+// Al cumplirse el objetivo (en % o en $) o el límite de pérdida (en % o en $),
+// el día queda BLOQUEADO con un candado persistente: ni un reinicio del VPS ni
+// un retroceso del equity lo reabren. Mañana se libera solo.
+string DayStopKey()
+{
+   MqlDateTime dt;
+   TimeToStruct(TimeCurrent(), dt);
+   return StringFormat("ORO_STOP_%s_%04d%02d%02d", _Symbol, dt.year, dt.mon, dt.day);
+}
+
+bool DayStopped(string &why)
+{
+   string k = DayStopKey();
+   if(GlobalVariableCheck(k))
+   {
+      why = GlobalVariableGet(k) > 1.5 ? "limite" : "objetivo";
+      return true;
+   }
+   double pnl = AccountInfoDouble(ACCOUNT_EQUITY) - dayStartBalance;
+   bool profitHit = (InpDailyTarget > 0 && pnl >= dayStartBalance * InpDailyTarget / 100.0)
+                 || (InpDailyTargetUSD > 0 && pnl >= InpDailyTargetUSD);
+   bool lossHit   = (InpMaxDailyDD > 0 && -pnl >= dayStartBalance * InpMaxDailyDD / 100.0)
+                 || (InpDailyLossUSD > 0 && -pnl >= InpDailyLossUSD);
+   if(profitHit)
+   {
+      GlobalVariableSet(k, 1);
+      why = "objetivo";
+      Print("🏆 ORO FINAL: OBJETIVO DEL DÍA logrado (+$", DoubleToString(pnl, 2), ") — el bot descansa hasta mañana");
+      return true;
+   }
+   if(lossHit)
+   {
+      GlobalVariableSet(k, 2);
+      why = "limite";
+      Print("🛑 ORO FINAL: límite de pérdida del día ($", DoubleToString(pnl, 2), ") — el bot descansa hasta mañana");
+      return true;
+   }
+   return false;
+}
+
 //──────────────────────────── INIT ────────────────────────────
 int OnInit()
 {
@@ -471,7 +515,7 @@ int OnInit()
    //  Agresivo: umbral -5, +2 ops/día, TP2 ≥ 2.5R, trailing más ceñido, riesgo ×1.5
    //  Turbo:    umbral -8, +4 ops/día, TP2 ≥ 3R, cooldown a la mitad, riesgo ×2
    g_thr         = InpThreshold - (InpAggro == 1 ? 5 : InpAggro == 2 ? 8 : 0);
-   g_maxTrades   = InpMaxTradesDay + (InpAggro == 1 ? 2 : InpAggro == 2 ? 4 : 0);
+   g_maxTrades   = InpMaxTradesDay;   // tu número manda: la agresividad ya no lo modifica
    g_cooldownMin = InpAggro == 2 ? (int)MathMax(15, InpCooldownMin / 2) : InpCooldownMin;
    g_rr2         = InpAggro == 0 ? InpRR2 : (InpAggro == 1 ? MathMax(InpRR2, 2.5) : MathMax(InpRR2, 3.0));
    g_trail       = InpAggro >= 1 ? MathMin(InpTrailAtr, 1.2) : InpTrailAtr;
@@ -513,10 +557,20 @@ void OnTick()
    if(d0 != dayStart)
    {
       dayStart = d0;
+      GlobalVariablesDeleteAll("ORO_STOP_");   // libera el candado de días anteriores
       LoadDayBaseline();
    }
 
    RefreshCache();
+
+   //── Parada del día: si se logró el objetivo o se tocó el límite, asegurar y descansar
+   string dayWhy0;
+   if(DayStopped(dayWhy0) && InpCloseOnTarget && SelectOwnPosition())
+   {
+      ulong tk0 = (ulong)PositionGetInteger(POSITION_TICKET);
+      if(trade.PositionClose(tk0))
+         Print("🏁 ORO FINAL: día detenido (", dayWhy0 == "objetivo" ? "objetivo logrado" : "límite de pérdida", ") — posición cerrada para asegurar el resultado");
+   }
 
    //── Gestión de la posición abierta (cada tick)
    bool havePos = SelectOwnPosition();
@@ -556,15 +610,13 @@ void OnTick()
       Comment("🥇 ORO FINAL | ⏸ Spread alto: $", DoubleToString(ask - bid, 2), " (máx. ", DoubleToString(InpMaxSpreadUSD, 2), ")");
       return;
    }
-   double eq = AccountInfoDouble(ACCOUNT_EQUITY);
-   if(eq < dayStartBalance * (1.0 - InpMaxDailyDD / 100.0))
+   string dayWhy;
+   if(DayStopped(dayWhy))
    {
-      Comment("🛑 ORO FINAL | Freno diario: pérdida > ", DoubleToString(InpMaxDailyDD, 1), "%. Sin entradas hasta mañana.");
-      return;
-   }
-   if(InpDailyTarget > 0 && eq >= dayStartBalance * (1.0 + InpDailyTarget / 100.0))
-   {
-      Comment("🏆 ORO FINAL | Objetivo diario +", DoubleToString(InpDailyTarget, 1), "% logrado. El bot descansa hasta mañana.");
+      double pnlDay = AccountInfoDouble(ACCOUNT_EQUITY) - dayStartBalance;
+      Comment(dayWhy == "objetivo"
+              ? "🏆 ORO FINAL | OBJETIVO DEL DÍA LOGRADO (+$" + DoubleToString(pnlDay, 2) + ") — descansando hasta mañana"
+              : "🛑 ORO FINAL | LÍMITE DE PÉRDIDA DEL DÍA ($" + DoubleToString(pnlDay, 2) + ") — descansando hasta mañana");
       return;
    }
    int nT, nL;
