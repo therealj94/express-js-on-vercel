@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
-  View, Text, ScrollView, TextInput, StyleSheet, Share, Pressable, Linking, Image, TouchableOpacity,
+  View, Text, ScrollView, TextInput, StyleSheet, Share, Pressable, Linking, Image,
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -9,7 +9,8 @@ import { mono, serif, sans, money, shadow } from '../theme'
 import { getBooking } from '../api'
 import { INTRO_STILL } from '../images'
 import { getDemoBooking, setDemoTransport } from '../demo'
-import { Plate, Label, Chip, Button, Notice, Serif } from '../components/ui'
+import { Plate, Label, Chip, Button, Notice, Serif, Tap } from '../components/ui'
+import { play } from '../sound'
 import Confetti from '../components/Confetti'
 import CaptainChat from '../components/CaptainChat'
 import { celebrationFor } from '../fun'
@@ -46,6 +47,16 @@ export default function BookingScreen({ c, initialRef, celebrate, settings, onBa
     if (initialRef) look(initialRef)
   }, [initialRef])
 
+  // Confetti with no sound is a silent party. This fires once, when a booking
+  // this app just made finishes loading — never on a plain look-up.
+  const sang = useRef(false)
+  useEffect(() => {
+    if (celebrate && booking && !sang.current) {
+      sang.current = true
+      play('aboard')
+    }
+  }, [celebrate, booking])
+
   async function look(which) {
     const target = String(which || ref).trim().toUpperCase()
     if (!target) return
@@ -77,6 +88,7 @@ export default function BookingScreen({ c, initialRef, celebrate, settings, onBa
 
   async function chooseRide(id) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    play('pop')
     setRide(id)
     if (booking?.demo) await setDemoTransport(booking.ref, id)
   }
@@ -149,9 +161,9 @@ export default function BookingScreen({ c, initialRef, celebrate, settings, onBa
             style={StyleSheet.absoluteFill}
           />
           <View style={[styles.heroTop, { paddingTop: insets.top + 10 }]}>
-            <Pressable onPress={onBack} style={styles.heroBtn}>
+            <Tap onPress={onBack} style={styles.heroBtn}>
               <Text style={{ fontSize: 17, color: '#fff' }}>←</Text>
-            </Pressable>
+            </Tap>
             {booking.demo ? (
               <View style={styles.demoTag}>
                 <Text style={styles.demoTagText}>DEMO BOOKING</Text>
@@ -206,9 +218,9 @@ export default function BookingScreen({ c, initialRef, celebrate, settings, onBa
             </Text>
             <Text style={[styles.detail, { color: c.inkFaint }]}>{where}</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Button c={c} ghost style={{ flex: 1 }} onPress={openMap}>Open in Maps</Button>
+              <Button c={c} ghost flex onPress={openMap}>Open in Maps</Button>
               <Button
-                c={c} ghost style={{ flex: 1 }}
+                c={c} ghost flex
                 onPress={() => Share.share({ message: `Meet us at ${where} — Love Cloud Roatán, booking ${booking.ref}` })}
               >
                 Send to a friend
@@ -224,9 +236,11 @@ export default function BookingScreen({ c, initialRef, celebrate, settings, onBa
                   Roatán taxis are an adventure of their own. We would rather just come and get you.
                 </Text>
                 {RIDES.map((r) => (
-                  <TouchableOpacity
+                  <Tap
                     key={r.id}
-                    activeOpacity={0.7}
+                    scaleTo={0.98}
+                    sound={null}
+                    haptic="none"
                     onPress={() => chooseRide(r.id)}
                     style={[styles.ride, { borderColor: c.rule, backgroundColor: c.chart }]}
                   >
@@ -236,7 +250,7 @@ export default function BookingScreen({ c, initialRef, celebrate, settings, onBa
                       <Text style={[styles.detail, { color: c.inkFaint }]}>{r.note}</Text>
                     </View>
                     <Text style={{ color: c.inkFaint, fontSize: 18 }}>›</Text>
-                  </TouchableOpacity>
+                  </Tap>
                 ))}
               </>
             ) : (
@@ -265,9 +279,9 @@ export default function BookingScreen({ c, initialRef, celebrate, settings, onBa
                     Send our pickup address
                   </Button>
                 ) : null}
-                <Pressable onPress={() => setRide(null)} hitSlop={8}>
+                <Tap onPress={() => setRide(null)} hitSlop={8}>
                   <Text style={[styles.detail, { color: c.shoal, textAlign: 'center' }]}>Change my answer</Text>
-                </Pressable>
+                </Tap>
               </>
             )}
           </Plate>
@@ -348,9 +362,9 @@ export default function BookingScreen({ c, initialRef, celebrate, settings, onBa
 
 const TopBar = ({ c, insets, onBack }) => (
   <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: insets.top + 8, paddingBottom: 4 }}>
-    <Pressable onPress={onBack} style={[{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: c.plate }, shadow]}>
+    <Tap onPress={onBack} style={[{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: c.plate }, shadow]}>
       <Text style={{ fontSize: 17, color: c.ink }}>←</Text>
-    </Pressable>
+    </Tap>
   </View>
 )
 

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Love Cloud Roatán",
     "slug": "love-cloud-roatan",
-    "version": "3.0.0",
+    "version": "3.1.0",
     "runtimeVersion": {
       "policy": "fingerprint"
     },
@@ -21,7 +21,7 @@
     ],
     "android": {
       "package": "com.lovecloud.roatanyacht",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#072A38"
@@ -34,14 +34,15 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.lovecloud.roatanyacht",
-      "buildNumber": "3",
+      "buildNumber": "4",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "plugins": [
       "expo-web-browser",
-      "expo-video"
+      "expo-video",
+      "expo-audio"
     ],
     "extra": {
       "apiUrl": "https://roatan-yacht.vercel.app"

@@ -3,6 +3,8 @@ import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { serif, sans, money, shadow } from '../theme'
 import Calendar, { spanDates } from '../components/Calendar'
+import { Tap } from '../components/ui'
+import { play } from '../sound'
 
 // Date and guests get their own screen, after the fun of packing the boat —
 // the experience is chosen with the heart, the date with the calendar.
@@ -21,9 +23,9 @@ export default function DateScreen({
   return (
     <View style={[styles.root, { backgroundColor: c.chart }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={onBack} style={[styles.roundBtn, { backgroundColor: c.plate, ...shadow }]}>
+        <Tap onPress={onBack} style={[styles.roundBtn, { backgroundColor: c.plate, ...shadow }]}>
           <Text style={{ fontSize: 17, color: c.ink }}>←</Text>
-        </Pressable>
+        </Tap>
         <View style={{ flex: 1 }}>
           <Text style={[styles.kicker, { color: c.signal }]}>ALMOST THERE</Text>
           <Text style={[styles.title, { color: c.ink }]}>When do we sail?</Text>
@@ -37,7 +39,7 @@ export default function DateScreen({
             unavailable={unavailable}
             value={cart.date}
             nights={cart.nights}
-            onPick={(d) => { Haptics.selectionAsync(); onPickDate(d) }}
+            onPick={(d) => { Haptics.selectionAsync(); play('pop'); onPickDate(d) }}
           />
           <Text style={[styles.note, { color: c.inkFaint }]}>
             {cart.nights
@@ -92,16 +94,14 @@ export default function DateScreen({
             {ready ? 'Everything aboard' : 'Pick a date to continue'}
           </Text>
         </View>
-        <Pressable
+        <Tap
           disabled={!ready}
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onContinue() }}
-          style={({ pressed }) => [
-            styles.cta,
-            { backgroundColor: c.signal, opacity: !ready ? 0.4 : pressed ? 0.85 : 1 },
-          ]}
+          haptic="medium"
+          onPress={onContinue}
+          style={[styles.cta, { backgroundColor: c.signal }]}
         >
           <Text style={styles.ctaText}>Review & pay →</Text>
-        </Pressable>
+        </Tap>
       </View>
     </View>
   )
@@ -109,16 +109,14 @@ export default function DateScreen({
 
 function BigStepper({ c, value, min, max, onChange }) {
   const btn = (txt, next, disabled) => (
-    <Pressable
+    <Tap
       disabled={disabled}
-      onPress={() => { Haptics.selectionAsync(); onChange(next) }}
-      style={({ pressed }) => [
-        styles.stepBtn,
-        { backgroundColor: c.sunk, opacity: disabled ? 0.35 : pressed ? 0.7 : 1 },
-      ]}
+      scaleTo={0.88}
+      onPress={() => onChange(next)}
+      style={[styles.stepBtn, { backgroundColor: c.sunk }]}
     >
       <Text style={{ fontFamily: sans, fontSize: 22, fontWeight: '700', color: c.ink }}>{txt}</Text>
-    </Pressable>
+    </Tap>
   )
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginVertical: 6 }}>

@@ -10,6 +10,8 @@ import * as Haptics from 'expo-haptics'
 import { serif, sans } from '../theme'
 import { INTRO_VIDEO, INTRO_STILL } from '../images'
 import { register, signIn, continueAsGuest } from '../account'
+import { Tap } from '../components/ui'
+import { play } from '../sound'
 
 // The sign-in card floats on the water rather than covering it: the video keeps
 // running behind frosted glass, the boat stays visible above the card, and the
@@ -41,6 +43,7 @@ export default function AuthScreen({ c, insets, onDone }) {
     try {
       const account = mode === 'register' ? await register(form) : await signIn(form)
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      play('aboard')
       onDone(account)
     } catch (err) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
@@ -100,13 +103,14 @@ export default function AuthScreen({ c, insets, onDone }) {
                 {[['register', 'Create account'], ['signin', 'Sign in']].map(([id, txt]) => {
                   const on = mode === id
                   return (
-                    <Pressable
+                    <Tap
                       key={id}
-                      onPress={() => { Haptics.selectionAsync(); setMode(id); setError('') }}
+                      flex
+                      onPress={() => { setMode(id); setError('') }}
                       style={[styles.switchBtn, on && { backgroundColor: c.signal }]}
                     >
                       <Text style={[styles.switchText, { opacity: on ? 1 : 0.7 }]}>{txt}</Text>
-                    </Pressable>
+                    </Tap>
                   )
                 })}
               </View>
@@ -127,22 +131,20 @@ export default function AuthScreen({ c, insets, onDone }) {
 
               {error ? <Text style={[styles.error, { color: '#FFC4DC' }]}>{error}</Text> : null}
 
-              <Pressable
+              <Tap
                 disabled={busy}
+                haptic="medium"
                 onPress={submit}
-                style={({ pressed }) => [
-                  styles.cta,
-                  { backgroundColor: c.signal, opacity: busy ? 0.5 : pressed ? 0.86 : 1 },
-                ]}
+                style={[styles.cta, { backgroundColor: c.signal }]}
               >
                 <Text style={styles.ctaText}>
                   {mode === 'register' ? 'Create my account  →' : 'Sign me in  →'}
                 </Text>
-              </Pressable>
+              </Tap>
 
-              <Pressable onPress={guest} hitSlop={10}>
+              <Tap onPress={guest} hitSlop={10}>
                 <Text style={styles.ghost}>Just let me look around  ·  continue as guest</Text>
-              </Pressable>
+              </Tap>
 
               <Text style={styles.fine}>
                 No password, no spam, no newsletter about our journey as a brand. We keep your name
@@ -185,7 +187,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', gap: 4, padding: 4, borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
-  switchBtn: { flex: 1, borderRadius: 999, paddingVertical: 11, alignItems: 'center' },
+  switchBtn: { borderRadius: 999, paddingVertical: 11, alignItems: 'center' },
   switchText: { fontFamily: sans, fontSize: 13.5, fontWeight: '700', color: '#fff' },
   label: { fontFamily: sans, fontSize: 9.5, fontWeight: '800', letterSpacing: 1.6, color: 'rgba(255,255,255,0.7)' },
   input: {

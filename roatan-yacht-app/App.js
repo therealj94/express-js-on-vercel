@@ -21,6 +21,7 @@ import SettingsScreen from './src/screens/SettingsScreen'
 import { spanDates } from './src/components/Calendar'
 import { LOADING_LINES } from './src/fun'
 import { loadAccount, hasSeenIntro, markIntroSeen, signOut } from './src/account'
+import { initSound } from './src/sound'
 
 const emptyCart = {
   vesselId: null, date: '', nights: 0, guests: 2,
@@ -76,6 +77,8 @@ function Shell() {
 
   useEffect(() => {
     (async () => {
+      // Sound comes up before the first screen so the intro's first tap ticks.
+      await initSound()
       const [saved, seen] = await Promise.all([loadAccount(), hasSeenIntro()])
       setAccount(saved)
       setPhase(!seen ? 'intro' : saved ? 'app' : 'auth')

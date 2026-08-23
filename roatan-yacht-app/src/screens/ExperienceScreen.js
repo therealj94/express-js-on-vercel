@@ -5,6 +5,8 @@ import {
 import * as Haptics from 'expo-haptics'
 import { mono, serif, sans, money, catColor, shadow } from '../theme'
 import { quipFor, MILESTONES, EMPTY_HINTS } from '../fun'
+import { play } from '../sound'
+import { Tap } from '../components/ui'
 
 // The screen the whole app exists for. Services are icons; you pick one up
 // with your finger and drop it into your experience. No lists, no forms —
@@ -52,6 +54,7 @@ export default function ExperienceScreen({
 
   const celebrate = (category) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    play('pop')
     const next = aboardCount + 1
     setQuip(MILESTONES[next] || quipFor(category, next))
     trayPulse.setValue(0)
@@ -61,15 +64,23 @@ export default function ExperienceScreen({
     ]).start()
   }
 
+  // Dropping is add, never toggle. It used to call the same toggle either way,
+  // so dragging something already aboard quietly threw it back off the boat —
+  // the opposite of what the gesture means.
   const addItem = (entry) => {
-    const already = aboardIds.has(entry.item.id)
-    if (!already) celebrate(entry.kind === 'bundle' ? 'celebrate' : entry.item.category)
+    if (aboardIds.has(entry.item.id)) {
+      Haptics.selectionAsync()
+      setQuip('Already aboard — we packed it the first time. 😄')
+      return
+    }
+    celebrate(entry.kind === 'bundle' ? 'celebrate' : entry.item.category)
     if (entry.kind === 'bundle') onToggleBundle(entry.item.id)
     else onToggleExtra(entry.item.id)
   }
 
   const removeItem = (entry) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    play('off')
     if (entry.kind === 'bundle') onToggleBundle(entry.item.id)
     else onToggleExtra(entry.item.id)
   }
@@ -142,6 +153,14 @@ export default function ExperienceScreen({
 
   const trayScale = trayPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] })
 
+  // Where the tray starts, in window coordinates — the line a finger has to
+  // cross for a drop to count. Re-measured whenever the tray changes height,
+  // which it does the moment the first item lands in it.
+  const trayRef = useRef(null)
+  const measureTray = () => {
+    trayRef.current?.measureInWindow?.((x, y) => { if (y) trayTop.current = y })
+  }
+
   return (
     <View style={[styles.root, { backgroundColor: c.chart }]} {...rootPan.panHandlers}>
       {/* header */}
@@ -171,9 +190,10 @@ export default function ExperienceScreen({
         {TABS.map((t) => {
           const on = tab === t.id
           return (
-            <Pressable
+            <Tap
               key={t.id}
-              onPress={() => { Haptics.selectionAsync(); setTab(t.id) }}
+              flex
+              onPress={() => setTab(t.id)}
               style={[
                 styles.tab,
                 { backgroundColor: on ? catColor[t.id] : c.plate, ...(on ? shadow : null) },
@@ -181,7 +201,7 @@ export default function ExperienceScreen({
             >
               <Text style={{ fontSize: 18 }}>{t.emoji}</Text>
               <Text style={[styles.tabLabel, { color: on ? '#fff' : c.inkSoft }]}>{t.label}</Text>
-            </Pressable>
+            </Tap>
           )
         })}
       </View>
@@ -206,7 +226,7 @@ export default function ExperienceScreen({
                   // its release will not fire. Drop the ghost here.
                   setTimeout(() => { if (draggingRef.current && !grantedRef.current) endDrag(null) }, 60)
                 }}
-                onPress={() => { Haptics.selectionAsync(); setDetail(en) }}
+                onPress={() => { Haptics.selectionAsync(); play('tap'); setDetail(en) }}
                 style={({ pressed }) => [
                   styles.bubble,
                   {
@@ -231,7 +251,9 @@ export default function ExperienceScreen({
               <Text style={[styles.bubblePrice, { color }]}>
                 {en.kind === 'bundle'
                   ? `save ${en.item.discountPct}%`
-                  : en.item.price === 0 ? 'FREE' : money(en.item.price)}
+                  : en.item.price === 0
+                    ? 'FREE'
+                    : `${money(en.item.price)}${en.item.unit === 'per_person' ? ' pp' : ''}`}
               </Text>
             </View>
           )
@@ -247,15 +269,8 @@ export default function ExperienceScreen({
 
       {/* the tray — your experience */}
       <Animated.View
-        onLayout={(e) => {
-          // measure in window: layout y is within parent; use a ref measure
-        }}
-        ref={(ref) => {
-          if (ref) {
-            ref.measureInWindow?.((x, y) => { if (y) trayTop.current = y })
-            setTimeout(() => ref.measureInWindow?.((x, y) => { if (y) trayTop.current = y }), 300)
-          }
-        }}
+        ref={trayRef}
+        onLayout={measureTray}
         style={[
           styles.tray,
           {
@@ -276,14 +291,25 @@ export default function ExperienceScreen({
         {aboardEntries.length ? (
           <ScrollView horizontal showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
             {aboardEntries.map((en) => (
-              <Pressable
-                key={en.item.id}
-                onPress={() => { Haptics.selectionAsync(); setDetail(en) }}
-                onLongPress={() => removeItem(en)}
-                style={[styles.trayBubble, { backgroundColor: en.kind === 'bundle' ? catColor.bundles : catColor[en.item.category] }]}
-              >
-                <Text style={{ fontSize: 20 }}>{en.item.emoji}</Text>
-              </Pressable>
+              <View key={en.item.id}>
+                <Tap
+                  sound={null}
+                  onPress={() => { play('tap'); setDetail(en) }}
+                  onLongPress={() => removeItem(en)}
+                  style={[styles.trayBubble, { backgroundColor: en.kind === 'bundle' ? catColor.bundles : catColor[en.item.category] }]}
+                >
+                  <Text style={{ fontSize: 20 }}>{en.item.emoji}</Text>
+                </Tap>
+                {/* Long-press to remove is a gesture nobody discovers. The
+                    little cross is the one people actually use. */}
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => removeItem(en)}
+                  style={[styles.trayRemove, { backgroundColor: c.chart, borderColor: c.deep }]}
+                >
+                  <Text style={{ color: c.ink, fontSize: 11, fontWeight: '800', lineHeight: 13 }}>×</Text>
+                </Pressable>
+              </View>
             ))}
           </ScrollView>
         ) : (
@@ -292,15 +318,15 @@ export default function ExperienceScreen({
           </Text>
         )}
 
-        <Pressable
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onContinue() }}
-          style={({ pressed }) => [
-            styles.continueBtn,
-            { backgroundColor: c.signal, opacity: pressed ? 0.85 : 1 },
-          ]}
+        <Tap
+          haptic="medium"
+          onPress={onContinue}
+          style={[styles.continueBtn, { backgroundColor: c.signal }]}
         >
-          <Text style={styles.continueText}>Continue — pick your date</Text>
-        </Pressable>
+          <Text style={styles.continueText}>
+            {aboardCount ? 'Continue — pick your date' : 'Skip the extras — just the boat'}
+          </Text>
+        </Tap>
       </Animated.View>
 
       {/* the floating clone under the finger */}
@@ -362,25 +388,24 @@ export default function ExperienceScreen({
                   </View>
                 ) : null}
 
-                <Pressable
+                <Tap
+                  sound={null}
+                  haptic="none"
                   onPress={() => {
                     const was = aboardIds.has(detail.item.id)
                     if (was) removeItem(detail)
                     else addItem(detail)
                     setDetail(null)
                   }}
-                  style={({ pressed }) => [
+                  style={[
                     styles.sheetBtn,
-                    {
-                      backgroundColor: aboardIds.has(detail.item.id) ? c.sunk : c.signal,
-                      opacity: pressed ? 0.85 : 1,
-                    },
+                    { backgroundColor: aboardIds.has(detail.item.id) ? c.sunk : c.signal },
                   ]}
                 >
                   <Text style={[styles.sheetBtnText, { color: aboardIds.has(detail.item.id) ? c.ink : '#fff' }]}>
                     {aboardIds.has(detail.item.id) ? 'Take it off the boat' : 'Add to my experience'}
                   </Text>
-                </Pressable>
+                </Tap>
               </>
             ) : null}
           </Pressable>
@@ -399,7 +424,7 @@ const styles = StyleSheet.create({
   countPill: { minWidth: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 9 },
   hint: { fontFamily: sans, fontSize: 12.5, paddingHorizontal: 16, paddingBottom: 8 },
   tabs: { flexDirection: 'row', gap: 7, paddingHorizontal: 16, paddingBottom: 10 },
-  tab: { flex: 1, borderRadius: 16, alignItems: 'center', paddingVertical: 8, gap: 2 },
+  tab: { borderRadius: 16, alignItems: 'center', paddingVertical: 8, gap: 2 },
   tabLabel: { fontFamily: sans, fontSize: 8.5, fontWeight: '700' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10, paddingTop: 6 },
   cell: { width: '25%', alignItems: 'center', marginBottom: 14, paddingHorizontal: 3 },
@@ -424,6 +449,10 @@ const styles = StyleSheet.create({
   trayHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   trayTitle: { fontFamily: sans, fontSize: 14, fontWeight: '700' },
   trayTotal: { fontFamily: sans, fontSize: 18, fontWeight: '800' },
+  trayRemove: {
+    position: 'absolute', top: -3, right: -3, width: 18, height: 18, borderRadius: 9, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center',
+  },
   trayBubble: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   trayEmpty: { fontFamily: sans, fontSize: 12.5, paddingVertical: 8 },
   continueBtn: { borderRadius: 999, alignItems: 'center', paddingVertical: 15, marginTop: 4 },

@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
-import { View, Text, ScrollView, TextInput, StyleSheet, Alert } from 'react-native'
+import { View, Text, ScrollView, TextInput, StyleSheet, Alert, Switch } from 'react-native'
 import * as Updates from 'expo-updates'
 import { mono } from '../theme'
 import { apiUrl, builtInUrl, setApiUrl, testConnection } from '../api'
 import { Plate, Label, Button, Notice, Serif } from '../components/ui'
+import { soundIsOn, setSoundOn, play } from '../sound'
 
 export default function SettingsScreen({ c, catalog, account, onSaved, onReplayIntro, onSignOut, insets }) {
   const goBack = () => onSaved()
@@ -11,6 +12,7 @@ export default function SettingsScreen({ c, catalog, account, onSaved, onReplayI
   const [result, setResult] = useState(null)
   const [busy, setBusy] = useState(false)
   const [checking, setChecking] = useState(false)
+  const [sound, setSound] = useState(soundIsOn())
 
   async function test() {
     setBusy(true)
@@ -59,6 +61,28 @@ export default function SettingsScreen({ c, catalog, account, onSaved, onReplayI
         <Label c={c} signal>Settings</Label>
         <Serif c={c} size={21}>Where the app books</Serif>
       </View>
+
+      <Plate c={c} title="Sound">
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.small, { color: c.inkSoft }]}>
+              Ticks when you press, a chime when a payment goes through. It ducks under your music
+              and obeys the phone's silent switch.
+            </Text>
+          </View>
+          <Switch
+            value={sound}
+            onValueChange={async (v) => {
+              setSound(v)
+              await setSoundOn(v)
+              // Turning it on should prove it works.
+              if (v) play('success')
+            }}
+            trackColor={{ true: c.signal, false: c.rule }}
+            thumbColor={c.plate}
+          />
+        </View>
+      </Plate>
 
       <Plate c={c} title="You">
         <Text style={[styles.small, { color: c.inkSoft }]}>

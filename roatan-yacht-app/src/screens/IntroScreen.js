@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import { serif, sans } from '../theme'
 import { INTRO_VIDEO, INTRO_STILL } from '../images'
+import { Tap } from '../components/ui'
 
 // The first fifteen seconds decide whether anyone books anything. So the app
 // does not open on a menu — it opens on the actual water, shot from a drone
@@ -133,9 +134,9 @@ export default function IntroScreen({ c, insets, onDone }) {
             <View key={x.at} style={[styles.tick, { opacity: i <= beat ? 1 : 0.28 }]} />
           ))}
         </View>
-        <Pressable onPress={leave} hitSlop={14} style={styles.skip}>
+        <Tap onPress={leave} hitSlop={14} style={styles.skip}>
           <Text style={styles.skipText}>Skip</Text>
-        </Pressable>
+        </Tap>
       </View>
 
       <View style={styles.brandWrap}>
@@ -149,15 +150,9 @@ export default function IntroScreen({ c, insets, onDone }) {
           <Text style={styles.sub}>{b.sub}</Text>
         </Animated.View>
 
-        <Pressable
-          onPress={leave}
-          style={({ pressed }) => [
-            styles.cta,
-            { backgroundColor: c.signal, opacity: pressed ? 0.85 : 1 },
-          ]}
-        >
+        <Tap haptic="medium" onPress={leave} style={[styles.cta, { backgroundColor: c.signal }]}>
           <Text style={styles.ctaText}>{ready ? 'Start my adventure  →' : 'Take me aboard  →'}</Text>
-        </Pressable>
+        </Tap>
 
         <View style={styles.barTrack}>
           <Animated.View

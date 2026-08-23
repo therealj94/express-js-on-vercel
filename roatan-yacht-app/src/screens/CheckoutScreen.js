@@ -1,17 +1,18 @@
 import React, { useState } from 'react'
 import {
-  View, Text, ScrollView, TextInput, StyleSheet, KeyboardAvoidingView, Platform, Linking, Pressable,
+  View, Text, ScrollView, TextInput, StyleSheet, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native'
 import * as WebBrowser from 'expo-web-browser'
 import * as Haptics from 'expo-haptics'
 import { mono, serif, sans, money, shadow } from '../theme'
 import { createBooking } from '../api'
 import { requestMessage } from '../pricing'
-import { Plate, Label, Button, Notice, Serif } from '../components/ui'
+import { Plate, Label, Button, Notice, Serif, Tap } from '../components/ui'
 import { spanDates } from '../components/Calendar'
 import { TIP_OPTIONS, celebrationFor } from '../fun'
 import Confetti from '../components/Confetti'
 import PaySheet from '../components/PaySheet'
+import { play } from '../sound'
 import { createDemoBooking } from '../demo'
 
 export default function CheckoutScreen({ c, cart, quote, settings, account, onBooked, onTip, onBack, insets }) {
@@ -25,7 +26,30 @@ export default function CheckoutScreen({ c, cart, quote, settings, account, onBo
   // Which amount the pay sheet is open for: 'deposit', 'full', or nothing.
   const [paying, setPaying] = useState(null)
 
-  const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }))
+  const set = (k) => (v) => { setForm((f) => ({ ...f, [k]: v })); setBad((b) => ({ ...b, [k]: false })) }
+
+  // Which fields are showing a complaint right now.
+  const [bad, setBad] = useState({ name: false, email: false })
+
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())
+  const nameOk = form.name.trim().length > 1
+
+  function openPay(which) {
+    if (!nameOk || !emailOk) {
+      setBad({ name: !nameOk, email: !emailOk })
+      setError(
+        !nameOk && !emailOk
+          ? 'The crew needs a name and an email before we take any money.'
+          : !nameOk
+            ? 'We need a name for the boarding pass.'
+            : 'That email does not look right — the boarding pass goes there.',
+      )
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+      return
+    }
+    setError('')
+    setPaying(which)
+  }
   const fmt = (d) =>
     new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', {
       weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC',
@@ -88,6 +112,7 @@ export default function CheckoutScreen({ c, cart, quote, settings, account, onBo
     // The request is on its way — that deserves the same joy as a paid
     // booking, not a silent return to a form.
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    play('success')
     setSent(true)
   }
 
@@ -128,9 +153,9 @@ export default function CheckoutScreen({ c, cart, quote, settings, account, onBo
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: insets.top + 8, paddingBottom: 4 }}>
-        <Pressable onPress={onBack} style={[{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: c.plate }, shadow]}>
+        <Tap onPress={onBack} style={[{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: c.plate }, shadow]}>
           <Text style={{ fontSize: 17, color: c.ink }}>←</Text>
-        </Pressable>
+        </Tap>
         <View>
           <Text style={{ fontFamily: sans, fontSize: 10, fontWeight: '800', letterSpacing: 2, color: c.signal }}>LAST STEP</Text>
           <Serif c={c} size={21}>Make it official</Serif>
@@ -187,12 +212,10 @@ export default function CheckoutScreen({ c, cart, quote, settings, account, onBo
             {TIP_OPTIONS.map((t) => {
               const on = (quote.tipPct || 0) === t.pct
               return (
-                <Pressable
+                <Tap
                   key={t.pct}
-                  onPress={() => {
-                    Haptics.selectionAsync()
-                    onTip(t.pct)
-                  }}
+                  onPress={() => onTip(t.pct)}
+                  scaleTo={0.97}
                   style={[
                     styles.tipChip,
                     { borderColor: on ? c.signal : c.rule, backgroundColor: on ? c.signalSoft : c.plate },
@@ -200,16 +223,16 @@ export default function CheckoutScreen({ c, cart, quote, settings, account, onBo
                 >
                   <Text style={[styles.tipPct, { color: on ? c.signal : c.ink }]}>{t.label}</Text>
                   <Text style={[styles.tipNote, { color: c.inkFaint }]}>{t.note}</Text>
-                </Pressable>
+                </Tap>
               )
             })}
           </View>
         </Plate>
 
         <Plate c={c} title="Who is coming">
-          <Field c={c} label="Full name" value={form.name} onChange={set('name')} autoComplete="name" />
+          <Field c={c} label="Full name" value={form.name} onChange={set('name')} autoComplete="name" bad={bad.name} />
           <Field
-            c={c} label="Email" value={form.email} onChange={set('email')}
+            c={c} label="Email" value={form.email} onChange={set('email')} bad={bad.email}
             keyboardType="email-address" autoCapitalize="none" autoComplete="email"
           />
           <Field c={c} label="Phone or WhatsApp" value={form.phone} onChange={set('phone')} keyboardType="phone-pad" />
@@ -238,19 +261,19 @@ export default function CheckoutScreen({ c, cart, quote, settings, account, onBo
           ))}
         </View>
 
-        <Button c={c} busy={busy === 'deposit'} disabled={Boolean(busy)} onPress={() => setPaying('deposit')}>
+        <Button c={c} busy={busy === 'deposit'} disabled={Boolean(busy)} onPress={() => openPay('deposit')}>
           Pay {money(quote.deposit, quote.currency)} deposit
         </Button>
-        <Button c={c} ghost busy={busy === 'full'} disabled={Boolean(busy)} onPress={() => setPaying('full')}>
+        <Button c={c} ghost busy={busy === 'full'} disabled={Boolean(busy)} onPress={() => openPay('full')}>
           Pay {money(quote.total, quote.currency)} in full
         </Button>
 
         {quote.estimate ? (
-          <Pressable onPress={sendByWhatsApp} hitSlop={8}>
+          <Tap onPress={sendByWhatsApp} hitSlop={8}>
             <Text style={[styles.whatsapp, { color: c.shoal }]}>
               Rather talk to a human? Send the manifest on WhatsApp
             </Text>
-          </Pressable>
+          </Tap>
         ) : null}
 
         <Text style={[styles.small, { color: c.inkFaint }]}>{settings.cancellationPolicy}</Text>
@@ -262,6 +285,13 @@ export default function CheckoutScreen({ c, cart, quote, settings, account, onBo
           amount={paying === 'full' ? quote.total : quote.deposit}
           currency={quote.currency}
           demo={Boolean(quote.estimate)}
+          insets={insets}
+          summary={`${quote.vesselName} · ${fmt(quote.date)} · ${quote.guests} guests`}
+          note={
+            paying === 'deposit'
+              ? `Deposit today. ${money(quote.total - quote.deposit, quote.currency)} due 48 h before departure.`
+              : 'Paid in full — nothing owing at the dock.'
+          }
           onClose={() => setPaying(null)}
           onPay={paid}
         />
@@ -270,10 +300,10 @@ export default function CheckoutScreen({ c, cart, quote, settings, account, onBo
   )
 }
 
-function Field({ c, label, value, onChange, multiline, ...rest }) {
+function Field({ c, label, value, onChange, multiline, bad, ...rest }) {
   return (
     <View style={{ gap: 5 }}>
-      <Label c={c}>{label}</Label>
+      <Label c={c} signal={bad}>{label}</Label>
       <TextInput
         value={value}
         onChangeText={onChange}
@@ -281,7 +311,8 @@ function Field({ c, label, value, onChange, multiline, ...rest }) {
         placeholderTextColor={c.inkFaint}
         style={[
           styles.input,
-          { color: c.ink, borderColor: c.rule, backgroundColor: c.plate },
+          { color: c.ink, borderColor: bad ? c.signal : c.rule, backgroundColor: c.plate },
+          bad && { borderWidth: 2 },
           multiline && { height: 78, textAlignVertical: 'top' },
         ]}
         {...rest}

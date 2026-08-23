@@ -5,6 +5,8 @@ import {
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { serif, sans, money } from '../theme'
+import { play } from '../sound'
+import { Tap } from './ui'
 
 // The payment sheet. It slides up from the bottom like the platform wallet
 // sheets do, because that is the shape people already trust with a card number.
@@ -43,7 +45,7 @@ const expiry = (s) => {
   return d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d
 }
 
-export default function PaySheet({ c, amount, currency, demo, busy, onClose, onPay }) {
+export default function PaySheet({ c, amount, currency, demo, busy, summary, note, insets, onClose, onPay }) {
   const wallet = METHODS.find((m) => m.only === Platform.OS)
   const [method, setMethod] = useState(wallet ? wallet.id : 'card')
   const [card, setCard] = useState({ number: '', exp: '', cvc: '', zip: '' })
@@ -77,6 +79,9 @@ export default function PaySheet({ c, amount, currency, demo, busy, onClose, onP
     await new Promise((r) => setTimeout(r, method === 'card' ? 1500 : 1100))
     setStage('approved')
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    // The one sound the app really needed: paying should feel like something
+    // happened, and this is the moment it happens.
+    play('success')
     Animated.timing(tick, { toValue: 1, duration: 420, easing: Easing.out(Easing.back(2)), useNativeDriver: true }).start()
     await new Promise((r) => setTimeout(r, 780))
     onPay({ method, brand: chosen.label, last4: digits(card.number).slice(-4) })
@@ -91,7 +96,9 @@ export default function PaySheet({ c, amount, currency, demo, busy, onClose, onP
       <Animated.View
         style={[
           styles.sheet,
-          { backgroundColor: c.plate },
+          // Clear of the gesture bar; the pay button is the last thing that
+          // should be fighting with the system navigation.
+          { backgroundColor: c.plate, paddingBottom: 20 + (insets?.bottom || 0) },
           { transform: [{ translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [520, 0] }) }] },
         ]}
       >
@@ -134,15 +141,19 @@ export default function PaySheet({ c, amount, currency, demo, busy, onClose, onP
             <View style={{ gap: 3 }}>
               <Text style={[styles.kicker, { color: c.signal }]}>PAYMENT</Text>
               <Text style={[styles.amount, { color: c.ink }]}>{money(amount, currency)}</Text>
-              <Text style={[styles.sub, { color: c.inkFaint }]}>Love Cloud Roatán · yacht charter</Text>
+              <Text style={[styles.sub, { color: c.inkFaint }]}>
+                {summary || 'Love Cloud Roatán · yacht charter'}
+              </Text>
+              {note ? <Text style={[styles.sub, { color: c.shoal }]}>{note}</Text> : null}
             </View>
 
             {METHODS.filter((m) => !m.only || m.only === Platform.OS).map((m) => {
               const on = method === m.id
               return (
-                <Pressable
+                <Tap
                   key={m.id}
-                  onPress={() => { Haptics.selectionAsync(); setMethod(m.id) }}
+                  onPress={() => setMethod(m.id)}
+                  scaleTo={0.98}
                   style={[
                     styles.method,
                     { borderColor: on ? c.signal : c.rule, backgroundColor: on ? c.signalSoft : c.chart },
@@ -158,7 +169,7 @@ export default function PaySheet({ c, amount, currency, demo, busy, onClose, onP
                   <View style={[styles.radio, { borderColor: on ? c.signal : c.rule }]}>
                     {on ? <View style={[styles.radioDot, { backgroundColor: c.signal }]} /> : null}
                   </View>
-                </Pressable>
+                </Tap>
               )
             })}
 
@@ -206,24 +217,23 @@ export default function PaySheet({ c, amount, currency, demo, busy, onClose, onP
               </View>
             ) : null}
 
-            <Pressable
+            <Tap
               disabled={!ready || busy}
+              haptic="none"
+              sound={null}
               onPress={confirm}
-              style={({ pressed }) => [
-                styles.pay,
-                { backgroundColor: method === 'card' ? c.signal : c.deep, opacity: !ready ? 0.4 : pressed ? 0.87 : 1 },
-              ]}
+              style={[styles.pay, { backgroundColor: method === 'card' ? c.signal : c.deep }]}
             >
               <Text style={styles.payText}>
                 {method === 'card'
                   ? `Pay ${money(amount, currency)}`
                   : `${chosen.mark.trim()}  ·  Pay ${money(amount, currency)}`}
               </Text>
-            </Pressable>
+            </Tap>
 
-            <Pressable onPress={onClose} hitSlop={8}>
+            <Tap onPress={onClose} hitSlop={8}>
               <Text style={[styles.cancel, { color: c.inkFaint }]}>Not yet — take me back</Text>
-            </Pressable>
+            </Tap>
           </ScrollView>
         )}
       </Animated.View>

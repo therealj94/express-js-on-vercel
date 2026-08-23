@@ -1,12 +1,14 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
-  View, Text, Pressable, Image, StyleSheet, FlatList, Dimensions, Animated,
+  View, Text, Image, StyleSheet, FlatList, Dimensions, Animated,
 } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { LinearGradient } from 'expo-linear-gradient'
-import * as Haptics from 'expo-haptics'
 import { serif, sans, money, shadow } from '../theme'
 import { photo } from '../images'
 import { API } from '../api'
+import { getDemoBooking } from '../demo'
+import { Tap } from '../components/ui'
 
 // Full-bleed boat cards you swipe through like a deck of postcards. One boat
 // fills the screen at a time — the photograph does the selling.
@@ -26,6 +28,21 @@ export default function FleetScreen({ c, catalog, cart, insets, onOccasion, onPi
   const [page, setPage] = useState(0)
   const scrollX = useRef(new Animated.Value(0)).current
 
+  // Someone who has already booked should not have to go hunting for their
+  // trip behind a ticket icon. If this phone has a booking, it says so here.
+  const [trip, setTrip] = useState(null)
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem('roatan.bookings')
+        const refs = raw ? JSON.parse(raw) : []
+        if (!refs.length) return
+        const local = await getDemoBooking(refs[0])
+        setTrip({ ref: refs[0], date: local?.date || null, vessel: local?.vesselName || null })
+      } catch { /* no trip to show is not an error */ }
+    })()
+  }, [])
+
   return (
     <View style={[styles.root, { backgroundColor: c.deep }]}>
       <View style={[styles.top, { paddingTop: insets.top + 16 }]}>
@@ -35,14 +52,32 @@ export default function FleetScreen({ c, catalog, cart, insets, onOccasion, onPi
           <Text style={[styles.subtitle, { color: c.onDeepSoft }]}>The day is already yours.</Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Pressable onPress={onMyBooking} style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.12)' }]}>
+          <Tap onPress={onMyBooking} style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.12)' }]}>
             <Text style={{ fontSize: 16 }}>🎟️</Text>
-          </Pressable>
-          <Pressable onPress={onSettings} style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.12)' }]}>
+          </Tap>
+          <Tap onPress={onSettings} style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.12)' }]}>
             <Text style={{ fontSize: 16 }}>⚙️</Text>
-          </Pressable>
+          </Tap>
         </View>
       </View>
+
+      {trip ? (
+        <Tap
+          onPress={onMyBooking}
+          style={[styles.tripBar, { backgroundColor: 'rgba(255,255,255,0.14)' }]}
+        >
+          <Text style={{ fontSize: 17 }}>🎟️</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.tripTitle, { color: c.onDeep }]}>
+              {trip.vessel ? `${trip.vessel} is booked` : 'You have a trip with us'}
+            </Text>
+            <Text style={[styles.tripSub, { color: c.onDeepSoft }]}>
+              {trip.ref}{trip.date ? ` · ${trip.date}` : ''} — tap for your boarding pass
+            </Text>
+          </View>
+          <Text style={{ color: c.onDeepSoft, fontSize: 18 }}>›</Text>
+        </Tap>
+      ) : null}
 
       {/* occasion row */}
       <FlatList
@@ -55,8 +90,8 @@ export default function FleetScreen({ c, catalog, cart, insets, onOccasion, onPi
         renderItem={({ item: o }) => {
           const on = cart.occasion === o.id
           return (
-            <Pressable
-              onPress={() => { Haptics.selectionAsync(); onOccasion(o) }}
+            <Tap
+              onPress={() => onOccasion(o)}
               style={[
                 styles.occasion,
                 { backgroundColor: on ? c.signal : 'rgba(255,255,255,0.1)' },
@@ -65,7 +100,7 @@ export default function FleetScreen({ c, catalog, cart, insets, onOccasion, onPi
               <Text style={{ fontFamily: sans, fontSize: 13, fontWeight: on ? '700' : '500', color: '#fff' }}>
                 {o.label}
               </Text>
-            </Pressable>
+            </Tap>
           )
         }}
       />
@@ -109,12 +144,13 @@ export default function FleetScreen({ c, catalog, cart, insets, onOccasion, onPi
                     </Text>
                     <Text style={styles.cardMeta}>{v.durationLabel} · up to {v.capacityMax} guests</Text>
                   </View>
-                  <Pressable
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onPickVessel(v) }}
-                    style={({ pressed }) => [styles.go, { backgroundColor: c.signal, opacity: pressed ? 0.85 : 1 }]}
+                  <Tap
+                    haptic="medium"
+                    onPress={() => onPickVessel(v)}
+                    style={[styles.go, { backgroundColor: c.signal }]}
                   >
                     <Text style={styles.goText}>Let's go →</Text>
-                  </Pressable>
+                  </Tap>
                 </View>
               </View>
             </Animated.View>
@@ -146,12 +182,23 @@ const styles = StyleSheet.create({
   subtitle: { fontFamily: sans, fontSize: 14.5, marginTop: 2 },
   iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   occasion: { borderRadius: 999, paddingHorizontal: 15, paddingVertical: 9 },
+  tripBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 11,
+    marginHorizontal: 24, marginTop: 14, borderRadius: 18, padding: 12,
+  },
+  tripTitle: { fontFamily: sans, fontSize: 13.5, fontWeight: '700' },
+  tripSub: { fontFamily: sans, fontSize: 11.5, marginTop: 1 },
   // The photographs are cut 3:4. Letting the card stretch to whatever height
   // the screen has left made `cover` scale them up and slice most of the frame
   // away — boats lost their bows. Pinning the card to the crop's own shape is
   // what actually fixes the framing; the crop file only helps if the container
   // agrees with it.
-  card: { width: CARD_W, aspectRatio: 3 / 4, borderRadius: 28, overflow: 'hidden', justifyContent: 'flex-end' },
+  // maxHeight keeps a short screen — or one showing the trip banner — from
+  // having to render a card taller than the space it has.
+  card: {
+    width: CARD_W, aspectRatio: 3 / 4, maxHeight: '100%',
+    borderRadius: 28, overflow: 'hidden', justifyContent: 'flex-end',
+  },
   cardBody: { padding: 22, gap: 5 },
   nameTag: {
     alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.92)',

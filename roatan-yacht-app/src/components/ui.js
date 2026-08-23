@@ -1,6 +1,62 @@
-import React from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
+import React, { useRef } from 'react'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Animated } from 'react-native'
+import * as Haptics from 'expo-haptics'
 import { mono, serif, sans, shadow } from '../theme'
+import { play } from '../sound'
+
+// Anything you can press, presses back.
+//
+// A flat opacity change reads as a web page. A control that physically dips
+// under the thumb, ticks, and springs back reads as an app — and the spring
+// on the way up is what makes it feel alive rather than merely animated.
+//
+// Every interactive surface in the app goes through this, so the feel is
+// identical everywhere and there is one place to change it.
+const HAPTIC = {
+  selection: () => Haptics.selectionAsync(),
+  light: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
+  medium: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium),
+  heavy: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy),
+  none: () => {},
+}
+
+export function Tap({
+  children, onPress, onPressIn, style, disabled, flex,
+  scaleTo = 0.955, haptic = 'selection', sound = 'tap', ...rest
+}) {
+  const s = useRef(new Animated.Value(1)).current
+
+  const down = (e) => {
+    Animated.spring(s, { toValue: scaleTo, friction: 7, tension: 300, useNativeDriver: true }).start()
+    if (!disabled) {
+      ;(HAPTIC[haptic] || HAPTIC.selection)()
+      if (sound) play(sound)
+    }
+    onPressIn?.(e)
+  }
+  const up = () => {
+    Animated.spring(s, { toValue: 1, friction: 4.5, tension: 220, useNativeDriver: true }).start()
+  }
+
+  // The Pressable is the outer box so `flex` works in a row; the Animated view
+  // inside carries the paint, so scaling shrinks the button and not its slot.
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={down}
+      onPressOut={up}
+      disabled={disabled}
+      style={flex ? { flex: 1 } : undefined}
+      {...rest}
+    >
+      <Animated.View
+        style={[style, { transform: [{ scale: s }] }, disabled && { opacity: 0.45 }]}
+      >
+        {children}
+      </Animated.View>
+    </Pressable>
+  )
+}
 
 export const Plate = ({ c, title, right, children, style }) => (
   <View style={[styles.plate, { backgroundColor: c.plate, borderColor: c.rule }, style]}>
@@ -24,17 +80,17 @@ export const Chip = ({ c, tone = 'shoal', children }) => (
   </View>
 )
 
-export const Button = ({ c, onPress, children, ghost, disabled, busy, style }) => (
-  <Pressable
+export const Button = ({ c, onPress, children, ghost, disabled, busy, style, haptic, flex }) => (
+  <Tap
     onPress={onPress}
     disabled={disabled || busy}
-    style={({ pressed }) => [
+    flex={flex}
+    haptic={haptic || (ghost ? 'selection' : 'medium')}
+    style={[
       styles.btn,
       ghost
         ? { borderColor: c.rule, backgroundColor: 'transparent' }
         : { backgroundColor: c.signal, borderColor: c.signal },
-      (disabled || busy) && { opacity: 0.45 },
-      pressed && { opacity: 0.8 },
       style,
     ]}
   >
@@ -43,7 +99,7 @@ export const Button = ({ c, onPress, children, ghost, disabled, busy, style }) =
     ) : (
       <Text style={[styles.btnText, { color: ghost ? c.ink : '#fff' }]}>{children}</Text>
     )}
-  </Pressable>
+  </Tap>
 )
 
 export const Notice = ({ c, tone = 'signal', children }) => (
