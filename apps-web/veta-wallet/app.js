@@ -1858,7 +1858,7 @@ const VETA = (() => {
     if (cual === 'cambiar') cambioMonto();
     if (cual === 'tarjeta' && !tarjeta) cargarTarjeta().then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
     if (cual === 'remesas' && !tasas) cargarTasas().then(() => { if (vistaActual === 'remesas') vista('remesas'); });
-    if (cual === 'chat') chatEntrar();
+    if (cual === 'chat') { p2cPortada(); chatEntrar(); }
     if (cual === 'token') montarVelasToken();
     else { velasApagar(); velasAmpliarCerrar(); }
     /* El directorio de MyTokenPay se pide al ENTRAR, no al arrancar la web:
@@ -6334,8 +6334,12 @@ const VETA = (() => {
     const c = (chatSt.convs || []).find(x => (x.id || x.correo) === id)
       || (chatSt.gente || []).find(x => x.correo === id);
     chatSt.con = c
-      ? { id, nombre: c.nombre || id, esGrupo: !!c.esGrupo, gid: c.gid || '', addr: c.addr || '' }
-      : { id, nombre: id, esGrupo: CHAT.esGrupo(id), gid: '', addr: '' };
+      ? { id, nombre: c.nombre || id, esGrupo: !!c.esGrupo, gid: c.gid || '', addr: c.addr || '',
+          foto: c.foto || '' }
+      : { id, nombre: id, esGrupo: CHAT.esGrupo(id), gid: '', addr: '', foto: '' };
+    // Lo que la lista ya sabía de su presencia vale como primer trazo; la
+    // bandeja lo confirma en el primer latido.
+    chatSt.enLinea = c && !c.esGrupo ? c.enLinea === true : null;
     chatSt.msgs = null;
     chatSt.gente = null;
     chatSt.busca = '';
@@ -6347,6 +6351,7 @@ const VETA = (() => {
 
   function chatCerrar() {
     chatSt.con = null;
+    chatSt.enLinea = null;
     chatSt.msgs = null;
     pintarChat();
     chatCargarConvs();
@@ -6356,10 +6361,17 @@ const VETA = (() => {
     const quien = chatSt.con?.id;
     if (!quien) return;
     try {
-      const m = await CHAT.bandeja(quien);
+      const { mensajes: m, enLinea } = await CHAT.bandeja(quien);
       // Si mientras llegaba la respuesta se cambio de hilo, se descarta: pintar
       // los mensajes de otra conversacion es peor que no pintar nada.
       if (chatSt.con?.id !== quien) return;
+      /* La presencia se pinta DIRECTO en la cabecera, sin repintar el chat:
+         repintar roba el foco del campo de texto, y el punto verde cambia
+         mucho más seguido que los mensajes. */
+      if (chatSt.enLinea !== enLinea) {
+        chatSt.enLinea = enLinea;
+        pintarPresencia();
+      }
       /* CUANDO REPINTAR, Y POR QUE ESTO SE ROMPIO DOS VECES.
        *
        * No se repinta si nada cambió: repintar en cada latido roba el foco del
@@ -6744,6 +6756,7 @@ const VETA = (() => {
   let llaReloj = null;
   let llaDesde = 0;
   let llaSono = false;      // ya se dio el golpe de «conectado»
+  let llaHabla0 = 0;        // cuándo entró la llamada, para el contador
 
   function llamadaArrancar() {
     if (!window.LLAMADA || !LLAMADA.puede()) return;
@@ -6810,6 +6823,89 @@ const VETA = (() => {
     ? LLAMADA.pantalla().catch(() => avisar(t('lla.pantallaNo')))
     : avisarSinPantalla();
 
+  /* ── LA PORTADA DE PULSE2CHAT ────────────────────────────────────────────
+   *
+   * Un instante de marca al entrar: el símbolo late, el pulso cruza y la capa
+   * se va sola. UNA vez por sesión — la segunda entrada va directa al chat,
+   * porque una portada que se repite deja de ser una entrada y pasa a ser un
+   * peaje. Cuelga del body para que el primer repintado del chat no la corte
+   * a media animación, y con movimiento reducido no aparece.
+   */
+  let p2cPortadaVista = false;
+
+  function p2cPortada() {
+    if (p2cPortadaVista) return;
+    p2cPortadaVista = true;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const capa = document.createElement('div');
+    capa.id = 'p2c-portada';
+    capa.setAttribute('aria-hidden', 'true');
+    capa.innerHTML = `
+      <img src="assets/p2c-simbolo.png" alt="">
+      <div class="p2c-porta-nombre">PULSE<b>2</b>CHAT</div>
+      <svg class="p2c-porta-pulso" viewBox="0 0 320 48" fill="none">
+        <path d="M0 24h96l14-16 18 32 14-24 10 8h168" stroke="currentColor"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <p>${t('cha.lema')}</p>`;
+    document.body.appendChild(capa);
+    // La capa se despinta con su propia animación y recién entonces se va.
+    setTimeout(() => capa.classList.add('yendo'), 1700);
+    setTimeout(() => capa.remove(), 2350);
+  }
+
+  /* Lo que el chat sabe de una persona, para pintarle la cara en la llamada.
+     Busca en las charlas y en la gente ya traída; si no hay nada, la inicial. */
+  function fichaDe(correo) {
+    const c = String(correo || '').toLowerCase();
+    return (chatSt.convs || []).find(x => x.correo === c)
+        || (chatSt.gente || []).find(x => x.correo === c)
+        || (chatSt.con?.id === c ? chatSt.con : null)
+        || { correo: c, nombre: c.split('@')[0] };
+  }
+
+  /* La presencia se pinta sola, sin repintar el chat entero: cambia mucho más
+     seguido que cualquier otra cosa y un repintado roba foco y scroll. */
+  function pintarPresencia() {
+    const c = chatSt.con;
+    const el = $('#cha-linea');
+    if (el && c && !c.esGrupo) {
+      el.classList.toggle('en-linea', chatSt.enLinea === true);
+      el.textContent = chatSt.enLinea ? t('cha.enLinea') : (c.gid || c.id);
+    }
+    // Y si hay una llamada en curso, su pantalla se repinta para que el aviso
+    // de disponibilidad («le esta sonando» / «no esta en el chat») siga vivo.
+    if (window.LLAMADA && LLAMADA.estado() !== 'libre') pintarLlamada(LLAMADA.cuento());
+  }
+
+  /* ── LOS AJUSTES DE LA LLAMADA ───────────────────────────────────────────
+   *
+   * Elegir micrófono y cámara SIN colgar. Los nombres de los aparatos solo
+   * existen con el permiso ya dado, así que este panel vive dentro de la
+   * llamada, que es además el único momento en que cambiarlos significa algo.
+   */
+  async function llamadaAjustes() {
+    const panel = $('#lla-ajustes');
+    if (!panel) return;
+    if (!panel.classList.contains('oculto')) return panel.classList.add('oculto');
+    // El panel vive en el HTML fijo; sus rótulos se traducen al abrirlo.
+    panel.querySelectorAll('[data-i18n]').forEach((e) => { e.textContent = t(e.dataset.i18n); });
+    try {
+      const ap = await LLAMADA.aparatos();
+      const opciones = (lista, puesto) => lista.map((x, i) =>
+        `<option value="${esc(x.deviceId)}" ${x.deviceId === puesto ? 'selected' : ''}>${
+          esc(x.label || `${t('lla.aparato')} ${i + 1}`)}</option>`).join('');
+      $('#lla-sel-mic').innerHTML = opciones(ap.mics, ap.puestos.mic);
+      const conVideo = LLAMADA.cuento().hayVideo;
+      $('#lla-cam-fila').classList.toggle('oculto', !conVideo || !ap.cams.length);
+      if (conVideo) $('#lla-sel-cam').innerHTML = opciones(ap.cams, ap.puestos.cam);
+      panel.classList.remove('oculto');
+    } catch { avisar(t('lla.aparatoNo')); }
+  }
+
+  const llamadaAparato = (clase, id) =>
+    LLAMADA.usarAparato(clase, id).catch(() => avisar(t('lla.aparatoNo')));
+
   /* La pantalla. Se pinta a mano y no con `vista()` porque una llamada no es
      una vista: pasa POR ENCIMA de la que sea, y navegar no debe cortarla. */
   function pintarLlamada(c) {
@@ -6821,6 +6917,9 @@ const VETA = (() => {
     // Con video la burbuja lo enseña; sin video enseña el nombre y un pulso,
     // que en una llamada de voz es lo unico que hay para mirar.
     capa.classList.toggle('con-video', !!c.hayVideo);
+    /* Mientras suena, los aros laten alrededor de la cara; ya hablando se
+       quedan quietos. Es el «está sonando» que se entiende sin leer. */
+    capa.classList.toggle('sonando', ['llamando', 'entrando', 'conectando'].includes(c.estado));
     clearInterval(llaReloj); llaReloj = null;
 
     /* EL TIMBRE.
@@ -6842,9 +6941,10 @@ const VETA = (() => {
     if (!activa) {
       // Al colgar, la ventana vuelve a su sitio: la proxima llamada no debe
       // aparecer chiquita en una esquina porque la anterior quedo asi.
-      capa.classList.remove('mini');
+      capa.classList.remove('mini', 'sonando');
       capa.style.inset = '';
-      llaMini = false; llaPos = null; llaSono = false;
+      $('#lla-ajustes')?.classList.add('oculto');
+      llaMini = false; llaPos = null; llaSono = false; llaHabla0 = 0;
       /* El motivo de la caída se dice UNA vez y con nombre propio. «Sin
          camino» es el caso del TURN que no tenemos, y confundirlo con
          «colgaste» deja a la gente probando diez veces creyendo que es su
@@ -6872,6 +6972,40 @@ const VETA = (() => {
       ? (chatSt.con.nombre || c.conQuien) : (c.conQuien || '');
     $('#lla-quien').textContent = nombre;
     const mq = $('#lla-mini-quien'); if (mq) mq.textContent = nombre;
+
+    /* LA CARA. En una llamada de voz es lo único que hay para mirar, y en una
+       de video acompaña mientras suena — cuando la conexión entra, el video
+       remoto toma el centro y la cara se aparta. La foto sale de lo que el
+       chat ya sabe de esa persona; sin foto, su inicial sobre el gradiente. */
+    const conCara = c.estado !== 'hablando' || !c.hayVideo;
+    const cara = $('#lla-cara');
+    if (cara) {
+      cara.classList.toggle('oculto', !conCara);
+      const f = fichaDe(c.conQuien);
+      const sello = `${c.conQuien}·${f.foto || ''}`;
+      const foto = $('#lla-foto');
+      if (foto && foto.dataset.sello !== sello) {
+        foto.dataset.sello = sello;
+        foto.innerHTML = f.foto
+          ? `<img src="${esc(CHAT.urlArchivo(f.foto))}" alt="">`
+          : `<span>${esc(chatIni(f.nombre || c.conQuien))}</span>`;
+      }
+    }
+
+    /* Y LA DISPONIBILIDAD, dicha de frente mientras suena: si el relevo lo ve
+       en el chat, «le está sonando»; si no, se dice que el aviso salió pero
+       que la llamada entra recién cuando abra PULSE2CHAT. Sin esto la gente
+       llama tres veces creyendo que la primera falló. */
+    const lin = $('#lla-linea');
+    if (lin) {
+      const decir = c.estado === 'llamando'
+        && chatSt.con?.id === c.conQuien && chatSt.enLinea !== null;
+      lin.classList.toggle('oculto', !decir);
+      if (decir) {
+        lin.textContent = t(chatSt.enLinea ? 'lla.estaAhi' : 'lla.noEsta');
+        lin.classList.toggle('lla-fuera', !chatSt.enLinea);
+      }
+    }
     // Si la persona la movio de sitio, ahi se queda.
     if (llaMini && llaPos) capa.style.inset = `${llaPos.arr}px auto auto ${llaPos.izq}px`;
     $('#lla-entra').classList.toggle('oculto', c.estado !== 'entrando');
@@ -6911,10 +7045,20 @@ const VETA = (() => {
       }, 500);
       est.textContent = t('lla.conectando');
     } else {
-      // Al pasar a hablando por primera vez: un golpe corto. Sin el, la
-      // persona sigue mirando la pantalla sin saber si ya se la oye.
-      if (!llaSono) { llaSono = true; TONO.golpe(true); }
-      est.textContent = c.compartiendo ? t('lla.compartiendo') : t('lla.hablando');
+      // Al pasar a hablando por primera vez: un golpe corto y «entró la
+      // llamada» en palabras. Sin el, la persona sigue mirando la pantalla
+      // sin saber si ya se la oye.
+      if (!llaSono) { llaSono = true; llaHabla0 = Date.now(); TONO.golpe(true); }
+      const pinta = () => {
+        const seg = Math.floor((Date.now() - llaHabla0) / 1000);
+        // El primer segundo dice QUE entró; después, cuánto lleva. Las dos
+        // cosas juntas no caben y la segunda es la que sirve el resto del rato.
+        if (seg < 2) { est.textContent = t('lla.entro'); return; }
+        const dur = `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, '0')}`;
+        est.textContent = `${c.compartiendo ? t('lla.compartiendo') : t('lla.hablando')} · ${dur}`;
+      };
+      llaReloj = setInterval(pinta, 1000);
+      pinta();
     }
   }
 
@@ -7797,7 +7941,10 @@ const VETA = (() => {
       return `
       <button class="cha-fila" ${chatSt.con?.id === id ? 'data-aqui' : ''}
               onclick="VETA.chatAbrir(${jsTxt(id)})">
-        ${chatAvatar(c)}
+        ${/* El punto verde dice «está en el chat ahora»: sale del relevo, no
+              es un adorno. Solo personas — un grupo no está ni deja de estar. */''}
+        <span class="cha-av-marco">${chatAvatar(c)}${
+          !c.esGrupo && c.enLinea ? '<i class="cha-pto"></i>' : ''}</span>
         <span class="cha-txt">
           <b>${esc(c.nombre || c.correo)}${c.esGrupo ? ` <em>· ${c.miembros}</em>` : ''}</b>
           <small>${esc(chatResumen(c.ultimo))}</small>
@@ -8192,7 +8339,13 @@ const VETA = (() => {
                  disponible al mantener el dedo encima y para un lector de
                  pantalla. Acortar no puede significar perder el dato. */''}
             <b title="${esc(c.nombre)}">${esc(c.nombre)}</b>
-            <small>${esc(c.esGrupo ? t('cha.esGrupo') : (c.gid || c.id))}</small>
+            ${/* Debajo del nombre va la presencia si es una persona: «En
+                  línea» significa que tiene PULSE2CHAT abierto ahora — o sea
+                  que un mensaje lo ve ya y una llamada le suena. Si no está,
+                  se queda el identificador de siempre. */''}
+            <small id="cha-linea" class="${chatSt.enLinea ? 'en-linea' : ''}">${
+              c.esGrupo ? esc(t('cha.esGrupo'))
+              : chatSt.enLinea ? t('cha.enLinea') : esc(c.gid || c.id)}</small>
           </span>
         </button>
         ${/* Llamar solo cara a cara: en grupo haria falta un SFU, que es
@@ -10410,7 +10563,7 @@ const VETA = (() => {
            chatAdjuntar, chatVoz, chatVozCancelar,
            chatCitar, chatDejarCita, chatReaccion, chatAbrirReaccion, chatTecleando,
            llamadaLlamar, llamadaContestar, llamadaRechazar, llamadaColgar,
-           llamadaMic, llamadaCam, llamadaPantalla,
+           llamadaMic, llamadaCam, llamadaPantalla, llamadaAjustes, llamadaAparato,
            llamadaMini, llamadaGrande,
            grupoLlamar, grupoContestar, grupoRechazar, grupoColgar,
            grupoMic, grupoCam, grupoPantalla, grupoMini, grupoGrande, chatReparar, chatCodigo, chatCodigoCopiar,

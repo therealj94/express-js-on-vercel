@@ -112,6 +112,22 @@ VAPID_PEM = os.environ.get('MENSAJES_VAPID_PEM', '/srv/mensajes/vapid.pem')
 VAPID_CONTACTO = 'mailto:info@ordenglobal.org'
 PULSO = {}                       # correo -> ultima consulta de bandeja (epoch)
 PULSO_FRESCO = 45
+
+# La presencia que se ENSEÑA es otra cosa que el pulso de arriba. PULSO dice
+# «está mirando este hilo ahora mismo» y sirve para no duplicar el push. Para
+# decir «está en el chat» —el punto verde, y sobre todo si una llamada puede
+# entrarle— la señal buena es el buzón de señales: quien lo está escuchando
+# tiene PULSE2CHAT de pie y una llamada le va a sonar. Se apunta cada vez que
+# alguien viene a escuchar; el ciclo es de 25 segundos, así que 40 de margen
+# separan «se fue» de «está entre dos preguntas».
+OIDO = {}                        # correo -> ultima escucha de señales (epoch)
+PRESENTE_FRESCO = 40
+
+
+def presente(c):
+    ahora = time.time()
+    return (ahora - OIDO.get(c, 0) < PRESENTE_FRESCO
+            or ahora - PULSO.get(c, 0) < PRESENTE_FRESCO)
 _vapid_pub = None
 _jwt_cache = {}                  # audiencia -> (vence, token)
 
@@ -1056,7 +1072,12 @@ class Relevo(BaseHTTPRequestHandler):
                 # El timbre. Solo el «llamo» inicial empuja —las demas señales
                 # son una llamada YA en curso, con las dos pantallas abiertas—
                 # y va con urgencia alta: un mensaje espera, una llamada no.
-                if tipo in ('llamo', 'gllamo'):
+                # Pero solo si NO está escuchando el buzón: a quien escucha,
+                # el timbre le llega directo por la señal y el push sería un
+                # segundo aviso por la misma llamada. (Para los mensajes esa
+                # regla no vale: el buzón de señales sigue vivo mientras se
+                # mira la billetera, y ahí un mensaje sin push no se ve.)
+                if tipo in ('llamo', 'gllamo') and not presente(para):
                     empujar(d, [para], urgencia='high')
                 return self._json(200, {'ok': True})
 
@@ -1066,6 +1087,10 @@ class Relevo(BaseHTTPRequestHandler):
                 # veinticinco segundos con él en la mano dejaría el chat
                 # congelado para todo el mundo mientras alguien llama.
                 # Se sale del bloque con un salto y la espera ocurre abajo.
+                # De paso queda apuntado que esta cuenta está escuchando: es
+                # la seña de presencia buena, porque quien escucha el buzón
+                # puede recibir una llamada.
+                OIDO[correo] = time.time()
                 esperar_para = correo
 
             if False:  # el hueco que deja el salto de /senales
@@ -1334,7 +1359,12 @@ class Relevo(BaseHTTPRequestHandler):
                 ocultos = set(d.get('ocultos', {}).get(correo, []))
                 if ocultos:
                     hilo = [m for m in hilo if m.get('id') not in ocultos]
-                return self._json(200, {'mensajes': hilo[-TOPE_BANDEJA:]})
+                # `enLinea` viaja con la bandeja porque la app ya la pide cada
+                # cinco segundos con el hilo abierto: la presencia va gratis en
+                # un viaje que ya existe, sin una ruta ni un sondeo más.
+                return self._json(200, {'mensajes': hilo[-TOPE_BANDEJA:],
+                                        'enLinea': (not ID_GRUPO.fullmatch(desde))
+                                                   and presente(desde)})
 
             if ruta == '/olvidar':
                 """Vaciar un hilo, o quitarlo de mi lista. SOLO DE MI LADO.
@@ -1774,6 +1804,7 @@ class Relevo(BaseHTTPRequestHandler):
                                   'addr': g.get('addr', ''),
                                   'gid': g.get('gid', ''),
                                   'foto': g.get('foto', ''),
+                                  'enLinea': presente(otro),
                                   'ultimo': h['ultimo'], 'sinLeer': h['sinLeer']})
                 # por lo último dicho; el grupo callado se ordena por cuándo se
                 # creó, así el recién hecho aparece arriba y no en el sótano

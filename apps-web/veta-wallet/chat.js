@@ -143,8 +143,12 @@ const CHAT = (() => {
     return (info?.miembros || []).map(m => m.correo).filter(Boolean);
   }
 
+  /* Devuelve también `enLinea`: el relevo sabe si la otra persona está con el
+     chat de pie —escuchando su buzón de señales— y esa es exactamente la
+     diferencia entre «llamala» y «esperá». */
   const bandeja = desde => pedir('/bandeja', firmado({ desde }))
-    .then(d => abrirTodos(d.mensajes || []));
+    .then(async d => ({ mensajes: await abrirTodos(d.mensajes || []),
+                        enLinea: d.enLinea === true }));
 
   /**
    * Abre lo que venga cerrado y deja lo demás como está.

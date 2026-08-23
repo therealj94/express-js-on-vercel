@@ -377,6 +377,51 @@ const LLAMADA = (() => {
     anunciar();
   }
 
+  /* ── ELEGIR MICRÓFONO Y CÁMARA, SIN COLGAR ────────────────────────────────
+   *
+   * Los nombres de los aparatos solo se leen con el permiso ya dado, así que
+   * esto se usa DENTRO de una llamada — que es además el único momento en que
+   * cambiar de micrófono significa algo. El cambio es un `replaceTrack` sobre
+   * la conexión en pie: el otro lado no nota ni un corte.
+   */
+  let puestos = { mic: null, cam: null };   // lo elegido, para marcarlo en el panel
+
+  async function aparatos() {
+    const l = await navigator.mediaDevices.enumerateDevices();
+    return {
+      mics: l.filter((x) => x.kind === 'audioinput'),
+      cams: l.filter((x) => x.kind === 'videoinput'),
+      puestos: { ...puestos },
+    };
+  }
+
+  async function usarAparato(clase, id) {
+    if (!miPista || !id) return;
+    const pedido = clase === 'mic'
+      ? { audio: { deviceId: { exact: id }, echoCancellation: true,
+                   noiseSuppression: true, autoGainControl: true } }
+      : { video: { deviceId: { exact: id }, width: { ideal: 1280 }, height: { ideal: 720 } } };
+    const flujo = await navigator.mediaDevices.getUserMedia(pedido);
+    const nueva = flujo.getTracks()[0];
+    const vieja = clase === 'mic' ? miPista.getAudioTracks()[0] : miPista.getVideoTracks()[0];
+    // El silencio se hereda: cambiar de micrófono con el micrófono apagado no
+    // puede encenderlo a escondidas.
+    if (vieja) nueva.enabled = vieja.enabled;
+    /* Con la pantalla compartida, la cámara nueva se guarda en `miPista` y no
+       toca la conexión: el emisor de video lleva la pantalla, y al dejar de
+       compartir, `dejarPantalla()` ya vuelve a la cámara que haya entonces. */
+    const tocarConexion = clase === 'mic' || !pistaPantalla;
+    if (tocarConexion) {
+      const emisor = pc?.getSenders().find((s) => s.track?.kind === nueva.kind);
+      if (emisor) await emisor.replaceTrack(nueva);
+    }
+    if (vieja) { try { miPista.removeTrack(vieja); vieja.stop(); } catch {} }
+    miPista.addTrack(nueva);
+    puestos[clase] = id;
+    pintarLocal();
+    anunciar();
+  }
+
   /* ── LO QUE LLEGA DEL OTRO LADO ───────────────────────────────────────── */
 
   async function recibir(s) {
@@ -431,7 +476,7 @@ const LLAMADA = (() => {
   const hayTurno = () => turno.length > 0;
 
   return { puede, puedePantalla, arrancar, recibir, llamar, contestar, rechazar,
-           reengancharVideo, hayTurno,
+           reengancharVideo, hayTurno, aparatos, usarAparato,
            colgar, micro, camara, pantalla, dejarPantalla, ponerTurno,
            estado: () => estado, cuento, entrante: () => entrante };
 })();

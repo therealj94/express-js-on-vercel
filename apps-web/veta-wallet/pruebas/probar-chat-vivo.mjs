@@ -159,8 +159,11 @@ console.log('\nMi perfil y el timbre\n')
 // persona.
 await A.pag.evaluate(()=>{ VETA._chatCon(null); VETA.vista('chat') })
 await A.pag.waitForTimeout(700)
-ok('mi cara es el boton de perfil', await A.pag.isVisible('.p2c-yo'))
-await A.pag.click('.p2c-yo'); await A.pag.waitForTimeout(900)
+/* Hay DOS botones con la clase .p2c-yo: la campana de avisos la comparte
+   para heredar el tamaño. La persona toca SU CARA, que es el que no es la
+   campana — y la prueba toca exactamente ese. */
+ok('mi cara es el boton de perfil', await A.pag.isVisible('.p2c-yo:not(.p2c-campana)'))
+await A.pag.click('.p2c-yo:not(.p2c-campana)'); await A.pag.waitForTimeout(900)
 const perfil = await A.pag.evaluate(()=>document.getElementById('lienzo')?.innerText||'')
 ok('se abre «Mi perfil»', /Mi perfil/i.test(perfil))
 ok('se puede poner nombre', /Nombre/i.test(perfil))

@@ -81,6 +81,20 @@ try:
     pedir('/senal', dict(B, para='ana@ordenglobal.link', tipo='cuelgo', datos={}))
     esperando.join(timeout=10)
 
+    print('\nLA PRESENCIA SALE DE ESCUCHAR EL BUZÓN\n')
+    # Beto escuchó señales hace un momento: para el resto del chat está EN
+    # LÍNEA — que es exactamente «una llamada le puede entrar».
+    r = pedir('/bandeja', dict(A, desde='beto@ordenglobal.link'))
+    ok('quien escucha el buzón aparece en línea', r.get('enLinea') is True)
+    convs = pedir('/conversaciones', dict(A)).get('conversaciones', [])
+    fila = next((x for x in convs if x.get('correo') == 'beto@ordenglobal.link'), {})
+    ok('y la lista de charlas lo dice también', fila.get('enLinea') is True,
+       json.dumps({k: fila.get(k) for k in ('correo', 'enLinea')}))
+    # Carla existe pero jamás escuchó señales ni miró su bandeja: no está.
+    pedir('/alta', {'correo': 'carla@ordenglobal.link'})
+    r = pedir('/bandeja', dict(A, desde='carla@ordenglobal.link'))
+    ok('quien nunca abrió el chat no aparece en línea', r.get('enLinea') is False)
+
     print('\nLo que se rechaza\n')
     try:
         pedir('/senal', dict(A, para='beto@ordenglobal.link', tipo='inventado', datos={}))
