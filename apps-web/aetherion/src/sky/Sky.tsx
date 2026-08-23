@@ -6,6 +6,7 @@ import { rig } from '../kernel/rig'
 import { GALAXY } from './galaxy'
 import { WELL_DEFS, WellField } from './Wells'
 import { Core } from './Core'
+import { Lejanos } from './Lejanos'
 import { DustLayer } from './Dust'
 import { getRadialTexture, getFlareTexture } from './textures'
 import { useUiStore } from '../state/uiStore'
@@ -235,6 +236,7 @@ export function Sky() {
       <DustLayer count={14000} spread={30} yFlat={6} size={1.1} opacity={0.75} />
       <DustLayer count={9000} spread={70} yFlat={14} size={0.7} opacity={0.4} dim={0.7} />
       <Core />
+      <Lejanos />
       <WellField defs={WELL_DEFS} />
       <TuLuz />
     </>

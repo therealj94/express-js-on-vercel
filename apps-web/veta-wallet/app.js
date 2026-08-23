@@ -391,6 +391,8 @@ const VETA = (() => {
        vestiría el interior con un color que no es suyo. */
     const marco = document.querySelector('meta[name=theme-color]');
     if (marco) marco.content = destino === 'app' ? '#021B1C' : '#050510';
+    // el botón de pantalla completa se ofrece adentro y se guarda en la puerta
+    pintarLlena();
     if (destino === 'acceso') { pestana(cual || 'entrar'); setTimeout(() => $('#i-correo').focus(), 60); }
     // AU-RA recibe en la puerta; en cualquier otra pantalla su saludo se apaga.
     if (destino === 'acceso') accesoEscena(); else accesoEscenaParar();
@@ -1967,7 +1969,7 @@ const VETA = (() => {
     if (cual === 'cambiar') cambioMonto();
     if (cual === 'tarjeta' && !tarjeta) cargarTarjeta().then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
     if (cual === 'remesas' && !tasas) cargarTasas().then(() => { if (vistaActual === 'remesas') vista('remesas'); });
-    if (cual === 'chat') { p2cPortada(); chatEntrar(); }
+    if (cual === 'chat') { p2cPortada(); chatEntrar(); } else p2cPortadaFuera();
     if (cual === 'token') montarVelasToken();
     else { velasApagar(); velasAmpliarCerrar(); }
     /* El cielo del Núcleo muere con su vista: si el canvas ya no está y la
@@ -4904,7 +4906,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = '817e4a034f';
+  const AET_V = '61cb0207c2';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -4927,6 +4929,45 @@ const VETA = (() => {
 
   function aeSaludoQuitar() { document.getElementById('ae-saludo')?.remove(); }
 
+  /* ── PANTALLA COMPLETA ───────────────────────────────────────────────────
+     La galaxia y las casas se ven mejor sin la barra del navegador comiéndose
+     un dedo de pantalla. El botón vive arriba a la derecha, el mismo sitio en
+     el teléfono y en la computadora, y el mismo botón la quita.
+
+     Si el navegador no sabe hacerlo —el Safari del iPhone no deja pantalla
+     completa fuera de un video— el botón NO aparece: un botón que no hace nada
+     es peor que ninguno. */
+  const puedeLlena = () => !!(document.documentElement.requestFullscreen
+    || document.documentElement.webkitRequestFullscreen);
+
+  const enLlena = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+
+  function pantallaLlena() {
+    try {
+      if (enLlena()) {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      } else {
+        const el = document.documentElement;
+        (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+      }
+    } catch { /* el navegador puede negarse: no hay nada que romper */ }
+  }
+
+  function pintarLlena() {
+    const b = $('#pantalla-llena');
+    if (!b) return;
+    const dentro = enLlena();
+    document.body.classList.toggle('a-lo-ancho', dentro);
+    const txt = t(dentro ? 'pl.cerrar' : 'pl.abrir');
+    b.setAttribute('aria-label', txt);
+    b.title = txt;
+    /* Solo se ofrece dentro de la casa: en la puerta no hace falta. */
+    b.classList.toggle('oculto', !puedeLlena() || $('#app').classList.contains('oculto'));
+  }
+
+  addEventListener('fullscreenchange', pintarLlena);
+  addEventListener('webkitfullscreenchange', pintarLlena);
+
   /* El Inicio decide su cuerpo: Aetherion si puede, el cerebro si no. */
   function encenderInicio() {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return encenderCerebro(false);
@@ -4948,6 +4989,9 @@ const VETA = (() => {
       if (vistaActual !== 'nucleo' || !lienzo) return;
       try {
         const nombre = (sesion?.nombre || '').split(' ')[0];
+        /* El corazón de la galaxia es AU-RA: tocarla la llama, igual que su
+           orbe en la esquina. */
+        window.__AE_AURA = () => { try { auraToca(); } catch { /* nada */ } };
         window.__AE_ABRIR = (k) => {
           const m = MUNDOS.find((x) => x.id === k);
           if (m && (m.fuera || m.paraFuera)) {
@@ -7272,6 +7316,13 @@ const VETA = (() => {
   }
 
   let p2cPortadaVista = false;
+  let p2cPortadaCapa = null;
+
+  /* La quita quien salga del chat, sin esperar al reloj. */
+  function p2cPortadaFuera() {
+    p2cPortadaCapa?.remove();
+    p2cPortadaCapa = null;
+  }
 
   function p2cPortada() {
     if (p2cPortadaVista) return;
@@ -7290,8 +7341,12 @@ const VETA = (() => {
       <p>${t('cha.lema')}</p>`;
     document.body.appendChild(capa);
     // La capa se despinta con su propia animación y recién entonces se va.
-    setTimeout(() => capa.classList.add('yendo'), 1700);
+    setTimeout(() => { if (vistaActual === 'chat') capa.classList.add('yendo'); }, 1700);
     setTimeout(() => capa.remove(), 2350);
+    /* Y si la persona se fue del chat antes de que termine el saludo, el
+       saludo se va con ella: nada de una marca ajena flotando sobre otra
+       vista. */
+    p2cPortadaCapa = capa;
   }
 
   /* Lo que el chat sabe de una persona, para pintarle la cara en la llamada.
@@ -11037,6 +11092,7 @@ const VETA = (() => {
            nuAbrir,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
+           pantallaLlena,
            auraBienFin, auraBienToca, auraAyuda,
            // La bienvenida del ecosistema: sale sola la primera vez y se puede
            // volver a abrir desde Ajustes.

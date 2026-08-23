@@ -114,7 +114,9 @@ function anillo(lista: Casa[], i: number, banda: 0 | 1): THREE.Vector3 {
   const n = Math.max(1, enBanda.length)
   const giro = banda === 0 ? 0.42 : 0.42 + Math.PI / n
   const a = giro + (idx / n) * Math.PI * 2
-  const r = RADIO_ANILLO * (banda === 0 ? 0.52 : 1.0)
+  /* La órbita de adentro se abre para dejarle el centro a AU-RA: el corazón
+     de la galaxia tiene que verse, no quedar tapado por las casas. */
+  const r = RADIO_ANILLO * (banda === 0 ? 0.68 : 1.08)
   const alto = Math.sin(a * 2 + banda * 1.7) * (banda === 0 ? 0.7 : 1.2)
   return new THREE.Vector3(Math.cos(a) * r, alto, Math.sin(a) * r)
 }
@@ -164,7 +166,7 @@ export function refrescarCasas() {
      apuntadas, con el bulto que ocupa cada planeta. */
   rig.anclas = WELL_DEFS.map((d) => ({
     pos: d.anchor.clone(),
-    r: 1.85 * d.scale,
+    r: 1.72 * d.scale,
     /* Las casas de todos los días NUNCA se cortan; las de la órbita de afuera
        pueden asomar por el borde, que para eso el cielo gira. */
     principal: casas().find((c) => c.key === d.key)?.banda === 0,
@@ -217,7 +219,7 @@ function WellView({ def }: { def: WellDef }) {
 
   /* El cuerpo del planeta: el radio manda sobre todo lo demás (emblema,
      letrero, atmósfera), así que se calcula UNA vez y de ahí cuelga el resto. */
-  const R = 1.85 * def.scale
+  const R = 1.72 * def.scale
   const atmo = useMemo(() => makeAtmoMaterial(def.halo, 0.55), [def.halo])
   const piel = useMemo(() => planetaTextura(def.key, def.grad), [def.key, def.grad])
   const cara = useMemo(
@@ -272,23 +274,23 @@ function WellView({ def }: { def: WellDef }) {
     const d = state.camera.position.distanceTo(g.position)
     const k = THREE.MathUtils.clamp(d / 13, 0.66, 2.2)
     if (emblema.current) {
-      const s = R * 1.22 * (selected ? 1.08 : 1)
+      const s = R * 1.42 * (selected ? 1.08 : 1)
       emblema.current.scale.setScalar(s)
       emblema.current.position.set(0, 0, 0)
-      ;(emblema.current.material as THREE.SpriteMaterial).opacity = THREE.MathUtils.clamp(2.6 - d / 14, 0.35, 1)
+      ;(emblema.current.material as THREE.SpriteMaterial).opacity = THREE.MathUtils.clamp(3.4 - d / 16, 0.6, 1)
     }
     if (letrero.current) {
       /* EL LETRERO NO CRECE CON EL PLANETA. Su tamaño en PANTALLA es el mismo
          para todas las casas —proporcional a la distancia, nada más—, así que
          de cerca no tapa medio cielo y de lejos sigue siendo legible. */
-      const s = d * 0.075
+      const s = d * 0.098
       letrero.current.scale.set(s * 2.6, s * 0.65, 1)
       letrero.current.position.set(0, -R * 1.12 - s * 0.34, 0)
       /* Y se calla cuando su casa está saliéndose del cuadro: un nombre
          cortado a la mitad en el borde se ve descuidado, no misterioso. */
       tmpP.copy(g.position).project(state.camera)
       const alBorde = Math.abs(tmpP.x) > 0.82 || Math.abs(tmpP.y) > 0.86 || tmpP.z > 1
-      const lejania = THREE.MathUtils.clamp(2.4 - d / 24, 0.4, 1)
+      const lejania = THREE.MathUtils.clamp(2.8 - d / 26, 0.62, 1)
       ;(letrero.current.material as THREE.SpriteMaterial).opacity =
         alBorde ? Math.min(0.12, lejania) : selected ? 1 : lejania
     }

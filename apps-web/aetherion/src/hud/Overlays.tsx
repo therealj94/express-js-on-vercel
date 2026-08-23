@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ARCHETYPES, MODULES, WELL_DEFS } from '../sky/Wells'
 import { transit } from '../transit/transit'
@@ -265,19 +265,36 @@ function Pulso() {
 
 function DimensionPanel() {
   const activeId = useUiStore((s) => s.activeId)
-  if (!activeId) return null
-  const well = WELL_DEFS.find((w) => w.key === activeId)
-  if (!well) return null
-  const arch = ARCHETYPES[well.arch]
+  const well = activeId ? WELL_DEFS.find((w) => w.key === activeId) : undefined
+  const puente = (window as any).__AE_ABRIR as ((k: string) => void) | undefined
+  const yaFue = useRef<string | null>(null)
 
   /* LA FUSIÓN: si la wallet dejó su puente (__AE_ABRIR), sintonizar un pozo
      ABRE LA APP DE VERDAD. Se le da medio segundo al aterrizaje del tránsito
      para que el ojo lo termine, y la wallet toma el mando. El grid de
-     cristales queda solo para el modo standalone. */
-  const puente = (window as any).__AE_ABRIR as ((k: string) => void) | undefined
+     cristales queda solo para el modo standalone.
+     
+     El salto vive en un efecto y SOLO SE DISPARA UNA VEZ POR CASA. Antes se
+     lanzaba en pleno dibujado: cada repintado encolaba otro salto, y al volver
+     al Inicio con una casa todavía marcada como abierta, la galaxia entraba
+     sola otra vez — la persona quedaba encerrada en la app sin poder salir. */
+  useEffect(() => {
+    if (!puente || !well) return
+    if (yaFue.current === well.key) return
+    yaFue.current = well.key
+    const reloj = window.setTimeout(() => puente(well.key), 520)
+    return () => window.clearTimeout(reloj)
+  }, [puente, well])
+
+  useEffect(() => {
+    if (!activeId) yaFue.current = null
+  }, [activeId])
+
+  if (!activeId || !well) return null
+  const arch = ARCHETYPES[well.arch]
+
   if (puente) {
     const en = (window as any).__AE_LANG === 'en'
-    window.setTimeout(() => puente(well.key), 520)
     return (
       <motion.div
         className="ae-panel ae-dim"

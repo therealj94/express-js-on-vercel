@@ -41,6 +41,16 @@ export function GestureLayer() {
       return ndc
     }
 
+    /* ¿El toque cayó sobre AU-RA? El corazón de la galaxia no es una casa: no
+       se entra, se la llama. La wallet deja su puente en window.__AE_AURA. */
+    const tocaAura = (x: number, y: number): boolean => {
+      const nucleo = (window as any).__AE_NUCLEO as { r: number } | undefined
+      if (!nucleo) return false
+      raycaster.setFromCamera(toNdc(x, y), camera)
+      const esfera = new THREE.Sphere(new THREE.Vector3(0, 0, 0), nucleo.r * 1.35)
+      return raycaster.ray.intersectsSphere(esfera)
+    }
+
     const pickWell = (x: number, y: number): string | null => {
       raycaster.setFromCamera(toNdc(x, y), camera)
       const targets: THREE.Object3D[] = []
@@ -160,6 +170,15 @@ export function GestureLayer() {
       if (ptrs.size === 0 && !transit.active && !st.activeId) {
         if (moved < 10 && dt < 260) {
           const id = pickWell(e.clientX, e.clientY)
+          if (!id && tocaAura(e.clientX, e.clientY)) {
+            const llamar = (window as any).__AE_AURA as (() => void) | undefined
+            if (llamar) {
+              audio.select(0.6)
+              haptic.tick()
+              llamar()
+              return
+            }
+          }
           const now = performance.now()
           if (id && id === lastTapId && now - lastTapTime < 340) {
             transit.beginEnter(id, camera as THREE.PerspectiveCamera)

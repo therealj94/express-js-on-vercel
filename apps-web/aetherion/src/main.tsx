@@ -4,6 +4,7 @@ import App from './App'
 import './styles.css'
 import { transit } from './transit/transit'
 import { refrescarCasas } from './sky/Wells'
+import { rig } from './kernel/rig'
 import { useUiStore } from './state/uiStore'
 
 /* LA FUSIÓN CON LA WALLET. Aetherion no se monta solo: expone montar y
@@ -11,8 +12,28 @@ import { useUiStore } from './state/uiStore'
    standalone (un #root en la página) sigue vivo para desarrollo. */
 let raiz: Root | null = null
 
+/* EN CERO. El motor guarda su estado en módulos que sobreviven al montaje:
+   si una casa quedó marcada como abierta al salir, al volver el Inicio la
+   abría sola y no había manera de quedarse en la galaxia. Montar y desmontar
+   pasan por aquí, siempre. */
+function reiniciar() {
+  try {
+    transit.active = false
+    transit.mode = null
+    transit.wid = null
+    transit.exitRequested = false
+    rig.enabled = true
+    const st = useUiStore.getState()
+    st.setActive(null)
+    st.select(null)
+    st.closeTear()
+    st.setPulso(false)
+  } catch { /* un motor a medio cargar no tiene nada que reiniciar */ }
+}
+
 function montar(el: HTMLElement) {
   if (raiz) desmontar()
+  reiniciar()
   /* La casa ya dejó puestos el idioma y las marcas: se rearman los planetas
      con eso ANTES de dibujar nada. */
   refrescarCasas()
@@ -25,6 +46,7 @@ function montar(el: HTMLElement) {
 function desmontar() {
   raiz?.unmount()
   raiz = null
+  reiniciar()
 }
 
 /* Exhalar desde afuera: cuando una casa se abre en otra pestaña, la wallet

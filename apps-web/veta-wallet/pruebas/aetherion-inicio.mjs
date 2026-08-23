@@ -103,14 +103,25 @@ console.log('\n── el timón: girar y acercar ──────────�
   const luego = await p.evaluate(() => window.__aeCamera.position.x);
   ok('arrastrar GIRA la galaxia', Math.abs(luego - antes) > 2, `x ${antes.toFixed(1)} → ${luego.toFixed(1)}`);
 
+  /* La cámara llega amortiguada: medir mientras todavía se acomoda compara
+     dos números en movimiento. Se espera a que se QUEDE QUIETA. */
+  const quieta = () => p.waitForFunction(() => {
+    const r = window.__aeCamera.position.length();
+    const antes = (window).__ultimoRadio;
+    (window).__ultimoRadio = r;
+    return antes !== undefined && Math.abs(r - antes) < 0.02;
+  }, null, { timeout: 8000, polling: 220 }).catch(() => {});
+
+  await quieta();
   const rBoton = await radio();
   await p.click('.ae-timon button[aria-label="Acercar"]');
-  await p.waitForTimeout(1300);
-  ok('el botón de acercar también manda', (await radio()) < rBoton - 0.8);
+  await quieta();
+  ok('el botón de acercar también manda', (await radio()) < rBoton - 0.8,
+     `${rBoton.toFixed(1)} → ${(await radio()).toFixed(1)}`);
   await p.click('.ae-timon button[aria-label="Recentrar"]');
-  await p.waitForTimeout(1500);
+  await quieta();
   ok('y recentrar devuelve al encuadre de la casa',
-     Math.abs((await radio()) - reposo) < 1.2);
+     Math.abs((await radio()) - reposo) < 1.2, `${(await radio()).toFixed(1)} · ${reposo.toFixed(1)}`);
 
   /* El mando que usa la mano en el aire: si esto no existe, AIR TOUCH no
      puede acercar por más que la mano se mueva. */

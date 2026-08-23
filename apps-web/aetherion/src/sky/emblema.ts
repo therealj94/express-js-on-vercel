@@ -100,7 +100,7 @@ export function emblemaTextura(def: CaraDef): THREE.Texture {
   const fondo = () => {
     g.clearRect(0, 0, L, L)
     // el halo que despega la insignia del planeta
-    const brillo = g.createRadialGradient(L / 2, L / 2, L * 0.34, L / 2, L / 2, L * 0.5)
+    const brillo = g.createRadialGradient(L / 2, L / 2, L * 0.38, L / 2, L / 2, L * 0.5)
     brillo.addColorStop(0, hexA(def.halo, 0.34))
     brillo.addColorStop(1, hexA(def.halo, 0))
     g.fillStyle = brillo
@@ -108,11 +108,11 @@ export function emblemaTextura(def: CaraDef): THREE.Texture {
     // la lente
     g.save()
     g.beginPath()
-    g.arc(L / 2, L / 2, L * 0.38, 0, Math.PI * 2)
+    g.arc(L / 2, L / 2, L * 0.42, 0, Math.PI * 2)
     g.closePath()
     const cristal = g.createLinearGradient(0, L * 0.12, 0, L * 0.88)
-    cristal.addColorStop(0, hexA(lente, 0.96))
-    cristal.addColorStop(1, hexA(lente, 0.86))
+    cristal.addColorStop(0, hexA(lente, 0.99))
+    cristal.addColorStop(1, hexA(lente, 0.94))
     g.fillStyle = cristal
     g.fill()
     g.restore()
@@ -123,9 +123,9 @@ export function emblemaTextura(def: CaraDef): THREE.Texture {
     g.beginPath()
     g.arc(L / 2, L / 2, L * 0.38, 0, Math.PI * 2)
     g.strokeStyle = hexA(def.halo, 0.75)
-    g.lineWidth = 3
+    g.lineWidth = 4
     g.shadowColor = def.halo
-    g.shadowBlur = 12
+    g.shadowBlur = 16
     g.stroke()
     g.restore()
   }
@@ -133,7 +133,7 @@ export function emblemaTextura(def: CaraDef): THREE.Texture {
   fondo()
   if (def.ico) {
     g.save()
-    g.beginPath(); g.arc(L / 2, L / 2, L * 0.38, 0, Math.PI * 2); g.clip()
+    g.beginPath(); g.arc(L / 2, L / 2, L * 0.42, 0, Math.PI * 2); g.clip()
     pintarIcono(g, def.ico, L, '#f6efe0')
     g.restore()
   }
@@ -147,7 +147,7 @@ export function emblemaTextura(def: CaraDef): THREE.Texture {
       fondo()
       g.save()
       g.beginPath(); g.arc(L / 2, L / 2, L * 0.38, 0, Math.PI * 2); g.clip()
-      const caja = L * 0.62 * (def.zoom || 1)
+      const caja = L * 0.74 * (def.zoom || 1)
       const k = Math.min(caja / img.width, caja / img.height)
       const w = img.width * k
       const h = img.height * k
@@ -179,19 +179,19 @@ export function letreroTextura(nombre: string, color: string): THREE.Texture {
   const H = 128
   const { c, g } = lienzo(W, H)
   const texto = nombre.toUpperCase()
-  g.font = '600 46px Cinzel, "Bodoni Moda", Didot, Georgia, serif'
+  g.font = '700 54px Cinzel, "Bodoni Moda", Didot, Georgia, serif'
   g.textAlign = 'center'
   g.textBaseline = 'middle'
   g.letterSpacing = '3px'
   /* El nombre se lee sobre cualquier fondo del cielo: primero su propia
      sombra, después la letra en crema. */
   g.shadowColor = 'rgba(0,0,0,0.85)'
-  g.shadowBlur = 14
-  g.fillStyle = 'rgba(6,10,20,0.55)'
+  g.shadowBlur = 18
+  g.fillStyle = 'rgba(4,8,16,0.78)'
   g.fillText(texto, W / 2, H / 2)
   g.shadowColor = color
-  g.shadowBlur = 16
-  g.fillStyle = '#f4ecdc'
+  g.shadowBlur = 18
+  g.fillStyle = '#fdf7ea'
   g.fillText(texto, W / 2, H / 2)
   return deLienzo(c, clave)
 }
