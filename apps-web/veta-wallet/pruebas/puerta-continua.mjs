@@ -93,6 +93,41 @@ console.log('\n── entrar es un vuelo, no un corte ────────�
   ok('el umbral quedó atrás', !est.puerta);
 }
 
+console.log('\n── la bienvenida ocurre EN la galaxia ───────────────────────');
+{
+  /* Antes, entrar terminaba en un cartel negro a pantalla completa que tapaba
+     el vuelo y la galaxia recién llegada. Ahora AU-RA saluda encima del cielo
+     y se puede callar con un toque. */
+  const cartel = await p.evaluate(() =>
+    !document.getElementById('aura-bienvenida').classList.contains('oculto'));
+  ok('ningún cartel tapa la galaxia al entrar', !cartel);
+
+  await p.evaluate(() => VETA.vista('nucleo'));
+  /* Se espera al MECANISMO —que el cielo esté montado— y no a un reloj: bajo
+     el render por software remontar la galaxia puede tardar lo suyo. */
+  await p.waitForFunction(() => !!document.querySelector('#ae-cielo canvas'),
+    null, { timeout: 20000, polling: 300 }).catch(() => {});
+  /* Se calla cualquier saludo en vuelo antes de pedir el nuestro: si no, lo
+     que se mide es el final de la bienvenida del aterrizaje y no el principio
+     de esta. */
+  await p.evaluate(() => VETA.aedCallar());
+  await p.waitForTimeout(600);
+  await p.evaluate(() => VETA._bienvenidaGalaxia?.(false));
+  await p.waitForTimeout(400);
+  const dice = await p.evaluate(() => {
+    const d = document.getElementById('ae-dice');
+    return { visible: d && !d.classList.contains('oculto'),
+             txt: d?.querySelector('.aed-txt')?.textContent || '',
+             cielo: !!document.querySelector('#ae-cielo canvas') };
+  });
+  ok('AU-RA saluda sobre el cielo, con la galaxia detrás', dice.visible && dice.cielo,
+     `visible=${dice.visible} cielo=${dice.cielo} · ${dice.txt.slice(0, 30)}`);
+  await p.evaluate(() => VETA.aedCallar());
+  await p.waitForTimeout(700);
+  ok('y se calla con un toque', await p.evaluate(() =>
+    document.getElementById('ae-dice').classList.contains('oculto')));
+}
+
 console.log('\n── GENESIS CORE: la memoria viva ────────────────────────────');
 {
   await p.evaluate(() => window.__AE_ABRIR('genesis'));

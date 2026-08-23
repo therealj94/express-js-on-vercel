@@ -41,9 +41,15 @@ export default function App() {
         <Kernel />
         <QualityWatcher />
         <Encuadre />
-        {/* el relleno de la cara de noche: sin esto la mitad oscura de cada
-            planeta es un agujero negro y la marca se pierde */}
-        <ambientLight intensity={0.55} color="#6d7fae" />
+        {/* LA LUZ HACE EL VOLUMEN. Con relleno parejo y fuerte, cada planeta
+            quedaba iluminado por igual de lado a lado: sin terminador, sin
+            sombra, sin bulto — pegatinas redondas. Ahora el relleno es apenas
+            el rebote del cielo (la cara de noche se insinúa, no desaparece) y
+            el que modela es el sol de AU-RA, desde el centro. */}
+        <ambientLight intensity={0.16} color="#5b6f9e" />
+        {/* la luz de contra: el filo frío de la galaxia que despega cada
+            mundo del fondo negro, como en cualquier foto bien hecha */}
+        <directionalLight position={[-14, 9, -12]} intensity={0.5} color="#7fa8d8" />
         <color attach="background" args={['#030308']} />
         <fogExp2 attach="fog" args={['#05060d', 0.0075]} />
         <Sky />

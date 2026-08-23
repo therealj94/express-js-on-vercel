@@ -111,8 +111,10 @@ export function emblemaTextura(def: CaraDef): THREE.Texture {
     g.arc(L / 2, L / 2, L * 0.42, 0, Math.PI * 2)
     g.closePath()
     const cristal = g.createLinearGradient(0, L * 0.12, 0, L * 0.88)
-    cristal.addColorStop(0, hexA(lente, 0.99))
-    cristal.addColorStop(1, hexA(lente, 0.94))
+    /* Cristal, no pintura: por la lente se adivina el mundo que hay detrás.
+       Opaca del todo, la insignia parecía un botón pegado. */
+    cristal.addColorStop(0, hexA(lente, 0.82))
+    cristal.addColorStop(1, hexA(lente, 0.62))
     g.fillStyle = cristal
     g.fill()
     g.restore()
@@ -348,6 +350,75 @@ export function planetaTextura(key: string, grad: string[], natura = 'gigante'):
   g.fillRect(0, 0, W, H)
 
   return deLienzo(c, clave)
+}
+
+/* EL VELO DE NUBES. Manchas blancas de bordes suaves sobre transparente, con
+   los polos despejados: envuelta en una esfera un pelo mayor que el planeta y
+   girando a otra velocidad, es lo que convierte una bola pintada en un mundo
+   con atmósfera. */
+export function nubesTextura(key: string): THREE.Texture {
+  const clave = `nb2:${key}`
+  const hecho = cache.get(clave)
+  if (hecho) return hecho
+  const W = 512
+  const H = 256
+  const { c, g } = lienzo(W, H)
+  let s = 0
+  for (const ch of key) s = (s * 31 + ch.charCodeAt(0)) >>> 0
+  const r = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296 }
+
+  g.clearRect(0, 0, W, H)
+  for (let i = 0; i < 130; i++) {
+    /* Los polos casi despejados: en un planeta de verdad las bandas de nubes
+       viven en las latitudes medias, y respetarlo se nota aunque nadie sepa
+       por qué. */
+    const y = H * (0.12 + Math.pow(r(), 0.75) * 0.76)
+    const x = r() * W
+    const rad = 8 + r() * 44
+    const alfa = 0.05 + r() * 0.2
+    const gr = g.createRadialGradient(x, y, 0, x, y, rad)
+    gr.addColorStop(0, `rgba(255,255,255,${alfa})`)
+    gr.addColorStop(0.6, `rgba(255,255,255,${alfa * 0.45})`)
+    gr.addColorStop(1, 'rgba(255,255,255,0)')
+    g.fillStyle = gr
+    g.beginPath()
+    g.ellipse(x, y, rad * (1.4 + r()), rad * (0.4 + r() * 0.4), 0, 0, Math.PI * 2)
+    g.fill()
+  }
+  return deLienzo(c, clave)
+}
+
+/* EL ANILLO. Un disco de color plano se ve de plástico; un anillo de verdad
+   son miles de piedras en bandas, con sus huecos —la división de Cassini— y
+   con el filo interior más brillante que el exterior. Se dibuja como una tira
+   horizontal que el mapeo del anillo estira en círculo. */
+export function anilloTextura(key: string, color: string): THREE.Texture {
+  const clave = `an:${key}`
+  const hecho = cache.get(clave)
+  if (hecho) return hecho
+  const W = 512
+  const H = 16
+  const { c, g } = lienzo(W, H)
+  let s = 7
+  for (const ch of key) s = (s * 31 + ch.charCodeAt(0)) >>> 0
+  const r = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296 }
+
+  g.clearRect(0, 0, W, H)
+  for (let x = 0; x < W; x++) {
+    const t = x / W
+    // bandas: unas densas, otras casi vacías
+    let a = 0.28 + 0.42 * Math.abs(Math.sin(t * 26 + Math.sin(t * 7) * 2))
+    a *= 0.55 + 0.45 * Math.sin(t * 3.1)
+    // los huecos: dos divisiones limpias, como las de verdad
+    if (Math.abs(t - 0.42) < 0.022 || Math.abs(t - 0.74) < 0.012) a *= 0.12
+    a *= 0.35 + 0.65 * (1 - t)          // el filo de adentro, más lleno
+    a += (r() - 0.5) * 0.06             // grano
+    g.fillStyle = `rgba(255,255,255,${Math.max(0, Math.min(1, a)).toFixed(3)})`
+    g.fillRect(x, 0, 1, H)
+  }
+  const t = deLienzo(c, clave)
+  t.wrapS = THREE.RepeatWrapping
+  return t
 }
 
 export function limpiarCaras() {

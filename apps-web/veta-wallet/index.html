@@ -217,6 +217,35 @@ body.a-lo-ancho #pantalla-llena .pl-cerrar{display:block}
 body .ae-hud .ae-topbar{padding-right:64px}
 @media (prefers-reduced-motion:reduce){#pantalla-llena{transition:none}}
 
+/* LO QUE AU-RA DICE, sobre la galaxia: una línea sola, encima del saludo de
+   la casa, que se va sola cuando termina de hablar. */
+#ae-dice{position:fixed;left:50%;transform:translateX(-50%);bottom:clamp(120px,17vh,180px);
+  z-index:24;display:flex;align-items:center;gap:12px;max-width:min(720px,88vw);
+  padding:13px 16px 13px 20px;border-radius:100px;
+  background:rgba(3,14,15,.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border:1px solid var(--linea2);box-shadow:0 18px 60px rgba(0,0,0,.5);
+  animation:aedEntra .5s cubic-bezier(.22,.9,.24,1) both}
+#ae-dice.yendo{animation:aedSale .45s ease forwards}
+#ae-dice .aed-txt{font:400 15px/1.5 var(--sans);color:var(--crema);flex:1}
+#ae-dice .aed-x{flex:none;width:26px;height:26px;border-radius:50%;color:var(--humo);
+  font-size:13px;line-height:1;border:1px solid var(--linea2);background:transparent}
+#ae-dice .aed-x:hover{color:var(--crema);border-color:var(--oro)}
+@keyframes aedEntra{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes aedSale{to{opacity:0;transform:translate(-50%,-8px)}}
+@media (max-width:900px){#ae-dice{bottom:calc(168px + env(safe-area-inset-bottom));
+  padding:11px 13px 11px 16px}#ae-dice .aed-txt{font-size:14px}}
+@media (prefers-reduced-motion:reduce){#ae-dice,#ae-dice.yendo{animation:none}}
+
+/* LA PUERTA SE DISUELVE. Entrar no es un corte: mientras la cámara vuela, el
+   formulario se desvanece encima. Sin esto, el panel desaparecía de golpe un
+   instante antes del vuelo y el corte se veía. */
+#acceso.se-va{animation:accesoSeVa .62s cubic-bezier(.4,0,.2,1) forwards;pointer-events:none}
+@keyframes accesoSeVa{
+  0%{opacity:1;transform:none;filter:blur(0)}
+  100%{opacity:0;transform:scale(1.06) translateY(-8px);filter:blur(6px)}
+}
+@media (prefers-reduced-motion:reduce){#acceso.se-va{animation:none;opacity:0}}
+
 .ae-saludo{position:fixed;left:clamp(16px,3vw,34px);bottom:clamp(24px,4vh,40px);
   z-index:5;pointer-events:none;display:flex;flex-direction:column;gap:3px}
 .ae-saludo b{font:700 clamp(19px,2.4vw,26px)/1.2 var(--serif);color:var(--crema)}
@@ -3683,6 +3712,13 @@ body.en-ventana .lienzo::before{
      vuelo de cámara, y no hay ni un corte. Solo respira con la clase
      cielo-vivo puesta en el body. -->
 <div id="ae-cielo" aria-hidden="true"></div>
+<!-- LA VOZ DE AU-RA EN LA GALAXIA. Su bienvenida ya no tapa la pantalla con
+     un cartel negro: se dice AQUÍ, sobre el cielo recién aterrizado, mientras
+     el sol resplandece con cada frase. Tocarla la calla. -->
+<div id="ae-dice" class="oculto" role="status">
+  <span class="aed-txt"></span>
+  <button class="aed-x" aria-label="Saltar" onclick="VETA.aedCallar()">✕</button>
+</div>
 
 <main id="app" class="oculto">
   <!-- PANTALLA COMPLETA. Arriba a la derecha, la misma esquina en el teléfono

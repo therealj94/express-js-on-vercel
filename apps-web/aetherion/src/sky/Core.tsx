@@ -90,6 +90,7 @@ function pielAura(): THREE.Texture {
   const t = new THREE.CanvasTexture(c)
   t.colorSpace = THREE.SRGBColorSpace
   t.wrapS = THREE.RepeatWrapping
+  t.wrapT = THREE.RepeatWrapping
   return t
 }
 
@@ -231,6 +232,13 @@ export function Core() {
       perla.current.rotation.y += dt * (0.09 + V * 0.22)
       const m = perla.current.material as THREE.MeshStandardMaterial
       m.emissiveIntensity = 1.5 + V * 2.4
+      /* EL PLASMA HIERVE. La piel se desplaza despacio sobre sí misma, en las
+         dos direcciones y a distinto ritmo: la superficie deja de ser un
+         dibujo pegado y pasa a ser materia en movimiento. */
+      if (m.map) {
+        m.map.offset.x = (m.map.offset.x + dt * (0.006 + V * 0.02)) % 1
+        m.map.offset.y = (m.map.offset.y + dt * 0.0016) % 1
+      }
     }
     if (anillo.current) anillo.current.rotation.z -= dt * (0.05 + V * 0.2)
 

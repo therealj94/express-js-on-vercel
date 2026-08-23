@@ -126,16 +126,17 @@ export function Lejanos() {
       {mundos.map((m, i) => (
         <group key={i} position={m.pos} rotation={[0, i * 0.7, m.aro ? 0.4 : 0]}>
           <mesh>
-            <sphereGeometry args={[m.r, 20, 20]} />
+            <sphereGeometry args={[m.r, 32, 32]} />
             {m.sol ? (
               <meshBasicMaterial color={m.color} toneMapped={false} />
             ) : (
+              /* Sin luz propia: los mundos de paisaje también los modela el
+                 sol, y por eso tienen su cara de día y su terminador. Antes
+                 se auto-iluminaban y parecían pegatinas de papel. */
               <meshStandardMaterial
                 color={m.color}
-                roughness={0.9}
-                metalness={0.05}
-                emissive={new THREE.Color(m.color)}
-                emissiveIntensity={0.12}
+                roughness={0.95}
+                metalness={0.02}
               />
             )}
           </mesh>

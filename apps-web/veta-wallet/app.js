@@ -393,7 +393,11 @@ const VETA = (() => {
     if (marco) marco.content = destino === 'app' ? '#021B1C' : '#050510';
     // el botón de pantalla completa se ofrece adentro y se guarda en la puerta
     pintarLlena();
-    if (destino === 'acceso') { pestana(cual || 'entrar'); setTimeout(() => $('#i-correo').focus(), 60); }
+    if (destino === 'acceso') {
+      $('#acceso')?.classList.remove('se-va');
+      pestana(cual || 'entrar');
+      setTimeout(() => $('#i-correo').focus(), 60);
+    }
     // AU-RA recibe en la puerta; en cualquier otra pantalla su saludo se apaga.
     if (destino === 'acceso') accesoEscena(); else accesoEscenaParar();
     /* La galaxia es el cielo de la ENTRADA. Adentro de la casa se apaga del
@@ -1155,7 +1159,7 @@ const VETA = (() => {
         if (!sesion) return;
         ir('app');
       };
-      if (aetPuertaViva()) AETHERION.entrar('directo', aterrizarLlave);
+      if (aetPuertaViva()) { $('#acceso')?.classList.add('se-va'); AETHERION.entrar('directo', aterrizarLlave); }
       else if (window.GALAXIA) GALAXIA.saltar(aterrizarLlave); else aterrizarLlave();
     } catch (e) {
       const m = String(e?.mensaje || e?.message || '');
@@ -1395,7 +1399,11 @@ const VETA = (() => {
            y en modo estricto reventaba AQUI, el catch de abajo se tragaba el
            ReferenceError y lo pintaba como error de credenciales — el saludo de
            AU-RA no corrió ni una vez para quien entraba sin semilla. */
-        if (!semillaNueva) { if (!volviendoACasa) setTimeout(() => auraBienvenida(true), 300); }
+        if (!semillaNueva) {
+          /* La bienvenida ocurre EN la galaxia, no encima de ella: se le da
+             al vuelo el tiempo de aterrizar y AU-RA saluda sobre el cielo. */
+          if (!volviendoACasa) setTimeout(() => auraBienvenidaGalaxia(true), 1500);
+        }
         else setTimeout(auraOfrecerGid, 1200);
         // La frase se enseña ENCIMA de la billetera ya pintada, no antes de
         // entrar: quien la ve entiende que ya tiene cuenta y que esto es lo que
@@ -1409,8 +1417,14 @@ const VETA = (() => {
          Crear cuenta desciende despacio (la fase de descubrimiento); iniciar
          sesión entra directo. AURA late más fuerte como bienvenida. El
          aterrizaje llega con el vuelo al 80%: la vista cambia debajo mientras
-         la cámara sigue moviéndose y nadie ve la costura. */
+         la cámara sigue moviéndose y nadie ve la costura.
+
+         Y LA PUERTA SE DISUELVE ENCIMA: el panel del formulario se desenfoca
+         y se va mientras la cámara ya está viajando. Antes desaparecía de
+         golpe justo antes del vuelo, y ese parpadeo era el único corte que
+         quedaba en toda la entrada. */
       if (aetPuertaViva()) {
+        $('#acceso')?.classList.add('se-va');
         AETHERION.entrar(modo === 'crear' ? 'descubrir' : 'directo', aterrizar);
       } else if (window.GALAXIA) GALAXIA.saltar(aterrizar); else aterrizar();
     } catch (e) {
@@ -2039,6 +2053,7 @@ const VETA = (() => {
     }
     /* GENESIS CORE: el cerebro informativo respira con su vista. */
     gcCerrar();
+    if (cual !== 'nucleo') aedCallar();
     if (cual === 'genesis') { AURA.pararRed(); encenderGenesis(); }
     else { try { window.CEREBRO_OG?.apagar(); } catch { /* nada */ } }
     /* El cielo 3D es del Inicio (y de la puerta): en cualquier otra vista se
@@ -5055,7 +5070,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = '8c60b71e91';
+  const AET_V = '45358ab80c';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -10366,6 +10381,55 @@ const VETA = (() => {
     auraBienFin();
   }
 
+  /* ── LA BIENVENIDA, EN LA GALAXIA ────────────────────────────────────────
+     Antes, entrar terminaba en un cartel negro a pantalla completa: se
+     perdían de golpe el vuelo de la cámara y la galaxia recién llegada, que
+     son justo lo que hay que ver. Ahora AU-RA saluda ENCIMA del cielo — su
+     voz, el sol resplandeciendo con cada frase, y una línea de texto que se
+     va sola. El cartel ceremonial sigue existiendo para quien lo pida desde
+     Ajustes: ahí sí es el sitio de una presentación. */
+  let aedTurno = 0;
+
+  function aedDecir(txt) {
+    const caja = $('#ae-dice');
+    if (!caja) return;
+    caja.classList.remove('oculto', 'yendo');
+    caja.querySelector('.aed-txt').textContent = txt;
+  }
+
+  function aedCallar() {
+    aedTurno++;
+    const caja = $('#ae-dice');
+    if (!caja || caja.classList.contains('oculto')) return;
+    try { AURA.pararVoz(); } catch { /* nada */ }
+    caja.classList.add('yendo');
+    setTimeout(() => { caja.classList.add('oculto'); caja.classList.remove('yendo'); }, 460);
+  }
+
+  async function auraBienvenidaGalaxia(conVoz) {
+    const T = aTxt();
+    const mio = ++aedTurno;
+    const vigente = () => mio === aedTurno && vistaActual === 'nucleo';
+    const nombre = (sesion?.nombre || '').split(' ')[0];
+    const frases = [
+      (nombre ? T.bienv1.replace('{nombre}', nombre) : T.bienv1Voz),
+      T.bienv2, T.bienv3,
+    ];
+    const voces = [T.bienv1Voz, T.bienv2, T.bienv3];
+    const espera = (ms) => new Promise(r => setTimeout(r, ms));
+    for (let i = 0; i < frases.length; i++) {
+      if (!vigente()) return;
+      aedDecir(frases[i]);
+      /* La voz y un tiempo mínimo de lectura corren a la par: quien la
+         escucha no espera de más, y quien la tiene en silencio alcanza a
+         leerla igual. */
+      const leer = espera(2600 + frases[i].length * 34);
+      if (conVoz) await Promise.all([AURA.hablar(voces[i], idiomaActivo()).catch(() => {}), leer]);
+      else await leer;
+    }
+    if (vigente()) aedCallar();
+  }
+
   function auraBienToca() {
     const t = $('#aurab-toca');
     if (t) t.classList.add('oculto');
@@ -11399,7 +11463,7 @@ const VETA = (() => {
       if (casaSso) volverConLlave(casaSso);
       if (!yaSePresento() && !casaSso) {
         marcarPresentada();
-        setTimeout(() => auraBienvenida(false), 500);
+        setTimeout(() => auraBienvenidaGalaxia(false), 1400);
       }
       // Despues de cargarTodo, para que la moneda del cobro exista en la
       // cartera cuando se intente elegir.
@@ -11441,7 +11505,8 @@ const VETA = (() => {
            nuAbrir,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
-           pantallaLlena, gcAbrir, gcCerrar,
+           pantallaLlena, gcAbrir, gcCerrar, aedCallar,
+           _bienvenidaGalaxia: (v) => auraBienvenidaGalaxia(v),
            auraBienFin, auraBienToca, auraAyuda,
            // La bienvenida del ecosistema: sale sola la primera vez y se puede
            // volver a abrir desde Ajustes.

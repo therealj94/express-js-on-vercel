@@ -6,7 +6,7 @@ import { RADIO_ANILLO, rig } from '../kernel/rig'
 import { useUiStore } from '../state/uiStore'
 import { atmosphereFragment, atmosphereVertex } from '../shaders/shared'
 import { getRingTexture } from './textures'
-import { emblemaTextura, letreroTextura, planetaTextura } from './emblema'
+import { emblemaTextura, letreroTextura, planetaTextura, nubesTextura, anilloTextura } from './emblema'
 import type { Galaxy } from './lattice'
 
 export type Archetype = 'pulsar' | 'binary' | 'memory' | 'torus' | 'sentinel'
@@ -239,6 +239,7 @@ function WellView({ def }: { def: WellDef }) {
   const group = useRef<THREE.Group>(null!)
   const spin = useRef<THREE.Group>(null!)
   const luna = useRef<THREE.Group>(null)
+  const nubes = useRef<THREE.Mesh>(null)
   const anillo3 = useRef<THREE.Group>(null)
   const hit = useRef<THREE.Mesh>(null!)
   const halo = useRef<THREE.Sprite>(null)
@@ -252,6 +253,8 @@ function WellView({ def }: { def: WellDef }) {
   const R = 1.72 * def.scale
   const atmo = useMemo(() => makeAtmoMaterial(def.halo, 0.55), [def.halo])
   const piel = useMemo(() => planetaTextura(def.key, def.grad, def.natura), [def.key, def.grad, def.natura])
+  const velo = useMemo(() => nubesTextura(def.key), [def.key])
+  const aro = useMemo(() => anilloTextura(def.key, def.halo), [def.key, def.halo])
   const cara = useMemo(
     () => emblemaTextura({
       key: def.key, logo: def.logo, ico: def.ico, halo: def.halo,
@@ -291,6 +294,9 @@ function WellView({ def }: { def: WellDef }) {
     )
 
     if (spin.current) spin.current.rotation.y += dt * rasgos.giro
+    /* Las nubes van más rápido que el suelo: esa diferencia es lo que el ojo
+       lee como atmósfera y no como una calcomanía pegada. */
+    if (nubes.current) nubes.current.rotation.y += dt * rasgos.giro * 1.45
     if (luna.current) luna.current.rotation.y += dt * 0.85
     if (anillo3.current) anillo3.current.rotation.z += dt * 0.16
 
@@ -304,9 +310,14 @@ function WellView({ def }: { def: WellDef }) {
     const d = state.camera.position.distanceTo(g.position)
     const k = THREE.MathUtils.clamp(d / 13, 0.66, 2.2)
     if (emblema.current) {
-      const s = R * 1.42 * (selected ? 1.08 : 1)
+      /* LA INSIGNIA FLOTA, NO ESTÁ PINTADA. Se adelanta hacia la cámara un
+         poco más que el radio del planeta: así se lee como un cristal que
+         orbita delante del mundo —con su parallax al girar— y no como una
+         calcomanía pegada en la superficie, que era lo que la delataba. */
+      const s = R * 1.12 * (selected ? 1.08 : 1)
       emblema.current.scale.setScalar(s)
-      emblema.current.position.set(0, 0, 0)
+      tmpP.copy(state.camera.position).sub(g.position).normalize().multiplyScalar(R * 1.22)
+      emblema.current.position.copy(tmpP)
       /* Al alejarse, la MARCA se apaga con el planeta: en el panorama de la
          galaxia lo que se mira son mundos y soles, no nueve insignias
          flotando del mismo tamaño. De cerca la marca manda; de lejos, el
@@ -348,16 +359,18 @@ function WellView({ def }: { def: WellDef }) {
 
   /* La silueta la manda la naturaleza del mundo: quién lleva anillo, de qué
      tamaño, quién tiene luna y quién brilla por dentro. */
-  const A: Record<string, { anillo?: [number, number]; luna?: number; brillo: number; giro: number }> = {
-    gigante: { anillo: [1.5, 2.35], luna: 0.26, brillo: 0.18, giro: 0.16 },
-    helado: { anillo: [1.7, 2.0], brillo: 0.3, giro: 0.1 },
-    forja: { anillo: [1.45, 1.95], brillo: 0.42, giro: 0.34 },
-    oceano: { luna: 0.3, brillo: 0.2, giro: 0.19 },
-    jardin: { luna: 0.22, brillo: 0.22, giro: 0.21 },
-    bunker: { anillo: [1.9, 2.05], brillo: 0.12, giro: 0.08 },
-    boveda: { anillo: [1.5, 1.9], brillo: 0.16, giro: 0.12 },
-    nucleo: { anillo: [1.6, 2.2], brillo: 0.5, giro: 0.26 },
-    faro: { luna: 0.18, brillo: 0.26, giro: 0.14 },
+  type Rasgos = { anillo?: [number, number]; luna?: number; brillo: number
+                  giro: number; relieve: number; nubes?: boolean }
+  const A: Record<string, Rasgos> = {
+    gigante: { anillo: [1.5, 2.35], luna: 0.26, brillo: 0.05, giro: 0.16, relieve: 0.012, nubes: true },
+    helado: { anillo: [1.7, 2.0], brillo: 0.06, giro: 0.1, relieve: 0.022 },
+    forja: { anillo: [1.45, 1.95], brillo: 0.3, giro: 0.34, relieve: 0.03 },
+    oceano: { luna: 0.3, brillo: 0.05, giro: 0.19, relieve: 0.008, nubes: true },
+    jardin: { luna: 0.22, brillo: 0.06, giro: 0.21, relieve: 0.018, nubes: true },
+    bunker: { anillo: [1.9, 2.05], brillo: 0.03, giro: 0.08, relieve: 0.038 },
+    boveda: { anillo: [1.5, 1.9], brillo: 0.05, giro: 0.12, relieve: 0.02 },
+    nucleo: { anillo: [1.6, 2.2], brillo: 0.34, giro: 0.26, relieve: 0.014 },
+    faro: { luna: 0.18, brillo: 0.08, giro: 0.14, relieve: 0.016 },
   }
   const rasgos = A[def.natura] || A.gigante
   const conAnillo = !!rasgos.anillo
@@ -387,16 +400,40 @@ function WellView({ def }: { def: WellDef }) {
 
       <group ref={spin}>
         {/* EL PLANETA: piel de marca, luz propia suave y bulto de esfera */}
+        {/* EL CUERPO. El mapa de relieve sale de la misma piel: donde la
+            textura es clara el terreno sobresale, y con la luz del sol
+            rasante eso ya da montañas, bandas y grano — es lo que separa una
+            esfera pintada de un mundo. */}
         <mesh>
-          <sphereGeometry args={[R, 48, 48]} />
+          <sphereGeometry args={[R, 64, 64]} />
           <meshStandardMaterial
             map={piel}
-            metalness={0.12}
-            roughness={0.78}
+            bumpMap={piel}
+            bumpScale={rasgos.relieve}
+            metalness={0.06}
+            roughness={0.92}
             emissive={new THREE.Color(def.halo)}
+            /* Casi nada de luz propia: un planeta no brilla, REFLEJA. Solo
+               los que de verdad arden por dentro (la forja, el núcleo)
+               conservan algo. */
             emissiveIntensity={rasgos.brillo}
           />
         </mesh>
+        {/* LAS NUBES: una segunda capa que gira a su ritmo. Es el truco más
+            barato y más eficaz que hay para que un mundo parezca vivo. */}
+        {rasgos.nubes && (
+          <mesh ref={nubes}>
+            <sphereGeometry args={[R * 1.028, 48, 48]} />
+            <meshStandardMaterial
+              map={velo}
+              transparent
+              opacity={0.5}
+              depthWrite={false}
+              roughness={1}
+              metalness={0}
+            />
+          </mesh>
+        )}
 
         {conLuna && (
           <group ref={luna}>
@@ -416,15 +453,20 @@ function WellView({ def }: { def: WellDef }) {
       {conAnillo && (
         <group ref={anillo3} rotation={[1.32, 0, 0.24]}>
           <mesh>
-            <ringGeometry args={[R * (rasgos.anillo?.[0] ?? 1.55), R * (rasgos.anillo?.[1] ?? 2.15), 64]} />
-            <meshBasicMaterial
-              map={getRingTexture()}
-              color={def.halo}
+            <ringGeometry args={[R * (rasgos.anillo?.[0] ?? 1.55), R * (rasgos.anillo?.[1] ?? 2.15), 128, 1]} />
+            {/* El anillo lo ILUMINA el sol, no brilla solo: por eso material
+                estándar y no aditivo — así tiene cara de día y cara de noche
+                como cualquier cosa que orbita. */}
+            <meshStandardMaterial
+              map={aro}
+              alphaMap={aro}
+              color={def.grad[1]}
               transparent
-              opacity={0.4}
+              opacity={0.85}
               side={THREE.DoubleSide}
               depthWrite={false}
-              blending={THREE.AdditiveBlending}
+              roughness={1}
+              metalness={0}
             />
           </mesh>
         </group>
