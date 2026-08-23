@@ -81,3 +81,19 @@ cp dist/assets/{aetherion.js,aetherion.css,three.js,r3f.js,ui.js} \
    ../veta-wallet/aetherion/assets/
 node ../veta-wallet/pruebas/aetherion-inicio.mjs   # la prueba de la fusión
 ```
+
+## Publicar (y por qué NO se copia a mano)
+
+```bash
+cd apps-web/aetherion
+npm install --legacy-peer-deps    # solo la primera vez
+python3 publicar.py               # compila, copia y SELLA la versión
+```
+
+`publicar.py` calcula la huella de lo compilado y la escribe en `app.js`
+(`const AET_V`), que pide el motor con `?v=<huella>`. Los trozos ya llevan su
+huella en el nombre. Esto existe porque pasó de verdad: se publicó un Inicio
+nuevo y el teléfono siguió enseñando el viejo durante horas, porque el archivo
+de entrada tiene nombre fijo y el navegador se quedó con su copia. Con la
+huella colgada del pedido, motor nuevo es dirección nueva y no hay copia vieja
+que valga.

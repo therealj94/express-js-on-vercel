@@ -10,10 +10,14 @@ export default defineConfig({
     chunkSizeWarningLimit: 1400,
     rollupOptions: {
       output: {
-        // nombres fijos: la wallet los carga por ruta conocida; el caché se
-        // rompe por ETag del CDN, no por hash en el nombre
+        /* La ENTRADA lleva nombre fijo porque la wallet la carga por ruta
+           conocida, y le cuelga su versión (?v=…) al pedirla. Los TROZOS van
+           con huella en el nombre: son los que la entrada importa sola, y sin
+           huella un navegador con la copia vieja seguía sirviendo el motor de
+           antes por más que se publicara uno nuevo. Eso fue exactamente lo que
+           le pasó a José: pantalla vieja después de publicar. */
         entryFileNames: 'assets/aetherion.js',
-        chunkFileNames: 'assets/[name].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/aetherion.[ext]',
         manualChunks: {
           three: ['three'],

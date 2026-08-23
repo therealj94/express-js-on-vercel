@@ -110,7 +110,14 @@ export function GestureLayer() {
 
       const st = useUiStore.getState()
       if (ptrs.size === 1 && !transit.active) {
-        if (Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > 10) clearLong()
+        if (Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > 10) {
+          clearLong()
+          /* ARRASTRAR LE GANA AL MENÚ. Si la mano se quedó quieta un momento
+             antes de moverse, el menú radial ya se abrió; en cuanto se ve que
+             la intención era GIRAR, el menú se retira solo. Antes se quedaba
+             abierto y se comía el gesto. */
+          if (st.tear.open) st.closeTear()
+        }
         if (st.activeId) {
           if (dy > 60 && Math.abs(dy) > Math.abs(dx)) {
             ptrs.delete(e.pointerId)

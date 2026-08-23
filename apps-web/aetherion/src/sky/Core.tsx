@@ -36,7 +36,7 @@ export function Core() {
     const b = sim.beat
     if (light.current) light.current.intensity = 55 * (1 + b * 0.9) * (1 - 0.7 * sim.eclipse)
     if (flare.current) {
-      const s = 5.4 * (1 + b * 0.3) * (0.6 + 0.4 * sim.intro)
+      const s = 3.9 * (1 + b * 0.3) * (0.6 + 0.4 * sim.intro)
       flare.current.scale.setScalar(s)
     }
     glowMat.uniforms.uTime.value = sim.now
@@ -53,7 +53,7 @@ export function Core() {
         <meshBasicMaterial color="#fff3dc" />
       </mesh>
       <mesh geometry={glowGeo} material={glowMat} />
-      <sprite ref={flare} scale={5.4}>
+      <sprite ref={flare} scale={3.9}>
         <spriteMaterial
           map={getFlareTexture()}
           color="#ffdf9e"

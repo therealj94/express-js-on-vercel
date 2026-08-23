@@ -4898,16 +4898,24 @@ const VETA = (() => {
    * el Inicio jamás se queda en negro por una mejora. */
   let aetCarga = null;
 
+  /* LA VERSIÓN DEL MOTOR. La entrada de Aetherion tiene nombre fijo, y un
+     nombre fijo es una invitación a que un navegador se quede con la copia
+     vieja: eso hizo que después de publicar el Inicio nuevo, el teléfono
+     siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
+     compilación —no se toca a mano— y va colgada del pedido, así que motor
+     nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
+  const AET_V = '817e4a034f';
+
   function aetCargar() {
     if (aetCarga) return aetCarga;
     aetCarga = new Promise((ok, mal) => {
       const css = document.createElement('link');
       css.rel = 'stylesheet';
-      css.href = 'aetherion/assets/aetherion.css';
+      css.href = `aetherion/assets/aetherion.css?v=${AET_V}`;
       document.head.appendChild(css);
       const s = document.createElement('script');
       s.type = 'module';
-      s.src = 'aetherion/assets/aetherion.js';
+      s.src = `aetherion/assets/aetherion.js?v=${AET_V}`;
       s.onload = () => (window.AETHERION ? ok() : mal(new Error('bundle sin AETHERION')));
       s.onerror = () => mal(new Error('no cargó el bundle'));
       document.head.appendChild(s);

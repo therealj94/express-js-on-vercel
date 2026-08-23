@@ -15,7 +15,7 @@ class Rig {
   tTheta = 0.65
   tPhi = 1.02
   tRadius = 17
-  cerca = 6.2
+  cerca = 4.4
   lejos = 40
   reposo = 17
   reposoPhi = 1.02
@@ -23,6 +23,9 @@ class Rig {
      perspectiva no cae simétrico en la pantalla, y sin esto quedaba un tercio
      de cielo vacío arriba y las casas apelotonadas abajo. */
   mira = 0.4
+  /* La distancia desde la que se ve el sistema entero: es el tope de alejar y
+     el destino del botón «ver todo». */
+  panorama = 26
   enabled = true
 
   orbit(dx: number, dy: number) {
@@ -73,7 +76,7 @@ class Rig {
    * Las posiciones las registra el cielo (anclas) al armar los planetas, así
    * que si mañana cambia el reparto, el encuadre se entera solo.
    */
-  anclas: Array<{ pos: THREE.Vector3; r: number }> = []
+  anclas: Array<{ pos: THREE.Vector3; r: number; principal?: boolean }> = []
 
   private posicionar(cam: THREE.PerspectiveCamera, d: number, phi: number) {
     const sp = Math.sin(phi)
@@ -83,10 +86,11 @@ class Rig {
     cam.updateProjectionMatrix()
   }
 
-  private cabeTodo(prueba: THREE.PerspectiveCamera, d: number, phi: number) {
+  private cabeTodo(prueba: THREE.PerspectiveCamera, d: number, phi: number, soloPrincipales = false) {
     this.posicionar(prueba, d, phi)
     const p = new THREE.Vector3()
     for (const a of this.anclas) {
+      if (soloPrincipales && !a.principal) continue
       p.copy(a.pos).project(prueba)
       if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return false
       /* el planeta ocupa lo suyo alrededor del ancla, y el letrero cuelga
@@ -95,8 +99,8 @@ class Rig {
       const dist = prueba.position.distanceTo(a.pos)
       const rY = (a.r * 1.5) / (medio * dist)
       const rX = rY / prueba.aspect
-      if (Math.abs(p.x) + rX > 0.94) return false
-      if (p.y + rY > 0.9 || p.y - rY * 1.6 < -0.9) return false
+      if (Math.abs(p.x) + rX > 0.96) return false
+      if (p.y + rY > 0.92 || p.y - rY * 1.25 < -0.92) return false
     }
     return true
   }
@@ -113,10 +117,23 @@ class Rig {
     let d = 12
     if (this.anclas.length) {
       const prueba = new THREE.PerspectiveCamera(cam.fov, cam.aspect, 0.1, 400)
-      d = 40
-      for (let x = 11; x <= 40; x += 0.5) {
-        if (this.cabeTodo(prueba, x, inclinacion)) { d = x; break }
+      /* DOS DISTANCIAS Y UN CRITERIO. Una es donde cabe TODO; la otra, donde
+         caben las casas de todos los días. Mirar desde donde cabe todo deja la
+         galaxia lejos y chiquita —que es justo lo que no queríamos—, así que se
+         entra bastante más cerca y las casas de afuera asoman por el borde: se
+         llega a ellas girando, alejando o tocando. Lo que NO se permite es
+         cortar una casa principal. */
+      let todo = 40
+      for (let x = 9; x <= 40; x += 0.5) {
+        if (this.cabeTodo(prueba, x, inclinacion)) { todo = x; break }
       }
+      let principales = 9
+      for (let x = 9; x <= 40; x += 0.5) {
+        if (this.cabeTodo(prueba, x, inclinacion, true)) { principales = x; break }
+      }
+      d = Math.max(principales, todo * 0.72)
+      // el tope de alejar SÍ tiene que dar el panorama entero
+      this.panorama = todo
     } else {
       // sin casas registradas todavía: el radio pelado con su margen
       const medio = Math.tan((cam.fov * Math.PI) / 180 / 2)
@@ -130,29 +147,34 @@ class Rig {
       const p = new THREE.Vector3()
       for (let paso = 0; paso < 3; paso++) {
         this.posicionar(prueba, d, inclinacion)
-        let alto = -Infinity
-        let bajo = Infinity
+        /* El centro se calcula con PESO: una casa cercana ocupa más pantalla
+           y tira más de la composición que una que asoma al fondo. Sin esto
+           quedaba un tercio de cielo vacío arriba. */
+        let suma = 0
+        let peso = 0
         for (const a of this.anclas) {
           p.copy(a.pos).project(prueba)
-          const r = (a.r * 1.5) / (Math.tan((cam.fov * Math.PI) / 180 / 2) * prueba.position.distanceTo(a.pos))
-          alto = Math.max(alto, p.y + r)
-          bajo = Math.min(bajo, p.y - r * 1.6)
+          const dist = prueba.position.distanceTo(a.pos)
+          const r = (a.r * 1.5) / (Math.tan((cam.fov * Math.PI) / 180 / 2) * dist)
+          const cuanto = r * r * (a.principal ? 1.6 : 1)
+          suma += p.y * cuanto
+          peso += cuanto
         }
-        const centro = (alto + bajo) / 2
+        const centro = peso > 0 ? suma / peso : 0
         if (Math.abs(centro) < 0.02) break
         const mundoMedio = Math.tan((cam.fov * Math.PI) / 180 / 2) * d
         this.mira = clamp(this.mira + centro * mundoMedio * 0.85, -8, 5)
       }
-      // si el centrado apretó los bordes, se vuelve a comprobar que todo cabe
+      // tras centrar, las principales tienen que seguir enteras
       let ok = false
       for (let x = d; x <= 40; x += 0.5) {
-        if (this.cabeTodo(prueba, x, inclinacion)) { d = x; ok = true; break }
+        if (this.cabeTodo(prueba, x, inclinacion, true)) { d = x; ok = true; break }
       }
-      if (!ok) d = 40
+      if (!ok) d = this.panorama
     }
-    this.reposo = clamp(d, 11, 40)
-    this.lejos = clamp(this.reposo * 1.9, 22, 62)
-    this.cerca = 6.2
+    this.reposo = clamp(d, 9, 40)
+    this.lejos = clamp(Math.max(this.panorama * 1.12, this.reposo * 1.6), 18, 62)
+    this.cerca = 4.4
     return this.reposo
   }
 

@@ -1,4 +1,4 @@
-import{r as Fr,c as jr,e as Ut,a as S,j as st}from"./r3f.js";var ye={exports:{}},N={};/**
+import{r as Fr,c as jr,e as Ut,a as S,j as st}from"./r3f-BGaXoUNf.js";var ye={exports:{}},N={};/**
  * @license React
  * react-dom.production.js
  *
