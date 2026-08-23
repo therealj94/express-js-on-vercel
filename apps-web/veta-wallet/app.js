@@ -401,6 +401,10 @@ const VETA = (() => {
       if (destino === 'app') GALAXIA.apagar();
       else GALAXIA.montar($('#galaxia'));   // idempotente si ya está ahí
     }
+    if (destino !== 'app') {
+      document.getElementById('ae-saludo')?.remove();
+      try { window.AETHERION?.desmontar(); } catch { /* nada */ }
+    }
     if (destino === 'app') vista(vistaActual);
     window.scrollTo(0, 0);
     /* AU-RA acompaña toda la sesion; fuera de ella no existe. Las seis
@@ -2007,7 +2011,14 @@ const VETA = (() => {
     if (cual === 'nucleo') {
       // volver a Inicio baja el tono: el mismo aire del viaje, de regreso
       if (veniaDe && veniaDe !== 'nucleo') { try { TONO.zarpe(false); } catch { /* nada */ } }
-      encenderCerebro(false);
+      encenderInicio();
+    }
+    /* El lienzo se repintó: si Aetherion quedó montado sobre un nodo que ya
+       no existe, se desmonta — React con la raíz muerta seguiría quemando
+       cuadros en el fondo. */
+    if (cual !== 'nucleo') {
+      document.getElementById('ae-saludo')?.remove();
+      if (window.AETHERION && !document.getElementById('ae-casa')) window.AETHERION.desmontar();
     }
     else { AURA.pararRed(); tourApagar(); }
     window.scrollTo(0, 0);
@@ -4875,6 +4886,82 @@ const VETA = (() => {
     const fuera = m.paraFuera === 'pay' ? URL_MYTOKENPAY : m.fuera;
     if (fuera) return window.open(fuera, '_blank', 'noopener');
     entrarPorLaEsfera(id, () => vista(m.va));
+  }
+
+  /* ── AETHERION · el web OS del Inicio ─────────────────────────────────────
+   *
+   * La galaxia 3D que trajo José (React + Three, compilada a un bundle
+   * propio, sin CDN) puede SER el Inicio: los pozos son las casas reales del
+   * ecosistema y sintonizar uno navega de verdad. El bundle pesa ~360KB gz,
+   * así que se carga UNA vez y solo al pisar el Inicio; si no carga —red,
+   * navegador sin WebGL, lo que sea— el cerebro clásico sigue ahí, intacto:
+   * el Inicio jamás se queda en negro por una mejora. */
+  let aetCarga = null;
+
+  function aetCargar() {
+    if (aetCarga) return aetCarga;
+    aetCarga = new Promise((ok, mal) => {
+      const css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = 'aetherion/assets/aetherion.css';
+      document.head.appendChild(css);
+      const s = document.createElement('script');
+      s.type = 'module';
+      s.src = 'aetherion/assets/aetherion.js';
+      s.onload = () => (window.AETHERION ? ok() : mal(new Error('bundle sin AETHERION')));
+      s.onerror = () => mal(new Error('no cargó el bundle'));
+      document.head.appendChild(s);
+    });
+    // un fallo no condena para siempre: el próximo intento vuelve a probar
+    aetCarga.catch(() => { aetCarga = null; });
+    return aetCarga;
+  }
+
+  function aeSaludoQuitar() { document.getElementById('ae-saludo')?.remove(); }
+
+  /* El Inicio decide su cuerpo: Aetherion si puede, el cerebro si no. */
+  function encenderInicio() {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return encenderCerebro(false);
+    aetCargar().then(() => {
+      const lienzo = $('#lienzo');
+      if (vistaActual !== 'nucleo' || !lienzo) return;
+      try {
+        const nombre = (sesion?.nombre || '').split(' ')[0];
+        window.__AE_LANG = idiomaActivo();
+        window.__AE_ABRIR = (k) => {
+          const m = MUNDOS.find((x) => x.id === k);
+          if (m && (m.fuera || m.paraFuera)) {
+            /* Una casa de afuera abre su pestaña y ESTA galaxia exhala de
+               vuelta al cielo: la persona no se queda mirando un «Entrando…»
+               eterno en una pestaña que ya no es la protagonista. */
+            nuAbrir(k);
+            setTimeout(() => window.AETHERION?.exhalar?.(), 600);
+          } else {
+            window.AETHERION.desmontar();
+            nuAbrir(k);
+          }
+        };
+        lienzo.innerHTML = '<div class="ae-casa" id="ae-casa"></div>';
+        /* El saludo vive colgado del body, no del lienzo: la animación de
+           entrada de vista le pone un transform al lienzo y eso secuestra el
+           position:fixed (el saludo quedaba tapado por las tabs del teléfono).
+           aeSaludoQuitar() lo retira en cada camino que desmonta la galaxia. */
+        aeSaludoQuitar();
+        const saludo = document.createElement('div');
+        saludo.className = 'ae-saludo'; saludo.id = 'ae-saludo';
+        saludo.setAttribute('aria-hidden', 'true');
+        saludo.innerHTML = `
+            <b>${nombre ? `${t('nu.hola')}, ${esc(nombre)}` : 'Orden Global'}</b>
+            <small>${t('nu.sub')}</small>`;
+        document.body.appendChild(saludo);
+        AETHERION.montar($('#ae-casa'));
+      } catch (e) {
+        // el bundle cargó pero el montaje murió: el cerebro clásico responde
+        aeSaludoQuitar();
+        lienzo.innerHTML = nucleo();
+        encenderCerebro(false);
+      }
+    }).catch(() => encenderCerebro(false));
   }
 
   /* ENTRAR POR LA ESFERA. Antes, tocar un mundo borraba el Nucleo y pintaba la

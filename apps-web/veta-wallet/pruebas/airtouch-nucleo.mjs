@@ -36,6 +36,10 @@ const pag = await (await b.newContext({ viewport: { width: 1280, height: 900 }, 
 pag.errores = [];
 pag.on('pageerror', (e) => pag.errores.push(String(e)));
 await pag.route('**/herokuapp.com/**', (r) => r.fulfill({ status: 200, json: {} }));
+/* Esta prueba ejercita el INICIO CLÁSICO (esferas DOM, cielo 2D, la mirada
+   de AIR TOUCH sobre .nu-mundo). El web OS 3D tiene su propia prueba
+   (aetherion-inicio.mjs); aquí se le corta el bundle para caer al clásico. */
+await pag.route('**/aetherion/**', (r) => r.abort());
 await pag.route('**/api.coingecko.com/**', (r) => r.fulfill({ json: {} }));
 await pag.goto(`http://127.0.0.1:${PUERTO}/index.html`, { waitUntil: 'domcontentloaded' });
 await pag.waitForTimeout(1600);

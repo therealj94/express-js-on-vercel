@@ -137,6 +137,23 @@ body:has(#app:not(.oculto)) .veta-svg{display:none}
 #galaxia{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
 #cielo-nucleo{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 
+/* ── AETHERION · el web OS del Inicio ───────────────────────────────────────
+   El bundle trae su .ae-root en fixed:inset 0; aquí se RE-ENCAJA dentro del
+   lienzo para que el riel y las pestañas de la casa sigan mandando. El saludo
+   es de la wallet y flota abajo a la izquierda, donde el HUD de la galaxia no
+   tiene nada. */
+.ae-casa{position:absolute;inset:0;overflow:hidden}
+.ae-casa .ae-root{position:absolute;inset:0}
+.ae-saludo{position:fixed;left:clamp(16px,3vw,34px);bottom:clamp(70px,10vh,90px);
+  z-index:5;pointer-events:none;display:flex;flex-direction:column;gap:3px}
+.ae-saludo b{font:700 clamp(19px,2.4vw,26px)/1.2 var(--serif);color:var(--crema)}
+.ae-saludo small{font:400 12.5px/1.4 var(--sans);color:var(--bruma)}
+@media (max-width:900px){.ae-saludo{left:16px;bottom:calc(84px + env(safe-area-inset-bottom))}}
+/* El lienzo del Inicio necesita ALTURA PROPIA: su único hijo (la galaxia)
+   es absoluto y no mide nada — sin esto, R3F ve un contenedor de 0×0 y el
+   canvas se queda en su 300×150 de fábrica, sin cámara ni escena. */
+body.en-cerebro #lienzo{position:relative;min-height:100svh}
+
 /* ── AIR TOUCH ─────────────────────────────────────────────────────────────── */
 #at-boton{position:fixed;right:21px;bottom:108px;z-index:71;width:46px;height:46px;
   border-radius:50%;border:1px solid var(--linea2);background:rgba(4,10,26,.72);
