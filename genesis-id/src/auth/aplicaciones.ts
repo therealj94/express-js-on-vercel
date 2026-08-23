@@ -81,6 +81,25 @@ export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance
       'movimiento.enviar', 'tamiz.direccion', 'telemetria.enviar',
     ],
   },
+  {
+    clave: 'aucorp',
+    nombre: 'AuCorp',
+    // La banca fiat. Misma figura que Ordenex y por los mismos motivos: a
+    // AuCorp entra gente que YA hizo su KYC, así que verifica el pase del SSO
+    // (gid.verificar) y lee el perfil para saber si sigue verificada y cuál es
+    // su dirección custodiada (gid.perfil); ata su cuenta local al GID
+    // (vinculo.crear); tamiza cada cuenta de destino antes de pagar un retiro
+    // (tamiz.direccion) y reporta cada movimiento de dinero al monitoreo
+    // (movimiento.enviar), que en una institución financiera no es opcional;
+    // telemetria.enviar para el panel.
+    // Sin identidad.* a propósito: AuCorp no hace KYC ni guarda documentos —
+    // el trámite vive en la wallet. Y sin directorio.enviar: su padrón es el
+    // del ecosistema, no tiene censo propio que sincronizar.
+    alcances: [
+      'gid.verificar', 'gid.perfil', 'vinculo.crear',
+      'movimiento.enviar', 'tamiz.direccion', 'telemetria.enviar',
+    ],
+  },
 ]
 
 /**

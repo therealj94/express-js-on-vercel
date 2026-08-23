@@ -126,7 +126,9 @@ decir('la puerta: sin llave no se ve nada, y se dice qué es esta casa');
   await p.goto(`${WEB}/banca/`);
   await p.waitForTimeout(400);
   const txt = await leer(p);
-  comprobar(/Entrar con Veta Wallet/.test(txt), 'la única puerta es la cuenta de Veta Wallet');
+  comprobar(/Entrar con Genesis ID/.test(txt), 'la puerta es la identidad del ecosistema');
+  comprobar(/sesión de Veta Wallet/.test(txt),
+    'y dice el viaje entero: dónde se confirma que sos vos');
   comprobar(!/\d+[.,]\d\d/.test(txt), 'y sin sesión no se enseña ni una cifra',
     txt.match(/\d+[.,]\d\d/)?.[0] || '');
   comprobar(/No es un banco con licencia bancaria/.test(txt),
@@ -273,7 +275,7 @@ decir('la portada de carga: marca primero, plataforma después');
   comprobar(await s.locator('.abriendo').isVisible(), 'al abrir aparece el sello de AuCorp cargando');
   await s.waitForTimeout(1700);
   comprobar(!(await s.locator('.abriendo').isVisible()), 'y se va sola en un momento');
-  comprobar(/Entrar con Veta Wallet/.test(await leer(s)), 'dejando la puerta a la vista');
+  comprobar(/Entrar con Genesis ID/.test(await leer(s)), 'dejando la puerta a la vista');
   await s.close();
 }
 

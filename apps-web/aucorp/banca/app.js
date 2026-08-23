@@ -33,7 +33,7 @@ const BANCA = (() => {
   /* El API. Se puede pisar desde fuera para ensayar contra un servidor de
      pruebas sin tocar el de verdad — misma puerta que usan la wallet y
      Ordenex. */
-  const API = (window.AUCORP_API || 'https://aucorp-api.herokuapp.com').replace(/\/$/, '');
+  const API = (window.AUCORP_API || 'https://aucorp-api-e70d3fd481ca.herokuapp.com').replace(/\/$/, '');
   /* A dónde se manda a la gente a buscar su llave. El `#sso-aucorp` es lo que
      la wallet reconoce (ver CASAS_SSO en su app.js). */
   const WALLET = (window.AUC_WALLET || 'https://app.vetawallet.com') + '/#sso-aucorp';
@@ -674,8 +674,9 @@ const BANCA = (() => {
     return `<div class="puerta"><div class="caja">
       <img class="puerta-marca" src="../assets/aucorp-marca.png" alt="AuCorp">
       <h1>Tus cuentas en moneda local</h1>
-      <p style="color:var(--tinta2)">Se entra con tu cuenta de Veta Wallet. Aquí no hay otra
-        contraseña que recordar, ni que perder. Es la banca fiat del ecosistema Orden Global.</p>
+      <p style="color:var(--tinta2)">Se entra con tu Genesis ID, la identidad del ecosistema.
+        Aquí no hay otra contraseña que recordar, ni que perder. Es la banca fiat de
+        Orden Global.</p>
       <ul class="puerta-lista">
         <li>Cuentas en 21 monedas del continente, con tu misma identidad.</li>
         <li>Cambio entre monedas con la tasa real, dicha con su fecha y su margen.</li>
@@ -683,7 +684,13 @@ const BANCA = (() => {
       </ul>
       ${recado ? `<div class="aviso ${recado.malo ? 'malo' : ''}">${esc(recado.texto)}</div>` : ''}
       <button class="bot" data-entrar style="justify-content:center">
-        ${cargando ? '<span class="cargando"></span> Entrando…' : 'Entrar con Veta Wallet'}</button>
+        ${cargando ? '<span class="cargando"></span> Entrando…' : 'Entrar con Genesis ID'}</button>
+      ${/* Y se dice el viaje entero, porque la pantalla siguiente es la de la
+            wallet y una puerta que no avisa a dónde manda parece un desvío:
+            lo que abre AuCorp es tu identidad, y la sesión de tu billetera es
+            donde se confirma que sos vos. */''}
+      <p class="ayuda" style="text-align:center;margin-top:-4px">Tu identidad del ecosistema.
+        Confirmamos que sos vos con tu sesión de Veta Wallet.</p>
       <p class="pieL" style="margin-top:8px;text-align:left">AuCorp es una institución de tecnología
         financiera constituida en Próspera ZEDE bajo la Regulación FinTech A. No es un banco con licencia
         bancaria: los saldos no están cubiertos por un seguro de depósitos.</p>
