@@ -60,7 +60,14 @@ export function Lejanos() {
   useFrame((_, dt) => {
     /* Todo el conjunto gira lentísimo alrededor del centro: da la sensación de
        galaxia viva sin pedirle un solo cálculo por mundo. */
-    if (grupo.current) grupo.current.rotation.y += dt * 0.006
+    if (!grupo.current) return
+    grupo.current.rotation.y += dt * 0.006
+    /* En el umbral la cámara está LEJOS y estos mundos quedaban en primer
+       plano, gigantes: en la puerta se recogen a la mitad — niebla de fondo,
+       no protagonistas — y al entrar recuperan su tamaño con suavidad. */
+    const objetivo = (window as any).__AE_PUERTA ? 0.5 : 1
+    const s = grupo.current.scale.x + (objetivo - grupo.current.scale.x) * Math.min(1, dt * 2.5)
+    grupo.current.scale.setScalar(s)
   })
 
   return (

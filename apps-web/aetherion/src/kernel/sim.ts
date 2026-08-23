@@ -10,6 +10,8 @@ export const sim = {
   beat: 0,
   beatCount: 0,
   intro: 0,
+  /* la bienvenida de AURA: sube a 1 al entrar alguien y decae sola */
+  auraBrillo: 0,
   timeScale: 1,
   timeScaleT: 1,
   desat: 0,

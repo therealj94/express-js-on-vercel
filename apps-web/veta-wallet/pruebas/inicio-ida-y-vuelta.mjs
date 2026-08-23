@@ -56,6 +56,7 @@ const ADENTRO = [
   { key: 'chat', vista: 'chat' },
   { key: 'gid', vista: 'identidad' },
   { key: 'pay', vista: 'pay' },
+  { key: 'genesis', vista: 'genesis' },
   { key: 'ajustes', vista: 'ajustes' },
 ];
 const AFUERA = ['scan', 'aucorp', 'oxch'];

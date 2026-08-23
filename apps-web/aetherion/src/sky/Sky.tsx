@@ -204,8 +204,12 @@ function TideAndIntro() {
       /* LA LLEGADA. El cielo ya no clava la cámara en un número fijo: pide la
          entrada y el timón la trae desde lejos hasta el encuadre que le queda
          bien a ESTA pantalla. Dos dueños de la cámara era exactamente por qué
-         no se podía ni girar ni acercar. */
-      rig.entrada()
+         no se podía ni girar ni acercar.
+
+         En la PUERTA no hay llegada: la galaxia se queda lejos, a la deriva,
+         esperando a que la persona entre — ahí recién vuela. */
+      if ((window as any).__AE_PUERTA) rig.puerta()
+      else rig.entrada()
     }
     const marea = useUiStore.getState().marea
     const pal = PALETTES[marea]

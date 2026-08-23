@@ -136,9 +136,9 @@ console.log('\n── las casas se reconocen: logo y nombre ──────�
     conLogo: (window.__AE_APPS || []).filter((a) => a.logo).length,
     conIco: (window.__AE_APPS || []).filter((a) => a.ico).length,
   }));
-  ok('la casa le pasa sus ocho apps a la galaxia', casas.apps.length === 8, casas.apps.join(','));
+  ok('la casa le pasa sus nueve apps a la galaxia', casas.apps.length === 9, casas.apps.join(','));
   ok('con logotipo de verdad las que lo tienen', casas.conLogo >= 5, `${casas.conLogo} logos`);
-  ok('y el ícono de línea para todas', casas.conIco === 8, `${casas.conIco} íconos`);
+  ok('y el ícono de línea para todas', casas.conIco === 9, `${casas.conIco} íconos`);
   /* Las marcas se pintan en texturas de canvas: se comprueba que el planeta
      de la wallet lleva PIXELES suyos y no un disco vacío. */
   const pintado = await p.evaluate(async () => {
@@ -159,9 +159,12 @@ console.log('\n── el puente navega de verdad ──────────�
   ok('volver al Inicio la remonta', await p.evaluate(() =>
     !!document.querySelector('#ae-casa canvas')));
   await p.evaluate(() => VETA.salir());
-  await p.waitForTimeout(700);
-  ok('salir de la sesión la apaga del todo', await p.evaluate(() =>
-    !document.getElementById('ae-casa') || !document.querySelector('#ae-casa canvas')));
+  await p.waitForTimeout(900);
+  /* Desde la puerta continua, salir NO corta la escena: la misma galaxia
+     recibe en el umbral, lejos y en silencio. */
+  ok('salir vuelve al umbral con la misma galaxia', await p.evaluate(() =>
+    !!document.querySelector('#ae-casa canvas') && !!window.__AE_PUERTA
+    && !document.getElementById('acceso').classList.contains('oculto')));
   ok('sin errores de página en el viaje', p.errores.length === 0, p.errores.slice(0, 2).join(' · '));
   await ctx.close();
 }

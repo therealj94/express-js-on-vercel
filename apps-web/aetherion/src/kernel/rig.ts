@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { clamp, damp } from './sim'
+import { clamp, damp, sim } from './sim'
 
 export const UP = new THREE.Vector3(0, 1, 0)
 
@@ -23,6 +23,15 @@ class Rig {
      perspectiva no cae simétrico en la pantalla, y sin esto quedaba un tercio
      de cielo vacío arriba y las casas apelotonadas abajo. */
   mira = 0.4
+  /* LA PUERTA. Antes de entrar, la galaxia se mira desde lejos: los planetas
+     orbitan despacio y la cámara deriva sola, como un sistema visto desde el
+     umbral. deriva la apaga el primer gesto de la persona o el vuelo. */
+  deriva = false
+  /* EL VUELO DE ENTRADA. Un solo movimiento de cámara, sin cortes: iniciar
+     sesión es acercarse en línea directa; crear cuenta es un descenso más
+     lento, con fase de descubrimiento. Mientras dura, el vuelo es el único
+     dueño del radio. */
+  vuelo: { desde: number; t0: number; dura: number; alFin?: () => void } | null = null
   /* La distancia desde la que se ve el sistema entero: es el tope de alejar y
      el destino del botón «ver todo». */
   panorama = 26
@@ -54,6 +63,23 @@ class Rig {
     this.tRadius = this.reposo
     this.tTheta = this.theta = 0.65
     this.tPhi = this.phi = this.reposoPhi
+  }
+
+  /* La cámara al umbral: lejos, alta y a la deriva. Es el estado de la
+     pantalla de entrada. */
+  puerta() {
+    this.vuelo = null
+    this.deriva = true
+    const lejos = clamp(this.panorama * 1.85, 30, 88)
+    this.radius = this.tRadius = lejos
+    this.tPhi = this.phi = Math.min(1.2, this.reposoPhi + 0.16)
+    this.lejos = Math.max(this.lejos, lejos)
+  }
+
+  /* El vuelo: del radio actual al encuadre de casa, en un solo gesto. */
+  volar(dura: number, alFin?: () => void) {
+    this.deriva = false
+    this.vuelo = { desde: this.radius, t0: -1, dura, alFin }
   }
 
   recentrar() {
@@ -188,6 +214,28 @@ class Rig {
 
   update(cam: THREE.Camera, dt: number) {
     if (!this.enabled) return
+    if (this.deriva) this.tTheta += dt * 0.02
+    if (this.vuelo) {
+      const v = this.vuelo
+      /* Reloj de PARED, no el de la simulación: sim.now recorta dt a 50 ms y
+         en un teléfono a 30 fps el vuelo duraría el doble de lo pedido. La
+         entrada dura lo que dice que dura, corra como corra el dibujo. */
+      if (v.t0 < 0) v.t0 = performance.now()
+      const p = Math.min(1, (performance.now() - v.t0) / v.dura)
+      /* easeInOutCubic: arranca suave, cruza con decisión, frena con calma —
+         el «un solo movimiento» del que habla el diseño. */
+      const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2
+      /* El destino es el reposo VIVO, no una foto: si el encuadre se mide a
+         mitad de vuelo (la primera visita, un giro de pantalla), el vuelo
+         aterriza donde corresponde y no donde correspondía. */
+      this.tRadius = v.desde + (this.reposo - v.desde) * e
+      this.radius = this.tRadius
+      this.tPhi += (this.reposoPhi - this.tPhi) * Math.min(1, dt * 2.2)
+      if (p >= 1) {
+        this.vuelo = null
+        v.alFin?.()
+      }
+    }
     this.theta = damp(this.theta, this.tTheta, 6, dt)
     this.phi = damp(this.phi, this.tPhi, 6, dt)
     this.radius = damp(this.radius, this.tRadius, 3.2, dt)

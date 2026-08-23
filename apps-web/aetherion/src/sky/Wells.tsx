@@ -80,6 +80,8 @@ const casas = (): Casa[] => {
     intent: EN ? 'Your identity, verified once' : 'Tu identidad, verificada una vez' },
   { key: 'pay', name: 'MyTokenPay', arch: 'torus', banda: 0, peso: 1.02,
     intent: EN ? 'Charges and commerce' : 'Cobros y comercio' },
+  { key: 'genesis', name: 'GENESIS CORE', arch: 'memory', banda: 0, peso: 1.0,
+    intent: EN ? 'The living memory of the ecosystem' : 'La memoria viva del ecosistema' },
   { key: 'aucorp', name: 'AuCorp', arch: 'memory', banda: 1, peso: 1.0,
     intent: EN ? 'Local-currency banking' : 'La banca en moneda local' },
   { key: 'scan', name: 'ORDENSCAN', arch: 'memory', banda: 1, peso: 0.92,
@@ -92,6 +94,7 @@ const casas = (): Casa[] => {
 }
 
 const COLOR_POR_DEFECTO: Record<string, { grad: string[]; halo: string; lente: string }> = {
+  genesis: { grad: ['#DFF3E9', '#6FBFAA', '#0F3A33'], halo: '#8FE6CE', lente: '#04211C' },
   wallet: { grad: ['#F8EFCF', '#DFC078', '#96793F'], halo: '#EAD79C', lente: '#05201B' },
   chat: { grad: ['#FBE0D4', '#E0937A', '#8A4A38'], halo: '#E0937A', lente: '#20100A' },
   gid: { grad: ['#D6EBE2', '#63A493', '#123B39'], halo: '#7FD8C4', lente: '#062123' },
@@ -112,12 +115,21 @@ function anillo(lista: Casa[], i: number, banda: 0 | 1): THREE.Vector3 {
   const enBanda = lista.filter((c) => c.banda === banda)
   const idx = enBanda.findIndex((c) => c.key === lista[i].key)
   const n = Math.max(1, enBanda.length)
-  const giro = banda === 0 ? 0.42 : 0.42 + Math.PI / n
+  /* El giro de cada banda se corre MEDIO PASO respecto del eje de la cámara
+     (theta de reposo = 0.65): así ninguna casa cae justo delante de AU-RA
+     tapándola — el corazón siempre tiene su ventana. */
+  const giro = 0.65 + Math.PI / n + (banda === 1 ? Math.PI / (n * 2) : 0)
   const a = giro + (idx / n) * Math.PI * 2
   /* La órbita de adentro se abre para dejarle el centro a AU-RA: el corazón
      de la galaxia tiene que verse, no quedar tapado por las casas. */
   const r = RADIO_ANILLO * (banda === 0 ? 0.68 : 1.08)
-  const alto = Math.sin(a * 2 + banda * 1.7) * (banda === 0 ? 0.7 : 1.2)
+  /* La altura no es adorno: en la órbita de adentro, las casas del sector
+     TRASERO suben y las del frontal bajan — así ninguna se proyecta encima
+     de AU-RA y el corazón siempre tiene su ventana limpia. La anillo(a) de
+     afuera conserva su vaivén propio. */
+  const alto = banda === 0
+    ? -Math.cos(a - 0.65) * 1.15
+    : Math.sin(a * 2 + 1.7) * 1.2
   return new THREE.Vector3(Math.cos(a) * r, alto, Math.sin(a) * r)
 }
 
@@ -291,8 +303,11 @@ function WellView({ def }: { def: WellDef }) {
       tmpP.copy(g.position).project(state.camera)
       const alBorde = Math.abs(tmpP.x) > 0.82 || Math.abs(tmpP.y) > 0.86 || tmpP.z > 1
       const lejania = THREE.MathUtils.clamp(2.8 - d / 26, 0.62, 1)
+      /* En la puerta el sistema se mira de lejos y en silencio: los nombres
+         aparecen recién cuando la persona entra. */
+      const puerta = (window as any).__AE_PUERTA ? 0 : 1
       ;(letrero.current.material as THREE.SpriteMaterial).opacity =
-        alBorde ? Math.min(0.12, lejania) : selected ? 1 : lejania
+        puerta * (alBorde ? Math.min(0.12, lejania) : selected ? 1 : lejania)
     }
 
     if (halo.current) {

@@ -399,14 +399,25 @@ const VETA = (() => {
     /* La galaxia es el cielo de la ENTRADA. Adentro de la casa se apaga del
        todo —no se esconde con el bucle andando— y al salir se vuelve a
        montar: el interior del ecosistema conserva su fondo de siempre. */
-    if (window.GALAXIA) {
-      if (destino === 'app') GALAXIA.apagar();
-      else GALAXIA.montar($('#galaxia'));   // idempotente si ya está ahí
-    }
     if (destino !== 'app') {
       document.getElementById('ae-saludo')?.remove();
-      try { window.AETHERION?.desmontar(); } catch { /* nada */ }
+      if (destino === 'acceso' && aetPuertaViva()) {
+        /* Salir de la sesión no corta la escena: la cámara se ALEJA de vuelta
+           al umbral y la puerta recibe con la misma galaxia, en silencio. */
+        try { window.AETHERION.puerta(); } catch { /* nada */ }
+      } else {
+        try { window.AETHERION?.desmontar(); } catch { /* nada */ }
+        $('#ae-cielo') && ($('#ae-cielo').innerHTML = '');
+        document.body.classList.remove('cielo-vivo');
+      }
     }
+    if (window.GALAXIA) {
+      if (destino === 'app' || (destino === 'acceso' && aetPuertaViva())) GALAXIA.apagar();
+      else GALAXIA.montar($('#galaxia'));   // idempotente si ya está ahí
+    }
+    /* La puerta intenta su cielo 3D apenas se pisa (y si no puede, el 2D de
+       arriba ya quedó puesto: la casa nunca se queda sin cielo). */
+    if (destino === 'acceso') aetPuerta();
     if (destino === 'app') vista(vistaActual);
     window.scrollTo(0, 0);
     /* AU-RA acompaña toda la sesion; fuera de ella no existe. Las seis
@@ -1144,7 +1155,8 @@ const VETA = (() => {
         if (!sesion) return;
         ir('app');
       };
-      if (window.GALAXIA) GALAXIA.saltar(aterrizarLlave); else aterrizarLlave();
+      if (aetPuertaViva()) AETHERION.entrar('directo', aterrizarLlave);
+      else if (window.GALAXIA) GALAXIA.saltar(aterrizarLlave); else aterrizarLlave();
     } catch (e) {
       const m = String(e?.mensaje || e?.message || '');
       if (/no corresponde a ninguna cuenta/i.test(m)) { llvAviso('llv.sinCuenta'); importarOfrecer(); }
@@ -1392,7 +1404,15 @@ const VETA = (() => {
         avisar(modo === 'crear' ? `${t('ok.creada')}, ${sesion.nombre.split(' ')[0]}` : `${t('ok.hola')}, ${sesion.nombre.split(' ')[0]}`);
       };
       viajando = true;
-      if (window.GALAXIA) GALAXIA.saltar(aterrizar); else aterrizar();
+      /* EL VUELO. Con la puerta 3D viva no hay corte ninguno: la MISMA cámara
+         que miraba el sistema desde el umbral vuela hasta el encuadre de casa.
+         Crear cuenta desciende despacio (la fase de descubrimiento); iniciar
+         sesión entra directo. AURA late más fuerte como bienvenida. El
+         aterrizaje llega con el vuelo al 80%: la vista cambia debajo mientras
+         la cámara sigue moviéndose y nadie ve la costura. */
+      if (aetPuertaViva()) {
+        AETHERION.entrar(modo === 'crear' ? 'descubrir' : 'directo', aterrizar);
+      } else if (window.GALAXIA) GALAXIA.saltar(aterrizar); else aterrizar();
     } catch (e) {
       // El servidor devuelve "credenciales inválidas" para un correo que no
       // existe y para una contraseña equivocada. Decirlo tal cual deja a la
@@ -1739,7 +1759,7 @@ const VETA = (() => {
      token y Genesis ID no son pestañas: se entra a ellas desde algun lado y se
      vuelve, igual que alla. */
   const VISTAS = {
-    nucleo, billetera, tarjeta: vTarjeta, cambiar, actividad, chat, ajustes,
+    nucleo, billetera, tarjeta: vTarjeta, cambiar, actividad, chat, ajustes, genesis,
     pay, payex, payneg, paycobro, paymio,
     enviar, recibir, comprar, deposito, token: vToken, identidad: vIdentidad,
     remesas, contactos, sesiones, lector, seguridad, perfil, verificar, cobrar,
@@ -1751,6 +1771,7 @@ const VETA = (() => {
     deposito: 'billetera', token: 'billetera', identidad: 'ajustes',
     remesas: 'billetera', lector: 'billetera', verificar: 'ajustes', cobrar: 'billetera',
     pay: 'nucleo', payex: 'nucleo', payneg: 'nucleo', paycobro: 'nucleo', paymio: 'nucleo',
+    genesis: 'nucleo',
     contactos: 'ajustes', sesiones: 'ajustes', seguridad: 'ajustes', perfil: 'ajustes',
   };
 
@@ -1994,7 +2015,8 @@ const VETA = (() => {
       const r = rutaDe(cual, dato);
       if (location.hash !== r) history.pushState({ v: cual, d: dato, neg: payNeg }, '', r);
     }
-    document.body.classList.toggle('en-cerebro', cual === 'nucleo');
+    /* genesis también es cerebro: mismo cielo negro, misma respiración */
+    document.body.classList.toggle('en-cerebro', cual === 'nucleo' || cual === 'genesis');
     /* PULSE2CHAT se queda con la pantalla entera. La billetera no desaparece
        —el riel y las pestañas siguen ahí— pero el fondo, el ancho y el relleno
        pasan a ser los suyos: dentro de su casa manda su marca. */
@@ -2015,12 +2037,20 @@ const VETA = (() => {
       if (veniaDe && veniaDe !== 'nucleo') { try { TONO.zarpe(false); } catch { /* nada */ } }
       encenderInicio();
     }
-    /* El lienzo se repintó: si Aetherion quedó montado sobre un nodo que ya
-       no existe, se desmonta — React con la raíz muerta seguiría quemando
-       cuadros en el fondo. */
+    /* GENESIS CORE: el cerebro informativo respira con su vista. */
+    gcCerrar();
+    if (cual === 'genesis') { AURA.pararRed(); encenderGenesis(); }
+    /* El cielo 3D es del Inicio (y de la puerta): en cualquier otra vista se
+       apaga DEL TODO — React quemando cuadros detrás de una billetera es
+       batería tirada a la basura. */
     if (cual !== 'nucleo') {
       document.getElementById('ae-saludo')?.remove();
-      if (window.AETHERION && !document.getElementById('ae-casa')) window.AETHERION.desmontar();
+      if (window.AETHERION && document.getElementById('ae-casa')) {
+        window.AETHERION.desmontar();
+        const cielo = document.getElementById('ae-cielo');
+        if (cielo) cielo.innerHTML = '';
+        document.body.classList.remove('cielo-vivo');
+      }
     }
     else { AURA.pararRed(); tourApagar(); }
     window.scrollTo(0, 0);
@@ -4543,6 +4573,13 @@ const VETA = (() => {
       grad: ['#D6EBE2', '#63A493', '#123B39'], halo: '#7FD8C4', lente: '#062123',
       logo: 'assets/apps/gid.png', zoom: 1.3,
       ico: '<path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/>' },
+    /* GENESIS CORE: la memoria viva del ecosistema. No mueve dinero: cuenta
+       — qué es cada casa, la cadena, ORIGEN y AUKA con las palabras exactas
+       de la Junta. Es el cerebro de siempre, ahora al servicio de quien
+       recién llega. */
+    { id: 'genesis', x: 14, y: 49, tam: 0.62, va: 'genesis',
+      grad: ['#DFF3E9', '#6FBFAA', '#0F3A33'], halo: '#8FE6CE', lente: '#04211C',
+      ico: '<circle cx="12" cy="12" r="2.6"/><path d="M12 9.4V5M12 14.6V19M9.4 12H5M14.6 12H19"/><circle cx="12" cy="3.6" r="1.3"/><circle cx="12" cy="20.4" r="1.3"/><circle cx="3.6" cy="12" r="1.3"/><circle cx="20.4" cy="12" r="1.3"/><path d="M10.2 10.2 7 7M13.8 10.2 17 7M10.2 13.8 7 17M13.8 13.8 17 17"/>' },
     { id: 'ajustes', x: 82, y: 81, tam: 0.68, va: 'ajustes',
       grad: ['#E4E8EE', '#93A0AE', '#2E3844'], halo: '#A9B6C4', lente: '#0C1116',
       ico: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/>' },
@@ -4790,6 +4827,107 @@ const VETA = (() => {
     });
   }
 
+  /* ═══ GENESIS CORE ═══════════════════════════════════════════════════════
+     El cerebro que armamos para el Núcleo clásico —el cielo interior de la
+     galaxia 2D y la red neuronal de AURA— puesto al servicio de contar el
+     ecosistema. Cada tema es un ganglio con la MISMA esfera del Núcleo (por
+     eso AIR TOUCH ya sabe mirarlas: son .nu-mundo), y tocarlo abre su hoja.
+     Ni un dato inventado: cada texto dice lo que la casa puede sostener. */
+  const GC_TEMAS = [
+    { id: 'og', x: 50, y: 16, tam: 0.78, grad: ['#F8EFCF', '#DFC078', '#96793F'], halo: '#EAD79C', lente: '#05201B',
+      ico: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17M6 6.5c3.5 2.6 8.5 2.6 12 0M6 17.5c3.5-2.6 8.5-2.6 12 0"/>' },
+    { id: 'cadena', x: 18, y: 34, tam: 0.66, grad: ['#D6F3EC', '#74E6C8', '#1B5A50'], halo: '#74E6C8', lente: '#07211D',
+      ico: '<rect x="3" y="9" width="6" height="6" rx="1.4"/><rect x="15" y="9" width="6" height="6" rx="1.4"/><path d="M9 12h6"/>' },
+    { id: 'origen', x: 82, y: 34, tam: 0.66, grad: ['#F8EFCF', '#DFC078', '#96793F'], halo: '#EAD79C', lente: '#141007',
+      ico: '<path d="M7 4h10l4 6-9 10L3 10z"/><path d="M3 10h18M12 20 8.5 10l2-6M12 20l3.5-10-2-6"/>' },
+    { id: 'auka', x: 50, y: 47, tam: 0.62, grad: ['#EFE6C9', '#CBB273', '#6E5A2E'], halo: '#D9C489', lente: '#120E05',
+      ico: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 15.5 12 7l3.5 8.5M9.8 13h4.4"/>' },
+    { id: 'gid', x: 18, y: 63, tam: 0.66, grad: ['#D6EBE2', '#63A493', '#123B39'], halo: '#7FD8C4', lente: '#062123',
+      ico: '<path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/>' },
+    { id: 'veta', x: 82, y: 63, tam: 0.66, grad: ['#F8EFCF', '#DFC078', '#96793F'], halo: '#EAD79C', lente: '#05201B',
+      ico: '<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/>' },
+    { id: 'p2c', x: 32, y: 82, tam: 0.62, grad: ['#FBE0D4', '#E0937A', '#8A4A38'], halo: '#E0937A', lente: '#20100A',
+      ico: '<path d="M3.5 6.6h12.2v8.2H8.1L4.4 18v-3.2H3.5z"/><path d="M18.6 9.4h1.9v8.2h-.9V20l-3-2.4H12"/>' },
+    { id: 'aura', x: 68, y: 82, tam: 0.62, grad: ['#E6F2EE', '#7ED8C4', '#123B39'], halo: '#8FE6CE', lente: '#04211C',
+      ico: '<circle cx="12" cy="12" r="3.4"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/>' },
+  ];
+
+  function genesis() {
+    const { enCaja, enAncho } = cajaNucleo();
+    const esferas = GC_TEMAS.map((m, i) => `
+      <button class="nu-mundo" data-tema="${m.id}"
+              style="left:${enAncho(m.x)}%;top:${enCaja(m.y)}%;--t:${m.tam};--z:.6;
+                     z-index:8;--d:-${i * 380}ms;
+                     --g1:${m.grad[0]};--g2:${m.grad[1]};--g3:${m.grad[2]};
+                     --halo:${m.halo};--lente:${m.lente}"
+              onclick="VETA.gcAbrir(${jsTxt(m.id)})"
+              aria-label="${esc(t('gc.' + m.id))}">
+        <span class="nu-esfera"><span class="nu-lente"><svg viewBox="0 0 24 24">${m.ico}</svg></span></span>
+        <span class="nu-nombre">${esc(t('gc.' + m.id))}</span>
+      </button>`).join('');
+    return `
+    <div class="cerebro" id="cerebro">
+      <canvas id="cielo-nucleo" aria-hidden="true"></canvas>
+      <canvas id="red-nucleo"></canvas>
+      <div class="cerebro-cab">
+        <h2>GENESIS CORE</h2>
+        <div class="sub">${t('gc.sub')}</div>
+      </div>
+      ${esferas}
+      <div class="cerebro-pie">
+        <a class="nu-power" href="https://ordenscan.com" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24"><path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5z"/></svg>
+          <span class="nup-txt"><b>${t('nu.powerT')}</b><small>${t('nu.powerP')}</small></span>
+        </a>
+      </div>
+    </div>`;
+  }
+
+  function encenderGenesis() {
+    const c = $('#red-nucleo');
+    if (!c) return;
+    if (window.GALAXIA) GALAXIA.montar($('#cielo-nucleo'), { interior: true });
+    medirCerebro();
+    const elementos = {};
+    document.querySelectorAll('.nu-mundo[data-tema]').forEach(el => {
+      elementos[el.dataset.tema] = el;
+    });
+    const { enCaja, enAncho } = cajaNucleo();
+    AURA.montarRed(c, GC_TEMAS.map(m => ({
+      id: m.id, x: enAncho(m.x), y: enCaja(m.y), tam: m.tam, tinte: tinteDe(m.halo),
+    })), {
+      elementos,
+      despertar: false,
+      alDestellar: id => {
+        const el = document.querySelector(`.nu-mundo[data-tema="${id}"] .nu-esfera`);
+        if (!el) return;
+        el.classList.add('nu-destello');
+        setTimeout(() => el.classList.remove('nu-destello'), 320);
+      },
+    });
+    engancharParalaje(c.closest('.cerebro'));
+  }
+
+  /* La hoja de lectura de un tema. Se cierra tocando afuera, con su botón o
+     con Escape — y AIR TOUCH la desplaza como a cualquier otra hoja. */
+  function gcAbrir(id) {
+    if (AURA.jalando()) return;
+    if (!GC_TEMAS.some(m => m.id === id)) return;
+    $('#gc-hoja')?.remove();
+    const caja = document.createElement('div');
+    caja.className = 'gc-hoja'; caja.id = 'gc-hoja';
+    caja.innerHTML = `
+      <div class="gc-carta vidrio" role="dialog" aria-modal="true" aria-label="${esc(t('gc.' + id))}">
+        <small>GENESIS CORE</small>
+        <h3>${esc(t('gc.' + id))}</h3>
+        ${t('gc.' + id + '.txt').split('\n').map(p => `<p>${esc(p)}</p>`).join('')}
+        <button class="btn btn-linea btn-sm" onclick="VETA.gcCerrar()">${t('gc.cerrar')}</button>
+      </div>`;
+    caja.addEventListener('click', (e) => { if (e.target === caja) gcCerrar(); });
+    document.body.appendChild(caja);
+  }
+  function gcCerrar() { $('#gc-hoja')?.remove(); }
+
   function encenderCerebro(despertar) {
     const c = $('#red-nucleo');
     if (!c) return;
@@ -4906,7 +5044,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = '61cb0207c2';
+  const AET_V = '5b483d2b5c';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -4968,25 +5106,64 @@ const VETA = (() => {
   addEventListener('fullscreenchange', pintarLlena);
   addEventListener('webkitfullscreenchange', pintarLlena);
 
+  /* ═══ LA PUERTA CONTINUA ═════════════════════════════════════════════════
+     El login y la casa son LA MISMA escena. Al llegar a la puerta se monta la
+     galaxia 3D lejos, a la deriva y en silencio (modo puerta); entrar es UN
+     vuelo de cámara — crear cuenta desciende despacio, con descubrimiento;
+     iniciar sesión llega directo — y del otro lado la casa la ADOPTA sin
+     remontarla. Si el bundle no carga o hay movimiento reducido, la puerta
+     conserva su cielo 2D de siempre: jamás una pantalla en negro. */
+  function aetIdentidad() {
+    window.__AE_LANG = idiomaActivo();
+    window.__AE_APPS = MUNDOS.map((m) => ({
+      id: m.id, key: m.id, ico: m.ico || null,
+      logo: m.logo || (m.id === 'chat' ? 'assets/p2c-simbolo.png' : null),
+      zoom: m.zoom || (m.id === 'chat' ? 1.05 : 1),
+      grad: m.grad, halo: m.halo, lente: m.lente,
+    }));
+  }
+
+  function aetPuerta() {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    aetIdentidad();
+    /* El formulario va PRIMERO. Montar la galaxia pelea por la CPU justo
+       cuando la persona quiere escribir su correo: se espera al primer
+       respiro del navegador (con tope, que en un aparato ocupado el respiro
+       puede no llegar nunca) y recién ahí se enciende el cielo. */
+    const respiro = window.requestIdleCallback || ((fn) => setTimeout(fn, 350));
+    respiro(() => aetCargar().then(() => {
+      const cielo = $('#ae-cielo');
+      // la persona pudo entrar (o irse) mientras el bundle bajaba
+      if (!cielo || !$('#app').classList.contains('oculto')) return;
+      if ($('#acceso').classList.contains('oculto')) return;
+      if (document.getElementById('ae-casa') && cielo.querySelector('canvas')) {
+        window.AETHERION.puerta();
+      } else {
+        window.__AE_PUERTA = true;
+        cielo.innerHTML = '<div class="ae-casa" id="ae-casa"></div>';
+        AETHERION.montar($('#ae-casa'));
+      }
+      document.body.classList.add('cielo-vivo');
+      /* el cielo 2D le pasa el turno al 3D: dos galaxias a la vez son humo */
+      try { window.GALAXIA?.apagar(); } catch { /* nada */ }
+    }).catch(() => { /* la puerta 2D sigue puesta: nada que hacer */ }), { timeout: 1200 });
+  }
+
+  /* ¿La puerta 3D está viva y volando se entra? */
+  const aetPuertaViva = () =>
+    !!(window.AETHERION?.entrar && document.getElementById('ae-casa')
+       && $('#ae-cielo')?.querySelector('canvas'));
+
   /* El Inicio decide su cuerpo: Aetherion si puede, el cerebro si no. */
   function encenderInicio() {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return encenderCerebro(false);
     /* LA IDENTIDAD VA PRIMERO. El motor arma el mapa de casas al EVALUARSE, no
        al montarse: si el idioma y las marcas llegan después, los planetas
        nacen mudos y en español aunque la persona esté en inglés. */
-    window.__AE_LANG = idiomaActivo();
-    window.__AE_APPS = MUNDOS.map((m) => ({
-      id: m.id, key: m.id, ico: m.ico || null,
-      /* PULSE2CHAT tiene su símbolo aparte del resto de logotipos: en el Núcleo
-         clásico la esfera va con el ícono de línea, pero un planeta con espacio
-         se merece la marca entera. */
-      logo: m.logo || (m.id === 'chat' ? 'assets/p2c-simbolo.png' : null),
-      zoom: m.zoom || (m.id === 'chat' ? 1.05 : 1),
-      grad: m.grad, halo: m.halo, lente: m.lente,
-    }));
+    aetIdentidad();
     aetCargar().then(() => {
-      const lienzo = $('#lienzo');
-      if (vistaActual !== 'nucleo' || !lienzo) return;
+      const cielo = $('#ae-cielo');
+      if (vistaActual !== 'nucleo' || !cielo) return;
       try {
         const nombre = (sesion?.nombre || '').split(' ')[0];
         /* El corazón de la galaxia es AU-RA: tocarla la llama, igual que su
@@ -5005,7 +5182,23 @@ const VETA = (() => {
             nuAbrir(k);
           }
         };
-        lienzo.innerHTML = '<div class="ae-casa" id="ae-casa"></div>';
+        /* LA ADOPCIÓN. Si la galaxia YA está montada —venimos de la puerta,
+           con la cámara todavía volando— no se toca nada: remontarla aquí
+           cortaría el vuelo por la mitad, que es exactamente la costura que
+           esta arquitectura elimina. Solo se cuelga el saludo. */
+        const yaVive = !!document.getElementById('ae-casa') && !!cielo.querySelector('canvas');
+        if (!yaVive) cielo.innerHTML = '<div class="ae-casa" id="ae-casa"></div>';
+        document.body.classList.add('cielo-vivo');
+        /* Con el cielo 3D vivo, la vista del Núcleo no pinta nada encima: el
+           cerebro clásico que dejó vista() se retira, o taparía los gestos y
+           se verían las dos escenas a la vez. */
+        const lienzo = $('#lienzo');
+        if (lienzo) lienzo.innerHTML = '';
+        /* Si la casa se pisa con la galaxia TODAVÍA en modo umbral —una
+           recarga con sesión viva, una carrera— el vuelo lo dispara la propia
+           adopción: nadie se queda mirando el sistema desde lejos y sin
+           mandos. */
+        if (yaVive && window.__AE_PUERTA) { try { AETHERION.entrar('directo'); } catch { /* nada */ } }
         /* El saludo vive colgado del body, no del lienzo: la animación de
            entrada de vista le pone un transform al lienzo y eso secuestra el
            position:fixed (el saludo quedaba tapado por las tabs del teléfono).
@@ -5018,7 +5211,7 @@ const VETA = (() => {
             <b>${nombre ? `${t('nu.hola')}, ${esc(nombre)}` : 'Orden Global'}</b>
             <small>${t('nu.sub')}</small>`;
         document.body.appendChild(saludo);
-        AETHERION.montar($('#ae-casa'));
+        if (!yaVive) AETHERION.montar($('#ae-casa'));
       } catch (e) {
         // el bundle cargó pero el montaje murió: el cerebro clásico responde
         aeSaludoQuitar();
@@ -11092,7 +11285,7 @@ const VETA = (() => {
            nuAbrir,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
-           pantallaLlena,
+           pantallaLlena, gcAbrir, gcCerrar,
            auraBienFin, auraBienToca, auraAyuda,
            // La bienvenida del ecosistema: sale sola la primera vez y se puede
            // volver a abrir desde Ajustes.

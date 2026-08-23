@@ -109,7 +109,10 @@ export function Pulses() {
       /* Dentro de la wallet no se inventan avisos: un pulso viajando hacia
          un pozo se lee como una notificación, y la casa no fabrica datos.
          En standalone quedan como demo del mecanismo. */
-      if ((window as any).__AE_ABRIR) return
+      /* Dentro de la wallet los avisos inventados no existen — ni en la casa
+         (__AE_ABRIR) ni en la puerta (__AE_PUERTA, donde el puente todavía no
+         está y un pulso falso se colaba igual). */
+      if ((window as any).__AE_ABRIR || (window as any).__AE_PUERTA) return
       const well = WELL_DEFS[Math.floor(Math.random() * WELL_DEFS.length)]
       const dur = isUrgent ? 0.9 : 1.8 + Math.random() * 0.8
       const pool = isUrgent ? urgentPool : calm

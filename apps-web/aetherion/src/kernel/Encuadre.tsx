@@ -25,10 +25,16 @@ export function Encuadre() {
 
     const antes = rig.reposo
     const reposo = rig.encuadrar(camera)
-    /* Si la persona ya había acercado o alejado, se le respeta LA PROPORCIÓN:
-       cambiar de horizontal a vertical no le deshace su encuadre. */
-    const proporcion = antes > 0 ? rig.tRadius / antes : 1
-    rig.tRadius = THREE.MathUtils.clamp(reposo * proporcion, rig.cerca, rig.lejos)
+    if ((window as any).__AE_PUERTA) {
+      /* En el umbral la cámara no respeta proporciones previas: se va lejos,
+         con el panorama recién medido para ESTA pantalla. */
+      rig.puerta()
+    } else if (!rig.vuelo) {
+      /* Si la persona ya había acercado o alejado, se le respeta LA
+         PROPORCIÓN: cambiar de horizontal a vertical no deshace su encuadre. */
+      const proporcion = antes > 0 ? rig.tRadius / antes : 1
+      rig.tRadius = THREE.MathUtils.clamp(reposo * proporcion, rig.cerca, rig.lejos)
+    }
   }, [camera, size.width, size.height])
 
   useEffect(() => {

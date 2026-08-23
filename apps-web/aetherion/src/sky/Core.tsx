@@ -91,7 +91,10 @@ export function Core() {
   }, [])
 
   useFrame((state, dt) => {
-    const b = sim.beat
+    /* La bienvenida: cuando alguien entra, AURA brilla más un momento y el
+       brillo decae solo. Es el saludo del sistema, sin palabras. */
+    sim.auraBrillo = Math.max(0, sim.auraBrillo - dt * 0.55)
+    const b = sim.beat + sim.auraBrillo * 0.9
     if (light.current) light.current.intensity = 42 * (1 + b * 0.9) * (1 - 0.7 * sim.eclipse)
     if (flare.current) {
       const s = 3.2 * (1 + b * 0.3) * (0.6 + 0.4 * sim.intro)
@@ -111,6 +114,9 @@ export function Core() {
       const s = d * 0.075
       letrero.current.scale.set(s * 2.6, s * 0.65, 1)
       letrero.current.position.set(0, -1.55 - s * 0.34, 0)
+      // en el umbral el sistema se mira en silencio: el nombre llega al entrar
+      ;(letrero.current.material as THREE.SpriteMaterial).opacity =
+        (window as any).__AE_PUERTA ? 0 : 0.92
     }
   })
 

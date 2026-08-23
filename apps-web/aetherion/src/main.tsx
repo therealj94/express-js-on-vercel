@@ -5,6 +5,7 @@ import './styles.css'
 import { transit } from './transit/transit'
 import { refrescarCasas } from './sky/Wells'
 import { rig } from './kernel/rig'
+import { sim } from './kernel/sim'
 import { useUiStore } from './state/uiStore'
 
 /* LA FUSIÓN CON LA WALLET. Aetherion no se monta solo: expone montar y
@@ -56,7 +57,33 @@ function exhalar() {
   useUiStore.getState().setActive(null)
 }
 
-;(window as any).AETHERION = { montar, desmontar, exhalar }
+;/* LA ENTRADA CONTINUA. La puerta y la casa son LA MISMA escena: la wallet
+   monta la galaxia detrás del login con __AE_PUERTA puesto (cámara lejos, a
+   la deriva, nombres callados) y, cuando la persona entra, llama a entrar():
+   un solo vuelo de cámara — sin cortes — hasta el encuadre de casa.
+
+   Dos maneras de entrar, como pide el diseño:
+     · 'descubrir' (cuenta recién creada): descenso lento, con fase de
+       acercamiento — el ecosistema se presenta.
+     · 'directo' (sesión de siempre): vuelo corto y decidido.
+   AURA late más fuerte como bienvenida en los dos. alListo se llama con el
+   vuelo al 80%: la casa cambia de vista mientras la cámara sigue volando y
+   nadie ve una costura. */
+function entrar(tipo: 'descubrir' | 'directo', alListo?: () => void) {
+  const dura = tipo === 'descubrir' ? 2300 : 1100
+  delete (window as any).__AE_PUERTA
+  sim.auraBrillo = tipo === 'descubrir' ? 1 : 0.6
+  rig.volar(dura)
+  if (alListo) window.setTimeout(alListo, Math.round(dura * 0.8))
+}
+
+/* De vuelta al umbral: salir de la sesión no corta la escena, la aleja. */
+function puerta() {
+  ;(window as any).__AE_PUERTA = true
+  rig.puerta()
+}
+
+;(window as any).AETHERION = { montar, desmontar, exhalar, entrar, puerta }
 
 refrescarCasas()
 const solo = document.getElementById('root')

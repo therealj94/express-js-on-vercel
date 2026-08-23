@@ -142,8 +142,47 @@ body:has(#app:not(.oculto)) .veta-svg{display:none}
    lienzo para que el riel y las pestañas de la casa sigan mandando. El saludo
    es de la wallet y flota abajo a la izquierda, donde el HUD de la galaxia no
    tiene nada. */
+#ae-cielo{display:none;position:fixed;inset:0;z-index:0}
+body.cielo-vivo #ae-cielo{display:block}
+/* En la puerta el cielo es paisaje: ni un toque se le va a la galaxia y su
+   HUD no existe — los mandos aparecen recién al entrar a la casa. */
+body:not(.en-cerebro) #ae-cielo{pointer-events:none}
+body:not(.en-cerebro) #ae-cielo .ae-hud{display:none}
+/* el medidor de cuadros es de taller: dentro de la casa jamás */
+#ae-cielo .ae-fps{display:none}
+/* En el Núcleo, la casa entera se vuelve transparente a los gestos: el cielo
+   3D vive DETRÁS de #app, y sin esto la página se comía cada toque antes de
+   que llegara a los planetas. Solo los muebles reales vuelven a tocar. */
+/* SOLO con el cielo 3D vivo: en el Núcleo clásico (la red de respaldo) las
+   esferas viven DENTRO de #app y quitarle los toques las mataba. */
+body.en-cerebro.cielo-vivo #app{pointer-events:none}
+/* El cielo es pantalla completa y el riel vive encima a la izquierda: los
+   mandos y el reloj del HUD se corren a su derecha para no quedar debajo. */
+@media (min-width:901px){
+  body.en-cerebro #ae-cielo .ae-timon{left:calc(232px + 20px)}
+  body.en-cerebro #ae-cielo .ae-topbar{padding-left:calc(232px + 20px)}
+}
+body.en-cerebro.cielo-vivo #app .riel,
+body.en-cerebro.cielo-vivo #app .tabs,
+body.en-cerebro.cielo-vivo #app #pantalla-llena{pointer-events:auto}
+
 .ae-casa{position:absolute;inset:0;overflow:hidden}
 .ae-casa .ae-root{position:absolute;inset:0}
+/* GENESIS CORE: el cerebro informativo. Los temas son ganglios con la misma
+   esfera del Núcleo clásico; tocar uno abre su hoja de lectura. */
+.gc-hoja{position:fixed;inset:0;z-index:130;display:grid;place-items:center;
+  padding:18px;background:rgba(1,10,10,.72);backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);animation:fadeArriba .28s ease}
+.gc-carta{width:min(100%,560px);max-height:min(78vh,640px);overflow-y:auto;
+  padding:clamp(22px,4vw,34px);border-radius:var(--r2)}
+.gc-carta small{display:block;color:var(--jade2,#7ED8C4);font-size:12px;
+  letter-spacing:.16em;margin-bottom:8px}
+.gc-carta h3{font-family:var(--serif);font-size:clamp(22px,3.4vw,28px);
+  letter-spacing:.04em;margin-bottom:12px}
+.gc-carta p{color:var(--bruma);font-size:14.5px;line-height:1.65;margin:0 0 12px}
+.gc-carta .btn{margin-top:6px}
+@media (prefers-reduced-motion:reduce){.gc-hoja{animation:none}}
+
 /* PANTALLA COMPLETA. Vive por encima de todo menos de los diálogos, en la
    esquina de arriba a la derecha. En el teléfono se corre debajo del techo de
    la casa, que ahí manda la marca. */
@@ -3603,6 +3642,13 @@ body.en-ventana .lienzo::before{
 </section>
 
 <!-- ══════════════════════════ APLICACIÓN ══════════════════════════════════ -->
+<!-- EL CIELO 3D PERSISTENTE. Aetherion ya no vive dentro del lienzo de una
+     vista: vive aquí, en una capa fija detrás de todo, y por eso la puerta y
+     la casa son LA MISMA escena — el login se mira desde lejos, entrar es un
+     vuelo de cámara, y no hay ni un corte. Solo respira con la clase
+     cielo-vivo puesta en el body. -->
+<div id="ae-cielo" aria-hidden="true"></div>
+
 <main id="app" class="oculto">
   <!-- PANTALLA COMPLETA. Arriba a la derecha, la misma esquina en el teléfono
        y en la computadora. Se esconde solo si el navegador no sabe hacerlo
