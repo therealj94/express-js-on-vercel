@@ -504,9 +504,7 @@ const VETA = (() => {
     tic();
   }
 
-  /* Los chips de la puerta le preguntan a AU-RA de verdad: abren su panel y
-     el cerebro de visita contesta, sin cuenta y sin pedir nada. */
-  const accesoPregunta = (n) => auraChip(t('acc.chip' + n));
+
 
 
   /* Cambiar de idioma en caliente. Las vistas se generan enteras cada vez que
@@ -9232,7 +9230,7 @@ const VETA = (() => {
   };
   const aTxt = () => AURA_TXT[idiomaActivo() === 'en' ? 'en' : 'es'];
 
-  let auraMontada = false, auraAbierta = false, auraCharla = [], auraOyendo = false;
+  let auraLienzo = null, auraAbierta = false, auraCharla = [], auraOyendo = false;
   /* Visita = todavía no entró. Manda sobre TODO lo que AU-RA hace: el saludo,
      los chips y a dónde va cada pregunta. Se pone en `ir()`, que es el único
      sitio donde se cambia de pantalla, así que no hay forma de que una vista
@@ -9242,11 +9240,20 @@ const VETA = (() => {
   /* El orbe aparece con la sesion y se monta UNA vez: es el mismo organismo
      toda la vida de la pagina, no un dibujo que se rehace por vista. */
   function auraDespertar() {
-    const orbe = $('#aura-orbe');
-    orbe.removeAttribute('data-oculto');
-    if (!auraMontada) {
-      AURA.montarOrbe(orbe.querySelector('canvas'));
-      auraMontada = true;
+    /* AU-RA vive en UN lienzo a la vez (el motor del orbe es un singleton):
+       en la puerta, el orbe GRANDE de la recepción — ella es la anfitriona y
+       una bola de adorno al lado sería un doble—; en el resto de la casa, el
+       flotante de la esquina. Aquí se decide cuál le toca y se re-monta solo
+       si cambió. */
+    const flotante = $('#aura-orbe');
+    const enAcceso = !$('#acceso')?.classList.contains('oculto');
+    const escena = enAcceso ? $('#ag-orbe canvas') : null;
+    flotante.toggleAttribute('data-oculto', !!escena);
+    if (!escena) flotante.removeAttribute('data-oculto');
+    const objetivo = escena || flotante.querySelector('canvas');
+    if (objetivo && auraLienzo !== objetivo) {
+      AURA.montarOrbe(objetivo);
+      auraLienzo = objetivo;
     }
     if (auraVisita) vigilarInvitacion();
   }
@@ -9794,7 +9801,9 @@ const VETA = (() => {
       id: m.id, x: m.x, y: m.y, tam: m.tam, tinte: tinteDe(m.halo),
     })), { despertar: true });
     AURA.montarOrbe(el.querySelector('.orbe-grande canvas'));
-    auraMontada = false;          // el orbe chico se re-monta al cerrar esto
+    // el que corresponda se re-monta al cerrar esto: auraDespertar ve que el
+    // lienzo ya no es el suyo
+    auraLienzo = el.querySelector('.orbe-grande canvas');
     if (conVoz) auraBienHablar();
     else $('#aurab-toca').classList.remove('oculto');
   }
@@ -10895,7 +10904,7 @@ const VETA = (() => {
            // El Nucleo: la portada del ecosistema.
            nuAbrir,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
-           auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin, accesoPregunta,
+           auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
            auraBienFin, auraBienToca, auraAyuda,
            // La bienvenida del ecosistema: sale sola la primera vez y se puede
            // volver a abrir desde Ajustes.

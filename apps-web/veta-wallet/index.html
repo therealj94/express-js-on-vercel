@@ -3,6 +3,7 @@
 <title>Orden Global · Un ecosistema entero, en una sola cuenta</title>
 <meta name="description" content="Orden Global: tu dinero referenciado al oro (Veta Wallet), tu gente (PULSE2CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), sobre nuestra propia cadena y con AU-RA, la inteligencia del ecosistema.">
 <meta name="theme-color" content="#050510">
+<link rel="preload" as="font" type="font/woff2" href="assets/fonts/Cinzel-Bold.woff2" crossorigin>
 
 <!-- A dónde puede hablar esta página, y desde dónde puede traer cosas.
 
@@ -142,7 +143,12 @@ body:has(#app:not(.oculto)) .veta-svg{display:none}
 #at-boton:hover{color:var(--oroLt);border-color:var(--linea)}
 #at-boton.encendido{background:linear-gradient(120deg,var(--oroLt),var(--oro));
   color:#2A2007;box-shadow:0 0 20px rgba(201,169,97,.55)}
-@media (max-width:900px){#at-boton{bottom:158px;right:17px}}
+@media (max-width:900px){
+  #at-boton{bottom:158px;right:17px}
+  /* En la puerta no hay pestañas abajo: la manito baja a la esquina y deja
+     el formulario limpio. */
+  body:has(#acceso:not(.oculto)) #at-boton{bottom:18px;right:16px}
+}
 
 /* el cursor: un anillo de oro con su punto; el pellizco lo cierra */
 #at-cursor{position:fixed;left:0;top:0;z-index:210;pointer-events:none;will-change:transform}
@@ -206,11 +212,12 @@ body:has(#app:not(.oculto)) #galaxia{display:none}
   animation:veloAuto .6s ease 5s forwards}
 #velo-og img{width:min(150px,34vw);animation:veloLate 2.2s ease-in-out infinite}
 #velo-og .velo-frase{font-family:var(--serif);font-weight:700;text-align:center;
-  font-size:clamp(27px,4.6vw,46px);line-height:1.2;color:var(--crema);
-  letter-spacing:.02em;padding:0 22px;text-wrap:balance}
+  font-size:clamp(26px,4.6vw,50px);line-height:1.3;color:var(--crema);
+  text-transform:uppercase;letter-spacing:.13em;padding:0 22px;text-wrap:balance}
 #velo-og .velo-frase span{display:inline-block;opacity:0;filter:blur(9px);
   animation:veloPalabra .75s ease forwards}
-#velo-og .velo-frase span.oro{color:var(--oroLt)}
+#velo-og .velo-frase span.oro{background:linear-gradient(115deg,var(--oroHi),var(--oroLt) 38%,var(--oro) 68%,var(--oroDp));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
 #velo-og.yendo{animation:veloVase .62s ease forwards}
 @keyframes veloPalabra{to{opacity:1;filter:blur(0)}}
 @keyframes veloLate{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
@@ -224,7 +231,6 @@ body:has(#app:not(.oculto)) #galaxia{display:none}
 #acceso .vidrio,#reclave .vidrio{background:rgba(7,10,28,.74)}
 #acceso .campo input,#reclave .campo input{background:rgba(9,12,32,.85);border-color:#2C3560}
 #acceso .seg{background:rgba(5,8,24,.6)}
-#acceso .ag-chips button{background:rgba(7,10,28,.55)}
 .techo .idiomas{background:rgba(5,8,24,.55)}
 
 /* ── la veta ─────────────────────────────────────────────────────────────── */
@@ -380,21 +386,15 @@ body:has(#app:not(.oculto)) #galaxia{display:none}
 .acc-escena{display:flex;flex-direction:column;align-items:flex-start}
 .ag-orbe{position:relative;width:186px;height:186px;margin:22px 0 4px -12px;border:0;
   background:none;cursor:pointer;display:grid;place-items:center}
-.ag-orbe>i{grid-area:1/1;display:block}
-.ag-nucleo{width:124px;height:124px;border-radius:50%;
-  background:radial-gradient(circle at 34% 30%, #FFF3D2 0%, #E8C87A 26%, #8C6B25 60%, #241C06 100%);
-  box-shadow:0 0 46px rgba(201,169,97,.5), inset 0 0 26px rgba(0,0,0,.45);
-  animation:agRespira 4.2s ease-in-out infinite}
-.ag-halo{width:100%;height:100%;border-radius:50%;filter:blur(1px);
-  background:conic-gradient(from 0deg, transparent, rgba(232,200,122,.42), transparent 33%);
-  animation:agGira 7s linear infinite}
+.ag-orbe>i,.ag-orbe>canvas{grid-area:1/1;display:block}
+.ag-orbe canvas{width:132px;height:132px;justify-self:center;align-self:center;
+  border-radius:50%;filter:drop-shadow(0 0 32px rgba(201,169,97,.4));
+  transition:filter .25s ease}
+.ag-orbe:hover canvas{filter:drop-shadow(0 0 46px rgba(201,169,97,.6)) brightness(1.12)}
 .ag-aro{width:100%;height:100%;border-radius:50%;border:1.5px solid rgba(232,200,122,.36);opacity:0}
 .ag-orbe.hablando .ag-aro{animation:agOnda 1.9s ease-out infinite}
 .ag-orbe.hablando .ag-aro2{animation-delay:.95s}
-.ag-orbe:hover .ag-nucleo{box-shadow:0 0 58px rgba(201,169,97,.65), inset 0 0 26px rgba(0,0,0,.45)}
 @keyframes agOnda{0%{transform:scale(.7);opacity:.85}100%{transform:scale(1.14);opacity:0}}
-@keyframes agGira{to{transform:rotate(360deg)}}
-@keyframes agRespira{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
 .ag-firma{font:600 11.5px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;
   color:var(--oroLt);margin:2px 0 14px}
 .ag-voz{min-height:128px;font-family:var(--serif);font-weight:700;
@@ -403,22 +403,14 @@ body:has(#app:not(.oculto)) #galaxia{display:none}
 .ag-cursor{display:inline-block;width:.5ch;height:.95em;background:var(--oroLt);
   vertical-align:-.12em;margin-left:5px;animation:agParpa 1s steps(1) infinite}
 @keyframes agParpa{50%{opacity:0}}
-.ag-chips{display:flex;flex-wrap:wrap;gap:9px;margin-top:20px}
-.ag-chips button{padding:9px 15px;border-radius:100px;border:1px solid var(--linea2);
-  background:rgba(2,22,23,.5);color:var(--bruma);font-size:13.5px;cursor:pointer;
-  transition:border-color .18s,color .18s,transform .12s}
-.ag-chips button:hover{border-color:var(--oro);color:var(--crema)}
-.ag-chips button:active{transform:scale(.96)}
 .acc-escena .acc-sorteo{margin-top:22px}
 /* El patrón canónico de texto solo-para-lectores, CON white-space:nowrap:
    sin él hay lectores que anuncian las palabras pegadas. El barrido de móvil
    exceptúa este patrón por su clip-path. */
 .lector-solo{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 @media (prefers-reduced-motion: reduce){
-  .ag-nucleo,.ag-halo{animation:none}
   .ag-orbe.hablando .ag-aro{animation:none}
   .ag-cursor{animation:none}
-  .ag-chips button:active{transform:none}
 }
 @media (max-width:900px){
   .acc-escena{align-items:center;text-align:center}
@@ -3107,7 +3099,10 @@ body.en-ventana .lienzo::before{
 <!-- La cabecera fina: marca a la izquierda, idioma a la derecha. Está desde el
      primer pixel porque el idioma se elige ANTES de leer, no después. -->
 <header class="techo" id="techo">
-  <div class="marca">veta <em>wallet</em></div>
+  <!-- La puerta es del ECOSISTEMA, no de una app: quien llega entra a
+       Orden Global entero, y la marca de arriba lo dice. Veta Wallet firma
+       adentro, en su propia casa. -->
+  <div class="marca">orden <em>global</em></div>
   <div class="idiomas" role="group" aria-label="Idioma">
     <button data-lang="es" id="lang-es" aria-pressed="true" onclick="VETA.idioma('es')">ES</button>
     <button data-lang="en" id="lang-en" aria-pressed="false" onclick="VETA.idioma('en')">EN</button>
@@ -3342,21 +3337,16 @@ body.en-ventana .lienzo::before{
        así que la voz visible empieza sola y la audible llega al primer toque
        — y eso el texto lo dice, para que nadie crea que está muda. -->
   <div class="acc-lado acc-escena">
-    <div class="sello">Orden Global</div>
     <button class="ag-orbe" id="ag-orbe" onclick="VETA.auraToca()" aria-label="Hablar con AU-RA">
-      <i class="ag-halo" aria-hidden="true"></i>
+      <!-- El lienzo lo monta el MISMO motor del orbe de AU-RA: es ella
+           en persona, con su nebulosa viva — no una esfera de adorno. -->
       <i class="ag-aro" aria-hidden="true"></i>
       <i class="ag-aro ag-aro2" aria-hidden="true"></i>
-      <i class="ag-nucleo" aria-hidden="true"></i>
+      <canvas aria-hidden="true"></canvas>
     </button>
     <div class="ag-firma">AU-RA · <span data-t="acc.agRol"></span></div>
     <div class="ag-voz" aria-hidden="true"><span id="ag-dice"></span><i class="ag-cursor"></i></div>
     <p class="lector-solo" data-t="acc.voz2"></p>
-    <div class="ag-chips">
-      <button onclick="VETA.accesoPregunta(1)" data-t="acc.chip1"></button>
-      <button onclick="VETA.accesoPregunta(2)" data-t="acc.chip2"></button>
-      <button onclick="VETA.accesoPregunta(3)" data-t="acc.chip3"></button>
-    </div>
     <p class="acc-sorteo" data-t="sor.acc"></p>
   </div>
   <div class="acc vidrio">

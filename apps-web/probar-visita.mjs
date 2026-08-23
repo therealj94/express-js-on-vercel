@@ -92,7 +92,13 @@ console.log('\n── la primera pantalla ────────────�
 
 // ── 2 · AU-RA está antes de la cuenta ──────────────────────────────────────
 console.log('\n── AU-RA, antes de tener cuenta ──────────────────────────────');
-const orbeVisible = () => p.evaluate(() => !document.querySelector('#aura-orbe').hasAttribute('data-oculto'));
+/* AU-RA tiene dos cuerpos: el orbe GRANDE de la recepción (en el acceso) y
+   el flotante de la esquina (en el resto). «Está» si cualquiera está. */
+const orbeVisible = () => p.evaluate(() => {
+  const escena = document.querySelector('#ag-orbe');
+  if (escena && escena.offsetParent !== null) return true;
+  return !document.querySelector('#aura-orbe').hasAttribute('data-oculto');
+});
 decir(await orbeVisible(), 'el orbe está en la portada, sin haber entrado');
 
 const preguntar = async (q) => {
