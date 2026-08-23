@@ -25,7 +25,7 @@
 //|  inteligente · limpieza de variables globales · log de errores   |
 //+------------------------------------------------------------------+
 #property copyright   "ORO FINAL"
-#property version     "2.10"
+#property version     "2.20"
 #property description "Bot de scalping XAUUSD: confluencia 0-100, gestión 50/50, salida inteligente y protecciones de cuenta"
 
 #include <Trade/Trade.mqh>
@@ -48,6 +48,12 @@ input int      InpOrbMinutes     = 15;         // Duración del rango de apertur
 input string   InpNewsBlock      = "";         // Ventanas bloqueadas "HH:MM-HH:MM" separadas por comas (opcional)
 input bool     InpCloseFriday    = true;       // Cerrar todo el viernes a la hora indicada
 input string   InpFridayTime     = "20:00";    // Hora de cierre del viernes (servidor)
+
+input group "🎚 Lote y agresividad"
+input int      InpLotMode        = 0;          // Lote: 0 = automático por % de riesgo · 1 = lote FIJO manual
+input double   InpFixedLot       = 0.10;       // Lote fijo manual (se usa con Lote = 1)
+input double   InpMaxRiskCapPct  = 5.0;        // Tope de seguridad del lote fijo (% máx. del equity en riesgo por operación)
+input int      InpAggro          = 0;          // Agresividad: 0 = Normal · 1 = Agresivo · 2 = Turbo
 
 input group "💰 Riesgo y protección de la cuenta"
 input double   InpRiskPct        = 0.5;        // Riesgo por operación (% del equity)
@@ -105,6 +111,9 @@ datetime  cacheBar = 0;
 double    cVwap = 0, cRelVol = 1.0;
 // Última posición gestionada (para limpieza y resumen al cierre)
 long      lastPid = 0;
+// Parámetros efectivos según agresividad (se fijan en OnInit)
+int       g_thr = 70, g_maxTrades = 4, g_cooldownMin = 60;
+double    g_rr2 = 2.0, g_trail = 1.5, g_risk = 0.5;
 
 //──────────────────────────── UTILIDADES ────────────────────────────
 double Buf(int handle, int shift)
@@ -342,12 +351,29 @@ double TradeHealth(bool isLong, bool t1Done, datetime openTime, string &motivo)
 //──────────────────────────── LOTE POR RIESGO ────────────────────────────
 double RiskLot(double slDistance, bool isLong, double px)
 {
-   double riskUSD  = AccountInfoDouble(ACCOUNT_EQUITY) * InpRiskPct / 100.0;
    double tickVal  = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
    double tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
    if(tickVal <= 0 || tickSize <= 0 || slDistance <= 0) return 0.0;
    double lossPerLot = slDistance / tickSize * tickVal;
-   double lot = riskUSD / lossPerLot;
+   double lot;
+   if(InpLotMode == 1)
+   {
+      // LOTE FIJO MANUAL — con tope de seguridad: si con este SL el lote fijo
+      // arriesga más del InpMaxRiskCapPct% del equity, se recorta a ese tope.
+      lot = InpFixedLot;
+      double capUSD = AccountInfoDouble(ACCOUNT_EQUITY) * InpMaxRiskCapPct / 100.0;
+      if(lossPerLot > 0 && lot * lossPerLot > capUSD)
+      {
+         lot = capUSD / lossPerLot;
+         Print("⚠️ ORO FINAL: el lote fijo arriesgaba más del ", DoubleToString(InpMaxRiskCapPct, 1),
+               "% del equity con este SL — recortado a ", DoubleToString(lot, 2), " lotes");
+      }
+   }
+   else
+   {
+      double riskUSD = AccountInfoDouble(ACCOUNT_EQUITY) * g_risk / 100.0;
+      lot = riskUSD / lossPerLot;
+   }
    double step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
    double vmin = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
    double vmax = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
@@ -441,6 +467,16 @@ int OnInit()
    trade.SetDeviationInPoints(InpSlippagePts);
    trade.SetTypeFillingBySymbol(_Symbol);
 
+   // Agresividad efectiva:
+   //  Agresivo: umbral -5, +2 ops/día, TP2 ≥ 2.5R, trailing más ceñido, riesgo ×1.5
+   //  Turbo:    umbral -8, +4 ops/día, TP2 ≥ 3R, cooldown a la mitad, riesgo ×2
+   g_thr         = InpThreshold - (InpAggro == 1 ? 5 : InpAggro == 2 ? 8 : 0);
+   g_maxTrades   = InpMaxTradesDay + (InpAggro == 1 ? 2 : InpAggro == 2 ? 4 : 0);
+   g_cooldownMin = InpAggro == 2 ? (int)MathMax(15, InpCooldownMin / 2) : InpCooldownMin;
+   g_rr2         = InpAggro == 0 ? InpRR2 : (InpAggro == 1 ? MathMax(InpRR2, 2.5) : MathMax(InpRR2, 3.0));
+   g_trail       = InpAggro >= 1 ? MathMin(InpTrailAtr, 1.2) : InpTrailAtr;
+   g_risk        = InpRiskPct * (InpAggro == 1 ? 1.5 : InpAggro == 2 ? 2.0 : 1.0);
+
    hEmaF = iMA(_Symbol, PERIOD_CURRENT, InpEmaFast, 0, MODE_EMA, PRICE_CLOSE);
    hEmaS = iMA(_Symbol, PERIOD_CURRENT, InpEmaSlow, 0, MODE_EMA, PRICE_CLOSE);
    hEmaB = iMA(_Symbol, PERIOD_CURRENT, InpEmaBias, 0, MODE_EMA, PRICE_CLOSE);
@@ -460,9 +496,10 @@ int OnInit()
    }
    dayStart = StringToTime("00:00");
    LoadDayBaseline();
-   Print("🥇 ORO FINAL ULTIMATE v2.00 iniciado | ", _Symbol, " ", EnumToString(_Period),
-         " | Umbral ", InpThreshold, " | Riesgo ", DoubleToString(InpRiskPct, 2),
-         "% | Baseline del día $", DoubleToString(dayStartBalance, 2));
+   Print("🥇 ORO FINAL ULTIMATE v2.20 iniciado | ", _Symbol, " ", EnumToString(_Period),
+         " | Umbral ", g_thr, InpAggro == 1 ? " (AGRESIVO)" : InpAggro == 2 ? " (TURBO)" : "",
+         " | Lote ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
+         " | TP2 ", DoubleToString(g_rr2, 1), "R | Baseline $", DoubleToString(dayStartBalance, 2));
    return INIT_SUCCEEDED;
 }
 
@@ -532,20 +569,22 @@ void OnTick()
    }
    int nT, nL;
    CountToday(nT, nL);
-   if(nT >= InpMaxTradesDay || nL >= InpMaxLossesDay)
+   if(nT >= g_maxTrades || nL >= InpMaxLossesDay)
    {
       Comment("🛑 ORO FINAL | Límite diario: ", nT, " operaciones, ", nL, " pérdidas.");
       return;
    }
-   if(lastEntryTime > 0 && (TimeCurrent() - lastEntryTime) < InpCooldownMin * 60) return;
+   if(lastEntryTime > 0 && (TimeCurrent() - lastEntryTime) < g_cooldownMin * 60) return;
 
-   bool goLong  = scL >= InpThreshold && scL > scS && pL < InpThreshold;
-   bool goShort = scS >= InpThreshold && scS > scL && pS_ < InpThreshold;
+   bool goLong  = scL >= g_thr && scL > scS && pL < g_thr;
+   bool goShort = scS >= g_thr && scS > scL && pS_ < g_thr;
    if(!goLong && !goShort)
    {
-      Comment("🥇 ORO FINAL v2 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
-              " (mín. ", InpThreshold, ")\nHoy: ", nT, "/", InpMaxTradesDay, " ops · ", nL, "/", InpMaxLossesDay,
-              " pérdidas | ", KzActive() ? "KILLZONE 🔥" : (TradeWindow() ? "ventana normal" : "fuera de horario"));
+      Comment("🥇 ORO FINAL v2.20 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
+              " (mín. ", g_thr, ")\nHoy: ", nT, "/", g_maxTrades, " ops · ", nL, "/", InpMaxLossesDay,
+              " pérdidas | ", KzActive() ? "KILLZONE 🔥" : (TradeWindow() ? "ventana normal" : "fuera de horario"),
+              "\nLote: ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
+              InpAggro == 1 ? " · MODO AGRESIVO" : InpAggro == 2 ? " · MODO TURBO" : "");
       return;
    }
 
@@ -580,7 +619,7 @@ void OpenTrade(bool isLong, double px, double sl, double minStop, double atr, do
    double risk = isLong ? px - sl : sl - px;
    if(risk <= 0) return;
    double tp1 = isLong ? px + InpRR1 * risk : px - InpRR1 * risk;
-   double tp2 = isLong ? px + InpRR2 * risk : px - InpRR2 * risk;
+   double tp2 = isLong ? px + g_rr2 * risk : px - g_rr2 * risk;
 
    // TP2 profesional: si el 2R queda detrás del swing de ~4 h, el objetivo se adelanta
    // a ese nivel (menos un colchón), siempre que deje al menos 1.3R
@@ -701,13 +740,13 @@ void ManagePosition()
       {
          if(isLong)
          {
-            double newSL = bid - InpTrailAtr * atr;
+            double newSL = bid - g_trail * atr;
             if(newSL > curSL + _Point * 5)
                trade.PositionModify(ticket, NormalizeDouble(newSL, _Digits), curTP);
          }
          else
          {
-            double newSL = ask + InpTrailAtr * atr;
+            double newSL = ask + g_trail * atr;
             if(curSL == 0 || newSL < curSL - _Point * 5)
                trade.PositionModify(ticket, NormalizeDouble(newSL, _Digits), curTP);
          }

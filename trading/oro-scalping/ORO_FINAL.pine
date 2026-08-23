@@ -30,6 +30,8 @@ gM = "💰 Tu cuenta (para el cálculo del lote)"
 capital = input.float(10000, "Capital ($)", minval=1, group=gM)
 riskPct = input.float(1.0, "Riesgo por operación (%)", minval=0.1, maxval=5, step=0.1, group=gM)
 ozLote  = input.float(100, "Onzas por lote (XAUUSD estándar = 100)", minval=1, group=gM)
+useFixedLot = input.bool(false, "Usar lote FIJO manual", group=gM, tooltip="Activado: el panel y las alertas usan tu lote fijo y muestran cuánto arriesga de verdad con el SL de cada señal.")
+fixedLot = input.float(0.10, "Lote fijo", minval=0.01, step=0.01, group=gM)
 
 gX = "🚪 Salida inteligente"
 useSmart  = input.bool(true, "Vigilar la salud de la operación", group=gX)
@@ -390,9 +392,11 @@ liveTP2  = pos != 0 ? t2Px : dirBias ? f_tp2L(close, riskLc) : f_tp2S(close, ris
 liveEnt  = pos != 0 ? ePx : close
 liveRisk = pos != 0 ? risk0 : dirBias ? riskLc : riskSc
 riskUSD  = capital * riskPct / 100.0
-lotSug   = liveRisk > 0 ? riskUSD / (liveRisk * ozLote) : 0.0
+lotAuto  = liveRisk > 0 ? riskUSD / (liveRisk * ozLote) : 0.0
+lotSug   = useFixedLot ? fixedLot : lotAuto
+riskReal = useFixedLot ? fixedLot * liveRisk * ozLote : riskUSD
 pnlR     = pos == 1 and risk0 > 0 ? (close - ePx) / risk0 : pos == -1 and risk0 > 0 ? (ePx - close) / risk0 : 0.0
-pnlUSD   = pos != 0 ? pnlR * riskUSD : 0.0
+pnlUSD   = pos != 0 ? pnlR * (useFixedLot ? risk0 * fixedLot * ozLote : riskUSD) : 0.0
 estrella(v) => v >= 90 ? "★★★" : v >= 80 ? "★★" : "★"
 
 // ─────── 11. SERIES OCULTAS PARA {{plot("...")}} EN LAS ALERTAS ───────
@@ -582,7 +586,7 @@ if showDash and barstate.islast
     r += 1
     fInfo(r, "TP1 → 50% · TP2 → resto", str.tostring(liveTP1, format.mintick) + " / " + str.tostring(liveTP2, format.mintick), color.teal)
     r += 1
-    fInfo(r, "Lote (" + str.tostring(riskPct, "#.#") + "% = $" + str.tostring(riskUSD, "#") + ")", str.tostring(lotSug, "#.##") + " lotes", DORADO)
+    fInfo(r, useFixedLot ? "Lote FIJO · riesgo real $" + str.tostring(riskReal, "#") + " (" + str.tostring(capital > 0 ? riskReal / capital * 100 : 0, "#.#") + "%)" : "Lote (" + str.tostring(riskPct, "#.#") + "% = $" + str.tostring(riskUSD, "#") + ")", str.tostring(lotSug, "#.##") + " lotes", riskReal > capital * 0.03 ? color.red : DORADO)
     r += 1
     if pos != 0
         fInfo(r, "Resultado flotante", str.tostring(pnlR, "#.##") + "R · $" + str.tostring(pnlUSD, "#.#"), pnlR >= 0 ? color.lime : color.red)
