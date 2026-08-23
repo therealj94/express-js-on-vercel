@@ -116,20 +116,23 @@ function Timon() {
   const en = typeof window !== 'undefined' && (window as any).__AE_LANG === 'en'
   const activo = useUiStore((s) => !s.activeId && !s.pulsoOpen && !s.tear.open)
   if (!activo) return null
-  const mando = (window as any).__AE_VISTA
+  /* El mando se busca AL TOCAR, no al dibujar: si este botón se pinta antes
+     de que el timón se publique —pasa en la primera vuelta— quedaba atado a
+     un undefined para siempre y no acercaba nada. */
+  const mando = () => (window as any).__AE_VISTA
   return (
     <div className="ae-timon">
-      <button type="button" aria-label={en ? 'Zoom in' : 'Acercar'} onClick={() => mando?.acercar()}>
+      <button type="button" aria-label={en ? 'Zoom in' : 'Acercar'} onClick={() => mando()?.acercar()}>
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
           <path d="M12 6v12M6 12h12" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
         </svg>
       </button>
-      <button type="button" aria-label={en ? 'Zoom out' : 'Alejar'} onClick={() => mando?.alejar()}>
+      <button type="button" aria-label={en ? 'Zoom out' : 'Alejar'} onClick={() => mando()?.alejar()}>
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
           <path d="M6 12h12" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
         </svg>
       </button>
-      <button type="button" aria-label={en ? 'Recenter' : 'Recentrar'} onClick={() => mando?.recentrar()}>
+      <button type="button" aria-label={en ? 'Recenter' : 'Recentrar'} onClick={() => mando()?.recentrar()}>
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
           <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.7" />
           <path d="M12 3v3M12 18v3M3 12h3M18 12h3" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />

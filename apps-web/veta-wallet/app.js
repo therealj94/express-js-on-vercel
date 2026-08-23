@@ -2055,7 +2055,10 @@ const VETA = (() => {
     gcCerrar();
     if (cual !== 'nucleo') aedCallar();
     if (cual === 'genesis') { AURA.pararRed(); encenderGenesis(); }
-    else { try { window.CEREBRO_OG?.apagar(); } catch { /* nada */ } }
+    else {
+      try { window.CEREBRO_OG?.apagar(); } catch { /* nada */ }
+      if (!document.getElementById('ae-casa')) delete window.__AE_VISTA;
+    }
     /* El cielo 3D es del Inicio (y de la puerta): en cualquier otra vista se
        apaga DEL TODO — React quemando cuadros detrás de una billetera es
        batería tirada a la basura. */
@@ -4910,6 +4913,23 @@ const VETA = (() => {
       <div id="gc-caja">
         <canvas id="gc-lienzo" aria-hidden="true"></canvas>
         ${esferas}
+        <!-- El mismo timón de la galaxia: acercar, alejar y volver al centro.
+             Girar ya se hace con el dedo; esto es lo que faltaba. -->
+        <div class="ae-timon gc-timon">
+          <button type="button" aria-label="${esc(t('gc.acercar'))}" onclick="VETA.gcZoom(1)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12"
+              fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </button>
+          <button type="button" aria-label="${esc(t('gc.alejar'))}" onclick="VETA.gcZoom(-1)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"
+              fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </button>
+          <button type="button" aria-label="${esc(t('gc.centrar'))}" onclick="VETA.gcZoom(0)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"
+              fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"
+              fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </button>
+        </div>
       </div>
       <div class="cerebro-pie">
         <a class="nu-power" href="https://ordenscan.com" target="_blank" rel="noopener">
@@ -4931,7 +4951,18 @@ const VETA = (() => {
       ...m,
       el: document.querySelector(`.nu-mundo[data-tema="${m.id}"]`),
     }));
-    CEREBRO_OG.montar(lienzo, temas);
+    const mando = CEREBRO_OG.montar(lienzo, temas);
+    /* El mando se publica en el MISMO sitio que el de la galaxia: así la mano
+       abierta de AIR TOUCH acerca y aleja aquí sin enterarse de que cambió de
+       escena, y los botones de arriba hablan con quien esté montado. */
+    if (mando) window.__AE_VISTA = mando;
+  }
+
+  function gcZoom(dir) {
+    const m = window.CEREBRO_OG?.mando();
+    if (!m) return;
+    if (dir > 0) m.acercar(); else if (dir < 0) m.alejar(); else m.centrar();
+    try { TONO.clic(); } catch { /* nada */ }
   }
 
   /* La hoja de lectura de un tema. Se cierra tocando afuera, con su botón o
@@ -5070,7 +5101,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = '45358ab80c';
+  const AET_V = '63ec2230dd';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -7342,7 +7373,11 @@ const VETA = (() => {
      sobre los planetas del Inicio y las pestañas de navegación — nunca sobre
      un botón de dinero: mirar fijo «Enviar» no puede mover un centavo. El
      pellizco sigue siendo el toque universal. */
-  const AT_MIRA_MS = 900;
+  /* LA MIRADA. Novecientos milisegundos apretaban solo: al pasar la mano por
+     encima de algo camino a otra parte, se disparaba sin que nadie lo pidiera.
+     Un segundo y cuarto es todavía un gesto cómodo —se sostiene sin cansarse—
+     y ya no se cruza con el simple hecho de pasar por al lado. */
+  const AT_MIRA_MS = 1250;
   const AT_MIRABLES = '.nu-mundo, .nav';
   let atMira = null;      // { el, desde, hecho }
 
@@ -7393,6 +7428,7 @@ const VETA = (() => {
       `conic-gradient(rgba(234,215,156,.95) ${Math.min(360, pr * 360)}deg, rgba(201,169,97,.14) 0deg)`;
     if (pr >= 1) {
       atMiraCielo.hecho = true;
+      try { TONO.clic(true); } catch { /* nada */ }
       $('#at-cursor')?.classList.add('toco');
       setTimeout(() => $('#at-cursor')?.classList.remove('toco'), 320);
       try { window.__AE_TOCAR(atMiraCielo.key); } catch { /* nada */ }
@@ -7425,6 +7461,7 @@ const VETA = (() => {
     if (pr >= 1) {
       atMira.hecho = true;
       const el = atMira.el;
+      try { TONO.clic(true); } catch { /* nada */ }
       $('#at-cursor')?.classList.add('toco');
       setTimeout(() => $('#at-cursor')?.classList.remove('toco'), 320);
       try {
@@ -7628,8 +7665,10 @@ const VETA = (() => {
   let atPalma = null;
   function atZoomMano(p) {
     const mando = window.__AE_VISTA;
-    if (!mando || !p.presente || !p.escala || !document.getElementById('ae-casa')) { atPalma = null; return; }
-    if (!atBajo(p.x, p.y)?.closest('.ae-casa')) { atPalma = null; return; }
+    if (!mando || !p.presente || !p.escala) { atPalma = null; return; }
+    /* Sobre cualquier lienzo que maneje sus gestos: la galaxia y el cerebro
+       de GENESIS CORE. Antes solo valía para la galaxia. */
+    if (!atBajo(p.x, p.y)?.closest('.ae-casa, #gc-caja')) { atPalma = null; return; }
     if (atPalma === null) { atPalma = p.escala; return; }
     const razon = p.escala / atPalma;
     if (razon > 1.06 || razon < 1 / 1.06) {
@@ -7666,6 +7705,7 @@ const VETA = (() => {
         const casa = a.casa || (() => { try { return window.__AE_MIRAR?.(x, y); } catch { return null; } })();
         if (casa) {
           atGestoVivo('g6');
+          try { TONO.clic(true); } catch { /* nada */ }
           $('#at-cursor')?.classList.add('toco');
           setTimeout(() => $('#at-cursor')?.classList.remove('toco'), 320);
           try { window.__AE_TOCAR(casa.key); } catch { /* nada */ }
@@ -7678,6 +7718,7 @@ const VETA = (() => {
        bajo el cursor AL SOLTAR — como un dedo de verdad. */
     if (!a.movio && performance.now() - a.desde < 700) {
       const el = atBajo(x, y);
+      try { TONO.clic(); } catch { /* sin audio no pasa nada */ }
       $('#at-cursor')?.classList.add('toco');
       setTimeout(() => $('#at-cursor')?.classList.remove('toco'), 320);
       try {
@@ -11514,7 +11555,7 @@ const VETA = (() => {
            nuAbrir,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
-           pantallaLlena, gcAbrir, gcCerrar, aedCallar,
+           pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,
            _bienvenidaGalaxia: (v) => auraBienvenidaGalaxia(v),
            auraBienFin, auraBienToca, auraAyuda,
            // La bienvenida del ecosistema: sale sola la primera vez y se puede

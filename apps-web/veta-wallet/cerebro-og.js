@@ -168,7 +168,10 @@ const CEREBRO_OG = (() => {
     }
 
     // ── la cámara de mano ──────────────────────────────────────────────────
-    const cam = { giro: 0.5, alto: -0.16, gGiro: 0.5, gAlto: -0.16, zoom: 1 };
+    /* zoom es el que se ve; gZoom es a donde va. Separados para que acercar
+       sea un MOVIMIENTO y no un salto: es la diferencia entre un cerebro que
+       se acerca y una imagen que cambia de tamano. */
+    const cam = { giro: 0.5, alto: -0.16, gGiro: 0.5, gAlto: -0.16, zoom: 1, gZoom: 1 };
     let dpr = 1, ancho = 0, alto = 0, escala = 1;
 
     function medir() {
@@ -215,6 +218,7 @@ const CEREBRO_OG = (() => {
       if (!arrastrando && !QUIETO) cam.gGiro += 0.0016;
       cam.giro += (cam.gGiro - cam.giro) * 0.12;
       cam.alto += (cam.gAlto - cam.alto) * 0.12;
+      cam.zoom += (cam.gZoom - cam.zoom) * 0.14;
 
       const g = ctx;
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -239,7 +243,9 @@ const CEREBRO_OG = (() => {
         const p = proy[i];
         const alfa = 0.3 + 0.7 * (1 - Math.min(1, (p.z + 130) / 260));
         g.fillStyle = puntos[i].t.tinte + Math.round(alfa * 255).toString(16).padStart(2, '0');
-        const lado = 1.9 * p.k;
+        // el tejido responde al zoom: de cerca los puntos crecen y los hilos
+        // se leen mejor, que es lo que hace que acercarse SIRVA para algo
+        const lado = 1.9 * p.k * (0.85 + cam.zoom * 0.35);
         g.fillRect(p.x, p.y, lado, lado);
       }
       // los axones entre temas, con su señal viajando
@@ -286,7 +292,18 @@ const CEREBRO_OG = (() => {
 
     // ── la mano ────────────────────────────────────────────────────────────
     let arrastrando = false, px = 0, py = 0, dedo = undefined;
+    /* Los dedos vivos: con dos, el gesto deja de ser girar y pasa a ser
+       ACERCAR. Es el pellizco de cualquier mapa; nadie tiene que aprenderlo. */
+    const dedos = new Map();
+    let pinza = 0;
     const abajo = (e) => {
+      dedos.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (dedos.size === 2) {
+        const [a, b] = [...dedos.values()];
+        pinza = Math.hypot(a.x - b.x, a.y - b.y);
+        arrastrando = false; dedo = undefined;   // dos dedos: manda el pellizco
+        return;
+      }
       if (dedo !== undefined) return;      // un solo dedo manda: dos pelean
       dedo = e.pointerId;
       arrastrando = true; px = e.clientX; py = e.clientY;
@@ -296,6 +313,16 @@ const CEREBRO_OG = (() => {
       try { canvas.setPointerCapture?.(e.pointerId); } catch { /* puntero de aire */ }
     };
     const mueve = (e) => {
+      if (dedos.has(e.pointerId)) dedos.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (dedos.size === 2) {
+        const [a, b] = [...dedos.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        // dedos que se separan (d > pinza) = acercar = factor < 1
+        if (pinza > 0 && d > 0) motor?.zoom(pinza / d);
+        pinza = d;
+        e.preventDefault();
+        return;
+      }
       if (!arrastrando || e.pointerId !== dedo) return;
       cam.gGiro += (e.clientX - px) * 0.006;
       cam.gAlto = Math.max(-0.9, Math.min(0.9, cam.gAlto + (e.clientY - py) * 0.004));
@@ -303,11 +330,14 @@ const CEREBRO_OG = (() => {
       e.preventDefault();
     };
     const suelta = (e) => {
+      dedos.delete(e.pointerId);
+      if (dedos.size < 2) pinza = 0;
       if (e.pointerId !== dedo) return;
       arrastrando = false; dedo = undefined;
     };
     const rueda = (e) => {
-      cam.zoom = Math.max(0.7, Math.min(1.9, cam.zoom * Math.exp(-e.deltaY * 0.0012)));
+      // rueda arriba (deltaY < 0) = acercar = factor < 1
+      motor?.zoom(Math.exp(e.deltaY * 0.0012));
       e.preventDefault();
     };
     canvas.addEventListener('pointerdown', abajo);
@@ -338,8 +368,16 @@ const CEREBRO_OG = (() => {
         cam.gGiro += dx * 0.006;
         cam.gAlto = Math.max(-0.9, Math.min(0.9, cam.gAlto + dy * 0.004));
       },
-      zoom(f) { cam.zoom = Math.max(0.7, Math.min(1.9, cam.zoom * f)); },
-      centrar() { cam.gGiro = 0.5; cam.gAlto = -0.16; cam.zoom = 1; },
+      /* EL MISMO CONTRATO QUE LA GALAXIA: factor > 1 ALEJA, < 1 acerca. Es el
+         lenguaje del pellizco (los dedos que se juntan alejan) y el que ya
+         habla la casa; tenerlo al revés aquí hacía que la mano abierta
+         alejara cuando se acercaba. */
+      zoom(f) { cam.gZoom = Math.max(0.55, Math.min(3.4, cam.gZoom / (f || 1))); },
+      acercar() { motor.zoom(0.82); },
+      alejar() { motor.zoom(1 / 0.82); },
+      centrar() { cam.gGiro = 0.5; cam.gAlto = -0.16; cam.gZoom = 1; },
+      recentrar() { motor.centrar(); },
+      estado: () => ({ zoom: cam.gZoom }),
     };
     if (opciones.alMontar) opciones.alMontar(motor);
     return motor;

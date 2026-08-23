@@ -190,9 +190,13 @@ console.log('\n── el tablero: si te veo la mano, y qué podés hacer ──�
   ok('con la mano puesta dice que la ve', await p.evaluate(() =>
     document.getElementById('at-tablero').classList.contains('ve')));
   await sinMano();
-  await p.waitForTimeout(900);
-  ok('y al perderla lo avisa', await p.evaluate(() =>
-    !document.getElementById('at-tablero').classList.contains('ve')));
+  /* Se espera al MECANISMO —que el tablero deje de decir que la ve— y no a un
+     reloj: el aviso tiene medio segundo de respiro a propósito, y con la
+     máquina cargada ese medio segundo se estira. */
+  const avisó = await p.waitForFunction(() =>
+    !document.getElementById('at-tablero').classList.contains('ve'),
+    null, { timeout: 6000, polling: 200 }).then(() => true).catch(() => false);
+  ok('y al perderla lo avisa', avisó);
 }
 
 ok('sin errores de página en todo el recorrido', errores.length === 0,

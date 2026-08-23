@@ -169,6 +169,34 @@ console.log('\n── GENESIS CORE: la memoria viva ─────────�
   ok('arrastrar GIRA el cerebro', Math.abs(luego - antes) > 12,
      `${antes.toFixed(0)} → ${luego.toFixed(0)}`);
 
+  /* EL ZOOM DEL CEREBRO. Acercarse a mirar una región es lo primero que pide
+     cualquiera delante de esto, y hasta ahora solo existía la rueda del ratón
+     —o sea, no existía en un teléfono. Botones, rueda y mano abierta hablan
+     el MISMO contrato que la galaxia: factor mayor que uno aleja. */
+  {
+    const zoom = () => p.evaluate(() => +window.CEREBRO_OG.mando().estado().zoom.toFixed(2));
+    ok('el cerebro tiene sus mandos de acercar', await p.evaluate(() =>
+      document.querySelectorAll('#gc-caja .gc-timon button').length === 3));
+    const z0 = await zoom();
+    await p.click('#gc-caja .gc-timon button:nth-child(1)');
+    await p.waitForTimeout(900);
+    const z1 = await zoom();
+    ok('el botón de acercar ACERCA', z1 > z0, `${z0} → ${z1}`);
+    await p.click('#gc-caja .gc-timon button:nth-child(2)');
+    await p.click('#gc-caja .gc-timon button:nth-child(2)');
+    await p.waitForTimeout(900);
+    ok('y el de alejar aleja', (await zoom()) < z1, `${z1} → ${await zoom()}`);
+    await p.click('#gc-caja .gc-timon button:nth-child(3)');
+    await p.waitForTimeout(900);
+    ok('centrar lo devuelve a su sitio', Math.abs((await zoom()) - 1) < 0.06, `${await zoom()}`);
+    await p.mouse.move(700, 450);
+    await p.mouse.wheel(0, -500);
+    await p.waitForTimeout(900);
+    ok('la rueda también acerca', (await zoom()) > 1.1, `${await zoom()}`);
+    await p.click('#gc-caja .gc-timon button:nth-child(3)');
+    await p.waitForTimeout(900);
+  }
+
   /* la mirada de AIR TOUCH ya sabe leer estos ganglios: son .nu-mundo */
   ok('los ganglios son mirables por AIR TOUCH', await p.evaluate(() =>
     document.querySelector('.nu-mundo[data-tema="origen"]')?.matches('.nu-mundo, .nav')));

@@ -127,6 +127,39 @@ const TONO = (() => {
   }
 
   /**
+   * EL CLIC DE LA MANO. Cuando se toca algo con AIR TOUCH no hay dedo que
+   * sienta la pantalla: la única confirmación posible es el oído. Es un clic
+   * seco y corto —dos milésimas de ataque, sesenta de cola— y a un volumen
+   * que confirma sin sobresaltar. Nada de campanitas: esto se va a oír
+   * cientos de veces por sesión.
+   *
+   * `hondo` lo usa la selección que ABRE algo (la mirada completa, el doble
+   * pellizco): mismo clic, medio tono más grave, para que el oído distingue
+   * «toqué» de «entré» sin pensarlo.
+   */
+  function clic(hondo = false) {
+    const c = contexto();
+    if (!c) return;
+    const t = c.currentTime;
+    const o = c.createOscillator();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(hondo ? 1180 : 1560, t);
+    o.frequency.exponentialRampToValueAtTime(hondo ? 620 : 880, t + 0.055);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(hondo ? 0.085 : 0.07, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+    /* Un pasa-altos: sin él el clic tiene un golpe grave que en un teléfono
+       suena a chasquido de bocina rota. */
+    const f = c.createBiquadFilter();
+    f.type = 'highpass';
+    f.frequency.value = 420;
+    o.connect(f); f.connect(g); g.connect(c.destination);
+    o.start(t);
+    o.stop(t + 0.08);
+  }
+
+  /**
    * El zarpe: un barrido de aire, cortito y grave, para los viajes de la
    * galaxia — abrir un planeta (sube) y volver a Inicio (baja). Es ruido
    * blanco pasado por un filtro que barre la frecuencia, la receta clásica
@@ -171,7 +204,7 @@ const TONO = (() => {
     }
   }
 
-  return { sonar, parar, golpe, zarpe, despertar, sonando: () => sonando };
+  return { sonar, parar, golpe, zarpe, clic, despertar, sonando: () => sonando };
 })();
 
 if (typeof window !== 'undefined') window.TONO = TONO;

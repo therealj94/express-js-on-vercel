@@ -182,6 +182,10 @@ body.en-cerebro.cielo-vivo #app #pantalla-llena{pointer-events:auto}
 #gc-caja .nu-mundo{position:absolute;transform:translate(-50%,-50%) scale(var(--k,1));
   animation:none;transition:none}
 #gc-caja .nu-mundo .nu-nombre{white-space:nowrap}
+/* El timón del cerebro: dentro de su caja, no fijo a la pantalla, porque
+   GENESIS CORE tiene su propio marco. */
+#gc-caja .gc-timon{position:absolute;left:14px;bottom:14px;z-index:12}
+@media (max-width:900px){#gc-caja .gc-timon{left:10px;bottom:10px}}
 
 .gc-hoja{position:fixed;inset:0;z-index:130;display:grid;place-items:center;
   padding:18px;background:rgba(1,10,10,.72);backdrop-filter:blur(10px);

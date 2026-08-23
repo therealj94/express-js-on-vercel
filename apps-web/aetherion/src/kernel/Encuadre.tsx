@@ -39,7 +39,11 @@ export function Encuadre() {
 
   useEffect(() => {
     const w = window as any
-    w.__AE_VISTA = {
+    /* El mando se retira SOLO SI SIGUE SIENDO EL NUESTRO. Al salir del Inicio,
+       la vista siguiente puede haber publicado ya su propio mando (el cerebro
+       de GENESIS CORE lo hace) y esta limpieza se lo borraba: la mano abierta
+       dejaba de acercar sin motivo aparente. */
+    const mio = {
       acercar: () => rig.zoomPaso(1),
       alejar: () => rig.zoomPaso(-1),
       /* factor > 1 aleja, < 1 acerca: es el mismo lenguaje del pellizco */
@@ -51,7 +55,8 @@ export function Encuadre() {
         libre: rig.enabled, cerca: rig.cerquita, lejos: rig.lejitos,
       }),
     }
-    return () => { delete w.__AE_VISTA }
+    w.__AE_VISTA = mio
+    return () => { if (w.__AE_VISTA === mio) delete w.__AE_VISTA }
   }, [])
 
   return null
