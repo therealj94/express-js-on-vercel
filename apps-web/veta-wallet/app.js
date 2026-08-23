@@ -2040,6 +2040,7 @@ const VETA = (() => {
     /* GENESIS CORE: el cerebro informativo respira con su vista. */
     gcCerrar();
     if (cual === 'genesis') { AURA.pararRed(); encenderGenesis(); }
+    else { try { window.CEREBRO_OG?.apagar(); } catch { /* nada */ } }
     /* El cielo 3D es del Inicio (y de la puerta): en cualquier otra vista se
        apaga DEL TODO — React quemando cuadros detrás de una billetera es
        batería tirada a la basura. */
@@ -4833,47 +4834,68 @@ const VETA = (() => {
      ecosistema. Cada tema es un ganglio con la MISMA esfera del Núcleo (por
      eso AIR TOUCH ya sabe mirarlas: son .nu-mundo), y tocarlo abre su hoja.
      Ni un dato inventado: cada texto dice lo que la casa puede sostener. */
+  /* Los ocho temas, repartidos por la anatomía: Orden Global en el frontal
+     (lo que decide), la cadena y ORIGEN en los parietales (lo que sostiene),
+     AUKA y Veta Wallet en los temporales (lo que se usa a diario), Genesis ID
+     en el occipital (lo que reconoce), PULSE2CHAT en el otro temporal (lo que
+     habla) y AU-RA en el tronco: por ahí pasa todo. */
   const GC_TEMAS = [
-    { id: 'og', x: 50, y: 16, tam: 0.78, grad: ['#F8EFCF', '#DFC078', '#96793F'], halo: '#EAD79C', lente: '#05201B',
-      ico: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17M6 6.5c3.5 2.6 8.5 2.6 12 0M6 17.5c3.5-2.6 8.5-2.6 12 0"/>' },
-    { id: 'cadena', x: 18, y: 34, tam: 0.66, grad: ['#D6F3EC', '#74E6C8', '#1B5A50'], halo: '#74E6C8', lente: '#07211D',
-      ico: '<rect x="3" y="9" width="6" height="6" rx="1.4"/><rect x="15" y="9" width="6" height="6" rx="1.4"/><path d="M9 12h6"/>' },
-    { id: 'origen', x: 82, y: 34, tam: 0.66, grad: ['#F8EFCF', '#DFC078', '#96793F'], halo: '#EAD79C', lente: '#141007',
-      ico: '<path d="M7 4h10l4 6-9 10L3 10z"/><path d="M3 10h18M12 20 8.5 10l2-6M12 20l3.5-10-2-6"/>' },
-    { id: 'auka', x: 50, y: 47, tam: 0.62, grad: ['#EFE6C9', '#CBB273', '#6E5A2E'], halo: '#D9C489', lente: '#120E05',
-      ico: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 15.5 12 7l3.5 8.5M9.8 13h4.4"/>' },
-    { id: 'gid', x: 18, y: 63, tam: 0.66, grad: ['#D6EBE2', '#63A493', '#123B39'], halo: '#7FD8C4', lente: '#062123',
-      ico: '<path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/>' },
-    { id: 'veta', x: 82, y: 63, tam: 0.66, grad: ['#F8EFCF', '#DFC078', '#96793F'], halo: '#EAD79C', lente: '#05201B',
-      ico: '<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/>' },
-    { id: 'p2c', x: 32, y: 82, tam: 0.62, grad: ['#FBE0D4', '#E0937A', '#8A4A38'], halo: '#E0937A', lente: '#20100A',
-      ico: '<path d="M3.5 6.6h12.2v8.2H8.1L4.4 18v-3.2H3.5z"/><path d="M18.6 9.4h1.9v8.2h-.9V20l-3-2.4H12"/>' },
-    { id: 'aura', x: 68, y: 82, tam: 0.62, grad: ['#E6F2EE', '#7ED8C4', '#123B39'], halo: '#8FE6CE', lente: '#04211C',
-      ico: '<circle cx="12" cy="12" r="3.4"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/>' },
+    { id: 'og',     centro: [0, -40, 88],   tinte: '#EAD79C' },
+    { id: 'cadena', centro: [-62, -34, 14], tinte: '#74E6C8' },
+    { id: 'origen', centro: [62, -34, 14],  tinte: '#EAD79C' },
+    { id: 'auka',   centro: [-52, 18, 58],  tinte: '#D9C489' },
+    { id: 'veta',   centro: [52, 18, 58],   tinte: '#EAD79C' },
+    { id: 'gid',    centro: [0, -30, -92],  tinte: '#7FD8C4' },
+    { id: 'p2c',    centro: [-56, 26, -46], tinte: '#E0937A' },
+    { id: 'aura',   centro: [0, 62, -40],   tinte: '#8FE6CE' },
   ];
 
+  const GC_ICO = {
+    og: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17M6 6.5c3.5 2.6 8.5 2.6 12 0M6 17.5c3.5-2.6 8.5-2.6 12 0"/>',
+    cadena: '<rect x="3" y="9" width="6" height="6" rx="1.4"/><rect x="15" y="9" width="6" height="6" rx="1.4"/><path d="M9 12h6"/>',
+    origen: '<path d="M7 4h10l4 6-9 10L3 10z"/><path d="M3 10h18M12 20 8.5 10l2-6M12 20l3.5-10-2-6"/>',
+    auka: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 15.5 12 7l3.5 8.5M9.8 13h4.4"/>',
+    veta: '<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/>',
+    gid: '<path d="M12 3l8 3.5v5c0 5-3.4 8.6-8 9.5-4.6-.9-8-4.5-8-9.5v-5z"/><path d="M9 12l2 2 4-4"/>',
+    p2c: '<path d="M3.5 6.6h12.2v8.2H8.1L4.4 18v-3.2H3.5z"/><path d="M18.6 9.4h1.9v8.2h-.9V20l-3-2.4H12"/>',
+    aura: '<circle cx="12" cy="12" r="3.4"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/>',
+  };
+
+  const GC_COLOR = {
+    og:     { grad: ['#F8EFCF', '#DFC078', '#96793F'], lente: '#05201B' },
+    cadena: { grad: ['#D6F3EC', '#74E6C8', '#1B5A50'], lente: '#07211D' },
+    origen: { grad: ['#F8EFCF', '#DFC078', '#96793F'], lente: '#141007' },
+    auka:   { grad: ['#EFE6C9', '#CBB273', '#6E5A2E'], lente: '#120E05' },
+    veta:   { grad: ['#F8EFCF', '#DFC078', '#96793F'], lente: '#05201B' },
+    gid:    { grad: ['#D6EBE2', '#63A493', '#123B39'], lente: '#062123' },
+    p2c:    { grad: ['#FBE0D4', '#E0937A', '#8A4A38'], lente: '#20100A' },
+    aura:   { grad: ['#E6F2EE', '#7ED8C4', '#123B39'], lente: '#04211C' },
+  };
+
   function genesis() {
-    const { enCaja, enAncho } = cajaNucleo();
-    const esferas = GC_TEMAS.map((m, i) => `
+    const esferas = GC_TEMAS.map((m) => {
+      const c = GC_COLOR[m.id];
+      return `
       <button class="nu-mundo" data-tema="${m.id}"
-              style="left:${enAncho(m.x)}%;top:${enCaja(m.y)}%;--t:${m.tam};--z:.6;
-                     z-index:8;--d:-${i * 380}ms;
-                     --g1:${m.grad[0]};--g2:${m.grad[1]};--g3:${m.grad[2]};
-                     --halo:${m.halo};--lente:${m.lente}"
+              style="--t:.66;--g1:${c.grad[0]};--g2:${c.grad[1]};--g3:${c.grad[2]};
+                     --halo:${m.tinte};--lente:${c.lente}"
               onclick="VETA.gcAbrir(${jsTxt(m.id)})"
               aria-label="${esc(t('gc.' + m.id))}">
-        <span class="nu-esfera"><span class="nu-lente"><svg viewBox="0 0 24 24">${m.ico}</svg></span></span>
+        <span class="nu-esfera"><span class="nu-lente"><svg viewBox="0 0 24 24">${GC_ICO[m.id]}</svg></span></span>
         <span class="nu-nombre">${esc(t('gc.' + m.id))}</span>
-      </button>`).join('');
+      </button>`;
+    }).join('');
     return `
     <div class="cerebro" id="cerebro">
       <canvas id="cielo-nucleo" aria-hidden="true"></canvas>
-      <canvas id="red-nucleo"></canvas>
       <div class="cerebro-cab">
         <h2>GENESIS CORE</h2>
         <div class="sub">${t('gc.sub')}</div>
       </div>
-      ${esferas}
+      <div id="gc-caja">
+        <canvas id="gc-lienzo" aria-hidden="true"></canvas>
+        ${esferas}
+      </div>
       <div class="cerebro-pie">
         <a class="nu-power" href="https://ordenscan.com" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24"><path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5z"/></svg>
@@ -4884,28 +4906,17 @@ const VETA = (() => {
   }
 
   function encenderGenesis() {
-    const c = $('#red-nucleo');
-    if (!c) return;
+    const lienzo = $('#gc-lienzo');
+    if (!lienzo || !window.CEREBRO_OG) return;
     if (window.GALAXIA) GALAXIA.montar($('#cielo-nucleo'), { interior: true });
     medirCerebro();
-    const elementos = {};
-    document.querySelectorAll('.nu-mundo[data-tema]').forEach(el => {
-      elementos[el.dataset.tema] = el;
-    });
-    const { enCaja, enAncho } = cajaNucleo();
-    AURA.montarRed(c, GC_TEMAS.map(m => ({
-      id: m.id, x: enAncho(m.x), y: enCaja(m.y), tam: m.tam, tinte: tinteDe(m.halo),
-    })), {
-      elementos,
-      despertar: false,
-      alDestellar: id => {
-        const el = document.querySelector(`.nu-mundo[data-tema="${id}"] .nu-esfera`);
-        if (!el) return;
-        el.classList.add('nu-destello');
-        setTimeout(() => el.classList.remove('nu-destello'), 320);
-      },
-    });
-    engancharParalaje(c.closest('.cerebro'));
+    /* Los ganglios son los botones del DOM: se le entregan al motor y él los
+       coloca en cada cuadro sobre su punto del volumen. */
+    const temas = GC_TEMAS.map(m => ({
+      ...m,
+      el: document.querySelector(`.nu-mundo[data-tema="${m.id}"]`),
+    }));
+    CEREBRO_OG.montar(lienzo, temas);
   }
 
   /* La hoja de lectura de un tema. Se cierra tocando afuera, con su botón o
@@ -5044,7 +5055,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = '5b483d2b5c';
+  const AET_V = 'a69e72bbdb';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -7333,6 +7344,7 @@ const VETA = (() => {
       atMirarLimpiar();
       if (!objetivo) return;
       objetivo.classList.add('at-mira');
+      atGestoVivo('g5');
       atMira = { el: objetivo, desde: performance.now(), hecho: false };
       const rotulo = objetivo.querySelector('.nu-nombre')?.textContent
         || objetivo.getAttribute('aria-label') || objetivo.textContent.trim();
@@ -7368,6 +7380,7 @@ const VETA = (() => {
       $('#at-boton')?.classList.remove('encendido');
       $('#at-cursor')?.classList.add('oculto');
       $('#at-cinta')?.classList.add('oculto');
+      atTablero(false);
       atMirarLimpiar();
       atAgarre = null;
       return avisar(t('at.apagado'));
@@ -7383,6 +7396,7 @@ const VETA = (() => {
     try {
       await AIRTOUCH.encender({ alCambiar: atPunto });
       $('#at-boton')?.classList.add('encendido');
+      atTablero(true);
       const cinta = $('#at-cinta');
       if (cinta) {
         cinta.textContent = t('at.cinta');
@@ -7429,15 +7443,73 @@ const VETA = (() => {
     } catch { /* un navegador sin PointerEvent no llega hasta aquí */ }
   };
 
+  /* ── EL TABLERO DE AIR TOUCH ──────────────────────────────────────────────
+     Dos cosas que la persona necesita saber en todo momento con la cámara
+     encendida: SI LA MANO SE VE (si no, mover la mano y que no pase nada
+     parece una avería) y QUÉ PUEDE HACER con ella. Los gestos se encienden
+     cuando se usan: el tablero enseña, no solo informa. */
+  const AT_GESTOS = [
+    { k: 'g1', ico: '<path d="M12 3v10M12 3l-3.5 3.5M12 3l3.5 3.5"/><circle cx="12" cy="18" r="2.6"/>' },
+    { k: 'g2', ico: '<path d="M7 8c2-3 6-3 8 0"/><circle cx="7" cy="13" r="2.4"/><circle cx="15" cy="13" r="2.4"/><path d="M9.4 13h3.2"/>' },
+    { k: 'g3', ico: '<path d="M4 12a8 8 0 0 1 13.7-5.6M20 12a8 8 0 0 1-13.7 5.6"/><path d="M17.7 3v3.6h-3.6M6.3 21v-3.6h3.6"/>' },
+    { k: 'g4', ico: '<circle cx="12" cy="12" r="3.2"/><path d="M12 3.6v2.6M12 17.8v2.6M3.6 12h2.6M17.8 12h2.6"/>' },
+    { k: 'g5', ico: '<path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/>' },
+  ];
+
+  function atTablero(encendido) {
+    const tab = $('#at-tablero');
+    if (!tab) return;
+    tab.classList.toggle('oculto', !encendido);
+    if (!encendido) { tab.classList.remove('ve'); return; }
+    tab.querySelector('.at-estado span').textContent = t('at.nove');
+    tab.querySelector('.at-gestos').innerHTML = AT_GESTOS.map(g => `
+      <li data-g="${g.k}"><svg viewBox="0 0 24 24" aria-hidden="true">${g.ico}</svg>
+      <span>${esc(t('at.' + g.k))}</span></li>`).join('');
+  }
+
+  /* Se enciende el gesto que se acaba de usar y se apaga solo. */
+  let atLuz = {};
+  function atGestoVivo(k) {
+    const li = document.querySelector(`#at-tablero li[data-g="${k}"]`);
+    if (!li) return;
+    li.classList.add('hace');
+    clearTimeout(atLuz[k]);
+    atLuz[k] = setTimeout(() => li.classList.remove('hace'), 900);
+  }
+
+  /* La mano perdida no es un fallo silencioso: se dice. Con un respiro de
+     medio segundo, que un parpadeo del detector no tiene por qué asustar. */
+  let atVistaReloj = null;
+  function atMano(seVe) {
+    const tab = $('#at-tablero');
+    if (!tab || tab.classList.contains('oculto')) return;
+    const decir = (k) => {
+      const s = tab.querySelector('.at-estado span');
+      if (s) s.textContent = t(k);
+    };
+    if (seVe) {
+      clearTimeout(atVistaReloj); atVistaReloj = null;
+      if (!tab.classList.contains('ve')) { tab.classList.add('ve'); decir('at.ve'); }
+    } else if (!atVistaReloj && tab.classList.contains('ve')) {
+      atVistaReloj = setTimeout(() => {
+        tab.classList.remove('ve');
+        decir('at.nove');
+        atVistaReloj = null;
+      }, 520);
+    }
+  }
+
   function atPunto(p) {
     const cur = $('#at-cursor');
     if (!cur) return;
+    atMano(!!p.presente);
     if (!p.presente) {
       cur.classList.add('oculto');
       atMirarLimpiar();
       if (atAgarre) atSoltar(p);
       return;
     }
+    atGestoVivo('g1');
     cur.classList.remove('oculto');
     cur.style.transform = `translate(${p.x}px, ${p.y}px)`;
     cur.classList.toggle('pellizco', !!p.pellizco);
@@ -7445,6 +7517,7 @@ const VETA = (() => {
     else atMirarLimpiar();
     if (!p.pellizco) atZoomMano(p);
     if (p.pellizco && !atAgarre) {
+      atGestoVivo('g2');
       const el = atBajo(p.x, p.y);
       atAgarre = { el, sx: atRodante(el), x0: p.x, y0: p.y, xa: p.x, ya: p.y,
                    movio: false, desde: performance.now(),
@@ -7459,7 +7532,7 @@ const VETA = (() => {
            es el mismo timón que el dedo en la pantalla, y la página no se
            mueve ni un pixel debajo. En el resto de la casa, agarrar sigue
            siendo llevarse la vista. */
-        if (atAgarre.enCielo) atEvento('pointermove', p.x, p.y, atAgarre.el);
+        if (atAgarre.enCielo) { atGestoVivo('g3'); atEvento('pointermove', p.x, p.y, atAgarre.el); }
         else if (atAgarre.sx) { atAgarre.sx.scrollTop -= dy; atAgarre.sx.scrollLeft -= dx; }
         else { window.scrollBy(-dx, -dy); atEvento('pointermove', p.x, p.y, atAgarre.el); }
       }
@@ -7483,6 +7556,7 @@ const VETA = (() => {
     const razon = p.escala / atPalma;
     if (razon > 1.06 || razon < 1 / 1.06) {
       // palma más grande = mano más cerca = cielo más cerca
+      atGestoVivo('g4');
       mando.zoom(Math.min(1.12, Math.max(0.89, 1 / razon)));
       atPalma = p.escala;
     }

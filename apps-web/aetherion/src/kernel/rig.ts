@@ -157,7 +157,12 @@ class Rig {
       for (let x = 9; x <= 40; x += 0.5) {
         if (this.cabeTodo(prueba, x, inclinacion, true)) { principales = x; break }
       }
-      d = Math.max(principales, todo * 0.72)
+      /* EL ENCUADRE DE CASA. Antes se entraba tan pegado que se perdía el
+         sistema: se veían cuatro planetas gigantes y ni sol ni galaxia. Ahora
+         se entra a la distancia donde CABE TODO —las nueve casas, el sol en
+         medio y el cielo alrededor— con un pelo de holgura para que respire.
+         Acercarse sigue estando a un gesto: para eso está el timón. */
+      d = Math.max(principales, todo * 1.04)
       // el tope de alejar SÍ tiene que dar el panorama entero
       this.panorama = todo
     } else {
@@ -199,7 +204,10 @@ class Rig {
       if (!ok) d = this.panorama
     }
     this.reposo = clamp(d, 9, 40)
-    this.lejos = clamp(Math.max(this.panorama * 1.12, this.reposo * 1.6), 18, 62)
+    /* Alejar tiene que ENSEÑAR LA GALAXIA: no solo las casas más chicas, sino
+       los mundos de afuera, el polvo y las estrellas. Por eso el tope de
+       alejar es muy superior al panorama de las casas. */
+    this.lejos = clamp(Math.max(this.panorama * 2.6, this.reposo * 3), 40, 130)
     this.cerca = 4.4
     return this.reposo
   }

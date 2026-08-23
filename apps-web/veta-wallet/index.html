@@ -168,8 +168,21 @@ body.en-cerebro.cielo-vivo #app #pantalla-llena{pointer-events:auto}
 
 .ae-casa{position:absolute;inset:0;overflow:hidden}
 .ae-casa .ae-root{position:absolute;inset:0}
-/* GENESIS CORE: el cerebro informativo. Los temas son ganglios con la misma
-   esfera del Núcleo clásico; tocar uno abre su hoja de lectura. */
+/* GENESIS CORE: el cerebro informativo. El canvas dibuja el tejido con forma
+   de cerebro y los ganglios son botones .nu-mundo que el motor coloca encima
+   en cada cuadro — por eso se tocan, se navegan con teclado y AIR TOUCH los
+   mira igual que a las casas del Inicio. */
+#gc-caja{position:relative;width:100%;height:100%;touch-action:none}
+#gc-lienzo{position:absolute;inset:0;width:100%;height:100%;display:block;
+  touch-action:none;cursor:grab}
+#gc-lienzo:active{cursor:grabbing}
+/* el ganglio: la esfera de la casa, colocada por el motor y escalada por su
+   hondura (--k), sin la órbita flotante del Núcleo — aquí el que se mueve es
+   el cerebro entero */
+#gc-caja .nu-mundo{position:absolute;transform:translate(-50%,-50%) scale(var(--k,1));
+  animation:none;transition:none}
+#gc-caja .nu-mundo .nu-nombre{white-space:nowrap}
+
 .gc-hoja{position:fixed;inset:0;z-index:130;display:grid;place-items:center;
   padding:18px;background:rgba(1,10,10,.72);backdrop-filter:blur(10px);
   -webkit-backdrop-filter:blur(10px);animation:fadeArriba .28s ease}
@@ -272,6 +285,28 @@ body.en-cerebro #lienzo{position:relative;min-height:100svh}
   letter-spacing:.04em;pointer-events:none;white-space:nowrap;max-width:94vw;overflow:hidden;
   text-overflow:ellipsis;animation:fadeArriba .3s ease}
 @keyframes fadeArriba{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+/* EL TABLERO DE AIR TOUCH: arriba a la izquierda, fuera del paso de la mano
+   (que trabaja en el centro) y del riel. */
+#at-tablero{position:fixed;top:14px;left:14px;z-index:206;width:min(240px,62vw);
+  padding:12px 14px;border-radius:16px;background:rgba(3,10,24,.76);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--linea2);pointer-events:none;animation:fadeAbajo .3s ease}
+#at-tablero .at-estado{display:flex;align-items:center;gap:9px;
+  font:600 12px/1.3 var(--sans);letter-spacing:.03em;color:var(--crema)}
+#at-tablero .at-estado i{width:9px;height:9px;border-radius:50%;flex:none;
+  background:#E0937A;box-shadow:0 0 10px #E0937A;transition:background .2s,box-shadow .2s}
+#at-tablero.ve .at-estado i{background:#7FD8C4;box-shadow:0 0 10px #7FD8C4}
+#at-tablero .at-gestos{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:7px}
+#at-tablero .at-gestos li{display:flex;align-items:center;gap:8px;
+  font:500 11.5px/1.35 var(--sans);color:var(--bruma)}
+#at-tablero .at-gestos svg{width:17px;height:17px;flex:none;fill:none;stroke:var(--oroLt);
+  stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+#at-tablero .at-gestos li.hace{color:var(--crema)}
+#at-tablero .at-gestos li.hace svg{stroke:#7FD8C4}
+@keyframes fadeAbajo{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@media (max-width:900px){#at-tablero{top:auto;bottom:calc(150px + env(safe-area-inset-bottom));
+  left:12px;width:min(210px,58vw);padding:10px 12px}}
+@media (prefers-reduced-motion:reduce){#at-tablero{animation:none}}
 /* el vidrio del login pesa menos en el teléfono: el desenfoque grande era
    parte del «se traba» */
 @media (max-width:900px){
@@ -3717,6 +3752,14 @@ body.en-ventana .lienzo::before{
 <div id="at-cursor" class="oculto" aria-hidden="true"><i></i></div>
 <div id="at-nombre" class="oculto" aria-hidden="true"></div>
 <div id="at-cinta" class="oculto" aria-hidden="true"></div>
+<!-- EL TABLERO DE AIR TOUCH. Mientras la cámara está encendida, la persona
+     tiene que saber DOS cosas todo el tiempo: si la mano se ve, y qué puede
+     hacer con ella. Sin eso, quien mueve la mano y no pasa nada cree que se
+     rompió. -->
+<div id="at-tablero" class="oculto" aria-hidden="true">
+  <div class="at-estado"><i></i><span></span></div>
+  <ul class="at-gestos"></ul>
+</div>
 <div id="at-tuto" class="oculto" role="dialog" aria-modal="true" aria-label="AIR TOUCH">
   <div class="at-hoja vidrio">
     <h3>AIR TOUCH</h3>
@@ -3919,5 +3962,8 @@ body.en-ventana .lienzo::before{
 <script src="chat.js"></script>
 <script src="i18n.js"></script>
 <script src="galaxia.js"></script>
+<!-- GENESIS CORE: el cerebro del ecosistema, el mismo volumen que se proyecta
+     en la sala de Genesis ID. Solo lo usa su vista. -->
+<script src="cerebro-og.js"></script>
 <script src="airtouch.js"></script>
 <script src="app.js"></script>

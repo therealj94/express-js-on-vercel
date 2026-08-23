@@ -51,6 +51,7 @@ export interface WellDef {
   halo: string
   lente?: string
   zoom?: number
+  natura: Natura
 }
 
 /* LA FUSIÓN CON ORDEN GLOBAL. Los pozos son las casas REALES del ecosistema:
@@ -60,6 +61,21 @@ export interface WellDef {
    que la persona ya conoce del Núcleo, no una versión inventada aquí. */
 const enIngles = () => typeof window !== 'undefined' && (window as any).__AE_LANG === 'en'
 
+/* LA NATURALEZA DE CADA MUNDO. Ocho bolas iguales pintadas de otro color son
+   ocho bolas; lo que hace que una casa se RECUERDE es que su planeta sea de
+   una clase distinta. Cada una lleva la suya, elegida por lo que la casa hace:
+
+     gigante  — bandas anchas y anillo mayor: la casa grande (la billetera)
+     helado   — casquetes blancos y brillo frío: la memoria que guarda (scan)
+     forja    — vetas encendidas girando: donde se acuña y se cambia (oxch)
+     oceano   — nubes altas sobre azul: la palabra que fluye (chat)
+     jardin   — atmósfera densa y luna: lo que crece contigo (pay)
+     bunker   — roca seca, cráteres y anillo fino: lo que custodia (gid)
+     boveda   — oro viejo y anillo doble: la banca (aucorp)
+     faro     — pálido, con su satélite: el que ordena (ajustes)
+     nucleo   — malla de luz por dentro: la memoria viva (genesis) */
+type Natura = 'gigante' | 'helado' | 'forja' | 'oceano' | 'jardin' | 'bunker' | 'boveda' | 'faro' | 'nucleo'
+
 interface Casa {
   key: string
   name: string
@@ -67,28 +83,29 @@ interface Casa {
   arch: Archetype
   banda: 0 | 1        // 0 = cerca del Núcleo, 1 = el anillo de afuera
   peso: number        // el tamaño del planeta: la casa mayor se ve mayor
+  natura: Natura
 }
 
 const casas = (): Casa[] => {
   const EN = enIngles()
   return [
-  { key: 'wallet', name: 'Veta Wallet', arch: 'pulsar', banda: 0, peso: 1.32,
+  { key: 'wallet', name: 'Veta Wallet', arch: 'pulsar', banda: 0, peso: 1.32, natura: 'gigante',
     intent: EN ? 'Your gold made money' : 'Tu oro hecho dinero' },
-  { key: 'chat', name: 'PULSE2CHAT', arch: 'binary', banda: 0, peso: 1.06,
+  { key: 'chat', name: 'PULSE2CHAT', arch: 'binary', banda: 0, peso: 1.06, natura: 'oceano',
     intent: EN ? 'The living word of the ecosystem' : 'La palabra viva del ecosistema' },
-  { key: 'gid', name: 'Genesis ID', arch: 'sentinel', banda: 0, peso: 1.06,
+  { key: 'gid', name: 'Genesis ID', arch: 'sentinel', banda: 0, peso: 1.06, natura: 'bunker',
     intent: EN ? 'Your identity, verified once' : 'Tu identidad, verificada una vez' },
-  { key: 'pay', name: 'MyTokenPay', arch: 'torus', banda: 0, peso: 1.02,
+  { key: 'pay', name: 'MyTokenPay', arch: 'torus', banda: 0, peso: 1.02, natura: 'jardin',
     intent: EN ? 'Charges and commerce' : 'Cobros y comercio' },
-  { key: 'genesis', name: 'GENESIS CORE', arch: 'memory', banda: 0, peso: 1.0,
+  { key: 'genesis', name: 'GENESIS CORE', arch: 'memory', banda: 0, peso: 1.0, natura: 'nucleo',
     intent: EN ? 'The living memory of the ecosystem' : 'La memoria viva del ecosistema' },
-  { key: 'aucorp', name: 'AuCorp', arch: 'memory', banda: 1, peso: 1.0,
+  { key: 'aucorp', name: 'AuCorp', arch: 'memory', banda: 1, peso: 1.0, natura: 'boveda',
     intent: EN ? 'Local-currency banking' : 'La banca en moneda local' },
-  { key: 'scan', name: 'ORDENSCAN', arch: 'memory', banda: 1, peso: 0.92,
+  { key: 'scan', name: 'ORDENSCAN', arch: 'memory', banda: 1, peso: 0.92, natura: 'helado',
     intent: EN ? 'The chain, in plain sight' : 'La cadena, a la vista' },
-  { key: 'oxch', name: 'Ordenex', arch: 'torus', banda: 1, peso: 0.92,
+  { key: 'oxch', name: 'Ordenex', arch: 'torus', banda: 1, peso: 0.92, natura: 'forja',
     intent: EN ? 'The exchange house' : 'La casa de cambio' },
-  { key: 'ajustes', name: EN ? 'Settings' : 'Ajustes', arch: 'sentinel', banda: 1, peso: 0.86,
+  { key: 'ajustes', name: EN ? 'Settings' : 'Ajustes', arch: 'sentinel', banda: 1, peso: 0.86, natura: 'faro',
     intent: EN ? 'The system lighthouse' : 'El faro del sistema' },
   ]
 }
@@ -156,6 +173,7 @@ export function buildWellDefs(gal: Galaxy): WellDef[] {
       halo: real?.halo || color.halo,
       lente: real?.lente || color.lente,
       zoom: real?.zoom || 1,
+      natura: c.natura,
     }
   })
 }
@@ -233,7 +251,7 @@ function WellView({ def }: { def: WellDef }) {
      letrero, atmósfera), así que se calcula UNA vez y de ahí cuelga el resto. */
   const R = 1.72 * def.scale
   const atmo = useMemo(() => makeAtmoMaterial(def.halo, 0.55), [def.halo])
-  const piel = useMemo(() => planetaTextura(def.key, def.grad), [def.key, def.grad])
+  const piel = useMemo(() => planetaTextura(def.key, def.grad, def.natura), [def.key, def.grad, def.natura])
   const cara = useMemo(
     () => emblemaTextura({
       key: def.key, logo: def.logo, ico: def.ico, halo: def.halo,
@@ -272,7 +290,7 @@ function WellView({ def }: { def: WellDef }) {
       def.anchor.z + tmpV.z
     )
 
-    if (spin.current) spin.current.rotation.y += dt * (def.arch === 'torus' ? 0.32 : 0.19)
+    if (spin.current) spin.current.rotation.y += dt * rasgos.giro
     if (luna.current) luna.current.rotation.y += dt * 0.85
     if (anillo3.current) anillo3.current.rotation.z += dt * 0.16
 
@@ -302,7 +320,10 @@ function WellView({ def }: { def: WellDef }) {
          cortado a la mitad en el borde se ve descuidado, no misterioso. */
       tmpP.copy(g.position).project(state.camera)
       const alBorde = Math.abs(tmpP.x) > 0.82 || Math.abs(tmpP.y) > 0.86 || tmpP.z > 1
-      const lejania = THREE.MathUtils.clamp(2.8 - d / 26, 0.62, 1)
+      /* De lejos los nombres se apagan del todo: en el panorama de la galaxia,
+         nueve letreros a tamaño fijo se apelotonan en el centro y tapan justo
+         lo que se fue a mirar. Cerca mandan ellos; lejos manda el cielo. */
+      const lejania = THREE.MathUtils.clamp(2.6 - d / 22, 0, 1)
       /* En la puerta el sistema se mira de lejos y en silencio: los nombres
          aparecen recién cuando la persona entra. */
       const puerta = (window as any).__AE_PUERTA ? 0 : 1
@@ -320,10 +341,22 @@ function WellView({ def }: { def: WellDef }) {
     }
   })
 
-  /* Los anillos son de la casa mayor y de las de flujo y memoria: le dan
-     silueta propia a cada mundo sin inventarle nada. */
-  const conAnillo = def.arch === 'torus' || def.arch === 'memory' || def.arch === 'pulsar'
-  const conLuna = def.arch === 'binary'
+  /* La silueta la manda la naturaleza del mundo: quién lleva anillo, de qué
+     tamaño, quién tiene luna y quién brilla por dentro. */
+  const A: Record<string, { anillo?: [number, number]; luna?: number; brillo: number; giro: number }> = {
+    gigante: { anillo: [1.5, 2.35], luna: 0.26, brillo: 0.18, giro: 0.16 },
+    helado: { anillo: [1.7, 2.0], brillo: 0.3, giro: 0.1 },
+    forja: { anillo: [1.45, 1.95], brillo: 0.42, giro: 0.34 },
+    oceano: { luna: 0.3, brillo: 0.2, giro: 0.19 },
+    jardin: { luna: 0.22, brillo: 0.22, giro: 0.21 },
+    bunker: { anillo: [1.9, 2.05], brillo: 0.12, giro: 0.08 },
+    boveda: { anillo: [1.5, 1.9], brillo: 0.16, giro: 0.12 },
+    nucleo: { anillo: [1.6, 2.2], brillo: 0.5, giro: 0.26 },
+    faro: { luna: 0.18, brillo: 0.26, giro: 0.14 },
+  }
+  const rasgos = A[def.natura] || A.gigante
+  const conAnillo = !!rasgos.anillo
+  const conLuna = !!rasgos.luna
 
   return (
     <group ref={group} position={def.anchor}>
@@ -356,14 +389,14 @@ function WellView({ def }: { def: WellDef }) {
             metalness={0.12}
             roughness={0.78}
             emissive={new THREE.Color(def.halo)}
-            emissiveIntensity={0.16}
+            emissiveIntensity={rasgos.brillo}
           />
         </mesh>
 
         {conLuna && (
           <group ref={luna}>
             <mesh position={[R * 2.1, R * 0.25, 0]}>
-              <sphereGeometry args={[R * 0.3, 24, 24]} />
+              <sphereGeometry args={[R * (rasgos.luna ?? 0.3), 24, 24]} />
               <meshStandardMaterial
                 color={def.grad[0]}
                 emissive={new THREE.Color(def.halo)}
@@ -378,7 +411,7 @@ function WellView({ def }: { def: WellDef }) {
       {conAnillo && (
         <group ref={anillo3} rotation={[1.32, 0, 0.24]}>
           <mesh>
-            <ringGeometry args={[R * 1.55, R * 2.15, 64]} />
+            <ringGeometry args={[R * (rasgos.anillo?.[0] ?? 1.55), R * (rasgos.anillo?.[1] ?? 2.15), 64]} />
             <meshBasicMaterial
               map={getRingTexture()}
               color={def.halo}

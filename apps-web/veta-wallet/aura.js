@@ -672,8 +672,19 @@ const AURA = (() => {
     canvas.width = canvas.height = Math.round(orbe.lado * orbe.dpr);
     dibujarOrbe();
   }
-  const animoOrbe = a => { orbe.animo = a; };
-  const nivelOrbe = v => { orbe.nivel = Math.max(0, Math.min(1, v)); };
+  /* EL SOL DE LA GALAXIA ES AU-RA, Y SE LE NOTA CUANDO HABLA. El orbe de la
+     esquina y el sol del Inicio son la MISMA voz: aquí se publica su ánimo y
+     su nivel para que el cielo 3D los lea y el sol resplandezca con cada
+     frase. Es un número en window, no un evento: el motor lo mira una vez por
+     cuadro y nadie tiene que suscribirse a nada. */
+  const animoOrbe = a => {
+    orbe.animo = a;
+    if (typeof window !== 'undefined') window.__AE_AURA_ANIMO = a;
+  };
+  const nivelOrbe = v => {
+    orbe.nivel = Math.max(0, Math.min(1, v));
+    if (typeof window !== 'undefined') window.__AE_AURA_VOZ = orbe.nivel;
+  };
 
   /* ════════════════════════════════════════════════════════════════════════
      LA VOZ

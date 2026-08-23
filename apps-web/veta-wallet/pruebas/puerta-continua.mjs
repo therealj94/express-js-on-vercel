@@ -97,17 +97,42 @@ console.log('\n── GENESIS CORE: la memoria viva ─────────�
 {
   await p.evaluate(() => window.__AE_ABRIR('genesis'));
   await p.waitForTimeout(1600);
-  const est = await p.evaluate(() => ({
-    vista: VETA.dondeEstoy(),
-    temas: document.querySelectorAll('.nu-mundo[data-tema]').length,
-    cielo: !!document.getElementById('cielo-nucleo'),
-    red: !!document.getElementById('red-nucleo'),
-    aeMuerto: !document.getElementById('ae-casa'),
-  }));
+  await p.waitForTimeout(1500);
+  const est = await p.evaluate(() => {
+    const g = [...document.querySelectorAll('#gc-caja .nu-mundo[data-tema]')];
+    return {
+      vista: VETA.dondeEstoy(),
+      temas: g.length,
+      colocados: g.filter((e) => (parseFloat(e.style.left) || 0) > 0).length,
+      vivo: !!window.CEREBRO_OG?.vivo(),
+      cielo: !!document.getElementById('cielo-nucleo'),
+      aeMuerto: !document.getElementById('ae-casa'),
+    };
+  });
   ok('el planeta GENESIS CORE lleva a su vista', est.vista === 'genesis');
   ok('con sus ocho ganglios de saber', est.temas === 8, `${est.temas}`);
-  ok('el cerebro de siempre respira detrás (cielo + red)', est.cielo && est.red);
+  /* EL CEREBRO DE VERDAD: el volumen con lóbulos, fisura y cerebelo que se
+     proyecta en la sala de Genesis ID. Los ganglios NO llevan posición en el
+     HTML: se la pone el motor sobre su punto del volumen, en cada cuadro. Si
+     esto falla, lo que hay es una constelación otra vez, no un cerebro. */
+  ok('el cerebro está vivo y coloca sus ganglios', est.vivo && est.colocados === 8,
+     `${est.colocados}/8 colocados`);
+  ok('con el cielo interior detrás', est.cielo);
   ok('y el 3D se apagó del todo: una escena a la vez', est.aeMuerto);
+
+  /* Se puede GIRAR: el cerebro se mira por todos lados, con el dedo, con el
+     ratón y con la mano en el aire (que dispara los mismos eventos). */
+  const antes = await p.evaluate(() =>
+    parseFloat(document.querySelector('#gc-caja .nu-mundo[data-tema="og"]').style.left));
+  await p.mouse.move(700, 480);
+  await p.mouse.down();
+  await p.mouse.move(950, 480, { steps: 12 });
+  await p.mouse.up();
+  await p.waitForTimeout(900);
+  const luego = await p.evaluate(() =>
+    parseFloat(document.querySelector('#gc-caja .nu-mundo[data-tema="og"]').style.left));
+  ok('arrastrar GIRA el cerebro', Math.abs(luego - antes) > 12,
+     `${antes.toFixed(0)} → ${luego.toFixed(0)}`);
 
   /* la mirada de AIR TOUCH ya sabe leer estos ganglios: son .nu-mundo */
   ok('los ganglios son mirables por AIR TOUCH', await p.evaluate(() =>

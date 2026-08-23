@@ -38,13 +38,16 @@ const TINTES = ['#6f8fb8', '#8f7fb0', '#5f9d94', '#b08f6f', '#7a86a8', '#9d7f8f'
 function sembrar(): Mundito[] {
   const r = alAzar(94117)
   const out: Mundito[] = []
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < 54; i++) {
     const a = r() * Math.PI * 2
-    const radio = RADIO_ANILLO * (1.55 + r() * 2.6)
-    const alto = (r() - 0.5) * RADIO_ANILLO * 1.5
+    /* Nunca dentro del barrio de las casas: un mundo de paisaje metido en
+       primer plano tapa la escena y encima parece una app que no se puede
+       tocar. Empiezan bien afuera del anillo. */
+    const radio = RADIO_ANILLO * (2.3 + r() * 4.6)
+    const alto = (r() - 0.5) * RADIO_ANILLO * 2.2
     out.push({
       pos: new THREE.Vector3(Math.cos(a) * radio, alto, Math.sin(a) * radio),
-      r: 0.35 + r() * 1.15,
+      r: 0.3 + r() * 1.5,
       color: TINTES[Math.floor(r() * TINTES.length)],
       giro: 0.05 + r() * 0.14,
       aro: r() > 0.72,
