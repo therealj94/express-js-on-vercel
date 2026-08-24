@@ -20,6 +20,9 @@ export const sim = {
   /* La noche del Génesis: 1 = el sol todavía no fue dicho (tiniebla), 0 = luz
      normal. Solo el tour la toca; el resto del motor la deja en cero. */
   noche: 0,
+  /* Hay película rodando. Mientras dure, la escena se comporta como plató:
+     los rótulos de las casas se callan salvo el de la que se presenta. */
+  pelicula: false,
   /* ¿hay un visor puesto? El post-procesado y otros lujos se apartan */
   visor: false,
   timeScale: 1,

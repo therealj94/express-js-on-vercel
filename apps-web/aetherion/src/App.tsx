@@ -1,4 +1,6 @@
-import { Canvas } from '@react-three/fiber'
+import { useRef } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
 import { AgXToneMapping } from 'three'
 import { Kernel, QualityWatcher } from './kernel/Kernel'
 import { Encuadre } from './kernel/Encuadre'
@@ -12,6 +14,30 @@ import { Overlays } from './hud/Overlays'
 import { Espacial } from './audio/Espacial'
 import { sim } from './kernel/sim'
 import { useUiStore } from './state/uiStore'
+
+/* LAS LUCES OBEDECEN A LA NOCHE. El sol ya lo hacía, pero el relleno de
+   ambiente, la contra y la luz del propio cielo no: con ellas puestas, «en el
+   principio había oscuridad» se veía como un mediodía nublado. En la tiniebla
+   del Génesis se apaga TODO menos un rescoldo — sin él la pantalla sería un
+   rectángulo negro y nadie sabría si la app se rompió. */
+function Luces() {
+  const amb = useRef<THREE.AmbientLight>(null)
+  const dir = useRef<THREE.DirectionalLight>(null)
+  const hemi = useRef<THREE.HemisphereLight>(null)
+  useFrame(() => {
+    const k = 1 - 0.93 * sim.noche
+    if (amb.current) amb.current.intensity = 0.16 * k
+    if (dir.current) dir.current.intensity = 0.5 * k
+    if (hemi.current) hemi.current.intensity = 0.42 * k
+  })
+  return (
+    <>
+      <ambientLight ref={amb} intensity={0.16} color="#5b6f9e" />
+      <directionalLight ref={dir} position={[-14, 9, -12]} intensity={0.5} color="#7fa8d8" />
+      <hemisphereLight ref={hemi} args={['#6d84b8', '#161d2e', 0.42]} />
+    </>
+  )
+}
 
 export default function App() {
   const initialTier: 0 | 1 | 2 =
@@ -53,17 +79,8 @@ export default function App() {
             sombra, sin bulto — pegatinas redondas. Ahora el relleno es apenas
             el rebote del cielo (la cara de noche se insinúa, no desaparece) y
             el que modela es el sol de AU-RA, desde el centro. */}
-        <ambientLight intensity={0.16} color="#5b6f9e" />
-        {/* LA LUZ DEL PROPIO CIELO. Un mundo a diez radios del sol no recibe
-            casi nada de él — pero SÍ recibe la galaxia entera, que es una
-            lámpara enorme y difusa encima. Sin esto los mundos del paisaje
-            eran discos negros; con esto tienen media luz azulada arriba y
-            penumbra abajo, que es exactamente lo que se ve en una foto del
-            sistema solar exterior. */}
-        <hemisphereLight args={['#6d84b8', '#161d2e', 0.42]} />
-        {/* la luz de contra: el filo frío de la galaxia que despega cada
-            mundo del fondo negro, como en cualquier foto bien hecha */}
-        <directionalLight position={[-14, 9, -12]} intensity={0.5} color="#7fa8d8" />
+        <Luces />
+
         <color attach="background" args={['#030308']} />
         <fogExp2 attach="fog" args={['#05060d', 0.0075]} />
         <Sky />

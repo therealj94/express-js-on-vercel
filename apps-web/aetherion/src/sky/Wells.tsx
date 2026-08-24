@@ -346,8 +346,13 @@ function WellView({ def }: { def: WellDef }) {
          galaxia lo que se mira son mundos y soles, no nueve insignias
          flotando del mismo tamaño. De cerca la marca manda; de lejos, el
          cielo. */
+      /* En la tiniebla las marcas TAMBIÉN se apagan: un logo encendido
+         mientras se dice «había oscuridad» rompe el hechizo entero. Y con
+         película rodando, solo la casa que se está presentando enseña la
+         suya — lo demás es silencio, como en cualquier plano bien hecho. */
+      const cine = sim.pelicula ? (selected ? 1 : 0.12) : 1
       ;(emblema.current.material as THREE.SpriteMaterial).opacity =
-        THREE.MathUtils.clamp(3.1 - d / 17, 0, 1)
+        THREE.MathUtils.clamp(3.1 - d / 17, 0, 1) * (1 - sim.noche) * cine
     }
     if (letrero.current) {
       /* EL LETRERO NO CRECE CON EL PLANETA. Su tamaño en PANTALLA es el mismo
@@ -367,8 +372,11 @@ function WellView({ def }: { def: WellDef }) {
       /* En la puerta el sistema se mira de lejos y en silencio: los nombres
          aparecen recién cuando la persona entra. */
       const puerta = (window as any).__AE_PUERTA ? 0 : 1
+      // durante la película, el nombre es SOLO de la casa que se presenta
+      const cineL = sim.pelicula ? (selected ? 1 : 0) : 1
       ;(letrero.current.material as THREE.SpriteMaterial).opacity =
-        puerta * (alBorde ? Math.min(0.12, lejania) : selected ? 1 : lejania)
+        puerta * cineL * (1 - sim.noche)
+        * (alBorde ? Math.min(0.12, lejania) : selected ? 1 : lejania)
     }
 
     if (halo.current) {

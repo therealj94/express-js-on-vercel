@@ -124,6 +124,7 @@ let saltarAhora: (() => void) | null = null
 
 function terminar(salteado: boolean, opciones: Opciones) {
   vivoAhora = false
+  sim.pelicula = false
   cancelAnimationFrame(raf)
   cancelAnimationFrame(acomodoRaf)
   cancelAnimationFrame(nocheRaf)
@@ -139,6 +140,7 @@ function terminar(salteado: boolean, opciones: Opciones) {
 function empezar(opciones: Opciones = {}) {
   if (vivoAhora) return
   vivoAhora = true
+  sim.pelicula = true
   audio.ensure()
 
   const casas = (opciones.casas ?? ['wallet', 'chat', 'gid', 'pay', 'genesis'])
@@ -266,4 +268,7 @@ export const genesis = {
 
 if (typeof window !== 'undefined') {
   ;(window as any).__AE_GENESIS = genesis
+  // para que una prueba pueda ver la tiniebla, que es lo que no se puede leer
+  // desde fuera en una foto: si está oscuro o no
+  ;(window as any).__AE_NOCHE = () => sim.noche
 }

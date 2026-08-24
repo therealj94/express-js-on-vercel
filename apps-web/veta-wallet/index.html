@@ -212,6 +212,21 @@ body.en-visor[data-visor=carton] #visor-capa .vs-pista{display:none}
    centro, en la letra de la casa; las presentaciones abajo, como rótulos de
    película. Nada tapa los planetas: texto con su sombra y aire alrededor. */
 #gen-letra{position:fixed;inset:0;z-index:96;pointer-events:none}
+/* LA SALA SE APAGA. Mientras rueda la película, la casa entera se aparta:
+   el menú, el saludo, los mandos del timón, el orbe de AU-RA. Nadie pone
+   subtítulos encima de una barra de navegación. Vuelven solos al terminar,
+   con calma. */
+body.en-cine .riel,
+body.en-cine .tabs,
+body.en-cine #ae-saludo,
+body.en-cine #ae-dice,
+body.en-cine #aura-orbe,
+body.en-cine #at-boton,
+body.en-cine #musica-btn,
+body.en-cine #pantalla-llena,
+body.en-cine .ae-hud{opacity:0;pointer-events:none;transition:opacity .9s ease}
+body.en-cine #lienzo{opacity:0;transition:opacity .9s ease}
+
 /* LAS BARRAS. Dos franjas negras arriba y abajo que entran al empezar y se
    van al terminar: es la señal universal de «esto es una película, mirá». Y
    de paso recortan el cuadro a formato ancho, que es donde la galaxia se ve

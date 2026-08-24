@@ -5256,7 +5256,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = '4433cbbb6a';
+  const AET_V = '7771a0ef0a';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -10811,6 +10811,8 @@ const VETA = (() => {
       capa.querySelector('.gen-saltar').addEventListener('click', () => motor.saltar());
       document.body.appendChild(capa);
     }
+    // se apaga la sala: el menú, el saludo y los mandos se retiran
+    document.body.classList.add('en-cine');
 
     const decir = (txt) => {
       try { AURA.hablar(String(txt).replace(/\n/g, ' '), idiomaActivo()).catch(() => {}); }
@@ -10875,6 +10877,7 @@ const VETA = (() => {
       },
       alFin() {
         genVivo = false;
+        document.body.classList.remove('en-cine');
         removeEventListener('keydown', porTecla);
         try { AURA.pararVoz(); } catch { /* nada */ }
         if (capa) { capa.classList.add('yendo'); setTimeout(() => capa.remove(), 800); }
