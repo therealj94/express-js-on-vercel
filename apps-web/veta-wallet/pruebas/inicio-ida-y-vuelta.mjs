@@ -33,6 +33,11 @@ const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium',
 async function entrar(ctx) {
   const p = await ctx.newPage();
   await p.addInitScript("localStorage.setItem('veta.genesis.visto','1')");
+  // las casas enmarcadas, respondidas aquí: sin internet y sin sorpresas
+  await p.route(/amplifyapp\.com/, (r) => r.fulfill({
+    contentType: 'text/html', body: '<title>AuCorp</title><h1>banca</h1>' }));
+  await p.route(/ordenexchange\.link/, (r) => r.fulfill({
+    contentType: 'text/html', body: '<title>Ordenex</title><h1>mercado</h1>' }));
   p.errores = [];
   p.on('pageerror', (e) => p.errores.push(String(e)));
   await p.route('**/herokuapp.com/**', (r) => r.fulfill({ status: 200, json: {} }));
@@ -99,26 +104,36 @@ console.log('\n── el botón de atrás del navegador ────────
     !document.querySelector('.ae-dim')));
 }
 
-console.log('\n── las casas de afuera abren pestaña y el cielo respira ─────');
+console.log('\n── AuCorp y Ordenex abren ADENTRO; scan, afuera ─────────────');
 {
-  /* La pestaña se pide con window.open. En el arnés no hay gesto humano y el
-     navegador la bloquea, así que se comprueba LA ORDEN y su destino: es lo
-     que decide si la persona llega a la casa correcta. */
+  /* AuCorp y Ordenex ya no son pestañas: viven en su marco, dentro de la
+     casa. Desde la galaxia se aterriza en el marco — sin pestañas, sin
+     «Entrando…» colgado — y volver al Inicio revive el cielo. */
+  for (const key of ['aucorp', 'oxch']) {
+    await p.evaluate((k) => window.__AE_ABRIR(k), key);
+    await p.waitForSelector('.marco-casa', { timeout: 9000 });
+    ok(`${key} aterriza en su marco de adentro`, true);
+    ok(`  con la plataforma enmarcada`, await p.evaluate(() =>
+      /amplifyapp\.com|ordenexchange\.link/.test(document.querySelector('.marco-hoja')?.src || '')));
+    await p.click('.marco-atras');
+    await p.waitForFunction(() => VETA.dondeEstoy() === 'nucleo', null, { timeout: 9000 });
+    await p.waitForFunction(() => !!document.querySelector('#ae-casa canvas'),
+      null, { timeout: 20000 });
+    ok(`  y volver revive el cielo`, true);
+    await p.waitForTimeout(500);
+  }
+  /* ORDENSCAN sigue siendo una casa de afuera: se comprueba LA ORDEN de la
+     pestaña (en el arnés no hay gesto y el navegador la bloquearía). */
   await p.evaluate(() => {
     window.__abiertas = [];
     const real = window.open;
     window.open = (u, ...r) => { window.__abiertas.push(String(u)); return real.call(window, u, ...r); };
   });
-  for (const key of AFUERA) {
-    await p.evaluate((k) => window.__AE_ABRIR(k), key);
-    await p.waitForTimeout(1600);
-    const url = await p.evaluate(() => window.__abiertas.at(-1) || '');
-    ok(`${key} manda a su casa de afuera`, /^https?:\/\//.test(url), url.slice(0, 46));
-    ok(`  y la galaxia se queda en el Inicio`, await p.evaluate(() => VETA.dondeEstoy()) === 'nucleo');
-    ok(`  con el cielo vivo, sin «Entrando…» colgado`, await p.evaluate(() =>
-      !!document.querySelector('#ae-casa canvas') && !document.querySelector('.ae-dim')));
-    await p.waitForTimeout(500);
-  }
+  await p.evaluate(() => window.__AE_ABRIR('scan'));
+  await p.waitForTimeout(1600);
+  const url = await p.evaluate(() => window.__abiertas.at(-1) || '');
+  ok('scan manda a su casa de afuera', /^https?:\/\//.test(url), url.slice(0, 46));
+  ok('  y la galaxia se queda en el Inicio', await p.evaluate(() => VETA.dondeEstoy()) === 'nucleo');
 }
 
 console.log('\n── las pestañas de abajo siempre responden ──────────────────');
