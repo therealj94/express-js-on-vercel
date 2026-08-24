@@ -7603,6 +7603,19 @@ const VETA = (() => {
   const AT_MIRABLES = '.nu-mundo, .nav, button:not([disabled]), a[href], ' +
     '[role="button"]:not([aria-disabled="true"]), input[type="checkbox"], ' +
     'label[for], summary';
+
+  /* LA MIRADA ABRE LO QUE NAVEGA, JAMÁS LO QUE PAGA. Una mirada sostenida es
+     el gesto más fácil de hacer sin querer: quedarse pensando delante de la
+     pantalla no puede acabar en una pantalla de plata. Todo lo que ejecuta o
+     lleva derecho al dinero queda fuera del alcance del aro — para eso está
+     el pellizco, que es deliberado. */
+  const AT_SIN_MIRADA = /vista\('(?:enviar|cobrar|comprar|cambiar|lector|mtp|tarjeta|llaves|seguridad)'|confirmar|firmar/;
+  function atPaga(el) {
+    if (el.closest('[data-sin-mirada]')) return true;
+    const orden = (el.getAttribute('onclick') || '') + ' ' + (el.dataset.vista || '');
+    return AT_SIN_MIRADA.test(orden)
+      || /^(enviar|cobrar|comprar|cambiar|lector|mtp|tarjeta|llaves|seguridad)$/.test(el.dataset.vista || '');
+  }
   let atMira = null;      // { el, desde, hecho }
 
   function atMirarLimpiar() {
@@ -7840,7 +7853,8 @@ const VETA = (() => {
     cur.style.transform = `translate(${p.x}px, ${p.y}px)`;
     cur.classList.toggle('pellizco', !!p.pellizco);
     if (!p.pellizco && !atAgarre) {
-      const boton = atBajo(p.x, p.y)?.closest(AT_MIRABLES) || null;
+      let boton = atBajo(p.x, p.y)?.closest(AT_MIRABLES) || null;
+      if (boton && atPaga(boton)) boton = null;
       if (boton) { atMirarCieloLimpiar(); atMirar(boton, p); }
       else { atMirarLimpiar(); atMirarCielo(p); }
     } else { atMirarLimpiar(); atMirarCieloLimpiar(); }
