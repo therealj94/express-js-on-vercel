@@ -1794,6 +1794,7 @@ const VETA = (() => {
     pay, payex, payneg, paycobro, paymio,
     enviar, recibir, comprar, deposito, token: vToken, identidad: vIdentidad,
     remesas, contactos, sesiones, lector, seguridad, perfil, verificar, cobrar,
+    aucorp: vAucorp, ordenex: vOrdenex,
   };
   const PESTANAS = ['nucleo', 'billetera', 'tarjeta', 'cambiar', 'actividad', 'chat', 'ajustes'];
   // A que pestaña se le enciende la luz cuando estas en una vista que no es una.
@@ -1802,6 +1803,7 @@ const VETA = (() => {
     deposito: 'billetera', token: 'billetera', identidad: 'ajustes',
     remesas: 'billetera', lector: 'billetera', verificar: 'ajustes', cobrar: 'billetera',
     pay: 'nucleo', payex: 'nucleo', payneg: 'nucleo', paycobro: 'nucleo', paymio: 'nucleo',
+    aucorp: 'nucleo', ordenex: 'nucleo',
     genesis: 'nucleo',
     contactos: 'ajustes', sesiones: 'ajustes', seguridad: 'ajustes', perfil: 'ajustes',
   };
@@ -1970,7 +1972,7 @@ const VETA = (() => {
      firmar un envío con la cara tapada, sin leer la letra chica y sin teclado,
      es la clase de comodidad que termina en un arrepentimiento caro. */
   const SIN_VISOR = ['enviar', 'cobrar', 'cambiar', 'comprar', 'lector', 'mtp',
-                     'tarjeta', 'llaves', 'seguridad'];
+                     'tarjeta', 'llaves', 'seguridad', 'aucorp', 'ordenex'];
 
   function vista(cual, dato) {
     if (!VISTAS[cual]) cual = 'nucleo';
@@ -4650,7 +4652,7 @@ const VETA = (() => {
     /* AuCorp ya abre: la esfera deja el «pronto» igual que hizo Ordenex. Sigue
        en oro viejo apagado —es la banca, familia del oro de la casa— pero
        ahora es una puerta. */
-    { id: 'aucorp', x: 50, y: 86, tam: 0.60, fuera: URL_AUCORP,
+    { id: 'aucorp', x: 50, y: 86, tam: 0.60, va: 'aucorp',
       grad: ['#E8E0C8', '#A5936A', '#463B24'], halo: '#CBBB8C', lente: '#141007',
       logo: 'assets/apps/aucorp.png', zoom: 1.5,
       ico: '<rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20M6 15h4"/>' },
@@ -4661,7 +4663,7 @@ const VETA = (() => {
        arranque devuelve a la gente ya con su llave — ver volverConLlave), y
        acuñar un token de paso por cada mirada al mercado seria gastar llaves
        que nadie pidio. */
-    { id: 'oxch', x: 86, y: 49, tam: 0.52, fuera: URL_ORDENEX,
+    { id: 'oxch', x: 86, y: 49, tam: 0.52, va: 'ordenex',
       grad: ['#DCD4F2', '#8D7EC9', '#372B63'], halo: '#A99CDE', lente: '#0D0A1D',
       ico: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>' },
   ];
@@ -5139,6 +5141,65 @@ const VETA = (() => {
   /* Un mundo cerrado no se abre a la fuerza ni se queda mudo: lleva a la
      verificacion, que es lo unico que lo abre. Uno que todavia no existe lo
      dice y no finge una pantalla vacia. */
+  /* ── EL MARCO DE CASA ────────────────────────────────────────────────────
+   * AuCorp y Ordenex son plataformas enteras con su propio dominio. Antes se
+   * abrían en otra pestaña — y desde la galaxia eso se moría en silencio: el
+   * viaje de entrada termina FUERA del gesto del usuario, y un window.open
+   * sin gesto es una pestaña que el navegador bloquea sin decir nada. La
+   * persona veía la entrada, y del otro lado, nada. «Pegado».
+   *
+   * Ahora la casa se abre ADENTRO, en su marco: cabecera con su nombre, la
+   * plataforma llenando el resto, y la salida siempre a la vista. La banca
+   * dejó su portón enmarcable solo para nosotros (frame-ancestors con la
+   * lista de la wallet) — cualquier otro sitio sigue sin poder meterla en un
+   * iframe. */
+  const CASAS_MARCO = {
+    aucorp: { nombre: 'AuCorp', url: () => URL_AUCORP, logo: 'assets/apps/aucorp.png' },
+    ordenex: { nombre: 'Ordenexchange', url: () => URL_ORDENEX, logo: null },
+  };
+
+  function marcoCasa(id) {
+    const c = CASAS_MARCO[id];
+    const u = c.url();
+    return `
+    <section class="marco-casa" data-al-cargar="VETA_marcoVivo">
+      <header class="marco-techo">
+        <button class="marco-atras" onclick="VETA.vista('nucleo')" aria-label="${t('marco.atras')}">←</button>
+        ${c.logo ? `<img class="marco-logo" src="${c.logo}" alt="">` : ''}
+        <b>${c.nombre}</b>
+        <span class="marco-alas"></span>
+        <a class="btn btn-linea btn-sm" href="${esc(u)}" target="_blank" rel="noopener">${t('marco.pestana')}</a>
+      </header>
+      <div class="marco-cuerpo">
+        <div class="marco-carga"><span></span>${t('marco.cargando')}</div>
+        <iframe class="marco-hoja" src="${esc(u)}" title="${c.nombre}"
+                allow="clipboard-write" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      </div>
+    </section>`;
+  }
+  /* Declaradas —no const—: el registro de VISTAS se evalúa mucho antes de
+     llegar aquí, y solo la función izada sobrevive a ese orden. */
+  function vAucorp() { return marcoCasa('aucorp'); }
+  function vOrdenex() { return marcoCasa('ordenex'); }
+
+  /* El cartel de carga se retira cuando la casa de adentro respira. Si en 15
+     segundos no respiró, se dice —con un botón de verdad, que sí puede abrir
+     pestaña porque ES un gesto— en vez de dejar a alguien mirando un anillo
+     que gira para siempre. */
+  function marcoVivo(sec) {
+    const marco = sec.closest ? sec : document.querySelector('.marco-casa');
+    const hoja = marco.querySelector('.marco-hoja');
+    const carga = marco.querySelector('.marco-carga');
+    const reloj = setTimeout(() => {
+      if (!carga.isConnected) return;
+      carga.innerHTML = `${t('marco.noRespira')}
+        <a class="btn btn-oro btn-sm" style="margin-top:10px"
+           href="${hoja.src}" target="_blank" rel="noopener">${t('marco.pestana')}</a>`;
+    }, 15000);
+    hoja.addEventListener('load', () => { clearTimeout(reloj); carga.remove(); hoja.classList.add('viva'); });
+  }
+  window.VETA_marcoVivo = marcoVivo;
+
   function nuAbrir(id) {
     // el clic que llega pegado a un jalon es el final del jalon, no un clic
     if (AURA.jalando()) return;
@@ -5151,7 +5212,25 @@ const VETA = (() => {
        estado antes de decidir (chatEntrar), asi que se la deja decidir a ella. */
     if (m.pideGid && identidad && !esVerificada()) { avisar(t('nu.cerrado')); return vista('verificar'); }
     const fuera = m.paraFuera === 'pay' ? URL_MYTOKENPAY : m.fuera;
-    if (fuera) return window.open(fuera, '_blank', 'noopener');
+    if (fuera) {
+      /* Desde la galaxia este abrir llega DESPUÉS del viaje, fuera del gesto:
+         el navegador puede bloquear la pestaña sin avisar. Si la bloqueó, se
+         ofrece un botón de verdad en vez de fingir que no pasó nada. */
+      const pest = window.open(fuera, '_blank', 'noopener');
+      if (!pest) {
+        avisar(t('nu.pestanaNo'));
+        const carta = document.createElement('div');
+        carta.className = 'puerta-afuera';
+        carta.innerHTML = `<div class="vidrio">
+          <p>${t('nu.pestanaP')}</p>
+          <a class="btn btn-oro" href="${esc(fuera)}" target="_blank" rel="noopener">${esc(m.id === 'scan' ? 'ORDENSCAN' : m.id.toUpperCase())} →</a>
+          <button class="btn btn-linea btn-sm">${t('gc.cerrar')}</button></div>`;
+        carta.querySelector('a').addEventListener('click', () => carta.remove());
+        carta.querySelector('button').addEventListener('click', () => carta.remove());
+        document.body.appendChild(carta);
+      }
+      return;
+    }
     entrarPorLaEsfera(id, () => vista(m.va));
   }
 
@@ -7503,7 +7582,16 @@ const VETA = (() => {
      Un segundo y cuarto es todavía un gesto cómodo —se sostiene sin cansarse—
      y ya no se cruza con el simple hecho de pasar por al lado. */
   const AT_MIRA_MS = 1250;
-  const AT_MIRABLES = '.nu-mundo, .nav';
+  /* Lo que la mirada puede elegir. Antes eran SOLO las esferas y las
+     pestañas: cada otro botón de la casa —cerrar la hoja del cerebro, volver
+     de una app, un enlace— era invisible para AIR TOUCH, y quien miraba fijo
+     un «Cerrar» no veía ni el aro llenarse. Ahora todo lo que se puede
+     presionar con el dedo se puede presionar con la mirada. Los botones de
+     dinero no corren peligro extra: los que confirman plata exigen mantener
+     apretado, y un click de mirada no sostiene nada. */
+  const AT_MIRABLES = '.nu-mundo, .nav, button:not([disabled]), a[href], ' +
+    '[role="button"]:not([aria-disabled="true"]), input[type="checkbox"], ' +
+    'label[for], summary';
   let atMira = null;      // { el, desde, hecho }
 
   function atMirarLimpiar() {

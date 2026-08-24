@@ -41,7 +41,10 @@
   object-src 'none';
   base-uri 'self';
   form-action 'self';
-  frame-src 'none';
+  frame-src
+    https://main.d2e55u6ls6v9xt.amplifyapp.com
+    https://www.ordenexchange.link
+    https://ordenexchange.link;
 ">
 <link rel="icon" href="assets/veta-logo.png">
 <link rel="apple-touch-icon" href="assets/veta-logo.png">
@@ -204,6 +207,43 @@ body.en-visor[data-visor=carton]::after{content:'';position:fixed;left:50%;top:0
   font:400 11px/1.5 var(--sans);color:var(--humo);padding:0 18px;opacity:.75}
 body.en-visor[data-visor=carton] #visor-capa .vs-pista{display:none}
 @media (prefers-reduced-motion:reduce){#visor-capa{animation:none}}
+
+/* EL MARCO DE CASA · AuCorp y Ordenex viven adentro. La cabecera es corta y
+   la plataforma se lleva todo lo demás: el marco tiene que sentirse como una
+   habitación de la misma casa, no como una ventana a otro sitio. */
+.marco-casa{display:flex;flex-direction:column;margin:-4px -2px 0;
+  height:calc(100dvh - 128px)}
+.marco-techo{display:flex;align-items:center;gap:10px;padding:8px 10px;
+  border:1px solid var(--linea2);border-radius:14px 14px 0 0;
+  background:rgba(6,12,28,.72);backdrop-filter:blur(10px)}
+.marco-techo b{font:600 14px/1 var(--sans);color:var(--crema);letter-spacing:.02em}
+.marco-logo{width:20px;height:20px;border-radius:6px;object-fit:cover}
+.marco-alas{flex:1}
+.marco-atras{width:32px;height:32px;border-radius:50%;border:1px solid var(--linea2);
+  background:transparent;color:var(--bruma);font-size:15px;line-height:1;cursor:pointer}
+.marco-atras:hover{color:var(--oro);border-color:var(--oro)}
+.marco-cuerpo{position:relative;flex:1;min-height:0;border:1px solid var(--linea2);
+  border-top:0;border-radius:0 0 14px 14px;overflow:hidden;background:#060b18}
+.marco-hoja{position:absolute;inset:0;width:100%;height:100%;border:0;opacity:0;
+  transition:opacity .45s ease}
+.marco-hoja.viva{opacity:1}
+.marco-carga{position:absolute;inset:0;display:flex;flex-direction:column;gap:12px;
+  align-items:center;justify-content:center;font:500 13px/1.5 var(--sans);
+  color:var(--bruma);text-align:center;padding:0 26px}
+.marco-carga>span{width:26px;height:26px;border-radius:50%;
+  border:2px solid var(--linea2);border-top-color:var(--oro);
+  animation:marco-gira 1s linear infinite}
+@keyframes marco-gira{to{transform:rotate(360deg)}}
+@media (max-width:760px){.marco-casa{height:calc(100dvh - 158px)}}
+@media (prefers-reduced-motion:reduce){.marco-carga>span{animation:none}}
+
+/* La carta de la pestaña bloqueada: un botón de verdad donde el navegador
+   se comió el window.open sin gesto. */
+.puerta-afuera{position:fixed;inset:0;z-index:320;display:flex;align-items:center;
+  justify-content:center;background:rgba(2,6,16,.6);backdrop-filter:blur(6px)}
+.puerta-afuera .vidrio{display:flex;flex-direction:column;gap:14px;max-width:340px;
+  margin:20px;padding:24px;text-align:center}
+.puerta-afuera p{font:400 13.5px/1.6 var(--sans);color:var(--bruma);margin:0}
 
 /* La ficha del visor en Ajustes */
 .vs-caja{display:grid;gap:12px}
@@ -371,6 +411,13 @@ body.en-cerebro #lienzo{position:relative;min-height:100svh}
 /* la mirada: el planeta apuntado crece, la pastilla dice a dónde se va */
 .nu-mundo.at-mira{scale:1.1;transition:scale .28s ease}
 .nav.at-mira{outline:2px solid rgba(234,215,156,.6);outline-offset:2px}
+/* Cualquier botón que la mirada tenga agarrado CONTESTA: aro de oro y un
+   respiro de escala. Sin esta respuesta, mirar fijo un «Cerrar» parece que
+   no está leyendo nada. */
+button.at-mira,a.at-mira,[role=button].at-mira,label.at-mira,summary.at-mira,
+input.at-mira{outline:2px solid rgba(234,215,156,.75);outline-offset:3px;
+  border-radius:10px;scale:1.04;transition:scale .25s ease,outline-color .25s ease}
+@media (prefers-reduced-motion:reduce){button.at-mira,a.at-mira{scale:1;transition:none}}
 #at-nombre{position:fixed;bottom:104px;left:50%;transform:translateX(-50%);z-index:205;
   display:flex;align-items:baseline;gap:10px;padding:10px 22px;border-radius:100px;
   background:rgba(4,10,26,.78);backdrop-filter:blur(10px);border:1px solid var(--linea2);

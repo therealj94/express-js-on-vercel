@@ -426,6 +426,13 @@ es: {
   // deposito
   'dep.t': 'Depositar', 'dep.p': 'Enviá a esta dirección desde otra billetera de la red de Orden Global.',
   'dep.red': 'Red', 'dep.aviso': 'Solo activos de la red de Orden Global (cadena 5550). Cualquier otra cosa que mandes a esta dirección se pierde.',
+  // el marco de casa (AuCorp / Ordenex adentro)
+  'marco.atras': 'Volver al Inicio',
+  'marco.pestana': 'Abrir en pestaña',
+  'marco.cargando': 'Abriendo la casa…',
+  'marco.noRespira': 'La casa no respondió aquí adentro. Podés abrirla en su propia pestaña:',
+  'nu.pestanaNo': 'El navegador bloqueó la pestaña.',
+  'nu.pestanaP': 'El navegador no dejó abrir la pestaña solo. Abrila vos:',
   // modo visor
   'vs.t': 'Modo visor',
   'vs.buscando': 'Viendo qué hay en este aparato…',
@@ -1363,6 +1370,12 @@ en: {
   'cmp.ir': 'Go to Receive',
   'dep.t': 'Deposit', 'dep.p': 'Send to this address from another wallet on the Orden Global network.',
   'dep.red': 'Network', 'dep.aviso': 'Orden Global network assets only (chain 5550). Anything else sent to this address is lost.',
+  'marco.atras': 'Back to Home',
+  'marco.pestana': 'Open in a tab',
+  'marco.cargando': 'Opening the house…',
+  'marco.noRespira': 'The house did not answer in here. You can open it in its own tab:',
+  'nu.pestanaNo': 'The browser blocked the tab.',
+  'nu.pestanaP': 'The browser would not open the tab on its own. Open it yourself:',
   'vs.t': 'Headset mode',
   'vs.buscando': 'Checking what this device can do…',
   'vs.xr': 'Headset detected · six degrees of freedom',
