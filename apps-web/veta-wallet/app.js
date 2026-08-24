@@ -1991,6 +1991,20 @@ const VETA = (() => {
          de salir. Se sale limpio y después se entra. */
       if (cual !== 'nucleo') window.VISOR.salir();
     }
+    /* ── LA MÚSICA ES DEL INICIO ────────────────────────────────────────────
+     *
+     * La pista acompaña a la galaxia, no a la aplicación entera. Dentro de una
+     * casa —la billetera, el chat, un cobro— sobra: ahí se está haciendo algo,
+     * casi siempre con dinero, y una banda sonora encima de una pantalla de
+     * enviar es exactamente el momento en que la música pasa de ambiente a
+     * estorbo. Al volver al Inicio vuelve sola, sin que nadie toque nada.
+     *
+     * Se apaga con un fundido, no de golpe: un corte seco se oye como si algo
+     * se hubiera roto. Y no se toca la DECISIÓN de la persona —quien la
+     * silenció en Ajustes sigue con ella silenciada—: lo único que se mueve es
+     * si suena ahora mismo. */
+    musicaSegunVista(cual);
+
     vistaDato = dato ?? null;
     // Salir de la tarjeta borra el numero y el CVV de la memoria y la deja de
     // frente otra vez. Nadie tiene por que volver y encontrarselos puestos.
@@ -5358,10 +5372,10 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '5922d4d6eb';
+  const VETA_V = '78e2fd9823';
   const VETA_FECHA = '2026-08-24';
 
-  const AET_V = '920fc38322';
+  const AET_V = 'fe2b48c892';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -5512,6 +5526,32 @@ const VETA = (() => {
   /* ── LA MÚSICA ───────────────────────────────────────────────────────────
      El botón, su marca visible, y el estado al arrancar. Encenderla la
      primera vez pide un gesto: por eso el botón vive donde se lo ve. */
+  /* Qué vista es «el Inicio» a estos efectos: la galaxia y nada más. */
+  const CON_MUSICA = new Set(['nucleo']);
+  let musicaEraDelInicio = false;
+
+  function musicaSegunVista(cual) {
+    const M = window.MUSICA;
+    if (!M) return;
+    const toca = CON_MUSICA.has(cual);
+    /* Y EL BOTÓN VIVE DONDE VIVE LA MÚSICA. Dejarlo puesto dentro de un mundo
+       sería ofrecer callar algo que ya está callado — y peor: apretarlo ahí
+       encendería la pista sobre una pantalla de enviar dinero, que es justo lo
+       que esto viene a evitar. En Ajustes sigue estando el interruptor de
+       siempre, que es el que manda de verdad. */
+    $('#musica-btn')?.classList.toggle('oculto', !toca);
+
+    if (toca) {
+      /* Vuelve solo si la persona la quiere puesta: quien la calló en Ajustes
+         no se la encuentra encendida al volver al Inicio. */
+      if (musicaEraDelInicio && M.quiere() && !M.puesta()) M.encender(false);
+      musicaEraDelInicio = true;
+    } else if (M.puesta()) {
+      musicaEraDelInicio = true;
+      M.apagar(false);
+    }
+  }
+
   function musicaAlterna() {
     if (!window.MUSICA) return;
     MUSICA.alterna();
@@ -5720,7 +5760,7 @@ const VETA = (() => {
   /* Antes esto era un booleano «viene de Ordenex». Con AuCorp abriendo por el
      mismo circuito, un segundo booleano habria sido dos caminos paralelos que
      se separan en cuanto alguien arregla uno solo. Asi que guarda el DESTINO:
-     una casa nueva del ecosistema solo agrega una linea a CASAS_SSO. */
+     un mundo nuevo del ecosistema solo agrega una linea a CASAS_SSO. */
   let ssoDestino = null;
   /* El cobro entrante (#pagar…) sobrevive al login, igual que el destino de
      SSO. Sin esto se perdia: quien llegaba SIN sesion iba a la puerta, y
@@ -10056,7 +10096,7 @@ const VETA = (() => {
     es: {
       /* El saludo de visita. Ni una palabra de venta: quien acaba de llegar
          quiere saber que hay alguien y que no le van a pedir nada todavia. */
-      holaVisita: 'Bienvenido a Orden Global. Soy AU-RA, la inteligencia de la casa. Preguntame lo que quieras del ecosistema —qué es ORIGEN, cómo funciona la cadena, qué hace falta para abrir una cuenta— y te contesto acá mismo, sin que tengas que registrarte ni darme nada.',
+      holaVisita: 'Bienvenido a Orden Global. Soy AU-RA, la inteligencia del ecosistema. Preguntame lo que quieras del ecosistema —qué es ORIGEN, cómo funciona la cadena, qué hace falta para abrir una cuenta— y te contesto acá mismo, sin que tengas que registrarte ni darme nada.',
       chipsVisita: ['¿Qué es Orden Global?', '¿Qué es ORIGEN?', '¿Es seguro?', 'Abrir mi cuenta'],
       vAbrir: 'Abrir mi cuenta',
       vSinCuenta: 'Eso ya es de tu cuenta, y todavía no tenés una — así que no hay saldo ni actividad de la que hablarte. En cuanto abrás la cuenta te lo contesto con tus números de verdad, nunca con un ejemplo.',
@@ -10161,7 +10201,7 @@ const VETA = (() => {
         og: 'Orden Global es un ecosistema completo: tu dinero (Veta Wallet), tu gente (PULSE2CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), todos conectados sobre nuestra propia cadena. Una cuenta, todas las puertas.',
         comision: 'La comisión de red se paga siempre en ORIGEN, también cuando enviás otro token, y es mínima: nuestra cadena es propia. El equivalente lo ves antes de confirmar cualquier envío.',
         remesas: 'Con remesas ves cuánto llega del otro lado después de la comisión y del cambio, en nueve países. Te abro el calculador.',
-        aucorp: 'AuCorp es la casa de cuentas en moneda local del ecosistema: tus cuentas en moneda local, en 21 monedas del continente, con esta misma cuenta y sin otra contraseña. Entrás por su esfera del Núcleo: abrís cuentas, depositás con tu referencia, cambiás con la tasa real dicha con su fecha y su margen, y retirás a tu banco. La tarjeta AuCorp ya se está armando y se va a pedir desde esa misma plataforma. AuCorp es dueña de Ordenex y aliada de Orden Global.',
+        aucorp: 'AuCorp lleva las cuentas en moneda local del ecosistema: tus cuentas en moneda local, en 21 monedas del continente, con esta misma cuenta y sin otra contraseña. Entrás por su esfera del Núcleo: abrís cuentas, depositás con tu referencia, cambiás con la tasa real dicha con su fecha y su margen, y retirás a tu banco. La tarjeta AuCorp ya se está armando y se va a pedir desde esa misma plataforma. AuCorp es dueña de Ordenex y aliada de Orden Global.',
         pronto: 'Ordenexchange y AuCorp ya abrieron: la casa de cambio y las cuentas en moneda local, las dos con esta misma cuenta desde su esfera del Núcleo. AuCorp es la que antes se llamaba AUBANK: cambió el nombre, no la casa. El ecosistema no es una lista cerrada. Crece.',
       },
       teEscucho: 'Te escucho…',
@@ -10943,12 +10983,23 @@ const VETA = (() => {
      * mudo emocionaba.
      */
     return es ? {
+      /* ── I. LA NADA ─────────────────────────────────────────────────────
+         El título es ORIGEN a propósito. Al empezar se lee como el nombre de
+         la historia; al final resulta que era el nombre de la cosa que la
+         sostenía todo el tiempo. Es gratis, y es lo que hace que cierre. */
+      titulo: 'ORIGEN',
       negro: 'Antes de todo, no había nada.',
       tiniebla: 'Ni orden. Ni luz. Solo distancia.',
+
+      /* ── II. LA LUZ ───────────────────────────────────────────────────── */
       palabra: 'Y dijo: «Sea la luz».',
       luz: 'Y fue la luz.',
+
+      /* ── III. EL ORDEN ────────────────────────────────────────────────── */
       palabraOrden: 'Y dijo: «Que haya orden».',
       orden: 'Y cada mundo encontró su órbita.',
+
+      /* ── IV. LOS MUNDOS ───────────────────────────────────────────────── */
       casas: {
         wallet: ['VETA WALLET', 'Tu valor, en tu mano. Nadie lo custodia por vos.'],
         chat: ['PULSE2CHAT', 'La palabra que fluye, sellada de punta a punta.'],
@@ -10956,40 +11007,44 @@ const VETA = (() => {
         pay: ['MYTOKENPAY', 'Tu saldo, aceptado en el mostrador de la esquina.'],
         genesis: ['GENESIS CORE', 'La memoria del origen: cómo empezó todo esto.'],
       },
-      /* EL TÍTULO. La película se llama como lo que cuenta. Aparece sobre el
-         negro absoluto, antes de la primera frase: una palabra sola en una
-         pantalla vacía es la manera más vieja y más segura de empezar algo. */
-      titulo: 'ORIGEN',
-      /* ORIGEN, EN EL CENTRO. Cuatro rótulos, no uno: qué es, qué la sostiene,
-         sobre qué corre, y qué va a hacer. Juntos serían un párrafo que nadie
-         lee; separados, con su respiro cada uno, son cuatro golpes.
-         Y se dice sin adornos: una moneda se explica en una frase o no se
-         explica. */
-      origen: 'Y en el centro, ORIGEN.\nNuestra moneda, referenciada al oro.',
-      respaldo: 'No la promesa de un gobierno.\nMetal que existe, que se pesa\ny que no lo imprime nadie.',
-      /* LA CADENA. Es lo que faltaba decir: una moneda no es solo su respaldo,
-         es también dónde vive. Y esta vive en algo nuestro, no alquilado. */
-      cadena: 'Y corre sobre una cadena propia.\nNo alquilada. Nuestra.\nCada movimiento queda escrito ahí.',
-      /* LA FUERZA. La frase que explica por qué todo lo anterior es UNA cosa y
-         no ocho cosas al lado. */
-      fuerza: 'Eso es lo que sostiene todo esto unido:\nel valor de un lado, la cadena del otro,\ny cada casa hablando el mismo idioma.',
-      /* Y QUE NO ESTÁ TERMINADO. Es lo que convierte una demostración en una
-         invitación: lo que se enseña hoy es el principio. */
-      creciendo: 'Y va a seguir uniendo cosas.\nCada problema que resolvemos\nes una casa más en este cielo.',
+
+      /* ── V. EL UNIVERSO ───────────────────────────────────────────────── */
       universo: 'Y alrededor, un universo entero.',
+
+      /* ── VI. LO QUE LO SOSTIENE ───────────────────────────────────────────
+         Aquí, y no antes. Se acaba de ver el sistema entero girando, así que
+         la pregunta «¿y qué lo mantiene unido?» ya se la está haciendo quien
+         mira: se contesta cuando se preguntó.
+         Dos frases en este acto, separadas por un silencio: la primera abre
+         la pregunta y la segunda la contesta con una palabra. */
+      origen: 'Nada de esto se sostiene en el aire.',
+      origen2: 'Todo gira alrededor de una sola cosa.\nORIGEN.',
+      respaldo: 'Una moneda con el oro detrás.\nNo la promesa de un gobierno:\nmetal que existe y que se pesa.',
+      cadena: 'Y debajo, una cadena propia.\nNo alquilada. Nuestra.\nCada movimiento, escrito para siempre.',
+      fuerza: 'Eso es lo que lo mantiene todo unido:\nel valor de un lado, la verdad del otro,\ny cada mundo hablando el mismo idioma.',
+      /* Y que no está terminado: es lo que convierte una demostración en una
+         invitación. Lo que se acaba de enseñar es el principio. */
+      creciendo: 'Y va a seguir uniendo cosas.\nCada problema que resolvemos\nes un mundo más en este cielo.',
+
+      /* ── VII. PARA QUÉ ────────────────────────────────────────────────── */
       obra: 'Nada de esto nos lo dieron.\nLa cadena, la identidad, las cuentas:\ncada pieza la levantamos nosotros.',
-      /* PARA QUIÉN. Es la frase que convierte una demostración de tecnología
-         en un motivo. Va antes del «vos» a propósito: primero el porqué, y
-         recién después la invitación. */
-      puente: 'Y llevamos los fondos\nhasta quien nunca los tuvo cerca.',
+      /* La frase de José, con sus palabras: traer los fondos a quien no los
+         tiene. Va después de ORIGEN a propósito — recién se explicó QUÉ es lo
+         que se lleva, así que ahora «lo llevamos» tiene sujeto. */
+      puente: 'Y lo llevamos donde nunca llegó.\nFondos para quien nunca los tuvo cerca.',
       union: 'Para unir las economías\nde América Latina y del mundo\ncon algo que genere valor de verdad.',
+
+      /* ── VIII. VOS ────────────────────────────────────────────────────────
+         El final no pide nada: dice que hay un sitio. Pedir suena a folleto;
+         decirle a alguien que su sitio ya existe y está vacío, no. */
       vos: nombre ? `Y vos estás acá, ${nombre}.` : 'Y vos estás acá.',
       vos2: 'Eso no es casualidad.',
-      proposito: 'Esto no es una aplicación más.\nEs que el orden que hoy es de pocos,\nmañana sea de todos.',
-      invitacion: 'Falta lo más grande,\ny falta con vos.',
+      proposito: 'Tenés un propósito en esto,\ny no es mirarlo.\nEs ser parte.',
+      invitacion: 'Llevalo a cada rincón.\nFalta lo más grande,\ny falta con vos.',
       cierre: 'EL FUTURO ES ORDEN.',
       saltar: 'Saltar',
     } : {
+      titulo: 'ORIGEN',
       negro: 'Before everything, there was nothing.',
       tiniebla: 'No order. No light. Only distance.',
       palabra: 'And said: “Let there be light.”',
@@ -11003,20 +11058,20 @@ const VETA = (() => {
         pay: ['MYTOKENPAY', 'Your balance, accepted at the shop on the corner.'],
         genesis: ['GENESIS CORE', 'The memory of the origin: how all of this began.'],
       },
-      titulo: 'ORIGEN',
-      origen: 'And at the centre, ORIGEN.\nOur currency, referenced to gold.',
-      respaldo: 'Not a government promise.\nMetal that exists, that can be weighed,\nand that nobody prints.',
-      cadena: 'And it runs on a chain of our own.\nNot rented. Ours.\nEvery movement is written there.',
-      fuerza: 'That is what holds all of this together:\nthe value on one side, the chain on the other,\nand every house speaking the same language.',
-      creciendo: 'And it will keep joining things.\nEvery problem we solve\nis one more house in this sky.',
       universo: 'And all around, an entire universe.',
+      origen: 'None of this holds itself up in mid-air.',
+      origen2: 'It all turns around one single thing.\nORIGEN.',
+      respaldo: 'A currency with gold behind it.\nNot a government promise:\nmetal that exists and can be weighed.',
+      cadena: 'And underneath, a chain of our own.\nNot rented. Ours.\nEvery movement, written for good.',
+      fuerza: 'That is what holds it all together:\nthe value on one side, the truth on the other,\nand every world speaking one language.',
+      creciendo: 'And it will keep joining things.\nEvery problem we solve\nis one more world in this sky.',
       obra: 'None of this was given to us.\nThe chain, the identity, the accounts:\nwe raised every piece ourselves.',
-      puente: 'And we carry the funds\nto those who never had them within reach.',
+      puente: 'And we take it where it never arrived.\nFunds for those who never had them near.',
       union: 'To join the economies\nof Latin America and the world\nwith something that creates real value.',
       vos: nombre ? `And you are here, ${nombre}.` : 'And you are here.',
       vos2: 'That is no accident.',
-      proposito: 'This is not one more app.\nIt is that the order few hold today\nbelongs to everyone tomorrow.',
-      invitacion: 'The biggest part is still missing,\nand it is missing you.',
+      proposito: 'You have a purpose in this,\nand it is not to watch it.\nIt is to be part of it.',
+      invitacion: 'Take it to every corner.\nThe biggest part is still missing,\nand it is missing you.',
       cierre: 'THE FUTURE IS ORDER.',
       saltar: 'Skip',
     };
@@ -11138,9 +11193,14 @@ const VETA = (() => {
         /* ORIGEN, EL CENTRO. Dos rótulos con aire entre ellos: primero qué es
            la moneda y después qué la sostiene. Es el corazón del relato —el
            sol de esta galaxia ES la moneda— así que la música sube con él. */
+        /* ORIGEN, EN DOS TIEMPOS. La primera frase abre la pregunta y se
+           queda sola casi cuatro segundos; la segunda la contesta con una
+           palabra. Ese silencio entre las dos es todo el efecto: sin él son
+           dos renglones seguidos y no pasa nada. */
         else if (clave === 'origen') {
           centro(G.origen, true);
-          try { MUSICA?.crecer(1.35, 3.2); } catch { /* nada */ }
+          centro(G.origen2, true, 3900);
+          try { MUSICA?.crecer(1.35, 3.6); } catch { /* nada */ }
         }
         else if (clave === 'respaldo') centro(G.respaldo, true);
         /* La cadena y la fuerza: es el corazón de lo que hay que entender, así
@@ -11150,6 +11210,7 @@ const VETA = (() => {
           centro(G.fuerza, true);
           try { MUSICA?.crecer(1.4, 3.4); } catch { /* nada */ }
         }
+        else if (clave === 'creciendo') centro(G.creciendo, true);
         else if (clave.startsWith('casa:')) {
           const c = G.casas[clave.slice(5)];
           if (c) pie(c[0], c[1]);
@@ -11163,7 +11224,7 @@ const VETA = (() => {
           centro(G.union, true);
           try { MUSICA?.crecer(1.5, 3.6); } catch { /* nada */ }
         }
-        else if (clave === 'creciendo') centro(G.creciendo, true);
+
         else if (clave === 'vos') {
           /* El golpe de este acto son DOS frases: la primera nombra, la
              segunda remata. Separadas por tres segundos y medio de silencio,

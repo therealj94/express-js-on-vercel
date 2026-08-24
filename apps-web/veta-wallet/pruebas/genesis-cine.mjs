@@ -176,6 +176,13 @@ console.log('\n── el retroceso que enseña el universo ───────
   /* Y LA LLUVIA: el plano del cielo abre el caudal de estrellas fugaces. */
   let vioLluvia = false;
   let masFuera = 0;
+  /* EL ORDEN DEL RELATO. Que las frases aparezcan no basta: lo que se
+     rediseñó es CUÁNDO. ORIGEN tiene que llegar después de haber visto los
+     mundos y el universo —cuando quien mira ya se está preguntando qué lo
+     mantiene unido— y no antes, cortando el cuento para explicar producto. */
+  const cuando = {};
+  const marcar = (k) => { if (cuando[k] === undefined) cuando[k] = Date.now(); };
+  let vioProposito2 = false;
   while (Date.now() < hasta) {
     const st = await pag.evaluate(() => ({
       r: window.__aeCamera.position.length(),
@@ -207,10 +214,13 @@ console.log('\n── el retroceso que enseña el universo ───────
       })(),
     }));
     masLejos = Math.max(masLejos, st.r);
-    if (/universo entero/i.test(st.txt)) vioUniverso = true;
+    if (/universo entero/i.test(st.txt)) { vioUniverso = true; marcar('universo'); }
+    if (st.prota) marcar('mundos');
+    if (/propósito en esto|no es mirarlo|ser parte/i.test(st.txt)) vioProposito2 = true;
+    if (/cada rincón/i.test(st.txt)) marcar('rincon');
     if (/no es casualidad|casualidad/i.test(st.txt)) vioProposito = true;
     if (/expandirlo|futuro es orden|falta con vos/i.test(st.txt)) vioInvitacion = true;
-    if (/en el centro, ORIGEN|referenciada al oro/i.test(st.txt)) vioOrigen = true;
+    if (/una sola cosa|se sostiene en el aire/i.test(st.txt)) { vioOrigen = true; marcar('origen'); }
     if (/promesa de un gobierno|se pesa/i.test(st.txt)) vioRespaldo = true;
     if (/llevamos los fondos|nunca los tuvo/i.test(st.txt)) vioFondos = true;
     if (/unir las economías|América Latina/i.test(st.txt)) vioUnion = true;
@@ -268,6 +278,18 @@ console.log('\n── el retroceso que enseña el universo ───────
      nunca. En el plano cuyo tema ES el cielo, la cámara los busca. */
   ok('y la cámara se da vuelta a mirar el cielo', masFuera > 25,
      `${masFuera}° apartada del centro de la galaxia`);
+
+  /* EL ARCO, EN ORDEN. Es lo que se rediseñó y es lo único que una lista de
+     frases sueltas no comprueba. */
+  ok('los mundos se presentan antes que el universo',
+     cuando.mundos !== undefined && cuando.universo !== undefined
+     && cuando.mundos < cuando.universo);
+  ok('y ORIGEN llega DESPUÉS de todo eso, no antes',
+     cuando.origen !== undefined && cuando.universo !== undefined
+     && cuando.origen > cuando.universo,
+     cuando.origen === undefined ? 'no se dijo' : 'en su sitio');
+  ok('la historia termina dando un propósito', vioProposito2);
+  ok('y pidiendo llevarlo a cada rincón', cuando.rincon !== undefined);
 }
 
 console.log('\n── al terminar, la casa vuelve entera ───────────────────────');

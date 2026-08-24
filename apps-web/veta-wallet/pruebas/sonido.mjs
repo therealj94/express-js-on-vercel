@@ -130,6 +130,17 @@ console.log('\n── el toque de elegir SÍ suena, y se apaga solo ────
 
 console.log('\n── el botón de la música funciona SOBRE la galaxia ──────────');
 {
+  /* De vuelta al Inicio. La sección anterior tocó un planeta, y eso no es
+     instantáneo: dispara un VUELO de un par de segundos que aterriza dentro de
+     ese mundo. Pedir el Inicio antes de que aterrice no sirve de nada — el
+     vuelo llega después y vuelve a abrir la billetera encima. Así que primero
+     se espera a que el viaje TERMINE, y recién entonces se vuelve. */
+  await pag.waitForFunction(() => !document.body.classList.contains('en-cerebro'),
+    null, { timeout: 12000 }).catch(() => {});
+  await pag.evaluate(() => VETA.vista('nucleo'));
+  await pag.waitForFunction(() => document.body.classList.contains('en-cerebro'),
+    null, { timeout: 12000 });
+  await pag.waitForTimeout(600);
   const btn = await pag.$('#musica-btn');
   ok('el botón está en pantalla', !!btn);
   if (btn) {
@@ -145,11 +156,15 @@ console.log('\n── el botón de la música funciona SOBRE la galaxia ──�
     });
     ok('y el toque le llega a él', quien === 'el botón', String(quien));
 
-    const antes = await pag.evaluate(() => window.MUSICA.quiere());
+    /* Lo que tiene que cambiar es SI SUENA, no la preferencia guardada.
+       Apretar el botón con la música parada la enciende sin tocar el ajuste
+       —ya estaba en «sí», simplemente no había sonado todavía—, así que mirar
+       la preferencia dice «no pasó nada» cuando sí pasó. */
+    const antes = await pag.evaluate(() => window.MUSICA.puesta());
     await btn.click();
-    await pag.waitForTimeout(500);
-    const despues = await pag.evaluate(() => window.MUSICA.quiere());
-    ok('tocarlo cambia la música', antes !== despues, `${antes} → ${despues}`);
+    await pag.waitForTimeout(600);
+    const despues = await pag.evaluate(() => window.MUSICA.puesta());
+    ok('tocarlo cambia si suena', antes !== despues, `${antes} → ${despues}`);
     ok('y el botón se ve como quedó',
        await btn.evaluate((el) => el.classList.contains('callada')) === !despues);
     await btn.click();     // se deja como estaba
@@ -188,6 +203,45 @@ console.log('\n── la música no se agacha sola ─────────�
   ok('un golpe pide un respiro corto', !!golpe && golpe.ms <= 500,
      golpe ? `${golpe.ms}ms` : 'ninguno');
   ok('y nunca hondo', !!golpe && !golpe.hondo);
+}
+
+console.log('\n── la música es del Inicio, no de toda la app ───────────────');
+{
+  /* La pista acompaña a la galaxia. Dentro de un mundo —la billetera, el
+     chat, un cobro— sobra: ahí se está haciendo algo, casi siempre con
+     dinero, y una banda sonora encima de una pantalla de enviar es
+     exactamente el momento en que la música pasa de ambiente a estorbo.
+     Al volver al Inicio vuelve sola, sin que nadie toque nada. */
+  await pag.evaluate(() => { VETA.vista('nucleo'); window.MUSICA.encender(); });
+  await pag.waitForTimeout(700);
+  ok('en el Inicio suena', await pag.evaluate(() => window.MUSICA.puesta()));
+
+  await pag.evaluate(() => VETA.vista('billetera'));
+  await pag.waitForTimeout(900);
+  ok('al entrar a un mundo se calla', await pag.evaluate(() => !window.MUSICA.puesta()));
+  /* Y el botón se retira con ella: ofrecer callar algo que ya está callado
+     confunde, y apretarlo ahí encendería la pista sobre una pantalla de
+     enviar dinero. */
+  ok('y su botón se retira', await pag.evaluate(() =>
+    document.getElementById('musica-btn')?.classList.contains('oculto') === true));
+  /* Y NO SE PIERDE LA DECISIÓN DE LA PERSONA: callarla al entrar no es lo
+     mismo que apagarla. Quien la quería puesta la sigue queriendo. */
+  ok('pero sigue queriéndola puesta', await pag.evaluate(() => window.MUSICA.quiere()));
+
+  await pag.evaluate(() => VETA.vista('nucleo'));
+  await pag.waitForTimeout(900);
+  ok('y al volver al Inicio vuelve sola', await pag.evaluate(() => window.MUSICA.puesta()));
+  ok('con su botón otra vez a la vista', await pag.evaluate(() =>
+    document.getElementById('musica-btn')?.classList.contains('oculto') === false));
+
+  /* AL REVÉS TAMBIÉN: quien la calló en Ajustes no se la encuentra encendida
+     al volver al Inicio. Volver no es una excusa para desobedecer. */
+  await pag.evaluate(() => window.MUSICA.apagar());
+  await pag.evaluate(() => VETA.vista('billetera'));
+  await pag.waitForTimeout(600);
+  await pag.evaluate(() => VETA.vista('nucleo'));
+  await pag.waitForTimeout(900);
+  ok('y si la callaste, sigue callada', await pag.evaluate(() => !window.MUSICA.puesta()));
 }
 
 ok('sin errores de página en todo el recorrido', pag.errores.length === 0,
