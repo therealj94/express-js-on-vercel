@@ -43,7 +43,7 @@ const ALTO = 512
    una frase que no cambia. */
 const cache = new Map<string, THREE.CanvasTexture>()
 
-function pintar(texto: string, peso: 'normal' | 'grande' | 'cierre'): THREE.CanvasTexture {
+function pintar(texto: string, peso: 'normal' | 'grande' | 'cierre' | 'titulo'): THREE.CanvasTexture {
   const clave = `${peso}:${texto}`
   const hecho = cache.get(clave)
   if (hecho) return hecho
@@ -54,14 +54,16 @@ function pintar(texto: string, peso: 'normal' | 'grande' | 'cierre'): THREE.Canv
   const g = c.getContext('2d')!
 
   const lineas = texto.split('\n')
-  const tam = peso === 'grande' ? 128 : peso === 'cierre' ? 104 : 92
-  const familia = peso === 'cierre'
+  const tam = peso === 'grande' ? 128 : peso === 'titulo' ? 116 : peso === 'cierre' ? 104 : 92
+  const familia = peso === 'cierre' || peso === 'titulo'
     ? `600 ${tam}px Cinzel, "Bodoni Moda", Georgia, serif`
     : `500 ${tam}px Cinzel, "Bodoni Moda", Georgia, serif`
   g.font = familia
   g.textAlign = 'center'
   g.textBaseline = 'middle'
-  g.letterSpacing = peso === 'cierre' ? '18px' : '2px'
+  /* El titulo lleva el mismo aire que en pantalla: mucha separacion entre
+     letras es lo que hace que algo se lea como titulo y no como frase. */
+  g.letterSpacing = peso === 'cierre' ? '18px' : peso === 'titulo' ? '22px' : '2px'
 
   const alto = tam * 1.35
   const y0 = ALTO / 2 - ((lineas.length - 1) * alto) / 2
@@ -75,9 +77,10 @@ function pintar(texto: string, peso: 'normal' | 'grande' | 'cierre'): THREE.Canv
     g.lineJoin = 'round'
     g.strokeStyle = 'rgba(2,5,14,0.92)'
     g.strokeText(l, ANCHO / 2, y)
-    g.shadowColor = peso === 'cierre' ? 'rgba(201,169,97,0.75)' : 'rgba(0,0,0,0.9)'
+    g.shadowColor = peso === 'cierre' || peso === 'titulo'
+      ? 'rgba(201,169,97,0.75)' : 'rgba(0,0,0,0.9)'
     g.shadowBlur = 26
-    g.fillStyle = peso === 'cierre' ? '#EAD79C' : '#F7EDD2'
+    g.fillStyle = peso === 'cierre' || peso === 'titulo' ? '#EAD79C' : '#F7EDD2'
     g.fillText(l, ANCHO / 2, y)
     g.shadowBlur = 0
   })
@@ -91,7 +94,7 @@ function pintar(texto: string, peso: 'normal' | 'grande' | 'cierre'): THREE.Canv
 
 export interface Frase {
   texto: string
-  peso: 'normal' | 'grande' | 'cierre'
+  peso: 'normal' | 'grande' | 'cierre' | 'titulo'
   /* Un sello de tiempo: dos frases iguales seguidas tienen que volver a
      entrar, y sin esto la segunda no se notaría. */
   turno: number
@@ -109,7 +112,8 @@ export function Teatro() {
   useEffect(() => {
     const w = window as any
     let turno = 0
-    w.__AE_DECIR = (texto: string | null, peso: 'normal' | 'grande' | 'cierre' = 'normal') => {
+    w.__AE_DECIR = (texto: string | null,
+                    peso: 'normal' | 'grande' | 'cierre' | 'titulo' = 'normal') => {
       turno += 1
       if (!texto) { setFrase(null); return }
       setFrase({ texto, peso, turno })
@@ -217,7 +221,7 @@ export function Teatro() {
     qMeta.setFromRotationMatrix(mLook.lookAt(g.position, ojoPos, arriba))
     g.quaternion.slerp(qMeta, 1 - Math.exp(-5 * dt))
 
-    const s = frase.peso === 'grande' ? 1.18 : 1
+    const s = frase.peso === 'grande' ? 1.18 : frase.peso === 'titulo' ? 1.14 : 1
     m.scale.set(2.4 * s, 0.6 * s, 1)
   })
 

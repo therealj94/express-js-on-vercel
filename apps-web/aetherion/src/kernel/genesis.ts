@@ -263,7 +263,11 @@ function empezar(opciones: Opciones = {}) {
     /* Y FUE LA LUZ. El sol nace y la cámara RETROCEDE de golpe, como quien se
        echa atrás ante algo que estalla. Es el único movimiento brusco de toda
        la película, y por eso funciona. */
-    { clave: 'luz', dura: 4600, mover: { radio: 38, curva: 'sale' } },
+    /* MÁS LARGO QUE ANTES, y por dos razones concretas: la onda que sale de
+       AU-RA tarda casi segundo y medio en cruzar la escena y pasar por encima
+       de la cámara —cortarla ahí sería tirar el efecto—, y después entra la
+       segunda frase, la que dice que todo salió de ella. */
+    { clave: 'luz', dura: 7200, mover: { radio: 38, curva: 'sale' } },
 
     /* ── III. EL ORDEN ─────────────────────────────────────────────────── */
     { clave: 'palabraOrden', dura: 5200, mover: { radio: 33, giro: 0.25, curva: 'suave' } },
@@ -278,7 +282,12 @@ function empezar(opciones: Opciones = {}) {
        que ninguno dure de más. Nombre, una línea, y el siguiente. El vuelo
        llega al 55% del acto, así que quedan dos segundos largos de casa
        quieta en cuadro — que es todo lo que hace falta para leer un renglón. */
-    ...casas.map((k) => ({ clave: `casa:${k}`, dura: 4900, casa: k,
+    /* CINCO SEIS POR MUNDO. Subió desde 4,9 porque el texto cambió: ahora cada
+       mundo lleva DOS renglones —qué es, y qué asegura— y dos renglones no se
+       leen en el tiempo de uno. Sigue siendo lo más corto que se puede: son
+       ocho seguidos y del mismo tipo de plano, y lo que sostiene una fila así
+       no es que cada uno dure mucho sino que ninguno dure de más. */
+    ...casas.map((k) => ({ clave: `casa:${k}`, dura: 5600, casa: k,
       mover: { curva: 'llega' as Curva } })),
 
     /* ── V. EL UNIVERSO ────────────────────────────────────────────────── */
@@ -299,12 +308,12 @@ function empezar(opciones: Opciones = {}) {
     /* MINAS, aquí. Se acaba de decir «metal que existe y que se pesa», y la
        pregunta inmediata es de dónde sale ese metal. La respuesta es un mundo
        que se puede señalar. */
-    { clave: 'casa:minas', dura: 6200, casa: 'minas', mover: { curva: 'llega' as Curva } },
+    { clave: 'casa:minas', dura: 8600, casa: 'minas', mover: { curva: 'llega' as Curva } },
     { clave: 'cadena', dura: 8200, mover: { radio: 24, phi: 1.30, giro: 1.25, curva: 'suave' } },
     /* DBNX, aquí. Se acaba de decir que hay una cadena propia donde queda
        escrito todo; DBNX es quien pone las reglas de lo que se emite encima.
        Va pegado a la cadena porque sin la cadena no significa nada. */
-    { clave: 'casa:dbnx', dura: 6200, casa: 'dbnx', mover: { curva: 'llega' as Curva } },
+    { clave: 'casa:dbnx', dura: 8600, casa: 'dbnx', mover: { curva: 'llega' as Curva } },
     /* La fuerza. Sube al plano y se queda: la frase que explica por qué todo
        lo anterior es UNA cosa se dice quieto. */
     { clave: 'fuerza', dura: 8000, mover: { radio: 21, phi: 0.86, giro: 0.4, curva: 'sale' } },

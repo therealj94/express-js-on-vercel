@@ -115,6 +115,10 @@ console.log('\n── la tiniebla: oscura de verdad ─────────�
   ok('la película se presenta con su título', titulo);
   ok('y el título llega sobre el negro, sin nada encendido detrás',
      await pag.evaluate(() => window.__AE_NOCHE() > 0.9));
+  /* Y SE VE COMO UN TÍTULO, no como la primera frase del relato: caja alta,
+     oro, sus reglas arriba y abajo, en el medio de la pantalla. */
+  ok('y se ve como un título, no como una frase más',
+     await pag.evaluate(() => !!document.querySelector('#gen-letra .gen-centro.titulo')));
 
   // la noche tiene que LLEGAR a uno, no quedarse a medias
   await pag.waitForFunction(() => window.__AE_NOCHE() > 0.95, null, { timeout: 9000 });
@@ -153,7 +157,7 @@ console.log('\n── el retroceso que enseña el universo ───────
   /* La película creció: el arranque se alargó a propósito —empezaba antes de
      que nadie hubiera terminado de sentarse— y se le sumaron los actos de
      ORIGEN y de la misión. La ventana la acompaña. */
-  const hasta = Date.now() + 250000;
+  const hasta = Date.now() + 275000;
   let vioUniverso = false;
   let vioProposito = false;
   let vioInvitacion = false;
@@ -193,6 +197,13 @@ console.log('\n── el retroceso que enseña el universo ───────
   let pulsoMin = 9; let pulsoMax = -9;
   /* Y los dos que no son apps, que se dicen con una frase y no con un lema. */
   let dijoMinas = false; let dijoDbnx = false;
+  /* EL ROTULO NO SE EVAPORA. En MINAS y DBNX el nombre del mundo tiene que
+     seguir puesto cuando entra su frase: no es un titulo que ya cumplio, es
+     el mundo que se esta mirando, y sacarlo deja la frase huerfana. */
+  let pieYFraseJuntos = false;
+  /* Y LA ONDA CRECE. El destello ya no es un velo plano: sale del centro —de
+     AU-RA— y se expande. Se mide que el radio de la onda AVANCE. */
+  let ondaVista = [];
   while (Date.now() < hasta) {
     const st = await pag.evaluate(() => ({
       r: window.__aeCamera.position.length(),
@@ -203,6 +214,10 @@ console.log('\n── el retroceso que enseña el universo ───────
       lluvia: window.__AE_LLUVIA?.() || 1,
       destello: window.__AE_DESTELLO?.() || 0,
       pulso: window.__AE_PULSO?.() ?? 0,
+      /* ¿El rotulo del mundo sigue puesto? */
+      pieVe: !!document.querySelector('#gen-letra .gen-pie.ve'),
+      /* ¿El titulo lleva su propia letra, o es una frase mas? */
+      esTitulo: !!document.querySelector('#gen-letra .gen-centro.titulo'),
       /* Cuánto se aparta la cámara del centro de la galaxia. Mirando al
          centro es cero; mirando a otra cosa —un agujero negro— es grande.
          Es la forma de comprobar que el plano del cielo enseña ALGO y no un
@@ -265,8 +280,10 @@ console.log('\n── el retroceso que enseña el universo ───────
     destelloAntes = st.destello;
     if (st.pulso < pulsoMin) pulsoMin = st.pulso;
     if (st.pulso > pulsoMax) pulsoMax = st.pulso;
-    if (/nuestro poder|Minas de metales/i.test(st.txt)) dijoMinas = true;
-    if (/DBNX audita|activos del mundo real/i.test(st.txt)) dijoDbnx = true;
+    if (/no es una promesa|minas que son nuestras/i.test(st.txt)) dijoMinas = true;
+    if (/nace auditado|En regla, o no nace/i.test(st.txt)) dijoDbnx = true;
+    if (st.pieVe && /no es una promesa|nace auditado/i.test(st.txt)) pieYFraseJuntos = true;
+    if (st.destello > 0.02) ondaVista.push(st.destello);
     if (!st.vivo) break;
     await pag.waitForTimeout(700);
   }
@@ -298,6 +315,7 @@ console.log('\n── el retroceso que enseña el universo ───────
      ['aucorp', 'oxch', 'scan'].every((k) => protagonistas.has(k)));
   ok('y MINAS y DBNX, cada uno con lo suyo dicho', dijoMinas && dijoDbnx,
      `minas ${dijoMinas ? 'sí' : 'NO'} · dbnx ${dijoDbnx ? 'sí' : 'NO'}`);
+  ok('con su nombre todavía puesto cuando entra la frase', pieYFraseJuntos);
   ok('y las demás se apagan de verdad',
      acompanantesApagados !== null && acompanantesApagados < 0.25,
      acompanantesApagados === null ? 'no se midió' : `la más visible al ${Math.round(acompanantesApagados * 100)}%`);
@@ -327,6 +345,12 @@ console.log('\n── el retroceso que enseña el universo ───────
      clavada daría siempre lo mismo. */
   ok('el sol respira cada cuatro segundos', pulsoMin < 0.25 && pulsoMax > 0.75,
      `entre ${pulsoMin.toFixed(2)} y ${pulsoMax.toFixed(2)}`);
+  /* Y EL DESTELLO ES UNA ONDA, no un parpadeo: dura lo suficiente para verse
+     salir del centro y cruzar la escena. Un velo plano se apagaría en dos
+     muestras; esto tiene que verse en varias seguidas y ARRANCAR fuerte. */
+  ok('la luz sale del centro y se expande',
+     ondaVista.length >= 3 && ondaVista[0] > 0.5,
+     `${ondaVista.length} muestras, de ${ondaVista[0]?.toFixed(2)} a ${ondaVista.at(-1)?.toFixed(2)}`);
 
   ok('la historia termina dando un propósito', vioProposito2);
   ok('y pidiendo llevarlo a cada rincón', cuando.rincon !== undefined);

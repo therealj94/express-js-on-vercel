@@ -34,7 +34,7 @@ export function Kernel() {
 
     /* El destello se apaga solo, rápido: lo enciende quien lo dispara y no
        tiene que acordarse de bajarlo. */
-    if (sim.destello > 0) sim.destello = Math.max(0, sim.destello - dt * 1.9)
+    if (sim.destello > 0) sim.destello = Math.max(0, sim.destello - dt * 0.72)
     const beatIdx = Math.floor(sim.now / HEART_PERIOD)
     if (beatIdx !== lastBeat.current) {
       lastBeat.current = beatIdx

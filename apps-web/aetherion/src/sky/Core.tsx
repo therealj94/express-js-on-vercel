@@ -156,6 +156,11 @@ export function Core() {
   const rayos = useRef<THREE.Sprite>(null)
   const corona = useRef<THREE.Mesh>(null)
   const perla = useRef<THREE.Mesh>(null)
+  /* Las tres piezas del sol que tenían la opacidad escrita a mano y por eso
+     seguían encendidas en el vacío. Ver el bloque de `presencia`. */
+  const brasaViva = useRef<THREE.Mesh>(null)
+  const cromosfera = useRef<THREE.Mesh>(null)
+  const aro = useRef<THREE.Mesh>(null)
   const letrero = useRef<THREE.Sprite>(null)
   const anillo = useRef<THREE.Group>(null)
   const brasa = useRef<THREE.Sprite>(null)
@@ -207,7 +212,44 @@ export function Core() {
        espera), y cuando el tour dice «sea la luz», esta perilla vuelve a
        cero y el sol NACE delante de quien mira. Y en la tiniebla ni la voz
        enciende lo que todavía no fue dicho. */
+    /* ══ EN LA TINIEBLA, AU-RA ESTÁ ══════════════════════════════════════
+       «Antes de todo no había nada» — pero sí había algo: AU-RA, esperando en
+       lo oscuro. Con la luz en el tres por ciento eso no se veía: era negro y
+       punto, y entonces el destello sale de la nada en vez de salir de
+       alguien.
+
+       ══ PERO LA BRASA NO PUEDE ILUMINAR EL MUNDO ═══════════════════════════
+       Subir la luz de la escena para que se vea la brasa fue el primer intento
+       y estaba mal: esa luz CAE SOBRE LOS PLANETAS, y en el negro absoluto del
+       título asomaba un mundo iluminado al fondo. El negro tiene que ser negro.
+
+       Así que son dos cosas distintas y hay que separarlas:
+        · `luzViva` — cuánta luz REPARTE el sol sobre la escena. En la tiniebla
+          sigue siendo casi cero, como estaba: ahí todavía no hay nada que
+          iluminar.
+        · `presencia` — cuánto se ve el sol A SÍ MISMO: su corona, su florón, su
+          propio cuerpo. Esto sí lleva la brasa, y respira.
+       Una vela en un cuarto oscuro se ve sin alumbrar el cuarto. Eso es lo que
+       hace falta acá. */
     const luzViva = (1 - 0.97 * sim.noche) * (1 - sim.vacio)
+    const rescoldo = (0.09 + 0.06 * sim.pulso) * sim.noche * (1 - sim.vacio)
+    /* Y EN EL VACÍO, NI ESO. Antes de la primera palabra no hay nada — ni una
+       brasa. `presencia` se apaga del todo cuando el vacío está puesto, y los
+       SUELOS de más abajo se apagan con ella: son los que dejaban un cinco por
+       ciento del sol encendido en el «negro absoluto», que en una pantalla
+       grande y a oscuras no es negro, es gris. */
+    const presencia = Math.max(luzViva, rescoldo) * (1 - sim.vacio)
+    const piso = (v: number) => v * (1 - sim.vacio)
+
+    /* ══ Y EN EL VACÍO TOTAL, AU-RA NO SE DIBUJA ═══════════════════════════
+       Apagar cada opacidad no alcanza: el CUERPO del sol es un material sólido
+       que aunque esté negro sigue TAPANDO lo que hay detrás, y contra el
+       resplandor del título se recortaba una silueta oscura justo en el medio
+       de la pantalla. Una cosa negra sobre negro se ve igual que una cosa
+       encendida: se ve.
+       Así que antes de la primera palabra el sol directamente no está — que es
+       además lo que el relato dice. Vuelve en la tiniebla, ya como brasa. */
+    if (group.current) group.current.visible = sim.vacio < 0.995
     const Vv = V * luzViva
     /* ══ DOS RITMOS, NO UNO ═══════════════════════════════════════════════
        `beat` es el latido: cincuenta y dos por minuto, corto y seco, el que
@@ -234,17 +276,20 @@ export function Core() {
       light.current.color.setHex(V > 0.02 ? 0xd8fff0 : 0xfff1cf)
     }
     if (flare.current) {
+      /* El florón lleva `presencia` y no `luzViva`: es lo que hace que en la
+         tiniebla se vea una brasa latiendo donde va a nacer el sol. */
       const s = 6.6 * (1 + Math.min(0.5, b) * 0.3) * (1 + sim.destello * 2.4)
         * (0.6 + 0.4 * sim.intro)
       flare.current.scale.setScalar(s)
-      ;(flare.current.material as THREE.SpriteMaterial).opacity = (0.58 + V * 0.22) * luzViva * (1 - 0.72 * sim.plano)
+      ;(flare.current.material as THREE.SpriteMaterial).opacity =
+        (0.58 + V * 0.22) * presencia * (1 - 0.72 * sim.plano)
     }
     if (rayos.current) {
       const mat = rayos.current.material as THREE.SpriteMaterial
       mat.rotation += dt * 0.05
       const s = 12 * (0.86 + Math.min(0.6, b) * 0.18) * (0.5 + 0.5 * sim.intro)
       rayos.current.scale.setScalar(s)
-      mat.opacity = (0.2 + V * 0.42) * (1 - 0.6 * sim.eclipse) * luzViva * (1 - 0.85 * sim.plano)
+      mat.opacity = (0.2 + V * 0.42) * (1 - 0.6 * sim.eclipse) * presencia * (1 - 0.85 * sim.plano)
     }
     glowMat.uniforms.uTime.value = sim.now
     glowMat.uniforms.uBoost.value = b * 0.9 * luzViva
@@ -255,7 +300,25 @@ export function Core() {
          —rojo hondo, no blanco—, que es lo que queda de una estrella que
          todavia no encendio. Lo justo para saber donde va a nacer. */
       const bm = brasa.current.material as THREE.SpriteMaterial
-      bm.opacity = 0.92 * Math.max(0.045, luzViva) * (1 - 0.55 * sim.plano)
+      bm.opacity = 0.92 * Math.max(piso(0.045), presencia) * (1 - 0.55 * sim.plano)
+      /* ══ LO QUE NO SE APAGABA CON NADA ═══════════════════════════════════
+         Estas tres nacían con su opacidad escrita en el JSX y ninguna perilla
+         las tocaba: el corazón blanco al 0,9, la cromosfera al 0,3 y el aro de
+         escucha al 0,55. En el negro absoluto del título quedaba una bola
+         encendida con su anillo, justo en el medio de la pantalla — y el negro
+         absoluto es de las pocas cosas de esta película que no admiten un
+         «casi». Ahora las tres obedecen a `presencia`, como todo el resto. */
+      if (brasaViva.current) {
+        (brasaViva.current.material as THREE.MeshBasicMaterial).opacity =
+          0.9 * Math.max(piso(0.05), presencia)
+      }
+      if (cromosfera.current) {
+        (cromosfera.current.material as THREE.MeshBasicMaterial).opacity =
+          0.3 * Math.max(piso(0.05), presencia)
+      }
+      if (aro.current) {
+        (aro.current.material as THREE.MeshBasicMaterial).opacity = 0.55 * presencia
+      }
       bm.color.setRGB(1, 0.72 + 0.28 * luzViva, 0.42 + 0.58 * luzViva)
     }
     if (corona.current) corona.current.scale.setScalar(1 + V * 0.16)
@@ -263,7 +326,7 @@ export function Core() {
     if (perla.current) {
       perla.current.rotation.y += dt * (0.09 + V * 0.22)
       const m = perla.current.material as THREE.MeshStandardMaterial
-      m.emissiveIntensity = (1.5 + Vv * 2.4) * Math.max(0.05, luzViva)
+      m.emissiveIntensity = (1.5 + Vv * 2.4) * Math.max(piso(0.05), presencia)
       /* EL PLASMA HIERVE. La piel se desplaza despacio sobre sí misma, en las
          dos direcciones y a distinto ritmo: la superficie deja de ser un
          dibujo pegado y pasa a ser materia en movimiento. */
@@ -302,13 +365,17 @@ export function Core() {
           toneMapped={false}
         />
       </mesh>
-      {/* el corazón que quema: sobre-expuesto a propósito, es un sol */}
-      <mesh>
+      {/* El corazón que quema: sobre-expuesto a propósito, es un sol.
+          Su opacidad estaba escrita a mano —0,9— y no la bajaba NADA: ni la
+          noche ni el vacío. En el «negro absoluto» del principio quedaba una
+          bola encendida en el centro de la pantalla, que es exactamente lo que
+          el negro absoluto no puede tener. */}
+      <mesh ref={brasaViva}>
         <sphereGeometry args={[R_SOL * 0.66, 32, 32]} />
         <meshBasicMaterial color="#ffffff" toneMapped={false} transparent opacity={0.9} />
       </mesh>
       {/* la cromosfera: el filo hirviendo que se ve pegado al disco */}
-      <mesh>
+      <mesh ref={cromosfera}>
         <sphereGeometry args={[R_SOL * 1.055, 48, 48]} />
         <meshBasicMaterial
           color="#ffe6ac"
@@ -342,7 +409,9 @@ export function Core() {
 
       {/* el anillo de escucha: AU-RA está atenta, y se nota */}
       <group ref={anillo} rotation={[1.36, 0, 0]}>
-        <mesh>
+        {/* Y el anillo, igual: dibujado siempre al 0,55. En la foto del
+            título era el aro que se veía alrededor de la bola. */}
+        <mesh ref={aro}>
           <torusGeometry args={[R_SOL * 1.55, 0.02, 8, 96]} />
           <meshBasicMaterial
             color="#EAD79C"

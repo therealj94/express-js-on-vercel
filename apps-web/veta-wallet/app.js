@@ -5372,10 +5372,10 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '053b47a3d6';
+  const VETA_V = 'f74c1a40a9';
   const VETA_FECHA = '2026-08-24';
 
-  const AET_V = '2975281f56';
+  const AET_V = '6bffae6bb3';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -10993,11 +10993,19 @@ const VETA = (() => {
          para entonces la palabra ya significa algo. */
       titulo: 'EL ORIGEN DE TODO',
       negro: 'Antes de todo, no había nada.',
-      tiniebla: 'Ni orden. Ni luz. Solo distancia.',
+      /* Y SIN EMBARGO HABÍA ALGO. La tiniebla deja de ser un vacío y pasa a
+         ser una espera: en el centro late una brasa. Sin esto, el destello de
+         la luz sale de la nada; con esto, sale de alguien — y esa es la
+         diferencia entre un efecto y el principio de una historia. */
+      tiniebla: 'Ni orden. Ni luz.\nSolo AU-RA, latiendo en lo oscuro.',
 
       /* ── II. LA LUZ ───────────────────────────────────────────────────── */
       palabra: 'Y dijo: «Sea la luz».',
       luz: 'Y fue la luz.',
+      /* La segunda frase entra CUANDO la onda ya pasó por encima: primero se
+         ve de dónde salió, y después se dice. Explicarlo antes le quitaría el
+         trabajo a la imagen. */
+      luz2: 'Salió de ella,\ny con ella salió todo lo demás.',
 
       /* ── III. EL ORDEN ────────────────────────────────────────────────── */
       palabraOrden: 'Y dijo: «Que haya orden».',
@@ -11007,29 +11015,50 @@ const VETA = (() => {
       /* Los lemas son de UNA línea y dicen lo que la cosa HACE, no lo que
          promete. En pantalla duran cinco segundos: una frase de dos renglones
          no se termina de leer y una consigna publicitaria no se cree. */
+      /* ══ EL TONO ══════════════════════════════════════════════════════════
+         Institucional quiere decir que cada línea dice QUÉ ES la pieza y qué
+         función cumple dentro del ecosistema — no que suene solemne. Se nombra
+         la categoría («infraestructura de identidad», «registro público») y se
+         dice qué garantiza, porque eso es lo que se presenta ante gente que
+         evalúa y no ante gente que compra.
+         Dos renglones: el primero declara qué es, el segundo qué asegura. Una
+         sola línea suena a eslogan y tres no se leen en cinco segundos. */
       casas: {
-        gid: ['GENESIS ID', 'Tu identidad, verificada una vez. La llave de todo lo demás.'],
-        wallet: ['VETA WALLET', 'Tu valor, en tu mano. Nadie lo custodia por vos.'],
-        pay: ['MYTOKENPAY', 'Tu saldo, aceptado en el mostrador de la esquina.'],
-        oxch: ['ORDENEXCHANGE', 'Donde una moneda se vuelve otra, sin salir de casa.'],
-        aucorp: ['AUCORP', 'Tus cuentas en moneda local, en veintiún monedas.'],
-        chat: ['PULSE2CHAT', 'La palabra que fluye, sellada de punta a punta.'],
-        scan: ['ORDENSCAN', 'La cadena por dentro. Comprobar en vez de creer.'],
-        genesis: ['GENESIS CORE', 'La memoria del origen: cómo empezó todo esto.'],
+        gid: ['GENESIS ID',
+          'Infraestructura de identidad del ecosistema.\nSe verifica una vez y habilita todo lo demás.'],
+        wallet: ['VETA WALLET',
+          'Custodia propia del valor.\nLas llaves se cifran en el aparato del titular.'],
+        pay: ['MYTOKENPAY',
+          'Red de aceptación en comercios.\nLleva el saldo del ecosistema al mostrador.'],
+        oxch: ['ORDENEXCHANGE',
+          'Casa de cambio del ecosistema.\nConversión entre monedas con la misma cuenta.'],
+        aucorp: ['AUCORP',
+          'Cuentas en moneda local, en veintiún monedas.\nLa puerta entre el dinero de todos los días y el ecosistema.'],
+        chat: ['PULSE2CHAT',
+          'Comunicación cifrada de punta a punta.\nNi los servidores de la casa pueden leerla.'],
+        scan: ['ORDENSCAN',
+          'Registro público de la cadena.\nCada bloque y cada envío, verificables por cualquiera.'],
+        genesis: ['GENESIS CORE',
+          'La memoria del origen.\nCómo se construyó todo esto, y por quién.'],
         /* Estos dos no se presentan en la fila de mundos: aparecen dentro del
            bloque de ORIGEN, cada uno contestando una pregunta que el relato
            acaba de abrir. Los lemas viven acá igual porque la escena los pinta
            por el mismo camino. */
-        minas: ['MINAS', 'Metal nuestro, bajo tierra. El respaldo no es una promesa.'],
-        dbnx: ['DBNX', 'Las reglas de lo que se emite. Nace en regla o no nace.'],
+        minas: ['MINAS',
+          'Reserva mineral propia.\nMetales preciosos en concesiones bajo nuestro control.'],
+        dbnx: ['DBNX',
+          'Auditoría de tokenización de activos reales.\nRWA emitidos bajo regla verificable.'],
       },
 
       /* LO QUE DICEN LOS DOS QUE NO SON APPS. Se dice sin adornos y con el
          dato concreto: lo que hace fuerte a esto no es la palabra «respaldo»,
          es que las minas existen y son nuestras. */
+      /* La frase que entra DESPUÉS del rótulo, con el nombre todavía puesto.
+         Aquí se puede dejar el registro institucional y hablar de frente: el
+         dato ya se dio arriba, esto es lo que ese dato SIGNIFICA. */
       dicho: {
-        minas: 'Minas de metales preciosos,\nen nuestro poder.\nEso es lo que hay debajo de ORIGEN.',
-        dbnx: 'DBNX audita la tokenización\nde activos del mundo real.\nLo que se emite acá, nace en regla.',
+        minas: 'El respaldo de ORIGEN no es una promesa:\nes metal, en minas que son nuestras.',
+        dbnx: 'Lo que se emite sobre nuestra cadena\nnace auditado. En regla, o no nace.',
       },
 
       /* ── V. EL UNIVERSO ───────────────────────────────────────────────── */
@@ -11070,26 +11099,37 @@ const VETA = (() => {
     } : {
       titulo: 'THE ORIGIN OF EVERYTHING',
       negro: 'Before everything, there was nothing.',
-      tiniebla: 'No order. No light. Only distance.',
+      tiniebla: 'No order. No light.\nOnly AU-RA, beating in the dark.',
       palabra: 'And said: “Let there be light.”',
       luz: 'And there was light.',
+      luz2: 'It came out of her,\nand with her came everything else.',
       palabraOrden: 'And said: “Let there be order.”',
       orden: 'And every world found its orbit.',
       casas: {
-        gid: ['GENESIS ID', 'Your identity, verified once. The key to all the rest.'],
-        wallet: ['VETA WALLET', 'Your value, in your hand. Nobody holds it for you.'],
-        pay: ['MYTOKENPAY', 'Your balance, accepted at the shop on the corner.'],
-        oxch: ['ORDENEXCHANGE', 'Where one currency becomes another, without leaving home.'],
-        aucorp: ['AUCORP', 'Your local-currency accounts, in twenty-one currencies.'],
-        chat: ['PULSE2CHAT', 'The word that flows, sealed end to end.'],
-        scan: ['ORDENSCAN', 'The chain from the inside. Check instead of trust.'],
-        genesis: ['GENESIS CORE', 'The memory of the origin: how all of this began.'],
-        minas: ['MINAS', 'Our own metal, underground. The backing is not a promise.'],
-        dbnx: ['DBNX', 'The rules of what gets issued. In order, or not at all.'],
+        gid: ['GENESIS ID',
+          'The ecosystem\u2019s identity infrastructure.\nVerified once, it opens everything else.'],
+        wallet: ['VETA WALLET',
+          'Self-custody of value.\nKeys are encrypted on the holder\u2019s own device.'],
+        pay: ['MYTOKENPAY',
+          'Merchant acceptance network.\nIt carries the ecosystem\u2019s balance to the counter.'],
+        oxch: ['ORDENEXCHANGE',
+          'The ecosystem\u2019s exchange.\nConversion between currencies on the same account.'],
+        aucorp: ['AUCORP',
+          'Local-currency accounts, in twenty-one currencies.\nThe door between everyday money and the ecosystem.'],
+        chat: ['PULSE2CHAT',
+          'End-to-end encrypted communication.\nNot even our own servers can read it.'],
+        scan: ['ORDENSCAN',
+          'Public record of the chain.\nEvery block and every transfer, verifiable by anyone.'],
+        genesis: ['GENESIS CORE',
+          'The memory of the origin.\nHow all of this was built, and by whom.'],
+        minas: ['MINAS',
+          'Our own mineral reserve.\nPrecious metals in concessions under our control.'],
+        dbnx: ['DBNX',
+          'Real-world asset tokenization auditing.\nRWA issued under verifiable rule.'],
       },
       dicho: {
-        minas: 'Precious-metal mines,\nin our own hands.\nThat is what sits underneath ORIGEN.',
-        dbnx: 'DBNX audits the tokenization\nof real-world assets.\nWhat is issued here is issued in order.',
+        minas: 'ORIGEN\u2019s backing is not a promise:\nit is metal, in mines that are ours.',
+        dbnx: 'What is issued on our chain\nis issued audited. In order, or not at all.',
       },
       universo: 'And all around, an entire universe.',
       origen: 'None of this holds itself up in mid-air.',
@@ -11163,18 +11203,24 @@ const VETA = (() => {
     /* Una línea grande al centro. `peso` la hace protagonista (la Palabra, la
        Luz) y `tarde` la deja entrar unos segundos después — así un acto puede
        decir dos cosas seguidas sin apelotonarlas. */
-    const centro = (txt, peso, tarde, marca) => {
+    /* `conPie`: dejar el rotulo del mundo en su sitio mientras entra la frase.
+       Sirve para MINAS y DBNX, donde el nombre NO es un titulo que ya cumplio
+       —es el mundo que se esta mirando— y sacarlo deja la frase huerfana. */
+    const centro = (txt, peso, tarde, marca, conPie) => {
       const poner = () => {
         // dentro del visor manda el teatro; en pantalla, la capa HTML
-        enEscena(txt, marca === 'cierre' ? 'cierre' : peso ? 'grande' : 'normal');
+        enEscena(txt, marca === 'cierre' ? 'cierre'
+          : marca === 'titulo' ? 'titulo'
+          : peso ? 'grande' : 'normal');
         if (!capa) return;
         const c = capa.querySelector('.gen-centro');
         if (!c) return;
         c.innerHTML = esc(String(txt)).replace(/\n/g, '<br>');
         c.classList.toggle('grande', !!peso);
         c.classList.toggle('cierre', marca === 'cierre');
+        c.classList.toggle('titulo', marca === 'titulo');
         c.classList.remove('ve'); void c.offsetWidth; c.classList.add('ve');
-        capa.querySelector('.gen-pie').classList.remove('ve');
+        if (!conPie) capa.querySelector('.gen-pie').classList.remove('ve');
       };
       if (tarde) setTimeout(() => { if (genVivo) poner(); }, tarde); else poner();
     };
@@ -11214,11 +11260,23 @@ const VETA = (() => {
         if (clave === 'negro') centro(G.negro, false, 1500);
         /* EL TÍTULO, en grande y solo. Se limpia lo anterior antes de que
            entre: una palabra sola no comparte pantalla con nada. */
-        else if (clave === 'titulo') centro(G.titulo, true, 300);
+        /* El titulo va con su propia marca: caja alta, oro, reglas arriba y
+           abajo y en el medio de la pantalla. Con la letra del relato era una
+           frase mas, un poco mas grande — y eso no abre una pelicula. */
+        else if (clave === 'titulo') centro(G.titulo, true, 300, 'titulo');
         else if (clave === 'tiniebla') centro(G.tiniebla);
         else if (clave === 'palabra') centro(G.palabra, true);
         else if (clave === 'luz') {
-          centro(G.luz, true);
+          /* ══ EL TEXTO ESPERA AL FOGONAZO ═══════════════════════════════════
+             La explosión llena la pantalla de blanco durante segundo y medio.
+             Poner «Y fue la luz» al mismo tiempo es escribirlo sobre el blanco:
+             no se lee, y encima le roba el momento a la imagen. Entra cuando el
+             fogonazo se está yendo, que es cuando se puede leer y cuando la
+             frase remata lo que se acaba de ver.
+             Y la segunda —la que dice que todo salió de AU-RA— más tarde
+             todavía, con la escena ya encendida. */
+          centro(G.luz, true, 1500);
+          centro(G.luz2, false, 4300);
           try { MUSICA?.crecer(1.6, 2.4); } catch { /* nada */ }
         }
         else if (clave === 'palabraOrden') centro(G.palabraOrden, true);
@@ -11255,7 +11313,10 @@ const VETA = (() => {
              quién pone las reglas de lo que se emite— y una pregunta no se
              contesta con un lema. Así que además del rótulo del mundo, entra
              una frase en el centro, después de un respiro. */
-          if (G.dicho?.[k]) centro(G.dicho[k], false, 2600);
+          /* Y su frase entra DESPUES, con el nombre todavia puesto: primero se
+             ve de quien se habla y despues que se dice de el. Tres segundos y
+             pico es lo que tarda alguien en leer un rotulo y levantar la vista. */
+          if (G.dicho?.[k]) centro(G.dicho[k], false, 3200, null, true);
         }
         else if (clave === 'universo') centro(G.universo);
         else if (clave === 'obra') centro(G.obra);

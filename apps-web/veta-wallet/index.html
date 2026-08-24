@@ -276,6 +276,40 @@ body.en-cine #lienzo{opacity:0;transition:opacity .9s ease}
   text-shadow:0 2px 30px rgba(0,0,0,.95),0 0 60px rgba(201,169,97,.55),
     0 0 130px rgba(201,169,97,.3)}
 .gen-centro.cierre.ve{animation:gen-cierre 3.4s cubic-bezier(.16,1,.3,1)}
+
+/* ── EL TITULO ──────────────────────────────────────────────────────────────
+   Tiene que LEERSE como un titulo y no como la primera frase del relato. Con
+   la misma letra que todo lo demas era una linea mas, un poco mas grande — y
+   una linea mas no abre una pelicula.
+   Lo que lo separa son tres cosas, y ninguna es «hacerlo grande»: la caja alta
+   con mucho aire entre letras (nadie escribe una frase asi, solo se titula
+   asi), las dos reglas finas que lo encierran —el gesto de una portada— y el
+   oro, que en esta casa esta reservado y aqui se gasta a proposito. Ademas se
+   planta en el medio exacto de la pantalla, no en el tercio donde vive la
+   narracion: un titulo no comparte sitio con el texto que va a venir. */
+.gen-centro.titulo{top:50%;
+  font:500 clamp(28px,5.4vw,58px)/1.22 var(--serif,Georgia,serif);
+  letter-spacing:.3em;text-indent:.3em;   /* el aire de la ultima letra, devuelto */
+  color:#EAD79C;text-transform:uppercase;
+  text-shadow:0 2px 26px rgba(0,0,0,.95),0 0 80px rgba(201,169,97,.5)}
+.gen-centro.titulo::before,
+.gen-centro.titulo::after{content:'';display:block;width:min(190px,42vw);
+  height:1px;margin:0 auto;background:linear-gradient(90deg,
+    transparent,rgba(201,169,97,.75),transparent)}
+.gen-centro.titulo::before{margin-bottom:clamp(14px,2.4vw,26px)}
+.gen-centro.titulo::after{margin-top:clamp(14px,2.4vw,26px)}
+.gen-centro.titulo.ve{animation:gen-titulo 2.6s cubic-bezier(.16,1,.3,1)}
+@keyframes gen-titulo{
+  0%{opacity:0;letter-spacing:.12em;transform:translate(-50%,-50%) scale(.97)}
+  100%{opacity:1;letter-spacing:.3em;transform:translate(-50%,-50%) scale(1)}}
+@media (max-width:760px), (orientation:portrait) and (max-width:900px){
+  /* En vertical el titulo se queda en el medio —no baja al tercio como el
+     resto— porque ahi no tapa nada: la pantalla esta negra. */
+  .gen-centro.titulo{top:50%;bottom:auto;transform:translate(-50%,-50%);
+    font-size:clamp(24px,7.2vw,40px);letter-spacing:.22em;text-indent:.22em}
+  .gen-centro.titulo.ve{animation:gen-titulo 2.6s cubic-bezier(.16,1,.3,1)}
+}
+@media (prefers-reduced-motion:reduce){ .gen-centro.titulo.ve{animation:none} }
 @keyframes gen-cierre{
   0%{opacity:0;letter-spacing:.05em;transform:translate(-50%,-50%) scale(.96)}
   100%{opacity:1;letter-spacing:.22em;transform:translate(-50%,-50%) scale(1)}}
@@ -292,7 +326,12 @@ body.en-cine #lienzo{opacity:0;transition:opacity .9s ease}
 @keyframes gen-sube{from{opacity:0;transform:translate(-50%,calc(-50% + 22px))}
   to{opacity:1;transform:translate(-50%,-50%)}}
 .gen-pie{position:absolute;left:50%;bottom:12%;transform:translateX(-50%);
-  max-width:min(640px,86vw);text-align:center;opacity:0}
+  max-width:min(640px,86vw);text-align:center;opacity:0;
+  /* SE VA COMO VINO. Sin transicion, quitarle la clase lo borraba de un
+     fotograma al otro: el nombre del mundo aparecia, y de golpe no estaba.
+     Eso no se lee como un corte de montaje, se lee como un fallo. Ocho
+     decimas de salida y el ojo lo acepta. */
+  transition:opacity .8s ease}
 .gen-pie.ve{opacity:1;animation:gen-sube-pie 1.1s cubic-bezier(.16,1,.3,1)}
 @keyframes gen-sube-pie{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .gen-pie b{display:block;font:600 clamp(16px,2.2vw,22px)/1.3 var(--sans);color:#F5E9C8;
@@ -4186,9 +4225,9 @@ body.en-ventana .lienzo::before{
 
 <!-- El saber publico que Genesis dejo salir. Lo genera
      infra/cerebro/publicar-saber.mjs; no se edita a mano. -->
-<script src="saber.js?v=053b47a3d6"></script>
-<script src="telemetria.js?v=053b47a3d6"></script>
-<script src="qr.js?v=053b47a3d6"></script>
+<script src="saber.js?v=f74c1a40a9"></script>
+<script src="telemetria.js?v=f74c1a40a9"></script>
+<script src="qr.js?v=f74c1a40a9"></script>
 <!-- La cripto para entrar con la frase semilla. Se carga aparte y no dentro
      de app.js porque son 13 KB que solo hacen falta si alguien elige ese
      camino, y porque asi se puede probar sola (pruebas/probar-llaves.mjs). -->
@@ -4331,24 +4370,24 @@ body.en-ventana .lienzo::before{
   </div>
 </div>
 
-<script src="vendor/cripto-llaves.js?v=053b47a3d6"></script>
-<script src="llaves.js?v=053b47a3d6"></script>
-<script src="tono.js?v=053b47a3d6"></script>
-<script src="llamada.js?v=053b47a3d6"></script>
-<script src="llamadaGrupo.js?v=053b47a3d6"></script>
-<script src="velas.js?v=053b47a3d6"></script>
-<script src="cadena.js?v=053b47a3d6"></script>
-<script src="datos.js?v=053b47a3d6"></script>
-<script src="aura.js?v=053b47a3d6"></script>
-<script src="candado.js?v=053b47a3d6"></script>
-<script src="chat.js?v=053b47a3d6"></script>
-<script src="i18n.js?v=053b47a3d6"></script>
-<script src="galaxia.js?v=053b47a3d6"></script>
+<script src="vendor/cripto-llaves.js?v=f74c1a40a9"></script>
+<script src="llaves.js?v=f74c1a40a9"></script>
+<script src="tono.js?v=f74c1a40a9"></script>
+<script src="llamada.js?v=f74c1a40a9"></script>
+<script src="llamadaGrupo.js?v=f74c1a40a9"></script>
+<script src="velas.js?v=f74c1a40a9"></script>
+<script src="cadena.js?v=f74c1a40a9"></script>
+<script src="datos.js?v=f74c1a40a9"></script>
+<script src="aura.js?v=f74c1a40a9"></script>
+<script src="candado.js?v=f74c1a40a9"></script>
+<script src="chat.js?v=f74c1a40a9"></script>
+<script src="i18n.js?v=f74c1a40a9"></script>
+<script src="galaxia.js?v=f74c1a40a9"></script>
 <!-- GENESIS CORE: el cerebro del ecosistema, el mismo volumen que se proyecta
      en la sala de Genesis ID. Solo lo usa su vista. -->
-<script src="cerebro-og.js?v=053b47a3d6"></script>
+<script src="cerebro-og.js?v=f74c1a40a9"></script>
 <!-- MODO VISOR: la casa dentro de un visor (WebXR, cartón o 360 en pantalla). -->
-<script src="visor.js?v=053b47a3d6"></script>
-<script src="musica.js?v=053b47a3d6"></script>
-<script src="airtouch.js?v=053b47a3d6"></script>
-<script src="app.js?v=053b47a3d6"></script>
+<script src="visor.js?v=f74c1a40a9"></script>
+<script src="musica.js?v=f74c1a40a9"></script>
+<script src="airtouch.js?v=f74c1a40a9"></script>
+<script src="app.js?v=f74c1a40a9"></script>

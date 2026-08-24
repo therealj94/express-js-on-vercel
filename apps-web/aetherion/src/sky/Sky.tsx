@@ -37,7 +37,12 @@ function Filaments() {
 
   useFrame(() => {
     mat.color.copy(sim.mareaColor)
-    mat.opacity = 0.55 * sim.intro * (1 - 0.45 * sim.eclipse) * (1 - 0.92 * sim.noche)
+    /* El `1 - 0.92 * noche` deja un ocho por ciento encendido: suficiente para
+       que en el negro absoluto se vieran los filamentos de la galaxia
+       dibujados en azul. El vacío los apaga del todo — antes de la primera
+       palabra no hay retícula que valga. */
+    mat.opacity = 0.55 * sim.intro * (1 - 0.45 * sim.eclipse)
+      * (1 - 0.92 * sim.noche) * (1 - sim.vacio)
     matRef.current = mat
   })
 
@@ -53,7 +58,7 @@ function Nebulae() {
     if (g1.current) g1.current.rotation.z += dt * 0.008
     if (g2.current) g2.current.rotation.z -= dt * 0.006
     // las nebulosas también obedecen a la noche
-    const k = 1 - 0.92 * sim.noche
+    const k = (1 - 0.92 * sim.noche) * (1 - sim.vacio)
     if (g1.current) (g1.current.material as THREE.MeshBasicMaterial).opacity = base.current[0] * k
     if (g2.current) (g2.current.material as THREE.MeshBasicMaterial).opacity = base.current[1] * k
   })

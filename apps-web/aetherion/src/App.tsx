@@ -63,10 +63,14 @@ export default function App() {
         }}
         dpr={[1, 2]}
         camera={{ fov: 62, near: 0.1, far: 400, position: [0, 26, 40] }}
-        onCreated={({ gl, camera }) => {
+        onCreated={({ gl, camera, scene }) => {
           gl.toneMapping = AgXToneMapping
           gl.toneMappingExposure = 1.05
           ;(window as any).__aeCamera = camera
+          /* La escena, para que una prueba pueda preguntarle QUÉ se está
+             dibujando. Un «negro absoluto» que no es negro se ve en una foto
+             pero no se explica sin poder recorrer el árbol. */
+          ;(window as any).__aeScene = scene
           /* El motor, a mano para el modo visor y para las pruebas: contar
              cuántas veces se dibuja un cuadro es la única forma honesta de
              comprobar que de verdad se están pintando DOS ojos. */
