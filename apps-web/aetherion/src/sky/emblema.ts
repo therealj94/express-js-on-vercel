@@ -356,6 +356,72 @@ export function planetaTextura(key: string, grad: string[], natura = 'gigante'):
    los polos despejados: envuelta en una esfera un pelo mayor que el planeta y
    girando a otra velocidad, es lo que convierte una bola pintada en un mundo
    con atmósfera. */
+/* LAS LUCES DE LA NOCHE. Un mundo habitado se delata de noche: puntos
+   calientes apiñados en cúmulos —ciudades— con hilos débiles entre ellos
+   —rutas—. Se usa como mapa emisivo: de día el sol las lava y no se ven;
+   al girar a la sombra, aparecen. Es el detalle que más rápido convierte
+   una esfera bonita en un LUGAR donde vive gente. */
+export function lucesTextura(key: string): THREE.Texture {
+  const clave = `lu:${key}`
+  const hecho = cache.get(clave)
+  if (hecho) return hecho
+  const W = 512
+  const H = 256
+  const { c, g } = lienzo(W, H)
+  g.fillStyle = '#000'
+  g.fillRect(0, 0, W, H)
+  let s = 7
+  for (const ch of key) s = (s * 31 + ch.charCodeAt(0)) >>> 0
+  const az = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296 }
+  // los cúmulos: 9-14 ciudades madre, lejos de los polos
+  const madres: Array<[number, number]> = []
+  for (let i = 0; i < 9 + Math.floor(az() * 6); i++) {
+    madres.push([az() * W, H * 0.2 + az() * H * 0.6])
+  }
+  g.globalCompositeOperation = 'lighter'
+  for (const [mx, my] of madres) {
+    const nucleo = g.createRadialGradient(mx, my, 0, mx, my, 7 + az() * 9)
+    nucleo.addColorStop(0, 'rgba(255,196,110,0.9)')
+    nucleo.addColorStop(1, 'rgba(255,196,110,0)')
+    g.fillStyle = nucleo
+    g.fillRect(mx - 18, my - 18, 36, 36)
+    // los suburbios: chispas alrededor, cada vez más ralas
+    for (let i = 0; i < 46; i++) {
+      const d = az() * az() * 26
+      const a = az() * Math.PI * 2
+      const x = mx + Math.cos(a) * d * 1.6
+      const y = my + Math.sin(a) * d
+      g.fillStyle = `rgba(255,${170 + az() * 60 | 0},${90 + az() * 60 | 0},${0.25 + az() * 0.55})`
+      g.fillRect(x, y, 1 + az(), 1 + az())
+    }
+  }
+  // las rutas: hilos débiles entre ciudades vecinas
+  g.strokeStyle = 'rgba(255,190,120,0.14)'
+  g.lineWidth = 0.7
+  for (let i = 0; i < madres.length; i++) {
+    let mejor = -1, dm = Infinity
+    for (let j = 0; j < madres.length; j++) {
+      if (i === j) continue
+      const d = (madres[i][0] - madres[j][0]) ** 2 + (madres[i][1] - madres[j][1]) ** 2
+      if (d < dm) { dm = d; mejor = j }
+    }
+    if (mejor >= 0 && dm < 130 * 130) {
+      g.beginPath()
+      g.moveTo(madres[i][0], madres[i][1])
+      g.quadraticCurveTo(
+        (madres[i][0] + madres[mejor][0]) / 2 + (az() - 0.5) * 20,
+        (madres[i][1] + madres[mejor][1]) / 2 + (az() - 0.5) * 20,
+        madres[mejor][0], madres[mejor][1])
+      g.stroke()
+    }
+  }
+  const tex = new THREE.CanvasTexture(c)
+  tex.wrapS = THREE.RepeatWrapping
+  tex.colorSpace = THREE.SRGBColorSpace
+  cache.set(clave, tex)
+  return tex
+}
+
 export function nubesTextura(key: string): THREE.Texture {
   const clave = `nb2:${key}`
   const hecho = cache.get(clave)

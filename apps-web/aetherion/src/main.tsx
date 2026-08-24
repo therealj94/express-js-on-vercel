@@ -7,6 +7,7 @@ import { refrescarCasas } from './sky/Wells'
 import { rig } from './kernel/rig'
 import { sim } from './kernel/sim'
 import { useUiStore } from './state/uiStore'
+import './kernel/genesis'
 
 /* LA FUSIÓN CON LA WALLET. Aetherion no se monta solo: expone montar y
    desmontar, y la wallet decide cuándo el Inicio es esta galaxia. El modo

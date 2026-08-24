@@ -426,6 +426,10 @@ es: {
   // deposito
   'dep.t': 'Depositar', 'dep.p': 'Enviá a esta dirección desde otra billetera de la red de Orden Global.',
   'dep.red': 'Red', 'dep.aviso': 'Solo activos de la red de Orden Global (cadena 5550). Cualquier otra cosa que mandes a esta dirección se pierde.',
+  // el tour Génesis
+  'gen.aj': 'La historia del origen',
+  'gen.ajP': '«Sea la luz»: el nacimiento de tu ecosistema',
+  'gen.sinCielo': 'La historia se cuenta sobre el cielo 3D. Volvé al Inicio y probá de nuevo.',
   // el marco de casa (AuCorp / Ordenex adentro)
   'marco.atras': 'Volver al Inicio',
   'marco.pestana': 'Abrir en pestaña',
@@ -1370,6 +1374,9 @@ en: {
   'cmp.ir': 'Go to Receive',
   'dep.t': 'Deposit', 'dep.p': 'Send to this address from another wallet on the Orden Global network.',
   'dep.red': 'Network', 'dep.aviso': 'Orden Global network assets only (chain 5550). Anything else sent to this address is lost.',
+  'gen.aj': 'The story of the origin',
+  'gen.ajP': '“Let there be light”: the birth of your ecosystem',
+  'gen.sinCielo': 'The story is told over the 3D sky. Go back Home and try again.',
   'marco.atras': 'Back to Home',
   'marco.pestana': 'Open in a tab',
   'marco.cargando': 'Opening the house…',

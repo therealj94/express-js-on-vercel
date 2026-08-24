@@ -202,36 +202,43 @@ export function Core() {
 
     // la bienvenida de la entrada decae sola
     sim.auraBrillo = Math.max(0, sim.auraBrillo - dt * 0.55)
-    const b = sim.beat + sim.auraBrillo * 0.9 + V * 1.1
+    /* LA TINIEBLA DEL GÉNESIS. Antes de la palabra, el sol no es: la luz y
+       todos sus velos se apagan casi del todo (casi — una brasa lejana
+       espera), y cuando el tour dice «sea la luz», esta perilla vuelve a
+       cero y el sol NACE delante de quien mira. Y en la tiniebla ni la voz
+       enciende lo que todavía no fue dicho. */
+    const luzViva = 1 - 0.97 * sim.noche
+    const Vv = V * luzViva
+    const b = (sim.beat + sim.auraBrillo * 0.9 + Vv * 1.1) * (0.03 + 0.97 * luzViva)
 
     if (light.current) {
-      light.current.intensity = 86 * (1 + b * 0.75) * (1 - 0.7 * sim.eclipse)
+      light.current.intensity = 86 * (1 + b * 0.75) * (1 - 0.7 * sim.eclipse) * luzViva
       light.current.color.setHex(V > 0.02 ? 0xd8fff0 : 0xfff1cf)
     }
     if (flare.current) {
       const s = 6.6 * (1 + Math.min(0.5, b) * 0.3) * (0.6 + 0.4 * sim.intro)
       flare.current.scale.setScalar(s)
-      ;(flare.current.material as THREE.SpriteMaterial).opacity = 0.58 + V * 0.22
+      ;(flare.current.material as THREE.SpriteMaterial).opacity = (0.58 + V * 0.22) * luzViva
     }
     if (rayos.current) {
       const mat = rayos.current.material as THREE.SpriteMaterial
       mat.rotation += dt * 0.05
       const s = 12 * (0.86 + Math.min(0.6, b) * 0.18) * (0.5 + 0.5 * sim.intro)
       rayos.current.scale.setScalar(s)
-      mat.opacity = (0.2 + V * 0.42) * (1 - 0.6 * sim.eclipse)
+      mat.opacity = (0.2 + V * 0.42) * (1 - 0.6 * sim.eclipse) * luzViva
     }
     glowMat.uniforms.uTime.value = sim.now
-    glowMat.uniforms.uBoost.value = b * 0.9
+    glowMat.uniforms.uBoost.value = b * 0.9 * luzViva
     if (brasa.current) {
-      brasa.current.scale.setScalar(R_SOL * (2.9 + b * 0.16))
-      ;(brasa.current.material as THREE.SpriteMaterial).opacity = 0.92
+      brasa.current.scale.setScalar(R_SOL * (2.9 + Math.min(0.8, b) * 0.13))
+      ;(brasa.current.material as THREE.SpriteMaterial).opacity = 0.92 * Math.max(0.06, luzViva)
     }
     if (corona.current) corona.current.scale.setScalar(1 + V * 0.16)
     if (group.current) group.current.scale.setScalar(1 + b * 0.05 + sim.breath * 0.02)
     if (perla.current) {
       perla.current.rotation.y += dt * (0.09 + V * 0.22)
       const m = perla.current.material as THREE.MeshStandardMaterial
-      m.emissiveIntensity = 1.5 + V * 2.4
+      m.emissiveIntensity = (1.5 + Vv * 2.4) * Math.max(0.05, luzViva)
       /* EL PLASMA HIERVE. La piel se desplaza despacio sobre sí misma, en las
          dos direcciones y a distinto ritmo: la superficie deja de ser un
          dibujo pegado y pasa a ser materia en movimiento. */

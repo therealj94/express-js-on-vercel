@@ -10,6 +10,7 @@ import { Lejanos } from './Lejanos'
 import { DustLayer } from './Dust'
 import { getRadialTexture, getFlareTexture } from './textures'
 import { useUiStore } from '../state/uiStore'
+import { Firmamento } from './Firmamento'
 
 function Filaments() {
   const matRef = useRef<THREE.LineBasicMaterial>(null)
@@ -235,6 +236,7 @@ export function Sky() {
   return (
     <>
       <TideAndIntro />
+      <Firmamento />
       <Nebulae />
       <Filaments />
       <DustLayer count={14000} spread={30} yFlat={6} size={1.1} opacity={0.75} />

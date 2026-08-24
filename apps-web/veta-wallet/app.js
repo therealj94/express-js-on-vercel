@@ -4479,6 +4479,7 @@ const VETA = (() => {
       <h3>${t('aj.ecosistema')}</h3>
       <div class="ajustes">
         ${fila(ICO.obra, t('aj.bien'), t('aj.bienP'), "VETA.bienvenida()")}
+        ${fila(ICO.chispa || ICO.obra, t('gen.aj'), t('gen.ajP'), "VETA.tourGenesis()")}
         ${fila(ICO.tienda, t('aj.mtp'), t('aj.mtpP'), "VETA.vista('pay')")}
         ${fila(ICO.globo, t('aj.idioma'), t('aj.idiomaP'), "VETA.idioma('" + (idiomaActivo() === 'es' ? 'en' : 'es') + "')")}
         ${fila(ICO.doc, t('aj.legal'), t('aj.legalP'), "window.open('/terminos','_blank','noopener')")}
@@ -5250,7 +5251,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = '549f41ce17';
+  const AET_V = '471909db4d';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -5473,6 +5474,16 @@ const VETA = (() => {
             <small>${t('nu.sub')}</small>`;
         document.body.appendChild(saludo);
         if (!yaVive) AETHERION.montar($('#ae-casa'));
+        /* LA PRIMERA VEZ, LA HISTORIA SE CUENTA SOLA. Quien pisa esta galaxia
+           por primera vez la ve nacer: la tiniebla, la palabra, la luz y los
+           mundos presentándose. Una sola vez — después queda en Ajustes para
+           quien quiera volver a verla. */
+        if (!localStorage.getItem('veta.genesis.visto')
+            && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          setTimeout(() => {
+            if (vistaActual === 'nucleo' && !genVivo && window.__AE_GENESIS) tourGenesis();
+          }, 2600);
+        }
       } catch (e) {
         // el bundle cargó pero el montaje murió: el cerebro clásico responde
         aeSaludoQuitar();
@@ -10669,6 +10680,112 @@ const VETA = (() => {
     setTimeout(() => { caja.classList.add('oculto'); caja.classList.remove('yendo'); }, 460);
   }
 
+  /* ── EL TOUR GÉNESIS ─────────────────────────────────────────────────────
+   * La historia del origen, contada sobre la galaxia de verdad: la tiniebla
+   * con el sistema suelto, LA PALABRA en letra grande, el sol que nace, los
+   * mundos que viajan a su órbita y se presentan uno a uno, y el panorama.
+   * El motor coreografía (window.__AE_GENESIS) y la casa pone las palabras:
+   * rótulos en pantalla y la voz de AU-RA. En el visor no hay HTML que valga
+   * — ahí la voz sola cuenta la historia entera.
+   */
+  function genGuion() {
+    const es = idiomaActivo() === 'es';
+    return {
+      tiniebla: es ? 'En el principio, todo estaba suelto y a oscuras.'
+                   : 'In the beginning, all was loose and dark.',
+      palabra: es ? 'Y dijo: «Sea la luz».' : 'And said: “Let there be light.”',
+      luz: es ? 'Y fue la luz.' : 'And there was light.',
+      acomodo: es ? 'Y cada mundo encontró su órbita.'
+                  : 'And every world found its orbit.',
+      casas: {
+        wallet: ['Veta Wallet', es ? 'Tu valor, en tu mano. La casa grande del sistema.'
+                                   : 'Your value, in your hand. The great house of the system.'],
+        chat: ['PULSE2CHAT', es ? 'La palabra que fluye: mensajes sellados de punta a punta.'
+                                : 'The word that flows: messages sealed end to end.'],
+        gid: ['Genesis ID', es ? 'Tu identidad verificada: una sola llave para todo.'
+                               : 'Your verified identity: one key for everything.'],
+        pay: ['MyTokenPay', es ? 'Pagá en los comercios con tu saldo.'
+                               : 'Pay at shops with your balance.'],
+        genesis: ['GENESIS CORE', es ? 'La memoria del origen: el cerebro que guarda cómo empezó todo.'
+                                     : 'The memory of the origin: the brain that keeps how it all began.'],
+      },
+      panorama: es ? 'Ese es tu ecosistema. El futuro es orden.'
+                   : 'This is your ecosystem. The future is order.',
+      saltar: es ? 'Saltar' : 'Skip',
+    };
+  }
+
+  let genVivo = false;
+  function tourGenesis() {
+    if (genVivo) return;
+    if (vistaActual !== 'nucleo') {
+      vista('nucleo');
+      return void setTimeout(tourGenesis, 1600);
+    }
+    const motor = window.__AE_GENESIS;
+    if (!motor || !document.getElementById('ae-casa')) return avisar(t('gen.sinCielo'));
+    genVivo = true;
+    localStorage.setItem('veta.genesis.visto', '1');
+    const G = genGuion();
+    const enVisor = !!window.VISOR?.activo();
+    aedCallar();
+
+    /* La capa de las palabras: la Palabra grande al centro, el resto abajo,
+       como los rótulos de una película. En el visor no se pinta: la pantalla
+       está partida en dos ojos y un HTML plano se vería roto. */
+    let capa = null;
+    if (!enVisor) {
+      capa = document.createElement('div');
+      capa.id = 'gen-letra';
+      capa.innerHTML = `
+        <div class="gen-centro"></div>
+        <div class="gen-pie"><b></b><span></span></div>
+        <button class="gen-saltar" type="button">${esc(G.saltar)}</button>`;
+      capa.querySelector('.gen-saltar').addEventListener('click', () => motor.saltar());
+      document.body.appendChild(capa);
+    }
+    const decir = (txt) => { AURA.hablar(txt, idiomaActivo()).catch(() => {}); };
+    const centro = (txt, grande) => {
+      if (!capa) return;
+      const c = capa.querySelector('.gen-centro');
+      c.textContent = txt;
+      c.classList.toggle('grande', !!grande);
+      c.classList.remove('ve'); void c.offsetWidth; c.classList.add('ve');
+      capa.querySelector('.gen-pie').classList.remove('ve');
+    };
+    const pie = (nombre, frase) => {
+      if (!capa) return;
+      capa.querySelector('.gen-centro').classList.remove('ve');
+      const p = capa.querySelector('.gen-pie');
+      p.querySelector('b').textContent = nombre;
+      p.querySelector('span').textContent = frase;
+      p.classList.remove('ve'); void p.offsetWidth; p.classList.add('ve');
+    };
+    const porTecla = (e) => { if (e.key === 'Escape') motor.saltar(); };
+    addEventListener('keydown', porTecla);
+
+    motor.empezar({
+      alFase(clave) {
+        if (clave === 'tiniebla') { centro(G.tiniebla); decir(G.tiniebla); }
+        else if (clave === 'palabra') { centro(G.palabra, true); decir(G.palabra); }
+        else if (clave === 'luz') { centro(G.luz, true); decir(G.luz); }
+        else if (clave === 'acomodo') { centro(G.acomodo); decir(G.acomodo); }
+        else if (clave.startsWith('casa:')) {
+          const c = G.casas[clave.slice(5)];
+          if (c) { pie(c[0], c[1]); decir(c[0] + '. ' + c[1]); }
+        } else if (clave === 'panorama') { centro(G.panorama); decir(G.panorama); }
+      },
+      alFin() {
+        genVivo = false;
+        removeEventListener('keydown', porTecla);
+        try { AURA.pararVoz(); } catch { /* nada */ }
+        if (capa) { capa.classList.add('yendo'); setTimeout(() => capa.remove(), 700); }
+      },
+      casas: ['wallet', 'chat', 'gid', 'pay', 'genesis'],
+    });
+    tele('accion', 'genesis.tour', { visor: enVisor });
+  }
+
   async function auraBienvenidaGalaxia(conVoz) {
     const T = aTxt();
     const mio = ++aedTurno;
@@ -11789,7 +11906,7 @@ const VETA = (() => {
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
            pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,
-           vsEntrar, vsSalir, vsOjos, vsMirada,
+           vsEntrar, vsSalir, vsOjos, vsMirada, tourGenesis,
            _bienvenidaGalaxia: (v) => auraBienvenidaGalaxia(v),
            /* El aterrizaje del login, tal cual: la prueba comprueba que entrar
               siempre deja a la persona en el Inicio, aunque la dirección

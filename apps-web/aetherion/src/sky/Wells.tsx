@@ -6,7 +6,7 @@ import { RADIO_ANILLO, rig } from '../kernel/rig'
 import { useUiStore } from '../state/uiStore'
 import { atmosphereFragment, atmosphereVertex } from '../shaders/shared'
 import { getRingTexture } from './textures'
-import { emblemaTextura, letreroTextura, planetaTextura, nubesTextura, anilloTextura } from './emblema'
+import { emblemaTextura, letreroTextura, planetaTextura, nubesTextura, anilloTextura, lucesTextura } from './emblema'
 import type { Galaxy } from './lattice'
 
 export type Archetype = 'pulsar' | 'binary' | 'memory' | 'torus' | 'sentinel'
@@ -384,21 +384,30 @@ function WellView({ def }: { def: WellDef }) {
   /* La silueta la manda la naturaleza del mundo: quién lleva anillo, de qué
      tamaño, quién tiene luna y quién brilla por dentro. */
   type Rasgos = { anillo?: [number, number]; luna?: number; brillo: number
-                  giro: number; relieve: number; nubes?: boolean }
+                  giro: number; relieve: number; nubes?: boolean
+                  vive?: boolean; mar?: boolean; eje?: number }
+  /* vive = luces de ciudad en la cara de noche; mar = superficie con brillo
+     especular (el destello del sol sobre agua); eje = inclinación del eje de
+     giro — ningún mundo de verdad gira derecho, y esa torcedura por sí sola
+     quita la mitad del aire a «bola generada». */
   const A: Record<string, Rasgos> = {
-    gigante: { anillo: [1.5, 2.35], luna: 0.26, brillo: 0.05, giro: 0.16, relieve: 0.012, nubes: true },
-    helado: { anillo: [1.7, 2.0], brillo: 0.06, giro: 0.1, relieve: 0.022 },
-    forja: { anillo: [1.45, 1.95], brillo: 0.3, giro: 0.34, relieve: 0.03 },
-    oceano: { luna: 0.3, brillo: 0.05, giro: 0.19, relieve: 0.008, nubes: true },
-    jardin: { luna: 0.22, brillo: 0.06, giro: 0.21, relieve: 0.018, nubes: true },
-    bunker: { anillo: [1.9, 2.05], brillo: 0.03, giro: 0.08, relieve: 0.038 },
-    boveda: { anillo: [1.5, 1.9], brillo: 0.05, giro: 0.12, relieve: 0.02 },
-    nucleo: { anillo: [1.6, 2.2], brillo: 0.34, giro: 0.26, relieve: 0.014 },
-    faro: { luna: 0.18, brillo: 0.08, giro: 0.14, relieve: 0.016 },
+    gigante: { anillo: [1.5, 2.35], luna: 0.26, brillo: 0.05, giro: 0.16, relieve: 0.012, nubes: true, eje: 0.32 },
+    helado: { anillo: [1.7, 2.0], brillo: 0.06, giro: 0.1, relieve: 0.022, mar: true, eje: 0.5 },
+    forja: { anillo: [1.45, 1.95], brillo: 0.3, giro: 0.34, relieve: 0.03, eje: 0.12 },
+    oceano: { luna: 0.3, brillo: 0.05, giro: 0.19, relieve: 0.008, nubes: true, vive: true, mar: true, eje: 0.41 },
+    jardin: { luna: 0.22, brillo: 0.06, giro: 0.21, relieve: 0.018, nubes: true, vive: true, mar: true, eje: 0.23 },
+    bunker: { anillo: [1.9, 2.05], brillo: 0.03, giro: 0.08, relieve: 0.038, vive: true, eje: 0.08 },
+    boveda: { anillo: [1.5, 1.9], brillo: 0.05, giro: 0.12, relieve: 0.02, vive: true, eje: 0.27 },
+    nucleo: { anillo: [1.6, 2.2], brillo: 0.34, giro: 0.26, relieve: 0.014, eje: 0.19 },
+    faro: { luna: 0.18, brillo: 0.08, giro: 0.14, relieve: 0.016, vive: true, eje: 0.36 },
   }
   const rasgos = A[def.natura] || A.gigante
   const conAnillo = !!rasgos.anillo
   const conLuna = !!rasgos.luna
+  const luces = useMemo(() => (rasgos.vive ? lucesTextura(def.key) : null),
+    [rasgos.vive, def.key])
+  // la torcedura de cada mundo: la de su naturaleza, matizada por su nombre
+  const eje = (rasgos.eje ?? 0.25) * (0.75 + ((seed * 13) % 10) / 20)
 
   return (
     <group ref={group} position={def.anchor}>
@@ -422,7 +431,7 @@ function WellView({ def }: { def: WellDef }) {
         />
       </sprite>
 
-      <group ref={spin}>
+      <group ref={spin} rotation={[0, 0, eje]}>
         {/* EL PLANETA: piel de marca, luz propia suave y bulto de esfera */}
         {/* EL CUERPO. El mapa de relieve sale de la misma piel: donde la
             textura es clara el terreno sobresale, y con la luz del sol
@@ -434,13 +443,29 @@ function WellView({ def }: { def: WellDef }) {
             map={piel}
             bumpMap={piel}
             bumpScale={rasgos.relieve}
-            metalness={0.06}
-            roughness={0.92}
-            emissive={new THREE.Color(def.halo)}
-            /* Casi nada de luz propia: un planeta no brilla, REFLEJA. Solo
-               los que de verdad arden por dentro (la forja, el núcleo)
-               conservan algo. */
-            emissiveIntensity={rasgos.brillo}
+            metalness={rasgos.mar ? 0.12 : 0.06}
+            /* El mar devuelve el sol: los mundos con agua llevan la
+               superficie más lisa y el destello especular viaja por ella al
+               girar — el brillo que en una foto de la Tierra delata el
+               océano. */
+            roughness={rasgos.mar ? 0.55 : 0.92}
+            {...(rasgos.vive
+              ? {
+                  /* LAS CIUDADES. El mapa emisivo pinta solo los cúmulos de
+                     luz: de día el sol los lava, y al girar a la sombra
+                     aparecen las ciudades y sus rutas. Un mundo con luces de
+                     noche es un mundo donde VIVE alguien. */
+                  emissive: new THREE.Color('#ffd2a0'),
+                  emissiveMap: luces,
+                  emissiveIntensity: 0.85,
+                }
+              : {
+                  emissive: new THREE.Color(def.halo),
+                  /* Casi nada de luz propia: un planeta no brilla, REFLEJA.
+                     Solo los que arden por dentro (la forja, el núcleo)
+                     conservan algo. */
+                  emissiveIntensity: rasgos.brillo,
+                })}
           />
         </mesh>
         {/* LAS NUBES: una segunda capa que gira a su ritmo. Es el truco más

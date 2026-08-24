@@ -9,6 +9,7 @@ import { TransitRunner } from './transit/TransitRunner'
 import { GestureLayer } from './gesture/useGestures'
 import { Hud } from './hud/Hud'
 import { Overlays } from './hud/Overlays'
+import { Espacial } from './audio/Espacial'
 import { sim } from './kernel/sim'
 import { useUiStore } from './state/uiStore'
 
@@ -61,6 +62,7 @@ export default function App() {
         <Sky />
         <Pulses />
         <TransitRunner />
+        <Espacial />
         <GestureLayer />
       </Canvas>
       <Hud />

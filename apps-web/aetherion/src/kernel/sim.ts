@@ -17,6 +17,9 @@ export const sim = {
      Entrar es exactamente el viaje de 1 a 0, y por eso los planetas se
      ACOMODAN mientras la cámara se acerca. */
   acomodo: 1,
+  /* La noche del Génesis: 1 = el sol todavía no fue dicho (tiniebla), 0 = luz
+     normal. Solo el tour la toca; el resto del motor la deja en cero. */
+  noche: 0,
   /* ¿hay un visor puesto? El post-procesado y otros lujos se apartan */
   visor: false,
   timeScale: 1,

@@ -184,6 +184,12 @@ class AetherAudio {
     this.tone(f, 'sine', 0.02, 0.005, 0.9)
   }
 
+  /* El plano espacial (espacio.ts) cuelga sus emisores del MISMO contexto y
+     del mismo máster: una sola mezcla, un solo compresor, un solo volumen. */
+  get contexto() { return this.ctx }
+  get salida() { return this.master }
+  get ruido() { return this.noiseBuf }
+
   pause() {
     if (this.ctx && this.ctx.state === 'running') this.ctx.suspend()
   }

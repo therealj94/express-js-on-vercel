@@ -208,6 +208,30 @@ body.en-visor[data-visor=carton]::after{content:'';position:fixed;left:50%;top:0
 body.en-visor[data-visor=carton] #visor-capa .vs-pista{display:none}
 @media (prefers-reduced-motion:reduce){#visor-capa{animation:none}}
 
+/* EL TOUR GÉNESIS · las palabras de la historia. La Palabra va grande y al
+   centro, en la letra de la casa; las presentaciones abajo, como rótulos de
+   película. Nada tapa los planetas: texto con su sombra y aire alrededor. */
+#gen-letra{position:fixed;inset:0;z-index:96;pointer-events:none}
+#gen-letra.yendo{opacity:0;transition:opacity .6s ease}
+.gen-centro{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);
+  max-width:min(720px,84vw);text-align:center;font:500 clamp(17px,2.6vw,26px)/1.5 var(--serif,serif);
+  color:var(--crema);text-shadow:0 2px 26px rgba(0,0,0,.85);opacity:0}
+.gen-centro.grande{font-size:clamp(26px,4.6vw,46px);letter-spacing:.01em;color:#F5E9C8}
+.gen-centro.ve{opacity:1;transition:opacity 1.1s ease}
+.gen-pie{position:absolute;left:50%;bottom:12%;transform:translateX(-50%);
+  max-width:min(640px,86vw);text-align:center;opacity:0}
+.gen-pie.ve{opacity:1;transition:opacity .8s ease}
+.gen-pie b{display:block;font:600 clamp(16px,2.2vw,22px)/1.3 var(--sans);color:#F5E9C8;
+  letter-spacing:.06em;text-shadow:0 2px 18px rgba(0,0,0,.9)}
+.gen-pie span{display:block;margin-top:6px;font:400 clamp(13px,1.7vw,16px)/1.55 var(--sans);
+  color:var(--bruma);text-shadow:0 2px 14px rgba(0,0,0,.9)}
+.gen-saltar{position:absolute;right:16px;bottom:16px;pointer-events:auto;
+  padding:8px 16px;border-radius:999px;border:1px solid var(--linea2);
+  background:rgba(4,10,26,.55);color:var(--bruma);font:500 12.5px/1 var(--sans);
+  cursor:pointer;backdrop-filter:blur(8px)}
+.gen-saltar:hover{color:var(--oro);border-color:var(--oro)}
+@media (prefers-reduced-motion:reduce){.gen-centro.ve,.gen-pie.ve{transition:none}}
+
 /* EL MARCO DE CASA · AuCorp y Ordenex viven adentro. La cabecera es corta y
    la plataforma se lleva todo lo demás: el marco tiene que sentirse como una
    habitación de la misma casa, no como una ventana a otro sitio. */
@@ -624,6 +648,17 @@ body:has(#app:not(.oculto)) #galaxia{display:none}
   transition:transform .22s cubic-bezier(.2,.8,.3,1),box-shadow .22s,background .22s,border-color .22s;
   white-space:nowrap;position:relative;overflow:hidden}
 .btn:active{transform:scale(.975)}
+/* TODO LO PRESIONABLE CONTESTA. La regla pareja de la casa: cualquier botón,
+   fila o mando —también los que no llevan .btn— se hunde un pelo al apretarse
+   y muestra la mano al pasar. Un control que no contesta parece un adorno, y
+   un adorno nadie lo toca. */
+button:not(:disabled),[role=button],summary{cursor:pointer}
+button:not(:disabled):active,[role=button]:active,summary:active,
+.fila:active,.nav:active,.marco-atras:active,.vs-salir:active,.vs-centrar:active,
+.gen-saltar:active{transform:scale(.96)}
+@media (prefers-reduced-motion:reduce){
+  button:not(:disabled):active,[role=button]:active,.fila:active,.nav:active{transform:none}
+}
 .btn-oro{color:#2A2007;background:linear-gradient(120deg,var(--oroLt),var(--oro) 52%,var(--oroLt));
   background-size:210% 100%;box-shadow:0 14px 40px -16px rgba(201,169,97,.7)}
 .btn-oro:hover{transform:translateY(-2px);box-shadow:0 20px 52px -16px rgba(201,169,97,.85)}
