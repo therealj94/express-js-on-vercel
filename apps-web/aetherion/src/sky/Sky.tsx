@@ -37,7 +37,7 @@ function Filaments() {
 
   useFrame(() => {
     mat.color.copy(sim.mareaColor)
-    mat.opacity = 0.55 * sim.intro * (1 - 0.45 * sim.eclipse)
+    mat.opacity = 0.55 * sim.intro * (1 - 0.45 * sim.eclipse) * (1 - 0.92 * sim.noche)
     matRef.current = mat
   })
 
@@ -48,9 +48,14 @@ function Nebulae() {
   const tex = getRadialTexture()
   const g1 = useRef<THREE.Mesh>(null)
   const g2 = useRef<THREE.Mesh>(null)
+  const base = useRef([0.16, 0.12])
   useFrame((_, dt) => {
     if (g1.current) g1.current.rotation.z += dt * 0.008
     if (g2.current) g2.current.rotation.z -= dt * 0.006
+    // las nebulosas también obedecen a la noche
+    const k = 1 - 0.92 * sim.noche
+    if (g1.current) (g1.current.material as THREE.MeshBasicMaterial).opacity = base.current[0] * k
+    if (g2.current) (g2.current.material as THREE.MeshBasicMaterial).opacity = base.current[1] * k
   })
   const mkMat = (op: number) => (
     <meshBasicMaterial

@@ -231,7 +231,13 @@ export function Core() {
     glowMat.uniforms.uBoost.value = b * 0.9 * luzViva
     if (brasa.current) {
       brasa.current.scale.setScalar(R_SOL * (2.9 + Math.min(0.8, b) * 0.13))
-      ;(brasa.current.material as THREE.SpriteMaterial).opacity = 0.92 * Math.max(0.06, luzViva)
+      /* EL RESCOLDO. En la tiniebla el disco no puede quedar como un sol
+         pálido: se apaga casi del todo y se pone del color de una brasa
+         —rojo hondo, no blanco—, que es lo que queda de una estrella que
+         todavia no encendio. Lo justo para saber donde va a nacer. */
+      const bm = brasa.current.material as THREE.SpriteMaterial
+      bm.opacity = 0.92 * Math.max(0.045, luzViva)
+      bm.color.setRGB(1, 0.72 + 0.28 * luzViva, 0.42 + 0.58 * luzViva)
     }
     if (corona.current) corona.current.scale.setScalar(1 + V * 0.16)
     if (group.current) group.current.scale.setScalar(1 + b * 0.05 + sim.breath * 0.02)
@@ -254,9 +260,11 @@ export function Core() {
       const s = d * 0.075
       letrero.current.scale.set(s * 2.6, s * 0.65, 1)
       letrero.current.position.set(0, -R_SOL - 0.5 - s * 0.34, 0)
-      // en el umbral el sistema se mira en silencio: el nombre llega al entrar
+      /* En el umbral el sistema se mira en silencio: el nombre llega al
+         entrar. Y en la tiniebla del Génesis TAMPOCO: no se le pone nombre a
+         algo que todavía no fue dicho. */
       ;(letrero.current.material as THREE.SpriteMaterial).opacity =
-        (window as any).__AE_PUERTA ? 0 : 0.92
+        (window as any).__AE_PUERTA ? 0 : 0.92 * (1 - sim.noche)
     }
   })
 
