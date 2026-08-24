@@ -53,6 +53,8 @@ es: {
   // El acceso es un solo gesto (el canje del token SSO), pero tiene tres
   // finales posibles y cada uno se dice distinto.
   'acc.entrando': 'Entrando con tu cuenta…',
+  'acc.err': 'No se pudo entrar. Probá de nuevo en un momento.',
+  'acc.sinGid': 'Para entrar a Ordenex hace falta tu Genesis ID verificado.',
   'acc.hola': 'Bienvenido a la casa de cambio',
   'acc.mal': 'No pudimos validar tu entrada. Volvé a intentarlo desde tu Veta Wallet.',
   'acc.vencida': 'Tu sesión venció. Entrá de nuevo con tu cuenta Veta Wallet.',
@@ -89,6 +91,8 @@ en: {
   'pie.og': 'Orden Global',
 
   'acc.entrando': 'Signing in with your account…',
+  'acc.err': 'Could not sign in. Try again in a moment.',
+  'acc.sinGid': 'To enter Ordenex you need your verified Genesis ID.',
   'acc.hola': 'Welcome to the exchange house',
   'acc.mal': 'We couldn’t validate your sign-in. Try again from your Veta Wallet.',
   'acc.vencida': 'Your session expired. Sign in again with your Veta Wallet account.',

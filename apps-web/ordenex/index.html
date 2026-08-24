@@ -414,6 +414,10 @@ body.en-app .lienzo{padding-top:calc(34px + 22px)}
 .riel-pie button{color:var(--bruma);font-size:11.5px;padding:0}
 .riel-pie button:hover{color:var(--oroLt)}
 .riel-pie .idiomas{margin-top:10px;width:max-content}
+/* El sello se lee cuando se lo busca y no antes: es un dato de diagnostico,
+   no una linea de la interfaz. De ahi el tamaño chico y el gris apagado. */
+.riel-pie .sello{margin-top:10px;font-size:10.5px;letter-spacing:.06em;
+  color:var(--humo);opacity:.62;font-variant-numeric:tabular-nums;user-select:all}
 /* La linea de propiedad. Lleva el oro del logo y una regla encima: es un dato
    de la casa, no un enlace mas de la lista. */
 .riel-pie .duena{padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--linea2);
@@ -701,6 +705,11 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
         <button data-lang="es" id="lang-es-r" aria-pressed="true" onclick="ONX.idioma('es')">ES</button>
         <button data-lang="en" id="lang-en-r" aria-pressed="false" onclick="ONX.idioma('en')">EN</button>
       </div>
+      <!-- QUE COPIA ESTA CORRIENDO. Un navegador puede seguir sirviendo la de
+           ayer durante horas, y sin este dato «ya lo arreglamos» y «a mi me
+           sigue fallando» son las dos ciertas al mismo tiempo y no hay forma
+           de saber cual. Aqui se lee el sello y se termina la discusion. -->
+      <div class="sello" id="onx-sello" title=""></div>
     </div>
   </nav>
   <div class="lienzo" id="lienzo"></div>

@@ -429,6 +429,7 @@ es: {
   // el tour Génesis
   'gen.aj': 'La historia del origen',
   'gen.ajP': '«Sea la luz»: cómo nació todo esto, en minuto y medio',
+  'ver.aj': 'Versión de la app',
   'mus.aj': 'Música del ecosistema',
   'mus.ajP': 'Suena debajo de todo y se calla cuando AU-RA habla',
   'gen.sinCielo': 'La historia se cuenta sobre el cielo 3D. Volvé al Inicio y probá de nuevo.',
@@ -1379,6 +1380,7 @@ en: {
   'dep.red': 'Network', 'dep.aviso': 'Orden Global network assets only (chain 5550). Anything else sent to this address is lost.',
   'gen.aj': 'The story of the origin',
   'gen.ajP': '“Let there be light”: how all of this was born, in ninety seconds',
+  'ver.aj': 'App version',
   'mus.aj': 'Ecosystem music',
   'mus.ajP': 'It plays under everything and hushes when AU-RA speaks',
   'gen.sinCielo': 'The story is told over the 3D sky. Go back Home and try again.',

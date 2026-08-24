@@ -50,6 +50,25 @@ const ONX = (() => {
   // circuito entero contra un ensayo.
   const WALLET = String(window.ONX_WALLET || 'https://app.vetawallet.com').replace(/\/$/, '');
 
+  /* LAS CASAS MADRE QUE VALEN.
+   *
+   * La wallet no vive en una sola dirección: está su nombre de siempre y están
+   * los dos tableros de Amplify —el de ensayo y el de producción—, y por
+   * cualquiera de los tres puede alguien abrir Ordenex enmarcado. Cuando la
+   * llave vuelve, vuelve con el origen POR EL QUE ENTRÓ; reconociendo uno solo,
+   * las otras dos respuestas se caían al piso sin decir nada y quedaba
+   * «Entrando…» hasta que saltaba el aviso de los diez segundos.
+   *
+   * Sigue siendo una puerta cerrada, no una abierta: es una lista corta y
+   * escrita a mano. Y la PREGUNTA no lleva ningún secreto —solo dice «soy
+   * Ordenex, dame la llave»—, así que se le puede preguntar a las tres: el
+   * navegador solo entrega el mensaje a la que de verdad está ahí. El secreto
+   * viaja en la RESPUESTA, y esa sí se comprueba contra la lista. */
+  const CASAS_MADRE = [...new Set([WALLET,
+    'https://app.vetawallet.com',
+    'https://main.d289v5ffkexk23.amplifyapp.com',
+    'https://main.d264zjawew1yea.amplifyapp.com'])];
+
   const $ = s => document.querySelector(s);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -379,9 +398,49 @@ const ONX = (() => {
        lee como «nadie quiso entrar». Se vacía la cola antes de saltar: esta
        página se va a descargar en la línea siguiente. */
     tele('accion', 'sso.pedido');
+    /* DENTRO DEL MARCO DE LA CASA MADRE NO SE VIAJA: SE PIDE.
+     *
+     * Mandar el marco a app.vetawallet.com es meter la wallet dentro de la
+     * wallet — su CSP lo bloquea (con razón) y lo que queda es una página en
+     * blanco. Estando adentro, la sesión ya existe del otro lado del cristal:
+     * basta pedirla. La wallet acuña el token y lo devuelve por el mismo
+     * canal, sin una sola recarga.
+     *
+     * Fuera del marco —alguien que llega a ordenexchange.link por su cuenta—
+     * el viaje de siempre sigue siendo el correcto. */
+    if (window.top !== window.self) {
+      esperandoLlave = true;
+      avisar(t('acc.entrando'));
+      for (const casa of CASAS_MADRE) {
+        try { parent.postMessage({ og: 'sso-pedido', app: 'ordenex' }, casa); }
+        catch { /* la que no sea, sencillamente no recibe */ }
+      }
+      /* Si la casa madre no contesta en diez segundos, algo pasó del otro
+         lado: se dice, en vez de dejar a alguien mirando «Entrando…». */
+      setTimeout(() => {
+        if (!esperandoLlave) return;
+        esperandoLlave = false;
+        avisar(t('acc.err'));
+      }, 10000);
+      return;
+    }
     tele('vaciar');
     location.href = WALLET + '/#sso-ordenex';
   }
+
+  /* LA LLAVE QUE LLEGA DE LA CASA MADRE. Puerta cerrada: solo se atiende a las
+     direcciones de la wallet escritas arriba, y a ninguna otra. */
+  let esperandoLlave = false;
+  addEventListener('message', (ev) => {
+    if (!CASAS_MADRE.includes(ev.origin) || !ev.data) return;
+    if (ev.data.og === 'sso-token' && ev.data.token) {
+      esperandoLlave = false;
+      canjear(ev.data.token);
+    } else if (ev.data.og === 'sso-no') {
+      esperandoLlave = false;
+      avisar(ev.data.motivo === 'sin-gid' ? t('acc.sinGid') : t('acc.err'));
+    }
+  });
 
   async function canjear(token) {
     avisar(t('acc.entrando'));
@@ -430,6 +489,27 @@ const ONX = (() => {
     else pintarVivos();
   }
 
+  /* ── EL SELLO DE ESTA COPIA ───────────────────────────────────────────────
+   *
+   * Lo escribe subir.py en el momento de publicar, a partir del contenido de
+   * todos los archivos: mismo contenido, mismo sello. Así que si dos personas
+   * leen el mismo sello, están viendo exactamente lo mismo, y si uno lee el
+   * de ayer, el navegador le está sirviendo una copia guardada.
+   *
+   * Existe por una discusión que se repetía: un arreglo publicado y alguien
+   * que sigue viendo el fallo. Sin este dato no había manera de distinguir
+   * «no se arregló» de «no te llegó», y se buscaba dos horas en el lugar
+   * equivocado. */
+  const ONX_V = 'sin-sellar';
+  const ONX_FECHA = '—';
+
+  function sellar() {
+    const el = document.getElementById('onx-sello');
+    if (!el) return;
+    el.textContent = `v ${ONX_V}`;
+    el.title = `Publicado ${ONX_FECHA}`;
+  }
+
   // ── el arranque ───────────────────────────────────────────────────────────
 
   function arrancar() {
@@ -444,6 +524,7 @@ const ONX = (() => {
        deducirlo sumando pantallas, que cuenta de más. */
     tele('sesion', 'app.abierta');
     pintarIdioma();
+    sellar();
 
     /* ¿Viene un token de la wallet? El hash se limpia ANTES de canjearlo: un
        token de sesión no se queda en la barra, ni en el historial, ni en la

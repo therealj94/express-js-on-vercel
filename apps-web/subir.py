@@ -8,7 +8,7 @@
 # doble, porque ahi viven privacidad.html y terminos.html y las tiendas de
 # aplicaciones las exigen: dejarlas fuera de una subida es tumbarlas.
 
-import hashlib, os, sys, time, boto3, requests
+import hashlib, os, re, sys, time, boto3, requests
 
 RAIZ, APP = sys.argv[1], sys.argv[2]
 RAMA = sys.argv[3] if len(sys.argv) > 3 else 'main'
@@ -32,6 +32,73 @@ FUERA = ('pruebas',)
 def se_sube(rel):
     return not any(p in FUERA for p in rel.split(os.sep))
 
+
+# ── EL SELLO DE LA VERSIÓN ───────────────────────────────────────────────────
+#
+# «No sé si se actualizó» es una pregunta que no se puede contestar mirando la
+# pantalla: un navegador que se quedó con una copia vieja se ve exactamente
+# igual que uno al día. Así que cada subida ESTAMPA su huella en app.js, y la
+# ficha de Ajustes la enseña. Si lo que dice la pantalla no coincide con lo que
+# se acaba de subir, la copia es vieja — y entonces ya se sabe qué hacer.
+#
+# La huella sale del contenido de los archivos que se suben, no de un reloj:
+# subir dos veces lo mismo da el mismo sello, que es lo correcto (no hubo
+# cambios) y evita el «actualizá» falso.
+#
+# Cada casa nombra sus constantes a su manera —VETA_V en la billetera, ONX_V en
+# Ordenex— así que el sello se busca por el par que corresponda y no por un
+# nombre fijo. La casa que no tenga ninguno sencillamente no se sella, en
+# silencio: no todas necesitan ficha de versión, y un aviso en cada subida que
+# no significa nada enseña a ignorar los avisos.
+SELLOS = (('VETA_V', 'VETA_FECHA'), ('ONX_V', 'ONX_FECHA'))
+
+
+def sellar(raiz):
+    import datetime
+    objetivo = os.path.join(raiz, 'app.js')
+    if not os.path.exists(objetivo):
+        return None
+    with open(objetivo, encoding='utf8') as f:
+        codigo = f.read()
+
+    marca = next((p for p in SELLOS if re.search(rf"const {p[0]} = '", codigo)), None)
+    if not marca:
+        return None
+    nomV, nomF = marca
+
+    h = hashlib.md5()
+    for base, _, nombres in sorted(os.walk(raiz)):
+        for n in sorted(nombres):
+            r = os.path.join(base, n)
+            rel = os.path.relpath(r, raiz)
+            if not se_sube(rel) or rel == 'app.js':
+                continue
+            with open(r, 'rb') as f:
+                h.update(rel.encode()); h.update(f.read())
+    # El propio app.js entra en la cuenta, pero SIN su sello anterior — LAS DOS
+    # LÍNEAS, versión y fecha. Borrando solo la versión, la fecha estampada en
+    # la subida anterior seguía dentro de lo que se hashea y cada subida daba un
+    # sello distinto aunque no se hubiera tocado una coma. Justo lo contrario de
+    # lo que este número tiene que decir: mismo contenido, mismo sello.
+    limpio = re.sub(rf"(const {nomV} = ')[^']*(')", r"\1\2", codigo)
+    limpio = re.sub(rf"(const {nomF} = ')[^']*(')", r"\1\2", limpio)
+    h.update(limpio.encode())
+    version = h.hexdigest()[:10]
+    fecha = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d')
+    nuevo, n1 = re.subn(rf"(const {nomV} = ')[^']*(')", rf"\g<1>{version}\g<2>", codigo)
+    nuevo, n2 = re.subn(rf"(const {nomF} = ')[^']*(')", rf"\g<1>{fecha}\g<2>", nuevo)
+    if not n2:
+        # Media ficha es peor que ninguna: diría una fecha que no es la de esta
+        # subida y nadie sabría que está mintiendo.
+        print(f'  aviso: hay `{nomV}` pero falta `{nomF}` — la fecha va a quedar vieja')
+    if nuevo != codigo:
+        with open(objetivo, 'w', encoding='utf8') as f:
+            f.write(nuevo)
+    print(f'  sello de la casa v={version} ({fecha})')
+    return version
+
+
+sellar(RAIZ)
 
 archivos = {}
 saltados = 0

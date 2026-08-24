@@ -371,6 +371,15 @@ body.en-cine #lienzo{opacity:0;transition:opacity .9s ease}
 .puerta-afuera .vidrio{display:flex;flex-direction:column;gap:14px;max-width:340px;
   margin:20px;padding:24px;text-align:center}
 .puerta-afuera p{font:400 13.5px/1.6 var(--sans);color:var(--bruma);margin:0}
+/* La ficha de versión: pares de dato y valor, con el número en monoespaciado
+   para que se pueda comparar de un vistazo con lo que se acaba de publicar. */
+.ver-lista{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;margin:0 0 14px;
+  font:400 13px/1.4 var(--sans)}
+.ver-lista dt{color:var(--humo)}
+.ver-lista dd{margin:0;color:var(--crema);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:12.5px;word-break:break-all}
+.ver-nota{font:400 12.5px/1.6 var(--sans);color:var(--humo);
+  border-left:2px solid var(--linea2);padding-left:12px;margin:0 0 16px}
 
 /* La ficha del visor en Ajustes */
 .vs-caja{display:grid;gap:12px}

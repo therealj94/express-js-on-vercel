@@ -4488,6 +4488,7 @@ const VETA = (() => {
         ${fila(ICO.obra, t('aj.bien'), t('aj.bienP'), "VETA.bienvenida()")}
         ${fila(ICO.chispa || ICO.obra, t('gen.aj'), t('gen.ajP'), "VETA.tourGenesis('boton')")}
         ${fila(ICO.nota || ICO.obra, t('mus.aj'), t('mus.ajP'), "VETA.musicaAlterna()")}
+        ${fila(ICO.chispa || ICO.obra, t('ver.aj'), `${VETA_V} · ${VETA_FECHA}`, "VETA.versionMirar()")}
         ${fila(ICO.tienda, t('aj.mtp'), t('aj.mtpP'), "VETA.vista('pay')")}
         ${fila(ICO.globo, t('aj.idioma'), t('aj.idiomaP'), "VETA.idioma('" + (idiomaActivo() === 'es' ? 'en' : 'es') + "')")}
         ${fila(ICO.doc, t('aj.legal'), t('aj.legalP'), "window.open('/terminos','_blank','noopener')")}
@@ -5309,6 +5310,15 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
+  /* ── EL SELLO DE ESTA CASA ───────────────────────────────────────────────
+     Lo estampa `subir.py` en cada despliegue, a partir del CONTENIDO de los
+     archivos. Existe para contestar una pregunta que mirando la pantalla no
+     se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
+     mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
+     enseña, y con eso se sabe. */
+  const VETA_V = 'sin-sellar';
+  const VETA_FECHA = '—';
+
   const AET_V = '70e95ad581';
 
   function aetCargar() {
@@ -5400,6 +5410,55 @@ const VETA = (() => {
   const vsSalir = () => window.VISOR?.salir();
   const vsOjos = (v) => window.VISOR?.ojos(Number(v) / 1000);
   const vsMirada = (v) => window.VISOR?.mirada(v);
+
+  /* ── LA VERSIÓN, A LA VISTA ──────────────────────────────────────────────
+   *
+   * «No sé si se actualizó» no se puede contestar mirando la pantalla: una
+   * copia vieja se ve idéntica a una al día. Esta ficha dice qué versión está
+   * cargada —la casa y la galaxia, que se despliegan por separado y pueden ir
+   * desfasadas— y ofrece la única cura de verdad: tirar la copia guardada y
+   * volver a pedirlo todo.
+   */
+  async function versionMirar() {
+    const sw = 'serviceWorker' in navigator
+      ? (await navigator.serviceWorker.getRegistrations().catch(() => []))
+      : [];
+    const cajas = 'caches' in window ? await caches.keys().catch(() => []) : [];
+    const es = idiomaActivo() === 'es';
+    const capa = document.createElement('div');
+    capa.className = 'puerta-afuera';
+    capa.innerHTML = `<div class="vidrio" style="max-width:400px;text-align:left">
+      <h3 style="margin:0 0 14px;font:600 15px/1.3 var(--sans);color:var(--crema);
+        letter-spacing:.06em">${esc(t('ver.aj'))}</h3>
+      <dl class="ver-lista">
+        <dt>${es ? 'La casa' : 'The app'}</dt><dd>${esc(VETA_V)}</dd>
+        <dt>${es ? 'Publicada' : 'Published'}</dt><dd>${esc(VETA_FECHA)}</dd>
+        <dt>${es ? 'La galaxia' : 'The galaxy'}</dt><dd>${esc(AET_V)}</dd>
+        <dt>${es ? 'Copia guardada' : 'Cached copy'}</dt>
+        <dd>${sw.length || cajas.length
+          ? (es ? 'sí — puede servir una versión vieja' : 'yes — may serve an old version')
+          : (es ? 'no' : 'no')}</dd>
+      </dl>
+      <p class="ver-nota">${es
+        ? 'Si este número no es el de la última publicación, tu navegador guardó una copia vieja. El botón la tira y lo pide todo de nuevo.'
+        : 'If this number is not the latest published one, your browser kept an old copy. The button throws it away and fetches everything again.'}</p>
+      <div class="acciones" style="margin-top:4px">
+        <button class="btn btn-oro btn-sm" id="ver-refrescar">${es ? 'Traer la última' : 'Fetch the latest'}</button>
+        <button class="btn btn-linea btn-sm" id="ver-cerrar">${esc(t('gc.cerrar'))}</button>
+      </div></div>`;
+    document.body.appendChild(capa);
+    capa.querySelector('#ver-cerrar').addEventListener('click', () => capa.remove());
+    capa.querySelector('#ver-refrescar').addEventListener('click', async () => {
+      /* LA CURA DE VERDAD, EN ESTE ORDEN: primero se despide al obrero que
+         sirve las copias, después se tiran las cajas, y recién entonces se
+         recarga. Recargar antes de eso vuelve a traer lo mismo de siempre. */
+      try { for (const r of sw) await r.unregister(); } catch { /* nada */ }
+      try { for (const c of cajas) await caches.delete(c); } catch { /* nada */ }
+      /* Y con la marca de tiempo en la dirección: hay navegadores que ni con
+         las cajas vacías se dignan a volver a pedir el documento. */
+      location.replace(location.pathname + '?v=' + Date.now());
+    });
+  }
 
   /* ── LA MÚSICA ───────────────────────────────────────────────────────────
      El botón, su marca visible, y el estado al arrancar. Encenderla la
@@ -5698,6 +5757,46 @@ const VETA = (() => {
     '#sso-ordenex': () => URL_ORDENEX,
     '#sso-aucorp': () => URL_AUCORP,
   };
+
+  /* ── LA LLAVE, SIN SALIR DE CASA ─────────────────────────────────────────
+   *
+   * Cuando Ordenex vive DENTRO de su marco y alguien toca «conectar con mi
+   * Veta Wallet», lo que hacía era mandar el marco a app.vetawallet.com — o
+   * sea, meter la wallet dentro de la wallet. La CSP lo bloquea (y con razón:
+   * anidar la casa dentro de sí misma no tiene sentido), y quedaba la página
+   * en blanco. Ese era el crash.
+   *
+   * La casa de adentro ya no viaja: PIDE. Manda un mensaje al marco de arriba,
+   * la wallet acuña el token igual que siempre y se lo devuelve por el mismo
+   * canal. Sin recargas, sin saltos, sin salir. Y con la puerta cerrada por
+   * los dos lados: solo se atienden mensajes del origen que ESTA casa enmarcó,
+   * y la respuesta se manda a ese origen y a ninguno más.
+   */
+  const ORIGEN_DE = (url) => { try { return new URL(url).origin; } catch { return null; } };
+
+  addEventListener('message', async (ev) => {
+    if (!ev.data || ev.data.og !== 'sso-pedido') return;
+    /* SOLO LA CASA QUE ESTÁ ENMARCADA AHORA MISMO. Un mensaje de cualquier
+       otro sitio —una pestaña abierta al lado, un anuncio— no puede pedir la
+       llave de nadie. */
+    const marco = $('.marco-hoja');
+    const suyo = marco ? ORIGEN_DE(marco.src) : null;
+    if (!suyo || ev.origin !== suyo) return;
+    if (!sesion?.token) { avisar(t('err.sesion')); return; }
+    try {
+      const d = await pedir('/genesis/sso/token', { metodo: 'POST' });
+      if (!d?.token) throw new Error(t('err.sesion'));
+      ev.source?.postMessage({ og: 'sso-token', token: d.token }, suyo);
+    } catch (e) {
+      /* El 403 es Genesis diciendo que sin identidad verificada no hay token:
+         se dice y se abre la verificación, que es lo único que la desbloquea.
+         Y se le avisa a la casa de adentro para que deje de esperar. */
+      try { ev.source?.postMessage({ og: 'sso-no', motivo: e.estado === 403 ? 'sin-gid' : 'error' }, suyo); }
+      catch { /* nada */ }
+      if (e.estado === 403) { avisar(t('nu.cerrado')); vista('verificar'); }
+      else avisar(e.message);
+    }
+  });
 
   async function volverConLlave(destino) {
     ssoDestino = null;
@@ -12176,7 +12275,7 @@ const VETA = (() => {
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
            pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,
-           vsEntrar, vsSalir, vsOjos, vsMirada, tourGenesis, musicaAlterna,
+           vsEntrar, vsSalir, vsOjos, vsMirada, tourGenesis, musicaAlterna, versionMirar,
            _bienvenidaGalaxia: (v) => auraBienvenidaGalaxia(v),
            /* El aterrizaje del login, tal cual: la prueba comprueba que entrar
               siempre deja a la persona en el Inicio, aunque la dirección
