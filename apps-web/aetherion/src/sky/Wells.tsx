@@ -269,6 +269,7 @@ function makeAtmoMaterial(color: string, density: number) {
       uTime: { value: 0 },
       uDensity: { value: density },
       uBoost: { value: 0 },
+      uAtenua: { value: 1 },
     },
   })
 }
@@ -344,6 +345,9 @@ function WellView({ def }: { def: WellDef }) {
   const luna = useRef<THREE.Group>(null)
   const nubes = useRef<THREE.Mesh>(null)
   const cuerpo = useRef<THREE.Mesh>(null)
+  /* Cuánto se ve esta casa ahora mismo: 1 entera, casi 0 apartada por un plano
+     de otra. Se guarda por referencia y no en estado para que no repinte. */
+  const atenua = useRef(1)
   const anilloMalla = useRef<THREE.Mesh>(null)
   const anillo3 = useRef<THREE.Group>(null)
   const hit = useRef<THREE.Mesh>(null!)
@@ -439,7 +443,22 @@ function WellView({ def }: { def: WellDef }) {
     if (cuerpo.current) {
       const mm = cuerpo.current.material as THREE.MeshStandardMaterial
       const base = rasgos.vive ? 0.85 : rasgos.brillo
-      mm.emissiveIntensity = base * (1 - sim.noche)
+      mm.emissiveIntensity = base * (1 - sim.noche) * atenua.current
+      /* ══ EL PROTAGONISTA DEL PLANO ═════════════════════════════════════════
+         Presentar una casa era enseñar once mundos con uno un poco más grande:
+         los demás seguían ahí, iluminados, disputando el cuadro y peleándose
+         con el rótulo por leerse. Es exactamente lo que se ve como «muy
+         pegadas» y «no se lee».
+         Durante un plano, todo lo que no es el tema se APAGA — no se esconde de
+         golpe, que sería un corte: se va en medio segundo, como cuando en un
+         teatro bajan las luces de sala. Lo que queda es un mundo, su nombre y
+         el cielo detrás. Eso es protagonismo. */
+      mm.transparent = true
+      mm.opacity = atenua.current
+      /* Para que una prueba pueda ver lo que una captura no distingue: un
+         planeta apagado y uno fuera de cuadro se ven igual desde fuera, y solo
+         uno de los dos es lo que se quería. */
+      ;((window as any).__AE_CASA_OP ||= {})[def.key] = atenua.current
       /* LOS DATOS DE LA SOMBRA, AL DÍA. El planeta se mueve (bota, se acomoda)
          y el anillo gira con él: su plano no es una constante, hay que
          decírselo al sombreador en cada cuadro o la banda oscura se queda
@@ -463,6 +482,13 @@ function WellView({ def }: { def: WellDef }) {
         ua.uRadioP.value = R
       }
     }
+
+    /* Cuánto le toca a esta casa: entera si es la que se presenta —o si no hay
+       plano—, y casi apagada si el plano es de otra. El paso es suave a
+       propósito: medio segundo es lo que tarda una sala en oscurecerse. */
+    const meta = !sim.protagonista || sim.protagonista === def.key ? 1 : 0.06
+    atenua.current = THREE.MathUtils.damp(atenua.current, meta, 7, dt)
+    atmo.uniforms.uAtenua.value = atenua.current
 
     atmo.uniforms.uTime.value = sim.now
     const boostT = selected ? 0.55 : 0

@@ -81,6 +81,10 @@ uniform vec3 uColor;
 uniform float uTime;
 uniform float uDensity;
 uniform float uBoost;
+/* Cuánto se ve esta atmósfera. Durante un plano de casa, las de las demás se
+   apagan: el halo es lo más visible de un mundo y sin bajarlo el cuadro sigue
+   lleno de coronas de colores compitiendo con la que se presenta. */
+uniform float uAtenua;
 varying vec3 vN;
 varying vec3 vW;
 ${SNOISE}
@@ -112,7 +116,7 @@ void main(){
               * (1.0 + uBoost * 1.7 + contra * 1.2)
               + rasante * fr * uDensity * 0.55;   // el anillo del atardecer suma
   ${extra}
-  gl_FragColor = vec4(col, clamp(alpha, 0.0, 1.0));
+  gl_FragColor = vec4(col, clamp(alpha, 0.0, 1.0) * uAtenua);
 }
 `
 }

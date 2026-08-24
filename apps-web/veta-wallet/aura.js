@@ -987,7 +987,12 @@ const AURA = (() => {
        llama a hablar: una sola puerta para la voz es una sola puerta para el
        agache, y ningún camino nuevo se olvida de bajarle. El tiempo se estima
        por el largo de la frase; si termina antes, terminar() la levanta. */
-    try { window.MUSICA?.agachar(1800 + texto.length * 70); } catch { /* nada */ }
+    /* AU-RA NO AGACHA LA MÚSICA. Se le hacía sitio como si fuera a hablar en
+       voz alta —hasta seis segundos con un mensaje largo— y AU-RA no tiene
+       voz: es texto en pantalla. No competía con nada, así que lo único que
+       lograba era que la música se fuera y volviera cada vez que AU-RA decía
+       algo, que es exactamente el fallo de «la música a veces se silencia».
+       El día que AU-RA hable de verdad, esta línea vuelve. */
     return new Promise(fin => {
       pararVoz();                       // corta lo anterior y sube el turno
       const mio = turnoVoz;             // el turno de ESTA frase
@@ -1000,7 +1005,7 @@ const AURA = (() => {
         // si ya la cortaron, el orbe es de la frase nueva: no tocarlo
         if (vigente()) { animoOrbe('dormida'); nivelOrbe(0); }
         // terminó de hablar: la música puede volver a su sitio
-        try { window.MUSICA?.agachar(220); } catch { /* nada */ }
+        /* ídem: sin voz, no hay a qué hacerle sitio. */
         fin();
       };
       alTerminarVoz = terminar;

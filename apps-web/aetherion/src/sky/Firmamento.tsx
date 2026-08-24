@@ -294,7 +294,9 @@ function Fugaces() {
       v.a.set(Math.cos(a) * 150, y, Math.sin(a) * 150)
       v.b.copy(v.a).add(new THREE.Vector3((Math.random() - 0.5) * 60, -25 - Math.random() * 20, (Math.random() - 0.5) * 60))
       v.desde = sim.now
-      v.sig = sim.now + 5 + Math.random() * 9
+      /* Con el caudal abierto caen casi seguidas: es la diferencia entre «hay
+         estrellas fugaces» y «está lloviendo el cielo». */
+      v.sig = sim.now + (5 + Math.random() * 9) / Math.max(1, sim.lluvia)
       const attr = geo.getAttribute('position') as THREE.BufferAttribute
       attr.setXYZ(0, v.a.x, v.a.y, v.a.z)
       attr.setXYZ(1, v.b.x, v.b.y, v.b.z)

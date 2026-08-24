@@ -5358,10 +5358,10 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '59ad6be78f';
+  const VETA_V = '5922d4d6eb';
   const VETA_FECHA = '2026-08-24';
 
-  const AET_V = '8b53c1d4b5';
+  const AET_V = '920fc38322';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -10956,12 +10956,26 @@ const VETA = (() => {
         pay: ['MYTOKENPAY', 'Tu saldo, aceptado en el mostrador de la esquina.'],
         genesis: ['GENESIS CORE', 'La memoria del origen: cómo empezó todo esto.'],
       },
-      /* ORIGEN, EN EL CENTRO. Dos rótulos y no uno: primero QUÉ ES, y después
-         QUÉ LA SOSTIENE. Juntos serían un párrafo; separados son dos golpes.
+      /* EL TÍTULO. La película se llama como lo que cuenta. Aparece sobre el
+         negro absoluto, antes de la primera frase: una palabra sola en una
+         pantalla vacía es la manera más vieja y más segura de empezar algo. */
+      titulo: 'ORIGEN',
+      /* ORIGEN, EN EL CENTRO. Cuatro rótulos, no uno: qué es, qué la sostiene,
+         sobre qué corre, y qué va a hacer. Juntos serían un párrafo que nadie
+         lee; separados, con su respiro cada uno, son cuatro golpes.
          Y se dice sin adornos: una moneda se explica en una frase o no se
          explica. */
       origen: 'Y en el centro, ORIGEN.\nNuestra moneda, referenciada al oro.',
       respaldo: 'No la promesa de un gobierno.\nMetal que existe, que se pesa\ny que no lo imprime nadie.',
+      /* LA CADENA. Es lo que faltaba decir: una moneda no es solo su respaldo,
+         es también dónde vive. Y esta vive en algo nuestro, no alquilado. */
+      cadena: 'Y corre sobre una cadena propia.\nNo alquilada. Nuestra.\nCada movimiento queda escrito ahí.',
+      /* LA FUERZA. La frase que explica por qué todo lo anterior es UNA cosa y
+         no ocho cosas al lado. */
+      fuerza: 'Eso es lo que sostiene todo esto unido:\nel valor de un lado, la cadena del otro,\ny cada casa hablando el mismo idioma.',
+      /* Y QUE NO ESTÁ TERMINADO. Es lo que convierte una demostración en una
+         invitación: lo que se enseña hoy es el principio. */
+      creciendo: 'Y va a seguir uniendo cosas.\nCada problema que resolvemos\nes una casa más en este cielo.',
       universo: 'Y alrededor, un universo entero.',
       obra: 'Nada de esto nos lo dieron.\nLa cadena, la identidad, las cuentas:\ncada pieza la levantamos nosotros.',
       /* PARA QUIÉN. Es la frase que convierte una demostración de tecnología
@@ -10989,8 +11003,12 @@ const VETA = (() => {
         pay: ['MYTOKENPAY', 'Your balance, accepted at the shop on the corner.'],
         genesis: ['GENESIS CORE', 'The memory of the origin: how all of this began.'],
       },
+      titulo: 'ORIGEN',
       origen: 'And at the centre, ORIGEN.\nOur currency, referenced to gold.',
       respaldo: 'Not a government promise.\nMetal that exists, that can be weighed,\nand that nobody prints.',
+      cadena: 'And it runs on a chain of our own.\nNot rented. Ours.\nEvery movement is written there.',
+      fuerza: 'That is what holds all of this together:\nthe value on one side, the chain on the other,\nand every house speaking the same language.',
+      creciendo: 'And it will keep joining things.\nEvery problem we solve\nis one more house in this sky.',
       universo: 'And all around, an entire universe.',
       obra: 'None of this was given to us.\nThe chain, the identity, the accounts:\nwe raised every piece ourselves.',
       puente: 'And we carry the funds\nto those who never had them within reach.',
@@ -11106,6 +11124,9 @@ const VETA = (() => {
            de pantalla vacía antes de la primera palabra. Ese silencio es lo
            que hace que la frase pese. */
         if (clave === 'negro') centro(G.negro, false, 1500);
+        /* EL TÍTULO, en grande y solo. Se limpia lo anterior antes de que
+           entre: una palabra sola no comparte pantalla con nada. */
+        else if (clave === 'titulo') centro(G.titulo, true, 300);
         else if (clave === 'tiniebla') centro(G.tiniebla);
         else if (clave === 'palabra') centro(G.palabra, true);
         else if (clave === 'luz') {
@@ -11122,6 +11143,13 @@ const VETA = (() => {
           try { MUSICA?.crecer(1.35, 3.2); } catch { /* nada */ }
         }
         else if (clave === 'respaldo') centro(G.respaldo, true);
+        /* La cadena y la fuerza: es el corazón de lo que hay que entender, así
+           que van con su aire y con la música sosteniendo. */
+        else if (clave === 'cadena') centro(G.cadena, true);
+        else if (clave === 'fuerza') {
+          centro(G.fuerza, true);
+          try { MUSICA?.crecer(1.4, 3.4); } catch { /* nada */ }
+        }
         else if (clave.startsWith('casa:')) {
           const c = G.casas[clave.slice(5)];
           if (c) pie(c[0], c[1]);
@@ -11135,6 +11163,7 @@ const VETA = (() => {
           centro(G.union, true);
           try { MUSICA?.crecer(1.5, 3.6); } catch { /* nada */ }
         }
+        else if (clave === 'creciendo') centro(G.creciendo, true);
         else if (clave === 'vos') {
           /* El golpe de este acto son DOS frases: la primera nombra, la
              segunda remata. Separadas por tres segundos y medio de silencio,

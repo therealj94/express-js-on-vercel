@@ -106,6 +106,16 @@ console.log('\n── la tiniebla: oscura de verdad ─────────�
   }, null, { timeout: 6000 }).then(() => true).catch(() => false);
   ok('con las barras de cine puestas', barras);
 
+  /* EL TÍTULO. Una palabra sola sobre el negro, antes de que pase nada más.
+     Se comprueba AQUÍ y no en el bucle grande de más abajo, porque para
+     entonces ya pasó: un título que dura cuatro segundos no espera a nadie. */
+  const titulo = await pag.waitForFunction(() =>
+    /^ORIGEN$/.test((document.querySelector('#gen-letra .gen-centro')?.textContent || '').trim()),
+    null, { timeout: 14000 }).then(() => true).catch(() => false);
+  ok('la película se presenta con su título', titulo);
+  ok('y el título llega sobre el negro, sin nada encendido detrás',
+     await pag.evaluate(() => window.__AE_NOCHE() > 0.9));
+
   // la noche tiene que LLEGAR a uno, no quedarse a medias
   await pag.waitForFunction(() => window.__AE_NOCHE() > 0.95, null, { timeout: 9000 });
   ok('la tiniebla es tiniebla', true);
@@ -143,7 +153,7 @@ console.log('\n── el retroceso que enseña el universo ───────
   /* La película creció: el arranque se alargó a propósito —empezaba antes de
      que nadie hubiera terminado de sentarse— y se le sumaron los actos de
      ORIGEN y de la misión. La ventana la acompaña. */
-  const hasta = Date.now() + 200000;
+  const hasta = Date.now() + 250000;
   let vioUniverso = false;
   let vioProposito = false;
   let vioInvitacion = false;
@@ -155,11 +165,46 @@ console.log('\n── el retroceso que enseña el universo ───────
   let vioFondos = false;
   let vioUnion = false;
   let dijoBanca = false;
+  let vioCadena = false;
+  let vioFuerza = false;
+  let vioCreciendo = false;
+  /* EL PROTAGONISMO. Presentar una casa tiene que APAGAR a las demás: es lo
+     que separa un plano de presentación de «once mundos con uno un poco más
+     grande», que es como se veía y por lo que no se leía nada. */
+  let protagonistas = new Set();
+  let acompanantesApagados = null;
+  /* Y LA LLUVIA: el plano del cielo abre el caudal de estrellas fugaces. */
+  let vioLluvia = false;
+  let masFuera = 0;
   while (Date.now() < hasta) {
     const st = await pag.evaluate(() => ({
       r: window.__aeCamera.position.length(),
       txt: document.querySelector('#gen-letra .gen-centro')?.textContent || '',
       vivo: window.__AE_GENESIS.vivo(),
+      prota: window.__AE_PROTA?.() || null,
+      opac: window.__AE_CASA_OP || null,
+      lluvia: window.__AE_LLUVIA?.() || 1,
+      /* Cuánto se aparta la cámara del centro de la galaxia. Mirando al
+         centro es cero; mirando a otra cosa —un agujero negro— es grande.
+         Es la forma de comprobar que el plano del cielo enseña ALGO y no un
+         sistema pequeñito en medio de un vacío negro. */
+      fuera: (() => {
+        const c = window.__aeCamera;
+        if (!c?.quaternion) return 0;
+        /* El frente de la cámara, a mano: (0,0,-1) rotado por el cuaternión.
+           Se hace aquí y no con THREE porque la escena no exporta la librería
+           —y no tiene por qué—, y esto son cuatro multiplicaciones. */
+        const { x: qx, y: qy, z: qz, w: qw } = c.quaternion;
+        const fx = 2 * (qx * qz + qw * qy) * -1 + 0;
+        const fy = 2 * (qy * qz - qw * qx) * -1 + 0;
+        const fz = (1 - 2 * (qx * qx + qy * qy)) * -1;
+        const fl = Math.hypot(fx, fy, fz) || 1;
+        const p = c.position;
+        const pl = Math.hypot(p.x, p.y, p.z) || 1;
+        /* hacia el centro = -posición, normalizada */
+        const dot = (fx / fl) * (-p.x / pl) + (fy / fl) * (-p.y / pl) + (fz / fl) * (-p.z / pl);
+        return Math.round(Math.acos(Math.max(-1, Math.min(1, dot))) * 180 / Math.PI);
+      })(),
     }));
     masLejos = Math.max(masLejos, st.r);
     if (/universo entero/i.test(st.txt)) vioUniverso = true;
@@ -173,6 +218,24 @@ console.log('\n── el retroceso que enseña el universo ───────
        banco licenciado no es solo impreciso, es un riesgo. */
     if (/\bbanca\b/i.test(st.txt)) dijoBanca = true;
     if (st.r > 0) masCerca = Math.min(masCerca, st.r);
+    if (/cadena propia|No alquilada/i.test(st.txt)) vioCadena = true;
+    if (/sostiene todo esto unido|mismo idioma/i.test(st.txt)) vioFuerza = true;
+    if (/seguir uniendo|una casa más/i.test(st.txt)) vioCreciendo = true;
+    if (st.prota) {
+      protagonistas.add(st.prota);
+      /* ¿LLEGAN A APARTARSE? Se guarda lo MEJOR que se logró, no el primer
+         cuadro: el apagado es un fundido de medio segundo a propósito —un
+         corte seco se vería como un fallo— así que medir al empezar es medir
+         el principio del fundido y no su resultado. */
+      if (st.opac) {
+        const otras = Object.entries(st.opac).filter(([k]) => k !== st.prota).map(([, v]) => v);
+        if (otras.length) {
+          const peor = Math.max(...otras);
+          if (acompanantesApagados === null || peor < acompanantesApagados) acompanantesApagados = peor;
+        }
+      }
+    }
+    if (st.lluvia > 1) { vioLluvia = true; masFuera = Math.max(masFuera, st.fuera); }
     if (!st.vivo) break;
     await pag.waitForTimeout(700);
   }
@@ -190,6 +253,21 @@ console.log('\n── el retroceso que enseña el universo ───────
   ok('se dice a quién se le llevan los fondos', vioFondos);
   ok('y con qué se unen las economías', vioUnion);
   ok('y nunca se dice «banca»', !dijoBanca);
+  ok('se cuenta que corre sobre cadena propia', vioCadena);
+  ok('y qué es la fuerza que lo sostiene unido', vioFuerza);
+  ok('y que va a seguir uniendo cosas', vioCreciendo);
+  /* PROTAGONISMO: cada casa manda en su plano, y las demás se apartan. */
+  ok('cada casa toma el cuadro en su plano', protagonistas.size >= 4,
+     `${protagonistas.size}: ${[...protagonistas].join(' ')}`);
+  ok('y las demás se apagan de verdad',
+     acompanantesApagados !== null && acompanantesApagados < 0.25,
+     acompanantesApagados === null ? 'no se midió' : `la más visible al ${Math.round(acompanantesApagados * 100)}%`);
+  ok('el plano del cielo abre la lluvia de estrellas', vioLluvia);
+  /* Y LA CÁMARA SE DA VUELTA A MIRAR. Los agujeros negros orbitan a setenta y
+     a cien unidades: durante toda la película quedan detrás de uno y no se ven
+     nunca. En el plano cuyo tema ES el cielo, la cámara los busca. */
+  ok('y la cámara se da vuelta a mirar el cielo', masFuera > 25,
+     `${masFuera}° apartada del centro de la galaxia`);
 }
 
 console.log('\n── al terminar, la casa vuelve entera ───────────────────────');

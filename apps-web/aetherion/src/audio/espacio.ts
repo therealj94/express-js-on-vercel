@@ -19,30 +19,9 @@ import { audio } from './engine'
  * sola mezcla, y si la casa baja el volumen, baja todo.
  */
 
-interface Voz {
-  panner: PannerNode
-  gain: GainNode
-  osc: OscillatorNode[]
-  lfo: OscillatorNode
-}
 
-/* La voz de cada naturaleza: fundamental, compañera y el pulso de su respiro.
-   Graves los pesados, aireados los helados, un latido de faro para el faro. */
-const VOCES: Record<string, { f: [number, number]; onda: OscillatorType; resp: number; peso: number }> = {
-  gigante: { f: [55, 82.5], onda: 'sine', resp: 0.07, peso: 1.0 },
-  helado: { f: [659, 663.5], onda: 'sine', resp: 0.05, peso: 0.35 },
-  forja: { f: [98, 147.2], onda: 'triangle', resp: 0.21, peso: 0.8 },
-  oceano: { f: [220, 220.8], onda: 'sine', resp: 0.11, peso: 0.6 },
-  jardin: { f: [329.6, 415.3], onda: 'sine', resp: 0.09, peso: 0.5 },
-  bunker: { f: [73.4, 77.1], onda: 'sine', resp: 0.04, peso: 0.9 },
-  boveda: { f: [174.6, 261.6], onda: 'sine', resp: 0.06, peso: 0.6 },
-  nucleo: { f: [261.6, 327.0], onda: 'triangle', resp: 0.16, peso: 0.7 },
-  faro: { f: [392, 392.6], onda: 'sine', resp: 0.42, peso: 0.5 },
-}
 
 class Espacio {
-  private voces = new Map<string, Voz>()
-  private sol: Voz | null = null
   private listo = false
   private frente = new THREE.Vector3()
   private arriba = new THREE.Vector3()
@@ -56,39 +35,24 @@ class Espacio {
     return ctx
   }
 
-  private crearVoz(ctx: AudioContext, natura: string): Voz {
-    const def = VOCES[natura] || VOCES.gigante
-    const panner = ctx.createPanner()
-    panner.panningModel = 'HRTF'
-    panner.distanceModel = 'inverse'
-    /* La matemática del silencio: a 3 unidades la voz está entera, a la
-       distancia de reposo (~13) queda a un séptimo — bajo el umbral de lo
-       que se nota — y en el panorama no existe. Acercarse ES el volumen. */
-    panner.refDistance = 2.6
-    panner.rolloffFactor = 1.6
-    panner.maxDistance = 90
-    const gain = ctx.createGain()
-    gain.gain.value = 0
-    const osc = def.f.map((freq) => {
-      const o = ctx.createOscillator()
-      o.type = def.onda
-      o.frequency.value = freq
-      o.connect(gain)
-      o.start()
-      return o
-    })
-    // el respiro: la voz sube y baja despacio, nunca es una nota clavada
-    const lfo = ctx.createOscillator()
-    lfo.frequency.value = def.resp
-    const lfoGain = ctx.createGain()
-    lfoGain.gain.value = 0.35
-    lfo.connect(lfoGain)
-    lfoGain.connect(gain.gain)
-    lfo.start()
-    gain.connect(panner)
-    panner.connect(audio.salida!)
-    return { panner, gain, osc, lfo }
-  }
+  /* ══ POR QUÉ AQUÍ YA NO SE CREA NINGUNA VOZ ═══════════════════════════════
+   *
+   * Cada mundo tenía la suya: dos osciladores y un LFO, sonando sin parar
+   * mientras la galaxia estuviera abierta. Con once casas son treinta y tres
+   * fuentes encimadas — el «sonido de fondo viejo» que seguía apareciendo
+   * debajo de la música por mucho que se apagara el ambiente del otro motor.
+   * Eran dos sistemas distintos y solo se había apagado uno.
+   *
+   * Y había una trampa que hacía imposible callarlas a medias, que es lo que
+   * se intentó primero: el LFO del respiro va conectado a `gain.gain`, o sea
+   * SUMA a la ganancia en vez de multiplicarla. Poniendo la base en cero, el
+   * LFO seguía moviéndola entre menos y más un tercio: las voces «apagadas»
+   * seguían respirando, audibles, y el código parecía correcto. Un volumen
+   * que se pone a cero y no calla es de las cosas que más cuesta encontrar.
+   *
+   * Así que no se crean. El fondo de esta casa es UNA pista y nada más. Lo que
+   * se queda es el toque de elegir un planeta, que no es fondo: es respuesta a
+   * algo que uno hizo, dura un cuarto de segundo y se apaga sola. */
 
   /* El oído en la cabeza: se llama cada cuadro con la cámara que DIBUJA (en
      visor, la del ojo; en pantalla, la normal). */
@@ -120,40 +84,23 @@ class Espacio {
 
   /* La voz de un mundo, en su sitio. Se llama cada cuadro; crea la voz si no
      existe y la mueve si el mundo se movió (el acomodo los mueve a todos). */
-  mundo(id: string, natura: string, pos: THREE.Vector3, apagado = false) {
-    const ctx = this.despertar()
-    if (!ctx) return
-    let v = this.voces.get(id)
-    if (!v) {
-      v = this.crearVoz(ctx, natura)
-      this.voces.set(id, v)
-    }
-    const t = ctx.currentTime
-    const pn = v.panner as PannerNode & Record<string, { value: number } | undefined>
-    if ((pn as any).positionX) {
-      ;(pn as any).positionX.setTargetAtTime(pos.x, t, 0.08)
-      ;(pn as any).positionY.setTargetAtTime(pos.y, t, 0.08)
-      ;(pn as any).positionZ.setTargetAtTime(pos.z, t, 0.08)
-    } else if ((pn as any).setPosition) {
-      ;(pn as any).setPosition(pos.x, pos.y, pos.z)
-    }
-    const def = VOCES[natura] || VOCES.gigante
-    v.gain.gain.setTargetAtTime(apagado ? 0 : 0.016 * def.peso, t, 0.4)
+  mundo(_id: string, _natura: string, _pos: THREE.Vector3, _apagado = false) {
+    /* Ver arriba: los mundos no tienen voz. Se conserva la firma porque el
+       cielo la llama por cada casa en cada cuadro, y quitarla obligaría a
+       tocar el bucle de dibujado para apagar un sonido. */
   }
 
-  /* El sol habla cuando AU-RA habla: un zumbido cálido desde el centro que
-     sigue su brillo. Callada, el sol calla. */
-  solHabla(nivel: number) {
-    const ctx = this.despertar()
-    if (!ctx) return
-    if (!this.sol) {
-      this.sol = this.crearVoz(ctx, 'nucleo')
-      const pn = this.sol.panner as any
-      if (pn.positionX) { pn.positionX.value = 0; pn.positionY.value = 0; pn.positionZ.value = 0 }
-      else pn.setPosition?.(0, 0, 0)
-    }
-    this.sol.gain.gain.setTargetAtTime(0.028 * Math.max(0, Math.min(1, nivel)),
-      ctx.currentTime, 0.15)
+  /* ══ EL SOL, CALLADO ══════════════════════════════════════════════════
+     Tenía su nota sostenida, y se encendía cuando AU-RA hablaba y se quedaba
+     encendida: era la más fácil de oír de todas y la más difícil de explicar.
+     Misma razón que las voces de los mundos — el fondo de esta casa es UNA
+     pista y nada más.
+     La función se queda, sin sonido: la llaman la película y AU-RA en varios
+     sitios, y un puente que desaparece obliga a tocar cinco archivos para
+     apagar una nota. Los momentos grandes los marca ahora la MÚSICA creciendo
+     (MUSICA.crecer), que es lo que hace una película de verdad. */
+  solHabla(_nivel: number) {
+    /* a propósito, en silencio */
   }
 
   /* Un toque CON lugar: la campanita de elegir, sonando desde el planeta
@@ -186,12 +133,12 @@ class Espacio {
     window.setTimeout(() => { try { panner.disconnect() } catch { /* nada */ } }, 500)
   }
 
-  /* Silencio total (salir de la galaxia): las voces se apagan sin cortarse. */
+  /* Silencio total (salir de la galaxia). Ya no queda nada sostenido que
+     callar —los toques mueren solos en un cuarto de segundo— pero la puerta se
+     conserva: la llama la casa al salir, y el día que vuelva a haber algo
+     continuo tiene que haber un sitio donde apagarlo. */
   callar() {
-    const ctx = audio.contexto
-    if (!ctx) return
-    for (const v of this.voces.values()) v.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.2)
-    this.sol?.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.2)
+    /* nada sostenido que apagar */
   }
 }
 

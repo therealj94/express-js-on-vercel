@@ -31,6 +31,21 @@ export const sim = {
   /* Hay un PLANO de casa en curso: el sol baja su resplandor para no comerse
      el encuadre. Lo que se apaga es el adorno, no la luz que modela. */
   plano: 0,
+  /* QUIÉN ES EL PROTAGONISTA DEL PLANO. Durante la presentación de una casa,
+     las demás se apartan: se apagan hasta quedar en sombra y dejan de disputar
+     el cuadro. Sin esto, presentar una casa era enseñar nueve mundos con uno
+     un poco más grande — «muy pegadas», y con el rótulo peleando por leerse
+     contra otro planeta iluminado detrás.
+     En cine esto se hace con luz e iris; aquí, apagando lo que no es el tema.
+     Nulo = ninguna casa manda y todas se ven igual. */
+  protagonista: null as string | null,
+  /* CUÁNTAS ESTRELLAS FUGACES. 1 = el goteo de siempre, una cada diez segundos
+     largos, que es lo correcto para un cielo en el que uno vive. En el plano
+     grande de la película se abre el caudal: ahí el tema ES el cielo, y una
+     sola estrella cada diez segundos no cuenta nada. */
+  lluvia: 1,
+  /* Los puentes de diagnóstico de la película. Van aquí y no en cada archivo
+     porque lo que se quiere saber es el ESTADO, y el estado vive aquí. */
   /* El vacío de antes del principio: 1 = ni siquiera hay cielo. Lo usa el
      primer acto del Génesis, el que empieza en negro absoluto. */
   vacio: 0,
@@ -94,4 +109,17 @@ export const PALETTES: Record<Marea, MareaPalette> = {
   alba: { filament: '#59d9ff', dust: '#9fe8ff', fog: 0.0075, expo: 1.0 },
   pleamar: { filament: '#b96bff', dust: '#e2c4ff', fog: 0.0105, expo: 0.92 },
   bajamar: { filament: '#2a5f8f', dust: '#35506b', fog: 0.0055, expo: 0.8 },
+}
+
+/* ── LOS PUENTES DE DIAGNÓSTICO DE LA PELÍCULA ────────────────────────────────
+ *
+ * Lo que hace que un plano de presentación funcione —quién manda en el cuadro,
+ * cuánto se apagaron los demás, si el cielo está lloviendo— no se distingue en
+ * una captura de pantalla: un planeta apagado y uno fuera de cuadro se ven
+ * exactamente igual, y solo uno de los dos es lo que se quería. Así que el
+ * estado se dice en voz alta y una prueba puede comprobarlo. */
+if (typeof window !== 'undefined') {
+  const w = window as unknown as Record<string, unknown>
+  w.__AE_PROTA = () => sim.protagonista
+  w.__AE_LLUVIA = () => sim.lluvia
 }

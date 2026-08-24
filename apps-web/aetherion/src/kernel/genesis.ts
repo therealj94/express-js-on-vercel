@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { rig } from './rig'
+import { agujeros } from '../sky/Agujeros'
 import { sim } from './sim'
 import { wellRegistry } from '../sky/Wells'
 import { useUiStore } from '../state/uiStore'
@@ -163,6 +164,8 @@ function terminar(salteado: boolean, opciones: Opciones) {
   vivoAhora = false
   sim.pelicula = 0
   sim.plano = 0
+  sim.protagonista = null
+  sim.lluvia = 1
   cancelAnimationFrame(raf)
   cancelAnimationFrame(acomodoRaf)
   cancelAnimationFrame(nocheRaf)
@@ -202,6 +205,10 @@ function empezar(opciones: Opciones = {}) {
        una pausa. Cinco segundos de negro incomodan lo justo para que la
        primera palabra caiga sobre alguien que ya está esperándola. */
     { clave: 'negro', dura: 5200 },
+    /* 0-bis. EL TÍTULO. Una palabra sola sobre el negro, y nada más pasando.
+       Es lo más viejo que hay para empezar una película y sigue siendo lo que
+       mejor funciona: la pantalla vacía obliga a leerla. */
+    { clave: 'titulo', dura: 4400 },
     /* I. LA TINIEBLA. El cielo asoma apenas —lo justo para entender que hay
        algo ahí fuera, disperso—, y la cámara empieza a acercarse muy despacio.
        El movimiento tiene que notarse solo si uno lo busca. */
@@ -231,6 +238,13 @@ function empezar(opciones: Opciones = {}) {
        ideas y cada una necesita su respiro: qué es, y qué la sostiene. */
     { clave: 'origen', dura: 7200, mover: { radio: 13, phi: 1.14, giro: 0.5, mira: 0, curva: 'entra' } },
     { clave: 'respaldo', dura: 7600, mover: { radio: 16, phi: 0.94, giro: 0.85, curva: 'suave' } },
+    /* VIII. LA CADENA. La cámara se aparta del sol y RODEA el sistema entero
+       por debajo del plano, pasando por delante de las casas: la imagen de
+       algo que atraviesa todo y las enhebra. */
+    { clave: 'cadena', dura: 8200, mover: { radio: 24, phi: 1.30, giro: 1.25, curva: 'suave' } },
+    /* IX. LA FUERZA. Sube al plano y se queda: es la frase que explica por qué
+       todo lo anterior es UNA cosa, y una frase así se dice quieto. */
+    { clave: 'fuerza', dura: 8000, mover: { radio: 21, phi: 0.86, giro: 0.4, curva: 'sale' } },
     /* VIII-XII. LAS CASAS. Cada una a contraluz, con un acercamiento que frena. */
     ...casas.map((k) => ({ clave: `casa:${k}`, dura: 5400, casa: k,
       mover: { curva: 'llega' as Curva } })),
@@ -249,6 +263,9 @@ function empezar(opciones: Opciones = {}) {
     /* XVI. UNIR. Se abre el plano hasta que caben todos los mundos a la vez:
        la imagen de muchas cosas separadas que resultan ser un solo sistema. */
     { clave: 'union', dura: 8200, mover: { radio: 74, phi: 0.88, giro: 0.9, curva: 'sale' } },
+    /* XVII. Y LO QUE FALTA. Todavía en el panorama, girando: lo que se enseñó
+       no está terminado, y ese es el punto. */
+    { clave: 'creciendo', dura: 7600, mover: { radio: 62, phi: 0.94, giro: 0.7, curva: 'suave' } },
     /* XVII. VOS. La cámara vuelve hacia el sistema — de vuelta a casa. */
     { clave: 'vos', dura: 7200, mover: { radio: 34, phi: 0.95, giro: 0.5, curva: 'suave' } },
     /* XVIII. EL PROPÓSITO. Sigue entrando, ya cerca. */
@@ -309,9 +326,25 @@ function empezar(opciones: Opciones = {}) {
          casa marcada compitiendo. */
       st.select(null)
       sim.plano = 0
+      sim.protagonista = null
       sim.auraBrillo = 2.1
       espacio.solHabla(0.85)
       audio.land()
+    } else if (a.clave === 'titulo') {
+      /* El título vive en el mismo negro que el acto anterior: no se toca
+         NADA. Encender algo detrás de una palabra sola la convierte en un
+         subtítulo de otra cosa. */
+    } else if (a.clave === 'cadena') {
+      /* La cadena atraviesa el sistema, así que se encienden todas las casas a
+         la vez —ninguna manda— y se suelta un pulso que recorre la galaxia. */
+      st.select(null)
+      sim.protagonista = null
+      sim.auraBrillo = 1.15
+      audio.whoosh(false)
+    } else if (a.clave === 'fuerza') {
+      sim.auraBrillo = 1.5
+    } else if (a.clave === 'creciendo') {
+      sim.auraBrillo = 1.2
     } else if (a.clave === 'respaldo') {
       /* Lo que la sostiene. El resplandor baja a la mitad: la idea ya no es
          el fogonazo sino el peso, y el peso no brilla. */
@@ -322,6 +355,7 @@ function empezar(opciones: Opciones = {}) {
          un golpe de aire: la cámara viaja, y se tiene que oír que viaja. */
       st.select(null)
       sim.plano = 1
+      sim.protagonista = null
       sim.auraBrillo = 1
       audio.whoosh(false)
     } else if (a.clave === 'union') {
@@ -332,6 +366,9 @@ function empezar(opciones: Opciones = {}) {
     } else if (a.clave.startsWith('casa:')) {
       const key = a.clave.slice(5)
       st.select(key)
+      /* Y SE APAGA TODO LO DEMÁS. Ver sim.protagonista: durante este plano la
+         casa que se presenta es lo único encendido. */
+      sim.protagonista = key
       const h = wellRegistry.get(key)
       /* EL SOL NO PUEDE QUEMAR EL PLANO. Aunque quede en el borde del cuadro,
          su fogonazo y sus rayos se comen medio encuadre: durante un plano de
@@ -384,7 +421,11 @@ function empezar(opciones: Opciones = {}) {
            perdía el sistema alrededor: lo que hace grande a un plano de
            presentación no es que el planeta sea enorme, es que se vea DÓNDE
            está. */
-        const parte = angosto ? 0.24 : 0.36
+        /* MÁS GRANDE QUE ANTES. Se había bajado a 0,24 para que no se perdiera
+           el sistema alrededor — pero ahora el sistema alrededor está APAGADO
+           (sim.protagonista), así que ya no hay nada que perder y sí una casa
+           que tiene que mandar en el cuadro. Presentar es enseñar de cerca. */
+        const parte = angosto ? 0.34 : 0.46
         const dist = Math.max(4.2, h.radius / Math.tan(parte * fovV / 2))
 
         /* DE QUÉ LADO PONERSE. Hay dos sitios buenos alrededor de una casa:
@@ -394,7 +435,13 @@ function empezar(opciones: Opciones = {}) {
            centro y lejos—, así que no se elige de antemano: se prueban los
            dos y gana el que deje el sol más lejos del eje de la cámara.
            Media línea de cuenta que evita un plano quemado. */
-        const ang = 0.61
+        /* Y MÁS DE FRENTE. A 0,61 radianes —treinta y cinco grados— la casa
+           salía en media luna, con la mitad en sombra: bonito de fotografiar y
+           malo para presentar, porque justo la mitad que se apaga es donde
+           vive la marca. A 0,38 el sol entra casi de frente, apenas ladeado: la
+           casa se ve ENTERA e iluminada, con un borde de sombra que le da bulto
+           y nada más. Se presenta de frente, que es como se presenta algo. */
+        const ang = 0.38
         let mejor = -2
         for (const signo of [1, -1]) {
           tmpDir.copy(alSol).multiplyScalar(signo * Math.cos(ang))
@@ -419,16 +466,44 @@ function empezar(opciones: Opciones = {}) {
         anguloCasa = Math.atan2(tmpCam.x, tmpCam.z)
       }
     } else if (a.clave === 'universo') {
-      // fuera de las casas la cámara vuelve a mirar al sistema entero
-      rig.objetivo = null
+      /* ══ EL PLANO GRANDE: AQUÍ EL TEMA ES EL CIELO ═════════════════════════
+       *
+       * Este acto se iba muy lejos y miraba al centro — o sea, enseñaba el
+       * sistema pequeñito en medio de un vacío negro. Y resulta que el vacío
+       * NO está vacío: ahí fuera hay dos agujeros negros orbitando, con su
+       * disco girando y la luz doblándose alrededor, que es lo más
+       * impresionante que tiene esta escena. Nunca se veían, porque durante
+       * toda la película la cámara está a quince o veinte unidades y ellos a
+       * setenta y a cien: quedaban siempre detrás de uno.
+       *
+       * Así que ahora la cámara SE DA VUELTA a mirarlos. Se elige el que esté
+       * más lejos del sol —para que no salgan los dos juntos ni el sol de
+       * fondo— y se apunta ahí. Y se abre el caudal de estrellas fugaces: en
+       * un plano cuyo tema es el cielo, una fugaz cada diez segundos no cuenta
+       * nada; seis o siete cruzando el cuadro, sí. */
       anguloCasa = null
       sim.plano = 0
+      sim.protagonista = null
       st.select(null)
+      sim.lluvia = 7
+      let lejos: THREE.Vector3 | null = null
+      for (const p of agujeros) {
+        if (!p) continue
+        if (!lejos || p.lengthSq() > lejos.lengthSq()) lejos = p
+      }
+      /* Se COPIA, no se referencia: el agujero sigue orbitando y una mira
+         pegada a él haría que la cámara lo persiguiera girando sola. Lo que se
+         quiere es un plano fijo sobre algo que se mueve dentro del cuadro. */
+      rig.objetivo = lejos ? lejos.clone() : null
       audio.whoosh(false)
     } else {
       rig.objetivo = null
       anguloCasa = null
       sim.plano = 0
+      sim.protagonista = null
+      /* La lluvia era del plano del cielo. Dejarla abierta la volvería un tic:
+         lo que impresiona una vez, repetido, es ruido. */
+      sim.lluvia = 1
     }
 
     /* El movimiento se congela AQUÍ: de dónde sale la cámara es lo que hay

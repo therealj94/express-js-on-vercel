@@ -30,7 +30,12 @@ const MUSICA = (() => {
   'use strict';
 
   const LLAVE = 'veta.musica';
-  const VOL = 0.26;            // el techo: debajo de todo lo demás
+  /* EL TECHO. Música de fondo quiere decir que no se note que está: que se
+     eche de menos al apagarla y no se piense en ella mientras suena. A 0,26
+     competía con lo que pasaba en pantalla; a 0,16 sostiene sin pedir turno.
+     Y ahora es el único sonido continuo de la casa —las notas de los planetas
+     se callaron— así que no tiene con quién pelear. */
+  const VOL = 0.16;
   const SUBE = 2.0;            // segundos de entrada
   const BAJA = 1.5;            // segundos de salida
 
@@ -151,7 +156,14 @@ const MUSICA = (() => {
   /* AGACHARSE. Lo llama todo lo que tiene algo que decir: la voz de AU-RA, un
      aviso, el narrador del Génesis. La música baja a un quinto y vuelve sola
      cuando el que hablaba termina. */
+  /* EL ÚLTIMO RESPIRO PEDIDO. Un fondo que se apaga y vuelve llama más la
+     atención que uno constante, así que cuánto y cuán hondo se agacha la
+     música es una decisión de producto — y desde fuera no se puede oír: hay
+     que preguntar. Aquí queda anotado el último. */
+  let ultimo = null;
+
   function agachar(ms = 1200, hondo = false) {
+    ultimo = { ms, hondo, cuando: Date.now() };
     agacheHasta = Math.max(agacheHasta, performance.now() + ms);
     if (hondo) agacheHondo = true;
     if (!sonando) return;
@@ -185,8 +197,18 @@ const MUSICA = (() => {
      Los dos viven en contextos de audio distintos y no pueden compartir un
      limitador: que uno se aparte cuando habla el otro es la única mezcla
      posible, y además es la correcta. */
+  /* ══ LOS GOLPES YA NO LA AGACHAN ═════════════════════════════════════════
+     Cada golpe de la película la bajaba al diez por ciento durante segundo y
+     pico. Con la música al veintiséis eso tenía sentido —había que hacerle
+     sitio—; con la música al dieciséis y sin las notas de los planetas
+     encima, lo único que hace es que la pista se apague y vuelva sola, y desde
+     fuera eso se ve como una música que falla. Un fondo que aparece y
+     desaparece llama MÁS la atención que uno constante, que es justo lo
+     contrario de lo que un fondo tiene que hacer.
+     Se deja un respiro cortito y suave: lo justo para que un golpe grande
+     tenga aire, sin que se note el hueco. */
   addEventListener('ae-golpe', (e) => {
-    agachar(Math.max(600, e?.detail?.ms || 1000), true);
+    agachar(Math.min(500, Math.max(260, e?.detail?.ms || 400)), false);
   });
 
   // Con la pestaña atrás, silencio.
@@ -206,8 +228,13 @@ const MUSICA = (() => {
   addEventListener('pointerdown', alPrimerGesto);
   addEventListener('keydown', alPrimerGesto);
 
+  /* El volumen REAL del grafo, no el que se pidió. Sirve para comprobar desde
+     fuera algo que el oído humano juzga mal: si la música se agacha sola. */
+  const volumen = () => (gan ? gan.gain.value : null);
+  const ultimoAgache = () => (ultimo ? { ...ultimo } : null);
+
   return {
-    encender, apagar, alterna, agachar, crecer, desdeElPrincipio,
+    encender, apagar, alterna, agachar, crecer, desdeElPrincipio, volumen, ultimoAgache,
     puesta: () => puesta,
     quiere,
     alCambiar: (fn) => { alCambiar = fn; },

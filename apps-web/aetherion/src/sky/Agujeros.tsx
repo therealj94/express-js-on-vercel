@@ -212,6 +212,19 @@ interface Ruta {
   eje: THREE.Vector3
 }
 
+/* DÓNDE ESTÁN AHORA MISMO.
+ *
+ * Orbitan muy por fuera del barrio de las casas —a siete y a diez veces el
+ * anillo— y esa distancia es la que los hace un acontecimiento y no decorado.
+ * Pero también quiere decir que durante casi toda la película, con la cámara a
+ * quince o veinte unidades, no se ven: están detrás de uno.
+ *
+ * Con esto la película puede APUNTAR a uno en el plano grande, que es el
+ * momento en que el tema es el universo y no las casas. Un agujero negro con
+ * su disco girando y la luz doblándose alrededor es lo más impresionante que
+ * hay en esta escena; tenerlo y no enseñarlo nunca sería un desperdicio. */
+export const agujeros: THREE.Vector3[] = []
+
 export function Agujeros() {
   const { camera } = useThree()
   const tex = useMemo(cieloTextura, [])
@@ -266,6 +279,8 @@ export function Agujeros() {
       const t = sim.now * rt.vel + rt.fase
       pos.set(Math.cos(t) * rt.radio, rt.altura + Math.sin(t * 0.7) * 6, Math.sin(t) * rt.radio)
       m.position.copy(pos)
+      if (!agujeros[i]) agujeros[i] = new THREE.Vector3()
+      agujeros[i].copy(pos)
       /* El cartel encara siempre a la cámara: el fenómeno es esférico y no
          tiene un «frente», así que lo que se dibuja es el disco que ocupa en
          la pantalla, y la cuenta se hace en el espacio del mundo. */
