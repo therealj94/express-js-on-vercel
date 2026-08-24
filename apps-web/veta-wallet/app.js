@@ -5316,8 +5316,8 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = 'sin-sellar';
-  const VETA_FECHA = '—';
+  const VETA_V = 'd472440087';
+  const VETA_FECHA = '2026-08-24';
 
   const AET_V = '70e95ad581';
 
@@ -5419,6 +5419,13 @@ const VETA = (() => {
    * desfasadas— y ofrece la única cura de verdad: tirar la copia guardada y
    * volver a pedirlo todo.
    */
+
+  /* El mismo dato, sin abrir nada. Sirve para dos cosas que la ficha no puede:
+     que una prueba compruebe contra producción qué copia está sirviendo de
+     verdad, y que alguien de soporte lo lea por teléfono sin guiar a nadie por
+     cuatro pantallas. */
+  const version = () => ({ app: VETA_V, fecha: VETA_FECHA, galaxia: AET_V });
+
   async function versionMirar() {
     const sw = 'serviceWorker' in navigator
       ? (await navigator.serviceWorker.getRegistrations().catch(() => []))
@@ -12275,7 +12282,7 @@ const VETA = (() => {
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
            pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,
-           vsEntrar, vsSalir, vsOjos, vsMirada, tourGenesis, musicaAlterna, versionMirar,
+           vsEntrar, vsSalir, vsOjos, vsMirada, tourGenesis, musicaAlterna, versionMirar, version,
            _bienvenidaGalaxia: (v) => auraBienvenidaGalaxia(v),
            /* El aterrizaje del login, tal cual: la prueba comprueba que entrar
               siempre deja a la persona en el Inicio, aunque la dirección
