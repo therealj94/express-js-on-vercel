@@ -25,7 +25,7 @@
 //|  inteligente · limpieza de variables globales · log de errores   |
 //+------------------------------------------------------------------+
 #property copyright   "ORO FINAL"
-#property version     "2.60"
+#property version     "2.70"
 #property description "Bot de scalping XAUUSD: confluencia 0-100, gestión 50/50, salida inteligente y protecciones de cuenta"
 
 #include <Trade/Trade.mqh>
@@ -187,7 +187,7 @@ int MinsToNextKz()
 void StatusIdle(string motivo)
 {
    int m = MinsToNextKz();
-   Comment("🥇 ORO FINAL v2.60 · ", _Symbol, " ", EnumToString(_Period),
+   Comment("🥇 ORO FINAL v2.70 · ", _Symbol, " ", EnumToString(_Period),
            "\n✅ BOT ACTIVO — ", motivo,
            "\n🕐 Hora del servidor: ", TimeToString(TimeCurrent(), TIME_MINUTES),
            "\n🔥 Killzones: ", InpLdnStart, "-", InpLdnEnd, "  y  ", InpNyStart, "-", InpNyEnd,
@@ -591,10 +591,27 @@ int OnInit()
    dayStart = StringToTime("00:00");
    LoadDayBaseline();
    StatusIdle("recién iniciado, esperando el primer tick");
-   Print("🥇 ORO FINAL ULTIMATE v2.60 iniciado | ", _Symbol, " ", EnumToString(_Period),
+   Print("🥇 ORO FINAL ULTIMATE v2.70 iniciado | ", _Symbol, " ", EnumToString(_Period),
          " | Umbral ", g_thr, InpAggro == 1 ? " (AGRESIVO)" : InpAggro == 2 ? " (TURBO)" : "",
          " | Lote ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
          " | TP2 ", DoubleToString(g_rr2, 1), "R | Baseline $", DoubleToString(dayStartBalance, 2));
+   // Resumen de protecciones: de un vistazo confirmas que TODA la configuración quedó bien
+   Print("   🛡 Protecciones: freno diario ", DoubleToString(InpMaxDailyDD, 1), "%",
+         InpDailyLossUSD > 0 ? " / $" + DoubleToString(InpDailyLossUSD, 0) : "",
+         " | objetivo diario ", InpDailyTarget > 0 ? DoubleToString(InpDailyTarget, 1) + "%" : "apagado",
+         InpDailyTargetUSD > 0 ? " / $" + DoubleToString(InpDailyTargetUSD, 0) : "",
+         " | máx ", InpMaxTradesDay, " ops · ", InpMaxLossesDay, " pérdidas",
+         " | salida por salud <", InpHealthExit,
+         " | spread máx $", DoubleToString(InpMaxSpreadUSD, 2));
+   Print("   🕐 Killzones (servidor): ", InpLdnStart, "-", InpLdnEnd, " y ", InpNyStart, "-", InpNyEnd,
+         " | ventana ", InpMode == 0 ? "solo killzones" : InpMode == 1 ? "Londres+NY" : "24 horas",
+         " | hora actual del servidor ", TimeToString(TimeCurrent(), TIME_MINUTES));
+   // Aviso si el freno diario es tan bajo que se activaría con una sola pérdida
+   if(InpLotMode == 0 && InpMaxDailyDD > 0 && InpMaxDailyDD <= g_risk * 1.05)
+      Print("⚠️ ATENCIÓN: tu freno diario (", DoubleToString(InpMaxDailyDD, 1),
+            "%) es igual o menor que el riesgo por operación (", DoubleToString(g_risk, 2),
+            "%). El bot se detendría tras la PRIMERA pérdida. Súbelo a ",
+            DoubleToString(g_risk * 2.2, 0), "% o más para permitir ", InpMaxLossesDay, " pérdidas.");
    return INIT_SUCCEEDED;
 }
 
@@ -710,7 +727,7 @@ void OnTick()
    bool goShort = scS >= g_thr && scS > scL && pS_ < g_thr;
    if(!goLong && !goShort)
    {
-      Comment("🥇 ORO FINAL v2.60 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
+      Comment("🥇 ORO FINAL v2.70 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
               " (mín. ", g_thr, ")\nHoy: ", nT, "/", g_maxTrades, " ops · ", nL, "/", InpMaxLossesDay,
               " pérdidas | ", KzActive() ? "KILLZONE 🔥" : (TradeWindow() ? "ventana normal" : "fuera de horario"),
               "\nLote: ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
