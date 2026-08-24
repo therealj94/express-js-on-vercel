@@ -4660,7 +4660,7 @@ const VETA = (() => {
       grad: ['#D6F3EC', '#74E6C8', '#1B5A50'], halo: '#74E6C8', lente: '#07211D',
       ico: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7 9h10M7 13h6M7 17h8"/>' },
     /* AuCorp ya abre: la esfera deja el «pronto» igual que hizo Ordenex. Sigue
-       en oro viejo apagado —es la banca, familia del oro de la casa— pero
+       en oro viejo apagado —es la casa de cuentas, familia del oro— pero
        ahora es una puerta. */
     { id: 'aucorp', x: 50, y: 86, tam: 0.60, va: 'aucorp',
       grad: ['#E8E0C8', '#A5936A', '#463B24'], halo: '#CBBB8C', lente: '#141007',
@@ -4676,6 +4676,18 @@ const VETA = (() => {
     { id: 'oxch', x: 86, y: 49, tam: 0.52, va: 'ordenex',
       grad: ['#DCD4F2', '#8D7EC9', '#372B63'], halo: '#A99CDE', lente: '#0D0A1D',
       ico: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>' },
+    /* LAS DOS QUE TODAVÍA NO ABREN, y que están a la vista a propósito.
+       Son las dos piezas que contestan las preguntas que cualquiera hace
+       primero: «¿qué hay detrás de esto?» —las minas— y «¿bajo qué reglas?»
+       —DBNX—. Enseñarlas cerradas, diciendo honestamente que falta, cuenta
+       muchísimo más que esconderlas hasta el día que abran: el ecosistema se
+       entiende por su forma entera, no por lo que ya está terminado. */
+    { id: 'minas', x: 30, y: 64, tam: 0.56, pronto: 'minas',
+      grad: ['#F0DFB4', '#B8894A', '#4A3218'], halo: '#D8B87A', lente: '#160E05',
+      ico: '<path d="M2.5 19.5h19L14.6 6.2l-3.3 5.6-2.4-3z"/><path d="M9.6 16l2.2-3.3 2.2 3.3"/>' },
+    { id: 'dbnx', x: 70, y: 64, tam: 0.54, pronto: 'dbnx',
+      grad: ['#DCE6F2', '#7A90AE', '#2A3852'], halo: '#9FB6D4', lente: '#080D16',
+      ico: '<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M3.5 9.4h17M3.5 15h17M9.4 3.5v17M15 3.5v17"/>' },
   ];
 
   const CENTRO = { x: 50, y: 47 };
@@ -4921,7 +4933,7 @@ const VETA = (() => {
     { id: 'p2c',    centro: [-56, 26, -46], tinte: '#E0937A' },
     { id: 'aura',   centro: [0, 62, -40],   tinte: '#8FE6CE' },
     /* Las casas que faltaban y lo que la gente pregunta de verdad: dónde se
-       mira la cadena, dónde se cobra, dónde se cambia, la banca, la tarjeta y
+       mira la cadena, dónde se cobra, dónde se cambia, las cuentas, la tarjeta y
        —lo más importante de todo— de quién es la llave. */
     { id: 'scan',   centro: [-26, -60, 72],  tinte: '#74E6C8' },
     { id: 'pay',    centro: [40, -52, 52],   tinte: '#5FC6EA' },
@@ -5159,7 +5171,7 @@ const VETA = (() => {
    * persona veía la entrada, y del otro lado, nada. «Pegado».
    *
    * Ahora la casa se abre ADENTRO, en su marco: cabecera con su nombre, la
-   * plataforma llenando el resto, y la salida siempre a la vista. La banca
+   * plataforma llenando el resto, y la salida siempre a la vista. AuCorp
    * dejó su portón enmarcable solo para nosotros (frame-ancestors con la
    * lista de la wallet) — cualquier otro sitio sigue sin poder meterla en un
    * iframe. */
@@ -5260,12 +5272,42 @@ const VETA = (() => {
   }
   window.VETA_marcoVivo = marcoVivo;
 
+  /* ── LA CASA QUE TODAVÍA NO ABRE ─────────────────────────────────────────
+   *
+   * Un aviso de esquina que dice «todavía no» es una puerta cerrada sin nota.
+   * Estas dos casas contestan las dos preguntas que cualquiera hace primero
+   * —qué respalda esto, y bajo qué reglas—, así que tocarlas tiene que DECIR
+   * algo, aunque lo que diga sea que falta. Se enseña qué es la casa, qué va a
+   * traer, y se admite sin vueltas que aún no está. Prometer poco y decirlo
+   * claro es lo que hace que valga la pena volver.
+   */
+  function prontoMirar(m) {
+    const capa = document.createElement('div');
+    capa.className = 'puerta-afuera';
+    const g = m.grad || ['#F8EFCF', '#C9A961', '#5C4A22'];
+    capa.innerHTML = `<div class="vidrio pronto-ficha" style="max-width:420px">
+      <div class="pronto-orbe" style="background:radial-gradient(circle at 34% 30%,
+        ${esc(g[0])} 0%, ${esc(g[1])} 46%, ${esc(g[2])} 100%);
+        box-shadow:0 0 34px ${esc(m.halo || g[1])}55">
+        <svg viewBox="0 0 24 24" aria-hidden="true">${m.ico || ''}</svg>
+      </div>
+      <h3>${esc(t('pr.' + m.pronto + '.t'))}</h3>
+      <p class="pronto-que">${esc(t('pr.' + m.pronto + '.q'))}</p>
+      <p class="pronto-p">${esc(t('pr.' + m.pronto + '.p'))}</p>
+      <div class="pronto-sello">${esc(t('nu.pronto'))}</div>
+      <button class="btn btn-oro" style="margin-top:18px">${esc(t('gc.cerrar'))}</button>
+    </div>`;
+    capa.querySelector('button').onclick = () => capa.remove();
+    capa.onclick = (ev) => { if (ev.target === capa) capa.remove(); };
+    document.body.appendChild(capa);
+  }
+
   function nuAbrir(id) {
     // el clic que llega pegado a un jalon es el final del jalon, no un clic
     if (AURA.jalando()) return;
     const m = MUNDOS.find(x => x.id === id);
     if (!m) return;
-    if (m.pronto) return avisar(t('nu.prontoP'));
+    if (m.pronto) return prontoMirar(m);
     /* Con la identidad todavia en camino no se le cierra la puerta a nadie:
        tocar la esfera del chat en los primeros segundos mandaba a alguien
        verificado a rehacer su KYC. La propia pantalla vuelve a preguntar el
@@ -5316,10 +5358,10 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = 'd472440087';
+  const VETA_V = '59ad6be78f';
   const VETA_FECHA = '2026-08-24';
 
-  const AET_V = '774e517d96';
+  const AET_V = '8b53c1d4b5';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -10119,7 +10161,7 @@ const VETA = (() => {
         og: 'Orden Global es un ecosistema completo: tu dinero (Veta Wallet), tu gente (PULSE2CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), todos conectados sobre nuestra propia cadena. Una cuenta, todas las puertas.',
         comision: 'La comisión de red se paga siempre en ORIGEN, también cuando enviás otro token, y es mínima: nuestra cadena es propia. El equivalente lo ves antes de confirmar cualquier envío.',
         remesas: 'Con remesas ves cuánto llega del otro lado después de la comisión y del cambio, en nueve países. Te abro el calculador.',
-        aucorp: 'AuCorp es la banca fiat del ecosistema: tus cuentas en moneda local, en 21 monedas del continente, con esta misma cuenta y sin otra contraseña. Entrás por su esfera del Núcleo: abrís cuentas, depositás con tu referencia, cambiás con la tasa real dicha con su fecha y su margen, y retirás a tu banco. La tarjeta AuCorp ya se está armando y se va a pedir desde esa misma plataforma. AuCorp es dueña de Ordenex y aliada de Orden Global.',
+        aucorp: 'AuCorp es la casa de cuentas en moneda local del ecosistema: tus cuentas en moneda local, en 21 monedas del continente, con esta misma cuenta y sin otra contraseña. Entrás por su esfera del Núcleo: abrís cuentas, depositás con tu referencia, cambiás con la tasa real dicha con su fecha y su margen, y retirás a tu banco. La tarjeta AuCorp ya se está armando y se va a pedir desde esa misma plataforma. AuCorp es dueña de Ordenex y aliada de Orden Global.',
         pronto: 'Ordenexchange y AuCorp ya abrieron: la casa de cambio y las cuentas en moneda local, las dos con esta misma cuenta desde su esfera del Núcleo. AuCorp es la que antes se llamaba AUBANK: cambió el nombre, no la casa. El ecosistema no es una lista cerrada. Crece.',
       },
       teEscucho: 'Te escucho…',
@@ -10914,8 +10956,19 @@ const VETA = (() => {
         pay: ['MYTOKENPAY', 'Tu saldo, aceptado en el mostrador de la esquina.'],
         genesis: ['GENESIS CORE', 'La memoria del origen: cómo empezó todo esto.'],
       },
+      /* ORIGEN, EN EL CENTRO. Dos rótulos y no uno: primero QUÉ ES, y después
+         QUÉ LA SOSTIENE. Juntos serían un párrafo; separados son dos golpes.
+         Y se dice sin adornos: una moneda se explica en una frase o no se
+         explica. */
+      origen: 'Y en el centro, ORIGEN.\nNuestra moneda, referenciada al oro.',
+      respaldo: 'No la promesa de un gobierno.\nMetal que existe, que se pesa\ny que no lo imprime nadie.',
       universo: 'Y alrededor, un universo entero.',
-      obra: 'Nada de esto nos lo dieron.\nLa cadena, la identidad, la banca:\ncada pieza la levantamos nosotros.',
+      obra: 'Nada de esto nos lo dieron.\nLa cadena, la identidad, las cuentas:\ncada pieza la levantamos nosotros.',
+      /* PARA QUIÉN. Es la frase que convierte una demostración de tecnología
+         en un motivo. Va antes del «vos» a propósito: primero el porqué, y
+         recién después la invitación. */
+      puente: 'Y llevamos los fondos\nhasta quien nunca los tuvo cerca.',
+      union: 'Para unir las economías\nde América Latina y del mundo\ncon algo que genere valor de verdad.',
       vos: nombre ? `Y vos estás acá, ${nombre}.` : 'Y vos estás acá.',
       vos2: 'Eso no es casualidad.',
       proposito: 'Esto no es una aplicación más.\nEs que el orden que hoy es de pocos,\nmañana sea de todos.',
@@ -10936,8 +10989,12 @@ const VETA = (() => {
         pay: ['MYTOKENPAY', 'Your balance, accepted at the shop on the corner.'],
         genesis: ['GENESIS CORE', 'The memory of the origin: how all of this began.'],
       },
+      origen: 'And at the centre, ORIGEN.\nOur currency, referenced to gold.',
+      respaldo: 'Not a government promise.\nMetal that exists, that can be weighed,\nand that nobody prints.',
       universo: 'And all around, an entire universe.',
-      obra: 'None of this was given to us.\nThe chain, the identity, the bank:\nwe raised every piece ourselves.',
+      obra: 'None of this was given to us.\nThe chain, the identity, the accounts:\nwe raised every piece ourselves.',
+      puente: 'And we carry the funds\nto those who never had them within reach.',
+      union: 'To join the economies\nof Latin America and the world\nwith something that creates real value.',
       vos: nombre ? `And you are here, ${nombre}.` : 'And you are here.',
       vos2: 'That is no accident.',
       proposito: 'This is not one more app.\nIt is that the order few hold today\nbelongs to everyone tomorrow.',
@@ -11057,12 +11114,27 @@ const VETA = (() => {
         }
         else if (clave === 'palabraOrden') centro(G.palabraOrden, true);
         else if (clave === 'orden') centro(G.orden);
+        /* ORIGEN, EL CENTRO. Dos rótulos con aire entre ellos: primero qué es
+           la moneda y después qué la sostiene. Es el corazón del relato —el
+           sol de esta galaxia ES la moneda— así que la música sube con él. */
+        else if (clave === 'origen') {
+          centro(G.origen, true);
+          try { MUSICA?.crecer(1.35, 3.2); } catch { /* nada */ }
+        }
+        else if (clave === 'respaldo') centro(G.respaldo, true);
         else if (clave.startsWith('casa:')) {
           const c = G.casas[clave.slice(5)];
           if (c) pie(c[0], c[1]);
         }
         else if (clave === 'universo') centro(G.universo);
         else if (clave === 'obra') centro(G.obra);
+        /* PARA QUIÉN, Y PARA QUÉ. Las dos frases que convierten una
+           demostración de tecnología en un motivo. */
+        else if (clave === 'puente') centro(G.puente, true);
+        else if (clave === 'union') {
+          centro(G.union, true);
+          try { MUSICA?.crecer(1.5, 3.6); } catch { /* nada */ }
+        }
         else if (clave === 'vos') {
           /* El golpe de este acto son DOS frases: la primera nombra, la
              segunda remata. Separadas por tres segundos y medio de silencio,
@@ -12114,9 +12186,19 @@ const VETA = (() => {
              style="animation-delay:${(VELO_INICIO + i * VELO_PASO).toFixed(2)}s">${esc(p)}</span>`).join(' ');
   }
 
+  /* UNA SOLA VEZ, PASE LO QUE PASE.
+   *
+   * A esta puerta se llama desde tres sitios —el camino feliz, el de la
+   * recuperación de clave y la red de seguridad de los cuatro segundos— y los
+   * tres pueden coincidir. Cada llamada programaba su propia salida, así que
+   * dos llamadas encimadas podían volver a animar un velo que ya se estaba
+   * yendo. Con la marca, la primera manda y las demás no hacen nada. */
+  let veloYaVa = false;
+
   function veloFuera(conSesion) {
     const velo = $('#velo-og');
-    if (!velo) return;
+    if (!velo || veloYaVa) return;
+    veloYaVa = true;
     const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
     /* LA FRASE SE LEE ENTERA, SIEMPRE. Antes, quien ya tenía sesión veía el
        velo irse a los setecientos milisegundos: la frase entra palabra por
@@ -12282,7 +12364,7 @@ const VETA = (() => {
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
            pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,
-           vsEntrar, vsSalir, vsOjos, vsMirada, tourGenesis, musicaAlterna, versionMirar, version,
+           vsEntrar, vsSalir, vsOjos, vsMirada, tourGenesis, musicaAlterna, versionMirar, version, prontoMirar,
            _bienvenidaGalaxia: (v) => auraBienvenidaGalaxia(v),
            /* El aterrizaje del login, tal cual: la prueba comprueba que entrar
               siempre deja a la persona en el Inicio, aunque la dirección

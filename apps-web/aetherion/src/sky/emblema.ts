@@ -304,13 +304,65 @@ export function planetaTextura(key: string, grad: string[], natura = 'gigante'):
       g.beginPath(); g.arc(x - r * 0.2, y - r * 0.2, r * 0.7, 0, Math.PI * 2); g.fill()
     }
   } else if (natura === 'boveda') {
-    // oro viejo en capas: la banca guarda por estratos
+    // oro viejo en capas: una casa de cuentas guarda por estratos
     for (let i = 0; i < 22; i++) {
       const y = (i / 22) * H
       g.globalAlpha = 0.10 + ((i * 23) % 11) / 48
       g.fillStyle = i % 2 === 0 ? '#e9d9a8' : hondo
       g.fillRect(0, y, W, 3 + ((i * 13) % 7))
     }
+  } else if (natura === 'veta') {
+    /* LA MINA. Roca partida con vetas de metal noble corriendo por dentro.
+       No es la forja —ahí el metal ya está fundido y encendido—: aquí está
+       todavía en la piedra, frío, esperando. Es la diferencia entre el oro que
+       respalda y el oro que se acuña, y son dos casas distintas. */
+    for (let i = 0; i < 30; i++) {           // las fracturas de la roca
+      g.globalAlpha = 0.10 + azar() * 0.14
+      g.strokeStyle = hondo
+      g.lineWidth = 1 + azar() * 4
+      g.beginPath()
+      let x = azar() * W, y = azar() * H
+      g.moveTo(x, y)
+      for (let k = 0; k < 5; k++) { x += (azar() - 0.5) * 60; y += (azar() - 0.5) * 34; g.lineTo(x, y) }
+      g.stroke()
+    }
+    for (let i = 0; i < 14; i++) {           // y el metal dentro de ellas
+      g.globalAlpha = 0.30 + azar() * 0.45
+      g.strokeStyle = i % 3 === 0 ? '#f4e3b0' : '#d9c489'
+      g.lineWidth = 0.8 + azar() * 2.2
+      g.beginPath()
+      let x = azar() * W, y = azar() * H
+      g.moveTo(x, y)
+      for (let k = 0; k < 7; k++) { x += (azar() - 0.45) * 46; y += (azar() - 0.5) * 16; g.lineTo(x, y) }
+      g.stroke()
+    }
+    for (let i = 0; i < 18; i++) {           // los brillos donde aflora
+      g.globalAlpha = 0.5 + azar() * 0.4
+      g.fillStyle = '#fff3d0'
+      g.beginPath(); g.arc(azar() * W, azar() * H, 0.8 + azar() * 1.9, 0, Math.PI * 2); g.fill()
+    }
+  } else if (natura === 'reticula') {
+    /* LA NORMA. Un mundo cuadriculado: meridianos y paralelos marcados, y los
+       cuadros que quedan dentro se encienden de a uno. Una regulación es
+       exactamente eso —un marco que se aplica igual en todas partes— y se lee
+       de un vistazo sin que haya que explicarlo. */
+    g.globalAlpha = 0.22
+    g.strokeStyle = claro
+    g.lineWidth = 1
+    for (let x = 0; x <= W; x += W / 16) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke() }
+    for (let y = 0; y <= H; y += H / 8) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke() }
+    for (let i = 0; i < 26; i++) {           // los cuadros que ya están en regla
+      const cx = Math.floor(azar() * 16) * (W / 16)
+      const cy = Math.floor(azar() * 8) * (H / 8)
+      g.globalAlpha = 0.10 + azar() * 0.26
+      g.fillStyle = i % 4 === 0 ? '#ffffff' : claro
+      g.fillRect(cx + 1, cy + 1, W / 16 - 2, H / 8 - 2)
+    }
+    g.globalAlpha = 0.45                      // el meridiano cero, más marcado
+    g.strokeStyle = '#ffffff'
+    g.lineWidth = 1.6
+    g.beginPath(); g.moveTo(W / 2, 0); g.lineTo(W / 2, H); g.stroke()
+    g.beginPath(); g.moveTo(0, H / 2); g.lineTo(W, H / 2); g.stroke()
   } else if (natura === 'nucleo') {
     // malla de luz por dentro: la memoria viva
     g.globalAlpha = 0.34

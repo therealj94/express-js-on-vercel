@@ -192,40 +192,68 @@ function empezar(opciones: Opciones = {}) {
      qué hace la cámara mientras se dice lo suyo. */
   const guion: Acto[] = [
     /* 0. EL NEGRO. Antes de la primera palabra no hay NADA que mirar: ni
-       estrellas, ni polvo, ni el rescoldo del sol. Pantalla negra de verdad,
-       tres segundos largos. Es incómodo, y por eso funciona: cuando después
-       aparece una sola línea de texto sobre ese vacío, pesa. */
-    { clave: 'negro', dura: 3400 },
+       estrellas, ni polvo, ni el rescoldo del sol. Pantalla negra de verdad.
+       Es incómodo, y por eso funciona: cuando después aparece una sola línea
+       de texto sobre ese vacío, pesa.
+       ══ POR QUÉ AHORA DURA MÁS ═══════════════════════════════════════════
+       Los tres primeros actos iban demasiado rápido y la película empezaba
+       antes de que nadie hubiera terminado de sentarse. El principio es lo
+       único que no se puede acelerar: si la nada dura poco, no es nada, es
+       una pausa. Cinco segundos de negro incomodan lo justo para que la
+       primera palabra caiga sobre alguien que ya está esperándola. */
+    { clave: 'negro', dura: 5200 },
     /* I. LA TINIEBLA. El cielo asoma apenas —lo justo para entender que hay
-       algo ahí fuera, disperso—, y la cámara empieza a acercarse. */
-    { clave: 'tiniebla', dura: 5200, mover: { radio: 46, phi: 1.02, giro: 0.22, mira: 0, curva: 'suave' } },
+       algo ahí fuera, disperso—, y la cámara empieza a acercarse muy despacio.
+       El movimiento tiene que notarse solo si uno lo busca. */
+    { clave: 'tiniebla', dura: 7400, mover: { radio: 48, phi: 1.02, giro: 0.16, mira: 0, curva: 'suave' } },
     /* II. LA PALABRA. La cámara sigue entrando, más decidida, hacia un centro
-       que todavía está vacío. La tensión la hace el movimiento, no el texto. */
-    { clave: 'palabra', dura: 5600, mover: { radio: 30, giro: 0.3, curva: 'entra' } },
+       que todavía está vacío. La tensión la hace el movimiento, no el texto.
+       Y se le da aire DESPUÉS de la frase: «Sea la luz» necesita un silencio
+       detrás o no es una orden, es un renglón. */
+    { clave: 'palabra', dura: 7800, mover: { radio: 30, giro: 0.26, curva: 'entra' } },
     /* III. Y FUE LA LUZ. El sol nace y la cámara RETROCEDE de golpe, como
        quien se echa atrás ante algo que estalla. Es el único movimiento
        brusco de toda la película, y por eso funciona. */
-    { clave: 'luz', dura: 3400, mover: { radio: 38, curva: 'sale' } },
+    { clave: 'luz', dura: 4600, mover: { radio: 38, curva: 'sale' } },
     /* IV. Y DIJO: ORDEN. La palabra que da nombre a la casa, dicha sobre un
        sistema todavía suelto. */
-    { clave: 'palabraOrden', dura: 3800, mover: { radio: 33, giro: 0.25, curva: 'suave' } },
+    { clave: 'palabraOrden', dura: 5200, mover: { radio: 33, giro: 0.25, curva: 'suave' } },
     /* V. Y SE ORDENÓ. Los mundos viajan a su órbita mientras la cámara los
        rodea despacio: se ve el sistema formándose desde fuera. */
-    { clave: 'orden', dura: 6600, mover: { radio: 26, phi: 0.9, giro: 0.9, curva: 'suave' } },
-    /* V-IX. LAS CASAS. Cada una a contraluz, con un acercamiento que frena. */
+    { clave: 'orden', dura: 8200, mover: { radio: 26, phi: 0.9, giro: 0.9, curva: 'suave' } },
+    /* VI-VII. ORIGEN, EL CENTRO.
+       ══════════════════════════════════════════════════════════════════════
+       El sol de esta galaxia no es decorado: ES la moneda. Todo lo demás
+       —cada casa, cada órbita— gira alrededor de ella, y esa es exactamente la
+       verdad del ecosistema. Así que la película se para aquí y lo dice.
+       La cámara BAJA hacia el sol y lo rodea de cerca: es el único momento en
+       que se mira el centro y no las casas. Dos actos y no uno, porque son dos
+       ideas y cada una necesita su respiro: qué es, y qué la sostiene. */
+    { clave: 'origen', dura: 7200, mover: { radio: 13, phi: 1.14, giro: 0.5, mira: 0, curva: 'entra' } },
+    { clave: 'respaldo', dura: 7600, mover: { radio: 16, phi: 0.94, giro: 0.85, curva: 'suave' } },
+    /* VIII-XII. LAS CASAS. Cada una a contraluz, con un acercamiento que frena. */
     ...casas.map((k) => ({ clave: `casa:${k}`, dura: 5400, casa: k,
       mover: { curva: 'llega' as Curva } })),
-    /* X. EL UNIVERSO. El retroceso grande: arranca lento y acelera hasta que
+    /* XIII. EL UNIVERSO. El retroceso grande: arranca lento y acelera hasta que
        cabe todo — los mundos de fuera, los soles, los agujeros negros. */
     { clave: 'universo', dura: 8600, mover: { radio: 104, phi: 0.82, giro: 1.5, mira: 0, curva: 'entra' } },
-    /* XI. LO QUE HICIMOS. Quieta en el panorama, girando apenas: el texto
+    /* XIV. LO QUE HICIMOS. Quieta en el panorama, girando apenas: el texto
        manda y la imagen sostiene. */
     { clave: 'obra', dura: 7600, mover: { giro: 0.55, curva: 'recta' } },
-    /* XII. VOS. La cámara vuelve hacia el sistema — de vuelta a casa. */
+    /* XV. A QUIEN NUNCA LO TUVO.
+       La cámara CRUZA el sistema de lado a lado —un barrido largo, el
+       movimiento más lateral de la película— mientras se dice a quién va
+       dirigido esto. No es un adorno: la frase habla de llevar algo de un
+       sitio a otro, y la cámara hace exactamente eso. */
+    { clave: 'puente', dura: 7800, mover: { radio: 52, phi: 0.98, giro: -1.35, curva: 'suave' } },
+    /* XVI. UNIR. Se abre el plano hasta que caben todos los mundos a la vez:
+       la imagen de muchas cosas separadas que resultan ser un solo sistema. */
+    { clave: 'union', dura: 8200, mover: { radio: 74, phi: 0.88, giro: 0.9, curva: 'sale' } },
+    /* XVII. VOS. La cámara vuelve hacia el sistema — de vuelta a casa. */
     { clave: 'vos', dura: 7200, mover: { radio: 34, phi: 0.95, giro: 0.5, curva: 'suave' } },
-    /* XIII. EL PROPÓSITO. Sigue entrando, ya cerca. */
+    /* XVIII. EL PROPÓSITO. Sigue entrando, ya cerca. */
     { clave: 'proposito', dura: 7600, mover: { radio: 24, giro: 0.35, curva: 'suave' } },
-    /* XIV. LA INVITACIÓN. El encuadre de casa, el de todos los días. */
+    /* XIX. LA INVITACIÓN. El encuadre de casa, el de todos los días. */
     { clave: 'invitacion', dura: 6400, mover: { radio: rig.reposo || 20, phi: rig.reposoPhi, giro: 0.2, curva: 'sale' } },
   ]
 
@@ -273,6 +301,34 @@ function empezar(opciones: Opciones = {}) {
       espacio.solHabla(1)
     } else if (a.clave === 'orden') {
       acomodar(0, 5600)
+    } else if (a.clave === 'origen') {
+      /* ORIGEN. La cámara baja al centro y el sol RESPONDE: se enciende y
+         habla. Es la única vez en toda la película que el centro es el sujeto
+         del plano, así que se le deja quemar un poco —aquí el resplandor no
+         estorba, es el tema— y se apaga la selección para que no haya ninguna
+         casa marcada compitiendo. */
+      st.select(null)
+      sim.plano = 0
+      sim.auraBrillo = 2.1
+      espacio.solHabla(0.85)
+      audio.land()
+    } else if (a.clave === 'respaldo') {
+      /* Lo que la sostiene. El resplandor baja a la mitad: la idea ya no es
+         el fogonazo sino el peso, y el peso no brilla. */
+      sim.auraBrillo = 1.35
+    } else if (a.clave === 'puente') {
+      /* El barrido de lado a lado. Se apaga el resplandor del sol para que el
+         movimiento se lea sobre las casas y no sobre un fogonazo, y se suelta
+         un golpe de aire: la cámara viaja, y se tiene que oír que viaja. */
+      st.select(null)
+      sim.plano = 1
+      sim.auraBrillo = 1
+      audio.whoosh(false)
+    } else if (a.clave === 'union') {
+      /* Se abre hasta que caben todos. El plano vuelve a la normalidad: lo
+         que se enseña ahora es el sistema completo, con su sol y todo. */
+      sim.plano = 0
+      espacio.solHabla(0.5)
     } else if (a.clave.startsWith('casa:')) {
       const key = a.clave.slice(5)
       st.select(key)

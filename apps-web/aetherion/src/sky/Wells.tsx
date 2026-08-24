@@ -71,10 +71,13 @@ const enIngles = () => typeof window !== 'undefined' && (window as any).__AE_LAN
      oceano   — nubes altas sobre azul: la palabra que fluye (chat)
      jardin   — atmósfera densa y luna: lo que crece contigo (pay)
      bunker   — roca seca, cráteres y anillo fino: lo que custodia (gid)
-     boveda   — oro viejo y anillo doble: la banca (aucorp)
+     boveda   — oro viejo y anillo doble: la casa de cuentas (aucorp)
      faro     — pálido, con su satélite: el que ordena (ajustes)
-     nucleo   — malla de luz por dentro: la memoria viva (genesis) */
-type Natura = 'gigante' | 'helado' | 'forja' | 'oceano' | 'jardin' | 'bunker' | 'boveda' | 'faro' | 'nucleo'
+     nucleo   — malla de luz por dentro: la memoria viva (genesis)
+     veta     — roca partida con metal noble dentro: lo que respalda (minas)
+     reticula — cuadriculado, con los cuadros en regla encendidos: la norma (dbnx) */
+type Natura = 'gigante' | 'helado' | 'forja' | 'oceano' | 'jardin' | 'bunker' | 'boveda'
+  | 'faro' | 'nucleo' | 'veta' | 'reticula'
 
 interface Casa {
   key: string
@@ -100,11 +103,20 @@ const casas = (): Casa[] => {
   { key: 'genesis', name: 'GENESIS CORE', arch: 'memory', banda: 0, peso: 1.0, natura: 'nucleo',
     intent: EN ? 'The living memory of the ecosystem' : 'La memoria viva del ecosistema' },
   { key: 'aucorp', name: 'AuCorp', arch: 'memory', banda: 1, peso: 1.0, natura: 'boveda',
-    intent: EN ? 'Local-currency banking' : 'La banca en moneda local' },
+    intent: EN ? 'Local-currency accounts' : 'Las cuentas en moneda local' },
   { key: 'scan', name: 'ORDENSCAN', arch: 'memory', banda: 1, peso: 0.92, natura: 'helado',
     intent: EN ? 'The chain, in plain sight' : 'La cadena, a la vista' },
   { key: 'oxch', name: 'Ordenex', arch: 'torus', banda: 1, peso: 0.92, natura: 'forja',
     intent: EN ? 'The exchange house' : 'La casa de cambio' },
+  /* LAS DOS QUE TODAVÍA NO ABREN. Están en el cielo desde ya y a propósito:
+     un ecosistema se entiende por su forma completa, y estos dos mundos son
+     los que explican de dónde sale el respaldo y bajo qué reglas se tokeniza.
+     Que se vean —y que al tocarlos digan honestamente «pronto»— cuenta más que
+     esconderlos hasta el día del estreno. */
+  { key: 'minas', name: 'MINAS', arch: 'memory', banda: 1, peso: 0.96, natura: 'veta',
+    intent: EN ? 'The precious metals behind it all' : 'Los metales preciosos que respaldan' },
+  { key: 'dbnx', name: 'DBNX', arch: 'sentinel', banda: 1, peso: 0.9, natura: 'reticula',
+    intent: EN ? 'Rules for tokenizing assets' : 'Las reglas para tokenizar activos' },
   { key: 'ajustes', name: EN ? 'Settings' : 'Ajustes', arch: 'sentinel', banda: 1, peso: 0.86, natura: 'faro',
     intent: EN ? 'The system lighthouse' : 'El faro del sistema' },
   ]
@@ -120,6 +132,12 @@ const COLOR_POR_DEFECTO: Record<string, { grad: string[]; halo: string; lente: s
   scan: { grad: ['#D6F3EC', '#74E6C8', '#1B5A50'], halo: '#74E6C8', lente: '#07211D' },
   oxch: { grad: ['#DCD4F2', '#8D7EC9', '#372B63'], halo: '#A99CDE', lente: '#0D0A1D' },
   ajustes: { grad: ['#E4E8EE', '#93A0AE', '#2E3844'], halo: '#A9B6C4', lente: '#0C1116' },
+  /* MINAS lleva el oro de la casa, pero apagado y terroso: es el metal
+     TODAVÍA EN LA PIEDRA, no el acuñado. Al lado de la billetera se nota que
+     son la misma familia y que uno viene antes que el otro. */
+  minas: { grad: ['#F0DFB4', '#B8894A', '#4A3218'], halo: '#D8B87A', lente: '#160E05' },
+  /* DBNX en acero azulado: la norma no es cálida ni quiere serlo. */
+  dbnx: { grad: ['#DCE6F2', '#7A90AE', '#2A3852'], halo: '#9FB6D4', lente: '#080D16' },
 }
 
 /* EL ANILLO DE CASAS. Antes los pozos caían donde tocara sobre los filamentos:
@@ -188,6 +206,16 @@ export function buildWellDefs(gal: Galaxy): WellDef[] {
 import { GALAXY } from './galaxy'
 export const WELL_DEFS: WellDef[] = buildWellDefs(GALAXY)
 
+/* QUÉ CLASE DE MUNDO LE TOCÓ A CADA CASA. Para que una prueba pueda comprobar
+   lo que una captura no distingue bien: que no haya dos casas con la misma
+   superficie. Ocho bolas iguales pintadas de otro color son ocho bolas; que
+   cada mundo sea de una clase distinta es LA razón de que el sitio se recuerde,
+   y es justo lo que se rompe sin querer al agregar una casa nueva. */
+if (typeof window !== 'undefined') {
+  (window as any).__AE_NATURAS = () =>
+    Object.fromEntries(casas().map((c) => [c.key, c.natura]))
+}
+
 export function refrescarCasas() {
   const nuevas = buildWellDefs(GALAXY)
   WELL_DEFS.length = 0
@@ -213,6 +241,14 @@ export interface WellHandle {
 }
 
 export const wellRegistry = new Map<string, WellHandle>()
+
+/* QUÉ CASAS ESTÁN DE VERDAD EN EL CIELO. Estar en la lista no es estar en la
+   escena: una casa mal declarada aparece en el registro de la wallet y luego
+   no se construye, y desde fuera eso se ve exactamente igual que todo bien —
+   hasta que alguien la mira y no hay nada. Esto responde por la escena. */
+if (typeof window !== 'undefined') {
+  (window as any).__AE_CASAS_VIVAS = () => [...wellRegistry.keys()]
+}
 
 const tmpV = new THREE.Vector3()
 const normalAro = new THREE.Vector3()
@@ -521,6 +557,13 @@ function WellView({ def }: { def: WellDef }) {
     boveda: { anillo: [1.5, 1.9], brillo: 0.05, giro: 0.12, relieve: 0.02, vive: true, eje: 0.27 },
     nucleo: { anillo: [1.6, 2.2], brillo: 0.34, giro: 0.26, relieve: 0.014, eje: 0.19 },
     faro: { luna: 0.18, brillo: 0.08, giro: 0.14, relieve: 0.016, vive: true, eje: 0.36 },
+    /* La mina: sin atmósfera, muy rugosa y girando despacio. Es un mundo de
+       piedra al que se le fue todo lo demás, y el relieve alto es lo que hace
+       que se lea como roca y no como bola pintada. */
+    veta: { brillo: 0.09, giro: 0.07, relieve: 0.046, eje: 0.14 },
+    /* La norma: anillo fino y limpio, giro parejo, sin nubes que la tapen. Lo
+       que se quiere es que la cuadrícula SE LEA. */
+    reticula: { anillo: [1.78, 1.94], brillo: 0.07, giro: 0.11, relieve: 0.006, eje: 0.05 },
   }
   const rasgos = A[def.natura] || A.gigante
   const conAnillo = !!rasgos.anillo

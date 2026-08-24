@@ -52,6 +52,51 @@ def se_sube(rel):
 # no significa nada enseña a ignorar los avisos.
 SELLOS = (('VETA_V', 'VETA_FECHA'), ('ONX_V', 'ONX_FECHA'))
 
+# ── Y EL SELLO PEGADO A CADA ARCHIVO ─────────────────────────────────────────
+#
+# Esto es lo que hace que una publicación LLEGUE.
+#
+# Los scripts se pedían por su nombre pelado —app.js, i18n.js, chat.js— y ese
+# nombre no cambia nunca. Un navegador que ya bajó uno se lo queda todo el
+# tiempo que quiera, y no hay forma de decirle que hay otro: se publica un
+# arreglo y del otro lado sigue corriendo el de antes.
+#
+# Lo peor no es quedarse viejo entero: es quedarse A MEDIAS. Cada archivo tiene
+# su propia caducidad, así que un navegador puede acabar con el app.js de ayer
+# y el i18n.js de hoy corriendo juntos. Ahí no falla nada de golpe — salen
+# rarezas sueltas, cosas que aparecen dos veces, textos que no coinciden con lo
+# que hace el botón. Exactamente los fantasmas que costaba explicar.
+#
+# Con el sello detrás (app.js?v=abc123) cada versión es una dirección distinta:
+# la copia guardada se aprovecha mientras el contenido sea el mismo —que es
+# para lo que sirve— y se tira sola en cuanto publicamos. Y como el sello sale
+# del contenido, todos los archivos de una misma subida llevan el mismo: o se
+# actualizan todos, o ninguno. Nunca a medias.
+QUITAR_SELLO = re.compile(r'((?:src|href)="[^"?#]+\.(?:js|css))\?v=[^"]*(")')
+PONER_SELLO = re.compile(r'((?:src|href)="(?!https?:|//|data:)[^"?#]+\.(?:js|css))(")')
+
+
+def sellar_paginas(raiz, version):
+    """Pega ?v=<version> a cada script y hoja de estilo propios de la casa."""
+    tocados = 0
+    for base, _, nombres in os.walk(raiz):
+        for n in nombres:
+            if not n.endswith('.html'):
+                continue
+            r = os.path.join(base, n)
+            if not se_sube(os.path.relpath(r, raiz)):
+                continue
+            with open(r, encoding='utf8') as f:
+                html = f.read()
+            # primero se limpia el sello anterior, después se pone el de ahora
+            nuevo = QUITAR_SELLO.sub(r'\1\2', html)
+            nuevo = PONER_SELLO.sub(rf'\1?v={version}\2', nuevo)
+            if nuevo != html:
+                with open(r, 'w', encoding='utf8') as f:
+                    f.write(nuevo)
+                tocados += 1
+    return tocados
+
 
 def sellar(raiz):
     import datetime
@@ -72,6 +117,15 @@ def sellar(raiz):
             r = os.path.join(base, n)
             rel = os.path.relpath(r, raiz)
             if not se_sube(rel) or rel == 'app.js':
+                continue
+            if n.endswith('.html'):
+                # SIN los sellos de la subida anterior. Con ellos dentro, cada
+                # subida cambiaría el hash aunque no se hubiera tocado nada: el
+                # sello se mordería la cola y «mismo contenido, mismo sello»
+                # dejaría de ser cierto.
+                with open(r, encoding='utf8') as f:
+                    h.update(rel.encode())
+                    h.update(QUITAR_SELLO.sub(r'\1\2', f.read()).encode())
                 continue
             with open(r, 'rb') as f:
                 h.update(rel.encode()); h.update(f.read())
@@ -94,7 +148,9 @@ def sellar(raiz):
     if nuevo != codigo:
         with open(objetivo, 'w', encoding='utf8') as f:
             f.write(nuevo)
-    print(f'  sello de la casa v={version} ({fecha})')
+    paginas = sellar_paginas(raiz, version)
+    print(f'  sello de la casa v={version} ({fecha})'
+          + (f' · {paginas} página(s) con el sello pegado a sus archivos' if paginas else ''))
     return version
 
 

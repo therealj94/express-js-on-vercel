@@ -139,11 +139,22 @@ console.log('\n── la palabra, y con ella la luz ─────────�
 console.log('\n── el retroceso que enseña el universo ──────────────────────');
 {
   let masLejos = 0;
-  /* La película dura ahora minuto y medio largo: la ventana la acompaña. */
-  const hasta = Date.now() + 130000;
+  let masCerca = 999;
+  /* La película creció: el arranque se alargó a propósito —empezaba antes de
+     que nadie hubiera terminado de sentarse— y se le sumaron los actos de
+     ORIGEN y de la misión. La ventana la acompaña. */
+  const hasta = Date.now() + 200000;
   let vioUniverso = false;
   let vioProposito = false;
   let vioInvitacion = false;
+  /* LO QUE LA HISTORIA TIENE QUE DECIR SÍ O SÍ. No es adorno: son las cuatro
+     ideas por las que existe la película. Si una se cae de la película por un
+     cambio de guion, esto lo dice en vez de que se descubra en el escenario. */
+  let vioOrigen = false;
+  let vioRespaldo = false;
+  let vioFondos = false;
+  let vioUnion = false;
+  let dijoBanca = false;
   while (Date.now() < hasta) {
     const st = await pag.evaluate(() => ({
       r: window.__aeCamera.position.length(),
@@ -154,6 +165,14 @@ console.log('\n── el retroceso que enseña el universo ───────
     if (/universo entero/i.test(st.txt)) vioUniverso = true;
     if (/no es casualidad|casualidad/i.test(st.txt)) vioProposito = true;
     if (/expandirlo|futuro es orden|falta con vos/i.test(st.txt)) vioInvitacion = true;
+    if (/en el centro, ORIGEN|referenciada al oro/i.test(st.txt)) vioOrigen = true;
+    if (/promesa de un gobierno|se pesa/i.test(st.txt)) vioRespaldo = true;
+    if (/llevamos los fondos|nunca los tuvo/i.test(st.txt)) vioFondos = true;
+    if (/unir las economías|América Latina/i.test(st.txt)) vioUnion = true;
+    /* La palabra que se quitó a propósito: nombrar «banca» algo que no es un
+       banco licenciado no es solo impreciso, es un riesgo. */
+    if (/\bbanca\b/i.test(st.txt)) dijoBanca = true;
+    if (st.r > 0) masCerca = Math.min(masCerca, st.r);
     if (!st.vivo) break;
     await pag.waitForTimeout(700);
   }
@@ -162,6 +181,15 @@ console.log('\n── el retroceso que enseña el universo ───────
   ok('y lo dice con todas las letras', vioUniverso);
   ok('«eso no es casualidad» se dice', vioProposito);
   ok('y la invitación a expandirlo, también', vioInvitacion);
+  /* ORIGEN es el centro del relato y del sistema: la cámara BAJA hasta el sol
+     —que es la moneda— y ahí se para a decir qué es y qué la sostiene. */
+  ok('ORIGEN se presenta como lo que es', vioOrigen);
+  ok('y se dice qué la respalda', vioRespaldo);
+  ok('la cámara baja de verdad hasta el centro', masCerca < 18,
+     `lo más cerca: ${masCerca.toFixed(1)} unidades`);
+  ok('se dice a quién se le llevan los fondos', vioFondos);
+  ok('y con qué se unen las economías', vioUnion);
+  ok('y nunca se dice «banca»', !dijoBanca);
 }
 
 console.log('\n── al terminar, la casa vuelve entera ───────────────────────');

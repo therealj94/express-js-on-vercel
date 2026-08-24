@@ -373,6 +373,28 @@ body.en-cine #lienzo{opacity:0;transition:opacity .9s ease}
 .puerta-afuera p{font:400 13.5px/1.6 var(--sans);color:var(--bruma);margin:0}
 /* La ficha de versión: pares de dato y valor, con el número en monoespaciado
    para que se pueda comparar de un vistazo con lo que se acaba de publicar. */
+/* LA CASA QUE TODAVIA NO ABRE. El planeta se pinta con el MISMO degradado que
+   lleva en el cielo: quien acaba de verlo alla arriba tiene que reconocerlo
+   aca sin que nadie se lo diga. Es la unica manera de que «pronto» se sienta
+   una casa de verdad esperando su turno y no un cartel de obra. */
+.pronto-ficha{text-align:center}
+.pronto-orbe{width:96px;height:96px;border-radius:50%;margin:2px auto 20px;
+  display:grid;place-items:center;position:relative}
+.pronto-orbe svg{width:38px;height:38px;fill:none;stroke:rgba(8,12,20,.72);
+  stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.pronto-ficha h3{margin:0 0 10px;font:600 21px/1.2 var(--display,var(--sans));
+  letter-spacing:.1em;color:var(--crema)}
+/* La frase corta va primero y en oro: es lo que alguien se lleva si no lee mas. */
+.pronto-que{margin:0 0 14px;font:500 14.5px/1.55 var(--sans);color:var(--oroLt)}
+.pronto-p{margin:0;font:400 13.5px/1.72 var(--sans);color:var(--bruma);text-align:left}
+.pronto-sello{margin-top:18px;display:inline-block;padding:5px 14px;border-radius:999px;
+  border:1px solid var(--linea2);font:600 10.5px/1 var(--sans);letter-spacing:.22em;
+  color:var(--humo)}
+@media (max-width:420px){
+  .pronto-orbe{width:78px;height:78px;margin-bottom:16px}
+  .pronto-orbe svg{width:31px;height:31px}
+  .pronto-ficha h3{font-size:19px}
+}
 .ver-lista{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;margin:0 0 14px;
   font:400 13px/1.4 var(--sans)}
 .ver-lista dt{color:var(--humo)}
@@ -4017,9 +4039,14 @@ body.en-ventana .lienzo::before{
   <!-- LA MÚSICA DEL ECOSISTEMA. preload="none" es la palabra clave: los 5 MB
        no se descargan JAMÁS si nadie la enciende. Quien la enciende la recibe
        en streaming y empieza a sonar antes de terminar de bajar. -->
-  <audio id="musica-cosmos" loop preload="none" crossorigin="anonymous">
-    <source src="assets/aud/cosmos.mp3" type="audio/mpeg">
-  </audio>
+  <!-- SIN src AQUI, A PROPOSITO. La pista se cuelga desde app.js con el sello
+       de la version pegado detras (?v=...). El nombre del archivo nunca cambia
+       —siempre es cosmos.mp3— asi que un navegador que ya bajo una version
+       anterior se queda con ella para siempre y sigue sonando la vieja por
+       mucho que se publique la nueva: exactamente lo que paso. Con el sello
+       detras, cada version es una direccion distinta y la copia guardada se
+       usa mientras SIRVE y se tira cuando cambiamos la pista. -->
+  <audio id="musica-cosmos" loop preload="none" crossorigin="anonymous"></audio>
   <!-- El interruptor de la música, al lado de pantalla completa: a la vista,
        de un toque, y la decisión sobrevive a la recarga. -->
   <button id="musica-btn" onclick="VETA.musicaAlterna()"
@@ -4152,9 +4179,9 @@ body.en-ventana .lienzo::before{
 
 <!-- El saber publico que Genesis dejo salir. Lo genera
      infra/cerebro/publicar-saber.mjs; no se edita a mano. -->
-<script src="saber.js"></script>
-<script src="telemetria.js"></script>
-<script src="qr.js"></script>
+<script src="saber.js?v=59ad6be78f"></script>
+<script src="telemetria.js?v=59ad6be78f"></script>
+<script src="qr.js?v=59ad6be78f"></script>
 <!-- La cripto para entrar con la frase semilla. Se carga aparte y no dentro
      de app.js porque son 13 KB que solo hacen falta si alguien elige ese
      camino, y porque asi se puede probar sola (pruebas/probar-llaves.mjs). -->
@@ -4297,24 +4324,24 @@ body.en-ventana .lienzo::before{
   </div>
 </div>
 
-<script src="vendor/cripto-llaves.js"></script>
-<script src="llaves.js"></script>
-<script src="tono.js"></script>
-<script src="llamada.js"></script>
-<script src="llamadaGrupo.js"></script>
-<script src="velas.js"></script>
-<script src="cadena.js"></script>
-<script src="datos.js"></script>
-<script src="aura.js"></script>
-<script src="candado.js"></script>
-<script src="chat.js"></script>
-<script src="i18n.js"></script>
-<script src="galaxia.js"></script>
+<script src="vendor/cripto-llaves.js?v=59ad6be78f"></script>
+<script src="llaves.js?v=59ad6be78f"></script>
+<script src="tono.js?v=59ad6be78f"></script>
+<script src="llamada.js?v=59ad6be78f"></script>
+<script src="llamadaGrupo.js?v=59ad6be78f"></script>
+<script src="velas.js?v=59ad6be78f"></script>
+<script src="cadena.js?v=59ad6be78f"></script>
+<script src="datos.js?v=59ad6be78f"></script>
+<script src="aura.js?v=59ad6be78f"></script>
+<script src="candado.js?v=59ad6be78f"></script>
+<script src="chat.js?v=59ad6be78f"></script>
+<script src="i18n.js?v=59ad6be78f"></script>
+<script src="galaxia.js?v=59ad6be78f"></script>
 <!-- GENESIS CORE: el cerebro del ecosistema, el mismo volumen que se proyecta
      en la sala de Genesis ID. Solo lo usa su vista. -->
-<script src="cerebro-og.js"></script>
+<script src="cerebro-og.js?v=59ad6be78f"></script>
 <!-- MODO VISOR: la casa dentro de un visor (WebXR, cartón o 360 en pantalla). -->
-<script src="visor.js"></script>
-<script src="musica.js"></script>
-<script src="airtouch.js"></script>
-<script src="app.js"></script>
+<script src="visor.js?v=59ad6be78f"></script>
+<script src="musica.js?v=59ad6be78f"></script>
+<script src="airtouch.js?v=59ad6be78f"></script>
+<script src="app.js?v=59ad6be78f"></script>

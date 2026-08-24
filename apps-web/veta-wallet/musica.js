@@ -51,10 +51,34 @@ const MUSICA = (() => {
   /* El grafo se arma la PRIMERA vez que se enciende, no al cargar la página:
      un AudioContext creado sin gesto nace suspendido y en algunos navegadores
      cuenta contra el límite de contextos. */
+  /* LA PISTA, CON EL SELLO DE LA VERSIÓN DETRÁS.
+   *
+   * El archivo se llama siempre igual —cosmos.mp3— así que un navegador que
+   * bajó una versión anterior se queda con ella y sigue sonando la vieja por
+   * mucho que publiquemos la nueva. Sin fecha de vencimiento: cinco megas de
+   * audio son justo lo que un navegador guarda con más ganas. Con el sello
+   * detrás, cada versión de la casa es una dirección distinta: la copia
+   * guardada se aprovecha mientras la pista sea la misma, y se tira sola el
+   * día que la cambiamos.
+   *
+   * Se cuelga aquí y no en el HTML porque `preload="none"` con un src puesto
+   * igual deja al navegador resolver la dirección; poniéndola en el momento de
+   * armar, la pista no existe hasta que alguien enciende la música. */
+  function colgarPista() {
+    if (!el || el.querySelector('source')) return;
+    const sello = (window.VETA?.version?.().app) || 'x';
+    const fuente = document.createElement('source');
+    fuente.src = `assets/aud/cosmos.mp3?v=${encodeURIComponent(sello)}`;
+    fuente.type = 'audio/mpeg';
+    el.appendChild(fuente);
+    el.load();
+  }
+
   function armar() {
     if (ctx) return true;
     el = document.getElementById('musica-cosmos');
     if (!el) return false;
+    colgarPista();
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return false;
     try {
