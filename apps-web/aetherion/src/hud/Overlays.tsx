@@ -25,6 +25,13 @@ export function Overlays() {
 function WhisperCard() {
   const id = useUiStore((s) => s.selectedId)!
   const well = WELL_DEFS.find((w) => w.key === id)
+  /* La casa que nos aloja necesita saber que hay una ficha abierta para
+     apartar lo que estorbe —su saludo, sobre todo—: en un teléfono los dos
+     se pelean el mismo rincón de abajo. */
+  useEffect(() => {
+    document.body.classList.add('hay-ficha')
+    return () => document.body.classList.remove('hay-ficha')
+  }, [])
   if (!well) return null
   const arch = ARCHETYPES[well.arch]
   const st = useUiStore.getState()

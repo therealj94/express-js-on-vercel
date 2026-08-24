@@ -287,7 +287,7 @@ export function Agujeros() {
       const d = camera.position.distanceTo(pos)
       u.uTam.value = rt.rs * (7 + Math.min(9, d * 0.035))
       m.scale.setScalar(u.uTam.value)
-      u.uIntro.value = sim.intro * (1 - 0.85 * sim.noche)
+      u.uIntro.value = sim.intro * (1 - 0.85 * sim.noche) * (1 - sim.vacio)
       void haciaOjo
     })
   })

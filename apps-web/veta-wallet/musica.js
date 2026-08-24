@@ -76,7 +76,10 @@ const MUSICA = (() => {
     } catch { ctx = null; return false; }
   }
 
-  const nivel = () => (agacheHasta > performance.now() ? VOL * 0.22 : VOL);
+  let agacheHondo = false;
+  const nivel = () => (agacheHasta > performance.now()
+    ? VOL * (agacheHondo ? 0.10 : 0.22)
+    : VOL);
 
   function rampa(a, seg) {
     if (!gan || !ctx) return;
@@ -124,13 +127,14 @@ const MUSICA = (() => {
   /* AGACHARSE. Lo llama todo lo que tiene algo que decir: la voz de AU-RA, un
      aviso, el narrador del Génesis. La música baja a un quinto y vuelve sola
      cuando el que hablaba termina. */
-  function agachar(ms = 1200) {
+  function agachar(ms = 1200, hondo = false) {
     agacheHasta = Math.max(agacheHasta, performance.now() + ms);
+    if (hondo) agacheHondo = true;
     if (!sonando) return;
     rampa(nivel(), 0.25);
     clearTimeout(agacheReloj);
     agacheReloj = setTimeout(() => {
-      if (sonando && agacheHasta <= performance.now()) rampa(VOL, 0.9);
+      if (sonando && agacheHasta <= performance.now()) { agacheHondo = false; rampa(VOL, 0.9); }
     }, ms + 80);
   }
 
@@ -151,6 +155,15 @@ const MUSICA = (() => {
     if (!el) return;
     try { el.currentTime = 0; } catch { /* algunos formatos no dejan buscar */ }
   }
+
+  /* EL AVISO DEL CIELO. Cuando la galaxia va a soltar un golpe —zarpar hacia
+     una app, aterrizar— la música se agacha antes de que suene, no después.
+     Los dos viven en contextos de audio distintos y no pueden compartir un
+     limitador: que uno se aparte cuando habla el otro es la única mezcla
+     posible, y además es la correcta. */
+  addEventListener('ae-golpe', (e) => {
+    agachar(Math.max(600, e?.detail?.ms || 1000), true);
+  });
 
   // Con la pestaña atrás, silencio.
   document.addEventListener('visibilitychange', () => {

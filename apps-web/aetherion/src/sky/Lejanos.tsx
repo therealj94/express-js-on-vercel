@@ -126,7 +126,10 @@ export function Lejanos() {
     /* En el umbral la cámara está LEJOS y estos mundos quedaban en primer
        plano, gigantes: en la puerta se recogen a la mitad — niebla de fondo,
        no protagonistas — y al entrar recuperan su tamaño con suavidad. */
-    const objetivo = (window as any).__AE_PUERTA ? 0.5 : 1
+    /* En el vacío del Génesis los mundos del paisaje se encogen hasta
+       desaparecer: la nada tiene que ser nada, no «unas bolas apagadas». */
+    const objetivo = sim.vacio > 0.01 ? 0.001
+      : (window as any).__AE_PUERTA ? 0.5 : 1
     const s = grupo.current.scale.x + (objetivo - grupo.current.scale.x) * Math.min(1, dt * 2.5)
     grupo.current.scale.setScalar(s)
 
@@ -136,7 +139,7 @@ export function Lejanos() {
       const d = estado.camera.position.length()
       const m = lineas.current.material as THREE.LineBasicMaterial
       const q = THREE.MathUtils.clamp((d - RADIO_ANILLO * 2.4) / (RADIO_ANILLO * 3), 0, 1)
-      m.opacity = 0.15 * q
+      m.opacity = 0.15 * q * (1 - sim.vacio)
       lineas.current.visible = q > 0.02
     }
   })

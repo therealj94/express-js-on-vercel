@@ -115,6 +115,22 @@ function acomodar(hasta: number, dura: number) {
   acomodoRaf = requestAnimationFrame(paso)
 }
 
+let vacioRaf = 0
+/* EL VACÍO: 1 = ni siquiera hay cielo. Es distinto de la noche —la noche es
+   un sistema sin sol; el vacío es la nada de antes de la primera palabra. */
+function llevarVacio(hasta: number, dura: number) {
+  cancelAnimationFrame(vacioRaf)
+  const desde = sim.vacio
+  const t0 = performance.now()
+  const paso = () => {
+    const p = Math.min(1, (performance.now() - t0) / dura)
+    sim.vacio = desde + (hasta - desde) * CURVAS.suave(p)
+    if (p < 1) vacioRaf = requestAnimationFrame(paso)
+  }
+  if (dura <= 0) { sim.vacio = hasta; return }
+  vacioRaf = requestAnimationFrame(paso)
+}
+
 function anochecer(hasta: number, dura: number) {
   cancelAnimationFrame(nocheRaf)
   const desde = sim.noche
@@ -150,6 +166,8 @@ function terminar(salteado: boolean, opciones: Opciones) {
   cancelAnimationFrame(raf)
   cancelAnimationFrame(acomodoRaf)
   cancelAnimationFrame(nocheRaf)
+  cancelAnimationFrame(vacioRaf)
+  sim.vacio = 0
   anochecer(0, salteado ? 500 : 0)
   acomodar(0, salteado ? 900 : 0)
   rig.deriva = true
@@ -173,8 +191,13 @@ function empezar(opciones: Opciones = {}) {
      Los tiempos son los de una lectura en voz alta sin apuro. Cada acto sabe
      qué hace la cámara mientras se dice lo suyo. */
   const guion: Acto[] = [
-    /* I. LA TINIEBLA. Lejísimos, todo disperso, sin luz. La cámara se acerca
-       apenas — lo justo para que se note que algo va a pasar. */
+    /* 0. EL NEGRO. Antes de la primera palabra no hay NADA que mirar: ni
+       estrellas, ni polvo, ni el rescoldo del sol. Pantalla negra de verdad,
+       tres segundos largos. Es incómodo, y por eso funciona: cuando después
+       aparece una sola línea de texto sobre ese vacío, pesa. */
+    { clave: 'negro', dura: 3400 },
+    /* I. LA TINIEBLA. El cielo asoma apenas —lo justo para entender que hay
+       algo ahí fuera, disperso—, y la cámara empieza a acercarse. */
     { clave: 'tiniebla', dura: 5200, mover: { radio: 46, phi: 1.02, giro: 0.22, mira: 0, curva: 'suave' } },
     /* II. LA PALABRA. La cámara sigue entrando, más decidida, hacia un centro
        que todavía está vacío. La tensión la hace el movimiento, no el texto. */
@@ -183,9 +206,12 @@ function empezar(opciones: Opciones = {}) {
        quien se echa atrás ante algo que estalla. Es el único movimiento
        brusco de toda la película, y por eso funciona. */
     { clave: 'luz', dura: 3400, mover: { radio: 38, curva: 'sale' } },
-    /* IV. EL ORDEN. Los mundos viajan a su órbita mientras la cámara los
+    /* IV. Y DIJO: ORDEN. La palabra que da nombre a la casa, dicha sobre un
+       sistema todavía suelto. */
+    { clave: 'palabraOrden', dura: 3800, mover: { radio: 33, giro: 0.25, curva: 'suave' } },
+    /* V. Y SE ORDENÓ. Los mundos viajan a su órbita mientras la cámara los
        rodea despacio: se ve el sistema formándose desde fuera. */
-    { clave: 'orden', dura: 6400, mover: { radio: 26, phi: 0.9, giro: 0.9, curva: 'suave' } },
+    { clave: 'orden', dura: 6600, mover: { radio: 26, phi: 0.9, giro: 0.9, curva: 'suave' } },
     /* V-IX. LAS CASAS. Cada una a contraluz, con un acercamiento que frena. */
     ...casas.map((k) => ({ clave: `casa:${k}`, dura: 5400, casa: k,
       mover: { curva: 'llega' as Curva } })),
@@ -214,23 +240,39 @@ function empezar(opciones: Opciones = {}) {
     opciones.alActo?.(a.clave)
     const st = useUiStore.getState()
 
-    if (a.clave === 'tiniebla') {
-      anochecer(1, 1500)
+    if (a.clave === 'negro') {
+      /* NEGRO ABSOLUTO: la noche a tope de golpe, y el firmamento también
+         apagado. No es «oscuro»: es que todavía no hay nada. */
+      anochecer(1, 500)
+      sim.vacio = 1
+      acomodar(1, 2200)
+      st.select(null)
+      rig.deriva = false
+      rig.tRadius = Math.min(rig.lejos, 62)
+      rig.tPhi = 1.06
+      rig.mira = 0
+    } else if (a.clave === 'tiniebla') {
+      /* El cielo aparece: sigue sin haber sol, pero ya hay universo. */
+      llevarVacio(0, 2600)
+      anochecer(1, 300)
       acomodar(1, 3000)
       st.select(null)
       rig.deriva = false
       rig.tRadius = Math.min(rig.lejos, 62)
       rig.tPhi = 1.06
       rig.mira = 0
+    } else if (a.clave === 'palabraOrden') {
+      // quieta: la palabra sostiene
     } else if (a.clave === 'luz') {
       /* Y FUE LA LUZ: de golpe, con su trueno. La noche se va en menos de un
          segundo — el nacimiento de una estrella no se desvanece, ocurre. */
+      llevarVacio(0, 400)
       anochecer(0, 850)
       sim.auraBrillo = 1.8
       audio.land()
       espacio.solHabla(1)
     } else if (a.clave === 'orden') {
-      acomodar(0, 5400)
+      acomodar(0, 5600)
     } else if (a.clave.startsWith('casa:')) {
       const key = a.clave.slice(5)
       st.select(key)
@@ -282,7 +324,11 @@ function empezar(opciones: Opciones = {}) {
         const anchoV = typeof window !== 'undefined' ? innerWidth : 1400
         const angosto = anchoV / alto < 0.8
         const fovV = (angosto ? 74 : 62) * Math.PI / 180
-        const parte = angosto ? 0.34 : 0.44
+        /* MENOS ZOOM EN EL TELÉFONO. Con 0.34 la casa llenaba el cuadro y se
+           perdía el sistema alrededor: lo que hace grande a un plano de
+           presentación no es que el planeta sea enorme, es que se vea DÓNDE
+           está. */
+        const parte = angosto ? 0.24 : 0.36
         const dist = Math.max(4.2, h.radius / Math.tan(parte * fovV / 2))
 
         /* DE QUÉ LADO PONERSE. Hay dos sitios buenos alrededor de una casa:
@@ -395,6 +441,7 @@ if (typeof window !== 'undefined') {
   // desde fuera en una foto: si está oscuro o no
   ;(window as any).__AE_NOCHE = () => sim.noche
   ;(window as any).__AE_PELICULA = () => sim.pelicula
+  ;(window as any).__AE_VACIO = () => sim.vacio
   // para diagnóstico: adónde apunta la cámara ahora mismo
   ;(window as any).__AE_OBJETIVO = () => rig.objetivo ? rig.objetivo.toArray().map((n) => Math.round(n * 10) / 10) : null
   /* Y qué tan encendido está cada rótulo: en una foto no se puede distinguir

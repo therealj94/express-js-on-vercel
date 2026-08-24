@@ -61,7 +61,7 @@ export function DustLayer({ count, spread, yFlat, size, opacity, dim = 1 }: Dust
     const ecl = 1 - 0.55 * sim.eclipse
     /* La tiniebla se lleva también el polvo: era el resplandor azul del
        centro lo que más delataba que había un sistema ya encendido. */
-    mat.uniforms.uOpacity.value = opacity * sim.intro * ecl * (1 - 0.9 * sim.noche)
+    mat.uniforms.uOpacity.value = opacity * sim.intro * ecl * (1 - 0.9 * sim.noche) * (1 - sim.vacio)
   })
 
   return (

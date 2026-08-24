@@ -40,13 +40,29 @@ class AetherAudio {
     const AC = window.AudioContext || (window as any).webkitAudioContext
     if (!AC) return
     this.ctx = new AC()
+    /* DOS ETAPAS, NO UNA. El compresor de antes dejaba pasar los picos
+       rápidos —un golpe grave de seis milisegundos entra y sale antes de que
+       reaccione— y esos picos, sumados a la música que corre en SU PROPIO
+       contexto, saturaban la salida del aparato: eso es el crujido. Ahora
+       hay un compresor suave que domestica el cuerpo del sonido y detrás un
+       LIMITADOR duro, de ataque instantáneo, que es el que no deja salir
+       nada por encima del techo pase lo que pase. */
     const comp = this.ctx.createDynamicsCompressor()
-    comp.threshold.value = -18
-    comp.ratio.value = 6
+    comp.threshold.value = -20
+    comp.ratio.value = 4
+    comp.attack.value = 0.006
+    comp.release.value = 0.18
+    const tope = this.ctx.createDynamicsCompressor()
+    tope.threshold.value = -3
+    tope.ratio.value = 20
+    tope.knee.value = 0
+    tope.attack.value = 0.001
+    tope.release.value = 0.08
     this.master = this.ctx.createGain()
     this.master.gain.value = this.volume
     this.master.connect(comp)
-    comp.connect(this.ctx.destination)
+    comp.connect(tope)
+    tope.connect(this.ctx.destination)
 
     const len = this.ctx.sampleRate * 2
     const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate)
@@ -87,12 +103,19 @@ class AetherAudio {
       this.master.gain.setTargetAtTime(this.volume * factor, this.ctx.currentTime, 0.2)
   }
 
+  /* EL ATAQUE MÍNIMO ES MEDIO CICLO. Un tono de 72 Hz tarda catorce
+     milisegundos en dar una vuelta: subirle el volumen en seis es pedirle al
+     altavoz que salte de golpe, y ese salto se oye como un chasquido. Aquí
+     ningún ataque baja de doce milisegundos, y las colas terminan en cero de
+     verdad —una cola que se corta a 0.0001 y ahí para también chasquea. */
   private env(g: GainNode, peak: number, attack: number, decay: number) {
     if (!this.ctx) return
     const t = this.ctx.currentTime
+    const a = Math.max(0.012, attack)
     g.gain.setValueAtTime(0.0001, t)
-    g.gain.linearRampToValueAtTime(peak, t + attack)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay)
+    g.gain.linearRampToValueAtTime(peak, t + a)
+    g.gain.exponentialRampToValueAtTime(0.0006, t + a + decay)
+    g.gain.linearRampToValueAtTime(0, t + a + decay + 0.03)
   }
 
   private tone(freq: number, type: OscillatorType, peak: number, attack: number, decay: number, freqEnd?: number) {
@@ -150,16 +173,30 @@ class AetherAudio {
     this.tone(38, 'sine', 0.06, 0.4, 0.6)
   }
 
+  /* Cuando la casa va a hacer ruido de verdad —un zarpe, un aterrizaje— se
+     avisa, y la música se agacha sola. Los dos viven en contextos de audio
+     distintos y no pueden compartir un limitador: la única forma de que no
+     se peleen es que uno se aparte cuando habla el otro. */
+  private avisarGolpe(ms: number) {
+    try { dispatchEvent(new CustomEvent('ae-golpe', { detail: { ms } })) } catch { /* nada */ }
+  }
+
   whoosh(up: boolean) {
     this.ensure()
-    if (up) this.noise(0.16, 0.85, 300, 5200, 0.9)
-    else this.noise(0.14, 0.7, 4200, 260, 0.9)
+    this.avisarGolpe(1100)
+    /* Menos nivel y filtro más cerrado (Q alto): el ruido blanco ancho es
+       justo lo que se oye como estática. Con la banda estrecha suena a aire
+       moviéndose, que es lo que tiene que ser. */
+    if (up) this.noise(0.085, 0.9, 340, 4200, 2.2)
+    else this.noise(0.075, 0.75, 3600, 300, 2.2)
   }
 
   land() {
     this.ensure()
-    this.tone(72, 'sine', 0.14, 0.006, 0.5, 44)
-    this.noise(0.05, 1.4, 900, 220, 0.5)
+    this.avisarGolpe(1400)
+    // 40 ms de ataque en un grave: se siente el golpe sin que chasquee
+    this.tone(72, 'sine', 0.11, 0.04, 0.6, 44)
+    this.noise(0.03, 1.4, 800, 240, 1.4)
   }
 
   snap() {

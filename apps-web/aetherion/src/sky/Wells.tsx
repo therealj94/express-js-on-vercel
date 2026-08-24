@@ -364,6 +364,11 @@ function WellView({ def }: { def: WellDef }) {
   useFrame((state, dt) => {
     const g = group.current
     if (!g) return
+    /* En el vacío, las casas tampoco están: se encogen a nada y vuelven a
+       crecer cuando el cielo aparece. */
+    const vivo = 1 - sim.vacio
+    g.scale.setScalar(Math.max(0.001, vivo))
+    g.visible = vivo > 0.01
     const bob = Math.sin(sim.now * 0.5 + seed) * 0.14
     tmpV.copy(sim.tuLuz).sub(def.anchor)
     const dist = tmpV.length()

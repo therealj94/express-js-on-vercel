@@ -207,7 +207,7 @@ export function Core() {
        espera), y cuando el tour dice «sea la luz», esta perilla vuelve a
        cero y el sol NACE delante de quien mira. Y en la tiniebla ni la voz
        enciende lo que todavía no fue dicho. */
-    const luzViva = 1 - 0.97 * sim.noche
+    const luzViva = (1 - 0.97 * sim.noche) * (1 - sim.vacio)
     const Vv = V * luzViva
     const b = (sim.beat + sim.auraBrillo * 0.9 + Vv * 1.1) * (0.03 + 0.97 * luzViva)
 

@@ -244,7 +244,7 @@ function Cometas() {
           p.z + lejosDelSol.z * d)
       }
       attr.needsUpdate = true
-      colaMat[i].uniforms.uOp.value = 0.5 * sim.intro
+      colaMat[i].uniforms.uOp.value = 0.5 * sim.intro * (1 - sim.vacio)
     })
   })
 
@@ -301,7 +301,7 @@ function Fugaces() {
       attr.needsUpdate = true
     }
     const p = Math.min(1, edad / 0.7)
-    mat.opacity = (p < 0.2 ? p / 0.2 : 1 - (p - 0.2) / 0.8) * 0.8 * sim.intro
+    mat.opacity = (p < 0.2 ? p / 0.2 : 1 - (p - 0.2) / 0.8) * 0.8 * sim.intro * (1 - sim.vacio)
   })
 
   const obj = useMemo(() => new THREE.Line(geo, mat), [geo, mat])
@@ -317,7 +317,8 @@ export function Firmamento() {
     // el cielo entero gira como gira la noche: apenas, pero gira
     esfera.current.rotation.y += dt * 0.0022
     const m = esfera.current.material as THREE.MeshBasicMaterial
-    m.opacity = 0.55 + 0.45 * sim.intro
+    // en el vacío ni el cielo existe todavía
+    m.opacity = (0.55 + 0.45 * sim.intro) * (1 - sim.vacio)
   })
 
   return (

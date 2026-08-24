@@ -208,6 +208,21 @@ body.en-visor[data-visor=carton]::after{content:'';position:fixed;left:50%;top:0
 body.en-visor[data-visor=carton] #visor-capa .vs-pista{display:none}
 @media (prefers-reduced-motion:reduce){#visor-capa{animation:none}}
 
+/* LA TARJETA DEL PLANETA ELEGIDO, POR ENCIMA DE LAS PESTAÑAS.
+   El cielo 3D trae su tarjeta pegada a 44px del borde de abajo — bien en un
+   monitor, mal aquí: en el teléfono ahí viven las pestañas, y el botón de
+   ENTRAR quedaba medio tapado, que es exactamente el peor sitio para que
+   quede a medias un botón. Se sube por encima de la barra, y se estrecha
+   para no chocar con el orbe de AU-RA. */
+.ae-casa .ae-whisper{bottom:calc(env(safe-area-inset-bottom,0px) + 30px)}
+@media (max-width:760px){
+  .ae-casa .ae-whisper{bottom:calc(env(safe-area-inset-bottom,0px) + 104px);
+    width:min(84vw,330px)}
+  /* Y el saludo se aparta: con la tarjeta puesta eran dos bloques de texto
+     peleándose el mismo rincón. */
+  body.hay-ficha #ae-saludo{opacity:0;transition:opacity .3s ease}
+}
+
 /* EL TOUR GÉNESIS · las palabras de la historia. La Palabra va grande y al
    centro, en la letra de la casa; las presentaciones abajo, como rótulos de
    película. Nada tapa los planetas: texto con su sombra y aire alrededor. */
@@ -245,6 +260,25 @@ body.en-cine #lienzo{opacity:0;transition:opacity .9s ease}
   opacity:0;letter-spacing:.005em}
 .gen-centro.grande{font-size:clamp(28px,5vw,52px);line-height:1.28;letter-spacing:.012em;
   color:#F7EDD2;text-shadow:0 2px 34px rgba(0,0,0,.95),0 0 90px rgba(201,169,97,.28)}
+/* EL CIERRE. «El futuro es orden» es la frase de la casa y es el último plano
+   de la película: va en oro, espaciada como un sello, y entra más despacio que
+   todo lo demás — un texto que aparece con calma se lee como una conclusión, y
+   uno que aparece rápido, como un aviso. */
+.gen-centro.cierre{font-size:clamp(26px,4.6vw,46px);letter-spacing:.22em;
+  color:#EAD79C;font-weight:500;
+  text-shadow:0 2px 30px rgba(0,0,0,.95),0 0 60px rgba(201,169,97,.55),
+    0 0 130px rgba(201,169,97,.3)}
+.gen-centro.cierre.ve{animation:gen-cierre 3.4s cubic-bezier(.16,1,.3,1)}
+@keyframes gen-cierre{
+  0%{opacity:0;letter-spacing:.05em;transform:translate(-50%,-50%) scale(.96)}
+  100%{opacity:1;letter-spacing:.22em;transform:translate(-50%,-50%) scale(1)}}
+@media (max-width:760px), (orientation:portrait) and (max-width:900px){
+  .gen-centro.cierre{font-size:clamp(21px,6.6vw,32px);letter-spacing:.16em}
+  .gen-centro.cierre.ve{animation:gen-cierre-movil 3.4s cubic-bezier(.16,1,.3,1)}
+  @keyframes gen-cierre-movil{
+    0%{opacity:0;letter-spacing:.04em;transform:translate(-50%,10px)}
+    100%{opacity:1;letter-spacing:.16em;transform:translate(-50%,0)}}
+}
 /* La entrada de cine: el rótulo no aparece, SUBE. Un texto que se materializa
    en su sitio se lee como HTML; uno que llega desde abajo, como una película. */
 .gen-centro.ve{opacity:1;transform:translate(-50%,-50%);animation:gen-sube 1.5s cubic-bezier(.16,1,.3,1)}

@@ -33,7 +33,10 @@ const VETA = (() => {
      volverConLlave) y adonde lleva su esfera del Nucleo. Se puede pisar desde
      fuera —ONX_URL— igual que el API y la cadena, para ensayar el viaje de
      ida y vuelta contra una Ordenex de pruebas sin tocar la de verdad. */
-  const URL_ORDENEX = window.ONX_URL || 'https://www.ordenexchange.link';
+  /* El APEX, no el www: es el dominio que la app de Amplify tiene asociado
+     de verdad, y el `www` es un salto de más que en un marco puede quedarse
+     a mitad de camino. */
+  const URL_ORDENEX = window.ONX_URL || 'https://ordenexchange.link';
   /* AuCorp — el lado FIAT del ecosistema. Se llamaba AUBANK cuando era solo
      una esfera dormida en el Nucleo; el nombre cambio con la empresa, y el
      viejo no sobrevive en ningun sitio porque dos nombres para una misma casa
@@ -5192,17 +5195,67 @@ const VETA = (() => {
      segundos no respiró, se dice —con un botón de verdad, que sí puede abrir
      pestaña porque ES un gesto— en vez de dejar a alguien mirando un anillo
      que gira para siempre. */
+  /* ── ¿LA CASA DE ADENTRO CARGÓ DE VERDAD? ────────────────────────────────
+   *
+   * `load` NO alcanza, y este es el fallo que dejaba un rectángulo gris con
+   * una hoja rota donde tenía que estar Ordenex: cuando el navegador no
+   * consigue la página, pinta SU PROPIA página de error dentro del marco —
+   * y esa página también dispara `load`. Nosotros lo tomábamos por éxito,
+   * quitábamos el velo y la persona se quedaba mirando el gris.
+   *
+   * La forma de distinguirlas sin poder leer el contenido: una página que
+   * cargó de verdad es de OTRO ORIGEN, y tocar su documento lanza una
+   * excepción de seguridad. La página de error del navegador, en cambio, se
+   * deja tocar —es un documento vacío del propio navegador—. Así que se
+   * intenta leerlo: si LANZA, cargó; si se deja leer y está vacío, falló.
+   *
+   * Y el vigía no se cancela con `load`: se cancela cuando esa comprobación
+   * dice que sí. Un aviso honesto con su botón vale más que un gris. */
   function marcoVivo(sec) {
     const marco = sec.closest ? sec : document.querySelector('.marco-casa');
     const hoja = marco.querySelector('.marco-hoja');
     const carga = marco.querySelector('.marco-carga');
-    const reloj = setTimeout(() => {
-      if (!carga.isConnected) return;
-      carga.innerHTML = `${t('marco.noRespira')}
-        <a class="btn btn-oro btn-sm" style="margin-top:10px"
-           href="${hoja.src}" target="_blank" rel="noopener">${t('marco.pestana')}</a>`;
-    }, 15000);
-    hoja.addEventListener('load', () => { clearTimeout(reloj); carga.remove(); hoja.classList.add('viva'); });
+    let resuelto = false;
+
+    const rendirse = () => {
+      if (resuelto || !carga.isConnected) return;
+      resuelto = true;
+      carga.innerHTML = `${esc(t('marco.noRespira'))}
+        <a class="btn btn-oro btn-sm" style="margin-top:12px"
+           href="${esc(hoja.src)}" target="_blank" rel="noopener">${esc(t('marco.pestana'))}</a>`;
+    };
+
+    const cargoDeVerdad = () => {
+      try {
+        const d = hoja.contentDocument;
+        /* null = otro origen y el navegador ni lo entrega: cargó bien. */
+        if (d === null) return true;
+        /* Se deja leer: o no navegó todavía, o es la página de error del
+           propio navegador. Las dos cosas son «no cargó». */
+        return !(d.location.href === 'about:blank' || !d.body || d.body.childElementCount === 0);
+      } catch {
+        // la excepción de seguridad ES la buena noticia: hay otra casa dentro
+        return true;
+      }
+    };
+
+    const mirar = () => {
+      if (resuelto) return;
+      if (cargoDeVerdad()) {
+        resuelto = true;
+        clearTimeout(reloj);
+        clearInterval(latido);
+        carga.remove();
+        hoja.classList.add('viva');
+      }
+    };
+
+    /* Se comprueba al cargar Y cada medio segundo: algunos navegadores no
+       disparan `load` para un marco que falló, y quedarse esperando ese
+       evento es quedarse esperando para siempre. */
+    hoja.addEventListener('load', mirar);
+    const latido = setInterval(mirar, 500);
+    const reloj = setTimeout(() => { clearInterval(latido); rendirse(); }, 9000);
   }
   window.VETA_marcoVivo = marcoVivo;
 
@@ -5256,7 +5309,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = 'fe1eb71970';
+  const AET_V = '758e1de14a';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -10731,14 +10784,22 @@ const VETA = (() => {
   function genGuion() {
     const es = idiomaActivo() === 'es';
     const nombre = (sesion?.nombre || '').split(' ')[0];
-    /* Los rótulos de la película. El `centro` es la línea grande; `pie` es el
-       nombre y la frase de una casa; `voz` es lo que AU-RA dice — casi siempre
-       lo mismo, pero a veces con el nombre de la persona, que en pantalla
-       quedaría raro repetido y dicho en voz alta se siente cerca. */
+    /* LAS PALABRAS DE LA PELÍCULA — Y NADA MÁS QUE PALABRAS.
+     *
+     * Aquí hubo voz sintética y se quitó: leída por una máquina, «y dijo: sea
+     * la luz» suena a locutor de ascensor y arruina justo el momento que
+     * tenía que erizar la piel. Un rótulo que aparece en silencio sobre una
+     * galaxia oscura dice más que cualquier voz que no sea humana. El día que
+     * haya una voz grabada de verdad, vuelve. Hasta entonces: letras, tiempo
+     * y movimiento, que es como se cuentan las cosas en cine mudo — y el cine
+     * mudo emocionaba.
+     */
     return es ? {
-      tiniebla: 'En el principio no había orden. Solo distancia.',
+      negro: 'Antes de todo, no había nada.',
+      tiniebla: 'Ni orden. Ni luz. Solo distancia.',
       palabra: 'Y dijo: «Sea la luz».',
       luz: 'Y fue la luz.',
+      palabraOrden: 'Y dijo: «Que haya orden».',
       orden: 'Y cada mundo encontró su órbita.',
       casas: {
         wallet: ['VETA WALLET', 'Tu valor, en tu mano. Nadie lo custodia por vos.'],
@@ -10748,17 +10809,19 @@ const VETA = (() => {
         genesis: ['GENESIS CORE', 'La memoria del origen: cómo empezó todo esto.'],
       },
       universo: 'Y alrededor, un universo entero.',
-      obra: 'Nada de esto nos lo dieron. La cadena, la identidad, la banca:\ncada pieza la construimos nosotros.',
+      obra: 'Nada de esto nos lo dieron.\nLa cadena, la identidad, la banca:\ncada pieza la levantamos nosotros.',
       vos: nombre ? `Y vos estás acá, ${nombre}.` : 'Y vos estás acá.',
       vos2: 'Eso no es casualidad.',
-      proposito: 'Esto no es una aplicación más.\nEs que el orden que hoy es de pocos, mañana sea de todos.',
-      invitacion: 'Ayudanos a expandirlo.',
-      cierre: 'El futuro es orden.',
+      proposito: 'Esto no es una aplicación más.\nEs que el orden que hoy es de pocos,\nmañana sea de todos.',
+      invitacion: 'Falta lo más grande,\ny falta con vos.',
+      cierre: 'EL FUTURO ES ORDEN.',
       saltar: 'Saltar',
     } : {
-      tiniebla: 'In the beginning there was no order. Only distance.',
+      negro: 'Before everything, there was nothing.',
+      tiniebla: 'No order. No light. Only distance.',
       palabra: 'And said: “Let there be light.”',
       luz: 'And there was light.',
+      palabraOrden: 'And said: “Let there be order.”',
       orden: 'And every world found its orbit.',
       casas: {
         wallet: ['VETA WALLET', 'Your value, in your hand. Nobody holds it for you.'],
@@ -10768,12 +10831,12 @@ const VETA = (() => {
         genesis: ['GENESIS CORE', 'The memory of the origin: how all of this began.'],
       },
       universo: 'And all around, an entire universe.',
-      obra: 'None of this was given to us. The chain, the identity, the bank:\nwe built every piece ourselves.',
+      obra: 'None of this was given to us.\nThe chain, the identity, the bank:\nwe raised every piece ourselves.',
       vos: nombre ? `And you are here, ${nombre}.` : 'And you are here.',
       vos2: 'That is no accident.',
-      proposito: 'This is not one more app.\nIt is that the order few hold today belongs to everyone tomorrow.',
-      invitacion: 'Help us expand it.',
-      cierre: 'The future is order.',
+      proposito: 'This is not one more app.\nIt is that the order few hold today\nbelongs to everyone tomorrow.',
+      invitacion: 'The biggest part is still missing,\nand it is missing you.',
+      cierre: 'THE FUTURE IS ORDER.',
       saltar: 'Skip',
     };
   }
@@ -10826,20 +10889,19 @@ const VETA = (() => {
     // se apaga la sala: el menú, el saludo y los mandos se retiran
     document.body.classList.add('en-cine');
 
-    const decir = (txt) => {
-      try { AURA.hablar(String(txt).replace(/\n/g, ' '), idiomaActivo()).catch(() => {}); }
-      catch { /* nada */ }
-    };
+    /* SIN VOZ. La sintética arruinaba el momento: aquí manda el silencio, la
+       letra y el tiempo. */
     /* Una línea grande al centro. `peso` la hace protagonista (la Palabra, la
        Luz) y `tarde` la deja entrar unos segundos después — así un acto puede
        decir dos cosas seguidas sin apelotonarlas. */
-    const centro = (txt, peso, tarde) => {
+    const centro = (txt, peso, tarde, marca) => {
       if (!capa) return;
       const poner = () => {
         const c = capa.querySelector('.gen-centro');
         if (!c) return;
         c.innerHTML = esc(String(txt)).replace(/\n/g, '<br>');
         c.classList.toggle('grande', !!peso);
+        c.classList.toggle('cierre', marca === 'cierre');
         c.classList.remove('ve'); void c.offsetWidth; c.classList.add('ve');
         capa.querySelector('.gen-pie').classList.remove('ve');
       };
@@ -10858,40 +10920,45 @@ const VETA = (() => {
 
     motor.empezar({
       alActo(clave) {
-        if (clave === 'tiniebla') { centro(G.tiniebla); decir(G.tiniebla); }
-        else if (clave === 'palabra') { centro(G.palabra, true); decir(G.palabra); }
+        /* EL NEGRO. La primera línea llega tarde a propósito: segundo y medio
+           de pantalla vacía antes de la primera palabra. Ese silencio es lo
+           que hace que la frase pese. */
+        if (clave === 'negro') centro(G.negro, false, 1500);
+        else if (clave === 'tiniebla') centro(G.tiniebla);
+        else if (clave === 'palabra') centro(G.palabra, true);
         else if (clave === 'luz') {
-          centro(G.luz, true); decir(G.luz);
+          centro(G.luz, true);
           try { MUSICA?.crecer(1.6, 2.4); } catch { /* nada */ }
         }
-        else if (clave === 'orden') { centro(G.orden); decir(G.orden); }
+        else if (clave === 'palabraOrden') centro(G.palabraOrden, true);
+        else if (clave === 'orden') centro(G.orden);
         else if (clave.startsWith('casa:')) {
           const c = G.casas[clave.slice(5)];
-          if (c) { pie(c[0], c[1]); decir(c[0] + '. ' + c[1]); }
+          if (c) pie(c[0], c[1]);
         }
-        else if (clave === 'universo') { centro(G.universo); decir(G.universo); }
-        else if (clave === 'obra') { centro(G.obra); decir(G.obra); }
+        else if (clave === 'universo') centro(G.universo);
+        else if (clave === 'obra') centro(G.obra);
         else if (clave === 'vos') {
           /* El golpe de este acto son DOS frases: la primera nombra, la
-             segunda remata. Separadas por tres segundos de silencio, que es
-             lo que las hace pesar. */
-          centro(G.vos, true); decir(G.vos);
-          centro(G.vos2, true, 3400);
-          setTimeout(() => { if (genVivo) decir(G.vos2); }, 3400);
+             segunda remata. Separadas por tres segundos y medio de silencio,
+             que es lo que las hace pesar. */
+          centro(G.vos, true);
+          centro(G.vos2, true, 3600);
         }
-        else if (clave === 'proposito') { centro(G.proposito); decir(G.proposito); }
+        else if (clave === 'proposito') centro(G.proposito);
         else if (clave === 'invitacion') {
-          centro(G.invitacion, true); decir(G.invitacion);
-          centro(G.cierre, true, 3200);
-          setTimeout(() => { if (genVivo) decir(G.cierre); }, 3200);
-          try { MUSICA?.crecer(1.35, 3.2); } catch { /* nada */ }
+          centro(G.invitacion, true);
+          /* EL CIERRE. La frase de la casa, sola, con la música creciendo
+             debajo y un aire de más antes de que caiga: es el último plano y
+             tiene que respirar. */
+          centro(G.cierre, true, 3400, 'cierre');
+          try { MUSICA?.crecer(1.45, 3.6); } catch { /* nada */ }
         }
       },
       alFin() {
         genVivo = false;
         document.body.classList.remove('en-cine');
         removeEventListener('keydown', porTecla);
-        try { AURA.pararVoz(); } catch { /* nada */ }
         if (capa) { capa.classList.add('yendo'); setTimeout(() => capa.remove(), 800); }
       },
       casas: ['wallet', 'chat', 'gid', 'pay', 'genesis'],

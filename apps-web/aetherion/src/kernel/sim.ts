@@ -31,6 +31,9 @@ export const sim = {
   /* Hay un PLANO de casa en curso: el sol baja su resplandor para no comerse
      el encuadre. Lo que se apaga es el adorno, no la luz que modela. */
   plano: 0,
+  /* El vacío de antes del principio: 1 = ni siquiera hay cielo. Lo usa el
+     primer acto del Génesis, el que empieza en negro absoluto. */
+  vacio: 0,
   /* ¿hay un visor puesto? El post-procesado y otros lujos se apartan */
   visor: false,
   timeScale: 1,
