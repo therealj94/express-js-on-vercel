@@ -5309,7 +5309,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = '758e1de14a';
+  const AET_V = '70e95ad581';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -10895,8 +10895,10 @@ const VETA = (() => {
        Luz) y `tarde` la deja entrar unos segundos después — así un acto puede
        decir dos cosas seguidas sin apelotonarlas. */
     const centro = (txt, peso, tarde, marca) => {
-      if (!capa) return;
       const poner = () => {
+        // dentro del visor manda el teatro; en pantalla, la capa HTML
+        enEscena(txt, marca === 'cierre' ? 'cierre' : peso ? 'grande' : 'normal');
+        if (!capa) return;
         const c = capa.querySelector('.gen-centro');
         if (!c) return;
         c.innerHTML = esc(String(txt)).replace(/\n/g, '<br>');
@@ -10908,6 +10910,8 @@ const VETA = (() => {
       if (tarde) setTimeout(() => { if (genVivo) poner(); }, tarde); else poner();
     };
     const pie = (nombre, frase) => {
+      // en el visor el nombre y su frase van juntos, en dos líneas
+      enEscena(nombre + '\n' + frase, 'normal');
       if (!capa) return;
       capa.querySelector('.gen-centro').classList.remove('ve');
       const p = capa.querySelector('.gen-pie');
@@ -10917,6 +10921,21 @@ const VETA = (() => {
     };
     const porTecla = (e) => { if (e.key === 'Escape') motor.saltar(); };
     addEventListener('keydown', porTecla);
+
+    /* DENTRO DEL VISOR LAS PALABRAS SON DE LA ESCENA. El HTML se pinta una
+       sola vez encima de las dos mitades de la pantalla y al cerebro le llega
+       una mancha doble: por eso la historia se veía muda con el visor puesto.
+       El teatro las dibuja como un objeto más, y las dos cámaras lo ven bien.
+       Y mientras cuenta, la mirada queda BLINDADA: solo el botón de salir. */
+    const enEscena = (txt, peso) => {
+      try { window.__AE_DECIR?.(txt, peso || 'normal'); } catch { /* nada */ }
+    };
+    if (enVisor) {
+      window.__AE_BLINDADO = true;
+      const es = idiomaActivo() === 'es';
+      window.__AE_PORTICO?.('salir', es ? 'SALIR' : 'EXIT',
+        es ? 'Sostené la mirada para terminar' : 'Hold your gaze to end');
+    }
 
     motor.empezar({
       alActo(clave) {
@@ -10959,6 +10978,13 @@ const VETA = (() => {
         genVivo = false;
         document.body.classList.remove('en-cine');
         removeEventListener('keydown', porTecla);
+        /* TERMINÓ LA HISTORIA: el ecosistema entero queda a mano. Se retira el
+           teatro, se retira el pórtico y se LEVANTA el blindaje — de aquí en
+           adelante la mirada abre casas, hasta que la persona se saque el
+           visor. Es el momento en que la película se vuelve producto. */
+        try { window.__AE_DECIR?.(null); } catch { /* nada */ }
+        try { window.__AE_PORTICO?.(null); } catch { /* nada */ }
+        window.__AE_BLINDADO = false;
         if (capa) { capa.classList.add('yendo'); setTimeout(() => capa.remove(), 800); }
       },
       casas: ['wallet', 'chat', 'gid', 'pay', 'genesis'],
@@ -10972,11 +10998,49 @@ const VETA = (() => {
   /* Los dos caminos que la piden solos, una vez por sesión cada uno: ponerse
      el visor y encender AIR TOUCH. Quien vuelve a entrar en la misma sesión
      no se come la película otra vez. */
+  /* ── LA LLEGADA AL VISOR ─────────────────────────────────────────────────
+   *
+   * Ponerse un visor es un momento torpe: uno se acomoda la correa y mira
+   * alrededor. Si la mirada ya estuviera armada, el primer planeta que
+   * quedara en el centro se abriría solo — y la persona terminaría dentro de
+   * una app sin haber decidido nada. Así que lo primero que ve es UNA PUERTA:
+   * un botón grande que se toca mirándolo, y hasta que no lo toque, la mirada
+   * no abre nada más.
+   */
   function genPorVisor() {
-    if (genSesion.visor || genVivo) return;
-    genSesion.visor = true;
-    setTimeout(() => { if (window.VISOR?.activo()) tourGenesis('visor'); }, 1400);
+    if (!window.__AE_PORTICO) return;
+    const es = idiomaActivo() === 'es';
+    /* BLINDADO desde el primer instante: la retícula no elige casas hasta que
+       la persona diga que sí. */
+    window.__AE_BLINDADO = true;
+    if (genSesion.visor || genVivo) {
+      // ya vio la historia en esta sesión: la puerta solo abre la galaxia
+      window.__AE_PORTICO('inicio', es ? 'ENTRAR' : 'ENTER',
+        es ? 'Sostené la mirada' : 'Hold your gaze');
+      return;
+    }
+    window.__AE_PORTICO('inicio', es ? 'INICIAR' : 'BEGIN',
+      es ? 'La historia del origen · sostené la mirada'
+         : 'The story of the origin · hold your gaze');
   }
+
+  /* El pórtico avisa cuando la mirada terminó de apretarlo. */
+  addEventListener('ae-portico', (e) => {
+    const modo = e?.detail?.modo;
+    if (modo === 'inicio') {
+      window.__AE_PORTICO?.(null);
+      if (genSesion.visor || genVivo) {
+        // la galaxia queda libre: se puede recorrer y abrir casas
+        window.__AE_BLINDADO = false;
+        return;
+      }
+      genSesion.visor = true;
+      tourGenesis('visor');
+    } else if (modo === 'salir') {
+      window.__AE_PORTICO?.(null);
+      try { window.__AE_GENESIS?.saltar(); } catch { /* nada */ }
+    }
+  });
   function genPorAire() {
     if (genSesion.aire || genVivo) return;
     genSesion.aire = true;

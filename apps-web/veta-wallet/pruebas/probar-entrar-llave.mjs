@@ -97,8 +97,14 @@ await pag.evaluate((fr) => {
 }, FRASE)
 await pag.waitForTimeout(400)
 ok('las doce palabras quedaron puestas', (await pag.$$('.llv-slot.bien')).length === 12)
-await pag.click('#btn-llave'); await pag.waitForTimeout(3500)
-ok('entró a la billetera', await pag.evaluate(() => !document.getElementById('app')?.classList.contains('oculto')))
+await pag.click('#btn-llave')
+/* Se espera el MECANISMO, no un reloj: entrar con una frase hace criptografía
+   de verdad y además monta el Inicio, y bajo carga eso pasa de tres segundos y
+   medio con facilidad. Lo que se comprueba es que entra, no cuánto tarda. */
+const entro = await pag.waitForFunction(
+  () => !document.getElementById('app')?.classList.contains('oculto'),
+  null, { timeout: 25000 }).then(() => true).catch(() => false)
+ok('entró a la billetera', entro)
 ok('la rejilla quedó vacía', (await pag.evaluate(() =>
   [...document.querySelectorAll('#llv-rejilla input')].every(c => !c.value))))
 ok('la sesión tiene la dirección de la cuenta',

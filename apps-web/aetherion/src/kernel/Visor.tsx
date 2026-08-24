@@ -408,6 +408,17 @@ function Reticula({ visible, dwell, modo }:
       return
     }
     if (aroM) aroM.color.set('#EAD79C')
+    /* BLINDAJE. Con el pórtico puesto —o mientras la historia se cuenta— la
+       mirada NO abre casas: solo el botón del pórtico responde. Es lo que
+       impide que alguien acomodándose el visor caiga dentro de una app sin
+       haberlo pedido. */
+    if (w.__AE_BLINDADO) {
+      mirando.current = null
+      apuntado.key = null
+      if (aroM) aroM.opacity = 0.14
+      w.__AE_RESALTAR?.(null)
+      return
+    }
     const casa = w.__AE_MIRAR?.(innerWidth / 2, innerHeight / 2) || null
     if (!casa) {
       mirando.current = null

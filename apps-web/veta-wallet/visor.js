@@ -137,6 +137,14 @@ const VISOR = (() => {
     /* Ya se está saliendo: la marca evita el ida y vuelta cuando la salida
        viene del motor (quitarse el visor) y no de la casa. */
     estado.activo = false;
+    /* NADA DEL VISOR SOBREVIVE A LA SALIDA. El pórtico, las palabras en la
+       escena y el blindaje de la mirada existen solo con el aparato puesto:
+       dejarlos colgados sería devolver la casa con la mirada muerta y un
+       cartel flotando en medio del cielo. */
+    try { window.__AE_PORTICO?.(null); } catch { /* nada */ }
+    try { window.__AE_DECIR?.(null); } catch { /* nada */ }
+    window.__AE_BLINDADO = false;
+    try { window.__AE_GENESIS?.saltar(); } catch { /* nada */ }
     try { window.__AE_VISOR?.salir(); } catch { /* nada */ }
     estado = { ...estado, activo: false, modo: null };
     document.body.classList.remove('en-visor');

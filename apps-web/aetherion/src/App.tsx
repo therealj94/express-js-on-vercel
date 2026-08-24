@@ -5,6 +5,8 @@ import { AgXToneMapping } from 'three'
 import { Kernel, QualityWatcher } from './kernel/Kernel'
 import { Encuadre } from './kernel/Encuadre'
 import { Visor } from './kernel/Visor'
+import { Teatro } from './kernel/Teatro'
+import { Portico } from './kernel/Portico'
 import { Sky } from './sky/Sky'
 import { Pulses } from './pulses/Pulses'
 import { TransitRunner } from './transit/TransitRunner'
@@ -74,6 +76,8 @@ export default function App() {
         <QualityWatcher />
         <Encuadre />
         <Visor />
+        <Teatro />
+        <Portico />
         {/* LA LUZ HACE EL VOLUMEN. Con relleno parejo y fuerte, cada planeta
             quedaba iluminado por igual de lado a lado: sin terminador, sin
             sombra, sin bulto — pegatinas redondas. Ahora el relleno es apenas
