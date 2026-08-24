@@ -96,8 +96,15 @@ console.log('\n── la tiniebla: oscura de verdad ─────────�
   ok('la película arranca cuando se la pide', true);
   ok('y la sala se apaga', await pag.evaluate(() =>
     document.body.classList.contains('en-cine')));
-  ok('con las barras de cine puestas', await pag.evaluate(() =>
-    getComputedStyle(document.getElementById('gen-letra'), '::before').height !== '0px'));
+  /* Las barras ENTRAN animadas: se espera a que estén, no se mira en el
+     instante cero, que es justo cuando todavía miden nada. */
+  const barras = await pag.waitForFunction(() => {
+    const el = document.getElementById('gen-letra');
+    if (!el) return false;
+    const h = parseFloat(getComputedStyle(el, '::before').height);
+    return h > 4;
+  }, null, { timeout: 6000 }).then(() => true).catch(() => false);
+  ok('con las barras de cine puestas', barras);
 
   // la noche tiene que LLEGAR a uno, no quedarse a medias
   await pag.waitForFunction(() => window.__AE_NOCHE() > 0.95, null, { timeout: 9000 });
@@ -132,7 +139,8 @@ console.log('\n── la palabra, y con ella la luz ─────────�
 console.log('\n── el retroceso que enseña el universo ──────────────────────');
 {
   let masLejos = 0;
-  const hasta = Date.now() + 78000;
+  /* La película dura ahora minuto y medio largo: la ventana la acompaña. */
+  const hasta = Date.now() + 130000;
   let vioUniverso = false;
   let vioProposito = false;
   let vioInvitacion = false;
@@ -145,7 +153,7 @@ console.log('\n── el retroceso que enseña el universo ───────
     masLejos = Math.max(masLejos, st.r);
     if (/universo entero/i.test(st.txt)) vioUniverso = true;
     if (/no es casualidad|casualidad/i.test(st.txt)) vioProposito = true;
-    if (/expandirlo|futuro es orden/i.test(st.txt)) vioInvitacion = true;
+    if (/expandirlo|futuro es orden|falta con vos/i.test(st.txt)) vioInvitacion = true;
     if (!st.vivo) break;
     await pag.waitForTimeout(700);
   }
@@ -158,7 +166,7 @@ console.log('\n── el retroceso que enseña el universo ───────
 
 console.log('\n── al terminar, la casa vuelve entera ───────────────────────');
 {
-  await pag.waitForFunction(() => !window.__AE_GENESIS.vivo(), null, { timeout: 30000 });
+  await pag.waitForFunction(() => !window.__AE_GENESIS.vivo(), null, { timeout: 45000 });
   await pag.waitForFunction(() => !document.getElementById('gen-letra'), null, { timeout: 6000 });
   ok('las palabras se retiran', true);
   ok('la sala se enciende', await pag.evaluate(() =>

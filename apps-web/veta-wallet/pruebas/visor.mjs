@@ -227,6 +227,17 @@ console.log('\n── la mirada abre ──────────────�
        que se prueba aquí es el DWELL —que sostener abre y soltar no—, no el
        trazado de rayos, que tiene su propia prueba. */
     VISOR.mirada(true);
+    /* EL PÓRTICO VA PRIMERO. Desde que el visor tiene puerta, la mirada nace
+       blindada: hasta que la persona toca el botón de INICIAR no se abre
+       nada. Esta prueba mide el DWELL, así que atraviesa la puerta como la
+       atravesaría alguien —por su propio evento— y recién después mide. */
+    if (window.__AE_BLINDADO) {
+      dispatchEvent(new CustomEvent('ae-portico', { detail: { modo: 'inicio' } }));
+      try { window.__AE_GENESIS?.saltar(); } catch { /* nada */ }
+      window.__AE_BLINDADO = false;
+      const tp = performance.now();
+      while (performance.now() - tp < 400) await new Promise((r) => requestAnimationFrame(r));
+    }
     const real = window.__AE_MIRAR;
     let tocada = null;
     window.__AE_MIRAR = () => ({ key: 'chat', nombre: 'PULSE2CHAT' });
