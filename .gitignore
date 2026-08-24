@@ -24,3 +24,6 @@ llv-*.png
 # repositorio el dia que se agregue uno nuevo, sin que nadie se entere.
 entregables/**/*.pdf
 /*.pdf
+
+# sondas temporales de diagnóstico
+apps-web/veta-wallet/pruebas/_*.mjs

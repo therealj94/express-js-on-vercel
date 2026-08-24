@@ -119,6 +119,9 @@ function puerta() {
 ;(window as any).AETHERION = {
   montar, desmontar, exhalar, entrar, puerta,
   acomodo: () => sim.acomodo,
+  /* Solo para diagnóstico: el estado del tránsito visto desde afuera. */
+  _transito: () => ({ active: transit.active, mode: transit.mode, wid: transit.wid,
+    activeId: useUiStore.getState().activeId }),
 }
 
 refrescarCasas()
