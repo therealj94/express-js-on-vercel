@@ -151,9 +151,11 @@ console.log('\n── doble pellizco: abrir ya ───────────
       punto(true); espera(90);   // segundo pellizco
       punto(false);
     }, donde);
-    await p.waitForTimeout(2200);
-    const abrio = await p.evaluate(() =>
-      VETA.dondeEstoy() !== 'nucleo' || !!document.querySelector('.ae-dim'));
+    /* Se espera el MECANISMO, no un reloj: bajo dibujo por software el viaje
+       de entrada tarda lo que tarda, y lo que se comprueba es que ocurre. */
+    const abrio = await p.waitForFunction(() =>
+      VETA.dondeEstoy() !== 'nucleo' || !!document.querySelector('.ae-dim'),
+      null, { timeout: 12000 }).then(() => true).catch(() => false);
     ok('dos pellizcos cortos abren el planeta', abrio,
        abrio ? await p.evaluate(() => VETA.dondeEstoy())
              : `quedó en ${await p.evaluate(() => VETA.dondeEstoy())} · planeta ${donde.key}`);
