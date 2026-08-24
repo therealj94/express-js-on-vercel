@@ -11,6 +11,7 @@ import { DustLayer } from './Dust'
 import { getRadialTexture, getFlareTexture } from './textures'
 import { useUiStore } from '../state/uiStore'
 import { Firmamento } from './Firmamento'
+import { Agujeros } from './Agujeros'
 
 function Filaments() {
   const matRef = useRef<THREE.LineBasicMaterial>(null)
@@ -237,6 +238,7 @@ export function Sky() {
     <>
       <TideAndIntro />
       <Firmamento />
+      <Agujeros />
       <Nebulae />
       <Filaments />
       <DustLayer count={14000} spread={30} yFlat={6} size={1.1} opacity={0.75} />

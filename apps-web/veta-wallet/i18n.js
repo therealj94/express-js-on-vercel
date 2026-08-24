@@ -428,7 +428,9 @@ es: {
   'dep.red': 'Red', 'dep.aviso': 'Solo activos de la red de Orden Global (cadena 5550). Cualquier otra cosa que mandes a esta dirección se pierde.',
   // el tour Génesis
   'gen.aj': 'La historia del origen',
-  'gen.ajP': '«Sea la luz»: el nacimiento de tu ecosistema',
+  'gen.ajP': '«Sea la luz»: cómo nació todo esto, en minuto y medio',
+  'mus.aj': 'Música del ecosistema',
+  'mus.ajP': 'Suena debajo de todo y se calla cuando AU-RA habla',
   'gen.sinCielo': 'La historia se cuenta sobre el cielo 3D. Volvé al Inicio y probá de nuevo.',
   // el marco de casa (AuCorp / Ordenex adentro)
   'marco.atras': 'Volver al Inicio',
@@ -1375,7 +1377,9 @@ en: {
   'dep.t': 'Deposit', 'dep.p': 'Send to this address from another wallet on the Orden Global network.',
   'dep.red': 'Network', 'dep.aviso': 'Orden Global network assets only (chain 5550). Anything else sent to this address is lost.',
   'gen.aj': 'The story of the origin',
-  'gen.ajP': '“Let there be light”: the birth of your ecosystem',
+  'gen.ajP': '“Let there be light”: how all of this was born, in ninety seconds',
+  'mus.aj': 'Ecosystem music',
+  'mus.ajP': 'It plays under everything and hushes when AU-RA speaks',
   'gen.sinCielo': 'The story is told over the 3D sky. Go back Home and try again.',
   'marco.atras': 'Back to Home',
   'marco.pestana': 'Open in a tab',

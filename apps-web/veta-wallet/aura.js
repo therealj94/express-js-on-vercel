@@ -983,6 +983,11 @@ const AURA = (() => {
    * el que espera para seguir el recorrido no se queda colgado jamás).
    */
   function hablar(texto, lang = 'es') {
+    /* LA MÚSICA SE AGACHA CUANDO ALGUIEN HABLA. Aquí y no en cada sitio que
+       llama a hablar: una sola puerta para la voz es una sola puerta para el
+       agache, y ningún camino nuevo se olvida de bajarle. El tiempo se estima
+       por el largo de la frase; si termina antes, terminar() la levanta. */
+    try { window.MUSICA?.agachar(1800 + texto.length * 70); } catch { /* nada */ }
     return new Promise(fin => {
       pararVoz();                       // corta lo anterior y sube el turno
       const mio = turnoVoz;             // el turno de ESTA frase
@@ -994,6 +999,8 @@ const AURA = (() => {
         if (alTerminarVoz === terminar) alTerminarVoz = null;
         // si ya la cortaron, el orbe es de la frase nueva: no tocarlo
         if (vigente()) { animoOrbe('dormida'); nivelOrbe(0); }
+        // terminó de hablar: la música puede volver a su sitio
+        try { window.MUSICA?.agachar(220); } catch { /* nada */ }
         fin();
       };
       alTerminarVoz = terminar;

@@ -54,6 +54,13 @@ export default function App() {
             el rebote del cielo (la cara de noche se insinúa, no desaparece) y
             el que modela es el sol de AU-RA, desde el centro. */}
         <ambientLight intensity={0.16} color="#5b6f9e" />
+        {/* LA LUZ DEL PROPIO CIELO. Un mundo a diez radios del sol no recibe
+            casi nada de él — pero SÍ recibe la galaxia entera, que es una
+            lámpara enorme y difusa encima. Sin esto los mundos del paisaje
+            eran discos negros; con esto tienen media luz azulada arriba y
+            penumbra abajo, que es exactamente lo que se ve en una foto del
+            sistema solar exterior. */}
+        <hemisphereLight args={['#6d84b8', '#161d2e', 0.42]} />
         {/* la luz de contra: el filo frío de la galaxia que despega cada
             mundo del fondo negro, como en cualquier foto bien hecha */}
         <directionalLight position={[-14, 9, -12]} intensity={0.5} color="#7fa8d8" />

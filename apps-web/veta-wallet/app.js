@@ -2113,6 +2113,10 @@ const VETA = (() => {
   }
 
   const ICO = {
+    // la nota musical, para la fila de la música en Ajustes
+    nota: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+    // la chispa del origen, para la fila de la historia
+    chispa: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/><circle cx="12" cy="12" r="2.6"/>',
     enviar: '<path d="M12 19V5M5 12l7-7 7 7"/>',
     recibir: '<path d="M12 5v14M5 12l7 7 7-7"/>',
     comprar: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
@@ -4479,7 +4483,8 @@ const VETA = (() => {
       <h3>${t('aj.ecosistema')}</h3>
       <div class="ajustes">
         ${fila(ICO.obra, t('aj.bien'), t('aj.bienP'), "VETA.bienvenida()")}
-        ${fila(ICO.chispa || ICO.obra, t('gen.aj'), t('gen.ajP'), "VETA.tourGenesis()")}
+        ${fila(ICO.chispa || ICO.obra, t('gen.aj'), t('gen.ajP'), "VETA.tourGenesis('boton')")}
+        ${fila(ICO.nota || ICO.obra, t('mus.aj'), t('mus.ajP'), "VETA.musicaAlterna()")}
         ${fila(ICO.tienda, t('aj.mtp'), t('aj.mtpP'), "VETA.vista('pay')")}
         ${fila(ICO.globo, t('aj.idioma'), t('aj.idiomaP'), "VETA.idioma('" + (idiomaActivo() === 'es' ? 'en' : 'es') + "')")}
         ${fila(ICO.doc, t('aj.legal'), t('aj.legalP'), "window.open('/terminos','_blank','noopener')")}
@@ -5251,7 +5256,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = 'af80644665';
+  const AET_V = '4433cbbb6a';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -5320,6 +5325,9 @@ const VETA = (() => {
     try {
       const m = await VISOR.entrar(modo);
       tele('accion', 'visor.entrar', { modo: m });
+      /* Ponerse el visor por primera vez ES pedir la historia: no hay mejor
+         momento para contarla que cuando alguien acaba de meterse dentro. */
+      genPorVisor();
     } catch (e) {
       avisar(t(e.message === 'sin-cielo' ? 'vs.sinCielo'
         : e.message === 'sin-webxr' ? 'vs.sinXr' : 'vs.noPudo'));
@@ -5328,6 +5336,18 @@ const VETA = (() => {
   const vsSalir = () => window.VISOR?.salir();
   const vsOjos = (v) => window.VISOR?.ojos(Number(v) / 1000);
   const vsMirada = (v) => window.VISOR?.mirada(v);
+
+  /* ── LA MÚSICA ───────────────────────────────────────────────────────────
+     El botón, su marca visible, y el estado al arrancar. Encenderla la
+     primera vez pide un gesto: por eso el botón vive donde se lo ve. */
+  function musicaAlterna() {
+    if (!window.MUSICA) return;
+    MUSICA.alterna();
+    tele('accion', 'musica', { puesta: MUSICA.puesta() });
+  }
+  function musicaMarca(puesta) {
+    $('#musica-btn')?.classList.toggle('callada', !puesta);
+  }
 
   /* ── PANTALLA COMPLETA ───────────────────────────────────────────────────
      La galaxia y las casas se ven mejor sin la barra del navegador comiéndose
@@ -5474,16 +5494,9 @@ const VETA = (() => {
             <small>${t('nu.sub')}</small>`;
         document.body.appendChild(saludo);
         if (!yaVive) AETHERION.montar($('#ae-casa'));
-        /* LA PRIMERA VEZ, LA HISTORIA SE CUENTA SOLA. Quien pisa esta galaxia
-           por primera vez la ve nacer: la tiniebla, la palabra, la luz y los
-           mundos presentándose. Una sola vez — después queda en Ajustes para
-           quien quiera volver a verla. */
-        if (!localStorage.getItem('veta.genesis.visto')
-            && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-          setTimeout(() => {
-            if (vistaActual === 'nucleo' && !genVivo && window.__AE_GENESIS) tourGenesis();
-          }, 2600);
-        }
+        /* AQUÍ NO ARRANCA NADA SOLO. La película se pone cuando alguien la
+           pide: el visor, AIR TOUCH o su fila en Ajustes. Llegar al Inicio no
+           es pedirla — quien viene a mandar plata viene a eso. */
       } catch (e) {
         // el bundle cargó pero el montaje murió: el cerebro clásico responde
         aeSaludoQuitar();
@@ -7733,6 +7746,8 @@ const VETA = (() => {
     try {
       await AIRTOUCH.encender({ alCambiar: atPunto });
       $('#at-boton')?.classList.add('encendido');
+      // encender la mano también pide la historia, una vez por sesión
+      genPorAire();
       atTablero(true);
       const cinta = $('#at-cinta');
       if (cinta) {
@@ -10704,49 +10719,87 @@ const VETA = (() => {
    */
   function genGuion() {
     const es = idiomaActivo() === 'es';
-    return {
-      tiniebla: es ? 'En el principio, todo estaba suelto y a oscuras.'
-                   : 'In the beginning, all was loose and dark.',
-      palabra: es ? 'Y dijo: «Sea la luz».' : 'And said: “Let there be light.”',
-      luz: es ? 'Y fue la luz.' : 'And there was light.',
-      acomodo: es ? 'Y cada mundo encontró su órbita.'
-                  : 'And every world found its orbit.',
+    const nombre = (sesion?.nombre || '').split(' ')[0];
+    /* Los rótulos de la película. El `centro` es la línea grande; `pie` es el
+       nombre y la frase de una casa; `voz` es lo que AU-RA dice — casi siempre
+       lo mismo, pero a veces con el nombre de la persona, que en pantalla
+       quedaría raro repetido y dicho en voz alta se siente cerca. */
+    return es ? {
+      tiniebla: 'En el principio no había orden. Solo distancia.',
+      palabra: 'Y dijo: «Sea la luz».',
+      luz: 'Y fue la luz.',
+      orden: 'Y cada mundo encontró su órbita.',
       casas: {
-        wallet: ['Veta Wallet', es ? 'Tu valor, en tu mano. La casa grande del sistema.'
-                                   : 'Your value, in your hand. The great house of the system.'],
-        chat: ['PULSE2CHAT', es ? 'La palabra que fluye: mensajes sellados de punta a punta.'
-                                : 'The word that flows: messages sealed end to end.'],
-        gid: ['Genesis ID', es ? 'Tu identidad verificada: una sola llave para todo.'
-                               : 'Your verified identity: one key for everything.'],
-        pay: ['MyTokenPay', es ? 'Pagá en los comercios con tu saldo.'
-                               : 'Pay at shops with your balance.'],
-        genesis: ['GENESIS CORE', es ? 'La memoria del origen: el cerebro que guarda cómo empezó todo.'
-                                     : 'The memory of the origin: the brain that keeps how it all began.'],
+        wallet: ['VETA WALLET', 'Tu valor, en tu mano. Nadie lo custodia por vos.'],
+        chat: ['PULSE2CHAT', 'La palabra que fluye, sellada de punta a punta.'],
+        gid: ['GENESIS ID', 'Tu identidad verificada. Una sola llave para todo.'],
+        pay: ['MYTOKENPAY', 'Tu saldo, aceptado en el mostrador de la esquina.'],
+        genesis: ['GENESIS CORE', 'La memoria del origen: cómo empezó todo esto.'],
       },
-      panorama: es ? 'Ese es tu ecosistema. El futuro es orden.'
-                   : 'This is your ecosystem. The future is order.',
-      saltar: es ? 'Saltar' : 'Skip',
+      universo: 'Y alrededor, un universo entero.',
+      obra: 'Nada de esto nos lo dieron. La cadena, la identidad, la banca:\ncada pieza la construimos nosotros.',
+      vos: nombre ? `Y vos estás acá, ${nombre}.` : 'Y vos estás acá.',
+      vos2: 'Eso no es casualidad.',
+      proposito: 'Esto no es una aplicación más.\nEs que el orden que hoy es de pocos, mañana sea de todos.',
+      invitacion: 'Ayudanos a expandirlo.',
+      cierre: 'El futuro es orden.',
+      saltar: 'Saltar',
+    } : {
+      tiniebla: 'In the beginning there was no order. Only distance.',
+      palabra: 'And said: “Let there be light.”',
+      luz: 'And there was light.',
+      orden: 'And every world found its orbit.',
+      casas: {
+        wallet: ['VETA WALLET', 'Your value, in your hand. Nobody holds it for you.'],
+        chat: ['PULSE2CHAT', 'The word that flows, sealed end to end.'],
+        gid: ['GENESIS ID', 'Your verified identity. One key for everything.'],
+        pay: ['MYTOKENPAY', 'Your balance, accepted at the shop on the corner.'],
+        genesis: ['GENESIS CORE', 'The memory of the origin: how all of this began.'],
+      },
+      universo: 'And all around, an entire universe.',
+      obra: 'None of this was given to us. The chain, the identity, the bank:\nwe built every piece ourselves.',
+      vos: nombre ? `And you are here, ${nombre}.` : 'And you are here.',
+      vos2: 'That is no accident.',
+      proposito: 'This is not one more app.\nIt is that the order few hold today belongs to everyone tomorrow.',
+      invitacion: 'Help us expand it.',
+      cierre: 'The future is order.',
+      saltar: 'Skip',
     };
   }
 
   let genVivo = false;
-  function tourGenesis() {
+  let genSesion = { visor: false, aire: false };   // ya se contó por este camino
+
+  /* ── EL TOUR GÉNESIS ─────────────────────────────────────────────────────
+   * La película solo se pone cuando alguien la pide: al entrar al modo visor,
+   * al encender AIR TOUCH, o desde su fila en Ajustes. NUNCA sola al llegar —
+   * una historia de minuto y medio que arranca sin permiso deja de ser un
+   * regalo y pasa a ser un obstáculo entre la persona y su dinero.
+   */
+  function tourGenesis(porQue) {
     if (genVivo) return;
     if (vistaActual !== 'nucleo') {
       vista('nucleo');
-      return void setTimeout(tourGenesis, 1600);
+      return void setTimeout(() => tourGenesis(porQue), 1800);
     }
     const motor = window.__AE_GENESIS;
     if (!motor || !document.getElementById('ae-casa')) return avisar(t('gen.sinCielo'));
     genVivo = true;
-    localStorage.setItem('veta.genesis.visto', '1');
     const G = genGuion();
     const enVisor = !!window.VISOR?.activo();
     aedCallar();
 
-    /* La capa de las palabras: la Palabra grande al centro, el resto abajo,
-       como los rótulos de una película. En el visor no se pinta: la pantalla
-       está partida en dos ojos y un HTML plano se vería roto. */
+    /* LA MÚSICA ES LA MITAD DE LA PELÍCULA. Se pone desde su primera nota —la
+       pista empieza donde empieza la historia— y en «y fue la luz» se le
+       suelta el techo un momento: es el único sitio donde se le permite
+       mandar. */
+    try {
+      if (window.MUSICA) {
+        MUSICA.desdeElPrincipio();
+        if (!MUSICA.puesta()) MUSICA.encender(false);
+      }
+    } catch { /* sin música la historia se cuenta igual */ }
+
     let capa = null;
     if (!enVisor) {
       capa = document.createElement('div');
@@ -10758,14 +10811,25 @@ const VETA = (() => {
       capa.querySelector('.gen-saltar').addEventListener('click', () => motor.saltar());
       document.body.appendChild(capa);
     }
-    const decir = (txt) => { AURA.hablar(txt, idiomaActivo()).catch(() => {}); };
-    const centro = (txt, grande) => {
+
+    const decir = (txt) => {
+      try { AURA.hablar(String(txt).replace(/\n/g, ' '), idiomaActivo()).catch(() => {}); }
+      catch { /* nada */ }
+    };
+    /* Una línea grande al centro. `peso` la hace protagonista (la Palabra, la
+       Luz) y `tarde` la deja entrar unos segundos después — así un acto puede
+       decir dos cosas seguidas sin apelotonarlas. */
+    const centro = (txt, peso, tarde) => {
       if (!capa) return;
-      const c = capa.querySelector('.gen-centro');
-      c.textContent = txt;
-      c.classList.toggle('grande', !!grande);
-      c.classList.remove('ve'); void c.offsetWidth; c.classList.add('ve');
-      capa.querySelector('.gen-pie').classList.remove('ve');
+      const poner = () => {
+        const c = capa.querySelector('.gen-centro');
+        if (!c) return;
+        c.innerHTML = esc(String(txt)).replace(/\n/g, '<br>');
+        c.classList.toggle('grande', !!peso);
+        c.classList.remove('ve'); void c.offsetWidth; c.classList.add('ve');
+        capa.querySelector('.gen-pie').classList.remove('ve');
+      };
+      if (tarde) setTimeout(() => { if (genVivo) poner(); }, tarde); else poner();
     };
     const pie = (nombre, frase) => {
       if (!capa) return;
@@ -10779,25 +10843,59 @@ const VETA = (() => {
     addEventListener('keydown', porTecla);
 
     motor.empezar({
-      alFase(clave) {
+      alActo(clave) {
         if (clave === 'tiniebla') { centro(G.tiniebla); decir(G.tiniebla); }
         else if (clave === 'palabra') { centro(G.palabra, true); decir(G.palabra); }
-        else if (clave === 'luz') { centro(G.luz, true); decir(G.luz); }
-        else if (clave === 'acomodo') { centro(G.acomodo); decir(G.acomodo); }
+        else if (clave === 'luz') {
+          centro(G.luz, true); decir(G.luz);
+          try { MUSICA?.crecer(1.6, 2.4); } catch { /* nada */ }
+        }
+        else if (clave === 'orden') { centro(G.orden); decir(G.orden); }
         else if (clave.startsWith('casa:')) {
           const c = G.casas[clave.slice(5)];
           if (c) { pie(c[0], c[1]); decir(c[0] + '. ' + c[1]); }
-        } else if (clave === 'panorama') { centro(G.panorama); decir(G.panorama); }
+        }
+        else if (clave === 'universo') { centro(G.universo); decir(G.universo); }
+        else if (clave === 'obra') { centro(G.obra); decir(G.obra); }
+        else if (clave === 'vos') {
+          /* El golpe de este acto son DOS frases: la primera nombra, la
+             segunda remata. Separadas por tres segundos de silencio, que es
+             lo que las hace pesar. */
+          centro(G.vos, true); decir(G.vos);
+          centro(G.vos2, true, 3400);
+          setTimeout(() => { if (genVivo) decir(G.vos2); }, 3400);
+        }
+        else if (clave === 'proposito') { centro(G.proposito); decir(G.proposito); }
+        else if (clave === 'invitacion') {
+          centro(G.invitacion, true); decir(G.invitacion);
+          centro(G.cierre, true, 3200);
+          setTimeout(() => { if (genVivo) decir(G.cierre); }, 3200);
+          try { MUSICA?.crecer(1.35, 3.2); } catch { /* nada */ }
+        }
       },
       alFin() {
         genVivo = false;
         removeEventListener('keydown', porTecla);
         try { AURA.pararVoz(); } catch { /* nada */ }
-        if (capa) { capa.classList.add('yendo'); setTimeout(() => capa.remove(), 700); }
+        if (capa) { capa.classList.add('yendo'); setTimeout(() => capa.remove(), 800); }
       },
       casas: ['wallet', 'chat', 'gid', 'pay', 'genesis'],
     });
-    tele('accion', 'genesis.tour', { visor: enVisor });
+    tele('accion', 'genesis.tour', { visor: enVisor, porQue: porQue || 'boton' });
+  }
+
+  /* Los dos caminos que la piden solos, una vez por sesión cada uno: ponerse
+     el visor y encender AIR TOUCH. Quien vuelve a entrar en la misma sesión
+     no se come la película otra vez. */
+  function genPorVisor() {
+    if (genSesion.visor || genVivo) return;
+    genSesion.visor = true;
+    setTimeout(() => { if (window.VISOR?.activo()) tourGenesis('visor'); }, 1400);
+  }
+  function genPorAire() {
+    if (genSesion.aire || genVivo) return;
+    genSesion.aire = true;
+    setTimeout(() => { if (window.AIRTOUCH?.activo?.() && vistaActual === 'nucleo') tourGenesis('airtouch'); }, 1600);
   }
 
   async function auraBienvenidaGalaxia(conVoz) {
@@ -11784,6 +11882,15 @@ const VETA = (() => {
   function arrancar() {
     veloFrase();
     if (window.AIRTOUCH?.puede()) $('#at-boton')?.classList.remove('oculto');
+    /* La música: el botón nace mostrando lo que la persona eligió la última
+       vez, y el módulo lo mantiene al día. Sonar, suena en cuanto haya un
+       gesto — antes ningún navegador lo permite. */
+    if (window.MUSICA) {
+      MUSICA.alCambiar(musicaMarca);
+      musicaMarca(MUSICA.quiere());
+    } else {
+      $('#musica-btn')?.classList.add('oculto');
+    }
     /* La red de seguridad del velo: algunos caminos de este arranque retornan
        antes de mirar la sesión (recuperación de clave, SSO), y un velo que no
        se va es una app secuestrada por su propia apertura. Si el camino feliz
@@ -11920,7 +12027,7 @@ const VETA = (() => {
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
            pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,
-           vsEntrar, vsSalir, vsOjos, vsMirada, tourGenesis,
+           vsEntrar, vsSalir, vsOjos, vsMirada, tourGenesis, musicaAlterna,
            _bienvenidaGalaxia: (v) => auraBienvenidaGalaxia(v),
            /* El aterrizaje del login, tal cual: la prueba comprueba que entrar
               siempre deja a la persona en el Inicio, aunque la dirección

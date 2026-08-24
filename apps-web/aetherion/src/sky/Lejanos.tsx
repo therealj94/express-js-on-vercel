@@ -3,7 +3,8 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { sim } from '../kernel/sim'
 import { RADIO_ANILLO } from '../kernel/rig'
-import { getFlareTexture } from './textures'
+import { getFlareTexture, getRingTexture } from './textures'
+import { pielMundo, type FamiliaMundo } from './emblema'
 
 /* LOS MUNDOS LEJANOS.
  *
@@ -23,6 +24,10 @@ interface Mundito {
   giro: number
   aro: boolean
   sol: boolean          // los soles lejanos: los que dan la escala de galaxia
+  fam: FamiliaMundo     // de qué familia es su piel
+  eje: number           // la torcedura de su eje: ninguno gira derecho
+  aire: boolean         // ¿tiene atmósfera? entonces tiene filo de luz
+  luna: number          // 0 = sin luna
 }
 
 /* Azar con semilla: la misma galaxia en todas las pantallas y en cada visita.
@@ -36,6 +41,19 @@ function alAzar(semilla: number) {
 }
 
 const TINTES = ['#6f8fb8', '#8f7fb0', '#5f9d94', '#b08f6f', '#7a86a8', '#9d7f8f', '#68a0a8']
+
+/* Cada familia tiñe distinto: un mundo helado no puede salir marrón y uno
+   volcánico no puede salir celeste. El color se sortea DENTRO de su familia,
+   y así cincuenta y cuatro mundos distintos siguen pareciendo del mismo
+   universo. */
+const FAMILIAS: Array<{ fam: FamiliaMundo; tintes: string[]; aire: boolean }> = [
+  { fam: 'rocoso', tintes: ['#8a8378', '#9c8f7e', '#77726b', '#a08b74'], aire: false },
+  { fam: 'helado', tintes: ['#bcd6e8', '#a8c4dc', '#cfe2ee', '#93b6cf'], aire: true },
+  { fam: 'desierto', tintes: ['#c9a678', '#b8925f', '#d4b98a', '#a8804f'], aire: true },
+  { fam: 'volcanico', tintes: ['#a2604a', '#8c4c3a', '#b06b4e', '#7a3f30'], aire: false },
+  { fam: 'oceano', tintes: ['#5f8fbe', '#4d7ea8', '#6ea2c8', '#3f6f96'], aire: true },
+  { fam: 'gaseoso', tintes: ['#c2a880', '#a8927a', '#d0b48e', '#9c8f9e'], aire: true },
+]
 
 function sembrar(): Mundito[] {
   const r = alAzar(94117)
@@ -51,14 +69,22 @@ function sembrar(): Mundito[] {
        que convierten «unas bolas lejos» en una galaxia — el ojo lee soles y
        entiende que hay más sistemas ahí afuera. */
     const sol = r() > 0.84
+    const f = FAMILIAS[Math.floor(r() * FAMILIAS.length)]
     out.push({
       pos: new THREE.Vector3(Math.cos(a) * radio, alto, Math.sin(a) * radio),
       r: sol ? 0.5 + r() * 0.7 : 0.3 + r() * 1.5,
       color: sol ? ['#ffe9b8', '#cfe6ff', '#ffd2b0'][Math.floor(r() * 3)]
-                 : TINTES[Math.floor(r() * TINTES.length)],
+                 : f.tintes[Math.floor(r() * f.tintes.length)],
       giro: 0.05 + r() * 0.14,
       aro: !sol && r() > 0.72,
       sol,
+      fam: f.fam,
+      /* La torcedura: entre nada y medio radián, cada uno la suya. Es el
+         detalle más barato que existe para que una fila de esferas deje de
+         parecer una fila de esferas. */
+      eje: (r() - 0.5) * 1.0,
+      aire: !sol && f.aire && r() > 0.35,
+      luna: !sol && r() > 0.78 ? 0.16 + r() * 0.14 : 0,
     })
   }
   return out
@@ -124,7 +150,7 @@ export function Lejanos() {
         <lineBasicMaterial color="#9fd8ff" transparent opacity={0} depthWrite={false} />
       </lineSegments>
       {mundos.map((m, i) => (
-        <group key={i} position={m.pos} rotation={[0, i * 0.7, m.aro ? 0.4 : 0]}>
+        <group key={i} position={m.pos} rotation={[0, i * 0.7, m.eje]}>
           <mesh>
             <sphereGeometry args={[m.r, 32, 32]} />
             {m.sol ? (
@@ -132,14 +158,47 @@ export function Lejanos() {
             ) : (
               /* Sin luz propia: los mundos de paisaje también los modela el
                  sol, y por eso tienen su cara de día y su terminador. Antes
-                 se auto-iluminaban y parecían pegatinas de papel. */
+                 se auto-iluminaban y parecían pegatinas de papel.
+
+                 Y desde ahora con PIEL: la de su familia, en gris, teñida por
+                 su color, y la MISMA imagen sirviendo de mapa de relieve —
+                 donde la piel es clara el terreno sobresale, y con el sol
+                 rasante eso da cráteres, dunas, grietas y bandas. Es la
+                 diferencia entre una pelota de color y un mundo. */
               <meshStandardMaterial
                 color={m.color}
-                roughness={0.95}
-                metalness={0.02}
+                map={pielMundo(m.fam)}
+                bumpMap={pielMundo(m.fam)}
+                bumpScale={m.fam === 'gaseoso' || m.fam === 'oceano' ? 0.006 : 0.02}
+                roughness={m.fam === 'oceano' ? 0.6 : m.fam === 'helado' ? 0.7 : 0.95}
+                metalness={m.fam === 'oceano' ? 0.1 : 0.02}
+                /* Un suelo mínimo de luz propia con su PROPIA piel: a esta
+                   distancia el relieve no se ve, pero la mancha sí, y sin
+                   ella el mundo se lee como un agujero recortado en el
+                   cielo. No es brillo — es que la superficie exista. */
+                emissive={new THREE.Color(m.color)}
+                emissiveMap={pielMundo(m.fam)}
+                emissiveIntensity={0.16}
               />
             )}
           </mesh>
+          {/* EL FILO DE LA ATMÓSFERA. Una cáscara apenas mayor, vista por
+              dentro y sumando luz: de frente no se ve y en el borde enciende
+              esa línea fina que tiene cualquier planeta con aire. */}
+          {m.aire && (
+            <mesh scale={1.045}>
+              <sphereGeometry args={[m.r, 24, 24]} />
+              <meshBasicMaterial color={m.color} transparent opacity={0.26}
+                side={THREE.BackSide} depthWrite={false} blending={THREE.AdditiveBlending} />
+            </mesh>
+          )}
+          {m.luna > 0 && (
+            <mesh position={[m.r * 2.4, m.r * 0.4, 0]}>
+              <sphereGeometry args={[m.r * m.luna, 16, 16]} />
+              <meshStandardMaterial color="#9a958c" map={pielMundo('rocoso')}
+                bumpMap={pielMundo('rocoso')} bumpScale={0.014} roughness={0.98} />
+            </mesh>
+          )}
           {/* El halo de un sol lejano es un DETALLE, no un protagonista: con el
               tamaño de antes, uno que pasara cerca deslumbraba más que AU-RA y
               parecía un fallo. */}
@@ -158,11 +217,15 @@ export function Lejanos() {
           )}
           {m.aro && (
             <mesh rotation={[1.3, 0, 0.3]}>
-              <ringGeometry args={[m.r * 1.5, m.r * 2.1, 40]} />
+              <ringGeometry args={[m.r * 1.5, m.r * 2.3, 64]} />
+              {/* El anillo lleva la textura de bandas: un aro liso de color se
+                  ve como un aro de plástico, y los anillos de verdad son
+                  polvo en carriles con huecos entre ellos. */}
               <meshBasicMaterial
+                map={getRingTexture()}
                 color={m.color}
                 transparent
-                opacity={0.18}
+                opacity={0.4}
                 side={THREE.DoubleSide}
                 depthWrite={false}
               />

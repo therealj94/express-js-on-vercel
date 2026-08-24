@@ -40,6 +40,15 @@ function colorEstrella(r: () => number): [number, number, number] {
   return [1.0, 0.78, 0.62]                    // naranja-roja: vieja
 }
 
+/* El cielo se pinta UNA vez y lo comparten quien lo necesite: la esfera del
+   firmamento lo enseña, y los agujeros negros lo DEFORMAN — para curvar la
+   luz de un cielo hay que tener ese cielo a mano. */
+let cieloHecho: THREE.CanvasTexture | null = null
+export function cieloTextura(): THREE.CanvasTexture {
+  if (!cieloHecho) cieloHecho = pintarCielo()
+  return cieloHecho
+}
+
 function pintarCielo(): THREE.CanvasTexture {
   const W = 2048
   const H = 1024
@@ -300,7 +309,7 @@ function Fugaces() {
 }
 
 export function Firmamento() {
-  const tex = useMemo(pintarCielo, [])
+  const tex = useMemo(cieloTextura, [])
   const esfera = useRef<THREE.Mesh>(null)
 
   useFrame((_, dt) => {

@@ -422,6 +422,150 @@ export function lucesTextura(key: string): THREE.Texture {
   return tex
 }
 
+/* LA PIEL DE LOS MUNDOS DEL PAISAJE.
+ *
+ * Los 54 mundos de alrededor eran esferas de color plano, y a media distancia
+ * eso se lee como lo que era: pelotas. Pero 54 texturas únicas cuestan 54
+ * lienzos de 512×256 al arrancar, y eso es medio segundo de pantalla trabada.
+ *
+ * La salida es la de siempre en gráficos: UN PUÑADO DE FAMILIAS bien hechas y
+ * el color por planeta. Seis pieles —rocoso, helado, desierto, volcánico,
+ * océano, gaseoso— se pintan una sola vez en escala de grises con su relieve
+ * de verdad, y cada mundo las tiñe con su color en el material. Seis lienzos,
+ * cincuenta y cuatro mundos, y ninguno se parece al de al lado porque además
+ * cada uno gira con su eje y su ritmo. */
+export type FamiliaMundo = 'rocoso' | 'helado' | 'desierto' | 'volcanico' | 'oceano' | 'gaseoso'
+
+export function pielMundo(fam: FamiliaMundo): THREE.Texture {
+  const clave = `fam:${fam}`
+  const hecho = cache.get(clave)
+  if (hecho) return hecho
+  const W = 512
+  const H = 256
+  const { c, g } = lienzo(W, H)
+  let s = 0
+  for (const ch of fam) s = (s * 31 + ch.charCodeAt(0)) >>> 0
+  const az = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296 }
+
+  const gris = (v: number) => `rgb(${v | 0},${v | 0},${v | 0})`
+  g.fillStyle = gris(128)
+  g.fillRect(0, 0, W, H)
+
+  /* Manchas suaves repetidas: la base de cualquier superficie natural. Se
+     pintan cruzando el borde para que la textura CIERRE al envolver la
+     esfera — sin esto hay una costura visible en cada mundo. */
+  const mancha = (x: number, y: number, r: number, v: number, a: number) => {
+    for (const dx of [-W, 0, W]) {
+      const gr = g.createRadialGradient(x + dx, y, 0, x + dx, y, r)
+      gr.addColorStop(0, `rgba(${v | 0},${v | 0},${v | 0},${a})`)
+      gr.addColorStop(1, `rgba(${v | 0},${v | 0},${v | 0},0)`)
+      g.fillStyle = gr
+      g.fillRect(x + dx - r, y - r, r * 2, r * 2)
+    }
+  }
+
+  if (fam === 'gaseoso') {
+    // bandas de gigante: franjas horizontales con turbulencia y su tormenta
+    for (let i = 0; i < 22; i++) {
+      const y = (i / 22) * H
+      const alto = H / 22 * (0.8 + az() * 1.6)
+      const v = 96 + Math.sin(i * 1.7) * 46 + az() * 26
+      g.fillStyle = gris(v)
+      g.globalAlpha = 0.8
+      g.beginPath()
+      g.ellipse(W / 2, y, W, alto, 0, 0, Math.PI * 2)
+      g.fill()
+    }
+    g.globalAlpha = 1
+    for (let i = 0; i < 120; i++) mancha(az() * W, az() * H, 16 + az() * 46, 90 + az() * 90, 0.16)
+    // el ojo de la tormenta
+    g.save(); g.translate(W * 0.63, H * 0.6); g.scale(1, 0.48)
+    const ojo = g.createRadialGradient(0, 0, 0, 0, 0, 52)
+    ojo.addColorStop(0, 'rgba(220,220,220,0.85)')
+    ojo.addColorStop(0.6, 'rgba(170,170,170,0.4)')
+    ojo.addColorStop(1, 'rgba(170,170,170,0)')
+    g.fillStyle = ojo; g.fillRect(-60, -60, 120, 120); g.restore()
+  } else if (fam === 'oceano') {
+    // continentes: manchas grandes claras sobre un fondo hondo
+    g.fillStyle = gris(64)
+    g.fillRect(0, 0, W, H)
+    for (let i = 0; i < 15; i++) {
+      const cx = az() * W, cy = H * 0.15 + az() * H * 0.7
+      for (let j = 0; j < 26; j++) {
+        mancha(cx + (az() - 0.5) * 120, cy + (az() - 0.5) * 60, 12 + az() * 34, 175 + az() * 55, 0.5)
+      }
+    }
+    // los casquetes
+    for (let i = 0; i < 60; i++) {
+      mancha(az() * W, az() * 16, 12 + az() * 26, 230, 0.5)
+      mancha(az() * W, H - az() * 16, 12 + az() * 26, 230, 0.5)
+    }
+  } else if (fam === 'helado') {
+    g.fillStyle = gris(196)
+    g.fillRect(0, 0, W, H)
+    for (let i = 0; i < 200; i++) mancha(az() * W, az() * H, 8 + az() * 40, 150 + az() * 90, 0.22)
+    // las grietas: hielo que se partió y se volvió a soldar
+    g.strokeStyle = 'rgba(84,84,84,0.5)'
+    for (let i = 0; i < 34; i++) {
+      g.lineWidth = 0.6 + az() * 1.8
+      g.beginPath()
+      let x = az() * W, y = az() * H
+      g.moveTo(x, y)
+      for (let j = 0; j < 7; j++) { x += (az() - 0.5) * 90; y += (az() - 0.5) * 44; g.lineTo(x, y) }
+      g.stroke()
+    }
+  } else if (fam === 'volcanico') {
+    g.fillStyle = gris(52)
+    g.fillRect(0, 0, W, H)
+    for (let i = 0; i < 180; i++) mancha(az() * W, az() * H, 10 + az() * 42, 30 + az() * 60, 0.35)
+    // las venas de lava: lo más claro del mapa, y por eso lo que más sobresale
+    for (let i = 0; i < 26; i++) {
+      const x0 = az() * W, y0 = az() * H
+      g.strokeStyle = `rgba(240,240,240,${0.3 + az() * 0.5})`
+      g.lineWidth = 0.8 + az() * 2.4
+      g.beginPath(); g.moveTo(x0, y0)
+      let x = x0, y = y0
+      for (let j = 0; j < 6; j++) { x += (az() - 0.5) * 70; y += (az() - 0.5) * 34; g.lineTo(x, y) }
+      g.stroke()
+    }
+  } else if (fam === 'desierto') {
+    g.fillStyle = gris(150)
+    g.fillRect(0, 0, W, H)
+    // dunas: franjas onduladas suaves
+    for (let i = 0; i < 40; i++) {
+      const y = az() * H
+      g.strokeStyle = `rgba(${110 + az() * 90 | 0},${110 + az() * 90 | 0},${110 + az() * 90 | 0},0.3)`
+      g.lineWidth = 2 + az() * 9
+      g.beginPath()
+      g.moveTo(-10, y)
+      for (let x = 0; x <= W + 10; x += 28) g.lineTo(x, y + Math.sin(x * 0.02 + i) * 9)
+      g.stroke()
+    }
+    for (let i = 0; i < 120; i++) mancha(az() * W, az() * H, 10 + az() * 30, 120 + az() * 80, 0.18)
+  } else {
+    // rocoso: cráteres con su borde levantado y su suelo hundido
+    g.fillStyle = gris(110)
+    g.fillRect(0, 0, W, H)
+    for (let i = 0; i < 150; i++) mancha(az() * W, az() * H, 12 + az() * 44, 80 + az() * 80, 0.25)
+    for (let i = 0; i < 90; i++) {
+      const x = az() * W, y = H * 0.08 + az() * H * 0.84, r = 3 + az() * 15
+      mancha(x, y, r * 1.5, 60 + az() * 30, 0.5)          // el suelo, hundido
+      for (const dx of [-W, 0, W]) {
+        g.strokeStyle = `rgba(200,200,200,${0.25 + az() * 0.3})`
+        g.lineWidth = 1 + r * 0.12
+        g.beginPath(); g.arc(x + dx, y, r, 0, Math.PI * 2); g.stroke()
+      }
+    }
+  }
+  g.globalAlpha = 1
+
+  const tex = new THREE.CanvasTexture(c)
+  tex.wrapS = THREE.RepeatWrapping
+  tex.colorSpace = THREE.SRGBColorSpace
+  cache.set(clave, tex)
+  return tex
+}
+
 export function nubesTextura(key: string): THREE.Texture {
   const clave = `nb2:${key}`
   const hecho = cache.get(clave)
