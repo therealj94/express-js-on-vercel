@@ -36,6 +36,7 @@ interface Estado {
   cabeza: boolean          // ¿la cabeza mueve la vista de verdad?
   ojos: number             // separación entre ojos, en metros
   mirada: boolean          // seleccionar sosteniendo la mirada
+  sinGiro?: boolean        // el vigía no vio llegar ni un evento de cabeza
 }
 
 /* ── LA CABEZA POR GIROSCOPIO ───────────────────────────────────────────────
@@ -73,6 +74,8 @@ export function Visor() {
   const der = useMemo(() => new THREE.PerspectiveCamera(), [])
   const sesionXR = useRef<any>(null)
   const orientRef = useRef(0)
+  // adónde mira el dedo cuando no hay cabeza que mande
+  const dedo = useRef({ yaw: 0, pitch: 0 })
   /* El tamaño de la ventana se lee por referencia A PROPÓSITO. Si el puente
      con la casa dependiera de él, cada cambio de tamaño —y esconder el menú
      al entrar YA es uno— lo borraría y lo volvería a poner; quien tuviera el
@@ -86,27 +89,115 @@ export function Visor() {
   useEffect(() => { setVisor(estado.activo); sim.visor = estado.activo },
     [estado.activo, setVisor])
 
-  // ── el giroscopio ────────────────────────────────────────────────────────
+  /* ── EL GIROSCOPIO ───────────────────────────────────────────────────────
+   *
+   * Mover la cabeza y que la galaxia se mueva con ella es TODO el modo visor.
+   * Cuando eso no engancha, el aparato en la cara enseña una foto fija — y
+   * enganchar bien tiene tres partes que ningún navegador pone de acuerdo:
+   *
+   *  1. QUÉ EVENTO. Android da el rumbo bueno —el que apunta al norte y no
+   *     deriva— en `deviceorientationabsolute`; el `deviceorientation` de
+   *     toda la vida ahí es RELATIVO al azar del arranque y se va girando
+   *     solo. iOS no tiene el absoluto, pero pone el rumbo verdadero en
+   *     `webkitCompassHeading`. Así que se escuchan los dos eventos, se
+   *     prefiere el absoluto, y en iOS el rumbo se toma de la brújula.
+   *  2. QUE LLEGUE. Un permiso denegado, un aparato sin sensor o un navegador
+   *     que simplemente no dispara nada se ven exactamente igual: quieto. Por
+   *     eso hay un vigía — si en un segundo y medio no llegó ni un evento, se
+   *     dice, y la casa puede ofrecer el dedo en vez de la cabeza.
+   *  3. QUE HAYA SALIDA. Sin giroscopio se mira arrastrando el dedo. No es lo
+   *     mismo, pero es infinitamente mejor que un cielo congelado.
+   */
   useEffect(() => {
     if (!estado.activo || estado.modo === 'xr') return
-    const alOrientar = (e: DeviceOrientationEvent) => {
-      if (e.alpha == null) return
-      const gr = Math.PI / 180
-      deAngulos(cabeza, (e.alpha || 0) * gr, (e.beta || 0) * gr, (e.gamma || 0) * gr,
+    const gr = Math.PI / 180
+    let absoluto = false          // ¿llegó ya el evento bueno?
+    let llego = false
+
+    const aplicar = (e: DeviceOrientationEvent, esAbsoluto: boolean) => {
+      if (e.alpha == null && e.beta == null && e.gamma == null) return
+      /* En cuanto aparece el absoluto, el relativo deja de mandar: los dos
+         eventos llegan a la vez en Android y mezclarlos hace temblar. */
+      if (absoluto && !esAbsoluto) return
+      if (esAbsoluto && !absoluto) absoluto = true
+
+      /* EL RUMBO. iOS pone el norte verdadero en webkitCompassHeading y hay
+         que darlo vuelta (la brújula crece hacia el este, alpha hacia el
+         oeste). Sin esto, en iPhone la galaxia arranca mirando a cualquier
+         lado y no coincide con el mundo. */
+      const brujula = (e as any).webkitCompassHeading
+      const alpha = typeof brujula === 'number' && !Number.isNaN(brujula)
+        ? 360 - brujula
+        : (e.alpha || 0)
+
+      deAngulos(cabeza, alpha * gr, (e.beta || 0) * gr, (e.gamma || 0) * gr,
         orientRef.current * gr)
+      if (!llego) {
+        llego = true
+        window.clearTimeout(vigia)
+      }
       if (!est.current.cabeza) setEstado((s) => ({ ...s, cabeza: true }))
     }
+
+    const alAbsoluto = (e: DeviceOrientationEvent) => aplicar(e, true)
+    const alRelativo = (e: DeviceOrientationEvent) => aplicar(e, (e as any).absolute === true)
+
     const alGirarPantalla = () => {
       orientRef.current = (screen.orientation?.angle ?? (window as any).orientation ?? 0) as number
     }
     alGirarPantalla()
-    addEventListener('deviceorientation', alOrientar, true)
+
+    /* EL VIGÍA. Si en un segundo y medio no llegó ni un evento, no hay cabeza:
+       se avisa a la casa para que lo diga y ofrezca el dedo. Callarse aquí es
+       dejar a alguien con el aparato puesto pensando que la app se colgó. */
+    const vigia = window.setTimeout(() => {
+      if (llego) return
+      setEstado((s) => ({ ...s, cabeza: false, sinGiro: true }))
+      dispatchEvent(new CustomEvent('ae-visor-sin-giro'))
+    }, 1500)
+
+    addEventListener('deviceorientationabsolute', alAbsoluto as EventListener, true)
+    addEventListener('deviceorientation', alRelativo, true)
     addEventListener('orientationchange', alGirarPantalla)
+    screen.orientation?.addEventListener?.('change', alGirarPantalla)
     return () => {
-      removeEventListener('deviceorientation', alOrientar, true)
+      window.clearTimeout(vigia)
+      removeEventListener('deviceorientationabsolute', alAbsoluto as EventListener, true)
+      removeEventListener('deviceorientation', alRelativo, true)
       removeEventListener('orientationchange', alGirarPantalla)
+      screen.orientation?.removeEventListener?.('change', alGirarPantalla)
     }
   }, [estado.activo, estado.modo, cabeza])
+
+  /* ── EL DEDO, CUANDO NO HAY CABEZA ───────────────────────────────────────
+   * Sin giroscopio (permiso denegado, sin sensor, o un navegador que no
+   * dispara), mirar alrededor se hace arrastrando. Se compone sobre lo mismo
+   * que compondría la cabeza, así que el resto del motor ni se entera de cuál
+   * de los dos está mandando. */
+  useEffect(() => {
+    if (!estado.activo || estado.modo === 'xr' || estado.cabeza) return
+    const el = gl.domElement as HTMLElement
+    let x0 = 0, y0 = 0, yaw = dedo.current.yaw, pitch = dedo.current.pitch, agarra = false
+    const abajo = (e: PointerEvent) => { agarra = true; x0 = e.clientX; y0 = e.clientY
+      yaw = dedo.current.yaw; pitch = dedo.current.pitch }
+    const mueve = (e: PointerEvent) => {
+      if (!agarra) return
+      dedo.current.yaw = yaw - (e.clientX - x0) * 0.0042
+      dedo.current.pitch = Math.max(-1.2, Math.min(1.2, pitch - (e.clientY - y0) * 0.0042))
+      cabeza.setFromEuler(new THREE.Euler(dedo.current.pitch, dedo.current.yaw, 0, 'YXZ'))
+    }
+    const arriba = () => { agarra = false }
+    el.addEventListener('pointerdown', abajo)
+    el.addEventListener('pointermove', mueve)
+    el.addEventListener('pointerup', arriba)
+    el.addEventListener('pointercancel', arriba)
+    return () => {
+      el.removeEventListener('pointerdown', abajo)
+      el.removeEventListener('pointermove', mueve)
+      el.removeEventListener('pointerup', arriba)
+      el.removeEventListener('pointercancel', arriba)
+    }
+  }, [estado.activo, estado.modo, estado.cabeza, cabeza, gl])
 
   // ── el puente con la casa ────────────────────────────────────────────────
   useEffect(() => {

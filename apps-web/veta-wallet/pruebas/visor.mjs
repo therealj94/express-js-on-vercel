@@ -79,7 +79,7 @@ const FINGIR_XR = `
     addEventListener: () => {}, removeEventListener: () => {},
   } });`;
 
-async function abrir({ xr = false, ancho = 1360, alto = 900, movil = false } = {}) {
+async function abrir({ xr = false, ancho = 1360, alto = 900, movil = false, sinGiro = false } = {}) {
   const ctx = await b.newContext({
     viewport: { width: ancho, height: alto },
     hasTouch: movil, isMobile: movil, locale: 'es',
@@ -88,7 +88,36 @@ async function abrir({ xr = false, ancho = 1360, alto = 900, movil = false } = {
   const pag = await ctx.newPage();
   pag.errores = [];
   pag.on('pageerror', (e) => pag.errores.push(String(e)));
-  await pag.addInitScript(`window.localStorage.setItem('veta.sesion', '${JWT()}');
+  await pag.addInitScript(`
+    /* EL PERMISO DE IOS, FINGIDO CON SU REGLA DE VERDAD: solo concede si la
+       llamada sale del propio gesto. Safari mide eso con la «activación
+       transitoria»; aquí se imita con una marca que el primer toque enciende
+       y que cualquier espera apaga. Así la prueba falla exactamente donde
+       fallaba el teléfono. */
+    window.__giro = { pedidas: 0, concedidas: 0, gesto: false };
+    addEventListener('pointerdown', () => {
+      window.__giro.gesto = true;
+      // la activación se pierde en cuanto el hilo respira, como en Safari
+      setTimeout(() => { window.__giro.gesto = false; }, 0);
+    }, true);
+    if (typeof DeviceOrientationEvent !== 'undefined') {
+      DeviceOrientationEvent.requestPermission = () => {
+        window.__giro.pedidas++;
+        if (!window.__giro.gesto) return Promise.reject(new Error('NotAllowedError'));
+        window.__giro.concedidas++;
+        return Promise.resolve('granted');
+      };
+    }
+    ${sinGiro ? `
+    /* Un aparato sin sensor: el objeto existe (el navegador lo declara) pero
+       NUNCA llega un evento. Es el caso más traicionero, porque desde fuera
+       se ve idéntico a uno que funciona. */
+    delete DeviceOrientationEvent.requestPermission;
+    const noHay = (t, fn, o) => { if (/deviceorientation/i.test(t)) return; _add.call(window, t, fn, o); };
+    const _add = window.addEventListener;
+    window.addEventListener = noHay;
+    ` : ''}
+    window.localStorage.setItem('veta.sesion', '${JWT()}');
     window.localStorage.setItem('veta.idioma', 'es');
     ${xr ? FINGIR_XR : ''}
     /* La pantalla completa y el bloqueo de orientación no existen sin gesto de
@@ -254,6 +283,69 @@ console.log('\n── salir: Escape ──────────────�
   }));
   ok('sin errores de página', pag.errores.length === 0, pag.errores.slice(0, 2).join(' · '));
   await pag.context().close();
+}
+
+console.log('\n── el permiso del giroscopio sale DEL GESTO ─────────────────');
+{
+  /* El fallo que esto fija: el permiso se pedía después de una espera de
+     segundo y medio y iOS lo rechazaba, así que la cabeza no movía nada y
+     nadie decía por qué. Se entra desde OTRA vista —el caso que obliga a
+     esperar— y el permiso tiene que salir concedido igual. */
+  const { pag: g } = await abrir();
+  await g.evaluate(() => VETA.vista('actividad'));
+  await g.waitForTimeout(600);
+  /* Un toque de verdad en el botón: es lo único que enciende la activación
+     del navegador, igual que en un teléfono. */
+  await g.evaluate(() => {
+    const b = document.createElement('button');
+    b.id = 'prueba-visor';
+    b.style.cssText = 'position:fixed;left:10px;top:10px;width:120px;height:44px;z-index:9999';
+    b.onclick = () => { VETA.vsMirada(false); VETA.vsEntrar('trescientos60'); };
+    document.body.appendChild(b);
+  });
+  await g.click('#prueba-visor');
+  await g.waitForFunction(() => window.VISOR.activo(), null, { timeout: 30000 });
+  const r = await g.evaluate(() => window.__giro);
+  ok('el permiso se pide una sola vez', r.pedidas === 1, `${r.pedidas} veces`);
+  ok('y sale del gesto, así que lo conceden', r.concedidas === 1,
+     `${r.concedidas} de ${r.pedidas}`);
+  ok('el modo entra igual', await g.evaluate(() => VISOR.modo() === 'trescientos60'));
+  await g.context().close();
+}
+
+console.log('\n── sin giroscopio: se dice y queda el dedo ──────────────────');
+{
+  const { pag: n } = await abrir({ sinGiro: true });
+  await n.evaluate(() => { VETA.vsMirada(false); return VETA.vsEntrar('trescientos60'); });
+  await n.waitForFunction(() => window.VISOR.activo(), null, { timeout: 30000 });
+  /* El vigía tarda segundo y medio en cantar: es a propósito, un giroscopio
+     lento no puede darse por muerto al primer cuadro. */
+  await n.waitForFunction(() => document.body.dataset.visorGiro === 'no',
+    null, { timeout: 9000 });
+  ok('el vigía canta que no hay cabeza', true);
+  ok('y la casa lo dice donde se lee', await n.evaluate(() =>
+    /dedo|finger/i.test(document.querySelector('#visor-capa .vs-pista')?.textContent || '')));
+  ok('el modo NO se cae por eso', await n.evaluate(() => VISOR.activo()));
+
+  /* Y el dedo mueve la vista: es la salida que reemplaza a la cabeza. */
+  const movio = await n.evaluate(async () => {
+    const q = () => window.__AE_VISOR.cabezaQ().map((v) => v.toFixed(3)).join(',');
+    const a = q();
+    const el = document.querySelector('#ae-casa canvas');
+    const r = el.getBoundingClientRect();
+    const ev = (t, x) => el.dispatchEvent(new PointerEvent(t, { bubbles: true,
+      clientX: x, clientY: r.top + r.height / 2, pointerId: 1, pointerType: 'touch' }));
+    ev('pointerdown', r.left + r.width * 0.5);
+    for (let i = 1; i <= 8; i++) ev('pointermove', r.left + r.width * (0.5 + i * 0.04));
+    ev('pointerup', r.left + r.width * 0.82);
+    const t0 = performance.now();
+    while (performance.now() - t0 < 300) await new Promise((s) => requestAnimationFrame(s));
+    return { a, b: q() };
+  });
+  ok('arrastrar el dedo mueve la vista', movio.a !== movio.b,
+     `${movio.a.slice(0, 20)} → ${movio.b.slice(0, 20)}`);
+  ok('sin errores de página', n.errores.length === 0, n.errores.slice(0, 2).join(' · '));
+  await n.context().close();
 }
 
 console.log('\n── cartón: dos ojos y separación ────────────────────────────');

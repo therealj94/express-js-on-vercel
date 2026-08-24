@@ -5256,7 +5256,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = 'e61342909a';
+  const AET_V = '03c63392da';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -5316,15 +5316,26 @@ const VETA = (() => {
 
   async function vsEntrar(modo) {
     if (!window.VISOR) return;
+    /* EL PERMISO DEL GIROSCOPIO, LO PRIMERO Y SIN ESPERAR NADA.
+       iOS solo lo concede si la llamada sale del propio gesto: cualquier
+       await previo —cambiar de vista, preguntar por WebXR— la convierte en
+       una llamada huérfana y Safari la rechaza. Aquí es el toque de la
+       persona, así que aquí se pide. La promesa se guarda y se espera
+       DESPUÉS, cuando ya no importa el gesto. */
+    const giro = modo === 'xr' ? Promise.resolve(true) : VISOR.pedirGiro();
     /* El cielo 3D tiene que estar montado: el visor ES la galaxia. Si la
        persona está en otra vista, se la lleva al Inicio primero. */
     if (vistaActual !== 'nucleo') {
       vista('nucleo');
       await new Promise(r => setTimeout(r, 1400));
     }
+    const hayGiro = await giro;
     try {
       const m = await VISOR.entrar(modo);
-      tele('accion', 'visor.entrar', { modo: m });
+      tele('accion', 'visor.entrar', { modo: m, giro: hayGiro });
+      /* Si el permiso se negó, se dice AHORA y no cuando la persona ya tenga
+         el aparato en la cara preguntándose por qué no se mueve nada. */
+      if (!hayGiro && m !== 'xr') avisar(t('vs.sinGiro'));
       /* Ponerse el visor por primera vez ES pedir la historia: no hay mejor
          momento para contarla que cuando alguien acaba de meterse dentro. */
       genPorVisor();

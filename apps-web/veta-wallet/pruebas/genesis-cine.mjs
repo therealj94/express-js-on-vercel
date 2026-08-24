@@ -73,6 +73,22 @@ console.log('\n── llegar al Inicio NO es pedir la película ─────�
     !document.body.classList.contains('en-cine')));
 }
 
+console.log('\n── pero vive en Ajustes, para quien la quiera ───────────────');
+{
+  /* Que no arranque sola no puede significar que no se encuentre: si la
+     película no tiene puerta, es como si no existiera. */
+  await pag.evaluate(() => VETA.vista('ajustes'));
+  await pag.waitForTimeout(500);
+  ok('su fila está en Ajustes', await pag.evaluate(() =>
+    [...document.querySelectorAll('#lienzo [onclick]')]
+      .some((el) => (el.getAttribute('onclick') || '').includes('tourGenesis'))));
+  ok('y la de la música, al lado', await pag.evaluate(() =>
+    [...document.querySelectorAll('#lienzo [onclick]')]
+      .some((el) => (el.getAttribute('onclick') || '').includes('musicaAlterna'))));
+  await pag.evaluate(() => VETA.vista('nucleo'));
+  await pag.waitForTimeout(1600);
+}
+
 console.log('\n── la tiniebla: oscura de verdad ────────────────────────────');
 {
   await pag.evaluate(() => VETA.tourGenesis('prueba'));

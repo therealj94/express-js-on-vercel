@@ -35,7 +35,7 @@ const VISOR = (() => {
 
   const $ = (s) => document.querySelector(s);
 
-  let estado = { activo: false, modo: null, ojos: 0.064, mirada: true };
+  let estado = { activo: false, modo: null, ojos: 0.064, mirada: true, giro: true };
   let alCambiar = null;
   let salirReloj = null;
 
@@ -66,14 +66,33 @@ const VISOR = (() => {
     return telefono ? 'carton' : 'trescientos60';
   }
 
-  /* El permiso del giroscopio en iOS: hay que pedirlo DETRÁS DE UN GESTO y no
-     se puede pedir dos veces. Si dice que no, el modo sigue existiendo — con
-     el dedo en vez de la cabeza — y se dice así. */
-  async function permisoGiro() {
-    if (typeof DeviceOrientationEvent?.requestPermission !== 'function') return true;
-    try { return (await DeviceOrientationEvent.requestPermission()) === 'granted'; }
-    catch { return false; }
+  /* ── EL PERMISO DEL GIROSCOPIO ────────────────────────────────────────────
+   *
+   * EN IOS ESTO SE PIDE DENTRO DEL GESTO O NO SE PIDE. Safari exige que
+   * `requestPermission()` salga del propio manejador del toque: basta un
+   * `await` a cualquier otra cosa antes —una comprobación de WebXR, una
+   * espera para cambiar de vista— y la llamada se rechaza con NotAllowed. Ese
+   * era exactamente el fallo: se pedía después de una espera de segundo y
+   * medio, iOS decía que no, y la cabeza no movía nada sin que nadie dijera
+   * por qué.
+   *
+   * Por eso vive aparte de entrar(): la casa lo llama DE PRIMERO, pegado al
+   * toque, y el resultado queda guardado para cuando el modo arranque de
+   * verdad. Y se pide UNA vez: iOS no vuelve a preguntar y repetirlo solo
+   * gasta la respuesta guardada. */
+  let permiso = null;              // null = sin preguntar, true/false = respuesta
+  async function pedirGiro() {
+    if (permiso !== null) return permiso;
+    if (typeof DeviceOrientationEvent?.requestPermission !== 'function') {
+      // Android y escritorio no preguntan: si hay sensor, hay sensor
+      permiso = typeof DeviceOrientationEvent !== 'undefined';
+      return permiso;
+    }
+    try { permiso = (await DeviceOrientationEvent.requestPermission()) === 'granted'; }
+    catch { permiso = false; }
+    return permiso;
   }
+  const permisoGiro = pedirGiro;
 
   async function pantallaCompleta() {
     const el = document.documentElement;
@@ -95,12 +114,16 @@ const VISOR = (() => {
     const elegido = modo || modoSugerido(cap);
 
     if (elegido !== 'xr') {
-      await permisoGiro();
+      /* El permiso ya se pidió pegado al toque (pedirGiro). Si nadie lo pidió
+         —una llamada desde una prueba, un camino nuevo— se intenta aquí como
+         red de seguridad, sabiendo que en iOS puede llegar tarde. */
+      if (permiso === null) await pedirGiro();
       await pantallaCompleta();
     }
     await motor.entrar(elegido, { ojos: estado.ojos, mirada: estado.mirada });
 
-    estado = { ...estado, activo: true, modo: elegido };
+    estado = { ...estado, activo: true, modo: elegido, giro: true };
+    delete document.body.dataset.visorGiro;
     document.body.classList.add('en-visor');
     document.body.dataset.visor = elegido;
     pintarCapa();
@@ -140,6 +163,23 @@ const VISOR = (() => {
     // salir de pantalla completa por el gesto del sistema también sale del modo
     if (estado.activo && estado.modo !== 'xr' && !document.fullscreenElement) salir();
   };
+
+  /* SIN CABEZA. El motor avisa cuando el vigía no vio llegar ni un evento de
+     orientación: ahí se marca el modo para que la capa lo diga y la persona
+     sepa que puede mirar con el dedo. */
+  let alSinGiro = null;
+  addEventListener('ae-visor-sin-giro', () => {
+    if (!estado.activo) return;
+    estado.giro = false;
+    document.body.dataset.visorGiro = 'no';
+    const pista = document.querySelector('#visor-capa .vs-pista');
+    if (pista) {
+      const dice = (k, alt) => { try { return typeof t === 'function' ? t(k) : alt; } catch { return alt; } };
+      pista.textContent = dice('vs.sinGiro', '');
+      pista.classList.add('vs-aviso-giro');
+    }
+    alSinGiro?.();
+  });
 
   /* La sexta salida, la que no elige nadie: el visor terminó la sesión por su
      cuenta —alguien se lo quitó, el sistema lo apagó, se acabó la batería—.
@@ -198,7 +238,9 @@ const VISOR = (() => {
   function recentrar() { try { window.__AE_VISOR?.recentrar(); } catch { /* nada */ } }
 
   return { detectar, modoSugerido, entrar, salir, activo, modo, ver, ojos, mirada, recentrar,
-           alCambiar: (fn) => { alCambiar = fn; } };
+           pedirGiro, hayGiro: () => estado.giro !== false,
+           alCambiar: (fn) => { alCambiar = fn; },
+           alSinGiro: (fn) => { alSinGiro = fn; } };
 })();
 
 if (typeof window !== 'undefined') window.VISOR = VISOR;
