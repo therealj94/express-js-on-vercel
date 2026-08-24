@@ -124,33 +124,36 @@ console.log('\n── doble pellizco: abrir ya ───────────
 {
   await p.evaluate(() => VETA.vista('nucleo'));
   await p.waitForTimeout(3200);
+  /* APUNTAR Y PELLIZCAR EN EL MISMO INSTANTE. La cámara deriva sola en el
+     reposo: si el planeta se busca en una visita y el gesto llega en la
+     siguiente, para entonces ya no está bajo ese punto — que es exactamente
+     lo que le pasó a esta prueba cuando el cielo se puso más pesado. Una
+     persona no sufre eso porque la mano SIGUE al planeta con la vista; el
+     arnés lo imita buscando y pellizcando dentro de la misma visita.
+
+     Y EL GESTO SE MIDE, NO LA CARGA DE LA MÁQUINA: las esperas entre
+     pellizcos van con reloj exacto dentro de esa visita, porque un
+     setTimeout bajo dibujo por software convierte 90 ms en 600. */
   const donde = await p.evaluate(() => {
     const dentro = ['wallet', 'chat', 'gid', 'pay', 'ajustes', 'genesis'];
-    for (let x = 300; x < 1340; x += 30) {
+    let d = null;
+    for (let x = 300; x < 1340 && !d; x += 30) {
       for (let y = 120; y < 800; y += 30) {
         const c = window.__AE_MIRAR?.(x, y);
-        if (c && dentro.includes(c.key)) return { x, y, key: c.key };
+        if (c && dentro.includes(c.key)) { d = { x, y, key: c.key }; break; }
       }
     }
-    return null;
+    if (!d) return null;
+    const espera = (ms) => { const t0 = performance.now(); while (performance.now() - t0 < ms); };
+    const punto = (pellizco) => VETA._atPunto({ presente: true, x: d.x, y: d.y, pellizco, escala: 0.2 });
+    punto(false); espera(60);
+    punto(true); espera(90);   // primer pellizco
+    punto(false); espera(140); // el hueco entre los dos
+    punto(true); espera(90);   // segundo pellizco
+    punto(false);
+    return d;
   });
   if (donde) {
-    /* EL GESTO SE MIDE, NO LA CARGA DE LA MÁQUINA. Un doble pellizco depende
-       de CUÁNTO TIEMPO pasa entre los dos, y ni un setTimeout del navegador ni
-       un viaje de ida y vuelta del arnés respetan ese tiempo cuando el cielo
-       3D está dibujando por software: los 90 ms pedidos llegan a ser 600. Se
-       mandan los cuatro eventos en una sola visita, con espera de reloj
-       exacta, y así lo que se prueba es el gesto de una persona y no lo
-       ocupada que estaba la CPU. */
-    await p.evaluate((d) => {
-      const espera = (ms) => { const t0 = performance.now(); while (performance.now() - t0 < ms); };
-      const punto = (pellizco) => VETA._atPunto({ presente: true, x: d.x, y: d.y, pellizco, escala: 0.2 });
-      punto(false); espera(60);
-      punto(true); espera(90);   // primer pellizco
-      punto(false); espera(140); // el hueco entre los dos
-      punto(true); espera(90);   // segundo pellizco
-      punto(false);
-    }, donde);
     /* Se espera el MECANISMO, no un reloj: bajo dibujo por software el viaje
        de entrada tarda lo que tarda, y lo que se comprueba es que ocurre. */
     const abrio = await p.waitForFunction(() =>
