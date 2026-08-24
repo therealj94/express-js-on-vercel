@@ -25,7 +25,7 @@
 //|  inteligente · limpieza de variables globales · log de errores   |
 //+------------------------------------------------------------------+
 #property copyright   "ORO FINAL"
-#property version     "2.40"
+#property version     "2.50"
 #property description "Bot de scalping XAUUSD: confluencia 0-100, gestión 50/50, salida inteligente y protecciones de cuenta"
 
 #include <Trade/Trade.mqh>
@@ -168,6 +168,31 @@ bool NewsBlocked()
          if(InRange(se[0], se[1])) return true;
    }
    return false;
+}
+
+// Minutos hasta el inicio de la próxima killzone
+int MinsToNextKz()
+{
+   datetime now = TimeCurrent();
+   datetime a = StringToTime(InpLdnStart);
+   datetime b = StringToTime(InpNyStart);
+   if(a <= now) a += 86400;
+   if(b <= now) b += 86400;
+   datetime nxt = (a < b) ? a : b;
+   return (int)((nxt - now) / 60);
+}
+
+// Panel de estado en el gráfico cuando el bot está vigilando sin operar.
+// Sin esto el gráfico se ve vacío fuera de horario y parece que el bot no corre.
+void StatusIdle(string motivo)
+{
+   int m = MinsToNextKz();
+   Comment("🥇 ORO FINAL v2.50 · ", _Symbol, " ", EnumToString(_Period),
+           "\n✅ BOT ACTIVO — ", motivo,
+           "\n🕐 Hora del servidor: ", TimeToString(TimeCurrent(), TIME_MINUTES),
+           "\n🔥 Killzones: ", InpLdnStart, "-", InpLdnEnd, "  y  ", InpNyStart, "-", InpNyEnd,
+           "\n⏳ Próxima killzone en ", m / 60, "h ", m % 60, "m",
+           "\n📅 Resultado del día: $", DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY) - dayStartBalance, 2));
 }
 
 bool IsFridayStop()
@@ -565,7 +590,8 @@ int OnInit()
    }
    dayStart = StringToTime("00:00");
    LoadDayBaseline();
-   Print("🥇 ORO FINAL ULTIMATE v2.20 iniciado | ", _Symbol, " ", EnumToString(_Period),
+   StatusIdle("recién iniciado, esperando el primer tick");
+   Print("🥇 ORO FINAL ULTIMATE v2.50 iniciado | ", _Symbol, " ", EnumToString(_Period),
          " | Umbral ", g_thr, InpAggro == 1 ? " (AGRESIVO)" : InpAggro == 2 ? " (TURBO)" : "",
          " | Lote ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
          " | TP2 ", DoubleToString(g_rr2, 1), "R | Baseline $", DoubleToString(dayStartBalance, 2));
@@ -622,11 +648,37 @@ void OnTick()
    GetScores(scL, scS);
    double pL = prevScL, pS_ = prevScS;
    prevScL = scL; prevScS = scS;
-   if(!scoreWarm) { scoreWarm = true; return; }   // primera vela tras el arranque: solo calibrar
+   if(!scoreWarm)
+   {
+      scoreWarm = true;
+      StatusIdle("calibrando la primera vela");
+      return;   // primera vela tras el arranque: solo calibrar
+   }
 
    if(havePos) return;                             // una posición a la vez
-   if(!TradeWindow() || IsFridayStop() || NewsBlocked()) return;
-   if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED) || !MQLInfoInteger(MQL_TRADE_ALLOWED)) return;
+   if(IsFridayStop())
+   {
+      StatusIdle("viernes: cierre de la semana, sin nuevas entradas");
+      return;
+   }
+   if(NewsBlocked())
+   {
+      StatusIdle("ventana de noticias bloqueada");
+      return;
+   }
+   if(!TradeWindow())
+   {
+      StatusIdle("fuera del horario de operación — vigilando");
+      return;
+   }
+   if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED) || !MQLInfoInteger(MQL_TRADE_ALLOWED))
+   {
+      Comment("⚠️ ORO FINAL · TRADING ALGORÍTMICO DESACTIVADO\n",
+              "Activa el botón \"Algo Trading\" (debe estar VERDE) y en\n",
+              "Herramientas → Opciones → Asesores Expertos marca\n",
+              "\"Permitir trading algorítmico\". El bot no puede operar así.");
+      return;
+   }
 
    //── Protecciones
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
@@ -658,7 +710,7 @@ void OnTick()
    bool goShort = scS >= g_thr && scS > scL && pS_ < g_thr;
    if(!goLong && !goShort)
    {
-      Comment("🥇 ORO FINAL v2.20 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
+      Comment("🥇 ORO FINAL v2.50 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
               " (mín. ", g_thr, ")\nHoy: ", nT, "/", g_maxTrades, " ops · ", nL, "/", InpMaxLossesDay,
               " pérdidas | ", KzActive() ? "KILLZONE 🔥" : (TradeWindow() ? "ventana normal" : "fuera de horario"),
               "\nLote: ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
