@@ -110,7 +110,7 @@ console.log('\n── la tiniebla: oscura de verdad ─────────�
      Se comprueba AQUÍ y no en el bucle grande de más abajo, porque para
      entonces ya pasó: un título que dura cuatro segundos no espera a nadie. */
   const titulo = await pag.waitForFunction(() =>
-    /^ORIGEN$/.test((document.querySelector('#gen-letra .gen-centro')?.textContent || '').trim()),
+    /^EL ORIGEN DE TODO$/.test((document.querySelector('#gen-letra .gen-centro')?.textContent || '').trim()),
     null, { timeout: 14000 }).then(() => true).catch(() => false);
   ok('la película se presenta con su título', titulo);
   ok('y el título llega sobre el negro, sin nada encendido detrás',
@@ -183,6 +183,16 @@ console.log('\n── el retroceso que enseña el universo ───────
   const cuando = {};
   const marcar = (k) => { if (cuando[k] === undefined) cuando[k] = Date.now(); };
   let vioProposito2 = false;
+  /* EL FOGONAZO. «Y fue la luz» tiene que OCURRIR, no desvanecerse. Y una vez
+     sola en toda la película: si algo más destella, este deja de significar
+     «acaba de nacer una estrella» y pasa a ser un efecto. */
+  let destelloMax = 0;
+  let destellosVistos = 0;
+  let destelloAntes = 0;
+  /* LA RESPIRACIÓN del sol: una crecida de luz cada cuatro segundos. */
+  let pulsoMin = 9; let pulsoMax = -9;
+  /* Y los dos que no son apps, que se dicen con una frase y no con un lema. */
+  let dijoMinas = false; let dijoDbnx = false;
   while (Date.now() < hasta) {
     const st = await pag.evaluate(() => ({
       r: window.__aeCamera.position.length(),
@@ -191,6 +201,8 @@ console.log('\n── el retroceso que enseña el universo ───────
       prota: window.__AE_PROTA?.() || null,
       opac: window.__AE_CASA_OP || null,
       lluvia: window.__AE_LLUVIA?.() || 1,
+      destello: window.__AE_DESTELLO?.() || 0,
+      pulso: window.__AE_PULSO?.() ?? 0,
       /* Cuánto se aparta la cámara del centro de la galaxia. Mirando al
          centro es cero; mirando a otra cosa —un agujero negro— es grande.
          Es la forma de comprobar que el plano del cielo enseña ALGO y no un
@@ -246,6 +258,15 @@ console.log('\n── el retroceso que enseña el universo ───────
       }
     }
     if (st.lluvia > 1) { vioLluvia = true; masFuera = Math.max(masFuera, st.fuera); }
+    if (st.destello > destelloMax) destelloMax = st.destello;
+    /* Se cuentan los FLANCOS, no las lecturas: un destello dura casi un
+       segundo y aparecería en varias muestras seguidas. */
+    if (st.destello > 0.15 && destelloAntes <= 0.15) destellosVistos++;
+    destelloAntes = st.destello;
+    if (st.pulso < pulsoMin) pulsoMin = st.pulso;
+    if (st.pulso > pulsoMax) pulsoMax = st.pulso;
+    if (/nuestro poder|Minas de metales/i.test(st.txt)) dijoMinas = true;
+    if (/DBNX audita|activos del mundo real/i.test(st.txt)) dijoDbnx = true;
     if (!st.vivo) break;
     await pag.waitForTimeout(700);
   }
@@ -267,8 +288,16 @@ console.log('\n── el retroceso que enseña el universo ───────
   ok('y qué es la fuerza que lo sostiene unido', vioFuerza);
   ok('y que va a seguir uniendo cosas', vioCreciendo);
   /* PROTAGONISMO: cada casa manda en su plano, y las demás se apartan. */
-  ok('cada casa toma el cuadro en su plano', protagonistas.size >= 4,
+  /* LOS DIEZ MUNDOS. Ocho en la fila —el camino que hace una persona por el
+     ecosistema— más MINAS y DBNX, que aparecen dentro del bloque de ORIGEN
+     porque no son sitios adonde se entra: son la respuesta a una pregunta que
+     el relato acaba de abrir. */
+  ok('se presentan los diez mundos', protagonistas.size >= 10,
      `${protagonistas.size}: ${[...protagonistas].join(' ')}`);
+  ok('entre ellos AuCorp, Ordenex y Ordenscan',
+     ['aucorp', 'oxch', 'scan'].every((k) => protagonistas.has(k)));
+  ok('y MINAS y DBNX, cada uno con lo suyo dicho', dijoMinas && dijoDbnx,
+     `minas ${dijoMinas ? 'sí' : 'NO'} · dbnx ${dijoDbnx ? 'sí' : 'NO'}`);
   ok('y las demás se apagan de verdad',
      acompanantesApagados !== null && acompanantesApagados < 0.25,
      acompanantesApagados === null ? 'no se midió' : `la más visible al ${Math.round(acompanantesApagados * 100)}%`);
@@ -288,6 +317,17 @@ console.log('\n── el retroceso que enseña el universo ───────
      cuando.origen !== undefined && cuando.universo !== undefined
      && cuando.origen > cuando.universo,
      cuando.origen === undefined ? 'no se dijo' : 'en su sitio');
+  /* EL FOGONAZO, UNA SOLA VEZ Y FUERTE. */
+  ok('«y fue la luz» destella de verdad', destelloMax > 0.7,
+     `llegó a ${destelloMax.toFixed(2)}`);
+  ok('y destella UNA sola vez en toda la película', destellosVistos === 1,
+     `${destellosVistos} veces`);
+  /* Y EL SOL RESPIRA: no es una luz fija ni un parpadeo, es una crecida cada
+     cuatro segundos. Se comprueba que el valor RECORRA su rango — una luz
+     clavada daría siempre lo mismo. */
+  ok('el sol respira cada cuatro segundos', pulsoMin < 0.25 && pulsoMax > 0.75,
+     `entre ${pulsoMin.toFixed(2)} y ${pulsoMax.toFixed(2)}`);
+
   ok('la historia termina dando un propósito', vioProposito2);
   ok('y pidiendo llevarlo a cada rincón', cuando.rincon !== undefined);
 }

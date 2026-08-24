@@ -187,7 +187,21 @@ function empezar(opciones: Opciones = {}) {
   sim.pelicula = opciones.rotulos === 'escena' ? 2 : 1
   audio.ensure()
 
-  const casas = (opciones.casas ?? ['wallet', 'chat', 'gid', 'pay', 'genesis'])
+  /* ══ QUIÉNES SE PRESENTAN, Y EN QUÉ ORDEN ═════════════════════════════════
+   *
+   * Los mundos que se USAN. El orden no es alfabético ni por antigüedad: es el
+   * camino que hace una persona de verdad por el ecosistema. Se entra con una
+   * identidad, se guarda valor, se cobra, se cambia, se saca a moneda local, se
+   * habla, se comprueba, y al final está la memoria de cómo empezó todo.
+   *
+   * MINAS y DBNX NO están acá a propósito, y no por olvido: no son sitios
+   * adonde se entra. MINAS es el metal que respalda —va con lo que respalda— y
+   * DBNX es dónde se administran las reglas de lo que se emite sobre la cadena
+   * —va con la cadena—. Presentarlos como dos apps más los volvería iconos en
+   * una fila; puestos donde significan algo, cada uno contesta una pregunta que
+   * el relato acaba de abrir. */
+  const casas = (opciones.casas ?? ['gid', 'wallet', 'pay', 'oxch', 'aucorp',
+    'chat', 'scan', 'genesis'])
     .filter((k) => wellRegistry.has(k))
 
   /* ── EL GUION ───────────────────────────────────────────────────────────
@@ -240,12 +254,12 @@ function empezar(opciones: Opciones = {}) {
     /* La tiniebla: el cielo asoma apenas —lo justo para entender que hay algo
        ahí fuera, disperso— y la cámara empieza a acercarse muy despacio. El
        movimiento tiene que notarse solo si uno lo busca. */
-    { clave: 'tiniebla', dura: 7400, mover: { radio: 48, phi: 1.02, giro: 0.16, mira: 0, curva: 'suave' } },
+    { clave: 'tiniebla', dura: 6400, mover: { radio: 48, phi: 1.02, giro: 0.16, mira: 0, curva: 'suave' } },
 
     /* ── II. LA LUZ ────────────────────────────────────────────────────── */
     /* La cámara sigue entrando, más decidida, hacia un centro que todavía está
        vacío. La tensión la hace el movimiento, no el texto. */
-    { clave: 'palabra', dura: 7800, mover: { radio: 30, giro: 0.26, curva: 'entra' } },
+    { clave: 'palabra', dura: 6900, mover: { radio: 30, giro: 0.26, curva: 'entra' } },
     /* Y FUE LA LUZ. El sol nace y la cámara RETROCEDE de golpe, como quien se
        echa atrás ante algo que estalla. Es el único movimiento brusco de toda
        la película, y por eso funciona. */
@@ -259,7 +273,12 @@ function empezar(opciones: Opciones = {}) {
 
     /* ── IV. LOS MUNDOS ────────────────────────────────────────────────── */
     /* Cada uno dueño del cuadro: los demás se apagan (sim.protagonista). */
-    ...casas.map((k) => ({ clave: `casa:${k}`, dura: 5400, casa: k,
+    /* CUATRO NUEVE POR MUNDO. Son ocho seguidos y el mismo tipo de plano: lo
+       que hace que una fila así se sostenga no es que cada uno dure mucho, es
+       que ninguno dure de más. Nombre, una línea, y el siguiente. El vuelo
+       llega al 55% del acto, así que quedan dos segundos largos de casa
+       quieta en cuadro — que es todo lo que hace falta para leer un renglón. */
+    ...casas.map((k) => ({ clave: `casa:${k}`, dura: 4900, casa: k,
       mover: { curva: 'llega' as Curva } })),
 
     /* ── V. EL UNIVERSO ────────────────────────────────────────────────── */
@@ -277,7 +296,15 @@ function empezar(opciones: Opciones = {}) {
     { clave: 'respaldo', dura: 8000, mover: { radio: 17, phi: 0.94, giro: 0.6, curva: 'suave' } },
     /* La cadena. La cámara RODEA el sistema por debajo del plano, pasando por
        delante de los mundos: la imagen de algo que atraviesa todo y lo enhebra. */
+    /* MINAS, aquí. Se acaba de decir «metal que existe y que se pesa», y la
+       pregunta inmediata es de dónde sale ese metal. La respuesta es un mundo
+       que se puede señalar. */
+    { clave: 'casa:minas', dura: 6200, casa: 'minas', mover: { curva: 'llega' as Curva } },
     { clave: 'cadena', dura: 8200, mover: { radio: 24, phi: 1.30, giro: 1.25, curva: 'suave' } },
+    /* DBNX, aquí. Se acaba de decir que hay una cadena propia donde queda
+       escrito todo; DBNX es quien pone las reglas de lo que se emite encima.
+       Va pegado a la cadena porque sin la cadena no significa nada. */
+    { clave: 'casa:dbnx', dura: 6200, casa: 'dbnx', mover: { curva: 'llega' as Curva } },
     /* La fuerza. Sube al plano y se queda: la frase que explica por qué todo
        lo anterior es UNA cosa se dice quieto. */
     { clave: 'fuerza', dura: 8000, mover: { radio: 21, phi: 0.86, giro: 0.4, curva: 'sale' } },
@@ -348,8 +375,11 @@ function empezar(opciones: Opciones = {}) {
       llevarVacio(0, 400)
       anochecer(0, 850)
       sim.auraBrillo = 1.8
+      /* EL FOGONAZO. Va aquí y en ningún otro sitio de la película: si algo
+         más destella, este deja de significar «acaba de nacer una estrella» y
+         pasa a ser un efecto. Se enciende y se apaga solo. */
+      sim.destello = 1
       audio.land()
-      espacio.solHabla(1)
     } else if (a.clave === 'orden') {
       acomodar(0, 5600)
     } else if (a.clave === 'origen') {

@@ -209,14 +209,33 @@ export function Core() {
        enciende lo que todavía no fue dicho. */
     const luzViva = (1 - 0.97 * sim.noche) * (1 - sim.vacio)
     const Vv = V * luzViva
-    const b = (sim.beat + sim.auraBrillo * 0.9 + Vv * 1.1) * (0.03 + 0.97 * luzViva)
+    /* ══ DOS RITMOS, NO UNO ═══════════════════════════════════════════════
+       `beat` es el latido: cincuenta y dos por minuto, corto y seco, el que
+       dice que esto está vivo. `pulso` es la RESPIRACIÓN: una crecida cada
+       cuatro segundos, lenta, que sube en medio segundo y baja en tres y
+       medio. Un solo ritmo se lee como un parpadeo — una luz que se enciende
+       y se apaga. Dos ritmos encimados, uno rápido y uno lento, se leen como
+       algo que está siendo, y esa es toda la diferencia entre una lámpara y
+       un corazón.
+       La respiración pesa MÁS que el latido a propósito: es la que se ve de
+       lejos y la que da el «palpitar» que se busca; el latido es el detalle
+       que aparece cuando uno se queda mirando. */
+    const b = (sim.beat * 0.55 + sim.pulso * 0.85 + sim.auraBrillo * 0.9 + Vv * 1.1)
+      * (0.03 + 0.97 * luzViva)
 
     if (light.current) {
-      light.current.intensity = 86 * (1 + b * 0.75) * (1 - 0.7 * sim.eclipse) * luzViva
+      /* EL DESTELLO. «Y fue la luz» no se desvanece: ocurre. El sol entrega de
+         golpe varias veces su luz y la vuelve a soltar en menos de un segundo;
+         lo que queda detrás es el sol ya encendido. Multiplica en vez de sumar
+         para que el fogonazo arrastre TODO —la luz, los planetas iluminados,
+         el florón— y no solo una capa. */
+      const rayo = 1 + sim.destello * 5.5
+      light.current.intensity = 86 * (1 + b * 0.75) * rayo * (1 - 0.7 * sim.eclipse) * luzViva
       light.current.color.setHex(V > 0.02 ? 0xd8fff0 : 0xfff1cf)
     }
     if (flare.current) {
-      const s = 6.6 * (1 + Math.min(0.5, b) * 0.3) * (0.6 + 0.4 * sim.intro)
+      const s = 6.6 * (1 + Math.min(0.5, b) * 0.3) * (1 + sim.destello * 2.4)
+        * (0.6 + 0.4 * sim.intro)
       flare.current.scale.setScalar(s)
       ;(flare.current.material as THREE.SpriteMaterial).opacity = (0.58 + V * 0.22) * luzViva * (1 - 0.72 * sim.plano)
     }

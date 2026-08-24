@@ -6,6 +6,9 @@ import { useUiStore } from '../state/uiStore'
 import { audio } from '../audio/engine'
 
 const HEART_PERIOD = 60 / 52
+/* Cuatro segundos: los que pidió José. Es también, y no por casualidad, el
+   ritmo de una respiración tranquila de persona. */
+const PULSO_PERIOD = 4
 
 export function Kernel() {
   const lastBeat = useRef(0)
@@ -22,6 +25,16 @@ export function Kernel() {
 
     const phase = (sim.now % HEART_PERIOD) / HEART_PERIOD
     sim.beat = phase < 0.12 ? phase / 0.12 : Math.exp(-(phase - 0.12) * 5.2)
+
+    /* LA RESPIRACIÓN, cada cuatro segundos. Misma forma que el latido pero
+       mucho más lenta: sube en medio segundo y baja en tres y medio. Un seno
+       daría una onda pareja —eso es un parpadeo—; esto es una inhalación. */
+    const fase4 = (sim.now % PULSO_PERIOD) / PULSO_PERIOD
+    sim.pulso = fase4 < 0.14 ? fase4 / 0.14 : Math.exp(-(fase4 - 0.14) * 3.1)
+
+    /* El destello se apaga solo, rápido: lo enciende quien lo dispara y no
+       tiene que acordarse de bajarlo. */
+    if (sim.destello > 0) sim.destello = Math.max(0, sim.destello - dt * 1.9)
     const beatIdx = Math.floor(sim.now / HEART_PERIOD)
     if (beatIdx !== lastBeat.current) {
       lastBeat.current = beatIdx

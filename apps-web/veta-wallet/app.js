@@ -5372,10 +5372,10 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '78e2fd9823';
+  const VETA_V = '053b47a3d6';
   const VETA_FECHA = '2026-08-24';
 
-  const AET_V = 'fe2b48c892';
+  const AET_V = '2975281f56';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -10987,7 +10987,11 @@ const VETA = (() => {
          El título es ORIGEN a propósito. Al empezar se lee como el nombre de
          la historia; al final resulta que era el nombre de la cosa que la
          sostenía todo el tiempo. Es gratis, y es lo que hace que cierre. */
-      titulo: 'ORIGEN',
+      /* EL TÍTULO. «ORIGEN» solo se leía como el nombre de la moneda y
+         adelantaba el final; «EL ORIGEN DE TODO» es el nombre de una historia
+         y promete lo que viene. La moneda llega igual al final, y llega mejor:
+         para entonces la palabra ya significa algo. */
+      titulo: 'EL ORIGEN DE TODO',
       negro: 'Antes de todo, no había nada.',
       tiniebla: 'Ni orden. Ni luz. Solo distancia.',
 
@@ -11000,12 +11004,32 @@ const VETA = (() => {
       orden: 'Y cada mundo encontró su órbita.',
 
       /* ── IV. LOS MUNDOS ───────────────────────────────────────────────── */
+      /* Los lemas son de UNA línea y dicen lo que la cosa HACE, no lo que
+         promete. En pantalla duran cinco segundos: una frase de dos renglones
+         no se termina de leer y una consigna publicitaria no se cree. */
       casas: {
+        gid: ['GENESIS ID', 'Tu identidad, verificada una vez. La llave de todo lo demás.'],
         wallet: ['VETA WALLET', 'Tu valor, en tu mano. Nadie lo custodia por vos.'],
-        chat: ['PULSE2CHAT', 'La palabra que fluye, sellada de punta a punta.'],
-        gid: ['GENESIS ID', 'Tu identidad verificada. Una sola llave para todo.'],
         pay: ['MYTOKENPAY', 'Tu saldo, aceptado en el mostrador de la esquina.'],
+        oxch: ['ORDENEXCHANGE', 'Donde una moneda se vuelve otra, sin salir de casa.'],
+        aucorp: ['AUCORP', 'Tus cuentas en moneda local, en veintiún monedas.'],
+        chat: ['PULSE2CHAT', 'La palabra que fluye, sellada de punta a punta.'],
+        scan: ['ORDENSCAN', 'La cadena por dentro. Comprobar en vez de creer.'],
         genesis: ['GENESIS CORE', 'La memoria del origen: cómo empezó todo esto.'],
+        /* Estos dos no se presentan en la fila de mundos: aparecen dentro del
+           bloque de ORIGEN, cada uno contestando una pregunta que el relato
+           acaba de abrir. Los lemas viven acá igual porque la escena los pinta
+           por el mismo camino. */
+        minas: ['MINAS', 'Metal nuestro, bajo tierra. El respaldo no es una promesa.'],
+        dbnx: ['DBNX', 'Las reglas de lo que se emite. Nace en regla o no nace.'],
+      },
+
+      /* LO QUE DICEN LOS DOS QUE NO SON APPS. Se dice sin adornos y con el
+         dato concreto: lo que hace fuerte a esto no es la palabra «respaldo»,
+         es que las minas existen y son nuestras. */
+      dicho: {
+        minas: 'Minas de metales preciosos,\nen nuestro poder.\nEso es lo que hay debajo de ORIGEN.',
+        dbnx: 'DBNX audita la tokenización\nde activos del mundo real.\nLo que se emite acá, nace en regla.',
       },
 
       /* ── V. EL UNIVERSO ───────────────────────────────────────────────── */
@@ -11044,7 +11068,7 @@ const VETA = (() => {
       cierre: 'EL FUTURO ES ORDEN.',
       saltar: 'Saltar',
     } : {
-      titulo: 'ORIGEN',
+      titulo: 'THE ORIGIN OF EVERYTHING',
       negro: 'Before everything, there was nothing.',
       tiniebla: 'No order. No light. Only distance.',
       palabra: 'And said: “Let there be light.”',
@@ -11052,11 +11076,20 @@ const VETA = (() => {
       palabraOrden: 'And said: “Let there be order.”',
       orden: 'And every world found its orbit.',
       casas: {
+        gid: ['GENESIS ID', 'Your identity, verified once. The key to all the rest.'],
         wallet: ['VETA WALLET', 'Your value, in your hand. Nobody holds it for you.'],
-        chat: ['PULSE2CHAT', 'The word that flows, sealed end to end.'],
-        gid: ['GENESIS ID', 'Your verified identity. One key for everything.'],
         pay: ['MYTOKENPAY', 'Your balance, accepted at the shop on the corner.'],
+        oxch: ['ORDENEXCHANGE', 'Where one currency becomes another, without leaving home.'],
+        aucorp: ['AUCORP', 'Your local-currency accounts, in twenty-one currencies.'],
+        chat: ['PULSE2CHAT', 'The word that flows, sealed end to end.'],
+        scan: ['ORDENSCAN', 'The chain from the inside. Check instead of trust.'],
         genesis: ['GENESIS CORE', 'The memory of the origin: how all of this began.'],
+        minas: ['MINAS', 'Our own metal, underground. The backing is not a promise.'],
+        dbnx: ['DBNX', 'The rules of what gets issued. In order, or not at all.'],
+      },
+      dicho: {
+        minas: 'Precious-metal mines,\nin our own hands.\nThat is what sits underneath ORIGEN.',
+        dbnx: 'DBNX audits the tokenization\nof real-world assets.\nWhat is issued here is issued in order.',
       },
       universo: 'And all around, an entire universe.',
       origen: 'None of this holds itself up in mid-air.',
@@ -11212,8 +11245,17 @@ const VETA = (() => {
         }
         else if (clave === 'creciendo') centro(G.creciendo, true);
         else if (clave.startsWith('casa:')) {
-          const c = G.casas[clave.slice(5)];
+          const k = clave.slice(5);
+          const c = G.casas[k];
           if (c) pie(c[0], c[1]);
+          /* MINAS y DBNX no se presentan como los demás mundos, aunque el
+             plano sea el mismo. Los demás son sitios adonde se entra y con el
+             nombre y una línea alcanza. Estos dos son ARGUMENTOS: contestan
+             una pregunta que el relato acaba de abrir —de dónde sale el metal,
+             quién pone las reglas de lo que se emite— y una pregunta no se
+             contesta con un lema. Así que además del rótulo del mundo, entra
+             una frase en el centro, después de un respiro. */
+          if (G.dicho?.[k]) centro(G.dicho[k], false, 2600);
         }
         else if (clave === 'universo') centro(G.universo);
         else if (clave === 'obra') centro(G.obra);
@@ -11255,7 +11297,15 @@ const VETA = (() => {
         window.__AE_BLINDADO = false;
         if (capa) { capa.classList.add('yendo'); setTimeout(() => capa.remove(), 800); }
       },
-      casas: ['wallet', 'chat', 'gid', 'pay', 'genesis'],
+      /* EL CAMINO QUE HACE UNA PERSONA por el ecosistema, y en ese orden: se
+         entra con una identidad, se guarda valor, se cobra, se cambia, se saca
+         a moneda local, se habla, se comprueba, y al final está la memoria de
+         cómo empezó todo.
+         MINAS y DBNX NO van en esta fila a propósito: no son sitios adonde se
+         entra. La película los pone dentro del bloque de ORIGEN, cada uno
+         contestando una pregunta que el relato acaba de abrir —de dónde sale
+         el metal, quién pone las reglas de lo que se emite. */
+      casas: ['gid', 'wallet', 'pay', 'oxch', 'aucorp', 'chat', 'scan', 'genesis'],
       /* En pantalla los nombres los pone esta capa; dentro del visor no hay
          HTML que valga y los tiene que poner la escena. */
       rotulos: enVisor ? 'escena' : 'html',

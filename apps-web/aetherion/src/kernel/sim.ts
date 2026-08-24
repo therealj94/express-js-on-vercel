@@ -8,6 +8,20 @@ export const sim = {
   time: 0,
   breath: 0,
   beat: 0,
+  /* ══ LA RESPIRACIÓN DEL SOL ═══════════════════════════════════════════════
+     Encima del latido rápido —cincuenta y dos por minuto, el pulso— el sol
+     RESPIRA: una crecida de luz cada cuatro segundos, lenta, que sube rápido y
+     baja despacio. Son dos ritmos distintos a propósito y por eso funciona:
+     el latido dice «está vivo» y la respiración dice «está tranquilo».
+     Un solo ritmo se lee como un parpadeo; dos, como algo que está siendo. */
+  pulso: 0,
+  /* ══ EL DESTELLO ══════════════════════════════════════════════════════════
+     «Y fue la luz» no es una transición: es un acontecimiento. Un fogonazo
+     blanco que llena la vista y se va en menos de un segundo, y detrás queda
+     el sol encendido. Va EN LA ESCENA y no en una capa HTML porque dentro del
+     visor el HTML se pinta una vez sobre las dos mitades y no sirve — y este
+     es justo el momento que no se puede perder con el visor puesto. */
+  destello: 0,
   beatCount: 0,
   intro: 0,
   /* la bienvenida de AURA: sube a 1 al entrar alguien y decae sola */
@@ -122,4 +136,6 @@ if (typeof window !== 'undefined') {
   const w = window as unknown as Record<string, unknown>
   w.__AE_PROTA = () => sim.protagonista
   w.__AE_LLUVIA = () => sim.lluvia
+  w.__AE_DESTELLO = () => sim.destello
+  w.__AE_PULSO = () => sim.pulso
 }

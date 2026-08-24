@@ -5,6 +5,7 @@ import { AgXToneMapping } from 'three'
 import { Kernel, QualityWatcher } from './kernel/Kernel'
 import { Encuadre } from './kernel/Encuadre'
 import { Visor } from './kernel/Visor'
+import { Destello } from './kernel/Destello'
 import { Teatro } from './kernel/Teatro'
 import { Portico } from './kernel/Portico'
 import { Sky } from './sky/Sky'
@@ -77,6 +78,7 @@ export default function App() {
         <Encuadre />
         <Visor />
         <Teatro />
+        <Destello />
         <Portico />
         {/* LA LUZ HACE EL VOLUMEN. Con relleno parejo y fuerte, cada planeta
             quedaba iluminado por igual de lado a lado: sin terminador, sin
