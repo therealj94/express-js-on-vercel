@@ -55,104 +55,25 @@ class AetherAudio {
     this.noiseBuf = buf
   }
 
-  /* EL FONDO ESTELAR.
+  /* SIN FONDO. Aquí hubo un zumbido grave, y después un acorde suspendido con
+   * su polvo de estrellas. Ninguno de los dos gustó, y la razón es más simple
+   * que la mezcla: un sonido que suena SOLO, todo el rato, sin que nadie lo
+   * haya pedido, molesta por definición — por bonito que sea. Cansa en dos
+   * minutos, se pisa con la música de quien está escuchando algo, y no aporta
+   * ninguna información.
    *
-   * Antes era un zumbido grave —44 Hz con su armónico y un sub de 32— que
-   * pesaba como un motor de sala de máquinas: llenaba la habitación y cansaba
-   * en dos minutos. Un cielo no zumba: RESPIRA.
+   * Los efectos se quedan, y esos sí sirven: el clic confirma que la mano
+   * tocó, el zarpe acompaña un viaje, el golpe avisa que algo pasó. Suenan
+   * porque ocurrió algo, que es la única razón decente para que una app haga
+   * ruido.
    *
-   * Lo que hay ahora es un acorde suspendido (la, mi, si, y un la agudo muy
-   * tenue) en registro medio, con cada voz desafinada un pelo respecto de su
-   * pareja: ese roce lentísimo entre las dos es lo que hace que el acorde
-   * ondule solo, sin que nada lo module. Encima, un soplo de aire filtrado
-   * muy agudo —el polvo de estrellas— que sube y baja cada nueve segundos.
-   * Y un pasa-bajos general que le quita el filo: suena LEJOS, que es lo que
-   * tiene que sonar.
-   *
-   * El volumen es la mitad largo del de antes, y sube en ocho segundos: nadie
-   * debería notar cuándo empezó. */
+   * La función sigue existiendo —la llaman los gestos al despertar el audio— y
+   * lo que hace ahora es exactamente eso: dejar el contexto listo para los
+   * efectos, sin arrancar ningún fondo. */
   startAmbient() {
     if (this.started || !this.ctx || !this.master) return
     this.started = true
-    const ctx = this.ctx
-    this.ambientGain = ctx.createGain()
-    this.ambientGain.gain.value = 0
-    this.ambientGain.connect(this.master)
-    this.ambientGain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 8)
-
-    /* La lejanía: todo el fondo pasa por aquí. Sin este filtro el acorde
-       tiene brillo de teclado y se planta delante de la escena. */
-    const lejos = ctx.createBiquadFilter()
-    lejos.type = 'lowpass'
-    lejos.frequency.value = 1100
-    lejos.Q.value = 0.4
-    lejos.connect(this.ambientGain)
-
-    const voz = (freq: number, g: number, tipo: OscillatorType = 'sine') => {
-      const o = ctx.createOscillator()
-      o.type = tipo
-      o.frequency.value = freq
-      const og = ctx.createGain()
-      og.gain.value = g
-      o.connect(og)
-      og.connect(lejos)
-      o.start()
-      return o
-    }
-
-    /* Un acorde suspendido: ni mayor ni menor, así que no dice nada — no
-       alegra ni entristece, solo sostiene. Cada voz con su pareja desafinada
-       para que el conjunto ondule. */
-    const CUERDAS: Array<[number, number]> = [
-      [110, 0.075],      // la grave
-      [110.28, 0.055],   // su pareja, un roce por encima
-      [164.81, 0.05],    // mi
-      [165.2, 0.038],
-      [246.94, 0.03],    // si
-      [329.63, 0.016],   // mi agudo, apenas insinuado
-    ]
-    for (const [f, g] of CUERDAS) voz(f, g)
-
-    /* Un cuerpo grave MUY por debajo, solo para que el fondo tenga suelo. No
-       se oye: se siente. */
-    voz(55, 0.03, 'triangle')
-
-    if (this.noiseBuf) {
-      // el polvo de estrellas: aire agudo, filtrado fino, casi inaudible
-      const src = ctx.createBufferSource()
-      src.buffer = this.noiseBuf
-      src.loop = true
-      const bp = ctx.createBiquadFilter()
-      bp.type = 'bandpass'
-      bp.frequency.value = 5200
-      bp.Q.value = 1.4
-      const ng = ctx.createGain()
-      ng.gain.value = 0.012
-      src.connect(bp)
-      bp.connect(ng)
-      ng.connect(this.ambientGain)
-      src.start()
-
-      // la marea del polvo: nueve segundos de ida y vuelta
-      const lfo = ctx.createOscillator()
-      lfo.frequency.value = 1 / 9
-      const lfoG = ctx.createGain()
-      lfoG.gain.value = 0.008
-      lfo.connect(lfoG)
-      lfoG.connect(ng.gain)
-      lfo.start()
-
-      /* Y una brisa lentísima sobre el filtro del acorde: el cielo se abre y
-         se cierra cada veintitrés segundos. Es el único movimiento grande que
-         tiene el fondo, y por eso no se percibe como un efecto. */
-      const brisa = ctx.createOscillator()
-      brisa.frequency.value = 1 / 23
-      const brisaG = ctx.createGain()
-      brisaG.gain.value = 260
-      brisa.connect(brisaG)
-      brisaG.connect(lejos.frequency)
-      brisa.start()
-    }
+    // el contexto queda despierto; el cielo se queda callado
   }
 
   setVolume(v: number) {

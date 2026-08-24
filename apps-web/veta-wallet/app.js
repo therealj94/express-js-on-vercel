@@ -1155,6 +1155,8 @@ const VETA = (() => {
       cargarTodo();
       viajando = true;
       const aterrizarLlave = () => {
+        // entrar con la frase es entrar igual: se llega al Inicio
+        vistaActual = 'nucleo';
         viajando = false;
         if (!sesion) return;
         ir('app');
@@ -1368,6 +1370,16 @@ const VETA = (() => {
       cargarTodo();
       const aterrizar = () => {
         viajando = false;
+        /* ENTRAR ES LLEGAR AL INICIO. La dirección conserva la última vista de
+           la sesión anterior (#ajustes, #billetera…), y eso está bien para una
+           RECARGA: quien refresca vuelve a donde estaba. Pero cruzar la puerta
+           con usuario y contraseña es otra cosa: del otro lado está la galaxia,
+           que es lo que el vuelo de la cámara acaba de prometer. Aterrizar en
+           Ajustes rompía el viaje entero.
+           Las intenciones de verdad —un cobro, una invitación de chat, una
+           casa del ecosistema esperando su llave— se atienden más abajo y
+           pisan esto con toda la razón. */
+        vistaActual = 'nucleo';
         /* Si la sesión murió DURANTE el vuelo (un 401 en plena carga cierra
            la sesión y devuelve a la puerta), aterrizar en la app sería meter
            a la persona a un cascarón vacío: el aviso de «volvé a entrar» ya
@@ -1461,6 +1473,11 @@ const VETA = (() => {
        dieciseis digitos que no son suyos. */
     secretoTarjeta = null; volteada = false; tokenAbierto = null;
     vistaActual = 'nucleo';
+    /* Y la DIRECCIÓN también vuelve a cero. Sin esto, el #ajustes de la sesión
+       que se cierra queda en la barra y el siguiente que entre —o esta misma
+       persona— aterriza ahí en vez de en el Inicio. */
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch { /* un navegador sin history no rompe la salida */ }
     /* El chat se va entero con su dueño: la lista de conversaciones de alguien
        no es lo primero que tiene que ver la persona siguiente. */
     chatParar();
@@ -5129,7 +5146,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = '1694a14b87';
+  const AET_V = '9d75f40f5c';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -11425,20 +11442,40 @@ const VETA = (() => {
   /* La frase del velo, palabra por palabra y con la última en oro. Se arma
      aquí y no en el HTML para hablar el idioma de la persona; el HTML trae
      el español plano de respaldo por si este código no llega a correr. */
+  /* CUÁNTO TARDA LA FRASE EN ESTAR ENTERA. Se calcula aquí y lo usa quien
+     decide cuándo irse: la frase y la salida dejan de ser dos relojes
+     separados que se contradicen. */
+  const VELO_PASO = 0.15;      // segundos entre palabra y palabra
+  const VELO_INICIO = 0.3;     // cuándo entra la primera
+  const VELO_ANIM = 0.75;      // lo que dura la aparición de cada una (el CSS manda)
+  const veloDura = () => {
+    const n = t('velo.frase').split(' ').length;
+    return (VELO_INICIO + (n - 1) * VELO_PASO + VELO_ANIM) * 1000;
+  };
+
   function veloFrase() {
     const f = $('#velo-og .velo-frase');
     if (!f) return;
     const palabras = t('velo.frase').split(' ');
     f.innerHTML = palabras.map((p, i) =>
       `<span class="${i === palabras.length - 1 ? 'oro' : ''}"
-             style="animation-delay:${(0.45 + i * 0.3).toFixed(2)}s">${esc(p)}</span>`).join(' ');
+             style="animation-delay:${(VELO_INICIO + i * VELO_PASO).toFixed(2)}s">${esc(p)}</span>`).join(' ');
   }
 
   function veloFuera(conSesion) {
     const velo = $('#velo-og');
     if (!velo) return;
     const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const espera = quieto ? 0 : (conSesion ? 700 : 2450);
+    /* LA FRASE SE LEE ENTERA, SIEMPRE. Antes, quien ya tenía sesión veía el
+       velo irse a los setecientos milisegundos: la frase entra palabra por
+       palabra y para entonces solo había aparecido la primera. Se leía «El» y
+       se cerraba, que es peor que no poner frase. Ahora la salida NUNCA es
+       antes de que la frase esté completa; el respiro corto de quien vuelve
+       sigue siendo corto, pero cuenta desde ahí. */
+    const completa = veloDura();
+    const espera = quieto ? 0
+      : conSesion ? completa + 320
+      : Math.max(2450, completa + 900);
     setTimeout(() => {
       velo.classList.add('yendo');
       setTimeout(() => velo.remove(), 640);
@@ -11585,6 +11622,10 @@ const VETA = (() => {
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
            pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,
            _bienvenidaGalaxia: (v) => auraBienvenidaGalaxia(v),
+           /* El aterrizaje del login, tal cual: la prueba comprueba que entrar
+              siempre deja a la persona en el Inicio, aunque la dirección
+              apuntara a otra vista. */
+           _aterrizar: () => { vistaActual = 'nucleo'; ir('app'); },
            auraBienFin, auraBienToca, auraAyuda,
            // La bienvenida del ecosistema: sale sola la primera vez y se puede
            // volver a abrir desde Ajustes.

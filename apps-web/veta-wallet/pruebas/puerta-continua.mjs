@@ -93,6 +93,36 @@ console.log('\n── entrar es un vuelo, no un corte ────────�
   ok('el umbral quedó atrás', !est.puerta);
 }
 
+console.log('\n── entrar aterriza en el INICIO, venga de donde venga ───────');
+{
+  /* La dirección conserva la última vista de la sesión anterior. Eso está bien
+     para una recarga —quien refresca vuelve a donde estaba— pero cruzar la
+     puerta con usuario y contraseña es otra cosa: del otro lado está la
+     galaxia, que es lo que el vuelo de la cámara acaba de prometer. Entrar y
+     caer en Ajustes rompía el viaje entero. */
+  ok('el vuelo dejó a la persona en el Inicio', await p.evaluate(() =>
+    VETA.dondeEstoy()) === 'nucleo', await p.evaluate(() => VETA.dondeEstoy()));
+
+  // y ahora el caso que falló de verdad: la dirección apuntando a otra vista
+  await p.evaluate(() => VETA.vista('ajustes'));
+  await p.waitForTimeout(900);
+  const hash = await p.evaluate(() => location.hash);
+  await p.evaluate(() => {
+    VETA.salir();
+  });
+  await p.waitForTimeout(1400);
+  await p.evaluate(() => {
+    const tk = btoa(JSON.stringify({ sub: 'p1', exp: Math.floor(Date.now() / 1000) + 9999 }));
+    VETA._sesion({ token: `x.${tk}.y`, correo: 'p@x.com', nombre: 'Medardo', direccion: '0x' + '1'.repeat(40) });
+    VETA._identidad({ estado: 'verificada' });
+    VETA._aterrizar?.();
+  });
+  await p.waitForTimeout(1800);
+  ok('tras estar en Ajustes y volver a entrar, aterriza en el Inicio',
+     await p.evaluate(() => VETA.dondeEstoy()) === 'nucleo',
+     `venía de ${hash} · quedó en ${await p.evaluate(() => VETA.dondeEstoy())}`);
+}
+
 console.log('\n── la bienvenida ocurre EN la galaxia ───────────────────────');
 {
   /* Antes, entrar terminaba en un cartel negro a pantalla completa que tapaba
@@ -219,10 +249,13 @@ console.log('\n── GENESIS CORE: la memoria viva ─────────�
     !document.getElementById('gc-hoja') && !window.CEREBRO_OG?.mando()?.elegida()));
 }
 
-console.log('\n── salir aleja, no corta ────────────────────────────────────');
+console.log('\n── salir aleja y suelta el sistema ──────────────────────────');
 {
   await p.evaluate(() => VETA.vista('nucleo'));
   await p.waitForTimeout(2600);
+  const acomodoDentro = await p.evaluate(() => AETHERION.acomodo());
+  ok('dentro de la casa el sistema está en formación', acomodoDentro < 0.05,
+     acomodoDentro.toFixed(2));
   await p.evaluate(() => VETA.salir());
   await p.waitForTimeout(1200);
   const est = await p.evaluate(() => ({
@@ -235,6 +268,14 @@ console.log('\n── salir aleja, no corta ────────────
   ok('y la cámara se aleja de vuelta al umbral', await p.waitForFunction((l) =>
     window.__aeCamera.position.length() > l, lejos, { timeout: 20000, polling: 300 })
     .then(() => true).catch(() => false));
+  /* Y SE SUELTA OTRA VEZ: salir no es solo alejar la cámara, es que el sistema
+     vuelva a estar disperso como estaba en el umbral. */
+  const soltado = await p.waitForFunction(() => AETHERION.acomodo() > 0.9,
+    null, { timeout: 12000, polling: 250 }).then(() => true).catch(() => false);
+  ok('y los mundos se sueltan como en el umbral', soltado,
+     `acomodo ${(await p.evaluate(() => AETHERION.acomodo())).toFixed(2)}`);
+  ok('la dirección queda limpia para el próximo que entre',
+     await p.evaluate(() => !location.hash), await p.evaluate(() => location.hash || '(vacía)'));
   ok('sin errores de página en todo el viaje', p.errores.length === 0,
      p.errores.slice(0, 2).join(' · '));
 }

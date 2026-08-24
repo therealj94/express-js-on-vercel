@@ -113,7 +113,12 @@ function puerta() {
   acomodar(1, 1600)
 }
 
-;(window as any).AETHERION = { montar, desmontar, exhalar, entrar, puerta }
+/* Para que la casa pueda comprobar lo que ve: en qué punto está el acomodo
+   (1 = suelto, 0 = en formación). Lo usa la prueba de la puerta. */
+;(window as any).AETHERION = {
+  montar, desmontar, exhalar, entrar, puerta,
+  acomodo: () => sim.acomodo,
+}
 
 refrescarCasas()
 const solo = document.getElementById('root')

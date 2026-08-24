@@ -947,7 +947,16 @@ const BANCA = (() => {
         return conCalma(() => ir('inicio'));
       } catch (e) {
         cargando = false;
-        return conCalma(() => avisar(e.message, true));
+        /* CUANDO LA PUERTA NO PUEDE ABRIR, SE DICE POR QUÉ. Si el API no logra
+           hablar con Genesis, «No se pudo comprobar el acceso» deja a la
+           persona sin saber si el problema es suyo, si escribió mal algo o si
+           tiene que volver. Esto no es culpa de nadie que esté del lado de
+           acá: es una conexión de la casa que falta terminar, y decirlo así
+           ahorra el intento número siete. */
+        const msg = e.codigo === 'GENESIS_NO_DISPONIBLE'
+          ? 'La puerta con Genesis ID todavía no termina de conectarse de este lado. No es culpa tuya y no hace falta que hagas nada: volvé a intentar en un rato.'
+          : e.message;
+        return conCalma(() => avisar(msg, true));
       }
     }
 
