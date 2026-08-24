@@ -127,25 +127,45 @@ console.log('\n── el cursor, el toque y el agarre ────────�
   ok('el agarre desplaza el contenido con la mano', scroll > 40, `${scroll}px`);
   ok('y un agarre con movimiento NO dispara un toque', await pag.evaluate(() => window._toques) === 1);
 
-  /* La mirada NO aplica a botones comunes: mirar fijo un botón de dinero no
-     puede apretarlo. Se apunta un botón cualquiera un buen rato y el contador
-     no se mueve. */
-  const miradaComun = await pag.evaluate(async () => {
-    const btn = document.createElement('button');
-    btn.id = 'at-comun';
-    btn.style.cssText = 'position:fixed;left:500px;top:500px;width:90px;height:40px;z-index:5';
-    btn.onclick = () => { window._toques++; };
-    document.body.appendChild(btn);
-    for (let i = 0; i < 12; i++) {
-      VETA._atPunto({ presente: true, x: 540 + (i % 2), y: 518, pellizco: false });
-      await new Promise(r => setTimeout(r, 110));
+  /* LA REGLA CAMBIÓ y la prueba cambia con ella: la mirada ahora abre
+     CUALQUIER botón común — José no podía cerrar el cerebro con la mano y
+     eso era esta regla vieja estorbando. Lo que sigue prohibido es la plata:
+     un botón de dinero no se aprieta con la mirada, jamás. Las dos caras se
+     comprueban con el mismo mecanismo. */
+  const mirada = await pag.evaluate(async () => {
+    window._toques = 0;
+    const comun = document.createElement('button');
+    comun.style.cssText = 'position:fixed;left:500px;top:500px;width:90px;height:40px;z-index:5';
+    comun.onclick = () => { window._toques++; };
+    document.body.appendChild(comun);
+    // sostener la mirada con reloj de pared: bajo carga, 12×110ms de setTimeout no llegan al dwell
+    const t0 = performance.now();
+    while (performance.now() - t0 < 2600) {
+      VETA._atPunto({ presente: true, x: 540 + (Math.random() > 0.5 ? 1 : 0), y: 518, pellizco: false });
+      await new Promise(r => requestAnimationFrame(r));
     }
-    const t = window._toques;
-    btn.remove();
+    const comunToques = window._toques;
+    comun.remove();
     VETA._atPunto({ presente: false });
-    return t;
+
+    window._toques = 0;
+    const plata = document.createElement('button');
+    plata.style.cssText = 'position:fixed;left:500px;top:500px;width:90px;height:40px;z-index:5';
+    plata.setAttribute('onclick', "VETA.vista('enviar')");
+    plata.addEventListener('click', () => { window._toques++; });
+    document.body.appendChild(plata);
+    const t1 = performance.now();
+    while (performance.now() - t1 < 2600) {
+      VETA._atPunto({ presente: true, x: 540 + (Math.random() > 0.5 ? 1 : 0), y: 518, pellizco: false });
+      await new Promise(r => requestAnimationFrame(r));
+    }
+    const plataToques = window._toques;
+    plata.remove();
+    VETA._atPunto({ presente: false });
+    return { comunToques, plataToques };
   });
-  ok('mirar fijo un botón común NO lo aprieta', miradaComun === 1, `toques ${miradaComun}`);
+  ok('mirar fijo un botón común SÍ lo aprieta', mirada.comunToques >= 1, `toques ${mirada.comunToques}`);
+  ok('y un botón de DINERO, jamás', mirada.plataToques === 0, `toques ${mirada.plataToques}`);
 }
 
 console.log('\n── el Núcleo es galaxia ─────────────────────────────────────');
