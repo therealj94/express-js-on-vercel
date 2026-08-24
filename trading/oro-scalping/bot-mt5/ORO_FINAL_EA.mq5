@@ -25,7 +25,7 @@
 //|  inteligente · limpieza de variables globales · log de errores   |
 //+------------------------------------------------------------------+
 #property copyright   "ORO FINAL"
-#property version     "2.50"
+#property version     "2.60"
 #property description "Bot de scalping XAUUSD: confluencia 0-100, gestión 50/50, salida inteligente y protecciones de cuenta"
 
 #include <Trade/Trade.mqh>
@@ -187,7 +187,7 @@ int MinsToNextKz()
 void StatusIdle(string motivo)
 {
    int m = MinsToNextKz();
-   Comment("🥇 ORO FINAL v2.50 · ", _Symbol, " ", EnumToString(_Period),
+   Comment("🥇 ORO FINAL v2.60 · ", _Symbol, " ", EnumToString(_Period),
            "\n✅ BOT ACTIVO — ", motivo,
            "\n🕐 Hora del servidor: ", TimeToString(TimeCurrent(), TIME_MINUTES),
            "\n🔥 Killzones: ", InpLdnStart, "-", InpLdnEnd, "  y  ", InpNyStart, "-", InpNyEnd,
@@ -591,7 +591,7 @@ int OnInit()
    dayStart = StringToTime("00:00");
    LoadDayBaseline();
    StatusIdle("recién iniciado, esperando el primer tick");
-   Print("🥇 ORO FINAL ULTIMATE v2.50 iniciado | ", _Symbol, " ", EnumToString(_Period),
+   Print("🥇 ORO FINAL ULTIMATE v2.60 iniciado | ", _Symbol, " ", EnumToString(_Period),
          " | Umbral ", g_thr, InpAggro == 1 ? " (AGRESIVO)" : InpAggro == 2 ? " (TURBO)" : "",
          " | Lote ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
          " | TP2 ", DoubleToString(g_rr2, 1), "R | Baseline $", DoubleToString(dayStartBalance, 2));
@@ -710,7 +710,7 @@ void OnTick()
    bool goShort = scS >= g_thr && scS > scL && pS_ < g_thr;
    if(!goLong && !goShort)
    {
-      Comment("🥇 ORO FINAL v2.50 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
+      Comment("🥇 ORO FINAL v2.60 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
               " (mín. ", g_thr, ")\nHoy: ", nT, "/", g_maxTrades, " ops · ", nL, "/", InpMaxLossesDay,
               " pérdidas | ", KzActive() ? "KILLZONE 🔥" : (TradeWindow() ? "ventana normal" : "fuera de horario"),
               "\nLote: ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
@@ -781,7 +781,24 @@ void OpenTrade(bool isLong, double px, double sl, double minStop, double atr, do
    double lot = RiskLot(risk, isLong, px);
    if(lot <= 0)
    {
-      Print("ORO FINAL: el riesgo configurado no alcanza el lote mínimo — entrada omitida");
+      // Diagnóstico completo: te dice EXACTAMENTE qué te falta para poder operar
+      double dTickVal  = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+      double dTickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+      double dVmin     = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+      double dEq       = AccountInfoDouble(ACCOUNT_EQUITY);
+      double dLossMin  = (dTickSize > 0) ? risk / dTickSize * dTickVal * dVmin : 0;   // $ que arriesga el lote mínimo
+      double dNeedPct  = (dEq > 0) ? dLossMin / dEq * 100.0 : 0;
+      double dNeedEq   = (g_risk > 0) ? dLossMin / (g_risk / 100.0) : 0;
+      string dMsg = InpLotMode == 1
+         ? StringFormat("⚠️ ORO FINAL: entrada omitida — tu lote fijo (%.2f) es menor que el mínimo del broker (%.2f). Súbelo a %.2f.",
+                        InpFixedLot, dVmin, dVmin)
+         : StringFormat("⚠️ ORO FINAL: entrada omitida — el %.2f%% de riesgo no alcanza el lote mínimo.\n"
+                        "   SL de esta señal: $%.2f por onza | lote mínimo %.2f = arriesga $%.2f\n"
+                        "   Tu presupuesto de riesgo: $%.2f (equity $%.2f × %.2f%%)\n"
+                        "   SOLUCIÓN: sube el riesgo a %.2f%% o más, o usa una cuenta con equity de $%.0f+",
+                        g_risk, risk, dVmin, dLossMin, dEq * g_risk / 100.0, dEq, g_risk, dNeedPct, dNeedEq);
+      Print(dMsg);
+      Comment(dMsg);
       return;
    }
 
