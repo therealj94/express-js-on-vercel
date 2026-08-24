@@ -29,6 +29,7 @@ const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium',
 
 async function entrar(ctx) {
   const p = await ctx.newPage();
+  await p.addInitScript("localStorage.setItem('veta.genesis.visto','1')");
   p.errores = [];
   p.on('pageerror', (e) => p.errores.push(String(e)));
   await p.route('**/herokuapp.com/**', (r) => r.fulfill({ status: 200, json: {} }));
@@ -173,6 +174,7 @@ console.log('\n── la red de seguridad: sin bundle, el cerebro clásico ─�
 {
   const c2 = await b.newContext({ viewport: { width: 1360, height: 900 }, locale: 'es' });
   const q = await c2.newPage();
+  await q.addInitScript("localStorage.setItem('veta.genesis.visto','1')");
   q.on('pageerror', () => {});
   await q.route('**/herokuapp.com/**', (r) => r.fulfill({ status: 200, json: {} }));
   await q.route('**/aetherion/**', (r) => r.abort());     // el bundle "no existe"

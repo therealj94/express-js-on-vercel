@@ -32,6 +32,7 @@ const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium',
 
 async function entrar(ctx) {
   const p = await ctx.newPage();
+  await p.addInitScript("localStorage.setItem('veta.genesis.visto','1')");
   p.errores = [];
   p.on('pageerror', (e) => p.errores.push(String(e)));
   await p.route('**/herokuapp.com/**', (r) => r.fulfill({ status: 200, json: {} }));

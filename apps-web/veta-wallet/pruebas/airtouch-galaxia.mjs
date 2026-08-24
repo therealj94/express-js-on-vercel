@@ -31,6 +31,8 @@ const ok = (q, c, x = '') => { console.log(`${c ? '  ok  ' : ' FALLA'}  ${q}${x 
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium',
   args: ['--no-sandbox', '--enable-unsafe-swiftshader'] });
 const p = await (await b.newContext({ viewport: { width: 1360, height: 900 }, locale: 'es' })).newPage();
+// esta prueba mide los gestos, no el tour: la historia queda como ya contada
+await p.addInitScript("localStorage.setItem('veta.genesis.visto','1')");
 const errores = [];
 p.on('pageerror', (e) => errores.push(String(e)));
 await p.route('**/herokuapp.com/**', (r) => r.fulfill({ status: 200, json: {} }));
