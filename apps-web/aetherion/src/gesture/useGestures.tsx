@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { useThree } from '@react-three/fiber'
 import { sim } from '../kernel/sim'
 import { rig } from '../kernel/rig'
+import { MIRADA, rayoMirada } from '../kernel/mirada'
 import { transit } from '../transit/transit'
 import { wellRegistry, WELL_DEFS } from '../sky/Wells'
 import { useUiStore } from '../state/uiStore'
@@ -51,8 +52,7 @@ export function GestureLayer() {
       return raycaster.ray.intersectsSphere(esfera)
     }
 
-    const pickWell = (x: number, y: number): string | null => {
-      raycaster.setFromCamera(toNdc(x, y), camera)
+    const delRayo = (): string | null => {
       const targets: THREE.Object3D[] = []
       wellRegistry.forEach((h) => targets.push(h.hit))
       const hits = raycaster.intersectObjects(targets, false)
@@ -61,6 +61,20 @@ export function GestureLayer() {
         if (id) return id
       }
       return null
+    }
+
+    const pickWell = (x: number, y: number): string | null => {
+      raycaster.setFromCamera(toNdc(x, y), camera)
+      return delRayo()
+    }
+
+    /* La misma pregunta, pero desde los ojos: es la que vale con el visor
+       puesto. Ver kernel/mirada.ts. */
+    const pickRayo = (): string | null => {
+      rayoMirada(camera, raycaster.ray)
+      raycaster.near = 0
+      raycaster.far = Infinity
+      return delRayo()
     }
 
     const clearLong = () => {
@@ -253,10 +267,45 @@ export function GestureLayer() {
     const w = window as any
     w.__AE_MIRAR = (x: number, y: number) => {
       if (useUiStore.getState().activeId || transit.active) return null
-      const id = pickWell(x, y)
+      /* CON EL VISOR PUESTO NO SE PREGUNTA POR COORDENADAS.
+       *
+       * La pantalla está partida en dos mitades, una por ojo, así que «el
+       * centro de la pantalla» no es el centro de la vista de nadie: cae en la
+       * juntura, entre los dos ojos. Y peor: proyectar por la cámara de la
+       * escena ignora la cabeza, que es justo lo que mueve la vista dentro del
+       * visor. Las dos cosas juntas daban una puntería que señalaba un planeta
+       * y abría otro.
+       *
+       * Con el visor puesto la pregunta correcta es geométrica: el rayo que
+       * sale de los ojos hacia adelante, y qué se cruza en su camino. */
+      const id = MIRADA.activa ? pickRayo() : pickWell(x, y)
       if (!id) return null
       const def = WELL_DEFS.find((d) => d.key === id)
       return { key: id, nombre: def?.name || id }
+    }
+    /* POR QUÉ LA PUNTERÍA NO ENCUENTRA NADA. Con el visor puesto no hay forma
+       de mirar esto por la pantalla, y «no encuentra» tiene cuatro causas muy
+       distintas: hay una casa abierta, hay un vuelo en curso, no hay blancos
+       registrados, o el rayo apunta a un sitio vacío. Distinguirlas a ojo es
+       imposible; aquí se dicen. */
+    w.__AE_DIAG_PICK = () => {
+      const st3 = useUiStore.getState()
+      rayoMirada(camera, raycaster.ray)
+      raycaster.near = 0
+      raycaster.far = Infinity
+      const targets: THREE.Object3D[] = []
+      wellRegistry.forEach((h) => targets.push(h.hit))
+      const hits = raycaster.intersectObjects(targets, false)
+      return {
+        casaAbierta: st3.activeId || null,
+        volando: transit.active,
+        blancos: targets.length,
+        visibles: targets.filter((t) => t.visible).length,
+        choques: hits.length,
+        primero: (hits[0]?.object.userData as { wellId?: string })?.wellId || null,
+        desde: raycaster.ray.origin.toArray().map((n) => Math.round(n * 10) / 10),
+        hacia: raycaster.ray.direction.toArray().map((n) => Math.round(n * 100) / 100),
+      }
     }
     w.__AE_RESALTAR = (id: string | null) => {
       const st2 = useUiStore.getState()

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
+import { poseMirada } from './mirada'
 
 /* EL PÓRTICO · lo primero que se ve con el visor puesto.
  *
@@ -29,6 +30,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 export type ModoPortico = 'inicio' | 'salir' | null
 
 const DWELL = 1500      // más largo que en pantalla: la cabeza tiembla
+const GRACIA = 1200     // lo que tarda alguien en acomodarse el aparato
 
 function pintarBoton(texto: string, sub: string): THREE.CanvasTexture {
   const W = 1024
@@ -80,12 +82,17 @@ function pintarBoton(texto: string, sub: string): THREE.CanvasTexture {
 
 export function Portico() {
   const { camera } = useThree()
+  /* La cámara por referencia: el puente de arriba se monta UNA vez y tiene que
+     ver la de ahora, no la que había en el primer dibujado. */
+  const camaraRef = useRef(camera)
+  camaraRef.current = camera
   const [modo, setModo] = useState<ModoPortico>(null)
   const [textos, setTextos] = useState({ boton: 'INICIAR', sub: 'Sostené la mirada' })
   const grupo = useRef<THREE.Group>(null)
   const aro = useRef<THREE.Mesh>(null)
   const mirando = useRef(0)
   const hecho = useRef(false)
+  const desde = useRef(0)
   // el modo, por referencia: el puente se monta una vez y tiene que ver el de ahora
   const modoRef = useRef<ModoPortico>(null)
 
@@ -98,12 +105,40 @@ export function Portico() {
       if (boton) setTextos({ boton, sub: sub || '' })
       mirando.current = 0
       hecho.current = false
+      /* UN RESPIRO AL APARECER. Ponerse el visor es un momento torpe —la
+         correa, el enfoque, mirar alrededor—, y un botón que ya está contando
+         desde el primer cuadro se aprieta en medio de todo eso. Durante este
+         rato el botón se ve, pero no cuenta. */
+      desde.current = performance.now()
     }
     w.__AE_PORTICO_MODO = () => modoRef.current
+    /* DÓNDE ESTÁ EL BOTÓN, para que una prueba pueda comprobar lo que una foto
+       no distingue: que siga delante de la cara cuando la cabeza se gira. Si se
+       queda atrás no hay manera de empezar la historia ni de salir del visor, y
+       desde fuera eso se ve exactamente igual que todo bien. */
+    w.__AE_PORTICO_SITIO = () => {
+      const g = grupo.current
+      if (!g || !modoRef.current) return null
+      poseMirada(camaraRef.current, sPos, sQuat)
+      sHacia.copy(g.position).sub(sPos)
+      const dist = sHacia.length()
+      sFrente.set(0, 0, -1).applyQuaternion(sQuat)
+      const cos = sHacia.normalize().dot(sFrente)
+      const grados = Math.round((Math.acos(Math.max(-1, Math.min(1, cos))) * 180) / Math.PI)
+      return {
+        modo: modoRef.current,
+        dist: Math.round(dist * 10) / 10,
+        grados,
+        // «delante» de verdad: al alcance y dentro del cono cómodo de la vista
+        delante: dist > 0.8 && dist < 3.5 && grados < 30,
+      }
+    }
     return () => {
       if (w.__AE_PORTICO) delete w.__AE_PORTICO
       if (w.__AE_PORTICO_MODO) delete w.__AE_PORTICO_MODO
+      if (w.__AE_PORTICO_SITIO) delete w.__AE_PORTICO_SITIO
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   modoRef.current = modo
@@ -117,6 +152,16 @@ export function Portico() {
   const frente = useMemo(() => new THREE.Vector3(), [])
   const plano = useMemo(() => new THREE.Vector3(), [])
   const arriba = useMemo(() => new THREE.Vector3(0, 1, 0), [])
+  const ojoPos = useMemo(() => new THREE.Vector3(), [])
+  const ojoQuat = useMemo(() => new THREE.Quaternion(), [])
+  const haciaBoton = useMemo(() => new THREE.Vector3(), [])
+  const dirMeta = useMemo(() => new THREE.Vector3(), [])
+  const dirSuave = useMemo(() => new THREE.Vector3(), [])
+  // los del puente de diagnóstico, aparte de los del dibujo
+  const sPos = useMemo(() => new THREE.Vector3(), [])
+  const sQuat = useMemo(() => new THREE.Quaternion(), [])
+  const sHacia = useMemo(() => new THREE.Vector3(), [])
+  const sFrente = useMemo(() => new THREE.Vector3(), [])
   const listo = useRef(false)
 
   useFrame((_, dt) => {
@@ -132,29 +177,61 @@ export function Portico() {
     g.visible = true
     mat.opacity = Math.min(1, mat.opacity + dt * 2.2)
 
-    /* EL BOTÓN VA MÁS CERCA QUE EL TEXTO —dos metros— y a la altura de los
-       ojos: es una cosa para tocar, no para leer, y tiene que sentirse al
-       alcance. */
-    frente.set(0, 0, -1).applyQuaternion(camera.quaternion)
-    plano.set(frente.x, 0, frente.z)
-    if (plano.lengthSq() < 1e-4) plano.set(0, 0, -1)
-    plano.normalize()
-    meta.copy(camera.position).addScaledVector(plano, 2.0)
-    meta.y -= 0.18
+    /* EL BOTÓN VA MÁS CERCA QUE EL TEXTO —dos metros—: es una cosa para tocar,
+       no para leer, y tiene que sentirse al alcance.
+       ══ Y UN POCO MÁS ABAJO, A PROPÓSITO ═══════════════════════════════════
+       Puesto justo en el centro de la vista era IMPOSIBLE no mirarlo: como
+       persigue a la cabeza, se queda clavado en el medio mires donde mires, y
+       se apretaba solo segundo y medio después de ponerse el visor, sin que
+       nadie hubiera decidido nada. Un botón que se aprieta solo no es un botón.
+       Bajarlo de la línea de los ojos lo cambia todo: al frente NO se toca, y
+       BAJAR LA VISTA hacia él —un gesto chico, natural, y el mismo que se hace
+       para mirar un menú— sí. Mirarlo vuelve a ser una decisión, que es lo
+       único que hace que apretarlo signifique algo.
+       ══ Y CUÁNTO SE BAJA LO DECIDEN LAS LETRAS ═════════════════════════════
+       Veinticuatro grados, y el número no es de gusto. Mientras la historia se
+       cuenta, el cartel del teatro cuelga a doce grados y el botón que hay
+       puesto es el de SALIR. El aro se llena con la mirada dentro de un cono de
+       diez grados, así que un botón a dieciocho quedaba a seis del cartel:
+       DENTRO del cono. O sea que quedarse leyendo la historia apretaba «salir»
+       y la saltaba — el mismo accidente que se está tratando de impedir, con
+       el disfraz cambiado. A veinticuatro grados quedan doce de separación y
+       leer es leer. */
+    /* DE LA CABEZA, NO DE LA CÁMARA: si el botón se coloca con la orientación
+       del timón, en cuanto alguien gira la cabeza deja de estar delante y no
+       hay manera de tocarlo. Ver kernel/mirada.ts. */
+    /* Al frente y un poco abajo, EN EL MARCO DE LA CABEZA. Aplanado contra la
+       vertical del mundo, el botón se colgaba del horizonte — y como el timón
+       mira la galaxia picado cuarenta grados, quedaba muy por encima de la
+       vista y no había manera de tocarlo. Ver kernel/mirada.ts y Teatro.tsx. */
+    poseMirada(camera, ojoPos, ojoQuat)
+    frente.set(0, 0, -1).applyQuaternion(ojoQuat)
+    plano.set(0, -1, 0).applyQuaternion(ojoQuat)
+    meta.copy(ojoPos).addScaledVector(frente, 2.0).addScaledVector(plano, 0.89)
 
-    if (!listo.current) { g.position.copy(meta); listo.current = true }
-    else g.position.lerp(meta, 1 - Math.exp(-3.2 * dt))
-    g.lookAt(camera.position)
+    /* Igual que el teatro: se suaviza la DIRECCIÓN, no la posición. Retrasando
+       la posición, cualquier viaje de la cámara dejaba el botón metros atrás y
+       fuera de alcance. Ver Teatro.tsx. */
+    dirMeta.copy(meta).sub(ojoPos)
+    const largo = dirMeta.length() || 2.0
+    dirMeta.divideScalar(largo)
+    if (!listo.current) { dirSuave.copy(dirMeta); listo.current = true }
+    else dirSuave.lerp(dirMeta, 1 - Math.exp(-3.2 * dt)).normalize()
+    g.position.copy(ojoPos).addScaledVector(dirSuave, largo)
+    g.lookAt(ojoPos)
 
     /* ¿LA MIRADA ESTÁ ENCIMA? El botón vive delante de la cara, así que la
        pregunta es simplemente si el centro de la vista cae dentro de su
        rectángulo — sin trazar rayos contra nada. */
-    const haciaBoton = plano
-    frente.set(0, 0, -1).applyQuaternion(camera.quaternion)
-    const cos = frente.dot(
-      meta.clone().sub(camera.position).normalize())
+    /* ¿La mirada cae dentro? Se compara el frente de LA CABEZA contra la
+       dirección al botón. Ojo: contra `g.position` —donde el botón está de
+       verdad, persiguiendo con retraso— y no contra `meta`, que es adonde va;
+       comparando contra la meta el aro se llenaba aunque el botón todavía
+       estuviera llegando. */
+    frente.set(0, 0, -1).applyQuaternion(ojoQuat)
+    const cos = frente.dot(haciaBoton.copy(g.position).sub(ojoPos).normalize())
     const dentro = cos > 0.985 && !hecho.current
-    void haciaBoton
+      && performance.now() - desde.current > GRACIA
 
     if (dentro) {
       mirando.current += dt * 1000

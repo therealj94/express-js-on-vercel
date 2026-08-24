@@ -8,6 +8,12 @@ export const UP = new THREE.Vector3(0, 1, 0)
    números viven juntos y no se pueden desincronizar. */
 export const RADIO_ANILLO = 9.4
 
+/* EL HORIZONTE, en la medida del timón: phi es el ángulo desde el eje vertical,
+   así que noventa grados —π/2— es el plano de la galaxia. Se queda un pelo por
+   encima, que es el tope que el timón admite y además deja ver el anillo como
+   anillo y no como una raya. */
+const HORIZONTE = 1.44
+
 class Rig {
   theta = 0.65
   phi = 1.02
@@ -18,6 +24,9 @@ class Rig {
   cerca = 4.4
   lejos = 40
   reposo = 17
+  /* ¿Hay un visor puesto? Cambia dónde se para la cámara: ver alVisor(). */
+  visorPuesto = false
+  phiPantalla: number | null = null
   reposoPhi = 1.02
   /* A dónde MIRA la cámara. No siempre al centro exacto: el anillo visto en
      perspectiva no cae simétrico en la pantalla, y sin esto quedaba un tercio
@@ -88,8 +97,39 @@ class Rig {
   recentrar() {
     this.objetivo = null
     this.tTheta = 0.65
-    this.tPhi = this.reposoPhi
+    this.tPhi = this.visorPuesto ? HORIZONTE : this.reposoPhi
     this.tRadius = this.reposo
+  }
+
+  /* ── AL PONERSE EL VISOR, EL HORIZONTE SE NIVELA ──────────────────────────
+   *
+   * En pantalla la galaxia se mira DESDE ARRIBA, unos treinta grados picado:
+   * es el encuadre que la enseña entera y es el correcto para una ventana.
+   *
+   * Con un visor en la cara ese mismo encuadre es otra cosa. La inclinación de
+   * la cámara se compone con la de la cabeza, así que mirar «al frente» pasa a
+   * significar mirar cuarenta grados AL SUELO: los planetas quedan arriba y
+   * hay que levantar la cabeza medio ángulo recto para verlos y sostenerla ahí
+   * para tocar algo. En dos minutos duele el cuello, y es exactamente lo que
+   * una demostración con gente poniéndose el aparato no puede permitirse.
+   *
+   * Puesto el visor, la cámara baja al plano de la galaxia: uno deja de mirar
+   * el sistema desde afuera y pasa a estar DENTRO, con los mundos alrededor y
+   * a la altura de los ojos. Que es, además, lo que un visor promete.
+   *
+   * Se guarda el encuadre de la pantalla para devolverlo al salir: quien se
+   * quita el visor tiene que encontrar su galaxia como la dejó.
+   */
+  alVisor(puesto: boolean) {
+    if (puesto === this.visorPuesto) return
+    this.visorPuesto = puesto
+    if (puesto) {
+      this.phiPantalla = this.tPhi
+      this.tPhi = HORIZONTE
+    } else {
+      this.tPhi = this.phiPantalla ?? this.reposoPhi
+      this.phiPantalla = null
+    }
   }
 
   get cerquita() { return this.tRadius <= this.cerca + 0.05 }

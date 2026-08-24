@@ -5319,7 +5319,7 @@ const VETA = (() => {
   const VETA_V = 'd472440087';
   const VETA_FECHA = '2026-08-24';
 
-  const AET_V = '70e95ad581';
+  const AET_V = '774e517d96';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;

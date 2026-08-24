@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
 import { rig } from './rig'
 import { sim } from './sim'
+import { MIRADA, poseMirada } from './mirada'
 import { useUiStore } from '../state/uiStore'
 
 /* MODO VISOR.
@@ -88,6 +89,15 @@ export function Visor() {
      lo que dependa de la calidad puede bajar el listón. */
   useEffect(() => { setVisor(estado.activo); sim.visor = estado.activo },
     [estado.activo, setVisor])
+
+  /* EL HORIZONTE SE NIVELA cuando hay una cabeza de verdad moviendo la vista
+     —visor WebXR o giroscopio—, y solo entonces. En 360 con el dedo la
+     inclinación de la cámara ES lo que se ve, y nivelarla sería quitarle a
+     alguien el encuadre que eligió. Ver rig.alVisor(). */
+  useEffect(() => {
+    rig.alVisor(estado.activo && estado.cabeza)
+    return () => { if (!estado.activo) rig.alVisor(false) }
+  }, [estado.activo, estado.cabeza])
 
   /* ── EL GIROSCOPIO ───────────────────────────────────────────────────────
    *
@@ -262,6 +272,10 @@ export function Visor() {
            dispara el aviso de fin, que vuelve a entrar por esta puerta: sin la
            marca, todo se desharía dos veces y el motor se cae. */
         est.current = { ...est.current, activo: false }
+        /* Y la cabeza deja de mandar: fuera del visor, quien manda es la
+           cámara. Dejarlo encendido clavaría las letras y la retícula en la
+           última postura que tuvo la cabeza puesta. */
+        MIRADA.activa = false
         const s = sesionXR.current
         sesionXR.current = null
         if (s) { try { s.end() } catch { /* ya terminó */ } }
@@ -316,7 +330,12 @@ export function Visor() {
     if (!e.activo) return
 
     if (e.modo === 'xr') {
-      // el visor manda: three ya compone los dos ojos con su propia cámara
+      /* El visor manda: three ya compone los dos ojos con su propia cámara, y
+         de paso mete la pose del casco DENTRO de la cámara de la escena. Así
+         que aquí la cámara ya ES la cabeza y no hay nada que componer —ni que
+         publicar: con esto apagado, todo el mundo le pregunta a la cámara, que
+         es justo lo correcto. */
+      MIRADA.activa = false
       gl.render(scene, camera)
       return
     }
@@ -326,6 +345,15 @@ export function Visor() {
     cuerpo.position.copy(camera.position)
     cuerpo.quaternion.copy(camera.quaternion)
     if (e.cabeza) cuerpo.quaternion.multiply(cabeza)
+
+    /* Y SE PUBLICA, porque no somos los únicos que la necesitan. Las letras de
+       la historia, el botón del pórtico y la retícula tienen que aparecer
+       delante de la CARA, y hasta ahora se colocaban con la orientación de la
+       cámara a secas —la del timón—, que con la cabeza girada no es la misma.
+       Ver kernel/mirada.ts: es el fallo por el que «no salían las letras». */
+    MIRADA.activa = true
+    MIRADA.pos.copy(cuerpo.position)
+    MIRADA.quat.copy(cuerpo.quaternion)
 
     const cam = camera as THREE.PerspectiveCamera
     const media = e.modo === 'carton' ? e.ojos / 2 : 0
@@ -383,6 +411,8 @@ function Reticula({ visible, dwell, modo }:
   const aro = useRef<THREE.Mesh>(null)
   const mirando = useRef<{ key: string; desde: number } | null>(null)
   const DWELL = 1400   // más largo que en pantalla: la cabeza tiembla
+  const gPos = useMemo(() => new THREE.Vector3(), [])
+  const gQuat = useMemo(() => new THREE.Quaternion(), [])
 
   useFrame(() => {
     const g = grupo.current
@@ -392,8 +422,13 @@ function Reticula({ visible, dwell, modo }:
        pierde entre los planetas. Se COLOCA delante de la cámara en cada
        cuadro en vez de colgarse de ella: meter la cámara dentro de un grupo
        la saca de su sitio en la escena y rompe todo lo demás. */
-    g.position.copy(camera.position)
-    g.quaternion.copy(camera.quaternion)
+    /* Y delante de LA CABEZA, no de la cámara. Son dos cosas distintas en
+       cuanto hay giroscopio, y con la de la cámara la retícula se quedaba
+       apuntando adonde miraba el timón mientras la persona miraba a otro
+       lado — o sea, señalando un planeta y abriendo otro. */
+    poseMirada(camera, gPos, gQuat)
+    g.position.copy(gPos)
+    g.quaternion.copy(gQuat)
     g.translateZ(-1.5)
 
     const w = window as any

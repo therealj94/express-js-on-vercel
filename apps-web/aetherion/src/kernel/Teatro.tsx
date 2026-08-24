@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
 import { sim } from './sim'
+import { poseMirada } from './mirada'
 
 /* EL TEATRO · las palabras DENTRO del visor.
  *
@@ -131,6 +132,14 @@ export function Teatro() {
   const frenteCam = useMemo(() => new THREE.Vector3(), [])
   const plano = useMemo(() => new THREE.Vector3(), [])
   const qMeta = useMemo(() => new THREE.Quaternion(), [])
+  const ojoPos = useMemo(() => new THREE.Vector3(), [])
+  const ojoQuat = useMemo(() => new THREE.Quaternion(), [])
+  /* Reutilizada, no creada en cada cuadro: dentro de un visor esto se dibuja
+     dos veces por fotograma, y la basura que genera un objeto nuevo por cuadro
+     sale en forma de tirón. Un tirón en la cara marea; en la pantalla, no. */
+  const mLook = useMemo(() => new THREE.Matrix4(), [])
+  const dirMeta = useMemo(() => new THREE.Vector3(), [])
+  const dirSuave = useMemo(() => new THREE.Vector3(), [])
   const arriba = useMemo(() => new THREE.Vector3(0, 1, 0), [])
   const listo = useRef(false)
 
@@ -158,29 +167,54 @@ export function Teatro() {
     const e = 1 - Math.pow(1 - p, 3)
     mat.opacity = e
 
-    /* DÓNDE TENDRÍA QUE ESTAR: dos metros y medio al frente, doce grados por
-       debajo de la línea de los ojos. La dirección se toma del frente de la
-       cámara APLANADO —sin su inclinación—, para que mirar al suelo o al
-       techo no arrastre el cartel arriba y abajo. */
-    frenteCam.set(0, 0, -1).applyQuaternion(camera.quaternion)
-    plano.set(frenteCam.x, 0, frenteCam.z)
-    if (plano.lengthSq() < 1e-4) plano.set(0, 0, -1)
-    plano.normalize()
-    meta.copy(camera.position).addScaledVector(plano, 2.5)
-    meta.y -= 0.52
+    /* DÓNDE TENDRÍA QUE ESTAR: dos metros y medio al frente y un poco por
+       debajo de la línea de los ojos.
+       ══ POR QUÉ EN EL MARCO DE LA CABEZA Y NO EN EL DEL MUNDO ══════════════
+       Antes esto se aplanaba contra la vertical del mundo, dando por hecho que
+       quien mira está mirando al horizonte. No lo está: el timón mira la
+       galaxia DESDE ARRIBA, unos cuarenta grados picado, y con el visor puesto
+       esa inclinación se compone con la de la cabeza. O sea que el frente de la
+       persona apunta bastante más abajo que el horizonte — y el cartel, colgado
+       en el horizonte, le quedaba cuarenta grados por encima de la vista. Era
+       el «no salían las letras»: colgadas del techo.
+       Puesto en el marco de la cabeza, «al frente y un poco abajo» significa lo
+       que dice, con el timón picado o llano. Lo que evitaba que el cartel se
+       zarandee al mover la cabeza no era el aplanado sino el retraso de más
+       abajo, que sigue igual. */
+    /* DE LA CABEZA, NO DE LA CÁMARA. Con el visor puesto son dos direcciones
+       distintas —el timón por un lado, el giroscopio por otro— y usando la de
+       la cámara el cartel se quedaba clavado donde apuntaba el timón mientras
+       la persona miraba a otro lado. Ese era el «no salían las letras»: salían,
+       pero fuera de la vista. Ver kernel/mirada.ts. */
+    poseMirada(camera, ojoPos, ojoQuat)
+    frenteCam.set(0, 0, -1).applyQuaternion(ojoQuat)
+    plano.set(0, -1, 0).applyQuaternion(ojoQuat)   // «abajo», el de la cabeza
+    /* 0.52 a 2.5 = doce grados por debajo de los ojos. Ese número está atado al
+       del pórtico (Portico.tsx): el botón tiene que quedar FUERA del cono de la
+       mirada cuando alguien está leyendo esto, o leer la historia la saltaría.
+       Si un día se mueve uno, hay que mover el otro. */
+    meta.copy(ojoPos).addScaledVector(frenteCam, 2.5).addScaledVector(plano, 0.52)
 
-    if (!listo.current) {
-      g.position.copy(meta)
-      listo.current = true
-    } else {
-      /* EL RETRASO. Ni pegado (pegatina en las gafas) ni fijo (se pierde al
-         girar): persigue con calma. Un tercio de segundo de constante es lo
-         que separa «cartel colgado delante» de «mancha en el cristal». */
-      g.position.lerp(meta, 1 - Math.exp(-2.6 * dt))
-    }
+    /* EL RETRASO ES DEL GIRO, NO DEL VIAJE.
+     *
+     * Retrasar la POSICIÓN en el mundo parecía lo mismo y no lo es. Girar la
+     * cabeza mueve el cartel un metro y lo alcanza enseguida; pero la película
+     * vuela la cámara de un planeta a otro, veinte metros de un tirón, y ahí el
+     * cartel se quedaba atrás de verdad — a cinco metros y sesenta grados de la
+     * vista, cruzando la pantalla cada vez que la cámara se movía.
+     *
+     * Lo que tiene que ir con calma es HACIA DÓNDE cuelga respecto de la cara.
+     * Así que se suaviza la dirección y la distancia se respeta siempre: al
+     * girar la cabeza el cartel sigue viniendo detrás con su punto de inercia,
+     * y al viajar va clavado delante, como si estuviera colgado del casco. */
+    dirMeta.copy(meta).sub(ojoPos)
+    const largo = dirMeta.length() || 2.5
+    dirMeta.divideScalar(largo)
+    if (!listo.current) { dirSuave.copy(dirMeta); listo.current = true }
+    else dirSuave.lerp(dirMeta, 1 - Math.exp(-2.6 * dt)).normalize()
+    g.position.copy(ojoPos).addScaledVector(dirSuave, largo)
     // y encara siempre a la cabeza, de plano, sin ladearse
-    qMeta.setFromRotationMatrix(
-      new THREE.Matrix4().lookAt(g.position, camera.position, arriba))
+    qMeta.setFromRotationMatrix(mLook.lookAt(g.position, ojoPos, arriba))
     g.quaternion.slerp(qMeta, 1 - Math.exp(-5 * dt))
 
     const s = frase.peso === 'grande' ? 1.18 : 1
@@ -197,9 +231,12 @@ export function Teatro() {
     w.__AE_TEATRO = () => {
       const g = grupo.current
       if (!g || !frase) return { texto: '', delante: false }
-      const haciaTexto = g.position.clone().sub(camera.position)
+      const oPos = new THREE.Vector3()
+      const oQuat = new THREE.Quaternion()
+      poseMirada(camera, oPos, oQuat)
+      const haciaTexto = g.position.clone().sub(oPos)
       const dist = haciaTexto.length()
-      const frenteC = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion)
+      const frenteC = new THREE.Vector3(0, 0, -1).applyQuaternion(oQuat)
       const cos = haciaTexto.normalize().dot(frenteC)
       const grados = Math.round((Math.acos(Math.max(-1, Math.min(1, cos))) * 180) / Math.PI)
       return {
