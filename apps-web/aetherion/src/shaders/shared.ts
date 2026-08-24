@@ -52,6 +52,29 @@ float fbm(vec3 p){
 }
 `
 
+/* LA ATMÓSFERA, AHORA CON SOL.
+ *
+ * Antes era un halo parejo alrededor de toda la esfera: bonito, y falso. Un
+ * planeta con aire no brilla igual por todos lados — brilla DONDE LE DA EL
+ * SOL, y en la línea donde el día se acaba se pone naranja. Eso es lo que el
+ * ojo reconoce sin poder nombrarlo, y es la diferencia entre una bola con
+ * aura y un mundo.
+ *
+ * Aquí el sol no necesita uniforme: AU-RA está en el origen, así que la
+ * dirección de la luz en cualquier punto del mundo es sencillamente
+ * normalize(-posición). Sale gratis.
+ *
+ * Lo que se calcula:
+ *  · EL DÍA. Cuánto sol recibe este trozo de aire. La transición no es dura:
+ *    la atmósfera dispersa luz hacia la sombra, y por eso el terminador de un
+ *    planeta de verdad es suave y no un filo.
+ *  · EL ATARDECER. Donde el sol RASPA de canto, la luz atraviesa muchísimo
+ *    más aire, se le come el azul y queda el naranja. Es el anillo cálido que
+ *    tiene cualquier foto de la Tierra desde órbita.
+ *  · LA CONTRALUZ. Con el sol detrás del planeta, el aire del borde se
+ *    enciende de golpe: es dispersión hacia adelante, y es el plano más
+ *    espectacular que da un planeta.
+ */
 export function atmosphereFragment(extra = '') {
   return /* glsl */ `
 uniform vec3 uColor;
@@ -63,13 +86,33 @@ varying vec3 vW;
 ${SNOISE}
 void main(){
   vec3 V = normalize(cameraPosition - vW);
-  float d = dot(V, normalize(vN));
+  vec3 N = normalize(vN);
+  // el sol vive en el origen del mundo: la luz sale de ahí
+  vec3 L = normalize(-vW);
+
+  float d = dot(V, N);
   float fr = pow(clamp(0.68 + d, 0.0, 1.0), 3.0);
   float n = fbm(normalize(vW) * 2.4 + vec3(0.0, uTime * 0.05, uTime * 0.02)) * 0.5 + 0.5;
-  float alpha = fr * (0.55 + n * 0.6) * uDensity * (1.0 + uBoost * 1.7);
-  vec3 col = uColor * (1.0 + uBoost * 1.3);
+
+  float sol = dot(N, L);
+  /* El terminador suave: el aire lleva luz un poco más allá de donde el
+     suelo ya está a oscuras. Sin esto, el halo se corta en seco. */
+  float dia = smoothstep(-0.42, 0.30, sol);
+  /* El atardecer: donde el sol raspa de canto, el rojo gana. */
+  float rasante = pow(1.0 - abs(sol), 7.0) * smoothstep(-0.55, 0.15, sol);
+  /* La contraluz: el sol detrás, y el borde arde. */
+  float contra = pow(clamp(dot(V, -L), 0.0, 1.0), 5.0);
+
+  vec3 calido = mix(uColor, vec3(1.0, 0.46, 0.20), 0.8);
+  vec3 col = mix(uColor, calido, clamp(rasante * 1.1, 0.0, 1.0));
+  col *= 1.0 + uBoost * 1.3 + contra * 1.5;
+
+  float alpha = fr * (0.5 + n * 0.55) * uDensity
+              * (0.06 + 0.94 * dia)               // la noche conserva un hilo
+              * (1.0 + uBoost * 1.7 + contra * 1.2)
+              + rasante * fr * uDensity * 0.55;   // el anillo del atardecer suma
   ${extra}
-  gl_FragColor = vec4(col, alpha);
+  gl_FragColor = vec4(col, clamp(alpha, 0.0, 1.0));
 }
 `
 }
@@ -121,3 +164,52 @@ void main(){
 }
 `
 }
+
+/* ── LAS SOMBRAS DE UN MUNDO CON ANILLOS ─────────────────────────────────────
+ *
+ * Es el detalle que separa un planeta con un aro pegado de Saturno. Son dos
+ * sombras, y las dos se calculan sin motor de sombras —que costaría un mapa
+ * por planeta— porque en este sistema el sol está en el ORIGEN y eso hace
+ * toda la geometría trivial:
+ *
+ *  · EL ANILLO SE PROYECTA SOBRE EL PLANETA. Desde cada punto de la
+ *    superficie se sale hacia el sol; si ese rayo cruza el plano del anillo
+ *    entre sus dos radios, ese punto está a la sombra. Es la banda oscura que
+ *    cruza el hemisferio de verano.
+ *  · EL PLANETA SE PROYECTA SOBRE EL ANILLO. Desde cada punto del anillo se
+ *    sale hacia el sol; si la esfera del planeta se cruza en el camino, ese
+ *    trozo de anillo está eclipsado. Es la mordida oscura que el aro tiene
+ *    siempre del lado contrario al sol.
+ *
+ * Se inyectan en materiales estándar con onBeforeCompile: así conservan toda
+ * la iluminación buena de three y solo se les añade la sombra. */
+export const SOMBRA_ANILLO = /* glsl */ `
+  /* ¿Está este punto del mundo a la sombra del anillo? El anillo vive en el
+     plano de normal uAnilloN que pasa por el centro del planeta. */
+  float sombraDeAnillo(vec3 punto, vec3 centro, vec3 haciaSol,
+                       vec3 anilloN, float rInt, float rExt) {
+    float den = dot(haciaSol, anilloN);
+    if (abs(den) < 1e-4) return 1.0;
+    float t = dot(centro - punto, anilloN) / den;
+    if (t <= 0.0) return 1.0;              // el anillo quedó detrás del sol
+    vec3 cruce = punto + haciaSol * t - centro;
+    float r = length(cruce);
+    /* Los bordes del anillo no son filos: el polvo se va acabando, y la
+       sombra con él. */
+    float dentro = smoothstep(rInt, rInt * 1.06, r) * (1.0 - smoothstep(rExt * 0.94, rExt, r));
+    return 1.0 - dentro * 0.82;
+  }
+`
+
+export const SOMBRA_PLANETA = /* glsl */ `
+  /* ¿Está este punto del anillo dentro de la sombra del planeta? Se prueba si
+     la recta hacia el sol pasa a menos de un radio del centro. */
+  float sombraDePlaneta(vec3 punto, vec3 centro, vec3 haciaSol, float radio) {
+    vec3 aC = centro - punto;
+    float t = dot(aC, haciaSol);
+    if (t <= 0.0) return 1.0;              // el planeta está del otro lado
+    float d = length(aC - haciaSol * t);
+    // penumbra: el borde de una sombra de verdad es difuso
+    return smoothstep(radio * 0.86, radio * 1.14, d) * 0.86 + 0.14;
+  }
+`

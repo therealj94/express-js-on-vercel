@@ -5256,7 +5256,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = '03c63392da';
+  const AET_V = '54feea107f';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -10816,6 +10816,7 @@ const VETA = (() => {
       capa = document.createElement('div');
       capa.id = 'gen-letra';
       capa.innerHTML = `
+        <div class="gen-velo"></div>
         <div class="gen-centro"></div>
         <div class="gen-pie"><b></b><span></span></div>
         <button class="gen-saltar" type="button">${esc(G.saltar)}</button>`;

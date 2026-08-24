@@ -1,3 +1,4 @@
+import * as THREE from 'three'
 import { rig } from './rig'
 import { sim } from './sim'
 import { wellRegistry } from '../sky/Wells'
@@ -76,6 +77,12 @@ const CURVAS: Record<Curva, (p: number) => number> = {
   recta: (p) => p,
 }
 
+const ARRIBA = new THREE.Vector3(0, 1, 0)
+const tmpSol = new THREE.Vector3()
+const tmpLado = new THREE.Vector3()
+const tmpDir = new THREE.Vector3()
+const tmpCam = new THREE.Vector3()
+
 let vivoAhora = false
 let raf = 0
 let acomodoRaf = 0
@@ -132,6 +139,7 @@ function terminar(salteado: boolean, opciones: Opciones) {
   acomodar(0, salteado ? 900 : 0)
   rig.deriva = true
   rig.mira = 0
+  rig.objetivo = null
   useUiStore.getState().select(null)
   rig.recentrar()
   opciones.alFin?.(salteado)
@@ -182,6 +190,9 @@ function empezar(opciones: Opciones = {}) {
 
   let i = -1
   let t0 = 0
+  /* Cuánto se aparta la cámara del eje casa-sol en un plano de casa. Vive
+     fuera del acto porque el coreógrafo lo suma al giro cuadro a cuadro. */
+  let anguloCasa: number | null = null
   let mov: (Movimiento & { r0: number; f0: number; g0: number; m0: number }) | null = null
 
   const entrarActo = (a: Acto) => {
@@ -211,19 +222,77 @@ function empezar(opciones: Opciones = {}) {
       const h = wellRegistry.get(key)
       if (h) {
         espacio.toque(h.getPos(), 520)
-        /* El acercamiento se calcula CON la casa ya en su sitio: quedarse a
-           poco más que su radio la deja llenando el cuadro sin cortarla. */
-        const d = h.getPos().length()
-        a.mover = { ...a.mover, radio: Math.max(rig.cerca + 4.5, d + 5.4), mira: h.getPos().y * 0.7 }
+        /* EL PLANO DE UNA CASA, COMPUESTO DE VERDAD.
+         *
+         * Antes la cámara se ponía detrás de la casa y miraba al CENTRO — que
+         * es donde está el sol. Resultado: el sol clavado en medio del cuadro,
+         * quemado, y la casa desplazada a un borde. En un teléfono, donde el
+         * cuadro es angosto, quedaba directamente fuera.
+         *
+         * Ahora la cámara MIRA A LA CASA (rig.objetivo) y se para a un lado
+         * del eje casa-sol: así el sol raspa desde el costado, la casa se ve
+         * con su media luna iluminada y su terminador, y el resplandor entra
+         * por el borde del cuadro en vez de comérselo. Es el plano que uno
+         * haría a mano. */
+        rig.objetivo = h.getPos()
+        /* EL SITIO DE LA CÁMARA SE ELIGE EN EL MUNDO, NO EN LA ÓRBITA.
+         *
+         * El timón es esférico alrededor del CENTRO: pedirle «ponete detrás
+         * de esta casa» lo deja a diez unidades, mirando de arriba, y con el
+         * sol dentro del cuadro — que es exactamente lo que quemaba el plano.
+         *
+         * Así que el plano se compone donde se compone un plano: en el
+         * espacio. Se elige el punto exacto desde donde se quiere ver la
+         * casa —cerca, ladeado unos setenta grados del eje casa-sol, un poco
+         * por encima— y RECIÉN DESPUÉS se traduce ese punto a las tres
+         * coordenadas que el timón entiende. Setenta grados es el ángulo del
+         * retratista: la casa sale con su media luna y su terminador, y el
+         * sol queda fuera del cuadro tirando luz desde el costado. */
+        const q = h.getPos()
+        const alSol = tmpSol.copy(q).negate().normalize()
+        tmpLado.crossVectors(alSol, ARRIBA).normalize()
+        /* Si la casa cae justo sobre el eje vertical el producto cruzado se
+           desmorona: cualquier perpendicular sirve. */
+        if (tmpLado.lengthSq() < 0.01) tmpLado.set(1, 0, 0)
+        tmpDir.copy(alSol).multiplyScalar(Math.cos(1.24))
+          .addScaledVector(tmpLado, Math.sin(1.24) * 0.94)
+          .addScaledVector(ARRIBA, 0.26)
+          .normalize()
+        /* En un teléfono vertical hay que apartarse: el cuadro es angosto y
+           además el rótulo se queda con el tercio de abajo. */
+        const angosto = typeof window !== 'undefined' && innerWidth / innerHeight < 0.8
+        tmpCam.copy(q).addScaledVector(tmpDir, angosto ? 8.6 : 6.2)
+
+        const r = Math.max(rig.cerca + 1.5, tmpCam.length())
+        a.mover = {
+          ...a.mover,
+          radio: r,
+          phi: Math.acos(Math.max(-1, Math.min(1, tmpCam.y / Math.max(0.001, tmpCam.length())))),
+        }
+        // el giro se pide relativo, así que se guarda el destino absoluto
+        anguloCasa = Math.atan2(tmpCam.x, tmpCam.z)
       }
     } else if (a.clave === 'universo') {
+      // fuera de las casas la cámara vuelve a mirar al sistema entero
+      rig.objetivo = null
+      anguloCasa = null
       st.select(null)
       audio.whoosh(false)
+    } else {
+      rig.objetivo = null
+      anguloCasa = null
     }
 
     /* El movimiento se congela AQUÍ: de dónde sale la cámara es lo que hay
        ahora mismo, y de ahí en adelante el coreógrafo interpola. */
-    const g = a.casa ? anguloDe(a.casa, rig.tTheta) : null
+    let g: number | null = null
+    if (a.casa && anguloCasa !== null) {
+      /* Por el camino corto: sin esto, ir de una casa a la siguiente podía
+         dar la vuelta larga entera y marear sin motivo. */
+      g = anguloCasa
+      while (g - rig.tTheta > Math.PI) g -= Math.PI * 2
+      while (g - rig.tTheta < -Math.PI) g += Math.PI * 2
+    }
     mov = {
       ...a.mover,
       r0: rig.tRadius, f0: rig.tPhi, g0: rig.tTheta, m0: rig.mira,
@@ -246,7 +315,15 @@ function empezar(opciones: Opciones = {}) {
        curva del acto; el amortiguador del propio timón hace el resto y el
        resultado es un movimiento continuo, sin tirones ni saltos. */
     if (mov) {
-      const p = Math.min(1, (ahora - t0) / guion[i].dura)
+      /* La casa BOTA en su sitio. Si el objetivo se congelara al empezar el
+         acto, la casa se iría saliendo del encuadre despacio durante los
+         cinco segundos que dura su presentación. */
+      const act = guion[i]
+      if (act.casa) {
+        const h = wellRegistry.get(act.casa)
+        if (h) rig.objetivo = h.getPos()
+      }
+      const p = Math.min(1, (ahora - t0) / act.dura)
       const e = CURVAS[mov.curva || 'suave'](p)
       if (mov.radio !== undefined) rig.tRadius = mov.r0 + (mov.radio - mov.r0) * e
       if (mov.phi !== undefined) rig.tPhi = mov.f0 + (mov.phi - mov.f0) * e
@@ -271,6 +348,8 @@ if (typeof window !== 'undefined') {
   // para que una prueba pueda ver la tiniebla, que es lo que no se puede leer
   // desde fuera en una foto: si está oscuro o no
   ;(window as any).__AE_NOCHE = () => sim.noche
+  // para diagnóstico: adónde apunta la cámara ahora mismo
+  ;(window as any).__AE_OBJETIVO = () => rig.objetivo ? rig.objetivo.toArray().map((n) => Math.round(n * 10) / 10) : null
   /* Y qué tan encendido está cada rótulo: en una foto no se puede distinguir
      un nombre apagado de uno que quedó fuera de cuadro, y la regla de la
      película es justamente que se callen. */

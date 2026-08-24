@@ -4,7 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { sim } from '../kernel/sim'
 import { RADIO_ANILLO, rig } from '../kernel/rig'
 import { useUiStore } from '../state/uiStore'
-import { atmosphereFragment, atmosphereVertex } from '../shaders/shared'
+import { atmosphereFragment, atmosphereVertex, SOMBRA_ANILLO, SOMBRA_PLANETA } from '../shaders/shared'
 import { getRingTexture } from './textures'
 import { emblemaTextura, letreroTextura, planetaTextura, nubesTextura, anilloTextura, lucesTextura } from './emblema'
 import type { Galaxy } from './lattice'
@@ -215,6 +215,8 @@ export interface WellHandle {
 export const wellRegistry = new Map<string, WellHandle>()
 
 const tmpV = new THREE.Vector3()
+const normalAro = new THREE.Vector3()
+const qAro = new THREE.Quaternion()
 const tmpP = new THREE.Vector3()
 const tmpA = new THREE.Vector3()
 
@@ -235,6 +237,70 @@ function makeAtmoMaterial(color: string, density: number) {
   })
 }
 
+/* LA SOMBRA DEL ANILLO SOBRE EL PLANETA.
+ *
+ * Se inyecta en el material estándar de three en vez de escribir uno propio:
+ * así el planeta conserva toda su iluminación buena —el terminador, el
+ * relieve, el brillo del mar— y solo se le añade la banda oscura que el
+ * anillo le pinta encima. Escribir el material entero para esto sería tirar
+ * a la basura cientos de líneas de sombreado que ya funcionan.
+ *
+ * Los uniformes los pone y los mantiene el propio planeta cada cuadro: el
+ * anillo se inclina con él, así que su plano no es constante. */
+function sombrearConAnillo(this: THREE.Material, sh: any) {
+  /* three llama a esto con el material como `this`, y NO guarda el shader por
+     su cuenta: sin esta línea no habría forma de tocar los uniformes después,
+     que es justo lo que hace falta cada cuadro. */
+  this.userData.shader = sh
+  sh.uniforms.uCentroP = { value: new THREE.Vector3() }
+  sh.uniforms.uAnilloN = { value: new THREE.Vector3(0, 1, 0) }
+  sh.uniforms.uAnilloR = { value: new THREE.Vector2(1, 2) }
+  sh.vertexShader = sh.vertexShader
+    .replace('#include <common>', `#include <common>\nvarying vec3 vMundo;`)
+    .replace('#include <worldpos_vertex>',
+      `#include <worldpos_vertex>\n  vMundo = (modelMatrix * vec4(transformed, 1.0)).xyz;`)
+  sh.fragmentShader = sh.fragmentShader
+    .replace('#include <common>', `#include <common>
+varying vec3 vMundo;
+uniform vec3 uCentroP;
+uniform vec3 uAnilloN;
+uniform vec2 uAnilloR;
+${SOMBRA_ANILLO}`)
+    /* Se aplica sobre la luz ya acumulada, justo antes del tonemapping: es
+       una sombra, no un color, y tiene que oscurecer todo lo que llegó. */
+    .replace('#include <tonemapping_fragment>',
+      `  {
+    vec3 haciaSol = normalize(-vMundo);
+    gl_FragColor.rgb *= sombraDeAnillo(vMundo, uCentroP, haciaSol,
+                                       uAnilloN, uAnilloR.x, uAnilloR.y);
+  }
+#include <tonemapping_fragment>`)
+}
+
+/* Y LA DEL PLANETA SOBRE EL ANILLO: la mordida oscura que el aro lleva
+   siempre del lado contrario al sol. */
+function sombrearAnillo(this: THREE.Material, sh: any) {
+  this.userData.shader = sh
+  sh.uniforms.uCentroP = { value: new THREE.Vector3() }
+  sh.uniforms.uRadioP = { value: 1 }
+  sh.vertexShader = sh.vertexShader
+    .replace('#include <common>', `#include <common>\nvarying vec3 vMundo;`)
+    .replace('#include <worldpos_vertex>',
+      `#include <worldpos_vertex>\n  vMundo = (modelMatrix * vec4(transformed, 1.0)).xyz;`)
+  sh.fragmentShader = sh.fragmentShader
+    .replace('#include <common>', `#include <common>
+varying vec3 vMundo;
+uniform vec3 uCentroP;
+uniform float uRadioP;
+${SOMBRA_PLANETA}`)
+    .replace('#include <tonemapping_fragment>',
+      `  {
+    vec3 haciaSol = normalize(-vMundo);
+    gl_FragColor.rgb *= sombraDePlaneta(vMundo, uCentroP, haciaSol, uRadioP);
+  }
+#include <tonemapping_fragment>`)
+}
+
 function WellView({ def }: { def: WellDef }) {
   const arch = ARCHETYPES[def.arch]
   const group = useRef<THREE.Group>(null!)
@@ -242,6 +308,7 @@ function WellView({ def }: { def: WellDef }) {
   const luna = useRef<THREE.Group>(null)
   const nubes = useRef<THREE.Mesh>(null)
   const cuerpo = useRef<THREE.Mesh>(null)
+  const anilloMalla = useRef<THREE.Mesh>(null)
   const anillo3 = useRef<THREE.Group>(null)
   const hit = useRef<THREE.Mesh>(null!)
   const halo = useRef<THREE.Sprite>(null)
@@ -332,6 +399,28 @@ function WellView({ def }: { def: WellDef }) {
       const mm = cuerpo.current.material as THREE.MeshStandardMaterial
       const base = rasgos.vive ? 0.85 : rasgos.brillo
       mm.emissiveIntensity = base * (1 - sim.noche)
+      /* LOS DATOS DE LA SOMBRA, AL DÍA. El planeta se mueve (bota, se acomoda)
+         y el anillo gira con él: su plano no es una constante, hay que
+         decírselo al sombreador en cada cuadro o la banda oscura se queda
+         donde estaba y delata el truco. */
+      const u = (mm as any).userData?.shader?.uniforms
+      if (u && conAnillo && anillo3.current) {
+        u.uCentroP.value.copy(g.position)
+        // la normal del anillo: su eje Y llevado al mundo
+        normalAro.set(0, 1, 0).applyQuaternion(anillo3.current.getWorldQuaternion(qAro))
+        u.uAnilloN.value.copy(normalAro)
+        u.uAnilloR.value.set(R * (rasgos.anillo?.[0] ?? 1.55), R * (rasgos.anillo?.[1] ?? 2.15))
+      }
+    }
+    /* Y el anillo necesita saber dónde está su planeta y cuánto mide, para
+       oscurecerse donde este le tapa el sol. */
+    if (anilloMalla.current) {
+      const am = anilloMalla.current.material as THREE.MeshStandardMaterial
+      const ua = (am as any).userData?.shader?.uniforms
+      if (ua) {
+        ua.uCentroP.value.copy(g.position)
+        ua.uRadioP.value = R
+      }
     }
 
     atmo.uniforms.uTime.value = sim.now
@@ -462,6 +551,7 @@ function WellView({ def }: { def: WellDef }) {
         <mesh ref={cuerpo}>
           <sphereGeometry args={[R, 64, 64]} />
           <meshStandardMaterial
+            onBeforeCompile={conAnillo ? sombrearConAnillo : undefined}
             map={piel}
             bumpMap={piel}
             bumpScale={rasgos.relieve}
@@ -523,12 +613,13 @@ function WellView({ def }: { def: WellDef }) {
 
       {conAnillo && (
         <group ref={anillo3} rotation={[1.32, 0, 0.24]}>
-          <mesh>
+          <mesh ref={anilloMalla}>
             <ringGeometry args={[R * (rasgos.anillo?.[0] ?? 1.55), R * (rasgos.anillo?.[1] ?? 2.15), 128, 1]} />
             {/* El anillo lo ILUMINA el sol, no brilla solo: por eso material
                 estándar y no aditivo — así tiene cara de día y cara de noche
                 como cualquier cosa que orbita. */}
             <meshStandardMaterial
+              onBeforeCompile={sombrearAnillo}
               map={aro}
               alphaMap={aro}
               color={def.grad[1]}
