@@ -271,4 +271,12 @@ if (typeof window !== 'undefined') {
   // para que una prueba pueda ver la tiniebla, que es lo que no se puede leer
   // desde fuera en una foto: si está oscuro o no
   ;(window as any).__AE_NOCHE = () => sim.noche
+  /* Y qué tan encendido está cada rótulo: en una foto no se puede distinguir
+     un nombre apagado de uno que quedó fuera de cuadro, y la regla de la
+     película es justamente que se callen. */
+  ;(window as any).__AE_ROTULOS = () =>
+    [...wellRegistry.keys()].map((k) => {
+      const o = (window as any).__AE_ROTULO_OP?.[k]
+      return typeof o === 'number' ? o : 0
+    })
 }

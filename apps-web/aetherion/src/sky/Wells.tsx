@@ -241,6 +241,7 @@ function WellView({ def }: { def: WellDef }) {
   const spin = useRef<THREE.Group>(null!)
   const luna = useRef<THREE.Group>(null)
   const nubes = useRef<THREE.Mesh>(null)
+  const cuerpo = useRef<THREE.Mesh>(null)
   const anillo3 = useRef<THREE.Group>(null)
   const hit = useRef<THREE.Mesh>(null!)
   const halo = useRef<THREE.Sprite>(null)
@@ -324,6 +325,15 @@ function WellView({ def }: { def: WellDef }) {
     if (luna.current) luna.current.rotation.y += dt * 0.85
     if (anillo3.current) anillo3.current.rotation.z += dt * 0.16
 
+    /* LAS CIUDADES SE APAGAN EN LA TINIEBLA. Un mundo con las luces puestas
+       mientras se dice «no había nada» es la clase de detalle que rompe una
+       película entera, y encima es el más brillante de la escena. */
+    if (cuerpo.current) {
+      const mm = cuerpo.current.material as THREE.MeshStandardMaterial
+      const base = rasgos.vive ? 0.85 : rasgos.brillo
+      mm.emissiveIntensity = base * (1 - sim.noche)
+    }
+
     atmo.uniforms.uTime.value = sim.now
     const boostT = selected ? 0.55 : 0
     atmo.uniforms.uBoost.value = THREE.MathUtils.damp(atmo.uniforms.uBoost.value, boostT, 6, dt)
@@ -374,9 +384,13 @@ function WellView({ def }: { def: WellDef }) {
       const puerta = (window as any).__AE_PUERTA ? 0 : 1
       // durante la película, el nombre es SOLO de la casa que se presenta
       const cineL = sim.pelicula ? (selected ? 1 : 0) : 1
-      ;(letrero.current.material as THREE.SpriteMaterial).opacity =
-        puerta * cineL * (1 - sim.noche)
+      const op = puerta * cineL * (1 - sim.noche)
         * (alBorde ? Math.min(0.12, lejania) : selected ? 1 : lejania)
+      ;(letrero.current.material as THREE.SpriteMaterial).opacity = op
+      /* Para que una prueba pueda ver lo que una foto no distingue: un
+         rótulo apagado y uno fuera de cuadro se ven igual. */
+      const w = window as any
+      ;(w.__AE_ROTULO_OP ||= {})[def.key] = op
     }
 
     if (halo.current) {
@@ -445,7 +459,7 @@ function WellView({ def }: { def: WellDef }) {
             textura es clara el terreno sobresale, y con la luz del sol
             rasante eso ya da montañas, bandas y grano — es lo que separa una
             esfera pintada de un mundo. */}
-        <mesh>
+        <mesh ref={cuerpo}>
           <sphereGeometry args={[R, 64, 64]} />
           <meshStandardMaterial
             map={piel}
