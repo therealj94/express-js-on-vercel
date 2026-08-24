@@ -9,6 +9,7 @@ import { useUiStore } from '../state/uiStore'
 export function TransitRunner() {
   const camera = useThree((s) => s.camera)
   const tier = useUiStore((s) => s.tier)
+  const visor = useUiStore((s) => s.visor)
 
   useFrame((_, dt) => {
     const st = useUiStore.getState()
@@ -27,6 +28,12 @@ export function TransitRunner() {
       rig.update(camera, dt)
     }
   })
+
+  /* CON EL VISOR PUESTO NO HAY POST-PROCESADO. Por dos razones y las dos
+     mandan: el visor dibuja DOS ojos por cuadro y hay que sostener noventa
+     cuadros por segundo o marea de verdad; y además el compositor se pelearía
+     por el mando del dibujo con el modo visor, que ya lo tomó. */
+  if (visor) return <primitive object={transit.burst.points} />
 
   return (
     <>

@@ -1,0 +1,365 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import * as THREE from 'three'
+import { useFrame, useThree } from '@react-three/fiber'
+import { rig } from './rig'
+import { sim } from './sim'
+import { useUiStore } from '../state/uiStore'
+
+/* MODO VISOR.
+ *
+ * Ponerse un visor y estar DENTRO de la galaxia. Hay tres clases de visor ahí
+ * fuera y las tres se atienden, porque quien tiene uno de cartón no tiene por
+ * qué quedarse afuera:
+ *
+ *  1. VISOR DE VERDAD (Quest, Pico, Vive, un PC con SteamVR…). Hablan WebXR:
+ *     el navegador entrega la sesión, las dos cámaras, la posición de la
+ *     cabeza —y de las manos si las hay— y nosotros solo dibujamos. Es el
+ *     camino bueno y el que da seis grados de libertad.
+ *  2. VISOR DE TELÉFONO (Cardboard y sus primos). No hay WebXR: hay un
+ *     teléfono metido en una caja. Se parte la pantalla en dos ojos, se lee
+ *     el giroscopio para la cabeza y se selecciona MIRANDO, porque no hay
+ *     mando ni manera de tocar la pantalla con el aparato en la cara.
+ *  3. SIN VISOR. Modo 360 en la pantalla: la cabeza es el giroscopio si lo
+ *     hay, y el dedo si no. Sirve para probar y para quien quiera mirar
+ *     alrededor sin ponerse nada.
+ *
+ * LA REGLA QUE NO SE NEGOCIA: dentro del visor NO SE MUEVE DINERO. Se mira,
+ * se recorre y se abre una casa; firmar un envío con la cara tapada y sin
+ * poder leer bien la letra chica no es una función, es una trampa.
+ */
+
+export type ModoVisor = 'xr' | 'carton' | 'trescientos60'
+
+interface Estado {
+  activo: boolean
+  modo: ModoVisor | null
+  cabeza: boolean          // ¿la cabeza mueve la vista de verdad?
+  ojos: number             // separación entre ojos, en metros
+  mirada: boolean          // seleccionar sosteniendo la mirada
+}
+
+/* ── LA CABEZA POR GIROSCOPIO ───────────────────────────────────────────────
+ * La receta clásica: los tres ángulos del aparato (alpha, beta, gamma) más la
+ * orientación de la pantalla se convierten en un cuaternión. El −90° del eje X
+ * es lo que pone la vista mirando al horizonte y no al suelo; sin eso, quien
+ * se pone el visor mira sus propios pies. */
+const cero = new THREE.Quaternion()
+const ejeZ = new THREE.Vector3(0, 0, 1)
+const q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5))
+const euler = new THREE.Euler()
+
+function deAngulos(q: THREE.Quaternion, alpha: number, beta: number, gamma: number, orient: number) {
+  euler.set(beta, alpha, -gamma, 'YXZ')
+  q.setFromEuler(euler)
+  q.multiply(q1)
+  q.multiply(cero.setFromAxisAngle(ejeZ, -orient))
+}
+
+export function Visor() {
+  const { gl, camera, scene, size, advance, setFrameloop } = useThree() as any
+  const [estado, setEstado] = useState<Estado>({
+    activo: false, modo: null, cabeza: false, ojos: 0.064, mirada: true,
+  })
+  const est = useRef(estado)
+  est.current = estado
+
+  /* La cabeza y el cuerpo son dos cosas distintas: el CUERPO lo mueve el
+     timón (girar, acercar) y la CABEZA la mueve quien lleva el visor puesto.
+     Se componen: sin esto, mirar a la izquierda pelearía con el giro de la
+     galaxia y la escena temblaría. */
+  const cabeza = useMemo(() => new THREE.Quaternion(), [])
+  const cuerpo = useMemo(() => new THREE.Object3D(), [])
+  const izq = useMemo(() => new THREE.PerspectiveCamera(), [])
+  const der = useMemo(() => new THREE.PerspectiveCamera(), [])
+  const sesionXR = useRef<any>(null)
+  const orientRef = useRef(0)
+  /* El tamaño de la ventana se lee por referencia A PROPÓSITO. Si el puente
+     con la casa dependiera de él, cada cambio de tamaño —y esconder el menú
+     al entrar YA es uno— lo borraría y lo volvería a poner; quien tuviera el
+     visor puesto en ese instante se quedaría sin botón de salir. */
+  const medida = useRef({ w: size.width, h: size.height })
+  medida.current = { w: size.width, h: size.height }
+  const setVisor = useUiStore((s) => s.setVisor)
+
+  /* El resto de la escena tiene que enterarse: el post-procesado se aparta y
+     lo que dependa de la calidad puede bajar el listón. */
+  useEffect(() => { setVisor(estado.activo); sim.visor = estado.activo },
+    [estado.activo, setVisor])
+
+  // ── el giroscopio ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!estado.activo || estado.modo === 'xr') return
+    const alOrientar = (e: DeviceOrientationEvent) => {
+      if (e.alpha == null) return
+      const gr = Math.PI / 180
+      deAngulos(cabeza, (e.alpha || 0) * gr, (e.beta || 0) * gr, (e.gamma || 0) * gr,
+        orientRef.current * gr)
+      if (!est.current.cabeza) setEstado((s) => ({ ...s, cabeza: true }))
+    }
+    const alGirarPantalla = () => {
+      orientRef.current = (screen.orientation?.angle ?? (window as any).orientation ?? 0) as number
+    }
+    alGirarPantalla()
+    addEventListener('deviceorientation', alOrientar, true)
+    addEventListener('orientationchange', alGirarPantalla)
+    return () => {
+      removeEventListener('deviceorientation', alOrientar, true)
+      removeEventListener('orientationchange', alGirarPantalla)
+    }
+  }, [estado.activo, estado.modo, cabeza])
+
+  // ── el puente con la casa ────────────────────────────────────────────────
+  useEffect(() => {
+    const w = window as any
+    const mio = {
+      /* ¿Qué visor hay delante? Se pregunta ANTES de ofrecer nada: prometer
+         un modo que este aparato no puede dar es peor que no ofrecerlo. */
+      async detectar() {
+        const xr = (navigator as any).xr
+        let hayXR = false
+        try { hayXR = !!(xr && await xr.isSessionSupported('immersive-vr')) } catch { hayXR = false }
+        const hayGiro = typeof DeviceOrientationEvent !== 'undefined'
+        const pidePermiso = typeof (DeviceOrientationEvent as any)?.requestPermission === 'function'
+        return { xr: hayXR, giroscopio: hayGiro, pidePermiso }
+      },
+
+      async entrar(modo: ModoVisor, opciones: { ojos?: number; mirada?: boolean } = {}) {
+        if (est.current.activo) return est.current.modo
+        const ojos = opciones.ojos ?? 0.064
+        const mirada = opciones.mirada ?? true
+
+        if (modo === 'xr') {
+          const xr = (navigator as any).xr
+          if (!xr) throw new Error('sin-webxr')
+          /* Se piden por opcional TODAS las capacidades que suman y ninguna
+             que bloquee: si el visor no las tiene, la sesión arranca igual.
+             Pedirlas como requeridas dejaría fuera a media flota. */
+          const sesion = await xr.requestSession('immersive-vr', {
+            optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'],
+          })
+          sesionXR.current = sesion
+          gl.xr.enabled = true
+          await gl.xr.setReferenceSpaceType('local-floor')
+          await gl.xr.setSession(sesion)
+          sesion.addEventListener('end', () => { mio.salir() })
+          /* El gatillo del mando, el botón del visor y el pellizco de la mano
+             llegan todos como `select`. Cualquiera de los tres abre lo que se
+             tenga en la mira, que es como se espera que funcione un visor. */
+          sesion.addEventListener('select', () => {
+            if (performance.now() < veto.hasta) return
+            const k = apuntado.key
+            if (k) (window as any).__AE_TOCAR?.(k)
+          })
+          /* DENTRO DE XR MANDA EL RELOJ DEL VISOR. El de la pantalla no
+             existe ahí: dibujar con requestAnimationFrame en una sesión
+             inmersiva es dibujar en el vacío. */
+          setFrameloop?.('never')
+          gl.setAnimationLoop((t: number, frame: any) => advance(t, true, undefined, frame))
+        }
+
+        /* UN RESPIRO AL ENTRAR. Recién puesto el visor, la vista cae donde
+           cayó: si hay un planeta justo delante, la mirada lo abriría antes
+           de que a nadie le diera tiempo a mirar alrededor. */
+        veto.hasta = performance.now() + 2200
+        setEstado({ activo: true, modo, cabeza: modo === 'xr', ojos, mirada })
+        return modo
+      },
+
+      salir() {
+        if (!est.current.activo) return
+        /* Se marca cerrado AQUÍ MISMO, antes de tocar nada. Terminar la sesión
+           dispara el aviso de fin, que vuelve a entrar por esta puerta: sin la
+           marca, todo se desharía dos veces y el motor se cae. */
+        est.current = { ...est.current, activo: false }
+        const s = sesionXR.current
+        sesionXR.current = null
+        if (s) { try { s.end() } catch { /* ya terminó */ } }
+        try {
+          gl.xr.enabled = false
+          gl.setAnimationLoop(null)
+          setFrameloop?.('always')
+        } catch { /* nada */ }
+        gl.setScissorTest(false)
+        gl.setViewport(0, 0, medida.current.w, medida.current.h)
+        cabeza.identity()
+        setEstado({ activo: false, modo: null, cabeza: false, ojos: 0.064, mirada: true })
+        /* LA CASA TIENE QUE ENTERARSE. Quitarse el visor termina la sesión
+           desde fuera: si solo saliera el motor, la wallet seguiría creyendo
+           que hay un visor puesto —sin menú, sin poder enviar— y no habría
+           forma de volver. */
+        dispatchEvent(new CustomEvent('ae-visor-fuera'))
+      },
+
+      ojos(v: number) { setEstado((s) => ({ ...s, ojos: Math.max(0.02, Math.min(0.12, v)) })) },
+      mirada(v: boolean) { setEstado((s) => ({ ...s, mirada: !!v })) },
+      estado: () => ({ ...est.current }),
+      /* Hacia dónde mira la cabeza, aparte del cuerpo. La casa no lo necesita;
+         las pruebas sí, porque es lo único que demuestra que el giroscopio
+         llegó a mover algo. */
+      cabezaQ: () => cabeza.toArray(),
+      /* Para la casa y para las pruebas: recentra el frente. Quien se sienta
+         girado necesita decir «esto de aquí es el frente» sin levantarse. */
+      recentrar() {
+        try { sesionXR.current?.requestReferenceSpace?.('local-floor') } catch { /* nada */ }
+        rig.recentrar()
+      },
+      /* La casa avisa que ESO no se abre con el visor puesto. Dentro de un
+         visor el aviso de la pantalla no se lee: la retícula se pone en rojo
+         un momento, que es el único idioma que se entiende ahí dentro. */
+      negar() { veto.hasta = performance.now() + 900 },
+    }
+    w.__AE_VISOR = mio
+    return () => { if (w.__AE_VISOR === mio) delete w.__AE_VISOR }
+  }, [gl, advance, setFrameloop, cabeza])
+
+  /* ── EL DIBUJO ────────────────────────────────────────────────────────────
+   * Con prioridad 1, R3F deja de dibujar solo y el mando es de aquí: en XR
+   * dibuja el propio motor (las dos cámaras las pone el visor), y en cartón se
+   * dibuja DOS VECES, una por ojo, cada una en su mitad de pantalla. */
+  /* La prioridad cambia con el modo A PROPÓSITO: con prioridad cero, R3F (y
+     el post-procesado) siguen dibujando como siempre; con uno, el mando es de
+     aquí. Registrar siempre prioridad uno dejaría la escena sin dibujar en
+     cuanto el post-procesado se desmontara. */
+  useFrame(() => {
+    const e = est.current
+    if (!e.activo) return
+
+    if (e.modo === 'xr') {
+      // el visor manda: three ya compone los dos ojos con su propia cámara
+      gl.render(scene, camera)
+      return
+    }
+
+    /* La cabeza se compone sobre el cuerpo: el timón sigue mandando dónde
+       está uno, y la cabeza, hacia dónde mira. */
+    cuerpo.position.copy(camera.position)
+    cuerpo.quaternion.copy(camera.quaternion)
+    if (e.cabeza) cuerpo.quaternion.multiply(cabeza)
+
+    const cam = camera as THREE.PerspectiveCamera
+    const media = e.modo === 'carton' ? e.ojos / 2 : 0
+    for (const [c, signo] of [[izq, -1], [der, 1]] as Array<[THREE.PerspectiveCamera, number]>) {
+      c.near = cam.near
+      c.far = cam.far
+      c.fov = cam.fov
+      c.aspect = e.modo === 'carton' ? cam.aspect / 2 : cam.aspect
+      c.updateProjectionMatrix()
+      c.position.copy(cuerpo.position)
+      c.quaternion.copy(cuerpo.quaternion)
+      c.translateX(signo * media)
+    }
+
+    const w = size.width * gl.getPixelRatio()
+    const h = size.height * gl.getPixelRatio()
+    if (e.modo === 'carton') {
+      gl.setScissorTest(true)
+      gl.setViewport(0, 0, w / 2, h)
+      gl.setScissor(0, 0, w / 2, h)
+      gl.render(scene, izq)
+      gl.setViewport(w / 2, 0, w / 2, h)
+      gl.setScissor(w / 2, 0, w / 2, h)
+      gl.render(scene, der)
+      gl.setScissorTest(false)
+      gl.setViewport(0, 0, w, h)
+    } else {
+      // 360 en pantalla: un solo ojo, pero la cabeza manda igual
+      gl.render(scene, der)
+    }
+  }, estado.activo ? 1 : 0)
+
+  /* La retícula sigue viva aunque la selección por mirada esté apagada: hace
+     falta para saber a QUÉ se apunta cuando se aprieta el gatillo. Lo que se
+     apaga es el aro que se llena solo, no la puntería. */
+  return <Reticula visible={estado.activo} dwell={estado.mirada} modo={estado.modo} />
+}
+
+/* ── LA RETÍCULA ────────────────────────────────────────────────────────────
+ * Dentro de un visor no hay puntero: el puntero es el CENTRO DE LA VISTA. La
+ * retícula va pegada a la cámara —así aparece en los dos ojos y a la misma
+ * distancia— y su aro se llena mientras se sostiene la mirada sobre una casa.
+ * Sin ella, mirar fijo un planeta y que se abra «solo» da miedo. */
+/* Lo que la retícula tiene ahora mismo en el centro. El gatillo del mando —y
+   el pellizco de la mano, que WebXR manda por el mismo camino— abren ESTO, sin
+   esperar a que se llene el aro. Con un visor de verdad en la cabeza, esperar
+   segundo y medio para cada cosa cansa. */
+const apuntado: { key: string | null } = { key: null }
+const veto = { hasta: 0 }
+
+function Reticula({ visible, dwell, modo }:
+                  { visible: boolean; dwell: boolean; modo: ModoVisor | null }) {
+  const { camera } = useThree()
+  const grupo = useRef<THREE.Group>(null)
+  const aro = useRef<THREE.Mesh>(null)
+  const mirando = useRef<{ key: string; desde: number } | null>(null)
+  const DWELL = 1400   // más largo que en pantalla: la cabeza tiembla
+
+  useFrame(() => {
+    const g = grupo.current
+    if (!g || !visible) { if (g) g.visible = false; return }
+    g.visible = true
+    /* Un metro y medio delante de los ojos: más cerca marea, más lejos se
+       pierde entre los planetas. Se COLOCA delante de la cámara en cada
+       cuadro en vez de colgarse de ella: meter la cámara dentro de un grupo
+       la saca de su sitio en la escena y rompe todo lo demás. */
+    g.position.copy(camera.position)
+    g.quaternion.copy(camera.quaternion)
+    g.translateZ(-1.5)
+
+    const w = window as any
+    const ahora = performance.now()
+    const aroM = aro.current?.material as THREE.MeshBasicMaterial | undefined
+    if (ahora < veto.hasta) {
+      // rechazo (o respiro de entrada): aro rojo y la mirada no cuenta
+      mirando.current = null
+      apuntado.key = null
+      if (aroM) { aroM.color.set('#E4574B'); aroM.opacity = 0.95 }
+      aro.current?.scale.setScalar(1.3)
+      return
+    }
+    if (aroM) aroM.color.set('#EAD79C')
+    const casa = w.__AE_MIRAR?.(innerWidth / 2, innerHeight / 2) || null
+    if (!casa) {
+      mirando.current = null
+      apuntado.key = null
+      if (aro.current) (aro.current.material as THREE.MeshBasicMaterial).opacity = 0.28
+      w.__AE_RESALTAR?.(null)
+      return
+    }
+    apuntado.key = casa.key
+    if (!dwell) {
+      // sin selección por mirada, el aro solo señala: no se llena ni abre nada
+      if (aroM) aroM.opacity = 0.55
+      aro.current?.scale.setScalar(1.12)
+      return
+    }
+    const yaMiraba = mirando.current
+    if (!yaMiraba || yaMiraba.key !== casa.key) {
+      mirando.current = { key: casa.key, desde: ahora }
+      w.__AE_RESALTAR?.(casa.key)
+      return
+    }
+    const p = Math.min(1, (ahora - yaMiraba.desde) / DWELL)
+    if (aro.current) {
+      const m = aro.current.material as THREE.MeshBasicMaterial
+      m.opacity = 0.3 + p * 0.7
+      aro.current.scale.setScalar(1 + p * 0.5)
+    }
+    if (p >= 1) {
+      mirando.current = null
+      w.__AE_TOCAR?.(casa.key)
+    }
+  })
+
+  return (
+    <group ref={grupo} visible={false} renderOrder={999}>
+      <mesh ref={aro}>
+        <ringGeometry args={[0.016, 0.022, 32]} />
+        <meshBasicMaterial color="#EAD79C" transparent opacity={0.3} depthTest={false} toneMapped={false} />
+      </mesh>
+      <mesh>
+        <circleGeometry args={[0.004, 16]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.8} depthTest={false} toneMapped={false} />
+      </mesh>
+    </group>
+  )
+}

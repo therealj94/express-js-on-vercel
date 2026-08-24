@@ -2,6 +2,7 @@ import { Canvas } from '@react-three/fiber'
 import { AgXToneMapping } from 'three'
 import { Kernel, QualityWatcher } from './kernel/Kernel'
 import { Encuadre } from './kernel/Encuadre'
+import { Visor } from './kernel/Visor'
 import { Sky } from './sky/Sky'
 import { Pulses } from './pulses/Pulses'
 import { TransitRunner } from './transit/TransitRunner'
@@ -36,11 +37,16 @@ export default function App() {
           gl.toneMapping = AgXToneMapping
           gl.toneMappingExposure = 1.05
           ;(window as any).__aeCamera = camera
+          /* El motor, a mano para el modo visor y para las pruebas: contar
+             cuántas veces se dibuja un cuadro es la única forma honesta de
+             comprobar que de verdad se están pintando DOS ojos. */
+          ;(window as any).__aeGL = gl
         }}
       >
         <Kernel />
         <QualityWatcher />
         <Encuadre />
+        <Visor />
         {/* LA LUZ HACE EL VOLUMEN. Con relleno parejo y fuerte, cada planeta
             quedaba iluminado por igual de lado a lado: sin terminador, sin
             sombra, sin bulto — pegatinas redondas. Ahora el relleno es apenas

@@ -1966,8 +1966,26 @@ const VETA = (() => {
     </div>`;
   }
 
+  /* Las vistas donde se mueve dinero. Con un visor puesto no se abre ninguna:
+     firmar un envío con la cara tapada, sin leer la letra chica y sin teclado,
+     es la clase de comodidad que termina en un arrepentimiento caro. */
+  const SIN_VISOR = ['enviar', 'cobrar', 'cambiar', 'comprar', 'lector', 'mtp',
+                     'tarjeta', 'llaves', 'seguridad'];
+
   function vista(cual, dato) {
     if (!VISTAS[cual]) cual = 'nucleo';
+    if (window.VISOR?.activo()) {
+      if (SIN_VISOR.includes(cual)) {
+        avisar(t('vs.dineroNo'));
+        try { window.__AE_VISOR?.negar?.(); } catch { /* nada */ }
+        return;
+      }
+      /* Cualquier otra app SÍ se abre, pero el visor se quita primero. Las
+         apps son pantallas planas y abrir una apaga el cielo 3D: si el modo
+         siguiera puesto, quedaría un visor sin galaxia, sin menú y sin forma
+         de salir. Se sale limpio y después se entra. */
+      if (cual !== 'nucleo') window.VISOR.salir();
+    }
     vistaDato = dato ?? null;
     // Salir de la tarjeta borra el numero y el CVV de la memoria y la deja de
     // frente otra vez. Nadie tiene por que volver y encontrarselos puestos.
@@ -4466,6 +4484,13 @@ const VETA = (() => {
     </div>
 
     <div class="bloque vidrio">
+      <h3>${t('vs.t')}</h3>
+      <div class="vs-caja" id="vs-caja" data-al-cargar="VETA_vsPintar">
+        <div class="vs-estado"><i></i><span>${t('vs.buscando')}</span></div>
+      </div>
+    </div>
+
+    <div class="bloque vidrio">
       <h3>${t('aj.seguridad')}</h3>
       <div class="ajustes">
         ${fila(ICO.llave, t('seg.frase'), t('seg.fraseP').slice(0, 58) + '…', "VETA.vista('seguridad')")}
@@ -5146,7 +5171,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = '9d75f40f5c';
+  const AET_V = '549f41ce17';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -5168,6 +5193,61 @@ const VETA = (() => {
   }
 
   function aeSaludoQuitar() { document.getElementById('ae-saludo')?.remove(); }
+
+  /* ── MODO VISOR ──────────────────────────────────────────────────────────
+     La ficha de Ajustes no promete nada antes de mirar: pregunta al aparato
+     qué puede, lo dice con todas las letras y solo ofrece el modo que este
+     visor —o esta falta de visor— puede sostener. */
+  async function vsPintar(caja) {
+    if (!caja || !window.VISOR) return;
+    const cap = await VISOR.detectar();
+    const sugerido = VISOR.modoSugerido(cap);
+    const hay = cap.xr || (cap.giroscopio && matchMedia('(pointer: coarse)').matches);
+    const nombre = { xr: t('vs.xr'), carton: t('vs.carton'), trescientos60: t('vs.pantalla') }[sugerido];
+    const est = VISOR.ver();
+    caja.innerHTML = `
+      <div class="vs-estado${hay ? ' hay' : ''}"><i></i><span>${esc(nombre)}</span></div>
+      <p class="vs-aviso">${t('vs.aviso')}</p>
+      <div class="vs-opciones">
+        <label class="vs-fila">
+          <span>${t('vs.mirada')}<small>${t('vs.miradaP')}</small></span>
+          <input type="checkbox" id="vs-mirada" ${est.mirada ? 'checked' : ''}
+                 onchange="VETA.vsMirada(this.checked)">
+        </label>
+        ${sugerido === 'carton' ? `
+        <label class="vs-fila">
+          <span>${t('vs.ojos')}<small>${t('vs.ojosP')}</small></span>
+          <input type="range" id="vs-ojos" min="40" max="80" step="1"
+                 value="${Math.round(est.ojos * 1000)}" oninput="VETA.vsOjos(this.value)">
+        </label>` : ''}
+      </div>
+      <div class="acciones" style="margin-top:6px">
+        <button class="btn btn-oro btn-sm" onclick="VETA.vsEntrar()">${t('vs.entrar')}</button>
+        ${sugerido !== 'trescientos60' ? `<button class="btn btn-linea btn-sm"
+          onclick="VETA.vsEntrar('trescientos60')">${t('vs.probar')}</button>` : ''}
+      </div>`;
+  }
+  window.VETA_vsPintar = vsPintar;
+
+  async function vsEntrar(modo) {
+    if (!window.VISOR) return;
+    /* El cielo 3D tiene que estar montado: el visor ES la galaxia. Si la
+       persona está en otra vista, se la lleva al Inicio primero. */
+    if (vistaActual !== 'nucleo') {
+      vista('nucleo');
+      await new Promise(r => setTimeout(r, 1400));
+    }
+    try {
+      const m = await VISOR.entrar(modo);
+      tele('accion', 'visor.entrar', { modo: m });
+    } catch (e) {
+      avisar(t(e.message === 'sin-cielo' ? 'vs.sinCielo'
+        : e.message === 'sin-webxr' ? 'vs.sinXr' : 'vs.noPudo'));
+    }
+  }
+  const vsSalir = () => window.VISOR?.salir();
+  const vsOjos = (v) => window.VISOR?.ojos(Number(v) / 1000);
+  const vsMirada = (v) => window.VISOR?.mirada(v);
 
   /* ── PANTALLA COMPLETA ───────────────────────────────────────────────────
      La galaxia y las casas se ven mejor sin la barra del navegador comiéndose
@@ -11621,6 +11701,7 @@ const VETA = (() => {
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
            pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,
+           vsEntrar, vsSalir, vsOjos, vsMirada,
            _bienvenidaGalaxia: (v) => auraBienvenidaGalaxia(v),
            /* El aterrizaje del login, tal cual: la prueba comprueba que entrar
               siempre deja a la persona en el Inicio, aunque la dirección

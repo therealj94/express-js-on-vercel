@@ -10,6 +10,7 @@ interface TearState {
 
 interface UiState {
   tier: 0 | 1 | 2
+  visor: boolean
   selectedId: string | null
   activeId: string | null
   marea: Marea
@@ -20,6 +21,7 @@ interface UiState {
   tear: TearState
   toast: { key: number; text: string; urgent: boolean } | null
   setTier: (t: 0 | 1 | 2) => void
+  setVisor: (v: boolean) => void
   select: (id: string | null) => void
   setActive: (id: string | null) => void
   setMarea: (m: Marea) => void
@@ -37,6 +39,7 @@ const MAREA_ORDER: Marea[] = ['alba', 'pleamar', 'bajamar']
 
 export const useUiStore = create<UiState>()((set) => ({
   tier: 1,
+  visor: false,
   selectedId: null,
   activeId: null,
   marea: 'alba',
@@ -47,6 +50,7 @@ export const useUiStore = create<UiState>()((set) => ({
   tear: { open: false, x: 0, y: 0, id: null },
   toast: null,
   setTier: (t) => set({ tier: t }),
+  setVisor: (v: boolean) => set({ visor: v }),
   select: (id) => set({ selectedId: id }),
   setActive: (id) => set({ activeId: id }),
   setMarea: (m) => set({ marea: m }),

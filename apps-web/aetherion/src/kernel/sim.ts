@@ -17,6 +17,8 @@ export const sim = {
      Entrar es exactamente el viaje de 1 a 0, y por eso los planetas se
      ACOMODAN mientras la cámara se acerca. */
   acomodo: 1,
+  /* ¿hay un visor puesto? El post-procesado y otros lujos se apartan */
+  visor: false,
   timeScale: 1,
   timeScaleT: 1,
   desat: 0,
