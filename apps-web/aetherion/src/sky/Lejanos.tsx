@@ -178,7 +178,7 @@ export function Lejanos() {
                    cielo. No es brillo — es que la superficie exista. */
                 emissive={new THREE.Color(m.color)}
                 emissiveMap={pielMundo(m.fam)}
-                emissiveIntensity={0.16}
+                emissiveIntensity={0.09}
               />
             )}
           </mesh>

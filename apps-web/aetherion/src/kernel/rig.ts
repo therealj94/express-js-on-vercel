@@ -114,13 +114,11 @@ class Rig {
   private posicionar(cam: THREE.PerspectiveCamera, d: number, phi: number) {
     const sp = Math.sin(phi)
     cam.position.set(d * sp * Math.sin(this.tTheta), d * Math.cos(phi), d * sp * Math.cos(this.tTheta))
-    /* ADÓNDE MIRA. Normalmente al centro del sistema —ahí vive AU-RA y ahí
-       está la composición—, pero la película necesita poder mirar a un
-       planeta concreto: si la cámara siempre apunta al centro, el sol queda
-       clavado en medio del cuadro, quemado, y la casa que se presenta se va a
-       un borde. Con objetivo puesto, manda el objetivo. */
-    if (this.objetivo) cam.lookAt(this.objetivo)
-    else cam.lookAt(0, this.mira, 0)
+    /* La cámara de MEDIR siempre mira al centro: con ella se calcula dónde
+       cae cada casa para elegir el encuadre, y apuntarla a otro sitio daría
+       distancias sin sentido. La que mira a un planeta es la de verdad, en
+       update(). */
+    cam.lookAt(0, this.mira, 0)
     cam.updateMatrixWorld(true)
     cam.updateProjectionMatrix()
   }
@@ -266,7 +264,13 @@ class Rig {
       this.radius * Math.cos(this.phi),
       this.radius * sp * Math.cos(this.theta)
     )
-    cam.lookAt(0, this.mira, 0)
+    /* ADÓNDE MIRA. Normalmente al centro —ahí vive AU-RA y ahí está la
+       composición—, pero la película necesita apuntar a una casa concreta:
+       mirando siempre al centro, el sol queda clavado en medio del cuadro,
+       quemado, y la casa que se presenta se va fuera de pantalla. Con
+       objetivo puesto, manda el objetivo. */
+    if (this.objetivo) cam.lookAt(this.objetivo)
+    else cam.lookAt(0, this.mira, 0)
   }
 
   altitudeLabel(): string {

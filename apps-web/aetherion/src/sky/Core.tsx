@@ -218,14 +218,14 @@ export function Core() {
     if (flare.current) {
       const s = 6.6 * (1 + Math.min(0.5, b) * 0.3) * (0.6 + 0.4 * sim.intro)
       flare.current.scale.setScalar(s)
-      ;(flare.current.material as THREE.SpriteMaterial).opacity = (0.58 + V * 0.22) * luzViva
+      ;(flare.current.material as THREE.SpriteMaterial).opacity = (0.58 + V * 0.22) * luzViva * (1 - 0.72 * sim.plano)
     }
     if (rayos.current) {
       const mat = rayos.current.material as THREE.SpriteMaterial
       mat.rotation += dt * 0.05
       const s = 12 * (0.86 + Math.min(0.6, b) * 0.18) * (0.5 + 0.5 * sim.intro)
       rayos.current.scale.setScalar(s)
-      mat.opacity = (0.2 + V * 0.42) * (1 - 0.6 * sim.eclipse) * luzViva
+      mat.opacity = (0.2 + V * 0.42) * (1 - 0.6 * sim.eclipse) * luzViva * (1 - 0.85 * sim.plano)
     }
     glowMat.uniforms.uTime.value = sim.now
     glowMat.uniforms.uBoost.value = b * 0.9 * luzViva
@@ -236,7 +236,7 @@ export function Core() {
          —rojo hondo, no blanco—, que es lo que queda de una estrella que
          todavia no encendio. Lo justo para saber donde va a nacer. */
       const bm = brasa.current.material as THREE.SpriteMaterial
-      bm.opacity = 0.92 * Math.max(0.045, luzViva)
+      bm.opacity = 0.92 * Math.max(0.045, luzViva) * (1 - 0.55 * sim.plano)
       bm.color.setRGB(1, 0.72 + 0.28 * luzViva, 0.42 + 0.58 * luzViva)
     }
     if (corona.current) corona.current.scale.setScalar(1 + V * 0.16)

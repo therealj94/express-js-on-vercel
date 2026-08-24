@@ -20,9 +20,17 @@ export const sim = {
   /* La noche del Génesis: 1 = el sol todavía no fue dicho (tiniebla), 0 = luz
      normal. Solo el tour la toca; el resto del motor la deja en cero. */
   noche: 0,
-  /* Hay película rodando. Mientras dure, la escena se comporta como plató:
-     los rótulos de las casas se callan salvo el de la que se presenta. */
-  pelicula: false,
+  /* Hay película rodando, y QUIÉN pone los nombres:
+       0 = no hay película
+       1 = rodando con rótulos en HTML (pantalla): la escena se calla del
+           todo, porque el nombre ya lo dice la capa de la película y dos
+           nombres del mismo planeta, a dos tamaños, se leen como un error
+       2 = rodando dentro del visor: ahí no hay HTML que valga, así que el
+           rótulo de la escena es el único que puede contarlo */
+  pelicula: 0 as 0 | 1 | 2,
+  /* Hay un PLANO de casa en curso: el sol baja su resplandor para no comerse
+     el encuadre. Lo que se apaga es el adorno, no la luz que modela. */
+  plano: 0,
   /* ¿hay un visor puesto? El post-procesado y otros lujos se apartan */
   visor: false,
   timeScale: 1,

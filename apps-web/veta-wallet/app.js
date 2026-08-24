@@ -5256,7 +5256,7 @@ const VETA = (() => {
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
      compilación —no se toca a mano— y va colgada del pedido, así que motor
      nuevo es dirección nueva. Los trozos ya llevan su huella en el nombre. */
-  const AET_V = '54feea107f';
+  const AET_V = 'fe1eb71970';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -10895,6 +10895,9 @@ const VETA = (() => {
         if (capa) { capa.classList.add('yendo'); setTimeout(() => capa.remove(), 800); }
       },
       casas: ['wallet', 'chat', 'gid', 'pay', 'genesis'],
+      /* En pantalla los nombres los pone esta capa; dentro del visor no hay
+         HTML que valga y los tiene que poner la escena. */
+      rotulos: enVisor ? 'escena' : 'html',
     });
     tele('accion', 'genesis.tour', { visor: enVisor, porQue: porQue || 'boton' });
   }

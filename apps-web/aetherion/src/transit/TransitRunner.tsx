@@ -45,12 +45,18 @@ export function TransitRunner() {
         </EffectComposer>
       ) : (
         <EffectComposer multisampling={0}>
+          {/* EL UMBRAL DEL RESPLANDOR, ALTO A PROPÓSITO. Con 0.22 florecía
+              casi todo: cualquier mundo pálido que pasara cerca de la cámara
+              se convertía en una bola blanca sin forma, y en un plano de la
+              película eso arruina el encuadre. Subido a 0.55, solo florece lo
+              que de verdad ARDE —el sol, el anillo de fotones de un agujero
+              negro, una veta de lava—, y los planetas conservan su piel. */}
           <Bloom
-            intensity={1.15}
-            luminanceThreshold={0.22}
-            luminanceSmoothing={0.32}
+            intensity={0.95}
+            luminanceThreshold={0.55}
+            luminanceSmoothing={0.28}
             mipmapBlur
-            radius={0.75}
+            radius={0.7}
           />
           <MembranePass />
           <Vignette offset={0.26} darkness={0.62} />

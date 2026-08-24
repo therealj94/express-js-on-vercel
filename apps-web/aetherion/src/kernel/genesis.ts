@@ -42,7 +42,7 @@ import { espacio } from '../audio/espacio'
  * lo cuenta todo— y para lo que venga.
  */
 
-type Curva = 'suave' | 'entra' | 'sale' | 'recta'
+type Curva = 'suave' | 'entra' | 'sale' | 'recta' | 'llega'
 
 interface Movimiento {
   /* Adónde va la cámara. Lo que no se dice, no se toca. */
@@ -68,6 +68,9 @@ interface Opciones {
   alActo?: (clave: string) => void
   alFin?: (salteado: boolean) => void
   casas?: string[]
+  /* Quién pone los nombres: la casa con su capa HTML, o la propia escena
+     (que es lo único que hay dentro de un visor). */
+  rotulos?: 'html' | 'escena'
 }
 
 const CURVAS: Record<Curva, (p: number) => number> = {
@@ -75,6 +78,14 @@ const CURVAS: Record<Curva, (p: number) => number> = {
   entra: (p) => p * p * p,                    // arranca quieto y acelera
   sale: (p) => 1 - Math.pow(1 - p, 3),        // llega frenando
   recta: (p) => p,
+  /* LLEGAR Y SOSTENER. Un plano de presentación tiene que estar COMPUESTO
+     cuando aparece el rótulo: si la cámara sigue viajando mientras se lee el
+     nombre de la casa, lo que se ve es una cámara buscando, no un plano. Así
+     que llega en el primer 55% y el resto lo pasa empujando apenas —ese
+     acercamiento lento que tiene cualquier plano sostenido de cine. */
+  llega: (p) => (p < 0.55
+    ? (1 - Math.pow(1 - p / 0.55, 3)) * 0.94
+    : 0.94 + ((p - 0.55) / 0.45) * 0.06),
 }
 
 const ARRIBA = new THREE.Vector3(0, 1, 0)
@@ -82,6 +93,9 @@ const tmpSol = new THREE.Vector3()
 const tmpLado = new THREE.Vector3()
 const tmpDir = new THREE.Vector3()
 const tmpCam = new THREE.Vector3()
+const tmpPrueba = new THREE.Vector3()
+const tmpMira = new THREE.Vector3()
+const tmpAlSolCam = new THREE.Vector3()
 
 let vivoAhora = false
 let raf = 0
@@ -131,7 +145,8 @@ let saltarAhora: (() => void) | null = null
 
 function terminar(salteado: boolean, opciones: Opciones) {
   vivoAhora = false
-  sim.pelicula = false
+  sim.pelicula = 0
+  sim.plano = 0
   cancelAnimationFrame(raf)
   cancelAnimationFrame(acomodoRaf)
   cancelAnimationFrame(nocheRaf)
@@ -148,7 +163,7 @@ function terminar(salteado: boolean, opciones: Opciones) {
 function empezar(opciones: Opciones = {}) {
   if (vivoAhora) return
   vivoAhora = true
-  sim.pelicula = true
+  sim.pelicula = opciones.rotulos === 'escena' ? 2 : 1
   audio.ensure()
 
   const casas = (opciones.casas ?? ['wallet', 'chat', 'gid', 'pay', 'genesis'])
@@ -173,7 +188,7 @@ function empezar(opciones: Opciones = {}) {
     { clave: 'orden', dura: 6400, mover: { radio: 26, phi: 0.9, giro: 0.9, curva: 'suave' } },
     /* V-IX. LAS CASAS. Cada una a contraluz, con un acercamiento que frena. */
     ...casas.map((k) => ({ clave: `casa:${k}`, dura: 5400, casa: k,
-      mover: { phi: 1.12, curva: 'sale' as Curva } })),
+      mover: { curva: 'llega' as Curva } })),
     /* X. EL UNIVERSO. El retroceso grande: arranca lento y acelera hasta que
        cabe todo — los mundos de fuera, los soles, los agujeros negros. */
     { clave: 'universo', dura: 8600, mover: { radio: 104, phi: 0.82, giro: 1.5, mira: 0, curva: 'entra' } },
@@ -220,6 +235,11 @@ function empezar(opciones: Opciones = {}) {
       const key = a.clave.slice(5)
       st.select(key)
       const h = wellRegistry.get(key)
+      /* EL SOL NO PUEDE QUEMAR EL PLANO. Aunque quede en el borde del cuadro,
+         su fogonazo y sus rayos se comen medio encuadre: durante un plano de
+         casa se le bajan, y vuelven solos al terminar. La luz que MODELA a la
+         casa no se toca — lo que se apaga es el resplandor, que es adorno. */
+      sim.plano = 1
       if (h) {
         espacio.toque(h.getPos(), 520)
         /* EL PLANO DE UNA CASA, COMPUESTO DE VERDAD.
@@ -254,14 +274,38 @@ function empezar(opciones: Opciones = {}) {
         /* Si la casa cae justo sobre el eje vertical el producto cruzado se
            desmorona: cualquier perpendicular sirve. */
         if (tmpLado.lengthSq() < 0.01) tmpLado.set(1, 0, 0)
-        tmpDir.copy(alSol).multiplyScalar(Math.cos(1.24))
-          .addScaledVector(tmpLado, Math.sin(1.24) * 0.94)
-          .addScaledVector(ARRIBA, 0.26)
-          .normalize()
-        /* En un teléfono vertical hay que apartarse: el cuadro es angosto y
-           además el rótulo se queda con el tercio de abajo. */
-        const angosto = typeof window !== 'undefined' && innerWidth / innerHeight < 0.8
-        tmpCam.copy(q).addScaledVector(tmpDir, angosto ? 8.6 : 6.2)
+        /* LA DISTANCIA SALE DEL TAMAÑO QUE SE QUIERE EN PANTALLA, no de un
+           número a ojo: la casa ocupa la misma parte del cuadro en un
+           monitor y en un teléfono. En vertical se pide menos, porque el
+           rótulo se queda con el tercio de abajo. */
+        const alto = typeof window !== 'undefined' ? innerHeight : 900
+        const anchoV = typeof window !== 'undefined' ? innerWidth : 1400
+        const angosto = anchoV / alto < 0.8
+        const fovV = (angosto ? 74 : 62) * Math.PI / 180
+        const parte = angosto ? 0.34 : 0.44
+        const dist = Math.max(4.2, h.radius / Math.tan(parte * fovV / 2))
+
+        /* DE QUÉ LADO PONERSE. Hay dos sitios buenos alrededor de una casa:
+           del lado del sol (queda iluminada de frente) o del contrario
+           (queda a contraluz, con su corona). Cuál de los dos aparta más el
+           sol del cuadro depende de dónde caiga esa casa —las hay cerca del
+           centro y lejos—, así que no se elige de antemano: se prueban los
+           dos y gana el que deje el sol más lejos del eje de la cámara.
+           Media línea de cuenta que evita un plano quemado. */
+        const ang = 0.61
+        let mejor = -2
+        for (const signo of [1, -1]) {
+          tmpDir.copy(alSol).multiplyScalar(signo * Math.cos(ang))
+            .addScaledVector(tmpLado, Math.sin(ang))
+            .addScaledVector(ARRIBA, 0.16)
+            .normalize()
+          tmpPrueba.copy(q).addScaledVector(tmpDir, dist)
+          // el coseno del ángulo entre «adónde mira» y «dónde está el sol»
+          tmpMira.copy(q).sub(tmpPrueba).normalize()
+          tmpAlSolCam.copy(tmpPrueba).negate().normalize()
+          const cos = tmpMira.dot(tmpAlSolCam)
+          if (-cos > mejor) { mejor = -cos; tmpCam.copy(tmpPrueba) }
+        }
 
         const r = Math.max(rig.cerca + 1.5, tmpCam.length())
         a.mover = {
@@ -276,11 +320,13 @@ function empezar(opciones: Opciones = {}) {
       // fuera de las casas la cámara vuelve a mirar al sistema entero
       rig.objetivo = null
       anguloCasa = null
+      sim.plano = 0
       st.select(null)
       audio.whoosh(false)
     } else {
       rig.objetivo = null
       anguloCasa = null
+      sim.plano = 0
     }
 
     /* El movimiento se congela AQUÍ: de dónde sale la cámara es lo que hay
@@ -348,6 +394,7 @@ if (typeof window !== 'undefined') {
   // para que una prueba pueda ver la tiniebla, que es lo que no se puede leer
   // desde fuera en una foto: si está oscuro o no
   ;(window as any).__AE_NOCHE = () => sim.noche
+  ;(window as any).__AE_PELICULA = () => sim.pelicula
   // para diagnóstico: adónde apunta la cámara ahora mismo
   ;(window as any).__AE_OBJETIVO = () => rig.objetivo ? rig.objetivo.toArray().map((n) => Math.round(n * 10) / 10) : null
   /* Y qué tan encendido está cada rótulo: en una foto no se puede distinguir

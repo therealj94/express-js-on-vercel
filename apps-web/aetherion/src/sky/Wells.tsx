@@ -449,7 +449,8 @@ function WellView({ def }: { def: WellDef }) {
          mientras se dice «había oscuridad» rompe el hechizo entero. Y con
          película rodando, solo la casa que se está presentando enseña la
          suya — lo demás es silencio, como en cualquier plano bien hecho. */
-      const cine = sim.pelicula ? (selected ? 1 : 0.12) : 1
+      const cine = sim.pelicula === 1 ? (selected ? 1 : 0)
+        : sim.pelicula === 2 ? (selected ? 1 : 0.12) : 1
       ;(emblema.current.material as THREE.SpriteMaterial).opacity =
         THREE.MathUtils.clamp(3.1 - d / 17, 0, 1) * (1 - sim.noche) * cine
     }
@@ -472,7 +473,11 @@ function WellView({ def }: { def: WellDef }) {
          aparecen recién cuando la persona entra. */
       const puerta = (window as any).__AE_PUERTA ? 0 : 1
       // durante la película, el nombre es SOLO de la casa que se presenta
-      const cineL = sim.pelicula ? (selected ? 1 : 0) : 1
+      /* Con rótulos en HTML el nombre de la escena SOBRA: el de la
+         película ya lo dice, más grande y mejor puesto. En el visor es al
+         revés — no hay HTML, así que este es el único que hay. */
+      const cineL = sim.pelicula === 1 ? 0
+        : sim.pelicula === 2 ? (selected ? 1 : 0) : 1
       const op = puerta * cineL * (1 - sim.noche)
         * (alBorde ? Math.min(0.12, lejania) : selected ? 1 : lejania)
       ;(letrero.current.material as THREE.SpriteMaterial).opacity = op
