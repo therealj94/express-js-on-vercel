@@ -3,7 +3,8 @@ import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
 import { rig } from './rig'
 import { sim } from './sim'
-import { MIRADA, poseMirada } from './mirada'
+import { MIRADA, PUNTERO, poseMirada, posePuntero } from './mirada'
+import { Mandos } from './Mandos'
 import { useUiStore } from '../state/uiStore'
 
 /* MODO VISOR.
@@ -240,7 +241,30 @@ export function Visor() {
           })
           sesionXR.current = sesion
           gl.xr.enabled = true
-          await gl.xr.setReferenceSpaceType('local-floor')
+          /* ══ LA RESOLUCIÓN, ANTES DE EMPEZAR ═══════════════════════════════
+             Un Quest 3 pide más de dos mil píxeles por ojo, y esta galaxia
+             —nebulosa, agujeros negros, mil estrellas— no la sostiene a esa
+             resolución. Y en un visor no hay «va un poco lento»: por debajo de
+             los 72 cuadros la imagen se sacude y marea de verdad. Un pelo menos
+             de resolución no se nota; los tirones sí. */
+          try { gl.xr.setFramebufferScaleFactor?.(0.85) } catch { /* nada */ }
+          /* ══ EL SUELO, CON RED ═════════════════════════════════════════════
+             `local-floor` es lo que pone la escena a la altura de los ojos de
+             quien está de pie. Se pidió como OPCIONAL —como todo lo demás, para
+             no dejar fuera a media flota—, así que un visor que no lo tenga
+             concede la sesión IGUAL y revienta recién al pedir el espacio: o
+             sea, entrar fallaba entero por una comodidad. Con `local` se entra
+             igual, sentado en el origen.
+             Y se pregunta ANTES de entregarle la sesión a three, no después:
+             three pide el espacio al FINAL de todo su montaje, y para entonces
+             ya colgó sus ocho escuchas y creó la capa de dibujo. Reintentar ahí
+             las duplicaría todas. Pedir un espacio dos veces no cuesta nada
+             —devuelve uno nuevo cada vez— y esto deja el reintento en la única
+             línea donde todavía no hay nada que deshacer. */
+          let suelo = 'local-floor'
+          try { await sesion.requestReferenceSpace('local-floor') }
+          catch { suelo = 'local' }
+          gl.xr.setReferenceSpaceType(suelo)
           await gl.xr.setSession(sesion)
           sesion.addEventListener('end', () => { mio.salir() })
           /* El gatillo del mando, el botón del visor y el pellizco de la mano
@@ -248,8 +272,23 @@ export function Visor() {
              tenga en la mira, que es como se espera que funcione un visor. */
           sesion.addEventListener('select', () => {
             if (performance.now() < veto.hasta) return
+            const w = window as any
+            /* EL PÓRTICO PRIMERO, Y NO ES UN DETALLE. Mientras hay una puerta
+               puesta —INICIAR, o SALIR durante la historia— la mirada está
+               blindada y `apuntado` es nulo a propósito, así que esto no hacía
+               absolutamente nada: en un Quest se apuntaba al botón, se apretaba
+               el gatillo y no pasaba nada. Había que sostener la mirada segundo
+               y medio, con un mando en la mano. */
+            if (w.__AE_PORTICO_APRETAR?.()) return
             const k = apuntado.key
-            if (k) (window as any).__AE_TOCAR?.(k)
+            if (k) w.__AE_TOCAR?.(k)
+          })
+          /* Apretar el gatillo y que se abra un mundo, sin más aviso que el
+             rayo, es brusco. Un golpecito lo convierte en algo que se siente
+             hecho — y en un visor el tacto es lo único que confirma. */
+          sesion.addEventListener('selectstart', (ev: any) => {
+            const h = ev?.inputSource?.gamepad?.hapticActuators?.[0]
+            try { h?.pulse?.(0.35, 30) } catch { /* no todos vibran */ }
           })
           /* DENTRO DE XR MANDA EL RELOJ DEL VISOR. El de la pantalla no
              existe ahí: dibujar con requestAnimationFrame en una sesión
@@ -308,6 +347,13 @@ export function Visor() {
         try { sesionXR.current?.requestReferenceSpace?.('local-floor') } catch { /* nada */ }
         rig.recentrar()
       },
+      /* QUÉ ABRIRÍA EL GATILLO AHORA MISMO. Es el valor exacto que usa el
+         `select` de la sesión, y es lo único que distingue «apunto a DBNX y se
+         abre DBNX» de «apunto a DBNX y se abre lo que tengo de frente» — el
+         fallo entero, que desde fuera se ve igual que todo bien. Preguntarlo
+         no abre nada, así que se puede comprobar sin que la galaxia se
+         desmonte a mitad de la prueba. */
+      apuntando: () => apuntado.key,
       /* La casa avisa que ESO no se abre con el visor puesto. Dentro de un
          visor el aviso de la pantalla no se lee: la retícula se pone en rojo
          un momento, que es el único idioma que se entiende ahí dentro. */
@@ -389,7 +435,17 @@ export function Visor() {
   /* La retícula sigue viva aunque la selección por mirada esté apagada: hace
      falta para saber a QUÉ se apunta cuando se aprieta el gatillo. Lo que se
      apaga es el aro que se llena solo, no la puntería. */
-  return <Reticula visible={estado.activo} dwell={estado.mirada} modo={estado.modo} />
+  return (
+    <>
+      <Reticula visible={estado.activo} dwell={estado.mirada} modo={estado.modo} />
+      {/* Los mandos, sólo con un visor de verdad: en cartón y en 360 no hay
+          ninguno que buscar, y pedirlos sería preguntarle a una sesión que no
+          existe. Salen por su propia puerta —el botón B/Y— porque la del
+          sistema saca del navegador entero. */}
+      <Mandos activo={estado.activo && estado.modo === 'xr'}
+              alSalir={() => (window as any).__AE_VISOR?.salir?.()} />
+    </>
+  )
 }
 
 /* ── LA RETÍCULA ────────────────────────────────────────────────────────────
@@ -454,7 +510,24 @@ function Reticula({ visible, dwell, modo }:
       w.__AE_RESALTAR?.(null)
       return
     }
+    /* ══ CON UN MANDO EN LA MANO, LA RETÍCULA SE RETIRA ════════════════════
+       El rayo del mando ya lleva su punta iluminada, y ESA es la retícula: va
+       donde se apunta. Dejar además el aro clavado en el centro de la vista
+       pone dos punteros señalando cosas distintas — y peor: el aro se llenaría
+       solo por descansar la vista sobre un planeta, abriendo mundos que nadie
+       pidió mientras la persona apunta a otra cosa. Con mando manda el gatillo.
+       La puntería sigue calculándose igual, porque de ella sale lo que el
+       gatillo va a abrir. Ver Mandos.tsx.
+       Va DESPUÉS del respiro y del blindaje a propósito: ni el mando ni la
+       mirada abren nada mientras la puerta está puesta. */
     const casa = w.__AE_MIRAR?.(innerWidth / 2, innerHeight / 2) || null
+    if (PUNTERO.activo) {
+      g.visible = false
+      mirando.current = null
+      apuntado.key = casa?.key || null
+      w.__AE_RESALTAR?.(apuntado.key)
+      return
+    }
     if (!casa) {
       mirando.current = null
       apuntado.key = null

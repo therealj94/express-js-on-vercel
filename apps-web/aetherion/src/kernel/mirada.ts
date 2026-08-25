@@ -60,6 +60,26 @@ export function poseMirada(
   }
 }
 
+/* ── EL MANDO, CUANDO LO HAY ────────────────────────────────────────────────
+ *
+ * En un Quest nadie apunta con la cabeza. Se apunta con el mando —o con el
+ * dedo, que el visor manda por el mismo camino—, y la cabeza queda libre para
+ * mirar. Un visor de cartón no tiene mando y ahí la cabeza ES el puntero; los
+ * dos casos conviven, así que hay una sola pregunta —«¿hacia dónde se está
+ * apuntando?»— y aquí se contesta.
+ *
+ * `desde` no es decoración: en un Quest los dos mandos están siempre
+ * conectados, también el que está sobre la mesa. Sin saber cuál se movió por
+ * última vez, la puntería salta entre uno y otro y no obedece a nadie.
+ */
+export const PUNTERO = {
+  activo: false,
+  mano: '' as 'left' | 'right' | '',
+  origen: new THREE.Vector3(),
+  dir: new THREE.Vector3(0, 0, -1),
+  desde: 0,
+}
+
 const tmpPos = new THREE.Vector3()
 const tmpQuat = new THREE.Quaternion()
 
@@ -75,6 +95,32 @@ export function rayoMirada(camara: THREE.Camera, rayo: THREE.Ray): THREE.Ray {
   return rayo
 }
 
+/** El rayo con el que se APUNTA: el del mando si hay uno en la mano, y el de
+ *  los ojos si no. Es lo que tiene que preguntar cualquiera que quiera saber
+ *  qué se está señalando — no `rayoMirada`, que es sólo la cabeza. */
+export function rayoPuntero(camara: THREE.Camera, rayo: THREE.Ray): THREE.Ray {
+  if (PUNTERO.activo) {
+    rayo.origin.copy(PUNTERO.origen)
+    rayo.direction.copy(PUNTERO.dir).normalize()
+    return rayo
+  }
+  return rayoMirada(camara, rayo)
+}
+
+/** Desde dónde y hacia dónde se apunta, como pose. Para colocar la retícula
+ *  en la punta del rayo en vez de clavarla delante de la cara. */
+export function posePuntero(
+  camara: THREE.Camera,
+  pos: THREE.Vector3,
+  quat: THREE.Quaternion,
+): void {
+  if (!PUNTERO.activo) { poseMirada(camara, pos, quat); return }
+  pos.copy(PUNTERO.origen)
+  quat.setFromUnitVectors(ADELANTE, tmpDir.copy(PUNTERO.dir).normalize())
+}
+const ADELANTE = new THREE.Vector3(0, 0, -1)
+const tmpDir = new THREE.Vector3()
+
 /* UNA VENTANITA PARA MIRAR ESTO DESDE FUERA.
  *
  * Dentro de un visor casi nada se puede comprobar con una captura de pantalla:
@@ -87,6 +133,9 @@ if (typeof window !== 'undefined') {
     const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(MIRADA.quat)
     return {
       activa: MIRADA.activa,
+      mando: PUNTERO.activo ? (PUNTERO.mano || 'sí') : 'no',
+      apunta: PUNTERO.activo
+        ? PUNTERO.dir.toArray().map((n) => Math.round(n * 100) / 100) : null,
       desde: MIRADA.pos.toArray().map((n) => Math.round(n * 10) / 10),
       hacia: dir.toArray().map((n) => Math.round(n * 100) / 100),
       /* Cuánto se aparta del centro de la galaxia: si esto es chico, se está

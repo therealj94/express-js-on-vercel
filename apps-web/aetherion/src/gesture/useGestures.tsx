@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { useThree } from '@react-three/fiber'
 import { sim } from '../kernel/sim'
 import { rig } from '../kernel/rig'
-import { MIRADA, rayoMirada } from '../kernel/mirada'
+import { MIRADA, rayoPuntero } from '../kernel/mirada'
 import { transit } from '../transit/transit'
 import { wellRegistry, WELL_DEFS } from '../sky/Wells'
 import { useUiStore } from '../state/uiStore'
@@ -68,10 +68,10 @@ export function GestureLayer() {
       return delRayo()
     }
 
-    /* La misma pregunta, pero desde los ojos: es la que vale con el visor
-       puesto. Ver kernel/mirada.ts. */
+    /* La misma pregunta, pero desde donde se APUNTA: el mando si lo hay, y los
+       ojos si no. Es la que vale con el visor puesto. Ver kernel/mirada.ts. */
     const pickRayo = (): string | null => {
-      rayoMirada(camera, raycaster.ray)
+      rayoPuntero(camera, raycaster.ray)
       raycaster.near = 0
       raycaster.far = Infinity
       return delRayo()
@@ -277,8 +277,19 @@ export function GestureLayer() {
        * y abría otro.
        *
        * Con el visor puesto la pregunta correcta es geométrica: el rayo que
-       * sale de los ojos hacia adelante, y qué se cruza en su camino. */
-      const id = MIRADA.activa ? pickRayo() : pickWell(x, y)
+       * sale de los ojos —o de la punta del mando— hacia adelante, y qué se
+       * cruza en su camino.
+       *
+       * ══ Y CON UN VISOR DE VERDAD, TAMBIÉN ═════════════════════════════════
+       * Esto miraba sólo `MIRADA.activa`, que está apagada A PROPÓSITO en
+       * WebXR: ahí la pose del casco la mete el motor DENTRO de la cámara, así
+       * que no hay nada que componer. Pero apagada quería decir «pregunta por
+       * coordenadas», y en una sesión inmersiva la cámara de la escena lleva
+       * el frustum COMBINADO de los dos ojos: el centro de esa proyección no
+       * es hacia dónde mira nadie. O sea que el único sitio donde el rayo hacía
+       * más falta —un Quest— era justo donde no se usaba. `sim.visor` es lo que
+       * distingue «hay un visor puesto» de «esto es una pantalla». */
+      const id = MIRADA.activa || sim.visor ? pickRayo() : pickWell(x, y)
       if (!id) return null
       const def = WELL_DEFS.find((d) => d.key === id)
       return { key: id, nombre: def?.name || id }
@@ -290,7 +301,7 @@ export function GestureLayer() {
        imposible; aquí se dicen. */
     w.__AE_DIAG_PICK = () => {
       const st3 = useUiStore.getState()
-      rayoMirada(camera, raycaster.ray)
+      rayoPuntero(camera, raycaster.ray)
       raycaster.near = 0
       raycaster.far = Infinity
       const targets: THREE.Object3D[] = []

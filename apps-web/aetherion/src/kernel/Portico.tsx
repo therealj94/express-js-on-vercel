@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
-import { poseMirada } from './mirada'
+import { PUNTERO, poseMirada } from './mirada'
 
 /* EL PÓRTICO · lo primero que se ve con el visor puesto.
  *
@@ -112,6 +112,35 @@ export function Portico() {
       desde.current = performance.now()
     }
     w.__AE_PORTICO_MODO = () => modoRef.current
+    /* ══ EL GATILLO TAMBIÉN APRIETA ═════════════════════════════════════════
+     *
+     * Con un mando en la mano, esperar segundo y medio mirando fijo un botón
+     * no es una interacción: es el aparato ignorándote. En un Quest se apunta
+     * y se aprieta, y eso tiene que abrir la puerta igual que sostener la
+     * mirada la abre en un visor de cartón.
+     *
+     * NO SE PIDE PUNTERÍA, y es a propósito. Mientras hay pórtico la mirada
+     * está blindada: esta puerta es literalmente lo ÚNICO que responde en toda
+     * la escena, así que un gatillo apretado no puede querer decir otra cosa.
+     * Exigir además que el rayo cayera dentro del rectángulo convertiría el
+     * botón en una prueba de puntería sin ningún beneficio.
+     *
+     * El respiro sí se respeta: recién puesto el visor, alguien acomodándose
+     * la correa aprieta cosas sin querer, y ese es justo el accidente que todo
+     * este pórtico existe para impedir.
+     *
+     * Devuelve si apretó, para que quien llama sepa si tiene que seguir
+     * buscando a quién darle el gatillo. */
+    w.__AE_PORTICO_APRETAR = () => {
+      if (!modoRef.current || hecho.current) return false
+      if (performance.now() - desde.current < GRACIA) return false
+      hecho.current = true
+      mirando.current = 0
+      try {
+        dispatchEvent(new CustomEvent('ae-portico', { detail: { modo: modoRef.current } }))
+      } catch { /* nada */ }
+      return true
+    }
     /* DÓNDE ESTÁ EL BOTÓN, para que una prueba pueda comprobar lo que una foto
        no distingue: que siga delante de la cara cuando la cabeza se gira. Si se
        queda atrás no hay manera de empezar la historia ni de salir del visor, y
@@ -137,6 +166,7 @@ export function Portico() {
       if (w.__AE_PORTICO) delete w.__AE_PORTICO
       if (w.__AE_PORTICO_MODO) delete w.__AE_PORTICO_MODO
       if (w.__AE_PORTICO_SITIO) delete w.__AE_PORTICO_SITIO
+      if (w.__AE_PORTICO_APRETAR) delete w.__AE_PORTICO_APRETAR
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -228,8 +258,18 @@ export function Portico() {
        verdad, persiguiendo con retraso— y no contra `meta`, que es adonde va;
        comparando contra la meta el aro se llenaba aunque el botón todavía
        estuviera llegando. */
-    frente.set(0, 0, -1).applyQuaternion(ojoQuat)
-    const cos = frente.dot(haciaBoton.copy(g.position).sub(ojoPos).normalize())
+    /* Y si hay un mando en la mano, la pregunta es por el RAYO y no por la
+       cabeza: apuntar al botón tiene que llenar el aro, o el rayo señalaría
+       una puerta que no reacciona. El origen también cambia —la mano no está
+       donde los ojos—, así que se mide desde donde sale el rayo de verdad. */
+    if (PUNTERO.activo) {
+      frente.copy(PUNTERO.dir).normalize()
+      haciaBoton.copy(g.position).sub(PUNTERO.origen).normalize()
+    } else {
+      frente.set(0, 0, -1).applyQuaternion(ojoQuat)
+      haciaBoton.copy(g.position).sub(ojoPos).normalize()
+    }
+    const cos = frente.dot(haciaBoton)
     const dentro = cos > 0.985 && !hecho.current
       && performance.now() - desde.current > GRACIA
 

@@ -396,6 +396,7 @@ const VETA = (() => {
     if (marco) marco.content = destino === 'app' ? '#021B1C' : '#050510';
     // el botón de pantalla completa se ofrece adentro y se guarda en la puerta
     pintarLlena();
+    pintarVR();
     if (destino === 'acceso') {
       $('#acceso')?.classList.remove('se-va');
       pestana(cual || 'entrar');
@@ -2026,6 +2027,9 @@ const VETA = (() => {
     if (vistaActual === 'enviar' && cual !== 'enviar') avisarChat = null;
     const veniaDe = vistaActual;
     vistaActual = cual;
+    /* El botón de entrar en VR es del Inicio: el visor ES la galaxia, y
+       ofrecerlo desde la billetera prometería un viaje que no sale de ahí. */
+    pintarVR();
     if (cual === 'token' && dato) tokenAbierto = dato;
     const encendida = PESTANAS.includes(cual) ? cual : DENTRO_DE[cual];
     document.querySelectorAll('.nav[data-vista]').forEach(b =>
@@ -5375,7 +5379,7 @@ const VETA = (() => {
   const VETA_V = 'd601c55175';
   const VETA_FECHA = '2026-08-25';
 
-  const AET_V = '3c7c66ff8a';
+  const AET_V = '9fc8b5595b';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -5446,7 +5450,31 @@ const VETA = (() => {
        persona está en otra vista, se la lleva al Inicio primero. */
     if (vistaActual !== 'nucleo') {
       vista('nucleo');
-      await new Promise(r => setTimeout(r, 1400));
+      /* ══ SE ESPERA AL MOTOR, NO AL RELOJ ═══════════════════════════════════
+       *
+       * Salir del Inicio DESMONTA la galaxia, y volver la vuelve a montar: por
+       * un rato `__AE_VISOR` no existe, y entrar en ese hueco falla con
+       * «sin-cielo». Aquí había una espera de segundo y medio a ojo, que es la
+       * peor de las dos opciones: de más en un aparato rápido, de menos en uno
+       * cargado. Se espera a que el motor ESTÉ, que es la condición de verdad.
+       *
+       * Y con un visor de por medio la diferencia no es sólo de elegancia.
+       * Pedir una sesión inmersiva exige que el navegador todavía esté contando
+       * el toque de la persona, y ese permiso dura unos pocos segundos: cada
+       * décima que se gasta esperando por si acaso es una décima menos para
+       * entrar. Con esto se entra en cuanto se puede.
+       *
+       * El tope existe porque un cielo que no monta —movimiento reducido, el
+       * bundle que no bajó— no puede dejar a nadie esperando para siempre: se
+       * sigue igual, y `entrar` dirá que no hay cielo, que es la verdad. */
+      const hasta = performance.now() + 6000;
+      while (!window.__AE_VISOR && performance.now() < hasta) {
+        await new Promise(r => setTimeout(r, 80));
+      }
+      /* Los modos que se quedan en la pantalla del teléfono sí agradecen ver
+         entrar el Inicio antes de partirse en dos ojos. Dentro de un visor de
+         verdad esa animación no la ve nadie: la sesión toma la escena. */
+      if (modo !== 'xr') await new Promise(r => setTimeout(r, 700));
     }
     const hayGiro = await giro;
     try {
@@ -5611,6 +5639,36 @@ const VETA = (() => {
 
   addEventListener('fullscreenchange', pintarLlena);
   addEventListener('webkitfullscreenchange', pintarLlena);
+
+  /* ── ENTRAR EN VR, DESDE LA MISMA CASA ───────────────────────────────────
+   *
+   * Con un Quest puesto, «Ajustes → Modo visor → Entrar» es un camino que
+   * nadie recorre: quien se calzó un visor y abrió esta página espera el botón
+   * a la vista, como en cualquier otra web de VR. Y hay una razón técnica que
+   * pesa más que la costumbre — pedir la sesión inmersiva exige que el
+   * navegador siga contando el toque de la persona, y ese permiso se gasta
+   * cambiando de vista y esperando a que el Inicio entre.
+   *
+   * Se pregunta UNA vez y sólo se enseña si la respuesta es que sí: en un
+   * teléfono o una computadora este botón no existe, porque ahí el cartón y el
+   * 360 necesitan explicarse y para eso está la ficha de Ajustes.
+   */
+  /* `var` y no `let` a propósito: esto se llama desde `ir()`, que está cientos
+     de líneas más arriba, y con `let` la primera llamada moriría en la zona
+     muerta antes de que este bloque se haya evaluado. */
+  var hayXR = null;
+  async function pintarVR() {
+    const b = $('#entrar-vr');
+    if (!b) return;
+    if (hayXR == null) {
+      try { hayXR = !!(navigator.xr && await navigator.xr.isSessionSupported('immersive-vr')); }
+      catch { hayXR = false; }
+    }
+    /* Dentro de la casa y sólo en el Inicio: el visor ES la galaxia, y
+       ofrecerlo desde la billetera prometería un viaje que no sale de ahí. */
+    b.classList.toggle('oculto', !hayXR || vistaActual !== 'nucleo'
+      || $('#app').classList.contains('oculto'));
+  }
 
   /* ═══ LA PUERTA CONTINUA ═════════════════════════════════════════════════
      El login y la casa son LA MISMA escena. Al llegar a la puerta se monta la
@@ -11307,7 +11365,9 @@ const VETA = (() => {
       window.__AE_BLINDADO = true;
       const es = idiomaActivo() === 'es';
       window.__AE_PORTICO?.('salir', es ? 'SALIR' : 'EXIT',
-        es ? 'Sostené la mirada para terminar' : 'Hold your gaze to end');
+        window.VISOR?.modo() === 'xr'
+          ? (es ? 'Gatillo para terminar' : 'Trigger to end')
+          : (es ? 'Sostené la mirada para terminar' : 'Hold your gaze to end'));
     }
 
     motor.empezar({
@@ -11414,15 +11474,21 @@ const VETA = (() => {
     /* BLINDADO desde el primer instante: la retícula no elige casas hasta que
        la persona diga que sí. */
     window.__AE_BLINDADO = true;
+    /* CÓMO SE APRIETA DEPENDE DE QUÉ VISOR HAY PUESTO, y decirlo mal es peor
+       que no decir nada: en un Quest, «sostené la mirada» manda a alguien con
+       un mando en la mano a mirar fijo un botón durante segundo y medio. Las
+       dos formas funcionan siempre; el pie nombra la que este aparato tiene. */
+    const conMando = window.VISOR?.modo() === 'xr';
+    const pie = conMando
+      ? (es ? 'Apuntá y apretá el gatillo' : 'Point and pull the trigger')
+      : (es ? 'Sostené la mirada' : 'Hold your gaze');
     if (genSesion.visor || genVivo) {
       // ya vio la historia en esta sesión: la puerta solo abre la galaxia
-      window.__AE_PORTICO('inicio', es ? 'ENTRAR' : 'ENTER',
-        es ? 'Sostené la mirada' : 'Hold your gaze');
+      window.__AE_PORTICO('inicio', es ? 'ENTRAR' : 'ENTER', pie);
       return;
     }
     window.__AE_PORTICO('inicio', es ? 'INICIAR' : 'BEGIN',
-      es ? 'La historia del origen · sostené la mirada'
-         : 'The story of the origin · hold your gaze');
+      (es ? 'La historia del origen · ' : 'The story of the origin · ') + pie.toLowerCase());
   }
 
   /* El pórtico avisa cuando la mirada terminó de apretarlo. */

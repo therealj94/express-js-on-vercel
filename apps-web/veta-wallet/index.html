@@ -576,6 +576,24 @@ body.en-cine #lienzo{opacity:0;transition:opacity .9s ease}
 #musica-btn.callada .mu-off{display:block}
 body.en-visor #musica-btn{display:none}
 @media (max-width:760px){#musica-btn{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);right:14px}}
+/* ENTRAR EN VR. Mismo peso y misma familia que pantalla completa, dos huecos a
+   su izquierda: es un botón de la misma clase, el que lleva a otra forma de
+   mirar lo mismo. Pintado en oro porque no es un ajuste — es una puerta.
+   El hueco es FIJO y no cedido por la música con un `:has()`: el botón sólo
+   aparece con un visor detrás, o sea en un navegador que no está a la vista
+   para arreglar un solapamiento si esa regla no se aplicara. */
+#entrar-vr{position:fixed;top:14px;right:106px;z-index:97;width:40px;height:40px;
+  display:grid;place-items:center;border-radius:13px;border:1px solid var(--oro);
+  background:rgba(4,20,21,.62);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  color:var(--oro);cursor:pointer;
+  transition:transform .16s ease,background .16s ease,box-shadow .16s ease}
+#entrar-vr svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;
+  stroke-linecap:round;stroke-linejoin:round}
+#entrar-vr:hover{background:rgba(8,32,33,.85);box-shadow:0 0 0 3px rgba(201,169,97,.16)}
+#entrar-vr:active{transform:scale(.93)}
+/* Con el visor puesto no hay pantalla que mirar: la casa entera se retira. */
+body.en-visor #entrar-vr{display:none}
+@media (max-width:900px){#entrar-vr{top:62px;right:104px;width:38px;height:38px}}
 #pantalla-llena .pl-cerrar{display:none}
 body.a-lo-ancho #pantalla-llena .pl-abrir{display:none}
 body.a-lo-ancho #pantalla-llena .pl-cerrar{display:block}
@@ -4222,6 +4240,23 @@ body.en-ventana .lienzo::before{
     </svg>
     <svg class="pl-cerrar" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M9 4v3.4c0 .9-.7 1.6-1.6 1.6H4M20 9h-3.4c-.9 0-1.6-.7-1.6-1.6V4M15 20v-3.4c0-.9.7-1.6 1.6-1.6H20M4 15h3.4c.9 0 1.6.7 1.6 1.6V20"/>
+    </svg>
+  </button>
+
+  <!-- ENTRAR EN VR. Sale SOLO si este navegador tiene un visor de verdad
+       detrás — o sea, prácticamente sólo dentro de un Quest, un Pico o un PC
+       con SteamVR. En un teléfono o una computadora no aparece nunca: el modo
+       cartón y el 360 viven en Ajustes, donde se pueden explicar.
+
+       Existe aparte de la ficha de Ajustes por una razón muy concreta: pedir
+       una sesión inmersiva requiere que el navegador todavía esté contando el
+       toque de la persona, y llegar hasta Ajustes gasta ese permiso en un
+       cambio de vista y una espera. Desde aquí el toque y la sesión son la
+       misma cosa. Y además es donde alguien con un visor puesto lo busca. -->
+  <button id="entrar-vr" class="oculto" onclick="VETA.vsEntrar('xr')"
+          aria-label="Entrar en VR" title="Entrar en VR">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3.4 9.6c0-1 .8-1.8 1.8-1.8h13.6c1 0 1.8.8 1.8 1.8v4.2c0 1-.8 1.8-1.8 1.8h-3.1c-.6 0-1.1-.3-1.4-.8l-.9-1.4c-.5-.8-1.7-.8-2.2 0l-.9 1.4c-.3.5-.8.8-1.4.8H5.2c-1 0-1.8-.8-1.8-1.8z"/>
     </svg>
   </button>
   <nav class="riel" aria-label="Secciones">
