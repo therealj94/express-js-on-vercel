@@ -808,6 +808,10 @@ const S = {
     // fila repetía esas mismas palabras. Dos textos distintos, dos llaves.
     'set.privacyDoc': 'Política de privacidad',
     'set.terms': 'Términos y condiciones',
+    /* La pelicula del origen. Se dice lo que ES y cuanto dura: tres minutos
+       es una decision, y quien la toma tiene derecho a saberla antes. */
+    'set.origen': 'El origen de todo',
+    'set.origenSub': 'La historia del ecosistema, en tres minutos',
     'set.about': 'Acerca de esta versión',
     'about.title': 'Versión y novedades', 'about.build': 'build {b}',
     'about.current': 'Versión instalada', 'about.news': 'NOVEDADES', 'about.latest': 'ACTUAL', 'about.by': 'UN PRODUCTO DE',
@@ -1567,6 +1571,8 @@ const S = {
     // Ver la nota en español: la cabecera y el documento son textos distintos.
     'set.privacyDoc': 'Privacy policy',
     'set.terms': 'Terms and conditions',
+    'set.origen': 'The origin of everything',
+    'set.origenSub': 'The story of the ecosystem, in three minutes',
     'set.about': 'About this version',
     'about.title': 'Version & what’s new', 'about.build': 'build {b}',
     'about.current': 'Installed version', 'about.news': "WHAT'S NEW", 'about.latest': 'CURRENT', 'about.by': 'A PRODUCT BY',

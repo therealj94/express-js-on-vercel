@@ -1,7 +1,21 @@
-# Perfil que se va a compilar. Cambiar esta linea y empujar dispara una build.
-#   development | preview | production
+# QUÉ PERFIL COMPILAR.
 #
-# Existe porque el operador automatico puede empujar codigo pero no tiene
-# permiso para apretar el boton de la pestana Actions. Tocar este archivo es
-# la forma de pedir una compilacion sin depender de que alguien este mirando.
+# La primera línea que no sea un comentario manda. Cambiar este archivo y
+# empujarlo dispara "Orden Global — compilar Android" — y solo este archivo lo
+# dispara, así que los demás empujes no gastan una compilación.
+#
+# Existe porque el operador automático puede empujar código pero no apretar el
+# botón de Actions, y esperar a que alguien lo apriete convertía cada
+# compilación en una cita.
+#
+#   preview      APK para instalar y repartir. El que se quiere casi siempre.
+#   development  APK con recarga en vivo, para desarrollar.
+#   production   AAB para Google Play. No se instala directo en un teléfono.
+#
+# Para volver a compilar sin cambiar de perfil, basta con tocar la fecha de
+# abajo: lo que dispara el flujo es que el ARCHIVO cambie.
+#
+#   última petición: 2026-08-25 · las casas web (Inicio, PULSE2CHAT, Ordenex,
+#   AuCorp) abriéndose dentro de la app con la sesión ya puesta.
+
 preview

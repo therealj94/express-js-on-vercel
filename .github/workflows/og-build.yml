@@ -1,0 +1,144 @@
+name: Orden Global — compilar Android
+
+# Compila la app de Orden Global (com.ordenglobal.app) en los servidores de
+# Expo. No hace falta tener nada instalado.
+#
+#   Actions → "Orden Global — compilar Android" → Run workflow → elegir perfil
+#
+# ══ POR QUÉ ESTE ARCHIVO NO EXISTÍA ═══════════════════════════════════════════
+#
+# El repositorio tenía compilación automática para Veta Wallet —siete corridas
+# en verde— y NINGUNA para Orden Global, que es la app del ecosistema entero.
+# La carpeta traía su propio `actualizar-por-aire.sh`, pero ese guion pide un
+# EXPO_TOKEN en la máquina de quien lo corra: sirve desde una computadora con
+# la sesión abierta, no desde aquí. Así que en la práctica esta app no tenía
+# forma de llegar a un teléfono.
+#
+# ══ LOS DOS PROYECTOS SON DISTINTOS ═══════════════════════════════════════════
+#
+#   Veta Wallet    cuenta `vetawallet`   · proyecto 8d134ab3…
+#   Orden Global   cuenta `ordenglobal`  · proyecto 3017e984…
+#
+# Comparten el secreto EXPO_TOKEN del repositorio. Si esa credencial es de la
+# cuenta `vetawallet` y no tiene acceso a `ordenglobal`, este workflow va a
+# fallar en el paso de compilar con un error de permisos — y ESE es el mensaje
+# útil: dice exactamente qué falta y dónde. Mejor eso que un guion local que
+# nadie puede correr.
+#
+# ══ QUÉ PERFIL ELEGIR ═════════════════════════════════════════════════════════
+#
+#   preview      APK para instalar en un teléfono y repartir. Es el que se
+#                quiere el 99% de las veces.
+#   development  APK con recarga en vivo, para desarrollar.
+#   production   AAB para subir a Google Play. No se instala directo.
+#
+# Igual que en Veta Wallet, también se puede pedir una compilación SIN entrar a
+# Actions: escribiendo el perfil en `orden-global-app/.solicitud-de-build` y
+# empujando el cambio. Existe porque el operador automático puede empujar código
+# pero no apretar el botón de Actions, y esperar a que alguien lo apriete
+# convertía cada compilación en una cita.
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Perfil de build'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - development
+          - production
+  push:
+    paths:
+      - 'orden-global-app/.solicitud-de-build'
+
+concurrency:
+  group: og-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: orden-global-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # De dónde sale el perfil: del menú si se lanzó a mano, y si no del
+      # archivo de solicitud. Se valida contra la lista en vez de pasarlo tal
+      # cual, porque va derecho a una línea de comandos.
+      - name: Qué perfil
+        id: perfil
+        run: |
+          P="${{ inputs.profile }}"
+          if [ -z "$P" ] && [ -f .solicitud-de-build ]; then
+            P=$(grep -vE '^\s*(#|$)' .solicitud-de-build | head -1 | tr -d '[:space:]')
+          fi
+          case "$P" in
+            development|preview|production) ;;
+            *) echo "::error::Perfil no reconocido: '$P'. Tiene que ser development, preview o production."; exit 1 ;;
+          esac
+          echo "perfil=$P" >> $GITHUB_OUTPUT
+          echo "Compilando el perfil: $P"
+
+      - name: Node 20
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: orden-global-app/package-lock.json
+
+      - name: EAS CLI
+        run: npm install -g eas-cli@latest
+
+      - name: Install
+        run: npm ci
+
+      # Caza colisiones de nombres, importaciones a archivos que no existen y
+      # plugins declarados sin instalar, ANTES de gastar una compilación entera.
+      - name: Verificar
+        run: npm run verificar
+
+      - name: Compilar
+        id: compilar
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          set -o pipefail
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Falta el secreto EXPO_TOKEN. Créalo en Settings → Secrets → Actions."
+            exit 1
+          fi
+          eas build \
+            --platform android \
+            --profile "${{ steps.perfil.outputs.perfil }}" \
+            --non-interactive \
+            --wait \
+            --json | tee build.json
+          URL=$(node -e "
+            const b=JSON.parse(require('fs').readFileSync('build.json','utf8'));
+            const x=Array.isArray(b)?b[0]:b;
+            process.stdout.write((x&&x.artifacts&&(x.artifacts.buildUrl||x.artifacts.applicationArchiveUrl))||'');
+          ")
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
+      - name: Dónde descargarlo
+        if: always()
+        run: |
+          echo "### Orden Global — Android" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Perfil: **${{ steps.perfil.outputs.perfil }}**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ steps.compilar.outputs.url }}" ]; then
+            echo "**Descarga directa:** ${{ steps.compilar.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Abrilo desde el teléfono y se instala." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No hubo archivo. Mirá el registro del paso «Compilar»: si dice algo de permisos o de cuenta, es que el EXPO_TOKEN del repositorio no tiene acceso al proyecto \`ordenglobal/orden-global\`." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Panel de Expo: https://expo.dev/accounts/ordenglobal/projects/orden-global/builds" >> $GITHUB_STEP_SUMMARY
+          fi

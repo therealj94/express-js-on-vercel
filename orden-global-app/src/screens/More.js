@@ -302,6 +302,21 @@ export function Settings({ nav }) {
             sub={t('help.subtitle')}
             onPress={() => nav.go('help')}
           />
+          {/* ══ LA HISTORIA DEL ORIGEN ═════════════════════════════════════
+              Vive en el Inicio de la web, que es donde esta la galaxia entera:
+              tres minutos de pelicula sincronizados con la musica.
+
+              Y va AQUI y no en el Nucleo a proposito — es la misma decision
+              que se tomo en la web. Nadie abre el Inicio para ver una
+              pelicula: lo abre para usar el ecosistema, y encontrarse tres
+              minutos encima es que la app haga otra cosa distinta de la que
+              se le pidio. Puesta en Ajustes, la ve quien la va a buscar. */}
+          <ListRow
+            icon="planet"
+            title={t('set.origen')}
+            sub={t('set.origenSub')}
+            onPress={() => nav.go('casa', { casa: 'inicio' })}
+          />
           <ListRow
             icon="information-circle"
             title={t('set.about')}

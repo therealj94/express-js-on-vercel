@@ -46,6 +46,10 @@ import CobrarOG from './src/og/CobrarOG';
 import FlotanteOG from './src/og/FlotanteOG';
 import ReporteOG from './src/og/ReporteOG';
 import Nucleo from './src/og/Nucleo';
+/* Las casas del ecosistema que viven en la web y se abren DENTRO de la app:
+   el Inicio con su galaxia, PULSE2CHAT con su cifrado y sus llamadas, y
+   Ordenex. Ver src/og/CasaWeb.js — el dinero NO pasa por ahi. */
+import CasaWeb from './src/og/CasaWeb';
 import PanelPay from './src/og/pay/PanelPay';
 import CobroPay from './src/og/pay/CobroPay';
 import InicioPay from './src/og/pay/InicioPay';
@@ -74,6 +78,7 @@ const SCREENS = {
   onboarding: Onboarding, watchOnly: WatchOnly, sessions: Sessions, help: Help,
   remesas: Remesas, deleteAccount: DeleteAccount,
   ecosistema: Nucleo, lista: Ecosistema, chat: AuroChat, cobrar: CobrarOG,
+  casa: CasaWeb,
   reporte: ReporteOG, 'pay-panel': PanelPay, 'pay-actividad': ActividadPay,
   'pay-cobro': CobroPay, 'pay-pagar': PagarPay, 'pay-explorar': ExplorarPay,
   'pay-negocio': MiNegocio, 'pay-bonos': BonosPay, 'pay-inicio': InicioPay,
@@ -106,7 +111,7 @@ const SECCION_TABS = {
 const TAB_ROUTES = [...new Set(Object.values(SECCION_TABS).flat().map((t) => t.r))];
 // a que seccion pertenece cada pantalla que NO es compartida
 const SECCION_DE = {
-  ecosistema: 'og', chat: 'og',
+  ecosistema: 'og', chat: 'og', casa: 'og',
   // Ajustes es pestaña de la sección og: sin esta fila, entrar por el avatar
   // de Home dejaba la barra veta debajo con ninguna pestaña encendida.
   settings: 'og',

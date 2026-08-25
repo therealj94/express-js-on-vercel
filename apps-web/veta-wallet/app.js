@@ -5569,7 +5569,19 @@ const VETA = (() => {
      Si el navegador no sabe hacerlo —el Safari del iPhone no deja pantalla
      completa fuera de un video— el botón NO aparece: un botón que no hace nada
      es peor que ninguno. */
-  const puedeLlena = () => !!(document.documentElement.requestFullscreen
+  /* ══ ¿ESTO SE ESTA VIENDO DENTRO DE LA APP DE ORDEN GLOBAL? ═══════════════
+   * La app abre algunas casas del ecosistema —el Inicio, PULSE2CHAT, Ordenex,
+   * AuCorp— dentro de si misma, y antes de cargar la pagina deja esta marca.
+   * Importa porque ahi ya NO tiene sentido ofrecer segun que cosas: la app YA
+   * esta a pantalla completa y ya esta instalada. Un boton que no puede hacer
+   * nada es peor que no tener boton. Ver orden-global-app/src/og/CasaWeb.js. */
+  const EN_APP = (() => {
+    try {
+      return window.__EN_APP_NATIVA === true || localStorage.getItem('veta.enApp') === '1';
+    } catch { return false; }
+  })();
+
+  const puedeLlena = () => !EN_APP && !!(document.documentElement.requestFullscreen
     || document.documentElement.webkitRequestFullscreen);
 
   const enLlena = () => !!(document.fullscreenElement || document.webkitFullscreenElement);

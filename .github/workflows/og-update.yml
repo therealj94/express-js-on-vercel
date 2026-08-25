@@ -1,0 +1,126 @@
+name: Orden Global — actualizar por aire
+
+# Manda el JavaScript nuevo a los teléfonos que ya tienen la app instalada, sin
+# pasar por la tienda y sin volver a compilar.
+#
+# ══ QUÉ VIAJA POR AIRE Y QUÉ NO ═══════════════════════════════════════════════
+#
+#   Sí:  pantallas, textos, traducciones, colores, arreglos de lógica, cambios
+#        en las llamadas al servidor. Todo lo que sea JavaScript.
+#
+#   No:  un módulo nativo nuevo, un permiso nuevo, el icono, la versión. Eso
+#        pide compilar («Orden Global — compilar Android»).
+#
+# ══ LA REGLA QUE LO GOBIERNA ══════════════════════════════════════════════════
+#
+# `runtimeVersion` de esta app es por HUELLA (`fingerprint`), no por número de
+# versión. La huella se calcula de lo NATIVO: dependencias con parte nativa,
+# permisos, configuración del proyecto. Un update solo llega a los teléfonos
+# cuya huella coincide.
+#
+# Esto es más seguro que la regla por versión y también más silencioso: si algo
+# nativo cambió, los teléfonos viejos NO reciben nada —en vez de recibir algo
+# que no pueden ejecutar y quedarse en negro— pero tampoco avisan de que se
+# quedaron atrás. Por eso, después de tocar algo nativo, hay que compilar.
+#
+# ══ POR QUÉ SE PUBLICA AL EMPUJAR ═════════════════════════════════════════════
+#
+# Cambiar algo en `orden-global-app/` y que llegue al teléfono no debería
+# requerir acordarse de apretar un botón. Se publica al canal `preview`, que es
+# el de los APK repartidos a mano. `production` —lo que ve la gente que la bajó
+# de la tienda— se dispara solo a mano y a propósito.
+
+on:
+  push:
+    branches:
+      - claude/veta-wallet-phantom-design-7syah8
+      - preview
+    paths:
+      - 'orden-global-app/**'
+      - '.github/workflows/og-update.yml'
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: 'A qué teléfonos va'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - development
+          - production
+      message:
+        description: 'Mensaje del update (aparece en el panel de Expo)'
+        required: false
+        default: ''
+
+concurrency:
+  group: og-update-${{ github.event.inputs.channel || 'preview' }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: orden-global-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Node 20
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: orden-global-app/package-lock.json
+
+      - name: EAS CLI
+        run: npm install -g eas-cli@latest
+
+      - name: Install
+        run: npm ci
+
+      - name: Verificar
+        run: npm run verificar
+
+      # Que el paquete ARMA antes de mandar nada. Un update que no compila se
+      # publica igual y deja la app en la pantalla de error al abrirla: el
+      # teléfono se lo descarga y recién ahí descubre que está roto.
+      - name: Que el paquete arma
+        run: |
+          npx expo export --platform android --clear >/dev/null
+          rm -rf dist
+
+      - name: Publicar
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          CANAL: ${{ github.event.inputs.channel || 'preview' }}
+        run: |
+          set -e
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Falta el secreto EXPO_TOKEN. Créalo en Settings → Secrets → Actions."
+            exit 1
+          fi
+          MSG="${{ github.event.inputs.message }}"
+          if [ -z "$MSG" ]; then
+            MSG=$(git log -1 --pretty=format:'%s' | cut -c1-72)
+          fi
+          # Por rama y no por canal: `--branch` la crea si no existe, `--channel`
+          # falla si todavía no está mapeado. Los perfiles de eas.json usan
+          # canales con el mismo nombre que su rama.
+          eas update --branch "$CANAL" --message "$MSG" --non-interactive
+
+      - name: Resumen
+        if: success()
+        env:
+          CANAL: ${{ github.event.inputs.channel || 'preview' }}
+        run: |
+          VER=$(node -p "require('./app.json').expo.version")
+          echo "### ✅ Update publicado" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Canal: **$CANAL** · versión **$VER**." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Llega solo a los teléfonos cuya huella nativa coincida con la de este código. Se descarga al reabrir la app; no se reinicia solo." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Panel: https://expo.dev/accounts/ordenglobal/projects/orden-global/updates" >> $GITHUB_STEP_SUMMARY

@@ -260,7 +260,8 @@ const MUNDOS = [
     // puente de SSO de ESTA app todavia no esta cableado, y una esfera que
     // navega a un sitio donde hay que volver a identificarse es peor que una
     // que dice honestamente «todavia no».
-    id: 'aucorp', icono: 'card', x: 0.50, y: 0.12, tam: 0.60, pronto: true,
+    // Ya no es «pronto»: AuCorp abrio, y se entra por la casa web.
+    id: 'aucorp', icono: 'card', x: 0.50, y: 0.12, tam: 0.60,
     grad: ['#E8E0C8', '#A5936A', '#463B24'], halo: '#CBBB8C', tinta: '#241D0E',
     lente: '#141007', zoom: 0,
     ritmo: 4300, flota: 3.5, retraso: 1200,
@@ -268,7 +269,8 @@ const MUNDOS = [
   {
     // Ordenexchange en violeta: el color que ninguno de los vivos usa, para
     // que se lea como territorio nuevo.
-    id: 'oxch', icono: 'swap-horizontal', x: 0.50, y: 0.86, tam: 0.60, pronto: true,
+    // Ya no es «pronto»: Ordenex abrio, y se entra por la casa web.
+    id: 'oxch', icono: 'swap-horizontal', x: 0.50, y: 0.86, tam: 0.60,
     grad: ['#DCD4F2', '#8D7EC9', '#372B63'], halo: '#A99CDE', tinta: '#1D1540',
     lente: '#0D0A1D', zoom: 0,
     ritmo: 4600, flota: 3.5, retraso: 2700,
@@ -1755,7 +1757,22 @@ export default function Nucleo({ nav }) {
   const nombre = (account?.name || '').trim().split(/\s+/)[0] || t.invitado;
 
   const irDestino = useCallback((id) => {
-    if (id === 'chat') return nav.go('chat');
+    /* ══ QUE ABRE CADA MUNDO ═══════════════════════════════════════════════
+     * Tres de estos viven en la web y se abren DENTRO de la app (CasaWeb):
+     *
+     *   chat    PULSE2CHAT con cifrado de punta a punta y llamadas. El chat
+     *           nativo de aqui no tiene ninguna de las dos cosas, y un cifrado
+     *           escrito dos veces son dos implementaciones que se tienen que
+     *           poner de acuerdo en el formato del sobre y la firma. Ahi no hay
+     *           «casi»: si se separan un milimetro, los mensajes no abren.
+     *   oxch    Ordenex. Aqui no existia — estaba marcado «pronto» y ya abrio.
+     *   aucorp  Las cuentas en moneda local. Igual.
+     *
+     * La billetera NO. El dinero, las llaves y la huella se quedan nativos,
+     * donde el sistema operativo los protege de verdad. */
+    if (id === 'chat') return nav.go('casa', { casa: 'chat' });
+    if (id === 'oxch') return nav.go('casa', { casa: 'ordenex' });
+    if (id === 'aucorp') return nav.go('casa', { casa: 'aucorp' });
     if (id === 'wallet') return nav.go('home');
     if (id === 'pay') return nav.go('pay-inicio');
     // Genesis ID abre el pasaporte si ya existe; si no, lleva al KYC, que es
