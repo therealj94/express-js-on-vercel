@@ -188,6 +188,27 @@ const tin = await medir('/tmp/f-tiniebla.png');
 ok('la tiniebla está vacía de verdad', tin.medio <= 8 && tin.maxFuera <= 30,
    `medio ${tin.medio}/255 · lo más claro fuera del texto ${tin.maxFuera}/255`);
 
+/* ══ PRIMERO SE DICE, Y ENTONCES ESTALLA ═══════════════════════════════════
+   El orden del versículo es el orden de la escena: se lee «y dijo Dios: sea la
+   luz» sobre el negro, y recién entonces la luz ocurre. Al revés —la luz
+   primero y la frase después— se cuenta el final antes del principio, y además
+   la frase se escribe sobre el blanco del fogonazo y no se lee.
+   Se comprueba que cuando la orden está en pantalla TODAVÍA no haya pasado
+   nada: ni luz, ni cielo, ni mundos. */
+await p.waitForFunction(()=>/Sea la luz/i.test(
+  document.querySelector('#gen-letra .gen-centro')?.textContent||''),null,{timeout:120000});
+const alDecir = await p.evaluate(()=>({
+  destello: window.__AE_DESTELLO?.() ?? 0,
+  vacio: window.__AE_VACIO?.() ?? 0,
+  txt: document.querySelector('#gen-letra .gen-centro')?.textContent||'',
+}));
+await p.screenshot({path:'/tmp/f-orden.png'});
+ok('la orden se lee ANTES de que pase nada',
+   alDecir.destello === 0 && alDecir.vacio > 0.9,
+   `destello ${alDecir.destello} · vacío ${alDecir.vacio}`);
+ok('y dice la orden, no el remate', /Sea la luz/.test(alDecir.txt) && !/fue la luz/i.test(alDecir.txt),
+   alDecir.txt.slice(0, 40));
+
 /* ══ EL FOGONAZO SE MIDE, NO SE FOTOGRAFÍA ════════════════════════════════
    Un navegador sin pantalla no da cuadros para fotografiar un suceso de
    segundo y medio: las tres capturas caían en el mismo instante y los números

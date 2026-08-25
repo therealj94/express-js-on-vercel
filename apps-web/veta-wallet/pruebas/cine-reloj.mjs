@@ -138,6 +138,10 @@ console.log('\n── todo se puede leer sin apuro ─────────�
       continue;
     }
     revisar(a.clave, textos[a.clave], a.dura);
+    /* «Sea la luz» lleva DOS rótulos: la orden al empezar y el remate cuando
+       el fogonazo ya pasó. Lo que le queda de acto al segundo es lo que se
+       tiene para leerlo. */
+    if (a.clave === 'seaLuz') revisar('fueLuz', textos.fueLuz, a.dura - 5.2);
   }
   ok('ningún plano pasa más rápido de lo que se lee', apurados.length === 0,
      apurados.join(' · '));

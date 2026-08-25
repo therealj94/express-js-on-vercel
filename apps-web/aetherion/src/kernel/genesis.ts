@@ -278,7 +278,7 @@ function empezar(opciones: Opciones = {}) {
     /* El título entra sobre negro y sobre nada: el acto arranca a oscuras y la
        palabra aparece a los dos segundos. Ese silencio previo es lo que la
        convierte en un título y no en la primera frase. */
-    { clave: 'titulo', dura: 5500 },
+    { clave: 'titulo', dura: 5000 },
     /* LA TINIEBLA. Negro absoluto de verdad —ni el sol, ni la retícula, ni una
        brasa— con el versículo encima. No hay nada que mirar, y eso es
        exactamente lo que dice el texto. */
@@ -290,7 +290,10 @@ function empezar(opciones: Opciones = {}) {
        hasta pasar por encima de quien mira. Detrás de la onda aparecen los
        mundos — todos, desordenados, como quedaron. La cámara retrocede: es el
        único movimiento brusco de la película. */
-    { clave: 'seaLuz', dura: 9000, mover: { radio: 54, phi: 0.98, curva: 'sale' } },
+    /* Tres segundos y medio de orden leída sobre el negro, el fogonazo, y el
+       remate. Es el acto más largo de la película y el único que necesita que
+       no pase nada durante un buen rato: la espera es el acto. */
+    { clave: 'seaLuz', dura: 10200, mover: { radio: 54, phi: 0.98, curva: 'sale' } },
     /* HAYA LUMBRERAS. Y cada mundo viaja a su órbita mientras la cámara los
        rodea despacio. El desorden se resuelve a la vista. */
     { clave: 'lumbreras', dura: 7200, mover: { radio: 30, phi: 0.9, giro: 0.85, curva: 'suave' } },
@@ -307,7 +310,7 @@ function empezar(opciones: Opciones = {}) {
        había detrás todo este tiempo: un agujero negro con su disco girando,
        los soles de fuera, y el cielo lloviendo estrellas. Es el respiro de la
        película y el único plano que no explica nada. */
-    { clave: 'universo', dura: 6100, mover: { radio: 104, phi: 0.82, giro: 1.5, mira: 0, curva: 'entra' } },
+    { clave: 'universo', dura: 5400, mover: { radio: 104, phi: 0.82, giro: 1.5, mira: 0, curva: 'entra' } },
 
     /* ══ IV · LO QUE LO SOSTIENE ═══════════════════════════════════════════
        Aquí las dos historias se tocan. */
@@ -346,6 +349,20 @@ function empezar(opciones: Opciones = {}) {
   let anguloCasa: number | null = null
   let mov: (Movimiento & { r0: number; f0: number; g0: number; m0: number }) | null = null
 
+  /* ══ ALGO QUE OCURRE DENTRO DE UN ACTO ════════════════════════════════════
+   * Casi todo lo que hace un acto ocurre al empezarlo. El fogonazo no: primero
+   * se LEE «y dijo Dios: sea la luz» y recién entonces estalla, porque ese es
+   * el orden del versículo y el orden en que la frase tiene sentido. Encender
+   * la luz mientras se lee la orden es contar el final antes del principio.
+   *
+   * Se comprueba dos cosas antes de disparar: que la película siga viva y que
+   * siga en el MISMO acto. Sin eso, saltar la historia justo en ese hueco haría
+   * estallar la luz encima de la galaxia ya devuelta a la normalidad. */
+  const luego = (ms: number, cual: string, fn: () => void) => {
+    const eraI = i
+    window.setTimeout(() => { if (vivoAhora && i === eraI && guion[i]?.clave === cual) fn() }, ms)
+  }
+
   const entrarActo = (a: Acto) => {
     opciones.alActo?.(a.clave)
     const st = useUiStore.getState()
@@ -373,18 +390,29 @@ function empezar(opciones: Opciones = {}) {
          viaje es el que le da sentido al retroceso de la luz — sin acercarse
          primero, el «echarse atrás» del fogonazo no tiene de dónde salir. */
     } else if (a.clave === 'seaLuz') {
-      /* ══ Y FUE LA LUZ ═══════════════════════════════════════════════════
-         Un punto en el centro, y de él una onda. Detrás de la onda aparece
-         TODO: el cielo, los soles de fuera, los mundos —desordenados, como
-         quedaron—. El orden es el versículo siguiente, no este.
-         El vacío se levanta un poco DESPUÉS del fogonazo para que las cosas
-         aparezcan detrás de la luz y no junto con ella: primero llega la luz,
-         y con ella se ve lo que ya estaba. */
-      sim.destello = 1
-      window.setTimeout(() => { llevarVacio(0, 1400) }, 260)
-      anochecer(0, 1500)
-      sim.auraBrillo = 1.8
-      audio.land()
+      /* ══ PRIMERO SE DICE, Y ENTONCES ESTALLA ═════════════════════════════
+       *
+       * El acto empieza EN LA MISMA NADA que el anterior: negro, sin sol, sin
+       * cielo, sin mundos. Sobre ese negro se lee la orden —«y dijo Dios: sea
+       * la luz»— y durante tres segundos y medio no pasa absolutamente nada.
+       * Esa espera es el acto entero: es la diferencia entre leer una orden y
+       * ver cómo se cumple.
+       *
+       * Y entonces: un punto en el centro, y de él una onda que se expande
+       * hasta pasar por encima de quien mira. Detrás de la onda aparece TODO
+       * —el cielo, los soles de fuera, los mundos, desordenados como
+       * quedaron—. El orden es el versículo siguiente, no este.
+       *
+       * El vacío se levanta un instante DESPUÉS del fogonazo, no con él: así
+       * las cosas aparecen DETRÁS de la luz. Primero llega la luz, y con ella
+       * se ve lo que ya estaba. */
+      luego(3400, 'seaLuz', () => {
+        sim.destello = 1
+        audio.land()
+        window.setTimeout(() => { llevarVacio(0, 1500) }, 300)
+        anochecer(0, 1600)
+        sim.auraBrillo = 1.8
+      })
     } else if (a.clave === 'lumbreras') {
       /* HAYA LUMBRERAS. Cada mundo viaja a su órbita: el desorden se resuelve
          a la vista, que es lo que el versículo está diciendo. */

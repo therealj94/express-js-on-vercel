@@ -5372,10 +5372,10 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '0915ca5207';
+  const VETA_V = 'ae2511f891';
   const VETA_FECHA = '2026-08-25';
 
-  const AET_V = 'f530e4e229';
+  const AET_V = '3c7c66ff8a';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -10990,7 +10990,11 @@ const VETA = (() => {
          (la clase `escritura`), no por un rótulo que diga cuál es cuál. */
       titulo: 'EL ORIGEN DE TODO',
       tinieblas: 'Y la tierra estaba desordenada y vacía,\ny las tinieblas estaban sobre la faz del abismo.',
-      seaLuz: 'Y dijo Dios: Sea la luz.\nY fue la luz.',
+      /* EL VERSÍCULO EN DOS TIEMPOS, porque son dos cosas: una orden y su
+         cumplimiento. Entre las dos estalla la luz. Juntas en un mismo rótulo,
+         el final llega antes que el principio. */
+      seaLuz: 'Y dijo Dios: Sea la luz.',
+      fueLuz: 'Y fue la luz.',
       lumbreras: 'Y dijo Dios: Haya lumbreras\nen la expansión de los cielos.',
 
       /* ══ II · LOS MUNDOS ═══════════════════════════════════════════════════
@@ -11049,7 +11053,8 @@ const VETA = (() => {
     } : {
       titulo: 'THE ORIGIN OF EVERYTHING',
       tinieblas: 'And the earth was without form, and void;\nand darkness was upon the face of the deep.',
-      seaLuz: 'And God said, Let there be light:\nand there was light.',
+      seaLuz: 'And God said, Let there be light.',
+      fueLuz: 'And there was light.',
       lumbreras: 'And God said, Let there be lights\nin the firmament of the heaven.',
       casas: {
         gid: ['GENESIS ID', 'Identity infrastructure. Verified once, it opens everything.'],
@@ -11140,6 +11145,21 @@ const VETA = (() => {
        —es el mundo que se esta mirando— y sacarlo deja la frase huerfana. */
     const centro = (txt, peso, tarde, marca, conPie) => {
       const poner = () => {
+        /* ══ NADA DE «null» EN PANTALLA ═══════════════════════════════════════
+         * Sin esto, pedir un rótulo que no existe —una clave mal escrita, un
+         * acto sin texto, un idioma al que le falta una frase— pinta la palabra
+         * `null` o `undefined` flotando sobre la galaxia. Y eso no se lee como
+         * un fallo: se lee como que la casa está rota, que es peor. Ya pasó.
+         * Un texto vacío quiere decir SILENCIO, que es una petición legítima —
+         * el plano del cielo no lleva palabras a propósito— así que se retira
+         * lo que hubiera y se calla, en vez de escribir la palabra `null`. */
+        if (txt == null || txt === '') {
+          enEscena(null, 'normal');
+          if (!capa) return;
+          capa.querySelector('.gen-centro')?.classList.remove('ve');
+          if (!conPie) capa.querySelector('.gen-pie')?.classList.remove('ve');
+          return;
+        }
         // dentro del visor manda el teatro; en pantalla, la capa HTML
         enEscena(txt, marca === 'cierre' ? 'cierre'
           : marca === 'titulo' ? 'titulo'
@@ -11159,13 +11179,16 @@ const VETA = (() => {
       if (tarde) setTimeout(() => { if (genVivo) poner(); }, tarde); else poner();
     };
     const pie = (nombre, frase) => {
+      /* Misma regla que arriba: un mundo sin nombre no pinta «null» debajo de
+         su planeta — sencillamente no pinta rótulo. */
+      if (!nombre) { centro(null); return; }
       // en el visor el nombre y su frase van juntos, en dos líneas
-      enEscena(nombre + '\n' + frase, 'normal');
+      enEscena(nombre + '\n' + (frase || ''), 'normal');
       if (!capa) return;
       capa.querySelector('.gen-centro').classList.remove('ve');
       const p = capa.querySelector('.gen-pie');
       p.querySelector('b').textContent = nombre;
-      p.querySelector('span').textContent = frase;
+      p.querySelector('span').textContent = frase || '';
       p.classList.remove('ve'); void p.offsetWidth; p.classList.add('ve');
     };
     const porTecla = (e) => { if (e.key === 'Escape') motor.saltar(); };
@@ -11199,12 +11222,15 @@ const VETA = (() => {
         if (clave === 'titulo') centro(G.titulo, true, 2000, 'titulo');
         else if (clave === 'tinieblas') centro(G.tinieblas, false, 600, 'escritura');
         else if (clave === 'seaLuz') {
-          /* El texto ESPERA AL FOGONAZO. La explosión llena la pantalla de
-             blanco: escribir encima es no poder leerlo y además robarle el
-             momento a la imagen. Entra cuando la luz se está asentando, que es
-             cuando la frase remata lo que se acaba de ver. */
-          centro(G.seaLuz, true, 2200, 'escritura');
-          try { MUSICA?.crecer(1.6, 3.0); } catch { /* nada */ }
+          /* ══ EL ORDEN DEL VERSÍCULO ═══════════════════════════════════════
+             Primero se LEE la orden, sobre el negro y sin que pase nada. A los
+             tres segundos y medio estalla la luz (ver `luego` en genesis.ts).
+             Y el remate entra cuando el fogonazo ya se está yendo: escribirlo
+             sobre el blanco es no poder leerlo y encima robarle el momento a
+             la imagen. */
+          centro(G.seaLuz, true, 400, 'escritura');
+          centro(G.fueLuz, true, 5200, 'escritura');
+          try { MUSICA?.crecer(1.6, 3.4); } catch { /* nada */ }
         }
         else if (clave === 'lumbreras') centro(G.lumbreras, false, 400, 'escritura');
         else if (clave.startsWith('casa:')) {

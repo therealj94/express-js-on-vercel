@@ -177,7 +177,11 @@ export function buildWellDefs(gal: Galaxy): WellDef[] {
     const color = COLOR_POR_DEFECTO[c.key] || { grad: ['#eee', '#888', '#222'], halo: '#cfd8e6', lente: '#0a1018' }
     return {
       key: c.key,
-      name: real?.name || c.name,
+      /* El nombre de la casa manda SIEMPRE que el de la wallet no sea un texto
+         de verdad: `real.name` puede llegar nulo, vacío o sin definir según qué
+         versión de la wallet esté cargada, y con `||` a secas eso caía en el
+         de aquí — pero con un `name: null` explícito no caía en ningún lado. */
+      name: (typeof real?.name === 'string' && real.name.trim()) || c.name,
       intent: c.intent,
       arch: c.arch,
       anchor: anillo(lista, i, c.banda),
@@ -552,6 +556,10 @@ function WellView({ def }: { def: WellDef }) {
          rótulo apagado y uno fuera de cuadro se ven igual. */
       const w = window as any
       ;(w.__AE_ROTULO_OP ||= {})[def.key] = op
+      /* Y QUÉ DICE. Un rótulo que enseña una palabra que no debería —«NULL»,
+         por ejemplo— es de las pocas cosas que arruinan un cielo entero, y
+         desde fuera no hay manera de leerlo: está pintado en una textura. */
+      ;(w.__AE_ROTULO_TXT ||= {})[def.key] = def.name
     }
 
     if (halo.current) {

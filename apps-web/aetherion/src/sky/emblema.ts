@@ -18,6 +18,19 @@ import * as THREE from 'three'
 
 const cache = new Map<string, THREE.Texture>()
 
+/* Una textura transparente de un píxel: lo que se dibuja cuando no hay nada
+   que decir. Cuesta nada y evita tener que llenar de condicionales a quien la
+   usa. */
+let vaciaTex: THREE.Texture | null = null
+function vacia(): THREE.Texture {
+  if (vaciaTex) return vaciaTex
+  const c = document.createElement('canvas')
+  c.width = c.height = 2
+  vaciaTex = new THREE.CanvasTexture(c)
+  vaciaTex.colorSpace = THREE.SRGBColorSpace
+  return vaciaTex
+}
+
 function lienzo(w: number, h: number) {
   const c = document.createElement('canvas')
   c.width = w
@@ -174,6 +187,19 @@ function hexA(hex: string, a: number) {
 }
 
 export function letreroTextura(nombre: string, color: string): THREE.Texture {
+  /* ══ UN RÓTULO NUNCA DICE «null» ══════════════════════════════════════════
+   * Si el nombre no llega, lo que se pinta es la palabra `null` —o `undefined`,
+   * o `NaN`— en letras de oro, flotando junto a un planeta. Eso no se lee como
+   * un dato que falta: se lee como que la casa está rota, que es infinitamente
+   * peor que un planeta sin nombre. Y aparece solo, sin que nadie lo escriba:
+   * basta una clave nueva que todavía no tiene texto, o un idioma al que le
+   * falta una entrada.
+   * Un mundo sin nombre se queda SIN RÓTULO. Es lo honesto y no se nota. */
+  const limpio = typeof nombre === 'string' ? nombre.trim() : ''
+  if (!limpio || /^(null|undefined|NaN)$/i.test(limpio)) {
+    return vacia()
+  }
+  nombre = limpio
   const clave = `nb:${nombre}`
   const hecho = cache.get(clave)
   if (hecho) return hecho

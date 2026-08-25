@@ -140,8 +140,11 @@ console.log('\n── la palabra, y con ella la luz ─────────�
      después — cuando la luz se está asentando. Escribirlo sobre el blanco del
      fogonazo sería no poder leerlo y encima robarle el momento a la imagen.
      Lo que se comprueba es lo contrario que antes: que la luz YA llegó. */
-  ok('y para cuando se lee, la luz ya llegó',
-     await pag.evaluate(() => window.__AE_NOCHE() < 0.4));
+  /* Y AHORA AL REVÉS QUE ANTES: cuando la ORDEN está en pantalla todavía no
+     pasó nada. La luz llega tres segundos y medio después, que es el orden en
+     que lo dice el versículo. */
+  ok('la orden se lee antes de que pase nada',
+     await pag.evaluate(() => window.__AE_NOCHE() > 0.9));
 
   /* LA CÁMARA NO SE QUEDA QUIETA. Dentro del mismo acto tiene que viajar: es
      la diferencia entre una película y una presentación con transiciones. */
@@ -226,6 +229,12 @@ console.log('\n── el retroceso que enseña el universo ───────
   let pulsoMin = 9; let pulsoMax = -9;
   /* Y los dos que no son apps, que se dicen con una frase y no con un lema. */
   let dijoMinas = false; let dijoDbnx = false;
+  /* ══ NUNCA UNA PALABRA QUE NO SE ESCRIBIÓ ════════════════════════════════
+     `null` y `undefined` flotando sobre la galaxia no se leen como un fallo:
+     se leen como que la casa está rota. Y aparecen solos, sin que nadie los
+     escriba — basta una clave mal puesta, un acto sin texto o un idioma al
+     que le falte una frase. Se vigila TODO el recorrido, rótulo por rótulo. */
+  const basura = new Set();
   /* EL ROTULO NO SE EVAPORA. En MINAS y DBNX el nombre del mundo tiene que
      seguir puesto cuando entra su frase: no es un titulo que ya cumplio, es
      el mundo que se esta mirando, y sacarlo deja la frase huerfana. */
@@ -245,6 +254,7 @@ console.log('\n── el retroceso que enseña el universo ───────
       pulso: window.__AE_PULSO?.() ?? 0,
       /* ¿El rotulo del mundo sigue puesto? */
       pieVe: !!document.querySelector('#gen-letra .gen-pie.ve'),
+      pieTxt: document.querySelector('#gen-letra .gen-pie b')?.textContent || '',
       /* ¿El titulo lleva su propia letra, o es una frase mas? */
       esTitulo: !!document.querySelector('#gen-letra .gen-centro.titulo'),
       /* Cuánto se aparta la cámara del centro de la galaxia. Mirando al
@@ -310,6 +320,8 @@ console.log('\n── el retroceso que enseña el universo ───────
     destelloAntes = st.destello;
     if (st.pulso < pulsoMin) pulsoMin = st.pulso;
     if (st.pulso > pulsoMax) pulsoMax = st.pulso;
+    if (/^\s*(null|undefined|NaN)\s*$/i.test(st.txt)) basura.add(st.txt.trim());
+    if (st.pieTxt && /^\s*(null|undefined|NaN)\s*$/i.test(st.pieTxt)) basura.add(st.pieTxt.trim());
     if (/no es una promesa|en minas nuestras/i.test(st.txt)) dijoMinas = true;
     if (/nace auditado/i.test(st.txt)) dijoDbnx = true;
     if (st.pieVe && /no es una promesa|nace auditado/i.test(st.txt)) pieYFraseJuntos = true;
@@ -344,6 +356,8 @@ console.log('\n── el retroceso que enseña el universo ───────
   ok('y MINAS y DBNX, cada uno con lo suyo dicho', dijoMinas && dijoDbnx,
      `minas ${dijoMinas ? 'sí' : 'NO'} · dbnx ${dijoDbnx ? 'sí' : 'NO'}`);
   ok('con su nombre todavía puesto cuando entra la frase', pieYFraseJuntos);
+  ok('y en toda la película no se escribe «null» ni «undefined»',
+     basura.size === 0, [...basura].join(' '));
   ok('y las demás se apagan de verdad',
      acompanantesApagados !== null && acompanantesApagados < 0.25,
      acompanantesApagados === null ? 'no se midió' : `la más visible al ${Math.round(acompanantesApagados * 100)}%`);

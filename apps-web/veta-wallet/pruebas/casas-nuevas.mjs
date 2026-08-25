@@ -151,6 +151,32 @@ console.log('\n── una casa cerrada no se cuela donde no debe ─────
   ok('ni cambia de pantalla', !abrio.cambio);
 }
 
+
+console.log('\n── ningún rótulo dice una palabra que no se escribió ────────');
+{
+  /* ══ EL «NULL» EN EL CIELO ═══════════════════════════════════════════════
+     Pasó: apareció la palabra NULL en letras de oro junto a un planeta. No se
+     lee como un dato que falta — se lee como que la casa está rota, y en una
+     presentación eso es lo único que la gente recuerda.
+     Y aparece SOLO, sin que nadie lo escriba: basta un mundo nuevo al que
+     todavía no se le puso nombre, o un idioma al que le falta una entrada, o
+     una wallet de otra versión mandando `name: null`. Así que ahora un mundo
+     sin nombre se queda sin rótulo —que es lo honesto y no se nota— y esto lo
+     vigila mundo por mundo. */
+  const rotulos = await pag.evaluate(() => window.__AE_ROTULO_TXT || null);
+  ok('se pueden leer los rótulos del cielo', !!rotulos,
+     rotulos ? `${Object.keys(rotulos).length} mundos` : 'sin puente');
+  if (rotulos) {
+    const malos = Object.entries(rotulos)
+      .filter(([, v]) => typeof v !== 'string' || !v.trim()
+        || /^(null|undefined|NaN)$/i.test(v.trim()))
+      .map(([k, v]) => `${k}=${v}`);
+    ok('y todos dicen algo de verdad', malos.length === 0, malos.join(' '));
+    ok('con los diez mundos y Ajustes nombrados', Object.keys(rotulos).length >= 11,
+       Object.values(rotulos).join(' · '));
+  }
+}
+
 ok('sin errores de página en todo el recorrido', pag.errores.length === 0,
    pag.errores.slice(0, 2).join(' · '));
 
