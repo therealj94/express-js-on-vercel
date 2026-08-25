@@ -1,7 +1,19 @@
 # Plan de reinicio de la 5550 · consolidar el ORIGEN en el tesoro
 
-**Escrito el 25 de agosto de 2026. No ejecutado.** Este documento se escribe
-ANTES de tocar nada, por pedido expreso: primero el plan, después la mano.
+**Escrito el 25 de agosto de 2026.** La etapa 0 está **ejecutada y comprobada**
+—ver `reinicio-5550/ETAPA-0-RESPALDO.md`—. De la 1 en adelante, sin ejecutar.
+
+> **Dos correcciones que trajo la etapa 0, y que mandan sobre lo escrito abajo:**
+>
+> 1. **La cadena tiene 23 transacciones, no una.** Se midieron los 92.410
+>    bloques uno por uno. Son 6 envíos nativos y 17 transferencias ERC-20 sobre
+>    tres tokens. El argumento de fondo no cambia —23 en diez días sigue siendo
+>    una cadena sin uso—, pero el génesis nuevo debe llevar los saldos de token
+>    movidos.
+> 2. **La llave del validador vive en `/opt/og5550-real/nodo/key`, dentro del
+>    directorio que la etapa 3 manda vaciar.** Vaciarlo entero deja los siete
+>    nodos con identidades nuevas y la cadena sin producir un solo bloque. El
+>    paso 4 queda corregido más abajo.
 
 ---
 
@@ -104,13 +116,19 @@ comprobación no es opcional y no se hace «a ojo»: la hace un guion.
 
 ## El procedimiento
 
-### Etapa 0 · El respaldo, antes de nada
+### Etapa 0 · El respaldo, antes de nada · HECHA el 25-ago
 
-- Copia del génesis actual `/opt/og5550-real/genesis.json` fuera de las
-  máquinas.
-- **Volcado del estado completo** de la cadena viva a la altura del corte, con
-  su huella.
-- Copia de la base de Ordenscan.
+- ✅ Copia del génesis actual, md5 comprobado contra el que corre en node1.
+- ✅ **Foto del estado completo** a la altura 92.426: 343 cuentas y 1.375
+  ranuras, leídas una por una a altura fija. md5 calculado en el nodo y aquí.
+- ✅ Las 23 transacciones con sus recibos y registros.
+- ✅ **Las siete llaves de validador comprobadas**: cada copia deriva a su
+  validador, y cada copia es la llave viva de su máquina.
+- ⬜ Copia de la base de Ordenscan — corre en Heroku y esta sesión no tiene ese
+  token. **No bloquea**: el índice es dato derivado y el procedimiento lo
+  reindexa igual en las dos direcciones. Lo que ahorraría es tiempo.
+
+El detalle está en `reinicio-5550/ETAPA-0-RESPALDO.md`.
 
 > Sin la etapa 0 no hay vuelta atrás. Es la única etapa que no se puede
 > improvisar después.
@@ -142,8 +160,13 @@ De noche, y en este orden:
 1. **Mantenimiento**: backend de la wallet en pausa.
 2. **Foto final** y su huella al acta.
 3. **Parar los siete nodos.**
-4. **Vaciar el directorio de datos de los siete.** Comprobar uno por uno que
-   quedó vacío — un nodo con datos viejos no entra y no lo dice claro.
+4. **Vaciar `nodo/database/` de los siete — y CONSERVAR `nodo/key`.**
+   La llave privada del validador vive dentro del directorio de datos. Borrar
+   el directorio entero da siete nodos con identidades nuevas: ninguno sería
+   validador, la cadena no produciría un bloque, y no lo diría claro —los nodos
+   levantan y el RPC responde—. Después de vaciar y antes de arrancar,
+   comprobar en cada máquina que `key` sigue ahí y que **deriva a la dirección
+   que el génesis nuevo lista como validador** (`comprobar_llaves.py`).
 5. Distribuir el génesis nuevo a los siete. Comprobar la **huella md5 en cada
    uno**: un archivo distinto en un nodo es una cadena que no arranca.
 6. Arrancar los validadores. Esperar a que produzcan bloques.
