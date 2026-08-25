@@ -239,109 +239,104 @@ function empezar(opciones: Opciones = {}) {
    *
    * Los tiempos son los de una lectura en voz alta sin apuro. Cada acto sabe
    * qué hace la cámara mientras se dice lo suyo. */
+  /* ── EL GUION ───────────────────────────────────────────────────────────
+   *
+   * ══ DOS ORÍGENES, CONTADOS A LA VEZ ═══════════════════════════════════
+   *
+   * La película cuenta dos historias en paralelo: cómo empezó el mundo y cómo
+   * empezó esto. No las compara — las hace RIMAR. La Escritura pone los golpes
+   * de la creación y nosotros contestamos con el nuestro, y la rima central,
+   * la que sostiene la película entera, es esta:
+   *
+   *     «Y separó Dios la luz de las tinieblas.»
+   *     Nosotros también tuvimos que separar algo: el valor, de la promesa.
+   *
+   * De ahí sale todo lo demás. Por eso ORIGEN va en el acto IV y no antes: es
+   * la respuesta a un versículo, y una respuesta necesita su pregunta primero.
+   *
+   * ══ LAS DOS VOCES ═════════════════════════════════════════════════════
+   *
+   * En los actos de creación NO HAY UNA SOLA PALABRA NUESTRA: solo Génesis 1.
+   * Meter una frase propia ahí rompe el préstamo — deja de ser una cita y pasa
+   * a ser decoración. Las dos voces se distinguen por la letra (ver la clase
+   * `escritura` en index.html y el peso del mismo nombre en el Teatro), no por
+   * un rótulo que diga cuál es cuál.
+   *
+   * ══ EL RELOJ ══════════════════════════════════════════════════════════
+   *
+   * Dura lo que dura la canción: 175 s. Cada plano tiene el tiempo de LEERLO
+   * sin apuro —un momento para registrar que cambió, las palabras a dos y
+   * media por segundo, y un momento para salir— y cuando la cuenta no cerraba
+   * se recortó CONTENIDO, nunca la lectura. La prueba `cine-reloj` comprueba
+   * las dos cosas: que el total entre en la canción y que ningún plano pase
+   * más deprisa de lo que se puede leer.
+   */
   const guion: Acto[] = [
-    /* ── I. LA NADA ────────────────────────────────────────────────────── */
-    /* Antes de la primera palabra no hay NADA que mirar: ni estrellas, ni
-       polvo, ni el rescoldo del sol. Pantalla negra de verdad. Es incómodo, y
-       por eso funciona: cuando después aparece una sola línea de texto sobre
-       ese vacío, pesa. Y no se puede acelerar — si la nada dura poco no es
-       nada, es una pausa. */
-    { clave: 'negro', dura: 5200 },
-    /* El título: una palabra sola sobre el negro, sin nada encendido detrás.
-       Es lo más viejo que hay para empezar una película y sigue siendo lo que
-       mejor funciona. */
-    { clave: 'titulo', dura: 4400 },
-    /* La tiniebla: el cielo asoma apenas —lo justo para entender que hay algo
-       ahí fuera, disperso— y la cámara empieza a acercarse muy despacio. El
-       movimiento tiene que notarse solo si uno lo busca. */
-    { clave: 'tiniebla', dura: 6400, mover: { radio: 48, phi: 1.02, giro: 0.16, mira: 0, curva: 'suave' } },
+    /* ══ I · LA CREACIÓN ═══════════════════════════════════════════════════
+       Solo Escritura. Ni una palabra nuestra. */
 
-    /* ── II. LA LUZ ────────────────────────────────────────────────────── */
-    /* La cámara sigue entrando, más decidida, hacia un centro que todavía está
-       vacío. La tensión la hace el movimiento, no el texto. */
-    { clave: 'palabra', dura: 6900, mover: { radio: 30, giro: 0.26, curva: 'entra' } },
-    /* Y FUE LA LUZ. El sol nace y la cámara RETROCEDE de golpe, como quien se
-       echa atrás ante algo que estalla. Es el único movimiento brusco de toda
-       la película, y por eso funciona. */
-    /* MÁS LARGO QUE ANTES, y por dos razones concretas: la onda que sale de
-       AU-RA tarda casi segundo y medio en cruzar la escena y pasar por encima
-       de la cámara —cortarla ahí sería tirar el efecto—, y después entra la
-       segunda frase, la que dice que todo salió de ella. */
-    { clave: 'luz', dura: 7200, mover: { radio: 38, curva: 'sale' } },
+    /* El título entra sobre negro y sobre nada: el acto arranca a oscuras y la
+       palabra aparece a los dos segundos. Ese silencio previo es lo que la
+       convierte en un título y no en la primera frase. */
+    { clave: 'titulo', dura: 5500 },
+    /* LA TINIEBLA. Negro absoluto de verdad —ni el sol, ni la retícula, ni una
+       brasa— con el versículo encima. No hay nada que mirar, y eso es
+       exactamente lo que dice el texto. */
+    /* Y la cámara SE ACERCA muy despacio a un centro que no existe. El
+       movimiento tiene que notarse solo si uno lo busca — pero tiene que
+       existir, porque es lo que le da al retroceso de la luz de dónde salir. */
+    { clave: 'tinieblas', dura: 9200, mover: { radio: 29, phi: 1.02, giro: 0.14, mira: 0, curva: 'suave' } },
+    /* Y FUE LA LUZ. Un punto en el centro, y de él una onda que se expande
+       hasta pasar por encima de quien mira. Detrás de la onda aparecen los
+       mundos — todos, desordenados, como quedaron. La cámara retrocede: es el
+       único movimiento brusco de la película. */
+    { clave: 'seaLuz', dura: 9000, mover: { radio: 54, phi: 0.98, curva: 'sale' } },
+    /* HAYA LUMBRERAS. Y cada mundo viaja a su órbita mientras la cámara los
+       rodea despacio. El desorden se resuelve a la vista. */
+    { clave: 'lumbreras', dura: 7200, mover: { radio: 30, phi: 0.9, giro: 0.85, curva: 'suave' } },
 
-    /* ── III. EL ORDEN ─────────────────────────────────────────────────── */
-    { clave: 'palabraOrden', dura: 5200, mover: { radio: 33, giro: 0.25, curva: 'suave' } },
-    /* Los mundos viajan a su órbita mientras la cámara los rodea despacio: se
-       ve el sistema formándose desde fuera. */
-    { clave: 'orden', dura: 8200, mover: { radio: 26, phi: 0.9, giro: 0.9, curva: 'suave' } },
-
-    /* ── IV. LOS MUNDOS ────────────────────────────────────────────────── */
-    /* Cada uno dueño del cuadro: los demás se apagan (sim.protagonista). */
-    /* CUATRO NUEVE POR MUNDO. Son ocho seguidos y el mismo tipo de plano: lo
-       que hace que una fila así se sostenga no es que cada uno dure mucho, es
-       que ninguno dure de más. Nombre, una línea, y el siguiente. El vuelo
-       llega al 55% del acto, así que quedan dos segundos largos de casa
-       quieta en cuadro — que es todo lo que hace falta para leer un renglón. */
-    /* CINCO SEIS POR MUNDO. Subió desde 4,9 porque el texto cambió: ahora cada
-       mundo lleva DOS renglones —qué es, y qué asegura— y dos renglones no se
-       leen en el tiempo de uno. Sigue siendo lo más corto que se puede: son
-       ocho seguidos y del mismo tipo de plano, y lo que sostiene una fila así
-       no es que cada uno dure mucho sino que ninguno dure de más. */
-    ...casas.map((k) => ({ clave: `casa:${k}`, dura: 5600, casa: k,
+    /* ══ II · LOS MUNDOS ═══════════════════════════════════════════════════
+       El camino que hace una persona: entra con una identidad, guarda valor,
+       cobra, cambia, saca a moneda local, habla, comprueba, y al final la
+       memoria de cómo empezó. Cada uno dueño del cuadro; los demás, apagados. */
+    ...casas.map((k) => ({ clave: `casa:${k}`, dura: 6200, casa: k,
       mover: { curva: 'llega' as Curva } })),
 
-    /* ── V. EL UNIVERSO ────────────────────────────────────────────────── */
-    /* El retroceso grande, y la cámara se da vuelta a mirar el cielo: los
-       agujeros negros, los soles de fuera, la lluvia de estrellas. */
-    { clave: 'universo', dura: 8600, mover: { radio: 104, phi: 0.82, giro: 1.5, mira: 0, curva: 'entra' } },
+    /* ══ III · EL CIELO ════════════════════════════════════════════════════
+       Sin una palabra. La cámara se va lejos y SE DA VUELTA a mirar lo que
+       había detrás todo este tiempo: un agujero negro con su disco girando,
+       los soles de fuera, y el cielo lloviendo estrellas. Es el respiro de la
+       película y el único plano que no explica nada. */
+    { clave: 'universo', dura: 6100, mover: { radio: 104, phi: 0.82, giro: 1.5, mira: 0, curva: 'entra' } },
 
-    /* ── VI. LO QUE LO SOSTIENE ────────────────────────────────────────── */
-    /* Se acaba de ver el sistema entero girando. La pregunta «¿y qué lo
-       mantiene unido?» ya está hecha; ahora se contesta. La cámara VUELVE del
-       panorama y baja al centro: al sol, que es la moneda. */
+    /* ══ IV · LO QUE LO SOSTIENE ═══════════════════════════════════════════
+       Aquí las dos historias se tocan. */
+    { clave: 'separo', dura: 6100, mover: { radio: 40, phi: 0.9, giro: 0.5, curva: 'suave' } },
+    /* La respuesta. La cámara baja al centro: al sol, que es la moneda. */
     { clave: 'origen', dura: 8400, mover: { radio: 14, phi: 1.12, giro: 1.1, curva: 'entra' } },
-    /* Lo que la respalda. El resplandor baja: la idea ya no es el fogonazo
-       sino el peso, y el peso no brilla. */
-    { clave: 'respaldo', dura: 8000, mover: { radio: 17, phi: 0.94, giro: 0.6, curva: 'suave' } },
+    { clave: 'respaldo', dura: 7600, mover: { radio: 17, phi: 0.94, giro: 0.6, curva: 'suave' } },
+    /* Se acaba de decir «metal que se pesa»: la pregunta de dónde sale ese
+       metal ya está hecha, y MINAS es la respuesta que se puede señalar. */
+    { clave: 'casa:minas', dura: 9400, casa: 'minas', mover: { curva: 'llega' as Curva } },
     /* La cadena. La cámara RODEA el sistema por debajo del plano, pasando por
-       delante de los mundos: la imagen de algo que atraviesa todo y lo enhebra. */
-    /* MINAS, aquí. Se acaba de decir «metal que existe y que se pesa», y la
-       pregunta inmediata es de dónde sale ese metal. La respuesta es un mundo
-       que se puede señalar. */
-    { clave: 'casa:minas', dura: 8600, casa: 'minas', mover: { curva: 'llega' as Curva } },
-    { clave: 'cadena', dura: 8200, mover: { radio: 24, phi: 1.30, giro: 1.25, curva: 'suave' } },
-    /* DBNX, aquí. Se acaba de decir que hay una cadena propia donde queda
-       escrito todo; DBNX es quien pone las reglas de lo que se emite encima.
-       Va pegado a la cadena porque sin la cadena no significa nada. */
-    { clave: 'casa:dbnx', dura: 8600, casa: 'dbnx', mover: { curva: 'llega' as Curva } },
-    /* La fuerza. Sube al plano y se queda: la frase que explica por qué todo
-       lo anterior es UNA cosa se dice quieto. */
-    { clave: 'fuerza', dura: 8000, mover: { radio: 21, phi: 0.86, giro: 0.4, curva: 'sale' } },
-    /* Y que no está terminado. Es el remate del bloque: acaba de explicarse
-       qué lo sostiene, y lo último que se dice de eso es que va a sostener
-       más cosas. La cámara se abre despacio, como quien hace sitio. */
-    { clave: 'creciendo', dura: 7200, mover: { radio: 30, phi: 0.9, giro: 0.55, curva: 'suave' } },
+       delante de los mundos: algo que atraviesa todo y lo enhebra. */
+    { clave: 'cadena', dura: 8000, mover: { radio: 24, phi: 1.30, giro: 1.25, curva: 'suave' } },
+    /* Y quién pone las reglas de lo que se emite encima de ella. */
+    { clave: 'casa:dbnx', dura: 8300, casa: 'dbnx', mover: { curva: 'llega' as Curva } },
 
-    /* ── VII. PARA QUÉ ─────────────────────────────────────────────────── */
-    /* Lo que hicimos. Quieta, girando apenas: el texto manda. */
-    { clave: 'obra', dura: 7400, mover: { radio: 30, giro: 0.5, curva: 'recta' } },
-    /* A quien nunca lo tuvo. La cámara CRUZA el sistema de lado a lado —el
-       movimiento más lateral de la película— mientras se dice a quién va
-       dirigido. La frase habla de llevar algo de un sitio a otro, y la cámara
-       hace exactamente eso. */
-    { clave: 'puente', dura: 7800, mover: { radio: 52, phi: 0.98, giro: -1.35, curva: 'suave' } },
-    /* Unir. Se abre el plano hasta que caben todos los mundos a la vez: muchas
-       cosas separadas que resultan ser un solo sistema. */
-    { clave: 'union', dura: 8200, mover: { radio: 74, phi: 0.88, giro: 0.9, curva: 'sale' } },
-
-    /* ── VIII. VOS ─────────────────────────────────────────────────────── */
-    /* La cámara vuelve hacia el sistema — de vuelta a casa. */
-    { clave: 'vos', dura: 7200, mover: { radio: 34, phi: 0.95, giro: 0.5, curva: 'suave' } },
-    /* El propósito. Sigue entrando, ya cerca. */
-    { clave: 'proposito', dura: 7600, mover: { radio: 24, giro: 0.35, curva: 'suave' } },
-    /* La invitación, en el encuadre de todos los días: el sitio al que se
-       vuelve cuando la película termina. */
-    { clave: 'invitacion', dura: 6400, mover: { radio: rig.reposo || 20, phi: rig.reposoPhi, giro: 0.2, curva: 'sale' } },
+    /* ══ V · EL PROPÓSITO ══════════════════════════════════════════════════ */
+    { clave: 'bueno', dura: 8400, mover: { radio: 34, phi: 0.86, giro: 0.6, curva: 'sale' } },
+    { clave: 'obra', dura: 7200, mover: { radio: 30, giro: 0.5, curva: 'recta' } },
+    /* La frase habla de llevar algo de un sitio a otro, y la cámara CRUZA el
+       sistema de lado a lado mientras se dice: el movimiento más lateral de
+       toda la película. */
+    { clave: 'puente', dura: 7600, mover: { radio: 52, phi: 0.98, giro: -1.35, curva: 'suave' } },
+    /* «Fructificad y multiplicaos; llenad la tierra». El plano se abre hasta
+       que caben todos los mundos: el versículo y la imagen dicen lo mismo. */
+    { clave: 'fructificad', dura: 5300, mover: { radio: 74, phi: 0.88, giro: 0.9, curva: 'sale' } },
+    /* Y vuelve a casa. */
+    { clave: 'proposito', dura: 6500, mover: { radio: 26, phi: 0.95, giro: 0.5, curva: 'suave' } },
+    { clave: 'cierre', dura: 5400, mover: { radio: rig.reposo || 20, phi: rig.reposoPhi, giro: 0.2, curva: 'sale' } },
   ]
 
   let i = -1
@@ -355,95 +350,103 @@ function empezar(opciones: Opciones = {}) {
     opciones.alActo?.(a.clave)
     const st = useUiStore.getState()
 
-    if (a.clave === 'negro') {
-      /* NEGRO ABSOLUTO: la noche a tope de golpe, y el firmamento también
-         apagado. No es «oscuro»: es que todavía no hay nada. */
-      anochecer(1, 500)
-      sim.vacio = 1
-      acomodar(1, 2200)
+    if (a.clave === 'titulo') {
+      /* NEGRO ABSOLUTO, Y NADA MÁS. Ni sol, ni brasa, ni retícula: el vacío
+         apaga hasta el cuerpo de AU-RA (ver Core.tsx). Y los mundos quedan
+         desparramados, como estaban antes de que nadie los ordenara — el
+         acomodo en uno es «cada cual donde cayó». */
+      anochecer(1, 400)
+      llevarVacio(1, 400)
+      acomodar(1, 0)
+      sim.lluvia = 1
       st.select(null)
       rig.deriva = false
       rig.tRadius = Math.min(rig.lejos, 62)
       rig.tPhi = 1.06
       rig.mira = 0
-    } else if (a.clave === 'tiniebla') {
-      /* El cielo aparece: sigue sin haber sol, pero ya hay universo. */
-      llevarVacio(0, 2600)
-      anochecer(1, 300)
-      acomodar(1, 3000)
-      st.select(null)
-      rig.deriva = false
-      rig.tRadius = Math.min(rig.lejos, 62)
-      rig.tPhi = 1.06
-      rig.mira = 0
-    } else if (a.clave === 'palabraOrden') {
-      // quieta: la palabra sostiene
-    } else if (a.clave === 'luz') {
-      /* Y FUE LA LUZ: de golpe, con su trueno. La noche se va en menos de un
-         segundo — el nacimiento de una estrella no se desvanece, ocurre. */
-      llevarVacio(0, 400)
-      anochecer(0, 850)
-      sim.auraBrillo = 1.8
-      /* EL FOGONAZO. Va aquí y en ningún otro sitio de la película: si algo
-         más destella, este deja de significar «acaba de nacer una estrella» y
-         pasa a ser un efecto. Se enciende y se apaga solo. */
+    } else if (a.clave === 'tinieblas') {
+      /* Sigue sin haber NADA. El versículo dice que la tierra estaba
+         desordenada y vacía y que las tinieblas cubrían el abismo: enseñar un
+         cielo estrellado mientras se lee eso sería contradecirlo en la misma
+         pantalla. El acercamiento lo hace el `mover` del guion: de sesenta y
+         dos a veintinueve, tan despacio que solo se nota si uno lo busca. Ese
+         viaje es el que le da sentido al retroceso de la luz — sin acercarse
+         primero, el «echarse atrás» del fogonazo no tiene de dónde salir. */
+    } else if (a.clave === 'seaLuz') {
+      /* ══ Y FUE LA LUZ ═══════════════════════════════════════════════════
+         Un punto en el centro, y de él una onda. Detrás de la onda aparece
+         TODO: el cielo, los soles de fuera, los mundos —desordenados, como
+         quedaron—. El orden es el versículo siguiente, no este.
+         El vacío se levanta un poco DESPUÉS del fogonazo para que las cosas
+         aparezcan detrás de la luz y no junto con ella: primero llega la luz,
+         y con ella se ve lo que ya estaba. */
       sim.destello = 1
+      window.setTimeout(() => { llevarVacio(0, 1400) }, 260)
+      anochecer(0, 1500)
+      sim.auraBrillo = 1.8
       audio.land()
-    } else if (a.clave === 'orden') {
-      acomodar(0, 5600)
-    } else if (a.clave === 'origen') {
-      /* ORIGEN. La cámara VUELVE del panorama y baja al centro: al sol, que es
-         la moneda. Es la única vez en toda la película que el centro es el
-         sujeto del plano, así que se le deja quemar un poco —aquí el
-         resplandor no estorba, es el tema— y no hay ningún mundo marcado
-         compitiendo.
-         ══ SE LIMPIA LO QUE DEJÓ EL PLANO ANTERIOR ══════════════════════════
-         Este acto viene JUSTO DESPUÉS del universo, que apunta la cámara a un
-         agujero negro y abre la lluvia de estrellas. Sin deshacer las dos
-         cosas, ORIGEN se contaría mirando a otro lado y bajo una tormenta de
-         fugaces. Es el precio de mover un acto de sitio y es exactamente el
-         tipo de cosa que no se ve leyendo el guion. */
+    } else if (a.clave === 'lumbreras') {
+      /* HAYA LUMBRERAS. Cada mundo viaja a su órbita: el desorden se resuelve
+         a la vista, que es lo que el versículo está diciendo. */
+      acomodar(0, 6000)
+      sim.auraBrillo = 1.2
+    } else if (a.clave === 'universo') {
+      /* EL CIELO, sin una palabra. La cámara se da vuelta a mirar el agujero
+         negro más lejano y se abre el caudal de estrellas fugaces. Ver
+         Agujeros.tsx: orbitan a setenta y a cien unidades, y sin esto no se
+         ven NUNCA — durante toda la película quedan detrás de uno. */
+      anguloCasa = null
+      sim.plano = 0
+      sim.protagonista = null
+      st.select(null)
+      sim.lluvia = 8
+      let lejos: THREE.Vector3 | null = null
+      for (const q of agujeros) {
+        if (!q) continue
+        if (!lejos || q.lengthSq() > lejos.lengthSq()) lejos = q
+      }
+      /* Se COPIA: el agujero sigue orbitando y una mira pegada a él haría que
+         la cámara lo persiguiera girando sola. Se quiere un plano fijo sobre
+         algo que se mueve dentro del cuadro. */
+      rig.objetivo = lejos ? lejos.clone() : null
+      audio.whoosh(false)
+    } else if (a.clave === 'separo') {
+      /* Vuelve del panorama. Se cierra la lluvia y se suelta la mira: lo que
+         viene es la respuesta al versículo, y se dice mirando al centro. */
       rig.objetivo = null
       anguloCasa = null
       sim.lluvia = 1
+      sim.plano = 0
+      sim.protagonista = null
+      st.select(null)
+    } else if (a.clave === 'origen') {
+      /* La cámara baja al centro: al sol, que es la moneda. Es la única vez en
+         toda la película que el centro es el sujeto del plano, así que se le
+         deja quemar — aquí el resplandor no estorba, es el tema. */
+      rig.objetivo = null
+      anguloCasa = null
       st.select(null)
       sim.plano = 0
       sim.protagonista = null
       sim.auraBrillo = 2.1
       audio.land()
-    } else if (a.clave === 'titulo') {
-      /* El título vive en el mismo negro que el acto anterior: no se toca
-         NADA. Encender algo detrás de una palabra sola la convierte en un
-         subtítulo de otra cosa. */
-    } else if (a.clave === 'cadena') {
-      /* La cadena atraviesa el sistema, así que se encienden todas las casas a
-         la vez —ninguna manda— y se suelta un pulso que recorre la galaxia. */
-      st.select(null)
-      sim.protagonista = null
-      sim.auraBrillo = 1.15
-      audio.whoosh(false)
-    } else if (a.clave === 'fuerza') {
-      sim.auraBrillo = 1.5
-    } else if (a.clave === 'creciendo') {
-      sim.auraBrillo = 1.2
-    } else if (a.clave === 'respaldo') {
-      /* Lo que la sostiene. El resplandor baja a la mitad: la idea ya no es
-         el fogonazo sino el peso, y el peso no brilla. */
-      sim.auraBrillo = 1.35
-    } else if (a.clave === 'puente') {
-      /* El barrido de lado a lado. Se apaga el resplandor del sol para que el
-         movimiento se lea sobre las casas y no sobre un fogonazo, y se suelta
-         un golpe de aire: la cámara viaja, y se tiene que oír que viaja. */
-      st.select(null)
-      sim.plano = 1
-      sim.protagonista = null
-      sim.auraBrillo = 1
-      audio.whoosh(false)
-    } else if (a.clave === 'union') {
-      /* Se abre hasta que caben todos. El plano vuelve a la normalidad: lo
-         que se enseña ahora es el sistema completo, con su sol y todo. */
+    } else if (a.clave === 'respaldo' || a.clave === 'cadena') {
+      /* El resplandor baja: la idea ya no es el fogonazo sino el peso, y el
+         peso no brilla. */
+      rig.objetivo = null
+      anguloCasa = null
       sim.plano = 0
-      espacio.solHabla(0.5)
+      sim.protagonista = null
+      st.select(null)
+      sim.auraBrillo = 0.55
+    } else if (a.clave === 'cierre') {
+      rig.objetivo = null
+      anguloCasa = null
+      sim.plano = 0
+      sim.protagonista = null
+      st.select(null)
+      sim.auraBrillo = 2.4
+      audio.commit()
     } else if (a.clave.startsWith('casa:')) {
       const key = a.clave.slice(5)
       st.select(key)

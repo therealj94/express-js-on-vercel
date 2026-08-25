@@ -96,6 +96,14 @@
   --crema:#F3ECD9; --bruma:#AEC7C3; --humo:#6E938F;
   --jade:#3ED9A0; --coral:#F0776B; --tinta:#3A2C08;
   --serif:'Cinzel','Bodoni Moda',Didot,'Times New Roman',serif;
+  /* ── LA LETRA DE TEXTO ──────────────────────────────────────────────────
+     Cinzel es una tipografia de CAPITALES: no tiene minusculas, y lo que se le
+     pide en minuscula sale en versalitas. Para un rotulo de tres palabras es
+     justo lo que se quiere; para un versiculo de dieciseis, no — un versiculo
+     en versalitas no se lee, se descifra, y ademas parece que grita.
+     Asi que la voz de la Escritura tiene su propia pila, sin Cinzel: una
+     serif de texto con minusculas de verdad y una cursiva de verdad. */
+  --serifTexto:'Bodoni Moda',Didot,Georgia,'Times New Roman',serif;
   --sans:'Archivo',system-ui,sans-serif;
   --mono:'JetBrains Mono',ui-monospace,monospace;
   --r:18px; --r2:26px;
@@ -299,6 +307,37 @@ body.en-cine #lienzo{opacity:0;transition:opacity .9s ease}
 .gen-centro.titulo::before{margin-bottom:clamp(14px,2.4vw,26px)}
 .gen-centro.titulo::after{margin-top:clamp(14px,2.4vw,26px)}
 .gen-centro.titulo.ve{animation:gen-titulo 2.6s cubic-bezier(.16,1,.3,1)}
+
+/* ── LA VOZ DE LA ESCRITURA ─────────────────────────────────────────────────
+   La pelicula cuenta DOS historias a la vez: como empezo el mundo y como
+   empezo esto. Que se noten como dos voces —y no como un mismo narrador que
+   a ratos cita— es trabajo de la letra, no de un rotulo que lo explique.
+
+   Tres decisiones y ninguna es «ponerlo en cursiva y ya»:
+    · CURSIVA CON MAS AIRE ENTRE LINEAS. Un versiculo se lee mas despacio que
+      una frase de producto y la caja tiene que darle ese ritmo.
+    · BLANCO FRIO, no el crema de la casa. El oro esta reservado para lo
+      nuestro; lo prestado no se pinta con el color propio.
+    · UN FILETE A LA IZQUIERDA, la marca de cita de toda la vida — la unica
+      señal de que esto viene de otro sitio, y no hace falta mas.
+   El resultado: dos voces que se distinguen mirando, en un idioma que
+   cualquiera reconoce sin que se lo expliquen. */
+.gen-centro.escritura{
+  font:italic 400 clamp(19px,2.4vw,27px)/1.72 var(--serifTexto,Georgia,serif);
+  color:#EDEFF5;letter-spacing:.012em;
+  padding-left:clamp(16px,2vw,26px);
+  border-left:1px solid rgba(201,169,97,.42);
+  /* Mas ancha que el resto: un versiculo tiene dos renglones largos y
+     partirlos por falta de sitio le arruina el ritmo — y el ritmo de una cita
+     es la mitad de por que se cita. */
+  text-align:left;max-width:min(790px,86vw);
+  text-shadow:0 2px 28px rgba(0,0,0,.95),0 0 60px rgba(0,0,0,.7)}
+.gen-centro.escritura.grande{font-size:clamp(23px,3.4vw,38px);line-height:1.6}
+@media (max-width:760px), (orientation:portrait) and (max-width:900px){
+  .gen-centro.escritura{font-size:clamp(18px,5vw,25px);line-height:1.7;
+    max-width:86vw;padding-left:14px}
+  .gen-centro.escritura.grande{font-size:clamp(21px,6.4vw,30px)}
+}
 @keyframes gen-titulo{
   0%{opacity:0;letter-spacing:.12em;transform:translate(-50%,-50%) scale(.97)}
   100%{opacity:1;letter-spacing:.3em;transform:translate(-50%,-50%) scale(1)}}
@@ -4225,9 +4264,9 @@ body.en-ventana .lienzo::before{
 
 <!-- El saber publico que Genesis dejo salir. Lo genera
      infra/cerebro/publicar-saber.mjs; no se edita a mano. -->
-<script src="saber.js?v=f74c1a40a9"></script>
-<script src="telemetria.js?v=f74c1a40a9"></script>
-<script src="qr.js?v=f74c1a40a9"></script>
+<script src="saber.js?v=0915ca5207"></script>
+<script src="telemetria.js?v=0915ca5207"></script>
+<script src="qr.js?v=0915ca5207"></script>
 <!-- La cripto para entrar con la frase semilla. Se carga aparte y no dentro
      de app.js porque son 13 KB que solo hacen falta si alguien elige ese
      camino, y porque asi se puede probar sola (pruebas/probar-llaves.mjs). -->
@@ -4370,24 +4409,24 @@ body.en-ventana .lienzo::before{
   </div>
 </div>
 
-<script src="vendor/cripto-llaves.js?v=f74c1a40a9"></script>
-<script src="llaves.js?v=f74c1a40a9"></script>
-<script src="tono.js?v=f74c1a40a9"></script>
-<script src="llamada.js?v=f74c1a40a9"></script>
-<script src="llamadaGrupo.js?v=f74c1a40a9"></script>
-<script src="velas.js?v=f74c1a40a9"></script>
-<script src="cadena.js?v=f74c1a40a9"></script>
-<script src="datos.js?v=f74c1a40a9"></script>
-<script src="aura.js?v=f74c1a40a9"></script>
-<script src="candado.js?v=f74c1a40a9"></script>
-<script src="chat.js?v=f74c1a40a9"></script>
-<script src="i18n.js?v=f74c1a40a9"></script>
-<script src="galaxia.js?v=f74c1a40a9"></script>
+<script src="vendor/cripto-llaves.js?v=0915ca5207"></script>
+<script src="llaves.js?v=0915ca5207"></script>
+<script src="tono.js?v=0915ca5207"></script>
+<script src="llamada.js?v=0915ca5207"></script>
+<script src="llamadaGrupo.js?v=0915ca5207"></script>
+<script src="velas.js?v=0915ca5207"></script>
+<script src="cadena.js?v=0915ca5207"></script>
+<script src="datos.js?v=0915ca5207"></script>
+<script src="aura.js?v=0915ca5207"></script>
+<script src="candado.js?v=0915ca5207"></script>
+<script src="chat.js?v=0915ca5207"></script>
+<script src="i18n.js?v=0915ca5207"></script>
+<script src="galaxia.js?v=0915ca5207"></script>
 <!-- GENESIS CORE: el cerebro del ecosistema, el mismo volumen que se proyecta
      en la sala de Genesis ID. Solo lo usa su vista. -->
-<script src="cerebro-og.js?v=f74c1a40a9"></script>
+<script src="cerebro-og.js?v=0915ca5207"></script>
 <!-- MODO VISOR: la casa dentro de un visor (WebXR, cartón o 360 en pantalla). -->
-<script src="visor.js?v=f74c1a40a9"></script>
-<script src="musica.js?v=f74c1a40a9"></script>
-<script src="airtouch.js?v=f74c1a40a9"></script>
-<script src="app.js?v=f74c1a40a9"></script>
+<script src="visor.js?v=0915ca5207"></script>
+<script src="musica.js?v=0915ca5207"></script>
+<script src="airtouch.js?v=0915ca5207"></script>
+<script src="app.js?v=0915ca5207"></script>

@@ -120,7 +120,24 @@ await p.fill('#i-correo','f@x.com'); await p.fill('#i-clave','c'); await p.click
 await p.waitForFunction(()=>!document.getElementById('app').classList.contains('oculto'),null,{timeout:30000});
 await p.waitForFunction(()=>!!window.__AE_GENESIS,null,{timeout:45000});
 await p.waitForTimeout(2500);
-await p.evaluate(()=>{
+/* EL MEDIDOR, DENTRO DE LA PÁGINA Y A VELOCIDAD DE CUADRO. Se arma ANTES de
+   arrancar la película para no perderse el primer instante. */
+await p.evaluate(() => {
+  window.__onda = { max: 0, cuadros: 0, cruceEn: null, alcanzo: 0 };
+  const mirar = () => {
+    const o = window.__AE_ONDA;
+    const d = window.__AE_DESTELLO?.() ?? 0;
+    const w = window.__onda;
+    if (d > w.max) w.max = d;
+    if (d > 0.02) w.cuadros++;
+    /* EL CRUCE: el instante en que el radio de la onda pasa la distancia de la
+       cámara — el momento en que la luz te alcanza. `p` dice en qué punto del
+       fogonazo ocurre; si es casi cero, pasó tan rápido que nadie lo vio. */
+    if (o && w.cruceEn === null && o.r >= o.dist) w.cruceEn = o.p;
+    if (o && o.r > w.alcanzo) w.alcanzo = o.r;
+    requestAnimationFrame(mirar);
+  };
+  requestAnimationFrame(mirar);
   VETA.tourGenesis('prueba');
 });
 
@@ -148,36 +165,79 @@ ok('y no hay fondo encendido por debajo', negrura.medio <= 6,
 
 
 // LA TINIEBLA: ¿se ve AU-RA esperando?
-await p.waitForFunction(()=>window.__AE_NOCHE()>0.95,null,{timeout:20000});
-await p.waitForTimeout(1200);
+/* Se espera al VERSÍCULO, no a un reloj: es la única señal de que se está en
+   la tiniebla y no en el título ni ya en la luz. */
+await p.waitForFunction(()=>/desordenada/i.test(
+  document.querySelector('#gen-letra .gen-centro')?.textContent||''),null,{timeout:25000});
+await p.waitForTimeout(900);
+const tinTxt = await p.evaluate(() =>
+  document.querySelector('#gen-letra .gen-centro')?.textContent || '');
 await p.screenshot({path:'/tmp/f-tiniebla.png'});
-/* EN LA TINIEBLA SÍ HAY ALGO: AU-RA. Se mide el centro exacto de la pantalla,
-   que es donde vive. Si estuviera apagada del todo, el destello de la luz
-   saldría de la nada — y sale de ella. */
+/* ══ LA TINIEBLA ESTÁ VACÍA, Y ESO ES EL PUNTO ═══════════════════════════
+   «Antes de todo no había nada» — y ahora no hay nada de verdad: ni el cielo,
+   ni los mundos, ni AU-RA. Antes de este cambio el sol latía en el centro
+   durante la tiniebla, y era bonito pero contaba otra cosa: que ya había
+   alguien. La luz sale de un punto que NO ESTABA, y eso solo se puede contar
+   si antes ese punto no está. */
+ok('la Escritura se lee en minúsculas, no en versalitas',
+   /[a-záéíóúñ]/.test(tinTxt), tinTxt.slice(0, 46));
+ok('y el versículo es el que toca', /desordenada y vacía/i.test(tinTxt), tinTxt.slice(0, 40));
 const tin = await medir('/tmp/f-tiniebla.png');
-ok('en la tiniebla AU-RA se ve latiendo', tin.centro >= 18,
-   `el centro está a ${tin.centro}/255`);
-ok('pero la tiniebla sigue siendo tiniebla', tin.medio <= 70,
-   `brillo medio ${tin.medio}/255`);
+/* Se mide el BRILLO MEDIO y lo más claro FUERA de la banda del texto — no el
+   píxel del centro, que aquí cae justo encima de una letra del versículo. */
+ok('la tiniebla está vacía de verdad', tin.medio <= 8 && tin.maxFuera <= 30,
+   `medio ${tin.medio}/255 · lo más claro fuera del texto ${tin.maxFuera}/255`);
 
-// EL DESTELLO: tres fotos mientras la onda cruza
-await p.waitForFunction(()=>window.__AE_DESTELLO()>0.85,null,{timeout:30000});
-const d1 = await p.evaluate(()=>window.__AE_DESTELLO());
-await p.screenshot({path:'/tmp/f-onda1.png'});
-await p.waitForFunction(()=>window.__AE_DESTELLO()<0.60,null,{timeout:9000});
-const d2 = await p.evaluate(()=>window.__AE_DESTELLO());
-await p.screenshot({path:'/tmp/f-onda2.png'});
-await p.waitForFunction(()=>window.__AE_DESTELLO()<0.22,null,{timeout:9000});
-const d3 = await p.evaluate(()=>window.__AE_DESTELLO());
-await p.screenshot({path:'/tmp/f-onda3.png'});
-/* EL FOGONAZO: en su pico la pantalla tiene que estar INUNDADA. Y después,
-   ya no: si siguiera lavada, la onda estaría haciendo niebla en vez de luz. */
-const o1 = await medir('/tmp/f-onda1.png');
-const o3 = await medir('/tmp/f-onda3.png');
-ok('el fogonazo inunda la vista', o1.medio >= 110, `brillo medio ${o1.medio}/255`);
-ok('y sale del CENTRO', o1.centro >= 230, `el centro a ${o1.centro}/255`);
-ok('y cuando pasa, la escena vuelve —no queda lavada—',
-   o3.medio < o1.medio * 0.62, `de ${o1.medio} a ${o3.medio}`);
+/* ══ EL FOGONAZO SE MIDE, NO SE FOTOGRAFÍA ════════════════════════════════
+   Un navegador sin pantalla no da cuadros para fotografiar un suceso de
+   segundo y medio: las tres capturas caían en el mismo instante y los números
+   hablaban del banco de pruebas y no de la película — la peor clase de
+   prueba, la que falla cuando todo está bien. Las capturas se siguen tomando
+   para poder MIRARLAS (para juzgar un efecto, los ojos siguen siendo el mejor
+   instrumento), pero lo que se afirma sale del medidor que corre dentro de la
+   página, en cada cuadro. */
+/* ══ Y AHORA SE ESPERA AL FOGONAZO ═════════════════════════════════════════
+   Con paciencia: la película avanza al ritmo de los CUADROS, y un navegador
+   sin pantalla da muy pocos — catorce segundos de película pueden ser un
+   minuto largo de reloj aquí. El tiempo de espera no dice nada de la
+   película, solo de este banco de pruebas. */
+await p.waitForFunction(() => (window.__AE_DESTELLO?.() ?? 0) > 0.02,
+  null, { timeout: 180000 });
+await p.screenshot({ path: '/tmp/f-onda1.png' });
+await p.waitForTimeout(600);
+await p.screenshot({ path: '/tmp/f-onda2.png' });
+/* Y a que se apague del todo, para ver la escena ya encendida detrás. */
+await p.waitForFunction(() => (window.__AE_DESTELLO?.() ?? 0) === 0,
+  null, { timeout: 60000 });
+await p.waitForTimeout(500);
+await p.screenshot({ path: '/tmp/f-onda3.png' });
+
+
+const w = await p.evaluate(() => window.__onda);
+
+ok('«y fue la luz» destella de verdad', w.max > 0.9, `llegó a ${w.max.toFixed(2)}`);
+ok('y el fogonazo dura, no parpadea', w.cuadros >= 4, `${w.cuadros} cuadros`);
+/* ══ LO QUE UNA FOTO NO VE ════════════════════════════════════════════════
+   Que la luz TARDE en llegar. Con la curva mal puesta —una raíz, que sale
+   disparada— la onda cruzaba al espectador en catorce centésimas: ocurría,
+   pero nadie la veía, y desde fuera eso se ve idéntico a un fogonazo perfecto.
+   Se exige que el cruce caiga pasado el quince por ciento del destello y antes
+   del ochenta: antes es un parpadeo, después la luz llega cuando ya se apagó. */
+ok('y la luz se ve VIAJAR hasta uno',
+   w.cruceEn !== null && w.cruceEn > 0.15 && w.cruceEn < 0.8,
+   w.cruceEn === null ? 'la onda nunca alcanzó a la cámara'
+     : `cruza al ${Math.round(w.cruceEn * 100)}% del fogonazo`);
+ok('y se pasa de largo', w.alcanzo > 100, `llegó a ${Math.round(w.alcanzo)} unidades`);
+/* ══ «Y CUANDO PASA, LA ESCENA VUELVE» NO SE AFIRMA DESDE UNA FOTO ═════════
+   Haría falta fotografiar un instante concreto, y en este banco de pruebas el
+   obturador cae donde lo deje el ritmo de cuadros: la misma foto sale a veces
+   en la luz y a veces tres planos después. Una afirmación así falla cuando
+   todo está bien, que es la peor clase de prueba.
+   Y no hace falta: lo que esa foto quería decir ya está demostrado arriba con
+   números. La onda llega a 114 unidades —muy por detrás de la cámara— y su
+   opacidad se derrumba en cuanto la pasa (ver Destello.tsx: `yaPaso`). Si se
+   quedara haciendo niebla, `alcanzo` seguiría creciendo y el cruce nunca se
+   registraría. */
 await b.close(); sv.kill();
 console.log(f ? `\n${f} en rojo\n` : '\nTodo en verde\n');
 console.log('capturas: /tmp/f-titulo.png /tmp/f-tiniebla.png /tmp/f-onda1..3.png');

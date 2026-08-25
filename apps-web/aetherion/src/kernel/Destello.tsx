@@ -43,7 +43,19 @@ import { sim } from './sim'
 /* Hasta dónde llega la onda. Más que el radio del sistema: tiene que pasarse
    de largo de la cámara esté donde esté, o la luz «se queda corta» y el efecto
    se lee como una burbuja de jabón. */
-const ALCANCE = 150
+/* ══ HASTA DÓNDE LLEGA, Y CUÁNDO ══════════════════════════════════════════
+ * La onda tiene que pasarse de largo de la cámara esté donde esté, o la luz
+ * «se queda corta» y el efecto se lee como una burbuja de jabón.
+ *
+ * Pero el número importante no es este: es la CURVA. Con una caída fuerte
+ * —raíz— la onda salía disparada y cruzaba al espectador en catorce
+ * centésimas: el fogonazo terminaba antes de que el ojo lo registrara, y en la
+ * foto no se veía nunca inundada la vista. Un efecto que ocurre demasiado
+ * rápido no es un efecto rápido: es un efecto que no ocurrió.
+ *
+ * Con la curva de abajo, la onda tarda cerca de la mitad del destello en
+ * llegar hasta uno. Eso es lo que se quiere ver: la luz VINIENDO. */
+const ALCANCE = 115
 
 export function Destello() {
   const { camera } = useThree()
@@ -99,17 +111,27 @@ export function Destello() {
        complemento: cuanto menos queda del destello, más lejos llegó. */
     const p = 1 - d
 
-    /* EL NÚCLEO: brilla al principio y se apaga enseguida. Es AU-RA
-       prendiendo, y dura lo que dura un chispazo. */
-    n.visible = p < 0.45
-    matNucleo.opacity = Math.max(0, 1 - p / 0.45)
-    n.scale.setScalar(0.6 + p * 5)
+    /* ══ EL PUNTO ══════════════════════════════════════════════════════════
+       Empieza en NADA. Un chispazo que ya nace con medio metro de ancho no es
+       un punto de luz apareciendo en la oscuridad: es una bola que se enciende,
+       que es otra cosa y mucho menos impresionante. Arranca en cero, crece muy
+       rápido en el primer cuarto —ahí es un punto que se abre— y después se
+       lo come la onda.
+       La curva es de raíz: al principio sube casi vertical y enseguida frena.
+       Es lo que hace la luz de verdad y lo que el ojo espera. */
+    n.visible = p < 0.5
+    matNucleo.opacity = Math.max(0, 1 - p / 0.5)
+    n.scale.setScalar(Math.pow(p, 0.42) * 7.5)
 
     /* LA ONDA: sale del centro y se expande. Arranca rápido y va frenando
        —una explosión pierde velocidad contra lo que la rodea— y se apaga
        mientras se agranda, porque la misma luz repartida en una superficie
        cada vez mayor tiene que dar menos. */
-    const r = Math.max(0.4, Math.pow(p, 0.62) * ALCANCE)
+    /* Sale de un punto —arranca en cero— y se expande frenando apenas: un
+       exponente cerca de uno es casi velocidad constante, con la pizca de
+       desaceleración que tiene una explosión de verdad contra lo que la
+       rodea. Con 0,62 se iba disparada; con 0,85 se la ve viajar. */
+    const r = Math.pow(p, 0.85) * ALCANCE
     o.scale.setScalar(r)
 
     /* ══ Y SE APAGA EN CUANTO TE PASA POR ENCIMA ══════════════════════════
@@ -130,6 +152,13 @@ export function Destello() {
     /* EL BAÑO: solo mientras la onda está pasando POR ENCIMA de la cámara.
        Se compara el radio de la onda con la distancia al centro; el instante
        en que se cruzan es el instante en que la luz te alcanza. */
+    /* Para que una prueba pueda comprobar lo único que de verdad importa acá y
+       que una foto no puede: CUÁNTO TARDA la luz en llegar hasta uno. Con la
+       curva mal puesta la onda cruzaba al espectador en catorce centésimas —
+       ocurría, pero nadie la veía— y desde fuera eso se ve exactamente igual
+       que un fogonazo perfecto. */
+    ;(window as any).__AE_ONDA = { r, dist, p, destello: d }
+
     const cerca = 1 - Math.min(1, Math.abs(r - dist) / (ALCANCE * 0.14))
     b.visible = cerca > 0.01
     if (b.visible) {

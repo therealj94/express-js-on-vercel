@@ -43,7 +43,7 @@ const ALTO = 512
    una frase que no cambia. */
 const cache = new Map<string, THREE.CanvasTexture>()
 
-function pintar(texto: string, peso: 'normal' | 'grande' | 'cierre' | 'titulo'): THREE.CanvasTexture {
+function pintar(texto: string, peso: 'normal' | 'grande' | 'cierre' | 'titulo' | 'escritura'): THREE.CanvasTexture {
   const clave = `${peso}:${texto}`
   const hecho = cache.get(clave)
   if (hecho) return hecho
@@ -54,18 +54,25 @@ function pintar(texto: string, peso: 'normal' | 'grande' | 'cierre' | 'titulo'):
   const g = c.getContext('2d')!
 
   const lineas = texto.split('\n')
-  const tam = peso === 'grande' ? 128 : peso === 'titulo' ? 116 : peso === 'cierre' ? 104 : 92
-  const familia = peso === 'cierre' || peso === 'titulo'
-    ? `600 ${tam}px Cinzel, "Bodoni Moda", Georgia, serif`
-    : `500 ${tam}px Cinzel, "Bodoni Moda", Georgia, serif`
+  const tam = peso === 'grande' ? 128 : peso === 'titulo' ? 116
+    : peso === 'cierre' ? 104 : peso === 'escritura' ? 96 : 92
+  /* La Escritura va en CURSIVA también dentro del visor: es la única señal
+     que distingue las dos voces, y perderla en el visor sería contar la
+     película a medias justo donde más se siente. */
+  const familia = peso === 'escritura'
+    ? `italic 400 ${tam}px "Bodoni Moda", Georgia, serif`
+    : peso === 'cierre' || peso === 'titulo'
+      ? `600 ${tam}px Cinzel, "Bodoni Moda", Georgia, serif`
+      : `500 ${tam}px Cinzel, "Bodoni Moda", Georgia, serif`
   g.font = familia
   g.textAlign = 'center'
   g.textBaseline = 'middle'
   /* El titulo lleva el mismo aire que en pantalla: mucha separacion entre
      letras es lo que hace que algo se lea como titulo y no como frase. */
-  g.letterSpacing = peso === 'cierre' ? '18px' : peso === 'titulo' ? '22px' : '2px'
+  g.letterSpacing = peso === 'cierre' ? '18px' : peso === 'titulo' ? '22px'
+    : peso === 'escritura' ? '0px' : '2px'
 
-  const alto = tam * 1.35
+  const alto = tam * (peso === 'escritura' ? 1.6 : 1.35)
   const y0 = ALTO / 2 - ((lineas.length - 1) * alto) / 2
 
   lineas.forEach((l, i) => {
@@ -80,7 +87,9 @@ function pintar(texto: string, peso: 'normal' | 'grande' | 'cierre' | 'titulo'):
     g.shadowColor = peso === 'cierre' || peso === 'titulo'
       ? 'rgba(201,169,97,0.75)' : 'rgba(0,0,0,0.9)'
     g.shadowBlur = 26
-    g.fillStyle = peso === 'cierre' || peso === 'titulo' ? '#EAD79C' : '#F7EDD2'
+    /* Blanco frío para lo prestado; el crema y el oro son de la casa. */
+    g.fillStyle = peso === 'cierre' || peso === 'titulo' ? '#EAD79C'
+      : peso === 'escritura' ? '#EDEFF5' : '#F7EDD2'
     g.fillText(l, ANCHO / 2, y)
     g.shadowBlur = 0
   })
@@ -94,7 +103,7 @@ function pintar(texto: string, peso: 'normal' | 'grande' | 'cierre' | 'titulo'):
 
 export interface Frase {
   texto: string
-  peso: 'normal' | 'grande' | 'cierre' | 'titulo'
+  peso: 'normal' | 'grande' | 'cierre' | 'titulo' | 'escritura'
   /* Un sello de tiempo: dos frases iguales seguidas tienen que volver a
      entrar, y sin esto la segunda no se notaría. */
   turno: number
@@ -113,7 +122,7 @@ export function Teatro() {
     const w = window as any
     let turno = 0
     w.__AE_DECIR = (texto: string | null,
-                    peso: 'normal' | 'grande' | 'cierre' | 'titulo' = 'normal') => {
+                    peso: 'normal' | 'grande' | 'cierre' | 'titulo' | 'escritura' = 'normal') => {
       turno += 1
       if (!texto) { setFrase(null); return }
       setFrase({ texto, peso, turno })

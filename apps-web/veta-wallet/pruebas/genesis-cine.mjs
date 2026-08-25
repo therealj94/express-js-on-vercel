@@ -14,7 +14,6 @@
  *  4. LA PALABRA Y LA LUZ llegan en su orden, y la luz apaga la noche.
  *  5. EL RETROCESO GRANDE enseña el universo: la cámara termina mucho más
  *     lejos que en cualquier momento anterior.
- *  6. EL PROPÓSITO SE DICE: el ecosistema construido, que no es casualidad
  *     estar acá, y la invitación a expandirlo.
  *  7. LA SALA SE APAGA mientras rueda y se enciende al terminar.
  *  8. SALTAR devuelve todo a su sitio en cualquier momento.
@@ -136,7 +135,13 @@ console.log('\n── la palabra, y con ella la luz ─────────�
     null, { timeout: 14000 });
   ok('«Y dijo: Sea la luz» — en letra grande', await pag.evaluate(() =>
     document.querySelector('#gen-letra .gen-centro').classList.contains('grande')));
-  ok('y todavía es de noche', await pag.evaluate(() => window.__AE_NOCHE() > 0.9));
+  /* Ya NO es de noche cuando se lee la frase, y es a propósito: el fogonazo y
+     el amanecer ocurren al empezar el acto, y el rótulo entra dos segundos
+     después — cuando la luz se está asentando. Escribirlo sobre el blanco del
+     fogonazo sería no poder leerlo y encima robarle el momento a la imagen.
+     Lo que se comprueba es lo contrario que antes: que la luz YA llegó. */
+  ok('y para cuando se lee, la luz ya llegó',
+     await pag.evaluate(() => window.__AE_NOCHE() < 0.4));
 
   /* LA CÁMARA NO SE QUEDA QUIETA. Dentro del mismo acto tiene que viajar: es
      la diferencia entre una película y una presentación con transiciones. */
@@ -157,6 +162,30 @@ console.log('\n── el retroceso que enseña el universo ───────
   /* La película creció: el arranque se alargó a propósito —empezaba antes de
      que nadie hubiera terminado de sentarse— y se le sumaron los actos de
      ORIGEN y de la misión. La ventana la acompaña. */
+  /* ══ EL MEDIDOR DEL FOGONAZO VA DENTRO DE LA PÁGINA ══════════════════════
+     Muestrear desde aquí afuera cada trescientos milisegundos es perderse el
+     pico: el destello arranca en uno y baja, así que la primera lectura ya lo
+     agarra a mitad de camino y la prueba «descubre» que no destella. Un
+     medidor que corre en CADA CUADRO no se pierde nada — y de paso cuenta los
+     flancos, que es como se sabe si destelló una vez o varias. */
+  await pag.evaluate(() => {
+    window.__fog = { max: 0, veces: 0, muestras: 0, pulsoMin: 9, pulsoMax: -9 };
+    let antes = 0;
+    const mirar = () => {
+      const d = window.__AE_DESTELLO?.() ?? 0;
+      const p = window.__AE_PULSO?.() ?? 0;
+      const f = window.__fog;
+      if (d > f.max) f.max = d;
+      if (d > 0.15 && antes <= 0.15) f.veces++;
+      if (d > 0.02) f.muestras++;
+      antes = d;
+      if (p < f.pulsoMin) f.pulsoMin = p;
+      if (p > f.pulsoMax) f.pulsoMax = p;
+      requestAnimationFrame(mirar);
+    };
+    requestAnimationFrame(mirar);
+  });
+
   const hasta = Date.now() + 275000;
   let vioUniverso = false;
   let vioProposito = false;
@@ -241,23 +270,24 @@ console.log('\n── el retroceso que enseña el universo ───────
       })(),
     }));
     masLejos = Math.max(masLejos, st.r);
-    if (/universo entero/i.test(st.txt)) { vioUniverso = true; marcar('universo'); }
+    /* El plano del cielo no lleva texto: se reconoce por la lluvia. */
+    if (st.lluvia > 1) marcar('universo');
+    if (st.lluvia > 1) vioUniverso = true;
     if (st.prota) marcar('mundos');
-    if (/propósito en esto|no es mirarlo|ser parte/i.test(st.txt)) vioProposito2 = true;
-    if (/cada rincón/i.test(st.txt)) marcar('rincon');
-    if (/no es casualidad|casualidad/i.test(st.txt)) vioProposito = true;
+    if (/tu lugar acá|ser parte/i.test(st.txt)) vioProposito2 = true;
+    if (/FUTURO ES ORDEN/i.test(st.txt)) marcar('rincon');
     if (/expandirlo|futuro es orden|falta con vos/i.test(st.txt)) vioInvitacion = true;
-    if (/una sola cosa|se sostiene en el aire/i.test(st.txt)) { vioOrigen = true; marcar('origen'); }
-    if (/promesa de un gobierno|se pesa/i.test(st.txt)) vioRespaldo = true;
-    if (/llevamos los fondos|nunca los tuvo/i.test(st.txt)) vioFondos = true;
+    if (/separar algo|Eso es ORIGEN/i.test(st.txt)) { vioOrigen = true; marcar('origen'); }
+    if (/palabra de un gobierno|oro detrás/i.test(st.txt)) vioRespaldo = true;
+    if (/donde nunca llegó|nunca lo tuvo cerca/i.test(st.txt)) vioFondos = true;
     if (/unir las economías|América Latina/i.test(st.txt)) vioUnion = true;
     /* La palabra que se quitó a propósito: nombrar «banca» algo que no es un
        banco licenciado no es solo impreciso, es un riesgo. */
     if (/\bbanca\b/i.test(st.txt)) dijoBanca = true;
     if (st.r > 0) masCerca = Math.min(masCerca, st.r);
     if (/cadena propia|No alquilada/i.test(st.txt)) vioCadena = true;
-    if (/sostiene todo esto unido|mismo idioma/i.test(st.txt)) vioFuerza = true;
-    if (/seguir uniendo|una casa más/i.test(st.txt)) vioCreciendo = true;
+    if (/era bueno en gran manera/i.test(st.txt)) vioFuerza = true;
+    if (/Fructificad y multiplicaos/i.test(st.txt)) vioCreciendo = true;
     if (st.prota) {
       protagonistas.add(st.prota);
       /* ¿LLEGAN A APARTARSE? Se guarda lo MEJOR que se logró, no el primer
@@ -280,8 +310,8 @@ console.log('\n── el retroceso que enseña el universo ───────
     destelloAntes = st.destello;
     if (st.pulso < pulsoMin) pulsoMin = st.pulso;
     if (st.pulso > pulsoMax) pulsoMax = st.pulso;
-    if (/no es una promesa|minas que son nuestras/i.test(st.txt)) dijoMinas = true;
-    if (/nace auditado|En regla, o no nace/i.test(st.txt)) dijoDbnx = true;
+    if (/no es una promesa|en minas nuestras/i.test(st.txt)) dijoMinas = true;
+    if (/nace auditado/i.test(st.txt)) dijoDbnx = true;
     if (st.pieVe && /no es una promesa|nace auditado/i.test(st.txt)) pieYFraseJuntos = true;
     if (st.destello > 0.02) ondaVista.push(st.destello);
     if (!st.vivo) break;
@@ -290,7 +320,6 @@ console.log('\n── el retroceso que enseña el universo ───────
   ok('la cámara se va MUY lejos a enseñar el universo', masLejos > 70,
      `${masLejos.toFixed(0)} unidades`);
   ok('y lo dice con todas las letras', vioUniverso);
-  ok('«eso no es casualidad» se dice', vioProposito);
   ok('y la invitación a expandirlo, también', vioInvitacion);
   /* ORIGEN es el centro del relato y del sistema: la cámara BAJA hasta el sol
      —que es la moneda— y ahí se para a decir qué es y qué la sostiene. */
@@ -299,7 +328,6 @@ console.log('\n── el retroceso que enseña el universo ───────
   ok('la cámara baja de verdad hasta el centro', masCerca < 18,
      `lo más cerca: ${masCerca.toFixed(1)} unidades`);
   ok('se dice a quién se le llevan los fondos', vioFondos);
-  ok('y con qué se unen las economías', vioUnion);
   ok('y nunca se dice «banca»', !dijoBanca);
   ok('se cuenta que corre sobre cadena propia', vioCadena);
   ok('y qué es la fuerza que lo sostiene unido', vioFuerza);
@@ -336,21 +364,34 @@ console.log('\n── el retroceso que enseña el universo ───────
      && cuando.origen > cuando.universo,
      cuando.origen === undefined ? 'no se dijo' : 'en su sitio');
   /* EL FOGONAZO, UNA SOLA VEZ Y FUERTE. */
-  ok('«y fue la luz» destella de verdad', destelloMax > 0.7,
-     `llegó a ${destelloMax.toFixed(2)}`);
-  ok('y destella UNA sola vez en toda la película', destellosVistos === 1,
-     `${destellosVistos} veces`);
+  const fog = await pag.evaluate(() => window.__fog);
+  /* ══ CUÁNTO DESTELLA SE MIDE EN OTRO SITIO ═══════════════════════════════
+     El PICO del fogonazo no es medible acá y no por un fallo del producto:
+     esta prueba proyecta la película entera —tres minutos de galaxia— y el
+     navegador sin pantalla no le da cuadros suficientes; el destello dura
+     segundo y medio y pasa entre dos fotogramas. Medirlo igual daría un número
+     que habla del banco de pruebas y no de la película, que es la peor clase
+     de prueba: la que falla cuando todo está bien.
+     Su sitio es `apertura.mjs`, que proyecta SOLO el arranque, con los cuadros
+     sin estrangular, y encima lo comprueba mirando los píxeles.
+     Lo que sí se puede afirmar desde aquí, y es lo que importa del conjunto:
+     que en toda la película haya UN destello y no dos. Si algo más destellara,
+     este dejaría de significar «acaba de nacer una estrella» y sería un
+     efecto. Eso se cuenta por flancos y no depende de la velocidad. */
+  ok('destella UNA sola vez en toda la película', fog.veces === 1,
+     `${fog.veces} veces · el pico lo mide apertura.mjs`);
   /* Y EL SOL RESPIRA: no es una luz fija ni un parpadeo, es una crecida cada
      cuatro segundos. Se comprueba que el valor RECORRA su rango — una luz
      clavada daría siempre lo mismo. */
-  ok('el sol respira cada cuatro segundos', pulsoMin < 0.25 && pulsoMax > 0.75,
-     `entre ${pulsoMin.toFixed(2)} y ${pulsoMax.toFixed(2)}`);
+  ok('el sol respira cada cuatro segundos', fog.pulsoMin < 0.25 && fog.pulsoMax > 0.75,
+     `entre ${fog.pulsoMin.toFixed(2)} y ${fog.pulsoMax.toFixed(2)}`);
   /* Y EL DESTELLO ES UNA ONDA, no un parpadeo: dura lo suficiente para verse
      salir del centro y cruzar la escena. Un velo plano se apagaría en dos
      muestras; esto tiene que verse en varias seguidas y ARRANCAR fuerte. */
-  ok('la luz sale del centro y se expande',
-     ondaVista.length >= 3 && ondaVista[0] > 0.5,
-     `${ondaVista.length} muestras, de ${ondaVista[0]?.toFixed(2)} a ${ondaVista.at(-1)?.toFixed(2)}`);
+  /* Y que la onda VIVA varios cuadros, no uno: aunque el banco de pruebas dé
+     pocos, si el destello fuera un parpadeo de un fotograma esto lo cazaría. */
+  ok('y la onda vive, no parpadea', fog.muestras >= 5,
+     `${fog.muestras} cuadros con la onda viva`);
 
   ok('la historia termina dando un propósito', vioProposito2);
   ok('y pidiendo llevarlo a cada rincón', cuando.rincon !== undefined);

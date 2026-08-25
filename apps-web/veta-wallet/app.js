@@ -5372,10 +5372,10 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = 'f74c1a40a9';
-  const VETA_FECHA = '2026-08-24';
+  const VETA_V = '0915ca5207';
+  const VETA_FECHA = '2026-08-25';
 
-  const AET_V = '6bffae6bb3';
+  const AET_V = 'f530e4e229';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -10983,168 +10983,100 @@ const VETA = (() => {
      * mudo emocionaba.
      */
     return es ? {
-      /* ── I. LA NADA ─────────────────────────────────────────────────────
-         El título es ORIGEN a propósito. Al empezar se lee como el nombre de
-         la historia; al final resulta que era el nombre de la cosa que la
-         sostenía todo el tiempo. Es gratis, y es lo que hace que cierre. */
-      /* EL TÍTULO. «ORIGEN» solo se leía como el nombre de la moneda y
-         adelantaba el final; «EL ORIGEN DE TODO» es el nombre de una historia
-         y promete lo que viene. La moneda llega igual al final, y llega mejor:
-         para entonces la palabra ya significa algo. */
+      /* ══ I · LA CREACIÓN ═══════════════════════════════════════════════════
+         Génesis 1, Reina-Valera. NI UNA PALABRA NUESTRA en este acto: meter una
+         frase propia entre los versículos rompe el préstamo — deja de ser una
+         cita y pasa a ser decoración. Las dos voces se distinguen por la letra
+         (la clase `escritura`), no por un rótulo que diga cuál es cuál. */
       titulo: 'EL ORIGEN DE TODO',
-      negro: 'Antes de todo, no había nada.',
-      /* Y SIN EMBARGO HABÍA ALGO. La tiniebla deja de ser un vacío y pasa a
-         ser una espera: en el centro late una brasa. Sin esto, el destello de
-         la luz sale de la nada; con esto, sale de alguien — y esa es la
-         diferencia entre un efecto y el principio de una historia. */
-      tiniebla: 'Ni orden. Ni luz.\nSolo AU-RA, latiendo en lo oscuro.',
+      tinieblas: 'Y la tierra estaba desordenada y vacía,\ny las tinieblas estaban sobre la faz del abismo.',
+      seaLuz: 'Y dijo Dios: Sea la luz.\nY fue la luz.',
+      lumbreras: 'Y dijo Dios: Haya lumbreras\nen la expansión de los cielos.',
 
-      /* ── II. LA LUZ ───────────────────────────────────────────────────── */
-      palabra: 'Y dijo: «Sea la luz».',
-      luz: 'Y fue la luz.',
-      /* La segunda frase entra CUANDO la onda ya pasó por encima: primero se
-         ve de dónde salió, y después se dice. Explicarlo antes le quitaría el
-         trabajo a la imagen. */
-      luz2: 'Salió de ella,\ny con ella salió todo lo demás.',
-
-      /* ── III. EL ORDEN ────────────────────────────────────────────────── */
-      palabraOrden: 'Y dijo: «Que haya orden».',
-      orden: 'Y cada mundo encontró su órbita.',
-
-      /* ── IV. LOS MUNDOS ───────────────────────────────────────────────── */
-      /* Los lemas son de UNA línea y dicen lo que la cosa HACE, no lo que
-         promete. En pantalla duran cinco segundos: una frase de dos renglones
-         no se termina de leer y una consigna publicitaria no se cree. */
-      /* ══ EL TONO ══════════════════════════════════════════════════════════
-         Institucional quiere decir que cada línea dice QUÉ ES la pieza y qué
-         función cumple dentro del ecosistema — no que suene solemne. Se nombra
-         la categoría («infraestructura de identidad», «registro público») y se
-         dice qué garantiza, porque eso es lo que se presenta ante gente que
-         evalúa y no ante gente que compra.
-         Dos renglones: el primero declara qué es, el segundo qué asegura. Una
-         sola línea suena a eslogan y tres no se leen en cinco segundos. */
+      /* ══ II · LOS MUNDOS ═══════════════════════════════════════════════════
+         Rótulo y UNA línea. Institucional quiere decir que dice qué ES la pieza
+         y qué función cumple, no que suene solemne. Una línea y no dos porque
+         seis segundos son seis segundos: dos renglones no se terminan de leer y
+         un renglón a medio leer es peor que uno que no estaba. */
+      /* SEIS SEGUNDOS SON SEIS SEGUNDOS. El rótulo y la línea se leen JUNTOS,
+         así que el nombre también cuenta: con nueve o diez palabras nadie llega
+         al final antes de que entre el siguiente mundo, y medio renglón leído
+         es peor que ninguno. Seis o siete palabras por línea, y cada una dice
+         qué ES la pieza. La prueba `cine-reloj` no deja que esto se afloje. */
       casas: {
-        gid: ['GENESIS ID',
-          'Infraestructura de identidad del ecosistema.\nSe verifica una vez y habilita todo lo demás.'],
-        wallet: ['VETA WALLET',
-          'Custodia propia del valor.\nLas llaves se cifran en el aparato del titular.'],
-        pay: ['MYTOKENPAY',
-          'Red de aceptación en comercios.\nLleva el saldo del ecosistema al mostrador.'],
-        oxch: ['ORDENEXCHANGE',
-          'Casa de cambio del ecosistema.\nConversión entre monedas con la misma cuenta.'],
-        aucorp: ['AUCORP',
-          'Cuentas en moneda local, en veintiún monedas.\nLa puerta entre el dinero de todos los días y el ecosistema.'],
-        chat: ['PULSE2CHAT',
-          'Comunicación cifrada de punta a punta.\nNi los servidores de la casa pueden leerla.'],
-        scan: ['ORDENSCAN',
-          'Registro público de la cadena.\nCada bloque y cada envío, verificables por cualquiera.'],
-        genesis: ['GENESIS CORE',
-          'La memoria del origen.\nCómo se construyó todo esto, y por quién.'],
-        /* Estos dos no se presentan en la fila de mundos: aparecen dentro del
-           bloque de ORIGEN, cada uno contestando una pregunta que el relato
-           acaba de abrir. Los lemas viven acá igual porque la escena los pinta
-           por el mismo camino. */
-        minas: ['MINAS',
-          'Reserva mineral propia.\nMetales preciosos en concesiones bajo nuestro control.'],
-        dbnx: ['DBNX',
-          'Auditoría de tokenización de activos reales.\nRWA emitidos bajo regla verificable.'],
+        gid: ['GENESIS ID', 'Una identidad, verificada una vez.'],
+        wallet: ['VETA WALLET', 'Custodia propia. Las llaves son tuyas.'],
+        pay: ['MYTOKENPAY', 'Aceptación en comercios, del ecosistema al mostrador.'],
+        oxch: ['ORDENEXCHANGE', 'Casa de cambio del ecosistema.'],
+        aucorp: ['AUCORP', 'Cuentas en moneda local, en veintiún monedas.'],
+        chat: ['PULSE2CHAT', 'Comunicación cifrada de punta a punta.'],
+        scan: ['ORDENSCAN', 'Registro público de la cadena.'],
+        genesis: ['GENESIS CORE', 'La memoria del origen.'],
+        minas: ['MINAS', 'Reserva mineral propia.'],
+        dbnx: ['DBNX', 'Auditoría de tokenización de activos reales.'],
       },
-
-      /* LO QUE DICEN LOS DOS QUE NO SON APPS. Se dice sin adornos y con el
-         dato concreto: lo que hace fuerte a esto no es la palabra «respaldo»,
-         es que las minas existen y son nuestras. */
-      /* La frase que entra DESPUÉS del rótulo, con el nombre todavía puesto.
-         Aquí se puede dejar el registro institucional y hablar de frente: el
-         dato ya se dio arriba, esto es lo que ese dato SIGNIFICA. */
+      /* Los dos que no son sitios adonde se entra contestan una pregunta que el
+         relato acaba de abrir, así que además del rótulo llevan una frase — con
+         el nombre todavía puesto, porque es el mundo que se está mirando. */
       dicho: {
-        minas: 'El respaldo de ORIGEN no es una promesa:\nes metal, en minas que son nuestras.',
-        dbnx: 'Lo que se emite sobre nuestra cadena\nnace auditado. En regla, o no nace.',
+        minas: 'El respaldo no es una promesa:\nes metal, en minas nuestras.',
+        dbnx: 'Lo que se emite sobre ella\nnace auditado.',
       },
 
-      /* ── V. EL UNIVERSO ───────────────────────────────────────────────── */
-      universo: 'Y alrededor, un universo entero.',
-
-      /* ── VI. LO QUE LO SOSTIENE ───────────────────────────────────────────
-         Aquí, y no antes. Se acaba de ver el sistema entero girando, así que
-         la pregunta «¿y qué lo mantiene unido?» ya se la está haciendo quien
-         mira: se contesta cuando se preguntó.
-         Dos frases en este acto, separadas por un silencio: la primera abre
-         la pregunta y la segunda la contesta con una palabra. */
-      origen: 'Nada de esto se sostiene en el aire.',
-      origen2: 'Todo gira alrededor de una sola cosa.\nORIGEN.',
-      respaldo: 'Una moneda con el oro detrás.\nNo la promesa de un gobierno:\nmetal que existe y que se pesa.',
+      /* ══ IV · LO QUE LO SOSTIENE ═══════════════════════════════════════════
+         Aquí las dos historias se tocan. El versículo pone la pregunta y
+         nosotros contestamos con la misma palabra: SEPARAR. Es la rima que
+         sostiene la película entera, y por eso ORIGEN va acá y no antes. */
+      separo: 'Y separó Dios la luz de las tinieblas.',
+      origen: 'Nosotros también tuvimos que separar algo:\nel valor, de la promesa.\nEso es ORIGEN.',
+      /* Se cae «metal que se pesa»: MINAS lo dice mejor tres segundos después,
+         y decirlo dos veces es gastar el golpe la primera. */
+      respaldo: 'Una moneda con el oro detrás.\nNo la palabra de un gobierno.',
       cadena: 'Y debajo, una cadena propia.\nNo alquilada. Nuestra.\nCada movimiento, escrito para siempre.',
-      fuerza: 'Eso es lo que lo mantiene todo unido:\nel valor de un lado, la verdad del otro,\ny cada mundo hablando el mismo idioma.',
-      /* Y que no está terminado: es lo que convierte una demostración en una
-         invitación. Lo que se acaba de enseñar es el principio. */
-      creciendo: 'Y va a seguir uniendo cosas.\nCada problema que resolvemos\nes un mundo más en este cielo.',
 
-      /* ── VII. PARA QUÉ ────────────────────────────────────────────────── */
-      obra: 'Nada de esto nos lo dieron.\nLa cadena, la identidad, las cuentas:\ncada pieza la levantamos nosotros.',
-      /* La frase de José, con sus palabras: traer los fondos a quien no los
-         tiene. Va después de ORIGEN a propósito — recién se explicó QUÉ es lo
-         que se lleva, así que ahora «lo llevamos» tiene sujeto. */
-      puente: 'Y lo llevamos donde nunca llegó.\nFondos para quien nunca los tuvo cerca.',
-      union: 'Para unir las economías\nde América Latina y del mundo\ncon algo que genere valor de verdad.',
-
-      /* ── VIII. VOS ────────────────────────────────────────────────────────
-         El final no pide nada: dice que hay un sitio. Pedir suena a folleto;
-         decirle a alguien que su sitio ya existe y está vacío, no. */
-      vos: nombre ? `Y vos estás acá, ${nombre}.` : 'Y vos estás acá.',
-      vos2: 'Eso no es casualidad.',
-      proposito: 'Tenés un propósito en esto,\ny no es mirarlo.\nEs ser parte.',
-      invitacion: 'Llevalo a cada rincón.\nFalta lo más grande,\ny falta con vos.',
+      /* ══ V · EL PROPÓSITO ══════════════════════════════════════════════════
+         «Fructificad y multiplicaos; llenad la tierra» es el final que la
+         historia venía pidiendo desde el principio: no pide nada, dice que hay
+         un sitio. Y nuestra respuesta es una sola frase. */
+      bueno: 'Y vio Dios todo lo que había hecho,\ny era bueno en gran manera.',
+      obra: 'Nada de esto nos lo dieron.\nCada pieza la levantamos nosotros.',
+      puente: 'Y lo llevamos donde nunca llegó:\na quien nunca lo tuvo cerca.',
+      fructificad: 'Fructificad y multiplicaos;\nllenad la tierra.',
+      proposito: nombre ? `Ese es tu lugar acá, ${nombre}.\nNo mirarlo: ser parte.`
+        : 'Ese es tu lugar acá.\nNo mirarlo: ser parte.',
       cierre: 'EL FUTURO ES ORDEN.',
       saltar: 'Saltar',
     } : {
       titulo: 'THE ORIGIN OF EVERYTHING',
-      negro: 'Before everything, there was nothing.',
-      tiniebla: 'No order. No light.\nOnly AU-RA, beating in the dark.',
-      palabra: 'And said: “Let there be light.”',
-      luz: 'And there was light.',
-      luz2: 'It came out of her,\nand with her came everything else.',
-      palabraOrden: 'And said: “Let there be order.”',
-      orden: 'And every world found its orbit.',
+      tinieblas: 'And the earth was without form, and void;\nand darkness was upon the face of the deep.',
+      seaLuz: 'And God said, Let there be light:\nand there was light.',
+      lumbreras: 'And God said, Let there be lights\nin the firmament of the heaven.',
       casas: {
-        gid: ['GENESIS ID',
-          'The ecosystem\u2019s identity infrastructure.\nVerified once, it opens everything else.'],
-        wallet: ['VETA WALLET',
-          'Self-custody of value.\nKeys are encrypted on the holder\u2019s own device.'],
-        pay: ['MYTOKENPAY',
-          'Merchant acceptance network.\nIt carries the ecosystem\u2019s balance to the counter.'],
-        oxch: ['ORDENEXCHANGE',
-          'The ecosystem\u2019s exchange.\nConversion between currencies on the same account.'],
-        aucorp: ['AUCORP',
-          'Local-currency accounts, in twenty-one currencies.\nThe door between everyday money and the ecosystem.'],
-        chat: ['PULSE2CHAT',
-          'End-to-end encrypted communication.\nNot even our own servers can read it.'],
-        scan: ['ORDENSCAN',
-          'Public record of the chain.\nEvery block and every transfer, verifiable by anyone.'],
-        genesis: ['GENESIS CORE',
-          'The memory of the origin.\nHow all of this was built, and by whom.'],
-        minas: ['MINAS',
-          'Our own mineral reserve.\nPrecious metals in concessions under our control.'],
-        dbnx: ['DBNX',
-          'Real-world asset tokenization auditing.\nRWA issued under verifiable rule.'],
+        gid: ['GENESIS ID', 'Identity infrastructure. Verified once, it opens everything.'],
+        wallet: ['VETA WALLET', 'Self-custody. Keys are encrypted on your own device.'],
+        pay: ['MYTOKENPAY', 'Merchant acceptance. From the ecosystem to the counter.'],
+        oxch: ['ORDENEXCHANGE', 'The exchange. One currency becomes another.'],
+        aucorp: ['AUCORP', 'Local-currency accounts, in twenty-one currencies.'],
+        chat: ['PULSE2CHAT', 'End-to-end encrypted communication.'],
+        scan: ['ORDENSCAN', 'Public record of the chain. Verifiable by anyone.'],
+        genesis: ['GENESIS CORE', 'The memory of the origin: how all of this was built.'],
+        minas: ['MINAS', 'Our own mineral reserve. Precious metals under our control.'],
+        dbnx: ['DBNX', 'Real-world asset tokenization auditing.'],
       },
       dicho: {
-        minas: 'ORIGEN\u2019s backing is not a promise:\nit is metal, in mines that are ours.',
-        dbnx: 'What is issued on our chain\nis issued audited. In order, or not at all.',
+        minas: 'The backing is not a promise:\nit is metal, in mines that are ours.',
+        dbnx: 'What is issued on it\nis issued audited. In order, or not at all.',
       },
-      universo: 'And all around, an entire universe.',
-      origen: 'None of this holds itself up in mid-air.',
-      origen2: 'It all turns around one single thing.\nORIGEN.',
-      respaldo: 'A currency with gold behind it.\nNot a government promise:\nmetal that exists and can be weighed.',
+      separo: 'And God divided the light from the darkness.',
+      origen: 'We also had to divide something:\nvalue, from the promise of it.\nThat is ORIGEN.',
+      respaldo: 'A currency with gold behind it.\nNot a government\u2019s word:\nmetal that can be weighed.',
       cadena: 'And underneath, a chain of our own.\nNot rented. Ours.\nEvery movement, written for good.',
-      fuerza: 'That is what holds it all together:\nthe value on one side, the truth on the other,\nand every world speaking one language.',
-      creciendo: 'And it will keep joining things.\nEvery problem we solve\nis one more world in this sky.',
-      obra: 'None of this was given to us.\nThe chain, the identity, the accounts:\nwe raised every piece ourselves.',
-      puente: 'And we take it where it never arrived.\nFunds for those who never had them near.',
-      union: 'To join the economies\nof Latin America and the world\nwith something that creates real value.',
-      vos: nombre ? `And you are here, ${nombre}.` : 'And you are here.',
-      vos2: 'That is no accident.',
-      proposito: 'You have a purpose in this,\nand it is not to watch it.\nIt is to be part of it.',
-      invitacion: 'Take it to every corner.\nThe biggest part is still missing,\nand it is missing you.',
+      bueno: 'And God saw every thing that he had made,\nand it was very good.',
+      obra: 'None of this was given to us.\nWe raised every piece ourselves.',
+      puente: 'And we take it where it never arrived:\nto those who never had it near.',
+      fructificad: 'Be fruitful, and multiply;\nreplenish the earth.',
+      proposito: nombre ? `That is your place here, ${nombre}.\nNot to watch it: to be part of it.`
+        : 'That is your place here.\nNot to watch it: to be part of it.',
       cierre: 'THE FUTURE IS ORDER.',
       saltar: 'Skip',
     };
@@ -11211,6 +11143,7 @@ const VETA = (() => {
         // dentro del visor manda el teatro; en pantalla, la capa HTML
         enEscena(txt, marca === 'cierre' ? 'cierre'
           : marca === 'titulo' ? 'titulo'
+          : marca === 'escritura' ? 'escritura'
           : peso ? 'grande' : 'normal');
         if (!capa) return;
         const c = capa.querySelector('.gen-centro');
@@ -11219,6 +11152,7 @@ const VETA = (() => {
         c.classList.toggle('grande', !!peso);
         c.classList.toggle('cierre', marca === 'cierre');
         c.classList.toggle('titulo', marca === 'titulo');
+        c.classList.toggle('escritura', marca === 'escritura');
         c.classList.remove('ve'); void c.offsetWidth; c.classList.add('ve');
         if (!conPie) capa.querySelector('.gen-pie').classList.remove('ve');
       };
@@ -11254,96 +11188,57 @@ const VETA = (() => {
 
     motor.empezar({
       alActo(clave) {
-        /* EL NEGRO. La primera línea llega tarde a propósito: segundo y medio
-           de pantalla vacía antes de la primera palabra. Ese silencio es lo
-           que hace que la frase pese. */
-        if (clave === 'negro') centro(G.negro, false, 1500);
-        /* EL TÍTULO, en grande y solo. Se limpia lo anterior antes de que
-           entre: una palabra sola no comparte pantalla con nada. */
-        /* El titulo va con su propia marca: caja alta, oro, reglas arriba y
-           abajo y en el medio de la pantalla. Con la letra del relato era una
-           frase mas, un poco mas grande — y eso no abre una pelicula. */
-        else if (clave === 'titulo') centro(G.titulo, true, 300, 'titulo');
-        else if (clave === 'tiniebla') centro(G.tiniebla);
-        else if (clave === 'palabra') centro(G.palabra, true);
-        else if (clave === 'luz') {
-          /* ══ EL TEXTO ESPERA AL FOGONAZO ═══════════════════════════════════
-             La explosión llena la pantalla de blanco durante segundo y medio.
-             Poner «Y fue la luz» al mismo tiempo es escribirlo sobre el blanco:
-             no se lee, y encima le roba el momento a la imagen. Entra cuando el
-             fogonazo se está yendo, que es cuando se puede leer y cuando la
-             frase remata lo que se acaba de ver.
-             Y la segunda —la que dice que todo salió de AU-RA— más tarde
-             todavía, con la escena ya encendida. */
-          centro(G.luz, true, 1500);
-          centro(G.luz2, false, 4300);
-          try { MUSICA?.crecer(1.6, 2.4); } catch { /* nada */ }
+        /* ══ EL REPARTO DE RÓTULOS ═════════════════════════════════════════
+           Cada plano dice lo suyo, y con la VOZ que le toca: `escritura` para
+           los versículos, la letra de siempre para lo nuestro. Las dos se
+           distinguen mirando, sin que nadie tenga que explicarlo. */
+
+        /* EL TÍTULO. Llega tarde a propósito: dos segundos de pantalla negra y
+           vacía antes de la palabra. Ese silencio es lo que la convierte en un
+           título y no en la primera frase del relato. */
+        if (clave === 'titulo') centro(G.titulo, true, 2000, 'titulo');
+        else if (clave === 'tinieblas') centro(G.tinieblas, false, 600, 'escritura');
+        else if (clave === 'seaLuz') {
+          /* El texto ESPERA AL FOGONAZO. La explosión llena la pantalla de
+             blanco: escribir encima es no poder leerlo y además robarle el
+             momento a la imagen. Entra cuando la luz se está asentando, que es
+             cuando la frase remata lo que se acaba de ver. */
+          centro(G.seaLuz, true, 2200, 'escritura');
+          try { MUSICA?.crecer(1.6, 3.0); } catch { /* nada */ }
         }
-        else if (clave === 'palabraOrden') centro(G.palabraOrden, true);
-        else if (clave === 'orden') centro(G.orden);
-        /* ORIGEN, EL CENTRO. Dos rótulos con aire entre ellos: primero qué es
-           la moneda y después qué la sostiene. Es el corazón del relato —el
-           sol de esta galaxia ES la moneda— así que la música sube con él. */
-        /* ORIGEN, EN DOS TIEMPOS. La primera frase abre la pregunta y se
-           queda sola casi cuatro segundos; la segunda la contesta con una
-           palabra. Ese silencio entre las dos es todo el efecto: sin él son
-           dos renglones seguidos y no pasa nada. */
-        else if (clave === 'origen') {
-          centro(G.origen, true);
-          centro(G.origen2, true, 3900);
-          try { MUSICA?.crecer(1.35, 3.6); } catch { /* nada */ }
-        }
-        else if (clave === 'respaldo') centro(G.respaldo, true);
-        /* La cadena y la fuerza: es el corazón de lo que hay que entender, así
-           que van con su aire y con la música sosteniendo. */
-        else if (clave === 'cadena') centro(G.cadena, true);
-        else if (clave === 'fuerza') {
-          centro(G.fuerza, true);
-          try { MUSICA?.crecer(1.4, 3.4); } catch { /* nada */ }
-        }
-        else if (clave === 'creciendo') centro(G.creciendo, true);
+        else if (clave === 'lumbreras') centro(G.lumbreras, false, 400, 'escritura');
         else if (clave.startsWith('casa:')) {
           const k = clave.slice(5);
           const c = G.casas[k];
           if (c) pie(c[0], c[1]);
-          /* MINAS y DBNX no se presentan como los demás mundos, aunque el
-             plano sea el mismo. Los demás son sitios adonde se entra y con el
-             nombre y una línea alcanza. Estos dos son ARGUMENTOS: contestan
-             una pregunta que el relato acaba de abrir —de dónde sale el metal,
-             quién pone las reglas de lo que se emite— y una pregunta no se
-             contesta con un lema. Así que además del rótulo del mundo, entra
-             una frase en el centro, después de un respiro. */
-          /* Y su frase entra DESPUES, con el nombre todavia puesto: primero se
-             ve de quien se habla y despues que se dice de el. Tres segundos y
-             pico es lo que tarda alguien en leer un rotulo y levantar la vista. */
-          if (G.dicho?.[k]) centro(G.dicho[k], false, 3200, null, true);
+          /* MINAS y DBNX llevan además una frase, con el nombre TODAVÍA
+             PUESTO: no es un título que ya cumplió, es el mundo que se está
+             mirando, y sacarlo dejaría la frase huérfana. */
+          if (G.dicho?.[k]) centro(G.dicho[k], false, 2200, null, true);
         }
-        else if (clave === 'universo') centro(G.universo);
-        else if (clave === 'obra') centro(G.obra);
-        /* PARA QUIÉN, Y PARA QUÉ. Las dos frases que convierten una
-           demostración de tecnología en un motivo. */
-        else if (clave === 'puente') centro(G.puente, true);
-        else if (clave === 'union') {
-          centro(G.union, true);
+        /* EL CIELO: ni una palabra. Es el respiro de la película y el único
+           plano que no explica nada — poner texto encima sería no confiar en
+           que la imagen alcanza. */
+        else if (clave === 'universo') centro(null);
+        else if (clave === 'separo') centro(G.separo, true, 500, 'escritura');
+        else if (clave === 'origen') {
+          centro(G.origen, true, 600);
+          try { MUSICA?.crecer(1.35, 3.6); } catch { /* nada */ }
+        }
+        else if (clave === 'respaldo') centro(G.respaldo, false, 400);
+        else if (clave === 'cadena') centro(G.cadena, false, 400);
+        else if (clave === 'bueno') {
+          centro(G.bueno, true, 500, 'escritura');
+          try { MUSICA?.crecer(1.4, 3.4); } catch { /* nada */ }
+        }
+        else if (clave === 'obra') centro(G.obra, false, 400);
+        else if (clave === 'puente') centro(G.puente, true, 400);
+        else if (clave === 'fructificad') {
+          centro(G.fructificad, true, 400, 'escritura');
           try { MUSICA?.crecer(1.5, 3.6); } catch { /* nada */ }
         }
-
-        else if (clave === 'vos') {
-          /* El golpe de este acto son DOS frases: la primera nombra, la
-             segunda remata. Separadas por tres segundos y medio de silencio,
-             que es lo que las hace pesar. */
-          centro(G.vos, true);
-          centro(G.vos2, true, 3600);
-        }
-        else if (clave === 'proposito') centro(G.proposito);
-        else if (clave === 'invitacion') {
-          centro(G.invitacion, true);
-          /* EL CIERRE. La frase de la casa, sola, con la música creciendo
-             debajo y un aire de más antes de que caiga: es el último plano y
-             tiene que respirar. */
-          centro(G.cierre, true, 3400, 'cierre');
-          try { MUSICA?.crecer(1.45, 3.6); } catch { /* nada */ }
-        }
+        else if (clave === 'proposito') centro(G.proposito, true, 500);
+        else if (clave === 'cierre') centro(G.cierre, true, 900, 'cierre');
       },
       alFin() {
         genVivo = false;

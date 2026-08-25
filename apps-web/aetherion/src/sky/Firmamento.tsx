@@ -266,48 +266,92 @@ function Cometas() {
   )
 }
 
-/* ── LAS FUGACES. De vez en cuando una raya cruza y muere: dura un suspiro,
-   aparece donde quiere, y es la clase de detalle que hace que alguien diga
-   «¿viste eso?» dentro del visor. */
+/* ── LAS FUGACES ────────────────────────────────────────────────────────────
+ *
+ * De vez en cuando una raya cruza el cielo y muere: dura un suspiro, aparece
+ * donde quiere, y es la clase de detalle que hace que alguien diga «¿viste
+ * eso?» dentro del visor.
+ *
+ * ══ POR QUÉ SON VARIAS Y NO UNA ═══════════════════════════════════════════
+ *
+ * Antes era UNA sola, reutilizada: cuando moría nacía la siguiente. Con el
+ * cielo tranquilo está perfecto —una fugaz cada diez segundos es lo que pasa
+ * de verdad— pero en el plano grande de la película, donde el tema ES el
+ * cielo, subir el caudal solo las hacía más SEGUIDAS: seguía habiendo una a
+ * la vez, en fila india. Y una fila india de fugaces no es una lluvia; es un
+ * tic.
+ *
+ * Ahora son ocho independientes, cada una con su propio reloj. En reposo casi
+ * todas duermen y se ve una de tanto en tanto, igual que antes. Con el caudal
+ * abierto se cruzan de verdad, varias a la vez y en direcciones distintas, que
+ * es lo que hace una lluvia de estrellas.
+ *
+ * Ocho y no más: son ocho líneas de dos puntos, no cuestan nada de dibujar, y
+ * a partir de ahí el cielo deja de parecer un cielo y empieza a parecer un
+ * salvapantallas.
+ */
+const CUANTAS_FUGACES = 8
+const VIDA_FUGAZ = 0.75
+
 function Fugaces() {
-  const linea = useRef<THREE.Line>(null)
-  const viva = useRef<{ desde: number; a: THREE.Vector3; b: THREE.Vector3; sig: number }>({
-    desde: -10, a: new THREE.Vector3(), b: new THREE.Vector3(), sig: 4,
-  })
-  const geo = useMemo(() => {
+  /* Una por línea, con su reloj propio. El desfase inicial se reparte a
+     propósito: sin él las ocho nacerían juntas en el primer cuadro y el efecto
+     empezaría con un fogonazo de rayas que no es lo que se quiere. */
+  const vivas = useMemo(() => Array.from({ length: CUANTAS_FUGACES }, (_, i) => ({
+    desde: -10,
+    a: new THREE.Vector3(),
+    b: new THREE.Vector3(),
+    sig: 3 + i * 2.6,
+  })), [])
+
+  const geos = useMemo(() => vivas.map(() => {
     const g = new THREE.BufferGeometry()
     g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3))
     return g
-  }, [])
-  const mat = useMemo(() => new THREE.LineBasicMaterial({
+  }), [vivas])
+
+  const mats = useMemo(() => vivas.map(() => new THREE.LineBasicMaterial({
     color: '#eaf2ff', transparent: true, opacity: 0, depthWrite: false,
     blending: THREE.AdditiveBlending,
-  }), [])
+  })), [vivas])
+
+  const objetos = useMemo(() => geos.map((g, i) => new THREE.Line(g, mats[i])),
+    [geos, mats])
 
   useFrame(() => {
-    const v = viva.current
-    const edad = sim.now - v.desde
-    if (edad > 0.7 && sim.now > v.sig) {
-      // nace una: dirección y sitio al azar del reloj (determinista no hace falta aquí)
-      const a = Math.random() * Math.PI * 2
-      const y = 30 + Math.random() * 60
-      v.a.set(Math.cos(a) * 150, y, Math.sin(a) * 150)
-      v.b.copy(v.a).add(new THREE.Vector3((Math.random() - 0.5) * 60, -25 - Math.random() * 20, (Math.random() - 0.5) * 60))
-      v.desde = sim.now
-      /* Con el caudal abierto caen casi seguidas: es la diferencia entre «hay
-         estrellas fugaces» y «está lloviendo el cielo». */
-      v.sig = sim.now + (5 + Math.random() * 9) / Math.max(1, sim.lluvia)
-      const attr = geo.getAttribute('position') as THREE.BufferAttribute
-      attr.setXYZ(0, v.a.x, v.a.y, v.a.z)
-      attr.setXYZ(1, v.b.x, v.b.y, v.b.z)
-      attr.needsUpdate = true
+    const caudal = Math.max(1, sim.lluvia)
+    for (let i = 0; i < vivas.length; i++) {
+      const v = vivas[i]
+      const edad = sim.now - v.desde
+      if (edad > VIDA_FUGAZ && sim.now > v.sig) {
+        /* Nace: sitio y dirección al azar. No hace falta que sea determinista
+           —dos personas mirando la misma galaxia no comparten las fugaces, y
+           eso está bien: son de quien las ve. */
+        const ang = Math.random() * Math.PI * 2
+        const alto = 26 + Math.random() * 70
+        v.a.set(Math.cos(ang) * 150, alto, Math.sin(ang) * 150)
+        v.b.copy(v.a).add(new THREE.Vector3(
+          (Math.random() - 0.5) * 70,
+          -22 - Math.random() * 26,
+          (Math.random() - 0.5) * 70))
+        v.desde = sim.now
+        /* CON OCHO EN JUEGO, cada una espera OCHO VECES más que antes: si cada
+           una cayera al ritmo de la única de antes, el cielo tranquilo tendría
+           ocho fugaces por minuto y dejaría de ser tranquilo. El caudal las
+           acerca a todas por igual. */
+        v.sig = sim.now + (5 + Math.random() * 9) * CUANTAS_FUGACES / caudal
+        const attr = geos[i].getAttribute('position') as THREE.BufferAttribute
+        attr.setXYZ(0, v.a.x, v.a.y, v.a.z)
+        attr.setXYZ(1, v.b.x, v.b.y, v.b.z)
+        attr.needsUpdate = true
+      }
+      const p = Math.min(1, edad / VIDA_FUGAZ)
+      mats[i].opacity = (p < 0.2 ? p / 0.2 : 1 - (p - 0.2) / 0.8)
+        * 0.8 * sim.intro * (1 - sim.vacio)
     }
-    const p = Math.min(1, edad / 0.7)
-    mat.opacity = (p < 0.2 ? p / 0.2 : 1 - (p - 0.2) / 0.8) * 0.8 * sim.intro * (1 - sim.vacio)
   })
 
-  const obj = useMemo(() => new THREE.Line(geo, mat), [geo, mat])
-  return <primitive object={obj} ref={linea} />
+  return <>{objetos.map((o, i) => <primitive key={i} object={o} />)}</>
 }
 
 export function Firmamento() {

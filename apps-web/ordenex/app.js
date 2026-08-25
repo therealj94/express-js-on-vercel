@@ -501,7 +501,7 @@ const ONX = (() => {
    * «no se arregló» de «no te llegó», y se buscaba dos horas en el lugar
    * equivocado. */
   const ONX_V = 'bc6a25b044';
-  const ONX_FECHA = '2026-08-24';
+  const ONX_FECHA = '2026-08-25';
 
   function sellar() {
     const el = document.getElementById('onx-sello');
