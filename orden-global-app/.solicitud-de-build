@@ -15,9 +15,9 @@
 # Para volver a compilar sin cambiar de perfil, basta con tocar la fecha de
 # abajo: lo que dispara el flujo es que el ARCHIVO cambie.
 #
-#   última petición: 2026-08-25 · los avisos del relevo en el teléfono. Va
-#   aparte de la actualización por aire A PROPÓSITO: los canales de Android
-#   (mensajes, llamadas) y el testigo de push son cosa NATIVA, y una
-#   actualización por aire no los crea. Sin APK nuevo, el teléfono no suena.
+#   última petición: 2026-08-25 · el chat vuelve a ser NATIVO. Entran tres
+#   librerías nuevas (@noble/curves, hashes y ciphers) para el cifrado, y
+#   aunque son JavaScript puro, una dependencia nueva cambia la huella del
+#   paquete: sin APK nuevo, la actualización por aire no llega a nadie.
 
 preview

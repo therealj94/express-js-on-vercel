@@ -1,12 +1,18 @@
 // El cliente del relevo de mensajes (infra/mensajes, en el nodo del cerebro).
 // Identidad = el correo de la cuenta de la wallet; el alta devuelve una llave
-// que firma cada petición. Sin E2E en v1 — no se promete en ningún texto.
+// que firma cada petición.
+//
+// Y CIFRA DE PUNTA A PUNTA, con el MISMO sobre que la web (src/og/candado.js).
+// Hasta hoy esta cabecera decía «sin E2E en v1», y era verdad: por eso el
+// planeta del chat abría la versión web dentro de una vista de navegador, que
+// no recibe avisos ni suena con la app cerrada.
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 // El JWT de la wallet. Es la ÚNICA prueba de identidad que el relevo sabe
 // comprobar por su cuenta, y con ella devuelve la llave de un correo que ya
 // tiene dueño en vez de dar el portazo del 409.
 import { getToken } from '../api';
+import * as CANDADO from './candado';
 
 const BASE = ((Constants.expoConfig?.extra || {}).mensajesApi || 'https://cerebro.ordenscan.com/mensajes').replace(/\/$/, '');
 let llave = null;
@@ -71,6 +77,11 @@ export async function alta(cuenta) {
   const d = await pedir('/alta', cuerpo);
   llave = (d && d.llave) || g;
   if (llave) await SecureStore.setItemAsync(donde, llave).catch(() => {});
+  /* La pública de este teléfono se publica AL ENTRAR, no al mandar el primer
+     mensaje. Si esperara al primero, quien acaba de instalar no podría RECIBIR
+     nada cifrado hasta escribir él, y su primera conversación entera llegaría
+     en claro. */
+  publicarMiLlave().catch(() => null);
 }
 
 /**
@@ -92,9 +103,96 @@ export async function rehacerAlta(cuenta) {
 }
 const firmado = (b) => ({ ...b, correo: yo?.correo, llave });
 
-// `extra` lleva el adjunto opcional {tipo, archivo, nombre}: el binario ya
-// subió por /subir y aquí solo viaja su id — el mensaje sigue siendo ligero.
-export const enviar = (para, texto, extra) => pedir('/enviar', firmado({ para, texto, ...(extra || {}) }));
+/* ══ EL CANDADO, TAMBIÉN AQUÍ ══════════════════════════════════════════════
+ *
+ * La web cifra de punta a punta desde hace tiempo y esta pantalla no sabía, y
+ * por eso el planeta del chat abría la versión web dentro de una vista de
+ * navegador — que no recibe avisos ni suena con la app cerrada. Con el candado
+ * portado (src/og/candado.js), el teléfono cierra y abre los MISMOS sobres.
+ *
+ * `pruebas/probar-candado.cjs` carga las dos implementaciones de verdad y se
+ * las cruza en los dos sentidos. Si esa prueba se pone roja, el fallo está aquí
+ * o en el candado, nunca en la web: la web es la que ya tiene conversaciones. */
+let publicada = false;
+
+async function publicarMiLlave() {
+  if (publicada) return;
+  const mia = await CANDADO.miLlave();
+  if (!mia) return;
+  try {
+    await pedir('/llaves/publicar', firmado({ id: mia.id, pub: mia.pub }));
+    publicada = true;
+  } catch { /* se reintenta en el siguiente envío */ }
+}
+
+/* Las llaves públicas ajenas se piden una vez y se guardan cinco minutos.
+   Pedirlas en cada mensaje sería una vuelta al servidor por tecla enviada; no
+   guardarlas nunca haría el chat lento en datos móviles. */
+const VIDA_LLAVES = 5 * 60 * 1000;
+const llavero = new Map();
+
+/* Trae al llavero lo que falte y devuelve el mapa correo → aparatos. */
+async function llaveroDe(correos) {
+  const ahora = Date.now();
+  const faltan = correos.filter((c) => {
+    const g = llavero.get(c);
+    return !g || ahora - g.en > VIDA_LLAVES;
+  });
+  if (faltan.length) {
+    const r = await pedir('/llaves/de', firmado({ correos: faltan }));
+    for (const c of faltan) llavero.set(c, { aparatos: r.llaves?.[c] || [], en: ahora });
+  }
+  const mapa = {};
+  for (const c of correos) mapa[c] = llavero.get(c)?.aparatos || [];
+  return mapa;
+}
+
+/* ══ DOS FORMAS, PORQUE SON DOS PREGUNTAS ══════════════════════════════════
+ * CERRAR necesita TODOS los aparatos juntos: se le hace un sobre a cada uno y
+ * da igual de quién sea cada cual.
+ * VERIFICAR necesita saber DE QUIÉN es cada llave: la firma vale si está entre
+ * las que publicó QUIEN ESCRIBIÓ, no entre las de cualquiera del hilo.
+ * En la web había una sola función y se leía como diccionario: a `abrir()` le
+ * llegaba siempre la lista vacía y todos los mensajes salían «no verificado».
+ * Aquí no se repite. */
+async function llavesDe(correos) {
+  const mapa = await llaveroDe(correos);
+  return correos.flatMap((c) => mapa[c] || []);
+}
+
+async function destinatarios(para) {
+  if (!esGrupo(para)) return [para];
+  const info = await grupoInfo(para).catch(() => null);
+  return (info?.miembros || []).map((m) => m.correo).filter(Boolean);
+}
+
+/** Devuelve el bulto cerrado, o null si no hay a quién cerrárselo. */
+async function cerrarPara(para, texto) {
+  try {
+    await publicarMiLlave();
+    const aparatos = await llavesDe(await destinatarios(para));
+    if (!aparatos.length) return null;
+    return await CANDADO.cerrar(texto, aparatos);
+  } catch { return null; }
+}
+
+/* `extra` lleva el adjunto opcional {tipo, archivo, nombre}: el binario ya
+   subió por /subir y aquí solo viaja su id — el mensaje sigue siendo ligero.
+
+   Se intenta cerrar SIEMPRE. Si no se puede —porque quien recibe todavía no
+   tiene ninguna llave publicada— se manda en claro y se devuelve `e2e:false`,
+   para que la pantalla lo diga EN ESE MENSAJE. Mandarlo en claro sin decirlo
+   sería exactamente la mentira que este trabajo vino a quitar. */
+export async function enviar(para, texto, extra) {
+  const base = { para, ...(extra || {}) };
+  const cerrado = await cerrarPara(para, texto);
+  if (cerrado) {
+    await pedir('/enviar', firmado({ ...base, cif: cerrado }));
+    return { ok: true, e2e: true };
+  }
+  await pedir('/enviar', firmado({ ...base, texto }));
+  return { ok: true, e2e: false };
+}
 // Subir un adjunto (base64, ≤8MB). Timeout largo: 8MB en datos móviles no
 // caben en los 15s de una petición normal.
 export const subir = (nombre, tipo, mime, datos) =>
@@ -102,7 +200,53 @@ export const subir = (nombre, tipo, mime, datos) =>
 // La URL pública de un adjunto: el id largo ES el permiso (capability URL),
 // por eso sirve tal cual para <Image> o para abrir en el navegador.
 export const urlArchivo = (id) => BASE + '/archivo/' + id;
-export const bandeja = (desde) => pedir('/bandeja', firmado({ desde }));
+/* La bandeja llega con los sobres cerrados y se abren AQUÍ, antes de que la
+   pantalla los vea: así ninguna vista tiene que saber de criptografía.
+
+   Un mensaje que este teléfono no puede abrir NO se esconde ni se convierte en
+   un renglón vacío: se marca `cerrado` y la pantalla lo dice —«llegó cifrado
+   para otro de tus aparatos»—. Un hueco mudo haría pensar que el chat perdió
+   mensajes, que es lo contrario de lo que pasa. */
+export async function bandeja(desde) {
+  const d = await pedir('/bandeja', firmado({ desde }));
+  const crudos = d.mensajes || [];
+
+  /* SE PIDEN LAS LLAVES DE TODOS LOS REMITENTES ANTES DE ABRIR NADA. No es una
+     optimización: es lo que hace POSIBLE verificar la firma. Sin las llaves
+     publicadas de quien escribió, lo único que se puede hacer es creerle al
+     bulto — que es exactamente el agujero que la firma cierra. Va en una sola
+     petición para todos, con la caché de cinco minutos. */
+  const deQuienes = [...new Set(crudos.filter((m) => m.cif && m.de).map((m) => m.de))];
+  let llaves = {};
+  if (deQuienes.length) {
+    try { llaves = (await llaveroDe(deQuienes)) || {}; } catch { llaves = {}; }
+  }
+
+  const msgs = await Promise.all(crudos.map(async (m) => {
+    if (!m.cif) return m;
+    const r = await CANDADO.abrir(m.cif, llaves[m.de] || []);
+    if (r == null) return { ...m, texto: '', cerrado: true, e2e: true };
+    const claro = r.texto;
+    /* El texto puede traer pegada la llave de un adjunto: viaja DENTRO del
+       cifrado, nunca al lado, que es lo que hace que el relevo guarde un
+       archivo que no puede abrir. */
+    let texto = claro;
+    let extra = null;
+    if (claro.startsWith('{')) {
+      try {
+        const j = JSON.parse(claro.slice(1));
+        texto = j.t || '';
+        extra = { llaveArchivo: j.k, ivArchivo: j.iv };
+      } catch { /* si no parsea es texto normal que empieza raro */ }
+    }
+    /* `verificado` viaja hasta la burbuja. Un mensaje que no se pudo verificar
+       NO se esconde: se enseña con su marca, porque esconderlo sería perder
+       información y enseñarlo callado sería mentir. */
+    return { ...m, texto, e2e: true, verificado: r.verificado, motivoFirma: r.motivo,
+             ...(extra || {}) };
+  }));
+  return { ...d, mensajes: msgs };
+}
 // /buscar encuentra por nombre, correo o GID (empieza-por, sin distinguir
 // mayúsculas) y cada persona del resultado ya trae su gid — se pasa tal cual.
 export const buscar = (q) => pedir('/buscar', firmado({ q }));

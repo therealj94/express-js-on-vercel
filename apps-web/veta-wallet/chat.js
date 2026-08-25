@@ -129,7 +129,8 @@ const CHAT = (() => {
     } catch { /* se reintenta en el siguiente envío */ }
   }
 
-  async function llavesDe(correos) {
+  /* Trae al llavero lo que falte y devuelve el mapa correo → aparatos. */
+  async function llaveroDe(correos) {
     const ahora = Date.now();
     const faltan = correos.filter(c => {
       const g = llavero.get(c);
@@ -139,7 +140,28 @@ const CHAT = (() => {
       const r = await pedir('/llaves/de', firmado({ correos: faltan }));
       for (const c of faltan) llavero.set(c, { aparatos: r.llaves?.[c] || [], en: ahora });
     }
-    return correos.flatMap(c => llavero.get(c)?.aparatos || []);
+    const mapa = {};
+    for (const c of correos) mapa[c] = llavero.get(c)?.aparatos || [];
+    return mapa;
+  }
+
+  /* ══ DOS FORMAS, PORQUE SON DOS PREGUNTAS ══════════════════════════════
+   * CERRAR necesita TODOS los aparatos juntos: se le hace un sobre a cada uno
+   * y da igual de quién sea cada cual.
+   * VERIFICAR necesita saber DE QUIÉN es cada llave: la firma de un bulto vale
+   * si está entre las que publicó QUIEN LO ESCRIBIÓ, y no entre las de
+   * cualquiera de la conversación.
+   *
+   * Aquí había una sola función que devolvía la lista aplanada, y `abrirTodos`
+   * la leía como si fuera un diccionario: `llaves[correo]` sobre un array da
+   * `undefined`, o sea que a `abrir()` le llegaba SIEMPRE la lista vacía. Con
+   * la lista vacía, la firma no se puede contrastar contra nada y todos los
+   * mensajes salían marcados «sin-llaves-del-remitente». La verificación
+   * existía entera y no verificaba nunca — y desde fuera se veía como un sello
+   * que simplemente no aparecía. */
+  async function llavesDe(correos) {
+    const mapa = await llaveroDe(correos);
+    return correos.flatMap(c => mapa[c] || []);
   }
 
   /** ¿A quién hay que cerrarle el sobre? En un grupo, a todos sus miembros. */
@@ -176,7 +198,7 @@ const CHAT = (() => {
     const deQuienes = [...new Set(msgs.filter(m => m.cif && m.de).map(m => m.de))];
     let llaves = {};
     if (deQuienes.length) {
-      try { llaves = (await llavesDe(deQuienes)) || {}; } catch { llaves = {}; }
+      try { llaves = (await llaveroDe(deQuienes)) || {}; } catch { llaves = {}; }
     }
 
     return Promise.all(msgs.map(async m => {
