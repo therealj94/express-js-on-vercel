@@ -314,6 +314,27 @@ class Transit {
       this.insideAngle = Math.atan2(this.nudgePos.z - c.z, this.nudgePos.x - c.x)
     }
     this.mode = null
+    /* ══ Y EL VIAJE SE DA POR TERMINADO ════════════════════════════════════
+     *
+     * Esto faltaba, y dejaba al motor SIN CAMINO DE VUELTA. `active` quedaba
+     * encendido para siempre después de entrar en un mundo, y de ahí salían
+     * tres cosas muertas que parecían vivas:
+     *
+     *   · `beginExitFrom` empieza con «si ya hay un viaje en curso, no» — así
+     *     que pedir la salida (requestExit) no hacía absolutamente nada. Ni el
+     *     arrastre hacia abajo para salir de una casa, ni `AETHERION.exhalar()`.
+     *   · `insideOrbit` —la deriva lenta alrededor del mundo en el que uno
+     *     está— cuelga de la rama `else` de ese mismo interruptor: nunca corría.
+     *   · y `update()` se iba en la primera línea por falta de `mode`, así que
+     *     `active` encendido no estaba moviendo nada. Era una luz de ocupado
+     *     sobre una habitación vacía.
+     *
+     * No se notaba porque la wallet nunca dependía de esto: al volver al Inicio
+     * remontaba la galaxia entera de cero. Con el visor puesto no hay remonte
+     * —la galaxia es lo único que hay— y volver tiene que ser un viaje de
+     * verdad. Ver kernel/Casa.tsx.
+     */
+    this.active = false
   }
 
   private finishExit(cam: THREE.PerspectiveCamera) {

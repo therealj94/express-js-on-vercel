@@ -8,6 +8,7 @@ import { Visor } from './kernel/Visor'
 import { Destello } from './kernel/Destello'
 import { Teatro } from './kernel/Teatro'
 import { Portico } from './kernel/Portico'
+import { Casa } from './kernel/Casa'
 import { Sky } from './sky/Sky'
 import { Pulses } from './pulses/Pulses'
 import { TransitRunner } from './transit/TransitRunner'
@@ -84,6 +85,7 @@ export default function App() {
         <Teatro />
         <Destello />
         <Portico />
+        <Casa />
         {/* LA LUZ HACE EL VOLUMEN. Con relleno parejo y fuerte, cada planeta
             quedaba iluminado por igual de lado a lado: sin terminador, sin
             sombra, sin bulto — pegatinas redondas. Ahora el relleno es apenas

@@ -227,7 +227,25 @@ export function Teatro() {
     else dirSuave.lerp(dirMeta, 1 - Math.exp(-2.6 * dt)).normalize()
     g.position.copy(ojoPos).addScaledVector(dirSuave, largo)
     // y encara siempre a la cabeza, de plano, sin ladearse
-    qMeta.setFromRotationMatrix(mLook.lookAt(g.position, ojoPos, arriba))
+    /* ══ Y DE CARA, QUE NO ES LO MISMO QUE DE FRENTE ═══════════════════════
+     *
+     * El orden de estos dos argumentos es la diferencia entre leer la historia
+     * y no verla. `Matrix4.lookAt(ojo, blanco)` es la convención de una CÁMARA:
+     * deja el +Z mirando del blanco hacia el ojo. Un plano tiene su cara en el
+     * +Z, así que puesto con `lookAt(sitioDelCartel, ojo)` el cartel quedaba
+     * dado vuelta —enseñando el dorso— y el dorso no se dibuja.
+     *
+     * Y desde fuera eso se ve EXACTAMENTE igual que todo bien: el cartel
+     * existe, está a dos metros y medio, a doce grados de la vista, la prueba
+     * dice «delante: sí»… y en el visor no hay nada. Era la otra mitad de «me
+     * lo puse y no salían las letras»: la primera fue ponerlas donde la persona
+     * mira (ver kernel/mirada.ts), ésta es ponerlas de cara.
+     *
+     * `Object3D.lookAt` da vuelta este par por dentro justo por esto — el
+     * pórtico lo usa y por eso su botón siempre se vio. Aquí no se puede usar
+     * porque hace falta el destino para suavizar el giro, así que se escribe
+     * con los argumentos en el orden bueno. */
+    qMeta.setFromRotationMatrix(mLook.lookAt(ojoPos, g.position, arriba))
     g.quaternion.slerp(qMeta, 1 - Math.exp(-5 * dt))
 
     const s = frase.peso === 'grande' ? 1.18 : frase.peso === 'titulo' ? 1.14 : 1

@@ -142,6 +142,10 @@ const VISOR = (() => {
        dejarlos colgados sería devolver la casa con la mirada muerta y un
        cartel flotando en medio del cielo. */
     try { window.__AE_PORTICO?.(null); } catch { /* nada */ }
+    /* La casa abierta dentro de la escena también: quitarse el visor con un
+       panel puesto dejaría un cartel de la billetera flotando en medio del
+       cielo de la pantalla, sin botones que respondan. Ver Casa.tsx. */
+    try { window.__AE_CASA?.(null); } catch { /* nada */ }
     try { window.__AE_DECIR?.(null); } catch { /* nada */ }
     window.__AE_BLINDADO = false;
     try { window.__AE_GENESIS?.saltar(); } catch { /* nada */ }

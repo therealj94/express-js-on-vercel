@@ -75,6 +75,9 @@ export function Visor() {
   const izq = useMemo(() => new THREE.PerspectiveCamera(), [])
   const der = useMemo(() => new THREE.PerspectiveCamera(), [])
   const sesionXR = useRef<any>(null)
+  /* El espacio de referencia tal como lo entrega el visor, sin mover. Ver
+     `plantar()` en el dibujo: sobre él se calcula dónde queda uno parado. */
+  const baseEspacio = useRef<any>(null)
   const orientRef = useRef(0)
   // adónde mira el dedo cuando no hay cabeza que mande
   const dedo = useRef({ yaw: 0, pitch: 0 })
@@ -266,6 +269,12 @@ export function Visor() {
           catch { suelo = 'local' }
           gl.xr.setReferenceSpaceType(suelo)
           await gl.xr.setSession(sesion)
+          /* EL SUELO DE PARTIDA, GUARDADO. Es sobre él que se calcula dónde
+             está uno dentro de la galaxia (ver `plantar` más abajo), y hay que
+             pedirlo AHORA: en cuanto se pone el primero de esos cálculos,
+             `getReferenceSpace()` empieza a devolver el desplazado y el
+             original ya no se puede recuperar. */
+          baseEspacio.current = gl.xr.getReferenceSpace?.() || null
           sesion.addEventListener('end', () => { mio.salir() })
           /* El gatillo del mando, el botón del visor y el pellizco de la mano
              llegan todos como `select`. Cualquiera de los tres abre lo que se
@@ -280,6 +289,11 @@ export function Visor() {
                el gatillo y no pasaba nada. Había que sostener la mirada segundo
                y medio, con un mando en la mano. */
             if (w.__AE_PORTICO_APRETAR?.()) return
+            /* Y LA CASA DESPUÉS. Con un panel abierto delante, el gatillo es
+               de sus botones y de nadie más: apuntar a VOLVER y que en vez de
+               eso se abra el planeta que quedaba por detrás sería el mismo
+               fallo que este orden existe para impedir. Ver Casa.tsx. */
+            if (w.__AE_CASA_APRETAR?.()) return
             const k = apuntado.key
             if (k) w.__AE_TOCAR?.(k)
           })
@@ -317,6 +331,8 @@ export function Visor() {
         MIRADA.activa = false
         const s = sesionXR.current
         sesionXR.current = null
+        baseEspacio.current = null
+        ultimoSuelo.current = { x: 0, y: 0, z: 0, giro: 0 }
         if (s) { try { s.end() } catch { /* ya terminó */ } }
         try {
           gl.xr.enabled = false
@@ -363,6 +379,78 @@ export function Visor() {
     return () => { if (w.__AE_VISOR === mio) delete w.__AE_VISOR }
   }, [gl, advance, setFrameloop, cabeza])
 
+  /* ══ DÓNDE ESTÁ UNO PARADO DENTRO DE LA GALAXIA ═══════════════════════════
+   *
+   * ══ EL FALLO QUE ESTO CIERRA — Y ERA GORDO ════════════════════════════════
+   *
+   * Dentro de una sesión inmersiva, la cámara de la escena NO es nuestra: en
+   * cada cuadro three le mete encima la pose del casco, medida desde el origen
+   * del espacio de referencia del visor. Todo lo que el timón, la película o el
+   * vuelo a un mundo escriben en `cam.position` se pisa antes de dibujar.
+   *
+   * O sea que con un Quest en la cara la cámara NUNCA VIAJABA. La galaxia se
+   * veía —preciosa, y quieta— desde el mismo punto para siempre: tocar un
+   * planeta no acercaba a nadie, la película no volaba de un mundo a otro, y la
+   * deriva alrededor de la casa abierta no existía. Desde fuera se ve idéntico
+   * a todo bien: la escena está viva, las letras salen, los botones responden.
+   * Sólo que uno está clavado.
+   *
+   * ══ POR QUÉ NO SE ARREGLA MOVIENDO LA CÁMARA ══════════════════════════════
+   *
+   * La salida clásica es meter la cámara dentro de un grupo y mover el grupo.
+   * Aquí no sirve: el timón escribe posiciones y `lookAt` en coordenadas DEL
+   * MUNDO, y en cuanto la cámara tiene padre, three las interpreta como locales
+   * a ese padre. Como el padre se calcularía a partir de la cámara, cada cuadro
+   * se compondría sobre el anterior — un lazo que se realimenta y se va.
+   *
+   * ══ LO QUE SÍ ════════════════════════════════════════════════════════════
+   *
+   * Se mueve EL SUELO, no a la persona. WebXR deja pedir un espacio de
+   * referencia desplazado respecto del original, y el visor entrega las poses
+   * medidas en ese suelo nuevo. Poniendo el suelo en el sitio inverso al que el
+   * timón quiere, la persona aparece exactamente donde la galaxia la lleva —y
+   * sigue moviéndose libre, con sus seis grados de libertad intactos, porque el
+   * casco no se entera de nada. Nadie toca la escena.
+   *
+   * ══ SÓLO EL RUMBO, NUNCA LA INCLINACIÓN ═══════════════════════════════════
+   *
+   * Del encuadre se toma HACIA DÓNDE mira y no cuánto cabecea. El timón mira la
+   * galaxia picado cuarenta grados: aplicado a un visor, eso es inclinar el
+   * mundo entero bajo los pies de alguien. El cabeceo y el alabeo son del
+   * cuello, y no se le quitan. */
+  const qGiro = useMemo(() => new THREE.Quaternion(), [])
+  const eGiro = useMemo(() => new THREE.Euler(0, 0, 0, 'YXZ'), [])
+  const pSuelo = useMemo(() => new THREE.Vector3(), [])
+  const ejeY = useMemo(() => new THREE.Vector3(0, 1, 0), [])
+  const ultimoSuelo = useRef({ x: 0, y: 0, z: 0, giro: 0 })
+
+  const plantar = () => {
+    const base = baseEspacio.current
+    if (!base?.getOffsetReferenceSpace || typeof XRRigidTransform === 'undefined') return
+    eGiro.setFromQuaternion(camera.quaternion, 'YXZ')
+    const giro = eGiro.y
+    const p = camera.position
+    /* Ni un cálculo de más: quieto —que es casi siempre, mirando alrededor— el
+       suelo no se toca. Pedir un espacio nuevo en cada cuadro para dejarlo en
+       el mismo sitio es basura para el recolector sesenta veces por segundo. */
+    const u = ultimoSuelo.current
+    if (Math.abs(p.x - u.x) < 0.004 && Math.abs(p.y - u.y) < 0.004
+        && Math.abs(p.z - u.z) < 0.004 && Math.abs(giro - u.giro) < 0.0009) return
+    u.x = p.x; u.y = p.y; u.z = p.z; u.giro = giro
+
+    /* El suelo va al revés de donde queremos aparecer: el visor mide las poses
+       DESDE el origen del suelo, así que poniéndolo en la transformación
+       inversa, la pose del casco cae justo en el sitio bueno. */
+    qGiro.setFromAxisAngle(ejeY, giro).invert()
+    pSuelo.copy(p).applyQuaternion(qGiro).negate()
+    try {
+      gl.xr.setReferenceSpace(base.getOffsetReferenceSpace(new XRRigidTransform(
+        { x: pSuelo.x, y: pSuelo.y, z: pSuelo.z, w: 1 },
+        { x: qGiro.x, y: qGiro.y, z: qGiro.z, w: qGiro.w },
+      )))
+    } catch { /* un visor puede negarse; mejor quieto que roto */ }
+  }
+
   /* ── EL DIBUJO ────────────────────────────────────────────────────────────
    * Con prioridad 1, R3F deja de dibujar solo y el mando es de aquí: en XR
    * dibuja el propio motor (las dos cámaras las pone el visor), y en cartón se
@@ -382,6 +470,7 @@ export function Visor() {
          publicar: con esto apagado, todo el mundo le pregunta a la cámara, que
          es justo lo correcto. */
       MIRADA.activa = false
+      plantar()
       gl.render(scene, camera)
       return
     }

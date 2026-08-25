@@ -5379,7 +5379,7 @@ const VETA = (() => {
   const VETA_V = '92a4e04571';
   const VETA_FECHA = '2026-08-25';
 
-  const AET_V = '9fc8b5595b';
+  const AET_V = 'e250bbe2f5';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -5491,6 +5491,158 @@ const VETA = (() => {
         : e.message === 'sin-webxr' ? 'vs.sinXr' : 'vs.noPudo'));
     }
   }
+  /* ══ EL ECOSISTEMA DENTRO DEL VISOR ═══════════════════════════════════════
+   *
+   * Hasta aquí, abrir un mundo con el visor puesto SACABA del visor: las casas
+   * son pantallas planas de HTML, y el HTML dentro de un visor no se puede
+   * leer —se pinta una vez encima de las dos mitades de la pantalla y al
+   * cerebro le llega una mancha doble—. Así que la wallet hacía lo honesto que
+   * podía: salir limpio y enseñar la casa en la pantalla. Sólo que en un Quest
+   * eso quiere decir que la galaxia se apaga y uno cae en un panel flotante
+   * del navegador. Se podía MIRAR el ecosistema con el visor puesto; usarlo,
+   * no.
+   *
+   * Se cierra con lo mismo que hizo que la historia se pudiera contar aquí
+   * dentro: las palabras dejan de ser HTML y pasan a ser un objeto de la
+   * escena, dibujado por las dos cámaras como cualquier planeta. Ver
+   * aetherion/src/kernel/Casa.tsx, que es el teatro con botones.
+   *
+   * QUÉ SE ENSEÑA. Lo que la casa ES y lo que TIENE ahora mismo: el saldo, los
+   * mensajes sin leer, el estado de la identidad, la cadena. El dato vivo va
+   * primero y en grande — quien entra a la billetera con el visor puesto viene
+   * a ver cuánto tiene, no a leer qué es una billetera. Y debajo, la misma
+   * línea institucional que la película ya dice de cada mundo: escribirla dos
+   * veces sería tener dos versiones de la misma frase envejeciendo por
+   * separado.
+   *
+   * QUÉ NO. No se mueve dinero, igual que antes. Enviar, cobrar y cambiar
+   * siguen fuera del visor a propósito, y aquí se dice por qué en vez de
+   * dejar un botón que no responde.
+   */
+  const vsColor = (id) => (MUNDOS.find(m => m.id === id)?.halo) || '#EAD79C';
+
+  function vsDatos(k) {
+    const es = idiomaActivo() === 'es';
+    const G = genGuion();
+    const ficha = G.casas?.[k] || [k.toUpperCase(), ''];
+    const T = (a, b) => (es ? a : b);
+    const volver = { id: 'volver', texto: T('Volver', 'Back') };
+    const base = {
+      key: k, titulo: ficha[0], sub: ficha[1], color: vsColor(k),
+      parrafos: [], lineas: [], botones: [volver],
+    };
+    /* La frase que la película ya le dedica a los dos mundos que todavía no
+       abren. Si mañana abren, esto se cae solo con ella. */
+    if (G.dicho?.[k]) base.parrafos.push(G.dicho[k].replace(/\n/g, ' '));
+
+    if (k === 'wallet') {
+      const pat = total();
+      /* `leido` y no `cant != null`: un saldo que no se pudo leer viaja con la
+         fila puesta y en cero sería un cero de consuelo — la misma trampa que
+         cadena.js se cuida de no dejar entrar. Sin lectura se escribe una raya,
+         que es la verdad. */
+      const ori = (cartera || []).find(x => x.s === 'ORIGEN');
+      base.lineas = [
+        { k: T('Patrimonio', 'Net worth'), v: pat == null ? '—' : usd(pat) },
+        { k: 'ORIGEN', v: ori?.leido && ori.cant != null
+          ? Number(ori.cant).toLocaleString(es ? 'es-HN' : 'en-US', { maximumFractionDigits: 4 })
+          : '—' },
+        { k: T('Tu dirección', 'Your address'), v: cortaDir(sesion?.direccion || '') },
+      ];
+      base.nota = T('Enviar, cobrar y cambiar se hacen fuera del visor: firmar con la cara tapada y sin poder leer la letra chica no es una comodidad.',
+        'Sending, receiving and swapping happen outside the headset: signing with your face covered and the fine print unreadable is not convenience.');
+    } else if (k === 'chat') {
+      const cs = chatSt.convs;
+      const sinLeer = (cs || []).reduce((s, c) => s + (Number(c.sinLeer) || 0), 0);
+      base.lineas = [
+        { k: T('Conversaciones', 'Conversations'), v: cs == null ? '—' : String(cs.length) },
+        { k: T('Sin leer', 'Unread'), v: cs == null ? '—' : String(sinLeer) },
+      ];
+      base.nota = T('Escribir y llamar se hacen fuera del visor: hace falta teclado.',
+        'Writing and calling happen outside the headset: they need a keyboard.');
+    } else if (k === 'gid') {
+      const estado = !identidad ? T('Sin empezar', 'Not started')
+        : esVerificada() ? T('Verificada', 'Verified') : T('En revisión', 'Under review');
+      base.lineas = [{ k: T('Tu identidad', 'Your identity'), v: estado }];
+      base.nota = T('Verificarse pide documentos y una foto: eso se hace fuera del visor.',
+        'Verifying needs documents and a photo: that happens outside the headset.');
+    } else if (k === 'genesis') {
+      base.botones = [{ id: 'historia', texto: T('La historia', 'The story') }, volver];
+      base.parrafos.push(T('Cómo se levantó todo esto, contado desde el principio.',
+        'How all of this was built, told from the beginning.'));
+    } else if (k === 'ajustes') {
+      base.lineas = [
+        { k: T('Casa', 'App'), v: VETA_V },
+        { k: T('Galaxia', 'Galaxy'), v: AET_V },
+      ];
+      base.botones = [{ id: 'salir', texto: T('Quitar el visor', 'Leave VR') }, volver];
+    }
+
+    /* Las casas de afuera abren una pestaña del navegador, y una pestaña no
+       existe dentro de una sesión inmersiva. Se dice, y se ofrece el único
+       camino que hay de verdad: salir del visor y abrirla. */
+    const m = MUNDOS.find(x => x.id === k);
+    if (m && (m.fuera || m.paraFuera)) {
+      base.botones = [{ id: 'fuera', texto: T('Salir y abrir', 'Leave and open') }, volver];
+      base.nota = T('Esta casa vive en su propia página: para entrar hay que quitarse el visor.',
+        'This one lives on its own page: opening it means taking the headset off.');
+    }
+    if (m?.pronto) {
+      base.nota = T('Todavía no abre. Está a la vista porque es parte de lo que se está levantando.',
+        'Not open yet. It is in plain sight because it is part of what is being built.');
+    }
+    return base;
+  }
+
+  /* Se abre un mundo con el visor puesto: en vez de salir, se enseña aquí
+     dentro. La cámara ya está aparcada delante del planeta —el vuelo lo hizo
+     el motor— así que el panel entra justo donde uno acaba de llegar. */
+  function vsAbrirCasa(k) {
+    if (!window.__AE_CASA) return false;
+    let d;
+    try { d = vsDatos(k); } catch { return false; }
+    /* BLINDADO mientras hay panel: la mirada no elige planetas por detrás del
+       cartel. Sin esto, leer la casa abriría otra. */
+    window.__AE_BLINDADO = true;
+    window.__AE_CASA(d);
+    tele('accion', 'visor.casa', { casa: k });
+    return true;
+  }
+
+  function vsCerrarCasa() {
+    try { window.__AE_CASA?.(null); } catch { /* nada */ }
+    window.__AE_BLINDADO = false;
+  }
+
+  addEventListener('ae-casa', (e) => {
+    const { accion, key } = e?.detail || {};
+    if (!window.VISOR?.activo()) return;
+    if (accion === 'volver') {
+      vsCerrarCasa();
+      /* Y de vuelta al cielo: el motor deshace el vuelo por donde vino, que es
+         lo que hace que volver se sienta un sitio y no un botón de atrás. */
+      try { window.AETHERION?.exhalar?.(); } catch { /* nada */ }
+      return;
+    }
+    if (accion === 'historia') {
+      vsCerrarCasa();
+      try { window.AETHERION?.exhalar?.(); } catch { /* nada */ }
+      /* La película necesita la galaxia entera y libre: se le da el tiempo del
+         vuelo de vuelta antes de empezar, o arrancaría con la cámara todavía
+         pegada a un planeta. */
+      setTimeout(() => { genSesion.visor = true; tourGenesis('visor'); }, 1500);
+      return;
+    }
+    if (accion === 'salir') { vsCerrarCasa(); window.VISOR.salir(); return; }
+    if (accion === 'fuera') {
+      /* Salir PRIMERO y abrir después: una pestaña nueva pedida desde dentro
+         de una sesión inmersiva no la ve nadie. */
+      vsCerrarCasa();
+      window.VISOR.salir();
+      setTimeout(() => nuAbrir(key), 400);
+    }
+  });
+
   const vsSalir = () => window.VISOR?.salir();
   const vsOjos = (v) => window.VISOR?.ojos(Number(v) / 1000);
   const vsMirada = (v) => window.VISOR?.mirada(v);
@@ -5734,6 +5886,15 @@ const VETA = (() => {
            orbe en la esquina. */
         window.__AE_AURA = () => { try { auraToca(); } catch { /* nada */ } };
         window.__AE_ABRIR = (k) => {
+          /* CON EL VISOR PUESTO LA CASA SE ABRE AQUÍ DENTRO. El vuelo ya
+             terminó y la cámara está aparcada delante del planeta: el panel
+             entra justo donde uno acabó de llegar, sin apagar la galaxia. Ver
+             vsAbrirCasa y aetherion/src/kernel/Casa.tsx.
+             Si por lo que sea no hay panel —el motor viejo en caché, un mundo
+             sin ficha—, se sigue de largo por el camino de siempre: salir del
+             visor y enseñar la casa en la pantalla. Peor sería quedarse
+             mirando un planeta que no hace nada. */
+          if (window.VISOR?.activo() && vsAbrirCasa(k)) return;
           const m = MUNDOS.find((x) => x.id === k);
           if (m && (m.fuera || m.paraFuera)) {
             /* Una casa de afuera abre su pestaña y ESTA galaxia exhala de
