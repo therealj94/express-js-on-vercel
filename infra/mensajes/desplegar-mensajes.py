@@ -15,15 +15,24 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 # LAS LLAVES DEL TURN DE CLOUDFLARE
 #
 # Se leen del ENTORNO de quien despliega y se escriben en la unidad de systemd
-# de la maquina. NUNCA se escriben en el repositorio: un token de API de
-# Cloudflare vale para toda la cuenta.
+# de la maquina. NUNCA se escriben en el repositorio.
 #
 #   TURN_LLAVE_ID=xxx TURN_LLAVE_TOKEN=yyy python3 desplegar-mensajes.py
 #
-# Si no vienen, la unidad se escribe SIN ellas y el relevo contesta la lista
-# vacia: las llamadas siguen andando con STUN, que es la mayoria. Y si ya
-# estaban puestas en la maquina, se conservan — desplegar sin las variables no
-# debe apagar el TURN por descuido.
+# ESTADO (25-ago-2026): PUESTAS. La llave se llama `orden-global-relevo` en el
+# panel de Cloudflare, y desde entonces /turno devuelve relevos de verdad en
+# vez de la lista vacia — o sea que una llamada conecta tambien detras de un
+# NAT cerrado, que es casi todo el movil con datos. Comprobarlo no pide entrar
+# a ningun panel: se le pregunta al relevo.
+#
+#   curl -s -X POST https://cerebro.ordenscan.com/mensajes/turno \
+#        -H 'Content-Type: application/json' \
+#        -d '{"correo":"<uno tuyo>","llave":"<la del alta>"}'
+#
+# Si sale `{"iceServers": []}`, no hay TURN y las llamadas van solo con STUN.
+#
+# Desplegar SIN las variables no las apaga: se rescatan las que la maquina ya
+# tenia (ver TURN_CONSERVADO mas abajo). Trayendolas, mandan las nuevas.
 def lineas_turno():
     fuera = []
     for nombre in ('TURN_LLAVE_ID', 'TURN_LLAVE_TOKEN', 'TURN_VIDA'):
