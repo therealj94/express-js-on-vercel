@@ -109,6 +109,13 @@ DATOS = {
         'resto_suma': '173,93',
         'resto_mayor': '20,93',
         'con_uno': 149,
+        'gasto_tesoro': {
+            'bloque': 14955,
+            'a': '0x746268404cc9ca2ef0ac344f02b236db232c3ad8',
+            'valor': '20,000000',
+            'comision': '0,001953',
+            'gas': '21.000 a 93 gwei',
+        },
         'wrapped': ('0xccbe0c6690bf61d1f23f95f3998e4ba0d7b89f75', '16.387,76'),
         'liquidez': ('0xa22180530d9d52676925e6ad9247ce3c24341fb1', '839,17'),
     },
@@ -471,18 +478,33 @@ y = tabla(['Dirección', 'Qué es', 'ORIGEN hoy'],
           y, anchos=[46 * mm, 74 * mm, 44 * mm])
 
 y -= 12
+gt = o['gasto_tesoro']
 y = bloque('las tres primeras nunca se han tocado',
            'Son asignaciones heredadas de la cadena anterior, de 250.000 millones cada una, '
            'que el constructor del génesis preservó a propósito. Su saldo de hoy es EXACTO: '
-           'ni un decimal se ha movido desde el bloque cero. La cuarta es el tesoro, y es la '
-           'única que ha gastado algo — 17.402 ORIGEN en comisiones.',
+           'ni un decimal se ha movido desde el bloque cero.',
            y, color=ORO)
+
+y = bloque('el tesoro ha movido 20 ORIGEN, y nada más',
+           f"Una sola transacción en toda la vida de la cadena: bloque {mil(gt['bloque'])}, "
+           f"{gt['valor']} ORIGEN a {gt['a'][:12]}…, con {gt['comision']} de comisión "
+           f"({gt['gas']}). Eso es TODO lo que ha salido del tesoro. "
+           'Ojo con el número redondo: el tesoro no empezó en 250.000 millones exactos sino en '
+           '249.999.982.618,07 — esos 17.382 de diferencia vienen heredados de la cadena '
+           'anterior, NO se gastaron aquí.',
+           y, color=JADE)
 
 y = bloque(f"las otras {o['resto']} billeteras suman {o['resto_suma']} ORIGEN",
            f"De ellas, {o['con_uno']} tienen exactamente 1 ORIGEN y la mayor tiene {o['resto_mayor']}. "
            'Ese 1 no es lo que esa persona posee: es la semilla de gas que el génesis dio a cada '
            'dirección heredada para que nadie quedara congelado — alcanza para unas 210 '
            'transferencias. Lo que la gente tiene de valor está en los tokens, no aquí.',
+           y, color=AMBAR)
+
+y = bloque('siete direcciones se han movido en diez días',
+           'El tesoro con su transferencia, quien la recibió, y cinco billeteras que gastaron '
+           'entre media milésima y un ORIGEN en comisiones. Eso es toda la actividad de la '
+           'cadena desde el bloque cero: ni un solo token ERC-20 ha cambiado de manos.',
            y, color=AMBAR)
 
 y = bloque('y dos contratos que sí guardan ORIGEN de verdad',
