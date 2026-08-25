@@ -153,10 +153,27 @@ o `-3`, que ya existen— y contra ella:
 
 Si el ensayo no pasa, se para aquí y no se ha tocado producción.
 
-### Etapa 3 · El corte
+### Etapa 3 · El corte · HECHA el 25-ago · ver `reinicio-5550/ETAPA-3-EL-CORTE.md`
+
+> **Los dos pasos que este plan NO tenia, y que el corte tuvo que aprender a
+> golpes.** Estan incorporados abajo como pasos 0 y 8:
+>
+> - **Apagar `ogb-vigia.timer` ANTES de nada.** Es un vigia nuestro que
+>   reinicia `besu5550` cada tres minutos si la altura no avanza. Durante el
+>   corte resucito cuatro nodos antes de que les llegara el genesis nuevo, y
+>   arrancaron con el viejo: la red quedo partida en dos cadenas. Y esto ya
+>   estaba escrito en `SIETE-VALIDADORES-20-AGO.md` — «el watchdog se apago
+>   primero: si no, reanima el servicio a los tres minutos y el apagado no
+>   dura»— pero estaba en un documento y no en el procedimiento.
+> - **Comprobar que el bloque 0 es IDENTICO en los siete, despues de
+>   arrancar.** Comprobar la huella del archivo no basta: el archivo puede
+>   estar bien y el nodo estar corriendo otra cosa. Sin esta comprobacion la
+>   red partida se ve sana nodo a nodo — cada uno responde, tiene altura y
+>   tiene pares—; solo comparandolos entre si aparece.
 
 De noche, y en este orden:
 
+0. **Apagar el vigia** `ogb-vigia.timer` en los siete, y comprobarlo.
 1. **Mantenimiento**: backend de la wallet en pausa.
 2. **Foto final** y su huella al acta.
 3. **Parar los siete nodos.**
@@ -170,10 +187,13 @@ De noche, y en este orden:
 5. Distribuir el génesis nuevo a los siete. Comprobar la **huella md5 en cada
    uno**: un archivo distinto en un nodo es una cadena que no arranca.
 6. Arrancar los validadores. Esperar a que produzcan bloques.
-7. **Comprobar desde fuera**: altura subiendo, siete validadores, saldo del
+7. **Comprobar que el bloque 0 es identico en los siete.** Un solo genesis en
+   la red, o no se sigue.
+8. **Comprobar desde fuera**: altura subiendo, siete validadores, saldo del
    tesoro correcto, los contratos responden.
-8. Vaciar y reindexar Ordenscan.
-9. Levantar el mantenimiento.
+9. Ordenscan: comprobar que reindexo. En el corte del 25-ago lo hizo solo.
+10. Levantar el mantenimiento.
+11. **Reactivar el vigia** `ogb-vigia.timer`.
 
 ### Etapa 4 · Después
 
