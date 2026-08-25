@@ -191,9 +191,79 @@ def _jwt_para(audiencia):
     return token
 
 
+# Se puede apuntar a otro sitio desde el entorno, que es como lo prueban las
+# pruebas sin mandarle avisos de verdad a nadie. Igual que MENSAJES_WALLET_URL.
+EXPO_ENVIO = os.environ.get('MENSAJES_EXPO_URL',
+                            'https://exp.host/--/api/v2/push/send')
+RE_EXPO = re.compile(r'^Expo(nent)?PushToken\[[A-Za-z0-9._\-]{1,120}\]$')
+
+
+def _empujar_expo(sus, urgencia):
+    """El aviso a un TELEFONO, por la red de Expo.
+
+    ══ POR QUE HAY DOS CAMINOS Y NO UNO ══════════════════════════════════════
+
+    El push de la web no llega a la app. PULSE2CHAT vive ahi dentro en una
+    vista de navegador incrustada, y una vista incrustada NO recibe push: no
+    hay obrero de servicio que despertar, ni permiso de notificacion que dar.
+    O sea que en la app —que es donde la gente lo usa— los mensajes llegaban
+    en silencio y las llamadas no sonaban. Se veian al abrir, y nada mas.
+
+    Un telefono se avisa por su propia red. Aqui es la de Expo, que es la que
+    la app ya habla: se le manda el testigo del aparato y ella se encarga de
+    Google. La web sigue por VAPID, sin cambiar nada.
+
+    ══ Y SIGUE SIN VIAJAR NI UNA PALABRA ═════════════════════════════════════
+
+    Expo SI deja mandar cuerpo, y aqui no se manda. La promesa del relevo es
+    que por la red de nadie pasa un dato de un mensaje: solo el hecho de que
+    hay algo. Se manda un titulo generico y `data` con el tipo, y la app pide
+    los detalles al relevo cuando se abre. Que se pueda no quiere decir que
+    convenga.
+    """
+    testigo = sus.get('expo') or ''
+    if not RE_EXPO.match(testigo):
+        return False                         # un testigo con mala pinta se poda
+    llamada = urgencia == 'high'
+    cuerpo = json.dumps([{
+        'to': testigo,
+        'title': 'PULSE2CHAT',
+        'body': 'Llamada entrante' if llamada else 'Tenés un mensaje nuevo',
+        'sound': 'default',
+        'priority': 'high',
+        'channelId': 'llamadas' if llamada else 'mensajes',
+        'ttl': 60 if llamada else 86400,
+        'data': {'tipo': 'llamada' if llamada else 'mensaje'},
+    }]).encode()
+    pet = urllib.request.Request(EXPO_ENVIO, data=cuerpo, method='POST', headers={
+        'Content-Type': 'application/json', 'Accept': 'application/json',
+    })
+    try:
+        with urllib.request.urlopen(pet, timeout=10) as r:
+            resp = json.loads(r.read() or b'{}')
+    except urllib.error.HTTPError as e:
+        return e.code not in (400, 404, 410)
+    except Exception:
+        return True                          # un fallo de red no es una baja
+    # Expo contesta 200 aunque el testigo este muerto: el motivo viene DENTRO.
+    # Sin mirarlo, un telefono desinstalado se quedaria en la lista para
+    # siempre, gastando un intento por cada mensaje de por vida.
+    try:
+        for r in (resp.get('data') or []):
+            if r.get('status') == 'error' and \
+                    (r.get('details') or {}).get('error') == 'DeviceNotRegistered':
+                return False
+    except Exception:
+        pass
+    return True
+
+
 def _empujar_uno(sus, urgencia):
-    """Un POST vacio al servicio de push de este navegador. Devuelve False si
-    la suscripcion ya no existe (404/410) para que se pode."""
+    """Un POST vacio al servicio de push de este navegador —o a la red de Expo
+    si esta suscripcion es la de un telefono. Devuelve False si la suscripcion
+    ya no existe (404/410) para que se pode."""
+    if sus.get('expo'):
+        return _empujar_expo(sus, urgencia)
     from urllib.parse import urlsplit
     punto = sus.get('endpoint') or ''
     u = urlsplit(punto)
@@ -230,8 +300,7 @@ def empujar(d, correos, urgencia='normal'):
     el primer borrador de esta funcion. Lee del `d` en memoria lo minimo, y el
     hilo trabaja sobre su copia; solo la poda de suscripciones muertas vuelve a
     tomar el candado, y para entonces esta en otro hilo."""
-    if not llave_publica_avisos():
-        return
+    hay_vapid = bool(llave_publica_avisos())
     ahora = time.time()
     tandas = []
     for c in correos:
@@ -239,6 +308,12 @@ def empujar(d, correos, urgencia='normal'):
             continue                         # esta mirando el chat ahora mismo
         f = (d.get('fichas') or {}).get(c) or {}
         for sus in f.get('push', []):
+            # Sin llave VAPID no se puede firmar un push de navegador, pero el
+            # de un telefono va por otra red y no necesita ninguna: antes esta
+            # funcion se iba en la primera linea si faltaba la llave, y con eso
+            # se llevaba por delante tambien los avisos de la app.
+            if not sus.get('expo') and not hay_vapid:
+                continue
             tandas.append((c, dict(sus)))
     if not tandas:
         return
@@ -247,17 +322,57 @@ def empujar(d, correos, urgencia='normal'):
         muertos = []
         for c, sus in tandas:
             if not _empujar_uno(sus, urgencia):
-                muertos.append((c, sus.get('endpoint')))
+                # Se poda POR SU IDENTIDAD, y un telefono no tiene `endpoint`:
+                # podando por endpoint, un testigo de Expo muerto se llevaba
+                # por delante a TODOS los telefonos de esa cuenta —todos tienen
+                # el endpoint vacio, o sea todos «coincidian».
+                muertos.append((c, sus.get('expo') or '', sus.get('endpoint') or ''))
         if muertos:
             with candado:
                 d2 = cargar()
                 fichas2 = d2.get('fichas') or {}
-                for c, punto in muertos:
+                for c, expo, punto in muertos:
                     f2 = fichas2.get(c)
-                    if f2:
-                        f2['push'] = [x for x in f2.get('push', []) if x.get('endpoint') != punto]
+                    if not f2:
+                        continue
+                    f2['push'] = [x for x in f2.get('push', [])
+                                  if (x.get('expo') or '') != expo
+                                  or (x.get('endpoint') or '') != punto]
                 guardar(d2)
     threading.Thread(target=tarea, daemon=True).start()
+
+
+_version = None
+
+
+def version_servida():
+    """La huella del codigo que este proceso esta corriendo AHORA MISMO.
+
+    ══ POR QUE HACE FALTA ════════════════════════════════════════════════════
+
+    «El chat esta en otro lado» se arreglo el 15 de agosto —el relevo devuelve
+    la llave al dueno que lo prueba con su sesion de la wallet— y siguio
+    rompiendo diez dias mas. El codigo estaba en el repositorio; el proceso de
+    la maquina era el de antes. Y no habia forma de saberlo desde fuera: /salud
+    contestaba «vivo: true» con la misma alegria sirviendo cualquier version.
+
+    Averiguarlo costo medir TIEMPOS de respuesta —el camino nuevo llama al
+    backend de la wallet y eso se nota— que es una manera de trabajar que no se
+    le desea a nadie. Con esto, «¿esta desplegado el arreglo?» se contesta con
+    un GET. Es la misma cura que la casa ya tiene en su ficha de Ajustes.
+
+    Se calcula del propio archivo y una sola vez: es el mismo dato en cada
+    peticion, y leerse a si mismo en cada /salud seria I/O por deporte.
+    """
+    global _version
+    if _version is None:
+        try:
+            import hashlib
+            with open(os.path.abspath(__file__), 'rb') as f:
+                _version = hashlib.sha256(f.read()).hexdigest()[:10]
+        except Exception:
+            _version = 'desconocida'
+    return _version
 
 
 def correo_de_sesion(token):
@@ -884,7 +999,8 @@ class Relevo(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path.rstrip('/').endswith('/salud'):
-            return self._json(200, {'vivo': True, 'cuando': int(time.time())})
+            return self._json(200, {'vivo': True, 'cuando': int(time.time()),
+                                    'version': version_servida()})
         # La llave publica de los avisos. Publica de verdad: es la mitad que el
         # navegador necesita para suscribirse, y sin la privada no firma nada.
         if self.path.rstrip('/').endswith('/llave-avisos'):
@@ -1227,6 +1343,20 @@ class Relevo(BaseHTTPRequestHandler):
                 # reemplaza la que tuviera el mismo `endpoint`: el navegador
                 # renueva esa direccion cada tanto y guardar las dos mandaria
                 # el aviso dos veces.
+                # ── EL TELEFONO SE APUNTA IGUAL, CON SU TESTIGO ─────────────
+                # La app no tiene `endpoint` de navegador: tiene un testigo de
+                # Expo. Va a la MISMA lista y con la misma regla de reemplazo,
+                # porque el problema es el mismo —un aparato, un aviso— y dos
+                # listas separadas serian dos sitios donde podar.
+                expo = str(b.get('expo', '') or '').strip()
+                if expo:
+                    if not RE_EXPO.match(expo):
+                        return self._json(400, {'error': 'testigo inválido'})
+                    lista = [x for x in f.setdefault('push', []) if x.get('expo') != expo]
+                    lista.append({'expo': expo, 'desde': int(time.time() * 1000)})
+                    f['push'] = lista[-3:]
+                    guardar(d)
+                    return self._json(200, {'ok': True, 'dispositivos': len(f['push'])})
                 sus = b.get('suscripcion')
                 if not isinstance(sus, dict) or not sus.get('endpoint'):
                     return self._json(400, {'error': 'faltan datos'})
@@ -1244,6 +1374,11 @@ class Relevo(BaseHTTPRequestHandler):
                 return self._json(200, {'ok': True, 'dispositivos': len(f['push'])})
 
             if ruta == '/desuscribir':
+                expo = str(b.get('expo', '') or '').strip()
+                if expo:
+                    f['push'] = [x for x in f.get('push', []) if x.get('expo') != expo]
+                    guardar(d)
+                    return self._json(200, {'ok': True})
                 sus = (b.get('suscripcion') or {}).get('endpoint')
                 f['push'] = [x for x in f.get('push', []) if x.get('endpoint') != sus]
                 guardar(d)

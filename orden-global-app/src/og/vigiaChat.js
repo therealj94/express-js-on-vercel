@@ -5,12 +5,14 @@
 // local en segundo plano, toast + sonido en primero) lo decide App.js, que
 // es quien sabe qué pantalla está a la vista.
 //
-// No registra a nadie: si en este teléfono nunca se entró a PULSE CHAT no hay
-// llave guardada y el vigía se queda quieto — dar de alta un buzón de chat
-// solo para vigilarlo sería crear identidades que el usuario no pidió.
+// Y da de alta el buzón él mismo, con la sesión de la wallet: antes esperaba a
+// encontrar una llave guardada por el chat nativo, y desde que el planeta del
+// chat abre PULSE2CHAT en la web esa llave ya no aparece nunca. Ver la nota
+// larga en `tick`. De paso apunta este teléfono para el push del relevo, que
+// es lo único que suena con la app cerrada.
 import { AppState } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
 import * as M from './mensajes';
+import { apuntarEsteTelefono } from '../notify';
 import { leerLibreta, comoMapa } from './contactos';
 
 // El resumen corto que cabe en una notificación. Mismo criterio que la
@@ -46,10 +48,45 @@ export function vigilarMensajes({ account, lang = 'es', alNuevo, cadaActivo = 25
     if (!vivo) return;
     try {
       if (!listo) {
-        const llave = await SecureStore.getItemAsync('og.llaveChat').catch(() => null);
-        if (!llave) return; // nunca entró al chat: nada que vigilar (aún)
-        await M.alta(account); // reusa esa llave y deja el módulo firmando
+        /* ══ EL ALTA YA NO ESPERA A QUE ALGUIEN ABRA EL CHAT NATIVO ═════════
+         *
+         * Esto exigía encontrar `og.llaveChat` en el teléfono y se quedaba
+         * quieto si no estaba. La razón era buena —no crear buzones que nadie
+         * pidió— y dejó de serlo el día que el planeta del chat en el Núcleo
+         * pasó a abrir PULSE2CHAT en la web dentro de la app: esa pantalla
+         * guarda SU llave en el navegador, no en el llavero del teléfono. O
+         * sea que se podía usar el chat todos los días y el vigía no arrancaba
+         * nunca. Sin vigía no hay notificación: los mensajes llegaban en
+         * silencio y sólo se veían al abrir la app.
+         *
+         * Ahora el alta se hace aquí con la sesión de la wallet, que es la
+         * prueba de que este teléfono es de quien dice. El relevo devuelve LA
+         * MISMA llave que ya tuviera ese correo —no acuña otra, que mataría a
+         * los demás aparatos—, así que el web, el chat nativo y el vigía
+         * comparten buzón. No se crea ninguna identidad nueva: si el correo no
+         * tiene buzón, esta es la primera vez y es la persona la que lo pide
+         * al entrar a su cuenta.
+         *
+         * Ver infra/mensajes/servidor.py (correo_de_sesion) y la nota de
+         * src/og/mensajes.js. */
+        try {
+          await M.alta(account);
+        } catch {
+          /* Sin red, o el relevo caído: se calla y lo reintenta en la
+             siguiente pasada. Un vigía que grita cada minuto porque el wifi
+             está flojo es peor que uno callado. */
+          return;
+        }
         listo = true;
+        /* ══ Y SE APUNTA EL TELÉFONO ═══════════════════════════════════════
+         * Esto es lo único que hace que suene con la app CERRADA. Todo lo de
+         * este vigía son avisos locales: sondea y notifica él mismo, y eso
+         * vive lo que viva el proceso — Android lo mata a los pocos minutos en
+         * segundo plano, y la tarea de sistema lo reanima cada cuarto de hora.
+         * Está bien para un mensaje; para una llamada es inservible.
+         * Aquí y no antes, porque apuntarse exige la llave del chat: es lo que
+         * le prueba al relevo de quién es este teléfono. */
+        apuntarEsteTelefono(M.apuntarTelefono).catch(() => null);
       }
       const d = await M.conversaciones();
       const cs = d.conversaciones || [];

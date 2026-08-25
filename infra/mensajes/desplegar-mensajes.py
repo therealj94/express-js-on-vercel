@@ -107,7 +107,31 @@ def main():
         # unico que garantiza que NO va a arrancar, y se ve sin tocar nada.
         'python3 -m py_compile /srv/mensajes/servidor.nuevo.py || { echo NO_COMPILA; exit 1; }',
         'mv /srv/mensajes/servidor.nuevo.py /srv/mensajes/servidor.py',
-        "curl -fsS '%s' -o /etc/systemd/system/mensajes.service" % url2,
+        # ── LAS LLAVES DEL TURN NO SE PIERDEN POR DESPLEGAR ─────────────────
+        #
+        # Esto sobrescribe la unidad entera, y la unidad es donde viven las
+        # credenciales del TURN de Cloudflare. Desplegar sin las variables de
+        # entorno puestas dejaba una unidad SIN ellas: el relevo pasaba a
+        # contestar la lista vacia y las llamadas entre dos redes con NAT
+        # cerrado —las de casa, las de un movil con datos— dejaban de conectar.
+        # Sin ruido, sin error, sin nada que mirar: llamadas que suenan y no
+        # entran. El comentario de arriba prometia que se conservaban; el
+        # codigo no lo hacia.
+        #
+        # Asi que si esta corrida no trae credenciales, se rescatan las que la
+        # maquina ya tenia y se pegan en la unidad nueva. Trayendolas, mandan
+        # las nuevas: cambiar una credencial tiene que poder hacerse.
+        "curl -fsS '%s' -o /tmp/mensajes.service.nuevo" % url2,
+        'if ! grep -q "^Environment=TURN_" /tmp/mensajes.service.nuevo; then '
+        '  VIEJAS=$(grep "^Environment=TURN_" /etc/systemd/system/mensajes.service 2>/dev/null || true); '
+        '  if [ -n "$VIEJAS" ]; then '
+        '    awk -v v="$VIEJAS" \'{print} /^Environment=MENSAJES_VAPID_PEM=/{print v}\' '
+        '      /tmp/mensajes.service.nuevo > /tmp/mensajes.service.con-turn && '
+        '    mv /tmp/mensajes.service.con-turn /tmp/mensajes.service.nuevo; '
+        '    echo TURN_CONSERVADO; '
+        '  else echo TURN_NO_HABIA; fi; '
+        'else echo TURN_NUEVO; fi',
+        'mv /tmp/mensajes.service.nuevo /etc/systemd/system/mensajes.service',
         # restart, no enable --now: con el servicio ya activo, enable --now es
         # un no-op y el proceso VIEJO sigue sirviendo el codigo viejo.
         'systemctl daemon-reload && systemctl enable mensajes && systemctl restart mensajes',

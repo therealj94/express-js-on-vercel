@@ -2,6 +2,7 @@ import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { enExpoGo } from './entorno';
 
 // Se reexporta porque media app lo pide desde aquí (More.js, entre otras) y
@@ -380,7 +381,106 @@ export function alTocarNotificacion(cb) {
   if (!N) return () => {};       // en Expo Go no hay notificaciones que tocar
   const sub = N.addNotificationResponseReceivedListener((r) => {
     const data = r?.notification?.request?.content?.data || {};
-    cb(data.screen || 'activity', data);
+    /* El aviso que viene del RELEVO no trae `screen`: trae `tipo`, y no puede
+       traer más — no lleva ni una palabra del mensaje, que es la promesa. Así
+       que aquí se traduce: cualquier aviso de chat abre el chat. Sin esto, un
+       mensaje o una llamada tocados desde la pantalla de bloqueo llevaban a
+       Actividad, que es la lista de movimientos de dinero. */
+    const pantalla = data.screen || (data.tipo ? 'chat' : 'activity');
+    cb(pantalla, data);
   });
   return () => sub.remove();
 }
+
+// ============================================================
+// EL TESTIGO DE ESTE TELÉFONO — para que suene con la app cerrada.
+//
+// ══ POR QUÉ NO ALCANZABA CON LO DE ARRIBA ═══════════════════
+//
+// Todo lo anterior son avisos LOCALES: el vigía sondea el relevo desde dentro
+// de la app y lanza la notificación él mismo. Eso funciona mientras el proceso
+// viva, y Android lo mata a los pocos minutos de irse a segundo plano. La
+// tarea de sistema lo reanima cada ~15 minutos, que está bien para un mensaje
+// y es inservible para una llamada: nadie espera un timbre un cuarto de hora.
+//
+// Un aviso que llega SIEMPRE tiene que venir de fuera. Aquí se pide el testigo
+// de este aparato y se le entrega al relevo; a partir de ahí es el relevo quien
+// despierta el teléfono, con la app cerrada, con la pantalla apagada.
+//
+// ══ Y NO REEMPLAZA AL VIGÍA, LO COMPLETA ════════════════════
+//
+// El vigía sigue: es el que sabe QUIÉN escribió y QUÉ dijo, porque lo lee del
+// relevo con la llave del chat. El push de fuera no lleva ni una palabra —esa
+// es la promesa del relevo, y se cumple también aquí—, así que lo que hace es
+// despertar y decir «hay algo»; el detalle lo pone la app cuando abre.
+const CANAL_LLAMADAS = 'llamadas';
+// El relevo manda `channelId: 'mensajes'` para los mensajes y 'llamadas' para
+// el timbre. Los nombres tienen que coincidir con los de allí o Android usa el
+// canal por defecto y el aviso sale mudo. Ver infra/mensajes/servidor.py.
+const CANAL_PUSH = 'mensajes';
+
+let canalesPushListos = false;
+async function asegurarCanalesPush(N) {
+  if (Platform.OS !== 'android' || canalesPushListos) return;
+  await N.setNotificationChannelAsync(CANAL_PUSH, {
+    name: 'PULSE2CHAT · mensajes',
+    description: 'Mensajes nuevos, aunque la app esté cerrada',
+    importance: IMPORTANCIA_MAX,
+    vibrationPattern: [0, 180, 80, 180],
+    lightColor: '#C9A961',
+    lockscreenVisibility: VISIBLE_EN_BLOQUEO,
+    sound: 'default', enableVibrate: true, showBadge: true,
+  });
+  // Las llamadas van en su propio canal: quien silencie los mensajes no tiene
+  // por qué perderse un timbre, y al revés. Y con vibración larga, que es lo
+  // que distingue un timbre de un aviso sin mirar el teléfono.
+  await N.setNotificationChannelAsync(CANAL_LLAMADAS, {
+    name: 'PULSE2CHAT · llamadas',
+    description: 'Llamadas y videollamadas entrantes',
+    importance: IMPORTANCIA_MAX,
+    vibrationPattern: [0, 700, 400, 700, 400, 700],
+    lightColor: '#C9A961',
+    lockscreenVisibility: VISIBLE_EN_BLOQUEO,
+    sound: 'default', enableVibrate: true, showBadge: true,
+  });
+  canalesPushListos = true;
+}
+
+let testigoPuesto = null;
+
+/**
+ * Pide el testigo de este teléfono y lo entrega al relevo. Devuelve el testigo,
+ * o null si aquí no hay avisos que dar (Expo Go, permiso denegado, sin red).
+ *
+ * `apuntar` es quien lo entrega — se pasa desde fuera para que este archivo no
+ * sepa de relevos, igual que no sabe de pantallas.
+ */
+export async function apuntarEsteTelefono(apuntar) {
+  const N = notif();
+  if (!N) return null;                    // en Expo Go no hay push que pedir
+  try {
+    if (!(await pedirPermiso())) return null;
+    await asegurarCanalesPush(N);
+    // El projectId es OBLIGATORIO en un build de EAS: sin él, la llamada falla
+    // con «No projectId found» y el teléfono se queda mudo sin decir por qué.
+    const projectId = Constants?.expoConfig?.extra?.eas?.projectId
+      || Constants?.easConfig?.projectId;
+    const { data } = await N.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+    if (!data) return null;
+    // Se entrega SIEMPRE, también si es el mismo de la última vez: el relevo
+    // reemplaza por testigo y no duplica, y una lista podada por error del
+    // otro lado se vuelve a llenar sola en el siguiente arranque.
+    await apuntar(data);
+    testigoPuesto = data;
+    return data;
+  } catch (e) {
+    if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('[notify] sin testigo de push:', e?.message || e);
+    return null;
+  }
+}
+
+/** El testigo entregado en esta sesión, si lo hubo. Para darlo de baja al
+ *  cerrar sesión: dejarlo puesto mandaría los avisos de esta cuenta al
+ *  teléfono de quien entre después. */
+export const testigoDeEsteTelefono = () => testigoPuesto;
+export function soltarTestigo() { testigoPuesto = null; }

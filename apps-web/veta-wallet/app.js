@@ -5376,7 +5376,7 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '92a4e04571';
+  const VETA_V = '7ae382be50';
   const VETA_FECHA = '2026-08-25';
 
   const AET_V = 'e250bbe2f5';
@@ -9937,7 +9937,18 @@ const VETA = (() => {
         <h3>${t('cha.e' + k + 'T')}</h3>
         <p>${t('cha.e' + k + 'P')}</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
-          ${k === 'otra' ? '' : `<button class="btn btn-oro btn-sm" onclick="VETA.chatReparar()">${t('cha.desbloquear')}</button>`}
+          ${/* ══ «TU CHAT ESTÁ EN OTRO LADO» TAMBIÉN SE DESATASCA ═══════════
+                Esta pantalla se quedaba SIN BOTÓN a propósito: la llave del
+                correo se la quedaba el primer aparato y desde aquí no había
+                nada que hacer, así que ofrecer un botón que no podía funcionar
+                era peor que no ofrecerlo.
+                Ya no es así. El relevo devuelve la llave existente a quien
+                demuestre ser el dueño con su sesión de la wallet —el mismo
+                correo, la misma persona, otro aparato— y eso es exactamente lo
+                que hace `chatReparar`. Dejar el botón fuera ahora deja a
+                alguien mirando un callejón que ya tiene salida: es lo que le
+                pasó a la app, con el chat abierto en el navegador. */''}
+          <button class="btn btn-oro btn-sm" onclick="VETA.chatReparar()">${t('cha.desbloquear')}</button>
           <button class="btn btn-linea btn-sm" onclick="VETA.chatEntrar()">${t('ini.act')}</button>
         </div>
       </div>`;

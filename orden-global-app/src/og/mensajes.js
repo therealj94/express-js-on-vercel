@@ -120,6 +120,22 @@ export const leido = (de) => pedir('/leido', firmado({ de }));
    toda la diferencia entre «vaciar los mensajes» y «borrar la conversación». */
 export const olvidar = (con, quitar = false) => pedir('/olvidar', firmado({ con, quitar }));
 
+/* ══ APUNTAR ESTE TELÉFONO PARA QUE SUENE ═════════════════════════════════
+ *
+ * El relevo sabía avisar a los NAVEGADORES —push VAPID, un obrero de servicio
+ * que despierta— y eso no llega aquí. PULSE2CHAT vive en la app dentro de una
+ * vista de navegador incrustada, y una vista incrustada no recibe push: no hay
+ * obrero que despertar ni permiso que dar. O sea que en la app, que es donde
+ * la gente lo usa, los mensajes llegaban en silencio y las llamadas no
+ * sonaban: se veían al abrir, y nada más.
+ *
+ * Un teléfono se avisa por su propia red. `testigo` es el de Expo, que es la
+ * que esta app ya habla. Va a la misma lista que las suscripciones del
+ * navegador —un aparato, un aviso— y el relevo elige el camino por sí solo.
+ * Ver infra/mensajes/servidor.py, `_empujar_expo`. */
+export const apuntarTelefono = (testigo) => pedir('/suscribir', firmado({ expo: testigo }));
+export const olvidarTelefono = (testigo) => pedir('/desuscribir', firmado({ expo: testigo }));
+
 export const ficha = (de) => pedir('/ficha', firmado({ de }));
 // Mi nombre y mi foto — y mi gid, que el relevo también acepta aquí.
 // JSON.stringify se come las claves `undefined`, así que perfil({ foto })
