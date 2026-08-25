@@ -77,6 +77,20 @@ const TXT = {
     siVaciar: 'VACIAR', siBorrar: 'BORRAR', cancelar: 'Cancelar',
     fallo: 'No se envió', reintentar: 'Reintentar',
     nuevos: 'Mensajes nuevos ↓',
+    /* ══ LOS TRES ESTADOS QUE EL CIFRADO PUEDE DEJAR, Y QUE NO SE CALLAN ══
+     * Un mensaje que este teléfono no puede abrir salía como una BURBUJA
+     * VACÍA con la hora al lado. Eso se lee como «el chat perdió un mensaje»,
+     * que es lo contrario de lo que pasó: el mensaje está entero y cerrado
+     * para otro aparato tuyo — el navegador, por ejemplo, si escribiste desde
+     * ahí antes de que este teléfono publicara su llave. */
+    cerrado: 'Cifrado para otro de tus aparatos',
+    /* La firma se pudo comprobar y NO cuadró. No es lo mismo que «no se pudo
+     * comprobar»: esto merece verse. */
+    sinFirma: 'Sin firma verificada',
+    /* Se mandó EN CLARO porque quien recibe todavía no tiene ninguna llave
+     * publicada. Se dice en el momento, no en una pantalla de ajustes: es de
+     * ese mensaje, no de la app. */
+    sinCifrar: 'Se envió sin cifrar: esa persona todavía no abrió el chat en ningún aparato.',
     sinRedT: 'Sin conexión',
     sinRedConvos: 'No pudimos traer tus conversaciones. Revisa tu conexión; tus chats siguen ahí.',
     sinRedHilo: 'No pudimos traer los mensajes de esta conversación.',
@@ -125,6 +139,9 @@ const TXT = {
     siVaciar: 'CLEAR', siBorrar: 'DELETE', cancelar: 'Cancel',
     fallo: 'Not sent', reintentar: 'Retry',
     nuevos: 'New messages ↓',
+    cerrado: 'Encrypted for another of your devices',
+    sinFirma: 'Signature not verified',
+    sinCifrar: 'Sent unencrypted: that person has not opened the chat on any device yet.',
     sinRedT: 'No connection',
     sinRedConvos: 'We could not fetch your conversations. Check your connection; your chats are still there.',
     sinRedHilo: 'We could not fetch the messages of this conversation.',
@@ -549,7 +566,13 @@ export default function AuroChat({ nav, params }) {
     };
     setPendientes((p) => [...p, mio]);
     try {
-      await M.enviar(destino, cuerpo);
+      const r = await M.enviar(destino, cuerpo);
+      /* SE DICE CUANDO NO SE PUDO CIFRAR. `enviar` devuelve `e2e:false` si la
+         otra persona no tiene ninguna llave publicada, y hasta ahora ese dato
+         se tiraba: el mensaje salía en claro y la pantalla no lo mencionaba.
+         Mandar en claro no es el problema —es lo único que se puede hacer—;
+         el problema sería no decirlo, con una app que promete cifrado. */
+      if (r && r.e2e === false) toast(t.sinCifrar, 'info');
       // solo AHORA se vacía la caja — y sin pisar lo que se haya tecleado
       // encima mientras el envío viajaba
       setTexto((x) => (x.trim() === cuerpo ? '' : x));
@@ -1034,6 +1057,32 @@ export default function AuroChat({ nav, params }) {
                     </Pressable>
                   )}
                   {!!item.texto && <Text style={[st.msg, mio && { color: item.fallo ? C.txt : '#3A2C08' }]}>{item.texto}</Text>}
+                  {/* CIFRADO PARA OTRO APARATO. Sin esto la burbuja sale
+                      VACÍA con la hora al lado, y eso se lee como «el chat
+                      perdió un mensaje» — cuando el mensaje está entero, sólo
+                      que cerrado con una llave que este teléfono no tiene.
+                      Pasa de verdad: quien escribió desde el navegador antes
+                      de que este teléfono publicara su llave tiene toda su
+                      conversación así. */}
+                  {item.cerrado && (
+                    <View style={st.selloFila}>
+                      <Icon name="lock-closed" size={11} color={mio ? 'rgba(58,44,8,0.6)' : C.txt3} />
+                      <Text style={[st.selloTxt, mio && { color: 'rgba(58,44,8,0.6)' }]}>{t.cerrado}</Text>
+                    </View>
+                  )}
+                  {/* Y si la firma NO cuadró, se dice. Un mensaje cifrado cuya
+                      firma falla puede ser el relevo poniendo palabras en boca
+                      de alguien: taparlo sería justo lo que la firma vino a
+                      impedir. `verificado === false` con motivo, no la simple
+                      ausencia — los mensajes viejos de antes de la firma no
+                      tienen por qué salir marcados. */}
+                  {item.e2e && item.verificado === false && item.motivoFirma
+                    && item.motivoFirma !== 'sin-firma' && !item.cerrado && (
+                    <View style={st.selloFila}>
+                      <Icon name="alert-circle" size={11} color={C.down} />
+                      <Text style={[st.selloTxt, { color: C.down }]}>{t.sinFirma}</Text>
+                    </View>
+                  )}
                   {item.fallo ? (
                     <Pressable onPress={() => reintentar(item)} hitSlop={8} style={st.reintentar}>
                       <Icon name="refresh" size={12} color={C.down} />
@@ -1331,6 +1380,11 @@ const st = StyleSheet.create({
   autor: { color: C.gold, fontSize: 11, fontWeight: '700', marginBottom: 2 },
   msg: { color: C.txt, fontSize: 14.5, lineHeight: 20 },
   msgHora: { color: C.txt3, fontSize: 9.5, alignSelf: 'flex-end', marginTop: 2 },
+  /* El sello del cifrado: en cursiva y con menos peso que el mensaje. Dice
+     algo del SOBRE, no de lo que la persona escribió, y tiene que leerse como
+     una nota al margen — no como parte de la conversación. */
+  selloFila: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  selloTxt: { color: C.txt3, fontSize: 10.5, fontStyle: 'italic', flexShrink: 1 },
   pago: { borderRadius: 18, borderWidth: 1, borderColor: C.line, backgroundColor: 'rgba(4,25,27,0.86)', overflow: 'hidden', marginVertical: 3, shadowColor: '#C9A961', shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 5 },
   pagoFilo: { height: 3, width: '100%' },
   pagoDentro: { paddingHorizontal: 15, paddingVertical: 13 },
