@@ -5372,7 +5372,7 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = 'ae2511f891';
+  const VETA_V = '1a33b26bb9';
   const VETA_FECHA = '2026-08-25';
 
   const AET_V = '3c7c66ff8a';
@@ -7341,10 +7341,22 @@ const VETA = (() => {
     if (!CHAT.listo()) return;
     const c = (chatSt.convs || []).find(x => (x.id || x.correo) === id)
       || (chatSt.gente || []).find(x => x.correo === id);
+    /* ══ DE DONDE SALE EL NOMBRE ═══════════════════════════════════════════
+     * El relevo no siempre lo trae —quien nunca lo puso, o una conversacion
+     * vieja— y hasta ahora se caia directo al identificador: en la cabecera se
+     * leia `morenoedwardortiz` en vez de una persona. Antes de rendirse hay que
+     * mirar LA LIBRETA: si alguien ya esta apuntado, su nombre es mejor que su
+     * usuario, y ademas es el que esa persona eligio. */
+    const dela = (() => {
+      try {
+        const f = buscaContacto(leerContactos(), { correo: id, dir: c?.addr || '' });
+        return f?.nombre || '';
+      } catch { return ''; }
+    })();
     chatSt.con = c
-      ? { id, nombre: c.nombre || id, esGrupo: !!c.esGrupo, gid: c.gid || '', addr: c.addr || '',
-          foto: c.foto || '' }
-      : { id, nombre: id, esGrupo: CHAT.esGrupo(id), gid: '', addr: '', foto: '' };
+      ? { id, nombre: c.nombre || dela || id, esGrupo: !!c.esGrupo, gid: c.gid || '',
+          addr: c.addr || '', foto: c.foto || '' }
+      : { id, nombre: dela || id, esGrupo: CHAT.esGrupo(id), gid: '', addr: '', foto: '' };
     // Lo que la lista ya sabía de su presencia vale como primer trazo; la
     // bandeja lo confirma en el primer latido.
     chatSt.enLinea = c && !c.esGrupo ? c.enLinea === true : null;
@@ -9735,7 +9747,8 @@ const VETA = (() => {
       ? `<div class="cha-cargando"><span class="girando"></span></div>`
       : (lista.length
           ? (aguja ? `<div class="cha-cuantos">${t('cha.cuantosCasan')
-              .replace('{n}', lista.length)}</div>` : '') + lista.map(chatBurbuja).join('')
+              .replace('{n}', lista.length)}</div>` : chatAvisoFirmas(lista))
+            + lista.map(chatBurbuja).join('')
           : aguja
             ? `<div class="vacio"><b>${t('cha.nadaEnHilo')}</b>${t('cha.nadaEnHiloP')}</div>`
             : `<div class="vacio"><b>${t('cha.hiloT')}</b>${t('cha.hiloP')}</div>`);
@@ -9795,7 +9808,7 @@ const VETA = (() => {
         <button onclick="VETA.chatBuscarHiloAbrir()" aria-label="${t('cha.cancelar')}">✕</button>
       </div>` : ''}
       ${chatSt.ficha ? chatFicha() : ''}
-      <div class="cha-msgs" id="chat-msgs">${cuerpo}</div>
+      <div class="cha-msgs" id="chat-msgs" onclick="VETA.chatGestosTocar(event)">${cuerpo}</div>
       ${chatSt.grabando ? `
       <div class="cha-grab">
         <span class="cha-grab-pt"></span>
@@ -9841,7 +9854,12 @@ const VETA = (() => {
           <span>${t('cha.e2eIdentidad')}</span>
         </div>
       </div>
-      <p class="cha-aviso">${t('cha.sinE2E')}</p>`;
+      ${/* El renglon de «las fotos y los videos todavia no» se fue de aqui.
+            Debajo de la caja de escribir, en cada pantalla y para siempre, un
+            parrafo de letra chica sobre lo que NO esta cifrado le quita el
+            sitio a lo que si —el sello de arriba— y es lo primero que la gente
+            aprende a saltarse. Donde importa es al MANDAR un adjunto: ahi la
+            informacion llega cuando sirve para decidir. */''}`;
   }
 
   /* La hoja de la ficha. Se dibuja ENCIMA del hilo, no en lugar de él: al
@@ -9958,14 +9976,60 @@ const VETA = (() => {
     }
     // De lo propio no se dice nada: uno sabe que lo escribio uno.
     if (mio || m.verificado !== false) return '';
+    /* ══ LO QUE NO SE DICE EN CADA BURBUJA ═══════════════════════════════════
+     *
+     * «Sin firma» y «sin llaves del remitente» NO son una anomalia: son el
+     * estado normal de la transicion. Quien escribe desde el telefono todavia
+     * no firma, y todo lo de antes de que existiera la firma tampoco. O sea:
+     * en una conversacion de verdad esto sale DEBAJO DE CADA MENSAJE.
+     *
+     * Y un aviso que sale siempre deja de ser un aviso. Peor: enseñando la
+     * conversacion a alguien, lo unico que se lee es «no se pudo comprobar
+     * quien lo escribio» repetido diez veces, y lo que queda es que la app
+     * esta rota. Eso no es honestidad, es ruido — y el ruido tapa justo el
+     * caso que si importa.
+     *
+     * Asi que esto se dice UNA VEZ, arriba del hilo (ver chatAvisoFirmas), y
+     * la burbuja se queda callada. Lo que si grita en cada mensaje es lo de
+     * abajo: una firma rota, una llave sin publicar o un aparato que no cuadra
+     * son anomalias de verdad y no admiten un renglon discreto. */
     if (m.motivoFirma === 'sin-firma' || m.motivoFirma === 'sin-llaves-del-remitente') {
-      return `<p class="cha-sinfirma">
-        <svg viewBox="0 0 24 24"><path d="M12 8v5m0 3h.01"/><circle cx="12" cy="12" r="9"/></svg>
-        ${t('cha.sinVerificar')}</p>`;
+      return '';
     }
     return `<p class="cha-sinfirma cha-alerta">
       <svg viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
       ${t('cha.firmaNoCuadra')}</p>`;
+  }
+
+  /* ══ EL ESTADO DE LAS FIRMAS, DICHO UNA VEZ ═══════════════════════════════
+   * Si en el hilo hay mensajes que no se pudieron verificar —porque vienen de
+   * un aparato que todavia no firma— se dice arriba y en gris, una sola vez.
+   * Ahi significa algo; repetido bajo cada burbuja, no. */
+  /* ══ TOCAR UNA BURBUJA ENSEÑA SUS BOTONES ═════════════════════════════════
+   * Solo con el dedo: donde hay puntero, los botones aparecen al pasar por
+   * encima y esto no hace falta. Se abre uno y se cierra el anterior — dos
+   * filas de botones abiertas a la vez es exactamente el desorden que esto
+   * viene a quitar. */
+  function chatGestosTocar(ev) {
+    if (matchMedia('(hover:hover)').matches) return;
+    const b = ev.target.closest?.('.cha-b');
+    const dentro = ev.target.closest?.('.cha-gestos,.cha-emojis,a,button,video,audio');
+    document.querySelectorAll('.cha-b.gestos-abiertos').forEach((el) => {
+      if (el !== b) el.classList.remove('gestos-abiertos');
+    });
+    if (!b || dentro) return;
+    b.classList.toggle('gestos-abiertos');
+  }
+
+  function chatAvisoFirmas(msgs) {
+    const mio = (sesion?.correo || '').toLowerCase();
+    const hay = (msgs || []).some(m => m && !m.borrado && !m.cerrado
+      && m.de !== mio && m.verificado === false
+      && (m.motivoFirma === 'sin-firma' || m.motivoFirma === 'sin-llaves-del-remitente'));
+    if (!hay) return '';
+    return `<p class="cha-nota-hilo">
+      <svg viewBox="0 0 24 24"><path d="M12 8v5m0 3h.01"/><circle cx="12" cy="12" r="9"/></svg>
+      ${t('cha.sinVerificarHilo')}</p>`;
   }
 
   function chatBurbuja(m) {
@@ -12486,7 +12550,7 @@ const VETA = (() => {
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
            pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,
-           vsEntrar, vsSalir, vsOjos, vsMirada, tourGenesis, musicaAlterna, versionMirar, version, prontoMirar,
+           chatGestosTocar, vsEntrar, vsSalir, vsOjos, vsMirada, tourGenesis, musicaAlterna, versionMirar, version, prontoMirar,
            _bienvenidaGalaxia: (v) => auraBienvenidaGalaxia(v),
            /* El aterrizaje del login, tal cual: la prueba comprueba que entrar
               siempre deja a la persona en el Inicio, aunque la dirección

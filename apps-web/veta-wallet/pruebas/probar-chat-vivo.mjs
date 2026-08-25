@@ -33,9 +33,14 @@ const nav = await chromium.launch({ executablePath:'/opt/pw-browsers/chromium-11
 const llaveDe = async (c) => (await (await fetch(REL+'/alta',{method:'POST',
   headers:{'content-type':'application/json'},body:JSON.stringify({correo:c})})).json()).llave
 
-async function abrir(correo, nombre) {
+/* Ana entra con DEDO y Beto con puntero. No es un detalle: los botones de
+   cada burbuja se comportan distinto en los dos, y el fallo que se arreglo
+   —cinco fantasmas flotando encima de cada mensaje— solo existia con dedo.
+   Probar las dos cosas cuesta un parametro. */
+async function abrir(correo, nombre, conDedo = false) {
   const llave = await llaveDe(correo)
-  const pag = await (await nav.newContext({ locale:'es-HN', viewport:{width:430,height:900}, deviceScaleFactor:2 })).newPage()
+  const pag = await (await nav.newContext({ locale:'es-HN', viewport:{width:430,height:900},
+    deviceScaleFactor:2, ...(conDedo ? { hasTouch:true, isMobile:true } : {}) })).newPage()
   const err = []; pag.on('pageerror', e=>err.push(String(e)))
   await pag.addInitScript(([u,c,k])=>{ window.OG_MENSAJES_API=u+'/mensajes'
     try{localStorage.setItem('veta.chat.llave.'+c,k)}catch{} }, [ORIGEN, correo, llave])
@@ -81,7 +86,7 @@ async function aceptarse(a, b) {
 }
 
 console.log('\nLa marca\n')
-const A = await abrir('ana@ordenglobal.link','Ana')
+const A = await abrir('ana@ordenglobal.link','Ana', true)   /* con dedo, como un iPad */
 const B = await abrir('beto@ordenglobal.link','Beto')
 await aceptarse(A, B)
 ok('dice PULSE2CHAT', /PULSE.?2.?CHAT/i.test(await A.pag.evaluate(()=>document.getElementById('lienzo')?.innerText||'')))
@@ -176,6 +181,81 @@ const t1 = await A.pag.evaluate(async () => {
   TONO.parar(); return { sono: a, tras: TONO.sonando() }
 })
 ok('suena y se calla', t1.sono === 'entrando' && t1.tras === null, JSON.stringify(t1))
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LO QUE SE LEE MIENTRAS SE CONVERSA
+   ══════════════════════════════════════════════════════════════════════════ */
+console.log('\nLo que se lee mientras se conversa\n')
+
+/* De vuelta al hilo: la seccion del perfil dejo a Ana en otra pantalla. */
+await A.pag.evaluate((c)=>VETA.chatAbrir(c), B.correo)
+await A.pag.waitForTimeout(1200)
+const hilo = await A.pag.evaluate(()=>document.getElementById('chat-msgs')?.innerText||'')
+
+/* ── EL AVISO DE FIRMA, UNA VEZ ─────────────────────────────────────────────
+   Estaba DEBAJO DE CADA BURBUJA. En una conversacion de verdad eso son diez
+   renglones diciendo «no se pudo comprobar quien lo escribio», y lo unico que
+   queda al enseñarla es que la app esta rota. Se dice una vez, arriba. */
+const cuantas = (hilo.match(/No se pudo comprobar/gi)||[]).length
+ok('el aviso de firma no se repite en cada mensaje', cuantas === 0,
+   `${cuantas} veces bajo las burbujas`)
+const arriba = await A.pag.evaluate(()=>
+  document.querySelectorAll('#chat-msgs .cha-nota-hilo').length)
+ok('y cuando hace falta se dice UNA vez arriba del hilo', arriba <= 1, `${arriba}`)
+
+/* ── FUERA EL PARRAFO DE LOS ADJUNTOS ───────────────────────────────────────
+   Un parrafo de letra chica sobre lo que NO esta cifrado, debajo de la caja de
+   escribir y en cada pantalla, le quitaba el sitio al sello que dice lo que SI
+   esta cifrado — y es lo primero que se aprende a saltar. */
+const pie = await A.pag.evaluate(()=>document.querySelector('.cha-hilo')?.innerText
+  || document.getElementById('lienzo')?.innerText || '')
+ok('no queda el parrafo de «las fotos y los videos todavia no»',
+   !/fotos, los videos|se guardan como est/i.test(pie))
+ok('pero el sello de cifrado sigue puesto', /cifrados de punta a punta/i.test(pie))
+
+/* ── LOS BOTONES DE LA BURBUJA ──────────────────────────────────────────────
+   En pantalla tactil estaban SIEMPRE puestos, al medio de opacidad, encima del
+   texto: cinco fantasmas por mensaje. Ahora se piden tocando la burbuja. */
+/* Ojo con el reloj: los botones entran con una transicion de siglo y medio de
+   milisegundo, asi que leer la opacidad en el MISMO instante del toque da cero
+   —el valor de partida— y parece que no pasa nada. Se mira antes, se toca, se
+   espera a que la transicion termine, y recien entonces se mira otra vez. */
+const antesDeTocar = await A.pag.evaluate(()=>{
+  const b = document.querySelector('#chat-msgs .cha-b')
+  if (!b) return null
+  const g = b.querySelector('.cha-gestos')
+  if (!g) return { hay:false }
+  return { hay:true, antes:+getComputedStyle(g).opacity,
+    tactil: !matchMedia('(hover:hover)').matches }
+})
+await A.pag.evaluate(()=>document.querySelector('#chat-msgs .cha-b')?.click())
+await A.pag.waitForTimeout(450)
+const gestos = { ...(antesDeTocar||{}), ...(await A.pag.evaluate(()=>{
+  const b = document.querySelector('#chat-msgs .cha-b')
+  const g = b?.querySelector('.cha-gestos')
+  return { tras: g ? +getComputedStyle(g).opacity : -1, clase: b?.className || '' }
+})) }
+ok('cada mensaje tiene sus botones', gestos && gestos.hay !== false)
+if (gestos?.tactil) {
+  ok('con el dedo NO se ven hasta que se toca la burbuja', gestos.antes < 0.05,
+     `opacidad en reposo ${gestos.antes}`)
+  ok('y al tocarla aparecen', gestos.tras > 0.9,
+     `opacidad ${gestos.antes} → ${gestos.tras}`)
+} else {
+  ok('con puntero se esconden hasta pasar por encima', gestos.antes < 0.05,
+     `opacidad en reposo ${gestos.antes}`)
+}
+
+/* ── EL NOMBRE ──────────────────────────────────────────────────────────────
+   La cabecera enseñaba el identificador —`morenoedwardortiz`— porque el relevo
+   no siempre trae el nombre. Ahora, antes de rendirse, se mira la libreta. */
+const cab = await A.pag.evaluate(()=>
+  document.querySelector('.cha-quien b')?.textContent?.trim() || '')
+ok('la cabecera enseña a quien se le escribe', !!cab, cab)
+ok('y no es un «undefined» ni un vacio',
+   !!cab && !/^(null|undefined)$/i.test(cab), cab)
+
+await A.pag.screenshot({path:'/tmp/p2c-hilo.png'})
 
 await A.pag.screenshot({path:'/tmp/p2c.png'})
 for (const p of [A,B]) ok(`sin errores de javascript (${p.correo.split('@')[0]})`, p.err.length===0)

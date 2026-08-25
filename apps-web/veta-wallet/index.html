@@ -2471,6 +2471,23 @@ body.en-p2c .cha-hcab{background:rgba(6,26,79,.5)}
 .cha-sinfirma svg{width:13px;height:13px;flex:none;fill:none;stroke:currentColor;
  stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .cha-sinfirma.cha-alerta{color:var(--coral);opacity:1;font-weight:600}
+
+/* ── EL ESTADO DE LAS FIRMAS, ARRIBA DEL HILO ───────────────────────────────
+   Se dice UNA vez y en voz baja: es contexto, no una alarma. Va centrado y
+   angosto para que se lea como una nota del sistema y no como un mensaje mas
+   —si pareciera un mensaje, alguien buscaria quien lo escribio.
+   Y el icono LLEVA MEDIDA. Sin ella un svg sin `width` se dibuja al tamaño de
+   su caja: en la primera version salio un circulo negro de seiscientos pixeles
+   en medio de la conversacion. Un icono sin medida no sale pequeño por
+   defecto — sale enorme. */
+.cha-nota-hilo{display:flex;align-items:flex-start;gap:7px;
+  max-width:min(440px,86%);margin:2px auto 10px;padding:8px 12px;
+  border-radius:12px;background:rgba(255,255,255,.045);
+  border:1px solid var(--p2c-linea2,rgba(255,255,255,.12));
+  font-size:11.5px;line-height:1.45;color:var(--humo);text-align:left}
+.cha-nota-hilo svg{width:14px;height:14px;flex:none;margin-top:1px;
+  fill:none;stroke:currentColor;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round}
 .cha-cerrado{display:flex;align-items:center;gap:7px;font-style:italic;opacity:.78}
 .cha-cerrado svg{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;
   stroke-width:1.7;stroke-linecap:round}
@@ -2522,13 +2539,55 @@ body.en-p2c .cha-puerta p{color:var(--p2c-bruma)}
    Los gestos aparecen al pasar por encima de la burbuja y no siempre: en un
    hilo largo, dos botones por mensaje son cien botones en pantalla. */
 .cha-b{position:relative}
-.cha-gestos{position:absolute;top:-9px;z-index:3;display:flex;gap:4px;opacity:0;
+/* ══ DONDE SE PONE LA FILA DE BOTONES ════════════════════════════════════════
+   ENTERA POR ENCIMA DE LA BURBUJA, y sin envolverse. Las dos cosas son el
+   mismo fallo visto dos veces:
+    · A nueve pixeles por dentro del borde tapaba el primer renglon.
+    · Dejandola envolver, la segunda fila caia DENTRO del mensaje: en la ultima
+      foto, «copiar» y «borrar» estaban escritos encima de «hola beto».
+   Con `bottom:100%` se apoya en el borde de arriba y no lo pisa nunca, y con
+   `nowrap` es una sola fila que se extiende HACIA ADENTRO de la pantalla —a la
+   derecha en los mensajes de la otra persona, a la izquierda en los propios—
+   asi que tampoco se sale del cuadro. */
+.cha-gestos{position:absolute;bottom:calc(100% + 3px);top:auto;z-index:3;
+  display:flex;gap:4px;flex-wrap:nowrap;opacity:0;
   transition:opacity .15s;pointer-events:none}
-.cha-b:not(.cha-mio) .cha-gestos{right:-4px}
-.cha-b.cha-mio .cha-gestos{left:-4px}
-.cha-b:hover .cha-gestos,.cha-b:focus-within .cha-gestos{opacity:1;pointer-events:auto}
-/* En pantalla tactil no hay «pasar por encima»: se ven siempre, atenuados. */
-@media (hover:none){.cha-gestos{opacity:.5;pointer-events:auto}}
+/* DENTRO DEL CUADRO, NO ASOMADOS. Colgaban cuatro pixeles POR FUERA del borde
+   de la burbuja, y con cinco botones en una pantalla angosta el ultimo se iba
+   de la pantalla: se veia media fila y el resto cortado. Alineados al borde de
+   adentro entran siempre, y la fila se envuelve si de verdad no cabe. */
+.cha-b:not(.cha-mio) .cha-gestos{left:0}
+.cha-b.cha-mio .cha-gestos{right:0}
+/* ══ CUANDO SE VEN LOS BOTONES DE UNA BURBUJA ════════════════════════════════
+   Tres maneras, y las tres significan lo mismo: «me interesa este mensaje».
+   Con puntero, pasar por encima. Con teclado, llegar a uno de ellos. Y con el
+   dedo —donde no existe «pasar por encima»— tocar la burbuja, que le pone la
+   clase de abajo (ver chatGestosTocar en app.js).
+   Se resuelve con UNA regla y no con una consulta de medios: `hover:none` no
+   se puede dar por sentado —hay bancos de pruebas y navegadores donde no casa
+   ninguna de las dos— y una regla que a veces no aplica es peor que no
+   tenerla. Con esto, en un aparato sin puntero simplemente nunca hay `:hover`
+   y manda la clase; en uno con puntero la clase nunca se pone. */
+.cha-b:hover .cha-gestos,
+.cha-b:focus-within .cha-gestos,
+.cha-b.gestos-abiertos .cha-gestos{opacity:1;pointer-events:auto}
+/* ══ EN PANTALLA TACTIL NO SE VEN HASTA QUE SE PIDEN ═════════════════════════
+   No hay «pasar por encima», asi que estaban SIEMPRE puestos, al medio de
+   opacidad, flotando encima de cada burbuja. Cinco fantasmas por mensaje: la
+   conversacion deja de leerse como una conversacion y el texto queda debajo de
+   una fila de circulos.
+   Ahora se piden: se toca la burbuja y aparecen los suyos —solo los suyos—, y
+   se van al tocar en cualquier otro sitio. Es el gesto que ya usa todo el
+   mundo, y mientras tanto un mensaje se ve como un mensaje. */
+/* Y un poco mas grandes donde se tocan con el dedo: veintiseis pixeles son
+   cuatro menos de lo que cualquiera acierta sin mirar. Esto SI puede ir en una
+   consulta de medios porque si no casa no rompe nada — solo quedan del tamaño
+   de siempre. */
+@media (hover:none){
+  .cha-gestos button{width:32px;height:32px}
+  .cha-gestos svg{width:15px;height:15px}
+}
+
 .cha-gestos button{width:26px;height:26px;border-radius:50%;border:1px solid var(--p2c-linea2);
   background:rgba(5,11,26,.9);color:var(--p2c-bruma);display:grid;place-items:center;cursor:pointer}
 .cha-gestos button:hover{color:var(--p2c-cyan);border-color:var(--p2c-cyan)}
@@ -2624,7 +2683,15 @@ body.en-p2c .cha-puerta p{color:var(--p2c-bruma)}
 .cha-manda svg{stroke:#1B1403}
 /* El sello de cifrado. Verde jade y no oro: el oro es la marca y una accion,
    y esto es un hecho comprobable sobre la llamada. */
+/* ══ SITIO PARA EL BOTON DE AIR TOUCH ═══════════════════════════════════════
+   La mano flotante vive fija abajo a la derecha, y el sello de cifrado ocupaba
+   todo el ancho: la mano caia justo encima de «...ni nosotros podemos leerlos
+   ni escucharlas», tapando la mitad de la unica frase que promete algo.
+   El sello se aparta cincuenta y seis pixeles por la derecha —el ancho del
+   boton mas su aire— y el texto se acomoda solo. Apartar el texto es mejor que
+   mover el boton: el boton esta donde el pulgar lo espera. */
 .cha-sello{display:flex;align-items:flex-start;gap:10px;margin:0 14px 8px;padding:10px 12px;
+  padding-right:56px;
   border-radius:12px;background:rgba(62,217,160,.08);border:1px solid rgba(62,217,160,.24)}
 .cha-sello svg{flex:none;width:16px;height:16px;margin-top:1px;fill:none;stroke:var(--jade);
   stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -4264,9 +4331,9 @@ body.en-ventana .lienzo::before{
 
 <!-- El saber publico que Genesis dejo salir. Lo genera
      infra/cerebro/publicar-saber.mjs; no se edita a mano. -->
-<script src="saber.js?v=ae2511f891"></script>
-<script src="telemetria.js?v=ae2511f891"></script>
-<script src="qr.js?v=ae2511f891"></script>
+<script src="saber.js?v=1a33b26bb9"></script>
+<script src="telemetria.js?v=1a33b26bb9"></script>
+<script src="qr.js?v=1a33b26bb9"></script>
 <!-- La cripto para entrar con la frase semilla. Se carga aparte y no dentro
      de app.js porque son 13 KB que solo hacen falta si alguien elige ese
      camino, y porque asi se puede probar sola (pruebas/probar-llaves.mjs). -->
@@ -4409,24 +4476,24 @@ body.en-ventana .lienzo::before{
   </div>
 </div>
 
-<script src="vendor/cripto-llaves.js?v=ae2511f891"></script>
-<script src="llaves.js?v=ae2511f891"></script>
-<script src="tono.js?v=ae2511f891"></script>
-<script src="llamada.js?v=ae2511f891"></script>
-<script src="llamadaGrupo.js?v=ae2511f891"></script>
-<script src="velas.js?v=ae2511f891"></script>
-<script src="cadena.js?v=ae2511f891"></script>
-<script src="datos.js?v=ae2511f891"></script>
-<script src="aura.js?v=ae2511f891"></script>
-<script src="candado.js?v=ae2511f891"></script>
-<script src="chat.js?v=ae2511f891"></script>
-<script src="i18n.js?v=ae2511f891"></script>
-<script src="galaxia.js?v=ae2511f891"></script>
+<script src="vendor/cripto-llaves.js?v=1a33b26bb9"></script>
+<script src="llaves.js?v=1a33b26bb9"></script>
+<script src="tono.js?v=1a33b26bb9"></script>
+<script src="llamada.js?v=1a33b26bb9"></script>
+<script src="llamadaGrupo.js?v=1a33b26bb9"></script>
+<script src="velas.js?v=1a33b26bb9"></script>
+<script src="cadena.js?v=1a33b26bb9"></script>
+<script src="datos.js?v=1a33b26bb9"></script>
+<script src="aura.js?v=1a33b26bb9"></script>
+<script src="candado.js?v=1a33b26bb9"></script>
+<script src="chat.js?v=1a33b26bb9"></script>
+<script src="i18n.js?v=1a33b26bb9"></script>
+<script src="galaxia.js?v=1a33b26bb9"></script>
 <!-- GENESIS CORE: el cerebro del ecosistema, el mismo volumen que se proyecta
      en la sala de Genesis ID. Solo lo usa su vista. -->
-<script src="cerebro-og.js?v=ae2511f891"></script>
+<script src="cerebro-og.js?v=1a33b26bb9"></script>
 <!-- MODO VISOR: la casa dentro de un visor (WebXR, cartón o 360 en pantalla). -->
-<script src="visor.js?v=ae2511f891"></script>
-<script src="musica.js?v=ae2511f891"></script>
-<script src="airtouch.js?v=ae2511f891"></script>
-<script src="app.js?v=ae2511f891"></script>
+<script src="visor.js?v=1a33b26bb9"></script>
+<script src="musica.js?v=1a33b26bb9"></script>
+<script src="airtouch.js?v=1a33b26bb9"></script>
+<script src="app.js?v=1a33b26bb9"></script>

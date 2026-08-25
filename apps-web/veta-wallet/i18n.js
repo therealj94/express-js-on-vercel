@@ -724,6 +724,10 @@ es: {
   'cha.e2eCerrado': 'Llegó cifrado para otro de tus aparatos. Abrilo desde el que lo recibió.',
   'cha.fueEnClaro': 'Este mensaje viajó sin cifrar: no se pudo preparar el candado.',
   'cha.sinVerificar': 'No se pudo comprobar quién lo escribió.',
+  /* El mismo dato, dicho UNA VEZ arriba del hilo en vez de debajo de cada
+     burbuja. Repetido diez veces no informa: hace ver la app rota. Y explica
+     POR QUÉ, que es lo que convierte un aviso en algo útil. */
+  'cha.sinVerificarHilo': 'Algunos mensajes de esta conversación llegaron sin firma: se escribieron desde un aparato que todavía no la pone. Se leen igual, y siguen cifrados de punta a punta.',
   'cha.firmaNoCuadra': 'La firma no cuadra. Confirmá por otra vía antes de fiarte de esto.',
   'cha.codigoTit': 'Código de seguridad',
   'cha.codigoQue': 'Comparalo con la otra persona en voz alta o en persona. Si los dos números coinciden, nadie se metió en medio de esta conversación.',
@@ -1645,6 +1649,7 @@ en: {
   'cha.e2eCerrado': 'This arrived encrypted for another of your devices. Open it there.',
   'cha.fueEnClaro': 'This message travelled unencrypted: the lock could not be set up.',
   'cha.sinVerificar': 'We could not confirm who wrote this.',
+  'cha.sinVerificarHilo': 'Some messages in this conversation arrived unsigned: they were written from a device that does not sign yet. They still read fine, and they are still end-to-end encrypted.',
   'cha.firmaNoCuadra': 'The signature does not match. Confirm through another channel before trusting this.',
   'cha.codigoTit': 'Safety code',
   'cha.codigoQue': 'Compare it with the other person out loud or in person. If both numbers match, nobody got in the middle of this conversation.',

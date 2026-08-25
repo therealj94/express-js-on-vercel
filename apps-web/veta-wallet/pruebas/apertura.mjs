@@ -167,12 +167,35 @@ ok('y no hay fondo encendido por debajo', negrura.medio <= 6,
 // LA TINIEBLA: ¿se ve AU-RA esperando?
 /* Se espera al VERSÍCULO, no a un reloj: es la única señal de que se está en
    la tiniebla y no en el título ni ya en la luz. */
-await p.waitForFunction(()=>/desordenada/i.test(
-  document.querySelector('#gen-letra .gen-centro')?.textContent||''),null,{timeout:25000});
-await p.waitForTimeout(900);
+/* ══ UNA FOTO LIMPIA DE LA TINIEBLA ════════════════════════════════════════
+   Esperar a que el versiculo este en pantalla no alcanza: entre que la espera
+   se cumple y el obturador dispara, una maquina cargada puede avanzar hasta el
+   fogonazo — y entonces la «tiniebla» sale iluminada y la prueba falla con
+   todo bien. Asi que se dispara y se COMPRUEBA que el instante siga siendo el
+   correcto; si se paso, se vuelve a intentar. Tres oportunidades: si en las
+   tres se escapa, el banco de pruebas esta demasiado lento para esta medida y
+   vale mas decirlo que inventar un numero. */
+let limpia = false;
+for (let intento = 0; intento < 3 && !limpia; intento++) {
+  await p.waitForFunction(()=>/desordenada/i.test(
+    document.querySelector('#gen-letra .gen-centro')?.textContent||'')
+    && (window.__AE_DESTELLO?.()??0) === 0, null, {timeout:25000})
+    .catch(()=>{});
+  await p.screenshot({path:'/tmp/f-tiniebla.png'});
+  limpia = await p.evaluate(()=>/desordenada/i.test(
+    document.querySelector('#gen-letra .gen-centro')?.textContent||'')
+    && (window.__AE_DESTELLO?.()??0) === 0);
+  if (!limpia && intento < 2) {
+    /* Se paso: se espera a que la pelicula vuelva a empezar para tener otra
+       oportunidad en el mismo sitio. */
+    await p.evaluate(()=>{ window.__AE_GENESIS?.saltar?.(); });
+    await p.waitForTimeout(1500);
+    await p.evaluate(()=>VETA.tourGenesis('prueba'));
+  }
+}
+ok('se pudo fotografiar la tiniebla sin que se colara la luz', limpia);
 const tinTxt = await p.evaluate(() =>
   document.querySelector('#gen-letra .gen-centro')?.textContent || '');
-await p.screenshot({path:'/tmp/f-tiniebla.png'});
 /* ══ LA TINIEBLA ESTÁ VACÍA, Y ESO ES EL PUNTO ═══════════════════════════
    «Antes de todo no había nada» — y ahora no hay nada de verdad: ni el cielo,
    ni los mundos, ni AU-RA. Antes de este cambio el sol latía en el centro
