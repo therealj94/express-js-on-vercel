@@ -89,6 +89,29 @@ DATOS = {
         'reinicio': '25-08-2026 19:00 UTC',
         'disco': '12 GB de 30 GB (40 %)',
     },
+    'origen': {
+        'altura': 91442,
+        'billeteras': 159,
+        'contratos': 3,
+        'direcciones': 162,
+        'suma': '999.999.999.998,93',
+        'principales': [
+            ('0xacc03b7fe0c658cb3872726d05da24d0554f44b8',
+             'Asignación preservada · nunca se ha tocado', '250.000.000.000,00'),
+            ('0x3011f7f9d263d7f73a1ac2130ac7afe426495718',
+             'Asignación preservada · nunca se ha tocado', '250.000.000.000,00'),
+            ('0x50219186545980b35912adc89550522e63667f74',
+             'Asignación preservada · nunca se ha tocado', '250.000.000.000,00'),
+            ('0x3d5510e5081822877d14cd51b356bf01df2c32c9',
+             'EL TESORO · billetera única de ORIGEN', '249.999.982.598,07'),
+        ],
+        'resto': 155,
+        'resto_suma': '173,93',
+        'resto_mayor': '20,93',
+        'con_uno': 149,
+        'wrapped': ('0xccbe0c6690bf61d1f23f95f3998e4ba0d7b89f75', '16.387,76'),
+        'liquidez': ('0xa22180530d9d52676925e6ad9247ce3c24341fb1', '839,17'),
+    },
     'tokens': [
         ('ORIGEN', 'nativo de la cadena', '—'),
         ('AUKA', '0x6Facc8Df…3a26B9B', '55.000.000'),
@@ -268,6 +291,8 @@ cifra('5550', 'la cadena viva. Siete validadores, un bloque cada diez segundos',
       18 * mm, y, tam=40)
 cifra('8532', 'la cadena anterior. Un solo nodo, sin pares, aislada',
       78 * mm, y, tam=40, color=HUMO)
+cifra('159', 'billeteras tienen ORIGEN hoy. Cuatro concentran casi todo',
+      140 * mm, y, tam=40, color=BRUMA)
 
 y -= 34
 y = bloque('lo que este informe viene a decir',
@@ -418,10 +443,61 @@ y = parrafo(
 pie()
 
 # ═════════════════════════════════════════════════════════════════════════════
-# 4 · LAS MÁQUINAS
+# 4 · QUIÉN TIENE ORIGEN
 # ═════════════════════════════════════════════════════════════════════════════
 fondo()
-sello('cuatro · el hierro', AL - 26 * mm)
+o = DATOS['origen']
+sello('cuatro · el reparto', AL - 26 * mm)
+titulo('Quién tiene ORIGEN', AL - 40 * mm)
+hilo(AL - 47 * mm)
+
+y = parrafo(
+    'Se preguntó el saldo de ORIGEN a la cadena, dirección por dirección, sobre las 331 '
+    f"cuentas del génesis. Al bloque {mil(o['altura'])}: {o['direcciones']} direcciones tienen "
+    f"algo, de las cuales {o['contratos']} son contratos. Billeteras de verdad, {o['billeteras']}.",
+    AL - 58 * mm)
+
+y -= 6
+cifra(str(o['billeteras']), 'billeteras con ORIGEN hoy', 18 * mm, y)
+cifra('4', 'concentran el 99,99998 % del total', 62 * mm, y)
+cifra(str(o['resto']), 'billeteras con el resto', 112 * mm, y, color=HUMO)
+cifra(o['resto_suma'], 'ORIGEN entre las 155', 152 * mm, y, color=HUMO)
+
+y -= 40
+sello('las cuatro principales', y)
+y -= 14
+y = tabla(['Dirección', 'Qué es', 'ORIGEN hoy'],
+          [[f"{d[:10]}…{d[-6:]}", q, b] for d, q, b in o['principales']],
+          y, anchos=[46 * mm, 74 * mm, 44 * mm])
+
+y -= 12
+y = bloque('las tres primeras nunca se han tocado',
+           'Son asignaciones heredadas de la cadena anterior, de 250.000 millones cada una, '
+           'que el constructor del génesis preservó a propósito. Su saldo de hoy es EXACTO: '
+           'ni un decimal se ha movido desde el bloque cero. La cuarta es el tesoro, y es la '
+           'única que ha gastado algo — 17.402 ORIGEN en comisiones.',
+           y, color=ORO)
+
+y = bloque(f"las otras {o['resto']} billeteras suman {o['resto_suma']} ORIGEN",
+           f"De ellas, {o['con_uno']} tienen exactamente 1 ORIGEN y la mayor tiene {o['resto_mayor']}. "
+           'Ese 1 no es lo que esa persona posee: es la semilla de gas que el génesis dio a cada '
+           'dirección heredada para que nadie quedara congelado — alcanza para unas 210 '
+           'transferencias. Lo que la gente tiene de valor está en los tokens, no aquí.',
+           y, color=AMBAR)
+
+y = bloque('y dos contratos que sí guardan ORIGEN de verdad',
+           f"Wrapped Origen ({o['wrapped'][0][:10]}…) guarda {o['wrapped'][1]} ORIGEN: es el "
+           'respaldo de los tokens envueltos que la gente tiene fuera, y por eso el génesis lo '
+           f"excluyó de la normalización. El de liquidez ({o['liquidez'][0][:10]}…) guarda "
+           f"{o['liquidez'][1]}. Un tercer contrato figura con saldo cero.",
+           y, color=ORO)
+pie()
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 5 · LAS MÁQUINAS
+# ═════════════════════════════════════════════════════════════════════════════
+fondo()
+sello('cinco · el hierro', AL - 26 * mm)
 titulo('Las máquinas', AL - 40 * mm)
 hilo(AL - 47 * mm)
 
@@ -453,7 +529,7 @@ pie()
 # 5 · LO QUE HAY QUE DECIDIR
 # ═════════════════════════════════════════════════════════════════════════════
 fondo()
-sello('cinco · lo abierto', AL - 26 * mm)
+sello('seis · lo abierto', AL - 26 * mm)
 titulo('Lo que hay que decidir', AL - 40 * mm)
 hilo(AL - 47 * mm)
 
