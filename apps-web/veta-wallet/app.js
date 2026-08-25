@@ -5376,7 +5376,7 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '7ae382be50';
+  const VETA_V = 'cca7f4b3e4';
   const VETA_FECHA = '2026-08-25';
 
   const AET_V = 'e250bbe2f5';
@@ -7459,6 +7459,29 @@ const VETA = (() => {
   const p2cCuerpo = () => chatSt.puerta === 'falta' ? ''
     : (chatSt.tab === 'gente' ? p2cGente() : chatLista());
 
+  /* ══ EL TOKEN QUE VA AL RELEVO TIENE QUE ESTAR VIVO ═══════════════════════
+   *
+   * Es lo único que le prueba al relevo que este navegador es de quien dice, y
+   * lo que le hace devolver la llave del correo en vez del portazo del 409 —el
+   * «tu chat está en otro lado». Un token vencido no prueba nada: el relevo se
+   * lo lleva al backend, el backend dice «invalid token», y desde fuera se ve
+   * exactamente igual que si fuera de otra persona.
+   *
+   * Y vence pronto, en cuarenta minutos. La wallet lo renueva sola, pero SOLO
+   * dentro de `pedir()` —su propio cliente— y el chat no pasa por ahí: habla
+   * con el relevo por su cuenta. O sea que quien dejó la pestaña abierta un
+   * rato y volvió al chat le entregaba al relevo un token muerto y se quedaba
+   * mirando «tu chat está en otro lado» sin haber hecho nada raro. Con la app
+   * abierta todo el día, que es lo normal, esto pasaba casi siempre.
+   *
+   * Aquí se renueva antes de entregarlo. Si no se puede —sin red, sin
+   * refresco—, se manda el que haya: puede que todavía sirva, y el peor caso es
+   * el 409 que ya había. */
+  async function chatSesionViva() {
+    try { if (!vive() && sesion?.refresco) await renovar(); } catch { /* nada */ }
+    return sesion?.token;
+  }
+
   /* Arrancar el chat es darse de alta en el relevo y pedir las charlas. El
      alta se espera SIEMPRE y se lee lo que devuelve: cuando el correo es
      nuevo el relevo acuña su propia llave e ignora la que le mandes, asi que
@@ -7475,7 +7498,7 @@ const VETA = (() => {
       if (!CHAT.listo()) {
         await CHAT.alta({ correo: sesion?.correo, nombre: sesion?.nombre,
                           direccion: sesion?.direccion, gid: identidad?.gid || '',
-                          sesion: sesion?.token });
+                          sesion: await chatSesionViva() });
       }
       chatSt.error = null;
       /* El buzón de señales se enciende con el chat, no con la vista: una
@@ -7506,7 +7529,10 @@ const VETA = (() => {
      y eso no lo arregla un reintento. Todo lo demas es la red. */
   function chatMotivo(e) {
     if (e?.code === 401) return 'llave';
-    if (e?.code === 409) return 'otra';
+    /* El 409 con `sesion-no-vale` no es «otro aparato»: es esta sesion, que
+       venció. Se arregla volviendo a entrar a la cuenta, y mandar a alguien a
+       buscar su teléfono viejo por esto es hacerle perder la tarde. */
+    if (e?.code === 409) return e?.motivo === 'sesion-no-vale' ? 'vencida' : 'otra';
     return 'red';
   }
 
@@ -7519,7 +7545,7 @@ const VETA = (() => {
     try {
       await CHAT.rehacerAlta({ correo: sesion?.correo, nombre: sesion?.nombre,
                                direccion: sesion?.direccion, gid: identidad?.gid || '',
-                               sesion: sesion?.token });
+                               sesion: await chatSesionViva() });
       await chatCargarConvs();
       avisar(t('cha.repOk'));
     } catch (e) {

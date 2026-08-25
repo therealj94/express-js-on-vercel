@@ -45,6 +45,12 @@ const CHAT = (() => {
       if (!res.ok) {
         const e = new Error(d.error || 'http ' + res.status);
         e.code = res.status;
+        /* El relevo dice POR QUE, y hasta ahora se tiraba. El 409 tenia dos
+           causas que se veian iguales: otro aparato con la llave, o una sesion
+           que no valia —casi siempre vencida—. La pantalla mandaba a todo el
+           mundo a buscar un telefono viejo, incluida la mitad a la que solo le
+           hacia falta volver a entrar. */
+        e.motivo = d.motivo || '';
         throw e;
       }
       return d;

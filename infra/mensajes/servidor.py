@@ -1140,7 +1140,19 @@ class Relevo(BaseHTTPRequestHandler):
                     f['foto'] = foto_valida(d, b.get('foto', f.get('foto', '')))
                     guardar(d)
                     return self._json(200, {'llave': f['llave']})
-                return self._json(409, {'error': 'ese correo ya tiene llave'})
+                # ── Y SE DICE POR QUE ──────────────────────────────────────
+                # Este 409 tenia dos causas muy distintas y contaba la misma
+                # historia: «tu chat esta en otro lado». Una es de verdad otro
+                # aparato; la otra es que la sesion que se mando no valia —casi
+                # siempre porque VENCIO, que pasa a los cuarenta minutos— y esa
+                # se arregla volviendo a entrar a la cuenta, no buscando el
+                # telefono viejo. Sin distinguirlas, la pantalla mandaba a la
+                # gente al sitio equivocado.
+                # No se filtra nada: decir si el token servia no dice de quien
+                # es la cuenta ni si existe.
+                motivo = 'sesion-no-vale' if b.get('sesion') else 'sin-sesion'
+                return self._json(409, {'error': 'ese correo ya tiene llave',
+                                        'motivo': motivo})
 
             # todo lo demás exige la llave del correo que firma
             correo = str(b.get('correo', '')).lower()

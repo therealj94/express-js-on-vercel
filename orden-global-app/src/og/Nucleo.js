@@ -1758,18 +1758,45 @@ export default function Nucleo({ nav }) {
 
   const irDestino = useCallback((id) => {
     /* ══ QUE ABRE CADA MUNDO ═══════════════════════════════════════════════
-     * Tres de estos viven en la web y se abren DENTRO de la app (CasaWeb):
      *
-     *   chat    PULSE2CHAT con cifrado de punta a punta y llamadas. El chat
-     *           nativo de aqui no tiene ninguna de las dos cosas, y un cifrado
-     *           escrito dos veces son dos implementaciones que se tienen que
-     *           poner de acuerdo en el formato del sobre y la firma. Ahi no hay
-     *           «casi»: si se separan un milimetro, los mensajes no abren.
-     *   oxch    Ordenex. Aqui no existia — estaba marcado «pronto» y ya abrio.
-     *   aucorp  Las cuentas en moneda local. Igual.
+     * EL CHAT ES NATIVO. Y esto se probo al reves primero, asi que conviene
+     * dejar escrito por que se volvio.
      *
-     * La billetera NO. El dinero, las llaves y la huella se quedan nativos,
-     * donde el sistema operativo los protege de verdad. */
+     * Se habia mandado a la web (CasaWeb) por una razon que sigue siendo
+     * cierta: PULSE2CHAT en la web tiene cifrado de punta a punta y llamadas,
+     * y escribir un cifrado dos veces son dos implementaciones que se tienen
+     * que poner de acuerdo en el formato del sobre y en la firma — si se
+     * separan un milimetro, los mensajes dejan de abrirse.
+     *
+     * Lo que esa razon no pesaba bastante: una vista de navegador incrustada
+     * NO ES UNA APP. No recibe avisos push, no puede sonar con la app cerrada,
+     * no tiene la camara ni el microfono con los permisos de la app, y el
+     * teclado, el boton de atras y el desplazamiento se sienten prestados. En
+     * un mensajero eso no es un detalle: es el producto. Un chat que no suena
+     * cuando te escriben no es un chat, es una bandeja que hay que ir a mirar.
+     *
+     * ══ Y SIN EMBARGO HOY SIGUE ABRIENDO LA WEB. POR UNA SOLA RAZON ═══════
+     *
+     * La pantalla nativa NO SABE ABRIR UN MENSAJE CIFRADO. Y las cuentas que
+     * ya usaron PULSE2CHAT en la web tienen su llave publica publicada, asi
+     * que quien les escriba desde la web les va a cifrar el mensaje — a la
+     * llave del NAVEGADOR. En el nativo eso llega como «esto llego cifrado
+     * para otro de tus aparatos» y no hay forma de leerlo.
+     *
+     * O sea que cambiar esta linea hoy no adelanta: cambia «el chat se siente
+     * prestado» por «el chat no se lee», que es peor. La linea se cambia el
+     * dia que el nativo sepa abrir el sobre, no antes.
+     *
+     * LO QUE FALTA, en orden: portar `candado.js` (P-256 ECDH + AES-GCM) a la
+     * app —con @noble, en JavaScript puro, para no atarse a un modulo nativo y
+     * no perder la actualizacion por aire—, comprobar contra la web que los
+     * sobres son BYTE POR BYTE los mismos, y recien despues las llamadas con
+     * react-native-webrtc, que si pide compilar.
+     *
+     * Ordenex y AuCorp se quedan en la web y ahi no hay nada que discutir: son
+     * paginas que se leen y no piden nada del telefono. La billetera tampoco
+     * se mueve — el dinero, las llaves y la huella son nativos, donde el
+     * sistema operativo los protege de verdad. */
     if (id === 'chat') return nav.go('casa', { casa: 'chat' });
     if (id === 'oxch') return nav.go('casa', { casa: 'ordenex' });
     if (id === 'aucorp') return nav.go('casa', { casa: 'aucorp' });
