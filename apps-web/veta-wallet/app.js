@@ -5372,7 +5372,7 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '1a33b26bb9';
+  const VETA_V = 'd601c55175';
   const VETA_FECHA = '2026-08-25';
 
   const AET_V = '3c7c66ff8a';
@@ -8000,6 +8000,23 @@ const VETA = (() => {
       return avisar(t('at.apagado'));
     }
     if (!window.AIRTOUCH?.puede()) return avisar(t('at.sinSoporte'));
+    /* ══ LA PANTALLA COMPLETA SE PIDE AQUI, Y NO MAS ADENTRO ═══════════════
+     * Mover la galaxia con la mano en el aire pide toda la pantalla: con la
+     * barra del navegador y las pestañas encima, la mitad del gesto se pierde
+     * apuntando a un cielo recortado.
+     *
+     * Y se pide EN ESTA LINEA a proposito. `airEncender` es asincrona —espera
+     * a que la camara arranque— y despues de un `await` el navegador ya no
+     * considera que hay un gesto de la persona detras: Safari niega la
+     * pantalla completa en silencio. Es el mismo fallo que tuvo el permiso del
+     * giroscopio en el visor, y se arregla igual: primero lo que necesita el
+     * gesto, y despues lo que puede esperar. */
+    if (!enLlena()) {
+      try {
+        const el = document.documentElement;
+        (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el);
+      } catch { /* si el navegador se niega, la mano funciona igual */ }
+    }
     // La primera vez se enseña qué se puede hacer; después, directo.
     if (!localStorage.getItem('veta.airtouch.tuto')) return airTutoAbrir();
     airEncender();
@@ -8010,8 +8027,14 @@ const VETA = (() => {
     try {
       await AIRTOUCH.encender({ alCambiar: atPunto });
       $('#at-boton')?.classList.add('encendido');
-      // encender la mano también pide la historia, una vez por sesión
-      genPorAire();
+      /* ══ LA MANO NO CUENTA LA HISTORIA ═══════════════════════════════════
+       * Encender AIR TOUCH disparaba el origen. La idea era buena —quien
+       * enciende la mano quiere jugar con la galaxia, y la historia es lo
+       * mejor que tiene— pero en la practica es lo contrario de lo que uno
+       * pide: se enciende la mano PARA USAR la galaxia, y encontrarse tres
+       * minutos de pelicula encima es que la app haga otra cosa distinta de
+       * la que se le pidio. Y para volver a usarla hay que saltarla.
+       * La historia tiene su sitio y es Ajustes, donde se elige verla. */
       atTablero(true);
       const cinta = $('#at-cinta');
       if (cinta) {
@@ -11152,7 +11175,9 @@ const VETA = (() => {
   }
 
   let genVivo = false;
-  let genSesion = { visor: false, aire: false };   // ya se contó por este camino
+  /* Ya se conto la historia por este camino. Solo queda el visor: encender la
+     mano en el aire NO la dispara — ver airEncender. */
+  let genSesion = { visor: false };
 
   /* ── EL TOUR GÉNESIS ─────────────────────────────────────────────────────
    * La película solo se pone cuando alguien la pide: al entrar al modo visor,
@@ -11405,11 +11430,6 @@ const VETA = (() => {
       try { window.__AE_GENESIS?.saltar(); } catch { /* nada */ }
     }
   });
-  function genPorAire() {
-    if (genSesion.aire || genVivo) return;
-    genSesion.aire = true;
-    setTimeout(() => { if (window.AIRTOUCH?.activo?.() && vistaActual === 'nucleo') tourGenesis('airtouch'); }, 1600);
-  }
 
   async function auraBienvenidaGalaxia(conVoz) {
     const T = aTxt();

@@ -238,6 +238,69 @@ console.log('\n── el teléfono ───────────────
   await m.context().close();
 }
 
+console.log('\n── la mano no cuenta la historia, y pide la pantalla ────────');
+{
+  /* ══ ENCENDER LA MANO NO ES PEDIR LA PELICULA ═════════════════════════════
+     Encender AIR TOUCH disparaba el origen: tres minutos de pelicula encima de
+     alguien que acababa de pedir MOVER la galaxia con la mano. La historia
+     tiene su sitio y es Ajustes, donde se elige verla. */
+  await p.evaluate(() => {
+    VETA.vista('nucleo');
+    localStorage.setItem('veta.airtouch.tuto', '1');
+    /* Se anota quien pide la pantalla completa y quien pide la historia, sin
+       dejar que ninguna de las dos ocurra de verdad: pedir pantalla completa
+       en un navegador sin gesto real falla, y la pelicula dura tres minutos. */
+    /* ══ UNA MANO DE MENTIRA, PORQUE AQUI NO HAY CAMARA ═══════════════════
+       Sin el modulo de verdad, `airToca` se sale en la primera linea —«este
+       aparato no puede»— y no llega a probarse nada de lo que viene despues.
+       La maqueta contesta lo justo: que se puede, que esta apagada, y que
+       encender no hace nada. Lo que se mide es lo que la CASA hace alrededor. */
+    window.AIRTOUCH = {
+      puede: () => true,
+      activo: () => false,
+      encender: async () => {},
+      apagar: () => {},
+    };
+    window.__pidio = { llena: 0, historia: 0 };
+    /* ══ Y SE PARTE DE NO ESTAR EN PANTALLA COMPLETA ══════════════════════
+       La casa pide la pantalla solo si no la tiene ya —pedirla dos veces es
+       ruido— asi que una seccion anterior que la hubiera dejado abierta haria
+       que esta prueba midiera cero y acusara a un codigo correcto. Se finge
+       explicitamente que no la tenemos. */
+    Object.defineProperty(document, 'fullscreenElement', { get: () => null, configurable: true });
+    Object.defineProperty(document, 'webkitFullscreenElement', { get: () => null, configurable: true });
+    const e = document.documentElement;
+    const real = e.requestFullscreen;
+    e.requestFullscreen = function (...a) { window.__pidio.llena++; return Promise.resolve(); };
+    void real;
+    const tour = VETA.tourGenesis;
+    VETA.tourGenesis = (...a) => { window.__pidio.historia++; return tour?.apply?.(VETA, a); };
+  });
+  await p.waitForTimeout(400);
+  await p.evaluate(() => { try { VETA.airToca(); } catch { /* sin cámara de verdad */ } });
+  /* Se espera de sobra: el disparo de la historia estaba detras de un segundo
+     y medio de espera, asi que mirar antes no probaria nada. */
+  await p.waitForTimeout(2600);
+  const pidio = await p.evaluate(() => window.__pidio);
+  ok('encender la mano NO arranca la historia del origen', pidio.historia === 0,
+     `${pidio.historia} veces`);
+  ok('y SI pide la pantalla completa', pidio.llena >= 1, `${pidio.llena} veces`);
+
+  /* Y la historia sigue teniendo su camino: el boton de Ajustes. */
+  await p.evaluate(() => { window.__pidio.historia = 0; });
+  const hayBoton = await p.evaluate(() => {
+    const b = [...document.querySelectorAll('#lienzo [onclick]')]
+      .some((el) => (el.getAttribute('onclick') || '').includes('tourGenesis'));
+    return b;
+  });
+  await p.evaluate(() => VETA.vista('ajustes'));
+  await p.waitForTimeout(700);
+  ok('y en Ajustes sigue estando el botón que sí la cuenta',
+     await p.evaluate(() => [...document.querySelectorAll('#lienzo [onclick]')]
+       .some((el) => (el.getAttribute('onclick') || '').includes('tourGenesis'))),
+     hayBoton ? '' : '');
+}
+
 ok('sin errores de página en todo el repaso', errores.length === 0,
    errores.slice(0, 2).join(' · '));
 
