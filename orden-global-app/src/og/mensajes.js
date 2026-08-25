@@ -183,6 +183,28 @@ async function cerrarPara(para, texto) {
    tiene ninguna llave publicada— se manda en claro y se devuelve `e2e:false`,
    para que la pantalla lo diga EN ESE MENSAJE. Mandarlo en claro sin decirlo
    sería exactamente la mentira que este trabajo vino a quitar. */
+/* El mensaje que acompaña a un adjunto va por el MISMO camino: cerrado. Y si
+   el archivo se cifró, su llave viaja DENTRO de ese texto — es lo que hace que
+   el relevo tenga los bytes y no pueda abrirlos. El tipo, el archivo y el
+   nombre van en claro porque son metadatos: la lista los necesita para decir
+   «📷 Imagen» sin abrir nada. */
+export async function enviarAdjunto(para, adj, texto) {
+  const meta = { para, tipo: adj.tipo, archivo: adj.id, nombre: adj.nombre };
+  const carga = adj.llave
+    ? '{' + JSON.stringify({ t: texto || '', k: adj.llave, iv: adj.iv })
+    : (texto || '');
+  const cerrado = adj.llave || carga ? await cerrarPara(para, carga) : null;
+  if (cerrado) {
+    await pedir('/enviar', firmado({ ...meta, cif: cerrado }));
+    return { ok: true, e2e: true };
+  }
+  /* Sin poder cerrar, la llave del archivo NO se manda: iría en claro al lado
+     de los bytes cifrados — lo mismo que no cifrar, con más pasos y aparentando
+     lo contrario. El archivo queda ilegible y el mensaje sale marcado. */
+  await pedir('/enviar', firmado({ ...meta, texto: texto || '' }));
+  return { ok: true, e2e: false };
+}
+
 export async function enviar(para, texto, extra) {
   const base = { para, ...(extra || {}) };
   const cerrado = await cerrarPara(para, texto);
@@ -195,8 +217,73 @@ export async function enviar(para, texto, extra) {
 }
 // Subir un adjunto (base64, ≤8MB). Timeout largo: 8MB en datos móviles no
 // caben en los 15s de una petición normal.
-export const subir = (nombre, tipo, mime, datos) =>
-  pedir('/subir', firmado({ nombre, tipo, mime, datos }), 120000);
+/* ══ UN ADJUNTO TAMBIÉN SE CIERRA ═════════════════════════════════════════
+ *
+ * Hasta hoy no: el texto viajaba cifrado y la FOTO iba en claro. El relevo la
+ * guardaba tal cual y la podía abrir quien tuviera acceso al disco. Una app que
+ * promete que ni nosotros podemos leer los mensajes no puede tener la mitad de
+ * la conversación al aire — y en un chat las fotos suelen ser la mitad que más
+ * importa.
+ *
+ * `datos` entra en base64 (así lo lee el teléfono del archivo) y sale cifrado,
+ * también en base64. La llave NO se devuelve al relevo: viaja dentro del texto
+ * cifrado del mensaje (ver `enviarAdjunto`), y por eso el relevo termina con
+ * unos bytes que no puede abrir. */
+export async function subir(nombre, tipo, mime, datos) {
+  const crudos = deB64Simple(datos);
+  const c = CANDADO.cerrarBytes(crudos);
+  const d = await pedir('/subir', firmado({
+    nombre, tipo, mime, datos: aB64Simple(c.bytes),
+  }), 120000);
+  return { ...d, llave: c.llave, iv: c.iv };
+}
+
+/* base64 CLÁSICO —con + / y relleno—, que es el que habla el relevo. NO es el
+   base64url del candado: mezclarlos sube un archivo que después no se arma. */
+const ALF64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+function aB64Simple(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 3) {
+    const n = (bytes[i] << 16) | ((bytes[i + 1] || 0) << 8) | (bytes[i + 2] || 0);
+    s += ALF64[(n >> 18) & 63] + ALF64[(n >> 12) & 63];
+    s += i + 1 < bytes.length ? ALF64[(n >> 6) & 63] : '=';
+    s += i + 2 < bytes.length ? ALF64[n & 63] : '=';
+  }
+  return s;
+}
+function deB64Simple(txt) {
+  const s = String(txt || '').replace(/[^A-Za-z0-9+/]/g, '');
+  const out = new Uint8Array(Math.floor((s.length * 3) / 4));
+  let n = 0; let bits = 0; let j = 0;
+  for (let i = 0; i < s.length; i++) {
+    n = (n << 6) | ALF64.indexOf(s[i]);
+    bits += 6;
+    if (bits >= 8) { bits -= 8; out[j++] = (n >> bits) & 255; }
+  }
+  return out.subarray(0, j);
+}
+
+/* El archivo, ABIERTO y listo para pintar. Devuelve una dirección `data:` que
+   `<Image>` sabe usar, o la del relevo si el adjunto es de los de antes —los
+   que están en claro—, o null si no se pudo abrir: eso último se dice, no se
+   deja como hueco mudo. */
+const adjAbiertos = new Map();
+export async function archivoAbierto(id, llaveB64, ivB64, mime) {
+  if (!llaveB64 || !ivB64) return urlArchivo(id);
+  const ya = adjAbiertos.get(id);
+  if (ya) return ya;
+  try {
+    const r = await fetch(urlArchivo(id));
+    if (!r.ok) throw new Error('no está');
+    const buf = new Uint8Array(await r.arrayBuffer());
+    const claros = CANDADO.abrirBytes(buf, llaveB64, ivB64);
+    const uri = `data:${mime || 'application/octet-stream'};base64,${aB64Simple(claros)}`;
+    adjAbiertos.set(id, uri);
+    return uri;
+  } catch {
+    return null;
+  }
+}
 // La URL pública de un adjunto: el id largo ES el permiso (capability URL),
 // por eso sirve tal cual para <Image> o para abrir en el navegador.
 export const urlArchivo = (id) => BASE + '/archivo/' + id;

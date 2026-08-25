@@ -84,6 +84,7 @@ const TXT = {
      * para otro aparato tuyo — el navegador, por ejemplo, si escribiste desde
      * ahí antes de que este teléfono publicara su llave. */
     cerrado: 'Cifrado para otro de tus aparatos',
+    adjNoAbre: 'Este adjunto no se pudo abrir aquí',
     /* La firma se pudo comprobar y NO cuadró. No es lo mismo que «no se pudo
      * comprobar»: esto merece verse. */
     sinFirma: 'Sin firma verificada',
@@ -140,6 +141,7 @@ const TXT = {
     fallo: 'Not sent', reintentar: 'Retry',
     nuevos: 'New messages ↓',
     cerrado: 'Encrypted for another of your devices',
+    adjNoAbre: 'This attachment could not be opened here',
     sinFirma: 'Signature not verified',
     sinCifrar: 'Sent unencrypted: that person has not opened the chat on any device yet.',
     sinRedT: 'No connection',
@@ -228,6 +230,43 @@ function Entrada({ delay = 0, style, children }) {
 // Un pago NO es un mensaje de texto y no debe parecerlo: monto grande en oro,
 // la marca de confirmado, la hora, y el enlace al explorador cuando hay hash.
 // Es el comprobante de algo que ya pasó en la cadena.
+/* ══ UN ADJUNTO QUE HAY QUE ABRIR ANTES DE VERLO ═══════════════════════════
+ *
+ * Los adjuntos de siempre están en claro y su dirección del relevo se le da a
+ * `<Image>` y listo. Uno CIFRADO son bytes: hay que bajarlo, abrirlo con la
+ * llave que venía dentro del mensaje y recién entonces pintarlo.
+ *
+ * Eso es una espera, así que mientras tanto se deja el hueco con el marco —no
+ * un espacio en blanco que salta cuando llega la foto, ni una imagen rota—. Y
+ * si no se pudo abrir, se DICE: dejar el hueco callado hace pensar que el chat
+ * perdió la foto, que es lo contrario de lo que pasó. */
+function Adjunto({ m, t, alTocar }) {
+  const [uri, setUri] = useState(null);
+  const [roto, setRoto] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    M.archivoAbierto(m.archivo, m.llaveArchivo, m.ivArchivo, m.mime || 'image/jpeg')
+      .then((u) => { if (!vivo) return; if (u) setUri(u); else setRoto(true); })
+      .catch(() => { if (vivo) setRoto(true); });
+    return () => { vivo = false; };
+  }, [m.archivo, m.llaveArchivo, m.ivArchivo, m.mime]);
+
+  if (roto) {
+    return (
+      <View style={[st.foto, st.fotoHueco]}>
+        <Icon name="lock-closed" size={18} color={C.txt3} />
+        <Text style={st.fotoHuecoTxt}>{t.adjNoAbre}</Text>
+      </View>
+    );
+  }
+  if (!uri) return <View style={[st.foto, st.fotoHueco]} />;
+  return (
+    <Pressable onPress={() => alTocar(uri)}>
+      <Image source={{ uri }} style={st.foto} resizeMode="cover" />
+    </Pressable>
+  );
+}
+
 function TarjetaPago({ m, mio, autor, t, toast }) {
   const abrir = () => {
     hap();
@@ -616,8 +655,12 @@ export default function AuroChat({ nav, params }) {
     if (datos.length * 0.75 > TOPE_ADJUNTO) { toast(t.grande, 'error'); return; }
     setSubiendo(true);
     try {
-      const { id } = await M.subir(nombre, tipo, mime, datos);
-      await M.enviar(destino, '', { tipo, archivo: id, nombre });
+      /* `subir` devuelve la llave del archivo y `enviarAdjunto` la mete DENTRO
+         del texto cifrado del mensaje. Antes esto llamaba a `enviar` con el id
+         suelto y el archivo viajaba en claro. */
+      const adj = await M.subir(nombre, tipo, mime, datos);
+      const r = await M.enviarAdjunto(destino, { ...adj, tipo, nombre }, '');
+      if (r && r.e2e === false) toast(t.sinCifrar, 'info');
       hap(); traerHilo();
     } catch { toast(t.noSubio, 'error'); }
     finally { setSubiendo(false); }
@@ -1042,10 +1085,12 @@ export default function AuroChat({ nav, params }) {
                     con «Reintentar» al toque — el texto nunca se pierde. */}
                 <View style={[st.burbuja, mio ? st.mia : st.suya, item.fallo && st.burbujaFallo]}>
                   {!!autor && <Text style={st.autor}>{autor}</Text>}
+                  {/* UN ADJUNTO CIFRADO NO SE PUEDE PINTAR DIRECTO: son bytes
+                      que ninguna etiqueta sabe dibujar. `Adjunto` lo baja, lo
+                      abre con la llave que venía dentro del mensaje y recién
+                      entonces lo enseña; mientras tanto deja su hueco. */}
                   {conAdj && item.tipo === 'imagen' && (
-                    <Pressable onPress={() => { hap(); setFoto(M.urlArchivo(item.archivo)); }}>
-                      <Image source={{ uri: M.urlArchivo(item.archivo) }} style={st.foto} resizeMode="cover" />
-                    </Pressable>
+                    <Adjunto m={item} t={t} alTocar={(uri) => { hap(); setFoto(uri); }} />
                   )}
                   {conAdj && item.tipo !== 'imagen' && (
                     <Pressable style={st.adjCard} onPress={() => abrirAdjunto(item.archivo)}>
@@ -1384,6 +1429,12 @@ const st = StyleSheet.create({
      algo del SOBRE, no de lo que la persona escribió, y tiene que leerse como
      una nota al margen — no como parte de la conversación. */
   selloFila: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  /* El hueco de un adjunto que todavía se está abriendo: MISMO tamaño que la
+     foto, para que la burbuja no salte cuando llegue. */
+  fotoHueco: { alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: C.line },
+  fotoHuecoTxt: { color: C.txt3, fontSize: 10.5, fontStyle: 'italic', textAlign: 'center',
+    paddingHorizontal: 12 },
   selloTxt: { color: C.txt3, fontSize: 10.5, fontStyle: 'italic', flexShrink: 1 },
   pago: { borderRadius: 18, borderWidth: 1, borderColor: C.line, backgroundColor: 'rgba(4,25,27,0.86)', overflow: 'hidden', marginVertical: 3, shadowColor: '#C9A961', shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 5 },
   pagoFilo: { height: 3, width: '100%' },

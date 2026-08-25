@@ -689,6 +689,9 @@ es: {
   'cha.vozSinMic': 'No encontramos un micrófono en este dispositivo.',
   'cha.errVoz': 'No se pudo mandar la nota. Probá otra vez.',
   'cha.unaFoto': '📷 Una foto', 'cha.unVideo': '🎬 Un video', 'cha.unArchivo': '📎 Un archivo',
+  /* Un adjunto cerrado que este aparato no puede abrir. Se dice: dejar el
+     hueco callado hace pensar que el chat perdió la foto. */
+  'cha.adjNoAbre': 'Este adjunto no se pudo abrir en este aparato.',
   'cha.vacioT': 'Todavía no hablás con nadie',
   'cha.vacioP': 'Buscá a alguien por su nombre, su correo o su Genesis ID y empezá.',
   'cha.nadie': 'No encontramos a nadie',
@@ -1633,6 +1636,7 @@ en: {
   'cha.vozSinMic': 'We could not find a microphone on this device.',
   'cha.errVoz': 'The note could not be sent. Please try again.',
 'cha.unaFoto': '📷 A photo', 'cha.unVideo': '🎬 A video', 'cha.unArchivo': '📎 A file',
+  'cha.adjNoAbre': 'This attachment could not be opened on this device.',
   'cha.vacioT': 'You are not talking to anyone yet',
   'cha.vacioP': 'Find someone by name, email or Genesis ID and start.',
   'cha.nadie': 'We found nobody',

@@ -287,21 +287,87 @@ const CHAT = (() => {
     return m.startsWith('image/') ? 'imagen' : m.startsWith('video/') ? 'video' : 'archivo';
   }
 
+  /* ══ UN ADJUNTO TAMBIÉN SE CIERRA ═════════════════════════════════════
+   *
+   * Hasta hoy no. El texto viajaba cifrado de punta a punta y la FOTO iba en
+   * claro: se subía tal cual, el relevo la guardaba tal cual y la podía abrir
+   * quien tuviera acceso al disco. Una app que promete que ni nosotros podemos
+   * leer los mensajes no puede tener la mitad de la conversación al aire —y en
+   * un chat, las fotos suelen ser la mitad que más importa.
+   *
+   * El candado ya sabía hacerlo (`cerrarBytes`) y el lado que recibe ya sabía
+   * leer la llave del archivo desde dentro del mensaje. Faltaba justo esto:
+   * que alguien lo llamara.
+   *
+   * CÓMO VIAJA LA LLAVE. Dentro del texto CIFRADO del mensaje, nunca al lado.
+   * Por eso el relevo guarda un archivo que no puede abrir: tiene los bytes,
+   * y la llave está en un sobre que no es suyo.
+   *
+   * QUÉ SIGUE EN CLARO, a propósito: el tipo y el nombre. La lista de
+   * conversaciones tiene que poder decir «📷 Imagen» sin abrir nada, y el
+   * relevo necesita el tipo para servir el archivo. Es metadato, no contenido
+   * — y los metadatos ya estaban declarados como lo que el servidor ve. */
   async function subir(fichero) {
     if (fichero.size > TOPE) { const e = new Error('más de 8MB'); e.code = 413; throw e; }
-    const datos = await new Promise((ok, mal) => {
-      const l = new FileReader();
-      // readAsDataURL da "data:mime;base64,XXXX": al relevo solo le interesa
-      // lo de despues de la coma.
-      l.onload = () => ok(String(l.result).split(',')[1] || '');
-      l.onerror = () => mal(new Error('no se pudo leer el archivo'));
-      l.readAsDataURL(fichero);
-    });
+    const crudos = new Uint8Array(await fichero.arrayBuffer());
     const tipo = tipoDe(fichero.type);
+    let datos;
+    let llave = null;
+    let iv = null;
+    if (CANDADO?.hay()) {
+      const c = await CANDADO.cerrarBytes(crudos);
+      datos = aB64Simple(c.bytes);
+      llave = c.llave;
+      iv = c.iv;
+    } else {
+      /* Sin candado —navegación privada con el cajón bloqueado— se sube en
+         claro, igual que el texto. No se disimula: el mensaje sale marcado
+         `e2e:false` y la burbuja lo dice. */
+      datos = aB64Simple(crudos);
+    }
     const d = await pedir('/subir', firmado({
       tipo, datos, mime: fichero.type || '', nombre: fichero.name || '',
     }), 120000);
-    return { id: d.id, tipo, nombre: fichero.name || '' };
+    return { id: d.id, tipo, nombre: fichero.name || '', llave, iv };
+  }
+
+  /* base64 CLÁSICO (con + / y relleno), que es lo que el relevo espera en
+     `/subir`. No es el mismo que el base64url del candado: mezclarlos sube un
+     archivo que después no se puede volver a armar. */
+  function aB64Simple(bytes) {
+    let s = '';
+    const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    const paso = 0x8000;   // en trozos: `apply` con 8 MB de golpe revienta la pila
+    for (let i = 0; i < b.length; i += paso) {
+      s += String.fromCharCode.apply(null, b.subarray(i, i + paso));
+    }
+    return btoa(s);
+  }
+
+  /* El archivo, ABIERTO. Se baja del relevo, se abre con la llave que venía
+     dentro del mensaje y se devuelve una dirección local que el navegador sabe
+     pintar. Sin llave se devuelve la del relevo tal cual: son los adjuntos de
+     antes de este cambio, que están en claro y se siguen viendo. */
+  const abiertos = new Map();     // id → blob: URL ya resuelta
+
+  async function archivoAbierto(id, llaveB64, ivB64) {
+    if (!llaveB64 || !ivB64 || !CANDADO?.hay()) return urlArchivo(id);
+    const ya = abiertos.get(id);
+    if (ya) return ya;
+    try {
+      const r = await fetch(urlArchivo(id));
+      if (!r.ok) throw new Error('no está');
+      const cerrados = new Uint8Array(await r.arrayBuffer());
+      const claros = await CANDADO.abrirBytes(cerrados, llaveB64, ivB64);
+      const url = URL.createObjectURL(new Blob([claros]));
+      abiertos.set(id, url);
+      return url;
+    } catch {
+      /* Si no se puede abrir, NO se devuelve la del relevo: eso pintaría los
+         bytes cifrados y saldría una imagen rota sin explicación. Se devuelve
+         nulo y la burbuja dice que ese adjunto no se pudo abrir. */
+      return null;
+    }
   }
 
 
@@ -546,9 +612,28 @@ const CHAT = (() => {
   const senalar = (para, tipo, datos) =>
     pedir('/senal', firmado({ para, tipo, datos: datos || {} })).catch(() => null);
 
-  const enviarAdjunto = (para, adj, texto) =>
-    pedir('/enviar', firmado({ para, texto: texto || '', tipo: adj.tipo,
-                               archivo: adj.id, nombre: adj.nombre }));
+  /* El mensaje que acompaña a un adjunto va por el MISMO camino que cualquier
+     otro: cerrado. Y si el archivo se cifró, su llave viaja DENTRO de ese
+     texto — es lo que hace que el relevo tenga los bytes y no pueda abrirlos.
+     El tipo, el archivo y el nombre van en claro porque son metadatos: la
+     lista los necesita para decir «📷 Imagen» sin abrir nada. */
+  async function enviarAdjunto(para, adj, texto) {
+    const meta = { para, tipo: adj.tipo, archivo: adj.id, nombre: adj.nombre };
+    const carga = adj.llave
+      ? '{' + JSON.stringify({ t: texto || '', k: adj.llave, iv: adj.iv })
+      : (texto || '');
+    const cerrado = adj.llave || carga ? await cerrarPara(para, carga) : null;
+    if (cerrado) {
+      await pedir('/enviar', firmado({ ...meta, cif: cerrado }));
+      return { ok: true, e2e: true };
+    }
+    /* Sin poder cerrar, la llave del archivo NO se manda: iría en claro al
+       lado de los bytes cifrados, que es exactamente lo mismo que no cifrar
+       pero con más pasos y aparentando lo contrario. El archivo se queda
+       ilegible y el mensaje sale marcado sin cifrar. */
+    await pedir('/enviar', firmado({ ...meta, texto: texto || '' }));
+    return { ok: true, e2e: false };
+  }
   const leido = de => pedir('/leido', firmado({ de })).catch(() => null);
 
   /* Vaciar un hilo, o quitarlo de la lista. Y hay que decirlo con todas las
@@ -655,7 +740,7 @@ const CHAT = (() => {
     fetch(BASE + '/llave-avisos').then(r => r.json())
       .then(d => d?.llave || null).catch(() => null);
 
-  return { alta, rehacerAlta, listo, quienSoy, olvidarLlave,
+  return { alta, rehacerAlta, listo, quienSoy, olvidarLlave, archivoAbierto,
            conversaciones, bandeja, enviar, subir, enviarAdjunto, leido, olvidar,
            buscar, ficha, perfil, pago,
            circulo, pedirAmistad, responderAmistad, quitarAmigo,

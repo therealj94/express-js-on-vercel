@@ -5376,7 +5376,7 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = 'f8d987cdd3';
+  const VETA_V = 'b33516f4e0';
   const VETA_FECHA = '2026-08-25';
 
   const AET_V = 'e250bbe2f5';
@@ -9465,6 +9465,46 @@ const VETA = (() => {
   /* Se repintan las dos columnas por dentro y no la vista entera: repintar la
      vista tira lo escrito en el campo y devuelve el scroll del hilo arriba
      del todo cada cinco segundos. */
+  /* ══ ABRIR LOS ADJUNTOS CIFRADOS DESPUÉS DE PINTAR ═══════════════════════
+   *
+   * Un adjunto cerrado son bytes que ninguna etiqueta sabe dibujar: hay que
+   * bajarlo del relevo, abrirlo con la llave que venía DENTRO del mensaje y
+   * recién entonces dárselo. Eso no cabe en una cadena de HTML, así que el
+   * pintado deja la marca `data-cif` y esto la resuelve.
+   *
+   * Se hace UNA vez por elemento —la marca se quita al terminar— porque el
+   * latido repinta cada cinco segundos, y volver a bajar y descifrar cada foto
+   * del hilo cada cinco segundos sería quemar la batería por deporte. Las
+   * direcciones ya abiertas quedan guardadas en el candado (`archivoAbierto`),
+   * así que un repintado las vuelve a poner sin tocar la red.
+   */
+  function chatAbrirAdjuntos() {
+    const marcados = document.querySelectorAll('[data-cif]');
+    for (const el of marcados) {
+      const id = el.getAttribute('data-cif');
+      const k = el.getAttribute('data-k');
+      const iv = el.getAttribute('data-iv');
+      el.removeAttribute('data-cif');
+      CHAT.archivoAbierto(id, k, iv).then((url) => {
+        if (!url) {
+          /* No se pudo abrir: se dice, en vez de dejar el hueco para siempre o
+             —peor— pintar los bytes cifrados y enseñar una imagen rota. */
+          el.classList.remove('abriendo');
+          el.classList.add('cha-adj-roto');
+          el.setAttribute('title', t('cha.adjNoAbre'));
+          return;
+        }
+        if (el.tagName === 'A') el.href = url;
+        else el.src = url;
+        /* La etiqueta <a> envuelve a la <img>: la de dentro también quiere su
+           dirección, y es la que se ve. */
+        const dentro = el.querySelector?.('img, video, audio');
+        if (dentro) { dentro.src = url; dentro.classList.remove('abriendo'); }
+        el.classList.remove('abriendo');
+      }).catch(() => { el.classList.remove('abriendo'); });
+    }
+  }
+
   function pintarChat() {
     if (vistaActual !== 'chat') return;
     const caja = $('#p2c');
@@ -9525,6 +9565,10 @@ const VETA = (() => {
         }
       }
     }
+    /* Y los adjuntos CIFRADOS se abren después de pintar, por lo mismo: un
+       repintado deja marcas nuevas, y cada marca hay que bajarla y abrirla.
+       Ver `chatAbrirAdjuntos`. */
+    chatAbrirAdjuntos();
     /* Los códigos se dibujan DESPUÉS de pintar, y aquí y no en quien los pide:
        cualquier repintado —el latido cada cinco segundos, sin ir más lejos—
        se llevaba por delante el QR y dejaba el hueco blanco. */
@@ -10345,14 +10389,31 @@ const VETA = (() => {
       </div>`;
     }
 
+    /* ══ UN ADJUNTO CIFRADO NO SE PUEDE PINTAR DIRECTO ═════════════════════
+     *
+     * La dirección del relevo sirve para los adjuntos de siempre, que están en
+     * claro. Un adjunto CERRADO son bytes que ningún navegador sabe dibujar:
+     * hay que bajarlo, abrirlo con la llave que venía dentro del mensaje y
+     * recién entonces dárselo a la etiqueta.
+     *
+     * Eso no se puede hacer mientras se arma una cadena de texto, así que se
+     * deja la marca —`data-cif`— y `chatAbrirAdjuntos()` los resuelve después
+     * de pintar. Hasta que llegue, la burbuja enseña su hueco: mejor un hueco
+     * que se llena que una imagen rota. */
+    const cifrado = !!(m.llaveArchivo && m.ivArchivo);
+    const marca = cifrado
+      ? ` data-cif="${esc(m.archivo)}" data-k="${esc(m.llaveArchivo)}" data-iv="${esc(m.ivArchivo)}"`
+      : '';
+    const dir = cifrado ? '' : CHAT.urlArchivo(m.archivo);
+
     let adj = '';
     if (m.tipo === 'imagen') {
-      adj = `<a href="${esc(CHAT.urlArchivo(m.archivo))}" target="_blank" rel="noopener">
-               <img class="cha-img" src="${esc(CHAT.urlArchivo(m.archivo))}" alt="" loading="lazy"></a>`;
+      adj = `<a href="${esc(dir)}"${marca} target="_blank" rel="noopener">
+               <img class="cha-img${cifrado ? ' abriendo' : ''}" src="${esc(dir)}" alt="" loading="lazy"></a>`;
     } else if (m.tipo === 'video') {
-      adj = `<video class="cha-img" src="${esc(CHAT.urlArchivo(m.archivo))}" controls preload="metadata"></video>`;
+      adj = `<video class="cha-img${cifrado ? ' abriendo' : ''}" src="${esc(dir)}"${marca} controls preload="metadata"></video>`;
     } else if (m.tipo === 'archivo') {
-      adj = `<a class="cha-arch" href="${esc(CHAT.urlArchivo(m.archivo))}" target="_blank" rel="noopener">
+      adj = `<a class="cha-arch" href="${esc(dir)}"${marca} target="_blank" rel="noopener">
                <svg viewBox="0 0 24 24">${ICO.doc}</svg>${esc(m.nombre || t('cha.unArchivo'))}</a>`;
     } else if (m.tipo === 'voz') {
       /* Una nota de voz se OYE en la burbuja: no es una tarjeta que se baja.
@@ -10362,7 +10423,7 @@ const VETA = (() => {
          consigue gratis pintando barritas. */
       const segs = CHAT.segundosDeVoz(m.nombre);
       adj = `<div class="cha-voz">
-               <audio src="${esc(CHAT.urlArchivo(m.archivo))}" controls preload="metadata"></audio>
+               <audio src="${esc(dir)}"${marca} controls preload="metadata"></audio>
                ${segs ? `<span class="cha-voz-t">${segs}s</span>` : ''}
              </div>`;
     }

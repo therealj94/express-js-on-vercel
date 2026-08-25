@@ -215,6 +215,44 @@ let APP;
       Buffer.compare(Buffer.from(vuelta2), Buffer.from(datos)) === 0);
   }
 
+  console.log('\n── el SOBRE DE UN ADJUNTO: la llave viaja dentro ───────────');
+  {
+    /* Así es como viaja de verdad una foto cifrada: los bytes van al relevo
+       cerrados con una llave suelta, y ESA LLAVE va dentro del texto cifrado
+       del mensaje. El relevo termina con unos bytes que no puede abrir.
+       Se prueba el camino entero, no las piezas: si el formato del envoltorio
+       —el `{` del principio, los nombres `t`, `k`, `iv`— se separa un
+       milímetro entre las dos, las fotos dejan de verse de un lado. */
+    const foto = new Uint8Array(4096).map((_, i) => (i * 31 + 7) % 256);
+    const c = APP.cerrarBytes(foto);
+    const dentro = '{' + JSON.stringify({ t: 'mirá esto', k: c.llave, iv: c.iv });
+    const bulto = await APP.cerrar(dentro, pubsWeb);
+
+    const r = await WEB.abrir(bulto, pubsApp);
+    ok('la web abre el mensaje del adjunto', !!r?.texto && r.texto.startsWith('{'));
+    const j = JSON.parse(r.texto.slice(1));
+    ok('y encuentra el texto que lo acompaña', j.t === 'mirá esto', j.t);
+    const abierta = await WEB.abrirBytes(c.bytes, j.k, j.iv);
+    ok('Y ABRE LA FOTO, byte por byte',
+      Buffer.compare(Buffer.from(abierta), Buffer.from(foto)) === 0,
+      `${foto.length} bytes`);
+    ok('los bytes que ve el relevo NO son la foto',
+      Buffer.compare(Buffer.from(c.bytes), Buffer.from(foto)) !== 0,
+      'si esto falla, no se cifró nada');
+  }
+
+  console.log('\n── y al revés: la web manda la foto, el teléfono la abre ───');
+  {
+    const foto = new Uint8Array(2048).map((_, i) => (255 - i) % 256);
+    const c = await WEB.cerrarBytes(foto);
+    const bulto = await WEB.cerrar('{' + JSON.stringify({ t: '', k: c.llave, iv: c.iv }), pubsApp);
+    const r = await APP.abrir(bulto, pubsWeb);
+    const j = JSON.parse(r.texto.slice(1));
+    const abierta = APP.abrirBytes(c.bytes, j.k, j.iv);
+    ok('el teléfono abre la foto de la web',
+      Buffer.compare(Buffer.from(abierta), Buffer.from(foto)) === 0);
+  }
+
   console.log('\n── el código de seguridad se lee igual en los dos ──────────');
   {
     /* Se lee EN VOZ ALTA entre dos personas. Si el teléfono dice un número y

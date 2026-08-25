@@ -548,6 +548,14 @@ body.en-cine #lienzo{opacity:0;transition:opacity .9s ease}
 .gc-carta .btn{margin-top:6px}
 @media (prefers-reduced-motion:reduce){.gc-hoja{animation:none}}
 
+/* Un adjunto cifrado mientras se baja y se abre: hueco con el latido de la
+   casa, no una imagen rota. Y si no se pudo abrir, se queda apagado con su
+   explicación en el `title`. Ver chatAbrirAdjuntos() en app.js. */
+.cha-img.abriendo, .cha-arch.abriendo{opacity:.35;filter:grayscale(1);
+  animation:respira 1.4s ease-in-out infinite}
+@keyframes respira{0%,100%{opacity:.22}50%{opacity:.45}}
+.cha-adj-roto{opacity:.4;filter:grayscale(1);cursor:not-allowed}
+
 /* PANTALLA COMPLETA. Vive por encima de todo menos de los diálogos, en la
    esquina de arriba a la derecha. En el teléfono se corre debajo del techo de
    la casa, que ahí manda la marca. */
@@ -4366,9 +4374,9 @@ body.en-ventana .lienzo::before{
 
 <!-- El saber publico que Genesis dejo salir. Lo genera
      infra/cerebro/publicar-saber.mjs; no se edita a mano. -->
-<script src="saber.js?v=f8d987cdd3"></script>
-<script src="telemetria.js?v=f8d987cdd3"></script>
-<script src="qr.js?v=f8d987cdd3"></script>
+<script src="saber.js?v=b33516f4e0"></script>
+<script src="telemetria.js?v=b33516f4e0"></script>
+<script src="qr.js?v=b33516f4e0"></script>
 <!-- La cripto para entrar con la frase semilla. Se carga aparte y no dentro
      de app.js porque son 13 KB que solo hacen falta si alguien elige ese
      camino, y porque asi se puede probar sola (pruebas/probar-llaves.mjs). -->
@@ -4511,24 +4519,24 @@ body.en-ventana .lienzo::before{
   </div>
 </div>
 
-<script src="vendor/cripto-llaves.js?v=f8d987cdd3"></script>
-<script src="llaves.js?v=f8d987cdd3"></script>
-<script src="tono.js?v=f8d987cdd3"></script>
-<script src="llamada.js?v=f8d987cdd3"></script>
-<script src="llamadaGrupo.js?v=f8d987cdd3"></script>
-<script src="velas.js?v=f8d987cdd3"></script>
-<script src="cadena.js?v=f8d987cdd3"></script>
-<script src="datos.js?v=f8d987cdd3"></script>
-<script src="aura.js?v=f8d987cdd3"></script>
-<script src="candado.js?v=f8d987cdd3"></script>
-<script src="chat.js?v=f8d987cdd3"></script>
-<script src="i18n.js?v=f8d987cdd3"></script>
-<script src="galaxia.js?v=f8d987cdd3"></script>
+<script src="vendor/cripto-llaves.js?v=b33516f4e0"></script>
+<script src="llaves.js?v=b33516f4e0"></script>
+<script src="tono.js?v=b33516f4e0"></script>
+<script src="llamada.js?v=b33516f4e0"></script>
+<script src="llamadaGrupo.js?v=b33516f4e0"></script>
+<script src="velas.js?v=b33516f4e0"></script>
+<script src="cadena.js?v=b33516f4e0"></script>
+<script src="datos.js?v=b33516f4e0"></script>
+<script src="aura.js?v=b33516f4e0"></script>
+<script src="candado.js?v=b33516f4e0"></script>
+<script src="chat.js?v=b33516f4e0"></script>
+<script src="i18n.js?v=b33516f4e0"></script>
+<script src="galaxia.js?v=b33516f4e0"></script>
 <!-- GENESIS CORE: el cerebro del ecosistema, el mismo volumen que se proyecta
      en la sala de Genesis ID. Solo lo usa su vista. -->
-<script src="cerebro-og.js?v=f8d987cdd3"></script>
+<script src="cerebro-og.js?v=b33516f4e0"></script>
 <!-- MODO VISOR: la casa dentro de un visor (WebXR, cartón o 360 en pantalla). -->
-<script src="visor.js?v=f8d987cdd3"></script>
-<script src="musica.js?v=f8d987cdd3"></script>
-<script src="airtouch.js?v=f8d987cdd3"></script>
-<script src="app.js?v=f8d987cdd3"></script>
+<script src="visor.js?v=b33516f4e0"></script>
+<script src="musica.js?v=b33516f4e0"></script>
+<script src="airtouch.js?v=b33516f4e0"></script>
+<script src="app.js?v=b33516f4e0"></script>
