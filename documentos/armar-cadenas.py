@@ -37,7 +37,7 @@ SALIDA = AQUI / 'Orden-Global-Cadenas-5550-y-8532.pdf'
 
 A, AL = A4
 FECHA = '25 de agosto de 2026'
-HORA = '19:15 UTC'
+HORA = '23:52 UTC · despues del reinicio'
 
 # ── la paleta de la casa, la misma de los demas informes ─────────────────────
 POZO = (0.008, 0.106, 0.110)
@@ -69,32 +69,39 @@ for archivo, nombre in [('Cinzel-Regular.ttf', 'Marca'), ('Cinzel-Bold.ttf', 'Ma
 # ═════════════════════════════════════════════════════════════════════════════
 DATOS = {
     'c5550': {
-        'altura': 91314,
-        'esperada': 91336,
+        # La cadena se REINICIO el 25-ago a las 23:40 UTC. La altura de aqui es
+        # la de la cadena nueva; la vieja murio en el 92.834.
+        'altura': 73,
+        'genesis': '0x56b3cf56694f61c8a1ff1eae8bb50c57723899a1f493910a59f797b3ce734405',
         'validadores': 7,
         'pares_rpc': 6,
         'cliente': 'Besu v26.7.1 · QBFT',
         'cadencia': '10 s exactos',
-        'primer_bloque': '15-08-2026 05:30 UTC',
-        'dias': 10.6,
+        'primer_bloque': '25-08-2026 23:40 UTC',
         'gas_limite': 10_000_000,
-        'explorador': 91302,
+        'explorador': 73,
+        # la cadena anterior, la que el reinicio cerro
+        'vieja_altura': 92_834,
+        'vieja_tx': 23,
+        'vieja_nacio': '15-08-2026 05:30 UTC',
+        'vieja_dias': 10.8,
     },
     'c8532': {
-        'altura': 4_246_769,
+        'altura': 4_247_873,
         'pares': 0,
-        'nodos': 1,
+        'nodos': 0,
         'cliente': 'polygon-edge · IBFT',
-        'watchdog_ultimo': '20 de agosto',
-        'reinicio': '25-08-2026 19:00 UTC',
-        'disco': '12 GB de 30 GB (40 %)',
+        'parada': '25-08-2026 23:52 UTC',
+        'disco': '12 GB de 30 GB (39 %)',
+        'datos': '2,6 GB en node3',
     },
     'origen': {
-        'altura': 91442,
+        'altura': 73,
+        'cuentas': 343,
+        'contratos': 172,
         'billeteras': 159,
-        'contratos': 3,
-        'direcciones': 162,
-        'suma': '999.999.999.998,93',
+        'contratos_con_origen': 0,
+        'suma': '1.000.000.000.000,00',
         'principales': [
             ('0xacc03b7fe0c658cb3872726d05da24d0554f44b8',
              'Asignación preservada · nunca se ha tocado', '250.000.000.000,00'),
@@ -103,21 +110,15 @@ DATOS = {
             ('0x50219186545980b35912adc89550522e63667f74',
              'Asignación preservada · nunca se ha tocado', '250.000.000.000,00'),
             ('0x3d5510e5081822877d14cd51b356bf01df2c32c9',
-             'EL TESORO · billetera única de ORIGEN', '249.999.982.598,07'),
+             'EL TESORO · recibió todo lo recuperado', '249.999.999.845,00'),
         ],
         'resto': 155,
-        'resto_suma': '173,93',
-        'resto_mayor': '20,93',
-        'con_uno': 149,
-        'gasto_tesoro': {
-            'bloque': 14955,
-            'a': '0x746268404cc9ca2ef0ac344f02b236db232c3ad8',
-            'valor': '20,000000',
-            'comision': '0,001953',
-            'gas': '21.000 a 93 gwei',
-        },
-        'wrapped': ('0xccbe0c6690bf61d1f23f95f3998e4ba0d7b89f75', '16.387,76'),
-        'liquidez': ('0xa22180530d9d52676925e6ad9247ce3c24341fb1', '839,17'),
+        'resto_suma': '155,00',
+        'recuperado': '17.246,93',
+        'antes_tesoro': '249.999.982.598,07',
+        'wrapped': ('0xccbe0c6690bf61d1f23f95f3998e4ba0d7b89f75', '0,00', '16.387,76'),
+        'liquidez': ('0xa22180530d9d52676925e6ad9247ce3c24341fb1', '0,00', '839,17'),
+        'pool': ('0xd3790bfd26fd215491e68180f1e2da2c3b8d973d', '0,00', '16.259,23'),
     },
     'tokens': [
         ('ORIGEN', 'nativo de la cadena', '—'),
@@ -128,7 +129,7 @@ DATOS = {
         ('HARV', '0x0fa04D11…AdDb1923', '1.000.000.000.000'),
     ],
     'nodos': [
-        ('node1', 'us-east-1', '23.23.205.33', 't2.medium', 'besu5550 + polygon-edge'),
+        ('node1', 'us-east-1', '23.23.205.33', 't2.medium', 'besu5550'),
         ('node2', 'us-east-2', '18.190.14.28', 't3.medium', 'besu5550'),
         ('node3', 'us-east-1', '54.205.125.99', 't2.medium', 'besu5550'),
         ('node4', 'us-east-2', '18.226.95.184', 't3.medium', 'besu5550'),
@@ -302,10 +303,10 @@ cifra('159', 'billeteras tienen ORIGEN hoy. Cuatro concentran casi todo',
       140 * mm, y, tam=40, color=BRUMA)
 
 y -= 34
-y = bloque('lo que este informe viene a decir',
-           'La 5550 está sana y es la que sostiene el ecosistema. La 8532 no está '
-           'apagada: sigue produciendo bloques en UNA sola máquina, sin un solo par '
-           'conectado y sin nadie mirándola. No es una cadena — es un proceso.',
+y = bloque('este informe se escribe DESPUES del reinicio',
+           'La 5550 se reinició el 25 de agosto a las 23:40 UTC para recuperar el ORIGEN '
+           'que se había quedado atrapado en las pruebas. Salió, y este informe cuenta cómo '
+           'quedó. La 8532 quedó parada de verdad el mismo día.',
            y, color=ORO)
 pie()
 
@@ -322,37 +323,53 @@ y = AL - 60 * mm
 y = tabla(
     ['', 'Cadena 5550', 'Cadena 8532'],
     [
-        ['Estado', 'Viva y en producción', 'Encendida, aislada'],
-        ['Altura', mil(d5['altura']), mil(d8['altura'])],
+        ['Estado', 'Viva · reiniciada el 25-ago', 'PARADA el 25-ago'],
+        ['Altura', mil(d5['altura']) + ' (nueva)', mil(d8['altura']) + ' (congelada)'],
         ['Cliente', 'Besu 26.7.1 · QBFT', 'polygon-edge · IBFT'],
-        ['Validadores', '7', '1'],
-        ['Pares conectados', str(d5['pares_rpc']), '0'],
-        ['Nodos corriendo', '7', '1'],
-        ['Ritmo', '10 s exactos', 'sin medir desde fuera'],
+        ['Validadores', '7', 'ninguno corriendo'],
+        ['Pares conectados', str(d5['pares_rpc']), '—'],
+        ['Nodos corriendo', '7', '0'],
+        ['Ritmo', '10 s exactos', 'no avanza'],
         ['RPC público', 'rpc.ordenglobal-rpc.com', 'ninguno'],
         ['La usa', 'Wallet, Ordenex, Ordenscan', 'nadie'],
     ], y, anchos=[42 * mm, 66 * mm, 66 * mm])
 
 y -= 12
-y = bloque('la 5550, en tres números',
-           f"Ha producido {mil(d5['altura'])} bloques donde le tocaban {mil(d5['esperada'])} "
-           f"si nunca hubiera parado: veintidós bloques de diferencia en {d5['dias']} días, "
-           'unos cuatro minutos. Y el explorador indexa exactamente la misma altura que '
-           'declara la cadena.',
+y = bloque('por qué se reinició la 5550',
+           f"Había 17.401,93 ORIGEN fuera del tesoro, atrapados en contratos y pools de "
+           'prueba, y ninguna vía de transacción para traerlos: la llave del dueño de las 31 '
+           'posiciones de liquidez no aparece en ningún sitio. Con una cadena que en '
+           f"{d5['vieja_dias']} días había registrado {d5['vieja_tx']} transacciones, "
+           'reescribir el estado salía más barato que perseguir esa llave.',
            y, color=JADE)
 
-y = bloque('la 8532, en una frase',
-           'Produce bloques con un solo validador y CERO pares. Su vigilante automático '
-           f"dejó de correr el {d8['watchdog_ultimo']}, y el servicio se reinició hoy a las "
-           '19:00 UTC sin que nadie lo pidiera. Nada del ecosistema la lee.',
+y = bloque('qué se recuperó, exactamente',
+           f"El tesoro pasó de {DATOS['origen']['antes_tesoro']} a "
+           f"{DATOS['origen']['principales'][3][2]} ORIGEN, o sea {DATOS['origen']['recuperado']} "
+           'recuperados. Las 155 billeteras sembradas conservan su 1 ORIGEN de gas, y todos '
+           'los saldos de tokens quedaron exactamente como estaban.',
+           y, color=JADE)
+
+y = bloque('la 8532, cerrada',
+           'Seguía produciendo bloques con un solo validador y cero pares, pese a darse por '
+           f"apagada el 20-ago. El {d8['parada']} se paró y se deshabilitó el servicio. Sus "
+           f"datos no se borraron: siguen en disco ({d8['datos']}).",
            y, color=AMBAR)
 
-y = bloque('la decisión que este informe deja servida',
-           'Mantener encendida una cadena que nadie consulta cuesta una máquina al mes y '
-           'genera un riesgo que no compra nada: cualquiera que configure una billetera con '
-           'la 8532 dejaría sus fondos donde nadie mira. O se apaga con un respaldo, o se '
-           'declara viva de verdad. Hoy no es ninguna de las dos cosas.',
+y = bloque('el corte no salió a la primera, y conviene que se sepa',
+           'El primer arranque partió la red en dos cadenas: cuatro nodos con el génesis viejo '
+           'y tres con el nuevo. La culpa fue de un vigilante nuestro que reinicia el nodo cada '
+           'tres minutos si la altura no avanza — hacía su trabajo, y resucitó cuatro máquinas '
+           'antes de que les llegara el génesis nuevo. Quince minutos para arreglarlo y '
+           'ninguna pérdida: el respaldo estaba hecho y comprobado.',
            y, color=ROJO)
+
+y = bloque('lo que estaba escrito y no se aplicó',
+           'Cinco días antes, al apagar la 8532, quedó anotado que «el watchdog se apaga '
+           'primero: si no, reanima el servicio a los tres minutos y el apagado no dura». '
+           'Estaba en un documento y no en el procedimiento. Una lección escrita que no entra '
+           'en el procedimiento no sirve de nada; ésta ya está en el paso 0.',
+           y, color=AMBAR)
 pie()
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -365,22 +382,26 @@ hilo(AL - 47 * mm)
 
 y = parrafo(
     'Es la cadena que sostiene el ecosistema: la wallet lee de ella los saldos, Ordenex '
-    'cotiza sobre ella y Ordenscan la indexa. Nació el 15 de agosto y lleva diez días y '
-    'medio produciendo sin interrupción apreciable.',
+    f"cotiza sobre ella y Ordenscan la indexa. La versión que corre hoy arrancó el "
+    f"{d5['primer_bloque']}, cuando se reinició para recuperar el ORIGEN de las pruebas. "
+    f"La anterior había nacido el {d5['vieja_nacio']} y murió en el bloque "
+    f"{mil(d5['vieja_altura'])}.",
     AL - 58 * mm)
 
 y -= 6
-cifra(mil(d5['altura']), 'bloques producidos', 18 * mm, y)
-cifra('7', 'validadores QBFT', 62 * mm, y)
-cifra('10 s', 'entre bloque y bloque, sin desviación', 96 * mm, y)
-cifra('99,98 %', 'de los bloques que le tocaban', 140 * mm, y)
+cifra('7', 'validadores QBFT', 18 * mm, y)
+cifra('10 s', 'entre bloque y bloque, sin desviación', 52 * mm, y)
+cifra(str(d5['vieja_tx']), 'transacciones tuvo la cadena anterior en toda su vida',
+      100 * mm, y, color=BRUMA)
+cifra('0', 'contratos guardan ORIGEN hoy', 148 * mm, y, color=JADE)
 
-y -= 40
-y = bloque('siete validadores, no cuatro',
-           'La documentación interna decía cuatro. La cadena responde SIETE, leídos de '
-           '`qbft_getValidatorsByBlockNumber`. Con siete, el quórum QBFT es de cinco: la red '
-           'aguanta la caída de dos validadores a la vez. Con cuatro habría aguantado uno. '
-           'Es mejor de lo que estaba escrito, y conviene que lo escrito lo diga.',
+y -= 44
+y = bloque('los siete validadores, ahora en el génesis',
+           'Antes sólo cuatro estaban en el génesis: node1, node2 y node7 habían entrado por '
+           'votación QBFT el 20-ago, y esa votación vivía en la historia que el reinicio '
+           'borra. De haberlo pasado por alto, la cadena habría vuelto con cuatro validadores '
+           '—aguantando una caída en vez de dos— sin que nada avisara. El génesis nuevo los '
+           'lleva a los siete, y los siete proponen bloques.',
            y, color=JADE)
 
 y = parrafo(
@@ -396,10 +417,12 @@ y = tabla(['Token', 'Contrato', 'Emisión'],
           y, anchos=[30 * mm, 74 * mm, 60 * mm])
 
 y -= 10
-y = bloque('comprobado, no supuesto',
-           'Los cinco contratos ERC-20 responden en la cadena y devuelven su emisión total. '
-           'Un contrato que no existiera devolvería vacío, y la wallet enseñaría un saldo de '
-           'cero sin decir por qué. No es el caso de ninguno.',
+y = bloque('los tokens no se tocaron, y se comprobó de dos maneras',
+           'Antes del corte se leyó la emisión de los 172 contratos en la cadena vieja y en '
+           'un ensayo del génesis nuevo, y se compararon: CERO diferencias. Después del corte '
+           'se volvieron a leer en la cadena viva, contrato por contrato, y siguen iguales. '
+           'Lo único que cambió fue WORIGEN, que fue a cero junto con el ORIGEN que lo '
+           'respaldaba — o el contrato habría quedado insolvente.',
            y, color=ORO)
 pie()
 
@@ -412,41 +435,41 @@ titulo('La 8532', AL - 40 * mm)
 hilo(AL - 47 * mm)
 
 y = parrafo(
-    'La documentación la da por «congelada y cerrada». No lo está. Sigue produciendo '
-    'bloques, y ese matiz importa: una cadena apagada no puede confundir a nadie, y una '
-    'encendida sin vigilancia sí.',
+    'El informe anterior la encontró encendida pese a darse por apagada el 20-ago: seguía '
+    'produciendo bloques en una sola máquina, sin un solo par. El 25 de agosto se paró de '
+    'verdad.',
     AL - 58 * mm)
 
 y -= 6
-cifra(mil(d8['altura']), 'bloques · sigue subiendo', 18 * mm, y)
-cifra('1', 'nodo la sostiene', 72 * mm, y, color=AMBAR)
-cifra('0', 'pares conectados', 104 * mm, y, color=ROJO)
-cifra('0', 'aplicaciones la leen', 140 * mm, y, color=HUMO)
+cifra(mil(d8['altura']), 'bloques · congelada ahí', 18 * mm, y)
+cifra('0', 'nodos la sostienen', 74 * mm, y, color=JADE)
+cifra('0', 'pares conectados', 108 * mm, y, color=HUMO)
+cifra('0', 'aplicaciones la leen', 144 * mm, y, color=HUMO)
 
 y -= 40
-y = bloque('qué queda de ella, exactamente',
-           'De los seis nodos que la formaban, CINCO fueron migrados a la 5550 y hoy sólo '
-           'corren Besu. El sexto —node1— es el único que conserva el servicio polygon-edge, '
-           'y por eso la cadena sigue avanzando: un validador solo firma sus propios bloques '
-           'sin necesitar a nadie.',
+y = bloque('parada y deshabilitada, no sólo parada',
+           f"El {d8['parada']} se paró `polygon-edge` en node1, el único que todavía la "
+           'sostenía, y quedó `disabled`: no vuelve sola al reiniciar la máquina. La '
+           'diferencia importa — un servicio parado pero habilitado vuelve en el siguiente '
+           'arranque y nadie se entera.',
+           y, color=JADE)
+
+y = bloque('llevaba encendida sin que nadie lo supiera',
+           'Se dio por apagada el 20 de agosto y el 25 seguía produciendo bloques. Ese es el '
+           'patrón que conviene retener: un servicio que se para sin deshabilitar, o con un '
+           'vigilante que lo reanima, vuelve solo. Es exactamente lo que le pasó a esta '
+           'cadena, y lo que estuvo a punto de arruinar el reinicio de la 5550.',
            y, color=AMBAR)
 
-y = bloque('sin pares es literal',
-           '`polygon-edge peers list` responde «No peers found». No es que tenga pocos: no '
-           'tiene ninguno. Sus bloques no los ve nadie más, no hay red que los replique, y si '
-           'esa máquina se pierde se pierde la cadena entera con ella.',
-           y, color=ROJO)
-
-y = bloque('el vigilante dejó de vigilar',
-           f"El watchdog que reparaba los estancamientos registró su última línea el "
-           f"{d8['watchdog_ultimo']} y hoy figura como inactivo. Además el servicio se "
-           'reinició hoy a las 19:00 UTC sin intervención — probablemente un reinicio de la '
-           'instancia. Nadie se enteró porque nadie está mirando.',
-           y, color=AMBAR)
+y = bloque('los datos no se borraron',
+           f"Siguen en disco: {d8['datos']}. Volver a encenderla es un `systemctl start`. Se "
+           'dejan a propósito hasta que alguien decida que la historia de la 8532 ya no hace '
+           'falta para nada.',
+           y, color=ORO)
 
 y = parrafo(
-    'La máquina tiene 12 GB ocupados de 30 GB. No hay urgencia de disco, pero una cadena que '
-    'avanza sola llena espacio para siempre y sin que nadie lo use.', y, tam=9.4)
+    f"La máquina tiene {d8['disco']} ocupados. Con la cadena parada, ese número ya no crece.",
+    y, tam=9.4)
 pie()
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -459,16 +482,17 @@ titulo('Quién tiene ORIGEN', AL - 40 * mm)
 hilo(AL - 47 * mm)
 
 y = parrafo(
-    'Se preguntó el saldo de ORIGEN a la cadena, dirección por dirección, sobre las 331 '
-    f"cuentas del génesis. Al bloque {mil(o['altura'])}: {o['direcciones']} direcciones tienen "
-    f"algo, de las cuales {o['contratos']} son contratos. Billeteras de verdad, {o['billeteras']}.",
+    'Se preguntó el saldo de ORIGEN a la cadena, dirección por dirección, sobre las '
+    f"{o['cuentas']} cuentas del génesis. Al bloque {mil(o['altura'])}: {o['billeteras']} "
+    f"direcciones tienen algo, y {o['contratos_con_origen']} de ellas son contratos. Después "
+    'del reinicio, ningún contrato guarda ORIGEN: todo lo que estaba dentro volvió al tesoro.',
     AL - 58 * mm)
 
 y -= 6
 cifra(str(o['billeteras']), 'billeteras con ORIGEN hoy', 18 * mm, y)
 cifra('4', 'concentran el 99,99998 % del total', 62 * mm, y)
-cifra(str(o['resto']), 'billeteras con el resto', 112 * mm, y, color=HUMO)
-cifra(o['resto_suma'], 'ORIGEN entre las 155', 152 * mm, y, color=HUMO)
+cifra(str(o['resto']), 'con su 1 ORIGEN de gas', 112 * mm, y, color=HUMO)
+cifra(o['recuperado'], 'ORIGEN recuperados al tesoro', 152 * mm, y, color=JADE)
 
 y -= 40
 sello('las cuatro principales', y)
@@ -478,41 +502,40 @@ y = tabla(['Dirección', 'Qué es', 'ORIGEN hoy'],
           y, anchos=[46 * mm, 74 * mm, 44 * mm])
 
 y -= 12
-gt = o['gasto_tesoro']
-y = bloque('las tres primeras nunca se han tocado',
+y = bloque('las tres primeras siguen sin tocarse',
            'Son asignaciones heredadas de la cadena anterior, de 250.000 millones cada una, '
-           'que el constructor del génesis preservó a propósito. Su saldo de hoy es EXACTO: '
-           'ni un decimal se ha movido desde el bloque cero.',
+           'que el reinicio preservó igual que el génesis original. Su saldo de hoy es EXACTO: '
+           'ni un decimal se ha movido. Mover el tesoro exige instrucción escrita de la Junta, '
+           'y el reinicio no lo era.',
            y, color=ORO)
 
-y = bloque('el tesoro ha movido 20 ORIGEN, y nada más',
-           f"Una sola transacción en toda la vida de la cadena: bloque {mil(gt['bloque'])}, "
-           f"{gt['valor']} ORIGEN a {gt['a'][:12]}…, con {gt['comision']} de comisión "
-           f"({gt['gas']}). Eso es TODO lo que ha salido del tesoro. "
-           'Ojo con el número redondo: el tesoro no empezó en 250.000 millones exactos sino en '
-           '249.999.982.618,07 — esos 17.382 de diferencia vienen heredados de la cadena '
-           'anterior, NO se gastaron aquí.',
+y = bloque('el tesoro subió, y por qué el número es redondo',
+           f"Pasó de {o['antes_tesoro']} a {o['principales'][3][2]}, o sea {o['recuperado']} "
+           'recuperados de contratos, pools y restos de prueba. Que caiga en un número tan '
+           'redondo no se buscó — es lo que queda al restar del billón las tres preservadas '
+           '(750.000 millones) y las 155 billeteras sembradas (155). Que cuadre exacto es la '
+           'señal de que las cuentas cierran.',
            y, color=JADE)
 
-y = bloque(f"las otras {o['resto']} billeteras suman {o['resto_suma']} ORIGEN",
-           f"De ellas, {o['con_uno']} tienen exactamente 1 ORIGEN y la mayor tiene {o['resto_mayor']}. "
-           'Ese 1 no es lo que esa persona posee: es la semilla de gas que el génesis dio a cada '
-           'dirección heredada para que nadie quedara congelado — alcanza para unas 210 '
-           'transferencias. Lo que la gente tiene de valor está en los tokens, no aquí.',
+y = bloque(f"las otras {o['resto']} billeteras tienen 1 ORIGEN cada una",
+           'Ni una más ni una menos: las que habían gastado gas se repusieron y las que tenían '
+           'de más se recortaron. Ese 1 no es lo que esa persona posee: es la semilla de gas '
+           'para que nadie quede congelado — alcanza para unas 210 transferencias. Lo que la '
+           'gente tiene de valor está en los tokens.',
            y, color=AMBAR)
 
-y = bloque('siete direcciones se han movido en diez días',
-           'El tesoro con su transferencia, quien la recibió, y cinco billeteras que gastaron '
-           'entre media milésima y un ORIGEN en comisiones. Eso es toda la actividad de la '
-           'cadena desde el bloque cero: ni un solo token ERC-20 ha cambiado de manos.',
-           y, color=AMBAR)
-
-y = bloque('y dos contratos que sí guardan ORIGEN de verdad',
-           f"Wrapped Origen ({o['wrapped'][0][:10]}…) guarda {o['wrapped'][1]} ORIGEN: es el "
-           'respaldo de los tokens envueltos que la gente tiene fuera, y por eso el génesis lo '
-           f"excluyó de la normalización. El de liquidez ({o['liquidez'][0][:10]}…) guarda "
-           f"{o['liquidez'][1]}. Un tercer contrato figura con saldo cero.",
+y = bloque('los tres contratos que guardaban ORIGEN quedaron en cero',
+           f"El wrapper WORIGEN ({o['wrapped'][0][:10]}…) tenía {o['wrapped'][2]} y el pool "
+           f"AUKA/WORIGEN ({o['pool'][0][:10]}…) {o['pool'][2]}; el contrato de liquidez "
+           f"({o['liquidez'][0][:10]}…), {o['liquidez'][2]}. Hoy los tres están a cero.",
            y, color=ORO)
+
+y = bloque('vaciar el wrapper era lo delicado',
+           'Su ORIGEN respalda los WORIGEN que la gente tiene fuera. Quitarle uno sin el otro '
+           'lo dejaba insolvente, así que se vaciaron los dos a la vez. Se comprobó antes en '
+           'un ensayo: depositando 0,10 ORIGEN emite exactamente 0,10 WORIGEN. Arranca '
+           'solvente desde cero y funciona.',
+           y, color=JADE)
 pie()
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -540,11 +563,18 @@ y = tabla(['Instancia', 'Región', 'Tipo', 'Estado'],
           DATOS['apagadas'], y, anchos=[52 * mm, 30 * mm, 26 * mm, 56 * mm])
 
 y -= 12
-y = bloque('node1 es el único que hace dos cosas',
-           'Corre Besu para la 5550 Y polygon-edge para la 8532, en la misma máquina t2.medium. '
-           'Es el nodo más pequeño de la flota y el único con doble carga. Si un día la 5550 '
-           'se pone lenta en un solo nodo, este es el sitio donde mirar primero.',
-           y, color=ORO)
+y = bloque('node1 ya no hace dos cosas',
+           'Hasta el 25 de agosto corría Besu para la 5550 Y polygon-edge para la 8532 en la '
+           'misma t2.medium. Con la 8532 parada, las siete máquinas hacen exactamente lo mismo: '
+           'un validador de la 5550 cada una.',
+           y, color=JADE)
+
+y = bloque('cada validador tiene su llave dentro del directorio de datos',
+           'En `/opt/og5550-real/nodo/key`, al lado de la base de la cadena. Cualquier '
+           'procedimiento que diga «vaciar el directorio de datos» tiene que decir también '
+           '«conservando key»: sin eso los siete nodos arrancan con identidades nuevas, '
+           'ninguno es validador, y la cadena no produce un solo bloque sin decir por qué.',
+           y, color=ROJO)
 pie()
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -556,12 +586,11 @@ titulo('Lo que hay que decidir', AL - 40 * mm)
 hilo(AL - 47 * mm)
 
 y = AL - 58 * mm
-y = bloque('1 · la 8532 no puede quedarse como está',
-           'Encendida y sin vigilancia es lo peor de las dos opciones: cuesta una máquina, no '
-           'sirve a nadie, y sigue siendo una dirección válida a la que alguien podría mandar '
-           'fondos por error. Apagarla con un respaldo del estado, o devolverle nodos y '
-           'vigilancia. Lo que no se sostiene es el punto medio de hoy.',
-           y, color=ROJO)
+y = bloque('1 · la 8532 · RESUELTO el 25-ago',
+           'Estaba encendida sin vigilancia, que era lo peor de las dos opciones. Se paró y se '
+           'deshabilitó, con sus datos intactos en disco. Queda decidir cuándo se borran esos '
+           'datos y cuándo se retira la máquina — eso todavía cuesta dinero al mes.',
+           y, color=JADE)
 
 y = bloque('2 · el contrato de staking sigue sin dueño',
            'Es un asunto abierto desde antes de este informe y no ha cambiado: el contrato no '
@@ -571,17 +600,27 @@ y = bloque('2 · el contrato de staking sigue sin dueño',
            y, color=ROJO)
 
 y = bloque('3 · la 5550 está sana y sin usar',
-           'En la muestra tomada no hubo NI UNA transacción en los últimos dos mil bloques. La '
-           'cadena funciona perfectamente y está vacía. Eso no es un fallo técnico —es el '
-           'estado normal de una red que todavía no tiene actividad— pero conviene no '
-           'confundir «sana» con «en uso» al presentarla.',
+           f"La cadena anterior registró {DATOS['c5550']['vieja_tx']} transacciones en "
+           f"{DATOS['c5550']['vieja_dias']} días. Funciona perfectamente y está vacía. Eso no "
+           'es un fallo técnico —es el estado normal de una red sin actividad todavía— pero '
+           'conviene no confundir «sana» con «en uso» al presentarla. Fue justamente lo que '
+           'hizo el reinicio barato: con gente moviendo dinero de verdad habría sido '
+           'impensable.',
            y, color=AMBAR)
 
-y = bloque('4 · la documentación decía cuatro validadores',
-           'La cadena tiene siete. La diferencia es a favor, pero un documento que se equivoca '
-           'a favor se equivoca igual, y el día que alguien calcule el quórum sobre el número '
-           'escrito va a sacar la cuenta mal.',
+y = bloque('4 · avisar a quien haya usado MetaMask · MENOR de lo que parecía',
+           'La red no hay que volver a agregarla: mismo chainId, misma URL, mismo símbolo. Y '
+           'los nonces se conservaron uno por uno, así que tampoco hace falta borrar datos de '
+           'actividad. Lo único que queda raro es el historial viejo de transacciones, que '
+           'apunta a hashes que ya no existen.',
            y, color=ORO)
+
+y = bloque('5 · lo que el reinicio enseñó, y hay que meter en los procedimientos',
+           'Un vigilante nuestro que reinicia el nodo cada tres minutos partió la red en dos '
+           'cadenas en el primer intento: hay que apagarlo ANTES de nada. Y comprobar la huella '
+           'del archivo de génesis no basta — hay que comprobar, después de arrancar, que los '
+           'siete nodos tengan el mismo bloque 0. Las dos cosas están ya en el plan.',
+           y, color=ROJO)
 
 y -= 4
 hilo(y)
