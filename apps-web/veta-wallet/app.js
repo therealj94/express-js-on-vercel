@@ -5376,7 +5376,7 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = 'd601c55175';
+  const VETA_V = '92a4e04571';
   const VETA_FECHA = '2026-08-25';
 
   const AET_V = '9fc8b5595b';
