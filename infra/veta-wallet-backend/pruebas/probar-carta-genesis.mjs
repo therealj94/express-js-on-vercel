@@ -35,14 +35,26 @@ ok('la versión de texto lleva el mismo enlace',
 ok('no manda a la raíz del sitio como si fuera lo mismo',
   !/href="https:\/\/app\.vetawallet\.com\/?"/.test(c.html))
 
-console.log('\nNo se vende lo que no está abierto\n')
-ok('avisa de que comprar y cambiar siguen en obra', /todavía están en obra/.test(todo))
+console.log('\nCada puerta se cuenta como es: abierta, o por abrir\n')
+ok('la tarjeta se ofrece como PEDIRLA, no como tenerla',
+  /podés solicitarla|Pedir tu tarjeta/i.test(todo))
+ok('no dice que la tarjeta ya la tenés', !/tu tarjeta ya está|ya tenés tu tarjeta/i.test(todo))
+ok('Ordenex aparece', /Ordenex/.test(todo))
+ok('y NUNCA sin decir que todavía no está',
+  /Ordenex[\s\S]{0,220}(muy pronto|todavía no está)/i.test(todo))
+ok('no invita a comprar en Ordenex como si se pudiera hoy',
+  !/comprá ahora|ya podés comprar y vender|entrá a comprar/i.test(todo))
+ok('PULSE2CHAT aparece', /PULSE2CHAT/.test(todo))
+
+/* El chat NO exige identidad verificada: en el relevo el gid es un dato
+   público que la persona declara. Si algún día alguien escribe que el Genesis
+   ID «abre» o «desbloquea» el chat, esta comprobación se pone roja — porque
+   sería mentira, y la persona lo descubre en treinta segundos. */
+ok('no dice que el Genesis ID desbloquee el chat',
+  !/(desbloque|abr[ie])[a-zé]*\s+(el\s+)?(chat|PULSE2CHAT)/i.test(todo))
+ok('avisa de que el cambio de activos sigue en obra', /todavía están en obra/.test(todo))
 ok('avisa de que la tarjeta no entra a Google Pay ni Apple Pay',
   /no entra a Google Pay ni a Apple Pay/.test(todo))
-ok('no ofrece el intercambio como si funcionara',
-  !/cambiá tus|intercambiá|comprá ORIGEN|invertí/i.test(todo))
-ok('sí ofrece la tarjeta, que es la puerta que de verdad se abre',
-  /tarjeta Visa/i.test(todo))
 
 console.log('\nLa regla de cobre (Decisión 4 de la Junta)\n')
 ok('nunca dice «respaldado»', !/respaldad[oa]/i.test(todo.replace(/frase de respaldo/gi, '')))

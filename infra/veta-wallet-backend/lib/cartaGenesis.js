@@ -16,20 +16,25 @@
  *
  * LO QUE SE PUEDE PROMETER, Y LO QUE NO
  *
- * Se comprobó en el código antes de escribir una línea. Hoy la identidad
- * aprobada abre exactamente dos puertas:
+ * Se comprobó en el código antes de escribir una línea, puerta por puerta:
  *
- *   · la tarjeta Visa  (controller/cardController.js, línea 51)
- *   · el intercambio   (controller/swapController.js, línea 129)
+ *   · LA TARJETA VISA — sí la abre. cardController.js:51 exige
+ *     kycStatus === "approved" para emitirla. Y se dice como es: la
+ *     identidad te deja PEDIRLA, no te la pone en la mano.
  *
- * De esas dos, la tarjeta está viva y el intercambio sigue en obra. Así que
- * la carta ofrece la tarjeta y NO ofrece el intercambio. Prometer una puerta
- * que está cerrada consigue que la persona entre, no la encuentre, y no
- * vuelva.
+ *   · PULSE2CHAT — el chat NO la exige. En el relevo (infra/mensajes) el
+ *     `gid` es un identificador PUBLICO que la persona declara, como el
+ *     nombre; no hay ninguna comprobación de identidad verificada para
+ *     escribir. Así que la carta NO dice que el Genesis ID abra el chat.
+ *     Dice lo que sí es verdad: que ahí tu Genesis ID es cómo te encuentran,
+ *     sin dictar una dirección de cuarenta caracteres.
  *
- * Lo que viene después —que todos tengamos identidad para movernos dentro del
- * sistema— se cuenta como lo que es: lo que viene. En futuro y sin fecha,
- * porque no la hay.
+ *   · ORDENEX — todavía no está. Comprar y vender llegan, y se dice en
+ *     futuro y sin fecha porque no la hay.
+ *
+ * Esa distinción —lo que abre, lo que identifica, lo que viene— es la carta
+ * entera. Prometer una puerta cerrada consigue que la persona entre, no la
+ * encuentre, y no vuelva.
  *
  * EL FONDO DE GALAXIA, SIN UNA SOLA IMAGEN
  *
@@ -97,24 +102,43 @@ const ESTRELLAS = [
     `radial-gradient(${r}px ${r}px at ${x} ${y}, rgba(255,255,255,${a}), rgba(255,255,255,0))`)
   .join(",");
 
+/* Todas las manchas viven ARRIBA —de 0% a 30% de la altura— porque ahí solo
+   hay título. Más abajo empieza el texto que hay que leer, y ahí manda el
+   color sólido. Los radios son chicos en vertical (18%–26%) por lo mismo: en
+   una tarjeta que mide más de mil píxeles de alto, un radio del 80% teñiría
+   la carta entera. */
 const NEBULOSAS = [
-  // la vía láctea: una elipse ancha y aplastada cruzando en diagonal. Va
-  // primero de las manchas para que quede por encima de las otras.
-  "radial-gradient(140% 34% at 34% 40%, rgba(196,214,230,.10), rgba(3,12,18,0))",
+  // la vía láctea: una elipse ancha y aplastada. Va primero de las manchas
+  // para que quede por encima de las otras.
+  "radial-gradient(150% 20% at 36% 18%, rgba(196,214,230,.11), rgba(3,12,18,0))",
   // el resplandor dorado de la casa, arriba a la derecha
-  "radial-gradient(120% 90% at 84% 4%, rgba(201,169,97,.30), rgba(3,12,18,0))",
-  // un jade tenue abajo a la izquierda
-  "radial-gradient(110% 80% at 8% 98%, rgba(62,217,160,.20), rgba(3,12,18,0))",
-  // el morado hondo del centro, que es lo que la vuelve galaxia y no fondo
-  "radial-gradient(100% 78% at 46% 54%, rgba(98,72,176,.40), rgba(3,12,18,0))",
+  "radial-gradient(95% 22% at 86% 2%, rgba(201,169,97,.34), rgba(3,12,18,0))",
+  // un jade tenue entrando por la izquierda
+  "radial-gradient(80% 18% at 4% 26%, rgba(62,217,160,.20), rgba(3,12,18,0))",
+  // el morado hondo, que es lo que la vuelve galaxia y no fondo
+  "radial-gradient(110% 26% at 48% 12%, rgba(98,72,176,.42), rgba(3,12,18,0))",
 ].join(",");
 
-/* El cielo va MAS OSCURO que el resto de la carta (#030C12 contra #062A2A):
-   así el bloque se lee como una ventana al espacio y no como otro panel del
-   mismo color. Y si los degradados no se pintan —Outlook de escritorio—, lo
-   que queda es ese azul casi negro con el texto claro encima: sigue siendo
-   legible, que es lo único que no se puede perder. */
+/* La galaxia es el fondo de la TARJETA ENTERA, no de una banda de arriba.
+   Las nebulosas se concentran en la mitad de arriba —donde solo hay título,
+   que va en blanco y grande— y de la mitad para abajo manda el color sólido,
+   que es donde vive el texto que hay que leer. Un fondo bonito que deja el
+   texto a medio leer no es un fondo bonito.
+
+   Si los degradados no se pintan —Outlook de escritorio, que dibuja con el
+   motor de Word— queda ese azul casi negro con el texto claro encima: se ve
+   distinto, nunca ilegible. Eso es lo único que no se puede perder. */
 const CIELO = `background-color:#030C12;background-image:${ESTRELLAS},${NEBULOSAS};`;
+
+/* Los colores que se le pasan al marco de la casa. La forma, el oro del
+   cintillo, el pie y el aviso de suplantación no se tocan: siguen siendo los
+   de todas las cartas. */
+const PIEL = {
+  fuera: "#01060A",
+  tarjeta: CIELO,
+  texto: "#CFE0DC",
+  tenue: "#7C9490",
+};
 
 const H = (t) =>
   `<div style="margin:26px 0 10px;font:700 17px/1.35 Georgia,serif;color:#F3ECD9;">${esc(t)}</div>`;
@@ -151,25 +175,22 @@ mayores de 18 años. Bases: ${BASES}
 `;
 
   const html = marco("Tu Genesis ID", `
-  <!-- ── el cielo ─────────────────────────────────────────────────────────
-       role="presentation" para que un lector de pantalla no lo anuncie como
-       una tabla de datos: es un fondo, no información. -->
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-         style="margin:16px 0 6px;border-radius:12px;border:1px solid rgba(201,169,97,.22);">
-    <tr><td align="center" style="${CIELO}padding:58px 24px 52px;border-radius:12px;">
-      <div style="font:600 11px/1 Georgia,serif;letter-spacing:.34em;text-transform:uppercase;color:#C9A961;">
-        Genesis ID
-      </div>
-      <div style="margin-top:18px;font:400 32px/1.22 Georgia,serif;color:#FFFFFF;">
-        Tu nombre<br>en la cadena
-      </div>
-      <div style="margin-top:16px;font:400 14px/1.6 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#BFD4D0;">
-        Una vez. Unos minutos. Y ya estás adentro.
-      </div>
-    </td></tr>
-  </table>
+  <!-- El título va DIRECTO sobre la galaxia de la tarjeta: no hay recuadro
+       aparte. Centrado y con aire, que es lo que hace que el cielo se lea como
+       cielo y no como un fondo cualquiera detrás de un párrafo. -->
+  <div align="center" style="padding:26px 0 40px;">
+    <div style="font:600 11px/1 Georgia,serif;letter-spacing:.34em;text-transform:uppercase;color:#C9A961;">
+      Genesis ID
+    </div>
+    <div style="margin-top:18px;font:400 32px/1.22 Georgia,serif;color:#FFFFFF;">
+      Tu nombre<br>en la cadena
+    </div>
+    <div style="margin-top:16px;font:400 14px/1.6 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#BFD4D0;">
+      Una vez. Unos minutos. Y se te abre la casa entera.
+    </div>
+  </div>
 
-  <p style="margin:22px 0 14px;font-size:16px;color:#F3ECD9;">${esc(saludo(nombre))}</p>
+  <p style="margin:0 0 14px;font-size:16px;color:#F3ECD9;">${esc(saludo(nombre))}</p>
 
   <p style="margin:0 0 12px;">
     Tu billetera en Orden Global ya existe. Está ahí, con tu nombre, con tu
@@ -182,24 +203,22 @@ mayores de 18 años. Bases: ${BASES}
 
   ${H("Qué es")}
   <p style="margin:0 0 12px;">
-    Es tu identidad dentro del sistema. No es un trámite: es lo que hace que la
-    cadena sepa que detrás de esa dirección hay una persona, y que esa persona
-    sos vos. Se hace una sola vez y queda tuya.
+    Es tu identidad dentro del sistema, y es <strong style="color:#F3ECD9;">una sola
+    llave para toda la casa</strong>. Te verificás una vez y quedás verificado en
+    todo el ecosistema — no hay que volver a hacerlo en cada lugar. No es un
+    trámite: es lo que hace que la cadena sepa que detrás de esa dirección hay
+    una persona, y que esa persona sos vos.
   </p>
 
-  ${H("Por qué ahora")}
-  <p style="margin:0 0 12px;">
-    Porque lo que viene después necesita que la tengamos todos. Un sistema donde
-    cada quien responde por lo suyo no se construye con direcciones anónimas: se
-    construye con personas que dieron la cara. Cuando eso se abra, los que ya
-    tengan su Genesis ID van a entrar caminando.
-  </p>
-
-  ${H("Qué se te abre hoy mismo")}
-  ${punto("La tarjeta Visa.",
-    "Con la identidad aprobada se te puede emitir. Gasta directo de tu saldo, en cualquier tienda en línea del mundo que acepte Visa, sin cuenta bancaria.")}
-  ${punto("Tu lugar guardado.",
-    "Lo que se abra después no te va a agarrar haciendo cola.")}
+  ${H("Todo lo que se te abre con ella")}
+  ${punto("Pedir tu tarjeta Visa.",
+    "Con la identidad aprobada ya podés solicitarla. Gasta directo de tu saldo, en cualquier tienda en línea del mundo que acepte Visa, sin cuenta bancaria y sin ir a ninguna sucursal.")}
+  ${punto("PULSE2CHAT.",
+    "El chat del ecosistema, cifrado de punta a punta. Tu Genesis ID es tu nombre ahí: es como te encuentran los tuyos, sin que nadie tenga que dictar una dirección de cuarenta caracteres.")}
+  ${punto("Ordenex, muy pronto.",
+    "La casa de cambio de Orden Global: comprar y vender. Todavía no está abierta — y cuando abra, va a pedir identidad verificada. El que ya la tenga entra caminando.")}
+  ${punto("Y lo que siga.",
+    "Cada cosa nueva de la casa va a reconocer tu Genesis ID desde el primer día. No hay que volver a verificarse nunca.")}
 
   ${botonCorreo("Entrar y hacer mi Genesis ID", IR)}
 
@@ -210,14 +229,15 @@ mayores de 18 años. Bases: ${BASES}
   </p>
 
   <p style="margin:26px 0 0;padding-top:16px;border-top:1px solid rgba(243,236,217,.10);font-size:13px;line-height:1.6;color:#7E938D;">
-    Con todas las letras: comprar y cambiar activos dentro de la billetera
-    todavía están en obra, y la tarjeta es virtual —para compras en línea—, así
-    que todavía no entra a Google Pay ni a Apple Pay. Preferimos decírtelo ahora
-    a que lo descubras después.
+    Con todas las letras, para que nada te agarre de sorpresa: Ordenex y el
+    cambio de activos dentro de la billetera todavía están en obra, y la tarjeta
+    es virtual —para compras en línea—, así que todavía no entra a Google Pay ni
+    a Apple Pay. Preferimos decírtelo ahora a que lo descubras después.
   </p>
   ${sorteoHtml}`,
   `Te escribimos porque tenés una billetera en Veta Wallet.
-   <a href="${baja}" style="color:#7E938D;">Si no querés recibir más correos como este, dale de baja acá</a>.`);
+   <a href="${baja}" style="color:#7E938D;">Si no querés recibir más correos como este, dale de baja acá</a>.`,
+  PIEL);
 
   const texto = `${saludo(nombre)}
 
@@ -228,23 +248,24 @@ Falta una sola cosa, y solo la podés hacer vos: tu Genesis ID.
 
 QUE ES
 
-Es tu identidad dentro del sistema. No es un trámite: es lo que hace que la
-cadena sepa que detrás de esa dirección hay una persona, y que esa persona sos
-vos. Se hace una sola vez y queda tuya.
+Es tu identidad dentro del sistema, y es una sola llave para toda la casa. Te
+verificás una vez y quedás verificado en todo el ecosistema — no hay que
+volver a hacerlo en cada lugar. No es un trámite: es lo que hace que la cadena
+sepa que detrás de esa dirección hay una persona, y que esa persona sos vos.
 
-POR QUE AHORA
+TODO LO QUE SE TE ABRE CON ELLA
 
-Porque lo que viene después necesita que la tengamos todos. Un sistema donde
-cada quien responde por lo suyo no se construye con direcciones anónimas: se
-construye con personas que dieron la cara. Cuando eso se abra, los que ya
-tengan su Genesis ID van a entrar caminando.
-
-QUE SE TE ABRE HOY MISMO
-
-- La tarjeta Visa. Con la identidad aprobada se te puede emitir. Gasta directo
-  de tu saldo, en cualquier tienda en línea del mundo que acepte Visa, sin
-  cuenta bancaria.
-- Tu lugar guardado. Lo que se abra después no te va a agarrar haciendo cola.
+- Pedir tu tarjeta Visa. Con la identidad aprobada ya podés solicitarla. Gasta
+  directo de tu saldo, en cualquier tienda en línea del mundo que acepte Visa,
+  sin cuenta bancaria y sin ir a ninguna sucursal.
+- PULSE2CHAT. El chat del ecosistema, cifrado de punta a punta. Tu Genesis ID
+  es tu nombre ahí: es como te encuentran los tuyos, sin que nadie tenga que
+  dictar una dirección de cuarenta caracteres.
+- Ordenex, muy pronto. La casa de cambio de Orden Global: comprar y vender.
+  Todavía no está abierta — y cuando abra, va a pedir identidad verificada. El
+  que ya la tenga entra caminando.
+- Y lo que siga. Cada cosa nueva de la casa va a reconocer tu Genesis ID desde
+  el primer día. No hay que volver a verificarse nunca.
 
 Entrar y hacer mi Genesis ID: ${IR}
 
@@ -252,10 +273,10 @@ Vas a necesitar tu documento de identidad y unos minutos de buena luz. Nada
 más. El enlace te lleva directo a la pantalla; si tenés que entrar primero, te
 lleva ahí y después sigue solo.
 
-Con todas las letras: comprar y cambiar activos dentro de la billetera todavía
-están en obra, y la tarjeta es virtual —para compras en línea—, así que
-todavía no entra a Google Pay ni a Apple Pay. Preferimos decírtelo ahora a que
-lo descubras después.
+Con todas las letras, para que nada te agarre de sorpresa: Ordenex y el cambio
+de activos dentro de la billetera todavía están en obra, y la tarjeta es
+virtual —para compras en línea—, así que todavía no entra a Google Pay ni a
+Apple Pay. Preferimos decírtelo ahora a que lo descubras después.
 ${sorteoTexto}
 —
 Orden Global Corp · Próspera, Roatán, Honduras

@@ -173,24 +173,39 @@ const esc = (s) => String(s == null ? "" : s)
  *   Existe para el enlace de baja de los correos de aviso: la baja tiene que
  *   ir en el pie de la propia carta, no en una página aparte que haya que
  *   buscar, y el pie lo arma este marco y no cada plantilla.
+ * @param {{tarjeta?: string, fuera?: string, texto?: string, tenue?: string}} [piel]
+ *   Cambia los colores del marco SIN cambiar su forma. Existe para una sola
+ *   carta —la del Genesis ID, que lleva la tarjeta entera de galaxia— y por
+ *   eso son tres campos y no un tema entero: la estructura, el oro del
+ *   cintillo, el pie y el aviso de suplantación siguen siendo los mismos en
+ *   todas las cartas de la casa. Una carta que no se parece a las demás le
+ *   enseña a la gente que el aspecto no significa nada, que es justo lo que
+ *   aprovecha una suplantación.
+ *
+ *   Sin este argumento el marco sale exactamente igual que siempre, así que
+ *   las cartas de confirmar cuenta y recuperar contraseña no se enteran.
  */
-export function marco(titulo, dentro, pie = "") {
+export function marco(titulo, dentro, pie = "", piel = {}) {
+  const fuera = piel.fuera || "#14100C";
+  const tarjeta = piel.tarjeta || "background:#1E1811;";
+  const texto = piel.texto || "#D8CFBE";
+  const tenue = piel.tenue || "#9A8C76";
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(titulo)}</title></head>
-<body style="margin:0;padding:0;background:#14100C;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#14100C;padding:28px 12px;">
+<body style="margin:0;padding:0;background:${fuera};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${fuera};padding:28px 12px;">
 <tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#1E1811;border:1px solid rgba(201,169,97,.25);border-radius:14px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;${tarjeta}border:1px solid rgba(201,169,97,.25);border-radius:14px;">
 <tr><td style="padding:30px 30px 8px;">
   <div style="font:600 12px/1 Georgia,serif;letter-spacing:.26em;text-transform:uppercase;color:#C9A961;">Veta Wallet · Orden Global</div>
 </td></tr>
-<tr><td style="padding:0 30px 30px;font:400 15px/1.62 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#D8CFBE;">
+<tr><td style="padding:0 30px 30px;font:400 15px/1.62 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:${texto};">
 ${dentro}
-  <div style="margin-top:30px;padding-top:18px;border-top:1px solid rgba(243,236,217,.10);font-size:12px;line-height:1.6;color:#9A8C76;">
+  <div style="margin-top:30px;padding-top:18px;border-top:1px solid rgba(243,236,217,.10);font-size:12px;line-height:1.6;color:${tenue};">
     Orden Global Corp · Próspera, Roatán, Honduras<br>
-    <strong style="color:#D8CFBE;">Nunca te vamos a pedir por correo tu contraseña ni tu frase de respaldo.</strong>
+    <strong style="color:${texto};">Nunca te vamos a pedir por correo tu contraseña ni tu frase de respaldo.</strong>
     Si un mensaje a nombre nuestro te las pide, no es nuestro.${pie ? `<br><br>${pie}` : ""}
   </div>
 </td></tr>
