@@ -112,7 +112,7 @@ y nunca llegaban a tocarse. Ahora el pie se ancla a la caja real de
 `#at-boton`, y se comprobó que sabe ponerse roja: sin el arreglo dice «el
 centro de Mandar es DE AIR TOUCH» en las tres pantallas.
 
-### B · En el Núcleo de respaldo, tocar una esfera no entra
+### B · En el Núcleo de respaldo, tocar una esfera no entra · ARREGLADO
 
 Reproducido limpio, sin un solo error de JavaScript:
 
@@ -128,9 +128,37 @@ ponerse**, así que algo corta antes.
 **Cuánto importa, dicho con honestidad:** el Núcleo de esferas **ya no es la
 pantalla principal**. Desde que AETHERION monta la escena 3D del Inicio, esas
 esferas sólo se pintan si el bundle no carga — y en producción carga
-(`aetherion.js`, 321.822 bytes, HTTP 200). O sea que es un bug **en la red de
+(`aetherion.js`, 321.822 bytes, HTTP 200). O sea que era un bug **en la red de
 seguridad**, no en el camino que ve la gente. Pero es exactamente la red que
-tiene que funcionar el día que el bundle falle, y hoy no funciona.
+tiene que funcionar el día que el bundle falle.
+
+**La causa, medida evento por evento:**
+
+```
+pointerdown -> esfera wallet
+pointerup   -> CANVAS          ← la esfera se corrió bajo el dedo
+click       -> cerebro         (ancestro común: el onclick nunca se entera)
+```
+
+Las esferas flotan sin parar; un toque son dos momentos separados por ochenta
+o cien milisegundos. Si la esfera se mueve en ese rato, el navegador manda el
+`click` al ancestro común de los dos targets, y el `onclick` del botón no lo
+recibe. Con «reducir movimiento» las esferas se quedan quietas y todo
+funcionaba — por eso se veía sólo a veces y sólo en algunas máquinas, que es
+la peor forma de romperse: quien lo sufre parece que toca mal.
+
+**Arreglado.** Se recuerda qué esfera recibió el APRETÓN y se abre esa al
+soltar: la intención está en el apretón, y dónde termine el dedo es cosa de la
+animación, no de la persona. Con dos cuidados — si se soltó encima de la misma
+esfera no se hace nada (el `click` nativo llega solo y se entraría dos veces),
+y se mira **cuánto se alejó el dedo como máximo** durante todo el gesto, no
+dónde terminó, para que arrastrar la constelación y volver al punto de partida
+siga sin abrir nada.
+
+**Una cosa que corregí sobre la marcha:** la primera versión descartaba los
+gestos de más de 600 ms, y eso dejaba fuera a quien toca despacio. Una
+pulsación larga y quieta es un toque, no un jalón. El tiempo se quitó; la
+distancia máxima hace el trabajo mejor y sin castigar a nadie por ir lento.
 
 ---
 
@@ -191,8 +219,11 @@ leyendo la cadena NUEVA sin que hubiera que tocarle nada.
 | `apps-web` (raíz) y las otras casas | 11 | 1 |
 | **Total** | **45** | **1** |
 
-El único rojo es `probar-nucleo-profundidad`, y está rojo **porque el bug B es
-real**. Un test rojo que señala un bug de verdad está haciendo su trabajo.
+El único rojo era `probar-nucleo-profundidad`, y estaba rojo **porque el bug B
+era real**. Con el bug arreglado quedó en verde, y se le sumaron dos pruebas
+nuevas: `probar-airtouch-chat` y `probar-esfera-toque`. De las dos se comprobó
+que saben ponerse rojas sin su arreglo — una prueba que no sabe fallar no
+comprueba nada.
 
 ---
 
@@ -218,9 +249,7 @@ usar, que se cobran igual.
 ## Lo que queda
 
 1. ~~Bug A · el botón de AIR TOUCH sobre el «Mandar» del chat.~~ **Hecho.**
-2. **Bug B · entrar por la esfera con animación.** Está en el respaldo, así que
-   no corre prisa, pero es la red que tiene que sostener el día que Aetherion
-   falle.
+2. ~~Bug B · entrar por la esfera con animación.~~ **Hecho.**
 3. **La 8532** está parada de verdad por primera vez. Queda decidir cuándo se
    borran sus 2,6 GB y cuándo se retira la máquina, que cuesta al mes.
 4. **La tarea #31 se puede cerrar**: las solicitudes de amistad están hechas.

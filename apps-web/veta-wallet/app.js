@@ -5354,6 +5354,74 @@ const VETA = (() => {
     entrarPorLaEsfera(id, () => vista(m.va));
   }
 
+  /* ── EL TOQUE QUE SE CAÍA ENTRE APRETAR Y SOLTAR ──────────────────────────
+   *
+   * Las esferas del Núcleo FLOTAN: cada una con su vuelta y su desfase, vivas
+   * desde el primer fotograma. Eso es el diseño, y está bien. Lo que no estaba
+   * bien es lo que le hacía al dedo.
+   *
+   * Un toque son dos momentos, y entre los dos pasan ochenta o cien
+   * milisegundos. Si la esfera se corre en ese rato —y se corre, porque nunca
+   * está quieta— el `pointerup` cae en otra cosa: en el lienzo de estrellas
+   * que hay detrás. Y cuando apretar y soltar ocurren sobre elementos
+   * distintos, el navegador NO le manda el `click` a ninguno de los dos: se lo
+   * manda al ancestro común. El `onclick` del botón nunca se entera.
+   *
+   * Medido, no supuesto:
+   *     pointerdown -> esfera wallet
+   *     pointerup   -> CANVAS
+   *     click       -> cerebro          (y nadie abre nada)
+   *
+   * Con «reducir movimiento» las esferas se quedan quietas y los tres caen en
+   * la esfera, que es por lo que esto se veía sólo a veces y sólo en algunas
+   * máquinas — la peor forma de romperse, porque quien lo sufre parece que
+   * está tocando mal.
+   *
+   * Aquí se rescata: se recuerda qué esfera recibió el APRETÓN y se abre esa
+   * al soltar. La intención está en el apretón; dónde termine el dedo es
+   * cosa de la animación, no de la persona.
+   *
+   * Dos cuidados:
+   *  · si soltó ENCIMA de la misma esfera, no se hace nada — el `click` nativo
+   *    va a llegar solo, y meterse aquí abriría dos veces;
+   *  · un jalón no es un toque. Se mira CUÁNTO SE ALEJÓ EL DEDO como máximo
+   *    durante todo el gesto, no dónde terminó: quien arrastra la constelación
+   *    y vuelve al punto de partida antes de soltar estaba arrastrando, no
+   *    tocando, y el punto final solo no sabría distinguirlo.
+   *
+   * No se mira el TIEMPO a propósito. La primera versión descartaba los
+   * gestos de más de 600ms, y eso dejaba fuera a quien toca despacio —una
+   * pulsación larga y quieta es un toque, no un jalón—. Quien va lento no
+   * tiene por qué pelearse con la pantalla.
+   */
+  const TOQUE_LEJOS = 12;      // px que puede correrse el dedo y seguir siendo toque
+  let esferaApretada = null;
+
+  document.addEventListener('pointerdown', (ev) => {
+    const el = ev.target.closest?.('.nu-mundo[data-mundo]');
+    esferaApretada = el
+      ? { el, id: el.dataset.mundo, x: ev.clientX, y: ev.clientY, lejos: 0 }
+      : null;
+  }, true);
+
+  document.addEventListener('pointermove', (ev) => {
+    const t = esferaApretada;
+    if (!t) return;
+    t.lejos = Math.max(t.lejos, Math.hypot(ev.clientX - t.x, ev.clientY - t.y));
+  }, true);
+
+  document.addEventListener('pointerup', (ev) => {
+    const t = esferaApretada;
+    esferaApretada = null;
+    if (!t) return;
+    if (ev.target.closest?.('.nu-mundo[data-mundo]') === t.el) return;
+    const lejos = Math.max(t.lejos, Math.hypot(ev.clientX - t.x, ev.clientY - t.y));
+    if (lejos > TOQUE_LEJOS) return;
+    nuAbrir(t.id);
+  }, true);
+
+  document.addEventListener('pointercancel', () => { esferaApretada = null; }, true);
+
   /* ── AETHERION · el web OS del Inicio ─────────────────────────────────────
    *
    * La galaxia 3D que trajo José (React + Three, compilada a un bundle
