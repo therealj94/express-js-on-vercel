@@ -98,8 +98,90 @@ const procesarBloque = async (currentBlock) => {
   }
 };
 
+/* ¿La cadena de ahí fuera es la misma que la que hay indexada?
+ *
+ * ══ POR QUE HACE FALTA PREGUNTARLO ══════════════════════════════════════════
+ *
+ * El 25 de agosto la 5550 se reinicio con un genesis nuevo. El explorador se
+ * quedo mudo y nadie lo noto en el acto, porque por fuera parecia sano: la
+ * altura la lee del RPC y salia bien.
+ *
+ * Lo que pasaba estaba aqui abajo. La marca de progreso decia 92.834 -la punta
+ * de la cadena muerta- y la cadena nueva iba por 1.500. Como `desde > punta`,
+ * el indexador se daba por adelantado y volvia sin hacer nada. No habria
+ * indexado un solo bloque hasta que la cadena nueva pasara los 92.834, o sea
+ * diez dias y medio despues. Mientras tanto servia las 23 transacciones de una
+ * cadena que ya no existe, apuntando a bloques que nadie puede abrir.
+ *
+ * ══ COMO SE PREGUNTA ════════════════════════════════════════════════════════
+ *
+ * Por el hash del bloque CERO, que es la huella de la cadena entera: dos
+ * cadenas distintas no pueden compartirlo. Comparar alturas no bastaria —una
+ * cadena reiniciada acaba pasando la altura vieja y desde ahi el enredo seria
+ * silencioso y permanente—.
+ *
+ * Cuesta una llamada al nodo por vuelta. Es barato al lado de servir datos de
+ * una cadena que se murio.
+ */
+const mismaCadena = async () => {
+  const cero = await web3.eth.getBlock(0);
+  const guardado = await Block.findOne({ number: "0" }).lean();
+  /* En la duda NO se borra. Solo se declara «otra cadena» cuando hay dos
+     hashes de verdad y son distintos: si al nodo se le escapa el bloque cero,
+     o si lo guardado esta a medias, la respuesta es «la misma» y no se toca
+     nada. Equivocarse hacia el borrado costaria tirar una base buena; hacia el
+     otro lado, esperar a la vuelta siguiente. */
+  if (guardado && guardado.hash && cero && cero.hash) {
+    return String(guardado.hash).toLowerCase() === String(cero.hash).toLowerCase();
+  }
+  if (guardado) return true;
+  // Sin bloque cero guardado no hay con que comparar el hash. Se cae al
+  // criterio pobre pero util: lo indexado tiene que caber en la cadena de hoy.
+  const doc = await Progreso.findOne({ clave: "ultimoBloque" });
+  if (!doc) return true;
+  return Number(doc.valor) <= Number(await web3.eth.getBlockNumber());
+};
+
+/* Lo indexado pertenece a otra cadena: se tira entero.
+   Se borra TODO y no solo la marca de progreso. Dejar los bloques y las
+   transacciones viejas mezclados con los nuevos daria un explorador que
+   responde a todo y miente en la mitad, que es peor que uno vacio. */
+const olvidarLaCadenaVieja = async () => {
+  const antes = {
+    bloques: await Block.estimatedDocumentCount(),
+    transacciones: await Transaction.estimatedDocumentCount(),
+  };
+  await Block.deleteMany({});
+  await Transaction.deleteMany({});
+  await Address.deleteMany({});
+  await Token.deleteMany({});
+  await Progreso.deleteMany({ clave: "ultimoBloque" });
+  console.log(
+    `[ogscan] la cadena no es la que estaba indexada: se borran ${antes.bloques} ` +
+    `bloques y ${antes.transacciones} transacciones viejas, y se indexa desde cero`
+  );
+};
+
+/* UNA VUELTA A LA VEZ.
+ *
+ * El temporizador dispara cada 15 s sin preguntar si la anterior termino. Casi
+ * siempre da igual —una vuelta normal tarda menos— pero cuando una tarda mas,
+ * dos pasadas corren a la vez sobre los mismos bloques: trabajo doble contra
+ * el nodo y contra Mongo, y la marca de progreso puede irse hacia atras porque
+ * la vuelta lenta la escribe despues que la rapida.
+ *
+ * Se vio al borrar la cadena vieja: tirar 92.838 bloques tardo mas de 15 s, y
+ * el registro enseño el mensaje de borrado DOS veces y `indexados 0..149` otras
+ * dos. Los upserts hicieron que no se rompiera nada, pero eso fue suerte, no
+ * diseño.
+ */
+let vueltaEnCurso = false;
+
 const revisarNuevosBloques = async () => {
+  if (vueltaEnCurso) return;
+  vueltaEnCurso = true;
   try {
+    if (!(await mismaCadena())) await olvidarLaCadenaVieja();
     const punta = Number(await web3.eth.getBlockNumber());
     const doc = await Progreso.findOne({ clave: "ultimoBloque" });
     // Sin marca previa se empieza por el principio: asi el explorador se pone
@@ -122,6 +204,11 @@ const revisarNuevosBloques = async () => {
     }
   } catch (error) {
     console.error("Error al revisar bloques:", error);
+  } finally {
+    // En `finally` y no al final del `try`: si la vuelta revienta, la bandera
+    // tiene que soltarse igual. Si no, un fallo suelto dejaria el indexador
+    // callado para siempre y por fuera se veria sano.
+    vueltaEnCurso = false;
   }
 };
 
