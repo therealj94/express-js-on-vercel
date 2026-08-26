@@ -159,11 +159,17 @@ const TXT = {
 const TOPE_ADJUNTO = 8_000_000;
 
 // El explorador de la cadena. El comprobante no se cree a sí mismo: enseña el
-// hash y lleva a donde cualquiera puede comprobarlo por su cuenta. La URL
-// sale de expoConfig.extra —igual que la del relevo en mensajes.js— con el
-// testnet solo como valor por defecto: el día que la cadena salga de testnet
-// basta cambiar app.json y ningún comprobante viejo queda con el enlace roto.
-const EXPLORADOR = ((Constants.expoConfig?.extra || {}).exploradorTx || 'https://testnet.ordenscan.com/tx/');
+// hash y lleva a donde cualquiera puede comprobarlo por su cuenta. La URL sale
+// de expoConfig.extra —igual que la del relevo en mensajes.js— y el valor por
+// defecto está aquí solo por si extra viniera vacío.
+//
+// Estuvo apuntando a testnet.ordenscan.com, que servía el explorador VIEJO: la
+// cadena 8532, muerta desde el reinicio a la 5550. Cada comprobante llevaba a
+// un sitio donde su transacción no existe. Cambiarlo aquí arregla las
+// instalaciones nuevas; los teléfonos que ya están instalados no leen este
+// archivo hasta que la persona actualice, así que el dominio viejo quedó
+// redirigido a ordenscan.com conservando la ruta. Los dos lados, no uno.
+const EXPLORADOR = ((Constants.expoConfig?.extra || {}).exploradorTx || 'https://ordenscan.com/tx/');
 
 // La libreta del chat (og.contactos) se mudó a ./contactos.js: antes solo se
 // ESCRIBÍA desde aquí y ninguna pantalla la leía. Ahora esta pantalla la lee
