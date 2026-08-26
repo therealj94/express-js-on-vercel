@@ -25,7 +25,7 @@
 //|  inteligente · limpieza de variables globales · log de errores   |
 //+------------------------------------------------------------------+
 #property copyright   "ORO FINAL"
-#property version     "2.70"
+#property version     "2.80"
 #property description "Bot de scalping XAUUSD: confluencia 0-100, gestión 50/50, salida inteligente y protecciones de cuenta"
 
 #include <Trade/Trade.mqh>
@@ -187,7 +187,7 @@ int MinsToNextKz()
 void StatusIdle(string motivo)
 {
    int m = MinsToNextKz();
-   Comment("🥇 ORO FINAL v2.70 · ", _Symbol, " ", EnumToString(_Period),
+   Comment("🥇 ORO FINAL v2.80 · ", _Symbol, " ", EnumToString(_Period),
            "\n✅ BOT ACTIVO — ", motivo,
            "\n🕐 Hora del servidor: ", TimeToString(TimeCurrent(), TIME_MINUTES),
            "\n🔥 Killzones: ", InpLdnStart, "-", InpLdnEnd, "  y  ", InpNyStart, "-", InpNyEnd,
@@ -439,42 +439,41 @@ void CountToday(int &nTrades, int &nLosses)
    int total = HistoryDealsTotal();
    double posProfit[];
    long   posIds[];
-   long   inIds[];
+
+   // PASO 1 — posiciones ABIERTAS por este bot (los deals de entrada sí llevan el magic)
    for(int i = 0; i < total; i++)
    {
       ulong dTicket = HistoryDealGetTicket(i);
       if(HistoryDealGetInteger(dTicket, DEAL_MAGIC) != InpMagic) continue;
-      long entry = HistoryDealGetInteger(dTicket, DEAL_ENTRY);
-      long pid   = HistoryDealGetInteger(dTicket, DEAL_POSITION_ID);
-      if(entry == DEAL_ENTRY_IN)
+      if(HistoryDealGetInteger(dTicket, DEAL_ENTRY) != DEAL_ENTRY_IN) continue;
+      long pid = HistoryDealGetInteger(dTicket, DEAL_POSITION_ID);
+      bool seen = false;
+      for(int k = 0; k < ArraySize(posIds); k++) if(posIds[k] == pid) { seen = true; break; }
+      if(!seen)
       {
-         // Una posición = una operación, aunque el broker la llene en varios fills
-         bool seen = false;
-         for(int k2 = 0; k2 < ArraySize(inIds); k2++) if(inIds[k2] == pid) { seen = true; break; }
-         if(!seen)
-         {
-            int sz2 = ArraySize(inIds);
-            ArrayResize(inIds, sz2 + 1);
-            inIds[sz2] = pid;
-            nTrades++;
-         }
+         int sz = ArraySize(posIds);
+         ArrayResize(posIds, sz + 1);
+         ArrayResize(posProfit, sz + 1);
+         posIds[sz] = pid; posProfit[sz] = 0;
+         nTrades++;   // una posición = una operación, aunque se llene en varios fills
       }
-      if(entry == DEAL_ENTRY_OUT)
-      {
-         double pf = HistoryDealGetDouble(dTicket, DEAL_PROFIT)
-                   + HistoryDealGetDouble(dTicket, DEAL_SWAP)
-                   + HistoryDealGetDouble(dTicket, DEAL_COMMISSION);
-         int idx = -1;
-         for(int k = 0; k < ArraySize(posIds); k++) if(posIds[k] == pid) { idx = k; break; }
-         if(idx < 0)
-         {
-            int sz = ArraySize(posIds);
-            ArrayResize(posIds, sz + 1);
-            ArrayResize(posProfit, sz + 1);
-            posIds[sz] = pid; posProfit[sz] = 0; idx = sz;
-         }
-         posProfit[idx] += pf;
-      }
+   }
+
+   // PASO 2 — resultado de esas posiciones, sumando TODOS sus deals de salida.
+   // No se filtra por magic: cuando el SERVIDOR ejecuta un Stop Loss o un Take Profit,
+   // el deal resultante puede venir con magic 0 y quedarse fuera del conteo. Ese era el
+   // motivo por el que las pérdidas no se contaban y el límite diario nunca se activaba.
+   for(int i = 0; i < total; i++)
+   {
+      ulong dTicket = HistoryDealGetTicket(i);
+      if(HistoryDealGetInteger(dTicket, DEAL_ENTRY) != DEAL_ENTRY_OUT) continue;
+      long pid = HistoryDealGetInteger(dTicket, DEAL_POSITION_ID);
+      int idx = -1;
+      for(int k = 0; k < ArraySize(posIds); k++) if(posIds[k] == pid) { idx = k; break; }
+      if(idx < 0) continue;   // no es una posición nuestra
+      posProfit[idx] += HistoryDealGetDouble(dTicket, DEAL_PROFIT)
+                      + HistoryDealGetDouble(dTicket, DEAL_SWAP)
+                      + HistoryDealGetDouble(dTicket, DEAL_COMMISSION);
    }
    // Pérdida = posición CERRADA con resultado neto negativo
    for(int k = 0; k < ArraySize(posIds); k++)
@@ -591,7 +590,7 @@ int OnInit()
    dayStart = StringToTime("00:00");
    LoadDayBaseline();
    StatusIdle("recién iniciado, esperando el primer tick");
-   Print("🥇 ORO FINAL ULTIMATE v2.70 iniciado | ", _Symbol, " ", EnumToString(_Period),
+   Print("🥇 ORO FINAL ULTIMATE v2.80 iniciado | ", _Symbol, " ", EnumToString(_Period),
          " | Umbral ", g_thr, InpAggro == 1 ? " (AGRESIVO)" : InpAggro == 2 ? " (TURBO)" : "",
          " | Lote ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
          " | TP2 ", DoubleToString(g_rr2, 1), "R | Baseline $", DoubleToString(dayStartBalance, 2));
@@ -727,7 +726,7 @@ void OnTick()
    bool goShort = scS >= g_thr && scS > scL && pS_ < g_thr;
    if(!goLong && !goShort)
    {
-      Comment("🥇 ORO FINAL v2.70 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
+      Comment("🥇 ORO FINAL v2.80 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
               " (mín. ", g_thr, ")\nHoy: ", nT, "/", g_maxTrades, " ops · ", nL, "/", InpMaxLossesDay,
               " pérdidas | ", KzActive() ? "KILLZONE 🔥" : (TradeWindow() ? "ventana normal" : "fuera de horario"),
               "\nLote: ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
