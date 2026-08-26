@@ -69,7 +69,7 @@ async function main() {
       };
 
   const gente = await Users.find(filtro)
-    .select("email name username kycStatus sinAvisos")
+    .select("email name username kycStatus sinAvisos country")
     .lean();
 
   // Para que el informe diga a cuánta gente NO se le escribe y por qué: sin
@@ -85,7 +85,29 @@ async function main() {
   console.log(`    de baja      : ${deBaja}  (no se les escribe)`);
   console.log(`    ya recibió   : ${yaRecibio}  (no se repite)`);
   console.log(`  DESTINO      : ${gente.length} personas`);
-  console.log(`  Modo         : ${UNA ? `UNA SOLA, a ${UNA}` : DE_VERDAD ? "DE VERDAD — salen los correos" : "ENSAYO — no sale ninguno"}\n`);
+
+  /* DE DONDE ES LA GENTE. No es curiosidad: la carta nombra ONDK, que es un
+     valor negociable, y el propio documento de la preventa dice que NO se
+     mercadea en Estados Unidos. Sin este desglose, «mandarla a todos» es
+     mandarla a jurisdicciones que nadie miró. Que salga impreso obliga a
+     mirarlo antes de escribir --de-verdad.
+
+     `country` viene de lo que la persona declaró al abrir la cuenta: es una
+     pista, no una prueba de residencia. Se dice así de claro para que nadie
+     lo tome por más de lo que es. */
+  const paises = {};
+  for (const u of gente) paises[(u.country || "(sin declarar)").trim() || "(sin declarar)"] =
+    (paises[(u.country || "(sin declarar)").trim() || "(sin declarar)"] || 0) + 1;
+  const orden = Object.entries(paises).sort((a, b) => b[1] - a[1]);
+  console.log(`  Países       : ${orden.slice(0, 8).map(([p, n]) => `${p} ${n}`).join(" · ")}`);
+  if (orden.length > 8) console.log(`                 … y ${orden.length - 8} más`);
+  const eeuu = orden.filter(([p]) => /^(US|USA|EEUU|Estados Unidos|United States)$/i.test(p))
+    .reduce((s, [, n]) => s + n, 0);
+  if (eeuu) {
+    console.log(`\n  *** ${eeuu} de Estados Unidos. La carta nombra ONDK, y la preventa dice`);
+    console.log(`      que ONDK no se mercadea allá. Decidilo ANTES de mandar. ***`);
+  }
+  console.log(`\n  Modo         : ${UNA ? `UNA SOLA, a ${UNA}` : DE_VERDAD ? "DE VERDAD — salen los correos" : "ENSAYO — no sale ninguno"}\n`);
 
   if (!gente.length) {
     console.log("  No hay a quién escribirle. Nada que hacer.\n");

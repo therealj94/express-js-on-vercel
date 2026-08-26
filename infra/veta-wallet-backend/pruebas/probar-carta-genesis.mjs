@@ -35,6 +35,31 @@ ok('la versión de texto lleva el mismo enlace',
 ok('no manda a la raíz del sitio como si fuera lo mismo',
   !/href="https:\/\/app\.vetawallet\.com\/?"/.test(c.html))
 
+console.log('\nLa cadena: lo que se dice se puede comprobar por fuera\n')
+ok('dice el número de cadena', /5550/.test(todo))
+ok('nombra la HyperLayer QBFT', /HyperLayer QBFT/.test(todo))
+ok('lleva el enlace al registro público, no solo la afirmación',
+  /chainlist\.org\/chain\/5550/.test(todo))
+ok('lleva el botón a nuestro explorador', /ordenscan\.com/.test(todo))
+ok('no dice que la cadena esté «certificada» ni «auditada», que sería otra cosa',
+  !/certificad|auditad/i.test(todo))
+
+console.log('\nONDK es un valor negociable, y eso obliga a decir cosas\n')
+const nombraOndk = /ONDK/.test(todo)
+ok('si se nombra ONDK, se dice que es un security token',
+  !nombraOndk || /security token/i.test(todo))
+ok('si se nombra ONDK, se dice que esto no es una oferta',
+  !nombraOndk || /no es una oferta/i.test(todo))
+ok('si se nombra ONDK, se dice que no promete rentabilidad',
+  !nombraOndk || /ni una promesa de rentabilidad|no es una promesa de rentabilidad|promesa de rentabilidad/i.test(todo))
+ok('nunca insinúa ganancia', !/vas a ganar|rendimiento|retorno garantizado|se va a valorizar|multiplic/i.test(todo))
+ok('ningún precio de ONDK en un correo masivo', !/\$\s?\d/.test(todo))
+
+console.log('\nLos tokens de metal: la regla de cobre vale para los dos\n')
+ok('AUKA sigue el precio de la onza', !/AUKA/.test(todo) || /AUKA[^.]{0,60}sigue el precio de una onza de oro/i.test(todo))
+ok('AGKA sigue el precio del gramo', !/AGKA/.test(todo) || /AGKA[^.]{0,60}sigue el precio de un gramo de plata/i.test(todo))
+ok('se avisa de que no entregan metal', /no entregan metal|no te entrega metal/i.test(todo))
+
 console.log('\nCada puerta se cuenta como es: abierta, o por abrir\n')
 ok('la tarjeta se ofrece como PEDIRLA, no como tenerla',
   /podés solicitarla|Pedir tu tarjeta/i.test(todo))
@@ -52,7 +77,8 @@ ok('PULSE2CHAT aparece', /PULSE2CHAT/.test(todo))
    sería mentira, y la persona lo descubre en treinta segundos. */
 ok('no dice que el Genesis ID desbloquee el chat',
   !/(desbloque|abr[ie])[a-zé]*\s+(el\s+)?(chat|PULSE2CHAT)/i.test(todo))
-ok('avisa de que el cambio de activos sigue en obra', /todavía están en obra/.test(todo))
+ok('avisa de que el lanzamiento global y el cambio de activos no están abiertos',
+  /lanzamiento\s+global de Ordenex y el cambio de activos[\s\S]{0,60}todavía no\s+están abiertos/.test(todo))
 ok('avisa de que la tarjeta no entra a Google Pay ni Apple Pay',
   /no entra a Google Pay ni a Apple Pay/.test(todo))
 

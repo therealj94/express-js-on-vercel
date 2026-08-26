@@ -69,10 +69,23 @@ import { enlaceBaja, sorteoVivo } from "./cartaNovedades.js";
 const IR = "https://app.vetawallet.com/#verificar";
 const BASES = "https://vetawallet.com/sorteo-orden-global";
 
-/* El asunto dice la única cosa que la persona no sabe. Sin emoji: el asunto de
-   un correo que habla de dinero no compite con la publicidad, compite con la
-   desconfianza. */
-export const ASUNTO = "Falta tu Genesis ID para lo que viene";
+/* El asunto lleva las DOS noticias: la de la casa y la de la persona. La
+   primera da la razón para abrir —pasó algo—, la segunda dice qué hacer. Sin
+   emoji: el asunto de un correo que habla de dinero no compite con la
+   publicidad, compite con la desconfianza. */
+export const ASUNTO = "Nuestra cadena ya está en el mundo. Falta tu Genesis ID.";
+
+/* La cadena, en el registro público que usa toda la industria. Comprobado el
+   26/08/2026 contra chainid.network, que es de donde lee chainlist.org: la
+   5550 sale con estado "active", con ORIGEN como moneda, con ordenscan
+   registrado como explorador (EIP-3091) y con nuestro ícono. Los dos RPC que
+   publica contestan 0x15ae, que es 5550 en hexadecimal.
+
+   Esto NO se escribe de memoria en un correo que va a cientos de personas: si
+   algún día nos sacaran de la lista, la carta estaría mintiendo. Por eso el
+   enlace va a la ficha, para que cualquiera lo compruebe por su cuenta. */
+const CHAINLIST = "https://chainlist.org/chain/5550";
+const CADENA = "https://ordenscan.com";
 
 const saludo = (nombre) => {
   const n = String(nombre || "").trim().split(/\s+/)[0];
@@ -143,6 +156,14 @@ const PIEL = {
 const H = (t) =>
   `<div style="margin:26px 0 10px;font:700 17px/1.35 Georgia,serif;color:#F3ECD9;">${esc(t)}</div>`;
 
+/* El botón de la cadena va HUECO —borde de oro, sin relleno— y el de hacerse
+   el Genesis ID va macizo. Dos botones dorados iguales compiten entre ellos y
+   la persona no sabe cuál es el que importa; con esta diferencia, el ojo va
+   solo al que pedimos. Mirar la cadena es una invitación; hacerse el Genesis
+   ID es lo que la carta viene a conseguir. */
+const botonHueco = (texto, url) =>
+  `<div style="margin:18px 0 10px;"><a href="${url}" style="display:inline-block;padding:12px 24px;border-radius:999px;border:1px solid #C9A961;color:#C9A961;font-weight:600;font-size:14px;text-decoration:none;">${esc(texto)}</a></div>`;
+
 const punto = (titulo, texto) =>
   `<div style="margin:0 0 13px;padding-left:14px;border-left:2px solid rgba(201,169,97,.35);">
     <strong style="color:#F3ECD9;">${esc(titulo)}</strong> ${texto}
@@ -193,20 +214,47 @@ mayores de 18 años. Bases: ${BASES}
   <p style="margin:0 0 14px;font-size:16px;color:#F3ECD9;">${esc(saludo(nombre))}</p>
 
   <p style="margin:0 0 12px;">
-    Tu billetera en Orden Global ya existe. Está ahí, con tu nombre, con tu
-    dirección propia en la cadena. No hay que abrir nada de nuevo.
-  </p>
-  <p style="margin:0 0 12px;">
-    Falta una sola cosa, y solo la podés hacer vos: <strong style="color:#F3ECD9;">tu
-    Genesis ID</strong>.
+    Tenemos dos cosas para contarte. La primera es de la casa. La segunda es
+    tuya, y sin ella la primera no te sirve de mucho.
   </p>
 
-  ${H("Qué es")}
+  ${H("Uno · Nuestra cadena ya está registrada en el mundo")}
   <p style="margin:0 0 12px;">
-    Es tu identidad dentro del sistema, y es <strong style="color:#F3ECD9;">una sola
-    llave para toda la casa</strong>. Te verificás una vez y quedás verificado en
-    todo el ecosistema — no hay que volver a hacerlo en cada lugar. No es un
-    trámite: es lo que hace que la cadena sepa que detrás de esa dirección hay
+    El registro público que usan todas las billeteras del planeta —el mismo donde
+    figuran Ethereum, Polygon y las demás— ya tiene la nuestra:
+    <strong style="color:#F3ECD9;">cadena 5550, Orden Global, moneda ORIGEN</strong>,
+    con estado activo y con su explorador propio. Cualquier billetera del mundo
+    puede conectarse escribiendo ese número.
+  </p>
+  <p style="margin:0 0 12px;">
+    Puede sonar a trámite. No lo es. Casi todo el oro digital del mundo vive
+    alquilado: emitido sobre la red de otro, sujeto a sus reglas, a sus subidas
+    de precio y a su permiso. Orden Global construyó la suya. La 5550 es nuestra
+    <strong style="color:#F3ECD9;">HyperLayer QBFT</strong>: siete validadores
+    nuestros, nuestras reglas, nuestra infraestructura — y lo que se mueve encima
+    responde solo ante la casa que lo construyó.
+  </p>
+  <p style="margin:0 0 4px;">
+    Eso ya no es una promesa nuestra. Es un registro público que podés ir a mirar
+    vos mismo, ahora, sin pedirnos permiso.
+  </p>
+  ${botonHueco("Ver nuestra cadena", CADENA)}
+  <p style="margin:0 0 12px;font-size:13px;color:#7E938D;">
+    Y la ficha en el registro, para comprobarlo por afuera:
+    <a href="${CHAINLIST}" style="color:#C9A961;">chainlist.org/chain/5550</a>
+  </p>
+
+  ${H("Dos · Falta tu Genesis ID")}
+  <p style="margin:0 0 12px;">
+    Tu billetera ya existe. Está ahí, con tu nombre, con tu dirección propia en
+    esa cadena. No hay que abrir nada de nuevo. Falta una sola cosa, y solo la
+    podés hacer vos.
+  </p>
+  <p style="margin:0 0 12px;">
+    El Genesis ID es tu identidad dentro del sistema, y es
+    <strong style="color:#F3ECD9;">una sola llave para toda la casa</strong>: te
+    verificás una vez y quedás verificado en todo el ecosistema. No es un
+    trámite. Es lo que hace que la cadena sepa que detrás de esa dirección hay
     una persona, y que esa persona sos vos.
   </p>
 
@@ -215,8 +263,8 @@ mayores de 18 años. Bases: ${BASES}
     "Con la identidad aprobada ya podés solicitarla. Gasta directo de tu saldo, en cualquier tienda en línea del mundo que acepte Visa, sin cuenta bancaria y sin ir a ninguna sucursal.")}
   ${punto("PULSE2CHAT.",
     "El chat del ecosistema, cifrado de punta a punta. Tu Genesis ID es tu nombre ahí: es como te encuentran los tuyos, sin que nadie tenga que dictar una dirección de cuarenta caracteres.")}
-  ${punto("Ordenex, muy pronto.",
-    "La casa de cambio de Orden Global: comprar y vender. Todavía no está abierta — y cuando abra, va a pedir identidad verificada. El que ya la tenga entra caminando.")}
+  ${punto("Ordenex.",
+    "La casa de cambio de AuCorp ya está en pie, y el lanzamiento global viene pronto. Ahí se van a comprar y vender los tokens de la casa: <strong style=\"color:#F3ECD9;\">AUKA</strong>, que sigue el precio de una onza de oro; <strong style=\"color:#F3ECD9;\">AGKA</strong>, que sigue el precio de un gramo de plata; <strong style=\"color:#F3ECD9;\">ONDK</strong>; y los que vengan. Va a pedir identidad verificada — el que ya la tenga entra caminando.")}
   ${punto("Y lo que siga.",
     "Cada cosa nueva de la casa va a reconocer tu Genesis ID desde el primer día. No hay que volver a verificarse nunca.")}
 
@@ -229,10 +277,17 @@ mayores de 18 años. Bases: ${BASES}
   </p>
 
   <p style="margin:26px 0 0;padding-top:16px;border-top:1px solid rgba(243,236,217,.10);font-size:13px;line-height:1.6;color:#7E938D;">
-    Con todas las letras, para que nada te agarre de sorpresa: Ordenex y el
-    cambio de activos dentro de la billetera todavía están en obra, y la tarjeta
-    es virtual —para compras en línea—, así que todavía no entra a Google Pay ni
-    a Apple Pay. Preferimos decírtelo ahora a que lo descubras después.
+    Con todas las letras, para que nada te agarre de sorpresa: el lanzamiento
+    global de Ordenex y el cambio de activos dentro de la billetera todavía no
+    están abiertos, y la tarjeta es virtual —para compras en línea—, así que
+    todavía no entra a Google Pay ni a Apple Pay. Preferimos decírtelo ahora a
+    que lo descubras después.
+  </p>
+  <p style="margin:12px 0 0;font-size:12px;line-height:1.6;color:#7E938D;">
+    ONDK es un valor negociable (<em>security token</em>) emitido bajo Próspera.
+    Esta carta es informativa: no es una oferta, ni una invitación a invertir, ni
+    una promesa de rentabilidad. AUKA y AGKA siguen el precio del metal; no
+    entregan metal.
   </p>
   ${sorteoHtml}`,
   `Te escribimos porque tenés una billetera en Veta Wallet.
@@ -241,17 +296,39 @@ mayores de 18 años. Bases: ${BASES}
 
   const texto = `${saludo(nombre)}
 
-Tu billetera en Orden Global ya existe. Está ahí, con tu nombre, con tu
-dirección propia en la cadena. No hay que abrir nada de nuevo.
+Tenemos dos cosas para contarte. La primera es de la casa. La segunda es tuya,
+y sin ella la primera no te sirve de mucho.
 
-Falta una sola cosa, y solo la podés hacer vos: tu Genesis ID.
+UNO · NUESTRA CADENA YA ESTA REGISTRADA EN EL MUNDO
 
-QUE ES
+El registro público que usan todas las billeteras del planeta —el mismo donde
+figuran Ethereum, Polygon y las demás— ya tiene la nuestra: cadena 5550, Orden
+Global, moneda ORIGEN, con estado activo y con su explorador propio. Cualquier
+billetera del mundo puede conectarse escribiendo ese número.
 
-Es tu identidad dentro del sistema, y es una sola llave para toda la casa. Te
-verificás una vez y quedás verificado en todo el ecosistema — no hay que
-volver a hacerlo en cada lugar. No es un trámite: es lo que hace que la cadena
-sepa que detrás de esa dirección hay una persona, y que esa persona sos vos.
+Puede sonar a trámite. No lo es. Casi todo el oro digital del mundo vive
+alquilado: emitido sobre la red de otro, sujeto a sus reglas, a sus subidas de
+precio y a su permiso. Orden Global construyó la suya. La 5550 es nuestra
+HyperLayer QBFT: siete validadores nuestros, nuestras reglas, nuestra
+infraestructura — y lo que se mueve encima responde solo ante la casa que lo
+construyó.
+
+Eso ya no es una promesa nuestra. Es un registro público que podés ir a mirar
+vos mismo, ahora, sin pedirnos permiso.
+
+Ver nuestra cadena: ${CADENA}
+La ficha en el registro: ${CHAINLIST}
+
+DOS · FALTA TU GENESIS ID
+
+Tu billetera ya existe. Está ahí, con tu nombre, con tu dirección propia en esa
+cadena. No hay que abrir nada de nuevo. Falta una sola cosa, y solo la podés
+hacer vos.
+
+El Genesis ID es tu identidad dentro del sistema, y es una sola llave para toda
+la casa: te verificás una vez y quedás verificado en todo el ecosistema. No es
+un trámite. Es lo que hace que la cadena sepa que detrás de esa dirección hay
+una persona, y que esa persona sos vos.
 
 TODO LO QUE SE TE ABRE CON ELLA
 
@@ -261,9 +338,11 @@ TODO LO QUE SE TE ABRE CON ELLA
 - PULSE2CHAT. El chat del ecosistema, cifrado de punta a punta. Tu Genesis ID
   es tu nombre ahí: es como te encuentran los tuyos, sin que nadie tenga que
   dictar una dirección de cuarenta caracteres.
-- Ordenex, muy pronto. La casa de cambio de Orden Global: comprar y vender.
-  Todavía no está abierta — y cuando abra, va a pedir identidad verificada. El
-  que ya la tenga entra caminando.
+- Ordenex. La casa de cambio de AuCorp ya está en pie, y el lanzamiento global
+  viene pronto. Ahí se van a comprar y vender los tokens de la casa: AUKA, que
+  sigue el precio de una onza de oro; AGKA, que sigue el precio de un gramo de
+  plata; ONDK; y los que vengan. Va a pedir identidad verificada — el que ya la
+  tenga entra caminando.
 - Y lo que siga. Cada cosa nueva de la casa va a reconocer tu Genesis ID desde
   el primer día. No hay que volver a verificarse nunca.
 
@@ -273,10 +352,15 @@ Vas a necesitar tu documento de identidad y unos minutos de buena luz. Nada
 más. El enlace te lleva directo a la pantalla; si tenés que entrar primero, te
 lleva ahí y después sigue solo.
 
-Con todas las letras, para que nada te agarre de sorpresa: Ordenex y el cambio
-de activos dentro de la billetera todavía están en obra, y la tarjeta es
-virtual —para compras en línea—, así que todavía no entra a Google Pay ni a
-Apple Pay. Preferimos decírtelo ahora a que lo descubras después.
+Con todas las letras, para que nada te agarre de sorpresa: el lanzamiento
+global de Ordenex y el cambio de activos dentro de la billetera todavía no
+están abiertos, y la tarjeta es virtual —para compras en línea—, así que
+todavía no entra a Google Pay ni a Apple Pay. Preferimos decírtelo ahora a que
+lo descubras después.
+
+ONDK es un valor negociable (security token) emitido bajo Próspera. Esta carta
+es informativa: no es una oferta, ni una invitación a invertir, ni una promesa
+de rentabilidad. AUKA y AGKA siguen el precio del metal; no entregan metal.
 ${sorteoTexto}
 —
 Orden Global Corp · Próspera, Roatán, Honduras
