@@ -57,6 +57,17 @@ function comprobar(ok, que, detalle = '') {
     const b = (await api('/alta', { correo: BETO, nombre: 'Beto' })).datos;
     const ana = { correo: ANA, llave: a.llave }, beto = { correo: BETO, llave: b.llave };
 
+    // Ana y Beto tienen que ser amigos antes de escribirse. El relevo exige
+    // una solicitud aceptada para el primer mensaje entre dos cuentas nuevas
+    // —quien ya tenia historial se quedo como estaba—, asi que sin este paso
+    // /enviar responde 403 «hace falta que te acepte» y el hilo arranca vacio.
+    // Esta prueba no viene a probar esa puerta: viene a probar vaciar y
+    // borrar, y para eso hace falta un hilo con mensajes dentro.
+    await api('/amistad/pedir', { ...ana, para: BETO });
+    const am = await api('/amistad/responder', { ...beto, de: ANA, aceptar: true });
+    comprobar(am.datos.estado === 'amigos', 'Ana y Beto quedan como amigos',
+              'sin esto no se pueden escribir, y el resto de la prueba no mide nada');
+
     for (const txt of ['uno', 'dos', 'tres']) {
       await api('/enviar', { ...ana, para: BETO, texto: txt });
     }
