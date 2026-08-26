@@ -160,6 +160,27 @@ const Users = new Schema(
             type: Date,
         },
 
+        /* Cuando se le mando la carta del Genesis ID y la cadena 5550.
+         *
+         * ESTE CAMPO FALTABA, Y COSTO CARO. El 26-ago-2026 salieron los 419
+         * correos y NINGUNO quedo marcado: el guion hacia el $set, mongoose lo
+         * descartaba en silencio por no estar declarado aqui, y el envio
+         * termino informando «419 salieron, 0 fallaron» con la base intacta.
+         * Volver a correrlo les habria escrito a los 419 por segunda vez.
+         *
+         * Se marcaron a mano despues, por la coleccion cruda. El aviso ya
+         * estaba escrito unas lineas mas abajo en este mismo archivo —«sin
+         * declararlo aqui mongoose lo descarta en silencio al guardar»— y no
+         * se aplico.
+         *
+         * Marca aparte de `novedadesEnviadaEn` y de `bienvenidaEn` por lo
+         * mismo que aquellas son distintas entre si: dos cartas distintas
+         * necesitan dos marcas distintas, o la segunda hereda a quien la
+         * primera ya toco. */
+        genesisEnviadaEn: {
+            type: Date,
+        },
+
         /* Cuando se le cambio el correo con el que entra.
          *
          * Queda anotado porque un cambio de correo de acceso es lo primero que

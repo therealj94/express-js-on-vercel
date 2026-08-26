@@ -152,7 +152,13 @@ async function main() {
       /* Se marca INMEDIATAMENTE, no al final. Si el proceso muere en la
          persona 200, las 199 anteriores ya están marcadas y no se repiten. */
       if (!UNA) {
-        await Users.updateOne({ email: u.email }, { $set: { genesisEnviadaEn: new Date() } });
+        /* Por la coleccion CRUDA, no por el modelo: mongoose descarta en
+         silencio lo que no esta en el esquema, y asi fue como el 26-ago
+         salieron 419 correos sin que ninguno quedara marcado. La marca de
+         «ya se le mando» no puede depender de que el esquema desplegado
+         este al dia. */
+      await Users.collection.updateOne({ email: u.email },
+        { $set: { genesisEnviadaEn: new Date() } });
       }
       if (salieron % 25 === 0) console.log(`  ${salieron} / ${gente.length}`);
     } else {
