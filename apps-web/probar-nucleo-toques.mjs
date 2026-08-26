@@ -23,8 +23,24 @@ const sv=createServer(async(q,r)=>{try{const p=join(RAIZ,decodeURIComponent(q.ur
 await new Promise(ok=>sv.listen(0,ok));
 const base='http://127.0.0.1:'+sv.address().port+'/index.html';
 const nav=await chromium.launch({executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome',args:['--no-sandbox']});
+
+// EL NUCLEO DE ESFERAS ES EL RESPALDO, no la pantalla principal. Desde que
+// AETHERION monta la escena 3D en el Inicio, `nucleo()` solo se pinta cuando
+// ese bundle no carga. Sin forzarlo, este archivo media sobre una pantalla que
+// ya no aparece: encontraba CERO esferas y no lo decia.
+//
+// Se corta el BUNDLE, no se sustituye AETHERION: la app trata «no cargo el
+// bundle» como un camino previsto y cae al cerebro clasico entero. Dejar un
+// AETHERION a medias rompe ademas la entrada por la esfera, y entonces la
+// prueba estaria midiendo el remiendo en vez de la app.
+const SIN_AETHERION = async (pag) => {
+  await pag.route('**/aetherion/assets/aetherion.js*', (r) => r.abort());
+};
+
+let vacias = 0;
 for (const [w,h] of [[1280,860],[390,844],[360,740],[320,568]]) {
   const p=await nav.newPage({viewport:{width:w,height:h},deviceScaleFactor:1,reducedMotion:'reduce',bypassCSP:true});
+  await SIN_AETHERION(p);
   await p.goto(base); await p.waitForTimeout(700);
   await p.evaluate(()=>{localStorage.setItem('veta.bienvenida.v1','1');localStorage.setItem('veta.aura.presentada','1');
     VETA.idioma('es');VETA._sembrar([{s:'ORIGEN',n:'Origen',cant:10,precio:.4,nativo:true}]);
@@ -62,7 +78,13 @@ for (const [w,h] of [[1280,860],[390,844],[360,740],[320,568]]) {
     });
     return fuera;
   });
-  console.log(`${w}x${h}:`, r.length? JSON.stringify(r) : 'todas libres');
+  // Un forEach sobre una lista vacia no comprueba nada y sale en verde. Este
+  // archivo estuvo diciendo "todas libres" mientras encontraba CERO esferas,
+  // que es la peor manera de fallar: en silencio y con buena cara.
+  const cuantas = await p.evaluate(()=>document.querySelectorAll('.nu-mundo[data-mundo]').length);
+  if (cuantas < 6) { console.log(`${w}x${h}: SIN ESFERAS (${cuantas}) — no se midio nada`); vacias++; }
+  else console.log(`${w}x${h}:`, r.length? JSON.stringify(r) : `todas libres (${cuantas} esferas)`);
   await p.close();
 }
 await nav.close(); sv.close();
+if (vacias) { console.log(`\n${vacias} pantalla(s) sin esferas`); process.exit(1); }

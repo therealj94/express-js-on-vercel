@@ -1,0 +1,207 @@
+# Diagnóstico del ecosistema · 26 de agosto de 2026
+
+Hecho el día después del reinicio de la 5550. Todo lo de aquí se midió; nada se
+supone. Donde algo no se pudo comprobar, se dice.
+
+---
+
+## Resumen
+
+**El ecosistema está sano.** La cadena, los siete nodos, los backends, el
+relevo del chat y las webs responden todos correctamente. Salieron **tres
+hallazgos** que no se veían y **una cosa que llevaba días deshaciéndose sola**.
+
+| Área | Estado |
+|---|---|
+| Cadena 5550 | sana · 7 validadores · 10 s exactos |
+| Los siete nodos | sanos · malla completa · memoria y disco de sobra |
+| RPC públicos | los tres sirven la 5550 |
+| Chainlist | correcto · sus dos RPC responden |
+| Backend de la wallet | sano · **leyendo la cadena nueva** |
+| Relevo PULSE2CHAT | vivo · **corre exactamente lo del repositorio** |
+| Explorador Ordenscan | reindexado, sigue la punta |
+| Webs públicas | todas responden |
+| Seguridad | limpia · ningún secreto en el repositorio |
+| Pruebas | 45 suites en verde, 1 en rojo por un bug real |
+
+---
+
+## Lo que estaba mal
+
+### 1 · Un cron resucitaba la cadena vieja cada media hora
+
+En node1, en el crontab de root:
+
+```
+0,30 * * * * /usr/bin/systemctl restart polygon-edge
+```
+
+La 8532 se dio por apagada el 20 de agosto. **Nunca lo estuvo**: esta línea la
+levantaba cada treinta minutos. Es también lo que la encendió a las 23:30 en
+plena ventana del corte del 25.
+
+Quitada, con copia en `/root/crontab.antes-de-quitar-polygon-2026-08-26.bak`.
+El servicio quedó parado y `disabled`. Sus datos siguen en disco (2,6 GB).
+
+**La lección, que ya van tres veces:** parar un servicio no es apagarlo. Entre
+`Restart=always`, un temporizador y un cron, en esta flota hay tres maneras
+distintas de que algo vuelva solo, y las tres han mordido.
+
+### 2 · Una prueba decía «verde» sin comprobar nada
+
+`apps-web/probar-nucleo-toques.mjs` recorría las esferas del Núcleo con un
+`forEach` y reportaba las que estaban tapadas. Cuando la lista quedó vacía
+—porque el Núcleo de esferas pasó a ser el respaldo de AETHERION— el `forEach`
+no recorría nada, no encontraba nada tapado, y el archivo imprimía «todas
+libres» y salía en verde.
+
+Es la peor forma de fallar: en silencio y con buena cara. Ahora la prueba fuerza
+el respaldo (corta el bundle de Aetherion) y **falla si encuentra menos de seis
+esferas**.
+
+### 3 · Una prueba llevaba meses en rojo por un motivo equivocado
+
+`orden-global-app/pruebas/probar-olvidar.cjs` fallaba 5 comprobaciones y yo lo
+tenía anotado como «rojo preexistente» sin mirarlo. No lo era: el relevo
+contesta `403 · hace falta que te acepte`, porque **las solicitudes de amistad
+ya están implementadas** y la prueba mandaba mensajes sin pedir permiso. El
+hilo arrancaba vacío y todo lo demás medía sobre nada.
+
+Arreglada. Y de paso queda comprobado que **la tarea #31 está hecha**, no
+pendiente: `puede_escribir()` exige amistad o historial previo, el bloqueo corta
+en los dos sentidos, y las conversaciones que ya existían se conservan para no
+cortarlas el día del despliegue.
+
+---
+
+## Dos bugs de verdad, encontrados al correr las pruebas
+
+### A · El botón de AIR TOUCH tapa el «Mandar» del chat · ESCRITORIO
+
+En 1280×860, el botón flotante de AIR TOUCH (`#at-boton`) queda encima del
+botón de enviar de PULSE2CHAT (`.cha-manda`) e intercepta el toque. Un dedo o
+un ratón en ese punto **abre AIR TOUCH en vez de mandar el mensaje**.
+
+No es un aviso teórico: el navegador lo dice con nombre y apellido.
+
+```
+waiting for element to be visible, enabled and stable
+  <path …> from <button id="at-boton" title="AIR TOUCH"> subtree intercepts pointer events
+```
+
+Se sigue pudiendo mandar con Enter, así que no deja a nadie sin chat — pero el
+botón que la pantalla enseña no hace lo que dice.
+
+### B · En el Núcleo de respaldo, tocar una esfera no entra
+
+Reproducido limpio, sin un solo error de JavaScript:
+
+```
+movimiento normal   : nucleo -> nucleo     NO ENTRA
+movimiento reducido : nucleo -> billetera  ENTRA
+```
+
+La animación de entrada se come la navegación. `entrarPorLaEsfera()` programa
+`setTimeout(abrir, 420)` y las clases `cer-yendo`/`nu-yendo` **nunca llegan a
+ponerse**, así que algo corta antes.
+
+**Cuánto importa, dicho con honestidad:** el Núcleo de esferas **ya no es la
+pantalla principal**. Desde que AETHERION monta la escena 3D del Inicio, esas
+esferas sólo se pintan si el bundle no carga — y en producción carga
+(`aetherion.js`, 321.822 bytes, HTTP 200). O sea que es un bug **en la red de
+seguridad**, no en el camino que ve la gente. Pero es exactamente la red que
+tiene que funcionar el día que el bundle falle, y hoy no funciona.
+
+---
+
+## Lo que está bien, comprobado
+
+### La cadena
+
+```
+tres nombres de RPC     -> los tres, chainId 5550
+altura                  -> subiendo
+validadores             -> 7
+proponentes en 70 bloques -> 7 distintos
+cadencia                -> min 10 s, max 10 s, media 10,0 s
+```
+
+Cadencia sin **una sola** desviación en la muestra. Eso es QBFT sano.
+
+### Los siete nodos
+
+Los siete con `besu5550` activo, su vigía activo, **seis pares cada uno**
+—malla completa—, altura sincronizada, y entre 3.000 y 3.070 MB de memoria
+libre. El disco más lleno es node7 al 10 %.
+
+### Producción corre lo que dice el repositorio
+
+El relevo de mensajes expone la huella del código que está corriendo:
+
+```
+en produccion  : 14caada662
+en el repositorio: 14caada662
+```
+
+Ese sello se puso justamente porque un arreglo del chat estuvo diez días en el
+repositorio sin desplegar y no había forma de saberlo desde fuera. Hoy se
+contesta con un GET.
+
+### El backend sobrevivió al reinicio
+
+`/salud` devuelve `{"ok":true,"mongo":true,"cadena":true,"bloque":214}` — está
+leyendo la cadena NUEVA sin que hubiera que tocarle nada.
+
+### Seguridad
+
+| Comprobación | Resultado |
+|---|---|
+| Credenciales TURN de Cloudflare en el repositorio | **ninguna** |
+| Archivos `.env` versionados | 4, y los cuatro son `.env.example` con valores vacíos |
+| Claves con forma `AKIA` | 2, y las dos son las de ejemplo de la documentación de AWS, dentro de una prueba de detección de secretos |
+| Buckets S3 públicos | 1 de 12, `ordenex-media`, y sólo `imagenes/*` en lectura: son logos de bancos y de tokens |
+
+### Las pruebas
+
+| Suite | Verde | Rojo |
+|---|---|---|
+| `orden-global-app` | 5 | 0 |
+| `infra/mensajes` | 10 | 0 |
+| `apps-web/veta-wallet` | 19 | 0 |
+| `apps-web` (raíz) y las otras casas | 11 | 1 |
+| **Total** | **45** | **1** |
+
+El único rojo es `probar-nucleo-profundidad`, y está rojo **porque el bug B es
+real**. Un test rojo que señala un bug de verdad está haciendo su trabajo.
+
+---
+
+## Costo
+
+Del 1 al 25 de agosto: **418,71 USD**.
+
+| Servicio | USD |
+|---|---:|
+| EC2 · cómputo | 323,31 |
+| VPC (las IP elásticas) | 39,73 |
+| EC2 · otros | 23,99 |
+| Balanceador | 21,76 |
+| Route 53 | 5,13 |
+| Amplify | 2,82 |
+
+Sigue abierto lo de siempre: las siete máquinas están sobradas para lo que
+hacen —un validador gasta medio giga— y hay cinco IP elásticas reservadas sin
+usar, que se cobran igual.
+
+---
+
+## Lo que queda
+
+1. **Bug A · el botón de AIR TOUCH sobre el «Mandar» del chat.** Es el que
+   toca a la gente. Debería ser un arreglo de posición o de `z-index`.
+2. **Bug B · entrar por la esfera con animación.** Está en el respaldo, así que
+   no corre prisa, pero es la red que tiene que sostener el día que Aetherion
+   falle.
+3. **La 8532** está parada de verdad por primera vez. Queda decidir cuándo se
+   borran sus 2,6 GB y cuándo se retira la máquina, que cuesta al mes.
+4. **La tarea #31 se puede cerrar**: las solicitudes de amistad están hechas.

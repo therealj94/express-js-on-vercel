@@ -52,6 +52,20 @@ const BASE = `http://127.0.0.1:${sv.address().port}/index.html`;
 const nav = await chromium.launch({
   executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox'] });
 
+
+// EL NUCLEO DE ESFERAS ES EL RESPALDO, no la pantalla principal. Desde que
+// AETHERION monta la escena 3D en el Inicio, `nucleo()` solo se pinta cuando
+// ese bundle no carga. Sin forzarlo, este archivo media sobre una pantalla que
+// ya no aparece: encontraba CERO esferas y no lo decia.
+//
+// Se corta el BUNDLE, no se sustituye AETHERION: la app trata «no cargo el
+// bundle» como un camino previsto y cae al cerebro clasico entero. Dejar un
+// AETHERION a medias rompe ademas la entrada por la esfera, y entonces la
+// prueba estaria midiendo el remiendo en vez de la app.
+const SIN_AETHERION = async (pag) => {
+  await pag.route('**/aetherion/assets/aetherion.js*', (r) => r.abort());
+};
+
 let fallos = 0;
 const comprobar = (ok, que, detalle = '') => {
   console.log(`  ${ok ? 'ok   ' : 'FALLA'} ${que}${detalle ? '\n           ' + detalle : ''}`);
@@ -62,6 +76,7 @@ const comprobar = (ok, que, detalle = '') => {
 // todo esto tiene que estar encendido a la vez.
 const p = await nav.newPage({ viewport: { width: 1280, height: 900 }, bypassCSP: true });
 await p.addInitScript((u) => { window.OG_API = u; }, API);
+await SIN_AETHERION(p);
 await p.goto(BASE);
 await p.evaluate(() => {
   localStorage.setItem('veta.bienvenida.v1', '1');
@@ -73,8 +88,12 @@ await p.evaluate(() => {
 await p.goto(BASE);
 await p.waitForTimeout(1400);
 await p.evaluate(() => VETA.idioma('es')).catch(() => {});
-await p.evaluate(() => VETA.vista('nucleo'));
-await p.waitForTimeout(700);
+// `ir('app')` ANTES de `vista('nucleo')`: sin eso la pantalla se queda en el
+// cascaron de fuera, el Nucleo no llega a montarse y el selector encuentra
+// cero esferas. La prueba llevaba mucho fallando por esto y parecia que las
+// esferas hubieran desaparecido de la app.
+await p.evaluate(() => { VETA.ir('app'); VETA.vista('nucleo'); });
+await p.waitForTimeout(900);
 
 // ── 1 · la hondura está puesta y ordenada ──────────────────────────────────
 const capas = await p.evaluate(() => [...document.querySelectorAll('.nu-mundo[data-mundo]')].map((el) => {
