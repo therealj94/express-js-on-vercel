@@ -25,7 +25,7 @@
 //|  inteligente · limpieza de variables globales · log de errores   |
 //+------------------------------------------------------------------+
 #property copyright   "ORO FINAL"
-#property version     "2.80"
+#property version     "2.90"
 #property description "Bot de scalping XAUUSD: confluencia 0-100, gestión 50/50, salida inteligente y protecciones de cuenta"
 
 #include <Trade/Trade.mqh>
@@ -101,6 +101,8 @@ input double   InpVolStrong      = 1.3;        // Volumen fuerte (× media de 20
 input group "🔔 Notificaciones"
 input bool     InpPushNotify     = false;      // Push al móvil (app MetaTrader; configura tu MetaQuotes ID en Herramientas→Opciones→Notificaciones)
 input bool     InpPopupAlert     = false;      // Ventana de alerta sonora en el terminal
+input int      InpHeartbeatMin   = 120;       // Latido "sigo vivo" al movil cada X minutos (0 = apagado)
+input bool     InpNotifySession  = true;      // Avisar al abrir y cerrar cada killzone
 
 //──────────────────────────── ESTADO ────────────────────────────
 CTrade    trade;
@@ -118,6 +120,8 @@ datetime  cacheBar = 0;
 double    cVwap = 0, cRelVol = 1.0;
 // Última posición gestionada (para limpieza y resumen al cierre)
 long      lastPid = 0;
+datetime  lastBeat = 0;      // ultimo latido enviado
+bool      wasKzBeat = false; // estado anterior de la killzone (para avisar apertura/cierre)
 // Parámetros efectivos según agresividad (se fijan en OnInit)
 int       g_thr = 70, g_maxTrades = 4, g_cooldownMin = 60;
 double    g_rr2 = 2.0, g_trail = 1.5, g_risk = 0.5;
@@ -187,7 +191,7 @@ int MinsToNextKz()
 void StatusIdle(string motivo)
 {
    int m = MinsToNextKz();
-   Comment("🥇 ORO FINAL v2.80 · ", _Symbol, " ", EnumToString(_Period),
+   Comment("🥇 ORO FINAL v2.90 · ", _Symbol, " ", EnumToString(_Period),
            "\n✅ BOT ACTIVO — ", motivo,
            "\n🕐 Hora del servidor: ", TimeToString(TimeCurrent(), TIME_MINUTES),
            "\n🔥 Killzones: ", InpLdnStart, "-", InpLdnEnd, "  y  ", InpNyStart, "-", InpNyEnd,
@@ -553,6 +557,41 @@ bool DayStopped(string &why)
    return false;
 }
 
+//────────────── AVISO DE ESTADO AL MOVIL ("el bot sigue vivo") ──────────────
+// La app de MetaTrader no puede mostrar si un robot esta activo, asi que el bot
+// lo dice el mismo: manda una notificacion push con su estado completo.
+void SendStatusPush(string tipo)
+{
+   if(!InpPushNotify && !InpPopupAlert) return;
+   if(Bars(_Symbol, PERIOD_CURRENT) < 250) return;   // sin datos suficientes todavia
+
+   double scL2 = 0, scS2 = 0;
+   GetScores(scL2, scS2);
+   int nT2 = 0, nL2 = 0;
+   CountToday(nT2, nL2);
+   double pnlD = AccountInfoDouble(ACCOUNT_EQUITY) - dayStartBalance;
+
+   string cab = tipo == "apertura" ? "🔥 KILLZONE ABIERTA"
+              : tipo == "cierre"   ? "🌙 Killzone cerrada"
+              : tipo == "inicio"   ? "🚀 ORO FINAL iniciado"
+              : "💚 ORO FINAL sigue activo";
+
+   string est = "sin posicion";
+   if(SelectOwnPosition())
+      est = (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY ? "EN OPERACION LONG" : "EN OPERACION SHORT");
+
+   string ventana = KzActive() ? "killzone activa" : ("proxima killzone en " + IntegerToString(MinsToNextKz() / 60)
+                    + "h " + IntegerToString(MinsToNextKz() % 60) + "m");
+
+   Notify(cab + " · " + _Symbol + " " + TimeToString(TimeCurrent(), TIME_MINUTES)
+          + " | Score L" + DoubleToString(scL2, 0) + " S" + DoubleToString(scS2, 0)
+          + " (min " + IntegerToString(g_thr) + ")"
+          + " | " + est
+          + " | Hoy " + IntegerToString(nT2) + " ops / " + IntegerToString(nL2) + " perdidas"
+          + " | Dia $" + DoubleToString(pnlD, 2)
+          + " | " + ventana);
+}
+
 //──────────────────────────── INIT ────────────────────────────
 int OnInit()
 {
@@ -589,8 +628,11 @@ int OnInit()
    }
    dayStart = StringToTime("00:00");
    LoadDayBaseline();
+   wasKzBeat = KzActive();
+   lastBeat  = TimeCurrent();
    StatusIdle("recién iniciado, esperando el primer tick");
-   Print("🥇 ORO FINAL ULTIMATE v2.80 iniciado | ", _Symbol, " ", EnumToString(_Period),
+   SendStatusPush("inicio");
+   Print("🥇 ORO FINAL ULTIMATE v2.90 iniciado | ", _Symbol, " ", EnumToString(_Period),
          " | Umbral ", g_thr, InpAggro == 1 ? " (AGRESIVO)" : InpAggro == 2 ? " (TURBO)" : "",
          " | Lote ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
          " | TP2 ", DoubleToString(g_rr2, 1), "R | Baseline $", DoubleToString(dayStartBalance, 2));
@@ -629,6 +671,21 @@ void OnTick()
    }
 
    RefreshCache();
+
+   //── Latido al movil: confirma desde el telefono que el bot sigue corriendo
+   if(InpHeartbeatMin > 0 && TimeCurrent() - lastBeat >= InpHeartbeatMin * 60)
+   {
+      lastBeat = TimeCurrent();
+      SendStatusPush("latido");
+   }
+
+   //── Aviso de apertura y cierre de cada killzone
+   bool kzBeatNow = KzActive();
+   if(kzBeatNow != wasKzBeat)
+   {
+      if(InpNotifySession) SendStatusPush(kzBeatNow ? "apertura" : "cierre");
+      wasKzBeat = kzBeatNow;
+   }
 
    //── Parada del día: si se logró el objetivo o se tocó el límite, asegurar y descansar
    string dayWhy0;
@@ -726,7 +783,7 @@ void OnTick()
    bool goShort = scS >= g_thr && scS > scL && pS_ < g_thr;
    if(!goLong && !goShort)
    {
-      Comment("🥇 ORO FINAL v2.80 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
+      Comment("🥇 ORO FINAL v2.90 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
               " (mín. ", g_thr, ")\nHoy: ", nT, "/", g_maxTrades, " ops · ", nL, "/", InpMaxLossesDay,
               " pérdidas | ", KzActive() ? "KILLZONE 🔥" : (TradeWindow() ? "ventana normal" : "fuera de horario"),
               "\nLote: ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
