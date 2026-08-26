@@ -38,6 +38,8 @@ ok('no manda a la raíz del sitio como si fuera lo mismo',
 console.log('\nLa cadena: lo que se dice se puede comprobar por fuera\n')
 ok('dice el número de cadena', /5550/.test(todo))
 ok('nombra la HyperLayer QBFT', /HyperLayer QBFT/.test(todo))
+ok('dice que la 5550 es una capa 1', /capa 1/.test(todo))
+ok('y que veníamos de una capa 2', /capa 2/.test(todo))
 ok('lleva el enlace al registro público, no solo la afirmación',
   /chainlist\.org\/chain\/5550/.test(todo))
 ok('lleva el botón a nuestro explorador', /ordenscan\.com/.test(todo))
@@ -62,7 +64,7 @@ ok('se avisa de que no entregan metal', /no entregan metal|no te entrega metal/i
 
 console.log('\nCada puerta se cuenta como es: abierta, o por abrir\n')
 ok('la tarjeta se ofrece como PEDIRLA, no como tenerla',
-  /podés solicitarla|Pedir tu tarjeta/i.test(todo))
+  /podés (pedirla|solicitarla)|Pedir tu tarjeta/i.test(todo))
 ok('no dice que la tarjeta ya la tenés', !/tu tarjeta ya está|ya tenés tu tarjeta/i.test(todo))
 ok('Ordenex aparece', /Ordenex/.test(todo))
 ok('y NUNCA sin decir que todavía no está',
