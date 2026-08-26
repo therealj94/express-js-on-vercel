@@ -55,5 +55,14 @@
       },
       "channel": "ensayo"
     }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "../.secretos/play-service-account.json",
+        "track": "internal",
+        "releaseStatus": "completed"
+      }
+    }
   }
 }

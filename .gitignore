@@ -27,3 +27,8 @@ entregables/**/*.pdf
 
 # sondas temporales de diagnóstico
 apps-web/veta-wallet/pruebas/_*.mjs
+
+# Llaves de publicacion. Si se filtra la cuenta de servicio de Play,
+# cualquiera puede publicar una version de la app en nuestro nombre.
+.secretos/
+*play-service-account*.json
