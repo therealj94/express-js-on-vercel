@@ -62,7 +62,20 @@
   @media(max-width:720px){
     .barra{flex-wrap:wrap;gap:0;padding:11px 0 0}
     .logo{margin:0 0 9px}
-    nav{margin:0 -20px;padding:0 20px 9px;width:calc(100% + 40px);
+    /* El sangrado hasta el borde se hace con margen negativo y ancho AUTO.
+       Con `width:calc(100% + 40px)` el 100% se resolvia contra una caja que ya
+       tenia su propio ancho, y la barra terminaba midiendo mas que la pantalla:
+       la pagina entera se podia arrastrar de lado. */
+    /* La barra se desliza DENTRO del margen de la pagina.
+       Antes sangraba hasta el borde con margen negativo y `width:calc(100% +
+       40px)`, y ese calculo la dejaba midiendo 430px en una pantalla de 390:
+       la pagina entera se arrastraba de lado. El sangrado era un adorno; que
+       no se pueda mover la pagina en horizontal, no.
+       `flex-basis:0` con `flex-grow:1` la hace ocupar la linea que le queda sin
+       mirar el ancho de su contenido, y `min-width:0` le da permiso para
+       encogerse por debajo de el — que es lo que deja que el desplazamiento
+       ocurra por dentro. */
+    nav{margin:0;padding:0 0 9px;flex:1 1 0;min-width:0;
       flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;
       scrollbar-width:none}
     nav::-webkit-scrollbar{display:none}
@@ -134,6 +147,14 @@
   td{padding:12px 17px;border-top:1px solid var(--linea);vertical-align:top;font-size:13.8px}
   tr:first-child td{border-top:0}
   td.k{color:var(--txt3);width:200px;white-space:nowrap}
+  /* Una linea de ayuda bajo la etiqueta, para los datos que no se explican
+     solos. «Tolerancia a caidas» no le dice nada a quien no sabe que es QBFT;
+     «cuantos validadores pueden faltar» si. */
+  /* «ARTIFICIAL INTELLIGENCE» desbordaba su tarjeta: los nombres largos se
+     parten en vez de empujar. */
+  .tarj .va{overflow-wrap:anywhere}
+  td.k .ayuda{display:block;color:var(--txt3);opacity:.72;font-size:11.5px;
+    line-height:1.35;white-space:normal;font-weight:400;margin-top:1px}
   td.v{word-break:break-all}
   @media(max-width:640px){
     td.k{width:auto;display:block;border-top:1px solid var(--linea);padding-bottom:2px;font-size:12px}
@@ -141,6 +162,11 @@
   }
 
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  /* `min-width:0` en las columnas: por defecto una celda de rejilla no se
+     encoge por debajo de su contenido mas ancho, asi que un hash largo o una
+     tabla con etiquetas fijas estiraban la columna MAS que la pantalla y
+     sacaban la pagina de cuadro en el telefono. */
+  .cols > *{min-width:0}
   @media(max-width:860px){.cols{grid-template-columns:1fr}}
 
   /* ── Filtros ──────────────────────────────────────────────────────────── */
@@ -264,7 +290,29 @@ const API = (typeof window.OGSCAN_API === "string")
 
 const CHAIN_ID = 5550;   // red oficial desde el corte del 15-ago-2026
 const RPC = "https://ordenglobal-rpc.com/";
+const RPC2 = "https://rpc.ordenglobal-rpc.com/";   // el segundo nombre publicado en Chainlist
 const MONEDA = "ORIGEN";
+
+/* Preguntarle a la CADENA, no al indexador.
+   El explorador vive del backend, que es una copia de la cadena con retraso.
+   Para los datos que definen la red —quiénes validan, qué cliente corre, cuál
+   es el techo de gas— eso no sirve: hay que preguntárselo al nodo. Y se puede,
+   porque el RPC acepta llamadas del navegador desde este dominio.
+   Un dato de la red que se escribe a mano en el HTML envejece sin avisar; es
+   exactamente lo que dejó a esta página diciendo «PolyBFT» —el consenso de la
+   cadena ANTERIOR— durante meses. */
+async function rpc(metodo, params = []) {
+  const r = await fetch(RPC, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: metodo, params }),
+  });
+  if (!r.ok) throw new Error("el nodo respondió " + r.status);
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message || "el nodo devolvió un error");
+  return d.result;
+}
+const aNum = (h) => (typeof h === "string" && h.startsWith("0x") ? parseInt(h, 16) : Number(h));
 
 // El catalogo de tokens lo sirve el backend (/address/tokens), que los resuelve
 // contra la cadena. Aqui solo se guarda en memoria al vuelo, para no llevar una
@@ -414,7 +462,13 @@ function buscar(e) {
   // Cualquier otra cosa se trata como busqueda libre sobre las transacciones.
   return ir(`/txs?q=${encodeURIComponent(q)}`);
 }
-function ejemplo(el) { const i = $("#q"); if (i) { i.value = el.textContent; buscar(); } }
+/* El chip puede ENSEÑAR una version corta y llevar el valor entero en
+   `data-valor`: una direccion completa mide 307px y no cabe en un telefono de
+   320. Sin `data-valor` se usa el texto, que es como estaba. */
+function ejemplo(el) {
+  const i = $("#q");
+  if (i) { i.value = el.dataset.valor || el.textContent; buscar(); }
+}
 
 const iconoLupa = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.2-4.2"/></svg>`;
 const cajaBuscar = (compacta) => `
@@ -440,10 +494,12 @@ async function vistaInicio(app) {
         <h1>Explorador de <b>Orden Global</b></h1>
         <p>Consultá bloques, transacciones, direcciones y tokens de la cadena, en tiempo real.</p>
         ${cajaBuscar()}
-        <div class="pista">Probá:
-          <code onclick="ejemplo(this)">4129701</code>
-          <code onclick="ejemplo(this)">0x049f03cf2efd67906d774203bda023eb1e209ed8</code>
-        </div>
+        <!-- Los ejemplos se rellenan con datos VIVOS de la cadena, no escritos
+             a mano. Los que habia -bloque 4.129.701 y una direccion suya- eran
+             de la cadena anterior: quien los tocaba caia en un «no existe», y
+             el primer gesto que ofrece la pagina no puede ser un callejon.
+             Leyendolos de la punta, no vuelven a envejecer. -->
+        <div class="pista" id="ejs"></div>
       </section>
 
       <!-- Las cuatro tarjetas se crean ya, con su identificador definitivo, y
@@ -467,6 +523,23 @@ async function vistaInicio(app) {
         <div>
           <div class="cabecera-seccion"><h2>Últimas transacciones</h2><a class="mas" href="/txs" data-ruta>Ver todas →</a></div>
           <div class="panel" id="tx">${esqueleto()}</div>
+
+          <!-- La cadena produce un bloque cada diez segundos y transacciones
+               muy de vez en cuando, asi que esta columna quedaba mucho mas
+               corta que la de bloques y dejaba un hueco. Se llena con lo que
+               alguien que llega por primera vez necesita saber: que red es
+               esta. Informa y ademas cuadra la pagina. -->
+          <div class="cabecera-seccion" style="margin-top:26px"><h2>La red, en corto</h2>
+            <a class="mas" href="/red" data-ruta>Ver todo →</a></div>
+          <div class="panel"><table>
+            <tr><td class="k">Qué es</td><td class="v">Blockchain propia de Orden Global
+              <span class="pill">Layer 1</span></td></tr>
+            <tr><td class="k">ID de cadena</td><td class="v">${CHAIN_ID}
+              <span class="pill">0x${CHAIN_ID.toString(16)}</span></td></tr>
+            <tr><td class="k">Moneda</td><td class="v">${MONEDA} <span class="pill">18 decimales</span></td></tr>
+            <tr><td class="k">Consenso</td><td class="v" id="p-cons">QBFT</td></tr>
+            <tr><td class="k">Compatible con</td><td class="v">EVM · Shanghai</td></tr>
+          </table></div>
         </div>
       </div></section>
 
@@ -487,8 +560,29 @@ async function vistaInicio(app) {
 
   // Cada bloque se carga por separado: si una parte falla, el resto se ve igual.
   api("/block/totalBlock")
-    .then(d => tarjeta("cbloq", "Último bloque", num(d.blockTotal), "", "oro"))
+    .then(d => {
+      tarjeta("cbloq", "Último bloque", num(d.blockTotal), "", "oro");
+      ejemplosVivos({ bloque: d.blockTotal });
+    })
     .catch(() => tarjeta("cbloq", "Último bloque", "—", "el nodo no respondió"));
+
+  /* Los ejemplos de búsqueda, con datos que EXISTEN.
+     Se juntan de a poco —el bloque llega por un lado y la dirección por otro—
+     así que cada trozo que llega repinta la línea con lo que haya. Mientras no
+     haya nada no se enseña nada: una pista que lleva a un «no existe» es peor
+     que ninguna pista. */
+  const _ej = {};
+  function ejemplosVivos(mas) {
+    Object.assign(_ej, mas || {});
+    const el = $("#ejs");
+    if (!el) return;
+    const trozos = [];
+    if (_ej.bloque) trozos.push(`<code onclick="ejemplo(this)">${esc(String(_ej.bloque))}</code>`);
+    if (_ej.direccion) trozos.push(
+      `<code onclick="ejemplo(this)" data-valor="${esc(_ej.direccion)}"
+         title="${esc(_ej.direccion)}">${esc(corto(_ej.direccion, 10, 8))}</code>`);
+    el.innerHTML = trozos.length ? "Probá: " + trozos.join(" ") : "";
+  }
 
   // El tiempo de bloque se mide de verdad, con bloques reales, en vez de
   // escribir "15 s" a mano y que envejezca mal.
@@ -498,18 +592,31 @@ async function vistaInicio(app) {
     tarjeta("ctiem", "Tiempo de bloque", t, "promedio de los últimos 10");
   }).catch(() => tarjeta("ctiem", "Tiempo de bloque", "—"));
 
-  Promise.all([api("/transaction/resumen"), catalogo()]).then(([r]) => {
+  Promise.all([api("/transaction/resumen"), catalogo()]).then(([r, tokens]) => {
     const tks = (r.simbolos || []).filter(s => !NO_TOKEN.has(s.simbolo.toUpperCase()));
     tarjeta("ctx", "Transacciones", num(r.total),
       "desde " + (r.primera ? new Date(r.primera * 1000).toLocaleDateString("es", { month: "short", year: "numeric" }) : "—"));
-    tarjeta("ctk", "Tokens", tks.length, "con movimientos registrados");
+    /* La tarjeta contaba los tokens QUE SE HAN MOVIDO, y enseñaba «1» en una
+       red con cinco desplegados. Como titular es falso: quien lo lee entiende
+       que la cadena tiene un token. Se cuenta el catálogo —lo que existe— y el
+       movimiento pasa al subtítulo, que es donde ese matiz sí informa. */
+    const cuantosSeMovieron = tks.length;
+    tarjeta("ctk", "Tokens", num((tokens || []).length || cuantosSeMovieron),
+      cuantosSeMovieron
+        ? `${num(cuantosSeMovieron)} con movimientos registrados`
+        : "desplegados en la red");
 
     // Grafico de actividad. SVG a mano: sin librerias, que la politica de
     // contenido del hosting bloquea igualmente.
+    //
+    // Con UN SOLO mes de historia el grafico era una barra dorada de lado a
+    // lado: no compara nada y ocupa media pantalla fingiendo que dice algo. Se
+    // dibuja a partir de dos meses; con menos, el dato va en una linea y la
+    // pagina no pierde el sitio.
     const meses = r.porMes || [];
-    if (meses.length) {
+    const et = (m) => new Date(m.anio, m.mes - 1, 1).toLocaleDateString("es", { month: "short", year: "2-digit" });
+    if (meses.length > 1) {
       const max = Math.max(...meses.map(m => m.n));
-      const et = (m) => new Date(m.anio, m.mes - 1, 1).toLocaleDateString("es", { month: "short", year: "2-digit" });
       $("#secgraf").innerHTML = `
         <div class="cabecera-seccion"><h2>Actividad de la cadena</h2>
           <span class="mas">${num(meses.length)} meses · pico de ${num(max)} en un mes</span></div>
@@ -518,16 +625,33 @@ async function vistaInicio(app) {
             <div class="b" style="height:${Math.max(3, (m.n / max) * 100)}%" title="${et(m)}: ${num(m.n)} transacciones"></div>`).join("")}</div>
           <div class="ejes"><span>${et(meses[0])}</span><span>${et(meses[meses.length - 1])}</span></div>
         </div>`;
+    } else if (meses.length === 1) {
+      $("#secgraf").innerHTML = `
+        <div class="cabecera-seccion"><h2>Actividad de la cadena</h2></div>
+        <div class="panel" style="padding:16px 18px;color:var(--txt2);font-size:14px">
+          ${num(meses[0].n)} ${meses[0].n === 1 ? "transacción" : "transacciones"} en
+          ${et(meses[0])}. La gráfica aparece cuando haya más de un mes con que comparar.
+        </div>`;
     }
 
-    // Los tokens de la portada salen de los datos reales, no de una lista fija.
-    $("#tks").innerHTML = tks.slice(0, 4).map(s => {
-      const c = contratoDe(s.simbolo);
-      const dest = c ? `/token/${c}` : `/txs?simbolo=${encodeURIComponent(s.simbolo)}`;
+    /* Los tokens DE LA RED son los que están desplegados, no los que se han
+       movido. La sección enseñaba uno solo —el único con transacciones— bajo un
+       título que promete la red entera, y daba a entender que la cadena tiene un
+       token cuando tiene catorce. Se listan los del catálogo y el movimiento va
+       de subtítulo, que es donde ese dato acompaña en vez de mentir. */
+    const movidos = Object.fromEntries(tks.map(s => [s.simbolo.toUpperCase(), s.n]));
+    const lista = (tokens || []).length
+      ? tokens.slice(0, 8).map(t => ({ simbolo: t.symbol, nombre: t.nombre || t.symbol,
+                                       contrato: t.contrato, n: movidos[String(t.symbol).toUpperCase()] || 0 }))
+      : tks.slice(0, 8).map(s => ({ simbolo: s.simbolo, nombre: NOMBRES[s.simbolo] || s.simbolo,
+                                    contrato: contratoDe(s.simbolo), n: s.n }));
+    $("#tks").innerHTML = lista.map(t => {
+      const dest = t.contrato ? `/token/${t.contrato}` : `/txs?simbolo=${encodeURIComponent(t.simbolo)}`;
       return `<a class="tarj" href="${dest}" data-ruta>
-        <div class="et">${esc(s.simbolo)}</div>
-        <div class="va">${esc(NOMBRES[s.simbolo] || s.simbolo)}</div>
-        <div class="sub">${num(s.n)} ${s.n === 1 ? "transacción" : "transacciones"}</div>
+        <div class="et">${esc(t.simbolo)}</div>
+        <div class="va">${esc(t.nombre)}</div>
+        <div class="sub">${t.n ? `${num(t.n)} ${t.n === 1 ? "transacción" : "transacciones"}`
+                               : "sin movimientos todavía"}</div>
       </a>`;
     }).join("");
   }).catch(() => {
@@ -535,6 +659,12 @@ async function vistaInicio(app) {
     tarjeta("ctk", "Tokens", "—");
     $("#tks").innerHTML = `<div class="aviso">No se pudo cargar el resumen.</div>`;
   });
+
+  // El número de validadores en la ficha corta: leído del nodo, no escrito.
+  rpc("qbft_getValidatorsByBlockNumber", ["latest"])
+    .then(v => { const e = $("#p-cons"); if (e && (v || []).length)
+      e.innerHTML = `QBFT <span class="pill">${num(v.length)} validadores</span>`; })
+    .catch(() => {});
 
   api("/block/allBlocks?lastBlock=8").then(d => {
     const b = d.blockInfo || [];
@@ -549,9 +679,13 @@ async function vistaInicio(app) {
   }).catch(e => { $("#bl").innerHTML = err(e.message); });
 
   api("/transaction/allTransactions?lastTransaction=8").then(d => {
-    $("#tx").innerHTML = (d.transactions || []).length
-      ? d.transactions.map(filaTx).join("")
-      : `<div class="aviso">Sin transacciones para mostrar.</div>`;
+    const t = d.transactions || [];
+    $("#tx").innerHTML = t.length
+      ? t.map(filaTx).join("")
+      : `<div class="aviso">Todavía no hay transacciones en la cadena.</div>`;
+    // Una dirección de verdad para la pista de búsqueda.
+    const dir = (t.find(x => x.from) || {}).from;
+    if (dir) ejemplosVivos({ direccion: dir });
   }).catch(e => { $("#tx").innerHTML = err(e.message); });
 }
 
@@ -739,13 +873,14 @@ async function vistaBloque(app, id) {
     const hashes = Array.isArray(b.transactions) ? b.transactions : [];
     const cuantas = b.transactionCount ?? hashes.length;
 
-    // Sobre el validador: en PolyBFT la cabecera `miner` es siempre la
-    // direccion cero — el proponente va firmado dentro de extraData. Mostrar
-    // "Validador: 0x000…000" no es un dato, es ruido que ademas hace pensar
-    // que el bloque no tiene validador. Se indica el consenso y ya.
+    // Sobre el validador: en la 5550 el proponente SI viaja en `miner` —QBFT lo
+    // pone ahi— y por eso se muestra. La direccion cero solo aparece en el
+    // bloque cero, que no lo propuso nadie: es el genesis. Decir «Validador:
+    // 0x000…000» ahi no es un dato, es ruido que ademas hace pensar que al
+    // bloque le falta algo.
     const cero = /^0x0{40}$/i.test(String(b.miner || ""));
     const filaValidador = cero
-      ? `<tr><td class="k">Consenso</td><td class="v">PolyBFT <span class="pill">el proponente va firmado en extraData</span></td></tr>`
+      ? `<tr><td class="k">Origen</td><td class="v">Bloque génesis <span class="pill">no lo propuso ningún validador</span></td></tr>`
       : `<tr><td class="k">Validador</td><td class="v mono">${esc(b.miner)} ${btnCopiar(b.miner)}</td></tr>`;
 
     $("#d").innerHTML = `<table>
@@ -974,30 +1109,144 @@ async function vistaDireccion(app, addr) {
   } catch (e) { $("#l").innerHTML = err(e.message); }
 }
 
-// ── Datos de la red, con alta en la billetera ────────────────────────────────
+// ── La red: qué es esta cadena, con los datos leídos del nodo ────────────────
+//
+// Lo que se enseña aquí es la ficha de identidad de la red, y tiene que ser
+// CIERTA: quien la lee decide con ella si conecta su billetera o su servicio.
+// Por eso casi todo se le pregunta al nodo en vivo —validadores, cliente,
+// techo de gas, ritmo— en vez de escribirlo en el HTML. Lo escrito a mano se
+// limita a lo que no cambia: el nombre, la moneda y las direcciones públicas.
 async function vistaRed(app) {
+  const dato = (k, id, ayuda) => `<tr><td class="k">${k}${
+    ayuda ? `<div class="ayuda">${ayuda}</div>` : ""}</td><td class="v" id="${id}">…</td></tr>`;
+
   app.innerHTML = `<div class="env">
-    <div class="cabecera-seccion" style="margin-top:26px"><h2>Datos de la red</h2></div>
-    <div class="panel"><table>
-      <tr><td class="k">Nombre</td><td class="v">Orden Global</td></tr>
-      <tr><td class="k">ID de cadena</td><td class="v">${CHAIN_ID} <span class="pill">0x${CHAIN_ID.toString(16)}</span> ${btnCopiar(String(CHAIN_ID))}</td></tr>
-      <tr><td class="k">Moneda</td><td class="v">${MONEDA} <span class="pill">18 decimales</span></td></tr>
-      <tr><td class="k">RPC</td><td class="v mono">${RPC} ${btnCopiar(RPC)}</td></tr>
-      <tr><td class="k">Explorador</td><td class="v mono">${esc(location.origin)} ${btnCopiar(location.origin)}</td></tr>
-      <tr><td class="k">Consenso</td><td class="v">PolyBFT</td></tr>
-      <tr><td class="k">Último bloque</td><td class="v" id="ub">…</td></tr>
-    </table></div>
-    <div class="acciones-f" style="margin-top:18px">
-      <button class="btn" onclick="agregarBilletera()">Añadir a MetaMask</button>
-      <span class="resumen-f" id="mmsg" style="margin-left:0"></span>
-    </div>
-    <p class="pista" style="text-align:left;margin-top:22px">
+    <section class="hero" style="padding:34px 0 6px">
+      <div class="et"><span class="punto"></span> Layer 1 propia · Chain ${CHAIN_ID}</div>
+      <h1>La cadena de <b>Orden Global</b></h1>
+      <p>Una blockchain propia, no una red de pruebas ni una capa encima de otra:
+         bloques cada diez segundos, validada por su propio grupo de nodos, y
+         compatible con las herramientas de Ethereum.</p>
+    </section>
+
+    <section class="seccion"><div class="tarjetas">
+      <div class="tarj"><div class="et">Validadores</div><div class="va oro" id="r-val">…</div>
+        <div class="sub" id="r-val-sub">consenso QBFT</div></div>
+      <div class="tarj"><div class="et">Ritmo</div><div class="va" id="r-ritmo">…</div>
+        <div class="sub">entre bloque y bloque</div></div>
+      <div class="tarj"><div class="et">Último bloque</div><div class="va" id="r-alt">…</div>
+        <div class="sub" id="r-alt-sub">&nbsp;</div></div>
+      <div class="tarj"><div class="et">Techo de gas</div><div class="va" id="r-gas">…</div>
+        <div class="sub">por bloque</div></div>
+    </div></section>
+
+    <section class="seccion"><div class="cols">
+      <div>
+        <div class="cabecera-seccion"><h2>Para conectarse</h2></div>
+        <div class="panel"><table>
+          <tr><td class="k">Nombre de la red</td><td class="v">Orden Global</td></tr>
+          <tr><td class="k">ID de cadena</td><td class="v">${CHAIN_ID}
+            <span class="pill">0x${CHAIN_ID.toString(16)}</span> ${btnCopiar(String(CHAIN_ID))}</td></tr>
+          <tr><td class="k">Moneda</td><td class="v">${MONEDA} <span class="pill">18 decimales</span></td></tr>
+          <tr><td class="k">RPC</td><td class="v mono">${RPC} ${btnCopiar(RPC)}</td></tr>
+          <tr><td class="k">RPC alterno</td><td class="v mono">${RPC2} ${btnCopiar(RPC2)}</td></tr>
+          <tr><td class="k">Explorador</td><td class="v mono">${esc(location.origin)} ${btnCopiar(location.origin)}</td></tr>
+        </table></div>
+        <div class="acciones-f" style="margin-top:16px">
+          <button class="btn" onclick="agregarBilletera()">Añadir a MetaMask</button>
+          <span class="resumen-f" id="mmsg" style="margin-left:0"></span>
+        </div>
+      </div>
+      <div>
+        <div class="cabecera-seccion"><h2>Cómo funciona</h2></div>
+        <div class="panel"><table>
+          ${dato("Tipo", "r-tipo")}
+          ${dato("Cliente", "r-cliente")}
+          ${dato("Consenso", "r-cons", "quién puede proponer un bloque")}
+          ${dato("Tolerancia a caídas", "r-tol", "cuántos validadores pueden faltar")}
+          ${dato("Máquina virtual", "r-evm", "qué contratos entiende")}
+          ${dato("Coste del gas", "r-precio")}
+          ${dato("Bloque génesis", "r-gen", "la huella de esta cadena")}
+        </table></div>
+      </div>
+    </div></section>
+
+    <section class="seccion">
+      <div class="cabecera-seccion"><h2>Los tokens de la red</h2>
+        <a class="mas" href="/tokens" data-ruta>Ver todos →</a></div>
+      <div class="tarjetas" id="r-tokens"></div>
+    </section>
+
+    <p class="pista" style="text-align:left;margin-top:6px">
       Este explorador implementa <b>EIP-3091</b> — las rutas <code>/block/&lt;n&gt;</code>,
       <code>/tx/&lt;hash&gt;</code> y <code>/address/&lt;0x…&gt;</code> — que es el estándar
-      que exigen Chainlist y las billeteras para reconocer un explorador de bloques.</p>
+      que exigen Chainlist y las billeteras para reconocer un explorador de bloques.
+      La red está publicada en <b>Chainlist</b> con este mismo ID.</p>
   </div>`;
-  api("/block/totalBlock").then(d => { $("#ub").textContent = num(d.blockTotal); })
-    .catch(() => { $("#ub").textContent = "—"; });
+
+  const poner = (id, txt, pill) => {
+    const el = $("#" + id);
+    if (el) el.innerHTML = txt + (pill ? ` <span class="pill">${pill}</span>` : "");
+  };
+  // Cada dato por su lado: si el nodo no contesta a uno, los demás se ven igual.
+  const flojo = (id) => () => poner(id, "—");
+
+  poner("r-tipo", "Layer 1 propia", "no es un rollup ni una sidechain");
+  poner("r-evm", "EVM · Shanghai", "compatible con Solidity y las herramientas de Ethereum");
+
+  rpc("web3_clientVersion")
+    .then(v => poner("r-cliente", esc(String(v).split("/").slice(0, 2).join(" · "))))
+    .catch(flojo("r-cliente"));
+
+  rpc("qbft_getValidatorsByBlockNumber", ["latest"]).then(v => {
+    const n = (v || []).length;
+    poner("r-val", num(n));
+    // La tolerancia de QBFT es (n−1)/3 hacia abajo. No se escribe «2» a mano:
+    // el día que entre o salga un validador, este número tiene que moverse solo.
+    const aguanta = Math.floor((n - 1) / 3);
+    const el = $("#r-val-sub");
+    if (el) el.textContent = `consenso QBFT · quórum de ${n - aguanta}`;
+    poner("r-cons", "QBFT", "tolerante a fallos bizantinos");
+    poner("r-tol", aguanta === 1 ? "1 validador" : `${num(aguanta)} validadores`,
+      `de ${num(n)}`);
+  }).catch(() => { flojo("r-val")(); flojo("r-cons")(); flojo("r-tol")(); });
+
+  // El ritmo y el techo de gas salen de bloques REALES, no de la configuración.
+  Promise.all([rpc("eth_blockNumber"), rpc("eth_getBlockByNumber", ["latest", false])])
+    .then(async ([alt, b]) => {
+      const n = aNum(alt);
+      poner("r-alt", num(n));
+      poner("r-gas", num(aNum(b.gasLimit)));
+      const sub = $("#r-alt-sub");
+      if (sub) sub.textContent = hace(aNum(b.timestamp));
+      const antes = await rpc("eth_getBlockByNumber", ["0x" + Math.max(0, n - 10).toString(16), false]);
+      const dt = (aNum(b.timestamp) - aNum(antes.timestamp)) / Math.max(1, n - Math.max(0, n - 10));
+      poner("r-ritmo", dt > 0 ? dt.toFixed(1) + " s" : "—");
+    })
+    .catch(() => { flojo("r-alt")(); flojo("r-gas")(); flojo("r-ritmo")(); });
+
+  rpc("eth_getBlockByNumber", ["0x0", false])
+    .then(g => poner("r-gen", `<span class="mono">${esc(corto(g.hash, 12, 8))}</span> ${btnCopiar(g.hash)}`))
+    .catch(flojo("r-gen"));
+
+  rpc("eth_gasPrice")
+    .then(p => {
+      const gwei = aNum(p) / 1e9;
+      poner("r-precio", gwei ? `${gwei.toLocaleString("es", { maximumFractionDigits: 2 })} gwei` : "sin coste",
+        "mínimo que aceptan los validadores");
+    })
+    .catch(flojo("r-precio"));
+
+  catalogo().then(tokens => {
+    const el = $("#r-tokens");
+    if (!el) return;
+    el.innerHTML = (tokens || []).length
+      ? tokens.map(t => `<a class="tarj" href="/token/${esc(t.contrato)}" data-ruta>
+          <div class="et">${esc(t.symbol)}</div>
+          <div class="va">${esc(t.nombre || t.symbol)}</div>
+          <div class="sub mono">${esc(corto(t.contrato, 10, 6))}</div></a>`).join("")
+      : `<div class="aviso">No se pudo leer el catálogo de tokens.</div>`;
+  });
 }
 
 async function agregarBilletera() {
