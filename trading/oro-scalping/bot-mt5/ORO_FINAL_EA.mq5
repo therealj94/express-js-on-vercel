@@ -1,7 +1,20 @@
 //+------------------------------------------------------------------+
 //|                                                 ORO_FINAL_EA.mq5 |
-//|     🥇 ORO FINAL ULTIMATE · Bot automático de scalping XAUUSD    |
-//|                          versión 2.00                            |
+//|     🥇 ORO FINAL · Bot automático de scalping XAUUSD             |
+//|                    versión 3.00 · LISTO PARA ENCENDER            |
+//|                                                                  |
+//|  PRECONFIGURADO — no hace falta tocar nada para arrancar:        |
+//|    · Servidor GMT+0  ·  Londres 07:00-10:00  ·  NY 12:30-15:30   |
+//|    · Modo TURBO (umbral 62, TP2 3R, trailing 1.2xATR)            |
+//|    · Riesgo 10% real por operación (5% x2 del Turbo)             |
+//|    · Máximo 10 operaciones al día                                |
+//|    · SE DETIENE A LAS 3 PÉRDIDAS SEGUIDAS (o 5 totales)          |
+//|    · Objetivo del día +20% -> cierra y descansa                  |
+//|    · Push al móvil: entradas, TP, SL, salidas y latido cada 2 h  |
+//|                                                                  |
+//|  UNICO REQUISITO: confirma que tu servidor sea GMT+0 comparando  |
+//|  la hora del Market Watch con la hora UTC. Si no coincide, ajusta|
+//|  los 4 horarios de las killzones.                                |
 //|                                                                  |
 //|  Estrategia: score de confluencia 0-100 (10 factores + castigos) |
 //|  · Entra solo en killzones (configurable) · SL estructura + ATR  |
@@ -25,8 +38,8 @@
 //|  inteligente · limpieza de variables globales · log de errores   |
 //+------------------------------------------------------------------+
 #property copyright   "ORO FINAL"
-#property version     "2.90"
-#property description "Bot de scalping XAUUSD: confluencia 0-100, gestión 50/50, salida inteligente y protecciones de cuenta"
+#property version     "3.00"
+#property description "ORO FINAL v3.00 - Preconfigurado TURBO: servidor GMT+0, 10 operaciones/dia, corte a las 3 perdidas seguidas. Pegar, compilar y encender."
 
 #include <Trade/Trade.mqh>
 
@@ -35,15 +48,15 @@ input group "⚙️ General"
 input long     InpMagic          = 20250823;   // Magic number del bot
 input int      InpThreshold      = 70;         // Score mínimo (62 agresivo · 70 normal · 78 conservador)
 input int      InpMode           = 0;          // Ventana: 0=Solo killzones · 1=Londres+NY · 2=24 horas
-input int      InpCooldownMin    = 60;         // Minutos mínimos entre entradas
+input int      InpCooldownMin    = 40;         // Minutos mínimos entre entradas (Turbo lo reduce a la mitad = 20)
 
 input group "🕐 Sesiones (HORA DEL SERVIDOR del broker)"
-input string   InpLdnStart       = "08:00";    // Killzone Londres: inicio
-input string   InpLdnEnd         = "11:00";    // Killzone Londres: fin
-input string   InpNyStart        = "13:30";    // Killzone Nueva York: inicio
-input string   InpNyEnd          = "16:30";    // Killzone Nueva York: fin
-input string   InpFullStart      = "07:00";    // Londres+NY completo: inicio
-input string   InpFullEnd        = "22:00";    // Londres+NY completo: fin
+input string   InpLdnStart       = "07:00";    // Killzone Londres: inicio  [servidor GMT+0]
+input string   InpLdnEnd         = "10:00";    // Killzone Londres: fin
+input string   InpNyStart        = "12:30";    // Killzone Nueva York: inicio
+input string   InpNyEnd          = "15:30";    // Killzone Nueva York: fin
+input string   InpFullStart      = "06:00";    // Londres+NY completo: inicio
+input string   InpFullEnd        = "21:00";    // Londres+NY completo: fin
 input int      InpOrbMinutes     = 15;         // Duración del rango de apertura (min)
 input string   InpNewsBlock      = "";         // Ventanas bloqueadas "HH:MM-HH:MM" separadas por comas (opcional)
 input bool     InpCloseFriday    = true;       // Cerrar todo el viernes a la hora indicada
@@ -53,14 +66,15 @@ input group "🎚 Lote y agresividad"
 input int      InpLotMode        = 0;          // Lote: 0 = automático por % de riesgo · 1 = lote FIJO manual
 input double   InpFixedLot       = 0.10;       // Lote fijo manual (se usa con Lote = 1)
 input double   InpMaxRiskCapPct  = 5.0;        // Tope de seguridad del lote fijo (% máx. del equity en riesgo por operación)
-input int      InpAggro          = 0;          // Agresividad: 0 = Normal · 1 = Agresivo · 2 = Turbo
+input int      InpAggro          = 2;          // Agresividad: 0 = Normal · 1 = Agresivo · 2 = TURBO
 
 input group "💰 Riesgo y protección de la cuenta"
-input double   InpRiskPct        = 0.5;        // Riesgo por operación (% del equity)
-input int      InpMaxTradesDay   = 4;          // Máximo de operaciones por día
-input int      InpMaxLossesDay   = 2;          // Máximo de pérdidas por día
-input double   InpMaxDailyDD     = 3.0;        // Freno de emergencia: pérdida diaria máx. (% del balance)
-input double   InpDailyTarget    = 0.0;        // Objetivo diario en % (al lograrlo se detiene; 0 = apagado)
+input double   InpRiskPct        = 5.0;        // Riesgo por operación (%) — Turbo lo multiplica x2 = 10% REAL
+input int      InpMaxTradesDay   = 10;         // Máximo de operaciones por día
+input int      InpMaxLossStreak  = 3;          // Máximo de PÉRDIDAS SEGUIDAS (se reinicia con cada ganadora)
+input int      InpMaxLossesDay   = 5;          // Máximo de pérdidas totales por día (red de seguridad)
+input double   InpMaxDailyDD     = 30.0;       // Freno de emergencia: pérdida diaria máx. (%) — 3 seguidas al 10% = -27%
+input double   InpDailyTarget    = 20.0;       // Objetivo diario en % (al lograrlo se detiene; 0 = apagado)
 input double   InpDailyTargetUSD = 0.0;        // Objetivo diario en $ (0 = apagado). Se detiene con el primero que se cumpla
 input double   InpDailyLossUSD   = 0.0;        // Límite de pérdida diaria en $ (0 = usar solo el % del freno)
 input bool     InpCloseOnTarget  = true;       // Al llegar a objetivo o límite: cerrar también la posición abierta
@@ -83,7 +97,7 @@ input double   InpStructBufAtr   = 0.2;        // Colchón del TP estructural (�
 
 input group "🚪 Salida inteligente"
 input bool     InpUseSmart       = true;       // Vigilar salud y cerrar si el mercado se gira
-input int      InpHealthExit     = 40;         // Salud mínima antes de cerrar (0-100)
+input int      InpHealthExit     = 45;         // Salud mínima antes de cerrar (0-100)
 input int      InpGraceBars      = 2;          // Velas de gracia antes de poder salir por salud
 input bool     InpUseTimeStop    = true;       // Contar estancamiento (~2 h sin TP1)
 input int      InpStallMinutes   = 120;        // Minutos de estancamiento
@@ -99,7 +113,7 @@ input double   InpVwapExtAtr     = 2.0;        // Extensión máxima del VWAP (�
 input double   InpVolStrong      = 1.3;        // Volumen fuerte (× media de 20)
 
 input group "🔔 Notificaciones"
-input bool     InpPushNotify     = false;      // Push al móvil (app MetaTrader; configura tu MetaQuotes ID en Herramientas→Opciones→Notificaciones)
+input bool     InpPushNotify     = true;       // Push al móvil (configura tu MetaQuotes ID en Herramientas→Opciones→Notificaciones)
 input bool     InpPopupAlert     = false;      // Ventana de alerta sonora en el terminal
 input int      InpHeartbeatMin   = 120;       // Latido "sigo vivo" al movil cada X minutos (0 = apagado)
 input bool     InpNotifySession  = true;      // Avisar al abrir y cerrar cada killzone
@@ -435,14 +449,15 @@ double RiskLot(double slDistance, bool isLong, double px)
 }
 
 //──────────────────────────── CONTADORES DEL DÍA ────────────────────────────
-void CountToday(int &nTrades, int &nLosses)
+void CountToday(int &nTrades, int &nLosses, int &lossStreak)
 {
-   nTrades = 0; nLosses = 0;
+   nTrades = 0; nLosses = 0; lossStreak = 0;
    datetime d0 = StringToTime("00:00");
    if(!HistorySelect(d0, TimeCurrent())) return;
    int total = HistoryDealsTotal();
-   double posProfit[];
-   long   posIds[];
+   double   posProfit[];
+   long     posIds[];
+   datetime posClose[];
 
    // PASO 1 — posiciones ABIERTAS por este bot (los deals de entrada sí llevan el magic)
    for(int i = 0; i < total; i++)
@@ -458,7 +473,8 @@ void CountToday(int &nTrades, int &nLosses)
          int sz = ArraySize(posIds);
          ArrayResize(posIds, sz + 1);
          ArrayResize(posProfit, sz + 1);
-         posIds[sz] = pid; posProfit[sz] = 0;
+         ArrayResize(posClose, sz + 1);
+         posIds[sz] = pid; posProfit[sz] = 0; posClose[sz] = 0;
          nTrades++;   // una posición = una operación, aunque se llene en varios fills
       }
    }
@@ -478,18 +494,52 @@ void CountToday(int &nTrades, int &nLosses)
       posProfit[idx] += HistoryDealGetDouble(dTicket, DEAL_PROFIT)
                       + HistoryDealGetDouble(dTicket, DEAL_SWAP)
                       + HistoryDealGetDouble(dTicket, DEAL_COMMISSION);
+      datetime dtc = (datetime)HistoryDealGetInteger(dTicket, DEAL_TIME);
+      if(dtc > posClose[idx]) posClose[idx] = dtc;   // hora del ultimo cierre de la posicion
    }
-   // Pérdida = posición CERRADA con resultado neto negativo
+   // PASO 3 — quedarse solo con las posiciones YA CERRADAS y ordenarlas por hora de cierre
+   datetime cerrHora[];
+   bool     cerrPerd[];
    for(int k = 0; k < ArraySize(posIds); k++)
    {
-      if(posProfit[k] >= 0) continue;
       bool stillOpen = false;
       for(int i = PositionsTotal() - 1; i >= 0; i--)
       {
          ulong tk = PositionGetTicket(i);
          if(tk != 0 && PositionGetInteger(POSITION_IDENTIFIER) == posIds[k]) { stillOpen = true; break; }
       }
-      if(!stillOpen) nLosses++;
+      if(stillOpen) continue;
+      if(posProfit[k] < 0) nLosses++;
+      int sz = ArraySize(cerrHora);
+      ArrayResize(cerrHora, sz + 1);
+      ArrayResize(cerrPerd, sz + 1);
+      cerrHora[sz] = posClose[k];
+      cerrPerd[sz] = (posProfit[k] < 0);
+   }
+
+   // Orden ascendente por hora de cierre (insercion simple: pocas operaciones al dia)
+   int n = ArraySize(cerrHora);
+   for(int i = 1; i < n; i++)
+   {
+      datetime h = cerrHora[i];
+      bool     pd = cerrPerd[i];
+      int j = i - 1;
+      while(j >= 0 && cerrHora[j] > h)
+      {
+         cerrHora[j + 1] = cerrHora[j];
+         cerrPerd[j + 1] = cerrPerd[j];
+         j--;
+      }
+      cerrHora[j + 1] = h;
+      cerrPerd[j + 1] = pd;
+   }
+
+   // PASO 4 — RACHA de perdidas seguidas: se cuenta desde la ultima operacion
+   // hacia atras y se corta en cuanto aparece una ganadora.
+   for(int i = n - 1; i >= 0; i--)
+   {
+      if(!cerrPerd[i]) break;
+      lossStreak++;
    }
 }
 
@@ -567,8 +617,8 @@ void SendStatusPush(string tipo)
 
    double scL2 = 0, scS2 = 0;
    GetScores(scL2, scS2);
-   int nT2 = 0, nL2 = 0;
-   CountToday(nT2, nL2);
+   int nT2 = 0, nL2 = 0, nS2 = 0;
+   CountToday(nT2, nL2, nS2);
    double pnlD = AccountInfoDouble(ACCOUNT_EQUITY) - dayStartBalance;
 
    string cab = tipo == "apertura" ? "🔥 KILLZONE ABIERTA"
@@ -587,7 +637,8 @@ void SendStatusPush(string tipo)
           + " | Score L" + DoubleToString(scL2, 0) + " S" + DoubleToString(scS2, 0)
           + " (min " + IntegerToString(g_thr) + ")"
           + " | " + est
-          + " | Hoy " + IntegerToString(nT2) + " ops / " + IntegerToString(nL2) + " perdidas"
+          + " | Hoy " + IntegerToString(nT2) + " ops / " + IntegerToString(nL2) + " perd"
+          + (nS2 > 0 ? " (" + IntegerToString(nS2) + " seguidas)" : "")
           + " | Dia $" + DoubleToString(pnlD, 2)
           + " | " + ventana);
 }
@@ -641,18 +692,20 @@ int OnInit()
          InpDailyLossUSD > 0 ? " / $" + DoubleToString(InpDailyLossUSD, 0) : "",
          " | objetivo diario ", InpDailyTarget > 0 ? DoubleToString(InpDailyTarget, 1) + "%" : "apagado",
          InpDailyTargetUSD > 0 ? " / $" + DoubleToString(InpDailyTargetUSD, 0) : "",
-         " | máx ", InpMaxTradesDay, " ops · ", InpMaxLossesDay, " pérdidas",
+         " | máx ", InpMaxTradesDay, " ops · ", InpMaxLossStreak, " pérdidas SEGUIDAS · ",
+         InpMaxLossesDay, " totales",
          " | salida por salud <", InpHealthExit,
          " | spread máx $", DoubleToString(InpMaxSpreadUSD, 2));
    Print("   🕐 Killzones (servidor): ", InpLdnStart, "-", InpLdnEnd, " y ", InpNyStart, "-", InpNyEnd,
          " | ventana ", InpMode == 0 ? "solo killzones" : InpMode == 1 ? "Londres+NY" : "24 horas",
          " | hora actual del servidor ", TimeToString(TimeCurrent(), TIME_MINUTES));
    // Aviso si el freno diario es tan bajo que se activaría con una sola pérdida
-   if(InpLotMode == 0 && InpMaxDailyDD > 0 && InpMaxDailyDD <= g_risk * 1.05)
+   if(InpLotMode == 0 && InpMaxDailyDD > 0 && InpMaxDailyDD <= g_risk * InpMaxLossStreak * 0.95)
       Print("⚠️ ATENCIÓN: tu freno diario (", DoubleToString(InpMaxDailyDD, 1),
             "%) es igual o menor que el riesgo por operación (", DoubleToString(g_risk, 2),
-            "%). El bot se detendría tras la PRIMERA pérdida. Súbelo a ",
-            DoubleToString(g_risk * 2.2, 0), "% o más para permitir ", InpMaxLossesDay, " pérdidas.");
+            "%) es menor de lo que costarían ", InpMaxLossStreak,
+            " pérdidas seguidas. El bot se detendría antes de agotar la racha. Súbelo a ",
+            DoubleToString(g_risk * InpMaxLossStreak * 1.1, 0), "% o más.");
    return INIT_SUCCEEDED;
 }
 
@@ -770,11 +823,19 @@ void OnTick()
               : "🛑 ORO FINAL | LÍMITE DE PÉRDIDA DEL DÍA ($" + DoubleToString(pnlDay, 2) + ") — descansando hasta mañana");
       return;
    }
-   int nT, nL;
-   CountToday(nT, nL);
+   int nT, nL, nStreak;
+   CountToday(nT, nL, nStreak);
+   if(InpMaxLossStreak > 0 && nStreak >= InpMaxLossStreak)
+   {
+      Comment("🛑 ORO FINAL | ", nStreak, " PÉRDIDAS SEGUIDAS — el bot se detiene hasta mañana.\n",
+              "Hoy: ", nT, " operaciones, ", nL, " pérdidas | Día $",
+              DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY) - dayStartBalance, 2));
+      return;
+   }
    if(nT >= g_maxTrades || nL >= InpMaxLossesDay)
    {
-      Comment("🛑 ORO FINAL | Límite diario: ", nT, " operaciones, ", nL, " pérdidas.");
+      Comment("🛑 ORO FINAL | Límite diario: ", nT, "/", g_maxTrades, " operaciones, ",
+              nL, "/", InpMaxLossesDay, " pérdidas.");
       return;
    }
    if(lastEntryTime > 0 && (TimeCurrent() - lastEntryTime) < g_cooldownMin * 60) return;
@@ -785,7 +846,8 @@ void OnTick()
    {
       Comment("🥇 ORO FINAL v2.90 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
               " (mín. ", g_thr, ")\nHoy: ", nT, "/", g_maxTrades, " ops · ", nL, "/", InpMaxLossesDay,
-              " pérdidas | ", KzActive() ? "KILLZONE 🔥" : (TradeWindow() ? "ventana normal" : "fuera de horario"),
+              " pérdidas · racha ", nStreak, "/", InpMaxLossStreak,
+              " | ", KzActive() ? "KILLZONE 🔥" : (TradeWindow() ? "ventana normal" : "fuera de horario"),
               "\nLote: ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
               InpAggro == 1 ? " · MODO AGRESIVO" : InpAggro == 2 ? " · MODO TURBO" : "",
               "\n📅 Día: $", DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY) - dayStartBalance, 2));
