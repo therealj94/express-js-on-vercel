@@ -76,7 +76,7 @@ cortarlas el día del despliegue.
 
 ## Dos bugs de verdad, encontrados al correr las pruebas
 
-### A · El botón de AIR TOUCH tapa el «Mandar» del chat · ESCRITORIO
+### A · El botón de AIR TOUCH tapa el «Mandar» del chat · ESCRITORIO · ARREGLADO
 
 En 1280×860, el botón flotante de AIR TOUCH (`#at-boton`) queda encima del
 botón de enviar de PULSE2CHAT (`.cha-manda`) e intercepta el toque. Un dedo o
@@ -91,6 +91,26 @@ waiting for element to be visible, enabled and stable
 
 Se sigue pudiendo mandar con Enter, así que no deja a nadie sin chat — pero el
 botón que la pantalla enseña no hace lo que dice.
+
+**Arreglado.** Con el pie del chat en pantalla, la manito se aparta:
+
+```css
+body:has(.cha-pie) #at-boton{display:none!important}
+```
+
+Se ancla en `.cha-pie` y no en la vista entera a propósito: en la LISTA de
+conversaciones no hay pie, no hay choque, y ahí AIR TOUCH sigue estando —
+comprobado en billetera, chat, pay, identidad y ajustes. Apagarlo del todo
+habría hecho pasar la prueba y roto la función.
+
+`probar-chat` pasó de rojo a verde, y queda una prueba propia,
+`veta-wallet/pruebas/probar-airtouch-chat.mjs`, que fija las dos mitades.
+
+**Sobre esa prueba, que la primera versión no servía:** puse el pie sintético
+pegado abajo y pasaba con el arreglo QUITADO — la manito vive 108px más arriba
+y nunca llegaban a tocarse. Ahora el pie se ancla a la caja real de
+`#at-boton`, y se comprobó que sabe ponerse roja: sin el arreglo dice «el
+centro de Mandar es DE AIR TOUCH» en las tres pantallas.
 
 ### B · En el Núcleo de respaldo, tocar una esfera no entra
 
@@ -197,8 +217,7 @@ usar, que se cobran igual.
 
 ## Lo que queda
 
-1. **Bug A · el botón de AIR TOUCH sobre el «Mandar» del chat.** Es el que
-   toca a la gente. Debería ser un arreglo de posición o de `z-index`.
+1. ~~Bug A · el botón de AIR TOUCH sobre el «Mandar» del chat.~~ **Hecho.**
 2. **Bug B · entrar por la esfera con animación.** Está en el respaldo, así que
    no corre prisa, pero es la red que tiene que sostener el día que Aetherion
    falle.

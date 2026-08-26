@@ -663,6 +663,16 @@ body.en-cerebro #lienzo{position:relative;min-height:100svh}
 #at-boton:hover{color:var(--oroLt);border-color:var(--linea)}
 #at-boton.encendido{background:linear-gradient(120deg,var(--oroLt),var(--oro));
   color:#2A2007;box-shadow:0 0 20px rgba(201,169,97,.55)}
+/* CON UN HILO DE CHAT ABIERTO, LA MANITO SE APARTA.
+   El pie del chat pone «Mandar» pegado al borde derecho (42px + 12 de margen)
+   y AIR TOUCH vive en right:21px con 46px de ancho: en escritorio los dos
+   ocupan la misma esquina y el toque se lo lleva la manito. No es teoría — el
+   navegador lo dice con nombre propio: «#at-boton subtree intercepts pointer
+   events». Se podía mandar con Enter, pero el botón que la pantalla enseña no
+   hacía lo que dice, que es la peor clase de botón.
+   Se ancla en .cha-pie y no en la vista entera a propósito: en la LISTA de
+   conversaciones no hay pie, no hay choque, y ahí la manito sigue estando. */
+body:has(.cha-pie) #at-boton{display:none!important}
 @media (max-width:900px){
   #at-boton{bottom:158px;right:17px}
   /* En la puerta no hay pestañas abajo: la manito baja a la esquina y deja
