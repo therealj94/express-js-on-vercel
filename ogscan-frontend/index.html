@@ -146,6 +146,8 @@
   table{width:100%;border-collapse:collapse}
   td{padding:12px 17px;border-top:1px solid var(--linea);vertical-align:top;font-size:13.8px}
   tr:first-child td{border-top:0}
+  .sello{color:var(--txt3);opacity:.6;font-size:11.5px;margin-left:10px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
   td.k{color:var(--txt3);width:200px;white-space:nowrap}
   /* Una linea de ayuda bajo la etiqueta, para los datos que no se explican
      solos. «Tolerancia a caidas» no le dice nada a quien no sabe que es QBFT;
@@ -273,7 +275,8 @@
 
 <footer><div class="env pie">
   <div>Explorador de la blockchain <b style="color:var(--txt2)">Orden Global</b> · Chain 5550 · Layer 1 · Besu QBFT · Shanghai</div>
-  <div><a href="/red" data-ruta>Datos de la red</a> · <a href="/tokens" data-ruta>Tokens</a></div>
+  <div><a href="/red" data-ruta>Datos de la red</a> · <a href="/tokens" data-ruta>Tokens</a>
+    <span id="sello" class="sello"></span></div>
 </div></footer>
 
 <div id="brindis"></div>
@@ -287,6 +290,16 @@
 const API = (typeof window.OGSCAN_API === "string")
   ? window.OGSCAN_API
   : "https://orden-global-scan-c4abe71e8024.herokuapp.com";
+
+/* EL SELLO DE ESTA COPIA.
+   Lo estampa `apps-web/subir.py` en cada publicacion, y sale del contenido de
+   los archivos: publicar dos veces lo mismo da el mismo sello.
+   Existe porque «no se si se actualizo» no se puede contestar mirando la
+   pantalla — un navegador con una copia vieja se ve igual que uno al dia—, y
+   esta pagina estuvo sirviendo «Chain 8532», el numero de la cadena ANTERIOR,
+   sin que nada lo delatara. Ahora se contesta leyendo el pie. */
+const OGS_V = '1e24449af5';
+const OGS_FECHA = '2026-08-26';
 
 const CHAIN_ID = 5550;   // red oficial desde el corte del 15-ago-2026
 const RPC = "https://ordenglobal-rpc.com/";
@@ -337,6 +350,13 @@ const NO_TOKEN = new Set(["", "ORIGEN", "CONTRACT"]);
 const contratoDe = (s) => CONTRATOS[String(s || "").toUpperCase()] || null;
 const tokenPorContrato = (a) => Object.keys(CONTRATOS)
   .find(s => CONTRATOS[s].toLowerCase() === String(a || "").toLowerCase());
+
+// El sello, en el pie. Sin publicar todavia no dice nada en vez de decir una
+// cadena vacia, que pareceria un fallo.
+addEventListener("DOMContentLoaded", () => {
+  const e = document.getElementById("sello");
+  if (e && OGS_V) e.textContent = `v${OGS_V}${OGS_FECHA ? " · " + OGS_FECHA : ""}`;
+});
 
 // ── Utilidades ───────────────────────────────────────────────────────────────
 const $ = (s) => document.querySelector(s);

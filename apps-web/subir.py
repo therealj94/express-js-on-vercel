@@ -50,7 +50,7 @@ def se_sube(rel):
 # nombre fijo. La casa que no tenga ninguno sencillamente no se sella, en
 # silencio: no todas necesitan ficha de versión, y un aviso en cada subida que
 # no significa nada enseña a ignorar los avisos.
-SELLOS = (('VETA_V', 'VETA_FECHA'), ('ONX_V', 'ONX_FECHA'))
+SELLOS = (('VETA_V', 'VETA_FECHA'), ('ONX_V', 'ONX_FECHA'), ('OGS_V', 'OGS_FECHA'))
 
 # ── Y EL SELLO PEGADO A CADA ARCHIVO ─────────────────────────────────────────
 #
@@ -100,7 +100,13 @@ def sellar_paginas(raiz, version):
 
 def sellar(raiz):
     import datetime
+    # La casa que vive en UN SOLO index.html tambien se sella.
+    # Ordenscan es exactamente eso, y por no tener `app.js` se quedaba fuera
+    # del sello: fue la que sirvio «Chain 8532» durante meses sin que nada lo
+    # dijera. El sello se busca donde este.
     objetivo = os.path.join(raiz, 'app.js')
+    if not os.path.exists(objetivo):
+        objetivo = os.path.join(raiz, 'index.html')
     if not os.path.exists(objetivo):
         return None
     with open(objetivo, encoding='utf8') as f:
@@ -116,7 +122,7 @@ def sellar(raiz):
         for n in sorted(nombres):
             r = os.path.join(base, n)
             rel = os.path.relpath(r, raiz)
-            if not se_sube(rel) or rel == 'app.js':
+            if not se_sube(rel) or r == objetivo:
                 continue
             if n.endswith('.html'):
                 # SIN los sellos de la subida anterior. Con ellos dentro, cada
