@@ -38,7 +38,7 @@
 //|  inteligente · limpieza de variables globales · log de errores   |
 //+------------------------------------------------------------------+
 #property copyright   "ORO FINAL"
-#property version     "3.00"
+#property version     "3.10"
 #property description "ORO FINAL v3.00 - Preconfigurado TURBO: servidor GMT+0, 10 operaciones/dia, corte a las 3 perdidas seguidas. Pegar, compilar y encender."
 
 #include <Trade/Trade.mqh>
@@ -135,6 +135,9 @@ double    cVwap = 0, cRelVol = 1.0;
 // Última posición gestionada (para limpieza y resumen al cierre)
 long      lastPid = 0;
 datetime  lastBeat = 0;      // ultimo latido enviado
+double    sesMaxL = 0;       // score LONG mas alto alcanzado en la killzone en curso
+double    sesMaxS = 0;       // score SHORT mas alto alcanzado en la killzone en curso
+int       sesBars = 0;       // velas vigiladas dentro de la killzone
 bool      wasKzBeat = false; // estado anterior de la killzone (para avisar apertura/cierre)
 // Parámetros efectivos según agresividad (se fijan en OnInit)
 int       g_thr = 70, g_maxTrades = 4, g_cooldownMin = 60;
@@ -205,7 +208,7 @@ int MinsToNextKz()
 void StatusIdle(string motivo)
 {
    int m = MinsToNextKz();
-   Comment("🥇 ORO FINAL v2.90 · ", _Symbol, " ", EnumToString(_Period),
+   Comment("🥇 ORO FINAL v3.10 · ", _Symbol, " ", EnumToString(_Period),
            "\n✅ BOT ACTIVO — ", motivo,
            "\n🕐 Hora del servidor: ", TimeToString(TimeCurrent(), TIME_MINUTES),
            "\n🔥 Killzones: ", InpLdnStart, "-", InpLdnEnd, "  y  ", InpNyStart, "-", InpNyEnd,
@@ -633,6 +636,19 @@ void SendStatusPush(string tipo)
    string ventana = KzActive() ? "killzone activa" : ("proxima killzone en " + IntegerToString(MinsToNextKz() / 60)
                     + "h " + IntegerToString(MinsToNextKz() % 60) + "m");
 
+   // Al cerrar la killzone se informa el score MAXIMO alcanzado: asi se sabe si el
+   // mercado nunca dio confluencia suficiente o si algo bloqueo la entrada.
+   string resumen = "";
+   if(tipo == "cierre")
+   {
+      double mx = MathMax(sesMaxL, sesMaxS);
+      resumen = " | Maximo de la sesion L" + DoubleToString(sesMaxL, 0) + " S" + DoubleToString(sesMaxS, 0)
+              + " en " + IntegerToString(sesBars) + " velas"
+              + (sesBars == 0 ? " -> EL BOT NO VIGILO ESTA SESION (arrancó tarde)"
+                 : mx < g_thr ? " -> nunca alcanzo el minimo de " + IntegerToString(g_thr)
+                 : " -> hubo confluencia suficiente");
+   }
+
    Notify(cab + " · " + _Symbol + " " + TimeToString(TimeCurrent(), TIME_MINUTES)
           + " | Score L" + DoubleToString(scL2, 0) + " S" + DoubleToString(scS2, 0)
           + " (min " + IntegerToString(g_thr) + ")"
@@ -640,7 +656,8 @@ void SendStatusPush(string tipo)
           + " | Hoy " + IntegerToString(nT2) + " ops / " + IntegerToString(nL2) + " perd"
           + (nS2 > 0 ? " (" + IntegerToString(nS2) + " seguidas)" : "")
           + " | Dia $" + DoubleToString(pnlD, 2)
-          + " | " + ventana);
+          + " | " + ventana + resumen);
+   if(tipo == "cierre") Print("📊 Cierre de killzone -", resumen);
 }
 
 //──────────────────────────── INIT ────────────────────────────
@@ -683,7 +700,7 @@ int OnInit()
    lastBeat  = TimeCurrent();
    StatusIdle("recién iniciado, esperando el primer tick");
    SendStatusPush("inicio");
-   Print("🥇 ORO FINAL ULTIMATE v2.90 iniciado | ", _Symbol, " ", EnumToString(_Period),
+   Print("🥇 ORO FINAL ULTIMATE v3.10 iniciado | ", _Symbol, " ", EnumToString(_Period),
          " | Umbral ", g_thr, InpAggro == 1 ? " (AGRESIVO)" : InpAggro == 2 ? " (TURBO)" : "",
          " | Lote ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
          " | TP2 ", DoubleToString(g_rr2, 1), "R | Baseline $", DoubleToString(dayStartBalance, 2));
@@ -737,6 +754,7 @@ void OnTick()
    if(kzBeatNow != wasKzBeat)
    {
       if(InpNotifySession) SendStatusPush(kzBeatNow ? "apertura" : "cierre");
+      if(kzBeatNow) { sesMaxL = 0; sesMaxS = 0; sesBars = 0; }   // arranca una sesion nueva
       wasKzBeat = kzBeatNow;
    }
 
@@ -774,6 +792,12 @@ void OnTick()
    GetScores(scL, scS);
    double pL = prevScL, pS_ = prevScS;
    prevScL = scL; prevScS = scS;
+   if(KzActive())
+   {
+      sesBars++;
+      if(scL > sesMaxL) sesMaxL = scL;
+      if(scS > sesMaxS) sesMaxS = scS;
+   }
    if(!scoreWarm)
    {
       scoreWarm = true;
@@ -844,9 +868,11 @@ void OnTick()
    bool goShort = scS >= g_thr && scS > scL && pS_ < g_thr;
    if(!goLong && !goShort)
    {
-      Comment("🥇 ORO FINAL v2.90 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
+      Comment("🥇 ORO FINAL v3.10 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
               " (mín. ", g_thr, ")\nHoy: ", nT, "/", g_maxTrades, " ops · ", nL, "/", InpMaxLossesDay,
               " pérdidas · racha ", nStreak, "/", InpMaxLossStreak,
+              "\nMáx. de la sesión: L", DoubleToString(sesMaxL, 0), " S", DoubleToString(sesMaxS, 0),
+              " en ", sesBars, " velas",
               " | ", KzActive() ? "KILLZONE 🔥" : (TradeWindow() ? "ventana normal" : "fuera de horario"),
               "\nLote: ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
               InpAggro == 1 ? " · MODO AGRESIVO" : InpAggro == 2 ? " · MODO TURBO" : "",
