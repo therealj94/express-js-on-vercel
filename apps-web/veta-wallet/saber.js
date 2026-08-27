@@ -7,7 +7,7 @@
  * Si hace falta que AU-RA sepa algo nuevo: se escribe la ficha allá, se corre
  * el publicador, y el cambio queda en un commit que alguien puede leer.
  *
- * 16 fichas públicas · 16 se quedaron en casa.
+ * 19 fichas públicas · 16 se quedaron en casa.
  */
 window.AURA_SABER = [
   {
@@ -81,14 +81,18 @@ window.AURA_SABER = [
     "id": "aura",
     "tema": "AU-RA",
     "palabras": [
-      "aura",
       "asistente",
       "assistant",
+      "aura",
+      "beta",
+      "modo",
+      "que puedes",
       "quien sos",
+      "version",
       "who are you"
     ],
-    "es": "Soy AU-RA: la inteligencia de Orden Global, modelo 1, en beta. Navego por vos, te explico el ecosistema y te dejo pagos preparados — pero nunca firmo: tu dinero se mueve solo con tu contraseña. Y sigo creciendo: cada versión voy a saber hacer más.",
-    "en": "I am AU-RA: the intelligence of Orden Global, model 1, in beta. I navigate for you, explain the ecosystem and leave payments ready — but I never sign: your money moves only with your password. And I keep growing: each version I will know how to do more."
+    "es": "Soy AU-RA, la inteligencia de Orden Global — versión beta, y creciendo con cada versión. Converso con vos aquí en el chat y también vivo dentro de la billetera. Tengo dos formas de pensar: la rápida, que contesta al vuelo, y la pensadora, que se toma su tiempo para preguntas con más fondo — me decís «modo pensador» o «modo rápido» y cambio. Nunca toco tu dinero: preparo y explico, pero firmás vos.",
+    "en": "I am AU-RA, Orden Global's intelligence — beta version, and growing with each release. I chat with you here and I also live inside the wallet. I have two ways of thinking: the fast one, answering on the fly, and the thoughtful one, which takes its time for deeper questions — tell me 'thinker mode' or 'fast mode' and I switch. I never touch your money: I prepare and explain, but you sign."
   },
   {
     "id": "og",
@@ -215,5 +219,58 @@ window.AURA_SABER = [
     ],
     "es": "Tu frase de respaldo es tuya y solo tuya: no se la digas a nadie, ni a mí. Yo no la necesito para nada — yo preparo y vos firmás con tu contraseña. Guardala escrita en un sitio seguro: es lo único que abre tu dinero si perdés el teléfono.",
     "en": "Your recovery phrase is yours and only yours: do not tell it to anyone, not even to me. I do not need it for anything — I prepare and you sign with your password. Keep it written somewhere safe: it is the only thing that opens your money if you lose your phone."
+  },
+  {
+    "id": "ordenex",
+    "tema": "Ordenex",
+    "palabras": [
+      "ordenex",
+      "exchange",
+      "casa de cambio",
+      "comprar",
+      "vender",
+      "intercambiar",
+      "cotiza",
+      "mercado"
+    ],
+    "es": "Ordenex es la casa de cambio de AuCorp, dentro del ecosistema. Ya está en pie y su lanzamiento global viene pronto: ahí se van a comprar y vender los tokens de la casa — AUKA, AGKA, ONDK y los que vengan. Va a pedir identidad verificada con Genesis ID: el que ya la tenga entra caminando. Todavía no está abierta al público, así que hoy no se puede comprar ni vender ahí — y preferimos decirlo antes de que lo descubras.",
+    "en": "Ordenex is AuCorp's exchange within the ecosystem. It is already built and its global launch is coming: the house tokens — AUKA, AGKA, ONDK and those to come — will be bought and sold there. It will require a verified Genesis ID: those who already have one walk right in. It is not open to the public yet, so you cannot buy or sell there today — and we would rather tell you than have you find out."
+  },
+  {
+    "id": "mision",
+    "tema": "La misión: la moneda de Latinoamérica",
+    "palabras": [
+      "mision",
+      "latinoamerica",
+      "devalua",
+      "devaluacion",
+      "inflacion",
+      "lempira",
+      "peso",
+      "moneda local",
+      "para que",
+      "por que existe",
+      "vision",
+      "sueño"
+    ],
+    "es": "Orden Global quiere ser la moneda de Latinoamérica. La razón es simple y duele: las monedas de la región pierden valor con los años, y el que ahorra en ellas ve cómo su esfuerzo se le hace agua. ORIGEN sigue el precio del oro — no sigue a ninguna moneda local—, así que lo que guardás en ORIGEN sigue al oro y no a la devaluación de tu país. No es una promesa de ganancia: el oro también sube y baja. Es otra vara para medir tu esfuerzo, una que ningún gobierno imprime.",
+    "en": "Orden Global wants to be Latin America's currency. The reason is simple and it hurts: the region's currencies lose value over the years, and savers watch their effort melt away. ORIGEN follows the price of gold — not any local currency — so what you keep in ORIGEN follows gold, not your country's devaluation. It is not a promise of profit: gold rises and falls too. It is a different yardstick for your effort, one no government can print."
+  },
+  {
+    "id": "pay-negocio",
+    "tema": "MyTokenPay para tu negocio",
+    "palabras": [
+      "mi negocio",
+      "pulperia",
+      "tienda",
+      "cobrar",
+      "vender en mi",
+      "aceptar origen",
+      "cliente",
+      "ventas",
+      "emprend"
+    ],
+    "es": "Si tenés un negocio, MyTokenPay te deja cobrar en ORIGEN sin aparatos nuevos: generás un código QR con el monto, el cliente lo escanea desde su Veta Wallet, y el pago te llega a tu billetera en segundos, con la comisión fija de la casa (0,001 ORIGEN). Tu negocio además aparece en el directorio del ecosistema, donde ya hay comercios en diecinueve países. Para emitir códigos de cobro a tu nombre hace falta tu Genesis ID verificado.",
+    "en": "If you run a business, MyTokenPay lets you charge in ORIGEN with no new hardware: you generate a QR with the amount, the customer scans it from their Veta Wallet, and the payment reaches your wallet in seconds, with the house's flat fee (0.001 ORIGEN). Your business also appears in the ecosystem directory, which already lists merchants in nineteen countries. Issuing charge codes in your name requires your verified Genesis ID."
   }
 ];

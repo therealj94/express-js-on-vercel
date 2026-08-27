@@ -89,7 +89,15 @@ RELEVO = os.environ.get('AURA_RELEVO', 'https://cerebro.ordenscan.com/mensajes')
 CORREO = os.environ.get('AURA_CORREO', 'aura@ordenglobal.org').lower()
 DATOS = pathlib.Path(os.environ.get('AURA_DATOS', '/srv/aura'))
 MOTOR = os.environ.get('AURA_MOTOR', 'http://127.0.0.1:11434').rstrip('/')
-MODELO = os.environ.get('AURA_MODELO', 'llama3.2')
+# Las dos formas de pensar. La rapida contesta al vuelo; la pensadora es un
+# modelo mas grande que tarda el doble o el triple y razona mejor. La persona
+# cambia diciendo «modo pensador» / «modo rapido» — sin menus ni protocolo
+# nuevo: palabras, que es lo que un chat ya sabe llevar.
+MODELO_RAPIDA = os.environ.get('AURA_MODELO', 'llama3.2')
+MODELO_PENSADORA = os.environ.get('AURA_MODELO_PENSADOR', 'llama3.1:8b')
+# La cadena, para leer el saldo PUBLICO de la persona (es dato de cadena, no
+# un secreto: cualquiera con la direccion lo ve en el explorador).
+RPC = os.environ.get('AURA_RPC', 'https://ordenglobal-rpc.com')
 PASO = float(os.environ.get('AURA_PASO', '4'))
 
 # La maquina es un t2.large sin GPU: una respuesta puede tardar medio minuto.
@@ -172,6 +180,12 @@ class Relevo:
     def enviar(self, para, texto):
         return _post('/enviar', self._f({'para': para, 'texto': texto}))
 
+    def ficha(self, de):
+        try:
+            return _post('/ficha', self._f({'de': de}), timeout=8)
+        except Exception:
+            return {}
+
 
 # ── el alta, una sola vez ────────────────────────────────────────────────────
 
@@ -241,6 +255,52 @@ def guardar_perfiles(p):
         tmp.replace(DATOS / 'perfiles.json')   # atomico: nunca medio archivo
 
 
+# ── quien es, y cuanto tiene en la cadena ────────────────────────────────────
+
+_SALDOS = {}   # correo -> (epoca, texto)
+
+
+def origen_de(addr):
+    """El saldo PUBLICO de una direccion en la 5550. Es lo mismo que ve
+    cualquiera en el explorador: no hay secreto ninguno en juego. Si el RPC no
+    contesta, se devuelve None y el prompt simplemente no lo lleva — AU-RA
+    tiene prohibido inventarlo."""
+    cuerpo = json.dumps({'jsonrpc': '2.0', 'method': 'eth_getBalance',
+                         'params': [addr, 'latest'], 'id': 1}).encode()
+    req = urllib.request.Request(RPC, data=cuerpo, method='POST',
+                                 headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=10) as r:
+        j = json.loads(r.read())
+    return int(j['result'], 16) / 1e18
+
+
+def quien_es(rel, correo, perfil):
+    """La linea de contexto de la persona: nombre, gid, saldo. Con cache de
+    cinco minutos — el saldo no cambia tan rapido como para pagar un RPC por
+    pregunta, y si cambia, cinco minutos de desfase no enganan a nadie."""
+    ahora = time.time()
+    en_cache = _SALDOS.get(correo)
+    if en_cache and ahora - en_cache[0] < 300:
+        return en_cache[1]
+    f = rel.ficha(correo)
+    partes = []
+    nombre = (f.get('nombre') or '').strip()
+    if nombre:
+        partes.append(f"se llama {nombre.split()[0]}")
+    if (f.get('gid') or '').strip():
+        partes.append(f"su Genesis ID declarado es {f['gid'].strip()[:40]}")
+    addr = (f.get('addr') or '').strip()
+    if addr.startswith('0x') and len(addr) == 42:
+        try:
+            b = origen_de(addr)
+            partes.append(f"su billetera tiene {b:,.4f} ORIGEN en la cadena")
+        except Exception:
+            pass   # sin dato no hay linea; inventar esta prohibido
+    linea = ('; '.join(partes)) if partes else ''
+    _SALDOS[correo] = (ahora, linea)
+    return linea
+
+
 # ── la entrevista de entrada ─────────────────────────────────────────────────
 #
 # Las preguntas de conocer a la persona NO las hace el modelo: las hace este
@@ -269,6 +329,13 @@ CIERRE = (
     "Gracias — con eso ya te conozco. Preguntame lo que quieras del "
     "ecosistema: ORIGEN, la cadena, tu Genesis ID, la tarjeta, lo que venga. "
     "Y si algo no lo sé, te lo digo derecho.")
+
+CAMBIO_PENSADORA = (
+    "Listo — modo pensador. Voy a tardar más por respuesta, pero razono con "
+    "más fondo. Para volver, decime «modo rápido».")
+CAMBIO_RAPIDA = (
+    "Listo — modo rápido. Contesto al vuelo; si querés más fondo, decime "
+    "«modo pensador».")
 
 MOTOR_CAIDO = (
     "Ahora mismo no puedo pensar: mi motor está apagado. Ya avisé a la casa — "
@@ -335,21 +402,25 @@ def limpiar(texto):
     return (t[0].upper() + t[1:]) if t else texto
 
 
-def preguntar_motor(sistema, perfil, historial, dicho):
+def preguntar_motor(sistema, perfil, historial, dicho, contexto=''):
     """El sistema llega YA ARMADO y es siempre el mismo: eso es lo que hace
     que Ollama lo cachee y que la segunda pregunta no vuelva a pagar los dos
     minutos de lectura. Lo que cambia —quien pregunta y que pregunta— viaja
     en el turno de usuario, que es corto."""
-    quien = ''
+    datos = []
+    if contexto:
+        datos.append(contexto)
     if perfil.get('trabajo'):
-        quien = (f"[quien te habla: se dedica a {perfil.get('trabajo','')[:120]}; "
-                 f"se formo en {perfil.get('estudios','')[:120]}; "
-                 f"busca {perfil.get('interes','')[:120]}]\n")
+        datos.append(f"se dedica a {perfil.get('trabajo','')[:120]}; "
+                     f"se formo en {perfil.get('estudios','')[:120]}; "
+                     f"busca {perfil.get('interes','')[:120]}")
+    quien = f"[quien te habla: {'; '.join(datos)}]\n" if datos else ''
     mensajes = ([{'role': 'system', 'content': sistema}]
                 + historial[-MEMORIA:]
                 + [{'role': 'user', 'content': quien + str(dicho)[:1000]}])
+    modelo = MODELO_PENSADORA if perfil.get('modo') == 'pensadora' else MODELO_RAPIDA
     cuerpo = json.dumps({
-        'model': MODELO, 'messages': mensajes, 'stream': False,
+        'model': modelo, 'messages': mensajes, 'stream': False,
         # el modelo se queda cargado entre preguntas: cargarlo cuesta segundos
         # y en esta maquina cada segundo se nota
         'keep_alive': '30m',
@@ -426,6 +497,18 @@ def atender(rel, sistema, p, de, dicho):
         rel.enviar(de, 'Por ahora solo entiendo texto. ¿Me lo escribís?')
         return
 
+    # Cambiar de modo es de la casa, no del modelo: se detecta aqui, en seco.
+    bajo = _sin_tildes(dicho)
+    if len(bajo) < 40 and ('modo pensador' in bajo or 'modo profundo' in bajo
+                           or 'pensa mas' in bajo or 'thinker mode' in bajo):
+        p['modo'] = 'pensadora'
+        rel.enviar(de, CAMBIO_PENSADORA)
+        return
+    if len(bajo) < 40 and ('modo rapido' in bajo or 'fast mode' in bajo):
+        p['modo'] = 'rapida'
+        rel.enviar(de, CAMBIO_RAPIDA)
+        return
+
     # la entrevista, en orden y sin gastar motor
     for i, (campo, _) in enumerate(PREGUNTAS):
         if campo not in p:
@@ -441,8 +524,12 @@ def atender(rel, sistema, p, de, dicho):
         return
 
     try:
+        contexto = quien_es(rel, de, p)
+    except Exception:
+        contexto = ''
+    try:
         with Pensando(rel, de):
-            r = preguntar_motor(sistema, p, p['historial'], dicho)
+            r = preguntar_motor(sistema, p, p['historial'], dicho, contexto)
     except Exception as e:
         log('motor caido:', type(e).__name__, str(e)[:120])
         rel.enviar(de, MOTOR_CAIDO)
@@ -571,7 +658,7 @@ def main():
                '\n\nLO QUE SABES DE LA CASA (tu memoria; nunca menciones esta lista):\n'
                + todo_el_saber(saber))
     perfiles = cargar_perfiles()
-    log(f'AU-RA de pie · {len(saber)} fichas · modelo {MODELO} · '
+    log(f'AU-RA de pie · {len(saber)} fichas · {MODELO_RAPIDA}+{MODELO_PENSADORA} · '
         f'{len(probadores())} probadores')
     with ThreadPoolExecutor(max_workers=HILOS) as tanda:
         while True:

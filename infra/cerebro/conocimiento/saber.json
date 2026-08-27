@@ -1,532 +1,598 @@
 {
-  "_leeme": [
-    "EL SABER DE LA CASA. Aquí vive TODO lo que Genesis Core sabe del ecosistema, y",
-    "de aquí sale lo poco que AU-RA puede decir en público.",
-    "",
-    "LA REGLA: `publico: false` es el valor de partida y el que se aplica ante",
-    "cualquier duda. Una ficha solo sale al mundo cuando una persona la marca a",
-    "mano y firma con su correo en `revisadoPor`. No hay forma de que algo se",
-    "vuelva público por descuido, por defecto, ni por un fallo del programa: lo",
-    "que no está marcado, no se copia al archivo que lee AU-RA.",
-    "",
-    "El filtro se aplica AL PUBLICAR, no al leer. El archivo que llega al",
-    "navegador contiene solo lo público; lo interno no viaja nunca, ni oculto ni",
-    "marcado para no enseñarse. Filtrar en el navegador sería mandarle a todo el",
-    "mundo el texto que se pretende esconder.",
-    "",
-    "Para añadir saber: se escribe la ficha aquí y se corre",
-    "`node infra/cerebro/publicar-saber.mjs`. Sin correrlo, AU-RA no se entera.",
-    "Eso es a propósito: cada cambio de lo que AU-RA dice en público pasa por un",
-    "commit que alguien puede leer."
-  ],
-  "fichas": [
-    {
-      "id": "origen",
-      "tema": "ORIGEN",
-      "publico": true,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "origen",
-        "origin",
-        "oro",
-        "gold",
-        "gramin"
-      ],
-      "es": "ORIGEN es la moneda de la cadena de Orden Global, y su valor está referenciado al oro: un ORIGEN es un gramin, la cincuentaicincoava parte de un gramo de oro, al precio del oro de hoy. La fórmula no la ponemos nosotros y no cambia, así que el precio lo podés rehacer con una calculadora cuando quieras. Se envía en segundos por nuestra propia cadena.",
-      "en": "ORIGEN is the currency of the Orden Global chain, and its value is referenced to gold: one ORIGEN is one gramin, the fifty-fifth part of a gram of gold, at today's gold price. We do not set the formula and it does not change, so you can redo the price with a calculator whenever you like. It sends in seconds over our own chain."
-    },
-    {
-      "id": "cadena",
-      "tema": "La cadena 5550",
-      "publico": true,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "cadena",
-        "chain",
-        "5550",
-        "besu",
-        "qbft",
-        "shanghai",
-        "blockchain",
-        "layer"
-      ],
-      "es": "Orden Global corre sobre su propia Layer 1: la cadena 5550, con Hyperledger Besu, consenso QBFT y máquina Shanghai. Ya no vivimos prestados en la red de otro — más rápida, más nuestra, sin pedirle permiso a nadie. Todo se puede ver en ordenscan.com.",
-      "en": "Orden Global runs on its own Layer 1: chain 5550, with Hyperledger Besu, QBFT consensus and the Shanghai machine. We no longer live on somebody else's network — faster, more ours, asking nobody for permission. It can all be seen at ordenscan.com."
-    },
-    {
-      "id": "gid",
-      "tema": "Genesis ID",
-      "publico": true,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "genesis",
-        "identidad",
-        "identity",
-        "kyc",
-        "verificar"
-      ],
-      "es": "Genesis ID es tu identidad para todo el ecosistema: te verificás UNA vez y quedás verificado en todas partes. Es lo que hace que del otro lado del chat o de un cobro siempre haya una persona real.",
-      "en": "Genesis ID is your identity across the whole ecosystem: you verify ONCE and you are verified everywhere. It is what makes sure there is always a real person on the other side of a chat or a charge."
-    },
-    {
-      "id": "chat",
-      "tema": "PULSE CHAT",
-      "publico": true,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "pulse",
-        "chat",
-        "mensaje",
-        "message"
-      ],
-      "es": "PULSE CHAT es la mensajería del ecosistema: solo entra gente con Genesis ID aprobado, podés mandar dinero sin salir del hilo y cada pago deja su comprobante verificable en la cadena.",
-      "en": "PULSE CHAT is the ecosystem's messaging: only people with an approved Genesis ID get in, you can send money without leaving the thread, and every payment leaves its receipt verifiable on the chain."
-    },
-    {
-      "id": "pay",
-      "tema": "MyTokenPay",
-      "publico": true,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "mytokenpay",
-        "negocio",
-        "comercio",
-        "merchant",
-        "business"
-      ],
-      "es": "MyTokenPay es la capa de comercio: cobrás con un QR, explorás negocios que aceptan ORIGEN y pagás desde tu misma billetera.",
-      "en": "MyTokenPay is the commerce layer: you charge with a QR, you explore businesses that accept ORIGEN, and you pay from the same wallet."
-    },
-    {
-      "id": "aura",
-      "tema": "AU-RA",
-      "publico": true,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "aura",
-        "asistente",
-        "assistant",
-        "quien sos",
-        "who are you"
-      ],
-      "es": "Soy AU-RA: la inteligencia de Orden Global, modelo 1, en beta. Navego por vos, te explico el ecosistema y te dejo pagos preparados — pero nunca firmo: tu dinero se mueve solo con tu contraseña. Y sigo creciendo: cada versión voy a saber hacer más.",
-      "en": "I am AU-RA: the intelligence of Orden Global, model 1, in beta. I navigate for you, explain the ecosystem and leave payments ready — but I never sign: your money moves only with your password. And I keep growing: each version I will know how to do more."
-    },
-    {
-      "id": "og",
-      "tema": "Orden Global",
-      "publico": true,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "orden global",
-        "ecosistema",
-        "ecosystem"
-      ],
-      "es": "Orden Global es un ecosistema completo: tu dinero (Veta Wallet), tu gente (PULSE CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), todos conectados sobre nuestra propia cadena. Una cuenta, todas las puertas.",
-      "en": "Orden Global is a complete ecosystem: your money (Veta Wallet), your people (PULSE CHAT), your business (MyTokenPay) and your identity (Genesis ID), all connected over our own chain. One account, every door."
-    },
-    {
-      "id": "comision",
-      "tema": "La comisión",
-      "publico": true,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "comision",
-        "fee",
-        "gas"
-      ],
-      "es": "La comisión de red se paga siempre en ORIGEN, también cuando enviás otro token, y es mínima: nuestra cadena es propia. El equivalente lo ves antes de confirmar cualquier envío.",
-      "en": "The network fee is always paid in ORIGEN, also when you send another token, and it is minimal: the chain is ours. You see the equivalent before confirming any transfer."
-    },
-    {
-      "id": "remesas",
-      "tema": "Remesas",
-      "publico": true,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "remesa",
-        "remit",
-        "enviar a otro pais"
-      ],
-      "es": "Con remesas ves cuánto llega del otro lado después de la comisión y del cambio, en nueve países. Te abro el calculador.",
-      "en": "With remittances you see how much arrives on the other side after the fee and the exchange, across nine countries. Let me open the calculator."
-    },
-    {
-      "id": "aucorp",
-      "tema": "AuCorp, la banca fiat",
-      "publico": true,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-23",
-      "palabras": [
-        "aucorp",
-        "aubank",
-        "banca",
-        "fiat",
-        "moneda local",
-        "local currency",
-        "tarjeta"
-      ],
-      "es": "AuCorp es la banca fiat del ecosistema: cuentas en moneda local, en 21 monedas del continente, con esta misma cuenta y sin otra contraseña. Se entra por su esfera aquí en el Núcleo. Hoy podés abrir cuentas, depositar con tu referencia, cambiar entre monedas con la tasa real dicha con su fecha y su margen, transferir y retirar a tu banco. La tarjeta AuCorp ya se está armando y se va a pedir desde esa misma plataforma. AuCorp es dueña de Ordenex y aliada de Orden Global. Es una institución FinTech de Próspera bajo la Regulación A, no un banco con licencia bancaria, y eso te lo dice en su propia pantalla.",
-      "en": "AuCorp is the fiat side of the ecosystem: local-currency accounts, in 21 currencies of the continent, with this same account and no extra password. You enter through its sphere here in the Nucleus. Today you can open accounts, deposit with your reference, exchange between currencies at the real rate stated with its date and margin, transfer, and withdraw to your bank. The AuCorp card is being built and will be requested from that same platform. AuCorp owns Ordenex and is an ally of Orden Global. It is a Próspera FinTech institution under Regulation A, not a licensed bank, and it tells you so on its own screen."
-    },
-    {
-      "id": "pronto",
-      "tema": "Lo que viene",
-      "publico": true,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "ordenexchange",
-        "pronto",
-        "coming"
-      ],
-      "es": "AuCorp y Ordenexchange ya abrieron los dos: las cuentas en moneda local y la casa de cambio, con esta misma cuenta. AuCorp es la que antes se llamaba AUBANK: cambió el nombre, no la casa. El ecosistema no es una lista cerrada. Crece.",
-      "en": "AuCorp and Ordenexchange are both open now: local-currency accounts and the exchange, with this same account. AuCorp is what used to be called AUBANK: the name changed, not the house. The ecosystem is not a closed list. It grows."
-    },
-    {
-      "id": "referencia",
-      "tema": "De dónde sale el valor de ORIGEN",
-      "publico": true,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "boveda",
-        "vault",
-        "respaldo",
-        "backing",
-        "certificado",
-        "43-101",
-        "auditoria",
-        "referencia",
-        "formula",
-        "precio"
-      ],
-      "es": "El precio de ORIGEN sale de una fórmula pública: el gramo de oro en dólares dividido entre cincuenta y cinco. No hay oro en bóveda detrás de ORIGEN — hay una referencia de precio, y te lo digo con esas palabras. Lo que sí se comprueba sin pedirnos nada es la cadena: la emisión total y cada movimiento están en ordenscan.com. Detrás del ecosistema hay activos en construcción —concesiones mineras en validación, terrenos, las plataformas y la propia cadena— y de esos hablamos por lo que son hoy, no por lo que serán.",
-      "en": "ORIGEN's price comes from a public formula: the gram of gold in dollars divided by fifty-five. There is no vaulted gold behind ORIGEN — there is a price reference, and I say it in those words. What can be checked without asking us is the chain: the total issuance and every movement are at ordenscan.com. Behind the ecosystem there are assets under construction — mining concessions under validation, land, the platforms and the chain itself — and we speak of those for what they are today, not for what they will be."
-    },
-    {
-      "id": "auka",
-      "tema": "AUKA",
-      "publico": true,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "auka",
-        "onza",
-        "ounce"
-      ],
-      "es": "AUKA sigue el precio de una onza de oro: es la forma de tener exposición al oro dentro del ecosistema sin custodiarlo vos. La figura de respaldo del metal —quién lo guarda, bajo qué contrato y con qué auditoría— está en manos de la Junta y no está firmada, así que hasta que lo esté te digo lo que sí es: sigue el precio, no te entrega el metal.",
-      "en": "AUKA tracks the price of one ounce of gold: it is how you get exposure to gold inside the ecosystem without holding it yourself. The legal figure of the metal's backing — who holds it, under what contract and with what audit — sits with the Board and is not signed, so until it is I will tell you what it does do: it tracks the price, it does not hand you the metal."
-    },
-    {
-      "id": "agka",
-      "tema": "AGKA",
-      "publico": true,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "agka",
-        "plata",
-        "silver"
-      ],
-      "es": "AGKA sigue el precio de una onza de plata: la puerta al mercado de la plata desde la misma billetera. Igual que con AUKA, la figura de respaldo del metal no está cerrada, y hasta que lo esté no te voy a decir que la plata está guardada.",
-      "en": "AGKA tracks the price of one ounce of silver: the way into the silver market from the same wallet. As with AUKA, the legal figure of the metal's backing is not settled, and until it is I am not going to tell you the silver is stored."
-    },
-    {
-      "id": "ondk",
-      "tema": "ONDK",
-      "publico": true,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "ondk",
-        "security",
-        "token de orden global",
-        "recompra"
-      ],
-      "es": "ONDK es Orden Global hecha token. Es un instrumento patrimonial digital, lo que en Próspera se llama un valor negociable —security token—, y es el único del ecosistema que sí está respaldado. Su valor viene de los activos del grupo: la minería, la infraestructura tecnológica y la participación en las compañías. Se gana por apreciación, y cada cierto tiempo Orden Global abre ventanas de recompra, que son una oportunidad puntual y no un derecho de rescate. No es una acción: no da voto ni te hace socio. No se mercadea en Estados Unidos.",
-      "en": "ONDK is Orden Global turned into a token. It is a digital equity instrument, what Próspera calls a security token, and the only one in the ecosystem that is genuinely backed. Its value comes from the group's assets: the mining, the technical infrastructure and the stakes in the companies. You gain by appreciation, and periodically Orden Global opens buy-back windows, which are an occasional opportunity and not a redemption right. It is not a share: no vote, no member status. It is not marketed in the United States."
-    },
-    {
-      "id": "seguridad-llaves",
-      "tema": "Quién guarda tus llaves",
-      "publico": true,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "llave",
-        "seed",
-        "frase",
-        "respaldo",
-        "recuperar",
-        "key",
-        "recovery"
-      ],
-      "es": "Tu frase de respaldo es tuya y solo tuya: no se la digas a nadie, ni a mí. Yo no la necesito para nada — yo preparo y vos firmás con tu contraseña. Guardala escrita en un sitio seguro: es lo único que abre tu dinero si perdés el teléfono.",
-      "en": "Your recovery phrase is yours and only yours: do not tell it to anyone, not even to me. I do not need it for anything — I prepare and you sign with your password. Keep it written somewhere safe: it is the only thing that opens your money if you lose your phone."
-    },
-    {
-      "id": "interno-infra",
-      "tema": "INTERNO · la infraestructura",
-      "publico": false,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "infraestructura",
-        "nodos",
-        "aws",
-        "validadores"
-      ],
-      "es": "La 5550 corre sobre cuatro validadores QBFT en AWS, con quórum de tres: tolera la caída de uno solo. El cerebro vive en el nodo RPC de la 5534 con Caddy delante. Esto es de la casa y no se cuenta fuera: un mapa de la infraestructura es un mapa para quien quiera tumbarla.",
-      "en": "Chain 5550 runs on four QBFT validators in AWS, with a quorum of three: it tolerates only one failure. The brain lives on the 5534 RPC node with Caddy in front. This is in-house and is not told outside: a map of the infrastructure is a map for whoever wants to bring it down."
-    },
-    {
-      "id": "interno-pendientes",
-      "tema": "INTERNO · lo que falta",
-      "publico": false,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "pendiente",
-        "deuda",
-        "arreglar"
-      ],
-      "es": "Pendiente: rotar las claves de Expo, Heroku y Render; borrar las cuatro cuentas de prueba; sellar la bitácora de Genesis ID tras la rotura de los 16 MB. Nada de esto sale al público: los pendientes de una casa se arreglan, no se anuncian.",
-      "en": "Pending: rotate the Expo, Heroku and Render keys; delete the four test accounts; seal the Genesis ID audit log after the 16 MB break. None of this goes public: a house's pending work gets fixed, not announced."
-    },
-    {
-      "id": "interno-boveda-en-marcha",
-      "tema": "INTERNO · la bóveda se está montando en Próspera",
-      "publico": false,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "boveda",
-        "custodia",
-        "prospera",
-        "en marcha",
-        "futuro"
-      ],
-      "es": "Dicho por la presidencia el 16/08/2026: la bóveda es un frente en marcha, se está trabajando en montarla en Próspera. Encaja con el expediente, que dice que el oro está en etapa de recurso y en proceso de formalización. Lo que NO se sabe todavía y hace falta antes de contarlo a nadie de fuera: qué sociedad o depositario custodia, en qué etapa está el trámite, si la bóveda es para ORIGEN o para AUKA, y con qué estándar de refinería se certificará —LBMA Good Delivery, no NI 43-101—. Hasta que eso exista, en público va el texto A: la figura de respaldo está en manos de la Junta y no está firmada. Una bóveda anunciada antes de existir es la misma clase de frase que acabamos de retirar de cuatro sitios, solo que en futuro.",
-      "en": "Stated by the president on 16/08/2026: the vault is work in progress, being set up in Próspera. It fits the legal file, which says the gold is at resource stage and being formalised. What is NOT known yet and is needed before telling anyone outside: which company or depositary holds custody, what stage the filing is at, whether the vault is for ORIGEN or for AUKA, and under which refinery standard it will be certified — LBMA Good Delivery, not NI 43-101. Until that exists, text A goes out in public: the backing figure sits with the Board and is not signed. A vault announced before it exists is the same class of sentence we just pulled from four sites, only in the future tense."
-    },
-    {
-      "id": "interno-legal-figura",
-      "tema": "INTERNO · qué es ORIGEN en derecho",
-      "publico": false,
-      "revisadoPor": "melany@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "referenciado",
-        "respaldado",
-        "figura juridica",
-        "boveda",
-        "ni 43-101",
-        "dictamen"
-      ],
-      "es": "La figura es REFERENCIADO, nunca respaldado: terminología no negociable en todos los documentos, y quien obtiene tokens es adquirente, no inversionista. No existe oro físico extraído ni custodiado en bóveda; el oro está en etapa de recurso o potencial minero dentro de concesiones sin formalizar. La NI 43-101 es un estándar canadiense de reporte de recursos mineros, NO una certificación de barras en bóveda: eso lo hacen estándares de refinería tipo LBMA. No hay dictamen jurídico externo escrito; la definición se construyó en casa. Excepción deliberada: ONDK sí se declara respaldado, porque es un valor negociable bajo Próspera y tiene otra naturaleza. Fuente: expediente de la Secretaria de la Junta, 14/08/2026.",
-      "en": "The legal figure is REFERENCED, never backed: non-negotiable wording across every document, and whoever obtains tokens is an acquirer, not an investor. There is no physical gold extracted or held in a vault; the gold sits as a resource or mining potential inside concessions that are not yet formalised. NI 43-101 is a Canadian mining-resource reporting standard, NOT a certification of bars in a vault: that is done by refinery standards such as LBMA. There is no external written legal opinion; the definition was built in-house. Deliberate exception: ONDK is declared backed, because it is a security under Próspera with a different nature. Source: Board Secretary's file, 14/08/2026."
-    },
-    {
-      "id": "interno-contradiccion-respaldo",
-      "tema": "INTERNO · lo que publicamos contradice al expediente legal",
-      "publico": false,
-      "revisadoPor": "melany@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "contradiccion",
-        "discrepancia",
-        "web",
-        "dossier",
-        "correccion"
-      ],
-      "es": "ALERTA ABIERTA. Cuatro sitios vivos afirman hoy respaldo uno a uno, custodia en bóveda y certificación NI 43-101: las fichas públicas origen y boveda de este mismo archivo, el texto de la portada en i18n.js, y el PDF para inversionistas de armar-dossier.py. El expediente legal dice que las tres afirmaciones son incorrectas. Es la Decisión 4 de la Junta: fijar por dictamen la naturaleza referenciada y corregir los textos. No se corrige por mantenimiento, porque el expediente pide dictamen. Mientras tanto, el PDF para inversionistas NO debe circular. Detalle con citas y rutas en legal-contradicciones.md.",
-      "en": "OPEN ALERT. Four live places today claim one-to-one backing, vault custody and NI 43-101 certification: the public origen and boveda cards in this very file, the landing copy in i18n.js, and the investor PDF from armar-dossier.py. The legal file says all three claims are wrong. This is Board Decision 4: settle the referenced nature by written opinion and correct the texts. Maintenance does not correct it, because the file asks for a legal opinion. Until then the investor PDF must not circulate. Detail with quotes and file paths in legal-contradicciones.md."
-    },
-    {
-      "id": "interno-licencias",
-      "tema": "INTERNO · licencias y regulador",
-      "publico": false,
-      "revisadoPor": "melany@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "licencia",
-        "rfsa",
-        "prospera",
-        "regulador",
-        "regulacion"
-      ],
-      "es": "Orden Global Corp no tiene NINGUNA licencia emitida; el paquete completo está en preparación ante la RFSA de Próspera. Primera ola, cuatro trámites: FinTech ATS Clase B para GoldeX Swap, Aviso de Oferta Exenta para ORIGEN, AUKA, AGKA y ONDK, Licencia de Compañía de Inversión con cien mil dólares de capital, y Prestamista No Bancario. Prerrequisito: formalizar la estructura accionaria ante Próspera, porque los expedientes exigen identificar beneficiarios finales. El modelo es operar desde Próspera hacia el mundo, sin licencia por país; la expansión por país es de otra sociedad y de otra etapa. Hasta que salgan, la operación está viva sobre base regulatoria incompleta: es el riesgo número uno del expediente.",
-      "en": "Orden Global Corp holds NO issued licence; the whole package is in preparation before Próspera's RFSA. First wave, four filings: FinTech ATS Class B for GoldeX Swap, Exempt Offering Notice for ORIGEN, AUKA, AGKA and ONDK, Investment Company Licence with one hundred thousand dollars of capital, and Non-Banking Lender. Prerequisite: formalise the share structure before Próspera, since the filings require identifying ultimate beneficiaries. The model is to operate from Próspera outward, with no per-country licence; per-country expansion belongs to another company and another stage. Until they are issued, a live operation rests on an incomplete regulatory base: risk number one in the file."
-    },
-    {
-      "id": "interno-sociedad",
-      "tema": "INTERNO · sociedad, jurisdicción y gobierno",
-      "publico": false,
-      "revisadoPor": "melany@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "sociedad",
-        "junta",
-        "prospera",
-        "accionista",
-        "gobernanza",
-        "estatutos"
-      ],
-      "es": "Orden Global Corp, Próspera ZEDE en Roatán, permiso 88501978376475, primer registro 23/07/2026. De ella dependen la cadena, ORIGEN y todas las plataformas. Es el eje operativo del Pilar 2 del Sistema Financiero Social. Accionista único hoy: José Medardo Ordóñez Martínez; está decidido reestructurar en series de acciones, con acciones fundadoras de voto reforzado, y llevar el control a una tenedora en Emiratos. Junta de cinco: presidente José Medardo Ordóñez, vicepresidente Carlos Leonardo Paguada, secretaria Melany Johan Ordóñez, vocales Mayra Carolina Enamorado y Vanesa Carolina Pinto. Quórum de tres, reuniones trimestrales, mayoría simple. El CEO firma solo hasta cien mil dólares. La entidad canadiense Orden Global Blockchain Corp no tiene rol operativo. El acuerdo uno, que mantiene viva la cadena vieja, está dicho pero sin acta a la vista.",
-      "en": "Orden Global Corp, Próspera ZEDE in Roatán, permit 88501978376475, first registered 23/07/2026. The chain, ORIGEN and every platform hang from it. It is the operating axis of Pillar 2 of the Social Financial System. Sole registered shareholder today: José Medardo Ordóñez Martínez; a restructuring into share series is decided, with founder shares carrying enhanced voting, and control moving to a holding company in the Emirates. Board of five: chair José Medardo Ordóñez, vice-chair Carlos Leonardo Paguada, secretary Melany Johan Ordóñez, members Mayra Carolina Enamorado and Vanesa Carolina Pinto. Quorum of three, quarterly meetings, simple majority. The CEO signs alone up to one hundred thousand dollars. The Canadian entity Orden Global Blockchain Corp has no operating role. Agreement one, which keeps the old chain alive, is stated but has no minute on record."
-    },
-    {
-      "id": "interno-tesoro-cuatro",
-      "tema": "INTERNO · el tesoro son cuatro billeteras",
-      "publico": false,
-      "revisadoPor": "melany@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "tesoro",
-        "tesoreria",
-        "billeteras madre",
-        "custodia",
-        "llaves"
-      ],
-      "es": "Corrige lo que el cerebro tenía anotado. El tesoro no es una billetera única: son CUATRO billeteras madre con doscientos cincuenta mil millones de ORIGEN cada una, un billón en total, que es la emisión entera. De las madres se reparte a operativas según el tokenomics, y las operativas liberan según la referencia del oro. Mover fondos de una madre exige acta de la Junta Directiva. Las direcciones no se divulgan por decisión del Protocolo de Seguridad de Accesos y Credenciales, que gobierna también las llaves. Ni direcciones ni llaves se escriben aquí.",
-      "en": "This corrects what the brain had on file. The treasury is not one wallet: it is FOUR mother wallets holding two hundred and fifty billion ORIGEN each, one trillion in total, which is the entire issuance. Mother wallets feed operating wallets per the tokenomics, and operating wallets release against the gold reference. Moving funds out of a mother wallet requires a Board minute. Addresses are not disclosed by decision of the Access and Credentials Security Protocol, which also governs the keys. Neither addresses nor keys are written here."
-    },
-    {
-      "id": "interno-usuarios-sin-contrato",
-      "tema": "INTERNO · 435 usuarios sin términos ni contrato",
-      "publico": false,
-      "revisadoPor": "melany@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "terminos",
-        "privacidad",
-        "contrato",
-        "usuarios",
-        "aceptacion"
-      ],
-      "es": "No hay términos y condiciones publicados, ni política de privacidad, ni contrato de usuario. Los enlaces legales de la web vigente están vacíos, y no hubo punto de aceptación registrable cuando los cuatrocientos treinta y cinco usuarios abrieron cuenta. Veinticuatro tarjetas emitidas. No hay garantía ni recompra hacia el usuario común si el precio de ORIGEN cae, distinta de las ventanas esporádicas de ONDK. Ley aplicable y reclamaciones: Próspera y arbitraje se asumen, pero no se han definido. Riesgo número tres del expediente y Decisión 3 de la Junta.",
-      "en": "There are no published terms and conditions, no privacy policy and no user contract. The legal links on the live site are empty, and there was no recordable point of acceptance when the four hundred and thirty-five users opened accounts. Twenty-four cards issued. There is no guarantee or buy-back for the ordinary user if ORIGEN's price falls, distinct from ONDK's occasional windows. Governing law and claims: Próspera and arbitration are assumed but undefined. Risk number three in the file and Board Decision 3."
-    },
-    {
-      "id": "interno-propiedad-intelectual",
-      "tema": "INTERNO · las marcas y el software no son de la empresa",
-      "publico": false,
-      "revisadoPor": "melany@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "marca",
-        "dominio",
-        "software",
-        "cesion",
-        "propiedad intelectual"
-      ],
-      "es": "Ninguna marca del ecosistema está registrada: ni Orden Global, ni Veta Wallet, ni Genesis ID, ni MyTokenPay, ni Ordenscan, ni ORIGEN. Los dominios están a nombre personal de una socia, aunque dentro de cuentas de la sociedad. El software está alojado a nombre de la sociedad y bajo su control, pero no hay cesión de derechos firmada. La precisión jurídica que importa: controlar una cuenta no es ser titular. Sin cesión, la titularidad legal del software sigue en quien lo desarrolló, y los dominios son de la persona natural. Riesgo número dos del expediente y Decisión 2 de la Junta.",
-      "en": "No trademark of the ecosystem is registered: not Orden Global, not Veta Wallet, not Genesis ID, not MyTokenPay, not Ordenscan, not ORIGEN. Domains sit in a partner's personal name, though inside company accounts. The software is hosted under the company's name and control, but no assignment of rights has been signed. The legal point that matters: controlling an account is not holding title. Without an assignment, legal title to the software stays with whoever developed it, and the domains belong to the natural person. Risk number two in the file and Board Decision 2."
-    },
-    {
-      "id": "interno-cumplimiento",
-      "tema": "INTERNO · cumplimiento y datos personales",
-      "publico": false,
-      "revisadoPor": "melany@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "aml",
-        "cumplimiento",
-        "datos",
-        "privacidad",
-        "kyc",
-        "oficial"
-      ],
-      "es": "Genesis ID hace KYC, KYB y AML, pero el marco alrededor está a medias: el manual AML y CFT está en proceso y sin aprobar, no hay oficial de cumplimiento nombrado, y el reporte de operaciones sospechosas ante la RFSA es futuro. Orden Global Corp es responsable del tratamiento; los datos viven en servidores de Amazon en Estados Unidos. No hay política de privacidad publicada y la transferencia internacional de datos no está abordada, con usuarios en más de diez países. Decisión 5 de la Junta.",
-      "en": "Genesis ID performs KYC, KYB and AML, but the framework around it is half-built: the AML and CFT manual is in progress and unapproved, no compliance officer is appointed, and suspicious-activity reporting to the RFSA is future work. Orden Global Corp is the data controller; the data lives on Amazon servers in the United States. No privacy policy is published and international data transfer is unaddressed, with users in more than ten countries. Board Decision 5."
-    },
-    {
-      "id": "interno-comision-dos-cobros",
-      "tema": "INTERNO · la comisión: dos cobros distintos",
-      "publico": false,
-      "revisadoPor": "jose@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "comision",
-        "gas",
-        "fee",
-        "cobro",
-        "fiscal"
-      ],
-      "es": "Comprobado el 16/08/2026, y concilia la contradicción que el expediente marcó. La comisión de la billetera, los 0,001 ORIGEN al tesoro, sigue APAGADA: lib/comision.js solo cobra si existe OG_COMISION_ORIGEN, y esa variable no está puesta en la aplicación vetawallet de Heroku. Lo que sí está activo es el suelo de gas de la cadena: eth_gasPrice devuelve noventa y tres gwei, que a veintiún mil de gas son 0,001953 ORIGEN por envío nativo. Mover ORIGEN ya cuesta algo más de una milésima, pero ese cobro es de la red y va al validador, no de la casa y no al tesoro. Se parecen en la cifra y se confunden con facilidad; tienen distinto cobrador y por tanto distinto tratamiento fiscal.",
-      "en": "Verified 16/08/2026, and this reconciles the contradiction the legal file flagged. The wallet commission, the 0.001 ORIGEN to the treasury, is still OFF: lib/comision.js only charges if OG_COMISION_ORIGEN exists, and that variable is not set on the vetawallet Heroku app. What is active is the chain's gas floor: eth_gasPrice returns ninety-three gwei, which at twenty-one thousand gas is 0.001953 ORIGEN per native send. Moving ORIGEN already costs a little over a thousandth, but that charge belongs to the network and goes to the validator, not to the house and not to the treasury. The figures look alike and are easy to confuse; they have different collectors and therefore different tax treatment."
-    },
-    {
-      "id": "interno-fiscalidad",
-      "tema": "INTERNO · fiscalidad",
-      "publico": false,
-      "revisadoPor": "melany@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "fiscal",
-        "impuesto",
-        "tributacion",
-        "hacienda"
-      ],
-      "es": "Orden Global Corp tributa bajo el régimen de Próspera ZEDE y tiene sus obligaciones al día. No ha habido todavía actividad que genere hecho gravable. Sin analizar: el tratamiento fiscal de la emisión de tokens, el de la comisión por transacción, y las obligaciones de información sobre usuarios. Decisión 6 de la Junta. Se acumulan hechos sin encuadre fiscal mientras no se decida.",
-      "en": "Orden Global Corp is taxed under the Próspera ZEDE regime and is up to date on its obligations. No taxable event has arisen yet. Unanalysed: the tax treatment of token issuance, that of the per-transaction fee, and reporting obligations on users. Board Decision 6. Facts accumulate without a tax framing until it is decided."
-    },
-    {
-      "id": "interno-migracion-saldos",
-      "tema": "INTERNO · migrar la cadena mueve el registro de 435 personas",
-      "publico": false,
-      "revisadoPor": "melany@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "migracion",
-        "5550",
-        "8532",
-        "saldos",
-        "consentimiento"
-      ],
-      "es": "Arrancar la 5550 sustituye a la cadena anterior como registro de saldos de los usuarios. En términos legales eso es migrar el registro contable de cuatrocientas treinta y cinco personas reales, y está por determinar si exige aviso o consentimiento previo. Hay que resolverlo ANTES de ejecutarla, no después. Decisión 8 de la Junta. Enlaza con el acuerdo uno: la cadena vieja no se apaga ni se borra y queda como respaldo, aunque ese acuerdo todavía no consta en acta.",
-      "en": "Starting 5550 replaces the previous chain as the users' balance ledger. In legal terms that migrates the accounting record of four hundred and thirty-five real people, and whether it requires prior notice or consent is undetermined. It must be settled BEFORE execution, not after. Board Decision 8. It ties to agreement one: the old chain is neither shut down nor deleted and remains as backup, though that agreement is not yet minuted."
-    },
-    {
-      "id": "interno-ondk",
-      "tema": "INTERNO · ONDK, el único respaldado",
-      "publico": false,
-      "revisadoPor": "melany@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "ondk",
-        "security",
-        "valor negociable",
-        "recompra"
-      ],
-      "es": "ONDK es un instrumento patrimonial digital: un título que representa valor económico del ecosistema. Toma su valor de la minería, la infraestructura tecnológica y la participación en las compañías del grupo. El titular gana por apreciación, y de forma secundaria por ventanas de recompra que Orden Global abre cada cierto tiempo, que no son un derecho permanente de rescate: eso evita crear una obligación de liquidez permanente. En Próspera se estructura como valor negociable y sí se declara RESPALDADO, que es la única excepción a la terminología del ecosistema. Su cobertura es la Licencia de Compañía de Inversión de la RFSA, y no puede mercadearse en Estados Unidos. No es una acción: da derechos económicos por contrato, sin voto ni condición de socio.",
-      "en": "ONDK is a digital equity instrument: a title representing the ecosystem's economic value. It draws value from the mining, the technical infrastructure and the stakes in the group's companies. Holders gain by appreciation, and secondarily through buy-back windows Orden Global opens periodically, which are not a permanent redemption right: that avoids creating a standing liquidity obligation. Under Próspera it is structured as a security and is declared BACKED, the sole exception to the ecosystem's wording. Its cover is the RFSA Investment Company Licence, and it cannot be marketed in the United States. It is not a share: it grants contractual economic rights, with no vote and no member status."
-    },
-    {
-      "id": "interno-mineria-desmentida",
-      "tema": "INTERNO · el documento minero se contradice con lo legal",
-      "publico": false,
-      "revisadoPor": "melany@ordenglobal.org",
-      "revisadoEn": "2026-08-16",
-      "palabras": [
-        "oriegen",
-        "portafolio",
-        "gramin",
-        "mineria",
-        "contradiccion"
-      ],
-      "es": "El documento portafolio-minero.md, entregado por la compañía el 14/08, choca en tres puntos con el expediente legal del mismo día. Uno: escribe ORIEGEN, y la moneda es ORIGEN. Dos: dice tokens respaldados en metales preciosos y anclados a activos físicos reales, contra el referenciado no negociable. Tres, y es el que más daño hace citado suelto: dice que un gramín es un gramo de oro y un ORIEGEN un cincuentaicincoavo de gramín, cuando un ORIGEN es un gramin y un gramin es un cincuentaicincoavo de gramo. Quien cite esa frase estará diciendo que la unidad vale cincuenta y cinco veces lo que vale. El documento se conserva tal cual lo entregó la compañía; el cerebro no repite esas tres cosas.",
-      "en": "The document portafolio-minero.md, supplied by the company on 14/08, clashes on three points with the legal file of the same date. One: it writes ORIEGEN, and the coin is ORIGEN. Two: it says tokens backed by precious metals and anchored to real physical assets, against the non-negotiable referenced wording. Three, the most damaging when quoted alone: it says a gramin is a gram of gold and an ORIEGEN is one fifty-fifth of a gramin, when an ORIGEN is a gramin and a gramin is one fifty-fifth of a gram. Anyone quoting that sentence will be saying the unit is worth fifty-five times its real value. The document is kept exactly as the company delivered it; the brain does not repeat those three things."
-    }
-  ]
+ "_leeme": [
+  "EL SABER DE LA CASA. Aquí vive TODO lo que Genesis Core sabe del ecosistema, y",
+  "de aquí sale lo poco que AU-RA puede decir en público.",
+  "",
+  "LA REGLA: `publico: false` es el valor de partida y el que se aplica ante",
+  "cualquier duda. Una ficha solo sale al mundo cuando una persona la marca a",
+  "mano y firma con su correo en `revisadoPor`. No hay forma de que algo se",
+  "vuelva público por descuido, por defecto, ni por un fallo del programa: lo",
+  "que no está marcado, no se copia al archivo que lee AU-RA.",
+  "",
+  "El filtro se aplica AL PUBLICAR, no al leer. El archivo que llega al",
+  "navegador contiene solo lo público; lo interno no viaja nunca, ni oculto ni",
+  "marcado para no enseñarse. Filtrar en el navegador sería mandarle a todo el",
+  "mundo el texto que se pretende esconder.",
+  "",
+  "Para añadir saber: se escribe la ficha aquí y se corre",
+  "`node infra/cerebro/publicar-saber.mjs`. Sin correrlo, AU-RA no se entera.",
+  "Eso es a propósito: cada cambio de lo que AU-RA dice en público pasa por un",
+  "commit que alguien puede leer."
+ ],
+ "fichas": [
+  {
+   "id": "origen",
+   "tema": "ORIGEN",
+   "publico": true,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "origen",
+    "origin",
+    "oro",
+    "gold",
+    "gramin"
+   ],
+   "es": "ORIGEN es la moneda de la cadena de Orden Global, y su valor está referenciado al oro: un ORIGEN es un gramin, la cincuentaicincoava parte de un gramo de oro, al precio del oro de hoy. La fórmula no la ponemos nosotros y no cambia, así que el precio lo podés rehacer con una calculadora cuando quieras. Se envía en segundos por nuestra propia cadena.",
+   "en": "ORIGEN is the currency of the Orden Global chain, and its value is referenced to gold: one ORIGEN is one gramin, the fifty-fifth part of a gram of gold, at today's gold price. We do not set the formula and it does not change, so you can redo the price with a calculator whenever you like. It sends in seconds over our own chain."
+  },
+  {
+   "id": "cadena",
+   "tema": "La cadena 5550",
+   "publico": true,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "cadena",
+    "chain",
+    "5550",
+    "besu",
+    "qbft",
+    "shanghai",
+    "blockchain",
+    "layer"
+   ],
+   "es": "Orden Global corre sobre su propia Layer 1: la cadena 5550, con Hyperledger Besu, consenso QBFT y máquina Shanghai. Ya no vivimos prestados en la red de otro — más rápida, más nuestra, sin pedirle permiso a nadie. Todo se puede ver en ordenscan.com.",
+   "en": "Orden Global runs on its own Layer 1: chain 5550, with Hyperledger Besu, QBFT consensus and the Shanghai machine. We no longer live on somebody else's network — faster, more ours, asking nobody for permission. It can all be seen at ordenscan.com."
+  },
+  {
+   "id": "gid",
+   "tema": "Genesis ID",
+   "publico": true,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "genesis",
+    "identidad",
+    "identity",
+    "kyc",
+    "verificar"
+   ],
+   "es": "Genesis ID es tu identidad para todo el ecosistema: te verificás UNA vez y quedás verificado en todas partes. Es lo que hace que del otro lado del chat o de un cobro siempre haya una persona real.",
+   "en": "Genesis ID is your identity across the whole ecosystem: you verify ONCE and you are verified everywhere. It is what makes sure there is always a real person on the other side of a chat or a charge."
+  },
+  {
+   "id": "chat",
+   "tema": "PULSE CHAT",
+   "publico": true,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "pulse",
+    "chat",
+    "mensaje",
+    "message"
+   ],
+   "es": "PULSE CHAT es la mensajería del ecosistema: solo entra gente con Genesis ID aprobado, podés mandar dinero sin salir del hilo y cada pago deja su comprobante verificable en la cadena.",
+   "en": "PULSE CHAT is the ecosystem's messaging: only people with an approved Genesis ID get in, you can send money without leaving the thread, and every payment leaves its receipt verifiable on the chain."
+  },
+  {
+   "id": "pay",
+   "tema": "MyTokenPay",
+   "publico": true,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "mytokenpay",
+    "negocio",
+    "comercio",
+    "merchant",
+    "business"
+   ],
+   "es": "MyTokenPay es la capa de comercio: cobrás con un QR, explorás negocios que aceptan ORIGEN y pagás desde tu misma billetera.",
+   "en": "MyTokenPay is the commerce layer: you charge with a QR, you explore businesses that accept ORIGEN, and you pay from the same wallet."
+  },
+  {
+   "id": "aura",
+   "tema": "AU-RA",
+   "publico": true,
+   "revisadoPor": "j.ordonez@ordenglobal.org (pedido por chat, 27-ago)",
+   "revisadoEn": "2026-08-27",
+   "palabras": [
+    "asistente",
+    "assistant",
+    "aura",
+    "beta",
+    "modo",
+    "que puedes",
+    "quien sos",
+    "version",
+    "who are you"
+   ],
+   "es": "Soy AU-RA, la inteligencia de Orden Global — versión beta, y creciendo con cada versión. Converso con vos aquí en el chat y también vivo dentro de la billetera. Tengo dos formas de pensar: la rápida, que contesta al vuelo, y la pensadora, que se toma su tiempo para preguntas con más fondo — me decís «modo pensador» o «modo rápido» y cambio. Nunca toco tu dinero: preparo y explico, pero firmás vos.",
+   "en": "I am AU-RA, Orden Global's intelligence — beta version, and growing with each release. I chat with you here and I also live inside the wallet. I have two ways of thinking: the fast one, answering on the fly, and the thoughtful one, which takes its time for deeper questions — tell me 'thinker mode' or 'fast mode' and I switch. I never touch your money: I prepare and explain, but you sign."
+  },
+  {
+   "id": "og",
+   "tema": "Orden Global",
+   "publico": true,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "orden global",
+    "ecosistema",
+    "ecosystem"
+   ],
+   "es": "Orden Global es un ecosistema completo: tu dinero (Veta Wallet), tu gente (PULSE CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), todos conectados sobre nuestra propia cadena. Una cuenta, todas las puertas.",
+   "en": "Orden Global is a complete ecosystem: your money (Veta Wallet), your people (PULSE CHAT), your business (MyTokenPay) and your identity (Genesis ID), all connected over our own chain. One account, every door."
+  },
+  {
+   "id": "comision",
+   "tema": "La comisión",
+   "publico": true,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "comision",
+    "fee",
+    "gas"
+   ],
+   "es": "La comisión de red se paga siempre en ORIGEN, también cuando enviás otro token, y es mínima: nuestra cadena es propia. El equivalente lo ves antes de confirmar cualquier envío.",
+   "en": "The network fee is always paid in ORIGEN, also when you send another token, and it is minimal: the chain is ours. You see the equivalent before confirming any transfer."
+  },
+  {
+   "id": "remesas",
+   "tema": "Remesas",
+   "publico": true,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "remesa",
+    "remit",
+    "enviar a otro pais"
+   ],
+   "es": "Con remesas ves cuánto llega del otro lado después de la comisión y del cambio, en nueve países. Te abro el calculador.",
+   "en": "With remittances you see how much arrives on the other side after the fee and the exchange, across nine countries. Let me open the calculator."
+  },
+  {
+   "id": "aucorp",
+   "tema": "AuCorp, la banca fiat",
+   "publico": true,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-23",
+   "palabras": [
+    "aucorp",
+    "aubank",
+    "banca",
+    "fiat",
+    "moneda local",
+    "local currency",
+    "tarjeta"
+   ],
+   "es": "AuCorp es la banca fiat del ecosistema: cuentas en moneda local, en 21 monedas del continente, con esta misma cuenta y sin otra contraseña. Se entra por su esfera aquí en el Núcleo. Hoy podés abrir cuentas, depositar con tu referencia, cambiar entre monedas con la tasa real dicha con su fecha y su margen, transferir y retirar a tu banco. La tarjeta AuCorp ya se está armando y se va a pedir desde esa misma plataforma. AuCorp es dueña de Ordenex y aliada de Orden Global. Es una institución FinTech de Próspera bajo la Regulación A, no un banco con licencia bancaria, y eso te lo dice en su propia pantalla.",
+   "en": "AuCorp is the fiat side of the ecosystem: local-currency accounts, in 21 currencies of the continent, with this same account and no extra password. You enter through its sphere here in the Nucleus. Today you can open accounts, deposit with your reference, exchange between currencies at the real rate stated with its date and margin, transfer, and withdraw to your bank. The AuCorp card is being built and will be requested from that same platform. AuCorp owns Ordenex and is an ally of Orden Global. It is a Próspera FinTech institution under Regulation A, not a licensed bank, and it tells you so on its own screen."
+  },
+  {
+   "id": "pronto",
+   "tema": "Lo que viene",
+   "publico": true,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "ordenexchange",
+    "pronto",
+    "coming"
+   ],
+   "es": "AuCorp y Ordenexchange ya abrieron los dos: las cuentas en moneda local y la casa de cambio, con esta misma cuenta. AuCorp es la que antes se llamaba AUBANK: cambió el nombre, no la casa. El ecosistema no es una lista cerrada. Crece.",
+   "en": "AuCorp and Ordenexchange are both open now: local-currency accounts and the exchange, with this same account. AuCorp is what used to be called AUBANK: the name changed, not the house. The ecosystem is not a closed list. It grows."
+  },
+  {
+   "id": "referencia",
+   "tema": "De dónde sale el valor de ORIGEN",
+   "publico": true,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "boveda",
+    "vault",
+    "respaldo",
+    "backing",
+    "certificado",
+    "43-101",
+    "auditoria",
+    "referencia",
+    "formula",
+    "precio"
+   ],
+   "es": "El precio de ORIGEN sale de una fórmula pública: el gramo de oro en dólares dividido entre cincuenta y cinco. No hay oro en bóveda detrás de ORIGEN — hay una referencia de precio, y te lo digo con esas palabras. Lo que sí se comprueba sin pedirnos nada es la cadena: la emisión total y cada movimiento están en ordenscan.com. Detrás del ecosistema hay activos en construcción —concesiones mineras en validación, terrenos, las plataformas y la propia cadena— y de esos hablamos por lo que son hoy, no por lo que serán.",
+   "en": "ORIGEN's price comes from a public formula: the gram of gold in dollars divided by fifty-five. There is no vaulted gold behind ORIGEN — there is a price reference, and I say it in those words. What can be checked without asking us is the chain: the total issuance and every movement are at ordenscan.com. Behind the ecosystem there are assets under construction — mining concessions under validation, land, the platforms and the chain itself — and we speak of those for what they are today, not for what they will be."
+  },
+  {
+   "id": "auka",
+   "tema": "AUKA",
+   "publico": true,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "auka",
+    "onza",
+    "ounce"
+   ],
+   "es": "AUKA sigue el precio de una onza de oro: es la forma de tener exposición al oro dentro del ecosistema sin custodiarlo vos. La figura de respaldo del metal —quién lo guarda, bajo qué contrato y con qué auditoría— está en manos de la Junta y no está firmada, así que hasta que lo esté te digo lo que sí es: sigue el precio, no te entrega el metal.",
+   "en": "AUKA tracks the price of one ounce of gold: it is how you get exposure to gold inside the ecosystem without holding it yourself. The legal figure of the metal's backing — who holds it, under what contract and with what audit — sits with the Board and is not signed, so until it is I will tell you what it does do: it tracks the price, it does not hand you the metal."
+  },
+  {
+   "id": "agka",
+   "tema": "AGKA",
+   "publico": true,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "agka",
+    "plata",
+    "silver"
+   ],
+   "es": "AGKA sigue el precio de una onza de plata: la puerta al mercado de la plata desde la misma billetera. Igual que con AUKA, la figura de respaldo del metal no está cerrada, y hasta que lo esté no te voy a decir que la plata está guardada.",
+   "en": "AGKA tracks the price of one ounce of silver: the way into the silver market from the same wallet. As with AUKA, the legal figure of the metal's backing is not settled, and until it is I am not going to tell you the silver is stored."
+  },
+  {
+   "id": "ondk",
+   "tema": "ONDK",
+   "publico": true,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "ondk",
+    "security",
+    "token de orden global",
+    "recompra"
+   ],
+   "es": "ONDK es Orden Global hecha token. Es un instrumento patrimonial digital, lo que en Próspera se llama un valor negociable —security token—, y es el único del ecosistema que sí está respaldado. Su valor viene de los activos del grupo: la minería, la infraestructura tecnológica y la participación en las compañías. Se gana por apreciación, y cada cierto tiempo Orden Global abre ventanas de recompra, que son una oportunidad puntual y no un derecho de rescate. No es una acción: no da voto ni te hace socio. No se mercadea en Estados Unidos.",
+   "en": "ONDK is Orden Global turned into a token. It is a digital equity instrument, what Próspera calls a security token, and the only one in the ecosystem that is genuinely backed. Its value comes from the group's assets: the mining, the technical infrastructure and the stakes in the companies. You gain by appreciation, and periodically Orden Global opens buy-back windows, which are an occasional opportunity and not a redemption right. It is not a share: no vote, no member status. It is not marketed in the United States."
+  },
+  {
+   "id": "seguridad-llaves",
+   "tema": "Quién guarda tus llaves",
+   "publico": true,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "llave",
+    "seed",
+    "frase",
+    "respaldo",
+    "recuperar",
+    "key",
+    "recovery"
+   ],
+   "es": "Tu frase de respaldo es tuya y solo tuya: no se la digas a nadie, ni a mí. Yo no la necesito para nada — yo preparo y vos firmás con tu contraseña. Guardala escrita en un sitio seguro: es lo único que abre tu dinero si perdés el teléfono.",
+   "en": "Your recovery phrase is yours and only yours: do not tell it to anyone, not even to me. I do not need it for anything — I prepare and you sign with your password. Keep it written somewhere safe: it is the only thing that opens your money if you lose your phone."
+  },
+  {
+   "id": "interno-infra",
+   "tema": "INTERNO · la infraestructura",
+   "publico": false,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "infraestructura",
+    "nodos",
+    "aws",
+    "validadores"
+   ],
+   "es": "La 5550 corre sobre cuatro validadores QBFT en AWS, con quórum de tres: tolera la caída de uno solo. El cerebro vive en el nodo RPC de la 5534 con Caddy delante. Esto es de la casa y no se cuenta fuera: un mapa de la infraestructura es un mapa para quien quiera tumbarla.",
+   "en": "Chain 5550 runs on four QBFT validators in AWS, with a quorum of three: it tolerates only one failure. The brain lives on the 5534 RPC node with Caddy in front. This is in-house and is not told outside: a map of the infrastructure is a map for whoever wants to bring it down."
+  },
+  {
+   "id": "interno-pendientes",
+   "tema": "INTERNO · lo que falta",
+   "publico": false,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "pendiente",
+    "deuda",
+    "arreglar"
+   ],
+   "es": "Pendiente: rotar las claves de Expo, Heroku y Render; borrar las cuatro cuentas de prueba; sellar la bitácora de Genesis ID tras la rotura de los 16 MB. Nada de esto sale al público: los pendientes de una casa se arreglan, no se anuncian.",
+   "en": "Pending: rotate the Expo, Heroku and Render keys; delete the four test accounts; seal the Genesis ID audit log after the 16 MB break. None of this goes public: a house's pending work gets fixed, not announced."
+  },
+  {
+   "id": "interno-boveda-en-marcha",
+   "tema": "INTERNO · la bóveda se está montando en Próspera",
+   "publico": false,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "boveda",
+    "custodia",
+    "prospera",
+    "en marcha",
+    "futuro"
+   ],
+   "es": "Dicho por la presidencia el 16/08/2026: la bóveda es un frente en marcha, se está trabajando en montarla en Próspera. Encaja con el expediente, que dice que el oro está en etapa de recurso y en proceso de formalización. Lo que NO se sabe todavía y hace falta antes de contarlo a nadie de fuera: qué sociedad o depositario custodia, en qué etapa está el trámite, si la bóveda es para ORIGEN o para AUKA, y con qué estándar de refinería se certificará —LBMA Good Delivery, no NI 43-101—. Hasta que eso exista, en público va el texto A: la figura de respaldo está en manos de la Junta y no está firmada. Una bóveda anunciada antes de existir es la misma clase de frase que acabamos de retirar de cuatro sitios, solo que en futuro.",
+   "en": "Stated by the president on 16/08/2026: the vault is work in progress, being set up in Próspera. It fits the legal file, which says the gold is at resource stage and being formalised. What is NOT known yet and is needed before telling anyone outside: which company or depositary holds custody, what stage the filing is at, whether the vault is for ORIGEN or for AUKA, and under which refinery standard it will be certified — LBMA Good Delivery, not NI 43-101. Until that exists, text A goes out in public: the backing figure sits with the Board and is not signed. A vault announced before it exists is the same class of sentence we just pulled from four sites, only in the future tense."
+  },
+  {
+   "id": "interno-legal-figura",
+   "tema": "INTERNO · qué es ORIGEN en derecho",
+   "publico": false,
+   "revisadoPor": "melany@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "referenciado",
+    "respaldado",
+    "figura juridica",
+    "boveda",
+    "ni 43-101",
+    "dictamen"
+   ],
+   "es": "La figura es REFERENCIADO, nunca respaldado: terminología no negociable en todos los documentos, y quien obtiene tokens es adquirente, no inversionista. No existe oro físico extraído ni custodiado en bóveda; el oro está en etapa de recurso o potencial minero dentro de concesiones sin formalizar. La NI 43-101 es un estándar canadiense de reporte de recursos mineros, NO una certificación de barras en bóveda: eso lo hacen estándares de refinería tipo LBMA. No hay dictamen jurídico externo escrito; la definición se construyó en casa. Excepción deliberada: ONDK sí se declara respaldado, porque es un valor negociable bajo Próspera y tiene otra naturaleza. Fuente: expediente de la Secretaria de la Junta, 14/08/2026.",
+   "en": "The legal figure is REFERENCED, never backed: non-negotiable wording across every document, and whoever obtains tokens is an acquirer, not an investor. There is no physical gold extracted or held in a vault; the gold sits as a resource or mining potential inside concessions that are not yet formalised. NI 43-101 is a Canadian mining-resource reporting standard, NOT a certification of bars in a vault: that is done by refinery standards such as LBMA. There is no external written legal opinion; the definition was built in-house. Deliberate exception: ONDK is declared backed, because it is a security under Próspera with a different nature. Source: Board Secretary's file, 14/08/2026."
+  },
+  {
+   "id": "interno-contradiccion-respaldo",
+   "tema": "INTERNO · lo que publicamos contradice al expediente legal",
+   "publico": false,
+   "revisadoPor": "melany@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "contradiccion",
+    "discrepancia",
+    "web",
+    "dossier",
+    "correccion"
+   ],
+   "es": "ALERTA ABIERTA. Cuatro sitios vivos afirman hoy respaldo uno a uno, custodia en bóveda y certificación NI 43-101: las fichas públicas origen y boveda de este mismo archivo, el texto de la portada en i18n.js, y el PDF para inversionistas de armar-dossier.py. El expediente legal dice que las tres afirmaciones son incorrectas. Es la Decisión 4 de la Junta: fijar por dictamen la naturaleza referenciada y corregir los textos. No se corrige por mantenimiento, porque el expediente pide dictamen. Mientras tanto, el PDF para inversionistas NO debe circular. Detalle con citas y rutas en legal-contradicciones.md.",
+   "en": "OPEN ALERT. Four live places today claim one-to-one backing, vault custody and NI 43-101 certification: the public origen and boveda cards in this very file, the landing copy in i18n.js, and the investor PDF from armar-dossier.py. The legal file says all three claims are wrong. This is Board Decision 4: settle the referenced nature by written opinion and correct the texts. Maintenance does not correct it, because the file asks for a legal opinion. Until then the investor PDF must not circulate. Detail with quotes and file paths in legal-contradicciones.md."
+  },
+  {
+   "id": "interno-licencias",
+   "tema": "INTERNO · licencias y regulador",
+   "publico": false,
+   "revisadoPor": "melany@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "licencia",
+    "rfsa",
+    "prospera",
+    "regulador",
+    "regulacion"
+   ],
+   "es": "Orden Global Corp no tiene NINGUNA licencia emitida; el paquete completo está en preparación ante la RFSA de Próspera. Primera ola, cuatro trámites: FinTech ATS Clase B para GoldeX Swap, Aviso de Oferta Exenta para ORIGEN, AUKA, AGKA y ONDK, Licencia de Compañía de Inversión con cien mil dólares de capital, y Prestamista No Bancario. Prerrequisito: formalizar la estructura accionaria ante Próspera, porque los expedientes exigen identificar beneficiarios finales. El modelo es operar desde Próspera hacia el mundo, sin licencia por país; la expansión por país es de otra sociedad y de otra etapa. Hasta que salgan, la operación está viva sobre base regulatoria incompleta: es el riesgo número uno del expediente.",
+   "en": "Orden Global Corp holds NO issued licence; the whole package is in preparation before Próspera's RFSA. First wave, four filings: FinTech ATS Class B for GoldeX Swap, Exempt Offering Notice for ORIGEN, AUKA, AGKA and ONDK, Investment Company Licence with one hundred thousand dollars of capital, and Non-Banking Lender. Prerequisite: formalise the share structure before Próspera, since the filings require identifying ultimate beneficiaries. The model is to operate from Próspera outward, with no per-country licence; per-country expansion belongs to another company and another stage. Until they are issued, a live operation rests on an incomplete regulatory base: risk number one in the file."
+  },
+  {
+   "id": "interno-sociedad",
+   "tema": "INTERNO · sociedad, jurisdicción y gobierno",
+   "publico": false,
+   "revisadoPor": "melany@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "sociedad",
+    "junta",
+    "prospera",
+    "accionista",
+    "gobernanza",
+    "estatutos"
+   ],
+   "es": "Orden Global Corp, Próspera ZEDE en Roatán, permiso 88501978376475, primer registro 23/07/2026. De ella dependen la cadena, ORIGEN y todas las plataformas. Es el eje operativo del Pilar 2 del Sistema Financiero Social. Accionista único hoy: José Medardo Ordóñez Martínez; está decidido reestructurar en series de acciones, con acciones fundadoras de voto reforzado, y llevar el control a una tenedora en Emiratos. Junta de cinco: presidente José Medardo Ordóñez, vicepresidente Carlos Leonardo Paguada, secretaria Melany Johan Ordóñez, vocales Mayra Carolina Enamorado y Vanesa Carolina Pinto. Quórum de tres, reuniones trimestrales, mayoría simple. El CEO firma solo hasta cien mil dólares. La entidad canadiense Orden Global Blockchain Corp no tiene rol operativo. El acuerdo uno, que mantiene viva la cadena vieja, está dicho pero sin acta a la vista.",
+   "en": "Orden Global Corp, Próspera ZEDE in Roatán, permit 88501978376475, first registered 23/07/2026. The chain, ORIGEN and every platform hang from it. It is the operating axis of Pillar 2 of the Social Financial System. Sole registered shareholder today: José Medardo Ordóñez Martínez; a restructuring into share series is decided, with founder shares carrying enhanced voting, and control moving to a holding company in the Emirates. Board of five: chair José Medardo Ordóñez, vice-chair Carlos Leonardo Paguada, secretary Melany Johan Ordóñez, members Mayra Carolina Enamorado and Vanesa Carolina Pinto. Quorum of three, quarterly meetings, simple majority. The CEO signs alone up to one hundred thousand dollars. The Canadian entity Orden Global Blockchain Corp has no operating role. Agreement one, which keeps the old chain alive, is stated but has no minute on record."
+  },
+  {
+   "id": "interno-tesoro-cuatro",
+   "tema": "INTERNO · el tesoro son cuatro billeteras",
+   "publico": false,
+   "revisadoPor": "melany@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "tesoro",
+    "tesoreria",
+    "billeteras madre",
+    "custodia",
+    "llaves"
+   ],
+   "es": "Corrige lo que el cerebro tenía anotado. El tesoro no es una billetera única: son CUATRO billeteras madre con doscientos cincuenta mil millones de ORIGEN cada una, un billón en total, que es la emisión entera. De las madres se reparte a operativas según el tokenomics, y las operativas liberan según la referencia del oro. Mover fondos de una madre exige acta de la Junta Directiva. Las direcciones no se divulgan por decisión del Protocolo de Seguridad de Accesos y Credenciales, que gobierna también las llaves. Ni direcciones ni llaves se escriben aquí.",
+   "en": "This corrects what the brain had on file. The treasury is not one wallet: it is FOUR mother wallets holding two hundred and fifty billion ORIGEN each, one trillion in total, which is the entire issuance. Mother wallets feed operating wallets per the tokenomics, and operating wallets release against the gold reference. Moving funds out of a mother wallet requires a Board minute. Addresses are not disclosed by decision of the Access and Credentials Security Protocol, which also governs the keys. Neither addresses nor keys are written here."
+  },
+  {
+   "id": "interno-usuarios-sin-contrato",
+   "tema": "INTERNO · 435 usuarios sin términos ni contrato",
+   "publico": false,
+   "revisadoPor": "melany@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "terminos",
+    "privacidad",
+    "contrato",
+    "usuarios",
+    "aceptacion"
+   ],
+   "es": "No hay términos y condiciones publicados, ni política de privacidad, ni contrato de usuario. Los enlaces legales de la web vigente están vacíos, y no hubo punto de aceptación registrable cuando los cuatrocientos treinta y cinco usuarios abrieron cuenta. Veinticuatro tarjetas emitidas. No hay garantía ni recompra hacia el usuario común si el precio de ORIGEN cae, distinta de las ventanas esporádicas de ONDK. Ley aplicable y reclamaciones: Próspera y arbitraje se asumen, pero no se han definido. Riesgo número tres del expediente y Decisión 3 de la Junta.",
+   "en": "There are no published terms and conditions, no privacy policy and no user contract. The legal links on the live site are empty, and there was no recordable point of acceptance when the four hundred and thirty-five users opened accounts. Twenty-four cards issued. There is no guarantee or buy-back for the ordinary user if ORIGEN's price falls, distinct from ONDK's occasional windows. Governing law and claims: Próspera and arbitration are assumed but undefined. Risk number three in the file and Board Decision 3."
+  },
+  {
+   "id": "interno-propiedad-intelectual",
+   "tema": "INTERNO · las marcas y el software no son de la empresa",
+   "publico": false,
+   "revisadoPor": "melany@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "marca",
+    "dominio",
+    "software",
+    "cesion",
+    "propiedad intelectual"
+   ],
+   "es": "Ninguna marca del ecosistema está registrada: ni Orden Global, ni Veta Wallet, ni Genesis ID, ni MyTokenPay, ni Ordenscan, ni ORIGEN. Los dominios están a nombre personal de una socia, aunque dentro de cuentas de la sociedad. El software está alojado a nombre de la sociedad y bajo su control, pero no hay cesión de derechos firmada. La precisión jurídica que importa: controlar una cuenta no es ser titular. Sin cesión, la titularidad legal del software sigue en quien lo desarrolló, y los dominios son de la persona natural. Riesgo número dos del expediente y Decisión 2 de la Junta.",
+   "en": "No trademark of the ecosystem is registered: not Orden Global, not Veta Wallet, not Genesis ID, not MyTokenPay, not Ordenscan, not ORIGEN. Domains sit in a partner's personal name, though inside company accounts. The software is hosted under the company's name and control, but no assignment of rights has been signed. The legal point that matters: controlling an account is not holding title. Without an assignment, legal title to the software stays with whoever developed it, and the domains belong to the natural person. Risk number two in the file and Board Decision 2."
+  },
+  {
+   "id": "interno-cumplimiento",
+   "tema": "INTERNO · cumplimiento y datos personales",
+   "publico": false,
+   "revisadoPor": "melany@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "aml",
+    "cumplimiento",
+    "datos",
+    "privacidad",
+    "kyc",
+    "oficial"
+   ],
+   "es": "Genesis ID hace KYC, KYB y AML, pero el marco alrededor está a medias: el manual AML y CFT está en proceso y sin aprobar, no hay oficial de cumplimiento nombrado, y el reporte de operaciones sospechosas ante la RFSA es futuro. Orden Global Corp es responsable del tratamiento; los datos viven en servidores de Amazon en Estados Unidos. No hay política de privacidad publicada y la transferencia internacional de datos no está abordada, con usuarios en más de diez países. Decisión 5 de la Junta.",
+   "en": "Genesis ID performs KYC, KYB and AML, but the framework around it is half-built: the AML and CFT manual is in progress and unapproved, no compliance officer is appointed, and suspicious-activity reporting to the RFSA is future work. Orden Global Corp is the data controller; the data lives on Amazon servers in the United States. No privacy policy is published and international data transfer is unaddressed, with users in more than ten countries. Board Decision 5."
+  },
+  {
+   "id": "interno-comision-dos-cobros",
+   "tema": "INTERNO · la comisión: dos cobros distintos",
+   "publico": false,
+   "revisadoPor": "jose@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "comision",
+    "gas",
+    "fee",
+    "cobro",
+    "fiscal"
+   ],
+   "es": "Comprobado el 16/08/2026, y concilia la contradicción que el expediente marcó. La comisión de la billetera, los 0,001 ORIGEN al tesoro, sigue APAGADA: lib/comision.js solo cobra si existe OG_COMISION_ORIGEN, y esa variable no está puesta en la aplicación vetawallet de Heroku. Lo que sí está activo es el suelo de gas de la cadena: eth_gasPrice devuelve noventa y tres gwei, que a veintiún mil de gas son 0,001953 ORIGEN por envío nativo. Mover ORIGEN ya cuesta algo más de una milésima, pero ese cobro es de la red y va al validador, no de la casa y no al tesoro. Se parecen en la cifra y se confunden con facilidad; tienen distinto cobrador y por tanto distinto tratamiento fiscal.",
+   "en": "Verified 16/08/2026, and this reconciles the contradiction the legal file flagged. The wallet commission, the 0.001 ORIGEN to the treasury, is still OFF: lib/comision.js only charges if OG_COMISION_ORIGEN exists, and that variable is not set on the vetawallet Heroku app. What is active is the chain's gas floor: eth_gasPrice returns ninety-three gwei, which at twenty-one thousand gas is 0.001953 ORIGEN per native send. Moving ORIGEN already costs a little over a thousandth, but that charge belongs to the network and goes to the validator, not to the house and not to the treasury. The figures look alike and are easy to confuse; they have different collectors and therefore different tax treatment."
+  },
+  {
+   "id": "interno-fiscalidad",
+   "tema": "INTERNO · fiscalidad",
+   "publico": false,
+   "revisadoPor": "melany@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "fiscal",
+    "impuesto",
+    "tributacion",
+    "hacienda"
+   ],
+   "es": "Orden Global Corp tributa bajo el régimen de Próspera ZEDE y tiene sus obligaciones al día. No ha habido todavía actividad que genere hecho gravable. Sin analizar: el tratamiento fiscal de la emisión de tokens, el de la comisión por transacción, y las obligaciones de información sobre usuarios. Decisión 6 de la Junta. Se acumulan hechos sin encuadre fiscal mientras no se decida.",
+   "en": "Orden Global Corp is taxed under the Próspera ZEDE regime and is up to date on its obligations. No taxable event has arisen yet. Unanalysed: the tax treatment of token issuance, that of the per-transaction fee, and reporting obligations on users. Board Decision 6. Facts accumulate without a tax framing until it is decided."
+  },
+  {
+   "id": "interno-migracion-saldos",
+   "tema": "INTERNO · migrar la cadena mueve el registro de 435 personas",
+   "publico": false,
+   "revisadoPor": "melany@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "migracion",
+    "5550",
+    "8532",
+    "saldos",
+    "consentimiento"
+   ],
+   "es": "Arrancar la 5550 sustituye a la cadena anterior como registro de saldos de los usuarios. En términos legales eso es migrar el registro contable de cuatrocientas treinta y cinco personas reales, y está por determinar si exige aviso o consentimiento previo. Hay que resolverlo ANTES de ejecutarla, no después. Decisión 8 de la Junta. Enlaza con el acuerdo uno: la cadena vieja no se apaga ni se borra y queda como respaldo, aunque ese acuerdo todavía no consta en acta.",
+   "en": "Starting 5550 replaces the previous chain as the users' balance ledger. In legal terms that migrates the accounting record of four hundred and thirty-five real people, and whether it requires prior notice or consent is undetermined. It must be settled BEFORE execution, not after. Board Decision 8. It ties to agreement one: the old chain is neither shut down nor deleted and remains as backup, though that agreement is not yet minuted."
+  },
+  {
+   "id": "interno-ondk",
+   "tema": "INTERNO · ONDK, el único respaldado",
+   "publico": false,
+   "revisadoPor": "melany@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "ondk",
+    "security",
+    "valor negociable",
+    "recompra"
+   ],
+   "es": "ONDK es un instrumento patrimonial digital: un título que representa valor económico del ecosistema. Toma su valor de la minería, la infraestructura tecnológica y la participación en las compañías del grupo. El titular gana por apreciación, y de forma secundaria por ventanas de recompra que Orden Global abre cada cierto tiempo, que no son un derecho permanente de rescate: eso evita crear una obligación de liquidez permanente. En Próspera se estructura como valor negociable y sí se declara RESPALDADO, que es la única excepción a la terminología del ecosistema. Su cobertura es la Licencia de Compañía de Inversión de la RFSA, y no puede mercadearse en Estados Unidos. No es una acción: da derechos económicos por contrato, sin voto ni condición de socio.",
+   "en": "ONDK is a digital equity instrument: a title representing the ecosystem's economic value. It draws value from the mining, the technical infrastructure and the stakes in the group's companies. Holders gain by appreciation, and secondarily through buy-back windows Orden Global opens periodically, which are not a permanent redemption right: that avoids creating a standing liquidity obligation. Under Próspera it is structured as a security and is declared BACKED, the sole exception to the ecosystem's wording. Its cover is the RFSA Investment Company Licence, and it cannot be marketed in the United States. It is not a share: it grants contractual economic rights, with no vote and no member status."
+  },
+  {
+   "id": "interno-mineria-desmentida",
+   "tema": "INTERNO · el documento minero se contradice con lo legal",
+   "publico": false,
+   "revisadoPor": "melany@ordenglobal.org",
+   "revisadoEn": "2026-08-16",
+   "palabras": [
+    "oriegen",
+    "portafolio",
+    "gramin",
+    "mineria",
+    "contradiccion"
+   ],
+   "es": "El documento portafolio-minero.md, entregado por la compañía el 14/08, choca en tres puntos con el expediente legal del mismo día. Uno: escribe ORIEGEN, y la moneda es ORIGEN. Dos: dice tokens respaldados en metales preciosos y anclados a activos físicos reales, contra el referenciado no negociable. Tres, y es el que más daño hace citado suelto: dice que un gramín es un gramo de oro y un ORIEGEN un cincuentaicincoavo de gramín, cuando un ORIGEN es un gramin y un gramin es un cincuentaicincoavo de gramo. Quien cite esa frase estará diciendo que la unidad vale cincuenta y cinco veces lo que vale. El documento se conserva tal cual lo entregó la compañía; el cerebro no repite esas tres cosas.",
+   "en": "The document portafolio-minero.md, supplied by the company on 14/08, clashes on three points with the legal file of the same date. One: it writes ORIEGEN, and the coin is ORIGEN. Two: it says tokens backed by precious metals and anchored to real physical assets, against the non-negotiable referenced wording. Three, the most damaging when quoted alone: it says a gramin is a gram of gold and an ORIEGEN is one fifty-fifth of a gramin, when an ORIGEN is a gramin and a gramin is one fifty-fifth of a gram. Anyone quoting that sentence will be saying the unit is worth fifty-five times its real value. The document is kept exactly as the company delivered it; the brain does not repeat those three things."
+  },
+  {
+   "id": "ordenex",
+   "tema": "Ordenex",
+   "publico": true,
+   "revisadoPor": "j.ordonez@ordenglobal.org (pedido por chat, 27-ago)",
+   "revisadoEn": "2026-08-27",
+   "palabras": [
+    "ordenex",
+    "exchange",
+    "casa de cambio",
+    "comprar",
+    "vender",
+    "intercambiar",
+    "cotiza",
+    "mercado"
+   ],
+   "es": "Ordenex es la casa de cambio de AuCorp, dentro del ecosistema. Ya está en pie y su lanzamiento global viene pronto: ahí se van a comprar y vender los tokens de la casa — AUKA, AGKA, ONDK y los que vengan. Va a pedir identidad verificada con Genesis ID: el que ya la tenga entra caminando. Todavía no está abierta al público, así que hoy no se puede comprar ni vender ahí — y preferimos decirlo antes de que lo descubras.",
+   "en": "Ordenex is AuCorp's exchange within the ecosystem. It is already built and its global launch is coming: the house tokens — AUKA, AGKA, ONDK and those to come — will be bought and sold there. It will require a verified Genesis ID: those who already have one walk right in. It is not open to the public yet, so you cannot buy or sell there today — and we would rather tell you than have you find out."
+  },
+  {
+   "id": "mision",
+   "tema": "La misión: la moneda de Latinoamérica",
+   "publico": true,
+   "revisadoPor": "j.ordonez@ordenglobal.org (pedido por chat, 27-ago)",
+   "revisadoEn": "2026-08-27",
+   "palabras": [
+    "mision",
+    "latinoamerica",
+    "devalua",
+    "devaluacion",
+    "inflacion",
+    "lempira",
+    "peso",
+    "moneda local",
+    "para que",
+    "por que existe",
+    "vision",
+    "sueño"
+   ],
+   "es": "Orden Global quiere ser la moneda de Latinoamérica. La razón es simple y duele: las monedas de la región pierden valor con los años, y el que ahorra en ellas ve cómo su esfuerzo se le hace agua. ORIGEN sigue el precio del oro — no sigue a ninguna moneda local—, así que lo que guardás en ORIGEN sigue al oro y no a la devaluación de tu país. No es una promesa de ganancia: el oro también sube y baja. Es otra vara para medir tu esfuerzo, una que ningún gobierno imprime.",
+   "en": "Orden Global wants to be Latin America's currency. The reason is simple and it hurts: the region's currencies lose value over the years, and savers watch their effort melt away. ORIGEN follows the price of gold — not any local currency — so what you keep in ORIGEN follows gold, not your country's devaluation. It is not a promise of profit: gold rises and falls too. It is a different yardstick for your effort, one no government can print."
+  },
+  {
+   "id": "pay-negocio",
+   "tema": "MyTokenPay para tu negocio",
+   "publico": true,
+   "revisadoPor": "j.ordonez@ordenglobal.org (pedido por chat, 27-ago)",
+   "revisadoEn": "2026-08-27",
+   "palabras": [
+    "mi negocio",
+    "pulperia",
+    "tienda",
+    "cobrar",
+    "vender en mi",
+    "aceptar origen",
+    "cliente",
+    "ventas",
+    "emprend"
+   ],
+   "es": "Si tenés un negocio, MyTokenPay te deja cobrar en ORIGEN sin aparatos nuevos: generás un código QR con el monto, el cliente lo escanea desde su Veta Wallet, y el pago te llega a tu billetera en segundos, con la comisión fija de la casa (0,001 ORIGEN). Tu negocio además aparece en el directorio del ecosistema, donde ya hay comercios en diecinueve países. Para emitir códigos de cobro a tu nombre hace falta tu Genesis ID verificado.",
+   "en": "If you run a business, MyTokenPay lets you charge in ORIGEN with no new hardware: you generate a QR with the amount, the customer scans it from their Veta Wallet, and the payment reaches your wallet in seconds, with the house's flat fee (0.001 ORIGEN). Your business also appears in the ecosystem directory, which already lists merchants in nineteen countries. Issuing charge codes in your name requires your verified Genesis ID."
+  }
+ ]
 }

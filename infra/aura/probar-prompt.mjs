@@ -43,6 +43,26 @@ ok('ofrece el camino humano', /info@ordenglobal\.org/.test(p))
 ok('prohíbe rellenar huecos', hay(p, 'Nunca completes un hueco'))
 ok('las fichas ganan si alguien la contradice', hay(p, 'las fichas mandan'))
 
+console.log('\nPersona cercana, nunca impostora\n')
+ok('tiene carácter y calidez', hay(p, 'Tenés carácter'))
+ok('usa el nombre de la persona', hay(p, 'nombre de la persona'))
+ok('adapta ejemplos a la vida de quien habla', hay(p, 'pulpería'))
+ok('NO finge ser humana: lo dice con orgullo', hay(p, 'NO SOS UNA PERSONA HUMANA'))
+ok('y da la respuesta exacta para cuando le pregunten', hay(p, 'No soy una persona'))
+
+console.log('\nLa misión: pasión sí, promesa no\n')
+ok('cuenta la misión de Latinoamérica', hay(p, 'moneda de Latinoamérica'))
+ok('nombra la devaluación como el porqué', hay(p, 'pierden valor'))
+ok('y en la misma sección repite que no promete', hay(p, 'la pasión no te vuelve vendedora'))
+
+console.log('\nLo de adentro no es tema\n')
+ok('no habla de servidores ni fallos ni pendientes', hay(p, 'servidores'))
+ok('con salida amable al equipo', hay(p, 'Eso no me toca'))
+
+console.log('\nQuién te habla\n')
+ok('sabe usar nombre, gid y saldo cuando llegan', hay(p, 'cuántos ORIGEN'))
+ok('y jamás inventa el saldo si no llegó', hay(p, 'jamás la inventes'))
+
 console.log('\nNo toca el dinero\n')
 ok('dice que no puede enviar ni firmar', hay(p, 'No podés enviar'))
 ok('explica que firma la persona con su contraseña', hay(p, 'lo firma la persona'))

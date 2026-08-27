@@ -191,6 +191,8 @@ def main():
             usuario = visto['peticiones'][0]['messages'][-1]['content']
             ok('contadora' in usuario and 'UNAH' in usuario,
                'el perfil viaja en el turno de usuario, no en el sistema')
+            ok('se llama Ana' in usuario,
+               'y el nombre de la ficha del chat viaja tambien')
             ok('contadora' not in sistema,
                'y el sistema NO lo lleva: por eso se puede cachear')
             # normalizado: el prompt esta formateado para leerse y una regla
@@ -212,6 +214,32 @@ def main():
             ok(visto['peticiones'][1].get('keep_alive') == '30m',
                'el modelo se queda cargado entre preguntas')
 
+        print('\nLos dos modos de pensar\n')
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': 'modo pensador'})
+        ms = espera_mensajes(ana, 7)
+        ok(len(ms) >= 7 and 'modo pensador' in ms[6].get('texto', '').lower(),
+           'cambiar de modo contesta al instante')
+        antes_m = len(visto['peticiones'])
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': '¿Qué es AUKA?'})
+        ms = espera_mensajes(ana, 8)
+        ok(len(visto['peticiones']) == antes_m + 1
+           and visto['peticiones'][-1].get('model') == 'llama3.1:8b',
+           'en modo pensador pregunta al modelo grande')
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': 'modo rápido'})
+        ms = espera_mensajes(ana, 9)
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': '¿Y AGKA?'})
+        ms = espera_mensajes(ana, 10)
+        ok(visto['peticiones'][-1].get('model') == 'llama3.2',
+           'y al volver al rapido, vuelve al modelo chico')
+        ok(not any('modo' in m['content'].lower()
+                   for pet in visto['peticiones'] for m in pet['messages']
+                   if m['role'] == 'user' and 'modo pensador' == m['content'].strip().lower()),
+           'los cambios de modo no gastan motor: son de la casa')
+
         print('\nZoe, desde fuera\n')
         code, _ = post(BASE, '/enviar', {**zoe, 'para': 'aura@prueba.local',
                                          'texto': 'hola?'})
@@ -221,8 +249,8 @@ def main():
         apagado['si'] = True
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': '¿Y la cadena qué es?'})
-        ms = espera_mensajes(ana, 7)
-        ok(len(ms) >= 7 and 'motor' in ms[6].get('texto', '').lower(),
+        ms = espera_mensajes(ana, 11)
+        ok(len(ms) >= 11 and 'motor' in ms[10].get('texto', '').lower(),
            'dice que el motor esta apagado en vez de inventar')
         apagado['si'] = False
 
@@ -233,9 +261,9 @@ def main():
         time.sleep(1.0)   # el motor sigue pensando: este cae en plena generacion
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': '¿y AGKA?'})
-        ms = espera_mensajes(ana, 9, seg=30)
-        ok(len(ms) >= 9, 'las DOS preguntas reciben respuesta, ninguna se traga',
-           f'llegaron {len(ms)-7} de 2')
+        ms = espera_mensajes(ana, 13, seg=30)
+        ok(len(ms) >= 13, 'las DOS preguntas reciben respuesta, ninguna se traga',
+           f'llegaron {len(ms)-11} de 2')
         ok(len(visto['peticiones']) - antes == 2,
            'dos preguntas, dos llamadas al motor')
 
@@ -256,8 +284,8 @@ def main():
            'al arrancar sin memoria NO recontesta el historial (cero motor)')
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': 'hola de nuevo'})
-        ms = espera_mensajes(ana, 10, seg=20)
-        ok(len(ms) >= 10 and 'conocerte' in ms[9].get('texto', ''),
+        ms = espera_mensajes(ana, 14, seg=20)
+        ok(len(ms) >= 14 and 'conocerte' in ms[13].get('texto', ''),
            'con la memoria perdida se vuelve a presentar, no adivina')
         ok(len(visto['peticiones']) == antes,
            'y sigue sin gastar motor: saludar es codigo')
