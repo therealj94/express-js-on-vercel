@@ -299,15 +299,24 @@ def cargar_prompt():
     return md[i + 3:j].strip()
 
 
-def fichas_para(saber, dicho):
-    """Las fichas que tocan la pregunta; si ninguna engancha, TODAS.
-    Dejar al modelo sin fichas es dejarlo inventando."""
-    d = _sin_tildes(dicho)
-    tocadas = [f for f in saber
-               if any(_sin_tildes(p) in d for p in f.get('palabras', []))
-               or _sin_tildes(f.get('tema', '')) in d]
-    elegidas = tocadas or saber
-    return '\n'.join(f"— {f['tema']}: {f.get('es', '')}" for f in elegidas)
+def todo_el_saber(saber):
+    """TODAS las fichas, siempre igual, byte por byte.
+
+    Antes se elegian las fichas que tocaban la pregunta, y sonaba sensato:
+    menos texto, menos trabajo. En esta maquina resulto ser lo contrario.
+
+    Ollama cachea el principio del prompt cuando NO CAMBIA entre llamadas
+    («cached n_tokens» en su registro). Con las fichas variando por pregunta,
+    el prompt de sistema era distinto cada vez: cero cache, y a 22 tokens por
+    segundo eso son casi dos minutos leyendo antes de escribir una palabra —
+    exactamente lo que le paso a Jose con «¿que puedes hacer?», que no
+    enganchaba con ninguna ficha y se llevaba las quince.
+
+    Con el sistema FIJO, la primera pregunta paga el precio una vez y todas
+    las siguientes solo procesan lo nuevo. Lo que la persona pregunta y quien
+    es viajan en el turno de usuario, que es corto y cambia sin costo.
+    """
+    return '\n'.join(f"— {f['tema']}: {f.get('es', '')}" for f in saber)
 
 
 import re as _re
@@ -326,22 +335,24 @@ def limpiar(texto):
     return (t[0].upper() + t[1:]) if t else texto
 
 
-def preguntar_motor(prompt, fichas, perfil, historial, dicho):
+def preguntar_motor(sistema, perfil, historial, dicho):
+    """El sistema llega YA ARMADO y es siempre el mismo: eso es lo que hace
+    que Ollama lo cachee y que la segunda pregunta no vuelva a pagar los dos
+    minutos de lectura. Lo que cambia —quien pregunta y que pregunta— viaja
+    en el turno de usuario, que es corto."""
     quien = ''
     if perfil.get('trabajo'):
-        quien = ("\n\nQUIEN TE HABLA (lo conto al presentarse; usalo para "
-                 "adaptar ejemplos y tono, nunca lo repitas entero):\n"
-                 f"- se dedica a: {perfil.get('trabajo','')[:200]}\n"
-                 f"- se formo en: {perfil.get('estudios','')[:200]}\n"
-                 f"- busca: {perfil.get('interes','')[:200]}")
-    sistema = (prompt + quien +
-               '\n\nLO QUE SABES DE LA CASA (tu memoria; nunca menciones esta lista):\n'
-               + fichas)
+        quien = (f"[quien te habla: se dedica a {perfil.get('trabajo','')[:120]}; "
+                 f"se formo en {perfil.get('estudios','')[:120]}; "
+                 f"busca {perfil.get('interes','')[:120]}]\n")
     mensajes = ([{'role': 'system', 'content': sistema}]
                 + historial[-MEMORIA:]
-                + [{'role': 'user', 'content': str(dicho)[:1000]}])
+                + [{'role': 'user', 'content': quien + str(dicho)[:1000]}])
     cuerpo = json.dumps({
         'model': MODELO, 'messages': mensajes, 'stream': False,
+        # el modelo se queda cargado entre preguntas: cargarlo cuesta segundos
+        # y en esta maquina cada segundo se nota
+        'keep_alive': '30m',
         'options': {'temperature': 0.3, 'num_predict': 260},
     }).encode()
     req = urllib.request.Request(
@@ -354,6 +365,31 @@ def preguntar_motor(prompt, fichas, perfil, historial, dicho):
         corte = texto.rfind('.', 0, 900)
         texto = texto[:corte + 1 if corte > 200 else 900].strip()
     return texto
+
+
+class Pensando:
+    """Mantiene vivo el «esta escribiendo…» mientras el motor trabaja.
+
+    El aviso del chat dura unos segundos y se manda una sola vez. Con
+    respuestas de uno o dos minutos, la persona veia «escribiendo» un
+    momento y despues silencio — que es exactamente lo que le parecio a
+    Jose que se habia colgado. Ahora se repite cada cinco segundos hasta
+    que hay respuesta."""
+
+    def __init__(self, rel, para):
+        self.rel, self.para, self.fin = rel, para, threading.Event()
+
+    def __enter__(self):
+        def latir():
+            while not self.fin.wait(5):
+                self.rel.escribiendo(self.para)
+        self.rel.escribiendo(self.para)
+        self.hilo = threading.Thread(target=latir, daemon=True)
+        self.hilo.start()
+        return self
+
+    def __exit__(self, *a):
+        self.fin.set()
 
 
 # ── atender a una persona ────────────────────────────────────────────────────
@@ -375,7 +411,7 @@ def perfil_de(perfiles, correo, tope=None):
     return p
 
 
-def atender(rel, saber, prompt, p, de, dicho):
+def atender(rel, sistema, p, de, dicho):
     """Atiende UN mensaje. Si lanza, el que llama decide reintentar o saltar;
     aqui no se avanza ningun tope."""
     if not p.get('saludado'):
@@ -404,10 +440,9 @@ def atender(rel, saber, prompt, p, de, dicho):
         rel.enviar(de, TECHO_MSG)
         return
 
-    rel.escribiendo(de)
     try:
-        r = preguntar_motor(prompt, fichas_para(saber, dicho),
-                            p, p['historial'], dicho)
+        with Pensando(rel, de):
+            r = preguntar_motor(sistema, p, p['historial'], dicho)
     except Exception as e:
         log('motor caido:', type(e).__name__, str(e)[:120])
         rel.enviar(de, MOTOR_CAIDO)
@@ -425,7 +460,7 @@ def atender(rel, saber, prompt, p, de, dicho):
     ])[-MEMORIA:]
 
 
-def atender_charla(rel, saber, prompt, perfiles, correo):
+def atender_charla(rel, sistema, perfiles, correo):
     """Todo lo pendiente de UNA persona, en su hilo. El tope solo avanza con
     lo que termino bien; un fallo se reintenta y al tercero se salta con
     ruido."""
@@ -438,7 +473,7 @@ def atender_charla(rel, saber, prompt, perfiles, correo):
     nuevos.sort(key=lambda m: m.get('cuando', 0))
     for m in nuevos[:POR_VUELTA]:
         try:
-            atender(rel, saber, prompt, p, correo, (m.get('texto') or '').strip())
+            atender(rel, sistema, p, correo, (m.get('texto') or '').strip())
         except Exception as e:
             with CANDADO_PERFILES:
                 f = p.setdefault('falla', {'id': None, 'n': 0})
@@ -473,7 +508,7 @@ EN_CURSO = set()
 CANDADO_CURSO = threading.Lock()
 
 
-def vuelta(rel, saber, prompt, perfiles, tanda):
+def vuelta(rel, sistema, perfiles, tanda):
     lista = probadores()
     ahora_ms = int(time.time() * 1000)
 
@@ -515,7 +550,7 @@ def vuelta(rel, saber, prompt, perfiles, tanda):
 
         def _uno(correo=c):
             try:
-                atender_charla(rel, saber, prompt, perfiles, correo)
+                atender_charla(rel, sistema, perfiles, correo)
             except Exception as e:
                 log('charla fallida', correo, type(e).__name__, str(e)[:120])
             finally:
@@ -530,14 +565,18 @@ def main():
     _candado = instancia_unica()
     rel = Relevo(CORREO, llave)
     saber = cargar_saber()
-    prompt = cargar_prompt()
+    # El sistema se arma UNA sola vez y no cambia nunca mas: es la condicion
+    # para que Ollama lo cachee entre preguntas.
+    sistema = (cargar_prompt() +
+               '\n\nLO QUE SABES DE LA CASA (tu memoria; nunca menciones esta lista):\n'
+               + todo_el_saber(saber))
     perfiles = cargar_perfiles()
     log(f'AU-RA de pie · {len(saber)} fichas · modelo {MODELO} · '
         f'{len(probadores())} probadores')
     with ThreadPoolExecutor(max_workers=HILOS) as tanda:
         while True:
             try:
-                vuelta(rel, saber, prompt, perfiles, tanda)
+                vuelta(rel, sistema, perfiles, tanda)
             except Exception as e:
                 # el relevo caido o la red rota no tumban el servicio
                 log('vuelta fallida:', type(e).__name__, str(e)[:140])

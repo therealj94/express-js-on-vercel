@@ -188,13 +188,29 @@ def main():
                'viajo el prompt de la casa y las fichas')
             ok('ORIGEN' in sistema and 'gramin' in sistema,
                'y la ficha que viajo es la de ORIGEN, con su contenido')
-            ok('contadora' in sistema and 'UNAH' in sistema,
-               'el perfil de la entrevista viaja para adaptar la respuesta')
+            usuario = visto['peticiones'][0]['messages'][-1]['content']
+            ok('contadora' in usuario and 'UNAH' in usuario,
+               'el perfil viaja en el turno de usuario, no en el sistema')
+            ok('contadora' not in sistema,
+               'y el sistema NO lo lleva: por eso se puede cachear')
             # normalizado: el prompt esta formateado para leerse y una regla
             # puede quedar partida en dos renglones. Ya me paso una vez.
             plano = ' '.join(sistema.split())
             ok('frase de respaldo' in plano,
                'las reglas duras van en cada peticion, no solo en el papel')
+
+        print('\nEl sistema no cambia entre preguntas (por eso se cachea)\n')
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': '¿Y qué podés hacer vos?'})
+        ms = espera_mensajes(ana, 6)
+        ok(len(visto['peticiones']) == 2, 'segunda pregunta, segunda llamada')
+        if len(visto['peticiones']) == 2:
+            a1 = visto['peticiones'][0]['messages'][0]['content']
+            a2 = visto['peticiones'][1]['messages'][0]['content']
+            ok(a1 == a2, 'el mensaje de sistema es IDENTICO byte por byte',
+               'si cambia, Ollama no lo cachea y cada pregunta paga la lectura entera')
+            ok(visto['peticiones'][1].get('keep_alive') == '30m',
+               'el modelo se queda cargado entre preguntas')
 
         print('\nZoe, desde fuera\n')
         code, _ = post(BASE, '/enviar', {**zoe, 'para': 'aura@prueba.local',
@@ -205,8 +221,8 @@ def main():
         apagado['si'] = True
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': '¿Y la cadena qué es?'})
-        ms = espera_mensajes(ana, 6)
-        ok(len(ms) >= 6 and 'motor' in ms[5].get('texto', '').lower(),
+        ms = espera_mensajes(ana, 7)
+        ok(len(ms) >= 7 and 'motor' in ms[6].get('texto', '').lower(),
            'dice que el motor esta apagado en vez de inventar')
         apagado['si'] = False
 
@@ -217,9 +233,9 @@ def main():
         time.sleep(1.0)   # el motor sigue pensando: este cae en plena generacion
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': '¿y AGKA?'})
-        ms = espera_mensajes(ana, 8, seg=25)
-        ok(len(ms) >= 8, 'las DOS preguntas reciben respuesta, ninguna se traga',
-           f'llegaron {len(ms)-6} de 2')
+        ms = espera_mensajes(ana, 9, seg=30)
+        ok(len(ms) >= 9, 'las DOS preguntas reciben respuesta, ninguna se traga',
+           f'llegaron {len(ms)-7} de 2')
         ok(len(visto['peticiones']) - antes == 2,
            'dos preguntas, dos llamadas al motor')
 
@@ -240,8 +256,8 @@ def main():
            'al arrancar sin memoria NO recontesta el historial (cero motor)')
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': 'hola de nuevo'})
-        ms = espera_mensajes(ana, 9, seg=20)
-        ok(len(ms) >= 9 and 'conocerte' in ms[8].get('texto', ''),
+        ms = espera_mensajes(ana, 10, seg=20)
+        ok(len(ms) >= 10 and 'conocerte' in ms[9].get('texto', ''),
            'con la memoria perdida se vuelve a presentar, no adivina')
         ok(len(visto['peticiones']) == antes,
            'y sigue sin gastar motor: saludar es codigo')
