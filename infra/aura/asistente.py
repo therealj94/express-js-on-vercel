@@ -402,11 +402,32 @@ def limpiar(texto):
     return (t[0].upper() + t[1:]) if t else texto
 
 
-def preguntar_motor(sistema, perfil, historial, dicho, contexto=''):
+def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=None):
     """El sistema llega YA ARMADO y es siempre el mismo: eso es lo que hace
     que Ollama lo cachee y que la segunda pregunta no vuelva a pagar los dos
     minutos de lectura. Lo que cambia —quien pregunta y que pregunta— viaja
-    en el turno de usuario, que es corto."""
+    en el turno de usuario, que es corto.
+
+    ── POR QUE STREAM=TRUE ──────────────────────────────────────────────────
+
+    Se midio de donde sale el tiempo: leer la pregunta son 13 segundos y
+    ESCRIBIR la respuesta son 87. En esta maquina el modelo escribe a unas
+    tres palabras por segundo, asi que una respuesta de 260 tokens tarda un
+    minuto y medio pase lo que pase.
+
+    Contra eso hay dos cosas que hacer, y las dos se hacen aqui:
+
+      · pedir menos palabras (num_predict), porque la mitad de lo que
+        escribia era relleno que ademas el prompt no queria; y
+      · NO ESPERAR A QUE TERMINE. Con `stream`, en cuanto la primera frase
+        esta completa se manda al chat y la persona empieza a leer mientras
+        el resto se escribe. El tiempo total no cambia; el tiempo hasta que
+        pasa algo baja de noventa segundos a diez o quince, que es lo unico
+        que la persona siente.
+
+    `al_vuelo(texto)` se llama con cada frase terminada. Si no se pasa, la
+    funcion se comporta como antes y devuelve todo junto.
+    """
     datos = []
     if contexto:
         datos.append(contexto)
@@ -418,20 +439,58 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto=''):
     mensajes = ([{'role': 'system', 'content': sistema}]
                 + historial[-MEMORIA:]
                 + [{'role': 'user', 'content': quien + str(dicho)[:1000]}])
-    modelo = MODELO_PENSADORA if perfil.get('modo') == 'pensadora' else MODELO_RAPIDA
+    pensadora = perfil.get('modo') == 'pensadora'
+    modelo = MODELO_PENSADORA if pensadora else MODELO_RAPIDA
     cuerpo = json.dumps({
-        'model': modelo, 'messages': mensajes, 'stream': False,
+        'model': modelo, 'messages': mensajes, 'stream': bool(al_vuelo),
         # el modelo se queda cargado entre preguntas: cargarlo cuesta segundos
         # y en esta maquina cada segundo se nota
         'keep_alive': '30m',
-        'options': {'temperature': 0.3, 'num_predict': 260},
+        'options': {
+            'temperature': 0.3,
+            # La pensadora puede extenderse; la rapida no. Menos palabras es
+            # menos espera Y mejor chat: el prompt ya pedia dos o tres frases.
+            'num_predict': 220 if pensadora else 110,
+        },
     }).encode()
     req = urllib.request.Request(
         MOTOR + '/api/chat', data=cuerpo, method='POST',
         headers={'Content-Type': 'application/json'})
+
+    if not al_vuelo:
+        with urllib.request.urlopen(req, timeout=TIMEOUT_MOTOR) as r:
+            j = json.loads(r.read())
+        return _recortar(limpiar((j.get('message') or {}).get('content', '').strip()))
+
+    entero, pendiente = '', ''
     with urllib.request.urlopen(req, timeout=TIMEOUT_MOTOR) as r:
-        j = json.loads(r.read())
-    texto = limpiar((j.get('message') or {}).get('content', '').strip())
+        for linea in r:
+            if not linea.strip():
+                continue
+            try:
+                j = json.loads(linea)
+            except Exception:
+                continue
+            trozo = (j.get('message') or {}).get('content', '')
+            entero += trozo
+            pendiente += trozo
+            # Se corta por frase, no por trozo: mandar «ORI», «GEN», « es»
+            # seria un tartamudeo. Y el primer envio pide 40 caracteres para
+            # que no salga un «Hola.» solitario.
+            if j.get('done'):
+                break
+            corte = max(pendiente.rfind('. '), pendiente.rfind('.\n'),
+                        pendiente.rfind('? '), pendiente.rfind('! '))
+            if corte > 40:
+                frase = pendiente[:corte + 1].strip()
+                pendiente = pendiente[corte + 1:]
+                if frase:
+                    al_vuelo(limpiar(frase))
+    resto = _recortar(limpiar(pendiente.strip()))
+    return resto, entero
+
+
+def _recortar(texto):
     if len(texto) > 900:
         corte = texto.rfind('.', 0, 900)
         texto = texto[:corte + 1 if corte > 200 else 900].strip()
@@ -527,17 +586,32 @@ def atender(rel, sistema, p, de, dicho):
         contexto = quien_es(rel, de, p)
     except Exception:
         contexto = ''
+    salio = []
+
+    def soltar(frase):
+        # cada frase terminada sale ya: la persona lee mientras se escribe el
+        # resto. Si una falla, se guarda para el envio final y no se pierde.
+        try:
+            rel.enviar(de, frase)
+            salio.append(frase)
+        except Exception as e:
+            log('no salio una frase para', de, str(e)[:60])
+
     try:
         with Pensando(rel, de):
-            r = preguntar_motor(sistema, p, p['historial'], dicho, contexto)
+            resto, entero = preguntar_motor(sistema, p, p['historial'], dicho,
+                                            contexto, al_vuelo=soltar)
     except Exception as e:
         log('motor caido:', type(e).__name__, str(e)[:120])
+        if not salio:
+            rel.enviar(de, MOTOR_CAIDO)
+        return
+    if resto:
+        rel.enviar(de, resto)
+    if not salio and not resto:
         rel.enviar(de, MOTOR_CAIDO)
         return
-    if not r:
-        rel.enviar(de, MOTOR_CAIDO)
-        return
-    rel.enviar(de, r)
+    r = (entero or '').strip() or resto
     # el cupo se gasta solo cuando la respuesta SALIO: si enviar lanza, el
     # que llama reintenta y la pregunta no se cobra dos veces
     p['usadas'] += 1

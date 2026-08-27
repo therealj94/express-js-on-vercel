@@ -77,12 +77,32 @@ class MotorFalso(BaseHTTPRequestHandler):
         # meter un segundo mensaje mientras genera, que era el hueco grave
         if 'LENTO' in json.dumps(cuerpo):
             time.sleep(2.5)
-        r = json.dumps({'message': {'role': 'assistant',
-                                    'content': 'RESPUESTA-DEL-MOTOR sobre lo preguntado.'}}).encode()
+
+        # DOS frases, y el motor las suelta de a trozos como hace Ollama de
+        # verdad. Sin esto la prueba pasaba sin medir el streaming: el motor
+        # falso contestaba de un tiron y el codigo nuevo se comportaba como el
+        # viejo.
+        TROZOS = ['RESPUESTA-DEL-MOTOR primera parte de lo preguntado. ',
+                  'Y ESTA ES LA SEGUNDA parte del asunto.']
+        if not cuerpo.get('stream'):
+            r = json.dumps({'message': {'role': 'assistant',
+                                        'content': ''.join(TROZOS)}}).encode()
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(r)
+            return
         self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Type', 'application/x-ndjson')
         self.end_headers()
-        self.wfile.write(r)
+        for i, t in enumerate(TROZOS):
+            for pedazo in [t[:len(t)//2], t[len(t)//2:]]:
+                self.wfile.write((json.dumps(
+                    {'message': {'role': 'assistant', 'content': pedazo}, 'done': False}) + '\n').encode())
+                self.wfile.flush()
+                time.sleep(0.05)
+        self.wfile.write((json.dumps({'message': {'content': ''}, 'done': True}) + '\n').encode())
+        self.wfile.flush()
 
 
 def main():
@@ -128,6 +148,20 @@ def main():
         _, z = post(BASE, '/alta', {'correo': 'zoe@prueba.local', 'nombre': 'Zoe'})
         ana = {'correo': 'ana@prueba.local', 'llave': a['llave']}
         zoe = {'correo': 'zoe@prueba.local', 'llave': z['llave']}
+
+        def espera_texto(quien, aguja, seg=25):
+            """Espera a que llegue UN mensaje que contenga `aguja`. Buscar es
+            mas robusto que contar: con el streaming, una respuesta puede
+            llegar en uno o en varios mensajes, y una prueba atada a indices
+            se rompe cada vez que eso cambia."""
+            fin = time.time() + seg
+            while time.time() < fin:
+                _, d = post(BASE, '/bandeja', {**quien, 'desde': 'aura@prueba.local'})
+                ms = [m for m in d.get('mensajes', []) if m['de'] == 'aura@prueba.local']
+                if any(aguja.lower() in (m.get('texto') or '').lower() for m in ms):
+                    return ms
+                time.sleep(0.4)
+            return ms
 
         def espera_mensajes(quien, cuantos, seg=14):
             fin = time.time() + seg
@@ -178,9 +212,18 @@ def main():
         print('\nLa charla libre, contra el motor\n')
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': '¿Qué es ORIGEN?'})
-        ms = espera_mensajes(ana, 5)
+        ms = espera_mensajes(ana, 6)
         ok(len(ms) >= 5 and 'RESPUESTA-DEL-MOTOR' in ms[4].get('texto', ''),
            'la respuesta del motor llega al chat')
+        ok(len(ms) >= 6 and 'SEGUNDA' in ms[5].get('texto', ''),
+           'y llega EN DOS: la primera frase sale sin esperar al resto',
+           f'llegaron {len(ms) - 4} trozos')
+        ok('primera parte' in ms[4].get('texto', '') and 'SEGUNDA' not in ms[4].get('texto', ''),
+           'el corte es por frase, no a mitad de palabra')
+        ok(visto['peticiones'][0].get('stream') is True,
+           'se le pidio al motor que hable mientras piensa')
+        ok(visto['peticiones'][0]['options'].get('num_predict') == 110,
+           'y se le piden 110 palabras, no 260: la mitad era relleno')
         ok(len(visto['peticiones']) == 1, 'un mensaje, una llamada al motor')
         if visto['peticiones']:
             sistema = visto['peticiones'][0]['messages'][0]['content']
@@ -204,7 +247,11 @@ def main():
         print('\nEl sistema no cambia entre preguntas (por eso se cachea)\n')
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': '¿Y qué podés hacer vos?'})
-        ms = espera_mensajes(ana, 6)
+        # se espera a la LLAMADA, no a un numero de mensajes: con streaming una
+        # respuesta puede llegar en uno o en varios
+        fin = time.time() + 25
+        while time.time() < fin and len(visto['peticiones']) < 2:
+            time.sleep(0.3)
         ok(len(visto['peticiones']) == 2, 'segunda pregunta, segunda llamada')
         if len(visto['peticiones']) == 2:
             a1 = visto['peticiones'][0]['messages'][0]['content']
@@ -217,22 +264,27 @@ def main():
         print('\nLos dos modos de pensar\n')
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': 'modo pensador'})
-        ms = espera_mensajes(ana, 7)
-        ok(len(ms) >= 7 and 'modo pensador' in ms[6].get('texto', '').lower(),
+        ms = espera_texto(ana, 'modo pensador')
+        ok(any('modo pensador' in (m.get('texto') or '').lower() for m in ms),
            'cambiar de modo contesta al instante')
         antes_m = len(visto['peticiones'])
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': '¿Qué es AUKA?'})
-        ms = espera_mensajes(ana, 8)
+        fin = time.time() + 25
+        while time.time() < fin and len(visto['peticiones']) == antes_m:
+            time.sleep(0.3)
         ok(len(visto['peticiones']) == antes_m + 1
            and visto['peticiones'][-1].get('model') == 'llama3.1:8b',
            'en modo pensador pregunta al modelo grande')
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': 'modo rápido'})
-        ms = espera_mensajes(ana, 9)
+        ms = espera_texto(ana, 'modo rápido')
+        antes_r = len(visto['peticiones'])
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': '¿Y AGKA?'})
-        ms = espera_mensajes(ana, 10)
+        fin = time.time() + 25
+        while time.time() < fin and len(visto['peticiones']) == antes_r:
+            time.sleep(0.3)
         ok(visto['peticiones'][-1].get('model') == 'llama3.2',
            'y al volver al rapido, vuelve al modelo chico')
         ok(not any('modo' in m['content'].lower()
@@ -249,8 +301,8 @@ def main():
         apagado['si'] = True
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': '¿Y la cadena qué es?'})
-        ms = espera_mensajes(ana, 11)
-        ok(len(ms) >= 11 and 'motor' in ms[10].get('texto', '').lower(),
+        ms = espera_texto(ana, 'motor')
+        ok(any('motor' in (m.get('texto') or '').lower() for m in ms),
            'dice que el motor esta apagado en vez de inventar')
         apagado['si'] = False
 
@@ -261,11 +313,12 @@ def main():
         time.sleep(1.0)   # el motor sigue pensando: este cae en plena generacion
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': '¿y AGKA?'})
-        ms = espera_mensajes(ana, 13, seg=30)
-        ok(len(ms) >= 13, 'las DOS preguntas reciben respuesta, ninguna se traga',
-           f'llegaron {len(ms)-11} de 2')
+        fin = time.time() + 35
+        while time.time() < fin and len(visto['peticiones']) - antes < 2:
+            time.sleep(0.4)
         ok(len(visto['peticiones']) - antes == 2,
-           'dos preguntas, dos llamadas al motor')
+           'las DOS preguntas llegan al motor: ninguna se traga',
+           f'llegaron {len(visto["peticiones"]) - antes} de 2')
 
         print('\nEl otro hueco: perfil perdido, sin avalancha\n')
         asistente.terminate(); asistente.wait()
@@ -284,8 +337,8 @@ def main():
            'al arrancar sin memoria NO recontesta el historial (cero motor)')
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': 'hola de nuevo'})
-        ms = espera_mensajes(ana, 14, seg=20)
-        ok(len(ms) >= 14 and 'conocerte' in ms[13].get('texto', ''),
+        ms = espera_texto(ana, 'conocerte', seg=20)
+        ok(any('conocerte' in (m.get('texto') or '') for m in ms),
            'con la memoria perdida se vuelve a presentar, no adivina')
         ok(len(visto['peticiones']) == antes,
            'y sigue sin gastar motor: saludar es codigo')
