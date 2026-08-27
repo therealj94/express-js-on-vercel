@@ -483,11 +483,30 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
                         pendiente.rfind('? '), pendiente.rfind('! '))
             if corte > 40:
                 frase = pendiente[:corte + 1].strip()
+                # La PRIMERA frase no puede ser una cortesia sola. El modelo
+                # chico tiende a abrir con «Rosa, me alegra que hayas...», y
+                # al mandarla suelta la persona recibe un mensaje que no dice
+                # nada y sigue esperando: peor que no haber mandado nada. Si
+                # la primera parece saludo, se pega a la siguiente.
+                if not entero.replace(frase, '', 1).strip() and _es_cortesia(frase):
+                    continue
                 pendiente = pendiente[corte + 1:]
                 if frase:
                     al_vuelo(limpiar(frase))
     resto = _recortar(limpiar(pendiente.strip()))
     return resto, entero
+
+
+_CORTESIA = _re.compile(
+    r"^(hola|buen[oa]s?)\b|me alegra|qu[eé] (buena|linda) pregunta|"
+    r"gracias por (preguntar|escribir)|encantada", _re.IGNORECASE)
+
+
+def _es_cortesia(frase):
+    """¿Esta frase es puro saludo y no contesta nada? Se mira que sea corta Y
+    que empiece con una formula: una frase larga que ademas saluda si lleva
+    contenido y se manda igual."""
+    return len(frase) < 120 and bool(_CORTESIA.search(frase))
 
 
 def _recortar(texto):
@@ -719,6 +738,24 @@ def vuelta(rel, sistema, perfiles, tanda):
                     EN_CURSO.discard(correo)
 
         tanda.submit(_uno)
+
+
+def templar(sistema):
+    """Una pregunta de mentira al arrancar, para que la primera persona no
+    pague el arranque en frio.
+
+    Se midio: tras un reinicio, la primera respuesta tardo 237 segundos
+    —cargar el modelo del disco mas leer el prompt entero sin cache— y la
+    siguiente 24. Ese primer minuto y medio se lo comia quien tuviera la mala
+    suerte de escribir primero. Templando aqui, se lo come el arranque.
+
+    Si falla no pasa nada: es una comodidad, no un requisito."""
+    try:
+        t0 = time.time()
+        preguntar_motor(sistema, {}, [], 'hola')
+        log(f'motor templado en {time.time() - t0:.0f}s')
+    except Exception as e:
+        log('no se pudo templar el motor:', str(e)[:80])
 
 
 def main():

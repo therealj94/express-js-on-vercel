@@ -82,7 +82,8 @@ class MotorFalso(BaseHTTPRequestHandler):
         # verdad. Sin esto la prueba pasaba sin medir el streaming: el motor
         # falso contestaba de un tiron y el codigo nuevo se comportaba como el
         # viejo.
-        TROZOS = ['RESPUESTA-DEL-MOTOR primera parte de lo preguntado. ',
+        TROZOS = ['Ana, me alegra que hayas preguntado eso. ',
+                  'RESPUESTA-DEL-MOTOR primera parte de lo preguntado. ',
                   'Y ESTA ES LA SEGUNDA parte del asunto.']
         if not cuerpo.get('stream'):
             r = json.dumps({'message': {'role': 'assistant',
@@ -220,6 +221,9 @@ def main():
            f'llegaron {len(ms) - 4} trozos')
         ok('primera parte' in ms[4].get('texto', '') and 'SEGUNDA' not in ms[4].get('texto', ''),
            'el corte es por frase, no a mitad de palabra')
+        ok('me alegra' in ms[4].get('texto', ''),
+           'la cortesía de apertura NO viaja sola: va pegada a la respuesta',
+           'un primer mensaje que solo saluda hace esperar por nada')
         ok(visto['peticiones'][0].get('stream') is True,
            'se le pidio al motor que hable mientras piensa')
         ok(visto['peticiones'][0]['options'].get('num_predict') == 110,
