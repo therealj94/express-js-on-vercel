@@ -2447,6 +2447,27 @@ body.en-p2c .chay-cara{background:var(--p2c-grad);color:#03122E;
 @keyframes portadaLate{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
 @keyframes portadaPulso{to{stroke-dashoffset:0}}
 .cha-mas{color:var(--p2c-bruma)}
+/* ── El rincón de AU-RA: la única charla que no es con una persona ──────
+   La tira vive pegada a la cabecera: la insignia de beta, los dos modos de
+   pensar y el interruptor de voz. Oro sobre el pozo, como el resto de la
+   casa — distinta sin volverse un parque de diversiones. */
+.cha-aura-tira{display:flex;align-items:center;gap:8px;padding:8px 14px;
+  background:linear-gradient(180deg,rgba(201,169,97,.10),rgba(201,169,97,.03));
+  border-bottom:1px solid rgba(201,169,97,.25);flex-wrap:wrap}
+.cha-aura-beta{font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.18em;
+  text-transform:uppercase;color:#C9A961;margin-right:auto}
+.cha-aura-chip{border:1px solid rgba(201,169,97,.4);background:none;color:#C9A961;
+  border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;
+  display:inline-flex;align-items:center;gap:5px}
+.cha-aura-chip.on{background:#C9A961;color:#14100C}
+.cha-aura-chip svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2}
+.cha-aura-voz:not(.on){opacity:.55}
+/* La burbuja de ella: el hilo de oro al costado. Se nota sin gritar. */
+.cha-b-aura{border-left:2px solid rgba(201,169,97,.55);
+  background:linear-gradient(135deg,rgba(201,169,97,.10),rgba(201,169,97,.03))}
+.cha-dictar.grabando{animation:aurapulso 1.2s ease-in-out infinite}
+@keyframes aurapulso{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+
 /* La cabecera del hilo: volver, llamar, videollamar y el menú. Eran los
    últimos botones dorados que quedaban dentro de la casa, y están justo donde
    más se mira — arriba, sobre la cara de la persona. */

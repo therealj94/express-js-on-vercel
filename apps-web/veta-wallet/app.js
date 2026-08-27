@@ -7740,9 +7740,10 @@ const VETA = (() => {
         x.reacciones ? Object.entries(x.reacciones).sort().join(',') : '',
       ].join('~')).join('|');
       const igual = callado && chatSt.msgs && huella(chatSt.msgs) === huella(m);
+      const primeraCarga = chatSt.msgs === null;
       chatSt.msgs = m;
       chatSt.error = null;
-      if (!igual) { pintarChat(); chatAlFinal(); }
+      if (!igual) { pintarChat(); chatAlFinal(); auraHablarNuevos(primeraCarga); }
     } catch (e) {
       chatSt.error = chatMotivo(e);
       if (!callado) pintarChat();
@@ -10057,6 +10058,108 @@ const VETA = (() => {
         <span class="cha-quien"><b title="${esc(titulo)}">${esc(titulo)}</b></span>
       </div>`;
 
+  /* ══ EL RINCON DE AU-RA EN EL CHAT ═══════════════════════════════════════
+   *
+   * La charla con AU-RA no es una charla mas y no debe parecerlo: es la unica
+   * ficha del chat que no es una persona. Tres diferencias, cada una con su
+   * porque:
+   *
+   *   · SIN botones de llamada. Llamar a la inteligencia de la casa hoy es un
+   *     boton que suena y nadie contesta — peor que no ponerlo.
+   *   · CON su tira propia: los dos modos de pensar (rapida / pensadora) como
+   *     botones que mandan la orden por el mismo chat — el asistente ya las
+   *     entiende como texto, asi que el boton es solo un atajo del pulgar—, y
+   *     el interruptor de la voz.
+   *   · CON voz en las dos direcciones: ella LEE en voz alta lo que contesta
+   *     (el texto se pinta igual: la voz acompaña, no reemplaza) y el
+   *     microfono DICTA — convierte lo hablado en texto, se ve lo dicho, y se
+   *     manda como cualquier mensaje. En la charla con AU-RA el microfono de
+   *     notas de voz no sirve (ella solo entiende texto), asi que ese boton
+   *     se convierte en dictado en vez de convivir dos microfonos.
+   */
+  const AURA_CHAT_ID = 'aura@ordenglobal.org';
+  const esAura = (c) => !!c && !c.esGrupo && (c.id || '').toLowerCase() === AURA_CHAT_ID;
+
+  /* La voz de AU-RA arranca APAGADA: un chat que se pone a hablar solo, en un
+     bus o en una reunion, se cierra y no se vuelve a abrir. Encenderla es un
+     toque, y la eleccion queda guardada. */
+  let auraVozChat = localStorage.getItem('veta.aura.vozchat') === '1';
+  let auraHablado = new Set();
+
+  function auraVozAlterna() {
+    auraVozChat = !auraVozChat;
+    localStorage.setItem('veta.aura.vozchat', auraVozChat ? '1' : '0');
+    if (!auraVozChat) try { speechSynthesis.cancel(); } catch (e) { /* sin voz */ }
+    pintarChat();
+  }
+
+  function auraLeer(texto) {
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(String(texto).slice(0, 600));
+      u.lang = idiomaActivo() === 'en' ? 'en-US' : 'es-US';
+      const voces = speechSynthesis.getVoices();
+      const voz = voces.find(v => v.lang.startsWith(u.lang.slice(0, 2)) && /female|mujer|Paulina|Sabina|Helena/i.test(v.name))
+               || voces.find(v => v.lang.startsWith(u.lang.slice(0, 2)));
+      if (voz) u.voice = voz;
+      u.rate = 1.02;
+      speechSynthesis.speak(u);
+    } catch (e) { /* navegador sin voz: el texto ya esta pintado */ }
+  }
+
+  /** Lee en voz alta lo NUEVO de AU-RA en el hilo abierto. Nunca el historial:
+      abrir una charla vieja y que recite veinte mensajes seria un castigo. */
+  function auraHablarNuevos(primeraVez) {
+    if (!auraVozChat || !esAura(chatSt.con)) return;
+    const deElla = (chatSt.msgs || []).filter(m => m.de === AURA_CHAT_ID && m.id);
+    if (primeraVez) { deElla.forEach(m => auraHablado.add(m.id)); return; }
+    const nuevos = deElla.filter(m => !auraHablado.has(m.id));
+    nuevos.forEach(m => auraHablado.add(m.id));
+    const ultimo = nuevos[nuevos.length - 1];
+    if (ultimo && ultimo.texto) auraLeer(ultimo.texto);
+  }
+
+  /** Los botones de modo mandan la orden POR EL CHAT: es la misma frase que
+      cualquiera puede escribir, el boton solo la ahorra. */
+  async function auraModoChat(cual) {
+    if (chatSt.mandando || !esAura(chatSt.con)) return;
+    chatSt.mandando = true;
+    try {
+      await CHAT.enviar(chatSt.con.id, cual === 'pensadora' ? 'modo pensador' : 'modo rápido');
+      await chatCargarMsgs();
+    } catch (e) { avisar(t('cha.eRedP')); }
+    chatSt.mandando = false;
+  }
+
+  const puedeDictar = () => !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  let dictando = null;
+
+  function auraDictar() {
+    if (dictando) { try { dictando.stop(); } catch (e) {} dictando = null; pintarChat(); return; }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    const r = new SR();
+    r.lang = idiomaActivo() === 'en' ? 'en-US' : 'es-HN';
+    r.interimResults = true;
+    const campo = () => $('#chat-txt');
+    r.onresult = (ev) => {
+      // lo dicho SE VE mientras se dice: el texto es el protagonista, la voz
+      // es solo la forma de escribirlo
+      const txt = Array.from(ev.results).map(x => x[0].transcript).join(' ').trim();
+      if (campo()) campo().value = txt;
+      if (ev.results[ev.results.length - 1].isFinal) {
+        dictando = null;
+        if (txt) $('#chat-hilo form.cha-pie')?.requestSubmit();
+        else pintarChat();
+      }
+    };
+    r.onerror = () => { dictando = null; pintarChat(); };
+    r.onend = () => { if (dictando) { dictando = null; pintarChat(); } };
+    dictando = r;
+    pintarChat();
+    r.start();
+  }
+
   function chatHilo() {
     if (chatSt.puerta === 'falta') return `
       ${chatCabPanel(t('cha.gateT'), "VETA.vista('nucleo')")}
@@ -10173,8 +10276,9 @@ const VETA = (() => {
                   línea» significa que tiene PULSE2CHAT abierto ahora — o sea
                   que un mensaje lo ve ya y una llamada le suena. Si no está,
                   se queda el identificador de siempre. */''}
-            <small id="cha-linea" class="${chatSt.enLinea ? 'en-linea' : ''}">${
-              c.esGrupo ? esc(t('cha.esGrupo'))
+            <small id="cha-linea" class="${chatSt.enLinea && !esAura(c) ? 'en-linea' : ''}">${
+              esAura(c) ? esc(t('au.chSub'))
+              : c.esGrupo ? esc(t('cha.esGrupo'))
               : chatSt.enLinea ? t('cha.enLinea') : esc(c.gid || c.id)}</small>
           </span>
         </button>
@@ -10187,7 +10291,7 @@ const VETA = (() => {
         <button class="cha-mas cha-hmas" id="cha-gllamar-video" onclick="VETA.grupoLlamar(true)" aria-label="${t('lla.video')}">
           <svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
         </button>` : ''}
-        ${(!c.esGrupo && window.LLAMADA?.puede()) ? `
+        ${(!c.esGrupo && !esAura(c) && window.LLAMADA?.puede()) ? `
         <button class="cha-mas cha-hmas" id="cha-llamar-voz" onclick="VETA.llamadaLlamar(false)" aria-label="${t('lla.voz')}">
           <svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
         </button>
@@ -10202,6 +10306,31 @@ const VETA = (() => {
           <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
         </button>
       </div>
+      ${esAura(c) ? (() => {
+        /* El modo encendido no se guarda en ningun lado: se LEE del hilo.
+           AU-RA confirma cada cambio con una frase fija; el ultimo de esos
+           mensajes dice en que modo esta. Un estado guardado aparte se
+           desincroniza (otro aparato, otra sesion); el hilo no miente. */
+        let modoP = false;
+        for (const m of (chatSt.msgs || [])) {
+          if (m.de !== AURA_CHAT_ID) continue;
+          if (/modo pensador\b/i.test(m.texto || '')) modoP = true;
+          else if (/modo r[aá]pido\b/i.test(m.texto || '')) modoP = false;
+        }
+        return `
+      <div class="cha-aura-tira">
+        <span class="cha-aura-beta">AU-RA · beta</span>
+        <button type="button" class="cha-aura-chip${!modoP ? ' on' : ''}"
+                onclick="VETA.auraModoChat('rapida')">${t('au.chModoR')}</button>
+        <button type="button" class="cha-aura-chip${modoP ? ' on' : ''}"
+                onclick="VETA.auraModoChat('pensadora')">${t('au.chModoP')}</button>
+        <button type="button" class="cha-aura-chip cha-aura-voz${auraVozChat ? ' on' : ''}"
+                onclick="VETA.auraVozAlterna()"
+                aria-label="${auraVozChat ? t('au.chVozOn') : t('au.chVozOff')}">
+          <svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5z"/>${''}
+          </svg>${auraVozChat ? t('au.chVozOn') : t('au.chVozOff')}
+        </button>
+      </div>`; })() : ''}
       ${chatSt.buscaHilo != null ? `
       <div class="p2c-filtro cha-busca-hilo">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
@@ -10211,7 +10340,7 @@ const VETA = (() => {
         <button onclick="VETA.chatBuscarHiloAbrir()" aria-label="${t('cha.cancelar')}">✕</button>
       </div>` : ''}
       ${chatSt.ficha ? chatFicha() : ''}
-      <div class="cha-msgs" id="chat-msgs" onclick="VETA.chatGestosTocar(event)">${cuerpo}</div>
+      <div class="cha-msgs${esAura(c) ? ' cha-de-aura' : ''}" id="chat-msgs" onclick="VETA.chatGestosTocar(event)">${cuerpo}</div>
       ${chatSt.grabando ? `
       <div class="cha-grab">
         <span class="cha-grab-pt"></span>
@@ -10234,7 +10363,13 @@ const VETA = (() => {
                oninput="VETA.chatTecleando()">
         ${/* El micrófono solo aparece si el navegador sabe grabar. Un botón que
               al tocarlo dice «tu navegador no puede» es peor que no ponerlo. */''}
-        ${CHAT.puedeGrabar() ? `
+        ${esAura(c) && puedeDictar() ? `
+        <button type="button" class="cha-mic cha-dictar${dictando ? ' grabando' : ''}"
+                aria-label="${t('au.chDictar')}" title="${t('au.chDictar')}"
+                onclick="VETA.auraDictar()">
+          <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/></svg>
+        </button>` : ''}
+        ${!esAura(c) && CHAT.puedeGrabar() ? `
         <button type="button" class="cha-mic${chatSt.grabando ? ' grabando' : ''}"
                 aria-label="${t(chatSt.grabando ? 'cha.vozParar' : 'cha.vozGrabar')}"
                 onclick="VETA.chatVoz()">
@@ -10250,11 +10385,19 @@ const VETA = (() => {
       ${/* Lo bueno arriba y en tono normal; la limitacion debajo y en gris.
             Al reves —la advertencia primero— la gente deja de leerla a los
             tres dias, y entonces no protege a nadie. */''}
-      <div class="cha-sello">
-        <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      ${/* El sello de abajo dice la verdad DE ESTE HILO, y la verdad cambia
+            con quien este del otro lado. Con una persona: punta a punta, y del
+            otro lado alguien real. Con AU-RA las dos cosas serian mentira —
+            este hilo lo procesa nuestro servidor para poder contestar, y del
+            otro lado no hay una persona—, y un sello que miente enseña a
+            ignorar todos los sellos. */''}
+      <div class="cha-sello${esAura(c) ? ' cha-sello-aura' : ''}">
+        <svg viewBox="0 0 24 24">${esAura(c)
+          ? '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>'
+          : '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>'}</svg>
         <div>
-          <b>${t('cha.e2eLlamadas')}</b>
-          <span>${t('cha.e2eIdentidad')}</span>
+          <b>${t(esAura(c) ? 'au.chSello' : 'cha.e2eLlamadas')}</b>
+          <span>${t(esAura(c) ? 'au.chSelloP' : 'cha.e2eIdentidad')}</span>
         </div>
       </div>
       ${/* El renglon de «las fotos y los videos todavia no» se fue de aqui.
@@ -10523,7 +10666,7 @@ const VETA = (() => {
         <button onclick="VETA.chatReaccion(${jsTxt(m.id)},${jsTxt(e)})">${e}</button>`).join('')}</div>` : '';
 
     return `
-      <div class="cha-b ${mio ? 'cha-mio' : ''}" data-id="${esc(m.id || '')}">
+      <div class="cha-b ${mio ? 'cha-mio' : ''}${!mio && m.de === AURA_CHAT_ID ? ' cha-b-aura' : ''}" data-id="${esc(m.id || '')}">
         ${m.id ? `<div class="cha-gestos">
           <button title="${t('cha.responder')}" onclick="VETA.chatCitar(${jsTxt(m.id)})">
             <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v5"/></svg>
@@ -12972,6 +13115,8 @@ const VETA = (() => {
            negUsarMiDireccion, negLibro,
            // El Nucleo: la portada del ecosistema.
            nuAbrir,
+           // El rincon de AU-RA en el chat: modos, voz y dictado.
+           auraModoChat, auraVozAlterna, auraDictar,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
            pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,
