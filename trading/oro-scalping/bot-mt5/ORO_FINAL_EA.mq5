@@ -40,7 +40,7 @@
 //|  inteligente · limpieza de variables globales · log de errores   |
 //+------------------------------------------------------------------+
 #property copyright   "ORO FINAL"
-#property version     "3.30"
+#property version     "3.40"
 #property description "ORO FINAL v3.00 - Preconfigurado TURBO: servidor GMT+0, 10 operaciones/dia, corte a las 3 perdidas seguidas. Pegar, compilar y encender."
 
 #include <Trade/Trade.mqh>
@@ -167,8 +167,40 @@ double Buf(int handle, int shift)
 
 void Notify(string msg)
 {
-   if(InpPushNotify) SendNotification(msg);
+   // MetaQuotes rechaza los push de más de 255 caracteres: si se pasa, NO LLEGA NADA.
+   // Se recorta para garantizar que el aviso siempre se entregue.
+   if(StringLen(msg) > 250) msg = StringSubstr(msg, 0, 247) + "...";
+   if(InpPushNotify)
+   {
+      if(!SendNotification(msg))
+         Print("⚠️ Push no enviado (error ", GetLastError(),
+               "). Revisa MetaQuotes ID en Herramientas->Opciones->Notificaciones.");
+   }
    if(InpPopupAlert) Alert(msg);
+}
+
+// Convierte una distancia de precio en dinero real para el lote indicado
+double MoneyFor(double priceDist, double lot)
+{
+   double tv = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+   double ts = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+   if(ts <= 0) return 0.0;
+   return MathAbs(priceDist) / ts * tv * lot;
+}
+
+// Estrellas de calidad de la senal segun el score
+string estrella(double v)
+{
+   if(v >= 90) return "***";
+   if(v >= 80) return "**";
+   if(v >= 70) return "*";
+   return "";
+}
+
+// Formato compacto de dinero con signo: +$48 / -$100
+string Money(double v)
+{
+   return (v >= 0 ? "+$" : "-$") + DoubleToString(MathAbs(v), 2);
 }
 
 bool InRange(string s, string e)
@@ -240,7 +272,7 @@ int MinsToNextKz()
 void StatusIdle(string motivo)
 {
    int m = MinsToNextKz();
-   Comment("🥇 ORO FINAL v3.30 · ", _Symbol, " ", EnumToString(_Period),
+   Comment("🥇 ORO FINAL v3.40 · ", _Symbol, " ", EnumToString(_Period),
            "\n✅ BOT ACTIVO — ", motivo,
            "\n🕐 Hora del servidor: ", TimeToString(TimeCurrent(), TIME_MINUTES),
            "\n🔥 Killzones: ", InpLdnStart, "-", InpLdnEnd, "  y  ", InpNyStart, "-", InpNyEnd,
@@ -642,6 +674,86 @@ bool DayStopped(string &why)
    return false;
 }
 
+// Resultado neto real de una posición ya cerrada (suma todos sus deals de salida)
+bool GetClosedResult(long pid, double &profit)
+{
+   profit = 0;
+   if(!HistorySelectByPosition(pid)) return false;
+   int n = HistoryDealsTotal();
+   bool found = false;
+   for(int i = 0; i < n; i++)
+   {
+      ulong t = HistoryDealGetTicket(i);
+      if(t == 0) continue;
+      if(HistoryDealGetInteger(t, DEAL_ENTRY) != DEAL_ENTRY_OUT) continue;
+      profit += HistoryDealGetDouble(t, DEAL_PROFIT)
+              + HistoryDealGetDouble(t, DEAL_SWAP)
+              + HistoryDealGetDouble(t, DEAL_COMMISSION);
+      found = true;
+   }
+   return found;
+}
+
+// Informe del día al cerrar la última killzone: el resumen que de verdad importa
+void SendDailyReport()
+{
+   datetime d0 = StringToTime("00:00");
+   if(!HistorySelect(d0, TimeCurrent())) return;
+   int total = HistoryDealsTotal();
+   double posProfit[];
+   long   posIds[];
+   for(int i = 0; i < total; i++)   // posiciones abiertas hoy por este bot
+   {
+      ulong t = HistoryDealGetTicket(i);
+      if(HistoryDealGetInteger(t, DEAL_MAGIC) != InpMagic) continue;
+      if(HistoryDealGetInteger(t, DEAL_ENTRY) != DEAL_ENTRY_IN) continue;
+      long pid = HistoryDealGetInteger(t, DEAL_POSITION_ID);
+      bool seen = false;
+      for(int k = 0; k < ArraySize(posIds); k++) if(posIds[k] == pid) { seen = true; break; }
+      if(seen) continue;
+      int sz = ArraySize(posIds);
+      ArrayResize(posIds, sz + 1); ArrayResize(posProfit, sz + 1);
+      posIds[sz] = pid; posProfit[sz] = 0;
+   }
+   for(int i = 0; i < total; i++)   // resultado de cada una
+   {
+      ulong t = HistoryDealGetTicket(i);
+      if(HistoryDealGetInteger(t, DEAL_ENTRY) != DEAL_ENTRY_OUT) continue;
+      long pid = HistoryDealGetInteger(t, DEAL_POSITION_ID);
+      for(int k = 0; k < ArraySize(posIds); k++)
+         if(posIds[k] == pid)
+         {
+            posProfit[k] += HistoryDealGetDouble(t, DEAL_PROFIT)
+                          + HistoryDealGetDouble(t, DEAL_SWAP)
+                          + HistoryDealGetDouble(t, DEAL_COMMISSION);
+            break;
+         }
+   }
+   int n = ArraySize(posIds);
+   if(n == 0)
+   {
+      Notify("📊 CIERRE DEL DIA " + _Symbol + " | Sin operaciones hoy | Balance $"
+             + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE), 2));
+      return;
+   }
+   int win = 0, los = 0;
+   double tot = 0, best = -99999, worst = 99999;
+   for(int k = 0; k < n; k++)
+   {
+      tot += posProfit[k];
+      if(posProfit[k] >= 0) win++; else los++;
+      if(posProfit[k] > best)  best  = posProfit[k];
+      if(posProfit[k] < worst) worst = posProfit[k];
+   }
+   double pct = dayStartBalance > 0 ? tot / dayStartBalance * 100.0 : 0;
+   Notify("📊 CIERRE DEL DIA " + _Symbol + " | " + IntegerToString(n) + " ops: "
+          + IntegerToString(win) + "G/" + IntegerToString(los) + "P ("
+          + DoubleToString(n > 0 ? 100.0 * win / n : 0, 0) + "%) | " + Money(tot)
+          + " (" + DoubleToString(pct, 1) + "%) | Mejor " + Money(best)
+          + " Peor " + Money(worst) + " | Balance $"
+          + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE), 2));
+}
+
 //══════════ MOTOR 2 · REVERSIÓN A LA MEDIA ══════════
 // El motor principal caza RUPTURAS con tendencia. Este hace lo contrario: busca
 // precio muy estirado del VWAP en un mercado SIN tendencia y apuesta al regreso.
@@ -777,7 +889,7 @@ int OnInit()
    lastBeat  = TimeCurrent();
    StatusIdle("recién iniciado, esperando el primer tick");
    SendStatusPush("inicio");
-   Print("🥇 ORO FINAL ULTIMATE v3.30 iniciado | ", _Symbol, " ", EnumToString(_Period),
+   Print("🥇 ORO FINAL ULTIMATE v3.40 iniciado | ", _Symbol, " ", EnumToString(_Period),
          " | Umbral ", g_thr, InpAggro == 1 ? " (AGRESIVO)" : InpAggro == 2 ? " (TURBO)" : "",
          " | Lote ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
          " | TP2 ", DoubleToString(g_rr2, 1), "R | Baseline $", DoubleToString(dayStartBalance, 2));
@@ -833,6 +945,8 @@ void OnTick()
    if(kzBeatNow != wasKzBeat)
    {
       if(InpNotifySession) SendStatusPush(kzBeatNow ? "apertura" : "cierre");
+      // Al cerrar la ULTIMA killzone del dia (la de NY) se envia el informe completo
+      if(!kzBeatNow && TimeCurrent() >= StringToTime(InpNyEnd)) SendDailyReport();
       if(kzBeatNow) { sesMaxL = 0; sesMaxS = 0; sesBars = 0; }   // arranca una sesion nueva
       wasKzBeat = kzBeatNow;
    }
@@ -853,11 +967,28 @@ void OnTick()
    else if(lastPid != 0)
    {
       // La posición se cerró (TP2/SL del servidor o cierre nuestro): resumen y limpieza
-      Print("🥇 ORO FINAL: posición ", lastPid, " cerrada. Revisa el historial para el resultado.");
-      Notify("🥇 ORO: posición cerrada — revisa el resultado en el historial");
+      double prof = 0;
+      string kR = "ORO_RUSD_" + (string)lastPid;
+      double rUsd0 = GlobalVariableCheck(kR) ? GlobalVariableGet(kR) : 0;
+      if(GetClosedResult(lastPid, prof))
+      {
+         int nTc = 0, nLc = 0, nSc = 0;
+         CountToday(nTc, nLc, nSc);
+         double eqc = AccountInfoDouble(ACCOUNT_EQUITY);
+         Notify((prof >= 0 ? "✅ CERRADA EN GANANCIA " : "❌ CERRADA EN PERDIDA ") + _Symbol
+                + "\nResultado " + Money(prof)
+                + (rUsd0 > 0 ? "  (" + DoubleToString(prof / rUsd0, 2) + "R)" : "")
+                + "\nDia " + Money(eqc - dayStartBalance) + " · " + IntegerToString(nTc) + "/"
+                + IntegerToString(g_maxTrades) + " ops · " + IntegerToString(nLc) + " perd"
+                + " · racha " + IntegerToString(nSc) + "/" + IntegerToString(InpMaxLossStreak)
+                + "\nBalance $" + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE), 2));
+         Print("🥇 Posición ", lastPid, " cerrada | ", Money(prof),
+               rUsd0 > 0 ? " (" + DoubleToString(prof / rUsd0, 2) + "R)" : "");
+      }
       GlobalVariableDel("ORO_TP1_" + (string)lastPid);
       GlobalVariableDel("ORO_T1D_" + (string)lastPid);
       GlobalVariableDel("ORO_OPN_" + (string)lastPid);
+      GlobalVariableDel(kR);
       lastPid = 0;
    }
 
@@ -969,7 +1100,7 @@ void OnTick()
          }
       }
 
-      Comment("🥇 ORO FINAL v3.30 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
+      Comment("🥇 ORO FINAL v3.40 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
               " (mín. ", thrAhora, KzActive() ? " killzone" : " fuera", ")",
               InpUseReversion && InRevSession() ? "  🔄 motor 2 vigilando" : "",
               "\nHoy: ", nT, "/", g_maxTrades, " ops · ", nL, "/", InpMaxLossesDay,
@@ -1087,6 +1218,10 @@ void OpenTrade(bool isLong, double px, double sl, double minStop, double atr, do
       return;
    }
    lastEntryTime = TimeCurrent();
+   double rUsd = MoneyFor(risk, lot);                       // lo que arriesgas en dinero
+   double gT1  = MoneyFor(tp1 - px, lot) * InpTP1Percent / 100.0;   // ganancia del parcial
+   double gT2  = MoneyFor(tp2 - px, lot) * (100.0 - InpTP1Percent) / 100.0;
+   double eq   = AccountInfoDouble(ACCOUNT_EQUITY);
    if(SelectOwnPosition())
    {
       long pid = PositionGetInteger(POSITION_IDENTIFIER);
@@ -1094,11 +1229,23 @@ void OpenTrade(bool isLong, double px, double sl, double minStop, double atr, do
       GlobalVariableSet("ORO_TP1_" + (string)pid, tp1);
       GlobalVariableSet("ORO_T1D_" + (string)pid, 0);
       GlobalVariableSet("ORO_OPN_" + (string)pid, (double)(long)TimeCurrent());
+      GlobalVariableSet("ORO_RUSD_" + (string)pid, rUsd);   // para calcular la R al cerrar
    }
    Print(isLong ? "🟢 ORO LONG" : "🔴 ORO SHORT", " | score ", DoubleToString(score, 0),
          " | lote ", DoubleToString(lot, 2), " | SL ", DoubleToString(sl, _Digits),
          " | TP1 ", DoubleToString(tp1, _Digits), " | TP2 ", DoubleToString(tp2, _Digits));
-   Notify((isLong ? "🟢 ORO LONG " : "🔴 ORO SHORT ") + DoubleToString(score, 0) + "/100 | Entrada " + DoubleToString(px, _Digits) + " | SL " + DoubleToString(sl, _Digits) + " | TP1 " + DoubleToString(tp1, _Digits) + " | TP2 " + DoubleToString(tp2, _Digits) + " | Lote " + DoubleToString(lot, 2));
+   int nTn = 0, nLn = 0, nSn = 0;
+   CountToday(nTn, nLn, nSn);
+   Notify((isLong ? "🟢 COMPRA " : "🔴 VENTA ") + "#" + IntegerToString(nTn) + " " + _Symbol
+          + (etiqueta == "REV" ? " [reversion]" : " " + estrella(score))
+          + (score > 0 ? " score " + DoubleToString(score, 0) : "")
+          + "\nEntrada " + DoubleToString(px, _Digits) + " · Lote " + DoubleToString(lot, 2)
+          + "\nSL " + DoubleToString(sl, _Digits) + " (" + Money(-rUsd) + " / "
+          + DoubleToString(eq > 0 ? rUsd / eq * 100.0 : 0, 1) + "%)"
+          + "\nTP1 " + DoubleToString(tp1, _Digits) + " (" + Money(gT1) + ")"
+          + " · TP2 " + DoubleToString(tp2, _Digits) + " (" + Money(gT2) + ")"
+          + "\nDia " + Money(eq - dayStartBalance) + " · " + IntegerToString(nTn) + "/"
+          + IntegerToString(g_maxTrades) + " ops");
 }
 
 //──────────────────────────── GESTIÓN ────────────────────────────
@@ -1197,7 +1344,12 @@ void ManagePosition()
             Print("ORO FINAL: fallo moviendo stop a break-even (", trade.ResultRetcode(), ") — se reasegura en la gestión");
          GlobalVariableSet(kT1D, 1);
          Print("🎯 ORO FINAL: TP1 — ", DoubleToString(pct, 0), "% cerrado, stop en la entrada (sin riesgo)");
-         Notify("🎯 ORO TP1 alcanzado — " + DoubleToString(pct, 0) + "% cobrado, stop asegurado en la entrada");
+         double gan1 = MoneyFor(tp1 - entry, half);
+         Notify("🎯 TP1 ALCANZADO " + _Symbol + " en " + DoubleToString(tp1, _Digits)
+                + "\n" + Money(gan1) + " cobrado (" + DoubleToString(pct, 0) + "% de la posicion)"
+                + "\n✅ Stop movido a la entrada: esta operacion YA NO PUEDE PERDER"
+                + "\nResto " + DoubleToString(vol - half, 2) + " va a TP2 " + DoubleToString(curTP, _Digits)
+                + "\nDia " + Money(AccountInfoDouble(ACCOUNT_EQUITY) - dayStartBalance));
          return;
       }
    }
