@@ -5,7 +5,9 @@
 //|                                                                  |
 //|  PRECONFIGURADO — no hace falta tocar nada para arrancar:        |
 //|    · Servidor GMT+0  ·  Londres 07:00-10:00  ·  NY 12:30-15:30   |
-//|    · Modo TURBO (umbral 62, TP2 3R, trailing 1.2xATR)            |
+//|    · Modo TURBO (umbral 62 = más entradas, no objetivos lejanos) |
+//|    · Objetivos de SCALPING: TP1 0.8R (cierra 60%) · TP2 1.6R     |
+//|    · Cierre por tiempo: 8 velas sin TP1 y fuera (no estar trabado)|
 //|    · Riesgo 10% real por operación (5% x2 del Turbo)             |
 //|    · Máximo 10 operaciones al día                                |
 //|    · SE DETIENE A LAS 3 PÉRDIDAS SEGUIDAS (o 5 totales)          |
@@ -38,7 +40,7 @@
 //|  inteligente · limpieza de variables globales · log de errores   |
 //+------------------------------------------------------------------+
 #property copyright   "ORO FINAL"
-#property version     "3.20"
+#property version     "3.30"
 #property description "ORO FINAL v3.00 - Preconfigurado TURBO: servidor GMT+0, 10 operaciones/dia, corte a las 3 perdidas seguidas. Pegar, compilar y encender."
 
 #include <Trade/Trade.mqh>
@@ -96,10 +98,11 @@ input int      InpAtrPeriod      = 14;         // Periodo ATR
 input double   InpSlBufAtr       = 0.5;        // Colchón del SL (× ATR)
 input double   InpMaxSlAtr       = 1.5;        // Distancia máxima del SL (× ATR)
 input int      InpSwingBars      = 6;          // Velas para el swing del SL
-input double   InpRR1            = 1.0;        // TP1 (× riesgo) — cierra 50% y stop a entrada
-input double   InpRR2            = 2.0;        // TP2 (× riesgo) — cierre total
+input double   InpRR1            = 0.8;        // TP1 (× riesgo) — objetivo rápido, cierra la mayor parte
+input int      InpTP1Percent     = 60;         // % de la posición que se cierra en TP1 (scalping: 60-70)
+input double   InpRR2            = 1.6;        // TP2 (× riesgo) — cierre total (el oro en M5 rara vez da más)
 input bool     InpUseTrail       = true;       // Trailing por ATR después del TP1
-input double   InpTrailAtr       = 1.5;        // Trailing (× ATR)
+input double   InpTrailAtr       = 1.0;        // Trailing (× ATR) — ceñido: asegura rápido
 input double   InpMinSlAtr       = 0.6;        // Distancia mínima del SL (× ATR)
 input double   InpBeBufAtr       = 0.1;        // Colchón del break-even (× ATR, cubre spread/comisión)
 input bool     InpUseStructTP    = true;       // TP2 limitado por la estructura (swing de 4 h)
@@ -110,7 +113,8 @@ input bool     InpUseSmart       = true;       // Vigilar salud y cerrar si el m
 input int      InpHealthExit     = 45;         // Salud mínima antes de cerrar (0-100)
 input int      InpGraceBars      = 2;          // Velas de gracia antes de poder salir por salud
 input bool     InpUseTimeStop    = true;       // Contar estancamiento (~2 h sin TP1)
-input int      InpStallMinutes   = 120;        // Minutos de estancamiento
+input int      InpStallMinutes   = 45;         // Minutos de estancamiento (penaliza la salud)
+input int      InpMaxBarsNoTP1   = 8;          // CIERRE POR TIEMPO: velas sin llegar a TP1 (0 = apagado)
 
 input group "📈 Indicadores"
 input int      InpEmaFast        = 9;          // EMA rápida
@@ -236,7 +240,7 @@ int MinsToNextKz()
 void StatusIdle(string motivo)
 {
    int m = MinsToNextKz();
-   Comment("🥇 ORO FINAL v3.20 · ", _Symbol, " ", EnumToString(_Period),
+   Comment("🥇 ORO FINAL v3.30 · ", _Symbol, " ", EnumToString(_Period),
            "\n✅ BOT ACTIVO — ", motivo,
            "\n🕐 Hora del servidor: ", TimeToString(TimeCurrent(), TIME_MINUTES),
            "\n🔥 Killzones: ", InpLdnStart, "-", InpLdnEnd, "  y  ", InpNyStart, "-", InpNyEnd,
@@ -744,8 +748,10 @@ int OnInit()
    g_thr         = InpThreshold - (InpAggro == 1 ? 5 : InpAggro == 2 ? 8 : 0);
    g_maxTrades   = InpMaxTradesDay;   // tu número manda: la agresividad ya no lo modifica
    g_cooldownMin = InpAggro == 2 ? (int)MathMax(15, InpCooldownMin / 2) : InpCooldownMin;
-   g_rr2         = InpAggro == 0 ? InpRR2 : (InpAggro == 1 ? MathMax(InpRR2, 2.5) : MathMax(InpRR2, 3.0));
-   g_trail       = InpAggro >= 1 ? MathMin(InpTrailAtr, 1.2) : InpTrailAtr;
+   // La agresividad da MÁS ENTRADAS, no objetivos más lejanos: en scalping alargar
+   // el TP solo consigue devolver ganancias ya conseguidas. El objetivo lo fijas tú.
+   g_rr2         = InpRR2;
+   g_trail       = InpAggro >= 1 ? MathMin(InpTrailAtr, 0.9) : InpTrailAtr;
    g_risk        = InpRiskPct * (InpAggro == 1 ? 1.5 : InpAggro == 2 ? 2.0 : 1.0);
 
    hEmaF = iMA(_Symbol, PERIOD_CURRENT, InpEmaFast, 0, MODE_EMA, PRICE_CLOSE);
@@ -771,7 +777,7 @@ int OnInit()
    lastBeat  = TimeCurrent();
    StatusIdle("recién iniciado, esperando el primer tick");
    SendStatusPush("inicio");
-   Print("🥇 ORO FINAL ULTIMATE v3.20 iniciado | ", _Symbol, " ", EnumToString(_Period),
+   Print("🥇 ORO FINAL ULTIMATE v3.30 iniciado | ", _Symbol, " ", EnumToString(_Period),
          " | Umbral ", g_thr, InpAggro == 1 ? " (AGRESIVO)" : InpAggro == 2 ? " (TURBO)" : "",
          " | Lote ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
          " | TP2 ", DoubleToString(g_rr2, 1), "R | Baseline $", DoubleToString(dayStartBalance, 2));
@@ -963,7 +969,7 @@ void OnTick()
          }
       }
 
-      Comment("🥇 ORO FINAL v3.20 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
+      Comment("🥇 ORO FINAL v3.30 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
               " (mín. ", thrAhora, KzActive() ? " killzone" : " fuera", ")",
               InpUseReversion && InRevSession() ? "  🔄 motor 2 vigilando" : "",
               "\nHoy: ", nT, "/", g_maxTrades, " ops · ", nL, "/", InpMaxLossesDay,
@@ -1144,7 +1150,27 @@ void ManagePosition()
       return;
    }
 
-   //── TP1: cerrar 50% y stop al punto de entrada
+   //── CIERRE POR TIEMPO — el alma del scalping: se vive del movimiento inmediato.
+   // Si en N velas la operación no llegó ni al primer objetivo, la idea ya no funcionó:
+   // mejor salir por poco que quedarse trabado esperando a que el stop decida.
+   if(InpMaxBarsNoTP1 > 0 && !t1Done)
+   {
+      int barsOpen = (int)((TimeCurrent() - opnT) / PeriodSeconds(PERIOD_CURRENT));
+      if(barsOpen >= InpMaxBarsNoTP1)
+      {
+         double pnlNow = PositionGetDouble(POSITION_PROFIT);
+         if(trade.PositionClose(ticket))
+         {
+            Print("⏱ ORO FINAL: cierre por tiempo — ", barsOpen, " velas sin alcanzar TP1 | resultado $",
+                  DoubleToString(pnlNow, 2));
+            Notify("⏱ ORO cierre por tiempo — " + IntegerToString(barsOpen) +
+                   " velas sin llegar al TP1 | $" + DoubleToString(pnlNow, 2));
+         }
+         return;
+      }
+   }
+
+   //── TP1: cerrar el parcial y mover el stop al punto de entrada
    if(!t1Done && tp1 > 0)
    {
       bool hit = isLong ? (bid >= tp1) : (ask <= tp1);
@@ -1152,7 +1178,8 @@ void ManagePosition()
       {
          double step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
          double vmin = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
-         double half = MathFloor(vol / 2.0 / step) * step;
+         double pct  = MathMax(10.0, MathMin(90.0, (double)InpTP1Percent));
+         double half = MathFloor(vol * pct / 100.0 / step) * step;
          if(half >= vmin && vol - half >= vmin)
          {
             if(!trade.PositionClosePartial(ticket, half))
@@ -1169,8 +1196,8 @@ void ManagePosition()
          if(!trade.PositionModify(ticket, NormalizeDouble(bePx, _Digits), curTP))
             Print("ORO FINAL: fallo moviendo stop a break-even (", trade.ResultRetcode(), ") — se reasegura en la gestión");
          GlobalVariableSet(kT1D, 1);
-         Print("🎯 ORO FINAL: TP1 — 50% cerrado, stop en la entrada (sin riesgo)");
-         Notify("🎯 ORO TP1 alcanzado — 50% cobrado, stop asegurado en la entrada");
+         Print("🎯 ORO FINAL: TP1 — ", DoubleToString(pct, 0), "% cerrado, stop en la entrada (sin riesgo)");
+         Notify("🎯 ORO TP1 alcanzado — " + DoubleToString(pct, 0) + "% cobrado, stop asegurado en la entrada");
          return;
       }
    }
