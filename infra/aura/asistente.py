@@ -330,9 +330,14 @@ CIERRE = (
     "ecosistema: ORIGEN, la cadena, tu Genesis ID, la tarjeta, lo que venga. "
     "Y si algo no lo sé, te lo digo derecho.")
 
+# Se avisa que la PRIMERA tarda mas, y no por cortesia: al cambiar de modo la
+# maquina descarga un modelo y carga el otro, y eso solo es un minuto. Sin el
+# aviso, ese minuto se lee como que se colgo, y la persona escribe de nuevo —
+# lo que pone otra pregunta en la cola y lo empeora.
 CAMBIO_PENSADORA = (
-    "Listo — modo pensador. Voy a tardar más por respuesta, pero razono con "
-    "más fondo. Para volver, decime «modo rápido».")
+    "Listo — modo pensador. Razono con más fondo, y tardo más por respuesta. "
+    "La primera va a tardar un poco extra mientras acomodo el motor. Para "
+    "volver, decime «modo rápido».")
 CAMBIO_RAPIDA = (
     "Listo — modo rápido. Contesto al vuelo; si querés más fondo, decime "
     "«modo pensador».")
@@ -451,6 +456,20 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
             # La pensadora puede extenderse; la rapida no. Menos palabras es
             # menos espera Y mejor chat: el prompt ya pedia dos o tres frases.
             'num_predict': 220 if pensadora else 110,
+            # ── LA VENTANA. Esto costo 170 segundos por respuesta ──────────
+            # Sin num_ctx, ollama usa 4096. El sistema solo son 1826 tokens;
+            # con ocho turnos de memoria la peticion llega a 3814. Sumando la
+            # respuesta REBALSA los 4096, y al rebalsar ollama tira la cache
+            # y RELEE los 3814 desde cero, a 22 tokens por segundo: dos
+            # minutos y medio ANTES de escribir la primera letra. En el log
+            # del nodo se ve tal cual: «n_ctx_slot = 4096, task.n_tokens =
+            # 3814, cached n_tokens = 5» — de 3814 tokens reaprovecho 5.
+            # Con la ventana holgada la peticion entra entera, la cache se
+            # sostiene y leer vuelve a costar 1,4s (medido, mismo nodo).
+            # La pensadora lleva ventana mas chica porque su modelo es mas
+            # grande y cada mil tokens de ventana le cuestan mas memoria, y
+            # memoria es justo lo que falta en esta maquina.
+            'num_ctx': 6144 if pensadora else 8192,
         },
     }).encode()
     req = urllib.request.Request(

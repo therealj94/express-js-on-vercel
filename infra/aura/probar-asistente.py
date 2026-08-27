@@ -241,6 +241,19 @@ def main():
            'se le pidio al motor que hable mientras piensa')
         ok(de_usuario()[0]['options'].get('num_predict') == 110,
            'y se le piden 110 palabras, no 260: la mitad era relleno')
+        # La ventana. Sin esta linea ollama usa 4096, la peticion con memoria
+        # llega a 3814, rebalsa al escribir y RELEE los 3814 desde cero: 170
+        # segundos de espera antes de la primera letra. Se mide en el numero,
+        # no en el humor: si alguien saca el num_ctx, esto se pone rojo.
+        ctx = de_usuario()[0]['options'].get('num_ctx')
+        ok(ctx is not None and ctx >= 6144,
+           'la ventana da lugar al historial: sin eso se relee todo cada vez',
+           f'num_ctx = {ctx} (con 4096 la peticion de 3814 rebalsa)')
+        mem = de_usuario()[0]['messages']
+        largo = sum(len(m.get('content', '')) for m in mem)
+        ok(largo / 3.6 < ctx * 0.75,
+           'y la peticion entera entra holgada en esa ventana',
+           f'~{largo/3.6:.0f} tokens contra una ventana de {ctx}')
         ok(len(de_usuario()) == 1, 'un mensaje, una llamada al motor')
         if de_usuario():
             sistema = de_usuario()[0]['messages'][0]['content']

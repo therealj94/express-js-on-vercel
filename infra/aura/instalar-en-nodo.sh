@@ -14,7 +14,21 @@ echo "== ollama =="
 if ! command -v ollama >/dev/null; then
   curl -fsSL https://ollama.com/install.sh | sh
 fi
-systemctl enable --now ollama
+# ── UN MODELO CARGADO A LA VEZ ────────────────────────────────────────────
+# La maquina tiene 8 GB. La rapida (3B) ocupa 2,5 y la pensadora (8B) ocupa
+# 5,2: juntas no entran, y el 27-ago el nucleo mato al motor por eso mismo
+# («Out of memory: Killed process llama-server, anon-rss 5255380kB»). AU-RA
+# quedo contestando «mi motor esta apagado» a todo el mundo.
+# Con esto Ollama descarga un modelo ANTES de cargar el otro: cambiar de modo
+# cuesta un minuto de carga, pero no se lleva puesto el servicio.
+mkdir -p /etc/systemd/system/ollama.service.d
+cat > /etc/systemd/system/ollama.service.d/memoria.conf <<'OLL'
+[Service]
+Environment=OLLAMA_MAX_LOADED_MODELS=1
+OLL
+systemctl daemon-reload
+systemctl enable ollama
+systemctl restart ollama
 sleep 3
 # Solo en el anillo local. El puerto de Ollama no tiene contrasena: abierto a
 # internet seria una maquina gratis para el primero que la encuentre.
