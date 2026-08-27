@@ -22,6 +22,9 @@ NODOS = {
     'node5': ('i-0fddf5712376e5b2e', 'us-east-1'),
     'node6': ('i-0bf474425fe5e635b', 'us-east-1'),
     'node7': ('i-00fd699595da41ef4', 'us-east-1'),
+    # La maquina de AU-RA: el t2.large que estaba apagado. 8 GB, la unica del
+    # parque donde entra un modelo. Antes se llamaba «validatorr ogb 1».
+    'aura': ('i-0279be5d28cf67194', 'us-east-2'),
     'testnet2': ('i-0aff688efc52ab8c8', 'us-east-1'),
     'testnet3': ('i-09a424b31734ddb48', 'us-east-1'),
 }
