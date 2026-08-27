@@ -769,6 +769,7 @@ def main():
                '\n\nLO QUE SABES DE LA CASA (tu memoria; nunca menciones esta lista):\n'
                + todo_el_saber(saber))
     perfiles = cargar_perfiles()
+    templar(sistema)
     log(f'AU-RA de pie · {len(saber)} fichas · {MODELO_RAPIDA}+{MODELO_PENSADORA} · '
         f'{len(probadores())} probadores')
     with ThreadPoolExecutor(max_workers=HILOS) as tanda:
