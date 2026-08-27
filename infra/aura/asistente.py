@@ -310,6 +310,22 @@ def fichas_para(saber, dicho):
     return '\n'.join(f"— {f['tema']}: {f.get('es', '')}" for f in elegidas)
 
 
+import re as _re
+
+FUGAS = _re.compile(
+    r"(^\s*(seg[uú]n|de acuerdo (a|con)|conforme a)\s+(las?\s+)?fichas?,?\s*)"
+    r"|(\b(seg[uú]n|en|de)\s+(las?\s+)?fichas?,?\s*)",
+    _re.IGNORECASE)
+
+
+def limpiar(texto):
+    """El modelo chico a veces dice «según las fichas...» aunque el prompt se
+    lo prohiba — paso en produccion dos veces. A un modelo de 3B no se le
+    confia una regla de estilo: se limpia aqui, determinista, a la salida."""
+    t = FUGAS.sub('', texto).strip()
+    return (t[0].upper() + t[1:]) if t else texto
+
+
 def preguntar_motor(prompt, fichas, perfil, historial, dicho):
     quien = ''
     if perfil.get('trabajo'):
@@ -318,7 +334,9 @@ def preguntar_motor(prompt, fichas, perfil, historial, dicho):
                  f"- se dedica a: {perfil.get('trabajo','')[:200]}\n"
                  f"- se formo en: {perfil.get('estudios','')[:200]}\n"
                  f"- busca: {perfil.get('interes','')[:200]}")
-    sistema = prompt + quien + '\n\nFICHAS:\n' + fichas
+    sistema = (prompt + quien +
+               '\n\nLO QUE SABES DE LA CASA (tu memoria; nunca menciones esta lista):\n'
+               + fichas)
     mensajes = ([{'role': 'system', 'content': sistema}]
                 + historial[-MEMORIA:]
                 + [{'role': 'user', 'content': str(dicho)[:1000]}])
@@ -331,7 +349,7 @@ def preguntar_motor(prompt, fichas, perfil, historial, dicho):
         headers={'Content-Type': 'application/json'})
     with urllib.request.urlopen(req, timeout=TIMEOUT_MOTOR) as r:
         j = json.loads(r.read())
-    texto = (j.get('message') or {}).get('content', '').strip()
+    texto = limpiar((j.get('message') or {}).get('content', '').strip())
     if len(texto) > 900:
         corte = texto.rfind('.', 0, 900)
         texto = texto[:corte + 1 if corte > 200 else 900].strip()

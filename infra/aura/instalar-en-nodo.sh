@@ -45,6 +45,11 @@ ExecStart=/usr/bin/python3 /srv/aura/asistente.py
 WorkingDirectory=/srv/aura
 Environment=AURA_DATOS=/srv/aura
 Environment=AURA_MODELO=llama3.2
+# 300 y no 90: el motor en CPU tarda hasta 90s por respuesta, y una pregunta
+# que llega DETRAS de otra espera su turno en la cola de Ollama. Con 90 el
+# turno en cola se comia el tiempo y la respuesta moria en «motor apagado» —
+# paso en la prueba real del 27-ago.
+Environment=AURA_TIMEOUT=300
 Restart=always
 RestartSec=8
 

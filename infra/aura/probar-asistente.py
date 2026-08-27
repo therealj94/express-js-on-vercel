@@ -184,7 +184,7 @@ def main():
         ok(len(visto['peticiones']) == 1, 'un mensaje, una llamada al motor')
         if visto['peticiones']:
             sistema = visto['peticiones'][0]['messages'][0]['content']
-            ok('AU-RA' in sistema and 'FICHAS' in sistema,
+            ok('AU-RA' in sistema and 'LO QUE SABES DE LA CASA' in sistema,
                'viajo el prompt de la casa y las fichas')
             ok('ORIGEN' in sistema and 'gramin' in sistema,
                'y la ficha que viajo es la de ORIGEN, con su contenido')
