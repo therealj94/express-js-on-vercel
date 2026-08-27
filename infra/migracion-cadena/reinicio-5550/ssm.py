@@ -25,6 +25,11 @@ NODOS = {
     # La maquina de AU-RA: el t2.large que estaba apagado. 8 GB, la unica del
     # parque donde entra un modelo. Antes se llamaba «validatorr ogb 1».
     'aura': ('i-0279be5d28cf67194', 'us-east-2'),
+    # La maquina con GPU de AU-RA: g4dn.xlarge, una NVIDIA T4 de 16 GB. Va en
+    # us-east-1 y no en us-east-2 con la vieja porque el cupo de vCPU de la
+    # familia G en us-east-2 es CERO — ahi no se puede encender una GPU
+    # aunque el tipo de maquina aparezca disponible en las tres zonas.
+    'gpu': ('i-02653feadc919d3a4', 'us-east-1'),
     'testnet2': ('i-0aff688efc52ab8c8', 'us-east-1'),
     'testnet3': ('i-09a424b31734ddb48', 'us-east-1'),
 }
