@@ -38,7 +38,7 @@
 //|  inteligente · limpieza de variables globales · log de errores   |
 //+------------------------------------------------------------------+
 #property copyright   "ORO FINAL"
-#property version     "3.10"
+#property version     "3.20"
 #property description "ORO FINAL v3.00 - Preconfigurado TURBO: servidor GMT+0, 10 operaciones/dia, corte a las 3 perdidas seguidas. Pegar, compilar y encender."
 
 #include <Trade/Trade.mqh>
@@ -49,6 +49,7 @@ input long     InpMagic          = 20250823;   // Magic number del bot
 input int      InpThreshold      = 70;         // Score mínimo (62 agresivo · 70 normal · 78 conservador)
 input int      InpMode           = 0;          // Ventana: 0=Solo killzones · 1=Londres+NY · 2=24 horas
 input int      InpCooldownMin    = 40;         // Minutos mínimos entre entradas (Turbo lo reduce a la mitad = 20)
+input int      InpThrOutside     = 70;         // Score mínimo FUERA de killzone (0 = no operar fuera)
 
 input group "🕐 Sesiones (HORA DEL SERVIDOR del broker)"
 input string   InpLdnStart       = "07:00";    // Killzone Londres: inicio  [servidor GMT+0]
@@ -80,6 +81,15 @@ input double   InpDailyLossUSD   = 0.0;        // Límite de pérdida diaria en 
 input bool     InpCloseOnTarget  = true;       // Al llegar a objetivo o límite: cerrar también la posición abierta
 input double   InpMaxSpreadUSD   = 0.35;       // Spread máximo aceptado ($ por onza)
 input int      InpSlippagePts    = 30;         // Desviación máxima (puntos)
+
+input group "🔄 Motor 2 · Reversión a la media (rangos y horas tranquilas)"
+input bool     InpUseReversion   = false;      // Activar el segundo motor (pruébalo en el Probador antes)
+input string   InpRevSession     = "21:00-06:00"; // Ventana del motor de reversión (servidor) — Asia por defecto
+input double   InpRevAdxMax      = 20.0;       // ADX máximo: por encima hay tendencia y este motor no opera
+input double   InpRevVwapAtr     = 2.0;        // Extensión mínima del VWAP para considerar el rebote (× ATR)
+input int      InpRevRsi         = 72;         // RSI de agotamiento (72 arriba / 28 abajo)
+input double   InpRevMinRR       = 1.0;        // Relación riesgo/beneficio mínima para aceptar la entrada
+input double   InpRevRiskMult    = 0.5;        // Riesgo de este motor respecto del principal (0.5 = la mitad)
 
 input group "🎯 SL / TP"
 input int      InpAtrPeriod      = 14;         // Periodo ATR
@@ -162,7 +172,16 @@ bool InRange(string s, string e)
    datetime now = TimeCurrent();
    datetime ts  = StringToTime(s);   // hoy a las HH:MM hora del servidor
    datetime te  = StringToTime(e);
-   return (now >= ts && now < te);
+   if(ts <= te) return (now >= ts && now < te);
+   return (now >= ts || now < te);   // la ventana cruza la medianoche (p. ej. 21:00-06:00)
+}
+
+// Ventana propia del motor de reversión ("HH:MM-HH:MM")
+bool InRevSession()
+{
+   string se[];
+   if(StringSplit(InpRevSession, '-', se) != 2) return false;
+   return InRange(se[0], se[1]);
 }
 
 bool KzLondon()  { return InRange(InpLdnStart, InpLdnEnd); }
@@ -173,7 +192,16 @@ bool TradeWindow()
 {
    if(InpMode == 2) return true;
    if(InpMode == 1) return InRange(InpFullStart, InpFullEnd);
-   return KzActive();
+   if(KzActive()) return true;
+   // Modo killzones: si hay umbral definido para fuera, se amplía a la ventana Londres+NY
+   return InpThrOutside > 0 && InRange(InpFullStart, InpFullEnd);
+}
+
+// Umbral que aplica AHORA: dentro de killzone el normal, fuera uno más exigente
+int ThrNow()
+{
+   if(KzActive()) return g_thr;
+   return InpThrOutside > 0 ? InpThrOutside : 9999;   // 9999 = imposible de alcanzar
 }
 
 // Ventanas de noticias bloqueadas: "13:25-13:40,19:55-20:10"
@@ -208,7 +236,7 @@ int MinsToNextKz()
 void StatusIdle(string motivo)
 {
    int m = MinsToNextKz();
-   Comment("🥇 ORO FINAL v3.10 · ", _Symbol, " ", EnumToString(_Period),
+   Comment("🥇 ORO FINAL v3.20 · ", _Symbol, " ", EnumToString(_Period),
            "\n✅ BOT ACTIVO — ", motivo,
            "\n🕐 Hora del servidor: ", TimeToString(TimeCurrent(), TIME_MINUTES),
            "\n🔥 Killzones: ", InpLdnStart, "-", InpLdnEnd, "  y  ", InpNyStart, "-", InpNyEnd,
@@ -408,7 +436,7 @@ double TradeHealth(bool isLong, bool t1Done, datetime openTime, string &motivo)
 }
 
 //──────────────────────────── LOTE POR RIESGO ────────────────────────────
-double RiskLot(double slDistance, bool isLong, double px)
+double RiskLot(double slDistance, bool isLong, double px, double riskMult = 1.0)
 {
    double tickVal  = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
    double tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
@@ -430,7 +458,7 @@ double RiskLot(double slDistance, bool isLong, double px)
    }
    else
    {
-      double riskUSD = AccountInfoDouble(ACCOUNT_EQUITY) * g_risk / 100.0;
+      double riskUSD = AccountInfoDouble(ACCOUNT_EQUITY) * g_risk / 100.0 * riskMult;
       lot = riskUSD / lossPerLot;
    }
    double step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
@@ -610,6 +638,49 @@ bool DayStopped(string &why)
    return false;
 }
 
+//══════════ MOTOR 2 · REVERSIÓN A LA MEDIA ══════════
+// El motor principal caza RUPTURAS con tendencia. Este hace lo contrario: busca
+// precio muy estirado del VWAP en un mercado SIN tendencia y apuesta al regreso.
+// La clave: las condiciones que el motor 1 PENALIZA (RSI extremo, precio lejos
+// del VWAP) son exactamente las que este motor necesita. Por eso se complementan
+// en vez de estorbarse, y por eso opera en horas distintas.
+bool CheckReversion(bool &goLong, bool &goShort, double &slOut, double &tpOut)
+{
+   goLong = false; goShort = false; slOut = 0; tpOut = 0;
+   if(!InpUseReversion) return false;
+   if(!InRevSession())  return false;          // solo dentro de su propia ventana horaria
+   if(Bars(_Symbol, PERIOD_CURRENT) < 250) return false;
+
+   double adx = Buf(hAdx, 1);
+   if(adx <= 0 || adx > InpRevAdxMax) return false;   // si hay tendencia, este motor no opera
+
+   double atr = Buf(hAtr, 1);
+   if(atr <= 0) return false;
+   double rsi = Buf(hRsi, 1);
+   double c = iClose(_Symbol, PERIOD_CURRENT, 1);
+   double o = iOpen(_Symbol, PERIOD_CURRENT, 1);
+   double h = iHigh(_Symbol, PERIOD_CURRENT, 1);
+   double l = iLow(_Symbol, PERIOD_CURRENT, 1);
+   double rng = MathMax(h - l, _Point);
+   double dist = c - cVwap;                     // distancia al VWAP de la sesión
+
+   // VENTA: precio muy por ENCIMA del VWAP, sobrecomprado y con mecha de rechazo arriba
+   if(dist > InpRevVwapAtr * atr && rsi > InpRevRsi && (h - MathMax(c, o)) / rng >= 0.30)
+   {
+      goShort = true;
+      slOut   = h + InpSlBufAtr * atr;
+      tpOut   = cVwap;                          // objetivo: el regreso al VWAP
+   }
+   // COMPRA: espejo exacto, precio muy por DEBAJO del VWAP
+   else if(-dist > InpRevVwapAtr * atr && rsi < (100 - InpRevRsi) && (MathMin(c, o) - l) / rng >= 0.30)
+   {
+      goLong = true;
+      slOut  = l - InpSlBufAtr * atr;
+      tpOut  = cVwap;
+   }
+   return (goLong || goShort);
+}
+
 //────────────── AVISO DE ESTADO AL MOVIL ("el bot sigue vivo") ──────────────
 // La app de MetaTrader no puede mostrar si un robot esta activo, asi que el bot
 // lo dice el mismo: manda una notificacion push con su estado completo.
@@ -700,7 +771,7 @@ int OnInit()
    lastBeat  = TimeCurrent();
    StatusIdle("recién iniciado, esperando el primer tick");
    SendStatusPush("inicio");
-   Print("🥇 ORO FINAL ULTIMATE v3.10 iniciado | ", _Symbol, " ", EnumToString(_Period),
+   Print("🥇 ORO FINAL ULTIMATE v3.20 iniciado | ", _Symbol, " ", EnumToString(_Period),
          " | Umbral ", g_thr, InpAggro == 1 ? " (AGRESIVO)" : InpAggro == 2 ? " (TURBO)" : "",
          " | Lote ", InpLotMode == 1 ? "FIJO " + DoubleToString(InpFixedLot, 2) : "auto " + DoubleToString(g_risk, 2) + "%",
          " | TP2 ", DoubleToString(g_rr2, 1), "R | Baseline $", DoubleToString(dayStartBalance, 2));
@@ -714,7 +785,9 @@ int OnInit()
          " | salida por salud <", InpHealthExit,
          " | spread máx $", DoubleToString(InpMaxSpreadUSD, 2));
    Print("   🕐 Killzones (servidor): ", InpLdnStart, "-", InpLdnEnd, " y ", InpNyStart, "-", InpNyEnd,
-         " | ventana ", InpMode == 0 ? "solo killzones" : InpMode == 1 ? "Londres+NY" : "24 horas",
+         " | ventana ", InpMode == 0 ? (InpThrOutside > 0 ? "killzones + fuera con umbral " + IntegerToString(InpThrOutside) : "solo killzones")
+                       : InpMode == 1 ? "Londres+NY" : "24 horas",
+         InpUseReversion ? " | 🔄 MOTOR 2 activo " + InpRevSession + " (riesgo x" + DoubleToString(InpRevRiskMult, 2) + ")" : " | motor 2 apagado",
          " | hora actual del servidor ", TimeToString(TimeCurrent(), TIME_MINUTES));
    // Aviso si el freno diario es tan bajo que se activaría con una sola pérdida
    if(InpLotMode == 0 && InpMaxDailyDD > 0 && InpMaxDailyDD <= g_risk * InpMaxLossStreak * 0.95)
@@ -864,12 +937,36 @@ void OnTick()
    }
    if(lastEntryTime > 0 && (TimeCurrent() - lastEntryTime) < g_cooldownMin * 60) return;
 
-   bool goLong  = scL >= g_thr && scL > scS && pL < g_thr;
-   bool goShort = scS >= g_thr && scS > scL && pS_ < g_thr;
+   int thrAhora = ThrNow();   // dentro de killzone el umbral normal, fuera uno más exigente
+   bool goLong  = scL >= thrAhora && scL > scS && pL < thrAhora;
+   bool goShort = scS >= thrAhora && scS > scL && pS_ < thrAhora;
+
    if(!goLong && !goShort)
    {
-      Comment("🥇 ORO FINAL v3.10 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
-              " (mín. ", g_thr, ")\nHoy: ", nT, "/", g_maxTrades, " ops · ", nL, "/", InpMaxLossesDay,
+      // ── MOTOR 2 · REVERSIÓN: solo si el motor principal no encontró nada ──
+      bool rL, rS;
+      double rSl, rTp;
+      if(CheckReversion(rL, rS, rSl, rTp))
+      {
+         double pxR   = rL ? ask : bid;
+         double riskR = MathAbs(pxR - rSl);
+         double rewR  = MathAbs(rTp - pxR);
+         if(riskR > 0 && rewR / riskR >= InpRevMinRR)
+         {
+            double minStopR = (double)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL) * _Point;
+            double atrR = Buf(hAtr, 1);
+            Print("🔄 MOTOR 2 (reversión): ", rL ? "COMPRA" : "VENTA",
+                  " | precio estirado del VWAP | objetivo VWAP ", DoubleToString(rTp, _Digits),
+                  " | R:R ", DoubleToString(rewR / riskR, 2));
+            OpenTrade(rL, pxR, rSl, minStopR, atrR, 0, rTp, InpRevRiskMult, "REV");
+            return;
+         }
+      }
+
+      Comment("🥇 ORO FINAL v3.20 | Score L ", DoubleToString(scL, 0), " · S ", DoubleToString(scS, 0),
+              " (mín. ", thrAhora, KzActive() ? " killzone" : " fuera", ")",
+              InpUseReversion && InRevSession() ? "  🔄 motor 2 vigilando" : "",
+              "\nHoy: ", nT, "/", g_maxTrades, " ops · ", nL, "/", InpMaxLossesDay,
               " pérdidas · racha ", nStreak, "/", InpMaxLossStreak,
               "\nMáx. de la sesión: L", DoubleToString(sesMaxL, 0), " S", DoubleToString(sesMaxS, 0),
               " en ", sesBars, " velas",
@@ -897,7 +994,7 @@ void OnTick()
 }
 
 //──────────────────────────── APERTURA ────────────────────────────
-void OpenTrade(bool isLong, double px, double sl, double minStop, double atr, double score)
+void OpenTrade(bool isLong, double px, double sl, double minStop, double atr, double score, double tpFijo = 0, double riskMult = 1.0, string etiqueta = "ORO")
 {
    // Distancia mínima propia del SL: un stop demasiado ceñido muere con el ruido del spread
    if(isLong)  sl = MathMin(sl, px - InpMinSlAtr * atr);
@@ -910,12 +1007,23 @@ void OpenTrade(bool isLong, double px, double sl, double minStop, double atr, do
    }
    double risk = isLong ? px - sl : sl - px;
    if(risk <= 0) return;
-   double tp1 = isLong ? px + InpRR1 * risk : px - InpRR1 * risk;
-   double tp2 = isLong ? px + g_rr2 * risk : px - g_rr2 * risk;
+   double tp1, tp2;
+   if(tpFijo > 0)
+   {
+      // Motor de reversión: el objetivo es un nivel concreto (el VWAP), no un múltiplo de R.
+      // El TP1 se coloca a mitad de camino para asegurar la mitad de la posición.
+      tp2 = tpFijo;
+      tp1 = px + (tpFijo - px) * 0.5;
+   }
+   else
+   {
+      tp1 = isLong ? px + InpRR1 * risk : px - InpRR1 * risk;
+      tp2 = isLong ? px + g_rr2 * risk : px - g_rr2 * risk;
+   }
 
    // TP2 profesional: si el 2R queda detrás del swing de ~4 h, el objetivo se adelanta
    // a ese nivel (menos un colchón), siempre que deje al menos 1.3R
-   if(InpUseStructTP)
+   if(InpUseStructTP && tpFijo <= 0)
    {
       int lookback = (int)MathMax(10, 14400 / PeriodSeconds(PERIOD_CURRENT));
       if(isLong)
@@ -939,7 +1047,7 @@ void OpenTrade(bool isLong, double px, double sl, double minStop, double atr, do
    }
    if(minStop > 0 && MathAbs(tp2 - px) < minStop) return;   // TP2 demasiado cerca: entrada inválida
 
-   double lot = RiskLot(risk, isLong, px);
+   double lot = RiskLot(risk, isLong, px, riskMult);
    if(lot <= 0)
    {
       // Diagnóstico completo: te dice EXACTAMENTE qué te falta para poder operar
@@ -963,7 +1071,7 @@ void OpenTrade(bool isLong, double px, double sl, double minStop, double atr, do
       return;
    }
 
-   string cmt = (isLong ? "ORO L " : "ORO S ") + DoubleToString(score, 0) + "/100";
+   string cmt = etiqueta + (isLong ? " L " : " S ") + DoubleToString(score, 0) + "/100";
    bool ok = isLong
       ? trade.Buy(lot, _Symbol, 0, NormalizeDouble(sl, _Digits), NormalizeDouble(tp2, _Digits), cmt)
       : trade.Sell(lot, _Symbol, 0, NormalizeDouble(sl, _Digits), NormalizeDouble(tp2, _Digits), cmt);
