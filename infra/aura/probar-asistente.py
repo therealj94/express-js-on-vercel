@@ -73,6 +73,10 @@ class MotorFalso(BaseHTTPRequestHandler):
             return
         cuerpo = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
         visto['peticiones'].append(cuerpo)
+        # si la pregunta pide LENTO, el motor piensa 2.5s: es la ventana para
+        # meter un segundo mensaje mientras genera, que era el hueco grave
+        if 'LENTO' in json.dumps(cuerpo):
+            time.sleep(2.5)
         r = json.dumps({'message': {'role': 'assistant',
                                     'content': 'RESPUESTA-DEL-MOTOR sobre lo preguntado.'}}).encode()
         self.send_response(200)
@@ -206,8 +210,47 @@ def main():
            'dice que el motor esta apagado en vez de inventar')
         apagado['si'] = False
 
+        print('\nEl hueco del panel: un mensaje mientras el motor piensa\n')
+        antes = len(visto['peticiones'])
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': 'Contame de AUKA LENTO'})
+        time.sleep(1.0)   # el motor sigue pensando: este cae en plena generacion
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': '¿y AGKA?'})
+        ms = espera_mensajes(ana, 8, seg=25)
+        ok(len(ms) >= 8, 'las DOS preguntas reciben respuesta, ninguna se traga',
+           f'llegaron {len(ms)-6} de 2')
+        ok(len(visto['peticiones']) - antes == 2,
+           'dos preguntas, dos llamadas al motor')
+
+        print('\nEl otro hueco: perfil perdido, sin avalancha\n')
+        asistente.terminate(); asistente.wait()
+        (datos / 'perfiles.json').unlink()
+        antes = len(visto['peticiones'])
+        asistente2 = subprocess.Popen(
+            [sys.executable, str(AQUI / 'asistente.py')],
+            env={**os.environ, 'AURA_RELEVO': BASE, 'AURA_CORREO': 'aura@prueba.local',
+                 'AURA_DATOS': str(datos), 'AURA_MOTOR': f'http://127.0.0.1:{p_motor}',
+                 'AURA_MODELO': 'llama3.2', 'AURA_PASO': '0.4',
+                 'HTTP_PROXY': '', 'HTTPS_PROXY': '', 'http_proxy': '', 'https_proxy': ''},
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        globals()['asistente'] = asistente2
+        time.sleep(3)
+        ok(len(visto['peticiones']) == antes,
+           'al arrancar sin memoria NO recontesta el historial (cero motor)')
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': 'hola de nuevo'})
+        ms = espera_mensajes(ana, 9, seg=20)
+        ok(len(ms) >= 9 and 'conocerte' in ms[8].get('texto', ''),
+           'con la memoria perdida se vuelve a presentar, no adivina')
+        ok(len(visto['peticiones']) == antes,
+           'y sigue sin gastar motor: saludar es codigo')
+
     finally:
-        asistente.terminate()
+        try:
+            asistente.terminate()
+        except Exception:
+            pass
         relevo.terminate()
         motor.shutdown()
         try:

@@ -26,14 +26,38 @@ esta vacio, chat.js:257), manda el texto en claro para el. O sea:
 Eso es un intercambio, no un truco, y el asistente lo dice en su primer
 mensaje. La gente decide sabiendo.
 
-══ LO QUE NO HACE, A PROPOSITO ═══════════════════════════════════════════════
+══ LO QUE EL PANEL DE REVISION ENCONTRO, Y COMO QUEDO ════════════════════════
 
-  · No mueve dinero, no firma, no toca cuentas. Es conversacion.
-  · No entra a grupos: solo charlas directas. Un asistente metido en un grupo
-    leeria todo lo que ahi se diga, y eso no se hace sin pensarlo mas.
-  · No responde a quien no este en la lista de prueba. La solicitud queda
-    pendiente, sin rechazo: si mañana se agrega a la persona, se acepta.
-  · Si el motor esta caido, LO DICE. No finge una respuesta.
+Antes de producción, tres revisores independientes leyeron este archivo
+contra el relevo real y un verificador refuto cada hallazgo contra el codigo.
+Los confirmados mandan sobre el diseño de este archivo:
+
+  · El «esta pensando» tragaba mensajes. La puerta era `sinLeer` del relevo,
+    y /leido sella la hora ACTUAL: un mensaje mandado mientras el motor
+    generaba (hasta 90s) quedaba detras del sello y no se contestaba nunca.
+    Ahora la puerta es NUESTRA: se compara el `cuando` del ultimo mensaje de
+    la charla contra el tope local, y el tope solo avanza con lo procesado.
+  · El «visto» avanzaba aunque el envio fallara: el mensaje de la persona se
+    consumia en silencio. Ahora solo avanza cuando atender() termino bien; un
+    mensaje que falla se reintenta, y al tercer fallo se salta CON RUIDO en
+    el registro (un mensaje venenoso no puede ciclar para siempre).
+  · Un perfil perdido disparaba una avalancha: con visto=0 la bandeja entera
+    (hasta 200 mensajes) se recontestaba a medio minuto de motor cada una.
+    Ahora una charla sin tope conocido arranca EN EL PRESENTE: se salta lo
+    viejo y se atiende solo lo que llegue desde ahora.
+  · Una respuesta lenta bloqueaba a los otros catorce: el bucle era monohilo
+    y el motor tarda 15-90s. Ahora cada charla se atiende en su hilo (pocos,
+    con candado por charla y por estado); el motor en CPU igual atiende de a
+    uno, pero nadie espera a que OTRA persona termine para que la suya entre
+    a la cola.
+  · Los perfiles se guardaban solo al final de la vuelta entera: una caida a
+    mitad perdia lo avanzado. Ahora se guardan al cerrar cada charla.
+  · Dos instancias a la vez contestarian doble: candado de archivo al
+    arrancar; la segunda instancia se despide sola.
+  · Si el saludo fallaba tras aceptar la amistad, la primera respuesta de la
+    persona se comia como si fuera de la entrevista. Ahora `saludado` se
+    marca solo con el saludo ENVIADO, y un mensaje de alguien sin saludar
+    dispara el saludo en vez de consumirse.
 
 ══ CONFIGURACION (variables de entorno) ══════════════════════════════════════
 
@@ -48,16 +72,18 @@ mensaje. La gente decide sabiendo.
 En el primer arranque, si no hay llave.txt, se da de alta solo en el relevo y
 guarda la llave con permisos 600. La llave NUNCA va al repositorio.
 """
+import fcntl
 import json
 import os
 import pathlib
-import re
 import stat
 import sys
+import threading
 import time
 import unicodedata
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 
 RELEVO = os.environ.get('AURA_RELEVO', 'https://cerebro.ordenscan.com/mensajes').rstrip('/')
 CORREO = os.environ.get('AURA_CORREO', 'aura@ordenglobal.org').lower()
@@ -70,13 +96,27 @@ PASO = float(os.environ.get('AURA_PASO', '4'))
 # El timeout corto tipico (10s) mataria respuestas perfectamente sanas.
 TIMEOUT_MOTOR = int(os.environ.get('AURA_TIMEOUT', '90'))
 
-# Techo de preguntas por persona por dia. No es tacañeria: sin techo, una
-# sola persona con un bucle deja al motor ocupado para los otros catorce.
+# Techo de respuestas DEL MOTOR por persona por dia. La entrevista no cuenta:
+# no gasta motor. Sin techo, una persona con un bucle deja al motor ocupado
+# para los otros catorce.
 TECHO_DIA = int(os.environ.get('AURA_TECHO', '60'))
 
 # Cuantos turnos de memoria lleva cada charla al motor. Mas historial empuja
 # las fichas fuera de la ventana del modelo, y sin fichas el modelo inventa.
 MEMORIA = 8
+
+# Cuantos mensajes de una misma persona se atienden por vuelta. No se pierde
+# ninguno —el tope no avanza sobre lo no procesado—, solo se les pone paso.
+POR_VUELTA = 4
+
+# Cuantas charlas a la vez. El motor en CPU atiende de a una igual (Ollama
+# las encola), pero asi nadie espera a que la charla de OTRO termine para
+# que la suya entre a la cola.
+HILOS = 3
+
+# Al tercer fallo seguido atendiendo el mismo mensaje, se salta con ruido.
+# Un mensaje venenoso no puede dejar la charla ciclando para siempre.
+REINTENTOS = 3
 
 
 def log(*a):
@@ -104,8 +144,7 @@ class Relevo:
         return {'correo': self.correo, 'llave': self.llave, **extra}
 
     def solicitudes(self):
-        d = _post('/amistad/lista', self._f({}))
-        return d.get('recibidas', [])
+        return _post('/amistad/lista', self._f({})).get('recibidas', [])
 
     def aceptar(self, de):
         return _post('/amistad/responder', self._f({'de': de, 'aceptar': True}))
@@ -117,11 +156,14 @@ class Relevo:
         return _post('/bandeja', self._f({'desde': desde})).get('mensajes', [])
 
     def leido(self, de):
-        return _post('/leido', self._f({'de': de}))
+        try:
+            _post('/leido', self._f({'de': de}), timeout=8)
+        except Exception:
+            pass   # el doble check es cortesia; no puede tumbar nada
 
     def escribiendo(self, para):
-        # El «esta escribiendo…» de siempre. Con respuestas que tardan medio
-        # minuto, este aviso es la diferencia entre «esta pensando» y «murio».
+        # Con respuestas que tardan medio minuto, este aviso es la diferencia
+        # entre «esta pensando» y «murio».
         try:
             _post('/escribiendo', self._f({'para': para}), timeout=6)
         except Exception:
@@ -134,7 +176,6 @@ class Relevo:
 # ── el alta, una sola vez ────────────────────────────────────────────────────
 
 def llave_del_asistente():
-    """Lee la llave guardada, o da de alta la cuenta si es la primera vez."""
     DATOS.mkdir(parents=True, exist_ok=True)
     f = DATOS / 'llave.txt'
     if f.exists():
@@ -149,20 +190,35 @@ def llave_del_asistente():
     return llave
 
 
+def instancia_unica():
+    """Dos asistentes a la vez contestarian todo doble. El candado vive en un
+    archivo: si otro proceso lo tiene, este se despide sin drama."""
+    f = open(DATOS / 'candado.pid', 'w')
+    try:
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        raise SystemExit('ya hay un asistente corriendo; me voy')
+    f.write(str(os.getpid()))
+    f.flush()
+    return f   # se devuelve para que viva lo que viva el proceso
+
+
 # ── quien puede hablarle ─────────────────────────────────────────────────────
 
 def probadores():
-    """La lista de prueba. Un correo por linea; # comenta. Se relee en cada
-    vuelta a proposito: agregar a alguien es editar el archivo, sin reiniciar."""
+    """Un correo por linea; # comenta. Se relee en cada vuelta a proposito:
+    agregar a alguien es editar el archivo, sin reiniciar nada."""
     f = DATOS / 'probadores.txt'
     if not f.exists():
         return set()
-    lineas = f.read_text().splitlines()
-    return {l.strip().lower() for l in lineas
+    return {l.strip().lower() for l in f.read_text().splitlines()
             if l.strip() and not l.strip().startswith('#')}
 
 
 # ── la memoria del asistente ─────────────────────────────────────────────────
+
+CANDADO_PERFILES = threading.Lock()
+
 
 def cargar_perfiles():
     f = DATOS / 'perfiles.json'
@@ -171,16 +227,18 @@ def cargar_perfiles():
             return json.loads(f.read_text())
         except Exception:
             # Un JSON roto no puede tumbar el servicio; se aparta y se empieza
-            # de nuevo. Perder perfiles es malo; quedarse mudo es peor.
+            # de nuevo. Perder perfiles es malo; quedarse mudo es peor. Las
+            # charlas afectadas arrancan EN EL PRESENTE (ver tope abajo): no
+            # hay avalancha de recontestar lo viejo.
             f.rename(DATOS / f'perfiles.roto.{int(time.time())}.json')
     return {}
 
 
 def guardar_perfiles(p):
-    f = DATOS / 'perfiles.json'
-    tmp = DATOS / 'perfiles.tmp'
-    tmp.write_text(json.dumps(p, ensure_ascii=False, indent=1))
-    tmp.replace(f)   # atomico: nunca queda medio archivo
+    with CANDADO_PERFILES:
+        tmp = DATOS / 'perfiles.tmp'
+        tmp.write_text(json.dumps(p, ensure_ascii=False, indent=1))
+        tmp.replace(DATOS / 'perfiles.json')   # atomico: nunca medio archivo
 
 
 # ── la entrevista de entrada ─────────────────────────────────────────────────
@@ -188,7 +246,8 @@ def guardar_perfiles(p):
 # Las preguntas de conocer a la persona NO las hace el modelo: las hace este
 # codigo, en orden fijo. Un modelo al que se le pide «preguntale cosas» un dia
 # pregunta de mas, otro dia no pregunta, y otro dia pregunta algo indebido.
-# La entrevista es la primera impresion del producto: va escrita, no improvisada.
+# La entrevista es la primera impresion del producto: va escrita, no
+# improvisada. Y no gasta motor: contesta al instante.
 
 SALUDO = (
     "Hola, soy AU-RA, la inteligencia de Orden Global. Estás en el grupo de "
@@ -210,8 +269,6 @@ CIERRE = (
     "Gracias — con eso ya te conozco. Preguntame lo que quieras del "
     "ecosistema: ORIGEN, la cadena, tu Genesis ID, la tarjeta, lo que venga. "
     "Y si algo no lo sé, te lo digo derecho.")
-
-FUERA_DE_LISTA = None   # a quien no esta en la lista no se le contesta nada
 
 MOTOR_CAIDO = (
     "Ahora mismo no puedo pensar: mi motor está apagado. Ya avisé a la casa — "
@@ -281,43 +338,54 @@ def preguntar_motor(prompt, fichas, perfil, historial, dicho):
     return texto
 
 
-# ── una vuelta del asistente ─────────────────────────────────────────────────
+# ── atender a una persona ────────────────────────────────────────────────────
 
 def hoy():
     return time.strftime('%Y-%m-%d')
 
 
-def atender(rel, saber, prompt, perfiles, msg, lista):
-    """Atiende UN mensaje. Cualquier fallo aqui no tumba la vuelta."""
-    de = msg['de']
-    dicho = (msg.get('texto') or '').strip()
+def perfil_de(perfiles, correo, tope=None):
+    p = perfiles.setdefault(correo, {})
+    p.setdefault('historial', [])
+    p.setdefault('dia', hoy())
+    p.setdefault('usadas', 0)
+    if tope is not None:
+        # Una charla sin tope conocido arranca EN EL PRESENTE. Es la guarda
+        # contra la avalancha: perfil perdido o probador re-agregado no
+        # significa recontestar 200 mensajes viejos a medio minuto cada uno.
+        p.setdefault('tope', tope)
+    return p
+
+
+def atender(rel, saber, prompt, p, de, dicho):
+    """Atiende UN mensaje. Si lanza, el que llama decide reintentar o saltar;
+    aqui no se avanza ningun tope."""
+    if not p.get('saludado'):
+        # El saludo se perdio (o nunca salio): se saluda ANTES de consumir
+        # nada. El mensaje de la persona no era respuesta a ninguna pregunta.
+        rel.enviar(de, SALUDO)
+        p['saludado'] = True
+        return
+
     if not dicho:
-        # Un adjunto, o un mensaje cifrado que no podemos abrir (alguien con
-        # cliente viejo). No se adivina: se dice.
+        # Un adjunto, o un mensaje cifrado de un cliente viejo. No se adivina.
         rel.enviar(de, 'Por ahora solo entiendo texto. ¿Me lo escribís?')
         return
 
-    p = perfiles.setdefault(de, {'historial': [], 'dia': hoy(), 'usadas': 0})
+    # la entrevista, en orden y sin gastar motor
+    for i, (campo, _) in enumerate(PREGUNTAS):
+        if campo not in p:
+            p[campo] = dicho[:400]
+            rel.enviar(de, PREGUNTAS[i + 1][1] if i + 1 < len(PREGUNTAS) else CIERRE)
+            return
 
-    # el techo del dia
+    # el techo del dia — solo para lo que gasta motor
     if p.get('dia') != hoy():
         p['dia'], p['usadas'] = hoy(), 0
     if p['usadas'] >= TECHO_DIA:
         rel.enviar(de, TECHO_MSG)
         return
-    p['usadas'] += 1
 
-    # la entrevista, en orden y sin improvisar
-    for i, (campo, pregunta) in enumerate(PREGUNTAS):
-        if campo not in p:
-            p[campo] = dicho[:400]
-            if i + 1 < len(PREGUNTAS):
-                rel.enviar(de, PREGUNTAS[i + 1][1])
-            else:
-                rel.enviar(de, CIERRE)
-            return
-
-    # conversacion libre, contra el motor
     rel.escribiendo(de)
     try:
         r = preguntar_motor(prompt, fichas_para(saber, dicho),
@@ -325,75 +393,138 @@ def atender(rel, saber, prompt, perfiles, msg, lista):
     except Exception as e:
         log('motor caido:', type(e).__name__, str(e)[:120])
         rel.enviar(de, MOTOR_CAIDO)
-        p['usadas'] -= 1   # una pregunta sin respuesta no gasta el cupo
         return
     if not r:
         rel.enviar(de, MOTOR_CAIDO)
-        p['usadas'] -= 1
         return
+    rel.enviar(de, r)
+    # el cupo se gasta solo cuando la respuesta SALIO: si enviar lanza, el
+    # que llama reintenta y la pregunta no se cobra dos veces
+    p['usadas'] += 1
     p['historial'] = (p['historial'] + [
         {'role': 'user', 'content': dicho[:600]},
         {'role': 'assistant', 'content': r[:600]},
     ])[-MEMORIA:]
-    rel.enviar(de, r)
 
 
-def vuelta(rel, saber, prompt, perfiles):
+def atender_charla(rel, saber, prompt, perfiles, correo):
+    """Todo lo pendiente de UNA persona, en su hilo. El tope solo avanza con
+    lo que termino bien; un fallo se reintenta y al tercero se salta con
+    ruido."""
+    with CANDADO_PERFILES:
+        p = perfil_de(perfiles, correo)
+        tope = p.get('tope', 0)
+    bandeja = rel.bandeja(correo)
+    nuevos = [m for m in bandeja
+              if m.get('de') == correo and m.get('cuando', 0) > tope]
+    nuevos.sort(key=lambda m: m.get('cuando', 0))
+    for m in nuevos[:POR_VUELTA]:
+        try:
+            atender(rel, saber, prompt, p, correo, (m.get('texto') or '').strip())
+        except Exception as e:
+            with CANDADO_PERFILES:
+                f = p.setdefault('falla', {'id': None, 'n': 0})
+                if f['id'] == m.get('id'):
+                    f['n'] += 1
+                else:
+                    f['id'], f['n'] = m.get('id'), 1
+                if f['n'] < REINTENTOS:
+                    log(f'fallo con {correo} (intento {f["n"]}), reintento:',
+                        type(e).__name__, str(e)[:100])
+                    return   # sin avanzar el tope: se reintenta la vuelta que viene
+                log(f'MENSAJE SALTADO tras {REINTENTOS} fallos · {correo} ·',
+                    type(e).__name__, str(e)[:100])
+        with CANDADO_PERFILES:
+            p['tope'] = m.get('cuando', 0)
+            p.pop('falla', None)
+    if len(nuevos) <= POR_VUELTA:
+        # Todo lo pendiente quedo atendido: el tope cubre tambien NUESTRAS
+        # respuestas del hilo. Sin esto, «lo ultimo de la charla» seria
+        # nuestra propia respuesta por encima del tope, y la charla se
+        # re-escanearia en cada vuelta para siempre.
+        with CANDADO_PERFILES:
+            p['tope'] = max([p.get('tope', 0)]
+                            + [m.get('cuando', 0) for m in bandeja])
+    rel.leido(correo)
+    guardar_perfiles(perfiles)
+
+
+# ── el bucle ─────────────────────────────────────────────────────────────────
+
+EN_CURSO = set()
+CANDADO_CURSO = threading.Lock()
+
+
+def vuelta(rel, saber, prompt, perfiles, tanda):
     lista = probadores()
+    ahora_ms = int(time.time() * 1000)
 
     # 1 · amistades: se acepta SOLO a la lista. El resto queda pendiente sin
     #     rechazo — agregar a alguien mañana es editar probadores.txt.
     for s in rel.solicitudes():
         c = (s.get('correo') or '').lower()
-        if c in lista:
-            rel.aceptar(c)
-            log('amistad aceptada:', c)
+        if c not in lista:
+            continue
+        rel.aceptar(c)
+        log('amistad aceptada:', c)
+        with CANDADO_PERFILES:
+            p = perfil_de(perfiles, c, tope=ahora_ms)
+        try:
             rel.enviar(c, SALUDO)
-            perfiles.setdefault(c, {'historial': [], 'dia': hoy(),
-                                    'usadas': 0, 'saludado': True})
+            p['saludado'] = True   # solo con el saludo ENVIADO de verdad
+        except Exception as e:
+            log('saludo no salio para', c, '- se saluda con su primer mensaje:',
+                str(e)[:80])
+        guardar_perfiles(perfiles)
 
-    # 2 · mensajes nuevos
+    # 2 · mensajes nuevos. La puerta es NUESTRA (el tope local), no el
+    #     sinLeer del relevo: /leido sella la hora actual y un mensaje mandado
+    #     mientras el motor pensaba quedaria detras del sello para siempre.
     for conv in rel.conversaciones():
         c = (conv.get('correo') or '').lower()
-        if c == CORREO or not conv.get('sinLeer'):
-            continue
-        if c not in lista:
-            continue          # ni respuesta ni acuse: silencio educado
-        if str(conv.get('correo', '')).startswith('g:'):
-            continue          # grupos no, a proposito (ver cabecera)
-        visto = perfiles.get(c, {}).get('visto', 0)
-        nuevos = [m for m in rel.bandeja(c)
-                  if m.get('de') == c and m.get('cuando', 0) > visto]
-        if not nuevos:
-            rel.leido(c)
-            continue
-        for m in nuevos:
+        if c == CORREO or c.startswith('g:') or c not in lista:
+            continue   # grupos no, a proposito (ver cabecera); fuera de lista, silencio
+        ult = conv.get('ultimo') or {}
+        with CANDADO_PERFILES:
+            p = perfil_de(perfiles, c, tope=ahora_ms if c not in perfiles else None)
+            tope = p.get('tope', 0)
+        if ult.get('cuando', 0) <= tope:
+            continue   # nada nuevo (o lo ultimo es nuestra propia respuesta ya contada)
+        with CANDADO_CURSO:
+            if c in EN_CURSO:
+                continue   # su charla ya se esta atendiendo; no se duplica
+            EN_CURSO.add(c)
+
+        def _uno(correo=c):
             try:
-                atender(rel, saber, prompt, perfiles, m, lista)
+                atender_charla(rel, saber, prompt, perfiles, correo)
             except Exception as e:
-                log('fallo atendiendo a', c, type(e).__name__, str(e)[:120])
-            perfiles.setdefault(c, {'historial': [], 'dia': hoy(),
-                                    'usadas': 0})['visto'] = m.get('cuando', 0)
-        rel.leido(c)
+                log('charla fallida', correo, type(e).__name__, str(e)[:120])
+            finally:
+                with CANDADO_CURSO:
+                    EN_CURSO.discard(correo)
+
+        tanda.submit(_uno)
 
 
 def main():
     llave = llave_del_asistente()
+    _candado = instancia_unica()
     rel = Relevo(CORREO, llave)
     saber = cargar_saber()
     prompt = cargar_prompt()
     perfiles = cargar_perfiles()
     log(f'AU-RA de pie · {len(saber)} fichas · modelo {MODELO} · '
         f'{len(probadores())} probadores')
-    while True:
-        try:
-            vuelta(rel, saber, prompt, perfiles)
-            guardar_perfiles(perfiles)
-        except Exception as e:
-            # el relevo caido o la red rota no tumban el servicio: se espera
-            log('vuelta fallida:', type(e).__name__, str(e)[:140])
-            time.sleep(10)
-        time.sleep(PASO)
+    with ThreadPoolExecutor(max_workers=HILOS) as tanda:
+        while True:
+            try:
+                vuelta(rel, saber, prompt, perfiles, tanda)
+            except Exception as e:
+                # el relevo caido o la red rota no tumban el servicio
+                log('vuelta fallida:', type(e).__name__, str(e)[:140])
+                time.sleep(10)
+            time.sleep(PASO)
 
 
 if __name__ == '__main__':
