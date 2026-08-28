@@ -50,6 +50,8 @@ import wave
 
 import numpy as np
 
+from decir import para_la_voz
+
 MODELO_DIR = os.environ.get('AURA_VOZ_MODELO', '')       # vacio = el de fabrica
 PUERTO = int(os.environ.get('AURA_VOZ_PUERTO', '8123'))
 MUESTREO = 24000                                          # lo que entrega el motor
@@ -378,7 +380,11 @@ class Motor:
     def decir(self, texto, voz=VOZ_POR_DEFECTO):
         """Texto a audio, ya humanizado y pegado. Devuelve (mp3, segundos)."""
         v = VOCES.get(voz) or VOCES[VOZ_POR_DEFECTO]
-        partes = trozos(humanizar(texto))
+        # Antes que nada, TRADUCIR DE ESCRITO A HABLADO. «0,001» y
+        # «MyTokenPay» estan perfectos en la pantalla y son ilegibles en voz
+        # alta: el motor atropella los digitos y lee el ingles en español.
+        # Ver decir.py — nace de dos quejas reales de produccion.
+        partes = trozos(humanizar(para_la_voz(texto)))
         if not partes:
             return b'', 0.0
         pedazos, silencios = [], []
