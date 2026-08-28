@@ -2,7 +2,18 @@
 
 Motor de identidad del ecosistema Orden Global: KYC de personas, KYB de
 empresas, tamizado contra listas de sanciones, monitoreo AML de transacciones e
-inicio de sesión único entre Veta Wallet, MyTokenPay y ordenscan.
+inicio de sesión único entre las apps.
+
+El ecosistema son cinco piezas —**Veta Wallet**, **MyTokenPay**, **OrdenEx**,
+**AuCorp** y este **Genesis ID**— sobre la Layer 1 propia (cadena **5550**),
+con **ORIGEN** como cripto nativa y **AUKA**, **AGKA** y **ONDK** como monedas
+del sistema. El respaldo son las minas propias: oro certificado NI 43-101 en
+bóveda.
+
+> Hoy Genesis ID tiene emitida clave de API y sesión única para Veta Wallet,
+> MyTokenPay y ordenscan (el explorador). **OrdenEx y AuCorp todavía no están
+> conectados** — no hay código suyo en este repositorio. Cuando lleguen, entran
+> por la misma puerta que las demás: clave propia, alcances propios.
 
 ---
 

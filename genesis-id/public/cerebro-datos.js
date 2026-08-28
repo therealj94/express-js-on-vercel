@@ -18,6 +18,7 @@
 // ninguna cifra que pueda mirarse en vivo está escrita aquí.
 
 export const GRUPOS = {
+  respaldo:   { nombre: 'El respaldo',      color: '#D4AF37' },
   cadena:     { nombre: 'La cadena',        color: '#C9A961' },
   nodo:       { nombre: 'Nodos',            color: '#EAD79C' },
   token:      { nombre: 'Tokens',           color: '#F0C674' },
@@ -39,6 +40,16 @@ export const GRUPOS = {
  * que le corresponde, si lo hay).
  */
 export const NODOS = [
+  // ── El respaldo ──────────────────────────────────────────────────────────
+  //
+  // Va PRIMERO a propósito. Es de donde sale el valor de todo lo demás: sin
+  // metal en bóveda, ORIGEN es un número. El mapa empezaba en la cadena y eso
+  // contaba la historia al revés — como si el ecosistema naciera del software.
+  { id: 'minas', n: 'Las minas', g: 'respaldo', peso: 3,
+    d: 'Concesiones mineras propias. El oro se extrae aquí, no se compra en mercado: es lo que hace que el respaldo sea nuestro y no un depósito en la cuenta de otro.' },
+  { id: 'boveda', n: 'Bóveda', g: 'respaldo', peso: 2.4,
+    d: 'Custodia del metal certificado bajo el estándar internacional NI 43-101 y anclado 1:1. Antes de existir como saldo, existe como barra.' },
+
   // ── La cadena ────────────────────────────────────────────────────────────
   { id: 'cadena', n: 'Cadena 5550', g: 'cadena', peso: 4, vivo: 'cadena',
     d: 'La Layer 1 propia del ecosistema, respaldada en oro físico certificado (NI 43-101). 1 ORIGEN = 1 gramín = 1/55 g de oro en bóveda. Corre sobre Hyperledger Besu con consenso QBFT, un bloque cada 10 s y baseFee 0.' },
@@ -68,10 +79,15 @@ export const NODOS = [
     d: 'ogb-watchdog.timer, cada 3 minutos en los nodos. Nació para el syncer de Polygon Edge, que se bloqueaba en un canal sin buffer y se quedaba estancado sin avisar. Con Besu esa falla concreta ya no existe; el vigilante se mantiene como red de seguridad.' },
 
   // ── Tokens ───────────────────────────────────────────────────────────────
-  { id: 'ORIGEN', n: 'ORIGEN', g: 'token', peso: 2.5, d: 'Nativo de la cadena. 1 gramín = 1/55 g de oro.' },
-  { id: 'AUKA', n: 'AUKA', g: 'token', peso: 1.6, d: 'Respaldado en oro — sigue una onza.' },
-  { id: 'AGKA', n: 'AGKA', g: 'token', peso: 1.6, d: 'Respaldado en plata — sigue una onza.' },
-  { id: 'ONDK', n: 'ONDK', g: 'token', peso: 1.6, d: 'Gobernanza y utilidad del ecosistema.' },
+  //
+  // Cuatro llevan el peso —ORIGEN, AUKA, AGKA y ONDK— y once son de sector. La
+  // lista salía plana y hacía parecer que las quince pesan lo mismo; el `peso`
+  // de las cuatro primeras es lo que marca la diferencia en el mapa.
+  { id: 'ORIGEN', n: 'ORIGEN', g: 'token', peso: 3,
+    d: 'La cripto NATIVA de la cadena. No es un contrato: es la moneda de la red. 1 ORIGEN = 1 gramín = 1/55 g de oro certificado en bóveda.' },
+  { id: 'AUKA', n: 'AUKA', g: 'token', peso: 2, d: 'Moneda respaldada en oro — sigue una onza. 55.000.000 emitidos.' },
+  { id: 'AGKA', n: 'AGKA', g: 'token', peso: 2, d: 'Moneda respaldada en plata — sigue una onza. 500.000.000 emitidos.' },
+  { id: 'ONDK', n: 'ONDK', g: 'token', peso: 2, d: 'Orden Kapital: gobernanza y utilidad del ecosistema. 555.000.000 emitidos.' },
   { id: 'MNKA', n: 'MNKA', g: 'token', d: 'Comunidad e innovación.' },
   { id: 'IBS', n: 'IBS', g: 'token', d: 'Token de sector.' },
   { id: 'HARV', n: 'HARV', g: 'token', d: 'Harvi — token de sector agrícola.' },
@@ -97,8 +113,17 @@ export const NODOS = [
     d: 'Generada desde la app, no del sitio viejo. Hoy corre con datos de prueba porque su backend está caído.' },
   { id: 'mtp-back', n: 'Backend MyTokenPay', g: 'abierto', peso: 2,
     d: 'Caído — responde 503. Bloqueado para desplegar por un repositorio de GitLab de terceros.' },
+  // OrdenEx y AuCorp son piezas del ecosistema y faltaban enteras en el mapa.
+  // Van con lo único que consta, y dicho como lo que es: no hay código suyo en
+  // este repositorio, ni dominio que responda, ni nada verificado desde aquí.
+  // Inventarles una descripción sería peor que dejarlas fuera — un mapa que se
+  // adorna deja de servir para decidir.
+  { id: 'ordenex', n: 'OrdenEx', g: 'app', peso: 2.4,
+    d: 'Pieza del ecosistema. PENDIENTE DE DOCUMENTAR: no hay código suyo en este repositorio ni dominio comprobado. Falta qué hace, dónde corre y cómo habla con la cadena y con Genesis ID.' },
+  { id: 'aucorp', n: 'AuCorp', g: 'app', peso: 2.4,
+    d: 'Pieza del ecosistema. Lo único que consta en el repo es una línea del README de MyTokenPay: «Red de comercios afiliados del Sistema Financiero Social (Orden Global · AuCorp · DBNX)». PENDIENTE DE DOCUMENTAR.' },
   { id: 'ordenscan', n: 'ordenscan', g: 'app', peso: 2,
-    d: 'El explorador de la cadena. La ficha de cada persona trae su historial completo: cuentas, identidad y movimiento de los 15 tokens.' },
+    d: 'El explorador de la cadena. No es una app del ecosistema sino su cara auditable: la ficha de cada persona trae cuentas, identidad y movimiento de los 15 tokens.' },
   { id: 'og-web', n: 'ordenglobal.org', g: 'app', peso: 1.6,
     d: 'El sitio corporativo. Sin conexión de datos con el resto: es la cara pública.' },
 
@@ -206,9 +231,20 @@ export const ENLACES = [
   ...NODOS_RED.map((n) => [n, 'aws', 'corren en EC2']),
   ['a-validador', 'validador', 'esto es lo que se cerró', true],
 
+  // De dónde sale el valor: metal antes que software.
+  ['minas', 'boveda', 'el oro extraído se custodia en', true],
+  ['boveda', 'ORIGEN', 'lo respalda 1:1', true],
+  ['boveda', 'AUKA', 'lo respalda en oro', true],
+  ['boveda', 'AGKA', 'lo respalda en plata', true],
+
   // Los tokens viven en la cadena
   ...['ORIGEN','AUKA','AGKA','ONDK','MNKA','IBS','HARV','AUBEX','ASL','LOVE','REST','SOL','AIT','AGRO','POLITICAL']
     .map((t) => [t, 'cadena', 'vive en']),
+
+  // Las dos piezas que faltaban. Solo se dibuja lo que se sabe: que pertenecen
+  // al ecosistema. En cuanto se documenten, aquí van sus relaciones reales.
+  ['ordenex', 'cadena', 'pieza del ecosistema · relación por documentar'],
+  ['aucorp', 'cadena', 'pieza del ecosistema · relación por documentar'],
 
   // Veta Wallet
   ['vw-app', 'vw-back', 'login · enviar · tarjeta'],
