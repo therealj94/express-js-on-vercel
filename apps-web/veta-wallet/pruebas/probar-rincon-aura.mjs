@@ -122,7 +122,29 @@ ok(aura.tira, 'tiene su tira propia');
 ok(/beta/i.test(aura.beta), 'con la insignia de beta a la vista');
 ok(aura.chips.some(x => /Rápida|Fast/.test(x)) && aura.chips.some(x => /Pensadora|Thinker/.test(x)),
    'los dos modos de pensar son botones', aura.chips.join(' · '));
-ok(aura.chips.some(x => /Voz|Voice/.test(x)), 'el interruptor de voz está en la tira');
+ok(aura.chips.some(x => /voz|voice/i.test(x)), 'el botón de voz está en la tira');
+
+/* Ya no es un interruptor: son TRES voces. Se comprueba abriendo el cajón,
+   que es lo que hace una persona, y contando lo que ve — no leyendo una
+   variable de dentro. */
+await p.evaluate(() => VETA.auraVozMenu());
+await p.waitForTimeout(250);
+const voces = await p.evaluate(() => ({
+  ops: [...document.querySelectorAll('.cha-aura-vozop b')].map(x => x.textContent.trim()),
+  razones: [...document.querySelectorAll('.cha-aura-vozop span')].map(x => x.textContent.trim()),
+}));
+ok(voces.ops.length === 4,
+   'el cajón ofrece las tres voces más la opción de no usarla',
+   voces.ops.join(' · '));
+ok(['Cálida', 'Sobria', 'Ágil'].every(n => voces.ops.includes(n)),
+   'y las tres tienen nombre propio, no «voz 1 / voz 2 / voz 3»',
+   voces.ops.join(' · '));
+ok(voces.razones.every(r => r.length > 3) && new Set(voces.razones).size === 4,
+   'cada una dice para qué sirve, y ninguna repite la razón de otra',
+   voces.razones.join(' | '));
+await p.evaluate(() => VETA.auraVozMenu());
+await p.waitForTimeout(200);
+ok(!(await p.$('.cha-aura-vozop')), 'y el cajón se cierra con el mismo botón');
 ok(!aura.llamar, 'SIN botones de llamar ni video: a un bot no se le timbra');
 ok(/beta/i.test(aura.sub), 'el subtítulo dice qué es, no un correo');
 ok(aura.claseMsgs.includes('cha-de-aura'), 'el hilo lleva su clase para el estilo');

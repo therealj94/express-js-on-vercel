@@ -72,6 +72,7 @@ Los confirmados mandan sobre el diseño de este archivo:
 En el primer arranque, si no hay llave.txt, se da de alta solo en el relevo y
 guarda la llave con permisos 600. La llave NUNCA va al repositorio.
 """
+import base64
 import fcntl
 import json
 import os
@@ -95,6 +96,14 @@ MOTOR = os.environ.get('AURA_MOTOR', 'http://127.0.0.1:11434').rstrip('/')
 # nuevo: palabras, que es lo que un chat ya sabe llevar.
 MODELO_RAPIDA = os.environ.get('AURA_MODELO', 'llama3.2')
 MODELO_PENSADORA = os.environ.get('AURA_MODELO_PENSADOR', 'llama3.1:8b')
+# La voz vive en la misma maquina, en 127.0.0.1. No sale a internet ni por
+# error: un modelo de voz abierto al mundo es una fabrica de audio gratis
+# para el primero que la encuentre, y ademas una forma comoda de dejar la
+# GPU ocupada para siempre.
+VOZ = os.environ.get('AURA_VOZ', 'http://127.0.0.1:8123').rstrip('/')
+# Los tres registros que entiende el servicio de voz. El nombre que ve la
+# persona vive alla; aca solo viajan las llaves.
+REGISTROS = ('calida', 'sobria', 'agil')
 # La cadena, para leer el saldo PUBLICO de la persona (es dato de cadena, no
 # un secreto: cualquiera con la direccion lo ve en el explorador).
 RPC = os.environ.get('AURA_RPC', 'https://ordenglobal-rpc.com')
@@ -179,6 +188,21 @@ class Relevo:
 
     def enviar(self, para, texto):
         return _post('/enviar', self._f({'para': para, 'texto': texto}))
+
+    def subir(self, datos, mime, nombre, tipo='voz'):
+        """Sube un adjunto y devuelve su id.
+
+        El binario NO viaja dentro del mensaje: primero se sube y despues se
+        manda el id. Asi un reintento no duplica megas en el hilo.
+        """
+        d = _post('/subir', self._f({
+            'tipo': tipo, 'mime': mime, 'nombre': nombre,
+            'datos': base64.b64encode(datos).decode()}), timeout=60)
+        return d.get('id', '')
+
+    def enviar_voz(self, para, archivo):
+        return _post('/enviar', self._f({
+            'para': para, 'texto': '', 'tipo': 'voz', 'archivo': archivo}))
 
     def ficha(self, de):
         try:
@@ -342,6 +366,21 @@ CAMBIO_RAPIDA = (
     "Listo — modo rápido. Contesto al vuelo; si querés más fondo, decime "
     "«modo pensador».")
 
+# La voz se apaga con una palabra y se enciende con una palabra. Por defecto
+# viene APAGADA: una nota de voz en cada respuesta es un regalo para quien la
+# quiere y una molestia para quien no, y en la duda no se elige por la
+# persona. Quien la quiere, la pide.
+CAMBIO_VOZ = {
+    'calida': 'Listo, te hablo con la voz cálida. Te sigo escribiendo igual, '
+              'la nota va aparte por si preferís escuchar.',
+    'sobria': 'Listo, voz sobria: más lenta y más clara, la que uso para los '
+              'montos.',
+    'agil':   'Listo, voz ágil: más rápida y con más energía.',
+}
+VOZ_APAGADA = 'Listo, dejo de mandarte notas de voz. Para volver, decime «con voz».'
+VOZ_NO_ESTA = ('Ahora mismo no puedo grabarte la nota, pero el texto lo tenés '
+               'arriba completo.')
+
 MOTOR_CAIDO = (
     "Ahora mismo no puedo pensar: mi motor está apagado. Ya avisé a la casa — "
     "probá de nuevo en un rato.")
@@ -399,12 +438,106 @@ FUGAS = _re.compile(
     _re.IGNORECASE)
 
 
+# El saludo de cortesia al principio de CADA respuesta. El prompt lo prohibe
+# con todas las letras («CONTESTA DESDE LA PRIMERA PALABRA») y el modelo lo
+# pone igual: «Hola Tere,» / «¡Gracias por confiar en AU-RA!». En una charla
+# ya empezada, saludar en cada turno no es amable, es raro — nadie que
+# conversa dice «hola» ocho veces. Y peor: hablar de si misma en tercera
+# persona rompe el personaje entero.
+#
+# El patron EXIGE un separador al final (coma, punto, salto). Sin esa
+# exigencia, «Hola, ¿en qué te ayudo?» se comia entero y quedaba «?» — el
+# limpiador destruyendo la respuesta que venia a limpiar. Un saludo es un
+# saludo cuando esta cerrado; si sigue de largo, es la frase.
+SALUDITO = _re.compile(
+    r'^\s*(?:¡?\s*(?:hola|buenas|buenos d[ií]as|buenas tardes|buenas noches|'
+    r'gracias por (?:confiar|preguntar|escribir|contactar)(?:\s+[\w-]+){0,5}|'
+    r'claro que s[ií]|por supuesto|excelente pregunta|qu[eé] buena pregunta)'
+    # [\w-] y no \w: su propio nombre lleva guion. Con \w el patron cortaba
+    # en «AU» y dejaba «-RA!» suelto en la respuesta.
+    r'(?:\s+[\w-]+){0,3}\s*[,.!¡\n]+\s*)+', _re.IGNORECASE)
+
+# El preambulo que le repite a la persona su propia vida: «Me alegra que
+# tengas una tienda de abarrotes y estés buscando proteger tus ahorros.»
+# Salio en TODAS las respuestas del nodo el 28-ago. No informa nada — se lo
+# conto ella misma— y repetido en cada turno se siente vigilada. Come hasta
+# el primer punto porque es siempre una oracion entera de relleno.
+PREAMBULO = _re.compile(
+    # El `(?!\s*(?:pero|sin embargo|aunque)\b)` de cada paso NO es un detalle
+    # de estilo: sin el, «Eso es una pregunta interesante, PERO no puedo
+    # predecir el precio.» se borraba ENTERA — el limpiador comiendose una
+    # negativa de seguridad. Una advertencia perdida es infinitamente peor
+    # que un preambulo que sobra. Donde aparece un «pero», ahi empieza lo que
+    # de verdad se dijo, y ahi el borrado se detiene.
+    r'^\s*(?:(?:me alegra|qu[eé] bueno)\s+que'
+    r'(?:(?!\s*(?:pero|sin embargo|aunque)\b)[^.!?\n]){0,160}[.!?]\s*'
+    # «Entiendo, Tere.» / «Entiendo tu preocupación.» — sin el «que». Es la
+    # misma frase de relleno con otra puntuacion, y salio igual en el nodo.
+    r'|(?:entiendo|comprendo)\b'
+    r'(?:(?!\s*(?:pero|sin embargo|aunque)\b)[^.!?\n]){0,70}[.!?]\s*'
+    # \w* al final del verbo: en español el pronombre se pega («explicarTE»,
+    # «ayudarTE», «contarTE») y un \b ahi no cierra nunca
+    r'|vamos a (?:hablar|explicar|contar|ver|ayudar|revisar)\w*\b[^.!?\n]{0,160}[.!?:]\s*'
+    r'|(?:aqu[ií] te|te)\s+(?:explico|cuento|dejo)\b[^.!?\n]{0,80}[.!?:]\s*)+',
+    _re.IGNORECASE)
+
+# El titulo que devuelve la pregunta antes de contestarla: «¿Qué es AUKA?»
+# como encabezado. La pregunta la hizo ella hace un segundo; repetirsela es
+# de folleto, no de conversacion.
+ECO = _re.compile(r'^\s*¿[^?\n]{3,80}\?\s*\n+', _re.MULTILINE)
+
+# El cierre de operadora: «¿Te gustaría saber más?» / «¿Hay algo más en lo
+# que pueda ayudarte?». Si hay algo mas, lo van a preguntar.
+CIERRE_HUECO = _re.compile(
+    r'\s*¿\s*(?:te gustar[ií]a|quer[ée]s|deseas|hay algo m[aá]s|necesitas algo)\b'
+    r'[^?\n]{0,90}\?\s*$', _re.IGNORECASE)
+
+# El markdown. El modelo escribe para una pagina web y esto es un CHAT: los
+# asteriscos se ven como asteriscos en la burbuja, y la voz los LEE — «asterisco
+# asterisco identidad unificada». Las vinetas y los numerales, igual.
+MARCAS = [
+    (_re.compile(r'\*\*(.+?)\*\*', _re.S), r'\1'),      # **negrita**
+    (_re.compile(r'(?<!\w)\*(?!\s)(.+?)(?<!\s)\*(?!\w)', _re.S), r'\1'),  # *cursiva*
+    (_re.compile(r'`{1,3}([^`]+)`{1,3}', _re.S), r'\1'),
+    (_re.compile(r'^#{1,6}\s*', _re.M), ''),            # ## titulo
+    (_re.compile(r'^\s*[-*•]\s+', _re.M), ''),          # - vineta
+    (_re.compile(r'^\s*\d+[.)]\s+', _re.M), ''),        # 1. enumeracion
+    (_re.compile(r'\n{3,}'), '\n\n'),
+]
+
+
 def limpiar(texto):
-    """El modelo chico a veces dice «según las fichas...» aunque el prompt se
-    lo prohiba — paso en produccion dos veces. A un modelo de 3B no se le
-    confia una regla de estilo: se limpia aqui, determinista, a la salida."""
-    t = FUGAS.sub('', texto).strip()
-    return (t[0].upper() + t[1:]) if t else texto
+    """Lo que el modelo pone y no deberia, quitado deterministamente.
+
+    El prompt ya prohibe las tres cosas. El modelo las hace igual: a un modelo
+    abierto no se le confia una regla de estilo, se le corrige a la salida.
+    Paso en produccion con «según las fichas», dos veces, y otra vez con el
+    «Hola Tere» de cada turno.
+    """
+    crudo = (texto or '').strip()
+    # Primero el relleno puro: saludos, preambulos y la fuga de las fichas.
+    sin_relleno = CIERRE_HUECO.sub(
+        '', PREAMBULO.sub('', SALUDITO.sub('', FUGAS.sub('', crudo)))).strip()
+    # Si de todo el trozo no queda NADA, es que el trozo era relleno de punta
+    # a punta — «¡Hola Tere! Me alegra que tengas una tienda.» y se acabo. Eso
+    # se tira entero: mandarlo es hacer esperar a alguien por un mensaje que
+    # no dice nada. Quien llama tiene que saber tratar el vacio.
+    if not sin_relleno:
+        return ''
+    t = sin_relleno
+    for patron, con in MARCAS:
+        t = patron.sub(con, t)
+    # el eco va DESPUES de quitar el markdown: el titulo suele venir como
+    # «**¿Qué es AUKA?**» y sin quitar los asteriscos no se reconoce
+    t = ECO.sub('', t.lstrip()).strip()
+    # LA RED. Un limpiador que se come la RESPUESTA es peor que la mugre que
+    # venia a sacar. Pero se compara contra `sin_relleno`, no contra el
+    # original: si se comparara contra el original, quitar un saludo largo
+    # parecería «se comió medio mensaje» y devolvería el saludo de vuelta —
+    # que es exactamente lo que pasó la primera vez.
+    if len(t) < len(sin_relleno) * 0.5:
+        t = sin_relleno
+    return (t[0].upper() + t[1:]) if t else ''
 
 
 def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=None):
@@ -453,9 +586,12 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
         'keep_alive': '30m',
         'options': {
             'temperature': 0.3,
-            # La pensadora puede extenderse; la rapida no. Menos palabras es
-            # menos espera Y mejor chat: el prompt ya pedia dos o tres frases.
-            'num_predict': 220 if pensadora else 110,
+            # Sobre CPU esto era 110/220 y era lo correcto: a 6 tokens por
+            # segundo cada palabra de mas costaba espera de verdad. Sobre la
+            # GPU son 40 tok/s, y el techo bajo dejo de proteger a la persona
+            # y empezo a cortarle la respuesta a media frase — que es peor que
+            # esperar dos segundos mas. Se sube al doble largo.
+            'num_predict': 400 if pensadora else 200,
             # ── LA VENTANA. Esto costo 170 segundos por respuesta ──────────
             # Sin num_ctx, ollama usa 4096. El sistema solo son 1826 tokens;
             # con ocho turnos de memoria la peticion llega a 3814. Sumando la
@@ -510,8 +646,12 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
                 if not entero.replace(frase, '', 1).strip() and _es_cortesia(frase):
                     continue
                 pendiente = pendiente[corte + 1:]
-                if frase:
-                    al_vuelo(limpiar(frase))
+                # limpiar puede devolver vacio: el trozo era relleno entero.
+                # Ahi no se manda nada — un mensaje vacio lo rechaza el relevo,
+                # y aunque no lo rechazara seria una burbuja en blanco.
+                limpia = limpiar(frase) if frase else ''
+                if limpia:
+                    al_vuelo(limpia)
     resto = _recortar(limpiar(pendiente.strip()))
     return resto, entero
 
@@ -533,6 +673,45 @@ def _recortar(texto):
         corte = texto.rfind('.', 0, 900)
         texto = texto[:corte + 1 if corte > 200 else 900].strip()
     return texto
+
+
+def mandar_voz(rel, para, texto, registro):
+    """Graba la respuesta y la manda como nota de voz.
+
+    Corre EN OTRO HILO y despues de que el texto ya salio, y las dos cosas
+    son a proposito:
+
+      · Despues, porque leer es instantaneo y grabar tarda unos segundos.
+        Quien prefiere leer ya termino; quien prefiere escuchar espera un
+        rato corto. Al reves —esperar la voz para recien mostrar el texto—
+        castigaria a todos por el gusto de algunos.
+      · En otro hilo, porque si grabar tarda, la siguiente pregunta de esa
+        persona (o de otra) no tiene por que esperar detras.
+
+    Si la voz falla, no pasa nada: el texto ya esta arriba y completo. Una
+    nota que no salio es una molestia; una respuesta que no salio es un
+    problema. Por eso esto nunca lanza hacia arriba.
+    """
+    try:
+        cuerpo = json.dumps({'texto': texto[:1200], 'voz': registro}).encode()
+        req = urllib.request.Request(
+            VOZ + '/decir', data=cuerpo, method='POST',
+            headers={'Content-Type': 'application/json'})
+        # 180s: la voz genera casi a tiempo real, asi que una respuesta larga
+        # puede pedir medio minuto. El techo esta para que un cuelgue no deje
+        # el hilo colgado para siempre, no para cortar trabajo sano.
+        with urllib.request.urlopen(req, timeout=180) as r:
+            mp3 = r.read()
+            segundos = r.headers.get('X-Duracion', '?')
+        if not mp3:
+            return
+        iid = rel.subir(mp3, 'audio/mpeg', 'aura.mp3')
+        if iid:
+            rel.enviar_voz(para, iid)
+            log(f'nota de voz para {para}: {segundos}s · {len(mp3) // 1024} KB'
+                f' · {registro}')
+    except Exception as e:
+        log('la voz no salio para', para, f'({type(e).__name__})', str(e)[:80])
 
 
 class Pensando:
@@ -606,6 +785,21 @@ def atender(rel, sistema, p, de, dicho):
         rel.enviar(de, CAMBIO_RAPIDA)
         return
 
+    # Encender y apagar la voz tambien es de la casa. Se mira ANTES que la
+    # entrevista, porque alguien puede querer oirla desde el primer minuto,
+    # y ANTES del motor, porque no hay nada que pensar en «con voz».
+    if len(bajo) < 40 and ('sin voz' in bajo or 'callate' in bajo
+                           or 'no voz' in bajo or 'voice off' in bajo):
+        p['voz'] = ''
+        rel.enviar(de, VOZ_APAGADA)
+        return
+    if len(bajo) < 40 and ('voz' in bajo or 'voice' in bajo or 'habla' in bajo):
+        pedido = next((r for r in REGISTROS if r in bajo), '')
+        if pedido or 'con voz' in bajo or 'hablame' in bajo or 'voice on' in bajo:
+            p['voz'] = pedido or 'calida'
+            rel.enviar(de, CAMBIO_VOZ[p['voz']])
+            return
+
     # la entrevista, en orden y sin gastar motor
     for i, (campo, _) in enumerate(PREGUNTAS):
         if campo not in p:
@@ -650,6 +844,11 @@ def atender(rel, sistema, p, de, dicho):
         rel.enviar(de, MOTOR_CAIDO)
         return
     r = (entero or '').strip() or resto
+    # La nota de voz, si esta persona la pidio. Va en otro hilo y detras del
+    # texto: leer es instantaneo, grabar tarda. Ver mandar_voz.
+    if p.get('voz') in REGISTROS and r:
+        threading.Thread(target=mandar_voz, args=(rel, de, r, p['voz']),
+                         daemon=True).start()
     # el cupo se gasta solo cuando la respuesta SALIO: si enviar lanza, el
     # que llama reintenta y la pregunta no se cobra dos veces
     p['usadas'] += 1

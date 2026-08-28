@@ -7740,10 +7740,9 @@ const VETA = (() => {
         x.reacciones ? Object.entries(x.reacciones).sort().join(',') : '',
       ].join('~')).join('|');
       const igual = callado && chatSt.msgs && huella(chatSt.msgs) === huella(m);
-      const primeraCarga = chatSt.msgs === null;
       chatSt.msgs = m;
       chatSt.error = null;
-      if (!igual) { pintarChat(); chatAlFinal(); auraHablarNuevos(primeraCarga); }
+      if (!igual) { pintarChat(); chatAlFinal(); }
     } catch (e) {
       chatSt.error = chatMotivo(e);
       if (!callado) pintarChat();
@@ -10080,43 +10079,49 @@ const VETA = (() => {
   const AURA_CHAT_ID = 'aura@ordenglobal.org';
   const esAura = (c) => !!c && !c.esGrupo && (c.id || '').toLowerCase() === AURA_CHAT_ID;
 
-  /* La voz de AU-RA arranca APAGADA: un chat que se pone a hablar solo, en un
-     bus o en una reunion, se cierra y no se vuelve a abrir. Encenderla es un
-     toque, y la eleccion queda guardada. */
-  let auraVozChat = localStorage.getItem('veta.aura.vozchat') === '1';
-  let auraHablado = new Set();
+  /* ── LA VOZ, QUE YA NO ES LA DEL NAVEGADOR ──────────────────────────────
+   *
+   * Antes esto usaba `speechSynthesis`: la voz del sistema operativo leyendo
+   * el texto. Sonaba a lo que era, a maquina, y ademas cambiaba de aparato en
+   * aparato — la misma AU-RA con cinco voces distintas segun el telefono.
+   *
+   * Ahora la voz la fabrica nuestro servidor con un modelo de verdad y llega
+   * al hilo como NOTA DE VOZ, el mismo mensaje que graba una persona. Eso
+   * significa que aca no hay nada que reproducir: la burbuja de audio ya
+   * existia en el chat y hace su trabajo sola. Este archivo solo elige la voz
+   * y avisa; el sonido viene de arriba.
+   *
+   * Y arranca APAGADA. Un chat que se pone a hablar solo, en un bus o en una
+   * reunion, se cierra y no se vuelve a abrir. */
+  const AURA_VOCES = [
+    { id: 'calida', nombre: 'Cálida', que: 'au.vozCalidaQue' },
+    { id: 'sobria', nombre: 'Sobria', que: 'au.vozSobriaQue' },
+    { id: 'agil',   nombre: 'Ágil',   que: 'au.vozAgilQue' },
+  ];
+  let auraVoz = localStorage.getItem('veta.aura.voz') || '';
+  let auraVozAbierta = false;
 
-  function auraVozAlterna() {
-    auraVozChat = !auraVozChat;
-    localStorage.setItem('veta.aura.vozchat', auraVozChat ? '1' : '0');
-    if (!auraVozChat) try { speechSynthesis.cancel(); } catch (e) { /* sin voz */ }
+  function auraVozMenu() {
+    auraVozAbierta = !auraVozAbierta;
     pintarChat();
   }
 
-  function auraLeer(texto) {
+  /** Elegir voz manda la orden POR EL CHAT, igual que los modos: es la misma
+      frase que cualquiera puede escribir, el boton solo la ahorra. Quien
+      decide de verdad es el servidor —el es quien graba—, asi que el estado
+      que vale es el suyo; esto es un atajo, no una segunda fuente. */
+  async function auraVozElegir(cual) {
+    if (chatSt.mandando || !esAura(chatSt.con)) return;
+    auraVozAbierta = false;
+    chatSt.mandando = true;
     try {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(String(texto).slice(0, 600));
-      u.lang = idiomaActivo() === 'en' ? 'en-US' : 'es-US';
-      const voces = speechSynthesis.getVoices();
-      const voz = voces.find(v => v.lang.startsWith(u.lang.slice(0, 2)) && /female|mujer|Paulina|Sabina|Helena/i.test(v.name))
-               || voces.find(v => v.lang.startsWith(u.lang.slice(0, 2)));
-      if (voz) u.voice = voz;
-      u.rate = 1.02;
-      speechSynthesis.speak(u);
-    } catch (e) { /* navegador sin voz: el texto ya esta pintado */ }
-  }
-
-  /** Lee en voz alta lo NUEVO de AU-RA en el hilo abierto. Nunca el historial:
-      abrir una charla vieja y que recite veinte mensajes seria un castigo. */
-  function auraHablarNuevos(primeraVez) {
-    if (!auraVozChat || !esAura(chatSt.con)) return;
-    const deElla = (chatSt.msgs || []).filter(m => m.de === AURA_CHAT_ID && m.id);
-    if (primeraVez) { deElla.forEach(m => auraHablado.add(m.id)); return; }
-    const nuevos = deElla.filter(m => !auraHablado.has(m.id));
-    nuevos.forEach(m => auraHablado.add(m.id));
-    const ultimo = nuevos[nuevos.length - 1];
-    if (ultimo && ultimo.texto) auraLeer(ultimo.texto);
+      await CHAT.enviar(chatSt.con.id, cual ? `hablame con voz ${cual}` : 'sin voz');
+      auraVoz = cual;
+      localStorage.setItem('veta.aura.voz', cual);
+      await chatCargarMsgs();
+    } catch (e) { avisar(t('cha.eRedP')); }
+    chatSt.mandando = false;
+    pintarChat();
   }
 
   /** Los botones de modo mandan la orden POR EL CHAT: es la misma frase que
@@ -10324,13 +10329,26 @@ const VETA = (() => {
                 onclick="VETA.auraModoChat('rapida')">${t('au.chModoR')}</button>
         <button type="button" class="cha-aura-chip${modoP ? ' on' : ''}"
                 onclick="VETA.auraModoChat('pensadora')">${t('au.chModoP')}</button>
-        <button type="button" class="cha-aura-chip cha-aura-voz${auraVozChat ? ' on' : ''}"
-                onclick="VETA.auraVozAlterna()"
-                aria-label="${auraVozChat ? t('au.chVozOn') : t('au.chVozOff')}">
+        <button type="button" class="cha-aura-chip cha-aura-voz${auraVoz ? ' on' : ''}"
+                onclick="VETA.auraVozMenu()"
+                aria-label="${auraVoz ? t('au.chVozOn') : t('au.chVozOff')}">
           <svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5z"/>${''}
-          </svg>${auraVozChat ? t('au.chVozOn') : t('au.chVozOff')}
+          </svg>${auraVoz ? (AURA_VOCES.find(v => v.id === auraVoz) || {}).nombre
+                          : t('au.chVozOff')}
         </button>
-      </div>`; })() : ''}
+      </div>
+      ${auraVozAbierta ? `
+      <div class="cha-aura-voces" role="group" aria-label="${t('au.vozElegir')}">
+        ${AURA_VOCES.map(v => `
+        <button type="button" class="cha-aura-vozop${auraVoz === v.id ? ' on' : ''}"
+                onclick="VETA.auraVozElegir('${v.id}')">
+          <b>${esc(v.nombre)}</b><span>${esc(t(v.que))}</span>
+        </button>`).join('')}
+        <button type="button" class="cha-aura-vozop${!auraVoz ? ' on' : ''}"
+                onclick="VETA.auraVozElegir('')">
+          <b>${t('au.vozNo')}</b><span>${t('au.vozNoQue')}</span>
+        </button>
+      </div>` : ''}`; })() : ''}
       ${chatSt.buscaHilo != null ? `
       <div class="p2c-filtro cha-busca-hilo">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
@@ -13116,7 +13134,7 @@ const VETA = (() => {
            // El Nucleo: la portada del ecosistema.
            nuAbrir,
            // El rincon de AU-RA en el chat: modos, voz y dictado.
-           auraModoChat, auraVozAlterna, auraDictar,
+           auraModoChat, auraVozMenu, auraVozElegir, auraDictar,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
            pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,

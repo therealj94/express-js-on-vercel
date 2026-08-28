@@ -28,6 +28,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 AQUI = pathlib.Path(__file__).parent
 RAIZ = AQUI.parent.parent
 
+# El asistente se importa TAMBIEN como modulo, aparte del proceso de verdad
+# que se levanta mas abajo. Es para poder probar en seco las piezas puras —
+# el limpiador de la salida, sobre todo— sin montar media conversacion para
+# comprobar una expresion regular. Importarlo no arranca nada: el archivo
+# tiene su guarda de __main__.
+sys.path.insert(0, str(AQUI))
+import asistente as aura  # noqa: E402
+
 fallos = 0
 
 
@@ -239,8 +247,14 @@ def main():
            'un primer mensaje que solo saluda hace esperar por nada')
         ok(de_usuario()[0].get('stream') is True,
            'se le pidio al motor que hable mientras piensa')
-        ok(de_usuario()[0]['options'].get('num_predict') == 110,
-           'y se le piden 110 palabras, no 260: la mitad era relleno')
+        # Sobre CPU el techo era 110 y protegia a la persona: a 6 tokens por
+        # segundo, cada palabra de mas era espera de verdad. Sobre GPU son 40
+        # tok/s y ese mismo techo empezo a CORTAR la respuesta a media frase
+        # — se vio en el nodo el 28-ago. Lo que se comprueba ya no es un
+        # numero fijo sino la propiedad: alcanza para una respuesta entera.
+        ok(de_usuario()[0]['options'].get('num_predict', 0) >= 180,
+           'el techo de palabras alcanza para terminar la frase',
+           f"num_predict = {de_usuario()[0]['options'].get('num_predict')}")
         # La ventana. Sin esta linea ollama usa 4096, la peticion con memoria
         # llega a 3814, rebalsa al escribir y RELEE los 3814 desde cero: 170
         # segundos de espera antes de la primera letra. Se mide en el numero,
@@ -321,6 +335,98 @@ def main():
                    for pet in de_usuario() for m in pet['messages']
                    if m['role'] == 'user' and 'modo pensador' == m['content'].strip().lower()),
            'los cambios de modo no gastan motor: son de la casa')
+
+        print('\nLo que el modelo pone y no debería\n')
+        # Todos estos salieron DE VERDAD del nodo el 28-ago. El prompt ya
+        # prohibe las tres cosas; el modelo las hace igual. Por eso se limpia
+        # a la salida y por eso se comprueba acá.
+        lim = aura.limpiar
+        ok(lim('Hola Tere,\n\nAUKA sigue el precio del oro y no lo custodiás vos.')
+           .startswith('AUKA'),
+           'el «Hola Fulana,» de cada turno se va: nadie saluda ocho veces')
+        ok('Gracias por confiar' not in
+           lim('Hola Tere,\n\n¡Gracias por confiar en AU-RA!\nEl Genesis ID es tu '
+               'identidad dentro del ecosistema y te sirve para entrar a todo.'),
+           'y el agradecimiento tampoco: hablar de sí misma en tercera persona '
+           'rompe el personaje')
+        m = lim('1. **Identidad Unificada**: es tu identidad única en el sistema.\n'
+                '2. **Acceso**: entrás a todo sin repetir papeles nunca más.')
+        ok('*' not in m and not m.startswith('1.'),
+           'el markdown se va: esto es un chat, y la voz LEE los asteriscos', m[:60])
+        ok('fichas' not in lim('Según las fichas, ORIGEN sigue al oro de cerca.').lower(),
+           'y la fuga vieja de «según las fichas» sigue tapada')
+        bueno = 'El oro no sube por capricho: es el mismo metal de siempre.'
+        ok(lim(bueno) == bueno, 'una respuesta limpia no se toca')
+        # La red de seguridad. Esta comprobación existe porque la primera
+        # versión del limpiador dejó «Hola, ¿en qué te ayudo?» en «?».
+        corto = lim('Hola, ¿en qué te ayudo?')
+        ok(len(corto) > 5 and 'ayudo' in corto,
+           'el limpiador NUNCA se come la respuesta: prefiere dejar la mugre',
+           f'quedó {corto!r}')
+
+        # Estas cuatro salieron del nodo el 28-ago en TODAS las respuestas.
+        pre = lim('Me alegra que tengas una tienda de abarrotes y estés buscando '
+                  'proteger tus ahorros. AUKA sigue el precio de una onza de oro '
+                  'y no tenés que guardarlo vos en ningún lado.')
+        ok(pre.startswith('AUKA'),
+           'no le repite a la persona su propia vida: eso se lo contó ella',
+           pre[:70])
+        eco = lim('**¿Qué es AUKA?**\n\nAUKA es un token que sigue el precio del oro '
+                  'de cerca y no lo custodiás vos.')
+        ok(eco.startswith('AUKA'),
+           'ni le devuelve la pregunta como título: la hizo ella hace un segundo',
+           eco[:70])
+        fin = lim('Ordenex todavía no abrió al público, pero viene pronto y vas a '
+                  'poder comprar y vender ahí. ¿Te gustaría saber más sobre esto?')
+        ok(not fin.rstrip().endswith('?'),
+           'y no cierra como operadora: si hay algo más, lo van a preguntar',
+           fin[-60:])
+        vamos = lim('Vamos a explicarte lo que es el Genesis ID y sus ventajas. '
+                    'Es tu identidad única dentro del ecosistema de Orden Global.')
+        ok(vamos.startswith('Es tu identidad'),
+           'ni anuncia que va a explicar: explica')
+        ok(lim('¡Hola Tere!\n\nMe alegra que tengas una tienda de abarrotes.') == '',
+           'un trozo que es relleno de punta a punta se tira entero, no se manda')
+
+        # LO QUE NO SE PUEDE PERDER NUNCA. Una versión del limpiador se comió
+        # «pero no puedo predecir el precio» — una negativa de seguridad. Un
+        # preámbulo que sobra es una molestia; una advertencia borrada es un
+        # problema de verdad. Donde hay un «pero», ahí empieza lo que se dijo.
+        for t, aguja in [
+            ('Entiendo que te preocupe, pero el oro no garantiza nada.', 'garantiza'),
+            ('Eso es una pregunta interesante, pero no puedo predecir el precio.', 'predecir'),
+            ('Me alegra que preguntes, pero nadie te va a pedir tu clave jamás.', 'clave'),
+            ('Entiendo tu apuro, sin embargo no puedo mover tu plata yo.', 'no puedo mover'),
+        ]:
+            ok(aguja in lim(t),
+               f'jamás se come una advertencia: «…{aguja}…» sobrevive',
+               f'quedó {lim(t)!r}')
+
+        print('\nLa voz: se pide, no se impone\n')
+        # Que venga APAGADA importa: una nota de voz en cada respuesta es un
+        # regalo para quien la quiere y una molestia para quien no. Si esto se
+        # pone en rojo, alguien encendio la voz para todo el mundo sin pedirla.
+        _, _b = post(BASE, '/bandeja', {**ana, 'desde': 'aura@prueba.local'})
+        ok(not any(m.get('tipo') == 'voz' for m in _b.get('mensajes', [])),
+           'hasta acá NADIE mandó una nota de voz: la voz viene apagada')
+
+        antes_v = len(de_usuario())
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': 'hablame con voz sobria'})
+        ms = espera_texto(ana, 'sobria')
+        ok(any('sobria' in (m.get('texto') or '').lower() for m in ms),
+           'encender la voz contesta al instante y con el registro pedido')
+        ok(len(de_usuario()) == antes_v,
+           'y encender la voz NO gasta motor: es de la casa, como los modos',
+           'no hay nada que pensar en «con voz»')
+
+        antes_v = len(de_usuario())
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': 'sin voz'})
+        ms = espera_texto(ana, 'notas de voz')
+        ok(any('dejo de mandarte' in (m.get('texto') or '').lower() for m in ms),
+           'y apagarla también, con una sola palabra')
+        ok(len(de_usuario()) == antes_v, 'apagarla tampoco gasta motor')
 
         print('\nZoe, desde fuera\n')
         code, _ = post(BASE, '/enviar', {**zoe, 'para': 'aura@prueba.local',
