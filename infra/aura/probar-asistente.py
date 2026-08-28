@@ -160,12 +160,18 @@ class MotorFalso(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-Type', 'application/x-ndjson')
         self.end_headers()
+        # DESPACIO: el motor suelta las frases con pausa. No es un capricho de
+        # ritmo — es lo unico que hace OBSERVABLE que el globo crece. Sin
+        # pausa las tres frases salen en tres decimas, cualquier sondeo ve un
+        # solo estado, y la prueba del crecimiento pasaria o fallaria segun
+        # como venga el dia. Una prueba que depende del reloj no prueba nada.
+        pausa = 0.5 if 'DESPACIO' in json.dumps(cuerpo) else 0.05
         for i, t in enumerate(TROZOS):
             for pedazo in [t[:len(t)//2], t[len(t)//2:]]:
                 self.wfile.write((json.dumps(
                     {'message': {'role': 'assistant', 'content': pedazo}, 'done': False}) + '\n').encode())
                 self.wfile.flush()
-                time.sleep(0.05)
+                time.sleep(pausa)
         self.wfile.write((json.dumps({'message': {'content': ''}, 'done': True}) + '\n').encode())
         self.wfile.flush()
 
@@ -395,6 +401,45 @@ def main():
             plano = ' '.join(sistema.split())
             ok('frase de respaldo' in plano,
                'las reglas duras van en cada peticion, no solo en el papel')
+
+        print('\nUna respuesta, un globo — y se escribe a la vista\n')
+        # Lo que se pide es contradictorio solo en apariencia: que la respuesta
+        # se VEA venir (y no cinco segundos de puntitos y un bloque de golpe),
+        # y que al terminar sea UNA burbuja (y no seis globos por una
+        # pregunta, que fue lo que se sufrio cuando cada frase salia sola).
+        # Se cumplen las dos con un globo que crece.
+        antes_g = len(bandeja_de(ana))
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': '¿Como funciona el globo DESPACIO?'})
+        # se mira MIENTRAS contesta: es el unico momento en que se puede ver
+        visto_parcial, visto_creciendo = False, set()
+        fin = time.time() + 25
+        while time.time() < fin:
+            ms = [m for m in bandeja_de(ana)][antes_g:]
+            for m in ms:
+                if m.get('parcial'):
+                    visto_parcial = True
+                    visto_creciendo.add(len(m.get('texto') or ''))
+            if ms and not any(m.get('parcial') for m in ms) and visto_parcial:
+                break
+            time.sleep(0.1)
+        finales = [m for m in bandeja_de(ana)][antes_g:]
+        ok(visto_parcial,
+           'mientras escribe, lo que se ve va marcado «todavia no termino»',
+           'sin la marca, media respuesta se lee como la respuesta: se diria '
+           'en voz alta cortada y la espera se cerraria antes de tiempo')
+        ok(len(visto_creciendo) > 1,
+           'y el texto CRECE, no aparece de una',
+           f'largos vistos: {sorted(visto_creciendo)} — con uno solo, no se '
+           f'vio crecer nada y el globo es decorativo')
+        ok(len(finales) == 1,
+           'y al terminar queda UNA sola burbuja',
+           f'quedaron {len(finales)}: volvimos a los seis globos por pregunta')
+        ok(finales and not finales[0].get('parcial'),
+           'sin la marca de «escribiendo», que si no queda asi para siempre')
+        ok(finales and 'Y ESTA ES LA SEGUNDA' in (finales[0].get('texto') or ''),
+           'y con la respuesta ENTERA adentro, no solo la primera frase',
+           f'quedo: {(finales[0].get("texto") if finales else "")!r}')
 
         print('\nEl sistema no cambia entre preguntas (por eso se cachea)\n')
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',

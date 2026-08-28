@@ -1347,6 +1347,12 @@ class Relevo(BaseHTTPRequestHandler):
                 cita = str(b.get('cita', ''))[:16]
                 if cita:
                     m['cita'] = cita
+                # «Todavia estoy escribiendo esto». Lo pone AU-RA al soltar su
+                # primera frase, y lo quita al terminar (ver /editar). Sin la
+                # marca, quien recibe no puede distinguir media respuesta de
+                # una respuesta.
+                if b.get('parcial'):
+                    m['parcial'] = 1
                 if cif is not None:
                     m['cif'] = cif
                     # El texto en claro NO se guarda al lado del cerrado. Seria
@@ -1372,7 +1378,10 @@ class Relevo(BaseHTTPRequestHandler):
                     empujar(d, miembros)
                 else:
                     empujar(d, [para])
-                return self._json(200, {'ok': True})
+                # El id vuelve porque sin el no hay forma de editarlo despues:
+                # «el ultimo que mande» no es una referencia que aguante que
+                # lleguen otros mensajes en el medio.
+                return self._json(200, {'ok': True, 'id': m['id']})
 
             if ruta == '/suscribir':
                 # La suscripcion push de ESTE navegador. Se guarda por
@@ -1420,6 +1429,55 @@ class Relevo(BaseHTTPRequestHandler):
                 f['push'] = [x for x in f.get('push', []) if x.get('endpoint') != sus]
                 guardar(d)
                 return self._json(200, {'ok': True})
+
+            if ruta == '/editar':
+                """Cambiar el texto de un mensaje YA MANDADO. Solo el suyo.
+
+                ── PARA QUE ────────────────────────────────────────────────
+                Para que AU-RA escriba a la vista, como escribe una persona.
+
+                Antes: preguntabas, mirabas los tres puntos cinco o seis
+                segundos, y la respuesta aparecia entera de golpe. Se probo
+                mandar cada frase por separado y fue peor —cinco o seis
+                globos por una sola pregunta, que no es como contesta
+                nadie—. Lo que falta es lo que hace cualquier chat: UN globo
+                que va creciendo. Eso pide poder cambiar un mensaje que ya
+                salio, y eso es esta ruta.
+
+                `parcial` dice si todavia esta escribiendo. Importa mas de lo
+                que parece: sin esa marca, quien recibe no puede distinguir
+                «ya termino» de «va por la mitad», y trataria media respuesta
+                como si fuera la respuesta — la leeria en voz alta cortada, o
+                cerraria la espera antes de tiempo.
+
+                Solo el AUTOR edita, y solo el TEXTO. No se toca `de`,
+                `para`, `cuando` ni el adjunto: editar el texto de lo que uno
+                dijo es una cosa; poder reescribir de quien es un mensaje o
+                cuando se mando es otra muy distinta, y esta ruta no la abre.
+                Un mensaje cifrado tampoco se edita: el texto en claro viaja
+                en `cif` y esto no sabe cerrarlo.
+                """
+                mid = str(b.get('id', ''))[:16]
+                msg = next((x for x in d['mensajes'] if x.get('id') == mid), None)
+                if not msg:
+                    return self._json(404, {'error': 'ese mensaje no existe'})
+                if msg['de'] != correo:
+                    return self._json(403, {'error': 'ese mensaje no es tuyo'})
+                if msg.get('cif'):
+                    return self._json(400, {'error': 'un mensaje cerrado no se edita'})
+                texto = str(b.get('texto', ''))[:TOPE_TEXTO].strip()
+                if not texto:
+                    return self._json(400, {'error': 'faltan datos'})
+                msg['texto'] = texto
+                if b.get('parcial'):
+                    msg['parcial'] = 1
+                else:
+                    msg.pop('parcial', None)
+                guardar(d)
+                # SIN aviso push: es el MISMO mensaje que ya se anuncio al
+                # salir. Un empujon por cada frase seria el telefono vibrando
+                # seis veces por una respuesta.
+                return self._json(200, {'ok': True, 'id': mid})
 
             if ruta == '/reaccion':
                 # Una reaccion a un mensaje. Se guarda POR PERSONA y no como

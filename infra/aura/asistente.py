@@ -216,8 +216,15 @@ class Relevo:
         except Exception:
             pass
 
-    def enviar(self, para, texto):
-        return _post('/enviar', self._f({'para': para, 'texto': texto}))
+    def enviar(self, para, texto, parcial=False):
+        return _post('/enviar', self._f({'para': para, 'texto': texto,
+                                         'parcial': bool(parcial)}))
+
+    def editar(self, mid, texto, parcial=False):
+        """Cambia el texto de un mensaje que ya salio. Es lo que convierte
+        «la respuesta aparece de golpe» en «la respuesta se escribe»."""
+        return _post('/editar', self._f({'id': mid, 'texto': texto,
+                                         'parcial': bool(parcial)}))
 
     def ficha(self, de):
         try:
@@ -1342,36 +1349,65 @@ def atender(rel, sistema, p, de, dicho):
         contexto = ''
     salio = []
 
-    # ── UNA RESPUESTA, UNA BURBUJA ────────────────────────────────────────
+    # ── UNA RESPUESTA, UNA BURBUJA, Y SE ESCRIBE A LA VISTA ───────────────
     #
-    # Antes cada frase terminada salia sola, y con razon: sobre CPU una
-    # respuesta tardaba noventa segundos y mandar la primera frase a los diez
-    # era la diferencia entre esperar y creer que se colgo.
+    # Este sitio ya cambio dos veces y las dos por una buena razon. Vale la
+    # pena la historia, porque explica por que ahora es asi:
     #
-    # Sobre la GPU la respuesta ENTERA tarda cinco o seis segundos, asi que
-    # ese reparto dejo de proteger a nadie y empezo a estorbar: la persona
-    # recibia cuatro, cinco, seis globos seguidos por una sola pregunta. La
-    # queja fue textual — «no hay conversación fluida, que aparezca que estoy
-    # teniendo una conversación». Nadie que conversa contesta en seis
-    # mensajes: contesta una vez.
+    #   1. Cada frase salia SOLA, y con razon: sobre CPU una respuesta
+    #      tardaba noventa segundos, y mandar la primera a los diez era la
+    #      diferencia entre esperar y creer que se colgo.
+    #   2. Sobre la GPU la respuesta entera tarda cinco o seis segundos, asi
+    #      que ese reparto dejo de proteger a nadie y empezo a estorbar: la
+    #      persona recibia cuatro, cinco, seis globos por UNA pregunta. La
+    #      queja fue textual — «que aparezca que estoy teniendo una
+    #      conversación». Nadie que conversa contesta en seis mensajes.
+    #      Asi que paso a ir entera, en un solo mensaje.
     #
-    # Asi que va entera, en un solo mensaje, mientras el «escribiendo…» hace
-    # su trabajo. Se deja el reparto por frases detras de un interruptor
-    # porque si algun dia esto vuelve a una maquina lenta, hace falta otra vez.
-    por_frases = os.environ.get('AURA_POR_FRASES', '') == '1'
+    # Pero eso dejo un problema que ninguna de las dos formas resolvia: cinco
+    # o seis segundos mirando tres puntitos y de golpe un bloque de texto. La
+    # respuesta no es mas lenta que la de nadie; lo que falta es que se VEA
+    # venir, que es lo que hace cualquier chat.
+    #
+    #   3. Ahora: UN globo, que CRECE. La primera frase sale marcada «todavia
+    #      escribiendo», y cada frase siguiente EDITA ese mismo mensaje en vez
+    #      de mandar uno nuevo. Se lee mientras se escribe, y al terminar
+    #      queda una sola burbuja con la respuesta entera — las dos cosas que
+    #      se pidieron, que hasta ahora parecian incompatibles.
+    #
+    # Si el relevo no supiera editar (uno viejo, sin la ruta), la primera
+    # frase igual salio y el resto se manda detras: peor, pero nunca mudo.
+    creciendo = {'id': None, 'texto': ''}
 
     def soltar(frase):
+        """Cada frase terminada. La primera abre el globo; las demas lo
+        agrandan."""
         try:
-            rel.enviar(de, frase)
+            junto = (creciendo['texto'] + ' ' + frase).strip()
+            if creciendo['id']:
+                rel.editar(creciendo['id'], junto, parcial=True)
+            else:
+                r = rel.enviar(de, frase, parcial=True)
+                creciendo['id'] = (r or {}).get('id')
+            creciendo['texto'] = junto
             salio.append(frase)
         except Exception as e:
+            # Que falle EDITAR no puede costar la frase: se manda suelta, que
+            # es exactamente lo que hacia antes de todo esto.
             log('no salio una frase para', de, str(e)[:60])
+            if creciendo['id']:
+                try:
+                    rel.enviar(de, frase)
+                    salio.append(frase)
+                    creciendo['id'] = None      # se rompio el globo: sigue suelto
+                except Exception as e2:
+                    log('ni suelta salio para', de, str(e2)[:60])
 
     try:
         with Pensando(rel, de):
             resto, entero = preguntar_motor(sistema, p, p['historial'], dicho,
                                             contexto,
-                                            al_vuelo=soltar if por_frases else None)
+                                            al_vuelo=soltar)
             # LA RESPUESTA VACIA, QUE NO ES UN MOTOR CAIDO.
             #
             # El freno de listas corta la generacion apenas el modelo empieza
@@ -1391,14 +1427,36 @@ def atender(rel, sistema, p, de, dicho):
             #
             # Una respuesta que termina en dos puntos SIEMPRE esta cortada:
             # nadie cierra una idea con «:». Se repregunta sin el freno.
-            promesa = ((resto or '').rstrip().endswith((':', ';', ','))
-                       or _promete_y_no_cumple(resto))
-            if not por_frases and (len((resto or '').strip()) < 40 or promesa):
+            # LO QUE SE MIRA ES LA RESPUESTA ENTERA, no la cola.
+            #
+            # `resto` es lo que quedo despues de la ultima frase terminada.
+            # Sin repartir era la respuesta completa; repartiendo es un
+            # pedacito, y casi siempre mide menos de 40. Medir eso disparaba
+            # la repregunta en CADA mensaje: dos llamadas al motor por
+            # pregunta, el doble de GPU y el doble de espera, sin que nadie
+            # lo notara mas que en la lentitud.
+            visto = ((creciendo['texto'] + ' ' + (resto or '')).strip()
+                     if creciendo['id'] else (resto or ''))
+            promesa = (visto.rstrip().endswith((':', ';', ','))
+                       or _promete_y_no_cumple(visto))
+            # ── SE PUEDE REPREGUNTAR PORQUE SE PUEDE REESCRIBIR ────────────
+            #
+            # Estos dos guardias —la promesa que no cumple, y el eco— corrian
+            # solo cuando la respuesta iba entera, y por una razon buena: con
+            # frases ya mandadas no habia forma de retirarlas, asi que
+            # repreguntar dejaba las viejas arriba y la nueva abajo.
+            #
+            # Con el globo que crece eso deja de ser cierto: lo que salio se
+            # puede reescribir. Asi que vuelven a correr siempre, y si hay
+            # globo abierto se vacia lo acumulado para que el cierre escriba
+            # la respuesta NUEVA en su lugar, no las dos pegadas.
+            if len(visto) < 40 or promesa:
                 log('respuesta vacia, cortisima o con promesa colgando; '
                     'repregunto sin el freno')
                 resto, entero = preguntar_motor(sistema, p, p['historial'],
                                                 dicho, contexto,
                                                 al_vuelo=None, frenar_listas=False)
+                creciendo['texto'] = ''      # lo dicho se reemplaza, no se suma
             # LA RESPUESTA REPETIDA.
             #
             # Un modelo que ve su propia respuesta anterior en el historial
@@ -1414,7 +1472,7 @@ def atender(rel, sistema, p, de, dicho):
             # vacia dejaba al guardia de eco sin correr sobre el resultado de
             # esa repregunta, que es justo cuando mas facil es que salga
             # repetida. Las dos comprobaciones son sobre lo que HAY ahora.
-            if not por_frases and _es_repetida(resto, p.get('historial')):
+            if _es_repetida(visto, p.get('historial')):
                 log('respuesta casi identica a la anterior, repregunto')
                 resto, entero = preguntar_motor(
                     sistema, p, p['historial'],
@@ -1422,12 +1480,31 @@ def atender(rel, sistema, p, de, dicho):
                             'un momento: contestá otra cosa, o decilo distinto '
                             'y mas corto]',
                     contexto, al_vuelo=None, variar=True)
+                creciendo['texto'] = ''      # idem: la nueva ocupa el lugar
     except Exception as e:
         log('motor caido:', type(e).__name__, str(e)[:120])
         if not salio:
             rel.enviar(de, MOTOR_CAIDO)
         return
-    if resto:
+    # ── Y SE CIERRA EL GLOBO ──────────────────────────────────────────────
+    #
+    # `resto` es lo que quedo sin frase terminada al final. Va DENTRO del
+    # mismo globo, no en uno nuevo: el punto entero era que la respuesta sea
+    # una sola. Y sin `parcial`, que es lo que le dice a la wallet «ya esta,
+    # podes leerla en voz alta y dejar de esperar».
+    if creciendo['id']:
+        entero_visto = (creciendo['texto'] + (' ' + resto if resto else '')).strip()
+        try:
+            rel.editar(creciendo['id'], entero_visto, parcial=False)
+        except Exception as e:
+            # Si el cierre falla, lo peor posible es dejarla «escribiendo»
+            # para siempre: se manda el resto suelto, que al menos completa
+            # lo que se lee.
+            log('no cerro el globo para', de, str(e)[:60])
+            if resto:
+                try: rel.enviar(de, resto)
+                except Exception: pass
+    elif resto:
         rel.enviar(de, resto)
     if not salio and not resto:
         # NO se dice «mi motor esta apagado»: el motor contesto, lo que paso

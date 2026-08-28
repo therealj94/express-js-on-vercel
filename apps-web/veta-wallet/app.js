@@ -7824,8 +7824,13 @@ const VETA = (() => {
       // Contestó: se cierra la ventana rápida y se vuelve al ritmo tranquilo.
       // Se mira si el ÚLTIMO es suyo, no si hay alguno: en un hilo con AU-RA
       // siempre hay mensajes suyos, y con eso la ventana no se abriría nunca.
-      if (!igual && auraEsperando() && esAura(chatSt.con)
-          && m.length && m[m.length - 1].de === AURA_CHAT_ID) auraLlego();
+      /* `parcial` es media respuesta: el cerebro la sigue escribiendo. Cerrar
+         la ventana rápida ahí volvería al sondeo tranquilo justo mientras la
+         respuesta está creciendo, y se vería crecer a saltos de cinco
+         segundos. Se cierra cuando de verdad terminó. */
+      if (!igual && auraEsperando() && esAura(chatSt.con) && m.length
+          && m[m.length - 1].de === AURA_CHAT_ID
+          && !m[m.length - 1].parcial) auraLlego();
       // El aviso de «llegó algo» se decide ACA —hace falta saber cuántos
       // había antes—, pero quién se mueve y quién no lo decide pintarChat(),
       // que es el único que sabe que acaba de destruir el hilo. Tenerlo en
@@ -10346,7 +10351,10 @@ const VETA = (() => {
    * creería que se rompió. */
   let auraCharlando = false;
   let auraSonando = null;
-  const auraYaSono = new Set();
+  /* id del mensaje -> hasta qué letra se leyó en voz alta. Era un Set de ids,
+     y dejó de alcanzar el día que un mensaje pasó a crecer: marcarlo entero
+     al oír su primera frase dejaba el resto de la respuesta mudo. */
+  const auraYaSono = new Map();
 
   /* La puerta al modo voz es `auraVozPantalla`, más abajo, y es la ÚNICA.
      Acá vivía `auraCharlarAlterna`, que hacía lo mismo y mejor —apagaba las
@@ -10366,8 +10374,21 @@ const VETA = (() => {
 
   function auraCharlaSonar() {
     if (!auraCharlando || !esAura(chatSt.con)) return;
-    const nuevas = (chatSt.msgs || []).filter(
-      (m) => m.de === AURA_CHAT_ID && m.id && !auraYaSono.has(m.id));
+    /* ── SE LLEVA LA CUENTA POR LETRAS, NO POR MENSAJE ────────────────────
+     *
+     * Antes bastaba con «este id ya sonó», y con un mensaje que llega entero
+     * eso alcanza. Ahora la respuesta CRECE dentro del mismo mensaje: con la
+     * cuenta vieja se decía la primera frase, se marcaba el id, y las otras
+     * tres no se decían nunca — la mitad de la respuesta muda, sin error a la
+     * vista.
+     *
+     * Así que se guarda hasta QUÉ LETRA se leyó de cada mensaje, y cada vuelta
+     * dice solo lo que creció desde entonces. */
+    const nuevas = (chatSt.msgs || []).filter((m) => {
+      if (m.de !== AURA_CHAT_ID || !m.id) return false;
+      const ya = auraYaSono.get(m.id) || 0;
+      return (m.texto || '').trim().length > ya || (m.tipo === 'voz' && !ya);
+    });
 
     /* EN VIVO: lo que llega ESCRITO se dice, sin esperar ninguna grabación.
        Ese es el cambio entero. El texto aparece en cuanto el modelo lo tiene,
@@ -10378,9 +10399,23 @@ const VETA = (() => {
        sería pagar el viaje —y la cola de la GPU— tres veces para decir lo
        mismo. El nodo ya la vuelve a partir por dentro, mejor que acá. */
     const escrito = nuevas.filter((m) => m.tipo !== 'voz' && (m.texto || '').trim());
-    escrito.forEach((m) => auraYaSono.add(m.id));
-    if (escrito.length) {
-      auraPorDecir.push(escrito.map((m) => m.texto.trim()).join(' '));
+    const trozos = [];
+    escrito.forEach((m) => {
+      const txt = m.texto.trim();
+      const ya = auraYaSono.get(m.id) || 0;
+      /* De un mensaje a medias solo se dice hasta el último punto: leer media
+         frase y completarla en la vuelta siguiente suena a tartamudeo. */
+      const listo = m.parcial
+        ? Math.max(txt.lastIndexOf('. '), txt.lastIndexOf('.\n'),
+                   txt.lastIndexOf('? '), txt.lastIndexOf('! ')) + 1
+        : txt.length;
+      if (listo <= ya) return;
+      const trozo = txt.slice(ya, listo).trim();
+      auraYaSono.set(m.id, listo);
+      if (trozo) trozos.push(trozo);
+    });
+    if (trozos.length) {
+      auraPorDecir.push(trozos.join(' '));
       auraDecirLoSiguiente();
       return;
     }
@@ -10388,7 +10423,7 @@ const VETA = (() => {
     /* Y si igual llegó una nota grabada —alguien dejó las notas encendidas, o
        la voz en vivo no salió y se cayó a esto—, se toca como siempre. */
     const notas = nuevas.filter((m) => m.tipo === 'voz' && m.archivo);
-    notas.forEach((m) => { auraYaSono.add(m.id); auraCola.push(m.archivo); });
+    notas.forEach((m) => { auraYaSono.set(m.id, 1); auraCola.push(m.archivo); });
     if (auraSonando || !auraCola.length) return;
     auraSonarSiguiente();
   }
@@ -10704,7 +10739,9 @@ const VETA = (() => {
      * Marcar es lo primero. Después se vuelve a marcar, por lo que haya
      * llegado durante la espera. */
     const marcarLoViejo = () =>
-      (chatSt.msgs || []).forEach((m) => { if (m.id) auraYaSono.add(m.id); });
+      (chatSt.msgs || []).forEach((m) => {
+        if (m.id) auraYaSono.set(m.id, (m.texto || '').trim().length || 1);
+      });
     marcarLoViejo();
 
     auraPantalla = true;
@@ -12933,10 +12970,18 @@ const VETA = (() => {
    *                 Antes era el segundo escalón; ahora hay que quedarse sin
    *                 las otras dos para llegar hasta él.
    */
-  async function auraVozDeLaCasa(txt) {
-    // lo anterior se calla: dos respuestas hablando encima es peor que una
-    try { auraCortarVozBurbuja?.(); } catch (e) { /* ya no sonaba */ }
-    auraCortarVozBurbuja = null;
+  async function auraVozDeLaCasa(txt, opciones = {}) {
+    /* `seguido` es una frase que viene DETRÁS de otra de la misma respuesta.
+       Cambia dos cosas, y las dos importan: no calla lo anterior —callarlo
+       sería que cada frase corte a la de antes y solo se oiga la última— y no
+       vuelve a abrir el micrófono al terminar, porque la respuesta sigue.
+       De eso se encarga quien vacía la cola, una sola vez, al final. */
+    const seguido = !!opciones.seguido;
+    if (!seguido) {
+      // lo anterior se calla: dos respuestas hablando encima es peor que una
+      try { auraCortarVozBurbuja?.(); } catch (e) { /* ya no sonaba */ }
+      auraCortarVozBurbuja = null;
+    }
     const idioma = idiomaActivo();
     if (AURA.tieneGrabada?.(txt, idioma)) {
       /* Grabada: suena ya. La bandera existe para que `auraVozEnCurso` la
@@ -12948,7 +12993,7 @@ const VETA = (() => {
       try { await AURA.hablar(txt, idioma); }
       finally { auraGrabadaSonando = false; auraMusicaAlDia(); }
       // y cierra el mismo ciclo que la voz en vivo: terminó, vuelve a oír
-      if (auraConversando && auraAbierta) setTimeout(auraOirEnLaBurbuja, 250);
+      if (!seguido && auraConversando && auraAbierta) setTimeout(auraOirEnLaBurbuja, 250);
       return;
     }
     if (!CHAT.listo?.() || !CHAT.vozEnVivo) return AURA.hablar(txt, idiomaActivo());
@@ -12985,7 +13030,48 @@ const VETA = (() => {
     auraMusicaAlDia();
     /* Y ACÁ SE CIERRA EL CICLO: terminó de hablar, vuelve a escuchar. Es esta
        línea la que convierte «tocar para hablar» en «conversar». */
-    if (auraConversando && auraAbierta) setTimeout(auraOirEnLaBurbuja, 250);
+    if (!seguido && auraConversando && auraAbierta) setTimeout(auraOirEnLaBurbuja, 250);
+  }
+
+  /* ── LA COLA DE LA BURBUJA ────────────────────────────────────────────────
+   *
+   * La respuesta llega por frases, y cada frase se dice en cuanto está. Sin
+   * cola, la segunda llamada cortaría a la primera —así está hecha la puerta,
+   * y para una respuesta suelta está bien— y solo se oiría el final.
+   *
+   * Se vacía de a una y en orden, y recién al terminar TODO se vuelve a
+   * escuchar: reabrir el micrófono entre frase y frase es abrirlo mientras
+   * ella sigue hablando, que es como se contestaba a sí misma. */
+  const auraColaBurbuja = [];
+  let auraVaciandoCola = false;
+
+  function auraVozEncolar(texto) {
+    if (!String(texto || '').trim()) return;
+    auraColaBurbuja.push(texto);
+    if (!auraVaciandoCola) auraVaciarColaBurbuja();
+  }
+
+  /** Corta lo que esté diciendo y tira lo que quedaba por decir. Lo llama una
+      pregunta nueva: nadie quiere oír el final de la respuesta anterior. */
+  function auraVozCallarCola() {
+    auraColaBurbuja.length = 0;
+    try { auraCortarVozBurbuja?.(); } catch (e) { /* ya no sonaba */ }
+    auraCortarVozBurbuja = null;
+  }
+
+  async function auraVaciarColaBurbuja() {
+    auraVaciandoCola = true;
+    try {
+      while (auraColaBurbuja.length) {
+        const t = auraColaBurbuja.shift();
+        try { await auraVozDeLaCasa(t, { seguido: true }); }
+        catch (e) { console.warn('una frase no sonó:', e); }
+      }
+    } finally {
+      auraVaciandoCola = false;
+      auraMusicaAlDia();
+      if (auraConversando && auraAbierta) setTimeout(auraOirEnLaBurbuja, 250);
+    }
   }
 
   /* ── LO QUE SE ESCRIBE EN EL HILO TAMBIÉN MUEVE LA APP ──────────────────
@@ -13455,6 +13541,9 @@ const VETA = (() => {
       return auraDecir(T.nose, { voz, botones: auraLoMasParecido(dicho).slice(0, 3) });
     }
     auraPensando = true;
+    /* Lo que quedaba por decir de la respuesta ANTERIOR se tira. Sin esto,
+       preguntás otra cosa y ella sigue terminando la de antes encima. */
+    auraVozCallarCola();
     const miSesion = auraSesion;
     const abiertoAlPreguntar = auraAbierta;
     pintarAura();
@@ -13467,20 +13556,58 @@ const VETA = (() => {
       const antes = new Set((await suyos()).map((m) => m.id));
       await CHAT.enviar(AURA_CHAT_ID, dicho);
       const hasta = Date.now() + AURA_ESPERA;
+      /* ── LA RESPUESTA SE VE ESCRIBIR, TAMBIÉN ACÁ ────────────────────────
+       *
+       * Antes esto tomaba el primer mensaje nuevo con texto y lo daba por LA
+       * respuesta. Ahora el cerebro manda la primera frase y va agrandando
+       * ese mismo mensaje, así que quedarse con lo primero que llega sería
+       * quedarse con una frase de cuatro.
+       *
+       * Se sigue el mismo mensaje mientras crece: el globo del panel se
+       * reescribe en cada vuelta, y el turno recién se cierra cuando el
+       * cerebro le quita la marca de «todavía escribiendo».
+       *
+       * `globo` es el índice del globo que estoy escribiendo en la charla del
+       * panel — no una copia del texto: la charla se recorta a 40 y una copia
+       * apuntaría a un sitio que ya no existe. */
+      let globo = -1;
+      let dichoEnVoz = 0;      // cuántos caracteres ya se mandaron a la voz
+      const puedeHablar = () => voz && abiertoAlPreguntar && auraAbierta;
       while (Date.now() < hasta) {
-        await new Promise((r) => setTimeout(r, 1200));
+        await new Promise((r) => setTimeout(r, 700));
         if (miSesion !== auraSesion) { auraPensando = false; return; }
         const nuevos = (await suyos())
           .filter((m) => !antes.has(m.id) && (m.texto || '').trim());
-        if (nuevos.length) {
-          auraPensando = false;
-          /* La voz solo si el panel seguía abierto. Cerrar es el gesto
-             universal de «ya no». Sin esto, alguien que se cansa de esperar y
-             cierra guarda el teléfono, y treinta segundos después AU-RA
-             empieza a hablar sola sin nada suyo en pantalla. */
-          return auraDecir(nuevos[nuevos.length - 1].texto,
-                           { voz: voz && abiertoAlPreguntar && auraAbierta });
+        if (!nuevos.length) continue;
+        const m = nuevos[nuevos.length - 1];
+        const txt = (m.texto || '').trim();
+        auraPensando = false;
+        if (globo < 0) {
+          auraCharla.push({ de: 'aura', txt });
+          if (auraCharla.length > 40) auraCharla = auraCharla.slice(-40);
+          globo = auraCharla.length - 1;
+        } else if (auraCharla[globo]) {
+          auraCharla[globo].txt = txt;
         }
+        pintarAura();
+        /* LA VOZ NO ESPERA A LA RESPUESTA ENTERA. En cuanto hay una frase
+           cerrada, se dice — y las siguientes se van encolando detrás. Así el
+           primer sonido llega a los ~4 s en vez de a los ~10, que era texto
+           entero primero y recién después pedir la voz.
+           Se corta en el ÚLTIMO punto: decir media frase y completarla en el
+           trozo siguiente suena a tartamudeo. */
+        if (puedeHablar()) {
+          const listo = m.parcial
+            ? Math.max(txt.lastIndexOf('. '), txt.lastIndexOf('.\n'),
+                       txt.lastIndexOf('? '), txt.lastIndexOf('! ')) + 1
+            : txt.length;
+          if (listo > dichoEnVoz) {
+            const trozo = txt.slice(dichoEnVoz, listo).trim();
+            dichoEnVoz = listo;
+            if (trozo) auraVozEncolar(trozo);
+          }
+        }
+        if (!m.parcial) return;      // terminó de escribirla: se cierra el turno
       }
       if (miSesion !== auraSesion) { auraPensando = false; return; }
       // Tardó de más. No se finge una respuesta: se dice qué pasó y se deja
