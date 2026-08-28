@@ -1444,8 +1444,30 @@ const VETA = (() => {
            AU-RA no corrió ni una vez para quien entraba sin semilla. */
         if (!semillaNueva) {
           /* La bienvenida ocurre EN la galaxia, no encima de ella: se le da
-             al vuelo el tiempo de aterrizar y AU-RA saluda sobre el cielo. */
-          if (!volviendoACasa) setTimeout(() => auraBienvenidaGalaxia(true), 1500);
+             al vuelo el tiempo de aterrizar y AU-RA saluda sobre el cielo.
+
+             Y SE DEJA CONSTANCIA DE QUE YA SALUDÓ. Antes no: este camino
+             saludaba y no escribía la marca, así que el arranque en frío de
+             después —una simple recarga de la página— la consideraba una
+             primera vez y la repetía entera. Trece segundos, dos veces, por
+             recargar. El comentario del otro camino ya decía que trece
+             segundos todos los días son un impuesto; le faltaba valer también
+             para éste. */
+          if (!volviendoACasa) {
+            marcarPresentada();
+            setTimeout(() => auraBienvenidaGalaxia(true), 1500);
+          }
+          /* Y LA OFERTA DEL GENESIS ID TAMBIÉN AQUÍ. Estaba solo en la rama de
+             abajo —la de una cuenta recién acuñada— así que quien abrió cuenta
+             ayer, no llegó a verificarse, y hoy entra con su correo, no la
+             recibía nunca. Ni ese día ni ninguno: la oferta existía durante
+             los primeros minutos de vida de la cuenta y se acabó.
+
+             Va después de la bienvenida y con su propio respiro, porque la
+             función se rinde en silencio si la identidad todavía no llegó de
+             la red; sus guardas (ya verificado, ya ofrecida en esta sesión)
+             hacen que sea inofensiva para quien no corresponde. */
+          setTimeout(auraOfrecerGid, 4200);
         }
         else setTimeout(auraOfrecerGid, 1200);
         // La frase se enseña ENCIMA de la billetera ya pintada, no antes de
@@ -7888,6 +7910,11 @@ const VETA = (() => {
     if (!texto || chatSt.mandando || !chatSt.con) return;
     chatSt.mandando = true;
     c.value = '';
+    /* PRIMERO SE ACTÚA Y DESPUÉS SE MANDA, y ese orden importa: abrir la
+       pantalla que te pidieron tiene que ser instantáneo, y el viaje al relevo
+       tarda lo que tarde. El mensaje se manda igual —queda escrito en el hilo
+       y ella lo contesta— así que no se pierde nada por actuar antes. */
+    if (esAura(chatSt.con)) { try { auraDesdeElHilo(texto); } catch (e) {} }
     try {
       await CHAT.enviar(chatSt.con.id, texto, chatSt.citando?.id);
       chatSt.citando = null;
@@ -10696,12 +10723,41 @@ const VETA = (() => {
       frase que cualquiera puede escribir, el boton solo la ahorra. Quien
       decide de verdad es el servidor —el es quien graba—, asi que el estado
       que vale es el suyo; esto es un atajo, no una segunda fuente. */
+  /* ── LAS ÓRDENES NO SON CONVERSACIÓN ────────────────────────────────────
+   *
+   * Los botones de voz y de modo mandan una frase POR EL CHAT: es la misma que
+   * cualquiera puede escribir, y el botón solo la ahorra. Eso está bien y no
+   * cambia — quien decide es el servidor, que es quien graba.
+   *
+   * Lo que estaba mal es que se VIERAN. Tocás «Pensadora», después «Hablar»,
+   * después la voz Sobria, y tu conversación queda con «modo pensador»,
+   * «hablame con voz calida» y «sin voz» metidos entre lo que le estabas
+   * preguntando, como si los hubieras escrito vos. Son botones de ajuste, no
+   * cosas dichas.
+   *
+   * Se ocultan del hilo, y SOLO las tuyas: la confirmación de ella —«listo, te
+   * hablo con la voz cálida»— se queda, porque esa sí es una respuesta y sin
+   * ella el botón no daría señal de haber hecho nada.
+   *
+   * La lista sale de aquí mismo, del sitio donde se arman, para que no puedan
+   * separarse: cambiar la frase de un botón sin cambiar la de ocultar dejaría
+   * la orden a la vista otra vez. */
+  const ordenVoz = (cual) => (cual ? `hablame con voz ${cual}` : 'sin voz');
+  const ordenModo = (cual) => (cual === 'pensadora' ? 'modo pensador' : 'modo rápido');
+
+  function esOrdenDeAjuste(txt) {
+    const t = String(txt || '').trim().toLowerCase();
+    if (!t) return false;
+    return t === ordenVoz('') || t === ordenModo('pensadora') || t === ordenModo('')
+      || ['calida', 'cálida', 'sobria', 'agil', 'ágil'].some((v) => t === ordenVoz(v));
+  }
+
   async function auraVozElegir(cual) {
     if (chatSt.mandando || !esAura(chatSt.con)) return;
     auraVozAbierta = false;
     chatSt.mandando = true;
     try {
-      await CHAT.enviar(chatSt.con.id, cual ? `hablame con voz ${cual}` : 'sin voz');
+      await CHAT.enviar(chatSt.con.id, ordenVoz(cual));
       auraVoz = cual;
       localStorage.setItem('veta.aura.voz', cual);
       await chatCargarMsgs();
@@ -10716,7 +10772,7 @@ const VETA = (() => {
     if (chatSt.mandando || !esAura(chatSt.con)) return;
     chatSt.mandando = true;
     try {
-      await CHAT.enviar(chatSt.con.id, cual === 'pensadora' ? 'modo pensador' : 'modo rápido');
+      await CHAT.enviar(chatSt.con.id, ordenModo(cual));
       await chatCargarMsgs();
     } catch (e) { avisar(t('cha.eRedP')); }
     chatSt.mandando = false;
@@ -10947,9 +11003,17 @@ const VETA = (() => {
        obliga a meter HTML en algo que viene de otra persona, y ese es el
        camino más corto a que un mensaje se salga de su burbuja. */
     const aguja = (chatSt.buscaHilo || '').trim().toLowerCase();
-    const lista = aguja
+    /* Las órdenes de ajuste que mandan los botones —«modo pensador», «hablame
+       con voz cálida»— no se pintan: son botones, no cosas dichas. Solo las
+       MÍAS y solo en el hilo de AU-RA; su confirmación se queda, que es la
+       única señal de que el botón hizo algo. Ver `esOrdenDeAjuste`. */
+    const sinOrdenes = (ms) => (esAura(c)
+      ? (ms || []).filter((m) => !(m.mio !== false && m.de !== AURA_CHAT_ID
+                                   && esOrdenDeAjuste(m.texto)))
+      : ms);
+    const lista = sinOrdenes(aguja
       ? (chatSt.msgs || []).filter(m => (m.texto || '').toLowerCase().includes(aguja))
-      : chatSt.msgs;
+      : chatSt.msgs);
     /* ── EL HILO DICE QUE ESTÁ PENSANDO ────────────────────────────────────
      *
      * El estado existía y solo se pintaba en la pantalla de voz. En el hilo
@@ -12181,11 +12245,56 @@ const VETA = (() => {
     p.style.top = `${Math.round(y)}px`;
   }
 
+  /* Cuando la orden viene del HILO y no de la burbuja, el cerebro determinista
+     ACTÚA pero no habla: quien contesta ahí es AU-RA de verdad, por el relevo,
+     y dos respuestas a la misma frase —una local y una suya— es peor que una.
+     Lo que iba a decir se guarda por si hace falta mirarlo. */
+  let auraSoloActuar = false;
+  let auraLoQueIbaADecir = null;
+
   function auraDecir(txt, opciones = {}) {
+    if (auraSoloActuar) { auraLoQueIbaADecir = txt; return; }
     auraCharla.push({ de: 'aura', txt, botones: opciones.botones });
     if (auraCharla.length > 40) auraCharla = auraCharla.slice(-40);
     pintarAura();
     if (opciones.voz) AURA.hablar(txt, idiomaActivo());
+  }
+
+  /* ── LO QUE SE ESCRIBE EN EL HILO TAMBIÉN MUEVE LA APP ──────────────────
+   *
+   * «igual se pueda mover en el ecosistema, decirle y ella pueda moverse y
+   *  hacer cosas»
+   *
+   * Escribir «llevame a cobrar» en la bolita abría Cobrar. Escribir lo MISMO
+   * en el hilo de PULSE2CHAT —que es donde dice «la inteligencia de la casa» y
+   * donde la gente va a hablar con ella— no hacía nada: el hilo mandaba el
+   * texto derecho al modelo, y un modelo no abre pantallas. La misma frase,
+   * dos resultados, según en qué caja la escribieras.
+   *
+   * Ahora el hilo pasa por el MISMO cerebro determinista que la burbuja, con
+   * una diferencia: acá solo ACTÚA. No contesta, porque la respuesta escrita
+   * la da ella por el relevo, como siempre. El reparto de siempre —el modelo
+   * explica, el cerebro actúa— sigue igual; lo que cambia es que ahora el
+   * cerebro también escucha por esta puerta.
+   *
+   * Se sale de puntillas ante todo lo que huela a AJUSTE de la propia AU-RA
+   * («modo pensador», «hablame con voz cálida»): esas órdenes las entiende
+   * ella y solo ella, y aquí «cambiame la voz» dispararía el /cambi/ de la
+   * tabla de navegación y abriría la pantalla de cambiar monedas. Un atajo que
+   * te lleva a otro lado es peor que no tener atajo.
+   */
+  const AJUSTE_SUYO = /\bmodo\b|\bvoz\b|\bvoces\b|pensador|pensadora|r[aá]pid[oa]|sin voz/i;
+
+  function auraDesdeElHilo(dicho) {
+    if (auraVisita || !String(dicho || '').trim()) return false;
+    if (AJUSTE_SUYO.test(dicho)) return false;
+    const antes = vistaActual;
+    auraSoloActuar = true;
+    auraLoQueIbaADecir = null;
+    try { auraSeso(dicho); }
+    catch (e) { console.warn('AU-RA no pudo actuar desde el hilo:', e); }
+    finally { auraSoloActuar = false; }
+    return vistaActual !== antes;
   }
 
   function auraManda(ev) {
@@ -14385,6 +14494,8 @@ const VETA = (() => {
            _atPunto: (p) => atPunto(p), _atTablero: (v) => atTablero(v),
            _bienvenidaAura: () => auraBienvenida(true),
            _auraTxt: () => AURA_TXT,
+           _vista: () => vistaActual,
+           _auraDesdeElHilo: (t) => auraDesdeElHilo(t),
            _auraEsperar: () => { auraEsperar(); pintarChat(); },
            /* Solo para las pruebas: el estado del modo voz, que vive en
               variables del módulo y desde fuera no se puede mirar. Sin esto,
