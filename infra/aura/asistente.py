@@ -385,6 +385,14 @@ MOTOR_CAIDO = (
     "Ahora mismo no puedo pensar: mi motor está apagado. Ya avisé a la casa — "
     "probá de nuevo en un rato.")
 
+# Cuando el motor SI contesto pero no quedo nada util. No es lo mismo que
+# estar caido, y decir «mi motor está apagado» ahi es dos errores en una
+# frase: es mentira, y habla de las tripas de la casa, que el prompt le
+# prohibe. Se pide de otra manera, que es lo que hace una persona que no
+# entendio la pregunta.
+NO_SALIO = (
+    "Se me enredó la respuesta. Preguntámelo de otra forma y te la doy bien.")
+
 TECHO_MSG = (
     "Por hoy llegamos al tope de preguntas que puedo atender por persona — "
     "estamos en prueba y el motor es uno solo. Mañana seguimos.")
@@ -544,7 +552,8 @@ def limpiar(texto):
     return (t[0].upper() + t[1:]) if t else ''
 
 
-def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=None):
+def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=None,
+                    frenar_listas=True):
     """El sistema llega YA ARMADO y es siempre el mismo: eso es lo que hace
     que Ollama lo cachee y que la segunda pregunta no vuelva a pagar los dos
     minutos de lectura. Lo que cambia —quien pregunta y que pregunta— viaja
@@ -595,7 +604,19 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
             # GPU son 40 tok/s, y el techo bajo dejo de proteger a la persona
             # y empezo a cortarle la respuesta a media frase — que es peor que
             # esperar dos segundos mas. Se sube al doble largo.
-            'num_predict': 400 if pensadora else 200,
+            'num_predict': 300 if pensadora else 170,
+            # ── EL FRENO DE LAS LISTAS ────────────────────────────────────
+            # El prompt le pide en tres lugares que no escriba listas ni
+            # titulos, y las escribe igual: es lo que hace un modelo
+            # entrenado para paginas web. A una regla de estilo no se le
+            # confia un modelo abierto — ya paso con «segun las fichas» y con
+            # «Hola Tere».
+            # Estas marcas CORTAN la generacion en seco. En cuanto empieza a
+            # armar una lista o un titulo, la respuesta termina ahi: se queda
+            # con lo que ya dijo, que son las frases de verdad. Es la unica
+            # forma determinista de que conteste hablando y no maquetando.
+            'stop': (['\n1.', '\n2.', '\n- ', '\n* ', '\n**', '\n#', '\n\n**']
+                     if frenar_listas else []),
             # ── LA VENTANA. Esto costo 170 segundos por respuesta ──────────
             # Sin num_ctx, ollama usa 4096. El sistema solo son 1826 tokens;
             # con ocho turnos de memoria la peticion llega a 3814. Sumando la
@@ -860,6 +881,22 @@ def atender(rel, sistema, p, de, dicho):
             resto, entero = preguntar_motor(sistema, p, p['historial'], dicho,
                                             contexto,
                                             al_vuelo=soltar if por_frases else None)
+            # LA RESPUESTA VACIA, QUE NO ES UN MOTOR CAIDO.
+            #
+            # El freno de listas corta la generacion apenas el modelo empieza
+            # a maquetar. Si empieza maquetando en la PRIMERA linea —«1.
+            # Identidad…»— corta en seco y no queda nada que mandar. Paso:
+            # «Explicame el Genesis ID con todas sus ventajas» devolvio cero
+            # caracteres.
+            #
+            # Se vuelve a preguntar UNA vez sin ese freno. Es preferible una
+            # respuesta con forma de lista a ninguna respuesta, y con el
+            # limpiador de la salida la lista queda decente igual.
+            if not por_frases and len((resto or '').strip()) < 40:
+                log('respuesta vacia o cortisima, repregunto sin el freno')
+                resto, entero = preguntar_motor(sistema, p, p['historial'],
+                                                dicho, contexto,
+                                                al_vuelo=None, frenar_listas=False)
     except Exception as e:
         log('motor caido:', type(e).__name__, str(e)[:120])
         if not salio:
@@ -868,7 +905,12 @@ def atender(rel, sistema, p, de, dicho):
     if resto:
         rel.enviar(de, resto)
     if not salio and not resto:
-        rel.enviar(de, MOTOR_CAIDO)
+        # NO se dice «mi motor esta apagado»: el motor contesto, lo que paso
+        # es que no quedo nada util. Ademas el prompt le prohibe hablar de
+        # las tripas de la casa, y «mi motor» es exactamente eso. Se pide de
+        # otra manera, que es lo que haria una persona que no entendio.
+        log('respuesta vacia hasta despues de repreguntar, para', de)
+        rel.enviar(de, NO_SALIO)
         return
     # `entero` es lo que dijo el motor EN CRUDO — con sus asteriscos, sus
     # «1.» y su «¡Hola Tere!». Lo que sale al chat ya va limpio porque cada

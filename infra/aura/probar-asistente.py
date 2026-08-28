@@ -94,6 +94,22 @@ class MotorFalso(BaseHTTPRequestHandler):
             return
         cuerpo = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
         visto['peticiones'].append(cuerpo)
+
+        # EL FRENO DE LISTAS QUE CORTA A CERO. Pasó en el nodo: el modelo
+        # empezó maquetando en la primera línea, el `stop` cortó ahí mismo y
+        # no quedó nada — y el asistente contestó «mi motor está apagado»,
+        # que era mentira. Este motor de mentira reproduce eso: con el freno
+        # puesto devuelve vacío, sin el freno contesta.
+        # Se mira SOLO el turno de ahora, no la conversación entera: la
+        # palabra queda en el historial y, mirando todo, el motor de mentira
+        # devolvía vacío en cada pregunta posterior de esa persona.
+        ahora = (cuerpo['messages'][-1]['content'] or '')
+        if 'MAQUETA' in ahora and cuerpo.get('options', {}).get('stop'):
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'message': {'content': ''}}).encode())
+            return
         # si la pregunta pide LENTO, el motor piensa 2.5s: es la ventana para
         # meter un segundo mensaje mientras genera, que era el hueco grave
         if 'LENTO' in json.dumps(cuerpo):
@@ -170,6 +186,10 @@ def main():
         _, z = post(BASE, '/alta', {'correo': 'zoe@prueba.local', 'nombre': 'Zoe'})
         ana = {'correo': 'ana@prueba.local', 'llave': a['llave']}
         zoe = {'correo': 'zoe@prueba.local', 'llave': z['llave']}
+
+        def bandeja_de(quien):
+            _, d = post(BASE, '/bandeja', {**quien, 'desde': 'aura@prueba.local'})
+            return [m for m in d.get('mensajes', []) if m['de'] == 'aura@prueba.local']
 
         def espera_texto(quien, aguja, seg=25):
             """Espera a que llegue UN mensaje que contenga `aguja`. Buscar es
@@ -262,13 +282,21 @@ def main():
         # tok/s y ese mismo techo empezo a CORTAR la respuesta a media frase
         # — se vio en el nodo el 28-ago. Lo que se comprueba ya no es un
         # numero fijo sino la propiedad: alcanza para una respuesta entera.
-        ok(de_usuario()[0]['options'].get('num_predict', 0) >= 180,
+        ok(de_usuario()[0]['options'].get('num_predict', 0) >= 150,
            'el techo de palabras alcanza para terminar la frase',
            f"num_predict = {de_usuario()[0]['options'].get('num_predict')}")
         # La ventana. Sin esta linea ollama usa 4096, la peticion con memoria
         # llega a 3814, rebalsa al escribir y RELEE los 3814 desde cero: 170
         # segundos de espera antes de la primera letra. Se mide en el numero,
         # no en el humor: si alguien saca el num_ctx, esto se pone rojo.
+        # El freno de las listas. El prompt se lo pide en tres lugares y el
+        # modelo las escribe igual; esto las corta en seco. Si alguien saca
+        # estas marcas, AU-RA vuelve a maquetar en vez de conversar.
+        paren = de_usuario()[0]['options'].get('stop') or []
+        ok(any('1.' in x for x in paren) and any('**' in x for x in paren),
+           'la generación se corta apenas empieza una lista o un título',
+           f'stop = {paren}')
+
         ctx = de_usuario()[0]['options'].get('num_ctx')
         ok(ctx is not None and ctx >= 6144,
            'la ventana da lugar al historial: sin eso se relee todo cada vez',
@@ -421,6 +449,33 @@ def main():
             ok(aguja in lim(t),
                f'jamás se come una advertencia: «…{aguja}…» sobrevive',
                f'quedó {lim(t)!r}')
+
+        print('\nCuando el freno de listas corta a cero\n')
+        # Se espera el HECHO (que el motor reciba las llamadas), no un texto:
+        # el motor de mentira contesta siempre lo mismo, así que buscar su
+        # texto encuentra el de una prueba anterior y mide antes de tiempo.
+        antes_q = len(de_usuario())
+        n_ms = len([m for m in bandeja_de(ana)])
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': 'MAQUETA: explicame todo con ventajas'})
+        fin = time.time() + 30
+        while time.time() < fin and len(de_usuario()) < antes_q + 2:
+            time.sleep(0.3)
+        time.sleep(1.5)          # que termine de mandar antes de contar
+        pedidas = len(de_usuario()) - antes_q
+        ok(pedidas == 2,
+           'si el freno cortó la respuesta a cero, se repregunta — UNA vez',
+           f'llamadas al motor: {pedidas} (una lista fea es mejor que nada, '
+           f'pero repreguntar en bucle es peor que las dos cosas)')
+        ok(pedidas >= 2 and de_usuario()[antes_q]['options'].get('stop')
+           and not de_usuario()[antes_q + 1]['options'].get('stop'),
+           'la primera va CON el freno y la repregunta SIN él')
+        nuevos = bandeja_de(ana)[n_ms:]
+        ok(any('RESPUESTA-DEL-MOTOR' in (m.get('texto') or '') for m in nuevos),
+           'y la persona termina recibiendo una respuesta de verdad')
+        ok(not any('motor está apagado' in (m.get('texto') or '') for m in nuevos),
+           'nunca dice «mi motor está apagado»: es mentira y habla de las tripas',
+           str([(m.get('texto') or '')[:50] for m in nuevos]))
 
         print('\nLa voz: se pide, no se impone\n')
         # Que venga APAGADA importa: una nota de voz en cada respuesta es un
